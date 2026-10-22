@@ -6,7 +6,7 @@
 
 import { WEG } from '@/lib/wege';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
-import { automationenLink } from '@/lib/crm/adresse';
+import { automationenLink, mandateLink } from '@/lib/crm/adresse';
 
 export interface SeitenTreffer {
   art: 'seite'; id: string; titel: string; href: string; space?: 'privat' | 'business';
@@ -99,6 +99,7 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('fulfillment-onboarding', 'Produkte & Mandate · Fulfillment · Onboarding', WEG.fulfillment('onboarding'), 'business'),
   s('fulfillment-analysen', 'Produkte & Mandate · Fulfillment · Analysen', WEG.fulfillment('analysen'), 'business'),
   s('fulfillment-kreislauf', 'Produkte & Mandate · Fulfillment · Kreislauf', WEG.fulfillment('kreislauf'), 'business'),
+  s('mandate-automationen', 'Produkte & Mandate · Automationen & Head (Übergabe, Fulfillment, Ausbau)', mandateLink('automationen'), 'business'),
   // Prozesse (21.10.): die Landkarte als Fliege — Marketing, Sales, Übergabe, Fulfillment, Ausbau; Liste und Vollbild über die Adresse.
   s('prozesse', 'Prozesse · Landkarte der Abläufe (Marketing, Sales, Übergabe, Fulfillment, Ausbau)', WEG.prozesse(), 'business'),
   s('prozesse-liste', 'Prozesse · als Liste', WEG.prozesse({ ansicht: 'liste' }), 'business'),

@@ -19,21 +19,35 @@
 //                   Prozess-Landkarte und welcher Head zum Werkzeug gehören, und WO auf der Seite des Werkzeugs der Baustein steht
 //                   (components/os/werkzeug/BereichAutomationen.tsx) — ein Parameter an der vorhandenen Seite, keine eigene Seite (keine dritte Ebene, die
 //                   Schnellsuche findet die Seite schon, der Rahmen bleibt). Prozesse selbst trägt ihn nicht: dort ist es die ganze Landkarte.
-// Werkzeuge heute: Prozesse (Miro-Art) und Markttraktion (HubSpot-Art, Gruppen-Überschriften, Punkte aus `HUB_MENUE`).
+//   · je Space   ein Werkzeug darf in Privat andere Punkte zeigen als in Business (`sichtbar` liest `k.space` — die Wahl im Kopf bzw. `?space=`); „Automationen
+//                & Head“ kann je Space eine eigene Fassung tragen (`automation` als Liste mit `spaces`) — in Privat nur, wo es einen Head gibt (Prozesse nur Business)
+//   · Heads       NIE eine zweite Zuordnung: welcher Head zu einem Werkzeug gehört, sagt `SEITEN_REGELN` (lib/agenten/kontext-head.ts) über die Ziele seiner Punkte
+//                (`headsDerSeiten` — der Head des Einstiegs zuerst); Markttraktion nimmt die Liste aus `HUB_MENUE` (dieselben Heads, Wächter)
+// Werkzeuge heute: Prozesse (Miro-Art), Markttraktion (HubSpot-Art, Gruppen-Überschriften, Punkte aus `HUB_MENUE`), Produkte & Mandate, Unternehmen, Finanzen
+// (Punkte aus lib/finanzen/navigation.ts) und Planung — die letzten vier seit 22.10. abends (Gruppe A, Entscheidung: „Ja, alle Empfehlungen“).
 // Ein neues Werkzeug = ein Eintrag in `WERKZEUGE` + die Seite hört seine Aktionen (bzw. hängt den Rahmen ein); nichts in der Leiste ändern.
 
 import type { LucideIcon } from 'lucide-react';
-import { Workflow, Map as MapIcon, List, Hammer, PencilRuler, History, FlaskConical, LayoutTemplate, Presentation, Bot, TrendingUp } from 'lucide-react';
+import {
+  Workflow, Map as MapIcon, List, Hammer, PencilRuler, History, FlaskConical, LayoutTemplate, Presentation, Bot, TrendingUp,
+  Briefcase, Package, Route, UserPlus, Blocks, ChartColumn, RefreshCw,
+} from 'lucide-react';
 import { WEG } from '@/lib/wege';
 import { prozesseAusAdresse } from '@/lib/prozesse/adresse';
 import { ansichtVorgabe, type ProzessAnsicht } from '@/lib/prozesse/typen';
-import { HUB_MENUE, hubOrtFuer, type HubPunkt, type HubOrtId } from '@/lib/crm/adresse';
+import { HUB_MENUE, hubOrtFuer, mandateLink, mandateOrt, MANDATE_PFAD, type HubPunkt, type HubOrtId } from '@/lib/crm/adresse';
+import { FULFILLMENT_PFAD, FULFILLMENT_BEREICHE, fulfillmentAusAdresse, type FulfillmentBereich } from '@/lib/fulfillment/adresse';
 import { HUB_SYMBOLE } from '@/lib/crm/hub-symbole';
-import { passtZu } from './spaces';
+import { kontextHeadFuer } from '@/lib/agenten/kontext-head';
+import { passtZu, wahlVon, SPACE_VORGABE } from './spaces';
 import type { SpaceId } from './space-regeln';
 
-/** Wo man gerade steht — aus der Adresse (und ob es das Handy-Blatt ist: dort gelten die Vorgaben des Handys). */
-export interface WerkzeugKontext { pfad: string; q: URLSearchParams; handy: boolean }
+/**
+ * Wo man gerade steht — aus der Adresse (und ob es das Handy-Blatt ist: dort gelten die Vorgaben des Handys). `space` = die Wahl im Kopf (Leiste) bzw. was die
+ * Adresse sagt (`?space=` gewinnt, sonst die Seite, sonst Business); `nurBusiness` = ein Konto „nur Business“ (der Server liefert ihm nichts Privates — das
+ * Menü zeigt ihm, was es benutzen kann).
+ */
+export interface WerkzeugKontext { pfad: string; q: URLSearchParams; handy: boolean; space: SpaceId; nurBusiness: boolean }
 
 export interface WerkzeugPunkt {
   id: string;
@@ -53,6 +67,11 @@ export interface WerkzeugPunkt {
   unter?: readonly WerkzeugPunkt[];
   /** Überschrift der Gruppe, zu der der Punkt gehört (nur Beschriftung, keine Ebene). */
   gruppe?: string;
+  /**
+   * Der Punkt führt in einen ANDEREN Bereich (Name, z. B. „Kalender“) — er verlässt das Werkzeug (Planung › „Woche planen“ öffnet Kalender › Planen); im Menü mit
+   * ↗ gekennzeichnet. Nur für Fuß-Punkte gedacht; der Wächter verlangt sonst, dass jedes Ziel im Werkzeug bleibt.
+   */
+  wechselt?: string;
 }
 
 /**
@@ -60,7 +79,12 @@ export interface WerkzeugPunkt {
  * kommen nie in den Code), der Head (Katalog-Kennung, lib/agenten/katalog.ts) und der Ort auf der Seite des Werkzeugs (`href`, über die Adress-Regeln der Seite).
  */
 export interface WerkzeugAutomation {
+  /** Ganze Bereiche der Landkarte (feste Kennungen). In Privat leer — Prozesse gibt es nur im Business. */
   bereiche: readonly string[];
+  /** Einzelne Prozesse der Landkarte (z. B. `sp-monatsabschluss`), die zum Werkzeug gehören, ohne dass ihr ganzer Bereich dazugehört. */
+  prozesse?: readonly string[];
+  /** In welchen Spaces diese Fassung gilt (ohne Angabe: in allen Spaces des Werkzeugs) — die erste passende gilt. */
+  spaces?: readonly SpaceId[];
   /** Der Head des Werkzeugs (Vorbelegung, „Head fragen“). */
   head?: string;
   /** Weitere Heads des Bereichs (z. B. Markttraktion: Marketing und Event neben Sales) — je eine Karte unter der ersten; ohne: nur `head`. */
@@ -73,8 +97,9 @@ export interface WerkzeugAutomation {
 /** Name und Symbol des Standard-Unterpunkts — überall gleich. */
 export const AUTOMATION_LABEL = 'Automationen & Head';
 export const AUTOMATION_ICON: LucideIcon = Bot;
+const AUTOMATION_TITEL = 'Die Prozesse dieses Bereichs bauen und steuern — mit seinem Head';
 /** Alle Heads eines Werkzeugs, der Head des Werkzeugs zuerst, ohne Doppelte (der Baustein zeichnet je Head eine Karte). */
-export function automationHeads(a: WerkzeugAutomation | undefined): string[] {
+export function automationHeads(a: WerkzeugAutomation | null | undefined): string[] {
   return a ? [...new Set([...(a.head ? [a.head] : []), ...(a.weitereHeads ?? [])])] : [];
 }
 
@@ -92,7 +117,49 @@ export interface Werkzeug {
   leistenPunkt: string;
   punkte: readonly WerkzeugPunkt[];
   fuss?: readonly WerkzeugPunkt[];
-  automation?: WerkzeugAutomation;
+  /** „Automationen & Head“ — eine Fassung für alle Spaces oder je Space eine (Liste mit `spaces`). */
+  automation?: WerkzeugAutomation | readonly WerkzeugAutomation[];
+  /**
+   * Nur für volle Mitglieder des Haushalts (wie der Leistenpunkt, `nurVolleMitglieder` in ./spaces.ts): ein Konto „nur Business“ bekommt den Bereich serverseitig
+   * nicht (403) — die Leiste zeigt ihm das Menü des Werkzeugs gar nicht erst.
+   */
+  nurVolleMitglieder?: true;
+}
+
+const geteilt = (href: string): { pfad: string; suche: string } => {
+  const ohneAnker = href.split('#')[0];
+  const i = ohneAnker.indexOf('?');
+  return i < 0 ? { pfad: ohneAnker, suche: '' } : { pfad: ohneAnker.slice(0, i), suche: ohneAnker.slice(i) };
+};
+
+/** Alle Fassungen von „Automationen & Head“ eines Werkzeugs. */
+export function automationenVon(w: Werkzeug): readonly WerkzeugAutomation[] {
+  const a = w.automation;
+  return !a ? [] : Array.isArray(a) ? a : [a as WerkzeugAutomation];
+}
+/** Die Fassung von „Automationen & Head“ für einen Space — oder null (dort steht der Punkt nicht). */
+export function automationVon(w: Werkzeug, space: SpaceId): WerkzeugAutomation | null {
+  return automationenVon(w).find(a => (a.spaces ?? w.spaces).includes(space)) ?? null;
+}
+
+/**
+ * Die Heads der Seiten eines Werkzeugs — aus `SEITEN_REGELN` (lib/agenten/kontext-head.ts, EINE Zuordnung Seite → Head), in der Reihenfolge der Ziele, ohne
+ * Doppelte, nur Heads des Space. So steht nirgends eine zweite Liste „welcher Head gehört zu welchem Bereich“.
+ */
+export function headsDerSeiten(hrefs: readonly string[], space: SpaceId): string[] {
+  const ids = hrefs.map(h => { const g = geteilt(h); return kontextHeadFuer(g.pfad, g.suche, space); });
+  return [...new Set(ids.filter((x): x is string => !!x))];
+}
+/** Die Ziele der Punkte eines Werkzeugs an seinem Einstieg in einem Space (für `headsDerSeiten`) — ohne Punkte, die das Werkzeug verlassen. */
+function zieleIm(start: string, punkte: readonly WerkzeugPunkt[], space: SpaceId): string[] {
+  const g = geteilt(start);
+  const k = werkzeugKontext(g.pfad, g.suche, false, { space });
+  return [start, ...punkte.flatMap(p => [p, ...(p.unter ?? [])]).filter(p => !p.wechselt && (p.sichtbar?.(k) ?? true) && p.href).map(p => p.href!(k))];
+}
+/** „Automationen & Head“ mit den Heads aus `SEITEN_REGELN` — der Head des Einstiegs zuerst, die der übrigen Punkte als weitere Karten. */
+function automationMitHeads(start: string, punkte: readonly WerkzeugPunkt[], space: SpaceId, a: Omit<WerkzeugAutomation, 'head' | 'weitereHeads' | 'spaces'>): WerkzeugAutomation {
+  const heads = headsDerSeiten(zieleIm(start, punkte, space), space);
+  return { ...a, spaces: [space], ...(heads[0] ? { head: heads[0] } : {}), ...(heads.length > 1 ? { weitereHeads: heads.slice(1) } : {}) };
 }
 
 // ─── Prozesse (das erste Werkzeug, Miro-Art) ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -167,14 +234,50 @@ export const MARKTTRAKTION_WERKZEUG: Werkzeug = {
   },
 };
 
-/** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG];
-
-const geteilt = (href: string): { pfad: string; suche: string } => {
-  const ohneAnker = href.split('#')[0];
-  const i = ohneAnker.indexOf('?');
-  return i < 0 ? { pfad: ohneAnker, suche: '' } : { pfad: ohneAnker.slice(0, i), suche: ohneAnker.slice(i) };
+// ─── Produkte & Mandate (22.10. abends, Gruppe A — Entscheidung: „Ja, alle Empfehlungen“) ─────────────────────────────────────────────────────────────
+// Kunden: Mandate · Angebot: Produkte · Fulfillment: Übersicht, Onboarding, Bausteine, Analysen, Kreislauf (Namen aus `FULFILLMENT_BEREICHE`) · „Automationen &
+// Head“ (`?s=automationen`: Bereiche Übergabe · Fulfillment · Ausbau + die Prozesse der Produkte über `Leistung.prozessId`; Heads aus `SEITEN_REGELN` = Kundenerfolg,
+// unter Produkte Sales). Die frühere Reiterzeile Mandate · Produkte · Fulfillment und die Unter-Reiter des Fulfillments ersetzt dieses Menü (Ebene 1); die dritte
+// Ebene bleibt in der Seite (Mandat-Akte, Reiter des Falls, Knoten/Baustein/Editor, Linien-Pillen, Leistungstreppe). Ein Fall (`?m=`) und der Editor (`?e=`)
+// gehören zur Übersicht des Fulfillments; alte Adressen (`u=visualisierung`, `r=ablauf` …) liest `fulfillmentAusAdresse`.
+type PmOrt = 'mandate' | 'produkte' | 'automationen' | FulfillmentBereich;
+const imFulfillment = (k: WerkzeugKontext) => k.pfad === FULFILLMENT_PFAD || k.pfad.startsWith(`${FULFILLMENT_PFAD}/`);
+const pmOrt = (k: WerkzeugKontext): PmOrt => (imFulfillment(k) ? fulfillmentAusAdresse(k.q).u : mandateOrt(k.q.get('s')));
+const FULFILLMENT_SYMBOL: Record<FulfillmentBereich, LucideIcon> = { prozesse: Route, onboarding: UserPlus, bausteine: Blocks, analysen: ChartColumn, kreislauf: RefreshCw };
+const FULFILLMENT_TITEL: Record<FulfillmentBereich, string> = {
+  prozesse: 'Heute im Fulfillment, Kunden in Lieferung, die Abläufe — ein Klick öffnet den Fall',
+  onboarding: 'Unterschriebene Mandate ins Fulfillment holen',
+  bausteine: 'Die Bausteine, aus denen die Abläufe bestehen',
+  analysen: 'Analysen und Dossiers der Kunden',
+  kreislauf: 'Nach der Leistung: Wirkung, Folgeangebot, Empfehlung',
 };
+const PM_PUNKTE: readonly WerkzeugPunkt[] = [
+  { id: 'mandate', label: 'Mandate', icon: Briefcase, gruppe: 'Kunden', titel: 'Für wen wir gerade arbeiten — Laufzeit, Gesundheit, Umsatz', href: () => mandateLink('mandate'), aktiv: k => pmOrt(k) === 'mandate' },
+  { id: 'produkte', label: 'Produkte', icon: Package, gruppe: 'Angebot', titel: 'Was wir anbieten — mit Preis, Ablauf und Unterlagen', href: () => mandateLink('produkte'), aktiv: k => pmOrt(k) === 'produkte' },
+  ...FULFILLMENT_BEREICHE.map((b): WerkzeugPunkt => ({
+    id: b.id === 'prozesse' ? 'fulfillment' : b.id, label: b.label, icon: FULFILLMENT_SYMBOL[b.id], gruppe: 'Fulfillment', titel: FULFILLMENT_TITEL[b.id],
+    href: () => WEG.fulfillment(b.id), aktiv: k => imFulfillment(k) && pmOrt(k) === b.id,
+  })),
+];
+
+export const PRODUKTE_WERKZEUG: Werkzeug = {
+  id: 'produkte-mandate',
+  name: 'Produkte & Mandate',
+  icon: Briefcase,
+  spaces: ['business'],
+  pfade: [MANDATE_PFAD],
+  start: mandateLink('mandate'),
+  leistenPunkt: 'Produkte & Mandate',
+  punkte: PM_PUNKTE,
+  automation: automationMitHeads(mandateLink('mandate'), PM_PUNKTE, 'business', {
+    bereiche: ['uebergabe', 'fulfillment', 'ausbau'],
+    href: () => mandateLink('automationen'),
+    aktiv: k => !imFulfillment(k) && pmOrt(k) === 'automationen',
+  }),
+};
+
+/** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, PRODUKTE_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {
@@ -183,9 +286,16 @@ export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {
 /** Dasselbe für einen Link (Pfad mit Parametern). */
 export const werkzeugVonHref = (href: string): Werkzeug | null => { const g = geteilt(href); return werkzeugFuer(g.pfad, g.suche); };
 
-export function werkzeugKontext(pfad: string, suche = '', handy = false): WerkzeugKontext {
-  return { pfad, q: new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche), handy };
+/** Der Kontext einer Adresse — `space` ohne Angabe wie die Wahl im Kopf (`?space=` gewinnt, sonst die Seite, sonst Business). */
+export function werkzeugKontext(pfad: string, suche = '', handy = false, o: { space?: SpaceId; nurBusiness?: boolean } = {}): WerkzeugKontext {
+  const nurBusiness = !!o.nurBusiness;
+  return {
+    pfad, q: new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche), handy,
+    space: nurBusiness ? 'business' : o.space ?? wahlVon(pfad, suche, SPACE_VORGABE), nurBusiness,
+  };
 }
+/** Steht das Werkzeug für dieses Konto da? (Ein Werkzeug `nurVolleMitglieder` nicht für ein Konto „nur Business“ — wie sein Leistenpunkt.) */
+export const werkzeugFuerKonto = (w: Werkzeug | null, nurBusiness: boolean | null | undefined): Werkzeug | null => (w && !(nurBusiness && w.nurVolleMitglieder) ? w : null);
 
 /** Ein Unterpunkt, aufgelöst für die Anzeige: Ziel bzw. Aktion, leuchtet ja/nein, die sichtbaren Kinder, die Überschrift der Gruppe. */
 export interface PunktAnsicht {
@@ -193,18 +303,30 @@ export interface PunktAnsicht {
   href: string | null; aktion: string | null; an: boolean;
   unter: PunktAnsicht[];
   gruppe?: string;
+  /** Führt in einen anderen Bereich (Name) — im Menü mit ↗. */
+  wechselt?: string;
 }
 const aufloesen = (p: WerkzeugPunkt, k: WerkzeugKontext, tiefe: number): PunktAnsicht => ({
-  id: p.id, label: p.label, icon: p.icon, titel: p.titel ?? p.label, ...(p.gruppe ? { gruppe: p.gruppe } : {}),
+  id: p.id, label: p.label, icon: p.icon, titel: p.titel ?? p.label, ...(p.gruppe ? { gruppe: p.gruppe } : {}), ...(p.wechselt ? { wechselt: p.wechselt } : {}),
   href: p.href ? p.href(k) : null, aktion: p.aktion ?? null, an: !!p.aktiv?.(k),
   // Höchstens zwei Ebenen: Kinder der Kinder fallen weg (die Konfiguration darf sie gar nicht erst tragen).
   unter: tiefe === 0 ? (p.unter ?? []).filter(u => u.sichtbar?.(k) ?? true).map(u => aufloesen(u, k, 1)) : [],
 });
 /** Der Standard-Unterpunkt „Automationen & Head“ eines Werkzeugs (aus `automation`) — oder null. */
 export function automationPunkt(w: Werkzeug): WerkzeugPunkt | null {
-  const a = w.automation;
-  if (!a) return null;
-  return { id: 'automationen', label: AUTOMATION_LABEL, icon: AUTOMATION_ICON, titel: 'Die Prozesse dieses Bereichs bauen und steuern — mit seinem Head', href: a.href, aktiv: a.aktiv, ...(a.gruppe ? { gruppe: a.gruppe } : {}) };
+  const alle = automationenVon(w);
+  if (!alle.length) return null;
+  const a = alle[0];
+  // Nur eine Fassung für alle Spaces: wie bisher. Je Space eine: der Punkt steht nur, wo es eine gibt (in Privat nur, wo es einen Head gibt).
+  if (alle.length === 1 && !a.spaces) {
+    return { id: 'automationen', label: AUTOMATION_LABEL, icon: AUTOMATION_ICON, titel: AUTOMATION_TITEL, href: a.href, aktiv: a.aktiv, ...(a.gruppe ? { gruppe: a.gruppe } : {}) };
+  }
+  return {
+    id: 'automationen', label: AUTOMATION_LABEL, icon: AUTOMATION_ICON, titel: AUTOMATION_TITEL, ...(a.gruppe ? { gruppe: a.gruppe } : {}),
+    href: k => (automationVon(w, k.space) ?? a).href(k),
+    aktiv: k => !!automationVon(w, k.space)?.aktiv(k),
+    sichtbar: k => !!automationVon(w, k.space),
+  };
 }
 /** Die Unterpunkte samt „Automationen & Head“ (in seiner Gruppe bzw. am Ende). */
 export function alleUnterpunkte(w: Werkzeug): readonly WerkzeugPunkt[] {

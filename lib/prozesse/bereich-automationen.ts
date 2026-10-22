@@ -62,13 +62,25 @@ export function automationZeile(p: ProzessDef, z?: LaufZahlen): AutomationZeile 
 /**
  * Die Prozesse der Bereiche eines Werkzeugs, in der Reihenfolge der Bereiche und der Landkarte (angepasst: eigene Zuordnung und Reihenfolge gelten). Unbekannte
  * Bereiche fallen weg; ein Bereich ohne Prozesse bleibt (mit leerer Liste) — dort steht dann „+ Prozess“.
+ * `prozesse` (22.10. abends, Werkzeuge Gruppe A): einzelne Prozesse, die zum Werkzeug gehören, ohne dass ihr ganzer Bereich dazugehört (Finanzen:
+ * Monatsabschluss und Rechnung; Unternehmen: Betroffenenrechte; Produkte & Mandate: die Prozesse der Produkte, `Leistung.prozessId`) — sie stehen unter
+ * dem Bereich, in dem die Landkarte sie zeigt (nach den ganzen Bereichen, in der Reihenfolge der Landkarte), nie doppelt; unbekannte Kennungen fallen weg.
  */
-export function automationenFuer(ansicht: LandkarteAnsicht, bereiche: readonly string[], laeufe: Readonly<Record<string, LaufZahlen>> = {}): AutomationGruppe[] {
+export function automationenFuer(ansicht: LandkarteAnsicht, bereiche: readonly string[], laeufe: Readonly<Record<string, LaufZahlen>> = {}, prozesse: readonly string[] = []): AutomationGruppe[] {
   const nachId = new Map(ansicht.bereiche.map(b => [b.id, b]));
-  return bereiche.flatMap(id => {
+  const ganz = bereiche.flatMap(id => {
     const b = nachId.get(id);
     return b ? [{ bereich: b, zeilen: (ansicht.jeBereich[id] ?? []).map(p => automationZeile(p, laeufe[p.id])) }] : [];
   });
+  const gesehen = new Set(ganz.flatMap(g => g.zeilen.map(z => z.id)));
+  const einzeln = new Set(prozesse.filter(id => !gesehen.has(id)));
+  if (!einzeln.size) return ganz;
+  const dazu = ansicht.bereiche.flatMap(b => {
+    // Ein ganzer Bereich enthält seine Prozesse schon (`gesehen`) — hier stehen nur Bereiche, die das Werkzeug nicht ganz trägt.
+    const zeilen = (ansicht.jeBereich[b.id] ?? []).filter(p => einzeln.has(p.id)).map(p => automationZeile(p, laeufe[p.id]));
+    return zeilen.length ? [{ bereich: b, zeilen }] : [];
+  });
+  return [...ganz, ...dazu];
 }
 
 /** Die Lage in Zahlen (Kopf des Bausteins): wie viele eigene Prozesse scharf, im Probelauf, pausiert, als Entwurf; dazu System und Pakete. */

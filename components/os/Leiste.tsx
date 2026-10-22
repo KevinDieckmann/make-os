@@ -11,7 +11,8 @@
 // Handy: unten FÜNF Einträge — Heute · Inbox · Menü · ZOE · Netzwerken (sechs liefen ineinander). „Menü“ öffnet das Blatt mit dem
 // Schalter Privat/Business, allen Punkten der Wahl, Einstellungen und „Problem oder Idee melden“ — ein „Mehr“ daneben wäre
 // dasselbe Blatt ein zweites Mal; den frei gewordenen Platz bekommt die Inbox (am Handy der häufigste Weg, sonst zwei Tipps entfernt).
-// Werkzeug-Muster (22.10., lib/make-one/werkzeuge.ts; Kevin: „Menü wie HubSpot“): steht die Adresse in einem Werkzeug (heute Prozesse), klappt die Leiste
+// Werkzeug-Muster (22.10., lib/make-one/werkzeuge.ts; Kevin: „Menü wie HubSpot“): steht die Adresse in einem Werkzeug (Prozesse, Markttraktion, Produkte &
+// Mandate, Unternehmen, Finanzen, Planung), klappt die Leiste
 // auf dessen Unterpunkte um — oben „← MAKE OS“ (zeigt wieder die Punkte des Space, die Seite bleibt offen: ein ungespeicherter Entwurf geht nie verloren,
 // und jeder Punkt ist von dort einen Klick entfernt), darunter Name und Symbol, dann die Unterpunkte; unten bleiben Einstellungen, Melden, Konto. Steht man so
 // im Werkzeug, aber mit der Space-Leiste, klappt ein Klick auf den Punkt des Werkzeugs sie wieder um. Am Handy bleibt die Leiste unten, wie sie ist — das
@@ -29,7 +30,7 @@ import { WEG } from '@/lib/wege';
 import { useWartezahl, wartezahlText } from '@/lib/netzwerken/zaehler';
 import { EINSTELLUNGEN_PFADE } from '@/lib/make-one/einstellungen';
 import { useNurBusiness } from './useInhaber';
-import { werkzeugFuer, werkzeugKontext, werkzeugVonHref, WERKZEUG_ZURUECK } from '@/lib/make-one/werkzeuge';
+import { werkzeugFuer, werkzeugFuerKonto, werkzeugKontext, werkzeugVonHref, WERKZEUG_ZURUECK } from '@/lib/make-one/werkzeuge';
 import { WerkzeugMenue } from './werkzeug/menue';
 
 /** Einstellungen (08.10., vorher „System“): Adresse bleibt /os/system; leuchtet auf allen Seiten, die dort gelistet sind. */
@@ -93,9 +94,11 @@ export function Leiste() {
   useEffect(() => { if (offen) setBlattWahl(wahl); }, [offen]); // eslint-disable-line react-hooks/exhaustive-deps
   const vorname = konto?.name.split(' ')[0] ?? '';
   // Werkzeug-Muster: auf einer Werkzeug-Adresse zeigt die Leiste dessen Menü — außer man hat „← MAKE OS“ gewählt (bis zum nächsten Seitenwechsel).
-  const werkzeug = werkzeugFuer(pfad, suche);
-  const wzKontext = useMemo(() => werkzeugKontext(pfad, suche), [pfad, suche]);
-  const wzBlattKontext = useMemo(() => werkzeugKontext(pfad, suche, true), [pfad, suche]);
+  // Je Space (22.10. abends): Finanzen und Planung zeigen in Privat andere Punkte als in Business — der Kontext trägt die Wahl im Kopf; ein Werkzeug „nur volle
+  // Mitglieder“ (Unternehmen) steht für ein Konto „nur Business“ nicht da (wie sein Leistenpunkt; der Server antwortet ihm ohnehin mit 403).
+  const werkzeug = werkzeugFuerKonto(werkzeugFuer(pfad, suche), nurBusiness);
+  const wzKontext = useMemo(() => werkzeugKontext(pfad, suche, false, { space: wahl, nurBusiness: !!nurBusiness }), [pfad, suche, wahl, nurBusiness]);
+  const wzBlattKontext = useMemo(() => werkzeugKontext(pfad, suche, true, { space: wahl, nurBusiness: !!nurBusiness }), [pfad, suche, wahl, nurBusiness]);
   const [spaceZeigen, setSpaceZeigen] = useState(false);
   useEffect(() => { setSpaceZeigen(false); }, [pfad]);
   useEffect(() => {

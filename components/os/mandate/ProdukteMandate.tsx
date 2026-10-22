@@ -6,18 +6,23 @@ import { Karte, Ueberschrift, Liste, Zeile, Knopf, Punkt } from '../ui';
 
 // ─── Produkte & Mandate (/os/mandate) ───────────────────────────────────────
 // Kevin 25.09.: „Das Mandaten-Abteil auf die linke Seite unter Aufgaben — da
-// ist das Thema Produkte und Mandate abgebildet.“ Zwei Reiter:
+// ist das Thema Produkte und Mandate abgebildet.“ Orte der Seite:
 //   Mandate   alle Mandate mit Monatsumsatz, Konzentration, Laufzeitradar,
 //             Health, Liquiditätsplan, Produkt und Phase (components/os/crm/Kunden.tsx)
 //   Produkte  der Katalog nach Linien mit Zahlen, Ablauf und Unterlagen (./Produkte.tsx)
-// Adresse: ?s=produkte für den zweiten Reiter, ?k=<id> für das offene Mandat
-// bzw. Produkt — Reiterwechsel sind Verlaufsschritte (Zurück führt zurück).
+//   Automationen & Head  (22.10. abends) die Prozesse des Bereichs (Übergabe, Fulfillment, Ausbau + die Prozesse der Produkte) und seine Heads
+// Adresse: ?s=produkte | automationen, ?k=<id> für das offene Mandat bzw. Produkt.
+// Seit 22.10. abends ist Produkte & Mandate ein Werkzeug (lib/make-one/werkzeuge.ts `PRODUKTE_WERKZEUG`): die linke Leiste trägt das Menü
+// (Mandate · Produkte · Fulfillment · Automationen & Head) — die frühere Segment-Zeile Mandate · Produkte · Fulfillment im Seitenkopf ist weg.
 // Sales › 3 · Kunden zeigt nur noch die Kurzfassung und verlinkt hierher.
 
+import { useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Seite, Segmente, Hinweis, LEUCHT } from '../ui';
+import { Seite, Hinweis, LEUCHT } from '../ui';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { mandateLink, markttraktion } from '@/lib/crm/adresse';
+import { mandateOrt, markttraktion } from '@/lib/crm/adresse';
+import { PRODUKTE_WERKZEUG } from '@/lib/make-one/werkzeuge';
+import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
 import { useCrm } from '../crm/daten';
 import { MandateUebersicht } from '../crm/Kunden';
 import { Produkte } from './Produkte';
@@ -25,21 +30,31 @@ import { MandateTabelle } from './MandateTabelle';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 import { OnboardingHinweis } from '../fulfillment/prozesse';
 
-type Reiter = 'mandate' | 'produkte';
-/** Fulfillment (10.10.): dritter Punkt der Segmente — eine eigene Seite (`/os/mandate/fulfillment`, components/os/fulfillment/FulfillmentSeite.tsx). */
-type Segment = Reiter | 'fulfillment';
+const UNTER = {
+  mandate: 'Für wen wir gerade arbeiten — Laufzeit, Gesundheit, Umsatz.',
+  produkte: 'Was wir anbieten — mit Preis, Ablauf und Unterlagen.',
+  automationen: 'Die Abläufe von der Übergabe bis zum Ausbau — und die Heads dieses Bereichs.',
+} as const;
 
 export function ProdukteMandate() {
   const router = useRouter();
   const params = useSearchParams();
-  const reiter: Reiter = params.get('s') === 'produkte' ? 'produkte' : 'mandate';
+  // Der Ort folgt der Adresse (auch beim Klick im Menü der Leiste — kein Zustand, der nur beim ersten Laden gelesen wird).
+  const reiter = mandateOrt(params.get('s'));
   const api = useCrm();
   const zuKontakt = (id: string) => router.push(markttraktion('kontakte', 'akte', id));
-  const zu = (s: Segment) => router.push(s === 'fulfillment' ? WEG.fulfillment() : mandateLink(s), { scroll: false });
+  // Die Prozesse der Produkte (`Leistung.prozessId`, 22.10.) gehören zu „Automationen & Head“ dieses Bereichs — nur Verweise, keine Kopie.
+  const produktProzesse = useMemo(() => [...new Set((api.crm?.stand.leistungen ?? []).map(l => l.prozessId).filter((x): x is string => !!x))], [api.crm]);
+  if (reiter === 'automationen') {
+    return (
+      <Seite titel="Produkte & Mandate" unter={UNTER.automationen}>
+        <BereichAutomationen werkzeug={PRODUKTE_WERKZEUG} space="business" weitereProzesse={produktProzesse} />
+      </Seite>
+    );
+  }
   return (
-    <Seite titel="Produkte & Mandate" unter={reiter === 'produkte' ? 'Was wir anbieten — mit Preis, Ablauf und Unterlagen.' : 'Für wen wir gerade arbeiten — Laufzeit, Gesundheit, Umsatz.'}
-      // Produkte & Mandate (10.10.): das Gesellschafts-Register ist ein eigener Punkt in der Leiste (/os/unternehmen), kein Reiter mehr hier.
-      rechts={<Segmente<Segment> liste={[{ id: 'mandate', label: 'Mandate' }, { id: 'produkte', label: 'Produkte' }, { id: 'fulfillment', label: 'Fulfillment' }]} aktiv={reiter} onWahl={zu} />}>
+    // Produkte & Mandate (10.10.): das Gesellschafts-Register ist ein eigener Punkt in der Leiste (/os/unternehmen), kein Reiter mehr hier.
+    <Seite titel="Produkte & Mandate" unter={UNTER[reiter]}>
       {api.fehler && <Hinweis art="kritisch">{api.fehler}</Hinweis>}
       {/* Fulfillment (10.10.): „Kundenonboarding starten“ für unterschriebene Mandate ohne Fall (Paket C1; bis dahin leer). */}
       {reiter === 'mandate' && <OnboardingHinweis api={api} />}

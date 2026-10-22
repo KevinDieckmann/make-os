@@ -1,21 +1,22 @@
 'use client';
 
 // ─── Fulfillment — die Seite (Rahmen, C0, 10.10.; FULFILLMENT_KONZEPT.md Abschnitt 10; Design 11.10.; seit 17.10. nach dem Miro-Standard) ────────────────
-// Produkte & Mandate › „Fulfillment“: eigene Seite `/os/mandate/fulfillment` mit demselben Kopf (Segmente Mandate · Produkte · Fulfillment).
+// Produkte & Mandate › „Fulfillment“: eigene Seite `/os/mandate/fulfillment`. Seit 22.10. abends ist Produkte & Mandate ein Werkzeug
+// (lib/make-one/werkzeuge.ts `PRODUKTE_WERKZEUG`): die Bereiche Übersicht · Onboarding · Bausteine · Analysen · Kreislauf stehen im Menü der linken Leiste (am
+// Handy oben im Blatt „Menü“) — die frühere Segment-Zeile Mandate · Produkte · Fulfillment und die Unter-Reiter der Seite sind weg (keine doppelte Navigation).
 // Rückmeldung 17.10.: „Es soll nicht überladen sein, sondern sehr klar. Lieber wenig und klar … es dupliziert sich.“ Seitdem:
-//   · Start: die Lage als EINE schlanke Zeile, dann fünf Unter-Reiter Landkarte (mit den Kunden in Lieferung) · Onboarding · Bausteine · Analysen · Kreislauf.
+//   · Start: die Lage als EINE schlanke Zeile, dann der Bereich (Übersicht mit den Kunden in Lieferung · Onboarding · Bausteine · Analysen · Kreislauf).
 //   · Ein Fall (`?m=<Mandat>`): ein knapper Kopf (zurück, Ampel mit einem Satz, „Dem Kunden zeigen“) und VIER Reiter — Reise (die Kundenjourney-Zeile, der
 //     Fluss je Phase, Analyse und Abschluss an ihrer Phase) · Ziele & Wirkung · Menschen & Termine · Kunde.
 // Frühere Adressen (`r=ueberblick|ablauf|wert|takt|analyse|kreislauf`, `u=visualisierung`) werden durch die neue ersetzt (lib/fulfillment/adresse.ts,
 // `neueAdresse`) — kein toter Link, kein zusätzlicher Verlaufsschritt. Reiterwechsel sind Verlaufsschritte (Zurück führt zurück). Der Rahmen rechnet nichts.
-// Am Handy stehen die Segmente unter dem Titel, die Reiter wischen seitwärts (`.ui-reiter-zeile`).
+// Am Handy wischen die Reiter des Falls seitwärts (`.ui-reiter-zeile`).
 
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Seite, Segmente, Reiter, Hinweis, useHandy } from '../ui';
+import { Seite, Reiter, Hinweis } from '../ui';
 import { WEG } from '@/lib/wege';
-import { mandateLink } from '@/lib/crm/adresse';
-import { FULFILLMENT_BEREICHE, FALL_REITER, fulfillmentAusAdresse, neueAdresse, type FulfillmentBereich, type FallReiter } from '@/lib/fulfillment/adresse';
+import { FALL_REITER, fulfillmentAusAdresse, neueAdresse, type FulfillmentBereich, type FallReiter } from '@/lib/fulfillment/adresse';
 import { useCrm } from '../crm/daten';
 import { Prozesse, Bausteine, Onboarding, Kreislauf, FallZiele, FallMenschen } from './prozesse';
 import { FallKunde } from './kunde';
@@ -25,16 +26,19 @@ import { FallReise } from './reise/FallReise';
 import { LageStreifen } from './reise/LageStreifen';
 import { ProzessEditor } from './editor/ProzessEditor';
 
-type Segment = 'mandate' | 'produkte' | 'fulfillment';
-const SEGMENTE: { id: Segment; label: string }[] = [{ id: 'mandate', label: 'Mandate' }, { id: 'produkte', label: 'Produkte' }, { id: 'fulfillment', label: 'Fulfillment' }];
+/** Ein Satz je Bereich unter dem Titel (der Bereich selbst steht im Menü der Leiste). */
+const UNTER: Record<FulfillmentBereich, string> = {
+  prozesse: 'Wie wir liefern — jeder Kunde als Reise durch unsere Phasen.',
+  onboarding: 'Onboarding — unterschriebene Mandate ins Fulfillment holen.',
+  bausteine: 'Bausteine — woraus die Abläufe bestehen.',
+  analysen: 'Analysen — was wir beim Kunden messen und berichten.',
+  kreislauf: 'Kreislauf — nach der Leistung: Wirkung, Folgeangebot, Empfehlung.',
+};
 
 export function FulfillmentSeite() {
   const router = useRouter();
   const adresse = fulfillmentAusAdresse(useSearchParams());
   const api = useCrm();
-  const handy = useHandy();
-  const zu = (s: Segment) => router.push(s === 'fulfillment' ? WEG.fulfillment() : mandateLink(s), { scroll: false });
-  const kopf = <Segmente liste={SEGMENTE} aktiv="fulfillment" onWahl={zu} />;
   // Frühere Adresse → die neue (ersetzt, ohne Verlaufsschritt; ein Sprung `#…` bleibt).
   const ersatz = neueAdresse(adresse, typeof window !== 'undefined' ? window.location.hash : '');
   useEffect(() => { if (ersatz) router.replace(ersatz, { scroll: false }); }, [ersatz, router]);
@@ -43,8 +47,7 @@ export function FulfillmentSeite() {
     const m = adresse.m;
     const mandat = api.crm?.stand.mandate.find(x => x.id === m);
     return (
-      <Seite titel={mandat ? mandat.titel : 'Fall'} unter={mandat ? `Fulfillment · ${mandat.kunde}` : 'Fulfillment · Fall'} rechts={handy ? undefined : kopf}>
-        {handy && kopf}
+      <Seite titel={mandat ? mandat.titel : 'Fall'} unter={mandat ? `Fulfillment · ${mandat.kunde}` : 'Fulfillment · Fall'}>
         <FallKopf mandatId={m} mitKunde={!!mandat} />
         {api.crm && !mandat && <Hinweis art="achtung">Dieses Mandat gibt es nicht (mehr).</Hinweis>}
         <div className="ui-reiter-zeile">
@@ -58,22 +61,17 @@ export function FulfillmentSeite() {
   // Prozess-Editor (17.10.): ein Ablauf zum Bearbeiten — eigene Ansicht (zurück führt zur Landkarte), ohne Lage-Zeile und Unter-Reiter.
   if (adresse.e) {
     return (
-      <Seite titel="Ablauf bearbeiten" unter="Phasen, Schritte, Nachrichten, Entscheidungen und Erinnerungen — per Ziehen oder Tastatur." rechts={handy ? undefined : kopf}>
-        {handy && kopf}
+      <Seite titel="Ablauf bearbeiten" unter="Phasen, Schritte, Nachrichten, Entscheidungen und Erinnerungen — per Ziehen oder Tastatur.">
         <ProzessEditor vorlageId={adresse.e} />
       </Seite>
     );
   }
 
   return (
-    <Seite titel="Fulfillment" unter="Wie wir liefern — jeder Kunde als Reise durch unsere Phasen." rechts={handy ? undefined : kopf}>
-      {handy && kopf}
+    <Seite titel="Fulfillment" unter={UNTER[adresse.u]}>
       {/* Auf der Übersicht sagen die Karten dasselbe („Kunden in Lieferung“, „Heute im Fulfillment · n zu tun“) — die Lage-Zeile nur auf den anderen
           Reitern (17.10., Gesamtprüfung L4 B2: „nur einfach dupliziert sich“). */}
       {!adresse.k && !adresse.b && adresse.u !== 'prozesse' && <LageStreifen />}
-      <div className="ui-reiter-zeile">
-        <Reiter<FulfillmentBereich> liste={FULFILLMENT_BEREICHE.map(b => ({ id: b.id, label: b.label }))} aktiv={adresse.u} onWahl={u => router.push(WEG.fulfillment(u), { scroll: false })} ariaLabel="Bereiche von Fulfillment" />
-      </div>
       <BereichInhalt u={adresse.u} k={adresse.k} b={adresse.b} />
     </Seite>
   );
