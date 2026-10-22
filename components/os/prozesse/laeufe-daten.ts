@@ -10,6 +10,7 @@ import type { CrmVerweise } from '@/lib/aufgaben/crm-verweise';
 import type { LaufKurz, ProbeZeile } from '@/lib/prozesse/lauf-regeln';
 import type { LaufInhalte, ScharfVorschau, TestErgebnisServer } from '@/lib/prozesse/lauf-server';
 import type { LaufSchritt, ProzessLaufStand, Testfall } from '@/lib/prozesse/lauf-typen';
+import type { LaufZahlen } from '@/lib/prozesse/bereich-automationen';
 
 export const LAEUFE_QUELLE = '/api/prozesse/laeufe';
 const mitSpace = (q: string) => `${LAEUFE_QUELLE}?${q}${q ? '&' : ''}space=business`;
@@ -45,6 +46,16 @@ export function useLaeufe(prozessId: string): { daten: LaeufeAntwort | null; feh
 }
 
 export const laufHolen = (id: string) => holen<LaufAntwort>(mitSpace(`lauf=${encodeURIComponent(id)}`));
+
+/**
+ * Werkzeug-Muster (22.10., „Automationen & Head“): je Prozess die Zahlen der Läufe und ob er scharf ist (GET ohne Parameter — nur Kennungen und Zahlen).
+ * null, solange nichts da ist (bzw. ohne Zugang): dann zeigt die Ansicht den Status der Werkstatt ohne Laufzeit-Stand.
+ */
+export function useLaufZahlen(): Record<string, LaufZahlen> | null {
+  const [daten, setDaten] = useState<Record<string, LaufZahlen> | null>(null);
+  useEffect(() => { void holen<{ ok: true; prozesse: Record<string, LaufZahlen> }>(mitSpace('')).then(r => { if (r.daten) setDaten(r.daten.prozesse); }); }, []);
+  return daten;
+}
 
 /** B3 (22.10.): die Läufe zu EINEM Fall (Karte „Begleitung läuft“ in der Akte) — offene + letzte 30 Tage, mit dem Titel des Prozesses. */
 export interface FallLaeufeAntwort { ok: true; laeufe: (LaufKurz & { titel: string })[]; weitere: number }

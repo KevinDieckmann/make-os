@@ -65,8 +65,10 @@ export function VorschauBild({ phasen }: { phasen: VorschauPhase[] }) {
  * Das Fenster „Aus Vorlage anlegen“. `onAngelegt(id)` führt in die Werkstatt des neuen Prozesses. Zwei Sammlungen (22.10., B2): Kundengewinnung und
  * „Fulfillment · Kunden-Begleitung“ — `gruppe` wählt die Sammlung vor (z. B. „+ Begleit-Prozess“ am Paket).
  */
-export function VorlagenGalerie({ onZu, onAngelegt, gruppe: gruppeVorgabe, andocken }: {
+export function VorlagenGalerie({ onZu, onAngelegt, gruppe: gruppeVorgabe, andocken, bereiche: nurBereiche }: {
   onZu: () => void; onAngelegt: (id: string) => Promise<void> | void; gruppe?: 'kundengewinnung' | 'begleitung';
+  /** Werkzeug-Muster (22.10., „Automationen & Head“): nur Vorlagen dieser Bereiche (Kennungen der Landkarte) — ohne Angabe alle. */
+  bereiche?: readonly string[];
   /** B3 (22.10.): „+ Begleit-Prozess“ am Paket — der übernommene Begleit-Prozess hört nur auf dieses Paket (und ggf. diesen Schritt); `text` = wo, in Worten. */
   andocken?: { paket: string; knoten?: string; text: string };
 }) {
@@ -113,9 +115,10 @@ export function VorlagenGalerie({ onZu, onAngelegt, gruppe: gruppeVorgabe, andoc
     if (r.status === 200 && r.j?.ok) { setListe(l => (l ? { ...l, eigene: (l.eigene ?? []).filter(v => v.id !== detail.id) } : l)); setGewaehlt(null); return; }
     setFehler(String(r.j?.fehler ?? 'Die Vorlage ließ sich nicht löschen.'));
   };
-  const eigene = liste?.eigene ?? [];
+  const imBereich = (b: string) => !nurBereiche?.length || nurBereiche.includes(b);
+  const eigene = (liste?.eigene ?? []).filter(v => imBereich(v.bereich));
 
-  const derGruppe = vorlagenFiltern(liste?.vorlagen ?? [], { bereich: 'alle', art: 'alle', gruppe });
+  const derGruppe = vorlagenFiltern(liste?.vorlagen ?? [], { bereich: 'alle', art: 'alle', gruppe }).filter(v => imBereich(v.bereich));
   const sichtbar = vorlagenFiltern(derGruppe, { bereich, art });
   const bereiche = galerieBereiche(derGruppe);
   const sammlung = VORLAGEN_GRUPPEN.find(g => g.id === gruppe) ?? VORLAGEN_GRUPPEN[0];

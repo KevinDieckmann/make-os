@@ -48,17 +48,19 @@ export function HeadUnterschied({ diff }: { diff: HeadDiff }) {
   );
 }
 
-export function HeadFragenFenster({ prozess, onZu, onUebernommen, gesperrt }: {
+export function HeadFragenFenster({ prozess, onZu, onUebernommen, gesperrt, bereichVorgabe }: {
   /** Der offene Prozess (Bausteine) — ohne: nur „ganzer Entwurf“. */
   prozess?: HeadProzess | null;
   onZu: () => void;
   onUebernommen: (r: { art: 'prozess' | 'baustein'; prozessId: string; text: string }) => Promise<void> | void;
   /** Warum Bausteine gerade nicht übernommen werden (z. B. ungespeicherte Änderungen). */
   gesperrt?: string | null;
+  /** Werkzeug-Muster (22.10., „Automationen & Head“): der Bereich, für den ein ganzer Entwurf vorgeschlagen wird (ohne offenen Prozess). */
+  bereichVorgabe?: ProzessBereich;
 }) {
   const [modus, setModus] = useState<'baustein' | 'prozess'>(prozess ? 'baustein' : 'prozess');
   const [ziel, setZiel] = useState(prozess && !prozess.phasen.length ? prozess.beschreibung ?? '' : '');
-  const [bereich, setBereich] = useState<ProzessBereich>(prozess?.bereich ?? 'sales');
+  const [bereich, setBereich] = useState<ProzessBereich>(prozess?.bereich ?? bereichVorgabe ?? 'sales');
   const [fallArt, setFallArt] = useState<FallArt>(prozess?.fallArt ?? 'lead');
   const [phaseId, setPhaseId] = useState(prozess?.phasen.at(-1)?.id ?? '');
   const [mitKi, setMitKi] = useState(true);
