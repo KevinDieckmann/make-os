@@ -8,7 +8,8 @@
 //   · Produkt: `prozessId` gesäubert (nur pz-…), ohne Verweis bleibt der Eintrag bit-gleich, KEIN Karten-Feld (Treppe unberührt)
 //   · Landkarte: „für <Produkt>“ nur, wenn der Titel es nicht schon sagt
 import { describe, it, expect } from 'vitest';
-import { ablaufVon, ablaufWechsel, fuerProduktWaehlbar, produktMandate, produktStarts, produkteVonProzess, produkteVonVorlage, produktZeile, PRODUKT_BEREICHE } from '@/lib/prozesse/produkt-bindung';
+import { ablaufVon, ablaufWechsel, fuerProduktWaehlbar, mandateMitProduktLauf, produktMandate, produktStarts, produkteVonProzess, produkteVonVorlage, produktZeile, PRODUKT_BEREICHE } from '@/lib/prozesse/produkt-bindung';
+import { onboardingKandidaten } from '@/lib/fulfillment/regeln';
 import { crmDiff } from '@/lib/ereignisse/quellen';
 import { EREIGNISSE_ANGEBUNDEN, EREIGNIS_NAME } from '@/lib/ereignisse/arten';
 import { eingabeSauber } from '@/lib/ereignisse/typen';
@@ -167,3 +168,31 @@ describe('Sicht: welche Produkte gehören zu einem Prozess', () => {
     expect(Object.keys(kachelTexte({ ...p, produkte: [{ id: 'p-1', name: 'Diagnose', href: '' }] }, undefined, 'fern'))).toEqual(['titel']);
   });
 });
+
+describe('Fulfillment-Kandidaten: „Dort ausblenden“ (Kevin 22.10.) — EINE Regel', () => {
+  const katalog = [produkt('p-haupt', { prozessId: PZ }), produkt('p-zusatz', { rolle: 'zusatz', prozessId: PZ2 }), produkt('p-paket')];
+  const lauf = (mandatId: string, prozessId: string, status: 'laeuft' | 'wartet' | 'fertig' | 'abgebrochen' = 'wartet') => ({ prozessId, fall: { art: 'mandat' as const, id: mandatId }, status });
+  const mandate = [
+    mandat('m-haupt', { leistungId: 'p-haupt', vertragUnterschrieben: true }), mandat('m-ohne-lauf', { leistungId: 'p-haupt', vertragUnterschrieben: true }),
+    mandat('m-paket', { leistungId: 'p-paket', vertragUnterschrieben: true, zusatz: [{ id: 'mz-1', leistungId: 'p-zusatz' }] }), mandat('m-ab', { leistungId: 'p-haupt', vertragUnterschrieben: true }),
+    mandat('m-fertig', { leistungId: 'p-haupt', vertragUnterschrieben: true }),
+  ];
+  it('Lauf des Prozesses des HAUPTprodukts (scharf oder Schatten, auch fertig) → ausgeblendet; abgebrochen, nur Zusatz-Lauf, ohne Lauf → nicht', () => {
+    const l = [lauf('m-haupt', PZ), lauf('m-paket', PZ2), lauf('m-ab', PZ, 'abgebrochen'), lauf('m-fertig', PZ, 'fertig'), lauf('m-fremd', PZ)];
+    expect([...mandateMitProduktLauf(l, { mandate, leistungen: katalog })].sort()).toEqual(['m-fertig', 'm-haupt']);
+    // Ein Lauf eines anderen Prozesses (z. B. eigener Auslöser „Mandat angelegt“ ohne Bindung) ist nicht der Ablauf des Produkts.
+    expect([...mandateMitProduktLauf([lauf('m-haupt', PZ2)], { mandate, leistungen: katalog })]).toEqual([]);
+    expect(mandateMitProduktLauf([], { mandate, leistungen: katalog }).size).toBe(0);
+  });
+  it('onboardingKandidaten: mit der Menge fehlen genau diese Mandate; ohne Menge bzw. leer bit-gleich wie vorher', () => {
+    const c = { mandate, angebote: [], chancen: [] };
+    const vorher = onboardingKandidaten(c, {}, {}, '2026-10-22');
+    expect(vorher.map(k => k.mandatId).sort()).toEqual(['m-ab', 'm-fertig', 'm-haupt', 'm-ohne-lauf', 'm-paket']);
+    expect(onboardingKandidaten(c, {}, {}, '2026-10-22', new Set())).toEqual(vorher);
+    const menge = mandateMitProduktLauf([lauf('m-haupt', PZ), lauf('m-fertig', PZ, 'fertig')], { mandate, leistungen: katalog });
+    const danach = onboardingKandidaten(c, {}, {}, '2026-10-22', menge);
+    expect(danach.map(k => k.mandatId).sort()).toEqual(['m-ab', 'm-ohne-lauf', 'm-paket']);
+    expect(danach).toEqual(vorher.filter(k => !menge.has(k.mandatId)));
+  });
+});
+

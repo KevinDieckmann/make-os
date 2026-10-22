@@ -1665,6 +1665,9 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   dieses Produkt anlegen“ = `NeuerProzessFenster fuerProdukt`), Landkarte/Steckbrief „gehört zu Produkt …“ (`ProzessDef.produkte`, Server hängt an), Werkstatt-GET
   `produkte`, Verbindungsprüfung `produkt-prozess-tot`. Kunde: Schalter „Dem Kunden zeigen“ (`kundeSichtbar`, nur Schritt · Nachricht · Termin) → Etappen aus SCHARFEN
   Läufen (`lib/prozesse/kunden-etappen.ts`) füllen `zeitstrahl`/`erledigt`/`naechstes` NUR ohne Fall (`sichtFuer`), keine neuen Schlüssel der Positivliste.
+  Fulfillment-Kandidaten (Entscheidung 22.10. „dort ausblenden“): ein Mandat mit Lauf (scharf/Schatten, nicht abgebrochen) des Prozesses seines HAUPTprodukts ist
+  kein Kandidat „noch kein Fall“ — EINE Regel `onboardingKandidaten(…, mitProzessLauf)` (Menge rein `mandateMitProduktLauf`, gelesen `mandateMitProduktLaufLesen`)
+  für Liste/Heute/Onboarding (GET /api/fulfillment) UND Morgenlauf (Vorschlag + Glocke); ohne Menge bit-gleich.
   Tests `tests/prozesse-fulfillment-*.test.ts` (Gold: Paket-Mandat bit-gleich).
 - **Lauf-Motor** (`lib/prozesse/lauf-server.ts`; rein und browser-sicher `lauf-regeln.ts`/`lauf-typen.ts` — Wächter `tests/prozesse-lauf-client.test.ts`:
   kein Server-Code in Modulen, die `components/os/prozesse/*` lädt; `next build` merkt es, tsc/vitest nicht): Bestand `prozess-laeufe--<haushalt>` (nur

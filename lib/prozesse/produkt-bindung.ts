@@ -16,6 +16,7 @@
 import type { Leistung, Mandat } from '@/lib/crm/typen';
 import type { Ereignis } from '@/lib/ereignisse/typen';
 import type { FallArt, ProzessBereich, ProzessForm, ProzessStatus } from './definition';
+import type { ProzessLauf } from './lauf-typen';
 
 /** In welchen Bereichen ein Prozess für ein Produkt stehen darf: dort, wo ein Mandat geliefert wird (Fliege rechts vom Knoten). */
 export const PRODUKT_BEREICHE: readonly ProzessBereich[] = ['fulfillment', 'uebergabe', 'ausbau'];
@@ -64,6 +65,22 @@ export function produktMandate<M extends MandatTeil>(prozessId: string, crm: { m
     if (m.geloeschtAm || m.status !== 'aktiv') continue;
     const s = produktStarts({ art: 'mandat-angelegt', bezug: { mandatId: m.id } }, { mandate: [m], leistungen: crm.leistungen }).find(x => x.prozessId === prozessId);
     if (s) raus.push({ mandat: m, leistungId: s.leistungId, rolle: s.rolle });
+  }
+  return raus;
+}
+
+/**
+ * Mandate, deren Ablauf ein Prozess der Werkstatt IST (Kevin 22.10.: „Dort ausblenden“ — im Fulfillment kein Kandidat „noch kein Fall“ mehr, nichts doppelt): es gibt
+ * einen Lauf (scharf ODER Probelauf/Schatten, auch fertig — nur nicht abgebrochen) mit Fall = dieses Mandat des Prozesses, auf den das HAUPTprodukt des Mandats zeigt.
+ * Zusatzmodule zählen nicht (ihr Prozess ersetzt den Ablauf des Hauptprodukts nicht); ohne Lauf (Entwurf, noch nicht gestartet) bleibt das Mandat Kandidat. Rein.
+ */
+export function mandateMitProduktLauf(laeufe: readonly Pick<ProzessLauf, 'prozessId' | 'fall' | 'status'>[], crm: { mandate: readonly Pick<Mandat, 'id' | 'leistungId'>[]; leistungen: Katalog }): Set<string> {
+  const raus = new Set<string>();
+  if (!laeufe.length) return raus;
+  const haupt = new Map(crm.mandate.map(m => [m.id, prozessDesProdukts(crm.leistungen, m.leistungId)] as const));
+  for (const l of laeufe) {
+    if (l.status === 'abgebrochen' || l.fall.art !== 'mandat' || !l.fall.id) continue;
+    if (haupt.get(l.fall.id) === l.prozessId) raus.add(l.fall.id);
   }
   return raus;
 }
