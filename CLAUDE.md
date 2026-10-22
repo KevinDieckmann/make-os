@@ -1767,6 +1767,32 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Regler statt Zahnrad = „System · einstellbar“. **Neuer fester Wert in einem System-Prozess → Eintrag in `WERTE` + Lesefunktion + Test „ohne Einstellung bit-gleich /
   mit Einstellung wirkt“**; eine vorhandene Einstellung → Zeile in `stellschraubenBauen` mit ihrem Weg. Offen: Playbook- und Event-Vorlagen (nur „Vorlagen ansehen“).
   Tests `tests/prozesse-stellschrauben*.test.ts`.
+- **Werkstatt bau-fertig (22.10., n8n-Niveau; Bauplan `research/prozesse/WERKSTATT_BAUFERTIG.md`):** das Modell bleibt „Strang je Phase + Abzweige“ — die OBERFLÄCHE
+  wird nachgiebig, jede Hilfe ist eine reine Funktion in lib/prozesse/werkstatt-aktionen.ts und prüft danach den Fluss (`neuerFlussFehler`: entsteht ein NEUER Fehler,
+  bleibt alles, wie es war — Grund statt still). `zwischenEinfuegen`/`zwischenGrund` („+“ mitten auf dem Faden; Abzweige tragen genau EINEN Schritt — dort kein „+“,
+  `ABZWEIG_EINER`), `verbindenFrei` (Faden über Phasen holt das Ziel mit Schloss und Abzweigen in die Phase der Quelle, mit Ansage), `umhaengen` (Kantenende ziehen),
+  `mehrfachEntscheidung` (Switch als Bau-Hilfe → sofort eine Kaskade aus Rauten nach Regel, höchstens `MEHRFACH_MAX`). Neue Bau-Hilfen ebenso: rein, `geprueft`, Test.
+  Bedienung: Hinweise schweben über der Fläche (`.pw-hinweise-schwebe`, gute Meldungen gehen nach 6 s), Doppelklick/F2 benennt auf der Fläche, zweiter Doppelklick/Enter
+  öffnet das große Fenster (`WerkstattGross.tsx`: Eingabe · Maske · Ausgabe), Knoten-Auswahl als Seitenleiste in voller Höhe (`formauswahlGruppen`: Zuletzt benutzt —
+  nur im Browser —, Auslöser, „Daten“ = `DATEN_BAUSTEINE`, je Anbindung), Befund am Knoten mit Satz beim Überfahren und Sprung ins Feld (`data-ws-feld`), Karte (M),
+  Zoom + − 0, Mausrad schiebt im Vollbild (`radSchiebt` in ui/flaeche/eingabe.ts), Zettelgröße ziehen, Duplizieren im Panel.
+  **Platzhalter** nur über die Textvorlage-Felder der Maske (`VorlageFeld`, `VorlageKontext`): Klick/Ziehen an den Cursor, Prüfung beim Tippen (`textvorlagePruefen`),
+  Vorschau mit den Testwerten (`textvorlageFuellen`). **Ausgabe-Vorschau** rein `lib/prozesse/werkstatt-ausgabe.ts` (Browser fragt nie den Server).
+  **Testdaten** = optionales Feld `ProzessEintrag.testdaten` (lib/prozesse/testdaten.ts: Platzhalter, Felder, Empfänger, „Weg annehmen“) — NUR erfundene Werte
+  (`testdatenPruefen`: Adressen nur `*.invalid`, Telefon nur Platzhalter, keine IBAN, keine `webhook.*`; Säuberer `testdatenAus` verwirft sonst alles), Schreibweg
+  `werkstattAnwenden` `testdaten` (Stand/409). Das Beispiel steht EINMAL dort (`BEISPIEL_FELDER`, `BEISPIEL_PLATZHALTER`, `testWerte`) — Motor und Vorschau rechnen
+  damit; ein Webhook bekommt sein Beispiel aus dem Schema (`webhookBeispiel`), nie aus einem Eingang. Ein echter Fall bleibt im Schatten (nur die Kennung in der
+  Sitzung, „Als Testdaten in Bauen“ speichert nur den Weg als Annahmen — `annahmenAusLauf`).
+  **Probelauf** (Route `/api/prozesse/probelauf`): `annahmen` (nur im Schatten, `LaufUmfeld.annahme`, scharf nie gelesen), `nur` (der Lauf beginnt dort; bei einer
+  Außenwirkung kommt ihr Schloss mit), `bis`, `ausgabe` (`LaufUmfeld.beobachte` → `probeAusgabe`: Tabelle für Menschen, JSON nur Kennungen) — sendet NIE, schreibt
+  nichts (Wächter bit-gleich in tests/prozesse-werkstatt-probe-server.test.ts); echter Fall + Ausgabe → Lese-Protokoll `kontakte`.
+  **„Modell wirklich fragen“** (`modell: schaetzen | fragen` mit `nur`, `modellTesten` in lauf-server): vor dem Klick „ca. x ct“ bzw. warum nicht; der Aufruf geht über
+  `agentFragen` (EIN Weg zum Modell für Lauf und Test — aus `agentAusfuehren` herausgelöst) als KI-Art „aufruf“ der Person, Budget je Prozess (scharf das Monatsbudget,
+  sonst `LAUF_GRENZEN.modellTestBudgetCent`), Art. 18/Werbesperre/„nur öffentliche Angaben“ wie im Lauf; Ergebnis NUR an die Ansicht (nie Akte, Brain, Stapel), gebucht
+  nur die Kosten (Verlauf `modell-test` als Zahl). **Ausschalten** = optionales Feld `ProzessKnoten.deaktiviert` (Säuberer nur `true`, `NUR_WERKSTATT_KNOTEN`): der
+  Motor überspringt (Grund `deaktiviert`, Raute/Freigabe über „ja“), ein Schloss dahinter wird MIT übersprungen und bleibt im Prozess; nie an Auslöser, Ende, Schloss.
+  **Kopieren zwischen Prozessen** nur über den Browser-Speicher (`lib/prozesse/ablage.ts`: immer `ohnePersonen`, beim Lesen gesäubert, 24 h) — nie über den Server.
+  Tests `tests/prozesse-werkstatt-{baufertig,testdaten,probe-server,ablage,modell-test}.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Werkzeug-Muster — jeder große Bereich ein eigenes Werkzeug (22.10., Branch `werkzeuge`, nur lokal)

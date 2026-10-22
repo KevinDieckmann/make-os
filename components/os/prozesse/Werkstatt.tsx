@@ -17,6 +17,9 @@
 //   · Werkzeugmodus (22.10., Werkzeug-Muster — ../werkzeug/rahmen.tsx): der Pfeil ⤢ oben rechts in der Fläche öffnet den ganzen Bildschirm; dort füllt die
 //     Fläche alles, und dieselben Griffe schweben Miro-artig: Ordnen, Zettel, Phase, Raster … links, Zoom unten rechts, „Head fragen“ unten links, Probelauf
 //     und Veröffentlichen oben rechts, Zustand und Version hinter dem Titel; das Panel schwebt rechts und klappt ein. Außerhalb bleibt alles wie bisher.
+//   · Werkstatt bau-fertig (22.10., n8n-Niveau): Hinweise schweben, Doppelklick benennt auf der Fläche, „+“ mitten auf dem Faden, Verbinden über Phasen und Kantenende
+//     umhängen, Knoten-Auswahl als Seitenleiste, Befund mit Satz, großes Fenster (./WerkstattGross.tsx) mit Platzhaltern an den Cursor, Testdaten, „Weg annehmen“,
+//     „Nur diesen Schritt“ / „Bis hier“ und „Modell wirklich fragen“, Lauf → Testdaten, Karte, Ausschalten, Kopieren zwischen Prozessen, Mehrfach-Entscheidung.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
