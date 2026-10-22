@@ -49,6 +49,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { bereich: 'business', text: 'Fulfillment im Prozess: auf der Produktkarte unter „Ablauf“ einen Werkstatt-Prozess wählen oder direkt anlegen — ein neues Mandat (auch ein Zusatzmodul) startet ihn, Schritte mit „Dem Kunden zeigen“ erscheinen im Kunden-Link.', weg: WEG.produkt() },
         { bereich: 'business', text: 'Recherche im Prozess nur mit öffentlichen Angaben (Firmenname, Website, Branche) — die gefundenen Felder bestätigt ihr im Stapel, einzeln oder alle auf einmal.' },
         { bereich: 'business', text: 'Landkarte anpassen (Stift auf der Landkarte): Bereiche umbenennen und einfärben, eigene Bereiche anlegen, Kacheln verschieben, umsortieren, kürzer beschriften oder ausblenden — „Auf Vorgabe zurück“ holt alles wieder.', weg: WEG.prozesse() },
+        { bereich: 'business', text: 'Jeder Prozess bleibt bearbeitbar: alte Versionen ansehen und als neuen Entwurf zurückholen, „Kopie anlegen“ und „Als Vorlage speichern“ — eure Vorlagen stehen in „Aus Vorlage anlegen“ unter „Eigene Vorlagen“, ohne Personen und Fall-Daten.', weg: WEG.prozesse({ ansicht: 'werkstatt' }) },
         { bereich: 'alle', text: 'Oben auf „Heute“ steht der Score eures Bereichs: unter Privat der Privat-Score (je Person), unter Business der Business-Score. Antippen öffnet Säulen, Kennzahlen und den größten Hebel.' },
         { bereich: 'business', text: 'Die Leistungstreppe ist jetzt euer Katalog: Stufen von links nach rechts, Alternativen übereinander, je Produkt Preis, Kunden und freie Plätze.', weg: WEG.produkt() },
         { bereich: 'business', text: 'Produkte geführt anlegen: Name, Art, Preis, Gesellschaft und ein Satz — danach öffnet sich die Karte mit allen Einzelheiten.', weg: WEG.produkt() },
@@ -60,6 +61,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
       { art: 'besser', punkte: [
         { bereich: 'alle', text: 'Der gemischte Wachstums-Score ist weg — Finanzen zeigt nur noch die Finanzen der Sicht, Privat zeigt Privat und Business zeigt Business.' },
         { bereich: 'business', text: 'Die Säule „Fulfillment“ im Business-Score heißt jetzt „Prozesse“.' },
+        { bereich: 'business', text: 'Werkstatt: bei Warten-Schritten stehen „Höchstens (Stunden)“ und „Arbeitszeit zählen“ jetzt im Panel, bei Entscheidungen „Entscheiden binnen (Tagen)“ — so lässt sich an übernommenen Vorlagen jeder Wert ändern.' },
         { bereich: 'business', text: 'Event-Nachfassen „48 Stunden“ heißt überall zwei Werktage; „keine Entscheidung“ ist ein eigener Verlustgrund.' },
         { bereich: 'business', text: 'Anrechnung (z. B. eines Workshops auf das Mandat): angerechnet wird alles inklusive gewählter Optionen; was in den ersten Monat nicht passt, wandert auf die nächsten Rechnungen — Liquidität rechnet genauso.' },
         { bereich: 'business', text: 'Tages- und Stundensätze planen mit einer Menge je Monat; abgerechnet werden die echten Stunden bzw. Tage.' },

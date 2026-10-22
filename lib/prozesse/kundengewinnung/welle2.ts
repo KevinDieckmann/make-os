@@ -62,7 +62,7 @@ const V02: KgVorlage = {
   recht: ['Eine Anfrage begründet die Einwilligung „Anfrage“ nur für ihren Kanal.', 'Die erste Antwort ist eine Antwort, keine Werbung — Folgemails mit Angebot brauchen die Ampel.', 'Webhook-Felder sind fremder Text: nur als Vorschlag, der Empfänger kommt aus der Kartei (E-V1).', 'Art. 13: die Antwort verweist auf den Datenschutzhinweis der Instanz.'],
   kennzahlen: ['traktion:anfragen_90', 'Zeit bis zur ersten Reaktion (Leitkennzahl, M5)', 'Prozesse: Anteil in der Uhr'],
   einstellbar: [
-    { id: 'uhrStunden', label: 'Uhr (Stunden, Arbeitszeit)', vorgabe: 4, knoten: 'a5', feld: 'hoechstensStunden' }, { id: 'ergebnisTage', label: 'Ergebnis in (Werktagen)', vorgabe: 2, knoten: 'a7', feld: 'frist' },
+    { id: 'uhrStunden', label: 'Uhr (Stunden, Arbeitszeit)', vorgabe: 4, knoten: 'a5', feld: 'hoechstensStunden' }, { id: 'ergebnisTage', label: 'Ergebnis in (Werktagen)', vorgabe: 2, knoten: 'a7', feld: 'fristTage' },
     { id: 'budgetCent', label: 'Budget (Cent)', vorgabe: 10 },
   ],
   offen: [{ punkt: 'Website-Formular', text: 'Ein offenes Formular gibt es nicht — der Webhook nimmt seine Felder an (Schlüssel je Prozess), übernommen wird nur per Klick (E-V1).' }],
@@ -121,7 +121,7 @@ const V10: KgVorlage = {
   kennzahlen: ['Angebots-Abschlussquote', 'Tage bis zur Antwort, Anteil abgelaufen ohne Entscheidung', 'Prozesse: Anteil vor Ablauf entschieden'],
   einstellbar: [
     { id: 'nachfassenWerktage', label: 'Nachfassen nach (Werktagen)', vorgabe: 5, knoten: 'a2', feld: 'hoechstensTage' }, { id: 'erinnerungVorAblaufTage', label: 'Erinnern vor Ablauf (Tage)', vorgabe: 3, knoten: 'a5', feld: 'versatzTage' },
-    { id: 'einordnenTage', label: 'Antwort einordnen in (Werktagen)', vorgabe: 2, knoten: 'a3', feld: 'frist' }, { id: 'ablaufEntscheidTage', label: 'Bei Ablauf entscheiden in (Werktagen)', vorgabe: 3, knoten: 'a6', feld: 'frist' },
+    { id: 'einordnenTage', label: 'Antwort einordnen in (Werktagen)', vorgabe: 2, knoten: 'a3', feld: 'fristTage' }, { id: 'ablaufEntscheidTage', label: 'Bei Ablauf entscheiden in (Werktagen)', vorgabe: 3, knoten: 'a6', feld: 'fristTage' },
   ],
   offen: [],
   demo: 'Das Saat-Angebot ist seit 6 Werktagen gestellt, ohne Antwort: ein Anruf-Leitfaden liegt im Stapel, die Erinnerung ist 3 Tage vor Ablauf geplant.',

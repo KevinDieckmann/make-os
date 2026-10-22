@@ -258,9 +258,12 @@ export function prozess(p: ProzessBau): ProzessDefinition {
       if (!e) throw new Error(`Vorlage ${p.id}: Baustein „${s.baustein}“ gibt es nicht.`);
       const zw: Zweige = {};
       for (const a of ['ja', 'nein', 'fehler', 'abgelaufen'] as const) { const z = ziel(s.zweige?.[a], s.id); if (z) zw[a] = z; }
+      // Die Frist eines Schritts (z. B. „entscheiden in 3 Tagen“) steht auch in der Maske (`fristTage`) — dort ist sie in der Werkstatt änderbar und dort liest
+      // sie der Motor (22.10.); `frist` am Knoten bleibt wie bisher.
+      const werte = !e.feld && s.frist !== undefined && s.werte?.fristTage === undefined && e.maske.some(f => f.id === 'fristTage') ? { ...(s.werte ?? {}), fristTage: s.frist } : s.werte;
       const k: K = {
         id: id(s.id), elternId: phaseId, titel: s.titel, rang: j + 1, form: e.form, bahn: s.bahn ?? e.bahn,
-        katalog: e.feld || !s.werte || !Object.keys(s.werte).length ? { id: e.id } : { id: e.id, werte: s.werte },
+        katalog: e.feld || !werte || !Object.keys(werte).length ? { id: e.id } : { id: e.id, werte },
         ...(s.feld ?? {}),
         ...(Object.keys(zw).length ? { zweige: zw } : {}), ...(s.pfeil ? { pfeilText: s.pfeil } : {}),
         ...(s.frist !== undefined ? { frist: s.frist } : {}), ...(s.versuche !== undefined ? { versuche: s.versuche } : {}),

@@ -6,6 +6,8 @@
 //                  `&datum=<Knoten>` (22.10.) die nächsten Starts eines Datums-Auslösers (nur Tage + Anzahlen).
 // POST { aktion }  anlegen (anfrageId) · steckbrief · entwurf · veroeffentlichen · version-uebernehmen · status (lib/prozesse/bestand.ts `werkstattAnwenden`)
 //                  · aus-vorlage { vorlageId, eigner?, anfrageId } (22.10.) · webhook-schluessel · webhook-scharf · webhook-entfernen (lib/prozesse/webhook-server.ts). Stand je Prozess → 409 mit der aktuellen Fassung.
+//                  · Kopieren und eigene Vorlagen (22.10., lib/prozesse/kopie.ts): kopieren { id, anfrageId } · als-vorlage { id, titel?, beschreibung?, anfrageId }
+//                    · vorlage-loeschen { vorlageId } · aus-vorlage mit `ev-…` (eigene Vorlage) — Bestand `prozess-vorlagen--<h>`, ohne Personen und Fall-Daten.
 // Tor: `werkstattZugang` — Haushalt des Inhabers, Sicht Privat 403; schreiben nur per Sitzung (Dienstweg 403) mit Bau-Kennung; veröffentlichen, Status und
 // Webhook nur volle Mitglieder (Konto „nur Business“ baut Entwürfe). Keine Personendaten Dritter (Lese-Protokoll nicht nötig); Lesen schreibt nie.
 
@@ -42,9 +44,18 @@ export async function GET(req: Request) {
   // Vorlagen der Kundengewinnung (22.10.): die Galerie (Kurzform + „schon übernommen“) bzw. eine Vorlage mit Vorschau — reine Daten, nichts Persönliches.
   if (q.get('vorlagen') === '1') {
     const [{ KUNDENGEWINNUNG_VORLAGEN, vorlageKurz }, { uebernommene }] = await Promise.all([import('@/lib/prozesse/kundengewinnung/bibliothek'), import('@/lib/prozesse/kundengewinnung/uebernehmen')]);
-    return NextResponse.json({ ok: true, rechte: z.rechte, vorlagen: KUNDENGEWINNUNG_VORLAGEN.map(vorlageKurz), uebernommen: uebernommene(d) });
+    // Eigene Vorlagen des Haushalts (22.10.) — nur Kurzform (Name, Bereich, Zahl der Schritte).
+    const [{ eigeneVorlagenLesen }, { eigeneVorlageKurz }] = await Promise.all([import('@/lib/prozesse/eigene-vorlagen-server'), import('@/lib/prozesse/kopie')]);
+    const eigene = (await eigeneVorlagenLesen(z.haushalt)).vorlagen.map(eigeneVorlageKurz);
+    return NextResponse.json({ ok: true, rechte: z.rechte, vorlagen: KUNDENGEWINNUNG_VORLAGEN.map(vorlageKurz), eigene, uebernommen: uebernommene(d) });
   }
   const vid = q.get('vorlage');
+  if (vid?.startsWith('ev-')) {
+    const [{ eigeneVorlagenLesen }, { eigeneVorlageKurz }, { vorlageVorschau }] = await Promise.all([import('@/lib/prozesse/eigene-vorlagen-server'), import('@/lib/prozesse/kopie'), import('@/lib/prozesse/kundengewinnung/bibliothek')]);
+    const v = (await eigeneVorlagenLesen(z.haushalt)).vorlagen.find(x => x.id === vid);
+    if (!v) return nein(404, 'Diese Vorlage gibt es nicht (mehr).');
+    return NextResponse.json({ ok: true, vorlage: { ...eigeneVorlageKurz(v), eigen: true, vorschau: vorlageVorschau(v.definition) } });
+  }
   if (vid) {
     const { vorlageVon, vorlageKurz, vorlageVorschau } = await import('@/lib/prozesse/kundengewinnung/bibliothek');
     const v = vorlageVon(vid);
@@ -136,6 +147,13 @@ export async function POST(req: Request) {
     if (!r.ok) return { status: r.status, body: { ok: false, fehler: r.fehler, ...(r.befunde ? { befunde: r.befunde } : {}) } };
     return { status: 200, body: { ok: true, ...ansicht(r.haupt), teile: r.teile.map(t => ({ id: t.id, titel: t.entwurf.titel, status: t.status })), befunde: r.befunde, hinweise: r.hinweise, probelauf: r.probelauf } };
   };
+  // Kopieren, als eigene Vorlage speichern, eigene Vorlage übernehmen bzw. löschen (22.10., lib/prozesse/kopie.ts) — eigene Stelle, derselbe Rahmen.
+  if (aktion === 'kopieren' || aktion === 'als-vorlage' || aktion === 'vorlage-loeschen' || (aktion === 'aus-vorlage' && typeof b.vorlageId === 'string' && b.vorlageId.startsWith('ev-'))) {
+    const { kopieAktion } = await import('@/lib/prozesse/kopie-server');
+    const ausfuehrenKopie = () => kopieAktion(aktion, b, { person: z.person, rechte: z.rechte, haushalt: z.haushalt, wer });
+    const k = aktion === 'vorlage-loeschen' ? await ausfuehrenKopie() : await einmalig<Record<string, unknown>>(`prozess-${aktion}`, b.anfrageId, ausfuehrenKopie, undefined, { wer: z.person });
+    return NextResponse.json(k.body, { status: k.status });
+  }
   const a = aktion === 'anlegen'
     ? await einmalig<Record<string, unknown>>('prozess-anlegen', b.anfrageId, ausfuehren, undefined, { wer: z.person })
     : aktion === 'aus-vorlage'

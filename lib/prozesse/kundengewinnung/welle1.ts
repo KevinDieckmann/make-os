@@ -200,7 +200,7 @@ const V08: KgVorlage = {
   kennzahlen: ['Rückkehrquote aus der Pflege zu SQL', 'Tage von der Wiedervorlage bis zur Entscheidung', 'Prozesse: Anteil der Wiedervorlagen, die in 5 Tagen entschieden wurden'],
   einstellbar: [
     { id: 'uhrzeit', label: 'Uhrzeit', vorgabe: '08:00', knoten: 't', feld: 'uhrzeit' }, { id: 'recherche', label: 'Recherche bei fehlenden Signalen', vorgabe: false },
-    { id: 'entscheidTage', label: 'Entscheiden in (Tagen)', vorgabe: 5, knoten: 'a6', feld: 'frist' }, { id: 'parkTage', label: 'Neu parken für (Tage)', vorgabe: 90, knoten: 'a6p', feld: 'parkTage' },
+    { id: 'entscheidTage', label: 'Entscheiden in (Tagen)', vorgabe: 5, knoten: 'a6', feld: 'fristTage' }, { id: 'parkTage', label: 'Neu parken für (Tage)', vorgabe: 90, knoten: 'a6p', feld: 'parkTage' },
     { id: 'reaktionTage', label: 'Reaktion abwarten (Tage)', vorgabe: 14, knoten: 'a8', feld: 'hoechstensTage' },
   ],
   // M2 (Wiedereintritt nach neuer Wiedervorlage) ist seit dem Datums-Start gebaut (22.10.: je Fall und Stichtag ein Lauf — lib/prozesse/datum-start.ts).

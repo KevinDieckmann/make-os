@@ -1695,6 +1695,15 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Werkstatt-Bestand), Schreibweg `POST /api/prozesse/landkarte { stand, ops }` (Tor wie die Werkstatt, Recht „Entwurf“, Stand/409). Die Seite nimmt überall die
   angepasste Fassung (Bild, Liste, Vollbild, Präsentieren); `fliegeLage(…, { bereiche })`, `alsListe(…, { bereiche })`, `tonVon` liest `p.ton`. Wächter
   `tests/prozesse-landkarte-anpassen.test.ts`.
+- **Alles an einem Prozess jederzeit bearbeitbar (22.10., Branch `prozesse-anpassbar`):** Versionen zeigen Nummer, Datum, wer, Notiz; eine alte Version ansehen
+  (gleiche Fläche, nur lesen) und „Als neuen Entwurf zurückholen“ (`version-uebernehmen` — Versionen, Status und die Version neuer Fälle bleiben, laufende Läufe
+  unberührt; dann normal veröffentlichen). „Kopie anlegen“ und „Als Vorlage speichern“ unten im Steckbrief (`components/os/prozesse/WerkstattKopie.tsx`), Regeln
+  rein `lib/prozesse/kopie.ts` (`mitNeuenKnoten`: neue Kennungen, Verweise innen folgen, andere Prozesse bleiben; `ohnePersonen`: kein Eigner/„läuft als“, Personen →
+  `rolle:zustaendig`, Konto leer, eigenes Postfach → `postfach.lauf`, Zettel ohne Verfasser), Server `lib/prozesse/kopie-server.ts` (Aktionen `kopieren`, `als-vorlage`,
+  `vorlage-loeschen` — nur volle Mitglieder —, `aus-vorlage` mit `ev-…`), Bestand `prozess-vorlagen--<h>` (eigener), Galerie-Abschnitt „Eigene Vorlagen“. Kopie und
+  Übernahme landen wie „Aus Vorlage“ (Version 1 im Probelauf bzw. Entwurf, nie scharf). **Masken vollständig:** jeder Wert jeder Vorlage steht in seiner Maske und
+  überlebt Lesen → Schreiben (Wächter in `tests/prozesse-versionen-kopie.test.ts` — neuer Wert in einer Vorlage ohne Maskenfeld = rot); neu: Warten „Höchstens
+  (Stunden)“/„Arbeitszeit zählen“ im Panel, Entscheidung (Mensch) „Entscheiden binnen (Tagen)“ (`fristTage`, Motor liest `fristTage ?? frist`).
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)

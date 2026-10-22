@@ -32,7 +32,13 @@ const texte = (v: unknown): string[] => liste<unknown>(v).filter((x): x is strin
 
 /** Die Werte der Maske eines Knotens (für das Panel). */
 export function maskeWerte(k: K, e: KatalogEintrag): W {
-  if (!e.feld) return { ...(k.katalog?.werte ?? {}) };
+  if (!e.feld) {
+    const w: W = { ...(k.katalog?.werte ?? {}) };
+    // Übernommene Vorlagen bis 22.10. trugen die Frist einer Entscheidung nur am Knoten (`frist`) — die Maske zeigt sie als „Entscheiden binnen“; beim nächsten
+    // Speichern steht sie dann in `katalog.werte.fristTage` (der Motor liest beides, lib/prozesse/lauf-regeln.ts).
+    if (w.fristTage === undefined && typeof k.frist === 'number' && e.maske.some(f => f.id === 'fristTage')) w.fristTage = k.frist;
+    return w;
+  }
   // Noch ohne Feld (das Nötigste fehlt): die bisher eingegebenen Werte stehen solange in `katalog.werte` — nichts geht verloren.
   if (k[e.feld] === undefined) return { ...(k.katalog?.werte ?? {}) };
   switch (e.feld) {
@@ -68,9 +74,12 @@ export function maskeWerte(k: K, e: KatalogEintrag): W {
     case 'warten': {
       const w = k.warten;
       if (!w) return {};
-      if (w.art === 'dauer') return ohneLeere({ tage: w.tage, stunden: w.stunden });
+      // 22.10. (alles an einer Vorlage änderbar): „Arbeitszeit zählen“ stand in der Maske, fiel aber beim Lesen und Schreiben weg.
+      if (w.art === 'dauer') return ohneLeere({ tage: w.tage, stunden: w.stunden, arbeitszeit: w.arbeitszeit });
       if (w.art === 'datum') return ohneLeere({ feld: w.feld, versatzTage: w.versatzTage, werktage: w.werktage ?? false, hoechstensTage: w.hoechstensTage || undefined });
-      return ohneLeere({ ereignis: w.ereignis, bedingungen: w.bedingungen ?? [], verknuepfung: w.verknuepfung, hoechstensTage: w.hoechstensTage || undefined });
+      // 22.10.: „Höchstens (Stunden)“ und „Arbeitszeit zählen“ (z. B. „Antwort binnen 4 Stunden“ der Vorlagen) stehen jetzt auch im Panel — vorher leer und
+      // beim nächsten Speichern verloren.
+      return ohneLeere({ ereignis: w.ereignis, bedingungen: w.bedingungen ?? [], verknuepfung: w.verknuepfung, hoechstensTage: w.hoechstensTage || undefined, hoechstensStunden: w.hoechstensStunden, arbeitszeit: w.arbeitszeit });
     }
     case 'schleife': return k.schleife ? ohneLeere({ liste: k.schleife.liste, prozessId: k.schleife.prozessId, hoechstens: k.schleife.hoechstens || undefined }) : {};
     case 'teilprozess': return k.teilprozess ? ohneLeere({ prozessId: k.teilprozess.prozessId, warten: k.teilprozess.warten }) : {};
@@ -142,9 +151,9 @@ function feldAus(e: KatalogEintrag, w: W, alt: K, kx: MaskenUmfeld): Partial<K> 
     }
     case 'warten': {
       let x: WartenRegel | undefined;
-      if (e.id === 'warten.dauer') x = sauber<WartenRegel>({ art: 'dauer', tage: zahl(w.tage) ?? 0, stunden: zahl(w.stunden) });
+      if (e.id === 'warten.dauer') x = sauber<WartenRegel>({ art: 'dauer', tage: zahl(w.tage) ?? 0, stunden: zahl(w.stunden), arbeitszeit: w.arbeitszeit === true ? true : undefined });
       else if (e.id === 'warten.datum') x = text(w.feld) ? sauber<WartenRegel>({ art: 'datum', feld: w.feld, versatzTage: zahl(w.versatzTage), hoechstensTage: zahl(w.hoechstensTage) ?? 0, werktage: w.werktage === true ? true : undefined }) : undefined;
-      else if (e.id === 'warten.ereignis') x = text(w.ereignis) ? sauber<WartenRegel>({ art: 'ereignis', ereignis: w.ereignis, bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung), hoechstensTage: zahl(w.hoechstensTage) ?? 0 }) : undefined;
+      else if (e.id === 'warten.ereignis') x = text(w.ereignis) ? sauber<WartenRegel>({ art: 'ereignis', ereignis: w.ereignis, bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung), hoechstensTage: zahl(w.hoechstensTage) ?? 0, hoechstensStunden: zahl(w.hoechstensStunden), arbeitszeit: w.arbeitszeit === true ? true : undefined }) : undefined;
       return { warten: x };
     }
     case 'schleife': return { schleife: text(w.liste) && text(w.prozessId) ? { liste: text(w.liste), prozessId: text(w.prozessId), hoechstens: zahl(w.hoechstens) ?? 0 } as SchleifeRegel : undefined };

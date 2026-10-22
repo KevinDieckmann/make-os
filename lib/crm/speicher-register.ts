@@ -796,6 +796,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'bis „Auf Vorgabe zurück“ bzw. die Instanz gelöscht wird; Konto löschen tilgt den Speichernamen („[gelöscht]“)',
     kategorie: ['vertraulich'],
   }),
+  // Prozesse · eigene Vorlagen (22.10., lib/prozesse/eigene-vorlagen-server.ts): Struktur und Texte eines Prozesses als Vorlage des Haushalts — ohne Personen, ohne Fall-Daten.
+  mit(H('prozess-vorlagen--*', 'Eigene Vorlagen der Prozesse je Haushalt: Name, Beschreibung, Bereich, Fall-Art und die Definition (Phasen, Bausteine, Masken-Werte als Textvorlagen mit Platzhaltern, Zettel ohne Verfasser) — Personen nur als Rolle („Zuständig im Fall“), kein Eigner, kein „läuft als“, keine Versionen, keine Läufe, keine Fall-Daten. Wer sie gespeichert hat: Speichername.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Organisation der eigenen Abläufe durch die Mitglieder des Haushalts; Person nur als Speichername',
+    art15: 'alle Konten des Haushalts sehen die eigenen Vorlagen in der Galerie „Aus Vorlage anlegen“ (GET /api/prozesse/werkstatt?vorlagen=1); Daten Dritter stehen hier nicht',
+    loeschfrist: 'bis der Haushalt die Vorlage löscht bzw. die Instanz gelöscht wird; Konto löschen tilgt den Speichernamen („[gelöscht]“)',
+    kategorie: ['vertraulich'],
+  }),
   mit(E('prozesse-webhook--*', 'Webhooks der Prozesse: je Prozess die öffentliche Adresse (pw-…) und NUR der Fingerabdruck (SHA-256) des Schlüssels, scharf ja/nein, Zähler; dazu die angenommenen Eingänge (nur die Felder des Schemas am Auslöser — fremder Text, kann Personen nennen, z. B. ein Formular). Art. 17: Eingänge, die die Person nennen, fallen weg (person-weitere.ts).', 'ereignisse'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Anfragen und Meldungen, die ein Fremdsystem im Auftrag des Haushalts schickt (z. B. Formular der eigenen Website); nur die Felder des Schemas, der Rest wird verworfen',
     art15: 'Kontakt: die Auskunft zählt die Eingänge, die die Person nennen (weitere Speicher); Konten des Haushalts sehen Adresse und Zähler in der Werkstatt, nie den Schlüssel',
@@ -882,7 +889,7 @@ const IN_BUSINESS: readonly string[] = [
   // Fulfillment (10.10.): Vorlagen, Fälle, Kunde (Links/Antworten/Puls), Dossiers, Personenkarten und der Datei-Ordner — nur Business
   'fulfillment--*', 'fulfillment-faelle--*', 'fulfillment-kunde--*', 'fulfillment-dossiers--*', 'fulfillment-personen--*', 'fulfillment-unterlagen',
   // Prozesse (21.10., B1): Werkstatt und Webhooks — nur Business
-  'prozesse--*', 'prozesse-webhook--*', 'prozesse-landkarte--*',
+  'prozesse--*', 'prozesse-webhook--*', 'prozesse-landkarte--*', 'prozess-vorlagen--*',
   // Prozesse · Läufe (21.10., C1) — nur Business
   'prozess-laeufe--*',
 ];

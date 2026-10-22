@@ -279,7 +279,8 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
 
   // ── Entscheidung, Freigabe ──
   { id: 'entscheidung.mensch', name: 'Entscheidung (Mensch)', satz: 'Eine Person entscheidet ja oder nein.', anbindung: 'Ablauf', form: 'entscheidung', kategorie: 'entscheidung', bahn: 'mensch', rechte: 'intern', ki: [],
-    maske: [{ id: 'frage', label: 'Frage', typ: 'text', pflicht: true, max: PROZESS_TEXT.frage }, WER('Wer entscheidet', true)] },
+    // 22.10.: die Frist der Entscheidung (Vorlagen „entscheiden in n Tagen“) — vorher nur am Knoten, ohne Eingabe; ohne Wert gilt die Freigabe-Frist des Laufs.
+    maske: [{ id: 'frage', label: 'Frage', typ: 'text', pflicht: true, max: PROZESS_TEXT.frage }, WER('Wer entscheidet', true), TAGE('fristTage', 'Entscheiden binnen (Tagen)', 90)] },
   { id: 'entscheidung.regel', name: 'Entscheidung (Regel)', satz: 'Entscheidet nach Feldern: passt es, geht es über „ja“, sonst über „nein“.', anbindung: 'Ablauf', form: 'entscheidung', kategorie: 'entscheidung', bahn: 'system', rechte: 'lesen', ki: [], feld: 'raute',
     maske: [BEDINGUNGEN(true), VERKNUEPFUNG] },
   { id: 'entscheidung.score', name: 'Entscheidung (Score)', satz: 'Lead-Score ≥ Schwelle, Temperatur, SQL-bereit oder MQL — aus der Scoring-Rechnung, nie gespeichert.', anbindung: 'CRM', form: 'entscheidung', kategorie: 'entscheidung', bahn: 'system', rechte: 'lesen', ki: [], feld: 'raute',

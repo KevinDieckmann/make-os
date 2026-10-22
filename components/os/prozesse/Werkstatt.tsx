@@ -48,6 +48,7 @@ import { WerkstattFlaeche, type AnhangZiel, type FlaecheSteuerung } from './Werk
 import { WerkstattPanel } from './WerkstattPanel';
 import { WerkstattFormauswahl } from './WerkstattFormauswahl';
 import { VersionenFenster } from './WerkstattVersionen';
+import { ProzessKopieren } from './WerkstattKopie';
 import { HeadFragenFenster } from './HeadFragen';
 import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, type EintragAnsicht } from './werkstatt-daten';
 import { WerkstattSteuerung } from './WerkstattSteuerung';
@@ -72,6 +73,7 @@ const sitzung = () => (typeof window !== 'undefined' ? window.sessionStorage : u
 const lokal = () => (typeof window !== 'undefined' ? window.localStorage : undefined);
 const fassungVon = (d: Pick<ProzessDefinition, 'knoten' | 'zettel'>): Fassung => ({ knoten: d.knoten, ...(d.zettel ? { zettel: d.zettel } : {}) });
 const gleich = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const tagZeit = (iso: string) => { const t = new Date(iso); return Number.isFinite(t.getTime()) ? t.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' }) : iso; };
 
 type Speicher = { art: 'gespeichert' | 'ausstehend' | 'speichert' | 'fehler' | 'konflikt' | 'offline'; text?: string };
 
@@ -106,6 +108,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
   const [probe, setProbe] = useState<ProbeErgebnis | null>(null);
   const [probeHinweis, setProbeHinweis] = useState<string | null>(null);
   const [versionAnsicht, setVersionAnsicht] = useState<ProzessVersion | null>(null);
+  /** 22.10.: „Als neuen Entwurf zurückholen“ an der gezeigten Version — erst nach der Rückfrage. */
+  const [zurueckholen, setZurueckholen] = useState(false);
   const [versionenOffen, setVersionenOffen] = useState(false);
   const [hilfe, setHilfe] = useState(false);
   const [headOffen, setHeadOffen] = useState(false);
@@ -609,8 +613,18 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
         </Hinweis>
       )}
       {versionAnsicht && (
-        <Hinweis art="info" titel={`Version ${versionAnsicht.nr} · ${versionAnsicht.name} — nur lesen`} aktion={<Knopf leise onClick={() => setVersionAnsicht(null)}><span className="pz-knopf-inhalt"><X size={14} aria-hidden />Zurück zum Entwurf</span></Knopf>}>
-          {versionAnsicht.notiz ?? 'So wurde der Prozess veröffentlicht.'}
+        <Hinweis art="info" titel={`Version ${versionAnsicht.nr} · ${versionAnsicht.name} — nur lesen`}
+          aktion={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}>
+            {!nurAnsehen && rechte?.entwurf && eintrag.status !== 'archiviert' && <Knopf leise onClick={() => setZurueckholen(true)} titel="Diese Version als neuen Entwurf zurückholen — die laufende Version bleibt, bis ihr veröffentlicht"><span className="pz-knopf-inhalt"><Undo2 size={14} aria-hidden />Als neuen Entwurf zurückholen</span></Knopf>}
+            <Knopf leise onClick={() => { setVersionAnsicht(null); setZurueckholen(false); }}><span className="pz-knopf-inhalt"><X size={14} aria-hidden />Zurück zum Entwurf</span></Knopf>
+          </span>}>
+          {`${tagZeit(versionAnsicht.am)}${konten.get(versionAnsicht.von) ? ` · ${konten.get(versionAnsicht.von)}` : ''} · ${versionAnsicht.notiz ?? 'So wurde der Prozess veröffentlicht.'}`}
+        </Hinweis>
+      )}
+      {versionAnsicht && zurueckholen && (
+        <Hinweis art="achtung" titel={`Version ${versionAnsicht.nr} als neuen Entwurf zurückholen?`}
+          aktion={<span style={{ display: 'inline-flex', gap: 8 }}><Knopf onClick={async () => { const f = await uebernehmen(versionAnsicht.nr); setZurueckholen(false); if (f) setMeldung({ text: f, art: 'kritisch' }); }}>Zurückholen</Knopf><Knopf leise onClick={() => setZurueckholen(false)}>Abbrechen</Knopf></span>}>
+          {`Der jetzige Entwurf wird ersetzt (Rückgängig holt ihn zurück). ${v ? `Neue Fälle laufen weiter auf Version ${v.nr}, bis ihr veröffentlicht; laufende Fälle bleiben auf ihrer Version.` : ''}`}
         </Hinweis>
       )}
       {(speicher.art === 'fehler' || speicher.art === 'offline') && speicher.text && <Hinweis art={speicher.art === 'fehler' ? 'kritisch' : 'achtung'}>{speicher.text}{speicher.art === 'fehler' ? ' Deine Fassung bleibt hier — nach der nächsten Änderung wird erneut gespeichert.' : ''}</Hinweis>}
@@ -668,7 +682,10 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
             onKopieren={kopie}
             onPhase={phaseAktion}
             onZettel={(id, teil) => { if (teil) mitFassung(f => zettelAendern(f, id, teil), { auswahl: false }); else { mitFassung(f => zettelWeg(f, [id])); setAuswahl([]); } }}
-            agentName={agentName} knotenZusatz={webhookZusatz} produkte={daten?.produkte} />
+            agentName={agentName} knotenZusatz={webhookZusatz} produkte={daten?.produkte}
+            steckbriefZusatz={!nurAnsehen && rechte?.entwurf && !versionAnsicht
+              ? <ProzessKopieren prozessId={prozessId} titel={d.titel} vorher={sichern} onKopiert={id => { onLandkarte?.(); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt' }), { scroll: false }); }} />
+              : null} />
           {!nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
         </aside>
       </div>}
@@ -682,7 +699,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte }: { prozessId: s
         <VersionenFenster versionen={eintrag.versionen} befunde={befunde} sperrt={sperrt} darfVeroeffentlichen={!!rechte?.veroeffentlichen} entwurfGeaendert={geaendertSeitVersion || ausstehend}
           ausstehend={ausstehend} laufHinweise={laufBefunde(d)}
           tests={{ anzahl: laeufe.daten?.tests.length ?? 0, stand: testStand(testErg.size ? [...testErg.values()] : null, laeufe.daten?.tests.length ?? 0), onPruefen: testsAlle }}
-          onVeroeffentlichen={veroeffentlichen} onAnsehen={ansehen} onVergleichen={vergleichen} onUebernehmen={uebernehmen} onZu={() => setVersionenOffen(false)} />
+          onVeroeffentlichen={veroeffentlichen} onAnsehen={ansehen} onVergleichen={vergleichen} onUebernehmen={uebernehmen} onZu={() => setVersionenOffen(false)} namen={konten} />
       )}
     </div>
   );

@@ -19,7 +19,7 @@ import { BefundListe } from './WerkstattPanel';
 const klein = { fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.45 } as const;
 const tag = (iso: string) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' }) : iso; };
 
-export function VersionenFenster({ versionen, befunde, sperrt, darfVeroeffentlichen, entwurfGeaendert, ausstehend, laufHinweise = [], tests, onVeroeffentlichen, onAnsehen, onVergleichen, onUebernehmen, onZu }: {
+export function VersionenFenster({ versionen, befunde, sperrt, darfVeroeffentlichen, entwurfGeaendert, ausstehend, laufHinweise = [], tests, onVeroeffentlichen, onAnsehen, onVergleichen, onUebernehmen, onZu, namen }: {
   versionen: readonly VersionKurz[]; befunde: readonly Befund[]; sperrt: boolean; darfVeroeffentlichen: boolean; entwurfGeaendert: boolean; ausstehend: boolean;
   /** Hinweise für das Laufen (22.10., Punkt 49: Schleifen über eigene Ereignisse, Modell-Rauten, Schleifen-Baustein — lib/prozesse/lauf-regeln.ts `laufBefunde`). */
   laufHinweise?: readonly Befund[];
@@ -30,6 +30,8 @@ export function VersionenFenster({ versionen, befunde, sperrt, darfVeroeffentlic
   onVergleichen: (nr: number) => Promise<Vergleich | null>;
   onUebernehmen: (nr: number) => Promise<string | null>;
   onZu: () => void;
+  /** Wer veröffentlicht hat (22.10.): Speichername → Name des Kontos (Auswahlliste der Werkstatt); unbekannt → kein Name. */
+  namen?: ReadonlyMap<string, string>;
 }) {
   const naechste = (versionen.at(-1)?.nr ?? 0) + 1;
   const [name, setName] = useState(`Version ${naechste}`);
@@ -72,21 +74,21 @@ export function VersionenFenster({ versionen, befunde, sperrt, darfVeroeffentlic
         {!versionen.length && <Leer>Noch keine Version — der Prozess ist ein Entwurf.</Leer>}
         {[...versionen].reverse().map(v => (
           <div key={v.nr} style={{ display: 'grid', gap: 6 }}>
-            <Zeile umbrechen titel={`${v.nr} · ${v.name}`} unter={`${tag(v.am)}${v.notiz ? ` · ${v.notiz}` : ''}`}
+            <Zeile umbrechen titel={`${v.nr} · ${v.name}${v.nr === versionen.at(-1)?.nr ? ' · neue Fälle laufen hierauf' : ''}`} unter={`${tag(v.am)}${namen?.get(v.von) ? ` · ${namen.get(v.von)}` : ''}${v.notiz ? ` · ${v.notiz}` : ''}`}
               rechts={
                 <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6 }}>
                   <Knopf leise onClick={() => onAnsehen(v.nr)} titel="Auf der Fläche ansehen (nur lesen)"><span className="pz-knopf-inhalt"><Eye size={14} aria-hidden />Ansehen</span></Knopf>
                   <Knopf leise onClick={async () => { const x = await onVergleichen(v.nr); if (x) setVergleich({ nr: v.nr, v: x }); }} titel="Mit dem Entwurf vergleichen"><span className="pz-knopf-inhalt"><GitCompare size={14} aria-hidden />Vergleichen</span></Knopf>
-                  <Knopf leise onClick={() => setFrage(v.nr)} titel="Diese Version als Entwurf übernehmen"><span className="pz-knopf-inhalt"><RotateCcw size={14} aria-hidden />Als Entwurf</span></Knopf>
+                  <Knopf leise onClick={() => setFrage(v.nr)} titel="Diese Version als neuen Entwurf zurückholen — danach normal veröffentlichen"><span className="pz-knopf-inhalt"><RotateCcw size={14} aria-hidden />Zurückholen</span></Knopf>
                 </span>
               } />
             {frage === v.nr && (
-              <Hinweis art="achtung" titel={`Version ${v.nr} als Entwurf übernehmen?`}
+              <Hinweis art="achtung" titel={`Version ${v.nr} als neuen Entwurf zurückholen?`}
                 aktion={<span style={{ display: 'inline-flex', gap: 8 }}>
-                  <Knopf onClick={async () => { const f = await onUebernehmen(v.nr); setFrage(null); if (f) setFehler(f); }}>Übernehmen</Knopf>
+                  <Knopf onClick={async () => { const f = await onUebernehmen(v.nr); setFrage(null); if (f) setFehler(f); }}>Zurückholen</Knopf>
                   <Knopf leise onClick={() => setFrage(null)}>Abbrechen</Knopf>
                 </span>}>
-                Der jetzige Entwurf wird ersetzt. Die Versionen bleiben unverändert — Rückgängig holt den Entwurf zurück.
+                {`Der jetzige Entwurf wird ersetzt (Rückgängig holt ihn zurück). Die Versionen bleiben unverändert: neue Fälle laufen weiter auf Version ${versionen.at(-1)?.nr ?? v.nr}, bis ihr veröffentlicht; laufende Fälle bleiben auf ihrer Version.`}
               </Hinweis>
             )}
             {vergleich?.nr === v.nr && <VergleichAnsicht v={vergleich.v} nr={v.nr} />}

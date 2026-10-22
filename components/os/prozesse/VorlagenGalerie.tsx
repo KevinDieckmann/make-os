@@ -8,7 +8,7 @@
 // Personen im Code. Rein darstellend — die Regeln stehen in lib/prozesse/kundengewinnung/*.
 
 import { useEffect, useMemo, useState } from 'react';
-import { LayoutTemplate, Lock, Check, ArrowLeft } from 'lucide-react';
+import { LayoutTemplate, Lock, Check, ArrowLeft, Trash2 } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, LEUCHT } from '@/lib/make-one/design';
 import { Knopf, Hinweis, Feldzeile, auswahl as auswahlStil, Chip, Pillen } from '../ui';
 import { Fenster } from '../Fenster';
@@ -16,12 +16,16 @@ import { neueKennung } from '@/lib/kennung';
 import { WERKSTATT_FORM_FARBE } from '@/lib/prozesse/farben';
 import { PROZESS_BEREICHE } from '@/lib/prozesse/definition';
 import type { VorlageKurz, VorschauPhase } from '@/lib/prozesse/kundengewinnung/bibliothek';
+import type { EigeneVorlageKurz } from '@/lib/prozesse/kopie';
 import { galerieBereiche, vorlagenFiltern, VORLAGEN_ARTEN, type VorlagenArt } from '@/lib/prozesse/kundengewinnung/galerie';
 import { WERKSTATT_QUELLE, useKatalog, werkstattSenden } from './werkstatt-daten';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.45 } as const;
 type Detail = VorlageKurz & { recht: string[]; kennzahlen: string[]; einstellbar: { id: string; label: string; vorgabe: string | number | boolean }[]; demo: string; vorschau: VorschauPhase[]; teileVorschau: { titel: string; vorschau: VorschauPhase[] }[] };
-type Liste = { vorlagen: VorlageKurz[]; uebernommen: Record<string, string>; rechte: { entwurf: boolean; veroeffentlichen: boolean } };
+/** Eine eigene Vorlage des Haushalts (22.10., „Als Vorlage speichern“ in der Werkstatt) — Struktur und Texte, ohne Personen. */
+type EigenDetail = EigeneVorlageKurz & { eigen: true; vorschau: VorschauPhase[] };
+type Liste = { vorlagen: VorlageKurz[]; eigene?: EigeneVorlageKurz[]; uebernommen: Record<string, string>; rechte: { entwurf: boolean; veroeffentlichen: boolean } };
+const istEigen = (d: Detail | EigenDetail | null): d is EigenDetail => !!d && 'eigen' in d;
 const FORM_WORT: Readonly<Record<string, string>> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Raute', erinnerung: 'Erinnerung', termin: 'Termin', ausloeser: 'Start', agent: 'Agent', warten: 'Warten', schleife: 'Schleife', teilprozess: 'Teilprozess', ende: 'Ende', abstimmung: 'Abstimmung', freigabe: 'Freigabe' };
 const bereichName = (id: string) => PROZESS_BEREICHE.find(b => b.id === id)?.titel ?? id;
 
@@ -67,7 +71,8 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
   const [bereich, setBereich] = useState('alle');
   const [art, setArt] = useState<VorlagenArt>('alle');
   const [gewaehlt, setGewaehlt] = useState<string | null>(null);
-  const [detail, setDetail] = useState<Detail | null>(null);
+  const [detail, setDetail] = useState<Detail | EigenDetail | null>(null);
+  const [loeschFrage, setLoeschFrage] = useState(false);
   const [eigner, setEigner] = useState('');
   const [fertig, setFertig] = useState<{ id: string; hinweise: string[]; probelauf: boolean } | null>(null);
   const [anfrageId, setAnfrageId] = useState(() => neueKennung('pza'));
@@ -75,8 +80,8 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
   useEffect(() => { void holen<Liste>('vorlagen=1').then(l => (l ? setListe(l) : setFehler('Die Vorlagen ließen sich nicht laden.'))); }, []);
   useEffect(() => {
     if (!gewaehlt) { setDetail(null); return; }
-    setDetail(null); setFertig(null); setAnfrageId(neueKennung('pza'));
-    void holen<{ vorlage: Detail }>(`vorlage=${encodeURIComponent(gewaehlt)}`).then(d => setDetail(d?.vorlage ?? null));
+    setDetail(null); setFertig(null); setLoeschFrage(false); setAnfrageId(neueKennung('pza'));
+    void holen<{ vorlage: Detail | EigenDetail }>(`vorlage=${encodeURIComponent(gewaehlt)}`).then(d => setDetail(d?.vorlage ?? null));
   }, [gewaehlt]);
 
   const uebernehmen = async () => {
@@ -92,11 +97,19 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
     }
     setFehler(String(r.j?.fehler ?? 'Die Vorlage ließ sich nicht übernehmen.'));
   };
+  /** Eine eigene Vorlage löschen (nur volle Mitglieder; die Prozesse, die schon daraus entstanden sind, bleiben). */
+  const loeschen = async () => {
+    if (!istEigen(detail)) return;
+    const r = await werkstattSenden(() => ({ aktion: 'vorlage-loeschen', vorlageId: detail.id }));
+    if (r.status === 200 && r.j?.ok) { setListe(l => (l ? { ...l, eigene: (l.eigene ?? []).filter(v => v.id !== detail.id) } : l)); setGewaehlt(null); return; }
+    setFehler(String(r.j?.fehler ?? 'Die Vorlage ließ sich nicht löschen.'));
+  };
+  const eigene = liste?.eigene ?? [];
 
   const sichtbar = vorlagenFiltern(liste?.vorlagen ?? [], { bereich, art });
   const bereiche = galerieBereiche(liste?.vorlagen ?? []);
   return (
-    <Fenster titel={detail ? `${detail.nr} · ${detail.titel}` : 'Aus Vorlage anlegen'} onZu={onZu} breit={980}>
+    <Fenster titel={detail ? (istEigen(detail) ? `Eigene Vorlage · ${detail.titel}` : `${detail.nr} · ${detail.titel}`) : 'Aus Vorlage anlegen'} onZu={onZu} breit={980}>
       {!detail && (
         <div style={{ display: 'grid', gap: 12 }}>
           <p style={klein}>18 Vorlagen der Kundengewinnung — jede ist ein vollständiger Prozess mit Schlössern vor jeder Außenwirkung, Rollen statt Personen und ehrlich benannten offenen Punkten. Übernehmen legt eine eigene Kopie an (Probelauf, schreibt nichts).</p>
@@ -106,6 +119,26 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
           <div role="group" aria-label="Wer arbeitet mit">
             <Pillen liste={[...VORLAGEN_ARTEN]} aktiv={art} onWahl={setArt} />
           </div>
+          {eigene.length > 0 && (
+            <section aria-label="Eigene Vorlagen" style={{ display: 'grid', gap: 8 }}>
+              <div style={{ ...MIKRO }}>{`Eigene Vorlagen · ${eigene.length}`}</div>
+              <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+                {eigene.filter(v => bereich === 'alle' || v.bereich === bereich).map(v => (
+                  <button key={v.id} type="button" onClick={() => setGewaehlt(v.id)} className="pz-vorlage-karte"
+                    style={{ textAlign: 'left', display: 'grid', gap: 6, padding: 12, borderRadius: 12, border: `1px solid ${C.linie}`, background: C.flaeche, color: C.ink, cursor: 'pointer', minHeight: 44 }}>
+                    <span style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ ...MIKRO }}>Eigene · {bereichName(v.bereich)}</span>
+                      {liste?.uebernommen[v.id] && <Chip farbe={LEUCHT.gut}><Check size={11} aria-hidden /> übernommen</Chip>}
+                    </span>
+                    <strong style={{ fontSize: TYP.body }}>{v.titel}</strong>
+                    {v.beschreibung && <span style={klein}>{v.beschreibung}</span>}
+                    <span style={{ ...klein, color: C.inkLeise }}>{v.schritte} Schritte</span>
+                  </button>
+                ))}
+              </div>
+              <div style={{ ...MIKRO }}>Kundengewinnung</div>
+            </section>
+          )}
           {liste && !sichtbar.length && <p style={klein}>Keine Vorlage passt zu dieser Auswahl.</p>}
           {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
           {!liste && !fehler && <p style={klein}>Die Vorlagen laden …</p>}
@@ -130,6 +163,13 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
       {detail && (
         <div style={{ display: 'grid', gap: 14 }}>
           <div><Knopf leise onClick={() => setGewaehlt(null)}><span className="pz-knopf-inhalt"><ArrowLeft size={14} aria-hidden />Alle Vorlagen</span></Knopf></div>
+          {istEigen(detail) ? (
+            <>
+              {detail.beschreibung && <p style={klein}>{detail.beschreibung}</p>}
+              <div style={{ ...klein, color: C.inkLeise }}>Eigene Vorlage · {bereichName(detail.bereich)} · {detail.schritte} Schritte — Personen stehen als Rolle („Zuständig im Fall“), den Eigner wählt ihr beim Übernehmen.</div>
+              <VorschauBild phasen={detail.vorschau} />
+            </>
+          ) : <>
           <p style={klein}>{detail.zweck}</p>
           <div style={{ ...klein, color: C.inkLeise }}>Eigner: {detail.eigner} · Auslöser: {detail.ausloeser} · {detail.schritte} Schritte · {detail.freigaben} Freigaben</div>
           <VorschauBild phasen={detail.vorschau} />
@@ -144,6 +184,7 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
           {detail.einstellbar.length > 0 && <section style={{ display: 'grid', gap: 4 }}><div style={{ ...MIKRO }}>Einstellbar (Vorgabe)</div><p style={klein}>{detail.einstellbar.map(e => `${e.label} (${String(e.vorgabe === true ? 'an' : e.vorgabe === false ? 'aus' : e.vorgabe)})`).join(' · ')}</p></section>}
           {detail.offen.length > 0 && <Hinweis art="info" titel="Noch offen">{detail.offen.map(o => <div key={o}>{o}</div>)}</Hinweis>}
           {detail.braucht.length > 0 && <p style={klein}>Braucht: {detail.braucht.join(', ')}.</p>}
+          </>}
           {liste?.rechte.entwurf ? (
             <>
               <Feldzeile label="Eigner (eine Person aus dem Team — die Vorlage nennt die Rolle)">
@@ -160,6 +201,11 @@ export function VorlagenGalerie({ onZu, onAngelegt }: { onZu: () => void; onAnge
                 </>
               ) : <div><Knopf haupt onClick={uebernehmen}><span className="pz-knopf-inhalt"><LayoutTemplate size={16} aria-hidden />{liste.uebernommen[detail.id] ? 'Noch einmal übernehmen' : 'Übernehmen'}</span></Knopf></div>}
               <p style={{ ...klein, color: C.inkLeise }}>{liste.rechte.veroeffentlichen ? 'Ohne offene Punkte steht der Prozess danach im Probelauf (schreibt nichts) — aktiv schaltet ihr in der Werkstatt.' : 'Veröffentlichen und Probelauf gibt es nur für volle Mitglieder — der Prozess steht dann als Entwurf bereit.'}</p>
+              {istEigen(detail) && liste.rechte.veroeffentlichen && (loeschFrage ? (
+                <Hinweis art="achtung" titel={`Eigene Vorlage „${detail.titel}“ löschen?`} aktion={<span style={{ display: 'inline-flex', gap: 8 }}><Knopf onClick={loeschen}>Löschen</Knopf><Knopf leise onClick={() => setLoeschFrage(false)}>Abbrechen</Knopf></span>}>
+                  Prozesse, die schon aus ihr entstanden sind, bleiben.
+                </Hinweis>
+              ) : <div><Knopf leise onClick={() => setLoeschFrage(true)}><span className="pz-knopf-inhalt"><Trash2 size={14} aria-hidden />Vorlage löschen</span></Knopf></div>)}
             </>
           ) : <Hinweis art="info">Prozesse bauen nur Personen im Haushalt.</Hinweis>}
         </div>

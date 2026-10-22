@@ -607,7 +607,8 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
         aktion: {
           art: 'vorschlag', kennung, knoten: k.id, sorte: 'entscheidung', titel: `Entscheidung: ${frage}`.slice(0, 200),
           nachher: `${frage}\n\nFreigeben = ja · Ablehnen = nein (Prozess „${u.titel}“).`, fuer: wer.an,
-          bis: bis(u, werte.fristTage),
+          // Die Frist aus der Maske; übernommene Vorlagen bis 22.10. trugen sie nur am Knoten (`frist`).
+          bis: bis(u, werte.fristTage ?? k.frist),
         },
       };
     }

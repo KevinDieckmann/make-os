@@ -84,6 +84,8 @@ export interface PanelProps {
   knotenZusatz?: (k: K) => ReactNode;
   /** Produkte, die auf diesen Prozess zeigen (22.10., Prozesse × Fulfillment) — der Steckbrief verlinkt sie. */
   produkte?: readonly { id: string; name: string }[];
+  /** Unten im Steckbrief (22.10.): „Kopie anlegen“ und „Als Vorlage speichern“ (./WerkstattKopie.tsx). */
+  steckbriefZusatz?: ReactNode;
 }
 
 /** Das Panel (siehe Kopf). */
@@ -136,6 +138,7 @@ function SteckbriefPanel(p: PanelProps) {
       <Feldzeile label="Endkriterium — wann ist der Prozess erfüllt?"><TextFeld label="Endkriterium" mehrzeilig wert={d.endKriterium ?? ''} aus={p.nurLesen} onWert={v => p.onSteckbrief({ endKriterium: v || null })} /></Feldzeile>
       <BefundListe befunde={ohne} raete={p.raete.filter(r => !r.knotenId)} onTeilprozess={p.nurLesen ? undefined : id => p.onPhase('teilen', id)} />
       {!ohne.length && <p style={leise}>Einen Knoten anklicken öffnet seine Einstellungen. „+“ am Ausgang hängt den nächsten Baustein an.</p>}
+      {p.steckbriefZusatz}
     </div>
   );
 }
