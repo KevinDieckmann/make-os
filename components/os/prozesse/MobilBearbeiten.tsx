@@ -18,7 +18,7 @@ export interface MobilPhase { id: string; titel: string; bearbeitbar?: boolean; 
 export function MobilSchrittListe({ phasen, darf, onBearbeiten }: { phasen: readonly MobilPhase[]; darf: boolean; onBearbeiten: (id: string) => void }) {
   const knopf = (id: string, titel: string) => (
     <button type="button" className="pz-mobil-bearbeiten" onClick={() => onBearbeiten(id)} aria-label={`„${titel}“ bearbeiten`}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: ZIEL.handy, minWidth: ZIEL.handy, padding: '0 12px', borderRadius: 10, border: `1px solid ${C.linie}`, background: 'transparent', color: C.aktiv, fontSize: TYP.bedien, cursor: 'pointer' }}>
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, whiteSpace: 'nowrap', minHeight: ZIEL.handy, minWidth: ZIEL.handy, padding: '0 12px', borderRadius: 10, border: `1px solid ${C.linie}`, background: 'transparent', color: C.aktiv, fontSize: TYP.bedien, cursor: 'pointer' }}>
       <Pencil size={14} aria-hidden />Bearbeiten
     </button>
   );
