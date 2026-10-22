@@ -92,7 +92,7 @@ export function FallKunde({ mandatId }: { mandatId: string }) {
   const heute = localDay();
   const fd = fall.daten;
   const start = fd?.fall ? fallStartTag(fd.fall) : (fd?.mandat.start ?? heute).slice(0, 10);
-  const achse = reportAchse({ start, heute, reports: fd?.reports ?? [], gesendetAm: fd?.report?.gesendetAm ?? null });
+  const achse = reportAchse({ start, heute, reports: fd?.reports ?? [], gesendetAm: fd?.report?.gesendetAm ?? null, ...(fd?.reportTage ? { reportTage: fd.reportTage } : {}) });
   const rl = reportLage(achse, heute);
   return (
     <div style={{ display: 'grid', gap: 14 }}>

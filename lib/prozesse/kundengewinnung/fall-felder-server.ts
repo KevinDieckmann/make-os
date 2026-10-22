@@ -212,7 +212,7 @@ export async function kgFallFelder(x: KgFallEingabe): Promise<KgFallFelder> {
         const d: Felder = { 'event.mix-erreicht': mix(e, x.crm.teilnahmen, [...x.kontakte], x.crm.firmen).ampel === 'gruen' };
         if (!istNetzwerkenEvent(e)) {
           // Eigene Abende: dieselbe Regel wie die Kennzahl „Nachgefasst binnen 48 h“ (Gäste „da“, deren Frist abgelaufen ist oder die schon nachgefasst sind).
-          const bis = followUpBis(e);
+          const bis = followUpBis(e, x.crm.wertelisten);
           const gaeste = x.crm.teilnahmen.filter(t => t.eventId === e.id && t.status === 'da' && (t.followUpAm || bis < heute));
           if (gaeste.length) d['event.quote-48h'] = Math.round((gaeste.filter(t => t.followUpAm && t.followUpAm.slice(0, 10) <= bis).length / gaeste.length) * 100);
         }

@@ -171,7 +171,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     if (!ev || ev.datum > heute) continue;
     // Ein offenes echtes Follow-up zu diesem Gast und Event (z. B. aus „Netzwerken“) führt — kein zweiter Eintrag aus demselben Anlass (M1).
     if ((crm.followups ?? []).some(x => x.status === 'offen' && x.bezug.art === 'event' && x.bezug.id === ev.id && x.kontaktId === t.kontaktId)) continue;
-    const bis = followUpBis(ev);
+    const bis = followUpBis(ev, crm.wertelisten);
     nimm(nachId.get(t.kontaktId), 'versprechen', bis >= heute ? 55 : 35, bis >= heute ? `${nachfassText(ev)} bis ${tagDe(bis)}` : `${nachfassText(ev)} überfällig`, { bezug: ev.id });
   }
   // 1b Echte Follow-ups (27.09.): die Follow-up-Ebene führt — was dort fällig ist, liegt auch hier oben (Prüfbericht, Punkt 1).
@@ -199,7 +199,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   }
   // 3 Chancen
   for (const c of crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe))) {
-    const g = gesundheit(c, heute);
+    const g = gesundheit(c, heute, crm.wertelisten);
     const wertPunkte = Math.round(Math.log10(gesamtwert(c) + 1) * 4);
     // Deal ohne Person (28.09.): über die Firma — sonst fiel er hier still heraus.
     const { k, ueberFirma } = ansprech(c.kontaktIds, f => dealZuFirma(c, f));

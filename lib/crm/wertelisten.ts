@@ -13,6 +13,7 @@ import { ERGEBNISSE, KREIS_TAKT, type Kreis, type Ergebnis } from '@/lib/make-on
 import { VERLUSTGRUENDE, verlustgruende } from './pipeline';
 import type { Wertelisten } from './typen';
 import { kennungAusName, reiheKennung, type EventReihe } from './marke';
+import { CRM_STELLSCHRAUBEN, crmStellschraubenPruefen, type CrmStellschraubeId } from './stellschrauben';
 
 export const KREISE: readonly Kreis[] = ['A', 'B', 'C', 'D'];
 /** Ein Wort je Kreis — dieselben wie in runden.ts KREIS_WAHL. */
@@ -62,6 +63,8 @@ export interface WertelistenVoll {
    * Instanz (`reihenDerInstanz`), die nicht gespeichert sind. `wert` = Name.
    */
   reihen: { wert: string; fest: boolean }[];
+  /** Stellschrauben der festen Prozesse (22.10.): der wirksame Wert je Stellschraube (gespeichert oder Vorgabe). */
+  stellschrauben: Record<CrmStellschraubeId, number>;
 }
 /** Grenzen einer Reihe in den Wertelisten. */
 export const REIHEN_MAX = 40;
@@ -120,6 +123,10 @@ export function wertelistenVollstaendig(w?: Wertelisten | null, instanzReihen: r
       ...instanzReihen.filter(r => !(w?.reihen ?? []).some(x => x.id === r.id)).map(r => ({ wert: r.name, fest: true })),
       ...(w?.reihen ?? []).map(r => ({ wert: r.name, fest: false })),
     ],
+    stellschrauben: Object.fromEntries(CRM_STELLSCHRAUBEN.map(d => {
+      const v = w?.stellschrauben?.[d.id];
+      return [d.id, typeof v === 'number' && Number.isInteger(v) && v >= d.min && v <= d.max ? v : d.vorgabe];
+    })) as Record<CrmStellschraubeId, number>,
   };
 }
 
@@ -258,6 +265,13 @@ export function wertelistenPruefen(roh: unknown, alt?: Wertelisten | null): Prue
       }
       if (Object.keys(z).length) neu.ziele = z; else delete neu.ziele;
     }
+  }
+
+  // Stellschrauben der festen Prozesse (22.10.): nur Abweichungen von der Vorgabe (lib/crm/stellschrauben.ts).
+  if ('stellschrauben' in roh) {
+    const r = crmStellschraubenPruefen(roh.stellschrauben, neu.stellschrauben, zahl);
+    fehler.push(...r.fehler);
+    if (r.neu) neu.stellschrauben = r.neu; else delete neu.stellschrauben;
   }
 
   return fehler.length ? { ok: false, wertelisten: alt ?? {}, fehler } : { ok: true, wertelisten: neu, fehler: [] };

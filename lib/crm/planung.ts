@@ -475,15 +475,15 @@ export type PlanMachbar = 'machbar' | 'eng' | 'nicht-machbar' | 'unbekannt' | 'n
 export interface KapaZeile { person: string; stunden: number; frei: number | null; status: PlanMachbar; text: string }
 /**
  * Bedarf gegen die freie Zeit (Ø nächste vier Wochen, lib/kapazitaet: belastbar − bereits verplant) — Schwellen wie die Kapazität:
- * bis 70 % machbar, bis 90 % eng, sonst „nicht machbar — bräuchte X h/Woche, frei sind F“.
+ * bis 70 % machbar, bis 90 % eng, sonst „nicht machbar — bräuchte X h/Woche, frei sind F“. `schwellen` = die Stellschraube (22.10.), fehlt = Vorgabe.
  */
-export function kapaVergleich(bedarf: readonly PersonBedarf[], frei: Readonly<Record<string, number | null>> | null): KapaZeile[] {
+export function kapaVergleich(bedarf: readonly PersonBedarf[], frei: Readonly<Record<string, number | null>> | null, schwellen: { machbarBis: number; engBis: number } = { machbarBis: MACHBAR_BIS, engBis: ENG_BIS }): KapaZeile[] {
   return bedarf.map(b => {
     const f = frei ? frei[b.person] ?? null : null;
     if (b.stunden <= 0) return { person: b.person, stunden: 0, frei: f, status: 'nichts' as const, text: 'Diese Woche keine geplanten Aktivitäten.' };
     if (f === null) return { person: b.person, stunden: b.stunden, frei: null, status: 'unbekannt' as const, text: `Braucht ${b.stunden} h/Woche — Kapazität unbekannt (Planung › Kapazität).` };
     const anteil = f > 0 ? b.stunden / f : Infinity;
-    const status: PlanMachbar = anteil <= MACHBAR_BIS ? 'machbar' : anteil <= ENG_BIS ? 'eng' : 'nicht-machbar';
+    const status: PlanMachbar = anteil <= schwellen.machbarBis ? 'machbar' : anteil <= schwellen.engBis ? 'eng' : 'nicht-machbar';
     const text = status === 'nicht-machbar' ? `Nicht machbar — bräuchte ${b.stunden} h/Woche, frei sind ${de1(Math.max(0, f))} h.` : `${status === 'eng' ? 'Eng' : 'Machbar'}: ${b.stunden} von ${de1(f)} freien h/Woche.`;
     return { person: b.person, stunden: b.stunden, frei: rund1(f), status, text };
   });

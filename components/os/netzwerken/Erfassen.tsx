@@ -37,6 +37,7 @@ import { Sprachnotiz, type Aufnahme } from './Sprachnotiz';
 import { TerminWahl, type TerminEingabe } from './TerminWahl';
 import { OhneTerminKnopf, linksAusAntwort } from './Ergebnis';
 import type { EventWahl } from './EventModus';
+import { nachfassWerktage } from '@/lib/crm/stellschrauben';
 import type { Person, useWarteschlange } from './useNetzwerken';
 import { NUR_RAM_HINWEIS } from '@/lib/netzwerken/warteschlange';
 import { MARKE_EVENTS, istNetzwerkenEvent, titelMitReihe } from '@/lib/crm/marke';
@@ -69,16 +70,18 @@ interface Entwurf {
   andereFaellig: string;
 }
 
-const neuerEntwurf = (zustaendig: string, heute: string): Entwurf => ({
+const neuerEntwurf = (zustaendig: string, heute: string, nachfass = 2): Entwurf => ({
   id: zufallsUuid(), fotos: [], rueckseiteWeg: false, felder: { anrede: 'Sie' }, neuErzwingen: false, firmaNeu: false, schritt: null, info: '', gesprochen: true, aufnahme: null, zustaendig,
-  termin: { art: 'kennenlernen', dauer: 45, start: '' }, followupFaellig: followupFrist(heute), vermittelnAn: '', andereText: '', andereFaellig: '',
+  termin: { art: 'kennenlernen', dauer: 45, start: '' }, followupFaellig: followupFrist(heute, nachfass), vermittelnAn: '', andereText: '', andereFaellig: '',
 });
 
 const leer = (v?: string) => !(v ?? '').trim();
 
 export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBericht }: { api: CrmApi; ich: string | null; personen: Person[]; heute: string; wahl: EventWahl | null; warte: Warte; offline: boolean; onBericht: () => void }) {
   const zustaendigStart = ich ?? personen[0]?.id ?? '';
-  const [e, setE] = useState<Entwurf>(() => neuerEntwurf(zustaendigStart, heute));
+  // Stellschraube „Nachfassen nach einem Event“ (22.10., lib/crm/stellschrauben.ts) — ohne geladenes CRM (offline) die Vorgabe.
+  const nachfass = nachfassWerktage(api.crm?.stand.wertelisten);
+  const [e, setE] = useState<Entwurf>(() => neuerEntwurf(zustaendigStart, heute, nachfass));
   const [phase, setPhase] = useState<Phase>('karte');
   const [gross, setGross] = useState<Foto | null>(null);
   const [mehr, setMehr] = useState(false);
@@ -214,7 +217,7 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
     } finally { setSpeichert(false); }
   };
 
-  const nochEine = () => { setE(neuerEntwurf(zustaendigStart, heute)); setPhase('karte'); setGesendetId(null); setFehler(null); setMehr(false); };
+  const nochEine = () => { setE(neuerEntwurf(zustaendigStart, heute, nachfass)); setPhase('karte'); setGesendetId(null); setFehler(null); setMehr(false); };
 
   // ── Darstellung ──
   const punkte = ['Karte', 'Schritt', 'Bestätigen'];
@@ -393,8 +396,8 @@ export function Erfassen({ api, ich, personen, heute, wahl, warte, offline, onBe
             <section style={{ display: 'grid', gap: 10 }}>
               <Beschriftung>Frist</Beschriftung>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <Wahl klein an={e.followupFaellig === followupFrist(heute)} onClick={() => up({ followupFaellig: followupFrist(heute) })}>in 2 Werktagen</Wahl>
-                <Wahl klein an={e.followupFaellig === followupFrist(followupFrist(heute))} onClick={() => up({ followupFaellig: followupFrist(followupFrist(heute)) })}>in 4 Werktagen</Wahl>
+                <Wahl klein an={e.followupFaellig === followupFrist(heute, nachfass)} onClick={() => up({ followupFaellig: followupFrist(heute, nachfass) })}>{`in ${nachfass} ${nachfass === 1 ? 'Werktag' : 'Werktagen'}`}</Wahl>
+                <Wahl klein an={e.followupFaellig === followupFrist(heute, nachfass * 2)} onClick={() => up({ followupFaellig: followupFrist(heute, nachfass * 2) })}>{`in ${nachfass * 2} Werktagen`}</Wahl>
               </div>
               <Feldzeile label="oder ein anderer Tag"><input type="date" value={e.followupFaellig} min={heute} onChange={x => up({ followupFaellig: x.target.value })} style={eingabe} aria-label="Frist" /></Feldzeile>
               <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Fällig am {e.followupFaellig ? tagText(e.followupFaellig) : '—'} bei {nameVon(e.zustaendig)}.</div>

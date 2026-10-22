@@ -153,6 +153,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   // Prozesse · Läufe (21.10., C1): je Haushalt, nur Kennungen und Status — beim Konto-Löschen wird der Speichername „[gelöscht]“ (laeufeKontoLoeschen).
   'prozess-laeufe--*': 'Läufe der Prozesse je Haushalt (nur Kennungen, Status, Zeitpunkte; Speichername der auslösenden Person) — keine Einträge je Konto, nicht im Export',
   'prozesse-landkarte--*': 'Landkarte der Prozesse angepasst je Haushalt (nur Abweichungen von der Vorgabe, Speichername wer zuletzt geändert hat) — keine Einträge je Konto',
+  'prozesse-stellschrauben--*': 'Stellschrauben der festen Prozesse je Haushalt (nur Zahlen und Schalter, nur Abweichungen von der Vorgabe, Speichername wer zuletzt geändert hat) — keine Einträge je Konto',
   'prozess-vorlagen--*': 'Eigene Vorlagen der Prozesse je Haushalt (Struktur und Texte, Personen nur als Rolle, Speichername wer gespeichert hat) — keine Einträge je Konto',
   'prozesse-webhook--*': 'Webhooks je Haushalt (Adresse, Fingerabdruck des Schlüssels, Eingänge Dritter — Art. 15/17 über die Kartei, Frist „ereignisse“) — keine Einträge je Konto',
   'produkt-treppe--*': 'Leistungstreppe je Haushalt (Stufen, Kundenreise, Roadmap, Positionierung, Fortschritt je Mandat-Kennung — wer geändert/erledigt/gesendet hat nur als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
@@ -580,6 +581,7 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     await sicher(`prozesse--${konto.haushalt}`, async () => (await import('@/lib/prozesse/werkstatt-server')).prozesseKontoLoeschen(konto.haushalt!, speicher));
     await sicher(`prozess-laeufe--${konto.haushalt}`, async () => (await import('@/lib/prozesse/lauf-server')).laeufeKontoLoeschen(konto.haushalt!, speicher));
     await sicher(`prozesse-landkarte--${konto.haushalt}`, async () => (await import('@/lib/prozesse/landkarte-anpassung-server')).landkarteKontoLoeschen(konto.haushalt!, speicher));
+    await sicher(`prozesse-stellschrauben--${konto.haushalt}`, async () => (await import('@/lib/prozesse/stellschrauben-werte-server')).stellschraubenKontoLoeschen(konto.haushalt!, speicher));
     await sicher(`prozess-vorlagen--${konto.haushalt}`, async () => (await import('@/lib/prozesse/eigene-vorlagen-server')).vorlagenKontoLoeschen(konto.haushalt!, speicher));
     // Ereignisse (09.10., E1): Ereignisse NUR dieser Person (ihre Mail, „An ZOE gegeben“) fallen weg, aus `personen` wird sie gestrichen.
     const ev = `ereignisse--${konto.haushalt}`;

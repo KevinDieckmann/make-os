@@ -820,6 +820,11 @@ export interface Wertelisten {
   labels?: string[];
   /** Reihen eigener Abende (14.10.: Instanz-Daten, keine im Code) — Kennung (gespeichert am Event) + Name. lib/crm/marke.ts `reihenListe`. */
   reihen?: { id: string; name: string }[];
+  /**
+   * Stellschrauben der festen Prozesse (22.10., lib/crm/stellschrauben.ts): Event-Nachfassfrist (Werktage), Wiedervorlage der Qualifizierung (Tage), Deal-Ampel gelb
+   * ab Verschiebungen — NUR Abweichungen von der Vorgabe; ohne Feld rechnet alles wie vorher. Gelesen nur über die Funktionen dort.
+   */
+  stellschrauben?: import('./stellschrauben').CrmStellschrauben;
 }
 
 export interface CrmBestand {

@@ -14,7 +14,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { karteiHaushalt } from '@/lib/crm/sperrliste';
 import { sitzungsGeheimnis } from '@/lib/zugang/sitzung';
 import { protokolliere, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
-import { bestandSauber, ablaufNachziehen, loeschfristAnwenden, slugVorsatz, type BuchungBestand, type HinweisFristen } from './buchung';
+import { bestandSauber, ablaufNachziehen, loeschfristAnwenden, slugVorsatz, MAIL_LINK_TAGE, type BuchungBestand, type HinweisFristen } from './buchung';
 import { fristenWirksam, LOESCHFRISTEN_SPEICHER, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 
 export async function buchungHaushalt(): Promise<string> { return karteiHaushalt(); }
@@ -25,7 +25,10 @@ export async function buchungHaushalt(): Promise<string> { return karteiHaushalt
  */
 export async function hinweisFristenLaden(): Promise<HinweisFristen> {
   const f = fristenWirksam((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER).catch(() => null))?.fristen);
-  return { buchungen: f.buchungen, kontakte: f.kontakte, kalenderCaches: f['kalender-caches'] };
+  // Stellschraube (22.10.): Gültigkeit des Bestätigungslinks — nur wenn abweichend (sonst bleiben Text und Fassung bit-gleich).
+  const [{ stellschraubenWerte }, { buchungMailLinkTage }] = await Promise.all([import('@/lib/prozesse/stellschrauben-werte-server'), import('@/lib/prozesse/stellschrauben-werte')]);
+  const mail = buchungMailLinkTage(await stellschraubenWerte());
+  return { buchungen: f.buchungen, kontakte: f.kontakte, kalenderCaches: f['kalender-caches'], ...(mail !== MAIL_LINK_TAGE ? { mailLinkTage: mail } : {}) };
 }
 
 /** Bestand lesen (Abgelaufenes nur in der Sicht nachgezogen — geschrieben wird beim nächsten Ändern). */

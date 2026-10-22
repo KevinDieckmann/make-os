@@ -241,7 +241,7 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     if (!ev || ev.datum > heute || nachId.get(t.kontaktId)?.eingeschraenkt) continue;
     // 4.18: älter als NACHFASSEN_MAX_TAGE — kein „Nachfassen“ mehr (die Begegnung bleibt in der Event-Akte; die Kadenz übernimmt).
     if (tage(ev.datum, heute) > NACHFASSEN_MAX_TAGE) continue;
-    const f = followUpBis(ev);
+    const f = followUpBis(ev, crm.wertelisten);
     if (!frei(t.kontaktId, f)) continue;
     // Ein echtes Event-Follow-up zu diesem Gast (etwa nach „+3 Tage“) ersetzt den virtuellen Eintrag.
     if ((crm.followups ?? []).some(x => x.status === 'offen' && x.bezug.art === 'event' && x.bezug.id === ev.id && x.kontaktId === t.kontaktId)) continue;

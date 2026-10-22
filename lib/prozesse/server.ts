@@ -27,9 +27,9 @@ async function sicher<T>(f: () => Promise<T>): Promise<T | null> {
 
 /** Die Zahlen der Markttraktion (Kreislauf, Follow-up, besuchte Events) — ein Lesen der Kartei, des CRM und der Planung. */
 async function markttraktionZahlen(heute: string): Promise<Partial<Record<ZaehlerArt, Zahl>>> {
-  const [{ kontakteFuerVerarbeitung, eingeschraenkteKennungen }, { ladeCrm }, { leads }, { faellige }, { kreislauf, zuordnen }, { ladePlanung }, { besuchUebersicht }, { WEG }] = await Promise.all([
+  const [{ kontakteFuerVerarbeitung, eingeschraenkteKennungen }, { ladeCrm }, { leads }, { faellige }, { kreislauf, zuordnen }, { ladePlanung }, { besuchUebersicht }, { WEG }, { nachfassWerktage }] = await Promise.all([
     import('@/lib/crm/verarbeitung'), import('@/lib/crm/speicher'), import('@/lib/crm/leads'), import('@/lib/crm/followup'), import('@/lib/crm/planung'),
-    import('@/lib/crm/planung-server'), import('@/lib/crm/besuche'), import('@/lib/wege'),
+    import('@/lib/crm/planung-server'), import('@/lib/crm/besuche'), import('@/lib/wege'), import('@/lib/crm/stellschrauben'),
   ]);
   const [kontakte, crm, ausgeblendet, plan] = await Promise.all([kontakteFuerVerarbeitung(), ladeCrm(), eingeschraenkteKennungen(), ladePlanung()]);
   const raus: Partial<Record<ZaehlerArt, Zahl>> = {};
@@ -43,7 +43,7 @@ async function markttraktionZahlen(heute: string): Promise<Partial<Record<Zaehle
   if (leadsSt) raus.leads = { wert: leadsSt.anzahl, wort: 'in Arbeit', href: leadsSt.href };
   if (dealsSt) raus.deals = { wert: dealsSt.anzahl, wort: 'offen', href: dealsSt.href };
   if (nachSt) raus.nachher = { wert: nachSt.anzahl, wort: 'Kunden offen', href: nachSt.href };
-  const besuche = besuchUebersicht(crm.events ?? [], { teilnahmen: crm.teilnahmen ?? [], kontakte, chancen: crm.chancen ?? [], heute });
+  const besuche = besuchUebersicht(crm.events ?? [], { teilnahmen: crm.teilnahmen ?? [], kontakte, chancen: crm.chancen ?? [], heute, nachfassWerktage: nachfassWerktage(crm.wertelisten) });
   if (besuche.zeilen.length) {
     const offen = besuche.zeilen.reduce((a, z) => a + z.wirkung.nachfassenOffen, 0);
     raus['event-nachfassen'] = { wert: offen, wort: 'offen', zweite: { wert: besuche.summe.nachgefasst, wort: 'rechtzeitig nachgefasst' }, href: WEG.besuch(undefined, 'wirkung') };
@@ -115,10 +115,12 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
     const mitProd = produkte ? await mitProdukten(alle, produkte.leistungen, datei?.zuordnung ?? {}) : alle;
     // Stellschrauben (22.10.): die Einstellungen, die die System-Prozesse heute schon lesen — aus den vorhandenen Beständen (nur lesen; geändert wird über
     // deren Routen). Scheitert es ganz, fehlen sie (die Landkarte bleibt, wie sie war).
-    const prozesse = (await sicher(async () => {
+    const mitSchrauben = await sicher(async () => {
       const { stellschraubenQuellenLesen, mitStellschrauben } = await import('./stellschrauben-server');
-      return mitStellschrauben(mitProd, await stellschraubenQuellenLesen(h, { ...(produkte ? { crm: produkte } : {}), ...(datei ? { fulfillment: datei.einstellungen } : {}) }));
-    })) ?? mitProd;
+      const q = await stellschraubenQuellenLesen(h, { ...(produkte ? { crm: produkte } : {}), ...(datei ? { fulfillment: datei.einstellungen } : {}) });
+      return { prozesse: mitStellschrauben(mitProd, q), stand: q.werteStand };
+    });
+    const prozesse = mitSchrauben?.prozesse ?? mitProd;
     const [mt, ff] = await Promise.all([sicher(() => markttraktionZahlen(heute)), sicher(() => fulfillmentZahlen(heute, vorlagen))]);
     const arten = { ...(mt ?? {}), ...(ff?.arten ?? {}) };
     const zahlen: Record<string, Zahl> = { ...(ff?.knoten ?? {}) };
@@ -132,7 +134,11 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
       const a = await anpassungLesen(h);
       return { anpassung: istVorgabe(a) ? null : a, anpassungStand: anpassungStand(a) };
     });
-    const mit = anp ? { ...(anp.anpassung ? { anpassung: anp.anpassung } : {}), anpassungStand: anp.anpassungStand } : {};
+    const mit = {
+      ...(anp ? { ...(anp.anpassung ? { anpassung: anp.anpassung } : {}), anpassungStand: anp.anpassungStand } : {}),
+      // Stand des Bestands `prozesse-stellschrauben--<h>` (für 409 beim Ändern einer neuen Stellschraube).
+      ...(mitSchrauben?.stand ? { stellschraubenStand: mitSchrauben.stand } : {}),
+    };
     return { prozesse, zahlen, ...mit, stand: fingerabdruck({ prozesse, zahlen, ...mit }) };
   });
 }

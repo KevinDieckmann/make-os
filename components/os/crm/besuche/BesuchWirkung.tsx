@@ -9,7 +9,8 @@
 import { useMemo } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Raster, Zahl, LEUCHT } from '../../ui';
-import { besuchKennzahlen, besuchUebersicht, URTEIL_AB_TAGE, FOLLOWUP_QUOTE_DEFINITION, type BesuchKontext, type UrteilArt } from '@/lib/crm/besuche';
+import { besuchKennzahlen, besuchUebersicht, URTEIL_AB_TAGE, followupQuoteDefinition, type BesuchKontext, type UrteilArt } from '@/lib/crm/besuche';
+import { nachfassWerktage } from '@/lib/crm/stellschrauben';
 import { datum, euro } from '../daten';
 import { FuerChip, type BesuchProps } from './gemeinsam';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
@@ -20,7 +21,7 @@ const AMPEL = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch, g
 export function BesuchWirkung({ api, crm, onAkte }: Pick<BesuchProps, 'api' | 'crm'> & { onAkte: (id: string) => void }) {
   const heute = crm.heute;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
-  const ctx: BesuchKontext = useMemo(() => ({ teilnahmen: crm.stand.teilnahmen, kontakte, chancen: crm.stand.chancen, heute }), [crm.stand.teilnahmen, kontakte, crm.stand.chancen, heute]);
+  const ctx: BesuchKontext = useMemo(() => ({ teilnahmen: crm.stand.teilnahmen, kontakte, chancen: crm.stand.chancen, heute, nachfassWerktage: nachfassWerktage(crm.stand.wertelisten) }), [crm.stand.teilnahmen, kontakte, crm.stand.chancen, heute, crm.stand.wertelisten]);
   const kpis = useMemo(() => besuchKennzahlen(crm.stand.events, ctx), [crm.stand.events, ctx]);
   const { zeilen, summe } = useMemo(() => besuchUebersicht(crm.stand.events, ctx), [crm.stand.events, ctx]);
 
@@ -32,7 +33,7 @@ export function BesuchWirkung({ api, crm, onAkte }: Pick<BesuchProps, 'api' | 'c
           {kpis.map(k => <div key={k.id} title={k.definition ?? k.quelle}><Zahl wert={k.anzeige} label={<>{k.label}{k.definition ? <span aria-hidden> ⓘ</span> : null}</>} farbe={AMPEL[k.ampel]} />{k.id === 'besuche_followup' && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 2 }}>{k.quelle}</div>}</div>)}
         </Raster>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>
-          <b style={{ color: C.inkDim }}>Follow-up-Quote:</b> {FOLLOWUP_QUOTE_DEFINITION}<br />
+          <b style={{ color: C.inkDim }}>Follow-up-Quote:</b> {followupQuoteDefinition(ctx.nachfassWerktage)}<br />
           Eigene Zahlen — getrennt von {MARKE_EVENTS} (Gäste, Zusagen und Nachfassen unserer Abende). Erfasste Kontakte, Deals und Umsatz zählen trotzdem normal in Sales.
         </div>
       </Karte>

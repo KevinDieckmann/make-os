@@ -44,6 +44,8 @@ import { einmalig } from '@/lib/store/anfragen';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
+import { reportTageWirksam } from '@/lib/prozesse/stellschrauben-werte-server';
+import { REPORT_TAGE } from '@/lib/crm/treppe';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -170,6 +172,8 @@ export async function GET(req: Request) {
     })(),
     kunde: kunde[m] ?? null, report: treppe?.reports[m] ?? null,
     reports, followups,
+    // Stellschraube (22.10.): Abstand der Reports — nur wenn abweichend (die Zeitachse rechnet dann mit ihm; sonst 14 wie die Treppe).
+    ...(await (async () => { const t = await reportTageWirksam(); return t === REPORT_TAGE ? {} : { reportTage: t }; })()),
     analyse: dossier ? { f2: !!dossier.f2, diagnose: !!dossier.diagnose, quickWins: ue.quickWins, fragen: ue.fragen.length, massnahmen: ue.massnahmen.map(x => x.text), ziel: ue.ziel?.titel ?? null } : null,
     nachsorge: { ende, plan: nachsorgePlan({ mandatId: m, ende, tage: vorlagen.einstellungen.nachsorgeTage, marken: f.marken, heute }) },
     // Ausführung der Abläufe (17.10. abends): je Knoten mit Form — dran, Runde, Frist, Aufgabe und ihr Stand (über die Sicht der Person).

@@ -257,7 +257,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
             {offenListe.length ? (
               <Liste>
                 {offenListe.slice(0, 6).map(({ t, e, name, firma }) => {
-                  const rest = nachfassenRest(e, jetzt);
+                  const rest = nachfassenRest(e, jetzt, crm?.stand.wertelisten);
                   return <Zeile key={t.id} onClick={() => router.push(WEG.event(e.id, 'nachfassen'))} links={<Punkt farbe={fristFarbe(rest)} />}
                     titel={<>{name}{firma && <span style={{ color: C.inkLeise }}> · {firma}</span>}</>} unter={`${e.titel} · ${stunden(rest)}`} />;
                 })}

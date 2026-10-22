@@ -9,7 +9,9 @@ import { qualifizierungLink } from '@/lib/crm/adresse';
 import { KREIS_TAKT, type Kreis } from '@/lib/make-one/crm';
 import { LOESCHFRISTEN, fristText, type FristArt } from '@/lib/crm/loeschfristen';
 import type { Wertelisten } from '@/lib/crm/typen';
-import type { Stellschraube } from './stellschrauben';
+import { CRM_STELLSCHRAUBEN, type CrmStellschraubeId } from '@/lib/crm/stellschrauben';
+import type { Stellschraube, StellschraubeArt } from './stellschrauben';
+import { AUCH_IN, WERTE, wert as wertVon, type Werte } from './stellschrauben-werte';
 
 /** Die Einstellungen eines Heads, wie sie hier gezeigt werden (nur Business-Heads, nie Abschnitte von Personen). */
 export interface HeadKurz { aktiv?: boolean; stufe?: string; budgetCentMonat?: number; autonomie?: string; notAus?: boolean }
@@ -26,7 +28,25 @@ export interface StellschraubenQuellen {
   heads?: Partial<Record<string, HeadKurz>>;
   kanaele?: number;
   buchungsseiten?: { aktiv: number; gesamt: number };
+  /** Die neuen Stellschrauben (Bestand `prozesse-stellschrauben--<h>`, nur Abweichungen) — `undefined` = nicht lesbar. */
+  werte?: Werte;
 }
+
+/** Wo die neuen Stellschrauben einer Gruppe eine Maske in der Fachseite haben (sonst nur hier). */
+const WERT_LINK: Readonly<Record<string, { href: string; text: string }>> = {
+  'sp-head-takt': { href: WEG.agenten(), text: 'ZOE › Agenten' },
+  'sp-monatsabschluss': { href: WEG.abschluss(), text: 'Finanzen › Business › Monatsabschluss' },
+  'sp-buchung': { href: WEG.kalender(), text: 'Kalender › Buchungsseiten' },
+  'sp-meilensteine': { href: WEG.kapazitaet(), text: 'Planung › Kapazität' },
+  'sp-vertriebsplanung': { href: WEG.kapazitaet(), text: 'Planung › Kapazität' },
+  'sp-treppe': { href: WEG.produkt(), text: 'Produkte & Mandate' },
+};
+/** Wo die Stellschrauben der Markttraktion im Steckbrief stehen (EIN Wert, mehrere Abläufe). */
+const CRM_IN: Readonly<Record<CrmStellschraubeId, { prozesse: readonly string[]; gruppe: string }>> = {
+  nachfassWerktage: { prozesse: ['sp-event-nachfassen', 'sp-netzwerken', 'sp-makeone'], gruppe: 'Nachfassen' },
+  qualiWiedervorlageTage: { prozesse: ['sp-lead-sql'], gruppe: 'Qualifizierung' },
+  verschobenGelb: { prozesse: ['sp-deal'], gruppe: 'Deal' },
+};
 
 /** Vorgaben der vorhandenen Bestände (nur gelesen — die Quelle der Wahrheit ist jeweils der Bestand bzw. sein Säuberer). */
 export const VORGABE_MAHNTAGE: [number, number, number] = [7, 14, 21];
@@ -170,6 +190,30 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
   if (q.heads) {
     dazu('sp-head-takt', HEADS.flatMap(h => headZeilen(h.id, h.name, q.heads![h.id])));
     dazu('sp-monatsabschluss', headZeilen('finanzen', 'Head of Finance', q.heads.finanzen));
+  }
+
+  // ── Teil B (22.10.): Werte, die bis heute fest im Code standen — jetzt im Bestand `prozesse-stellschrauben--<h>` (Lesefunktionen: ./stellschrauben-werte.ts) ──
+  if (q.werte) {
+    const werte = q.werte;
+    for (const d of WERTE) {
+      const s: Stellschraube = {
+        id: d.id, gruppe: d.gruppe, name: d.name, art: d.art as StellschraubeArt, wert: wertVon(werte, d.id), vorgabe: d.vorgabe,
+        ...(d.einheit ? { einheit: d.einheit } : {}), ...(d.min !== undefined ? { min: d.min, max: d.max } : {}),
+        erklaerung: d.erklaerung, wo: 'Stellschrauben der festen Prozesse (prozesse-stellschrauben)', weg: { art: 'prozesse', id: d.id },
+      };
+      for (const p of [d.prozess, ...(AUCH_IN[d.id] ?? [])]) dazu(p, [{ ...s, ...(WERT_LINK[p] ? { link: WERT_LINK[p] } : {}) }]);
+    }
+  }
+  // Stellschrauben der Markttraktion in den Wertelisten (lib/crm/stellschrauben.ts) — Nachfassfrist, Wiedervorlage, Deal-Ampel.
+  if (w) {
+    for (const d of CRM_STELLSCHRAUBEN) {
+      const v = w.stellschrauben?.[d.id];
+      const s: Stellschraube = {
+        id: `crm-${d.id}`, gruppe: CRM_IN[d.id].gruppe, name: d.name, art: 'zahl', wert: typeof v === 'number' && Number.isInteger(v) && v >= d.min && v <= d.max ? v : d.vorgabe, vorgabe: d.vorgabe,
+        einheit: d.einheit, min: d.min, max: d.max, erklaerung: d.erklaerung, wo: WL, weg: { art: 'wertelisten', feld: 'stellschrauben', schluessel: d.id },
+      };
+      for (const p of CRM_IN[d.id].prozesse) dazu(p, [s]);
+    }
   }
 
   // ── Vorlagen der Kampagnen und eigenen Abende: nur ansehen (überführt werden sie in einem eigenen Paket) ──

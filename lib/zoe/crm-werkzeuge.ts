@@ -19,6 +19,7 @@ import { crmSicht, crmAntwort, ausgeblendetText, eindeutig, NICHT_IM_HINTERGRUND
 import { fehlschlag, istWerkzeugErgebnis, type WerkzeugErgebnis, type WerkzeugRueckgabe } from '@/lib/werkzeuge/vertrag';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
 import { preiseText } from '@/lib/crm/produkt-karte';
+import { nachfassWerktage as nachfassWerktageVon, qualiWiedervorlageTage } from '@/lib/crm/stellschrauben';
 
 type Eingabe = Record<string, unknown>;
 type Lauf = (input: Eingabe, origin: string, person?: string) => Promise<WerkzeugRueckgabe>;
@@ -89,8 +90,8 @@ function aktivitaetZeile(s: CrmSicht, a: Aktivitaet): string {
   return `- ${a.wann ? a.wann.replace('T', ' ') : tag(a.am)}${a.terminUid ? ' (Termin im Kalender)' : ''} · ${a.art}${a.ergebnis ? ` (${a.ergebnis})` : ''} · von ${a.von}${a.bezug ? ` · Bezug ${a.bezug}` : ''}${a.ort ? ` · Ort ${a.ort}` : ''}${a.anlass ? ` · Anlass ${a.anlass}` : ''}${a.text ? `\n  ${a.text}` : ''}${n ? `\n  ${n}` : ''}`;
 }
 
-function dealZeile(s: CrmSicht, c: Chance, heute: string, gesundheit?: (c: Chance, h: string) => { ampel: string; gruende: string[] }): string {
-  const g = gesundheit?.(c, heute);
+function dealZeile(s: CrmSicht, c: Chance, heute: string, gesundheit?: (c: Chance, h: string, w?: CrmBestand['wertelisten']) => { ampel: string; gruende: string[] }): string {
+  const g = gesundheit?.(c, heute, s.crm.wertelisten);
   return `- ${c.id} · ${c.titel} · Stufe ${c.stufe} · ${eur(c.wert.betrag)} ${c.wert.basis}${c.firma ? ` · ${c.firma}` : ''} · zuständig ${c.besitzer}`
     + `${c.naechsterSchritt ? ` · nächster Schritt ${c.naechsterSchritt.datum}: ${c.naechsterSchritt.text}` : ' · ohne nächsten Schritt'}`
     + `${c.erwartetAm ? ` · Entscheidung bis ${c.erwartetAm}` : ''}${g ? ` · Ampel ${g.ampel}${g.gruende.length ? ` (${g.gruende.join('; ')})` : ''}` : ''}`
@@ -374,7 +375,7 @@ async function pipeline(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
     if (Array.isArray(r)) return mehrdeutig(r, c => `${c.titel} (${c.stufe})`);
     const c = r;
     const { angeboteZu } = await import('@/lib/crm/angebote');
-    const g = p.gesundheit(c, heute);
+    const g = p.gesundheit(c, heute, s.crm.wertelisten);
     const akt = s.kontakte.flatMap(k => (k.aktivitaeten ?? []).filter(a => a.bezug === c.id).map(a => ({ k, a }))).sort((x, y) => ereignisMs(y.a) - ereignisMs(x.a));
     const koerper = [
       dealZeile(s, c, heute, p.gesundheit).slice(2),
@@ -494,7 +495,7 @@ async function eventsLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
     const z = eventZahlen(e, s.crm.teilnahmen, s.kontakte, s.crm.chancen);
     const gaeste = s.crm.teilnahmen.filter(t => t.eventId === e.id);
     const ausgeblendet = gaeste.filter(t => s.eingeschraenkt.has(t.kontaktId)).length;
-    const rest = nachfassenRest(e, Date.now());
+    const rest = nachfassenRest(e, Date.now(), s.crm.wertelisten);
     return `- ${e.id} · ${eventName(e)} · ${e.datum}${e.uhrzeit ? ` ${e.uhrzeit}` : ''} · ${e.status} · ${e.format}${e.ort ? ` · ${e.ort}` : ''}${e.kapazitaet ? ` · ${e.kapazitaet} Plätze` : ''} · Ziel ${e.ziel}`
       + `\n  eingeladen ${z.eingeladen} · zugesagt ${z.zugesagt} · da ${z.da} · no show ${z.noShow} · nachgefasst ${z.nachgefasst} (offen ${z.nachfassenOffen}${rest > 0 ? `, noch ${Math.ceil(rest / 36e5)} h` : ''}) · Folgegespräche ${z.folgegespraeche} · Kosten ${eur(z.kosten)}${z.noteSchnitt !== null ? ` · Note ${z.noteSchnitt}` : ''}`
       + `${l.length <= 3 ? `\n  Gäste: ${gaeste.filter(t => !s.eingeschraenkt.has(t.kontaktId)).map(t => `${t.kontaktId} ${s.name(t.kontaktId)} (${t.status}${t.einladenDurch ? `, lädt ${t.einladenDurch}` : ''}${t.followUpAm ? `, nachfassen ${t.followUpAm}` : ''}${t.feedback?.note ? `, Note ${t.feedback.note}` : ''})`).join(', ') || 'keine'}${ausgeblendet ? ` · ${ausgeblendet} eingeschränkte ausgeblendet` : ''}`
@@ -515,7 +516,7 @@ async function besucheLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> 
   const gefragt = text(i.event, 80);
   const l = s.crm.events.filter((e: Event) => istBesuch(e) && (!gefragt || e.id === gefragt || suchPasst([e.titel], gefragt)))
     .sort((a, b) => b.datum.localeCompare(a.datum));
-  const ctx = { teilnahmen: s.crm.teilnahmen, kontakte: s.kontakte, chancen: s.crm.chancen, heute: s.heute };
+  const ctx = { teilnahmen: s.crm.teilnahmen, kontakte: s.kontakte, chancen: s.crm.chancen, heute: s.heute, nachfassWerktage: nachfassWerktageVon(s.crm.wertelisten) };
   const summe = besuchUebersicht(l, ctx).summe;
   const firmaName = (id: string) => s.crm.firmen.find(f => f.id === id)?.name ?? id;
   const zeilen = l.map(e => {
@@ -608,7 +609,7 @@ async function qualifizierungLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRuec
   const { lifecycleVerteilung } = await import('@/lib/crm/vorschlaege');
   const { kontakte, crm, heute, person } = s;
   const zeilen = leads(kontakte, crm, heute);
-  const runde = zuQualifizieren(zeilen, { wer: text(i.wer, 40) || person, auchKalt: i.auch_kalt === true, heute });
+  const runde = zuQualifizieren(zeilen, { wer: text(i.wer, 40) || person, auchKalt: i.auch_kalt === true, heute, wiedervorlageTage: qualiWiedervorlageTage(s.crm.wertelisten) });
   const tr = trichter(zeilen, crm, heute);
   const tv = temperaturVerteilung(zeilen);
   const lv = lifecycleVerteilung(kontakte, crm, heute);

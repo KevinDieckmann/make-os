@@ -23,9 +23,9 @@ const BUSINESS_HEADS = ['sales', 'marketing', 'event', 'finanzen'] as const;
 /**
  * Die Quellen lesen. `crm` und `fulfillment` gibt die Landkarte mit (sie liest sie ohnehin) — `undefined` = dort nicht lesbar.
  */
-export async function stellschraubenQuellenLesen(h: string, schon: { crm?: CrmBestand; fulfillment?: FulfillmentEinstellungen } = {}): Promise<StellschraubenQuellen> {
+export async function stellschraubenQuellenLesen(h: string, schon: { crm?: CrmBestand; fulfillment?: FulfillmentEinstellungen } = {}): Promise<StellschraubenQuellen & { werteStand?: string }> {
   const crm = schon.crm;
-  const [loeschfristen, mahnTage, heads, kanaele, buchungsseiten] = await Promise.all([
+  const [loeschfristen, mahnTage, heads, kanaele, buchungsseiten, neu] = await Promise.all([
     sicher(async () => {
       const { LOESCHFRISTEN_SPEICHER } = await import('@/lib/crm/loeschfristen');
       return (await loadJson<{ fristen?: StellschraubenQuellen['loeschfristen'] }>(LOESCHFRISTEN_SPEICHER))?.fristen ?? {};
@@ -50,6 +50,8 @@ export async function stellschraubenQuellenLesen(h: string, schon: { crm?: CrmBe
       const s = (await (await import('@/lib/kalender/buchung-speicher')).ladeBuchungBestand()).seiten;
       return { aktiv: s.filter(x => x.aktiv).length, gesamt: s.length };
     }),
+    // Die neuen Stellschrauben (Teil B): hier STRENG gelesen — nicht lesbar = ihre Zeilen fehlen (die ausführenden Stellen nehmen dann die Vorgabe).
+    sicher(async () => (await import('./stellschrauben-werte-server')).stellschraubenLesen(h)),
   ]);
   const sc = crm?.scoring;
   return {
@@ -61,6 +63,7 @@ export async function stellschraubenQuellenLesen(h: string, schon: { crm?: CrmBe
     ...(heads ? { heads } : {}),
     ...(typeof kanaele === 'number' ? { kanaele } : {}),
     ...(buchungsseiten ? { buchungsseiten } : {}),
+    ...(neu ? { werte: neu.werte, werteStand: (await import('./stellschrauben-werte-server')).stellschraubenStand(neu) } : {}),
   };
 }
 
@@ -71,7 +74,7 @@ export function mitStellschrauben(prozesse: readonly ProzessDef[], q: Stellschra
 }
 
 /**
- * Was die Person je Weg ändern darf — dieselben Regeln wie die Routen: Dienstweg nie; Wertelisten, Löschfristen und Fulfillment-Einstellungen jede Person im
+ * Was die Person je Weg ändern darf — dieselben Regeln wie die Routen: Dienstweg nie; neue Stellschrauben (/api/prozesse/stellschrauben) nur volle Mitglieder; Wertelisten, Löschfristen und Fulfillment-Einstellungen jede Person im
  * Haushalt des Inhabers (wie /api/crm/stammdaten, /api/crm/datenschutz, /api/fulfillment[/kunde]); Mahnstufen nur mit vollem Finanz-Zugang (wie /api/rechnung
  * `mahntage`). Die Route prüft beim Schreiben noch einmal — das hier entscheidet nur, ob ein Feld oder nur der Wert erscheint.
  */
@@ -82,5 +85,5 @@ export async function stellschraubenRechte(req: Request, z: Pick<ProzesseTor, 'd
     const p = await planZugangVon(req);
     return !!p && p.sicht === 'privat' && p.haushalt === (await haushaltDesInhabers());
   });
-  return { wertelisten: true, loeschfrist: true, 'puls-schwelle': true, fulfillment: true, mahntage: !!finanz };
+  return { prozesse: z.rechte.veroeffentlichen, wertelisten: true, loeschfrist: true, 'puls-schwelle': true, fulfillment: true, mahntage: !!finanz };
 }

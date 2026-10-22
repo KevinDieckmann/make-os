@@ -200,13 +200,14 @@ export interface ReportAchse { von: string; bis: string; heuteX: number; reports
  * (erfüllt, wenn in den 14 Tagen davor ein Report entstand) und der nächste fällige Termin (`reportNaechsterFaellig`, lib/crm/treppe.ts — dieselbe Regel wie
  * die Treppe und der Hänger im Fall-Kopf).
  */
-export function reportAchse(e: { start: string; heute: string; reports: readonly { am: string }[]; gesendetAm?: string | null; takt?: number }): ReportAchse {
-  const takt = e.takt ?? REPORT_TAKT_TAGE;
+export function reportAchse(e: { start: string; heute: string; reports: readonly { am: string }[]; gesendetAm?: string | null; takt?: number; reportTage?: number }): ReportAchse {
+  // Stellschraube (22.10.): `reportTage` = der eingestellte Abstand der Reports (lib/prozesse/stellschrauben-werte.ts) — fehlt = 14 wie die Treppe.
+  const takt = e.takt ?? e.reportTage ?? REPORT_TAKT_TAGE;
   const start = e.start.slice(0, 10);
   const tage = e.reports.map(r => r.am.slice(0, 10)).sort();
   const letzter = tage.at(-1);
   // EINE Regel mit der Treppe und dem Hänger im Fall-Kopf (17.10., L2 A1): letzter + 14, ohne Report der Start + REPORT_ERSTER_NACH.
-  const naechsterFaellig = (e.takt === undefined ? reportNaechsterFaellig(start, letzter) : null) ?? tagPlus(letzter ?? start, takt);
+  const naechsterFaellig = (e.takt === undefined ? reportNaechsterFaellig(start, letzter, e.reportTage) : null) ?? tagPlus(letzter ?? start, takt);
   const bis = [tagPlus(e.heute, 7), naechsterFaellig].sort().at(-1)!;
   const von = [start, ...tage].sort()[0];
   const spanne = Math.max(1, zwischen(von, bis));

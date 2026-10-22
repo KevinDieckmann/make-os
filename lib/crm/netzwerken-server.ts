@@ -38,6 +38,7 @@ import { anzeigename, wendeAktivitaetAn, bezuegeSynchron, serverStempel } from '
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { aendereKontakte } from './kartei-schreiben';
 import { aendereCrm, ladeCrm } from './speicher';
+import { nachfassWerktage } from './stellschrauben';
 import { sperrlisteLaden, neuanlageSperre } from './sperrliste';
 import { datenschutzStempeln } from './datenschutz-stempel';
 import { kontaktAusKarte, firmaZurKarte, type VisitenkartenDaten } from './visitenkarte';
@@ -501,7 +502,7 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
     }, ctx.wer);
   };
   await schritt('schritt', async () => {
-    const frist = followupFrist(begegnungsTag);
+    const frist = followupFrist(begegnungsTag, nachfassWerktage(crm0.wertelisten));
     await leadStellen();
     switch (e.schritt) {
       case 'followup': {

@@ -1,5 +1,5 @@
 // ─── Prozesse — Stellschrauben der festen System-Prozesse (rein, client-sicher; 22.10., Branch `prozesse-stellschrauben`) ───────────────────────────────
-// Kevin 22.10.: „Alles muss anpassbar sein und immer mal wieder zu bearbeiten.“ Entscheidung (Klickrunde): ERST Stellschrauben, DANN überführen. Die
+// Entscheidung 22.10.: „Alles muss anpassbar sein und immer mal wieder zu bearbeiten.“ Entscheidung (Klickrunde): ERST Stellschrauben, DANN überführen. Die
 // System-Prozesse (lib/prozesse/register.ts) bleiben im Code als Ausführer — ihr Steckbrief zeigt aber, WELCHE Einstellungen sie steuern, mit Wert,
 // Vorgabe, Grenzen und dem Ort, an dem der Wert gespeichert ist. KEINE zweite Wahrheit:
 //   · der Server füllt `ProzessDef.stellschrauben` aus den VORHANDENEN Beständen (lib/prozesse/stellschrauben-server.ts), wie die Zahl der Fälle;

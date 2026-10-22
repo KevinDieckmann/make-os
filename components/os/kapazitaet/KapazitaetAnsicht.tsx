@@ -332,7 +332,7 @@ function KopfKarte({ s, privat }: { s: KapaStand; privat: boolean }) {
         <BusinessFreiLink vor="Business-freie Zeiten (Familie und eigene) nehmen Arbeitszeit der Wochenvorlage weg — dort zählt kein Soll: " />
         {/* Erholung ist Gesundheit — die Erklärung steht nur in der Sicht Privat (10.10.). */}
         {privat && <span>Kopf & Energie: {s.team.kopf.personen ? `Team-Faktor ${Math.round(s.team.kopf.faktor * 100)} % aus der geteilten Erholung (${s.team.kopf.personen} Person${s.team.kopf.personen === 1 ? '' : 'en'})` : 'ohne geteilte Erholung neutral (100 %)'} — wirkt auf die nächsten {s.team.kopf.tage} Tage. Einzelwerte sieht nur die Person selbst. Fokus-Blöcke im Kalender sind geplante Arbeit und ziehen nichts ab.</span>}
-        <span>{`Machbarkeit: Rest (Aufwand × offener Anteil) gegen die freie Zeit bis zum Termin — der Reihe nach (Überfälliges, dann nach Termin und Rang). Bis ${Math.round(MACHBAR_BIS * 100)} % machbar, bis ${Math.round(ENG_BIS * 100)} % eng, darüber nicht machbar. Ohne Aufwand oder Termin keine Aussage.`}</span>
+        <span>{`Machbarkeit: Rest (Aufwand × offener Anteil) gegen die freie Zeit bis zum Termin — der Reihe nach (Überfälliges, dann nach Termin und Rang). Bis ${Math.round((s.schwellen?.machbarBis ?? MACHBAR_BIS) * 100)} % machbar, bis ${Math.round((s.schwellen?.engBis ?? ENG_BIS) * 100)} % eng, darüber nicht machbar. Ohne Aufwand oder Termin keine Aussage.`}</span>
       </div>
     </Karte>
   );

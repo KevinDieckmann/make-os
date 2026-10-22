@@ -30,6 +30,7 @@ import { localDay } from '@/lib/zeit';
 import { MANDAT_ID, KENNUNG } from '@/lib/fulfillment/grenzen';
 import { istBusinessMandat } from '@/lib/fulfillment/regeln';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { reportTageWirksam } from '@/lib/prozesse/stellschrauben-werte-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -93,7 +94,7 @@ export async function GET(req: Request) {
       ...(kunde[f.mandatId]?.letzterPuls ? { puls: kunde[f.mandatId].letzterPuls } : {}),
       ...(dossiers[f.mandatId] ? { dossier: dossiers[f.mandatId] } : {}), mandatsEnde: m ? mandatsEnde(m) : null,
     };
-  }), { heute, jetzt: iso, willkommenStunden: vorlagen.einstellungen.willkommenStunden });
+  }), { heute, jetzt: iso, willkommenStunden: vorlagen.einstellungen.willkommenStunden, reportTage: await reportTageWirksam() });
   const st = mitStaenden(vorlagen, eintragStand);
   return NextResponse.json({
     ok: true, inhaber: await istInhaber(z.person), darfBearbeiten: await darfVorlagenBearbeiten(z.person),

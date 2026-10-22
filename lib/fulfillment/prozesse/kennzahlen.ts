@@ -45,7 +45,7 @@ export function kickoffTag(f: Fall, kickoffRitualIds: readonly string[]): string
   return l[0];
 }
 
-export function ffKennzahlenRechnen(faelle: readonly FfFallDaten[], e: { heute: string; jetzt: string; willkommenStunden: number }): FfKennzahl[] {
+export function ffKennzahlenRechnen(faelle: readonly FfFallDaten[], e: { heute: string; jetzt: string; willkommenStunden: number; reportTage?: number }): FfKennzahl[] {
   const aktiv = faelle.filter(x => x.fall.status !== 'abgeschlossen');
   const raus: FfKennzahl[] = [];
   const k = (id: string, label: string, erklaerung: string, wert: number | null, anzeige: (w: number) => string, n: number, luecke: string) =>
@@ -72,7 +72,7 @@ export function ffKennzahlenRechnen(faelle: readonly FfFallDaten[], e: { heute: 
   k('ff_quickwin_30', 'Quick Win in 30 Tagen', 'fulfillment.kennzahl.quickwin', qw.length ? (qw.filter(Boolean).length / qw.length) * 100 : null, pz, qw.length, 'Noch kein Fall, der 30 Tage läuft');
   // 14.10. (Abnahme B6): aus DERSELBEN Rechnung wie die Report-Zeitachse im Fall (`reportAchse`) — Anteil der Soll-Termine (alle 14 Tage ab Start, bis heute),
   // vor denen ein Report entstand. Vorher zählte nur „letzter Report ≤ 14 Tage“: 100 %, während die Zeitachse einen verpassten Termin rot zeigte.
-  const soll = aktiv.flatMap(x => reportAchse({ start: fallStartTag(x.fall), heute: e.heute, reports: x.reports ?? (x.reportLetzter ? [{ am: x.reportLetzter }] : []) }).takt.filter(t => t.tag <= e.heute));
+  const soll = aktiv.flatMap(x => reportAchse({ start: fallStartTag(x.fall), heute: e.heute, reports: x.reports ?? (x.reportLetzter ? [{ am: x.reportLetzter }] : []), ...(e.reportTage !== undefined ? { reportTage: e.reportTage } : {}) }).takt.filter(t => t.tag <= e.heute));
   k('ff_report_takt', 'Report-Takt eingehalten', 'fulfillment.kennzahl.reporttakt', soll.length ? (soll.filter(t => t.erfuellt).length / soll.length) * 100 : null, pz, soll.length, 'Noch kein Report-Termin fällig (alle 14 Tage ab Start)');
   const alt = aktiv.flatMap(x => wartetAufEuch(x.fall, e.heute).map(p => p.tage ?? 0));
   k('ff_wartet_alt', 'Ältester Punkt „wartet auf euch“', 'fulfillment.kennzahl.wartet', alt.length ? Math.max(...alt) : aktiv.length ? 0 : null, x => anzahl(x, 'Tag', 'Tage'), alt.length, 'Kein laufender Fall');

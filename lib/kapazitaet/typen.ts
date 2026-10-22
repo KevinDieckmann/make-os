@@ -31,7 +31,10 @@ export const ANNAHME_STUNDEN_WOCHE = 40;
 export const UMSCHALTEN_STUNDEN = 0.25;
 /** „Kopf & Energie“ wirkt nur auf die nächsten 14 Tage — Erholung ist ein Zustand von jetzt, keine Prognose fürs Jahr. */
 export const KOPF_TAGE = 14;
-/** Machbar, solange der Restbedarf höchstens 70 % der freien Zeit bis zum Termin braucht; bis 90 % „eng“ (Kevin 04.10.: mehr Puffer). */
+/**
+ * Machbar, solange der Restbedarf höchstens 70 % der freien Zeit bis zum Termin braucht; bis 90 % „eng“ (Kevin 04.10.: mehr Puffer). Die VORGABE — seit 22.10.
+ * einstellbar (Stellschraube `kapaSchwellen`, lib/prozesse/stellschrauben-werte.ts; `KapaEingabe.schwellen`).
+ */
 export const MACHBAR_BIS = 0.7;
 export const ENG_BIS = 0.9;
 /** Wochen, die gerechnet werden (ab der laufenden). Der Strahl zeigt darüber hinaus nichts. */
@@ -139,6 +142,8 @@ export interface KapaEingabe {
   ist?: { person: string; tag: string; stunden: number }[];
   /** Namen der Bezüge (Mandat/Kunde) — zur Anzeige, aus dem CRM (Server). */
   bezugNamen?: Record<string, string>;
+  /** Schwellen der Machbarkeit (Stellschraube, 22.10., lib/prozesse/stellschrauben-werte.ts `kapaSchwellen`) — fehlt = MACHBAR_BIS/ENG_BIS. */
+  schwellen?: { machbarBis: number; engBis: number };
 }
 
 // ── Ergebnis ─────────────────────────────────────────────────────────────────
@@ -265,4 +270,6 @@ export interface KapaStand {
   kennzahlen: KapaKennzahlen;
   /** Plan der laufenden Woche (ab heute) — das, was der Morgenlauf festhält (lib/kapazitaet/plan.ts). */
   wochenPlan?: WochenPlan;
+  /** Schwellen der Machbarkeit, NUR wenn sie von der Vorgabe abweichen (Stellschraube, 22.10.) — die Oberfläche nennt sie dann. */
+  schwellen?: { machbarBis: number; engBis: number };
 }

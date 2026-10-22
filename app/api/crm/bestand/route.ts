@@ -63,7 +63,7 @@ async function antwort(voll: CrmBestand, ich: string) {
     stufen: STUFEN.map(s => ({ ...s, p: wahrscheinlichkeit(s.id, b.wahrscheinlichkeiten) })),
     prognose: prognose(b.chancen, heute, b.wahrscheinlichkeiten),
     gewinnquote: winRate(b.chancen, localDay()),
-    ampel: Object.fromEntries(b.chancen.map(c => [c.id, gesundheit(c, heute)])),
+    ampel: Object.fromEntries(b.chancen.map(c => [c.id, gesundheit(c, heute, b.wertelisten)])),
     mandate: Object.fromEntries(b.mandate.map(m => [m.id, mandatLage(m, heute, rechnungen)])),
     zahlung: Object.fromEntries(b.mandate.map(m => [m.id, zahlungAusRechnungen(m, rechnungen, heute)])),
     mrr: mrr(b.mandate), konzentration: konzentration(b.mandate),

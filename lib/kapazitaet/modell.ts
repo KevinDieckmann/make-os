@@ -118,6 +118,9 @@ interface PersonRechnung {
 
 export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
   const heute = e.heute;
+  // Stellschraube (22.10.): Schwellen der Machbarkeit — ohne Angabe die Vorgabe (70 % / 90 %).
+  const sw = e.schwellen ?? { machbarBis: MACHBAR_BIS, engBis: ENG_BIS };
+  const swAnders = sw.machbarBis !== MACHBAR_BIS || sw.engBis !== ENG_BIS;
   const n = Math.max(1, Math.min(WOCHEN_STANDARD + 52, e.wochen ?? WOCHEN_STANDARD));
   const start = montagVon(heute);
   const wochen = Array.from({ length: n }, (_, i) => tagPlus(start, 7 * i));
@@ -224,7 +227,7 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
     const braeuchte = rest / Math.max(1, tageBasis);
     const freiTag = frei / Math.max(1, tageBasis);
     const quote = frei > 0 ? rest / frei : Infinity;
-    const status: MachbarStatus = quote <= MACHBAR_BIS ? 'machbar' : quote <= ENG_BIS ? 'eng' : 'nicht-machbar';
+    const status: MachbarStatus = quote <= sw.machbarBis ? 'machbar' : quote <= sw.engBis ? 'eng' : 'nicht-machbar';
     // Verteilen: anteilig auf die freie Zeit; ohne freie Zeit gleichmäßig auf die Arbeitstage (Überlast wird sichtbar).
     if (frei > 0) {
       for (const r of wer) for (let d = 0; d <= dEnde; d++) {
@@ -332,6 +335,7 @@ export function kapazitaetRechnen(e: KapaEingabe): KapaStand {
     wochenPlan: { woche: start, ab: heute, personen: planPersonen },
     zuweisungen: zuweisungen.map(z => ({ ...z, label: e.bezugNamen?.[z.bezugId] ?? (z.art === 'mandat' ? 'Mandat' : 'Kunde') })),
     kennzahlen,
+    ...(swAnders ? { schwellen: { ...sw } } : {}),
   };
 }
 

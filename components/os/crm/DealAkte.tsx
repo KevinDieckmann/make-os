@@ -20,7 +20,8 @@ import { dealRolleVorschlag, besterEntscheider, entscheiderHinweis, offeneRollen
 import { Person } from './team';
 import { ChancenDetail } from './Pipeline';
 import { useFollowups } from './FollowUp';
-import { gesamtwert, VERSCHOBEN_GELB, OFFENE_STUFEN, WIN_RATE_TEXT, winRateStufe } from '@/lib/crm/pipeline';
+import { gesamtwert, OFFENE_STUFEN, WIN_RATE_TEXT, winRateStufe } from '@/lib/crm/pipeline';
+import { verschobenGelbAb } from '@/lib/crm/stellschrauben';
 import { verweildauer, verweildauerJeStufe, umwandlung, winLoss, zyklus, prognoseNachMonat, haengtNachWert, MINDESTMENGE } from '@/lib/crm/deal-auswertung';
 import { firmaVonDeal } from '@/lib/crm/firmen-bezug';
 import { mitglied } from '@/lib/crm/team';
@@ -101,9 +102,9 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
               <span>· führt <Person id={c.besitzer} name groesse={16} /></span>
               {a && <span style={{ color: AMPEL[a.ampel] }}>· {a.ampel === 'gruen' ? 'in Bewegung' : a.gruende[0]}</span>}
             </div>
-            {/* Verschiebungen von „Entscheidung bis“ (28.09., K4): zählt der Server; ab zwei wird die Ampel gelb. */}
+            {/* Verschiebungen von „Entscheidung bis“ (28.09., K4): zählt der Server; ab der Stellschraube (Vorgabe zwei, 22.10.) wird die Ampel gelb. */}
             {(c.erwartetVerschoben ?? 0) > 0 && (
-              <div style={{ marginTop: 4, fontSize: TYP.bedien, color: (c.erwartetVerschoben ?? 0) >= VERSCHOBEN_GELB ? LEUCHT.achtung : C.inkDim }}>
+              <div style={{ marginTop: 4, fontSize: TYP.bedien, color: (c.erwartetVerschoben ?? 0) >= verschobenGelbAb(crm.stand.wertelisten) ? LEUCHT.achtung : C.inkDim }}>
                 Entscheidung {c.erwartetVerschoben}× verschoben{c.erwartetUrsprung ? ` · ursprünglich ${datum(c.erwartetUrsprung)}` : ''}{c.erwartetAm ? ` · jetzt ${datum(c.erwartetAm, crm.heute)}` : ''}
               </div>
             )}

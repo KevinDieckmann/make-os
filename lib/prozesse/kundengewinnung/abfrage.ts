@@ -96,7 +96,7 @@ export function abfrageFaelle(q: CrmAbfrage, d: AbfrageDaten): LaufFall[] {
       return offeneDeals.filter(c => !c.naechsterSchritt).sort((a, b) => reihenfolge(a.geaendert ?? '', b.geaendert ?? '') || reihenfolge(a.id, b.id)).map(dealFall);
     case 'deals-haengen': {
       // Ampel rot/gelb (lib/crm/pipeline.ts `gesundheit`) oder ohne nächsten Schritt — rot zuerst, dann gelb, dann ohne Schritt.
-      const rang = (c: Chance) => { const g = gesundheit(c, d.heute).ampel; return g === 'rot' ? 0 : g === 'gelb' ? 1 : !c.naechsterSchritt ? 2 : 9; };
+      const rang = (c: Chance) => { const g = gesundheit(c, d.heute, d.crm.wertelisten).ampel; return g === 'rot' ? 0 : g === 'gelb' ? 1 : !c.naechsterSchritt ? 2 : 9; };
       return offeneDeals.filter(c => rang(c) < 9).sort((a, b) => rang(a) - rang(b) || reihenfolge(a.id, b.id)).map(dealFall);
     }
     case 'deals-wiedervorlage':
