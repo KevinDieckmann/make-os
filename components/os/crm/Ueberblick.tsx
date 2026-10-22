@@ -1,12 +1,12 @@
 'use client';
 
 // ─── Markttraktion · Überblick ──────────────────────────────────────────────
-// Oben „Für dich“ und „Zuletzt im Team“, dann der Traktions-Index (26.09.):
-// derselbe Kern wie Business- und Privat-Index — Sales 50 % · Marketing 40 % ·
-// Event 10 % (KEMARIS-Konzept, geometrisches Mittel), dazu die Grundlage, die
-// nicht zählt. Jede Kennzahl mit Ampel, den Punkten dahinter (Personen, Deals,
-// Beiträge, Events — je mit Weg dorthin) und Fenster mit Formel, Schwellen,
-// Verlauf. In jeder Welt steht ihr Head. Darunter Scoreboard, Übergaben, Befunde.
+// Oben „Für dich“ und „Zuletzt im Team“, dann neue Leads ohne Schritt, BEAN, Übergaben und was jetzt zu tun ist.
+// Der Traktions-Index (26.09.) steht seit dem Hub (22.10.) unter „Auswertung“ (`TraktionsIndex` unten, components/os/crm/Auswertung.tsx):
+// derselbe Kern wie Business- und Privat-Index — Sales 50 % · Marketing 40 % · Event 10 % (KEMARIS-Konzept, geometrisches Mittel), dazu die
+// Grundlage, die nicht zählt. Jede Kennzahl mit Ampel, den Punkten dahinter (Personen, Deals, Beiträge, Events — je mit Weg dorthin) und
+// Fenster mit Formel, Schwellen, Verlauf. In jeder Welt steht ihr Head, dazwischen das Wochen-Scoreboard. Beide lesen /api/crm/traktion
+// über `useTraktion` — EIN Abruf, eine Form.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -46,9 +46,21 @@ const BEFUND_WELT: Record<Befund['bereich'], Welt | null> = { heute: 'sales', fo
 const PRIO = { 1: LEUCHT.kritisch, 2: LEUCHT.achtung, 3: LEUCHT.puls, 4: C.inkDim, 5: C.inkLeise } as const;
 
 interface HeadKurz { id: Welt; name: string; verantwortlich: string; offen: number; status: 'ruhig' | 'beobachten' | 'handeln' | null; zeit: string | null; zusammenfassung: string | null }
-interface Daten { heute: string; ich: string; fuerDich: FuerDich[]; fluss?: FlussReihe; teamFeed: TeamEreignis[]; traktion: Traktion; index: IndexErgebnis; indexVerlauf: IndexVerlauf; uebergaben: Uebergabe[]; befunde: Befund[]; heads: HeadKurz[]; bestand: Record<string, number> }
+/** Die Antwort von /api/crm/traktion — Überblick und Auswertung lesen dieselbe Form. */
+export interface TraktionDaten { heute: string; ich: string; fuerDich: FuerDich[]; fluss?: FlussReihe; teamFeed: TeamEreignis[]; traktion: Traktion; index: IndexErgebnis; indexVerlauf: IndexVerlauf; uebergaben: Uebergabe[]; befunde: Befund[]; heads: HeadKurz[]; bestand: Record<string, number> }
+type Daten = TraktionDaten;
 
 const leise = { background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 } as const;
+
+/** /api/crm/traktion laden (und jede Minute abgleichen) — EIN Weg für Überblick und Auswertung. */
+export function useTraktion() {
+  const [d, setD] = useState<Daten | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const laden = useCallback(() => fetch('/api/crm/traktion', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(`Antwort ${r.status}`)))).then(x => { if (x.ok) { setD(x); setFehler(null); } else setFehler(x.fehler ?? 'Überblick nicht ladbar.'); }).catch(e => setFehler(e instanceof Error ? e.message : 'Nicht erreichbar.')), []);
+  useEffect(() => { void laden(); }, [laden]);
+  useAbgleich(laden, { alle: 60_000 });
+  return { d, fehler, laden };
+}
 
 export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: string, a?: string, k?: string) => void }) {
   const router = useRouter();
@@ -56,12 +68,8 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
   // `filter` (14.10., B5): der Sprung in die Leads-Liste öffnet den Filter, nach dem die Zahl gezählt hat (dieselbe Regel `passtLeadFilter`).
   // `wer` (16.10., B11): „Für dich“ zählt die eigenen — die Liste öffnet dann auf „Meins“ und zeigt dieselbe Zahl.
   const geh = (z: { s: string; a?: string; k?: string; href?: string; filter?: LeadFilter; wer?: 'ich' }) => { if (z.filter) leadsFilterSetzen(z.filter, z.wer); return z.href ? router.push(z.href) : zuBereich(z.s, z.a, z.k); };
-  const [d, setD] = useState<Daten | null>(null);
+  const { d, fehler, laden } = useTraktion();
   const [alle, setAlle] = useState(false);
-  const [fehler, setFehler] = useState<string | null>(null);
-  const laden = useCallback(() => fetch('/api/crm/traktion', { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error(`Antwort ${r.status}`)))).then(x => { if (x.ok) { setD(x); setFehler(null); } else setFehler(x.fehler ?? 'Überblick nicht ladbar.'); }).catch(e => setFehler(e instanceof Error ? e.message : 'Nicht erreichbar.')), []);
-  useEffect(() => { void laden(); }, [laden]);
-  useAbgleich(laden, { alle: 60_000 });
   // BEAN-Verteilung (28.09., H4): über die ganze Kartei, mit den offenen Angeboten der Dateiablage.
   const angebote = useOffeneAngebote();
   const bean = useMemo(() => (api.kontakte ? beanVerteilung(api.kontakte, api.crm?.stand, { angebote }) : null), [api.kontakte, api.crm, angebote]);
@@ -70,45 +78,6 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
   if (!d) return <Karte i={0}>{fehler || api.fehler ? <div style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span>Überblick konnte nicht geladen werden: {fehler ?? api.fehler}</span><button onClick={() => void laden()} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 8, padding: '5px 10px', color: C.ink, cursor: 'pointer' }}>Noch einmal</button></div> : <Leer>Lädt …</Leer>}</Karte>;
   const befunde = alle ? d.befunde : d.befunde.slice(0, 5);
   const zeit = (iso: string) => { const tg = iso.slice(0, 10); return tg === d.heute ? iso.slice(11, 16) : datum(tg, d.heute); };
-  const zahl = (n: number, wort: string, href: string) => <Link href={href} style={{ color: C.inkDim, textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.25)' }}>{n} {wort}</Link>;
-
-  /** Oben in jeder Welt-Karte: wer sie verantwortet und was ihr Head zuletzt gesagt hat; in der Grundlage der Bestand. */
-  const saeuleKopf = (s: SaeulenStand) => {
-    if (s.id === 'grundlage') {
-      const b = d.bestand;
-      return (
-        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12, display: 'flex', gap: '4px 10px', flexWrap: 'wrap' }}>
-          {zahl(b.kontakte, 'Kontakte', WEG.kontakt())} · {zahl(b.firmen, 'Firmen', WEG.firma())} · {zahl(b.chancen, 'Deals', WEG.deals())} · {zahl(b.mandate, 'Mandate', WEG.mandat())} · {zahl(b.events, `${MARKE_EVENTS}-Abende`, WEG.event())} · {zahl(b.besuche ?? 0, 'besuchte Events', WEG.besuch())} · {zahl(b.kampagnen, 'Kampagnen', WEG.kampagne())}
-          <button onClick={() => zuBereich('stammdaten')} style={leise}>Stammdaten ›</button>
-        </div>
-      );
-    }
-    const w = s.id as Welt;
-    const h = d.heads.find(x => x.id === w);
-    const v = verantwortlich(w);
-    return (
-      <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: C.inkDim, flexWrap: 'wrap' }}>
-          <Person id={v} groesse={18} /> verantwortet {nameVon(v)}{v === d.ich ? ' · dein Bereich' : ''}
-          <button onClick={() => zuBereich(w === 'sales' ? 'deals' : w)} style={{ ...leise, marginLeft: 'auto' }}>{WELT_LABEL[w]} öffnen ›</button>
-        </div>
-        <div style={{ display: 'grid', gap: 4, padding: '10px 12px', borderRadius: 12, background: 'rgba(199,125,255,.06)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <Punkt farbe={LEUCHT.agenten} groesse={7} />
-            <span style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{h?.name ?? 'Head'}</span>
-            {h?.status && <Chip farbe={STATUS[h.status]}>{h.status}</Chip>}
-            {!!h?.offen && <Link href="/os/stapel" style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.agenten}>{h.offen} zur Freigabe</Chip></Link>}
-          </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-            {/* Leerzustand mit dem Weg dahin (15.10., Abnahme 2 C5): der Head läuft im Bereich seiner Welt. */}
-            {h?.zusammenfassung ?? <>Noch kein Lauf — der Head liest Kartei und Bestand und legt Vorschläge zur Freigabe vor. <button onClick={() => zuBereich(w === 'sales' ? 'deals' : w)} style={leise}>Unter {WELT_LABEL[w]} starten ›</button></>}
-          </div>
-          {h?.zeit && <div style={{ fontSize: 12, color: C.inkLeise }}>{datum(h.zeit, d.heute)}</div>}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
       <Flaeche seite="markttraktion-ueberblick">
@@ -159,13 +128,6 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
       <Kachel id="bean" titel="Kundengruppen · BEAN" breite={6}>
         {bean ? <BeanVerteilungKarte je={bean.je} vonHand={bean.vonHand} i={1} /> : <Karte i={1}><Leer>Kartei lädt …</Leer></Karte>}
       </Kachel>
-      <Kachel id="traktion" titel="Traktions-Score" breite={6}>
-      <IndexAnsicht d={{ pi: d.index, ...d.indexVerlauf }} name="Traktion" chip="Traktions-Index" farben={INDEX_FARBE} scope="markttraktion" i0={2} fadenLinie
-        chips={d.traktion.vorlaeufig ? <Chip farbe={LEUCHT.achtung}>vorläufig</Chip> : undefined}
-        schwelleSenden={schwelle => fetch('/api/crm/traktion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ schwelle }) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }))}
-        onGespeichert={() => void laden()} saeuleKopf={saeuleKopf} zwischen={<Scoreboard api={api} />}
-        hinweis={<>{d.traktion.hinweis}. Die fünf Säulen des Markttraktion-Konzepts (Sichtbarkeit, Marketing, Vertrieb, Events, Conversions) liegen in den drei Welten. Punkte je Kennzahl: an der roten Schwelle 20, an der grünen 100, dazwischen linear; gesamt als gewichtetes geometrisches Mittel — ein Ungleichgewicht zwischen den Welten kostet mehr als ein Durchschnitt. Dieselbe Zahl steht als „Traktions-Score“ im Business-Index.</>} />
-      </Kachel>
 
           <Kachel id="uebergaben" titel="Übergaben" breite={3}>
           <Karte i={8}>
@@ -202,5 +164,57 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
           </Kachel>
       </Flaeche>
     </>
+  );
+}
+
+/**
+ * Der Traktions-Index mit dem Wochen-Scoreboard dazwischen (seit 22.10. unter „Auswertung“; vorher im Überblick). Oben in jeder Welt, wer sie
+ * verantwortet und was ihr Head zuletzt gesagt hat; in der Grundlage der Bestand mit Wegen in die Listen.
+ */
+export function TraktionsIndex({ api, d, laden, zuBereich, i0 = 2 }: { api: CrmApi; d: TraktionDaten; laden: () => unknown; zuBereich: (b: string, a?: string, k?: string) => void; i0?: number }) {
+  const zahl = (n: number, wort: string, href: string) => <Link href={href} style={{ color: C.inkDim, textDecoration: 'none', borderBottom: '1px dotted rgba(255,255,255,.25)' }}>{n} {wort}</Link>;
+
+  /** Oben in jeder Welt-Karte: wer sie verantwortet und was ihr Head zuletzt gesagt hat; in der Grundlage der Bestand. */
+  const saeuleKopf = (s: SaeulenStand) => {
+    if (s.id === 'grundlage') {
+      const b = d.bestand;
+      return (
+        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12, display: 'flex', gap: '4px 10px', flexWrap: 'wrap' }}>
+          {zahl(b.kontakte, 'Kontakte', WEG.kontakt())} · {zahl(b.firmen, 'Firmen', WEG.firma())} · {zahl(b.chancen, 'Deals', WEG.deals())} · {zahl(b.mandate, 'Mandate', WEG.mandat())} · {zahl(b.events, `${MARKE_EVENTS}-Abende`, WEG.event())} · {zahl(b.besuche ?? 0, 'besuchte Events', WEG.besuch())} · {zahl(b.kampagnen, 'Kampagnen', WEG.kampagne())}
+          <button onClick={() => zuBereich('stammdaten')} style={leise}>Stammdaten ›</button>
+        </div>
+      );
+    }
+    const w = s.id as Welt;
+    const h = d.heads.find(x => x.id === w);
+    const v = verantwortlich(w);
+    return (
+      <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: TYP.bedien, color: C.inkDim, flexWrap: 'wrap' }}>
+          <Person id={v} groesse={18} /> verantwortet {nameVon(v)}{v === d.ich ? ' · dein Bereich' : ''}
+          <button onClick={() => zuBereich(w === 'sales' ? 'deals' : w)} style={{ ...leise, marginLeft: 'auto' }}>{WELT_LABEL[w]} öffnen ›</button>
+        </div>
+        <div style={{ display: 'grid', gap: 4, padding: '10px 12px', borderRadius: 12, background: 'rgba(199,125,255,.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <Punkt farbe={LEUCHT.agenten} groesse={7} />
+            <span style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{h?.name ?? 'Head'}</span>
+            {h?.status && <Chip farbe={STATUS[h.status]}>{h.status}</Chip>}
+            {!!h?.offen && <Link href="/os/stapel" style={{ textDecoration: 'none' }}><Chip farbe={LEUCHT.agenten}>{h.offen} zur Freigabe</Chip></Link>}
+          </div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+            {/* Leerzustand mit dem Weg dahin (15.10., Abnahme 2 C5): der Head läuft im Bereich seiner Welt. */}
+            {h?.zusammenfassung ?? <>Noch kein Lauf — der Head liest Kartei und Bestand und legt Vorschläge zur Freigabe vor. <button onClick={() => zuBereich(w === 'sales' ? 'deals' : w)} style={leise}>Unter {WELT_LABEL[w]} starten ›</button></>}
+          </div>
+          {h?.zeit && <div style={{ fontSize: 12, color: C.inkLeise }}>{datum(h.zeit, d.heute)}</div>}
+        </div>
+      </div>
+    );
+  };
+  return (
+    <IndexAnsicht d={{ pi: d.index, ...d.indexVerlauf }} name="Traktion" chip="Traktions-Index" farben={INDEX_FARBE} scope="markttraktion" i0={i0} fadenLinie
+      chips={d.traktion.vorlaeufig ? <Chip farbe={LEUCHT.achtung}>vorläufig</Chip> : undefined}
+      schwelleSenden={schwelle => fetch('/api/crm/traktion', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ schwelle }) }).then(r => r.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }))}
+      onGespeichert={() => void laden()} saeuleKopf={saeuleKopf} zwischen={<Scoreboard api={api} />}
+      hinweis={<>{d.traktion.hinweis}. Die fünf Säulen des Markttraktion-Konzepts (Sichtbarkeit, Marketing, Vertrieb, Events, Conversions) liegen in den drei Welten. Punkte je Kennzahl: an der roten Schwelle 20, an der grünen 100, dazwischen linear; gesamt als gewichtetes geometrisches Mittel — ein Ungleichgewicht zwischen den Welten kostet mehr als ein Durchschnitt. Dieselbe Zahl steht als „Traktions-Score“ im Business-Index.</>} />
   );
 }

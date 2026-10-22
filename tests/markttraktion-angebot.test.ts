@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { aufloesen, markttraktion, angebotLink, angebotAusAdresse, BEREICHE, REITER_ZEILE, reiterVon, kontaktAkte, dealAkte } from '../lib/crm/adresse';
+import { aufloesen, markttraktion, angebotLink, angebotAusAdresse, angebotVonHier, BEREICHE, HUB_MENUE, punktVon, kontaktAkte, dealAkte } from '../lib/crm/adresse';
 import { WEG } from '../lib/wege';
 
-// Markttraktion · Schnellknopf „Angebot“ und die Leiste (Kevin 28.09. abends).
+// Markttraktion · Angebot (Kevin 28.09. abends; seit 22.10. Hub-Punkt „Angebote“ und „+ Angebot“ in den Akten).
 
 describe('Adresse — Bereich „angebot“', () => {
   it('ist ein eigener Bereich', () => {
@@ -44,19 +44,23 @@ describe('Adresse — Bereich „angebot“', () => {
   });
 });
 
-describe('Reiterleiste — links · Mitte · rechts', () => {
-  it('Schnellknöpfe in der Mitte: Qualifizierung, dann Angebot, rechts daneben Planung (10.10.)', () => {
-    expect(REITER_ZEILE.mitte).toEqual(['qualifizierung', 'angebot', 'planung']);
-    // Aufräumen Etappe 3 (08.10.): sechs Reiter, Stammdaten hinter dem Zahnrad.
-    expect(REITER_ZEILE.links.map(r => r.id)).toEqual(['ueberblick', 'kontakte', 'deals', 'followup']);
-    expect(REITER_ZEILE.rechts.map(r => r.id)).toEqual(['marketing', 'events']);
-    expect(REITER_ZEILE.zahnrad).toBe('stammdaten');
+describe('Hub — „Angebote“ unter Vertrieb, „+ Angebot“ in den Akten (22.10.)', () => {
+  it('Angebote ist ein Punkt der Gruppe Vertrieb und führt in die Liste', () => {
+    const vertrieb = HUB_MENUE.gruppen.find(g => g.id === 'vertrieb')!;
+    expect(vertrieb.punkte.map(p => p.id)).toEqual(['qualifizierung', 'deals', 'angebot', 'followup']);
+    expect(vertrieb.punkte.find(p => p.id === 'angebot')!.ziel).toBe(angebotLink());
+    expect(punktVon({ s: 'angebot' })).toBe('angebot');
   });
-
-  it('jeder Bereich steht genau einmal in der Leiste', () => {
-    const alle = [...REITER_ZEILE.links.flatMap(r => r.bereiche), ...REITER_ZEILE.mitte, ...REITER_ZEILE.rechts.flatMap(r => r.bereiche), REITER_ZEILE.zahnrad];
+  it('„+ Angebot“ nimmt die offene Akte mit: Kontakt, Firma, Deal — ohne Bezug die Liste', () => {
+    expect(angebotVonHier('kontakte', 'akte', 'c-1')).toBe(angebotLink({ kontaktId: 'c-1' }));
+    expect(angebotVonHier('kontakte', undefined, 'f-acme')).toBe(angebotLink({ firmaId: 'f-acme' }));
+    expect(angebotVonHier('firmen', undefined, 'f-acme')).toBe(angebotLink({ firmaId: 'f-acme' }));
+    expect(angebotVonHier('deals', 'akte', 'ch-3')).toBe(angebotLink({ dealId: 'ch-3' }));
+    expect(angebotVonHier('deals', undefined, null)).toBe(angebotLink());
+  });
+  it('jeder Bereich steht genau einmal im Hub', () => {
+    const alle = [...HUB_MENUE.gruppen.flatMap(g => g.punkte.flatMap(p => p.bereiche)), ...HUB_MENUE.automation.bereiche, ...HUB_MENUE.fuss.flatMap(p => p.bereiche)];
     expect(new Set(alle).size).toBe(alle.length);
     expect([...alle].sort()).toEqual([...BEREICHE].sort());
-    expect(reiterVon('angebot')).toBeNull();
   });
 });

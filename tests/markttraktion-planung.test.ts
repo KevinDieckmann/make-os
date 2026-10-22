@@ -9,7 +9,7 @@ import type { Chance, Mandat, Kampagne, CrmBestand } from '../lib/crm/typen';
 import { leererBestand } from '../lib/crm/speicher';
 import { leads } from '../lib/crm/leads';
 import { TEAM, BEIDE } from '../lib/crm/team-liste';
-import { aufloesen, markttraktion, planungLink, REITER_ZEILE } from '../lib/crm/adresse';
+import { aufloesen, markttraktion, planungLink, HUB_MENUE, punktVon } from '../lib/crm/adresse';
 import { WEG } from '../lib/wege';
 import { leerePlanung, planungAnwenden, planungAus, type LeadKanal, type UmsatzZiel, type PlanungDatei, type Challenge } from '../lib/crm/planung-daten';
 import {
@@ -42,9 +42,11 @@ const ziel = (x: Partial<UmsatzZiel> = {}): UmsatzZiel => ({ id: 'uz-ziel1', ges
 const crmMit = (x: Partial<CrmBestand>): CrmBestand => ({ ...leererBestand(), ...x });
 const ctx = (person = A) => ({ person, jetzt: J, heute: HEUTE, standVon: (o: object) => JSON.stringify(o), neueId: (p: string) => `${p}-neu${Math.random().toString(36).slice(2, 8)}` });
 
-describe('Adresse — Schnellknopf „Planung“ rechts neben „Angebot“', () => {
-  it('steht in der Mitte nach dem Angebot und löst seine Ansichten auf', () => {
-    expect(REITER_ZEILE.mitte).toEqual(['qualifizierung', 'angebot', 'planung']);
+describe('Adresse — „Planung“ im Hub unter Steuerung (22.10., vorher Schnellknopf rechts neben „Angebot“)', () => {
+  it('steht unter Steuerung vor der Auswertung und löst seine Ansichten auf', () => {
+    expect(HUB_MENUE.gruppen.find(g => g.id === 'steuerung')!.punkte.map(p => p.id)).toEqual(['planung', 'auswertung']);
+    expect(HUB_MENUE.gruppen.find(g => g.id === 'steuerung')!.punkte[0].ziel).toBe(planungLink());
+    expect(punktVon(aufloesen('planung', 'ziele'))).toBe('planung');
     expect(aufloesen('planung')).toEqual({ s: 'planung' });
     expect(aufloesen('planung', 'ziele')).toEqual({ s: 'planung', a: 'ziele' });
     expect(aufloesen('planung', 'kreislauf')).toEqual({ s: 'planung' });

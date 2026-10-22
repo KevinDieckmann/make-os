@@ -53,10 +53,13 @@ const QUAL: { id: keyof Chance['qualifizierung']; label: string }[] = [
 const BASEN = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }] as const;
 const wertText = (c: Chance) => (c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert');
 
-export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, zurueck }: { api: CrmApi; ansicht?: DealsAnsicht; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void; /** Deal-Akte öffnen (27.09.). */ zuAkte?: (id: string) => void; zurueck?: () => void }) {
+export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, zurueck, zuOffen }: { api: CrmApi; ansicht?: DealsAnsicht; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void; /** Deal-Akte öffnen (27.09.). */ zuAkte?: (id: string) => void; zurueck?: () => void; /** „Gewonnen · Verloren · Geparkt“ aufgeklappt öffnen (Adresse `zu=1`, z. B. aus dem Flow der Auswertung, 22.10.). */ zuOffen?: boolean }) {
   // Offener Deal im Link (k): Zurück schließt ihn wieder.
   const [auswahl, setAuswahl] = useLinkAuswahl();
-  const [geschlossen, setGeschlossen] = useState(false);
+  const [geschlossen, setGeschlossen] = useState(!!zuOffen);
+  // Aus dem Flow der Auswertung (22.10.): die aufgeklappte Karte kommt ins Bild.
+  const geladen = !!api.crm;
+  useEffect(() => { if (zuOffen && geladen) document.getElementById('deals-geschlossen')?.scrollIntoView({ block: 'start' }); }, [zuOffen, geladen]);
   const breit = useBreit();
   const board = ansicht !== 'liste';
   // Deal anlegen: ein Dialog für alle Wege (27.09.).
@@ -293,7 +296,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
         </Karte>
       )}
 
-      <Karte i={7}>
+      <Karte i={7} id="deals-geschlossen">
         <Ueberschrift rechts={<button onClick={() => { if (zeigeZu && gewaehlt && !istOffen(gewaehlt)) setAuswahl(null); setGeschlossen(!zeigeZu); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>{zeigeZu ? 'ausblenden' : `${zu.length} zeigen`}</button>}>Gewonnen · Verloren · Geparkt</Ueberschrift>
         {zeigeZu && <Liste>{zu.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />)}</Liste>}
       </Karte>
