@@ -33,6 +33,7 @@ import {
   Briefcase, Package, Route, UserPlus, Blocks, ChartColumn, RefreshCw,
   Building2, Gauge, CalendarClock, FileText, TriangleAlert, ShieldCheck, Network, Gavel, FileSignature, Landmark, Archive, Trash2,
   Wallet, LayoutDashboard, Target, Receipt, Waves, BookOpen, Calculator, Scale, Settings2, Anchor, Sun, ListChecks, PiggyBank,
+  Flag, CalendarRange, CalendarDays, Repeat, Hourglass, CalendarPlus,
 } from 'lucide-react';
 import { WEG } from '@/lib/wege';
 import { prozesseAusAdresse } from '@/lib/prozesse/adresse';
@@ -373,8 +374,60 @@ export const FINANZEN_WERKZEUG: Werkzeug = {
   })),
 };
 
+// ─── Planung (22.10. abends, Gruppe A) — in Business UND Privat ────────────────────────────────────────────────────────────────────────────────
+// Horizonte: Jahr & Ziele · Quartal · Monat · Tag · Rhythmus & Zeit: Routinen · Kapazität · „Automationen & Head“ (`/os/planung/jahr?s=automationen`: Business
+// Ziele & Meilenstein-Kette aus „Führung“ + CEO-Office, unter Kapazität Head of Operations; Privat die Persönliche Assistenz — Heads aus `SEITEN_REGELN`) · Fuß
+// „Woche planen ↗“ (Kalender › Planen — verlässt das Werkzeug). Die Seiten eines Ziels und eines Meilensteins leuchten unter Jahr & Ziele. Fokus, Kompass und
+// Wachstum gehören NICHT dazu (Fokus-Seite oben rechts im Kopf). `?space=` steht in jedem Ziel. Die frühere Reiterzeile der Planer-Seiten (`PlanerLeiste`)
+// ist dieses Menü geworden — dort bleibt nur die Zeitnavigation des Tages.
+export const PLANUNG_PFAD = '/os/planung';
+type PlanungOrt = 'jahr' | 'quartal' | 'monat' | 'tag' | 'routinen' | 'kapazitaet' | 'automationen';
+function planungOrt(k: WerkzeugKontext): PlanungOrt | null {
+  const rest = k.pfad === PLANUNG_PFAD ? '' : k.pfad.startsWith(`${PLANUNG_PFAD}/`) ? k.pfad.slice(PLANUNG_PFAD.length + 1).split('/')[0] : null;
+  if (rest === null) return null;
+  if (rest === '') return 'tag';
+  if (rest === 'jahr') return k.q.get('s') === 'automationen' ? 'automationen' : 'jahr';
+  if (rest === 'ziel' || rest === 'meilenstein') return 'jahr';
+  return rest === 'quartal' || rest === 'monat' || rest === 'routinen' || rest === 'kapazitaet' ? rest : null;
+}
+/** Eine Adresse mit dem Space der Wahl (wie die Leiste: `/os/planung/jahr?space=…`). */
+const mitSpace = (href: string, k: WerkzeugKontext) => { const g = geteilt(href); const q = new URLSearchParams(g.suche.slice(1)); q.set('space', k.space); return `${g.pfad}?${q.toString()}`; };
+const planungPunkt = (id: Exclude<PlanungOrt, 'automationen'>, label: string, icon: LucideIcon, gruppe: string, ziel: string, titel: string): WerkzeugPunkt => ({
+  id, label, icon, gruppe, titel, href: k => mitSpace(ziel, k), aktiv: k => planungOrt(k) === id,
+});
+const PLANUNG_PUNKTE: readonly WerkzeugPunkt[] = [
+  planungPunkt('jahr', 'Jahr & Ziele', Flag, 'Horizonte', WEG.jahr(), 'Ziele, Meilensteine und Lichtfäden des Jahres — mit dem Nordstern'),
+  planungPunkt('quartal', 'Quartal', CalendarRange, 'Horizonte', '/os/planung/quartal', 'Fokus, Ziele und Meilensteine des Quartals'),
+  planungPunkt('monat', 'Monat', CalendarDays, 'Horizonte', '/os/planung/monat', 'Fokus, Ziele und Meilensteine des Monats'),
+  planungPunkt('tag', 'Tag', Sun, 'Horizonte', WEG.tag(), 'Der Tag mit Blöcken und Aufgaben — die nächsten Tage auf einen Blick'),
+  planungPunkt('routinen', 'Routinen', Repeat, 'Rhythmus & Zeit', WEG.routinen(), 'Routinen und die Wochenvorlage'),
+  planungPunkt('kapazitaet', 'Kapazität', Hourglass, 'Rhythmus & Zeit', WEG.kapazitaet(), 'Zeit und Machbarkeit je Person und Woche'),
+];
+const planungAutomationHref = (k: WerkzeugKontext) => mitSpace(`${WEG.jahr()}?s=automationen`, k);
+
+export const PLANUNG_WERKZEUG: Werkzeug = {
+  id: 'planung',
+  name: 'Planung',
+  icon: Target,
+  spaces: ['privat', 'business'],
+  pfade: [PLANUNG_PFAD],
+  start: WEG.jahr(),
+  leistenPunkt: 'Planung',
+  punkte: PLANUNG_PUNKTE,
+  fuss: [{
+    id: 'woche', label: 'Woche planen', icon: CalendarPlus, wechselt: 'Kalender', titel: 'Die Woche im Kalender planen — Blöcke, Routinen und Aufgaben einplanen',
+    href: k => mitSpace(WEG.woche(), k),
+  }],
+  automation: (['business', 'privat'] as const).map(b => automationMitHeads(`${WEG.jahr()}?space=${b}`, PLANUNG_PUNKTE, b, {
+    bereiche: [],
+    ...(b === 'business' ? { prozesse: ['sp-meilensteine'] } : {}),
+    href: planungAutomationHref,
+    aktiv: k => planungOrt(k) === 'automationen',
+  })),
+};
+
 /** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, PRODUKTE_WERKZEUG, UNTERNEHMEN_WERKZEUG, FINANZEN_WERKZEUG];
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, PRODUKTE_WERKZEUG, UNTERNEHMEN_WERKZEUG, FINANZEN_WERKZEUG, PLANUNG_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {

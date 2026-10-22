@@ -59,7 +59,7 @@ const PZ = 'pz-11111111-2222-4333-8444-555555555555';
 /** Die Seite eines Werkzeugs, die seine Aktionen hört — ein neues Werkzeug trägt sich hier ein (sonst rot). */
 const SEITE_DES_WERKZEUGS: Record<string, string> = {
   prozesse: 'components/os/prozesse/ProzesseSeite.tsx', markttraktion: 'components/os/crm/Markttraktion.tsx', 'produkte-mandate': 'components/os/mandate/ProdukteMandate.tsx',
-  unternehmen: 'components/os/unternehmen/UnternehmenView.tsx', finanzen: 'components/os/FinanzenView.tsx',
+  unternehmen: 'components/os/unternehmen/UnternehmenView.tsx', finanzen: 'components/os/FinanzenView.tsx', planung: 'components/os/planung/PlanungAutomationen.tsx',
 };
 
 /** Beispiel-Adressen, an denen die Unterpunkte aufgelöst werden. */
@@ -504,6 +504,7 @@ const { automationVon, headsDerSeiten, werkzeugFuerKonto } = W;
 const PM = W.PRODUKTE_WERKZEUG;
 const UN = W.UNTERNEHMEN_WERKZEUG;
 const FI = W.FINANZEN_WERKZEUG;
+const PL = W.PLANUNG_WERKZEUG;
 type Sp = 'privat' | 'business';
 const kx = (pfad: string, suche = '', space?: Sp, o: { handy?: boolean; nurBusiness?: boolean } = {}) => werkzeugKontext(pfad, suche, !!o.handy, { ...(space ? { space } : {}), nurBusiness: o.nurBusiness });
 const leuchtet = (w: Werkzeug, pfad: string, suche = '', space?: Sp, o: { handy?: boolean; nurBusiness?: boolean } = {}) => {
@@ -745,6 +746,53 @@ describe('Gruppe A · Leiste: Finanzen', () => {
     for (const t of ['Überblick', 'Konten &amp; Buchungen', 'Planung', 'Steuern', 'Altbestand']) expect(d, t).toContain(`>${t}</span>`);
     for (const t of ['Cockpit', 'Liquidität', '0-Punkt']) expect(d, t).not.toContain(`>${t}</span>`);
     expect(d.match(/<a [^>]*aria-current="page"[^>]*>/)?.[0]).toContain('data-werkzeug-punkt="privat-konten"');
+  });
+});
+
+describe('Gruppe A · Planung (Business und Privat)', () => {
+  it('Horizonte: Jahr & Ziele · Quartal · Monat · Tag · Rhythmus & Zeit: Routinen · Kapazität · Automationen & Head · Fuß „Woche planen ↗“', () => {
+    expect(WERKZEUGE).toContain(PL);
+    for (const sp of ['business', 'privat'] as const) {
+      const k = kx('/os/planung/jahr', '', sp);
+      expect(werkzeugPunkte(PL, k).map(p => [p.label, p.gruppe ?? null])).toEqual([
+        ['Jahr & Ziele', 'Horizonte'], ['Quartal', 'Horizonte'], ['Monat', 'Horizonte'], ['Tag', 'Horizonte'], ['Routinen', 'Rhythmus & Zeit'], ['Kapazität', 'Rhythmus & Zeit'],
+        [AUTOMATION_LABEL, null],
+      ]);
+      for (const p of werkzeugPunkte(PL, k)) expect(p.href, p.id).toContain(`space=${sp}`);
+      const w = werkzeugPunkte(PL, k, 'fuss');
+      expect(w.map(p => [p.label, p.href, p.wechselt])).toEqual([['Woche planen', `/os/kalender?modus=planen&space=${sp}`, 'Kalender']]);
+      expect(werkzeugVonHref(w[0].href!)).toBeNull();
+    }
+    // Fokus, Kompass und Wachstum gehören nicht zur Planung (Fokus-Seite oben rechts im Kopf).
+    expect(alleUnterpunkte(PL).map(p => p.label)).not.toEqual(expect.arrayContaining(['Fokus', 'Kompass', 'Wachstum']));
+    expect(werkzeugFuer('/os/fokus')).toBeNull();
+  });
+  it('genau ein Punkt je Adresse — Ziel- und Meilenstein-Seiten leuchten unter Jahr & Ziele', () => {
+    const faelle: [string, string, string][] = [
+      ['/os/planung', '', 'tag'], ['/os/planung', '?tag=2026-10-23', 'tag'], ['/os/planung/jahr', '', 'jahr'], ['/os/planung/jahr', '?jahr=2027&raum=jahr', 'jahr'],
+      ['/os/planung/jahr', '?s=automationen', 'automationen'], ['/os/planung/ziel/z-1', '', 'jahr'], ['/os/planung/meilenstein/m-1', '?r=verlauf', 'jahr'],
+      ['/os/planung/quartal', '', 'quartal'], ['/os/planung/monat', '', 'monat'], ['/os/planung/routinen', '', 'routinen'], ['/os/planung/kapazitaet', '?person=konto-x', 'kapazitaet'],
+    ];
+    for (const sp of ['business', 'privat'] as const) for (const [pfad, suche, id] of faelle) expect(leuchtet(PL, pfad, `${suche}${suche ? '&' : '?'}space=${sp}`, sp), `${pfad}${suche} (${sp})`).toEqual([id]);
+    for (const sp of ['business', 'privat'] as const) zieleLeuchten(PL, sp);
+  });
+  it('„Automationen & Head“: Business Ziele & Meilenstein-Kette, CEO-Office und (Kapazität) Head of Operations; Privat nur die Persönliche Assistenz', () => {
+    const b = automationVon(PL, 'business')!, p = automationVon(PL, 'privat')!;
+    expect([b.prozesse, automationHeads(b)]).toEqual([['sp-meilensteine'], ['strategie', 'operations']]);
+    expect([p.prozesse ?? [], automationHeads(p)]).toEqual([[], ['assistenz']]);
+    expect(lies('app/os/planung/[horizont]/page.tsx')).toContain("if (params.horizont === 'jahr' && s === 'automationen') return <PlanungAutomationen />;");
+  });
+  it('die Reiter der Planer-Seiten sind das Menü geworden: die Planer-Leiste trägt nur noch die Zeitnavigation des Tages', () => {
+    const l = lies('components/os/PlanerLeiste.tsx');
+    for (const h of ["'/os/planung/monat'", "'/os/planung/quartal'", "'/os/planung/jahr'", "'/os/planung/routinen'", "'/os/planung/kapazitaet'", 'modus=planen']) expect(l, h).not.toContain(h);
+    for (const f of ['components/os/HorizontView.tsx', 'components/os/RoutinenPlanerView.tsx', 'components/os/kapazitaet/KapazitaetAnsicht.tsx']) expect(lies(f), f).not.toContain('<PlanerLeiste');
+    expect(lies('components/os/TagesplanView.tsx')).toContain('<PlanerLeiste tag={heute} />');
+  });
+  it('Leiste: Menü mit „Woche planen“ (↗, öffnet Kalender); Ziel- und Meilenstein-Seiten leuchten unter Jahr & Ziele', async () => {
+    const p = await leiste('/os/planung/meilenstein/m-1', '?space=business');
+    expect(p).toContain('data-werkzeug="planung"');
+    expect(p).toContain('title="Woche planen — Die Woche im Kalender planen — Blöcke, Routinen und Aufgaben einplanen (öffnet Kalender)"');
+    expect(p.match(/<a [^>]*aria-current="page"[^>]*>/)?.[0]).toContain('data-werkzeug-punkt="jahr"');
   });
 });
 

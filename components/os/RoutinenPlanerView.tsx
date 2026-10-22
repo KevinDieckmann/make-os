@@ -33,7 +33,6 @@ import { hatPrivatEinheit } from '@/lib/planung/bereich';
 import { routineRhythmusKurz, routineStatistik, faelligkeit, tagesZielVon, pausiertAm } from '@/lib/planung/rhythmus';
 import { ROUTINEN_VORLAGEN, vorlageAnlegen } from '@/lib/planung/routinen-vorlagen';
 import { kalenderBetroffen } from '@/lib/planung/routinen-erinnerung';
-import { PlanerLeiste } from './PlanerLeiste';
 import { Seite, Karte, Ueberschrift, Liste, Leer, Chip, Knopf, Punkt, feld, LEUCHT, Schalter, Pillen, ZeileAktionen, useRueckgaengig, Kennzahl, Hinweis, Zeile } from './ui';
 import { PfeilRang } from './planung/PfeilRang';
 import { neueKennung } from '@/lib/kennung';
@@ -308,7 +307,6 @@ export function RoutinenPlanerView() {
         <Chip farbe={SPACE_FARBE.business}>{nBusiness} Business</Chip>
       </div>}
     >
-      <PlanerLeiste aktiv="routinen" />
 
       {/* Neu anlegen — Name, dann der Editor mit allen Einstellungen */}
       <Karte i={0} ton={LEUCHT.gut}>

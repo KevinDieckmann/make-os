@@ -47,6 +47,8 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('planung-quartal', 'Planung · Quartal', '/os/planung/quartal'),
   s('routinen', 'Planung · Routinen', WEG.routinen()),
   s('kapazitaet', 'Planung · Kapazität, Zeit und Machbarkeit je Person', WEG.kapazitaet(), 'business'),
+  // Werkzeug Planung (22.10. abends): „Automationen & Head“ — ein Parameter an der Seite des Jahres (Business: Ziele & Meilensteine, Privat: Assistenz).
+  s('planung-automationen', 'Planung · Automationen & Head (Ziele & Meilensteine, CEO-Office, Assistenz)', `${WEG.jahr()}?s=automationen`),
   // Finanzen (08.10., Aufräumen Etappe 2: höchstens zwei Ebenen — Aufbau in lib/finanzen/navigation.ts)
   s('finanzen', 'Finanzen · Privat', WEG.privat(), 'privat'),
   s('finanzen-konten', 'Finanzen · Privat · Konten & Buchungen', WEG.privat('buchungen'), 'privat'),

@@ -227,7 +227,8 @@ describe('Inbox (Inbox 2, 06.10.)', () => {
 
 describe('Praxis-Funde 04.10. (Handy-Tippziele, Kopf, Abschneiden)', () => {
   it('Tippziele ≥ 44 px: Planer-Reiter, Rückgängig, „Alle gelesen“, Sport-Kopfknöpfe, Finanzplan-Datei, Website-Login', () => {
-    expect(lies('components/os/PlanerLeiste.tsx').match(/className="planer-reiter"/g)?.length).toBe(2);
+    // Seit 22.10. abends stehen die Horizonte im Menü des Werkzeugs Planung — die Planer-Leiste trägt nur noch die Tage (ein Ziel-Stil für alle).
+    expect(lies('components/os/PlanerLeiste.tsx').match(/className="planer-reiter"/g)?.length).toBe(1);
     expect(lies('app/globals.css')).toMatch(/\.planer-reiter \{ display: inline-flex !important; align-items: center; min-height: 44px;/);
     // Rückgängig: seit 04.10. EINE Leiste für alle Listen (components/os/ui/zeile-aktionen.tsx, Klasse in globals.css).
     expect(lies('components/os/planung/ZieleMeilensteine.tsx')).toMatch(/useRueckgaengig[^\n]*from '\.\.\/ui'/); // planung/Rueckgaengig.tsx ist darin aufgegangen

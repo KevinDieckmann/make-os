@@ -288,7 +288,7 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   const routinenErledigt = Array.from(erledigt).filter(id => routinenHeute.some(r => r.id === id)).length;
 
   return (
-    <Seite titel="Tagesplanung" unter={<div>{datum}<div style={{ marginTop: 12 }}><PlanerLeiste aktiv="tag" tag={heute} /></div></div>}>
+    <Seite titel="Tagesplanung" unter={<div>{datum}<div style={{ marginTop: 12 }}><PlanerLeiste tag={heute} /></div></div>}>
       {/* ── Die Fokusthemen stehen über dem Tag ── */}
       <Karte i={0} akzent={LEUCHT.schlaf}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={WEG.fokus('prioritaeten')} style={verweis}>Prioritäten ›</Link>}>

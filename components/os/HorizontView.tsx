@@ -24,7 +24,6 @@ import Link from 'next/link';
 // Familie und Gesundheit, Tippen auf ein Bündel = eine Ebene tiefer. Blättern, Heute, Anlegen per Klick bleiben wie gehabt.
 import { useEffect, useMemo, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { PlanerLeiste } from './PlanerLeiste';
 import { useTasks } from '@/context/TasksContext';
 import { localDay } from '@/lib/zeit';
 import { tagKurz } from '@/lib/zeit/kalender-kern';
@@ -197,7 +196,6 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
       unter={<>{zr.label} · {meta.claim} {meta.hinweis}</>}
       rechts={<span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{schnitt != null && <Chip farbe={col(schnitt)}>Ziele Ø {schnitt} %</Chip>}<NeuAnfangenKnopf klein /></span>}
     >
-      <PlanerLeiste aktiv={horizont} />
 
       {/* Planungsjahr (30.09.): laufendes + nächstes (und belegte) — Ziele, Meilensteine, Fokus und Forecast je Jahr */}
       {istJahr && (
