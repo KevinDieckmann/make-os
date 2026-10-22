@@ -155,7 +155,9 @@ const LEER_FALL: FallInfo = { fehlt: false, daten: {}, platzhalter: {}, kontakt:
 function kontaktPlatzhalter(k: Kontakt | null): Record<string, unknown> {
   if (!k) return {};
   // `kunde.gruss` (22.10., B2): die Grußzeile nach Du/Sie aus der Akte — EINE Stelle (lib/fulfillment/kunde/bild.ts `kundenGruss`).
-  return { 'kontakt.anrede': k.anrede ?? 'Sie', 'kontakt.vorname': k.vorname ?? '', 'kontakt.nachname': k.nachname ?? '', 'kunde.gruss': kundenGruss(anredeAus(k.anrede), k.vorname, k.nachname) };
+  // `kontakt.gruss` (22.10.) ist dieselbe Zeile für alle Fall-Arten; `kunde.gruss` bleibt für die Begleit-Vorlagen der Mandate.
+  const gruss = kundenGruss(anredeAus(k.anrede), k.vorname, k.nachname);
+  return { 'kontakt.anrede': k.anrede ?? 'Sie', 'kontakt.vorname': k.vorname ?? '', 'kontakt.nachname': k.nachname ?? '', 'kontakt.gruss': gruss, 'kunde.gruss': gruss };
 }
 
 /**

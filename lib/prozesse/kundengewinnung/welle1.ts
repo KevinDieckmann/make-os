@@ -183,7 +183,7 @@ const V12: KgVorlage = {
         S.fallStarten('a5', 'Fall starten'),
         S.regel('a6', 'Darf die Willkommens-Mail raus?', [B.ist('deal.ampel-mail', 'gruen')], { zweige: { nein: 'a6p' } }),
         S.aufgabe('a6p', 'Persönlich begrüßen', { titel: 'Persönlich begrüßen (Mail nicht frei)', fristTage: 1 }, { zweige: { ja: 'a8' } }),
-        S.mail('a7', 'Willkommen in 24 Stunden', { betreff: 'Willkommen — so starten wir', text: 'Guten Tag {{kontakt.anrede}} {{kontakt.nachname}},\n\nschön, dass wir mit „{{deal.titel}}“ starten. In den nächsten Tagen melden wir uns mit dem Termin für den Auftakt.' }),
+        S.mail('a7', 'Willkommen in 24 Stunden', { betreff: 'Willkommen — so starten wir', text: '{{kontakt.gruss}},\n\nschön, dass wir mit „{{deal.titel}}“ starten. In den nächsten Tagen melden wir uns mit dem Termin für den Auftakt.' }),
         S.einladung('a8', 'Kickoff terminieren', { titel: 'Auftakt', dauerMin: 60, gaeste: AN_ANSPRECHPARTNER }),
         S.ziel('ez', 'Startklar — weiter im Fulfillment'),
       ] },
