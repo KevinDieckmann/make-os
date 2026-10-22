@@ -156,14 +156,34 @@ export async function POST(req: Request) {
     const kx = await pruefKontextFuer(z.haushalt, z.person);
     const eigner = typeof b.eigner === 'string' && b.eigner ? b.eigner : undefined;
     if (eigner && kx.team && !kx.team.some(t => t.id === eigner && t.aktiv)) return { status: 400, body: { ok: false, fehler: 'Eigner: eine aktive Person aus dem Team.' } };
+    // B3 (22.10.): „+ Begleit-Prozess“ am Paket — Paket (und Schritt bzw. Phase) müssen im Fulfillment-Bestand stehen; gelesen wird nur.
+    let andocken: { paket: string; knoten?: string } | undefined;
+    if (b.andocken !== undefined) {
+      const ad = (b.andocken && typeof b.andocken === 'object' ? b.andocken : {}) as { paket?: unknown; knoten?: unknown };
+      if (typeof ad.paket !== 'string') return { status: 400, body: { ok: false, fehler: 'Andocken: welches Paket?' } };
+      const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
+      const pk = (await fulfillmentLesen('vorlagen', z.haushalt)).prozesse.find(x => x.id === ad.paket && x.art === 'paket');
+      if (!pk) return { status: 400, body: { ok: false, fehler: 'Dieses Paket gibt es nicht (mehr).' } };
+      if (ad.knoten !== undefined && (typeof ad.knoten !== 'string' || !pk.knoten.some(k => k.id === ad.knoten && !!k.elternId))) return { status: 400, body: { ok: false, fehler: 'Diesen Schritt gibt es im Paket nicht.' } };
+      andocken = { paket: pk.id, ...(typeof ad.knoten === 'string' ? { knoten: ad.knoten } : {}) };
+    }
     const { ausVorlageAnwenden } = await import('@/lib/prozesse/kundengewinnung/uebernehmen');
     type Ok = Extract<ReturnType<typeof ausVorlageAnwenden>, { ok: true }>;
     const r = await prozesseAendern<Omit<Ok, 'ok' | 'datei'>>(
-      dd => ausVorlageAnwenden(dd, b.vorlageId, { person: z.person, jetzt: new Date().toISOString(), rechte: z.rechte, neueKennung: p => neueKennung(p), ...(eigner ? { eigner } : {}), pruef: kx }) as never,
+      dd => ausVorlageAnwenden(dd, b.vorlageId, { person: z.person, jetzt: new Date().toISOString(), rechte: z.rechte, neueKennung: p => neueKennung(p), ...(eigner ? { eigner } : {}), ...(andocken ? { andocken } : {}), pruef: kx }) as never,
       wer, z.haushalt,
     ) as ReturnType<typeof ausVorlageAnwenden>;
     if (!r.ok) return { status: r.status, body: { ok: false, fehler: r.fehler, ...(r.befunde ? { befunde: r.befunde } : {}) } };
-    return { status: 200, body: { ok: true, ...ansicht(r.haupt), teile: r.teile.map(t => ({ id: t.id, titel: t.entwurf.titel, status: t.status })), befunde: r.befunde, hinweise: r.hinweise, probelauf: r.probelauf } };
+    // B3 (22.10.): Wiedereintritt je Fall aus der Vorlage (Begleit-Prozesse: jede Etappe, jeder Report …) — über den vorhandenen Weg der Läufe-Einstellungen,
+    // nur für volle Mitglieder (wie Läufe › Einstellungen); sonst ein Hinweis.
+    const hinweise = [...r.hinweise];
+    const { vorlageVon } = await import('@/lib/prozesse/kundengewinnung/bibliothek');
+    const erneut = typeof b.vorlageId === 'string' ? vorlageVon(b.vorlageId)?.erneutNachTagen : undefined;
+    if (erneut) {
+      if (z.rechte.status && (await (await import('@/lib/prozesse/lauf-server')).einstellungSetzen(r.haupt.id, z.person, { erneutNachTagen: erneut })).ok) hinweise.push(`Läuft je Mandat erneut, frühestens nach ${erneut === 1 ? 'einem Tag' : `${erneut} Tagen`} (Läufe › Einstellungen).`);
+      else hinweise.push(`Läuft je Mandat nur einmal — „erneut nach ${erneut} Tagen“ setzt ein volles Mitglied unter Läufe › Einstellungen.`);
+    }
+    return { status: 200, body: { ok: true, ...ansicht(r.haupt), teile: r.teile.map(t => ({ id: t.id, titel: t.entwurf.titel, status: t.status })), befunde: r.befunde, hinweise, probelauf: r.probelauf } };
   };
   const a = aktion === 'anlegen'
     ? await einmalig<Record<string, unknown>>('prozess-anlegen', b.anfrageId, ausfuehren, undefined, { wer: z.person })

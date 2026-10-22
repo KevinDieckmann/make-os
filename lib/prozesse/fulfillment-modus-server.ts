@@ -7,6 +7,7 @@
 import type { Befund, ProzessVorlage } from './definition';
 import { fulfillmentModusBefunde, type BibliothekKurz } from './fulfillment-modus';
 import type { ProduktVerweis } from './produkt-bindung';
+import type { BegleitAndock } from './begleitung/andocken';
 
 export interface LaufenderKunde { mandatId: string; kunde: string; titel: string; art: 'paket' | 'zusatz'; fassung: number; aenderung: { titel: string; zeilen: string[] }[] | null }
 
@@ -23,6 +24,11 @@ export interface PaketFuerWerkstatt {
    * Fall); `aenderung` null = der Fall hat schon die aktuelle Fassung. Nur Mandate von Business-Gesellschaften; die Route schreibt das Lese-Protokoll.
    */
   kunden: LaufenderKunde[];
+  /**
+   * B3 (22.10.): die Begleit-Prozesse der Werkstatt, die an diesem Paket andocken (lib/prozesse/begleitung/andocken.ts `begleitFuer` — über die Bedingungen ihres
+   * Auslösers, jüngste veröffentlichte Version, sonst der Entwurf). Nur lesen; fehlt der Werkstatt-Bestand, ist die Liste leer.
+   */
+  begleitung: BegleitAndock[];
   produkte: ProduktVerweis[];
   /** Der vorhandene Editor des Fulfillments. */
   editor: string;
@@ -65,6 +71,11 @@ export async function paketFuerWerkstatt(h: string, id: string): Promise<PaketFu
     produkte = produkteVonVorlage(crm.leistungen, d.zuordnung, id);
   } catch { /* ohne Zahl */ }
   const laufende = kunden.length;
+  let begleitung: BegleitAndock[] = [];
+  try {
+    const [{ prozesseLesen }, { begleitFuer }, { juengsteVersion }] = await Promise.all([import('./werkstatt-server'), import('./begleitung/andocken'), import('./versionen')]);
+    begleitung = begleitFuer(id, (await prozesseLesen(h)).prozesse.map(p => ({ id: p.id, titel: p.entwurf.titel, status: p.status, definition: juengsteVersion(p)?.definition ?? p.entwurf })));
+  } catch { /* ohne Begleitung */ }
   const e = d.entwuerfe?.[id] ?? null;
   // Die Bibliothek in Kürze umfasst auch Bausteine, die nur der Entwurf nutzt.
   for (const k of e?.vorlage.knoten ?? []) if (k.bausteinId && !genutzt.has(k.bausteinId)) {
@@ -72,7 +83,7 @@ export async function paketFuerWerkstatt(h: string, id: string): Promise<PaketFu
     if (b) { const kf = fuerKundenFrei(b, d); genutzt.add(b.id); bibliothek.push({ id: b.id, titel: b.titel, art: b.art, kundeFrei: kf.frei, ...(kf.grund ? { grund: kf.grund } : {}) }); }
   }
   return {
-    paket: v, stand: eintragStand(v), befunde, bibliothek, laufende, kunden, produkte, editor: WEG.fulfillment('prozesse', { e: id }),
+    paket: v, stand: eintragStand(v), befunde, bibliothek, laufende, kunden, begleitung, produkte, editor: WEG.fulfillment('prozesse', { e: id }),
     entwurf: e ? { vorlage: e.vorlage, basisFassung: e.basisFassung, am: e.am, von: e.von, paketGeaendert: e.basisStand !== eintragStand(v) } : null,
     arbeitsStand: eintragStand(e?.vorlage ?? v),
   };

@@ -19,12 +19,12 @@ const KENNZAHL_LAEUFE = 'Prozesse: Anteil der Läufe mit „Ziel erreicht“';
 const basis = { welle: 0 as const, bereich: 'fulfillment' as const, fallArt: 'mandat' as const, eignerRolle: 'kundenerfolg' as const, gruppe: 'begleitung' as const, teile: [] };
 
 const FB1: KgVorlage = {
-  ...basis, id: 'fb-01', nr: 'FB1', titel: 'Unterlagen fehlen — freundlich nachfassen',
+  ...basis, id: 'fb-01', nr: 'FB1', erneutNachTagen: 14, titel: 'Unterlagen fehlen — freundlich nachfassen',
   zweck: 'Wartet der Fall seit über einer Woche auf den Kunden, erinnern zwei vorgefertigte Mails an die offenen Punkte; kommt nichts, ruft die zuständige Person an — liefert der Kunde, endet die Kette sofort.',
   ausloeserText: 'Ein Fall wartet seit über 7 Tagen auf den Kunden', braucht: ['fulfillment', 'postfach'], uebergabeAn: [],
   recht: [RECHT_MANDAT, RECHT_SCHLOSS, 'Die Erinnerung nennt nur den vorhandenen Kunden-Link — einen neuen Link legt nur der Fall an.'],
   kennzahlen: ['Fulfillment: Tage „wartet auf den Kunden“', KENNZAHL_LAEUFE],
-  einstellbar: [{ id: 'warten1', label: 'Warten nach der ersten Erinnerung (Werktage)', vorgabe: 3, knoten: 'w1', feld: 'hoechstensTage' }, { id: 'warten2', label: 'Warten nach der zweiten Erinnerung (Werktage)', vorgabe: 3, knoten: 'w2', feld: 'hoechstensTage' }],
+  einstellbar: [{ id: 'erneut', label: 'Wieder je Mandat frühestens nach (Tagen)', vorgabe: 14 }, { id: 'warten1', label: 'Warten nach der ersten Erinnerung (Werktage)', vorgabe: 3, knoten: 'w1', feld: 'hoechstensTage' }, { id: 'warten2', label: 'Warten nach der zweiten Erinnerung (Werktage)', vorgabe: 3, knoten: 'w2', feld: 'hoechstensTage' }],
   offen: [], demo: 'Ein Saat-Fall wartet seit zehn Tagen auf eine Unterlage: die erste Erinnerung liegt im Stapel; nach dem Hochladen über den Kunden-Link endet der Lauf.',
   definition: prozess({
     id: 'fb-01', titel: 'Unterlagen fehlen — freundlich nachfassen', bereich: 'fulfillment', fallArt: 'mandat',
@@ -57,12 +57,12 @@ const FB1: KgVorlage = {
 };
 
 const FB2: KgVorlage = {
-  ...basis, id: 'fb-02', nr: 'FB2', titel: 'Bestätigung offen',
+  ...basis, id: 'fb-02', nr: 'FB2', erneutNachTagen: 7, titel: 'Bestätigung offen',
   zweck: 'Ist eine Bestätigung des Kunden überfällig, erinnert eine Mail an den Kunden-Link; bleibt sie offen, entscheidet die zuständige Person: kurzer Termin zum Abstimmen oder — nur wenn nötig — ein neuer Link aus dem Fall.',
   ausloeserText: 'Eine Bestätigung des Kunden ist überfällig', braucht: ['fulfillment', 'postfach', 'kalender'], uebergabeAn: [],
   recht: [RECHT_MANDAT, RECHT_SCHLOSS, 'Ein neuer Kunden-Link ersetzt den alten (höchstens einer je Mandat) — darum nur nach eigener Entscheidung und aus dem Fall.'],
   kennzahlen: ['Fulfillment: überfällige Bestätigungen', KENNZAHL_LAEUFE],
-  einstellbar: [{ id: 'warten', label: 'Warten nach der Erinnerung (Werktage)', vorgabe: 3, knoten: 'w1', feld: 'hoechstensTage' }],
+  einstellbar: [{ id: 'erneut', label: 'Wieder je Mandat frühestens nach (Tagen)', vorgabe: 7 }, { id: 'warten', label: 'Warten nach der Erinnerung (Werktage)', vorgabe: 3, knoten: 'w1', feld: 'hoechstensTage' }],
   offen: [], demo: 'Eine Bestätigung im Saat-Fall ist seit gestern überfällig: die Erinnerung liegt im Stapel; nach der Bestätigung über den Link endet der Lauf.',
   definition: prozess({
     id: 'fb-02', titel: 'Bestätigung offen', bereich: 'fulfillment', fallArt: 'mandat',
@@ -118,12 +118,12 @@ const FB3: KgVorlage = {
 };
 
 const FB4: KgVorlage = {
-  ...basis, id: 'fb-04', nr: 'FB4', titel: 'Etappe geschafft',
+  ...basis, id: 'fb-04', nr: 'FB4', erneutNachTagen: 1, titel: 'Etappe geschafft',
   zweck: 'Ist eine Etappe abgeschlossen, liegt eine kurze Nachricht an den Kunden bereit: was geschafft ist und was als Nächstes ansteht — vor dem Senden im Stapel anpassbar.',
   ausloeserText: 'Eine Etappe des Falls ist abgeschlossen', braucht: ['fulfillment', 'postfach'], uebergabeAn: [],
   recht: [RECHT_MANDAT, RECHT_SCHLOSS],
   kennzahlen: ['Fulfillment: Kunden-Lage', KENNZAHL_LAEUFE],
-  einstellbar: [],
+  einstellbar: [{ id: 'erneut', label: 'Wieder je Mandat frühestens nach (Tagen)', vorgabe: 1 }],
   offen: [], demo: 'Im Saat-Fall wird die Etappe „Analyse“ abgeschlossen: die Nachricht mit der nächsten Etappe liegt im Stapel.',
   definition: prozess({
     id: 'fb-04', titel: 'Etappe geschafft', bereich: 'fulfillment', fallArt: 'mandat',
@@ -167,12 +167,12 @@ const FB5: KgVorlage = {
 };
 
 const FB6: KgVorlage = {
-  ...basis, id: 'fb-06', nr: 'FB6', titel: 'Report fällig',
+  ...basis, id: 'fb-06', nr: 'FB6', erneutNachTagen: 7, titel: 'Report fällig',
   zweck: 'Ist der Report fällig, erinnert der Prozess die zuständige Person — gesendet wird er im Fall (dort zählt er als letzter Report); bleibt er offen, erfährt es der Eigner.',
   ausloeserText: 'Der Report des Falls ist fällig', braucht: ['fulfillment'], uebergabeAn: [],
   recht: ['Nur intern: Aufgabe und Glocke — der Report selbst geht aus dem Fall (wie die Willkommensmail, Entscheidung 22.10.).'],
   kennzahlen: ['Fulfillment: Report im Takt', KENNZAHL_LAEUFE],
-  einstellbar: [{ id: 'frist', label: 'Aufgabe fällig in (Tagen)', vorgabe: 2, knoten: 'a1', feld: 'fristTage' }],
+  einstellbar: [{ id: 'erneut', label: 'Wieder je Mandat frühestens nach (Tagen)', vorgabe: 7 }, { id: 'frist', label: 'Aufgabe fällig in (Tagen)', vorgabe: 2, knoten: 'a1', feld: 'fristTage' }],
   offen: [], demo: 'Im Saat-Fall liegt der letzte Report über zwei Wochen zurück: Aufgabe „Report im Fall senden“; nach dem Senden endet der Lauf.',
   definition: prozess({
     id: 'fb-06', titel: 'Report fällig', bereich: 'fulfillment', fallArt: 'mandat',
@@ -193,12 +193,12 @@ const FB6: KgVorlage = {
 };
 
 const FB7: KgVorlage = {
-  ...basis, id: 'fb-07', nr: 'FB7', titel: 'Ziel erreicht — gratulieren',
+  ...basis, id: 'fb-07', nr: 'FB7', erneutNachTagen: 1, titel: 'Ziel erreicht — gratulieren',
   zweck: 'Erreicht ein Ziel des Wert-Kontos 100 %, liegt ein kurzer Glückwunsch an den Kunden bereit. Die Bitte um eine Empfehlung bleibt bei „Empfehlung anfragen“ (V14) — die hört selbst auf „Ziel erreicht“, nichts doppelt.',
   ausloeserText: 'Ein Ziel des Mandats ist erreicht', braucht: ['fulfillment', 'postfach'], uebergabeAn: [],
   recht: [RECHT_MANDAT, RECHT_SCHLOSS],
   kennzahlen: ['Fulfillment: Ø Zielerreichung (Wert-Konto)', KENNZAHL_LAEUFE],
-  einstellbar: [],
+  einstellbar: [{ id: 'erneut', label: 'Wieder je Mandat frühestens nach (Tagen)', vorgabe: 1 }],
   offen: [], demo: 'Im Saat-Fall erreicht ein Ziel 100 %: der Glückwunsch liegt im Stapel.',
   definition: prozess({
     id: 'fb-07', titel: 'Ziel erreicht — gratulieren', bereich: 'fulfillment', fallArt: 'mandat',
@@ -216,12 +216,12 @@ const FB7: KgVorlage = {
 };
 
 const FB8: KgVorlage = {
-  ...basis, id: 'fb-08', nr: 'FB8', titel: 'Puls niedrig — Check-in',
+  ...basis, id: 'fb-08', nr: 'FB8', erneutNachTagen: 7, titel: 'Puls niedrig — Check-in',
   zweck: 'Fällt der Kunden-Puls unter die Schwelle, plant der Prozess einen persönlichen Check-in — nur, wenn das Puls-Gespräch des Fulfillments nicht schon im Stapel liegt (nichts doppelt).',
   ausloeserText: 'Der Kunden-Puls ist kritisch', braucht: ['fulfillment'], uebergabeAn: [],
   recht: ['Nur intern: eine Aufgabe — der Puls-Wert erscheint nirgends in Texten.'],
   kennzahlen: ['Fulfillment: Kunden-Puls', KENNZAHL_LAEUFE],
-  einstellbar: [{ id: 'frist', label: 'Check-in fällig in (Tagen)', vorgabe: 2, knoten: 'a1', feld: 'fristTage' }],
+  einstellbar: [{ id: 'erneut', label: 'Wieder je Mandat frühestens nach (Tagen)', vorgabe: 7 }, { id: 'frist', label: 'Check-in fällig in (Tagen)', vorgabe: 2, knoten: 'a1', feld: 'fristTage' }],
   offen: [], demo: 'Ein Saat-Kunde gibt einen niedrigen Puls: liegt das Puls-Gespräch schon im Stapel, endet der Lauf; sonst steht die Aufgabe „Check-in“ an.',
   definition: prozess({
     id: 'fb-08', titel: 'Puls niedrig — Check-in', bereich: 'fulfillment', fallArt: 'mandat',

@@ -1942,6 +1942,21 @@ export async function laeufeDesProzesses(prozessId: string): Promise<{ laeufe: i
     kennzahlen: laufKennzahlen(d.laeufe, prozessId),
   };
 }
+/**
+ * Die Läufe zu EINEM Fall (22.10., B3 — Karte „Begleitung läuft“ in der Akte des Fulfillment-Falls): offene und die der letzten 30 Tage, jüngste zuerst, mit dem
+ * Titel des Prozesses — nur Kennungen, Status, Zahlen (wie `laeufeDesProzesses`). Angezeigt werden höchstens 20, `weitere` zählt den Rest (nie still gekürzt).
+ */
+export async function laeufeDesFalls(fall: { art: string; id: string }, h?: string): Promise<{ laeufe: (import('./lauf-regeln').LaufKurz & { titel: string })[]; weitere: number }> {
+  const [{ laufKurz }, { prozesseLesen }] = await Promise.all([import('./lauf-regeln'), import('./werkstatt-server')]);
+  const [d, pz] = await Promise.all([laeufeLesen(h), prozesseLesen(h)]);
+  const jetzt = new Date().toISOString();
+  const grenze = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const titel = new Map(pz.prozesse.map(p => [p.id, p.entwurf.titel] as const));
+  const offen = (s: ProzessLauf['status']) => s === 'laeuft' || s === 'wartet' || s === 'angehalten' || s === 'fehler';
+  const alle = d.laeufe.filter(l => l.fall.art === fall.art && l.fall.id === fall.id && titel.has(l.prozessId) && (offen(l.status) || (l.ende ?? l.geaendert) >= grenze))
+    .sort((a, b) => (offen(a.status) === offen(b.status) ? (a.start < b.start ? 1 : -1) : offen(a.status) ? -1 : 1));
+  return { laeufe: alle.slice(0, 20).map(l => ({ ...laufKurz(l, jetzt), titel: titel.get(l.prozessId)! })), weitere: Math.max(0, alle.length - 20) };
+}
 export async function laufLesen(id: string): Promise<{ lauf: import('./lauf-regeln').LaufKurz; knoten: ReturnType<typeof import('./lauf-regeln').knotenStand>; schritte: LaufSchritt[]; daten: Record<string, string> } | null> {
   const { laufKurz, knotenStand } = await import('./lauf-regeln');
   const l = (await laeufeLesen()).laeufe.find(x => x.id === id);

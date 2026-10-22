@@ -61,7 +61,11 @@ export function VorschauBild({ phasen }: { phasen: VorschauPhase[] }) {
  * Das Fenster „Aus Vorlage anlegen“. `onAngelegt(id)` führt in die Werkstatt des neuen Prozesses. Zwei Sammlungen (22.10., B2): Kundengewinnung und
  * „Fulfillment · Kunden-Begleitung“ — `gruppe` wählt die Sammlung vor (z. B. „+ Begleit-Prozess“ am Paket).
  */
-export function VorlagenGalerie({ onZu, onAngelegt, gruppe: gruppeVorgabe }: { onZu: () => void; onAngelegt: (id: string) => Promise<void> | void; gruppe?: 'kundengewinnung' | 'begleitung' }) {
+export function VorlagenGalerie({ onZu, onAngelegt, gruppe: gruppeVorgabe, andocken }: {
+  onZu: () => void; onAngelegt: (id: string) => Promise<void> | void; gruppe?: 'kundengewinnung' | 'begleitung';
+  /** B3 (22.10.): „+ Begleit-Prozess“ am Paket — der übernommene Begleit-Prozess hört nur auf dieses Paket (und ggf. diesen Schritt); `text` = wo, in Worten. */
+  andocken?: { paket: string; knoten?: string; text: string };
+}) {
   const kat = useKatalog();
   const team = useMemo(() => (kat.daten?.auswahl?.['team-person'] ?? []).filter(t => !t.id.startsWith('rolle:')), [kat.daten]);
   const [liste, setListe] = useState<Liste | null>(null);
@@ -86,7 +90,8 @@ export function VorlagenGalerie({ onZu, onAngelegt, gruppe: gruppeVorgabe }: { o
   const uebernehmen = async () => {
     if (!detail) return;
     setFehler(null);
-    const r = await werkstattSenden(() => ({ aktion: 'aus-vorlage', anfrageId, vorlageId: detail.id, ...(eigner ? { eigner } : {}) }));
+    const ad = andocken && detail.gruppe === 'begleitung' ? { andocken: { paket: andocken.paket, ...(andocken.knoten ? { knoten: andocken.knoten } : {}) } } : {};
+    const r = await werkstattSenden(() => ({ aktion: 'aus-vorlage', anfrageId, vorlageId: detail.id, ...(eigner ? { eigner } : {}), ...ad }));
     const id = r.j?.eintrag?.id;
     if (r.status === 200 && r.j?.ok && id) {
       // Was noch offen ist (Eigner, offene Punkte der Vorlage, Übergaben ohne Ziel), steht hier — dann geht es in die Werkstatt.
@@ -153,6 +158,7 @@ export function VorlagenGalerie({ onZu, onAngelegt, gruppe: gruppeVorgabe }: { o
           {detail.einstellbar.length > 0 && <section style={{ display: 'grid', gap: 4 }}><div style={{ ...MIKRO }}>Einstellbar (Vorgabe)</div><p style={klein}>{detail.einstellbar.map(e => `${e.label} (${String(e.vorgabe === true ? 'an' : e.vorgabe === false ? 'aus' : e.vorgabe)})`).join(' · ')}</p></section>}
           {detail.offen.length > 0 && <Hinweis art="info" titel="Noch offen">{detail.offen.map(o => <div key={o}>{o}</div>)}</Hinweis>}
           {detail.braucht.length > 0 && <p style={klein}>Braucht: {detail.braucht.join(', ')}.</p>}
+          {andocken && detail.gruppe === 'begleitung' && <Hinweis art="info" titel="Dockt an">{`Hört nur auf ${andocken.text} — der Auslöser bekommt die Bedingung beim Übernehmen.`}</Hinweis>}
           {liste?.rechte.entwurf ? (
             <>
               <Feldzeile label="Eigner (eine Person aus dem Team — die Vorlage nennt die Rolle)">

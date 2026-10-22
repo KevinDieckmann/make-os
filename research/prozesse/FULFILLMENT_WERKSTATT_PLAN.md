@@ -161,7 +161,15 @@ Platzhalter `kunde.gruss`/`fall.phase`/`fall.termin`. Abweichungen vom Plan (nic
   - die Kette endet bei `kunde-geliefert`
   - Fall vorher = Fall nachher (ein Begleit-Lauf schreibt nie in den Fall)
 
-#### B3 · Eine Fläche — 1,5–2 Tage
+#### B3 · Eine Fläche — GEBAUT (22.10.)
+
+**Stand 22.10.:** `lib/prozesse/begleitung/andocken.ts`, Kacheln „Begleitung“ unter der Fläche des Pakets (`PaketBegleitung.tsx`), „+ Begleit-Prozess“ mit Andocken an
+Paket/Schritt, Karte „Begleitung läuft“ in der Reise des Falls (`BegleitungLaeuft.tsx`, GET `/api/prozesse/laeufe?fall=`). Abweichungen:
+- Die Kacheln stehen als Band unter der Fläche (gestrichelter Rand, „an „Schritt““ zeigt den Schritt auf der Fläche) — kein Faden IN der Fläche (die Fläche bleibt
+  unverändert, kein Eingriff in `WerkstattFlaeche`).
+- Neu nötig: Wiedereintritt je Fall (`KgVorlage.erneutNachTagen`, beim Übernehmen in die Läufe-Einstellung) — sonst liefe z. B. „Etappe geschafft“ je Mandat nur einmal.
+- Im Probelauf (Schatten) wartet der Motor nicht; die Rauten lesen die echte Lage des Falls. Gold: `tests/prozesse-ff-begleitung-b3.test.ts`.
+
 
 - **Andocken ohne zweites Feld:** Ein Begleit-Prozess gehört zu einem Paket bzw. Schritt über die Bedingungen seines Auslösers (`ereignis.vorlageId`, `ereignis.knotenId`). Rein `begleitFuer(paket, prozesse)`.
 - **Werkstatt-Ansicht des Pakets** (`PaketWerkstatt`): angedockte Begleit-Prozesse als Kacheln neben Schritt bzw. Phase, mit gestricheltem Lichtfaden zum Auslöser. „+ Begleit-Prozess“ öffnet die Galerie mit Vorbelegung (Paket, Schritt). Ein Klick öffnet den Prozess in der Werkstatt.

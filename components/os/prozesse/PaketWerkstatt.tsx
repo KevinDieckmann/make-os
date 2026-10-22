@@ -22,6 +22,7 @@ import type { ProzessVorlage } from '@/lib/prozesse/definition';
 import { WerkstattFlaeche, type FlaecheSteuerung } from './WerkstattFlaeche';
 import { PaketPanel, type PanelAuswahl, type PanelPhase } from './PaketPanel';
 import { PaketKunden } from './PaketKunden';
+import { PaketBegleitung } from './PaketBegleitung';
 import { usePaket, werkstattSenden, type PaketAntwort } from './werkstatt-daten';
 
 const leer = () => undefined;
@@ -261,6 +262,10 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
           </aside>
         )}
       </div>
+      {/* B3 (22.10.): die Begleit-Prozesse am Paket — angedockt über die Bedingungen ihres Auslösers; „+ Begleit-Prozess“ am gewählten Schritt bzw. der Phase. */}
+      <PaketBegleitung paketId={paketId} begleitung={daten.begleitung ?? []} titelVon={id => fassung.knoten.find(k => k.id === id)?.titel ?? null}
+        onZeigen={id => { if (phasen(d).some(p => p.id === id)) { setRahmenWahl(id); setAuswahl([]); } else { setRahmenWahl(null); setAuswahl([id]); } flaeche.current?.zeige(id); }}
+        ziel={gewaehlt?.startsWith('ab~') ? gewaehlt.slice(3) : gewaehlt ?? rahmenWahl} darf={!schmal && !!daten.rechte?.entwurf} />
       <div aria-live="polite" className="pz-nur-vorlesen">{ansage}</div>
     </div>
   );

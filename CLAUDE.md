@@ -1713,6 +1713,12 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Lage-Felder `fall.phase`, `fall.wartet-kunde`, `fall.bestaetigung-offen`, `fall.willkommen-offen`, `fall.report-faellig`, `fall.puls-kritisch`,
   `fall.puls-gespraech-offen` NUR aus `faelleFuerProzesse` (Cockpit-Zeile + offener `k:puls:`-Vorschlag); Platzhalter `{{kunde.gruss}}` (Du/Sie aus der Akte,
   EINE Stelle `kundenGruss` in lib/fulfillment/kunde/bild.ts), `{{fall.phase}}`, `{{fall.termin}}`. Texte ohne Sie/ihr. Wächter `tests/prozesse-ff-begleitung-b2.test.ts`.
+  **B3 Eine Fläche:** Andocken OHNE zweites Feld — NUR über die Bedingungen des Auslösers (`fall.paket` bzw. `bezug.vorlageid`, `bezug.knotenid`), Regeln in
+  lib/prozesse/begleitung/andocken.ts (`begleitFuer`, `andockenAnwenden`, `istBegleitProzess`). „+ Begleit-Prozess“ am Paket (`PaketBegleitung.tsx`) = Galerie mit
+  `andocken` → POST `aus-vorlage` (Route prüft Paket/Schritt im Fulfillment-Bestand, nur Begleit-Vorlagen, sonst 400). `paketFuerWerkstatt` liefert `begleitung`.
+  Akte: Karte „Begleitung läuft“ (`BegleitungLaeuft.tsx` in FallReise) über GET `/api/prozesse/laeufe?fall=mandat:<id>` (`laeufeDesFalls`, offen + 30 Tage, nur
+  Business). Wiedereintritt je Fall: der Motor startet je Prozess und Fall EINEN Lauf — Begleit-Vorlagen bringen `KgVorlage.erneutNachTagen` mit, „Aus Vorlage“ setzt
+  es für volle Mitglieder über `einstellungSetzen`. Wächter `tests/prozesse-ff-begleitung-b3.test.ts` (von Ende zu Ende über den Takt, Fall/Paket Byte für Byte).
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
