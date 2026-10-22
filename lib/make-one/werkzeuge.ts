@@ -392,8 +392,68 @@ export const AUFGABEN_WERKZEUG: Werkzeug = {
   })),
 };
 
+// ─── Gesundheit — nur Privat ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Heute: Heute · Tagesstart & Tagesende (/os/ritual) · Journal · Körper & Training: Sport · Erholung · Körper · Ernährung · Auswertung: Index · Verlauf ·
+// „Automationen & Head“ (`?s=automationen`, Heads aus `SEITEN_REGELN`: Gesundheit & Sport, unter Ernährung Ernährung & Einkauf). Erholung steht EINMAL im Menü
+// (Gesundheit › Erholung) — die Adresse des Sport-Reiters `/os/sport?s=erholung` gilt weiter und leuchtet dort. Art. 9: „Körper“ nur in der EIGENEN Ansicht
+// (mit `?fuer=` — der Ansicht einer anderen Person — gibt es den Punkt nicht, wie den Reiter); das Menü zeigt nie Werte. Die Ansicht einer anderen Person
+// (`?fuer=`) wandert in die Ziele der Gesundheits-Seite mit; Sport, Journal und Tagesritual sind immer die eigenen. Nur volle Mitglieder (Privat).
+const GESUNDHEIT_PFAD = '/os/gesundheit';
+type GesundheitOrt = 'heute' | 'ritual' | 'journal' | 'sport' | 'erholung' | 'koerper' | 'ernaehrung' | 'index' | 'verlauf' | 'automationen';
+/** Die Ansicht einer anderen Person (`?fuer=`) — dort gibt es „Körper“ nicht. */
+export const fremdeGesundheit = (k: WerkzeugKontext): boolean => !!k.q.get('fuer');
+const GESUNDHEIT_REITER: readonly GesundheitOrt[] = ['erholung', 'koerper', 'ernaehrung', 'index', 'verlauf', 'automationen'];
+export function gesundheitOrt(k: WerkzeugKontext): GesundheitOrt {
+  const s = k.q.get('s');
+  if (unterSeite(k.pfad, '/os/ritual')) return 'ritual';
+  if (unterSeite(k.pfad, '/os/journal')) return 'journal';
+  if (unterSeite(k.pfad, '/os/sport')) return s === 'erholung' ? 'erholung' : 'sport';
+  const r = GESUNDHEIT_REITER.find(x => x === s);
+  return !r || (r === 'koerper' && fremdeGesundheit(k)) ? 'heute' : r;
+}
+/** Ein Reiter der Gesundheits-Seite — mit der Ansicht der anderen Person, wenn sie offen ist. */
+const gesundheitZiel = (s: GesundheitOrt | null, k: WerkzeugKontext): string => {
+  const q = new URLSearchParams();
+  if (s) q.set('s', s);
+  const fuer = k.q.get('fuer');
+  if (fuer && unterSeite(k.pfad, GESUNDHEIT_PFAD)) q.set('fuer', fuer);
+  const t = q.toString();
+  return t ? `${GESUNDHEIT_PFAD}?${t}` : GESUNDHEIT_PFAD;
+};
+const gPunkt = (id: Exclude<GesundheitOrt, 'automationen'>, label: string, icon: LucideIcon, gruppe: string, titel: string, href: (k: WerkzeugKontext) => string, sichtbar?: (k: WerkzeugKontext) => boolean): WerkzeugPunkt => ({
+  id, label, icon, gruppe, titel, href, aktiv: k => gesundheitOrt(k) === id, ...(sichtbar ? { sichtbar } : {}),
+});
+const GESUNDHEIT_PUNKTE: readonly WerkzeugPunkt[] = [
+  gPunkt('heute', 'Heute', Sun, 'Heute', 'Tagesform, Routinen, drei Fragen', k => gesundheitZiel(null, k)),
+  gPunkt('ritual', 'Tagesstart & Tagesende', Sunrise, 'Heute', 'Morgens und abends in fünf Minuten', () => '/os/ritual'),
+  gPunkt('journal', 'Journal', NotebookPen, 'Heute', 'Das eigene Journal', () => WEG.journal()),
+  gPunkt('sport', 'Sport', Dumbbell, 'Körper & Training', 'Training, Hyrox, Running, Gym', () => WEG.sport()),
+  gPunkt('erholung', 'Erholung', BatteryCharging, 'Körper & Training', 'Programme, Behandlungen, Regeneration', k => gesundheitZiel('erholung', k)),
+  gPunkt('koerper', 'Körper', PersonStanding, 'Körper & Training', 'Das eigene Körper-Profil — nur du siehst es', () => `${GESUNDHEIT_PFAD}?s=koerper`, k => !fremdeGesundheit(k)),
+  gPunkt('ernaehrung', 'Ernährung', Salad, 'Körper & Training', 'Die Woche, Gerichte und Einkauf', k => gesundheitZiel('ernaehrung', k)),
+  gPunkt('index', 'Index', Gauge, 'Auswertung', 'Der Gesundheits-Index mit Säulen und Kennzahlen', k => gesundheitZiel('index', k)),
+  gPunkt('verlauf', 'Verlauf', ChartLine, 'Auswertung', '30 Tage je Kennzahl', k => gesundheitZiel('verlauf', k)),
+];
+export const GESUNDHEIT_WERKZEUG: Werkzeug = {
+  id: 'gesundheit',
+  name: 'Gesundheit',
+  icon: HeartPulse,
+  spaces: ['privat'],
+  // /os/ernaehrung und /os/energie leiten in die Gesundheit (next.config.mjs); der Tageslauf gehört zu ZOE, nicht hierher.
+  pfade: [GESUNDHEIT_PFAD, '/os/sport', '/os/journal', '/os/ritual'],
+  start: GESUNDHEIT_PFAD,
+  leistenPunkt: 'Gesundheit',
+  nurVolleMitglieder: true,
+  punkte: GESUNDHEIT_PUNKTE,
+  automation: automationMitHeads(GESUNDHEIT_PFAD, GESUNDHEIT_PUNKTE, 'privat', {
+    bereiche: [],
+    href: () => `${GESUNDHEIT_PFAD}?s=automationen`,
+    aktiv: k => gesundheitOrt(k) === 'automationen',
+  }),
+};
+
 /** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG, INBOX_WERKZEUG, AUFGABEN_WERKZEUG];
+export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, KALENDER_WERKZEUG, INBOX_WERKZEUG, AUFGABEN_WERKZEUG, GESUNDHEIT_WERKZEUG];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {
