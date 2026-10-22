@@ -184,7 +184,13 @@ Bewusst nicht gebaut:
 - **Die Werkstatt-Aktionen bleiben, wo sie sind:** Rückgängig/Wiederholen, Kopieren, Tastatur (`werkstatt-aktionen.ts`). Wo eine Aktion Werkstatt-Arten erzeugen würde, sperrt sie der Modus.
 - **Gold:** Entwurf speichern lässt Paket, Fassung, Fälle und Aufgaben `ff-ab-…` bit-gleich (Fall vorher = Fall nachher). Zweimal speichern ohne Änderung schreibt nichts. Ein Werkstatt-Feld im Körper ergibt 400 mit Pfad.
 
-### E3 · Veröffentlichen ins Paket und Übernehmen je Kunde (F2) — 1,5–2 Tage
+### E3 · Veröffentlichen ins Paket und Übernehmen je Kunde (F2) — GEBAUT (22.10.)
+
+Gebaut so:
+- Rein: `paketVeroeffentlichen` in `fulfillment-entwurf.ts`.
+- Die Liste `kunden` kommt aus `paketFuerWerkstatt` (mit Lese-Protokoll).
+- Oberfläche: `PaketKunden.tsx` ruft den vorhandenen Weg `vorlage-uebernehmen` auf.
+- Gold: `tests/prozesse-ff-werkstatt-e3.test.ts`.
 
 - **„Veröffentlichen“** (Name und Notiz) schreibt den Entwurf als neue Fassung des Pakets, über die vorhandene Schreibstelle (`fulfillmentAendern('vorlagen')`, Stand des Pakets → 409, `vorlageStrukturPruefen`, `fulfillmentModusBefunde`, `feldVerluste` hart). Die Notiz kommt als Marke `fassung-notiz:<paket>:<n>`. Danach ist der Entwurf leer.
 - **Hinweis danach:** „n laufende Kunden — Änderung je Kunde übernehmen“. Die Liste zeigt je Fall die vorhandenen `vorlagenDiff`/`diffVorschau`, der Knopf ruft das vorhandene `POST /api/fulfillment/fall { aktion: 'vorlage-uebernehmen' }` auf (Zusatzmodul: `zusatzDiff`/`zusatzUebernehmen`). Nie automatisch.

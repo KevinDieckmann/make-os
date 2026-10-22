@@ -298,7 +298,8 @@ async function hole(kopf: Record<string, string>, suche: string): Promise<{ stat
 }
 function bytes(): Record<string, string> {
   const raus: Record<string, string> = {};
-  const geh = (o: string) => { for (const x of readdirSync(o)) { const p = path.join(o, x); if (statSync(p).isDirectory()) geh(p); else raus[path.relative(ordner, p)] = fp(readFileSync(p).toString('base64')); } };
+  // Das Lese-Protokoll (seit E3 nennt die Antwort laufende Kunden) ist die einzige erlaubte Schreibung beim Lesen — es zählt hier nicht.
+  const geh = (o: string) => { for (const x of readdirSync(o)) { const p = path.join(o, x); if (statSync(p).isDirectory()) geh(p); else if (!x.startsWith('leseprotokoll') && !x.startsWith('protokoll-')) raus[path.relative(ordner, p)] = fp(readFileSync(p).toString('base64')); } };
   geh(ordner);
   return raus;
 }
@@ -360,6 +361,7 @@ describe('Route GET /api/prozesse/werkstatt?paket= — nur lesen', () => {
   it('Lesen schreibt nie: Bytes des Datenordners vorher = nachher (Fall vorher = Fall nachher), kein Eintrag in prozesse--…', async () => {
     await hole(sitzung('pia'), '?space=business&paket=fp-editor');
     await hole(sitzung('pia'), '?space=business');
+    await (await import('@/lib/store/leseprotokoll')).leseprotokollWarten();
     expect(bytes()).toEqual(vorher);
   });
   it('die Liste der Werkstatt führt das Paket weiter als Fulfillment (nur lesen) — nichts doppelt', async () => {

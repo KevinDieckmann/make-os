@@ -1703,6 +1703,9 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   lib/prozesse/fulfillment-entwurf.ts (`paketEntwurfAnwenden`: Stand/409, Fulfillment-Modus + Verlust-Wächter, `vorlageStrukturPruefen`; gleich dem Paket → kein
   Entwurf) via POST `/api/prozesse/werkstatt` `paket-entwurf`/`paket-verwerfen` (nur volle Mitglieder, `darfVorlagenBearbeiten`). Jede Änderung im Browser = Op des
   Fulfillment-Editors (`paketBearbeiten` → `editorAnwenden`, nie nachgebaut). Laufende Fälle und neue Fälle sehen einen Entwurf nie.
+  **E3 Veröffentlichen:** `paketVeroeffentlichen` (Fassung + 1, Marke `fassung-notiz:<paket>:<n>`; Paket seit Entwurfsbeginn anders → 409 `paketGeaendert`, nur
+  `trotzdem` ersetzt). Laufende Fälle ändern sich NIE beim Veröffentlichen — je Kunde per Klick über den vorhandenen Weg `vorlage-uebernehmen` (Liste `kunden` mit
+  `diffVorschau`, `PaketKunden.tsx`).
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)

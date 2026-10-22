@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Grid3x3, Maximize2, Minus, Plus, Redo2, Undo2 } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Chip, Hinweis, Knopf, SymbolKnopf } from '../ui';
+import { Chip, Hinweis, Knopf, SymbolKnopf, eingabe as eingabeStil } from '../ui';
 import { neueKennung } from '@/lib/kennung';
 import { abstimmungsKnoten, paketAnsicht, paketUnterzeile } from '@/lib/prozesse/fulfillment-modus';
 import { paketBearbeiten, type EditorOp } from '@/lib/prozesse/fulfillment-bearbeiten';
@@ -21,6 +21,7 @@ import { nachbar, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
 import type { ProzessVorlage } from '@/lib/prozesse/definition';
 import { WerkstattFlaeche, type FlaecheSteuerung } from './WerkstattFlaeche';
 import { PaketPanel, type PanelAuswahl, type PanelPhase } from './PaketPanel';
+import { PaketKunden } from './PaketKunden';
 import { usePaket, werkstattSenden, type PaketAntwort } from './werkstatt-daten';
 
 const leer = () => undefined;
@@ -39,6 +40,8 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
   const [rahmenWahl, setRahmenWahl] = useState<string | null>(null);
   const [raster, setRaster] = useState(true);
   const [ansage, setAnsage] = useState('');
+  // E3: Veröffentlichen mit Name und Notiz; `geaendert` = das Paket wurde seit Beginn des Entwurfs anders gespeichert (ausdrücklich „trotzdem“).
+  const [veroeff, setVeroeff] = useState<{ name: string; notiz: string; geaendert?: boolean; fehler?: string } | null>(null);
   const flaeche = useRef<FlaecheSteuerung>(null);
   const stand = useRef('');
   const aenderung = useRef(0), gesichert = useRef(0);
@@ -132,6 +135,21 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
     setFassung(konflikt.entwurf?.vorlage ?? konflikt.paket); stand.current = konflikt.arbeitsStand;
     aenderung.current = gesichert.current; setKonflikt(null); setSpeicher({ art: 'gespeichert' });
   };
+  const neuLaden = async () => {
+    const j = await laden();
+    if (j) setDaten(d => (d ? { ...d, ...j } : j));
+  };
+  const veroeffentlichen = async (trotzdem = false) => {
+    if (!veroeff) return;
+    if (aenderung.current !== gesichert.current && !(await sichern())) { setVeroeff(v => (v ? { ...v, fehler: 'Erst muss der Entwurf gespeichert sein.' } : v)); return; }
+    const r = await werkstattSenden(() => ({ aktion: 'paket-veroeffentlichen', paketId, stand: stand.current, name: veroeff.name, notiz: veroeff.notiz, ...(trotzdem ? { trotzdem: true } : {}) }));
+    const j = r.j as (PaketAntwort & { ok?: boolean; fehler?: string; paketGeaendert?: boolean; veroeffentlicht?: number }) | null;
+    if (r.status === 409 && j?.paketGeaendert) { setVeroeff(v => (v ? { ...v, geaendert: true, fehler: undefined } : v)); return; }
+    if (r.status !== 200 || !j?.ok) { setVeroeff(v => (v ? { ...v, fehler: String(j?.fehler ?? 'Nicht veröffentlicht.') } : v)); return; }
+    setDaten(d => (d ? { ...d, ...j, bibliothekAlle: d.bibliothekAlle } : d)); setFassung(j.paket); fassungRef.current = j.paket; stand.current = j.arbeitsStand;
+    setZurueck([]); setVor([]); aenderung.current = gesichert.current; setSpeicher({ art: 'gespeichert' }); setVeroeff(null);
+    setAnsage(`Fassung ${j.veroeffentlicht ?? j.paket.fassung} veröffentlicht.`);
+  };
   const meineSpeichern = () => { if (!konflikt) return; stand.current = konflikt.arbeitsStand; setKonflikt(null); aenderung.current++; setSpeicher({ art: 'ausstehend' }); };
 
   if (fehler && !daten) return <Hinweis art="achtung" titel="Das Paket ließ sich nicht laden" aktion={<Knopf leise onClick={() => void laden()}>Erneut laden</Knopf>}>{fehler}</Hinweis>;
@@ -194,6 +212,7 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
           <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
           <SymbolKnopf ariaLabel="Alles zeigen" onClick={() => flaeche.current?.allesZeigen()}><Maximize2 size={16} /></SymbolKnopf>
           {bearbeiten && daten.entwurf && <Knopf leise onClick={verwerfen} titel="Den Entwurf löschen — das Paket bleibt, wie es ist">Entwurf verwerfen</Knopf>}
+          {bearbeiten && istEntwurf && !veroeff && <Knopf onClick={() => setVeroeff({ name: '', notiz: '' })} titel="Der Entwurf wird die neue Fassung des Pakets — laufende Kunden übernehmen je Kunde per Klick">Veröffentlichen</Knopf>}
           {!bearbeiten && !schmal && <Knopf leise href={daten.editor} titel="Ohne Recht zum Bearbeiten: der Editor des Fulfillments zeigt dasselbe Paket">Im Fulfillment-Editor ansehen ›</Knopf>}
         </div>
       </div>
@@ -202,6 +221,23 @@ export function PaketWerkstatt({ paketId, schmal }: { paketId: string; /** Am Ha
           Deine Fassung ist nicht verloren — sie steht hier auf der Fläche. Speichern überschreibt die andere; Übernehmen holt die andere (Rückgängig holt deine zurück).
         </Hinweis>
       )}
+      {veroeff && (
+        <Hinweis art={veroeff.geaendert ? 'achtung' : 'info'} titel={veroeff.geaendert ? 'Das Paket wurde seit Beginn dieses Entwurfs anders gespeichert' : `Als Fassung ${daten.paket.fassung + 1} veröffentlichen`}
+          aktion={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}>
+            {veroeff.geaendert ? <Knopf onClick={() => veroeffentlichen(true)}>Trotzdem veröffentlichen</Knopf> : <Knopf onClick={() => veroeffentlichen()}>Veröffentlichen</Knopf>}
+            <Knopf leise onClick={() => setVeroeff(null)}>Abbrechen</Knopf>
+          </span>}>
+          {veroeff.geaendert
+            ? 'Veröffentlichen ersetzt die Änderungen, die seitdem im Paket gespeichert wurden (z. B. im alten Editor). Prüfe sie vorher im Fulfillment-Editor.'
+            : 'Neue Fälle starten danach mit dieser Fassung. Laufende Kunden bleiben, wie sie sind — die Änderung übernehmt ihr je Kunde.'}
+          <span style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+            <input aria-label="Name der Fassung" placeholder="Name (optional)" value={veroeff.name} maxLength={80} onChange={e => setVeroeff(v => (v ? { ...v, name: e.target.value } : v))} style={eingabeStil} />
+            <input aria-label="Notiz zur Fassung" placeholder="Was hat sich geändert? (optional)" value={veroeff.notiz} maxLength={500} onChange={e => setVeroeff(v => (v ? { ...v, notiz: e.target.value } : v))} style={eingabeStil} />
+          </span>
+          {veroeff.fehler && <span style={{ display: 'block', color: C.kritisch, marginTop: 6 }}>{veroeff.fehler}</span>}
+        </Hinweis>
+      )}
+      <PaketKunden kunden={daten.kunden ?? []} paketId={paketId} fassung={daten.paket.fassung} darf={bearbeiten} onNeu={neuLaden} />
       {daten.entwurf?.paketGeaendert && <Hinweis art="info" titel="Das Paket wurde seit Beginn dieses Entwurfs geändert">Beim Veröffentlichen wird verglichen — nichts geht still verloren.</Hinweis>}
       {(speicher.art === 'fehler' || speicher.art === 'offline') && speicher.text && <Hinweis art={speicher.art === 'fehler' ? 'kritisch' : 'achtung'}>{speicher.text}</Hinweis>}
       {fehlerBefunde.length > 0 && (

@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Befund, ProzessEintrag, ProzessVersion, ProzessVorlage } from '@/lib/prozesse/definition';
 import type { BibliothekKurz } from '@/lib/prozesse/fulfillment-modus';
+import type { LaufenderKunde } from '@/lib/prozesse/fulfillment-modus-server';
 import type { ProzessKurz } from '@/lib/prozesse/fulfillment-bruecke';
 import type { ProzessRechte } from '@/lib/prozesse/rollen';
 import type { KatalogEintrag, KatalogKategorie } from '@/lib/prozesse/baustein-katalog';
@@ -63,6 +64,8 @@ export interface PaketAntwort {
   arbeitsStand: string;
   /** Die ganze Bibliothek in Kürze (Baustein hinzufügen). */
   bibliothekAlle?: BibliothekKurz[];
+  /** E3: die laufenden Kunden mit ihrer Änderung (übernehmen je Kunde per Klick). */
+  kunden: LaufenderKunde[];
 }
 export const usePaket = (id: string) => useAbruf<PaketAntwort>(`${WERKSTATT_QUELLE}&paket=${encodeURIComponent(id)}&bibliothek=1`);
 

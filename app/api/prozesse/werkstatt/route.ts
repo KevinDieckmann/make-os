@@ -27,6 +27,7 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { einmalig } from '@/lib/store/anfragen';
 import { neueKennung } from '@/lib/kennung';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,6 +64,8 @@ export async function GET(req: Request) {
     if (!KENNUNG.vorlage.test(paketId)) return nein(400, 'Welches Paket? (?paket=fp-…)');
     const p = await paketFuerWerkstatt(z.haushalt, paketId);
     if (!p) return nein(404, 'Dieses Paket gibt es nicht (mehr).');
+    // E3: die Antwort nennt laufende Kunden (Mandate) — Lese-Protokoll wie das Cockpit des Fulfillments (nur Zahlen).
+    leseZugriff(req, 'fulfillment', { anzahl: p.kunden.length });
     // E2 (22.10.): bearbeiten wie im Editor des Fulfillments — nur volle Mitglieder (`darfVorlagenBearbeiten`); mit `&bibliothek=1` die ganze Bibliothek in Kürze.
     const [{ darfVorlagenBearbeiten }, { bibliothekKurz }] = await Promise.all([import('@/lib/fulfillment/zugang'), import('@/lib/prozesse/fulfillment-modus-server')]);
     return NextResponse.json({ ok: true, rechte: z.rechte, ...p, bearbeiten: !z.dienst && await darfVorlagenBearbeiten(z.person), ...(q.get('bibliothek') === '1' ? { bibliothekAlle: await bibliothekKurz(z.haushalt) } : {}) });
@@ -117,11 +120,12 @@ export async function POST(req: Request) {
   const aktion = typeof b.aktion === 'string' ? b.aktion : '';
   // Fulfillment in die Werkstatt (22.10., E2): der Entwurf eines Pakets — im Bestand `fulfillment--<h>` (keine Kopie), nur volle Mitglieder (wie der Editor des
   // Fulfillments), Stand/409, Fulfillment-Modus + Verlust-Wächter + Struktur (lib/prozesse/fulfillment-entwurf.ts). Laufende Fälle sehen einen Entwurf nie.
-  if (aktion === 'paket-entwurf' || aktion === 'paket-verwerfen') {
+  // E3: `paket-veroeffentlichen` { paketId, stand, name?, notiz?, trotzdem? } — der Entwurf wird die neue Fassung des Pakets; laufende Fälle übernehmen je Kunde per Klick.
+  if (aktion === 'paket-entwurf' || aktion === 'paket-verwerfen' || aktion === 'paket-veroeffentlichen') {
     const { darfVorlagenBearbeiten } = await import('@/lib/fulfillment/zugang');
     if (!(await darfVorlagenBearbeiten(z.person))) return nein(403, 'Pakete bearbeiten nur volle Mitglieder des Haushalts.');
     const { paketEntwurfSchreiben } = await import('@/lib/prozesse/fulfillment-modus-server');
-    const r = await paketEntwurfSchreiben(z.haushalt, z.person, aktion === 'paket-entwurf' ? 'speichern' : 'verwerfen', b);
+    const r = await paketEntwurfSchreiben(z.haushalt, z.person, aktion === 'paket-entwurf' ? 'speichern' : aktion === 'paket-verwerfen' ? 'verwerfen' : 'veroeffentlichen', b);
     return NextResponse.json(r.body, { status: r.status });
   }
   if (aktion.startsWith('webhook-')) {

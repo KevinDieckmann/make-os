@@ -30,8 +30,8 @@ export function gleicheFassung(a: ProzessVorlage, b: ProzessVorlage): boolean {
   return JSON.stringify(ohne(a)) === JSON.stringify(ohne(b));
 }
 
-export type EntwurfErgebnis = AnwendenErgebnis<VorlagenDatei> & { befunde?: Befund[] };
-const nein = (status: 400 | 403 | 404 | 409 | 413, fehler: string, x: { befunde?: Befund[]; konflikte?: { id: string; stand: string }[] } = {}): EntwurfErgebnis => ({ ok: false, status, fehler, ...x });
+export type EntwurfErgebnis = AnwendenErgebnis<VorlagenDatei> & { befunde?: Befund[]; paketGeaendert?: true; fassung?: number };
+const nein = (status: 400 | 403 | 404 | 409 | 413, fehler: string, x: { befunde?: Befund[]; konflikte?: { id: string; stand: string }[]; paketGeaendert?: true } = {}): EntwurfErgebnis => ({ ok: false, status, fehler, ...x });
 
 /**
  * Einen Entwurf speichern (rein, alles oder nichts). `eingabe` = `{ paketId, stand, vorlage }` — `stand` = Stand der Fassung, die die Werkstatt geladen hat (Entwurf bzw.
@@ -63,6 +63,45 @@ export function paketEntwurfAnwenden(d: VorlagenDatei, eingabe: unknown, k: Entw
   }
   const { entwuerfe: _alt, ...rest } = d;
   return { ok: true, datei: Object.keys(entwuerfe).length ? { ...rest, entwuerfe } : rest, geaendert: [x.paket.id] };
+}
+
+/** Die Marke mit Name und Notiz einer veröffentlichten Fassung (der Fulfillment-Bestand kennt keine Versionen — die Notiz steht in `marken`). */
+export const fassungNotizMarke = (paketId: string, fassung: number): string => `fassung-notiz:${paketId}:${fassung}`;
+const NAME_MAX = 80, NOTIZ_MAX = 500;
+
+/**
+ * Den Entwurf veröffentlichen (rein, E3): er wird die NEUE Fassung des Pakets (Fassung + 1) — über dieselbe Prüfung wie beim Speichern (Fulfillment-Modus, Verlust-
+ * Wächter, Struktur). Stand des Entwurfs veraltet → 409; wurde das Paket seit Beginn des Entwurfs anders gespeichert (z. B. im alten Editor) → 409 `paketGeaendert`
+ * — nur mit `trotzdem: true` ersetzt der Entwurf es (die Werkstatt fragt ausdrücklich). Laufende Fälle ändern sich NICHT: jeder Kunde übernimmt per Klick
+ * (`vorlageUebernehmen`, F2). Name und Notiz → Marke `fassung-notiz:<paket>:<n>`.
+ */
+export function paketVeroeffentlichen(d: VorlagenDatei, eingabe: unknown, k: EntwurfKontext): EntwurfErgebnis {
+  const e = (eingabe && typeof eingabe === 'object' ? eingabe : {}) as { paketId?: unknown; stand?: unknown; name?: unknown; notiz?: unknown; trotzdem?: unknown };
+  if (typeof e.paketId !== 'string') return nein(400, 'Welches Paket?');
+  const x = paketEntwurfVon(d, e.paketId);
+  if (!x) return nein(404, 'Dieses Paket gibt es nicht (mehr).');
+  if (!x.entwurf) return nein(409, 'Es gibt keinen Entwurf zum Veröffentlichen.');
+  const aktuell = k.standVon(x.entwurf.vorlage);
+  if (e.stand !== aktuell) return nein(409, 'Der Entwurf wurde inzwischen geändert — bitte neu laden.', { konflikte: [{ id: x.paket.id, stand: aktuell }] });
+  if (k.standVon(x.paket) !== x.entwurf.basisStand && e.trotzdem !== true) {
+    return nein(409, 'Das Paket wurde seit Beginn dieses Entwurfs anders gespeichert — beim Veröffentlichen ersetzt der Entwurf diese Änderungen.', { paketGeaendert: true });
+  }
+  const name = typeof e.name === 'string' ? e.name.trim() : '', notiz = typeof e.notiz === 'string' ? e.notiz.trim() : '';
+  if (name.length > NAME_MAX) return nein(413, `Name: höchstens ${NAME_MAX} Zeichen.`);
+  if (notiz.length > NOTIZ_MAX) return nein(413, `Notiz: höchstens ${NOTIZ_MAX} Zeichen.`);
+  const r = paketAusDefinition(x.entwurf.vorlage as ProzessDefinition);
+  if (!r.ok) return nein(400, r.befunde[0]?.text ?? 'Das Paket trägt etwas, das der Fall nicht ausführt.', { befunde: r.befunde });
+  try { vorlageStrukturPruefen(r.vorlage, d); } catch (f) { return nein(400, f instanceof Error ? f.message : 'Die Struktur ist nicht gültig.'); }
+  if (gleicheFassung(r.vorlage, x.paket)) return nein(409, 'Der Entwurf ist gleich dem Paket — es gibt nichts zu veröffentlichen.');
+  const fassung = x.paket.fassung + 1;
+  const neu: ProzessVorlage = { ...r.vorlage, fassung, geaendert: k.jetzt, geaendertVon: k.person };
+  const { [x.paket.id]: _weg, ...uebrig } = d.entwuerfe ?? {};
+  const { entwuerfe: _alt, ...rest } = d;
+  const marken = name || notiz ? { ...d.marken, [fassungNotizMarke(x.paket.id, fassung)]: [name, notiz].filter(Boolean).join(' — ') } : d.marken;
+  return {
+    ok: true, fassung, geaendert: [x.paket.id],
+    datei: { ...rest, prozesse: d.prozesse.map(p => (p.id === x.paket.id ? neu : p)), marken, ...(Object.keys(uebrig).length ? { entwuerfe: uebrig } : {}) },
+  };
 }
 
 /** Den Entwurf verwerfen (rein) — das Paket bleibt, wie es ist. Ohne Entwurf: nichts geändert. */
