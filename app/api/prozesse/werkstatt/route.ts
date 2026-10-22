@@ -44,9 +44,12 @@ export async function GET(req: Request) {
   const id = q.get('id');
   const d = await prozesseLesen(z.haushalt);
   // Vorlagen der Kundengewinnung (22.10.): die Galerie (Kurzform + „schon übernommen“) bzw. eine Vorlage mit Vorschau — reine Daten, nichts Persönliches.
+  // B2 (22.10.): `&gruppe=begleitung` bzw. `&gruppe=alle` zeigt die Kunden-Begleitung (Fulfillment) — ohne Angabe wie bisher die 18 der Kundengewinnung.
   if (q.get('vorlagen') === '1') {
-    const [{ KUNDENGEWINNUNG_VORLAGEN, vorlageKurz }, { uebernommene }] = await Promise.all([import('@/lib/prozesse/kundengewinnung/bibliothek'), import('@/lib/prozesse/kundengewinnung/uebernehmen')]);
-    return NextResponse.json({ ok: true, rechte: z.rechte, vorlagen: KUNDENGEWINNUNG_VORLAGEN.map(vorlageKurz), uebernommen: uebernommene(d) });
+    const [{ vorlagenDerGruppe, vorlageKurz }, { uebernommene }] = await Promise.all([import('@/lib/prozesse/kundengewinnung/bibliothek'), import('@/lib/prozesse/kundengewinnung/uebernehmen')]);
+    const g = q.get('gruppe');
+    const gruppe = g === 'begleitung' || g === 'alle' ? g : 'kundengewinnung';
+    return NextResponse.json({ ok: true, rechte: z.rechte, vorlagen: vorlagenDerGruppe(gruppe).map(vorlageKurz), uebernommen: uebernommene(d) });
   }
   const vid = q.get('vorlage');
   if (vid) {

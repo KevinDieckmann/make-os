@@ -119,7 +119,17 @@ Weitere Teile von B1:
   - Ein zweiter Lauf erzeugt nichts.
   - Ein Kennungs-Umzug erzeugt keine Ereignisse (vorhandener Wächter).
 
-#### B2 · Vorlagen-Galerie „Fulfillment · Kunden-Begleitung“ — 2,5–3 Tage
+#### B2 · Vorlagen-Galerie „Fulfillment · Kunden-Begleitung“ — GEBAUT (22.10.)
+
+**Stand 22.10.:** `lib/prozesse/begleitung/vorlagen.ts` (FB1–FB9), Sammlung in Galerie und Route (`&gruppe=`), Lage-Felder des Falls aus `faelleFuerProzesse`,
+Platzhalter `kunde.gruss`/`fall.phase`/`fall.termin`. Abweichungen vom Plan (nichts doppelt, nichts am Fall vorbei):
+- FB4/FB5 ohne Agenten-Schritt: vorgefertigte Nachricht, im Stapel anpassbar (ein Agent kann heute keinen Text in den Entwurf geben).
+- FB6 wie FB3: nur erinnern — der Report geht aus dem Fall (sonst zählt „letzter Report“ nicht).
+- FB7 nur Glückwunsch — die Empfehlung fragt V14 (hört selbst auf „Ziel erreicht“).
+- FB9: Auslöser „letzte Etappe abgeschlossen“ (`fall.phase` leer) → Übergabe an V15.
+- Platzhalter `kunde.gruss` statt `kunde.anrede`; Texte neutral ohne Sie/ihr.
+- Gold: `tests/prozesse-ff-begleitung-b2.test.ts` (Probelauf aller neun mit Beispiel und echtem Fall: kein Lauf geschrieben, Fall und Paket Byte für Byte gleich).
+
 
 - **Daten wie die 18 Vorlagen der Kundengewinnung** (`lib/prozesse/begleitung/*`; dieselbe Galerie, dieselbe Übernahme `ausVorlageAnwenden`), ohne Namen und Beträge.
 - **Texte:** mit Platzhaltern; die Anrede Sie/Du kommt aus der Akte (`KundenAnrede` → Platzhalter `kunde.anrede`).

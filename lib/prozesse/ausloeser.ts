@@ -84,6 +84,11 @@ export const FALL_FELDER: Readonly<Record<FallArt, readonly FeldDef[]>> = {
     { id: 'mandat.produkt', titel: 'Produkt', art: 'kennung' }, { id: 'mandat.zustaendig', titel: 'Zuständig', art: 'kennung' },
     // Begleit-Prozesse am Fall (22.10., B1): das Paket und der Status des Fulfillment-Falls (lib/fulfillment/prozesse/server.ts `faelleFuerProzesse`) — ohne Fall fehlen sie.
     { id: 'fall.paket', titel: 'Paket des Falls', art: 'kennung' }, { id: 'fall.status', titel: 'Status des Falls', art: 'text' },
+    // Kunden-Begleitung (22.10., B2): die Lage des Falls für die Begleit-Vorlagen — aus derselben Cockpit-Zeile (`faelleFuerProzesse`), ohne Fall fehlen sie.
+    { id: 'fall.phase', titel: 'Aktuelle Etappe des Falls (fehlt: keine mehr offen)', art: 'text' }, { id: 'fall.wartet-kunde', titel: 'Punkte, die auf den Kunden warten', art: 'zahl' },
+    { id: 'fall.bestaetigung-offen', titel: 'Bestätigung überfällig', art: 'ja-nein' }, { id: 'fall.willkommen-offen', titel: 'Willkommensmail überfällig', art: 'ja-nein' },
+    { id: 'fall.report-faellig', titel: 'Report fällig', art: 'ja-nein' }, { id: 'fall.puls-kritisch', titel: 'Kunden-Puls kritisch', art: 'ja-nein' },
+    { id: 'fall.puls-gespraech-offen', titel: 'Puls-Gespräch des Fulfillments noch im Stapel', art: 'ja-nein' },
     ...KG_FALL_FELDER.mandat,
   ],
   event: [

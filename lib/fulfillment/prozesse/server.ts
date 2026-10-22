@@ -208,14 +208,33 @@ async function empfaenger(m: Pick<Mandat, 'zustaendig'>): Promise<string[]> {
 }
 
 /** Was die Prozesse (Lauf-Motor) von einem Fall wissen dürfen (22.10., Begleit-Prozesse B1): nur Kennung des Pakets, Status und der nächste Termin mit dem Kunden. */
-export interface FallFuerProzesse { paket: string; status: Fall['status']; termin?: string }
+export interface FallFuerProzesse {
+  paket: string; status: Fall['status']; termin?: string;
+  /**
+   * Begleit-Vorlagen (22.10., B2) — die Lage des Falls für die Rauten der Kunden-Begleitung, ALLES aus derselben Cockpit-Zeile (keine zweite Rechnung): aktuelle
+   * Etappe (fehlt = keine Etappe mehr offen), Punkte, die auf den Kunden warten, und ob eine Bestätigung / die Willkommensmail überfällig bzw. der Report fällig
+   * ist (dieselben Hänger wie „Heute im Fulfillment“), Puls kritisch und ob das Puls-Gespräch des Fulfillments (`k:puls:`) noch offen im Stapel liegt.
+   */
+  phase?: string; wartetKunde: number; bestaetigungOffen: boolean; willkommenOffen: boolean; reportFaellig: boolean; pulsKritisch: boolean; pulsGespraechOffen: boolean;
+}
 /**
  * Je laufendem Fall eines Business-Mandats Paket, Status und nächster Termin mit dem Kunden — aus DERSELBEN Rechnung wie das Cockpit (`cockpitDaten`:
  * `naechsterFallTermin`), keine zweite Fristen- oder Terminrechnung. Gelesen vom Motor (Fall-Felder `fall.paket`/`fall.status`, Datums-Auslöser `fall.termin`).
  */
 export async function faelleFuerProzesse(heute = localDay()): Promise<Record<string, FallFuerProzesse>> {
-  const [{ zeilen }, faelle] = await Promise.all([cockpitDaten(heute), fulfillmentLesen('faelle')]);
-  return Object.fromEntries(zeilen.map(z => [z.mandatId, { paket: faelle.faelle[z.mandatId]?.vorlageId ?? '', status: z.status, ...(z.naechsterRitual ? { termin: z.naechsterRitual } : {}) }]));
+  const [{ zeilen }, faelle, puls] = await Promise.all([cockpitDaten(heute), fulfillmentLesen('faelle'), pulsGespraecheOffen()]);
+  return Object.fromEntries(zeilen.map(z => [z.mandatId, {
+    paket: faelle.faelle[z.mandatId]?.vorlageId ?? '', status: z.status, ...(z.naechsterRitual ? { termin: z.naechsterRitual } : {}),
+    ...(z.phase ? { phase: z.phase } : {}), wartetKunde: z.wartet, bestaetigungOffen: z.haengt.some(h => h.art === 'freigabe'),
+    willkommenOffen: z.onboarding.willkommenUeberfaellig, reportFaellig: z.haengt.some(h => h.art === 'report'), pulsKritisch: z.pulsKritisch, pulsGespraechOffen: puls.has(z.mandatId),
+  } satisfies FallFuerProzesse]));
+}
+/** Mandate mit offenem Puls-Gespräch im Stapel (Vorschlag `k:puls:` aus lib/fulfillment/kunde/server.ts) — ohne Stapel leer, wirft nie. */
+async function pulsGespraecheOffen(): Promise<Set<string>> {
+  try {
+    const { lies } = await import('@/lib/zoe/stapel');
+    return new Set((await lies('offen')).filter(v => v.bezug?.art === 'fulfillment' && v.bezug.id.startsWith('k:puls:') && typeof v.eingabe?.mandatId === 'string').map(v => v.eingabe.mandatId as string));
+  } catch { return new Set(); }
 }
 
 /** Begleit-Prozesse (22.10., B1): jeder Hänger eines laufenden Falls als Ereignis `fall-haengt` — DIESELBE Rechnung wie Cockpit und „Heute im Fulfillment“ (`wasHaengt`). */

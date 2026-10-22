@@ -40,6 +40,7 @@ import { anspracheUrteil } from './ansprache';
 import { laufPerson, type TeamKurz } from './rollen';
 import { herkunftAus, mitLaufHerkunft } from './lauf-herkunft';
 import { gelesenFelderMenge } from './kundengewinnung/raute-felder';
+import { anredeAus, kundenGruss } from '@/lib/fulfillment/kunde/bild';
 
 // ══ Bestand ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -150,7 +151,8 @@ const LEER_FALL: FallInfo = { fehlt: false, daten: {}, platzhalter: {}, kontakt:
 
 function kontaktPlatzhalter(k: Kontakt | null): Record<string, unknown> {
   if (!k) return {};
-  return { 'kontakt.anrede': k.anrede ?? 'Sie', 'kontakt.vorname': k.vorname ?? '', 'kontakt.nachname': k.nachname ?? '' };
+  // `kunde.gruss` (22.10., B2): die Grußzeile nach Du/Sie aus der Akte — EINE Stelle (lib/fulfillment/kunde/bild.ts `kundenGruss`).
+  return { 'kontakt.anrede': k.anrede ?? 'Sie', 'kontakt.vorname': k.vorname ?? '', 'kontakt.nachname': k.nachname ?? '', 'kunde.gruss': kundenGruss(anredeAus(k.anrede), k.vorname, k.nachname) };
 }
 
 /**
@@ -229,7 +231,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
           ...(await kgLesen(k, m.kontaktIds.map(nachId).filter((y): y is Kontakt => !!y))).daten,
           ...(await mandatFelder(m, kx)), ...fallFelderVon(ff),
         },
-        platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde },
+        platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde, ...(ff?.phase ? { 'fall.phase': ff.phase } : {}), ...(ff?.termin ? { 'fall.termin': ff.termin } : {}) },
         datum: { ...(m.start ? { 'mandat.start': m.start.slice(0, 10) } : {}), ...(mf.endeAm ? { 'mandat.ende': mf.endeAm } : {}), ...(m.naechstesReview ? { 'mandat.review': m.naechstesReview.slice(0, 10) } : {}), ...(mf.frist ? { 'mandat.kuendigungsfrist': mf.frist } : {}), ...(ff?.termin ? { 'fall.termin': ff.termin } : {}) },
       };
     }
@@ -288,8 +290,12 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
 async function faelleVon(kx: MotorKontext): Promise<Record<string, import('@/lib/fulfillment/prozesse/server').FallFuerProzesse>> {
   try { return await (await import('@/lib/fulfillment/prozesse/server')).faelleFuerProzesse(localDay(kx.jetzt)); } catch { return {}; }
 }
-/** Die Fall-Felder `fall.paket`/`fall.status` (nur mit Fall). */
-const fallFelderVon = (f: { paket: string; status: string } | undefined): Record<string, string> => (f ? { ...(f.paket ? { 'fall.paket': f.paket } : {}), 'fall.status': f.status } : {});
+/** Die Fall-Felder `fall.paket`/`fall.status` und (B2) die Lage für die Kunden-Begleitung (nur mit Fall; `fall.phase` fehlt, wenn keine Etappe mehr offen ist). */
+const fallFelderVon = (f: import('@/lib/fulfillment/prozesse/server').FallFuerProzesse | undefined): Record<string, string | number | boolean> => (f ? {
+  ...(f.paket ? { 'fall.paket': f.paket } : {}), 'fall.status': f.status, ...(f.phase ? { 'fall.phase': f.phase } : {}),
+  'fall.wartet-kunde': f.wartetKunde, 'fall.bestaetigung-offen': f.bestaetigungOffen, 'fall.willkommen-offen': f.willkommenOffen, 'fall.report-faellig': f.reportFaellig,
+  'fall.puls-kritisch': f.pulsKritisch, 'fall.puls-gespraech-offen': f.pulsGespraechOffen,
+} : {});
 
 async function mandatFelder(m: CrmBestand['mandate'][number], kx: MotorKontext): Promise<Record<string, unknown>> {
   const { mandatLage } = await import('@/lib/crm/kunden');
@@ -1868,8 +1874,14 @@ const BEISPIEL: FallInfo = {
     'lead.einladungsweg': 'mail', 'lead.danke-moeglich': true, 'lead.netzwerken-schritt': 'qualifizieren', 'lead.kampagnen-ergebnis': 'chance',
     'mandat.ampel': 'gruen', 'mandat.health': 80, 'mandat.verlaengerung': 'manuell', 'mandat.verlaengert': false, 'mandat.ampel-mail': 'gruen',
     'event.mix-erreicht': true, 'event.quote-48h': 90,
+    // Kunden-Begleitung (22.10., B2) — der Hauptweg der Begleit-Vorlagen, erfunden.
+    'fall.status': 'laeuft', 'fall.phase': 'Umsetzung', 'fall.wartet-kunde': 1, 'fall.bestaetigung-offen': true, 'fall.willkommen-offen': true, 'fall.report-faellig': true,
+    'fall.puls-kritisch': true, 'fall.puls-gespraech-offen': false,
   },
-  platzhalter: { 'kontakt.anrede': 'Sie', 'kontakt.vorname': 'Erika', 'kontakt.nachname': 'Beispiel', 'firma.name': 'Beispiel GmbH', 'deal.titel': 'Beispiel-Deal', 'mandat.titel': 'Beispiel-Mandat', 'event.titel': 'Beispiel-Abend', 'kampagne.titel': 'Beispiel-Kampagne' },
+  platzhalter: {
+    'kontakt.anrede': 'Sie', 'kontakt.vorname': 'Erika', 'kontakt.nachname': 'Beispiel', 'firma.name': 'Beispiel GmbH', 'deal.titel': 'Beispiel-Deal', 'mandat.titel': 'Beispiel-Mandat', 'event.titel': 'Beispiel-Abend', 'kampagne.titel': 'Beispiel-Kampagne',
+    'kunde.gruss': 'Guten Tag Erika Beispiel', 'fall.phase': 'Umsetzung', 'fall.termin': '2026-11-05',
+  },
   datum: {},
 };
 const BEISPIEL_EMPFAENGER: Empfaenger = { kontaktId: 'c-beispiel', name: 'Erika Beispiel', email: 'erika@example.invalid', telefon: '+49 000 0000000' };

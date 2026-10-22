@@ -1706,6 +1706,13 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   **E3 Veröffentlichen:** `paketVeroeffentlichen` (Fassung + 1, Marke `fassung-notiz:<paket>:<n>`; Paket seit Entwurfsbeginn anders → 409 `paketGeaendert`, nur
   `trotzdem` ersetzt). Laufende Fälle ändern sich NIE beim Veröffentlichen — je Kunde per Klick über den vorhandenen Weg `vorlage-uebernehmen` (Liste `kunden` mit
   `diffVorschau`, `PaketKunden.tsx`).
+  **B2 Kunden-Begleitung:** neun Begleit-Vorlagen FB1–FB9 in `lib/prozesse/begleitung/vorlagen.ts` (gebaut wie die 18 der Kundengewinnung, `gruppe: 'begleitung'`,
+  `ALLE_VORLAGEN`/`vorlagenDerGruppe`, Galerie mit Sammlung; `?vorlagen=1` bleibt die Kundengewinnung, `&gruppe=begleitung|alle`). Regeln: nur Bausteine, die nie
+  in den Fall schreiben; Willkommensmail und Report bleiben im Fall (Vorlage erinnert nur); Erinnerungen nennen nur den Kunden-Link der Willkommensmail, ein neuer
+  Link nur nach Raute „Mensch“ und aus dem Fall; jedes Warten (auf `kunde-geliefert`/`abstimmung-bestaetigt`) mit Obergrenze + Raute auf die Lage des Falls.
+  Lage-Felder `fall.phase`, `fall.wartet-kunde`, `fall.bestaetigung-offen`, `fall.willkommen-offen`, `fall.report-faellig`, `fall.puls-kritisch`,
+  `fall.puls-gespraech-offen` NUR aus `faelleFuerProzesse` (Cockpit-Zeile + offener `k:puls:`-Vorschlag); Platzhalter `{{kunde.gruss}}` (Du/Sie aus der Akte,
+  EINE Stelle `kundenGruss` in lib/fulfillment/kunde/bild.ts), `{{fall.phase}}`, `{{fall.termin}}`. Texte ohne Sie/ihr. Wächter `tests/prozesse-ff-begleitung-b2.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
