@@ -7,6 +7,7 @@
 //   Buchung          Haltezeit einer vorläufigen Buchung, Gültigkeit des Mail-Links              lib/kalender/buchung.ts `reservieren`, app/api/kalender/buchung
 //   Kapazität        Schwellen „machbar“ / „eng“                                                lib/kapazitaet/modell.ts, lib/crm/planung.ts
 //   Leistungstreppe  Abstand der Fortschritts-Reports                                           lib/crm/treppe.ts `reportNaechsterFaellig`
+//   Überführung      Umschalten ab n gleichen Läufen / m Tagen (Paket Ü)                         lib/prozesse/ueberfuehrung.ts `umschaltenPruefen`
 // Geschrieben nur über POST /api/prozesse/stellschrauben (lib/prozesse/stellschrauben-werte-server.ts: Stand/409, alles oder nichts, Protokoll ohne Werte).
 // Werte der Markttraktion (Nachfassfrist, Wiedervorlage, Deal-Ampel) liegen in den Wertelisten (lib/crm/stellschrauben.ts) — ein vorhandener Bestand.
 
@@ -60,11 +61,19 @@ export const WERTE: readonly WertDef[] = [
     erklaerung: 'Bis zu diesem Anteil gilt ein Ziel als eng, darüber als nicht machbar. Muss über „machbar bis“ liegen.' },
   { id: 'treppe.reportTage', prozess: 'sp-treppe', gruppe: 'Fortschritts-Report', name: 'Report alle', art: 'zahl', vorgabe: 14, min: 7, max: 90, einheit: 'Tage',
     erklaerung: 'So viele Tage nach dem letzten Report ist der nächste fällig — Treppe, Hänger im Fall-Kopf und Report-Zeitachse lesen denselben Wert.' },
+  // Überführung (22.10., Paket Ü — lib/prozesse/ueberfuehrung.ts `umschaltenPruefen`): wann ein überführter Prozess frühestens umschalten darf. Ein Wert für alle
+  // überführbaren Teile (gezeigt im Steckbrief jedes überführbaren System-Prozesses).
+  { id: 'ueberfuehrung.laeufe', prozess: 'sp-rechnung', gruppe: 'Überführung', name: 'Umschalten ab … gleichen Läufen', art: 'zahl', vorgabe: 5, min: 1, max: 60, einheit: 'Läufe',
+    erklaerung: 'So viele Läufe in Folge müssen alter und neuer Weg im Schatten dasselbe tun, bevor „Umschalten“ geht. Umgeschaltet wird immer nur per Klick.' },
+  { id: 'ueberfuehrung.tage', prozess: 'sp-rechnung', gruppe: 'Überführung', name: 'Umschalten frühestens nach … Tagen', art: 'zahl', vorgabe: 3, min: 1, max: 60, einheit: 'Tage',
+    erklaerung: 'So viele Tage ohne Abweichung müssen vergangen sein, bevor „Umschalten“ geht — zusammen mit der Zahl der gleichen Läufe.' },
 ];
 const NACH_ID = new Map(WERTE.map(w => [w.id, w]));
 export const wertDef = (id: string): WertDef | undefined => NACH_ID.get(id);
 /** Prozesse, deren Steckbrief eine Stellschraube auch zeigt (dieselbe Kennung, derselbe Wert). */
-export const AUCH_IN: Readonly<Record<string, readonly string[]>> = { 'kapa.machbarBis': ['sp-vertriebsplanung'], 'kapa.engBis': ['sp-vertriebsplanung'] };
+export const AUCH_IN: Readonly<Record<string, readonly string[]>> = {
+  'kapa.machbarBis': ['sp-vertriebsplanung'], 'kapa.engBis': ['sp-vertriebsplanung'],
+};
 
 export type Werte = Readonly<Record<string, number | boolean>>;
 /** Der Bestand. `werte` trägt NUR Abweichungen von der Vorgabe. */
@@ -121,6 +130,8 @@ export const buchungMailLinkTage = (w?: Werte | null): number => zahl(w, 'buchun
 export const kapaSchwellen = (w?: Werte | null): { machbarBis: number; engBis: number } => ({ machbarBis: zahl(w, 'kapa.machbarBis') / 100, engBis: zahl(w, 'kapa.engBis') / 100 });
 /** Abstand der Fortschritts-Reports in Tagen. */
 export const reportTage = (w?: Werte | null): number => zahl(w, 'treppe.reportTage');
+/** Wann ein überführter Prozess frühestens umschalten darf (Paket Ü): gleiche Läufe in Folge und Tage ohne Abweichung. */
+export const umschaltRegel = (w?: Werte | null): { laeufe: number; tage: number } => ({ laeufe: zahl(w, 'ueberfuehrung.laeufe'), tage: zahl(w, 'ueberfuehrung.tage') });
 
 // ── Ändern (rein) ─────────────────────────────────────────────────────────────────────────────────────────────────────
 

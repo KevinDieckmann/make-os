@@ -21,6 +21,7 @@ import { oeffentlichModus, vertragAus } from './agent-schritt';
 import { freigabepunktAus, papierkorbEintragAus, rolleAus, uebergangAus, vorlagenKnotenAus } from '@/lib/fulfillment/lesen';
 import type { ProzessRechte } from './rollen';
 import { testdatenAus, testdatenPruefen } from './testdaten';
+import { ersetztAus, ueberfuehrungAus } from './ueberfuehrung';
 
 type O = Record<string, unknown>;
 type K = ProzessKnoten<ProzessForm>;
@@ -252,6 +253,8 @@ export function eintragAus(o: O): ProzessEintrag | null {
     statusAm: s(o.statusAm), statusVon: s(o.statusVon),
     // Werkstatt bau-fertig (22.10.): optionale Testdaten — nur erfundene Werte (sonst fallen sie beim Lesen ganz weg); ohne Feld bit-gleich wie bisher.
     testdaten: testdatenAus(o.testdaten),
+    // Überführung (22.10., Paket Ü): nur ein System-Prozess der festen Liste; die Phase gibt es nur mit `ersetzt` — ohne beides bit-gleich wie bisher.
+    ...(ersetztAus(o.ersetzt) ? { ersetzt: ersetztAus(o.ersetzt), ueberfuehrung: ueberfuehrungAus(o.ueberfuehrung) } : {}),
   });
 }
 export const leerProzesse = (): ProzesseDatei => ({ v: 1, prozesse: [] });

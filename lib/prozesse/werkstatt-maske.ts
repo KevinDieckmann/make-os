@@ -208,7 +208,8 @@ export function formauswahl(katalog: readonly KatalogEintrag[], o: { suche?: str
   const passt = (e: KatalogEintrag) => !q || `${e.name} ${e.satz} ${e.anbindung}`.normalize('NFC').toLowerCase().includes(q);
   // Feinschliff 22.10. (Befund 1): beim Anhängen an einen Knoten stehen Aktionen und Entscheidungen vorn, Auslöser (nur am Anfang sinnvoll) ganz hinten.
   const rang = (e: KatalogEintrag) => (o.anhaengen && e.form === 'ausloeser' ? 1 : 0);
-  return katalog.filter(e => !(o.ohneAusloeser && e.form === 'ausloeser') && passt(e))
+  // Feste Schritte (Paket Ü) kommen nur mit „In die Werkstatt überführen“ — nie aus der Auswahl.
+  return katalog.filter(e => !e.nurUeberfuehrung && !(o.ohneAusloeser && e.form === 'ausloeser') && passt(e))
     .sort((a, b) => Number(b.form === o.form) - Number(a.form === o.form) || rang(a) - rang(b));
 }
 

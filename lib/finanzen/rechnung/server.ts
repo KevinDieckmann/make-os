@@ -655,35 +655,54 @@ export async function mahnTageSetzen(roh: unknown): Promise<[number, number, num
   return t;
 }
 
+/** Ein fälliger Mahnvorschlag mit seiner Aufgabe (Kennungs-Brücke `mahnAufgabeId`) und seinem Bereich — für den Schatten-Vergleich der Überführung (Paket Ü). */
+export interface MahnSoll { id: string; bereich: 'privat' | 'business' }
+
 /**
- * Morgenlauf (08.10.): je fälligem Mahnvorschlag EINE Aufgabe (feste Kennung `mahn-<rechnung>-<stufe>`) über den Aufgaben-Schreibweg —
- * gibt es sie schon (auch erledigt oder im Papierkorb), passiert nichts. Titel ohne Betrag und ohne Namen (Glocke, Telegram).
- * Versand bleibt ein Klick in Finanzen › Rechnungen & Zahlungen. Wirft nie.
+ * Der Kern der Mahnaufgaben (Paket Ü — der Morgenlauf und der feste Schritt `mahnaufgaben` rechnen hiermit): je fälligem Mahnvorschlag EINE Aufgabe (feste
+ * Kennung `mahn-<rechnung>-<stufe>`) über den Aufgaben-Schreibweg — gibt es sie schon (auch erledigt oder im Papierkorb), passiert nichts. Titel ohne Betrag und
+ * ohne Namen (Glocke, Telegram). `bereich` = welche Rechnungen (nach dem Bereich ihrer Gesellschaft); `schreiben: false` = nur rechnen (Schatten). Wirft.
+ */
+export async function mahnAufgabenKern(heute: string, o: { bereich: 'alle' | 'privat' | 'business'; schreiben: boolean }): Promise<{ neu: number; neueIds: string[]; soll: MahnSoll[] }> {
+  const tage = await mahnTageLaden();
+  const plan = await planLaden();
+  const faellig: (MahnVorschlag & { r: Rechnung })[] = mahnVorschlaege(plan.rechnungen, heute, tage).map(v => ({ ...v, r: plan.rechnungen.find(r => r.id === v.rechnungId)! }))
+    .filter(v => o.bereich === 'alle' || bereichVon(v.r.firmaId) === o.bereich);
+  const soll: MahnSoll[] = faellig.map(v => ({ id: mahnAufgabeId(v.rechnungId, v.stufe), bereich: bereichVon(v.r.firmaId) }));
+  if (!faellig.length || !o.schreiben) return { neu: 0, neueIds: [], soll };
+  const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
+  const jetzt = new Date().toISOString();
+  let neueIds: string[] = [];
+  await systemAufgabenAendern(stand => {
+    const da = new Set(stand.tasks.map(t => t.id));
+    const fehlen = faellig.filter(v => !da.has(mahnAufgabeId(v.rechnungId, v.stufe)));
+    neueIds = fehlen.map(v => mahnAufgabeId(v.rechnungId, v.stufe));
+    return {
+      neu: fehlen.map(v => ({
+        id: mahnAufgabeId(v.rechnungId, v.stufe), title: `${v.label} vorbereiten — Rechnung ${v.nummer ?? ''}`.trim(),
+        description: `Die Rechnung ist seit ${v.tageUeberfaellig} Tagen überfällig. Entwurf ansehen und per Klick verschicken (Finanzen › Rechnungen & Zahlungen).`,
+        notiz: `[Rechnung öffnen](${WEG.rechnung(v.rechnungId)})`, status: 'todo', priority: 'high', assignee: 'both', dueDate: heute,
+        tags: ['rechnung', 'mahnung'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt,
+        space: bereichVon(v.r.firmaId), ...(istGesellschaft(v.r.firmaId) ? { spaceId: v.r.firmaId } : {}),
+      })),
+    };
+  }, { jetzt });
+  return { neu: neueIds.length, neueIds, soll };
+}
+
+/**
+ * Morgenlauf (08.10.): je fälligem Mahnvorschlag EINE Aufgabe (`mahnAufgabenKern`). Versand bleibt ein Klick in Finanzen › Rechnungen & Zahlungen. Wirft nie.
+ * Ablöse-Weiche (22.10., Paket Ü): die Mahnaufgaben der Business-Gesellschaften kann ein überführter Prozess der Werkstatt übernehmen (`sp-rechnung`) — hier wird die
+ * Weiche GENAU EINMAL gefragt; arbeitet der neue Weg, bleiben hier nur die Privat-Gesellschaften (Prozesse sind Business). Rechnet der neue Weg im Schatten mit,
+ * meldet dieser Lauf sein Wirkungsbild (Business) dem Vergleich. Ohne Überführung bit-gleich wie vorher.
  */
 export async function mahnAufgabenNachziehen(heute = localDay()): Promise<{ neu: number }> {
   try {
-    const tage = await mahnTageLaden();
-    const plan = await planLaden();
-    const faellig: (MahnVorschlag & { r: Rechnung })[] = mahnVorschlaege(plan.rechnungen, heute, tage).map(v => ({ ...v, r: plan.rechnungen.find(r => r.id === v.rechnungId)! }));
-    if (!faellig.length) return { neu: 0 };
-    const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
-    const jetzt = new Date().toISOString();
-    let neu = 0;
-    await systemAufgabenAendern(stand => {
-      const da = new Set(stand.tasks.map(t => t.id));
-      const fehlen = faellig.filter(v => !da.has(mahnAufgabeId(v.rechnungId, v.stufe)));
-      neu = fehlen.length;
-      return {
-        neu: fehlen.map(v => ({
-          id: mahnAufgabeId(v.rechnungId, v.stufe), title: `${v.label} vorbereiten — Rechnung ${v.nummer ?? ''}`.trim(),
-          description: `Die Rechnung ist seit ${v.tageUeberfaellig} Tagen überfällig. Entwurf ansehen und per Klick verschicken (Finanzen › Rechnungen & Zahlungen).`,
-          notiz: `[Rechnung öffnen](${WEG.rechnung(v.rechnungId)})`, status: 'todo', priority: 'high', assignee: 'both', dueDate: heute,
-          tags: ['rechnung', 'mahnung'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt,
-          space: bereichVon(v.r.firmaId), ...(istGesellschaft(v.r.firmaId) ? { spaceId: v.r.firmaId } : {}),
-        })),
-      };
-    }, { jetzt });
-    return { neu };
+    const ue = await import('@/lib/prozesse/ueberfuehrung-server');
+    const weg = await ue.wegFuer('sp-rechnung');
+    const r = await mahnAufgabenKern(heute, { bereich: weg.weg === 'neu' ? 'privat' : 'alle', schreiben: true });
+    if (weg.schatten) await ue.vergleichMeldenServer('sp-rechnung', 'alt', heute, (await import('@/lib/prozesse/system-schritte-server')).mahnBild(r.soll.filter(x => x.bereich === 'business'), heute));
+    return { neu: r.neu };
   } catch (e) {
     console.error('[rechnung] Mahn-Aufgaben nicht angelegt:', e instanceof Error ? e.message : e);
     return { neu: 0 };

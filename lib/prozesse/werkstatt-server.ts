@@ -24,8 +24,15 @@ export async function prozesseHaushalt(): Promise<string> {
   return h && HAUSHALT_OK.test(h) ? h : 'inhaber';
 }
 
-/** Stand eines Prozesses (für 409) — Fingerabdruck des ganzen Eintrags. Nie gespeichert. */
-export const standVon = (e: ProzessEintrag): string => fingerabdruck(e as unknown as Record<string, unknown>);
+/**
+ * Stand eines Prozesses (für 409) — Fingerabdruck des ganzen Eintrags. Nie gespeichert. Ausgenommen der Schatten-Vergleich einer Überführung (Paket Ü, 22.10.):
+ * den schreibt der Takt bzw. der Morgenlauf — sonst bekäme, wer gerade in der Werkstatt baut, nach jedem Morgen ein 409. Ohne Überführung derselbe Wert wie bisher.
+ */
+export const standVon = (e: ProzessEintrag): string => {
+  if (!e.ueberfuehrung) return fingerabdruck(e as unknown as Record<string, unknown>);
+  const { vergleich: _v, ...ue } = e.ueberfuehrung;
+  return fingerabdruck({ ...e, ueberfuehrung: ue } as unknown as Record<string, unknown>);
+};
 
 export async function prozesseLesen(h?: string): Promise<ProzesseDatei> {
   return prozesseAus(await loadJson<unknown>(prozesseBestand(h ?? await prozesseHaushalt())));
@@ -164,7 +171,7 @@ export async function katalogAufgeloest(): Promise<KatalogAufgeloest[]> {
 // ── Konto löschen (lib/datenschutz/konto-daten.ts) ────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Felder mit einem Speichernamen (Person des Haushalts) in den Prozess-Beständen. */
-export const PROZESS_PERSONEN_FELDER: ReadonlySet<string> = new Set(['angelegtVon', 'entwurfVon', 'statusVon', 'geaendertVon', 'von', 'laeuftAls', 'erneuertVon', 'scharfVon']);
+export const PROZESS_PERSONEN_FELDER: ReadonlySet<string> = new Set(['angelegtVon', 'entwurfVon', 'statusVon', 'geaendertVon', 'von', 'laeuftAls', 'erneuertVon', 'scharfVon', 'umgeschaltetVon']);
 /** Speichername bzw. Team-Kennung `konto-<speicher>` einer gelöschten Kontoperson → „[gelöscht]“ (rein). Die Einträge bleiben (Geschäftsunterlagen). */
 export function prozesseOhnePerson<T>(wert: T, speicher: string, ersatz = '[gelöscht]'): { wert: T; n: number } {
   let n = 0;

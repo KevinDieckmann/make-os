@@ -36,6 +36,7 @@ import {
 import { ausWandzeit, minutenVon, tagPlus, tagVon, wandAus, wandzeit } from '@/lib/kalender/zeit';
 import { istWerktag, werktagePlus } from '@/lib/zeit/kalender-kern';
 import { istDatumPeriode, stichtagVon } from './datum-start';
+import { istSystemSchritt, ueberfuehrbarZuSchritt, type SystemSchrittId } from './ueberfuehrung';
 
 type K = ProzessKnoten<ProzessForm>;
 
@@ -231,7 +232,12 @@ export type Aktion =
    * Schleife je Fall (22.10. spät): je Eintrag der Liste ein Teil-Lauf des veröffentlichten Teilprozesses — höchstens `hoechstens` neue je Lauf (der Rest wartet
    * sichtbar auf den nächsten Lauf), Fälle mit einem Lauf zählen nicht (ein Lauf je Prozess und Fall — so legt ein Wiederholen nichts doppelt an).
    */
-  | { art: 'schleife'; kennung: string; knoten: string; prozessId: string; liste: string; hoechstens: number };
+  | { art: 'schleife'; kennung: string; knoten: string; prozessId: string; liste: string; hoechstens: number }
+  /**
+   * Fester Schritt (22.10., Paket Ü — Baustein `system.fest`): der Kern eines überführten System-Ablaufs (lib/prozesse/system-schritte-server.ts). Die Wirkungen
+   * tragen die Kennungen des alten Codes (Kennungs-Brücke) — der Lauf hält sie nach dem Ausführen am Schritt fest, nicht `kennung`.
+   */
+  | { art: 'system'; kennung: string; knoten: string; schritt: SystemSchrittId };
 
 /** Worauf ein Lauf nach dieser Aktion wartet — null: gleich weiter. */
 export function warteArtVon(a: Aktion): WarteArt | null {
@@ -707,6 +713,11 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
     if (n < k.erneut.hoechstens && def.knoten.some(x => x.id === k.erneut!.ab)) return { art: 'weiter', ausgang: 'weiter', status: 'erledigt', grund: 'erneut', sprung: k.erneut.ab, zaehle: true };
     return { art: 'weiter', ausgang: 'weiter', status: 'erledigt' };
   }
+  // Fester Schritt (Paket Ü): der Kern des alten Ablaufs — ob der Prozess ihn wirklich ersetzt (sonst hält der Lauf), prüft der Server beim Ausführen.
+  if (e?.id === 'system.fest') {
+    if (!istSystemSchritt(werte.schritt)) return { art: 'fehler', grund: 'nicht-gebaut' };
+    return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'system', kennung, knoten: k.id, schritt: werte.schritt } };
+  }
   // CRM abfragen (N1): eine Liste von Fällen — nur lesen (der Server liest über die vorhandenen Leser, Art. 18 ausgeblendet, nur Business).
   if (k.abfrage) return { art: 'aktion', schatten: 'wuerde', ausgangSchatten: 'weiter', aktion: { art: 'abfrage', kennung, knoten: k.id, abfrage: k.abfrage } };
   if (e && LESEN_BAUSTEINE.has(e.id)) return { art: 'weiter', ausgang: 'weiter', status: 'erledigt' };
@@ -894,7 +905,8 @@ export function voran(laufEin: ProzessLauf, def: ProzessDefinition, u: LaufUmfel
           continue;
         }
         // Abfrage und Schleife haben keine eigene Wirkung mit dieser Kennung — die Schleife trägt nach dem Ausführen die Kennungen ihrer Teil-Läufe.
-        if (plan.aktion.art !== 'abfrage' && plan.aktion.art !== 'schleife') s.wirkung = [{ art: wirkungArtVon(plan.aktion), id: plan.aktion.kennung }];
+        // Ein fester Schritt (Paket Ü) trägt nach dem Ausführen die Kennungen des alten Codes (Aufgaben, Vorschläge) — nicht seine eigene.
+        if (plan.aktion.art !== 'abfrage' && plan.aktion.art !== 'schleife' && plan.aktion.art !== 'system') s.wirkung = [{ art: wirkungArtVon(plan.aktion), id: plan.aktion.kennung }];
         return { lauf: l, aktion: plan.aktion };
       }
     }
@@ -1368,6 +1380,7 @@ export function probeZeilen(l: ProzessLauf, def: ProzessDefinition): { schritte:
             : k?.form === 'agent' ? `würde ${k.agent?.wer.art === 'zoe' ? 'ZOE' : 'den Agenten'} fragen${s.kostenCent ? `, ca. ${Math.max(1, Math.round(s.kostenCent))} ct` : ''}`
               : k?.form === 'schleife' ? `würde je Fall einen Teil-Lauf starten: ${titel} (höchstens ${k.schleife?.hoechstens ?? 0} je Lauf)`
               : k?.abfrage ? `würde im CRM abfragen: ${titel} (höchstens ${k.abfrage.hoechstens})`
+              : k?.katalog?.id === 'system.fest' ? `würde den festen Schritt ausführen: ${titel}`
               : k?.form === 'ausloeser' ? `startet: ${titel}`
                 : k?.form === 'ende' ? `endet: ${titel}`
                   : k?.form === 'entscheidung' ? `entscheidet: ${titel} → ${s.ausgang === 'nein' ? 'nein' : 'ja'}${s.grund === 'daten-fehlen' ? ` (${GRUND_TEXT['daten-fehlen']})` : ''}`
@@ -1453,6 +1466,12 @@ export function probeAusgabe(b: ProbeBeobachtung, def: Pick<ProzessDefinition, '
         z.push({ feld: 'Wirkung', wert: 'würde je Eintrag einen Teil-Lauf starten' }, { feld: 'Höchstens je Lauf', wert: String(a.hoechstens) });
         Object.assign(j, { prozessId: a.prozessId, liste: a.liste, hoechstens: a.hoechstens });
         break;
+      case 'system': {
+        const u = ueberfuehrbarZuSchritt(a.schritt);
+        z.push({ feld: 'Wirkung', wert: `würde den festen Schritt „${u.teil}“ ausführen — wie der alte Ablauf im Code` }, { feld: 'Was', wert: u.satz }, { feld: 'Kennungen', wert: u.kennung });
+        Object.assign(j, { schritt: a.schritt, ersetzt: u.sp });
+        break;
+      }
     }
   } else if (b.warten) {
     z.push({ feld: 'Wirkung', wert: b.warten.art === 'ereignis' ? 'würde auf ein Ereignis warten' : b.warten.art === 'datum' ? 'würde bis zu einem Datum am Fall warten' : 'würde warten' }, { feld: 'Höchstens bis', wert: zeit(b.warten.bis) });

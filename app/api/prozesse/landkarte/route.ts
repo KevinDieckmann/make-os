@@ -27,9 +27,11 @@ export async function GET(req: Request) {
   const daten = await landkarteLesen();
   // Stellschrauben (22.10.): was DIESE Person je Weg ändern darf — außerhalb des Merkers (der gilt je Haushalt), darum auch im ETag.
   const rechte = await stellschraubenRechte(req, z);
+  // Überführung (22.10., Paket Ü): überführen und umschalten nur volle Mitglieder per Sitzung — die Werkstatt-Route prüft es beim Schreiben noch einmal.
+  const ueberfuehrenRecht = z.rechte.status && !z.dienst;
   // Fingerabdruck statt JSON (Kommas trennen If-None-Match — der ETag wäre nie wiedererkannt worden).
-  const etag = etagAus('prozesse', `${daten.stand}-${fingerabdruck(rechte)}`);
-  return unveraendert(req, etag) ?? jsonAntwort(req, { ok: true, ...daten, stellschraubenRechte: rechte }, etag);
+  const etag = etagAus('prozesse', `${daten.stand}-${fingerabdruck({ ...rechte, ueberfuehrenRecht })}`);
+  return unveraendert(req, etag) ?? jsonAntwort(req, { ok: true, ...daten, stellschraubenRechte: rechte, ueberfuehrenRecht }, etag);
 }
 
 const nein = (status: number, fehler: string, extra: Record<string, unknown> = {}) => NextResponse.json({ ok: false, fehler, ...extra }, { status });
