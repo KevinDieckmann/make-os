@@ -27,6 +27,14 @@ export function ueberfuehrungsVorlage(u: UeberfuehrbarDef): ProzessDefinition {
         endKriterium: 'Für jede fällige Mahnstufe einer Rechnung der Business-Gesellschaften steht eine Aufgabe.',
         phasen: [{ titel: 'Mahnen', schritte: [S.loop('t', 'Nach dem Morgen-Loop', 'morgen'), S.fest('f', 'Mahnaufgaben anlegen', 'mahnaufgaben'), S.ziel('e', 'Aufgaben stehen')] }],
       });
+    case 'treppe-report':
+      return prozess({
+        id: 'ue-treppe-report', titel: u.titel, bereich: 'ausbau', fallArt: 'keiner', zettel: zettel(u),
+        beschreibung: u.satz,
+        startKriterium: 'Jeden Morgen nach dem Morgen-Loop (Tagesstart) — einmal am Tag, wie bisher der Morgenlauf.',
+        endKriterium: 'Für jedes Mandat, dessen Report dran ist, liegt ein Vorschlag im Stapel (gesendet wird per Klick).',
+        phasen: [{ titel: 'Report', schritte: [S.loop('t', 'Nach dem Morgen-Loop', 'morgen'), S.fest('f', 'Report-Vorschläge legen', 'treppe-report'), S.ziel('e', 'Vorschläge liegen im Stapel')] }],
+      });
   }
 }
 

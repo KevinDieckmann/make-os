@@ -73,6 +73,8 @@ export const wertDef = (id: string): WertDef | undefined => NACH_ID.get(id);
 /** Prozesse, deren Steckbrief eine Stellschraube auch zeigt (dieselbe Kennung, derselbe Wert). */
 export const AUCH_IN: Readonly<Record<string, readonly string[]>> = {
   'kapa.machbarBis': ['sp-vertriebsplanung'], 'kapa.engBis': ['sp-vertriebsplanung'],
+  // Überführung (Paket Ü): dieselbe Regel für jeden überführbaren System-Prozess.
+  'ueberfuehrung.laeufe': ['sp-treppe'], 'ueberfuehrung.tage': ['sp-treppe'],
 };
 
 export type Werte = Readonly<Record<string, number | boolean>>;

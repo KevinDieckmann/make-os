@@ -220,6 +220,7 @@ describe('Vorlagen, Baustein, feste Liste', () => {
     expect(r.eintrag.versionen).toHaveLength(1);
     expect(r.eintrag.entwurf.eigner).toBe('konto-pia');
     expect(ueberfuehrungAnlegen(r.datei, 'sp-rechnung', kx)).toMatchObject({ ok: false, status: 409, prozessId: r.eintrag.id });
+    expect(ueberfuehrungAnlegen(r.datei, 'sp-treppe', kx).ok).toBe(true);
   });
 });
 
@@ -239,6 +240,7 @@ describe('Wächter: jeder alte Einstiegspunkt fragt die Weiche genau einmal', ()
   it('der Kern des alten Wegs ist der Kern des festen Schritts (Kennungs-Brücke: dieselbe Funktion)', () => {
     const s = readFileSync(path.join(process.cwd(), 'lib/prozesse/system-schritte-server.ts'), 'utf8');
     expect(s).toContain('mahnAufgabenKern(');
+    expect(s).toContain('treppeReportsKern(');
     expect(readFileSync(path.join(process.cwd(), 'lib/finanzen/rechnung/server.ts'), 'utf8')).toMatch(/mahnAufgabenNachziehen[\s\S]*mahnAufgabenKern\(heute/);
   });
 });

@@ -54,6 +54,11 @@ async function mahnMorgen(n: number): Promise<void> {
   await (await import('@/lib/finanzen/rechnung/server')).mahnAufgabenNachziehen();
   await L.prozesseNachLoop('morgen');
 }
+async function treppeMorgen(n: number): Promise<void> {
+  morgen(n);
+  await (await import('@/lib/crm/treppe-server')).treppeMorgenlauf();
+  await L.prozesseNachLoop('morgen');
+}
 
 /** Rechnungen (erfunden): zwei der Business-Gesellschaften, eine der Selbstständigkeit (Privat), eine bezahlt. Fällig vor 10 bzw. 16 Tagen. */
 const rechnung = (id: string, firmaId: string, faellig: string, status = 'gestellt') => ({ id, firmaId, kunde: 'Beispiel GmbH', titel: `Leistung ${id}`, betrag: 1190, status, faellig, nummer: `R-${id}`, datum: faellig });
@@ -213,5 +218,60 @@ describe('Mahnaufgaben: Schatten → Umschalten → Gold → hin und zurück', (
     } finally { chmodSync(datei, 0o600); utimesSync(datei, new Date(), new Date(Date.now() + 10000)); }
     const ids = await mahnIds();
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+// ══ Fortschritts-Report (sp-treppe) ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+describe('Fortschritts-Report: Schatten → Umschalten → Gold', () => {
+  const BESTAENDE = ['zoe-stapel', 'meldungen--pia', 'meldungen--olaf', `produkt-treppe--${H}`];
+  interface V { id: string; werkzeug: string; titel: string; eingabe: Record<string, unknown>; person?: string; bezug?: unknown; zeit: string; tag: string; [k: string]: unknown }
+  const vorschlaege = async (): Promise<V[]> => ((await db.loadJson<{ vorschlaege: V[] }>('zoe-stapel'))?.vorschlaege ?? []).filter(v => v.werkzeug === 'fortschritt_report' || v.werkzeug === 'naechste_stufe');
+  const ohneId = <T extends { id?: unknown }>(l: readonly T[]) => l.map(({ id: _i, ...r }) => r).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  const glocken = async () => ({
+    pia: ohneId((await db.loadJson<{ eintraege: { id: string }[] }>('meldungen--pia'))?.eintraege ?? []),
+    olaf: ohneId((await db.loadJson<{ eintraege: { id: string }[] }>('meldungen--olaf'))?.eintraege ?? []),
+  });
+  const marken = async () => ((await db.loadJson<{ marken?: Record<string, string> }>(`produkt-treppe--${H}`))?.marken ?? {});
+  let start: Record<string, unknown> = {};
+  let gold: { v: unknown; g: unknown; m: unknown } = { v: null, g: null, m: null };
+  let pz = '';
+  it('ohne Überführung: Report-Vorschläge für beide Business-Mandate (nie Privat) + „nächste Stufe“ — wie vorher', async () => {
+    start = await sichern(BESTAENDE);
+    morgen(19);
+    const { treppeMorgenlauf } = await import('@/lib/crm/treppe-server');
+    expect(await treppeMorgenlauf()).toEqual({ reports: 2, stufen: 1 });
+    const v = await vorschlaege();
+    expect(v.filter(x => x.werkzeug === 'fortschritt_report').map(x => x.eingabe.mandatId).sort()).toEqual(['m-a', 'm-b']);
+    gold = { v: ohneId(v), g: await glocken(), m: await marken() };
+    await zurueck(start);
+  });
+  it('überführen → Schatten: der alte Weg schlägt vor, der neue schreibt nichts; dasselbe Bild — die Marke von heute bremst den Vergleich nicht', async () => {
+    morgen(20);
+    const r = await UE.ueberfuehren({ sp: 'sp-treppe', person: 'pia', rechte: RECHTE, h: H, wer: WER });
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    pz = String(r.body.prozessId);
+    await treppeMorgen(20);
+    expect((await vorschlaege()).filter(x => x.werkzeug === 'fortschritt_report')).toHaveLength(2);
+    const v = (await prozess(pz)).ueberfuehrung!.vergleich;
+    expect(v.offen?.alt).toHaveLength(2);
+    expect(v.offen?.neu).toEqual(v.offen?.alt);
+    for (let n = 21; n <= 26; n++) await treppeMorgen(n);
+    expect((await vorschlaege()).filter(x => x.werkzeug === 'fortschritt_report'), 'gebremst — kein zweiter Vorschlag').toHaveLength(2);
+    const a = await UE.ueberfuehrungAnsicht(await prozess(pz), H);
+    expect(a).toMatchObject({ vergleich: { gleich: 6, abweichend: 0 }, umschalten: { erlaubt: true } });
+    expect((await UE.umschalten({ prozessId: pz, stand: W.standVon(await prozess(pz)), person: 'pia', rechte: RECHTE, h: H, wer: WER })).status).toBe(200);
+  });
+  it('GOLD: derselbe Bestand — alter Code allein vs. neuer Prozess scharf (der alte Weg nur noch „nächste Stufe“) → dieselben Vorschläge, Glocken, Marken', async () => {
+    // Ein Tag ohne Schatten-Lauf (am Tag des Umschaltens hat der alte Weg morgens schon gearbeitet — der Lauf dieses Tages ist der des Schattens).
+    await zurueck(start);
+    await treppeMorgen(19);
+    expect({ v: ohneId(await vorschlaege()), g: await glocken(), m: await marken() }).toEqual(gold);
+    const lauf = (await L.laeufeLesen(H)).laeufe.filter(l => l.prozessId === pz && l.modus === 'scharf');
+    expect(lauf).toHaveLength(1);
+    expect(lauf[0].schritte.flatMap(s => s.wirkung ?? []).filter(w => w.art === 'vorschlag')).toHaveLength(2);
+    // Ein zweiter Morgen am selben Tag legt nichts doppelt (Marke = Kennungs-Brücke), auch nicht der alte Weg nach dem Anhalten.
+    await treppeMorgen(19);
+    expect((await vorschlaege()).filter(x => x.werkzeug === 'fortschritt_report')).toHaveLength(2);
   });
 });

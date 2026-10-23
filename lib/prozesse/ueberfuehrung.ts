@@ -21,8 +21,8 @@ import type { ProzessEintrag } from './definition';
 // ══ Was umziehen kann ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** Ein fester Schritt (Baustein `system.fest`): der Kern eines alten Ablaufs — dieselbe Regel, dieselben Kennungen, derselbe Schreibweg. */
-export type SystemSchrittId = 'mahnaufgaben';
-export const SYSTEM_SCHRITT_IDS = ['mahnaufgaben'] as const satisfies readonly SystemSchrittId[];
+export type SystemSchrittId = 'mahnaufgaben' | 'treppe-report';
+export const SYSTEM_SCHRITT_IDS = ['mahnaufgaben', 'treppe-report'] as const satisfies readonly SystemSchrittId[];
 export const istSystemSchritt = (v: unknown): v is SystemSchrittId => typeof v === 'string' && (SYSTEM_SCHRITT_IDS as readonly string[]).includes(v);
 
 export interface UeberfuehrbarDef {
@@ -56,6 +56,13 @@ export const UEBERFUEHRBAR: readonly UeberfuehrbarDef[] = [
     einstieg: { datei: 'lib/finanzen/rechnung/server.ts', funktion: 'mahnAufgabenNachziehen' },
     kennung: '`mahnAufgabeId(rechnung, stufe)` (lib/finanzen/rechnung/regeln.ts) — Aufgabe `mahn-<rechnung>-<stufe>`',
     bleibt: 'Rechnung stellen, Storno, Mahnung vermerken (per Klick) und die Mahnaufgaben der Privat-Gesellschaften bleiben im Code.',
+  },
+  {
+    sp: 'sp-treppe', schritt: 'treppe-report', teil: 'Fortschritts-Report', titel: 'Fortschritts-Report (überführt)',
+    satz: 'Je aktivem Mandat der Leistungstreppe alle n Tage ein Vorschlag „Fortschritts-Report“ in den Stapel und eine Glocke — dieselbe Regel und Marke wie der Morgenlauf. Gesendet wird per Klick.',
+    einstieg: { datei: 'lib/crm/treppe-server.ts', funktion: 'treppeMorgenlauf' },
+    kennung: 'Marke `report:<mandat>` im Bestand der Treppe (`reportFaelligHeute`) und der Vorschlag `report-<fnv(mandat|tag)>` (lib/crm/treppe-server.ts)',
+    bleibt: '„Nächste Stufe anbieten“ und das Erstellen des Reports bei der Freigabe bleiben im Code.',
   },
 ];
 const NACH_SP = new Map(UEBERFUEHRBAR.map(u => [u.sp, u]));

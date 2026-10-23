@@ -2,7 +2,9 @@
 // Ein fester Schritt (Baustein `system.fest`) ist der Kern eines überführten System-Ablaufs — er ruft DENSELBEN Kern wie der alte Einstiegspunkt (eine Regel, ein
 // Schreibweg, dieselben Kennungen: die Kennungs-Brücke). Der Prozess der Werkstatt steuert, wann er läuft; der Schritt selbst erfindet nichts:
 //   mahnaufgaben    lib/finanzen/rechnung/server.ts `mahnAufgabenKern` (nur Rechnungen der Business-Gesellschaften) — Aufgabe `mahn-<rechnung>-<stufe>`
-// `schatten` rechnet nur (schreibt NICHTS) und liefert das Wirkungsbild für den Vergleich; `scharf` schreibt über den Kern. Die Wirkungsbilder (`mahnBild`) bauen alter und neuer Weg mit derselben Funktion — nur Kennungen, die Zuständigkeit speichert der Vergleich nur als Fingerabdruck.
+//   treppe-report   lib/crm/treppe-server.ts `treppeReportsKern` (Mandate der Leistungstreppe sind Business) — Vorschlag + Glocke + Marke `report:<mandat>`
+// `schatten` rechnet nur (schreibt NICHTS) und liefert das Wirkungsbild für den Vergleich; `scharf` schreibt über den Kern. Die Wirkungsbilder (`mahnBild`,
+// `reportBild`) bauen alter und neuer Weg mit derselben Funktion — nur Kennungen, die Zuständigkeit speichert der Vergleich nur als Fingerabdruck.
 
 import { localDay } from '@/lib/zeit';
 import type { SystemSchrittId, Wirkungsbild } from './ueberfuehrung';
@@ -12,6 +14,8 @@ export type SystemSchrittErgebnis = { ok: true; bild: Wirkungsbild[]; neu: numbe
 
 /** Wirkungsbild der Mahnaufgaben: je fälliger Stufe die Aufgabe (`mahn-…`), fällig heute, für beide (wie der Morgenlauf seit dem 08.10.). */
 export const mahnBild = (soll: readonly { id: string }[], heute: string): Wirkungsbild[] => soll.map(s => ({ art: 'aufgabe', ziel: s.id, tag: heute, zustaendig: 'both' }));
+/** Wirkungsbild der Report-Vorschläge: je Mandat der Vorschlag (`report:<mandat>`), heute, für die zuständige Team-Person bzw. den Haushalt. */
+export const reportBild = (soll: readonly { mandatId: string; fuer: string }[], heute: string): Wirkungsbild[] => soll.map(s => ({ art: 'vorschlag', ziel: `report:${s.mandatId}`, tag: heute, zustaendig: s.fuer }));
 
 /** Einen festen Schritt ausführen (`scharf`) bzw. nur rechnen (`schatten`). Wirft nie — ein nicht lesbarer Bestand ist „vorübergehend“ (der Motor wiederholt). */
 export async function systemSchrittAusfuehren(s: SystemSchrittId, kx: { modus: 'scharf' | 'schatten'; jetzt: Date }): Promise<SystemSchrittErgebnis> {
@@ -23,6 +27,11 @@ export async function systemSchrittAusfuehren(s: SystemSchrittId, kx: { modus: '
         const { mahnAufgabenKern } = await import('@/lib/finanzen/rechnung/server');
         const r = await mahnAufgabenKern(heute, { bereich: 'business', schreiben });
         return { ok: true, bild: mahnBild(r.soll, heute), neu: r.neu, wirkung: r.neueIds.map(id => ({ art: 'aufgabe' as const, id })) };
+      }
+      case 'treppe-report': {
+        const { treppeReportsKern } = await import('@/lib/crm/treppe-server');
+        const r = await treppeReportsKern(heute, { schreiben });
+        return { ok: true, bild: reportBild(r.soll, heute), neu: r.reports, wirkung: r.vorschlaege.map(id => ({ art: 'vorschlag' as const, id })) };
       }
     }
   } catch (e) {
