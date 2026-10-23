@@ -55,15 +55,18 @@ export function WerkzeugMenue({ werkzeug, kontext, variante, schmal = false, far
     const S = p.icon;
     // Ein Punkt, der in einen anderen Bereich führt (Planung › „Woche planen“ → Kalender), trägt ↗ — er verlässt das Werkzeug.
     const raus = p.wechselt ? <ArrowUpRight size={13} strokeWidth={1.9} aria-hidden style={{ flex: '0 0 auto', marginLeft: 'auto', opacity: 0.7 }} /> : null;
+    // Zahl hinter dem Namen (Punkte aus einer Liste der Seite: ungelesen bzw. offen) — klein und leise, eingeklappt weg.
+    const zahl = p.zahl ? <span aria-label={`${p.zahl}`} style={{ marginLeft: 'auto', flex: '0 0 auto', fontSize: TYP.bedien, fontWeight: 600, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{p.zahl}</span> : null;
     const innen = <>
       <S size={kind ? 15 : 17} strokeWidth={1.8} style={{ flex: '0 0 auto' }} aria-hidden />
       {!nurSymbole && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span>}
+      {!nurSymbole && zahl}
       {!nurSymbole && raus}
     </>;
     const titel = `${p.titel === p.label ? p.label : `${p.label} — ${p.titel}`}${p.wechselt ? ` (öffnet ${p.wechselt})` : ''}`;
     if (variante === 'blatt') {
       const stil: CSSProperties = { display: 'flex', alignItems: 'center', gap: 9, padding: kind ? '10px 10px 10px 22px' : '10px 10px', minHeight: ZIEL.handy, minWidth: 0, boxSizing: 'border-box', borderRadius: ECKE.eingabe, textDecoration: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text, color: p.an ? farbe : C.ink, background: p.an ? `${farbe}14` : 'transparent', fontSize: TYP.body, fontWeight: p.an ? 600 : 500 };
-      const blattInnen = <><S size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} aria-hidden /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span>{raus}</>;
+      const blattInnen = <><S size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} aria-hidden /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span>{zahl}{raus}</>;
       return p.href
         ? <Link key={p.id} href={p.href} onClick={() => onWeg?.()} aria-current={p.an ? 'page' : undefined} title={titel} data-werkzeug-punkt={p.id} style={stil}>{blattInnen}</Link>
         : <button key={p.id} type="button" onClick={() => { werkzeugAktion(werkzeug.id, p.aktion!); onWeg?.(); }} title={titel} data-werkzeug-punkt={p.id} className="fassbar" style={stil}>{blattInnen}</button>;

@@ -12,8 +12,10 @@
 // ZOE-Stapel (C4, Kachel „Wartet auf Freigabe“), weitere Ansichten (C5, `ansicht=`).
 // Paket T2 (29.09.): Filter „Alle · Meine · Beteiligt“, Suchfeld (Titel + Beschreibung, `suchPasst`, #58), Rückfragen und
 // „Rückgängig“ über den HandlungProvider, Fokus zurück auf die Zeile nach dem Schließen (#89), Hinweis bei toten Links (#45).
+// Werkzeug (22.10. abends, lib/make-one/werkzeuge.ts `AUFGABEN_WERKZEUG`): die frühere Leiste Überblick · Privat · Firmen ▾ · Mandanten ▾ · Archiv ist das Menü
+// links (Überblick · Spaces · Zeitstrahl · Automationen & Head · Archiv & Papierkorb) — keine doppelte Navigation. Die Seite legt ihre Spaces als Liste
+// `aufgaben-spaces` ab (Kennung, Name, Bereich, Archiv, offen; components/os/werkzeug/listen.ts). Projekt › Liste › Aufgabe bleiben als Brotkrumen in der Seite.
 
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
@@ -35,7 +37,10 @@ import { AnsichtTabelle } from './AnsichtTabelle';
 import { AnsichtKalender } from './AnsichtKalender';
 import { BaumAnsicht, leiseKnopf } from './BaumAnsicht';
 import { ProjektSeite } from './ProjektSeite';
-import { AufgabenLeiste, Brotkrumen, MandantKopf } from './Navigation';
+import { Brotkrumen, MandantKopf } from './Navigation';
+import { useWerkzeugListe } from '../werkzeug/listen';
+import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
+import { AUFGABEN_SPACES, AUFGABEN_WERKZEUG } from '@/lib/make-one/werkzeuge';
 import { AufgabenUeberblick, AufgabenArchiv } from './Ueberblick';
 import { VorlagenKnopf } from './VorlagenDialog';
 import { ZoeAufgabenSicht } from './ZoeAufgabe';
@@ -147,6 +152,9 @@ export function AufgabenRaum() {
     for (const t of state.tasks) if (!t.parentId && t.status !== 'done' && t.spaceId) m.set(t.spaceId, (m.get(t.spaceId) ?? 0) + 1);
     return m;
   }, [state.tasks]);
+  // Die Spaces für das Werkzeug-Menü (22.10. abends): nur Kennung, Name, Bereich, Archiv und die Zahl offener Aufgaben — welche dort stehen (Bereich der Wahl,
+  // nur laufende Mandanten), sagt die Regel `aufgabenSpaceImMenue`.
+  useWerkzeugListe(AUFGABEN_SPACES, spaces.map(x => ({ id: x.id, label: x.label, bereich: x.bereich, ...(x.archiv ? { archiv: true } : {}), ...(offenJe.get(x.id) ? { zahl: offenJe.get(x.id) } : {}) })));
 
   const zeigen = (t: Task) => passtFilter(t, { ...filter, ich }, heute) && (!suche.trim() || suchPasst([t.title, t.description], suche));
   const standard = filter.wer === 'alle' && filter.faellig === 'alle' && (filter.status === 'offen' || filter.status === 'alle') && !suche.trim();
@@ -208,11 +216,9 @@ export function AufgabenRaum() {
 
   // Darstellung (Liste · Board · Tabelle · Kalender · ZOE): am Rechner im Kopf, am Handy als eigene wischbare Zeile im Inhalt (Standard: breite Umschalter nicht im Kopf).
   const darstellungWahl = <Segmente liste={[{ id: 'liste', label: 'Liste' }, { id: 'board', label: 'Board' }, { id: 'tabelle', label: 'Tabelle' }, { id: 'kalender', label: 'Kalender' }, { id: 'zoe', label: 'ZOE' }]} aktiv={darstellung} onWahl={a => gehe({ ...adresse, darstellung: a === 'liste' ? undefined : a }, 'replace')} />;
-  const nebenWege = <>
-    <Link href={aufgabenLink({ ansicht: 'ueberblick', darstellung: 'zeitstrahl', ...(adresse.bereich ? { bereich: adresse.bereich } : {}) })} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Zeitstrahl ›</Link>
-    {!raum && <NeuAnfangenKnopf klein />}
-  </>;
-  const titel = raum ? `Aufgaben · ${raum.label}` : adresse.ansicht === 'archiv' ? 'Aufgaben · Archiv' : 'Aufgaben';
+  // Der Zeitstrahl ist seit 22.10. abends ein Punkt im Werkzeug-Menü — hier bleibt nur „Neu anfangen …“.
+  const nebenWege = <>{!raum && adresse.ansicht !== 'automationen' && <NeuAnfangenKnopf klein />}</>;
+  const titel = raum ? `Aufgaben · ${raum.label}` : adresse.ansicht === 'archiv' ? 'Aufgaben · Archiv' : adresse.ansicht === 'automationen' ? 'Aufgaben · Automationen & Head' : 'Aufgaben';
   const treffer = adresse.ansicht === 'ueberblick' && suche.trim() ? state.tasks.filter(t => suchPasst([t.title, t.description], suche)).slice(0, 40) : [];
   return (
     <HandlungProvider>
@@ -231,8 +237,7 @@ export function AufgabenRaum() {
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>{nebenWege}</div>
         </div>
       </div>
-      <AufgabenLeiste adresse={adresse} spaces={spaces} offenJe={offenJe} gehe={gehe} bereich={adresse.bereich ?? bereichGemerkt} />
-      <SchnellAnlegen state={state} dispatch={dispatch} spaces={spaces} vorbelegt={vorbelegt} />
+      {adresse.ansicht !== 'automationen' && <SchnellAnlegen state={state} dispatch={dispatch} spaces={spaces} vorbelegt={vorbelegt} />}
 
       {!ready && <Karte i={1}><Leer>lade …</Leer></Karte>}
       {tot && (
@@ -272,6 +277,8 @@ export function AufgabenRaum() {
         // Firmen, Mandanten und ihre Aufgaben (nur Business war begrenzt).
         : <AufgabenUeberblick state={state} dispatch={dispatch} spaces={spaces} ich={ich} heute={heute} gehe={gehe} nur={adresse.bereich ?? bereichGemerkt} />)}
       {ready && adresse.ansicht === 'archiv' && <AufgabenArchiv state={state} dispatch={dispatch} spaces={spaces} heute={heute} gehe={gehe} />}
+      {/* „Automationen & Head“ (22.10. abends): Business — Head of Operations, Head-Takt und Morgenlauf (Serien); Privat — die Persönliche Assistenz. */}
+      {adresse.ansicht === 'automationen' && <BereichAutomationen werkzeug={AUFGABEN_WERKZEUG} space={adresse.bereich ?? bereichGemerkt} />}
 
       {ready && raum && <>
         <Brotkrumen adresse={adresse} state={state} spaces={spaces} gehe={gehe} />

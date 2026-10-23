@@ -35,7 +35,6 @@ import { useTasks } from '@/context/TasksContext';
 import { risikoarm, vorschlagSauber, nurGewaehlt, zoeStandLesen, ZOE_AUFGABE_WERKZEUG, type ZoeFeld } from '@/lib/aufgaben/zoe';
 import { felderZurWahl, crmSammelTauglich } from '@/lib/zoe/crm-felder-wahl';
 import { FreigabeFelder, alleFelder } from './aufgaben/ZoeAufgabe';
-import { ZoeReiter } from './ZoeReiter';
 import { useSpace } from '@/hooks/useSpace';
 import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
 import { BeispielMarke } from './BeispielMarke';
@@ -261,7 +260,6 @@ export function StapelView() {
 
   return (
     <Seite titel="Aufträge & Freigaben" unter="Was ZOE vorbereitet hat und auf dein Ja wartet. Ohne dich passiert nichts.">
-      <ZoeReiter />
       {/* Reiter der Freigaben (08.10.): Ort wechseln = push (Zurück führt zum vorigen Reiter). */}
       <div><Pillen<FreigabenReiter> einzeilig liste={[{ id: 'offen', label: offen.length ? `Offen · ${offen.length}` : 'Offen' }, { id: 'protokoll', label: 'Protokoll' }]}
         aktiv={reiter} onWahl={t => router.push(WEG.freigaben(t), { scroll: false })} /></div>

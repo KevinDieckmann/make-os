@@ -62,6 +62,10 @@ describe('Kein Server-Code im Browser-Bündel der Prozesse', () => {
   it('die reinen Motor-Regeln (lauf-regeln, lauf-typen) sind client-sicher — die Werkstatt darf sie für Probelauf und Läufe-Ansicht nutzen', () => {
     expect(serverFunde([path.join(WURZEL, 'lib/prozesse/lauf-regeln.ts'), path.join(WURZEL, 'lib/prozesse/lauf-typen.ts')])).toEqual([]);
   });
+  it('das Werkzeug-Muster (Menü, Rahmen, Listen, Spalte, „Automationen & Head“) und seine Konfiguration sind client-sicher (22.10. abends)', () => {
+    const eintritte = [...dateienIn(path.join(WURZEL, 'components/os/werkzeug')), path.join(WURZEL, 'lib/make-one/werkzeuge.ts')];
+    expect(serverFunde(eintritte)).toEqual([]);
+  });
   it('der Wächter selbst erkennt Server-Code (Gegenprobe: der Motor-Server lädt Bestände)', () => {
     expect(serverFunde([path.join(WURZEL, 'lib/prozesse/lauf-server.ts')]).length).toBeGreaterThan(0);
   });

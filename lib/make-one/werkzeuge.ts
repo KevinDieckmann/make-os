@@ -24,16 +24,22 @@
 //   · Heads       NIE eine zweite Zuordnung: welcher Head zu einem Werkzeug gehört, sagt `SEITEN_REGELN` (lib/agenten/kontext-head.ts) über die Ziele seiner Punkte
 //                (`headsDerSeiten` — der Head des Einstiegs zuerst); Markttraktion nimmt die Liste aus `HUB_MENUE` (dieselben Heads, Wächter)
 // Werkzeuge heute: Prozesse (Miro-Art), Markttraktion (HubSpot-Art, Gruppen-Überschriften, Punkte aus `HUB_MENUE`), Produkte & Mandate, Unternehmen, Finanzen
-// (Punkte aus lib/finanzen/navigation.ts) und Planung — die letzten vier seit 22.10. abends (Gruppe A, Entscheidung: „Ja, alle Empfehlungen“).
+// (Punkte aus lib/finanzen/navigation.ts) und Planung — die letzten vier seit 22.10. abends (Gruppe A, Entscheidung: „Ja, alle Empfehlungen“); dazu Gruppe B:
+// Kalender, Inbox, Aufgaben, Gesundheit, Familie und ZOE (dieselbe Entscheidung).
 // Ein neues Werkzeug = ein Eintrag in `WERKZEUGE` + die Seite hört seine Aktionen (bzw. hängt den Rahmen ein); nichts in der Leiste ändern.
+// Gruppe B (22.10. abends — Kalender, Inbox, Aufgaben, Gesundheit, Familie, ZOE; Entscheidung: „Ja, alle Empfehlungen“) bringt zwei Bausteine dazu:
+//   · `liste`    Unterpunkte aus den Daten der Person (Bereiche der Inbox, Spaces der Aufgaben): die Seite legt Kennung + Name ab (`werkzeugListeSetzen`,
+//                components/os/werkzeug/listen.ts — nie Inhalte, nur was ihre serverseitig gefilterte Antwort schon trägt), die Konfiguration sagt Ziel und Regel
+//   · `spalte`   das Werkzeug bringt eine eigene linke Spalte mit (Kalender: Mini-Monat, Kalender, Planen-Bausteine) — breit steht sie IN der Leiste unter dem
+//                Menü (EINE Spalte, components/os/werkzeug/spalte.tsx), schmal wie bisher auf der Seite
 
 import type { LucideIcon } from 'lucide-react';
 import {
   Workflow, Map as MapIcon, List, Hammer, PencilRuler, History, FlaskConical, LayoutTemplate, Presentation, Bot, TrendingUp,
-  Briefcase, Package, Route, UserPlus, Blocks, ChartColumn, RefreshCw,
-  Building2, Gauge, CalendarClock, FileText, TriangleAlert, ShieldCheck, Network, Gavel, FileSignature, Landmark, Archive, Trash2,
-  Wallet, LayoutDashboard, Target, Receipt, Waves, BookOpen, Calculator, Scale, Settings2, Anchor, Sun, ListChecks, PiggyBank,
-  Flag, CalendarRange, CalendarDays, Repeat, Hourglass, CalendarPlus,
+  Briefcase, Package, Route, UserPlus, Blocks, ChartColumn, RefreshCw, Building2, Gauge, CalendarClock, FileText, TriangleAlert, ShieldCheck, Network, Gavel,
+  FileSignature, Landmark, Archive, Trash2, Wallet, LayoutDashboard, Target, Receipt, Waves, BookOpen, Calculator, Scale, Settings2, Anchor, Sun, ListChecks, PiggyBank,
+  Flag, CalendarRange, CalendarDays, Repeat, Hourglass, CalendarPlus, Inbox, Layers, Mailbox, LayoutGrid, FolderKanban, ChartGantt, Sunrise, NotebookPen, Dumbbell,
+  BatteryCharging, PersonStanding, Salad, ChartLine, HeartPulse, Heart, Users, Shield, BookUser, Sparkles, CheckCheck, Microscope, PenLine, Mic, Radar, Brain,
 } from 'lucide-react';
 import { WEG } from '@/lib/wege';
 import { prozesseAusAdresse } from '@/lib/prozesse/adresse';
@@ -45,15 +51,32 @@ import type { SchildReiter } from '@/lib/gesellschaften/schild/ampel';
 import { FINANZ_MENUE, FINANZ_FUSS, finanzAdresse, finanzFussAdresse, finanzOrt, finanzMenueId, finanzMenueErlaubt, type FinanzBereich, type FinanzMenueId, type FinanzFussPunkt } from '@/lib/finanzen/navigation';
 import { HUB_SYMBOLE } from '@/lib/crm/hub-symbole';
 import { kontextHeadFuer } from '@/lib/agenten/kontext-head';
+import { adresseLesen as aufgabenAdresseLesen, aufgabenLink } from '@/lib/aufgaben/adresse';
+import { kalenderLink, modusAusAdresse } from '@/lib/kalender/modus';
 import { passtZu, wahlVon, SPACE_VORGABE } from './spaces';
 import type { SpaceId } from './space-regeln';
 
 /**
  * Wo man gerade steht — aus der Adresse (und ob es das Handy-Blatt ist: dort gelten die Vorgaben des Handys). `space` = die Wahl im Kopf (Leiste) bzw. was die
  * Adresse sagt (`?space=` gewinnt, sonst die Seite, sonst Business); `nurBusiness` = ein Konto „nur Business“ (der Server liefert ihm nichts Privates — das
- * Menü zeigt ihm, was es benutzen kann).
+ * Menü zeigt ihm, was es benutzen kann). `listen` = die Einträge, die die Seite zur Laufzeit abgelegt hat (Punkte mit `liste`); ohne: keine solchen Punkte.
  */
-export interface WerkzeugKontext { pfad: string; q: URLSearchParams; handy: boolean; space: SpaceId; nurBusiness: boolean }
+export interface WerkzeugKontext { pfad: string; q: URLSearchParams; handy: boolean; space: SpaceId; nurBusiness: boolean; listen?: WerkzeugListen }
+
+/**
+ * Ein Eintrag einer Liste, die eine Seite zur Laufzeit liefert (Bereiche der Inbox, Spaces der Aufgaben) — nur Kennung, Name und Merkmale für die Regel
+ * (Bereich, Archiv, Zähler); nie Inhalte. Kommt aus der serverseitig gefilterten Antwort der Seite (sie zeigt nur, was die Sicht sehen darf).
+ */
+export interface ListenEintrag { id: string; label: string; bereich?: SpaceId; archiv?: boolean; zahl?: number }
+export type WerkzeugListen = Readonly<Record<string, readonly ListenEintrag[]>>;
+/** Ein Unterpunkt je Eintrag einer Liste (statt eines festen Punkts): Ziel, Regel „leuchtet“ und „steht da“ je Eintrag. */
+export interface WerkzeugListe {
+  /** Unter welchem Schlüssel die Seite die Einträge ablegt (components/os/werkzeug/listen.ts). */
+  schluessel: string;
+  href: (k: WerkzeugKontext, e: ListenEintrag) => string;
+  aktiv: (k: WerkzeugKontext, e: ListenEintrag) => boolean;
+  sichtbar?: (k: WerkzeugKontext, e: ListenEintrag) => boolean;
+}
 
 export interface WerkzeugPunkt {
   id: string;
@@ -78,6 +101,8 @@ export interface WerkzeugPunkt {
    * ↗ gekennzeichnet. Nur für Fuß-Punkte gedacht; der Wächter verlangt sonst, dass jedes Ziel im Werkzeug bleibt.
    */
   wechselt?: string;
+  /** Statt EINES Punkts: je Eintrag einer Liste der Seite ein Punkt (Symbol, Gruppe und Titel von hier). Ohne Einträge steht nichts da. */
+  liste?: WerkzeugListe;
 }
 
 /**
@@ -130,6 +155,11 @@ export interface Werkzeug {
    * nicht (403) — die Leiste zeigt ihm das Menü des Werkzeugs gar nicht erst.
    */
   nurVolleMitglieder?: true;
+  /**
+   * Das Werkzeug bringt eine eigene linke Spalte mit (Kalender): breit steht sie in der Leiste unter dem Menü (EINE Spalte — nie zwei linke Spalten nebeneinander,
+   * components/os/werkzeug/spalte.tsx), die Leiste wird dafür breiter; schmal und mit eingeklappter Leiste legt die Seite sie selbst hin.
+   */
+  spalte?: true;
 }
 
 const geteilt = (href: string): { pfad: string; suche: string } => {
@@ -156,7 +186,7 @@ export function headsDerSeiten(hrefs: readonly string[], space: SpaceId): string
   const ids = hrefs.map(h => { const g = geteilt(h); return kontextHeadFuer(g.pfad, g.suche, space); });
   return [...new Set(ids.filter((x): x is string => !!x))];
 }
-/** Die Ziele der Punkte eines Werkzeugs an seinem Einstieg in einem Space (für `headsDerSeiten`) — ohne Punkte, die das Werkzeug verlassen. */
+/** Die Ziele der Punkte eines Werkzeugs an seinem Einstieg in einem Space (für `headsDerSeiten`) — ohne Punkte, die das Werkzeug verlassen, und ohne Punkte aus Listen der Seite (die haben kein festes Ziel). */
 function zieleIm(start: string, punkte: readonly WerkzeugPunkt[], space: SpaceId): string[] {
   const g = geteilt(start);
   const k = werkzeugKontext(g.pfad, g.suche, false, { space });
@@ -426,8 +456,263 @@ export const PLANUNG_WERKZEUG: Werkzeug = {
   })),
 };
 
-/** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche. */
-export const WERKZEUGE: readonly Werkzeug[] = [PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, PRODUKTE_WERKZEUG, UNTERNEHMEN_WERKZEUG, FINANZEN_WERKZEUG, PLANUNG_WERKZEUG];
+// ═══ Gruppe B (22.10. abends — Entscheidung: „Ja, alle Empfehlungen“): Kalender, Inbox, Aufgaben, Gesundheit, Familie, ZOE ═══════════════════════════════
+// Adressen bleiben, wie sie sind (alte Links leuchten genau EINEN Punkt — Wächter in tests/werkzeuge.test.ts); in Werkzeugen beider Spaces wandert `?space=`
+// in jedem Ziel mit (die Wahl im Kopf; `mitSpace` aus der Planung oben — EIN Helfer). Gesundheit und Familie gehören fest zu Privat (die Seite legt den Space fest) — dort braucht es den Parameter nicht.
+// „Automationen & Head“ nur, wo es Prozesse (Business) oder einen Head gibt — Heads NUR aus `SEITEN_REGELN` (`automationMitHeads`); Kalender und Inbox haben dort
+// keinen Head (ZOE antwortet) und tragen darum nur ihre Prozesse.
+
+/** Liegt der Pfad unter einer Seite (gleich oder Unterpfad)? */
+const unterSeite = (pfad: string, seite: string): boolean => pfad === seite || pfad.startsWith(`${seite}/`);
+
+// ─── Kalender — Business UND Privat ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Kalender · Planen (`?modus=planen`) · Aufgaben (`?modus=aufgaben`) — dieselben Modi wie der Umschalter der Seite (lib/kalender/modus.ts); nur Business:
+// „Automationen & Head“ (`?s=automationen`: der Prozess Terminbuchung + die Buchungsseiten der Seite; kein Head — `SEITEN_REGELN` gibt dem Kalender ZOE). Fuß:
+// Einstellungen (`?einstellungen=1` — dieselbe Öffnung wie aus dem Onboarding). Die linke Spalte der Seite (Mini-Monat, Kalender, Planen-Bausteine) steht breit in
+// der Leiste unter diesem Menü (`spalte`).
+type KalenderOrt = 'kalender' | 'planen' | 'aufgaben' | 'einstellungen' | 'automationen';
+export function kalenderOrt(k: WerkzeugKontext): KalenderOrt {
+  if (k.q.get('s') === 'automationen' && k.space === 'business') return 'automationen';
+  if (k.q.get('einstellungen') === '1') return 'einstellungen';
+  return modusAusAdresse(k.q).modus;
+}
+const KALENDER_PUNKTE: readonly WerkzeugPunkt[] = [
+  { id: 'kalender', label: 'Kalender', icon: CalendarDays, titel: 'Tag, Woche, Monat, Jahr — Termine, Fristen und Aufgaben mit Uhrzeit', href: k => mitSpace(WEG.kalender(), k), aktiv: k => kalenderOrt(k) === 'kalender' },
+  { id: 'planen', label: 'Planen', icon: Blocks, titel: 'Die Woche planen — Blöcke, Routinen und Aufgaben ins Raster setzen', href: k => mitSpace(WEG.woche(), k), aktiv: k => kalenderOrt(k) === 'planen' },
+  { id: 'aufgaben', label: 'Aufgaben', icon: ListChecks, titel: 'Aufgaben nach Fälligkeit — abhaken und einplanen', href: k => mitSpace(kalenderLink({ modus: 'aufgaben' }), k), aktiv: k => kalenderOrt(k) === 'aufgaben' },
+];
+export const KALENDER_WERKZEUG: Werkzeug = {
+  id: 'kalender',
+  name: 'Kalender',
+  icon: CalendarDays,
+  spaces: ['privat', 'business'],
+  pfade: ['/os/kalender'],
+  start: WEG.kalender(),
+  leistenPunkt: 'Kalender',
+  spalte: true,
+  punkte: KALENDER_PUNKTE,
+  fuss: [{ id: 'einstellungen', label: 'Einstellungen', icon: Settings2, titel: 'Kalender verbinden und zuordnen, Dauer, Bereiche, „zählt als belegt“', href: k => mitSpace(`${WEG.kalender()}?einstellungen=1`, k), aktiv: k => kalenderOrt(k) === 'einstellungen' }],
+  automation: automationMitHeads(WEG.kalender(), KALENDER_PUNKTE, 'business', {
+    bereiche: [],
+    prozesse: ['sp-buchung'],
+    href: k => mitSpace(`${WEG.kalender()}?s=automationen`, k),
+    aktiv: k => kalenderOrt(k) === 'automationen',
+  }),
+};
+
+// ─── Inbox — Business UND Privat ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Inbox (alle Bereiche der Sicht) · Bereiche (je Bereich mit Postfächern der Person — aus der Antwort von GET /api/inbox, die der Server nach Space filtert
+// (`imBereich`); die Seite legt sie als Liste `inbox-bereiche` ab, mit Ungelesen-Zähler) · nur Business: „Automationen & Head“ (`?s=automationen`: der Prozess
+// Anfrage-Eingang; kein Head — die Inbox gehört ZOE) · Fuß Postfächer (`?postfaecher=1`). Die Fächer (Antworten, Nachfassen, Termine …) bleiben in der Seite.
+export const INBOX_BEREICHE = 'inbox-bereiche';
+type InboxOrt = 'inbox' | 'postfaecher' | 'automationen' | `bereich:${string}`;
+export function inboxOrt(k: WerkzeugKontext): InboxOrt {
+  if (k.q.get('s') === 'automationen' && k.space === 'business') return 'automationen';
+  if (k.q.get('postfaecher') === '1') return 'postfaecher';
+  const b = k.q.get('bereich');
+  return b && (k.listen?.[INBOX_BEREICHE] ?? []).some(e => e.id === b) ? `bereich:${b}` : 'inbox';
+}
+const INBOX_PUNKTE: readonly WerkzeugPunkt[] = [
+  { id: 'inbox', label: 'Inbox', icon: Inbox, titel: 'Alle Gespräche der Sicht — Wichtiges zuerst', href: k => mitSpace(WEG.inbox(), k), aktiv: k => inboxOrt(k) === 'inbox' },
+  {
+    id: 'bereich', label: 'Bereiche', icon: Layers, gruppe: 'Bereiche', titel: 'Nur die Gespräche eines Bereichs',
+    liste: { schluessel: INBOX_BEREICHE, href: (k, e) => mitSpace(`${WEG.inbox()}?bereich=${encodeURIComponent(e.id)}`, k), aktiv: (k, e) => inboxOrt(k) === `bereich:${e.id}` },
+  },
+];
+export const INBOX_WERKZEUG: Werkzeug = {
+  id: 'inbox',
+  name: 'Inbox',
+  icon: Inbox,
+  spaces: ['privat', 'business'],
+  pfade: ['/os/inbox'],
+  start: WEG.inbox(),
+  leistenPunkt: 'Inbox',
+  punkte: INBOX_PUNKTE,
+  fuss: [{ id: 'postfaecher', label: 'Postfächer', icon: Mailbox, titel: 'Postfächer verbinden, Bereich zuordnen, Absender', href: k => mitSpace(`${WEG.inbox()}?postfaecher=1`, k), aktiv: k => inboxOrt(k) === 'postfaecher' }],
+  automation: automationMitHeads(WEG.inbox(), INBOX_PUNKTE, 'business', {
+    bereiche: [],
+    prozesse: ['sp-anfrage'],
+    href: k => mitSpace(`${WEG.inbox()}?s=automationen`, k),
+    aktiv: k => inboxOrt(k) === 'automationen',
+  }),
+};
+
+// ─── Aufgaben — Business UND Privat ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Überblick · Spaces (die Spaces des Bereichs aus dem Bestand der Person: Privat bzw. die Gesellschaften nach `bereichVon` und NUR laufende Mandanten-Spaces
+// `m-<firmaId>` — beendete/pausierte stehen im Archiv; die Seite legt sie als Liste `aufgaben-spaces` ab, mit Zahl offener Aufgaben) · Zeitstrahl
+// (`ansicht=zeitstrahl`) · „Automationen & Head“ (`b=automationen`; Business: Head of Operations + Head-Takt und Morgenlauf (Serien); Privat: die Persönliche
+// Assistenz — Heads aus `SEITEN_REGELN`) · Fuß Archiv & Papierkorb (`b=archiv`). Projekt › Liste › Aufgabe bleiben Ebene 3 in der Seite (Brotkrumen).
+// Adressen NUR über `WEG.aufgaben`/`aufgabenLink` (lib/aufgaben/adresse.ts).
+export const AUFGABEN_SPACES = 'aufgaben-spaces';
+/** Steht ein Space im Menü? Nur Spaces des Bereichs der Wahl, nie archivierte (beendete/pausierte Mandanten). */
+export const aufgabenSpaceImMenue = (k: WerkzeugKontext, e: ListenEintrag): boolean => !e.archiv && (e.bereich ?? 'business') === k.space;
+type AufgabenOrt = 'ueberblick' | 'zeitstrahl' | 'archiv' | 'automationen' | `space:${string}`;
+export function aufgabenOrt(k: WerkzeugKontext): AufgabenOrt {
+  const a = aufgabenAdresseLesen(k.q);
+  if (a.ansicht === 'automationen') return 'automationen';
+  if (a.ansicht === 'archiv') return 'archiv';
+  if (a.ansicht === 'space' && a.s) {
+    const e = (k.listen?.[AUFGABEN_SPACES] ?? []).find(x => x.id === a.s);
+    if (e?.archiv) return 'archiv';
+    return e && aufgabenSpaceImMenue(k, e) ? `space:${a.s}` : 'ueberblick';
+  }
+  return a.darstellung === 'zeitstrahl' ? 'zeitstrahl' : 'ueberblick';
+}
+const AUFGABEN_PUNKTE: readonly WerkzeugPunkt[] = [
+  { id: 'ueberblick', label: 'Überblick', icon: LayoutGrid, titel: 'Meine, heute, überfällig, wartet — und je Space eine Karte', href: k => WEG.aufgaben({ space: k.space }), aktiv: k => aufgabenOrt(k) === 'ueberblick' },
+  {
+    id: 'space', label: 'Spaces', icon: FolderKanban, gruppe: 'Spaces', titel: 'Projekte, Listen und Aufgaben eines Space',
+    liste: { schluessel: AUFGABEN_SPACES, sichtbar: aufgabenSpaceImMenue, href: (_k, e) => WEG.aufgaben({ s: e.id }), aktiv: (k, e) => aufgabenOrt(k) === `space:${e.id}` },
+  },
+  { id: 'zeitstrahl', label: 'Zeitstrahl', icon: ChartGantt, titel: 'Stränge zum Ziel — Aufgaben, Projekte und Meilensteine auf dem Zeitstrahl', href: k => aufgabenLink({ ansicht: 'ueberblick', darstellung: 'zeitstrahl', bereich: k.space }), aktiv: k => aufgabenOrt(k) === 'zeitstrahl' },
+];
+export const AUFGABEN_WERKZEUG: Werkzeug = {
+  id: 'aufgaben',
+  name: 'Aufgaben',
+  icon: ListChecks,
+  spaces: ['privat', 'business'],
+  pfade: ['/os/aufgaben'],
+  start: WEG.aufgaben(),
+  leistenPunkt: 'Aufgaben',
+  punkte: AUFGABEN_PUNKTE,
+  fuss: [{ id: 'archiv', label: 'Archiv & Papierkorb', icon: Archive, titel: 'Beendete Mandanten, archivierte Projekte, „Neu angefangen“ und der Papierkorb', href: k => WEG.aufgaben({ b: 'archiv', space: k.space }), aktiv: k => aufgabenOrt(k) === 'archiv' }],
+  automation: (['business', 'privat'] as const).map(b => automationMitHeads(WEG.aufgaben({ space: b }), AUFGABEN_PUNKTE, b, {
+    bereiche: [],
+    ...(b === 'business' ? { prozesse: ['sp-head-takt', 'sp-morgenlauf'] } : {}),
+    href: () => WEG.aufgaben({ b: 'automationen', space: b }),
+    aktiv: k => aufgabenOrt(k) === 'automationen',
+  })),
+};
+
+// ─── Gesundheit — nur Privat ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Heute: Heute · Tagesstart & Tagesende (/os/ritual) · Journal · Körper & Training: Sport · Erholung · Körper · Ernährung · Auswertung: Index · Verlauf ·
+// „Automationen & Head“ (`?s=automationen`, Heads aus `SEITEN_REGELN`: Gesundheit & Sport, unter Ernährung Ernährung & Einkauf). Erholung steht EINMAL im Menü
+// (Gesundheit › Erholung) — die Adresse des Sport-Reiters `/os/sport?s=erholung` gilt weiter und leuchtet dort. Art. 9: „Körper“ nur in der EIGENEN Ansicht
+// (mit `?fuer=` — der Ansicht einer anderen Person — gibt es den Punkt nicht, wie den Reiter); das Menü zeigt nie Werte. Die Ansicht einer anderen Person
+// (`?fuer=`) wandert in die Ziele der Gesundheits-Seite mit; Sport, Journal und Tagesritual sind immer die eigenen. Nur volle Mitglieder (Privat).
+const GESUNDHEIT_PFAD = '/os/gesundheit';
+type GesundheitOrt = 'heute' | 'ritual' | 'journal' | 'sport' | 'erholung' | 'koerper' | 'ernaehrung' | 'index' | 'verlauf' | 'automationen';
+/** Die Ansicht einer anderen Person (`?fuer=`) — dort gibt es „Körper“ nicht. */
+export const fremdeGesundheit = (k: WerkzeugKontext): boolean => !!k.q.get('fuer');
+const GESUNDHEIT_REITER: readonly GesundheitOrt[] = ['erholung', 'koerper', 'ernaehrung', 'index', 'verlauf', 'automationen'];
+export function gesundheitOrt(k: WerkzeugKontext): GesundheitOrt {
+  const s = k.q.get('s');
+  if (unterSeite(k.pfad, '/os/ritual')) return 'ritual';
+  if (unterSeite(k.pfad, '/os/journal')) return 'journal';
+  if (unterSeite(k.pfad, '/os/sport')) return s === 'erholung' ? 'erholung' : 'sport';
+  const r = GESUNDHEIT_REITER.find(x => x === s);
+  return !r || (r === 'koerper' && fremdeGesundheit(k)) ? 'heute' : r;
+}
+/** Ein Reiter der Gesundheits-Seite — mit der Ansicht der anderen Person, wenn sie offen ist. */
+const gesundheitZiel = (s: GesundheitOrt | null, k: WerkzeugKontext): string => {
+  const q = new URLSearchParams();
+  if (s) q.set('s', s);
+  const fuer = k.q.get('fuer');
+  if (fuer && unterSeite(k.pfad, GESUNDHEIT_PFAD)) q.set('fuer', fuer);
+  const t = q.toString();
+  return t ? `${GESUNDHEIT_PFAD}?${t}` : GESUNDHEIT_PFAD;
+};
+const gPunkt = (id: Exclude<GesundheitOrt, 'automationen'>, label: string, icon: LucideIcon, gruppe: string, titel: string, href: (k: WerkzeugKontext) => string, sichtbar?: (k: WerkzeugKontext) => boolean): WerkzeugPunkt => ({
+  id, label, icon, gruppe, titel, href, aktiv: k => gesundheitOrt(k) === id, ...(sichtbar ? { sichtbar } : {}),
+});
+const GESUNDHEIT_PUNKTE: readonly WerkzeugPunkt[] = [
+  gPunkt('heute', 'Heute', Sun, 'Heute', 'Tagesform, Routinen, drei Fragen', k => gesundheitZiel(null, k)),
+  gPunkt('ritual', 'Tagesstart & Tagesende', Sunrise, 'Heute', 'Morgens und abends in fünf Minuten', () => '/os/ritual'),
+  gPunkt('journal', 'Journal', NotebookPen, 'Heute', 'Das eigene Journal', () => WEG.journal()),
+  gPunkt('sport', 'Sport', Dumbbell, 'Körper & Training', 'Training, Hyrox, Running, Gym', () => WEG.sport()),
+  gPunkt('erholung', 'Erholung', BatteryCharging, 'Körper & Training', 'Programme, Behandlungen, Regeneration', k => gesundheitZiel('erholung', k)),
+  gPunkt('koerper', 'Körper', PersonStanding, 'Körper & Training', 'Das eigene Körper-Profil — nur du siehst es', () => `${GESUNDHEIT_PFAD}?s=koerper`, k => !fremdeGesundheit(k)),
+  gPunkt('ernaehrung', 'Ernährung', Salad, 'Körper & Training', 'Die Woche, Gerichte und Einkauf', k => gesundheitZiel('ernaehrung', k)),
+  gPunkt('index', 'Index', Gauge, 'Auswertung', 'Der Gesundheits-Index mit Säulen und Kennzahlen', k => gesundheitZiel('index', k)),
+  gPunkt('verlauf', 'Verlauf', ChartLine, 'Auswertung', '30 Tage je Kennzahl', k => gesundheitZiel('verlauf', k)),
+];
+export const GESUNDHEIT_WERKZEUG: Werkzeug = {
+  id: 'gesundheit',
+  name: 'Gesundheit',
+  icon: HeartPulse,
+  spaces: ['privat'],
+  // /os/ernaehrung und /os/energie leiten in die Gesundheit (next.config.mjs); der Tageslauf gehört zu ZOE, nicht hierher.
+  pfade: [GESUNDHEIT_PFAD, '/os/sport', '/os/journal', '/os/ritual'],
+  start: GESUNDHEIT_PFAD,
+  leistenPunkt: 'Gesundheit',
+  nurVolleMitglieder: true,
+  punkte: GESUNDHEIT_PUNKTE,
+  automation: automationMitHeads(GESUNDHEIT_PFAD, GESUNDHEIT_PUNKTE, 'privat', {
+    bereiche: [],
+    href: () => `${GESUNDHEIT_PFAD}?s=automationen`,
+    aktiv: k => gesundheitOrt(k) === 'automationen',
+  }),
+};
+
+// ─── Familie — nur Privat ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Wir zwei · Familie · Rahmen (die Bereiche der Seite, `?b=`) · Kontakte (/os/menschen — seit 22.10. abends ein Punkt dieses Werkzeugs statt eines eigenen
+// Leistenpunkts; Adresse und Zeitmessung bleiben) · „Automationen & Head“ (`?b=automationen`, Head „Familie & Partnerschaft“ aus `SEITEN_REGELN`).
+type FamilieOrt = 'wir' | 'familie' | 'rahmen' | 'kontakte' | 'automationen';
+export function familieOrt(k: WerkzeugKontext): FamilieOrt {
+  if (unterSeite(k.pfad, WEG.menschen())) return 'kontakte';
+  const b = k.q.get('b');
+  return b === 'familie' || b === 'rahmen' || b === 'automationen' ? b : 'wir';
+}
+const FAMILIE_PUNKTE: readonly WerkzeugPunkt[] = [
+  { id: 'wir', label: 'Wir zwei', icon: Heart, titel: 'Erst wir zwei — Dates, Gespräch, Pflege-Rhythmus', href: () => WEG.familie(), aktiv: k => familieOrt(k) === 'wir' },
+  { id: 'familie', label: 'Familie', icon: Users, titel: 'Familie organisieren — Karten, Menschen, wichtige Tage', href: () => WEG.familie('familie'), aktiv: k => familieOrt(k) === 'familie' },
+  { id: 'rahmen', label: 'Rahmen', icon: Shield, titel: 'Paar-Gespräch, Business-freie Zeiten, Ausnahmezeit', href: () => `${WEG.familie()}?b=rahmen`, aktiv: k => familieOrt(k) === 'rahmen' },
+  { id: 'kontakte', label: 'Kontakte', icon: BookUser, titel: 'Eure Menschen mit Kontakt-Takt und die wichtigen Tage', href: () => WEG.menschen(), aktiv: k => familieOrt(k) === 'kontakte' },
+];
+export const FAMILIE_WERKZEUG: Werkzeug = {
+  id: 'familie',
+  name: 'Familie',
+  icon: Users,
+  spaces: ['privat'],
+  pfade: [WEG.familie(), WEG.menschen()],
+  start: WEG.familie(),
+  leistenPunkt: 'Familie',
+  nurVolleMitglieder: true,
+  punkte: FAMILIE_PUNKTE,
+  automation: automationMitHeads(WEG.familie(), FAMILIE_PUNKTE, 'privat', {
+    bereiche: [],
+    href: () => `${WEG.familie()}?b=automationen`,
+    aktiv: k => familieOrt(k) === 'automationen',
+  }),
+};
+
+// ─── ZOE — Business UND Privat ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+// Freigaben · Agenten · Agenten-Werkzeuge: Research · Content · Meeting · Board · Prospecting · Loops · Brain (/os/wissen) · Fuß Empfang (/zoe). Ersetzt die frühere
+// Reiterzeile der ZOE-Seiten (`ZoeReiter`) — EINE Navigation. Kein „Automationen & Head“ (ZOE führt die Agenten selbst).
+interface ZoeOrt { id: string; label: string; icon: LucideIcon; pfad: string; titel: string; gruppe?: string }
+const ZOE_ORTE: readonly ZoeOrt[] = [
+  { id: 'freigaben', label: 'Freigaben', icon: CheckCheck, pfad: '/os/stapel', titel: 'Was ZOE und die Heads vorschlagen — freigeben oder ablehnen' },
+  { id: 'agenten', label: 'Agenten', icon: Bot, pfad: '/os/agenten', titel: 'ZOE und die Heads — Gespräche, Läufe, Einstellungen' },
+  { id: 'research', label: 'Research', icon: Microscope, pfad: '/os/research', titel: 'Recherche mit Quellen', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'content', label: 'Content', icon: PenLine, pfad: '/os/content', titel: 'Beiträge und Texte', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'meeting', label: 'Meeting', icon: Mic, pfad: '/os/meeting', titel: 'Meeting → Aufgaben', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'board', label: 'Board', icon: Presentation, pfad: '/os/board', titel: 'Reporting & Board', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'prospecting', label: 'Prospecting', icon: Radar, pfad: '/os/prospecting', titel: 'Neue Kontakte finden', gruppe: 'Agenten-Werkzeuge' },
+  { id: 'loops', label: 'Loops', icon: Repeat, pfad: '/os/loop', titel: 'Wiederkehrende Abläufe von ZOE' },
+  { id: 'brain', label: 'Brain', icon: Brain, pfad: '/os/wissen', titel: 'Notizen und Wissen' },
+];
+const ZOE_EMPFANG = '/zoe';
+export const zoeOrt = (k: WerkzeugKontext): string | null => (unterSeite(k.pfad, ZOE_EMPFANG) ? 'empfang' : ZOE_ORTE.find(o => unterSeite(k.pfad, o.pfad))?.id ?? null);
+export const ZOE_WERKZEUG: Werkzeug = {
+  id: 'zoe',
+  name: 'ZOE',
+  icon: Sparkles,
+  spaces: ['privat', 'business'],
+  pfade: [...ZOE_ORTE.map(o => o.pfad), ZOE_EMPFANG],
+  start: WEG.freigaben(),
+  leistenPunkt: 'ZOE',
+  punkte: ZOE_ORTE.map((o): WerkzeugPunkt => ({
+    id: o.id, label: o.label, icon: o.icon, titel: o.titel, ...(o.gruppe ? { gruppe: o.gruppe } : {}),
+    href: k => (o.id === 'freigaben' ? WEG.freigaben(undefined, k.space) : mitSpace(o.pfad, k)), aktiv: k => zoeOrt(k) === o.id,
+  })),
+  fuss: [{ id: 'empfang', label: 'Empfang', icon: Sparkles, titel: 'Der Empfang — ZOE als ganze Fläche', href: () => ZOE_EMPFANG, aktiv: k => zoeOrt(k) === 'empfang' }],
+};
+
+/** Alle Werkzeuge — Prozesse und Markttraktion, dann die übrigen Bereiche (Gruppe A, dann Gruppe B). */
+export const WERKZEUGE: readonly Werkzeug[] = [
+  PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG, PRODUKTE_WERKZEUG, UNTERNEHMEN_WERKZEUG, FINANZEN_WERKZEUG, PLANUNG_WERKZEUG,
+  KALENDER_WERKZEUG, INBOX_WERKZEUG, AUFGABEN_WERKZEUG, GESUNDHEIT_WERKZEUG, FAMILIE_WERKZEUG, ZOE_WERKZEUG,
+];
 
 /** Zu welchem Werkzeug gehört die Adresse? Höchstens eines (Wächter); sonst null. */
 export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {
@@ -437,11 +722,11 @@ export function werkzeugFuer(pfad: string, suche = ''): Werkzeug | null {
 export const werkzeugVonHref = (href: string): Werkzeug | null => { const g = geteilt(href); return werkzeugFuer(g.pfad, g.suche); };
 
 /** Der Kontext einer Adresse — `space` ohne Angabe wie die Wahl im Kopf (`?space=` gewinnt, sonst die Seite, sonst Business). */
-export function werkzeugKontext(pfad: string, suche = '', handy = false, o: { space?: SpaceId; nurBusiness?: boolean } = {}): WerkzeugKontext {
+export function werkzeugKontext(pfad: string, suche = '', handy = false, o: { space?: SpaceId; nurBusiness?: boolean; listen?: WerkzeugListen } = {}): WerkzeugKontext {
   const nurBusiness = !!o.nurBusiness;
   return {
     pfad, q: new URLSearchParams(suche.startsWith('?') ? suche.slice(1) : suche), handy,
-    space: nurBusiness ? 'business' : o.space ?? wahlVon(pfad, suche, SPACE_VORGABE), nurBusiness,
+    space: nurBusiness ? 'business' : o.space ?? wahlVon(pfad, suche, SPACE_VORGABE), nurBusiness, ...(o.listen ? { listen: o.listen } : {}),
   };
 }
 /** Steht das Werkzeug für dieses Konto da? (Ein Werkzeug `nurVolleMitglieder` nicht für ein Konto „nur Business“ — wie sein Leistenpunkt.) */
@@ -455,14 +740,28 @@ export interface PunktAnsicht {
   gruppe?: string;
   /** Führt in einen anderen Bereich (Name) — im Menü mit ↗. */
   wechselt?: string;
+  /** Kleine Zahl hinter dem Namen (z. B. ungelesen bzw. offen) — nur bei Punkten aus einer Liste der Seite. */
+  zahl?: number;
 }
 const aufloesen = (p: WerkzeugPunkt, k: WerkzeugKontext, tiefe: number): PunktAnsicht => ({
   id: p.id, label: p.label, icon: p.icon, titel: p.titel ?? p.label, ...(p.gruppe ? { gruppe: p.gruppe } : {}), ...(p.wechselt ? { wechselt: p.wechselt } : {}),
   href: p.href ? p.href(k) : null, aktion: p.aktion ?? null, an: !!p.aktiv?.(k),
   // Höchstens zwei Ebenen: Kinder der Kinder fallen weg (die Konfiguration darf sie gar nicht erst tragen).
-  unter: tiefe === 0 ? (p.unter ?? []).filter(u => u.sichtbar?.(k) ?? true).map(u => aufloesen(u, k, 1)) : [],
+  unter: tiefe === 0 ? (p.unter ?? []).filter(u => u.sichtbar?.(k) ?? true).flatMap(u => aufloesenAlle(u, k, 1)) : [],
 });
-/** Der Standard-Unterpunkt „Automationen & Head“ eines Werkzeugs (aus `automation`) — oder null. */
+/** Ein Punkt mit `liste` wird zu je einem Punkt für jeden (sichtbaren) Eintrag der Seite; Kennung `<punkt>:<eintrag>`. */
+function aufloesenAlle(p: WerkzeugPunkt, k: WerkzeugKontext, tiefe: number): PunktAnsicht[] {
+  const l = p.liste;
+  if (!l) return [aufloesen(p, k, tiefe)];
+  return (k.listen?.[l.schluessel] ?? []).filter(e => l.sichtbar?.(k, e) ?? true).map(e => ({
+    id: `${p.id}:${e.id}`, label: e.label, icon: p.icon, titel: e.label, ...(p.gruppe ? { gruppe: p.gruppe } : {}),
+    href: l.href(k, e), aktion: null, an: l.aktiv(k, e), unter: [], ...(e.zahl ? { zahl: e.zahl } : {}),
+  }));
+}
+/**
+ * Der Standard-Unterpunkt „Automationen & Head“ eines Werkzeugs (aus `automation`) — oder null. Je Space die passende Fassung (`automationVon`): in einem Space
+ * ohne Fassung steht der Punkt nicht da.
+ */
 export function automationPunkt(w: Werkzeug): WerkzeugPunkt | null {
   const alle = automationenVon(w);
   if (!alle.length) return null;
@@ -488,7 +787,7 @@ export function alleUnterpunkte(w: Werkzeug): readonly WerkzeugPunkt[] {
 }
 /** Die sichtbaren Unterpunkte bzw. Fußpunkte des Werkzeugs an dieser Adresse. */
 export function werkzeugPunkte(w: Werkzeug, k: WerkzeugKontext, teil: 'punkte' | 'fuss' = 'punkte'): PunktAnsicht[] {
-  return (teil === 'punkte' ? alleUnterpunkte(w) : w.fuss ?? []).filter(p => p.sichtbar?.(k) ?? true).map(p => aufloesen(p, k, 0));
+  return (teil === 'punkte' ? alleUnterpunkte(w) : w.fuss ?? []).filter(p => p.sichtbar?.(k) ?? true).flatMap(p => aufloesenAlle(p, k, 0));
 }
 
 // ─── Werkzeugmodus = Vollbild (`voll=1`) ───────────────────────────────────────────────────────────────────────────────────────────────────

@@ -29,7 +29,7 @@ function dateien(dir: string, ende = /\.tsx?$/): string[] {
 const ORDNER = ['components/os/familie', 'components/os/sport', 'components/os/wissen', 'components/os/gesundheit', 'components/os/flaeche', 'components/os/fokus', 'components/os/routinen'];
 const EINZELN = [
   'GesundheitView', 'JournalView', 'ErnaehrungView', 'EnergieView', 'WhoopImport', 'RoutinenPlanerView', 'FokusView', 'WissenView',
-  'HeuteView', 'ZoeReiter', 'StapelView', 'StapelProtokoll', 'AgentenView', 'AgentenHirn', 'LoopView', 'HoiView', 'TeamKarte',
+  'HeuteView', 'StapelView', 'StapelProtokoll', 'AgentenView', 'AgentenHirn', 'LoopView', 'HoiView', 'TeamKarte',
   'KontoView', 'AnmeldeAdressen', 'SystemView', 'VerbindungenView', 'DatenbasisView', 'StammdatenView', 'ZoeStart',
 ].map(n => `components/os/${n}.tsx`);
 const ALLE = [...ORDNER.flatMap(d => dateien(d)), ...EINZELN];
@@ -58,8 +58,10 @@ describe('Privat · ZOE · System hängen am Standard', () => {
     expect(ALLE.filter(f => /<h1[ >]/.test(lies(f)))).toEqual([]);
   });
 
-  it('Umschalter stehen im Inhalt als wischbare Leiste, nicht im Kopf (Gesundheit, Familie, Sport)', () => {
-    for (const f of ['components/os/GesundheitView.tsx', 'components/os/familie/FamilieView.tsx', 'components/os/sport/SportView.tsx']) {
+  // Gesundheit und Familie sind seit 22.10. abends Werkzeuge: ihre Reiter stehen im Menü links (tests/werkzeuge.test.ts) — in der Seite bleibt nur Sport (Ebene 3).
+  it('Umschalter stehen im Inhalt als wischbare Leiste, nicht im Kopf (Sport); Gesundheit und Familie ohne zweite Reiterzeile', () => {
+    for (const f of ['components/os/GesundheitView.tsx', 'components/os/familie/FamilieView.tsx']) expect(lies(f), f).not.toContain('<Segmente');
+    for (const f of ['components/os/sport/SportView.tsx']) {
       const t = lies(f);
       expect(t, f).toContain('<Segmente');
       expect(/rechts=\{[^}]*<Segmente/.test(t), f).toBe(false);

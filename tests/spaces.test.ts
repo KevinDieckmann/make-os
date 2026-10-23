@@ -46,7 +46,8 @@ describe('Spaces', () => {
       expect(l.at(-1)).toBe(ZOE_EINTRAG);
       expect(s.start).toBe(`/os?space=${s.id}`);
     }
-    expect(leisteFuer('privat').map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Gesundheit', 'Familie', 'Kontakte', 'ZOE']);
+    // 22.10. abends: Kontakte privat ist ein Punkt im Werkzeug Familie (lib/make-one/werkzeuge.ts) — kein eigener Leistenpunkt mehr.
+    expect(leisteFuer('privat').map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Gesundheit', 'Familie', 'ZOE']);
     expect(leisteFuer('business').map(e => e.label)).toEqual(['Heute', 'Inbox', 'Kalender', 'Aufgaben', 'Planung', 'Finanzen', 'Markttraktion', 'Produkte & Mandate', 'Prozesse', 'Unternehmen', 'ZOE']);
   });
   it('Hervorhebung in der Leiste passt zum Fundort', () => {
@@ -60,7 +61,7 @@ describe('Spaces', () => {
     expect(aktiverLeistenPunkt('business', '/os/kalender', '?modus=planen')?.label).toBe('Kalender');
     expect(aktiverLeistenPunkt('business', '/os/board', '')?.label).toBe('ZOE');
     expect(aktiverLeistenPunkt('business', '/os/meeting', '')?.label).toBe('ZOE');
-    expect(aktiverLeistenPunkt('privat', '/os/menschen', '')?.label).toBe('Kontakte');
+    expect(aktiverLeistenPunkt('privat', '/os/menschen', '')?.label).toBe('Familie');
     expect(aktiverLeistenPunkt('privat', '/os/konto', '')).toBeNull();
   });
   it('Space-Schalter: Gegenstück im anderen Space, sonst Heute; gemeinsame Seiten bleiben stehen', () => {

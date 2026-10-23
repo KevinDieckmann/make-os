@@ -25,7 +25,7 @@
 // Alte Adressen mit `?space=alles` und ein gemerktes „alles“ gelten als „kein Parameter“ bzw. „der zuletzt konkrete Space“.
 
 import type { LucideIcon } from 'lucide-react';
-import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, BookUser, TrendingUp, Sparkles, Sun, Inbox, CalendarDays, Building2, Workflow } from 'lucide-react';
+import { Home, Briefcase, Wallet, Target, ListChecks, HeartPulse, Users, TrendingUp, Sparkles, Sun, Inbox, CalendarDays, Building2, Workflow } from 'lucide-react';
 import { SPACE_FARBE, type SpaceId } from './space-regeln';
 
 export type { SpaceId };
@@ -74,7 +74,10 @@ export const ZOE_EINTRAG: SpaceEintrag = {
   auch: ['/zoe', '/os/stapel', '/os/agenten', '/os/loop', '/os/wissen', '/os/research', '/os/content', '/os/meeting', '/os/board', '/os/prospecting'],
 };
 
-/** Die Reiter unter ZOE (components/os/ZoeReiter.tsx) — Brain ist der Name des Wissens, die Adresse bleibt /os/wissen. */
+/**
+ * Die Bereiche unter ZOE — Brain ist der Name des Wissens, die Adresse bleibt /os/wissen. Seit 22.10. abends zeigt sie das Werkzeug-Menü ZOE
+ * (lib/make-one/werkzeuge.ts `ZOE_WERKZEUG`, die frühere Reiterzeile `ZoeReiter` ist weg); die Liste bleibt die Grundlage für Wächter und Einstellungen.
+ */
 export const ZOE_BEREICH: { href: string; label: string; passt: string[] }[] = [
   { href: '/os/stapel', label: 'Freigaben', passt: ['/os/stapel'] },
   { href: '/os/agenten', label: 'Agenten', passt: ['/os/agenten', '/os/research', '/os/content', '/os/meeting', '/os/board', '/os/prospecting'] },
@@ -91,8 +94,9 @@ export const SPACES: Space[] = [
       ...vorn('privat'),
       { href: '/os/finanzen?s=privat', label: 'Finanzen', icon: Wallet, passt: ['/os/finanzen?space=privat', '/os/finanzen?s=privat', '/os/finanzen?s=gesamt'], auch: ['/os/finanzen'] },
       { href: '/os/gesundheit', label: 'Gesundheit', icon: HeartPulse, passt: ['/os/gesundheit', '/os/sport', '/os/journal', '/os/ernaehrung', '/os/ritual', '/os/energie', '/os/tageslauf'] },
-      { href: '/os/familie', label: 'Familie', icon: Users, passt: ['/os/familie'] },
-      { href: '/os/menschen', label: 'Kontakte', icon: BookUser, passt: ['/os/menschen'] },
+      // Kontakte privat (/os/menschen) ist seit 22.10. abends ein Punkt im Werkzeug Familie (lib/make-one/werkzeuge.ts) statt eines eigenen Leistenpunkts —
+      // die Adresse gehört weiter zu Privat und leuchtet unter Familie; die Zeit zählt weiter unter `kontakte` (lib/zeitmessung/bereich.ts).
+      { href: '/os/familie', label: 'Familie', icon: Users, passt: ['/os/familie', '/os/menschen'] },
     ],
   },
   {

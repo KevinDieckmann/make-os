@@ -17,7 +17,6 @@ import {
 } from '@/lib/make-one/agents-data';
 import { AgentenHirn } from './AgentenHirn';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Punkt, Zahl, Hinweis, LEUCHT, Spalten, Spalte, aufZwei } from './ui';
-import { ZoeReiter } from './ZoeReiter';
 import { useBetreiber } from './useInhaber';
 import { BETREIBER_WISSEN } from '@/lib/betrieb/betreiber';
 
@@ -119,7 +118,6 @@ export function AgentenView() {
 
   return (
     <Seite titel="Agenten" unter={`${ORCHESTRATOR.name} dirigiert · ${DEPARTMENTS.length} Abteilungen · ${live} von ${alle.length} live`}>
-      <ZoeReiter />
       <Spalten verhaeltnis="1:1">
         <Spalte>
       <Karte i={0} ton={LEUCHT.agenten}>

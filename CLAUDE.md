@@ -1818,7 +1818,8 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
 ## Werkzeug-Muster — jeder große Bereich ein eigenes Werkzeug (22.10., Branch `werkzeuge`, nur lokal)
 Kevin 22.10.: „Wenn ich Prozesse aufmache, kommt im Grunde ein neues Tool — wie bei Miro. Genauso bei Markttraktion wie bei HubSpot … dann bekommt jeder Bereich
 mehr Power“ — „Innerhalb der Maske auf jeden Fall einen Pfeil oben rechts, der diesen Bereich einfach als Ganzes macht.“ Prozesse ist das erste Werkzeug (Miro-Art),
-Markttraktion das zweite (HubSpot-Art, Gruppen-Überschriften im Menü); seit 22.10. abends auch Produkte & Mandate, Unternehmen, Finanzen und Planung (Gruppe A).
+Markttraktion das zweite (HubSpot-Art, Gruppen-Überschriften im Menü); seit 22.10. abends auch Produkte & Mandate, Unternehmen, Finanzen und Planung (Gruppe A)
+sowie Kalender, Inbox, Aufgaben, Gesundheit, Familie und ZOE (Gruppe B) — zwölf Werkzeuge in `WERKZEUGE`.
 - **EINE Konfiguration je Werkzeug als Daten** in `lib/make-one/werkzeuge.ts` (`WERKZEUGE`, rein, client-sicher): Kennung, Name, Symbol, Spaces, `pfade` (Muster wie
   `passtZu` — eine Adresse gehört höchstens EINEM Werkzeug), `leistenPunkt` (der Punkt der Space-Leiste, der es öffnet — das Werkzeug ersetzt keinen Punkt),
   Unterpunkte (Ziel NUR über `WEG`/vorhandene Adressen — alte Links gelten weiter — oder eine Aktion der Seite über das Ereignis `make-werkzeug`; `aktiv`,
@@ -1863,6 +1864,22 @@ Markttraktion das zweite (HubSpot-Art, Gruppen-Überschriften im Menü); seit 22
 - Wächter `tests/werkzeuge.test.ts` (jede Adresse eines Unterpunkts existiert und bleibt im Werkzeug, Zuordnung eindeutig, Leistenpunkt öffnet, ≤ 2 Ebenen, Gruppen
   beieinander, Aktionen gehört, Menü nur auf Werkzeug-Adressen, Rückweg, Rahmen/Orte, keine Literale, Automationen & Head mit mehreren Heads, Markttraktion: Punkte =
   `HUB_MENUE`, genau ein leuchtender Punkt je Adresse inkl. Netzwerken, Leiste und Blatt) plus die Wächter der Aufräum-Etappe und `tests/markttraktion-hub.test.ts`.
+- **Gruppe B (22.10. abends, Branch `werkzeuge-b`)** — nutzt das Muster der Gruppe A (Space im Kontext, `automationVon`, `headsDerSeiten`, `werkzeugFuerKonto`,
+  `mitSpace`) und bringt zwei Bausteine dazu: **`liste`** = Punkte aus Daten der Seite (`ListenEintrag`, `WerkzeugKontext.listen`, `components/os/werkzeug/listen.ts`: nur
+  Kennung/Name/Bereich/Archiv/Zahl, nie Inhalte, nichts gemerkt; die Zahl steht im Menü hinter dem Namen) und **`spalte`** = eigene linke Spalte breit IN der Leiste
+  unter dem Menü (`components/os/werkzeug/spalte.tsx`, Portal; schmal/eingeklappt wie bisher auf der Seite).
+- **Kalender** (`KALENDER_WERKZEUG`, Privat + Business): Kalender · Planen · Aufgaben (`?modus=`) · nur Business „Automationen & Head“ (`?s=automationen`: Prozess
+  Terminbuchung + Buchungsseiten, kein Head) · Fuß Einstellungen (`?einstellungen=1`); die Spalte (Mini-Monat, Kalender, Bausteine) steht in der Leiste; die Seite folgt der Adresse.
+- **Inbox** (`INBOX_WERKZEUG`, Privat + Business): Inbox · Bereiche (Liste `inbox-bereiche` aus der nach Space gefilterten Antwort, mit ungelesen) · nur Business Automationen
+  (`?s=automationen`: Anfrage-Eingang) · Fuß Postfächer (`?postfaecher=1`, jetzt aus der Adresse); die Bereichs-Reiter der Seite sind weg, Fächer und Postfach-Pillen bleiben.
+- **Aufgaben** (`AUFGABEN_WERKZEUG`, Privat + Business): Überblick · Spaces (Liste `aufgaben-spaces`, Regel `aufgabenSpaceImMenue`: Bereich der Wahl, nie archivierte
+  Mandanten) · Zeitstrahl · Automationen (`b=automationen`: Business Operations + Head-Takt/Morgenlauf, Privat Assistenz) · Fuß Archiv & Papierkorb; `AufgabenLeiste` ist weg.
+- **Gesundheit** (`GESUNDHEIT_WERKZEUG`, nur Privat, nur volle Mitglieder): Heute · Tagesstart & Tagesende · Journal | Sport · Erholung · Körper · Ernährung | Index ·
+  Verlauf · Automationen (`?s=automationen`); `/os/sport?s=erholung` leuchtet unter Erholung; „Körper“ nie mit `?fuer=` (der Personen-Schalter schreibt `?fuer=`).
+- **Familie** (`FAMILIE_WERKZEUG`, nur Privat): Wir zwei · Familie · Rahmen (`?b=`, jetzt aus der Adresse) · Kontakte (`/os/menschen` — kein eigener Leistenpunkt mehr,
+  `passt` unter Familie, Zeit weiter `privat:kontakte` über `FEST` in lib/zeitmessung/bereich.ts) · Automationen (`?b=automationen`, Head Familie).
+- **ZOE** (`ZOE_WERKZEUG`, Privat + Business): Freigaben · Agenten · Agenten-Werkzeuge (Research · Content · Meeting · Board · Prospecting) · Loops · Brain · Fuß Empfang
+  (`/zoe`); ersetzt die Reiterzeile `ZoeReiter` (gelöscht), `ZOE_BEREICH` bleibt als Liste für die Wächter. Kein „Automationen & Head“.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.

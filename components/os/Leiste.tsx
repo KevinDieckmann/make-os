@@ -32,6 +32,8 @@ import { EINSTELLUNGEN_PFADE } from '@/lib/make-one/einstellungen';
 import { useNurBusiness } from './useInhaber';
 import { werkzeugFuer, werkzeugFuerKonto, werkzeugKontext, werkzeugVonHref, WERKZEUG_ZURUECK } from '@/lib/make-one/werkzeuge';
 import { WerkzeugMenue } from './werkzeug/menue';
+import { useWerkzeugListen } from './werkzeug/listen';
+import { WerkzeugSpalteZiel, useSpalteBelegt, SPALTE_BREITE } from './werkzeug/spalte';
 
 /** Einstellungen (08.10., vorher „System“): Adresse bleibt /os/system; leuchtet auf allen Seiten, die dort gelistet sind. */
 export const EINSTELLUNGEN: SpaceEintrag = { href: '/os/system', label: 'Einstellungen', icon: Settings, passt: EINSTELLUNGEN_PFADE };
@@ -94,11 +96,16 @@ export function Leiste() {
   useEffect(() => { if (offen) setBlattWahl(wahl); }, [offen]); // eslint-disable-line react-hooks/exhaustive-deps
   const vorname = konto?.name.split(' ')[0] ?? '';
   // Werkzeug-Muster: auf einer Werkzeug-Adresse zeigt die Leiste dessen Menü — außer man hat „← MAKE OS“ gewählt (bis zum nächsten Seitenwechsel).
-  // Je Space (22.10. abends): Finanzen und Planung zeigen in Privat andere Punkte als in Business — der Kontext trägt die Wahl im Kopf; ein Werkzeug „nur volle
-  // Mitglieder“ (Unternehmen) steht für ein Konto „nur Business“ nicht da (wie sein Leistenpunkt; der Server antwortet ihm ohnehin mit 403).
+  // Je Space (22.10. abends): Werkzeuge beider Spaces (Finanzen, Planung, Kalender, Inbox, Aufgaben, ZOE) zeigen in Privat andere Punkte als in Business — der
+  // Kontext trägt die Wahl im Kopf; ein Werkzeug „nur volle Mitglieder“ (Unternehmen, Gesundheit, Familie) steht für ein Konto „nur Business“ nicht da (wie sein
+  // Leistenpunkt; der Server antwortet ihm ohnehin mit 403). `listen` = was die Seite für das Menü abgelegt hat (Bereiche der Inbox, Spaces der Aufgaben —
+  // components/os/werkzeug/listen.ts).
   const werkzeug = werkzeugFuerKonto(werkzeugFuer(pfad, suche), nurBusiness);
-  const wzKontext = useMemo(() => werkzeugKontext(pfad, suche, false, { space: wahl, nurBusiness: !!nurBusiness }), [pfad, suche, wahl, nurBusiness]);
-  const wzBlattKontext = useMemo(() => werkzeugKontext(pfad, suche, true, { space: wahl, nurBusiness: !!nurBusiness }), [pfad, suche, wahl, nurBusiness]);
+  const listen = useWerkzeugListen();
+  const wzKontext = useMemo(() => werkzeugKontext(pfad, suche, false, { space: wahl, nurBusiness: !!nurBusiness, listen }), [pfad, suche, wahl, nurBusiness, listen]);
+  const wzBlattKontext = useMemo(() => werkzeugKontext(pfad, suche, true, { space: wahl, nurBusiness: !!nurBusiness, listen }), [pfad, suche, wahl, nurBusiness, listen]);
+  // Eigene Spalte eines Werkzeugs (Kalender): breit steht sie in der Leiste unter dem Menü — die Leiste wird dann breiter (components/os/werkzeug/spalte.tsx).
+  const spalteBelegt = useSpalteBelegt();
   const [spaceZeigen, setSpaceZeigen] = useState(false);
   useEffect(() => { setSpaceZeigen(false); }, [pfad]);
   useEffect(() => {
@@ -132,7 +139,7 @@ export function Leiste() {
       </Link>
     );
   };
-  const breite = zu ? 68 : 232;
+  const breite = zu ? 68 : werkzeug?.spalte && spalteBelegt ? SPALTE_BREITE : 232;
 
   // Handy unten: fünf Einträge (HANDY_LEISTE). Heute und Inbox folgen der Wahl; „Menü“ leuchtet, wenn das Blatt offen ist oder die
   // Seite ein Punkt der Leiste ist, der unten nicht eigens steht (Aufgaben, Finanzen, Gesundheit …), oder in den Einstellungen.
@@ -170,6 +177,8 @@ export function Leiste() {
         {!werkzeugMenue && !zu && <div style={{ fontFamily: SCHRIFT.display, fontSize: TYP.mikro, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: sp.farbe, padding: '0 10px 6px' }}>{sp.label}</div>}
         {/* Die Punkte des Space, dann ZOE (gemeinsam). */}
         {!werkzeugMenue && leisteFuer(wahl, !!nurBusiness).map(e => zeile(e, punktAn?.href === e.href, e === ZOE_EINTRAG ? C.aktiv : sp.farbe))}
+        {/* Die eigene Spalte des Werkzeugs (Kalender) — unter dem Menü bzw. den Punkten des Space, nie als zweite Spalte daneben. */}
+        {werkzeug?.spalte && !zu && <WerkzeugSpalteZiel />}
 
         <div style={{ marginTop: 'auto', display: 'grid', gap: 1 }}>
           <div style={{ borderTop: `1px solid ${C.linie}`, margin: '10px 0 8px' }} />

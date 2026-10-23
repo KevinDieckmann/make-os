@@ -27,7 +27,7 @@ import {
 } from '@/lib/make-one/werkzeuge';
 import { HUB_MENUE, HUB_PUNKTE, hubGruppenAnzeige, hubOrtFuer, markttraktion } from '@/lib/crm/adresse';
 import { HUB_SYMBOLE } from '@/lib/crm/hub-symbole';
-import { SPACES, leisteFuer, passtZu } from '@/lib/make-one/spaces';
+import { SPACES, leisteFuer, passtZu, ZOE_BEREICH } from '@/lib/make-one/spaces';
 import { prozesseAusAdresse } from '@/lib/prozesse/adresse';
 import { WEG } from '@/lib/wege';
 import { BEREICH_IDS } from '@/lib/prozesse/definition';
@@ -60,6 +60,9 @@ const PZ = 'pz-11111111-2222-4333-8444-555555555555';
 const SEITE_DES_WERKZEUGS: Record<string, string> = {
   prozesse: 'components/os/prozesse/ProzesseSeite.tsx', markttraktion: 'components/os/crm/Markttraktion.tsx', 'produkte-mandate': 'components/os/mandate/ProdukteMandate.tsx',
   unternehmen: 'components/os/unternehmen/UnternehmenView.tsx', finanzen: 'components/os/FinanzenView.tsx', planung: 'components/os/planung/PlanungAutomationen.tsx',
+  // Gruppe B (22.10. abends) — keine Aktionen, jeder Punkt eine Adresse.
+  kalender: 'components/os/kalender/Kalender.tsx', inbox: 'components/os/inbox/InboxZwei.tsx', aufgaben: 'components/os/aufgaben/AufgabenRaum.tsx',
+  gesundheit: 'components/os/GesundheitView.tsx', familie: 'components/os/familie/FamilieView.tsx', zoe: 'components/os/StapelView.tsx',
 };
 
 /** Beispiel-Adressen, an denen die Unterpunkte aufgelöst werden. */
@@ -113,8 +116,8 @@ describe('Werkzeug-Konfiguration', () => {
     expect(werkzeugFuer('/os/netzwerkenx')).toBeNull();
     expect(werkzeugFuer('/os/mandate')?.id).toBe('produkte-mandate'); // seit 22.10. abends ein Werkzeug (Gruppe A)
     expect(werkzeugFuer('/os/mandate/fulfillment', '?u=bausteine')?.id).toBe('produkte-mandate');
-    expect(werkzeugFuer('/os/kalender')).toBeNull(); // Kalender ist (noch) kein Werkzeug
-    expect(werkzeugFuer('/os/menschen')).toBeNull(); // Kontakte privat
+    expect(werkzeugFuer('/os/kalender')?.id).toBe('kalender'); // seit 22.10. abends ein Werkzeug (Gruppe B)
+    expect(werkzeugFuer('/os/menschen')?.id).toBe('familie'); // Kontakte privat (seit 22.10. abends ein Punkt im Werkzeug Familie)
     expect(werkzeugFuer('/os/prozesse', '?p=sp-deal&voll=1')?.id).toBe('prozesse');
     expect(werkzeugFuer('/os/prozessebuch')).toBeNull();
   });
@@ -244,7 +247,8 @@ describe('Leiste: das Werkzeug-Menü nur auf Werkzeug-Adressen', () => {
     expect(laeufe).toContain('data-werkzeug-punkt="laeufe"');
   });
   it('überall sonst die Leiste des Space — kein Werkzeug-Menü, kein Rückweg', async () => {
-    for (const [pfad, suche] of [['/os', ''], ['/os/kalender', ''], ['/os/aufgaben', '']] as const) {
+    // Seit 22.10. abends sind auch Kalender, Aufgaben, Produkte & Mandate … Werkzeuge — geprüft wird an Seiten ohne Werkzeug.
+    for (const [pfad, suche] of [['/os', ''], ['/os/system', ''], ['/os/konto', '']] as const) {
       const { desktop } = await render(pfad, suche);
       expect(desktop, pfad).not.toContain('data-werkzeug');
       expect(desktop, pfad).not.toContain(`>${RUECKWEG_LABEL}</span>`);
@@ -761,7 +765,9 @@ describe('Gruppe A · Planung (Business und Privat)', () => {
       for (const p of werkzeugPunkte(PL, k)) expect(p.href, p.id).toContain(`space=${sp}`);
       const w = werkzeugPunkte(PL, k, 'fuss');
       expect(w.map(p => [p.label, p.href, p.wechselt])).toEqual([['Woche planen', `/os/kalender?modus=planen&space=${sp}`, 'Kalender']]);
-      expect(werkzeugVonHref(w[0].href!)).toBeNull();
+      // Seit Gruppe B ist der Kalender selbst ein Werkzeug: „Woche planen“ verlässt die Planung und lässt dort „Planen“ leuchten.
+      expect(werkzeugVonHref(w[0].href!)?.id).toBe('kalender');
+      expect(W.kalenderOrt(kx('/os/kalender', `?modus=planen&space=${sp}`))).toBe('planen');
     }
     // Fokus, Kompass und Wachstum gehören nicht zur Planung (Fokus-Seite oben rechts im Kopf).
     expect(alleUnterpunkte(PL).map(p => p.label)).not.toEqual(expect.arrayContaining(['Fokus', 'Kompass', 'Wachstum']));
@@ -806,5 +812,275 @@ describe('Gruppe A · Netzwerken gehört fest zu Business (Teil der Markttraktio
     expect(aktiverLeistenPunkt('business', '/os/netzwerken')?.label).toBe('Markttraktion');
     expect(zeitSchluessel('/os/netzwerken', '', 'privat').schluessel).toBe('business:markttraktion');
     expect(zeitSchluessel('/os/markttraktion', '?s=deals', 'privat').schluessel).toBe('business:markttraktion');
+  });
+});
+
+// ── Gruppe B (22.10. abends — „Ja, alle Empfehlungen“): Kalender, Inbox, Aufgaben, Gesundheit, Familie, ZOE ──────────────────────────────────────────────
+describe('Gruppe B: Kalender, Inbox, Aufgaben, Gesundheit, Familie, ZOE als Werkzeuge', () => {
+  const W = (id: string) => WERKZEUGE.find(w => w.id === id)!;
+  type Liste = Parameters<typeof werkzeugKontext>[3];
+  /** Alle sichtbaren Punkte (samt Fuß und Kindern) an einer Adresse — mit Space und Listen der Seite. */
+  const punkte = (w: Werkzeug, pfad: string, suche = '', o: Liste = {}, handy = false) => {
+    const k = werkzeugKontext(pfad, suche, handy, o);
+    return [...werkzeugPunkte(w, k), ...werkzeugPunkte(w, k, 'fuss')].flatMap(p => [p, ...p.unter]);
+  };
+  const an = (w: Werkzeug, pfad: string, suche = '', o: Liste = {}) => punkte(w, pfad, suche, o).filter(p => p.an).map(p => p.id);
+  const INBOX_LISTE = { 'inbox-bereiche': [{ id: 'ug', label: 'Firma U', zahl: 3 }, { id: 'kdv', label: 'Firma V' }] };
+  const AUFG_LISTE = { 'aufgaben-spaces': [
+    { id: 'privat', label: 'Privat', bereich: 'privat' as const }, { id: 'kdc', label: 'Selbstständig', bereich: 'privat' as const, zahl: 2 },
+    { id: 'kdv', label: 'Firma V', bereich: 'business' as const }, { id: 'ug', label: 'Firma U', bereich: 'business' as const },
+    { id: 'm-aktiv', label: 'Kunde Aktiv', bereich: 'business' as const }, { id: 'm-beendet', label: 'Kunde Beendet', bereich: 'business' as const, archiv: true },
+  ] };
+
+  it('sechs Werkzeuge, je mit Leistenpunkt in ihren Spaces; Gesundheit und Familie nur Privat und nur für volle Mitglieder; nur der Kalender bringt eine Spalte mit', () => {
+    expect(['kalender', 'inbox', 'aufgaben', 'gesundheit', 'familie', 'zoe'].map(id => [id, W(id)?.spaces])).toEqual([
+      ['kalender', ['privat', 'business']], ['inbox', ['privat', 'business']], ['aufgaben', ['privat', 'business']],
+      ['gesundheit', ['privat']], ['familie', ['privat']], ['zoe', ['privat', 'business']],
+    ]);
+    expect(WERKZEUGE.filter(w => w.spalte).map(w => w.id)).toEqual(['kalender']);
+    expect(WERKZEUGE.filter(w => w.nurVolleMitglieder).map(w => w.id)).toEqual(expect.arrayContaining(['gesundheit', 'familie']));
+    expect(werkzeugFuerKonto(W('gesundheit'), true)).toBeNull();
+    expect(werkzeugFuerKonto(W('gesundheit'), false)?.id).toBe('gesundheit');
+    expect(werkzeugFuerKonto(W('aufgaben'), true)?.id).toBe('aufgaben');
+    // Die Zuordnung der Adressen: alte und neue.
+    for (const [pfad, suche, id] of [
+      ['/os/kalender', '?modus=planen', 'kalender'], ['/os/inbox', '?postfaecher=1', 'inbox'], ['/os/aufgaben', '?s=privat', 'aufgaben'], ['/os/sport', '?s=lauf', 'gesundheit'],
+      ['/os/ritual', '?modus=abend', 'gesundheit'], ['/os/journal', '', 'gesundheit'], ['/os/menschen', '', 'familie'], ['/os/familie', '?b=rahmen', 'familie'],
+      ['/os/research', '', 'zoe'], ['/os/wissen', '?n=a.md', 'zoe'], ['/zoe', '', 'zoe'], ['/os/stapel', '?t=protokoll', 'zoe'],
+    ] as const) expect(werkzeugFuer(pfad, suche)?.id, `${pfad}${suche}`).toBe(id);
+    for (const pfad of ['/os/tageslauf', '/os/system', '/os/konto', '/os/fokus', '/os']) expect(werkzeugFuer(pfad), pfad).toBeNull();
+  });
+
+  it('genau EIN Punkt leuchtet je Adresse — auch bei alten Adressen (Rechner und Handy)', () => {
+    const faelle: [string, string, string, Liste, string][] = [
+      // Kalender
+      ['kalender', '/os/kalender', '', { space: 'business' }, 'kalender'], ['kalender', '/os/kalender', '?space=privat&tag=2026-10-22', {}, 'kalender'],
+      ['kalender', '/os/kalender', '?modus=planen&tag=2026-10-22', { space: 'privat' }, 'planen'], ['kalender', '/os/planung/woche', '', {}, ''],
+      ['kalender', '/os/kalender', '?modus=aufgaben&as=kdv&wer=meine', { space: 'business' }, 'aufgaben'], ['kalender', '/os/kalender', '?einstellungen=1', { space: 'privat' }, 'einstellungen'],
+      ['kalender', '/os/kalender', '?s=automationen&space=business', {}, 'automationen'], ['kalender', '/os/kalender', '?s=automationen&space=privat', {}, 'kalender'],
+      ['kalender', '/os/kalender', '?termin=x&tag=2026-10-22', { space: 'business' }, 'kalender'], ['kalender', '/os/kalender', '?buchungen=1', { space: 'business' }, 'kalender'],
+      // Inbox
+      ['inbox', '/os/inbox', '', { space: 'privat' }, 'inbox'], ['inbox', '/os/inbox', '?space=business&bereich=ug', { listen: INBOX_LISTE }, 'bereich:ug'],
+      ['inbox', '/os/inbox', '?space=business&bereich=ug', {}, 'inbox'], ['inbox', '/os/inbox', '?bereich=xx', { space: 'business', listen: INBOX_LISTE }, 'inbox'],
+      ['inbox', '/os/inbox', '?postfaecher=1', { space: 'privat' }, 'postfaecher'], ['inbox', '/os/inbox', '?offen=gm~abc', { space: 'business', listen: INBOX_LISTE }, 'inbox'],
+      ['inbox', '/os/inbox', '?s=automationen', { space: 'business' }, 'automationen'], ['inbox', '/os/inbox', '?s=automationen', { space: 'privat' }, 'inbox'],
+      // Aufgaben
+      ['aufgaben', '/os/aufgaben', '', { space: 'business', listen: AUFG_LISTE }, 'ueberblick'], ['aufgaben', '/os/aufgaben', '?space=privat&b=ueberblick', { listen: AUFG_LISTE }, 'ueberblick'],
+      ['aufgaben', '/os/aufgaben', '?space=business&s=kdv&p=pr-1&a=t-1', { listen: AUFG_LISTE }, 'space:kdv'], ['aufgaben', '/os/aufgaben', '?space=privat', { listen: AUFG_LISTE }, 'space:privat'],
+      ['aufgaben', '/os/aufgaben', '?r=m-aktiv', { space: 'business', listen: AUFG_LISTE }, 'space:m-aktiv'], ['aufgaben', '/os/aufgaben', '?space=business&s=m-beendet', { listen: AUFG_LISTE }, 'archiv'],
+      ['aufgaben', '/os/aufgaben', '?space=business&s=kdv', {}, 'ueberblick'], ['aufgaben', '/os/aufgaben', '?ansicht=zeitstrahl&space=business', {}, 'zeitstrahl'],
+      ['aufgaben', '/os/aufgaben', '?b=archiv', { space: 'privat' }, 'archiv'], ['aufgaben', '/os/aufgaben', '?space=business&b=automationen', {}, 'automationen'],
+      ['aufgaben', '/os/aufgaben', '?space=privat&b=automationen', {}, 'automationen'], ['aufgaben', '/os/aufgaben', '?offen=t-1', { space: 'business', listen: AUFG_LISTE }, 'ueberblick'],
+      // Gesundheit (alte Adressen: Reiter `?s=`, Sport-Reiter, Ritual mit Modus, die Ansicht einer anderen Person)
+      ['gesundheit', '/os/gesundheit', '', {}, 'heute'], ['gesundheit', '/os/gesundheit', '?s=erholung', {}, 'erholung'], ['gesundheit', '/os/sport', '?s=erholung', {}, 'erholung'],
+      ['gesundheit', '/os/sport', '', {}, 'sport'], ['gesundheit', '/os/sport', '?s=hyrox', {}, 'sport'], ['gesundheit', '/os/ritual', '?modus=morgen', {}, 'ritual'],
+      ['gesundheit', '/os/journal', '', {}, 'journal'], ['gesundheit', '/os/gesundheit', '?s=koerper', {}, 'koerper'], ['gesundheit', '/os/gesundheit', '?s=koerper&fuer=person-b', {}, 'heute'],
+      ['gesundheit', '/os/gesundheit', '?s=ernaehrung&g=g-1', {}, 'ernaehrung'], ['gesundheit', '/os/gesundheit', '?s=index&fuer=person-b', {}, 'index'],
+      ['gesundheit', '/os/gesundheit', '?s=verlauf', {}, 'verlauf'], ['gesundheit', '/os/gesundheit', '?s=automationen', {}, 'automationen'], ['gesundheit', '/os/gesundheit', '?s=quatsch#morgen', {}, 'heute'],
+      // Familie
+      ['familie', '/os/familie', '', {}, 'wir'], ['familie', '/os/familie', '?b=wir', {}, 'wir'], ['familie', '/os/familie', '?b=familie', {}, 'familie'],
+      ['familie', '/os/familie', '?b=rahmen', {}, 'rahmen'], ['familie', '/os/menschen', '', {}, 'kontakte'], ['familie', '/os/familie', '?b=automationen', {}, 'automationen'],
+      // ZOE
+      ['zoe', '/os/stapel', '?t=protokoll', { space: 'privat' }, 'freigaben'], ['zoe', '/os/agenten', '?h=sales&r=einstellungen', { space: 'business' }, 'agenten'],
+      ['zoe', '/os/research', '', {}, 'research'], ['zoe', '/os/content', '', {}, 'content'], ['zoe', '/os/meeting', '', {}, 'meeting'], ['zoe', '/os/board', '', {}, 'board'],
+      ['zoe', '/os/prospecting', '', { space: 'privat' }, 'prospecting'], ['zoe', '/os/loop', '', {}, 'loops'], ['zoe', '/os/wissen', '?n=x.md', {}, 'brain'], ['zoe', '/zoe', '', {}, 'empfang'],
+    ];
+    for (const [id, pfad, suche, o, erwartet] of faelle) {
+      if (!erwartet) continue; // /os/planung/woche leitet um (next.config.mjs) — der Browser steht dann auf /os/kalender?modus=planen
+      for (const handy of [false, true]) expect(punkte(W(id), pfad, suche, o, handy).filter(p => p.an).map(p => p.id), `${id} ${pfad}${suche} ${JSON.stringify(o)}`).toEqual([erwartet]);
+    }
+  });
+
+  it('jedes Ziel gibt es (Seite unter app), bleibt im Werkzeug und lässt genau seinen Punkt leuchten — in beiden Spaces, mit Listen', () => {
+    const listen = { ...INBOX_LISTE, ...AUFG_LISTE };
+    const GRUPPE_B = ['kalender', 'inbox', 'aufgaben', 'gesundheit', 'familie', 'zoe'].map(W);
+    for (const w of GRUPPE_B) for (const space of w.spaces) for (const fuer of ['', '?fuer=person-b']) {
+      const start = w.pfade[0];
+      for (const p of punkte(w, start, w.id === 'gesundheit' ? fuer : '', { space, listen })) {
+        expect(p.href, `${w.id}:${p.id}`).toBeTruthy();
+        const ziel = p.href!.split('#')[0];
+        const [pfad, suche = ''] = ziel.split('?');
+        expect(seiteDa(pfad) || pfad === '/zoe', `${w.id}:${p.id} → ${ziel}`).toBe(true);
+        expect(werkzeugVonHref(ziel)?.id, `${w.id}:${p.id} → ${ziel}`).toBe(w.id);
+        expect(an(w, pfad, suche ? `?${suche}` : '', { space, listen }), `${w.id}:${p.id} → ${ziel} (${space})`).toEqual([p.id]);
+      }
+    }
+  });
+
+  it('`?space=` wandert in jedem Punkt der Werkzeuge beider Spaces mit (Gesundheit und Familie legt die Seite selbst fest)', () => {
+    const listen = { ...INBOX_LISTE, ...AUFG_LISTE };
+    for (const id of ['kalender', 'inbox', 'aufgaben', 'zoe']) for (const space of ['privat', 'business'] as const) {
+      for (const p of punkte(W(id), W(id).pfade[0], '', { space, listen })) {
+        if (p.href === '/zoe') continue; // Empfang: eine ganze Fläche außerhalb von /os, ohne Space
+        const q = new URLSearchParams(p.href!.split('?')[1] ?? '');
+        // Ein Space der Aufgaben trägt seinen eigenen Bereich (der Space des Spaces gewinnt — aufgabenLink).
+        if (p.id.startsWith('space:')) { expect(q.get('space'), `${id}:${p.id}`).toBe(AUFG_LISTE['aufgaben-spaces'].find(e => `space:${e.id}` === p.id)!.bereich); continue; }
+        expect(q.get('space'), `${id}:${p.id} (${space})`).toBe(space);
+      }
+    }
+  });
+
+  it('Menüs: Punkte in fester Reihenfolge; Automationen nur Business (Kalender, Inbox) bzw. nur mit Head (Privat); ZOE ohne', () => {
+    const ids = (id: string, space: 'privat' | 'business', suche = '', o: Liste = {}) => punkte(W(id), W(id).pfade[0], suche, { space, ...o }).filter(p => !p.unter.length || true).map(p => p.id);
+    expect(ids('kalender', 'business')).toEqual(['kalender', 'planen', 'aufgaben', 'automationen', 'einstellungen']);
+    expect(ids('kalender', 'privat')).toEqual(['kalender', 'planen', 'aufgaben', 'einstellungen']);
+    expect(ids('inbox', 'business', '', { listen: INBOX_LISTE })).toEqual(['inbox', 'bereich:ug', 'bereich:kdv', 'automationen', 'postfaecher']);
+    expect(ids('inbox', 'privat')).toEqual(['inbox', 'postfaecher']); // ohne Liste der Seite (noch nicht geladen) keine Bereiche
+    expect(ids('aufgaben', 'business', '', { listen: AUFG_LISTE })).toEqual(['ueberblick', 'space:kdv', 'space:ug', 'space:m-aktiv', 'zeitstrahl', 'automationen', 'archiv']);
+    expect(ids('aufgaben', 'privat', '', { listen: AUFG_LISTE })).toEqual(['ueberblick', 'space:privat', 'space:kdc', 'zeitstrahl', 'automationen', 'archiv']);
+    expect(ids('gesundheit', 'privat')).toEqual(['heute', 'ritual', 'journal', 'sport', 'erholung', 'koerper', 'ernaehrung', 'index', 'verlauf', 'automationen']);
+    expect(ids('familie', 'privat')).toEqual(['wir', 'familie', 'rahmen', 'kontakte', 'automationen']);
+    expect(ids('zoe', 'privat')).toEqual(['freigaben', 'agenten', 'research', 'content', 'meeting', 'board', 'prospecting', 'loops', 'brain', 'empfang']);
+    expect(automationPunkt(W('zoe'))).toBeNull();
+    // Erholung steht EINMAL im Menü; Gruppen der Gesundheit, Agenten-Werkzeuge der ZOE, Bereiche der Inbox, Spaces der Aufgaben.
+    expect(punkte(W('gesundheit'), '/os/sport', '?s=erholung').filter(p => p.label === 'Erholung')).toHaveLength(1);
+    const k = werkzeugKontext('/os/gesundheit');
+    expect([...new Set(werkzeugPunkte(W('gesundheit'), k).map(p => p.gruppe ?? null))]).toEqual(['Heute', 'Körper & Training', 'Auswertung', null]);
+    expect(werkzeugPunkte(W('zoe'), werkzeugKontext('/os/stapel')).filter(p => p.gruppe === 'Agenten-Werkzeuge').map(p => p.id)).toEqual(['research', 'content', 'meeting', 'board', 'prospecting']);
+    expect(werkzeugPunkte(W('inbox'), werkzeugKontext('/os/inbox', '', false, { space: 'business', listen: INBOX_LISTE })).find(p => p.id === 'bereich:ug')).toMatchObject({ gruppe: 'Bereiche', label: 'Firma U', zahl: 3 });
+  });
+
+  it('Aufgaben: nur Spaces des Bereichs der Wahl, nur laufende Mandanten (beendete/pausierte stehen im Archiv) — Adressen nur über WEG.aufgaben', () => {
+    const l = punkte(W('aufgaben'), '/os/aufgaben', '', { space: 'business', listen: AUFG_LISTE });
+    expect(l.map(p => p.id)).not.toContain('space:m-beendet');
+    expect(l.map(p => p.id)).not.toContain('space:privat');
+    expect(l.find(p => p.id === 'space:m-aktiv')?.href).toBe(WEG.aufgaben({ s: 'm-aktiv' }));
+    expect(l.find(p => p.id === 'archiv')?.href).toBe(WEG.aufgaben({ b: 'archiv', space: 'business' }));
+    expect(l.find(p => p.id === 'automationen')?.href).toBe(WEG.aufgaben({ b: 'automationen', space: 'business' }));
+    expect(l.find(p => p.id === 'zeitstrahl')?.href).toBe('/os/aufgaben?space=business&ansicht=zeitstrahl');
+    // Die Adresse „automationen“ ist neu und vertauscht nichts: alte Adressen lesen sich wie vorher.
+    expect(WEG.aufgaben({ b: 'automationen', space: 'privat' })).toBe('/os/aufgaben?space=privat&b=automationen');
+    expect(WEG.aufgaben({ b: 'archiv' })).toBe('/os/aufgaben?b=archiv');
+    expect(WEG.aufgaben({ space: 'privat' })).toBe('/os/aufgaben?space=privat&b=ueberblick');
+  });
+
+  it('Gesundheit: „Körper“ nie in der Ansicht einer anderen Person (Art. 9) — die Ansicht wandert in die Ziele der Gesundheits-Seite mit', () => {
+    const fremd = punkte(W('gesundheit'), '/os/gesundheit', '?fuer=person-b&s=index');
+    expect(fremd.map(p => p.id)).not.toContain('koerper');
+    expect(fremd.find(p => p.id === 'verlauf')?.href).toBe('/os/gesundheit?s=verlauf&fuer=person-b');
+    expect(fremd.find(p => p.id === 'erholung')?.href).toBe(WEG.erholung('person-b'));
+    expect(fremd.find(p => p.id === 'sport')?.href).toBe(WEG.sport()); // Sport, Journal, Ritual sind immer die eigenen
+    expect(punkte(W('gesundheit'), '/os/gesundheit', '?s=koerper').find(p => p.id === 'koerper')?.href).toBe('/os/gesundheit?s=koerper');
+    for (const handy of [false, true]) expect(punkte(W('gesundheit'), '/os/gesundheit', '?fuer=person-b', {}, handy).map(p => p.id)).not.toContain('koerper');
+    // Die Seite schreibt die Ansicht in die Adresse (der Personen-Schalter), sonst sähe das Menü sie nicht.
+    const g = lies('components/os/GesundheitView.tsx');
+    expect(g).toContain('onClick={() => personWaehlen(p.speicher)}');
+    expect(g).toContain("router.replace(adresse(segment === 'koerper' && !eigen ? 'heute' : segment, eigen ? '' : speicher), { scroll: false });");
+  });
+
+  it('„Automationen & Head“: Heads NUR aus SEITEN_REGELN — Aufgaben Operations bzw. Assistenz, Gesundheit (mit Ernährung), Familie; Kalender und Inbox ohne Head, mit ihren Prozessen', () => {
+    expect(automationVon(W('kalender'), 'business')).toMatchObject({ bereiche: [], prozesse: ['sp-buchung'] });
+    expect(automationVon(W('kalender'), 'privat')).toBeNull();
+    expect(automationHeads(automationVon(W('kalender'), 'business'))).toEqual([]);
+    expect(automationVon(W('inbox'), 'business')).toMatchObject({ prozesse: ['sp-anfrage'] });
+    expect(automationVon(W('inbox'), 'privat')).toBeNull();
+    expect(automationHeads(automationVon(W('aufgaben'), 'business'))).toEqual(['operations']);
+    expect(automationVon(W('aufgaben'), 'business')?.prozesse).toEqual(['sp-head-takt', 'sp-morgenlauf']);
+    expect(automationHeads(automationVon(W('aufgaben'), 'privat'))).toEqual(['assistenz']);
+    expect(automationVon(W('aufgaben'), 'privat')?.bereiche).toEqual([]);
+    expect(automationHeads(automationVon(W('gesundheit'), 'privat'))).toEqual(['gesundheit', 'ernaehrung']);
+    expect(automationHeads(automationVon(W('familie'), 'privat'))).toEqual(['familie']);
+    // Jede einzelne Prozess-Kennung gibt es auf der Landkarte.
+    for (const w of WERKZEUGE) for (const a of automationenVon(w)) for (const p of a.prozesse ?? []) expect(SYSTEM_PROZESSE.some(x => x.id === p), `${w.id}:${p}`).toBe(true);
+    // Keine zweite Zuordnung: die Heads entsprechen dem, was der Chat je Seite vorschlägt.
+    expect(headsDerSeiten(['/os/aufgaben?space=privat&b=ueberblick'], 'privat')).toEqual(['assistenz']);
+  });
+
+  it('einzelne Prozesse stehen unter ihrem Bereich, nach den ganzen Bereichen, nichts doppelt', () => {
+    const ansicht = landkarteAnsicht(SYSTEM_PROZESSE, null);
+    const g = automationenFuer(ansicht, ['marketing'], {}, ['sp-buchung', 'sp-anfrage', 'gibt-es-nicht']);
+    expect(g.map(x => x.bereich.id)).toEqual(['marketing', 'sales']);
+    expect(g[0].zeilen.filter(z => z.id === 'sp-anfrage')).toHaveLength(1); // sp-anfrage steht schon unter Marketing
+    expect(g[1].zeilen.map(z => z.id)).toEqual(['sp-buchung']);
+    expect(automationenFuer(ansicht, [], {}, ['sp-head-takt', 'sp-morgenlauf']).flatMap(x => x.zeilen.map(z => z.id))).toEqual(['sp-head-takt', 'sp-morgenlauf']);
+  });
+
+  it('Privat: der Baustein zeigt nur die Heads — keine Landkarte, kein „+ Prozess“, Freigaben unter Privat', async () => {
+    const { BereichAutomationenAnsicht } = await import('@/components/os/werkzeug/BereichAutomationen');
+    const kopf = (id: string, name: string) => ({ id, name, kurz: name, auftrag: `${name} hilft.`, aktiv: true, zaehler: { freigaben: 1, laufend: 0 } });
+    const html = renderToStaticMarkup(h(BereichAutomationenAnsicht, {
+      werkzeug: W('gesundheit'), space: 'privat', mitProzessen: false, gruppen: [], headId: 'gesundheit', head: kopf('gesundheit', 'Gesundheit & Sport'), weitere: [{ id: 'ernaehrung', head: null }],
+      darfBauen: true, schrauben: {}, onNeu: () => {}, onVorlage: () => {}, onHead: () => {}, onGespeichert: () => {},
+    }));
+    expect(html).toContain('data-werkzeug="gesundheit"');
+    expect(html).toContain('Gesundheit &amp; Sport');
+    for (const t of ['Aus Vorlage', '>Prozess<', 'Head fragen', 'Kein Bereich der Landkarte']) expect(html, t).not.toContain(t);
+    expect(html).toContain(`href="${WEG.freigaben(undefined, 'privat').replace(/&/g, '&amp;')}"`);
+    expect(html).toContain('Der Head ist für dich hier nicht zu sehen');
+    const q = lies('components/os/werkzeug/BereichAutomationen.tsx');
+    // Seit dem Zusammenführen mit Gruppe A: EIN Baustein — in Privat (bzw. ohne Prozesse) nur die Heads, die Landkarte wird dort gar nicht erst geladen.
+    expect(q).toContain("const mitProzessen = space === 'business' &&");
+    expect(q).toContain('<NurHeads key={space}');
+    expect(q).toContain('fetch(`/api/agenten?space=${space}`');
+  });
+
+  it('Leiste: auf jeder Werkzeug-Adresse das Menü des Werkzeugs, genau ein Punkt leuchtet; die Handy-Leiste bleibt', async () => {
+    const render = async (pfad: string, suche = '') => {
+      nav.pfad = pfad; nav.suche = suche;
+      const { Leiste } = await import('@/components/os/Leiste');
+      const html = renderToStaticMarkup(h(Leiste));
+      const [desktop, mobil] = html.split('class="leiste-mobil"');
+      return { desktop, mobil };
+    };
+    for (const [pfad, suche, id, punkt] of [
+      ['/os/kalender', '?modus=planen&space=privat', 'kalender', 'planen'], ['/os/inbox', '?postfaecher=1&space=business', 'inbox', 'postfaecher'],
+      ['/os/aufgaben', '?space=business&ansicht=zeitstrahl', 'aufgaben', 'zeitstrahl'], ['/os/gesundheit', '?s=verlauf', 'gesundheit', 'verlauf'],
+      ['/os/menschen', '', 'familie', 'kontakte'], ['/os/board', '?space=business', 'zoe', 'board'],
+    ] as const) {
+      const { desktop, mobil } = await render(pfad, suche);
+      expect(desktop, pfad).toContain(`data-werkzeug="${id}"`);
+      expect((desktop.match(/aria-current="page"/g) ?? []).length, `${pfad}${suche}`).toBe(1);
+      expect(desktop.match(/<a [^>]*aria-current="page"[^>]*>/)?.[0] ?? '', `${pfad}${suche}`).toContain(`data-werkzeug-punkt="${punkt}"`);
+      for (const t of ['>Heute<', '>Inbox<', '>Menü<', '>ZOE<', '>Netzwerken<']) expect(mobil, t).toContain(t);
+    }
+    // Kalender bringt seine Spalte mit: der Ort steht in der Leiste (ausgeklappt) — sonst nirgends.
+    expect((await render('/os/kalender', '?space=business')).desktop).toContain('data-werkzeug-spalte=""');
+    expect((await render('/os/inbox', '?space=business')).desktop).not.toContain('data-werkzeug-spalte');
+    const l = lies('components/os/Leiste.tsx');
+    expect(l).toContain('const werkzeug = werkzeugFuerKonto(werkzeugFuer(pfad, suche), nurBusiness);');
+    expect(l).toContain('werkzeugKontext(pfad, suche, false, { space: wahl, nurBusiness: !!nurBusiness, listen })');
+    expect(l).toContain('{werkzeug?.spalte && !zu && <WerkzeugSpalteZiel />}');
+  });
+
+  it('Privat-Leiste ohne eigenen Punkt „Kontakte“: /os/menschen leuchtet unter Familie, die Zeit zählt weiter unter `kontakte` (Privat)', async () => {
+    expect(leisteFuer('privat').map(e => e.label)).not.toContain('Kontakte');
+    expect(leisteFuer('privat').find(e => e.label === 'Familie')?.passt).toContain('/os/menschen');
+    const { zeitSchluessel } = await import('@/lib/zeitmessung/bereich');
+    expect(zeitSchluessel('/os/menschen', '', 'business').schluessel).toBe('privat:kontakte');
+    expect(zeitSchluessel('/os/familie', '?b=rahmen', 'business').schluessel).toBe('privat:familie');
+  });
+
+  it('Seiten folgen der Adresse (Menü-Klicks ändern nur sie) und tragen keine zweite Navigation mehr', () => {
+    const k = lies('components/os/kalender/Kalender.tsx');
+    expect(k).toContain("const modusParam = suchParams?.get('modus') ?? null;");
+    expect(k).toContain('}, [modusParam]);');
+    expect(k).toContain('}, [einstParam]);');
+    expect(k).toContain('<BereichAutomationen werkzeug={KALENDER_WERKZEUG} space="business" />');
+    expect(k).toContain('{automationen ? k4.mitPlanen : k4.karten}');
+    const i = lies('components/os/inbox/InboxZwei.tsx');
+    expect(i).toContain("const ansicht: 'liste' | 'postfaecher' = params.get('postfaecher') === '1' ? 'postfaecher' : 'liste';");
+    expect(i).not.toContain('data-inbox="bereiche"');
+    expect(i).toContain('useWerkzeugListe(INBOX_BEREICHE,');
+    const a = lies('components/os/aufgaben/AufgabenRaum.tsx');
+    expect(a).not.toContain('AufgabenLeiste');
+    expect(a).toContain('useWerkzeugListe(AUFGABEN_SPACES,');
+    expect(lies('components/os/aufgaben/Navigation.tsx')).not.toContain('export function AufgabenLeiste');
+    const f = lies('components/os/familie/FamilieView.tsx');
+    expect(f).toContain("const b = params?.get('b') ?? null;");
+    expect(f).not.toContain("new URLSearchParams(window.location.search).get('b')");
+    expect(existsSync(path.join(wurzel, 'components/os/ZoeReiter.tsx'))).toBe(false);
+    const zoeSeiten = ['StapelView', 'AgentenView', 'BoardView', 'ContentView', 'LoopView', 'MeetingView', 'ProspectingView', 'ResearchView', 'WissenView', 'agenten/AgentenSeite'];
+    for (const s of zoeSeiten) expect(lies(`components/os/${s}.tsx`), s).not.toContain('ZoeReiter');
+    // Jede frühere ZOE-Reiterseite ist ein Punkt des Menüs.
+    for (const b of ZOE_BEREICH) expect(werkzeugVonHref(b.href)?.id, b.href).toBe('zoe');
+  });
+
+  it('Listen und Spalte: nur Kennung, Name, Merkmale — kein Browser-Speicher; die Spalte nur breit und nie neben einer zweiten', () => {
+    const l = lies('components/os/werkzeug/listen.ts');
+    expect(l).not.toMatch(/localStorage|sessionStorage|indexedDB/);
+    expect(l).toContain('useEffect(() => () => werkzeugListeSetzen(schluessel, null), [schluessel]);');
+    const k = lies('components/os/kalender/Kalender.tsx');
+    expect(k).toContain('const inLeiste = breit && !!spalteZiel;');
+    expect(k).toContain("{breit && !inLeiste && <div id={LINKS_ID}");
   });
 });

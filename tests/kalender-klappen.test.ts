@@ -70,7 +70,9 @@ describe('Kalender — linke Spalte einklappen', () => {
     expect(seite).toMatch(/\{breit && !linksOffen && <ErstellenMenue breit=\{false\}/);
     // Zugeklappt: `hidden` (Zustand bleibt), das Raster nimmt die ganze Breite; schmal ohne `hidden`.
     expect(seite).toMatch(/<div id=\{LINKS_ID\} hidden=\{!linksSichtbar\(breit, linksOffen\)\}/);
-    expect(seite).toMatch(/gridTemplateColumns: breit && linksSichtbar\(breit, linksOffen\) \? '280px minmax\(0, 1fr\)' : 'minmax\(0, 1fr\)'/);
+    // Werkzeug (22.10. abends): breit steht die Spalte in der Leiste unter dem Menü (Portal) — auf der Seite nur, wenn die Leiste keinen Ort dafür hat.
+    expect(seite).toMatch(/gridTemplateColumns: breit && !inLeiste && linksSichtbar\(breit, linksOffen\) \? '280px minmax\(0, 1fr\)' : 'minmax\(0, 1fr\)'/);
+    expect(seite).toMatch(/\{inLeiste && spalteZiel && createPortal\(<div id=\{LINKS_ID\} hidden=\{!linksSichtbar\(breit, linksOffen\)\}/);
     // Taste, Merker, Planen.
     expect(seite).toMatch(/!linksTaste\(e, document\.activeElement/);
     expect(seite).toMatch(/setLinksOffen\(linksOffenLesen\(\)\)/);

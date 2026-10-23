@@ -15,6 +15,10 @@
 //   Körper     Energie, Gesundheits-Meilensteine, die eigenen Module (09.10.) und das EIGENE Körper-Profil (Daten je
 //              Person, seit 08.10. abends — nur die Person selbst; in der Ansicht einer anderen Person gibt es den Reiter nicht)
 //
+// Werkzeug (22.10. abends, lib/make-one/werkzeuge.ts `GESUNDHEIT_WERKZEUG`): die Reiter stehen im Menü links (Heute · Tagesstart & Tagesende · Journal · Sport ·
+// Erholung · Körper · Ernährung · Index · Verlauf · Automationen & Head) — die Reiterzeile der Seite ist weg. Die Ansicht einer anderen Person steht in der
+// Adresse (`?fuer=`, der Personen-Schalter schreibt sie): so zeigt das Menü dort kein „Körper“ (Art. 9), und die Ziele tragen die Ansicht mit.
+//
 // Whoops Regeln, hier eingehalten: keine Rahmen — Weißraum und Haarlinien;
 // eine Schrift; große Zahlen, kleine Labels in normaler Schrift; eine Farbe
 // je Kennzahl; nie eine Null, wo kein Wert ist.
@@ -26,7 +30,9 @@ import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { WhoopImport } from './WhoopImport';
 import { WhoopKarte } from './gesundheit/WhoopKarte';
 import { UnterlagenKarte } from './gesundheit/Unterlagen';
-import { Seite, Karte, Ueberschrift, Ring, Segmente, Chip, Fortschritt, Balken as Trend, Leer, Hinweis, Schalter, ZielBezug, feld, LEUCHT, FlussKarte } from './ui';
+import { Seite, Karte, Ueberschrift, Ring, Chip, Fortschritt, Balken as Trend, Leer, Hinweis, Schalter, ZielBezug, feld, LEUCHT, FlussKarte } from './ui';
+import { BereichAutomationen } from './werkzeug/BereichAutomationen';
+import { GESUNDHEIT_WERKZEUG } from '@/lib/make-one/werkzeuge';
 import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { useKoerper, KoerperLeer, ProfilKarte, BeschwerdenKarte, HebelKarte, ZusammenhaengeKarte, AnzeigeKarte, ModuleKarte } from './gesundheit/Koerper';
 import { routinenHinweis } from '@/lib/gesundheit/koerper';
@@ -51,7 +57,7 @@ import { RoutineSteuer, routineHakenSenden, streakText } from './routinen/haken'
 import { WEG } from '@/lib/wege';
 import { useNurBusiness } from './useInhaber';
 
-type Segment = 'heute' | 'erholung' | 'index' | 'verlauf' | 'ernaehrung' | 'koerper';
+type Segment = 'heute' | 'erholung' | 'index' | 'verlauf' | 'ernaehrung' | 'koerper' | 'automationen';
 // Erholung (10.10., Kevin): eigener Reiter direkt nach „Heute“ — Programme, Behandlungen, Regeneration, Beschwerden-Verlauf
 // (components/os/gesundheit/Erholung.tsx). In der Ansicht einer anderen Person nur lesend und nur, was sie teilt (die Route entscheidet).
 const SEGMENTE: { id: Segment; label: string }[] = [
@@ -127,11 +133,16 @@ export function GesundheitView() {
   const router = useRouter();
   const pfad = usePathname();
   const params = useSearchParams();
-  const segment = (SEGMENTE.find(s => s.id === params.get('s'))?.id ?? 'heute') as Segment;
+  // „Automationen & Head“ (22.10. abends): ein Ort der Seite, kein Reiter — der Head Gesundheit & Sport (und Ernährung & Einkauf) aus `SEITEN_REGELN`.
+  const segment = (params.get('s') === 'automationen' ? 'automationen' : SEGMENTE.find(s => s.id === params.get('s'))?.id ?? 'heute') as Segment;
   const heute = localDay();
 
   // ?fuer=<person> zeigt die andere Person (wenn sie teilt) — z. B. aus einem Index-Link (26.09.).
-  const [ansicht, setAnsicht] = useState(() => { const f = params.get('fuer'); return f && /^[a-z0-9-]{1,40}$/.test(f) ? f : ''; });
+  const fuerRoh = params.get('fuer');
+  const fuerAdresse = fuerRoh && /^[a-z0-9-]{1,40}$/.test(fuerRoh) ? fuerRoh : '';
+  const [ansicht, setAnsicht] = useState(fuerAdresse);
+  /** Die eigene Kennung (aus dem Stand) — Ziel, wenn `?fuer=` aus der Adresse verschwindet (Zurück, Menü). */
+  const ichRef = useRef('');
   const [personen, setPersonen] = useState<{ speicher: string; name: string }[]>([]);
   const [stand, setStand] = useState<Stand | null>(null);
   const [hl, setHl] = useState<Record<string, string[]>>({});
@@ -149,7 +160,6 @@ export function GesundheitView() {
   // Ernährung & Einkauf sind Privat-Bereich des HAUSHALTS (Einkauf, Plan, Gerichte) — ein Konto „nur Business“ bekommt sie serverseitig nicht
   // (403, Gesamtprüfung 12.10.); den Reiter gibt es für es darum gar nicht.
   const nurBusiness = useNurBusiness();
-  const segmente = (!stand || eigeneSicher ? SEGMENTE : SEGMENTE.filter(s => s.id !== 'koerper')).filter(s => !(nurBusiness && s.id === 'ernaehrung'));
   // Module (09.10., lib/gesundheit/module.ts): Symptom-Regler und Zähler „Sauber geblieben“ nur, wenn die angezeigte Person das
   // Modul führt (`stand.module` — der Server liefert ein ausgeschaltetes leer). Eigene Ansicht mit dem eigenen Namen des
   // Reglers; geteilte Ansicht nur mit Einträgen und neutral benannt (die Einstellungen der anderen Person bleiben bei ihr).
@@ -168,6 +178,7 @@ export function GesundheitView() {
   const laden = () => fetch(`/api/gesundheit/stand${q}`).then(r => r.json()).then((d: Stand & { error?: string }) => {
     if (d.error) return;
     setStand(d);
+    if (d.ich) ichRef.current = d.ich;
     if (!ansicht && d.ich) setAnsicht(d.ich);
     setJuckreiz(d.haut.trend.heute ?? null);
     setFragen({ gut: d.journal.heute?.gut ?? '', dankbar: d.journal.heute?.dankbar ?? '', hart: d.journal.heute?.hart ?? '' });
@@ -198,8 +209,25 @@ export function GesundheitView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segment, ansicht]);
 
-  // Segment wechseln ist ein Ortswechsel — Zurück führt zum vorigen Segment (25.09.).
-  const geheZu = (s: Segment) => router.push(s === 'heute' ? pfad : `${pfad}?s=${s}`, { scroll: false });
+  // Segment wechseln ist ein Ortswechsel — Zurück führt zum vorigen Segment (25.09.). Die Ansicht einer anderen Person (`?fuer=`) bleibt dabei stehen.
+  const adresse = (s: Segment, fuer: string) => { const n = new URLSearchParams(); if (s !== 'heute') n.set('s', s); if (fuer) n.set('fuer', fuer); return `${pfad}${n.toString() ? `?${n}` : ''}`; };
+  const geheZu = (s: Segment) => router.push(adresse(s, fuerAdresse), { scroll: false });
+  // Personen-Schalter (22.10. abends): die Ansicht steht in der Adresse — die eigene ohne `?fuer=`; „Körper“ gibt es in einer fremden Ansicht nicht.
+  const personWaehlen = (speicher: string) => {
+    const eigen = !!stand && speicher === stand.ich;
+    setAnsicht(speicher); setStand(null); setVerlauf(null);
+    router.replace(adresse(segment === 'koerper' && !eigen ? 'heute' : segment, eigen ? '' : speicher), { scroll: false });
+  };
+  // Zurück/Vor oder ein Link ändert `?fuer=`: die Ansicht folgt (ohne Parameter = die eigene).
+  useEffect(() => {
+    const ziel = fuerAdresse || ichRef.current;
+    if (!ziel || ziel === ansicht) return;
+    setAnsicht(ziel); setStand(null); setVerlauf(null);
+  }, [fuerAdresse]); // eslint-disable-line react-hooks/exhaustive-deps
+  // `?fuer=<ich>` (ein Link auf die eigene Ansicht): ohne Parameter — so stimmen Menü und Seite überein.
+  useEffect(() => {
+    if (stand && fuerAdresse && fuerAdresse === stand.ich) router.replace(adresse(segment, ''), { scroll: false });
+  }, [stand, fuerAdresse]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Schreiben (nur auf der eigenen Seite) ──
   // Routinen 2 (10.10.): abhaken bzw. zählen — EIN PATCH je Tipp (der Server zählt und setzt den Haken mit dem Tagesziel), nie mehr der ganze Log.
@@ -267,14 +295,15 @@ export function GesundheitView() {
     <Seite titel={<>Gesundheit{personen.length > 1 && !eigene && <span style={{ color: C.inkLeise, fontWeight: 500 }}> · {personen.find(p => p.speicher === ansicht)?.name.split(' ')[0]}</span>}</>}
       unter={personen.length > 1 ? (
         <div style={{ display: 'flex', gap: 14, fontSize: TYP.bedien }}>
-          {personen.map(p => <button key={p.speicher} onClick={() => { setAnsicht(p.speicher); setStand(null); setVerlauf(null); }} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: ansicht === p.speicher ? C.ink : C.inkLeise, borderBottom: `1px solid ${ansicht === p.speicher ? C.ink : 'transparent'}` }}>{p.name.split(' ')[0]}</button>)}
+          {personen.map(p => <button key={p.speicher} onClick={() => personWaehlen(p.speicher)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, color: ansicht === p.speicher ? C.ink : C.inkLeise, borderBottom: `1px solid ${ansicht === p.speicher ? C.ink : 'transparent'}` }}>{p.name.split(' ')[0]}</button>)}
         </div>
       ) : undefined}
       >
       {/* Die Umschalter stehen im Inhalt als EINE wischbare Leiste (Standard, Regel 11) — nicht im Kopf. */}
       {eigene && <EinwilligungHinweis />}
-      <Segmente liste={segmente} aktiv={segment} onWahl={geheZu} />
+      {/* Die Reiter stehen seit 22.10. abends im Werkzeug-Menü links (am Handy im Blatt „Menü“) — keine zweite Reiterzeile. */}
       <ZielBezug bereich="gesundheit" />
+      {segment === 'automationen' && <BereichAutomationen werkzeug={GESUNDHEIT_WERKZEUG} space="privat" />}
 
       {segment === 'heute' && (
         <>

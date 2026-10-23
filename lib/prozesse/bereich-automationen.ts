@@ -63,7 +63,8 @@ export function automationZeile(p: ProzessDef, z?: LaufZahlen): AutomationZeile 
  * Die Prozesse der Bereiche eines Werkzeugs, in der Reihenfolge der Bereiche und der Landkarte (angepasst: eigene Zuordnung und Reihenfolge gelten). Unbekannte
  * Bereiche fallen weg; ein Bereich ohne Prozesse bleibt (mit leerer Liste) — dort steht dann „+ Prozess“.
  * `prozesse` (22.10. abends, Werkzeuge Gruppe A): einzelne Prozesse, die zum Werkzeug gehören, ohne dass ihr ganzer Bereich dazugehört (Finanzen:
- * Monatsabschluss und Rechnung; Unternehmen: Betroffenenrechte; Produkte & Mandate: die Prozesse der Produkte, `Leistung.prozessId`) — sie stehen unter
+ * Monatsabschluss und Rechnung; Unternehmen: Betroffenenrechte; Produkte & Mandate: die Prozesse der Produkte, `Leistung.prozessId`; Gruppe B: Kalender
+ * Terminbuchung, Inbox Anfrage-Eingang, Aufgaben Head-Takt und Morgenlauf) — sie stehen unter
  * dem Bereich, in dem die Landkarte sie zeigt (nach den ganzen Bereichen, in der Reihenfolge der Landkarte), nie doppelt; unbekannte Kennungen fallen weg.
  */
 export function automationenFuer(ansicht: LandkarteAnsicht, bereiche: readonly string[], laeufe: Readonly<Record<string, LaufZahlen>> = {}, prozesse: readonly string[] = []): AutomationGruppe[] {

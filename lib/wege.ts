@@ -270,11 +270,11 @@ export const WEG = {
   /**
    * Aufgaben-Seite (Navigation wie im CRM, 28.09. spät — lib/aufgaben/adresse.ts): ohne Angabe der Überblick;
    * `s` Space (privat · kdc · kdv · ug · m-<firmaId>), `p` Projekt (Projektseite, `t` Reiter), `g` Gruppe, `l` Liste,
-   * `a` Aufgabe, `b: 'archiv'`. Alt (weiter gültig): `r` = Space, `space` = Seitenleiste.
+   * `a` Aufgabe, `b: 'archiv'` (bzw. `'automationen'` — „Automationen & Head“). Alt (weiter gültig): `r` = Space, `space` = Seitenleiste.
    */
-  aufgaben: (o: Partial<Omit<AufgabenAdresse, 'ansicht'>> & { r?: string; space?: 'privat' | 'business'; b?: 'ueberblick' | 'archiv' } = {}) => {
+  aufgaben: (o: Partial<Omit<AufgabenAdresse, 'ansicht'>> & { r?: string; space?: 'privat' | 'business'; b?: 'ueberblick' | 'archiv' | 'automationen' } = {}) => {
     const s = o.s ?? o.r;
-    return aufgabenLink({ ...o, s, bereich: o.bereich ?? o.space, ansicht: o.b === 'archiv' ? 'archiv' : s && o.b !== 'ueberblick' ? 'space' : 'ueberblick' });
+    return aufgabenLink({ ...o, s, bereich: o.bereich ?? o.space, ansicht: o.b === 'archiv' || o.b === 'automationen' ? o.b : s && o.b !== 'ueberblick' ? 'space' : 'ueberblick' });
   },
 } as const;
 

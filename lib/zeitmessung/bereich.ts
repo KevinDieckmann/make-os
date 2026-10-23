@@ -24,6 +24,8 @@ const FEST: [RegExp, BereichTreffer][] = [
   [/^\/os\/wissen/, { id: 'brain', label: 'Brain' }],
   [/^\/os\/inbox/, { id: 'inbox', label: 'Inbox' }],
   [/^\/os\/(kalender|planung\/woche)/, { id: 'kalender', label: 'Kalender' }],
+  // Kontakte privat (22.10. abends): kein eigener Leistenpunkt mehr (ein Punkt im Werkzeug Familie) — die Zeit zählt weiter unter `kontakte`, der Space bleibt Privat.
+  [/^\/os\/menschen/, { id: 'kontakte', label: 'Kontakte' }],
 ];
 
 /** Aus „Ziele & Planung“ wird `ziele-planung`. */

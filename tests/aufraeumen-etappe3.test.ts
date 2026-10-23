@@ -65,7 +65,8 @@ describe('Markttraktion — ein Hub mit höchstens zwölf Punkten, jede Ansicht 
     // Seit 22.10. abends trägt die linke Leiste die Punkte (lib/make-one/werkzeuge.ts `MARKTTRAKTION_WERKZEUG`) — das Übergangs-Menü der Seite ist weg.
     expect(v).not.toContain('HubMenue');
     expect(v).not.toContain('mt-hub');
-    expect(lies('lib/make-one/werkzeuge.ts')).toMatch(/export const WERKZEUGE: readonly Werkzeug\[\] = \[PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG[,\]]/);
+    // Seit 22.10. abends folgen weitere Werkzeuge (Gruppe B) — Markttraktion bleibt das zweite.
+    expect(lies('lib/make-one/werkzeuge.ts')).toMatch(/export const WERKZEUGE: readonly Werkzeug\[\] = \[\s*PROZESSE_WERKZEUG, MARKTTRAKTION_WERKZEUG[,\]]/);
     expect(v).toContain('punktVon({ s: bereich, a: ansicht })');
     for (const alt of ['REITER_ZEILE', 'Schnellknoepfe', 'mt-schnell', 'Settings', 'KONTAKTE']) expect(v, alt).not.toContain(alt);
     expect(lies('app/globals.css')).not.toMatch(/\.mt-schnell|mtPuls|\.mt-leiste|\.mt-nur-/);

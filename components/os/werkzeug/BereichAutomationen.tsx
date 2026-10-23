@@ -15,6 +15,7 @@
 // Je Space (22.10. abends, Werkzeuge Gruppe A): ein Werkzeug in beiden Bereichen (Finanzen, Planung) trägt je Space eine Fassung (`automationVon`). In Privat gibt
 // es keine Prozesse (die Landkarte ist Business) — dort stehen nur die Karten der Heads (GET /api/agenten?space=privat, serverseitig gefiltert), ohne Abruf der
 // Landkarte. Einzelne Prozesse (`prozesse`, z. B. Monatsabschluss) und die Prozesse der Seite (`weitereProzesse`, z. B. die der Produkte) kommen dazu.
+// Gruppe B (Kalender, Inbox, Aufgaben, Gesundheit, Familie) nutzt denselben Baustein: `space` fest (Business bzw. Privat), einzelne Prozesse z. B. Terminbuchung.
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';

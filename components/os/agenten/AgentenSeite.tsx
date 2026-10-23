@@ -22,7 +22,6 @@ import { FARBE as C, ABSTAND, ECKE, FLAECHE_STIL, LEUCHT, RAND, SCHRIFT, TIEF, T
 import { WEG } from '@/lib/wege';
 import { useSpace } from '@/hooks/useSpace';
 import { AgentenView } from '../AgentenView';
-import { ZoeReiter } from '../ZoeReiter';
 import { Chip, Hinweis, Karte, Knopf, Seite, useBreit, useHandy, useRueckfrage } from '../ui';
 import { Team } from './Team';
 import { ZoeMitte } from './ZoeMitte';
@@ -281,7 +280,6 @@ export function AgentenSeite() {
   return (
     <AgentenKontext wert={wert}>
       <Seite titel="Agenten">
-        <ZoeReiter />
         {notAus && <Hinweis art="achtung" titel="Not-Aus ist an">Alle Agenten halten an: Hintergrundläufe, Zeitpläne und Aufträge an Heads ruhen. Mit ZOE sprechen geht weiter.</Hinweis>}
         {meldung && <Hinweis art={meldung.art} rolle={meldung.art === 'kritisch' ? 'alert' : 'status'} aktion={meldung.art === 'kritisch' ? <Knopf leise onClick={() => setMeldung(null)}>Schließen</Knopf> : undefined}>{meldung.text}</Hinweis>}
         {form === 'handy' && offenRisikoarm > 0 && handyReiter !== 'laeuft' && (
