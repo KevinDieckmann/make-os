@@ -47,6 +47,7 @@ import { Buehne, type BuehneSteuerung, type Einflug, type MinimapTeil } from './
 import { LandkarteBild, ProzessBild, AblaufBild } from './Bilder';
 import { SteckbriefKarte, PhaseKarte, SchrittKarte } from './Feld';
 import { StellschraubenKarte } from './Stellschrauben';
+import { UeberfuehrungKarte } from './Ueberfuehrung';
 import { ProzessListe } from './ProzessListe';
 import { ProzessSuche } from './Suche';
 import { useLandkarte } from './daten';
@@ -317,8 +318,12 @@ export function ProzesseSeite() {
   );
   const anpassFeld = anpassen && !praes && ebene === 1 && daten ? <LandkarteAnpassen ansicht={anp.ansicht} anpassung={anp.anpassung} speicher={anp.speicher} aendern={anp.aendern} onZu={() => setAnpassen(false)} /> : null;
   // Stellschrauben (22.10.): öffnet man einen System-Prozess, stehen seine Einstellungen unter dem Steckbrief (Bild), unter der Liste bzw. in der Werkstatt.
-  const schrauben = !praes && p?.stellschrauben?.length && daten
-    ? <StellschraubenKarte key={p.id} p={p} rechte={daten.stellschraubenRechte} stand={daten.stellschraubenStand} onGespeichert={landkarteNeu} />
+  // Überführung (22.10., Paket Ü): ein System-Prozess der festen Liste zeigt über seinen Stellschrauben, ob und wie ein Teil in die Werkstatt umzieht.
+  const ueKarte = !praes && p?.quelle === 'system' && p.ueberfuehrung && daten
+    ? <UeberfuehrungKarte key={`ue-${p.id}`} p={p} recht={!!daten.ueberfuehrenRecht} onGeaendert={landkarteNeu} />
+    : null;
+  const schrauben = !praes && p && daten && (p.stellschrauben?.length || ueKarte)
+    ? <>{ueKarte}{p.stellschrauben?.length ? <StellschraubenKarte key={p.id} p={p} rechte={daten.stellschraubenRechte} stand={daten.stellschraubenStand} onGespeichert={landkarteNeu} /> : null}</>
     : null;
   const feld = anpassFeld ?? (!praes && p ? (
     s && ph ? <SchrittKarte p={p} ph={ph} s={s} zahl={zahlen[zahlSchluessel({ p: p.id, ph: ph.id, s: s.id })]} />

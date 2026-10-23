@@ -18,8 +18,9 @@ import type { ProzessRechte } from './rollen';
 import type { ProzessDef } from './typen';
 import {
   UMSCHALT_VORGABE, UEBERFUEHRBAR, ersetzerVon, standVonUeberfuehrung, ueberfuehrbarVon, umschaltenPruefen, vergleichAbschliessen, vergleichMelden, wegEntscheiden,
-  zurueckInDenSchatten, type UmschaltPruefung, type UmschaltRegel, type UeberfuehrungStand, type Vergleich, type WegEntscheidung, type Wirkungsbild,
+  zurueckInDenSchatten, type UeberfuehrungAnsicht, type UmschaltRegel, type WegEntscheidung, type Wirkungsbild,
 } from './ueberfuehrung';
+export type { UeberfuehrungAnsicht } from './ueberfuehrung';
 
 async function haushalt(h?: string): Promise<string> {
   return h ?? (await import('./werkstatt-server')).prozesseHaushalt();
@@ -71,16 +72,6 @@ export async function umschaltRegelLesen(h?: string): Promise<UmschaltRegel> {
 }
 
 // ══ Ansicht (Werkstatt, Landkarte) ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
-
-export interface UeberfuehrungAnsicht {
-  sp: string; spTitel: string; teil: string; satz: string; kennung: string; bleibt: string;
-  phase: 'schatten' | 'scharf'; stand: UeberfuehrungStand; seit: string; umgeschaltetAm?: string; umgeschaltetVon?: string;
-  /** Der Vergleich mit den Tagen, die vorbei sind, abgeschlossen (die offene Gelegenheit von heute steht unter `heute`). */
-  vergleich: Omit<Vergleich, 'offen'>; heute?: { alt: boolean; neu: boolean };
-  umschalten: UmschaltPruefung;
-  /** Welcher Weg JETZT arbeitet. */
-  arbeitet: 'alt' | 'neu';
-}
 
 /** Die Ansicht der Überführung eines Werkstatt-Prozesses (Werkstatt-Band) — nur Zahlen, Kennungen, Sätze. */
 export async function ueberfuehrungAnsicht(e: ProzessEintrag, h?: string, jetzt = new Date()): Promise<UeberfuehrungAnsicht | null> {

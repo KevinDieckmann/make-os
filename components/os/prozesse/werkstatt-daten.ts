@@ -15,6 +15,7 @@ import type { ProzessRechte } from '@/lib/prozesse/rollen';
 import type { KatalogEintrag, KatalogKategorie } from '@/lib/prozesse/baustein-katalog';
 import type { AuswahlQuelle } from '@/lib/prozesse/baustein-katalog';
 import type { ModellOption } from '@/lib/prozesse/modell-wahl';
+import type { UeberfuehrungAnsicht } from '@/lib/prozesse/ueberfuehrung';
 
 export const WERKSTATT_QUELLE = '/api/prozesse/werkstatt?space=business';
 export const KATALOG_QUELLE = '/api/prozesse/katalog?auswahl=1&space=business';
@@ -23,7 +24,9 @@ export interface VersionKurz { nr: number; name: string; notiz?: string; am: str
 export type EintragAnsicht = Omit<ProzessEintrag, 'versionen'> & { versionen: VersionKurz[] };
 export interface ProzessAntwort { ok: true; rechte: ProzessRechte; eintrag: EintragAnsicht; stand: string; entwurfGeaendert: boolean; befunde: Befund[]; webhook: unknown;
   /** Produkte, die auf diesen Prozess zeigen (22.10., Prozesse × Fulfillment) — nur Kennung und Name. */
-  produkte?: { id: string; name: string }[] }
+  produkte?: { id: string; name: string }[];
+  /** Überführung (22.10., Paket Ü): ersetzt dieser Prozess einen System-Ablauf — Phase, Schatten-Vergleich (Zähler, Kennungen), ob Umschalten geht. */
+  ueberfuehrung?: UeberfuehrungAnsicht }
 export interface ListenAntwort { ok: true; rechte: ProzessRechte; prozesse: ProzessKurz[] }
 export type KatalogAufgeloest = KatalogEintrag & { klasse: string | null };
 export type Auswahl = Partial<Record<AuswahlQuelle, { id: string; label: string }[]>>;

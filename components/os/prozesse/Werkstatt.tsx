@@ -60,6 +60,7 @@ import { VersionenFenster } from './WerkstattVersionen';
 import { ProzessKopieren } from './WerkstattKopie';
 import { HeadFragenFenster } from './HeadFragen';
 import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, type EintragAnsicht } from './werkstatt-daten';
+import { UeberfuehrungBand } from './Ueberfuehrung';
 import { WerkstattGross, type ModellAntwort } from './WerkstattGross';
 import { MehrfachFenster } from './WerkstattMehrfach';
 import { VorlageKontext, type VorlageZiel } from './WerkstattMaske';
@@ -754,6 +755,10 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     if (t && k && t !== k.titel) mitFassung(f => umbenennen_(f, id, t), { auswahl: false });
     flaeche.current?.fokus();
   };
+  // Überführung (22.10., Paket Ü): ersetzt dieser Prozess einen System-Ablauf — Band mit Vergleich, „Umschalten“ und „Zurück in den Schatten“.
+  const ueBand = daten.ueberfuehrung
+    ? <UeberfuehrungBand prozessId={prozessId} a={daten.ueberfuehrung} darf={!!rechte?.status && !nurAnsehen} stand={() => stand.current} onGeaendert={neuLaden} />
+    : null;
   const panelFuer = (o: { knoten: K | null; imFenster?: boolean }) => (
     <>
           <WerkstattPanel d={d} auswahl={auswahlListen} modelle={modelle} befunde={befunde} raete={raete} probe={probeSaetze} kanten={lage.kanten} nurLesen={nurLesen}
@@ -769,9 +774,13 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
             onPhase={phaseAktion}
             onZettel={(id, teil) => { if (teil) mitFassung(f => zettelAendern(f, id, teil), { auswahl: false }); else { mitFassung(f => zettelWeg(f, [id])); setAuswahl([]); } }}
             agentName={agentName} knotenZusatz={webhookZusatz} produkte={daten?.produkte}
-            steckbriefZusatz={!nurAnsehen && rechte?.entwurf && !versionAnsicht
-              ? <ProzessKopieren prozessId={prozessId} titel={d.titel} vorher={sichern} onKopiert={id => { onLandkarte?.(); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt' }), { scroll: false }); }} />
-              : null} />
+            steckbriefZusatz={<>
+              {/* Überführung (Paket Ü): im Werkzeugmodus steht das Band hier im Feld (außerhalb unter der Kopfzeile). */}
+              {imModus && ueBand}
+              {!nurAnsehen && rechte?.entwurf && !versionAnsicht
+                ? <ProzessKopieren prozessId={prozessId} titel={d.titel} vorher={sichern} onKopiert={id => { onLandkarte?.(); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt' }), { scroll: false }); }} />
+                : null}
+            </>} />
           {!o.imFenster && !nurLesen && auswahl.length > 1 && <p style={{ ...MIKRO, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien }}>{`${auswahl.length} gewählt — ziehen verschiebt alle, Entf löscht, ⌘C kopiert mit Verbindungen.`}</p>}
     </>
   );
@@ -860,6 +869,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
         </div>}
       </div>
       )}
+      {!imModus && ueBand}
       {reiter !== 'bauen' && hinweisBlock(false)}
       {reiter === 'laeufe' && (
         <WerkstattLaeufe prozessId={prozessId} laufId={adr.lauf ?? null} daten={laeufe.daten} fehler={laeufe.fehler} rechte={rechte} team={team} konten={konten} agentName={agentName}

@@ -12,6 +12,7 @@
 import { suchPasst } from '@/lib/text/such-norm';
 import { produktZeile } from './produkt-bindung';
 import { einstellbar } from './stellschrauben';
+import { STAND_MARKE } from './ueberfuehrung';
 import type { ProzessKnoten, ProzessVorlage } from '@/lib/fulfillment/typen';
 import { BAENDER, KERN_STUFEN, STECKBRIEF_FELDER, EBENE_NAME, type Band, type Ebene, type KernStufe, type ProzessDef, type ProzessPfad, type ProzessPhase, type ProzessSchritt, type Zahl } from './typen';
 
@@ -54,6 +55,14 @@ export const markeVon = (p: Pick<ProzessDef, 'quelle'>): 'System' | 'Vorlage' | 
  * lib/prozesse/stellschrauben.ts), „System · einstellbar“. Der Ablauf selbst bleibt im Code; einstellbar sind seine Werte.
  */
 export const systemMarke = (p: { stellschrauben?: ProzessDef['stellschrauben'] }): 'System · einstellbar' | 'System · nur lesbar' => (einstellbar(p) ? 'System · einstellbar' : 'System · nur lesbar');
+/**
+ * Überführung (22.10., Paket Ü): die Marke eines System-Prozesses, dessen Teil in die Werkstatt umzieht, bzw. des Werkstatt-Prozesses, der ihn ersetzt —
+ * „System · im Schatten“ / „Werkstatt · überführt“ … Ohne Überführung (bzw. solange sie nur möglich ist) null — dann gilt die Marke wie bisher.
+ */
+export const ueberfuehrungMarke = (p: Pick<ProzessDef, 'quelle' | 'ueberfuehrung'>): string | null => {
+  const m = p.ueberfuehrung ? STAND_MARKE[p.ueberfuehrung.stand] : null;
+  return m ? `${p.quelle === 'system' ? 'System' : 'Werkstatt'} · ${m}` : null;
+};
 
 /** Wo eine Kachel auf der Landkarte steht: Band (und im Kern die Stufe der Fliege). */
 export function ortVon(p: Pick<ProzessDef, 'band' | 'stufe'>): string {
@@ -245,14 +254,14 @@ export type KachelStufe = 'fern' | 'mittel' | 'nah';
  * Was eine Kachel der Landkarte zeigt — je Zoomstufe (Punkt 14) und nur einmal (Punkt 24): fern der kurze Titel und EINE Zahl (groß), mittel Titel + Zahl,
  * nah dazu Marke und Eigner. Der Steckbrief steht erst eine Ebene tiefer.
  */
-export function kachelTexte(p: Pick<ProzessDef, 'titel' | 'quelle' | 'steckbrief'> & Partial<Pick<ProzessDef, 'produkte' | 'stellschrauben'>>, z: Zahl | undefined, stufe: KachelStufe): { titel?: string; marke?: string; eigner?: string; produkt?: string; zahl?: string; zweite?: string } {
+export function kachelTexte(p: Pick<ProzessDef, 'titel' | 'quelle' | 'steckbrief'> & Partial<Pick<ProzessDef, 'produkte' | 'stellschrauben' | 'ueberfuehrung'>>, z: Zahl | undefined, stufe: KachelStufe): { titel?: string; marke?: string; eigner?: string; produkt?: string; zahl?: string; zweite?: string } {
   const t = zahlTexte(z);
   if (stufe === 'fern') return { titel: kurztitel(p.titel), ...(t?.haupt ? { zahl: t.haupt } : t?.zweite ? { zahl: t.zweite.text } : {}) };
   // Prozesse × Fulfillment (22.10.): „für <Produkt>“ — nur, wenn der Titel es nicht schon sagt (lib/prozesse/produkt-bindung.ts `produktZeile`).
   const produkt = p.produkte?.length ? produktZeile(p.titel, p.produkte) : null;
   return {
     titel: p.titel,
-    ...(stufe === 'nah' ? { marke: p.quelle === 'system' ? systemMarke(p) : markeVon(p), eigner: p.steckbrief.eigner } : {}),
+    ...(stufe === 'nah' ? { marke: ueberfuehrungMarke(p) ?? (p.quelle === 'system' ? systemMarke(p) : markeVon(p)), eigner: p.steckbrief.eigner } : {}),
     ...(produkt ? { produkt } : {}),
     ...(t?.haupt ? { zahl: t.haupt } : {}), ...(t?.zweite ? { zweite: t.zweite.text } : {}),
   };

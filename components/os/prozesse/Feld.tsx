@@ -11,7 +11,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Eigenschaft, Knopf, Chip, Hinweis } from '../ui';
 import { FormZeichen } from '../ui/reise/ReiseBild';
 import { FORM_NAME } from '@/lib/reise/bild';
-import { ortVon, schrittSatz, steckbriefZeilen, zahlTexte, zahlSchluessel, systemMarke } from '@/lib/prozesse/modell';
+import { ortVon, schrittSatz, steckbriefZeilen, zahlTexte, zahlSchluessel, systemMarke, ueberfuehrungMarke } from '@/lib/prozesse/modell';
 import { einstellbar } from '@/lib/prozesse/stellschrauben';
 import { tonVon } from '@/lib/prozesse/farben';
 import type { ProzessDef, ProzessPhase, ProzessSchritt, Zahl } from '@/lib/prozesse/typen';
@@ -36,7 +36,7 @@ function ZahlZeile({ z }: { z: Zahl | undefined }) {
 function Marke({ p }: { p: ProzessDef }) {
   const Z = p.quelle === 'system' ? (einstellbar(p) ? SlidersHorizontal : Cog) : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
   const w = p.werkstatt;
-  const text = p.quelle === 'system' ? systemMarke(p) : w ? `Werkstatt · ${w.version ? `Version ${w.version}` : 'Entwurf'}` : 'Vorlage';
+  const text = ueberfuehrungMarke(p) ?? (p.quelle === 'system' ? systemMarke(p) : w ? `Werkstatt · ${w.version ? `Version ${w.version}` : 'Entwurf'}` : 'Vorlage');
   return <Chip farbe={tonVon(p)}><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}><Z size={13} aria-hidden />{text}</span></Chip>;
 }
 

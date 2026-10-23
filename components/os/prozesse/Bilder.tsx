@@ -16,7 +16,7 @@ import { FARBE as C, TIEF, RAND, FLAECHE_STIL } from '@/lib/make-one/design';
 import { pfadVon, pfeilTextOrt, type FlaecheBild } from '@/lib/fulfillment/prozesse/flaeche';
 import { pfeileImBild, kachelTitel, wegTextMass, KACHEL_TEXT, WEG_TEXT, PHASE_TITEL, type FliegeLage, type ProzessLage } from '@/lib/prozesse/landkarte';
 import type { ProzessDef, Zahl } from '@/lib/prozesse/typen';
-import { kachelTexte, kurztitel, zahlTexte, zahlSchluessel } from '@/lib/prozesse/modell';
+import { kachelTexte, kurztitel, zahlTexte, zahlSchluessel, ueberfuehrungMarke } from '@/lib/prozesse/modell';
 import { einstellbar } from '@/lib/prozesse/stellschrauben';
 import { STUFE_FARBE, tonVon } from '@/lib/prozesse/farben';
 import { einpassen, textBreite, type Eingepasst } from '@/lib/text/umbruch';
@@ -164,7 +164,8 @@ export function LandkarteBild({ lage, prozesse, zahlen, stufe, spitze, fokus = [
         // Stellschrauben (22.10.): ein System-Prozess mit änderbaren Werten trägt statt des Zahnrads den Regler — dezent, dieselbe Größe und Farbe.
         const schrauben = p.quelle === 'system' && einstellbar(p);
         const Zeichen = p.quelle === 'system' ? (schrauben ? SlidersHorizontal : Cog) : p.quelle === 'werkstatt' ? Workflow : LayoutTemplate;
-        const aria = `${p.beschriftung ?? p.titel}${t.produkt ? `, ${t.produkt}` : ''}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${p.quelle === 'system' ? (schrauben ? 'System, einstellbar' : 'System, nur lesbar') : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage'}; öffnen`;
+        const ue = ueberfuehrungMarke(p);
+        const aria = `${p.beschriftung ?? p.titel}${t.produkt ? `, ${t.produkt}` : ''}${z?.haupt ? `, ${z.haupt}` : ''}${z?.zweite ? `, ${z.zweite.text}` : ''} — ${ue ? ue.replace(' · ', ', ') : p.quelle === 'system' ? (schrauben ? 'System, einstellbar' : 'System, nur lesbar') : p.quelle === 'werkstatt' ? 'Werkstatt' : 'Vorlage'}; öffnen`;
         const spec = KACHEL_TEXT[stufe];
         const titel = einpassen({ text: kachelTitel(p, stufe), breite: k.b - spec.innen, groesse: spec.groesse, min: spec.min, zeilen: spec.zeilen, gewicht: spec.gewicht });
         const hell = hellIds.has(k.id);

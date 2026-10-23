@@ -1,5 +1,5 @@
 // ─── Prozesse · Überführung — feste System-Abläufe ziehen echt in die Werkstatt (22.10., Paket Ü; rein, client-sicher) ──────────────────────────────────
-// Kevin (Plan-Seite, abgenommen): „Die Prozesse im Code zeigen ihre Einstellungen schon im Steckbrief. Fünf davon ziehen echt in die Werkstatt um: zuerst ein paar
+// Entscheidung 22.10. (Plan-Seite abgenommen): „Die Prozesse im Code zeigen ihre Einstellungen schon im Steckbrief. Fünf davon ziehen echt in die Werkstatt um: zuerst ein paar
 // Tage im Schatten neben dem alten Code, umgeschaltet wird erst, wenn beide dasselbe tun. Hältst du einen überführten Prozess an, läuft der alte Weg wieder.“ —
 // „Erst Stellschrauben, dann überführen“, „klein und sicher zuerst“.
 //
@@ -291,6 +291,16 @@ export const STAND_TEXT: Readonly<Record<UeberfuehrungStand, string>> = {
 };
 /** Die Marke der Kachel (kurz). */
 export const STAND_MARKE: Readonly<Record<UeberfuehrungStand, string | null>> = { moeglich: null, schatten: 'im Schatten', scharf: 'überführt', angehalten: 'alter Weg' };
+/** Die Ansicht einer Überführung (Werkstatt-Band; GET /api/prozesse/werkstatt?id=) — nur Zahlen, Kennungen, Sätze. */
+export interface UeberfuehrungAnsicht {
+  sp: string; spTitel: string; teil: string; satz: string; kennung: string; bleibt: string;
+  phase: UeberfuehrungPhase; stand: UeberfuehrungStand; seit: string; umgeschaltetAm?: string; umgeschaltetVon?: string;
+  /** Der Vergleich mit den Tagen, die vorbei sind, abgeschlossen (die offene Gelegenheit von heute steht unter `heute`). */
+  vergleich: Omit<Vergleich, 'offen'>; heute?: { alt: boolean; neu: boolean };
+  umschalten: UmschaltPruefung;
+  /** Welcher Weg JETZT arbeitet. */
+  arbeitet: 'alt' | 'neu';
+}
 /** Sätze zu den Abweichungen. */
 export const ABWEICHUNG_TEXT: Readonly<Record<AbweichungGrund, string>> = {
   'nur-alt': 'nur der alte Weg hat an diesem Tag gewirkt',

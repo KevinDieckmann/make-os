@@ -67,7 +67,7 @@ beforeAll(async () => {
   vi.useFakeTimers({ toFake: ['Date'] });
   morgen(-1);
   db = await import('@/lib/store/local-db');
-  await db.saveJson('konten', { konten: [konto('k1', 'pia', 'inhaber', { haushalt: H }), konto('k2', 'olaf', 'mitglied', { haushalt: H })], einladungen: [] });
+  await db.saveJson('konten', { konten: [konto('k1', 'pia', 'inhaber', { haushalt: H }), konto('k2', 'olaf', 'mitglied', { haushalt: H }), konto('k3', 'bea', 'mitglied', { haushalt: H, finanzRecht: 'business' }), konto('k4', 'gast', 'mitglied', { haushalt: 'haus-fremd' })], einladungen: [] });
   await db.saveJson('kontakte', { kontakte: [{ id: 'c-erika', vorname: 'Erika', nachname: 'Beispiel', email: 'erika@example.invalid', stufe: 'kontakt', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01' }] });
   await db.saveJson('tasks', { tasks: [], projects: [] });
   await db.saveJson('finanzplan', { firmen: [], zahlungen: [], merkposten: [], rechnungen: [
@@ -273,5 +273,48 @@ describe('Fortschritts-Report: Schatten → Umschalten → Gold', () => {
     // Ein zweiter Morgen am selben Tag legt nichts doppelt (Marke = Kennungs-Brücke), auch nicht der alte Weg nach dem Anhalten.
     await treppeMorgen(19);
     expect((await vorschlaege()).filter(x => x.werkzeug === 'fortschritt_report')).toHaveLength(2);
+  });
+});
+
+// ══ Route: nur volle Mitglieder per Sitzung — Dienstweg, „nur Business“, fremder Haushalt und Sicht Privat bekommen nichts ═════════════════════════════
+
+describe('Route /api/prozesse/werkstatt — Überführung', () => {
+  type Mod = { GET: (r: Request) => Promise<Response>; POST: (r: Request) => Promise<Response> };
+  const sitzung = (person: string) => ({ 'content-type': 'application/json', 'x-make-user': person });
+  const dienst = (person?: string) => ({ 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, ...(person ? { 'x-make-person': person } : {}) });
+  const post = async (k: Record<string, string>, body: unknown, space = 'business') => {
+    const m = await import('@/app/api/prozesse/werkstatt/route') as unknown as Mod;
+    const r = await m.POST(new Request(`http://test/api/prozesse/werkstatt?space=${space}`, { method: 'POST', headers: k, body: JSON.stringify(body) }));
+    return { status: r.status, j: await r.json().catch(() => ({})) as Record<string, unknown> };
+  };
+  it('überführen: nur volle Mitglieder — „nur Business“, fremder Haushalt, Dienstweg, Sicht Privat → 403; schon überführt → 409 mit dem Prozess', async () => {
+    const b = { aktion: 'ueberfuehren', sp: 'sp-rechnung', anfrageId: 'pzu-00000000-0000-4000-8000-000000000001' };
+    for (const k of [sitzung('bea'), sitzung('gast'), dienst('pia'), dienst()]) expect((await post(k, { ...b, anfrageId: undefined })).status, JSON.stringify(k)).toBe(403);
+    expect((await post(sitzung('pia'), b, 'privat')).status).toBe(403);
+    const r = await post(sitzung('pia'), b);
+    expect(r.status).toBe(409);
+    expect(r.j.prozessId).toMatch(/^pz-/);
+    expect((await post(sitzung('pia'), { ...b, sp: 'sp-bauplan', anfrageId: undefined })).status).toBe(404);
+  });
+  it('umschalten und zurück: „nur Business“ und Dienstweg → 403; GET ?id= trägt den Vergleich (nur Zahlen und Kennungen)', async () => {
+    const pz = (await W.prozesseLesen(H)).prozesse.find(p => p.ersetzt === 'sp-rechnung')!;
+    for (const aktion of ['umschalten', 'ueberfuehrung-zurueck']) {
+      expect((await post(sitzung('bea'), { aktion, id: pz.id, stand: W.standVon(pz) })).status).toBe(403);
+      expect((await post(dienst('pia'), { aktion, id: pz.id, stand: W.standVon(pz) })).status).toBe(403);
+    }
+    const m = await import('@/app/api/prozesse/werkstatt/route') as unknown as Mod;
+    const g = await m.GET(new Request(`http://test/api/prozesse/werkstatt?space=business&id=${pz.id}`, { headers: sitzung('olaf') }));
+    const j = await g.json() as { ueberfuehrung?: { sp: string; vergleich: Record<string, unknown> } };
+    expect(j.ueberfuehrung).toMatchObject({ sp: 'sp-rechnung', vergleich: { laeufe: expect.any(Number) } });
+    expect(JSON.stringify(j.ueberfuehrung?.vergleich)).not.toMatch(/pia|olaf|Beispiel/);
+  });
+  it('Landkarte: der System-Prozess sagt „überführt“ und nennt den Prozess, der Werkstatt-Prozess, wen er ersetzt', async () => {
+    const { landkarteLesen } = await import('@/lib/prozesse/server');
+    const k = await landkarteLesen(tag(30));
+    const sys = k.prozesse.find(p => p.id === 'sp-rechnung')!;
+    const pz = (await W.prozesseLesen(H)).prozesse.find(p => p.ersetzt === 'sp-rechnung')!;
+    expect(sys.ueberfuehrung).toMatchObject({ rolle: 'alt', teil: 'Mahnaufgaben', stand: 'scharf', prozessId: pz.id });
+    expect(k.prozesse.find(p => p.id === pz.id)?.ueberfuehrung).toMatchObject({ rolle: 'neu', stand: 'scharf', prozessId: 'sp-rechnung' });
+    expect(k.prozesse.find(p => p.id === 'sp-bauplan')?.ueberfuehrung).toBeUndefined();
   });
 });
