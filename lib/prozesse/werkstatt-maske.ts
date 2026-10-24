@@ -50,6 +50,7 @@ export function maskeWerte(k: K, e: KatalogEintrag): W {
       if (a.art === 'datum') return ohneLeere({ feld: a.feld, versatzTage: a.versatzTage, werktage: a.werktage ?? false, uhrzeit: a.uhrzeit, bedingungen: a.bedingungen ?? [], verknuepfung: a.verknuepfung });
       if (a.art === 'webhook') return ohneLeere({ felder: a.felder, bedingungen: a.bedingungen ?? [], verknuepfung: a.verknuepfung });
       if (a.art === 'loop') return { loop: a.loop };
+      if (a.art === 'person') return ohneLeere({ uhrzeit: a.uhrzeit, bis: a.bis, tage: a.tage, nachMorgenlauf: a.nachMorgenlauf ?? false });
       return {};
     }
     case 'agent': {
@@ -123,6 +124,8 @@ function feldAus(e: KatalogEintrag, w: W, alt: K, kx: MaskenUmfeld): Partial<K> 
       else if (e.id === 'ausloeser.datum') a = text(w.feld) && zahl(w.versatzTage) !== undefined ? sauber<Ausloeser>({ art: 'datum', feld: w.feld, versatzTage: zahl(w.versatzTage), werktage: w.werktage === true ? true : undefined, uhrzeit: text(w.uhrzeit) || undefined, bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung) }) : undefined;
       else if (e.id === 'ausloeser.webhook') a = sauber<Ausloeser>({ art: 'webhook', felder: liste<WebhookFeld>(w.felder), bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung) });
       else if (e.id === 'ausloeser.loop') a = text(w.loop) ? { art: 'loop', loop: w.loop as 'morgen' } : undefined;
+      // Je Person (24.10.): die Stunde einer Stellschraube (`stundeAus`, nur aus einer Überführung) bleibt beim Bearbeiten stehen.
+      else if (e.id === 'ausloeser.person') a = text(w.uhrzeit) ? sauber<Ausloeser>({ art: 'person', uhrzeit: w.uhrzeit, bis: text(w.bis) || undefined, tage: (text(w.tage) || 'mo-fr') as 'mo-fr', nachMorgenlauf: w.nachMorgenlauf === true ? true : undefined, stundeAus: alt.ausloeser?.art === 'person' ? alt.ausloeser.stundeAus : undefined }) : undefined;
       return { ausloeser: a };
     }
     case 'agent': {
@@ -290,4 +293,4 @@ export function knotenUnterzeile(k: K, o: { mitSchloss?: boolean; agentName?: st
     default: return `${e ? (e.name !== k.titel ? e.name : e.anbindung) : formWort(k.form)}${stapel}`;
   }
 }
-const ausloeserKurz = (a: Ausloeser): string => (a.art === 'hand' ? 'von Hand' : a.art === 'zeitplan' ? `Zeitplan ${a.uhrzeit}` : a.art === 'datum' ? 'Datum am Fall' : a.art === 'webhook' ? 'Webhook' : a.art === 'loop' ? 'nach Loop' : 'Ereignis');
+const ausloeserKurz = (a: Ausloeser): string => (a.art === 'hand' ? 'von Hand' : a.art === 'zeitplan' ? `Zeitplan ${a.uhrzeit}` : a.art === 'datum' ? 'Datum am Fall' : a.art === 'webhook' ? 'Webhook' : a.art === 'loop' ? 'nach Loop' : a.art === 'person' ? `je Person ab ${a.uhrzeit}` : 'Ereignis');

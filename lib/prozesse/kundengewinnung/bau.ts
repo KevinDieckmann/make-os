@@ -12,7 +12,7 @@
 
 import type {
   AgentSchritt, Ausloeser, Bahn, Bedingung, CrmAbfrage, DatumsFeld, FallArt, MaskenWert, PfeilText, ProzessBereich, ProzessDefinition, ProzessForm, ProzessKnoten,
-  RautenRegel, ScorePruefung, SkillEreignis, VertragFeld, WartenRegel, WebhookFeld, Zweige, ModelTier, NotizZettel, LoopArt,
+  RautenRegel, ScorePruefung, SkillEreignis, VertragFeld, WartenRegel, WebhookFeld, Zweige, ModelTier, NotizZettel, LoopArt, PersonTage,
 } from '../definition';
 import { katalogEintrag, GESELLSCHAFT_DES_FALLS, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT, ROLLE_EIGNER, ROLLE_ZUSTAENDIG } from '../baustein-katalog';
 import { schlossSetzen } from '../schloss';
@@ -155,6 +155,9 @@ export const S = {
   webhook: (id: string, titel: string, felder: WebhookFeld[]): Schritt => sch(id, titel, 'ausloeser.webhook', { feld: { ausloeser: { art: 'webhook', felder } } }),
   /** Nach einem Loop (Morgen-Loop am Ende des Tagesstarts, Wochen-Loop, Rückblick). */
   loop: (id: string, titel: string, loop: LoopArt): Schritt => sch(id, titel, 'ausloeser.loop', { feld: { ausloeser: { art: 'loop', loop } } }),
+  /** Je Person ab Uhrzeit (24.10., Paket Ü 2) — einmal am Tag je Person des Teams; `stundeAus` = die Stunde einer Stellschraube gewinnt vor `uhrzeit`. */
+  person: (id: string, titel: string, a: { uhrzeit: string; bis?: string; tage?: PersonTage; nachMorgenlauf?: boolean; stundeAus?: string }): Schritt =>
+    sch(id, titel, 'ausloeser.person', { feld: { ausloeser: { art: 'person', uhrzeit: a.uhrzeit, ...(a.bis ? { bis: a.bis } : {}), tage: a.tage ?? 'mo-fr', ...(a.nachMorgenlauf ? { nachMorgenlauf: true as const } : {}), ...(a.stundeAus ? { stundeAus: a.stundeAus } : {}) } } }),
   /** Fester Schritt eines überführten System-Ablaufs (22.10., Paket Ü — lib/prozesse/ueberfuehrung.ts). */
   fest: (id: string, titel: string, schritt: string): Schritt => sch(id, titel, 'system.fest', { werte: { schritt } }),
   // CRM lesen

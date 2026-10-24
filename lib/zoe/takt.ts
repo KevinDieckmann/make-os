@@ -53,6 +53,23 @@ export function tagesstartLaeuft(s: { laeuft?: { tag?: string; seit?: string } }
 }
 
 /**
+ * Darf, was „nach dem Morgenlauf“ kommt, laufen? (rein; 24.10. aus `faelligOhnePause` herausgezogen — EINE Regel für den Takt und den Auslöser „je Person“ der
+ * Prozesse): der Morgenlauf ist heute durch ODER er wird umgangen (`tagesstartLage`).
+ */
+export function nachMorgenlaufOffen(start: { lastRun?: string; laeuft?: { tag?: string; seit?: string } } | null | undefined, auftraege: readonly AuftragSpur[], heute: string, stunde: number, jetzt: Date): boolean {
+  return start?.lastRun === heute || tagesstartLage(auftraege, heute, stunde, tagesstartLaeuft(start, heute, jetzt)).umgehen;
+}
+
+/** Ist der Morgenlauf des Tages durch — im Takt-Fenster (7–22 Uhr, wie die Heads)? Liest nur (Auslöser „je Person“ mit `nachMorgenlauf`, 24.10.). */
+export async function morgenlaufDurch(jetzt = new Date()): Promise<boolean> {
+  const h = Number(wandzeit(jetzt).slice(11, 13));
+  if (h < VON || h >= BIS) return false;
+  const heute = localDay(jetzt);
+  const [start, auftraege] = await Promise.all([loadJson<TagesstartStand>('tagesstart'), loadJson<{ auftraege?: AuftragSpur[] }>('zoe-auftraege')]);
+  return nachMorgenlaufOffen(start, auftraege?.auftraege ?? [], heute, h, jetzt);
+}
+
+/**
  * Ein Engpass weniger (09.10., Takt robust): bis hierher wartete ALLES Weitere des Tages (Morgen-/Abendlauf, Heads, Head of Finance,
  * Tageslauf, Selbstbild …) auf den Morgenlauf — hakte er, lief den ganzen Tag nichts davon. Jetzt laufen die übrigen Läufe trotzdem, sobald
  * der Morgenlauf heute `TAGESSTART_UMGEHEN_AB` Fehlversuche hat oder ab `TAGESSTART_MITTAG` Uhr mindestens einen — nie, während er läuft.
@@ -267,10 +284,10 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
         auftrag: { art: 'agent', name: 'tagesstart', anlass: 'Takt: Morgenlauf' },
       });
     }
-    // Der Tageslauf setzt auf dem Morgenlauf auf — heute noch nichts weiter. Außer der Morgenlauf hakt (Engpass, 09.10.): dann laufen die
-    // übrigen Läufe trotzdem, der Head of IT zeigt es.
-    if (!lage.umgehen) return raus;
   }
+  // Der Tageslauf setzt auf dem Morgenlauf auf — heute noch nichts weiter. Außer der Morgenlauf hakt (Engpass, 09.10.): dann laufen die
+  // übrigen Läufe trotzdem, der Head of IT zeigt es. EINE Regel (`nachMorgenlaufOffen`) — auch für den Auslöser „je Person“ der Prozesse (24.10.).
+  if (!nachMorgenlaufOffen(start, auftraege?.auftraege ?? [], heute, h, jetzt)) return raus;
 
   // 2) Der Morgenlauf — einmal am Tag, direkt nach dem Tagesstart. Er ist der
   //    Grund, warum morgens überhaupt etwas im Stapel liegt; ohne ihn wartet

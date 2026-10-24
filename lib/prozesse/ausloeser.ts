@@ -15,9 +15,10 @@ import { EREIGNISSE_ANGEBUNDEN, EREIGNISSE_INTERN, EREIGNIS_NAME, istEreignisArt
 import type { Ereignis } from '@/lib/ereignisse/typen';
 import { wiederkehrendPruefen } from '@/lib/agenten/zeitplan-regeln';
 import {
-  FELD_KENNUNG, LOOP_ARTEN, PROZESS_GRENZEN, PROZESS_TEXT, WEBHOOK_FELD_ARTEN,
-  type Ausloeser, type AusloeserArt, type Befund, type DatumsFeld, type FallArt, type LoopArt, type SkillEreignis, type WebhookFeld, type WebhookFeldArt,
+  FELD_KENNUNG, LOOP_ARTEN, PERSON_TAGE, PROZESS_GRENZEN, PROZESS_TEXT, WEBHOOK_FELD_ARTEN,
+  type Ausloeser, type AusloeserArt, type Befund, type DatumsFeld, type FallArt, type LoopArt, type PersonTage, type SkillEreignis, type WebhookFeld, type WebhookFeldArt,
 } from './definition';
+import { wertDef } from './stellschrauben-werte';
 import { bedingungenAus, bedingungenTreffen, verknuepfungAus } from './bedingung';
 import { KG_FALL_FELDER } from './kundengewinnung/felder';
 
@@ -26,8 +27,10 @@ const istObj = (v: unknown): v is O => !!v && typeof v === 'object' && !Array.is
 
 /** Wie die Auslöser-Arten heißen. */
 export const AUSLOESER_NAME: Readonly<Record<AusloeserArt, string>> = {
-  ereignis: 'Ereignis', zeitplan: 'Zeitplan', datum: 'Datum am Fall', hand: 'von Hand', webhook: 'Webhook von außen', loop: 'nach einem Loop',
+  ereignis: 'Ereignis', zeitplan: 'Zeitplan', datum: 'Datum am Fall', hand: 'von Hand', webhook: 'Webhook von außen', loop: 'nach einem Loop', person: 'je Person ab Uhrzeit',
 };
+/** Wie die Tage des Auslösers „je Person“ heißen. */
+export const PERSON_TAGE_NAME: Readonly<Record<PersonTage, string>> = { 'mo-fr': 'Mo–Fr (Feiertage zählen mit)', werktage: 'Werktage (Mo–Fr ohne Feiertage NRW)', taeglich: 'täglich' };
 /** Wie die Loops heißen. */
 export const LOOP_NAME: Readonly<Record<LoopArt, string>> = { morgen: 'Morgen-Loop', woche: 'Wochen-Loop', rueckblick: 'Rückblick' };
 
@@ -184,7 +187,7 @@ export function webhookFelderAus(roh: unknown): { felder: WebhookFeld[]; befunde
  */
 export function ausloeserAus(roh: unknown, fall: FallArt, knotenId?: string): { ausloeser: Ausloeser | null; befunde: Befund[] } {
   const b = (stufe: Befund['stufe'], text: string): Befund => ({ stufe, text, ...(knotenId ? { knotenId } : {}) });
-  if (!istObj(roh)) return { ausloeser: null, befunde: [b('offen', 'Auslöser: wähle Ereignis, Zeitplan, Datum, von Hand, Webhook oder Loop.')] };
+  if (!istObj(roh)) return { ausloeser: null, befunde: [b('offen', 'Auslöser: wähle Ereignis, Zeitplan, Datum, von Hand, Webhook, Loop oder je Person.')] };
   switch (roh.art) {
     case 'hand': return { ausloeser: { art: 'hand' }, befunde: [] };
     case 'zeitplan': {
@@ -232,7 +235,21 @@ export function ausloeserAus(roh: unknown, fall: FallArt, knotenId?: string): { 
       const l = (LOOP_ARTEN as readonly string[]).includes(roh.loop as string) ? roh.loop as LoopArt : null;
       return l ? { ausloeser: { art: 'loop', loop: l }, befunde: [] } : { ausloeser: null, befunde: [b('offen', `Loop: ${LOOP_ARTEN.map(x => LOOP_NAME[x]).join(', ')}.`)] };
     }
-    default: return { ausloeser: null, befunde: [b('offen', 'Auslöser: wähle Ereignis, Zeitplan, Datum, von Hand, Webhook oder Loop.')] };
+    case 'person': {
+      const raus: Befund[] = [];
+      const uhr = typeof roh.uhrzeit === 'string' && UHRZEIT.test(roh.uhrzeit) ? roh.uhrzeit : null;
+      if (!uhr) raus.push(b('offen', 'Je Person: ab welcher Uhrzeit („HH:MM“)?'));
+      const bis = typeof roh.bis === 'string' && UHRZEIT.test(roh.bis) ? roh.bis : undefined;
+      if (roh.bis !== undefined && roh.bis !== null && roh.bis !== '' && !bis) raus.push(b('fehler', 'Je Person: „bis“ als „HH:MM“.'));
+      if (uhr && bis && bis <= uhr) raus.push(b('offen', 'Je Person: „bis“ muss nach „ab“ liegen.'));
+      const tage = (PERSON_TAGE as readonly string[]).includes(roh.tage as string) ? roh.tage as PersonTage : roh.tage === undefined ? 'mo-fr' : null;
+      if (!tage) raus.push(b('offen', `Je Person: Tage ${PERSON_TAGE.map(t => PERSON_TAGE_NAME[t]).join(', ')}.`));
+      const sa = typeof roh.stundeAus === 'string' && roh.stundeAus ? roh.stundeAus : undefined;
+      if (sa && wertDef(sa)?.art !== 'stunde') raus.push(b('fehler', 'Je Person: die Uhrzeit kann nur aus einer Stellschraube „ab Uhrzeit“ kommen.'));
+      if (raus.length) return { ausloeser: null, befunde: raus };
+      return { ausloeser: { art: 'person', uhrzeit: uhr!, ...(bis ? { bis } : {}), tage: tage!, ...(roh.nachMorgenlauf === true ? { nachMorgenlauf: true as const } : {}), ...(sa ? { stundeAus: sa } : {}) }, befunde: [] };
+    }
+    default: return { ausloeser: null, befunde: [b('offen', 'Auslöser: wähle Ereignis, Zeitplan, Datum, von Hand, Webhook, Loop oder je Person.')] };
   }
 }
 
@@ -275,5 +292,56 @@ export function ausloeserText(a: Ausloeser): string {
     }
     case 'webhook': return `Webhook von außen${a.felder.length ? ` (${a.felder.length} Felder)` : ''}`;
     case 'loop': return `nach dem ${LOOP_NAME[a.loop]}`;
+    case 'person': return `je Person ${PERSON_TAGE_KURZ[a.tage]} ab ${a.stundeAus ? 'der Uhrzeit der Stellschraube' : a.uhrzeit}${a.bis ? ` bis ${a.bis}` : ''}${a.nachMorgenlauf ? ' nach dem Morgenlauf' : ''}, einmal am Tag (Business-frei ruht er)`;
   }
+}
+const PERSON_TAGE_KURZ: Readonly<Record<PersonTage, string>> = { 'mo-fr': 'Mo–Fr', werktage: 'werktags (ohne Feiertage)', taeglich: 'täglich' };
+
+// ── Auslöser „je Person“ (24.10., Paket Ü 2) — die Regel des Takts, rein ────────────────────────────────────────────────────────────────────────────
+
+/** Was der Takt für den Auslöser „je Person“ wissen muss (der Server liest es über die vorhandenen Lesewege). */
+export interface PersonLage {
+  /** Berliner Wandzeit `YYYY-MM-DDTHH:mm…`. */
+  wand: string;
+  /** Wochentag des Tages (1 = Montag … 7 = Sonntag) und ob er ein Feiertag NRW ist. */
+  wochentag: number; feiertag: boolean;
+  /** Ist der Morgenlauf des Tages durch (bzw. umgangen)? Nur gefragt mit `nachMorgenlauf`. */
+  morgenlaufDurch: boolean;
+  /** Ist der Haushalt jetzt Business-frei? Dann ruht der Auslöser für alle. */
+  haushaltFrei: boolean;
+  /** Personen, die jetzt Business-frei sind. */
+  frei: ReadonlySet<string>;
+  /** Die Stunde der Stellschraube `stundeAus` (fehlt = `uhrzeit`). */
+  stunde?: number;
+}
+export interface PersonStand { seit: string; tage: Record<string, string> }
+/** Der Fingerabdruck einer Person im Stand (nie der Speichername) — FNV-1a, 8 hex. */
+export function personSchluessel(speicher: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < speicher.length; i++) h = Math.imul(h ^ speicher.charCodeAt(i), 16777619) >>> 0;
+  return h.toString(16).padStart(8, '0');
+}
+/** Ab welcher Uhrzeit (rein): die Stunde der Stellschraube gewinnt. */
+export const personAb = (a: Extract<Ausloeser, { art: 'person' }>, stunde?: number): string =>
+  (a.stundeAus && typeof stunde === 'number' && Number.isInteger(stunde) && stunde >= 0 && stunde <= 23 ? `${String(stunde).padStart(2, '0')}:00` : a.uhrzeit);
+/** Passt der Tag? (rein) */
+export const personTagPasst = (tage: PersonTage, wochentag: number, feiertag: boolean): boolean =>
+  tage === 'taeglich' || (wochentag >= 1 && wochentag <= 5 && (tage === 'mo-fr' || !feiertag));
+
+/**
+ * Wer startet jetzt? (rein) — ohne Stand: nur merken (`seit` = heute, niemand startet; ab dem Folgetag). Sonst je Person der Team-Liste höchstens EIN Lauf am Tag: Tag passt,
+ * Uhrzeit erreicht und nicht über „bis“, ggf. nach dem Morgenlauf, der Haushalt nicht Business-frei, die Person nicht Business-frei (dann kommt sie später am Tag —
+ * „Nachholen“, nie über den Tag hinaus), heute noch nicht gestartet. Höchstens `max` Personen; der Stand trägt nur Fingerabdrücke.
+ */
+export function personenFaellig(a: Extract<Ausloeser, { art: 'person' }>, personen: readonly string[], lage: PersonLage, stand: PersonStand | undefined, max = 20): { stand: PersonStand; starten: string[]; ueber: number } {
+  const tag = lage.wand.slice(0, 10), uhr = lage.wand.slice(11, 16);
+  if (!stand) return { stand: { seit: tag, tage: {} }, starten: [], ueber: 0 };
+  const nichts = { stand, starten: [] as string[], ueber: 0 };
+  if (tag <= stand.seit) return nichts;
+  if (!personTagPasst(a.tage, lage.wochentag, lage.feiertag)) return nichts;
+  if (uhr < personAb(a, lage.stunde) || (a.bis && uhr >= a.bis)) return nichts;
+  if (a.nachMorgenlauf && !lage.morgenlaufDurch) return nichts;
+  if (lage.haushaltFrei) return nichts;
+  const dran = Array.from(new Set(personen)).filter(p => !lage.frei.has(p) && stand.tage[personSchluessel(p)] !== tag);
+  return { stand, starten: dran.slice(0, max), ueber: Math.max(0, dran.length - max) };
 }
