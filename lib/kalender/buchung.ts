@@ -198,6 +198,18 @@ export const slugOk = (s: unknown): s is string => typeof s === 'string' && SLUG
 const PERSON = /^[a-z0-9-]{1,40}$/;
 const txt = (v: unknown) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim() : '');
 const zahl = (v: unknown, min: number, max: number, sonst: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : sonst; };
+/**
+ * Grenzen und Vorgaben der Zahlen einer Seite — EINE Stelle (Restpunkte 24.10.): `seiteSauber` klemmt mit ihnen, die Maske im Steckbrief der Prozesse
+ * (lib/prozesse/stellschrauben-weiter-server.ts) lehnt Werte außerhalb mit 400 ab, statt still zu klemmen.
+ */
+export const SEITE_ZAHLEN = {
+  dauerMin: { min: 10, max: 240, vorgabe: 30 },
+  tageVoraus: { min: 1, max: 60, vorgabe: 14 },
+  vorlaufMin: { min: 0, max: 60 * 24 * 14, vorgabe: 1440 },
+  maxJeTag: { min: 1, max: 20, vorgabe: 4 },
+  pufferMin: { min: 0, max: 120, vorgabe: 15 },
+} as const;
+const sz = (v: unknown, k: keyof typeof SEITE_ZAHLEN) => zahl(v, SEITE_ZAHLEN[k].min, SEITE_ZAHLEN[k].max, SEITE_ZAHLEN[k].vorgabe);
 
 /**
  * Lesbarer Vorsatz der Adresse aus dem Titel („30 min mit Kevin“ → „30-min-mit-kevin“). Umlaute wie in der Suche
@@ -235,11 +247,11 @@ export function seiteSauber(roh: Record<string, unknown>, fest: Pick<BuchungsSei
     ok: true,
     seite: {
       id: fest.id, slug: fest.slug, titel, person: fuer, fenster,
-      dauerMin: zahl(roh.dauerMin, 10, 240, 30),
-      tageVoraus: zahl(roh.tageVoraus, 1, 60, 14),
-      vorlaufMin: zahl(roh.vorlaufMin, 0, 60 * 24 * 14, 1440),
-      maxJeTag: zahl(roh.maxJeTag, 1, 20, 4),
-      pufferMin: zahl(roh.pufferMin, 0, 120, 15),
+      dauerMin: sz(roh.dauerMin, 'dauerMin'),
+      tageVoraus: sz(roh.tageVoraus, 'tageVoraus'),
+      vorlaufMin: sz(roh.vorlaufMin, 'vorlaufMin'),
+      maxJeTag: sz(roh.maxJeTag, 'maxJeTag'),
+      pufferMin: sz(roh.pufferMin, 'pufferMin'),
       rasterMin: [15, 30, 60].includes(Number(roh.rasterMin)) ? Number(roh.rasterMin) : 30,
       zielKalender: kal, ort, verantwortlich,
       fragen: { firma: f.firma !== false, anliegen: f.anliegen !== false },
