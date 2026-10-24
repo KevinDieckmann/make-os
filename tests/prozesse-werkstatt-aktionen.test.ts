@@ -34,15 +34,17 @@ describe('Anlegen am Ausgang (Punkt 17: „+“, Tab, Alt+Pfeil)', () => {
     const f2 = gut(anlegen(f, b, { nach: start(d).id }));
     expect(schritteDer(f2, phase(d).id).map(s => s.id)).toEqual([start(d).id, b.id, a.id]);
   });
-  it('nein an einer Entscheidung wird ein Abzweig (Zweig gesetzt); ein zweites nein → Grund, nichts geändert', () => {
+  it('nein an einer Entscheidung wird ein Abzweig (Zweig gesetzt); ein zweites nein kommt dazwischen (Werkstatt-Fäden 24.10.: die Kette bleibt ganz)', () => {
     const d = basis();
     const r = knoten('entscheidung.mensch', 'Antwort erhalten?');
     let f = gut(anlegen(fass(d), r, { nach: start(d).id }));
     const e = knoten('erinnerung.runde', 'Erinnerung senden');
     f = gut(anlegen(f, e, { nach: r.id, ausgang: 'nein' }));
     expect(f.knoten.find(k => k.id === r.id)?.zweige?.nein).toBe(e.id);
-    const x = anlegen(f, knoten('aufgabe.anlegen'), { nach: r.id, ausgang: 'nein' });
-    expect(x.ok).toBe(false);
+    const x = knoten('aufgabe.anlegen', 'Vorher klären');
+    const g = gut(anlegen(f, x, { nach: r.id, ausgang: 'nein' }));
+    expect(g.knoten.find(k => k.id === r.id)?.zweige?.nein).toBe(x.id);
+    expect(kantenVon(g).find(k => k.von === x.id && k.ausgang === 'weiter')?.nach).toBe(e.id);
   });
   it('ein Sprung „weiter bei …“ des Vorgängers wandert an den neuen Knoten (Kette bleibt ganz)', () => {
     const d = basis();
@@ -52,8 +54,10 @@ describe('Anlegen am Ausgang (Punkt 17: „+“, Tab, Alt+Pfeil)', () => {
     f = { ...f, knoten: f.knoten.map(k => (k.id === a.id ? { ...k, zweige: { ja: z.id } } : k)) };
     const m = knoten('crm.kontakt-notiz', 'Notiz schreiben');
     f = gut(anlegen(f, m, { nach: a.id }));
+    // a → m (der Strang), m → z — wohin es vorher ging (ob als Sprung oder im Strang, rechnet kantenVon gleich).
     expect(f.knoten.find(k => k.id === a.id)?.zweige).toBeUndefined();
-    expect(f.knoten.find(k => k.id === m.id)?.zweige?.ja).toBe(z.id);
+    expect(kantenVon(f).find(k => k.von === a.id && k.ausgang === 'weiter')?.nach).toBe(m.id);
+    expect(kantenVon(f).find(k => k.von === m.id && k.ausgang === 'weiter')?.nach).toBe(z.id);
   });
   it('ein Auslöser kommt immer an den Anfang; vor einem Auslöser steht nichts', () => {
     const d = basis();

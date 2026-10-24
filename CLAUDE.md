@@ -1815,6 +1815,16 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Motor überspringt (Grund `deaktiviert`, Raute/Freigabe über „ja“), ein Schloss dahinter wird MIT übersprungen und bleibt im Prozess; nie an Auslöser, Ende, Schloss.
   **Kopieren zwischen Prozessen** nur über den Browser-Speicher (`lib/prozesse/ablage.ts`: immer `ohnePersonen`, beim Lesen gesäubert, 24 h) — nie über den Server.
   Tests `tests/prozesse-werkstatt-{baufertig,testdaten,probe-server,ablage,modell-test}.test.ts`.
+- **Werkstatt-Fäden (24.10., Bau-Test; Branch `werkstatt-faeden`) — Regel: eine Bau-Aktion ändert nie, wohin ein ANDERER Ausgang führt.** „weiter“/„ja“ ohne Zweig =
+  der nächste im Strang — darum schreibt `festschreiben` (lib/prozesse/werkstatt-aktionen.ts) nach JEDER Bau-Aktion (anlegen, zwischenEinfuegen, einfuegen, mehrfachEntscheidung,
+  verbinden, verbindenFrei, umhaengen, inPhase, loeschen, loesen, ausgangSetzen, ausloeserWechseln) jedes geänderte aufgelöste Ziel eines nicht bedienten Ausgangs fest:
+  Sprung `zweige.ja` (gleiche Phase) bzw. neues optionales Feld `ProzessKnoten.danach` (`{ ziel }` auch über Phasen, `{ ende: true }` = „Lauf endet“). Aufgelöst NUR über
+  `ausgangsZiele`/`kantenVon` (lib/prozesse/fluss.ts) — Motor, Probelauf, Werkstatt, Bild lesen `danach` gleich; ein Abzweig kehrt hinter seinen Ursprung zurück (dessen
+  `danach` gilt dafür nicht). „+“ an einem Ausgang hängt GENAU dort an, der Neue führt dorthin, wohin der Ausgang führte (nein/Fehler ohne Zweig: Lauf endet); ⌘V lose an
+  der Maus (`einfuegeLagen`), angehängt nur an einen FREIEN Hauptausgang des einen gewählten Knotens; Panel › Ausgänge: jeder Ausgang wählbar (`ausgangsWahl`); am Auslöser
+  „Auslöser ändern …“ statt eines zweiten; Warten mit fester Dauer ohne „abgelaufen“ (`ausgaengeVon`). Neue Bau-Hilfe = rein + `abschliessen`/`regel` + Eintrag in der
+  Eigenschaft (tests/prozesse-werkstatt-faeden.test.ts: alle Vorlagen × jeder Ausgang/Faden/Kopie/Löschen). Ohne `danach` bit-gleich; im Paket des Fulfillments ein Fehler
+  (`NUR_WERKSTATT_KNOTEN`). Rückweg: der alte Stand kennt `danach` nicht (verwirft es, die Ziele fallen auf den Strang zurück — der Fehler von vorher).
 - **Überführung — feste Abläufe ziehen echt in die Werkstatt (22.10., Paket Ü, Branch `prozesse-ueberfuehren`; Plan-Seite abgenommen: „zuerst ein paar Tage im
   Schatten neben dem alten Code, umgeschaltet wird erst, wenn beide dasselbe tun. Hältst du einen überführten Prozess an, läuft der alte Weg wieder.“):** feste Liste
   `UEBERFUEHRBAR` (lib/prozesse/ueberfuehrung.ts, rein): Mahnaufgaben (`sp-rechnung`), Fortschritts-Report (`sp-treppe`), Onboarding-Vorschlag „Fall starten“

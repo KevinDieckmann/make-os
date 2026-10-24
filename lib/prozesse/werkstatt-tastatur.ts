@@ -95,14 +95,15 @@ export function nachbar(von: Box, andere: readonly (Box & { id: string })[], r: 
 }
 
 /** Was Alt+Pfeil an einem Knoten anlegt (rein): an welchem Ausgang bzw. davor, und in welche Bahn (null = dieselbe). */
-export function altPfeil(k: Pick<K, 'form' | 'zweige'>, r: Richtung, bahnen: { darunter?: BahnSchluessel; darueber?: BahnSchluessel }): { ausgang?: Ausgang; vor?: true; bahn?: BahnSchluessel } | null {
+export function altPfeil(k: Pick<K, 'form' | 'zweige'> & Partial<Pick<K, 'warten' | 'katalog'>>, r: Richtung, bahnen: { darunter?: BahnSchluessel; darueber?: BahnSchluessel }): { ausgang?: Ausgang; vor?: true; bahn?: BahnSchluessel } | null {
   const f = k.form ?? 'schritt';
   if (f === 'ende' && r !== 'links') return null;
   if (r === 'links') return f === 'ausloeser' ? null : { vor: true };
   if (r === 'rechts') return { ausgang: f === 'entscheidung' ? 'ja' : 'weiter' };
   if (r === 'unten') {
     if (f === 'entscheidung' || f === 'freigabe') return k.zweige?.nein ? null : { ausgang: 'nein' };
-    if (f === 'warten') return k.zweige?.abgelaufen ? null : { ausgang: 'abgelaufen' };
+    // Warten mit fester Dauer läuft nie ab (Bau-Test 24.10.) — dort hängt Alt+↓ wie sonst in der Bahn darunter an.
+    if (f === 'warten' && !(k.warten ? k.warten.art === 'dauer' : k.katalog?.id === 'warten.dauer')) return k.zweige?.abgelaufen ? null : { ausgang: 'abgelaufen' };
     return { ausgang: 'weiter', ...(bahnen.darunter ? { bahn: bahnen.darunter } : {}) };
   }
   return { ausgang: f === 'entscheidung' ? 'ja' : 'weiter', ...(bahnen.darueber ? { bahn: bahnen.darueber } : {}) };

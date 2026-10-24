@@ -72,6 +72,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { bereich: 'alle', text: 'Der gemischte Wachstums-Score ist weg — Finanzen zeigt nur noch die Finanzen der Sicht, Privat zeigt Privat und Business zeigt Business.' },
         { bereich: 'business', text: 'Die Säule „Fulfillment“ im Business-Score heißt jetzt „Prozesse“.' },
         { bereich: 'business', text: 'Werkstatt: bei Warten-Schritten stehen „Höchstens (Stunden)“ und „Arbeitszeit zählen“ jetzt im Panel, bei Entscheidungen „Entscheiden binnen (Tagen)“ — so lässt sich an übernommenen Vorlagen jeder Wert ändern.' },
+        { bereich: 'business', text: 'Werkstatt: „+“ hängt genau an diesen Ausgang und ändert nie, wohin ein anderer Faden führt; im Panel ist jeder Ausgang wählbar (auch „weiter“), ⌘V fügt lose an der Maus ein, und am Start heißt es jetzt „Auslöser ändern“.', weg: WEG.prozesse({ ansicht: 'werkstatt' }) },
         { bereich: 'business', text: 'Event-Nachfassen „48 Stunden“ heißt überall zwei Werktage; „keine Entscheidung“ ist ein eigener Verlustgrund.' },
         { bereich: 'business', text: 'Anrechnung (z. B. eines Workshops auf das Mandat): angerechnet wird alles inklusive gewählter Optionen; was in den ersten Monat nicht passt, wandert auf die nächsten Rechnungen — Liquidität rechnet genauso.' },
         { bereich: 'business', text: 'Tages- und Stundensätze planen mit einer Menge je Monat; abgerechnet werden die echten Stunden bzw. Tage.' },

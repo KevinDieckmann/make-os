@@ -2,12 +2,13 @@
 
 // ─── Prozesse · Werkstatt — „Mehrfach-Entscheidung“ als Bau-Hilfe (22.10., „Werkstatt bau-fertig“ Punkt 15; Vorbild der Switch in n8n) ─────────────────────────
 // Mehrere Fälle mit Bedingungen und je einem Ziel, dazu „sonst“. Gebaut wird daraus SOFORT eine Kaskade aus Rauten nach Regel (lib/prozesse/werkstatt-aktionen.ts
-// `mehrfachEntscheidung`) — das Modell bleibt „Strang je Phase + Abzweige“, die Rauten lassen sich danach wie jede andere bearbeiten.
+// `mehrfachEntscheidung`) — das Modell bleibt „Strang je Phase + Abzweige“, die Rauten lassen sich danach wie jede andere bearbeiten. Bau-Test 24.10.: ein Klick
+// daneben bzw. Esc mit Eingaben fragt erst „Verwerfen?“ (vorher waren die Eingaben weg); „Anlegen“ zählt genau einmal.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, RAND } from '@/lib/make-one/design';
-import { Knopf, Hinweis, Feldzeile, Pillen, SymbolKnopf, feld, auswahl as auswahlStil } from '../ui';
+import { Knopf, Hinweis, Feldzeile, Pillen, SymbolKnopf, feld, auswahl as auswahlStil, useRueckfrage } from '../ui';
 import type { Bedingung, ProzessDefinition } from '@/lib/prozesse/definition';
 import { alleSchritte } from '@/lib/prozesse/fluss';
 import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
@@ -25,8 +26,23 @@ export function MehrfachFenster({ d, nach, onAnlegen, onZu }: { d: ProzessDefini
   const phase = alleSchritte(d).find(x => x.schritt.id === nach)?.phase.id;
   const ziele = alleSchritte(d).filter(x => x.phase.id === phase && x.schritt.id !== nach && x.schritt.form !== 'ausloeser' && !x.schritt.schloss).map(x => x.schritt);
   const setze = (i: number, t: Partial<MehrfachFall>) => setFaelle(l => l.map((x, j) => (j === i ? { ...x, ...t } : x)));
+  const { bestaetigen, dialog } = useRueckfrage();
+  // Etwas eingegeben? Dann fragt Schließen erst (Klick daneben, Esc, ×, Abbrechen).
+  const anfang = useRef(JSON.stringify({ f: [leer(1), leer(2)], s: 'aufgabe' }));
+  const geaendert = JSON.stringify({ f: faelle, s: sonst }) !== anfang.current;
+  const zu = async () => {
+    if (geaendert && !(await bestaetigen({ titel: 'Eingaben verwerfen?', text: 'Die Fälle der Mehrfach-Entscheidung sind noch nicht angelegt — beim Schließen gehen sie verloren.', ja: 'Verwerfen', gefahr: true }))) return;
+    onZu();
+  };
+  // „Anlegen“ zählt genau einmal (ein Doppelklick baut nie zwei Kaskaden).
+  const angelegt = useRef(false);
+  const anlegen = () => {
+    if (angelegt.current) return;
+    const f = onAnlegen(faelle, sonst);
+    if (f) setFehler(f); else angelegt.current = true;
+  };
   return (
-    <Fenster titel="Mehrfach-Entscheidung" onZu={onZu} breit={760}>
+    <Fenster titel="Mehrfach-Entscheidung" onZu={() => void zu()} breit={760}>
       <p style={{ margin: 0, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 }}>Mehrere Fälle, der erste passende gewinnt. Gebaut wird daraus eine Reihe von Rauten nach Regel (je Fall eine) — du kannst sie danach wie jede Raute bearbeiten.</p>
       {faelle.map((x, i) => (
         <section key={i} style={{ display: 'grid', gap: 8, padding: 12, borderRadius: 14, border: `1px solid ${RAND.haar}` }} aria-label={`Fall ${i + 1}`}>
@@ -55,9 +71,10 @@ export function MehrfachFenster({ d, nach, onAnlegen, onZu }: { d: ProzessDefini
       </Feldzeile>
       {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <Knopf onClick={() => { const f = onAnlegen(faelle, sonst); if (f) setFehler(f); }}>Anlegen</Knopf>
-        <Knopf leise onClick={onZu}>Abbrechen</Knopf>
+        <Knopf onClick={anlegen}>Anlegen</Knopf>
+        <Knopf leise onClick={() => void zu()}>Abbrechen</Knopf>
       </div>
+      {dialog}
     </Fenster>
   );
 }

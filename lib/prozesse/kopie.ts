@@ -87,6 +87,8 @@ export function mitNeuenKnoten(d: ProzessDefinition, a: { id: string; neu: () =>
     if (k.elternId) n.elternId = m(k.elternId);
     if (k.phaseId && karte.has(k.phaseId)) n.phaseId = karte.get(k.phaseId);
     if (k.zweige) n.zweige = Object.fromEntries(Object.entries(k.zweige).map(([z, v]) => [z, m(v)])) as K['zweige'];
+    // Werkstatt-Fäden (24.10.): ein festgelegter Ausgang folgt den neuen Kennungen.
+    if (k.danach && 'ziel' in k.danach) n.danach = { ziel: m(k.danach.ziel)! };
     if (k.schloss) n.schloss = { ...k.schloss, fuer: m(k.schloss.fuer)! };
     if (k.erneut) n.erneut = { ...k.erneut, ab: m(k.erneut.ab)! };
     if (k.schleife) n.schleife = { ...k.schleife, liste: k.schleife.liste.startsWith('abfrage:') ? `abfrage:${m(k.schleife.liste.slice(8))}` : k.schleife.liste };

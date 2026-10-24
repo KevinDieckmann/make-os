@@ -34,11 +34,12 @@ import { FACH_AGENTEN } from '@/lib/prozesse/agent-schritt';
 import { alleSchritte, phasen, wurzel } from '@/lib/prozesse/fluss';
 import type { AgentWer, Befund, KnotenLage, ProzessDefinition, ProzessForm, ProzessKnoten, ProzessVersion } from '@/lib/prozesse/definition';
 import {
-  werkstattLage, lagenFesthalten, ordnen, zettelFreiLegen, kachelnFuerAlles, ortBei, inBahn, bahnSchluessel, knotenMass, WS, type TeamName, type KanteLage,
+  werkstattLage, lagenFesthalten, ordnen, zettelFreiLegen, kachelnFuerAlles, ortBei, inBahn, bahnSchluessel, knotenMass, WS, einfuegeLagen, ausgangName, type TeamName, type KanteLage,
 } from '@/lib/prozesse/werkstatt-lage';
 import {
   anlegen, verbinden, loesen, loeschen, ersetzen, umbenennen as umbenennen_, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
   kopieren, einfuegen, merke, rueckgaengig, wiederholen, LEERE_GESCHICHTE, phaseVon, verbindenFrei, umhaengen, zwischenEinfuegen, zwischenGrund, mehrfachEntscheidung,
+  ausgangSetzen, ausloeserWechseln, hauptZiel,
   type Ablage, type Ergebnis, type Fassung, type Geschichte,
 } from '@/lib/prozesse/werkstatt-aktionen';
 import { neuerKnoten, knotenUnterzeile, maskeAnwenden, maskeWerte } from '@/lib/prozesse/werkstatt-maske';
@@ -149,7 +150,11 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const vorlageZiel = useRef<VorlageZiel | null>(null);
   const [ansage, setAnsage] = useState('');
   const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'achtung' | 'kritisch' | 'info'; link?: { href: string; text: string } } | null>(null);
-  const [formauswahl, setFormauswahl] = useState<{ ziel: AnhangZiel & { bahn?: string }; form?: ProzessForm } | null>(null);
+  /**
+   * Die Knoten-Auswahl: wohin (Ziel), die Kennung des Neuen (Werkstatt-Fäden 24.10.: EINE je Öffnung — ein zweiter Klick legt nie einen zweiten Knoten an) und — am
+   * Auslöser — ob sie seinen Typ wechselt bzw. bewusst einen weiteren anlegt.
+   */
+  const [formauswahl, setFormauswahl] = useState<{ ziel: AnhangZiel & { bahn?: string }; form?: ProzessForm; kennung: string; modus?: 'ausloeser-wechseln' | 'ausloeser-neu' } | null>(null);
   const [probe, setProbe] = useState<ProbeErgebnis | null>(null);
   const [probeHinweis, setProbeHinweis] = useState<string | null>(null);
   const [versionAnsicht, setVersionAnsicht] = useState<ProzessVersion | null>(null);
@@ -223,7 +228,16 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   }, [eintrag, fassung, versionAnsicht]);
   const zuWirksam = useMemo(() => (uebersicht?.size ? new Set([...zu, ...uebersicht]) : zu), [zu, uebersicht]);
   const lage = useMemo(() => (d ? werkstattLage(d, { team, zu: zuWirksam }) : null), [d, team, zuWirksam]);
-  useEffect(() => { const id = zeigeNeu.current; if (id && lage?.knoten.has(id)) { zeigeNeu.current = null; flaeche.current?.insBild(id); } }, [lage]);
+  useEffect(() => { const id = zeigeNeu.current; if (id && lage?.knoten.has(id)) { zeigeNeu.current = null; flaeche.current?.insBild(id, { ausgaenge: true }); } }, [lage]);
+  // Werkstatt-Fäden (24.10., Bau-Test): ein gewählter Knoten samt seinen „+“ liegt nie unter dem Seitenfeld — die Kamera rückt nur so weit wie nötig (zwei Bilder
+  // später: erst dann steht das Feld mit den Einstellungen und seine Breite zählt im freien Feld).
+  const einerGewaehlt = auswahl.length === 1 ? auswahl[0] : null;
+  useEffect(() => {
+    if (!einerGewaehlt) return;
+    let t2 = 0;
+    const t1 = requestAnimationFrame(() => { t2 = requestAnimationFrame(() => flaeche.current?.insBild(einerGewaehlt, { ausgaenge: true })); });
+    return () => { cancelAnimationFrame(t1); cancelAnimationFrame(t2); };
+  }, [einerGewaehlt]);
   // Nach dem Umschalten der Übersicht (bzw. dem Aufklappen einer Kachel) die Kamera auf die neue Lage einpassen.
   useEffect(() => {
     const e = einpassen.current;
@@ -451,7 +465,19 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     const vonId = ziel.nach ?? (ziel.zwischen ? lage?.kanten.find(k => k.id === ziel.zwischen)?.von : undefined);
     const von = vonId ? d.knoten.find(k => k.id === vonId) : undefined;
     setUmbenennen(null);
-    setFormauswahl({ ziel, ...(von?.form && von.form !== 'ausloeser' && von.form !== 'freigabe' ? { form: von.form } : {}) });
+    setFormauswahl({ ziel, kennung: neueKennung('fk'), ...(von?.form && von.form !== 'ausloeser' && von.form !== 'freigabe' ? { form: von.form } : {}) });
+  };
+  /** Am Auslöser (Bau-Test 24.10.): die Knoten-Auswahl nur mit Auslösern — Typ wechseln bzw. bewusst einen weiteren anlegen. */
+  const ausloeserWahl = (id: string, art: 'wechseln' | 'neu') => {
+    if (nurLesen) return;
+    setUmbenennen(null);
+    setFormauswahl({ ziel: { nach: id }, kennung: neueKennung('fk'), modus: art === 'wechseln' ? 'ausloeser-wechseln' : 'ausloeser-neu' });
+  };
+  const ausloeserTauschen = (e: KatalogEintrag, id: string) => {
+    const alt = d?.knoten.find(k => k.id === id);
+    if (mitFassung(f => ausloeserWechseln(f, id, neuerKnoten(e, id), { altName: katalogEintrag(alt?.katalog?.id)?.name }))) setAuswahl([id]);
+    setFormauswahl(null);
+    flaeche.current?.fokus();
   };
   /** Wo ein neuer Knoten liegen soll, wenn die Fläche schon von Hand gelegt ist (sonst legt die Regel ihn selbst). */
   const platzFuer = (neu: K, ziel: AnhangZiel & { bahn?: string }): { platz?: KnotenLage; platzSchaffen?: number } => {
@@ -469,8 +495,10 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     const y = zweig ? quelle.y - b.y + quelle.h + WS.reihenLuecke : bahn === quelle.bahn ? quelle.y - b.y : WS.bahnRand;
     return { platz: { x, y: Math.max(0, y) }, ...(!zweig ? { platzSchaffen: m.b + WS.spaltenLuecke } : {}) };
   };
-  const ausKatalog = (e: KatalogEintrag, ziel: AnhangZiel & { bahn?: string }) => {
-    let neu = neuerKnoten(e, neueKennung('fk'));
+  const ausKatalog = (e: KatalogEintrag, ziel: AnhangZiel & { bahn?: string }, kennung = neueKennung('fk')) => {
+    // Idempotent über die Kennung (Werkstatt-Fäden 24.10.): steht der Knoten schon da (Doppelklick, zweites Absenden), passiert nichts mehr.
+    if (fassungRef.current?.knoten.some(k => k.id === kennung)) { setFormauswahl(null); return; }
+    let neu = neuerKnoten(e, kennung);
     if (ziel.bahn) neu = inBahn(neu, ziel.bahn as ReturnType<typeof bahnSchluessel>) ?? neu;
     // Feinschliff 22.10. (Befund 5): was nach außen geht, folgt der Menschen-Bahn des Vorgängers (kein Zickzack Mensch/System/Mensch).
     else if (ziel.nach) { const b = bahnBeimAnhaengen(neu, d?.knoten.find(k => k.id === ziel.nach)); if (b) neu = inBahn(neu, b) ?? neu; }
@@ -543,18 +571,32 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     schreib(lokal(), ABLAGE_MERKER, JSON.stringify(ablageFuerSpeicher(a, { quelle: prozessId, jetzt: am })));
     ansagen(`${a.knoten.length + a.zettel.length} kopiert — mit ihren Verbindungen; auch in einem anderen Prozess einfügbar.`);
   };
-  const einf = () => {
+  /**
+   * Einfügen (Werkstatt-Fäden 24.10., Bau-Test): an der Mausposition (bzw. der Mitte des sichtbaren Bereichs, beim Duplizieren neben dem Original) — lose, ohne einen
+   * bestehenden Ausgang umzuhängen; ist genau EIN Knoten gewählt und sein Hauptausgang frei, hängt es dort an (die Ansage sagt, was geschah).
+   */
+  const einf = (o: { neben?: boolean } = {}) => {
     const f = fassungRef.current;
     // Aus einem anderen Prozess (jünger als die eigene Ablage): die Fassung ohne Personen aus dem Browser-Speicher.
     const fremd = ablageAus(lies(lokal(), ABLAGE_MERKER), new Date().toISOString());
     const ausFremd = !!fremd && fremd.quelle !== prozessId && (!ablage.current || fremd.am > ablage.current.am);
     const a = ausFremd ? fremd!.ablage : ablage.current?.ablage;
     if (!a || !f || !d) { ansagen('Die Ablage ist leer.'); return; }
-    const ziel = auswahl.find(id => phaseVon(f, id));
-    const phaseId = (ziel && phaseVon(f, ziel)) ?? phasen(d).at(-1)?.id;
+    const ziel = auswahl.length === 1 && phaseVon(f, auswahl[0]) ? auswahl[0] : undefined;
+    const erst = a.knoten[0] && lage?.knoten.get(a.knoten[0].id);
+    const punkt: [number, number] | null = o.neben && erst ? [erst.x + erst.b / 2 + 40, erst.y + erst.koerper.y + erst.koerper.h / 2 + 40] : flaeche.current?.zeiger() ?? flaeche.current?.mitte() ?? null;
+    const ort = punkt && lage ? ortBei(lage, punkt[0], punkt[1]) : null;
+    // Hängt es am gewählten Knoten an (sein Hauptausgang ist frei), gehört es in dessen Phase — sonst in die Phase unter dem Zeiger.
+    const haengt = !!ziel && hauptZiel(f.knoten, ziel) === null;
+    const phaseId = (haengt ? phaseVon(f, ziel!) : null) ?? ort?.phaseId ?? (ziel && phaseVon(f, ziel)) ?? phasen(d).at(-1)?.id;
     if (!phaseId) return;
-    if (mitFassung(x => einfuegen(x, a, { phaseId, nach: ziel ?? null, kennung: () => neueKennung('fk') })) && ausFremd) {
-      setMeldung({ text: `Aus einem anderen Prozess eingefügt${fremd!.hinweise.length ? ` — ${fremd!.hinweise.join(' ')}` : ''} Verweise auf Schritte, die es hier nicht gibt, meldet die Prüfung.`, art: 'info' });
+    const lagen = punkt && lage ? einfuegeLagen(a.knoten, lage, punkt, phaseId) : undefined;
+    const e = einfuegen(f, a, { phaseId, nach: ziel ?? null, kennung: () => neueKennung('fk'), ...(lagen?.size ? { lagen } : {}) });
+    // Die Ansage sagt, ob verbunden oder lose — sichtbar als Meldung, nicht nur für den Vorleser.
+    if (anwenden(e) && e.ok) {
+      setMeldung(ausFremd
+        ? { text: `${e.ansage} Aus einem anderen Prozess${fremd!.hinweise.length ? ` — ${fremd!.hinweise.join(' ')}` : ''} Verweise auf Schritte, die es hier nicht gibt, meldet die Prüfung.`, art: 'info' }
+        : { text: e.ansage, art: 'gut' });
     }
   };
 
@@ -591,7 +633,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
       case 'wiederholen': vor(); return true;
       case 'alles-waehlen': setAuswahl([...alleSchritte(d).map(x => x.schritt.id), ...(d.zettel ?? []).map(z => z.id)]); return true;
       case 'einfuegen': einf(); return true;
-      case 'duplizieren': kopie(); einf(); return true;
+      case 'duplizieren': kopie(); einf({ neben: true }); return true;
       // Ordnen legt auch Zettel frei, die einen Phasen-Kopf, eine Bahn oder einen Knoten verdecken (Befund 3) — über die Rahmen.
       case 'ordnen': mitFassung(f => ({ ok: true, fassung: zettelFreiLegen(ordnen(f), { team, zu }), ansage: 'Geordnet — eine Leserichtung, Zettel liegen frei. Rückgängig holt die alte Lage.' })); return true;
       case 'loeschen': loeschenAuswahl(); return true;
@@ -838,9 +880,16 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const probeKnopf = <Knopf leise onClick={() => setProbeOffen(o => !o)} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts); mit dem Beispiel oder einem echten Fall"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>;
   const versionenKnopf = (!nurAnsehen || mobilDarf) && !versionAnsicht && <Knopf onClick={() => { setVersionenOffen(true); if (laeufe.daten?.tests.length) void testsAlle(); }} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>;
   // ── Werkstatt bau-fertig: Titel der Knoten-Auswahl, Fäden mit „+“, Doppelklick und Umbenennen auf der Fläche ──
-  const auswahlTitel = (z: AnhangZiel): string => {
-    if (z.zwischen) { const k = lage.kanten.find(x => x.id === z.zwischen); return `Einfügen zwischen „${d.knoten.find(x => x.id === k?.von)?.titel ?? ''}“ und „${d.knoten.find(x => x.id === k?.nach)?.titel ?? ''}“`; }
-    return z.nach ? `Anhängen an „${d.knoten.find(k => k.id === z.nach)?.titel ?? ''}“` : 'Baustein anlegen';
+  // Werkstatt-Fäden (24.10.): der Kopf nennt auch den Ausgang — „Anhängen an „X“ · Ausgang „nein““.
+  const auswahlTitel = (w: { ziel: AnhangZiel; modus?: 'ausloeser-wechseln' | 'ausloeser-neu' }): string => {
+    const z = w.ziel;
+    const k = z.nach ? d.knoten.find(x => x.id === z.nach) : undefined;
+    if (w.modus === 'ausloeser-wechseln') return `Auslöser ändern: „${k?.titel ?? ''}“`;
+    if (w.modus === 'ausloeser-neu') return 'Weiterer Auslöser — führt in den ersten Schritt';
+    if (z.zwischen) { const kn = lage.kanten.find(x => x.id === z.zwischen); return `Einfügen zwischen „${d.knoten.find(x => x.id === kn?.von)?.titel ?? ''}“ und „${d.knoten.find(x => x.id === kn?.nach)?.titel ?? ''}“`; }
+    if (!k) return 'Baustein anlegen';
+    const aus = z.ausgang ?? (k.form === 'entscheidung' || k.form === 'freigabe' ? 'ja' : 'weiter');
+    return `Anhängen an „${k.titel}“ · Ausgang „${ausgangName(k.form ?? 'schritt', aus)}“`;
   };
   const doppelklick = (id: string) => {
     const k = d.knoten.find(x => x.id === id);
@@ -865,11 +914,13 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           <WerkstattPanel d={d} auswahl={auswahlListen} modelle={modelle} befunde={befunde} raete={raete} probe={probeSaetze} kanten={lage.kanten} nurLesen={nurLesen}
             knoten={o.knoten} phase={o.imFenster ? null : panelPhase} kante={o.imFenster ? null : panelKante} zettel={o.imFenster ? null : panelZettel} andock={andockWahl?.id === o.knoten?.id ? andockWahl?.art ?? null : null} titelFokus={titelFokus}
             annahmen={eintrag.testdaten?.annahmen} onAnnahme={nurLesen ? undefined : (id, a) => void annahmeSetzen(id, a)}
-            onDuplizieren={() => { kopie(); einf(); }} onGross={id => setGross(id)} feldFokus={feldFokus} imFenster={o.imFenster}
+            onDuplizieren={() => { kopie(); einf({ neben: true }); }} onGross={id => setGross(id)} feldFokus={feldFokus} imFenster={o.imFenster}
             onTeilprozessNeu={nurLesen ? undefined : id => void teilprozessNeu(id)}
             onKnoten={k => mitFassung(f => ersetzen(f, k), { auswahl: false })}
             onSteckbrief={steckbrief}
             onZweig={(von, ausgang, nach) => mitFassung(f => (nach ? verbinden(f, von, ausgang, nach) : loesen(f, von, ausgang)), { auswahl: false })}
+            onAusgang={(von, ausgang, wahl) => mitFassung(f => ausgangSetzen(f, von, ausgang, wahl), { auswahl: false })}
+            onAusloeser={ausloeserWahl}
             onPfeilText={(von, art, t) => mitFassung(f => pfeilText(f, von, art, t), { auswahl: false })}
             onLoeschen={ids => { mitFassung(f => loeschen(f, ids)); setAuswahl([]); }}
             onKopieren={kopie}
@@ -1017,12 +1068,20 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           {hinweisBlock(true)}
           {/* Der Pfeil oben rechts IN der Fläche (Entscheidung 22.10.) — im Werkzeugmodus trägt ihn die Kopfzeile (⤡). */}
           {!modus && onGanzerBildschirm && <GanzerBildschirmKnopf onClick={onGanzerBildschirm} />}
-          {formauswahl && (
-            <WerkstattFormauswahl form={formauswahl.form} titel={auswahlTitel(formauswahl.ziel)}
-              ohneAusloeser={!!formauswahl.ziel.zwischen || (!!formauswahl.ziel.nach && d.knoten.find(k => k.id === formauswahl.ziel.nach)?.form !== 'ausloeser')} anhaengen={!!formauswahl.ziel.nach || !!formauswahl.ziel.zwischen}
-              onWahl={e => ausKatalog(e, formauswahl.ziel)} onZu={() => { setFormauswahl(null); flaeche.current?.fokus(); }}
-              onMehrfach={formauswahl.ziel.nach && !formauswahl.ziel.zwischen && !formauswahl.ziel.ausgang?.match(/nein|fehler|abgelaufen/) ? () => { setMehrfach(formauswahl.ziel.nach!); setFormauswahl(null); } : undefined} />
-          )}
+          {formauswahl && (() => {
+            // Bau-Test 24.10.: beim Anhängen keine Auslöser (ein zweiter landete in eigener Bahn) — am Auslöser stehen dafür „Auslöser ändern …“ und „Weiteren
+            // Auslöser hinzufügen …“. Ohne jeden Auslöser im Prozess bleiben sie wählbar (sonst gäbe es keinen Weg zurück).
+            const amAusloeser = !formauswahl.modus && !formauswahl.ziel.zwischen && d.knoten.find(k => k.id === formauswahl.ziel.nach)?.form === 'ausloeser';
+            const hatAusloeser = d.knoten.some(k => k.form === 'ausloeser');
+            return (
+              <WerkstattFormauswahl key={formauswahl.kennung} form={formauswahl.form} titel={auswahlTitel(formauswahl)}
+                nurAusloeser={!!formauswahl.modus} ohneAusloeser={!formauswahl.modus && hatAusloeser} anhaengen={!!formauswahl.ziel.nach || !!formauswahl.ziel.zwischen}
+                onAusloeser={amAusloeser ? art => ausloeserWahl(formauswahl.ziel.nach!, art) : undefined}
+                onWahl={e => (formauswahl.modus === 'ausloeser-wechseln' ? ausloeserTauschen(e, formauswahl.ziel.nach!) : ausKatalog(e, formauswahl.modus ? {} : formauswahl.ziel, formauswahl.kennung))}
+                onZu={() => { setFormauswahl(null); flaeche.current?.fokus(); }}
+                onMehrfach={!formauswahl.modus && formauswahl.ziel.nach && !formauswahl.ziel.zwischen && !formauswahl.ziel.ausgang?.match(/nein|fehler|abgelaufen/) ? () => { setMehrfach(formauswahl.ziel.nach!); setFormauswahl(null); } : undefined} />
+            );
+          })()}
           {probeOffen && <ProbeFallFenster fallArt={d.fallArt ?? 'mandat'} wert={probeFall} onWert={setProbeFall} onStart={() => probelauf()} onZu={() => setProbeOffen(false)} />}
           {hilfe && (
             <div role="dialog" aria-label="Kürzel der Werkstatt" className="pz-hilfe">

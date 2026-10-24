@@ -16,7 +16,7 @@
 //   · Hilfslinien beim Ziehen (Punkt 19): `hilfslinien` rastet an Kanten und Mitten der Nachbarn ein und sagt, welche Linien zu zeichnen sind.
 // Tests: tests/prozesse-werkstatt-lage.test.ts.
 
-import type { Bahn, ProzessDefinition, ProzessForm, ProzessKnoten, ModelTier } from './definition';
+import type { Bahn, KnotenLage, ProzessDefinition, ProzessForm, ProzessKnoten, ModelTier } from './definition';
 import { kantenVon, phasen, schritteDer, seitenZiele, type Ausgang, type Kante } from './fluss';
 import { katalogEintrag } from './baustein-katalog';
 import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
@@ -196,6 +196,16 @@ export const AUSGAENGE: Readonly<Record<ProzessForm, readonly Ausgang[]>> = {
   ausloeser: ['weiter'], agent: ['weiter', 'fehler'], warten: ['weiter', 'abgelaufen'], schleife: ['weiter', 'fehler'], teilprozess: ['weiter', 'fehler'],
   freigabe: ['ja', 'nein', 'abgelaufen'], ende: [],
 };
+/**
+ * Läuft dieses Warten je ab? Eine feste Dauer nicht — der Motor geht nach der Dauer „weiter“ (lib/prozesse/lauf-regeln.ts `weckenZeit`); „abgelaufen“ gibt es nur beim
+ * Warten bis Datum bzw. auf ein Ereignis (Obergrenze erreicht, Datum bzw. Ereignis noch nicht da). Bau-Test 24.10.
+ */
+export const wartenDauer = (k: Pick<K, 'form' | 'warten' | 'katalog'>): boolean => k.form === 'warten' && (k.warten ? k.warten.art === 'dauer' : k.katalog?.id === 'warten.dauer');
+/** Die Ausgänge eines Knotens (rein): die seiner Form — am Warten mit fester Dauer ohne „abgelaufen“ (außer es trägt dort schon ein Ziel, das man lösen können muss). */
+export function ausgaengeVon(k: Pick<K, 'form' | 'warten' | 'katalog' | 'zweige'>): readonly Ausgang[] {
+  const a = AUSGAENGE[k.form ?? 'schritt'];
+  return wartenDauer(k) && !k.zweige?.abgelaufen ? a.filter(x => x !== 'abgelaufen') : a;
+}
 /** Wie ein Ausgang an dieser Form heißt (Beschriftung des Fadens; Punkt 23: Rauten-Ausgänge immer benannt). */
 export function ausgangName(f: ProzessForm, a: Ausgang): string {
   if (a === 'fehler') return 'Fehler';
@@ -207,21 +217,21 @@ export function ausgangName(f: ProzessForm, a: Ausgang): string {
 }
 
 /** Die Anschlüsse eines Knotens (relativ zur Box). Raute: vier feste Andockpunkte (links Eingang, rechts ja, unten nein, oben Fehler). */
-export function anschluesse(k: Pick<K, 'form'>): Anschluss[] {
+export function anschluesse(k: Pick<K, 'form'> & Partial<Pick<K, 'warten' | 'katalog' | 'zweige'>>): Anschluss[] {
   const f = k.form ?? 'schritt';
   const { koerper: c } = knotenMass(k);
   const cy = c.y + c.h / 2;
   const raus: Anschluss[] = [];
   if (f !== 'ausloeser') raus.push({ art: 'ein', x: c.x, y: cy, richtung: 'links' });
   if (gestaltVon(f) === 'raute') {
-    for (const a of AUSGAENGE[f]) {
+    for (const a of ausgaengeVon(k)) {
       if (a === 'ja' || a === 'weiter') raus.push({ art: a, x: c.x + c.b, y: cy, richtung: 'rechts' });
       else if (a === 'nein') raus.push({ art: a, x: c.x + c.b / 2, y: c.y + c.h, richtung: 'unten' });
       else raus.push({ art: a, x: c.x + c.b / 2, y: c.y, richtung: 'oben' });
     }
     return raus;
   }
-  const aus = AUSGAENGE[f];
+  const aus = ausgaengeVon(k);
   // Rechts übereinander: der Hauptausgang mittig (bzw. oben), die übrigen darunter; „Fehler“ immer unten.
   const anteile = aus.length <= 1 ? [0.5] : aus.length === 2 ? [0.4, 0.8] : [0.26, 0.56, 0.86];
   aus.forEach((a, i) => raus.push({ art: a, x: c.x + c.b, y: c.y + c.h * anteile[i], richtung: 'rechts' }));
@@ -472,6 +482,42 @@ export function ortBei(l: Pick<WerkstattLage, 'rahmen' | 'bahnen'>, x: number, y
   const r = l.rahmen.find(r => x >= r.x && x <= r.x + r.b);
   const b = l.bahnen.find(b => y >= b.y && y <= b.y + b.h) ?? (l.bahnen.length && y > l.bahnen[l.bahnen.length - 1].y ? l.bahnen[l.bahnen.length - 1] : l.bahnen[0]);
   return r && b ? { phaseId: r.id, bahn: b.schluessel, rahmenX: r.x, bahnY: b.y } : null;
+}
+
+/**
+ * Wo Kopien beim Einfügen (⌘V) liegen (rein, Werkstatt-Fäden 24.10., Bau-Test): an der Mausposition (bzw. der Mitte des sichtbaren Bereichs) — die Gruppe behält ihre
+ * Anordnung (Lage der Originale, sonst nebeneinander); liegt dort schon ein Knoten, rückt sie nach unten in freien Platz. Jede Kopie bleibt in ihrer Bahn (liegt der
+ * Punkt außerhalb, oben in ihrer Bahn). Liefert je ALTER Kennung die gespeicherte Lage (x relativ zum Rahmen der Phase, y relativ zur Bahn).
+ */
+export function einfuegeLagen(kopien: readonly K[], l: Pick<WerkstattLage, 'knoten' | 'rahmen' | 'bahnen'>, punkt: Pt, phaseId: string): Map<string, KnotenLage> {
+  const r = l.rahmen.find(x => x.id === phaseId);
+  const raus = new Map<string, KnotenLage>();
+  if (!r || !kopien.length) return raus;
+  const mass = kopien.map(k => knotenMass(k));
+  const orig = kopien.map(k => l.knoten.get(k.id) ?? null);
+  const x0 = Math.min(...orig.map(o => o?.x ?? Infinity)), y0 = Math.min(...orig.map(o => o?.y ?? Infinity));
+  const rel: Pt[] = orig.every(Boolean) ? orig.map(o => [o!.x - x0, o!.y - y0]) : kopien.map((_, i) => [i * (WS.knotenB + WS.spaltenLuecke), 0]);
+  // Der Punkt ist die Mitte des ersten Körpers.
+  const p0: Pt = [punkt[0] - rel[0][0] - mass[0].b / 2, punkt[1] - rel[0][1] - mass[0].koerper.y - mass[0].koerper.h / 2];
+  // Je Kopie die Lage in Welt-Koordinaten: x am Punkt, y am Punkt — liegt der außerhalb ihrer Bahn, oben in ihrer Bahn.
+  const bahnen = kopien.map(k => l.bahnen.find(x => x.schluessel === bahnSchluessel(k)) ?? null);
+  const basis: Pt[] = kopien.map((_, j) => {
+    const ax = p0[0] + rel[j][0], ay = p0[1] + rel[j][1], b = bahnen[j];
+    return [ax, b && (ay < b.y || ay > b.y + b.h) ? b.y + WS.bahnRand : ay];
+  });
+  const belegt = [...l.knoten.values()].filter(k => !k.zu).map(k => ({ x: k.x, y: k.y, b: k.b, h: k.h }));
+  const schneidet = (a: Box, b: Box) => a.x < b.x + b.b && a.x + a.b > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  const reihe = WS.quadrat + WS.beschriftung + WS.reihenLuecke;
+  let dy = 0;
+  for (let i = 0; i < 12; i++) {
+    if (!kopien.some((_, j) => belegt.some(b => schneidet({ x: basis[j][0], y: basis[j][1] + dy, b: mass[j].b, h: mass[j].h }, b)))) break;
+    dy += reihe;
+  }
+  kopien.forEach((k, j) => {
+    const by = bahnen[j]?.y ?? WS.rahmenKopf;
+    raus.set(k.id, { x: Math.max(Math.round(WS.rahmenRand / 2), Math.round(basis[j][0] - r.x)), y: Math.max(0, Math.round(basis[j][1] + dy - by)) });
+  });
+  return raus;
 }
 
 export interface Hilfslinie { x1: number; y1: number; x2: number; y2: number }
