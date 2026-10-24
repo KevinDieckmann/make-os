@@ -25,6 +25,7 @@ import { schlossText } from '@/lib/prozesse/schloss';
 import { kundenFormErlaubt } from '@/lib/prozesse/produkt-bindung';
 import { maskeWerte, maskeAnwenden, formWort } from '@/lib/prozesse/werkstatt-maske';
 import { feldWerte } from '@/lib/prozesse/feld-werte';
+import { tageOptionen } from '@/lib/prozesse/zeitplan-tage';
 import { AUSGAENGE, ausgangName, type KanteLage } from '@/lib/prozesse/werkstatt-lage';
 import { PROBE_NAME, PROBE_BEDEUTUNG, centText, type ProbeSchritt, type Rat } from '@/lib/prozesse/werkstatt-hinweise';
 import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
@@ -179,7 +180,13 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   const S = symbolVon(k);
   const ton = WERKSTATT_FORM_FARBE[k.form ?? 'schritt'];
   const werte = e ? maskeWerte(k, e) : {};
-  const setze = (id: string, v: MaskenWert) => { if (e && !p.nurLesen) p.onKnoten(maskeAnwenden(k, e, { ...werte, [id]: v }, { modelle: p.modelle })); };
+  const setze = (id: string, v: MaskenWert) => {
+    if (!e || p.nurLesen) return;
+    const neu = { ...werte, [id]: v };
+    // Feinschliff 24.10.: ein anderer Rhythmus hat andere Tage (Wochentage ↔ Monatstage) — die alten passen nicht mehr.
+    if (id === 'rhythmus' && v !== werte.rhythmus) delete neu.tage;
+    p.onKnoten(maskeAnwenden(k, e, neu, { modelle: p.modelle }));
+  };
   const schloss = d.knoten.find(x => x.schloss?.fuer === k.id);
   const fuer = k.schloss ? d.knoten.find(x => x.id === k.schloss!.fuer) : null;
   const befunde = p.befunde.filter(b => b.knotenId === k.id);
@@ -215,10 +222,12 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   const gesperrt = (id: string) => nurOeffentlich && (id === 'akte' || id === 'brain');
   // Feinschliff 24.10.: Felder mit Werteliste (Produkt, Stufe, Status, Zuständig …) — Auswahl statt Freitext (lib/prozesse/feld-werte.ts).
   const werteVon = (feldId: string) => feldWerte(feldId, p.auswahl, d);
-  const eingabe = (f: KatalogEintrag['maske'][number]) => (
+  // Zeitplan (Feinschliff 24.10.): Tage nach dem Rhythmus — wöchentlich Mo–So, monatlich 1–30 + „letzter Tag“; täglich/werktags ohne Tage.
+  const tage = tageOptionen(werte.rhythmus);
+  const eingabe = (f: KatalogEintrag['maske'][number]) => (f.typ === 'tage' && !tage ? null : (
     <MaskenEingabe key={f.id} f={f} wert={gesperrt(f.id) ? false : werte[f.id]} onWert={v => setze(f.id, v)} optionen={f.optionen ? f.optionen.map(o => ({ ...o })) : optionenFuer(f.quelle, p, k)}
-      felder={felder} platzhalter={platz} fehler={fehlerVon(f.id)} aus={p.nurLesen || gesperrt(f.id)} werteVon={werteVon} />
-  );
+      felder={felder} platzhalter={platz} fehler={fehlerVon(f.id)} aus={p.nurLesen || gesperrt(f.id)} werteVon={werteVon} {...(tage ? { tage } : {})} />
+  ));
   // Feinschliff 24.10. (Bau-Test A2): am Teilprozess bzw. an der Schleife gleich einen neuen Prozess anlegen — mit dem passenden Fall, danach gewählt.
   const teilNeu = !p.nurLesen && !!p.onTeilprozessNeu && (e?.feld === 'schleife' || e?.feld === 'teilprozess');
   const feld = (f: KatalogEintrag['maske'][number]) => (f.id === 'prozessId' && f.quelle === 'prozess' && teilNeu

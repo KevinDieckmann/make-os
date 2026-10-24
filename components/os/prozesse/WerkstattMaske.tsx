@@ -18,6 +18,7 @@ import { textvorlageFuellen, textvorlagePruefen, type MaskenFeld } from '@/lib/p
 import type { TestWert } from '@/lib/prozesse/testdaten';
 import { eingabePuffer, type Puffer } from '@/lib/prozesse/eingabe-puffer';
 import { wertLage, type WertLage, type WertOption } from '@/lib/prozesse/feld-werte';
+import { MONATSTAGE, WOCHENTAGE, type TagOption } from '@/lib/prozesse/zeitplan-tage';
 
 export interface Option { id: string; label: string; hinweis?: string }
 
@@ -282,12 +283,12 @@ function VertragFeldEditor({ wert, onWert, aus }: { wert: readonly VertragFeld[]
   );
 }
 
-const TAGE_31 = Array.from({ length: 31 }, (_, i) => ({ id: String(i + 1), label: String(i + 1) }));
 
 /** Ein Feld der Maske — nach seinem Typ. `optionen` = feste bzw. aus der Instanz aufgelöste Werte, `felder` = Felder für Bedingungen. */
-export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, fehler, aus, werteVon }: {
+export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, fehler, aus, werteVon, tage }: {
   f: MaskenFeld; wert: MaskenWert | undefined; onWert: (v: MaskenWert) => void; optionen: readonly Option[]; felder?: readonly Option[]; platzhalter?: readonly string[]; fehler?: string; aus?: boolean;
   /** Bedingungen: welche Werte ein Feld hat (Auswahl statt Freitext, Feinschliff 24.10.). */ werteVon?: WerteVon;
+  /** Tage des Zeitplans nach dem Rhythmus (lib/prozesse/zeitplan-tage.ts): wöchentlich Mo–So, monatlich 1–30 + „letzter Tag“ (Feinschliff 24.10.). */ tage?: readonly TagOption[];
 }) {
   const label = `${f.label}${f.pflicht ? ' *' : ''}`;
   let eingabe: ReactNode;
@@ -316,7 +317,13 @@ export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, 
     }
     case 'tage': {
       const an = Array.isArray(wert) ? (wert as readonly unknown[]).filter((x): x is number => typeof x === 'number').map(String) : [];
-      eingabe = <MehrfachPillen liste={TAGE_31} aktiv={an} onWahl={v => onWert(v.map(Number).sort((a, b) => a - b))} />;
+      const liste = tage ?? MONATSTAGE;
+      eingabe = (
+        <div style={{ display: 'grid', gap: 6 }}>
+          <MehrfachPillen liste={liste.map(t => ({ id: t.id, label: t.label }))} aktiv={an} onWahl={v => { if (!aus) onWert(v.map(Number).sort((a, b) => a - b)); }} />
+          <span style={klein}>{liste === WOCHENTAGE ? 'Ohne Wahl: montags.' : 'Ohne Wahl: am 1. — „letzter Tag“ läuft am Monatsende, auch im Februar.'}</span>
+        </div>
+      );
       break;
     }
     case 'bedingungen': eingabe = <BedingungenFeld wert={Array.isArray(wert) ? wert as Bedingung[] : []} onWert={v => onWert(v as unknown as MaskenWert)} felder={felder ?? []} aus={aus} werteVon={werteVon} />; break;
