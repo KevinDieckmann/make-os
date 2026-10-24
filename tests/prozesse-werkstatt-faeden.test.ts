@@ -149,6 +149,29 @@ describe('(a) Eigenschaft über alle Vorlagen: eine Bau-Aktion ändert nie, wohi
       }
     });
 
+    it('Faden ziehen (verbinden), Mehrfach-Entscheidung, in eine andere Phase ziehen: nur der bediente Ausgang ändert sich', () => {
+      const ps = phasen(f);
+      for (const k of schritte.filter(x => !(x.form === 'freigabe' && x.schloss))) {
+        const ph = alleSchritte(f).find(x => x.schritt.id === k.id)!.phase.id;
+        const kandidaten = alleSchritte(f).filter(x => x.phase.id === ph && x.schritt.id !== k.id && x.schritt.form !== 'ausloeser' && !x.schritt.schloss).map(x => x.schritt);
+        for (const z of [kandidaten[0], kandidaten.at(-1)].filter((x): x is K => !!x)) {
+          const r = verbinden(f, k.id, k.form === 'entscheidung' || k.form === 'freigabe' ? 'ja' : 'weiter', z.id);
+          if (!r.ok) continue;
+          andereGleich(f, r.fassung, new Set(hauptAusgang(f.knoten, k.id).alle), `${name} · „${k.titel}“ → „${z.titel}“`);
+          expect(hauptZiel(r.fassung.knoten, k.id)).toBe(z.id);
+        }
+        const fall = (t: string) => ({ titel: t, bedingungen: [{ feld: 'lead.status', op: 'gleich' as const, wert: t }] });
+        const m = mehrfachEntscheidung(f, { nach: k.id, faelle: [fall('eins'), fall('zwei')], sonst: 'aufgabe', kennung });
+        if (m.ok) andereGleich(f, m.fassung, new Set(hauptAusgang(f.knoten, k.id).alle), `${name} · Mehrfach an „${k.titel}“`);
+        else expect(m.grund).toMatch(/Kreis|Ende/);
+        const andere = ps.find(p => p.id !== ph);
+        if (andere && k.form !== 'ausloeser') {
+          const r = inPhase(f, k.id, andere.id);
+          if (r.ok) andereGleich(f, r.fassung, new Set(), `${name} · „${k.titel}“ in „${andere.titel}“`);
+        }
+      }
+    });
+
     it('Löschen: nur Ausgänge, die auf den Gelöschten zeigten, ändern sich', () => {
       for (const k of schritte.filter(x => !(x.form === 'freigabe' && x.schloss))) {
         const r = loeschen(f, [k.id]);
@@ -343,6 +366,19 @@ describe('Panel › Ausgänge, Auslöser ändern, Warten, Rückgängig', () => {
     const u = gut(umhaengen(f, k, c.id));
     expect(hauptZiel(u.knoten, a.id)).toBe(c.id);
     andereGleich(f, u, new Set(hauptAusgang(f.knoten, a.id).alle), 'umhängen');
+  });
+  it('ein festgelegter Ausgang auf einen gelöschten Schritt löst sich (dann gilt der Strang); vom Auslöser verbunden rückt nichts zwischen die Auslöser', () => {
+    const { f, a, b, c, start } = kette();
+    const fest = gut(ausgangSetzen(f, a.id, 'weiter', { art: 'schritt', id: c.id }));
+    const weg = gut(loeschen(fest, [c.id]));
+    expect(weg.knoten.find(k => k.id === a.id)?.danach).toBeUndefined();
+    expect(flussPruefen(weg).filter(x => x.stufe === 'fehler')).toEqual([]);
+    const zwei = gut(anlegen(f, neuerKnoten(katalogEintrag('ausloeser.zeitplan')!, kennung(), 'Montags'), {}));
+    const v = gut(verbinden(zwei, start.id, 'weiter', c.id));
+    expect(hauptZiel(v.knoten, start.id)).toBe(c.id);
+    expect(flussPruefen(v).filter(x => x.stufe === 'fehler')).toEqual([]);
+    andereGleich(zwei, v, new Set(hauptAusgang(zwei.knoten, start.id).alle), 'Auslöser verbunden');
+    expect(hauptZiel(v.knoten, b.id)).toBe(c.id);
   });
   it('in eine andere Phase ziehen: der Weg bleibt derselbe', () => {
     const { f, b } = kette();

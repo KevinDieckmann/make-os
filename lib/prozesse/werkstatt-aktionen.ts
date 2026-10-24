@@ -299,11 +299,12 @@ export function verbinden(f: Fassung, von: string, aus: Ausgang, nach: string): 
   if (a.form === 'entscheidung' && ausgang === 'ja') return abschliessen(f, hauptSetzen(kn, von, nach), bedient, `${titel(a)} → ${titel(b)} (ja).`, { pruefen: false });
   // Ein Abzweig (nein · Fehler · abgelaufen eines anderen) bleibt Abzweig seines Ursprungs — die Quelle springt zu ihm.
   if (seitenZiele(kn).has(nach)) return abschliessen(f, hauptSetzen(kn, von, nach), bedient, `${titel(a)} geht jetzt weiter bei ${titel(b)}.`, { pruefen: false });
-  // weiter: B direkt hinter A (gleicher Eltern-Knoten wie A) — bzw. hinter A's Freigabe-Schloss.
+  // weiter: B direkt hinter A (gleicher Eltern-Knoten wie A) — bzw. hinter A's Freigabe-Schloss, an einem Auslöser hinter den letzten Auslöser (sie stehen am Anfang).
   const sl = kn.find(k => k.schloss?.fuer === von && k.elternId === a.elternId);
   const reihe = reiheVon(kn, a.elternId ?? pa).filter(id => id !== nach);
-  if (reihe.indexOf(sl ? sl.id : von) < 0) return nein('Die Reihenfolge ließ sich nicht bestimmen.');
-  let neu = einreihen(kn.map(k => (k.id === nach ? { ...k, elternId: a.elternId } : k)), a.elternId ?? pa, [nach], sl ? sl.id : von);
+  const anker = a.form === 'ausloeser' ? letzterAusloeser(kn, a.elternId ?? pa) ?? von : sl ? sl.id : von;
+  if (reihe.indexOf(anker) < 0) return nein('Die Reihenfolge ließ sich nicht bestimmen.');
+  let neu = einreihen(kn.map(k => (k.id === nach ? { ...k, elternId: a.elternId } : k)), a.elternId ?? pa, [nach], anker);
   neu = hauptSetzen(neu, von, nach);
   return abschliessen(f, neu, bedient, `${titel(b)} folgt jetzt auf ${titel(a)}.`, { pruefen: false });
 }
@@ -317,7 +318,7 @@ export function ausgangSetzen(f: Fassung, von: string, ausgang: Ausgang, w: Ausg
   const a = f.knoten.find(k => k.id === von);
   if (!a) return nein('Diesen Knoten gibt es nicht (mehr).');
   if (istSchloss(a) && (ausgang === 'ja' || ausgang === 'weiter')) return ausgangSetzen(f, a.schloss!.fuer, 'weiter', w);
-  if (w.art === 'schritt') return verbinden(f, von, ausgang, w.id);
+  if (w.art === 'schritt') return geprueft(f, verbinden(f, von, ausgang, w.id), 'Geht so nicht');
   if (istZweigArt(ausgang)) return a.zweige?.[ausgang] ? loesen(f, von, ausgang) : nein('Dieser Ausgang endet schon hier.');
   if (a.form === 'ende') return nein(`${titel(a)} ist ein Ende.`);
   const bedient = bedientVon(f.knoten, von, ausgang);
@@ -399,7 +400,7 @@ export function zwischenEinfuegen(f: Fassung, k: KanteRef, neu: K, o: { platz?: 
   if (grund) return nein(grund);
   const a = f.knoten.find(x => x.id === k.von)!, b = f.knoten.find(x => x.id === k.nach)!;
   const r = anlegen(f, neu, { nach: a.id, ausgang: k.ausgang, ...(o.platz ? { platz: o.platz } : {}), ...(o.platzSchaffen ? { platzSchaffen: o.platzSchaffen } : {}) });
-  if (!r.ok) return nein(`Dazwischen einfügen geht hier nicht: ${r.grund}`);
+  if (!r.ok) return r;
   const q = istSchloss(a) ? f.knoten.find(x => x.id === a.schloss!.fuer) ?? a : a;
   return { ...r, ansage: `${titel(neu)} eingefügt zwischen ${titel(q)} und ${titel(b)}.` };
 }
@@ -572,6 +573,8 @@ export function loeschen(f: Fassung, ids: readonly string[]): Ergebnis {
   const rest = kn.filter(k => !weg.has(k.id)).map(k => {
     let x = k;
     for (const z of ZWEIGE) if (x.zweige?.[z] && weg.has(x.zweige[z]!)) x = mitZweig(x, z, null);
+    // Ein festgelegter Ausgang auf den Gelöschten löst sich ebenso (dann gilt der Strang).
+    if (x.danach && 'ziel' in x.danach && weg.has(x.danach.ziel)) { x = { ...x }; delete x.danach; }
     return x;
   });
   const zahl = [...weg].filter(id => schritte.has(id)).length;
