@@ -555,12 +555,19 @@ export const WERKSTATT_LESBAR = 12 / 15;
 /**
  * Die Kamera beim Öffnen (rein; Befund 21.10.: „lesbar beim Öffnen“): alles zeigen, wenn es lesbar passt (höchstens 100 %); sonst lesbar (`WERKSTATT_LESBAR`)
  * und oben links am Anfang des Ablaufs beginnen — „Alles zeigen“ holt den ganzen Prozess.
+ * Bau-Test 2 (24.10., Runde 3: „nach dem Neuladen liegen die jüngsten Schritte unter dem Einstellungs-Panel, ihr „+“ ist verdeckt“): gerechnet wird im freien Feld
+ * OHNE Panel und Werkzeugleiste (`raender`, gemessen erst, wenn das Panel steht); passt der INHALT (`inhalt`, wie bei „Alles zeigen“) dort mindestens so groß wie die
+ * Übersicht von „Alles zeigen“ (`WERKSTATT_UEBERSICHT_MIN`), steht er ganz da — eingepasst wie mit „Alles zeigen“ (dieselbe Rechnung). Erst darunter lesbar am Anfang.
  */
-export function startKamera(box: Box, buehne: { b: number; h: number }, rand = 32, raender?: Raender): { s: number; x: number; y: number } {
+export function startKamera(box: Box, buehne: { b: number; h: number }, rand = 32, raender?: Raender, inhalt?: Box): { s: number; x: number; y: number } {
   // Feinschliff 1 (23.10.): im freien Feld neben den schwebenden Leisten (lib/einpassen.ts) — ohne Ränder wie bisher.
   const f = freiesFeld(buehne, raender);
   const s = Math.min(1, (f.b - 2 * rand) / Math.max(1, box.b), (f.h - 2 * rand) / Math.max(1, box.h));
   if (s >= WERKSTATT_LESBAR) return { s, x: Math.round(f.x + (f.b - box.b * s) / 2 - box.x * s), y: Math.round(f.y + (f.h - box.h * s) / 2 - box.y * s) };
+  if (inhalt) {
+    const k = einpassKamera(inhalt, buehne, rand, WERKSTATT_EINPASS_MAX, raender);
+    if (k.s >= WERKSTATT_UEBERSICHT_MIN) return k;
+  }
   const l = WERKSTATT_LESBAR;
   return { s: l, x: Math.round(f.x + rand - box.x * l), y: Math.round(f.y + rand - box.y * l) };
 }

@@ -194,14 +194,17 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     requestAnimationFrame(schritt);
   }, [setze]);
 
+  /** Was „Alles zeigen“ einpasst: der Inhalt samt der Spalte mit den Namen der Bahnen (ab x = 0) — auch beim Öffnen (Runde 3). */
+  const allesBox = () => {
+    const b = inhaltBox(stand.current.lage, stand.current.d.zettel ?? []);
+    const links = stand.current.lage.bahnen.length ? Math.min(b.x, 0) : b.x;
+    return { ...b, x: links, b: b.b + (b.x - links) };
+  };
+
   useImperativeHandle(ref, () => ({
     // Feinschliff 22.10. (Befund 4): auf den Inhalt einpassen (nicht auf leere Bahnränder), höchstens 100 % — seit 23.10. im freien Feld (`raender`).
     // Feinschliff 24.10. (Bau-Test: „Alles zeigen schneidet links die Bahn-Beschriftung ab“): die Spalte mit den Namen der Bahnen (ab x = 0) gehört dazu.
-    allesZeigen: () => {
-      const g = groesse(), b = inhaltBox(stand.current.lage, stand.current.d.zettel ?? []);
-      const links = stand.current.lage.bahnen.length ? Math.min(b.x, 0) : b.x;
-      fliege(einpassKamera({ ...b, x: links, b: b.b + (b.x - links) }, g, undefined, undefined, raender()));
-    },
+    allesZeigen: () => { fliege(einpassKamera(allesBox(), groesse(), undefined, undefined, raender())); },
     insBild: (id, o) => {
       const k = stand.current.lage.knoten.get(id);
       if (!k) return;
@@ -233,14 +236,15 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     fokus: () => svg.current?.focus({ preventScroll: true }),
   }), [fliege]);
 
-  // Beim Öffnen (je Szene): lesbar einpassen — alles, wenn es lesbar passt, sonst oben links am Anfang (lib/prozesse/werkstatt-lage.ts `startKamera`). Ein Bild
-  // später (noch vor dem ersten Zeichnen): im Vollbild stehen die schwebenden Leisten erst dann im Rahmen (Feinschliff 1, 23.10.). Eine Kamerafahrt, die schon
-  // läuft (Schritt aus der Adresse), bleibt.
+  // Beim Öffnen (je Szene): lesbar einpassen — alles, wenn es lesbar passt, sonst oben links am Anfang (lib/prozesse/werkstatt-lage.ts `startKamera`). Zwei Bilder
+  // später (Runde 3, Bau-Test 2: „nach dem Neuladen liegen die jüngsten Schritte unter dem Panel“): erst dann stehen Seitenfeld (Einstellungen) und schwebende
+  // Leisten im Rahmen, und das freie Feld ohne sie zählt — wie bei „ins Bild“. Eine Kamerafahrt, die schon läuft (Schritt aus der Adresse), bleibt.
   useEffect(() => {
     const vorher = kamera.current;
-    const t = requestAnimationFrame(() => { if (kamera.current === vorher) setze(startKamera(stand.current.lage.box, groesse(), undefined, raender())); });
+    let t2 = 0;
+    const t1 = requestAnimationFrame(() => { t2 = requestAnimationFrame(() => { if (kamera.current === vorher) setze(startKamera(stand.current.lage.box, groesse(), undefined, raender(), allesBox())); }); });
     setGeraet({ mac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent), touch: !!window.matchMedia?.('(pointer: coarse)').matches });
-    return () => cancelAnimationFrame(t);
+    return () => { cancelAnimationFrame(t1); cancelAnimationFrame(t2); };
   }, [p.szene, setze]);
 
   // Zoom und Schieben am SVG (nur dort). Am Handy bzw. nur lesend schiebt auch das Ziehen auf freier Fläche.

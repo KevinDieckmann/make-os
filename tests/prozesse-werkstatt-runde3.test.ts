@@ -2,7 +2,8 @@
 // Je Befund ein Wächter: (1) Mehrfach-Dialog mit derselben Wertauswahl wie das Panel (Kennung statt Name) und eine Meldung je Fall, die genau sagt, was fehlt;
 // (2) die Suche der Bausteinauswahl findet jeden Baustein über Namen/Teilwort und die Mehrfach-Entscheidung über „mehrfach“, „Fälle“, „verzweig“;
 // (3) kein `<label>` um Pillen, Chips, Schalter oder mehrere Knöpfe im Prozess-Bereich (Klick auf die Überschrift drückte den ersten Chip);
-// (4) die Ansicht nimmt die Treffer von „Schritt testen“ nur mit Name, Kennung und einem Link in MAKE OS (Server: tests/prozesse-werkstatt-runde3-server.test.ts).
+// (4) die Ansicht nimmt die Treffer von „Schritt testen“ nur mit Name, Kennung und einem Link in MAKE OS (Server: tests/prozesse-werkstatt-runde3-server.test.ts);
+// (5) beim Öffnen liegt nichts unter dem Einstellungs-Panel, wenn der Prozess so groß wie bei „Alles zeigen“ ins freie Feld passt.
 // Erfundene Werte, kein Netz, kein Modell.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -17,6 +18,7 @@ import { leereLaeufe } from '@/lib/prozesse/lauf-typen';
 import type { ProzessDefinition } from '@/lib/prozesse/definition';
 import { BAUSTEIN_KATALOG } from '@/lib/prozesse/baustein-katalog';
 import { probelaufAus } from '@/lib/prozesse/werkstatt-hinweise';
+import { startKamera, einpassKamera, WERKSTATT_LESBAR, WERKSTATT_UEBERSICHT_MIN } from '@/lib/prozesse/werkstatt-lage';
 import { BAUSTEIN_STICHWOERTER, formauswahl, formauswahlGruppen, sonderAuswahl, SONDER_AUSWAHL } from '@/lib/prozesse/werkstatt-maske';
 
 let n = 0;
@@ -195,5 +197,34 @@ describe('(4) Schritt testen: Treffer in der Ansicht', () => {
     const g = lies('components/os/prozesse/WerkstattGross.tsx');
     expect(g).toContain('x.ausgabe?.treffer && !json');
     expect(g).toContain('<Link href={t.href}');
+  });
+});
+
+describe('(5) Kamera beim Öffnen: das freie Feld ohne Panel und Werkzeugleiste', () => {
+  // Bühne wie im Bau-Test (Vollbild 1376 × 1000): links die Werkzeugleiste, oben die Kopfzeile, rechts das Einstellungs-Panel.
+  const BUEHNE = { b: 1376, h: 1000 };
+  const r = { links: 74, oben: 140, rechts: 400, unten: 70 };
+  const bild = (k: { s: number; x: number }, x: number) => x * k.s + k.x;
+  it('passt der Inhalt so groß wie bei „Alles zeigen“, steht er ganz links vom Panel — die jüngsten Schritte samt „+“ sind frei', () => {
+    const box = { x: 0, y: 0, b: 1440, h: 500 }, inhalt = { x: 0, y: 40, b: 1440, h: 420 };
+    const k = startKamera(box, BUEHNE, 32, r, inhalt);
+    expect(k.s).toBeLessThan(WERKSTATT_LESBAR);
+    expect(k.s).toBeGreaterThanOrEqual(WERKSTATT_UEBERSICHT_MIN);
+    expect(k).toEqual(einpassKamera(inhalt, BUEHNE, 32, 1, r));
+    expect(bild(k, inhalt.x)).toBeGreaterThanOrEqual(r.links);
+    expect(bild(k, inhalt.x + inhalt.b)).toBeLessThanOrEqual(BUEHNE.b - r.rechts);
+  });
+  it('ein sehr langer Prozess beginnt weiter lesbar am Anfang (rechts neben der Werkzeugleiste); ohne Inhalt wie bisher', () => {
+    const lang = { x: 0, y: 0, b: 6000, h: 600 };
+    const k = startKamera(lang, BUEHNE, 32, r, lang);
+    expect(k.s).toBe(WERKSTATT_LESBAR);
+    expect(bild(k, 0)).toBeGreaterThanOrEqual(r.links);
+    expect(startKamera({ x: 0, y: 0, b: 1440, h: 500 }, BUEHNE, 32, r).s).toBe(WERKSTATT_LESBAR);
+  });
+  it('die Fläche misst zwei Bilder später (dann steht das Panel) und nimmt dieselbe Box wie „Alles zeigen“', () => {
+    const q = lies('components/os/prozesse/WerkstattFlaeche.tsx');
+    expect(q).toContain('startKamera(stand.current.lage.box, groesse(), undefined, raender(), allesBox())');
+    expect(q).toContain('t2 = requestAnimationFrame(');
+    expect(q).toContain('allesZeigen: () => { fliege(einpassKamera(allesBox(), groesse(), undefined, undefined, raender())); }');
   });
 });
