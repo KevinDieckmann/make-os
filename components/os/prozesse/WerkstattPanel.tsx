@@ -30,7 +30,7 @@ import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
 import { WEG } from '@/lib/wege';
 import { ZETTEL_TON, WERKSTATT_FORM_FARBE } from '@/lib/prozesse/farben';
 import type { ModellOption } from '@/lib/prozesse/modell-wahl';
-import { MaskenEingabe, TextFeld, type Option } from './WerkstattMaske';
+import { MaskenEingabe, TextFeld, useTippen, type Option } from './WerkstattMaske';
 import { symbolVon } from './WerkstattKnoten';
 import type { Auswahl } from './werkstatt-daten';
 
@@ -102,7 +102,8 @@ export interface PanelProps {
 
 /** Das Panel (siehe Kopf). */
 export function WerkstattPanel(p: PanelProps) {
-  if (p.knoten) return <KnotenPanel {...p} k={p.knoten} />;
+  // Je Knoten frisch (key): Getipptes eines Felds wird beim Wechsel zum nächsten Knoten noch für DIESEN übernommen (Feinschliff 24.10.), nie für den neuen.
+  if (p.knoten) return <KnotenPanel key={p.knoten.id} {...p} k={p.knoten} />;
   if (p.phase) return <PhasePanel {...p} ph={p.phase} />;
   if (p.kante) return <KantenPanel {...p} k={p.kante} />;
   if (p.zettel) return <ZettelPanel {...p} z={p.zettel} />;
@@ -118,7 +119,7 @@ function SteckbriefPanel(p: PanelProps) {
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <Ueberschrift>Steckbrief</Ueberschrift>
-      <Feldzeile label="Name *"><TextFeld label="Name" wert={d.titel} aus={p.nurLesen} platz="z. B. Lead nachfassen" onWert={v => p.onSteckbrief({ titel: v })} /></Feldzeile>
+      <Feldzeile label="Name *"><TextFeld label="Name" pflicht wert={d.titel} aus={p.nurLesen} platz="z. B. Lead nachfassen" onWert={v => p.onSteckbrief({ titel: v })} /></Feldzeile>
       <Feldzeile label="Beschreibung"><TextFeld label="Beschreibung" mehrzeilig wert={d.beschreibung ?? ''} aus={p.nurLesen} onWert={v => p.onSteckbrief({ beschreibung: v || null })} /></Feldzeile>
       <Feldzeile label="Bereich (Kachel auf der Landkarte)">
         <Pillen liste={PROZESS_BEREICHE.map(b => ({ id: b.id, label: b.titel }))} aktiv={d.bereich ?? 'fulfillment'} onWahl={v => { if (!p.nurLesen) p.onSteckbrief({ bereich: v }); }} />
@@ -338,10 +339,16 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   );
 }
 
+/** Der Name eines Schritts — beim Tippen übernommen (entprellt, nie leer), beim Verlassen gekürzt bzw. zurück auf den gespeicherten Namen (Feinschliff 24.10.). */
 function TitelFeld({ eingabe, wert, aus, onWert }: { eingabe: RefObject<HTMLInputElement>; wert: string; aus: boolean; onWert: (t: string) => void }) {
+  const e = useTippen(wert, onWert, { gueltig: v => !!v.trim() });
+  const verlassen = () => {
+    if (e.t.trim() !== e.t && e.t.trim()) e.tippe(e.t.trim());
+    if (!e.fertig() && !e.t.trim()) e.zuruecksetzen();
+  };
   return (
-    <input ref={eingabe} aria-label="Name" defaultValue={wert} key={wert} disabled={aus} placeholder="z. B. Angebot senden"
-      onBlur={ev => { const t = ev.target.value.trim(); if (t && t !== wert) onWert(t); else ev.target.value = wert; }}
+    <input ref={eingabe} aria-label="Name des Schritts" value={e.t} disabled={aus} placeholder="z. B. Angebot senden"
+      onChange={ev => e.tippe(ev.target.value)} onBlur={verlassen}
       onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
       style={{ width: '100%', minHeight: 44, boxSizing: 'border-box', background: 'transparent', border: `1px solid ${C.linie}`, borderRadius: 12, padding: '10px 14px', color: C.ink, fontSize: TYP.body }} />
   );

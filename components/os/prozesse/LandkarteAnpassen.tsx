@@ -157,11 +157,11 @@ export function LandkarteAnpassen({ ansicht, anpassung, speicher, aendern, onZu 
             {offen === b.id && (
               <div style={{ display: 'grid', gap: 10 }}>
                 <Feldzeile label={vorgabe ? `Name (Vorgabe „${vorgabe.titel}“)` : 'Name'}>
-                  <TextFeld label={`Name von „${b.titel}“`} wert={b.titel} platz={vorgabe?.titel} onWert={v => void aendern([{ art: 'bereich', bereich: b.id, titel: v.trim() ? v : null }])} />
+                  <TextFeld nurBeimVerlassen label={`Name von „${b.titel}“`} wert={b.titel} platz={vorgabe?.titel} onWert={v => void aendern([{ art: 'bereich', bereich: b.id, titel: v.trim() ? v : null }])} />
                 </Feldzeile>
                 {b.art !== 'stufe' && (
                   <Feldzeile label={vorgabe?.satz ? `Satz (Vorgabe „${vorgabe.satz}“)` : 'Satz (optional)'}>
-                    <TextFeld label={`Satz von „${b.titel}“`} wert={b.satz ?? ''} platz={vorgabe?.satz} onWert={v => void aendern([{ art: 'bereich', bereich: b.id, satz: v.trim() ? v : null }])} />
+                    <TextFeld nurBeimVerlassen label={`Satz von „${b.titel}“`} wert={b.satz ?? ''} platz={vorgabe?.satz} onWert={v => void aendern([{ art: 'bereich', bereich: b.id, satz: v.trim() ? v : null }])} />
                   </Feldzeile>
                 )}
                 <Feldzeile label={vorgabe ? `Ton (Vorgabe ${LANDKARTE_TOENE.find(t => t.id === vorgabe.ton)?.titel ?? ''})` : 'Ton'}>
@@ -204,7 +204,7 @@ export function LandkarteAnpassen({ ansicht, anpassung, speicher, aendern, onZu 
                     {kachelOffen === p.id && (
                       <div style={{ display: 'grid', gap: 8, padding: '0 4px 6px' }}>
                         <Feldzeile label={`Beschriftung (leer = „${p.titel}“)`}>
-                          <TextFeld label={`Beschriftung von „${p.titel}“`} wert={p.beschriftung ?? ''} platz={p.titel} onWert={v => void aendern([{ art: 'kachel', id: p.id, beschriftung: v.trim() ? v : null }])} />
+                          <TextFeld nurBeimVerlassen label={`Beschriftung von „${p.titel}“`} wert={p.beschriftung ?? ''} platz={p.titel} onWert={v => void aendern([{ art: 'kachel', id: p.id, beschriftung: v.trim() ? v : null }])} />
                         </Feldzeile>
                         <Feldzeile label="Bereich">
                           <select aria-label={`Bereich von „${name}“`} value={b.id} onChange={e => { void aendern([{ art: 'kachel', id: p.id, bereich: e.target.value }]); setAnsage(`„${name}“ steht jetzt in „${ansicht.bereiche.find(x => x.id === e.target.value)?.titel ?? ''}“.`); }} style={{ ...auswahlStil, width: '100%' }}>

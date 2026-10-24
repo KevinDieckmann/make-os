@@ -3,8 +3,10 @@
 // ─── Prozesse · Werkstatt — die Felder einer Einstellungs-Maske (Etappe B2, 21.10.; Kevins Bild: „Panel aus dem Masken-Schema des Katalogs“) ─────────────────
 // Je Feldtyp des Katalogs (lib/prozesse/baustein-katalog.ts `MaskenTyp`) EIN Eingabe-Baustein aus dem Standard (components/os/ui): Text, Langtext, Textvorlage
 // (mit den erlaubten Platzhaltern), Zahl, ja/nein (Schalter), Auswahl, Mehrfach, Uhrzeit, Tage, Bedingungen („nur wenn …“), Webhook-Felder, Vertrag (Ein- und
-// Ausgabe des Agenten — nur Kennungen, Zahlen, Tage, ja/nein, Auswahl). Texte werden beim Verlassen des Felds übernommen (nicht bei jedem Tastendruck — so bleibt
-// die Geschichte für Rückgängig sauber). Die Werte prüft die Regel (`maskeSaeubern`, `definitionPruefen`); hier steht nur, wie man sie eingibt.
+// Ausgabe des Agenten — nur Kennungen, Zahlen, Tage, ja/nein, Auswahl). Texte und Zahlen werden beim Tippen übernommen — entprellt (lib/prozesse/eingabe-puffer.ts,
+// Feinschliff 24.10.: „nie Eingaben verlieren“) — und sofort beim Verlassen, Schließen und `pagehide`; solange ein Feld Getipptes hält, meldet es das der Werkstatt
+// (`EingabeKontext`: Kopf „wird übernommen …“, vor dem Speichern wird alles übernommen). Die Werte prüft die Regel (`maskeSaeubern`, `definitionPruefen`); hier steht
+// nur, wie man sie eingibt.
 
 import { createContext, useContext, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { Plus, X } from 'lucide-react';
@@ -14,8 +16,49 @@ import { BEDINGUNG_OPS, KENNUNG_ARTEN, WEBHOOK_FELD_ARTEN, type Bedingung, type 
 import { BEDINGUNG_NAME } from '@/lib/prozesse/bedingung';
 import { textvorlageFuellen, textvorlagePruefen, type MaskenFeld } from '@/lib/prozesse/baustein-katalog';
 import type { TestWert } from '@/lib/prozesse/testdaten';
+import { eingabePuffer, type Puffer } from '@/lib/prozesse/eingabe-puffer';
 
 export interface Option { id: string; label: string; hinweis?: string }
+
+// ── Beim Tippen übernehmen (Feinschliff 24.10.) ─────────────────────────────────────────────────────────────────────────────────────────────────────
+/** Wer noch Getipptes hält: `melde(id, jetzt)` (jetzt = sofort übernehmen) bzw. `melde(id, null)`, sobald übernommen. Die Werkstatt zählt und übernimmt alles. */
+export interface EingabeRegister { melde: (id: symbol, jetzt: (() => void) | null) => void }
+export const EingabeKontext = createContext<EingabeRegister | null>(null);
+
+/**
+ * EIN Feld beim Tippen übernehmen (lib/prozesse/eingabe-puffer.ts): `tippe` bei jedem Tastendruck, `fertig` beim Verlassen/Enter; beim Verschwinden des Felds
+ * (Fenster zu, anderer Knoten) wird Offenes übernommen. Ein Wert von außen ersetzt den Text nur, wenn nichts Getipptes offen ist (und nie, wenn er sich nur um
+ * Leerzeichen am Rand unterscheidet — der Server kürzt manche Texte).
+ */
+export function useTippen(wert: string, uebernehmen: (v: string) => void, o: { gueltig?: (v: string) => boolean; nurBeimVerlassen?: boolean } = {}) {
+  const reg = useContext(EingabeKontext);
+  const regRef = useRef(reg); regRef.current = reg;
+  const ueRef = useRef(uebernehmen); ueRef.current = uebernehmen;
+  const gRef = useRef(o.gueltig); gRef.current = o.gueltig;
+  const id = useRef(Symbol('eingabe'));
+  const [t, setT] = useState(wert);
+  const puffer = useRef<Puffer | null>(null);
+  if (!puffer.current) {
+    puffer.current = eingabePuffer({
+      anfang: wert, uebernehmen: v => ueRef.current(v), gueltig: v => (gRef.current ? gRef.current(v) : true), ohneUhr: o.nurBeimVerlassen,
+      onOffen: offen => regRef.current?.melde(id.current, offen ? () => { puffer.current?.jetzt(); } : null),
+    });
+  }
+  useEffect(() => {
+    const p = puffer.current!;
+    if (wert.trim() === p.text().trim() && !p.offen()) return;
+    setT(p.vonAussen(wert));
+  }, [wert]);
+  useEffect(() => () => { const p = puffer.current; if (p) { p.jetzt(); p.stopp(); } regRef.current?.melde(id.current, null); }, []);
+  return {
+    t,
+    tippe: (v: string) => { setT(v); puffer.current!.tippe(v); },
+    /** Sofort übernehmen — liefert, ob etwas übernommen wurde. */
+    fertig: () => puffer.current!.jetzt(),
+    /** Zurück auf den gespeicherten Wert (z. B. leerer Name beim Verlassen). */
+    zuruecksetzen: () => { setT(wert); puffer.current!.tippe(wert); },
+  };
+}
 
 // ── Platzhalter an den Cursor (Werkstatt bau-fertig, 22.10., Punkt 8) ──────────────────────────────────────────────────────────────────────────────
 /** Das Textvorlagen-Feld, das zuletzt den Fokus hatte — ein Klick auf einen Platzhalter (auch in der linken Spalte des großen Fensters) setzt ihn dort ein. */
@@ -38,22 +81,22 @@ export function PlatzhalterChip({ id, wert, onEinsetzen }: { id: string; wert?: 
 
 /**
  * Eine Textvorlage (Punkt 8): Platzhalter per Klick bzw. Ziehen an den Cursor, Prüfung beim Tippen (`textvorlagePruefen`), Live-Vorschau mit den Testwerten
- * (`textvorlageFuellen`). Übernommen wird beim Verlassen (wie jedes Textfeld der Maske — die Geschichte für Rückgängig bleibt sauber).
+ * (`textvorlageFuellen`). Übernommen wird beim Tippen (entprellt) und beim Verlassen (Feinschliff 24.10. — wie jedes Textfeld der Maske).
  */
 function VorlageFeld({ id, label, wert, onWert, aus, platzhalter }: { id: string; label: string; wert: string; onWert: (v: string) => void; aus?: boolean; platzhalter?: readonly string[] }) {
   const u = useContext(VorlageKontext);
-  const [t, setT] = useState(wert);
+  const e = useTippen(wert, onWert);
+  const t = e.t;
   const el = useRef<HTMLTextAreaElement | null>(null);
   const tRef = useRef(t);
   tRef.current = t;
-  useEffect(() => setT(wert), [wert]);
-  const fertig = () => { if (tRef.current !== wert) onWert(tRef.current); };
+  const fertig = () => { e.fertig(); };
   const einsetzen = (x: string) => {
     if (aus) return;
     const a = el.current;
     const von = a?.selectionStart ?? tRef.current.length, bis = a?.selectionEnd ?? von;
     const neu = `${tRef.current.slice(0, von)}${x}${tRef.current.slice(bis)}`;
-    setT(neu); tRef.current = neu;
+    e.tippe(neu); tRef.current = neu;
     requestAnimationFrame(() => { a?.focus(); a?.setSelectionRange(von + x.length, von + x.length); });
   };
   const ziel: VorlageZiel = { einsetzen, feld: id };
@@ -61,7 +104,7 @@ function VorlageFeld({ id, label, wert, onWert, aus, platzhalter }: { id: string
   const vorschau = u?.werte && t ? textvorlageFuellen(t, u.werte) : null;
   return (
     <div style={{ display: 'grid', gap: 6 }}>
-      <textarea ref={el} aria-label={label} value={t} disabled={aus} rows={4} onChange={e => setT(e.target.value)}
+      <textarea ref={el} aria-label={label} value={t} disabled={aus} rows={4} onChange={ev => e.tippe(ev.target.value)}
         onFocus={() => { if (u) u.ziel.current = ziel; }} onBlur={fertig}
         style={{ ...feld, resize: 'vertical', minHeight: 96, ...(fehler.length ? { borderColor: LEUCHT.achtung } : {}) }} />
       {fehler.map(f => <span key={f} role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{f.charAt(0).toUpperCase() + f.slice(1)}</span>)}
@@ -85,20 +128,24 @@ function VorlageFeld({ id, label, wert, onWert, aus, platzhalter }: { id: string
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, margin: 0, lineHeight: 1.45 } as const;
 const zeile = { display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' } as const;
 
-/** Ein Textfeld, das beim Verlassen übernimmt (Enter auch, außer im Langtext). */
-export function TextFeld({ wert, onWert, mehrzeilig, aus, platz, label }: { wert: string; onWert: (v: string) => void; mehrzeilig?: boolean; aus?: boolean; platz?: string; label: string }) {
-  const [t, setT] = useState(wert);
-  useEffect(() => setT(wert), [wert]);
-  const fertig = () => { if (t !== wert) onWert(t); };
+/**
+ * Ein Textfeld, das beim Tippen (entprellt) und beim Verlassen übernimmt (Enter auch, außer im Langtext). `pflicht`: leer wird nie übernommen — beim Verlassen
+ * steht wieder der gespeicherte Text da. `gueltig`: nur passende Texte übernehmen (z. B. keine halbe Liste „a,“).
+ */
+export function TextFeld({ wert, onWert, mehrzeilig, aus, platz, label, pflicht, gueltig, nurBeimVerlassen }: { wert: string; onWert: (v: string) => void; mehrzeilig?: boolean; aus?: boolean; platz?: string; label: string; pflicht?: boolean; gueltig?: (v: string) => boolean;
+  /** Nur beim Verlassen/Enter übernehmen (Felder außerhalb der Werkstatt, deren Übernahme z. B. eine Vorgabe zurückbringt). */ nurBeimVerlassen?: boolean }) {
+  const e = useTippen(wert, onWert, { gueltig: v => (!pflicht || !!v.trim()) && (!gueltig || gueltig(v)), nurBeimVerlassen });
+  const fertig = () => { if (!e.fertig() && pflicht && !e.t.trim()) e.zuruecksetzen(); };
   return mehrzeilig
-    ? <textarea aria-label={label} value={t} disabled={aus} placeholder={platz} onChange={e => setT(e.target.value)} onBlur={fertig} rows={4} style={{ ...feld, resize: 'vertical', minHeight: 96 }} />
-    : <input aria-label={label} value={t} disabled={aus} placeholder={platz} onChange={e => setT(e.target.value)} onBlur={fertig} onKeyDown={e => { if (e.key === 'Enter') fertig(); }} style={feld} />;
+    ? <textarea aria-label={label} value={e.t} disabled={aus} placeholder={platz} onChange={ev => e.tippe(ev.target.value)} onBlur={fertig} rows={4} style={{ ...feld, resize: 'vertical', minHeight: 96 }} />
+    : <input aria-label={label} value={e.t} disabled={aus} placeholder={platz} onChange={ev => e.tippe(ev.target.value)} onBlur={fertig} onKeyDown={ev => { if (ev.key === 'Enter') fertig(); }} style={feld} />;
 }
+/** Eine Zahl als Text: übernommen wird, sobald sie lesbar ist (leer = keine Zahl); beim Verlassen springt Unlesbares auf den gespeicherten Wert zurück. */
+const zahlAus = (t: string): number | null | undefined => { if (!t.trim()) return null; const n = Number(t.replace(',', '.')); return Number.isFinite(n) ? Math.round(n) : undefined; };
 export function ZahlFeld({ wert, onWert, aus, min, max, label }: { wert: number | null; onWert: (v: number | null) => void; aus?: boolean; min?: number; max?: number; label: string }) {
-  const [t, setT] = useState(wert === null ? '' : String(wert));
-  useEffect(() => setT(wert === null ? '' : String(wert)), [wert]);
-  const fertig = () => { const n = t.trim() === '' ? null : Number(t.replace(',', '.')); if (n === null || Number.isFinite(n)) { if (n !== wert) onWert(n === null ? null : Math.round(n)); } else setT(wert === null ? '' : String(wert)); };
-  return <input aria-label={label} inputMode="numeric" value={t} disabled={aus} min={min} max={max} onChange={e => setT(e.target.value)} onBlur={fertig} onKeyDown={e => { if (e.key === 'Enter') fertig(); }} style={{ ...feld, maxWidth: 180 }} />;
+  const e = useTippen(wert === null ? '' : String(wert), t => { const n = zahlAus(t); if (n !== undefined && n !== wert) onWert(n); }, { gueltig: t => zahlAus(t) !== undefined });
+  const fertig = () => { if (!e.fertig() && zahlAus(e.t) === undefined) e.zuruecksetzen(); };
+  return <input aria-label={label} inputMode="numeric" value={e.t} disabled={aus} min={min} max={max} onChange={ev => e.tippe(ev.target.value)} onBlur={fertig} onKeyDown={ev => { if (ev.key === 'Enter') fertig(); }} style={{ ...feld, maxWidth: 180 }} />;
 }
 
 /** Eine Bedingung je Zeile: Feld · Vergleich · Wert. */
@@ -118,7 +165,8 @@ function BedingungenFeld({ wert, onWert, felder, aus }: { wert: readonly Bedingu
           </select>
           {b.op === 'gesetzt' || b.op === 'leer'
             ? <span style={klein}>—</span>
-            : <TextFeld label="Wert" wert={Array.isArray(b.wert) ? b.wert.join(', ') : String(b.wert ?? '')} aus={aus} onWert={v => setze(i, { wert: b.op === 'einer-von' ? v.split(',').map(x => x.trim()).filter(Boolean) : v })} />}
+            : <TextFeld label="Wert" wert={Array.isArray(b.wert) ? b.wert.join(', ') : String(b.wert ?? '')} aus={aus} gueltig={b.op === 'einer-von' ? v => !/,\s*$/.test(v) : undefined}
+                onWert={v => setze(i, { wert: b.op === 'einer-von' ? v.split(',').map(x => x.trim()).filter(Boolean) : v })} />}
           <SymbolKnopf ariaLabel="Bedingung entfernen" aus={aus} onClick={() => onWert(l.filter((_, j) => j !== i))}><X size={16} /></SymbolKnopf>
         </div>
       ))}

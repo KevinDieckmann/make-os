@@ -82,16 +82,25 @@ export const vergleichHolen = (id: string, a: number | 'entwurf', b: number | 'e
 
 export interface SendeAntwort { status: number; j: (Record<string, unknown> & { ok?: boolean; fehler?: string; befunde?: Befund[]; eintrag?: EintragAnsicht; stand?: string; version?: VersionKurz }) | null }
 let kette: Promise<unknown> = Promise.resolve();
+let unterwegs = 0;
+/** Browser senden keepalive-Anfragen nur bis 64 KB — darüber ohne (der Sitzungsspeicher hält die Fassung ohnehin bis zur Bestätigung). */
+const KEEPALIVE_MAX = 60_000;
 /**
  * EIN Schreibweg (POST /api/prozesse/werkstatt) — nacheinander: der Körper entsteht erst, wenn die Anfrage an der Reihe ist (`koerper()`), damit der Stand aus der
- * letzten Antwort kommt. Netzfehler → Status 0 (nie geworfen).
+ * letzten Antwort kommt. Netzfehler → Status 0 (nie geworfen). `keepalive` (Seite wird verlassen, Feinschliff 24.10.): sofort senden, wenn gerade nichts unterwegs
+ * ist — die Kette würde mit der Seite enden.
  */
-export function werkstattSenden(koerper: () => Record<string, unknown>): Promise<SendeAntwort> {
-  const lauf = kette.then(async (): Promise<SendeAntwort> => {
-    const r = await fetch(WERKSTATT_QUELLE, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(koerper()) }).catch(() => null);
-    if (!r) return { status: 0, j: null };
-    return { status: r.status, j: await r.json().catch(() => null) };
-  });
+export function werkstattSenden(koerper: () => Record<string, unknown>, o: { keepalive?: boolean } = {}): Promise<SendeAntwort> {
+  const senden = async (): Promise<SendeAntwort> => {
+    unterwegs++;
+    try {
+      const body = JSON.stringify(koerper());
+      const r = await fetch(WERKSTATT_QUELLE, { method: 'POST', headers: { 'content-type': 'application/json' }, body, ...(o.keepalive && body.length < KEEPALIVE_MAX ? { keepalive: true } : {}) }).catch(() => null);
+      if (!r) return { status: 0, j: null };
+      return { status: r.status, j: await r.json().catch(() => null) };
+    } finally { unterwegs--; }
+  };
+  const lauf = o.keepalive && !unterwegs ? senden() : kette.then(senden);
   kette = lauf.catch(() => undefined);
   return lauf;
 }

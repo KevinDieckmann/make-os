@@ -113,3 +113,64 @@ describe('1a — die Prüfung über eine ganze Definition', () => {
     expect(b.find(x => /Wert fehlt/.test(x.text))).toMatchObject({ stufe: 'offen', knotenId: fk(10), feld: 'bedingungen' });
   });
 });
+
+// ── 1b: beim Tippen übernehmen, „gespeichert“ erst ohne Getipptes ────────────────────────────────────────────────────────────────────────────────────
+
+describe('1b — Eingaben beim Tippen übernehmen (rein, eigene Uhr)', () => {
+  const uhr = () => {
+    let jetzt = 0; const plan: { t: number; f: () => void; h: number }[] = []; let n = 0;
+    return {
+      setze: (f: () => void, ms: number) => { const h = ++n; plan.push({ t: jetzt + ms, f, h }); return h; },
+      loesche: (h: unknown) => { const i = plan.findIndex(x => x.h === h); if (i >= 0) plan.splice(i, 1); },
+      weiter: (ms: number) => { jetzt += ms; for (const x of plan.filter(y => y.t <= jetzt)) { plan.splice(plan.indexOf(x), 1); x.f(); } },
+    };
+  };
+  it('übernimmt nach der Pause (entprellt), nicht bei jedem Tastendruck; meldet „offen“ bis dahin', async () => {
+    const { eingabePuffer, TIPP_PAUSE_MS } = await import('@/lib/prozesse/eingabe-puffer');
+    expect(TIPP_PAUSE_MS).toBeGreaterThanOrEqual(600);
+    expect(TIPP_PAUSE_MS).toBeLessThanOrEqual(800);
+    const u = uhr(); const raus: string[] = []; const offen: boolean[] = [];
+    const p = eingabePuffer({ anfang: 'Danke für Ihr Interesse', uebernehmen: v => raus.push(v), onOffen: o => offen.push(o), uhr: u });
+    p.tippe('Danke für Ihr Interesse!');
+    u.weiter(300);
+    p.tippe('Danke für Ihr Interesse!!');
+    u.weiter(TIPP_PAUSE_MS - 1);
+    expect(raus).toEqual([]);
+    expect(p.offen()).toBe(true);
+    u.weiter(1);
+    expect(raus).toEqual(['Danke für Ihr Interesse!!']);
+    expect(p.offen()).toBe(false);
+    expect(offen).toEqual([true, false]);
+  });
+  it('Verlassen/Schließen/pagehide übernimmt sofort; ein Wert von außen ersetzt Getipptes nie', async () => {
+    const { eingabePuffer } = await import('@/lib/prozesse/eingabe-puffer');
+    const u = uhr(); const raus: string[] = [];
+    const p = eingabePuffer({ anfang: 'a', uebernehmen: v => raus.push(v), uhr: u });
+    p.tippe('ab');
+    expect(p.vonAussen('x')).toBe('ab');
+    expect(p.jetzt()).toBe(true);
+    expect(raus).toEqual(['ab']);
+    expect(p.jetzt()).toBe(false);
+    expect(p.vonAussen('y')).toBe('y');
+  });
+  it('„gueltig“: ein leerer Name wird nie übernommen; ohne Uhr nur beim Verlassen', async () => {
+    const { eingabePuffer } = await import('@/lib/prozesse/eingabe-puffer');
+    const u = uhr(); const raus: string[] = [];
+    const p = eingabePuffer({ anfang: 'Start', uebernehmen: v => raus.push(v), gueltig: v => !!v.trim(), uhr: u });
+    p.tippe(''); u.weiter(5000);
+    expect(raus).toEqual([]);
+    const q = eingabePuffer({ anfang: 'a', uebernehmen: v => raus.push(v), ohneUhr: true, uhr: u });
+    q.tippe('b'); u.weiter(5000);
+    expect(raus).toEqual([]);
+    q.jetzt();
+    expect(raus).toEqual(['b']);
+  });
+  it('Kopf: solange ein Feld Getipptes hält, nie „gespeichert“; Fehler/Konflikt/offline gehen vor', async () => {
+    const { speicherAnzeige } = await import('@/lib/prozesse/eingabe-puffer');
+    expect(speicherAnzeige('gespeichert', 1)).toBe('tippt');
+    expect(speicherAnzeige('gespeichert', 0)).toBe('gespeichert');
+    expect(speicherAnzeige('speichert', 2)).toBe('tippt');
+    expect(speicherAnzeige('fehler', 1)).toBe('fehler');
+    expect(speicherAnzeige('konflikt', 1)).toBe('konflikt');
+  });
+});

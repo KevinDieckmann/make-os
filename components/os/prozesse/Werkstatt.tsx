@@ -64,7 +64,8 @@ import { useKatalog, useProzess, versionHolen, vergleichHolen, werkstattSenden, 
 import { UeberfuehrungBand } from './Ueberfuehrung';
 import { WerkstattGross, type ModellAntwort } from './WerkstattGross';
 import { MehrfachFenster } from './WerkstattMehrfach';
-import { VorlageKontext, type VorlageZiel } from './WerkstattMaske';
+import { VorlageKontext, EingabeKontext, type VorlageZiel, type EingabeRegister } from './WerkstattMaske';
+import { speicherAnzeige } from '@/lib/prozesse/eingabe-puffer';
 import { testWerte, annahmenAusLauf, type ProzessTestdaten } from '@/lib/prozesse/testdaten';
 import type { LaufKurz } from '@/lib/prozesse/lauf-regeln';
 import type { LaufSchritt } from '@/lib/prozesse/lauf-typen';
@@ -298,13 +299,23 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   // Punkt 1: gute Nachrichten verschwinden von selbst (sie schweben über der Fläche) — Warnungen und Fehler bleiben, bis man sie schließt.
   useEffect(() => { if (meldung?.art !== 'gut') return; const t = window.setTimeout(() => setMeldung(null), 6000); return () => window.clearTimeout(t); }, [meldung]);
 
+  // ── Getipptes (Feinschliff 24.10.): jedes Feld meldet, solange es Getipptes hält — der Kopf sagt dann nie „gespeichert“; vor dem Speichern, beim Verlassen der
+  // Seite (pagehide) und beim Verbergen wird alles übernommen (lib/prozesse/eingabe-puffer.ts). ──
+  const eingaben = useRef(new Map<symbol, () => void>());
+  const [tippt, setTippt] = useState(0);
+  const eingabeRegister = useMemo<EingabeRegister>(() => ({
+    melde: (id, jetzt) => { if (jetzt) eingaben.current.set(id, jetzt); else eingaben.current.delete(id); setTippt(eingaben.current.size); },
+  }), []);
+  const eingabenUebernehmen = useCallback(() => { for (const f of [...eingaben.current.values()]) f(); }, []);
+
   // ── Speichern: EIN Weg, nacheinander; die Antwort ersetzt die Fassung nur, wenn seitdem nichts dazukam ──
-  const sichern = useCallback(async (): Promise<boolean> => {
+  const sichern = useCallback(async (o: { keepalive?: boolean } = {}): Promise<boolean> => {
+    eingabenUebernehmen();
     const f = fassungRef.current;
     if (!f || aenderung.current === gesichert.current) return true;
     const nr = aenderung.current;
     setSpeicher({ art: 'speichert' });
-    const r = await werkstattSenden(() => ({ aktion: 'entwurf', id: prozessId, stand: stand.current, knoten: f.knoten, zettel: f.zettel ?? null }));
+    const r = await werkstattSenden(() => ({ aktion: 'entwurf', id: prozessId, stand: stand.current, knoten: f.knoten, zettel: f.zettel ?? null }), { keepalive: o.keepalive });
     const j = r.j;
     if (r.status === 200 && j?.ok && j.eintrag && j.stand) {
       stand.current = j.stand;
@@ -324,7 +335,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     if (j?.befunde) setBefundeServer(j.befunde);
     setSpeicher({ art: 'fehler', text: String(j?.fehler ?? 'Nicht gespeichert.') });
     return false;
-  }, [prozessId]);
+  }, [prozessId, eingabenUebernehmen]);
   // Nach einer Pause speichern; bei Netzfehler mit wachsendem Abstand erneut.
   const versuch = useRef(0);
   useEffect(() => {
@@ -336,11 +347,19 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   }, [speicher, fassung, konflikt, sichern]);
   // Verlassen mit Ungespeichertem: der Browser fragt.
   useEffect(() => {
-    if (!ausstehend) return;
+    if (!ausstehend && !tippt) return;
     const vorher = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
     window.addEventListener('beforeunload', vorher);
     return () => window.removeEventListener('beforeunload', vorher);
-  }, [ausstehend]);
+  }, [ausstehend, tippt]);
+  // Seite verlassen bzw. verborgen (Feinschliff 24.10.): Getipptes sofort übernehmen (steht damit auch im Sitzungsspeicher) und mit keepalive senden.
+  useEffect(() => {
+    const weg = () => { eingabenUebernehmen(); if (aenderung.current !== gesichert.current) void sichern({ keepalive: true }); };
+    const sicht = () => { if (document.visibilityState === 'hidden') weg(); };
+    window.addEventListener('pagehide', weg);
+    document.addEventListener('visibilitychange', sicht);
+    return () => { window.removeEventListener('pagehide', weg); document.removeEventListener('visibilitychange', sicht); };
+  }, [eingabenUebernehmen, sichern]);
 
   /** Eine Änderung übernehmen: Geschichte, Fassung, Sitzungsspeicher, Speichern anstoßen, Ansage. */
   const anwenden = useCallback((e: Ergebnis, o: { auswahl?: boolean } = {}): boolean => {
@@ -750,9 +769,11 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const panelPhase = rahmenWahl && !panelKnoten ? phasen(d).find(p => p.id === rahmenWahl) ?? null : null;
   const panelKante: KanteLage | null = kanteWahl ? lage.kanten.find(k => k.id === kanteWahl) ?? null : null;
   const sperrt = sperrtVeroeffentlichen(befunde);
-  const SP = { gespeichert: Check, ausstehend: Loader2, speichert: Loader2, fehler: CloudOff, konflikt: CloudOff, offline: CloudOff }[speicher.art];
-  const spText = { gespeichert: 'Entwurf gespeichert', ausstehend: 'wird gespeichert …', speichert: 'speichert …', fehler: 'nicht gespeichert', konflikt: 'Konflikt — deine Fassung bleibt', offline: 'offline — bleibt hier' }[speicher.art];
-  const spFarbe = speicher.art === 'gespeichert' ? C.inkLeise : speicher.art === 'fehler' || speicher.art === 'konflikt' ? LEUCHT.kritisch : speicher.art === 'offline' ? LEUCHT.achtung : C.inkDim;
+  // „Entwurf gespeichert“ erst nach der Antwort des Servers und ohne Getipptes in einem Feld (lib/prozesse/eingabe-puffer.ts `speicherAnzeige`).
+  const spArt = speicherAnzeige(speicher.art, tippt);
+  const SP = { gespeichert: Check, ausstehend: Loader2, speichert: Loader2, fehler: CloudOff, konflikt: CloudOff, offline: CloudOff, tippt: Loader2 }[spArt];
+  const spText = { gespeichert: 'Entwurf gespeichert', ausstehend: 'wird gespeichert …', speichert: 'speichert …', fehler: 'nicht gespeichert', konflikt: 'Konflikt — deine Fassung bleibt', offline: 'offline — bleibt hier', tippt: 'Änderung wird übernommen …' }[spArt];
+  const spFarbe = spArt === 'gespeichert' ? C.inkLeise : spArt === 'fehler' || spArt === 'konflikt' ? LEUCHT.kritisch : spArt === 'offline' ? LEUCHT.achtung : C.inkDim;
   const v = eintrag.versionen.at(-1);
   // Die Teile der Kopfzeile — außerhalb in der Werkzeugzeile, im Werkzeugmodus an den Orten des Rahmens (dieselben Griffe, nur verteilt).
   const kopfZustand = (
@@ -856,6 +877,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     ? <div className={schwebend ? (imModus ? 'wz-hinweise' : 'pw-hinweise-schwebe') : 'pw-hinweise'}>{hinweisTeile.map((x, i) => <div key={i} className={schwebend ? 'pw-hinweis-karte' : undefined}>{x}</div>)}</div>
     : null);
   return (
+    <EingabeKontext.Provider value={eingabeRegister}>
     <VorlageKontext.Provider value={vorlageUmfeld}>
     <div className={`pw-werkstatt${imModus ? ' pw-modus' : ''}`} onKeyDown={e => { if (e.key === 'Escape' && (formauswahl || hilfe || probeOffen)) { e.preventDefault(); setFormauswahl(null); setHilfe(false); setProbeOffen(false); } }}>
       {imModus ? (
@@ -1001,6 +1023,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
       )}
     </div>
     </VorlageKontext.Provider>
+    </EingabeKontext.Provider>
   );
 }
 
