@@ -134,12 +134,16 @@ const merkerSchreiben = (k: string, v: string) => { try { window.localStorage.se
  * Das Seitenfeld im Werkzeugmodus: schwebt rechts, klappt ein und aus (gemerkt je Werkzeug). `oeffnenBei` — wechselt der Wert (neue Auswahl), öffnet es
  * sich wieder: wer einen Schritt wählt, will seine Maske sehen.
  */
-export function WerkzeugFeld({ titel, oeffnenBei, children }: { titel: string; oeffnenBei?: string | null; children: ReactNode }) {
+export function WerkzeugFeld({ titel, oeffnenBei, zuBei, children }: { titel: string; oeffnenBei?: string | null;
+  /** Feinschliff 24.10.: ein neuer Wert klappt das Feld für den Augenblick ein (z. B. Probelauf — das Ergebnis steht auf der Fläche); nicht gemerkt. */ zuBei?: number;
+  children: ReactNode }) {
   const id = useContext(RahmenKontext)?.werkzeug.id ?? 'werkzeug';
   const [offen, setOffen] = useState(true);
   useEffect(() => { setOffen(merkerLesen(FELD_MERKER(id)) !== 'zu'); }, [id]);
   const vorher = useRef(oeffnenBei);
   useEffect(() => { if (oeffnenBei && oeffnenBei !== vorher.current) setOffen(true); vorher.current = oeffnenBei; }, [oeffnenBei]);
+  const zuVorher = useRef(zuBei);
+  useEffect(() => { if (zuBei && zuBei !== zuVorher.current) setOffen(false); zuVorher.current = zuBei; }, [zuBei]);
   const setzen = (an: boolean) => { setOffen(an); merkerSchreiben(FELD_MERKER(id), an ? 'auf' : 'zu'); };
   if (!offen) {
     return (

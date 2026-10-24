@@ -191,7 +191,12 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
 
   useImperativeHandle(ref, () => ({
     // Feinschliff 22.10. (Befund 4): auf den Inhalt einpassen (nicht auf leere Bahnränder), höchstens 100 % — seit 23.10. im freien Feld (`raender`).
-    allesZeigen: () => { const g = groesse(); fliege(einpassKamera(inhaltBox(stand.current.lage, stand.current.d.zettel ?? []), g, undefined, undefined, raender())); },
+    // Feinschliff 24.10. (Bau-Test: „Alles zeigen schneidet links die Bahn-Beschriftung ab“): die Spalte mit den Namen der Bahnen (ab x = 0) gehört dazu.
+    allesZeigen: () => {
+      const g = groesse(), b = inhaltBox(stand.current.lage, stand.current.d.zettel ?? []);
+      const links = stand.current.lage.bahnen.length ? Math.min(b.x, 0) : b.x;
+      fliege(einpassKamera({ ...b, x: links, b: b.b + (b.x - links) }, g, undefined, undefined, raender()));
+    },
     insBild: id => {
       const k = stand.current.lage.knoten.get(id);
       if (!k) return;
@@ -450,7 +455,10 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     p.onAnhaengen({ nach: von, ausgang: art as Ausgang }, [e.clientX - r.left, e.clientY - r.top]);
   };
   const doppel = (e: RMouseEvent<SVGSVGElement>) => {
-    const id = (e.target as Element).closest('[data-ws-knoten]')?.getAttribute('data-ws-knoten');
+    // Feinschliff 24.10. (Bau-Test: „Doppelklick öffnet kein Namensfeld“): der Knoten fängt den Zeiger beim Drücken (setPointerCapture auf der Fläche) — dann ist das
+    // Ziel des Doppelklicks die Fläche selbst. Darum zählt, was unter dem Zeiger liegt.
+    const unter = typeof document !== 'undefined' && document.elementFromPoint ? document.elementFromPoint(e.clientX, e.clientY) : null;
+    const id = (e.target as Element).closest('[data-ws-knoten]')?.getAttribute('data-ws-knoten') ?? unter?.closest('[data-ws-knoten]')?.getAttribute('data-ws-knoten');
     if (id) { e.preventDefault(); p.onDoppel?.(id); }
   };
   const taste = (e: RKeyboardEvent<SVGSVGElement>) => {

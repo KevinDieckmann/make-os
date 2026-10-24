@@ -168,6 +168,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const [webhook, setWebhook] = useState<WebhookKurz | null>(null);
   const [probeFall, setProbeFall] = useState<FallWert>('beispiel');
   const [probeOffen, setProbeOffen] = useState(false);
+  /** Feinschliff 24.10.: der Probelauf klappt das Seitenfeld (Werkzeugmodus) für den Augenblick ein — ein Zähler, kein Merker. */
+  const [panelZu, setPanelZu] = useState(0);
+  const allesZeigenRef = useRef<() => void>(() => {});
   const [testErg, setTestErg] = useState<Map<string, TestErgebnis>>(new Map());
   /** Feinschliff 22.10. (Befund 2): ein neu angehängter Knoten — sobald die Lage ihn kennt, fährt die Kamera hin. */
   const zeigeNeu = useRef<string | null>(null);
@@ -273,6 +276,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     if (uebersicht) { setUebersicht(null); einpassen.current = 'alles'; return; }
     flaeche.current?.allesZeigen();
   };
+  allesZeigenRef.current = allesZeigen;
   // Testergebnisse gelten für genau diese Fassung — jede Änderung macht sie wieder „noch nicht geprüft“.
   useEffect(() => { setTestErg(m => (m.size ? new Map() : m)); }, [fassung]);
   const ausstehend = speicher.art === 'ausstehend' || speicher.art === 'speichert' || speicher.art === 'fehler' || speicher.art === 'offline' || speicher.art === 'konflikt';
@@ -328,6 +332,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
       setBefundeServer(j.befunde ?? []);
       if (typeof j.entwurfGeaendert === 'boolean') setGeaendertSeitVersion(j.entwurfGeaendert);
       gesichert.current = nr;
+      // Feinschliff 24.10. (Bau-Test: „das neue Freigabe-Schloss lag unter dem Panel“): ein Schloss, das die Regel beim Speichern gesetzt hat, kommt ins Bild.
+      const neuesSchloss = j.eintrag.entwurf.knoten.find(k => k.schloss && !f.knoten.some(x => x.id === k.id));
+      if (neuesSchloss) zeigeNeu.current = neuesSchloss.id;
       if (aenderung.current === nr) {
         setFassungRoh(fassungVon(j.eintrag.entwurf));
         schreib(sitzung(), ENTWURF_MERKER(prozessId), null);
@@ -550,6 +557,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     const eine = auswahl.length === 1 ? d.knoten.find(k => k.id === auswahl[0]) : undefined;
     switch (a.art) {
       case 'abbrechen':
+        // Feinschliff 24.10.: Esc schließt das große Fenster auch, wenn der Fokus auf der Fläche liegt (Enter auf dem Knoten öffnet es von dort).
+        if (gross) { setGross(null); setSchrittTest(null); flaeche.current?.fokus(); return true; }
         if (umbenennen) { setUmbenennen(null); return true; }
         if (formauswahl) { setFormauswahl(null); return true; }
         if (hilfe) { setHilfe(false); return true; }
@@ -619,6 +628,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     if (a.art === 'fehlt') { setProbe(null); setProbeHinweis(PROBE_FEHLT); return; }
     if (a.art === 'fehler') { setProbe(null); setProbeHinweis(a.text); return; }
     setProbe(a.ergebnis);
+    // Feinschliff 24.10. (Bau-Test: Ergebnis unter Panel und Hinweis-Karte): das Seitenfeld klappt ein, dann „Alles zeigen“ — im freien Feld unter der Karte.
+    setPanelZu(n => n + 1);
+    requestAnimationFrame(() => requestAnimationFrame(() => allesZeigenRef.current()));
     ansagen(`Probelauf${pf === 'beispiel' ? ' mit dem Beispiel' : ` mit „${pf.name}“`}: ${a.ergebnis.schritte.length} Schritte, geschätzt ${centText(a.ergebnis.kostenSchaetzungCent)}.`);
   };
 
@@ -1012,7 +1024,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           )}
         </div>
         {imModus
-          ? <WerkzeugFeld titel="Einstellungen" oeffnenBei={ein ?? kanteWahl ?? rahmenWahl ?? null}>{panelInhalt}</WerkzeugFeld>
+          ? <WerkzeugFeld titel="Einstellungen" oeffnenBei={ein ?? kanteWahl ?? rahmenWahl ?? null} zuBei={panelZu}>{panelInhalt}</WerkzeugFeld>
           : <aside className="pw-panel" aria-label="Einstellungen">{panelInhalt}</aside>}
       </div>}
       {mobilWahl && (() => {
