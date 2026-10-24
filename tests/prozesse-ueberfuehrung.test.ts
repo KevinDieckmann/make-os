@@ -137,8 +137,11 @@ describe('Schatten-Vergleich (rein)', () => {
     v = vergleichAbschliessen(vergleichMelden(v, 'alt', '2026-10-21', bild(1)), '2026-10-22');
     expect(v).toMatchObject({ laeufe: 2, abweichend: 1, gleichLaeufe: 0, letzte: { tag: '2026-10-21', grund: 'nur-alt', kennungen: ['mahn-r0-1'] } });
     expect(v.gleichSeit).toBeUndefined();
+    // Paket Ü 2: meldet nur EIN Weg und hat er nichts bewirkt, war es keine Gelegenheit (zählt nicht).
     v = vergleichAbschliessen(vergleichMelden(v, 'neu', '2026-10-22', []), '2026-10-23');
-    expect(v.letzte).toMatchObject({ grund: 'nur-neu', kennungen: [] });
+    expect(v).toMatchObject({ laeufe: 2, abweichend: 1, letzte: { tag: '2026-10-21', grund: 'nur-alt' } });
+    v = vergleichAbschliessen(vergleichMelden(v, 'neu', '2026-10-23', bild(1)), '2026-10-24');
+    expect(v).toMatchObject({ laeufe: 3, abweichend: 2, letzte: { tag: '2026-10-23', grund: 'nur-neu', kennungen: ['mahn-r0-1'] } });
   });
   it('anders: dieselbe Kennung mit anderem Tag bzw. anderer Zuständigkeit (Feldnamen), Kennungen nur auf einer Seite', () => {
     expect(slotUrteil({ tag: 't', alt: bild(1).map(bildSchluessel), neu: bild(1, { zustaendig: 'pia' }).map(bildSchluessel) })).toEqual({ gleich: false, abweichung: { tag: 't', grund: 'anders', kennungen: ['mahn-r0-1'], felder: ['zustaendig'] } });
@@ -190,15 +193,22 @@ describe('Vorlagen, Baustein, feste Liste', () => {
     for (const u of UEBERFUEHRBAR) expect(ids.has(u.sp), u.sp).toBe(true);
     expect(new Set(UEBERFUEHRBAR.map(u => u.sp)).size).toBe(UEBERFUEHRBAR.length);
     expect(istUeberfuehrbar('sp-rechnung')).toBe(true);
-    expect(ueberfuehrbarVon('sp-followup')).toBeNull();
+    expect(ueberfuehrbarVon('sp-head-takt')).toBeNull();
+    expect(ueberfuehrbarVon('sp-followup')).toMatchObject({ schritt: 'power-hour', einstieg: { datei: 'lib/heads/takt.ts', funktion: 'headsFaellig' } });
   });
-  it('jede Vorlage ist veröffentlichbar: Auslöser „nach dem Morgen-Loop“ (wie der Morgenlauf), der feste Schritt, Ziel', () => {
+  it('jede Vorlage ist veröffentlichbar: Auslöser wie der alte Einstieg („nach dem Morgen-Loop“ bzw. je Person ab der Uhrzeit der Power Hour), der feste Schritt, Ziel', () => {
     for (const u of UEBERFUEHRBAR) {
       const d = ueberfuehrungsVorlage(u);
       const b = definitionPruefen(d, {});
       expect(sperrtVeroeffentlichen(b), `${u.sp}: ${JSON.stringify(b)}`).toBe(false);
-      expect(startKnoten(d).map(s => s.ausloeser)).toEqual([{ art: 'loop', loop: 'morgen' }]);
-      expect(alleSchritte(d).filter(x => x.schritt.katalog?.id === 'system.fest').map(x => x.schritt.katalog?.werte?.schritt)).toEqual([u.schritt]);
+      const START: Record<string, unknown[]> = {
+        'power-hour': [{ art: 'person', uhrzeit: '07:00', bis: '22:00', tage: 'mo-fr', nachMorgenlauf: true, stundeAus: 'head.sales.power_hour.stunde' }],
+        // Ausbau (Paket Ü 2): der Kern nach dem Morgen-Loop, dazu (neu) „Deal gewonnen“ für den Rest der Übergabe.
+        'fall-vorschlag': [{ art: 'loop', loop: 'morgen' }, { art: 'ereignis', ereignis: 'deal-stufe', bedingungen: [{ feld: 'ereignis.stufe', op: 'gleich', wert: 'gewonnen' }] }],
+        'nachfass-lage': [{ art: 'datum', feld: 'event.datum', versatzTage: 1, uhrzeit: '08:00', bedingungen: [{ feld: 'event.besucht', op: 'gleich', wert: true }, { feld: 'event.status', op: 'ungleich', wert: 'abgesagt' }] }],
+      };
+      expect(startKnoten(d).map(s => s.ausloeser)).toEqual(START[u.schritt] ?? [{ art: 'loop', loop: 'morgen' }]);
+      expect(alleSchritte(d).filter(x => x.schritt.katalog?.id === 'system.fest').map(x => x.schritt.katalog?.werte?.schritt)).toEqual([u.schritt, ...(u.zusatz?.schritte ?? [])]);
     }
   });
   it('der feste Schritt steht nicht in der Knoten-Auswahl, der Katalog bleibt in sich stimmig', () => {
@@ -242,6 +252,16 @@ describe('Wächter: jeder alte Einstiegspunkt fragt die Weiche genau einmal', ()
     expect(s).toContain('mahnAufgabenKern(');
     expect(s).toContain('treppeReportsKern(');
     expect(s).toContain('onboardingVorschlaegeKern(');
+    expect(s).toContain('powerHourKern(');
+    // Event-Nachfassen (Paket Ü 2): der Kern ist die Rechnung der Glocke (`dankeAnstehend`), der alte Einstieg hängt im Morgenlauf.
+    expect(s).toContain('nachfassLageBild(');
+    expect(s).toContain('nachfassFollowupsKern(');
+    expect(readFileSync(path.join(process.cwd(), 'lib/crm/nachfassen-server.ts'), 'utf8')).toContain('dankeAnstehend(crm, kontakte, heute, p)');
+    expect(readFileSync(path.join(process.cwd(), 'app/api/tagesstart/route.ts'), 'utf8')).toContain('nachfassLageMorgenlauf(today)');
+    // Power Hour (Paket Ü 2): derselbe Auftrag aus EINER Funktion für den Takt der Heads und den festen Schritt.
+    const ht = readFileSync(path.join(process.cwd(), 'lib/heads/takt.ts'), 'utf8');
+    expect(ht).toMatch(/headsFaellig[\s\S]*powerHourFaellig\(m\.person\)/);
+    expect(ht).toMatch(/export async function powerHourKern[\s\S]*powerHourFaellig\(person\)/);
     expect(readFileSync(path.join(process.cwd(), 'lib/finanzen/rechnung/server.ts'), 'utf8')).toMatch(/mahnAufgabenNachziehen[\s\S]*mahnAufgabenKern\(heute/);
   });
 });

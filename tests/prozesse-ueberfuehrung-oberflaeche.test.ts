@@ -74,6 +74,14 @@ describe('Band in der Werkstatt', () => {
     expect(html).not.toContain('Umschalten</span>');
     expect(html).toContain('Umschalten und zurückschalten dürfen volle Mitglieder des Haushalts.');
   });
+  it('Ausbau (Paket Ü 2): „Neu gegenüber dem alten Weg“ mit dem Satz und — im Schatten — den gezählten Wirkungen je Art (nichts angelegt)', () => {
+    const ev = UEBERFUEHRBAR.find(x => x.sp === 'sp-event-nachfassen')!;
+    const html = band(ansicht({ zusatz: { satz: ev.zusatz!.satz, zaehler: { wirkungen: 3, arten: { followup: 2, meldung: 1 }, zuletzt: '2026-10-26' } } }), true);
+    for (const t of ['Neu gegenüber dem alten Weg', 'Follow-up „Nachfassen nach der Begegnung“', 'Im Schatten bisher: 2 Follow-ups, 1 Glocken (zuletzt 26.10.) — nichts davon angelegt.']) expect(html, t).toContain(t);
+    expect(band(ansicht({ zusatz: { satz: ev.zusatz!.satz } }), true)).toContain('Im Schatten noch nichts gezählt.');
+    // Ohne Ausbau (Mahnaufgaben) gibt es den Abschnitt nicht.
+    expect(band(ansicht(), true)).not.toContain('Neu gegenüber dem alten Weg');
+  });
 });
 
 describe('Marke an Kachel und Steckbrief', () => {

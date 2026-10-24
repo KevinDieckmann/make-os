@@ -152,6 +152,18 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Produkte: Fortschritt', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0d2b) Event-Nachfassen (24.10., Paket Ü 2): der Kern ist abgeleitet (Glocke „n Danke-Mails bereit“) — nur im Schatten eines überführten Prozesses meldet der
+  //       Morgenlauf dem Vergleich, was die Glocke heute für die Events von gestern zeigt. Schreibt sonst nichts, wirft nie.
+  try {
+    if (await imHaushaltOderSystemlauf(req)) {
+      const { nachfassLageMorgenlauf } = await import('@/lib/crm/nachfassen-server');
+      const n = await nachfassLageMorgenlauf(today);
+      if (n.gemeldet) schritte.push({ name: 'Event-Nachfassen (Vergleich)', ok: true, info: `${n.gemeldet} Glocke${n.gemeldet === 1 ? '' : 'n'} gemeldet` });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Event-Nachfassen (Vergleich)', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 0d3) Fulfillment (10.10., FULFILLMENT_KONZEPT.md): Onboarding-Vorschläge, Nachsorge, Puls, Art.-14-Uhr — nur Vorschläge in den Stapel
   //      (+ Glocke), idempotent über Marken; verschickt, eingeladen oder gestartet wird nichts (lib/fulfillment/morgenlauf.ts → die drei Pakete).
   try {

@@ -243,9 +243,20 @@ export type Ausloeser =
   | { art: 'hand' }
   | { art: 'webhook'; felder: WebhookFeld[]; bedingungen?: Bedingung[]; verknuepfung?: Verknuepfung }
   /** Nach einem der vorhandenen Loops (app/api/loop/route.ts: morgen · woche · rueckblick) — „nach dem Morgen-Loop“. */
-  | { art: 'loop'; loop: LoopArt };
+  | { art: 'loop'; loop: LoopArt }
+  /**
+   * Je Person ab Uhrzeit (24.10., Paket Ü 2 — Entscheidung: „je Person ab Uhrzeit, nur an Arbeitstagen, einmal am Tag, mit Nachholen“; Regeln rein in
+   * lib/prozesse/ausloeser.ts `personenFaellig`, gestartet im Takt `personenStarten`): für jede Person des Teams mit Konto EIN Lauf am Tag — ab `uhrzeit` (bzw. der
+   * Stunde einer Stellschraube `stundeAus`, die gewinnt), bis `bis` (exklusiv), an den Tagen `tage`; Business-frei (Haushalt oder die Person) ruht er und kommt danach
+   * am selben Tag („Nachholen“, nie über den Tag hinaus); `nachMorgenlauf` = erst, wenn der Morgenlauf des Tages durch ist (wie die Heads). Der erste Takt merkt sich
+   * nur den Tag — gestartet wird ab dem Folgetag.
+   */
+  | { art: 'person'; /** „HH:MM“ Berliner Zeit */ uhrzeit: string; /** „HH:MM“, exklusiv */ bis?: string; tage: PersonTage; nachMorgenlauf?: true; /** Kennung einer Stellschraube der Art „stunde“ (lib/prozesse/stellschrauben-werte.ts) */ stundeAus?: string };
+/** An welchen Tagen der Auslöser „je Person“ startet: Mo–Fr (Feiertage zählen mit — wie der Takt der Heads), Werktage (Mo–Fr ohne Feiertage NRW), täglich. */
+export type PersonTage = 'mo-fr' | 'werktage' | 'taeglich';
+export const PERSON_TAGE = ['mo-fr', 'werktage', 'taeglich'] as const satisfies readonly PersonTage[];
 export type AusloeserArt = Ausloeser['art'];
-export const AUSLOESER_ARTEN = ['ereignis', 'zeitplan', 'datum', 'hand', 'webhook', 'loop'] as const satisfies readonly AusloeserArt[];
+export const AUSLOESER_ARTEN = ['ereignis', 'zeitplan', 'datum', 'hand', 'webhook', 'loop', 'person'] as const satisfies readonly AusloeserArt[];
 /** Die Loops (app/api/loop/route.ts, POST `{ loop }`). */
 export type LoopArt = 'morgen' | 'woche' | 'rueckblick';
 export const LOOP_ARTEN = ['morgen', 'woche', 'rueckblick'] as const satisfies readonly LoopArt[];

@@ -33,7 +33,7 @@ import {
 } from './lauf-typen';
 import { fallArtVon, type AgentSchritt, type Ausloeser, type DatumsFeld, type ProzessDefinition, type ProzessEintrag, type ProzesseDatei } from './definition';
 import { alleSchritte, startKnoten } from './fluss';
-import { ausloeserPasst, ereignisDaten, startetNachLoop, DATUMS_FELDER } from './ausloeser';
+import { ausloeserPasst, ereignisDaten, startetNachLoop, DATUMS_FELDER, personSchluessel as personSchluesselRein } from './ausloeser';
 import { datumFaellig, datumFeldFenster, datumMoment, datumPeriode, stichtagVon } from './datum-start';
 import { bedingungenTreffen } from './bedingung';
 import { anspracheUrteil } from './ansprache';
@@ -627,7 +627,7 @@ async function wirkungAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Aktion, k
           const { ueberfuehrbarZuSchritt } = await import('./ueberfuehrung');
           if (e.ersetzt !== ueberfuehrbarZuSchritt(a.schritt).sp || modusFuer(e, standVon(await laeufeLesen(kx.h), e.id)) !== 'scharf') return fehlt('ueberfuehrung-fehlt');
           const { systemSchrittAusfuehren } = await import('./system-schritte-server');
-          const r = await systemSchrittAusfuehren(a.schritt, { modus: 'scharf', jetzt: kx.jetzt });
+          const r = await systemSchrittAusfuehren(a.schritt, { modus: 'scharf', jetzt: kx.jetzt, person: l.person, fall: l.fall });
           if (!r.ok) return fehlt(r.voruebergehend ? 'voruebergehend' : 'dauerhaft', r.voruebergehend ? 'voruebergehend' : 'dauerhaft');
           return { ok: true, wirkung: r.wirkung, anzahl: r.neu, ...(r.neu ? {} : { hinweis: 'schon-erledigt' as const }) };
         }
@@ -968,8 +968,13 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
       const u0 = await umfeldFuer(l0, def, kx, { st, laeufe: d });
       // Überführung (Paket Ü): im Schatten merkt sich der Lauf, welche festen Schritte er erreicht hätte — danach rechnet der Schritt sein Wirkungsbild (schreibt
       // nichts) und meldet es dem Vergleich mit dem alten Weg. Nur für den Prozess, der den System-Ablauf ersetzt.
+      // Ausbau (24.10., Paket Ü 2): die übrigen Wirkungen (Schritte, die der alte Weg nicht tat) werden im Schatten nur je Art gezählt — nie verglichen.
       const festeSchatten: SystemSchrittId[] = [];
-      const u: LaufUmfeld = l0.modus === 'schatten' && e.ersetzt ? { ...u0, beobachte: (b: ProbeBeobachtung) => { if (b.aktion?.art === 'system') festeSchatten.push(b.aktion.schritt); } } : u0;
+      const zusatzArten: Record<string, number> = {};
+      const u: LaufUmfeld = l0.modus === 'schatten' && e.ersetzt ? { ...u0, beobachte: (b: ProbeBeobachtung) => {
+        if (b.aktion?.art === 'system') festeSchatten.push(b.aktion.schritt);
+        else if (b.aktion && ZUSATZ_WIRKUNGEN.has(b.aktion.art)) zusatzArten[b.aktion.art] = (zusatzArten[b.aktion.art] ?? 0) + 1;
+      } } : u0;
       const plan = await laeufeAendern(dd => {
         const l = dd.laeufe.find(x => x.id === laufId);
         if (!l || l.geaendert !== l0.geaendert || l.status !== 'laeuft') return { datei: dd, r: null };
@@ -977,7 +982,8 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
         return { datei: mitLauf(dd, v.lauf), r: v };
       }, kx.h);
       if (!plan) continue; // inzwischen geändert — neu lesen
-      for (const schritt of festeSchatten) await festenSchrittVergleichen(e, schritt, kx);
+      for (const schritt of festeSchatten) await festenSchrittVergleichen(e, schritt, kx, l0);
+      if (e.ersetzt && Object.keys(zusatzArten).length) await (await import('./ueberfuehrung-server')).zusatzMeldenServer(e.ersetzt, localDay(kx.jetzt), zusatzArten, kx.h);
       letzter = plan.lauf;
       if (plan.pause) { await prozessPausieren(l0.prozessId, 'budget', kx); break; }
       if (!plan.aktion) break;
@@ -1023,13 +1029,16 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
  * Schatten-Vergleich (Paket Ü): der feste Schritt rechnet, was er JETZT täte (schreibt nichts), und meldet sein Wirkungsbild — nur, wenn dieser Prozess den
  * System-Ablauf des Schritts ersetzt und in Phase „Schatten“ steht. Wirft nie (der Lauf geht weiter, der Vergleich fehlt dann für diesen Tag).
  */
-async function festenSchrittVergleichen(e: ProzessEintrag, schritt: SystemSchrittId, kx: MotorKontext): Promise<void> {
+async function festenSchrittVergleichen(e: ProzessEintrag, schritt: SystemSchrittId, kx: MotorKontext, l: Pick<ProzessLauf, 'person' | 'fall'>): Promise<void> {
   try {
-    const [{ ueberfuehrbarZuSchritt }, { systemSchrittAusfuehren }, { vergleichMeldenServer }] = await Promise.all([import('./ueberfuehrung'), import('./system-schritte-server'), import('./ueberfuehrung-server')]);
+    const [{ ueberfuehrbarZuSchritt, istKernSchritt }, { systemSchrittAusfuehren }, { vergleichMeldenServer, zusatzMeldenServer }] = await Promise.all([import('./ueberfuehrung'), import('./system-schritte-server'), import('./ueberfuehrung-server')]);
     const sp = ueberfuehrbarZuSchritt(schritt).sp;
     if (e.ersetzt !== sp || (e.ueberfuehrung?.phase ?? 'schatten') !== 'schatten') return;
-    const r = await systemSchrittAusfuehren(schritt, { modus: 'schatten', jetzt: kx.jetzt });
-    if (r.ok) await vergleichMeldenServer(sp, 'neu', localDay(kx.jetzt), r.bild, kx.h);
+    const r = await systemSchrittAusfuehren(schritt, { modus: 'schatten', jetzt: kx.jetzt, person: l.person, fall: l.fall });
+    if (!r.ok) return;
+    // Der Kern geht in den Vergleich; ein Zusatz-Schritt (Ausbau) wird nur gezählt.
+    if (istKernSchritt(schritt)) await vergleichMeldenServer(sp, 'neu', localDay(kx.jetzt), r.bild, kx.h);
+    else await zusatzMeldenServer(sp, localDay(kx.jetzt), r.bild.reduce<Record<string, number>>((a, b) => ({ ...a, [b.art]: (a[b.art] ?? 0) + 1 }), {}), kx.h);
   } catch (err) {
     console.error(`[prozesse/ueberfuehrung] Schatten-Vergleich ausgefallen — ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);
   }
@@ -1116,6 +1125,9 @@ export async function prozesseImTakt(jetzt = new Date()): Promise<TaktErgebnis |
 
     // 3b) Datum am Fall (22.10., Punkt 34): Fälle, deren Stichtag jetzt erreicht ist — beim ersten Mal nur merken.
     erg.gestartet += await datumStarten(kx);
+
+    // 3c) Je Person ab Uhrzeit (24.10., Paket Ü 2): je Person des Teams einmal am Tag — beim ersten Mal nur merken.
+    erg.gestartet += await personenStarten(kx);
 
     // 4) Wecker.
     erg.geweckt += await weckerPruefen(kx);
@@ -1294,6 +1306,84 @@ async function zeitplaeneStarten(kx: MotorKontext): Promise<number> {
       }, kx.h);
       if (res.ok) n++;
     }
+  }
+  return n;
+}
+
+/** Aktionen, die als Wirkung gezählt werden, wenn ein überführter Prozess im Schatten neue Schritte geht (Ausbau) — Lesen, Schleifen und Auslöser zählen nicht. */
+const ZUSATZ_WIRKUNGEN: ReadonlySet<string> = new Set(['aufgabe', 'vorschlag', 'crm-vorschlag', 'meldung', 'agent', 'teilprozess']);
+
+// ══ Je Person ab Uhrzeit (24.10., Paket Ü 2 — Regeln: lib/prozesse/ausloeser.ts `personenFaellig`) ═══════════════════════════════════════════════════════
+
+/**
+ * Die Personen des Auslösers „je Person“: das Team der Instanz mit Konto, sonst die Konten im Haushalt des Inhabers (Inhaber zuerst) — DIESELBE Liste wie die
+ * Power Hour der Heads (`powerHourPersonen`, lib/heads/takt.ts), nie ein festes Kürzel.
+ */
+export async function personenDesTeams(): Promise<string[]> {
+  const [{ powerHourPersonen }, { TEAM }, { ladeKonten }] = await Promise.all([import('@/lib/heads/takt'), import('@/lib/crm/team'), import('@/lib/zugang/konten')]);
+  const k = await ladeKonten();
+  return powerHourPersonen(TEAM, k.konten, k.einstellungen);
+}
+
+/** Die Lage für den Auslöser „je Person“ (über die vorhandenen Lesewege; einmal je Takt). */
+async function personLageLaden(kx: MotorKontext, personen: readonly string[], mitMorgenlauf: boolean, stundeAus: readonly string[]): Promise<Omit<import('./ausloeser').PersonLage, 'stunde'> & { stunden: Record<string, number> }> {
+  const wand = wandzeit(kx.jetzt), tag = wand.slice(0, 10);
+  const [{ wochentag, istFeiertag }, arbeit, werte] = await Promise.all([
+    import('@/lib/zeit/kalender-kern'), import('@/lib/arbeitsrahmen/server'),
+    stundeAus.length ? import('./stellschrauben-werte-server').then(m => m.stellschraubenWerte()).catch(() => null) : Promise.resolve(null),
+  ]);
+  const [hf, frei, morgen] = await Promise.all([
+    arbeit.haushaltBusinessFreiJetzt(kx.jetzt).then(x => x.frei).catch(() => false),
+    Promise.all(personen.map(async p => ((await arbeit.businessFreiJetzt(p, kx.jetzt).catch(() => ({ frei: false }))).frei ? p : null))),
+    mitMorgenlauf ? import('@/lib/zoe/takt').then(m => m.morgenlaufDurch(kx.jetzt)).catch(() => false) : Promise.resolve(true),
+  ]);
+  const { wert } = await import('./stellschrauben-werte');
+  const stunden: Record<string, number> = {};
+  for (const id of stundeAus) { try { const v = wert(werte, id); if (typeof v === 'number') stunden[id] = v; } catch { /* unbekannte Stellschraube: es gilt `uhrzeit` */ } }
+  return { wand, wochentag: wochentag(tag), feiertag: istFeiertag(tag), morgenlaufDurch: morgen, haushaltFrei: hf, frei: new Set(frei.filter((x): x is string => !!x)), stunden };
+}
+
+/**
+ * Auslöser „je Person“: je Prozess und Auslöser-Knoten für jede fällige Person EIN Lauf am Tag (ohne Fall, Periode = Knoten + Fingerabdruck der Person + Tag; der Lauf
+ * schreibt als diese Person). Beim ersten Takt wird nur der Tag gemerkt (ab dem Folgetag). Gestartet bzw. versucht = gemerkt — nie zweimal am Tag.
+ */
+async function personenStarten(kx: MotorKontext): Promise<number> {
+  const { personenFaellig, personSchluessel } = await import('./ausloeser');
+  const kandidaten: { p: ProzessEintrag; j: NonNullable<ReturnType<typeof juengste>>; knoten: string; a: Extract<Ausloeser, { art: 'person' }> }[] = [];
+  for (const p of kx.prozesse.prozesse) {
+    if (laufZustand(p) !== 'laeuft') continue;
+    const j = juengste(p);
+    if (!j) continue;
+    for (const s of startKnoten(j.def)) if (s.ausloeser?.art === 'person') kandidaten.push({ p, j, knoten: s.id, a: s.ausloeser });
+  }
+  if (!kandidaten.length) return 0;
+  const personen = await personenDesTeams().catch(() => [] as string[]);
+  const lage = await personLageLaden(kx, personen, kandidaten.some(k => k.a.nachMorgenlauf), Array.from(new Set(kandidaten.map(k => k.a.stundeAus).filter((x): x is string => !!x))));
+  const tag = lage.wand.slice(0, 10);
+  let n = 0;
+  for (const { p, j, knoten, a } of kandidaten) {
+    const d = await laeufeLesen(kx.h);
+    const st = standVon(d, p.id);
+    const r = personenFaellig(a, personen, { ...lage, ...(a.stundeAus && lage.stunden[a.stundeAus] !== undefined ? { stunde: lage.stunden[a.stundeAus] } : {}) }, st.person?.[knoten], LAUF_GRENZEN.personenJeAusloeser);
+    const merken = (tage: Record<string, string>, seit: string) => laeufeAendern(dd => {
+      const alt = standVon(dd, p.id);
+      return { datei: mitStand(dd, p.id, { ...alt, person: { ...(alt.person ?? {}), [knoten]: { seit, tage: { ...(alt.person?.[knoten]?.tage ?? {}), ...tage } } } }), r: null };
+    }, kx.h);
+    if (!st.person?.[knoten]) { await merken({}, r.stand.seit); continue; } // erstes Mal: nur merken
+    if (!r.starten.length) continue;
+    const modus = modusFuer(p, st);
+    if (!modus) continue;
+    const gemerkt: Record<string, string> = {};
+    for (const person of r.starten) {
+      gemerkt[personSchluessel(person)] = tag;
+      const res = await prozessLaufStarten({
+        id: neueKennung('pl'), prozessId: p.id, version: j.nr, def: j.def, fall: { art: 'keiner' }, modus, person: kx.konten.includes(person) ? person : null,
+        ausloeser: { art: 'person', knoten, quelle: `${personSchluessel(person)}:${tag}` }, automatisch: true, periode: `person:${knoten}:${personSchluessel(person)}:${tag}`, jetzt: kx.jetzt.toISOString(),
+      }, kx.h);
+      if (res.ok) n++;
+    }
+    await merken(gemerkt, st.person[knoten].seit);
+    if (r.ueber) await verlaufNotieren(p.id, { am: kx.jetzt.toISOString(), von: 'system', was: 'personen-grenze', n: r.ueber }, kx.h).catch(() => {});
   }
   return n;
 }
@@ -1788,6 +1878,8 @@ async function laeufeJeMonat(def: ProzessDefinition, kx: MotorKontext): Promise<
     if (a?.art === 'ereignis' && b) n += b.eintraege.filter(e => e.art === a.ereignis && e.bereich !== 'privat' && ausloeserPasst(a, def.id, e, ereignisDaten(e))).length;
     if (a?.art === 'zeitplan') n += a.rhythmus === 'taeglich' ? 30 : a.rhythmus === 'werktags' ? 21 : a.rhythmus === 'woechentlich' ? Math.round(4.3 * (a.tage?.length || 1)) : (a.tage?.length || 1);
     if (a?.art === 'loop') n += a.loop === 'morgen' ? 30 : a.loop === 'woche' ? 4 : 1;
+    // Je Person (24.10.): Tage im Monat × Personen des Teams (eine obere Schätzung — Business-frei zieht ab).
+    if (a?.art === 'person') n += (a.tage === 'taeglich' ? 30 : 21) * Math.max(1, (await personenDesTeams().catch(() => [] as string[])).length);
     // Datum am Fall (22.10.): Fälle, deren Stichtag in den nächsten 30 Tagen liegt (ohne „nur wenn …“ zu prüfen — eine obere Schätzung).
     if (a?.art === 'datum') {
       const heute = localDay(kx.jetzt);
@@ -2296,7 +2388,10 @@ export function laeufeOhneKonto(d: LaeufeDatei, speicher: string): { neu: Laeufe
   for (const [id, st] of Object.entries(d.prozesse)) {
     const verlauf = st.verlauf.map(v => (v.von === speicher ? (n++, { ...v, von: G }) : v));
     const scharf = st.einstellung.scharf?.von === speicher ? (n++, { ...st.einstellung.scharf, von: G }) : st.einstellung.scharf;
-    prozesse[id] = { ...st, verlauf, einstellung: { ...st.einstellung, ...(scharf ? { scharf } : {}) } };
+    // Auslöser „je Person“ (24.10.): der Fingerabdruck der Person im Stand fällt weg (sonst bliebe er als einziger Rest).
+    const fp = personSchluesselRein(speicher);
+    const person = st.person ? Object.fromEntries(Object.entries(st.person).map(([k, v]) => { if (!(fp in v.tage)) return [k, v]; n++; const { [fp]: _w, ...rest } = v.tage; return [k, { ...v, tage: rest }]; })) : undefined;
+    prozesse[id] = { ...st, verlauf, einstellung: { ...st.einstellung, ...(scharf ? { scharf } : {}) }, ...(person ? { person } : {}) };
   }
   const zurueckgehalten = d.zurueckgehalten.map(z => (z.person === speicher ? (n++, { ...z, person: G }) : z));
   return { neu: n ? { ...d, laeufe, prozesse, zurueckgehalten } : d, n };

@@ -7,7 +7,7 @@
 
 import {
   AUSLOESER_ARTEN, BAHNEN, BEDINGUNG_OPS, BEREICH_IDS, CRM_ABFRAGE_ARTEN, EINGANG_KENNUNG, FALL_ART_IDS, FELD_KENNUNG, KENNUNG_ARTEN, KNOTEN_KENNUNG,
-  LOOP_ARTEN, PROZESS_FORMEN, PROZESS_GRENZEN, PROZESS_KENNUNG, PROZESS_STATUS, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, VORSCHLAG_ZIELFELDER,
+  LOOP_ARTEN, PERSON_TAGE, PROZESS_FORMEN, PROZESS_GRENZEN, PROZESS_KENNUNG, PROZESS_STATUS, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, VORSCHLAG_ZIELFELDER,
   WEBHOOK_FELD_ARTEN, WEBHOOK_KENNUNG, ZETTEL_FARBEN,
   type AgentSchritt, type Ausloeser, type Bedingung, type Befund, type CrmAbfrage, type EndeAngabe, type ErneutAb, type KatalogBezug, type KnotenLage,
   type MaskenWert, type ModellWahl, type NotizZettel, type PfeilText, type ProzessDefinition, type ProzessEintrag, type ProzessForm, type ProzessKnoten,
@@ -94,6 +94,8 @@ const ausloeser = (v: unknown): Ausloeser | undefined => {
     case 'datum': { const f = s(o.feld), vt = n(o.versatzTage); return f && vt !== undefined ? sauber<Ausloeser>({ art, feld: f, versatzTage: vt, werktage: o.werktage === true ? true : undefined, uhrzeit: s(o.uhrzeit), bedingungen: bedingungen(o.bedingungen), verknuepfung: verkn(o.verknuepfung) }) : undefined; }
     case 'webhook': return sauber<Ausloeser>({ art, felder: liste(o.felder, webhookFeld), bedingungen: bedingungen(o.bedingungen), verknuepfung: verkn(o.verknuepfung) });
     case 'loop': { const l = wahl(o.loop, LOOP_ARTEN); return l ? { art, loop: l } : undefined; }
+    // 24.10. (Paket Ü 2): je Person ab Uhrzeit — Tage fehlen = Mo–Fr.
+    case 'person': { const u = s(o.uhrzeit); return u ? sauber<Ausloeser>({ art, uhrzeit: u, bis: s(o.bis), tage: wahl(o.tage, PERSON_TAGE) ?? 'mo-fr', nachMorgenlauf: o.nachMorgenlauf === true ? true : undefined, stundeAus: s(o.stundeAus) }) : undefined; }
   }
 };
 const agent = (v: unknown): AgentSchritt | undefined => {

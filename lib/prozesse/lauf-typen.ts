@@ -69,7 +69,11 @@ export type SchrittStatus = 'laeuft' | 'wartet' | 'erledigt' | 'uebersprungen' |
 export type LaufAusgang = Ausgang | 'eingetreten';
 
 /** Worauf eine Wirkung zeigt — nur die Kennung. */
-export type WirkungArt = 'aufgabe' | 'vorschlag' | 'lauf' | 'meldung' | 'gesendet';
+export type WirkungArt = 'aufgabe' | 'vorschlag' | 'lauf' | 'meldung' | 'gesendet'
+  /** 24.10. (Paket Ü 2): ein Auftrag in der Warteschlange (fester Schritt „Power Hour vorbereiten“) — Kennung des Auftrags. */
+  | 'auftrag'
+  /** 24.10. (Paket Ü 2): ein Follow-up der Markttraktion (fester Zusatz-Schritt „Follow-ups sichern“) — Kennung `fu-…`. */
+  | 'followup';
 export interface Wirkung { art: WirkungArt; id: string }
 
 /** Feste Gründe (nie Text Dritter, nie Namen) — die Sätze stehen in `GRUND_TEXT`. */
@@ -243,7 +247,9 @@ export interface LaufEinstellung {
 export type VerlaufWas = 'scharf' | 'bestehende' | 'budget' | 'einstellung' | 'pause' | 'fortgesetzt' | 'notbremse' | 'budget-80' | 'budget-grenze'
   | 'zurueckgehalten' | 'gestartet' | 'verworfen' | 'umzug' | 'abgebrochen' | 'erneut'
   // 22.10. (Werkstatt bau-fertig): „Modell wirklich fragen“ aus der Werkstatt — nur die Kosten (Cent) als Zahl.
-  | 'modell-test';
+  | 'modell-test'
+  // 24.10. (Auslöser „je Person“): so viele Personen lagen heute über der Grenze `personenJeAusloeser` (nicht gestartet).
+  | 'personen-grenze';
 /** Ein Eintrag im Verlauf des Prozesses (Punkt 36: „die Antwort steht im Verlauf“) — nur Zahlen und Kennungen. */
 export interface VerlaufEintrag {
   am: string; von: string; was: VerlaufWas; n?: number; version?: number; wert?: number;
@@ -269,6 +275,11 @@ export interface ProzessLaufStand {
    * nach dem Scharfschalten bzw. nach dem Update), wird nur gemerkt — nie nachgeholt. Optional, fehlt im Altbestand.
    */
   datum?: Record<string, string>;
+  /**
+   * Auslöser „je Person“ (24.10.): je Auslöser-Knoten der Tag des ersten Takts (`seit` — an dem Tag wird nur gemerkt) und je Person (Fingerabdruck des Speichernamens,
+   * nie der Name) der Tag, an dem zuletzt gestartet wurde. Optional, fehlt im Altbestand.
+   */
+  person?: Record<string, { seit: string; tage: Record<string, string> }>;
   verlauf: VerlaufEintrag[];
   /** Nur Zähler (Lage, Head of IT): nie gestartete Läufe — ohne Person, Kette zu tief, eigene Wirkung, Bestand voll, Probeläufe über der Schwelle. */
   nicht?: { ohnePerson?: number; kette?: number; eigen?: number; voll?: number; schatten?: number };
@@ -343,6 +354,8 @@ export const LAUF_GRENZEN = {
   ereignisAlterStunden: 72,
   /** Testfälle je Prozess (22.10.) — darüber 413, nie gekürzt. */
   testfaelle: 20,
+  /** Auslöser „je Person“ (24.10.): höchstens so viele Personen je Auslöser und Tag — darüber starten die übrigen nicht (gezählt im Verlauf), nie still. */
+  personenJeAusloeser: 20,
   /** Arbeitszeit (M1 „Arbeitszeit zählen“): Werktage NRW, von … bis (Berliner Stunden). */
   arbeitVon: 9,
   arbeitBis: 18,

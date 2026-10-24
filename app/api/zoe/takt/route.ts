@@ -107,6 +107,8 @@ export async function POST(req: Request) {
   const dran = await faellig();
   if (!dran.length) return NextResponse.json({ ok: true, eingereiht: 0 });
   const { angelegt, schonDa, abgelehnt } = await reihe(dran.map(f => f.auftrag));
+  // Überführung (Paket Ü 2): der alte Weg der Power Hour meldet dem Schatten-Vergleich, was er wirklich eingereiht hat — nur hier (GET meldet nie). Wirft nie.
+  await import('@/lib/heads/takt').then(m => m.powerHourEingereihtMelden(angelegt)).catch(() => {});
   return NextResponse.json({
     ok: true,
     eingereiht: angelegt.length,

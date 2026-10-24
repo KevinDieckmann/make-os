@@ -21,9 +21,9 @@ import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
 import { IMMER_FREIGABE, type Rechteklasse } from '@/lib/werkzeuge/vertrag';
 import type { Kanal } from '@/lib/crm/recht';
 import { LIFECYCLE_WAHL } from '@/lib/crm/lifecycle';
-import { UEBERFUEHRBAR } from './ueberfuehrung';
+import { SYSTEM_SCHRITT_IDS, SYSTEM_SCHRITT_NAME } from './ueberfuehrung';
 import {
-  CRM_ABFRAGE_ARTEN, FELD_KENNUNG, LOOP_ARTEN, PROZESS_GRENZEN, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, VORSCHLAG_ZIELFELDER,
+  CRM_ABFRAGE_ARTEN, FELD_KENNUNG, LOOP_ARTEN, PERSON_TAGE, PROZESS_GRENZEN, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, VORSCHLAG_ZIELFELDER,
   type AgentWer, type Bahn, type Befund, type FallArt, type KiKategorie, type MaskenWert, type ProzessForm,
 } from './definition';
 
@@ -216,6 +216,11 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
   { id: 'ausloeser.hand', name: 'Von Hand', satz: 'Startet, wenn jemand auf „Starten“ klickt.', anbindung: 'Ablauf', form: 'ausloeser', kategorie: 'ausloeser', bahn: 'mensch', rechte: 'lesen', ki: [], feld: 'ausloeser', maske: [] },
   { id: 'ausloeser.loop', name: 'Nach einem Loop', satz: 'Startet nach dem Morgen-Loop, dem Wochen-Loop oder dem Rückblick.', anbindung: 'ZOE', form: 'ausloeser', kategorie: 'ausloeser', bahn: 'system', rechte: 'lesen', ki: [], feld: 'ausloeser',
     maske: [{ id: 'loop', label: 'Loop', typ: 'auswahl', pflicht: true, optionen: LOOP_ARTEN.map(id => ({ id, label: { morgen: 'Morgen-Loop', woche: 'Wochen-Loop', rueckblick: 'Rückblick' }[id] })) }] },
+  // 24.10. (Paket Ü 2): je Person ab Uhrzeit — einmal am Tag je Person des Teams mit Konto, Business-frei ruht er und kommt danach am selben Tag.
+  { id: 'ausloeser.person', name: 'Je Person ab Uhrzeit', satz: 'Startet für jede Person des Teams einmal am Tag ab einer Uhrzeit — Business-frei ruht er und kommt danach am selben Tag.', anbindung: 'Ablauf', form: 'ausloeser', kategorie: 'ausloeser', bahn: 'system', rechte: 'lesen', ki: [], feld: 'ausloeser',
+    maske: [{ id: 'uhrzeit', label: 'Ab Uhrzeit', typ: 'uhrzeit', pflicht: true, vorgabe: '08:00' }, { id: 'bis', label: 'Bis (ohne: bis Mitternacht)', typ: 'uhrzeit' },
+      { id: 'tage', label: 'Tage', typ: 'auswahl', pflicht: true, vorgabe: 'mo-fr', optionen: PERSON_TAGE.map(id => ({ id, label: { 'mo-fr': 'Mo–Fr (Feiertage zählen mit)', werktage: 'Werktage (ohne Feiertage NRW)', taeglich: 'täglich' }[id] })) },
+      { id: 'nachMorgenlauf', label: 'Erst nach dem Morgenlauf', typ: 'ja-nein', vorgabe: false }] },
   { id: 'ausloeser.webhook', name: 'Webhook von außen', satz: 'Eigene Adresse mit eigenem Schlüssel — nimmt nur die Felder des Schemas an, alles ist fremder Text.', anbindung: 'Webhook', form: 'ausloeser', kategorie: 'ausloeser', bahn: 'system', rechte: 'lesen', ki: [], fremd: true, feld: 'ausloeser',
     maske: [{ id: 'felder', label: 'Felder', typ: 'webhook-felder' }, BEDINGUNGEN(), VERKNUEPFUNG] },
 
@@ -386,8 +391,8 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
   //    Der Prozess steuert, wann er läuft (Auslöser, Bedingungen, Anhalten); nur im Prozess, der den System-Ablauf ersetzt (sonst hält der Lauf mit Grund). ──
   { id: 'system.fest', name: 'Fester Schritt', satz: 'Tut genau, was der alte Ablauf im Code tat — dieselbe Regel und dieselben Kennungen (überführter System-Prozess).', anbindung: 'Ablauf', form: 'schritt', kategorie: 'aktion', bahn: 'system',
     rechte: 'intern', ki: [], nurUeberfuehrung: true,
-    schreibweg: 'lib/prozesse/system-schritte-server.ts `systemSchrittAusfuehren` → der Kern des alten Ablaufs (Mahnaufgaben: `mahnAufgabenKern`, Fortschritts-Report: `treppeReportsKern`, Onboarding-Vorschlag: `onboardingVorschlaegeKern`) — nur Business',
-    maske: [{ id: 'schritt', label: 'Was', typ: 'auswahl', pflicht: true, optionen: UEBERFUEHRBAR.map(u => ({ id: u.schritt, label: u.teil })), hilfe: 'Kommt mit der Überführung — die Regel und ihre Stellschrauben bleiben dort, wo sie heute schon stehen.' }] },
+    schreibweg: 'lib/prozesse/system-schritte-server.ts `systemSchrittAusfuehren` → der Kern des alten Ablaufs (Mahnaufgaben: `mahnAufgabenKern`, Fortschritts-Report: `treppeReportsKern`, Onboarding-Vorschlag: `onboardingVorschlaegeKern`, Power Hour: `powerHourKern` je Person des Laufs, Event-Nachfassen: `nachfassLageBild` + `nachfassFollowupsKern`) — nur Business',
+    maske: [{ id: 'schritt', label: 'Was', typ: 'auswahl', pflicht: true, optionen: SYSTEM_SCHRITT_IDS.map(id => ({ id, label: SYSTEM_SCHRITT_NAME[id] })), hilfe: 'Kommt mit der Überführung — die Regel und ihre Stellschrauben bleiben dort, wo sie heute schon stehen.' }] },
 
   // ── Ende ──
   { id: 'ende.ziel', name: 'Ziel erreicht', satz: 'Der Lauf endet erfolgreich.', anbindung: 'Ablauf', form: 'ende', kategorie: 'ende', bahn: 'system', rechte: 'lesen', ki: [], feld: 'ende', maske: [] },

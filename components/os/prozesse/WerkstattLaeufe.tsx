@@ -211,7 +211,7 @@ function DatenListe({ daten }: { daten: Record<string, string> }) {
   );
 }
 
-const WIRKUNG_WORT: Readonly<Record<InhaltZeile['art'], string>> = { aufgabe: 'Aufgabe', vorschlag: 'Vorschlag im Stapel', lauf: 'Teil-Lauf', meldung: 'Glocke', gesendet: 'gesendet', fall: 'Fall' };
+const WIRKUNG_WORT: Readonly<Record<InhaltZeile['art'], string>> = { aufgabe: 'Aufgabe', vorschlag: 'Vorschlag im Stapel', lauf: 'Teil-Lauf', meldung: 'Glocke', gesendet: 'gesendet', fall: 'Fall', auftrag: 'Auftrag an einen Agenten', followup: 'Follow-up' };
 
 /** Ein Knoten im Lauf: Stand, Zeiten, Grund, Eingabe (Fall) und Ausgabe (Wirkungen, live mit den Rechten der Person). */
 function KnotenImLauf({ k, lauf, inhalte, konten, agentName }: { k: K; lauf: LaufAntwort; inhalte: InhalteAntwort | null; konten: ReadonlyMap<string, string>; agentName: LaeufeProps['agentName'] }) {
