@@ -21,14 +21,27 @@ const je = stellschraubenBauen({
   heads: { sales: {}, marketing: {}, event: {}, finanzen: {} }, werte: { 'head.sales.wochenreview.stunde': 16 },
 });
 const mit = (id: string): ProzessDef => ({ ...SYSTEM_PROZESSE.find(p => p.id === id)!, stellschrauben: je[id] });
-const karte = (p: ProzessDef, rechte: Record<string, boolean>) => renderToStaticMarkup(h(StellschraubenKarte, { p, rechte, stand: 's', onGespeichert: () => {} }));
+const karte = (p: ProzessDef, rechte: Record<string, boolean>, offen = true) => renderToStaticMarkup(h(StellschraubenKarte, { p, rechte, stand: 's', onGespeichert: () => {}, offen }));
 
 describe('Abschnitt „Stellschrauben“', () => {
   it('wer darf: Feld, „Speichern“, „Vorgabe“ bei Abweichung, Vorgabe genannt, wo gespeichert; Gruppen aufklappbar (die erste offen)', () => {
     const html = karte(mit('sp-followup'), { wertelisten: true });
-    for (const t of ['Stellschrauben', '4 einstellbar', 'Kadenz je Kreis', 'Kreis A (eng)', '45 Tage', 'Vorgabe: 30 Tage', 'Speichern', 'Vorgabe', 'Gespeichert in: Wertelisten']) expect(html, t).toContain(t);
+    for (const t of ['Stellschrauben', '4 einstellbar', 'Kadenz je Kreis', 'Kreis A (eng)', '45 Tage', 'Vorgabe: 30 Tage', 'Speichern', 'Vorgabe', 'Gespeichert in den Einstellungen der Markttraktion']) expect(html, t).toContain(t);
     expect(html).toContain('aria-label="Kreis A (eng)"');
     expect(html).toContain('aria-expanded="true"');
+  });
+  it('Feinschliff 1: standardmäßig zugeklappt — nur der Kopf mit „n einstellbar“ und der Zahl der Abweichungen; kein Ort als Technik (Datei, Bestand)', () => {
+    const zu = karte(mit('sp-followup'), { wertelisten: true }, false);
+    expect(zu).toContain('Stellschrauben');
+    expect(zu).toContain('4 einstellbar');
+    expect(zu).toContain('aria-expanded="false"');
+    expect(zu).not.toContain('Speichern');
+    expect(zu).not.toContain('Kreis A (eng)');
+    for (const id of Object.keys(je)) {
+      const html = karte(mit(id), { wertelisten: true, prozesse: true, loeschfrist: true, mahntage: true, fulfillment: true, 'puls-schwelle': true });
+      expect(html, id).not.toMatch(/Gespeichert in:|lib\/|\.ts\b|\((crm|prozesse|agenten|markttraktion|rechnungswesen|buchung|fulfillment)[-.a-z]*\)/);
+    }
+    expect(karte(mit('sp-kampagnen'), {})).toContain('Fest im System');
   });
   it('ohne Recht: nur der Wert und der Satz, wer ändern darf — kein Feld, kein Speichern', () => {
     const html = karte(mit('sp-head-takt'), { wertelisten: true, prozesse: false });

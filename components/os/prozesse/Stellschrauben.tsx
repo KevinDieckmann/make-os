@@ -10,9 +10,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SlidersHorizontal, RotateCcw, Check } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Schalter, Klappbar, auswahl as auswahlStil, feld as feldStil } from '../ui';
+import { Karte, Knopf, Chip, Hinweis, Schalter, Klappbar, auswahl as auswahlStil, feld as feldStil } from '../ui';
 import {
-  abweichend, anfrageFuer, darfAendern, aenderbar, eingabeLesen, wertText, WOCHENTAGE,
+  abweichend, anfrageFuer, darfAendern, aenderbar, eingabeLesen, wertText, ortSatz, WOCHENTAGE,
   type Stellschraube, type StellschraubenRechte, type StellschraubeWert,
 } from '@/lib/prozesse/stellschrauben';
 import type { ProzessDef } from '@/lib/prozesse/typen';
@@ -107,17 +107,21 @@ function Feld({ s, darf, stand, onGespeichert }: { s: Stellschraube; darf: boole
         {s.link && <Knopf leise href={s.link.href}>{`${s.link.text} ›`}</Knopf>}
       </div>
       {!darf && aenderbar(s) && s.weg && <p style={{ ...klein, color: C.inkLeise }}>{OHNE_RECHT[s.weg.art] ?? 'Ändern darf, wer die Fachseite bearbeiten darf.'}</p>}
-      <p style={{ ...klein, color: C.inkLeise }}>{`Gespeichert in: ${s.wo}`}</p>
+      <p style={{ ...klein, color: C.inkLeise }}>{ortSatz(s.wo)}</p>
       {meldung && <Hinweis art={meldung.art === 'gut' ? 'gut' : meldung.art === 'konflikt' ? 'achtung' : 'kritisch'} rolle={meldung.art === 'gut' ? 'status' : 'alert'}>{meldung.text}</Hinweis>}
     </li>
   );
 }
 
 /**
- * Der Abschnitt „Stellschrauben“ — je Gruppe aufklappbar (die erste offen). `rechte` = was diese Person je Weg ändern darf (vom Server), `stand` = Stand des
- * Bestands der neuen Stellschrauben (409), `onGespeichert` lädt die Landkarte neu (danach zeigt das Feld den Wert des Servers).
+ * Der Abschnitt „Stellschrauben“ — als Ganzes zugeklappt (Feinschliff 1, 23.10.: in „Automationen & Head“ stehen viele System-Prozesse untereinander, offen
+ * wurde die Seite sehr lang); aufgeklappt je Gruppe aufklappbar (die erste offen). `offen` = aufgeklappt beginnen. `rechte` = was diese Person je Weg ändern darf
+ * (vom Server), `stand` = Stand des Bestands der neuen Stellschrauben (409), `onGespeichert` lädt die Landkarte neu (danach zeigt das Feld den Wert des Servers).
  */
-export function StellschraubenKarte({ p, rechte, stand, onGespeichert }: { p: ProzessDef; rechte: StellschraubenRechte | undefined; stand: string | undefined; onGespeichert: () => Promise<void> | void }) {
+export function StellschraubenKarte({ p, rechte, stand, onGespeichert, offen: offenAnfang = false }: {
+  p: ProzessDef; rechte: StellschraubenRechte | undefined; stand: string | undefined; onGespeichert: () => Promise<void> | void; offen?: boolean;
+}) {
+  const [auf, setAuf] = useState(offenAnfang);
   const gruppen = useMemo(() => {
     const m = new Map<string, Stellschraube[]>();
     for (const s of p.stellschrauben ?? []) { const g = s.gruppe ?? 'Allgemein'; m.set(g, [...(m.get(g) ?? []), s]); }
@@ -127,9 +131,11 @@ export function StellschraubenKarte({ p, rechte, stand, onGespeichert }: { p: Pr
   if (!gruppen.length) return null;
   const einstellbar = (p.stellschrauben ?? []).filter(aenderbar).length;
   const darfIrgendwas = (p.stellschrauben ?? []).some(s => darfAendern(s, rechte));
+  const anders = (p.stellschrauben ?? []).filter(s => aenderbar(s) && abweichend(s)).length;
   return (
     <Karte flach>
-      <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', ...klein }}><SlidersHorizontal size={13} aria-hidden />{einstellbar ? `${einstellbar} einstellbar` : 'nur ansehen'}</span>}>Stellschrauben</Ueberschrift>
+      <Klappbar id={`pz-schrauben-${p.id}`} titel="Stellschrauben" offen={auf} umschalten={() => setAuf(x => !x)} zaehler={anders}
+        rechts={<span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', ...klein }}><SlidersHorizontal size={13} aria-hidden />{einstellbar ? `${einstellbar} einstellbar` : 'nur ansehen'}</span>}>
       <p style={klein}>
         {darfIrgendwas
           ? 'Was dieser Ablauf liest — hier geändert, wirkt es sofort; gespeichert wird nur, was von der Vorgabe abweicht.'
@@ -144,6 +150,7 @@ export function StellschraubenKarte({ p, rechte, stand, onGespeichert }: { p: Pr
           </ul>
         </Klappbar>
       ))}
+      </Klappbar>
     </Karte>
   );
 }

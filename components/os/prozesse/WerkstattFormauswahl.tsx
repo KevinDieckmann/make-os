@@ -54,7 +54,9 @@ export function WerkstattFormauswahl({ form, ohneAusloeser, anhaengen, titel, on
       </div>
       <input ref={eingabe} aria-label="Baustein suchen" placeholder="Baustein suchen … (z. B. Mail, Deal, Warten)" value={suche} onChange={e => setSuche(e.target.value)}
         style={{ ...FLAECHE_STIL.eingabe, width: '100%', minHeight: 44, boxSizing: 'border-box', borderRadius: 12, padding: '10px 14px', color: C.ink, fontSize: 16 }} />
-      <Pillen einzeilig liste={[{ id: 'alle' as const, label: 'Alle' }, ...kategorien.map(k => ({ id: k.id, label: k.titel }))]} aktiv={kat} onWahl={v => setKat(v)} />
+      {/* Feinschliff 1 (23.10.): die Filter brechen um und stehen fest über der Liste (vorher eine wischbare Zeile, die die Liste halb verdeckte — globals.css
+          `.pw-auswahl-leiste > :not(.pw-auswahl-liste)`). */}
+      <div className="pw-auswahl-filter" role="group" aria-label="Kategorien"><Pillen liste={[{ id: 'alle' as const, label: 'Alle' }, ...kategorien.map(k => ({ id: k.id, label: k.titel }))]} aktiv={kat} onWahl={v => setKat(v)} /></div>
       {onMehrfach && !suche.trim() && (kat === 'alle' || kat === 'entscheidung') && (
         <button type="button" className="fassbar pw-auswahl-zeile" onClick={onMehrfach} title="Mehrere Fälle mit je einer Bedingung — gebaut als Rauten nach Regel hintereinander">
           <span aria-hidden style={{ display: 'inline-flex', width: 34, height: 34, flex: '0 0 auto', borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: TIEF.flaeche(WERKSTATT_FORM_FARBE.entscheidung), border: `1px solid ${TIEF.rand(WERKSTATT_FORM_FARBE.entscheidung)}` }}><GitFork width={18} height={18} color={WERKSTATT_FORM_FARBE.entscheidung} /></span>

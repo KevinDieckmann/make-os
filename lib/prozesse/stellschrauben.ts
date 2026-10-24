@@ -28,6 +28,27 @@ export type StellschraubeWeg =
   | { art: 'puls-schwelle' }
   | { art: 'fulfillment'; feld: 'willkommenStunden' | 'nachsorgeTage' };
 export type StellschraubeWegArt = StellschraubeWeg['art'];
+
+/**
+ * Wo der Wert einer Stellschraube liegt — in Worten der Nutzer (Feinschliff 1, 23.10., Sichtprüfung: „Gespeichert in: im Code (lib/crm/kampagnen.ts)“ zeigte
+ * Technik). EINE Abbildung Kennung → Satz; die Bestände dahinter nennt nur der Code (lib/prozesse/stellschrauben-bau.ts liefert die Kennung).
+ */
+export const STELLSCHRAUBE_ORT = {
+  heads: 'Gespeichert in den Einstellungen der Heads',
+  wertelisten: 'Gespeichert in den Einstellungen der Markttraktion',
+  vertriebsplanung: 'Gespeichert in der Planung der Markttraktion',
+  scoring: 'Gespeichert in den Scoring-Einstellungen der Markttraktion',
+  buchung: 'Gespeichert bei den Buchungsseiten des Kalenders',
+  fulfillment: 'Gespeichert in den Einstellungen des Fulfillments',
+  rechnungswesen: 'Gespeichert in den Einstellungen des Rechnungswesens',
+  loeschfristen: 'Gespeichert bei den Löschfristen des Datenschutzes',
+  prozesse: 'Gespeichert in den Einstellungen der Prozesse',
+  gesetz: 'Fest im Gesetz',
+  system: 'Fest im System',
+} as const;
+export type StellschraubeOrt = keyof typeof STELLSCHRAUBE_ORT;
+/** Der Satz zum Ort (unbekannte Kennung: „Fest im System“ — nie eine Kennung auf dem Bildschirm). */
+export const ortSatz = (wo: string): string => (STELLSCHRAUBE_ORT as Record<string, string>)[wo] ?? STELLSCHRAUBE_ORT.system;
 export const STELLSCHRAUBE_WEGE: readonly StellschraubeWegArt[] = ['prozesse', 'wertelisten', 'loeschfrist', 'mahntage', 'puls-schwelle', 'fulfillment'];
 
 export interface Stellschraube {
@@ -44,8 +65,8 @@ export interface Stellschraube {
   vorgabe?: StellschraubeWert;
   einheit?: string;
   min?: number; max?: number;
-  /** Wo der Wert gespeichert ist (Bestand bzw. Ort in Worten). */
-  wo: string;
+  /** Wo der Wert gespeichert ist — eine Kennung; die Oberfläche zeigt den Satz aus `STELLSCHRAUBE_ORT` (nie Dateipfade oder Bestandsnamen). */
+  wo: StellschraubeOrt;
   /** Wie eine Änderung gespeichert wird — fehlt = nur ansehen. */
   weg?: StellschraubeWeg;
   /** Die Maske in der Fachseite, wo es sie schon gibt (nur über WEG gebaut). */
