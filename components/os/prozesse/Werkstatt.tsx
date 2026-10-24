@@ -34,7 +34,7 @@ import { FACH_AGENTEN } from '@/lib/prozesse/agent-schritt';
 import { alleSchritte, phasen, wurzel } from '@/lib/prozesse/fluss';
 import type { AgentWer, Befund, KnotenLage, ProzessDefinition, ProzessForm, ProzessKnoten, ProzessVersion } from '@/lib/prozesse/definition';
 import {
-  werkstattLage, lagenFesthalten, ordnen, zettelFreiLegen, allesAlsKacheln, ortBei, inBahn, bahnSchluessel, knotenMass, WS, type TeamName, type KanteLage,
+  werkstattLage, lagenFesthalten, ordnen, zettelFreiLegen, kachelnFuerAlles, ortBei, inBahn, bahnSchluessel, knotenMass, WS, type TeamName, type KanteLage,
 } from '@/lib/prozesse/werkstatt-lage';
 import {
   anlegen, verbinden, loesen, loeschen, ersetzen, umbenennen as umbenennen_, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
@@ -46,6 +46,7 @@ import { bahnBeimAnhaengen } from '@/lib/prozesse/werkstatt-lage';
 import { laufBefunde } from '@/lib/prozesse/lauf-regeln';
 import { webhookAusloeserVon } from '@/lib/prozesse/webhook';
 import { prozesseAusAdresse, type WerkstattReiterId } from '@/lib/prozesse/adresse';
+import { werkstattZiel } from '@/lib/prozesse/werkstatt-ziel';
 import { testStand } from '@/lib/prozesse/laeufe-ansicht';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
@@ -73,7 +74,6 @@ import { DatumAusloeserKarte } from './WerkstattDatum';
 import { WebhookKarte, type WebhookKurz } from './WerkstattWebhook';
 import { ProbeFallFenster, type FallWert } from './ProbeFall';
 import { useLaeufe } from './laeufe-daten';
-import { zoomStufe } from '../ui/flaeche/stufe';
 import { MobilMaske, MobilSchrittListe } from './MobilBearbeiten';
 import { werkstattMobilAnwenden, werkstattMobilFelder } from '@/lib/prozesse/mobil-felder';
 import { useWerkzeugModus, WerkzeugSlot, WerkzeugFeld, GanzerBildschirmKnopf } from '../werkzeug/rahmen';
@@ -220,14 +220,47 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     if (e === 'alles') flaeche.current?.allesZeigen(); else flaeche.current?.rahmenZeigen(e.phase);
   }, [lage]);
   useEffect(() => { setUebersicht(null); }, [prozessId, versionAnsicht]);
-  /** „Alles zeigen“ (Befund 6): passt der Prozess nur unlesbar ins Bild (`zoomStufe` „fern“), stehen die Phasen als Kacheln da — ein Klick klappt auf. */
+  // Feinschliff 1 (23.10.): ein Link mit Schritt (`?ph=…&s=…`, lib/prozesse/adresse.ts) wählt ihn — das Panel zeigt seine Einstellungen, eine zugeklappte Phase
+  // klappt auf, die Kamera fährt hin. Auch, wenn sich nur die Adresse ändert (kein Neuladen); dieselbe Adresse wirkt einmal.
+  const adresseGezeigt = useRef<string | null>(null);
+  const zeigeAdresse = useRef<string | null>(null);
+  useEffect(() => {
+    const schluessel = `${prozessId}|${adr.ph ?? ''}|${adr.s ?? ''}`;
+    if (!d || !lage || reiter !== 'bauen' || versionAnsicht || adresseGezeigt.current === schluessel) return;
+    adresseGezeigt.current = schluessel;
+    const z = werkstattZiel(d, { ph: adr.ph, s: adr.s }, zuWirksam);
+    if (!z) return;
+    if (z.aufklappen) {
+      setUebersicht(u => { if (!u?.has(z.phase)) return u; const n = new Set(u); n.delete(z.phase); return n.size ? n : null; });
+      if (zu.has(z.phase)) setZu(alt => { const n = new Set(alt); n.delete(z.phase); schreib(lokal(), ZU_MERKER(prozessId), [...n].join(',') || null); return n; });
+    }
+    setKanteWahl(null); setAndockWahl(null);
+    if (z.art === 'schritt') { setAuswahl([z.id]); setRahmenWahl(null); } else { setAuswahl([]); setRahmenWahl(z.id); }
+    // Ein Bild später: dann stehen Seitenfeld und Leisten (Vollbild), und eine aufgeklappte Phase ist in der Lage.
+    if (z.aufklappen) zeigeAdresse.current = z.art === 'schritt' ? z.id : `phase:${z.id}`;
+    else requestAnimationFrame(() => { if (z.art === 'schritt') flaeche.current?.zeige(z.id); else flaeche.current?.rahmenZeigen(z.id); });
+  }, [prozessId, adr.ph, adr.s, d, lage, reiter, versionAnsicht, zu, zuWirksam]);
+  useEffect(() => {
+    const id = zeigeAdresse.current;
+    if (!id || !lage) return;
+    const phase = id.startsWith('phase:') ? id.slice(6) : null;
+    if (phase ? [...lage.knoten.values()].some(k => k.zu?.phaseId === phase) : !lage.knoten.has(id)) return;
+    zeigeAdresse.current = null;
+    requestAnimationFrame(() => { if (phase) flaeche.current?.rahmenZeigen(phase); else flaeche.current?.zeige(id); });
+  }, [lage]);
+  /**
+   * „Alles zeigen“ (Befund 6, Feinschliff 1 vom 23.10.): eingepasst ins freie Feld neben Seitenfeld und Leisten; nur wenn der Prozess dort unter den Mindestmaßstab
+   * fiele, klappen so wenige Phasen wie nötig zu — die Phase der Auswahl bleibt offen (lib/prozesse/werkstatt-lage.ts `kachelnFuerAlles`). Ein Klick klappt auf.
+   */
   const allesZeigen = () => {
     if (!d) return;
     const g = flaeche.current?.groesse() ?? { b: 960, h: 600 };
-    if (allesAlsKacheln(d, g, zoomStufe, { team, zu })) {
-      setUebersicht(new Set(phasen(d).map(p => p.id).filter(id => !zu.has(id))));
+    const behalten = auswahl.length === 1 ? lage?.knoten.get(auswahl[0])?.phaseId ?? null : rahmenWahl;
+    const kacheln = kachelnFuerAlles(d, g, { raender: flaeche.current?.raender(), team, zu, behalten });
+    if (kacheln.size) {
+      setUebersicht(kacheln);
       einpassen.current = 'alles';
-      ansagen('Alles zeigen: die Phasen stehen als Kacheln da — ein Klick klappt eine auf.');
+      ansagen(`Alles zeigen: ${kacheln.size === 1 ? 'eine Phase steht' : `${kacheln.size} Phasen stehen`} als Kachel da — ein Klick klappt auf.`);
       return;
     }
     if (uebersicht) { setUebersicht(null); einpassen.current = 'alles'; return; }

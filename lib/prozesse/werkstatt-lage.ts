@@ -20,6 +20,7 @@ import type { Bahn, ProzessDefinition, ProzessForm, ProzessKnoten, ModelTier } f
 import { kantenVon, phasen, schritteDer, seitenZiele, type Ausgang, type Kante } from './fluss';
 import { katalogEintrag } from './baustein-katalog';
 import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
+import { einpassen, freiesFeld, type Raender } from '@/lib/einpassen';
 
 type K = ProzessKnoten<ProzessForm>;
 export interface Box { x: number; y: number; b: number; h: number }
@@ -503,11 +504,13 @@ export const WERKSTATT_LESBAR = 12 / 15;
  * Die Kamera beim Öffnen (rein; Befund 21.10.: „lesbar beim Öffnen“): alles zeigen, wenn es lesbar passt (höchstens 100 %); sonst lesbar (`WERKSTATT_LESBAR`)
  * und oben links am Anfang des Ablaufs beginnen — „Alles zeigen“ holt den ganzen Prozess.
  */
-export function startKamera(box: Box, buehne: { b: number; h: number }, rand = 32): { s: number; x: number; y: number } {
-  const s = Math.min(1, (buehne.b - 2 * rand) / Math.max(1, box.b), (buehne.h - 2 * rand) / Math.max(1, box.h));
-  if (s >= WERKSTATT_LESBAR) return { s, x: Math.round((buehne.b - box.b * s) / 2 - box.x * s), y: Math.round((buehne.h - box.h * s) / 2 - box.y * s) };
+export function startKamera(box: Box, buehne: { b: number; h: number }, rand = 32, raender?: Raender): { s: number; x: number; y: number } {
+  // Feinschliff 1 (23.10.): im freien Feld neben den schwebenden Leisten (lib/einpassen.ts) — ohne Ränder wie bisher.
+  const f = freiesFeld(buehne, raender);
+  const s = Math.min(1, (f.b - 2 * rand) / Math.max(1, box.b), (f.h - 2 * rand) / Math.max(1, box.h));
+  if (s >= WERKSTATT_LESBAR) return { s, x: Math.round(f.x + (f.b - box.b * s) / 2 - box.x * s), y: Math.round(f.y + (f.h - box.h * s) / 2 - box.y * s) };
   const l = WERKSTATT_LESBAR;
-  return { s: l, x: Math.round(rand - box.x * l), y: Math.round(rand - box.y * l) };
+  return { s: l, x: Math.round(f.x + rand - box.x * l), y: Math.round(f.y + rand - box.y * l) };
 }
 
 // ── Feinschliff 22.10. (Sichtprüfung, research/prozesse/FEINSCHLIFF_WERKSTATT.md) ────────────────────────────────────────────────────────────────
@@ -522,24 +525,28 @@ export function inhaltBox(l: Pick<WerkstattLage, 'knoten' | 'box'>, zettel: read
   const x1 = Math.max(...teile.map(t => t.x + t.b)) + rand, y1 = Math.max(...teile.map(t => t.y + t.h)) + rand;
   return { x: x0, y: y0, b: x1 - x0, h: y1 - y0 };
 }
-/** „Alles zeigen“ (rein, Befund 4): auf den Inhalt einpassen (nicht auf die leeren Bahnränder), höchstens `WERKSTATT_EINPASS_MAX`, mittig. */
-export function einpassKamera(box: Box, buehne: { b: number; h: number }, rand = 32, max = WERKSTATT_EINPASS_MAX): { s: number; x: number; y: number } {
-  const s = Math.max(0.15, Math.min(max, (buehne.b - 2 * rand) / Math.max(1, box.b), (buehne.h - 2 * rand) / Math.max(1, box.h)));
-  return { s, x: Math.round((buehne.b - box.b * s) / 2 - box.x * s), y: Math.round((buehne.h - box.h * s) / 2 - box.y * s) };
+/**
+ * „Alles zeigen“ (rein, Befund 4): auf den Inhalt einpassen (nicht auf die leeren Bahnränder), höchstens `WERKSTATT_EINPASS_MAX`, mittig — seit Feinschliff 1
+ * (23.10.) im freien Feld neben Seitenfeld und schwebenden Leisten (`raender`, EINE Rechnung mit der Landkarte: lib/einpassen.ts `einpassen`).
+ */
+export function einpassKamera(box: Box, buehne: { b: number; h: number }, rand = 32, max = WERKSTATT_EINPASS_MAX, raender?: Raender): { s: number; x: number; y: number } {
+  return einpassen(box, buehne, { raender, rand, min: 0.15, max });
 }
 /**
  * Die Kamera so wenig wie möglich verschieben, dass eine Box ganz zu sehen ist (rein, Befund 2: „neu angehängter Knoten liegt außerhalb des Bildes“). Der Zoom
  * bleibt; schon sichtbar → dieselbe Kamera (gleiches Objekt); größer als das Bild → mittig.
  */
-export function kameraZu(k: { s: number; x: number; y: number }, box: Box, buehne: { b: number; h: number }, rand = 48): { s: number; x: number; y: number } {
-  const lx = box.x * k.s + k.x, ly = box.y * k.s + k.y, rx = lx + box.b * k.s, ry = ly + box.h * k.s;
+export function kameraZu(k: { s: number; x: number; y: number }, box: Box, buehne: { b: number; h: number }, rand = 48, raender?: Raender): { s: number; x: number; y: number } {
+  // Feinschliff 1 (23.10.): „ganz zu sehen“ heißt im freien Feld — nicht unter dem Seitenfeld bzw. einer schwebenden Leiste.
+  const f = freiesFeld(buehne, raender);
+  const lx = box.x * k.s + k.x - f.x, ly = box.y * k.s + k.y - f.y, rx = lx + box.b * k.s, ry = ly + box.h * k.s;
   let dx = 0, dy = 0;
-  if (box.b * k.s + 2 * rand > buehne.b) dx = buehne.b / 2 - (lx + rx) / 2;
+  if (box.b * k.s + 2 * rand > f.b) dx = f.b / 2 - (lx + rx) / 2;
   else if (lx < rand) dx = rand - lx;
-  else if (rx > buehne.b - rand) dx = buehne.b - rand - rx;
-  if (box.h * k.s + 2 * rand > buehne.h) dy = buehne.h / 2 - (ly + ry) / 2;
+  else if (rx > f.b - rand) dx = f.b - rand - rx;
+  if (box.h * k.s + 2 * rand > f.h) dy = f.h / 2 - (ly + ry) / 2;
   else if (ly < rand) dy = rand - ly;
-  else if (ry > buehne.h - rand) dy = buehne.h - rand - ry;
+  else if (ry > f.h - rand) dy = f.h - rand - ry;
   return dx || dy ? { s: k.s, x: Math.round(k.x + dx), y: Math.round(k.y + dy) } : k;
 }
 /**
@@ -649,19 +656,37 @@ export function zettelFreiLegen<D extends Pick<ProzessDefinition, 'knoten' | 'ze
   return { ...d, zettel: neu };
 }
 
-/** Der Zoom, mit dem „Alles zeigen“ diese Lage einpasst (rein). */
-export const einpassZoom = (l: Pick<WerkstattLage, 'knoten' | 'box'>, zettel: readonly { pos: { x: number; y: number; b?: number; h?: number } }[], buehne: { b: number; h: number }): number =>
-  einpassKamera(inhaltBox(l, zettel), buehne).s;
+/** Der Zoom, mit dem „Alles zeigen“ diese Lage einpasst (rein) — im freien Feld neben den schwebenden Leisten (`raender`). */
+export const einpassZoom = (l: Pick<WerkstattLage, 'knoten' | 'box'>, zettel: readonly { pos: { x: number; y: number; b?: number; h?: number } }[], buehne: { b: number; h: number }, raender?: Raender): number =>
+  einpassKamera(inhaltBox(l, zettel), buehne, 32, WERKSTATT_EINPASS_MAX, raender).s;
 /**
- * Befund 6 (Sichtprüfung 22.10.: „Alles zeigen wird unlesbar“): passt der ganze Prozess nur so klein ins Bild, dass die Namen unlesbar wären (Stufe „fern“ der
- * EINEN Regel `zoomStufe` — components/os/ui/flaeche/stufe.ts, der Aufrufer reicht sie herein), zeigt „Alles zeigen“ die Phasen als zugeklappte Kacheln
- * (semantischer Zoom wie auf der Landkarte); ein Klick auf eine Kachel klappt sie auf. Bei nur einer Phase gibt es nichts zuzuklappen. Rein.
+ * Mindestmaßstab für „Alles zeigen“ (Feinschliff 1, 23.10.): darunter wären die Namen (15 px) kleiner als 7,5 px — dann stehen Phasen als Kacheln da. Bewusst
+ * kleiner als beim Öffnen (`WERKSTATT_LESBAR`) und als die Stufe „fern“ der Landkarte: die Übersicht soll den ganzen Prozess zeigen, solange er erkennbar bleibt
+ * (Sichtprüfung 22.10.: „klappt alle Phasen zu“).
  */
-export function allesAlsKacheln(
-  d: Pick<ProzessDefinition, 'knoten' | 'zettel'>, buehne: { b: number; h: number }, stufe: (s: number) => 'fern' | 'mittel' | 'nah',
-  o: { team?: readonly TeamName[]; zu?: ReadonlySet<string> } = {},
-): boolean {
-  const offen = phasen(d).filter(p => !o.zu?.has(p.id));
-  if (offen.length < 2) return false;
-  return stufe(einpassZoom(werkstattLage(d, o), d.zettel ?? [], buehne)) === 'fern';
+export const WERKSTATT_UEBERSICHT_MIN = 0.5;
+/**
+ * Welche Phasen „Alles zeigen“ zuklappt (rein; Befund 6 vom 22.10. „Alles zeigen wird unlesbar“, Feinschliff 1 vom 23.10. „klappt alle Phasen zu“):
+ *   · passt der ganze Prozess lesbar ins freie Feld (`lesbar`, Vorgabe: mindestens `WERKSTATT_UEBERSICHT_MIN`), klappt nichts zu;
+ *   · sonst nur so viele Phasen wie nötig, die breitesten zuerst — die Phase der Auswahl (`behalten`) bleibt offen; reicht auch das nicht, stehen alle (übrigen)
+ *     als Kacheln da. Bei weniger als zwei offenen Phasen gibt es nichts zuzuklappen. Ein Klick auf eine Kachel klappt sie wieder auf.
+ * Zurück kommt die Menge der zuzuklappenden Phasen (leer = alles offen einpassen).
+ */
+export function kachelnFuerAlles(
+  d: Pick<ProzessDefinition, 'knoten' | 'zettel'>, buehne: { b: number; h: number },
+  o: { lesbar?: (s: number) => boolean; raender?: Raender; team?: readonly TeamName[]; zu?: ReadonlySet<string>; behalten?: string | null } = {},
+): Set<string> {
+  const basis = new Set(o.zu ?? []);
+  const lesbar = o.lesbar ?? ((s: number) => s >= WERKSTATT_UEBERSICHT_MIN);
+  const passt = (zu: ReadonlySet<string>) => lesbar(einpassZoom(werkstattLage(d, { team: o.team, zu }), d.zettel ?? [], buehne, o.raender));
+  const offen = phasen(d).filter(p => !basis.has(p.id));
+  if (offen.length < 2 || passt(basis)) return new Set();
+  const breite = new Map(werkstattLage(d, { team: o.team, zu: basis }).rahmen.map(r => [r.id, r.b]));
+  const reihe = offen.filter(p => p.id !== o.behalten).sort((a, b) => (breite.get(b.id) ?? 0) - (breite.get(a.id) ?? 0) || a.id.localeCompare(b.id));
+  const zu = new Set<string>();
+  for (const p of reihe) {
+    zu.add(p.id);
+    if (passt(new Set([...basis, ...zu]))) break;
+  }
+  return zu;
 }
