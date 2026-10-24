@@ -627,7 +627,7 @@ async function wirkungAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Aktion, k
           const { ueberfuehrbarZuSchritt } = await import('./ueberfuehrung');
           if (e.ersetzt !== ueberfuehrbarZuSchritt(a.schritt).sp || modusFuer(e, standVon(await laeufeLesen(kx.h), e.id)) !== 'scharf') return fehlt('ueberfuehrung-fehlt');
           const { systemSchrittAusfuehren } = await import('./system-schritte-server');
-          const r = await systemSchrittAusfuehren(a.schritt, { modus: 'scharf', jetzt: kx.jetzt });
+          const r = await systemSchrittAusfuehren(a.schritt, { modus: 'scharf', jetzt: kx.jetzt, person: l.person });
           if (!r.ok) return fehlt(r.voruebergehend ? 'voruebergehend' : 'dauerhaft', r.voruebergehend ? 'voruebergehend' : 'dauerhaft');
           return { ok: true, wirkung: r.wirkung, anzahl: r.neu, ...(r.neu ? {} : { hinweis: 'schon-erledigt' as const }) };
         }
@@ -977,7 +977,7 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
         return { datei: mitLauf(dd, v.lauf), r: v };
       }, kx.h);
       if (!plan) continue; // inzwischen geändert — neu lesen
-      for (const schritt of festeSchatten) await festenSchrittVergleichen(e, schritt, kx);
+      for (const schritt of festeSchatten) await festenSchrittVergleichen(e, schritt, kx, l0.person);
       letzter = plan.lauf;
       if (plan.pause) { await prozessPausieren(l0.prozessId, 'budget', kx); break; }
       if (!plan.aktion) break;
@@ -1023,12 +1023,12 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
  * Schatten-Vergleich (Paket Ü): der feste Schritt rechnet, was er JETZT täte (schreibt nichts), und meldet sein Wirkungsbild — nur, wenn dieser Prozess den
  * System-Ablauf des Schritts ersetzt und in Phase „Schatten“ steht. Wirft nie (der Lauf geht weiter, der Vergleich fehlt dann für diesen Tag).
  */
-async function festenSchrittVergleichen(e: ProzessEintrag, schritt: SystemSchrittId, kx: MotorKontext): Promise<void> {
+async function festenSchrittVergleichen(e: ProzessEintrag, schritt: SystemSchrittId, kx: MotorKontext, person: string | null): Promise<void> {
   try {
     const [{ ueberfuehrbarZuSchritt }, { systemSchrittAusfuehren }, { vergleichMeldenServer }] = await Promise.all([import('./ueberfuehrung'), import('./system-schritte-server'), import('./ueberfuehrung-server')]);
     const sp = ueberfuehrbarZuSchritt(schritt).sp;
     if (e.ersetzt !== sp || (e.ueberfuehrung?.phase ?? 'schatten') !== 'schatten') return;
-    const r = await systemSchrittAusfuehren(schritt, { modus: 'schatten', jetzt: kx.jetzt });
+    const r = await systemSchrittAusfuehren(schritt, { modus: 'schatten', jetzt: kx.jetzt, person });
     if (r.ok) await vergleichMeldenServer(sp, 'neu', localDay(kx.jetzt), r.bild, kx.h);
   } catch (err) {
     console.error(`[prozesse/ueberfuehrung] Schatten-Vergleich ausgefallen — ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);

@@ -21,8 +21,8 @@ import type { ProzessEintrag } from './definition';
 // ══ Was umziehen kann ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** Ein fester Schritt (Baustein `system.fest`): der Kern eines alten Ablaufs — dieselbe Regel, dieselben Kennungen, derselbe Schreibweg. */
-export type SystemSchrittId = 'mahnaufgaben' | 'treppe-report' | 'fall-vorschlag';
-export const SYSTEM_SCHRITT_IDS = ['mahnaufgaben', 'treppe-report', 'fall-vorschlag'] as const satisfies readonly SystemSchrittId[];
+export type SystemSchrittId = 'mahnaufgaben' | 'treppe-report' | 'fall-vorschlag' | 'power-hour';
+export const SYSTEM_SCHRITT_IDS = ['mahnaufgaben', 'treppe-report', 'fall-vorschlag', 'power-hour'] as const satisfies readonly SystemSchrittId[];
 export const istSystemSchritt = (v: unknown): v is SystemSchrittId => typeof v === 'string' && (SYSTEM_SCHRITT_IDS as readonly string[]).includes(v);
 
 export interface UeberfuehrbarDef {
@@ -45,10 +45,8 @@ export interface UeberfuehrbarDef {
 }
 
 /**
- * Die feste Liste (Reihenfolge „klein und sicher zuerst“). Nicht dabei (Bericht Paket Ü): Power-Hour-Vorbereitung (der alte Weg bereitet je Person „ab Uhrzeit, einmal am Tag,
- * sobald sie nicht Business-frei ist“ vor — der Zeitplan des Motors startet einmal je Slot, „je Person mit Nachholen“ gibt es nicht; gleichwertig ginge es nur mit
- * einem neuen Auslöser) und Event-Nachfassen (der alte Weg schreibt nichts — Kennzahl `besuchWirkung` und die abgeleitete Glocke aus `dankeOffen`; es gibt nichts
- * abzulösen). Von „Übergabe & Onboarding“ zieht nur der automatische Teil um (der Onboarding-Vorschlag des Morgenlaufs) — der Rest ist Klick.
+ * Die feste Liste (Reihenfolge „klein und sicher zuerst“). Seit 24.10. (Paket Ü 2, Entscheidung „Ja, ins Update“) auch die Power-Hour-Vorbereitung — mit dem neuen
+ * Auslöser „je Person ab Uhrzeit“ (lib/prozesse/ausloeser.ts). Von „Übergabe & Onboarding“ ist der automatische Teil (der Onboarding-Vorschlag des Morgenlaufs) der Kern.
  */
 export const UEBERFUEHRBAR: readonly UeberfuehrbarDef[] = [
   {
@@ -71,6 +69,13 @@ export const UEBERFUEHRBAR: readonly UeberfuehrbarDef[] = [
     einstieg: { datei: 'lib/fulfillment/prozesse/server.ts', funktion: 'prozesseMorgenlauf' },
     kennung: 'Marke `onboarding-vorschlag:<mandat>` im Fulfillment-Bestand und der Vorschlag `p:onboarding:<mandat>` (`onboardingVorschlaegeKern`, lib/fulfillment/prozesse/server.ts)',
     bleibt: 'Mandat anlegen, Fall starten, Willkommen und Kickoff (im Fall, per Klick) sowie die Nachsorge bleiben im Code.',
+  },
+  {
+    sp: 'sp-followup', schritt: 'power-hour', teil: 'Power-Hour-Vorbereitung', titel: 'Power-Hour-Vorbereitung (überführt)',
+    satz: 'Je Person des Teams an Arbeitstagen ab der Uhrzeit der Power Hour einmal den Auftrag „Power Hour vorbereiten“ an den Head of Sales — dieselbe Regel (Business-frei, Not-Aus, Pause nach Fehlern) und derselbe Auftrag wie der Takt der Heads.',
+    einstieg: { datei: 'lib/heads/takt.ts', funktion: 'headsFaellig' },
+    kennung: 'Der Auftrag `head-sales · modus:power_hour person:<person>` (`powerHourFaellig`, derselbe Schlüssel der Warteschlange) und der Riegel `power_hour:<person>` im Stand des Head of Sales',
+    bleibt: 'Die übrigen Läufe der Heads (Wochen-, Lead- und Kundenreview, Marketing, Event) und die Power Hour selbst (Karten, Anrufe) bleiben im Code.',
   },
 ];
 const NACH_SP = new Map(UEBERFUEHRBAR.map(u => [u.sp, u]));
@@ -219,8 +224,12 @@ export function slotUrteil(s: VergleichSlot): { gleich: true } | { gleich: false
   return { gleich: false, abweichung: { tag: s.tag, grund: 'anders', kennungen: [...kennungen].slice(0, LETZTE_MAX), ...(felder.size ? { felder: [...felder] } : {}) } };
 }
 
-/** Eine abgeschlossene Gelegenheit in die Zähler (rein). */
+/**
+ * Eine abgeschlossene Gelegenheit in die Zähler (rein). Meldet nur EIN Weg und hat er nichts bewirkt (leeres Bild), war es keine Gelegenheit (24.10.: der alte Weg der
+ * Power Hour meldet nur, wenn er wirklich einreiht — ein Tag, an dem beide nichts tun, zählt nicht).
+ */
 function buchen(v: Vergleich, s: VergleichSlot): Vergleich {
+  if ((!s.alt && s.neu && !s.neu.length) || (!s.neu && s.alt && !s.alt.length)) return v;
   const u = slotUrteil(s);
   if (u.gleich) return { ...v, laeufe: v.laeufe + 1, gleich: v.gleich + 1, gleichLaeufe: v.gleichLaeufe + 1, gleichSeit: v.gleichSeit ?? s.tag };
   const { gleichSeit: _g, ...rest } = v;

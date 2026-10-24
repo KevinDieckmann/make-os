@@ -4,6 +4,7 @@
 //   mahnaufgaben    lib/finanzen/rechnung/server.ts `mahnAufgabenKern` (nur Rechnungen der Business-Gesellschaften) — Aufgabe `mahn-<rechnung>-<stufe>`
 //   treppe-report   lib/crm/treppe-server.ts `treppeReportsKern` (Mandate der Leistungstreppe sind Business) — Vorschlag + Glocke + Marke `report:<mandat>`
 //   fall-vorschlag  lib/fulfillment/prozesse/server.ts `onboardingVorschlaegeKern` (nur Business-Mandate) — Vorschlag „Fall starten“ + Glocke + Marke `onboarding-vorschlag:<mandat>`
+//   power-hour      lib/heads/takt.ts `powerHourKern` (je Person des Laufs, 24.10.) — Auftrag `head-sales · modus:power_hour person:<p>` in die Warteschlange
 // `schatten` rechnet nur (schreibt NICHTS) und liefert das Wirkungsbild für den Vergleich; `scharf` schreibt über den Kern. Die Wirkungsbilder (`mahnBild`,
 // `reportBild`) bauen alter und neuer Weg mit derselben Funktion — nur Kennungen, die Zuständigkeit speichert der Vergleich nur als Fingerabdruck.
 
@@ -22,7 +23,7 @@ export const reportBild = (soll: readonly { mandatId: string; fuer: string }[], 
 export const onboardingBild = (soll: readonly { mandatId: string; fuer: string }[], heute: string): Wirkungsbild[] => soll.map(s => ({ art: 'vorschlag', ziel: `onboarding:${s.mandatId}`, tag: heute, zustaendig: s.fuer }));
 
 /** Einen festen Schritt ausführen (`scharf`) bzw. nur rechnen (`schatten`). Wirft nie — ein nicht lesbarer Bestand ist „vorübergehend“ (der Motor wiederholt). */
-export async function systemSchrittAusfuehren(s: SystemSchrittId, kx: { modus: 'scharf' | 'schatten'; jetzt: Date }): Promise<SystemSchrittErgebnis> {
+export async function systemSchrittAusfuehren(s: SystemSchrittId, kx: { modus: 'scharf' | 'schatten'; jetzt: Date; /** Die Person des Laufs (Auslöser „je Person“). */ person?: string | null }): Promise<SystemSchrittErgebnis> {
   const heute = localDay(kx.jetzt);
   const schreiben = kx.modus === 'scharf';
   try {
@@ -41,6 +42,15 @@ export async function systemSchrittAusfuehren(s: SystemSchrittId, kx: { modus: '
         const [{ onboardingVorschlaegeKern }, { fulfillmentHaushalt }] = await Promise.all([import('@/lib/fulfillment/prozesse/server'), import('@/lib/fulfillment/speicher')]);
         const r = await onboardingVorschlaegeKern(await fulfillmentHaushalt(), heute, { schreiben });
         return { ok: true, bild: onboardingBild(r.soll, heute), neu: r.vorschlaege.length, wirkung: r.vorschlaege.map(id => ({ art: 'vorschlag' as const, id })) };
+      }
+      case 'power-hour': {
+        // Je Person (Auslöser „je Person“): ohne Person kein Auftrag — dauerhaft (der Lauf hält mit Grund, nie ein Rückfall auf den Inhaber).
+        if (!kx.person || kx.person === '[gelöscht]') return { ok: false, voruebergehend: false };
+        const { powerHourKern } = await import('@/lib/heads/takt');
+        const r = await powerHourKern(kx.person, kx.jetzt, { schreiben });
+        // Gesperrt (Not-Aus, Head-Budget, Pause nach Fehlern) bzw. Warteschlange voll: später noch einmal — wie der Takt, der jede Minute wieder fragt.
+        if (r.status === 'gesperrt' || r.status === 'voll') return { ok: false, voruebergehend: true };
+        return { ok: true, bild: r.bild, neu: r.status === 'eingereiht' ? 1 : 0, wirkung: r.auftragId ? [{ art: 'auftrag' as const, id: r.auftragId }] : [] };
       }
     }
   } catch (e) {

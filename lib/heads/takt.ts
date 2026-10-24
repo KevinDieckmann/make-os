@@ -169,6 +169,18 @@ export function powerHourPersonen(team: readonly { id: string }[], konten: reado
   return [haupt.speicher, ...kontenImHaushaltDerInhaber(st).filter(k => k.speicher !== haupt.speicher).map(k => k.speicher)];
 }
 
+/**
+ * Der Auftrag „Power Hour vorbereiten“ für eine Person — EINE Stelle für den Takt der Heads und den festen Schritt der Werkstatt (Paket Ü 2, Kennungs-Brücke): derselbe
+ * Auftrag, derselbe Schlüssel der Warteschlange (`schluesselFuer`) — umgeschaltet mitten am Tag reiht nie doppelt ein.
+ */
+export function powerHourFaellig(person: string): Faellig {
+  const grund = `Power Hour vorbereiten (${person.charAt(0).toUpperCase() + person.slice(1)})`;
+  return { id: `${AGENT_ID.sales}-power_hour-${person}`, grund: `${HEAD_NAME.sales}: ${grund}`, auftrag: { art: 'agent', name: AGENT_ID.sales, auftrag: `modus:power_hour person:${person}`, anlass: `Takt: ${HEAD_NAME.sales} (${grund})` } };
+}
+
+/** Der Teil von „Follow-up & Power Hour“, der in die Werkstatt umziehen kann (lib/prozesse/ueberfuehrung.ts `UEBERFUEHRBAR`). */
+const UEBERFUEHRT_SP = 'sp-followup';
+
 export async function headsFaellig(jetzt: Date): Promise<Faellig[]> {
   const crm = await ladeCrm();
   // Nur Personen mit Konto bekommen eine vorbereitete Power Hour (Team der Instanz, sonst der Haushalt des Inhabers).
@@ -178,13 +190,73 @@ export async function headsFaellig(jetzt: Date): Promise<Faellig[]> {
   const rahmen = await headsRahmen(jetzt, personen);
   // Stellschrauben der festen Prozesse (22.10.): Uhrzeit, Wochentag, an/aus je Modus — nicht lesbar = die Zeiten von vorher.
   const modi = await (await import('@/lib/prozesse/stellschrauben-werte-server')).stellschraubenWerte();
+  // Ablöse-Weiche (Paket Ü 2): arbeitet der überführte Prozess scharf, bereitet ER die Power Hour vor — der Takt der Heads lässt sie aus (die übrigen Modi bleiben).
+  // Nicht lesbar → alter Weg (nie keiner, nie beide).
+  const weg = await (await import('@/lib/prozesse/ueberfuehrung-server')).wegFuer('sp-followup');
   const raus: Faellig[] = [];
   for (const head of ['sales', 'marketing', 'event'] as HeadId[]) {
     if (!(await resolveAgent(AGENT_ID[head])).enabled) continue;
     const s = { ...leererStand(), ...((await loadJson<HeadStand>(standName(head))) ?? {}) };
-    for (const m of faelligeModi(head, jetzt, s, crm.events, personen, rahmen, { altRiegelPerson, modi })) {
-      raus.push({ id: `${AGENT_ID[head]}-${m.modus}${m.person ? `-${m.person}` : ''}`, grund: `${HEAD_NAME[head]}: ${m.grund}`, auftrag: { art: 'agent', name: AGENT_ID[head], auftrag: `modus:${m.modus}${m.person ? ` person:${m.person}` : ''}`, anlass: `Takt: ${HEAD_NAME[head]} (${m.grund})` } });
+    for (const m of faelligeModi(head, jetzt, s, crm.events, head === 'sales' && weg.weg === 'neu' ? [] : personen, rahmen, { altRiegelPerson, modi })) {
+      raus.push(m.modus === 'power_hour' && m.person ? powerHourFaellig(m.person)
+        : { id: `${AGENT_ID[head]}-${m.modus}${m.person ? `-${m.person}` : ''}`, grund: `${HEAD_NAME[head]}: ${m.grund}`, auftrag: { art: 'agent', name: AGENT_ID[head], auftrag: `modus:${m.modus}${m.person ? ` person:${m.person}` : ''}`, anlass: `Takt: ${HEAD_NAME[head]} (${m.grund})` } });
     }
   }
   return raus;
+}
+
+// ══ Power Hour als fester Schritt (24.10., Paket Ü 2 — lib/prozesse/system-schritte-server.ts) ═════════════════════════════════════════════════════════
+
+const POWER_HOUR_AUFTRAG = /^modus:power_hour person:([a-z0-9][a-z0-9_-]{0,63})$/;
+
+/** Wirkungsbild einer vorbereiteten Power Hour (nur Kennungen: Fingerabdruck der Person, Tag) — alter und neuer Weg bauen es mit DIESER Funktion. */
+export async function powerHourBild(person: string, tag: string): Promise<import('@/lib/prozesse/ueberfuehrung').Wirkungsbild> {
+  const { personSchluessel } = await import('@/lib/prozesse/ausloeser');
+  return { art: 'auftrag', ziel: `power_hour:${personSchluessel(person)}`, tag, zustaendig: person };
+}
+
+export type PowerHourStatus = 'eingereiht' | 'schon' | 'nicht-dran' | 'gesperrt' | 'voll';
+/**
+ * Der Kern der Power-Hour-Vorbereitung für EINE Person (der feste Schritt `power-hour`): DIESELBE Regel wie der Takt der Heads (`faelligeModi` mit genau dieser
+ * Person — an/aus und Stunde aus den Stellschrauben, Mo–Fr, Business-frei, Riegel `power_hour:<person>`), danach dieselben Sperren (`sperrenFiltern`: Not-Aus,
+ * Head-Budget, Pause nach Fehlern) und derselbe Auftrag (`powerHourFaellig`). `schreiben` reiht ein; ohne rechnet er nur — und zählt einen Riegel von HEUTE nicht
+ * (das Soll des Tages: hätte der alte Weg heute vorbereitet?).
+ */
+export async function powerHourKern(person: string, jetzt: Date, o: { schreiben: boolean }): Promise<{ status: PowerHourStatus; bild: import('@/lib/prozesse/ueberfuehrung').Wirkungsbild[]; auftragId?: string }> {
+  const tag = localDay(jetzt);
+  if (!(await resolveAgent(AGENT_ID.sales)).enabled) return { status: 'nicht-dran', bild: [] };
+  const kst = await ladeKonten();
+  if (!powerHourPersonen(TEAM, kst.konten, kst.einstellungen).includes(person)) return { status: 'nicht-dran', bild: [] };
+  const altRiegelPerson = hauptInhaber(kst)?.speicher ?? null;
+  const rahmen = await headsRahmen(jetzt, [person]);
+  const modi = await (await import('@/lib/prozesse/stellschrauben-werte-server')).stellschraubenWerte();
+  const s0 = { ...leererStand(), ...((await loadJson<HeadStand>(standName('sales'))) ?? {}) };
+  const schonHeute = liefHeute(s0, `power_hour:${person}`, tag) || (person === altRiegelPerson && liefHeute(s0, 'power_hour', tag));
+  // Im Schatten zählt ein Riegel von heute nicht (sonst sähe der neue Weg „nichts zu tun“, wo der alte heute schon vorbereitet hat).
+  const s = o.schreiben ? s0 : { ...s0, letzte: Object.fromEntries(Object.entries(s0.letzte).filter(([k, v]) => !((k === `power_hour:${person}` || k === 'power_hour') && tagVon(v) === tag))) };
+  const dran = faelligeModi('sales', jetzt, s, [], [person], rahmen, { altRiegelPerson, modi }).some(m => m.modus === 'power_hour' && m.person === person);
+  if (!dran) return { status: o.schreiben && schonHeute ? 'schon' : 'nicht-dran', bild: o.schreiben && schonHeute ? [await powerHourBild(person, tag)] : [] };
+  const f = powerHourFaellig(person);
+  const { sperrenFiltern } = await import('@/lib/zoe/takt');
+  if (!(await sperrenFiltern([f], jetzt)).length) return { status: 'gesperrt', bild: [] };
+  if (!o.schreiben) return { status: 'eingereiht', bild: [await powerHourBild(person, tag)] };
+  const r = await (await import('@/lib/zoe/auftraege')).reihe([f.auftrag], jetzt);
+  if (r.abgelehnt) return { status: 'voll', bild: [] };
+  return { status: r.angelegt.length ? 'eingereiht' : 'schon', bild: [await powerHourBild(person, tag)], ...(r.angelegt[0] ? { auftragId: r.angelegt[0].id } : {}) };
+}
+
+/**
+ * Der alte Weg meldet dem Schatten-Vergleich, was er WIRKLICH eingereiht hat (Paket Ü 2; aus der Takt-Route nach `reihe` — GET schaut nur voraus und meldet nie):
+ * je neu eingereihtem Auftrag „Power Hour vorbereiten“ das Wirkungsbild. Nur, solange der überführte Prozess im Schatten läuft. Wirft nie.
+ */
+export async function powerHourEingereihtMelden(angelegt: readonly { name: string; auftrag?: string; zeit: string }[]): Promise<void> {
+  try {
+    const ph = angelegt.map(a => (a.name === AGENT_ID.sales ? POWER_HOUR_AUFTRAG.exec(a.auftrag ?? '')?.[1] : undefined) ? { person: POWER_HOUR_AUFTRAG.exec(a.auftrag ?? '')![1], tag: localDay(new Date(a.zeit)) } : null).filter((x): x is { person: string; tag: string } => !!x);
+    if (!ph.length) return;
+    const { wegFuer, vergleichMeldenServer } = await import('@/lib/prozesse/ueberfuehrung-server');
+    if (!(await wegFuer(UEBERFUEHRT_SP)).schatten) return;
+    for (const tag of Array.from(new Set(ph.map(x => x.tag)))) await vergleichMeldenServer(UEBERFUEHRT_SP, 'alt', tag, await Promise.all(ph.filter(x => x.tag === tag).map(x => powerHourBild(x.person, tag))));
+  } catch (err) {
+    console.error(`[heads/takt] Schatten-Meldung der Power Hour ausgefallen — ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);
+  }
 }

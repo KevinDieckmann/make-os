@@ -69,7 +69,9 @@ export type SchrittStatus = 'laeuft' | 'wartet' | 'erledigt' | 'uebersprungen' |
 export type LaufAusgang = Ausgang | 'eingetreten';
 
 /** Worauf eine Wirkung zeigt — nur die Kennung. */
-export type WirkungArt = 'aufgabe' | 'vorschlag' | 'lauf' | 'meldung' | 'gesendet';
+export type WirkungArt = 'aufgabe' | 'vorschlag' | 'lauf' | 'meldung' | 'gesendet'
+  /** 24.10. (Paket Ü 2): ein Auftrag in der Warteschlange (fester Schritt „Power Hour vorbereiten“) — Kennung des Auftrags. */
+  | 'auftrag';
 export interface Wirkung { art: WirkungArt; id: string }
 
 /** Feste Gründe (nie Text Dritter, nie Namen) — die Sätze stehen in `GRUND_TEXT`. */

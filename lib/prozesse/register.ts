@@ -218,7 +218,8 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
     zaehler: 'deals',
   },
   {
-    // lib/crm/followup.ts (`faellige` — DIE Fälligkeitsliste), Power Hour je Person (lib/crm/team.ts)
+    // lib/crm/followup.ts (`faellige` — DIE Fälligkeitsliste), Power Hour je Person (lib/crm/team.ts). Überführbar (Paket Ü 2): die Vorbereitung der Power Hour —
+    // Weiche in lib/heads/takt.ts `headsFaellig`, Kern `powerHourKern` (lib/prozesse/ueberfuehrung.ts `UEBERFUEHRBAR`).
     id: 'sp-followup', titel: 'Follow-up & Power Hour', quelle: 'system', band: 'kern', stufe: 'sales',
     steckbrief: { ausloeser: 'Fälligkeit: nächster Schritt, Wiedervorlage, Kadenz je Kreis', eingang: 'Fälligkeitsliste', ergebnis: 'Erledigt mit Ergebnis bzw. neu verschoben', empfaenger: 'Die zuständige Person', eigner: 'Head of Sales' },
     phasen: [

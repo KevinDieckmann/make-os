@@ -74,7 +74,9 @@ export const wertDef = (id: string): WertDef | undefined => NACH_ID.get(id);
 export const AUCH_IN: Readonly<Record<string, readonly string[]>> = {
   'kapa.machbarBis': ['sp-vertriebsplanung'], 'kapa.engBis': ['sp-vertriebsplanung'],
   // Überführung (Paket Ü): dieselbe Regel für jeden überführbaren System-Prozess.
-  'ueberfuehrung.laeufe': ['sp-treppe', 'sp-uebergabe'], 'ueberfuehrung.tage': ['sp-treppe', 'sp-uebergabe'],
+  'ueberfuehrung.laeufe': ['sp-treppe', 'sp-uebergabe', 'sp-followup'], 'ueberfuehrung.tage': ['sp-treppe', 'sp-uebergabe', 'sp-followup'],
+  // Power Hour (24.10., Paket Ü 2): der überführte Teil von „Follow-up & Power Hour“ liest Uhrzeit und an/aus aus DERSELBEN Stellschraube des Head of Sales.
+  'head.sales.power_hour.an': ['sp-followup'], 'head.sales.power_hour.stunde': ['sp-followup'],
 };
 
 export type Werte = Readonly<Record<string, number | boolean>>;

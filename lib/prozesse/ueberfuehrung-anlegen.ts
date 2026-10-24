@@ -43,6 +43,19 @@ export function ueberfuehrungsVorlage(u: UeberfuehrbarDef): ProzessDefinition {
         endKriterium: 'Für jeden neuen Kunden ohne Fall liegt ein Vorschlag „Fall starten“ im Stapel (gestartet wird per Klick).',
         phasen: [{ titel: 'Onboarding', schritte: [S.loop('t', 'Nach dem Morgen-Loop', 'morgen'), S.fest('f', 'Onboarding-Vorschläge legen', 'fall-vorschlag'), S.ziel('e', 'Vorschläge liegen im Stapel')] }],
       });
+    case 'power-hour':
+      // 24.10. (Paket Ü 2): der Auslöser „je Person“ nimmt die Uhrzeit aus DERSELBEN Stellschraube wie der Takt der Heads (`head.sales.power_hour.stunde` — eine
+      // Wahrheit), Mo–Fr wie der Takt (Feiertage zählen mit), bis 22 Uhr und erst nach dem Morgenlauf (wie alle Heads). An/aus prüft der feste Schritt.
+      return prozess({
+        id: 'ue-power-hour', titel: u.titel, bereich: 'sales', fallArt: 'keiner', zettel: zettel(u),
+        beschreibung: u.satz,
+        startKriterium: 'Je Person des Teams an Arbeitstagen ab der Uhrzeit der Power Hour (Stellschraube des Head of Sales), nach dem Morgenlauf — einmal am Tag; Business-frei kommt sie danach.',
+        endKriterium: 'Für jede Person ist die Power Hour des Tages beim Head of Sales in Auftrag (bzw. schon vorbereitet).',
+        phasen: [{ titel: 'Power Hour', schritte: [
+          S.person('t', 'Je Person ab der Uhrzeit der Power Hour', { uhrzeit: '07:00', bis: '22:00', tage: 'mo-fr', nachMorgenlauf: true, stundeAus: 'head.sales.power_hour.stunde' }),
+          S.fest('f', 'Power Hour vorbereiten', 'power-hour'), S.ziel('e', 'Power Hour in Auftrag'),
+        ] }],
+      });
   }
 }
 

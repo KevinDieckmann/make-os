@@ -26,14 +26,15 @@ const karte = (p: ProzessDef, rechte: Record<string, boolean>, offen = true) => 
 describe('Abschnitt „Stellschrauben“', () => {
   it('wer darf: Feld, „Speichern“, „Vorgabe“ bei Abweichung, Vorgabe genannt, wo gespeichert; Gruppen aufklappbar (die erste offen)', () => {
     const html = karte(mit('sp-followup'), { wertelisten: true });
-    for (const t of ['Stellschrauben', '4 einstellbar', 'Kadenz je Kreis', 'Kreis A (eng)', '45 Tage', 'Vorgabe: 30 Tage', 'Speichern', 'Vorgabe', 'Gespeichert in den Einstellungen der Markttraktion']) expect(html, t).toContain(t);
+    // 24.10. (Paket Ü 2): dazu die zwei der Power Hour (Head of Sales — dieselbe Stellschraube) und die zwei der Überführung → 8.
+    for (const t of ['Stellschrauben', '8 einstellbar', 'Kadenz je Kreis', 'Kreis A (eng)', '45 Tage', 'Vorgabe: 30 Tage', 'Speichern', 'Vorgabe', 'Gespeichert in den Einstellungen der Markttraktion']) expect(html, t).toContain(t);
     expect(html).toContain('aria-label="Kreis A (eng)"');
     expect(html).toContain('aria-expanded="true"');
   });
   it('Feinschliff 1: standardmäßig zugeklappt — nur der Kopf mit „n einstellbar“ und der Zahl der Abweichungen; kein Ort als Technik (Datei, Bestand)', () => {
     const zu = karte(mit('sp-followup'), { wertelisten: true }, false);
     expect(zu).toContain('Stellschrauben');
-    expect(zu).toContain('4 einstellbar');
+    expect(zu).toContain('8 einstellbar');
     expect(zu).toContain('aria-expanded="false"');
     expect(zu).not.toContain('Speichern');
     expect(zu).not.toContain('Kreis A (eng)');

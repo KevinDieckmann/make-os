@@ -391,7 +391,7 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
   //    Der Prozess steuert, wann er läuft (Auslöser, Bedingungen, Anhalten); nur im Prozess, der den System-Ablauf ersetzt (sonst hält der Lauf mit Grund). ──
   { id: 'system.fest', name: 'Fester Schritt', satz: 'Tut genau, was der alte Ablauf im Code tat — dieselbe Regel und dieselben Kennungen (überführter System-Prozess).', anbindung: 'Ablauf', form: 'schritt', kategorie: 'aktion', bahn: 'system',
     rechte: 'intern', ki: [], nurUeberfuehrung: true,
-    schreibweg: 'lib/prozesse/system-schritte-server.ts `systemSchrittAusfuehren` → der Kern des alten Ablaufs (Mahnaufgaben: `mahnAufgabenKern`, Fortschritts-Report: `treppeReportsKern`, Onboarding-Vorschlag: `onboardingVorschlaegeKern`) — nur Business',
+    schreibweg: 'lib/prozesse/system-schritte-server.ts `systemSchrittAusfuehren` → der Kern des alten Ablaufs (Mahnaufgaben: `mahnAufgabenKern`, Fortschritts-Report: `treppeReportsKern`, Onboarding-Vorschlag: `onboardingVorschlaegeKern`, Power Hour: `powerHourKern` je Person des Laufs) — nur Business',
     maske: [{ id: 'schritt', label: 'Was', typ: 'auswahl', pflicht: true, optionen: UEBERFUEHRBAR.map(u => ({ id: u.schritt, label: u.teil })), hilfe: 'Kommt mit der Überführung — die Regel und ihre Stellschrauben bleiben dort, wo sie heute schon stehen.' }] },
 
   // ── Ende ──
