@@ -207,7 +207,10 @@ describe('Die Seite — Hub statt Reiterzeile', () => {
     expect(a).toContain('<TraktionsIndex');
     expect(a).toContain('useTraktion()');
     const u = lies('components/os/crm/Ueberblick.tsx');
-    expect(u).not.toMatch(/<Kachel id="traktion"/); // der Index steht nur noch einmal — in der Auswertung
+    // Der volle Index (Säulen, Kennzahlen, Verlauf) steht nur in der Auswertung; oben im Überblick (24.10.) nur die kompakte Kennzahl.
+    expect(u).not.toMatch(/<Kachel id="traktion"/);
+    expect(u).not.toContain('<TraktionsIndex');
+    expect(u).toContain('<TraktionKurz');
     expect(u).toContain('export function useTraktion');
   });
 });
