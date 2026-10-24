@@ -2,17 +2,18 @@
 
 // ─── Markttraktion · Überblick ──────────────────────────────────────────────
 // Oben „Für dich“ und „Zuletzt im Team“, dann neue Leads ohne Schritt, BEAN, Übergaben und was jetzt zu tun ist.
-// Der Traktions-Index (26.09.) steht seit dem Hub (22.10.) unter „Auswertung“ (`TraktionsIndex` unten, components/os/crm/Auswertung.tsx):
-// derselbe Kern wie Business- und Privat-Index — Sales 50 % · Marketing 40 % · Event 10 % (KEMARIS-Konzept, geometrisches Mittel), dazu die
-// Grundlage, die nicht zählt. Jede Kennzahl mit Ampel, den Punkten dahinter (Personen, Deals, Beiträge, Events — je mit Weg dorthin) und
-// Fenster mit Formel, Schwellen, Verlauf. In jeder Welt steht ihr Head, dazwischen das Wochen-Scoreboard. Beide lesen /api/crm/traktion
-// über `useTraktion` — EIN Abruf, eine Form.
+// Der Traktions-Index (26.09.) steht mit allen Details unter „Auswertung“ (`TraktionsIndex` unten, components/os/crm/Auswertung.tsx) und seit 24.10.
+// (Kevin) zusätzlich als kompakte Kennzahl OBEN im Überblick (`TraktionKurz`: Ring, Status, „vorläufig“, die drei Welten; ein Klick führt über
+// `WEG.auswertung()` in die Auswertung). Derselbe Kern wie Business- und Privat-Index — Sales 50 % · Marketing 40 % · Event 10 % (KEMARIS-Konzept,
+// geometrisches Mittel), dazu die Grundlage, die nicht zählt; in der Auswertung jede Kennzahl mit Ampel, den Punkten dahinter und Fenster mit
+// Formel, Schwellen, Verlauf, in jeder Welt ihr Head, dazwischen das Wochen-Scoreboard. Überblick und Auswertung lesen /api/crm/traktion über
+// `useTraktion` — EIN Abruf, eine Form, keine zweite Rechnung.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, LEUCHT, FlussKarte } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Punkt, Ring, LEUCHT, FlussKarte } from '../ui';
 import type { FlussReihe } from '@/lib/fluss/modell';
 import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { useAbgleich } from '@/hooks/useAbgleich';
@@ -20,9 +21,10 @@ import type { Befund } from '@/lib/crm/befunde';
 import type { Traktion, Uebergabe, Welt } from '@/lib/crm/traktion';
 import type { FuerDich, TeamEreignis } from '@/lib/crm/team';
 import { verantwortlich, nameVon } from '@/lib/crm/team';
-import type { IndexErgebnis, SaeulenStand } from '@/lib/kennzahlen/kern';
+import { indexStatus, type IndexErgebnis, type SaeulenStand } from '@/lib/kennzahlen/kern';
 import type { IndexVerlauf } from '@/lib/kennzahlen/speicher';
 import { IndexAnsicht } from '../kennzahlen/IndexAnsicht';
+import { scoreFarbe } from '../business/teile';
 import { WEG } from '@/lib/wege';
 import { Person } from './team';
 import { Scoreboard } from './Scoreboard';
@@ -81,6 +83,10 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
   return (
     <>
       <Flaeche seite="markttraktion-ueberblick">
+          {/* Der Traktions-Index als kompakte Kennzahl (24.10.): dieselbe Antwort wie die Auswertung, ein Klick führt dorthin. */}
+          <Kachel id="traktion-kurz" titel="Traktions-Index" breite={6}>
+            <TraktionKurz d={d} />
+          </Kachel>
           <Kachel id="fuer-dich" titel="Für dich" breite={3}>
           {/* Überblick „Für dich“ (04.10. abends, Muster für jeden Bereich): Umsatz der letzten 3 Monate → heute → Pipeline × Wahrscheinlichkeit
               (FlussKarte, Reihe serverseitig aus /api/crm/traktion), darunter die priorisierten Zeilen aus dem Team-Modell. */}
@@ -164,6 +170,42 @@ export function Ueberblick({ api, zuBereich }: { api: CrmApi; zuBereich: (b: str
           </Kachel>
       </Flaeche>
     </>
+  );
+}
+
+/**
+ * Der Traktions-Index als kompakte Kennzahl im Überblick (24.10., Kevin: „auch oben im Überblick“): Ring mit Zahl und Ampelfarbe, Status
+ * (dasselbe Wort wie überall — `indexStatus`), „vorläufig“, wenn Welten noch ohne Messung sind, und die drei Welten mit ihrem Wert. Ring und
+ * Link führen in die Auswertung (`WEG.auswertung()`), dort stehen Säulen, Kennzahlen und Verlauf. Gerechnet wird nichts: `d.index` und
+ * `d.traktion` sind die Antwort von /api/crm/traktion (`traktionsIndex`/`alsTraktion` — EINE Zahl, auch im Business-Index).
+ */
+export function TraktionKurz({ d, i = 0 }: { d: Pick<TraktionDaten, 'index' | 'traktion'>; i?: number }) {
+  const pi = d.index;
+  const farbe = scoreFarbe(pi.index);
+  const status = indexStatus(pi);
+  const vorlaeufig = d.traktion.vorlaeufig && !status.vorlaeufig;
+  const href = WEG.auswertung();
+  return (
+    <Karte i={i} akzent={farbe}>
+      <div data-traktion-kurz="" style={{ display: 'flex', gap: 'clamp(14px, 3vw, 28px)', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Ring groesse="klein" wert={pi.index != null ? String(pi.index) : undefined} anteil={pi.index != null ? pi.index / 100 : undefined} farbe={farbe}
+          label="Traktion" href={href} hinweis="Traktions-Index in der Auswertung öffnen" />
+        <div style={{ flex: '1 1 260px', minWidth: 0, display: 'grid', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: TYP.body, fontWeight: 700, color: C.ink }}>Traktions-Index</span>
+            <Chip farbe={farbe}>{status.titel}</Chip>
+            {vorlaeufig && <Chip farbe={LEUCHT.achtung}>vorläufig</Chip>}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {d.traktion.welten.map(w => (
+              <Chip key={w.id} farbe={w.score != null ? WELT_FARBE[w.id] : C.inkLeise}>{w.label} {w.score ?? '—'}</Chip>
+            ))}
+          </div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 }}>{d.traktion.hinweis}</div>
+          <Link href={href} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', width: 'fit-content' }}>Auswertung öffnen ›</Link>
+        </div>
+      </div>
+    </Karte>
   );
 }
 
