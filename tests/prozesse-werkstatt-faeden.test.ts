@@ -427,7 +427,8 @@ describe('Panel › Ausgänge, Auslöser ändern, Warten, Rückgängig', () => {
     // Eine Wahl zählt genau einmal; am Auslöser „Auslöser ändern …“ statt eines zweiten in eigener Bahn.
     const fa = lies('components/os/prozesse/WerkstattFormauswahl.tsx');
     expect(fa).toContain('genommen.current');
-    expect(fa).toContain('Auslöser ändern …');
+    expect(fa).toContain('sonderAuswahl(');
+    expect(lies('lib/prozesse/werkstatt-maske.ts')).toContain('Auslöser ändern …');
   });
   it('⌘V-Lage: an der Mausposition in der Bahn der Kopie; liegt dort ein Knoten, rückt die Kopie in freien Platz', () => {
     const { f, b } = kette();

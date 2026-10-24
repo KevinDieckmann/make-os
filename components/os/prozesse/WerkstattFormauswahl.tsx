@@ -15,12 +15,13 @@ import { FARBE as C, TYP, FLAECHE_STIL, TIEF, MIKRO } from '@/lib/make-one/desig
 import { Pillen, SymbolKnopf } from '../ui';
 import { BAUSTEIN_KATALOG, KATALOG_KATEGORIEN, type KatalogEintrag, type KatalogKategorie } from '@/lib/prozesse/baustein-katalog';
 import type { ProzessForm } from '@/lib/prozesse/definition';
-import { formauswahlGruppen, zuletztAus, zuletztMerken, ZULETZT_MERKER } from '@/lib/prozesse/werkstatt-maske';
+import { formauswahlGruppen, sonderAuswahl, zuletztAus, zuletztMerken, ZULETZT_MERKER, type SonderWahl } from '@/lib/prozesse/werkstatt-maske';
 import { WERKSTATT_FORM_FARBE } from '@/lib/prozesse/farben';
 import { symbolVon } from './WerkstattKnoten';
 
 const merkerLesen = (): string[] => { try { return zuletztAus(window.localStorage.getItem(ZULETZT_MERKER)); } catch { return []; } };
 const merkerSchreiben = (l: readonly string[]) => { try { window.localStorage.setItem(ZULETZT_MERKER, JSON.stringify(l)); } catch { /* privates Fenster */ } };
+const SONDER_SYMBOL: Readonly<Record<SonderWahl, typeof Zap>> = { 'ausloeser-wechseln': Zap, 'ausloeser-neu': Plus, mehrfach: GitFork };
 
 export function WerkstattFormauswahl({ form, ohneAusloeser, anhaengen, titel, onWahl, onZu, onMehrfach, nurAusloeser, onAusloeser }: {
   form?: ProzessForm; ohneAusloeser?: boolean; /** An einen Knoten anhängen — Auslöser stehen dann hinten. */ anhaengen?: boolean; titel: string;
@@ -43,6 +44,8 @@ export function WerkstattFormauswahl({ form, ohneAusloeser, anhaengen, titel, on
   useEffect(() => { setZuletzt(merkerLesen()); eingabe.current?.focus(); }, []);
   const gruppen = useMemo(() => formauswahlGruppen(BAUSTEIN_KATALOG, { suche, form, ohneAusloeser: ohneAusloeser && !nurAusloeser, anhaengen: anhaengen && !nurAusloeser, kategorie: nurAusloeser ? 'ausloeser' : kat, zuletzt }), [suche, form, ohneAusloeser, anhaengen, kat, zuletzt, nurAusloeser]);
   const flach = useMemo(() => gruppen.flatMap(g => g.eintraege.map(e => ({ e, g: g.id }))), [gruppen]);
+  const sonder = useMemo(() => sonderAuswahl({ suche, kategorie: nurAusloeser ? 'ausloeser' : kat, mehrfach: !!onMehrfach, ausloeser: !!onAusloeser }), [suche, kat, nurAusloeser, onMehrfach, onAusloeser]);
+  const sonderNehmen = (id: SonderWahl) => { if (id === 'mehrfach') onMehrfach?.(); else onAusloeser?.(id === 'ausloeser-wechseln' ? 'wechseln' : 'neu'); };
   useEffect(() => { setI(0); }, [suche, kat]);
   useEffect(() => { liste.current?.querySelector(`[data-wahl="${i}"]`)?.scrollIntoView({ block: 'nearest' }); }, [i]);
   const nehmen = (e: KatalogEintrag) => { if (genommen.current) return; genommen.current = true; merkerSchreiben(zuletztMerken(zuletzt, e.id)); onWahl(e); };
@@ -51,6 +54,8 @@ export function WerkstattFormauswahl({ form, ohneAusloeser, anhaengen, titel, on
     else if (e.key === 'ArrowDown') { e.preventDefault(); setI(x => Math.min(flach.length - 1, x + 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setI(x => Math.max(0, x - 1)); }
     else if (e.key === 'Enter' && flach[i]) { e.preventDefault(); nehmen(flach[i].e); }
+    // Findet die Suche nur eine Bau-Hilfe (z. B. „mehrfach“), nimmt Enter sie.
+    else if (e.key === 'Enter' && !flach.length && sonder.length) { e.preventDefault(); sonderNehmen(sonder[0].id); }
   };
   const kategorien = KATALOG_KATEGORIEN.filter(k => !(ohneAusloeser && k.id === 'ausloeser')).sort((a, b) => (anhaengen ? Number(a.id === 'ausloeser') - Number(b.id === 'ausloeser') : 0));
   let nr = -1;
@@ -65,33 +70,20 @@ export function WerkstattFormauswahl({ form, ohneAusloeser, anhaengen, titel, on
       {/* Feinschliff 1 (23.10.): die Filter brechen um und stehen fest über der Liste (vorher eine wischbare Zeile, die die Liste halb verdeckte — globals.css
           `.pw-auswahl-leiste > :not(.pw-auswahl-liste)`). */}
       {!nurAusloeser && <div className="pw-auswahl-filter" role="group" aria-label="Kategorien"><Pillen liste={[{ id: 'alle' as const, label: 'Alle' }, ...kategorien.map(k => ({ id: k.id, label: k.titel }))]} aktiv={kat} onWahl={v => setKat(v)} /></div>}
-      {onAusloeser && !suche.trim() && (
-        <>
-          <button type="button" className="fassbar pw-auswahl-zeile" onClick={() => onAusloeser('wechseln')} title="Den Typ dieses Auslösers wechseln — kein zweiter Auslöser">
-            <span aria-hidden style={{ display: 'inline-flex', width: 34, height: 34, flex: '0 0 auto', borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: TIEF.flaeche(WERKSTATT_FORM_FARBE.ausloeser), border: `1px solid ${TIEF.rand(WERKSTATT_FORM_FARBE.ausloeser)}` }}><Zap width={18} height={18} color={WERKSTATT_FORM_FARBE.ausloeser} /></span>
+      {/* Bau-Hilfen (Auslöser ändern/hinzufügen, Mehrfach-Entscheidung) — Bau-Test 2 (24.10.): auch die Suche findet sie („mehrfach“, „Fälle“, „Verzweigung“). */}
+      {sonder.map(x => {
+        const S = SONDER_SYMBOL[x.id];
+        const ton = WERKSTATT_FORM_FARBE[x.kategorie === 'ausloeser' ? 'ausloeser' : 'entscheidung'];
+        return (
+          <button key={x.id} type="button" className="fassbar pw-auswahl-zeile" onClick={() => sonderNehmen(x.id)} title={x.satz}>
+            <span aria-hidden style={{ display: 'inline-flex', width: 34, height: 34, flex: '0 0 auto', borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: TIEF.flaeche(ton), border: `1px solid ${TIEF.rand(ton)}` }}><S width={18} height={18} color={ton} /></span>
             <span style={{ minWidth: 0, display: 'grid', gap: 2, textAlign: 'left' }}>
-              <span style={{ fontSize: TYP.body, color: C.ink, fontWeight: 600 }}>Auslöser ändern …</span>
-              <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.35 }}>Von Hand, Ereignis, Zeitplan, je Person ab Uhrzeit, Webhook — der Ablauf dahinter bleibt.</span>
+              <span style={{ fontSize: TYP.body, color: C.ink, fontWeight: 600 }}>{x.name}</span>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.35 }}>{x.satz}</span>
             </span>
           </button>
-          <button type="button" className="fassbar pw-auswahl-zeile" onClick={() => onAusloeser('neu')} title="Einen zweiten Auslöser dazu — er führt in den ersten Schritt">
-            <span aria-hidden style={{ display: 'inline-flex', width: 34, height: 34, flex: '0 0 auto', borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: TIEF.flaeche(WERKSTATT_FORM_FARBE.ausloeser), border: `1px solid ${TIEF.rand(WERKSTATT_FORM_FARBE.ausloeser)}` }}><Plus width={18} height={18} color={WERKSTATT_FORM_FARBE.ausloeser} /></span>
-            <span style={{ minWidth: 0, display: 'grid', gap: 2, textAlign: 'left' }}>
-              <span style={{ fontSize: TYP.body, color: C.ink, fontWeight: 600 }}>Weiteren Auslöser hinzufügen …</span>
-              <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.35 }}>Ein zweiter Start — beide führen in den ersten Schritt.</span>
-            </span>
-          </button>
-        </>
-      )}
-      {onMehrfach && !suche.trim() && (kat === 'alle' || kat === 'entscheidung') && (
-        <button type="button" className="fassbar pw-auswahl-zeile" onClick={onMehrfach} title="Mehrere Fälle mit je einer Bedingung — gebaut als Rauten nach Regel hintereinander">
-          <span aria-hidden style={{ display: 'inline-flex', width: 34, height: 34, flex: '0 0 auto', borderRadius: 10, alignItems: 'center', justifyContent: 'center', background: TIEF.flaeche(WERKSTATT_FORM_FARBE.entscheidung), border: `1px solid ${TIEF.rand(WERKSTATT_FORM_FARBE.entscheidung)}` }}><GitFork width={18} height={18} color={WERKSTATT_FORM_FARBE.entscheidung} /></span>
-          <span style={{ minWidth: 0, display: 'grid', gap: 2, textAlign: 'left' }}>
-            <span style={{ fontSize: TYP.body, color: C.ink, fontWeight: 600 }}>Mehrfach-Entscheidung …</span>
-            <span style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.35 }}>Mehrere Fälle, der erste passende gewinnt — wird zu Rauten nach Regel.</span>
-          </span>
-        </button>
-      )}
+        );
+      })}
       <div ref={liste} role="listbox" aria-label="Bausteine" className="pw-auswahl-liste">
         {gruppen.map(g => (
           <section key={g.id} aria-label={g.titel} style={{ display: 'grid', gap: 2 }}>
@@ -116,7 +108,7 @@ export function WerkstattFormauswahl({ form, ohneAusloeser, anhaengen, titel, on
             })}
           </section>
         ))}
-        {!flach.length && <p style={{ fontSize: TYP.bedien, color: C.inkDim, padding: 8, margin: 0 }}>Nichts gefunden — anders suchen.</p>}
+        {!flach.length && !sonder.length && <p style={{ fontSize: TYP.bedien, color: C.inkDim, padding: 8, margin: 0 }}>Nichts gefunden — anders suchen.</p>}
       </div>
     </aside>
   );

@@ -88,7 +88,9 @@ describe('Punkt 15 · Mehrfach-Entscheidung — eine Kaskade aus Rauten nach Reg
     if (!k.ok) expect(k.grund).toMatch(/Kreis/);
   });
   it('die Oberfläche: Bau-Hilfe in der Knoten-Auswahl, ein eigenes Fenster', () => {
-    expect(lies('components/os/prozesse/WerkstattFormauswahl.tsx')).toContain('Mehrfach-Entscheidung …');
+    // Runde 3 (24.10.): die Bau-Hilfen stehen als Daten in lib/prozesse/werkstatt-maske.ts (`SONDER_AUSWAHL`) — auch die Suche findet sie.
+    expect(lies('components/os/prozesse/WerkstattFormauswahl.tsx')).toContain('sonderAuswahl(');
+    expect(lies('lib/prozesse/werkstatt-maske.ts')).toContain('Mehrfach-Entscheidung …');
     expect(lies('components/os/prozesse/Werkstatt.tsx')).toContain('mehrfachEntscheidung(f, { nach: mehrfach, faelle, sonst');
     // Kopieren zwischen Prozessen läuft über den Browser-Speicher (nie über den Server).
     expect(lies('components/os/prozesse/Werkstatt.tsx')).toContain('ablageFuerSpeicher(a, { quelle: prozessId, jetzt: am })');

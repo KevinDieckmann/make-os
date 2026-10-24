@@ -15,7 +15,8 @@ import {
   type ModellWahl, type ModelTier, type ProzessForm, type ProzessKnoten, type RautenRegel, type SchleifeRegel, type TeilprozessAufruf, type VertragFeld,
   type WartenRegel, type WebhookFeld,
 } from './definition';
-import { katalogEintrag, maskeSaeubern, maskeVorgaben, type KatalogEintrag, type MaskenKontext } from './baustein-katalog';
+import { katalogEintrag, maskeSaeubern, maskeVorgaben, type KatalogEintrag, type KatalogKategorie, type MaskenKontext } from './baustein-katalog';
+import { suchPasst } from '@/lib/text/such-norm';
 import { modellSchluessel, stufeVorgabe, type ModellOption } from './modell-wahl';
 import { istWebRecherche, oeffentlichModus } from './agent-schritt';
 import { DATUMS_FELDER, LOOP_NAME } from './ausloeser';
@@ -208,10 +209,60 @@ export function maskeBefunde(k: K, kx: MaskenKontext = {}): Befund[] {
   return e && !e.feld ? maskeSaeubern(e, k.katalog?.werte, kx, k.id).befunde : [];
 }
 
-/** Die Formauswahl (Punkt 17): Bausteine einer Form zuerst, dann der Rest — gefiltert nach Suchtext (Name, Satz, Anbindung). Auslöser nur am Anfang. */
+// ── Suche der Knoten-Auswahl (Bau-Test 2, 24.10.: „mehrfach“ fand die Mehrfach-Entscheidung nicht) ─────────────────────────────────────────────────────
+
+/**
+ * Stichwörter je Baustein — Wörter, unter denen man ihn sucht, ohne seinen Namen zu kennen (Kennung des Katalogs → Wörter). Gesucht wird über Name, Satz,
+ * Anbindung, Form und diese Wörter (`suchPasst` — eine Regel für alle Suchen: Umlaute, Groß/klein, Wortteile). Nur Suchhilfe, nie gespeichert.
+ */
+export const BAUSTEIN_STICHWOERTER: Readonly<Record<string, readonly string[]>> = {
+  'ausloeser.ereignis': ['Trigger', 'Start', 'wenn etwas passiert'], 'ausloeser.zeitplan': ['Trigger', 'Start', 'täglich', 'wöchentlich', 'monatlich', 'regelmäßig', 'Cron'],
+  'ausloeser.datum': ['Trigger', 'Start', 'Frist', 'Stichtag', 'Geburtstag'], 'ausloeser.hand': ['Trigger', 'Start', 'manuell', 'Knopf'],
+  'ausloeser.loop': ['Trigger', 'Start'], 'ausloeser.person': ['Trigger', 'Start', 'Uhrzeit', 'täglich'], 'ausloeser.webhook': ['Trigger', 'Start', 'API', 'HTTP', 'extern'],
+  'aufgabe.anlegen': ['Task', 'To-do', 'Todo'], 'aufgabe.an-zoe': ['KI', 'Assistent', 'Aufgabe'],
+  'inbox.mail-entwurf': ['E-Mail', 'Email', 'Nachricht', 'schreiben', 'senden'], 'whatsapp.entwurf': ['Nachricht', 'Chat', 'Messenger', 'senden'],
+  'kalender.block': ['Termin', 'Zeit blocken', 'Fokus'], 'kalender.einladung': ['Meeting', 'Kalender', 'einladen'],
+  'crm.abfragen': ['Liste', 'Filter', 'suchen', 'Leads', 'Deals', 'Daten holen'], 'crm.outreach-aufgabe': ['Ansprache', 'Akquise', 'anrufen'],
+  'crm.kontakt-notiz': ['Kommentar', 'Vermerk'], 'crm.kontakt-pflegen': ['Stammdaten', 'aktualisieren', 'ändern'], 'crm.firma-akte': ['Firma', 'Daten holen'],
+  'crm.deal-anlegen': ['Chance', 'Opportunity', 'Verkauf'], 'crm.deal-stufe': ['Pipeline', 'Phase', 'Stufe'], 'crm.lead-qualifizieren': ['SQL', 'MQL', 'Scoring'],
+  'crm.followup': ['Nachfassen', 'Wiedervorlage'], 'crm.uebergeben': ['Zuständig', 'abgeben', 'Team'],
+  'angebot.entwurf': ['Offerte', 'Kostenvoranschlag'], 'angebot.stellen': ['Offerte', 'versenden'], 'rechnung.erfassen': ['Faktura', 'abrechnen'],
+  'glocke.melden': ['Benachrichtigung', 'Meldung', 'Hinweis'], 'telegram.hinweis': ['Benachrichtigung', 'Push', 'Nachricht'], 'loeschen.papierkorb': ['löschen', 'entfernen'],
+  'erinnerung.runde': ['Nachfassen', 'Wiederholung', 'Runde'],
+  'entscheidung.mensch': ['wenn', 'Verzweigung', 'Frage', 'ja nein'], 'entscheidung.regel': ['wenn', 'Bedingung', 'Verzweigung', 'Filter', 'if', 'ja nein'],
+  'entscheidung.score': ['wenn', 'Verzweigung', 'Lead-Score', 'Temperatur'], 'entscheidung.modell': ['wenn', 'Verzweigung', 'KI'],
+  'freigabe.stapel': ['Genehmigung', 'Approval', 'prüfen', 'Stapel'],
+  'warten.dauer': ['Pause', 'Verzögerung', 'Delay', 'Tage', 'Stunden'], 'warten.datum': ['Pause', 'Frist', 'Termin'], 'warten.ereignis': ['Pause', 'Antwort', 'bis etwas passiert'],
+  'agent.zoe': ['KI', 'Assistent'], 'agent.head': ['KI'], 'agent.skill': ['KI', 'Fähigkeit'], 'agent.research': ['KI', 'Recherche', 'Web'],
+  'teilprozess.aufruf': ['Unterprozess', 'Subprozess', 'Prozess aufrufen'], 'teilprozess.starten': ['Unterprozess', 'Teilprozess', 'anderer Prozess'],
+  'lauf.erneut-ab': ['zurück', 'wiederholen', 'Schleife'], 'schleife.je-eintrag': ['Loop', 'für jeden', 'je Eintrag', 'Wiederholung', 'Liste'],
+  'crm.entwurf-text': ['LinkedIn', 'Nachricht', 'Anruf', 'Leitfaden'], 'crm.karte-ergaenzen': ['Akte', 'anreichern'], 'crm.lead-parken': ['ruhen', 'später', 'Wiedervorlage'],
+  'crm.deal-vorschlagen': ['Chance'], 'crm.deal-schritt': ['Next Step'], 'crm.mandat-anlegen': ['Kunde', 'Auftrag'],
+  'fulfillment.fall-starten': ['Kunde', 'Paket'], 'event.gaeste': ['Event', 'Einladung'], 'crm.kampagnen-ergebnis': ['Kampagne'], 'crm.anfrage-anlegen': ['Lead', 'Eingang'],
+  'ende.ziel': ['Ende', 'Stopp', 'Erfolg', 'fertig'], 'ende.abbruch': ['Ende', 'Stopp', 'abbrechen'], 'ende.uebergabe': ['Ende', 'anderer Prozess'],
+};
+/** Worüber ein Baustein gefunden wird (rein): Name, Satz, Anbindung, Form, Stichwörter. */
+export const suchFelderVon = (e: Pick<KatalogEintrag, 'id' | 'name' | 'satz' | 'anbindung' | 'form'>): string[] =>
+  [e.name, e.satz, e.anbindung, formWort(e.form), ...(BAUSTEIN_STICHWOERTER[e.id] ?? [])];
+
+/** Die Bau-Hilfen über der Liste (keine Bausteine des Katalogs): Auslöser ändern bzw. hinzufügen, Mehrfach-Entscheidung — auch sie findet die Suche. */
+export type SonderWahl = 'ausloeser-wechseln' | 'ausloeser-neu' | 'mehrfach';
+export interface SonderEintrag { id: SonderWahl; name: string; satz: string; kategorie: KatalogKategorie; stichwoerter: readonly string[] }
+export const SONDER_AUSWAHL: readonly SonderEintrag[] = [
+  { id: 'ausloeser-wechseln', name: 'Auslöser ändern …', satz: 'Von Hand, Ereignis, Zeitplan, je Person ab Uhrzeit, Webhook — der Ablauf dahinter bleibt.', kategorie: 'ausloeser', stichwoerter: ['Trigger', 'Start', 'wechseln', 'Typ'] },
+  { id: 'ausloeser-neu', name: 'Weiteren Auslöser hinzufügen …', satz: 'Ein zweiter Start — beide führen in den ersten Schritt.', kategorie: 'ausloeser', stichwoerter: ['Trigger', 'Start', 'zweiter'] },
+  { id: 'mehrfach', name: 'Mehrfach-Entscheidung …', satz: 'Mehrere Fälle, der erste passende gewinnt — wird zu Rauten nach Regel.', kategorie: 'entscheidung', stichwoerter: ['mehrfach', 'mehrere Fälle', 'Verzweigung', 'Switch', 'wenn', 'Raute'] },
+];
+/** Welche Bau-Hilfen die Auswahl zeigt (rein): nur, wo es sie gibt (`mehrfach`, `ausloeser`), passend zur Kategorie und zur Suche (dieselbe Regel wie für Bausteine). */
+export function sonderAuswahl(o: { suche?: string; kategorie?: string; mehrfach?: boolean; ausloeser?: boolean }): SonderEintrag[] {
+  return SONDER_AUSWAHL.filter(x => (x.id === 'mehrfach' ? !!o.mehrfach : !!o.ausloeser)
+    && (!o.kategorie || o.kategorie === 'alle' || o.kategorie === x.kategorie)
+    && suchPasst([x.name, x.satz, ...x.stichwoerter], o.suche));
+}
+
+/** Die Formauswahl (Punkt 17): Bausteine einer Form zuerst, dann der Rest — gefiltert nach Suchtext (`suchFelderVon`). Auslöser nur am Anfang. */
 export function formauswahl(katalog: readonly KatalogEintrag[], o: { suche?: string; form?: ProzessForm; ohneAusloeser?: boolean; anhaengen?: boolean } = {}): KatalogEintrag[] {
-  const q = (o.suche ?? '').normalize('NFC').trim().toLowerCase();
-  const passt = (e: KatalogEintrag) => !q || `${e.name} ${e.satz} ${e.anbindung}`.normalize('NFC').toLowerCase().includes(q);
+  const passt = (e: KatalogEintrag) => suchPasst(suchFelderVon(e), o.suche);
   // Feinschliff 22.10. (Befund 1): beim Anhängen an einen Knoten stehen Aktionen und Entscheidungen vorn, Auslöser (nur am Anfang sinnvoll) ganz hinten.
   const rang = (e: KatalogEintrag) => (o.anhaengen && e.form === 'ausloeser' ? 1 : 0);
   // Feste Schritte (Paket Ü) kommen nur mit „In die Werkstatt überführen“ — nie aus der Auswahl.
@@ -244,7 +295,7 @@ export function zuletztAus(roh: string | null): string[] {
 
 /**
  * Die Knoten-Auswahl in Gruppen (rein): „Zuletzt benutzt“ (nur ohne Suche), „Auslöser“ (vorn bzw. — beim Anhängen — ganz hinten), „Daten“, dann je Anbindung
- * (Ablauf, Aufgabe, CRM, Inbox …). Gefiltert wie `formauswahl` (Suche über Name, Satz, Anbindung; Kategorie); innerhalb einer Gruppe stehen Bausteine derselben
+ * (Ablauf, Aufgabe, CRM, Inbox …). Gefiltert wie `formauswahl` (Suche über Name, Satz, Anbindung, Form, Stichwörter; Kategorie); innerhalb einer Gruppe stehen Bausteine derselben
  * Form wie der Ausgangsknoten vorn. Leere Gruppen fallen weg.
  */
 export function formauswahlGruppen(katalog: readonly KatalogEintrag[], o: { suche?: string; form?: ProzessForm; ohneAusloeser?: boolean; anhaengen?: boolean; kategorie?: string; zuletzt?: readonly string[] } = {}): AuswahlGruppe[] {
