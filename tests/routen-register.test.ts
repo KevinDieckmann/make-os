@@ -36,6 +36,8 @@ const SCHREIBEN = ['updateJson', 'saveJson', 'updateGeschuetzt', 'updateGeschuet
  * zweite, bewusste Änderung. Öffentlich laut middleware.ts: Anmeldung, Buchung, Google-Meldewege, CSP-Meldeweg.
  */
 const OFFEN_ERLAUBT: Record<string, Methode[]> = {
+  // Innovations-Check (24.10.): die öffentliche Strecke — nur POST, die Seite /check ist kein API-Weg.
+  'check': ['POST'],
   'abmelden/[token]': ['GET', 'POST'],
   'konto/status': ['GET'], 'konto/anmelden': ['POST'], 'konto/einrichten': ['POST'], 'konto/beitreten': ['POST'],
   'buchung/[slug]': ['GET', 'POST'], 'buchung/[slug]/status': ['POST'],

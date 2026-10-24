@@ -302,6 +302,13 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('inbox-uebergaben', await uebergabenAufraeumen(new Date(), stichtag('mail-spiegel', f['mail-spiegel'], heute)));
   });
 
+  // 11b2 · Innovations-Check der Website (24.10.): Sitzungen ohne Kontaktdaten nach 30 Tagen, mit Kontaktdaten nach 24 Monaten ohne Änderung
+  //        (feste Fristen in lib/check/fristen.ts — sie stehen so im Hinweis der Seite). Ohne Bestand: nichts.
+  await schritt('check-sitzungen', async () => {
+    const { checkFristLauf } = await import('@/lib/check/speicher');
+    zaehle('check-sitzungen', await checkFristLauf(new Date()));
+  });
+
   // 11c · WhatsApp (07.10.): Nachrichten der Business-Nummer vor der Frist (Vorgabe 7 Jahre, § 257 HGB) weg, ihre Dateien mit; Medien vor der
   //       Medien-Frist (Vorgabe 90 Tage) — die Nachricht bleibt („abgelaufen“). Ohne Spiegel: nichts.
   await schritt('whatsapp', async () => {

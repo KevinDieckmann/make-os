@@ -1,0 +1,231 @@
+{
+ "hinweis": "Einstellungen der Website makeinnovation.de (Markenhandbuch 4.0, Bauplan 24.10.2026). Inhalte der Angebote stehen in inhalt.json. Werte in [[KEVIN: …]] sind offen und blockieren die Freigabe (pruefen.mjs).",
+ "domain": "makeinnovation.de",
+ "check": "/check",
+ "termin": {
+  "hinweis": "Buchungsseite aus MAKE OS (Kalender › Buchungsseiten, Form /buchen/<name>-<24 Hex>). Solange leer: vorbereitete Mail an kontakt.mail.",
+  "link": ""
+ },
+ "kontakt": {
+  "mail": "kevin@makeinnovation.de",
+  "telefon": "",
+  "adresse": [
+   "Kurfürstendamm 96",
+   "10709 Berlin"
+  ]
+ },
+ "anbieter_aktiv": "kdv",
+ "anbieter_hinweis": "Bis 08.11.2026 KD Ventures UG, ab 09.11.2026 MAKE Innovation GmbH: anbieter_aktiv auf \"make\" stellen und node makeinnovation/bauen.mjs ausführen.",
+ "anbieter": {
+  "kdv": {
+   "name": "KD Ventures UG (haftungsbeschränkt)",
+   "adresse": [
+    "Kurfürstendamm 96",
+    "10709 Berlin"
+   ],
+   "vertreten": "Kevin Dieckmann",
+   "register": "[[KEVIN: Registergericht und HRB-Nummer der KD Ventures UG]]",
+   "ustid": ""
+  },
+  "make": {
+   "name": "MAKE Innovation GmbH",
+   "adresse": [
+    "[[KEVIN: Straße und Hausnummer der MAKE Innovation GmbH]]",
+    "[[KEVIN: PLZ und Ort]]"
+   ],
+   "vertreten": "[[KEVIN: Geschäftsführer der MAKE Innovation GmbH]]",
+   "register": "[[KEVIN: Registergericht und HRB-Nummer nach Eintragung]]",
+   "ustid": ""
+  }
+ },
+ "check_punkte": {
+  "hinweis": "Was der Check heute wirklich kann (Beta). Sprache und Datei-Upload kommen erst mit Phase 2 — deshalb hier nicht versprochen.",
+  "punkte": [
+   "15 Fragen mit Zoe, fast alles per Klick, auf Wunsch mehr für einen genaueren Bericht",
+   "Sofort: deine Stufe, ein Netzdiagramm und der Vergleich mit deiner Branche",
+   "Auf Wunsch: dein persönlicher Bericht per E-Mail",
+   "Danach: das kostenlose 90-Tage-Umsetzungsgespräch mit Kevin"
+  ]
+ },
+ "team": [
+  {
+   "name": "Kevin Dieckmann",
+   "kuerzel": "KD",
+   "rolle": "Vertrieb und Positionierung",
+   "text": "Kevin ist Gründer und Geschäftsführer von MAKE. Er baut Vertrieb so auf, dass er ohne Zufall läuft — und setzt selbst mit um."
+  },
+  {
+   "name": "Malin",
+   "kuerzel": "MA",
+   "rolle": "Gastgeberin Fokus Innovation",
+   "text": "Malin ist Mitgründerin von MAKE und Gastgeberin von Fokus Innovation. Sie bringt Unternehmer an einen Tisch, die Neues umsetzen, und sorgt dafür, dass aus Begegnungen echte Verbindungen werden."
+  }
+ ],
+ "fallbeispiele": [
+  {
+   "titel": "[[KEVIN: Fallbeispiel 1 — Branche und Größe, z. B. FinTech, 40 Mitarbeitende]]",
+   "ausgangslage": "[[KEVIN: Ausgangslage]]",
+   "vorgehen": "[[KEVIN: Was wir gemacht haben]]",
+   "ergebnis": "[[KEVIN: Ergebnis mit Zahl]]",
+   "bereich": "vertrieb"
+  },
+  {
+   "titel": "[[KEVIN: Fallbeispiel 2 — Branche und Größe]]",
+   "ausgangslage": "[[KEVIN: Ausgangslage]]",
+   "vorgehen": "[[KEVIN: Was wir gemacht haben]]",
+   "ergebnis": "[[KEVIN: Ergebnis mit Zahl]]",
+   "bereich": "vertrieb"
+  },
+  {
+   "titel": "[[KEVIN: Fallbeispiel 3 — Branche und Größe]]",
+   "ausgangslage": "[[KEVIN: Ausgangslage]]",
+   "vorgehen": "[[KEVIN: Was wir gemacht haben]]",
+   "ergebnis": "[[KEVIN: Ergebnis mit Zahl]]",
+   "bereich": "sichtbarkeit"
+  }
+ ],
+ "bereiche": {
+  "vertrieb": {
+   "pfad": "vertrieb",
+   "kachel": "MAKE_Kachel_Vertrieb.svg",
+   "faq": [
+    "was-ist-der-unterschied-zwischen-head",
+    "kann-ich-vorzeitig-kuendigen",
+    "was-kostet-der-tagesworkshop-und-was",
+    "gibt-es-rabatt",
+    "sind-die-preise-netto"
+   ]
+  },
+  "sichtbarkeit": {
+   "pfad": "sichtbarkeit",
+   "kachel": "MAKE_Kachel_Sichtbarkeit.svg",
+   "faq": [
+    "wie-schnell-ist-meine-homepage-fertig",
+    "kann-ich-spaeter-auf-ein-groesseres",
+    "sind-eure-videos-ki-generiert",
+    "gibt-es-rabatt",
+    "sind-die-preise-netto"
+   ]
+  },
+  "innovation": {
+   "pfad": "innovation",
+   "kachel": "MAKE_Kachel_Innovation.svg",
+   "faq": [
+    "was-kostet-der-innovations-check",
+    "was-passiert-im-90-tage-umsetzungsgespraech",
+    "ist-zoe-ein-mensch",
+    "sind-die-preise-netto"
+   ]
+  }
+ },
+ "check_faq": [
+  "was-kostet-der-innovations-check",
+  "wie-lange-dauert-der-check",
+  "ist-zoe-ein-mensch",
+  "was-passiert-im-90-tage-umsetzungsgespraech"
+ ],
+ "produkt_faq": {
+  "tagesworkshop": [
+   "was-kostet-der-tagesworkshop-und-was",
+   "sind-die-preise-netto"
+  ],
+  "head-of-sales": [
+   "was-ist-der-unterschied-zwischen-head",
+   "kann-ich-vorzeitig-kuendigen",
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "cso": [
+   "was-ist-der-unterschied-zwischen-head",
+   "kann-ich-vorzeitig-kuendigen",
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "ki-crm": [
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "homepage-landing": [
+   "wie-schnell-ist-meine-homepage-fertig",
+   "kann-ich-spaeter-auf-ein-groesseres",
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "homepage-story": [
+   "wie-schnell-ist-meine-homepage-fertig",
+   "kann-ich-spaeter-auf-ein-groesseres",
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "homepage-cinematic": [
+   "wie-schnell-ist-meine-homepage-fertig",
+   "kann-ich-spaeter-auf-ein-groesseres",
+   "sind-eure-videos-ki-generiert",
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "erklaervideo": [
+   "sind-eure-videos-ki-generiert",
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "videostory": [
+   "sind-eure-videos-ki-generiert",
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "video-serie": [
+   "sind-eure-videos-ki-generiert",
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "positionierung": [
+   "gibt-es-rabatt",
+   "sind-die-preise-netto"
+  ],
+  "umsetzungsprojekte": [
+   "was-kostet-der-innovations-check",
+   "sind-die-preise-netto"
+  ]
+ },
+ "produkt_konditionen": {
+  "head-of-sales": [
+   "Head of Sales und CSO monatlich abgerechnet"
+  ],
+  "cso": [
+   "Head of Sales und CSO monatlich abgerechnet"
+  ],
+  "homepage-landing": [
+   "Homepage Landing und Story in bis zu 3 Raten, Cinematic 50 % vorab, 50 % nach Abschluss",
+   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
+  ],
+  "homepage-story": [
+   "Homepage Landing und Story in bis zu 3 Raten, Cinematic 50 % vorab, 50 % nach Abschluss",
+   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
+  ],
+  "homepage-cinematic": [
+   "Homepage Landing und Story in bis zu 3 Raten, Cinematic 50 % vorab, 50 % nach Abschluss",
+   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
+  ],
+  "erklaervideo": [
+   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
+  ],
+  "videostory": [
+   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
+  ],
+  "video-serie": [
+   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
+  ]
+ },
+ "fokus": {
+  "titel": "Fokus Innovation",
+  "satz": "Ein Abend. Ein langer Tisch. Menschen, die Neues umsetzen.",
+  "termine": "Termine und Orte folgen. Trag dich auf die Gästeliste ein, dann bekommst du die nächste Einladung.",
+  "mail_betreff": "Fokus Innovation – Gästeliste"
+ },
+ "fallbeispiele_hinweis": "Kevin 24.10.: erst ohne, ausgeblendet — fallbeispiele_zeigen auf true stellen, sobald die drei Fälle (mit Zustimmung) eingetragen sind.",
+ "fallbeispiele_zeigen": false,
+ "indexieren_hinweis": "Kevin 24.10.: sofort indexieren — ohne noindex, robots.txt offen, sitemap.xml wird mitgebaut. Auf dem Server die Zeile X-Robots-Tag im Caddy-Block entfernen.",
+ "indexieren": true,
+ "abzeichen": "Empfohlen"
+}

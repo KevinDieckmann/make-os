@@ -1,0 +1,842 @@
+{
+ "meta": {
+  "version": "1.0",
+  "stand": "2026-10-24 (Homepage-Pakete 18:15, Bereichsseiten 19:10, Hosting entfernt 19:15, CI Markenhandbuch 4.0 19:55)",
+  "quelle": "Leistungsumfang 2.0 (Rev. 98, Kundenteil) und Konzept Innovations-Check (Rev. 33)",
+  "ansprache": "Du",
+  "preise": "alle Preise netto zuzüglich Umsatzsteuer, Angebot richtet sich an Unternehmen (B2B)",
+  "quelle_datei": "homepage-content.json (Stand 24.10.2026), interne Teile entfernt"
+ },
+ "marke": {
+  "name": "MAKE Innovation",
+  "claim": "Innovation braucht Umsetzung.",
+  "positionierung": "MAKE Innovation ist der Umsetzungs- und Wachstumspartner für innovationsbegeisterte Unternehmer. Wir beraten nicht nur, wir setzen mit um: Vertrieb, Sichtbarkeit und Innovation.",
+  "story": [
+   {
+    "schritt": "gesehen werden",
+    "bereich": "Sichtbarkeit"
+   },
+   {
+    "schritt": "verstanden werden",
+    "bereich": "Sichtbarkeit"
+   },
+   {
+    "schritt": "vorankommen",
+    "bereich": "Vertrieb und Innovation"
+   }
+  ]
+ },
+ "belege": [
+  "35 Vertriebler in einem Telesales-Unternehmen geführt",
+  "60 Partner und 1.200 Verkäufe in 18 Monaten im Empfehlungsvertrieb",
+  "Head of Sales bei einem FinTech",
+  "über 250 Entscheider im Netzwerk",
+  "eigene KI-Plattform mit rund 30 Agenten"
+ ],
+ "startseite": [
+  {
+   "id": "hero",
+   "titel": "Innovation braucht Umsetzung.",
+   "text": "Wir sind dein Umsetzungs- und Wachstumspartner für Vertrieb, Sichtbarkeit und Innovation. Wir beraten nicht nur, wir setzen mit um.",
+   "cta_primaer": {
+    "text": "Innovations-Check starten",
+    "ziel": "Zoe-Chat öffnen, Check startet"
+   },
+   "cta_sekundaer": {
+    "text": "Angebote ansehen",
+    "ziel": "#bereiche"
+   },
+   "hinweis": "kostenlos, rund 10 Minuten, Ergebnis sofort"
+  },
+  {
+   "id": "story",
+   "titel": "Gesehen werden. Verstanden werden. Vorankommen.",
+   "text": "Ein Unternehmer muss erst gesehen werden, dann verstanden werden und dann mit seinem Angebot in seiner Branche vorankommen. Dafür gibt es unsere drei Bereiche."
+  },
+  {
+   "id": "innovations-check",
+   "titel": "Wie innovativ ist dein Unternehmen wirklich?",
+   "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo du im Vergleich zu deiner Branche stehst: bei Strategie, KI im Alltag, Automatisierung, Daten und Team. Spielt ihr nur mit KI, oder nutzt ihr sie wirklich?",
+   "punkte": [
+    "15 Fragen im Chat mit Zoe, auf Wunsch mehr für einen genaueren Bericht",
+    "Antworten per Klick, Text oder Sprachnachricht, Dateien hochladen möglich",
+    "Sofort: deine Stufe, ein Netzdiagramm und der Vergleich mit deiner Branche",
+    "Per E-Mail: dein persönlicher IST-Bericht als PDF",
+    "Danach: kostenloses 90-Tage-Umsetzungsgespräch mit Kevin"
+   ],
+   "stufen": [
+    "Beobachter",
+    "Ausprobierer",
+    "Anwender",
+    "Integrierer",
+    "KI-geführtes Unternehmen"
+   ],
+   "cta": {
+    "text": "Innovations-Check starten",
+    "ziel": "Zoe-Chat"
+   },
+   "zusatz": "Beispielbericht ansehen (anonymisiert), sobald vorhanden. Kurzes Erklärvideo mit Zoe im Bild."
+  },
+  {
+   "id": "gespraech",
+   "titel": "Das 90-Tage-Umsetzungsgespräch",
+   "text": "Der Check zeigt, wo du stehst. Im Gespräch legen wir fest, wie es weitergeht: 60 Minuten per Video-Call mit Kevin, kostenlos. Du gehst mit deinen Top 3 Handlungsempfehlungen für die nächsten 90 Tage raus, klar und messbar. Innerhalb von 24 Stunden bekommst du sie schriftlich. Kein Verkaufsgespräch.",
+   "regel": "5 Gespräche pro Woche. Ist die Woche voll, bekommst du den nächsten freien Termin oder einen Platz auf der Warteliste.",
+   "cta": {
+    "text": "Gespräch buchen",
+    "ziel": "erst Check, dann Termin im Chat"
+   }
+  },
+  {
+   "id": "bereiche",
+   "titel": "Drei Bereiche, ein Ziel: Umsetzung",
+   "bereiche": [
+    {
+     "name": "Vertrieb",
+     "satz": "Aus Interesse werden planbar Kunden.",
+     "angebote": [
+      "tagesworkshop",
+      "head-of-sales",
+      "cso",
+      "ki-crm"
+     ]
+    },
+    {
+     "name": "Sichtbarkeit",
+     "satz": "Gesehen werden, verstanden werden, auf die Bühne kommen.",
+     "angebote": [
+      "homepage-landing",
+      "homepage-story",
+      "homepage-cinematic",
+      "erklaervideo",
+      "videostory",
+      "video-serie",
+      "positionierung",
+      "fokus-innovation"
+     ]
+    },
+    {
+     "name": "Innovation",
+     "satz": "Neues im Unternehmen einführen, bis es genutzt wird.",
+     "status": "Coming Soon",
+     "angebote": [
+      "umsetzungsprojekte"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gratis",
+   "titel": "Gratis: Wissen, das dich weiterbringt",
+   "text": "Dir fehlt es nicht an Informationen, sondern an Klarheit, welchen Weg du gehen sollst. Deshalb geben wir großzügig Wissen heraus.",
+   "verweis": "gratis"
+  },
+  {
+   "id": "ueber-uns",
+   "titel": "Warum MAKE",
+   "text": "Wir haben Vertrieb aufgebaut, geführt und skaliert, und wir bauen unsere eigenen KI-Werkzeuge.",
+   "verweis": "belege",
+   "team": "Kevin Dieckmann (Vertrieb, Positionierung), Malin (Fokus Innovation). Fotos und Kurztexte folgen."
+  },
+  {
+   "id": "fokus",
+   "titel": "Fokus Innovation",
+   "text": "Unsere Bühne und unser Netzwerk für Menschen, die Neues umsetzen. Für Kunden kostenlos.",
+   "cta": {
+    "text": "Zum nächsten Abend anmelden",
+    "ziel": "Anmeldeseite"
+   }
+  },
+  {
+   "id": "faq",
+   "titel": "Häufige Fragen",
+   "verweis": "faq"
+  },
+  {
+   "id": "abschluss",
+   "titel": "Bereit für den nächsten Schritt?",
+   "text": "Starte mit dem Innovations-Check. In 10 Minuten weißt du, wo du stehst.",
+   "cta": {
+    "text": "Innovations-Check starten",
+    "ziel": "Zoe-Chat"
+   }
+  }
+ ],
+ "angebote": [
+  {
+   "id": "tagesworkshop",
+   "bereich": "Vertrieb",
+   "name": "Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit",
+   "preis": "1.900 €",
+   "preis_zusatz": "einmalig, wird beim Mandatsstart voll angerechnet",
+   "fuer_wen": "Wer wissen will, wo der größte Hebel liegt, bevor er investiert.",
+   "enthalten": [
+    "Ein Tag zu Vertrieb, Markteintritt und Sichtbarkeit",
+    "Fokus vorab wählbar: eher Strategie oder eher operativ",
+    "Protokoll mit den Top 5 nach Aufwand und Wirkung",
+    "90-Tage-Plan",
+    "Einordnung: Markt- oder Produktproblem",
+    "Eine Sache setzen wir am Tag direkt um"
+   ],
+   "cta": "Workshop anfragen"
+  },
+  {
+   "id": "head-of-sales",
+   "bereich": "Vertrieb",
+   "name": "Head of Sales",
+   "preis": "2.990 €",
+   "preis_zusatz": "pro Monat, 6 oder 12 Monate",
+   "fuer_wen": "Für Unternehmen, die systematischen Vertrieb auf einer sauberen Datenbasis wollen.",
+   "enthalten": [
+    "Start mit dem Fundament: Onboarding, Zielgruppenanalyse, Ansprache, Salesprozess, Setting-Skript mit BANT, Einwandbibliothek",
+    "Baustein Leadgenerierung: alle Kanäle ins CRM, Bestand reaktivieren, Empfehlungsprogramm, Lead-Magnete",
+    "Baustein Prozesse und Strukturen: CRM-Standard, Skripte, Angebotsvorlagen, Vertriebsrhythmus",
+    "Baustein KPIs: KPI-Trichter, Rückwärtsrechnung vom Umsatzziel, Wochenreport",
+    "Onboarding-Programm und Trainings für dein Team",
+    "Sales Playbook Teil 1 und 2"
+   ],
+   "nicht_enthalten": [
+    "Strategie, Teamaufbau, Recruiting, Führung des Teams",
+    "Intros aus dem Netzwerk",
+    "Telefonie für dich: wir machen vor, bis dein Team selbst abschließt"
+   ],
+   "regeln": [
+    "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist",
+    "Wechsel zum CSO jederzeit, der Preis wird angepasst"
+   ],
+   "cta": "Gespräch vereinbaren"
+  },
+  {
+   "id": "cso",
+   "bereich": "Vertrieb",
+   "name": "Chief Sales Officer (CSO)",
+   "preis": "4.990 €",
+   "preis_zusatz": "pro Monat, 6 oder 12 Monate",
+   "fuer_wen": "Für Unternehmen, die Vertrieb strategisch aufbauen und skalieren wollen.",
+   "enthalten": [
+    "Alles aus Head of Sales",
+    "Strategie, Go-to-Market und Preislogik",
+    "Rollen, Vergütung, Recruiting und Teamaufbau",
+    "Strategische Partnerschaften, Investoren und Skalierung",
+    "Intros zu Kunden und Partnern aus dem Netzwerk",
+    "Führung des Teams bis 10 Vertriebler, je nach Kunde",
+    "Monatliche Produkt-Runde",
+    "Sales Playbook Teil 1 bis 3"
+   ],
+   "regeln": [
+    "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist"
+   ],
+   "cta": "Gespräch vereinbaren",
+   "hervorheben": true
+  },
+  {
+   "id": "ki-crm",
+   "bereich": "Vertrieb",
+   "name": "KI-CRM selbst bauen",
+   "preis": "ab 4.990 €",
+   "preis_zusatz": "einmalig, Lieferung in 4 Wochen",
+   "fuer_wen": "Für Firmen, die kein Mandat wollen, sondern ihr eigenes KI-gestütztes CRM.",
+   "enthalten": [
+    "Pipeline mit Stages",
+    "Notizenstandard",
+    "Lead-Scoring",
+    "KPI-Trichter",
+    "Einweisung, danach betreibst du es selbst"
+   ],
+   "regeln": [
+    "Größere Ausbauten individuell"
+   ],
+   "cta": "KI-CRM anfragen"
+  },
+  {
+   "id": "homepage-landing",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "Homepage-Pakete",
+   "name": "Homepage Landing",
+   "preis": "2.990 €",
+   "preis_zusatz": "einmalig, zahlbar in bis zu 3 Raten",
+   "fuer_wen": "Coaches, kleine Agenturen, Solo-Unternehmer.",
+   "enthalten": [
+    "One-Pager mit Effekten",
+    "Impressum und Datenschutzseite",
+    "Lieferung in 10 Werktagen",
+    "1 Korrekturschleife",
+    "Onboarding-Formular und 60 Minuten Kick-off"
+   ],
+   "cta": "Landing anfragen"
+  },
+  {
+   "id": "homepage-story",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "Homepage-Pakete",
+   "name": "Homepage Story",
+   "preis": "4.990 €",
+   "preis_zusatz": "einmalig, zahlbar in bis zu 3 Raten",
+   "fuer_wen": "Firmen, die ihre Geschichte schon kennen.",
+   "enthalten": [
+    "Alles aus Landing",
+    "3D-Effekte",
+    "3 Unterseiten",
+    "Story liefert der Kunde",
+    "2 Korrekturschleifen",
+    "Lieferzeit nach Kick-off"
+   ],
+   "cta": "Story anfragen",
+   "hervorheben": true
+  },
+  {
+   "id": "homepage-cinematic",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "Homepage-Pakete",
+   "name": "Homepage Cinematic",
+   "preis": "9.990 €",
+   "preis_zusatz": "einmalig, 50 % vorab, 50 % nach Abschluss",
+   "fuer_wen": "Firmen, die mit Wirkung auffallen wollen.",
+   "enthalten": [
+    "Story-Workshop, Skript und Storyboard: die Story entwickeln wir",
+    "3D-Szenen, 3 Effekte und Animationen",
+    "5 Unterseiten",
+    "Erklärvideo inklusive",
+    "3 Korrekturschleifen",
+    "Lieferzeit nach Kick-off"
+   ],
+   "cta": "Cinematic anfragen"
+  },
+  {
+   "id": "erklaervideo",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "Videos",
+   "name": "Erklärvideo",
+   "preis": "1.490 €",
+   "preis_zusatz": "einmalig",
+   "enthalten": [
+    "60 bis 90 Sekunden",
+    "erklärt dein Produkt oder deine Leistung"
+   ],
+   "cta": "Video anfragen"
+  },
+  {
+   "id": "videostory",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "Videos",
+   "name": "Videostory",
+   "preis": "1.990 €",
+   "preis_zusatz": "einmalig",
+   "enthalten": [
+    "60 bis 90 Sekunden",
+    "die Geschichte deines Unternehmens",
+    "Story von uns"
+   ],
+   "cta": "Video anfragen"
+  },
+  {
+   "id": "video-serie",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "Videos",
+   "name": "Video Serie",
+   "preis": "1.490 €",
+   "preis_zusatz": "pro Monat, mindestens 3 Monate",
+   "enthalten": [
+    "Jeden Monat ein Erklärvideo und eine Videostory",
+    "einzeln würden beide 3.480 € kosten"
+   ],
+   "cta": "Serie starten",
+   "hervorheben": true
+  },
+  {
+   "id": "positionierung",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "Positionierung",
+   "name": "Positionierung S, M, L",
+   "preis": "1.990 / 2.990 / 4.990 €",
+   "preis_zusatz": "einmalig, KI-gestützt vorbereitet, Workshop mit Kevin",
+   "stufen": [
+    {
+     "name": "S",
+     "preis": "1.990 €",
+     "workshop": "2 Stunden remote",
+     "ergebnis": "Positionierung in 5 Sätzen, 1 Satz und 7 Worten, Check gegen 10 Grundsätze"
+    },
+    {
+     "name": "M",
+     "preis": "2.990 €",
+     "workshop": "halber Tag",
+     "ergebnis": "wie S, dazu 3 Kundeninterviews, Wettbewerb, Einstiegsprodukt, Elevator Pitch 30 Sekunden und 2 Minuten, Kernbotschaften"
+    },
+    {
+     "name": "L",
+     "preis": "4.990 €",
+     "workshop": "ganzer Tag",
+     "ergebnis": "wie M, dazu Team-Interviews, persönliche Ebene des Gründers, neue Kategorie, Positionierungs-Canvas, Leistungspalette und Preislogik, Claim, Markenstory, Textbausteine"
+    }
+   ],
+   "cta": "Positionierung anfragen"
+  },
+  {
+   "id": "fokus-innovation",
+   "bereich": "Sichtbarkeit",
+   "name": "Fokus Innovation",
+   "preis": "für Kunden kostenlos",
+   "enthalten": [
+    "Abende mit Bühne und Netzwerk",
+    "geführt von Malin",
+    "Partner werden nur mit Zustimmung genannt"
+   ],
+   "cta": "Anmelden"
+  },
+  {
+   "id": "umsetzungsprojekte",
+   "bereich": "Innovation",
+   "name": "Umsetzungsprojekte: KI und Software einführen",
+   "preis": "ab 9.990 €",
+   "preis_zusatz": "Projekt-Festpreis mit klarem Umfang vorab",
+   "status": "Coming Soon",
+   "enthalten": [
+    "KI und Software einführen, bis sie im Alltag genutzt werden",
+    "Prozesse bauen, die ohne den Chef laufen",
+    "eigene Werkzeuge entwickeln"
+   ],
+   "cta": "Anfrage stellen / Warteliste"
+  }
+ ],
+ "zusatzoptionen": [
+  {
+   "name": "Express",
+   "fuer": "alle Homepage-Pakete",
+   "preis": "+990 € bei Landing und Story, +1.490 € bei Cinematic",
+   "leistung": "halbe Lieferzeit (Landing in 5 Werktagen)"
+  },
+  {
+   "name": "Upgrade",
+   "fuer": "Homepage-Pakete",
+   "preis": "nur die Differenz",
+   "leistung": "innerhalb von 3 Monaten auf das größere Paket"
+  },
+  {
+   "name": "Bild- und Videoproduktion",
+   "fuer": "Sichtbarkeit",
+   "preis": "auf Anfrage",
+   "leistung": "Fotoshooting und Videodreh bei dir: Team, Räume, Produkt, Interviews"
+  },
+  {
+   "name": "Social Media Management",
+   "fuer": "Sichtbarkeit",
+   "preis": "auf Anfrage, monatlich",
+   "leistung": "Redaktionsplan, Beiträge, Community, monatlicher Bericht"
+  }
+ ],
+ "gratis": [
+  {
+   "rubrik": "Sales",
+   "angebote": [
+    {
+     "name": "Kostenlose Vertriebsanalyse",
+     "format": "als Rubrik im Innovations-Check oder als kleiner Check unter Gratis Sales",
+     "start": true
+    },
+    {
+     "name": "Vertriebs-Starterkit: Setting-Skript, CRM-Notizenstandard, Wochenreport",
+     "format": "Google Docs/Sheets + PDF"
+    },
+    {
+     "name": "Die 10 häufigsten Einwände und wie du antwortest",
+     "format": "PDF"
+    },
+    {
+     "name": "Go-to-Market-Wissen",
+     "format": "Leitfäden und Newsletter-Serie"
+    },
+    {
+     "name": "Umsatz-Rechner",
+     "format": "Rechner, Plan per E-Mail"
+    }
+   ]
+  },
+  {
+   "rubrik": "Sichtbarkeit",
+   "angebote": [
+    {
+     "name": "Homepage-Check: Ist deine Botschaft in 5 Sekunden klar?",
+     "format": "Online-Tool mit KI",
+     "start": true
+    },
+    {
+     "name": "Positionierungs-Check",
+     "format": "Formular, Ergebnis per E-Mail"
+    },
+    {
+     "name": "LinkedIn-Profil-Check",
+     "format": "Text oder Screenshot hochladen"
+    },
+    {
+     "name": "Leitfaden „In 60 Sekunden erklärt“",
+     "format": "PDF + Beispielvideo"
+    },
+    {
+     "name": "Content-Plan für 30 Tage",
+     "format": "per E-Mail"
+    },
+    {
+     "name": "Fokus Innovation: Anmeldung und Warteliste",
+     "format": "Anmeldeseite"
+    }
+   ]
+  },
+  {
+   "rubrik": "Innovation",
+   "angebote": [
+    {
+     "name": "Innovations-Check",
+     "format": "Chat mit Zoe, Bericht als PDF, 90-Tage-Umsetzungsgespräch",
+     "start": true,
+     "herzstueck": true
+    },
+    {
+     "name": "Markteintritt-Check: Ampel plus 3 nächste Schritte",
+     "format": "12 Fragen, Ergebnis per E-Mail",
+     "start": true
+    },
+    {
+     "name": "Leitfaden „Von der Idee in den Markt in 90 Tagen“",
+     "format": "PDF"
+    },
+    {
+     "name": "Guideline „Software einführen, die das Team auch nutzt“",
+     "format": "PDF"
+    },
+    {
+     "name": "Leitfaden Fördermittel für Innovation (ohne Gewähr)",
+     "format": "PDF"
+    },
+    {
+     "name": "Warteliste Umsetzungsprojekte",
+     "format": "Formular"
+    }
+   ]
+  },
+  {
+   "rubrik": "AI",
+   "angebote": [
+    {
+     "name": "So baust du dir ein KI-Brain auf",
+     "format": "5-Tage-Kurs per E-Mail",
+     "start": true
+    },
+    {
+     "name": "Sales Agents mit KI",
+     "format": "PDF",
+     "start": true
+    },
+    {
+     "name": "KI-Reifegrad-Check (Kurzversion, 12 Fragen)",
+     "format": "Online-Check"
+    },
+    {
+     "name": "Prompt-Bibliothek mit 50 Prompts",
+     "format": "Google Doc, jeden Monat 10 neue"
+    },
+    {
+     "name": "Guideline „KI-Inhalte richtig kennzeichnen“",
+     "format": "PDF, keine Rechtsberatung"
+    }
+   ]
+  }
+ ],
+ "faq": [
+  {
+   "id": "was-kostet-der-innovations-check",
+   "f": "Was kostet der Innovations-Check?",
+   "a": "Nichts. Der Check, der Bericht und das 90-Tage-Umsetzungsgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen."
+  },
+  {
+   "id": "wie-lange-dauert-der-check",
+   "f": "Wie lange dauert der Check?",
+   "a": "Rund 10 Minuten für die 15 Kernfragen. Wenn du mehr beantwortest, wird dein Bericht genauer. Du kannst jederzeit pausieren und später weitermachen."
+  },
+  {
+   "id": "ist-zoe-ein-mensch",
+   "f": "Ist Zoe ein Mensch?",
+   "a": "Nein. Zoe ist unsere KI-Assistentin. Sie sagt das auch am Anfang jedes Gesprächs. Wenn du lieber mit einem Menschen sprichst, gibt sie dich an Kevin weiter."
+  },
+  {
+   "id": "was-passiert-im-90-tage-umsetzungsgespraech",
+   "f": "Was passiert im 90-Tage-Umsetzungsgespräch?",
+   "a": "60 Minuten per Video-Call mit Kevin. Wir gehen dein Ergebnis durch und legen deine Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch."
+  },
+  {
+   "id": "was-ist-der-unterschied-zwischen-head",
+   "f": "Was ist der Unterschied zwischen Head of Sales und CSO?",
+   "a": "Der Head of Sales baut deinen Vertrieb operativ auf: Leads, Prozesse und Kennzahlen. Der CSO enthält das komplett und dazu Strategie, Teamaufbau, Recruiting, Partnerschaften und Intros aus unserem Netzwerk."
+  },
+  {
+   "id": "kann-ich-vorzeitig-kuendigen",
+   "f": "Kann ich vorzeitig kündigen?",
+   "a": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist."
+  },
+  {
+   "id": "was-kostet-der-tagesworkshop-und-was",
+   "f": "Was kostet der Tagesworkshop, und was passiert danach?",
+   "a": "1.900 €. Startest du danach ein Mandat, rechnen wir den Workshop voll an."
+  },
+  {
+   "id": "wie-schnell-ist-meine-homepage-fertig",
+   "f": "Wie schnell ist meine Homepage fertig?",
+   "a": "Landing in 10 Werktagen, mit Express in 5. Story und Cinematic legen wir im Kick-off fest. Express halbiert die Lieferzeit bei allen Paketen."
+  },
+  {
+   "id": "kann-ich-spaeter-auf-ein-groesseres",
+   "f": "Kann ich später auf ein größeres Homepage-Paket wechseln?",
+   "a": "Ja, innerhalb von 3 Monaten. Du zahlst nur die Differenz."
+  },
+  {
+   "id": "sind-eure-videos-ki-generiert",
+   "f": "Sind eure Videos KI-generiert?",
+   "a": "Sie entstehen aus KI-Szenen und deinem eigenen Material. Wo es nötig ist, kennzeichnen wir KI-Inhalte."
+  },
+  {
+   "id": "gibt-es-rabatt",
+   "f": "Gibt es Rabatt?",
+   "a": "3 % Skonto bei Zahlung innerhalb der Frist, auch wenn du die volle Laufzeit vorab zahlst."
+  },
+  {
+   "id": "sind-die-preise-netto",
+   "f": "Sind die Preise netto?",
+   "a": "Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich an Unternehmen."
+  }
+ ],
+ "konditionen": [
+  "Alle Preise netto zuzüglich Umsatzsteuer",
+  "3 % Skonto bei Zahlung innerhalb der Frist, auch bei Vorauszahlung der vollen Laufzeit",
+  "Head of Sales und CSO monatlich abgerechnet",
+  "Homepage Landing und Story in bis zu 3 Raten, Cinematic 50 % vorab, 50 % nach Abschluss",
+  "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
+ ],
+ "seitenstruktur": [
+  {
+   "pfad": "/",
+   "seite": "Startseite",
+   "abschnitte": "hero, story, innovations-check, gespraech, bereiche, gratis, ueber-uns, fokus, faq, abschluss"
+  },
+  {
+   "pfad": "/innovations-check",
+   "seite": "Landingpage Innovations-Check",
+   "inhalt": "Video, Zoe im Bild, Ablauf, Stufen, Beispielbericht, FAQ, Start-Button"
+  },
+  {
+   "pfad": "/vertrieb",
+   "seite": "Vertrieb",
+   "inhalt": "Eigene Seite mit eigener Story und Erklärvideo, siehe bereichsseiten"
+  },
+  {
+   "pfad": "/sichtbarkeit",
+   "seite": "Sichtbarkeit",
+   "inhalt": "Eigene Seite mit eigener Story und Erklärvideo, siehe bereichsseiten"
+  },
+  {
+   "pfad": "/innovation",
+   "seite": "Innovation (Coming Soon)",
+   "inhalt": "Eigene Seite mit eigener Story und Erklärvideo (Coming Soon), siehe bereichsseiten"
+  },
+  {
+   "pfad": "/gratis",
+   "seite": "Gratis",
+   "inhalt": "vier Rubriken, Formular je Angebot"
+  },
+  {
+   "pfad": "/fokus-innovation",
+   "seite": "Fokus Innovation",
+   "inhalt": "nächster Abend, Anmeldung, Warteliste, Partner-Infopaket"
+  },
+  {
+   "pfad": "/impressum, /datenschutz, /agb",
+   "seite": "Rechtliches",
+   "inhalt": "siehe rechtliches_fuer_die_homepage"
+  }
+ ],
+ "bereichsseiten": [
+  {
+   "pfad": "/vertrieb",
+   "bereich": "Vertrieb",
+   "farbe": "#17A05D",
+   "kachel": "MAKE/Bereiche/MAKE_Kachel_Vertrieb.svg",
+   "story_kern": "Aus Interesse werden planbar Kunden.",
+   "hero": {
+    "titel": "Dein Produkt ist gut. Jetzt muss es sich verkaufen.",
+    "text": "Wir bauen deinen Vertrieb so auf, dass er ohne Zufall funktioniert: mit klaren Prozessen, sauberen Zahlen und einem Team, das selbst abschließt. Wir beraten nicht nur, wir setzen mit um.",
+    "cta": "Innovations-Check starten",
+    "cta2": "Gespräch vereinbaren"
+   },
+   "story": [
+    {
+     "schritt": "Ausgangslage",
+     "text": "Viele Gründer verkaufen selbst und nebenbei. Neue Kunden kommen über Empfehlungen, aber nicht planbar. Niemand weiß genau, wie viele Termine es für das Umsatzziel braucht."
+    },
+    {
+     "schritt": "Wendepunkt",
+     "text": "Vertrieb ist kein Talent, sondern ein System: wer angesprochen wird, was gesagt wird, was gemessen wird."
+    },
+    {
+     "schritt": "Unser Weg",
+     "text": "Wir starten mit dem Fundament: Zielgruppe, Ansprache, Salesprozess. Dann bauen wir Leadgenerierung, Prozesse und Kennzahlen auf und machen vor, bis dein Team selbst abschließt."
+    },
+    {
+     "schritt": "Ergebnis",
+     "text": "Ein Vertrieb, den du steuern kannst: Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt."
+    }
+   ],
+   "abschnitte": [
+    "Hero mit Erklärvideo",
+    "Story in 4 Schritten",
+    "Belege (35 Vertriebler geführt, 1.200 Verkäufe in 18 Monaten, Head of Sales bei einem FinTech)",
+    "Angebote: Tagesworkshop, Head of Sales, CSO, KI-CRM",
+    "Vergleich Head of Sales und CSO",
+    "So läuft es ab: Check → 90-Tage-Gespräch → Tagesworkshop → Mandat",
+    "Gratis Sales: Vertriebsanalyse, Starterkit, 10 Einwände, Umsatz-Rechner",
+    "FAQ Vertrieb",
+    "Abschluss-CTA"
+   ],
+   "erklaervideo": {
+    "titel": "Vom Zufall zum System",
+    "laenge": "60 bis 90 Sekunden",
+    "ablauf": [
+     "0–10 s: Gründer am Telefon zwischen zwei Terminen, Kalender voll, Pipeline leer",
+     "10–30 s: der MAKE-Ring öffnet sich, Linie wird zum Trichter: Leads, Termine, Abschlüsse",
+     "30–60 s: drei Bausteine erscheinen als Kacheln (Leadgenerierung, Prozesse, KPIs), Zahlen zählen hoch",
+     "60–80 s: Team schließt selbst ab, Wochenreport grün",
+     "80–90 s: Claim und Button: Innovations-Check starten"
+    ]
+   },
+   "status_konzept": "Entwurf, wird durch das finale Bereichskonzept ersetzt"
+  },
+  {
+   "pfad": "/sichtbarkeit",
+   "bereich": "Sichtbarkeit",
+   "farbe": "#3D7BEA",
+   "kachel": "MAKE/Bereiche/MAKE_Kachel_Sichtbarkeit.svg",
+   "story_kern": "Gesehen werden. Verstanden werden. Auf die Bühne kommen.",
+   "hero": {
+    "titel": "Wer dich nicht versteht, kauft nicht.",
+    "text": "Wir machen dich sichtbar und verständlich: mit einer Homepage, die in 5 Sekunden klar ist, Videos, die erklären, und einer Positionierung, die hängen bleibt.",
+    "cta": "Homepage-Check starten",
+    "cta2": "Pakete ansehen"
+   },
+   "story": [
+    {
+     "schritt": "Ausgangslage",
+     "text": "Dein Angebot ist innovativ, aber auf der Website versteht man es erst nach drei Absätzen. Besucher gehen, bevor sie verstehen, was du machst."
+    },
+    {
+     "schritt": "Wendepunkt",
+     "text": "Sichtbarkeit beginnt mit Klarheit: ein Satz, ein Bild, eine Geschichte."
+    },
+    {
+     "schritt": "Unser Weg",
+     "text": "Wir schärfen deine Positionierung, erzählen deine Geschichte und bauen Homepage und Videos, die sie in Sekunden zeigen."
+    },
+    {
+     "schritt": "Ergebnis",
+     "text": "Du wirst gesehen, verstanden und auf die Bühne geholt, zum Beispiel bei Fokus Innovation."
+    }
+   ],
+   "abschnitte": [
+    "Hero mit Erklärvideo",
+    "Story in 4 Schritten",
+    "Homepage-Pakete Landing, Story, Cinematic mit Vergleich und Zusatzoptionen",
+    "Videos: Erklärvideo, Videostory, Video Serie",
+    "Positionierung S, M, L",
+    "Auf Anfrage: Bild- und Videoproduktion, Social Media Management",
+    "Fokus Innovation",
+    "Gratis Sichtbarkeit: Homepage-Check, Positionierungs-Check, LinkedIn-Check, Leitfaden 60 Sekunden, Content-Plan",
+    "FAQ Sichtbarkeit",
+    "Abschluss-CTA"
+   ],
+   "erklaervideo": {
+    "titel": "In 5 Sekunden verstanden",
+    "laenge": "60 bis 90 Sekunden",
+    "ablauf": [
+     "0–10 s: Besucher scrollt durch eine unklare Website und springt ab, Zähler 5 Sekunden läuft ab",
+     "10–30 s: Text schrumpft auf einen Satz, Funke zündet",
+     "30–60 s: Landing, Story und Cinematic bauen sich als 3D-Ebenen auf",
+     "60–80 s: Video läuft, Bühne von Fokus Innovation, Publikum",
+     "80–90 s: Claim und Button: Homepage-Check starten"
+    ]
+   },
+   "status_konzept": "Entwurf, wird durch das finale Bereichskonzept ersetzt"
+  },
+  {
+   "pfad": "/innovation",
+   "bereich": "Innovation",
+   "farbe": "#6A4CE0",
+   "kachel": "MAKE/Bereiche/MAKE_Kachel_Innovation.svg",
+   "status": "Coming Soon",
+   "story_kern": "Neues einführen, bis es genutzt wird.",
+   "hero": {
+    "titel": "Spielt dein Team mit KI, oder arbeitet es damit?",
+    "text": "Wir führen KI und Software in deinem Unternehmen ein, bis sie im Alltag genutzt werden. Prozesse, die ohne den Chef laufen, und Werkzeuge, die wirklich Zeit sparen.",
+    "cta": "Innovations-Check starten",
+    "cta2": "Auf die Warteliste"
+   },
+   "story": [
+    {
+     "schritt": "Ausgangslage",
+     "text": "Alle reden von KI. Einzelne im Team probieren ChatGPT, aber nichts davon steckt in den Abläufen. Der Chef ist weiter der Engpass."
+    },
+    {
+     "schritt": "Wendepunkt",
+     "text": "Innovation braucht Umsetzung: erst messen, wo du stehst, dann die drei Hebel mit der größten Wirkung angehen."
+    },
+    {
+     "schritt": "Unser Weg",
+     "text": "Der Innovations-Check zeigt deine Stufe. Im 90-Tage-Umsetzungsgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit dir, bis sie laufen."
+    },
+    {
+     "schritt": "Ergebnis",
+     "text": "Weniger Handarbeit, verbundene Daten, Agenten in den Kernprozessen, auf dem Weg zum KI-geführten Unternehmen."
+    }
+   ],
+   "abschnitte": [
+    "Hero mit Erklärvideo",
+    "Story in 4 Schritten",
+    "Innovations-Check mit den 5 Stufen",
+    "90-Tage-Umsetzungsgespräch",
+    "Umsetzungsprojekte ab 9.990 € (Coming Soon, Anfrage und Warteliste)",
+    "Eigene KI-Plattform mit rund 30 Agenten als Beleg",
+    "Gratis Innovation und AI: Markteintritt-Check, KI-Brain, Sales Agents, Leitfäden",
+    "FAQ Innovation",
+    "Abschluss-CTA"
+   ],
+   "erklaervideo": {
+    "titel": "Von Ausprobieren zu Umsetzen",
+    "laenge": "60 bis 90 Sekunden",
+    "ablauf": [
+     "0–10 s: Büro, jemand tippt in einen Chat, daneben Stapel Papier",
+     "10–30 s: die 5 Stufen erscheinen als Treppe, Beobachter bis KI-geführtes Unternehmen",
+     "30–60 s: Zoe-Chat, Netzdiagramm baut sich auf, Top 3 erscheinen als Karten",
+     "60–80 s: Abläufe verbinden sich zu einer Linie, die Lücke im Ring schließt sich",
+     "80–90 s: Claim und Button: Innovations-Check starten"
+    ]
+   },
+   "status_konzept": "Entwurf, wird durch das finale Bereichskonzept ersetzt"
+  }
+ ],
+ "erklaervideos_ci": {
+  "grundsatz": "Jede Bereichsseite und die Landingpage Innovations-Check bekommen ein eigenes Erklärvideo in MAKE-CI. Wir produzieren sie selbst (KI-Szenen plus echtes Material), damit Look und Sprache überall gleich sind.",
+  "regeln": [
+   "Grund Anthrazit, Licht im Verlauf Grün→Violett, Bereichsfarbe als Leitfarbe",
+   "Schrift Schibsted Grotesk, Zahlen IBM Plex Mono",
+   "Animiertes MAKE-Logo als Intro (MAKE_Innovation_Logo_animiert_auf-dunkel.svg), Ring und Funke als wiederkehrendes Motiv",
+   "60 bis 90 Sekunden, Formate 16:9 für die Website, 9:16 und 1:1 für Social und Ads",
+   "Untertitel immer, Du-Ansprache, Sprecher ruhig und klar",
+   "Am Ende Claim „Innovation braucht Umsetzung.“ und ein Button",
+   "KI-erzeugte Inhalte kennzeichnen, wo nötig (Art. 50 AI Act, Hinweis, keine Rechtsberatung)"
+  ],
+  "videos": [
+   "Startseite: MAKE in 60 Sekunden (gesehen, verstanden, vorankommen)",
+   "Vertrieb: Vom Zufall zum System",
+   "Sichtbarkeit: In 5 Sekunden verstanden",
+   "Innovation: Von Ausprobieren zu Umsetzen",
+   "Landingpage Innovations-Check: So funktioniert der Check mit Zoe"
+  ],
+  "verkauf": "Dieselbe Produktionsweise ist das Angebot Erklärvideo 1.490 € und Video Serie 1.490 €/Monat. Unsere eigenen Videos dienen als Referenz."
+ }
+}

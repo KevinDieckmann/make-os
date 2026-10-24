@@ -1,5 +1,8 @@
 # Landingpage makeinnovation.de — MAKE Innovation (eine Marke der KEMARIS Innovation GmbH)
 
+> **Abgelöst (24.10.2026):** makeinnovation.de wird nach Markenhandbuch 4.0 neu gebaut — Ordner `makeinnovation/` (LIESMICH dort,
+> Kevins 20 Entscheidungen). Dieser Ordner bleibt nur liegen, bis fokusinnovation.de ebenfalls in 4.0 steht (gemeinsame Grundlage).
+
 > **Stand 08.10.2026 (Kevin):** Beide Seiten sind **offline** (Caddy antwortet 503, Hotfix 1de19d8c auf `main`). KEMARIS steht
 > **nirgends mehr** — Absender überall nur „MAKE Innovation“, Kontakt hello@makeinnovation.de, ohne Telefon; verantwortlich nach
 > § 18 MStV Kevin Dieckmann; Registerangaben als Platzhalter bis zur Eintragung der Umbenennung. `pruefen.mjs` meldet jedes „KEMARIS“
@@ -146,6 +149,21 @@ keine Animation, kein Parallax, nichts hängt am Scrollen. Bei „Bewegung reduz
 
 **Barrierefreiheit:** eine H1 je Seite, Abschnitte mit `aria-labelledby`, Sprung-Link „Zum Inhalt“, sichtbarer Fokus (2 px Tinte, auf Dunkel
 Weiß), Kontrast AA (siehe Farben), Tippziele ≥ 44 px am Handy (gemessen), Menü per Tastatur (`<details>`, Esc schließt), das Licht `aria-hidden`.
+
+## Innovations-Check unter makeinnovation.de/check (24.10., Branch `innovations-check`, noch nicht online)
+
+Der Check läuft NICHT als statische Seite, sondern in MAKE OS (öffentliche Strecke `app/check`, Schnittstelle `POST /api/check`, Regeln in
+CLAUDE.md › „Innovations-Check der Website“). Die Homepage verlinkt nur: Haupt-Knopf „Innovations-Check starten“ → `/check?q=homepage_hero`
+(Quelle frei wählbar, `[a-z0-9_-]{1,40}`). Damit es dieselbe Adresse bleibt, leitet Caddy im Block `makeinnovation.de` genau diese Pfade an die App
+weiter — alles andere bleibt die statische Seite (Vorschlag, erst auf Kevins Wort):
+
+```
+@check path /check /api/check /buchen/* /api/buchung/* /_next/*
+reverse_proxy @check app:3000
+```
+
+`/buchen/*` gehört dazu, damit der Termin aus dem Ergebnis auf derselben Adresse gebucht wird (die Vorbelegung liegt im Sitzungsspeicher des
+Browsers und gilt nur auf derselben Adresse). Ohne Einschalten in MAKE OS (Markttraktion › Marketing › Innovations-Check) antwortet `/check` mit 404.
 
 ## Dateien
 

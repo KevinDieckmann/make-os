@@ -32,6 +32,19 @@ export function Buchen({ slug }: { slug: string }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [firma, setFirma] = useState('');
+  // Aus dem Innovations-Check (24.10.): die Angaben, die der Gast dort schon gemacht hat, stehen einmal vorbelegt da — nur im
+  // Sitzungsspeicher desselben Browsers (nie in der Adresse), danach gelöscht. Er kann alles ändern.
+  useEffect(() => {
+    try {
+      const roh = sessionStorage.getItem('make-check-vorbelegung');
+      if (!roh) return;
+      sessionStorage.removeItem('make-check-vorbelegung');
+      const v = JSON.parse(roh) as { name?: unknown; email?: unknown; firma?: unknown };
+      if (typeof v.name === 'string') setName(v.name.slice(0, 80));
+      if (typeof v.email === 'string') setEmail(v.email.slice(0, 160));
+      if (typeof v.firma === 'string') setFirma(v.firma.slice(0, 160));
+    } catch { /* ohne Speicher: leere Felder wie bisher */ }
+  }, []);
   const [anliegen, setAnliegen] = useState('');
   const [ja, setJa] = useState(false);
   const [falle, setFalle] = useState('');

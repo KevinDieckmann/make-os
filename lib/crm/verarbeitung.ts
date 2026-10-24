@@ -77,6 +77,8 @@ export const KONTAKTE_LESER_ERLAUBT: Readonly<Record<string, string>> = {
   'app/api/crm/netzwerk/route.ts': 'Vernetzen-Runde — eingeschränkte raus (lib/crm/netzwerk.ts).',
   'app/api/crm/marketing/route.ts': 'Marketing — Segmente/Newsletter nehmen eingeschränkte selbst raus (lib/crm/segmente.ts).',
   'app/api/crm/anfrage/route.ts': 'Eingehende Anfragen — auch einer eingeschränkten Person muss eine Anfrage zugeordnet werden können.',
+  // 24.10.: der Schreibweg der Anfrage liegt jetzt in EINER Datei (Route + Innovations-Check der Website) — dieselbe Begründung.
+  'lib/crm/anfrage-anlegen.ts': 'Eingehende Anfragen (Route und Website-Check) — auch einer eingeschränkten Person muss eine Anfrage zugeordnet werden können; die Probe lehnt sie dann ab.',
   'app/api/crm/traktion/route.ts': 'Traktions-Index — nur Zahlen über den Bestand.',
   'app/api/heads/[head]/route.ts': 'Heads — Pakete ohne eingeschränkte Personen (lib/heads/*), Anzeige „eingeschränkter Kontakt“.',
   'app/api/heads/eval/route.ts': 'Heads-Bewertung gespeicherter Läufe — nur Zahlen, kein Modellaufruf mit Personen.',

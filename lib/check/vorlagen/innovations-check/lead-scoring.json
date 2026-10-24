@@ -1,0 +1,21 @@
+{
+ "version": "1.0",
+ "stand": "2026-10-24",
+ "grundlage": "Aufbau wie die Lead-Scoring-Vorlage des Inhabers (Wert 1, 3 oder 5 je Eigenschaft, Summe gegen Mindestpunktzahl). Startwerte, der Inhaber kalibriert nach den ersten 20 Gesprächen.",
+ "automatisch_aus_dem_check": [
+  {"eigenschaft": "Mitarbeitende", "frage": "A2", "werte": {"solo": 1, "2-9": 3, "10-49": 5, "50-249": 5, "250+": 3}},
+  {"eigenschaft": "Umsatz", "frage": "A3", "werte": {"<250k": 1, "250k-1m": 3, "1-5m": 5, "5-50m": 5, ">50m": 3, "keine_angabe": 2}},
+  {"eigenschaft": "Rolle", "frage": "A5", "werte": {"inhaber_gf": 5, "innovation_ki": 5, "bereichsleitung": 3, "vertrieb_marketing": 1, "it": 1, "mitarbeitende": 1}},
+  {"eigenschaft": "Budget", "frage": "B2", "werte_nach_punkten": {"0": 1, "1": 1, "2": 3, "3": 5, "4": 5}, "fehlt": 2},
+  {"eigenschaft": "Stufe (Hebel)", "quelle": "Gesamtstufe", "werte": {"1": 2, "2": 5, "3": 5, "4": 3, "5": 1}},
+  {"eigenschaft": "Zeithorizont", "quelle": "Verhalten", "werte": {"gespraech_gebucht": 5, "bericht_geoeffnet": 3, "nur_check": 1}},
+  {"eigenschaft": "Gratis-Produkte genutzt", "quelle": "Brevo/CRM", "werte": {"0": 1, "1": 3, "2+": 5}}
+ ],
+ "maximal_automatisch": 35,
+ "klassen": {"A": "ab 26 Punkte", "B": "18 bis 25 Punkte", "C": "unter 18 Punkte"},
+ "regeln": [
+  "A-Lead: Zoe bietet aktiv die Übergabe an den Gastgeber an, der Gastgeber bekommt sofort eine Nachricht und liest den Bericht persönlich.",
+  "Branche tech mit startup == true und Phase 'Idee oder Prototyp' (J1 = 0): höchstens B, laut Leistungsumfang keine Mandate ohne fertiges Produkt (Ausnahme nach Einzelfall).",
+  "Nach dem Gespräch ergänzt der Gastgeber im CRM: Motivation, Entscheidungsfreiheit, Coachbarkeit (je 1, 3, 5). Das ist die zweite Hälfte der Vorlage und ändert die Klasse."
+ ]
+}

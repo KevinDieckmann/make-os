@@ -1968,6 +1968,39 @@ sowie Kalender, Inbox, Aufgaben, Gesundheit, Familie und ZOE (Gruppe B) — zwö
 - **Kalender:** kein neuer Weg — der vorhandene Spiegel (`events/Kalender.tsx` → `/api/kalender/spiegel`, `eventSoll`) gilt für jedes Event; die Akte zeigt denselben Knopf. Folgeschritt (nicht gebaut): Hinweis in der Glocke „Event ohne Termin“.
 - Tests: `besuche-adresse`, `besuche-form`, `besuche-wirkung`, `besuche-route`. Doku: `UPDATES.md` › Events, `GO_LIVE_CHECKLISTE.md` › Rückweg.
 
+## Innovations-Check der Website (24.10., Branch `innovations-check`, nur lokal; Bauanleitung: Kevins Ordner „MAKE Innovations-Check Bauanleitung“)
+Kevin 24.10.: „Baue die Basis“ — der Check ist das Herzstück aller Gratis-Angebote (Konzept-Doc „MAKE Innovations-Check: Konzept“, Leistungsumfang 2.0).
+Klickrunde 24.10.: Kontaktdaten erst NACH Frage 15 (überspringbar, Kurzergebnis frei sichtbar) · Zoe zur Beta mit FESTEN Texten (keine KI-Antwort an
+Besucher bis AVV/Anwalt/Leitplanken) · Adresse `makeinnovation.de/check` (Caddy leitet nur `/check` + `/api/check` an MAKE OS) · Homepage ruhig, Check lebendig.
+- **EINE Check-Maschine** `lib/check/` (rein): Vorlagen als JSON in `lib/check/vorlagen/<id>/` (fragenkatalog, scoring, benchmarks, lead-scoring — vom
+  Inhaber freigegeben, Texte nur nach seiner Freigabe ändern; neuer Check = neuer Ordner + Eintrag in `VORLAGEN`). Auswertung `auswertung.ts` = Nachbau
+  der verbindlichen Referenz (`tests/fixtures/check-referenz/scoring.cjs`), gleiche Werte für dieselben Eingaben (Wächter `tests/check-auswertung.test.ts`:
+  vier Fälle der Anleitung + 600 Zufallsfälle). **Zahlen nie aus einem Sprachmodell.** Ablauf NUR `ablauf.ts` (`naechsterSchritt`, `phaseVon`,
+  `antwortPruefen` — Kennungen nur aus dem Katalog, Freitexte nie gekürzt → 413), Zoes Sätze `zoe-texte.ts` (Marke/Gastgeber aus der Instanz),
+  Ergebnis-Ansicht `ergebnis.ts`, Katalog für den Browser OHNE Punkte/Stufen/Rubriken `oeffentlich.ts`, Hinweis `datenschutz.ts` (Fassung hochzählen),
+  Fristen `fristen.ts` (ohne Kontakt 30 Tage, mit 24 Monate).
+- **Öffentlich:** Seite `app/check/page.tsx` + `components/check/*` (CSS-Modul mit CI-Variablen — CI noch nicht final), EINE Schnittstelle
+  `POST /api/check` (Middleware `CHECK_OFFEN`, Register-Klasse `offen`): Sitzung erst mit dem ersten Klick, Token 256 Bit nur im Browser (Bestand: SHA-256),
+  Drossel je Netz, Honigtopf, Mindestzeit vor dem Kontakt, ≤ 16 KB, strenge Köpfe wie die Buchung. **Kommt AUSGESCHALTET** (`check-einstellungen.aktiv`,
+  nur der Inhaber schaltet ein, nur mit Verantwortlichem der Einrichtung) — sonst 404.
+- **Lead:** nach der Kontakt-Frage über den EINEN Anfrage-Weg `lib/crm/anfrage-anlegen.ts` (auch von `/api/crm/anfrage` genutzt): Kanal „Website“, Follow-up
+  für den Gastgeber, Ereignis „neuer Lead“. Abgelehnt (Art. 18 …) → nichts entsteht, Grund nur intern. Termin = vorhandene Buchungsseite (`buchungSlug`,
+  Vorbelegung nur per `sessionStorage`).
+- **Intern:** Markttraktion › Marketing › „Innovations-Check“ (`components/os/crm/marketing/Checks.tsx`, `/api/check/intern`, Haushalt): an/aus, Buchungsseite,
+  eingegangene Checks, Beleg-Bewertung C5/D6 nach Rubrik von Hand (rechnet neu), Lead nachholen, löschen.
+- **Recht:** Speicher-Register `check-sitzungen` (mit Angaben, Bereich Business), `check-einstellungen`; Art. 15/17 über `person-weitere.ts`; Löschfrist im
+  Morgenlauf (`checkFristLauf`); VVT `vv-innovations-check` erst, wenn eingeschaltet. Hinweis, keine Rechtsberatung — Anwalt offen.
+- **Offen (Phase 2, Bauanleitung 2.2):** Live-KI (Zoe-Prompt, Beleg-Bewertung per KI), Sprache, Upload, PDF-Bericht (erste 20 prüft der Inhaber), Brevo/Mail-Strecke
+  (braucht Kevins ausdrückliches Ja zur Ausnahme von Eiserne Regel 3), Kontingent 5/Woche + Warteliste, Team-Check, Re-Check, Siegel. Tests `tests/check-*.test.ts`.
+
+## makeinnovation.de — Neubau nach Markenhandbuch 4.0 (24.10., Branch `innovations-check`, nicht online; `makeinnovation/LIESMICH.md`)
+Kevin 24.10.: „sehr seriös, nicht wie die nächste Tech-Bude“ — 20 Entscheidungen stehen im LIESMICH (Du, dunkel mit hellen Lesestellen, Animation
+im Code, eigene Seite je Produkt, Preise offen, Termin direkt, Zoe-Knopf als KI gekennzeichnet, erst ohne Fotos, Gratis nur was fertig ist).
+Ordner `makeinnovation/` ersetzt `website/` (bleibt bis Fokus in 4.0 steht). Alle Seiten entstehen aus `inhalt/inhalt.json` (Kevins
+homepage-content.json OHNE interne Teile — Sperrliste in `pruefen.mjs`) + `inhalt/seite.json` über `bauen.mjs`; nie eine Seite von Hand ändern.
+`pruefen.mjs` (Wächter `tests/makeinnovation-seite.test.ts`): keine Inline-Skripte/-Stile, keine Formulare, keine fremden Quellen, Links/Anker,
+Zoe als KI. Offenes = `[[KEVIN: …]]`. Der Check verspricht nur, was die Beta kann. CI-Farben auch im Check (`components/check/check.module.css`, kein Rot).
+
 ## Fokus Innovation — Reihe unter Make.One + Event-Seite (03.10., nur lokal, Branch `fokus-innovation`)
 - **Reihe** = drittes Merkmal eines eigenen Abends neben `marke` (Make.One) und `format` (Art des Abends): `Event.reihe` (optional, Kennung aus `EVENT_REIHEN`,
   lib/crm/marke.ts; `reiheVon`/`reiheName`/`titelMitReihe`, nie bei besuchten Events). Neue Reihe = neue Zeile in `EVENT_REIHEN` (Kennung nie ändern). Name nach außen nur über
