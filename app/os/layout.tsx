@@ -22,6 +22,8 @@ import { wache } from '@/lib/zugang/wache';
 import { TeamQuelle } from '@/components/os/TeamQuelle';
 import { teamAusKonten } from '@/lib/crm/team-liste';
 import { ladeKonten } from '@/lib/zugang/konten';
+import { kontoSichtAus } from '@/lib/zugang/konto-sicht';
+import { KontoVorab } from '@/components/os/useInhaber';
 
 // Alles hinter der Anmeldung wird je Anfrage gebaut (25.09., schneller Modus): Die Wache liest das
 // Sitzungs-Cookie — beim Vorab-Erzeugen während `next build` gibt es keins.
@@ -30,10 +32,15 @@ export const dynamic = 'force-dynamic';
 export default async function OsLayout({ children }: { children: React.ReactNode }) {
   // Seit 23.09.: ohne gültiges Konto keine Seite — die Middleware prüft die
   // Unterschrift, die Wache prüft, ob es das Konto noch gibt.
-  await wache('/os');
+  const konto = await wache('/os');
   // CRM-Team aus den Konten (14.10.) — nur Kennung, Vorname, Farbe, Verantwortung; im Browser vor allen Seiten gesetzt.
-  const team = teamAusKonten((await ladeKonten()).konten);
+  const konten = await ladeKonten();
+  const team = teamAusKonten(konten.konten);
+  // Feinschliff 1 (23.10.): „nur Business“ steht schon beim ersten Bild fest (dieselbe Regel wie /api/konto/ich) — die Leiste zeigt Punkte nur für volle
+  // Mitglieder (Unternehmen) nicht erst kurz an. Die Schranke bleibt der Server (403).
+  const vorab = { nurBusiness: kontoSichtAus(konten, konto.speicher).nurBusiness };
   return (
+    <KontoVorab wert={vorab}>
     <div className="os-shell" style={{ display: 'flex', minHeight: '100vh', alignItems: 'stretch' }}>
       <TeamQuelle team={team} />
       {/* Tempo (27.09.): gleiche GET-Abfragen an /api werden geteilt statt dreifach gestellt. */}
@@ -74,5 +81,6 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       {/* Nach jedem Update einmal „Was ist neu“ je Person (18.10.) — der Server entscheidet, ob es etwas Neues gibt. */}
       <UpdateHinweis />
     </div>
+    </KontoVorab>
   );
 }

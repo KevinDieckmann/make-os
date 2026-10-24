@@ -95,7 +95,7 @@ export function BlickUeberblick({ lage, schild, daten, gewaehlt, heute }: { lage
         </div>
         <div style={{ marginTop: 12 }}><VerlaufStreifen tage={verlauf} jetzt={lb.ton} heute={heute} /></div>
         <div style={{ marginTop: 10 }}><TonLegende /></div>
-        <WasSeheIch>Das Schild-Zeichen zeigt je Gesellschaft, wie es steht: rot nur, wenn eine Folge droht (Frist verstrichen, Schutz abgelaufen), gelb bei bald Fälligem, grau bei Lücken ohne Eile. Je Karte stehen höchstens drei Handgriffe — der Rest ist gezählt, einen Klick tiefer.</WasSeheIch>
+        <WasSeheIch>Das Schild-Zeichen zeigt je Gesellschaft, wie es steht: rot nur, wenn eine Folge droht (Frist verstrichen, Marke oder Versicherung abgelaufen), gelb bei bald Fälligem, grau bei Lücken ohne Eile. Je Karte stehen höchstens drei Handgriffe — der Rest ist gezählt, einen Klick tiefer.</WasSeheIch>
       </Karte>
       <Raster min={320}>
         {lb.je.map(x => <GesellschaftKarte key={x.id} b={x} heute={heute} />)}

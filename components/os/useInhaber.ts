@@ -5,9 +5,20 @@
 // Einmal je Seite über `/api/konto/ich` (Feld `inhaber`, mehrere Inhaber möglich). `null` = noch unbekannt.
 // Seit 09.10. (E4-Rest) liest dieselbe Anfrage auch `nurBusiness` (EINE Konto-Sicht, serverseitig gerechnet) — `useNurBusiness` für den
 // Kopf-Schalter und den Fokus-Satz in „Alles“. Die Trennung selbst geschieht auf dem Server; der Browser blendet nur aus, was leer bliebe.
-import { useEffect, useState } from 'react';
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from 'react';
 
 interface Ich { inhaber: boolean; nurBusiness: boolean; betreiber: boolean; haushaltZugang: boolean; privatFinanzen: boolean }
+
+/**
+ * Feinschliff 1 (23.10.): was der OS-Rahmen schon beim Bauen der Seite über das Konto weiß (app/os/layout.tsx — dieselbe Regel wie `/api/konto/ich`,
+ * `kontoSichtAus`). Ohne dieses Vorwissen stand ein Feld bis zur Antwort auf `null` — die Leiste zeigte einem Konto „nur Business“ so lange das Menü
+ * „Unternehmen“ (nur für volle Mitglieder). Je Anfrage über einen Kontext, nie als Modul-Zustand (der Server rendert mehrere Personen nebeneinander).
+ */
+export type KontoVorwissen = Partial<Pick<Ich, 'nurBusiness'>>;
+const VorabKontext = createContext<KontoVorwissen>({});
+export function KontoVorab({ wert, children }: { wert: KontoVorwissen; children: ReactNode }) {
+  return createElement(VorabKontext.Provider, { value: wert }, children);
+}
 let anfrage: Promise<Ich> | null = null;
 const FELDER: (keyof Ich)[] = ['inhaber', 'nurBusiness', 'betreiber', 'haushaltZugang', 'privatFinanzen'];
 const ich = (): Promise<Ich> => {
@@ -21,7 +32,8 @@ const ich = (): Promise<Ich> => {
 };
 
 function useIchFeld(feld: keyof Ich): boolean | null {
-  const [wert, setWert] = useState<boolean | null>(null);
+  const vorab = (useContext(VorabKontext) as Partial<Ich>)[feld];
+  const [wert, setWert] = useState<boolean | null>(typeof vorab === 'boolean' ? vorab : null);
   useEffect(() => {
     let lebt = true;
     void ich().then(v => { if (lebt) setWert(v[feld]); });
