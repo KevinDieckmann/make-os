@@ -1258,7 +1258,10 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .pw-test-schritt { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.02); }
 .pw-json { margin: 0; padding: 10px; border-radius: 10px; background: #0B0E10; color: #C9D2D0; font-size: 13px; overflow: auto; max-height: 260px; }
 .pw-testdaten { display: grid; gap: 8px; padding: 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.1); }
-.pw-platzhalter { display: inline-flex; align-items: center; gap: 2px; min-height: 32px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(88,217,205,.35); background: rgba(88,217,205,.08); color: #58D9CD; font: inherit; font-size: 13px; cursor: grab; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pw-platzhalter { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px; min-height: 32px; padding: 4px 10px; border-radius: 16px; border: 1px solid rgba(88,217,205,.35); background: rgba(88,217,205,.08); color: #58D9CD; font: inherit; font-size: 13px; cursor: grab; max-width: 100%; min-width: 0; box-sizing: border-box; text-align: left; white-space: normal; overflow-wrap: anywhere; }
+/* Runde 3 (Bau-Test 2: „Panel bei Fall Deal läuft 10 px seitlich über“): kein Inhalt macht das Panel breiter — lange Platzhalter brechen um, Felder schrumpfen
+   (das Panel steht im Werkzeugmodus im Seitenfeld `.wz-feld-inhalt`, sonst in `.pw-panel`). */
+.pw-panel > *, .wz-feld-inhalt > * { min-width: 0; }
 .pw-vorschau { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.03); border: 1px dashed rgba(255,255,255,.12); }
 .pw-modell { display: grid; gap: 8px; padding: 12px; border-radius: 14px; border: 1px dashed rgba(255,255,255,.14); }
 .pw-befund-tipp { position: absolute; z-index: 6; display: grid; gap: 4px; max-width: 340px; padding: 10px 12px; border-radius: 12px; background: #1B2126; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 14px 36px -16px rgba(0,0,0,.85); font-size: 14px; line-height: 1.4; pointer-events: none; }

@@ -256,7 +256,7 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   // Werkstatt-Fäden (24.10.): die Ausgänge der Form — am Warten mit fester Dauer ohne „abgelaufen“ (es läuft nie ab).
   const ausgaenge = ausgaengeVon(k);
   return (
-    <div ref={andock} style={{ display: 'grid', gap: 12 }}>
+    <div ref={andock} style={{ display: 'grid', gap: 12, minWidth: 0, gridTemplateColumns: 'minmax(0,1fr)' }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <span aria-hidden style={{ display: 'inline-flex', width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', background: TIEF.flaeche(ton), border: `1px solid ${TIEF.rand(ton)}` }}><S width={20} height={20} color={ton} /></span>
         <div style={{ minWidth: 0 }}>

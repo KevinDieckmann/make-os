@@ -114,13 +114,13 @@ export function VorlageEingabe({ id, label, text: t, onText, onVerlassen, aus, p
   const fehler = textvorlagePruefen(t, platzhalter);
   const vorschau = u?.werte && t ? textvorlageFuellen(t, u.werte) : null;
   return (
-    <div style={{ display: 'grid', gap: 6 }}>
+    <div style={{ display: 'grid', gap: 6, minWidth: 0, gridTemplateColumns: 'minmax(0,1fr)' }}>
       <textarea ref={el} aria-label={label} value={t} disabled={aus} rows={4} onChange={ev => onText(ev.target.value)}
         onFocus={() => { if (u) u.ziel.current = ziel; }} onBlur={onVerlassen}
         style={{ ...(gross ? eingabeStil : feld), resize: 'vertical', minHeight: 96, ...(fehler.length ? { borderColor: LEUCHT.achtung } : {}) }} />
       {fehler.map(f => <span key={f} role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{f.charAt(0).toUpperCase() + f.slice(1)}</span>)}
       {platzhalter?.length ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} aria-label="Platzhalter (klicken setzt an den Cursor)">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minWidth: 0 }} aria-label="Platzhalter (klicken setzt an den Cursor)">
           {platzhalter.map(x => <PlatzhalterChip key={x} id={x} wert={u?.werte?.[x]} onEinsetzen={aus ? undefined : einsetzen} />)}
         </div>
       ) : null}

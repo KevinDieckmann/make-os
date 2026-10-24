@@ -6,7 +6,8 @@
 // (5) beim Öffnen liegt nichts unter dem Einstellungs-Panel, wenn der Prozess so groß wie bei „Alles zeigen“ ins freie Feld passt;
 // (6) das Ausgang-Menü nennt je Option das aufgelöste Ziel, implizit „(folgt im Ablauf)“, nie zweimal denselben Namen — über alle Vorlagen;
 // (7) ⌘V: die Kopie heißt „<Name> (Kopie)“; „zurück zu …“ nur, wenn der Faden wirklich zu einem früheren Schritt im Ablauf führt;
-// (8) die Schleife bietet nur Teilprozesse an, deren Fall zum Eintrag passt; der Probelauf nennt Zahl, Einträge und Teilprozess.
+// (8) die Schleife bietet nur Teilprozesse an, deren Fall zum Eintrag passt; der Probelauf nennt Zahl, Einträge und Teilprozess;
+// (9) das Panel läuft nie seitlich über (lange Platzhalter brechen um, jede Ebene darf schrumpfen).
 // Erfundene Werte, kein Netz, kein Modell.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -378,5 +379,21 @@ describe('(8) Teilprozess der Schleife nach Fall; Satz im Probelauf', () => {
     expect(schleifeSatz({ anzahl: 1, element: 'deal', teil: 'Deal klären', hoechstens: 50, titel: 'x' })).toBe('würde für 1 Deal je einen Teil-Lauf von „Deal klären“ starten (höchstens 50 je Lauf)');
     expect(schleifeSatz({ anzahl: null, element: 'deal', teil: 'Deal klären', hoechstens: 50, titel: 'x' })).toBe('würde je Deal einen Teil-Lauf von „Deal klären“ starten (höchstens 50 je Lauf)');
     expect(schleifeSatz({ anzahl: null, element: null, teil: null, hoechstens: 5, titel: 'Je Eintrag' })).toBe('würde je Eintrag einen Teil-Lauf starten: Je Eintrag (höchstens 5 je Lauf)');
+  });
+});
+
+describe('(9) Panel läuft nie seitlich über', () => {
+  it('Platzhalter brechen um statt das Panel zu verbreitern; jede Ebene bis zum Platzhalter darf schrumpfen', () => {
+    const css = lies('app/globals.css');
+    const chip = css.split('\n').find(z => z.startsWith('.pw-platzhalter {'))!;
+    expect(chip).toContain('white-space: normal');
+    expect(chip).toContain('overflow-wrap: anywhere');
+    expect(chip).toContain('min-width: 0');
+    expect(chip).not.toContain('nowrap');
+    expect(css).toContain('.pw-panel > *, .wz-feld-inhalt > * { min-width: 0; }');
+    const m = lies('components/os/prozesse/WerkstattMaske.tsx');
+    expect(m).toContain("<div style={{ display: 'grid', gap: 6, minWidth: 0, gridTemplateColumns: 'minmax(0,1fr)' }}>");
+    expect(m).toContain("<div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minWidth: 0 }} aria-label=\"Platzhalter");
+    expect(lies('components/os/prozesse/WerkstattPanel.tsx')).toContain("<div ref={andock} style={{ display: 'grid', gap: 12, minWidth: 0, gridTemplateColumns: 'minmax(0,1fr)' }}>");
   });
 });
