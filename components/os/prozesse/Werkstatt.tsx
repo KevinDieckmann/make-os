@@ -401,8 +401,11 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   // ── Steckbrief (eigene Aktion; der Name der Wurzel zieht mit) ──
   const steckbrief = async (felder: Record<string, unknown>) => {
     await sichern();
+    // Feinschliff 24.10.: auch der Steckbrief sagt „speichert …“, bis der Server geantwortet hat (nie vorher „gespeichert“).
+    setSpeicher(s => (s.art === 'gespeichert' ? { art: 'speichert' } : s));
     const r = await werkstattSenden(() => ({ aktion: 'steckbrief', id: prozessId, stand: stand.current, felder }));
     const j = r.j;
+    setSpeicher(s => (s.art === 'speichert' ? { art: 'gespeichert' } : s));
     if (r.status === 200 && j?.ok && j.eintrag && j.stand) {
       stand.current = j.stand;
       setEintrag(j.eintrag);

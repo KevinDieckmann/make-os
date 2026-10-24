@@ -247,7 +247,7 @@ describe('2 — Probelauf mit echtem Mandat: Produkt = Auswahl geht über „ja�
     const nein = await S.probelauf({ prozessId: PZM, quelle: 'entwurf', fall: { art: 'mandat', id: 'm-nord' }, person: 'pia' });
     expect(nein.ok && nein.schritte.map(x => x.knotenId)).toContain(fk(20));
   });
-  it('Sicht: die Auswahl „Produkt“ trägt nur Business-Produkte des Haushalts (kein Privat, kein Papierkorb) — fremder Haushalt bekommt nichts (403)', async () => {
+  it('Sicht: die Auswahl „Produkt“ trägt nur Business-Produkte des Haushalts (kein Privat, kein Papierkorb) — fremder Haushalt und Sicht Privat bekommen nichts (403)', async () => {
     const { auswahlListen } = await import('@/lib/prozesse/werkstatt-server');
     const l = await auswahlListen(H_, 'pia');
     expect(l.produkt?.map(x => x.id)).toEqual(['l-demo-vertrieb']);
@@ -258,6 +258,9 @@ describe('2 — Probelauf mit echtem Mandat: Produkt = Auswahl geht über „ja�
     const fremd = await GET(new Request('http://test/api/prozesse/katalog?auswahl=1&space=business', { headers: sitzung('gast') }));
     expect(fremd.status).toBe(403);
     expect(await fremd.text()).not.toContain('Vertriebsaufbau');
+    const privat = await GET(new Request('http://test/api/prozesse/katalog?auswahl=1&space=privat', { headers: sitzung('pia') }));
+    expect(privat.status).toBe(403);
+    expect(await privat.text()).not.toContain('Vertriebsaufbau');
     const eigen = await GET(new Request('http://test/api/prozesse/katalog?auswahl=1&space=business', { headers: sitzung('pia') }));
     expect(eigen.status).toBe(200);
     expect(((await eigen.json()) as { auswahl: { produkt: { id: string }[] } }).auswahl.produkt.map(x => x.id)).toEqual(['l-demo-vertrieb']);
