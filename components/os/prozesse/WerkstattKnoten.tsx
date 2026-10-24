@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL } from '@/lib/make-one/design';
 import type { ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
-import type { KnotenLageW } from '@/lib/prozesse/werkstatt-lage';
-import { ausgangName, ausgangMarke, titelOben, WS } from '@/lib/prozesse/werkstatt-lage';
+import type { KnotenLageW, Box, Anschluss } from '@/lib/prozesse/werkstatt-lage';
+import { ausgangName, ausgangMarke, knotenTreffer, titelOben, WS } from '@/lib/prozesse/werkstatt-lage';
 import { MARKEN_BEDEUTUNG, zeitText, type LaufMarke, type MarkenStufe } from '@/lib/prozesse/laeufe-ansicht';
 import { WERKSTATT_FORM_FARBE, AGENT_TON_ZWEI } from '@/lib/prozesse/farben';
 import { PROBE_NAME, type ProbeStatus } from '@/lib/prozesse/werkstatt-hinweise';
@@ -80,6 +80,8 @@ export interface KnotenZeichnungProps {
   andockGewaehlt?: string | null;
   /** Werkstatt bau-fertig (Punkt 14): ausgeschaltet (bzw. das Schloss hinter einem ausgeschalteten Schritt) — blass, gestrichelt, Marke „aus“. */
   aus?: boolean;
+  /** Feinschliff 1 (23.10.): die Beschriftungen der Fäden an diesem Knoten (relativ zur Box, lib/prozesse/werkstatt-lage.ts `ausgangChips`) — die „+“ weichen aus. */
+  chips?: readonly { art: Anschluss['art']; box: Box }[];
 }
 
 /** Ein Knoten in seiner Gestalt (an 0, 0 der Knoten-Box). */
@@ -98,6 +100,7 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
   // Unter dem Körper; bei der Raute tiefer — „nein“, sein „+“ und die Beschriftung des Fadens stehen dazwischen (lib/prozesse/werkstatt-lage.ts `titelOben`).
   const titelY = titelOben(l);
   const rechts = l.anschluesse.filter(a => a.richtung === 'rechts' && a.art !== 'ein').length;
+  const chipBoxen = (p.chips ?? []).map(c => c.box);
   // ── Körper ──
   let koerper: ReactNode;
   if (raute) {
@@ -137,6 +140,8 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
   }
   return (
     <g opacity={p.grau ? 0.38 : p.aus ? 0.5 : undefined} data-ws-lauf={p.marke?.stufe ?? (p.grau ? 'nicht-erreicht' : undefined)} data-ws-aus={p.aus ? '' : undefined}>
+      {/* Feinschliff 1 (23.10.): wo ein Klick den Knoten meint — Körper bis zum Namen und der Name selbst (unsichtbar; die „+“ ragen nie hinein). */}
+      {knotenTreffer(l).map((t, i) => <rect key={`t${i}`} data-ws-treffer="" x={t.x} y={t.y} width={t.b} height={t.h} fill="transparent" />)}
       {p.aus && <rect x={c.x - 5} y={c.y - 5} width={c.b + 10} height={c.h + 10} rx={raute ? 12 : 22} fill="none" stroke={C.inkDim} strokeWidth={1.6} strokeDasharray="6 5" />}
       {probeFarbe && <rect x={c.x - 7} y={c.y - 7} width={c.b + 14} height={c.h + 14} rx={raute ? 14 : 24} fill="none" stroke={probeFarbe} strokeWidth={2.4} strokeDasharray={p.probe === 'uebersprungen' ? '5 5' : undefined} />}
       {/* Lauf-Ansicht: der Ring im Ton des Stands; „wartet auf dich“ pulsiert (still bei reduzierter Bewegung — globals.css) und nennt die Frist. */}
@@ -163,15 +168,19 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
         const farbe = istFehler ? LEUCHT.kritisch : a.art === 'nein' ? WERKSTATT_FORM_FARBE.erinnerung : C.aktiv;
         const benannt = a.art !== 'ein' && a.art !== 'weiter' && (raute || f === 'freigabe' || f === 'warten' || istFehler);
         const zeigePlus = !p.nurLesen && a.art !== 'ein' && (frei || p.gewaehlt) && !(istFehler && !p.gewaehlt) && !(a.art === 'abgelaufen' && !p.gewaehlt && f === 'warten');
-        // Feinschliff 22.10. (Befund 3): „+“ dicht am Anschluss, der Name rechts daneben auf Höhe des Anschlusses — nie über dem nächsten „+“.
-        const m = ausgangMarke(a, { rechtsAnzahl: rechts, mitPlus: !!zeigePlus });
+        // Feinschliff 22.10. (Befund 3): „+“ dicht am Anschluss, der Name rechts daneben auf Höhe des Anschlusses — nie über dem nächsten „+“. Seit 23.10.: hängt
+        // schon ein beschrifteter Faden daran, nennt der ihn (kein zweiter Name), und das „+“ rückt hinter die Beschriftungen; unten (Raute) steht es neben dem Körper.
+        const eigenChip = p.chips?.find(c => c.art === a.art)?.box ?? null;
+        const m = ausgangMarke(a, { rechtsAnzahl: rechts, mitPlus: !!zeigePlus, chip: eigenChip, chips: chipBoxen });
         const plus = m.plus;
+        const strichEnde: [number, number] = a.richtung === 'oben' ? [plus[0], plus[1] + m.r] : [plus[0] - m.r, plus[1]];
         return (
           <g key={a.art}>
-            {zeigePlus && <line x1={a.x} y1={a.y} x2={a.richtung === 'rechts' ? plus[0] - m.r : plus[0]} y2={a.richtung === 'unten' ? plus[1] - m.r : a.richtung === 'oben' ? plus[1] + m.r : plus[1]} stroke={TIEF.rand(farbe)} strokeWidth={1.4} strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
+            {/* Der Hilfsstrich nur an freien Ausgängen — hängt ein beschrifteter Faden daran, führt der Faden selbst zum „+“ (sonst kreuzte der Strich die Beschriftung). */}
+            {zeigePlus && !eigenChip && <polyline points={[[a.x, a.y], ...(m.knick ? [m.knick] : []), strichEnde].map(q => q.join(',')).join(' ')} fill="none" stroke={TIEF.rand(farbe)} strokeWidth={1.4} strokeDasharray="3 3" style={{ pointerEvents: 'none' }} />}
             <circle data-ws-anschluss={`${k.id}|${a.art}`} cx={a.x} cy={a.y} r={a.art === 'ein' ? 6 : 7} fill={C.grund} stroke={a.art === 'ein' ? C.inkDim : farbe} strokeWidth={2}
               style={{ cursor: p.nurLesen || a.art === 'ein' ? 'default' : 'crosshair' }} aria-hidden />
-            {benannt && (frei || p.gewaehlt) && <text x={m.text[0]} y={m.text[1]} fontSize={FLAECHE_SCHRIFT.mikro + 1} fill={istFehler ? LEUCHT.kritisch : C.inkDim} style={{ pointerEvents: 'none' }}>{`${a.art === 'ein' ? '' : ausgangName(f, a.art)}${frei && raute && a.art === 'nein' ? ' · offen' : ''}`}</text>}
+            {benannt && (frei || p.gewaehlt) && m.name && <text x={m.text[0]} y={m.text[1]} textAnchor={m.anker} fontSize={FLAECHE_SCHRIFT.mikro + 1} fill={istFehler ? LEUCHT.kritisch : C.inkDim} style={{ pointerEvents: 'none' }}>{`${a.art === 'ein' ? '' : ausgangName(f, a.art)}${frei && raute && a.art === 'nein' ? ' · offen' : ''}`}</text>}
             {zeigePlus && (
               <g data-ws-plus={`${k.id}|${a.art}`} transform={`translate(${plus[0]} ${plus[1]})`} style={{ cursor: 'pointer' }} role="button" aria-label={`An „${a.art === 'ein' ? '' : ausgangName(f, a.art)}“ von „${k.titel}“ anhängen`}>
                 <circle r={m.r} fill={C.flaeche} stroke={TIEF.rand(farbe)} strokeWidth={1.4} />

@@ -158,7 +158,7 @@ export function neueVorschlaege(v: readonly CheckVorschlag[], marken: Readonly<R
 export function checkText(c: Omit<WochenCheck, 'text'>): string {
   const z: string[] = [`RECHT-CHECK ${c.kw.replace('-W', ' · KW ')} — gesamt: ${AMPEL_WORT[c.ampel]}`];
   if (!c.gesellschaften.length) z.push('Noch keine Business-Gesellschaft im Register — das Schild führt nur Gesellschaften im Bereich Business.');
-  for (const g of c.gesellschaften) z.push(`• ${g.name}: ${AMPEL_WORT[g.ampel]} (Dokumente ${AMPEL_WORT[g.teile.dokumente]} · Pflichten ${AMPEL_WORT[g.teile.pflichten]} · Risiken ${AMPEL_WORT[g.teile.risiken]} · Schutz ${AMPEL_WORT[g.teile.schutz]})`);
+  for (const g of c.gesellschaften) z.push(`• ${g.name}: ${AMPEL_WORT[g.ampel]} (Dokumente ${AMPEL_WORT[g.teile.dokumente]} · Pflichten ${AMPEL_WORT[g.teile.pflichten]} · Risiken ${AMPEL_WORT[g.teile.risiken]} · Marken & Versicherungen ${AMPEL_WORT[g.teile.schutz]})`);
   z.push('', `FRISTEN der nächsten ${CHECK_TAGE} Tage (${c.fristen.length}):`);
   if (!c.fristen.length) z.push('keine');
   for (const f of c.fristen.slice(0, 20)) z.push(`• ${tagText(f.tag)} — ${f.titel} · ${f.unter}${f.inTagen < 0 ? ' · ÜBERFÄLLIG' : ''}${f.eskalation ? ' · Anwalt/Steuerbüro einbeziehen' : ''}`);

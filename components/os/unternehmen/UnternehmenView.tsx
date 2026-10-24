@@ -130,7 +130,7 @@ export function UnternehmenView() {
 
   if (!daten) {
     return (
-      <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Pflichten, Risiken und Schutzrechte — eine Quelle.">
+      <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Pflichten, Risiken, Marken und Versicherungen — eine Quelle.">
         {fehler ? <Hinweis art="kritisch" rolle="alert" titel="Register nicht geladen" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal versuchen</Knopf>}>{fehler}</Hinweis> : <Karte><Leer>lädt …</Leer></Karte>}
       </Seite>
     );
@@ -154,7 +154,7 @@ export function UnternehmenView() {
 
   return (
     // Unternehmen (10.10.): eigener Punkt in der Leiste, getrennt von Produkte & Mandate. 11.10.: Antwort zuerst — der Überblick ist „in einem Blick“.
-    <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Pflichten, Risiken und Schutzrechte — eine Quelle."
+    <Seite titel="Unternehmen" unter="Eigene Gesellschaften, Pflichten, Risiken, Marken und Versicherungen — eine Quelle."
       rechts={sicht === 'gesellschaften' ? (!neu && <Knopf haupt onClick={() => setNeu(true)}>+ Gesellschaft</Knopf>)
         : !assistent && business.length > 0 && <Knopf haupt href={WEG.ereignisAssistent(filter1)}>Was ist passiert?</Knopf>}>
       {offen && !g && (weg
@@ -184,7 +184,7 @@ export function UnternehmenView() {
         schildVon={id => schild.daten?.eintraege.find(e => e.id === id)} heute={heute} />}
       {sicht !== 'gesellschaften' && sicht !== 'struktur' && sicht !== 'vertraege' && sicht !== 'beschluesse' && (!lage || !schild.daten ? <Karte><Leer>lädt …</Leer></Karte>
         : sicht === 'ueberblick' ? <><BlickUeberblick lage={lage} schild={schild.daten} daten={daten} gewaehlt={w} heute={heute} />{!w && <RechtBereich lage={lage} gesellschaften={daten.gesellschaften} />}</>
-          : !gewaehlt ? <Karte><Leerzustand symbol={<Building2 size={22} />} titel="Keine Business-Gesellschaft" aktion={<Knopf leise onClick={() => geh({ s: 'gesellschaften' })}>Zu den Gesellschaften</Knopf>}>Pflichten, Dokumente, Risiken und Schutzrechte gelten je Gesellschaft im Bereich Business.</Leerzustand></Karte>
+          : !gewaehlt ? <Karte><Leerzustand symbol={<Building2 size={22} />} titel="Keine Business-Gesellschaft" aktion={<Knopf leise onClick={() => geh({ s: 'gesellschaften' })}>Zu den Gesellschaften</Knopf>}>Pflichten, Dokumente, Risiken, Marken und Versicherungen gelten je Gesellschaft im Bereich Business.</Leerzustand></Karte>
             : MIT_ALLE.includes(sicht) && !w && business.length > 1 ? <AlleGesellschaften sicht={sicht} lage={lage} />
               : <JeGesellschaft key={filter1 ?? gewaehlt} sicht={sicht} lage={lage} id={filter1 ?? gewaehlt} schild={schild.daten} ersetzen={schild.ersetzen} personen={daten.personen} heute={heute} />)}
     </Seite>

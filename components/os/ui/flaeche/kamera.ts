@@ -4,6 +4,8 @@
 // wie die Lupe der Brain-Kugel, components/os/kugel/steuerung.ts `zoomeUm`, nur ohne Kugel-Grenzen), Verschieben, „Alles zeigen“, Raster.
 // Rad- und Pinch-Erkennung kommen unverändert von der Kugel (`radFaktor`, `radArt`, `istZiehen`) — siehe ./eingabe.ts.
 
+import { einpassen, type Raender } from '@/lib/einpassen';
+
 export interface Kamera { s: number; x: number; y: number }
 export interface Rechteck { x: number; y: number; b: number; h: number }
 
@@ -34,11 +36,13 @@ export const weltAus = (k: Kamera, sx: number, sy: number): [number, number] => 
 /** Welt → Bildschirm. */
 export const bildAus = (k: Kamera, wx: number, wy: number): [number, number] => [wx * k.s + k.x, wy * k.s + k.y];
 
-/** Die Kamera, die das Rechteck (Welt) mit Rand in die Bühne (breite × hoehe) setzt — höchstens `max` (Vorgabe 100 %, nie größer als der Inhalt). */
-export function allesZeigen(r: Rechteck, breite: number, hoehe: number, rand = 40, max = 1): Kamera {
-  const b = Math.max(1, r.b), h = Math.max(1, r.h);
-  const s = klemme(Math.min((breite - 2 * rand) / b, (hoehe - 2 * rand) / h, max), ZOOM_MIN, ZOOM_MAX);
-  return { s, x: Math.round((breite - b * s) / 2 - r.x * s), y: Math.round((hoehe - h * s) / 2 - r.y * s) };
+/**
+ * Die Kamera, die das Rechteck (Welt) mit Rand in die Bühne (breite × hoehe) setzt — höchstens `max` (Vorgabe 100 %, nie größer als der Inhalt). `raender`
+ * (Feinschliff 1, 23.10.): was schwebende Leisten an den Seiten verdecken (./schwebe.ts misst sie) — eingepasst wird dann ins freie Feld. EINE Rechnung mit der
+ * Werkstatt: lib/einpassen.ts `einpassen`.
+ */
+export function allesZeigen(r: Rechteck, breite: number, hoehe: number, rand = 40, max = 1, raender?: Raender): Kamera {
+  return einpassen(r, { b: breite, h: hoehe }, { raender, rand, min: ZOOM_MIN, max: klemme(max, ZOOM_MIN, ZOOM_MAX) });
 }
 
 /** Die Kamera als SVG-Transform der Welt-Gruppe. */

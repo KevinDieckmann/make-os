@@ -20,6 +20,7 @@ import type { Bahn, ProzessDefinition, ProzessForm, ProzessKnoten, ModelTier } f
 import { kantenVon, phasen, schritteDer, seitenZiele, type Ausgang, type Kante } from './fluss';
 import { katalogEintrag } from './baustein-katalog';
 import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
+import { einpassen, freiesFeld, type Raender } from '@/lib/einpassen';
 
 type K = ProzessKnoten<ProzessForm>;
 export interface Box { x: number; y: number; b: number; h: number }
@@ -51,6 +52,12 @@ export const WS = {
   rauteTitel: 44,
   /** Beschriftung eines Fadens (Chip): Schriftgröße und Höhe — dieselben Maße zeichnet die Fläche. */
   chip: { schrift: 13, hoehe: 22 },
+  /**
+   * Feinschliff 1 (23.10., Sichtprüfung 22.10.): die Marken der Ausgänge — Radius des „+“ (kleiner bei drei Ausgängen rechts), Abstand vom Anschluss (rechts
+   * bzw. senkrecht), Luft zu Beschriftungen und Knoten, Abstand des Namens. Das „+“ unten an der Raute steht RECHTS neben dem Körper auf Höhe des Stummels (dort
+   * biegt der „nein“-Faden ab) — nie zwischen Körper und Name, wo ein Klick den Knoten meint (`knotenTreffer`).
+   */
+  ausgang: { r: 13, rKlein: 11, abstand: 20, senkrecht: 34, luft: 6, name: 12 },
 } as const;
 
 // ── Bahnen (Punkt 25) ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -503,11 +510,13 @@ export const WERKSTATT_LESBAR = 12 / 15;
  * Die Kamera beim Öffnen (rein; Befund 21.10.: „lesbar beim Öffnen“): alles zeigen, wenn es lesbar passt (höchstens 100 %); sonst lesbar (`WERKSTATT_LESBAR`)
  * und oben links am Anfang des Ablaufs beginnen — „Alles zeigen“ holt den ganzen Prozess.
  */
-export function startKamera(box: Box, buehne: { b: number; h: number }, rand = 32): { s: number; x: number; y: number } {
-  const s = Math.min(1, (buehne.b - 2 * rand) / Math.max(1, box.b), (buehne.h - 2 * rand) / Math.max(1, box.h));
-  if (s >= WERKSTATT_LESBAR) return { s, x: Math.round((buehne.b - box.b * s) / 2 - box.x * s), y: Math.round((buehne.h - box.h * s) / 2 - box.y * s) };
+export function startKamera(box: Box, buehne: { b: number; h: number }, rand = 32, raender?: Raender): { s: number; x: number; y: number } {
+  // Feinschliff 1 (23.10.): im freien Feld neben den schwebenden Leisten (lib/einpassen.ts) — ohne Ränder wie bisher.
+  const f = freiesFeld(buehne, raender);
+  const s = Math.min(1, (f.b - 2 * rand) / Math.max(1, box.b), (f.h - 2 * rand) / Math.max(1, box.h));
+  if (s >= WERKSTATT_LESBAR) return { s, x: Math.round(f.x + (f.b - box.b * s) / 2 - box.x * s), y: Math.round(f.y + (f.h - box.h * s) / 2 - box.y * s) };
   const l = WERKSTATT_LESBAR;
-  return { s: l, x: Math.round(rand - box.x * l), y: Math.round(rand - box.y * l) };
+  return { s: l, x: Math.round(f.x + rand - box.x * l), y: Math.round(f.y + rand - box.y * l) };
 }
 
 // ── Feinschliff 22.10. (Sichtprüfung, research/prozesse/FEINSCHLIFF_WERKSTATT.md) ────────────────────────────────────────────────────────────────
@@ -522,37 +531,93 @@ export function inhaltBox(l: Pick<WerkstattLage, 'knoten' | 'box'>, zettel: read
   const x1 = Math.max(...teile.map(t => t.x + t.b)) + rand, y1 = Math.max(...teile.map(t => t.y + t.h)) + rand;
   return { x: x0, y: y0, b: x1 - x0, h: y1 - y0 };
 }
-/** „Alles zeigen“ (rein, Befund 4): auf den Inhalt einpassen (nicht auf die leeren Bahnränder), höchstens `WERKSTATT_EINPASS_MAX`, mittig. */
-export function einpassKamera(box: Box, buehne: { b: number; h: number }, rand = 32, max = WERKSTATT_EINPASS_MAX): { s: number; x: number; y: number } {
-  const s = Math.max(0.15, Math.min(max, (buehne.b - 2 * rand) / Math.max(1, box.b), (buehne.h - 2 * rand) / Math.max(1, box.h)));
-  return { s, x: Math.round((buehne.b - box.b * s) / 2 - box.x * s), y: Math.round((buehne.h - box.h * s) / 2 - box.y * s) };
+/**
+ * „Alles zeigen“ (rein, Befund 4): auf den Inhalt einpassen (nicht auf die leeren Bahnränder), höchstens `WERKSTATT_EINPASS_MAX`, mittig — seit Feinschliff 1
+ * (23.10.) im freien Feld neben Seitenfeld und schwebenden Leisten (`raender`, EINE Rechnung mit der Landkarte: lib/einpassen.ts `einpassen`).
+ */
+export function einpassKamera(box: Box, buehne: { b: number; h: number }, rand = 32, max = WERKSTATT_EINPASS_MAX, raender?: Raender): { s: number; x: number; y: number } {
+  return einpassen(box, buehne, { raender, rand, min: 0.15, max });
 }
 /**
  * Die Kamera so wenig wie möglich verschieben, dass eine Box ganz zu sehen ist (rein, Befund 2: „neu angehängter Knoten liegt außerhalb des Bildes“). Der Zoom
  * bleibt; schon sichtbar → dieselbe Kamera (gleiches Objekt); größer als das Bild → mittig.
  */
-export function kameraZu(k: { s: number; x: number; y: number }, box: Box, buehne: { b: number; h: number }, rand = 48): { s: number; x: number; y: number } {
-  const lx = box.x * k.s + k.x, ly = box.y * k.s + k.y, rx = lx + box.b * k.s, ry = ly + box.h * k.s;
+export function kameraZu(k: { s: number; x: number; y: number }, box: Box, buehne: { b: number; h: number }, rand = 48, raender?: Raender): { s: number; x: number; y: number } {
+  // Feinschliff 1 (23.10.): „ganz zu sehen“ heißt im freien Feld — nicht unter dem Seitenfeld bzw. einer schwebenden Leiste.
+  const f = freiesFeld(buehne, raender);
+  const lx = box.x * k.s + k.x - f.x, ly = box.y * k.s + k.y - f.y, rx = lx + box.b * k.s, ry = ly + box.h * k.s;
   let dx = 0, dy = 0;
-  if (box.b * k.s + 2 * rand > buehne.b) dx = buehne.b / 2 - (lx + rx) / 2;
+  if (box.b * k.s + 2 * rand > f.b) dx = f.b / 2 - (lx + rx) / 2;
   else if (lx < rand) dx = rand - lx;
-  else if (rx > buehne.b - rand) dx = buehne.b - rand - rx;
-  if (box.h * k.s + 2 * rand > buehne.h) dy = buehne.h / 2 - (ly + ry) / 2;
+  else if (rx > f.b - rand) dx = f.b - rand - rx;
+  if (box.h * k.s + 2 * rand > f.h) dy = f.h / 2 - (ly + ry) / 2;
   else if (ly < rand) dy = rand - ly;
-  else if (ry > buehne.h - rand) dy = buehne.h - rand - ry;
+  else if (ry > f.h - rand) dy = f.h - rand - ry;
   return dx || dy ? { s: k.s, x: Math.round(k.x + dx), y: Math.round(k.y + dy) } : k;
 }
+/** Wo „+“ und Name eines Ausgangs stehen (relativ zur Knoten-Box): `anker` des Namens, `name` = Name zeigen, `knick` = der Hilfsstrich zum „+“ biegt dort ab. */
+export interface AusgangMarke { plus: Pt; r: number; text: Pt; anker: 'start' | 'end'; name: boolean; knick?: Pt }
 /**
  * Wo „+“ und Name eines Ausgangs stehen (rein, Befund 3: „Beschriftungen überlappen die +-Knöpfe“): rechts steht das „+“ dicht am Anschluss, der Name RECHTS
  * daneben auf Höhe des Anschlusses (nie darüber) — bei drei Ausgängen übereinander (Freigabe: freigegeben · abgelehnt · abgelaufen) ist das „+“ kleiner, damit
- * die Kreise sich nicht berühren. Unten/oben (Raute) bleibt der Name neben dem Anschluss, das „+“ in Fadenrichtung.
+ * die Kreise sich nicht berühren. Oben (Raute: Fehler) das „+“ in Fadenrichtung, der Name daneben.
+ * Feinschliff 1 (23.10., Sichtprüfung 22.10.):
+ *   · Hängt am Ausgang schon ein Faden mit Beschriftung (`chip`), nennt diese ihn — kein zweiter Name („nein“ stand doppelt) —, und das „+“ rückt nach außen,
+ *     bis es keine Beschriftung des Knotens (`chips`) mehr berührt („ja“ lag halb unter dem „+“).
+ *   · Unten (Raute: nein) steht das „+“ rechts neben dem Körper auf Höhe des Stummels (der Hilfsstrich knickt dort ab wie der Faden), der Name links vom Stummel —
+ *     zwischen Körper und Name der Raute liegt nichts Klickbares mehr, ein Klick dort wählt den Knoten (`knotenTreffer`).
  */
-export function ausgangMarke(a: Pick<Anschluss, 'x' | 'y' | 'richtung'>, o: { rechtsAnzahl: number; mitPlus: boolean }): { plus: Pt; r: number; text: Pt } {
-  if (a.richtung === 'unten') return { plus: [a.x, a.y + 34], r: 13, text: [a.x + 12, a.y + 16] };
-  if (a.richtung === 'oben') return { plus: [a.x, a.y - 34], r: 13, text: [a.x + 12, a.y - 8] };
-  const r = o.rechtsAnzahl >= 3 ? 11 : 13;
-  const plus: Pt = [a.x + 20 + r, a.y];
-  return { plus, r, text: [o.mitPlus ? plus[0] + r + 6 : a.x + 12, a.y + 4] };
+export function ausgangMarke(a: Pick<Anschluss, 'x' | 'y' | 'richtung'>, o: { rechtsAnzahl: number; mitPlus: boolean; chip?: Box | null; chips?: readonly Box[] }): AusgangMarke {
+  const A = WS.ausgang;
+  const name = !o.chip;
+  const chips = o.chips ?? (o.chip ? [o.chip] : []);
+  // Das „+“ so weit nach außen, bis sein Kreis (mit Luft) keine Beschriftung mehr berührt — rechts und unten waagerecht, oben senkrecht.
+  const weg = (p: Pt, r: number, richtung: 'x' | 'y-'): Pt => {
+    let q: Pt = p;
+    for (let i = 0; i <= chips.length; i++) {
+      const kreis = { x: q[0] - r - A.luft, y: q[1] - r - A.luft, b: 2 * (r + A.luft), h: 2 * (r + A.luft) };
+      const im = chips.filter(c => ueberlappt(kreis, c));
+      if (!im.length) return q;
+      q = richtung === 'x' ? [Math.max(...im.map(c => c.x + c.b)) + A.luft + r, q[1]] : [q[0], Math.min(...im.map(c => c.y)) - A.luft - r];
+    }
+    return q;
+  };
+  if (a.richtung === 'unten') {
+    const knick: Pt = [a.x, a.y + WS.stummel];
+    const plus = weg([a.x + WS.raute / 2 + A.luft + A.r, knick[1]], A.r, 'x');
+    return { plus, r: A.r, text: [a.x - A.name, a.y + 16], anker: 'end', name, knick };
+  }
+  if (a.richtung === 'oben') return { plus: weg([a.x, a.y - A.senkrecht], A.r, 'y-'), r: A.r, text: [a.x + A.name, a.y - 8], anker: 'start', name };
+  const r = o.rechtsAnzahl >= 3 ? A.rKlein : A.r;
+  const plus = weg([a.x + A.abstand + r, a.y], r, 'x');
+  return { plus, r, text: [o.mitPlus ? plus[0] + r + A.luft : a.x + A.name, a.y + 4], anker: 'start', name };
+}
+/**
+ * Wo ein Klick den Knoten meint (rein, Feinschliff 1, 23.10.: „Klick auf die Mitte einer Raute samt Beschriftung trifft ein ‚+‘“): der Körper bis hinunter zum
+ * Namen (bei der Raute die Spalte zwischen Körper und Name) und die Fläche von Name und Unterzeile — relativ zur Knoten-Box. Die Fläche zeichnet genau diese
+ * Trefferflächen; die „+“ der Ausgänge (`ausgangMarke`) ragen nie hinein.
+ */
+export function knotenTreffer(l: Pick<KnotenLageW, 'b' | 'gestalt' | 'koerper'>): Box[] {
+  const c = l.koerper;
+  const t = titelBox({ x: 0, y: 0, b: l.b, gestalt: l.gestalt, koerper: c });
+  if (!t) return [{ x: c.x, y: c.y, b: c.b, h: c.h }];
+  return [{ x: c.x, y: c.y, b: c.b, h: Math.max(c.h, t.y - c.y) }, t];
+}
+/**
+ * Die Beschriftungen der Fäden je Knoten und Ausgang (rein, Feinschliff 1) — relativ zur Knoten-Box, damit `ausgangMarke` ihnen ausweicht. Welcher Ausgang es
+ * ist, sagt der Anfang des Fadens (ein „ja“ an einer Form ohne „ja“ geht vom Hauptausgang ab). Rückschleifen tragen ihre Beschriftung unten am Bogen — sie zählen nicht.
+ */
+export function ausgangChips(l: Pick<WerkstattLage, 'knoten' | 'kanten'>): Map<string, { art: Anschluss['art']; box: Box }[]> {
+  const raus = new Map<string, { art: Anschluss['art']; box: Box }[]>();
+  for (const k of l.kanten) {
+    if (k.zurueck) continue;
+    const c = chipBox(k), lk = l.knoten.get(k.von), p0 = k.punkte[0];
+    if (!c || !lk || !p0) continue;
+    const a = lk.anschluesse.find(x => x.art !== 'ein' && Math.abs(lk.x + x.x - p0[0]) < 0.5 && Math.abs(lk.y + x.y - p0[1]) < 0.5);
+    if (!a) continue;
+    raus.set(lk.id, [...(raus.get(lk.id) ?? []), { art: a.art, box: { x: c.x - lk.x, y: c.y - lk.y, b: c.b, h: c.h } }]);
+  }
+  return raus;
 }
 /**
  * Die Bahn eines neu angehängten Knotens (rein, Befund 5: „Zickzack Mensch/System/Mensch“): was nach außen geht (Mail-/WhatsApp-Entwurf, Einladung, Angebot
@@ -649,19 +714,37 @@ export function zettelFreiLegen<D extends Pick<ProzessDefinition, 'knoten' | 'ze
   return { ...d, zettel: neu };
 }
 
-/** Der Zoom, mit dem „Alles zeigen“ diese Lage einpasst (rein). */
-export const einpassZoom = (l: Pick<WerkstattLage, 'knoten' | 'box'>, zettel: readonly { pos: { x: number; y: number; b?: number; h?: number } }[], buehne: { b: number; h: number }): number =>
-  einpassKamera(inhaltBox(l, zettel), buehne).s;
+/** Der Zoom, mit dem „Alles zeigen“ diese Lage einpasst (rein) — im freien Feld neben den schwebenden Leisten (`raender`). */
+export const einpassZoom = (l: Pick<WerkstattLage, 'knoten' | 'box'>, zettel: readonly { pos: { x: number; y: number; b?: number; h?: number } }[], buehne: { b: number; h: number }, raender?: Raender): number =>
+  einpassKamera(inhaltBox(l, zettel), buehne, 32, WERKSTATT_EINPASS_MAX, raender).s;
 /**
- * Befund 6 (Sichtprüfung 22.10.: „Alles zeigen wird unlesbar“): passt der ganze Prozess nur so klein ins Bild, dass die Namen unlesbar wären (Stufe „fern“ der
- * EINEN Regel `zoomStufe` — components/os/ui/flaeche/stufe.ts, der Aufrufer reicht sie herein), zeigt „Alles zeigen“ die Phasen als zugeklappte Kacheln
- * (semantischer Zoom wie auf der Landkarte); ein Klick auf eine Kachel klappt sie auf. Bei nur einer Phase gibt es nichts zuzuklappen. Rein.
+ * Mindestmaßstab für „Alles zeigen“ (Feinschliff 1, 23.10.): darunter wären die Namen (15 px) kleiner als 7,5 px — dann stehen Phasen als Kacheln da. Bewusst
+ * kleiner als beim Öffnen (`WERKSTATT_LESBAR`) und als die Stufe „fern“ der Landkarte: die Übersicht soll den ganzen Prozess zeigen, solange er erkennbar bleibt
+ * (Sichtprüfung 22.10.: „klappt alle Phasen zu“).
  */
-export function allesAlsKacheln(
-  d: Pick<ProzessDefinition, 'knoten' | 'zettel'>, buehne: { b: number; h: number }, stufe: (s: number) => 'fern' | 'mittel' | 'nah',
-  o: { team?: readonly TeamName[]; zu?: ReadonlySet<string> } = {},
-): boolean {
-  const offen = phasen(d).filter(p => !o.zu?.has(p.id));
-  if (offen.length < 2) return false;
-  return stufe(einpassZoom(werkstattLage(d, o), d.zettel ?? [], buehne)) === 'fern';
+export const WERKSTATT_UEBERSICHT_MIN = 0.5;
+/**
+ * Welche Phasen „Alles zeigen“ zuklappt (rein; Befund 6 vom 22.10. „Alles zeigen wird unlesbar“, Feinschliff 1 vom 23.10. „klappt alle Phasen zu“):
+ *   · passt der ganze Prozess lesbar ins freie Feld (`lesbar`, Vorgabe: mindestens `WERKSTATT_UEBERSICHT_MIN`), klappt nichts zu;
+ *   · sonst nur so viele Phasen wie nötig, die breitesten zuerst — die Phase der Auswahl (`behalten`) bleibt offen; reicht auch das nicht, stehen alle (übrigen)
+ *     als Kacheln da. Bei weniger als zwei offenen Phasen gibt es nichts zuzuklappen. Ein Klick auf eine Kachel klappt sie wieder auf.
+ * Zurück kommt die Menge der zuzuklappenden Phasen (leer = alles offen einpassen).
+ */
+export function kachelnFuerAlles(
+  d: Pick<ProzessDefinition, 'knoten' | 'zettel'>, buehne: { b: number; h: number },
+  o: { lesbar?: (s: number) => boolean; raender?: Raender; team?: readonly TeamName[]; zu?: ReadonlySet<string>; behalten?: string | null } = {},
+): Set<string> {
+  const basis = new Set(o.zu ?? []);
+  const lesbar = o.lesbar ?? ((s: number) => s >= WERKSTATT_UEBERSICHT_MIN);
+  const passt = (zu: ReadonlySet<string>) => lesbar(einpassZoom(werkstattLage(d, { team: o.team, zu }), d.zettel ?? [], buehne, o.raender));
+  const offen = phasen(d).filter(p => !basis.has(p.id));
+  if (offen.length < 2 || passt(basis)) return new Set();
+  const breite = new Map(werkstattLage(d, { team: o.team, zu: basis }).rahmen.map(r => [r.id, r.b]));
+  const reihe = offen.filter(p => p.id !== o.behalten).sort((a, b) => (breite.get(b.id) ?? 0) - (breite.get(a.id) ?? 0) || a.id.localeCompare(b.id));
+  const zu = new Set<string>();
+  for (const p of reihe) {
+    zu.add(p.id);
+    if (passt(new Set([...basis, ...zu]))) break;
+  }
+  return zu;
 }

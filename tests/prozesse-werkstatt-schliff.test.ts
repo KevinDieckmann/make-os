@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { phasen } from '@/lib/prozesse/fluss';
 import {
-  werkstattLage, zettelVerdeckt, zettelFreiLegen, zettelObenPlatz, titelBox, chipBox, ueberlappt, ausgangMarke, allesAlsKacheln, einpassZoom, WS, type Box,
+  werkstattLage, zettelVerdeckt, zettelFreiLegen, zettelObenPlatz, titelBox, chipBox, ueberlappt, ausgangMarke, kachelnFuerAlles, einpassZoom, WS, type Box,
 } from '@/lib/prozesse/werkstatt-lage';
 import { zoomStufe } from '@/components/os/ui/flaeche/stufe';
 import type { ProzessDefinition } from '@/lib/prozesse/definition';
@@ -74,7 +74,7 @@ describe('Befund 4: der Name der Raute kollidiert mit nichts', () => {
       for (const k of l.kanten.filter(x => x.von === lk.id && x.ausgang === 'nein')) expect(durch(k.punkte, name), `${lk.id} → ${k.nach}`).toBe(false);
     }
   });
-  it('die Raute aus dem Befund (V02 „Lead schon in der Kartei?“): Chip „Formular“ steht über dem Namen, rechts neben dem „+“', () => {
+  it('die Raute aus dem Befund (V02 „Lead schon in der Kartei?“): Chip „Formular“ steht über dem Namen; das „+“ (gewählt) rückt hinter ihn (Feinschliff 1)', () => {
     const d = vorlage('kg-v02');
     const l = werkstattLage(d);
     const r = l.knoten.get('kg-v02:s0')!;
@@ -84,31 +84,34 @@ describe('Befund 4: der Name der Raute kollidiert mit nichts', () => {
     const name = titelBox(r)!;
     expect(chip.y + chip.h).toBeLessThanOrEqual(name.y);
     const unten = r.anschluesse.find(a => a.richtung === 'unten')!;
-    const m = ausgangMarke(unten, { rechtsAnzahl: 1, mitPlus: true });
-    expect(chip.x).toBeGreaterThanOrEqual(r.x + m.plus[0] + m.r);
+    const eigen = { x: chip.x - r.x, y: chip.y - r.y, b: chip.b, h: chip.h };
+    const m = ausgangMarke(unten, { rechtsAnzahl: 1, mitPlus: true, chip: eigen, chips: [eigen] });
+    expect(r.x + m.plus[0] - m.r).toBeGreaterThanOrEqual(chip.x + chip.b);
+    expect(m.name).toBe(false);
   });
 });
 
 describe('Befund 6: „Alles zeigen“ bei großen Prozessen — Phasen als Kacheln (EINE Regel zoomStufe)', () => {
   const buehne = { b: 960, h: 600 };
-  it('V02 voll eingepasst wäre unlesbar (fern) → Kacheln; als Kacheln eingepasst ist es lesbar', () => {
+  const lesbar = (s: number) => zoomStufe(s) !== 'fern';
+  it('V02 voll eingepasst wäre unlesbar (fern) → Kacheln; mit ihnen eingepasst ist es lesbar', () => {
     const d = vorlage('kg-v02');
     expect(zoomStufe(einpassZoom(werkstattLage(d), d.zettel ?? [], buehne))).toBe('fern');
-    expect(allesAlsKacheln(d, buehne, zoomStufe)).toBe(true);
-    const zu = new Set(phasen(d).map(p => p.id));
+    const zu = kachelnFuerAlles(d, buehne, { lesbar });
+    expect(zu.size).toBeGreaterThan(0);
     const kacheln = werkstattLage(d, { zu });
-    expect([...kacheln.knoten.values()].every(k => k.zu)).toBe(true);
+    expect([...kacheln.knoten.values()].some(k => k.zu)).toBe(true);
     expect(zoomStufe(einpassZoom(kacheln, d.zettel ?? [], buehne))).not.toBe('fern');
   });
   it('ein kleiner Prozess bleibt offen; eine einzige Phase klappt nie zu; schon zugeklappte zählen nicht', () => {
     const v07 = vorlage('kg-v07');
     expect(phasen(v07)).toHaveLength(1);
-    expect(allesAlsKacheln(v07, { b: 200, h: 120 }, zoomStufe)).toBe(false);
+    expect(kachelnFuerAlles(v07, { b: 200, h: 120 }, { lesbar }).size).toBe(0);
     const v13 = vorlage('kg-v13');
-    expect(allesAlsKacheln(v13, { b: 4000, h: 2400 }, zoomStufe)).toBe(false);
+    expect(kachelnFuerAlles(v13, { b: 4000, h: 2400 }, { lesbar }).size).toBe(0);
     const v02 = vorlage('kg-v02');
     const alleBisAufEine = new Set(phasen(v02).slice(1).map(p => p.id));
-    expect(allesAlsKacheln(v02, buehne, zoomStufe, { zu: alleBisAufEine })).toBe(false);
+    expect(kachelnFuerAlles(v02, buehne, { lesbar, zu: alleBisAufEine }).size).toBe(0);
   });
 });
 

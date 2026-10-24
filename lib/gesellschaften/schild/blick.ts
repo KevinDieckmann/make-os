@@ -21,12 +21,16 @@ import type { PflichtEintrag } from './pflichten';
 import { DOK_GRUPPEN, type DokSoll } from './dokumente';
 import { markeFristen, domainZustand, policeFristen } from './schutz';
 import { tagText } from './zeit';
+import { LAGE_REITER } from './adresse';
+
+/** Der Name des Teils „schutz“ — derselbe wie der Reiter (Feinschliff 1, 23.10.: „Marken & Versicherungen“; die Kennung `schutz` bleibt). */
+const SCHUTZ_NAME = LAGE_REITER.find(r => r.id === 'schutz')?.label ?? 'Marken & Versicherungen';
 
 export type Ton = 'rot' | 'gelb' | 'ruhig' | 'gruen';
 export const TON_TEXT: Record<Ton, string> = { rot: 'Folge droht', gelb: 'bald fällig', ruhig: 'Lücken ohne Eile', gruen: 'im Lot' };
 /** Ein Satz je Ton — was er bedeutet (Überblick, Legende). */
 export const TON_SATZ: Record<Ton, string> = {
-  rot: 'Eine Frist ist verstrichen oder ein Schutz abgelaufen — hier droht eine Folge.',
+  rot: 'Eine Frist ist verstrichen oder eine Marke bzw. Versicherung abgelaufen — hier droht eine Folge.',
   gelb: 'Etwas ist bald fällig oder sollte geprüft werden.',
   ruhig: 'Es fehlen Unterlagen oder Angaben, aber keine Frist drängt.',
   gruen: 'Nichts zu tun.',
@@ -230,7 +234,7 @@ export interface Dimension {
 }
 export const DIMENSIONEN: readonly { id: DimensionId; label: string; reiter: SchildReiter }[] = [
   { id: 'dokumente', label: 'Dokumente', reiter: 'dokumente' }, { id: 'pflichten', label: 'Pflichten', reiter: 'pflichten' },
-  { id: 'risiken', label: 'Risiken', reiter: 'risiken' }, { id: 'schutz', label: 'Schutz', reiter: 'schutz' },
+  { id: 'risiken', label: 'Risiken', reiter: 'risiken' }, { id: 'schutz', label: SCHUTZ_NAME, reiter: 'schutz' },
 ];
 const ART_DIM: Record<HandgriffArt, DimensionId> = { dokument: 'dokumente', pflicht: 'pflichten', profil: 'pflichten', risiko: 'risiken', schutz: 'schutz' };
 
@@ -252,7 +256,7 @@ function dimensionen(g: GesellschaftLage, s: SchildGesellschaft | null | undefin
     { id: 'pflichten', label: 'Pflichten', reiter: 'pflichten', anteil: !g.kontext.rechtsform ? null : faellig.length ? erledigt / faellig.length : 1, ton: ton('pflichten'),
       zahl: !g.kontext.rechtsform ? 'Rechtsform fehlt' : verstrichen ? `${verstrichen} verstrichen` : bald ? `${bald} bald fällig` : faellig.length ? `${erledigt} erledigt` : 'nichts fällig' },
     { id: 'risiken', label: 'Risiken', reiter: 'risiken', anteil: rz.length ? gutRisiken / rz.length : null, ton: ton('risiken'), zahl: rz.length ? `${bewertet} von ${rz.length} bewertet` : 'noch keins erfasst' },
-    { id: 'schutz', label: 'Schutz', reiter: 'schutz', anteil: posten ? Math.max(0, posten - schutzProbleme) / posten : null, ton: ton('schutz'), zahl: posten ? `${Math.max(0, posten - schutzProbleme)} von ${posten} in Ordnung` : 'nichts erfasst' },
+    { id: 'schutz', label: SCHUTZ_NAME, reiter: 'schutz', anteil: posten ? Math.max(0, posten - schutzProbleme) / posten : null, ton: ton('schutz'), zahl: posten ? `${Math.max(0, posten - schutzProbleme)} von ${posten} in Ordnung` : 'nichts erfasst' },
   ];
 }
 

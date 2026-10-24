@@ -64,7 +64,7 @@ const HEADS: readonly { id: string; name: string }[] = [
 /** Die Einstellungen eines Business-Heads — nur zu sehen, geändert wird in ZOE › Agenten (dort gelten die Rechte des Heads, Budget, Not-Aus). */
 function headZeilen(id: string, name: string, h: HeadKurz | undefined): Stellschraube[] {
   const link = { href: WEG.agenten({ h: id }), text: `${name} in ZOE › Agenten einstellen` };
-  const wo = 'Einstellungen der Heads (agenten-einstellung)';
+  const wo = 'heads' as const;
   const z = (k: string, n: string, wert: string, erklaerung: string): Stellschraube => ({ id: `head-${id}-${k}`, gruppe: name, name: n, erklaerung, art: 'info', wert, wo, link });
   return [
     z('aktiv', 'An / aus', h?.notAus ? 'angehalten (Not-Aus)' : h?.aktiv === false ? 'aus' : 'an', 'Ausgeschaltet schlägt der Head im Takt nichts vor; Not-Aus hält alle seine Läufe an.'),
@@ -79,7 +79,7 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
   const raus: Record<string, Stellschraube[]> = {};
   const dazu = (p: string, l: readonly Stellschraube[]) => { if (l.length) raus[p] = [...(raus[p] ?? []), ...l]; };
   const w = q.wertelisten;
-  const WL = 'Wertelisten der Markttraktion (crm.wertelisten)';
+  const WL = 'wertelisten' as const;
   const wertelistenLink = { href: WEG.stammdaten('wertelisten'), text: 'Stammdaten › Wertelisten' };
 
   // ── Vertriebsplanung: Ziele je Monat (Messlatte der Kennzahlen, lib/crm/wertelisten.ts ZIEL_FELDER) · Kanäle (lib/crm/planung-server.ts) ──
@@ -97,7 +97,7 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
   if (typeof q.kanaele === 'number') {
     dazu('sp-vertriebsplanung', [{ id: 'kanaele', gruppe: 'Kanäle und Quoten', name: 'Lead-Kanäle', art: 'info', wert: `${q.kanaele} eingerichtet`,
       erklaerung: 'Woher die Leads kommen sollen, mit Wochenziel und Quoten je Kanal — gepflegt in der Planung der Markttraktion.',
-      wo: 'Planung der Markttraktion (markttraktion-planung)', link: { href: WEG.vertriebsplanung('kanaele'), text: 'Markttraktion › Planung › Kanäle' } }]);
+      wo: 'vertriebsplanung', link: { href: WEG.vertriebsplanung('kanaele'), text: 'Markttraktion › Planung › Kanäle' } }]);
   }
 
   // ── Follow-up: Kadenz je Kreis (lib/crm/followup.ts `faellige`, Standard KREIS_TAKT) ──
@@ -124,7 +124,7 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
   if (q.scoring) {
     const s = q.scoring;
     const link = { href: qualifizierungLink(undefined, 'scoring'), text: 'Qualifizierung › Scoring' };
-    const wo = 'Scoring-Einstellungen (crm-scoring)';
+    const wo = 'scoring' as const;
     dazu('sp-lead-sql', [
       { id: 'scoring-mql', gruppe: 'Scoring', name: 'MQL ab (Marketing-Punkte)', art: 'info', wert: `${s.marketing} Punkte${s.mussMarketing ? ` · ${s.mussMarketing} Muss` : ''}`, erklaerung: 'Ab dieser Marketing-Schwelle (und den Muss-Kriterien) wird ein Lead aus dem Marketing zum MQL.', wo, link },
       { id: 'scoring-sql', gruppe: 'Scoring', name: 'SQL ab (Sales-Punkte)', art: 'info', wert: `${s.sales} Punkte${s.mussSales ? ` · ${s.mussSales} Muss` : ''}`, erklaerung: 'Ab dieser Sales-Schwelle und mit allen Muss-Kriterien ist ein Lead SQL-bereit.', wo, link },
@@ -136,13 +136,13 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
   if (q.buchungsseiten) {
     dazu('sp-buchung', [{ id: 'buchungsseiten', gruppe: 'Buchungsseiten', name: 'Seiten', art: 'info', wert: q.buchungsseiten.gesamt ? `${q.buchungsseiten.aktiv} von ${q.buchungsseiten.gesamt} aktiv` : 'noch keine',
       erklaerung: 'Je Seite: Dauer, buchbare Fenster, Vorlauf, höchstens je Tag, Puffer, Zielkalender — eingestellt in der Verwaltung der Buchungsseiten.',
-      wo: 'Buchungsseiten (buchung)', link: { href: WEG.kalender(), text: 'Kalender › Buchungsseiten' } }]);
+      wo: 'buchung', link: { href: WEG.kalender(), text: 'Kalender › Buchungsseiten' } }]);
   }
 
   // ── Übergabe & Wirkung: Einstellungen des Fulfillments (lib/fulfillment/lesen.ts EINSTELLUNGEN_VORGABE) ──
   if (q.fulfillment) {
     const f = q.fulfillment;
-    const wo = 'Einstellungen des Fulfillments (fulfillment)';
+    const wo = 'fulfillment' as const;
     const puls: Stellschraube = { id: 'puls-schwelle', gruppe: 'Puls', name: 'Puls braucht Aufmerksamkeit bis', art: 'zahl', wert: f.pulsSchwelle, vorgabe: VORGABE_FULFILLMENT.pulsSchwelle, einheit: 'von 10', min: 0, max: 10,
       erklaerung: 'Bis zu diesem Wert gilt ein Kunden-Puls als „braucht Aufmerksamkeit“ — dann meldet sich die Glocke.', wo, weg: { art: 'puls-schwelle' } };
     dazu('sp-uebergabe', [
@@ -164,17 +164,17 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
       id: `mahnstufe-${i + 1}`, gruppe: 'Mahnstufen', name: i === 0 ? 'Zahlungserinnerung ab' : `${i + 1}. Mahnung ab`, art: 'zahl', wert: t[i], vorgabe: VORGABE_MAHNTAGE[i], einheit: 'Tage überfällig',
       min: i === 0 ? 1 : t[i - 1] + 1, max: i === 2 ? 365 : t[i + 1] - 1,
       erklaerung: 'Ab so vielen Tagen nach Fälligkeit schlägt der Morgenlauf diese Stufe vor (eine Aufgabe; verschickt wird per Klick). Die Stufen steigen.',
-      wo: 'Rechnungswesen (rechnungswesen)', weg: { art: 'mahntage', stufe: i, tage: [t[0], t[1], t[2]] }, link: { href: WEG.rechnungen(), text: 'Finanzen › Rechnungen & Zahlungen' },
+      wo: 'rechnungswesen', weg: { art: 'mahntage', stufe: i, tage: [t[0], t[1], t[2]] }, link: { href: WEG.rechnungen(), text: 'Finanzen › Rechnungen & Zahlungen' },
     })));
   }
 
   // ── Betroffenenrechte: Löschfristen (lib/crm/loeschfristen.ts LOESCHFRISTEN) und die Monatsfrist des Art. 12 ──
   if (q.loeschfristen) {
     const g = q.loeschfristen;
-    const wo = 'Löschfristen (crm-loeschfristen)';
+    const wo = 'loeschfristen' as const;
     const link = { href: WEG.stammdaten('datenschutz'), text: 'Stammdaten › Datenschutz' };
     dazu('sp-betroffenenrechte', [
-      { id: 'art12-frist', gruppe: 'Fristen', name: 'Antwort auf einen Antrag', art: 'fest', wert: '1 Monat', fest: 'fest (Gesetz) — Art. 12 Abs. 3 DSGVO', erklaerung: 'Auskunft, Löschung, Einschränkung: binnen eines Monats nach Eingang.', wo: 'Gesetz' },
+      { id: 'art12-frist', gruppe: 'Fristen', name: 'Antwort auf einen Antrag', art: 'fest', wert: '1 Monat', fest: 'fest (Gesetz) — Art. 12 Abs. 3 DSGVO', erklaerung: 'Auskunft, Löschung, Einschränkung: binnen eines Monats nach Eingang.', wo: 'gesetz' },
       ...LOESCHFRISTEN.map((f): Stellschraube => {
         const v = g[f.id];
         const wert = f.wirkung !== 'fest' && typeof v === 'number' && Number.isInteger(v) && v >= f.min && v <= f.max ? v : f.standard;
@@ -199,7 +199,7 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
       const s: Stellschraube = {
         id: d.id, gruppe: d.gruppe, name: d.name, art: d.art as StellschraubeArt, wert: wertVon(werte, d.id), vorgabe: d.vorgabe,
         ...(d.einheit ? { einheit: d.einheit } : {}), ...(d.min !== undefined ? { min: d.min, max: d.max } : {}),
-        erklaerung: d.erklaerung, wo: 'Stellschrauben der festen Prozesse (prozesse-stellschrauben)', weg: { art: 'prozesse', id: d.id },
+        erklaerung: d.erklaerung, wo: 'prozesse', weg: { art: 'prozesse', id: d.id },
       };
       for (const p of [d.prozess, ...(AUCH_IN[d.id] ?? [])]) dazu(p, [{ ...s, ...(WERT_LINK[p] ? { link: WERT_LINK[p] } : {}) }]);
     }
@@ -217,8 +217,8 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
   }
 
   // ── Vorlagen der Kampagnen und eigenen Abende: nur ansehen (überführt werden sie in einem eigenen Paket) ──
-  dazu('sp-kampagnen', [{ id: 'playbooks', gruppe: 'Vorlagen', name: 'Playbooks', art: 'info', wert: 'im System', erklaerung: 'Die Playbooks der Kampagnen (Segment, Kanal, Texte, Nachfassen) — ansehen und daraus planen.', wo: 'im Code (lib/crm/kampagnen.ts)', link: { href: WEG.marketing('kampagnen'), text: 'Vorlagen ansehen' } }]);
-  dazu('sp-makeone', [{ id: 'event-vorlagen', gruppe: 'Vorlagen', name: 'Event-Vorlagen', art: 'info', wert: 'im System', erklaerung: 'Vorlagen eigener Abende (Ablauf, Checkliste, Budget) — ansehen und daraus planen.', wo: 'im Code (lib/crm/eventplanung.ts)', link: { href: WEG.event(), text: 'Vorlagen ansehen' } }]);
+  dazu('sp-kampagnen', [{ id: 'playbooks', gruppe: 'Vorlagen', name: 'Playbooks', art: 'info', wert: 'im System', erklaerung: 'Die Playbooks der Kampagnen (Segment, Kanal, Texte, Nachfassen) — ansehen und daraus planen.', wo: 'system', link: { href: WEG.marketing('kampagnen'), text: 'Vorlagen ansehen' } }]);
+  dazu('sp-makeone', [{ id: 'event-vorlagen', gruppe: 'Vorlagen', name: 'Event-Vorlagen', art: 'info', wert: 'im System', erklaerung: 'Vorlagen eigener Abende (Ablauf, Checkliste, Budget) — ansehen und daraus planen.', wo: 'system', link: { href: WEG.event(), text: 'Vorlagen ansehen' } }]);
 
   return raus;
 }

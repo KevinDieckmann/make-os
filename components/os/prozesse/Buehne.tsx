@@ -15,6 +15,8 @@ import { FARBE as C, TYP, RAND } from '@/lib/make-one/design';
 import { flowEbene, bewegungReduziert, type FlowEbene, type FlowFaden } from '@/lib/lichtfaeden/flow';
 import { allesZeigen, transformVon, zoomUm, zwischen, sanft, flaecheHinweis, type Kamera, type Rechteck } from '../ui/flaeche/kamera';
 import { flaecheEingabe } from '../ui/flaeche/eingabe';
+import { schwebeRaender } from '../ui/flaeche/schwebe';
+import { freiesFeld } from '@/lib/einpassen';
 import { zoomStufe, type ZoomStufe } from '../ui/flaeche/stufe';
 import { JETZT } from '../ui/reise/formen';
 
@@ -117,13 +119,14 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
     };
     fahrt.current = requestAnimationFrame(schritt);
   }, [setze]);
-  const passend = useCallback((b: Rechteck, max = 1.2, rand = 48) => { const g = groesse(); return allesZeigen(b, g.b, g.h, rand, max); }, []);
+  // Feinschliff 1 (23.10.): eingepasst wird ins freie Feld — Kopfzeile, Werkzeugleiste, Zoom und Seitenfeld schweben im Vollbild über der Fläche (../ui/flaeche/schwebe.ts).
+  const passend = useCallback((b: Rechteck, max = 1.2, rand = 48, mitRaendern = true) => { const g = groesse(); return allesZeigen(b, g.b, g.h, rand, max, mitRaendern ? schwebeRaender(buehne.current) : undefined); }, []);
   /** Auf ein Ziel (Phase, Schritt): passend — aber nie unlesbar klein; ist es zu groß, beginnt das Bild oben an seiner Mitte (wie der Editor, START_MIN). */
   const aufZiel = useCallback((b: Rechteck) => {
     const k = passend(b, 1.1, 60);
     if (k.s >= LESBAR) return k;
-    const g = groesse();
-    return { s: LESBAR, x: Math.round(g.b / 2 - (b.x + b.b / 2) * LESBAR), y: Math.round(40 - b.y * LESBAR) };
+    const f = freiesFeld(groesse(), schwebeRaender(buehne.current));
+    return { s: LESBAR, x: Math.round(f.x + f.b / 2 - (b.x + b.b / 2) * LESBAR), y: Math.round(f.y + 40 - b.y * LESBAR) };
   }, [passend]);
 
   const leuchte = useCallback((id: string) => {
@@ -141,22 +144,27 @@ export const Buehne = forwardRef<BuehneSteuerung, BuehneProps>(function Buehne(p
     fliegeIn: (id, dann) => {
       const b = stand.current.boxen.get(id);
       if (!b) { dann(); return; }
-      fliege(passend(b, 2.5, 16), FAHRT.rein, dann);
+      fliege(passend(b, 2.5, 16, false), FAHRT.rein, dann);
     },
     zoomen: f => { const g = groesse(); fliege(zoomUm(kamera.current, f, g.b / 2, g.h / 2), 220); },
     rahmen: b => fliege(passend(b, 1.6, 24), 700),
   }), [fliege, passend, aufZiel, leuchte]);
 
   // ── Landen: eine neue Szene erscheint (rein: aus der Weite heran · raus: aus dem Element heraus · neu: gleich passend) ──
+  // Ein Bild später (noch vor dem ersten Zeichnen): beim Öffnen des Vollbilds stehen die schwebenden Leisten erst dann im Rahmen — vorher wüsste das Einpassen
+  // nichts von ihnen (Feinschliff 1, 23.10.).
   useEffect(() => {
-    const e = stand.current.einflug;
-    const zielBox = stand.current.ziel ? stand.current.boxen.get(stand.current.ziel) : undefined;
-    const endKamera = zielBox ? aufZiel(zielBox) : passend(stand.current.box, 1, RAND_ALLES);
-    if (e.art === 'neu' || ruhig()) { setze(endKamera); return; }
-    const g = groesse();
-    if (e.art === 'rein') setze(zoomUm(endKamera, 0.62, g.b / 2, g.h / 2));
-    else { const von = stand.current.boxen.get(e.von); setze(von ? passend(von, 2.5, 16) : zoomUm(endKamera, 1.6, g.b / 2, g.h / 2)); }
-    fliege(endKamera, FAHRT.landen);
+    const t = requestAnimationFrame(() => {
+      const e = stand.current.einflug;
+      const zielBox = stand.current.ziel ? stand.current.boxen.get(stand.current.ziel) : undefined;
+      const endKamera = zielBox ? aufZiel(zielBox) : passend(stand.current.box, 1, RAND_ALLES);
+      if (e.art === 'neu' || ruhig()) { setze(endKamera); return; }
+      const g = groesse();
+      if (e.art === 'rein') setze(zoomUm(endKamera, 0.62, g.b / 2, g.h / 2));
+      else { const von = stand.current.boxen.get(e.von); setze(von ? passend(von, 2.5, 16, false) : zoomUm(endKamera, 1.6, g.b / 2, g.h / 2)); }
+      fliege(endKamera, FAHRT.landen);
+    });
+    return () => cancelAnimationFrame(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Szenenwechsel
   }, [p.szene]);
   // Innerhalb einer Szene: auf das Ziel fahren (Phase bzw. Schritt gewählt).

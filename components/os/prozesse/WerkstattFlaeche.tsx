@@ -18,9 +18,11 @@ import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL, TYP } from '@/lib/make-on
 import type { NotizZettel, ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { Ausgang } from '@/lib/prozesse/fluss';
 import {
-  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, kantenPlus, titelBox,
+  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, kantenPlus, titelBox, ausgangChips,
   type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
 } from '@/lib/prozesse/werkstatt-lage';
+import { freiesFeld, type Raender } from '@/lib/einpassen';
+import { schwebeRaender } from '../ui/flaeche/schwebe';
 import { kanteAufWeg, type LaufMarke } from '@/lib/prozesse/laeufe-ansicht';
 import { tasteZuAktion, type TastenAktion } from '@/lib/prozesse/werkstatt-tastatur';
 import type { ProbeStatus } from '@/lib/prozesse/werkstatt-hinweise';
@@ -41,6 +43,8 @@ export interface FlaecheSteuerung {
   insBild(id: string): void;
   /** Feinschliff 22.10. (Vorlagen, Befund 6): die Größe der Bühne (für „Alles zeigen“ als Kacheln) und eine Phase einpassen (nach dem Aufklappen einer Kachel). */
   groesse(): { b: number; h: number };
+  /** Feinschliff 1 (23.10.): was Seitenfeld und schwebende Leisten gerade verdecken (für „Alles zeigen“ als Kacheln — dieselben Ränder wie beim Einpassen). */
+  raender(): Raender;
   rahmenZeigen(phaseId: string): void;
 }
 
@@ -160,6 +164,8 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   }, []);
 
   const groesse = () => { const r = buehne.current?.getBoundingClientRect(); return { b: r?.width || 960, h: r?.height || 600 }; };
+  /** Feinschliff 1 (23.10.): eingepasst wird ins freie Feld — Seitenfeld, Kopfzeile, Leisten und Knoten-Auswahl schweben über der Fläche (../ui/flaeche/schwebe.ts). */
+  const raender = () => schwebeRaender(buehne.current);
   const zeichne = useCallback(() => {
     if (bild.current) return;
     bild.current = requestAnimationFrame(() => {
@@ -184,39 +190,44 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   }, [setze]);
 
   useImperativeHandle(ref, () => ({
-    // Feinschliff 22.10. (Befund 4): auf den Inhalt einpassen (nicht auf leere Bahnränder), höchstens 100 %.
-    allesZeigen: () => { const g = groesse(); fliege(einpassKamera(inhaltBox(stand.current.lage, stand.current.d.zettel ?? []), g)); },
+    // Feinschliff 22.10. (Befund 4): auf den Inhalt einpassen (nicht auf leere Bahnränder), höchstens 100 % — seit 23.10. im freien Feld (`raender`).
+    allesZeigen: () => { const g = groesse(); fliege(einpassKamera(inhaltBox(stand.current.lage, stand.current.d.zettel ?? []), g, undefined, undefined, raender())); },
     insBild: id => {
       const k = stand.current.lage.knoten.get(id);
       if (!k) return;
       const g = groesse();
-      const z = kameraZu(kamera.current, { x: k.x, y: k.y, b: k.b, h: k.h }, g);
+      const z = kameraZu(kamera.current, { x: k.x, y: k.y, b: k.b, h: k.h }, g, undefined, raender());
       if (z !== kamera.current) fliege(z);
     },
     zoomen: f => { const g = groesse(); fliege(zoomUm(kamera.current, f, g.b / 2, g.h / 2)); },
     groesse: () => groesse(),
+    raender: () => raender(),
     rahmenZeigen: phaseId => {
       const r = stand.current.lage.rahmen.find(x => x.id === phaseId);
       if (!r) return;
       const drin = [...stand.current.lage.knoten.values()].filter(k => k.phaseId === phaseId);
-      fliege(einpassKamera(drin.length ? inhaltBox({ knoten: new Map(drin.map(k => [k.id, k])), box: r }) : r, groesse()));
+      fliege(einpassKamera(drin.length ? inhaltBox({ knoten: new Map(drin.map(k => [k.id, k])), box: r }) : r, groesse(), undefined, undefined, raender()));
     },
     zeige: id => {
       const k = stand.current.lage.knoten.get(id);
       if (!k) return;
-      const g = groesse(), s = Math.max(kamera.current.s, 0.9);
-      fliege({ s, x: Math.round(g.b / 2 - (k.x + k.b / 2) * s), y: Math.round(g.h / 2 - (k.y + k.h / 2) * s) });
+      // Mitten ins freie Feld (nicht unter das Seitenfeld, das die Einstellungen des gewählten Schritts zeigt).
+      const f = freiesFeld(groesse(), raender()), s = Math.max(kamera.current.s, 0.9);
+      fliege({ s, x: Math.round(f.x + f.b / 2 - (k.x + k.b / 2) * s), y: Math.round(f.y + f.h / 2 - (k.y + k.h / 2) * s) });
     },
     mitte: () => { const g = groesse(); return weltAus(kamera.current, g.b / 2, g.h / 2); },
     bildschirm: (x, y) => bildAus(kamera.current, x, y),
     fokus: () => svg.current?.focus({ preventScroll: true }),
   }), [fliege]);
 
-  // Beim Öffnen (je Szene): lesbar einpassen — alles, wenn es lesbar passt, sonst oben links am Anfang (lib/prozesse/werkstatt-lage.ts `startKamera`).
+  // Beim Öffnen (je Szene): lesbar einpassen — alles, wenn es lesbar passt, sonst oben links am Anfang (lib/prozesse/werkstatt-lage.ts `startKamera`). Ein Bild
+  // später (noch vor dem ersten Zeichnen): im Vollbild stehen die schwebenden Leisten erst dann im Rahmen (Feinschliff 1, 23.10.). Eine Kamerafahrt, die schon
+  // läuft (Schritt aus der Adresse), bleibt.
   useEffect(() => {
-    const g = groesse();
-    setze(startKamera(stand.current.lage.box, g));
+    const vorher = kamera.current;
+    const t = requestAnimationFrame(() => { if (kamera.current === vorher) setze(startKamera(stand.current.lage.box, groesse(), undefined, raender())); });
     setGeraet({ mac: /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent), touch: !!window.matchMedia?.('(pointer: coarse)').matches });
+    return () => cancelAnimationFrame(t);
   }, [p.szene, setze]);
 
   // Zoom und Schieben am SVG (nur dort). Am Handy bzw. nur lesend schiebt auch das Ziehen auf freier Fläche.
@@ -246,6 +257,8 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     return x;
   }), [p.d.zettel, zieh, groesse_]);
   const nach = useMemo(() => new Map(p.d.knoten.map(k => [k.id, k])), [p.d.knoten]);
+  /** Feinschliff 1 (23.10.): die Beschriftungen der Fäden je Knoten — die „+“ der Ausgänge weichen ihnen aus, ein Ausgang mit Beschriftung trägt keinen zweiten Namen. */
+  const chips = useMemo(() => ausgangChips({ knoten, kanten }), [knoten, kanten]);
   /** Punkt 14: ausgeschaltete Schritte und die Schlösser dahinter (sie werden mit übersprungen). */
   const aus = useMemo(() => { const m = new Set(p.d.knoten.filter(k => k.deaktiviert).map(k => k.id)); for (const k of p.d.knoten) if (k.schloss && m.has(k.schloss.fuer)) m.add(k.id); return m; }, [p.d.knoten]);
   const belegt = useMemo(() => {
@@ -542,7 +555,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
                 style={{ cursor: lk.zu ? 'pointer' : p.nurLesen ? 'default' : 'grab' }} {...(lk.zu ? { role: 'button' } : {})}
                 aria-label={lk.zu ? `Phase „${lk.zu.titel}“ aufklappen (${lk.zu.schritte} Schritte)` : k ? `${k.titel} — ${p.unterzeile(k)}` : undefined}>
                 {lk.zu || !k ? <ZuKachel l={lk} /> : (
-                  <KnotenZeichnung k={k} l={lk} unterzeile={p.unterzeile(k)} gewaehlt={gewaehlt.has(k.id)} ziel={ziel} zielNein={ziel && fadenZiel?.nein} belegt={belegt.get(k.id) ?? new Set()}
+                  <KnotenZeichnung k={k} l={lk} unterzeile={p.unterzeile(k)} gewaehlt={gewaehlt.has(k.id)} ziel={ziel} zielNein={ziel && fadenZiel?.nein} belegt={belegt.get(k.id) ?? new Set()} chips={chips.get(lk.id)}
                     schloss={p.mitSchloss.has(k.id)} befund={p.befundJe.get(k.id) ?? null} probe={p.probe?.get(k.id)} nurLesen={p.nurLesen} aus={aus.has(k.id)}
                     {...(p.lauf ? { marke: p.lauf.marken.get(k.id), grau: !p.lauf.marken.has(k.id) } : {})}
                     andockGewaehlt={p.andockWahl?.id === k.id ? p.andockWahl.art : null} />
