@@ -152,7 +152,7 @@ Weiß), Kontrast AA (siehe Farben), Tippziele ≥ 44 px am Handy (gemessen), Men
 
 ## Innovations-Check unter makeinnovation.de/check (24.10., Branch `innovations-check`, noch nicht online)
 
-Der Check läuft NICHT als statische Seite, sondern in MAKE OS (öffentliche Strecke `app/check`, Schnittstelle `POST /api/check`, Regeln in
+Der Check läuft NICHT als statische Seite, sondern in der Software (öffentliche Strecke `app/check`, Schnittstelle `POST /api/check`, Regeln in
 CLAUDE.md › „Innovations-Check der Website“). Die Homepage verlinkt nur: Haupt-Knopf „Innovations-Check starten“ → `/check?q=homepage_hero`
 (Quelle frei wählbar, `[a-z0-9_-]{1,40}`). Damit es dieselbe Adresse bleibt, leitet Caddy im Block `makeinnovation.de` genau diese Pfade an die App
 weiter — alles andere bleibt die statische Seite (Vorschlag, erst auf Kevins Wort):
@@ -163,7 +163,7 @@ reverse_proxy @check app:3000
 ```
 
 `/buchen/*` gehört dazu, damit der Termin aus dem Ergebnis auf derselben Adresse gebucht wird (die Vorbelegung liegt im Sitzungsspeicher des
-Browsers und gilt nur auf derselben Adresse). Ohne Einschalten in MAKE OS (Markttraktion › Marketing › Innovations-Check) antwortet `/check` mit 404.
+Browsers und gilt nur auf derselben Adresse). Ohne Einschalten in der Software (Markttraktion › Marketing › Innovations-Check) antwortet `/check` mit 404.
 
 ## Dateien
 

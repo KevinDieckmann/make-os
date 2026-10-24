@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Raster, Zahl, Hinweis, Schalter, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Raster, Zahl, Hinweis, Schalter, LEUCHT, useRueckfrage } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { datum } from '../daten';
 
@@ -43,6 +43,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
   const [fehler, setFehler] = useState('');
   const [offen, setOffen] = useState<string | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
+  const { bestaetigen, dialog } = useRueckfrage();
 
   const laden = useCallback(async () => {
     const r = await fetch('/api/check/intern', { cache: 'no-store' });
@@ -71,6 +72,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
 
   return (
     <>
+      {dialog}
       <Karte>
         <Ueberschrift>Innovations-Check der Website</Ueberschrift>
         {!d.verantwortlichDa && (
@@ -131,7 +133,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {z.crm?.status === 'ok' && z.crm.kontaktId && <Knopf leise onClick={() => zuKontakt(z.crm!.kontaktId!)}>Zur Person</Knopf>}
                       {z.kontakt && z.crm?.status !== 'ok' && <Knopf leise onClick={async () => { await tun({ aktion: 'crm', id: z.id }); }}>Ins CRM übernehmen</Knopf>}
-                      <Knopf leise onClick={async () => { if (window.confirm('Diesen Check endgültig löschen?')) { await tun({ aktion: 'loeschen', id: z.id }); setOffen(null); } }}>Löschen</Knopf>
+                      <Knopf leise onClick={async () => { if (await bestaetigen({ titel: 'Diesen Check endgültig löschen?', text: 'Antworten und Ergebnis sind danach weg. Ein Kontakt im CRM bleibt.', ja: 'Endgültig löschen', gefahr: true })) { await tun({ aktion: 'loeschen', id: z.id }); setOffen(null); } }}>Löschen</Knopf>
                     </div>
                     {!detail ? <Leer>Lade die Antworten …</Leer> : detail.antworten.map(a => (
                       <div key={a.frage} style={{ borderTop: `1px solid ${C.linie}`, paddingTop: 8 }}>

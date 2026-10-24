@@ -1,4 +1,4 @@
-# makeinnovation.de — Neubau nach Markenhandbuch 4.0 (24.10.2026, Branch `innovations-check`, nicht online)
+# makeinnovation.de — Neubau nach Markenhandbuch 4.0 (24.10.2026, nicht online; Upload als kleines Update `website-check-vorab`)
 
 Kevin 24.10. abends: „In die Richtung soll es erstmal laufen. So können wir jetzt erstmal alles bauen und auch die Unterseiten zu den
 Produkten. Da haben wir ja dann Sales, Sichtbarkeit und Innovation.“ — „Ich möchte auf jeden Fall sehr seriös wahrgenommen werden, nicht
@@ -81,12 +81,7 @@ was fehlt, steht als gelber Platzhalter `[[KEVIN: …]]` und blockiert die Freig
 - Innovations-Check in MAKE OS einschalten (Markttraktion › Marketing › Innovations-Check, braucht den Verantwortlichen)
 
 ## Online gehen (nur auf Kevins Wort)
-Caddy liefert diesen Ordner statt `website/` aus und leitet die App-Pfade an MAKE OS (Vorschlag, `deploy/caddy/Caddyfile`):
-
-```
-@app path /check /api/check /buchen/* /api/buchung/* /_next/*
-reverse_proxy @app app:3000
-```
-
-Arbeitsdateien werden nie ausgeliefert: `@arbeit path *.md *.mjs /inhalt/*` → `respond 404` (wie bei `website/`). Dazu compose-Mount des Ordners, `robots.txt` öffnen und `noindex` entfernen, sobald die Seite beworben wird (pruefen.mjs verlangt `noindex`
-nur, solange `robots.txt` sperrt).
+Kevin 24.10.: „so früh wie möglich“ als **eigenes kleines Update** (Website + Innovations-Check, ohne das große Update), „sofort indexieren“.
+Branch `website-check-vorab` = Online-Stand `main` + dieser Ordner + der Check. Caddy (`deploy/caddy/Caddyfile`) liefert diesen Ordner unter
+makeinnovation.de aus (Köpfe `make_koepfe`, Arbeitsdateien `*.md *.mjs /inhalt/*` → 404) und gibt nur `/check /api/check /buchen… /api/buchung… /_next/*`
+an die App; fokusinnovation.de bleibt 503. compose mountet `./makeinnovation:/srv/makeinnovation:ro`. Ablauf und Prüfschritte: UPDATES.md (24.10. spät).

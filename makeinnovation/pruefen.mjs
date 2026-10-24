@@ -17,8 +17,8 @@ import { ORDNER, seitenBauen, quellen } from './bauen.mjs';
 export const APP_PFADE = [/^\/check(\?q=[a-z0-9_-]{1,40})?$/, /^\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}$/];
 /** Erlaubte Ziele außerhalb (nur Links, nie geladene Quellen). */
 export const AUSSEN_ERLAUBT = [/^https:\/\/app\.makeinnovation\.de\/anmelden$/, /^mailto:[a-z]+@makeinnovation\.de(\?subject=[^"]*)?$/, /^tel:\+?\d{6,20}$/];
-/** Gehört nicht auf die Homepage (Kevins Liste „nicht_auf_die_homepage“, Namensregel, alter Firmenname). */
-export const SPERRLISTE = [/KEMARIS/i, /KD Management/i, /Vincenzo/, /\bRichard\b/, /Bodo/, /OneBuddy/i, /Make\.One/, /Eventvertrieb/, /KI-Vertriebsassistent/];
+/** Gehört nicht auf die Homepage (Kevins Liste „nicht_auf_die_homepage“, Namensregel, alter Firmenname; der Name der Software erst, wenn sie marktreif ist). */
+export const SPERRLISTE = [/KEMARIS/i, /MAKE OS/, /KD Management/i, /Vincenzo/, /\bRichard\b/, /Bodo/, /OneBuddy/i, /Make\.One/, /Eventvertrieb/, /KI-Vertriebsassistent/];
 /** Größe der Startseite (HTML + CSS + Skript, gzip) — ohne Schriften. */
 export const GEWICHT_MAX = 120 * 1024;
 
