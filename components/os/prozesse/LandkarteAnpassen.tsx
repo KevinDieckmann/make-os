@@ -164,12 +164,12 @@ export function LandkarteAnpassen({ ansicht, anpassung, speicher, aendern, onZu 
                     <TextFeld nurBeimVerlassen label={`Satz von „${b.titel}“`} wert={b.satz ?? ''} platz={vorgabe?.satz} onWert={v => void aendern([{ art: 'bereich', bereich: b.id, satz: v.trim() ? v : null }])} />
                   </Feldzeile>
                 )}
-                <Feldzeile label={vorgabe ? `Ton (Vorgabe ${LANDKARTE_TOENE.find(t => t.id === vorgabe.ton)?.titel ?? ''})` : 'Ton'}>
+                <Feldzeile gruppe label={vorgabe ? `Ton (Vorgabe ${LANDKARTE_TOENE.find(t => t.id === vorgabe.ton)?.titel ?? ''})` : 'Ton'}>
                   <TonWahl name={b.titel} wert={b.tonId} onWahl={t => void aendern([{ art: 'bereich', bereich: b.id, ton: vorgabe && t === vorgabe.ton ? null : t }])} />
                 </Feldzeile>
                 {b.art === 'eigen' && (
                   <>
-                    <Feldzeile label="Wo auf der Landkarte">
+                    <Feldzeile gruppe label="Wo auf der Landkarte">
                       <Pillen liste={[{ id: 'oben', label: 'oben (unter Führung)' }, { id: 'unten', label: 'unten (unter Unterstützung)' }]} aktiv={b.lage ?? 'unten'} onWahl={l => void aendern([{ art: 'bereich', bereich: b.id, lage: l as 'oben' | 'unten' }])} />
                     </Feldzeile>
                     <div><Knopf leise onClick={async () => { await aendern([{ art: 'bereich-weg', bereich: b.id }]); setOffen(null); }} titel="Die Kacheln stehen danach wieder in ihrem Bereich der Vorgabe">

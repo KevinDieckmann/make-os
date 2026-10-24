@@ -57,15 +57,15 @@ export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe, fuerProd
         ? `Der Prozess gehört zum Produkt „${fuerProdukt.name}“: ein neues Mandat mit diesem Produkt startet ihn — erst nach „Veröffentlichen“, im Probelauf zuerst ohne Wirkung. Gebaut wird in der Werkstatt.`
         : 'Ein Prozess beginnt als Entwurf mit einer Phase und einem Auslöser „von Hand“. Gebaut wird in der Werkstatt; erst „Veröffentlichen“ macht ihn lauffähig.'}</p>
       <Feldzeile label="Name * (Verb + Gegenstand)"><input aria-label="Name" value={titel} maxLength={PROZESS_TEXT.titel} placeholder="z. B. Lead nachfassen" onChange={e => setTitel(e.target.value)} style={feld} autoFocus /></Feldzeile>
-      <Feldzeile label="Bereich — die Kachel steht dort auf der Landkarte"><Pillen liste={bereiche.map(b => ({ id: b.id, label: b.titel }))} aktiv={bereich} onWahl={setBereich} /></Feldzeile>
+      <Feldzeile gruppe label="Bereich — die Kachel steht dort auf der Landkarte"><Pillen liste={bereiche.map(b => ({ id: b.id, label: b.titel }))} aktiv={bereich} onWahl={setBereich} /></Feldzeile>
       {!fuerProdukt && bereich === 'fulfillment' && (
-        <Feldzeile label="Was entsteht?">
+        <Feldzeile gruppe label="Was entsteht?">
           <Pillen liste={[{ id: 'prozess' as const, label: 'Prozess (läuft im Motor)' }, { id: 'paket' as const, label: 'Paket (Ablauf im Fall des Kunden)' }]} aktiv={art} onWahl={setArt} />
         </Feldzeile>
       )}
       {alsPaket ? <p style={klein}>Ein Paket des Fulfillments: Phasen, Schritte und Bestätigungen, die jeder Fall dieses Pakets durchläuft. Es entsteht mit einer Phase und wird nur in der Werkstatt bearbeitet.</p> : fuerProdukt
-        ? <Feldzeile label="Woran hängt ein Lauf?"><span style={klein}>Am Mandat — dem Mandat mit diesem Produkt.</span></Feldzeile>
-        : <Feldzeile label="Woran hängt ein Lauf?"><Pillen liste={FALL_ARTEN.map(f => ({ id: f.id, label: f.titel }))} aktiv={fallArt} onWahl={setFallArt} /></Feldzeile>}
+        ? <Feldzeile gruppe label="Woran hängt ein Lauf?"><span style={klein}>Am Mandat — dem Mandat mit diesem Produkt.</span></Feldzeile>
+        : <Feldzeile gruppe label="Woran hängt ein Lauf?"><Pillen liste={FALL_ARTEN.map(f => ({ id: f.id, label: f.titel }))} aktiv={fallArt} onWahl={setFallArt} /></Feldzeile>}
       {!alsPaket && (
         <>
           <Feldzeile label="Eigner (eine Person aus dem Team, später änderbar)">

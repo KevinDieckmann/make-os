@@ -4,7 +4,7 @@
 // `eingabe` = Formularstil (Netzwerken): 48 px hoch, 16 px Schrift — kleiner zoomt iOS beim Antippen die Seite auf.
 // `feld` = kompakter Stil für Zeilen, die beim Verlassen speichern (Kartei, Akte): 44 px, am Rechner 14 px. Beide mit sichtbarem Fokus (.ui-feld).
 
-import type { CSSProperties, ReactNode } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP, LEUCHT, RAND, ECKE } from '@/lib/make-one/design';
 import { abschnitteVon, type ErklaerungsQuelle } from '@/lib/erklaerungen';
 import { ErklaerKnopf, ErklaerPanel, useErklaerung } from './erklaerung';
@@ -28,17 +28,19 @@ export const auswahl: CSSProperties = {
 /**
  * Beschriftung über dem Feld, Fehlertext darunter (in ganzen Sätzen). Mit `erklaerung` (10.10.) steht ein „i“ rechts neben der Beschriftung;
  * die Erklärung klappt unter dem Feld auf (das „i“ liegt neben dem `label`, nicht darin — ein Klick darauf soll nicht das Feld fokussieren).
+ * `gruppe` (24.10., Bau-Test 2: „Klick auf die Überschrift löst den ersten Chip aus“): für Pillen, Segmente, Schalter, Chips und mehrere Felder — dann ist es
+ * KEIN `<label>` (ein Klick auf die Beschriftung würde den ersten Knopf darin drücken), sondern `role="group"` mit `aria-labelledby` auf die Beschriftung.
+ * Ein `<label>` nur um GENAU ein Eingabefeld (input, select, textarea).
  */
-export function Feldzeile({ label, children, fehler, erklaerung }: { label: string; children: ReactNode; fehler?: string; erklaerung?: ErklaerungsQuelle }) {
+export function Feldzeile({ label, children, fehler, erklaerung, gruppe }: { label: string; children: ReactNode; fehler?: string; erklaerung?: ErklaerungsQuelle; gruppe?: boolean }) {
   const e = useErklaerung();
+  const id = useId();
   const abschnitte = erklaerung ? abschnitteVon(erklaerung) : [];
-  const kern = (
-    <label style={{ display: 'grid', gap: 5, minWidth: 0 }}>
-      <span style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, ...(abschnitte.length ? { paddingRight: 36 } : null) }}>{label}</span>
-      {children}
-      {fehler && <span role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{fehler}</span>}
-    </label>
-  );
+  const titel = <span id={gruppe ? `${id}-titel` : undefined} style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.inkDim, ...(abschnitte.length ? { paddingRight: 36 } : null) }}>{label}</span>;
+  const fehlerText = fehler && <span role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{fehler}</span>;
+  const kern = gruppe
+    ? <div role="group" aria-labelledby={`${id}-titel`} style={{ display: 'grid', gap: 5, minWidth: 0 }}>{titel}{children}{fehlerText}</div>
+    : <label style={{ display: 'grid', gap: 5, minWidth: 0 }}>{titel}{children}{fehlerText}</label>;
   if (!abschnitte.length) return kern;
   return (
     <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>

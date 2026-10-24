@@ -137,6 +137,11 @@ export function VorlageEingabe({ id, label, text: t, onText, onVerlassen, aus, p
 }
 
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, margin: 0, lineHeight: 1.45 } as const;
+/**
+ * Feldtypen mit GENAU einem Eingabefeld — nur sie stehen in einem `<label>` (Klick auf die Beschriftung setzt den Cursor hinein). Alle anderen (Pillen, Schalter,
+ * Bedingungen, Platzhalter-Knöpfe …) sind eine Gruppe (`Feldzeile gruppe`): sonst drückt ein Klick auf die Überschrift den ersten Knopf (Bau-Test 2, 24.10.).
+ */
+export const EIN_FELD: ReadonlySet<MaskenFeld['typ']> = new Set<MaskenFeld['typ']>(['text', 'langtext', 'zahl', 'uhrzeit', 'auswahl']);
 const zeile = { display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' } as const;
 
 /**
@@ -342,7 +347,7 @@ export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, 
   // data-ws-feld (Punkt 6): ein Klick auf den Befund am Knoten springt genau in dieses Feld.
   return (
     <div data-ws-feld={f.id} style={{ display: 'grid', minWidth: 0 }}>
-      <Feldzeile label={label} fehler={fehler}>
+      <Feldzeile label={label} fehler={fehler} gruppe={!EIN_FELD.has(f.typ)}>
         {eingabe}
         {f.hilfe && f.typ !== 'ja-nein' && <span style={klein}>{f.hilfe}</span>}
       </Feldzeile>

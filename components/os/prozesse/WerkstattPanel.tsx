@@ -130,10 +130,10 @@ function SteckbriefPanel(p: PanelProps) {
       <Ueberschrift>Steckbrief</Ueberschrift>
       <Feldzeile label="Name *"><TextFeld label="Name" pflicht wert={d.titel} aus={p.nurLesen} platz="z. B. Lead nachfassen" onWert={v => p.onSteckbrief({ titel: v })} /></Feldzeile>
       <Feldzeile label="Beschreibung"><TextFeld label="Beschreibung" mehrzeilig wert={d.beschreibung ?? ''} aus={p.nurLesen} onWert={v => p.onSteckbrief({ beschreibung: v || null })} /></Feldzeile>
-      <Feldzeile label="Bereich (Kachel auf der Landkarte)">
+      <Feldzeile gruppe label="Bereich (Kachel auf der Landkarte)">
         <Pillen liste={PROZESS_BEREICHE.map(b => ({ id: b.id, label: b.titel }))} aktiv={d.bereich ?? 'fulfillment'} onWahl={v => { if (!p.nurLesen) p.onSteckbrief({ bereich: v }); }} />
       </Feldzeile>
-      <Feldzeile label="Woran hängt ein Lauf?">
+      <Feldzeile gruppe label="Woran hängt ein Lauf?">
         <Pillen liste={FALL_ARTEN.map(f => ({ id: f.id, label: f.titel }))} aktiv={d.fallArt ?? 'mandat'} onWahl={v => { if (!p.nurLesen) p.onSteckbrief({ fallArt: v }); }} />
       </Feldzeile>
       <Feldzeile label="Eigner (genau eine Person aus dem Team)">
@@ -150,7 +150,7 @@ function SteckbriefPanel(p: PanelProps) {
         </select>
       </Feldzeile>
       {p.produkte?.length ? (
-        <Feldzeile label="Gehört zu Produkt — ein neues Mandat startet diesen Prozess">
+        <Feldzeile gruppe label="Gehört zu Produkt — ein neues Mandat startet diesen Prozess">
           <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8 }}>
             {p.produkte.map(x => <Link key={x.id} href={WEG.produkt(x.id)} style={{ color: C.aktiv, fontSize: TYP.bedien }}>{x.name} ›</Link>)}
           </span>
@@ -438,7 +438,7 @@ function ZettelPanel(p: PanelProps & { z: NotizZettel }) {
       <Ueberschrift>Notiz-Zettel</Ueberschrift>
       <p style={leise}>Nur Text auf der Fläche — kein Schritt, keine Wirkung, nie im Lauf.</p>
       <Feldzeile label="Text"><TextFeld label="Text des Zettels" mehrzeilig wert={z.text} aus={p.nurLesen} platz="z. B. Auftrag an den Agenten" onWert={t => p.onZettel(z.id, { text: t })} /></Feldzeile>
-      <Feldzeile label="Farbe">
+      <Feldzeile gruppe label="Farbe">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {ZETTEL_FARBEN.map(f => (
             <button key={f} type="button" className="fassbar" aria-pressed={(z.farbe ?? 'gelb') === f} aria-label={`Farbe ${f}`} disabled={p.nurLesen} onClick={() => p.onZettel(z.id, { farbe: f })}

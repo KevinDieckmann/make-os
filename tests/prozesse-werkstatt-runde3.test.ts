@@ -1,9 +1,10 @@
 // ─── Prozesse · Werkstatt — Feinschliff Runde 3 (24.10., Befunde aus dem zweiten Bau-Test im Demo) ─────────────────────────────────────────────────────────
 // Je Befund ein Wächter: (1) Mehrfach-Dialog mit derselben Wertauswahl wie das Panel (Kennung statt Name) und eine Meldung je Fall, die genau sagt, was fehlt;
-// (2) die Suche der Bausteinauswahl findet jeden Baustein über Namen/Teilwort und die Mehrfach-Entscheidung über „mehrfach“, „Fälle“, „verzweig“.
+// (2) die Suche der Bausteinauswahl findet jeden Baustein über Namen/Teilwort und die Mehrfach-Entscheidung über „mehrfach“, „Fälle“, „verzweig“;
+// (3) kein `<label>` um Pillen, Chips, Schalter oder mehrere Knöpfe im Prozess-Bereich (Klick auf die Überschrift drückte den ersten Chip).
 // Erfundene Werte, kein Netz, kein Modell.
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { neuerProzess } from '@/lib/prozesse/bestand';
 import { mehrfachEntscheidung, mehrfachFallFehlt, mehrfachMeldung, type Ergebnis, type Fassung, type MehrfachFall } from '@/lib/prozesse/werkstatt-aktionen';
@@ -121,5 +122,57 @@ describe('(2) Suche der Bausteinauswahl: Name, Kurzbeschreibung, Stichwörter', 
     const fa = lies('components/os/prozesse/WerkstattFormauswahl.tsx');
     expect(fa).toContain('sonderAuswahl(');
     expect(fa).not.toContain('!suche.trim() && (kat');
+  });
+});
+
+describe('(3) Überschriften über Chips sind keine <label> (Klick auf die Überschrift drückt nichts)', () => {
+  const ORDNER = 'components/os/prozesse';
+  const dateien = readdirSync(path.join(process.cwd(), ORDNER)).filter(n => n.endsWith('.tsx'));
+  /** Knöpfe und Gruppen von Knöpfen — in einem `<label>` drückt ein Klick auf die Beschriftung den ersten davon. */
+  const KNOEPFE = /<(Pillen|MehrfachPillen|Segmente|Schalter|button|Knopf|SymbolKnopf|TonWahl|Chip|VorlageEingabe|MehrfachListe|Link)\b/;
+  /** Ende des öffnenden Tags ab `i` (geschweifte Klammern der Ausdrücke zählen mit). */
+  const tagEnde = (q: string, i: number) => { let t = 0; for (let j = i; j < q.length; j++) { const c = q[j]; if (c === '{') t++; else if (c === '}') t--; else if (c === '>' && t === 0) return j; } return -1; };
+  /** Alle Vorkommen eines Tags mit Attributen und Inhalt (verschachtelt gezählt). */
+  function tags(q: string, name: string): { attr: string; inhalt: string }[] {
+    const raus: { attr: string; inhalt: string }[] = [];
+    const auf = new RegExp(`<${name}(?=[\\s>])`, 'g');
+    for (const m of q.matchAll(auf)) {
+      const e = tagEnde(q, m.index!);
+      const attr = q.slice(m.index! + name.length + 1, e);
+      if (attr.trimEnd().endsWith('/')) continue;
+      let tiefe = 1, j = e + 1;
+      const re = new RegExp(`<${name}(?=[\\s>])|</${name}>`, 'g');
+      re.lastIndex = j;
+      let x: RegExpExecArray | null;
+      while (tiefe && (x = re.exec(q))) {
+        if (x[0].startsWith('</')) tiefe--;
+        else { const e2 = tagEnde(q, x.index); if (!q.slice(x.index, e2).trimEnd().endsWith('/')) tiefe++; }
+        j = x.index;
+      }
+      raus.push({ attr, inhalt: q.slice(e + 1, j) });
+    }
+    return raus;
+  }
+  it('jede Feldzeile mit Knöpfen darin ist eine Gruppe (gruppe), jedes <label> umschließt keine Knöpfe', () => {
+    const fehler: string[] = [];
+    for (const n of dateien) {
+      // Ohne Kommentare (sie erwähnen `<label>` nur).
+      const q = lies(`${ORDNER}/${n}`).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      for (const t of tags(q, 'Feldzeile')) if (!/\sgruppe(?=[\s=>/])/.test(` ${t.attr}`) && KNOEPFE.test(t.inhalt)) fehler.push(`${n}: Feldzeile ohne gruppe um ${t.inhalt.match(KNOEPFE)![0]}`);
+      for (const t of tags(q, 'label')) if (KNOEPFE.test(t.inhalt)) fehler.push(`${n}: <label> um ${t.inhalt.match(KNOEPFE)![0]}`);
+    }
+    expect(fehler).toEqual([]);
+    // Der Wächter sieht die Stellen wirklich (ein Beispiel ohne gruppe; Steckbrief: Bereich und Fall).
+    const probe = tags('<Feldzeile label={`a ${b}`}><Pillen liste={x.map(y => y)} /></Feldzeile><Feldzeile gruppe label="b"><Segmente /></Feldzeile>', 'Feldzeile');
+    expect(probe.map(t => [/gruppe/.test(t.attr), KNOEPFE.test(t.inhalt)])).toEqual([[false, true], [true, true]]);
+    expect(tags(lies(`${ORDNER}/WerkstattPanel.tsx`), 'Feldzeile').filter(t => /Woran hängt ein Lauf/.test(t.attr))[0].attr).toMatch(/gruppe/);
+  });
+  it('die Maske: nur Felder mit genau einem Eingabefeld stehen in einem <label>', () => {
+    const q = lies(`${ORDNER}/WerkstattMaske.tsx`);
+    expect(q).toContain("new Set<MaskenFeld['typ']>(['text', 'langtext', 'zahl', 'uhrzeit', 'auswahl'])");
+    expect(q).toContain('gruppe={!EIN_FELD.has(f.typ)}');
+    // Die Feldzeile als Gruppe: role="group" + aria-labelledby auf die Beschriftung (kein <label>).
+    const ui = lies('components/os/ui/felder.tsx');
+    expect(ui).toContain('<div role="group" aria-labelledby={`${id}-titel`}');
   });
 });

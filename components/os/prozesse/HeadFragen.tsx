@@ -115,8 +115,8 @@ export function HeadFragenFenster({ prozess, onZu, onUebernommen, gesperrt, bere
       </Feldzeile>
       {modus === 'prozess' && (
         <>
-          <Feldzeile label="Bereich"><Pillen liste={PROZESS_BEREICHE.map(b => ({ id: b.id, label: b.titel }))} aktiv={bereich} onWahl={setBereich} /></Feldzeile>
-          <Feldzeile label="Woran hängt ein Lauf?"><Pillen liste={FALL_ARTEN.map(f => ({ id: f.id, label: f.titel }))} aktiv={fallArt} onWahl={setFallArt} /></Feldzeile>
+          <Feldzeile gruppe label="Bereich"><Pillen liste={PROZESS_BEREICHE.map(b => ({ id: b.id, label: b.titel }))} aktiv={bereich} onWahl={setBereich} /></Feldzeile>
+          <Feldzeile gruppe label="Woran hängt ein Lauf?"><Pillen liste={FALL_ARTEN.map(f => ({ id: f.id, label: f.titel }))} aktiv={fallArt} onWahl={setFallArt} /></Feldzeile>
         </>
       )}
       {modus === 'baustein' && prozess && prozess.phasen.length > 1 && (

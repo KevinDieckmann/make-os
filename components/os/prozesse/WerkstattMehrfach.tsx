@@ -77,7 +77,7 @@ export function MehrfachFenster({ d, nach, auswahl, onAnlegen, onZu }: {
         </section>
       ))}
       {faelle.length < MEHRFACH_MAX && <Knopf leise onClick={() => setFaelle(l => [...l, leer(l.length + 1)])}><span className="pz-knopf-inhalt"><Plus size={14} aria-hidden />Fall</span></Knopf>}
-      <Feldzeile label="Sonst (kein Fall passt)">
+      <Feldzeile gruppe label="Sonst (kein Fall passt)">
         <Pillen liste={[{ id: 'aufgabe' as const, label: 'Aufgabe „von Hand prüfen“' }, { id: 'ende' as const, label: 'Lauf endet' }]} aktiv={sonst} onWahl={v => setSonst(v)} />
       </Feldzeile>
       {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}

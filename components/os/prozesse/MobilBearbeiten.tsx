@@ -69,7 +69,7 @@ export function MobilMaske({ titel, felder, onSpeichern, onZu, platzhalter }: { 
     <Fenster titel={titel} onZu={onZu} breit={520}>
       <form onSubmit={speichern} style={{ display: 'grid', gap: 12 }}>
         {felder.map(f => (
-          <Feldzeile key={f.id} label={f.label}>
+          <Feldzeile key={f.id} label={f.label} gruppe={f.art === 'vorlage'}>
             {f.art === 'vorlage'
               ? <VorlageEingabe id={f.id} label={f.label} text={w[f.id] ?? ''} onText={v => setze(f.id, v)} platzhalter={platzhalter} gross />
               : f.art === 'textlang'

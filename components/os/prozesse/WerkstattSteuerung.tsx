@@ -121,7 +121,7 @@ export function ScharfFenster(p: SteuerungProps & { onZu: () => void; /** Nur f�
               : <p style={klein}>Keine Agenten-Schritte — dieser Prozess kostet keine KI.</p>}
             {zeilen.length > 0 && <p style={{ ...klein, color: C.ink }}>{`Zusammen etwa ${centWort(v.schaetzungCent)} im Monat (${v.laeufeJeMonat} ${v.laeufeJeMonat === 1 ? 'Lauf' : 'Läufe'} geschätzt aus den letzten 30 Tagen bzw. dem Zeitplan).`}</p>}
             {v.bestehende > 0 && (
-              <Feldzeile label={`Gilt das für ${v.bestehende} bestehende ${v.bestehende === 1 ? 'Fall' : 'Fälle'}?`} erklaerung="prozesse.bestehende">
+              <Feldzeile gruppe label={`Gilt das für ${v.bestehende} bestehende ${v.bestehende === 1 ? 'Fall' : 'Fälle'}?`} erklaerung="prozesse.bestehende">
                 <Segmente liste={[{ id: 'nur-neue' as const, label: 'Nur neue Fälle' }, { id: 'alle' as const, label: `Auch die ${v.bestehende} bestehenden` }]} aktiv={bestehende} onWahl={setBestehende} umbrechen />
               </Feldzeile>
             )}
