@@ -14,6 +14,20 @@ Kevin 22.10.: „alles muss anpassbar sein und es muss auch immer mal wieder zu 
   (Anpassungen ruhen, nichts geht verloren); Kampagnen/Events, die aus einer eigenen Kopie (`pb-…`/`evv-…`) geplant wurden, behalten Namen, Schritte und Kennung.
   Die Buchungs-Route schreibt Seiten über die herausgelöste Stelle `seiteSpeichern` — Verhalten unverändert.
 
+## 24.10.2026 — Überführen Teil 2: Power Hour, Event-Nachfassen, Übergabe (Paket Ü 2, nur lokal — Branch `prozesse-ueberfuehren-2`, Basis 3786c6de)
+Kevins Klickrunde 24.10.: Power-Hour „Ja, ins Update“ — Event-Nachfassen und der Rest der Übergabe „Als neuen Ablauf bauen“. Neu: der allgemeine Auslöser
+**„je Person ab Uhrzeit“** (einmal am Tag je Person des Teams, Mo–Fr/Werktage/täglich, Business-frei ruht er und kommt danach am selben Tag, erster Takt merkt nur).
+Überführt: **Power-Hour-Vorbereitung** (`sp-followup`, Uhrzeit und an/aus aus derselben Stellschraube des Head of Sales). **Ausbau** mit Kern im Vergleich und neuen
+Schritten „Neu gegenüber dem alten Weg“ (im Schatten nur gezählt): **Übergabe** (`sp-uebergabe`: nach „Deal gewonnen“ Mandat-Vorschlag bzw. Aufgaben „Übergabe
+vervollständigen“/„Vertrag unterschreiben lassen“; Willkommen und Kick-off bleiben im Fall) und **Event-Nachfassen** (`sp-event-nachfassen`: Kern = die abgeleitete
+Danke-Glocke, unverändert; neu Follow-ups `fu-nf-…` je Erfassung ohne Nachfassen und die Quote-Glocke nach zwei Werktagen; kein Danke-Entwurf im Stapel).
+- **So testet ihr:** Prozesse › Landkarte › „Follow-up & Power Hour“ › „In die Werkstatt überführen“ → Band „im Schatten“; jeden Arbeitstag zählt das Band den
+  Vergleich (eure Power Hour kommt weiter wie gewohnt). Nach 5 gleichen Tagen „Umschalten“ → ab dann bereitet der Prozess die Power Hour vor; anhalten = der Takt der
+  Heads übernimmt sofort. Für „Übergabe & Onboarding“ und „Event-Nachfassen“ ebenso — im Band steht dazu „Neu gegenüber dem alten Weg“ mit den im Schatten gezählten
+  Wirkungen (angelegt wird davon erst nach dem Umschalten).
+- **Rückweg/Update-Probe:** kein neuer Bestand; neu nur optionale Felder (`ProzessLaufStand.person`, `vergleich.zusatz`, Auslöser-Art `person`, Wirkungsarten `auftrag`/
+  `followup`) und die Follow-ups `fu-nf-…` (normale Follow-ups — der alte Stand zeigt sie wie jedes andere). Ohne Überführung bit-gleich (Wächter).
+
 ## 22.10.2026 — Feste Prozesse echt überführen (Paket Ü, nur lokal — Branch `prozesse-ueberfuehren`, Basis 632b5875)
 Plan-Seite (abgenommen): „Fünf davon ziehen echt in die Werkstatt um: zuerst ein paar Tage im Schatten neben dem alten Code, umgeschaltet wird erst, wenn beide dasselbe
 tun. Hältst du einen überführten Prozess an, läuft der alte Weg wieder.“ Überführt (je mit Gold-Test): **Mahnaufgaben** (`sp-rechnung`, nur Business-Gesellschaften),

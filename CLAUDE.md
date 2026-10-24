@@ -1835,9 +1835,26 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   `components/os/prozesse/Ueberfuehrung.tsx` (Karte „In die Werkstatt“ im Steckbrief, Band „Ersetzt …“ in der Werkstatt), Kachel-Marke `ueberfuehrungMarke`.
   **Neuer überführbarer Teil** = Eintrag in `UEBERFUEHRBAR` + Kern im Fachmodul (alter Einstieg und fester Schritt rufen ihn) + Fall in `systemSchrittAusfuehren` +
   Vorlage in `ueberfuehrung-anlegen.ts` + Gold-Test (alter Code allein vs. neuer Prozess scharf → dieselben Schreibungen, hin und zurück, Weiche nicht lesbar).
-  Nicht überführt: Power-Hour-Vorbereitung (kein Auslöser „ab Uhrzeit, je Person, sobald nicht Business-frei“), Event-Nachfassen (der alte Weg schreibt nichts).
   Tests `tests/prozesse-ueberfuehrung{,-gold,-oberflaeche}.test.ts`. Rückweg zum Live-Stand: der kennt keinen Lauf-Motor und keine Weiche — dort arbeitet
   immer der alte Weg (dieselben Kennungen: nichts doppelt); `ersetzt`/`ueberfuehrung` sind nur optionale Felder im Werkstatt-Bestand.
+  **Paket Ü 2 (24.10., Branch `prozesse-ueberfuehren-2`; Kevins Klickrunde: Power-Hour „Ja, ins Update“, Event-Nachfassen und Rest der Übergabe „Als neuen Ablauf
+  bauen“):** (1) **Auslöser „je Person ab Uhrzeit“** (`{ art: 'person', uhrzeit, bis?, tage: mo-fr | werktage | taeglich, nachMorgenlauf?, stundeAus? }`, Regel rein
+  `personenFaellig` in lib/prozesse/ausloeser.ts, Takt `personenStarten`): je Person des Teams mit Konto (`personenDesTeams` = dieselbe Liste wie die Power Hour) EIN
+  Lauf am Tag (Periode Knoten + Fingerabdruck + Tag, der Lauf schreibt als diese Person); Business-frei (Haushalt bzw. Person) ruht er und kommt danach am selben Tag;
+  „Mo–Fr“ zählt Feiertage mit wie der Takt der Heads; `nachMorgenlauf` = `nachMorgenlaufOffen` (lib/zoe/takt.ts, EINE Regel mit dem Takt); `stundeAus` = die Stunde
+  einer Stellschraube (gewinnt); erster Takt merkt nur; im Stand nur Fingerabdrücke (Art. 17 nimmt sie heraus). (2) **Power-Hour-Vorbereitung** (`sp-followup`, fester
+  Schritt `power-hour`, Kern `powerHourKern` = `faelligeModi` für genau diese Person + `sperrenFiltern` + `powerHourFaellig` — derselbe Auftrag/Schlüssel der
+  Warteschlange und der Riegel `power_hour:<person>` sind die Kennungs-Brücke); Weiche in `headsFaellig` (lässt bei scharfem neuen Weg nur die Power Hour aus); der alte
+  Weg meldet dem Vergleich NUR, was die Takt-Route wirklich einreiht (`powerHourEingereihtMelden` — GET meldet nie). Ein Tag, an dem nur EIN Weg „nichts“ meldet, ist
+  keine Gelegenheit. (3) **Ausbau** (`UeberfuehrbarDef.zusatz`): Schritte, die der alte Weg nicht tat, stehen im Band/Steckbrief als „Neu gegenüber dem alten Weg“, gehen
+  NICHT in den Vergleich und werden im Schatten nur je Art gezählt (`vergleich.zusatz`, `zusatzMeldenServer` — nie Kennungen); scharf laufen sie nach C1.
+  Übergabe: zweiter Auslöser „Deal gewonnen“ → Mandat-Vorschlag (nur ohne Mandat), Aufgaben „Übergabe vervollständigen“/„Vertrag unterschreiben lassen“ — ohne „Fall
+  starten“ (Kern) und ohne Willkommen/Kick-off (führt der Fall, sonst doppelt). **Event-Nachfassen** (`sp-event-nachfassen`): der Kern ist abgeleitet — Glocke
+  „n Danke-Mails bereit“ (`dankeAnstehend`, EINE Rechnung) bleibt beim Lesen, der feste Schritt `nachfass-lage` sieht dieselbe Lage und schreibt nichts; im Schatten
+  meldet der Morgenlauf (`nachfassLageMorgenlauf`, lib/crm/nachfassen-server.ts) die Glocke von gestern-Events, der Prozess (Datum am Event + 1, 08:00, nur besuchte)
+  dieselbe. Neu: `nachfass-followups` (Follow-up `fu-nf-<teilnahme>`, nie zu `fu-<erfassung>`/offenem Follow-up am Event, nie bei „Nur Kontakt“/Termin/Verzicht/
+  `followUpAm`/Art. 18/Werbesperre; Frist wie das Erfassen) und die Quote-Glocke nach zwei Werktagen — kein Danke-Entwurf im Stapel (die Danke-Mails bleiben in
+  Netzwerken › Heute). Tests `tests/prozesse-ausloeser-person.test.ts`, `tests/prozesse-ueberfuehrung-{powerhour,ausbau}.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Werkzeug-Muster — jeder große Bereich ein eigenes Werkzeug (22.10., Branch `werkzeuge`, nur lokal)
