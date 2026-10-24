@@ -16,7 +16,7 @@ import {
   PROZESS_BEREICHE, FALL_ARTEN, ZETTEL_FARBEN, type Befund, type MaskenWert, type NotizZettel, type ProzessDefinition, type ProzessForm, type ProzessKnoten, type AgentWer,
 } from '@/lib/prozesse/definition';
 import { alleSchritte, phasen, schritteDer, type Ausgang } from '@/lib/prozesse/fluss';
-import { katalogEintrag, klasseVonEintrag, platzhalterFuer, type AuswahlQuelle, type KatalogEintrag } from '@/lib/prozesse/baustein-katalog';
+import { feldSichtbar, katalogEintrag, klasseVonEintrag, platzhalterFuer, type AuswahlQuelle, type KatalogEintrag } from '@/lib/prozesse/baustein-katalog';
 import { ausloeserFelder, feldTitelVon } from '@/lib/prozesse/ausloeser';
 import { annahmeOptionen } from '@/lib/prozesse/testdaten';
 import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
@@ -224,7 +224,7 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   const werteVon = (feldId: string) => feldWerte(feldId, p.auswahl, d);
   // Zeitplan (Feinschliff 24.10.): Tage nach dem Rhythmus — wöchentlich Mo–So, monatlich 1–30 + „letzter Tag“; täglich/werktags ohne Tage.
   const tage = tageOptionen(werte.rhythmus);
-  const eingabe = (f: KatalogEintrag['maske'][number]) => (f.typ === 'tage' && !tage ? null : (
+  const eingabe = (f: KatalogEintrag['maske'][number]) => ((f.typ === 'tage' && !tage) || !feldSichtbar(f, werte) ? null : (
     <MaskenEingabe key={f.id} f={f} wert={gesperrt(f.id) ? false : werte[f.id]} onWert={v => setze(f.id, v)} optionen={f.optionen ? f.optionen.map(o => ({ ...o })) : optionenFuer(f.quelle, p, k)}
       felder={felder} platzhalter={platz} fehler={fehlerVon(f.id)} aus={p.nurLesen || gesperrt(f.id)} werteVon={werteVon} {...(tage ? { tage } : {})} />
   ));

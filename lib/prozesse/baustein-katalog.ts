@@ -23,7 +23,7 @@ import type { Kanal } from '@/lib/crm/recht';
 import { LIFECYCLE_WAHL } from '@/lib/crm/lifecycle';
 import { SYSTEM_SCHRITT_IDS, SYSTEM_SCHRITT_NAME } from './ueberfuehrung';
 import {
-  CRM_ABFRAGE_ARTEN, FELD_KENNUNG, LOOP_ARTEN, PERSON_TAGE, PROZESS_GRENZEN, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, VORSCHLAG_ZIELFELDER,
+  ABFRAGE_DEAL_FILTER, ABFRAGE_LEAD_FILTER, ABFRAGE_MIT_TAGEN, CRM_ABFRAGE_ARTEN, FELD_KENNUNG, LOOP_ARTEN, PERSON_TAGE, PROZESS_GRENZEN, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, VORSCHLAG_ZIELFELDER,
   type AgentWer, type Bahn, type Befund, type FallArt, type KiKategorie, type MaskenWert, type ProzessForm,
 } from './definition';
 
@@ -70,7 +70,12 @@ export interface MaskenFeld {
   quelle?: AuswahlQuelle;
   min?: number; max?: number;
   hilfe?: string;
+  /** Nur zeigen, wenn ein anderes Feld der Maske einen dieser Werte hat (Feinschliff 24.10.: CRM abfragen — Lead-Filter nur bei Lead-Abfragen, Deal-Filter nur bei Deals). */
+  nurBei?: { feld: string; werte: readonly string[] };
 }
+/** Steht ein Feld der Maske bei diesen Werten? (rein) — ohne `nurBei` immer. */
+export const feldSichtbar = (f: Pick<MaskenFeld, 'nurBei'>, werte: Readonly<Record<string, MaskenWert | undefined>>): boolean =>
+  !f.nurBei || (typeof werte[f.nurBei.feld] === 'string' && f.nurBei.werte.includes(werte[f.nurBei.feld] as string));
 /** In welches Feld des Knotens die Maske schreibt (statt `katalog.werte`). */
 export type KatalogFeld = 'ausloeser' | 'agent' | 'raute' | 'warten' | 'schleife' | 'teilprozess' | 'ende' | 'abfrage' | 'erneut';
 export interface KatalogEintrag {
@@ -245,12 +250,17 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
   // ── CRM: Kontakt, Firma, Deal, Lead, Follow-up ──
   { id: 'crm.abfragen', name: 'CRM abfragen', satz: 'Liefert eine Liste von Fällen: Leads, neue Leads, ruhende Firmen, Deals ohne nächsten Schritt, Angebote ohne Antwort.', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', rechte: 'lesen', ki: ['crm'], feld: 'abfrage',
     liest: 'lib/crm/leads.ts `leads` (Score, Lifecycle, BEAN) und die Kartei NUR über `kontakteFuerVerarbeitung` (Art. 18: eingeschränkte Personen fehlen ganz)',
+    // Feinschliff 24.10. (Bau-Test A2: „Deals ohne nächsten Schritt“ zeigte Lead-Filter): Filter je Abfrage — Lead-Filter nur bei Leads, Deal-Filter nur bei Deals,
+    // „Tage“ nur, wo die Abfrage sie liest (`nurBei`, dieselben Listen wie der Motor).
     maske: [{ id: 'art', label: 'Was', typ: 'auswahl', pflicht: true, optionen: CRM_ABFRAGE_ARTEN.map(id => ({ id, label: ABFRAGE_NAME[id] })) },
-      { id: 'status', label: 'Lead-Status', typ: 'mehrfach', optionen: LEAD_STATUS },
-      { id: 'temperatur', label: 'Temperatur', typ: 'mehrfach', optionen: TEMPERATUREN.map(id => ({ id, label: id === 'heiss' ? 'heiß' : id })) },
-      { id: 'bean', label: 'Kundengruppe (BEAN)', typ: 'mehrfach', optionen: [{ id: 'B', label: 'Bestand' }, { id: 'E', label: 'Ehemalig' }, { id: 'A', label: 'Angebot' }, { id: 'N', label: 'Neu' }] },
-      { id: 'lifecycle', label: 'Lifecycle', typ: 'mehrfach', optionen: LIFECYCLE_WAHL.map(l => ({ id: l.id, label: l.label })) },
-      TAGE('tage', 'Seit bzw. ohne Kontakt seit (Tagen)', 3650),
+      { id: 'status', label: 'Lead-Status', typ: 'mehrfach', optionen: LEAD_STATUS, nurBei: { feld: 'art', werte: ABFRAGE_LEAD_FILTER } },
+      { id: 'temperatur', label: 'Temperatur', typ: 'mehrfach', optionen: TEMPERATUREN.map(id => ({ id, label: id === 'heiss' ? 'heiß' : id })), nurBei: { feld: 'art', werte: ABFRAGE_LEAD_FILTER } },
+      { id: 'bean', label: 'Kundengruppe (BEAN)', typ: 'mehrfach', optionen: [{ id: 'B', label: 'Bestand' }, { id: 'E', label: 'Ehemalig' }, { id: 'A', label: 'Angebot' }, { id: 'N', label: 'Neu' }], nurBei: { feld: 'art', werte: ABFRAGE_LEAD_FILTER } },
+      { id: 'lifecycle', label: 'Lifecycle', typ: 'mehrfach', optionen: LIFECYCLE_WAHL.map(l => ({ id: l.id, label: l.label })), nurBei: { feld: 'art', werte: ABFRAGE_LEAD_FILTER } },
+      { id: 'stufe', label: 'Deal-Stufe', typ: 'mehrfach', quelle: 'pipeline-stufe', nurBei: { feld: 'art', werte: ABFRAGE_DEAL_FILTER } },
+      { id: 'nurMeine', label: 'Nur Deals der Person des Laufs', typ: 'ja-nein', vorgabe: false, hilfe: 'Zuständig ist die Person, als die der Lauf schreibt (oder „beide“) — im Prozess stehen keine Namen.', nurBei: { feld: 'art', werte: ABFRAGE_DEAL_FILTER } },
+      { id: 'wertAb', label: 'Wert ab (€)', typ: 'zahl', min: 0, max: 100_000_000, nurBei: { feld: 'art', werte: ABFRAGE_DEAL_FILTER } },
+      { ...TAGE('tage', 'Seit bzw. ohne Kontakt seit (Tagen)', 3650), nurBei: { feld: 'art', werte: ABFRAGE_MIT_TAGEN } },
       { id: 'hoechstens', label: 'Höchstens', typ: 'zahl', min: 1, max: PROZESS_GRENZEN.abfrageHoechstens, pflicht: true, vorgabe: 50, hilfe: 'Mehr wird nie still gekürzt — der Lauf zeigt, wie viele übrig sind.' }] },
   { id: 'crm.outreach-aufgabe', name: 'Outreach-Aufgabe', satz: 'Legt eine Aufgabe zur Ansprache an — nur, wenn der Kanal nicht rot ist (Kanal-Ampel, Werbesperre).', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'mensch', werkzeug: 'create_task',
     ansprache: { kanalFeld: 'kanal' },

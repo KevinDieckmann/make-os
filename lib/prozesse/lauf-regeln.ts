@@ -18,7 +18,7 @@ import { kantenVon, startKnoten, alleSchritte, schloesser, type Kante } from './
 import { bedingungenTreffen, bedingungTrifft, bedingungText } from './bedingung';
 import {
   brauchtSchloss, FORM_KLASSE, katalogEintrag, klasseVonEintrag, maskeVorgaben, textvorlageFuellen, GESELLSCHAFT_DES_FALLS, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT,
-  KARTE_FELDER, type KatalogEintrag,
+  KARTE_FELDER, ABFRAGE_NAME, type KatalogEintrag,
 } from './baustein-katalog';
 import { textGeruest } from './kundengewinnung/text-geruest';
 import type { AnspracheUrteil } from './ansprache';
@@ -1459,7 +1459,7 @@ export function probeAusgabe(b: ProbeBeobachtung, def: Pick<ProzessDefinition, '
         Object.assign(j, { prozessId: a.prozessId, warten: a.warten });
         break;
       case 'abfrage':
-        z.push({ feld: 'Wirkung', wert: 'würde im CRM abfragen (nur lesen)' }, { feld: 'Was', wert: a.abfrage.art }, { feld: 'Höchstens', wert: String(a.abfrage.hoechstens) });
+        z.push({ feld: 'Wirkung', wert: 'würde im CRM abfragen (nur lesen)' }, { feld: 'Was', wert: ABFRAGE_NAME[a.abfrage.art] ?? a.abfrage.art }, { feld: 'Höchstens', wert: String(a.abfrage.hoechstens) });
         Object.assign(j, { abfrage: a.abfrage.art, hoechstens: a.abfrage.hoechstens });
         break;
       case 'schleife':

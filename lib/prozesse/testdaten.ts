@@ -39,7 +39,7 @@ export const BEISPIEL_FELDER: Readonly<Record<string, TestWert>> = {
   'firma.daten-fehlen': true, 'firma.bester-kanal': 'telefon', 'lead.bester-kanal': 'mail', 'lead.ampel-mail': 'gruen', 'lead.ampel-telefon': 'gelb',
   'deal.ampel': 'gelb', 'deal.offen': true, 'deal.verschoben': 0, 'deal.mandat-da': false, 'deal.ampel-mail': 'gruen',
   // 22.10. spät (lib/prozesse/kundengewinnung/fall-felder-server.ts) — der Hauptweg jeder Raute, erfunden.
-  'deal.vertrag-unterschrieben': false, 'deal.nachfass-followup': false, 'lead.zustaendig': 'beispiel', 'lead.neue-signale': true, 'lead.waerme-gestiegen': false,
+  'deal.vertrag-unterschrieben': false, 'deal.nachfass-followup': false, 'lead.zustaendig': 'beispiel', 'lead.neue-signale': true, 'lead.geantwortet': true, 'lead.waerme-gestiegen': false,
   'lead.mail-fach': 'antworten', 'lead.gespraech-zugeordnet': false, 'lead.anfrage-kanal': 'mail', 'lead.buchung-folge': 'qualifizierung', 'lead.nachweis-vollstaendig': true,
   'lead.einladungsweg': 'mail', 'lead.danke-moeglich': true, 'lead.netzwerken-schritt': 'qualifizieren', 'lead.kampagnen-ergebnis': 'chance',
   'mandat.ampel': 'gruen', 'mandat.health': 80, 'mandat.verlaengerung': 'manuell', 'mandat.verlaengert': false, 'mandat.ampel-mail': 'gruen',

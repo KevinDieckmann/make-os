@@ -144,7 +144,8 @@ const abfrage = (v: unknown): CrmAbfrage | undefined => {
   const o = obj(v); const art = wahl(o?.art, CRM_ABFRAGE_ARTEN);
   if (!o || !art) return undefined;
   const l = (x: unknown) => { const t = texte(x); return t.length ? t : undefined; };
-  return sauber<CrmAbfrage>({ art, status: l(o.status), temperatur: l(o.temperatur), bean: l(o.bean), lifecycle: l(o.lifecycle), tage: n(o.tage), hoechstens: n(o.hoechstens) ?? 0 });
+  // Feinschliff 24.10.: Filter über Deals (optional — ohne sie bit-gleich wie bisher).
+  return sauber<CrmAbfrage>({ art, status: l(o.status), temperatur: l(o.temperatur), bean: l(o.bean), lifecycle: l(o.lifecycle), stufe: l(o.stufe), nurMeine: o.nurMeine === true ? true : undefined, wertAb: n(o.wertAb), tage: n(o.tage), hoechstens: n(o.hoechstens) ?? 0 });
 };
 const erneut = (v: unknown): ErneutAb | undefined => { const o = obj(v); const a = id(o?.ab); return a ? { ab: a, hoechstens: n(o?.hoechstens) ?? 0 } : undefined; };
 const MASKEN_WERT = (w: unknown): MaskenWert | undefined => {

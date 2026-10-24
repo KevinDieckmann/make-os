@@ -64,6 +64,16 @@ function leadVerarbeitbar(z: LeadZeile, k: (id: string | undefined) => Kontakt |
   return !personen.length || personen.some(p => !ausgenommen(p));
 }
 const dealFall = (c: Pick<Chance, 'id'>): LaufFall => ({ art: 'deal', id: c.id });
+/**
+ * Die Filter einer Abfrage über Deals (Feinschliff 24.10., optional — ohne sie alle wie bisher): Stufe, nur Deals der Person des Laufs (zuständig bzw. „beide“; ohne
+ * Person keiner), Wert ab (Betrag des Deals in €).
+ */
+function dealPasst(q: CrmAbfrage, c: Chance, person: string | null): boolean {
+  if (q.stufe?.length && !q.stufe.includes(c.stufe)) return false;
+  if (q.nurMeine && (!person || (c.besitzer !== person && c.besitzer !== 'beide'))) return false;
+  if (typeof q.wertAb === 'number' && q.wertAb > 0 && !((c.wert?.betrag ?? 0) >= q.wertAb)) return false;
+  return true;
+}
 const reihenfolge = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
@@ -75,7 +85,7 @@ export function abfrageFaelle(q: CrmAbfrage, d: AbfrageDaten): LaufFall[] {
   const k = (id: string | undefined) => (id ? nachId.get(id) : undefined);
   const leads = d.leads.filter(z => leadVerarbeitbar(z, k) && leadPasst(q, z, k));
   // Offene Deals des Business — ohne Deals, an denen eine eingeschränkte Person (fehlt in der Kartei) bzw. eine Person mit Werbesperre hängt.
-  const offeneDeals = d.crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe) && d.business(c.gesellschaft) && !c.kontaktIds.some(id => (id.startsWith('c-') && !nachId.has(id)) || ausgenommen(k(id))));
+  const offeneDeals = d.crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe) && d.business(c.gesellschaft) && !c.kontaktIds.some(id => (id.startsWith('c-') && !nachId.has(id)) || ausgenommen(k(id))) && dealPasst(q, c, d.person));
   switch (q.art) {
     case 'leads':
       return ohneDoppelte([...leads].sort((a, b) => b.score.punkte - a.score.punkte || reihenfolge(a.id, b.id)).map(leadFall));
@@ -100,7 +110,7 @@ export function abfrageFaelle(q: CrmAbfrage, d: AbfrageDaten): LaufFall[] {
       return offeneDeals.filter(c => rang(c) < 9).sort((a, b) => rang(a) - rang(b) || reihenfolge(a.id, b.id)).map(dealFall);
     }
     case 'deals-wiedervorlage':
-      return dealWiedervorlagen(d.crm, d.heute).filter(c => d.business(c.gesellschaft)).sort((a, b) => reihenfolge(a.wiedervorlage ?? '', b.wiedervorlage ?? '') || reihenfolge(a.id, b.id)).map(dealFall);
+      return dealWiedervorlagen(d.crm, d.heute).filter(c => d.business(c.gesellschaft) && dealPasst(q, c, d.person)).sort((a, b) => reihenfolge(a.wiedervorlage ?? '', b.wiedervorlage ?? '') || reihenfolge(a.id, b.id)).map(dealFall);
     case 'leads-wiedervorlage':
       return ohneDoppelte(leads.filter(z => z.status === 'ruht' && !!z.wiedervorlage && z.wiedervorlage.slice(0, 10) <= d.heute).sort((a, b) => reihenfolge(a.wiedervorlage ?? '', b.wiedervorlage ?? '') || reihenfolge(a.id, b.id)).map(leadFall));
     case 'angebote-ohne-antwort': {

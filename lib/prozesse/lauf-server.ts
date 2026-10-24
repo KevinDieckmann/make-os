@@ -2101,6 +2101,22 @@ export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'ver
     const { feldTitelVon } = await import('./ausloeser');
     const felder = { ...r.lauf.daten, ...u.daten };
     schritte = schritte.map(x => { const b = beobachtet.get(x.knotenId); return b ? { ...x, ausgabe: probeAusgabe(b, def, { felder, feldName: feldTitelVon }) } : x; });
+    // Feinschliff 24.10. (Bau-Test A2: „Test zeigt deals-ohne-schritt ohne Treffer“): eine CRM-Abfrage liest im Test wirklich (nur lesen, dieselben Leser wie der
+    // Lauf) und nennt die Zahl der Treffer — keine Namen, nichts geschrieben.
+    if (schritte.some(x => x.ausgabe && def.knoten.find(k => k.id === x.knotenId)?.abfrage)) {
+      const daten = await abfrageDaten(lauf, kx).catch(() => null);
+      if (daten) {
+        const [{ abfrageFaelle }, { ABFRAGE_FALL }] = await Promise.all([import('./kundengewinnung/abfrage'), import('./teilprozess-neu')]);
+        const WORT: Readonly<Record<string, [string, string]>> = { lead: ['Lead', 'Leads'], deal: ['Deal', 'Deals'], firma: ['Firma', 'Firmen'], mandat: ['Mandat', 'Mandate'] };
+        schritte = schritte.map(x => {
+          const q = def.knoten.find(k => k.id === x.knotenId)?.abfrage;
+          if (!q || !x.ausgabe) return x;
+          const n = abfrageFaelle(q, daten).length;
+          const w = WORT[ABFRAGE_FALL[q.art]] ?? ['Fall', 'Fälle'];
+          return { ...x, ausgabe: { zeilen: [...x.ausgabe.zeilen, { feld: 'Treffer jetzt (nur gelesen)', wert: n ? `${n} ${n === 1 ? w[0] : w[1]}` : `keine — zurzeit passt kein ${w[0]}` }], json: { ...x.ausgabe.json, treffer: n } } };
+        });
+      }
+    }
   }
   const kosten = Math.round(schritte.reduce((n, x) => n + (x.kostenCent ?? 0), 0));
   return { ok: true, schritte, kostenSchaetzungCent: ziel ? kosten : p.kostenSchaetzungCent, befunde: laufBefunde(def), ...(hinweis ? { hinweis } : {}), ...(info.beispiel ? {} : { echterFall: true as const }) };

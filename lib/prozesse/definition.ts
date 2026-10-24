@@ -328,9 +328,17 @@ export type BeanGruppe = 'B' | 'E' | 'A' | 'N';
 export interface CrmAbfrage {
   art: CrmAbfrageArt;
   status?: string[]; temperatur?: Temperatur[]; bean?: BeanGruppe[]; lifecycle?: string[];
+  /**
+   * Filter über Deals (Feinschliff 24.10., optional — ohne sie wie bisher): Stufe, nur Deals der Person des Laufs (zuständig bzw. „beide“ — keine Namen im Prozess),
+   * Wert ab (Betrag des Deals in €). Nur die Deal-Abfragen (`ABFRAGE_DEAL_FILTER`) lesen sie.
+   */
+  stufe?: string[]; nurMeine?: true; wertAb?: number;
   tage?: number;
   hoechstens: number;
 }
+/** Abfragen über Leads (die Lead-Filter Status, Temperatur, BEAN, Lifecycle wirken) bzw. über Deals (Stufe, nur meine, Wert ab) — EINE Stelle für Maske und Motor. */
+export const ABFRAGE_LEAD_FILTER: readonly CrmAbfrageArt[] = ['leads', 'neue-leads', 'firmen-ruhend', 'leads-wiedervorlage'];
+export const ABFRAGE_DEAL_FILTER: readonly CrmAbfrageArt[] = ['deals-ohne-schritt', 'deals-haengen', 'deals-wiedervorlage'];
 /** „Erneut ab Schritt …“: zurück zu einem früheren Schritt dieses Prozesses, höchstens `hoechstens`-mal je Lauf (danach weiter). */
 export interface ErneutAb { ab: string; hoechstens: number }
 export interface ProzessSchnittstelle { eingaben: VertragFeld[]; ausgaben: VertragFeld[] }

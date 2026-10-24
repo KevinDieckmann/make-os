@@ -23,6 +23,8 @@ export const KG_FALL_FELDER: Readonly<Record<FallArt, readonly KgFeld[]>> = {
     f('lead.netzwerken-schritt', 'Vereinbarter Schritt (Netzwerken)', 'text', 'Teilnahme.netzwerken.schritt (lib/crm/netzwerken.ts SCHRITTE)'),
     f('lead.danke-moeglich', 'Danke möglich', 'ja-nein', 'dankeOffen (lib/crm/netzwerken.ts): gesprochen, Mail-Ampel nicht rot, Frist nicht abgelaufen'),
     f('lead.nachweis-vollstaendig', 'Newsletter-Nachweis vollständig', 'ja-nein', 'nachweisLuecken leer (lib/crm/einwilligung.ts)'),
+    // Feinschliff 24.10. (Bau-Test: für „hat geantwortet?“ gab es kein Feld — geraten wurde „Neue Signale“): nur die Antwort selbst.
+    f('lead.geantwortet', 'Hat geantwortet (seit dem Start)', 'ja-nein', 'Aktivität „antwort“ (eingehende Mail, WhatsApp, LinkedIn) an einer Person des Falls seit dem Start des Laufs (bzw. 30 Tage)'),
     f('lead.neue-signale', 'Neue Signale seit dem Start', 'ja-nein', 'eingehende Aktivität, Zusage, Kampagnen-Reaktion, neuer Deal bzw. höhere Temperatur (lib/crm/score.ts) seit dem Start bzw. dem Parken + ereignisseSeit (lib/ereignisse/server.ts)'),
     f('lead.gespraech-zugeordnet', 'Gespräch zugeordnet', 'ja-nein', 'Inbox-Zustand der Person (lib/inbox/zustand.ts zuordnung)'),
     f('lead.mail-fach', 'Fach der Mail', 'text', 'fachVon (lib/inbox/faecher.ts) über den Spiegel der Person (lib/inbox/strom-server.ts) — antworten · termine · info · warten …'),

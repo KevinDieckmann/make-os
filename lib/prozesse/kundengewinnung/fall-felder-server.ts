@@ -3,6 +3,7 @@
 // Raute fiel dann still auf den Vorgabe-Ast (eine fehlende Angabe ist für „gleich“ nie wahr). Hier werden sie gerechnet — NUR aus vorhandenen Lesern (CRM-Bestand,
 // Kartei, Leads, Inbox-Spiegel und -Zustand der Person, Ereignisstelle, Läufe), nie gespeichert, nie eine Anfrage an einen Fremddienst, nur Kennungen, Zahlen,
 // ja/nein und feste Wörter. Teure Felder (Inbox, Ereignisse, Läufe, Fulfillment) nur, wenn die Definition sie nennt (`brauche`).
+//   lead.geantwortet           eine Antwort (Aktivität „antwort“) einer Person des Falls seit dem Start des Laufs (Feinschliff 24.10.)
 //   lead.neue-signale          eingehende Aktivität, Zusage zu einem Event, Kampagnen-Reaktion, neuer Deal bzw. gestiegene Temperatur seit dem Start (bzw. seit dem
 //                              Parken eines ruhenden Leads); dazu Ereignisse zur Person (lib/ereignisse/server.ts `ereignisseSeit`)
 //   lead.waerme-gestiegen      Temperatur jetzt gegen die Temperatur mit dem Verlauf vor dem Start (lib/crm/score.ts `leadScore`)
@@ -66,6 +67,11 @@ export function signaleSeit(personen: readonly Kontakt[], crm: Pick<CrmBestand, 
   return crm.chancen.some(c => c.kontaktIds.some(id => ids.has(id)) && ab(c.angelegt, seit));
 }
 
+/** Hat eine Person des Falls seit `seit` geantwortet? (rein) — nur die Aktivität „antwort“ (eingehende Mail, WhatsApp, LinkedIn), nur Kennungen gelesen. */
+export function geantwortetSeit(personen: readonly Kontakt[], seit: string): boolean {
+  return personen.some(k => (k.aktivitaeten ?? []).some(a => a.art === 'antwort' && ab(a.am, seit)));
+}
+
 /** Der Kanal der jüngsten Anfrage der Personen (rein) — „keiner“ ohne Anfrage. */
 export async function anfrageKanal(personen: readonly Kontakt[]): Promise<string> {
   const [{ istAnfrage, ANFRAGE_PRAEFIX }, { ANFRAGE_KANAELE }] = await Promise.all([import('@/lib/crm/marketing'), import('@/lib/crm/anfragen')]);
@@ -102,6 +108,8 @@ async function leadFelder(x: KgFallEingabe, firma: Firma | undefined): Promise<K
   const start = x.lauf?.start ?? new Date(x.jetzt.getTime() - 30 * 86_400_000).toISOString();
   const geparkt = leadObj?.status === 'ruht' && leadObj.geaendert ? leadObj.geaendert : undefined;
   const seit = geparkt && geparkt < start ? geparkt : start;
+  // Feinschliff 24.10.: „hat geantwortet“ — nur die Antwort selbst (Aktivität „antwort“: eingehende Mail, WhatsApp, LinkedIn), seit dem Start des Laufs.
+  if (braucht('lead.geantwortet')) d['lead.geantwortet'] = geantwortetSeit(personen, start);
   if (braucht('lead.neue-signale') || braucht('lead.waerme-gestiegen')) {
     const jetzt = await temperatur(personen, leadObj, x.crm, heute);
     if (braucht('lead.waerme-gestiegen')) d['lead.waerme-gestiegen'] = jetzt > await temperatur(personen, leadObj, x.crm, heute, x.lauf?.start ?? start);

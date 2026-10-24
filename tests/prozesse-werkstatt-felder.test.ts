@@ -10,7 +10,7 @@ import { definitionPruefen, sperrtSpeichern, sperrtVeroeffentlichen } from '@/li
 import { bedingungenAus } from '@/lib/prozesse/bedingung';
 import { katalogEintrag, maskeSaeubern } from '@/lib/prozesse/baustein-katalog';
 import type { ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
-import { definition, fk, schritt, konto } from './fixtures/prozess-bau';
+import { definition, fk, schritt, konto, J } from './fixtures/prozess-bau';
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-prozesse-felder-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
@@ -367,5 +367,61 @@ describe('5 — Kurzzeile je Knoten (Fläche, Liste, Handy)', () => {
     expect(p.phasen[0].schritte.find(s => s.id === fk(70))?.was).toBe('3 Tage');
     const l = prozessAlsListe(p);
     expect(l.kinder[0].kinder.find(s => s.pfad.s === fk(70))?.text).toBe('3 Tage');
+  });
+});
+
+// ── 6: Felder und Begriffe — „hat geantwortet“, Filter je Abfrage, Test mit Namen und Treffern ───────────────────────────────────────────────────────
+
+describe('6 — „hat geantwortet (seit dem Start)“ und Filter je CRM-Abfrage', () => {
+  it('„hat geantwortet“: nur die Aktivität „antwort“ seit dem Start; ein ja/nein-Feld im Lead-Fall', async () => {
+    const { geantwortetSeit } = await import('@/lib/prozesse/kundengewinnung/fall-felder-server');
+    const { FALL_FELDER, feldTitelVon } = await import('@/lib/prozesse/ausloeser');
+    const { feldWerte } = await import('@/lib/prozesse/feld-werte');
+    const k = (art: string, am: string) => ({ id: 'c-x', vorname: 'X', stufe: 'kontakt', aktivitaeten: [{ art, am, text: '' }] }) as never;
+    expect(geantwortetSeit([k('antwort', '2026-10-22T09:00:00Z')], '2026-10-21T08:00:00Z')).toBe(true);
+    expect(geantwortetSeit([k('antwort', '2026-10-20T09:00:00Z')], '2026-10-21T08:00:00Z')).toBe(false);
+    expect(geantwortetSeit([k('mail', '2026-10-22T09:00:00Z')], '2026-10-21T08:00:00Z')).toBe(false);
+    expect(FALL_FELDER.lead.some(f => f.id === 'lead.geantwortet')).toBe(true);
+    expect(feldTitelVon('lead.geantwortet')).toBe('Hat geantwortet (seit dem Start)');
+    expect(feldWerte('lead.geantwortet', {})?.map(o => o.label)).toEqual(['ja', 'nein']);
+  });
+  it('Filter je Abfrage: Lead-Filter nur bei Leads, Deal-Filter (Stufe, nur meine, Wert ab) nur bei Deals, Tage nur, wo gelesen', async () => {
+    const { katalogEintrag, feldSichtbar } = await import('@/lib/prozesse/baustein-katalog');
+    const m = katalogEintrag('crm.abfragen')!.maske;
+    const sicht = (art: string) => m.filter(f => feldSichtbar(f, { art })).map(f => f.id);
+    expect(sicht('deals-ohne-schritt')).toEqual(['art', 'stufe', 'nurMeine', 'wertAb', 'hoechstens']);
+    expect(sicht('leads')).toEqual(['art', 'status', 'temperatur', 'bean', 'lifecycle', 'hoechstens']);
+    expect(sicht('neue-leads')).toContain('tage');
+  });
+  it('der Motor liest die Deal-Filter (ohne sie wie bisher)', async () => {
+    const { abfrageFaelle } = await import('@/lib/prozesse/kundengewinnung/abfrage');
+    const { leererBestand } = await import('@/lib/crm/speicher');
+    const deal = (id: string, stufe: string, besitzer: string, betrag: number) => ({ id, titel: id, kontaktIds: [], stufe, historie: [], wert: { betrag, basis: 'einmalig' }, art: 'projekt', gesellschaft: 'ug', besitzer, angelegt: J, geaendert: J });
+    const crm = { ...leererBestand(), chancen: [deal('ch-a', 'angebot', 'pia', 5000), deal('ch-b', 'bedarf', 'olaf', 800), deal('ch-c', 'diagnose', 'beide', 2000)] } as never;
+    const d = { crm, kontakte: [], leads: [], heute: '2026-10-24', person: 'pia', fall: { art: 'keiner' as const }, business: () => true };
+    const ids = (q: Record<string, unknown>) => abfrageFaelle({ art: 'deals-ohne-schritt', hoechstens: 10, ...q } as never, d).map(f => f.id);
+    expect(ids({})).toEqual(['ch-a', 'ch-b', 'ch-c']);
+    expect(ids({ stufe: ['angebot'] })).toEqual(['ch-a']);
+    expect(ids({ nurMeine: true })).toEqual(['ch-a', 'ch-c']);
+    expect(ids({ wertAb: 1000 })).toEqual(['ch-a', 'ch-c']);
+    expect(abfrageFaelle({ art: 'deals-ohne-schritt', hoechstens: 10, nurMeine: true } as never, { ...d, person: null }).length).toBe(0);
+  });
+  it('„Schritt testen“ an der Abfrage: Name statt Technik-Kennung und die Treffer (nur gelesen)', async () => {
+    const db = await import('@/lib/store/local-db');
+    const { leererBestand } = await import('@/lib/crm/speicher');
+    const { prozesseBestand } = await import('@/lib/prozesse/definition');
+    const PZA = 'pz-00000000-0000-4000-8000-000000000601';
+    await db.saveJson('crm', { ...leererBestand(), chancen: [{ id: 'ch-ohne', titel: 'Ohne Schritt', kontaktIds: [], stufe: 'bedarf', historie: [], wert: { betrag: 900, basis: 'einmalig' }, art: 'projekt', gesellschaft: 'ug', besitzer: 'pia', angelegt: J, geaendert: J },
+      { id: 'ch-mit', titel: 'Mit Schritt', kontaktIds: [], stufe: 'bedarf', historie: [], wert: { betrag: 900, basis: 'einmalig' }, art: 'projekt', gesellschaft: 'ug', besitzer: 'pia', angelegt: J, geaendert: J, naechsterSchritt: { text: 'Anrufen', datum: '2026-10-30' } }] });
+    const def = { ...definition([schritt(80, 'Deals ohne Schritt', 1, { katalog: { id: 'crm.abfragen' }, abfrage: { art: 'deals-ohne-schritt', hoechstens: 10 } }), schritt(81, 'Ende', 2, { form: 'ende', ende: { ergebnis: 'erfolg' } })], { fallArt: 'keiner', laeuftAls: 'pia' }), id: PZA };
+    await db.saveJson(prozesseBestand(H_), { v: 1, prozesse: [{ id: PZA, entwurf: def, versionen: [], status: 'entwurf', angelegtAm: J, angelegtVon: 'pia', entwurfAm: J, entwurfVon: 'pia' }] });
+    const S = await import('@/lib/prozesse/lauf-server');
+    const r = await S.probelauf({ prozessId: PZA, quelle: 'entwurf', fall: 'beispiel', person: 'pia', nur: fk(80), ausgabe: true });
+    expect(r.ok, JSON.stringify(r)).toBe(true);
+    if (!r.ok) return;
+    const z = r.schritte[0].ausgabe!.zeilen.map(x => `${x.feld}: ${x.wert}`).join('\n');
+    expect(z).toContain('Was: Deals ohne nächsten Schritt');
+    expect(z).toContain('Treffer jetzt (nur gelesen): 1 Deal');
+    expect(z).not.toContain('Ohne Schritt');
   });
 });

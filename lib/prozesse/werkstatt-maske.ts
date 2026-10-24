@@ -90,7 +90,7 @@ export function maskeWerte(k: K, e: KatalogEintrag): W {
     case 'ende': return k.ende?.uebergabeAn ? { uebergabeAn: k.ende.uebergabeAn } : {};
     case 'abfrage': {
       const q = k.abfrage;
-      return q ? ohneLeere({ art: q.art, status: q.status, temperatur: q.temperatur, bean: q.bean, lifecycle: q.lifecycle, tage: q.tage, hoechstens: q.hoechstens || undefined }) : {};
+      return q ? ohneLeere({ art: q.art, status: q.status, temperatur: q.temperatur, bean: q.bean, lifecycle: q.lifecycle, stufe: q.stufe, nurMeine: q.nurMeine, wertAb: q.wertAb, tage: q.tage, hoechstens: q.hoechstens || undefined }) : {};
     }
     case 'erneut': return k.erneut ? ohneLeere({ ab: k.erneut.ab, hoechstens: k.erneut.hoechstens || undefined }) : {};
   }
@@ -170,7 +170,7 @@ function feldAus(e: KatalogEintrag, w: W, alt: K, kx: MaskenUmfeld): Partial<K> 
     }
     case 'abfrage': {
       const l = (x: unknown) => { const t = texte(x); return t.length ? t : undefined; };
-      return { abfrage: text(w.art) ? sauber<CrmAbfrage>({ art: w.art, status: l(w.status), temperatur: l(w.temperatur), bean: l(w.bean), lifecycle: l(w.lifecycle), tage: zahl(w.tage), hoechstens: zahl(w.hoechstens) ?? 0 }) : undefined };
+      return { abfrage: text(w.art) ? sauber<CrmAbfrage>({ art: w.art, status: l(w.status), temperatur: l(w.temperatur), bean: l(w.bean), lifecycle: l(w.lifecycle), stufe: l(w.stufe), nurMeine: w.nurMeine === true ? true : undefined, wertAb: zahl(w.wertAb), tage: zahl(w.tage), hoechstens: zahl(w.hoechstens) ?? 0 }) : undefined };
     }
     case 'erneut': return { erneut: text(w.ab) ? { ab: text(w.ab), hoechstens: zahl(w.hoechstens) ?? 0 } as ErneutAb : undefined };
     default: return {};
