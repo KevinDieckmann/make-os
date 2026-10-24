@@ -367,7 +367,7 @@ describe('V01 · Nächtlicher Prospecting-Lauf im Probelauf (Beispiel-Fall)', ()
     const h = await S.probelauf({ prozessId: haupt.id, quelle: 'version', fall: 'beispiel', person: 'pia' });
     if (h.ok) {
       expect(h.schritte.filter(z => /würde im CRM abfragen/.test(z.text))).toHaveLength(2);
-      expect(h.schritte.filter(z => /würde je Fall einen Teil-Lauf starten/.test(z.text))).toHaveLength(2);
+      expect(h.schritte.filter(z => /würde (für \d+ \S+ je|je \S+) einen Teil-Lauf von „/.test(z.text))).toHaveLength(2);
     }
     // Der Probelauf schreibt nichts.
     expect(JSON.stringify(await laeufe())).toBe(vorher);

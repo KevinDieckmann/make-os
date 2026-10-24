@@ -5,7 +5,8 @@
 // (4) die Ansicht nimmt die Treffer von „Schritt testen“ nur mit Name, Kennung und einem Link in MAKE OS (Server: tests/prozesse-werkstatt-runde3-server.test.ts);
 // (5) beim Öffnen liegt nichts unter dem Einstellungs-Panel, wenn der Prozess so groß wie bei „Alles zeigen“ ins freie Feld passt;
 // (6) das Ausgang-Menü nennt je Option das aufgelöste Ziel, implizit „(folgt im Ablauf)“, nie zweimal denselben Namen — über alle Vorlagen;
-// (7) ⌘V: die Kopie heißt „<Name> (Kopie)“; „zurück zu …“ nur, wenn der Faden wirklich zu einem früheren Schritt im Ablauf führt.
+// (7) ⌘V: die Kopie heißt „<Name> (Kopie)“; „zurück zu …“ nur, wenn der Faden wirklich zu einem früheren Schritt im Ablauf führt;
+// (8) die Schleife bietet nur Teilprozesse an, deren Fall zum Eintrag passt; der Probelauf nennt Zahl, Einträge und Teilprozess.
 // Erfundene Werte, kein Netz, kein Modell.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -24,6 +25,7 @@ import { startKamera, einpassKamera, WERKSTATT_LESBAR, WERKSTATT_UEBERSICHT_MIN,
 import { ausgangsWahl, mehrfachZiele, zielNamen, anlegen, AUSGANG_NAECHSTER, hauptZiel, kopieren, einfuegen, kopieTitel, verbinden } from '@/lib/prozesse/werkstatt-aktionen';
 import { werkstattLage } from '@/lib/prozesse/werkstatt-lage';
 import { phasen } from '@/lib/prozesse/fluss';
+import { schleifeSatz, schleifenElementFall, teilFallPasst, teilprozessOptionen, PASST_NICHT_HINWEIS } from '@/lib/prozesse/teilprozess-neu';
 import { ALLE_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';
 import { MUSTER_PAKETE } from '@/lib/fulfillment/muster';
 import { paketAlsDefinition } from '@/lib/prozesse/fulfillment-modus';
@@ -346,5 +348,35 @@ describe('(7) ⌘V-Kopie: Name und Beschriftung des Fadens', () => {
     expect(faden.rueckwaerts).toBe(true);
     expect(faden.text).toBe(`zurück zu „${warten.titel}“`);
     expect(lies('components/os/prozesse/WerkstattPanel.tsx')).toContain("p.k.rueckwaerts ? ' · zurück (Schleife)'");
+  });
+});
+
+describe('(8) Teilprozess der Schleife nach Fall; Satz im Probelauf', () => {
+  const d = { knoten: [
+    { id: 'fk-a', titel: 'Deals ohne Schritt', rang: 1, form: 'schritt', katalog: { id: 'crm.abfragen' }, abfrage: { art: 'deals-ohne-schritt', hoechstens: 50 } },
+    { id: 'fk-s', titel: 'Je Deal klären', rang: 2, form: 'schleife', katalog: { id: 'schleife.je-eintrag' }, schleife: { liste: 'abfrage:fk-a', prozessId: 'pz-deal', hoechstens: 50 } },
+  ] } as unknown as Pick<ProzessDefinition, 'knoten'>;
+  const schleife = d.knoten[1];
+  it('Deal-Liste → Fall Deal und „ohne Fall“ passen; Lead ↔ Firma wie im Motor; sonst nicht', () => {
+    expect(schleifenElementFall(d, schleife)).toBe('deal');
+    expect(teilFallPasst('deal', 'deal')).toBe(true);
+    expect(teilFallPasst('deal', 'keiner')).toBe(true);
+    expect(teilFallPasst('deal', 'lead')).toBe(false);
+    expect(teilFallPasst('deal', undefined)).toBe(false);
+    expect(teilFallPasst('lead', 'firma')).toBe(true);
+    expect(teilFallPasst('firma', 'lead')).toBe(true);
+  });
+  it('angeboten werden nur passende; ein schon gewählter unpassender bleibt mit „passt nicht zum Fall“', () => {
+    const l = [{ id: 'pz-deal', label: 'Deal klären', fall: 'deal' as const }, { id: 'pz-lead', label: 'Lead pflegen', fall: 'lead' as const }, { id: 'pz-frei', label: 'Ohne Fall', fall: 'keiner' as const }, { id: 'pz-mandat', label: 'Mandat', fall: 'mandat' as const }];
+    expect(teilprozessOptionen(l, 'deal').map(o => o.id)).toEqual(['pz-deal', 'pz-frei']);
+    expect(teilprozessOptionen(l, 'deal', 'pz-lead').find(o => o.id === 'pz-lead')?.hinweis).toBe(PASST_NICHT_HINWEIS);
+    expect(teilprozessOptionen(l, null).map(o => o.id)).toEqual(l.map(o => o.id));
+    expect(lies('components/os/prozesse/WerkstattPanel.tsx')).toContain('teilprozessOptionen(l.filter(o => o.id !== p.d.id), schleifenElementFall(p.d, k), k.schleife?.prozessId ?? null)');
+  });
+  it('der Satz: mit Zahl, ohne Zahl, ohne Teilprozess', () => {
+    expect(schleifeSatz({ anzahl: 6, element: 'deal', teil: 'Deal klären', hoechstens: 50, titel: 'Je Deal klären' })).toBe('würde für 6 Deals je einen Teil-Lauf von „Deal klären“ starten (höchstens 50 je Lauf)');
+    expect(schleifeSatz({ anzahl: 1, element: 'deal', teil: 'Deal klären', hoechstens: 50, titel: 'x' })).toBe('würde für 1 Deal je einen Teil-Lauf von „Deal klären“ starten (höchstens 50 je Lauf)');
+    expect(schleifeSatz({ anzahl: null, element: 'deal', teil: 'Deal klären', hoechstens: 50, titel: 'x' })).toBe('würde je Deal einen Teil-Lauf von „Deal klären“ starten (höchstens 50 je Lauf)');
+    expect(schleifeSatz({ anzahl: null, element: null, teil: null, hoechstens: 5, titel: 'Je Eintrag' })).toBe('würde je Eintrag einen Teil-Lauf starten: Je Eintrag (höchstens 5 je Lauf)');
   });
 });

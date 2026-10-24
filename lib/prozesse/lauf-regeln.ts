@@ -37,6 +37,7 @@ import { ausWandzeit, minutenVon, tagPlus, tagVon, wandAus, wandzeit } from '@/l
 import { istWerktag, werktagePlus } from '@/lib/zeit/kalender-kern';
 import { istDatumPeriode, stichtagVon } from './datum-start';
 import { istSystemSchritt, ueberfuehrbarZuSchritt, type SystemSchrittId } from './ueberfuehrung';
+import { schleifeSatz, schleifenElementFall } from './teilprozess-neu';
 
 type K = ProzessKnoten<ProzessForm>;
 
@@ -1366,8 +1367,19 @@ export function knotenStand(l: ProzessLauf): Record<string, { status: SchrittSta
 
 /** Der Probelauf als Zeilen (Vertrag der Werkstatt, B2): je besuchtem Knoten Status und Satz — „würde …“, nie etwas geschrieben. */
 export interface ProbeZeile { knotenId: string; status: 'wuerde' | 'uebersprungen' | 'wartet' | 'freigabe' | 'fehler'; text: string; kostenCent?: number; /** „Schritt testen“ (22.10.): was der Schritt täte. */ ausgabe?: ProbeAusgabe }
-export function probeZeilen(l: ProzessLauf, def: ProzessDefinition): { schritte: ProbeZeile[]; kostenSchaetzungCent: number } {
+/**
+ * Was der Probelauf zusätzlich weiß (Runde 3, Server): der Name eines Teilprozesses und die Zahl der Einträge einer Liste (CRM-Abfrage davor, nur gelesen). Ohne
+ * Angabe: der Satz ohne diese Teile.
+ */
+export interface ProbeWissen { teilTitel?: (prozessId: string) => string | null; listeAnzahl?: (liste: string) => number | null }
+export function probeZeilen(l: ProzessLauf, def: ProzessDefinition, o: ProbeWissen = {}): { schritte: ProbeZeile[]; kostenSchaetzungCent: number } {
   const nach = new Map(def.knoten.map(k => [k.id, k]));
+  // Die Zahl einer Liste: aus der Abfrage (Server) bzw. aus dem Probelauf-Fall („abfrage.anzahl“ der Testdaten).
+  const anzahlAusDaten = (() => { const v = Number(l.daten?.['abfrage.anzahl']); return l.daten?.['abfrage.anzahl'] !== undefined && Number.isFinite(v) ? v : null; })();
+  const schleife = (k: K, titel: string) => schleifeSatz({
+    anzahl: (k.schleife ? o.listeAnzahl?.(k.schleife.liste) ?? null : null) ?? anzahlAusDaten, element: schleifenElementFall(def, k),
+    teil: k.schleife ? o.teilTitel?.(k.schleife.prozessId) ?? null : null, hoechstens: k.schleife?.hoechstens ?? 0, titel,
+  });
   const schritte: ProbeZeile[] = [];
   for (const s of l.schritte) {
     const k = nach.get(s.knoten);
@@ -1378,7 +1390,7 @@ export function probeZeilen(l: ProzessLauf, def: ProzessDefinition): { schritte:
         : s.status === 'freigabe' ? `würde zur Freigabe vorlegen: ${titel}`
           : s.status === 'wartet' ? `würde warten: ${titel}`
             : k?.form === 'agent' ? `würde ${k.agent?.wer.art === 'zoe' ? 'ZOE' : 'den Agenten'} fragen${s.kostenCent ? `, ca. ${Math.max(1, Math.round(s.kostenCent))} ct` : ''}`
-              : k?.form === 'schleife' ? `würde je Fall einen Teil-Lauf starten: ${titel} (höchstens ${k.schleife?.hoechstens ?? 0} je Lauf)`
+              : k?.form === 'schleife' ? schleife(k, titel)
               : k?.abfrage ? `würde im CRM abfragen: ${titel} (höchstens ${k.abfrage.hoechstens})`
               : k?.katalog?.id === 'system.fest' ? `würde den festen Schritt ausführen: ${titel}`
               : k?.form === 'ausloeser' ? `startet: ${titel}`

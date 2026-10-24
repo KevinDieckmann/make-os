@@ -6,7 +6,7 @@
 // Senden aus der letzten Antwort). Rechnet nichts — Regeln stehen in lib/prozesse/*.
 
 import { useCallback, useEffect, useState } from 'react';
-import type { Befund, ProzessEintrag, ProzessVersion, ProzessVorlage } from '@/lib/prozesse/definition';
+import type { Befund, FallArt, ProzessEintrag, ProzessVersion, ProzessVorlage } from '@/lib/prozesse/definition';
 import type { BibliothekKurz } from '@/lib/prozesse/fulfillment-modus';
 import type { LaufenderKunde } from '@/lib/prozesse/fulfillment-modus-server';
 import type { BegleitAndock } from '@/lib/prozesse/begleitung/andocken';
@@ -29,7 +29,8 @@ export interface ProzessAntwort { ok: true; rechte: ProzessRechte; eintrag: Eint
   ueberfuehrung?: UeberfuehrungAnsicht }
 export interface ListenAntwort { ok: true; rechte: ProzessRechte; prozesse: ProzessKurz[] }
 export type KatalogAufgeloest = KatalogEintrag & { klasse: string | null };
-export type Auswahl = Partial<Record<AuswahlQuelle, { id: string; label: string }[]>>;
+/** Die Auswahllisten (nur Kennung + Name; Prozesse dazu mit ihrem Fall — die Schleife bietet nur passende an, Runde 3). */
+export type Auswahl = Partial<Record<AuswahlQuelle, { id: string; label: string; hinweis?: string; fall?: FallArt }[]>>;
 export interface KatalogAntwort { ok: true; katalog: KatalogAufgeloest[]; kategorien: readonly { id: KatalogKategorie; titel: string }[]; auswahl?: Auswahl; modelle?: ModellOption[] }
 
 async function holen<T>(url: string): Promise<{ daten: T | null; fehler: string | null; status: number }> {

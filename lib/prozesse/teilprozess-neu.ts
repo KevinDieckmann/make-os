@@ -33,3 +33,45 @@ export function teilprozessTitel(k: Pick<K, 'titel'>, max = 120): string {
 
 /** Wie ein Prozess in der Auswahl heißt: Entwürfe sind gekennzeichnet (Probelauf nimmt den Entwurf, scharf nur die veröffentlichte Version). */
 export const ENTWURF_HINWEIS = 'Entwurf — läuft erst nach dem Veröffentlichen';
+
+// ── Teilprozess einer Schleife nach Fall (Runde 3, Bau-Test 2: die Liste bot jeden Prozess an, auch solche an einem anderen Fall) ────────────────────────
+
+/** Der Fall der Einträge einer Schleife (rein): über eine CRM-Abfrage deren Fall (`ABFRAGE_FALL`); sonst unbekannt (null). */
+export function schleifenElementFall(d: Pick<ProzessDefinition, 'knoten'>, k: K): FallArt | null {
+  const liste = k.schleife?.liste ?? (typeof k.katalog?.werte?.liste === 'string' ? k.katalog.werte.liste : undefined);
+  if (k.form !== 'schleife' || !liste?.startsWith('abfrage:')) return null;
+  const q = d.knoten.find(x => x.id === liste.slice(8));
+  const art = q?.abfrage?.art ?? (typeof q?.katalog?.werte?.art === 'string' ? q.katalog.werte.art as CrmAbfrageArt : undefined);
+  return art && ABFRAGE_FALL[art] ? ABFRAGE_FALL[art] : null;
+}
+/**
+ * Passt ein Teilprozess zum Eintrag der Liste (rein)? Gleicher Fall, „ohne Fall“, und Lead ↔ Firma (ein Firmen-Lead läuft als Firma, eine Firma als Lead — dieselbe
+ * Regel wie der Motor: lib/prozesse/kundengewinnung/abfrage.ts `fallFuerTeil`). Ohne bekannten Fall eines Prozesses gilt die Vorgabe Mandat.
+ */
+export function teilFallPasst(element: FallArt, teil: FallArt | undefined): boolean {
+  const t = teil ?? 'mandat';
+  return t === element || t === 'keiner' || (element === 'lead' && t === 'firma') || (element === 'firma' && t === 'lead');
+}
+export const PASST_NICHT_HINWEIS = 'passt nicht zum Fall';
+/**
+ * Die Teilprozesse, die eine Schleife anbietet (rein): nur passende (`teilFallPasst`); ein schon gewählter, der nicht passt, bleibt sichtbar mit „passt nicht zum
+ * Fall“ (nie still entfernt). Ohne bekannten Fall der Einträge: alle wie bisher.
+ */
+export function teilprozessOptionen<O extends { id: string; label: string; hinweis?: string; fall?: FallArt }>(optionen: readonly O[], element: FallArt | null, gewaehlt?: string | null): O[] {
+  if (!element) return [...optionen];
+  return optionen.flatMap(o => (teilFallPasst(element, o.fall) ? [o] : o.id === gewaehlt ? [{ ...o, hinweis: PASST_NICHT_HINWEIS }] : []));
+}
+
+/** Wie ein Eintrag einer Liste heißt (Einzahl, Mehrzahl) — „Schritt testen“ und Probelauf der Schleife. */
+export const FALL_WORT: Readonly<Record<string, readonly [string, string]>> = { lead: ['Lead', 'Leads'], deal: ['Deal', 'Deals'], firma: ['Firma', 'Firmen'], mandat: ['Mandat', 'Mandate'], event: ['Event', 'Events'], kampagne: ['Kampagne', 'Kampagnen'] };
+/**
+ * Der Satz der Schleife im Probelauf (rein; Runde 3): „würde für 6 Deals je einen Teil-Lauf von „Deal klären“ starten (höchstens 50 je Lauf)“ — die Zahl aus der Abfrage
+ * davor bzw. dem Probelauf-Fall, sonst ohne Zahl („je Deal“); ohne bekannten Teilprozess mit dem Namen des Schritts.
+ */
+export function schleifeSatz(o: { anzahl: number | null; element: FallArt | null; teil: string | null; hoechstens: number; titel: string }): string {
+  const w = (o.element && FALL_WORT[o.element]) || (['Eintrag', 'Einträge'] as const);
+  const wer = o.anzahl !== null && o.anzahl >= 0 ? `für ${o.anzahl} ${o.anzahl === 1 ? w[0] : w[1]} je` : `je ${w[0]}`;
+  return o.teil
+    ? `würde ${wer} einen Teil-Lauf von „${o.teil}“ starten (höchstens ${o.hoechstens} je Lauf)`
+    : `würde ${wer} einen Teil-Lauf starten: ${o.titel} (höchstens ${o.hoechstens} je Lauf)`;
+}

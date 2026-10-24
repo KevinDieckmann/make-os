@@ -11,7 +11,7 @@ import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { protokolliere, protokolliereBestand, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { prozesseBestand, webhookBestand, type KiKategorie, type ProzesseDatei, type ProzessEintrag, type WebhookDatei } from './definition';
+import { fallArtVon, prozesseBestand, webhookBestand, type FallArt, type KiKategorie, type ProzesseDatei, type ProzessEintrag, type WebhookDatei } from './definition';
 import { prozesseAus, webhooksAus } from './bestand';
 import { BAUSTEIN_KATALOG, GESELLSCHAFT_DES_FALLS, POSTFACH_WERTE, QUELLEN_IM_PROZESS, ROLLEN_WERTE, kategorienVonEintrag, klasseVonEintrag, type AuswahlQuelle, type KatalogEintrag } from './baustein-katalog';
 import type { PruefKontext } from './definition-pruefen';
@@ -93,7 +93,7 @@ export async function modellOptionenInstanz(kategorien: readonly KiKategorie[] =
 }
 
 /** Werte je Auswahlquelle (Kennung + Name) — für die Masken der Werkstatt und die Prüfung. Nur Business, nur was die Person sehen darf. */
-export async function auswahlListen(h: string, person: string, datei?: ProzesseDatei): Promise<Partial<Record<AuswahlQuelle, { id: string; label: string; hinweis?: string }[]>>> {
+export async function auswahlListen(h: string, person: string, datei?: ProzesseDatei): Promise<Partial<Record<AuswahlQuelle, { id: string; label: string; hinweis?: string; fall?: FallArt }[]>>> {
   const sicher = async <T>(f: () => Promise<T>, leer: T): Promise<T> => { try { return await f(); } catch { return leer; } };
   const [{ teamVon, kontenDesHaushalts }, { KATALOG }, { STUFEN }, { PROZESS_EREIGNISSE, DATUMS_FELDER }, { EREIGNIS_NAME }, einheiten] = await Promise.all([
     import('@/lib/make-one/team-speicher'), import('@/lib/agenten/katalog'), import('@/lib/crm/pipeline'), import('./ausloeser'), import('@/lib/ereignisse/arten'), import('@/lib/einheiten'),
@@ -130,7 +130,11 @@ export async function auswahlListen(h: string, person: string, datei?: ProzesseD
     skill: Array.from(skills.entries()).filter(([, s]) => s.aktiv).map(([id, s]) => ({ id, label: s.name })),
     ereignis: PROZESS_EREIGNISSE.map(e => ({ id: e, label: EREIGNIS_NAME[e] })),
     // Feinschliff 24.10. (Bau-Test A2): auch Entwürfe — gekennzeichnet; der Probelauf nimmt ihren Entwurf, scharf läuft nur die veröffentlichte Version (Prüfung meldet es).
-    prozess: d.prozesse.filter(p => p.status !== 'archiviert').map(p => ({ id: p.id, label: p.entwurf.titel, ...(p.versionen.length ? {} : { hinweis: ENTWURF_HINWEIS }) })),
+    // Runde 3 (Bau-Test 2): mit dem Fall des Prozesses (jüngste Version, sonst Entwurf) — die Schleife bietet nur passende an (lib/prozesse/teilprozess-neu.ts).
+    prozess: d.prozesse.filter(p => p.status !== 'archiviert').map(p => {
+      const j = p.versionen.reduce<(typeof p.versionen)[number] | null>((a, v) => (!a || v.nr > a.nr ? v : a), null);
+      return { id: p.id, label: p.entwurf.titel, fall: fallArtVon(j?.definition ?? p.entwurf), ...(p.versionen.length ? {} : { hinweis: ENTWURF_HINWEIS }) };
+    }),
     gesellschaft: [...einheiten.BUSINESS_GESELLSCHAFTEN.map(g => ({ id: g, label: einheiten.finanzOrtName(g) })), { id: GESELLSCHAFT_DES_FALLS, label: 'Gesellschaft des Falls' }],
     // Erst mit eingerichteter Business-Nummer (lib/whatsapp/konfig.ts) — die Liste der genehmigten Vorlagen liefert die WhatsApp-Route.
     'whatsapp-vorlage': [],

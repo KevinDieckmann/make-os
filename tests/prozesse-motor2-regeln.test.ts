@@ -95,7 +95,8 @@ describe('CRM-Abfrage und Schleife im Lauf', () => {
     expect(r.lauf).toMatchObject({ status: 'fertig' });
     const z = probeZeilen(r.lauf, SCHLEIFE).schritte;
     expect(z.find(x => x.knotenId === fk(10))?.text).toMatch(/würde im CRM abfragen/);
-    expect(z.find(x => x.knotenId === fk(12))?.text).toMatch(/würde je Fall einen Teil-Lauf starten/);
+    // Runde 3: „würde je Deal einen Teil-Lauf …“ bzw. mit Zahl „würde für n Deals je einen Teil-Lauf …“.
+    expect(z.find(x => x.knotenId === fk(12))?.text).toMatch(/würde (für \d+ \S+ je|je \S+) einen Teil-Lauf/);
   });
   it('startGesperrt: offener bzw. beendeter Lauf ohne Wiedereintritt sperrt; nach erneutNachTagen ist der Fall wieder dran', () => {
     const def = definition([schritt(10, 'Klären', 1)]);

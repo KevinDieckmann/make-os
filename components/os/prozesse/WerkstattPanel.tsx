@@ -24,6 +24,7 @@ import { erlaubteWerkzeuge, rechteProfil } from '@/lib/prozesse/agent-schritt';
 import { schlossText } from '@/lib/prozesse/schloss';
 import { kundenFormErlaubt } from '@/lib/prozesse/produkt-bindung';
 import { maskeWerte, maskeAnwenden, formWort } from '@/lib/prozesse/werkstatt-maske';
+import { schleifenElementFall, teilprozessOptionen } from '@/lib/prozesse/teilprozess-neu';
 import { feldWerte } from '@/lib/prozesse/feld-werte';
 import { tageOptionen } from '@/lib/prozesse/zeitplan-tage';
 import { ausgaengeVon, ausgangName, type KanteLage } from '@/lib/prozesse/werkstatt-lage';
@@ -175,7 +176,9 @@ function optionenFuer(q: AuswahlQuelle | undefined, p: PanelProps, k: K): Option
     const erlaubt = k.agent ? erlaubteWerkzeuge(k.agent.wer) : null;
     return l.filter(o => !erlaubt || erlaubt.includes(o.id)).map(o => { const r = EINORDNUNG[o.id]?.rechte; return { ...o, ...(r === 'aussen' || r === 'geld' || r === 'loeschen' ? { hinweis: 'mit Freigabe' } : r ? { hinweis: r } : {}) }; });
   }
-  if (q === 'prozess') return l.filter(o => o.id !== p.d.id);
+  // Runde 3 (Bau-Test 2): an einer Schleife nur Teilprozesse, deren Fall zum Eintrag der Liste passt (Deal-Liste → Fall Deal bzw. ohne Fall); ein schon gewählter,
+  // der nicht passt, bleibt mit „passt nicht zum Fall“ stehen.
+  if (q === 'prozess') return teilprozessOptionen(l.filter(o => o.id !== p.d.id), schleifenElementFall(p.d, k), k.schleife?.prozessId ?? null);
   return l;
 }
 

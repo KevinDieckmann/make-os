@@ -1,7 +1,8 @@
 // ─── Prozesse · Werkstatt — Feinschliff Runde 3, Server (24.10., zweiter Bau-Test im Demo) ──────────────────────────────────────────────────────────────────
 // Eigener Datenordner, erfundene Konten (@example.invalid) und Daten, kein Netz, kein Modell. Geprüft:
 //   (4) „Schritt testen“ an einer CRM-Abfrage: Trefferzahl und die ersten (≤ 5) Treffer mit Namen und Link — nur aus der eigenen Sicht: eingeschränkte Personen
-//       (Art. 18) fehlen, ein fremder Haushalt, ein Testkunde ohne Haushalt und der Dienstweg bekommen nichts (403, keine Namen); nichts wird geschrieben.
+//       (Art. 18) fehlen, ein fremder Haushalt, ein Testkunde ohne Haushalt und der Dienstweg bekommen nichts (403, keine Namen); nichts wird geschrieben;
+//   (8) die Auswahl der Prozesse trägt den Fall (die Schleife bietet nur passende an), der Probelauf der Schleife nennt Zahl, Einträge und Teilprozess.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,7 +18,7 @@ delete process.env.ANTHROPIC_API_KEY;
 
 const H = 'haus-runde3';
 const pz = (n: number) => `pz-00000000-0000-4000-8300-${String(n).padStart(12, '0')}`;
-const DEALS = pz(1), LEADS = pz(2);
+const DEALS = pz(1), LEADS = pz(2), TEIL_DEAL = pz(3), TEIL_LEAD = pz(4), SCHLEIFE = pz(5);
 const sitzung = (person: string) => ({ 'x-make-user': person, 'content-type': 'application/json' });
 const dienst = (person?: string) => ({ 'x-make-key': process.env.MAKE_OS_KEY!, ...(person ? { 'x-make-person': person } : {}), 'content-type': 'application/json' });
 let S: typeof import('@/lib/prozesse/lauf-server');
@@ -61,7 +62,15 @@ beforeAll(async () => {
   const deals = definition([schritt(10, 'Deals ohne Schritt finden', 1, { katalog: { id: 'crm.abfragen' }, abfrage: { art: 'deals-ohne-schritt', hoechstens: 50 } }), ende(11, 2)], { laeuftAls: 'pia', fallArt: 'keiner' });
   const leads = definition([schritt(20, 'Leads finden', 1, { katalog: { id: 'crm.abfragen' }, abfrage: { art: 'leads', hoechstens: 50 } }), ende(21, 2)], { laeuftAls: 'pia', fallArt: 'keiner' });
   const { prozesseBestand } = await import('@/lib/prozesse/definition');
-  await db.saveJson(prozesseBestand(H), { v: 1, prozesse: [eintrag(DEALS, deals), eintrag(LEADS, leads)] });
+  const teilDeal = definition([schritt(30, 'Deal klären', 1), ende(31, 2)], { laeuftAls: 'pia', fallArt: 'deal', titel: 'Deal klären' });
+  const teilLead = definition([schritt(40, 'Lead pflegen', 1), ende(41, 2)], { laeuftAls: 'pia', fallArt: 'lead', titel: 'Lead pflegen' });
+  const schleife = definition([
+    schritt(50, 'Deals ohne Schritt finden', 1, { katalog: { id: 'crm.abfragen' }, abfrage: { art: 'deals-ohne-schritt', hoechstens: 50 } }),
+    schritt(51, 'Je Deal klären', 2, { form: 'schleife', katalog: { id: 'schleife.je-eintrag' }, schleife: { liste: `abfrage:${fk(50)}`, prozessId: TEIL_DEAL, hoechstens: 50 } }),
+    ende(52, 3),
+  ], { laeuftAls: 'pia', fallArt: 'keiner' });
+  const mitTitel = (e: ProzessEintrag, titel: string): ProzessEintrag => ({ ...e, entwurf: { ...e.entwurf, titel } });
+  await db.saveJson(prozesseBestand(H), { v: 1, prozesse: [eintrag(DEALS, deals), eintrag(LEADS, leads), mitTitel(eintrag(TEIL_DEAL, teilDeal), 'Deal klären'), mitTitel(eintrag(TEIL_LEAD, teilLead), 'Lead pflegen'), eintrag(SCHLEIFE, schleife)] });
   S = await import('@/lib/prozesse/lauf-server');
 });
 afterAll(async () => {
@@ -116,5 +125,25 @@ describe('(4) „Schritt testen“ an „CRM abfragen“: Zahl und die ersten Tr
       expect([401, 403]).toContain(x.status);
       expect(x.text).not.toMatch(/Deal [a-z]|ch-/);
     }
+  });
+});
+
+describe('(8) Teilprozess der Schleife nach Fall (Server)', () => {
+  it('die Auswahl der Prozesse trägt den Fall — nur Kennung, Name, Fall (und der Entwurfs-Hinweis)', async () => {
+    const { auswahlListen } = await import('@/lib/prozesse/werkstatt-server');
+    const a = await auswahlListen(H, 'pia');
+    const p = new Map((a.prozess ?? []).map(x => [x.id, x]));
+    expect(p.get(TEIL_DEAL)).toMatchObject({ id: TEIL_DEAL, label: 'Deal klären', fall: 'deal' });
+    expect(p.get(TEIL_LEAD)?.fall).toBe('lead');
+    expect(p.get(SCHLEIFE)?.fall).toBe('keiner');
+    for (const x of a.prozess ?? []) expect(Object.keys(x).every(k => ['id', 'label', 'fall', 'hinweis'].includes(k))).toBe(true);
+  });
+  it('Probelauf der Schleife: „würde für 6 Deals je einen Teil-Lauf von „Deal klären“ starten (höchstens 50 je Lauf)“ — nichts geschrieben', async () => {
+    const vorher = alleDateien();
+    const r = await S.probelauf({ prozessId: SCHLEIFE, quelle: 'entwurf', fall: 'beispiel', person: 'pia' });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.schritte.find(x => x.knotenId === fk(51))?.text).toBe('würde für 6 Deals je einen Teil-Lauf von „Deal klären“ starten (höchstens 50 je Lauf)');
+    expect(alleDateien()).toEqual(vorher);
   });
 });

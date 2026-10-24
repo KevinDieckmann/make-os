@@ -642,9 +642,6 @@ async function wirkungAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Aktion, k
 // ══ CRM-Abfrage und Schleife (22.10. spät, N1) ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** Was die Abfrage liest — über die vorhandenen Lesewege (Kartei verarbeitbar: Art. 18 heraus; Leads wie überall). */
-/** Wie ein Eintrag einer Liste heißt (Einzahl, Mehrzahl) — „Schritt testen“ und Probelauf der Schleife. */
-const FALL_WORT: Readonly<Record<string, [string, string]>> = { lead: ['Lead', 'Leads'], deal: ['Deal', 'Deals'], firma: ['Firma', 'Firmen'], mandat: ['Mandat', 'Mandate'], event: ['Event', 'Events'], kampagne: ['Kampagne', 'Kampagnen'] };
-
 async function abfrageDaten(l: ProzessLauf, kx: MotorKontext): Promise<import('./kundengewinnung/abfrage').AbfrageDaten | null> {
   const crm = await crmVon(kx);
   if (!crm) return null;
@@ -2087,7 +2084,20 @@ export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'ver
   };
   const { probeZeilen, laufBefunde, probeAusgabe } = await import('./lauf-regeln');
   const r = voran(lauf, def, u, 'schatten');
-  const p = probeZeilen(r.lauf, def);
+  // Runde 3 (Bau-Test 2): die Schleife nennt ihren Teilprozess und — über eine CRM-Abfrage davor — wie viele Einträge sie hätte (nur gelesen, nur die Zahl).
+  const schleifen = def.knoten.filter(k => k.form === 'schleife' && k.schleife?.liste.startsWith('abfrage:'));
+  const anzahl = new Map<string, number>();
+  if (schleifen.length) {
+    const daten = await abfrageDaten(lauf, kx).catch(() => null);
+    if (daten) {
+      const { abfrageFaelle } = await import('./kundengewinnung/abfrage');
+      for (const k of schleifen) {
+        const q = def.knoten.find(x => x.id === k.schleife!.liste.slice(8))?.abfrage;
+        if (q) anzahl.set(k.schleife!.liste, abfrageFaelle(q, daten).length);
+      }
+    }
+  }
+  const p = probeZeilen(r.lauf, def, { teilTitel: id => eintragVon(kx, id)?.entwurf.titel ?? null, listeAnzahl: liste => anzahl.get(liste) ?? null });
   let schritte = p.schritte;
   let hinweis: 'bis-nicht-erreicht' | 'nur-nicht-erreichbar' | undefined;
   // Ausschnitt: nur dieser Schritt (bei einer Außenwirkung dazu das Schloss direkt dahinter) bzw. alles bis hier.
@@ -2110,7 +2120,7 @@ export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'ver
     if (schritte.some(x => x.ausgabe && def.knoten.find(k => k.id === x.knotenId)?.abfrage)) {
       const daten = await abfrageDaten(lauf, kx).catch(() => null);
       if (daten) {
-        const [{ abfrageFaelle, abfrageTreffer }, { ABFRAGE_FALL }] = await Promise.all([import('./kundengewinnung/abfrage'), import('./teilprozess-neu')]);
+        const [{ abfrageFaelle, abfrageTreffer }, { ABFRAGE_FALL, FALL_WORT }] = await Promise.all([import('./kundengewinnung/abfrage'), import('./teilprozess-neu')]);
         schritte = schritte.map(x => {
           const q = def.knoten.find(k => k.id === x.knotenId)?.abfrage;
           if (!q || !x.ausgabe) return x;
