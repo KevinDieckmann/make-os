@@ -13,11 +13,10 @@ import { Plus, X } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, RAND } from '@/lib/make-one/design';
 import { Knopf, Hinweis, Feldzeile, Pillen, SymbolKnopf, feld, auswahl as auswahlStil, useRueckfrage } from '../ui';
 import type { Bedingung, ProzessDefinition } from '@/lib/prozesse/definition';
-import { alleSchritte } from '@/lib/prozesse/fluss';
 import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
 import { feldTitelVon } from '@/lib/prozesse/ausloeser';
 import { feldWerte } from '@/lib/prozesse/feld-werte';
-import { MEHRFACH_MAX, type MehrfachFall } from '@/lib/prozesse/werkstatt-aktionen';
+import { MEHRFACH_MAX, mehrfachZiele, type MehrfachFall } from '@/lib/prozesse/werkstatt-aktionen';
 import type { Auswahl } from './werkstatt-daten';
 import { Fenster } from '../Fenster';
 import { MaskenEingabe } from './WerkstattMaske';
@@ -34,8 +33,8 @@ export function MehrfachFenster({ d, nach, auswahl, onAnlegen, onZu }: {
   const felder = useMemo(() => rautenFelder(d).map(id => ({ id, label: feldTitelVon(id) })), [d]);
   // Wie im Panel: Felder mit Werteliste bekommen eine Auswahl (Name sichtbar, Kennung gespeichert).
   const werteVon = (feldId: string) => feldWerte(feldId, auswahl, d);
-  const phase = alleSchritte(d).find(x => x.schritt.id === nach)?.phase.id;
-  const ziele = alleSchritte(d).filter(x => x.phase.id === phase && x.schritt.id !== nach && x.schritt.form !== 'ausloeser' && !x.schritt.schloss).map(x => x.schritt);
+  // Runde 3: „weiter im Ablauf“ nennt sein aufgelöstes Ziel („folgt im Ablauf“), gleiche Namen werden unterschieden — dieselbe Regel wie im Panel.
+  const ziele = useMemo(() => mehrfachZiele(d, nach), [d, nach]);
   const setze = (i: number, t: Partial<MehrfachFall>) => setFaelle(l => l.map((x, j) => (j === i ? { ...x, ...t } : x)));
   const { bestaetigen, dialog } = useRueckfrage();
   // Etwas eingegeben? Dann fragt Schließen erst (Klick daneben, Esc, ×, Abbrechen).
@@ -70,8 +69,7 @@ export function MehrfachFenster({ d, nach, auswahl, onAnlegen, onZu }: {
           </Feldzeile>
           <Feldzeile label="Dann weiter bei">
             <select aria-label={`Ziel von Fall ${i + 1}`} value={x.ziel ?? ''} onChange={e => setze(i, { ziel: e.target.value || null })} style={{ ...auswahlStil, width: '100%' }}>
-              <option value="">— weiter im Ablauf —</option>
-              {ziele.map(z => <option key={z.id} value={z.id}>{z.titel}</option>)}
+              {ziele.map(z => <option key={z.wert} value={z.wert}>{z.label}</option>)}
             </select>
           </Feldzeile>
         </section>

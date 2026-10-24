@@ -3,7 +3,8 @@
 // (2) die Suche der Bausteinauswahl findet jeden Baustein über Namen/Teilwort und die Mehrfach-Entscheidung über „mehrfach“, „Fälle“, „verzweig“;
 // (3) kein `<label>` um Pillen, Chips, Schalter oder mehrere Knöpfe im Prozess-Bereich (Klick auf die Überschrift drückte den ersten Chip);
 // (4) die Ansicht nimmt die Treffer von „Schritt testen“ nur mit Name, Kennung und einem Link in MAKE OS (Server: tests/prozesse-werkstatt-runde3-server.test.ts);
-// (5) beim Öffnen liegt nichts unter dem Einstellungs-Panel, wenn der Prozess so groß wie bei „Alles zeigen“ ins freie Feld passt.
+// (5) beim Öffnen liegt nichts unter dem Einstellungs-Panel, wenn der Prozess so groß wie bei „Alles zeigen“ ins freie Feld passt;
+// (6) das Ausgang-Menü nennt je Option das aufgelöste Ziel, implizit „(folgt im Ablauf)“, nie zweimal denselben Namen — über alle Vorlagen.
 // Erfundene Werte, kein Netz, kein Modell.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -18,7 +19,13 @@ import { leereLaeufe } from '@/lib/prozesse/lauf-typen';
 import type { ProzessDefinition } from '@/lib/prozesse/definition';
 import { BAUSTEIN_KATALOG } from '@/lib/prozesse/baustein-katalog';
 import { probelaufAus } from '@/lib/prozesse/werkstatt-hinweise';
-import { startKamera, einpassKamera, WERKSTATT_LESBAR, WERKSTATT_UEBERSICHT_MIN } from '@/lib/prozesse/werkstatt-lage';
+import { startKamera, einpassKamera, WERKSTATT_LESBAR, WERKSTATT_UEBERSICHT_MIN, ausgaengeVon } from '@/lib/prozesse/werkstatt-lage';
+import { ausgangsWahl, mehrfachZiele, zielNamen, anlegen, AUSGANG_NAECHSTER, hauptZiel } from '@/lib/prozesse/werkstatt-aktionen';
+import { ALLE_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';
+import { MUSTER_PAKETE } from '@/lib/fulfillment/muster';
+import { paketAlsDefinition } from '@/lib/prozesse/fulfillment-modus';
+import { neuerKnoten } from '@/lib/prozesse/werkstatt-maske';
+import { katalogEintrag } from '@/lib/prozesse/baustein-katalog';
 import { BAUSTEIN_STICHWOERTER, formauswahl, formauswahlGruppen, sonderAuswahl, SONDER_AUSWAHL } from '@/lib/prozesse/werkstatt-maske';
 
 let n = 0;
@@ -226,5 +233,73 @@ describe('(5) Kamera beim Öffnen: das freie Feld ohne Panel und Werkzeugleiste'
     expect(q).toContain('startKamera(stand.current.lage.box, groesse(), undefined, raender(), allesBox())');
     expect(q).toContain('t2 = requestAnimationFrame(');
     expect(q).toContain('allesZeigen: () => { fliege(einpassKamera(allesBox(), groesse(), undefined, undefined, raender())); }');
+  });
+});
+
+describe('(6) Ausgang-Menü: aufgelöstes Ziel, „(folgt im Ablauf)“, keine doppelten Namen', () => {
+  const FASSUNGEN: { name: string; d: Pick<ProzessDefinition, 'knoten'> }[] = [
+    ...ALLE_VORLAGEN.flatMap(v => [v.definition, ...v.teile.map(t => t.definition)]).map(d => ({ name: d.id, d })),
+    ...MUSTER_PAKETE.map(v => ({ name: v.id, d: paketAlsDefinition(v) as Pick<ProzessDefinition, 'knoten'> })),
+  ];
+  it('über alle Vorlagen: je Knoten und Ausgang jede Beschriftung höchstens einmal; der Strang steht mit Namen da', () => {
+    let menues = 0;
+    for (const { name, d } of FASSUNGEN) {
+      for (const k of d.knoten.filter(x => x.form && x.form !== 'ende')) {
+        for (const a of ausgaengeVon(k)) {
+          const w = ausgangsWahl(d, k.id, a);
+          if (!w.optionen.length) continue;
+          menues++;
+          const labels = w.optionen.map(o => o.label);
+          expect(new Set(labels).size, `${name} ${k.titel} ${a}: ${labels.join(' | ')}`).toBe(labels.length);
+          const n = w.optionen.find(o => o.wert === AUSGANG_NAECHSTER);
+          if (n) expect(n.label, `${name} ${k.titel}`).toMatch(/\(folgt im Ablauf( · Bahn (Mensch|System|Agent|Kunde))?\)$/);
+          expect(labels.some(l => /der nächste Schritt/.test(l))).toBe(false);
+        }
+      }
+    }
+    expect(menues).toBeGreaterThan(100);
+  });
+  it('Bau-Test: Mehrfach-Entscheidung — implizites und ausdrückliches Ziel heißen gleich aufgelöst, die Sonst-Aufgabe nennt ihr Ziel', () => {
+    const e = neuerProzess({ id: 'pz-00000000-0000-4000-9300-000000000006', titel: 'Mandat-Start (Probe)', bereich: 'uebergabe', fallArt: 'mandat', von: 'test', jetzt: '2026-10-24T10:00:00Z', kennung });
+    const start = e.entwurf.knoten.find(k => k.form === 'ausloeser')!;
+    const fall = (titel: string, wert: string): MehrfachFall => ({ titel, bedingungen: [{ feld: 'mandat.produkt', op: 'gleich', wert }] });
+    let f = gut(mehrfachEntscheidung({ knoten: e.entwurf.knoten }, { nach: start.id, faelle: [fall('Cockpit', 'l-1'), fall('Diagnose', 'l-2')], sonst: 'aufgabe', kennung }));
+    const r = (t: string) => f.knoten.find(k => k.titel === t)!;
+    const kick = neuerKnoten(katalogEintrag('aufgabe.anlegen')!, kennung(), 'Kick-off Cockpit');
+    f = gut(anlegen(f, kick, { nach: r('Cockpit').id, ausgang: 'ja' }));
+    const cockpit = ausgangsWahl(f, r('Cockpit').id, 'ja');
+    const ziel = hauptZiel(f.knoten, r('Cockpit').id);
+    const gewaehlt = cockpit.optionen.find(o => o.wert === cockpit.wert)!;
+    // Ob implizit oder ausdrücklich: die gewählte Option nennt „Kick-off Cockpit“.
+    expect(ziel).toBe(kick.id);
+    expect(gewaehlt.label).toMatch(/„Kick-off Cockpit“/);
+    // Die Sonst-Aufgabe (Bahn Mensch) endet ausdrücklich; der Strang dahinter steht mit Namen und — liegt er in einer anderen Bahn — mit der Bahn da.
+    const so = r('Sonst: von Hand prüfen');
+    const sonst = ausgangsWahl(f, so.id, 'weiter');
+    expect(sonst.optionen.find(o => o.wert === sonst.wert)!.label).toBe('— Lauf endet —');
+    const implizit = sonst.optionen.find(o => o.wert === AUSGANG_NAECHSTER)!.label;
+    expect(implizit).toMatch(/\(folgt im Ablauf( · Bahn (Mensch|System|Agent|Kunde))?\)$/);
+    expect(implizit).not.toMatch(/der nächste Schritt/);
+  });
+  it('gleiche Namen: andere Phase bzw. Bahn dazu, sonst „· 2“', () => {
+    const e = neuerProzess({ id: 'pz-00000000-0000-4000-9300-000000000007', titel: 'Probe', bereich: 'uebergabe', fallArt: 'mandat', von: 'test', jetzt: '2026-10-24T10:00:00Z', kennung });
+    const start = e.entwurf.knoten.find(k => k.form === 'ausloeser')!;
+    const a = { ...neuerKnoten(katalogEintrag('aufgabe.anlegen')!, kennung(), 'Prüfen'), bahn: 'mensch' as const };
+    const b = { ...neuerKnoten(katalogEintrag('aufgabe.anlegen')!, kennung(), 'Prüfen'), bahn: 'system' as const };
+    const c = { ...neuerKnoten(katalogEintrag('aufgabe.anlegen')!, kennung(), 'Prüfen'), bahn: 'system' as const };
+    let f = gut(anlegen({ knoten: e.entwurf.knoten }, a, { nach: start.id, ausgang: 'weiter' }));
+    f = gut(anlegen(f, b, { nach: a.id, ausgang: 'weiter' }));
+    expect([...zielNamen(f, [a.id, b.id]).values()]).toEqual(['„Prüfen“ · Mensch', '„Prüfen“ · System']);
+    f = gut(anlegen(f, c, { nach: b.id, ausgang: 'weiter' }));
+    expect([...zielNamen(f, [b.id, c.id]).values()]).toEqual(['„Prüfen“', '„Prüfen“ · 2']);
+    expect([...zielNamen(f, [a.id, b.id, c.id]).values()]).toEqual(['„Prüfen“ · Mensch', '„Prüfen“ · System', '„Prüfen“ · System · 2']);
+    const m = mehrfachZiele(f, start.id);
+    expect(m[0].label).toBe('„Prüfen“ · Mensch (folgt im Ablauf)');
+    // Der Strang hinter „Prüfen“ (Mensch) liegt in der Bahn System — das steht dabei.
+    const w = ausgangsWahl(f, a.id, 'weiter');
+    expect(w.optionen.find(o => o.wert === AUSGANG_NAECHSTER)!.label).toBe('„Prüfen“ (folgt im Ablauf · Bahn System)');
+    expect(w.optionen.map(o => o.label)).toEqual(['„Prüfen“ (folgt im Ablauf · Bahn System)', '„Prüfen“', '„Prüfen“ · 2', '— Lauf endet —']);
+    expect(new Set(m.map(x => x.label)).size).toBe(m.length);
+    expect(lies('components/os/prozesse/WerkstattMehrfach.tsx')).toContain('mehrfachZiele(d, nach)');
   });
 });
