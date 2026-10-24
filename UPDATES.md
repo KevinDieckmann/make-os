@@ -4,6 +4,19 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 22.10.2026 — Feste Prozesse echt überführen (Paket Ü, nur lokal — Branch `prozesse-ueberfuehren`, Basis 632b5875)
+Plan-Seite (abgenommen): „Fünf davon ziehen echt in die Werkstatt um: zuerst ein paar Tage im Schatten neben dem alten Code, umgeschaltet wird erst, wenn beide dasselbe
+tun. Hältst du einen überführten Prozess an, läuft der alte Weg wieder.“ Überführt (je mit Gold-Test): **Mahnaufgaben** (`sp-rechnung`, nur Business-Gesellschaften),
+**Fortschritts-Report** (`sp-treppe`), **Onboarding-Vorschlag „Fall starten“** (`sp-uebergabe`). Nicht überführt: **Power-Hour-Vorbereitung** (der alte Weg bereitet je
+Person „ab Uhrzeit, einmal am Tag, sobald nicht Business-frei“ vor — dafür fehlt dem Motor ein Auslöser bzw. eine Schleife je Team-Person mit Nachholen; ein Zeitplan
+startet einmal je Slot) und **Event-Nachfassen** (der alte Weg schreibt nichts, er misst nur). Regeln: CLAUDE.md › Prozesse › Überführung.
+- **So testet ihr:** Prozesse › Landkarte › „Rechnung & Zahlung“ öffnen → im Steckbrief „In die Werkstatt“ → „In die Werkstatt überführen“ → die Werkstatt öffnet den
+  neuen Prozess (Probelauf, Band „Ersetzt … · im Schatten“). Jeden Morgen arbeitet weiter der alte Weg, das Band zählt die gleichen Tage; nach 5 Läufen über 3 Tage
+  (Stellschrauben „Überführung“ im Steckbrief) wird „Umschalten“ frei → Rückfrage → „Ja, umschalten“. Anhalten (Status pausiert) bzw. „Zurück in den Schatten“ lässt
+  sofort wieder den alten Weg arbeiten. Die Kachel trägt „System · im Schatten“ bzw. „überführt“.
+- **Rückweg/Update-Probe:** kein neuer Bestand; neu nur optionale Felder am Werkstatt-Prozess (`ersetzt`, `ueberfuehrung`), zwei Stellschrauben und der Baustein
+  `system.fest`. Ohne Überführung rechnet alles bit-gleich (Wächter in den Tests). Der Live-Stand kennt keinen Lauf-Motor — dort arbeitet immer der alte Weg.
+
 ## 17.10.2026 spät — Fulfillment maximal einfach für uns (nur lokal — Branch `ff-einfach`, Basis f9ef11b1 = `update-0910b`)
 Kevin: „Ich will, dass das Fulfillment wirklich maximal einfach für uns ist, sodass wir das gut verkloppen können.“ Alltagswege in der Demo gemessen
 (Bericht `~/make-os-demo/einfach-1710/BERICHT.md`), dann vereinfacht:

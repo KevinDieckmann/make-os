@@ -23,6 +23,7 @@ Agenten-Lauf-Spur, Top 3, Vertriebsplanung, Leistungstreppe. Im Verzeichnis (Art
 neue Löschfristen `fulfillment-personen`, `fulfillment-unterlagen`, `fulfillment-mandatsdaten`. Anwalt: Interessenabwägung/Art.-14-Muster der Personenrecherche, Kunden-Hinweis, Einwilligung Erholung gegenlesen.
 
 **Rückweg:** wie im Vorgänger „Rückweg, falls nötig“ mit Tag `make-os:a063e73a` und `git revert --no-commit a063e73a..HEAD`; was der alte Stand mit den neuen Feldern macht, steht gesammelt in `UPDATES.md` › „Update 12.10.“ › Rückweg.
+- **Überführung (Paket Ü, Prozesse):** der alte Stand kennt keinen Lauf-Motor und keine Ablöse-Weiche — dort arbeiten Mahnaufgaben, Fortschritts-Report und Onboarding-Vorschlag immer im Code (dieselben Kennungen/Marken, also nichts doppelt); `ersetzt`/`ueberfuehrung` am Werkstatt-Prozess sind nur optionale Felder. Neue Instanz: nichts überführt.
 Zusätzlich Caddyfile aus dem alten Stand + `caddy reload`.
 
 ---

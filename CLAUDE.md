@@ -1811,6 +1811,29 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Motor überspringt (Grund `deaktiviert`, Raute/Freigabe über „ja“), ein Schloss dahinter wird MIT übersprungen und bleibt im Prozess; nie an Auslöser, Ende, Schloss.
   **Kopieren zwischen Prozessen** nur über den Browser-Speicher (`lib/prozesse/ablage.ts`: immer `ohnePersonen`, beim Lesen gesäubert, 24 h) — nie über den Server.
   Tests `tests/prozesse-werkstatt-{baufertig,testdaten,probe-server,ablage,modell-test}.test.ts`.
+- **Überführung — feste Abläufe ziehen echt in die Werkstatt (22.10., Paket Ü, Branch `prozesse-ueberfuehren`; Plan-Seite abgenommen: „zuerst ein paar Tage im
+  Schatten neben dem alten Code, umgeschaltet wird erst, wenn beide dasselbe tun. Hältst du einen überführten Prozess an, läuft der alte Weg wieder.“):** feste Liste
+  `UEBERFUEHRBAR` (lib/prozesse/ueberfuehrung.ts, rein): Mahnaufgaben (`sp-rechnung`), Fortschritts-Report (`sp-treppe`), Onboarding-Vorschlag „Fall starten“
+  (`sp-uebergabe`) — je Teil der alte Einstiegspunkt, der FESTE SCHRITT (Baustein `system.fest`, `nurUeberfuehrung` — nie in der Knoten-Auswahl, Motor-Aktion `system`,
+  lib/prozesse/system-schritte-server.ts) und die Kennungs-Brücke: beide Wege rufen DENSELBEN Kern (`mahnAufgabenKern`, `treppeReportsKern`, `onboardingVorschlaegeKern`)
+  mit denselben Kennungen/Marken — Umschalten mitten im Monat legt nie doppelt an. Am Prozess `ersetzt` (nur `sp-…` der Liste, höchstens einer je `sp-…`, sonst 409)
+  + `ueberfuehrung` (Phase `schatten | scharf`, wer wann umschaltete, Vergleich) — schreibt NUR der Server, Säuberer `bestand.ts`, ohne Feld bit-gleich; `standVon`
+  übergeht den Vergleich (kein 409 je Morgen). **EINE Weiche** `wegEntscheiden`/`neuerWegScharf` (Server `wegFuer`, nicht lesbar → alter Weg): der alte Weg läuft,
+  AUSSER der Prozess ist aktiv, in Phase scharf UND im Motor scharf geschaltet; `modusFuer` nimmt dieselbe Regel (nie beide, nie keiner). Jeder alte Einstiegspunkt
+  (`mahnAufgabenNachziehen`, `treppeMorgenlauf`, `prozesseMorgenlauf`) fragt die Weiche GENAU EINMAL (Wächter) und behält bei scharfem neuen Weg nur seinen Rest
+  (Privat-Mahnungen, „nächste Stufe“, Nachsorge). **Schatten:** der neue Prozess läuft im Probelauf auf denselben Auslöser („nach dem Morgen-Loop“), der feste Schritt
+  rechnet nur (`schatten`) — beide Wege melden ihr Wirkungsbild je Berliner Tag (`vergleichMelden`: Art, Ziel-Kennung, Tag, Zuständigkeit als Fingerabdruck; nie Texte,
+  Werte, Namen); ein Tag zählt, wenn er vorbei ist (gleich · anders mit Feldnamen · nur alt · nur neu · zu viele). Das Soll zählt eine Marke von heute nicht als
+  „schon erledigt“. **Umschalten** nur per Klick einer Person (Route `/api/prozesse/werkstatt` `umschalten`, nur volle Mitglieder, Dienstweg 403), erst ab N gleichen
+  Läufen und M Tagen (Stellschrauben `ueberfuehrung.laeufe`/`ueberfuehrung.tage`, Vorgabe 5 / 3) und nur mit dem festen Schritt in der jüngsten Version: erst
+  `scharfSchalten` (Budget 0, nur neue Fälle), dann die Phase. Zurück = anhalten (Status pausiert) oder `ueberfuehrung-zurueck` (Vergleich zählt neu). Stellschrauben
+  der Teile bleiben EINE Wahrheit in ihrem Bestand (Mahnstufen, Report-Abstand lesen auch andere Stellen) — der feste Schritt liest sie dort, keine Kopie. Oberfläche
+  `components/os/prozesse/Ueberfuehrung.tsx` (Karte „In die Werkstatt“ im Steckbrief, Band „Ersetzt …“ in der Werkstatt), Kachel-Marke `ueberfuehrungMarke`.
+  **Neuer überführbarer Teil** = Eintrag in `UEBERFUEHRBAR` + Kern im Fachmodul (alter Einstieg und fester Schritt rufen ihn) + Fall in `systemSchrittAusfuehren` +
+  Vorlage in `ueberfuehrung-anlegen.ts` + Gold-Test (alter Code allein vs. neuer Prozess scharf → dieselben Schreibungen, hin und zurück, Weiche nicht lesbar).
+  Nicht überführt: Power-Hour-Vorbereitung (kein Auslöser „ab Uhrzeit, je Person, sobald nicht Business-frei“), Event-Nachfassen (der alte Weg schreibt nichts).
+  Tests `tests/prozesse-ueberfuehrung{,-gold,-oberflaeche}.test.ts`. Rückweg zum Live-Stand: der kennt keinen Lauf-Motor und keine Weiche — dort arbeitet
+  immer der alte Weg (dieselben Kennungen: nichts doppelt); `ersetzt`/`ueberfuehrung` sind nur optionale Felder im Werkstatt-Bestand.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
 ## Werkzeug-Muster — jeder große Bereich ein eigenes Werkzeug (22.10., Branch `werkzeuge`, nur lokal)
