@@ -44,6 +44,7 @@ import {
 } from '@/lib/prozesse/werkstatt-aktionen';
 import { neuerKnoten, knotenUnterzeile, maskeAnwenden, maskeWerte } from '@/lib/prozesse/werkstatt-maske';
 import { teilprozessFall, teilprozessTitel } from '@/lib/prozesse/teilprozess-neu';
+import { feldTitelVon } from '@/lib/prozesse/ausloeser';
 import { FALL_ARTEN } from '@/lib/prozesse/definition';
 import Link from 'next/link';
 import { bahnBeimAnhaengen } from '@/lib/prozesse/werkstatt-lage';
@@ -1126,10 +1127,10 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           onVeroeffentlichen={veroeffentlichen} onAnsehen={ansehen} onVergleichen={vergleichen} onUebernehmen={uebernehmen} onZu={() => setVersionenOffen(false)} namen={konten} />
       )}
       {mehrfach && (
-        <MehrfachFenster d={d} nach={mehrfach} onZu={() => setMehrfach(null)} onAnlegen={(faelle, sonst) => {
+        <MehrfachFenster d={d} nach={mehrfach} auswahl={auswahlListen} onZu={() => setMehrfach(null)} onAnlegen={(faelle, sonst) => {
           const f = fassungRef.current;
           if (!f) return 'Die Werkstatt lädt noch.';
-          const e = mehrfachEntscheidung(f, { nach: mehrfach, faelle, sonst, kennung: () => neueKennung('fk') });
+          const e = mehrfachEntscheidung(f, { nach: mehrfach, faelle, sonst, kennung: () => neueKennung('fk'), feldName: feldTitelVon });
           if (!e.ok) return e.grund;
           anwenden(e); setMehrfach(null);
           return null;

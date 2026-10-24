@@ -4,6 +4,9 @@
 // Mehrere Fälle mit Bedingungen und je einem Ziel, dazu „sonst“. Gebaut wird daraus SOFORT eine Kaskade aus Rauten nach Regel (lib/prozesse/werkstatt-aktionen.ts
 // `mehrfachEntscheidung`) — das Modell bleibt „Strang je Phase + Abzweige“, die Rauten lassen sich danach wie jede andere bearbeiten. Bau-Test 24.10.: ein Klick
 // daneben bzw. Esc mit Eingaben fragt erst „Verwerfen?“ (vorher waren die Eingaben weg); „Anlegen“ zählt genau einmal.
+// Bau-Test 2 (24.10.): Felder mit Kennungs-Werten (Produkt, Stufe, Status …) bekommen DIESELBE Wertauswahl wie im Panel (lib/prozesse/feld-werte.ts `feldWerte`,
+// Quelle `auswahl` vom Server — Name sichtbar, Kennung gespeichert); Freitext nur für echte Textfelder. Fehlt etwas, sagt die Meldung je Fall genau, was
+// (`mehrfachMeldung`: Name, Bedingung, Wert).
 
 import { useMemo, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
@@ -13,16 +16,24 @@ import type { Bedingung, ProzessDefinition } from '@/lib/prozesse/definition';
 import { alleSchritte } from '@/lib/prozesse/fluss';
 import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
 import { feldTitelVon } from '@/lib/prozesse/ausloeser';
+import { feldWerte } from '@/lib/prozesse/feld-werte';
 import { MEHRFACH_MAX, type MehrfachFall } from '@/lib/prozesse/werkstatt-aktionen';
+import type { Auswahl } from './werkstatt-daten';
 import { Fenster } from '../Fenster';
 import { MaskenEingabe } from './WerkstattMaske';
 
-export function MehrfachFenster({ d, nach, onAnlegen, onZu }: { d: ProzessDefinition; nach: string; onAnlegen: (faelle: MehrfachFall[], sonst: 'ende' | 'aufgabe') => string | null; onZu: () => void }) {
+export function MehrfachFenster({ d, nach, auswahl, onAnlegen, onZu }: {
+  d: ProzessDefinition; nach: string;
+  /** Die Auswahllisten des Haushalts (GET /api/prozesse/katalog?auswahl=1) — dieselbe Quelle wie im Panel. */ auswahl: Auswahl;
+  onAnlegen: (faelle: MehrfachFall[], sonst: 'ende' | 'aufgabe') => string | null; onZu: () => void;
+}) {
   const leer = (n: number): MehrfachFall => ({ titel: `Fall ${n}`, bedingungen: [], ziel: null });
   const [faelle, setFaelle] = useState<MehrfachFall[]>([leer(1), leer(2)]);
   const [sonst, setSonst] = useState<'ende' | 'aufgabe'>('aufgabe');
   const [fehler, setFehler] = useState<string | null>(null);
   const felder = useMemo(() => rautenFelder(d).map(id => ({ id, label: feldTitelVon(id) })), [d]);
+  // Wie im Panel: Felder mit Werteliste bekommen eine Auswahl (Name sichtbar, Kennung gespeichert).
+  const werteVon = (feldId: string) => feldWerte(feldId, auswahl, d);
   const phase = alleSchritte(d).find(x => x.schritt.id === nach)?.phase.id;
   const ziele = alleSchritte(d).filter(x => x.phase.id === phase && x.schritt.id !== nach && x.schritt.form !== 'ausloeser' && !x.schritt.schloss).map(x => x.schritt);
   const setze = (i: number, t: Partial<MehrfachFall>) => setFaelle(l => l.map((x, j) => (j === i ? { ...x, ...t } : x)));
@@ -51,7 +62,7 @@ export function MehrfachFenster({ d, nach, onAnlegen, onZu }: { d: ProzessDefini
             {faelle.length > 2 && <SymbolKnopf ariaLabel={`Fall ${i + 1} entfernen`} onClick={() => setFaelle(l => l.filter((_, j) => j !== i))}><X size={16} /></SymbolKnopf>}
           </div>
           <Feldzeile label="Name"><input aria-label={`Name von Fall ${i + 1}`} value={x.titel} maxLength={120} onChange={e => setze(i, { titel: e.target.value })} style={feld} /></Feldzeile>
-          <MaskenEingabe f={{ id: 'bedingungen', label: 'Wenn …', typ: 'bedingungen', pflicht: true }} wert={x.bedingungen as never} felder={felder} optionen={[]} onWert={v => setze(i, { bedingungen: v as unknown as Bedingung[] })} />
+          <MaskenEingabe f={{ id: 'bedingungen', label: 'Wenn …', typ: 'bedingungen', pflicht: true }} wert={x.bedingungen as never} felder={felder} optionen={[]} werteVon={werteVon} onWert={v => setze(i, { bedingungen: v as unknown as Bedingung[] })} />
           <Feldzeile label="Verknüpfung">
             <select aria-label="Verknüpfung" value={x.verknuepfung ?? 'und'} onChange={e => setze(i, { verknuepfung: e.target.value as 'und' | 'oder' })} style={{ ...auswahlStil, width: '100%' }}>
               <option value="und">alle Bedingungen</option><option value="oder">mindestens eine</option>

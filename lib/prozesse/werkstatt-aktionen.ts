@@ -491,20 +491,50 @@ export interface MehrfachFall { titel: string; bedingungen: import('./definition
 export const MEHRFACH_MAX = 8;
 
 /**
+ * Was einem Fall der Mehrfach-Entscheidung fehlt (rein; Bau-Test 2, 24.10.: „Fall 2: Name und mindestens eine Bedingung fehlen“, obwohl der Name gesetzt war) —
+ * genau benannt: „Name“, „Bedingung“, „Feld“ bzw. „Wert bei „Produkt““ je Bedingung (nicht bei „ist gesetzt“/„ist leer“). Leer = vollständig.
+ */
+export function mehrfachFallFehlt(x: MehrfachFall, feldName: (id: string) => string = id => id): string[] {
+  const raus: string[] = [];
+  if (!x.titel.trim()) raus.push('Name');
+  if (!x.bedingungen.length) raus.push('Bedingung');
+  const mehrere = x.bedingungen.length > 1;
+  x.bedingungen.forEach((b, i) => {
+    const nr = mehrere ? ` (Bedingung ${i + 1})` : '';
+    if (!b.feld?.trim()) { raus.push(`Feld${nr}`); return; }
+    if (b.op === 'gesetzt' || b.op === 'leer') return;
+    const w = b.wert;
+    if (w === undefined || w === null || (typeof w === 'string' && !w.trim()) || (Array.isArray(w) && !w.length)) raus.push(`Wert bei „${feldName(b.feld)}“${nr}`);
+  });
+  return raus;
+}
+/** Die Meldung über alle unvollständigen Fälle (rein) — je Fall eine Zeile, was fehlt; null = alle vollständig. */
+export function mehrfachMeldung(faelle: readonly MehrfachFall[], feldName?: (id: string) => string): string | null {
+  const zeilen = faelle.flatMap((x, i) => {
+    const f = mehrfachFallFehlt(x, feldName);
+    if (!f.length) return [];
+    const was = f.length === 1 ? `${f[0]} fehlt` : `${f.slice(0, -1).join(', ')} und ${f[f.length - 1]} fehlen`;
+    return [`Fall ${i + 1}${x.titel.trim() ? ` „${x.titel.trim()}“` : ''}: ${was}.`];
+  });
+  return zeilen.length ? zeilen.join(' ') : null;
+}
+
+/**
  * „Mehrfach-Entscheidung“ als Bau-Hilfe (rein, Punkt 15 — der Switch aus n8n): wird SOFORT zu einer Kaskade aus Rauten nach Regel — das Modell bleibt, wie es ist.
  * Fall 1 = die erste Raute am Hauptausgang von `nach`; jeder weitere Fall = die Raute am „nein“ der vorigen; „sonst“ = das „nein“ der letzten Raute (der Lauf endet
  * bzw. eine Aufgabe „von Hand prüfen“). „ja“ eines Falls → sein Ziel bzw. „weiter im Ablauf“ = dorthin, wohin der Ausgang von `nach` vorher führte; dorthin geht
  * auch die Aufgabe „sonst“. Kein anderer Ausgang ändert sich (Werkstatt-Fäden, 24.10.). Die Rauten tragen die Verknüpfung „alle Bedingungen“, wenn nichts gewählt ist.
- * Ein Fall braucht mindestens eine Bedingung; Ziele sind Schritte derselben Phase. Prüft den Fluss wie jede Hilfe (Kreis, Phase) — sonst ein Grund, nichts geändert.
+ * Ein Fall braucht Name, mindestens eine Bedingung und je Bedingung einen Wert (`mehrfachMeldung` sagt je Fall genau, was fehlt); Ziele sind Schritte derselben
+ * Phase. Prüft den Fluss wie jede Hilfe (Kreis, Phase) — sonst ein Grund, nichts geändert.
  */
-export function mehrfachEntscheidung(f: Fassung, o: { nach: string; faelle: readonly MehrfachFall[]; sonst?: 'ende' | 'aufgabe'; kennung: Kennung }): Ergebnis {
+export function mehrfachEntscheidung(f: Fassung, o: { nach: string; faelle: readonly MehrfachFall[]; sonst?: 'ende' | 'aufgabe'; kennung: Kennung; feldName?: (id: string) => string }): Ergebnis {
   const q0 = f.knoten.find(k => k.id === o.nach);
   if (!q0) return nein('Den Knoten, an den angehängt werden soll, gibt es nicht (mehr).');
   const quelle = istSchloss(q0) ? f.knoten.find(k => k.id === q0.schloss!.fuer) ?? q0 : q0;
   if (o.faelle.length < 2) return nein('Eine Mehrfach-Entscheidung hat mindestens zwei Fälle — für einen Fall reicht eine Raute.');
   if (o.faelle.length > MEHRFACH_MAX) return nein(`Höchstens ${MEHRFACH_MAX} Fälle — sonst lieber einen Teilprozess bilden.`);
-  const leer = o.faelle.findIndex(x => !x.bedingungen.length || !x.titel.trim());
-  if (leer >= 0) return nein(`Fall ${leer + 1}: Name und mindestens eine Bedingung fehlen.`);
+  const fehlt = mehrfachMeldung(o.faelle, o.feldName);
+  if (fehlt) return nein(fehlt);
   const ph = phaseVon(f, quelle.id);
   for (const x of o.faelle) {
     if (!x.ziel) continue;
