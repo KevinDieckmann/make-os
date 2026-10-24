@@ -454,3 +454,47 @@ describe('7 — Rolle ohne Person: gelber Befund am Knoten (mit und ohne Fall), 
     expect(rolle(definitionPruefen(definition([aufgabe('konto-pia'), ende], { fallArt: 'keiner' }), {}))).toHaveLength(0);
   });
 });
+
+// ── 8/9: Ansicht beim Bauen und Handy ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+describe('8 — Ansicht beim Bauen', () => {
+  it('eine schwebende Hinweis-Karte unter der Kopfzeile zählt als Rand oben („Alles zeigen“ legt nichts darunter)', async () => {
+    const { raenderAus, SCHWEBE_NAEHE } = await import('@/lib/einpassen');
+    const { HINWEIS_NAEHE, HINWEIS_SELEKTOR } = await import('@/components/os/ui/flaeche/schwebe');
+    const buehne = { x: 0, y: 0, b: 1440, h: 1000 };
+    const karte = { x: 432, y: 143, b: 620, h: 144 };
+    expect(raenderAus(buehne, [karte]).oben).toBe(0); // so lag die Karte bisher über den Knoten
+    expect(HINWEIS_NAEHE).toBeGreaterThan(SCHWEBE_NAEHE);
+    expect(raenderAus(buehne, [karte], { naehe: HINWEIS_NAEHE }).oben).toBeGreaterThanOrEqual(143 + 144);
+    expect(HINWEIS_SELEKTOR).toBe('.pw-hinweis-karte');
+  });
+  it('Doppelklick, Esc und Probelauf sind verdrahtet (Quelltext)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const flaeche = readFileSync('components/os/prozesse/WerkstattFlaeche.tsx', 'utf8');
+    expect(flaeche).toMatch(/elementFromPoint\(e\.clientX, e\.clientY\)[\s\S]{0,200}data-ws-knoten[\s\S]{0,120}p\.onDoppel/);
+    expect(flaeche).toMatch(/Math\.min\(b\.x, 0\)/);
+    const w = readFileSync('components/os/prozesse/Werkstatt.tsx', 'utf8');
+    expect(w).toMatch(/case 'abbrechen':\s*\/\/[^\n]*\n\s*if \(gross\) \{ setGross\(null\)/);
+    expect(w).toMatch(/setPanelZu\(n => n \+ 1\);\s*requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => allesZeigenRef\.current\(\)\)\)/);
+    expect(w).toMatch(/neuesSchloss[\s\S]{0,120}zeigeNeu\.current = neuesSchloss\.id/);
+  });
+});
+
+describe('9 — Handy: eindeutige Felder, Bestätigung, Mail mit Platzhaltern', () => {
+  it('„Name des Schritts“ und „Titel der Aufgabe“ — nie zweimal „Titel“; die Mail ist eine Vorlage (Platzhalter + Vorschau)', async () => {
+    const { werkstattMobilFelder, paketMobilFelder } = await import('@/lib/prozesse/mobil-felder');
+    const aufgabe = werkstattMobilFelder({ id: fk(95), titel: 'Rückruf', rang: 1, form: 'schritt', katalog: { id: 'aufgabe.anlegen', werte: { titel: 'Zurückrufen' } } });
+    const labels = aufgabe.map(f => f.label);
+    expect(labels).toContain('Name des Schritts');
+    expect(labels).toContain('Titel der Aufgabe');
+    expect(labels.filter(l => l === 'Titel')).toHaveLength(0);
+    const mail = werkstattMobilFelder({ id: fk(96), titel: 'Danke', rang: 1, form: 'nachricht', katalog: { id: 'inbox.mail-entwurf', werte: { betreff: 'Danke {{kontakt.vorname}}' } } });
+    expect(mail.find(f => f.id === 'werte.betreff')?.art).toBe('vorlage');
+    expect(paketMobilFelder({ titel: 'Kick-off' }, 'schritt')[0].label).toBe('Name des Schritts');
+    const { readFileSync } = await import('node:fs');
+    const m = readFileSync('components/os/prozesse/MobilBearbeiten.tsx', 'utf8');
+    expect(m).toContain("f.art === 'vorlage'");
+    expect(m).toContain('<VorlageEingabe');
+    expect(readFileSync('components/os/prozesse/Werkstatt.tsx', 'utf8')).toMatch(/ist gespeichert — als Entwurf/);
+  });
+});

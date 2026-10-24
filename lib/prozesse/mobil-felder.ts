@@ -14,7 +14,8 @@ import type { ProzessKnoten as PaketKnoten } from '@/lib/fulfillment/typen';
 
 export interface MobilFeld {
   id: string; label: string;
-  art: 'text' | 'textlang' | 'zahl' | 'wahl';
+  /** `vorlage` (Feinschliff 24.10.): ein Text mit {{Platzhaltern}} — am Handy mit Platzhalter-Knöpfen und Vorschau wie im großen Fenster. */
+  art: 'text' | 'textlang' | 'vorlage' | 'zahl' | 'wahl';
   wert: string | number | null;
   min?: number; max?: number;
   optionen?: readonly { id: string; label: string }[];
@@ -27,7 +28,8 @@ const NUR_PERSONEN = 'team-person';
 
 /** Die Felder eines Werkstatt-Schritts, die am Handy änderbar sind (rein). `team` = Auswahlliste „team-person“ (mit Rollen). */
 export function werkstattMobilFelder(k: K, team: readonly { id: string; label: string }[] = []): MobilFeld[] {
-  const raus: MobilFeld[] = [{ id: 'titel', label: 'Titel', art: 'text', wert: k.titel }];
+  // Feinschliff 24.10. (Bau-Test am Handy: zwei Felder hießen „Titel“): der Name des Schritts und der Titel der Aufgabe heißen verschieden.
+  const raus: MobilFeld[] = [{ id: 'titel', label: 'Name des Schritts', art: 'text', wert: k.titel }];
   if (typeof k.frist === 'number') raus.push({ id: 'frist', label: 'Frist (Tage)', art: 'zahl', wert: k.frist, min: 0, max: 365 });
   if (k.warten?.art === 'dauer') raus.push({ id: 'warten.tage', label: 'Warten (Tage)', art: 'zahl', wert: k.warten.tage, min: 0, max: 365 });
   if (k.warten && (k.warten.art === 'ereignis' || k.warten.art === 'datum')) raus.push({ id: 'warten.hoechstensTage', label: 'Höchstens warten (Tage)', art: 'zahl', wert: k.warten.hoechstensTage, min: 1, max: 365 });
@@ -36,12 +38,18 @@ export function werkstattMobilFelder(k: K, team: readonly { id: string; label: s
     const w = k.katalog?.werte ?? {};
     for (const m of e.maske) {
       const v = w[m.id];
-      if (TEXT_TYPEN.has(m.typ)) raus.push({ id: `werte.${m.id}`, label: m.label, art: m.typ === 'text' ? 'text' : 'textlang', wert: typeof v === 'string' ? v : null });
+      if (TEXT_TYPEN.has(m.typ)) raus.push({ id: `werte.${m.id}`, label: mobilLabel(m.label, e), art: m.typ === 'text' ? 'text' : m.typ === 'textvorlage' ? 'vorlage' : 'textlang', wert: typeof v === 'string' ? v : null });
       else if (m.typ === 'zahl' || m.typ === 'tage') raus.push({ id: `werte.${m.id}`, label: m.label, art: 'zahl', wert: typeof v === 'number' ? v : null, ...(m.min !== undefined ? { min: m.min } : {}), ...(m.max !== undefined ? { max: m.max } : {}) });
       else if (m.typ === 'auswahl' && m.quelle === NUR_PERSONEN) raus.push({ id: `werte.${m.id}`, label: m.label, art: 'wahl', wert: typeof v === 'string' ? v : null, optionen: team });
     }
   }
   return raus;
+}
+
+/** Ein Feld der Maske, das „Titel“ heißt, heißt am Handy nach dem, was es ist („Titel der Aufgabe“, „Titel (Termin)“) — nie wie der Name des Schritts. */
+function mobilLabel(label: string, e: { name: string; anbindung: string }): string {
+  if (label !== 'Titel') return label;
+  return e.anbindung === 'Aufgabe' || /aufgabe/i.test(e.name) ? 'Titel der Aufgabe' : `Titel (${e.name})`;
 }
 
 const zahlAus = (v: string | number | null | undefined): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() && Number.isFinite(Number(v)) ? Number(v) : null);
@@ -79,7 +87,7 @@ export const PAKET_ZUSTAENDIG: readonly { id: 'intern' | 'kunde' | 'beide'; labe
 export function paketMobilFelder(k: Pick<PaketKnoten, 'titel' | 'frist' | 'zustaendig'>, art: 'schritt' | 'phase'): MobilFeld[] {
   if (art === 'phase') return [{ id: 'titel', label: 'Titel der Phase', art: 'text', wert: k.titel }];
   return [
-    { id: 'titel', label: 'Titel', art: 'text', wert: k.titel },
+    { id: 'titel', label: 'Name des Schritts', art: 'text', wert: k.titel },
     { id: 'frist', label: 'Frist (Tage nach dem Schritt davor)', art: 'zahl', wert: typeof k.frist === 'number' ? k.frist : null, min: 0, max: 365 },
     { id: 'zustaendig', label: 'Zuständig', art: 'wahl', wert: k.zustaendig ?? 'intern', optionen: PAKET_ZUSTAENDIG },
   ];

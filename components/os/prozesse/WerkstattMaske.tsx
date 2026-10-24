@@ -11,7 +11,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { Plus, X } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT, RAND } from '@/lib/make-one/design';
-import { feld, auswahl as auswahlStil, Feldzeile, MehrfachPillen, Schalter, SymbolKnopf, Knopf } from '../ui';
+import { feld, eingabe as eingabeStil, auswahl as auswahlStil, Feldzeile, MehrfachPillen, Schalter, SymbolKnopf, Knopf } from '../ui';
 import { BEDINGUNG_OPS, KENNUNG_ARTEN, WEBHOOK_FELD_ARTEN, type Bedingung, type MaskenWert, type VertragFeld, type WebhookFeld } from '@/lib/prozesse/definition';
 import { BEDINGUNG_NAME } from '@/lib/prozesse/bedingung';
 import { textvorlageFuellen, textvorlagePruefen, type MaskenFeld } from '@/lib/prozesse/baustein-katalog';
@@ -86,19 +86,28 @@ export function PlatzhalterChip({ id, wert, onEinsetzen }: { id: string; wert?: 
  * (`textvorlageFuellen`). Übernommen wird beim Tippen (entprellt) und beim Verlassen (Feinschliff 24.10. — wie jedes Textfeld der Maske).
  */
 function VorlageFeld({ id, label, wert, onWert, aus, platzhalter }: { id: string; label: string; wert: string; onWert: (v: string) => void; aus?: boolean; platzhalter?: readonly string[] }) {
-  const u = useContext(VorlageKontext);
   const e = useTippen(wert, onWert);
-  const t = e.t;
+  return <VorlageEingabe id={id} label={label} text={e.t} onText={e.tippe} onVerlassen={() => { e.fertig(); }} aus={aus} platzhalter={platzhalter} />;
+}
+
+/**
+ * Der Baustein einer Textvorlage — Textfeld, Prüfung beim Tippen, Platzhalter-Knöpfe an den Cursor, Vorschau mit den Testwerten. Gesteuert (`text`/`onText`):
+ * dieselben Bausteine im großen Fenster, im Panel und am Handy (Feinschliff 24.10.: „Mail auf dem Handy mit Platzhalter-Knöpfen und Vorschau“).
+ */
+export function VorlageEingabe({ id, label, text: t, onText, onVerlassen, aus, platzhalter, gross }: {
+  id: string; label: string; text: string; onText: (v: string) => void; onVerlassen?: () => void; aus?: boolean; platzhalter?: readonly string[];
+  /** Am Handy: Eingabe 16 px (iOS zoomt sonst), Ziele ≥ 44 px. */ gross?: boolean;
+}) {
+  const u = useContext(VorlageKontext);
   const el = useRef<HTMLTextAreaElement | null>(null);
   const tRef = useRef(t);
   tRef.current = t;
-  const fertig = () => { e.fertig(); };
   const einsetzen = (x: string) => {
     if (aus) return;
     const a = el.current;
     const von = a?.selectionStart ?? tRef.current.length, bis = a?.selectionEnd ?? von;
     const neu = `${tRef.current.slice(0, von)}${x}${tRef.current.slice(bis)}`;
-    e.tippe(neu); tRef.current = neu;
+    onText(neu); tRef.current = neu;
     requestAnimationFrame(() => { a?.focus(); a?.setSelectionRange(von + x.length, von + x.length); });
   };
   const ziel: VorlageZiel = { einsetzen, feld: id };
@@ -106,9 +115,9 @@ function VorlageFeld({ id, label, wert, onWert, aus, platzhalter }: { id: string
   const vorschau = u?.werte && t ? textvorlageFuellen(t, u.werte) : null;
   return (
     <div style={{ display: 'grid', gap: 6 }}>
-      <textarea ref={el} aria-label={label} value={t} disabled={aus} rows={4} onChange={ev => e.tippe(ev.target.value)}
-        onFocus={() => { if (u) u.ziel.current = ziel; }} onBlur={fertig}
-        style={{ ...feld, resize: 'vertical', minHeight: 96, ...(fehler.length ? { borderColor: LEUCHT.achtung } : {}) }} />
+      <textarea ref={el} aria-label={label} value={t} disabled={aus} rows={4} onChange={ev => onText(ev.target.value)}
+        onFocus={() => { if (u) u.ziel.current = ziel; }} onBlur={onVerlassen}
+        style={{ ...(gross ? eingabeStil : feld), resize: 'vertical', minHeight: 96, ...(fehler.length ? { borderColor: LEUCHT.achtung } : {}) }} />
       {fehler.map(f => <span key={f} role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{f.charAt(0).toUpperCase() + f.slice(1)}</span>)}
       {platzhalter?.length ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} aria-label="Platzhalter (klicken setzt an den Cursor)">

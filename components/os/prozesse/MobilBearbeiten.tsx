@@ -11,6 +11,7 @@ import { FARBE as C, TYP, MIKRO, ZIEL } from '@/lib/make-one/design';
 import { Feldzeile, Knopf, eingabe } from '../ui';
 import { Fenster } from '../Fenster';
 import type { MobilFeld, MobilWerte } from '@/lib/prozesse/mobil-felder';
+import { VorlageEingabe } from './WerkstattMaske';
 
 export interface MobilPhase { id: string; titel: string; bearbeitbar?: boolean; schritte: { id: string; titel: string; unter?: string; bearbeitbar?: boolean }[] }
 
@@ -46,8 +47,11 @@ export function MobilSchrittListe({ phasen, darf, onBearbeiten }: { phasen: read
   );
 }
 
-/** Die Maske am Handy: nur die übergebenen Felder; „Speichern“ übergibt die Werte (der Aufrufer schreibt den Entwurf). */
-export function MobilMaske({ titel, felder, onSpeichern, onZu }: { titel: string; felder: readonly MobilFeld[]; onSpeichern: (w: MobilWerte) => void; onZu: () => void }) {
+/**
+ * Die Maske am Handy: nur die übergebenen Felder; „Speichern“ übergibt die Werte (der Aufrufer schreibt den Entwurf und bestätigt). Texte mit Platzhaltern (Mail)
+ * bekommen dieselben Bausteine wie das große Fenster (Platzhalter-Knöpfe an den Cursor, Vorschau mit den Testwerten — Feinschliff 24.10.).
+ */
+export function MobilMaske({ titel, felder, onSpeichern, onZu, platzhalter }: { titel: string; felder: readonly MobilFeld[]; onSpeichern: (w: MobilWerte) => void; onZu: () => void; platzhalter?: readonly string[] }) {
   const [w, setW] = useState<Record<string, string>>(() => Object.fromEntries(felder.map(f => [f.id, f.wert === null || f.wert === undefined ? '' : String(f.wert)])));
   const setze = (id: string, v: string) => setW(x => ({ ...x, [id]: v }));
   const speichern = (e: FormEvent) => {
@@ -66,7 +70,9 @@ export function MobilMaske({ titel, felder, onSpeichern, onZu }: { titel: string
       <form onSubmit={speichern} style={{ display: 'grid', gap: 12 }}>
         {felder.map(f => (
           <Feldzeile key={f.id} label={f.label}>
-            {f.art === 'textlang'
+            {f.art === 'vorlage'
+              ? <VorlageEingabe id={f.id} label={f.label} text={w[f.id] ?? ''} onText={v => setze(f.id, v)} platzhalter={platzhalter} gross />
+              : f.art === 'textlang'
               ? <textarea aria-label={f.label} value={w[f.id] ?? ''} rows={4} onChange={e => setze(f.id, e.target.value)} style={{ ...eingabe, resize: 'vertical' }} />
               : f.art === 'wahl'
                 ? (

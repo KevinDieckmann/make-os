@@ -28,7 +28,7 @@ import { FARBE as C, TYP, MIKRO, LEUCHT } from '@/lib/make-one/design';
 import { Knopf, Hinweis, SymbolKnopf, Chip, Reiter } from '../ui';
 import { neueKennung } from '@/lib/kennung';
 import { definitionPruefen, sperrtVeroeffentlichen } from '@/lib/prozesse/definition-pruefen';
-import { katalogEintrag, type KatalogEintrag } from '@/lib/prozesse/baustein-katalog';
+import { katalogEintrag, platzhalterFuer, type KatalogEintrag } from '@/lib/prozesse/baustein-katalog';
 import { headDef } from '@/lib/agenten/katalog';
 import { FACH_AGENTEN } from '@/lib/prozesse/agent-schritt';
 import { alleSchritte, phasen, wurzel } from '@/lib/prozesse/fluss';
@@ -213,6 +213,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   // E6 (22.10., Entscheidung „Am Handy Texte & Fristen ändern“): am Handy Texte, Fristen/Dauer und Zuständige der Schritte — derselbe Entwurf, dieselben Rechte.
   const mobilDarf = nurAnsehen && !!rechte?.entwurf && !versionAnsicht && eintrag?.status !== 'archiviert';
   const [mobilWahl, setMobilWahl] = useState<string | null>(null);
+  /** Feinschliff 24.10. (Bau-Test am Handy: „nach dem Speichern keine Bestätigung“): welcher Schritt gerade übernommen wurde — bis der Server bestätigt hat. */
+  const [mobilBestaetigt, setMobilBestaetigt] = useState<string | null>(null);
   const d: ProzessDefinition | null = useMemo(() => {
     if (versionAnsicht) return versionAnsicht.definition;
     if (!eintrag || !fassung) return null;
@@ -357,6 +359,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     const t = window.setTimeout(async () => { const ok = await sichern(); versuch.current = ok ? 0 : versuch.current + 1; }, warte);
     return () => window.clearTimeout(t);
   }, [speicher, fassung, konflikt, sichern]);
+  // Am Handy: die Bestätigung bleibt, bis der Server gespeichert hat, und geht dann nach 6 s.
+  useEffect(() => { if (!mobilBestaetigt || speicher.art !== 'gespeichert' || tippt) return; const t = window.setTimeout(() => setMobilBestaetigt(null), 6000); return () => window.clearTimeout(t); }, [mobilBestaetigt, speicher.art, tippt]);
   // Verlassen mit Ungespeichertem: der Browser fragt.
   useEffect(() => {
     if (!ausstehend && !tippt) return;
@@ -978,6 +982,12 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           onErgebnisse={e => setTestErg(m => { const n = new Map(m); for (const x of e) n.set(x.id, x); return n; })} onNeu={laeufe.laden} />
       )}
       {/* Am Handy zuerst die Schritte zum Bearbeiten (Texte, Fristen, Zuständige) — die Fläche und der Steckbrief folgen darunter. */}
+      {reiter === 'bauen' && nurAnsehen && mobilBestaetigt && (
+        <Hinweis art={spArt === 'gespeichert' ? 'gut' : spArt === 'fehler' || spArt === 'konflikt' ? 'kritisch' : spArt === 'offline' ? 'achtung' : 'info'}
+          aktion={<SymbolKnopf ariaLabel="Bestätigung schließen" onClick={() => setMobilBestaetigt(null)}><X size={14} /></SymbolKnopf>}>
+          {spArt === 'gespeichert' ? `„${mobilBestaetigt}“ ist gespeichert — als Entwurf.` : spArt === 'fehler' || spArt === 'konflikt' || spArt === 'offline' ? `„${mobilBestaetigt}“: ${spText} — deine Änderung bleibt hier.` : `„${mobilBestaetigt}“ wird gespeichert …`}
+        </Hinweis>
+      )}
       {reiter === 'bauen' && nurAnsehen && (
         <MobilSchrittListe darf={mobilDarf} onBearbeiten={setMobilWahl}
           phasen={phasen(d).map(p => ({ id: p.id, titel: p.titel, schritte: alleSchritte(d).filter(x => x.phase.id === p.id && x.schritt.form !== 'freigabe').map(x => ({ id: x.schritt.id, titel: x.schritt.titel, unter: unterzeile(x.schritt) || undefined })) }))} />
@@ -1030,8 +1040,16 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
       {mobilWahl && (() => {
         const k = d.knoten.find(x => x.id === mobilWahl);
         if (!k) return null;
-        return <MobilMaske titel={`„${k.titel}“`} felder={werkstattMobilFelder(k, auswahlListen['team-person'] ?? [])} onZu={() => setMobilWahl(null)}
-          onSpeichern={w => { if (mobilDarf) mitFassung(f => ersetzen(f, werkstattMobilAnwenden(k, w)), { auswahl: false }); setMobilWahl(null); }} />;
+        return <MobilMaske titel={`„${k.titel}“`} felder={werkstattMobilFelder(k, auswahlListen['team-person'] ?? [])} onZu={() => setMobilWahl(null)} platzhalter={platzhalterFuer(d.fallArt ?? 'mandat')}
+          onSpeichern={w => {
+            if (mobilDarf) {
+              const vorher = fassungRef.current;
+              mitFassung(f => ersetzen(f, werkstattMobilAnwenden(k, w)), { auswahl: false });
+              // Bestätigung nur, wenn sich etwas geändert hat (anwenden setzt die Fassung sofort).
+              setMobilBestaetigt(fassungRef.current !== vorher ? werkstattMobilAnwenden(k, w).titel : null);
+            }
+            setMobilWahl(null);
+          }} />;
       })()}
       <div aria-live="polite" className="pz-nur-vorlesen">{ansage}</div>
       {headOffen && (
