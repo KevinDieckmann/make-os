@@ -47,7 +47,7 @@ export function BefundListe({ befunde, raete = [], onTeilprozess }: { befunde: r
   if (!befunde.length && !raete.length) return null;
   return (
     <div style={{ display: 'grid', gap: 8 }} aria-live="polite">
-      {befunde.map((b, i) => <Hinweis key={`b${i}`} art={ART[b.stufe]}>{b.text}</Hinweis>)}
+      {befunde.map((b, i) => <Hinweis key={`b${i}`} art={b.warnung ? 'achtung' : ART[b.stufe]}>{b.text}</Hinweis>)}
       {raete.map((r, i) => (
         <Hinweis key={`r${i}`} art={r.art === 'warnung' ? 'achtung' : 'info'}
           aktion={r.aktion === 'teilprozess' && r.phaseId && onTeilprozess ? <Knopf leise onClick={() => onTeilprozess(r.phaseId!)}><span className="pz-knopf-inhalt"><Scissors size={14} aria-hidden />Teilprozess bilden</span></Knopf> : undefined}>
@@ -216,7 +216,7 @@ function KnotenPanel(p: PanelProps & { k: K }) {
     return ids.map(id => ({ id, label: feldTitel(id) }));
   }, [k, e, d]);
   const platz = useMemo(() => platzhalterFuer(d.fallArt ?? 'mandat'), [d.fallArt]);
-  const fehlerVon = (feldId: string) => befunde.find(b => b.feld === feldId && b.stufe !== 'hinweis')?.text;
+  const fehlerVon = (feldId: string) => befunde.find(b => b.feld === feldId && (b.stufe !== 'hinweis' || b.warnung))?.text;
   // „Nur öffentliche Angaben“ (Entscheidung 22.10. nachts): dann sind Akte und Brain aus — die Maske zeigt sie gesperrt auf „nein“ (so läuft es auch im Motor).
   const nurOeffentlich = k.form === 'agent' && werte.nurOeffentlich === true;
   const gesperrt = (id: string) => nurOeffentlich && (id === 'akte' || id === 'brain');

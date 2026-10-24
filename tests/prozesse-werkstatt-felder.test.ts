@@ -425,3 +425,32 @@ describe('6 — „hat geantwortet (seit dem Start)“ und Filter je CRM-Abfrage
     expect(z).not.toContain('Ohne Schritt');
   });
 });
+
+// ── 7: Zuständig ohne Person — Befund schon beim Bauen ─────────────────────────────────────────────────────────────────────────────────────────────
+
+describe('7 — Rolle ohne Person: gelber Befund am Knoten (mit und ohne Fall), sperrt das Veröffentlichen nicht', () => {
+  const aufgabe = (wer: string) => schritt(90, 'Aufgabe anlegen', 1, { katalog: { id: 'aufgabe.anlegen', werte: { titel: 'Anrufen', wer, fristTage: 2 } } });
+  const ende = schritt(91, 'Ende', 2, { form: 'ende', ende: { ergebnis: 'erfolg' } });
+  const rolle = (bs: ReturnType<typeof definitionPruefen>) => bs.filter(b => b.knotenId === fk(90) && b.feld === 'wer' && b.warnung);
+  it('ohne Fall und ohne Eigner: „Zuständig im Fall“ → Befund mit Satz und Weg; nicht sperrend', () => {
+    const b = definitionPruefen(definition([aufgabe('rolle:zustaendig'), ende], { fallArt: 'keiner' }), {});
+    expect(rolle(b)).toHaveLength(1);
+    expect(rolle(b)[0]).toMatchObject({ stufe: 'hinweis', warnung: true });
+    expect(rolle(b)[0].text).toMatch(/ohne Fall nimmt der Lauf den Eigner; der Prozess hat noch keinen Eigner\. Im Steckbrief einen Eigner mit Konto wählen/);
+    expect(sperrtVeroeffentlichen(rolle(b))).toBe(false);
+  });
+  it('mit Fall (Lead) ohne Eigner: Befund „hat der Fall keine Zuständige …“; „Eigner des Prozesses“ ebenso', () => {
+    const z = rolle(definitionPruefen(definition([aufgabe('rolle:zustaendig'), ende], { fallArt: 'lead' }), {}));
+    expect(z[0].text).toMatch(/hat der Fall keine Zuständige/);
+    const e = rolle(definitionPruefen(definition([aufgabe('rolle:eigner'), ende], { fallArt: 'lead' }), {}));
+    expect(e[0].text).toMatch(/„Eigner des Prozesses“ — der Prozess hat noch keinen Eigner/);
+  });
+  it('Eigner mit Konto → kein Befund; Eigner ohne Konto → Befund „kein Konto“; eine feste Person → nie', () => {
+    const team = [{ id: 'konto-pia', aktiv: true, speicher: 'pia' }, { id: 't-ohne', aktiv: true }];
+    const mit = definitionPruefen(definition([aufgabe('rolle:zustaendig'), ende], { fallArt: 'keiner', eigner: 'konto-pia' }), { team, konten: ['pia'] });
+    expect(rolle(mit)).toHaveLength(0);
+    const ohne = definitionPruefen(definition([aufgabe('rolle:zustaendig'), ende], { fallArt: 'keiner', eigner: 't-ohne' }), { team, konten: ['pia'] });
+    expect(rolle(ohne)[0].text).toMatch(/kein Konto/);
+    expect(rolle(definitionPruefen(definition([aufgabe('konto-pia'), ende], { fallArt: 'keiner' }), {}))).toHaveLength(0);
+  });
+});

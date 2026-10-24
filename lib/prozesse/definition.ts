@@ -542,6 +542,7 @@ export const webhookBestand = (h: string): string => `prozesse-webhook--${h}`;
  *   hinweis  nur ein Rat (z. B. „Teilprozess bilden?“) — sperrt nichts
  */
 export type BefundStufe = 'fehler' | 'offen' | 'hinweis';
-export interface Befund { stufe: BefundStufe; text: string; knotenId?: string; feld?: string; /** Nur ein eingegebener Wert ist falsch — der Entwurf speichert trotzdem (24.10.). */ nurWert?: true }
+export interface Befund { stufe: BefundStufe; text: string; knotenId?: string; feld?: string; /** Nur ein eingegebener Wert ist falsch — der Entwurf speichert trotzdem (24.10.). */ nurWert?: true;
+  /** Ein Rat (`hinweis`), der am Knoten gelb steht — z. B. eine Rolle ohne Person (24.10.); sperrt nichts. */ warnung?: true }
 /** KI-Kategorien eines Bausteins (Typ-Durchreiche für die Schnittstelle). */
 export type { KiKategorie, ModelTier, Rechteklasse, SkillEreignis };

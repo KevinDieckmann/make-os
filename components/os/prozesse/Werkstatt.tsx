@@ -101,6 +101,8 @@ const gleich = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(
 const tagZeit = (iso: string) => { const t = new Date(iso); return Number.isFinite(t.getTime()) ? t.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' }) : iso; };
 
 type Speicher = { art: 'gespeichert' | 'ausstehend' | 'speichert' | 'fehler' | 'konflikt' | 'offline'; text?: string };
+/** Was am Knoten steht (Feinschliff 24.10.): ein Rat mit `warnung` (z. B. eine Rolle ohne Person) steht gelb wie „offen“ — er sperrt nichts. */
+const amKnoten = (x: Befund): 'fehler' | 'offen' | null => (x.stufe === 'fehler' ? 'fehler' : x.stufe === 'offen' || x.warnung ? 'offen' : null);
 
 export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschirm }: { prozessId: string; nurAnsehen: boolean; /** Steckbrief bzw. Version geändert — die Landkarte (Kachel, Brotkrumen) neu laden. */ onLandkarte?: () => void;
   /** Werkzeug-Muster (22.10.): der Pfeil ⤢ oben rechts in der Fläche — „Ganzer Bildschirm“ (außerhalb des Werkzeugmodus). */ onGanzerBildschirm?: () => void }) {
@@ -278,14 +280,14 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const raete = useMemo(() => (d ? hinweiseVon(d) : []), [d]);
   const befundJe = useMemo(() => {
     const m = new Map<string, 'fehler' | 'offen'>();
-    for (const b of befunde) if (b.knotenId && b.stufe !== 'hinweis' && m.get(b.knotenId) !== 'fehler') m.set(b.knotenId, b.stufe as 'fehler' | 'offen');
+    for (const b of befunde) { const s = amKnoten(b); if (b.knotenId && s && m.get(b.knotenId) !== 'fehler') m.set(b.knotenId, s); }
     return m;
   }, [befunde]);
   const mitSchloss = useMemo(() => new Set((d?.knoten ?? []).flatMap(k => (k.schloss ? [k.schloss.fuer] : []))), [d]);
   /** Punkt 6: die Sätze der Befunde je Knoten (beim Überfahren der Marke am Knoten). */
   const befundTexte = useMemo(() => {
     const m = new Map<string, { text: string; feld?: string; stufe: 'fehler' | 'offen' }[]>();
-    for (const b of befunde) if (b.knotenId && b.stufe !== 'hinweis') m.set(b.knotenId, [...(m.get(b.knotenId) ?? []), { text: b.text, stufe: b.stufe as 'fehler' | 'offen', ...(b.feld ? { feld: b.feld } : {}) }]);
+    for (const b of befunde) { const s = amKnoten(b); if (b.knotenId && s) m.set(b.knotenId, [...(m.get(b.knotenId) ?? []), { text: b.text, stufe: s, ...(b.feld ? { feld: b.feld } : {}) }]); }
     return m;
   }, [befunde]);
   /** Punkt 3: auf welchen Fäden mitten ein „+“ steht (dazwischen einfügen) — die Regel `zwischenGrund`; Kacheln zugeklappter Phasen nie. */

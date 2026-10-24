@@ -12,7 +12,7 @@ import {
   ABFRAGE_MIT_TAGEN, BEREICH_IDS, CRM_ABFRAGE_ARTEN, FALL_ART_IDS, FELD_KENNUNG, PROZESS_GRENZEN, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, ZETTEL_FARBEN,
   type Befund, type FallArt, type ProzessDefinition, type ProzessEintrag, type ProzessForm, type ProzessKnoten, type ProzessSchnittstelle,
 } from './definition';
-import { katalogEintrag, maskeSaeubern, platzhalterFuer, type AuswahlQuelle } from './baustein-katalog';
+import { katalogEintrag, maskeSaeubern, platzhalterFuer, ROLLE_EIGNER, ROLLE_ZUSTAENDIG, type AuswahlQuelle, type KatalogEintrag } from './baustein-katalog';
 import { agentAus, vertragAus, WARUM_MIN, type AgentKontext } from './agent-schritt';
 import { ausloeserAus, datumsFelderFuer, ereignisStartetProzess, FALL_FELDER, feldTitelVon, webhookFeldSchluessel } from './ausloeser';
 import { bedingungWertBefunde } from './feld-werte';
@@ -72,7 +72,7 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
   if (k.katalog && !e) raus.push(b('fehler', `${titel}: diesen Baustein gibt es nicht.`, k.id));
   if (e && e.form !== (k.form ?? 'schritt')) raus.push(b('fehler', `${titel}: der Baustein „${e.name}“ passt nicht zur Form.`, k.id));
   if (e?.fest?.art && kx.vorschlagArten && !kx.vorschlagArten.includes(e.fest.art)) raus.push(b('fehler', `${titel}: Vorschlags-Art „${e.fest.art}“ gibt es nicht.`, k.id));
-  if (e && !e.feld) raus.push(...maskeSaeubern(e, k.katalog?.werte, { auswahl: kx.auswahl, platzhalter: platzhalterFuer(fall, webhookFelderVon(d)) }, k.id).befunde);
+  if (e && !e.feld) raus.push(...maskeSaeubern(e, k.katalog?.werte, { auswahl: kx.auswahl, platzhalter: platzhalterFuer(fall, webhookFelderVon(d)) }, k.id).befunde, ...rollenBefunde(k, e, d, kx, titel));
   // Die Formen mit eigenem Feld
   switch (k.form) {
     case 'ausloeser':
@@ -178,6 +178,35 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
     if (!ab || ab.form === 'ausloeser' || ab.id === k.id || reihe.indexOf(ab.id) < 0 || reihe.indexOf(ab.id) > reihe.indexOf(k.id)) raus.push(b('offen', `${titel}: ab einem früheren Schritt dieses Prozesses.`, k.id, 'ab'));
     if (!ganz(k.erneut.hoechstens, 1, PROZESS_GRENZEN.erneutHoechstens)) raus.push(b('offen', `${titel}: höchstens 1 bis ${PROZESS_GRENZEN.erneutHoechstens}-mal.`, k.id, 'hoechstens'));
   } else if (e?.feld === 'erneut') raus.push(b('offen', `${titel}: ab welchem Schritt?`, k.id));
+  return raus;
+}
+
+/** Fall-Arten, deren Fall eine zuständige Person trägt (lib/prozesse/lauf-server.ts `fallInfo`: Besitzer des Leads/Deals, Zuständige des Mandats bzw. der Firma). */
+const FALL_MIT_ZUSTAENDIG: readonly FallArt[] = ['lead', 'deal', 'mandat', 'firma'];
+/**
+ * Rollen ohne Person (Feinschliff 24.10., Bau-Test: „Zuständig im Fall“ ohne Eigner fiel erst im Probelauf auf — „hält an: die Rolle … ist keiner Person mit Konto
+ * zugeordnet“). Schon beim Bauen ein Befund am Feld, gelb am Knoten (`hinweis` mit `warnung` — er sperrt das Veröffentlichen nicht: Vorlagen kommen ohne Personen
+ * und gehen so in den Probelauf; aktiv wird ohne Eigner ohnehin nichts, `aktivBefunde`), mit Satz und Weg: „Eigner des Prozesses“ braucht einen Eigner mit Konto;
+ * „Zuständig im Fall“ nimmt ohne Fall (bzw. bei einem Fall ohne Zuständige) den Eigner. Ohne Team/Konten im Kontext zählt nur, ob es einen Eigner gibt.
+ */
+function rollenBefunde(k: K, e: KatalogEintrag, d: ProzessDefinition, kx: PruefKontext, titel: string): Befund[] {
+  const eigner = d.eigner ? (kx.team && kx.konten ? kx.team.find(t => t.id === d.eigner && t.aktiv) : { id: d.eigner, aktiv: true, speicher: '?' }) : undefined;
+  const eignerMitKonto = !!eigner && (!kx.konten || (!!eigner.speicher && (eigner.speicher === '?' || kx.konten.includes(eigner.speicher))));
+  if (eignerMitKonto) return [];
+  const warum = d.eigner ? 'der Eigner hat kein Konto (bzw. ist nicht mehr im Team)' : 'der Prozess hat noch keinen Eigner';
+  const weg = 'Im Steckbrief einen Eigner mit Konto wählen — oder hier eine Person.';
+  const fall = d.fallArt ?? 'mandat';
+  const raus: Befund[] = [];
+  for (const f of e.maske) {
+    if (f.quelle !== 'team-person') continue;
+    const v = k.katalog?.werte?.[f.id];
+    if (v === ROLLE_EIGNER) raus.push({ ...b('hinweis', `${titel} › ${f.label}: „Eigner des Prozesses“ — ${warum}, der Schritt hielte an. ${weg}`, k.id, f.id), warnung: true });
+    else if (v === ROLLE_ZUSTAENDIG) {
+      raus.push({ ...b('hinweis', FALL_MIT_ZUSTAENDIG.includes(fall)
+        ? `${titel} › ${f.label}: „Zuständig im Fall“ — hat der Fall keine Zuständige (z. B. im Probelauf mit dem Beispiel), nimmt der Lauf den Eigner; ${warum}. ${weg}`
+        : `${titel} › ${f.label}: „Zuständig im Fall“ — ${fall === 'keiner' ? 'ohne Fall' : 'dieser Fall trägt keine Zuständige'} nimmt der Lauf den Eigner; ${warum}. ${weg}`, k.id, f.id), warnung: true });
+    }
+  }
   return raus;
 }
 
