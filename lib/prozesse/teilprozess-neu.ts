@@ -57,7 +57,7 @@ export const PASST_NICHT_HINWEIS = 'passt nicht zum Fall';
  * Die Teilprozesse, die eine Schleife anbietet (rein): nur passende (`teilFallPasst`); ein schon gewählter, der nicht passt, bleibt sichtbar mit „passt nicht zum
  * Fall“ (nie still entfernt). Ohne bekannten Fall der Einträge: alle wie bisher.
  */
-export function teilprozessOptionen<O extends { id: string; label: string; hinweis?: string; fall?: FallArt }>(optionen: readonly O[], element: FallArt | null, gewaehlt?: string | null): O[] {
+export function teilprozessOptionen<O extends { id: string; label: string; hinweis?: string; fall?: FallArt }>(optionen: readonly O[], element: FallArt | null, gewaehlt?: string | null): (O & { hinweis?: string })[] {
   if (!element) return [...optionen];
   return optionen.flatMap(o => (teilFallPasst(element, o.fall) ? [o] : o.id === gewaehlt ? [{ ...o, hinweis: PASST_NICHT_HINWEIS }] : []));
 }
