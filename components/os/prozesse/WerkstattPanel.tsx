@@ -418,7 +418,7 @@ function KantenPanel(p: PanelProps & { k: KanteLage }) {
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <Ueberschrift>Faden</Ueberschrift>
-      <p style={klein}>„{von?.titel ?? ''}“ → „{nach?.titel ?? ''}“ · Ausgang {ausgangName(f, p.k.ausgang)}{p.k.zurueck ? ' · zurück (Schleife)' : ''}</p>
+      <p style={klein}>„{von?.titel ?? ''}“ → „{nach?.titel ?? ''}“ · Ausgang {ausgangName(f, p.k.ausgang)}{p.k.rueckwaerts ? ' · zurück (Schleife)' : ''}</p>
       {von && !p.nurLesen && (
         <Feldzeile label="Beschriftung">
           <TextFeld label="Beschriftung" wert={(p.k.ausgang === 'weiter' ? von.pfeilText?.weiter : von.pfeilText?.[p.k.ausgang]) ?? ''} platz={ausgangName(f, p.k.ausgang)} onWert={t => p.onPfeilText(von.id, p.k.ausgang, t || null)} />

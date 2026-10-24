@@ -16,7 +16,7 @@
 // vorher führte (die Kette bleibt ganz). Ohne Bau-Aktion bleibt alles bit-gleich.
 // Tests: tests/prozesse-werkstatt-aktionen.test.ts, tests/prozesse-werkstatt-faeden.test.ts (Eigenschaft über alle Vorlagen, Bau-Test als Regression).
 
-import type { Befund, KnotenLage, NotizZettel, ProzessForm, ProzessKnoten, Zweige } from './definition';
+import { PROZESS_TEXT, type Befund, type KnotenLage, type NotizZettel, type ProzessForm, type ProzessKnoten, type Zweige } from './definition';
 import { alleSchritte, ausgangsZiele, flussPruefen, kinder, phasen, schritteDer, seitenZiele, wurzel, type Ausgang } from './fluss';
 import { bahnVon } from './werkstatt-lage';
 
@@ -855,6 +855,21 @@ export function kopieren(f: Fassung, ids: readonly string[]): Ablage | null {
   return sauber.length || zettel.length ? { knoten: sauber, zettel } : null;
 }
 /**
+ * Der Name einer Kopie (rein; Runde 3, Bau-Test 2): steht der Name schon im Prozess, heißt die Kopie „<Name> (Kopie)“, dann „(Kopie 2)“ … — ein „(Kopie …)“ am
+ * Original wird dabei nicht verdoppelt. Ein freier Name (Einfügen in einen anderen Prozess) bleibt. `belegt` = die Namen, die es schon gibt (klein geschrieben).
+ */
+export function kopieTitel(titel: string, belegt: ReadonlySet<string>): string {
+  const t = titel.trim();
+  if (!belegt.has(t.toLowerCase())) return t;
+  const basis = t.replace(/\s*\(Kopie(?: \d+)?\)$/, '').trim() || t;
+  for (let n = 1; ; n++) {
+    const zusatz = n === 1 ? ' (Kopie)' : ` (Kopie ${n})`;
+    const name = `${basis.length + zusatz.length > PROZESS_TEXT.titel ? `${basis.slice(0, PROZESS_TEXT.titel - zusatz.length - 1).trimEnd()}…` : basis}${zusatz}`;
+    if (!belegt.has(name.toLowerCase())) return name;
+  }
+}
+
+/**
  * Einfügen (rein): neue Kennungen, Zweige und festgelegte Ausgänge auf die neuen Kennungen umgeschrieben (Kanten zwischen den Kopien kommen mit). Werkstatt-Fäden
  * (24.10., Bau-Test): ⌘V verdrahtet NIE um — die Kopien stehen lose in der Phase (was aus ihnen hinausführte, endet), kein bestehender Ausgang ändert sich. Nur wenn
  * `nach` (der eine gewählte Knoten) einen FREIEN Hauptausgang hat (dort endet der Lauf), hängen sie dort an. `lagen` = Lage je kopiertem Knoten (alte Kennung → Lage,
@@ -871,8 +886,12 @@ export function einfuegen(f: Fassung, a: Ablage, o: { phaseId: string; nach?: st
   const q = q0 && istSchloss(q0) ? f.knoten.find(k => k.id === q0.schloss!.fuer) : q0;
   const frei = !!q && q.form !== 'ende' && !!phaseVon(f, q.id) && hauptZiel(f.knoten, q.id) === null;
   const elternId = frei ? q!.elternId ?? o.phaseId : o.phaseId;
+  // Runde 3: eine Kopie heißt „<Name> (Kopie)“, wenn es den Namen hier schon gibt (nie zwei gleiche Namen durch ⌘V).
+  const belegt = new Set(f.knoten.map(k => k.titel.trim().toLowerCase()));
   const neu = a.knoten.map(k => {
-    const x: K = { ...k, id: neuId.get(k.id)!, elternId };
+    const name = kopieTitel(k.titel, belegt);
+    belegt.add(name.toLowerCase());
+    const x: K = { ...k, id: neuId.get(k.id)!, elternId, titel: name };
     if (k.zweige) { const z: Zweige = {}; for (const art of ZWEIGE) if (k.zweige[art]) z[art] = um(k.zweige[art]); x.zweige = z; }
     if (k.danach) { if ('ende' in k.danach) x.danach = { ende: true }; else if (neuId.has(k.danach.ziel)) x.danach = { ziel: neuId.get(k.danach.ziel)! }; else delete x.danach; }
     if (k.erneut) x.erneut = { ...k.erneut, ab: um(k.erneut.ab)! };

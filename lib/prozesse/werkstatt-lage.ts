@@ -254,7 +254,11 @@ export interface KnotenLageW extends Box {
 export const zuKennung = (phaseId: string) => `zu:${phaseId}`;
 export interface BahnLage extends Box { schluessel: BahnSchluessel; titel: string }
 export interface RahmenLageW extends Box { id: string; nr: number; titel: string }
-export interface KanteLage extends Kante { id: string; punkte: Pt[]; zurueck: boolean; text?: string; textOrt?: Pt }
+/**
+ * Ein Faden mit Weg. `zurueck` = er läuft als Schleife außen herum (das Ziel liegt links — Geometrie); `rueckwaerts` = er führt wirklich zu einem FRÜHEREN Schritt im
+ * Ablauf (Phase, dann Rang). Nur dann heißt er „zurück zu …“ (Runde 3, Bau-Test 2: eine ⌘V-Kopie links unten hieß „zurück zu …“, obwohl sie danach kommt).
+ */
+export interface KanteLage extends Kante { id: string; punkte: Pt[]; zurueck: boolean; rueckwaerts?: boolean; text?: string; textOrt?: Pt }
 export interface WerkstattLage {
   knoten: Map<string, KnotenLageW>; bahnen: BahnLage[]; rahmen: RahmenLageW[]; kanten: KanteLage[];
   /** Alles (Rahmen, Bahnen, Zettel). */
@@ -421,6 +425,8 @@ export function fadenWeg(von: Pt, richtung: Anschluss['richtung'], nach: Pt, unt
 /** Alle Kanten mit Weg (rein). Kanten ins Leere (`nach: null` — der Lauf endet) haben keinen Faden; ein „abgelaufen“ ohne eigenes Ziel am Warten auch nicht. */
 export function kantenWege(d: Pick<ProzessDefinition, 'knoten'>, knoten: ReadonlyMap<string, KnotenLageW>, kanten: readonly Kante[] = kantenVon(d), zuVon: ReadonlyMap<string, string> = new Map()): KanteLage[] {
   const nachId = new Map(d.knoten.map(k => [k.id, k]));
+  // Die Reihenfolge im Ablauf (Phase, dann Rang) — „zurück zu …“ nur, wenn das Ziel davor liegt.
+  const reihe = new Map(phasen(d).flatMap(p => schritteDer(d, p.id)).map((k, i) => [k.id, i]));
   const raus: KanteLage[] = [];
   const gesehen = new Set<string>();
   for (const k0 of kanten) {
@@ -445,13 +451,15 @@ export function kantenWege(d: Pick<ProzessDefinition, 'knoten'>, knoten: Readonl
     const f = kv?.form ?? 'schritt';
     const eigen = k.ausgang === 'weiter' ? kv?.pfeilText?.weiter : kv?.pfeilText?.[k.ausgang];
     const zielTitel = nachId.get(k.nach!)?.titel ?? b.zu?.titel ?? '';
-    const zeigen = eigen ?? (w.zurueck ? `zurück zu „${zielTitel}“` : k.ausgang === 'weiter' ? undefined : ausgangName(f, k.ausgang));
+    const iVon = reihe.get(k0.von), iNach = reihe.get(k0.nach);
+    const rueckwaerts = iVon !== undefined && iNach !== undefined && iNach <= iVon;
+    const zeigen = eigen ?? (rueckwaerts ? `zurück zu „${zielTitel}“` : k.ausgang === 'weiter' ? undefined : ausgangName(f, k.ausgang));
     const textOrt: Pt | undefined = zeigen
       ? w.zurueck ? [r1((w.punkte[3][0] + w.punkte[4][0]) / 2), w.punkte[3][1] + 14]
         // unten (Befund 4): rechts neben dem „+“ des Ausgangs, auf dem waagerechten Stück des Fadens — über dem Namen der Raute, nie darauf.
         : aus.richtung === 'unten' ? [aus.abs[0] + 22, aus.abs[1] + 14] : aus.richtung === 'oben' ? [aus.abs[0] + 8, aus.abs[1] - 8] : [aus.abs[0] + 10, aus.abs[1] - 8]
       : undefined;
-    raus.push({ ...k, id: schluessel, punkte: w.punkte, zurueck: w.zurueck, ...(zeigen ? { text: zeigen } : {}), ...(textOrt ? { textOrt } : {}) });
+    raus.push({ ...k, id: schluessel, punkte: w.punkte, zurueck: w.zurueck, ...(rueckwaerts ? { rueckwaerts } : {}), ...(zeigen ? { text: zeigen } : {}), ...(textOrt ? { textOrt } : {}) });
   }
   return raus;
 }

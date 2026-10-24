@@ -4,7 +4,8 @@
 // (3) kein `<label>` um Pillen, Chips, Schalter oder mehrere Knöpfe im Prozess-Bereich (Klick auf die Überschrift drückte den ersten Chip);
 // (4) die Ansicht nimmt die Treffer von „Schritt testen“ nur mit Name, Kennung und einem Link in MAKE OS (Server: tests/prozesse-werkstatt-runde3-server.test.ts);
 // (5) beim Öffnen liegt nichts unter dem Einstellungs-Panel, wenn der Prozess so groß wie bei „Alles zeigen“ ins freie Feld passt;
-// (6) das Ausgang-Menü nennt je Option das aufgelöste Ziel, implizit „(folgt im Ablauf)“, nie zweimal denselben Namen — über alle Vorlagen.
+// (6) das Ausgang-Menü nennt je Option das aufgelöste Ziel, implizit „(folgt im Ablauf)“, nie zweimal denselben Namen — über alle Vorlagen;
+// (7) ⌘V: die Kopie heißt „<Name> (Kopie)“; „zurück zu …“ nur, wenn der Faden wirklich zu einem früheren Schritt im Ablauf führt.
 // Erfundene Werte, kein Netz, kein Modell.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -20,7 +21,9 @@ import type { ProzessDefinition } from '@/lib/prozesse/definition';
 import { BAUSTEIN_KATALOG } from '@/lib/prozesse/baustein-katalog';
 import { probelaufAus } from '@/lib/prozesse/werkstatt-hinweise';
 import { startKamera, einpassKamera, WERKSTATT_LESBAR, WERKSTATT_UEBERSICHT_MIN, ausgaengeVon } from '@/lib/prozesse/werkstatt-lage';
-import { ausgangsWahl, mehrfachZiele, zielNamen, anlegen, AUSGANG_NAECHSTER, hauptZiel } from '@/lib/prozesse/werkstatt-aktionen';
+import { ausgangsWahl, mehrfachZiele, zielNamen, anlegen, AUSGANG_NAECHSTER, hauptZiel, kopieren, einfuegen, kopieTitel, verbinden } from '@/lib/prozesse/werkstatt-aktionen';
+import { werkstattLage } from '@/lib/prozesse/werkstatt-lage';
+import { phasen } from '@/lib/prozesse/fluss';
 import { ALLE_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';
 import { MUSTER_PAKETE } from '@/lib/fulfillment/muster';
 import { paketAlsDefinition } from '@/lib/prozesse/fulfillment-modus';
@@ -301,5 +304,47 @@ describe('(6) Ausgang-Menü: aufgelöstes Ziel, „(folgt im Ablauf)“, keine d
     expect(w.optionen.map(o => o.label)).toEqual(['„Prüfen“ (folgt im Ablauf · Bahn System)', '„Prüfen“', '„Prüfen“ · 2', '— Lauf endet —']);
     expect(new Set(m.map(x => x.label)).size).toBe(m.length);
     expect(lies('components/os/prozesse/WerkstattMehrfach.tsx')).toContain('mehrfachZiele(d, nach)');
+  });
+});
+
+describe('(7) ⌘V-Kopie: Name und Beschriftung des Fadens', () => {
+  it('kopieTitel: „(Kopie)“, dann „(Kopie 2)“ — nie verdoppelt, freie Namen bleiben, Höchstlänge gilt', () => {
+    expect(kopieTitel('Warten (Dauer)', new Set(['warten (dauer)']))).toBe('Warten (Dauer) (Kopie)');
+    expect(kopieTitel('Warten (Dauer)', new Set(['warten (dauer)', 'warten (dauer) (kopie)']))).toBe('Warten (Dauer) (Kopie 2)');
+    expect(kopieTitel('Warten (Dauer) (Kopie)', new Set(['warten (dauer)', 'warten (dauer) (kopie)']))).toBe('Warten (Dauer) (Kopie 2)');
+    expect(kopieTitel('Nur hier', new Set(['anderes']))).toBe('Nur hier');
+    const lang = 'x'.repeat(120);
+    expect(kopieTitel(lang, new Set([lang])).length).toBeLessThanOrEqual(120);
+  });
+  const bau = () => {
+    const e = neuerProzess({ id: 'pz-00000000-0000-4000-9300-000000000008', titel: 'Lead-Eingang (Probe)', bereich: 'sales', fallArt: 'lead', von: 'test', jetzt: '2026-10-24T10:00:00Z', kennung });
+    const start = e.entwurf.knoten.find(k => k.form === 'ausloeser')!;
+    const warten = neuerKnoten(katalogEintrag('warten.dauer')!, kennung());
+    const raute = neuerKnoten(katalogEintrag('entscheidung.regel')!, kennung(), 'hat geantwortet?');
+    let f = gut(anlegen({ knoten: e.entwurf.knoten }, warten, { nach: start.id, ausgang: 'weiter' }));
+    f = gut(anlegen(f, raute, { nach: warten.id, ausgang: 'weiter' }));
+    return { f, warten, raute };
+  };
+  it('Bau-Test: „Warten“ kopiert, an das freie „nein“ der Raute — die Kopie heißt „Warten (Dauer) (Kopie)“, ihr Faden heißt nicht „zurück zu …“', () => {
+    const { f, warten, raute } = bau();
+    const ablage = kopieren(f, [warten.id])!;
+    // Lose unten links eingefügt (wie im Bild: links unter der Raute), dann das „nein“ dorthin gezogen.
+    let g = gut(einfuegen(f, ablage, { phaseId: phasen(f)[0].id, kennung, lagen: new Map([[warten.id, { x: 40, y: 400 }]]) }));
+    const kopie = g.knoten.find(k => !f.knoten.some(x => x.id === k.id))!;
+    expect(kopie.titel).toBe(`${warten.titel} (Kopie)`);
+    g = gut(verbinden(g, raute.id, 'nein', kopie.id));
+    const l = werkstattLage({ ...g, id: 'pz-x', titel: 'x' } as unknown as ProzessDefinition);
+    const faden = l.kanten.find(k => k.von === raute.id && k.nach === kopie.id)!;
+    expect(faden.rueckwaerts ?? false).toBe(false);
+    expect(faden.text ?? '').not.toMatch(/zurück zu/);
+  });
+  it('ein Faden zu einem FRÜHEREN Schritt heißt weiter „zurück zu …“', () => {
+    const { f, warten, raute } = bau();
+    const g = gut(verbinden(f, raute.id, 'nein', warten.id));
+    const l = werkstattLage({ ...g, id: 'pz-x', titel: 'x' } as unknown as ProzessDefinition);
+    const faden = l.kanten.find(k => k.von === raute.id && k.nach === warten.id)!;
+    expect(faden.rueckwaerts).toBe(true);
+    expect(faden.text).toBe(`zurück zu „${warten.titel}“`);
+    expect(lies('components/os/prozesse/WerkstattPanel.tsx')).toContain("p.k.rueckwaerts ? ' · zurück (Schleife)'");
   });
 });
