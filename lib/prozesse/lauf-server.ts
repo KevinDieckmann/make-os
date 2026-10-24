@@ -642,6 +642,9 @@ async function wirkungAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Aktion, k
 // ══ CRM-Abfrage und Schleife (22.10. spät, N1) ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** Was die Abfrage liest — über die vorhandenen Lesewege (Kartei verarbeitbar: Art. 18 heraus; Leads wie überall). */
+/** Wie ein Eintrag einer Liste heißt (Einzahl, Mehrzahl) — „Schritt testen“ und Probelauf der Schleife. */
+const FALL_WORT: Readonly<Record<string, [string, string]>> = { lead: ['Lead', 'Leads'], deal: ['Deal', 'Deals'], firma: ['Firma', 'Firmen'], mandat: ['Mandat', 'Mandate'], event: ['Event', 'Events'], kampagne: ['Kampagne', 'Kampagnen'] };
+
 async function abfrageDaten(l: ProzessLauf, kx: MotorKontext): Promise<import('./kundengewinnung/abfrage').AbfrageDaten | null> {
   const crm = await crmVon(kx);
   if (!crm) return null;
@@ -2102,18 +2105,21 @@ export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'ver
     const felder = { ...r.lauf.daten, ...u.daten };
     schritte = schritte.map(x => { const b = beobachtet.get(x.knotenId); return b ? { ...x, ausgabe: probeAusgabe(b, def, { felder, feldName: feldTitelVon }) } : x; });
     // Feinschliff 24.10. (Bau-Test A2: „Test zeigt deals-ohne-schritt ohne Treffer“): eine CRM-Abfrage liest im Test wirklich (nur lesen, dieselben Leser wie der
-    // Lauf) und nennt die Zahl der Treffer — keine Namen, nichts geschrieben.
+    // Lauf) und nennt die Zahl der Treffer. Bau-Test 2 (Runde 3): dazu die ersten Treffer mit Namen und Link (`abfrageTreffer` — nur Kennung + Name, aus der
+    // verarbeitbaren Kartei: eingeschränkte Personen nach Art. 18 fehlen; nur wer die Werkstatt öffnen darf, sieht sie). Im JSON nur die Kennungen. Nichts geschrieben.
     if (schritte.some(x => x.ausgabe && def.knoten.find(k => k.id === x.knotenId)?.abfrage)) {
       const daten = await abfrageDaten(lauf, kx).catch(() => null);
       if (daten) {
-        const [{ abfrageFaelle }, { ABFRAGE_FALL }] = await Promise.all([import('./kundengewinnung/abfrage'), import('./teilprozess-neu')]);
-        const WORT: Readonly<Record<string, [string, string]>> = { lead: ['Lead', 'Leads'], deal: ['Deal', 'Deals'], firma: ['Firma', 'Firmen'], mandat: ['Mandat', 'Mandate'] };
+        const [{ abfrageFaelle, abfrageTreffer }, { ABFRAGE_FALL }] = await Promise.all([import('./kundengewinnung/abfrage'), import('./teilprozess-neu')]);
         schritte = schritte.map(x => {
           const q = def.knoten.find(k => k.id === x.knotenId)?.abfrage;
           if (!q || !x.ausgabe) return x;
-          const n = abfrageFaelle(q, daten).length;
-          const w = WORT[ABFRAGE_FALL[q.art]] ?? ['Fall', 'Fälle'];
-          return { ...x, ausgabe: { zeilen: [...x.ausgabe.zeilen, { feld: 'Treffer jetzt (nur gelesen)', wert: n ? `${n} ${n === 1 ? w[0] : w[1]}` : `keine — zurzeit passt kein ${w[0]}` }], json: { ...x.ausgabe.json, treffer: n } } };
+          const alle = abfrageFaelle(q, daten);
+          const n = alle.length;
+          const w = FALL_WORT[ABFRAGE_FALL[q.art]] ?? ['Fall', 'Fälle'];
+          const treffer = abfrageTreffer(alle, daten);
+          const zeilen = [...x.ausgabe.zeilen, { feld: 'Treffer jetzt (nur gelesen)', wert: n ? `${n} ${n === 1 ? w[0] : w[1]}${n > treffer.length && treffer.length ? ` — die ersten ${treffer.length}:` : ':'}` : `keine — zurzeit passt kein ${w[0]}` }];
+          return { ...x, ausgabe: { zeilen, json: { ...x.ausgabe.json, treffer: n, ...(treffer.length ? { erste: treffer.map(t => t.id).join(', ') } : {}) }, ...(treffer.length ? { treffer } : {}) } };
         });
       }
     }

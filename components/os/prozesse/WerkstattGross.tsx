@@ -10,6 +10,7 @@
 //     Schloss bleibt sichtbar; ein Modell fragt auch der Test nicht.
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { Lock, Play, ListChecks, Pencil, Braces, Sparkles } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, LEUCHT, RAND } from '@/lib/make-one/design';
 import { Knopf, Hinweis, Feldzeile, feld, SymbolKnopf } from '../ui';
@@ -105,6 +106,12 @@ export function WerkstattGross({ k, d, panel, werte, testdaten, namen, mitSchlos
                     {x.ausgabe && (json
                       ? <pre className="pw-json" aria-label="Ausgabe als JSON (nur Kennungen)">{JSON.stringify(x.ausgabe.json, null, 2)}</pre>
                       : <AusgabeTabelle zeilen={x.ausgabe.zeilen} />)}
+                    {/* Runde 3: an einer CRM-Abfrage die ersten Treffer — Name als Link, sonst nichts. */}
+                    {x.ausgabe?.treffer && !json && (
+                      <ul aria-label="Die ersten Treffer" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
+                        {x.ausgabe.treffer.map(t => <li key={t.id}><Link href={t.href} style={{ color: C.aktiv, fontSize: TYP.bedien, overflowWrap: 'anywhere' }}>{t.name} ›</Link></li>)}
+                      </ul>
+                    )}
                   </div>
                 );
               })}

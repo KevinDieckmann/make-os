@@ -1,7 +1,8 @@
 // ─── Prozesse · Werkstatt — Feinschliff Runde 3 (24.10., Befunde aus dem zweiten Bau-Test im Demo) ─────────────────────────────────────────────────────────
 // Je Befund ein Wächter: (1) Mehrfach-Dialog mit derselben Wertauswahl wie das Panel (Kennung statt Name) und eine Meldung je Fall, die genau sagt, was fehlt;
 // (2) die Suche der Bausteinauswahl findet jeden Baustein über Namen/Teilwort und die Mehrfach-Entscheidung über „mehrfach“, „Fälle“, „verzweig“;
-// (3) kein `<label>` um Pillen, Chips, Schalter oder mehrere Knöpfe im Prozess-Bereich (Klick auf die Überschrift drückte den ersten Chip).
+// (3) kein `<label>` um Pillen, Chips, Schalter oder mehrere Knöpfe im Prozess-Bereich (Klick auf die Überschrift drückte den ersten Chip);
+// (4) die Ansicht nimmt die Treffer von „Schritt testen“ nur mit Name, Kennung und einem Link in MAKE OS (Server: tests/prozesse-werkstatt-runde3-server.test.ts).
 // Erfundene Werte, kein Netz, kein Modell.
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -15,6 +16,7 @@ import { starten, voran, probeZeilen } from '@/lib/prozesse/lauf-regeln';
 import { leereLaeufe } from '@/lib/prozesse/lauf-typen';
 import type { ProzessDefinition } from '@/lib/prozesse/definition';
 import { BAUSTEIN_KATALOG } from '@/lib/prozesse/baustein-katalog';
+import { probelaufAus } from '@/lib/prozesse/werkstatt-hinweise';
 import { BAUSTEIN_STICHWOERTER, formauswahl, formauswahlGruppen, sonderAuswahl, SONDER_AUSWAHL } from '@/lib/prozesse/werkstatt-maske';
 
 let n = 0;
@@ -174,5 +176,24 @@ describe('(3) Überschriften über Chips sind keine <label> (Klick auf die Über
     // Die Feldzeile als Gruppe: role="group" + aria-labelledby auf die Beschriftung (kein <label>).
     const ui = lies('components/os/ui/felder.tsx');
     expect(ui).toContain('<div role="group" aria-labelledby={`${id}-titel`}');
+  });
+});
+
+describe('(4) Schritt testen: Treffer in der Ansicht', () => {
+  it('nur Name, Kennung, Link innerhalb von /os/ — höchstens 5; fremde Links und weitere Felder fallen weg', () => {
+    const treffer = [
+      { art: 'deal', id: 'ch-1', name: 'Deal eins', href: '/os/markttraktion?s=deals&a=akte&k=ch-1', email: 'x@example.invalid' },
+      { art: 'deal', id: 'ch-2', name: 'Fremd', href: 'https://example.invalid/' },
+      ...[3, 4, 5, 6, 7].map(i => ({ art: 'deal', id: `ch-${i}`, name: `Deal ${i}`, href: `/os/markttraktion?k=ch-${i}` })),
+    ];
+    const a = probelaufAus(200, { schritte: [{ knotenId: 'fk-1', status: 'wuerde', text: 'würde im CRM abfragen', ausgabe: { zeilen: [], json: { treffer: 7 }, treffer } }] });
+    if (a.art !== 'ergebnis') throw new Error('kein Ergebnis');
+    const t = a.ergebnis.schritte[0].ausgabe!.treffer!;
+    expect(t.map(x => x.id)).toEqual(['ch-1', 'ch-3', 'ch-4', 'ch-5', 'ch-6']);
+    expect(Object.keys(t[0]).sort()).toEqual(['href', 'id', 'name']);
+    // Die Ansicht zeigt sie als Links (nur in der Tabellen-Ansicht, nie im JSON).
+    const g = lies('components/os/prozesse/WerkstattGross.tsx');
+    expect(g).toContain('x.ausgabe?.treffer && !json');
+    expect(g).toContain('<Link href={t.href}');
   });
 });

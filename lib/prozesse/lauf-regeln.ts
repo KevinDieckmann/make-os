@@ -1395,8 +1395,11 @@ export function probeZeilen(l: ProzessLauf, def: ProzessDefinition): { schritte:
 
 /** Eine Zeile der Ausgabe: Feld und Wert (Text für Menschen — Inhalte nur aus Beispiel bzw. live mit den Rechten der Person). */
 export interface AusgabeZeile { feld: string; wert: string }
-/** Die Ausgabe eines Schritts: Tabelle für Menschen, JSON nur mit Kennungen, Arten und Zahlen (nie Namen, Adressen, Texte). */
-export interface ProbeAusgabe { zeilen: AusgabeZeile[]; json: Record<string, string | number | boolean | null> }
+/**
+ * Die Ausgabe eines Schritts: Tabelle für Menschen, JSON nur mit Kennungen, Arten und Zahlen (nie Namen, Adressen, Texte). `treffer` (Bau-Test 2, 24.10.): an einer
+ * CRM-Abfrage die ersten Treffer zum Ansehen — nur Kennung, Name und Link (lib/prozesse/kundengewinnung/abfrage.ts `abfrageTreffer`), nie im JSON.
+ */
+export interface ProbeAusgabe { zeilen: AusgabeZeile[]; json: Record<string, string | number | boolean | null>; treffer?: { art: string; id: string; name: string; href: string }[] }
 
 const zeit = (iso: string | undefined): string => {
   if (!iso) return '';

@@ -44,8 +44,10 @@ export function hinweiseVon(d: { knoten: K[] }): Rat[] {
 export const PROBELAUF_PFAD = '/api/prozesse/probelauf';
 export type ProbeStatus = 'wuerde' | 'uebersprungen' | 'wartet' | 'freigabe' | 'fehler';
 export const PROBE_STATUS = ['wuerde', 'uebersprungen', 'wartet', 'freigabe', 'fehler'] as const satisfies readonly ProbeStatus[];
-/** Was ein Schritt täte (Werkstatt bau-fertig, Punkt 10): Tabelle für Menschen, JSON nur mit Kennungen. */
-export interface ProbeAusgabeAnsicht { zeilen: { feld: string; wert: string }[]; json: Record<string, string | number | boolean | null> }
+/** Was ein Schritt täte (Werkstatt bau-fertig, Punkt 10): Tabelle für Menschen, JSON nur mit Kennungen; an einer CRM-Abfrage die ersten Treffer (Name + Link). */
+export interface ProbeAusgabeAnsicht { zeilen: { feld: string; wert: string }[]; json: Record<string, string | number | boolean | null>; treffer?: { id: string; name: string; href: string }[] }
+/** Höchstens so viele Treffer nimmt die Ansicht an (der Server liefert ≤ 5). */
+const TREFFER_ANSICHT_MAX = 5;
 export interface ProbeSchritt { knotenId: string; status: ProbeStatus; text: string; kostenCent?: number; ausgabe?: ProbeAusgabeAnsicht }
 export interface ProbeErgebnis { schritte: ProbeSchritt[]; kostenSchaetzungCent: number; /** Der Schritt von „bis hier“ bzw. „nur diesen“ wurde auf dem Weg nicht erreicht. */ hinweis?: 'bis-nicht-erreicht' | 'nur-nicht-erreichbar' }
 export type ProbeQuelle = 'entwurf' | 'version';
@@ -65,7 +67,12 @@ const ausgabeAus = (v: unknown): ProbeAusgabeAnsicht | undefined => {
   const zeilen = o.zeilen.flatMap((z: unknown) => { const x = z && typeof z === 'object' ? z as Record<string, unknown> : null; return x && typeof x.feld === 'string' && typeof x.wert === 'string' ? [{ feld: x.feld, wert: x.wert }] : []; });
   const json: ProbeAusgabeAnsicht['json'] = {};
   for (const [k, w] of Object.entries(o.json && typeof o.json === 'object' ? o.json as Record<string, unknown> : {})) if (w === null || ['string', 'number', 'boolean'].includes(typeof w)) json[k] = w as string | number | boolean | null;
-  return { zeilen, json };
+  // Treffer nur mit Name, Kennung und einem Link innerhalb von MAKE OS (/os/…).
+  const treffer = (Array.isArray(o.treffer) ? o.treffer : []).flatMap((t: unknown) => {
+    const x = t && typeof t === 'object' ? t as Record<string, unknown> : null;
+    return x && typeof x.id === 'string' && typeof x.name === 'string' && typeof x.href === 'string' && x.href.startsWith('/os/') ? [{ id: x.id, name: x.name, href: x.href }] : [];
+  }).slice(0, TREFFER_ANSICHT_MAX);
+  return { zeilen, json, ...(treffer.length ? { treffer } : {}) };
 };
 
 /** Die Antwort lesen (rein): 404 = den Lauf-Motor gibt es noch nicht; sonst Schritte (unbekannte Status fallen weg) oder ein Fehlersatz. */

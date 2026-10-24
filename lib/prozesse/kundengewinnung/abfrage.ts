@@ -20,6 +20,7 @@ import { nachbereitung } from '@/lib/crm/erfassen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { RUHEND_TAGE } from '@/lib/crm/planung';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { WEG } from '@/lib/wege';
 
 /** Was die Abfrage braucht — alles über die vorhandenen Lesewege geladen (Server). */
 export interface AbfrageDaten {
@@ -155,6 +156,41 @@ export function abfrageFaelle(q: CrmAbfrage, d: AbfrageDaten): LaufFall[] {
     }
   }
   return [];
+}
+
+// ── „Schritt testen“ an einer Abfrage (Bau-Test 2, 24.10.: nur die Trefferzahl war zu sehen) ────────────────────────────────────────────────────────────
+
+/** Ein Treffer zum Ansehen: nur Art, Kennung, Name und der Link dorthin (`WEG`) — nie weitere Felder. */
+export interface AbfrageTreffer { art: LaufFall['art']; id: string; name: string; href: string }
+/** So viele Treffer zeigt „Schritt testen“ mit Namen. */
+export const ABFRAGE_TREFFER_MAX = 5;
+const personName = (k: Pick<Kontakt, 'vorname' | 'nachname'>) => [k.vorname, k.nachname].map(x => (x ?? '').trim()).filter(Boolean).join(' ');
+/**
+ * Die ersten Treffer einer Abfrage mit Namen (rein): Lead (Firma bzw. Person), Firma, Deal-Titel, Mandat. Die Namen kommen NUR aus den Daten der Abfrage — die
+ * Kartei ist schon ohne eingeschränkte Personen (Art. 18); wessen Name dort nicht steht, erscheint nicht. Höchstens `max`.
+ */
+export function abfrageTreffer(faelle: readonly LaufFall[], d: Pick<AbfrageDaten, 'crm' | 'kontakte' | 'leads'>, max = ABFRAGE_TREFFER_MAX): AbfrageTreffer[] {
+  const lead = new Map(d.leads.map(z => [z.id, z]));
+  const person = new Map(d.kontakte.map(k => [k.id, k]));
+  const firma = new Map(d.crm.firmen.map(f => [f.id, f]));
+  const deal = new Map(d.crm.chancen.map(c => [c.id, c]));
+  const mandat = new Map(d.crm.mandate.map(m => [m.id, m]));
+  const raus: AbfrageTreffer[] = [];
+  for (const f of faelle) {
+    if (raus.length >= max) break;
+    if (!f.id) continue;
+    let name = '', href = '';
+    if (f.art === 'lead' || f.art === 'firma') {
+      const p = person.get(f.id), fi = firma.get(f.id);
+      name = lead.get(f.id)?.name ?? (p ? personName(p) : fi?.name ?? '');
+      href = p ? WEG.kontakt(f.id) : WEG.firma(f.id);
+      // Eine Person, die nicht in der verarbeitbaren Kartei steht (Art. 18), nie mit Namen.
+      if (f.id.startsWith('c-') && !p) name = '';
+    } else if (f.art === 'deal') { name = deal.get(f.id)?.titel ?? ''; href = WEG.deal(f.id); }
+    else if (f.art === 'mandat') { const m = mandat.get(f.id); name = m ? (m.titel || m.kunde || '') : ''; href = WEG.mandat(f.id); }
+    if (name.trim()) raus.push({ art: f.art, id: f.id, name: name.trim(), href });
+  }
+  return raus;
 }
 
 /**

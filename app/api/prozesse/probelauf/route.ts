@@ -8,6 +8,7 @@
 // Werkstatt bau-fertig (22.10., Punkte 9–10): `annahmen` { <Knoten>: ja|nein|weiter|abgelaufen|eingetreten } („Weg annehmen“, ohne Angabe die gespeicherten
 // Testdaten), `nur` (nur diesen Schritt testen), `bis` (bis hier testen), `ausgabe: true` (je Schritt die Ausgabe als Tabelle und JSON nur mit Kennungen). Auch damit
 // wird NIE gesendet, angelegt oder ein Modell gefragt — „würde senden: … an …“. Mit einem echten Fall und Ausgabe: Lese-Protokoll (Bereich Kontakte, nur die Kennung).
+// Runde 3: an einer CRM-Abfrage die ersten (≤ 5) Treffer mit Namen und Link — nur Kennung + Name, aus der verarbeitbaren Kartei (Art. 18 fehlt), Protokoll nur die Zahl.
 // „Modell wirklich fragen“ (22.10.): `modell: 'schaetzen'` (ca. x ct und ob es geht — ruft nichts) bzw. `modell: 'fragen'` mit `nur` = ein Agenten-Schritt — NUR auf eigenen
 // Klick, zuerst `modellSchranke`, dann derselbe Agenten-Weg wie der Lauf (askText/KI-Tor, Budget je Prozess); das Ergebnis geht nur an die Ansicht zurück, gebucht werden
 // nur die Kosten (lib/prozesse/lauf-server.ts `modellTesten`).
@@ -73,5 +74,8 @@ export async function POST(req: Request) {
   if (!r.ok) return nein(r.status, r.fehler);
   // Ein echter Fall mit Ausgabe zeigt Inhalte (Empfänger, gefüllte Texte) — live mit den Rechten der Person; protokolliert wird nur, dass gelesen wurde.
   if (b.ausgabe === true && r.echterFall && fall !== 'beispiel') leseZugriff(req, 'kontakte', { anzahl: 1 });
+  // Runde 3 (24.10.): „Schritt testen“ an einer CRM-Abfrage zeigt die ersten Treffer mit Namen — protokolliert wird nur, wie viele (nie Namen).
+  const namen = r.schritte.reduce((n, x) => n + (x.ausgabe?.treffer?.length ?? 0), 0);
+  if (namen) leseZugriff(req, 'kontakte', { anzahl: namen });
   return NextResponse.json({ ok: true, schritte: r.schritte, kostenSchaetzungCent: r.kostenSchaetzungCent, befunde: r.befunde, ...(r.hinweis ? { hinweis: r.hinweis } : {}) });
 }
