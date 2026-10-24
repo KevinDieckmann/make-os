@@ -325,6 +325,36 @@ export function ausgangSetzen(f: Fassung, von: string, ausgang: Ausgang, w: Ausg
   return abschliessen(f, f.knoten.map(k => (k.id === von ? ohneHaupt(k) : k)), bedient, `${titel(a)} geht zum nächsten Schritt im Ablauf.`, { pruefen: false });
 }
 
+/** Die Werte der Auswahl „wohin führt dieser Ausgang?“ im Panel (neben den Kennungen der Schritte). */
+export const AUSGANG_NAECHSTER = '__naechster', AUSGANG_ENDE = '__ende';
+/** Ein gewählter Wert der Auswahl → die Wahl für `ausgangSetzen`. */
+export const ausgangWahlAus = (v: string): AusgangWahl => (v === AUSGANG_NAECHSTER ? { art: 'naechster' } : v === AUSGANG_ENDE || !v ? { art: 'ende' } : { art: 'schritt', id: v });
+/**
+ * Was das Panel an einem Ausgang zeigt (rein, Werkstatt-Fäden 24.10.): die gewählte Option und die Auswahl. Am Hauptausgang „— der nächste Schritt —“ (mit dem Ziel, das
+ * der Strang gerade nimmt), jeder Schritt der Phase (ein festgelegtes Ziel in einer anderen Phase steht dazu) und „— Lauf endet —“; an einem Abzweig „leer“ (der Lauf
+ * endet; am Warten: geht weiter; „Fehler“: hält an) und jeder Schritt der Phase. Dieselben Ziele, die der Faden kennt.
+ */
+export function ausgangsWahl(f: Pick<Fassung, 'knoten'>, id: string, a: Ausgang): { wert: string; optionen: { wert: string; label: string }[] } {
+  const k = f.knoten.find(x => x.id === id);
+  if (!k) return { wert: '', optionen: [] };
+  const name = (x: string | null) => (x === null ? 'Lauf endet' : `„${f.knoten.find(y => y.id === x)?.titel ?? ''}“`);
+  const eigner = istSchloss(k) && (a === 'ja' || a === 'weiter') ? f.knoten.find(x => x.id === k.schloss!.fuer) ?? k : k;
+  const ph = phaseVon(f, eigner.id);
+  const ziele = (ph ? schritteDer(f, ph) : []).filter(x => x.id !== eigner.id && x.id !== id && x.form !== 'ausloeser' && !istSchloss(x));
+  const schritte = ziele.map(x => ({ wert: x.id, label: x.titel }));
+  if (eigner !== k || !istZweigArt(a)) {
+    const fest = eigner.form !== 'freigabe' && eigner.zweige?.ja ? eigner.zweige.ja : eigner.danach ? ('ende' in eigner.danach ? null : eigner.danach.ziel) : undefined;
+    const strang = hauptZiel(f.knoten.map(x => (x.id === eigner.id ? ohneHaupt(x) : x)), eigner.id);
+    const anderswo = typeof fest === 'string' && !ziele.some(x => x.id === fest) ? [{ wert: fest, label: `${f.knoten.find(y => y.id === fest)?.titel ?? ''} (andere Phase)` }] : [];
+    return {
+      wert: fest === undefined ? AUSGANG_NAECHSTER : fest === null ? AUSGANG_ENDE : fest,
+      optionen: [{ wert: AUSGANG_NAECHSTER, label: `— der nächste Schritt (${name(strang)}) —` }, ...schritte, ...anderswo, { wert: AUSGANG_ENDE, label: '— Lauf endet —' }],
+    };
+  }
+  const leer = a === 'abgelaufen' && k.form === 'warten' ? `— geht weiter (${name(hauptZiel(f.knoten, id))}) —` : a === 'fehler' ? '— Lauf hält an (Fehler) —' : '— Lauf endet —';
+  return { wert: k.zweige?.[a as ZweigArt] ?? '', optionen: [{ wert: '', label: leer }, ...schritte] };
+}
+
 // ── Werkstatt bau-fertig (22.10., n8n-Niveau): nachgiebig bauen, ohne das Modell umzubauen ─────────────────────────────────────────────────────────────
 // Das Modell bleibt „Strang je Phase + Abzweige“ (lib/prozesse/fluss.ts). Die Oberfläche wird nachgiebig: ein Faden über Phasen holt das Ziel in die Phase
 // (mit Ansage), ein „+“ mitten auf dem Faden fügt dazwischen ein, das Kantenende lässt sich umhängen. Jede dieser Hilfen prüft danach den Fluss

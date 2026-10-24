@@ -39,8 +39,13 @@ type K = ProzessKnoten<ProzessForm>;
 export interface AnhangZiel { nach?: string; ausgang?: Ausgang; vor?: string; phaseId?: string; platz?: [number, number]; /** Werkstatt bau-fertig (Punkt 3): mitten auf diesem Faden einfügen. */ zwischen?: string }
 export interface FlaecheSteuerung {
   allesZeigen(): void; zoomen(f: number): void; zeige(id: string): void; mitte(): [number, number]; bildschirm(x: number, y: number): [number, number]; fokus(): void;
-  /** Feinschliff 22.10. (Befund 2): die Kamera fährt nur so weit, dass der Knoten ganz zu sehen ist (der Zoom bleibt). */
-  insBild(id: string): void;
+  /**
+   * Feinschliff 22.10. (Befund 2): die Kamera fährt nur so weit, dass der Knoten ganz zu sehen ist (der Zoom bleibt). Werkstatt-Fäden (24.10.): `ausgaenge` nimmt die „+“
+   * rechts am Knoten mit — sie liegen nie unter dem Seitenfeld.
+   */
+  insBild(id: string, o?: { ausgaenge?: boolean }): void;
+  /** Werkstatt-Fäden (24.10.): wo der Zeiger zuletzt auf der Fläche war (Welt-Koordinaten) — ⌘V fügt dort ein; null = noch nie bzw. nicht über der Fläche. */
+  zeiger(): [number, number] | null;
   /** Feinschliff 22.10. (Vorlagen, Befund 6): die Größe der Bühne (für „Alles zeigen“ als Kacheln) und eine Phase einpassen (nach dem Aufklappen einer Kachel). */
   groesse(): { b: number; h: number };
   /** Feinschliff 1 (23.10.): was Seitenfeld und schwebende Leisten gerade verdecken (für „Alles zeigen“ als Kacheln — dieselben Ränder wie beim Einpassen). */
@@ -192,11 +197,13 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   useImperativeHandle(ref, () => ({
     // Feinschliff 22.10. (Befund 4): auf den Inhalt einpassen (nicht auf leere Bahnränder), höchstens 100 % — seit 23.10. im freien Feld (`raender`).
     allesZeigen: () => { const g = groesse(); fliege(einpassKamera(inhaltBox(stand.current.lage, stand.current.d.zettel ?? []), g, undefined, undefined, raender())); },
-    insBild: id => {
+    insBild: (id, o) => {
       const k = stand.current.lage.knoten.get(id);
       if (!k) return;
       const g = groesse();
-      const z = kameraZu(kamera.current, { x: k.x, y: k.y, b: k.b, h: k.h }, g, undefined, raender());
+      // Die „+“ der Ausgänge stehen rechts neben dem Körper (hinter Beschriftungen auch weiter) — mit ihnen, damit keines unter dem Seitenfeld liegt.
+      const rechts = o?.ausgaenge ? Math.max(0, ...(chipsRef.current.get(id) ?? []).map(c => c.box.x + c.box.b - k.b)) + 2 * (WS.ausgang.abstand + WS.ausgang.r) : 0;
+      const z = kameraZu(kamera.current, { x: k.x, y: k.y, b: k.b + rechts, h: k.h }, g, undefined, raender());
       if (z !== kamera.current) fliege(z);
     },
     zoomen: f => { const g = groesse(); fliege(zoomUm(kamera.current, f, g.b / 2, g.h / 2)); },
@@ -216,6 +223,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       fliege({ s, x: Math.round(f.x + f.b / 2 - (k.x + k.b / 2) * s), y: Math.round(f.y + f.h / 2 - (k.y + k.h / 2) * s) });
     },
     mitte: () => { const g = groesse(); return weltAus(kamera.current, g.b / 2, g.h / 2); },
+    zeiger: () => letzterZeiger.current,
     bildschirm: (x, y) => bildAus(kamera.current, x, y),
     fokus: () => svg.current?.focus({ preventScroll: true }),
   }), [fliege]);
@@ -259,6 +267,8 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   const nach = useMemo(() => new Map(p.d.knoten.map(k => [k.id, k])), [p.d.knoten]);
   /** Feinschliff 1 (23.10.): die Beschriftungen der Fäden je Knoten — die „+“ der Ausgänge weichen ihnen aus, ein Ausgang mit Beschriftung trägt keinen zweiten Namen. */
   const chips = useMemo(() => ausgangChips({ knoten, kanten }), [knoten, kanten]);
+  const chipsRef = useRef(chips);
+  chipsRef.current = chips;
   /** Punkt 14: ausgeschaltete Schritte und die Schlösser dahinter (sie werden mit übersprungen). */
   const aus = useMemo(() => { const m = new Set(p.d.knoten.filter(k => k.deaktiviert).map(k => k.id)); for (const k of p.d.knoten) if (k.schloss && m.has(k.schloss.fuer)) m.add(k.id); return m; }, [p.d.knoten]);
   const belegt = useMemo(() => {
@@ -306,6 +316,8 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   useEffect(() => { ebene.current?.zug(zugPunkte ? { id: 'ws-zug', punkte: zugPunkte, farbe: FLOW_TON.basis, staerke: 'mittel', gluehen: true } : null); }, [zugPunkte]);
 
   // ── Zeiger ──
+  /** Werkstatt-Fäden (24.10.): die letzte Lage des Zeigers über der Fläche (für ⌘V an der Mausposition). */
+  const letzterZeiger = useRef<[number, number] | null>(null);
   const welt0 = (e: { clientX: number; clientY: number }): [number, number] => {
     const r = svg.current!.getBoundingClientRect();
     return weltAus(kamera.current, e.clientX - r.left, e.clientY - r.top);
@@ -357,6 +369,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   };
   const bewegt = (e: RPointerEvent<SVGSVGElement>) => {
     const z = zug.current;
+    letzterZeiger.current = welt0(e);
     if (!z) {
       // Punkt 6: über der Befund-Marke steht der Satz (nicht nur das Symbol).
       const bf = (e.target as Element).closest?.('[data-ws-befund]')?.getAttribute('data-ws-befund') ?? null;
@@ -427,10 +440,12 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       const ziel = fadenZiel;
       setZugPunkte(null); setFadenZiel(null);
       if (z.aktiv && ziel && !ziel.nein) { p.onVerbinden(z.von, z.ausgang, ziel.id); return; }
-      // Ins Leere gezogen bzw. nur geklickt: die Formauswahl — dort, wo losgelassen wurde (bzw. am Ausgang).
+      // Werkstatt-Fäden (24.10., Bau-Test): nur geklickt (nicht gezogen) wählt den Knoten — die Bausteinauswahl öffnet nur das „+“.
+      if (!z.aktiv) { p.onAuswahl([z.von]); return; }
+      // Ins Leere gezogen: die Formauswahl — dort, wo losgelassen wurde.
       const r = svg.current!.getBoundingClientRect();
       const w = welt0(e);
-      p.onAnhaengen({ nach: z.von, ausgang: z.ausgang, ...(z.aktiv ? { platz: [Math.round(w[0]), Math.round(w[1])] as [number, number] } : {}) }, [e.clientX - r.left, e.clientY - r.top]);
+      p.onAnhaengen({ nach: z.von, ausgang: z.ausgang, platz: [Math.round(w[0]), Math.round(w[1])] }, [e.clientX - r.left, e.clientY - r.top]);
       return;
     }
     setBand(null);
@@ -471,7 +486,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     <div ref={buehne} className="ff-flaeche-buehne pw-buehne">
       <canvas ref={leinwand} aria-hidden="true" data-flow-ebene="" className="ff-flow-ebene" style={{ pointerEvents: 'none' }} />
       <svg ref={svg} tabIndex={0} role="application" aria-roledescription="Werkstatt-Fläche" aria-label={p.label} className="pw-svg"
-        onPointerDown={runter} onPointerMove={bewegt} onPointerUp={hoch} onPointerCancel={hoch} onClick={plusKlick} onDoubleClick={doppel} onKeyDown={taste}
+        onPointerDown={runter} onPointerMove={bewegt} onPointerUp={hoch} onPointerCancel={hoch} onPointerLeave={() => { if (!zug.current) letzterZeiger.current = null; }} onClick={plusKlick} onDoubleClick={doppel} onKeyDown={taste}
         style={{ fontFamily: 'inherit', cursor: p.nurLesen ? 'grab' : 'default', touchAction: p.nurLesen ? undefined : 'none' }}>
         <defs>
           <pattern ref={muster} id={rasterId} width={WS.raster} height={WS.raster} patternUnits="userSpaceOnUse"><circle cx={1} cy={1} r={1.1} fill={RAND.stark} /></pattern>

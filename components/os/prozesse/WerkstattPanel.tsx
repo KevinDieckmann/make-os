@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
-import { Lock, Trash2, Copy, Scissors, ChevronsRightLeft, Plus, CopyPlus, Maximize2 } from 'lucide-react';
+import { Lock, Trash2, Copy, Scissors, ChevronsRightLeft, Plus, CopyPlus, Maximize2, Zap } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT, BEDEUTUNG_FARBE, MIKRO, TIEF } from '@/lib/make-one/design';
 import { Ueberschrift, Hinweis, Knopf, Pillen, Feldzeile, Schalter, auswahl as auswahlStil, Chip } from '../ui';
 import {
@@ -24,7 +24,8 @@ import { erlaubteWerkzeuge, rechteProfil } from '@/lib/prozesse/agent-schritt';
 import { schlossText } from '@/lib/prozesse/schloss';
 import { kundenFormErlaubt } from '@/lib/prozesse/produkt-bindung';
 import { maskeWerte, maskeAnwenden, formWort } from '@/lib/prozesse/werkstatt-maske';
-import { AUSGAENGE, ausgangName, type KanteLage } from '@/lib/prozesse/werkstatt-lage';
+import { ausgaengeVon, ausgangName, type KanteLage } from '@/lib/prozesse/werkstatt-lage';
+import { ausgangsWahl, ausgangWahlAus, type AusgangWahl } from '@/lib/prozesse/werkstatt-aktionen';
 import { PROBE_NAME, PROBE_BEDEUTUNG, centText, type ProbeSchritt, type Rat } from '@/lib/prozesse/werkstatt-hinweise';
 import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
 import { WEG } from '@/lib/wege';
@@ -75,6 +76,10 @@ export interface PanelProps {
   onKnoten: (k: K) => void;
   onSteckbrief: (felder: Record<string, unknown>) => void;
   onZweig: (von: string, ausgang: Ausgang, nach: string | null) => void;
+  /** Werkstatt-Fäden (24.10.): wohin ein Ausgang führt — JEDER Ausgang (auch „weiter“), dieselbe Funktion wie der Faden (lib/prozesse/werkstatt-aktionen.ts `ausgangSetzen`). */
+  onAusgang?: (von: string, ausgang: Ausgang, wahl: AusgangWahl) => void;
+  /** Am Auslöser (Bau-Test 24.10.): den Typ wechseln bzw. bewusst einen weiteren Auslöser hinzufügen — beides über die Knoten-Auswahl. */
+  onAusloeser?: (id: string, art: 'wechseln' | 'neu') => void;
   onPfeilText: (von: string, art: Ausgang, text: string | null) => void;
   onLoeschen: (ids: string[]) => void;
   onKopieren: () => void;
@@ -218,9 +223,8 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   const istAgent = k.form === 'agent' && e?.feld === 'agent';
   const profil = istAgent && k.agent ? rechteProfil(k.agent, {}) : null;
   const klasse = e ? klasseVonEintrag(e) : null;
-  const ausgaenge = AUSGAENGE[k.form ?? 'schritt'];
-  const phaseId = alleSchritte(d).find(x => x.schritt.id === k.id)?.phase.id;
-  const ziele = phaseId ? schritteDer(d, phaseId).filter(x => x.id !== k.id && x.form !== 'ausloeser' && !x.schloss) : [];
+  // Werkstatt-Fäden (24.10.): die Ausgänge der Form — am Warten mit fester Dauer ohne „abgelaufen“ (es läuft nie ab).
+  const ausgaenge = ausgaengeVon(k);
   return (
     <div ref={andock} style={{ display: 'grid', gap: 12 }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -280,23 +284,28 @@ function KnotenPanel(p: PanelProps & { k: K }) {
           )}
         </>
       )}
-      {/* Ausgänge: wohin, wie beschriftet — dasselbe wie einen Faden ziehen (Punkt 23: Rauten-Ausgänge immer benannt). */}
+      {/* Auslöser (Bau-Test 24.10.): den Typ wechseln statt eines zweiten Auslösers; ein weiterer Auslöser nur bewusst. */}
+      {k.form === 'ausloeser' && !p.nurLesen && p.onAusloeser && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <Knopf leise onClick={() => p.onAusloeser!(k.id, 'wechseln')} titel="Den Typ dieses Auslösers wechseln — von Hand, Ereignis, Zeitplan, je Person ab Uhrzeit, Webhook …"><span className="pz-knopf-inhalt"><Zap size={14} aria-hidden />Auslöser ändern …</span></Knopf>
+          <Knopf leise onClick={() => p.onAusloeser!(k.id, 'neu')} titel="Einen zweiten Auslöser dazu — er führt wie dieser in den ersten Schritt"><span className="pz-knopf-inhalt"><Plus size={14} aria-hidden />Weiteren Auslöser hinzufügen</span></Knopf>
+        </div>
+      )}
+      {/* Ausgänge: wohin, wie beschriftet — dasselbe wie einen Faden ziehen (Punkt 23: Rauten-Ausgänge immer benannt). Werkstatt-Fäden (24.10.): JEDER Ausgang ist
+          wählbar, auch „weiter“ einer Aufgabe — „der nächste Schritt“, ein Schritt der Phase oder „Lauf endet“; kein anderer Ausgang ändert sich dabei. */}
       {ausgaenge.length > 0 && !p.nurLesen && (
         <div style={{ display: 'grid', gap: 8 }}>
           <div style={{ ...MIKRO }}>Ausgänge</div>
           {ausgaenge.map(a => {
             const kante = p.kanten.find(x => x.von === k.id && (x.ausgang === a || (a === 'weiter' && x.ausgang === 'ja' && k.form !== 'entscheidung')));
-            const zweig = a !== 'weiter' && !(a === 'ja' && k.form === 'freigabe');
-            const ziel = zweig ? k.zweige?.[a as 'ja' | 'nein' | 'fehler' | 'abgelaufen'] ?? null : null;
+            const wahl = ausgangsWahl(d, k.id, a);
             return (
               <div key={a} style={{ display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,0.8fr) minmax(0,1.2fr)', alignItems: 'center' }}>
                 <span style={{ fontSize: TYP.bedien, color: a === 'fehler' ? LEUCHT.kritisch : C.inkDim }}>{ausgangName(k.form ?? 'schritt', a)}</span>
-                {zweig ? (
-                  <select aria-label={`Ausgang ${ausgangName(k.form ?? 'schritt', a)}`} value={ziel ?? ''} onChange={ev => p.onZweig(k.id, a, ev.target.value || null)} style={{ ...auswahlStil, width: '100%' }}>
-                    <option value="">{a === 'ja' && k.form === 'entscheidung' ? '— der nächste Schritt —' : a === 'abgelaufen' && k.form === 'warten' ? '— geht weiter —' : '— Lauf endet —'}</option>
-                    {ziele.map(z => <option key={z.id} value={z.id}>{z.titel}</option>)}
-                  </select>
-                ) : <span style={klein}>{kante ? `zu „${d.knoten.find(x => x.id === kante.nach)?.titel ?? ''}“` : 'Lauf endet hier'}</span>}
+                <select aria-label={`Ausgang ${ausgangName(k.form ?? 'schritt', a)}`} value={wahl.wert} disabled={!p.onAusgang}
+                  onChange={ev => p.onAusgang?.(k.id, a, ausgangWahlAus(ev.target.value))} style={{ ...auswahlStil, width: '100%' }}>
+                  {wahl.optionen.map(o => <option key={o.wert} value={o.wert}>{o.label}</option>)}
+                </select>
                 {(a !== 'weiter' || kante) && (
                   <span style={{ gridColumn: '1 / -1' }}>
                     <TextFeld label={`Beschriftung von ${ausgangName(k.form ?? 'schritt', a)}`} wert={(a === 'weiter' ? k.pfeilText?.weiter : k.pfeilText?.[a]) ?? ''} platz={`Beschriftung (Vorgabe „${ausgangName(k.form ?? 'schritt', a)}“)`}

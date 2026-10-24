@@ -6,6 +6,8 @@
 //   (b) der Bau-Test als Regression: Mehrfach-Entscheidung mit drei Fällen + „sonst“, an jedes „ja“ eine Aufgabe → der Probelauf geht genau den einen Weg;
 //   (c) ⌘V verdrahtet nie um; (d) ohne das neue Feld `danach` bit-gleich (Säuberer, Kanten), dazu die Teile der Oberfläche (Panel, Kopf, Warten, Auslöser).
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { ALLE_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';
 import { MUSTER_PAKETE } from '@/lib/fulfillment/muster';
 import { UEBERFUEHRBAR } from '@/lib/prozesse/ueberfuehrung';
@@ -16,7 +18,7 @@ import { katalogEintrag } from '@/lib/prozesse/baustein-katalog';
 import { neuerKnoten } from '@/lib/prozesse/werkstatt-maske';
 import { knotenAus, neuerProzess } from '@/lib/prozesse/bestand';
 import { mitNeuenKnoten } from '@/lib/prozesse/kopie';
-import { ausgaengeVon, werkstattLage } from '@/lib/prozesse/werkstatt-lage';
+import { ausgaengeVon, einfuegeLagen, werkstattLage } from '@/lib/prozesse/werkstatt-lage';
 import {
   anlegen, zwischenEinfuegen, zwischenGrund, einfuegen, kopieren, loeschen, mehrfachEntscheidung, ausgangSetzen, ausloeserWechseln, verbinden, umhaengen, inPhase,
   rueckgaengig, merke, LEERE_GESCHICHTE, hauptAusgang, hauptZiel, phaseNeu, type Fassung, type Ergebnis,
@@ -32,6 +34,7 @@ const kennung = () => `fk-00000000-0000-4000-9000-${String(++n).padStart(12, '0'
 const gut = (e: Ergebnis): Fassung => { if (!e.ok) throw new Error(e.grund); return e.fassung; };
 const aufgabe = (titel = 'Neu') => neuerKnoten(katalogEintrag('aufgabe.anlegen')!, kennung(), titel);
 const zerlegt = (s: string): [string, string] => { const i = s.lastIndexOf('|'); return [s.slice(0, i), s.slice(i + 1)]; };
+const lies = (p: string) => readFileSync(path.join(process.cwd(), p), 'utf8');
 
 // ── Alle Fassungen, die im Repo als Daten vorliegen ────────────────────────────────────────────────────────────────────────────────────────────────────
 const FASSUNGEN: { name: string; d: Pick<ProzessDefinition, 'knoten'> }[] = [
@@ -373,5 +376,36 @@ describe('Panel › Ausgänge, Auslöser ändern, Warten, Rückgängig', () => {
     const r = gut(anlegen(f, aufgabe('Zwischen'), { nach: a.id }));
     const z = rueckgaengig(g, r)!;
     expect(ausgangsZiele(z.fassung)).toEqual(ausgangsZiele(f));
+  });
+  it('die Oberfläche: Kopf nennt den Ausgang, Panel wählt jeden Ausgang, ⌘V an der Mausposition, Klick auf einen Anschluss wählt, Rückfrage im Mehrfach-Fenster', () => {
+    const w = lies('components/os/prozesse/Werkstatt.tsx');
+    expect(w).toContain('· Ausgang „');
+    expect(w).toContain('ausgangSetzen(');
+    expect(w).toContain('flaeche.current?.zeiger()');
+    expect(w).toContain('ausloeserWechseln(');
+    expect(lies('components/os/prozesse/WerkstattPanel.tsx')).toContain('onAusgang');
+    expect(lies('components/os/prozesse/WerkstattFlaeche.tsx')).toContain('zeiger: () =>');
+    expect(lies('components/os/prozesse/WerkstattMehrfach.tsx')).toContain('bestaetigen(');
+    // Ein Klick (ohne Ziehen) auf einen Anschluss wählt den Knoten — die Bausteinauswahl nur über das „+“.
+    expect(lies('components/os/prozesse/WerkstattFlaeche.tsx')).toContain('if (!z.aktiv) { p.onAuswahl([z.von]); return; }');
+    // Eine Wahl zählt genau einmal; am Auslöser „Auslöser ändern …“ statt eines zweiten in eigener Bahn.
+    const fa = lies('components/os/prozesse/WerkstattFormauswahl.tsx');
+    expect(fa).toContain('genommen.current');
+    expect(fa).toContain('Auslöser ändern …');
+  });
+  it('⌘V-Lage: an der Mausposition in der Bahn der Kopie; liegt dort ein Knoten, rückt die Kopie in freien Platz', () => {
+    const { f, b } = kette();
+    const l = werkstattLage(f);
+    const ph = phasen(f)[0].id;
+    const kb = l.knoten.get(b.id)!;
+    const k = f.knoten.find(x => x.id === b.id)!;
+    // Mitten auf „B“: die Kopie liegt nicht über B.
+    const auf = einfuegeLagen([k], l, [kb.x + kb.b / 2, kb.y + kb.koerper.y + kb.koerper.h / 2], ph).get(b.id)!;
+    const r = l.rahmen.find(x => x.id === ph)!, bahn = l.bahnen.find(x => x.schluessel === kb.bahn)!;
+    const box = { x: r.x + auf.x, y: bahn.y + auf.y };
+    expect(box.y >= kb.y + kb.h || box.x >= kb.x + kb.b || box.x + kb.b <= kb.x).toBe(true);
+    // Ins Leere weit rechts: genau dort (x relativ zum Rahmen).
+    const frei = einfuegeLagen([k], l, [r.x + 2000, kb.y + kb.koerper.y + kb.koerper.h / 2], ph).get(b.id)!;
+    expect(frei.x).toBe(Math.round(2000 - kb.b / 2));
   });
 });
