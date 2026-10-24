@@ -1237,8 +1237,8 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
     bleibt stehen und folgt dem Schalter, `KOPF_SEITEN`; am Handy kompakt) · Suche (⌘K) · Glocke · Fokus-Knopf (öffnet `/os/fokus`; läuft ein Fokus: Uhr, Klick beendet).
     Kein Score, kein Index-Schalter, keine Heute/Inbox/Kalender-Knöpfe.
   - **Leiste** (`components/os/Leiste.tsx`): nur die Punkte des aktiven Space, `leisteFuer(space)` in `lib/make-one/spaces.ts` (≤ 12): Heute · Inbox · Kalender · Aufgaben ·
-    Planung (nur Planung: Tag · Woche · Monat · Quartal · Jahr & Ziele · Routinen · Kapazität) · Finanzen · Privat: Gesundheit · Familie · Kontakte `/os/menschen` |
-    Business: Markttraktion · Produkte & Mandate · Unternehmen · ZOE. **Business hat keinen Kontakte-Punkt mehr** (Entscheidung 10.10.): die Kartei liegt in
+    Planung (nur Planung: Tag · Woche · Monat · Quartal · Jahr & Ziele · Routinen · Kapazität) · Finanzen · Privat: Gesundheit · Familie (Kontakte `/os/menschen` seit 22.10. als Punkt im Werkzeug Familie,
+    kein eigener Leistenpunkt) | Business: Markttraktion · Produkte & Mandate · Unternehmen · ZOE. **Business hat keinen Kontakte-Punkt mehr** (Entscheidung 10.10.): die Kartei liegt in
     Markttraktion › Kontakte & Firmen. Unten Einstellungen (`/os/system`), „Problem oder Idee melden“, Konto. Handy unten: siehe Mechanik (fünf Einträge). `SpaceEintrag.passt`
     legt den Space fest, `auch` hebt nur hervor (gemeinsame Seiten), Muster `=/os` = genau die Startseite; `zeitId` hält den Zeitmessungs-Schlüssel bei Umbenennung
     (Planung = `ziele-planung`, Produkte & Mandate = `mandate`).
@@ -1252,7 +1252,7 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
     „Zahlen“), „Brain“ (Adresse `/os/wissen`).
   - Wächter `tests/aufraeumen-etappe1.test.ts` (≤ 12 je Space, jede Seite unter app/os erreichbar und in der Suche, Einstellungen ohne Doppel,
     alte Adressen leiten weiter, keine verdeckte Seite, Kopf schlank), `tests/spaces.test.ts`.
-- Kontakte privat: `/os/menschen`. Postfächer → Bereich je Postfach im Register `postfaecher--<person>` (Inbox 2, serverseitig gefiltert),
+- Kontakte privat: `/os/menschen` (Familie › Kontakte). Schnellsuche: ZOE-Agenten-Seiten (Research … Prospecting) ohne Space — in beiden vorgeschlagen. Postfächer → Bereich je Postfach im Register `postfaecher--<person>` (Inbox 2, serverseitig gefiltert),
   Kalender → Space in den Kalender-Einstellungen (`lib/kalender/space.ts`, client-sicher).
 - Neue Bereiche: Space aus der Adresse lesen (`useSpace().ausAdresse`), nie stumm mischen; Adressen in `lib/wege.ts` eintragen;
   neue Seite in `lib/make-one/spaces.ts` (Leisten-Punkt `passt`/`auch`, nur wenn wirklich nötig — höchstens zwölf) bzw. als Unterreiter
