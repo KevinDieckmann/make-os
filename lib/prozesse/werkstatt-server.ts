@@ -92,7 +92,7 @@ export async function modellOptionenInstanz(kategorien: readonly KiKategorie[] =
 }
 
 /** Werte je Auswahlquelle (Kennung + Name) — für die Masken der Werkstatt und die Prüfung. Nur Business, nur was die Person sehen darf. */
-export async function auswahlListen(h: string, person: string, datei?: ProzesseDatei): Promise<Partial<Record<AuswahlQuelle, { id: string; label: string }[]>>> {
+export async function auswahlListen(h: string, person: string, datei?: ProzesseDatei): Promise<Partial<Record<AuswahlQuelle, { id: string; label: string; hinweis?: string }[]>>> {
   const sicher = async <T>(f: () => Promise<T>, leer: T): Promise<T> => { try { return await f(); } catch { return leer; } };
   const [{ teamVon, kontenDesHaushalts }, { KATALOG }, { STUFEN }, { PROZESS_EREIGNISSE, DATUMS_FELDER }, { EREIGNIS_NAME }, einheiten] = await Promise.all([
     import('@/lib/make-one/team-speicher'), import('@/lib/agenten/katalog'), import('@/lib/crm/pipeline'), import('./ausloeser'), import('@/lib/ereignisse/arten'), import('@/lib/einheiten'),
@@ -107,6 +107,17 @@ export async function auswahlListen(h: string, person: string, datei?: ProzesseD
   const postfaecher = await sicher(async () => {
     const { ladePostfaecher } = await import('@/lib/postfach/register');
     return (await ladePostfaecher(person)).filter(p => !!p.bereich && p.bereich !== 'privat' && einheiten.bereichVonGesellschaft(p.bereich) === 'business').map(p => ({ id: p.id, label: p.anzeigename }));
+  }, [] as { id: string; label: string }[]);
+  // Feinschliff 24.10. (Werte für „nur wenn …“, lib/prozesse/feld-werte.ts): Produkte einer Business-Gesellschaft (ohne Papierkorb) und Pakete des Fulfillments —
+  // nur Kennung + Name; Produkte einer Privat-Einheit kommen nie an (dieselbe Regel wie überall: `bereichVonGesellschaft`).
+  const produkte = await sicher(async () => {
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    return (await ladeCrm()).leistungen.filter(l => !l.geloeschtAm && einheiten.bereichVonGesellschaft(l.gesellschaft) === 'business')
+      .map(l => ({ id: l.id, label: l.name, ...(l.status === 'aktiv' ? {} : { hinweis: l.status === 'eingestellt' ? 'eingestellt' : 'Entwurf' }) }));
+  }, [] as { id: string; label: string; hinweis?: string }[]);
+  const pakete = await sicher(async () => {
+    const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
+    return (await fulfillmentLesen('vorlagen', h)).prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, label: p.titel }));
   }, [] as { id: string; label: string }[]);
   return {
     // Rollen statt Personen (22.10., Vorlagen der Kundengewinnung, R8): „Zuständig im Fall“ und „Eigner des Prozesses“ löst erst der Lauf auf.
@@ -125,6 +136,8 @@ export async function auswahlListen(h: string, person: string, datei?: ProzesseD
     'fall-feld': [{ id: 'fall.kontakt', label: 'Kontakt des Falls' }, { id: 'fall.ansprechpartner', label: 'Ansprechpartner der Firma' }, { id: 'fall.zustaendig', label: 'Zuständige Person' }],
     modell: modelle.filter(m => m.waehlbar).map(m => ({ id: m.schluessel, label: `${m.name} · ${m.anbieterName}` })),
     werkzeug: werkzeuge,
+    produkt: produkte,
+    paket: pakete,
   };
 }
 

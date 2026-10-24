@@ -174,3 +174,92 @@ describe('1b — Eingaben beim Tippen übernehmen (rein, eigene Uhr)', () => {
     expect(speicherAnzeige('konflikt', 1)).toBe('konflikt');
   });
 });
+
+// ── 2: Bedingungen über Kennungs-Felder — Auswahl statt Freitext ─────────────────────────────────────────────────────────────────────────────────────
+
+describe('2 — Werte je Feld: Auswahl aus dem Bestand, alter Freitext wird erkannt (rein)', () => {
+  it('Produkt, Stufe, Status, Zuständig, ja/nein haben Werte; echte Textfelder bleiben frei', async () => {
+    const { feldWerte, wertLage, wertAusOption } = await import('@/lib/prozesse/feld-werte');
+    const auswahl = { produkt: [{ id: 'l-demo-vertrieb', label: 'Vertriebsaufbau' }], 'pipeline-stufe': [{ id: 'angebot', label: 'Angebot' }], 'konto-person': [{ id: 'pia', label: 'Pia' }], gesellschaft: [{ id: 'ug', label: 'MAKE' }, { id: 'fall.gesellschaft', label: 'Gesellschaft des Falls' }] };
+    expect(feldWerte('mandat.produkt', auswahl)).toEqual([{ id: 'l-demo-vertrieb', label: 'Vertriebsaufbau' }]);
+    expect(feldWerte('deal.stufe', auswahl)?.map(o => o.id)).toEqual(['angebot']);
+    expect(feldWerte('lead.status', auswahl)?.map(o => o.id)).toContain('qualifizierung');
+    expect(feldWerte('lead.zustaendig', auswahl)?.map(o => o.id)).toEqual(['pia', 'beide']);
+    expect(feldWerte('mandat.gesellschaft', auswahl)?.map(o => o.id)).toEqual(['ug']);
+    expect(feldWerte('lead.sql-bereit', auswahl)?.map(o => o.label)).toEqual(['ja', 'nein']);
+    expect(wertAusOption('lead.sql-bereit', 'true')).toBe(true);
+    expect(feldWerte('ereignis.quelle', auswahl)).toBeNull();
+    expect(feldWerte('deal.wert', auswahl)).toBeNull();
+    // Alter Freitext „Vertriebsaufbau“ = genau ein Name → erkannt (nicht umgeschrieben); Kennung → gut; Unbekanntes → fremd.
+    const o = feldWerte('mandat.produkt', auswahl)!;
+    expect(wertLage('Vertriebsaufbau', o)).toMatchObject({ art: 'name', option: { id: 'l-demo-vertrieb' } });
+    expect(wertLage('l-demo-vertrieb', o).art).toBe('kennung');
+    expect(wertLage('Etwas anderes', o).art).toBe('fremd');
+  });
+  it('die Prüfung meldet einen Namen statt der Kennung als offen (Entwurf speichert, Veröffentlichen nicht) — nur, wenn die Liste bekannt ist', () => {
+    const d = (wert: string) => definition([schritt(10, 'Passt das Produkt?', 1, { form: 'entscheidung', katalog: { id: 'entscheidung.regel' }, raute: { art: 'regel', bedingungen: [{ feld: 'mandat.produkt', op: 'gleich', wert }] } }),
+      schritt(11, 'Ende', 2, { form: 'ende', ende: { ergebnis: 'erfolg' } })], { fallArt: 'mandat' });
+    const kx = { auswahl: (q: string) => (q === 'produkt' ? ['l-demo-vertrieb'] : null) };
+    const name = definitionPruefen(d('Vertriebsaufbau'), kx);
+    expect(name.find(b => /steht nicht in der Liste/.test(b.text))).toMatchObject({ stufe: 'offen', knotenId: fk(10), feld: 'bedingungen' });
+    expect(sperrtSpeichern(name)).toBe(false);
+    expect(definitionPruefen(d('l-demo-vertrieb'), kx).some(b => /steht nicht in der Liste/.test(b.text))).toBe(false);
+    expect(definitionPruefen(d('Vertriebsaufbau'), {}).some(b => /steht nicht in der Liste/.test(b.text))).toBe(false);
+  });
+});
+
+describe('2 — Probelauf mit echtem Mandat: Produkt = Auswahl geht über „ja“', () => {
+  const PZM = 'pz-00000000-0000-4000-8000-000000000201';
+  const J2 = '2026-10-21T08:00:00.000Z';
+  const def = (wert: string) => ({
+    ...definition([
+      schritt(10, 'Passt das Produkt?', 1, { form: 'entscheidung', katalog: { id: 'entscheidung.regel' }, raute: { art: 'regel', bedingungen: [{ feld: 'mandat.produkt', op: 'gleich', wert }] }, zweige: { nein: fk(20) } }),
+      schritt(11, 'Vertrieb starten', 2, { form: 'ende', ende: { ergebnis: 'erfolg' } }),
+      schritt(20, 'Anderes Produkt', 3, { form: 'ende', ende: { ergebnis: 'abbruch' } }),
+    ], { fallArt: 'mandat', bereich: 'fulfillment', laeuftAls: 'pia' }), id: PZM,
+  });
+  beforeAll(async () => {
+    const db = await import('@/lib/store/local-db');
+    const { leererBestand } = await import('@/lib/crm/speicher');
+    const produkt = (id: string, name: string, x: Record<string, unknown> = {}) => ({ id, name, typ: 'retainer', stufe: 'kern', preis: { betrag: 100, einheit: 'Monat netto' }, lieferumfang: [], gesellschaft: 'ug', status: 'aktiv', geaendert: J2, ...x });
+    await db.saveJson('kontakte', { kontakte: [{ id: 'c-nord', vorname: 'Nora', nachname: 'Beispiel', email: 'nora@example.invalid', stufe: 'kontakt', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01' }] });
+    await db.saveJson('crm', {
+      ...leererBestand(),
+      leistungen: [produkt('l-demo-vertrieb', 'Vertriebsaufbau'), produkt('l-demo-privat', 'Privates Coaching', { gesellschaft: 'kdc' }), produkt('l-demo-weg', 'Gelöschtes', { geloeschtAm: J2 })],
+      mandate: [{ id: 'm-nord', kunde: 'Nordwerk Beispiel', kontaktIds: ['c-nord'], titel: 'Vertriebsaufbau Nordwerk', art: 'retainer', leistungId: 'l-demo-vertrieb', gesellschaft: 'ug', status: 'aktiv',
+        start: '2026-10-01', verlaengerung: 'offen', honorar: { betrag: 1000, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [],
+        health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: [], geaendert: J2 }],
+    });
+    await db.saveJson('tasks', { tasks: [], projects: [] });
+    const { prozesseBestand } = await import('@/lib/prozesse/definition');
+    await db.saveJson(prozesseBestand(H_), { v: 1, prozesse: [{ id: PZM, entwurf: def('l-demo-vertrieb'), versionen: [], status: 'entwurf', angelegtAm: J2, angelegtVon: 'pia', entwurfAm: J2, entwurfVon: 'pia' }] });
+  });
+  it('Produkt als Kennung (Auswahl „Vertriebsaufbau“) → „ja“; derselbe Name als Freitext → „nein“ (darum die Auswahl)', async () => {
+    const S = await import('@/lib/prozesse/lauf-server');
+    const ja = await S.probelauf({ prozessId: PZM, quelle: 'entwurf', fall: { art: 'mandat', id: 'm-nord' }, person: 'pia' });
+    expect(ja.ok, JSON.stringify(ja)).toBe(true);
+    if (!ja.ok) return;
+    expect(ja.schritte.map(x => x.knotenId)).toContain(fk(11));
+    expect(ja.schritte.map(x => x.knotenId)).not.toContain(fk(20));
+    const db = await import('@/lib/store/local-db');
+    const { prozesseBestand } = await import('@/lib/prozesse/definition');
+    await db.saveJson(prozesseBestand(H_), { v: 1, prozesse: [{ id: PZM, entwurf: def('Vertriebsaufbau'), versionen: [], status: 'entwurf', angelegtAm: J2, angelegtVon: 'pia', entwurfAm: J2, entwurfVon: 'pia' }] });
+    const nein = await S.probelauf({ prozessId: PZM, quelle: 'entwurf', fall: { art: 'mandat', id: 'm-nord' }, person: 'pia' });
+    expect(nein.ok && nein.schritte.map(x => x.knotenId)).toContain(fk(20));
+  });
+  it('Sicht: die Auswahl „Produkt“ trägt nur Business-Produkte des Haushalts (kein Privat, kein Papierkorb) — fremder Haushalt bekommt nichts (403)', async () => {
+    const { auswahlListen } = await import('@/lib/prozesse/werkstatt-server');
+    const l = await auswahlListen(H_, 'pia');
+    expect(l.produkt?.map(x => x.id)).toEqual(['l-demo-vertrieb']);
+    expect(JSON.stringify(l)).not.toMatch(/Privates Coaching|Gelöschtes/);
+    const db = await import('@/lib/store/local-db');
+    await db.saveJson('konten', { konten: [konto('k1', 'pia', 'inhaber', { haushalt: H_ }), konto('k2', 'olaf', 'mitglied', { haushalt: H_ }), konto('k3', 'gast', 'mitglied', { haushalt: 'anderer-haus' })], einladungen: [] });
+    const { GET } = await import('@/app/api/prozesse/katalog/route');
+    const fremd = await GET(new Request('http://test/api/prozesse/katalog?auswahl=1&space=business', { headers: sitzung('gast') }));
+    expect(fremd.status).toBe(403);
+    expect(await fremd.text()).not.toContain('Vertriebsaufbau');
+    const eigen = await GET(new Request('http://test/api/prozesse/katalog?auswahl=1&space=business', { headers: sitzung('pia') }));
+    expect(eigen.status).toBe(200);
+    expect(((await eigen.json()) as { auswahl: { produkt: { id: string }[] } }).auswahl.produkt.map(x => x.id)).toEqual(['l-demo-vertrieb']);
+  });
+});

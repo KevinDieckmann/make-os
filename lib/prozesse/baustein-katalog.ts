@@ -50,8 +50,11 @@ export type AuswahlQuelle =
   | 'modell'           // angebundene Modelle der Instanz (lib/prozesse/modell-wahl.ts `modellOptionen`) — nie fest in der Maske
   | 'werkzeug'         // ZOE-Werkzeuge des Business-Bereichs
   | 'schritt'          // Schritte DIESES Prozesses (die Werkstatt kennt sie selbst)
-  | 'liste';           // Listen im Lauf: Ergebnis einer CRM-Abfrage dieses Prozesses (`abfrage:<Knoten>`) bzw. eine Liste am Fall
-export const AUSWAHL_QUELLEN = ['team-person', 'konto-person', 'pipeline-stufe', 'postfach', 'head', 'skill', 'ereignis', 'prozess', 'gesellschaft', 'whatsapp-vorlage', 'datumsfeld', 'fall-feld', 'modell', 'werkzeug', 'schritt', 'liste'] as const satisfies readonly AuswahlQuelle[];
+  | 'liste'            // Listen im Lauf: Ergebnis einer CRM-Abfrage dieses Prozesses (`abfrage:<Knoten>`) bzw. eine Liste am Fall
+  // Feinschliff 24.10. (Werte für „nur wenn …“, lib/prozesse/feld-werte.ts): Kennungen aus dem Bestand des Haushalts — nur Business, nur Kennung + Name.
+  | 'produkt'          // Produkte (Leistungen) einer Business-Gesellschaft, ohne Papierkorb
+  | 'paket';           // Pakete des Fulfillments
+export const AUSWAHL_QUELLEN = ['team-person', 'konto-person', 'pipeline-stufe', 'postfach', 'head', 'skill', 'ereignis', 'prozess', 'gesellschaft', 'whatsapp-vorlage', 'datumsfeld', 'fall-feld', 'modell', 'werkzeug', 'schritt', 'liste', 'produkt', 'paket'] as const satisfies readonly AuswahlQuelle[];
 /** Quellen, deren Werte aus dem Prozess selbst kommen (kein Abruf beim Server). */
 export const QUELLEN_IM_PROZESS: readonly AuswahlQuelle[] = ['schritt', 'liste'];
 

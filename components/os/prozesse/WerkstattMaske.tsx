@@ -17,6 +17,7 @@ import { BEDINGUNG_NAME } from '@/lib/prozesse/bedingung';
 import { textvorlageFuellen, textvorlagePruefen, type MaskenFeld } from '@/lib/prozesse/baustein-katalog';
 import type { TestWert } from '@/lib/prozesse/testdaten';
 import { eingabePuffer, type Puffer } from '@/lib/prozesse/eingabe-puffer';
+import { wertLage, type WertLage, type WertOption } from '@/lib/prozesse/feld-werte';
 
 export interface Option { id: string; label: string; hinweis?: string }
 
@@ -148,28 +149,87 @@ export function ZahlFeld({ wert, onWert, aus, min, max, label }: { wert: number 
   return <input aria-label={label} inputMode="numeric" value={e.t} disabled={aus} min={min} max={max} onChange={ev => e.tippe(ev.target.value)} onBlur={fertig} onKeyDown={ev => { if (ev.key === 'Enter') fertig(); }} style={{ ...feld, maxWidth: 180 }} />;
 }
 
-/** Eine Bedingung je Zeile: Feld · Vergleich · Wert. */
-function BedingungenFeld({ wert, onWert, felder, aus }: { wert: readonly Bedingung[]; onWert: (v: Bedingung[]) => void; felder: readonly Option[]; aus?: boolean }) {
+/** Welche Werte ein Feld der Bedingung hat (lib/prozesse/feld-werte.ts `feldWerte`) — null = frei (Text bzw. Zahl). */
+export type WerteVon = (feld: string) => readonly WertOption[] | null;
+const istJaNein = (o: readonly WertOption[]) => o.length === 2 && o[0].id === 'true' && o[1].id === 'false';
+const optionWert = (o: readonly WertOption[], id: string): string | boolean => (istJaNein(o) ? id === 'true' : id);
+
+/**
+ * Der Wert einer Bedingung mit Werteliste (Feinschliff 24.10.): Name sichtbar, Kennung gespeichert. Ein alter Freitext, der genau einem Namen entspricht, wird als
+ * Treffer erkannt und markiert („bitte aus der Liste wählen“) — umgeschrieben wird nie still; Fremdes steht als „nicht in der Liste“ da.
+ */
+function WertWahl({ b, optionen, aus, onWert, feldName }: { b: Bedingung; optionen: readonly WertOption[]; aus?: boolean; onWert: (w: Bedingung['wert']) => void; feldName: string }) {
+  if (b.op === 'einer-von') {
+    const werte = Array.isArray(b.wert) ? b.wert : [];
+    const an = optionen.filter(o => werte.some(w => wertLage(w, [o]).art === 'kennung')).map(o => o.id);
+    const lagen = werte.map(w => ({ w, l: wertLage(w, optionen) })).filter(x => x.l.art !== 'kennung');
+    const setze = (ids: string[]) => onWert(ids);
+    return (
+      <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+        {optionen.length <= 16
+          ? <MehrfachPillen liste={optionen.map(o => ({ id: o.id, label: o.label }))} aktiv={an} onWahl={v => { if (!aus) setze(v); }} />
+          : <MehrfachListe optionen={optionen} an={an} onWert={setze} aus={aus} />}
+        {lagen.map(x => <WertHinweis key={String(x.w)} wert={String(x.w)} lage={x.l} feldName={feldName} />)}
+      </div>
+    );
+  }
+  const lage = wertLage(b.wert, optionen);
+  const aktuell = lage.art === 'kennung' ? lage.option.id : lage.art === 'leer' ? '' : '__alt';
+  return (
+    <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+      <select aria-label="Wert" value={aktuell} disabled={aus} onChange={e => { if (e.target.value !== '__alt') onWert(e.target.value ? optionWert(optionen, e.target.value) : ''); }}
+        style={{ ...auswahlStil, width: '100%', ...(lage.art === 'name' || lage.art === 'fremd' ? { borderColor: LEUCHT.achtung } : {}) }}>
+        <option value="">— wählen —</option>
+        {(lage.art === 'name' || lage.art === 'fremd') && <option value="__alt">{`„${String(b.wert)}“ — ${lage.art === 'name' ? 'bitte aus der Liste wählen' : 'nicht in der Liste'}`}</option>}
+        {optionen.map(o => <option key={o.id} value={o.id}>{`${o.label}${o.hinweis ? ` · ${o.hinweis}` : ''}`}</option>)}
+      </select>
+      {(lage.art === 'name' || lage.art === 'fremd') && <WertHinweis wert={String(b.wert)} lage={lage} feldName={feldName} />}
+    </div>
+  );
+}
+function WertHinweis({ wert, lage, feldName }: { wert: string; lage: WertLage; feldName: string }) {
+  const text = lage.art === 'name'
+    ? `„${wert}“ ist ein Name — verglichen wird die Kennung, so trifft es nie. Bitte „${lage.option.label}“ aus der Liste wählen.`
+    : `„${wert}“ steht nicht in der Liste von „${feldName}“ — bitte einen Wert aus der Liste wählen.`;
+  return <span role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, lineHeight: 1.4 }}>{text}</span>;
+}
+
+/**
+ * Eine Bedingung je Zeile (Feinschliff 24.10.): das Feld in voller Breite, darunter Vergleich und Wert — nichts wird abgeschnitten. Felder mit Werteliste (Produkt,
+ * Stufe, Status, Zuständig …) bekommen eine Auswahl (`werteVon`); Freitext nur für echte Text- und Zahlenfelder.
+ */
+function BedingungenFeld({ wert, onWert, felder, aus, werteVon }: { wert: readonly Bedingung[]; onWert: (v: Bedingung[]) => void; felder: readonly Option[]; aus?: boolean; werteVon?: WerteVon }) {
   const l = [...wert];
   const setze = (i: number, b: Partial<Bedingung>) => onWert(l.map((x, j) => (j === i ? { ...x, ...b } : x)));
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      {l.map((b, i) => (
-        <div key={i} style={{ display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) auto', alignItems: 'center' }}>
-          <select aria-label="Feld" value={b.feld} disabled={aus} onChange={e => setze(i, { feld: e.target.value })} style={{ ...auswahlStil, width: '100%' }}>
-            {!felder.some(f => f.id === b.feld) && <option value={b.feld}>{b.feld}</option>}
-            {felder.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
-          </select>
-          <select aria-label="Vergleich" value={b.op} disabled={aus} onChange={e => setze(i, { op: e.target.value as Bedingung['op'] })} style={{ ...auswahlStil, width: '100%' }}>
-            {BEDINGUNG_OPS.map(o => <option key={o} value={o}>{BEDINGUNG_NAME[o]}</option>)}
-          </select>
-          {b.op === 'gesetzt' || b.op === 'leer'
-            ? <span style={klein}>—</span>
-            : <TextFeld label="Wert" wert={Array.isArray(b.wert) ? b.wert.join(', ') : String(b.wert ?? '')} aus={aus} gueltig={b.op === 'einer-von' ? v => !/,\s*$/.test(v) : undefined}
-                onWert={v => setze(i, { wert: b.op === 'einer-von' ? v.split(',').map(x => x.trim()).filter(Boolean) : v })} />}
-          <SymbolKnopf ariaLabel="Bedingung entfernen" aus={aus} onClick={() => onWert(l.filter((_, j) => j !== i))}><X size={16} /></SymbolKnopf>
-        </div>
-      ))}
+    <div style={{ display: 'grid', gap: 10 }}>
+      {l.map((b, i) => {
+        const optionen = werteVon?.(b.feld) ?? null;
+        const feldName = felder.find(f => f.id === b.feld)?.label ?? b.feld;
+        return (
+          <div key={i} className="pw-bedingung" style={{ display: 'grid', gap: 6, padding: 8, borderRadius: 12, border: `1px solid ${RAND.haar}` }}>
+            <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,1fr) auto', alignItems: 'center' }}>
+              <select aria-label="Feld" value={b.feld} disabled={aus} title={feldName}
+                onChange={e => setze(i, { feld: e.target.value, ...(b.op === 'gesetzt' || b.op === 'leer' ? {} : { wert: b.op === 'einer-von' ? [] : '' }) })} style={{ ...auswahlStil, width: '100%' }}>
+                {!felder.some(f => f.id === b.feld) && <option value={b.feld}>{b.feld}</option>}
+                {felder.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+              </select>
+              <SymbolKnopf ariaLabel="Bedingung entfernen" aus={aus} onClick={() => onWert(l.filter((_, j) => j !== i))}><X size={16} /></SymbolKnopf>
+            </div>
+            <div style={{ display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,0.8fr) minmax(0,1.2fr)', alignItems: 'start' }}>
+              <select aria-label="Vergleich" value={b.op} disabled={aus} onChange={e => setze(i, { op: e.target.value as Bedingung['op'] })} style={{ ...auswahlStil, width: '100%' }}>
+                {BEDINGUNG_OPS.map(o => <option key={o} value={o}>{BEDINGUNG_NAME[o]}</option>)}
+              </select>
+              {b.op === 'gesetzt' || b.op === 'leer'
+                ? <span style={{ ...klein, alignSelf: 'center' }}>—</span>
+                : optionen && optionen.length && b.op !== 'groesser' && b.op !== 'kleiner'
+                  ? <WertWahl b={b} optionen={optionen} aus={aus} feldName={feldName} onWert={w => setze(i, { wert: w })} />
+                  : <TextFeld label="Wert" wert={Array.isArray(b.wert) ? b.wert.join(', ') : String(b.wert ?? '')} aus={aus} gueltig={b.op === 'einer-von' ? v => !/,\s*$/.test(v) : undefined}
+                      onWert={v => setze(i, { wert: b.op === 'einer-von' ? v.split(',').map(x => x.trim()).filter(Boolean) : v })} />}
+            </div>
+          </div>
+        );
+      })}
       {!aus && <Knopf leise onClick={() => onWert([...l, { feld: felder[0]?.id ?? 'lead.status', op: 'gleich', wert: '' }])}><span className="pz-knopf-inhalt"><Plus size={14} aria-hidden />Bedingung</span></Knopf>}
       {!felder.length && <p style={klein}>Für diesen Auslöser gibt es keine Felder zum Vergleichen.</p>}
     </div>
@@ -225,8 +285,9 @@ function VertragFeldEditor({ wert, onWert, aus }: { wert: readonly VertragFeld[]
 const TAGE_31 = Array.from({ length: 31 }, (_, i) => ({ id: String(i + 1), label: String(i + 1) }));
 
 /** Ein Feld der Maske — nach seinem Typ. `optionen` = feste bzw. aus der Instanz aufgelöste Werte, `felder` = Felder für Bedingungen. */
-export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, fehler, aus }: {
+export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, fehler, aus, werteVon }: {
   f: MaskenFeld; wert: MaskenWert | undefined; onWert: (v: MaskenWert) => void; optionen: readonly Option[]; felder?: readonly Option[]; platzhalter?: readonly string[]; fehler?: string; aus?: boolean;
+  /** Bedingungen: welche Werte ein Feld hat (Auswahl statt Freitext, Feinschliff 24.10.). */ werteVon?: WerteVon;
 }) {
   const label = `${f.label}${f.pflicht ? ' *' : ''}`;
   let eingabe: ReactNode;
@@ -242,7 +303,7 @@ export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, 
         <select aria-label={f.label} value={typeof wert === 'string' ? wert : ''} disabled={aus} onChange={e => onWert(e.target.value || null)} style={{ ...auswahlStil, width: '100%' }}>
           <option value="">— wählen —</option>
           {typeof wert === 'string' && wert && !optionen.some(o => o.id === wert) && <option value={wert}>{`${wert} (nicht mehr da)`}</option>}
-          {optionen.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+          {optionen.map(o => <option key={o.id} value={o.id}>{`${o.label}${o.hinweis ? ` · ${o.hinweis}` : ''}`}</option>)}
         </select>
       );
       break;
@@ -258,7 +319,7 @@ export function MaskenEingabe({ f, wert, onWert, optionen, felder, platzhalter, 
       eingabe = <MehrfachPillen liste={TAGE_31} aktiv={an} onWahl={v => onWert(v.map(Number).sort((a, b) => a - b))} />;
       break;
     }
-    case 'bedingungen': eingabe = <BedingungenFeld wert={Array.isArray(wert) ? wert as Bedingung[] : []} onWert={v => onWert(v as unknown as MaskenWert)} felder={felder ?? []} aus={aus} />; break;
+    case 'bedingungen': eingabe = <BedingungenFeld wert={Array.isArray(wert) ? wert as Bedingung[] : []} onWert={v => onWert(v as unknown as MaskenWert)} felder={felder ?? []} aus={aus} werteVon={werteVon} />; break;
     case 'webhook-felder': eingabe = <WebhookFelderFeld wert={Array.isArray(wert) ? wert as WebhookFeld[] : []} onWert={v => onWert(v as unknown as MaskenWert)} aus={aus} />; break;
     case 'vertrag': eingabe = <VertragFeldEditor wert={Array.isArray(wert) ? wert as VertragFeld[] : []} onWert={v => onWert(v as unknown as MaskenWert)} aus={aus} />; break;
   }

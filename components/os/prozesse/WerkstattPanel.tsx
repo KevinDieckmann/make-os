@@ -24,6 +24,7 @@ import { erlaubteWerkzeuge, rechteProfil } from '@/lib/prozesse/agent-schritt';
 import { schlossText } from '@/lib/prozesse/schloss';
 import { kundenFormErlaubt } from '@/lib/prozesse/produkt-bindung';
 import { maskeWerte, maskeAnwenden, formWort } from '@/lib/prozesse/werkstatt-maske';
+import { feldWerte } from '@/lib/prozesse/feld-werte';
 import { AUSGAENGE, ausgangName, type KanteLage } from '@/lib/prozesse/werkstatt-lage';
 import { PROBE_NAME, PROBE_BEDEUTUNG, centText, type ProbeSchritt, type Rat } from '@/lib/prozesse/werkstatt-hinweise';
 import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
@@ -210,9 +211,11 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   // „Nur öffentliche Angaben“ (Entscheidung 22.10. nachts): dann sind Akte und Brain aus — die Maske zeigt sie gesperrt auf „nein“ (so läuft es auch im Motor).
   const nurOeffentlich = k.form === 'agent' && werte.nurOeffentlich === true;
   const gesperrt = (id: string) => nurOeffentlich && (id === 'akte' || id === 'brain');
+  // Feinschliff 24.10.: Felder mit Werteliste (Produkt, Stufe, Status, Zuständig …) — Auswahl statt Freitext (lib/prozesse/feld-werte.ts).
+  const werteVon = (feldId: string) => feldWerte(feldId, p.auswahl, d);
   const feld = (f: KatalogEintrag['maske'][number]) => (
     <MaskenEingabe key={f.id} f={f} wert={gesperrt(f.id) ? false : werte[f.id]} onWert={v => setze(f.id, v)} optionen={f.optionen ? f.optionen.map(o => ({ ...o })) : optionenFuer(f.quelle, p, k)}
-      felder={felder} platzhalter={platz} fehler={fehlerVon(f.id)} aus={p.nurLesen || gesperrt(f.id)} />
+      felder={felder} platzhalter={platz} fehler={fehlerVon(f.id)} aus={p.nurLesen || gesperrt(f.id)} werteVon={werteVon} />
   );
   // Agent: die Maske nach den drei Andockpunkten gruppiert (Modell · Gedächtnis · Werkzeuge), dazu das Rechte-Profil.
   const GRUPPE: Readonly<Record<string, 'modell' | 'gedaechtnis' | 'werkzeuge'>> = { modell: 'modell', modellWahl: 'modell', budgetCent: 'modell', nurOeffentlich: 'gedaechtnis', brain: 'gedaechtnis', akte: 'gedaechtnis', werkzeuge: 'werkzeuge' };

@@ -14,7 +14,8 @@ import {
 } from './definition';
 import { katalogEintrag, maskeSaeubern, platzhalterFuer, type AuswahlQuelle } from './baustein-katalog';
 import { agentAus, vertragAus, WARUM_MIN, type AgentKontext } from './agent-schritt';
-import { ausloeserAus, datumsFelderFuer, ereignisStartetProzess, FALL_FELDER, webhookFeldSchluessel } from './ausloeser';
+import { ausloeserAus, datumsFelderFuer, ereignisStartetProzess, FALL_FELDER, feldTitelVon, webhookFeldSchluessel } from './ausloeser';
+import { bedingungWertBefunde } from './feld-werte';
 import { bedingungenAus } from './bedingung';
 import { alleSchritte, flussPruefen, phasen, startKnoten, wurzel } from './fluss';
 import { schlossFehlt } from './schloss';
@@ -52,6 +53,12 @@ export function rautenFelder(d: Pick<ProzessDefinition, 'knoten' | 'fallArt'>): 
 }
 
 const b = (stufe: Befund['stufe'], text: string, knotenId?: string, feld?: string): Befund => ({ stufe, text, ...(knotenId ? { knotenId } : {}), ...(feld ? { feld } : {}) });
+/**
+ * Werte außerhalb der Liste eines Felds (Feinschliff 24.10., lib/prozesse/feld-werte.ts): Produkt, Stufe, Status, Zuständig … vergleicht der Motor als Kennung — ein
+ * Name trifft nie. `offen` (der Entwurf speichert). Eine leere bzw. unbekannte Quelle wird nicht geprüft (nie ein falscher Befund, wenn der Bestand nicht lesbar war).
+ */
+const wertBefunde = (l: Parameters<typeof bedingungWertBefunde>[0], d: ProzessDefinition, kx: PruefKontext, wo: string, knotenId: string): Befund[] =>
+  bedingungWertBefunde(l, { ids: q => { const x = kx.auswahl?.(q) ?? null; return x?.length ? x : null; }, d, wo, feldName: feldTitelVon, knotenId });
 const ganz = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
 
 /** Die Befunde EINES Knotens (rein). */
@@ -70,7 +77,10 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
   switch (k.form) {
     case 'ausloeser':
       if (!k.ausloeser) raus.push(b('offen', `${titel}: wie startet der Prozess?`, k.id));
-      else raus.push(...ausloeserAus(k.ausloeser, fall, k.id).befunde);
+      else {
+        raus.push(...ausloeserAus(k.ausloeser, fall, k.id).befunde);
+        if (k.ausloeser.art === 'ereignis' || k.ausloeser.art === 'datum') raus.push(...wertBefunde(k.ausloeser.bedingungen, d, kx, 'Nur wenn', k.id));
+      }
       break;
     case 'agent': {
       if (!k.agent) { raus.push(b('offen', `${titel}: wähle ZOE, einen Head, einen Skill oder einen Fach-Agenten.`, k.id)); break; }
@@ -88,7 +98,7 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
       if (!r) break; // ein Mensch entscheidet
       if (r.art === 'regel') {
         const x = bedingungenAus(r.bedingungen, rautenFelder(d), titel);
-        raus.push(...x.befunde.map(y => ({ ...y, knotenId: k.id, feld: 'bedingungen' })));
+        raus.push(...x.befunde.map(y => ({ ...y, knotenId: k.id, feld: 'bedingungen' })), ...wertBefunde(r.bedingungen, d, kx, titel, k.id));
         if (!r.bedingungen.length) raus.push(b('offen', `${titel}: mindestens eine Bedingung.`, k.id));
       } else if (r.art === 'modell') {
         if (!r.frage.trim()) raus.push(b('offen', `${titel}: die Frage an das Modell fehlt.`, k.id));
@@ -118,7 +128,7 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
         if (w.art === 'datum' && !datumsFelderFuer(fall).includes(w.feld)) raus.push(b('offen', `${titel}: dieses Datum gibt es bei diesem Fall nicht.`, k.id));
         if (w.art === 'ereignis') {
           if (!istEreignisArt(w.ereignis) || !ereignisStartetProzess(w.ereignis)) raus.push(b('offen', `${titel}: auf dieses Ereignis kann ein Prozess nicht warten.`, k.id));
-          raus.push(...bedingungenAus(w.bedingungen, rautenFelder(d), titel).befunde.map(y => ({ ...y, knotenId: k.id, feld: 'bedingungen' })));
+          raus.push(...bedingungenAus(w.bedingungen, rautenFelder(d), titel).befunde.map(y => ({ ...y, knotenId: k.id, feld: 'bedingungen' })), ...wertBefunde(w.bedingungen, d, kx, titel, k.id));
         }
       }
       break;
