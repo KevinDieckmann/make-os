@@ -255,11 +255,70 @@ export async function prozesseMorgenlauf(h: string, heute: string): Promise<Morg
   const ablauf = await (await import('./ausfuehrung-server')).ablaufMorgenlauf(heute);
   // Begleit-Prozesse (22.10., B1): die Hänger als Ereignisse — nur gemeldet (nur Kennungen), wirkt nur, wenn ein Begleit-Prozess darauf hört. Wirft nie.
   await begleitHaenger(heute).catch(() => 0);
+  // Ablöse-Weiche (22.10., Paket Ü): den Onboarding-Vorschlag „Fall starten“ kann ein überführter Prozess der Werkstatt übernehmen (`sp-uebergabe`) — hier wird
+  // die Weiche GENAU EINMAL gefragt; arbeitet der neue Weg, bleibt hier nur die Nachsorge. Ohne Überführung bit-gleich wie vorher.
+  const weg = await (await import('@/lib/prozesse/ueberfuehrung-server')).wegFuer('sp-uebergabe');
   const plus = (t: MorgenlaufTeil): MorgenlaufTeil => ({ vorschlaege: t.vorschlaege + ablauf.nachrichten, ...(ablauf.aufgaben || ablauf.glocken ? { info: `Ablauf: ${ablauf.aufgaben} Aufgaben, ${ablauf.glocken} Glocken` } : {}) });
-  return plus(await prozesseMorgenlaufRest(h, heute));
+  return plus(await prozesseMorgenlaufRest(h, heute, weg));
 }
 
-async function prozesseMorgenlaufRest(h: string, heute: string): Promise<MorgenlaufTeil> {
+/** Ein fälliger Onboarding-Vorschlag (Paket Ü, Wirkungsbild des Schatten-Vergleichs): nur Kennungen — Mandat und für wen (der Vergleich speichert nur einen Fingerabdruck). */
+export interface OnboardingSoll { mandatId: string; fuer: string }
+type MorgenDaten = { crm: CrmBestand; vorlagen: VorlagenDatei; faelle: { faelle: Record<string, Fall> } };
+
+/**
+ * Der Kern „Onboarding-Vorschlag“ (Paket Ü — der Morgenlauf und der feste Schritt `fall-vorschlag` rechnen hiermit): je Kandidat (`onboardingKandidaten`, ohne
+ * Bestand) EIN Vorschlag „Fall starten“ + Glocke + Marke `onboarding-vorschlag:<mandat>` (die Kennungs-Brücke — idempotent). `schreiben: false` = nur rechnen.
+ * Ohne `daten` (fester Schritt) liest er selbst und schlägt nichts vor, solange das Fulfillment nicht eingerichtet ist oder es erst heute wurde — wie der Morgenlauf
+ * am ersten Tag. Das Soll zählt eine Marke von HEUTE nicht als „schon vorgeschlagen“ (wer heute vorschlug, war heute dran).
+ */
+export async function onboardingVorschlaegeKern(h: string, heute: string, o: { schreiben: boolean; daten?: MorgenDaten }): Promise<{ vorschlaege: string[]; soll: OnboardingSoll[] }> {
+  let d = o.daten;
+  if (!d) {
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const [crm, vorlagen, faelle] = await Promise.all([ladeCrm(), fulfillmentLesen('vorlagen', h), fulfillmentLesen('faelle', h)]);
+    const seit = vorlagen.marken[MARKE_FULFILLMENT_SEIT];
+    if (!seit || seit >= heute) return { vorschlaege: [], soll: [] };
+    d = { crm, vorlagen, faelle };
+  }
+  const { crm, vorlagen, faelle } = d;
+  // Prozesse × Fulfillment (22.10.): ein Mandat, dessen Ablauf ein laufender Werkstatt-Prozess ist, bekommt keinen Vorschlag und keine Glocke „Fall starten“.
+  const { mandateMitProduktLaufLesen } = await import('@/lib/prozesse/produkt-laeufe-server');
+  const alle = onboardingKandidaten(crm, faelle.faelle, vorlagen.marken, heute, await mandateMitProduktLaufLesen(crm)).filter(k => !k.bestand);
+  const vorgeschlagen = (id: string) => vorlagen.marken[markeOnboardingVorschlag(id)];
+  const soll: OnboardingSoll[] = [];
+  for (const k of alle) {
+    const am = vorgeschlagen(k.mandatId);
+    if (am && am !== heute) continue;
+    const m = crm.mandate.find(x => x.id === k.mandatId)!;
+    soll.push({ mandatId: m.id, fuer: (await zustaendigePerson(m)) ?? 'haushalt' });
+  }
+  const kandidaten = alle.filter(k => !vorgeschlagen(k.mandatId));
+  if (!o.schreiben || !kandidaten.length) return { vorschlaege: [], soll };
+  const { lege } = await import('@/lib/zoe/stapel');
+  const { melde } = await import('@/lib/meldungen/melden');
+  const { WEG } = await import('@/lib/wege');
+  const vorschlaege: string[] = [];
+  const neueMarken: Record<string, string> = {};
+  for (const k of kandidaten) {
+    const m = crm.mandate.find(x => x.id === k.mandatId)!;
+    const person = await zustaendigePerson(m);
+    const v = vorlageFuerProdukt(vorlagen, m.leistungId);
+    const x = await lege({
+      werkzeug: WERKZEUG.onboarding, gruppe: STAPEL_GRUPPE, titel: `Fall starten: ${m.kunde}`.slice(0, 200),
+      nachher: v ? `Fall nach „${v.titel}“ anlegen — die Willkommensmail bereitest du danach vor, gesendet wird erst per Klick` : 'Fall anlegen — vorher dem Produkt einen Ablauf zuordnen (Produkte & Mandate › Produkte)',
+      eingabe: { mandatId: m.id, ...(v ? { vorlageId: v.id } : {}) }, anlass: k.grund === 'vertrag' ? 'Vertrag unterschrieben' : k.grund === 'angebot' ? 'Angebot angenommen' : 'Deal gewonnen',
+      quelle: 'lauf', bezug: { art: 'fulfillment', id: `p:onboarding:${m.id}` }, ...(person ? { person } : {}),
+    });
+    for (const an of await empfaenger(m)) await melde({ an, art: 'produkte', titel: 'Ein neuer Kunde ist bereit fürs Onboarding — Vorschlag im Stapel', link: WEG.fulfillment('onboarding') });
+    neueMarken[markeOnboardingVorschlag(m.id)] = heute;
+    vorschlaege.push(x.id);
+  }
+  if (Object.keys(neueMarken).length) await fulfillmentAendern('vorlagen', dd => ({ ok: true, datei: { ...dd, marken: { ...dd.marken, ...neueMarken } }, geaendert: Object.keys(neueMarken) }), { art: 'system' }, h);
+  return { vorschlaege, soll };
+}
+
+async function prozesseMorgenlaufRest(h: string, heute: string, weg: import('@/lib/prozesse/ueberfuehrung').WegEntscheidung): Promise<MorgenlaufTeil> {
   const { ladeCrm } = await import('@/lib/crm/speicher');
   const [crm, vorlagen, faelle] = await Promise.all([ladeCrm(), fulfillmentLesen('vorlagen', h), fulfillmentLesen('faelle', h)]);
   // Prüf-Fund 11.10.: der ERSTE Lauf nach der Einrichtung merkt sich nur den Tag (Stichtag für „Bestand“) und legt nichts an — sonst bekäme jedes
@@ -271,32 +330,19 @@ async function prozesseMorgenlaufRest(h: string, heute: string): Promise<Morgenl
     }
     return { vorschlaege: 0 };
   }
-  // Prozesse × Fulfillment (22.10.): ein Mandat, dessen Ablauf ein laufender Werkstatt-Prozess ist, bekommt keinen Vorschlag und keine Glocke „Fall starten“.
-  const { mandateMitProduktLaufLesen } = await import('@/lib/prozesse/produkt-laeufe-server');
-  const kandidaten = onboardingKandidaten(crm, faelle.faelle, vorlagen.marken, heute, await mandateMitProduktLaufLesen(crm)).filter(k => !k.bestand && !vorlagen.marken[markeOnboardingVorschlag(k.mandatId)]);
+  // Onboarding-Vorschläge (Kern, Paket Ü) — nur, solange der alte Weg arbeitet; rechnet der neue im Schatten mit, meldet dieser Lauf sein Wirkungsbild.
+  const ob = await onboardingVorschlaegeKern(h, heute, { schreiben: weg.weg === 'alt', daten: { crm, vorlagen, faelle } });
+  if (weg.schatten) {
+    const [ue, { onboardingBild }] = await Promise.all([import('@/lib/prozesse/ueberfuehrung-server'), import('@/lib/prozesse/system-schritte-server')]);
+    await ue.vergleichMeldenServer('sp-uebergabe', 'alt', heute, onboardingBild(ob.soll, heute));
+  }
   const enden: Record<string, string | null> = Object.fromEntries(crm.mandate.map(m => [m.id, mandatsEnde(m)]));
   const nachsorge = nachsorgeFaellig({ faelle: Object.values(faelle.faelle), enden, tage: vorlagen.einstellungen.nachsorgeTage, heute });
-  if (!kandidaten.length && !nachsorge.length) return { vorschlaege: 0 };
+  let n = ob.vorschlaege.length;
+  if (!nachsorge.length) return { vorschlaege: n };
   const { lege } = await import('@/lib/zoe/stapel');
   const { melde } = await import('@/lib/meldungen/melden');
   const { WEG } = await import('@/lib/wege');
-  let n = 0;
-  const neueMarken: Record<string, string> = {};
-  for (const k of kandidaten) {
-    const m = crm.mandate.find(x => x.id === k.mandatId)!;
-    const person = await zustaendigePerson(m);
-    const v = vorlageFuerProdukt(vorlagen, m.leistungId);
-    await lege({
-      werkzeug: WERKZEUG.onboarding, gruppe: STAPEL_GRUPPE, titel: `Fall starten: ${m.kunde}`.slice(0, 200),
-      nachher: v ? `Fall nach „${v.titel}“ anlegen — die Willkommensmail bereitest du danach vor, gesendet wird erst per Klick` : 'Fall anlegen — vorher dem Produkt einen Ablauf zuordnen (Produkte & Mandate › Produkte)',
-      eingabe: { mandatId: m.id, ...(v ? { vorlageId: v.id } : {}) }, anlass: k.grund === 'vertrag' ? 'Vertrag unterschrieben' : k.grund === 'angebot' ? 'Angebot angenommen' : 'Deal gewonnen',
-      quelle: 'lauf', bezug: { art: 'fulfillment', id: `p:onboarding:${m.id}` }, ...(person ? { person } : {}),
-    });
-    for (const an of await empfaenger(m)) await melde({ an, art: 'produkte', titel: 'Ein neuer Kunde ist bereit fürs Onboarding — Vorschlag im Stapel', link: WEG.fulfillment('onboarding') });
-    neueMarken[markeOnboardingVorschlag(m.id)] = heute;
-    n++;
-  }
-  if (Object.keys(neueMarken).length) await fulfillmentAendern('vorlagen', d => ({ ok: true, datei: { ...d, marken: { ...d.marken, ...neueMarken } }, geaendert: Object.keys(neueMarken) }), { art: 'system' }, h);
   const fallMarken: Record<string, Record<string, string>> = {};
   for (const x of nachsorge) {
     const m = crm.mandate.find(y => y.id === x.mandatId);

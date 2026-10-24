@@ -90,6 +90,12 @@ beforeAll(async () => {
   ], 'pia');
   expect(t.ok, JSON.stringify(t)).toBe(true);
   expect((await treppeSchreiben([{ op: 'lieferobjekt', mandatId: 'm-a', was: 'Befund', erledigt: true }], 'pia')).ok).toBe(true);
+  // Fulfillment (Onboarding-Vorschlag): eingerichtet vor 40 Tagen, ein Paket am Produkt l-a — beide Business-Mandate sind neue Kunden ohne Fall.
+  await db.saveJson(`fulfillment--${H}`, { version: 1, prozesse: [{
+    id: 'fp-paket', art: 'paket', titel: 'Paket liefern', fassung: 1, geaendert: '2026-09-01T00:00:00.000Z', geaendertVon: 'pia', uebergaenge: [], freigaben: [], rollen: [],
+    knoten: [{ id: 'fk-w', titel: 'Paket liefern', rang: 0 }, { id: 'fk-p', elternId: 'fk-w', titel: 'Start', rang: 0 }, { id: 'fk-s', elternId: 'fk-p', titel: 'Kick-off', rang: 0, form: 'termin' }],
+  }], bausteine: [], rituale: [], zuordnung: { 'l-a': { vorlageId: 'fp-paket' } }, agentZusatz: {}, einstellungen: {}, importLaeufe: [], marken: { 'fulfillment-eingerichtet': tag(-40) } });
+  await db.saveJson(`fulfillment-faelle--${H}`, { version: 1, faelle: {} });
   L = await import('@/lib/prozesse/lauf-server');
   UE = await import('@/lib/prozesse/ueberfuehrung-server');
   W = await import('@/lib/prozesse/werkstatt-server');
@@ -273,6 +279,57 @@ describe('Fortschritts-Report: Schatten → Umschalten → Gold', () => {
     // Ein zweiter Morgen am selben Tag legt nichts doppelt (Marke = Kennungs-Brücke), auch nicht der alte Weg nach dem Anhalten.
     await treppeMorgen(19);
     expect((await vorschlaege()).filter(x => x.werkzeug === 'fortschritt_report')).toHaveLength(2);
+  });
+});
+
+// ══ Onboarding-Vorschlag „Fall starten“ (sp-uebergabe) ═══════════════════════════════════════════════════════════════════════════════════════════
+
+describe('Onboarding-Vorschlag: Schatten → Umschalten → Gold', () => {
+  const BESTAENDE = ['zoe-stapel', 'meldungen--pia', 'meldungen--olaf', `fulfillment--${H}`];
+  interface V { id: string; werkzeug: string; eingabe: Record<string, unknown>; [k: string]: unknown }
+  const vorschlaege = async (): Promise<V[]> => ((await db.loadJson<{ vorschlaege: V[] }>('zoe-stapel'))?.vorschlaege ?? []).filter(v => v.werkzeug === 'fulfillment_onboarding');
+  const ohneId = <T extends { id?: unknown }>(l: readonly T[]) => l.map(({ id: _i, ...r }) => r).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+  const glocken = async () => ({
+    pia: ohneId(((await db.loadJson<{ eintraege: { id: string; titel: string }[] }>('meldungen--pia'))?.eintraege ?? []).filter(m => m.titel.includes('Onboarding'))),
+    olaf: ohneId(((await db.loadJson<{ eintraege: { id: string; titel: string }[] }>('meldungen--olaf'))?.eintraege ?? []).filter(m => m.titel.includes('Onboarding'))),
+  });
+  const marken = async () => Object.fromEntries(Object.entries((await db.loadJson<{ marken?: Record<string, string> }>(`fulfillment--${H}`))?.marken ?? {}).filter(([k]) => k.startsWith('onboarding-vorschlag:')));
+  const morgenlauf = async (n: number) => {
+    morgen(n);
+    await (await import('@/lib/fulfillment/prozesse/server')).prozesseMorgenlauf(H, tag(n));
+    await L.prozesseNachLoop('morgen');
+  };
+  let start: Record<string, unknown> = {};
+  let gold: unknown = null;
+  let pz = '';
+  it('ohne Überführung: je neuem Business-Kunden ein Vorschlag „Fall starten“ + Glocke + Marke (nie Privat) — wie vorher', async () => {
+    start = await sichern(BESTAENDE);
+    morgen(49);
+    expect((await (await import('@/lib/fulfillment/prozesse/server')).prozesseMorgenlauf(H, tag(49))).vorschlaege).toBe(2);
+    expect((await vorschlaege()).map(v => v.eingabe.mandatId).sort()).toEqual(['m-a', 'm-b']);
+    gold = { v: ohneId(await vorschlaege()), g: await glocken(), m: await marken() };
+    await zurueck(start);
+  });
+  it('überführen → Schatten über sechs Morgen: der alte Weg schlägt einmal vor, der neue schreibt nichts; dasselbe Bild → Umschalten', async () => {
+    morgen(50);
+    const r = await UE.ueberfuehren({ sp: 'sp-uebergabe', person: 'pia', rechte: RECHTE, h: H, wer: WER });
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    pz = String(r.body.prozessId);
+    for (let n = 50; n <= 56; n++) await morgenlauf(n);
+    expect(await vorschlaege(), 'je Kunde genau ein Vorschlag (Marke)').toHaveLength(2);
+    const a = await UE.ueberfuehrungAnsicht(await prozess(pz), H);
+    expect(a).toMatchObject({ vergleich: { abweichend: 0 }, umschalten: { erlaubt: true } });
+    expect((await UE.umschalten({ prozessId: pz, stand: W.standVon(await prozess(pz)), person: 'pia', rechte: RECHTE, h: H, wer: WER })).status).toBe(200);
+  });
+  it('GOLD: derselbe Bestand — alter Code allein vs. neuer Prozess scharf (der alte Weg nur noch Nachsorge) → dieselben Vorschläge, Glocken, Marken', async () => {
+    await zurueck(start);
+    await morgenlauf(49);
+    expect({ v: ohneId(await vorschlaege()), g: await glocken(), m: await marken() }).toEqual(gold);
+    const lauf = (await L.laeufeLesen(H)).laeufe.filter(l => l.prozessId === pz && l.modus === 'scharf');
+    expect(lauf).toHaveLength(1);
+    expect(lauf[0].schritte.flatMap(s => s.wirkung ?? []).filter(w => w.art === 'vorschlag')).toHaveLength(2);
+    await morgenlauf(49);
+    expect(await vorschlaege(), 'nichts doppelt').toHaveLength(2);
   });
 });
 

@@ -21,8 +21,8 @@ import type { ProzessEintrag } from './definition';
 // ══ Was umziehen kann ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** Ein fester Schritt (Baustein `system.fest`): der Kern eines alten Ablaufs — dieselbe Regel, dieselben Kennungen, derselbe Schreibweg. */
-export type SystemSchrittId = 'mahnaufgaben' | 'treppe-report';
-export const SYSTEM_SCHRITT_IDS = ['mahnaufgaben', 'treppe-report'] as const satisfies readonly SystemSchrittId[];
+export type SystemSchrittId = 'mahnaufgaben' | 'treppe-report' | 'fall-vorschlag';
+export const SYSTEM_SCHRITT_IDS = ['mahnaufgaben', 'treppe-report', 'fall-vorschlag'] as const satisfies readonly SystemSchrittId[];
 export const istSystemSchritt = (v: unknown): v is SystemSchrittId => typeof v === 'string' && (SYSTEM_SCHRITT_IDS as readonly string[]).includes(v);
 
 export interface UeberfuehrbarDef {
@@ -45,9 +45,10 @@ export interface UeberfuehrbarDef {
 }
 
 /**
- * Die feste Liste (Reihenfolge „klein und sicher zuerst“). Nicht dabei (Bericht Paket Ü): Power-Hour-Vorbereitung (Head-Lauf je Person mit Nachholen in Business-
- * freien Zeiten — der Zeitplan startet einmal je Slot, eine Fan-out „je Person“ gibt es im Motor nicht), Event-Nachfassen (der alte Weg schreibt nichts — er misst nur;
- * es gibt nichts abzulösen) und Übergabe & Onboarding (der alte Weg ist Klick + Fulfillment-Morgenlauf, keine eine Stelle mit denselben Schreibungen).
+ * Die feste Liste (Reihenfolge „klein und sicher zuerst“). Nicht dabei (Bericht Paket Ü): Power-Hour-Vorbereitung (der alte Weg bereitet je Person „ab Uhrzeit, einmal am Tag,
+ * sobald sie nicht Business-frei ist“ vor — der Zeitplan des Motors startet einmal je Slot, „je Person mit Nachholen“ gibt es nicht; gleichwertig ginge es nur mit
+ * einem neuen Auslöser) und Event-Nachfassen (der alte Weg schreibt nichts — Kennzahl `besuchWirkung` und die abgeleitete Glocke aus `dankeOffen`; es gibt nichts
+ * abzulösen). Von „Übergabe & Onboarding“ zieht nur der automatische Teil um (der Onboarding-Vorschlag des Morgenlaufs) — der Rest ist Klick.
  */
 export const UEBERFUEHRBAR: readonly UeberfuehrbarDef[] = [
   {
@@ -63,6 +64,13 @@ export const UEBERFUEHRBAR: readonly UeberfuehrbarDef[] = [
     einstieg: { datei: 'lib/crm/treppe-server.ts', funktion: 'treppeMorgenlauf' },
     kennung: 'Marke `report:<mandat>` im Bestand der Treppe (`reportFaelligHeute`) und der Vorschlag `report-<fnv(mandat|tag)>` (lib/crm/treppe-server.ts)',
     bleibt: '„Nächste Stufe anbieten“ und das Erstellen des Reports bei der Freigabe bleiben im Code.',
+  },
+  {
+    sp: 'sp-uebergabe', schritt: 'fall-vorschlag', teil: 'Onboarding-Vorschlag „Fall starten“', titel: 'Onboarding-Vorschlag (überführt)',
+    satz: 'Je neuem Kunden (Mandat unterschrieben, Angebot angenommen bzw. Deal gewonnen — noch ohne Fall) ein Vorschlag „Fall starten“ in den Stapel und eine Glocke — dieselbe Regel und Marke wie der Morgenlauf. Gestartet wird per Klick.',
+    einstieg: { datei: 'lib/fulfillment/prozesse/server.ts', funktion: 'prozesseMorgenlauf' },
+    kennung: 'Marke `onboarding-vorschlag:<mandat>` im Fulfillment-Bestand und der Vorschlag `p:onboarding:<mandat>` (`onboardingVorschlaegeKern`, lib/fulfillment/prozesse/server.ts)',
+    bleibt: 'Mandat anlegen, Fall starten, Willkommen und Kickoff (im Fall, per Klick) sowie die Nachsorge bleiben im Code.',
   },
 ];
 const NACH_SP = new Map(UEBERFUEHRBAR.map(u => [u.sp, u]));

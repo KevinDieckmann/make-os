@@ -241,6 +241,7 @@ describe('Wächter: jeder alte Einstiegspunkt fragt die Weiche genau einmal', ()
     const s = readFileSync(path.join(process.cwd(), 'lib/prozesse/system-schritte-server.ts'), 'utf8');
     expect(s).toContain('mahnAufgabenKern(');
     expect(s).toContain('treppeReportsKern(');
+    expect(s).toContain('onboardingVorschlaegeKern(');
     expect(readFileSync(path.join(process.cwd(), 'lib/finanzen/rechnung/server.ts'), 'utf8')).toMatch(/mahnAufgabenNachziehen[\s\S]*mahnAufgabenKern\(heute/);
   });
 });

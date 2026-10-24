@@ -74,7 +74,7 @@ export const wertDef = (id: string): WertDef | undefined => NACH_ID.get(id);
 export const AUCH_IN: Readonly<Record<string, readonly string[]>> = {
   'kapa.machbarBis': ['sp-vertriebsplanung'], 'kapa.engBis': ['sp-vertriebsplanung'],
   // Überführung (Paket Ü): dieselbe Regel für jeden überführbaren System-Prozess.
-  'ueberfuehrung.laeufe': ['sp-treppe'], 'ueberfuehrung.tage': ['sp-treppe'],
+  'ueberfuehrung.laeufe': ['sp-treppe', 'sp-uebergabe'], 'ueberfuehrung.tage': ['sp-treppe', 'sp-uebergabe'],
 };
 
 export type Werte = Readonly<Record<string, number | boolean>>;

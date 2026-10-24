@@ -35,6 +35,14 @@ export function ueberfuehrungsVorlage(u: UeberfuehrbarDef): ProzessDefinition {
         endKriterium: 'Für jedes Mandat, dessen Report dran ist, liegt ein Vorschlag im Stapel (gesendet wird per Klick).',
         phasen: [{ titel: 'Report', schritte: [S.loop('t', 'Nach dem Morgen-Loop', 'morgen'), S.fest('f', 'Report-Vorschläge legen', 'treppe-report'), S.ziel('e', 'Vorschläge liegen im Stapel')] }],
       });
+    case 'fall-vorschlag':
+      return prozess({
+        id: 'ue-fall-vorschlag', titel: u.titel, bereich: 'uebergabe', fallArt: 'keiner', zettel: zettel(u),
+        beschreibung: u.satz,
+        startKriterium: 'Jeden Morgen nach dem Morgen-Loop (Tagesstart) — einmal am Tag, wie bisher der Morgenlauf des Fulfillments.',
+        endKriterium: 'Für jeden neuen Kunden ohne Fall liegt ein Vorschlag „Fall starten“ im Stapel (gestartet wird per Klick).',
+        phasen: [{ titel: 'Onboarding', schritte: [S.loop('t', 'Nach dem Morgen-Loop', 'morgen'), S.fest('f', 'Onboarding-Vorschläge legen', 'fall-vorschlag'), S.ziel('e', 'Vorschläge liegen im Stapel')] }],
+      });
   }
 }
 
