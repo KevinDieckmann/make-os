@@ -9,7 +9,7 @@ import {
   AUSLOESER_ARTEN, BAHNEN, BEDINGUNG_OPS, BEREICH_IDS, CRM_ABFRAGE_ARTEN, EINGANG_KENNUNG, FALL_ART_IDS, FELD_KENNUNG, KENNUNG_ARTEN, KNOTEN_KENNUNG,
   LOOP_ARTEN, PERSON_TAGE, PROZESS_FORMEN, PROZESS_GRENZEN, PROZESS_KENNUNG, PROZESS_STATUS, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, VORSCHLAG_ZIELFELDER,
   WEBHOOK_FELD_ARTEN, WEBHOOK_KENNUNG, ZETTEL_FARBEN,
-  type AgentSchritt, type Ausloeser, type Bedingung, type Befund, type CrmAbfrage, type EndeAngabe, type ErneutAb, type KatalogBezug, type KnotenLage,
+  type AgentSchritt, type Ausloeser, type Bedingung, type Befund, type CrmAbfrage, type Danach, type EndeAngabe, type ErneutAb, type KatalogBezug, type KnotenLage,
   type MaskenWert, type ModellWahl, type NotizZettel, type PfeilText, type ProzessDefinition, type ProzessEintrag, type ProzessForm, type ProzessKnoten,
   type ProzessSchnittstelle, type ProzessStatus, type ProzessVersion, type ProzesseDatei, type RautenRegel, type SchleifeRegel, type SchlossMarke,
   type TeilprozessAufruf, type VertragFeld, type VorlagenPapierkorb, type WartenRegel, type WebhookDatei, type WebhookEingang, type WebhookEintrag, type WebhookFeld, type Zweige,
@@ -52,6 +52,13 @@ const zweige = (v: unknown): Zweige | undefined => {
   const o = obj(v); if (!o) return undefined;
   const z = sauber<Zweige>({ ja: id(o.ja), nein: id(o.nein), fehler: id(o.fehler), abgelaufen: id(o.abgelaufen) });
   return Object.keys(z).length ? z : undefined;
+};
+/** Werkstatt-Fäden (24.10.): der festgelegte Hauptausgang — `{ ende: true }` bzw. `{ ziel: <Kennung> }`; alles andere fällt weg (ohne Feld bit-gleich). */
+const danach = (v: unknown): Danach | undefined => {
+  const o = obj(v); if (!o) return undefined;
+  if (o.ende === true) return { ende: true };
+  const z = id(o.ziel);
+  return z ? { ziel: z } : undefined;
 };
 const pfeilText = (v: unknown): PfeilText | undefined => {
   const o = obj(v); if (!o) return undefined;
@@ -181,6 +188,8 @@ export function knotenAus(o: O): K | null {
     bahn: wahl(o.bahn, BAHNEN), abfrage: abfrage(o.abfrage), erneut: erneut(o.erneut),
     // Werkstatt bau-fertig (22.10., Punkt 14): ausgeschaltet — nur `true` zählt, ohne Feld bit-gleich wie bisher.
     deaktiviert: o.deaktiviert === true ? true : undefined,
+    // Werkstatt-Fäden (24.10.): der ausdrücklich festgelegte Hauptausgang — ohne Feld bit-gleich wie bisher.
+    danach: danach(o.danach),
     // Fulfillment in die Werkstatt (22.10., Etappe 1): die Felder der Paket-Vorlagen, die nur das Fulfillment kennt — mit DERSELBEN Regel gesäubert
     // (lib/fulfillment/lesen.ts `vorlagenKnotenAus`), damit ein Paket, das die Werkstatt öffnet und speichert, nichts verliert. Werkstatt-Prozesse tragen
     // sie nicht; dann fehlen sie wie bisher (Gold: tests/prozesse-ff-werkstatt-e1.test.ts gegen den Stand 451bd6fd).

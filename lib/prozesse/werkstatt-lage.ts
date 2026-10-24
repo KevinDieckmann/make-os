@@ -196,6 +196,16 @@ export const AUSGAENGE: Readonly<Record<ProzessForm, readonly Ausgang[]>> = {
   ausloeser: ['weiter'], agent: ['weiter', 'fehler'], warten: ['weiter', 'abgelaufen'], schleife: ['weiter', 'fehler'], teilprozess: ['weiter', 'fehler'],
   freigabe: ['ja', 'nein', 'abgelaufen'], ende: [],
 };
+/**
+ * Läuft dieses Warten je ab? Eine feste Dauer nicht — der Motor geht nach der Dauer „weiter“ (lib/prozesse/lauf-regeln.ts `weckenZeit`); „abgelaufen“ gibt es nur beim
+ * Warten bis Datum bzw. auf ein Ereignis (Obergrenze erreicht, Datum bzw. Ereignis noch nicht da). Bau-Test 24.10.
+ */
+export const wartenDauer = (k: Pick<K, 'form' | 'warten' | 'katalog'>): boolean => k.form === 'warten' && (k.warten ? k.warten.art === 'dauer' : k.katalog?.id === 'warten.dauer');
+/** Die Ausgänge eines Knotens (rein): die seiner Form — am Warten mit fester Dauer ohne „abgelaufen“ (außer es trägt dort schon ein Ziel, das man lösen können muss). */
+export function ausgaengeVon(k: Pick<K, 'form' | 'warten' | 'katalog' | 'zweige'>): readonly Ausgang[] {
+  const a = AUSGAENGE[k.form ?? 'schritt'];
+  return wartenDauer(k) && !k.zweige?.abgelaufen ? a.filter(x => x !== 'abgelaufen') : a;
+}
 /** Wie ein Ausgang an dieser Form heißt (Beschriftung des Fadens; Punkt 23: Rauten-Ausgänge immer benannt). */
 export function ausgangName(f: ProzessForm, a: Ausgang): string {
   if (a === 'fehler') return 'Fehler';
@@ -207,21 +217,21 @@ export function ausgangName(f: ProzessForm, a: Ausgang): string {
 }
 
 /** Die Anschlüsse eines Knotens (relativ zur Box). Raute: vier feste Andockpunkte (links Eingang, rechts ja, unten nein, oben Fehler). */
-export function anschluesse(k: Pick<K, 'form'>): Anschluss[] {
+export function anschluesse(k: Pick<K, 'form'> & Partial<Pick<K, 'warten' | 'katalog' | 'zweige'>>): Anschluss[] {
   const f = k.form ?? 'schritt';
   const { koerper: c } = knotenMass(k);
   const cy = c.y + c.h / 2;
   const raus: Anschluss[] = [];
   if (f !== 'ausloeser') raus.push({ art: 'ein', x: c.x, y: cy, richtung: 'links' });
   if (gestaltVon(f) === 'raute') {
-    for (const a of AUSGAENGE[f]) {
+    for (const a of ausgaengeVon(k)) {
       if (a === 'ja' || a === 'weiter') raus.push({ art: a, x: c.x + c.b, y: cy, richtung: 'rechts' });
       else if (a === 'nein') raus.push({ art: a, x: c.x + c.b / 2, y: c.y + c.h, richtung: 'unten' });
       else raus.push({ art: a, x: c.x + c.b / 2, y: c.y, richtung: 'oben' });
     }
     return raus;
   }
-  const aus = AUSGAENGE[f];
+  const aus = ausgaengeVon(k);
   // Rechts übereinander: der Hauptausgang mittig (bzw. oben), die übrigen darunter; „Fehler“ immer unten.
   const anteile = aus.length <= 1 ? [0.5] : aus.length === 2 ? [0.4, 0.8] : [0.26, 0.56, 0.86];
   aus.forEach((a, i) => raus.push({ art: a, x: c.x + c.b, y: c.y + c.h * anteile[i], richtung: 'rechts' }));

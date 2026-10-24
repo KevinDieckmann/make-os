@@ -9,7 +9,10 @@
 // in den Strang hinter dem Knoten, von dem sie abzweigen; ein Ende-Knoten beendet den Weg. Ein Freigabe-Schloss (lib/prozesse/schloss.ts) steht immer
 // DIREKT hinter seinem Knoten — egal, wo es gespeichert ist. Kreise nur über eine Erinnerung zurück zur Entscheidung (die Schleife des Fulfillments);
 // eine Schleife „je Eintrag“ ruft einen Teilprozess (kein Kreis im Fluss). Mehrere Auslöser stehen am Anfang nebeneinander und führen JEDER in den ersten
-// Schritt dahinter (22.10., Befund 2). Rein und client-sicher; Tests: tests/prozesse-modell.test.ts, tests/prozesse-vorlagen-gliederung.test.ts.
+// Schritt dahinter (22.10., Befund 2). Werkstatt-Fäden (24.10.): `danach` legt den Hauptausgang ausdrücklich fest (ein Schritt — auch in einer anderen Phase —
+// bzw. „Lauf endet“); ein Sprung `zweige.ja` gewinnt davor, der Strang kommt danach. Ohne das Feld bit-gleich. `ausgangsZiele` = die aufgelösten Ziele aller
+// Ausgänge (Schlüssel `<Knoten>|<Ausgang>`) — die Werkstatt hält damit die Regel „eine Bau-Aktion ändert nie, wohin ein ANDERER Ausgang führt“.
+// Rein und client-sicher; Tests: tests/prozesse-modell.test.ts, tests/prozesse-vorlagen-gliederung.test.ts, tests/prozesse-werkstatt-faeden.test.ts.
 
 import type { Befund, ProzessDefinition, ProzessForm, ProzessKnoten } from './definition';
 
@@ -19,6 +22,8 @@ export type Ausgang = 'weiter' | 'ja' | 'nein' | 'fehler' | 'abgelaufen';
 export interface Kante { von: string; nach: string | null; ausgang: Ausgang }
 
 const nachRang = (a: K, b: K) => a.rang - b.rang || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+/** Der ausdrücklich festgelegte Hauptausgang (`danach`): Kennung, `null` = „Lauf endet“, `undefined` = nicht festgelegt. */
+export const danachZiel = (k: Pick<K, 'danach'>): string | null | undefined => (k.danach ? ('ende' in k.danach ? null : k.danach.ziel) : undefined);
 /** Direkte Kinder (Rang-Reihenfolge); `undefined` = die Wurzeln. */
 export function kinder(id: string | undefined, kn: readonly K[]): K[] {
   const ids = new Set(kn.map(k => k.id));
@@ -75,9 +80,12 @@ export function kantenVon(d: Pick<ProzessDefinition, 'knoten'>): Kante[] {
   const weiterVon = (k: K, gesehen = new Set<string>()): string | null => {
     if (k.form === 'ende') return null;
     if (k.zweige?.ja && k.form !== 'entscheidung' && k.form !== 'freigabe') return k.zweige.ja;
+    const fest = danachZiel(k);
+    if (fest !== undefined) return fest;
     if (naechsterIm.has(k.id)) return naechsterIm.get(k.id)!;
+    // Zurück in den Strang HINTER dem Ursprung — sein Sprung bzw. sein festgelegter Ausgang gilt dafür nicht (der Abzweig kehrt in den Strang zurück).
     const u = seite.get(k.id);
-    if (u && !gesehen.has(u)) { gesehen.add(u); const o = nach.get(u); if (o) return weiterVon({ ...o, zweige: { ...o.zweige, ja: undefined } } as K, gesehen); }
+    if (u && !gesehen.has(u)) { gesehen.add(u); const o = nach.get(u); if (o) return weiterVon({ ...o, zweige: { ...o.zweige, ja: undefined }, danach: undefined } as K, gesehen); }
     return null;
   };
 
@@ -97,7 +105,7 @@ export function kantenVon(d: Pick<ProzessDefinition, 'knoten'>): Kante[] {
     if (!schritte.has(k.id) || istSchloss.has(k.id)) continue; // Wurzel, Phasen, Gruppen, Bausteine; Schlösser unten bei ihrem Knoten
     if (k.form === 'ende') continue;
     const positiv = k.form === 'entscheidung' ? (k.zweige?.ja ?? weiterVon({ ...k, zweige: { ...k.zweige, ja: undefined } } as K))
-      : k.form === 'ausloeser' && naechsterIm.has(k.id) ? nachAusloesern(k.id) : weiterVon(k);
+      : k.form === 'ausloeser' && naechsterIm.has(k.id) && !k.danach ? nachAusloesern(k.id) : weiterVon(k);
     const l = schloss.get(k.id);
     const ausgangPositiv: Ausgang = k.form === 'entscheidung' ? 'ja' : k.form === 'freigabe' ? 'ja' : 'weiter';
     if (l) {
@@ -112,6 +120,28 @@ export function kantenVon(d: Pick<ProzessDefinition, 'knoten'>): Kante[] {
     if (k.form === 'freigabe') { kante(k.id, k.zweige?.nein ?? null, 'nein'); kante(k.id, k.zweige?.abgelaufen ?? null, 'abgelaufen'); }
     if (k.form === 'warten') kante(k.id, k.zweige?.abgelaufen ?? positiv, 'abgelaufen');
     if (k.zweige?.fehler) kante(k.id, k.zweige.fehler, 'fehler');
+  }
+  return raus;
+}
+
+/**
+ * Die aufgelösten Ziele aller Ausgänge (rein) — dieselbe Auflösung wie Lauf-Motor und Probelauf (`kantenVon`): Schlüssel `<Knoten>|<Ausgang>`, Wert = Ziel bzw.
+ * `null` (der Lauf endet). Ein „abgelaufen“ am Warten ohne eigenes Ziel geht denselben Weg wie „weiter“ — kein eigener Ausgang. Dazu der Ausstieg einer Erinnerung
+ * mit „danach zurück zu …“ (`<Knoten>|ausstieg`: wohin der Motor nach der letzten Runde geht — lib/prozesse/lauf-regeln.ts `ausstiegZiel`).
+ */
+export function ausgangsZiele(d: Pick<ProzessDefinition, 'knoten'>): Map<string, string | null> {
+  const raus = new Map<string, string | null>();
+  const nach = new Map(d.knoten.map(k => [k.id, k]));
+  for (const k of kantenVon(d)) {
+    const v = nach.get(k.von);
+    if (k.ausgang === 'abgelaufen' && v?.form === 'warten' && !v.zweige?.abgelaufen) continue;
+    const s = `${k.von}|${k.ausgang}`;
+    if (!raus.has(s)) raus.set(s, k.nach);
+  }
+  const mitJa = new Set(d.knoten.filter(k => k.form === 'erinnerung' && k.zweige?.ja).map(k => k.id));
+  if (mitJa.size) {
+    const ohne = { knoten: d.knoten.map(k => (mitJa.has(k.id) ? { ...k, zweige: { ...k.zweige, ja: undefined } } : k)) };
+    for (const k of kantenVon(ohne)) if (k.ausgang === 'weiter' && mitJa.has(k.von)) raus.set(`${k.von}|ausstieg`, k.nach);
   }
   return raus;
 }
@@ -165,6 +195,21 @@ export function flussPruefen(d: Pick<ProzessDefinition, 'knoten'>, schritteHinwe
         ursprung.set(ziel, k.id);
       }
     }
+  }
+  // Ein festgelegter Hauptausgang (`danach`, 24.10.): nie an einem Ende oder Schloss; das Ziel ist ein Schritt (jede Phase) — nie ein Auslöser, nie ein Schloss, nie
+  // der Knoten selbst.
+  const istSchlossK = new Set(kn.filter(k => k.form === 'freigabe' && k.schloss).map(k => k.id));
+  for (const k of kn) {
+    if (!k.danach) continue;
+    if (!schrittPhase.has(k.id)) { raus.push({ stufe: 'fehler', text: `„${k.titel}“ ist kein Schritt — einen Ausgang gibt es nur an Schritten.`, knotenId: k.id }); continue; }
+    if (k.form === 'ende' || istSchlossK.has(k.id)) { raus.push({ stufe: 'fehler', text: `„${k.titel}“ hat keinen eigenen Ausgang „weiter“.`, knotenId: k.id }); continue; }
+    const ziel = danachZiel(k);
+    if (!ziel) continue;
+    const zk = nach.get(ziel);
+    if (ziel === k.id) raus.push({ stufe: 'fehler', text: `„${k.titel}“ zeigt auf sich selbst.`, knotenId: k.id });
+    else if (!zk || !schrittPhase.has(ziel)) raus.push({ stufe: 'fehler', text: `„${k.titel}“ (weiter) zeigt auf keinen Schritt.`, knotenId: k.id });
+    else if (zk.form === 'ausloeser') raus.push({ stufe: 'fehler', text: `„${k.titel}“ (weiter) zeigt auf einen Auslöser.`, knotenId: k.id });
+    else if (istSchlossK.has(ziel)) raus.push({ stufe: 'fehler', text: `„${k.titel}“ (weiter) zeigt auf ein Freigabe-Schloss — es steht immer direkt hinter seinem Schritt.`, knotenId: k.id });
   }
   // Auslöser: nur am Anfang der ersten Phase.
   const erste = ps[0] ? schritteDer(d, ps[0].id) : [];

@@ -10,7 +10,7 @@ import { katalogEintrag, BAUSTEIN_KATALOG } from '@/lib/prozesse/baustein-katalo
 import { schlossSetzen } from '@/lib/prozesse/schloss';
 import { neuerKnoten, formauswahlGruppen, zuletztMerken, zuletztAus, DATEN_BAUSTEINE, ZULETZT_MAX } from '@/lib/prozesse/werkstatt-maske';
 import {
-  anlegen, phaseNeu, zwischenEinfuegen, zwischenGrund, verbindenFrei, umhaengen, neuerFlussFehler, ABZWEIG_EINER, type Fassung, type Ergebnis,
+  anlegen, phaseNeu, zwischenEinfuegen, zwischenGrund, verbindenFrei, umhaengen, type Fassung, type Ergebnis,
 } from '@/lib/prozesse/werkstatt-aktionen';
 import { kantenMitte, kantenPlus, werkstattLage } from '@/lib/prozesse/werkstatt-lage';
 import { tasteZuAktion, WERKSTATT_KUERZEL } from '@/lib/prozesse/werkstatt-tastatur';
@@ -64,20 +64,24 @@ describe('Punkt 3 · „+“ mitten auf dem Faden: dazwischen einfügen', () => 
     f = { ...f, knoten: f.knoten.map(k => (k.id === e.id ? { ...k, zweige: { ja: z.id } } : k)) };
     const x = knoten('aufgabe.anlegen', 'Vorher klären');
     const r = gut(zwischenEinfuegen(f, kante(f, e.id, z.id), x));
-    expect(r.knoten.find(k => k.id === e.id)?.zweige?.ja).toBe(x.id);
+    expect(weiterVon(r, e.id)).toBe(x.id);
     expect(weiterVon(r, x.id)).toBe(z.id);
+    // „Mitte“ lag lose (niemand führte hinein) — sie bleibt es, ihr Ausgang auch (Werkstatt-Fäden, 24.10.).
+    expect(weiterVon(r, m.id)).toBe(z.id);
   });
-  it('mehrere Auslöser: der Neue kommt hinter den letzten — jeder Auslöser führt in ihn', () => {
+  it('mehrere Auslöser: der Neue kommt hinter den letzten — nur der bediente Auslöser führt in ihn, der andere weiter in den ersten Schritt (24.10.)', () => {
     const { f: f0, a } = kette();
     const f = gut(anlegen(f0, knoten('ausloeser.zeitplan', 'Montags'), {}));
     const st = f.knoten.filter(k => k.form === 'ausloeser');
     expect(st).toHaveLength(2);
     const x = knoten('aufgabe.anlegen', 'Liste holen');
     const r = gut(zwischenEinfuegen(f, kante(f, st[0].id, a), x));
-    for (const s of st) expect(weiterVon(r, s.id)).toBe(x.id);
+    expect(weiterVon(r, st[0].id)).toBe(x.id);
+    expect(weiterVon(r, st[1].id)).toBe(a);
     expect(weiterVon(r, x.id)).toBe(a);
+    expect(flussPruefen(r).filter(z => z.stufe === 'fehler')).toEqual([]);
   });
-  it('hinter einem Freigabe-Schloss einfügen geht, VOR das Schloss nie; Abzweige tragen genau einen Schritt (Grund, nichts geändert)', () => {
+  it('hinter einem Freigabe-Schloss einfügen geht, VOR das Schloss nie; seit 24.10. auch mitten auf einem Abzweig (die Kette bleibt ganz)', () => {
     const d = basis();
     const m = knoten('inbox.mail-entwurf', 'Angebot senden'), z = knoten('ende.ziel', 'Gesendet');
     let f = gut(anlegen(fass(d), m, { nach: start(d).id }));
@@ -89,15 +93,18 @@ describe('Punkt 3 · „+“ mitten auf dem Faden: dazwischen einfügen', () => 
     const r = gut(zwischenEinfuegen(f, kante(f, s.id, z.id), x));
     expect(weiterVon(r, s.id)).toBe(x.id);
     expect(weiterVon(r, x.id)).toBe(z.id);
-    // nein am Schloss bzw. an einer Entscheidung: kein „+“.
-    const e = knoten('entscheidung.mensch', 'Antwort?'), er = knoten('erinnerung.runde', 'Erinnern');
+    // Werkstatt-Fäden (24.10.): auch auf dem „nein“ einer Entscheidung — der Neue hängt am „nein“ und führt zum bisherigen Abzweig.
+    const e = knoten('entscheidung.mensch', 'Antwort?'), er = knoten('aufgabe.anlegen', 'Erinnern');
     const d2 = basis();
     let g = gut(anlegen(fass(d2), e, { nach: start(d2).id }));
     g = gut(anlegen(g, er, { nach: e.id, ausgang: 'nein' }));
     const nein = kantenVon(g).find(k => k.von === e.id && k.ausgang === 'nein')!;
-    expect(zwischenGrund(g, nein)).toBe(ABZWEIG_EINER);
-    const r2 = zwischenEinfuegen(g, nein, knoten('aufgabe.anlegen'));
-    expect(r2.ok).toBe(false);
+    expect(zwischenGrund(g, nein)).toBeNull();
+    const y = knoten('aufgabe.anlegen', 'Vorher prüfen');
+    const r2 = gut(zwischenEinfuegen(g, nein, y));
+    expect(r2.knoten.find(k => k.id === e.id)?.zweige?.nein).toBe(y.id);
+    expect(weiterVon(r2, y.id)).toBe(er.id);
+    expect(flussPruefen(r2).filter(z => z.stufe === 'fehler')).toEqual([]);
   });
 });
 
@@ -148,10 +155,11 @@ describe('Punkt 4 · Verbinden über Phasen ohne Fehler, Kantenende umhängen', 
     const { f: f0, a, b, c } = kette();
     const x = knoten('aufgabe.anlegen', 'Extra');
     let f = gut(anlegen(f0, x, { nach: b }));
-    // Strang a → b, umhängen auf x: x folgt direkt auf a, b danach.
+    // Strang a → b, umhängen auf x: a führt in x; x und b führen weiter dorthin, wohin sie führten (Werkstatt-Fäden, 24.10.).
     let r = gut(umhaengen(f, kante(f, a, b), x.id));
     expect(weiterVon(r, a)).toBe(x.id);
-    expect(weiterVon(r, x.id)).toBe(b);
+    expect(weiterVon(r, x.id)).toBe(c);
+    expect(weiterVon(r, b)).toBe(x.id);
     // Sprung a ⇒ c, umhängen auf b: der Sprung zeigt auf b.
     f = { ...f, knoten: f.knoten.map(k => (k.id === a ? { ...k, zweige: { ja: c } } : k)) };
     r = gut(umhaengen(f, kante(f, a, c), b));

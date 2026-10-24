@@ -9,10 +9,15 @@
 //   · Notiz-Zettel.
 // Jede Funktion liefert die neue Fassung und eine deutsche Ansage (Vorleser, Punkt 17) — oder einen Grund, warum es nicht geht (nichts geändert). Das
 // Freigabe-Schloss setzt nie die Werkstatt, sondern die Regel beim Speichern (lib/prozesse/schloss.ts); löschen lässt es sich nicht.
-// Tests: tests/prozesse-werkstatt-aktionen.test.ts.
+// Werkstatt-Fäden (24.10., Bau-Test): EINE Regel für jede Bau-Aktion — sie ändert nie, wohin ein ANDERER Ausgang führt. Weil „weiter“ ohne Zweig „der nächste im
+// Strang“ heißt, verschöbe ein Einfügen in den Strang still das Ziel anderer Ausgänge. Darum merkt `festschreiben` vorher die aufgelösten Ziele aller Ausgänge
+// (lib/prozesse/fluss.ts `ausgangsZiele` — dieselbe Auflösung wie Motor und Probelauf) und schreibt danach jedes geänderte Ziel eines NICHT bedienten Ausgangs
+// ausdrücklich fest (Sprung `zweige.ja`, über Phasen bzw. „Lauf endet“ `danach`). Der bediente Ausgang führt in den Neuen, der Neue dorthin, wohin der Ausgang
+// vorher führte (die Kette bleibt ganz). Ohne Bau-Aktion bleibt alles bit-gleich.
+// Tests: tests/prozesse-werkstatt-aktionen.test.ts, tests/prozesse-werkstatt-faeden.test.ts (Eigenschaft über alle Vorlagen, Bau-Test als Regression).
 
 import type { Befund, KnotenLage, NotizZettel, ProzessForm, ProzessKnoten, Zweige } from './definition';
-import { alleSchritte, flussPruefen, kantenVon, kinder, phasen, schritteDer, seitenZiele, wurzel, type Ausgang } from './fluss';
+import { alleSchritte, ausgangsZiele, flussPruefen, kinder, phasen, schritteDer, seitenZiele, wurzel, type Ausgang } from './fluss';
 
 type K = ProzessKnoten<ProzessForm>;
 /** Was die Werkstatt ändert: die Knoten und die Notiz-Zettel des Entwurfs. */
@@ -48,24 +53,140 @@ const mitZweig = (k: K, art: (typeof ZWEIGE)[number], ziel: string | null): K =>
   return n;
 };
 
+// ── Werkstatt-Fäden (24.10.): eine Bau-Aktion ändert nie, wohin ein ANDERER Ausgang führt ─────────────────────────────────────────────────────────────
+
+/** Die Abzweige (neben dem Strang) — „ja“ ist der Hauptausgang bzw. ein Sprung. */
+type ZweigArt = 'nein' | 'fehler' | 'abgelaufen';
+/** Der Schlüssel eines Ausgangs — wie `ausgangsZiele` (lib/prozesse/fluss.ts) ihn rechnet. */
+const schluessel = (von: string, a: Ausgang | 'ausstieg') => `${von}|${a}`;
+const zerlegt = (s: string): [string, string] => { const i = s.lastIndexOf('|'); return [s.slice(0, i), s.slice(i + 1)]; };
+/** Formen, deren Hauptausgang einen Sprung `zweige.ja` tragen kann — sonst `danach`. Die Erinnerung nicht: ihr „ja“ heißt „danach zurück zu …“ (Runden). */
+const SPRUNG_FORM: ReadonlySet<ProzessForm> = new Set(['schritt', 'nachricht', 'termin', 'abstimmung', 'entscheidung', 'agent', 'warten', 'schleife', 'teilprozess']);
+const istZweigArt = (a: string): a is ZweigArt => a === 'nein' || a === 'fehler' || a === 'abgelaufen';
+
+/**
+ * Der Hauptausgang eines Knotens als Schlüssel: `haupt` = wohin er wirklich führt (steht ein Schloss dahinter: dessen „freigegeben“), `alle` = was sich mit ihm
+ * bewegt (sein eigener Faden, das „freigegeben“ des Schlosses, der Ausstieg einer Erinnerung).
+ */
+export function hauptAusgang(kn: readonly K[], id: string): { haupt: string; alle: string[] } {
+  const k = kn.find(x => x.id === id);
+  const l = kn.find(x => x.form === 'freigabe' && x.schloss?.fuer === id);
+  const eigen = schluessel(id, k && (k.form === 'entscheidung' || k.form === 'freigabe') ? 'ja' : 'weiter');
+  const haupt = l ? schluessel(l.id, 'ja') : eigen;
+  return { haupt, alle: [eigen, haupt, schluessel(id, 'ausstieg')] };
+}
+/** Wohin der Hauptausgang jetzt führt (rein) — `null` = der Lauf endet. */
+export function hauptZiel(kn: readonly K[], id: string): string | null {
+  return ausgangsZiele({ knoten: [...kn] }).get(hauptAusgang(kn, id).haupt) ?? null;
+}
+/** Ohne Festlegung des Hauptausgangs (Sprung bzw. `danach`) — dann gilt der Strang. */
+function ohneHaupt(k: K): K {
+  let n: K = k.form !== 'freigabe' && k.zweige?.ja ? mitZweig(k, 'ja', null) : k;
+  if (n.danach) { n = { ...n }; delete n.danach; }
+  return n;
+}
+/**
+ * Den Hauptausgang eines Knotens auf `ziel` setzen (rein; nur dieser Knoten, `null` = „Lauf endet“): führt der Strang ohne Festlegung schon dorthin, bleibt es
+ * dabei (außer `immer` — eine ausdrückliche Wahl im Panel); sonst ein Sprung `zweige.ja` (gleiche Phase, Formen mit Sprung) bzw. `danach` (über Phasen, an Freigabe,
+ * Auslöser und Erinnerung, „Lauf endet“). An einem Schloss gilt es für seinen Schritt.
+ */
+function hauptSetzen(kn: readonly K[], id: string, ziel: string | null, immer = false): K[] {
+  const k = kn.find(x => x.id === id);
+  if (!k || k.form === 'ende') return [...kn];
+  if (istSchloss(k)) return hauptSetzen(kn, k.schloss!.fuer, ziel, immer);
+  const o = ohneHaupt(k);
+  const neu = kn.map(x => (x.id === id ? o : x));
+  if (!immer && hauptZiel(neu, id) === ziel) return neu;
+  const f = { knoten: neu };
+  const pk = phaseVon(f, id), pz = ziel === null ? null : phaseVon(f, ziel);
+  const n: K = ziel !== null && SPRUNG_FORM.has(o.form ?? 'schritt') && pk && pk === pz ? mitZweig(o, 'ja', ziel) : { ...o, danach: ziel === null ? { ende: true } : { ziel } };
+  return neu.map(x => (x.id === id ? n : x));
+}
+/** Den Ausstieg einer Erinnerung mit „danach zurück zu …“ festlegen (`danach` — ihr Sprung „ja“ bleibt). */
+function ausstiegSetzen(kn: readonly K[], id: string, ziel: string | null): K[] {
+  const ohne = kn.map(x => { if (x.id !== id || !x.danach) return x; const n = { ...x }; delete n.danach; return n; });
+  if ((ausgangsZiele({ knoten: ohne }).get(schluessel(id, 'ausstieg')) ?? null) === ziel) return ohne;
+  return kn.map(x => (x.id === id ? { ...x, danach: ziel === null ? { ende: true as const } : { ziel } } : x));
+}
+/** Einen Ausgang (Schlüssel) auf `ziel` setzen (rein). */
+function ausgangFest(kn: readonly K[], s: string, ziel: string | null): K[] {
+  const [von, a] = zerlegt(s);
+  const k = kn.find(x => x.id === von);
+  if (!k) return [...kn];
+  if (a === 'ausstieg') return ausstiegSetzen(kn, von, ziel);
+  if (istZweigArt(a)) return kn.map(x => (x.id === von ? mitZweig(x, a, ziel) : x));
+  return hauptSetzen(kn, von, ziel);
+}
+/** Welche Ausgänge eine Aktion an `von` bedient: der Hauptausgang (mit Schloss und Ausstieg) bzw. genau dieser Zweig. */
+function bedientVon(kn: readonly K[], von: string, a: Ausgang): Set<string> {
+  const k = kn.find(x => x.id === von);
+  if (k && istSchloss(k) && (a === 'ja' || a === 'weiter')) return new Set(hauptAusgang(kn, k.schloss!.fuer).alle);
+  return new Set(istZweigArt(a) ? [schluessel(von, a)] : hauptAusgang(kn, von).alle);
+}
+
+/**
+ * Die Regel festschreiben (rein): vergleicht die aufgelösten Ziele aller Ausgänge vorher und nachher und legt jedes geänderte Ziel eines NICHT bedienten Ausgangs
+ * ausdrücklich fest. Ausgänge gelöschter Knoten und Ausgänge, deren Ziel gelöscht wurde, zählen nicht (Löschen: „Zweige, die darauf zeigten, lösen sich“). Bleibt
+ * danach etwas anders (darf nicht sein), kommt ein Grund statt der Änderung — nie still.
+ */
+export function festschreiben(vorher: Pick<Fassung, 'knoten'>, knoten: readonly K[], bedient: ReadonlySet<string> = new Set()): { ok: true; knoten: K[] } | { ok: false; grund: string } {
+  const z0 = ausgangsZiele(vorher);
+  const da = new Map(knoten.map(k => [k.id, k]));
+  const zaehlt = (s: string, ziel: string | null): boolean => {
+    if (bedient.has(s)) return false;
+    const k = da.get(zerlegt(s)[0]);
+    if (!k || (istSchloss(k) && !da.has(k.schloss!.fuer))) return false;
+    return ziel === null || da.has(ziel);
+  };
+  let kn = [...knoten];
+  for (let runde = 0; runde < 6; runde++) {
+    const z1 = ausgangsZiele({ knoten: kn });
+    const anders = [...z0].filter(([s, ziel]) => zaehlt(s, ziel) && z1.get(s) !== ziel);
+    if (!anders.length) return { ok: true, knoten: kn };
+    for (const [s, ziel] of anders) kn = ausgangFest(kn, s, ziel);
+  }
+  return { ok: false, grund: 'Das würde ändern, wohin ein anderer Ausgang führt — nichts geändert.' };
+}
+/** Abschluss jeder Bau-Aktion: die Regel festschreiben, dann (wenn verlangt) die Fluss-Prüfung — sonst ein Grund, nichts geändert. */
+function abschliessen(f: Fassung, kn: readonly K[], bedient: ReadonlySet<string>, ansage: string, o: { waehle?: string[]; pruefen?: string | false } = {}): Ergebnis {
+  const r = festschreiben(f, kn, bedient);
+  if (!r.ok) return nein(r.grund);
+  const e = ok(r.knoten, f, ansage, o.waehle);
+  return o.pruefen === false ? e : geprueft(f, e, o.pruefen ?? 'Geht so nicht');
+}
+/** Kennungen in die Reihe eines Eltern-Knotens setzen — hinter `nach` (`null` = an den Anfang), Ränge lückenlos. */
+function einreihen(kn: readonly K[], elternId: string, ids: readonly string[], nach: string | null): K[] {
+  const reihe = reiheVon(kn, elternId).filter(x => !ids.includes(x));
+  const i = nach === null ? -1 : reihe.indexOf(nach);
+  return rangSetzen([...kn], [...reihe.slice(0, i + 1), ...ids, ...reihe.slice(i + 1)]);
+}
+/** Der letzte Auslöser am Anfang der Reihe (ein neuer Schritt hinter einem Auslöser kommt dahinter — Auslöser stehen am Anfang). */
+const letzterAusloeser = (kn: readonly K[], elternId: string): string | null => [...reiheVon(kn, elternId)].reverse().find(id => kn.find(x => x.id === id)?.form === 'ausloeser') ?? null;
+/** Hat der Knoten einen eigenen, festgelegten Hauptausgang (Sprung bzw. `danach`)? Vorschläge des Heads bringen ihn mit — dann bleibt er. */
+const eigenerHaupt = (k: K): boolean => !!k.danach || (!!k.zweige?.ja && k.form !== 'freigabe');
+
 // ── Anlegen ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Einen neuen Knoten anlegen (rein). `nach` = der Knoten, an dessen Ausgang `ausgang` er hängt (null: ans Ende der Phase `phaseId`, ein Auslöser an den Anfang):
- *   weiter → direkt dahinter im Strang (ein „weiter bei …“-Sprung des Vorgängers wandert an den neuen Knoten — so bleibt die Kette ganz);
- *   ja an einer Entscheidung → direkt dahinter (er ist dann der Ja-Weg); nein · Fehler · abgelaufen → ein Abzweig (Zweig gesetzt, neben dem Strang).
- * `vor` = vor diesem Knoten einfügen (Alt+←). `platz` = gespeicherte Lage; mit `platzSchaffen` rücken die Schritte rechts davon eine Spalte weiter.
+ * Einen neuen Knoten anlegen (rein). `nach` = der Knoten, an dessen Ausgang `ausgang` er hängt — GENAU an diesen Ausgang (Werkstatt-Fäden, 24.10.): der Ausgang
+ * führt danach in den Neuen, der Neue dorthin, wohin der Ausgang vorher führte (die Kette bleibt ganz; bei „nein“ ohne Zweig bzw. „Fehler“: der Lauf endet). Alle
+ * anderen Ausgänge führen danach dorthin, wohin sie vorher führten (`festschreiben`). Im Strang steht der Neue direkt hinter der Quelle (hinter ihrem Schloss, an
+ * einem Auslöser hinter dem letzten Auslöser); an nein · Fehler · abgelaufen ist er ein Abzweig. `vor` = vor diesem Knoten (Alt+←): was in ihn führte, führt in den
+ * Neuen. Ohne beides: ans Ende der Phase — hinter ihren letzten Schritt, dessen „weiter“ bisher in den Strang ging. Ein Auslöser kommt an den Anfang.
+ * `platz` = gespeicherte Lage; mit `platzSchaffen` rücken die Schritte rechts davon eine Spalte weiter.
  */
 export function anlegen(f: Fassung, neu: K, o: { nach?: string | null; vor?: string; phaseId?: string; ausgang?: Ausgang; platz?: KnotenLage; platzSchaffen?: number }): Ergebnis {
   let kn = [...f.knoten];
   if (kn.some(k => k.id === neu.id)) return nein('Diese Kennung gibt es schon.');
   const ps = phasen(f);
-  const quelle = o.nach ? kn.find(k => k.id === o.nach) : undefined;
+  let quelle = o.nach ? kn.find(k => k.id === o.nach) : undefined;
   if (o.nach && !quelle) return nein('Den Knoten, an den angehängt werden soll, gibt es nicht (mehr).');
+  let ausgang: Ausgang = o.ausgang ?? 'weiter';
+  // Am Schloss ist „freigegeben“ der Hauptausgang seines Schritts.
+  if (quelle && istSchloss(quelle) && (ausgang === 'ja' || ausgang === 'weiter')) { quelle = kn.find(k => k.id === quelle!.schloss!.fuer) ?? quelle; ausgang = 'weiter'; }
   const vor = o.vor ? kn.find(k => k.id === o.vor) : undefined;
   const phaseId = (quelle && phaseVon(f, quelle.id)) ?? (vor && phaseVon(f, vor.id)) ?? o.phaseId ?? ps[0]?.id;
   if (!phaseId) return nein('Erst eine Phase anlegen.');
-  const ausgang: Ausgang = o.ausgang ?? 'weiter';
   if (quelle?.form === 'ende') return nein(`${titel(quelle)} ist ein Ende — dahinter geht es nicht weiter.`);
   if (vor?.form === 'ausloeser' && neu.form !== 'ausloeser') return nein('Vor einem Auslöser steht nichts — der Prozess beginnt mit ihm.');
   const elternId = quelle?.elternId ?? vor?.elternId ?? phaseId;
@@ -76,55 +197,83 @@ export function anlegen(f: Fassung, neu: K, o: { nach?: string | null; vor?: str
     const inPhase = new Set(schritteDer(f, phaseId).map(s => s.id));
     kn = kn.map(k => (inPhase.has(k.id) && k.pos && k.pos.x >= o.platz!.x - 1 ? { ...k, pos: { ...k.pos, x: k.pos.x + o.platzSchaffen! } } : k));
   }
-  const reihe = reiheVon(kn, elternId);
-  let neueReihe: string[];
+  const z0 = ausgangsZiele(f);
   if (n.form === 'ausloeser') {
-    // Ein Auslöser steht immer am Anfang der ersten Phase.
+    // Ein Auslöser steht immer am Anfang der ersten Phase — hinter den vorhandenen; jeder führt in den ersten Schritt (kein anderer Ausgang ändert sich).
     const erste = ps[0]?.id ?? phaseId;
     n = { ...n, elternId: erste };
-    const r = reiheVon(kn, erste);
-    const nachAusl = r.filter(id => kn.find(k => k.id === id)?.form === 'ausloeser').length;
-    neueReihe = [...r.slice(0, nachAusl), n.id, ...r.slice(nachAusl)];
-    kn = rangSetzen([...kn, n], neueReihe);
-    return ok(kn, f, `Auslöser ${titel(n)} angelegt — am Anfang des Prozesses.`, [n.id]);
+    kn = einreihen([...kn, n], erste, [n.id], letzterAusloeser(kn, erste));
+    return abschliessen(f, kn, new Set(), `Auslöser ${titel(n)} angelegt — am Anfang des Prozesses.`, { waehle: [n.id], pruefen: false });
   }
+  const eigen = eigenerHaupt(n);
   if (vor) {
-    const i = reihe.indexOf(vor.id);
-    neueReihe = [...reihe.slice(0, i), n.id, ...reihe.slice(i)];
-    kn = rangSetzen([...kn, n], neueReihe);
-    return ok(kn, f, `${titel(n)} angelegt, vor ${titel(vor)}.`, [n.id]);
+    // Vor einem Knoten: alles, was in ihn führte, führt jetzt in den Neuen — der Neue führt in ihn.
+    const bedient = [...z0].filter(([s, z]) => z === vor.id && zerlegt(s)[0] !== vor.id).map(([s]) => s);
+    const reihe = reiheVon(kn, elternId);
+    kn = einreihen([...kn, n], elternId, [n.id], reihe[reihe.indexOf(vor.id) - 1] ?? null);
+    for (const s of bedient) kn = ausgangFest(kn, s, n.id);
+    if (!eigen) kn = hauptSetzen(kn, n.id, vor.id);
+    return abschliessen(f, kn, new Set(bedient), `${titel(n)} angelegt, vor ${titel(vor)}.`, { waehle: [n.id], pruefen: false });
   }
   if (!quelle) {
-    neueReihe = [...reihe, n.id];
-    kn = rangSetzen([...kn, n], neueReihe);
-    return ok(kn, f, `${titel(n)} angelegt, am Ende der Phase.`, [n.id]);
+    // Ans Ende der Phase: hinter ihren letzten Schritt im Strang (bzw. — leere Phase — hinter den letzten davor); ging dessen „weiter“ bisher in den Strang,
+    // geht er jetzt in den Neuen und der Neue dorthin. Sonst steht der Neue lose da (der Lauf endet hinter ihm).
+    const reihe = reiheVon(kn, elternId);
+    const seite = seitenZiele(f.knoten);
+    const strang = alleSchritte(f).filter(x => !seite.has(x.schritt.id) && !istSchloss(x.schritt));
+    const pi = ps.findIndex(p => p.id === phaseId);
+    const vg = [...strang].reverse().find(x => ps.findIndex(p => p.id === x.phase.id) <= pi)?.schritt;
+    kn = einreihen([...kn, n], elternId, [n.id], reihe.at(-1) ?? null);
+    if (vg && vg.form !== 'ende' && !eigenerHaupt(vg)) {
+      const T = z0.get(hauptAusgang(f.knoten, vg.id).haupt) ?? null;
+      // Am Anfang stehen Auslöser: jeder, der in den Strang ging, geht jetzt in den Neuen.
+      const vgs = vg.form === 'ausloeser' ? strang.map(x => x.schritt).filter(x => x.form === 'ausloeser' && !x.danach) : [vg];
+      for (const x of vgs) kn = hauptSetzen(kn, x.id, n.id);
+      if (!eigen) kn = hauptSetzen(kn, n.id, T);
+      return abschliessen(f, kn, new Set(vgs.flatMap(x => hauptAusgang(f.knoten, x.id).alle)), `${titel(n)} angelegt, am Ende der Phase.`, { waehle: [n.id], pruefen: false });
+    }
+    if (!eigen) kn = hauptSetzen(kn, n.id, null);
+    return abschliessen(f, kn, new Set(), `${titel(n)} angelegt, am Ende der Phase — noch ohne Eingang.`, { waehle: [n.id], pruefen: false });
   }
-  // Steht hinter der Quelle ein Freigabe-Schloss, kommt der Neue dahinter (das Schloss steht immer direkt hinter seinem Knoten).
-  const sl = kn.find(k => k.schloss?.fuer === quelle.id && k.elternId === quelle.elternId);
-  const i = reihe.indexOf(sl ? sl.id : quelle.id);
-  neueReihe = [...reihe.slice(0, i + 1), n.id, ...reihe.slice(i + 1)];
-  const istZweig = ausgang === 'nein' || ausgang === 'fehler' || ausgang === 'abgelaufen';
-  if (istZweig) {
-    if (quelle.zweige?.[ausgang]) return nein(`${titel(quelle)} hat am Ausgang „${ausgang}“ schon einen Schritt — erst lösen.`);
-    kn = kn.map(k => (k.id === quelle.id ? mitZweig(k, ausgang, n.id) : k));
-    kn = rangSetzen([...kn, n], neueReihe);
-    return ok(kn, f, `${titel(n)} angelegt am Ausgang „${ausgang}“ von ${titel(quelle)}.`, [n.id]);
-  }
-  // weiter / ja: direkt dahinter. Ein Sprung „weiter bei …“ des Vorgängers wandert an den neuen Knoten (Kette bleibt ganz).
-  if (quelle.form !== 'entscheidung' && quelle.form !== 'freigabe' && quelle.zweige?.ja) {
-    n = mitZweig(n, 'ja', quelle.zweige.ja);
-    kn = kn.map(k => (k.id === quelle.id ? mitZweig(k, 'ja', null) : k));
-  }
-  if (quelle.form === 'entscheidung' && quelle.zweige?.ja) kn = kn.map(k => (k.id === quelle.id ? mitZweig(k, 'ja', n.id) : k));
-  kn = rangSetzen([...kn, n], neueReihe);
-  return ok(kn, f, `${titel(n)} angelegt und verbunden mit ${titel(quelle)}.`, [n.id]);
+  // An einem Ausgang der Quelle — wohin er bisher führte (ein „abgelaufen“ am Warten ohne eigenes Ziel geht den Weg von „weiter“).
+  const istZweig = istZweigArt(ausgang);
+  const h = hauptAusgang(kn, quelle.id);
+  const T: string | null = istZweig
+    ? (quelle.zweige?.[ausgang as ZweigArt] ?? (ausgang === 'abgelaufen' && quelle.form === 'warten' ? z0.get(h.haupt) ?? null : null))
+    : (z0.get(h.haupt) ?? null);
+  // In die Reihe: hinter das Schloss der Quelle bzw. die Quelle; an einem Auslöser hinter den letzten Auslöser.
+  const sl = kn.find(k => k.schloss?.fuer === quelle!.id && k.elternId === quelle!.elternId);
+  const anker = quelle.form === 'ausloeser' ? letzterAusloeser(kn, elternId) ?? quelle.id : sl ? sl.id : quelle.id;
+  kn = einreihen([...kn, n], elternId, [n.id], anker);
+  if (istZweig) kn = kn.map(k => (k.id === quelle!.id ? mitZweig(k, ausgang as ZweigArt, n.id) : k));
+  else kn = hauptSetzen(kn, quelle.id, n.id);
+  if (!eigen) kn = hauptSetzen(kn, n.id, T);
+  const bedient = istZweig ? new Set([schluessel(quelle.id, ausgang)]) : new Set(h.alle);
+  const wo = istZweig ? `am Ausgang „${ausgang}“ von ${titel(quelle)}` : `hinter ${titel(quelle)}`;
+  return abschliessen(f, kn, bedient, `${titel(n)} angelegt ${wo}.`, { waehle: [n.id] });
+}
+
+/**
+ * Den Typ eines Auslösers wechseln (rein, Bau-Test 24.10.: „Von Hand“ → Ereignis, Zeitplan, Webhook …) — statt eines zweiten Auslösers. Kennung, Platz im Strang,
+ * Lage, Beschriftung und sein Ausgang bleiben; der Name auch, außer er war der Name des alten Typs (`altName`). Ein weiterer Auslöser nur bewusst über `anlegen`.
+ */
+export function ausloeserWechseln(f: Fassung, id: string, neu: K, o: { altName?: string } = {}): Ergebnis {
+  const k = f.knoten.find(x => x.id === id);
+  if (!k || k.form !== 'ausloeser') return nein('Das ist kein Auslöser.');
+  if (neu.form !== 'ausloeser') return nein('Ein Auslöser wird nur gegen einen Auslöser getauscht.');
+  const name = !k.titel.trim() || (o.altName && k.titel === o.altName) ? neu.titel : k.titel;
+  const n: K = { ...neu, id: k.id, elternId: k.elternId, rang: k.rang, titel: name, ...(k.pos ? { pos: k.pos } : {}), ...(k.pfeilText ? { pfeilText: k.pfeilText } : {}), ...(k.danach ? { danach: k.danach } : {}) };
+  delete n.zweige;
+  return abschliessen(f, f.knoten.map(x => (x.id === id ? n : x)), new Set(), `Auslöser von ${titel(k)} gewechselt: jetzt „${neu.titel}“.`, { waehle: [id], pruefen: false });
 }
 
 // ── Verbinden, lösen ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Einen Faden ziehen (rein): „weiter“ hängt das Ziel direkt hinter die Quelle in den Strang (die Reihenfolge ergibt sich aus den Fäden — wie die Fläche des
- * Fulfillment-Editors); ja/nein/Fehler/abgelaufen setzen den Zweig. Fäden bleiben in ihrer Phase; ein Abzweig gehört genau einem Schritt.
+ * Einen Faden ziehen (rein): genau dieser Ausgang führt danach zum Ziel, alle anderen bleiben, wie sie waren (Werkstatt-Fäden, 24.10.). „weiter“ holt das Ziel direkt
+ * hinter die Quelle in den Strang (die Reihenfolge folgt den Fäden — die Fläche liest sich von links nach rechts); ein Abzweig bleibt Abzweig seines Ursprungs (die
+ * Quelle springt dann zu ihm); ja an einer Entscheidung bzw. nein · Fehler · abgelaufen setzen den Zweig. Fäden bleiben in ihrer Phase; ein Abzweig gehört genau
+ * einem Schritt.
  */
 export function verbinden(f: Fassung, von: string, aus: Ausgang, nach: string): Ergebnis {
   const kn = f.knoten;
@@ -140,26 +289,40 @@ export function verbinden(f: Fassung, von: string, aus: Ausgang, nach: string): 
   if (!pa || !pb) return nein('Fäden verbinden Schritte.');
   if (pa !== pb) return nein('Fäden bleiben in ihrer Phase — erst den Schritt in die Phase ziehen.');
   if (istSchloss(b)) return nein(`Das Schloss gehört zu „${kn.find(k => k.id === b.schloss!.fuer)?.titel ?? ''}“ — es steht immer direkt dahinter.`);
-  if (ausgang !== 'weiter' && !(ausgang === 'ja' && a.form !== 'entscheidung' && a.form !== 'freigabe')) {
-    if (ausgang !== 'ja') {
-      const ursprung = seitenZiele(kn).get(nach);
-      if (ursprung && ursprung !== von) return nein(`${titel(b)} ist schon der Abzweig von ${titel(kn.find(k => k.id === ursprung))}.`);
-    }
-    return ok(kn.map(k => (k.id === von ? mitZweig(k, ausgang, nach) : k)), f, `${titel(a)} → ${titel(b)} (${ausgang}).`);
+  const bedient = bedientVon(kn, von, ausgang);
+  if (istZweigArt(ausgang)) {
+    const ursprung = seitenZiele(kn).get(nach);
+    if (ursprung && ursprung !== von) return nein(`${titel(b)} ist schon der Abzweig von ${titel(kn.find(k => k.id === ursprung))}.`);
+    return abschliessen(f, kn.map(k => (k.id === von ? mitZweig(k, ausgang, nach) : k)), bedient, `${titel(a)} → ${titel(b)} (${ausgang}).`, { pruefen: false });
   }
+  // ja an einer Entscheidung: der Zweig zeigt aufs Ziel (die Reihenfolge bleibt).
+  if (a.form === 'entscheidung' && ausgang === 'ja') return abschliessen(f, hauptSetzen(kn, von, nach), bedient, `${titel(a)} → ${titel(b)} (ja).`, { pruefen: false });
+  // Ein Abzweig (nein · Fehler · abgelaufen eines anderen) bleibt Abzweig seines Ursprungs — die Quelle springt zu ihm.
+  if (seitenZiele(kn).has(nach)) return abschliessen(f, hauptSetzen(kn, von, nach), bedient, `${titel(a)} geht jetzt weiter bei ${titel(b)}.`, { pruefen: false });
   // weiter: B direkt hinter A (gleicher Eltern-Knoten wie A) — bzw. hinter A's Freigabe-Schloss.
-  const reihe = reiheVon(kn, a.elternId ?? pa).filter(id => id !== nach);
   const sl = kn.find(k => k.schloss?.fuer === von && k.elternId === a.elternId);
-  const i = reihe.indexOf(sl ? sl.id : von);
-  if (i < 0) return nein('Die Reihenfolge ließ sich nicht bestimmen.');
-  const neuReihe = [...reihe.slice(0, i + 1), nach, ...reihe.slice(i + 1)];
-  let neu = kn.map(k => (k.id === nach ? { ...k, elternId: a.elternId } : k));
-  // Ein Sprung „weiter bei“ am Vorgänger würde die neue Verbindung überspringen — er fällt weg.
-  if (a.zweige?.ja && a.form !== 'entscheidung' && a.form !== 'freigabe') neu = neu.map(k => (k.id === von ? mitZweig(k, 'ja', null) : k));
-  // War B bisher ein Abzweig (nein/Fehler/abgelaufen) eines anderen? Dann wird er jetzt Teil des Strangs — der alte Zweig löst sich.
-  const ursprung = seitenZiele(kn).get(nach);
-  if (ursprung) neu = neu.map(k => { if (k.id !== ursprung) return k; let x = k; for (const z of ZWEIGE) if (x.zweige?.[z] === nach && z !== 'ja') x = mitZweig(x, z, null); return x; });
-  return ok(rangSetzen(neu, neuReihe), f, `${titel(b)} folgt jetzt auf ${titel(a)}.`);
+  const reihe = reiheVon(kn, a.elternId ?? pa).filter(id => id !== nach);
+  if (reihe.indexOf(sl ? sl.id : von) < 0) return nein('Die Reihenfolge ließ sich nicht bestimmen.');
+  let neu = einreihen(kn.map(k => (k.id === nach ? { ...k, elternId: a.elternId } : k)), a.elternId ?? pa, [nach], sl ? sl.id : von);
+  neu = hauptSetzen(neu, von, nach);
+  return abschliessen(f, neu, bedient, `${titel(b)} folgt jetzt auf ${titel(a)}.`, { pruefen: false });
+}
+
+/**
+ * Wohin ein Ausgang führt, im Panel wählen (rein, Werkstatt-Fäden 24.10.): JEDER Ausgang — auch „weiter“ einer Aufgabe, Mail oder Wartezeit. „der nächste Schritt“
+ * = keine Festlegung (der Strang), „Lauf endet“ = ausdrücklich, ein Schritt = dieselbe Funktion wie der Faden (`verbinden`). Die anderen Ausgänge bleiben.
+ */
+export type AusgangWahl = { art: 'naechster' } | { art: 'ende' } | { art: 'schritt'; id: string };
+export function ausgangSetzen(f: Fassung, von: string, ausgang: Ausgang, w: AusgangWahl): Ergebnis {
+  const a = f.knoten.find(k => k.id === von);
+  if (!a) return nein('Diesen Knoten gibt es nicht (mehr).');
+  if (istSchloss(a) && (ausgang === 'ja' || ausgang === 'weiter')) return ausgangSetzen(f, a.schloss!.fuer, 'weiter', w);
+  if (w.art === 'schritt') return verbinden(f, von, ausgang, w.id);
+  if (istZweigArt(ausgang)) return a.zweige?.[ausgang] ? loesen(f, von, ausgang) : nein('Dieser Ausgang endet schon hier.');
+  if (a.form === 'ende') return nein(`${titel(a)} ist ein Ende.`);
+  const bedient = bedientVon(f.knoten, von, ausgang);
+  if (w.art === 'ende') return abschliessen(f, hauptSetzen(f.knoten, von, null, true), bedient, `${titel(a)}: hier endet der Lauf.`, { pruefen: false });
+  return abschliessen(f, f.knoten.map(k => (k.id === von ? ohneHaupt(k) : k)), bedient, `${titel(a)} geht zum nächsten Schritt im Ablauf.`, { pruefen: false });
 }
 
 // ── Werkstatt bau-fertig (22.10., n8n-Niveau): nachgiebig bauen, ohne das Modell umzubauen ─────────────────────────────────────────────────────────────
@@ -169,9 +332,6 @@ export function verbinden(f: Fassung, von: string, aus: Ausgang, nach: string): 
 
 /** Ein Faden, wie die Fläche ihn kennt (Kante aus `kantenVon`). */
 export interface KanteRef { von: string; nach: string | null; ausgang: Ausgang }
-/** Ein Abzweig (nein · Fehler · abgelaufen) trägt genau EINEN Schritt — das sagt das Modell (lib/prozesse/fluss.ts). */
-export const ABZWEIG_EINER = 'Ein Abzweig trägt genau einen Schritt (danach geht es zurück in den Ablauf) — dazwischen passt nichts. Den Schritt dort ersetzen oder im Ablauf dahinter anhängen.';
-const ZWEIG_ARTEN: readonly Ausgang[] = ['nein', 'fehler', 'abgelaufen'];
 
 /** Der erste NEUE Fehler der Fluss-Prüfung nach einer Änderung (rein) — null = es ist kein neuer dazugekommen. */
 export function neuerFlussFehler(vorher: Pick<Fassung, 'knoten'>, nachher: Pick<Fassung, 'knoten'>): Befund | null {
@@ -185,13 +345,15 @@ function geprueft(vorher: Fassung, e: Ergebnis, vorsatz = 'Geht so nicht'): Erge
   return f ? nein(`${vorsatz}: ${f.text}`) : e;
 }
 
-/** Warum auf diesem Faden kein „+“ zum Dazwischen-Einfügen steht (rein) — null = es geht. */
+/**
+ * Warum auf diesem Faden kein „+“ zum Dazwischen-Einfügen steht (rein) — null = es geht. Seit 24.10. (Werkstatt-Fäden) auch auf Abzweigen und ihrem Weg zurück:
+ * der Neue hängt GENAU an diesem Ausgang und führt dorthin, wohin der Faden führte.
+ */
 export function zwischenGrund(f: Pick<Fassung, 'knoten'>, k: KanteRef): string | null {
   if (!k.nach) return 'Dieser Faden endet hier — am Ausgang „+“ anhängen.';
   const a = f.knoten.find(x => x.id === k.von), b = f.knoten.find(x => x.id === k.nach);
   if (!a || !b) return 'Diesen Schritt gibt es nicht (mehr).';
   if (!phaseVon(f, a.id) || !phaseVon(f, b.id)) return 'Fäden verbinden Schritte.';
-  if (ZWEIG_ARTEN.includes(k.ausgang) || seitenZiele(f.knoten).has(a.id)) return ABZWEIG_EINER;
   if (istSchloss(b)) return 'Das Freigabe-Schloss steht immer direkt hinter seinem Schritt — hinter dem Schloss einfügen.';
   if (b.form === 'ausloeser') return 'In einen Auslöser führt kein Faden.';
   if (a.form === 'ende') return `${titel(a)} ist ein Ende.`;
@@ -199,27 +361,17 @@ export function zwischenGrund(f: Pick<Fassung, 'knoten'>, k: KanteRef): string |
 }
 
 /**
- * Einen neuen Schritt mitten auf einen Faden setzen (rein, Punkt 3 — das „+“ in der Mitte jedes Fadens): er steht danach zwischen Quelle und Ziel. Im Modell
- * heißt das: direkt hinter der Quelle in den Strang (hinter ihr Schloss bzw. hinter den letzten Auslöser), und ist das Ziel dann nicht ohnehin sein nächster
- * Schritt, ein Sprung „weiter bei …“ zum Ziel (an einer Entscheidung zeigt „ja“ auf den neuen Schritt). Abzweige tragen genau einen Schritt (`zwischenGrund`).
+ * Einen neuen Schritt mitten auf einen Faden setzen (rein, Punkt 3 — das „+“ in der Mitte jedes Fadens): er hängt GENAU an dem Ausgang, von dem der Faden kommt,
+ * und führt dorthin, wohin der Faden führte (`anlegen` am Ausgang); alle anderen Ausgänge bleiben (Werkstatt-Fäden, 24.10.).
  */
 export function zwischenEinfuegen(f: Fassung, k: KanteRef, neu: K, o: { platz?: KnotenLage; platzSchaffen?: number } = {}): Ergebnis {
   const grund = zwischenGrund(f, k);
   if (grund) return nein(grund);
   const a = f.knoten.find(x => x.id === k.von)!, b = f.knoten.find(x => x.id === k.nach)!;
-  let q = istSchloss(a) ? f.knoten.find(x => x.id === a.schloss!.fuer) ?? a : a;
-  if (q.form === 'ausloeser' && q.elternId) {
-    // Mehrere Auslöser führen JEDER in den ersten Schritt — der Neue kommt hinter den letzten (nie zwischen zwei Auslöser).
-    const letzter = [...reiheVon(f.knoten, q.elternId)].reverse().find(id => f.knoten.find(x => x.id === id)?.form === 'ausloeser');
-    q = f.knoten.find(x => x.id === letzter) ?? q;
-  }
-  const r = anlegen(f, neu, { nach: q.id, ausgang: q.form === 'entscheidung' ? 'ja' : 'weiter', ...(o.platz ? { platz: o.platz } : {}), ...(o.platzSchaffen ? { platzSchaffen: o.platzSchaffen } : {}) });
-  if (!r.ok) return r;
-  let kn = r.fassung.knoten;
-  const n = kn.find(x => x.id === neu.id)!;
-  const naechster = kantenVon({ knoten: kn }).find(x => x.von === n.id && (x.ausgang === 'weiter' || x.ausgang === 'ja'))?.nach ?? null;
-  if (n.form !== 'ende' && naechster !== b.id && !n.zweige?.ja) kn = kn.map(x => (x.id === n.id ? mitZweig(x, 'ja', b.id) : x));
-  return geprueft(f, ok(kn, f, `${titel(n)} eingefügt zwischen ${titel(a.schloss ? q : a)} und ${titel(b)}.`, [n.id]), 'Dazwischen einfügen geht hier nicht');
+  const r = anlegen(f, neu, { nach: a.id, ausgang: k.ausgang, ...(o.platz ? { platz: o.platz } : {}), ...(o.platzSchaffen ? { platzSchaffen: o.platzSchaffen } : {}) });
+  if (!r.ok) return nein(`Dazwischen einfügen geht hier nicht: ${r.grund}`);
+  const q = istSchloss(a) ? f.knoten.find(x => x.id === a.schloss!.fuer) ?? a : a;
+  return { ...r, ansage: `${titel(neu)} eingefügt zwischen ${titel(q)} und ${titel(b)}.` };
 }
 
 /** Ein Schritt mit allem, was zu ihm gehört: sein Freigabe-Schloss und seine Abzweige (rekursiv) — wandert er in eine andere Phase, wandern sie mit. */
@@ -256,12 +408,20 @@ export function verbindenFrei(f: Fassung, von: string, aus: Ausgang, nach: strin
   if (!a0 || !b) return nein('Diesen Knoten gibt es nicht (mehr).');
   const a = istSchloss(a0) && (aus === 'ja' || aus === 'weiter') ? f.knoten.find(k => k.id === a0.schloss!.fuer) ?? a0 : a0;
   const pa = phaseVon(f, a.id), pb = phaseVon(f, nach);
-  if (!pa || !pb || pa === pb || b.form === 'ausloeser' || istSchloss(b) || a.form === 'ende' || a.id === nach) return geprueft(f, verbinden(f, von, aus, nach), 'Verbinden geht so nicht');
+  const bedient = bedientVon(f.knoten, von, aus);
+  if (!pa || !pb || pa === pb || b.form === 'ausloeser' || istSchloss(b) || a.form === 'ende' || a.id === nach) return regel(f, verbinden(f, von, aus, nach), bedient, 'Verbinden geht so nicht');
   const geholt = inPhaseHolen(f, nach, pa);
   const r = verbinden(geholt, von, aus, nach);
   if (!r.ok) return r;
   const ph = f.knoten.find(k => k.id === pa)?.titel ?? '';
-  return geprueft(f, { ...r, ansage: `${titel(b)} liegt jetzt in der Phase „${ph}“ (Fäden bleiben in ihrer Phase). ${r.ansage}` }, `${titel(b)} in die Phase „${ph}“ zu holen geht nicht`);
+  return regel(f, { ...r, ansage: `${titel(b)} liegt jetzt in der Phase „${ph}“ (Fäden bleiben in ihrer Phase). ${r.ansage}` }, bedient, `${titel(b)} in die Phase „${ph}“ zu holen geht nicht`);
+}
+/** Ein Ergebnis gegen die Fassung VOR der ganzen Aktion auf die Regel prüfen (nur die bedienten Ausgänge ändern sich) und danach den Fluss. */
+function regel(f: Fassung, e: Ergebnis, bedient: ReadonlySet<string>, vorsatz: string): Ergebnis {
+  if (!e.ok) return e;
+  const r = festschreiben(f, e.fassung.knoten, bedient);
+  if (!r.ok) return nein(r.grund);
+  return geprueft(f, { ...e, fassung: { ...e.fassung, knoten: r.knoten } }, vorsatz);
 }
 
 /**
@@ -278,7 +438,7 @@ export function umhaengen(f: Fassung, k: KanteRef, ziel: string): Ergebnis {
   if (!a || !z) return nein('Diesen Knoten gibt es nicht (mehr).');
   const nachK = k.nach ? f.knoten.find(x => x.id === k.nach) : undefined;
   if (nachK && istSchloss(nachK) && nachK.schloss!.fuer === a.id) return nein('Das Freigabe-Schloss steht immer direkt hinter seinem Schritt — dieser Faden lässt sich nicht umhängen.');
-  if (ZWEIG_ARTEN.includes(k.ausgang)) return verbindenFrei(f, k.von, k.ausgang, ziel);
+  if (istZweigArt(k.ausgang)) return verbindenFrei(f, k.von, k.ausgang, ziel);
   const quelle = istSchloss(a) ? f.knoten.find(x => x.id === a.schloss!.fuer) ?? a : a;
   const sprung = quelle.form === 'entscheidung' ? !!quelle.zweige?.ja : quelle.form !== 'freigabe' && !!quelle.zweige?.ja;
   const seite = seitenZiele(f.knoten).has(quelle.id);
@@ -292,7 +452,7 @@ export function umhaengen(f: Fassung, k: KanteRef, ziel: string): Ergebnis {
   const basis = pq === pz ? f : inPhaseHolen(f, ziel, pq);
   const kn = basis.knoten.map(x => (x.id === quelle.id ? mitZweig(x, 'ja', ziel) : x));
   const geholt = pq === pz ? '' : ` ${titel(z)} liegt jetzt in der Phase „${f.knoten.find(x => x.id === pq)?.titel ?? ''}“.`;
-  return geprueft(f, ok(kn, f, `${titel(quelle)} geht jetzt weiter bei ${titel(z)}.${geholt}`), 'Umhängen geht so nicht');
+  return regel(f, ok(kn, f, `${titel(quelle)} geht jetzt weiter bei ${titel(z)}.${geholt}`), bedientVon(f.knoten, k.von, k.ausgang), 'Umhängen geht so nicht');
 }
 
 /** Ein Fall der Mehrfach-Entscheidung (Punkt 15): Name, Bedingungen („wenn …“) und wohin es dann geht (ein Schritt der Phase; ohne = weiter im Ablauf). */
@@ -301,13 +461,15 @@ export const MEHRFACH_MAX = 8;
 
 /**
  * „Mehrfach-Entscheidung“ als Bau-Hilfe (rein, Punkt 15 — der Switch aus n8n): wird SOFORT zu einer Kaskade aus Rauten nach Regel — das Modell bleibt, wie es ist.
- * Fall 1 = die erste Raute direkt hinter `nach` (ja → sein Ziel bzw. weiter im Ablauf); jeder weitere Fall = die Raute am „nein“ der vorigen (ja → sein Ziel bzw.
- * weiter im Ablauf); „sonst“ = das „nein“ der letzten Raute (der Lauf endet bzw. eine Aufgabe „von Hand prüfen“). Ein Fall braucht mindestens eine Bedingung; Ziele
- * sind Schritte derselben Phase. Prüft den Fluss wie jede Hilfe (Kreis, Phase) — sonst ein Grund, nichts geändert.
+ * Fall 1 = die erste Raute am Hauptausgang von `nach`; jeder weitere Fall = die Raute am „nein“ der vorigen; „sonst“ = das „nein“ der letzten Raute (der Lauf endet
+ * bzw. eine Aufgabe „von Hand prüfen“). „ja“ eines Falls → sein Ziel bzw. „weiter im Ablauf“ = dorthin, wohin der Ausgang von `nach` vorher führte; dorthin geht
+ * auch die Aufgabe „sonst“. Kein anderer Ausgang ändert sich (Werkstatt-Fäden, 24.10.). Die Rauten tragen die Verknüpfung „alle Bedingungen“, wenn nichts gewählt ist.
+ * Ein Fall braucht mindestens eine Bedingung; Ziele sind Schritte derselben Phase. Prüft den Fluss wie jede Hilfe (Kreis, Phase) — sonst ein Grund, nichts geändert.
  */
 export function mehrfachEntscheidung(f: Fassung, o: { nach: string; faelle: readonly MehrfachFall[]; sonst?: 'ende' | 'aufgabe'; kennung: Kennung }): Ergebnis {
-  const quelle = f.knoten.find(k => k.id === o.nach);
-  if (!quelle) return nein('Den Knoten, an den angehängt werden soll, gibt es nicht (mehr).');
+  const q0 = f.knoten.find(k => k.id === o.nach);
+  if (!q0) return nein('Den Knoten, an den angehängt werden soll, gibt es nicht (mehr).');
+  const quelle = istSchloss(q0) ? f.knoten.find(k => k.id === q0.schloss!.fuer) ?? q0 : q0;
   if (o.faelle.length < 2) return nein('Eine Mehrfach-Entscheidung hat mindestens zwei Fälle — für einen Fall reicht eine Raute.');
   if (o.faelle.length > MEHRFACH_MAX) return nein(`Höchstens ${MEHRFACH_MAX} Fälle — sonst lieber einen Teilprozess bilden.`);
   const leer = o.faelle.findIndex(x => !x.bedingungen.length || !x.titel.trim());
@@ -318,15 +480,17 @@ export function mehrfachEntscheidung(f: Fassung, o: { nach: string; faelle: read
     const z = f.knoten.find(k => k.id === x.ziel);
     if (!z || phaseVon(f, z.id) !== ph || z.form === 'ausloeser' || istSchloss(z)) return nein(`„${x.titel}“: das Ziel muss ein Schritt derselben Phase sein.`);
   }
+  // Wohin der Ausgang bisher führte — „weiter im Ablauf“ der Fälle ohne eigenes Ziel.
+  const weiterImAblauf = hauptZiel(f.knoten, quelle.id);
   const raute = (x: MehrfachFall): K => ({
     id: o.kennung(), titel: x.titel.trim(), rang: 0, form: 'entscheidung', bahn: 'system', katalog: { id: 'entscheidung.regel' },
-    raute: { art: 'regel', bedingungen: x.bedingungen, ...(x.verknuepfung ? { verknuepfung: x.verknuepfung } : {}) },
+    raute: { art: 'regel', bedingungen: x.bedingungen, verknuepfung: x.verknuepfung ?? 'und' },
   });
   const r1 = raute(o.faelle[0]);
-  let e = anlegen(f, r1, { nach: quelle.id, ausgang: quelle.form === 'entscheidung' ? 'ja' : 'weiter' });
+  let e = anlegen(f, r1, { nach: quelle.id, ausgang: quelle.form === 'entscheidung' || quelle.form === 'freigabe' ? 'ja' : 'weiter' });
   if (!e.ok) return e;
   let kn = e.fassung.knoten;
-  if (o.faelle[0].ziel) kn = kn.map(k => (k.id === r1.id ? mitZweig(k, 'ja', o.faelle[0].ziel!) : k));
+  const rauten: [K, MehrfachFall][] = [[r1, o.faelle[0]]];
   let vorige = r1.id;
   const neu = [r1.id];
   for (const x of o.faelle.slice(1)) {
@@ -334,18 +498,22 @@ export function mehrfachEntscheidung(f: Fassung, o: { nach: string; faelle: read
     e = anlegen({ ...e.fassung, knoten: kn }, r, { nach: vorige, ausgang: 'nein' });
     if (!e.ok) return e;
     kn = e.fassung.knoten;
-    if (x.ziel) kn = kn.map(k => (k.id === r.id ? mitZweig(k, 'ja', x.ziel!) : k));
+    rauten.push([r, x]);
     vorige = r.id;
     neu.push(r.id);
   }
+  // Ein gewähltes Ziel steht ausdrücklich an der Raute; „weiter im Ablauf“ nur, wenn der Strang nicht ohnehin dorthin führt.
+  for (const [r, x] of rauten) kn = hauptSetzen(kn, r.id, x.ziel ?? weiterImAblauf, !!x.ziel);
   if (o.sonst === 'aufgabe') {
     const t: K = { id: o.kennung(), titel: 'Sonst: von Hand prüfen', rang: 0, form: 'schritt', bahn: 'mensch', katalog: { id: 'aufgabe.anlegen', werte: { titel: 'Sonst: von Hand prüfen', wer: 'rolle:zustaendig' } } };
     e = anlegen({ ...e.fassung, knoten: kn }, t, { nach: vorige, ausgang: 'nein' });
     if (!e.ok) return e;
-    kn = e.fassung.knoten;
+    kn = hauptSetzen(e.fassung.knoten, t.id, weiterImAblauf);
     neu.push(t.id);
   }
-  return geprueft(f, ok(kn, f, `Mehrfach-Entscheidung mit ${o.faelle.length} Fällen angelegt — als ${o.faelle.length} Rauten nach Regel hintereinander${o.sonst === 'aufgabe' ? ', „sonst“ als Aufgabe' : ', „sonst“ endet der Lauf'}.`, neu), 'Die Mehrfach-Entscheidung geht so nicht');
+  return abschliessen(f, kn, new Set(hauptAusgang(f.knoten, quelle.id).alle),
+    `Mehrfach-Entscheidung mit ${o.faelle.length} Fällen angelegt — als ${o.faelle.length} Rauten nach Regel hintereinander${o.sonst === 'aufgabe' ? ', „sonst“ als Aufgabe' : ', „sonst“ endet der Lauf'}.`,
+    { waehle: neu, pruefen: 'Die Mehrfach-Entscheidung geht so nicht' });
 }
 
 /** Einen Zweig lösen (rein) — der Strang („weiter“) lässt sich nicht lösen, nur umhängen. */
@@ -354,7 +522,8 @@ export function loesen(f: Fassung, von: string, ausgang: Ausgang): Ergebnis {
   if (!a) return nein('Diesen Knoten gibt es nicht (mehr).');
   if (ausgang === 'weiter') return nein('Die Reihenfolge lässt sich nicht lösen — nur umhängen (Faden zu einem anderen Schritt ziehen).');
   if (!a.zweige?.[ausgang]) return nein('Dieser Ausgang ist schon frei.');
-  return ok(f.knoten.map(k => (k.id === von ? mitZweig(k, ausgang, null) : k)), f, `Ausgang „${ausgang}“ von ${titel(a)} gelöst.`);
+  // Der frei gewordene Schritt bleibt, wo er hinführte; was sonst auf ihn bzw. hinter ihm lag, ebenso (Werkstatt-Fäden, 24.10.).
+  return abschliessen(f, f.knoten.map(k => (k.id === von ? mitZweig(k, ausgang, null) : k)), bedientVon(f.knoten, von, ausgang), `Ausgang „${ausgang}“ von ${titel(a)} gelöst.`, { pruefen: false });
 }
 
 // ── Löschen, ändern ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -376,7 +545,8 @@ export function loeschen(f: Fassung, ids: readonly string[]): Ergebnis {
     return x;
   });
   const zahl = [...weg].filter(id => schritte.has(id)).length;
-  return ok(rest, f, `${zahl === 1 ? `${titel(kn.find(k => weg.has(k.id) && schritte.has(k.id)))} gelöscht` : `${zahl} Schritte gelöscht`}${gesperrt.length ? ' — das Freigabe-Schloss bleibt' : ''}.`);
+  // Nur Ausgänge, die auf Gelöschtes zeigten, ändern sich (sie lösen sich bzw. gehen im Strang weiter) — alle anderen bleiben (Werkstatt-Fäden, 24.10.).
+  return abschliessen(f, rest, new Set(), `${zahl === 1 ? `${titel(kn.find(k => weg.has(k.id) && schritte.has(k.id)))} gelöscht` : `${zahl} Schritte gelöscht`}${gesperrt.length ? ' — das Freigabe-Schloss bleibt' : ''}.`, { pruefen: false });
 }
 
 /** Einen Knoten ersetzen (Panel, Maske, Titel) — Kennung, Eltern und Rang bleiben. */
@@ -412,7 +582,8 @@ export function inPhase(f: Fassung, id: string, phaseId: string, nach?: string |
   const reihe = reiheVon(f.knoten, phaseId).filter(x => x !== id);
   const i = nach ? reihe.indexOf(nach) : -1;
   const neu = i >= 0 ? [...reihe.slice(0, i + 1), id, ...reihe.slice(i + 1)] : [...reihe, id];
-  return ok(rangSetzen(f.knoten.map(x => (x.id === id ? { ...x, elternId: phaseId } : x)), neu), f, `${titel(k)} liegt jetzt in „${f.knoten.find(x => x.id === phaseId)?.titel ?? ''}“.`);
+  // Der Weg bleibt derselbe (Werkstatt-Fäden, 24.10.): nur die Phase wechselt — wohin seine und die anderen Ausgänge führen, ändert sich nicht.
+  return abschliessen(f, rangSetzen(f.knoten.map(x => (x.id === id ? { ...x, elternId: phaseId } : x)), neu), new Set(), `${titel(k)} liegt jetzt in „${f.knoten.find(x => x.id === phaseId)?.titel ?? ''}“.`, { pruefen: false });
 }
 /** Die Beschriftung eines Fadens (Punkt 23) — leer = die Vorgabe („ja“, „nein“ …). */
 export function pfeilText(f: Fassung, id: string, art: 'weiter' | (typeof ZWEIGE)[number], text: string | null): Ergebnis {
@@ -553,34 +724,62 @@ export function kopieren(f: Fassung, ids: readonly string[]): Ablage | null {
     let x: K = { ...k };
     delete x.schloss;
     for (const z of ZWEIGE) if (x.zweige?.[z] && !drin.has(x.zweige[z]!)) x = mitZweig(x, z, null);
+    if (x.danach && 'ziel' in x.danach && !drin.has(x.danach.ziel)) delete x.danach;
     return x;
   });
   const zettel = (f.zettel ?? []).filter(z => gewaehlt.has(z.id));
   return sauber.length || zettel.length ? { knoten: sauber, zettel } : null;
 }
 /**
- * Einfügen (rein): neue Kennungen, Zweige auf die neuen Kennungen umgeschrieben (Kanten kommen mit), als Folge hinter `nach` (bzw. ans Ende der Phase);
- * gespeicherte Lagen um `versatz` verschoben. Verweise auf Schritte außerhalb (erneut ab, Liste einer Abfrage) bleiben — die Prüfung meldet, was fehlt.
+ * Einfügen (rein): neue Kennungen, Zweige und festgelegte Ausgänge auf die neuen Kennungen umgeschrieben (Kanten zwischen den Kopien kommen mit). Werkstatt-Fäden
+ * (24.10., Bau-Test): ⌘V verdrahtet NIE um — die Kopien stehen lose in der Phase (was aus ihnen hinausführte, endet), kein bestehender Ausgang ändert sich. Nur wenn
+ * `nach` (der eine gewählte Knoten) einen FREIEN Hauptausgang hat (dort endet der Lauf), hängen sie dort an. `lagen` = Lage je kopiertem Knoten (alte Kennung → Lage,
+ * z. B. an der Mausposition); sonst werden gespeicherte Lagen um `versatz` verschoben. Verweise auf Schritte außerhalb (erneut ab, Liste einer Abfrage) bleiben — die
+ * Prüfung meldet, was fehlt. Die Ansage sagt, ob verbunden oder lose.
  */
-export function einfuegen(f: Fassung, a: Ablage, o: { phaseId: string; nach?: string | null; kennung: Kennung; versatz?: [number, number] }): Ergebnis {
+export function einfuegen(f: Fassung, a: Ablage, o: { phaseId: string; nach?: string | null; kennung: Kennung; versatz?: [number, number]; lagen?: ReadonlyMap<string, KnotenLage> }): Ergebnis {
   if (!phasen(f).some(p => p.id === o.phaseId)) return nein('Diese Phase gibt es nicht (mehr).');
   const [dx, dy] = o.versatz ?? [40, 40];
   const neuId = new Map(a.knoten.map(k => [k.id, o.kennung()]));
   const um = (id: string | undefined) => (id && neuId.has(id) ? neuId.get(id)! : id);
+  // Verbunden nur an einem freien Hauptausgang des einen gewählten Knotens.
+  const q0 = o.nach ? f.knoten.find(k => k.id === o.nach) : undefined;
+  const q = q0 && istSchloss(q0) ? f.knoten.find(k => k.id === q0.schloss!.fuer) : q0;
+  const frei = !!q && q.form !== 'ende' && !!phaseVon(f, q.id) && hauptZiel(f.knoten, q.id) === null;
+  const elternId = frei ? q!.elternId ?? o.phaseId : o.phaseId;
   const neu = a.knoten.map(k => {
-    const x: K = { ...k, id: neuId.get(k.id)!, elternId: o.phaseId };
+    const x: K = { ...k, id: neuId.get(k.id)!, elternId };
     if (k.zweige) { const z: Zweige = {}; for (const art of ZWEIGE) if (k.zweige[art]) z[art] = um(k.zweige[art]); x.zweige = z; }
+    if (k.danach) { if ('ende' in k.danach) x.danach = { ende: true }; else if (neuId.has(k.danach.ziel)) x.danach = { ziel: neuId.get(k.danach.ziel)! }; else delete x.danach; }
     if (k.erneut) x.erneut = { ...k.erneut, ab: um(k.erneut.ab)! };
     if (k.schleife?.liste.startsWith('abfrage:')) x.schleife = { ...k.schleife, liste: `abfrage:${um(k.schleife.liste.slice(8))}` };
-    if (k.pos) x.pos = { ...k.pos, x: k.pos.x + dx, y: k.pos.y + dy };
+    const lage = o.lagen?.get(k.id);
+    if (lage) x.pos = { x: Math.round(lage.x), y: Math.round(lage.y) };
+    else if (k.pos) x.pos = { ...k.pos, x: k.pos.x + dx, y: k.pos.y + dy };
     return x;
   });
-  const reihe = reiheVon(f.knoten, o.phaseId);
-  const i = o.nach ? reihe.indexOf(o.nach) : reihe.length - 1;
-  const neueReihe = [...reihe.slice(0, i + 1), ...neu.map(k => k.id), ...reihe.slice(i + 1)];
+  const kopien = new Set(neu.map(k => k.id));
+  const reihe = reiheVon(f.knoten, elternId);
+  const sl = frei ? f.knoten.find(k => k.schloss?.fuer === q!.id && k.elternId === q!.elternId) : undefined;
+  const anker = frei ? (q!.form === 'ausloeser' ? letzterAusloeser(f.knoten, elternId) ?? q!.id : sl ? sl.id : q!.id) : reihe.at(-1) ?? null;
+  let kn = einreihen([...f.knoten, ...neu], elternId, neu.map(k => k.id), anker);
+  // Der Eingang der Kopien: die erste, die kein Abzweig einer anderen Kopie ist.
+  const seiteNeu = seitenZiele(neu);
+  const eingang = neu.find(k => !seiteNeu.has(k.id));
+  if (frei && eingang) kn = hauptSetzen(kn, q!.id, eingang.id);
+  // Was aus den Kopien hinausführt, endet (lose bzw. dort, wo der freie Ausgang endete) — nie in einen bestehenden Schritt.
+  const z = ausgangsZiele({ knoten: kn });
+  for (const c of neu) {
+    const ziel = z.get(hauptAusgang(kn, c.id).haupt);
+    if (ziel !== undefined && ziel !== null && !kopien.has(ziel)) kn = hauptSetzen(kn, c.id, null);
+  }
+  const r = festschreiben(f, kn, frei ? new Set(hauptAusgang(f.knoten, q!.id).alle) : new Set());
+  if (!r.ok) return nein(r.grund);
   const zettel = a.zettel.map(z => ({ ...z, id: o.kennung(), pos: { ...z.pos, x: z.pos.x + dx, y: z.pos.y + dy } }));
-  const kn = rangSetzen([...f.knoten, ...neu], neueReihe);
-  const fassung: Fassung = { ...f, knoten: kn, ...(zettel.length ? { zettel: [...(f.zettel ?? []), ...zettel] } : {}) };
+  const fassung: Fassung = { ...f, knoten: r.knoten, ...(zettel.length ? { zettel: [...(f.zettel ?? []), ...zettel] } : {}) };
   const n = neu.length + zettel.length;
-  return { ok: true, fassung, ansage: `${n === 1 ? 'Ein Teil' : `${n} Teile`} eingefügt${neu.some(k => k.zweige) ? ' — mit ihren Verbindungen' : ''}.`, waehle: [...neu.map(k => k.id), ...zettel.map(z => z.id)] };
+  const was = n === 1 ? 'Ein Teil' : `${n} Teile`;
+  const mit = neu.some(k => k.zweige) ? ' (mit ihren Verbindungen untereinander)' : '';
+  const ansage = !neu.length ? `${was} eingefügt.` : frei && eingang ? `${was} eingefügt${mit} und an ${titel(q)} angehängt.` : `${was} lose eingefügt${mit} — noch ohne Eingang; einen Faden ziehen, um ${n === 1 ? 'ihn' : 'sie'} anzuhängen.`;
+  return { ok: true, fassung, ansage, waehle: [...neu.map(k => k.id), ...zettel.map(z => z.id)] };
 }

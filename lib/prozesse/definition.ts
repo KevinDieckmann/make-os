@@ -88,7 +88,16 @@ export interface ProzessKnoten<F extends string = KnotenForm> {
    * den Hauptweg weiter; ein Freigabe-Schloss dahinter wird MIT übersprungen (es bleibt im Prozess, fällt nie still weg). Nie an Auslöser, Ende oder Schloss.
    */
   deaktiviert?: boolean;
+  /**
+   * Werkstatt-Fäden (24.10., Regel „eine Bau-Aktion ändert nie, wohin ein ANDERER Ausgang führt“): wohin der Hauptausgang AUSDRÜCKLICH führt — „weiter“, an
+   * Entscheidung und Freigabe „ja“, an einer Erinnerung mit „danach zurück zu …“ der Ausstieg nach der letzten Runde. `ziel` = ein Schritt (auch in einer anderen
+   * Phase), `ende` = der Lauf endet hier — statt „der nächste Schritt im Strang“. Ein Sprung `zweige.ja` gewinnt davor. Fehlt = wie bisher (bit-gleich). Gelesen NUR
+   * über `kantenVon` (lib/prozesse/fluss.ts): Werkstatt, Lauf-Motor und Probelauf rechnen damit gleich. Nur Prozesse der Werkstatt (im Paket ein Fehler).
+   */
+  danach?: Danach;
 }
+/** Ein ausdrücklich festgelegter Hauptausgang (`ProzessKnoten.danach`): weiter bei einem Schritt bzw. „Lauf endet“. */
+export type Danach = { ziel: string } | { ende: true };
 /**
  * Lage auf der Fläche (Prozess-Editor, 17.10.): an einer Phase der Rahmen (absolut, mit Breite `b` und Höhe `h` — fehlen sie, passt sich der Rahmen dem Inhalt an),
  * an einem Schritt die linke obere Ecke RELATIV zu seinem Rahmen (der Rahmen nimmt seine Schritte beim Verschieben mit). Ganze Zahlen in Bildpunkten der Fläche.

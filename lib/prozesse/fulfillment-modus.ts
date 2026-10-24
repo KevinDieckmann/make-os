@@ -29,12 +29,12 @@ export const FULFILLMENT_FORMEN: readonly KnotenForm[] = KNOTEN_FORMEN;
 export const istFulfillmentForm = (f: unknown): f is KnotenForm => typeof f === 'string' && (FULFILLMENT_FORMEN as readonly string[]).includes(f);
 
 /** Felder eines Knotens, die nur die Werkstatt (der Lauf-Motor) ausführt — im Paket nie. */
-export const NUR_WERKSTATT_KNOTEN = ['katalog', 'ausloeser', 'agent', 'raute', 'warten', 'schleife', 'abfrage', 'erneut', 'teilprozess', 'ende', 'schloss', 'bahn', 'deaktiviert'] as const satisfies readonly (keyof K)[];
+export const NUR_WERKSTATT_KNOTEN = ['katalog', 'ausloeser', 'agent', 'raute', 'warten', 'schleife', 'abfrage', 'erneut', 'teilprozess', 'ende', 'schloss', 'bahn', 'deaktiviert', 'danach'] as const satisfies readonly (keyof K)[];
 /** Felder einer Definition, die nur Prozesse der Werkstatt tragen. */
 export const NUR_WERKSTATT_DEFINITION = ['eigner', 'laeuftAls', 'startKriterium', 'endKriterium', 'schnittstelle', 'zettel'] as const satisfies readonly (keyof ProzessDefinition)[];
 const FELD_NAME: Readonly<Record<string, string>> = {
   katalog: 'Baustein aus dem Katalog', ausloeser: 'Auslöser', agent: 'Agent', raute: 'Entscheidung nach Regel bzw. Score', warten: 'Warten', schleife: 'Schleife',
-  abfrage: 'CRM-Abfrage', erneut: '„Erneut ab Schritt …“', teilprozess: 'Teilprozess', ende: 'Ende', schloss: 'Freigabe-Schloss', bahn: 'Bahn einer Person', deaktiviert: 'Ausgeschalteter Schritt',
+  abfrage: 'CRM-Abfrage', erneut: '„Erneut ab Schritt …“', teilprozess: 'Teilprozess', ende: 'Ende', schloss: 'Freigabe-Schloss', bahn: 'Bahn einer Person', deaktiviert: 'Ausgeschalteter Schritt', danach: 'Festgelegter Ausgang („weiter bei …“ bzw. „Lauf endet“)',
   eigner: 'Eigner', laeuftAls: '„Läuft als“', startKriterium: 'Start-Kriterium', endKriterium: 'End-Kriterium', schnittstelle: 'Ein- und Ausgaben', zettel: 'Notiz-Zettel',
 };
 const NICHT_IM_FALL = 'gibt es im Fulfillment nicht — der Fall kann das nicht ausführen. Als Begleit-Prozess daneben bauen.';

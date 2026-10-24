@@ -7,7 +7,7 @@
 
 import { WEG } from '@/lib/wege';
 import { FALL_ARTEN, PROZESS_BEREICHE, type ProzessDefinition, type ProzessEintrag, type ProzessForm, type ProzessKnoten } from './definition';
-import { alleSchritte, phasen, schritteDer, seitenZiele, startKnoten } from './fluss';
+import { alleSchritte, danachZiel, phasen, schritteDer, seitenZiele, startKnoten } from './fluss';
 import { ausloeserText } from './ausloeser';
 import type { FlussForm } from '@/lib/reise/bild';
 import type { KernStufe, ProzessDef, ProzessPhase, ProzessSchritt } from './typen';
@@ -26,7 +26,8 @@ function phasenVon(d: ProzessDefinition): ProzessPhase[] {
     id: p.id, titel: p.titel,
     schritte: schritteDer(d, p.id).filter(s => s.form !== 'ausloeser').map((s: K): ProzessSchritt => ({
       id: s.id, titel: s.titel, form: LANDKARTEN_FORM[s.form ?? 'schritt'],
-      ...(s.form === 'entscheidung' && s.zweige?.ja ? { ja: s.zweige.ja } : {}),
+      // Werkstatt-Fäden (24.10.): ein festgelegtes „ja“ (`danach`, etwa über Phasen) zeigt das Bild wie einen Zweig.
+      ...(s.form === 'entscheidung' && (s.zweige?.ja ?? danachZiel(s)) ? { ja: (s.zweige?.ja ?? danachZiel(s))! } : {}),
       ...((s.form === 'entscheidung' || s.form === 'freigabe') && s.zweige?.nein ? { nein: s.zweige.nein } : {}),
       ...(s.form === 'ende' ? { ende: true as const } : {}),
       ...(seite.has(s.id) && s.form === 'erinnerung' && s.zweige?.ja ? { zurueck: true as const } : {}),
