@@ -18,6 +18,9 @@ import {
 import { katalogEintrag, maskeSaeubern, maskeVorgaben, type KatalogEintrag, type MaskenKontext } from './baustein-katalog';
 import { modellSchluessel, stufeVorgabe, type ModellOption } from './modell-wahl';
 import { istWebRecherche, oeffentlichModus } from './agent-schritt';
+import { DATUMS_FELDER, LOOP_NAME } from './ausloeser';
+import { zeitplanKurz } from './zeitplan-tage';
+import { EREIGNIS_NAME, istEreignisArt } from '@/lib/ereignisse/arten';
 
 type K = ProzessKnoten<ProzessForm>;
 type W = Record<string, MaskenWert>;
@@ -263,7 +266,9 @@ export function formauswahlGruppen(katalog: readonly KatalogEintrag[], o: { such
   return raus.filter(g => g.eintraege.length);
 }
 
-// ── Die Unterzeile eines Knotens (Kevins Bild: „kleine Unterzeile, z. B. Mail-Entwurf · Stapel“) ──────────────────────────────────────────────────────
+// ── Die Unterzeile eines Knotens (Kevins Bild: „kleine Unterzeile, z. B. Mail-Entwurf · Stapel“) — die EINE Kurzzeile je Knoten ────────────────────────────
+// Feinschliff 24.10. (Bau-Test: „Ereignis“ statt „neuer Lead“, „Zeitplan 08:00“ statt „montags 08:00“): sie zeigt die EINSTELLUNG — Ereignis mit Namen, Zeitplan mit
+// Tagen, Warten mit Dauer bzw. worauf, Mail mit Betreff (gekürzt). Genutzt von Fläche, Liste (lib/prozesse/werkstatt-landkarte.ts → `was`) und Handy.
 
 const FORM_WORT: Readonly<Record<ProzessForm, string>> = {
   schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Entscheidung', erinnerung: 'Erinnerung', termin: 'Termin', abstimmung: 'Abstimmung',
@@ -284,13 +289,44 @@ export function knotenUnterzeile(k: K, o: { mitSchloss?: boolean; agentName?: st
     case 'warten': {
       const w = k.warten;
       if (!w) return 'wie lange?';
-      if (w.art === 'dauer') return `${w.tage} ${w.tage === 1 ? 'Tag' : 'Tage'}${w.stunden ? ` ${w.stunden} h` : ''}`;
-      return w.art === 'datum' ? `bis Datum · höchstens ${w.hoechstensTage} T.` : `auf Ereignis · höchstens ${w.hoechstensTage} T.`;
+      if (w.art === 'dauer') {
+        if (w.tage === 0 && w.stunden) return `${w.stunden} h${w.arbeitszeit ? ' Arbeitszeit' : ''}`;
+        return `${w.tage} ${w.tage === 1 ? 'Tag' : 'Tage'}${w.stunden ? ` ${w.stunden} h` : ''}${w.arbeitszeit ? ' Arbeitszeit' : ''}`;
+      }
+      const hoechstens = w.art === 'ereignis' && w.hoechstensStunden ? `${w.hoechstensStunden} h` : `${w.hoechstensTage} T.`;
+      if (w.art === 'datum') return kurz(`bis ${DATUMS_FELDER.find(x => x.id === w.feld)?.titel ?? 'Datum'} · höchstens ${hoechstens}`);
+      return kurz(`auf „${istEreignisArt(w.ereignis) ? EREIGNIS_NAME[w.ereignis] : w.ereignis}“ · höchstens ${hoechstens}`);
     }
     case 'entscheidung': return !k.raute ? 'Mensch entscheidet' : k.raute.art === 'regel' ? 'nach Regel' : k.raute.art === 'score' ? 'nach Score' : 'Modell entscheidet';
     case 'ende': return k.ende?.ergebnis === 'abbruch' ? 'Abbruch' : k.ende?.ergebnis === 'uebergabe' ? 'Übergabe' : 'Ziel erreicht';
     case 'freigabe': return k.schloss ? 'Freigabe · nicht entfernbar' : 'Freigabe im Stapel';
-    default: return `${e ? (e.name !== k.titel ? e.name : e.anbindung) : formWort(k.form)}${stapel}`;
+    default: {
+      // Mail mit Betreff (gekürzt) — die Einstellung, nicht der Baustein; ohne Betreff wie bisher.
+      const betreff = e?.id === 'inbox.mail-entwurf' && typeof k.katalog?.werte?.betreff === 'string' ? k.katalog.werte.betreff.trim() : '';
+      if (betreff) return `„${kurz(betreff, 28)}“${stapel}`;
+      return `${e ? (e.name !== k.titel ? e.name : e.anbindung) : formWort(k.form)}${stapel}`;
+    }
   }
 }
-const ausloeserKurz = (a: Ausloeser): string => (a.art === 'hand' ? 'von Hand' : a.art === 'zeitplan' ? `Zeitplan ${a.uhrzeit}` : a.art === 'datum' ? 'Datum am Fall' : a.art === 'webhook' ? 'Webhook' : a.art === 'loop' ? 'nach Loop' : a.art === 'person' ? `je Person ab ${a.uhrzeit}` : 'Ereignis');
+/** Kürzen an einer Wortgrenze (Kurzzeile am Knoten). */
+function kurz(t: string, max = 42): string {
+  if (t.length <= max) return t;
+  const schnitt = t.slice(0, max - 1);
+  const wort = schnitt.lastIndexOf(' ');
+  return `${(wort > max * 0.6 ? schnitt.slice(0, wort) : schnitt).trimEnd()}…`;
+}
+function ausloeserKurz(a: Ausloeser): string {
+  switch (a.art) {
+    case 'hand': return 'von Hand';
+    case 'zeitplan': return zeitplanKurz(a);
+    case 'datum': {
+      const d = DATUMS_FELDER.find(x => x.id === a.feld)?.titel ?? 'Datum am Fall';
+      const t = Math.abs(a.versatzTage);
+      return kurz(a.versatzTage === 0 ? `am Tag: ${d}` : `${t} ${a.werktage ? 'WT' : 'T.'} ${a.versatzTage < 0 ? 'vor' : 'nach'} ${d}`);
+    }
+    case 'webhook': return 'Webhook';
+    case 'loop': return `nach ${LOOP_NAME[a.loop]}`;
+    case 'person': return `je Person ab ${a.uhrzeit}`;
+    case 'ereignis': return kurz(`${istEreignisArt(a.ereignis) ? EREIGNIS_NAME[a.ereignis] : 'Ereignis'}${a.bedingungen?.length ? ' · nur wenn …' : ''}`);
+  }
+}

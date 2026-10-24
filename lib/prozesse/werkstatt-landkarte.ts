@@ -9,6 +9,7 @@ import { WEG } from '@/lib/wege';
 import { FALL_ARTEN, PROZESS_BEREICHE, type ProzessDefinition, type ProzessEintrag, type ProzessForm, type ProzessKnoten } from './definition';
 import { alleSchritte, phasen, schritteDer, seitenZiele, startKnoten } from './fluss';
 import { ausloeserText } from './ausloeser';
+import { knotenUnterzeile } from './werkstatt-maske';
 import type { FlussForm } from '@/lib/reise/bild';
 import type { KernStufe, ProzessDef, ProzessPhase, ProzessSchritt } from './typen';
 
@@ -22,10 +23,13 @@ export const LANDKARTEN_FORM: Readonly<Record<ProzessForm, FlussForm>> = {
 
 function phasenVon(d: ProzessDefinition): ProzessPhase[] {
   const seite = seitenZiele(d.knoten);
+  const mitSchloss = new Set(d.knoten.flatMap(k => (k.schloss ? [k.schloss.fuer] : [])));
   return phasen(d).map(p => ({
     id: p.id, titel: p.titel,
     schritte: schritteDer(d, p.id).filter(s => s.form !== 'ausloeser').map((s: K): ProzessSchritt => ({
       id: s.id, titel: s.titel, form: LANDKARTEN_FORM[s.form ?? 'schritt'],
+      // Feinschliff 24.10.: die EINE Kurzzeile je Knoten (lib/prozesse/werkstatt-maske.ts) — dieselbe wie auf der Fläche und am Handy.
+      was: knotenUnterzeile(s, { mitSchloss: mitSchloss.has(s.id) }),
       ...(s.form === 'entscheidung' && s.zweige?.ja ? { ja: s.zweige.ja } : {}),
       ...((s.form === 'entscheidung' || s.form === 'freigabe') && s.zweige?.nein ? { nein: s.zweige.nein } : {}),
       ...(s.form === 'ende' ? { ende: true as const } : {}),

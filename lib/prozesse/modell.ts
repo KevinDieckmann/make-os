@@ -173,7 +173,9 @@ export function prozessAlsListe(p: ProzessDef, zahlen: Readonly<Record<string, Z
         kinder: ph.schritte.map(s => {
           const satz = schrittSatz(ph, s);
           const zs = zahlText(zahlen[zahlSchluessel({ p: p.id, ph: ph.id, s: s.id })]);
-          return { id: `${p.id}/${ph.id}/${s.id}`, ebene: 4 as const, titel: s.titel, pfad: { p: p.id, ph: ph.id, s: s.id }, kinder: [], ...(satz ? { text: satz } : {}), ...(zs ? { zahl: zs } : {}) };
+          // Feinschliff 24.10.: Schritte der Werkstatt tragen ihre Kurzzeile (`was`, z. B. „montags 08:00“, „„Danke …“ · Stapel“) — vor dem Satz des Wegs.
+          const text = [s.was, satz].filter(Boolean).join(' · ');
+          return { id: `${p.id}/${ph.id}/${s.id}`, ebene: 4 as const, titel: s.titel, pfad: { p: p.id, ph: ph.id, s: s.id }, kinder: [], ...(text ? { text } : {}), ...(zs ? { zahl: zs } : {}) };
         }),
       };
     }),

@@ -318,3 +318,54 @@ describe('3 — Teilprozess: Entwürfe wählbar (Probelauf ja, scharf nein), neu
     expect(teilprozessTitel({ titel: 'x'.repeat(200) }).length).toBeLessThanOrEqual(120);
   });
 });
+
+// ── 4/5: Zeitplan-Tage nach dem Rhythmus; die Kurzzeile je Knoten zeigt die Einstellung ───────────────────────────────────────────────────────────────
+
+describe('4 — Zeitplan: wöchentlich Mo–So, monatlich 1–30 + „letzter Tag“', () => {
+  it('Tage je Rhythmus (dieselbe Regel wie der Takt)', async () => {
+    const { tageOptionen, WOCHENTAGE, MONATSTAGE, LETZTER_TAG } = await import('@/lib/prozesse/zeitplan-tage');
+    expect(tageOptionen('woechentlich')?.map(t => t.label)).toEqual(['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']);
+    expect(tageOptionen('woechentlich')).toBe(WOCHENTAGE);
+    expect(tageOptionen('monatlich')).toBe(MONATSTAGE);
+    expect(MONATSTAGE.at(-1)).toEqual({ id: String(LETZTER_TAG), label: 'letzter Tag' });
+    expect(tageOptionen('taeglich')).toBeNull();
+    expect(tageOptionen('werktags')).toBeNull();
+    // Der Takt: 31 läuft am letzten Tag eines kürzeren Monats (lib/agenten/zeitplan.ts) — deshalb heißt sie „letzter Tag“.
+    const { slotsAmTag } = await import('@/lib/agenten/zeitplan');
+    expect(slotsAmTag({ art: 'wiederkehrend', rhythmus: 'monatlich', uhrzeit: '08:00', tage: [LETZTER_TAG] }, '2027-02-28')).toEqual(['2027-02-28T08:00:00']);
+    expect(slotsAmTag({ art: 'wiederkehrend', rhythmus: 'woechentlich', uhrzeit: '08:00', tage: [1] }, '2026-10-26')).toEqual(['2026-10-26T08:00:00']);
+  });
+  it('die Prüfung nimmt Wochentage nur bei „wöchentlich“ (1–7)', async () => {
+    const { ausloeserAus } = await import('@/lib/prozesse/ausloeser');
+    expect(ausloeserAus({ art: 'zeitplan', rhythmus: 'woechentlich', uhrzeit: '08:00', tage: [1, 3] }, 'keiner').befunde).toEqual([]);
+    expect(ausloeserAus({ art: 'zeitplan', rhythmus: 'woechentlich', uhrzeit: '08:00', tage: [15] }, 'keiner').befunde[0].stufe).toBe('offen');
+  });
+});
+
+describe('5 — Kurzzeile je Knoten (Fläche, Liste, Handy)', () => {
+  it('Ereignis mit Namen, Zeitplan mit Tagen, Warten mit Dauer, Mail mit Betreff (gekürzt)', async () => {
+    const { knotenUnterzeile } = await import('@/lib/prozesse/werkstatt-maske');
+    const k = (x: Partial<K>): K => ({ id: fk(60), titel: 'Schritt', rang: 1, ...x });
+    expect(knotenUnterzeile(k({ form: 'ausloeser', ausloeser: { art: 'ereignis', ereignis: 'neuer-lead' } }))).toBe('neuer Lead');
+    expect(knotenUnterzeile(k({ form: 'ausloeser', ausloeser: { art: 'ereignis', ereignis: 'neuer-lead', bedingungen: [{ feld: 'lead.status', op: 'gleich', wert: 'neu' }] } }))).toBe('neuer Lead · nur wenn …');
+    expect(knotenUnterzeile(k({ form: 'ausloeser', ausloeser: { art: 'zeitplan', rhythmus: 'woechentlich', uhrzeit: '08:00', tage: [1] } }))).toBe('montags 08:00');
+    expect(knotenUnterzeile(k({ form: 'ausloeser', ausloeser: { art: 'zeitplan', rhythmus: 'woechentlich', uhrzeit: '09:30', tage: [1, 3, 5] } }))).toBe('Mo, Mi, Fr 09:30');
+    expect(knotenUnterzeile(k({ form: 'ausloeser', ausloeser: { art: 'zeitplan', rhythmus: 'monatlich', uhrzeit: '08:00', tage: [31] } }))).toBe('am letzten Tag 08:00');
+    expect(knotenUnterzeile(k({ form: 'ausloeser', ausloeser: { art: 'zeitplan', rhythmus: 'werktags', uhrzeit: '07:30' } }))).toBe('werktags 07:30');
+    expect(knotenUnterzeile(k({ form: 'warten', warten: { art: 'dauer', tage: 3 } }))).toBe('3 Tage');
+    expect(knotenUnterzeile(k({ form: 'warten', warten: { art: 'dauer', tage: 0, stunden: 4, arbeitszeit: true } }))).toBe('4 h Arbeitszeit');
+    expect(knotenUnterzeile(k({ form: 'warten', warten: { art: 'ereignis', ereignis: 'antwort-gesendet', hoechstensTage: 0, hoechstensStunden: 4 } }))).toBe('auf „Antwort gesendet“ · höchstens 4 h');
+    const mail = k({ form: 'nachricht', titel: 'Danke-Mail', katalog: { id: 'inbox.mail-entwurf', werte: { betreff: 'Danke für Ihr Interesse an unserem Angebot' } } });
+    expect(knotenUnterzeile(mail, { mitSchloss: true })).toBe('„Danke für Ihr Interesse an…“ · Stapel');
+    expect(knotenUnterzeile(k({ form: 'nachricht', titel: 'Mail', katalog: { id: 'inbox.mail-entwurf' } }), { mitSchloss: true })).toBe('Mail-Entwurf · Stapel');
+  });
+  it('die Liste (Landkarte) trägt dieselbe Kurzzeile je Schritt', async () => {
+    const { prozessAusWerkstatt } = await import('@/lib/prozesse/werkstatt-landkarte');
+    const { prozessAlsListe } = await import('@/lib/prozesse/modell');
+    const d = definition([schritt(70, 'Warten', 1, { form: 'warten', warten: { art: 'dauer', tage: 3 } }), schritt(71, 'Ende', 2, { form: 'ende', ende: { ergebnis: 'erfolg' } })]);
+    const p = prozessAusWerkstatt({ id: d.id, entwurf: d, versionen: [], status: 'entwurf', angelegtAm: '', angelegtVon: '', entwurfAm: '', entwurfVon: '' })!;
+    expect(p.phasen[0].schritte.find(s => s.id === fk(70))?.was).toBe('3 Tage');
+    const l = prozessAlsListe(p);
+    expect(l.kinder[0].kinder.find(s => s.pfad.s === fk(70))?.text).toBe('3 Tage');
+  });
+});
