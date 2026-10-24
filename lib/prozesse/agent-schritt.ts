@@ -175,7 +175,7 @@ export function vertragPruefen(roh: unknown, schema: readonly VertragFeld[]): { 
  */
 export function agentAus(roh: unknown, k: AgentKontext = {}, knotenId?: string): { agent: AgentSchritt | null; befunde: Befund[] } {
   const befunde: Befund[] = [];
-  const b = (stufe: Befund['stufe'], text: string, feld?: string) => befunde.push({ stufe, text: `Agent: ${text}`, ...(knotenId ? { knotenId } : {}), ...(feld ? { feld } : {}) });
+  const b = (stufe: Befund['stufe'], text: string, feld?: string, nurWert?: true) => befunde.push({ stufe, text: `Agent: ${text}`, ...(knotenId ? { knotenId } : {}), ...(feld ? { feld } : {}), ...(nurWert ? { nurWert } : {}) });
   if (!istObj(roh)) { b('offen', 'wähle ZOE, einen Head oder einen Skill.'); return { agent: null, befunde }; }
   // Wer
   const w = istObj(roh.wer) ? roh.wer : {};
@@ -209,7 +209,7 @@ export function agentAus(roh: unknown, k: AgentKontext = {}, knotenId?: string):
   const bc = roh.budgetCent;
   const budgetCent = typeof bc === 'number' && Number.isInteger(bc) ? bc : 0;
   if (budgetCent <= 0) b('offen', 'Budget je Schritt fehlt (Cent, mindestens 1).', 'budgetCent');
-  else if (budgetCent > PROZESS_GRENZEN.budgetCentMax) b('fehler', `Budget höchstens ${PROZESS_GRENZEN.budgetCentMax} Cent je Schritt.`, 'budgetCent');
+  else if (budgetCent > PROZESS_GRENZEN.budgetCentMax) b('fehler', `Budget höchstens ${PROZESS_GRENZEN.budgetCentMax} Cent je Schritt.`, 'budgetCent', true);
   // Gedächtnis — im Modus „nur öffentliche Angaben“ (nur Web-Recherche-Fach-Agenten) sind Akte und Brain aus.
   const g = istObj(roh.gedaechtnis) ? roh.gedaechtnis : {};
   const oeffentlich = roh.nurOeffentlich === true && !!wer && istWebRecherche({ wer });
@@ -222,7 +222,8 @@ export function agentAus(roh: unknown, k: AgentKontext = {}, knotenId?: string):
   for (const name of werkzeuge) {
     const e = EINORDNUNG[name];
     if (!e || e.herkunft !== 'zoe') { b('fehler', `das Werkzeug „${name}“ gibt es nicht.`, 'werkzeuge'); continue; }
-    if (erlaubt && !erlaubt.includes(name)) b('fehler', `„${name}“ hat ${wer?.art === 'zoe' ? 'ZOE' : wer?.art === 'head' ? 'dieser Head' : wer?.art === 'fach' ? 'der Fach-Agent nicht zur Auswahl (er bringt seine Werkzeuge mit) —' : 'dieser Skill'} nicht — ein Schritt kann nur Werkzeuge nutzen, die der Agent schon hat.`, 'werkzeuge');
+    // 24.10.: nach einem Wechsel des Agenten nur ein falscher Wert — der Entwurf speichert trotzdem, veröffentlicht wird erst ohne.
+    if (erlaubt && !erlaubt.includes(name)) b('fehler', `„${name}“ hat ${wer?.art === 'zoe' ? 'ZOE' : wer?.art === 'head' ? 'dieser Head' : wer?.art === 'fach' ? 'der Fach-Agent nicht zur Auswahl (er bringt seine Werkzeuge mit) —' : 'dieser Skill'} nicht — ein Schritt kann nur Werkzeuge nutzen, die der Agent schon hat.`, 'werkzeuge', true);
     const bereich = k.werkzeugBereich?.(name) ?? e.bereich ?? null;
     if (bereich === 'privat') b('fehler', `„${name}“ gehört zu Privat — Prozesse sind Business.`, 'werkzeuge');
   }

@@ -527,11 +527,13 @@ export const webhookBestand = (h: string): string => `prozesse-webhook--${h}`;
 
 /**
  * Ein Ergebnis eines Prüfschritts (die Werkstatt zeigt alle, nicht nur den ersten):
- *   fehler   unlesbar bzw. gegen eine Regel — wird nicht gespeichert (auch nicht als Entwurf)
+ *   fehler   unlesbar bzw. gegen eine Regel — wird nicht gespeichert (auch nicht als Entwurf); mit `nurWert` nur ein falscher EINGEGEBENER Wert
+ *            (Zahl außerhalb der Grenzen, Platzhalter halb getippt, Auswahl nicht mehr da …) — der Entwurf speichert trotzdem (Feinschliff 24.10.: „nie
+ *            Eingaben verlieren“), rot am Knoten, veröffentlichen erst ohne
  *   offen    unvollständig — der Entwurf wird gespeichert, veröffentlichen bzw. aktiv schalten geht erst ohne
  *   hinweis  nur ein Rat (z. B. „Teilprozess bilden?“) — sperrt nichts
  */
 export type BefundStufe = 'fehler' | 'offen' | 'hinweis';
-export interface Befund { stufe: BefundStufe; text: string; knotenId?: string; feld?: string }
+export interface Befund { stufe: BefundStufe; text: string; knotenId?: string; feld?: string; /** Nur ein eingegebener Wert ist falsch — der Entwurf speichert trotzdem (24.10.). */ nurWert?: true }
 /** KI-Kategorien eines Bausteins (Typ-Durchreiche für die Schnittstelle). */
 export type { KiKategorie, ModelTier, Rechteklasse, SkillEreignis };

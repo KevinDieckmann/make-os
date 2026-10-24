@@ -451,7 +451,9 @@ const UHRZEIT = /^([01]\d|2[0-3]):([0-5]\d)$/;
 /**
  * Die Werte einer Maske säubern und prüfen (rein): nur Felder der Maske (Unbekanntes fällt weg), feste Werte stehen nie darin; Typen geprüft (`fehler`),
  * fehlende Pflichtfelder bzw. nicht mehr vorhandene Auswahl-Werte sind `offen` (Entwurf ja, Veröffentlichen nein). Bausteine mit eigenem Feld
- * (`feld`) prüft dessen Regel — hier nur leer.
+ * (`feld`) prüft dessen Regel — hier nur leer. Feinschliff 24.10. („nie Eingaben verlieren“): ein falscher eingegebener Wert (Zahl außerhalb der Grenzen,
+ * Platzhalter halb getippt, unbekannte Auswahl, Uhrzeit) ist `fehler` mit `nurWert` — rot am Feld, der Entwurf speichert trotzdem; zu lang bzw. zu viele
+ * bleiben ungespeichert (Größe).
  */
 export function maskeSaeubern(e: KatalogEintrag, roh: unknown, k: MaskenKontext = {}, knotenId?: string): { werte: Record<string, MaskenWert>; befunde: Befund[] } {
   const werte: Record<string, MaskenWert> = {};
@@ -459,46 +461,48 @@ export function maskeSaeubern(e: KatalogEintrag, roh: unknown, k: MaskenKontext 
   if (e.feld) return { werte, befunde };
   const o: O = roh && typeof roh === 'object' && !Array.isArray(roh) ? roh as O : {};
   const b = (stufe: Befund['stufe'], f: MaskenFeld, text: string) => befunde.push({ stufe, text: `${e.name} › ${f.label}: ${text}`, feld: f.id, ...(knotenId ? { knotenId } : {}) });
+  /** Ein falscher Wert (nicht zu groß): rot, aber der Entwurf speichert (24.10.). */
+  const w = (f: MaskenFeld, text: string) => befunde.push({ stufe: 'fehler', nurWert: true, text: `${e.name} › ${f.label}: ${text}`, feld: f.id, ...(knotenId ? { knotenId } : {}) });
   for (const f of e.maske) {
     const v = o[f.id];
     const leer = v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);
     if (leer) { if (f.pflicht) b('offen', f, 'fehlt.'); continue; }
     switch (f.typ) {
       case 'text': case 'langtext': case 'textvorlage': {
-        if (typeof v !== 'string') { b('fehler', f, 'Text erwartet.'); break; }
+        if (typeof v !== 'string') { w(f, 'Text erwartet.'); break; }
         const max = f.max ?? (f.typ === 'text' ? PROZESS_TEXT.feldText : PROZESS_TEXT.textvorlage);
         if (v.length > max) { b('fehler', f, `höchstens ${max.toLocaleString('de-DE')} Zeichen.`); break; }
-        if (f.typ === 'textvorlage') for (const x of textvorlagePruefen(v, k.platzhalter)) b('fehler', f, x);
+        if (f.typ === 'textvorlage') for (const x of textvorlagePruefen(v, k.platzhalter)) w(f, x);
         werte[f.id] = v;
         break;
       }
       case 'zahl': {
         const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v.replace(',', '.')) : NaN;
-        if (!Number.isFinite(n) || !Number.isInteger(n)) { b('fehler', f, 'ganze Zahl erwartet.'); break; }
-        if ((f.min !== undefined && n < f.min) || (f.max !== undefined && n > f.max)) { b('fehler', f, `${f.min ?? '…'} bis ${f.max ?? '…'}.`); break; }
+        if (!Number.isFinite(n) || !Number.isInteger(n)) { w(f, 'ganze Zahl erwartet.'); break; }
+        if ((f.min !== undefined && n < f.min) || (f.max !== undefined && n > f.max)) { w(f, `${f.min ?? '…'} bis ${f.max ?? '…'}.`); break; }
         werte[f.id] = n;
         break;
       }
-      case 'ja-nein': if (typeof v === 'boolean') werte[f.id] = v; else b('fehler', f, 'ja oder nein.'); break;
-      case 'uhrzeit': if (typeof v === 'string' && UHRZEIT.test(v)) werte[f.id] = v; else b('fehler', f, '„HH:MM“.'); break;
+      case 'ja-nein': if (typeof v === 'boolean') werte[f.id] = v; else w(f, 'ja oder nein.'); break;
+      case 'uhrzeit': if (typeof v === 'string' && UHRZEIT.test(v)) werte[f.id] = v; else w(f, '„HH:MM“.'); break;
       case 'tage': {
-        if (!Array.isArray(v) || !v.every(t => Number.isInteger(t) && t >= 1 && t <= 31)) { b('fehler', f, 'Tage 1 bis 31.'); break; }
+        if (!Array.isArray(v) || !v.every(t => Number.isInteger(t) && t >= 1 && t <= 31)) { w(f, 'Tage 1 bis 31.'); break; }
         werte[f.id] = Array.from(new Set(v as number[])).sort((x, y) => x - y);
         break;
       }
       case 'auswahl': {
-        if (typeof v !== 'string') { b('fehler', f, 'eine Auswahl.'); break; }
-        if (f.optionen && !f.optionen.some(x => x.id === v)) { b('fehler', f, 'unbekannter Wert.'); break; }
+        if (typeof v !== 'string') { w(f, 'eine Auswahl.'); break; }
+        if (f.optionen && !f.optionen.some(x => x.id === v)) { w(f, 'unbekannter Wert.'); break; }
         const liste = f.quelle ? k.auswahl?.(f.quelle) ?? null : null;
         if (liste && !liste.includes(v)) b('offen', f, 'gibt es nicht (mehr) — bitte neu wählen.');
         werte[f.id] = v;
         break;
       }
       case 'mehrfach': {
-        if (!Array.isArray(v) || !v.every(x => typeof x === 'string')) { b('fehler', f, 'Liste erwartet.'); break; }
+        if (!Array.isArray(v) || !v.every(x => typeof x === 'string')) { w(f, 'Liste erwartet.'); break; }
         const l = Array.from(new Set(v as string[]));
         if (l.length > PROZESS_GRENZEN.optionen) { b('fehler', f, `höchstens ${PROZESS_GRENZEN.optionen}.`); break; }
-        if (f.optionen && l.some(x => !f.optionen!.some(y => y.id === x))) { b('fehler', f, 'unbekannter Wert.'); break; }
+        if (f.optionen && l.some(x => !f.optionen!.some(y => y.id === x))) { w(f, 'unbekannter Wert.'); break; }
         const liste = f.quelle ? k.auswahl?.(f.quelle) ?? null : null;
         if (liste && l.some(x => !liste.includes(x))) b('offen', f, 'nicht alles gibt es (noch).');
         werte[f.id] = l;

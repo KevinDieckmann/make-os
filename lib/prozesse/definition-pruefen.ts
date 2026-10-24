@@ -1,6 +1,7 @@
 // ─── Prozesse — einen Prozess prüfen: speichern, veröffentlichen, aktiv schalten (Etappe B1, 21.10.; ANALYSE_100.md Punkte 6, 10, 43, 45, 53–55, 62) ────
 // EINE Stelle, die alle Regeln über einer Definition zusammenführt und ALLE Befunde liefert (die Werkstatt zeigt sie am Knoten):
-//   fehler   gegen eine Regel bzw. unlesbar — wird nicht gespeichert (auch nicht als Entwurf)
+//   fehler   gegen eine Regel bzw. unlesbar — wird nicht gespeichert (auch nicht als Entwurf); `nurWert` = nur ein eingegebener Wert ist falsch → der
+//            Entwurf speichert trotzdem (24.10., „nie Eingaben verlieren“), veröffentlichen nein
 //   offen    unvollständig — Entwurf ja, veröffentlichen nein
 //   hinweis  nur ein Rat
 // `definitionPruefen` (Entwurf und Veröffentlichen), `aktivBefunde` (aktiv schalten: veröffentlicht, Eigner aus dem Team, Start- und Endkriterium, als wer
@@ -87,7 +88,7 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
       if (!r) break; // ein Mensch entscheidet
       if (r.art === 'regel') {
         const x = bedingungenAus(r.bedingungen, rautenFelder(d), titel);
-        raus.push(...x.befunde.map(y => ({ ...y, knotenId: k.id })));
+        raus.push(...x.befunde.map(y => ({ ...y, knotenId: k.id, feld: 'bedingungen' })));
         if (!r.bedingungen.length) raus.push(b('offen', `${titel}: mindestens eine Bedingung.`, k.id));
       } else if (r.art === 'modell') {
         if (!r.frage.trim()) raus.push(b('offen', `${titel}: die Frage an das Modell fehlt.`, k.id));
@@ -117,7 +118,7 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
         if (w.art === 'datum' && !datumsFelderFuer(fall).includes(w.feld)) raus.push(b('offen', `${titel}: dieses Datum gibt es bei diesem Fall nicht.`, k.id));
         if (w.art === 'ereignis') {
           if (!istEreignisArt(w.ereignis) || !ereignisStartetProzess(w.ereignis)) raus.push(b('offen', `${titel}: auf dieses Ereignis kann ein Prozess nicht warten.`, k.id));
-          raus.push(...bedingungenAus(w.bedingungen, rautenFelder(d), titel).befunde.map(y => ({ ...y, knotenId: k.id })));
+          raus.push(...bedingungenAus(w.bedingungen, rautenFelder(d), titel).befunde.map(y => ({ ...y, knotenId: k.id, feld: 'bedingungen' })));
         }
       }
       break;
@@ -140,7 +141,7 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
       const ziel = kx.prozess?.(t.prozessId);
       if (ziel?.schnittstelle) {
         const ein = ziel.schnittstelle.eingaben;
-        for (const key of Object.keys(t.eingaben ?? {})) if (!ein.some(f => f.id === key)) raus.push(b('fehler', `${titel}: „${key}“ ist keine Eingabe von „${ziel.titel}“.`, k.id));
+        for (const key of Object.keys(t.eingaben ?? {})) if (!ein.some(f => f.id === key)) raus.push({ ...b('fehler', `${titel}: „${key}“ ist keine Eingabe von „${ziel.titel}“.`, k.id), nurWert: true });
         for (const f of ein) if (f.pflicht && !t.eingaben?.[f.id]) raus.push(b('offen', `${titel}: die Eingabe „${f.id}“ fehlt.`, k.id));
       }
       break;
@@ -227,8 +228,11 @@ export function definitionPruefen(d: ProzessDefinition, kx: PruefKontext = {}): 
 
 /** Sperrt etwas das Veröffentlichen? (`fehler` oder `offen`) */
 export const sperrtVeroeffentlichen = (l: readonly Befund[]): boolean => l.some(x => x.stufe !== 'hinweis');
-/** Sperrt etwas das Speichern des Entwurfs? (`fehler`) */
-export const sperrtSpeichern = (l: readonly Befund[]): boolean => l.some(x => x.stufe === 'fehler');
+/**
+ * Sperrt etwas das Speichern des Entwurfs? (`fehler` — außer `nurWert`: ein Entwurf speichert auch halb getippte bzw. falsche Werte, Feinschliff 24.10.
+ * „nie Eingaben verlieren“; ungültige Form und Größe bleiben gesperrt.)
+ */
+export const sperrtSpeichern = (l: readonly Befund[]): boolean => l.some(x => x.stufe === 'fehler' && !x.nurWert);
 
 /**
  * Aktiv schalten (Punkt 10): eine veröffentlichte Version ohne Sperre, mit Eigner aus dem Team, Start- und Endkriterium und einer Person, als die der Lauf

@@ -28,7 +28,8 @@ describe('Auslöser prüfen', () => {
     expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'frist-naht' }, 'deal'))).toBe(1); // noch nicht angebunden (termin-vorbei seit C1 angebunden)
     expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'webhook' }, 'deal'))).toBe(1); // intern
     expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'aufgabe-zoe' }, 'deal'))).toBe(1); // intern
-    expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'neuer-lead', bedingungen: [{ feld: 'deal.wert', op: 'groesser', wert: 5 }] }, 'lead'), 'fehler')).toBe(1);
+    // Feinschliff 24.10. („nie Eingaben verlieren“): ein Feld, das es hier nicht (mehr) gibt, ist `offen` — der Entwurf speichert, veröffentlicht wird erst danach.
+    expect(fehler(ausloeserAus({ art: 'ereignis', ereignis: 'neuer-lead', bedingungen: [{ feld: 'deal.wert', op: 'groesser', wert: 5 }] }, 'lead'), 'offen')).toBe(1);
     expect(PROZESS_EREIGNISSE).not.toContain('webhook');
     expect(PROZESS_EREIGNISSE).toContain('neuer-lead');
   });
@@ -44,7 +45,7 @@ describe('Auslöser prüfen', () => {
     expect(ausloeserFelder(r.ausloeser!, 'lead')).toEqual(['webhook.email', 'webhook.quelle']);
     expect(fehler(ausloeserAus({ art: 'webhook', felder: [{ id: 'x', art: 'text' }, { id: 'x', art: 'zahl' }] }, 'lead'), 'fehler')).toBe(1);
     expect(fehler(ausloeserAus({ art: 'webhook', felder: [{ id: 'wahl', art: 'auswahl' }] }, 'lead'), 'fehler')).toBe(1);
-    expect(fehler(ausloeserAus({ art: 'webhook', felder: [{ id: 'a', art: 'text' }], bedingungen: [{ feld: 'webhook.b', op: 'gesetzt' }] }, 'lead'), 'fehler')).toBe(1);
+    expect(fehler(ausloeserAus({ art: 'webhook', felder: [{ id: 'a', art: 'text' }], bedingungen: [{ feld: 'webhook.b', op: 'gesetzt' }] }, 'lead'), 'offen')).toBe(1);
   });
   it('Text für Steckbrief und Liste', () => {
     expect(ausloeserText({ art: 'datum', feld: 'mandat.kuendigungsfrist', versatzTage: -14, werktage: true })).toBe('14 Werktage vor: Kündigungsfrist des Mandats');

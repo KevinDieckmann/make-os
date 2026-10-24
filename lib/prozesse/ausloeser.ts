@@ -199,7 +199,7 @@ export function ausloeserAus(roh: unknown, fall: FallArt, knotenId?: string): { 
       const e = roh.ereignis as SkillEreignis;
       const { bedingungen, befunde } = bedingungenAus(roh.bedingungen, ausloeserFelder({ art: 'ereignis' }, fall), 'Nur wenn');
       const v = verknuepfungAus(roh.verknuepfung);
-      const raus: Befund[] = befunde.map(x => ({ ...x, ...(knotenId ? { knotenId } : {}) }));
+      const raus: Befund[] = befunde.map(x => ({ ...x, feld: 'bedingungen', ...(knotenId ? { knotenId } : {}) }));
       if (!ereignisStartetProzess(e)) raus.push(b('offen', `„${EREIGNIS_NAME[e]}“ startet keinen Prozess${EREIGNISSE_INTERN.includes(e) ? '' : ' — noch nicht angebunden'}.`));
       return { ausloeser: { art: 'ereignis', ereignis: e, ...(bedingungen.length ? { bedingungen } : {}), ...(v && bedingungen.length > 1 ? { verknuepfung: v } : {}) }, befunde: raus };
     }
@@ -212,13 +212,13 @@ export function ausloeserAus(roh: unknown, fall: FallArt, knotenId?: string): { 
       const versatz = typeof vt === 'number' && Number.isInteger(vt) && Math.abs(vt) <= 365 ? vt : null;
       if (versatz === null) raus.push(b('offen', 'Datum: Versatz in ganzen Tagen (−365 bis 365).'));
       const uhr = typeof roh.uhrzeit === 'string' && UHRZEIT.test(roh.uhrzeit) ? roh.uhrzeit : undefined;
-      if (roh.uhrzeit !== undefined && roh.uhrzeit !== null && !uhr) raus.push(b('fehler', 'Datum: Uhrzeit als „HH:MM“.'));
+      if (roh.uhrzeit !== undefined && roh.uhrzeit !== null && !uhr) raus.push({ ...b('fehler', 'Datum: Uhrzeit als „HH:MM“.'), feld: 'uhrzeit', nurWert: true });
       if (raus.length) return { ausloeser: null, befunde: raus };
       const { bedingungen, befunde } = bedingungenAus(roh.bedingungen, ausloeserFelder({ art: 'datum' }, fall), 'Nur wenn');
       const v = verknuepfungAus(roh.verknuepfung);
       return {
         ausloeser: { art: 'datum', feld, versatzTage: versatz!, ...(roh.werktage === true ? { werktage: true } : {}), ...(uhr ? { uhrzeit: uhr } : {}), ...(bedingungen.length ? { bedingungen } : {}), ...(v && bedingungen.length > 1 ? { verknuepfung: v } : {}) },
-        befunde: befunde.map(x => ({ ...x, ...(knotenId ? { knotenId } : {}) })),
+        befunde: befunde.map(x => ({ ...x, feld: 'bedingungen', ...(knotenId ? { knotenId } : {}) })),
       };
     }
     case 'webhook': {

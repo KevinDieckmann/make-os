@@ -64,7 +64,10 @@ export function bedingungText(b: Bedingung, feldName: (id: string) => string = i
 
 /**
  * Bedingungen aus der Eingabe säubern und prüfen (rein): nur bekannte Felder (`erlaubt`; ohne Liste jede Feld-Kennung), bekannte Vergleiche, Wert passend,
- * höchstens `PROZESS_GRENZEN.bedingungen` (darüber ein Befund — nie gekürzt). Liefert die sauberen Bedingungen und die Befunde (fehler).
+ * höchstens `PROZESS_GRENZEN.bedingungen` (darüber ein Befund — nie gekürzt). Liefert die sauberen Bedingungen und die Befunde.
+ * Feinschliff 24.10. („nie Eingaben verlieren“): eine NEUE, noch leere Bedingung (Feld/Wert fehlt, Feld passt nicht mehr zum Fall) ist `offen` — der Entwurf
+ * speichert, veröffentlicht wird erst vollständig; ein falscher Wert („größer“ mit Text) ist `fehler` mit `nurWert` (rot, speichert trotzdem). Unlesbares,
+ * unbekannte Vergleiche, zu viele bzw. zu lange Werte bleiben `fehler` (nicht speicherbar).
  */
 export function bedingungenAus(roh: unknown, erlaubt?: readonly string[] | null, wo = 'Bedingung'): { bedingungen: Bedingung[]; befunde: Befund[] } {
   const befunde: Befund[] = [];
@@ -76,15 +79,15 @@ export function bedingungenAus(roh: unknown, erlaubt?: readonly string[] | null,
     const nr = `${wo} ${i + 1}`;
     if (!istObj(x)) { befunde.push({ stufe: 'fehler', text: `${nr}: unlesbar.` }); return; }
     const feld = typeof x.feld === 'string' ? x.feld.trim() : '';
-    if (!FELD_KENNUNG.test(feld)) { befunde.push({ stufe: 'fehler', text: `${nr}: Feld fehlt.` }); return; }
-    if (erlaubt && !erlaubt.includes(feld)) { befunde.push({ stufe: 'fehler', text: `${nr}: das Feld „${feld}“ gibt es hier nicht.` }); return; }
+    if (!FELD_KENNUNG.test(feld)) { befunde.push({ stufe: 'offen', text: `${nr}: Feld fehlt.` }); return; }
+    if (erlaubt && !erlaubt.includes(feld)) { befunde.push({ stufe: 'offen', text: `${nr}: das Feld „${feld}“ gibt es hier nicht — bitte ein anderes wählen.` }); return; }
     const op = (BEDINGUNG_OPS as readonly string[]).includes(x.op as string) ? x.op as BedingungOp : null;
     if (!op) { befunde.push({ stufe: 'fehler', text: `${nr}: unbekannter Vergleich.` }); return; }
     if (OHNE_WERT.has(op)) { bedingungen.push({ feld, op }); return; }
     const w = x.wert;
     if (op === 'einer-von') {
       const l = Array.isArray(w) ? w.filter((y): y is string => typeof y === 'string' && !!y.trim()).map(y => y.trim()) : [];
-      if (!l.length) { befunde.push({ stufe: 'fehler', text: `${nr}: mindestens ein Wert.` }); return; }
+      if (!l.length) { befunde.push({ stufe: 'offen', text: `${nr}: mindestens ein Wert.` }); return; }
       if (l.length > PROZESS_GRENZEN.optionen) { befunde.push({ stufe: 'fehler', text: `${nr}: höchstens ${PROZESS_GRENZEN.optionen} Werte.` }); return; }
       if (l.some(y => y.length > PROZESS_TEXT.feldText)) { befunde.push({ stufe: 'fehler', text: `${nr}: ein Wert ist zu lang.` }); return; }
       bedingungen.push({ feld, op, wert: l });
@@ -94,11 +97,11 @@ export function bedingungenAus(roh: unknown, erlaubt?: readonly string[] | null,
     if (typeof w === 'boolean') { bedingungen.push({ feld, op, wert: w }); return; }
     if (typeof w === 'string' && w.trim()) {
       if (w.length > PROZESS_TEXT.feldText) { befunde.push({ stufe: 'fehler', text: `${nr}: der Wert ist zu lang (höchstens ${PROZESS_TEXT.feldText} Zeichen).` }); return; }
-      if ((op === 'groesser' || op === 'kleiner') && zahl(w) === null && !/^\d{4}-\d{2}-\d{2}$/.test(w.trim())) { befunde.push({ stufe: 'fehler', text: `${nr}: „größer/kleiner“ vergleicht Zahlen oder Tage.` }); return; }
+      if ((op === 'groesser' || op === 'kleiner') && zahl(w) === null && !/^\d{4}-\d{2}-\d{2}$/.test(w.trim())) { befunde.push({ stufe: 'fehler', nurWert: true, text: `${nr}: „größer/kleiner“ vergleicht Zahlen oder Tage.` }); return; }
       bedingungen.push({ feld, op, wert: w.trim() });
       return;
     }
-    befunde.push({ stufe: 'fehler', text: `${nr}: Wert fehlt.` });
+    befunde.push({ stufe: 'offen', text: `${nr}: Wert fehlt.` });
   });
   return { bedingungen, befunde };
 }
