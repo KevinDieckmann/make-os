@@ -106,9 +106,10 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
     const reihe = { landkarte: 0, paket: 1, ablauf: 2 } as const;
     const vorlagen = [...(datei?.prozesse ?? [])].sort((a, b) => (reihe[a.art] ?? 3) - (reihe[b.art] ?? 3));
     // Prozesse der Werkstatt (Etappe B2): je eine Kachel in ihrem Bereich der Fliege — jüngste Version bzw. Entwurf, archivierte fehlen.
+    const eintraege = await sicher(async () => (await (await import('./werkstatt-server')).prozesseLesen(h)).prozesse);
     const werkstatt = await sicher(async () => {
-      const [{ prozesseLesen }, { prozessAusWerkstatt }] = await Promise.all([import('./werkstatt-server'), import('./werkstatt-landkarte')]);
-      return (await prozesseLesen(h)).prozesse.map(prozessAusWerkstatt).filter((p): p is ProzessDef => !!p);
+      const { prozessAusWerkstatt } = await import('./werkstatt-landkarte');
+      return (eintraege ?? []).map(prozessAusWerkstatt).filter((p): p is ProzessDef => !!p);
     });
     const alle: ProzessDef[] = [...SYSTEM_PROZESSE, ...vorlagen.map(v => prozessAusVorlageMit(v, !!datei && inWerkstatt(datei, v.id))).filter((p): p is ProzessDef => !!p), ...(werkstatt ?? [])];
     // Prozesse × Fulfillment (22.10.): welche Produkte auf einen Prozess zeigen (Werkstatt über `Leistung.prozessId`, Pakete über die Zuordnung des Fulfillments).
@@ -121,7 +122,8 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
       const q = await stellschraubenQuellenLesen(h, { ...(produkte ? { crm: produkte } : {}), ...(datei ? { fulfillment: datei.einstellungen } : {}) });
       return { prozesse: mitStellschrauben(mitProd, q), stand: q.werteStand };
     });
-    const prozesse = mitSchrauben?.prozesse ?? mitProd;
+    // Überführung (22.10., Paket Ü): welche System-Prozesse in die Werkstatt umziehen können und wie es steht — dazu am Werkstatt-Prozess, wen er ersetzt.
+    const prozesse = (eintraege ? await sicher(async () => (await import('./ueberfuehrung-server')).mitUeberfuehrung(mitSchrauben?.prozesse ?? mitProd, eintraege, h)) : null) ?? mitSchrauben?.prozesse ?? mitProd;
     const [mt, ff] = await Promise.all([sicher(() => markttraktionZahlen(heute)), sicher(() => fulfillmentZahlen(heute, vorlagen))]);
     const arten = { ...(mt ?? {}), ...(ff?.arten ?? {}) };
     const zahlen: Record<string, Zahl> = { ...(ff?.knoten ?? {}) };

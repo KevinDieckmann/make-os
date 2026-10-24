@@ -100,6 +100,11 @@ export interface ProzessDef {
   ton?: string;
   bereichEigen?: string;
   aus?: true;
+  /**
+   * Überführung (22.10., Paket Ü — lib/prozesse/ueberfuehrung.ts; der Server hängt es an, nie gespeichert): am System-Prozess (`rolle: 'alt'`) der Teil, der in die
+   * Werkstatt umziehen kann, wie es darum steht und der ersetzende Prozess; am Werkstatt-Prozess (`rolle: 'neu'`) welchen System-Prozess er ersetzt (`prozessId`).
+   */
+  ueberfuehrung?: { rolle: 'alt' | 'neu'; teil: string; satz: string; stand: import('./ueberfuehrung').UeberfuehrungStand; prozessId?: string; titel?: string };
 }
 
 /**
@@ -120,6 +125,8 @@ export interface LandkarteDaten {
    */
   stellschraubenRechte?: import('./stellschrauben').StellschraubenRechte;
   stellschraubenStand?: string;
+  /** Überführung (22.10., Paket Ü): darf DIESE Person einen System-Prozess in die Werkstatt überführen (volle Mitglieder per Sitzung)? Fehlt = nein. */
+  ueberfuehrenRecht?: boolean;
 }
 
 /** Ein Ort im Modell — die Ebenen (Punkt 5): 1 Landkarte (leer), 2 Prozess (`p`), 3 Ablauf einer Phase (`ph`), 4 Schritt-Detail (`s`). */

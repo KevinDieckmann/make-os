@@ -21,6 +21,7 @@ import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
 import { IMMER_FREIGABE, type Rechteklasse } from '@/lib/werkzeuge/vertrag';
 import type { Kanal } from '@/lib/crm/recht';
 import { LIFECYCLE_WAHL } from '@/lib/crm/lifecycle';
+import { UEBERFUEHRBAR } from './ueberfuehrung';
 import {
   CRM_ABFRAGE_ARTEN, FELD_KENNUNG, LOOP_ARTEN, PROZESS_GRENZEN, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, VORSCHLAG_ZIELFELDER,
   type AgentWer, type Bahn, type Befund, type FallArt, type KiKategorie, type MaskenWert, type ProzessForm,
@@ -103,6 +104,11 @@ export interface KatalogEintrag {
   schreibweg?: string;
   /** Über welche vorhandenen Leser der Baustein liest (z. B. Kontakte NUR über `kontakteFuerVerarbeitung`, Art. 18). */
   liest?: string;
+  /**
+   * Nur in einem überführten Prozess (22.10., Paket Ü): steht nicht in der Knoten-Auswahl — er kommt mit „In die Werkstatt überführen“ und wirkt nur im
+   * Prozess, der den System-Ablauf ersetzt (lib/prozesse/ueberfuehrung.ts).
+   */
+  nurUeberfuehrung?: true;
   maske: readonly MaskenFeld[];
 }
 
@@ -375,6 +381,13 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
   { id: 'crm.anfrage-anlegen', name: 'Anfrage übernehmen', satz: 'Macht aus den Feldern eines Webhooks (z. B. Website-Formular) eine Anfrage — nur als Vorschlag, der Empfänger kommt aus der Kartei, die Uhr läuft ab Eingang.', anbindung: 'CRM', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag', fest: { art: 'anfrage_anlegen' },
     schreibweg: 'POST /api/crm/anfrage `anlegen` (anfrageBauen: Dublette, Art. 18, Werbesperre, Einwilligung „Anfrage“, Follow-up „Anfrage beantworten“)',
     maske: [{ id: 'kanal', label: 'Kanal', typ: 'auswahl', pflicht: true, vorgabe: 'website', optionen: [{ id: 'website', label: 'Website' }, { id: 'mail', label: 'Mail' }, { id: 'linkedin', label: 'LinkedIn' }, { id: 'telefon', label: 'Telefon' }, { id: 'empfehlung', label: 'Empfehlung' }, { id: 'event', label: 'Event' }] }] },
+
+  // ── Überführung (22.10., Paket Ü): der Kern eines alten System-Ablaufs als EIN Schritt — dieselbe Regel, dieselben Kennungen, derselbe Schreibweg wie der Code.
+  //    Der Prozess steuert, wann er läuft (Auslöser, Bedingungen, Anhalten); nur im Prozess, der den System-Ablauf ersetzt (sonst hält der Lauf mit Grund). ──
+  { id: 'system.fest', name: 'Fester Schritt', satz: 'Tut genau, was der alte Ablauf im Code tat — dieselbe Regel und dieselben Kennungen (überführter System-Prozess).', anbindung: 'Ablauf', form: 'schritt', kategorie: 'aktion', bahn: 'system',
+    rechte: 'intern', ki: [], nurUeberfuehrung: true,
+    schreibweg: 'lib/prozesse/system-schritte-server.ts `systemSchrittAusfuehren` → der Kern des alten Ablaufs (Mahnaufgaben: `mahnAufgabenKern`, Fortschritts-Report: `treppeReportsKern`, Onboarding-Vorschlag: `onboardingVorschlaegeKern`) — nur Business',
+    maske: [{ id: 'schritt', label: 'Was', typ: 'auswahl', pflicht: true, optionen: UEBERFUEHRBAR.map(u => ({ id: u.schritt, label: u.teil })), hilfe: 'Kommt mit der Überführung — die Regel und ihre Stellschrauben bleiben dort, wo sie heute schon stehen.' }] },
 
   // ── Ende ──
   { id: 'ende.ziel', name: 'Ziel erreicht', satz: 'Der Lauf endet erfolgreich.', anbindung: 'Ablauf', form: 'ende', kategorie: 'ende', bahn: 'system', rechte: 'lesen', ki: [], feld: 'ende', maske: [] },

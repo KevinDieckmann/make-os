@@ -23,7 +23,7 @@ import type { TasksState } from '@/types/tasks';
 import {
   aufgabeFertig, budgetReicht, ereignisEingetreten, fallAusEreignis, fallSchluessel, freigabeEntschieden, kostenBuchen, laeufeAus, monatVon, nachAktion,
   starten, teilprozessFertig, voran, wartetAuf, weckenZeit, wirkungZaehlen, anhalten, fortsetzen, abbrechen, verlaufAnhaengen, tagVonIso, startGesperrt, rechercheVorTagen, datumSchonGestartet,
-  type Aktion, type AktionErgebnis, type Empfaenger, type LaufUmfeld, type StartAnfrage, type StartErgebnis, type AgentFreigabe,
+  type Aktion, type AktionErgebnis, type Empfaenger, type LaufUmfeld, type StartAnfrage, type StartErgebnis, type AgentFreigabe, type ProbeBeobachtung,
 } from './lauf-regeln';
 import { istWebRecherche, oeffentlichModus, OEFFENTLICH_KATEGORIEN } from './agent-schritt';
 import { ROLLE_EIGNER, ROLLE_ZUSTAENDIG, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT } from './baustein-katalog';
@@ -42,6 +42,7 @@ import { herkunftAus, mitLaufHerkunft } from './lauf-herkunft';
 import { gelesenFelderMenge } from './kundengewinnung/raute-felder';
 import { testWerte, webhookBeispiel, webhookFelderVon } from './testdaten';
 import { anredeAus, kundenGruss } from '@/lib/fulfillment/kunde/bild';
+import { neuerWegScharf, type SystemSchrittId } from './ueberfuehrung';
 
 // ══ Bestand ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -124,8 +125,11 @@ export function laufZustand(e: Pick<ProzessEintrag, 'status'> | undefined): 'lae
  * Scharf oder Schatten? Scharf NUR, wenn der Prozess aktiv ist UND über „scharf schalten“ (Budget, Rückfrage) ging — ein Prozess, der nur über den
  * Status aktiv wurde, läuft im Schatten weiter, bis jemand ihn scharf schaltet. Probelauf = Schatten. Sonst startet nichts.
  */
-export function modusFuer(e: Pick<ProzessEintrag, 'status'> | undefined, st: ProzessLaufStand | undefined): LaufModus | null {
+export function modusFuer(e: (Pick<ProzessEintrag, 'status'> & Partial<Pick<ProzessEintrag, 'id' | 'ersetzt' | 'ueberfuehrung'>>) | undefined, st: ProzessLaufStand | undefined): LaufModus | null {
   if (!e) return null;
+  // Überführung (22.10., Paket Ü): ein Prozess, der einen System-Ablauf ersetzt, läuft scharf NUR in Phase „scharf“ — dieselbe Regel wie die Ablöse-Weiche
+  // des alten Codes (`neuerWegScharf`), so arbeitet nie beides und nie keins.
+  if (e.ersetzt && e.status === 'aktiv') return neuerWegScharf({ id: e.id ?? '', status: e.status, ersetzt: e.ersetzt, ueberfuehrung: e.ueberfuehrung }, !!st?.einstellung.scharf) ? 'scharf' : 'schatten';
   if (e.status === 'aktiv') return st?.einstellung.scharf ? 'scharf' : 'schatten';
   return e.status === 'probelauf' ? 'schatten' : null;
 }
@@ -618,6 +622,15 @@ async function wirkungAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Aktion, k
         }
         case 'abfrage': return await abfrageAusfuehren(l, defVon(e, l.version), a, kx);
         case 'schleife': return await schleifeAusfuehren(l, a, kx);
+        case 'system': {
+          // Fester Schritt (Paket Ü): nur im Prozess, der den System-Ablauf ersetzt UND gerade scharf ist (dieselbe Weiche wie der alte Code) — sonst hält er.
+          const { ueberfuehrbarZuSchritt } = await import('./ueberfuehrung');
+          if (e.ersetzt !== ueberfuehrbarZuSchritt(a.schritt).sp || modusFuer(e, standVon(await laeufeLesen(kx.h), e.id)) !== 'scharf') return fehlt('ueberfuehrung-fehlt');
+          const { systemSchrittAusfuehren } = await import('./system-schritte-server');
+          const r = await systemSchrittAusfuehren(a.schritt, { modus: 'scharf', jetzt: kx.jetzt });
+          if (!r.ok) return fehlt(r.voruebergehend ? 'voruebergehend' : 'dauerhaft', r.voruebergehend ? 'voruebergehend' : 'dauerhaft');
+          return { ok: true, wirkung: r.wirkung, anzahl: r.neu, ...(r.neu ? {} : { hinweis: 'schon-erledigt' as const }) };
+        }
       }
     } catch (err) {
       console.error(`[prozesse/lauf] Wirkung nicht ausgeführt — ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);
@@ -952,7 +965,11 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
       await agentKostenVorladen(def, kx);
       if (alleSchritte(def).some(x => x.schritt.form === 'agent') && !kx.cache.auftraege) kx.cache.auftraege = await (await import('@/lib/zoe/auftraege')).lies().catch(() => []);
       const st = standVon(d, l0.prozessId);
-      const u = await umfeldFuer(l0, def, kx, { st, laeufe: d });
+      const u0 = await umfeldFuer(l0, def, kx, { st, laeufe: d });
+      // Überführung (Paket Ü): im Schatten merkt sich der Lauf, welche festen Schritte er erreicht hätte — danach rechnet der Schritt sein Wirkungsbild (schreibt
+      // nichts) und meldet es dem Vergleich mit dem alten Weg. Nur für den Prozess, der den System-Ablauf ersetzt.
+      const festeSchatten: SystemSchrittId[] = [];
+      const u: LaufUmfeld = l0.modus === 'schatten' && e.ersetzt ? { ...u0, beobachte: (b: ProbeBeobachtung) => { if (b.aktion?.art === 'system') festeSchatten.push(b.aktion.schritt); } } : u0;
       const plan = await laeufeAendern(dd => {
         const l = dd.laeufe.find(x => x.id === laufId);
         if (!l || l.geaendert !== l0.geaendert || l.status !== 'laeuft') return { datei: dd, r: null };
@@ -960,6 +977,7 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
         return { datei: mitLauf(dd, v.lauf), r: v };
       }, kx.h);
       if (!plan) continue; // inzwischen geändert — neu lesen
+      for (const schritt of festeSchatten) await festenSchrittVergleichen(e, schritt, kx);
       letzter = plan.lauf;
       if (plan.pause) { await prozessPausieren(l0.prozessId, 'budget', kx); break; }
       if (!plan.aktion) break;
@@ -998,6 +1016,22 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
     return null;
   } finally {
     IN_ARBEIT.delete(laufId);
+  }
+}
+
+/**
+ * Schatten-Vergleich (Paket Ü): der feste Schritt rechnet, was er JETZT täte (schreibt nichts), und meldet sein Wirkungsbild — nur, wenn dieser Prozess den
+ * System-Ablauf des Schritts ersetzt und in Phase „Schatten“ steht. Wirft nie (der Lauf geht weiter, der Vergleich fehlt dann für diesen Tag).
+ */
+async function festenSchrittVergleichen(e: ProzessEintrag, schritt: SystemSchrittId, kx: MotorKontext): Promise<void> {
+  try {
+    const [{ ueberfuehrbarZuSchritt }, { systemSchrittAusfuehren }, { vergleichMeldenServer }] = await Promise.all([import('./ueberfuehrung'), import('./system-schritte-server'), import('./ueberfuehrung-server')]);
+    const sp = ueberfuehrbarZuSchritt(schritt).sp;
+    if (e.ersetzt !== sp || (e.ueberfuehrung?.phase ?? 'schatten') !== 'schatten') return;
+    const r = await systemSchrittAusfuehren(schritt, { modus: 'schatten', jetzt: kx.jetzt });
+    if (r.ok) await vergleichMeldenServer(sp, 'neu', localDay(kx.jetzt), r.bild, kx.h);
+  } catch (err) {
+    console.error(`[prozesse/ueberfuehrung] Schatten-Vergleich ausgefallen — ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);
   }
 }
 

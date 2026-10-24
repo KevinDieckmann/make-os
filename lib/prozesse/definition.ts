@@ -420,6 +420,13 @@ export interface ProzessEintrag {
    * `*.invalid`-Adressen, Platzhalter-Telefon, Annahmen nur als Kennungen). Gehört zum Eintrag, nicht zur Version — läuft nie, geht nie in einen Fall.
    */
   testdaten?: import('./testdaten').ProzessTestdaten;
+  /**
+   * Überführung (22.10., Paket Ü — lib/prozesse/ueberfuehrung.ts): dieser Prozess ersetzt einen Teil eines System-Prozesses (`sp-…`, nur die feste Liste
+   * `UEBERFUEHRBAR`, höchstens einer je `sp-…`). Schreibt NUR der Server; ohne Feld bit-gleich wie bisher.
+   */
+  ersetzt?: string;
+  /** Phase (Schatten → scharf), wer wann umschaltete, der Schatten-Vergleich (nur Zähler und Kennungen). Schreibt NUR der Server. */
+  ueberfuehrung?: import('./ueberfuehrung').Ueberfuehrung;
 }
 export interface ProzesseDatei { v: 1; prozesse: ProzessEintrag[] }
 

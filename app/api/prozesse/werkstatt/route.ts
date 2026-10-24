@@ -12,6 +12,10 @@
 //                  · aus-vorlage { vorlageId, eigner?, anfrageId } (22.10.) · webhook-schluessel · webhook-scharf · webhook-entfernen (lib/prozesse/webhook-server.ts). Stand je Prozess → 409 mit der aktuellen Fassung.
 //                  · Kopieren und eigene Vorlagen (22.10., lib/prozesse/kopie.ts): kopieren { id, anfrageId } · als-vorlage { id, titel?, beschreibung?, anfrageId }
 //                    · vorlage-loeschen { vorlageId } · aus-vorlage mit `ev-…` (eigene Vorlage) — Bestand `prozess-vorlagen--<h>`, ohne Personen und Fall-Daten.
+//                  · Überführung (22.10., Paket Ü — lib/prozesse/ueberfuehrung-server.ts): ueberfuehren { sp, anfrageId } (System-Prozess → neuer Prozess im Schatten,
+//                    höchstens einer je `sp-…`, sonst 409) · umschalten { id, stand } (erst ab N gleichen Läufen / M Tagen, sonst 409) · ueberfuehrung-zurueck { id, stand }
+//                    (zurück in den Schatten) — nur volle Mitglieder per Sitzung; der Dienstweg schreibt nie (ZOE und Takt schalten nie um).
+//                  GET ?id= trägt dann `ueberfuehrung` (Phase, Vergleich nur als Zähler und Kennungen, ob Umschalten geht).
 // Tor: `werkstattZugang` — Haushalt des Inhabers, Sicht Privat 403; schreiben nur per Sitzung (Dienstweg 403) mit Bau-Kennung; veröffentlichen, Status und
 // Webhook nur volle Mitglieder (Konto „nur Business“ baut Entwürfe). Keine Personendaten Dritter (Lese-Protokoll nicht nötig); Lesen schreibt nie.
 
@@ -122,9 +126,11 @@ export async function GET(req: Request) {
   const produkte = await (async () => {
     try { const [{ ladeCrm }, { produkteVonProzess }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/prozesse/produkt-bindung')]); return produkteVonProzess((await ladeCrm()).leistungen, e.id); } catch { return []; }
   })();
+  // Überführung (Paket Ü): ersetzt dieser Prozess einen System-Ablauf — Phase, Vergleich (Zähler, Kennungen), ob Umschalten schon geht.
+  const ueberfuehrung = e.ersetzt ? await (await import('@/lib/prozesse/ueberfuehrung-server')).ueberfuehrungAnsicht(e, z.haushalt).catch(() => null) : null;
   return NextResponse.json({
     ok: true, rechte: z.rechte, ...ansicht(e), befunde: definitionPruefen(e.entwurf, kx), kanten: kantenVon(e.entwurf),
-    webhook: w ? webhookKurz(w) : null, produkte,
+    webhook: w ? webhookKurz(w) : null, produkte, ...(ueberfuehrung ? { ueberfuehrung } : {}),
   });
 }
 
@@ -159,6 +165,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, webhook: r.eintrag ? webhookKurz(r.eintrag) : null, ...(r.geheim ? { geheim: r.geheim } : {}) }, { headers: { 'Cache-Control': 'no-store' } });
   }
   const wer = werAus(req);
+  // Überführung (22.10., Paket Ü): nur volle Mitglieder (die Funktionen prüfen `rechte.status`), Tor und Dienstweg schon oben (`schreiben: true`).
+  if (aktion === 'ueberfuehren' || aktion === 'umschalten' || aktion === 'ueberfuehrung-zurueck') {
+    const ue = await import('@/lib/prozesse/ueberfuehrung-server');
+    const a = aktion === 'ueberfuehren'
+      ? await einmalig<Record<string, unknown>>('prozess-ueberfuehren', b.anfrageId, () => ue.ueberfuehren({ sp: b.sp, person: z.person, rechte: z.rechte, h: z.haushalt, wer }), undefined, { wer: z.person })
+      : aktion === 'umschalten'
+        ? await ue.umschalten({ prozessId: b.id, stand: b.stand, person: z.person, rechte: z.rechte, h: z.haushalt, wer })
+        : await ue.zurueckInDenSchattenServer({ prozessId: b.id, stand: b.stand, person: z.person, rechte: z.rechte, h: z.haushalt, wer });
+    return NextResponse.json(a.body, { status: a.status });
+  }
   const ausfuehren = async (): Promise<{ status: number; body: Record<string, unknown> }> => {
     const kx = await pruefKontextFuer(z.haushalt, z.person);
     const r = await prozesseAendern<Extract<WerkstattErgebnis, { ok: true }>>(

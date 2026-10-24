@@ -315,13 +315,72 @@ const fuerPerson = (m: Pick<Mandat, 'zustaendig'>): string | undefined => { cons
 const empfaenger = (m: Pick<Mandat, 'zustaendig'>): string[] => { const p = fuerPerson(m); return p ? [p] : TEAM.map(t => t.id); };
 
 /**
+ * Ist der Fortschritts-Report eines Mandats heute vorzuschlagen? EINE Regel für den Morgenlauf und den festen Schritt „Fortschritts-Report“ (Paket Ü, die
+ * Kennungs-Brücke): fällig (`reportFaellig`) und nicht gebremst — gebremst nur durch die Marke `report:<mandat>` der letzten `reportTage` Tage (die Marke ist
+ * kein Report, 17.10.). `heuteZaehlt` (nur für das Wirkungsbild des Schatten-Vergleichs): eine Marke von HEUTE bremst nicht — wer heute vorschlug, war heute fällig.
+ */
+export function reportHeute(z: Pick<KundenZeile, 'mandatId' | 'report'>, marken: Readonly<Record<string, string>>, heute: string, reportTage: number, heuteZaehlt = false): boolean {
+  const vorgeschlagen = marken[`report:${z.mandatId}`];
+  const gebremst = !!vorgeschlagen && vorgeschlagen > tagPlus(heute, -reportTage) && !(heuteZaehlt && vorgeschlagen === heute);
+  return z.report.faellig && !gebremst;
+}
+
+/** Den Vorschlag „Fortschritts-Report“ in den Stapel legen und die Zuständigen per Glocke (ohne Namen) holen — EIN Weg für Morgenlauf und festen Schritt. */
+async function reportVorlegen(m: Mandat, heute: string): Promise<string> {
+  const [{ lege }, { melde }, { WEG }] = await Promise.all([import('@/lib/zoe/stapel'), import('@/lib/meldungen/melden'), import('@/lib/wege')]);
+  const person = fuerPerson(m);
+  const v = await lege({
+    werkzeug: WERKZEUG.report, gruppe: 'kunden', titel: `Fortschritts-Report für ${m.kunde}`, nachher: 'Report-PDF erstellen und Mail vorbereiten — gesendet wird erst per Klick',
+    eingabe: { mandatId: m.id, tag: heute }, anlass: 'Head of Sales: zwei Wochen seit dem letzten Stand', quelle: 'lauf', bezug: { art: 'produkte', id: `report-${fnv(`${m.id}|${heute}`)}` },
+    ...(person ? { person } : {}),
+  });
+  // Glocke ohne Namen (Messenger-Regel): die Meldung führt ins Mandat.
+  for (const an of empfaenger(m)) await melde({ an, art: 'produkte', titel: 'Ein Fortschritts-Report ist fällig — bitte prüfen und senden', link: WEG.mandat(m.id) });
+  return v.id;
+}
+
+/** Das Wirkungsbild eines Report-Vorschlags (Paket Ü, Schatten-Vergleich): nur Kennungen — Mandat, Tag, für wen (der Vergleich speichert nur einen Fingerabdruck). */
+export interface ReportSoll { mandatId: string; fuer: string }
+const reportSoll = (zeilen: readonly KundenZeile[], mandate: ReadonlyMap<string, Mandat>, marken: Readonly<Record<string, string>>, heute: string, reportTage: number): ReportSoll[] =>
+  zeilen.filter(z => reportHeute(z, marken, heute, reportTage, true)).map(z => ({ mandatId: z.mandatId, fuer: fuerPerson(mandate.get(z.mandatId)!) ?? 'haushalt' }));
+
+/**
+ * Der Kern „Fortschritts-Report“ (Paket Ü — der feste Schritt `treppe-report` und der Morgenlauf rechnen hiermit): je aktivem Mandat, dessen Report heute dran ist,
+ * ein Vorschlag + Glocke + Marke (idempotent über die Marke). `schreiben: false` = nur rechnen (Schatten). Liefert das Soll (für den Vergleich) und die Vorschläge.
+ */
+export async function treppeReportsKern(heute: string, o: { schreiben: boolean }): Promise<{ reports: number; soll: ReportSoll[]; vorschlaege: string[] }> {
+  const [gespeichert, crm] = await Promise.all([ladeTreppe(heute), ladeCrm()]);
+  const datei = treppeMitKatalog(gespeichert, crm.leistungen);
+  if (!datei.stufen.length) return { reports: 0, soll: [], vorschlaege: [] };
+  const mandate = new Map(crm.mandate.map(m => [m.id, m]));
+  const reportTage = await reportTageLesen();
+  const zeilen = kundenZeilen({ datei, crm, heute, reportTage });
+  const soll = reportSoll(zeilen, mandate, datei.marken, heute, reportTage);
+  if (!o.schreiben) return { reports: 0, soll, vorschlaege: [] };
+  const neueMarken: Record<string, string> = {};
+  const vorschlaege: string[] = [];
+  for (const z of zeilen) {
+    if (!reportHeute(z, datei.marken, heute, reportTage) || Object.keys(datei.marken).length + Object.keys(neueMarken).length >= TREPPE_GRENZEN.marken) continue;
+    vorschlaege.push(await reportVorlegen(mandate.get(z.mandatId)!, heute));
+    neueMarken[`report:${z.mandatId}`] = heute;
+  }
+  if (Object.keys(neueMarken).length) await vermerken(d => ({ ...d, marken: { ...d.marken, ...neueMarken } }));
+  return { reports: vorschlaege.length, soll, vorschlaege };
+}
+
+/**
  * Morgenlauf (idempotent über die Marken im Bestand): je aktivem Mandat (a) alle zwei Wochen ein Vorschlag „Fortschritts-Report“ in den
  * Freigabe-Stapel + Glocke, (b) einmal je erreichter Stufe ein Vorschlag des Head of Sales „nächste Stufe anbieten“. Verschickt wird nichts.
+ * Ablöse-Weiche (22.10., Paket Ü): den Teil (a) kann ein überführter Prozess der Werkstatt übernehmen (`sp-treppe`) — hier wird die Weiche GENAU EINMAL gefragt;
+ * arbeitet der neue Weg, bleibt hier nur (b). Rechnet der neue Weg im Schatten mit, meldet dieser Lauf sein Wirkungsbild dem Vergleich. Ohne Überführung bit-gleich.
  */
 export async function treppeMorgenlauf(heute = localDay()): Promise<{ reports: number; stufen: number }> {
   const [gespeichert, crm] = await Promise.all([ladeTreppe(heute), ladeCrm()]);
   const datei = treppeMitKatalog(gespeichert, crm.leistungen);
   if (!datei.stufen.length) return { reports: 0, stufen: 0 };
+  const ue = await import('@/lib/prozesse/ueberfuehrung-server');
+  const weg = await ue.wegFuer('sp-treppe');
+  const reportsHier = weg.weg === 'alt';
   const { kontakteFuerVerarbeitung } = await import('./verarbeitung');
   const kartei = await kontakteFuerVerarbeitung({ mitEingeschraenkten: true });
   const { lege } = await import('@/lib/zoe/stapel');
@@ -331,22 +390,16 @@ export async function treppeMorgenlauf(heute = localDay()): Promise<{ reports: n
   const neueMarken: Record<string, string> = {};
   let reports = 0, stufen = 0;
   const reportTage = await reportTageLesen();
-  for (const z of kundenZeilen({ datei, crm, heute, reportTage })) {
+  const zeilen = kundenZeilen({ datei, crm, heute, reportTage });
+  if (weg.schatten) await ue.vergleichMeldenServer('sp-treppe', 'alt', heute, (await import('@/lib/prozesse/system-schritte-server')).reportBild(reportSoll(zeilen, mandate, datei.marken, heute, reportTage), heute));
+  for (const z of zeilen) {
     const m = mandate.get(z.mandatId)!;
     const person = fuerPerson(m);
     const link = WEG.mandat(m.id);
     // Die Marke bremst nur das erneute Vorschlagen (höchstens alle `reportTage` Tage, Stellschraube — Vorgabe 14) — sie ist kein Report (17.10., L2 A1).
-    const vorgeschlagen = datei.marken[`report:${m.id}`];
-    const gebremst = !!vorgeschlagen && vorgeschlagen > tagPlus(heute, -reportTage);
-    if (z.report.faellig && !gebremst && Object.keys(datei.marken).length + Object.keys(neueMarken).length < TREPPE_GRENZEN.marken) {
-      await lege({
-        werkzeug: WERKZEUG.report, gruppe: 'kunden', titel: `Fortschritts-Report für ${m.kunde}`, nachher: 'Report-PDF erstellen und Mail vorbereiten — gesendet wird erst per Klick',
-        eingabe: { mandatId: m.id, tag: heute }, anlass: 'Head of Sales: zwei Wochen seit dem letzten Stand', quelle: 'lauf', bezug: { art: 'produkte', id: `report-${fnv(`${m.id}|${heute}`)}` },
-        ...(person ? { person } : {}),
-      });
+    if (reportsHier && reportHeute(z, datei.marken, heute, reportTage) && Object.keys(datei.marken).length + Object.keys(neueMarken).length < TREPPE_GRENZEN.marken) {
+      await reportVorlegen(m, heute);
       neueMarken[`report:${m.id}`] = heute;
-      // Glocke ohne Namen (Messenger-Regel): die Meldung führt ins Mandat.
-      for (const an of empfaenger(m)) await melde({ an, art: 'produkte', titel: 'Ein Fortschritts-Report ist fällig — bitte prüfen und senden', link });
       reports++;
     }
     if (z.naechsteStufe && z.stufe && upsellAnsprechbar(m.kontaktIds, kartei).erlaubt) {

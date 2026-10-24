@@ -88,7 +88,9 @@ export type LaufGrund =
   // 22.10. spät (Bausteine mit eigenem Weg — lib/prozesse/bausteine-server.ts): nichts zu tun bzw. kein eigener Weg möglich.
   | 'schon-erledigt' | 'nichts-vorzuschlagen' | 'keine-zeit' | 'kein-ablauf'
   // 22.10. (Werkstatt bau-fertig, Punkt 14): der Schritt ist in der Werkstatt ausgeschaltet.
-  | 'deaktiviert';
+  | 'deaktiviert'
+  // 22.10. (Paket Ü): ein fester Schritt läuft nur im Prozess, der den System-Ablauf ersetzt (sonst arbeitet der alte Weg).
+  | 'ueberfuehrung-fehlt';
 
 /** Ein besuchter Knoten. Ein Knoten kann mehrfach besucht werden (Erinnerung, „erneut ab“) — `runde` zählt mit. */
 export interface LaufSchritt {
@@ -408,6 +410,7 @@ export const GRUND_TEXT: Readonly<Record<LaufGrund, string>> = {
   dauerhaft: 'Fehler — angehalten',
   'agent-fehlt': 'Agenten-Schritt ohne Einstellungen',
   deaktiviert: 'Schritt ausgeschaltet (Werkstatt) — übersprungen',
+  'ueberfuehrung-fehlt': 'ein fester Schritt läuft nur im Prozess, der den System-Ablauf ersetzt — hier arbeitet der alte Weg im Code',
   notbremse: 'Notbremse: zu viele Wirkungen in einer Stunde — Prozess pausiert',
   erneut: 'erneut ab diesem Schritt',
   'ki-nicht-eingerichtet': 'KI nicht eingerichtet (kein Schlüssel bzw. kein Guthaben) — angehalten, „erneut ab hier“, sobald sie eingerichtet ist',

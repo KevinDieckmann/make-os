@@ -12,7 +12,7 @@
 
 import type {
   AgentSchritt, Ausloeser, Bahn, Bedingung, CrmAbfrage, DatumsFeld, FallArt, MaskenWert, PfeilText, ProzessBereich, ProzessDefinition, ProzessForm, ProzessKnoten,
-  RautenRegel, ScorePruefung, SkillEreignis, VertragFeld, WartenRegel, WebhookFeld, Zweige, ModelTier, NotizZettel,
+  RautenRegel, ScorePruefung, SkillEreignis, VertragFeld, WartenRegel, WebhookFeld, Zweige, ModelTier, NotizZettel, LoopArt,
 } from '../definition';
 import { katalogEintrag, GESELLSCHAFT_DES_FALLS, POSTFACH_DES_LAUFS, POSTFACH_DER_NACHRICHT, ROLLE_EIGNER, ROLLE_ZUSTAENDIG } from '../baustein-katalog';
 import { schlossSetzen } from '../schloss';
@@ -153,6 +153,10 @@ export const S = {
   datum: (id: string, titel: string, feld: DatumsFeld, versatzTage: number, uhrzeit?: string, werktage?: boolean, bedingungen?: Bedingung[]): Schritt =>
     sch(id, titel, 'ausloeser.datum', { feld: { ausloeser: { art: 'datum', feld, versatzTage, ...(werktage ? { werktage } : {}), ...(uhrzeit ? { uhrzeit } : {}), ...(bedingungen?.length ? { bedingungen } : {}) } } }),
   webhook: (id: string, titel: string, felder: WebhookFeld[]): Schritt => sch(id, titel, 'ausloeser.webhook', { feld: { ausloeser: { art: 'webhook', felder } } }),
+  /** Nach einem Loop (Morgen-Loop am Ende des Tagesstarts, Wochen-Loop, Rückblick). */
+  loop: (id: string, titel: string, loop: LoopArt): Schritt => sch(id, titel, 'ausloeser.loop', { feld: { ausloeser: { art: 'loop', loop } } }),
+  /** Fester Schritt eines überführten System-Ablaufs (22.10., Paket Ü — lib/prozesse/ueberfuehrung.ts). */
+  fest: (id: string, titel: string, schritt: string): Schritt => sch(id, titel, 'system.fest', { werte: { schritt } }),
   // CRM lesen
   abfrage: (id: string, titel: string, q: CrmAbfrage, o: Opt = {}): Schritt => sch(id, titel, 'crm.abfragen', { feld: { abfrage: q }, ...o }),
   akte: (id: string, titel: string, o: Opt = {}): Schritt => sch(id, titel, 'crm.firma-akte', o),

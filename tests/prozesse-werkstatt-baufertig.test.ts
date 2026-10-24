@@ -223,10 +223,10 @@ describe('Punkt 5 · Knoten-Auswahl als Seitenleiste: Gruppen, Zuletzt benutzt, 
     expect(g[2].eintraege.map(e => e.id)).toEqual(expect.arrayContaining([...DATEN_BAUSTEINE]));
     const crm = g.find(x => x.id === 'a:CRM')!;
     expect(crm.eintraege.some(e => e.id === 'crm.abfragen')).toBe(false);
-    // Jeder Baustein steht (außer in „Zuletzt“) genau einmal.
+    // Jeder Baustein steht (außer in „Zuletzt“) genau einmal — feste Schritte einer Überführung (Paket Ü) kommen nur mit „In die Werkstatt überführen“.
     const ohneZuletzt = g.filter(x => x.id !== 'zuletzt').flatMap(x => x.eintraege.map(e => e.id));
     expect(new Set(ohneZuletzt).size).toBe(ohneZuletzt.length);
-    expect(ohneZuletzt.length).toBe(BAUSTEIN_KATALOG.length);
+    expect(ohneZuletzt.length).toBe(BAUSTEIN_KATALOG.filter(e => !e.nurUeberfuehrung).length);
   });
   it('mit Suche kein „Zuletzt“; beim Anhängen Auslöser ganz hinten, ohne Auslöser gar nicht; Kategorie filtert', () => {
     expect(formauswahlGruppen(BAUSTEIN_KATALOG, { suche: 'mail', zuletzt: ['aufgabe.anlegen'] }).some(x => x.id === 'zuletzt')).toBe(false);
