@@ -99,6 +99,8 @@ export interface PanelProps {
   feldFokus?: { knoten: string; feld?: string; n: number } | null;
   /** Im großen Fenster: ohne Kopfzeile (die trägt das Fenster) und ohne „großes Fenster“-Knopf. */
   imFenster?: boolean;
+  /** „+ Teilprozess hier anlegen“ an Schleife bzw. Teilprozess (Feinschliff 24.10.): neuer Prozess mit passendem Fall, danach gewählt. */
+  onTeilprozessNeu?: (knotenId: string) => void;
 }
 
 /** Das Panel (siehe Kopf). */
@@ -213,10 +215,22 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   const gesperrt = (id: string) => nurOeffentlich && (id === 'akte' || id === 'brain');
   // Feinschliff 24.10.: Felder mit Werteliste (Produkt, Stufe, Status, Zuständig …) — Auswahl statt Freitext (lib/prozesse/feld-werte.ts).
   const werteVon = (feldId: string) => feldWerte(feldId, p.auswahl, d);
-  const feld = (f: KatalogEintrag['maske'][number]) => (
+  const eingabe = (f: KatalogEintrag['maske'][number]) => (
     <MaskenEingabe key={f.id} f={f} wert={gesperrt(f.id) ? false : werte[f.id]} onWert={v => setze(f.id, v)} optionen={f.optionen ? f.optionen.map(o => ({ ...o })) : optionenFuer(f.quelle, p, k)}
       felder={felder} platzhalter={platz} fehler={fehlerVon(f.id)} aus={p.nurLesen || gesperrt(f.id)} werteVon={werteVon} />
   );
+  // Feinschliff 24.10. (Bau-Test A2): am Teilprozess bzw. an der Schleife gleich einen neuen Prozess anlegen — mit dem passenden Fall, danach gewählt.
+  const teilNeu = !p.nurLesen && !!p.onTeilprozessNeu && (e?.feld === 'schleife' || e?.feld === 'teilprozess');
+  const feld = (f: KatalogEintrag['maske'][number]) => (f.id === 'prozessId' && f.quelle === 'prozess' && teilNeu
+    ? (
+      <div key={f.id} style={{ display: 'grid', gap: 6 }}>
+        {eingabe(f)}
+        <span><Knopf leise onClick={() => p.onTeilprozessNeu!(k.id)} titel="Legt einen neuen Prozess mit dem passenden Fall an (je Deal: am Deal) und wählt ihn hier — öffnen lässt er sich danach in einem neuen Tab">
+          <span className="pz-knopf-inhalt"><Plus size={14} aria-hidden />Teilprozess hier anlegen</span>
+        </Knopf></span>
+      </div>
+    )
+    : eingabe(f));
   // Agent: die Maske nach den drei Andockpunkten gruppiert (Modell · Gedächtnis · Werkzeuge), dazu das Rechte-Profil.
   const GRUPPE: Readonly<Record<string, 'modell' | 'gedaechtnis' | 'werkzeuge'>> = { modell: 'modell', modellWahl: 'modell', budgetCent: 'modell', nurOeffentlich: 'gedaechtnis', brain: 'gedaechtnis', akte: 'gedaechtnis', werkzeuge: 'werkzeuge' };
   const istAgent = k.form === 'agent' && e?.feld === 'agent';

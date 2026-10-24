@@ -15,6 +15,7 @@ import { prozesseBestand, webhookBestand, type KiKategorie, type ProzesseDatei, 
 import { prozesseAus, webhooksAus } from './bestand';
 import { BAUSTEIN_KATALOG, GESELLSCHAFT_DES_FALLS, POSTFACH_WERTE, QUELLEN_IM_PROZESS, ROLLEN_WERTE, kategorienVonEintrag, klasseVonEintrag, type AuswahlQuelle, type KatalogEintrag } from './baustein-katalog';
 import type { PruefKontext } from './definition-pruefen';
+import { ENTWURF_HINWEIS } from './teilprozess-neu';
 import type { TeamKurz } from './rollen';
 import type { ModellOption } from './modell-wahl';
 
@@ -128,7 +129,8 @@ export async function auswahlListen(h: string, person: string, datei?: ProzesseD
     head: KATALOG.filter(x => x.bereich === 'business').map(x => ({ id: x.id, label: x.name })),
     skill: Array.from(skills.entries()).filter(([, s]) => s.aktiv).map(([id, s]) => ({ id, label: s.name })),
     ereignis: PROZESS_EREIGNISSE.map(e => ({ id: e, label: EREIGNIS_NAME[e] })),
-    prozess: d.prozesse.filter(p => p.versionen.length && p.status !== 'archiviert').map(p => ({ id: p.id, label: p.entwurf.titel })),
+    // Feinschliff 24.10. (Bau-Test A2): auch Entwürfe — gekennzeichnet; der Probelauf nimmt ihren Entwurf, scharf läuft nur die veröffentlichte Version (Prüfung meldet es).
+    prozess: d.prozesse.filter(p => p.status !== 'archiviert').map(p => ({ id: p.id, label: p.entwurf.titel, ...(p.versionen.length ? {} : { hinweis: ENTWURF_HINWEIS }) })),
     gesellschaft: [...einheiten.BUSINESS_GESELLSCHAFTEN.map(g => ({ id: g, label: einheiten.finanzOrtName(g) })), { id: GESELLSCHAFT_DES_FALLS, label: 'Gesellschaft des Falls' }],
     // Erst mit eingerichteter Business-Nummer (lib/whatsapp/konfig.ts) — die Liste der genehmigten Vorlagen liefert die WhatsApp-Route.
     'whatsapp-vorlage': [],

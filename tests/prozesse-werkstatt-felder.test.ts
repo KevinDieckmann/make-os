@@ -263,3 +263,58 @@ describe('2 — Probelauf mit echtem Mandat: Produkt = Auswahl geht über „ja�
     expect(((await eigen.json()) as { auswahl: { produkt: { id: string }[] } }).auswahl.produkt.map(x => x.id)).toEqual(['l-demo-vertrieb']);
   });
 });
+
+// ── 3: Teilprozess — auch Entwürfe wählbar, „+ Teilprozess hier anlegen“ mit passendem Fall ──────────────────────────────────────────────────────────
+
+describe('3 — Teilprozess: Entwürfe wählbar (Probelauf ja, scharf nein), neuer Teilprozess mit passendem Fall', () => {
+  const ELTERN = 'pz-00000000-0000-4000-8000-000000000301';
+  const KIND = 'pz-00000000-0000-4000-8000-000000000302';
+  const ALT = 'pz-00000000-0000-4000-8000-000000000303';
+  const J3 = '2026-10-21T08:00:00.000Z';
+  const eltern = () => ({
+    ...definition([
+      schritt(30, 'Deals ohne Schritt holen', 1, { katalog: { id: 'crm.abfragen' }, abfrage: { art: 'deals-ohne-schritt', hoechstens: 10 } }),
+      schritt(31, 'Je Deal nachfassen', 2, { form: 'schleife', katalog: { id: 'schleife.je-eintrag' }, schleife: { liste: `abfrage:${fk(30)}`, prozessId: KIND, hoechstens: 10 } }),
+      schritt(32, 'Ende', 3, { form: 'ende', ende: { ergebnis: 'erfolg' } }),
+    ], { fallArt: 'keiner', bereich: 'sales', laeuftAls: 'pia' }), id: ELTERN,
+  });
+  const kind = () => ({ ...definition([schritt(40, 'Nachfassen', 1), schritt(41, 'Ende', 2, { form: 'ende', ende: { ergebnis: 'erfolg' } })], { fallArt: 'deal', titel: 'Deal nachfassen' }), id: KIND });
+  beforeAll(async () => {
+    const db = await import('@/lib/store/local-db');
+    const { prozesseBestand } = await import('@/lib/prozesse/definition');
+    const e = (id: string, def: ReturnType<typeof eltern>, status: string, versionen: number) => ({ id, entwurf: def, status, angelegtAm: J3, angelegtVon: 'pia', entwurfAm: J3, entwurfVon: 'pia',
+      versionen: Array.from({ length: versionen }, (_, i) => ({ nr: i + 1, name: `v${i + 1}`, am: J3, von: 'pia', definition: def })) });
+    await db.saveJson(prozesseBestand(H_), { v: 1, prozesse: [e(ELTERN, eltern(), 'probelauf', 1), e(KIND, kind(), 'entwurf', 0), e(ALT, { ...kind(), id: ALT, titel: 'Archiviert' }, 'archiviert', 1)] });
+  });
+  it('die Auswahl „Prozess“ zeigt auch Entwürfe (gekennzeichnet), nie Archiviertes', async () => {
+    const { auswahlListen } = await import('@/lib/prozesse/werkstatt-server');
+    const l = (await auswahlListen(H_, 'pia')).prozess ?? [];
+    expect(l.find(x => x.id === KIND)).toMatchObject({ label: 'Deal nachfassen', hinweis: 'Entwurf — läuft erst nach dem Veröffentlichen' });
+    expect(l.find(x => x.id === ELTERN)?.hinweis).toBeUndefined();
+    expect(l.some(x => x.id === ALT)).toBe(false);
+  });
+  it('Probelauf des Entwurfs nimmt den Entwurfs-Teilprozess; die veröffentlichte Version nicht (Teilprozess fehlt)', async () => {
+    const S = await import('@/lib/prozesse/lauf-server');
+    const ent = await S.probelauf({ prozessId: ELTERN, quelle: 'entwurf', fall: 'beispiel', person: 'pia' });
+    expect(ent.ok, JSON.stringify(ent)).toBe(true);
+    const schleife = ent.ok ? ent.schritte.find(x => x.knotenId === fk(31)) : undefined;
+    expect(schleife?.status).not.toBe('fehler');
+    const ver = await S.probelauf({ prozessId: ELTERN, quelle: 'version', fall: 'beispiel', person: 'pia' });
+    expect(ver.ok && ver.schritte.find(x => x.knotenId === fk(31))?.status).toBe('fehler');
+  });
+  it('Veröffentlichen mit Entwurfs-Teilprozess: klarer Befund (offen) am Knoten', async () => {
+    const { pruefKontextFuer } = await import('@/lib/prozesse/werkstatt-server');
+    const kx = await pruefKontextFuer(H_, 'pia');
+    const b = definitionPruefen(eltern(), kx).find(x => x.knotenId === fk(31) && /noch ein Entwurf/.test(x.text));
+    expect(b).toMatchObject({ stufe: 'offen', feld: 'prozessId' });
+    expect(b!.text).toContain('erst „Deal nachfassen“ veröffentlichen');
+  });
+  it('„+ Teilprozess hier anlegen“: Schleife je Deal → Fall Deal; sonst der Fall des Elternprozesses', async () => {
+    const { teilprozessFall, teilprozessTitel } = await import('@/lib/prozesse/teilprozess-neu');
+    const d = eltern();
+    expect(teilprozessFall(d, d.knoten.find(k => k.id === fk(31))!)).toBe('deal');
+    expect(teilprozessFall({ ...d, fallArt: 'mandat' }, { id: fk(50), titel: 'Aufruf', rang: 1, form: 'teilprozess' })).toBe('mandat');
+    expect(teilprozessTitel({ titel: 'Je Deal nachfassen' })).toBe('Je Deal nachfassen — Teilprozess');
+    expect(teilprozessTitel({ titel: 'x'.repeat(200) }).length).toBeLessThanOrEqual(120);
+  });
+});

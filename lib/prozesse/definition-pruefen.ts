@@ -160,6 +160,7 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
       if (k.ende?.ergebnis === 'uebergabe') {
         if (!k.ende.uebergabeAn) raus.push(b('offen', `${titel}: an welchen Prozess wird übergeben?`, k.id));
         else if (kx.prozess && !kx.prozess(k.ende.uebergabeAn)) raus.push(b('offen', `${titel}: diesen Prozess gibt es nicht (mehr).`, k.id));
+        else if (kx.prozess && !kx.prozess(k.ende.uebergabeAn)!.veroeffentlicht) raus.push(b('offen', `${titel}: „${kx.prozess(k.ende.uebergabeAn)!.titel}“ ist noch ein Entwurf — übergeben wird erst, wenn er veröffentlicht ist.`, k.id, 'uebergabeAn'));
       }
       break;
     default: break;
@@ -184,7 +185,8 @@ function teilprozessBefunde(id: string, d: ProzessDefinition, kx: PruefKontext, 
   if (id === d.id) return [b('fehler', `${titel}: ein Prozess ruft sich nicht selbst auf.`, knotenId)];
   const p = kx.prozess?.(id);
   if (kx.prozess && !p) return [b('offen', `${titel}: diesen Prozess gibt es nicht (mehr).`, knotenId)];
-  if (p && !p.veroeffentlicht) return [b('offen', `${titel}: „${p.titel}“ ist noch nicht veröffentlicht — aufgerufen wird immer die veröffentlichte Version.`, knotenId)];
+  // Feinschliff 24.10.: ein Entwurf ist wählbar (der Probelauf nimmt ihn) — scharf läuft nur Veröffentlichtes, darum sperrt er das Veröffentlichen mit klarem Satz.
+  if (p && !p.veroeffentlicht) return [b('offen', `${titel}: „${p.titel}“ ist noch ein Entwurf — erst „${p.titel}“ veröffentlichen, dann diesen Prozess (der Probelauf nimmt schon den Entwurf; scharf läuft immer die veröffentlichte Version).`, knotenId, 'prozessId')];
   return [];
 }
 

@@ -2077,7 +2077,8 @@ export async function probelauf(a: { prozessId: string; quelle: 'entwurf' | 'ver
     ...basis, ausgenommen: info.beispiel ? null : basis.ausgenommen, empfaenger: an => (an === 'fall.zustaendig' ? null : empfaenger),
     // Beispiel: die erste Business-Gesellschaft der Instanz (lib/einheiten.ts — nie eine feste Firma im Code).
     ...(info.beispiel ? { ansprache: () => null, fallDatum: () => tagPlus(localDay(kx.jetzt), 1), gesellschaft: () => beispielGesellschaft } : {}),
-    teilprozess: id => { const x = eintragVon(kx, id); const jj = x ? juengste(x) : null; return jj ? { version: jj.nr } : null; },
+    // Feinschliff 24.10.: im Probelauf eines Entwurfs zählt auch ein Teilprozess, der noch Entwurf ist (Version 0 = sein Entwurf) — scharf nie (umfeldFuer).
+    teilprozess: id => { const x = eintragVon(kx, id); const jj = x ? juengste(x) : null; return jj ? { version: jj.nr } : x && a.quelle === 'entwurf' && x.status !== 'archiviert' ? { version: 0 } : null; },
     annahme: id => annahmen[id],
     ...(a.ausgabe ? { beobachte: (b: import('./lauf-regeln').ProbeBeobachtung) => { beobachtet.set(b.knoten, b); } } : {}),
   };

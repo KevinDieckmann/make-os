@@ -41,7 +41,10 @@ import {
   kopieren, einfuegen, merke, rueckgaengig, wiederholen, LEERE_GESCHICHTE, phaseVon, verbindenFrei, umhaengen, zwischenEinfuegen, zwischenGrund, mehrfachEntscheidung,
   type Ablage, type Ergebnis, type Fassung, type Geschichte,
 } from '@/lib/prozesse/werkstatt-aktionen';
-import { neuerKnoten, knotenUnterzeile } from '@/lib/prozesse/werkstatt-maske';
+import { neuerKnoten, knotenUnterzeile, maskeAnwenden, maskeWerte } from '@/lib/prozesse/werkstatt-maske';
+import { teilprozessFall, teilprozessTitel } from '@/lib/prozesse/teilprozess-neu';
+import { FALL_ARTEN } from '@/lib/prozesse/definition';
+import Link from 'next/link';
 import { bahnBeimAnhaengen } from '@/lib/prozesse/werkstatt-lage';
 import { laufBefunde } from '@/lib/prozesse/lauf-regeln';
 import { webhookAusloeserVon } from '@/lib/prozesse/webhook';
@@ -143,7 +146,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   /** Punkt 8: das Textvorlagen-Feld, das zuletzt den Fokus hatte — Platzhalter landen dort am Cursor. */
   const vorlageZiel = useRef<VorlageZiel | null>(null);
   const [ansage, setAnsage] = useState('');
-  const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'achtung' | 'kritisch' | 'info' } | null>(null);
+  const [meldung, setMeldung] = useState<{ text: string; art: 'gut' | 'achtung' | 'kritisch' | 'info'; link?: { href: string; text: string } } | null>(null);
   const [formauswahl, setFormauswahl] = useState<{ ziel: AnhangZiel & { bahn?: string }; form?: ProzessForm } | null>(null);
   const [probe, setProbe] = useState<ProbeErgebnis | null>(null);
   const [probeHinweis, setProbeHinweis] = useState<string | null>(null);
@@ -677,6 +680,29 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     void probelauf({ fall, annahmen });
   };
 
+  // ── „+ Teilprozess hier anlegen“ (Feinschliff 24.10., Bau-Test A2): neuer Prozess mit dem passenden Fall (Schleife je Deal → am Deal), danach hier gewählt; ein Entwurf —
+  // der Probelauf nimmt ihn schon, scharf erst nach dem Veröffentlichen. Öffnen in einem neuen Tab (diese Werkstatt bleibt, wie sie ist). ──
+  const teilprozessNeu = async (knotenId: string) => {
+    if (nurLesen || !d) return;
+    const k = fassungRef.current?.knoten.find(x => x.id === knotenId);
+    const e = k ? katalogEintrag(k.katalog?.id) : null;
+    if (!k || !e) return;
+    const fallArt = teilprozessFall(d, k);
+    const titel = teilprozessTitel(k);
+    const r = await werkstattSenden(() => ({ aktion: 'anlegen', titel, bereich: d.bereich ?? 'fulfillment', fallArt, ...(d.eigner ? { eigner: d.eigner } : {}), anfrageId: neueKennung('pza') }));
+    const j = r.j;
+    const neuId = r.status === 200 && j?.ok ? j.eintrag?.id : undefined;
+    if (!neuId) { setMeldung({ text: String(j?.fehler ?? 'Der Teilprozess ließ sich nicht anlegen.'), art: 'kritisch' }); return; }
+    const jetzt = fassungRef.current?.knoten.find(x => x.id === knotenId);
+    if (jetzt) mitFassung(f => ersetzen(f, maskeAnwenden(jetzt, e, { ...maskeWerte(jetzt, e), prozessId: neuId }, { modelle })), { auswahl: false });
+    await kat.laden();
+    onLandkarte?.();
+    const fall = FALL_ARTEN.find(x => x.id === fallArt)?.titel ?? fallArt;
+    setMeldung({ text: `„${titel}“ ist angelegt (Fall: ${fall}) und hier gewählt — noch ein Entwurf: der Probelauf nimmt ihn schon, scharf läuft er erst nach dem Veröffentlichen.`, art: 'info',
+      link: { href: WEG.prozesse({ p: neuId, ansicht: 'werkstatt' }), text: 'In neuem Tab öffnen' } });
+    ansagen(`Teilprozess „${titel}“ angelegt und gewählt.`);
+  };
+
   // ── Zustand, Status, Neu laden (22.10.) ──
   /** Eintrag und Laufzeit-Stand neu laden (nach Scharfschalten, Einstellungen, Status) — die Fassung auf der Fläche bleibt. */
   const neuLaden = async () => {
@@ -819,6 +845,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
             knoten={o.knoten} phase={o.imFenster ? null : panelPhase} kante={o.imFenster ? null : panelKante} zettel={o.imFenster ? null : panelZettel} andock={andockWahl?.id === o.knoten?.id ? andockWahl?.art ?? null : null} titelFokus={titelFokus}
             annahmen={eintrag.testdaten?.annahmen} onAnnahme={nurLesen ? undefined : (id, a) => void annahmeSetzen(id, a)}
             onDuplizieren={() => { kopie(); einf(); }} onGross={id => setGross(id)} feldFokus={feldFokus} imFenster={o.imFenster}
+            onTeilprozessNeu={nurLesen ? undefined : id => void teilprozessNeu(id)}
             onKnoten={k => mitFassung(f => ersetzen(f, k), { auswahl: false })}
             onSteckbrief={steckbrief}
             onZweig={(von, ausgang, nach) => mitFassung(f => (nach ? verbinden(f, von, ausgang, nach) : loesen(f, von, ausgang)), { auswahl: false })}
@@ -869,7 +896,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
       </Hinweis>
     ),
     (speicher.art === 'fehler' || speicher.art === 'offline') && speicher.text && <Hinweis art={speicher.art === 'fehler' ? 'kritisch' : 'achtung'}>{speicher.text}{speicher.art === 'fehler' ? ' Deine Fassung bleibt hier — nach der nächsten Änderung wird erneut gespeichert.' : ''}</Hinweis>,
-    meldung && <Hinweis art={meldung.art} aktion={<SymbolKnopf ariaLabel="Meldung schließen" onClick={() => setMeldung(null)}><X size={14} /></SymbolKnopf>}>{meldung.text}</Hinweis>,
+    meldung && <Hinweis art={meldung.art} aktion={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      {meldung.link && <Link href={meldung.link.href} target="_blank" rel="noopener" style={{ color: C.aktiv, fontSize: TYP.bedien }}>{`${meldung.link.text} ›`}</Link>}
+      <SymbolKnopf ariaLabel="Meldung schließen" onClick={() => setMeldung(null)}><X size={14} /></SymbolKnopf></span>}>{meldung.text}</Hinweis>,
     probeHinweis && <Hinweis art="info" aktion={<SymbolKnopf ariaLabel="Schließen" onClick={() => setProbeHinweis(null)}><X size={14} /></SymbolKnopf>}>{probeHinweis}</Hinweis>,
     reiter === 'bauen' && probe && <Hinweis art="info" titel={`Probelauf ${probeFall === 'beispiel' ? 'mit dem Beispiel-Fall' : `mit „${probeFall.name}“`} — nichts wurde geschrieben`} aktion={<Knopf leise onClick={() => setProbe(null)}>Beenden</Knopf>}>{`Grün würde laufen, gelb wartet bzw. braucht Freigabe, grau wird übersprungen, rot ist ein Fehler. Kosten geschätzt: ${centText(probe.kostenSchaetzungCent)}.`}</Hinweis>,
   ].filter(Boolean);
