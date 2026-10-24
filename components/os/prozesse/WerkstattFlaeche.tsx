@@ -18,7 +18,7 @@ import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL, TYP } from '@/lib/make-on
 import type { NotizZettel, ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { Ausgang } from '@/lib/prozesse/fluss';
 import {
-  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, kantenPlus, titelBox,
+  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, kantenPlus, titelBox, ausgangChips,
   type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
 } from '@/lib/prozesse/werkstatt-lage';
 import { freiesFeld, type Raender } from '@/lib/einpassen';
@@ -257,6 +257,8 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     return x;
   }), [p.d.zettel, zieh, groesse_]);
   const nach = useMemo(() => new Map(p.d.knoten.map(k => [k.id, k])), [p.d.knoten]);
+  /** Feinschliff 1 (23.10.): die Beschriftungen der Fäden je Knoten — die „+“ der Ausgänge weichen ihnen aus, ein Ausgang mit Beschriftung trägt keinen zweiten Namen. */
+  const chips = useMemo(() => ausgangChips({ knoten, kanten }), [knoten, kanten]);
   /** Punkt 14: ausgeschaltete Schritte und die Schlösser dahinter (sie werden mit übersprungen). */
   const aus = useMemo(() => { const m = new Set(p.d.knoten.filter(k => k.deaktiviert).map(k => k.id)); for (const k of p.d.knoten) if (k.schloss && m.has(k.schloss.fuer)) m.add(k.id); return m; }, [p.d.knoten]);
   const belegt = useMemo(() => {
@@ -553,7 +555,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
                 style={{ cursor: lk.zu ? 'pointer' : p.nurLesen ? 'default' : 'grab' }} {...(lk.zu ? { role: 'button' } : {})}
                 aria-label={lk.zu ? `Phase „${lk.zu.titel}“ aufklappen (${lk.zu.schritte} Schritte)` : k ? `${k.titel} — ${p.unterzeile(k)}` : undefined}>
                 {lk.zu || !k ? <ZuKachel l={lk} /> : (
-                  <KnotenZeichnung k={k} l={lk} unterzeile={p.unterzeile(k)} gewaehlt={gewaehlt.has(k.id)} ziel={ziel} zielNein={ziel && fadenZiel?.nein} belegt={belegt.get(k.id) ?? new Set()}
+                  <KnotenZeichnung k={k} l={lk} unterzeile={p.unterzeile(k)} gewaehlt={gewaehlt.has(k.id)} ziel={ziel} zielNein={ziel && fadenZiel?.nein} belegt={belegt.get(k.id) ?? new Set()} chips={chips.get(lk.id)}
                     schloss={p.mitSchloss.has(k.id)} befund={p.befundJe.get(k.id) ?? null} probe={p.probe?.get(k.id)} nurLesen={p.nurLesen} aus={aus.has(k.id)}
                     {...(p.lauf ? { marke: p.lauf.marken.get(k.id), grau: !p.lauf.marken.has(k.id) } : {})}
                     andockGewaehlt={p.andockWahl?.id === k.id ? p.andockWahl.art : null} />

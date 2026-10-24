@@ -74,7 +74,7 @@ describe('Befund 4: der Name der Raute kollidiert mit nichts', () => {
       for (const k of l.kanten.filter(x => x.von === lk.id && x.ausgang === 'nein')) expect(durch(k.punkte, name), `${lk.id} → ${k.nach}`).toBe(false);
     }
   });
-  it('die Raute aus dem Befund (V02 „Lead schon in der Kartei?“): Chip „Formular“ steht über dem Namen, rechts neben dem „+“', () => {
+  it('die Raute aus dem Befund (V02 „Lead schon in der Kartei?“): Chip „Formular“ steht über dem Namen; das „+“ (gewählt) rückt hinter ihn (Feinschliff 1)', () => {
     const d = vorlage('kg-v02');
     const l = werkstattLage(d);
     const r = l.knoten.get('kg-v02:s0')!;
@@ -84,8 +84,10 @@ describe('Befund 4: der Name der Raute kollidiert mit nichts', () => {
     const name = titelBox(r)!;
     expect(chip.y + chip.h).toBeLessThanOrEqual(name.y);
     const unten = r.anschluesse.find(a => a.richtung === 'unten')!;
-    const m = ausgangMarke(unten, { rechtsAnzahl: 1, mitPlus: true });
-    expect(chip.x).toBeGreaterThanOrEqual(r.x + m.plus[0] + m.r);
+    const eigen = { x: chip.x - r.x, y: chip.y - r.y, b: chip.b, h: chip.h };
+    const m = ausgangMarke(unten, { rechtsAnzahl: 1, mitPlus: true, chip: eigen, chips: [eigen] });
+    expect(r.x + m.plus[0] - m.r).toBeGreaterThanOrEqual(chip.x + chip.b);
+    expect(m.name).toBe(false);
   });
 });
 
