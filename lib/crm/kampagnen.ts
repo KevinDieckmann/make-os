@@ -28,6 +28,15 @@ export interface Playbook {
   kennzahl: string;
   recht: string;
   fuer: ('head-sales' | 'head-marketing')[];
+  /**
+   * Restpunkte (24.10., Playbooks bearbeitbar — lib/crm/vorlagen-anpassung.ts): Segment-Vorschlag (ein gespeichertes Segment ersetzt Zielgruppe und Filter
+   * der Vorgabe), `angepasst` = der Haushalt hat Felder dieser Code-Vorlage geändert, `eigen` + `basis` = eine eigene Kopie (Recht, Filter, Zuständigkeit aus
+   * `basis`). Fehlen sie, ist es die Vorgabe im Code. Gelesen nur über `playbooksFuer` (lib/crm/vorlagen-anpassung-server.ts).
+   */
+  segmentId?: string;
+  angepasst?: boolean;
+  eigen?: boolean;
+  basis?: string;
 }
 
 export const PLAYBOOKS: Playbook[] = [
@@ -151,8 +160,19 @@ export function aehnlicheFirmen(crm: CrmBestand, heute: string, n = 25): Aehnlic
 
 // ── Zielgruppe einer Kampagne ───────────────────────────────────────────────
 
-export function zielgruppe(kontakte: Kontakt[], crm: CrmBestand, pb: Pick<Playbook, 'zielgruppe' | 'zusatz'>, heute: string): Kontakt[] {
+/**
+ * Die Zielgruppe eines Playbooks (Restpunkte 24.10.): mit Segment-Vorschlag die Kriterien des gespeicherten Segments (ohne den Filter der Vorgabe), sonst die
+ * der Vorgabe. Ein gelöschtes Segment gilt nicht — dann wieder die Vorgabe (die Bearbeitung zeigt es an).
+ */
+export function zielKriterien(crm: Pick<CrmBestand, 'segmente'>, pb: Pick<Playbook, 'zielgruppe' | 'zusatz' | 'segmentId'>): { kriterien: SegmentKriterien; zusatz: Playbook['zusatz']; segmentId?: string } {
+  const seg = pb.segmentId ? (crm.segmente ?? []).find(s => s.id === pb.segmentId && !s.geloeschtAm) : undefined;
+  return seg ? { kriterien: seg.kriterien, zusatz: undefined, segmentId: seg.id } : { kriterien: pb.zielgruppe, zusatz: pb.zusatz };
+}
+
+export function zielgruppe(kontakte: Kontakt[], crm: CrmBestand, pb0: Pick<Playbook, 'zielgruppe' | 'zusatz' | 'segmentId'>, heute: string): Kontakt[] {
   const ctx = kontextAus(crm, heute);
+  const z = zielKriterien(crm, pb0);
+  const pb = { zielgruppe: z.kriterien, zusatz: z.zusatz };
   let l = segmentAuswerten(kontakte, pb.zielgruppe, ctx).mitglieder;
   if (pb.zusatz === 'health_gruen') {
     const gruen = new Set(crm.mandate.filter(m => m.status === 'aktiv' && (mandatLage(m, heute).ampel ?? 'gruen') !== 'rot').flatMap(m => m.kontaktIds));
@@ -177,8 +197,9 @@ export function zielgruppe(kontakte: Kontakt[], crm: CrmBestand, pb: Pick<Playbo
 export function planen(pb: Playbook, kontakte: Kontakt[], crm: CrmBestand, heute: string, id: string, von: Kampagne['von'] = 'hand', max?: number): Kampagne {
   const alle = zielgruppe(kontakte, crm, pb, heute);
   const l = max != null && max >= 0 ? alle.slice(0, max) : alle;
+  const z = zielKriterien(crm, pb);
   return {
-    id, name: pb.name, playbook: pb.id, ziel: pb.kennzahl, zielgruppe: pb.zielgruppe, kanal: pb.kanal, status: 'entwurf', start: heute,
+    id, name: pb.name, playbook: pb.id, ziel: pb.kennzahl, zielgruppe: z.kriterien, ...(z.segmentId ? { segmentId: z.segmentId } : {}), kanal: pb.kanal, status: 'entwurf', start: heute,
     schritte: pb.schritte.map((s, i) => ({ id: `s${i}`, text: s.text, tag: s.tag, erledigt: false })),
     kontaktIds: l.map(k => k.id), ergebnisse: [], von, geaendert: new Date().toISOString(),
     ...(pb.id === 'vernetzen' ? { vernetzen: vernetzenStandard() } : {}),

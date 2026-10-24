@@ -1776,8 +1776,8 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
 - **Stellschrauben der festen Prozesse (22.10., Branch `prozesse-stellschrauben`; Entscheidung: erst Stellschrauben, dann überführen):** die System-Prozesse bleiben
   Ausführer im Code, ihr Steckbrief zeigt aber, welche Einstellungen sie lesen (`ProzessDef.stellschrauben`, Modell rein `lib/prozesse/stellschrauben.ts`, gebaut in
   `stellschrauben-bau.ts` aus den VORHANDENEN Beständen, gelesen in `stellschrauben-server.ts`, angehängt in `landkarteLesen` wie `zaehler`). Geändert wird IMMER über die
-  vorhandene Route des Bestands (`weg` → `anfrageFuer`: Wertelisten, Löschfristen, Mahnstufen, Puls-Schwelle, Fulfillment-Einstellungen; komplexe Masken — Scoring,
-  Buchungsseiten, Head-Einstellungen, Kanäle — nur als Link); Rechte je Weg rechnet `stellschraubenRechte` mit den Regeln der Route (Landkarte `stellschraubenRechte`,
+  vorhandene Route des Bestands (`weg` → `anfrageFuer`: Wertelisten, Löschfristen, Mahnstufen, Puls-Schwelle, Fulfillment-Einstellungen; Scoring, Buchungsseiten,
+  Heads seit 24.10. über den Weiterleiter (unten); Kanäle nur als Link); Rechte je Weg rechnet `stellschraubenRechte` mit den Regeln der Route (Landkarte `stellschraubenRechte`,
   im ETag als Fingerabdruck). Feste Code-Werte sind Einstellungen geworden — EINE Lesefunktion je Wert, ohne Eintrag bit-gleich: Markttraktion in den Wertelisten
   (`crm.wertelisten.stellschrauben`, lib/crm/stellschrauben.ts: `nachfassWerktage` für eigene Abende, besuchte Events UND Erfassung, `qualiWiedervorlageTage`,
   `verschobenGelbAb`), der Rest im neuen Bestand `prozesse-stellschrauben--<h>` (lib/prozesse/stellschrauben-werte.ts: `headModusPlan`, `abschlussFenster`,
@@ -1785,8 +1785,10 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   `stellschrauben-werte-server.ts`, Route `/api/prozesse/stellschrauben` nur volle Mitglieder, Stand/409). Gesetzlich Festes (Art.-12-Monatsfrist, Löschfristen
   `wirkung: 'fest'`) steht als „fest (Gesetz)“. Oberfläche `components/os/prozesse/Stellschrauben.tsx` (Bild unter dem Steckbrief, Liste, Werkstatt), Kachel mit
   Regler statt Zahnrad = „System · einstellbar“. **Neuer fester Wert in einem System-Prozess → Eintrag in `WERTE` + Lesefunktion + Test „ohne Einstellung bit-gleich /
-  mit Einstellung wirkt“**; eine vorhandene Einstellung → Zeile in `stellschraubenBauen` mit ihrem Weg. Offen: Playbook- und Event-Vorlagen (nur „Vorlagen ansehen“).
-  Tests `tests/prozesse-stellschrauben*.test.ts`.
+  mit Einstellung wirkt“**; eine vorhandene Einstellung → Zeile in `stellschraubenBauen` mit ihrem Weg.
+  **Masken (Restpunkte 24.10.):** Scoring (MQL/SQL-Schwelle, Temperatur), je Buchungsseite (An/aus, Dauer, Vorlauf, je Tag, Puffer) und je Business-Head (An/aus, Modell `auswahl`, Budget in €, Autonomie nur bis zum Boden) sind Felder, sobald die Quelle einen `stand` trägt (ohne: Ansicht wie bisher) — Weg `scoring|buchung|head` → `POST /api/prozesse/stellschrauben/weiter` (lib/prozesse/stellschrauben-weiter-server.ts: aktueller Stand → 409, Grenzen 400 statt klemmen, dann DIESELBE Schreibstelle `scoringSchreiben` · `seiteSpeichern` (lib/kalender/buchung-seite-server.ts, auch die Buchungs-Route) · `einstellungAendern`); Heads nur der Inhaber (403, Rechte `head`), Grenzen der Seite nur `SEITE_ZAHLEN` (lib/kalender/buchung.ts).
+  **Vorlagen (Restpunkte 24.10.):** Playbooks/Event-Vorlagen je Haushalt bearbeitbar (Abweichungen + eigene Kopien `pb-…`/`evv-…` ≤ 40 Zeichen, Bestände `kampagnen-vorlagen--<h>`/`event-vorlagen--<h>`, Regeln lib/crm/vorlagen-regeln.ts, rein lib/crm/vorlagen-anpassung.ts, Route `/api/crm/vorlagen`: schreiben nur volle Mitglieder per Sitzung, „nur Business“ liest); lesen NUR `playbooksFuer`/`eventVorlagenFuer` (lib/crm/vorlagen-anpassung-server.ts; Browser `useEventVorlagen`) — nie `PLAYBOOKS`/`VORLAGEN` direkt; Recht/Filter/Zuständigkeit/Vernetzen-Kanal fest im Code (`KANAL_RECHT`, `EVENT_RECHT`), UWG-Hinweis über eigene Texte (`playbookHinweise`); Stellschraube zeigt „n angepasst“ + `WEG.vorlagenBearbeiten`.
+  Tests `tests/prozesse-stellschrauben*.test.ts`, `tests/crm-vorlagen-anpassung.test.ts`.
 - **Werkstatt bau-fertig (22.10., n8n-Niveau; Bauplan `research/prozesse/WERKSTATT_BAUFERTIG.md`):** das Modell bleibt „Strang je Phase + Abzweige“ — die OBERFLÄCHE
   wird nachgiebig, jede Hilfe ist eine reine Funktion in lib/prozesse/werkstatt-aktionen.ts und prüft danach den Fluss (`neuerFlussFehler`: entsteht ein NEUER Fehler,
   bleibt alles, wie es war — Grund statt still). `zwischenEinfuegen`/`zwischenGrund` („+“ mitten auf dem Faden; Abzweige tragen genau EINEN Schritt — dort kein „+“,

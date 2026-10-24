@@ -355,6 +355,8 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/heute': r('GET', MT, 'CRM heute.'),
   'crm/import': r('GET,POST', MT, 'Import.'),
   'crm/kampagnen': r('GET,POST', MT, 'Kampagnen.'),
+  // Restpunkte (24.10.): Playbooks und Event-Vorlagen je Haushalt bearbeiten — nur Abweichungen und eigene Kopien; Rechtshinweise bleiben fest im Code.
+  'crm/vorlagen': r('GET,POST', MT, 'Playbooks und Event-Vorlagen (24.10.): GET die wirksamen Vorlagen des Haushalts mit Vorgabe, Stand und UWG-Hinweisen (Lesen schreibt nie); POST speichern/kopieren/zurück auf Standard/löschen eigener — nur eine angemeldete Person des Haushalts mit Bau-Kennung (Dienstweg 403), Stand/409, ungültig 400, zu groß 413.'),
   'crm/kennungen-umzug': r('POST', MT, 'Kennungen umziehen (Inhaber).'),
   'crm/kontakt-frage': r('GET,POST', MT, 'Frage an einen Kontakt (KI).'),
   'crm/lead': r('GET,POST', MT, 'Leads.'),

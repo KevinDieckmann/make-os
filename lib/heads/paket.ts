@@ -16,7 +16,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
 import { uebergaben } from '@/lib/crm/traktion';
 import { TEAM, verantwortlich, nameVon, haeltBeziehung, zustaendig, BEIDE } from '@/lib/crm/team';
-import { datenpaket } from './daten';
+import { datenpaket, type DatenpaketOptionen } from './daten';
 import { einstellungAus } from '@/lib/crm/marketing';
 import { grundlauf } from './grundlauf';
 import { lernstand } from './lernen';
@@ -25,7 +25,6 @@ import type { HeadStand } from './stand';
 import type { Vorschlag } from './pruefer';
 import { nordsternSatz } from '@/lib/planung/nordstern';
 import type { HeadZiele } from '@/lib/planung/jahresziele-sicht';
-import type { WerIstDranOptionen } from '@/lib/crm/heute';
 
 /** Die Ziele im Paket (rein): Nordstern als Satz im `<daten quelle="nordstern">`-Rahmen, Jahresziele nur Titel + Fortschritt — Daten, nie Anweisung. */
 export function zieleImPaket(z: HeadZiele) {
@@ -39,7 +38,7 @@ export function zieleImPaket(z: HeadZiele) {
 }
 
 /** `person` null = Systemlauf des Takts (lib/heads/lauf.ts): Karten aller, „fuer“ ohne Rückfall. */
-export function vollesPaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, stand: HeadStand, ziele?: HeadZiele, opt: WerIstDranOptionen = {}) {
+export function vollesPaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, person: string | null, stand: HeadStand, ziele?: HeadZiele, opt: DatenpaketOptionen = {}) {
   const frueher = stand.vorschlaege.filter(v => v.status !== 'erledigt').map(v => ({ titel: v.titel, status: v.status }));
   const basis = datenpaket(head, modus, kontakte, crm, heute, person, frueher, opt) as Record<string, unknown>;
   const g = modus === 'frage' ? null : grundlauf(head, modus, basis);

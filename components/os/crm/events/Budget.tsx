@@ -10,7 +10,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Zahl, Raster, Leer, Chip, feld, LEUCHT } from '../../ui';
-import { budgetSumme, VORLAGEN } from '@/lib/crm/eventplanung';
+import { budgetSumme } from '@/lib/crm/eventplanung';
+import { useEventVorlagen } from '../vorlagen/daten';
 import { LIQUIPLAN_STATUS, type LiquiplanStand } from '@/lib/crm/event-bruecke';
 import type { Event } from '@/lib/crm/typen';
 import { neueId, euro, plusTage, datum } from '../daten';
@@ -92,7 +93,9 @@ export function Budget({ e, api }: ReiterProps) {
     void speichern([...liste, { id: neueId('b'), posten: posten.trim(), betrag: b }]);
     setPosten(''); setBetrag('');
   };
-  const vorlage = VORLAGEN.find(v => v.format === e.format);
+  // Restpunkte (24.10.): die Vorlage, mit der das Event angelegt wurde — sonst die Vorgabe seines Formats (Vorlagen des Haushalts).
+  const vorlagen = useEventVorlagen();
+  const vorlage = vorlagen.find(v => v.id === e.vorlage) ?? vorlagen.find(v => !v.eigen && v.format === e.format);
   const rendite = z && kosten ? z.beeinflusst / kosten : null;
   const reif = plusTage(e.datum, 90) <= heute;
 

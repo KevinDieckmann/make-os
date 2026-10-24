@@ -25,7 +25,7 @@ const BUSINESS_HEADS = ['sales', 'marketing', 'event', 'finanzen'] as const;
  */
 export async function stellschraubenQuellenLesen(h: string, schon: { crm?: CrmBestand; fulfillment?: FulfillmentEinstellungen } = {}): Promise<StellschraubenQuellen & { werteStand?: string }> {
   const crm = schon.crm;
-  const [loeschfristen, mahnTage, heads, kanaele, buchungsseiten, neu, scoringZusatz] = await Promise.all([
+  const [loeschfristen, mahnTage, heads, kanaele, buchungsseiten, neu, scoringZusatz, vorlagen] = await Promise.all([
     sicher(async () => {
       const { LOESCHFRISTEN_SPEICHER } = await import('@/lib/crm/loeschfristen');
       return (await loadJson<{ fristen?: StellschraubenQuellen['loeschfristen'] }>(LOESCHFRISTEN_SPEICHER))?.fristen ?? {};
@@ -71,6 +71,8 @@ export async function stellschraubenQuellenLesen(h: string, schon: { crm?: CrmBe
       const st = standardScoring();
       return { stand: scoringStand(crm.scoring), vorgabe: { marketing: st.marketing.schwelle, sales: st.sales.schwelle, temperatur: { ...st.temperaturAb } }, schwelleMax: SCORING_GRENZEN.schwelleMax };
     }),
+    // Restpunkte (24.10.): wie viele Playbooks bzw. Event-Vorlagen angepasst oder selbst angelegt sind (Zähler an der Stellschraube „Vorlagen“).
+    sicher(async () => (await import('@/lib/crm/vorlagen-anpassung-server')).vorlagenZaehler()),
   ]);
   const sc = crm?.scoring;
   return {
@@ -82,6 +84,7 @@ export async function stellschraubenQuellenLesen(h: string, schon: { crm?: CrmBe
     ...(heads ? { heads } : {}),
     ...(typeof kanaele === 'number' ? { kanaele } : {}),
     ...(buchungsseiten ? { buchungsseiten } : {}),
+    ...(vorlagen ? { vorlagen } : {}),
     ...(neu ? { werte: neu.werte, werteStand: (await import('./stellschrauben-werte-server')).stellschraubenStand(neu) } : {}),
   };
 }

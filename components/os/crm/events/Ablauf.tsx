@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Leer, feld } from '../../ui';
-import { VORLAGEN } from '@/lib/crm/eventplanung';
+import { useEventVorlagen } from '../vorlagen/daten';
 import type { Event } from '@/lib/crm/typen';
 import { Feld } from '../teile';
 import { eventSetzen, type ReiterProps } from './gemeinsam';
@@ -22,7 +22,9 @@ export function Ablauf({ e, api }: ReiterProps) {
   const speichern = (neu: Punkt[]) => eventSetzen(api, e, { ablauf: sortiert(neu) });
   const aendern = (i: number, teil: Partial<Punkt>) => speichern(liste.map((a, j) => (j === i ? { ...a, ...teil } : a)));
   const dazu = () => { if (!punkt.trim()) return; void speichern([...liste, { zeit, punkt: punkt.trim() }]); setPunkt(''); };
-  const vorlage = VORLAGEN.find(v => v.format === e.format);
+  // Restpunkte (24.10.): die Vorlage, mit der das Event angelegt wurde — sonst die Vorgabe seines Formats (Vorlagen des Haushalts).
+  const vorlagen = useEventVorlagen();
+  const vorlage = vorlagen.find(v => v.id === e.vorlage) ?? vorlagen.find(v => !v.eigen && v.format === e.format);
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>

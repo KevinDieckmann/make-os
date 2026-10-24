@@ -472,7 +472,9 @@ async function angeboteLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe>
 // ── kampagnen_lage / events_lage / marketing_lage ─────────────────────────
 
 async function kampagnenLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> {
-  const { kampagnenZahlen, PLAYBOOKS } = await import('@/lib/crm/kampagnen');
+  const { kampagnenZahlen } = await import('@/lib/crm/kampagnen');
+  // Restpunkte (24.10.): die Playbooks des Haushalts (angepasst + eigene) — EINE Lesestelle.
+  const PLAYBOOKS = await (await import('@/lib/crm/vorlagen-anpassung-server')).playbooksDesHaushalts();
   const l = s.crm.kampagnen.filter((k: Kampagne) => !i.kampagne || k.id === text(i.kampagne, 80) || suchPasst([k.name], text(i.kampagne, 80)));
   const zeilen = l.map(k => {
     const z = kampagnenZahlen(k, s.heute);

@@ -34,11 +34,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Pillen, useBreit, LEUCHT, ZeileAktionen } from '../ui';
 import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte } from './ablage';
-import { VORLAGEN, vorlageAnwenden, checklisteStand, einlader, type VorlageId } from '@/lib/crm/eventplanung';
+import { vorlageAnwenden, checklisteStand, einlader } from '@/lib/crm/eventplanung';
+// Restpunkte (24.10.): die Event-Vorlagen des Haushalts (angepasst + eigene) — vom Server, bis dahin die Vorgaben.
+import { useEventVorlagen } from './vorlagen/daten';
+import { EventVorlagenBearbeiten } from './vorlagen/EventVorlagenBearbeiten';
 import { MARKE_EVENTS, nachfassenRest } from '@/lib/crm/events';
 import { istNetzwerkenEvent, OHNE_REIHE, reiheName, eventTitelVorschlag } from '@/lib/crm/marke';
 import { reihenFilter, passtReihe, reihenUebersicht, zahlenSumme } from '@/lib/crm/reihen';
@@ -83,6 +86,17 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   const [neuReihe, setNeuReihe] = useState<string | undefined>(undefined);
   const [jetzt] = useState(() => Date.now());
   const ich = api.ich;
+  const vorlagen = useEventVorlagen();
+  // Vorlagen bearbeiten (Restpunkte 24.10.): Knopf bei „+ Event“ oder der Link der Stellschraube (`vorlagen=1`, WEG.vorlagenBearbeiten).
+  const adresse = useSearchParams();
+  const pfad = usePathname();
+  const [bearbeiten, setBearbeiten] = useState(false);
+  useEffect(() => { if (adresse?.get('vorlagen') === '1') setBearbeiten(true); }, [adresse]);
+  const bearbeitenZu = () => {
+    setBearbeiten(false);
+    if (adresse?.get('vorlagen')) { const q = new URLSearchParams(adresse.toString()); q.delete('vorlagen'); router.replace(`${pfad}${q.toString() ? `?${q}` : ''}`); }
+  };
+  const bearbeitenFenster = bearbeiten ? <EventVorlagenBearbeiten onZu={bearbeitenZu} /> : null;
 
   const crm = api.crm;
   const heute = crm?.heute ?? '';
@@ -148,7 +162,8 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
       <>
         <Kopf />
         <HeadPanel head="event" standardModus="wirkung" zuKontakt={zuKontakt} i={0} />
-        <Karte i={1} akzent={LEUCHT.beziehung}><Start api={api} onFertig={id => waehle(id)} /></Karte>
+        <Karte i={1} akzent={LEUCHT.beziehung}><Start api={api} onFertig={id => waehle(id)} /><div style={{ marginTop: 10 }}><Knopf leise onClick={() => setBearbeiten(true)}>Vorlagen bearbeiten</Knopf></div></Karte>
+        {bearbeitenFenster}
       </>
     );
   }
@@ -158,13 +173,13 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
   if (andere && andere !== ich) zahlen[andere] = kommendAlle.filter(e => passtWer(andere, e.zustaendig, 'event', ich)).length;
   const nachfassenText = TEAM.filter(m => nachfassen[m.id]).map(m => `${nachfassen[m.id]} bei ${m.id === ich ? 'dir' : m.name}`).join(' · ');
 
-  const anlegen = (v: VorlageId | null) => {
-    const vorlage = VORLAGEN.find(x => x.id === v);
+  const anlegen = (v: string | null) => {
+    const vorlage = vorlagen.find(x => x.id === v);
     // Neue Events tragen die Marke als Vorgabe (27.09.) — im Überblick des Events änderbar.
     // Reihe (03.10.): gewählt im Anlegen, sonst die gefilterte — nie still eine Reihe, die niemand gesehen hat.
     const reihe = neuReihe ?? (reiheAktiv && reiheAktiv !== OHNE_REIHE ? reiheAktiv : undefined);
     const basis: Event = { id: neueId('ev'), titel: eventTitelVorschlag(reihe, vorlage?.label), format: 'sonstig', ziel: '', datum: plusTage(heute, 42), status: 'idee', marke: MARKE_EVENTS, ...(reihe ? { reihe } : {}), geaendert: new Date().toISOString() };
-    const e = vorlage ? vorlageAnwenden(basis, vorlage.id) : basis;
+    const e = vorlage ? vorlageAnwenden(basis, vorlage.id, vorlagen) : basis;
     void api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
     waehle(e.id); setNeu(false); setNeuReihe(undefined);
   };
@@ -222,9 +237,9 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
             {neu && (
               <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', marginBottom: 12 }}>
                 <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>Mit Vorlage starten: Ablauf, Checkliste mit sechs Wochen Vorlauf, Budgetposten und Soll-Mischung sind vorbereitet — das Ziel setzt du. Läuft unter {MARKE_EVENTS}; zuständig ist erst einmal {nameVon(verantwortlich('event'))}; im Überblick des Events änderbar.</div>
-                <div style={{ marginBottom: 8 }}><ReiheWahl wert={neuReihe ?? (reiheAktiv && reiheAktiv !== OHNE_REIHE ? reiheAktiv : undefined)} onWahl={setNeuReihe} /></div>
+                <div style={{ marginBottom: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}><ReiheWahl wert={neuReihe ?? (reiheAktiv && reiheAktiv !== OHNE_REIHE ? reiheAktiv : undefined)} onWahl={setNeuReihe} /><Knopf leise onClick={() => setBearbeiten(true)}>Vorlagen bearbeiten</Knopf></div>
                 <Liste>
-                  {VORLAGEN.map(v => (
+                  {vorlagen.map(v => (
                     <Zeile key={v.id} onClick={() => anlegen(v.id)} titel={v.label} unter={`${v.beschreibung} ${v.kapazitaet} Plätze · Soll ${v.mixZiel.zielkunden} % Zielkunden, ${v.mixZiel.kunden} % Kunden`}
                       rechts={<span style={{ fontSize: TYP.bedien, color: C.aktiv, fontWeight: 600 }}>anlegen</span>} />
                   ))}
@@ -319,6 +334,7 @@ export function Events({ api, zuKontakt, start, onAuswahl }: { api: CrmApi; zuKo
       </Flaeche>
       {ablage.dialog}
       {ablage.hinweis}
+      {bearbeitenFenster}
     </>
   );
 }

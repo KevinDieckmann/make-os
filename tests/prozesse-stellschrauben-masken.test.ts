@@ -11,6 +11,10 @@ import { stellschraubenBauen, type StellschraubenQuellen } from '@/lib/prozesse/
 import { anfrageFuer, eingabeLesen, wertText, darfAendern, aenderbar, WEITER_URL, type Stellschraube } from '@/lib/prozesse/stellschrauben';
 import { weiterAnfrage } from '@/lib/prozesse/stellschrauben-weiter-server';
 import { SEITE_ZAHLEN } from '@/lib/kalender/buchung';
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { SYSTEM_PROZESSE } from '@/lib/prozesse/register';
+import { StellschraubenKarte } from '@/components/os/prozesse/Stellschrauben';
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-stellschrauben-masken-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
@@ -27,6 +31,7 @@ const MIT_STAND: StellschraubenQuellen = {
   scoring: { marketing: 8, sales: 28, mussMarketing: 0, mussSales: 2, temperatur: { lau: 5, warm: 12, heiss: 25 }, stand: 'sc-abc', vorgabe: { marketing: 8, sales: 28, temperatur: { lau: 5, warm: 12, heiss: 25 } }, schwelleMax: 1000 },
   heads: { sales: { stand: 'es-1', stufeVorgabe: 'ausgewogen', autonomieBoden: 'intern', autonomieWirksam: 'intern' }, marketing: { aktiv: false, budgetCentMonat: 2550, stand: 'es-2', stufeVorgabe: 'ausgewogen', autonomieBoden: 'vorschlag', autonomieWirksam: 'vorschlag' } },
   buchungsseiten: { aktiv: 1, gesamt: 1, seiten: [SEITE], zahlen: ZAHLEN },
+  vorlagen: { playbooks: 2, events: 0 },
 };
 
 describe('Bau (rein): mit Stand werden die Zeilen Felder — ohne Stand bleibt es beim Ansehen', () => {
@@ -59,6 +64,10 @@ describe('Bau (rein): mit Stand werden die Zeilen Felder — ohne Stand bleibt e
     // Head of Finance (Monatsabschluss) ohne Stand: wie bisher nur zu sehen.
     expect(von(je, 'sp-monatsabschluss', 'head-finanzen-aktiv')).toMatchObject({ art: 'info' });
   });
+  it('Vorlagen: Zähler „n angepasst“ und der Weg in die Bearbeitung', () => {
+    expect(von(je, 'sp-kampagnen', 'playbooks')).toMatchObject({ art: 'info', wert: '2 angepasst', wo: 'vorlagen', link: { text: 'Playbooks bearbeiten', href: expect.stringContaining('vorlagen=1') } });
+    expect(von(je, 'sp-makeone', 'event-vorlagen')).toMatchObject({ wert: 'wie im System', link: { href: expect.stringContaining('s=event') } });
+  });
   it('Anfrage: Feld + Wert + Stand an den Weiterleiter; Vorgabe = null; Rechte je Weg; Auswahl prüft die Optionen', () => {
     const mql = von(je, 'sp-lead-sql', 'scoring-mql')!;
     expect(anfrageFuer(mql, 12)).toEqual({ url: WEITER_URL, method: 'POST', body: { weg: { art: 'scoring', feld: 'marketing', stand: 'sc-abc' }, wert: 12 } });
@@ -77,6 +86,19 @@ describe('Bau (rein): mit Stand werden die Zeilen Felder — ohne Stand bleibt e
     expect(weiterAnfrage({ weg: { art: 'scoring', feld: 'muss', stand: 'x' }, wert: 1 }).ok).toBe(false);
     expect(weiterAnfrage({ weg: { art: 'head', head: 'assistenz', feld: 'stufe', stand: 'x' }, wert: 'stark' }).ok).toBe(false);
     expect(weiterAnfrage({ weg: { art: 'buchung', seite: SEITE.id, feld: 'dauerMin', stand: SEITE.stand } }).ok).toBe(false);
+  });
+});
+
+describe('Oberfläche (ohne Browser): Auswahl, Schalter, Rechte', () => {
+  const je = stellschraubenBauen(MIT_STAND);
+  const karte = (rechte: Record<string, boolean>) => renderToStaticMarkup(h(StellschraubenKarte, { p: { ...SYSTEM_PROZESSE.find(x => x.id === 'sp-head-takt')!, stellschrauben: je['sp-head-takt'] }, rechte, stand: 's', onGespeichert: () => {}, offen: true }));
+  it('Inhaber: Modell als Auswahl mit drei Stufen; andere sehen nur den Wert und den Satz „nur der Inhaber“', () => {
+    const inhaber = karte({ head: true });
+    expect(inhaber).toContain('aria-label="Modell"');
+    for (const t of ['schnell', 'ausgewogen', 'stark', 'Budget je Monat']) expect(inhaber).toContain(t);
+    const andere = karte({ head: false });
+    expect(andere).not.toContain('aria-label="Modell"');
+    expect(andere).toContain('Die Agenten-Regler der Heads ändert nur der Inhaber.');
   });
 });
 

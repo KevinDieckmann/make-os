@@ -46,6 +46,8 @@ export interface StellschraubenQuellen {
   heads?: Partial<Record<string, HeadKurz>>;
   kanaele?: number;
   buchungsseiten?: { aktiv: number; gesamt: number; /** Restpunkte (24.10.): je Seite die Felder der Maske — fehlt es, steht nur die Zahl da. */ seiten?: BuchungsseiteKurz[]; zahlen?: BuchungZahlen };
+  /** Restpunkte (24.10.): wie viele Playbooks bzw. Event-Vorlagen der Haushalt angepasst oder selbst angelegt hat (lib/crm/vorlagen-anpassung-server.ts). */
+  vorlagen?: { playbooks: number; events: number };
 
   /** Die neuen Stellschrauben (Bestand `prozesse-stellschrauben--<h>`, nur Abweichungen) — `undefined` = nicht lesbar. */
   werte?: Werte;
@@ -301,9 +303,15 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
     }
   }
 
-  // ── Vorlagen der Kampagnen und eigenen Abende: nur ansehen (überführt werden sie in einem eigenen Paket) ──
-  dazu('sp-kampagnen', [{ id: 'playbooks', gruppe: 'Vorlagen', name: 'Playbooks', art: 'info', wert: 'im System', erklaerung: 'Die Playbooks der Kampagnen (Segment, Kanal, Texte, Nachfassen) — ansehen und daraus planen.', wo: 'system', link: { href: WEG.marketing('kampagnen'), text: 'Vorlagen ansehen' } }]);
-  dazu('sp-makeone', [{ id: 'event-vorlagen', gruppe: 'Vorlagen', name: 'Event-Vorlagen', art: 'info', wert: 'im System', erklaerung: 'Vorlagen eigener Abende (Ablauf, Checkliste, Budget) — ansehen und daraus planen.', wo: 'system', link: { href: WEG.event(), text: 'Vorlagen ansehen' } }]);
+  // ── Vorlagen der Kampagnen und eigenen Abende (Restpunkte 24.10.): je Haushalt bearbeitbar (lib/crm/vorlagen-anpassung-server.ts) — hier der Zähler und der Weg
+  //    in die Bearbeitung; ohne Quelle (nicht lesbar) wie bisher nur der Verweis. Rechtshinweise der Playbooks bleiben fest im Code.
+  const angepasst = (n: number) => (n ? `${n} angepasst` : 'wie im System');
+  dazu('sp-kampagnen', [{ id: 'playbooks', gruppe: 'Vorlagen', name: 'Playbooks', art: 'info', wert: q.vorlagen ? angepasst(q.vorlagen.playbooks) : 'im System',
+    erklaerung: 'Die Playbooks der Kampagnen (Texte, Kanal, Segment-Vorschlag, Nachfass-Schritte) — bearbeiten, als eigene Vorlage kopieren, zurück auf Standard. Die Rechtshinweise bleiben fest.',
+    wo: q.vorlagen ? 'vorlagen' : 'system', link: { href: WEG.vorlagenBearbeiten('playbook'), text: 'Playbooks bearbeiten' } }]);
+  dazu('sp-makeone', [{ id: 'event-vorlagen', gruppe: 'Vorlagen', name: 'Event-Vorlagen', art: 'info', wert: q.vorlagen ? angepasst(q.vorlagen.events) : 'im System',
+    erklaerung: 'Vorlagen eigener Abende (Ablauf, Checkliste, Budget-Posten) — bearbeiten, als eigene Vorlage kopieren, zurück auf Standard.',
+    wo: q.vorlagen ? 'vorlagen' : 'system', link: { href: WEG.vorlagenBearbeiten('event'), text: 'Event-Vorlagen bearbeiten' } }]);
 
   return raus;
 }
