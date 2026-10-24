@@ -34,11 +34,16 @@ const norm = (t: string) => t.trim().toLowerCase().replace(/\s+/g, ' ');
 export type VorlageId = 'stammtisch' | 'workshop' | 'dinner' | 'webinar';
 type Punkt = { id: string; text: string; tageVorher: number };
 export interface Vorlage {
-  id: VorlageId; label: string; format: EventFormat; beschreibung: string;
+  /** Kennung: eine der Vorgaben (`VorlageId`) oder eine eigene Kopie des Haushalts (`evv-<basis>-<zufall>`, Restpunkte 24.10.). */
+  id: string; label: string; format: EventFormat; beschreibung: string;
   uhrzeit: string; kapazitaet: number; mixZiel: { zielkunden: number; kunden: number };
   ablauf: { zeit: string; punkt: string }[];
   checkliste: Punkt[];
   budget: { id: string; posten: string }[];
+  /** Restpunkte (24.10., lib/crm/vorlagen-anpassung.ts): Felder der Vorgabe geändert bzw. eigene Kopie (`basis` = Vorgabe, von der kopiert wurde). */
+  angepasst?: boolean;
+  eigen?: boolean;
+  basis?: string;
 }
 
 // Etappen, die jedes Format braucht — gleiche IDs, damit eine zweite Vorlage nichts doppelt anlegt.
@@ -109,8 +114,9 @@ export const VORLAGEN: Vorlage[] = [
  * als vorhanden), Ablauf nur, wenn noch keiner steht (zwei Abläufe ineinander
  * ergäben keinen Abend), Rahmenwerte nur, wenn sie fehlen.
  */
-export function vorlageAnwenden(e: Event, vorlageId: string): Event {
-  const v = VORLAGEN.find(x => x.id === vorlageId);
+export function vorlageAnwenden(e: Event, vorlageId: string, vorlagen: readonly Vorlage[] = VORLAGEN): Event {
+  // Restpunkte (24.10.): die Vorlagen des Haushalts (angepasst + eigene, `eventVorlagenFuer`) — ohne Angabe die Vorgaben im Code.
+  const v = vorlagen.find(x => x.id === vorlageId);
   if (!v) return e;
   const cl = [...(e.checkliste ?? [])];
   const clIds = new Set(cl.map(c => c.id)), clTexte = new Set(cl.map(c => norm(c.text)));

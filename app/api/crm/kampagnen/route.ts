@@ -28,7 +28,10 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { anzeigename, wendeAktivitaetAn, type Kontakt, type AktivitaetArt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm, LISTEN_GRENZEN } from '@/lib/crm/speicher';
-import { PLAYBOOKS, planen, zielgruppe, kundenprofil, aehnlicheFirmen, kampagnenZahlen } from '@/lib/crm/kampagnen';
+import { planen, zielgruppe, kundenprofil, aehnlicheFirmen, kampagnenZahlen } from '@/lib/crm/kampagnen';
+// Restpunkte (24.10.): die Playbooks des Haushalts (Vorgaben mit Abweichungen + eigene) — EINE Lesestelle, nie `PLAYBOOKS` direkt.
+import { playbooksDesHaushalts, vorlagenBestandName, vorlagenHaushalt } from '@/lib/crm/vorlagen-anpassung-server';
+import { playbookHinweise } from '@/lib/crm/vorlagen-regeln';
 import { kampagnenAmpel } from '@/lib/crm/personen-schranke';
 import { bearbeiterFuer } from '@/lib/crm/pipeline';
 import { wer, mitglied, nameVon, BEIDE } from '@/lib/crm/team';
@@ -47,7 +50,7 @@ export async function GET(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const heute = localDay();
   // ETag aus dem Stand beider Bestände (27.09.): der Abgleich alle 20 s bekommt 304 statt der ganzen Antwort.
-  const etag = etagAus('kp', await speicherStand(['crm', 'kontakte', 'crm-scoring']), heute);
+  const etag = etagAus('kp', await speicherStand(['crm', 'kontakte', 'crm-scoring', vorlagenBestandName('playbook', await vorlagenHaushalt())]), heute);
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
   const kontakte = await kontakteLaden();
@@ -57,7 +60,10 @@ export async function GET(req: Request) {
   const personenJeFirma = personenJeFirmaVon(kontakte.filter(k => !ausgenommen(k)), { nurAktiv: true });
   return jsonAntwort(req, {
     ok: true, heute,
-    playbooks: PLAYBOOKS.map(p => ({ ...p, anzahl: zielgruppe(kontakte, crm, p, heute).length })),
+    playbooks: (await playbooksDesHaushalts()).map(p => {
+      const h = playbookHinweise(p);
+      return { ...p, anzahl: zielgruppe(kontakte, crm, p, heute).length, ...(h.length ? { hinweise: h } : {}) };
+    }),
     profil: { kunden: profil.firmen.map(f => ({ id: f.id, name: f.name, branche: f.branche, stadt: f.stadt })), branchen: profil.branchen, staedte: profil.staedte, groesse: profil.groesse, mrrJeKunde: profil.mrrJeKunde },
     aehnliche: aehnlicheFirmen(crm, heute, 15).map(a => ({ id: a.firma.id, name: a.firma.name, branche: a.firma.branche, stadt: a.firma.stadt, punkte: a.punkte, gruende: a.gruende, personen: (personenJeFirma.get(a.firma.id) ?? []).map(k => ({ id: k.id, name: anzeigename(k) })) })),
     zahlen: Object.fromEntries(crm.kampagnen.map(k => [k.id, kampagnenZahlen(k, heute)])),
@@ -77,9 +83,10 @@ export async function POST(req: Request) {
     const kontakte = await kontakteLaden();
     const crm = await ladeCrm();
     const seg = b.segmentId ? crm.segmente.find(s => s.id === b.segmentId) : undefined;
-    const pb = PLAYBOOKS.find(p => p.id === b.playbook);
+    const pb = (await playbooksDesHaushalts()).find(p => p.id === b.playbook);
     const basis = pb ?? { id: 'eigen', name: seg ? `Kampagne: ${seg.name}` : 'Eigene Kampagne', kurz: '', warum: '', zielgruppe: seg?.kriterien ?? {}, kanal: 'persoenlich' as const, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }], kennzahl: 'Gespräche', recht: '', fuer: [] };
-    const plan0 = planen(seg ? { ...basis, zielgruppe: seg.kriterien, zusatz: undefined } : basis, kontakte, crm, heute, neueKennung('kp'), 'hand');
+    // Ein gewähltes Segment ersetzt auch den Segment-Vorschlag des Playbooks.
+    const plan0 = planen(seg ? { ...basis, zielgruppe: seg.kriterien, zusatz: undefined, segmentId: undefined } : basis, kontakte, crm, heute, neueKennung('kp'), 'hand');
     // 5.6 (08.10.): „Eigene Kampagne“ ohne Segment ist leer — nie die ganze Kartei (leere Kriterien träfen alle).
     const plan = !pb && !seg ? { ...plan0, kontaktIds: [] } : plan0;
     // Wer plant, ist zuständig (Kevin oder Malin) — umstellen oder übergeben geht in der Kampagne.

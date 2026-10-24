@@ -16,7 +16,9 @@ export const PLAYBOOK_WELT: Readonly<Record<string, Welt>> = {
 
 /** Die Welt einer Kampagne (für die Standard-Zuständigkeit, Filter und Aufgaben). */
 export function weltDerKampagne(k: Pick<Kampagne, 'playbook'> & { von?: Kampagne['von'] }): Welt {
-  const p = k.playbook ? PLAYBOOK_WELT[k.playbook] : undefined;
+  // Restpunkte (24.10.): eine eigene Kopie (`pb-<basis>-<zufall>`, lib/crm/vorlagen-regeln.ts) gehört zur Welt ihrer Vorgabe.
+  const basis = k.playbook ? /^pb-([a-z0-9]{1,20})-[0-9a-f]{8}$/.exec(k.playbook)?.[1] : undefined;
+  const p = k.playbook ? PLAYBOOK_WELT[basis ?? k.playbook] : undefined;
   if (p) return p;
   return k.von === 'head-sales' ? 'sales' : 'marketing';
 }

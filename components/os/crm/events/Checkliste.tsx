@@ -18,7 +18,8 @@ import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Knopf, Chip, Leer, Haken, Fortschritt, feld, LEUCHT } from '../../ui';
-import { checklisteFaellig, checklisteStand, vorlageAnwenden, VORLAGEN, punktAendern, punktWer, arbeitJePerson, type FaelligerPunkt, type PunktAenderung, type ChecklistenPunkt } from '@/lib/crm/eventplanung';
+import { useEventVorlagen } from '../vorlagen/daten';
+import { checklisteFaellig, checklisteStand, vorlageAnwenden, punktAendern, punktWer, arbeitJePerson, type FaelligerPunkt, type PunktAenderung, type ChecklistenPunkt } from '@/lib/crm/eventplanung';
 import { BEIDE, anderer, zustaendig, nameVon } from '@/lib/crm/team';
 import type { Event } from '@/lib/crm/typen';
 import { neueId, datum } from '../daten';
@@ -42,6 +43,8 @@ function schonDa(liste: ChecklistenPunkt[], a: PunktAenderung): boolean {
 
 export function Checkliste({ e, api }: ReiterProps) {
   const crm = api.crm!;
+  // Restpunkte (24.10.): die Event-Vorlagen des Haushalts (angepasst + eigene).
+  const vorlagen = useEventVorlagen();
   const heute = crm.heute;
   const ich = api.ich;
   const [text, setText] = useState('');
@@ -164,7 +167,7 @@ export function Checkliste({ e, api }: ReiterProps) {
         <Leer>
           Noch keine Checkliste. Die Vorlage legt sechs Wochen Vorlauf an: Ziel (42 Tage), Gästeliste (28), persönliche Einladungen (21), Erinnerung (7), Technik (1), Nachfassen in 48 h, Wirkung nach 30 Tagen. Jeder Punkt liegt zuerst bei {nameVon(standard)} — je Punkt umverteilbar.
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-            {VORLAGEN.map(v => <Knopf key={v.id} leise onClick={() => void eventSetzen(api, e, vorlageAnwenden(e, v.id))}>{v.label}</Knopf>)}
+            {vorlagen.map(v => <Knopf key={v.id} leise onClick={() => void eventSetzen(api, e, vorlageAnwenden(e, v.id, vorlagen))}>{v.label}</Knopf>)}
           </div>
         </Leer>
       )}

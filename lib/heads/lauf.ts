@@ -105,7 +105,9 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   // seit dem letzten Lauf passiert ist — nur Arten, deren KI-Bereich frei ist; ihre Kategorien gehen ins Etikett.
   const ev = await import('@/lib/ereignisse/leser').catch(() => null);
   const geradeGeschrieben = a.person && ev ? await ev.geradeGeschriebenFuer(a.person).catch(() => new Set<string>()) : new Set<string>();
-  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele, { geradeGeschrieben }) as Record<string, unknown>;
+  // Restpunkte (24.10.): Kampagnen plant der Head mit den Playbooks des Haushalts (angepasst + eigene) — EINE Lesestelle; scheitert sie, die Vorgaben.
+  const playbooks = a.modus === 'kampagne' ? await (await import('@/lib/crm/vorlagen-anpassung-server')).playbooksDesHaushalts().catch(() => undefined) : undefined;
+  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele, { geradeGeschrieben, ...(playbooks ? { playbooks } : {}) }) as Record<string, unknown>;
   // Leistungstreppe & Positionierung (10.10., Produkte & Mandate) — nur der Head of Sales; Daten, nie Anweisung; ohne Pflege fehlt der Block.
   if (a.head === 'sales') { const t = await (await import('@/lib/crm/treppe-server')).treppeFuerHead(heute).catch(() => null); if (t) daten.leistungstreppe = t; }
   const ereignisKategorien: KiKategorie[] = [];

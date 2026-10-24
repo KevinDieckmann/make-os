@@ -31,7 +31,7 @@ import { lernstand, merksatzNeu, ABLEHNGRUENDE } from '@/lib/heads/lernen';
 import { ruecknehmbar } from '@/lib/heads/autonomie';
 import { uebersicht } from '@/lib/zoe/verbrauch';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { PLAYBOOKS, planen } from '@/lib/crm/kampagnen';
+import { planen } from '@/lib/crm/kampagnen';
 import { localDay, tagVon } from '@/lib/zeit';
 import { wer, verantwortlich, haeltBeziehung, nameVon, BEIDE } from '@/lib/crm/team';
 import { leererStand, standName, type HeadStand, type HeadVorschlag, type Status } from '@/lib/heads/stand';
@@ -203,10 +203,12 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
     if (status === 'angenommen' && t.art === 'merken') wohin = 'Gedächtnis des Heads';
     else if (status === 'angenommen' && t.kampagne) {
       // Kampagnen-Vorschlag → Entwurf im Marketing › Kampagnen (Personen aus dem Vorschlag, sonst Zielgruppe des Playbooks).
-      const pb = PLAYBOOKS.find(x => x.id === t.kampagne!.playbook);
+      // Restpunkte (24.10.): die Playbooks des Haushalts (angepasst + eigene) — EINE Lesestelle.
+      const alle = await (await import('@/lib/crm/vorlagen-anpassung-server')).playbooksDesHaushalts();
+      const pb = alle.find(x => x.id === t.kampagne!.playbook);
       const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
       const crm = await ladeCrm();
-      const basis = pb ?? { ...PLAYBOOKS[0], id: 'eigen', name: t.kampagne.name, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }] };
+      const basis = pb ?? { ...alle[0], id: 'eigen', segmentId: undefined, name: t.kampagne.name, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }] };
       const plan = planen(basis, kontakte, crm, localDay(), neueKennung('kp'), h === 'sales' ? 'head-sales' : 'head-marketing');
       const ids = t.kampagne.kontakt_ids.filter(id => kontakte.some(k => k.id === id && !ausgenommen(k)));
       // Zuständig: wer angenommen hat — die Kampagne gehört der Person, die sie führen will.

@@ -13,7 +13,7 @@ import { eventZahlen, followUpBis, nachfassenRest } from '@/lib/crm/events';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { mix, checklisteStand, zielHinweis, budgetSumme, gaesteVorschlag } from '@/lib/crm/eventplanung';
 import type { HeadId } from './prompt';
-import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen } from '@/lib/crm/kampagnen';
+import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen, type Playbook } from '@/lib/crm/kampagnen';
 import { leads as leadZeilen, fehltBisSqlZeile, salesBereit, mqlErreicht, geklaert, inArbeit, sqlEntscheidungOffen } from '@/lib/crm/leads';
 import { tagPlus } from '@/lib/zeit/kalender-kern';
 import { kanalLeistung } from '@/lib/crm/score';
@@ -78,7 +78,9 @@ export function dealSignale(c: CrmBestand['chancen'][number], personen: Kontakt[
 }
 
 /** `personName` null = Systemlauf des Takts: die Karten aller (werIstDran ohne Personenfilter), `meta.fuer` = null. */
-export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, personName: string | null, frueher: { titel: string; status: string }[], opt: WerIstDranOptionen = {}) {
+/** Restpunkte (24.10.): `playbooks` = die Playbooks des Haushalts (lib/crm/vorlagen-anpassung-server.ts `playbooksFuer`) — ohne Angabe die Vorgaben im Code. */
+export type DatenpaketOptionen = WerIstDranOptionen & { playbooks?: readonly Playbook[] };
+export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, personName: string | null, frueher: { titel: string; status: string }[], opt: DatenpaketOptionen = {}) {
   // Werbesperre und Einschränkung (Art. 18, U2): nie in ein Agentenpaket.
   const aktiv = kontakte.filter(k => !ausgenommen(k));
   const nachId = new Map(aktiv.map(k => [k.id, k]));
@@ -106,7 +108,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       meta,
       kundenprofil: { kunden: profil.firmen.map(f => ({ name: f.name, branche: f.branche, stadt: f.stadt, mitarbeiter: f.mitarbeiter })), branchen: profil.branchen, staedte: profil.staedte, groesse: profil.groesse, mrr_je_kunde: profil.mrrJeKunde },
       aehnliche: aehnlicheFirmen(crm, heute, 15).map(a => ({ firma: a.firma.name, branche: a.firma.branche, gruende: a.gruende, personen: (personenJeFirma.get(a.firma.id) ?? []).slice(0, 3).map(p) })),
-      playbooks: PLAYBOOKS.filter(pb => pb.fuer.includes(head === 'sales' ? 'head-sales' : 'head-marketing')).map(pb => {
+      playbooks: (opt.playbooks ?? PLAYBOOKS).filter(pb => pb.fuer.includes(head === 'sales' ? 'head-sales' : 'head-marketing')).map(pb => {
         const zg = zielgruppe(aktiv, crm, pb, heute);
         return { id: pb.id, name: pb.name, warum: pb.warum, kanal: pb.kanal, kennzahl: pb.kennzahl, recht: pb.recht, zielgruppe_anzahl: zg.length, zielgruppe: zg.slice(0, 20).map(p) };
       }),

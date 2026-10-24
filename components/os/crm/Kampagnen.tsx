@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { useLinkAuswahl } from '../Verlauf';
 import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { dealAkte } from '@/lib/crm/adresse';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT, ZeileAktionen, Hinweis } from '../ui';
@@ -44,9 +44,10 @@ import { DealAusQuelle } from './marketing/DealAusQuelle';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { NEU_MAX, kampagneInPowerHour } from '@/lib/crm/heute';
 import { weltDerKampagne, sichtbareKampagnen } from '@/lib/crm/kampagnen-welt';
+import { PlaybooksBearbeiten } from './vorlagen/PlaybooksBearbeiten';
 
 interface Daten {
-  heute: string; playbooks: (Playbook & { anzahl: number })[];
+  heute: string; playbooks: (Playbook & { anzahl: number; hinweise?: string[] })[];
   profil: { kunden: { id: string; name: string; branche?: string; stadt?: string }[]; branchen: string[]; staedte: string[]; groesse: { min: number; max: number } | null; mrrJeKunde: { kunde: string; mrr: number; health: number | null }[] };
   aehnliche: { id: string; name: string; branche?: string; stadt?: string; punkte: number; gruende: string[]; personen: { id: string; name: string }[] }[];
   zahlen: Record<string, KampagnenZahlen>;
@@ -70,6 +71,16 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
   const [fehler, setFehler] = useState<string | null>(null);
   const ablage = useCrmAblage(api, 'kampagnen');
   const [sicht, setSicht] = useAblageSicht(() => setOffen(null));
+  // Restpunkte (24.10.): Playbooks bearbeiten — offen über den Knopf oder den Link der Stellschraube (`vorlagen=1`, WEG.vorlagenBearbeiten).
+  const adresse = useSearchParams();
+  const pfad = usePathname();
+  const router = useRouter();
+  const [bearbeiten, setBearbeiten] = useState<{ start?: string } | null>(null);
+  useEffect(() => { if (adresse?.get('vorlagen') === '1') setBearbeiten({}); }, [adresse]);
+  const bearbeitenZu = () => {
+    setBearbeiten(null);
+    if (adresse?.get('vorlagen')) { const q = new URLSearchParams(adresse.toString()); q.delete('vorlagen'); router.replace(`${pfad}${q.toString() ? `?${q}` : ''}`); }
+  };
   const laden = useCallback(() => fetch('/api/crm/kampagnen', { cache: 'no-store' }).then(r => r.json()).then(x => { if (x.ok) { setD(x); setFehler(null); } else setFehler(x.fehler ?? 'Kampagnen nicht geladen.'); }).catch(() => setFehler('Kampagnen nicht erreichbar.')), []);
   useEffect(() => { void laden(); }, [laden]);
   useEffect(() => { try { const s = sessionStorage.getItem('crm-kampagne-segment'); if (s) { setSegmentPlan(s); sessionStorage.removeItem('crm-kampagne-segment'); } } catch { /* ohne Speicher */ } }, []);
@@ -170,21 +181,26 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
 
       <Karte i={3}>
         {/* 5.6 (08.10.): eine eigene (leere) Kampagne geht auch ohne Segment — Personen danach über die Suche hinzufügen. */}
-        <Ueberschrift rechts={<Knopf leise onClick={() => planen('eigen')}>Eigene Kampagne</Knopf>}>Bewährtes Vorgehen</Ueberschrift>
+        <Ueberschrift rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}><Knopf leise onClick={() => setBearbeiten({})}>Playbooks bearbeiten</Knopf><Knopf leise onClick={() => planen('eigen')}>Eigene Kampagne</Knopf></span>}>Bewährtes Vorgehen</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 10 }}>
           {d.playbooks.map(p => (
             <div key={p.id} style={{ padding: 14, borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 6, alignContent: 'start' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><b style={{ fontSize: TYP.body }}>{p.name}</b><Chip farbe={p.anzahl ? LEUCHT.business : C.inkLeise}>{p.anzahl} Personen</Chip></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><b style={{ fontSize: TYP.body }}>{p.name}</b><span style={{ display: 'inline-flex', gap: 6 }}>{(p.eigen || p.angepasst) && <Chip farbe={C.aktiv}>{p.eigen ? 'eigen' : 'angepasst'}</Chip>}<Chip farbe={p.anzahl ? LEUCHT.business : C.inkLeise}>{p.anzahl} Personen</Chip></span></div>
               <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{p.warum}</div>
               <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kanal: {KANAL_LABEL[p.kanal]} · Messgröße: {p.kennzahl} · {p.fuer.map(f => (f === 'head-sales' ? 'Sales' : 'Marketing')).join(' & ')}</div>
               <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>⚖ {p.recht}</div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><Knopf leise aus={!p.anzahl} onClick={() => planen(p.id)}>Kampagne planen</Knopf>{!p.anzahl && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Zielgruppe heute leer — „Eigene Kampagne“ geht immer.</span>}</div>
+              {(p.hinweise ?? []).map(h => <div key={h} style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{h}</div>)}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><Knopf leise aus={!p.anzahl} onClick={() => planen(p.id)}>Kampagne planen</Knopf><Knopf leise onClick={() => setBearbeiten({ start: p.id })}>Bearbeiten</Knopf>{!p.anzahl && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Zielgruppe heute leer — „Eigene Kampagne“ geht immer.</span>}</div>
             </div>
           ))}
         </div>
       </Karte>
       {ablage.dialog}
       {ablage.hinweis}
+      {bearbeiten && (
+        <PlaybooksBearbeiten start={bearbeiten.start} onZu={bearbeitenZu} onGeaendert={() => void laden()}
+          segmente={(api.crm?.stand.segmente ?? []).filter(sg => !sg.geloeschtAm).map(sg => ({ id: sg.id, name: sg.name }))} />
+      )}
     </>
   );
 }

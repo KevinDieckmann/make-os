@@ -38,12 +38,11 @@ import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { aufgabeErledigenNachFollowUp } from '@/lib/crm/followup-aufgabe-server';
 import type { FollowUp } from '@/lib/crm/typen';
-import { neueKennung } from '@/lib/kennung';
-import { seiteSauber, mailLinkMoeglich, mailLinkPfad, vorbereitenErledigen, buchungenDesGasts, gastAdresse, notizOhneGast, titelOhneGast, GRENZEN, OFFEN, type Buchung, type BuchungsSeite } from '@/lib/kalender/buchung';
-import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, neuerSlug, neuesToken, mailTokenHash } from '@/lib/kalender/buchung-speicher';
+import { mailLinkMoeglich, mailLinkPfad, vorbereitenErledigen, buchungenDesGasts, gastAdresse, notizOhneGast, titelOhneGast, OFFEN, type Buchung } from '@/lib/kalender/buchung';
+import { ladeBuchungBestand, aendereBuchungBestand, buchungProtokoll, neuesToken, mailTokenHash } from '@/lib/kalender/buchung-speicher';
 import { buchungFreigeben, folgeVorschlag, FreigabeFehler } from '@/lib/kalender/buchung-ablauf';
+import { seiteSpeichern } from '@/lib/kalender/buchung-seite-server';
 import { istDienst } from '@/lib/zugang/dienst';
-import { personImHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { buchungKopie } from '@/lib/crm/person-auskunft-kalender';
@@ -114,31 +113,12 @@ export async function POST(req: Request) {
   const stand = typeof b.stand === 'string' ? b.stand : null;
 
   if (b.aktion === 'seite') {
+    // Restpunkte (24.10.): die Fachregeln stehen in der EINEN Schreibstelle (lib/kalender/buchung-seite-server.ts) — auch die Maske im Steckbrief der
+    // Prozesse schreibt darüber (lib/prozesse/stellschrauben-weiter-server.ts).
     const roh = (b.seite && typeof b.seite === 'object' ? b.seite : {}) as Record<string, unknown>;
-    const id = typeof roh.id === 'string' && ID.test(roh.id) ? roh.id : null;
-    // #13: die Seite bucht für eine Person — sie muss zum Haushalt des Inhabers gehören (sonst ginge ihre Belegung/Glocke ins Leere oder nach außen).
-    const fuer = typeof roh.person === 'string' ? roh.person.trim() : '';
-    if (!(await personImHaushaltDesInhabers(fuer))) return nein('Für wen ist die Seite? Nur für eine Person des Haushalts.', 400);
-    let fehler = '', status = 400, gespeichert: BuchungsSeite | null = null;
-    // Verantwortlicher (05.10.): steht er in der Einrichtung (System › Datenschutz), ist das Feld der Seite nur noch eine Abweichung.
-    const einrichtung = !!(await datenschutzOeffentlichLaden()).verantwortlich;
-    await aendereBuchungBestand(bs => {
-      const vorher = id ? bs.seiten.find(s => s.id === id) : undefined;
-      if (id && !vorher) { fehler = 'Buchungsseite nicht gefunden.'; status = 404; return bs; }
-      // #15: nur auf der Fassung ändern, die gelesen wurde — sonst 409 (ein anderes Fenster, Kevin und Malin gleichzeitig).
-      if (vorher && stand !== vorher.geaendert) { fehler = 'Die Seite wurde inzwischen geändert — bitte neu laden.'; status = 409; return bs; }
-      if (!vorher && bs.seiten.length >= GRENZEN.seiten) { fehler = `Höchstens ${GRENZEN.seiten} Buchungsseiten.`; status = 413; return bs; }
-      const titel = typeof roh.titel === 'string' ? roh.titel : '';
-      const fest = vorher ? { id: vorher.id, slug: vorher.slug, angelegt: vorher.angelegt } : { id: neueKennung('bs'), slug: neuerSlug(titel), angelegt: jetztIso };
-      const r = seiteSauber(roh, fest, person, jetztIso, { einrichtung });
-      if (!r.ok) { fehler = r.fehler; return bs; }
-      gespeichert = r.seite;
-      return { ...bs, seiten: vorher ? bs.seiten.map(s => (s.id === vorher.id ? r.seite : s)) : [...bs.seiten, r.seite] };
-    }, jetzt);
-    if (!gespeichert) return nein(fehler || 'Nicht gespeichert.', status);
-    const s = gespeichert as BuchungsSeite;
-    await buchungProtokoll([{ liste: 'seiten', op: id ? 'geaendert' : 'neu', id: s.id }], wer);
-    return NextResponse.json({ ok: true, seite: { ...s, pfad: `/buchen/${s.slug}` } });
+    const r = await seiteSpeichern(roh, { stand, person, wer, jetzt });
+    if (!r.ok) return nein(r.fehler, r.status);
+    return NextResponse.json({ ok: true, seite: { ...r.seite, pfad: `/buchen/${r.seite.slug}` } });
   }
 
   if (b.aktion === 'seite-loeschen') {

@@ -40,6 +40,7 @@ async function senden(s: Stellschraube, wert: StellschraubeWert | 'vorgabe', sta
 const OHNE_RECHT: Readonly<Record<string, string>> = {
   prozesse: 'Ändern dürfen volle Mitglieder des Haushalts.',
   mahntage: 'Die Mahnstufen ändert, wer vollen Zugang zu den Finanzen hat.',
+  head: 'Die Agenten-Regler der Heads ändert nur der Inhaber.',
 };
 
 function Feld({ s, darf, stand, onGespeichert }: { s: Stellschraube; darf: boolean; stand: string | undefined; onGespeichert: () => Promise<void> | void }) {
@@ -69,6 +70,13 @@ function Feld({ s, darf, stand, onGespeichert }: { s: Stellschraube; darf: boole
   if (darf) {
     if (s.art === 'schalter') {
       eingabe = <Schalter an={s.wert === true} aus={laeuft} onChange={v => void speichern(v)} erklaerung={[{ kopf: s.name, text: s.erklaerung }]}>{s.wert === true ? 'an' : 'aus'}</Schalter>;
+    } else if (s.art === 'auswahl') {
+      // Restpunkte (24.10.): Modellstufe und Autonomie der Heads — eine der Optionen; der Server prüft noch einmal (Autonomie nur verschärfen).
+      eingabe = (
+        <select aria-label={s.name} value={typeof s.wert === 'string' ? s.wert : ''} disabled={laeuft} style={auswahlStil} onChange={e => void speichern(e.target.value)}>
+          {(s.optionen ?? []).map(o => <option key={o.wert} value={o.wert}>{o.text}</option>)}
+        </select>
+      );
     } else if (s.art === 'stunde' || s.art === 'wochentag') {
       const optionen = s.art === 'stunde' ? Array.from({ length: 24 }, (_, h) => ({ v: h, t: `ab ${h} Uhr` })) : WOCHE_REIHE.map(w => ({ v: w, t: WOCHENTAGE[w] }));
       eingabe = (
@@ -108,7 +116,12 @@ function Feld({ s, darf, stand, onGespeichert }: { s: Stellschraube; darf: boole
       </div>
       {!darf && aenderbar(s) && s.weg && <p style={{ ...klein, color: C.inkLeise }}>{OHNE_RECHT[s.weg.art] ?? 'Ändern darf, wer die Fachseite bearbeiten darf.'}</p>}
       <p style={{ ...klein, color: C.inkLeise }}>{ortSatz(s.wo)}</p>
-      {meldung && <Hinweis art={meldung.art === 'gut' ? 'gut' : meldung.art === 'konflikt' ? 'achtung' : 'kritisch'} rolle={meldung.art === 'gut' ? 'status' : 'alert'}>{meldung.text}</Hinweis>}
+      {meldung && (
+        <Hinweis art={meldung.art === 'gut' ? 'gut' : meldung.art === 'konflikt' ? 'achtung' : 'kritisch'} rolle={meldung.art === 'gut' ? 'status' : 'alert'}
+          aktion={meldung.art === 'konflikt' ? <Knopf leise onClick={async () => { await onGespeichert(); setMeldung(null); }}>Neu laden</Knopf> : undefined}>
+          {meldung.text}
+        </Hinweis>
+      )}
     </li>
   );
 }

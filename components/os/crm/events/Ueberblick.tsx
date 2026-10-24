@@ -8,7 +8,8 @@
 
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Ueberschrift, Zahl, Raster, Chip, LEUCHT } from '../../ui';
-import { mix, zielHinweis, checklisteStand, vorlageAnwenden, VORLAGEN, budgetSumme, arbeitJePerson, punktWer, type VorlageId } from '@/lib/crm/eventplanung';
+import { mix, zielHinweis, checklisteStand, vorlageAnwenden, budgetSumme, arbeitJePerson, punktWer } from '@/lib/crm/eventplanung';
+import { useEventVorlagen } from '../vorlagen/daten';
 import { TEAM, zustaendig } from '@/lib/crm/team';
 import type { Event } from '@/lib/crm/typen';
 import { datum, euro } from '../daten';
@@ -24,6 +25,8 @@ export function Ueberblick({ e, api, zuReiter, ablage }: ReiterProps & { zuReite
   const crm = api.crm!;
   // Ohne Liste darüber (z. B. eingebettet) ein eigener Weg — sonst der der Liste, damit „Rückgängig“ stehen bleibt.
   const eigeneAblage = useCrmAblage(api, 'events');
+  // Restpunkte (24.10.): die Event-Vorlagen des Haushalts (angepasst + eigene).
+  const vorlagen = useEventVorlagen();
   const heute = crm.heute;
   const z = crm.events[e.id];
   const gaeste = crm.stand.teilnahmen.filter(t => t.eventId === e.id);
@@ -142,7 +145,7 @@ export function Ueberblick({ e, api, zuReiter, ablage }: ReiterProps & { zuReite
         <Feldzeile label="Reihe"><ReiheWahl wert={e.reihe} onWahl={reihe => setze({ reihe })} /></Feldzeile>
         <Feldzeile label="Vorlage">
           <div style={{ display: 'grid', gap: 4 }}>
-            <Wahl label="Vorlage" leer="+ Vorlage anwenden" liste={VORLAGEN.map(v => ({ id: v.id, label: v.label }))} wert={(e.vorlage as VorlageId | undefined) ?? null} onWahl={id => setze(vorlageAnwenden(e, id))} />
+            <Wahl label="Vorlage" leer="+ Vorlage anwenden" liste={vorlagen.map(v => ({ id: v.id, label: v.label }))} wert={e.vorlage ?? null} onWahl={id => setze(vorlageAnwenden(e, id, vorlagen))} />
             <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Ergänzt Ablauf, Checkliste und Budget — nur, was fehlt. Nichts wird überschrieben.</span>
           </div>
         </Feldzeile>

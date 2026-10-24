@@ -822,6 +822,9 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'beendete Läufe nach der Frist „prozess-laeufe“ (Vorgabe 12 Monate ab Ende, Stammdaten › Datenschutz) im täglichen Löschfristen-Lauf; offene Läufe bleiben, bis sie enden (Art. 18/Werbesperre beenden sie sofort)',
   }),
   K('crm-scoring', 'Scoring-Einstellungen des CRM (Kriterien, Stufen, Schwellen MQL/SQL) samt früheren Fassungen und Vermerk wer/wann — keine Personendaten (Leads tragen ihre Antworten selbst, in crm/kontakte).'),
+  // Restpunkte (24.10., lib/crm/vorlagen-anpassung-server.ts): Vorlagen der Markttraktion je Haushalt — nur Abweichungen von den Vorgaben im Code und eigene Kopien.
+  K('kampagnen-vorlagen--*', 'Playbooks der Kampagnen je Haushalt: Abweichungen von den Vorgaben (Name, Texte, Kanal, Segment-Vorschlag als Kennung, Nachfass-Schritte) und eigene Kopien — Geschäftswissen, keine Personendaten (wer geändert hat, steht nur im Änderungsprotokoll); Rechtshinweise bleiben im Code.'),
+  K('event-vorlagen--*', 'Vorlagen eigener Abende je Haushalt: Abweichungen von den Vorgaben (Name, Beschreibung, Uhrzeit, Plätze, Soll-Mischung, Ablauf, Checkliste, Budget-Posten ohne Beträge) und eigene Kopien — keine Personendaten.'),
   K('traktion-verlauf', 'Markttraktion-Kennzahlen je Tag (nur Zahlen).'),
   K('finanzchef-einstellung', 'Einstellungen des Finanzchefs.'),
   K('performance--*', 'Wachstums-Score je Person (Zahlen) — Altbestand, wird seit 21.10. nicht mehr geschrieben.'),
@@ -876,7 +879,7 @@ const IN_PRIVAT: readonly string[] = [
 const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
-  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'markttraktion-planung--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
+  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
   'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',

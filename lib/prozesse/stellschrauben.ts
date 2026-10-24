@@ -7,8 +7,11 @@
 //   · ohne `weg` ist eine Stellschraube nur zu sehen (eine Maske in der Fachseite → `link`, oder gesetzlich fest → `fest`).
 // Hier steht nur das Modell und die reinen Helfer: Wert als Text, Eingabe lesen, die Anfrage an die Route bauen (`anfrageFuer`). Rechnet nichts aus Beständen.
 
-/** Wie eine Stellschraube eingegeben wird. `fest` = nicht einstellbar (Gesetz), `info` = nur ein Wert zum Ansehen (Maske in der Fachseite). */
-export type StellschraubeArt = 'zahl' | 'schalter' | 'stunde' | 'wochentag' | 'tage-liste' | 'info' | 'fest';
+/**
+ * Wie eine Stellschraube eingegeben wird. `fest` = nicht einstellbar (Gesetz), `info` = nur ein Wert zum Ansehen (Maske in der Fachseite), `auswahl` = eine der
+ * `optionen` (Restpunkte 24.10.: Modellstufe und Autonomie der Heads).
+ */
+export type StellschraubeArt = 'zahl' | 'schalter' | 'stunde' | 'wochentag' | 'tage-liste' | 'auswahl' | 'info' | 'fest';
 export type StellschraubeWert = number | boolean | number[] | string | null;
 
 /**
@@ -19,6 +22,12 @@ export type StellschraubeWert = number | boolean | number[] | string | null;
  *   mahntage        POST /api/rechnung (mahntage)                 `rechnungswesen` — die drei Mahnstufen zusammen (steigend)
  *   puls-schwelle   POST /api/fulfillment/kunde (puls-schwelle)   `fulfillment--<h>.einstellungen`
  *   fulfillment     PATCH /api/fulfillment (einstellungen)        `fulfillment--<h>.einstellungen` — Willkommen, Nachsorge
+ * Restpunkte (24.10., Kevin 22.10.: „alles muss anpassbar sein“): drei Masken, deren Route ein GANZES Objekt erwartet (Scoring-Einstellungen, Buchungsseite,
+ * Head-Einstellung). Die Karte schickt nur Feld + Wert + den gelesenen Stand an POST /api/prozesse/stellschrauben/weiter — der Server
+ * (lib/prozesse/stellschrauben-weiter-server.ts) liest den aktuellen Stand, prüft ihn (409) und leitet an DIESELBE Schreibstelle weiter wie die Fachseite:
+ *   scoring         `scoringSchreiben` (lib/crm/scoring-server.ts)   Bestand `crm-scoring` — MQL-/SQL-Schwelle, Temperatur (Fragen/Stufen/Muss bleiben im Reiter Scoring)
+ *   buchung         `seiteSpeichern` (lib/kalender/buchung-seite-server.ts, auch die Route /api/kalender/buchung) — An/aus, Dauer, Vorlauf, je Tag, Puffer einer Seite
+ *   head            `einstellungAendern` (lib/agenten/einstellung.ts, auch POST /api/agenten) — An/aus, Modell, Budget, Autonomie (nur verschärfen); nur der Inhaber
  */
 export type StellschraubeWeg =
   | { art: 'prozesse'; id: string }
@@ -26,7 +35,21 @@ export type StellschraubeWeg =
   | { art: 'loeschfrist'; id: string }
   | { art: 'mahntage'; stufe: 0 | 1 | 2; tage: [number, number, number] }
   | { art: 'puls-schwelle' }
-  | { art: 'fulfillment'; feld: 'willkommenStunden' | 'nachsorgeTage' };
+  | { art: 'fulfillment'; feld: 'willkommenStunden' | 'nachsorgeTage' }
+  | { art: 'scoring'; feld: ScoringFeld; stand: string }
+  | { art: 'buchung'; seite: string; feld: BuchungFeld; stand: string }
+  | { art: 'head'; head: string; feld: HeadFeld; stand: string };
+/** Was die Steckbrief-Maske am Scoring ändert: die Schwellen der zwei Seiten und die drei Temperatur-Grenzen. */
+export const SCORING_FELDER = ['marketing', 'sales', 'lau', 'warm', 'heiss'] as const;
+export type ScoringFeld = typeof SCORING_FELDER[number];
+/** Was die Steckbrief-Maske an einer Buchungsseite ändert (Fenster, Fragen, Ort, Verantwortlicher bleiben in der Verwaltung). */
+export const BUCHUNG_FELDER = ['aktiv', 'dauerMin', 'vorlaufMin', 'maxJeTag', 'pufferMin'] as const;
+export type BuchungFeld = typeof BUCHUNG_FELDER[number];
+/** Was die Steckbrief-Maske an einem Business-Head ändert (`budget` in Euro — der Server rechnet in Cent). Not-Aus, Auftrag, Wissen bleiben in ZOE › Agenten. */
+export const HEAD_FELDER = ['aktiv', 'stufe', 'budget', 'autonomie'] as const;
+export type HeadFeld = typeof HEAD_FELDER[number];
+/** Der Weg, über den diese drei Masken schreiben (eine Route, die weiterleitet). */
+export const WEITER_URL = '/api/prozesse/stellschrauben/weiter?space=business';
 export type StellschraubeWegArt = StellschraubeWeg['art'];
 
 /**
@@ -43,13 +66,14 @@ export const STELLSCHRAUBE_ORT = {
   rechnungswesen: 'Gespeichert in den Einstellungen des Rechnungswesens',
   loeschfristen: 'Gespeichert bei den Löschfristen des Datenschutzes',
   prozesse: 'Gespeichert in den Einstellungen der Prozesse',
+  vorlagen: 'Gespeichert bei den Vorlagen der Markttraktion',
   gesetz: 'Fest im Gesetz',
   system: 'Fest im System',
 } as const;
 export type StellschraubeOrt = keyof typeof STELLSCHRAUBE_ORT;
 /** Der Satz zum Ort (unbekannte Kennung: „Fest im System“ — nie eine Kennung auf dem Bildschirm). */
 export const ortSatz = (wo: string): string => (STELLSCHRAUBE_ORT as Record<string, string>)[wo] ?? STELLSCHRAUBE_ORT.system;
-export const STELLSCHRAUBE_WEGE: readonly StellschraubeWegArt[] = ['prozesse', 'wertelisten', 'loeschfrist', 'mahntage', 'puls-schwelle', 'fulfillment'];
+export const STELLSCHRAUBE_WEGE: readonly StellschraubeWegArt[] = ['prozesse', 'wertelisten', 'loeschfrist', 'mahntage', 'puls-schwelle', 'fulfillment', 'scoring', 'buchung', 'head'];
 
 export interface Stellschraube {
   /** Eindeutig im Prozess (Schlüssel der Oberfläche). */
@@ -65,6 +89,8 @@ export interface Stellschraube {
   vorgabe?: StellschraubeWert;
   einheit?: string;
   min?: number; max?: number;
+  /** Nur `auswahl`: die wählbaren Werte (Anzeige-Text je Wert). */
+  optionen?: readonly { wert: string; text: string }[];
   /** Wo der Wert gespeichert ist — eine Kennung; die Oberfläche zeigt den Satz aus `STELLSCHRAUBE_ORT` (nie Dateipfade oder Bestandsnamen). */
   wo: StellschraubeOrt;
   /** Wie eine Änderung gespeichert wird — fehlt = nur ansehen. */
@@ -91,11 +117,12 @@ export const darfAendern = (s: Pick<Stellschraube, 'weg' | 'art'>, rechte: Stell
 export const einstellbar = (p: { stellschrauben?: readonly Stellschraube[] }): boolean => !!p.stellschrauben?.some(aenderbar);
 
 /** Ein Wert als Text (Anzeige, auch für „Vorgabe: …“). */
-export function wertText(s: Pick<Stellschraube, 'art' | 'einheit'>, w: StellschraubeWert | undefined): string {
+export function wertText(s: Pick<Stellschraube, 'art' | 'einheit'> & Partial<Pick<Stellschraube, 'optionen'>>, w: StellschraubeWert | undefined): string {
   if (w === null || w === undefined || w === '') return '—';
   if (s.art === 'schalter') return w === true ? 'an' : 'aus';
   if (s.art === 'stunde' && typeof w === 'number') return `ab ${w} Uhr`;
   if (s.art === 'wochentag' && typeof w === 'number') return WOCHENTAGE[((w % 7) + 7) % 7];
+  if (s.art === 'auswahl' && typeof w === 'string') return s.optionen?.find(o => o.wert === w)?.text ?? w;
   if (Array.isArray(w)) return `${w.join(' · ')}${s.einheit ? ` ${s.einheit}` : ''}`;
   if (typeof w === 'number') return `${w.toLocaleString('de-DE')}${s.einheit ? ` ${s.einheit}` : ''}`;
   return String(w);
@@ -105,8 +132,12 @@ export function wertText(s: Pick<Stellschraube, 'art' | 'einheit'>, w: Stellschr
  * Eine Eingabe lesen und prüfen (dieselben Grenzen, die der Server prüft — der Server bleibt die Wahrheit). Leer bei einer Stellschraube ohne Vorgabe = löschen
  * (`null`). Liefert den Wert oder einen Satz.
  */
-export function eingabeLesen(s: Pick<Stellschraube, 'art' | 'min' | 'max' | 'name' | 'einheit' | 'vorgabe'>, roh: string | boolean): { ok: true; wert: StellschraubeWert } | { ok: false; fehler: string } {
+export function eingabeLesen(s: Pick<Stellschraube, 'art' | 'min' | 'max' | 'name' | 'einheit' | 'vorgabe'> & Partial<Pick<Stellschraube, 'optionen'>>, roh: string | boolean): { ok: true; wert: StellschraubeWert } | { ok: false; fehler: string } {
   if (s.art === 'schalter') return typeof roh === 'boolean' ? { ok: true, wert: roh } : { ok: false, fehler: 'an oder aus.' };
+  if (s.art === 'auswahl') {
+    const o = s.optionen?.find(x => x.wert === roh);
+    return o ? { ok: true, wert: o.wert } : { ok: false, fehler: `${s.name}: ${(s.optionen ?? []).map(x => x.text).join(', ') || 'keine Wahl'}.` };
+  }
   const t = String(roh).trim();
   if (!t && s.vorgabe === undefined) return { ok: true, wert: null };
   if (s.art === 'tage-liste') {
@@ -157,5 +188,10 @@ export function anfrageFuer(s: Pick<Stellschraube, 'weg' | 'art' | 'vorgabe'>, w
       if (v === null || v === undefined) return null;
       return { url: '/api/fulfillment?space=business', method: 'PATCH', body: { ops: [{ op: 'einstellungen', felder: { [w.feld]: v } }] } };
     }
+    // Restpunkte (24.10.): Feld, Wert und gelesener Stand — `null` = zurück auf die Vorgabe (der Server setzt sie ein).
+    case 'scoring':
+    case 'buchung':
+    case 'head':
+      return { url: WEITER_URL, method: 'POST', body: { weg: w, wert: neu } };
   }
 }

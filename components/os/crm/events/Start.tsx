@@ -10,10 +10,11 @@
 // zeigt die Liste wieder „+ Event“.
 
 import { localDay } from '@/lib/zeit';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Knopf, feld, LEUCHT } from '../../ui';
-import { VORLAGEN, vorlageAnwenden, zielHinweis, MIX_STANDARD, type VorlageId } from '@/lib/crm/eventplanung';
+import { VORLAGEN, vorlageAnwenden, zielHinweis, MIX_STANDARD } from '@/lib/crm/eventplanung';
+import { useEventVorlagen } from '../vorlagen/daten';
 import { verantwortlich, nameVon } from '@/lib/crm/team';
 import type { Event } from '@/lib/crm/typen';
 import { type CrmApi, neueId, plusTage } from '../daten';
@@ -23,7 +24,7 @@ import { ZustaendigWahl } from '../team';
 import { FORMATE, MarkeWahl, ReiheWahl } from './gemeinsam';
 import { MARKE_EVENTS, reiheName, eventTitelVorschlag } from '@/lib/crm/marke';
 
-type Wahl = VorlageId | 'ohne';
+type Wahl = string;
 const OHNE = { id: 'ohne' as const, label: 'Ohne Vorlage' };
 
 /** Blockiert nur, was kein Ziel ist: leer oder „Netzwerken“ ohne Zahl. Eine fehlende Zahl ist ein Hinweis, kein Stopp. */
@@ -32,15 +33,17 @@ const zielReicht = (ziel: string, hinweis: string | null) => !!ziel.trim() && !(
 export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) => void }) {
   const heute = api.crm?.heute ?? localDay();
   const [wahl, setWahl] = useState<Wahl>('stammtisch');
-  const vorlage = VORLAGEN.find(v => v.id === wahl);
+  // Restpunkte (24.10.): die Vorlagen des Haushalts (angepasst + eigene) — bis zur Antwort die Vorgaben.
+  const vorlagen = useEventVorlagen();
+  const vorlage = vorlagen.find(v => v.id === wahl);
   const [titel, setTitel] = useState('');
   const [datum, setDatum] = useState(plusTage(heute, 42));
-  const [uhrzeit, setUhrzeit] = useState(VORLAGEN[0].uhrzeit);
+  const [uhrzeit, setUhrzeit] = useState((vorlage ?? VORLAGEN[0]).uhrzeit);
   const [ort, setOrt] = useState('');
   const [ziel, setZiel] = useState('');
   const [format, setFormat] = useState<Event['format']>('stammtisch');
-  const [kapazitaet, setKapazitaet] = useState(String(VORLAGEN[0].kapazitaet));
-  const [mixZiel, setMixZiel] = useState({ ...VORLAGEN[0].mixZiel });
+  const [kapazitaet, setKapazitaet] = useState(String((vorlage ?? VORLAGEN[0]).kapazitaet));
+  const [mixZiel, setMixZiel] = useState({ ...(vorlage ?? VORLAGEN[0]).mixZiel });
   const [zustaendig, setZustaendig] = useState<string | undefined>(undefined);
   // Marke (27.09.): Vorgabe Make.One — undefined heißt abgeleitet, gespeichert wird sie beim Anlegen trotzdem ausdrücklich.
   const [marke, setMarke] = useState<string | undefined>(undefined);
@@ -53,9 +56,9 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
   const bereit = zielReicht(ziel, hinweis) && /^\d{4}-\d{2}-\d{2}$/.test(datum) && !laeuft;
 
   /** Vorlage wechseln: Uhrzeit, Kapazität, Mischung und Format folgen — nur, solange niemand etwas anderes getippt hat, sonst bleibt der Wert. */
-  const waehle = (w: Wahl) => {
-    const alt = VORLAGEN.find(v => v.id === wahl);
-    const neu = VORLAGEN.find(v => v.id === w);
+  const waehle = (w: Wahl, liste = vorlagen, altListe = vorlagen) => {
+    const alt = altListe.find(v => v.id === wahl);
+    const neu = liste.find(v => v.id === w);
     setWahl(w);
     if (!neu) { if (!alt || format === alt.format) setFormat('sonstig'); return; }
     if (!alt || uhrzeit === alt.uhrzeit) setUhrzeit(neu.uhrzeit);
@@ -63,6 +66,13 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
     if (!alt || (mixZiel.zielkunden === alt.mixZiel.zielkunden && mixZiel.kunden === alt.mixZiel.kunden)) setMixZiel({ ...neu.mixZiel });
     if (!alt || format === alt.format) setFormat(neu.format);
   };
+
+  // Kommen die Vorlagen des Haushalts an (eine angepasste Vorgabe), folgen Uhrzeit, Plätze und Mischung — nur, solange niemand etwas getippt hat.
+  const vorige = useRef(vorlagen);
+  useEffect(() => {
+    if (vorige.current !== vorlagen) { const alt = vorige.current; vorige.current = vorlagen; waehle(wahl, vorlagen, alt); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur, wenn neue Vorlagen ankommen
+  }, [vorlagen]);
 
   const anlegen = async () => {
     if (!bereit) return;
@@ -75,7 +85,7 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
       mixZiel: { zielkunden: mixZiel.zielkunden, kunden: mixZiel.kunden },
       status: 'geplant', ...(zustaendig ? { zustaendig } : {}), marke: marke ?? MARKE_EVENTS, ...(reihe ? { reihe } : {}), geaendert: new Date().toISOString(),
     };
-    const e = vorlage ? vorlageAnwenden(basis, vorlage.id) : basis;
+    const e = vorlage ? vorlageAnwenden(basis, vorlage.id, vorlagen) : basis;
     setFehler(null);
     const ok = await api.setze('events', e as unknown as { id: string } & Record<string, unknown>);
     setLaeuft(false);
@@ -96,7 +106,7 @@ export function Start({ api, onFertig }: { api: CrmApi; onFertig: (id: string) =
 
       <Feldzeile label="Vorlage">
         <div style={{ display: 'grid', gap: 6 }}>
-          <WahlChip label="Vorlage" liste={[...VORLAGEN.map(v => ({ id: v.id as Wahl, label: v.label })), OHNE]} wert={wahl} onWahl={waehle} farbe={LEUCHT.beziehung} />
+          <WahlChip label="Vorlage" liste={[...vorlagen.map(v => ({ id: v.id as Wahl, label: v.label })), OHNE]} wert={wahl} onWahl={w => waehle(w)} farbe={LEUCHT.beziehung} />
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{vorlage ? `${vorlage.beschreibung} Ablauf, Checkliste (${vorlage.checkliste.length} Punkte) und Budgetposten kommen mit.` : 'Leeres Event — Format, Ablauf und Checkliste baust du selbst auf.'}</span>
         </div>
       </Feldzeile>

@@ -4,6 +4,16 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 24.10.2026 — Restpunkte des großen Updates: Stellschrauben-Masken, Vorlagen bearbeitbar (nur lokal — Branch `prozesse-restpunkte`, Basis cf323838)
+Kevin 22.10.: „alles muss anpassbar sein und es muss auch immer mal wieder zu bearbeiten sein.“
+- **Masken im Steckbrief:** Scoring (MQL/SQL-Schwelle, Temperatur), Buchungsseiten (je Seite An/aus, Dauer, Vorlauf, je Tag, Puffer), Business-Heads (An/aus, Modell,
+  Budget, Autonomie — nur der Inhaber) über `POST /api/prozesse/stellschrauben/weiter` an dieselbe Schreibstelle wie die Fachseite (Stand/409, Grenzen 400).
+- **Playbooks und Event-Vorlagen bearbeitbar** (Marketing › Kampagnen „Playbooks bearbeiten“, Make.One „Vorlagen bearbeiten“, Link der Stellschraube): je Haushalt
+  nur Abweichungen + eigene Kopien; Rechtshinweise fest im Code; ändern nur volle Mitglieder (Rolle „nur Business“ liest).
+- **Rückweg:** nur zwei neue Bestände (`kampagnen-vorlagen--<h>`, `event-vorlagen--<h>`) und eine Route — der alte Stand kennt sie nicht und liest die Code-Vorlagen
+  (Anpassungen ruhen, nichts geht verloren); Kampagnen/Events, die aus einer eigenen Kopie (`pb-…`/`evv-…`) geplant wurden, behalten Namen, Schritte und Kennung.
+  Die Buchungs-Route schreibt Seiten über die herausgelöste Stelle `seiteSpeichern` — Verhalten unverändert.
+
 ## 22.10.2026 — Feste Prozesse echt überführen (Paket Ü, nur lokal — Branch `prozesse-ueberfuehren`, Basis 632b5875)
 Plan-Seite (abgenommen): „Fünf davon ziehen echt in die Werkstatt um: zuerst ein paar Tage im Schatten neben dem alten Code, umgeschaltet wird erst, wenn beide dasselbe
 tun. Hältst du einen überführten Prozess an, läuft der alte Weg wieder.“ Überführt (je mit Gold-Test): **Mahnaufgaben** (`sp-rechnung`, nur Business-Gesellschaften),

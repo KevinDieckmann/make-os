@@ -355,6 +355,8 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/heute': r('GET', MT, 'CRM heute.'),
   'crm/import': r('GET,POST', MT, 'Import.'),
   'crm/kampagnen': r('GET,POST', MT, 'Kampagnen.'),
+  // Restpunkte (24.10.): Playbooks und Event-Vorlagen je Haushalt bearbeiten — nur Abweichungen und eigene Kopien; Rechtshinweise bleiben fest im Code.
+  'crm/vorlagen': r('GET,POST', MT, 'Playbooks und Event-Vorlagen (24.10.): GET die wirksamen Vorlagen des Haushalts mit Vorgabe, Stand und UWG-Hinweisen (Lesen schreibt nie); POST speichern/kopieren/zurück auf Standard/löschen eigener — nur eine angemeldete Person des Haushalts mit Bau-Kennung (Dienstweg 403), Stand/409, ungültig 400, zu groß 413.'),
   'crm/kennungen-umzug': r('POST', MT, 'Kennungen umziehen (Inhaber).'),
   'crm/kontakt-frage': r('GET,POST', MT, 'Frage an einen Kontakt (KI).'),
   'crm/lead': r('GET,POST', MT, 'Leads.'),
@@ -408,6 +410,8 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'kunde/[link]/puls': r('POST', 'offen', 'Kunden-Puls (C2): Wert 0–10 + ein Satz mit dem Puls-Token (öffnet nur den Puls) — sonst dieselbe 404.'),
   // Stellschrauben der festen Prozesse (22.10.): eigener Bestand `prozesse-stellschrauben--<h>`, nur Abweichungen; Werte der Markttraktion gehen über die Wertelisten.
   'prozesse/stellschrauben': r('GET,POST', 'modul:prozesse', 'Stellschrauben der festen System-Prozesse (Head-Modi, Fenster des Monatsabschlusses, Buchung, Kapazität, Report-Abstand): GET gespeicherte Abweichungen, wirksame Werte und Stand (nur Business, schreibt nie); POST nur per Sitzung mit Bau-Kennung und nur volle Mitglieder, Stand/409, unbekannt 404, ungültig 400, zu viele 413 — alles oder nichts, gespeichert nur Abweichungen.', 'prozesseZugang'),
+  // Restpunkte (24.10.): drei Masken des Steckbriefs (Scoring-Schwellen/Temperatur, Felder einer Buchungsseite, Regler der Business-Heads) — leitet an DIESELBE Schreibstelle wie die Fachseite weiter.
+  'prozesse/stellschrauben/weiter': r('POST', 'modul:prozesse', 'Stellschrauben-Masken im Steckbrief (24.10.): EIN Feld der Scoring-Einstellungen, einer Buchungsseite oder eines Business-Heads — der Server liest den aktuellen Stand (409), prüft die Grenzen (400) und schreibt über dieselbe Stelle wie die Fachseite (scoringSchreiben, seiteSpeichern, einstellungAendern); nur per Sitzung mit Bau-Kennung, Heads nur der Inhaber (403), Dienstweg 403.', 'prozesseZugang'),
   // ── Prozesse · Werkstatt (21.10., Etappe B1 „Modell & Bausteine“) — Modul `prozesse`, Tor `werkstattZugang` (Haushalt des Inhabers, Sicht Privat 403; schreiben nur
   //    per Sitzung + Bau-Kennung; veröffentlichen/Status/Webhook nur volle Mitglieder, Konto „nur Business“ baut Entwürfe).
   'prozesse/werkstatt': r('GET,POST', 'modul:prozesse', 'Werkstatt (B1): Prozesse aller Business-Bereiche — Liste (mit Paket-Vorlagen des Fulfillments, nur lesend), Entwurf mit Stand/409, Befunde, Versionen, Vergleich; anlegen (anfrageId), Steckbrief, Entwurf, veröffentlichen, Version übernehmen, Status, Webhook-Schlüssel (genau einmal in der Antwort); seit 22.10. kopieren, als eigene Vorlage speichern (ohne Personen und Fall-Daten), eigene Vorlage übernehmen bzw. löschen (nur volle Mitglieder); Überführung (Paket Ü, 22.10.): überführen (anfrageId, höchstens einer je System-Prozess, sonst 409), umschalten (erst ab N gleichen Läufen / M Tagen im Schatten, Stand/409), zurück in den Schatten — nur volle Mitglieder — Dienstweg schreibt nie.', 'werkstattZugang'),

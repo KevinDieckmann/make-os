@@ -13,13 +13,31 @@ import { CRM_STELLSCHRAUBEN, type CrmStellschraubeId } from '@/lib/crm/stellschr
 import type { Stellschraube, StellschraubeArt } from './stellschrauben';
 import { AUCH_IN, WERTE, wert as wertVon, type Werte } from './stellschrauben-werte';
 
-/** Die Einstellungen eines Heads, wie sie hier gezeigt werden (nur Business-Heads, nie Abschnitte von Personen). */
-export interface HeadKurz { aktiv?: boolean; stufe?: string; budgetCentMonat?: number; autonomie?: string; notAus?: boolean }
+/**
+ * Die Einstellungen eines Heads, wie sie hier gezeigt werden (nur Business-Heads, nie Abschnitte von Personen). Restpunkte (24.10.): mit `stand` (Stand der
+ * Einstellung des Heads, 409) und den Vorgaben des Katalogs werden die Zeilen zu Feldern (Schalter, Auswahl, Betrag) — ohne `stand` bleiben sie zum Ansehen.
+ */
+export interface HeadKurz {
+  aktiv?: boolean; stufe?: string; budgetCentMonat?: number; autonomie?: string; notAus?: boolean;
+  stand?: string;
+  /** Modellstufe des Katalogs (gilt ohne Eintrag). */
+  stufeVorgabe?: string;
+  /** Der Boden der Autonomie (mehr Freiheit gibt es nicht) und die wirksame Stufe (lib/agenten/leistung.ts `autonomieLage`). */
+  autonomieBoden?: string; autonomieWirksam?: string;
+}
+/** Eine Buchungsseite, wie der Steckbrief sie zeigt (nur die Felder der Maske; `stand` = `geaendert` der gelesenen Fassung, 409). */
+export interface BuchungsseiteKurz { id: string; titel: string; aktiv: boolean; dauerMin: number; vorlaufMin: number; maxJeTag: number; pufferMin: number; stand: string }
+/** Grenzen und Vorgaben der Felder einer Buchungsseite — dieselben wie `seiteSauber` (lib/kalender/buchung.ts `SEITE_ZAHLEN`; der Lader gibt sie mit). */
+export type BuchungZahlen = Record<'dauerMin' | 'vorlaufMin' | 'maxJeTag' | 'pufferMin', { min: number; max: number; vorgabe: number }>;
 
 /** Was der Bau braucht. Ein Feld `undefined` = Quelle nicht lesbar → ihre Stellschrauben fehlen. */
 export interface StellschraubenQuellen {
   wertelisten?: Wertelisten;
-  scoring?: { marketing: number; sales: number; mussMarketing: number; mussSales: number; temperatur: { lau: number; warm: number; heiss: number } };
+  scoring?: {
+    marketing: number; sales: number; mussMarketing: number; mussSales: number; temperatur: { lau: number; warm: number; heiss: number };
+    /** Restpunkte (24.10.): Stand der Scoring-Einstellungen (`scoringStand`, 409), die Werte des Standards und die Grenze der Schwellen — mit ihnen werden die Zeilen Felder. */
+    stand?: string; vorgabe?: { marketing: number; sales: number; temperatur: { lau: number; warm: number; heiss: number } }; schwelleMax?: number;
+  };
   /** Gespeicherte Abweichungen der Löschfristen (`crm-loeschfristen`). */
   loeschfristen?: Partial<Record<FristArt, number>>;
   mahnTage?: [number, number, number];
@@ -27,7 +45,10 @@ export interface StellschraubenQuellen {
   /** Business-Heads des Haushalts (Kennung → Einstellung). */
   heads?: Partial<Record<string, HeadKurz>>;
   kanaele?: number;
-  buchungsseiten?: { aktiv: number; gesamt: number };
+  buchungsseiten?: { aktiv: number; gesamt: number; /** Restpunkte (24.10.): je Seite die Felder der Maske — fehlt es, steht nur die Zahl da. */ seiten?: BuchungsseiteKurz[]; zahlen?: BuchungZahlen };
+  /** Restpunkte (24.10.): wie viele Playbooks bzw. Event-Vorlagen der Haushalt angepasst oder selbst angelegt hat (lib/crm/vorlagen-anpassung-server.ts). */
+  vorlagen?: { playbooks: number; events: number };
+
   /** Die neuen Stellschrauben (Bestand `prozesse-stellschrauben--<h>`, nur Abweichungen) — `undefined` = nicht lesbar. */
   werte?: Werte;
 }
@@ -61,10 +82,37 @@ const HEADS: readonly { id: string; name: string }[] = [
   { id: 'sales', name: 'Head of Sales' }, { id: 'marketing', name: 'Head of Marketing' }, { id: 'event', name: 'Head of Event' },
 ];
 
-/** Die Einstellungen eines Business-Heads — nur zu sehen, geändert wird in ZOE › Agenten (dort gelten die Rechte des Heads, Budget, Not-Aus). */
+/** Grenze des Budgets je Head in Euro (lib/agenten/einstellung.ts `HEAD_BUDGET_MAX_CENT` / 100 — der Schreibweg prüft noch einmal). */
+export const HEAD_BUDGET_MAX_EURO = 100_000;
+const STUFEN_WAHL = ['schnell', 'ausgewogen', 'stark'] as const;
+
+/**
+ * Die Einstellungen eines Business-Heads. Mit `stand` (Restpunkte 24.10.) als Felder — geändert über denselben Schreibweg wie ZOE › Agenten (`einstellungAendern`:
+ * Stand/409, Autonomie nur verschärfen); ohne `stand` nur zu sehen. Not-Aus, Auftrag, Wissen, Mitarbeiter bleiben in ZOE › Agenten (Link).
+ */
 function headZeilen(id: string, name: string, h: HeadKurz | undefined): Stellschraube[] {
   const link = { href: WEG.agenten({ h: id }), text: `${name} in ZOE › Agenten einstellen` };
   const wo = 'heads' as const;
+  if (h?.stand) {
+    const stand = h.stand;
+    const boden = h.autonomieBoden === 'intern' ? 'intern' : 'vorschlag';
+    const autonomie = AUTONOMIE_TEXT;
+    const feld = (k: string, rest: Omit<Stellschraube, 'id' | 'gruppe' | 'wo' | 'link'>): Stellschraube => ({ id: `head-${id}-${k}`, gruppe: name, wo, link, ...rest });
+    return [
+      feld('aktiv', { name: 'An / aus', art: 'schalter', wert: h.aktiv !== false, vorgabe: true, weg: { art: 'head', head: id, feld: 'aktiv', stand },
+        erklaerung: 'Ausgeschaltet schlägt der Head im Takt nichts vor; Läufe, die deshalb warteten, laufen beim Einschalten weiter.' }),
+      ...(h.notAus ? [feld('notaus', { name: 'Not-Aus', art: 'info', wert: 'angehalten', erklaerung: 'Der Not-Aus hält alle Läufe des Heads an — aufheben in ZOE › Agenten.' })] : []),
+      feld('stufe', { name: 'Modell', art: 'auswahl', optionen: STUFEN_WAHL.map(x => ({ wert: x, text: STUFE_TEXT[x] })), wert: h.stufe ?? h.stufeVorgabe ?? null,
+        ...(h.stufeVorgabe ? { vorgabe: h.stufeVorgabe } : {}), weg: { art: 'head', head: id, feld: 'stufe', stand },
+        erklaerung: 'Welche Modellstufe der Head nimmt — schnell ist günstig, stark für schwierige Fälle.' }),
+      feld('budget', { name: 'Budget je Monat', art: 'zahl', einheit: '€', min: 0, max: HEAD_BUDGET_MAX_EURO, wert: typeof h.budgetCentMonat === 'number' ? h.budgetCentMonat / 100 : null,
+        weg: { art: 'head', head: id, feld: 'budget', stand },
+        erklaerung: 'Ab 80 % meldet sich die Glocke, bei 100 % pausiert der Head bis Monatsende. Leer = keine Grenze, nur messen.' }),
+      feld('autonomie', { name: 'Autonomie', art: 'auswahl', optionen: (boden === 'intern' ? ['vorschlag', 'intern'] : ['vorschlag']).map(x => ({ wert: x, text: autonomie[x] })),
+        wert: h.autonomieWirksam ?? h.autonomie ?? boden, vorgabe: boden, weg: { art: 'head', head: id, feld: 'autonomie', stand },
+        erklaerung: 'Was der Head ohne Klick selbst erledigen darf — nur verschärfen; zurück auf die Vorgabe erst mit guter Annahmequote (prüft der Server).' }),
+    ];
+  }
   const z = (k: string, n: string, wert: string, erklaerung: string): Stellschraube => ({ id: `head-${id}-${k}`, gruppe: name, name: n, erklaerung, art: 'info', wert, wo, link });
   return [
     z('aktiv', 'An / aus', h?.notAus ? 'angehalten (Not-Aus)' : h?.aktiv === false ? 'aus' : 'an', 'Ausgeschaltet schlägt der Head im Takt nichts vor; Not-Aus hält alle seine Läufe an.'),
@@ -121,7 +169,25 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
   }
 
   // ── Lead → SQL: Scoring (lib/crm/scoring.ts, Bestand crm-scoring) — die Maske ist der Reiter Scoring (zu reich für eine Zeile) ──
-  if (q.scoring) {
+  if (q.scoring?.stand && q.scoring.vorgabe) {
+    // Restpunkte (24.10.): Schwellen und Temperatur direkt — geschrieben über `scoringSchreiben` (Stand/409, `scoringPruefen` → 400 mit Satz);
+    // Fragen, Stufen und Muss-Kriterien bleiben im Reiter Scoring (Link).
+    const s = q.scoring, v = q.scoring.vorgabe, stand = q.scoring.stand;
+    const link = { href: qualifizierungLink(undefined, 'scoring'), text: 'Qualifizierung › Scoring' };
+    const wo = 'scoring' as const;
+    const max = s.schwelleMax ?? 1000;
+    const muss = (n: number) => (n ? ` Dazu ${n === 1 ? 'ein Muss-Kriterium' : `${n} Muss-Kriterien`} (Reiter Scoring).` : '');
+    const t = (k: 'lau' | 'warm' | 'heiss', n: string): Stellschraube => ({ id: `scoring-${k}`, gruppe: 'Scoring', name: n, art: 'zahl', einheit: 'Punkte', min: 1, max: 100,
+      wert: s.temperatur[k], vorgabe: v.temperatur[k], wo, link, weg: { art: 'scoring', feld: k, stand },
+      erklaerung: 'Ab diesen Punkten ist ein Lead lau, warm oder heiß (lau < warm < heiß, höchstens 100) — kalte zeigt die Runde nur auf Wunsch.' });
+    dazu('sp-lead-sql', [
+      { id: 'scoring-mql', gruppe: 'Scoring', name: 'MQL ab (Marketing-Punkte)', art: 'zahl', einheit: 'Punkte', min: 0, max, wert: s.marketing, vorgabe: v.marketing, wo, link,
+        weg: { art: 'scoring', feld: 'marketing', stand }, erklaerung: `Ab dieser Marketing-Schwelle wird ein Lead aus dem Marketing zum MQL.${muss(s.mussMarketing)}` },
+      { id: 'scoring-sql', gruppe: 'Scoring', name: 'SQL ab (Sales-Punkte)', art: 'zahl', einheit: 'Punkte', min: 0, max, wert: s.sales, vorgabe: v.sales, wo, link,
+        weg: { art: 'scoring', feld: 'sales', stand }, erklaerung: `Ab dieser Sales-Schwelle und mit allen Muss-Kriterien ist ein Lead SQL-bereit.${muss(s.mussSales)}` },
+      t('lau', 'Lau ab'), t('warm', 'Warm ab'), t('heiss', 'Heiß ab'),
+    ]);
+  } else if (q.scoring) {
     const s = q.scoring;
     const link = { href: qualifizierungLink(undefined, 'scoring'), text: 'Qualifizierung › Scoring' };
     const wo = 'scoring' as const;
@@ -134,9 +200,30 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
 
   // ── Terminbuchung: Buchungsseiten (lib/kalender/buchung.ts — Dauer, Fenster, Vorlauf, max./Tag, Puffer je Seite) ──
   if (q.buchungsseiten) {
+    const link = { href: WEG.kalender(), text: 'Kalender › Buchungsseiten' };
+    const z = q.buchungsseiten.zahlen;
+    const masken = !!z && !!q.buchungsseiten.seiten;
     dazu('sp-buchung', [{ id: 'buchungsseiten', gruppe: 'Buchungsseiten', name: 'Seiten', art: 'info', wert: q.buchungsseiten.gesamt ? `${q.buchungsseiten.aktiv} von ${q.buchungsseiten.gesamt} aktiv` : 'noch keine',
-      erklaerung: 'Je Seite: Dauer, buchbare Fenster, Vorlauf, höchstens je Tag, Puffer, Zielkalender — eingestellt in der Verwaltung der Buchungsseiten.',
-      wo: 'buchung', link: { href: WEG.kalender(), text: 'Kalender › Buchungsseiten' } }]);
+      erklaerung: masken
+        ? 'Je Seite stehen An/aus, Dauer, Vorlauf, höchstens je Tag und Puffer hier — buchbare Fenster, Fragen, Ort und Zielkalender in der Verwaltung der Buchungsseiten.'
+        : 'Je Seite: Dauer, buchbare Fenster, Vorlauf, höchstens je Tag, Puffer, Zielkalender — eingestellt in der Verwaltung der Buchungsseiten.',
+      wo: 'buchung', link }]);
+    // Restpunkte (24.10.): je Seite die Felder der Maske — geschrieben über `seiteSpeichern` (dieselbe Stelle wie die Verwaltung; Stand = `geaendert`, 409).
+    if (z) for (const seite of q.buchungsseiten.seiten ?? []) {
+      const gruppe = `Seite „${seite.titel}“`;
+      const zahl = (feld: keyof BuchungZahlen, name: string, einheit: string, erklaerung: string): Stellschraube => ({
+        id: `buchung-${seite.id}-${feld}`, gruppe, name, art: 'zahl', einheit, min: z[feld].min, max: z[feld].max, wert: seite[feld], vorgabe: z[feld].vorgabe,
+        erklaerung, wo: 'buchung', link, weg: { art: 'buchung', seite: seite.id, feld, stand: seite.stand },
+      });
+      dazu('sp-buchung', [
+        { id: `buchung-${seite.id}-aktiv`, gruppe, name: 'An / aus', art: 'schalter', wert: seite.aktiv, vorgabe: true, wo: 'buchung', link,
+          weg: { art: 'buchung', seite: seite.id, feld: 'aktiv', stand: seite.stand }, erklaerung: 'Ausgeschaltet zeigt die Seite keine freien Zeiten mehr; der Link bleibt gleich.' },
+        zahl('dauerMin', 'Dauer', 'Minuten', 'So lange dauert ein gebuchter Termin.'),
+        zahl('vorlaufMin', 'Vorlauf', 'Minuten', 'So viel Zeit muss mindestens vor dem Termin liegen (1.440 Minuten = 24 Stunden).'),
+        zahl('maxJeTag', 'Höchstens je Tag', 'Termine', 'Mehr Buchungen dieser Seite nimmt ein Tag nicht an.'),
+        zahl('pufferMin', 'Puffer', 'Minuten', 'So viel Luft bleibt vor und nach jedem Termin frei.'),
+      ]);
+    }
   }
 
   // ── Übergabe & Wirkung: Einstellungen des Fulfillments (lib/fulfillment/lesen.ts EINSTELLUNGEN_VORGABE) ──
@@ -216,9 +303,15 @@ export function stellschraubenBauen(q: StellschraubenQuellen): Record<string, St
     }
   }
 
-  // ── Vorlagen der Kampagnen und eigenen Abende: nur ansehen (überführt werden sie in einem eigenen Paket) ──
-  dazu('sp-kampagnen', [{ id: 'playbooks', gruppe: 'Vorlagen', name: 'Playbooks', art: 'info', wert: 'im System', erklaerung: 'Die Playbooks der Kampagnen (Segment, Kanal, Texte, Nachfassen) — ansehen und daraus planen.', wo: 'system', link: { href: WEG.marketing('kampagnen'), text: 'Vorlagen ansehen' } }]);
-  dazu('sp-makeone', [{ id: 'event-vorlagen', gruppe: 'Vorlagen', name: 'Event-Vorlagen', art: 'info', wert: 'im System', erklaerung: 'Vorlagen eigener Abende (Ablauf, Checkliste, Budget) — ansehen und daraus planen.', wo: 'system', link: { href: WEG.event(), text: 'Vorlagen ansehen' } }]);
+  // ── Vorlagen der Kampagnen und eigenen Abende (Restpunkte 24.10.): je Haushalt bearbeitbar (lib/crm/vorlagen-anpassung-server.ts) — hier der Zähler und der Weg
+  //    in die Bearbeitung; ohne Quelle (nicht lesbar) wie bisher nur der Verweis. Rechtshinweise der Playbooks bleiben fest im Code.
+  const angepasst = (n: number) => (n ? `${n} angepasst` : 'wie im System');
+  dazu('sp-kampagnen', [{ id: 'playbooks', gruppe: 'Vorlagen', name: 'Playbooks', art: 'info', wert: q.vorlagen ? angepasst(q.vorlagen.playbooks) : 'im System',
+    erklaerung: 'Die Playbooks der Kampagnen (Texte, Kanal, Segment-Vorschlag, Nachfass-Schritte) — bearbeiten, als eigene Vorlage kopieren, zurück auf Standard. Die Rechtshinweise bleiben fest.',
+    wo: q.vorlagen ? 'vorlagen' : 'system', link: { href: WEG.vorlagenBearbeiten('playbook'), text: 'Playbooks bearbeiten' } }]);
+  dazu('sp-makeone', [{ id: 'event-vorlagen', gruppe: 'Vorlagen', name: 'Event-Vorlagen', art: 'info', wert: q.vorlagen ? angepasst(q.vorlagen.events) : 'im System',
+    erklaerung: 'Vorlagen eigener Abende (Ablauf, Checkliste, Budget-Posten) — bearbeiten, als eigene Vorlage kopieren, zurück auf Standard.',
+    wo: q.vorlagen ? 'vorlagen' : 'system', link: { href: WEG.vorlagenBearbeiten('event'), text: 'Event-Vorlagen bearbeiten' } }]);
 
   return raus;
 }

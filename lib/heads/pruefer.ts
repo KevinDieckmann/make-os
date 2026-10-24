@@ -124,6 +124,8 @@ export function pruefe(a: Antwort, daten: unknown, kontakte: Kontakt[], crm: Crm
   const nachId = new Map(kontakte.map(k => [k.id, k]));
   const gestrichen: Pruefung['gestrichen'] = [];
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds));
+  // Restpunkte (24.10.): eigene Playbooks des Haushalts stehen im Datenpaket (`playbooks`) — deren Kennungen sind bekannt.
+  const paketPlaybooks = new Set(((daten as { playbooks?: { id?: unknown }[] } | null)?.playbooks ?? []).map(p => p.id).filter((x): x is string => typeof x === 'string'));
   const bleiben = a.vorschlaege.filter(v => {
     const weg = (grund: string) => { gestrichen.push({ titel: v.titel, grund }); return false; };
     if (v.chance_id && !crm.chancen.some(c => c.id === v.chance_id)) return weg('Chance gibt es nicht');
@@ -140,7 +142,7 @@ export function pruefe(a: Antwort, daten: unknown, kontakte: Kontakt[], crm: Crm
       }
     } else if (v.entwurf && v.entwurf.kanal !== 'persoenlich') return weg('Entwurf ohne Person');
     if (v.kampagne) {
-      if (!PLAYBOOK_IDS.has(v.kampagne.playbook)) return weg(`unbekanntes Vorgehen „${v.kampagne.playbook}“`);
+      if (!PLAYBOOK_IDS.has(v.kampagne.playbook) && !paketPlaybooks.has(v.kampagne.playbook)) return weg(`unbekanntes Vorgehen „${v.kampagne.playbook}“`);
       // Nur echte, nicht gesperrte Personen — Rest still aussortieren.
       v.kampagne.kontakt_ids = v.kampagne.kontakt_ids.filter(id => { const k = nachId.get(id); return k && !ausgenommen(k); });
     }
