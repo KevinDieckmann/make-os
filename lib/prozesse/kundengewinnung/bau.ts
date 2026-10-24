@@ -159,7 +159,7 @@ export const S = {
   person: (id: string, titel: string, a: { uhrzeit: string; bis?: string; tage?: PersonTage; nachMorgenlauf?: boolean; stundeAus?: string }): Schritt =>
     sch(id, titel, 'ausloeser.person', { feld: { ausloeser: { art: 'person', uhrzeit: a.uhrzeit, ...(a.bis ? { bis: a.bis } : {}), tage: a.tage ?? 'mo-fr', ...(a.nachMorgenlauf ? { nachMorgenlauf: true as const } : {}), ...(a.stundeAus ? { stundeAus: a.stundeAus } : {}) } } }),
   /** Fester Schritt eines überführten System-Ablaufs (22.10., Paket Ü — lib/prozesse/ueberfuehrung.ts). */
-  fest: (id: string, titel: string, schritt: string): Schritt => sch(id, titel, 'system.fest', { werte: { schritt } }),
+  fest: (id: string, titel: string, schritt: string, o: Opt = {}): Schritt => sch(id, titel, 'system.fest', { werte: { schritt }, ...o }),
   // CRM lesen
   abfrage: (id: string, titel: string, q: CrmAbfrage, o: Opt = {}): Schritt => sch(id, titel, 'crm.abfragen', { feld: { abfrage: q }, ...o }),
   akte: (id: string, titel: string, o: Opt = {}): Schritt => sch(id, titel, 'crm.firma-akte', o),

@@ -16,7 +16,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Eigenschaft, Knopf, Chip, Hinweis } from '../ui';
 import { WEG } from '@/lib/wege';
 import { neueKennung } from '@/lib/kennung';
-import { ABWEICHUNG_TEXT, STAND_MARKE, STAND_TEXT, type UeberfuehrungAnsicht, type UeberfuehrungStand } from '@/lib/prozesse/ueberfuehrung';
+import { ABWEICHUNG_TEXT, STAND_MARKE, STAND_TEXT, ZUSATZ_ART_TEXT, type UeberfuehrungAnsicht, type UeberfuehrungStand } from '@/lib/prozesse/ueberfuehrung';
 import type { ProzessDef } from '@/lib/prozesse/typen';
 import { werkstattSenden } from './werkstatt-daten';
 
@@ -44,6 +44,7 @@ export function UeberfuehrungKarte({ p, recht, onGeaendert }: { p: ProzessDef; r
       <Ueberschrift rechts={<Chip farbe={STAND_FARBE[u.stand]}>{STAND_MARKE[u.stand] ?? 'möglich'}</Chip>}>In die Werkstatt</Ueberschrift>
       <Eigenschaft label="Teil">{u.teil}</Eigenschaft>
       <p style={klein}>{u.satz}</p>
+      {u.zusatz && <Eigenschaft label="Neu gegenüber dem alten Weg">{u.zusatz}</Eigenschaft>}
       {u.stand === 'moeglich' ? (
         <>
           <p style={klein}>Zuerst ein paar Tage im Schatten neben dem alten Code — umgeschaltet wird per Klick, wenn beide dasselbe tun. Hältst du den Prozess an, arbeitet wieder der alte Weg.</p>
@@ -99,6 +100,13 @@ export function UeberfuehrungBand({ prozessId, a, darf, stand, onGeaendert }: { 
         </>
       )}
       {a.phase === 'scharf' && a.umgeschaltetAm && <Eigenschaft label="Umgeschaltet">{tagText(a.umgeschaltetAm.slice(0, 10))}</Eigenschaft>}
+      {a.zusatz && (
+        // Ausbau (24.10., Paket Ü 2): was neu ist gegenüber dem alten Weg — nicht im Vergleich; im Schatten nur gezählt, scharf läuft es mit.
+        <Eigenschaft label="Neu gegenüber dem alten Weg">
+          {a.zusatz.satz}
+          {a.zusatz.zaehler?.wirkungen ? ` Im Schatten bisher: ${Object.entries(a.zusatz.zaehler.arten).map(([k, n]) => `${n} ${ZUSATZ_ART_TEXT[k] ?? k}`).join(', ')}${a.zusatz.zaehler.zuletzt ? ` (zuletzt ${tagText(a.zusatz.zaehler.zuletzt)})` : ''} — nichts davon angelegt.` : a.phase === 'schatten' ? ' Im Schatten noch nichts gezählt.' : ''}
+        </Eigenschaft>
+      )}
       <p style={{ ...klein, color: C.inkLeise }}>{`Dieselben Kennungen wie der Code: ${a.kennung}. ${a.bleibt}`}</p>
       {darf && a.phase === 'schatten' && !frage && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

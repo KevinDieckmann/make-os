@@ -18,7 +18,7 @@ import type { ProzessRechte } from './rollen';
 import type { ProzessDef } from './typen';
 import {
   UMSCHALT_VORGABE, UEBERFUEHRBAR, ersetzerVon, standVonUeberfuehrung, ueberfuehrbarVon, umschaltenPruefen, vergleichAbschliessen, vergleichMelden, wegEntscheiden,
-  zurueckInDenSchatten, type UeberfuehrungAnsicht, type UmschaltRegel, type WegEntscheidung, type Wirkungsbild,
+  zurueckInDenSchatten, zusatzMelden, type UeberfuehrungAnsicht, type UmschaltRegel, type WegEntscheidung, type Wirkungsbild,
 } from './ueberfuehrung';
 export type { UeberfuehrungAnsicht } from './ueberfuehrung';
 
@@ -63,6 +63,25 @@ export async function vergleichMeldenServer(sp: string, seite: 'alt' | 'neu', ta
   }
 }
 
+/**
+ * Ausbau (24.10., Paket Ü 2): die neuen Schritte eines Laufs im Schatten melden, was sie bewirkt hätten — nur Zahlen je Art (nie Kennungen, nie Inhalte), nur in
+ * Phase „Schatten“. Wirft nie.
+ */
+export async function zusatzMeldenServer(sp: string, tag: string, arten: Readonly<Record<string, number>>, h?: string): Promise<void> {
+  if (!Object.values(arten).some(n => n > 0)) return;
+  try {
+    const { prozesseAendern } = await import('./werkstatt-server');
+    await prozesseAendern<object>(d => {
+      const e = ersetzerVon(d.prozesse, sp);
+      if (!e?.ueberfuehrung || e.ueberfuehrung.phase !== 'schatten') return { ok: false };
+      const vergleich = zusatzMelden(e.ueberfuehrung.vergleich, tag, arten);
+      return { ok: true, datei: { ...d, prozesse: d.prozesse.map(x => (x.id === e.id ? { ...x, ueberfuehrung: { ...e.ueberfuehrung!, vergleich } } : x)) } };
+    }, { art: 'system' }, await haushalt(h));
+  } catch (e) {
+    console.error(`[prozesse/ueberfuehrung] Zusatz ${sp} nicht gezählt:`, e instanceof Error ? e.message.slice(0, 120) : e);
+  }
+}
+
 /** Die Regel fürs Umschalten aus den Stellschrauben (`ueberfuehrung.laeufe` / `ueberfuehrung.tage`) — nicht lesbar = Vorgabe. */
 export async function umschaltRegelLesen(h?: string): Promise<UmschaltRegel> {
   try {
@@ -89,6 +108,7 @@ export async function ueberfuehrungAnsicht(e: ProzessEintrag, h?: string, jetzt 
     ...(e.ueberfuehrung.umgeschaltetAm ? { umgeschaltetAm: e.ueberfuehrung.umgeschaltetAm } : {}), ...(e.ueberfuehrung.umgeschaltetVon ? { umgeschaltetVon: e.ueberfuehrung.umgeschaltetVon } : {}),
     vergleich, ...(offen?.tag === heute ? { heute: { alt: !!offen.alt, neu: !!offen.neu } } : {}),
     umschalten: umschaltenPruefen(e.ueberfuehrung, regel, heute), arbeitet: stand === 'scharf' ? 'neu' : 'alt',
+    ...(u.zusatz ? { zusatz: { satz: u.zusatz.satz, ...(v.zusatz ? { zaehler: v.zusatz } : {}) } } : {}),
   };
 }
 
@@ -103,7 +123,7 @@ export async function mitUeberfuehrung(prozesse: readonly ProzessDef[], eintraeg
       const u = ueberfuehrbarVon(p.id);
       if (!u) return p;
       const e = ersetzerVon(eintraege, p.id);
-      return { ...p, ueberfuehrung: { rolle: 'alt' as const, teil: u.teil, satz: u.satz, stand: standVonUeberfuehrung(e, e ? scharf(e.id) : false), ...(e ? { prozessId: e.id, titel: e.entwurf.titel } : {}) } };
+      return { ...p, ueberfuehrung: { rolle: 'alt' as const, teil: u.teil, satz: u.satz, stand: standVonUeberfuehrung(e, e ? scharf(e.id) : false), ...(e ? { prozessId: e.id, titel: e.entwurf.titel } : {}), ...(u.zusatz ? { zusatz: u.zusatz.satz } : {}) } };
     }
     if (p.quelle === 'werkstatt') {
       const e = eintraege.find(x => x.id === p.id);

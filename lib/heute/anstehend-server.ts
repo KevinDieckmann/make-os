@@ -58,8 +58,11 @@ async function vorschlaegeZaehlen(person: string): Promise<AVorschlaege> {
   return { ...zahl(offen), jeBereich: { privat: zahl(offen.filter(v => passtZurSicht(v, 'privat'))), business: zahl(offen.filter(v => passtZurSicht(v, 'business'))) } };
 }
 
-/** Danke-Mails nach einem Event (Netzwerken, 02.10.): je Event die Zahl der noch nicht verschickten mit Adresse — ab dem Folgetag. */
-function dankeAnstehend(crm: { events: Parameters<typeof dankeZeilen>[0]['events']; teilnahmen: Parameters<typeof dankeZeilen>[0]['teilnahmen'] } | null, kontakte: Parameters<typeof dankeZeilen>[0]['kontakte'], heute: string, person: string): ADanke[] {
+/**
+ * Danke-Mails nach einem Event (Netzwerken, 02.10.): je Event die Zahl der noch nicht verschickten mit Adresse — ab dem Folgetag. Exportiert (24.10., Paket Ü 2):
+ * EINE Rechnung auch für den Kern des überführten Event-Nachfassens (lib/crm/nachfassen-server.ts).
+ */
+export function dankeAnstehend(crm: { events: Parameters<typeof dankeZeilen>[0]['events']; teilnahmen: Parameters<typeof dankeZeilen>[0]['teilnahmen'] } | null, kontakte: Parameters<typeof dankeZeilen>[0]['kontakte'], heute: string, person: string): ADanke[] {
   if (!crm) return [];
   const zeilen = dankeZeilen({ events: crm.events, teilnahmen: crm.teilnahmen, kontakte, heute, person });
   const je = new Map<string, typeof zeilen>();

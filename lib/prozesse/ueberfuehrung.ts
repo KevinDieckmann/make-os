@@ -21,8 +21,8 @@ import type { ProzessEintrag } from './definition';
 // ══ Was umziehen kann ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 /** Ein fester Schritt (Baustein `system.fest`): der Kern eines alten Ablaufs — dieselbe Regel, dieselben Kennungen, derselbe Schreibweg. */
-export type SystemSchrittId = 'mahnaufgaben' | 'treppe-report' | 'fall-vorschlag' | 'power-hour';
-export const SYSTEM_SCHRITT_IDS = ['mahnaufgaben', 'treppe-report', 'fall-vorschlag', 'power-hour'] as const satisfies readonly SystemSchrittId[];
+export type SystemSchrittId = 'mahnaufgaben' | 'treppe-report' | 'fall-vorschlag' | 'power-hour' | 'nachfass-lage' | 'nachfass-followups';
+export const SYSTEM_SCHRITT_IDS = ['mahnaufgaben', 'treppe-report', 'fall-vorschlag', 'power-hour', 'nachfass-lage', 'nachfass-followups'] as const satisfies readonly SystemSchrittId[];
 export const istSystemSchritt = (v: unknown): v is SystemSchrittId => typeof v === 'string' && (SYSTEM_SCHRITT_IDS as readonly string[]).includes(v);
 
 export interface UeberfuehrbarDef {
@@ -42,6 +42,12 @@ export interface UeberfuehrbarDef {
   kennung: string;
   /** Was am System-Prozess im Code bleibt (der Rest des Ablaufs). */
   bleibt: string;
+  /**
+   * Ausbau (24.10., Paket Ü 2 — Entscheidung „Als neuen Ablauf bauen“): Schritte, die der alte Weg NICHT tat — sichtbar als „neu gegenüber dem alten Weg“ (Band,
+   * Vergleich). Sie gehen nicht in den Gold-/Schatten-Vergleich (der vergleicht nur den Kern); im Schatten werden ihre Wirkungen nur gezählt, scharf laufen sie
+   * nach C1 (Aufgaben und Follow-ups intern, nach außen nur über den Stapel). `schritte` = feste Zusatz-Schritte (`system.fest`) dieses Teils.
+   */
+  zusatz?: { satz: string; schritte?: readonly SystemSchrittId[] };
 }
 
 /**
@@ -68,7 +74,10 @@ export const UEBERFUEHRBAR: readonly UeberfuehrbarDef[] = [
     satz: 'Je neuem Kunden (Mandat unterschrieben, Angebot angenommen bzw. Deal gewonnen — noch ohne Fall) ein Vorschlag „Fall starten“ in den Stapel und eine Glocke — dieselbe Regel und Marke wie der Morgenlauf. Gestartet wird per Klick.',
     einstieg: { datei: 'lib/fulfillment/prozesse/server.ts', funktion: 'prozesseMorgenlauf' },
     kennung: 'Marke `onboarding-vorschlag:<mandat>` im Fulfillment-Bestand und der Vorschlag `p:onboarding:<mandat>` (`onboardingVorschlaegeKern`, lib/fulfillment/prozesse/server.ts)',
-    bleibt: 'Mandat anlegen, Fall starten, Willkommen und Kickoff (im Fall, per Klick) sowie die Nachsorge bleiben im Code.',
+    bleibt: 'Fall starten, Willkommen und Kickoff (im Fall, per Klick) sowie die Nachsorge bleiben im Code.',
+    // Ausbau (24.10.): der Rest der Übergabe aus der Vorlage „Gewonnen → Übergabe“ (kg-v12) — ohne „Fall starten“ (das ist der Kern) und ohne Willkommen/Kickoff
+    // (die führt der Fall, sonst doppelt).
+    zusatz: { satz: 'Neu gegenüber dem alten Weg: sobald ein Deal gewonnen ist, ein Vorschlag „Mandat anlegen“ (nur wenn noch keins da ist, übernommen per Klick), die Aufgabe „Übergabe vervollständigen“ und — solange der Vertrag fehlt — „Vertrag unterschreiben lassen“. Willkommen und Kick-off bleiben im Fall.' },
   },
   {
     sp: 'sp-followup', schritt: 'power-hour', teil: 'Power-Hour-Vorbereitung', titel: 'Power-Hour-Vorbereitung (überführt)',
@@ -77,17 +86,38 @@ export const UEBERFUEHRBAR: readonly UeberfuehrbarDef[] = [
     kennung: 'Der Auftrag `head-sales · modus:power_hour person:<person>` (`powerHourFaellig`, derselbe Schlüssel der Warteschlange) und der Riegel `power_hour:<person>` im Stand des Head of Sales',
     bleibt: 'Die übrigen Läufe der Heads (Wochen-, Lead- und Kundenreview, Marketing, Event) und die Power Hour selbst (Karten, Anrufe) bleiben im Code.',
   },
+  {
+    // 24.10. (Paket Ü 2, „Als neuen Ablauf bauen“): der Kern ist abgeleitet — die Glocke „n Danke-Mails bereit“ und die Quote rechnen Glocke, Heute und Events ›
+    // Wirkung beim Lesen; der feste Schritt sieht dieselbe Lage (EINE Rechnung) und schreibt für den Kern nichts. Neu: Follow-ups und die Frist.
+    sp: 'sp-event-nachfassen', schritt: 'nachfass-lage', teil: 'Nachfass-Lage (Danke-Glocke)', titel: 'Event-Nachfassen (überführt)',
+    satz: 'Am Tag nach einem besuchten Event die Nachfass-Lage: je Person, die erfasst hat, die offenen Danke-Mails — dieselbe Rechnung wie die Glocke „n Danke-Mails bereit“, Heute und Events › Wirkung. Die Glocke bleibt abgeleitet.',
+    einstieg: { datei: 'lib/crm/nachfassen-server.ts', funktion: 'nachfassLageMorgenlauf' },
+    kennung: 'Die Glocke `danke-<event>` je Person (`dankeAnstehend`, lib/heute/anstehend-server.ts) und die Follow-ups `fu-nf-<teilnahme>` (`nachfassFollowupsKern`)',
+    bleibt: 'Erfassen, die Danke-Mails selbst (Netzwerken › Heute, per Klick) und die Kennzahlen bleiben im Code.',
+    zusatz: {
+      satz: 'Neu gegenüber dem alten Weg: je Erfassung ohne Nachfassen ein Follow-up „Nachfassen nach der Begegnung“ (nur, wenn noch keins da ist; nie bei Art. 18 oder Werbesperre) und nach zwei Werktagen eine Glocke, wenn die Quote unter dem Ziel liegt.',
+      schritte: ['nachfass-followups'],
+    },
+  },
 ];
 const NACH_SP = new Map(UEBERFUEHRBAR.map(u => [u.sp, u]));
 export const ueberfuehrbarVon = (sp: string | undefined | null): UeberfuehrbarDef | null => (sp ? NACH_SP.get(sp) ?? null : null);
 export const istUeberfuehrbar = (sp: unknown): sp is string => typeof sp === 'string' && NACH_SP.has(sp);
-export const ueberfuehrbarZuSchritt = (s: SystemSchrittId): UeberfuehrbarDef => UEBERFUEHRBAR.find(u => u.schritt === s)!;
+/** Zu welchem Teil gehört ein fester Schritt — als Kern (`schritt`) oder als Zusatz (`zusatz.schritte`)? */
+export const ueberfuehrbarZuSchritt = (s: SystemSchrittId): UeberfuehrbarDef => UEBERFUEHRBAR.find(u => u.schritt === s || (u.zusatz?.schritte ?? []).includes(s))!;
+/** Wie die festen Schritte in der Maske heißen (Kern = der Teil, Zusatz = was neu ist). */
+export const SYSTEM_SCHRITT_NAME: Readonly<Record<SystemSchrittId, string>> = {
+  mahnaufgaben: 'Mahnaufgaben', 'treppe-report': 'Fortschritts-Report', 'fall-vorschlag': 'Onboarding-Vorschlag „Fall starten“', 'power-hour': 'Power-Hour-Vorbereitung',
+  'nachfass-lage': 'Nachfass-Lage (Danke-Glocke)', 'nachfass-followups': 'Follow-ups nach einem Event sichern (neu)',
+};
+/** Ist der feste Schritt der Kern seines Teils (Vergleich) — oder ein Zusatz (nur gezählt)? */
+export const istKernSchritt = (s: SystemSchrittId): boolean => UEBERFUEHRBAR.some(u => u.schritt === s);
 
 // ══ Das Feld am Prozess (`ProzessEintrag.ersetzt` + `ProzessEintrag.ueberfuehrung` — schreibt NUR der Server) ══════════════════════════════════════
 
 export type UeberfuehrungPhase = 'schatten' | 'scharf';
 /** Ein Eintrag des Wirkungsbilds (nur Kennungen): Art, Ziel-Kennung, Tag, Fingerabdruck der Zuständigkeit. */
-export interface Wirkungsbild { art: 'aufgabe' | 'vorschlag' | 'auftrag' | 'meldung'; ziel: string; tag?: string; zustaendig?: string }
+export interface Wirkungsbild { art: 'aufgabe' | 'vorschlag' | 'auftrag' | 'meldung' | 'followup'; ziel: string; tag?: string; zustaendig?: string }
 /** Eine noch offene Gelegenheit (ein Berliner Tag): die Schlüssel der Wirkungen je Weg. */
 export interface VergleichSlot { tag: string; alt?: string[]; neu?: string[] }
 export type AbweichungGrund = 'nur-alt' | 'nur-neu' | 'anders' | 'zu-viele';
@@ -100,7 +130,11 @@ export interface Vergleich {
   gleichLaeufe: number; gleichSeit?: string;
   letzte?: VergleichAbweichung;
   offen?: VergleichSlot;
+  /** Ausbau (24.10.): Wirkungen der Schritte, die der alte Weg nicht tat — im Schatten nur gezählt (je Art), nie verglichen. */
+  zusatz?: Zusatzzaehler;
 }
+/** Gezählte Wirkungen der neuen Schritte (nur Zahlen je Art und der letzte Tag). */
+export interface Zusatzzaehler { wirkungen: number; arten: Record<string, number>; zuletzt?: string }
 export interface Ueberfuehrung {
   phase: UeberfuehrungPhase;
   /** Seit wann überführt (ISO). */
@@ -141,11 +175,17 @@ export function ueberfuehrungAus(roh: unknown): Ueberfuehrung | undefined {
     ? { tag: of.tag, ...(Array.isArray(of.alt) ? { alt: liste(of.alt, SCHLUESSEL, BILD_MAX + 1) } : {}), ...(Array.isArray(of.neu) ? { neu: liste(of.neu, SCHLUESSEL, BILD_MAX + 1) } : {}) }
     : undefined;
   const gleichSeit = typeof v.gleichSeit === 'string' && TAG.test(v.gleichSeit) ? v.gleichSeit : undefined;
+  const z = o(v.zusatz);
+  const zusatz: Zusatzzaehler | undefined = z ? {
+    wirkungen: zahl(z.wirkungen),
+    arten: Object.fromEntries(Object.entries(o(z.arten) ?? {}).filter(([k, n]) => ZUSATZ_ART.test(k) && zahl(n) > 0).slice(0, 12).map(([k, n]) => [k, zahl(n)])),
+    ...(typeof z.zuletzt === 'string' && TAG.test(z.zuletzt) ? { zuletzt: z.zuletzt } : {}),
+  } : undefined;
   return {
     phase, seit, ...(text(x.umgeschaltetAm, 40) ? { umgeschaltetAm: x.umgeschaltetAm as string } : {}), ...(text(x.umgeschaltetVon, 60) ? { umgeschaltetVon: x.umgeschaltetVon as string } : {}),
     vergleich: {
       laeufe: zahl(v.laeufe), gleich: zahl(v.gleich), abweichend: zahl(v.abweichend), gleichLaeufe: zahl(v.gleichLaeufe),
-      ...(gleichSeit ? { gleichSeit } : {}), ...(letzte ? { letzte } : {}), ...(offen ? { offen } : {}),
+      ...(gleichSeit ? { gleichSeit } : {}), ...(letzte ? { letzte } : {}), ...(offen ? { offen } : {}), ...(zusatz && zusatz.wirkungen ? { zusatz } : {}),
     },
   };
 }
@@ -256,6 +296,23 @@ export function vergleichMelden(v0: Vergleich, seite: 'alt' | 'neu', tag: string
   return { ...v, offen: slot };
 }
 
+const ZUSATZ_ART = /^[a-z][a-z-]{1,23}$/;
+/** Wie die gezählten neuen Wirkungen heißen (Band). */
+export const ZUSATZ_ART_TEXT: Readonly<Record<string, string>> = {
+  aufgabe: 'Aufgaben', vorschlag: 'Vorschläge im Stapel', 'crm-vorschlag': 'Vorschläge im Stapel (CRM)', meldung: 'Glocken', followup: 'Follow-ups', agent: 'Agenten-Schritte', teilprozess: 'Teil-Läufe',
+};
+/**
+ * Ausbau (rein): Wirkungen der neuen Schritte zählen (je Art) — im Schatten, ohne Kennungen, ohne Inhalte. Ein Lauf meldet einmal; der Tag ist nur der letzte.
+ */
+export function zusatzMelden(v: Vergleich, tag: string, arten: Readonly<Record<string, number>>): Vergleich {
+  const plus = Object.entries(arten).filter(([k, n]) => ZUSATZ_ART.test(k) && Number.isInteger(n) && n > 0);
+  if (!plus.length || !TAG.test(tag)) return v;
+  const alt = v.zusatz ?? { wirkungen: 0, arten: {} };
+  const neueArten = { ...alt.arten };
+  for (const [k, n] of plus) neueArten[k] = (neueArten[k] ?? 0) + n;
+  return { ...v, zusatz: { wirkungen: alt.wirkungen + plus.reduce((a, [, n]) => a + n, 0), arten: neueArten, zuletzt: tag } };
+}
+
 /** Die Regel fürs Umschalten (Stellschrauben, Vorgabe 5 Läufe / 3 Tage). */
 export interface UmschaltRegel { laeufe: number; tage: number }
 export const UMSCHALT_VORGABE: UmschaltRegel = { laeufe: 5, tage: 3 };
@@ -317,6 +374,8 @@ export interface UeberfuehrungAnsicht {
   umschalten: UmschaltPruefung;
   /** Welcher Weg JETZT arbeitet. */
   arbeitet: 'alt' | 'neu';
+  /** Ausbau (24.10.): was neu ist gegenüber dem alten Weg — der Satz und, im Schatten, die gezählten Wirkungen. */
+  zusatz?: { satz: string; zaehler?: Zusatzzaehler };
 }
 /** Sätze zu den Abweichungen. */
 export const ABWEICHUNG_TEXT: Readonly<Record<AbweichungGrund, string>> = {

@@ -627,7 +627,7 @@ async function wirkungAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Aktion, k
           const { ueberfuehrbarZuSchritt } = await import('./ueberfuehrung');
           if (e.ersetzt !== ueberfuehrbarZuSchritt(a.schritt).sp || modusFuer(e, standVon(await laeufeLesen(kx.h), e.id)) !== 'scharf') return fehlt('ueberfuehrung-fehlt');
           const { systemSchrittAusfuehren } = await import('./system-schritte-server');
-          const r = await systemSchrittAusfuehren(a.schritt, { modus: 'scharf', jetzt: kx.jetzt, person: l.person });
+          const r = await systemSchrittAusfuehren(a.schritt, { modus: 'scharf', jetzt: kx.jetzt, person: l.person, fall: l.fall });
           if (!r.ok) return fehlt(r.voruebergehend ? 'voruebergehend' : 'dauerhaft', r.voruebergehend ? 'voruebergehend' : 'dauerhaft');
           return { ok: true, wirkung: r.wirkung, anzahl: r.neu, ...(r.neu ? {} : { hinweis: 'schon-erledigt' as const }) };
         }
@@ -968,8 +968,13 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
       const u0 = await umfeldFuer(l0, def, kx, { st, laeufe: d });
       // Überführung (Paket Ü): im Schatten merkt sich der Lauf, welche festen Schritte er erreicht hätte — danach rechnet der Schritt sein Wirkungsbild (schreibt
       // nichts) und meldet es dem Vergleich mit dem alten Weg. Nur für den Prozess, der den System-Ablauf ersetzt.
+      // Ausbau (24.10., Paket Ü 2): die übrigen Wirkungen (Schritte, die der alte Weg nicht tat) werden im Schatten nur je Art gezählt — nie verglichen.
       const festeSchatten: SystemSchrittId[] = [];
-      const u: LaufUmfeld = l0.modus === 'schatten' && e.ersetzt ? { ...u0, beobachte: (b: ProbeBeobachtung) => { if (b.aktion?.art === 'system') festeSchatten.push(b.aktion.schritt); } } : u0;
+      const zusatzArten: Record<string, number> = {};
+      const u: LaufUmfeld = l0.modus === 'schatten' && e.ersetzt ? { ...u0, beobachte: (b: ProbeBeobachtung) => {
+        if (b.aktion?.art === 'system') festeSchatten.push(b.aktion.schritt);
+        else if (b.aktion && ZUSATZ_WIRKUNGEN.has(b.aktion.art)) zusatzArten[b.aktion.art] = (zusatzArten[b.aktion.art] ?? 0) + 1;
+      } } : u0;
       const plan = await laeufeAendern(dd => {
         const l = dd.laeufe.find(x => x.id === laufId);
         if (!l || l.geaendert !== l0.geaendert || l.status !== 'laeuft') return { datei: dd, r: null };
@@ -977,7 +982,8 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
         return { datei: mitLauf(dd, v.lauf), r: v };
       }, kx.h);
       if (!plan) continue; // inzwischen geändert — neu lesen
-      for (const schritt of festeSchatten) await festenSchrittVergleichen(e, schritt, kx, l0.person);
+      for (const schritt of festeSchatten) await festenSchrittVergleichen(e, schritt, kx, l0);
+      if (e.ersetzt && Object.keys(zusatzArten).length) await (await import('./ueberfuehrung-server')).zusatzMeldenServer(e.ersetzt, localDay(kx.jetzt), zusatzArten, kx.h);
       letzter = plan.lauf;
       if (plan.pause) { await prozessPausieren(l0.prozessId, 'budget', kx); break; }
       if (!plan.aktion) break;
@@ -1023,13 +1029,16 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
  * Schatten-Vergleich (Paket Ü): der feste Schritt rechnet, was er JETZT täte (schreibt nichts), und meldet sein Wirkungsbild — nur, wenn dieser Prozess den
  * System-Ablauf des Schritts ersetzt und in Phase „Schatten“ steht. Wirft nie (der Lauf geht weiter, der Vergleich fehlt dann für diesen Tag).
  */
-async function festenSchrittVergleichen(e: ProzessEintrag, schritt: SystemSchrittId, kx: MotorKontext, person: string | null): Promise<void> {
+async function festenSchrittVergleichen(e: ProzessEintrag, schritt: SystemSchrittId, kx: MotorKontext, l: Pick<ProzessLauf, 'person' | 'fall'>): Promise<void> {
   try {
-    const [{ ueberfuehrbarZuSchritt }, { systemSchrittAusfuehren }, { vergleichMeldenServer }] = await Promise.all([import('./ueberfuehrung'), import('./system-schritte-server'), import('./ueberfuehrung-server')]);
+    const [{ ueberfuehrbarZuSchritt, istKernSchritt }, { systemSchrittAusfuehren }, { vergleichMeldenServer, zusatzMeldenServer }] = await Promise.all([import('./ueberfuehrung'), import('./system-schritte-server'), import('./ueberfuehrung-server')]);
     const sp = ueberfuehrbarZuSchritt(schritt).sp;
     if (e.ersetzt !== sp || (e.ueberfuehrung?.phase ?? 'schatten') !== 'schatten') return;
-    const r = await systemSchrittAusfuehren(schritt, { modus: 'schatten', jetzt: kx.jetzt, person });
-    if (r.ok) await vergleichMeldenServer(sp, 'neu', localDay(kx.jetzt), r.bild, kx.h);
+    const r = await systemSchrittAusfuehren(schritt, { modus: 'schatten', jetzt: kx.jetzt, person: l.person, fall: l.fall });
+    if (!r.ok) return;
+    // Der Kern geht in den Vergleich; ein Zusatz-Schritt (Ausbau) wird nur gezählt.
+    if (istKernSchritt(schritt)) await vergleichMeldenServer(sp, 'neu', localDay(kx.jetzt), r.bild, kx.h);
+    else await zusatzMeldenServer(sp, localDay(kx.jetzt), r.bild.reduce<Record<string, number>>((a, b) => ({ ...a, [b.art]: (a[b.art] ?? 0) + 1 }), {}), kx.h);
   } catch (err) {
     console.error(`[prozesse/ueberfuehrung] Schatten-Vergleich ausgefallen — ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);
   }
@@ -1300,6 +1309,9 @@ async function zeitplaeneStarten(kx: MotorKontext): Promise<number> {
   }
   return n;
 }
+
+/** Aktionen, die als Wirkung gezählt werden, wenn ein überführter Prozess im Schatten neue Schritte geht (Ausbau) — Lesen, Schleifen und Auslöser zählen nicht. */
+const ZUSATZ_WIRKUNGEN: ReadonlySet<string> = new Set(['aufgabe', 'vorschlag', 'crm-vorschlag', 'meldung', 'agent', 'teilprozess']);
 
 // ══ Je Person ab Uhrzeit (24.10., Paket Ü 2 — Regeln: lib/prozesse/ausloeser.ts `personenFaellig`) ═══════════════════════════════════════════════════════
 

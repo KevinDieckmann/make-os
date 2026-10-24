@@ -104,7 +104,7 @@ export interface ProzessDef {
    * Überführung (22.10., Paket Ü — lib/prozesse/ueberfuehrung.ts; der Server hängt es an, nie gespeichert): am System-Prozess (`rolle: 'alt'`) der Teil, der in die
    * Werkstatt umziehen kann, wie es darum steht und der ersetzende Prozess; am Werkstatt-Prozess (`rolle: 'neu'`) welchen System-Prozess er ersetzt (`prozessId`).
    */
-  ueberfuehrung?: { rolle: 'alt' | 'neu'; teil: string; satz: string; stand: import('./ueberfuehrung').UeberfuehrungStand; prozessId?: string; titel?: string };
+  ueberfuehrung?: { rolle: 'alt' | 'neu'; teil: string; satz: string; stand: import('./ueberfuehrung').UeberfuehrungStand; prozessId?: string; titel?: string; /** Ausbau (24.10.): was neu ist gegenüber dem alten Weg (ein Satz). */ zusatz?: string };
 }
 
 /**
