@@ -31,6 +31,9 @@ export interface AntwortVorgabe {
   /** Neue Mail: wählbare Postfächer. */
   postfaecher?: { id: string; name: string }[];
   start?: { an?: string; text?: string; betreff?: string; zoeHinweis?: string };
+  /** Neue Mail (25.10., „Über <Postfach> senden (mit PDF)“): Anhänge aus der Ablage (nur Kennung + Name) und der Beleg dazu — der Server prüft beides. */
+  anhaenge?: { datei: string; name: string }[];
+  beleg?: { art: 'angebot' | 'rechnung'; id: string };
 }
 
 const KEY = (id: string) => `make-inbox-entwurf-${id}`;
@@ -82,7 +85,7 @@ export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVor
       ? { gespraech: v.gespraech, an: zuListe(an), cc: zuListe(cc), text, ...(v.von.length > 1 ? { von } : {}), uwgBestaetigt: uwg, anfrageId: anfrageId.current }
       : v.uebergabe
         ? { uebergabe: v.uebergabe, postfach, an: zuListe(an), cc: zuListe(cc), text, uwgBestaetigt: uwg, anfrageId: anfrageId.current }
-        : { neu: { postfach, betreff }, an: zuListe(an), cc: zuListe(cc), text, uwgBestaetigt: uwg, anfrageId: anfrageId.current };
+        : { neu: { postfach, betreff }, an: zuListe(an), cc: zuListe(cc), text, uwgBestaetigt: uwg, anfrageId: anfrageId.current, ...(v.anhaenge?.length ? { anhaenge: v.anhaenge.map(a => ({ datei: a.datei })) } : {}), ...(v.beleg ? { beleg: v.beleg } : {}) };
     const r = await senden<{ an?: string[]; uwg?: UwgDaten }>('/api/inbox/senden', body);
     setLaeuft(false);
     if (r.d.ok) { schreibe(schluessel, ''); meldung(`Gesendet an ${(r.d.an ?? []).join(', ')}.`); onGesendet(); return; }
@@ -117,6 +120,7 @@ export function Antwort({ v, allen, onGesendet, onZu, meldung }: { v: AntwortVor
       {(cc || allen) && <Feldzeile label="Cc"><input value={cc} onChange={e => setCc(e.target.value)} style={eingabe} aria-label="Cc" inputMode="email" autoComplete="off" /></Feldzeile>}
       {!v.gespraech && !v.uebergabe && <Feldzeile label="Betreff"><input value={betreff} onChange={e => setBetreff(e.target.value)} style={eingabe} aria-label="Betreff" /></Feldzeile>}
       {vonKi && text.trim() && <KiMarke />}
+      {!!v.anhaenge?.length && <div style={{ fontSize: TYP.bedien, color: C.inkDim }} data-inbox="anhaenge-neu">Anhang: {v.anhaenge.map(a => a.name || 'Datei').join(', ')}</div>}
       <textarea ref={feld} value={text} onChange={e => { setText(e.target.value); if (!e.target.value.trim()) setVonKi(false); }} rows={10} placeholder="Deine Antwort …" aria-label="Text" style={{ ...eingabe, minHeight: 200, resize: 'vertical', lineHeight: 1.55, paddingTop: 12 }} />
       {(v.gespraech || v.uebergabe) && (
         <details style={{ fontSize: TYP.bedien, color: C.inkLeise }} open={!!v.start?.zoeHinweis}>

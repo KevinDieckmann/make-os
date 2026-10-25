@@ -18,7 +18,8 @@ import { nachrichtenVon } from '@/lib/inbox/verlauf';
 import { gmailBereit } from '@/lib/gmail/abgleich';
 import { protokolliere, type Wer } from '@/lib/store/aenderungsprotokoll';
 import type { Adr } from '@/lib/gmail/typen';
-import { anhaengeLaden } from '@/lib/inbox/anhaenge-server';
+import { anhaengeLaden, anhangKennungen } from '@/lib/inbox/anhaenge-server';
+import { belegAus, belegPruefen, belegVermerken } from '@/lib/inbox/beleg-versand';
 
 const adressen = (v: unknown): Adr[] | undefined => Array.isArray(v) ? v.slice(0, 40).map(x => ({ email: String((x as Adr)?.email ?? ''), ...((x as Adr)?.name ? { name: String((x as Adr).name) } : {}) })) : undefined;
 
@@ -30,6 +31,11 @@ export async function inboxSenden(person: string, b: Record<string, unknown>, we
   const neu = b.neu && typeof b.neu === 'object' ? b.neu as { postfach?: unknown; betreff?: unknown } : null;
   const uebergabe = typeof b.uebergabe === 'string' && /^ub-[0-9a-f-]{36}$/.test(b.uebergabe) ? b.uebergabe : null;
   try {
+    // Beleg (25.10., „Über <Postfach> senden (mit PDF)“): nur bei einer neuen Mail; der Anhang muss GENAU das PDF dieses Angebots bzw. dieser Rechnung
+    // sein — geprüft, BEVOR etwas gesendet wird. Nach dem Senden steht „versendet am … über …“ am Beleg (lib/inbox/beleg-versand.ts).
+    const beleg = belegAus(b.beleg);
+    if (beleg && !neu) return { status: 400, body: { ok: false, fehler: 'Ein Beleg geht nur mit einer neuen Mail hinaus.' } };
+    if (beleg) await belegPruefen(beleg, anhangKennungen(b.anhaenge));
     // Anhänge (10.10., Fortschritts-Report): nur Kennungen eigener Ablage-Dateien — geladen und geprüft, BEVOR etwas gesendet wird.
     const anhaenge = await anhaengeLaden(person, b.anhaenge);
     const gemeinsam = { person: person, text: String(b.text ?? ''), ...(adressen(b.an) ? { an: adressen(b.an) } : {}), ...(adressen(b.cc) ? { cc: adressen(b.cc) } : {}), uwgBestaetigt: b.uwgBestaetigt === true, ...(anhaenge.length ? { anhaenge } : {}) };
@@ -71,6 +77,7 @@ export async function inboxSenden(person: string, b: Record<string, unknown>, we
     // Wer gesendet hat, steht im Protokoll (`wer` = Sitzung) — beim Team-Postfach auch, dass es ALS das geteilte Postfach ging.
     await protokolliere('inbox', [{ op: 'neu', id: x.id ?? uebergabe ?? (b.gespraech as string | undefined) ?? postfach, felder: ['gesendet', ...(team ? ['team-postfach'] : []), ...(uebergabe ? ['uebergabe'] : []), ...(anhaenge.length ? ['anhang'] : [])] }], wer).catch(() => { /* nur Protokoll */ });
     if (uebergabe) await uebergabeGeantwortet(person, uebergabe);
+    if (beleg) await belegVermerken(beleg, { person, von: x.von, wer });
     // Ereignis (21.10., Prozesse C1, E8): eigene Antwort an Kontakte gesendet — stoppt z. B. die Uhr eines Lead-Eingangs. Nur Kennungen, wirft nie.
     await import('@/lib/ereignisse/quellen').then(q => q.antwortGesendetEreignis({
       person, quelle: postfach === GMAIL_POSTFACH ? 'gmail' : 'imap', nachricht: x.id ?? `${postfach}:${new Date().toISOString()}`, an: x.an, postfach,

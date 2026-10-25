@@ -96,7 +96,14 @@ export interface RechnungZusatz {
   /** Am Original: die Stornorechnung dazu. */
   stornoRechnungId?: string;
   mahnungen?: Mahnung[];
+  /**
+   * Versendet aus MAKE OS (25.10., optional, additiv — nur der Server): „Über <Postfach> senden (mit PDF)“ in der Inbox, nur per Klick der Person
+   * (Rechnungen gehen nie automatisch raus). Je Versand Tag/Zeit, Postfach (Adresse maskiert), wer. Der alte Stand verwirft das Feld.
+   */
+  versendet?: RechnungVersand[];
 }
+/** Ein Versand einer Rechnung aus MAKE OS (25.10.). */
+export interface RechnungVersand { am: string; ueber: string; von: string }
 
 /**
  * Was mit der Rechnungsanschrift an der Kundenfirma geschah (19.10., Rundgang B12 — Kevin 18.10.: „An der Firma speichern“), nur in der Antwort,

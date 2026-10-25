@@ -25,7 +25,8 @@ import { rechnungDokument, bankZeile } from '@/lib/finanzen/rechnung/dokument';
 import { Blatt } from '../crm/angebot/Blatt';
 import { Karte, Knopf, Chip, Hinweis, Pillen, Segmente, Feldzeile, Ueberschrift, Schalter, feld, useRueckfrage } from '../ui';
 import { neueAnfrage, pdfLaden, rechnungPost, type RechnungDaten, type RechnungMitFassung, type AbsenderAnzeige } from './daten';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
+import { BelegSendenKnopf } from '../inbox/BelegSenden';
 import { neueKennung } from '@/lib/kennung';
 import { anzahl } from '@/lib/text/zahlwort';
 
@@ -339,7 +340,9 @@ function RechnungAnsicht({ r, daten, onZu }: { r: RechnungMitFassung; daten: Rec
   const vorschlag = mahnVorschlag(r, heute, tage);
   const stufe = mahnstufeVon(r);
   const name = g ? mitVorgaben(g).name : undefined;
-  const mail = rechnungMail(r, name);
+  const mail = r.art === 'storno'
+    ? { betreff: `Stornorechnung${r.nummer ? ` ${r.nummer}` : ''} – ${r.titel || 'Rechnung'}`, text: `${rechnungMail(r, name).text.split('\n\n')[0]}\n\nanbei erhalten Sie unsere Stornorechnung${r.nummer ? ` ${r.nummer}` : ''}${original?.nummer ? ` zur Rechnung ${original.nummer}` : ''}.\n\nBei Fragen melden Sie sich gern.\n\nMit freundlichen Grüßen${name ? `\n${name}` : ''}` }
+    : rechnungMail(r, name);
 
   async function stornieren() {
     if (!grund || grund.trim().length < 3) return;
@@ -366,9 +369,13 @@ function RechnungAnsicht({ r, daten, onZu }: { r: RechnungMitFassung; daten: Rec
         <Chip farbe={r.status === 'bezahlt' ? LEUCHT.gut : r.status === 'storniert' ? C.inkLeise : LEUCHT.achtung}>{r.art === 'storno' ? 'Stornorechnung' : r.status}</Chip>
         {r.pdfDateiId && <Chip farbe={C.inkDim}>PDF · Prüfsumme gespeichert</Chip>}
         {stufe > 0 && <Chip farbe={LEUCHT.achtung}>{mahnLabel(stufe as 1 | 2 | 3)} am {r.mahnungen?.find(m => m.stufe === stufe)?.am}</Chip>}
+        {(r.versendet ?? []).slice(-1).map(v => <Chip key={v.am} farbe={LEUCHT.gut}>versendet {tagVon(v.am).split('-').reverse().join('.')} über {v.ueber}</Chip>)}
         <span style={{ flex: 1 }} />
         {r.pdfDateiId && <Knopf leise onClick={() => pdfLaden(r.id)}>PDF herunterladen</Knopf>}
-        {r.art !== 'storno' && r.status === 'gestellt' && <Knopf leise href={mailtoLink(r.empfaenger?.email, mail.betreff, mail.text)}>Mail-Entwurf</Knopf>}
+        {/* 25.10.: „Über <Postfach> senden (mit PDF)“ — neue Mail in der Inbox mit dem PDF als Anhang, gesendet nur per Klick; ohne Postfach `mailto`. Auch Storno. */}
+        {r.pdfDateiId && (r.art === 'storno' || r.status === 'gestellt') && (
+          <BelegSendenKnopf an={r.empfaenger?.email} betreff={mail.betreff} text={mail.text} pdf={{ id: r.pdfDateiId, name: `${r.art === 'storno' ? 'Stornorechnung' : 'Rechnung'} ${r.nummer ?? r.id}.pdf` }} beleg={{ art: 'rechnung', id: r.id }} mailto={mailtoLink(r.empfaenger?.email, mail.betreff, mail.text)} />
+        )}
       </div>
       {vorschlag && vorschlagText && (
         <Hinweis art="achtung" titel={`${vorschlag.label} ist dran — ${anzahl(vorschlag.tageUeberfaellig, 'Tag', 'Tage')} überfällig`}
