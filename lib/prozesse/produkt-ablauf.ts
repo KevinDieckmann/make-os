@@ -127,12 +127,11 @@ export const istAblaufPhase = (id: string | null | undefined): boolean => !!id &
  * hat ihr „Hier“ schon (Onboarding läuft) — dann steht eine begonnene Phase des Ablaufs als „läuft“ daneben, nie als zweites „Hier“. Band: intern (der Kunde
  * sieht seine Etappen über den Kunden-Link, lib/prozesse/kunden-etappen.ts).
  */
-export function ablaufSpalten(a: Pick<ProduktAblaufAnsicht, 'phasen'>, abNr: number, nebenher: boolean): BildSpalte[] {
+export function ablaufSpalten(a: Pick<ProduktAblaufAnsicht, 'phasen'> & Partial<Pick<ProduktAblaufAnsicht, 'lage'>>, abNr: number, nebenher: boolean): BildSpalte[] {
+  // 25.10. (Kern-Bau-Test 2): läuft der Ablauf nicht scharf, trägt jede seiner Phasen das Kennzeichen („im Schatten“) — sie zählen mit (`phasenZaehlung`).
+  const kennzeichen = a.lage && a.lage !== 'scharf' ? ` · ${LAGE_WORT[a.lage]}` : '';
   return a.phasen.map((p, i): BildSpalte => {
-    const zaehlend = p.schritte.filter(s => s.zustand !== 'entfaellt');
-    const erledigt = zaehlend.filter(s => s.zustand === 'erledigt').length;
-    const hier = p.schritte.some(s => s.zustand === 'hier');
-    const zustand: ReiseZustand = zaehlend.length && erledigt === zaehlend.length ? 'fertig' : hier ? (nebenher ? 'laeuft' : 'jetzt') : 'offen';
+    const { zaehlend, erledigt, zustand } = phaseStand(p, nebenher);
     const kaestchen: BildKaestchen[] = p.schritte.map(s => {
       const f = flussForm(s.form);
       return { id: s.id, titel: s.titel, ...(f ? { form: f } : {}), zustand: nebenher && s.zustand === 'hier' ? 'offen' : s.zustand };
@@ -142,8 +141,46 @@ export function ablaufSpalten(a: Pick<ProduktAblaufAnsicht, 'phasen'>, abNr: num
     const zeigen = kaestchen.slice(von, von + KAESTCHEN);
     return {
       id: ablaufPhasenKennung(p.id), nr: abNr + i, titel: p.titel, zustand,
-      unter: zustand === 'fertig' ? 'erledigt' : zaehlend.length ? `${erledigt} von ${zaehlend.length}` : 'noch ohne Schritte',
+      unter: `${zustand === 'fertig' ? 'erledigt' : zaehlend ? `${erledigt} von ${zaehlend}` : 'noch ohne Schritte'}${kennzeichen}`,
       kaestchen: zeigen, mehr: kaestchen.length - zeigen.length, band: { intern: true },
     };
   });
 }
+
+/** Stand einer Phase des Ablaufs aus ihren Schritten (EINE Regel für Spalten, Zähler und Strahl): fertig · jetzt (bzw. „läuft“ neben dem Onboarding) · offen. */
+function phaseStand(p: Pick<AblaufPhase, 'schritte'>, nebenher: boolean): { zaehlend: number; erledigt: number; zustand: ReiseZustand } {
+  const zaehlend = p.schritte.filter(s => s.zustand !== 'entfaellt');
+  const erledigt = zaehlend.filter(s => s.zustand === 'erledigt').length;
+  const hier = p.schritte.some(s => s.zustand === 'hier');
+  return { zaehlend: zaehlend.length, erledigt, zustand: zaehlend.length && erledigt === zaehlend.length ? 'fertig' : hier ? (nebenher ? 'laeuft' : 'jetzt') : 'offen' };
+}
+
+/** Die Phasen des Ablaufs in Kurzform (Titel, Zustand, Anteil) — für Strahl und Zähler außerhalb der Reise (Cockpit, Mandat), dieselbe Regel wie die Spalten. */
+export function ablaufPhasenKurz(a: Pick<ProduktAblaufAnsicht, 'phasen'>, nebenher: boolean): { titel: string; zustand: ReiseZustand; anteil: number }[] {
+  return a.phasen.map(p => {
+    const st = phaseStand(p, nebenher);
+    return { titel: p.titel, zustand: st.zustand, anteil: st.zaehlend ? Math.round((st.erledigt / st.zaehlend) * 100) / 100 : st.zustand === 'fertig' ? 1 : 0 };
+  });
+}
+
+// ══ EINE Zählung der Phasen (Reise, Mandat, Cockpit) ═══════════════════════════════════════════════════════════════════════════════════════════
+
+/** Wo ein Fall steht: „Phase n von m · Titel“ — `ablauf` = Lage des Ablaufs, wenn er NICHT scharf läuft (dann zählen seine Phasen mit, gekennzeichnet). */
+export interface PhasenZahl { nr: number; von: number; titel: string; ablauf?: Exclude<AblaufLage, 'scharf'> }
+/**
+ * EINE Zählung der Phasen eines Falls (25.10., Kern-Bau-Test 2: die Reise zeigte Onboarding + die Phasen des Produkt-Ablaufs, Mandat und Kunden-Ansicht sagten
+ * „Phase 1 von 1 · Onboarding“): die Phasen des Falls (`fallStelle`: nr/von) und dahinter die Phasen des Ablaufs eines Werkstatt-Prozesses — auch im Schatten
+ * (dann mit Kennzeichen). Steht der Fall in keiner Phase mehr (Onboarding durch), zählt die laufende Phase des Ablaufs („jetzt“), sonst keine. Ohne Ablauf genau
+ * wie bisher. Die Reise zeichnet dieselben Phasen (`ablaufSpalten` ab Nummer `fallPhasen + 1`).
+ */
+export function phasenZaehlung(fall: { titel: string; nr: number; von: number } | null, fallPhasen: number, ablauf: Pick<ProduktAblaufAnsicht, 'phasen' | 'lage'> | null): PhasenZahl | null {
+  const kennzeichen = ablauf && ablauf.lage !== 'scharf' ? { ablauf: ablauf.lage } : {};
+  const extra = ablauf?.phasen.length ?? 0;
+  if (fall) return { nr: fall.nr, von: fall.von + extra, titel: fall.titel, ...kennzeichen };
+  if (!ablauf) return null;
+  const kurz = ablaufPhasenKurz(ablauf, false);
+  const j = kurz.findIndex(p => p.zustand === 'jetzt');
+  return j < 0 ? null : { nr: fallPhasen + j + 1, von: fallPhasen + extra, titel: kurz[j].titel, ...kennzeichen };
+}
+/** „Phase 1 von 3 · Onboarding“ (+ „· Ablauf im Schatten“) — EIN Wortlaut für Mandat und Cockpit. */
+export const phasenText = (z: PhasenZahl): string => `Phase ${z.nr} von ${z.von} · ${z.titel}${z.ablauf ? ` · Ablauf ${LAGE_WORT[z.ablauf]}` : ''}`;

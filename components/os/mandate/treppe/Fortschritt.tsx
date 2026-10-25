@@ -22,6 +22,7 @@ import { WEG } from '@/lib/wege';
 import type { Ampel } from '@/lib/crm/treppe';
 import { PULS_PLATZHALTER, hatZusatz, type ReportDokument } from '@/lib/crm/treppe-report';
 import { useTreppe, datum } from './daten';
+import { phasenText } from '@/lib/prozesse/produkt-ablauf';
 // Die Wörter der Fall-Ampel — dieselben wie im Fulfillment (EINE Tabelle).
 import { AMPEL_TEXT as FALL_AMPEL_TEXT } from '../../fulfillment/reise/bilder';
 
@@ -44,7 +45,7 @@ export function FallPhase({ mandatId, ohne, rahmen }: { mandatId: string; ohne: 
   if (!f?.phase) return ohne ? <>{rahmen(ohne)}</> : null;
   return <>{rahmen(
     <Link href={WEG.fall(mandatId)} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', minHeight: 44, fontSize: TYP.bedien, color: C.ink, textDecoration: 'none', flexWrap: 'wrap' }}>
-      <span>{f.phaseNr && f.phasenAnzahl ? `Phase ${f.phaseNr} von ${f.phasenAnzahl} · ` : ''}{f.phase}</span>
+      <span>{f.phaseNr && f.phasenAnzahl ? phasenText({ nr: f.phaseNr, von: f.phasenAnzahl, titel: f.phase, ...(f.ablaufLage ? { ablauf: f.ablaufLage } : {}) }) : f.phase}</span>
       <span style={{ color: C.aktiv }}>in der Reise ›</span>
     </Link>,
   )}</>;

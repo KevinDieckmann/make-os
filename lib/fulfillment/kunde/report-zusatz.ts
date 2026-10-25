@@ -13,7 +13,7 @@ import { wartetAufEuch, wertKontoZeilen } from '../regeln';
 import { tagePlus, tagVon } from '@/lib/zeit';
 import { letzterPuls } from './puls';
 import { knotenGesperrt } from './sicht';
-import { fragenText, kundenTeile, kundenText, type KundenAnrede, type KundenHaenger } from './bild';
+import { fragenText, kundenTeile, kundenText, type KundenAnrede, type KundenHaenger, type KundenPhase } from './bild';
 import type { Fall, Freigabepunkt, KundeDatei, ReportZusatz, RitualVorlage } from '../typen';
 import type { Mandat } from '@/lib/crm/typen';
 
@@ -31,6 +31,8 @@ export interface ReportUmfeld {
   formulareOffen?: readonly { schluessel: string; titel: string; beantwortet: number; gesamt: number }[];
   /** Was intern hängt (Cockpit) — die Lage übersetzt es in Worte, wie auf der Kunden-Seite. */
   haengt?: readonly KundenHaenger[];
+  /** 25.10.: die Phasen des Werkstatt-Ablaufs hinter dem Fall (wie auf der Kunden-Seite, `kundenAblaufPhasen`). */
+  danachPhasen?: readonly KundenPhase[];
 }
 
 /**
@@ -62,6 +64,7 @@ export function reportZusatz(fallJetzt: Fall | null, mandat: Pick<Mandat, 'id' |
     fall, mandat, heute, anrede, gesperrt, ...(umfeld.freigaben ? { freigaben: umfeld.freigaben } : {}), ...(umfeld.rituale ? { rituale: umfeld.rituale } : {}),
     ...(umfeld.terminTage ? { terminTage: umfeld.terminTage } : {}), ...(umfeld.formulare ? { formulare: umfeld.formulare } : {}),
     ...(umfeld.formulareOffen ? { formulareOffen: umfeld.formulareOffen.map(x => x.schluessel) } : {}), ...(umfeld.haengt ? { haengt: umfeld.haengt } : {}),
+    ...(umfeld.danachPhasen?.length ? { danachPhasen: umfeld.danachPhasen } : {}),
   });
   // Offene Formulare, die nicht schon über „wartet“ verlinkt sind, stehen mit in der Liste — dieselbe Zählung wie Lage und Kunden-Seite (`brauchtAnzahl`).
   const formularZeilen = (umfeld.formulareOffen ?? []).filter(x => !t.wartet.some(w => w.formular === x.schluessel))

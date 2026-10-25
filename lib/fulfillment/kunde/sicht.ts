@@ -103,6 +103,8 @@ export interface SichtEingabe {
    * — gilt NUR ohne Fall: dann füllen sie dieselben Schlüssel `zeitstrahl`, `erledigt`, `naechstes` (kein neuer Schlüssel der Positivliste). Mit Fall bit-gleich wie vorher.
    */
   etappen?: { phasen: KundenPhase[]; erledigt: string[]; naechstes: string[] } | null;
+  /** 25.10.: die Phasen des Werkstatt-Ablaufs hinter dem Fall, solange es keine Etappen gibt (`kundenAblaufPhasen`) — zählen in „Phase n von m“ mit. */
+  danachPhasen?: KundenPhase[] | null;
 }
 
 export { formularOffen };
@@ -137,6 +139,7 @@ export function kundenSicht(e: SichtEingabe): KundenSicht {
     formulare: new Map(formularBausteine.map(b => [b.id, formularSchluessel(e.mandat.id, b.id)])), ...(e.terminTage ? { terminTage: e.terminTage } : {}),
     // 14.10.: offene Formulare zählen in der Lage mit (wie in der Karte), und die Ampel folgt dem, was intern hängt.
     formulareOffen: formulare.filter(formularOffen).map(x => x.schluessel), ...(e.haengt ? { haengt: e.haengt } : {}),
+    ...(e.danachPhasen?.length && f && fallAblauf(f) && !e.etappen ? { danachPhasen: e.danachPhasen } : {}),
   });
   // Nur geteilte Entscheidungen (Prüf-Fund 11.10.: ungeteilte erschienen hier mit Titel).
   const entscheidungen = (f?.entscheidungen ?? []).filter(x => x.geteilt).sort((a, b) => (a.am < b.am ? 1 : -1))

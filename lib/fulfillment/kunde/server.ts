@@ -203,13 +203,31 @@ export async function sichtFuer(e: { mandat: Mandat; modus: 'voll' | 'puls'; lin
   // Prozesse × Fulfillment (22.10.): ohne Fall die Etappen aus den scharfen Läufen der Werkstatt-Prozesse am Mandat (nur „Dem Kunden zeigen“; wirft nie).
   // E5: auch für die Akte eines Werkstatt-Prozesses (`fallAblauf`) — ein Fall mit Paket liest weiter nur den Fall (bit-gleich).
   const etappen = (!fall || fallAblauf(fall)) && e.modus === 'voll' ? await (await import('@/lib/prozesse/kunden-etappen-server')).kundenEtappenFuer(e.mandat.id) : null;
+  // 25.10.: ohne Etappen stehen die Phasen des Werkstatt-Ablaufs hinter dem Fall (EINE Zählung mit der Reise; Sichtregel wie die Etappen).
+  const danachPhasen = fall && !etappen && e.modus === 'voll' ? await danachPhasenFuer(e.mandat, fall, e.crm) : null;
   return kundenSicht({
     modus: e.modus, heute: e.heute, mandat: e.mandat, paket: paketName(e.mandat, e.crm, fall, e.vorlagen), fall, bausteine: e.vorlagen.bausteine, marken: e.vorlagen.marken, rituale: e.vorlagen.rituale,
     kunde: e.kunde, rechte, standVon, datenschutz: await hinweisLaden(u.anrede), uploadFrei: frei,
     ...(e.anfrage ? { pulsOffen: !e.anfrage.beantwortetAm && e.anfrage.offenBis >= e.heute } : {}),
     anrede: u.anrede, ...(u.anbieter ? { anbieter: u.anbieter } : {}), ...(u.ansprechperson ? { ansprechperson: u.ansprechperson } : {}), freigaben: u.freigaben, terminTage: u.terminTage,
-    ...(haengt ? { haengt } : {}), ...(etappen ? { etappen } : {}),
+    ...(haengt ? { haengt } : {}), ...(etappen ? { etappen } : {}), ...(danachPhasen ? { danachPhasen } : {}),
   });
+}
+
+/**
+ * Die Phasen des Werkstatt-Ablaufs, die der Kunde HINTER der Akte eines Werkstatt-Prozesses sieht (25.10., Kern-Bau-Test 2 — `kundenAblaufPhasen`, dieselbe Sichtregel
+ * wie die Etappen). null für einen Fall mit Paket, ohne Ablauf bzw. ohne sichtbare Phase. Wirft nie.
+ */
+async function danachPhasenFuer(m: Pick<Mandat, 'id' | 'leistungId'>, fall: Fall, crm: Pick<CrmBestand, 'leistungen'>) {
+  if (!fallAblauf(fall)) return null;
+  try {
+    const [{ produktAblaufLesen }, { kundenAblaufPhasen }] = await Promise.all([import('@/lib/prozesse/produkt-laeufe-server'), import('@/lib/prozesse/kunden-etappen')]);
+    const a = await produktAblaufLesen(m, crm, fall);
+    const l = a ? kundenAblaufPhasen(a) : [];
+    return l.length ? l : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Was an einem Fall hängt (Cockpit-Rechnung, nur Art/Schwere/Tage) — über die Schnittstelle von C1; Fehler → null (Lage wie bis 13.10.). */
@@ -695,9 +713,12 @@ export async function reportZusatzFuer(mandatId: string, heute: string): Promise
     const formulareOffen = fb.map(b => ({ b, st: formularStandVon(kunde, m.id, b.id) })).filter(({ b, st }) => abschnitteVon(b).some(a => !st?.fertig.includes(a.schluessel)))
       .map(({ b, st }) => ({ schluessel: formularSchluessel(m.id, b.id), titel: b.titel, ...zaehl(formularZaehlung(b.fragen ?? [], st?.antworten ?? {})) }));
     const haengt = await haengerVon(m.id, heute);
+    // 25.10.: dieselben Phasen hinter dem Fall wie die Kunden-Seite (ohne Etappen eines scharfen Laufs).
+    const etappen = fallAblauf(fall) ? await (await import('@/lib/prozesse/kunden-etappen-server')).kundenEtappenFuer(m.id) : null;
+    const danachPhasen = etappen ? null : await danachPhasenFuer(m, fall, crm);
     return reportZusatz(fall, m, kunde, heute, !!link?.rechte.puls, kundenGesperrt(vorlagen.bausteine, vorlagen), {
       anrede: u.anrede, freigaben: u.freigaben, rituale: vorlagen.rituale, terminTage: u.terminTage,
-      formulare: new Map(fb.map(b => [b.id, formularSchluessel(m.id, b.id)])), formulareOffen, ...(haengt ? { haengt } : {}),
+      formulare: new Map(fb.map(b => [b.id, formularSchluessel(m.id, b.id)])), formulareOffen, ...(haengt ? { haengt } : {}), ...(danachPhasen ? { danachPhasen } : {}),
     });
   } catch (e) {
     console.error('[fulfillment] Report-Zusatz:', e instanceof Error ? e.message.slice(0, 160) : e);

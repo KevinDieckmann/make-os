@@ -12,6 +12,7 @@ import type { KundenPhase } from '@/lib/fulfillment/kunde/bild';
 import { kundenText } from '@/lib/fulfillment/kunde/bild';
 import type { ProzessDefinition } from './definition';
 import type { ProzessLauf } from './lauf-typen';
+import type { ProduktAblaufAnsicht } from './produkt-ablauf';
 import { knotenStand } from './lauf-regeln';
 import { phasen, schritteDer } from './fluss';
 import { kundenFormErlaubt } from './produkt-bindung';
@@ -53,4 +54,18 @@ export function kundenEtappen(laeufe: readonly { lauf: Pick<ProzessLauf, 'modus'
   raus.phasen = raus.phasen.map((p, i) => (p.stand === 'aktuell' && i !== erste ? { ...p, stand: 'laeuft' as const } : p));
   raus.naechstes = [...offen, ...kommt].slice(0, NAECHSTES_MAX);
   return raus;
+}
+
+/**
+ * Die Phasen eines Werkstatt-Ablaufs, die der Kunde HINTER den Phasen des Falls sieht, solange es keine Etappen aus einem scharfen Lauf gibt (25.10., Kern-Bau-Test 2:
+ * die Reise zeigte Onboarding + die Phasen des Ablaufs, die Kunden-Ansicht „Phase 1 von 1“) — DIESELBE Sichtregel wie `kundenEtappen`: nur Phasen mit mindestens
+ * einem Schritt „Dem Kunden zeigen“ in einer Kunden-Form, nur ihr Titel (`kundenText`); Stand „kommt“ (alle sichtbaren Schritte erledigt: „erledigt“). Ein Ablauf im
+ * Schatten erscheint so als das, was noch kommt — das Wort „Schatten“ erreicht den Kunden nie.
+ */
+export function kundenAblaufPhasen(a: Pick<ProduktAblaufAnsicht, 'phasen'>): KundenPhase[] {
+  return a.phasen.flatMap(p => {
+    const sichtbar = p.schritte.filter(s => s.kunde === true && kundenFormErlaubt(s.form) && s.zustand !== 'entfaellt');
+    if (!sichtbar.length) return [];
+    return [{ titel: kundenText(p.titel), stand: sichtbar.every(s => s.zustand === 'erledigt') ? 'erledigt' as const : 'kommt' as const }];
+  });
 }

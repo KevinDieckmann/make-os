@@ -12,6 +12,7 @@ import { knotenAktion, type HeuteAktion } from './heute';
 import { abstimmungName, abstimmungsNummern, anzeigeTitel, kundeSiehtLage, type Ampel, type KundenLageArt } from './darstellung';
 import { wertDurchschnitt } from './wert';
 import { WEG } from '@/lib/wege';
+import { ablaufPhasenKurz, phasenZaehlung, type AblaufLage, type ProduktAblaufAnsicht } from '@/lib/prozesse/produkt-ablauf';
 import { anzahl } from '@/lib/text/zahlwort';
 
 export type HaengerArt = 'willkommen' | 'freigabe' | 'wartet' | 'puls' | 'report' | 'art14' | 'faellig';
@@ -33,6 +34,8 @@ export interface CockpitZeile {
   mandatId: string; kunde: string; titel: string; paket?: string; status: Fall['status'];
   /** Phase und „Als Nächstes“ aus `fallStelle` (lib/fulfillment/prozesse/reise.ts) — dieselbe Rechnung wie Fall-Kopf, Landkarte, Kunden-Seite. */
   phase?: string; phaseNr?: number; phasenAnzahl?: number; schritt?: string; fortschritt: number;
+  /** 25.10.: der Ablauf eines Werkstatt-Prozesses läuft nicht scharf — seine Phasen zählen mit (`phasenZaehlung`), die Anzeige kennzeichnet sie. */
+  ablaufLage?: Exclude<AblaufLage, 'scharf'>;
   /**
    * Live-Lage des nächsten Punkts (17.10. abends, Ausführung): worauf gewartet wird, bis wann, ob er überfällig ist — aus DEMSELBEN `naechsterPunkt`
    * (Fall-Kopf, Reise „hier“, Landkarte). Fehlt ohne nächsten Punkt.
@@ -99,6 +102,11 @@ export interface CockpitEingabe {
   gesperrt?: ReadonlySet<string>;
   /** Trägt ein Knoten einen Mail-Baustein? (Server: `mailBausteinVon`) — dann ist der Handgriff „Entwurf öffnen“. Ohne: nie. */
   mitMail?: (k: FallKnoten) => boolean;
+  /**
+   * Der Ablauf des Werkstatt-Prozesses, den die Akte trägt (25.10., `produktAblaufLesen`) — seine Phasen zählen hinter denen des Falls (EINE Zählung mit der Reise,
+   * `phasenZaehlung`) und stehen im Strahl. Ohne: genau wie bisher.
+   */
+  ablauf?: Pick<ProduktAblaufAnsicht, 'phasen' | 'lage'> | null;
 }
 
 export const WARTET_ALT_TAGE = 7;
@@ -156,13 +164,16 @@ export function kundeSiehtWartend(f: Pick<Fall, 'knoten' | 'entscheidungen'>, w:
 
 export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
   const st = fallStelle(e.fall, e.freigaben ?? [], e.heute);
+  const reise = reiseKurz(fallReise(e.fall, e.freigaben ?? [], e.heute));
+  // EINE Zählung mit der Reise (25.10.): hinter den Phasen des Falls die des Ablaufs eines Werkstatt-Prozesses (auch im Schatten, gekennzeichnet).
+  const zahl = phasenZaehlung(st.phase, reise.length, e.ablauf ?? null);
   const w = wartetAufEuch(e.fall, e.heute);
   const p = e.kunde2?.letzterPuls;
   const haengt = wasHaengt(e);
   const zusaetze = zusatzPunkte(e, st.naechster);
   return {
     mandatId: e.fall.mandatId, kunde: e.kunde, titel: e.titel, ...(e.paket ? { paket: e.paket } : {}), status: e.fall.status,
-    ...(st.phase ? { phase: st.phase.titel, phaseNr: st.phase.nr, phasenAnzahl: st.phase.von } : {}), ...(st.naechster ? { schritt: st.naechster.titel } : {}), fortschritt: st.fortschritt,
+    ...(zahl ? { phase: zahl.titel, phaseNr: zahl.nr, phasenAnzahl: zahl.von, ...(zahl.ablauf ? { ablaufLage: zahl.ablauf } : {}) } : {}), ...(st.naechster ? { schritt: st.naechster.titel } : {}), fortschritt: st.fortschritt,
     ...(st.naechster ? { schrittLage: { wartetAuf: st.naechster.wartetAuf, ...(st.naechster.faelligAm ? { faelligAm: st.naechster.faelligAm } : {}), ueberfaellig: st.naechster.ueberfaellig } } : {}),
     wartet: w.length, ...(w[0]?.tage !== undefined ? { wartetAeltesterTage: w[0].tage } : {}),
     health: e.health, report: e.report,
@@ -172,7 +183,7 @@ export function cockpitZeile(e: CockpitEingabe): CockpitZeile {
     ...(e.fall.onboarding?.kickoffAm ? { kickoffVermerktAm: e.fall.onboarding.kickoffAm } : {}),
     ...(e.naechsterRitual ? { naechsterRitual: e.naechsterRitual } : {}),
     haengt,
-    phasen: reiseKurz(fallReise(e.fall, e.freigaben ?? [], e.heute)),
+    phasen: [...reise, ...(e.ablauf ? ablaufPhasenKurz(e.ablauf, reise.some(p => p.zustand === 'jetzt')) : [])],
     wert: wertDurchschnitt(e.fall.wertKonto ?? {}),
     kundeSieht: kundeSiehtLage({ health: e.health, haengt }, st.fertig),
     ...(st.naechster ? { naechster: naechsterHandgriffZeile(e.fall, st.naechster, e.mitMail) } : {}),

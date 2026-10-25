@@ -170,3 +170,61 @@ describe('5 · Reise: „0 von 8“ mit vier Kästchen und „+4“ (nie „+9�
     expect(verborgeneSchritte(schritte.map((_, i) => ({ knoten: { id: `s${i}` } as FallKnoten })), alle.slice(0, 6))).toBe(2);
   });
 });
+
+// ── 4 · EINE Zählung der Phasen für Reise, Mandat (Cockpit) und Kunden-Ansicht ──
+import { ablaufSpalten, phasenText, phasenZaehlung, type ProduktAblaufAnsicht } from '@/lib/prozesse/produkt-ablauf';
+import { cockpitZeile } from '@/lib/fulfillment/prozesse/cockpit';
+import { onboardingStand } from '@/lib/fulfillment/prozesse/onboarding';
+import { fallStelle } from '@/lib/fulfillment/prozesse/reise';
+import { kundenTeile } from '@/lib/fulfillment/kunde/bild';
+import { kundenAblaufPhasen } from '@/lib/prozesse/kunden-etappen';
+
+describe('4 · „Phase 1 von 3 · Onboarding“ überall — der Ablauf im Schatten zählt mit, gekennzeichnet', () => {
+  const kn = (id: string, elternId: string | undefined, titel: string, rang: number, x: Partial<FallKnoten> = {}): FallKnoten => ({ id, ...(elternId ? { elternId } : {}), titel, rang, status: 'offen', ...x } as FallKnoten);
+  const akte = {
+    mandatId: 'm-paket', vorlageId: 'pz-paket', vorlageFassung: 1, gestartetAm: J, gestartetVon: 'kevin', status: 'onboarding',
+    knoten: [kn('w', undefined, 'Wachstumspaket', 1), kn('ob', 'w', 'Onboarding', 1, { kundeSichtbar: true }), kn('ob-1', 'ob', 'Willkommensmail', 1, { kundeSichtbar: true }), kn('ob-2', 'ob', 'Kick-off', 2)],
+    freigaben: {}, onboarding: {}, stakeholder: [], entscheidungen: [], rituale: [], mitschriften: [], quickWins: [], kickoffFragen: [], wertKonto: {}, befaehigung: [], marken: {}, geaendert: J, geaendertVon: 'kevin',
+  } as unknown as Fall;
+  const ablauf: ProduktAblaufAnsicht = {
+    id: 'pz-paket', titel: 'Wachstumspaket', lage: 'schatten', version: 1, lauf: null,
+    phasen: [
+      { id: 'ph-a', titel: 'Ablauf', schritte: [{ id: 'k-1', titel: 'Workshop vorbereiten', form: 'schritt', zustand: 'offen', kunde: true }] },
+      { id: 'ph-b', titel: 'Umsetzung', schritte: [{ id: 'k-2', titel: 'Maßnahmen umsetzen', form: 'schritt', zustand: 'offen' }] },
+    ],
+  };
+  const st = fallStelle(akte, [], HEUTE);
+  const reise = reiseZeile({ fall: akte, freigaben: [], heute: HEUTE });
+  const spalten = [...reise.spalten, ...ablaufSpalten(ablauf, reise.spalten.length + 1, true)];
+  it('Reise: Onboarding + zwei Phasen des Ablaufs, fortlaufend nummeriert, die des Ablaufs mit Kennzeichen', () => {
+    expect(spalten.map(s => [s.nr, s.titel])).toEqual([[1, 'Onboarding'], [2, 'Ablauf'], [3, 'Umsetzung']]);
+    expect(ablaufSpalten(ablauf, 2, true).map(s => s.unter)).toEqual(['0 von 1 · im Schatten', '0 von 1 · im Schatten']);
+    expect(ablaufSpalten({ ...ablauf, lage: 'scharf' }, 2, true)[0].unter).toBe('0 von 1');
+  });
+  it('Zählung: dieselbe Zahl wie die Reise; ohne Ablauf genau wie bisher', () => {
+    const z = phasenZaehlung(st.phase, reise.spalten.length, ablauf)!;
+    expect(z).toEqual({ nr: 1, von: spalten.length, titel: 'Onboarding', ablauf: 'schatten' });
+    expect(phasenText(z)).toBe('Phase 1 von 3 · Onboarding · Ablauf im Schatten');
+    expect(phasenZaehlung(st.phase, reise.spalten.length, null)).toEqual({ nr: 1, von: 1, titel: 'Onboarding' });
+    expect(phasenText(phasenZaehlung(st.phase, 1, { ...ablauf, lage: 'scharf' })!)).toBe('Phase 1 von 3 · Onboarding');
+  });
+  it('Mandat/Cockpit: Phase 1 von 3 mit Kennzeichen, der Strahl trägt alle drei Phasen', () => {
+    const ob = onboardingStand(akte, { ziele: [], formularProzent: null, kickoffRitualIds: [], willkommenStunden: 24, jetzt: J });
+    const eingabe = { fall: akte, kunde: 'Beispiel Logistik AG', titel: 'Wachstumspaket', onboarding: ob, health: null, report: { faellig: false }, pulsSchwelle: 6, heute: HEUTE };
+    expect(cockpitZeile({ ...eingabe, ablauf })).toMatchObject({ phase: 'Onboarding', phaseNr: 1, phasenAnzahl: 3, ablaufLage: 'schatten' });
+    expect(cockpitZeile({ ...eingabe, ablauf }).phasen?.map(p => p.titel)).toEqual(['Onboarding', 'Ablauf', 'Umsetzung']);
+    const ohne = cockpitZeile(eingabe);
+    expect([ohne.phaseNr, ohne.phasenAnzahl, ohne.ablaufLage, ohne.phasen?.length]).toEqual([1, 1, undefined, 1]);
+  });
+  it('Kunden-Ansicht: hinter dem Onboarding die Phasen des Ablaufs, die der Kunde sehen darf — „Phase 1 von 2“, nie „Schatten“', () => {
+    const danach = kundenAblaufPhasen(ablauf);
+    expect(danach).toEqual([{ titel: 'Ablauf', stand: 'kommt' }]);
+    const t = kundenTeile({ fall: akte, mandat: { ziele: [] }, heute: HEUTE, anrede: 'sie', gesperrt: new Set(), danachPhasen: danach });
+    expect(t.phasen.map(p => p.titel)).toEqual(['Onboarding', 'Ablauf']);
+    expect(t.lage.saetze[0]).toContain('Phase 1 von 2');
+    expect(JSON.stringify(t)).not.toMatch(/Schatten/);
+    // Ohne Ablauf genau wie bisher.
+    expect(kundenTeile({ fall: akte, mandat: { ziele: [] }, heute: HEUTE, anrede: 'sie', gesperrt: new Set() }).lage.saetze[0]).toContain('Phase 1 von 1');
+  });
+});
+

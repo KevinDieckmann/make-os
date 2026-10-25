@@ -192,6 +192,11 @@ export interface TeileEingabe {
    * mehr). Ohne Angabe hängt nichts.
    */
   haengt?: readonly KundenHaenger[];
+  /**
+   * Die Phasen des Werkstatt-Ablaufs hinter den Phasen des Falls (25.10., `kundenAblaufPhasen` — nur für die Akte eines Werkstatt-Prozesses ohne scharfe Etappen):
+   * sie stehen hinter den Phasen des Falls und zählen in „Phase n von m“ mit (EINE Zählung mit der Reise). Ohne Angabe genau wie bisher.
+   */
+  danachPhasen?: readonly KundenPhase[];
 }
 /** So viele Einträge je Liste zeigt die Zusammenfassung (Report Seite 1); die Kunden-Seite zeigt alle. */
 export const KURZ_MAX = 4;
@@ -232,7 +237,7 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
   // Stand je Phase aus DERSELBEN Regel wie die Reise intern (`phasenStaende`, 19.10., Rundgang A4): „erledigt“ nur, wenn wirklich alles darin erledigt ist;
   // eine Phase, an der der Weg vorbei ist, obwohl darin noch etwas nebenher läuft (das Kunden-Playbook), „läuft noch“; eine spätere nur aus Bausteinen „kommt“.
   const staende = f ? phasenStaende(f) : new Map<string, PhasenStand>();
-  const phasen: KundenPhase[] = reihe.filter(k => ebeneVon(k, l) === 2 && (sichtbar(k) || (jetzt.has(k.id) && k.status !== 'entfaellt' && !(k.bausteinId && e.gesperrt.has(k.bausteinId))))).map(p => {
+  const phasenDesFalls: KundenPhase[] = reihe.filter(k => ebeneVon(k, l) === 2 && (sichtbar(k) || (jetzt.has(k.id) && k.status !== 'entfaellt' && !(k.bausteinId && e.gesperrt.has(k.bausteinId))))).map(p => {
     const st = staende.get(p.id) ?? 'offen';
     const fertig = st === 'fertig';
     const s = schritteJe.get(p.id);
@@ -243,6 +248,8 @@ export function kundenTeile(e: TeileEingabe): KundenTeile {
       ...(a && p.freigabe ? { abstimmung: { titel: a, erledigt: !!f?.freigaben?.[p.freigabe] } } : {}),
     };
   });
+  // 25.10.: dahinter die Phasen des Werkstatt-Ablaufs (EINE Zählung mit der Reise) — ohne Angabe genau die Phasen des Falls wie bisher.
+  const phasen: KundenPhase[] = e.danachPhasen?.length ? [...phasenDesFalls, ...e.danachPhasen.map(p => ({ ...p }))] : phasenDesFalls;
 
   const seit = tagePlus(e.heute, -14);
   const imFenster = (t: string | undefined): t is string => !!t && tagVon(t) >= seit && tagVon(t) <= e.heute;

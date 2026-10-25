@@ -67,7 +67,8 @@ describe('Die Reise aus dem Ablauf (rein)', () => {
     expect(a.phasen.map(p => [p.titel, p.schritte.map(s => s.titel)])).toEqual([['Ablauf', ['Kick-off vereinbaren', 'Mail an den Kunden']], ['Umsetzung', ['Pipeline aufbauen']]]);
     expect(a.phasen.flatMap(p => p.schritte.map(s => s.zustand))).toEqual(['offen', 'offen', 'offen']);
     expect(a.lauf).toEqual({ id: 'pl-1', modus: 'schatten', status: 'fertig' });
-    expect(ablaufSpalten(a, 2, false).map(s => [s.id, s.nr, s.zustand, s.unter])).toEqual([[ablaufPhasenKennung(fk(2)), 2, 'offen', '0 von 2'], [ablaufPhasenKennung(fk(5)), 3, 'offen', '0 von 1']]);
+    // 25.10. (Kern-Runde 4): im Schatten tragen die Phasen des Ablaufs ihr Kennzeichen (sie zählen mit — `phasenZaehlung`).
+    expect(ablaufSpalten(a, 2, false).map(s => [s.id, s.nr, s.zustand, s.unter])).toEqual([[ablaufPhasenKennung(fk(2)), 2, 'offen', '0 von 2 · im Schatten'], [ablaufPhasenKennung(fk(5)), 3, 'offen', '0 von 1 · im Schatten']]);
   });
   it('scharf: erledigt · hier · offen aus dem Lauf; läuft das Onboarding noch, steht die Phase als „läuft“ daneben (nie ein zweites „Hier“)', () => {
     const lauf = { id: 'pl-2', modus: 'scharf' as const, status: 'wartet' as const, schritte: [

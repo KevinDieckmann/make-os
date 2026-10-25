@@ -100,6 +100,17 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
   const gesperrt = kundenGesperrt(vorlagen.bausteine, vorlagen);
   // „Heute im Fulfillment“ (17.10. spät): trägt ein Knoten einen Mail-Baustein, ist sein Handgriff „Entwurf öffnen“ — dieselbe Regel wie die Ausführung.
   const { mailBausteinVon } = await import('./ausfuehrung-server');
+  // 25.10. (Kern-Bau-Test 2): die Akte eines Werkstatt-Prozesses zählt die Phasen ihres Ablaufs mit (EINE Zählung mit der Reise) — nur für diese Fälle gelesen.
+  const { fallAblauf } = await import('./ablauf-art');
+  const akten = laufend.filter(f => fallAblauf(f));
+  const ablaeufe = akten.length ? await sicher(async () => {
+    const { produktAblaufLesen } = await import('@/lib/prozesse/produkt-laeufe-server');
+    const paare = await Promise.all(akten.map(async f => {
+      const m = crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
+      return [f.mandatId, m ? await produktAblaufLesen(m, crm, f) : null] as const;
+    }));
+    return Object.fromEntries(paare.filter(([, a]) => !!a)) as Record<string, NonNullable<(typeof paare)[number][1]>>;
+  }, {} as Record<string, never>) : {};
   const zeilen: (CockpitZeile & { gesellschaft: string })[] = [];
   for (const f of laufend) {
     const m = crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
@@ -114,7 +125,7 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
         onboarding: onboardingStand(f, abl), ...(kunde[m.id] ? { kunde2: kunde[m.id] } : {}), ...(dossiers[m.id] ? { dossier: dossiers[m.id] } : {}),
         health: z?.ampel.gesamt ?? null, report: { faellig: z?.report.faellig ?? false, ...(z?.report.gesendetAm || z?.report.letzter ? { letzter: z?.report.gesendetAm ?? z?.report.letzter } : {}) },
         ...(naechster ? { naechsterRitual: naechster } : {}), pulsSchwelle: vorlagen.einstellungen.pulsSchwelle, heute, gesperrt,
-        mitMail: k => !!mailBausteinVon(k, w.knoten, vorlagen),
+        mitMail: k => !!mailBausteinVon(k, w.knoten, vorlagen), ...(ablaeufe[m.id] ? { ablauf: ablaeufe[m.id] } : {}),
       });
     // Stand der gespeicherten Knoten, die die Handgriffe ändern (Schreibwege B3) — derselbe Stand, den der Schreibweg des Falls prüft.
     const ids = new Set(handgriffKnoten(zeile));
@@ -141,6 +152,8 @@ export async function haengerFuer(mandatId: string, heute = localDay()): Promise
 /** Was die Leistungstreppe je Mandat aus dem Fall übernimmt (15.10., Abnahme B1) — Ampel, was der Kunde sieht, Phase, nächster Schritt. */
 export interface FallFuerTreppe {
   ampel: Ampel; kundeSieht?: CockpitZeile['kundeSieht']; phase?: string; phaseNr?: number; phasenAnzahl?: number; schritt?: string;
+  /** 25.10.: der Ablauf des Werkstatt-Prozesses läuft nicht scharf (seine Phasen zählen mit, gekennzeichnet — `phasenText`). */
+  ablaufLage?: CockpitZeile['ablaufLage'];
   /** Kick-off vermerkt ohne eigenen Kalender-Termin (Tag; `Fall.onboarding.kickoffAm`) — Text über `kickoffVermerkText` (18.10., L1b N13). */
   kickoffVermerktAm?: string;
 }
@@ -151,7 +164,7 @@ export interface FallFuerTreppe {
 export async function fallFuerTreppe(heute = localDay()): Promise<Record<string, FallFuerTreppe>> {
   try {
     const { zeilen } = await cockpitDaten(heute);
-    return Object.fromEntries(zeilen.map(z => [z.mandatId, { ampel: kundenAmpel(z), ...(z.kundeSieht ? { kundeSieht: z.kundeSieht } : {}), ...(z.phase ? { phase: z.phase, ...(z.phaseNr ? { phaseNr: z.phaseNr } : {}), ...(z.phasenAnzahl ? { phasenAnzahl: z.phasenAnzahl } : {}) } : {}), ...(z.schritt ? { schritt: z.schritt } : {}), ...(z.kickoffVermerktAm ? { kickoffVermerktAm: z.kickoffVermerktAm } : {}) }]));
+    return Object.fromEntries(zeilen.map(z => [z.mandatId, { ampel: kundenAmpel(z), ...(z.kundeSieht ? { kundeSieht: z.kundeSieht } : {}), ...(z.phase ? { phase: z.phase, ...(z.phaseNr ? { phaseNr: z.phaseNr } : {}), ...(z.phasenAnzahl ? { phasenAnzahl: z.phasenAnzahl } : {}), ...(z.ablaufLage ? { ablaufLage: z.ablaufLage } : {}) } : {}), ...(z.schritt ? { schritt: z.schritt } : {}), ...(z.kickoffVermerktAm ? { kickoffVermerktAm: z.kickoffVermerktAm } : {}) }]));
   } catch { return {}; }
 }
 
