@@ -71,10 +71,13 @@ export function useFallLaeufe(art: string, id: string): FallLaeufeAntwort | null
 export const inhalteHolen = (id: string) => holen<InhalteAntwort>(mitSpace(`lauf=${encodeURIComponent(id)}&inhalte=1`));
 
 let verweise: { am: number; v: Promise<CrmVerweise | null> } | null = null;
-/** Die schlanken CRM-Verweise (Kennung + Name) — eine Minute gemerkt, damit Liste und Suche nicht mehrfach laden. */
+/**
+ * Die schlanken CRM-Verweise (Kennung + Name) — eine Minute gemerkt, damit Liste und Suche nicht mehrfach laden. Runde 4: mit dem Merkmal je Fall (`?fall=1`:
+ * Produkt, Stufe, Status), damit man im Probelauf den passenden wählt.
+ */
 export function verweiseHolen(): Promise<CrmVerweise | null> {
   if (verweise && Date.now() - verweise.am < 60_000) return verweise.v;
-  const v = fetch('/api/aufgaben/crm', { cache: 'no-store' }).then(r => (r.ok ? r.json() as Promise<CrmVerweise> : null)).catch(() => null);
+  const v = fetch('/api/aufgaben/crm?fall=1', { cache: 'no-store' }).then(r => (r.ok ? r.json() as Promise<CrmVerweise> : null)).catch(() => null);
   verweise = { am: Date.now(), v };
   return v;
 }

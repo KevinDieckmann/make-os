@@ -287,20 +287,28 @@ export const FALL_WORT: Readonly<Record<FallArt, string>> = { lead: 'Lead', deal
 /** „Echter …“ mit dem Genus der Fall-Art (Kern-Bau-Test 24.10.: „Echter Mandat“) — der Lead/Deal, das Mandat/Event, die Firma/Kampagne. */
 const ECHT: Readonly<Record<FallArt, string>> = { lead: 'Echter', deal: 'Echter', mandat: 'Echtes', event: 'Echtes', firma: 'Echte', kampagne: 'Echte', keiner: 'Echter' };
 export const echterFall = (art: FallArt): string => (art === 'keiner' ? 'Echter Fall' : `${ECHT[art]} ${FALL_WORT[art]}`);
-export interface FallTreffer { art: FallArt; id: string; name: string; unter?: string }
+/**
+ * Ein Fall zur Auswahl. `merkmal` (Runde 4, Bau-Test 3: „Echtes Mandat zeigt das Produkt nicht“) = woran man den passenden erkennt: Mandat → Produkt, Deal → Stufe,
+ * Lead → Status (aus GET /api/aufgaben/crm?fall=1); fehlt es, bleibt der Name allein.
+ */
+export interface FallTreffer { art: FallArt; id: string; name: string; unter?: string; merkmal?: string }
 /** Welche Fall-Arten sich über die Verweise suchen lassen (Events und Kampagnen nur mit dem Beispiel). */
 export const FALL_SUCHBAR: ReadonlySet<FallArt> = new Set(['lead', 'deal', 'mandat', 'firma']);
 
-/** Treffer für eine Fall-Art (rein): Deal → Deals, Mandat → Mandate, Firma → Firmen, Lead → Firmen und Personen (ein Lead ist eine Firma bzw. eine Person). */
+/**
+ * Treffer für eine Fall-Art (rein): Deal → Deals, Mandat → Mandate, Firma → Firmen, Lead → Firmen und Personen (ein Lead ist eine Firma bzw. eine Person). Mit dem
+ * Merkmal (Produkt, Stufe, Status) — gesucht wird auch darüber.
+ */
 export function fallTreffer(v: CrmVerweise | null | undefined, art: FallArt, frage: string, max = 8): FallTreffer[] {
   if (!v || !FALL_SUCHBAR.has(art)) return [];
   const q = frage.trim();
   const passt = (felder: (string | undefined)[]) => !q || suchPasst(felder.filter((x): x is string => !!x), q);
   const raus: FallTreffer[] = [];
-  if (art === 'deal') raus.push(...v.deals.filter(d => passt([d.titel, d.firma])).map(d => ({ art, id: d.id, name: d.titel, ...(d.firma ? { unter: d.firma } : {}) })));
-  if (art === 'mandat') raus.push(...v.mandate.filter(m => passt([m.titel, m.kunde])).map(m => ({ art, id: m.id, name: m.titel, unter: m.kunde })));
-  if (art === 'firma' || art === 'lead') raus.push(...v.firmen.filter(f => passt([f.name])).map(f => ({ art, id: f.id, name: f.name })));
-  if (art === 'lead') raus.push(...v.kontakte.filter(k => passt([k.name, k.firma])).map(k => ({ art, id: k.id, name: k.name, ...(k.firma ? { unter: k.firma } : {}) })));
+  const mit = (m: string | undefined) => (m ? { merkmal: m } : {});
+  if (art === 'deal') raus.push(...v.deals.filter(d => passt([d.titel, d.firma, d.stufeName])).map(d => ({ art, id: d.id, name: d.titel, ...(d.firma ? { unter: d.firma } : {}), ...mit(d.stufeName) })));
+  if (art === 'mandat') raus.push(...v.mandate.filter(m => passt([m.titel, m.kunde, m.produkt])).map(m => ({ art, id: m.id, name: m.titel, unter: m.kunde, ...mit(m.produkt) })));
+  if (art === 'firma' || art === 'lead') raus.push(...v.firmen.filter(f => passt([f.name, art === 'lead' ? f.leadStatus : undefined])).map(f => ({ art, id: f.id, name: f.name, ...mit(art === 'lead' ? f.leadStatus : undefined) })));
+  if (art === 'lead') raus.push(...v.kontakte.filter(k => passt([k.name, k.firma, k.leadStatus])).map(k => ({ art, id: k.id, name: k.name, ...(k.firma ? { unter: k.firma } : {}), ...mit(k.leadStatus) })));
   return raus.slice(0, max);
 }
 /** Der Name eines Falls aus den Verweisen (rein) — fehlt er (gelöscht, Art. 18, keine Sicht), die Art. */

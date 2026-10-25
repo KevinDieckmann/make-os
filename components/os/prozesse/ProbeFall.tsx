@@ -35,7 +35,8 @@ export function FallWahl({ fallArt, wert, onWert }: { fallArt: FallArt; wert: Fa
             {treffer.map(t => (
               <li key={`${t.art}:${t.id}`} role="option" aria-selected={wert !== 'beispiel' && wert.id === t.id}>
                 <button type="button" className="fassbar pz-feld-zeile" onClick={() => onWert(t)} style={{ display: 'grid', textAlign: 'left', color: C.ink, cursor: 'pointer', outline: wert !== 'beispiel' && wert.id === t.id ? `1px solid ${C.ink}` : undefined }}>
-                  <span style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{t.name}</span>
+                  {/* Runde 4: das Merkmal (Produkt, Stufe, Status) hinter dem Namen — damit man den passenden Fall wählt. */}
+                  <span style={{ fontSize: TYP.bedien, fontWeight: 600 }}>{t.name}{t.merkmal && <span style={{ fontWeight: 400, color: C.inkDim }}>{` · ${t.merkmal}`}</span>}</span>
                   {t.unter && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{t.unter}</span>}
                 </button>
               </li>

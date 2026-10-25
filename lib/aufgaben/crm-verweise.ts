@@ -9,10 +9,10 @@ import { kontaktAkte } from '@/lib/crm/adresse';
 import { WEG } from '@/lib/wege';
 
 export interface CrmVerweise {
-  kontakte: { id: string; name: string; firmaId?: string; firma?: string }[];
-  firmen: { id: string; name: string }[];
-  mandate: { id: string; titel: string; kunde: string; status: string; firmaId?: string; /** Wer das Mandat betreut (Team-Kürzel oder „beide“). */ zustaendig?: string }[];
-  deals: { id: string; titel: string; stufe: string; firmaId?: string; firma?: string }[];
+  kontakte: { id: string; name: string; firmaId?: string; firma?: string; /** Nur mit `?fall=1`: Status des Leads (Name). */ leadStatus?: string }[];
+  firmen: { id: string; name: string; /** Nur mit `?fall=1`: Status des Leads (Name). */ leadStatus?: string }[];
+  mandate: { id: string; titel: string; kunde: string; status: string; firmaId?: string; /** Wer das Mandat betreut (Team-Kürzel oder „beide“). */ zustaendig?: string; /** Nur mit `?fall=1`: Name des Produkts. */ produkt?: string }[];
+  deals: { id: string; titel: string; stufe: string; firmaId?: string; firma?: string; /** Nur mit `?fall=1`: Name der Stufe. */ stufeName?: string }[];
 }
 export type BezugArt = keyof AufgabeBezug;
 export const BEZUG_ARTEN: readonly BezugArt[] = ['kontaktId', 'firmaId', 'mandatId', 'dealId'];
