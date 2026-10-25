@@ -267,13 +267,21 @@ export function ereignisDaten(e: Pick<Ereignis, 'art' | 'quelle' | 'bezug' | 'be
 /**
  * Passt ein Ereignis zu einem Auslöser? (rein) — Art gleich, NIE ein privates Ereignis (Prozesse sind Business, Punkt 38), Webhook nur für den eigenen
  * Prozess, dann „nur wenn …“ über `daten` (Ereignis-Felder, vom Motor um Fall-Felder bzw. die Felder des Webhook-Eingangs ergänzt).
+ * Einzige Ausnahme (25.10., Fulfillment für die Selbstständigkeit): ein privates Ereignis mit Arbeits-Marke (`arbeit`, nur Mandate/Fälle der Privat-Arbeits-
+ * Einheit — `ereignisArbeitPasst`), wenn der Motor für DIESEN Prozess `arbeitErlaubt` sagt (an das Produkt des Mandats gebunden bzw. Begleit-Prozess am Fall).
  */
-export function ausloeserPasst(a: Ausloeser, prozessId: string, e: Pick<Ereignis, 'art' | 'bereich' | 'bezug'>, daten: Readonly<Record<string, unknown>>): boolean {
-  if (e.bereich === 'privat') return false;
+export function ausloeserPasst(a: Ausloeser, prozessId: string, e: Pick<Ereignis, 'art' | 'bereich' | 'bezug'> & { arbeit?: true }, daten: Readonly<Record<string, unknown>>, arbeitErlaubt = false): boolean {
+  if (e.bereich === 'privat' && !ereignisArbeitPasst(e, arbeitErlaubt)) return false;
   if (a.art === 'ereignis') return e.art === a.ereignis && ereignisStartetProzess(a.ereignis) && bedingungenTreffen(a.bedingungen, daten, a.verknuepfung);
   if (a.art === 'webhook') return e.art === 'webhook' && e.bezug?.prozessId === prozessId && bedingungenTreffen(a.bedingungen, daten, a.verknuepfung);
   return false;
 }
+
+/**
+ * Darf ein PRIVATES Ereignis an einen Prozess (rein, EINE Regel — Start, Wecken, Zählen)? Nur mit Arbeits-Marke (Mandat/Fall der Privat-Arbeits-Einheit, nie
+ * Gesundheit, Familie, Privat-Finanzen) UND wenn der Prozess dafür freigegeben ist (`arbeitErlaubt`). Business-Ereignisse fragen das nicht.
+ */
+export const ereignisArbeitPasst = (e: { bereich: Ereignis['bereich']; arbeit?: true }, arbeitErlaubt: boolean): boolean => e.bereich !== 'privat' || (e.arbeit === true && arbeitErlaubt);
 
 /** Startet dieser Auslöser nach dem Loop `loop`? (rein — der Motor fragt nach jedem Loop-Lauf.) */
 export const startetNachLoop = (a: Ausloeser, loop: LoopArt): boolean => a.art === 'loop' && a.loop === loop;

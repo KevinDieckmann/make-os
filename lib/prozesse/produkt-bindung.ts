@@ -68,6 +68,17 @@ export function produktStarts(e: Pick<Ereignis, 'art' | 'bezug'>, crm: { mandate
   return raus;
 }
 
+/**
+ * Darf ein Prozess für ein Mandat der Privat-Arbeits-Einheit laufen (25.10., Fulfillment für die Selbstständigkeit)? Ereignisse solcher Mandate sind Arbeit, kein
+ * privater Lebensbereich — aber NICHT jeder Business-Prozess hört darauf: nur ein Prozess, auf den das Produkt des Mandats zeigt (Haupt oder Zusatzmodul, wie
+ * `produktStarts`), oder ein Begleit-Prozess, der am Fall andockt (`begleit`, lib/prozesse/begleitung/andocken.ts `istBegleitProzess`). Rein.
+ */
+export function arbeitErlaubtFuer(prozessId: string, mandatId: string | undefined, crm: { mandate: readonly MandatTeil[]; leistungen: Katalog }, begleit: boolean): boolean {
+  if (!mandatId) return false;
+  if (begleit) return crm.mandate.some(m => m.id === mandatId && !m.geloeschtAm);
+  return produktStarts({ art: 'mandat-angelegt', bezug: { mandatId } }, crm).some(x => x.prozessId === prozessId);
+}
+
 /** Laufende Mandate (Status „aktiv“), deren Hauptprodukt oder ein Zusatzmodul auf diesen Prozess zeigt — die „bestehenden Fälle“ beim Scharfschalten. */
 export function produktMandate<M extends MandatTeil>(prozessId: string, crm: { mandate: readonly M[]; leistungen: Katalog }): { mandat: M; leistungId: string; rolle: ProduktStart['rolle'] }[] {
   const raus: { mandat: M; leistungId: string; rolle: ProduktStart['rolle'] }[] = [];

@@ -1032,8 +1032,10 @@ export function ereignisEingetreten(l: ProzessLauf, def: ProzessDefinition, jetz
 }
 
 /** Wartet der Lauf auf genau dieses Ereignis? (rein) — Art, derselbe Fall, „nur wenn …“ des Knotens über `daten`. */
-export function wartetAuf(l: ProzessLauf, def: ProzessDefinition, e: { art: SkillEreignis; bezug: Readonly<Record<string, string | undefined>>; bereich: 'privat' | 'business' | null }, daten: Readonly<Record<string, unknown>>): boolean {
-  if (l.status !== 'wartet' || l.wartet?.art !== 'ereignis' || l.wartet.ereignis !== e.art || e.bereich === 'privat') return false;
+export function wartetAuf(l: ProzessLauf, def: ProzessDefinition, e: { art: SkillEreignis; bezug: Readonly<Record<string, string | undefined>>; bereich: 'privat' | 'business' | null; arbeit?: true }, daten: Readonly<Record<string, unknown>>): boolean {
+  // Privat nie — außer Arbeit (25.10.): ein Ereignis mit Arbeits-Marke weckt einen Lauf, dessen Fall DIESES Mandat ist (`ereignisZumFall` unten); den Lauf gibt es
+  // nur, wenn der Prozess für das Mandat der Privat-Arbeits-Einheit freigegeben war (Produkt-Bindung, Begleitung) bzw. ein Mensch ihn für den Fall startete.
+  if (l.status !== 'wartet' || l.wartet?.art !== 'ereignis' || l.wartet.ereignis !== e.art || (e.bereich === 'privat' && !(e.arbeit === true && l.fall.art === 'mandat'))) return false;
   const k = def.knoten.find(x => x.id === l.wartet!.knoten);
   if (k?.warten?.art !== 'ereignis') return false;
   if (!ereignisZumFall(l.fall, e.bezug)) return false;

@@ -82,7 +82,7 @@ export async function GET(req: Request) {
   if (paketId !== null) {
     const [{ KENNUNG }, { paketFuerWerkstatt }] = await Promise.all([import('@/lib/fulfillment/grenzen'), import('@/lib/prozesse/fulfillment-modus-server')]);
     if (!KENNUNG.vorlage.test(paketId)) return nein(400, 'Welches Paket? (?paket=fp-…)');
-    const p = await paketFuerWerkstatt(z.haushalt, paketId);
+    const p = await paketFuerWerkstatt(z.haushalt, paketId, { privat: z.privat });
     if (!p) return nein(404, 'Dieses Paket gibt es nicht (mehr).');
     // E3: die Antwort nennt laufende Kunden (Mandate) — Lese-Protokoll wie das Cockpit des Fulfillments (nur Zahlen).
     leseZugriff(req, 'fulfillment', { anzahl: p.kunden.length });

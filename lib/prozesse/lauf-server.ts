@@ -403,12 +403,15 @@ export async function umfeldFuer(l: ProzessLauf, def: ProzessDefinition, kx: Mot
   // Postfach „des Laufs“ bzw. „der Nachricht“: nur Business-Postfächer der Person, als die der Lauf schreibt (Gmail bzw. IMAP mit Business-Bereich).
   const mitMail = alleSchritte(def).some(x => x.schritt.katalog?.id === 'inbox.mail-entwurf');
   const pf = mitMail && l.person ? await businessPostfaecher(l.person, kx) : null;
-  // Gesellschaft des Falls: Deal bzw. Mandat — nur eine Business-Gesellschaft.
-  const { bereichVonGesellschaft } = await import('@/lib/einheiten');
-  const ges = [f.daten['deal.gesellschaft'], f.daten['mandat.gesellschaft']].find((g): g is string => typeof g === 'string' && !!g);
+  // Gesellschaft des Falls: Deal bzw. Mandat — eine Business-Gesellschaft; beim Mandat seit 25.10. auch die Privat-Arbeits-Einheit (Fulfillment für die
+  // Selbstständigkeit: ein Angebots-Entwurf am Mandat kommt von ihr). Deals einer Privat-Einheit nie (die Kundengewinnung bleibt Business).
+  const [{ bereichVonGesellschaft }, { istFulfillmentMandat }] = await Promise.all([import('@/lib/einheiten'), import('@/lib/fulfillment/regeln')]);
+  const dealGes = typeof f.daten['deal.gesellschaft'] === 'string' && f.daten['deal.gesellschaft'] ? f.daten['deal.gesellschaft'] as string : null;
+  const mandatGes = typeof f.daten['mandat.gesellschaft'] === 'string' && f.daten['mandat.gesellschaft'] ? f.daten['mandat.gesellschaft'] as string : null;
+  const ges = dealGes ? (bereichVonGesellschaft(dealGes) === 'business' ? dealGes : null) : mandatGes && istFulfillmentMandat(mandatGes) ? mandatGes : null;
   return {
     rolle: w => (w === ROLLE_EIGNER ? eigner : w === ROLLE_ZUSTAENDIG ? zustaendig ?? eigner : null),
-    gesellschaft: () => (ges && bereichVonGesellschaft(ges) === 'business' ? ges : null),
+    gesellschaft: () => ges,
     postfach: w => {
       if (!pf) return null;
       if (w === POSTFACH_DER_NACHRICHT) {
@@ -532,14 +535,18 @@ export const _agentKostenSetzen = (m: Record<string, number>) => { agentKosten =
 
 const fehlt = (grund: LaufGrund, art: 'voruebergehend' | 'dauerhaft' = 'dauerhaft'): AktionErgebnis => ({ ok: false, art, grund });
 
-/** Ort einer Aufgabe: Mandant-Space bzw. Gesellschaft des Falls (nur Business). */
-async function aufgabeOrt(l: ProzessLauf, kx: MotorKontext): Promise<{ spaceId?: string }> {
+/**
+ * Ort einer Aufgabe: beim Fall Mandat DIESELBE Regel wie das Fulfillment (`fallAufgabeSpace`, lib/fulfillment/regeln.ts — Mandant-Space bzw. Gesellschaft; ein
+ * Mandat der Privat-Arbeits-Einheit im Firmen-Space dieser Einheit unter Privat, 25.10.), beim Deal die Business-Gesellschaft.
+ */
+async function aufgabeOrt(l: ProzessLauf, kx: MotorKontext): Promise<{ space?: 'privat' | 'business'; spaceId?: string }> {
   const crm = await crmVon(kx);
   if (!crm) return {};
   const m = l.fall.art === 'mandat' ? crm.mandate.find(x => x.id === l.fall.id) : undefined;
-  if (m) return m.firmaId ? { spaceId: `m-${m.firmaId}` } : ['kdv', 'ug'].includes(m.gesellschaft) ? { spaceId: m.gesellschaft } : {};
+  if (m) return (await import('@/lib/fulfillment/regeln')).fallAufgabeSpace(m);
   const c = l.fall.art === 'deal' ? crm.chancen.find(x => x.id === l.fall.id) : undefined;
-  return c && ['kdv', 'ug'].includes(c.gesellschaft) ? { spaceId: c.gesellschaft } : {};
+  const { istBusinessGesellschaft } = await import('@/lib/einheiten');
+  return c && istBusinessGesellschaft(c.gesellschaft) ? { spaceId: c.gesellschaft } : {};
 }
 
 async function wirkungAusfuehren(l: ProzessLauf, e: ProzessEintrag, a: Aktion, kx: MotorKontext): Promise<AktionErgebnis & { kopf?: string }> {
@@ -1160,7 +1167,8 @@ async function ereignisseVerarbeiten(kx: MotorKontext, erg: TaktErgebnis): Promi
   if (!neu.length) return 0;
   const alt = kx.jetzt.getTime() - LAUF_GRENZEN.ereignisAlterStunden * 3_600_000;
   for (const e of neu) {
-    if (e.bereich === 'privat' || Date.parse(e.am) < alt) continue;
+    // Private Ereignisse nie — außer Arbeit (25.10.: Mandate/Fälle der Privat-Arbeits-Einheit, `arbeit`); welcher Prozess darauf hört, entscheidet `arbeitErlaubt`.
+    if ((e.bereich === 'privat' && !e.arbeit) || Date.parse(e.am) < alt) continue;
     erg.gestartet += await aufEreignisStarten(e, kx);
     erg.geweckt += await aufEreignisWecken(e, kx);
   }
@@ -1196,7 +1204,7 @@ async function aufEreignisStarten(e: Ereignis, kx: MotorKontext): Promise<number
       const basis = { ...ereignisDaten(e), ...(await webhookDaten(e, kx)) };
       const brauchtFall = (a.bedingungen ?? []).some(b => !b.feld.startsWith('ereignis.') && !b.feld.startsWith('bezug.') && !b.feld.startsWith('webhook.'));
       const daten = brauchtFall ? { ...basis, ...(await fallInfo(fall, kx, kennungsDaten(e), { brauche: gelesenFelderMenge(j.def) })).daten } : basis;
-      if (!ausloeserPasst(a, p.id, e, daten)) continue;
+      if (!ausloeserPasst(a, p.id, e, daten, e.arbeit ? await arbeitErlaubt(p.id, j.def, e, kx) : false)) continue;
       // Schleifenschutz (Punkt 49): die eigene Wirkung startet den Prozess nie; eine Kette endet nach `kettenTiefe`.
       if (herkunft?.prozessId === p.id) { await laeufeAendern(dd => ({ datei: mitStand(dd, p.id, { ...standVon(dd, p.id), nicht: { ...(standVon(dd, p.id).nicht ?? {}), eigen: (standVon(dd, p.id).nicht?.eigen ?? 0) + 1 } }), r: null }), kx.h); continue; }
       const r = await prozessLaufStarten({
@@ -1210,6 +1218,17 @@ async function aufEreignisStarten(e: Ereignis, kx: MotorKontext): Promise<number
   }
   // Produkt → Prozess (22.10., Prozesse × Fulfillment): ein neues Mandat bzw. ein gebuchtes Zusatzmodul startet den Prozess, auf den sein Produkt zeigt.
   return n + await produktLaeufeStarten(e, kx);
+}
+/**
+ * Darf dieser Prozess auf ein privates Ereignis mit Arbeits-Marke hören (25.10.)? Nur Fall-Art Mandat und nur, wenn das Produkt des Mandats auf ihn zeigt bzw. er
+ * ein Begleit-Prozess am Fall ist — EINE Regel `arbeitErlaubtFuer` (lib/prozesse/produkt-bindung.ts). Ohne CRM: nein.
+ */
+async function arbeitErlaubt(prozessId: string, def: ProzessDefinition, e: Pick<Ereignis, 'bezug'>, kx: MotorKontext): Promise<boolean> {
+  if (fallArtVon(def) !== 'mandat') return false;
+  const crm = await crmVon(kx);
+  if (!crm) return false;
+  const [{ arbeitErlaubtFuer }, { istBegleitProzess }] = await Promise.all([import('./produkt-bindung'), import('./begleitung/andocken')]);
+  return arbeitErlaubtFuer(prozessId, e.bezug.mandatId, crm, istBegleitProzess(def));
 }
 /**
  * Starts über die Bindung eines Produkts (`Leistung.prozessId`; welche: lib/prozesse/produkt-bindung.ts `produktStarts`) — wie jeder Ereignis-Start: nur ein
@@ -1419,7 +1438,8 @@ async function personenStarten(kx: MotorKontext): Promise<number> {
 // ══ Datum am Fall (22.10.; ANALYSE_100.md Punkt 34 — Regeln: lib/prozesse/datum-start.ts) ════════════════════════════════════════════════════════════════
 
 /** Ein Fall mit einem Datum: der Fall, das Datum am Fall, die Kennungen für den Lauf und einfache Felder für „nur wenn …“ (ohne den ganzen Fall zu lesen). */
-interface DatumKandidat { fall: LaufFall; datum: string; bezug: Record<string, string>; vor: Record<string, unknown> }
+/** `arbeit` (25.10.): ein Mandat der Privat-Arbeits-Einheit — nur für Prozesse, die dafür freigegeben sind (`arbeitErlaubtFuer`, geprüft in `datumFaelle`). */
+interface DatumKandidat { fall: LaufFall; datum: string; bezug: Record<string, string>; vor: Record<string, unknown>; arbeit?: true }
 
 const FRIST_PRAEFIX: Partial<Record<DatumsFeld, string>> = {
   'mandat.kuendigungsfrist': 'md-frist-', 'mandat.review': 'md-review-', 'deal.entscheidung': 'dl-', 'angebot.gueltig-bis': 'an-', 'rechnung.faellig': 're-',
@@ -1436,8 +1456,10 @@ async function datumKandidaten(feld: DatumsFeld, von: string, bis: string, kx: M
   const crm = await crmVon(kx);
   if (!crm) return null;
   const heute = localDay(kx.jetzt);
-  const { bereichVonGesellschaft } = await import('@/lib/einheiten');
+  const [{ bereichVonGesellschaft }, { istPrivatArbeitsMandat }] = await Promise.all([import('@/lib/einheiten'), import('@/lib/fulfillment/regeln')]);
   const business = (g: string | undefined) => !g || bereichVonGesellschaft(g) !== 'privat';
+  // Mandate der Privat-Arbeits-Einheit (25.10.): Start/Ende des Mandats und der Termin des Falls — mit Marke `arbeit`, nur für freigegebene Prozesse.
+  const arbeit = (g: string | undefined): { arbeit?: true } | null => (business(g) ? {} : istPrivatArbeitsMandat(g) ? { arbeit: true } : null);
   const imFenster = (t: string | null | undefined): t is string => !!t && t.slice(0, 10) >= von && t.slice(0, 10) <= bis;
   const mandatVon = (id: string | undefined) => (id ? crm.mandate.find(m => m.id === id && !m.geloeschtAm) : undefined);
   const mandatBezug = (m: CrmBestand['mandate'][number]) => ({ 'bezug.mandatid': m.id, ...(m.firmaId ? { 'bezug.firmaid': m.firmaId } : {}) });
@@ -1465,9 +1487,10 @@ async function datumKandidaten(feld: DatumsFeld, von: string, bis: string, kx: M
   if (feld === 'mandat.start' || feld === 'mandat.ende') {
     const { mandatFristen } = await import('@/lib/crm/kunden');
     for (const m of crm.mandate) {
-      if (m.geloeschtAm || !business(m.gesellschaft)) continue;
+      const ab = arbeit(m.gesellschaft);
+      if (m.geloeschtAm || !ab) continue;
       const t = feld === 'mandat.start' ? m.start?.slice(0, 10) : mandatFristen(m, heute).endeAm;
-      if (imFenster(t)) raus.push({ fall: { art: 'mandat', id: m.id }, datum: t.slice(0, 10), bezug: mandatBezug(m), vor: { 'mandat.status': m.status } });
+      if (imFenster(t)) raus.push({ fall: { art: 'mandat', id: m.id }, datum: t.slice(0, 10), bezug: mandatBezug(m), vor: { 'mandat.status': m.status }, ...ab });
     }
     return raus;
   }
@@ -1483,7 +1506,8 @@ async function datumKandidaten(feld: DatumsFeld, von: string, bis: string, kx: M
     // Begleit-Prozesse am Fall (22.10., B1): der nächste Termin mit dem Kunden — aus der Rechnung des Cockpits (`faelleFuerProzesse`), nur laufende Business-Fälle.
     for (const [id, f] of Object.entries(await faelleVon(kx))) {
       const m = mandatVon(id);
-      if (m && business(m.gesellschaft) && imFenster(f.termin)) raus.push({ fall: { art: 'mandat', id: m.id }, datum: f.termin.slice(0, 10), bezug: { ...mandatBezug(m), ...(f.paket ? { 'bezug.vorlageid': f.paket } : {}) }, vor: { 'mandat.status': m.status, ...fallFelderVon(f) } });
+      const ab = m ? arbeit(m.gesellschaft) : null;
+      if (m && ab && imFenster(f.termin)) raus.push({ fall: { art: 'mandat', id: m.id }, datum: f.termin.slice(0, 10), bezug: { ...mandatBezug(m), ...(f.paket ? { 'bezug.vorlageid': f.paket } : {}) }, vor: { 'mandat.status': m.status, ...fallFelderVon(f) }, ...ab });
     }
     return raus;
   }
@@ -1512,6 +1536,8 @@ async function datumFaelle(a: DatumAusloeserDef, knotenId: string, def: ProzessD
   for (const k of kandidaten) {
     const stichtag = stichtagVon(k.datum, a);
     if (!stichtag || !menge.has(stichtag) || k.fall.art !== fallArt) continue;
+    // Privat-Arbeits-Einheit (25.10.): nur, wenn dieser Prozess für das Mandat freigegeben ist (Produkt-Bindung bzw. Begleit-Prozess) — EINE Regel mit dem Ereignis-Start.
+    if (k.arbeit && !(await arbeitErlaubt(def.id, def, { bezug: { mandatId: k.fall.id } }, kx))) continue;
     raus.push({ k, stichtag, periode: datumPeriode(knotenId, stichtag), daten: { ...k.bezug, 'datum.feld': a.feld, 'datum.stichtag': stichtag } });
   }
   return raus.sort((x, y) => x.stichtag.localeCompare(y.stichtag) || (x.k.fall.id ?? '').localeCompare(y.k.fall.id ?? ''));
@@ -1888,8 +1914,10 @@ export async function bestehendeFaelle(def: ProzessDefinition, kx: MotorKontext)
   if (fallArt === 'mandat') {
     const { produktMandate } = await import('./produkt-bindung');
     const start = startKnoten(def)[0]?.id ?? alleSchritte(def)[0]?.schritt.id ?? '';
+    const { istFulfillmentMandat } = await import('@/lib/fulfillment/regeln');
     for (const x of produktMandate(def.id, crm)) {
-      if (bereichVonGesellschaft(x.mandat.gesellschaft) === 'privat' || raus.some(r => r.fall.id === x.mandat.id)) continue;
+      // Mandate der Privat-Arbeits-Einheit gehören dazu (25.10. — die Produkt-Bindung IST die Freigabe, `arbeitErlaubtFuer`); eine Privat-Einheit ohne Arbeit nie.
+      if (!istFulfillmentMandat(x.mandat.gesellschaft) || raus.some(r => r.fall.id === x.mandat.id)) continue;
       raus.push({ fall: { art: 'mandat', id: x.mandat.id }, daten: { 'ereignis.quelle': 'bestehend', 'bezug.mandatid': x.mandat.id, 'produkt.id': x.leistungId, 'produkt.rolle': x.rolle }, knoten: start });
     }
   }
@@ -1918,7 +1946,7 @@ async function laeufeJeMonat(def: ProzessDefinition, kx: MotorKontext): Promise<
   const crm = b && fallArtVon(def) === 'mandat' ? await crmVon(kx) : null;
   if (b && crm) {
     const { produktStarts } = await import('./produkt-bindung');
-    n += b.eintraege.filter(e => e.bereich !== 'privat' && produktStarts(e, crm).some(x => x.prozessId === def.id)).length;
+    n += b.eintraege.filter(e => (e.bereich !== 'privat' || e.arbeit) && produktStarts(e, crm).some(x => x.prozessId === def.id)).length;
   }
   return Math.max(1, n);
 }
