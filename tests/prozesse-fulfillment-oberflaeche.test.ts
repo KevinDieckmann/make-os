@@ -17,10 +17,11 @@ import type { ProzessDef } from '@/lib/prozesse/typen';
 const lies = (p: string) => readFileSync(path.join(process.cwd(), p), 'utf8');
 
 describe('„Prozess für dieses Produkt anlegen“', () => {
-  it('Name = Produkt, Bereich nur Fulfillment · Übergabe · Ausbau, ein Lauf hängt am Mandat', () => {
+  it('Name = „<Produkt> umsetzen“, Bereich nur Fulfillment · Übergabe · Ausbau, ein Lauf hängt am Mandat', () => {
     const html = renderToStaticMarkup(h(NeuerProzessFenster, { fuerProdukt: { name: 'Diagnose' }, onZu: () => {}, onAngelegt: () => {} }));
     expect(html).toContain('Prozess für dieses Produkt');
-    expect(html).toContain('value="Diagnose"');
+    // Kern-Runde 4 · 14 (25.10.): der Name trägt ein Verb (`produktProzessTitel`) — der Wächter zog dort nicht mit.
+    expect(html).toContain('value="Diagnose umsetzen"');
     for (const b of ['Fulfillment', 'Übergabe', 'Ausbau']) expect(html, b).toContain(`>${b}<`);
     for (const b of ['Marketing', 'Sales', 'Führung', 'Unterstützung']) expect(html, b).not.toContain(`>${b}<`);
     expect(html).toContain('Am Mandat');
