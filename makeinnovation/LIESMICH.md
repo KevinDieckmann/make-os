@@ -72,6 +72,16 @@ Quellen · jeder eigene Link und Anker führt irgendwohin, nach außen nur Login
 Phase 2). „Homepage-Check“ und die übrigen Gratis-Werkzeuge stehen erst da, wenn sie fertig sind. Keine erfundenen Fälle, Kunden oder Zahlen —
 was fehlt, steht als gelber Platzhalter `[[KEVIN: …]]` und blockiert die Freigabe.
 
+## Sauber und flüssig (25.10., Kevin: „überarbeite alles, ich will es sauber und flüssig haben“)
+- **Bewegung, die der Browser auf der Grafikkarte rechnet:** kein Unschärfe-Filter in Animationen (der Schein ist ein mehrstufiger Verlauf), animiert
+  werden nur Deckkraft und Lage; Kopf ohne Hintergrund-Unschärfe (deckend). Gemessen im unsichtbaren Chrome: 60 Bilder/s beim Einstieg und beim Scrollen,
+  keine Layout-Sprünge (CLS 0).
+- **Seitenwechsel blenden weich über** (View Transitions zwischen Seiten, Kopf und Zoe-Knopf bleiben stehen) und **Inhalte gleiten beim Hineinscrollen
+  ein** (Scroll-Zeitleiste in CSS, kein Skript; ohne Unterstützung steht alles sofort da). Untermenüs und Handy-Menü blenden weich, Karten heben sich
+  beim Zeigen leicht an. Alles nur ohne „Bewegung reduzieren“.
+- **Ruhiger Aufbau:** je Seite erst die dunklen Abschnitte (Einstieg, Weg, Belege, Ablauf), dann die hellen zum Lesen (Angebote, Vergleich, Fragen),
+  dann der Abschluss — kein Hin und Her mehr. Das 90-Tage-Gespräch steht direkt unter dem Check. Vier Angebote stehen in einer Reihe.
+
 ## Offen vor der Freigabe (Stand 24.10. spät; `node makeinnovation/pruefen.mjs` listet es)
 - Telefon und Adresse · Anbieter-Daten der KD Ventures UG (Anschrift, Geschäftsführer, Register) und später der GmbH
 - Kurztexte zu Kevin und Malin · drei Fallbeispiele (anonymisiert, mit Zustimmung)

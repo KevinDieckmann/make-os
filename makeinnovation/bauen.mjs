@@ -152,6 +152,12 @@ ${fuss()}
 ${a.fuer_wen ? `<p class="fuer">${t(a.fuer_wen)}</p>` : ''}
 ${mitListe && a.enthalten ? haken(a.enthalten.slice(0, 4)) : ''}
 <a class="textlink" href="${produktPfad(a)}">Mehr erfahren ${PFEIL}</a></article>`;
+  /** Preis einer Zusatzoption: auf einer Produktseite nur der Betrag für dieses Paket („+990 € bei Landing und Story, +1.490 € bei Cinematic“). */
+  const zusatzPreis = (z, a) => {
+    if (a) for (const m of String(z.preis).matchAll(/([+\d.,]+ €) bei ([^,]+)/g)) if (m[2].split(/ und /).some((n) => a.name.endsWith(n.trim()))) return m[1];
+    return z.preis;
+  };
+  const zusatzKarte = (z, a) => { const p = zusatzPreis(z, a); return `<article class="angebot"><h3>${e(z.name)}</h3><div class="preis"><b${p.length > 16 ? ' class="lang"' : ''}>${e(p)}</b><span>${e(a ? z.leistung : z.fuer)}</span></div>${a ? '' : `<p class="fuer">${t(z.leistung)}</p>`}</article>`; };
   const belegListe = (liste) => `<div class="belege">${liste.map((b) => `<div class="beleg"><span class="punkt" aria-hidden="true"></span><span>${t(b)}</span></div>`).join('')}</div>`;
   const team = () => `<div class="team">${seite.team.map((p) => `<div class="person"><span class="kuerzel" aria-hidden="true">${e(p.kuerzel)}</span><div><span class="rolle">${e(p.rolle)}</span><b>${e(p.name)}</b><p>${t(p.text)}</p></div></div>`).join('')}</div>`;
   const faelle = (liste) => `<div class="faelle">${liste.map((f) => `<article class="fall"><h3>${t(f.titel)}</h3><dl><dt>Ausgangslage</dt><dd>${t(f.ausgangslage)}</dd><dt>Vorgehen</dt><dd>${t(f.vorgehen)}</dd><dt>Ergebnis</dt><dd>${t(f.ergebnis)}</dd></dl></article>`).join('')}</div>`;
@@ -198,7 +204,7 @@ ${ebeneKarte('innovation')}
   };
   /** Zeilen eines Bereichs auf der Startseite: Angebote mit Gruppe zusammengefasst („ab“-Preis), die übrigen einzeln. */
   const startZeilen = (b) => {
-    const aus = [];
+    const aus = b === 'innovation' ? [{ name: 'Innovations-Check', preis: 'kostenlos', href: '/innovations-check/' }] : [];
     for (const a of produkteIn(b)) {
       if (!a.gruppe) { aus.push({ name: a.name, preis: preisKurz(a), href: produktPfad(a) }); continue; }
       if (aus.some((z) => z.gruppe === a.gruppe)) continue;
@@ -244,9 +250,8 @@ ${haken(seite.check_punkte.punkte)}
 <div class="knoepfe">${checkKnopf('start_check')}<a class="textlink" href="/innovations-check/">So funktioniert der Check ${PFEIL}</a></div>
 ${stufenLeiste()}</div>
 ${chat()}
-</div></section>
-
-<section class="abschnitt" aria-label="Das 90-Tage-Umsetzungsgespräch"><div class="w">${gespraechKarte('start_gespraech')}</div></section>
+</div>
+<div class="w folgt">${gespraechKarte('start_gespraech')}</div></section>
 
 <section class="abschnitt" id="warum" aria-labelledby="warum-titel"><div class="w zwei mitte">
 <div><span class="eb">Über uns</span><h2 id="warum-titel">${e(start['ueber-uns'].titel)}</h2><p class="lead">${t(start['ueber-uns'].text)}</p>
@@ -284,7 +289,7 @@ ${ende(e(start.abschluss.titel), start.abschluss.text, checkKnopf('start_ende', 
       if (!ziel) gruppen.push((ziel = { name: g, liste: [] }));
       ziel.liste.push(a);
     }
-    const angeboteHtml = gruppen.map((g) => `${g.name && gruppen.length > 1 ? `<h3 class="gruppe-titel" id="${gruppeAnker(g.name)}">${e(g.name)}</h3>` : ''}<div class="angebote">${g.liste.map((a) => angebotKarte(a)).join('')}</div>`).join('\n');
+    const angeboteHtml = gruppen.map((g) => `${g.name && gruppen.length > 1 ? `<h3 class="gruppe-titel" id="${gruppeAnker(g.name)}">${e(g.name)}</h3>` : ''}<div class="angebote n${g.liste.length}">${g.liste.map((a) => angebotKarte(a)).join('')}</div>`).join('\n');
     const ablauf = b === 'vertrieb' ? (() => {
       const zeile = s.abschnitte.find((x) => x.startsWith('So läuft es ab:')) ?? '';
       const schritte = zeile.replace(/^So läuft es ab:\s*/, '').split('→').map((x) => x.trim()).filter(Boolean);
@@ -302,7 +307,7 @@ ${ende(e(start.abschluss.titel), start.abschluss.text, checkKnopf('start_ende', 
 <div class="knoepfe"><a class="textlink" href="${produktPfad(hos)}">Head of Sales im Detail ${PFEIL}</a><a class="textlink" href="${produktPfad(cso)}">CSO im Detail ${PFEIL}</a></div></div></section>`;
     })() : '';
     const zusatz = b === 'sichtbarkeit' ? `<section class="abschnitt hell" aria-labelledby="zusatz-titel"><div class="w">${kopfzeile('Zusatzoptionen', '<span id="zusatz-titel">Dazu buchbar</span>')}
-<div class="angebote">${inhalt.zusatzoptionen.map((z) => `<article class="angebot"><h3>${e(z.name)}</h3><div class="preis"><b>${e(z.preis)}</b><span>${e(z.fuer)}</span></div><p class="fuer">${t(z.leistung)}</p></article>`).join('')}</div>${netto}</div></section>` : '';
+<div class="angebote n${inhalt.zusatzoptionen.length}">${inhalt.zusatzoptionen.map((z) => zusatzKarte(z)).join('')}</div>${netto}</div></section>` : '';
     const belege = b === 'vertrieb' ? inhalt.belege.slice(0, 3) : b === 'innovation' ? inhalt.belege.slice(4, 5) : [];
     const faelleHier = seite.fallbeispiele.filter((f) => f.bereich === b);
     neu(`${pfad}/index.html`, {
@@ -325,8 +330,10 @@ ${ende(e(start.abschluss.titel), start.abschluss.text, checkKnopf('start_ende', 
 
 ${belege.length ? `<section class="abschnitt" aria-labelledby="belege-titel"><div class="w zwei mitte"><div>${kopfzeile('Belege', `<span id="belege-titel">${b === 'innovation' ? 'Wir nutzen, was wir einführen' : 'Wir haben Vertrieb aufgebaut, geführt und skaliert'}</span>`)}</div>${belegListe(belege)}</div></section>` : ''}
 
-${b === 'innovation' ? `<section class="abschnitt getoent" aria-labelledby="stufen-titel"><div class="w zwei"><div>${kopfzeile('Innovations-Check', `<span id="stufen-titel">${e(start['innovations-check'].titel)}</span>`, start['innovations-check'].text)}<div class="knoepfe">${checkKnopf('innovation_stufen')}</div></div>${stufenLang()}</div></section>
-<section class="abschnitt" aria-label="Das 90-Tage-Umsetzungsgespräch"><div class="w">${gespraechKarte('innovation_gespraech')}</div></section>` : ''}
+${b === 'innovation' ? `<section class="abschnitt getoent" aria-labelledby="stufen-titel"><div class="w zwei"><div>${kopfzeile('Innovations-Check', `<span id="stufen-titel">${e(start['innovations-check'].titel)}</span>`, start['innovations-check'].text)}<div class="knoepfe">${checkKnopf('innovation_stufen')}</div></div>${stufenLang()}</div>
+<div class="w folgt">${gespraechKarte('innovation_gespraech')}</div></section>` : ''}
+
+${ablauf}
 
 <section class="abschnitt hell" id="angebote" aria-labelledby="angebote-titel"><div class="w">${kopfzeile('Angebote', `<span id="angebote-titel">${e(d.name)}: unsere Angebote</span>`, d.satz)}
 ${angeboteHtml}
@@ -334,10 +341,9 @@ ${netto}</div></section>
 
 ${vergleich}
 ${zusatz}
-${ablauf}
 ${seite.fallbeispiele_zeigen && faelleHier.length ? `<section class="abschnitt hell" aria-labelledby="faelle-titel"><div class="w">${kopfzeile('Aus der Praxis', '<span id="faelle-titel">So sieht das in der Praxis aus</span>', 'Anonymisiert, mit Zustimmung der Kunden.')}${faelle(faelleHier)}</div></section>` : ''}
-${b === 'sichtbarkeit' ? `<section class="abschnitt fokus" aria-labelledby="fokus-titel"><div class="w fokus-zeile"><div><span class="eb">Auf die Bühne</span><h2 id="fokus-titel">${e(start.fokus.titel)}</h2><p>${t(start.fokus.text)}</p></div><a class="knopf fokus-knopf" href="/fokus-innovation/">Mehr zu Fokus Innovation ${PFEIL}</a></div></section>` : ''}
 ${fragen(faqVon(seite.bereiche[b].faq))}
+${b === 'sichtbarkeit' ? `<section class="abschnitt fokus" aria-labelledby="fokus-titel"><div class="w fokus-zeile"><div><span class="eb">Auf die Bühne</span><h2 id="fokus-titel">${e(start.fokus.titel)}</h2><p>${t(start.fokus.text)}</p></div><a class="knopf fokus-knopf" href="/fokus-innovation/">Mehr zu Fokus Innovation ${PFEIL}</a></div></section>` : ''}
 ${ende(e(start.abschluss.titel), start.abschluss.text, checkKnopf(`${b}_ende`, start.abschluss.cta.text))}`,
     });
   }
@@ -369,7 +375,7 @@ ${ende(e(start.abschluss.titel), start.abschluss.text, checkKnopf(`${b}_ende`, s
 <h1 id="held-titel">${e(a.name)}</h1>
 ${a.fuer_wen ? `<p class="lead">${t(a.fuer_wen)}</p>` : `<p class="lead">${t(d.satz)}</p>`}
 </div>
-<aside class="preis-kasten" aria-label="Preis"><span class="eb">Preis</span><div class="betrag">${e(a.preis)}</div><div class="zusatz">${e(a.preis_zusatz ?? '')} · netto zuzüglich Umsatzsteuer</div>${terminKnopf}${checkKnopf(`produkt_${a.id}`, 'Erst den Innovations-Check machen', 'zweit')}</aside>
+<aside class="preis-kasten" aria-label="Preis"><span class="eb">Preis</span><div class="betrag">${e(a.preis)}</div><div class="zusatz">${e(a.preis_zusatz ?? '')} · netto zuzüglich Umsatzsteuer</div>${terminKnopf}${checkKnopf(`produkt_${a.id}`, 'Erst den Check machen', 'zweit')}</aside>
 </div></section>
 
 ${a.enthalten ? `<section class="abschnitt hell" aria-labelledby="inhalt-titel"><div class="w spalten">
@@ -379,9 +385,9 @@ ${gutZuWissen}
 
 ${stufenHtml}
 ${a.enthalten ? '' : `<section class="abschnitt hell" aria-label="Gut zu wissen"><div class="w">${gutZuWissen}</div></section>`}
-${zusatz.length ? `<section class="abschnitt hell" aria-labelledby="zusatz-titel"><div class="w">${kopfzeile('Zusatzoptionen', '<span id="zusatz-titel">Dazu buchbar</span>')}<div class="angebote">${zusatz.map((z) => `<article class="angebot"><h3>${e(z.name)}</h3><div class="preis"><b>${e(z.preis)}</b><span>${e(z.fuer)}</span></div><p class="fuer">${t(z.leistung)}</p></article>`).join('')}</div></div></section>` : ''}
+${zusatz.length ? `<section class="abschnitt hell" aria-labelledby="zusatz-titel"><div class="w">${kopfzeile('Zusatzoptionen', '<span id="zusatz-titel">Dazu buchbar</span>')}<div class="angebote">${zusatz.map((z) => zusatzKarte(z, a)).join('')}</div></div></section>` : ''}
 ${fragen(faqVon(seite.produkt_faq[a.id] ?? []))}
-${weitere.length ? `<section class="abschnitt" aria-labelledby="weitere-titel"><div class="w">${kopfzeile(d.name, `<span id="weitere-titel">Weitere Angebote im Bereich ${e(d.name)}</span>`)}<div class="angebote dunkel-karten">${weitere.map((x) => `<a class="schritt" href="${produktPfad(x)}"><span class="nr">${e(preisKurz(x))}</span><b>${e(x.name)}</b><p>${t(x.fuer_wen ?? (x.enthalten ?? [])[0] ?? '')}</p></a>`).join('')}</div></div></section>` : ''}
+${weitere.length ? `<section class="abschnitt" aria-labelledby="weitere-titel"><div class="w">${kopfzeile(d.name, `<span id="weitere-titel">Weitere Angebote im Bereich ${e(d.name)}</span>`)}<div class="angebote dunkel-karten n${weitere.length}">${weitere.map((x) => `<a class="schritt" href="${produktPfad(x)}"><span class="nr">${e(preisKurz(x))}</span><b>${e(x.name)}</b><p>${t(x.fuer_wen ?? (x.enthalten ?? [])[0] ?? '')}</p></a>`).join('')}</div></div></section>` : ''}
 ${ende('Bereit für den nächsten Schritt?', istBald ? 'Trag dich auf die Warteliste ein. Oder starte mit dem Innovations-Check, er zeigt in 10 Minuten, wo du stehst.' : 'Sprich mit uns über deinen Start. Oder mach zuerst den Innovations-Check, er zeigt in 10 Minuten, wo du stehst.', `<div class="knoepfe">${terminKnopf}${checkKnopf(`produkt_${a.id}_ende`, 'Innovations-Check starten', 'zweit')}</div>`)}`,
     });
   }
