@@ -4,6 +4,21 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 25.10.2026 abends — großes Update geht online (main a05d8866 → update-0910b, „Was ist neu“ u-2026-10-25)
+Kevin 25.10.: „Dann machen wir heute Abend das große Update.“ Inhalt: Prozesse/Werkstatt (Runden 1–4), Kern-Modul Produkte → Angebot → Mandat → Rechnung →
+Liquidität (Preis-Kette, Runde 4), Fulfillment inkl. Selbstständigkeit (Arbeit), Formular „Angebot anfordern“, Belege über Postfach mit PDF, kleine Bauten (Artikel-/
+Kundennummer, Rechnungsnummer-Format, Texte/Mails je Produkt, Laufzeit wählbar, `{{absender.name}}`, Postfach der Arbeits-Einheit). Bewusst NICHT drin (Bauplan):
+Agenten-Sammelimport (Branch `import-wege`, pausiert), Lieferzeit ab Ereignis, Express automatisch, Zweige über Phasen, Rituale im Import, Vorauszahlung/Skonto.
+- **Prüfungen vor dem Upload:** tsc 0, Lint sauber, 845 Testdateien / 11.991 Tests grün, Update-Probe z8 verlustfrei (0 Abweichungen, Rückweg ✓), Produkt-Import
+  der echten Lieferung (scratchpad-Umwandler) gegen die reinen Funktionen grün.
+- **Einmal-Schritte am Server:** vorher `cd /srv/make-os/app && bash deploy/sicherung.sh` (letzte Zeile `: ok`), Rückweg-Marke `vor-update-2510` auf a05d8866;
+  nach dem Ausrollen Caddy NUR mit der Aurelia-Konfiguration prüfen und neu laden (`--config /etc/caddy-aurelia/Caddyfile`, neuer Block `@angebot`).
+  Keine neuen Umgebungsvariablen.
+- **Danach in der App (Kevin):** Einstellungen › Datenschutz (Verantwortlicher + Kontaktweg — sonst geht kein Angebot automatisch raus), Unternehmen › Absender der
+  Selbstständigkeit (Firmierung MIT vollem Namen des Inhabers, Anschrift, Steuernummer, Bank, AGB-Link), Markttraktion › Formulare › Einstellungen (Absender-Postfach).
+- **Import der echten Produkte (nach dem Upload, mit Vorschau und Kevins OK):** erst `pakete-import.json` (Fulfillment-Import), dann `produkte-import.json`
+  (Produkte › Import). Agenten (Skills) erst mit dem Folge-Update.
+
 ## 25.10.2026 — Markttraktion › Formulare: „Angebot anfordern“ + „Über <Postfach> senden (mit PDF)“ (nur lokal — Branch `angebotsformular`, Basis 57dc4806)
 Kevin 25.10.: „Ein Formular, wo die Vertriebler Kunden eintragen können, die ein Angebot brauchen … automatisiert das Angebot abgeschickt … am besten unter
 Formulare unter Markttraktion.“ Entscheidungen (Klickrunde): Versand automatisch MIT Leitplanken (sonst Freigabe, ein Klick „Senden“), Absender = ein vom Inhaber
