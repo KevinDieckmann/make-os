@@ -1318,6 +1318,8 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .wz-inhalt-flaeche .pz-raster { display: block; }
 .wz-inhalt-flaeche .ff-flaeche-buehne.pz-buehne, .wz-inhalt-flaeche .ff-flaeche-buehne.pw-buehne { height: 100%; min-height: 0; border: 0; border-radius: 0; }
 .wz-inhalt-flaeche .pw-werkstatt { display: block; position: relative; height: 100%; }
+/* Werkstatt Runde 4 (Bau-Test 3: „Die Werkstatt lädt“ lag beim langsamen Laden unter der schwebenden Kopfzeile): im Werkzeugmodus darunter, mittig. */
+.wz-inhalt-flaeche .pw-laedt { position: absolute; top: var(--wz-oben); left: 0; right: 0; display: flex; justify-content: center; padding: 16px; box-sizing: border-box; }
 .wz-inhalt-flaeche .pw-raster { display: block; position: relative; height: 100%; }
 .wz-inhalt-flaeche .pw-flaeche-rahmen { position: absolute; inset: 0; }
 .wz-inhalt-flaeche .wz-feld .pw-panel { max-height: none; padding: 0; border: 0; background: transparent; }

@@ -866,7 +866,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
 
   // ── Zeichnung ──
   if (!daten || !eintrag || !fassung || !d || !lage) {
-    return <div className="pw-werkstatt">{ladeFehler ? <Hinweis art="kritisch">{ladeFehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Werkstatt lädt …</p>}</div>;
+    // Runde 4 (Bau-Test 3): im Werkzeugmodus schwebt die Kopfzeile über der Fläche — „lädt“ steht darunter (`.pw-laedt`), nie hinter ihr.
+    return <div className="pw-werkstatt"><div className="pw-laedt">{ladeFehler ? <Hinweis art="kritisch">{ladeFehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien, margin: 0 }}>Die Werkstatt lädt …</p>}</div></div>;
   }
   const konten = new Map((auswahlListen['konto-person'] ?? []).map(t => [t.id, t.label]));
   const jungeVersion = eintrag.versionen.at(-1);
@@ -1047,12 +1048,15 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           {!nurLesen && <Knopf leise onClick={() => taste({ art: 'ordnen' })} titel="Ordnen — eine Leserichtung; Zettel, die etwas verdecken, wandern über die Rahmen (⇧O, rückgängig machbar)"><span className="pz-knopf-inhalt"><LayoutGrid size={14} aria-hidden />Ordnen</span></Knopf>}
           {!nurLesen && <Knopf leise onClick={zettelHin} titel="Notiz-Zettel auf die Fläche"><span className="pz-knopf-inhalt"><StickyNote size={14} aria-hidden />Zettel</span></Knopf>}
           {!nurLesen && <Knopf leise onClick={() => phaseAktion('neu', phasen(d).at(-1)?.id ?? '')} titel="Neue Phase am Ende"><span className="pz-knopf-inhalt"><Columns3 size={14} aria-hidden />Phase</span></Knopf>}
-          {rasterKnopf}
-          <SymbolKnopf ariaLabel="Verkleinern" onClick={() => flaeche.current?.zoomen(0.8)}><Minus size={16} /></SymbolKnopf>
-          <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
-          <SymbolKnopf ariaLabel="Alles zeigen" onClick={allesZeigen}><Fullscreen size={16} /></SymbolKnopf>
-          {karteKnopf}
-          <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
+          {/* Runde 4 (Bau-Test 3, Handy): Raster, Zoom, Karte und Kürzel gehören zur Fläche — am Handy (nur ansehen: Liste zuerst, Pinch zoomt) stehen sie nicht. */}
+          {!nurAnsehen && <>
+            {rasterKnopf}
+            <SymbolKnopf ariaLabel="Verkleinern" onClick={() => flaeche.current?.zoomen(0.8)}><Minus size={16} /></SymbolKnopf>
+            <SymbolKnopf ariaLabel="Vergrößern" onClick={() => flaeche.current?.zoomen(1.25)}><Plus size={16} /></SymbolKnopf>
+            <SymbolKnopf ariaLabel="Alles zeigen" onClick={allesZeigen}><Fullscreen size={16} /></SymbolKnopf>
+            {karteKnopf}
+            <SymbolKnopf ariaLabel="Kürzel (?)" gedrueckt={hilfe} onClick={() => setHilfe(h => !h)}><Keyboard size={16} /></SymbolKnopf>
+          </>}
           {headKnopf}
           {probeKnopf}
           {versionenKnopf}
@@ -1094,7 +1098,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
             zwischen={zwischenOk} onZwischen={(id, ort) => anhaengen({ zwischen: id }, ort)}
             onUmhaengen={(id, ziel) => { const k = lage.kanten.find(x => x.id === id); if (k && mitFassung(f => umhaengen(f, k, ziel))) setKanteWahl(null); }}
             onDoppel={doppelklick} umbenennen={umbenennen} onUmbenannt={umbenannt}
-            karte={karte} radSchiebt={imModus} onZettelGroesse={(id, b, h) => mitFassung(f => { const z = (f.zettel ?? []).find(x => x.id === id); return z ? zettelAendern(f, id, { pos: { ...z.pos, b, h } }) : { ok: false, grund: 'Diesen Zettel gibt es nicht (mehr).' }; }, { auswahl: false })}
+            karte={karte && !nurAnsehen} radSchiebt={imModus} onZettelGroesse={(id, b, h) => mitFassung(f => { const z = (f.zettel ?? []).find(x => x.id === id); return z ? zettelAendern(f, id, { pos: { ...z.pos, b, h } }) : { ok: false, grund: 'Diesen Zettel gibt es nicht (mehr).' }; }, { auswahl: false })}
             befundTexte={befundTexte} onBefund={(id, feld) => { setAuswahl([id]); setKanteWahl(null); setRahmenWahl(null); setFeldFokus(f => ({ knoten: id, ...(feld ? { feld } : {}), n: (f?.n ?? 0) + 1 })); }}
             onAnhaengen={anhaengen}
             onZuklappen={zuklappen}

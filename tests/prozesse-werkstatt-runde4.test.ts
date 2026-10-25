@@ -333,3 +333,19 @@ describe('(9) Panel beim Knotenwechsel oben', () => {
     expect(lies('components/os/prozesse/Werkstatt.tsx')).toContain('<aside className="pw-panel" aria-label="Einstellungen">{panelInhalt}</aside>');
   });
 });
+
+describe('(10) Handy und langsames Laden', () => {
+  const w = lies('components/os/prozesse/Werkstatt.tsx');
+  it('am Handy (nur ansehen) keine Werkzeuge der Fläche in der Leiste — Raster, Zoom, Karte, Kürzel — und keine Minimap', () => {
+    const i = w.indexOf('{!nurAnsehen && <>');
+    expect(i).toBeGreaterThan(0);
+    const block = w.slice(i, w.indexOf('</>}', i));
+    for (const s of ['{rasterKnopf}', 'ariaLabel="Verkleinern"', 'ariaLabel="Vergrößern"', 'ariaLabel="Alles zeigen"', '{karteKnopf}', 'ariaLabel="Kürzel (?)"']) expect(block).toContain(s);
+    expect(w).toContain('karte={karte && !nurAnsehen}');
+  });
+  it('die Auswahl eines Ausgangs nimmt die volle Breite (nichts abgeschnitten); „lädt“ steht im Werkzeugmodus unter der Kopfzeile', () => {
+    expect(lies('components/os/prozesse/WerkstattPanel.tsx')).toContain("<div key={a} style={{ display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,1fr)' }}>");
+    expect(w).toContain('<div className="pw-laedt">');
+    expect(lies('app/globals.css')).toContain('.wz-inhalt-flaeche .pw-laedt { position: absolute; top: var(--wz-oben);');
+  });
+});
