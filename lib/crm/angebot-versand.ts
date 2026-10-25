@@ -24,7 +24,7 @@ import { datenschutzAngabenAus } from './netzwerken-recht';
 import { angebotMail, ABSENDER_FEHLT, formularBestandName, type FormularEinstellungen } from './formulare';
 import { aendereEingang, empfaengerHash, formularHaushalt, ladeFormular } from './formulare-speicher';
 import { adresseMaskiert } from '@/lib/zugang/konten';
-import { bereichVon } from '@/lib/einheiten';
+import { formularPostfachBereichOk } from './formulare';
 
 export type VersandErgebnis = { ok: true; an: string; ueber: string } | { ok: false; status: number; fehler: string };
 const nein = (status: number, fehler: string): VersandErgebnis => ({ ok: false, status, fehler });
@@ -40,7 +40,8 @@ export async function absenderPruefen(a: FormularEinstellungen['absender']): Pro
   const { ladePostfach } = await import('@/lib/postfach/register');
   const p = await ladePostfach(a.person, a.postfach);
   if (!p || p.quelle === 'whatsapp') return { ok: false, grund: 'Das gewählte Absender-Postfach gibt es nicht (mehr) — bitte neu wählen.' };
-  if (!p.bereich || bereichVon(p.bereich) !== 'business') return { ok: false, grund: 'Das Absender-Postfach liegt nicht im Business-Bereich — Angebote gehen nur aus einem Business-Postfach.' };
+  // 25.10.: auch der Bereich einer Arbeits-Einheit (Selbstständigkeit) — nie ein reines Privat-Postfach (`formularPostfachBereichOk`).
+  if (!formularPostfachBereichOk(p.bereich)) return { ok: false, grund: 'Das Absender-Postfach liegt weder im Business-Bereich noch bei einer Einheit, die Angebote stellt — Angebote gehen nicht aus einem Privat-Postfach.' };
   if (p.quelle === 'gmail') {
     const { gmailBereit } = await import('@/lib/gmail/abgleich');
     if (!(await gmailBereit(a.person).catch(() => false))) return { ok: false, grund: 'Gmail ist für das Absender-Postfach nicht (mehr) verbunden.' };
