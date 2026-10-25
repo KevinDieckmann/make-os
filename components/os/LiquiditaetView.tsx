@@ -17,7 +17,7 @@ import { useSpeichern } from '@/hooks/useSpeichern';
 import { useAbgleich } from '@/hooks/useAbgleich';
 import { FINANZPLAN_LISTEN } from '@/lib/sync';
 import {
-  vorschau, businessFirmen, KATEGORIEN, KATEGORIE, szenarioGruppen, SZENARIEN_GLEICH, CASH_GEGEN_FREI, monatsSumme, rechnungDeckung, postenZeitText,
+  vorschau, businessFirmen, KATEGORIEN, KATEGORIE, szenarioGruppen, SZENARIEN_GLEICH, CASH_GEGEN_FREI, monatsSumme, rechnungDeckung, postenZeitText, ersetztText,
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
@@ -224,6 +224,8 @@ export function LiquiditaetView() {
         <Zeile onClick={() => setOffen(auf ? null : p.id)} aktiv={auf} titel={p.titel} unter={postenZeitText(p, heute)}
           rechts={<>
             {!p.sicher && <Chip farbe={LEUCHT.achtung}>unsicher</Chip>}
+            {/* 24.10.: eine gestellte Rechnung ersetzt diese Zahlung (dieselbe Regel wie die Vorschau, `rechnungDeckung`) — sie zählt dort, nicht hier. */}
+            {ersetztText(p, heute, deckung) && <Chip farbe={C.inkLeise}>{ersetztText(p, heute, deckung)}</Chip>}
             {planpostenVor(p, eroeffnung) && <Chip farbe={C.inkLeise}>vor dem 0-Punkt</Chip>}
             {/* 05.10.: Posten einer Privat-Einheit (Selbstständigkeit) bleiben hier sichtbar und änderbar, zählen aber nicht in die Business-Vorschau. */}
             {p.firmaId && p.firmaId !== 'privat' && bereichVonFirma(p.firmaId) === 'privat' && <Chip farbe={LEUCHT.geld}>Privat · {istGesellschaft(p.firmaId) ? finanzOrtName(p.firmaId) : p.firmaId}</Chip>}

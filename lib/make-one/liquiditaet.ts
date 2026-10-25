@@ -320,6 +320,24 @@ export function rechnungDeckung(rechnungen: readonly Rechnung[], opt: { mitEntwu
 }
 
 /**
+ * Das Kennzeichen eines Planpostens, dessen Zahlung(en) eine gestellte Rechnung ersetzt (24.10., Bau-Test: der ersetzte Posten stand ohne Kennzeichen weiter in
+ * „Was reinkommt“) — DIESELBE Regel wie Vorschau und Kopfzahl (`rechnungDeckung`). Einmalig: „durch Rechnung ersetzt“; wiederkehrend: „November 2026 durch
+ * Rechnung ersetzt“ bzw. „3 Zahlungen durch Rechnungen ersetzt“. null, wenn keine Zahlung ersetzt ist. Gezählt ab dem Beginn des Postens bis 13 Monate nach heute.
+ */
+export function ersetztText(p: Pick<Planposten, 'ab' | 'bis' | 'rhythmus'> & Partial<Pick<Planposten, 'id' | 'mandatId' | 'leistungsmonat'>>, heute: string, deckung: Deckung): string | null {
+  if (deckung === KEINE_DECKUNG || !/^\d{4}-\d{2}-\d{2}/.test(p.ab ?? '')) return null;
+  const von = p.ab < heute ? p.ab : heute;
+  const bis = monatePlus(heute, 13);
+  const ersetzt = zahltage(p, von, bis).filter(t => deckung(p, t));
+  if (!ersetzt.length) return null;
+  if (p.rhythmus === 'einmalig') return 'durch Rechnung ersetzt';
+  if (ersetzt.length > 1) return `${ersetzt.length} Zahlungen durch Rechnungen ersetzt`;
+  const MONATE = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  const lm = postenLeistungsmonat(p, ersetzt[0], 14) ?? ersetzt[0].slice(0, 7);
+  return `${MONATE[Number(lm.slice(5, 7)) - 1]} ${lm.slice(0, 4)} durch Rechnung ersetzt`;
+}
+
+/**
  * Was ein Posten „je Monat“ ausmacht (Liquidität › Was reinkommt / Was rausgeht, Nachprüfung 18.10. N3): nur, solange er wirklich zahlt —
  * ein wiederkehrender Posten zählt mit seinem Monatswert (Quartal ⅓, Jahr 1/12), wenn er im nächsten Abstand ab heute (1 bzw. 3 bzw. 12 Monate)
  * einen Zahltag hat. Beendete (letzter Zahltag vorbei) und erst später beginnende zählen nicht; einmalige nie. Seit 21.10. (A2): Zahltage, die eine
@@ -404,7 +422,8 @@ export function vorschau(
       const faellig = r.faellig ?? iso(tage(heuteD, geplant ? 28 : 7));
       if (faellig < vonISO || faellig > bisISO) continue;
       // Überfälliges landet in der laufenden Woche, nicht in der Vergangenheit.
-      bewegungen.push({ datum: faellig, text: `${r.kunde}: ${r.titel}`.slice(0, 60), betrag: r.betrag, art: 'eingang', sicher: !geplant, ...(r.id ? { quelle: { art: 'rechnung' as const, id: r.id } } : {}) });
+      // 24.10. (Bau-Test): eine Rechnung aus einem Mandat zählt unter „Mandate & Honorare“ (vorher „Sonstige Einnahmen“) — dieselbe Kategorie wie ihr Planposten.
+      bewegungen.push({ datum: faellig, text: `${r.kunde}: ${r.titel}`.slice(0, 60), betrag: r.betrag, art: 'eingang', sicher: !geplant, ...(r.mandatId ? { kategorie: 'mandat' } : {}), ...(r.id ? { quelle: { art: 'rechnung' as const, id: r.id } } : {}) });
       if (geplant) unsicher += r.betrag;
     }
     // Überfällige Rechnungen in Woche 1 mitnehmen.
@@ -412,7 +431,7 @@ export function vorschau(
       for (const r of rechnungen) {
         if (r.status === 'bezahlt' || r.status === 'storniert' || !r.betrag || !r.faellig || r.faellig >= vonISO) continue;
         if (r.status === 'geplant' && !optimistisch) continue;
-        bewegungen.push({ datum: r.faellig, text: `${r.kunde}: ${r.titel} (überfällig)`.slice(0, 60), betrag: r.betrag, art: 'eingang', sicher: false, ...(r.id ? { quelle: { art: 'rechnung' as const, id: r.id } } : {}) });
+        bewegungen.push({ datum: r.faellig, text: `${r.kunde}: ${r.titel} (überfällig)`.slice(0, 60), betrag: r.betrag, art: 'eingang', sicher: false, ...(r.mandatId ? { kategorie: 'mandat' } : {}), ...(r.id ? { quelle: { art: 'rechnung' as const, id: r.id } } : {}) });
         unsicher += r.betrag;
       }
     }

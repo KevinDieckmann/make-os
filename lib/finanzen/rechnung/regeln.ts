@@ -344,13 +344,25 @@ export function empfaengerAusCrm(k: KontaktTeil | undefined, f: FirmaTeil | unde
 export const kundeAus = (e: RechnungEmpfaenger | undefined, rueckfall = 'Kunde') => (e?.firma || e?.name || rueckfall).slice(0, 120);
 
 /** Basis eines neuen Entwurfs (geplant, ohne Nummer). */
+/**
+ * Fälligkeit einer Rechnung — EINE Regel für Entwurf und Stellen (24.10., Bau-Test: Rechnung fällig 07.11., der Liquiplan erwartete das Geld am 29.11.):
+ * Rechnungsdatum + Zahlungsziel, frühestens Zahlungsziel nach Beginn der Leistung (`leistungVon`). Das ist dieselbe Regel wie der Zahltag eines Mandats im
+ * Liquiplan (Beginn der Leistung im Monat + Zahlungsziel, lib/crm/mandat-laufzeit.ts) — eine im Voraus gestellte Monatsrechnung wird nie früher fällig, als
+ * der Plan sie erwartet; eine später gestellte ist Rechnungsdatum + Ziel (wie bisher).
+ */
+export function faelligAm(datum: string, zielTage: number, leistungVon?: string): string {
+  const ab = plusTage(datum, zielTage);
+  const lv = typeof leistungVon === 'string' && tagOk(leistungVon) ? plusTage(leistungVon, zielTage) : null;
+  return lv && lv > ab ? lv : ab;
+}
+
 export function neuerEntwurf(p: { id: string; firmaId: Gesellschaftskennung; kunde: string; titel?: string; empfaenger?: RechnungEmpfaenger; positionen?: RechnungPosition[]; zahlungszielTage?: number; heute: string } & Partial<Pick<Rechnung, 'mandatId' | 'leistungVon' | 'leistungBis' | 'angebot' | 'angebotAm'>> & Partial<Pick<RechnungZusatz, 'kontaktId' | 'kundeFirmaId' | 'angebotId' | 'steuerHinweis' | 'einleitung' | 'schluss'>>, opt: { kleinunternehmer?: boolean } = {}): Rechnung {
   const positionen = p.positionen ?? [];
   const b: { betrag: number; netto: number; ustSatz?: number } = positionen.length ? betragFelder(positionen, opt) : { betrag: 0, netto: 0 };
   const ziel = p.zahlungszielTage ?? ZAHLUNGSZIEL_VORGABE_TAGE;
   return {
     id: p.id, firmaId: p.firmaId, ...(p.mandatId ? { mandatId: p.mandatId } : {}), kunde: p.kunde.slice(0, 120) || 'Kunde', titel: (p.titel || 'Rechnung').slice(0, RECHNUNG_GRENZEN.titel),
-    betrag: b.betrag, status: 'geplant', faellig: plusTage(p.heute, ziel),
+    betrag: b.betrag, status: 'geplant', faellig: faelligAm(p.heute, ziel, p.leistungVon),
     ...(p.angebot ? { angebot: p.angebot } : {}), ...(p.angebotAm ? { angebotAm: p.angebotAm } : {}),
     netto: b.netto, ...(b.ustSatz !== undefined ? { ustSatz: b.ustSatz } : {}),
     ...(p.leistungVon ? { leistungVon: p.leistungVon } : {}), ...(p.leistungBis ? { leistungBis: p.leistungBis } : {}),

@@ -33,10 +33,10 @@ import {
   MAHN_VORGABE_TAGE, EINLEITUNG_VORLAGE, SCHLUSS_VORLAGE, entwurfAnwenden, entwurfGrenzen, empfaengerAusCrm, kundeAus, kurzVon, mahnLabel, mahnMail,
   mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
-  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen,
+  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen, faelligAm,
   type MahnVorschlag, type Pflicht,
 } from './regeln';
-import { angenommenZuDeal, angebotTitelFuerFolge } from '@/lib/crm/angebote';
+import { angenommenZuDeal, angebotEinmalRest, angebotTitelFuerFolge } from '@/lib/crm/angebote';
 import { abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, istAnrechnung, monatsPositionen, nurAbgerechnet } from '@/lib/crm/mandat-zusatz';
 import type { RechnungPosition } from './typen';
 import { rechnungDokument, bankZeile } from './dokument';
@@ -166,7 +166,10 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     if (!a) throw new RechnungFehler('Angebot nicht gefunden.', 404);
     if (a.status !== 'angenommen') throw new RechnungFehler('Eine Rechnung entsteht nur aus einem angenommenen Angebot — erst „angenommen“ vermerken.', 409, { grund: 'nicht-angenommen' });
     const nurEinmalig = p.nur === 'einmalig';
-    if (nurEinmalig && !a.positionen.some(x => x.basis === 'einmalig')) throw new RechnungFehler('Dieses Angebot hat keine Einmalposten.', 409, { grund: 'ohne-einmalposten' });
+    // 24.10.: nur die Einmalposten, die das Mandat NICHT selbst abrechnet (`angebotEinmalRest`) — die eigenen Teile einer Kombination (z. B. der Festpreis
+    // 50/50) stehen als Zusatzmodul am Mandat und kämen sonst doppelt auf eine Rechnung.
+    const einmalRest = angebotEinmalRest(a, crm.leistungen);
+    if (nurEinmalig && !einmalRest.length) throw new RechnungFehler(a.positionen.some(x => x.basis === 'einmalig') ? 'Die Einmalposten dieses Angebots rechnet das Mandat ab (Zusatzmodul) — keine eigene Rechnung nötig.' : 'Dieses Angebot hat keine Einmalposten.', 409, { grund: 'ohne-einmalposten' });
     const fest = einmalRechnungId(a.id);
     vorhandenIn = nurEinmalig
       ? l => l.find(r => r.id === fest) ?? l.find(r => r.angebotId === a.id && r.art !== 'storno' && r.status !== 'storniert')
@@ -193,7 +196,7 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     // Gesellschaft wie überall (08.10., 3.6): eine Register-Gesellschaft führt der Finanzplan nicht (409 „nur Grunddaten“), nie still kdc.
     const g = gesellschaftFuer(a.gesellschaft);
     if (!g) throw new RechnungFehler('Für dieses Angebot steht keine Gesellschaft fest — die Rechnung frei schreiben.', 409, { grund: 'gesellschaft' });
-    const positionen = positionenAusAngebot(nurEinmalig ? { positionen: a.positionen.filter(x => x.basis === 'einmalig') } : a, ku(g));
+    const positionen = positionenAusAngebot(nurEinmalig ? { positionen: einmalRest } : a, ku(g));
     entwurf = neuerEntwurf({
       id: nurEinmalig ? fest : id, firmaId: g, kunde: kundeAus(empf, a.empfaenger?.firma ?? a.empfaenger?.name), titel: nurEinmalig ? `${titelAusAngebot || 'Leistung'} — einmalig`.slice(0, 160) : titelAusAngebot, empfaenger: empf, positionen,
       zahlungszielTage: a.zahlungszielTage, heute, ...(mandat ? { mandatId: mandat.id } : {}), ...(a.nummer ? { angebot: a.nummer } : {}), ...(a.gestelltAm ? { angebotAm: tagVon(a.gestelltAm) } : {}),
@@ -493,7 +496,8 @@ export async function rechnungStellen(p: { id: string; stand: unknown; person: s
     const bf = betragFelder(positionen, { kleinunternehmer: ku });
     const gestellt: Rechnung = {
       ...a, ...bf, positionen, status: 'gestellt', nummer, datum: heute,
-      faellig: new Date(Date.parse(`${heute}T12:00:00Z`) + ziel * 864e5).toISOString().slice(0, 10), zahlungszielTage: ziel,
+      // 24.10.: frühestens Zahlungsziel nach Beginn der Leistung — dieselbe Regel wie der Zahltag im Liquiplan (`faelligAm`).
+      faellig: faelligAm(heute, ziel, a.leistungVon), zahlungszielTage: ziel,
       lauf, absender: absenderAus(g), gestelltAm: jetztIso, gestelltVon: p.person,
       ...(ku ? { steuerHinweis: undefined, steuerfreiGrund: undefined } : {}),
     };

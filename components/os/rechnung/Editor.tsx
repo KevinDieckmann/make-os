@@ -23,7 +23,7 @@ import {
 } from '@/lib/finanzen/rechnung/regeln';
 import { rechnungDokument, bankZeile } from '@/lib/finanzen/rechnung/dokument';
 import { Blatt } from '../crm/angebot/Blatt';
-import { Karte, Knopf, Chip, Hinweis, Pillen, Segmente, Feldzeile, Ueberschrift, Schalter, feld } from '../ui';
+import { Karte, Knopf, Chip, Hinweis, Pillen, Segmente, Feldzeile, Ueberschrift, Schalter, feld, useRueckfrage } from '../ui';
 import { neueAnfrage, pdfLaden, rechnungPost, type RechnungDaten, type RechnungMitFassung, type AbsenderAnzeige } from './daten';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
@@ -70,6 +70,7 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
   const [ansicht, setAnsicht] = useState<'bearbeiten' | 'vorschau'>('bearbeiten');
   const [fertig, setFertig] = useState<{ r: RechnungMitFassung; pdf: { id: string; name: string }; mailto: string } | null>(null);
   const [loeschFrage, setLoeschFrage] = useState(false);
+  const { bestaetigen, dialog: rueckfrage } = useRueckfrage();
   // Rechnungsanschrift an der Firma (19.10., B12): was der Server zuletzt meldete; der Haken überschreibt eine ANDERE Anschrift der Firma.
   const [anFirma, setAnFirma] = useState<AnschriftAnFirma | null>(null);
   const anFirmaRef = useRef<AnschriftAnFirma | null>(null); anFirmaRef.current = anFirma;
@@ -129,7 +130,8 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
   const g: AbsenderAnzeige | undefined = gesellschaften.find(x => x.id === form.firmaId);
   const ku = !!g?.kleinunternehmer;
   const s = rechnungSummen(form.positionen, { kleinunternehmer: ku });
-  const fehlt = pflichtFehlt(form, g ?? null);
+  // Eine neue Position ohne Bezeichnung (24.10.: „Leistung“ ist nur noch Platzhalter) würde der Server verwerfen — erst benennen, dann stellen.
+  const fehlt = [...pflichtFehlt(form, g ?? null), ...(form.positionen.some(p => !p.titel.trim()) ? [{ text: 'Eine Position hat noch keine Bezeichnung.' }] : [])];
   const nullSatz = !ku && form.positionen.some(p => p.ustSatz === 0);
   const entwurfAlsRechnung: Rechnung = { ...start, ...form, kunde: kundeAus(form.empfaenger, start.kunde), betrag: s.brutto / 100, status: 'geplant' };
   const dok = useMemo(() => rechnungDokument(entwurfAlsRechnung, absenderAus(g ?? { id: (form.firmaId || 'kdc') as Gesellschaftskennung }), { datum: heute, bank: bankZeile(g?.bank), kleinunternehmer: ku }),
@@ -138,6 +140,8 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
   const setzePos = (l: RechnungPosition[]) => aendern({ positionen: l });
 
   async function stellen() {
+    // 24.10. (Bau-Test, Reibung): wie „Angebot annehmen“ erst eine Rückfrage — Nummer und Betrag werden festgeschrieben (nur noch Storno).
+    if (!(await bestaetigen({ titel: 'Rechnung stellen?', text: `Die Rechnung bekommt jetzt ihre Nummer und wird über ${euroCent(s.brutto)} brutto (${euroCent(s.netto)} netto) festgeschrieben — danach ist sie ein Beleg und lässt sich nur noch stornieren.`, ja: 'Rechnung stellen' }))) return;
     if (!start.positionen) offen.current = true; // Altbestand: die vorbelegte Position erst jetzt speichern
     await speichernJetzt();
     if (offen.current) { setMeldung('Der Entwurf ist noch nicht gespeichert — bitte kurz warten und noch einmal.'); return; }
@@ -239,7 +243,8 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
                 onWeg={() => setzePos(form.positionen.filter(x => x.id !== p.id))} />
             ))}
             {!form.positionen.length && <div style={{ ...klein, padding: '10px 0' }}>Noch keine Position — Menge und Art der Leistung gehören auf jede Rechnung.</div>}
-            <div style={{ marginTop: 8 }}><Knopf leise onClick={() => setzePos([...form.positionen, { id: neueKennung('p').slice(0, 20), titel: 'Leistung', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 0, ustSatz: ku ? 0 : 19 }])}>+ Position</Knopf></div>
+            {/* 24.10. (Bau-Test, Reibung): „Leistung“ ist Platzhalter, kein Wert — die neue Position startet leer. */}
+            <div style={{ marginTop: 8 }}><Knopf leise onClick={() => setzePos([...form.positionen, { id: neueKennung('p').slice(0, 20), titel: '', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 0, ustSatz: ku ? 0 : 19 }])}>+ Position</Knopf></div>
           </div>
           {nullSatz && (
             <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
@@ -278,6 +283,7 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
         <Knopf haupt farbe={LEUCHT.gut} aus={fehlt.length > 0} onClick={stellen}>Rechnung stellen</Knopf>
       </div>
       <div style={klein}>Stellen vergibt die nächste fortlaufende Nummer der Gesellschaft, schreibt das PDF fest (danach nicht mehr änderbar) und legt es als Beleg ab. {KEINE_STEUERBERATUNG}</div>
+      {rueckfrage}
     </div>
   );
 }
@@ -288,7 +294,7 @@ function PositionZeile({ p, nr, ku, onAendern, onWeg }: { p: RechnungPosition; n
     <div style={{ padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,.06)', display: 'grid', gap: 6 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         <span style={{ width: 20, color: C.inkLeise, fontSize: TYP.bedien, textAlign: 'right' }}>{nr}</span>
-        <input value={p.titel} aria-label="Leistung" onChange={e => onAendern({ titel: e.target.value })} style={{ ...zelle, flex: '1 1 200px', minWidth: 160, fontWeight: 600 }} />
+        <input value={p.titel} aria-label="Leistung" placeholder="Leistung" onChange={e => onAendern({ titel: e.target.value })} style={{ ...zelle, flex: '1 1 200px', minWidth: 160, fontWeight: 600 }} />
         <ZahlFeld label="Menge" breite={72} wert={mengeText(p.menge)} onWert={t => { const m = mengeAusEingabe(t); if (m === null) return false; onAendern({ menge: m }); return true; }} />
         <input value={p.einheit} aria-label="Einheit" onChange={e => onAendern({ einheit: e.target.value })} style={{ ...zelle, width: 90 }} />
         <ZahlFeld label="Einzelpreis € netto" breite={110} wert={eingabeAusCent(p.einzelpreisCent)} onWert={t => { const c = centAusEingabe(t); if (c === null) return false; onAendern({ einzelpreisCent: c }); return true; }} />
