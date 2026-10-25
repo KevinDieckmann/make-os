@@ -618,7 +618,8 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
       // Ein Prozess löst die Paket-Zuordnung (wie `ablaufWechsel`).
       plan.zuordnungen.push({ leistungId: v.id, vorlageId: null });
       zeile.ablauf = { name: '', stand: 'entfernen' };
-      merke('ablauf', (k.vorlagen ?? []).find(x => x.id === k.zuordnung![v.id].vorlageId)?.titel ?? 'ein Ablauf', undefined);
+      const bisherPaket = k.zuordnung[v.id].vorlageId;
+      merke('ablauf', (k.vorlagen ?? []).find(x => x.id === bisherPaket)?.titel ?? 'ein Ablauf', undefined);
     } else if (paketNeu && alt?.prozessId && prozRoh === undefined) {
       // Ein Paket löst den Prozess (wie `ablaufWechsel`).
       felder.prozessId = null;
