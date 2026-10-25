@@ -20,8 +20,9 @@
 //      → nach einem Firmenwechsel der Person: Lead und offene Deals zur neuen Firma (lib/crm/firma-umhaengen-server.ts)
 // POST { aktion: 'firmen-zusammen-vorschau' | 'firmen-zusammen', behalten, weg }  → Firmen-Dublette zusammenführen
 // Die neuen Schreib-Aktionen laufen nie über den Dienstweg (403) und prüfen die Bau-Kennung.
-// POST { aktion: 'mandat', chanceId }   → gewonnener Deal wird Mandat (Deals ›
-//      Kunden); Firma wird Kunde, Personen Lebensphase „Kunde“.
+// POST { aktion: 'mandat', chanceId, start?, vorschau? }   → gewonnener Deal wird Mandat (Deals ›
+//      Kunden); Firma wird Kunde, Personen Lebensphase „Kunde“. `vorschau: true` (24.10.) liefert das Mandat, wie es entstünde (schreibt nichts) —
+//      das Fenster „Mandat anlegen“ zeigt es zum Prüfen; `start` = gewählter Beginn (sonst heute).
 // POST { aktion: 'mandat-neu', firma: { id } | { name }, person: { id } | { neu: { vorname, nachname, email, … } }, gesellschaft, titel?,
 //        leistungId?, stufeId?, zustaendig?, anfrageId? }   (10.10.) → „+ Mandat“ IMMER mit Lead: Firma + Ansprechperson (vorhanden per Klick oder
 //        neu — Firma ohne Dublette über `firmaSichern`, Person über den EINEN Weg „Person anlegen“), dann dieselbe Folge wie oben (Firma/Lead →
@@ -37,7 +38,6 @@
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { NextResponse } from 'next/server';
-import { istBusinessGesellschaft } from '@/lib/einheiten';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
@@ -56,13 +56,11 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 import { dealAnlegen } from '@/lib/crm/deal-anlegen';
 import { dealPersonenVorgabe } from '@/lib/crm/pipeline';
 import { personenWerdenKunde } from '@/lib/crm/mandat-anlegen-server';
-import { honorarAusPreis } from '@/lib/crm/mandat-anlegen';
-import { mandatVertragAusProdukt, mandatVorlageAusProdukt } from '@/lib/crm/produkt-karte';
+import { mandatAusDeal, startAus, startVorschlag } from '@/lib/crm/mandat-aus-deal';
 import { einmalig } from '@/lib/store/anfragen';
 import { wer, BEIDE, nameVon } from '@/lib/crm/team';
 import { EINGESCHRAENKT_FEHLER } from '@/lib/crm/einschraenkung';
-import type { Lead, Mandat } from '@/lib/crm/typen';
-import { angenommenZuDeal, mandatVorbelegung } from '@/lib/crm/angebote';
+import type { Lead } from '@/lib/crm/typen';
 import { neueKennung } from '@/lib/kennung';
 import { leadSchreiben, leadParkenOderRaus } from '@/lib/crm/lead-parken-server';
 
@@ -94,7 +92,7 @@ export async function POST(req: Request) {
   if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
   if (alterBau) return alterBau;
-  let b: { aktion?: string; id?: string; felder?: Record<string, unknown>; deal?: Record<string, unknown>; trotzdem?: boolean; zweiter?: boolean; chanceId?: string; an?: string; bis?: string; grundArt?: string; grund?: string; notiz?: string; personIds?: unknown[]; von?: string; nach?: string; leadMit?: boolean; dealsMit?: boolean; behalten?: string; weg?: string };
+  let b: { aktion?: string; id?: string; felder?: Record<string, unknown>; deal?: Record<string, unknown>; trotzdem?: boolean; zweiter?: boolean; chanceId?: string; an?: string; bis?: string; grundArt?: string; grund?: string; notiz?: string; personIds?: unknown[]; von?: string; nach?: string; leadMit?: boolean; dealsMit?: boolean; behalten?: string; weg?: string; start?: unknown; vorschau?: unknown };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);
   const jetzt = new Date().toISOString();
@@ -139,48 +137,20 @@ export async function POST(req: Request) {
     if (crm.mandate.some(m => m.chanceId === c.id)) return NextResponse.json({ ok: false, fehler: 'Zu diesem Deal gibt es schon ein Mandat.' }, { status: 409 });
     // Art. 18: mit einer eingeschränkten Person entsteht kein Mandat (Verarbeitung gesperrt).
     if (c.kontaktIds.some(id => kontakte.find(k => k.id === id)?.eingeschraenkt)) return NextResponse.json({ ok: false, fehler: EINGESCHRAENKT_FEHLER, eingeschraenkt: true }, { status: 409 });
-    // Kunde = die Firma (Stammdaten vor dem Text am Deal), sonst „Privatkunde“ — nie der Deal-Titel (Personenname, Art. 17).
-    const kunde = (c.firmaId ? crm.firmen.find(f => f.id === c.firmaId)?.name : undefined) ?? c.firma ?? 'Privatkunde';
+    // 24.10. (Bau-Test): EINE Stelle baut das Mandat (lib/crm/mandat-aus-deal.ts) — für die Vorschau im Fenster „Mandat anlegen“ (`vorschau: true`, schreibt
+    // nichts) und fürs Anlegen. Der Start ist wählbar (`start`, Tag JJJJ-MM-TT); ohne Angabe wie bisher heute.
+    const heute = tagVon(jetzt);
+    let start: string | undefined;
+    if (b.start !== undefined && b.start !== null && b.start !== '') {
+      const s0 = startAus(b.start, heute);
+      if (!s0) return NextResponse.json({ ok: false, fehler: 'Start: ein Tag JJJJ-MM-TT (höchstens zwei Jahre von heute).' }, { status: 400 });
+      start = s0;
+    }
+    const vorschau = b.vorschau === true;
+    const gebaut = mandatAusDeal(c, { leistungen: crm.leistungen, angebote: crm.angebote, firmen: crm.firmen, id: neueId('m'), jetzt, heute, person, start: vorschau ? start ?? startVorschlag(heute) : start });
+    const m = gebaut.mandat;
+    if (vorschau) return NextResponse.json({ ok: true, vorschau: true, mandat: m, quelle: gebaut.quelle, ...(gebaut.angebot ? { angebot: gebaut.angebot } : {}), startVorschlag: startVorschlag(heute) });
     // (die Prüfung läuft unten noch einmal INNERHALB der Sperre — ein Doppelklick legt kein zweites Mandat an, Stufe 2)
-    const m: Mandat = {
-      id: neueId('m'), kunde, ...(c.firmaId ? { firmaId: c.firmaId } : {}), kontaktIds: c.kontaktIds, titel: c.titel, art: c.art, chanceId: c.id, gesellschaft: c.gesellschaft, status: 'aktiv',
-      // Das Produkt reist mit (26.09.) — sonst sieht die Produkt-Auswertung das Mandat nie.
-      ...(c.leistungId ? { leistungId: c.leistungId } : {}),
-      vertragUnterschrieben: false, start: tagVon(jetzt), verlaengerung: 'offen',
-      // Prüf-Fund 11.10.: EINE Umrechnung mit „+ Mandat“ (je Jahr → ÷ 12 auf den Cent).
-      ...honorarAusPreis(c.wert),
-      ustSatz: 19, zahlungszielTage: 14, ziele: [],
-      health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: ['Vertrag unterschreiben lassen', 'Kickoff-Termin festlegen'],
-      quelle: `aus Deal „${c.titel}“`, zustaendig: c.besitzer, geaendert: jetzt, geaendertVon: person,
-    };
-    // Angebots-Tool (28.09.): gibt es ein angenommenes Angebot zum Deal, belegt es Honorar, Laufzeit, Produkt,
-    // Gesellschaft, USt, Zahlungsziel und Leistungen vor — derselbe Weg, nur mit besseren Startwerten.
-    const angebot = angenommenZuDeal(crm.angebote, c.id);
-    // Produkt-Karte (19.10.): der Vertrag des Produkts (Mindestlaufzeit, Kündigung, Verlängerung, Rhythmus, Zahlungsziel, USt) — ohne Karte nichts.
-    const produkt = c.leistungId ? crm.leistungen.find(l => l.id === c.leistungId) : undefined;
-    if (!angebot && produkt) {
-      Object.assign(m, mandatVertragAusProdukt(produkt, m.honorar.basis));
-      // P3 (19.10.): die Vorlage des Produkts auch hier — der Deal-Wert ist vereinbart (er gewinnt); ohne Wert das Honorar des Produkts.
-      // Leistungen, offene Punkte der Vorlage (Stundensatz, je Einheit …), Gesellschaft (nur wenn am Deal „offen“) und inklusive Module.
-      const v = mandatVorlageAusProdukt(produkt);
-      if (!(m.honorar.betrag > 0) && v.honorar.betrag > 0) Object.assign(m, { honorar: v.honorar, rechnungsrhythmus: v.rechnungsrhythmus }, mandatVertragAusProdukt(produkt, v.honorar.basis));
-      if (!m.leistungen.length && v.leistungen.length) m.leistungen = v.leistungen;
-      if (v.hinweise.length) m.offen = [...m.offen, ...v.hinweise];
-      if (m.gesellschaft === 'offen' && v.gesellschaft) m.gesellschaft = v.gesellschaft;
-      if (v.zusatz?.length) m.zusatz = v.zusatz;
-      // Zahlplan (21.10., B2): nur bei einmaligem Honorar (der Deal-Wert gewinnt — seine Basis entscheidet).
-      if (v.zahlplan && m.honorar.basis === 'einmalig') m.zahlplan = v.zahlplan;
-      if (v.tageJeMonat && m.honorar.basis === 'tag') m.tageJeMonat = v.tageJeMonat;
-    }
-    if (angebot) {
-      const v = mandatVorbelegung(angebot, crm.leistungen);
-      Object.assign(m, v, { quelle: `aus Angebot ${angebot.nummer ?? ''} (Deal „${c.titel}“)`.replace('  ', ' ') });
-      if (!v.titel) m.titel = c.titel;
-      // Das angenommene Angebot IST die Unterschrift (17.10., Gesamtprüfung L1 B3 — der Fall sagte „Mandat unterschrieben“, das Mandat „ohne Vertrag“, der
-      // Liquiditäts-Posten „unsicher“). Den Kick-off führt bei Business-Mandaten der Fall — kein zweiter offener Punkt daneben.
-      m.vertragUnterschrieben = true;
-      m.offen = m.offen.filter(x => x !== 'Vertrag unterschreiben lassen' && !(istBusinessGesellschaft(m.gesellschaft) && x === 'Kickoff-Termin festlegen'));
-    }
     const ids = new Set(c.kontaktIds);
     // Platzgrenze (21.10., B3 — Kevin: warnen, aber erlauben): angelegt wird trotzdem, die Antwort trägt den Hinweis.
     const { platzHinweisFuer } = await import('@/lib/crm/mandat-anlegen-server');

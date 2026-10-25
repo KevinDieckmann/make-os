@@ -20,8 +20,8 @@ import { Feldzeile, Feld } from './teile';
 import { Wahl } from './Wahl';
 import { WEG } from '@/lib/wege';
 import { localDay, tagePlus } from '@/lib/zeit';
-import { mandatVertragAusProdukt, mandatZahlplanAusProdukt, preiseText, vertragVon, zusatzExtras, zusatzHonorar } from '@/lib/crm/produkt-karte';
-import { zusatzArt, zusatzBeschreibung, zusatzDeckel, zusatzEinheit, zusatzName, zusatzZeitraum, zusatzOptionen, teilEinheit, JE_TEXT } from '@/lib/crm/mandat-zusatz';
+import { eigeneTeileOffen, mandatVertragAusProdukt, mandatZahlplanAusProdukt, preiseText, preisText, teilLabel, vertragVon, zusatzAusTeil, zusatzExtras, zusatzHonorar } from '@/lib/crm/produkt-karte';
+import { zusatzArt, zusatzBeschreibung, zusatzDeckel, zusatzEinheit, zusatzName, zusatzZeitraum, zusatzOptionen, teilEinheit, vertragsHinweise, JE_TEXT } from '@/lib/crm/mandat-zusatz';
 import { centAusEingabe, eingabeAusCent } from '@/lib/crm/angebote';
 import { leistungsmonat, monatsName } from '@/lib/crm/mandat-laufzeit';
 import { entwurfAnlegen } from '../rechnung/daten';
@@ -66,6 +66,8 @@ export function MandatVertrag({ m, produkt, setze }: { m: Mandat; produkt?: Leis
           {m.honorar.basis === 'tag' && <Feld typ="number" wert={m.tageJeMonat ? String(m.tageJeMonat) : ''} breite={160} platzhalter="Tage/Monat geplant" onFertig={x => { const n = Math.round(Number(x.replace(',', '.')) * 100) / 100; void setze({ tageJeMonat: n >= 0.25 && n <= 744 ? n : undefined }); }} />}
         </div>
         <span style={klein}>{m.mindestlaufzeitMonate ? `${m.mindestlaufzeitMonate} Monate Mindestlaufzeit` : 'ohne Mindestlaufzeit'} · Rechnung {RHYTHMUS.find(r => r.id === m.rechnungsrhythmus)?.label} · Zahlungsziel {m.zahlungszielTage ?? 14} Tage{m.honorar.basis === 'einmalig' && m.zahlplan ? ` · Zahlung ${m.zahlplan.anzahlungProzent} % bei Beginn, Rest bei Abschluss` : ''}{m.honorar.basis === 'tag' ? (m.tageJeMonat ? ` · ${m.tageJeMonat.toLocaleString('de-DE')} Tage/Monat geplant` : ' · geplante Tage je Monat offen (ohne sie plant die Liquidität nichts)') : ''}</span>
+        {/* 24.10. (Bau-Test): kostet das Produkt inzwischen anderes, sagt es ein Satz — das Mandat behält seine Bedingungen (Vertrag). */}
+        {produkt && vertragsHinweise(m, produkt).map(h => <span key={h} style={{ ...klein, color: C.inkDim }}>{h}</span>)}
         {produkt && (
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={klein}>Vom Produkt „{produkt.name}“: {preiseText(produkt)}{produktText.length ? ` · ${produktText.join(' · ')}` : ''}</span>
@@ -104,6 +106,8 @@ export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: 
   // „abrechnen“: das Modul selbst (je Einheit · Tag · Stunde) oder ein optionaler Teil seines Produkts (21.10., B7 — z. B. „je Messe“).
   const [abrechnen, setAbrechnen] = useState<{ z: MandatZusatz; teil?: PreisTeil } | null>(null);
   const waehlbar = katalog.filter(l => !l.geloeschtAm && l.status !== 'eingestellt' && l.id !== m.leistungId && (l.rolle === 'zusatz' || l.rolle === 'beides'));
+  // 24.10. (Bau-Test): die noch nicht übernommenen eigenen Preis-Teile des Hauptprodukts (Festpreis, Tagessatz, Optionen …) — der Hauptpreis ist das Honorar.
+  const eigeneOffen = haupt ? eigeneTeileOffen(haupt, liste.filter(z => z.leistungId === haupt.id).map(z => z.preisTeilId)) : [];
   const vorschlaege = (haupt?.regeln?.inklusive ?? []).filter(x => !liste.some(z => z.leistungId === x.leistungId && z.inklusive) && katalog.some(l => l.id === x.leistungId && !l.geloeschtAm));
   const schreiben = (neu: MandatZusatz[]) => setze({ zusatz: neu });
   const aendern = (id: string, teil: Partial<MandatZusatz>) => schreiben(liste.map(z => (z.id === id ? stripLeer({ ...z, ...teil }) : z)));
@@ -138,6 +142,21 @@ export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: 
     await anhaengen(l.id, z.ab);
   };
 
+  /** Ein eigener Preis-Teil des Hauptprodukts als Modul (`zusatzAusTeil`) — Beginn wie bei jedem neuen Modul. */
+  const hinzuTeil = async (t: PreisTeil) => {
+    if (!haupt) return;
+    const z = zusatzAusTeil(haupt, t, { ...(startVorgabe ? { ab: startVorgabe } : {}) });
+    if (z) await schreiben([...liste, z]);
+  };
+  const ausWahl = (id: string) => {
+    if (id.startsWith('teil:')) { const t = eigeneOffen.find(x => x.id === id.slice(5)); if (t) void hinzuTeil(t); return; }
+    const l = waehlbar.find(x => x.id === id); if (l) void hinzu(l);
+  };
+  const wahlListe = [
+    ...eigeneOffen.map(t => ({ id: `teil:${t.id}`, label: `${haupt!.name} · ${teilLabel(t)} · ${preisText(t)}`.slice(0, 80) })),
+    ...waehlbar.map(l => ({ id: l.id, label: `${l.name} · ${preiseText(l)}`.slice(0, 80) })),
+  ];
+
   return (
     <Feldzeile label="Zusatzmodule">
       <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
@@ -159,7 +178,10 @@ export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: 
                 <Feld typ="date" wert={z.bis} breite={150} platzhalter="bis" onFertig={bis => aendern(z.id, { bis: bis || undefined })} />
                 <Wahl label="Berechnet oder inklusive" liste={JA_NEIN} wert={z.inklusive ? 'ja' : 'nein'} onWahl={x => {
                   const l = katalog.find(k => k.id === z.leistungId);
-                  void aendern(z.id, x === 'ja' ? { inklusive: true, honorar: undefined, zahlplan: undefined, stundenJeMonat: undefined, tageJeMonat: undefined } : { inklusive: undefined, menge: undefined, je: undefined, ...(z.honorar ? {} : l && zusatzHonorar(l) ? { honorar: zusatzHonorar(l), ...zusatzExtras(l) } : {}) });
+                  // Eigener Preis-Teil (24.10.): Honorar und Extras aus genau diesem Teil, nicht aus dem Hauptpreis.
+                  const ausTeil = l && z.preisTeilId ? l.preise?.find(t => t.id === z.preisTeilId) : undefined;
+                  const neuZ = ausTeil && l ? zusatzAusTeil(l, ausTeil) : null;
+                  void aendern(z.id, x === 'ja' ? { inklusive: true, honorar: undefined, zahlplan: undefined, stundenJeMonat: undefined, tageJeMonat: undefined } : { inklusive: undefined, menge: undefined, je: undefined, ...(z.honorar ? {} : neuZ ? { honorar: neuZ.honorar, ...(neuZ.zahlplan ? { zahlplan: neuZ.zahlplan } : {}), ...(neuZ.tageJeMonat ? { tageJeMonat: neuZ.tageJeMonat } : {}), ...(neuZ.stundenJeMonat ? { stundenJeMonat: neuZ.stundenJeMonat } : {}) } : l && zusatzHonorar(l) ? { honorar: zusatzHonorar(l), ...zusatzExtras(l) } : {}) });
                 }} />
               </div>
               {!z.inklusive && (
@@ -200,8 +222,8 @@ export function MandatZusatzModule({ m, katalog, setze }: { m: Mandat; katalog: 
             </div>
           );
         })}
-        {waehlbar.length > 0
-          ? <Wahl label="Zusatzmodul" liste={waehlbar.map(l => ({ id: l.id, label: `${l.name} · ${preiseText(l)}`.slice(0, 80) }))} wert={null} leer="+ Zusatzmodul" onWahl={id => { const l = waehlbar.find(x => x.id === id); if (l) void hinzu(l); }} />
+        {wahlListe.length > 0
+          ? <Wahl label="Zusatzmodul" liste={wahlListe} wert={null} leer="+ Zusatzmodul" onWahl={ausWahl} />
           : <span style={klein}>Für „+ Zusatzmodul“ ein Produkt mit der Rolle „Zusatz“ oder „beides“ anlegen (Produkte).</span>}
         {meldung && <span style={{ fontSize: TYP.bedien, color: meldung.startsWith('Ablauf nicht') ? LEUCHT.achtung : LEUCHT.gut }}>{meldung}</span>}
         {abrechnen && <AbrechnenDialog m={m} z={abrechnen.z} teil={abrechnen.teil} katalog={katalog} onZu={() => setAbrechnen(null)} />}
@@ -226,7 +248,8 @@ function AbrechnenDialog({ m, z, teil, katalog, onZu }: { m: Mandat; z: MandatZu
   // Vormonat, dieser und nächster Monat — nur die, in denen das Modul läuft.
   const monate = [-1, 0, 1].map(n => tagePlus(`${heute.slice(0, 7)}-15`, n * 30).slice(0, 7)).filter((mo, i, l) => l.indexOf(mo) === i && (leistungsmonat(zr, mo)?.tage ?? 0) > 0);
   const [monat, setMonat] = useState<string | null>(monate.includes(heute.slice(0, 7)) ? heute.slice(0, 7) : monate[0] ?? null);
-  const [menge, setMenge] = useState('1');
+  // Vorschlag = die geplante Menge des Moduls (24.10.: z. B. 2 Tage/Monat) — vor dem Stellen im Rechnungs-Editor änderbar.
+  const [menge, setMenge] = useState(() => String(!teil && z.honorar?.basis === 'tag' && z.tageJeMonat ? z.tageJeMonat : !teil && z.honorar?.basis === 'stunde' && z.stundenJeMonat ? z.stundenJeMonat : 1).replace('.', ','));
   const [fehler, setFehler] = useState<string | null>(null);
   const einheit = teil ? teilEinheit(teil) : zusatzEinheit(z, katalog);
   const deckel = teil ? (teil.art === 'stundensatz' ? teil.deckel?.stundenJeMonat ?? null : null) : zusatzDeckel(z, katalog);

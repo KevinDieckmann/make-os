@@ -22,11 +22,12 @@ import { Wahl } from '../Wahl';
 import type { CrmApi } from '../daten';
 import { verlustgruende } from '@/lib/crm/pipeline';
 import { angebotDokument } from '@/lib/crm/angebot-dokument';
-import { ANGEBOT_STATUS_LABEL, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, mailtoLink } from '@/lib/crm/angebote';
+import { ANGEBOT_STATUS_LABEL, angebotEinmalRest, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, mailtoLink } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { Blatt } from './Blatt';
 import { FallAmDeal } from '../../fulfillment/prozesse/FallAmDeal';
-import { angebotPost, mandatAusDeal, pdfDateiHolen, pdfLaden, pdfTeilen, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
+import { angebotPost, pdfDateiHolen, pdfLaden, pdfTeilen, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
+import { useMandatAnlegen } from '../MandatAnlegenFenster';
 
 export const STATUS_FARBE: Record<Angebot['status'], string> = { entwurf: C.inkDim, gestellt: LEUCHT.business, angenommen: LEUCHT.gut, abgelehnt: LEUCHT.kritisch, abgelaufen: C.inkLeise, ersetzt: C.inkLeise };
 const datumDe = (d?: string) => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
@@ -46,6 +47,8 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   const [mandatId, setMandatId] = useState<string | null>(null);
   const [einmal, setEinmal] = useState<{ id?: string; fehler?: string } | null>(null);
   const { bestaetigen, dialog } = useRueckfrage();
+  // 24.10.: „Mandat anlegen“ öffnet erst die Vorbelegung zum Prüfen (Start wählbar) — angelegt wird erst dort.
+  const mandatFenster = useMandatAnlegen(api);
   const router = useRouter();
   const k = a.kontaktId ? (api.kontakte ?? []).find(x => x.id === a.kontaktId) : undefined;
   const g = daten.gesellschaften.find(x => x.id === a.gesellschaft);
@@ -55,8 +58,9 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   const vorhandenesMandat = deal ? crm.stand.mandate.find(m => m.chanceId === deal.id) : undefined;
   const hatMandat = !!vorhandenesMandat;
   const mandatZiel = mandatId ?? vorhandenesMandat?.id ?? null;
-  // Gemischtes Angebot (3.6): Einmalposten UND laufende Leistung — der Einmal-Anteil wird eine eigene geplante Rechnung.
-  const gemischt = a.positionen.some(p => p.basis === 'einmalig') && a.positionen.some(p => p.basis !== 'einmalig');
+  // Gemischtes Angebot (3.6): Einmalposten UND laufende Leistung — der Einmal-Anteil wird eine eigene geplante Rechnung. Seit 24.10. nur, was das Mandat
+  // NICHT selbst abrechnet (`angebotEinmalRest`): die eigenen Preis-Teile einer Kombination (z. B. der Festpreis 50/50) stehen dort als Zusatzmodul.
+  const gemischt = angebotEinmalRest(a, crm.stand.leistungen).length > 0 && a.positionen.some(p => p.basis !== 'einmalig');
   const nachfolger = a.nachfolgerId ? daten.angebote?.find(x => x.id === a.nachfolgerId) : daten.angebote?.find(x => x.vorgaengerId === a.id);
   const vorgaenger = a.vorgaengerId ? daten.angebote?.find(x => x.id === a.vorgaengerId) : undefined;
 
@@ -74,8 +78,9 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   }
   async function mandatAnlegen() {
     if (!deal) return;
-    // EIN Weg (Woche 2 · 3.10): derselbe Aufruf wie in Kontakt › Umsatz (`mandatAusDeal`).
-    const r = await mandatAusDeal(deal.id);
+    // EIN Weg (Woche 2 · 3.10): dasselbe Fenster wie am Deal und in Kontakt › Umsatz (`useMandatAnlegen`, 24.10.).
+    const r = await mandatFenster.oeffnen(deal.id);
+    if (!r) return;
     if (!r.ok) { setMeldung(r.fehler ?? 'Mandat nicht angelegt.'); return; }
     setMandat(r.text ?? 'Mandat angelegt.');
     if (r.mandatId) setMandatId(r.mandatId);
@@ -188,6 +193,7 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
       </Karte>
       {dok ? <Blatt d={dok} logoUrl={logoUrl} /> : <Karte i={2}><div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine Vorschau (Schnappschuss fehlt) — das PDF ist die Unterlage.</div></Karte>}
       {dialog}
+      {mandatFenster.fenster}
     </div>
   );
 }

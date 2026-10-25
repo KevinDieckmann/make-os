@@ -32,7 +32,7 @@ import { inGruppe } from '@/lib/crm/konzern';
 import Link from 'next/link';
 import { angebotLink } from '@/lib/crm/adresse';
 import { angeboteZu, angebotMandatWeg, ANGEBOT_STATUS_LABEL } from '@/lib/crm/angebote';
-import { mandatAusDeal } from '../angebot/angebot-daten';
+import { useMandatAnlegen } from '../MandatAnlegenFenster';
 import { useRouter } from 'next/navigation';
 import { entwurfAnlegen, type EntwurfNeu } from '../../rechnung/daten';
 import { useNurBusiness } from '../../useInhaber';
@@ -172,6 +172,8 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
   const router = useRouter();
   /** Rolle „nur Business“ (13.10.): Unterlagen lesen und hochladen ja — ändern und löschen nicht (Server: 403). */
   const nurLesen = useNurBusiness() === true;
+  // 24.10.: „Mandat anlegen“ öffnet erst die Vorbelegung zum Prüfen (Start wählbar) — derselbe Weg wie am Deal.
+  const mandatFenster = useMandatAnlegen(api);
   /**
    * Rechnung schreiben mit PDF (08.10.): legt den Entwurf an (vorbelegt aus Kontakt, Firma, Mandat bzw. dem angenommenen Angebot)
    * und öffnet den Editor unter Finanzen › Rechnungen & Zahlungen — dort wird gestellt (Nummer + PDF).
@@ -307,7 +309,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
           <AngebotZeileAnsicht key={a.schluessel} a={a} heute={heute} zuDeal={zuDeal} aendern={eintragAendern} loeschen={eintragLoeschen} nurLesen={nurLesen}
             rechnungAusAngebot={kein ? undefined : (angebotId: string) => rechnungSchreibenOeffnen({ quelle: 'angebot', angebotId })}
             mandatWeg={a.angebot && stand ? angebotMandatWeg(a.angebot, stand) : null}
-            mandatAnlegen={async dealId => { const r = await mandatAusDeal(dealId); setMeldung(r.ok ? r.text ?? 'Mandat angelegt.' : r.fehler ?? 'Mandat nicht angelegt.'); if (r.ok) await api.laden(true); }}
+            mandatAnlegen={async dealId => { const r = await mandatFenster.oeffnen(dealId); if (!r) return; setMeldung(r.ok ? r.text ?? 'Mandat angelegt.' : r.fehler ?? 'Mandat nicht angelegt.'); if (r.ok) await api.laden(true); }}
             alsRechnung={plan === null || typeof plan !== 'object' ? undefined : async () => {
               const e = a.eintrag!;
               const mandat = e.mandatId ? bezug.mandate.find(m => m.id === e.mandatId) : bezug.mandate[0];
@@ -350,6 +352,7 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
           ))}
         </>}
       </KachelKarte>
+      {mandatFenster.fenster}
     </div>
   );
 }

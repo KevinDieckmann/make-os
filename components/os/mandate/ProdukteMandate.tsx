@@ -24,6 +24,7 @@ import { mandateOrt, markttraktion } from '@/lib/crm/adresse';
 import { PRODUKTE_WERKZEUG } from '@/lib/make-one/werkzeuge';
 import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
 import { useCrm } from '../crm/daten';
+import { useMandatAnlegen } from '../crm/MandatAnlegenFenster';
 import { MandateUebersicht } from '../crm/Kunden';
 import { Produkte } from './Produkte';
 import { MandateTabelle } from './MandateTabelle';
@@ -72,13 +73,15 @@ export function ProdukteMandate() {
 /** Gewonnene Deals, aus denen noch kein Mandat entstanden ist (26.09.) — ein Klick legt es an. */
 function GewonneneOhneMandat({ api }: { api: ReturnType<typeof useCrm> }) {
   const router = useRouter();
+  const mandatFenster = useMandatAnlegen(api);
   const crm = api.crm;
   if (!crm) return null;
   const offen = crm.stand.chancen.filter(c => c.stufe === 'gewonnen' && !crm.stand.mandate.some(m => m.chanceId === c.id));
   if (!offen.length) return null;
+  // 24.10.: erst die Vorbelegung zum Prüfen (Start wählbar) — angelegt wird erst im Fenster.
   const anlegen = async (chanceId: string) => {
-    const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId }) }).then(x => x.json()).catch(() => null);
-    if (r?.ok) { await api.laden(); router.push(WEG.mandat(r.mandatId)); }
+    const r = await mandatFenster.oeffnen(chanceId);
+    if (r?.ok && r.mandatId) { await api.laden(); router.push(WEG.mandat(r.mandatId)); }
   };
   return (
     <Karte i={2} akzent={LEUCHT.geld}>
@@ -89,6 +92,7 @@ function GewonneneOhneMandat({ api }: { api: ReturnType<typeof useCrm> }) {
             rechts={<Knopf leise onClick={() => void anlegen(c.id)}>Mandat anlegen</Knopf>} />
         ))}
       </Liste>
+      {mandatFenster.fenster}
     </Karte>
   );
 }

@@ -18,6 +18,7 @@ import type { CrmApi } from '../../crm/daten';
 import { useUebersichtKurz } from './daten';
 import { StartDialog } from './Onboarding';
 import { usePlatzLage } from '../../crm/plaetze';
+import { useMandatAnlegen } from '../../crm/MandatAnlegenFenster';
 
 export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string }) {
   const crm = api.crm;
@@ -25,6 +26,8 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
   // Nur am gewonnenen Deal fragen (17.10., Gesamtprüfung Tempo B2) — vorher holte jeder geöffnete Deal das Fulfillment.
   const kurz = useUebersichtKurz(c?.stufe === 'gewonnen');
   const [start, setStart] = useState<{ mandatId: string; kunde: string; leistungId?: string } | null>(null);
+  // 24.10. (Bau-Test, Branch `kern-preise`): „Mandat anlegen“ öffnet erst die Vorbelegung zum Prüfen (Start wählbar) — angelegt wird erst dort.
+  const mandatFenster = useMandatAnlegen(api);
   if (!crm || !c || c.stufe !== 'gewonnen') return null;
   const mandat = crm.stand.mandate.find(m => m.chanceId === c.id && !m.geloeschtAm);
   const business = istBusinessMandat(mandat?.gesellschaft ?? c.gesellschaft) && !!kurz.daten;
@@ -36,8 +39,8 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
     return p ? { vorlage: { id: p.id, titel: p.titel } } : {};
   };
   const anlegen = async (mitFall: boolean) => {
-    const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: c.id }) })
-      .then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' })) as { ok?: boolean; fehler?: string; mandatId?: string };
+    const r = await mandatFenster.oeffnen(c.id);
+    if (!r) return;
     await api.laden(true);
     if (!r.ok) { api.setFehler(r.fehler ?? 'Mandat nicht angelegt.'); return; }
     if (mitFall && r.mandatId) setStart({ mandatId: r.mandatId, kunde: c.firma ?? c.titel, ...(c.leistungId ? { leistungId: c.leistungId } : {}) });
@@ -61,6 +64,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
           <Link href={mandateLink('mandate', mandat.id)} style={{ ...klein, textDecoration: 'none' }}>Mandat öffnen ›</Link>
         </>
       )}
+      {mandatFenster.fenster}
       {start && <StartDialog k={{ mandatId: start.mandatId, kunde: start.kunde, ...(start.leistungId ? { leistungId: start.leistungId } : {}), ...vorlageFuer(start.leistungId) }} pakete={pakete} onZu={() => setStart(null)} />}
     </div>
   );
