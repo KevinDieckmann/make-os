@@ -1708,6 +1708,16 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Produkt-Läufe auf Klick ebenso an (`fallStartenOderAnhaengen(…, { laeufeAnstossen: true })`, nur aus der Route — nie im Motor). Ist-Basis der Planung
   (`istBasisVorschlaege`) je Zusatzmodul und Einmal-Anteil ein Eintrag (`teil`, `name`; eigene Preis-Teile ohne `produktId`); CSV-Export Deals `WERT_EINMALIG`,
   Mandate `ZUSATZMODULE` (am Ende). Fall-Kopf intern NUR `fallKopf` (lib/fulfillment/kunde/kopf.ts). Tests `tests/kern-{lauf-anstoss,einmal-anteil}.test.ts`.
+  **Kern-Runde 4 (25.10., Branch `kern-runde4`, Befunde des Kern-Bau-Tests 2):** Rest eines Zahlplans (Honorar UND Zusatzmodul) NUR über `restMonat`
+  (lib/crm/mandat-zusatz.ts: „bis“ am Modul → gesetztes Ende → Ende der Mindestlaufzeit → erst ohne beides Folgemonat; nie das geplante Ende der Liquidität), Wortlaut
+  `zahlplanSatz`. Mandatsende = LETZTER Tag (inklusiv) NUR über `laufzeitEnde` (lib/crm/mandat-laufzeit.ts; `mandatFristen` rechnet damit), Anzeige `endeText`.
+  Deal-Wert: `wert.geplantBetrag`/`geplantSatz` (optional, Teil von `betrag` aus geplanten Tages-/Stundensätzen) — Anzeige nur `dealWertText`, „monatlich wiederkehrend“
+  nur `festerMonatswert`, Pipeline/Prognose weiter `gesamtwert`. Phasen eines Falls mit Werkstatt-Ablauf: EINE Zählung `phasenZaehlung`/`phasenText`
+  (lib/prozesse/produkt-ablauf.ts; Cockpit `ablauf`, Kunden-Seite `danachPhasen` über `kundenAblaufPhasen` mit der Sichtregel der Etappen); „+n“ der Reise
+  nur Schritte (`verborgeneSchritte`). „Fall starten“ Start = `fallStartVorgabe`. Ein offener Angebots-Entwurf je Deal (`offenerEntwurfFuerDeal`). Option der
+  Produktkarte = ein Klick (`optionUmschalten`). Nächster Rechnungsmonat `naechsterOffenerMonat`/`abgerechneteMonate`. Gesundheit eines Mandats unter
+  `HEALTH_TRAGFAEHIG` Gewicht = vorläufig (`healthText`, nie grün). Start am Mandat: `startAmMandat` (Unterzeile, Panel-Kopf, Symbol). Werkstatt-Kopf: EINE
+  hervorgehobene Aktion (`hauptAktion`). Tests `tests/kern-runde4.test.ts`.
 - **Lauf-Motor** (`lib/prozesse/lauf-server.ts`; rein und browser-sicher `lauf-regeln.ts`/`lauf-typen.ts` — Wächter `tests/prozesse-lauf-client.test.ts`:
   kein Server-Code in Modulen, die `components/os/prozesse/*` lädt; `next build` merkt es, tsc/vitest nicht): Bestand `prozess-laeufe--<haushalt>` (nur
   Kennungen/Status, 12 Monate), Wirkung = Kennung `<lauf>-<schritt>`, Flut-/Schleifenschutz (Herkunft, Tiefe 3), Warten mit Ablauf, Notbremse, HOI-Befund.
