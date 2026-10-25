@@ -9,7 +9,9 @@ const kunden = readFileSync('components/os/crm/Kunden.tsx', 'utf8');
 describe('B6 · Kundenonboarding nach dem Anlegen', () => {
   it('fragt nur mit zugeordnetem Ablauf (kein Zusatzmodul), nur Business, nicht bei laufendem Fall', () => {
     expect(frage).toContain('Kundenonboarding jetzt starten?');
-    expect(frage).toMatch(/d\.zuordnung\[m\.leistungId\]/);
+    // Kern-Bau-Test 24.10.: die Vorbelegung kommt aus der EINEN Regel (`startMandat` → `startVorbelegung`): der Prozess des Produkts, sonst sein Paket.
+    expect(frage).toMatch(/startMandat\(d, \{ mandatId: m\.id/);
+    expect(frage).toMatch(/sm\?\.prozess \?\?/);
     expect(frage).toMatch(/p\.art === 'paket' && !p\.zusatz/);
     expect(frage).toMatch(/istBusinessMandat\(m\.gesellschaft\)/);
     expect(frage).toMatch(/d\.faelle\[m\.id\]/);
