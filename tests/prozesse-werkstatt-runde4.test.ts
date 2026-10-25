@@ -10,7 +10,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { neuerProzess } from '@/lib/prozesse/bestand';
 import { anlegen, kopieren, einfuegen, ausgangsWahl, ausgangSetzen, ausgangWahlAus, hauptZiel, mehrfachZiele, AUSGANG_NAECHSTER, AUSGANG_ENDE, type Ergebnis, type Fassung } from '@/lib/prozesse/werkstatt-aktionen';
-import { ausgaengeVon, einfuegeLagen, werkstattLage } from '@/lib/prozesse/werkstatt-lage';
+import { ausgaengeVon, einfuegeLagen, werkstattLage, kameraSicht, boxUm, WERKSTATT_UEBERSICHT_MIN, type Box } from '@/lib/prozesse/werkstatt-lage';
+import { freiesFeld } from '@/lib/einpassen';
 import { ausgangsZiele } from '@/lib/prozesse/fluss';
 import type { ProzessDefinition } from '@/lib/prozesse/definition';
 import { ALLE_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';
@@ -191,5 +192,67 @@ describe('(3) Eine angehängte Kopie liegt hinter ihrem Ziel — der Faden läuf
     const lose = einfuegeLagen(ablage.knoten, l, unten, ph);
     expect(lose.get(kick.id)!.x).toBeLessThan(lagen.get(kick.id)!.x);
     expect(lies('components/os/prozesse/Werkstatt.tsx')).toContain('einfuegeLagen(a.knoten, lage, punkt, phaseId, { hinter })');
+  });
+});
+
+describe('(4) Kamera: der sichtbare Bereich ist das freie Feld OHNE Werkzeugleiste und Panel', () => {
+  // Bühne wie im Bau-Test (Vollbild): links die Werkzeugleiste, oben die Kopfzeile, rechts das Panel, unten Zoom und „Head fragen“.
+  const BUEHNE = { b: 1376, h: 1000 };
+  const RAENDER = { links: 74, oben: 140, rechts: 400, unten: 80 };
+  const F = freiesFeld(BUEHNE, RAENDER);
+  const aufBild = (k: { s: number; x: number; y: number }, b: Box) => ({ x0: b.x * k.s + k.x, y0: b.y * k.s + k.y, x1: (b.x + b.b) * k.s + k.x, y1: (b.y + b.h) * k.s + k.y });
+  const ganzFrei = (k: { s: number; x: number; y: number }, b: Box) => { const r = aufBild(k, b); return r.x0 >= F.x - 0.5 && r.y0 >= F.y - 0.5 && r.x1 <= F.x + F.b + 0.5 && r.y1 <= F.y + F.h + 0.5; };
+  it('Wählen (l/16): passt der Inhalt beim Zoom, liegt er danach ganz im freien Feld — nichts unter der Leiste, nichts hinter dem Panel', () => {
+    const inhalt = { x: 0, y: 0, b: 1400, h: 600 };
+    const ziel = { x: 1300, y: 200, b: 184, h: 150 };
+    // Vorher: der Anfang unter der Werkzeugleiste, das Ziel hinter dem Panel.
+    const k0 = { s: 0.58, x: 20, y: 200 };
+    expect(ganzFrei(k0, inhalt)).toBe(false);
+    const k = kameraSicht(k0, ziel, BUEHNE, { raender: RAENDER, inhalt });
+    expect(k.s).toBe(0.58);
+    expect(ganzFrei(k, inhalt)).toBe(true);
+    expect(ganzFrei(k, ziel)).toBe(true);
+    // Schon passend → dieselbe Kamera.
+    expect(kameraSicht(k, ziel, BUEHNE, { raender: RAENDER, inhalt })).toBe(k);
+  });
+  it('Anhängen (d/09): passt nicht mehr alles, war aber der Anfang zu sehen — herauszoomen statt den Start unter die Leiste zu schieben', () => {
+    const rest = { x: 0, y: 0, b: 1000, h: 500 };
+    const neu = { x: 1060, y: 200, b: 184 + 66, h: 150 };
+    const inhalt = boxUm([rest, neu])!;
+    const k0 = { s: 0.9, x: 90, y: 300 };
+    expect(ganzFrei(k0, rest)).toBe(false); // rechts schon unter dem Panel, aber der Anfang ist zu sehen
+    const k = kameraSicht(k0, neu, BUEHNE, { raender: RAENDER, inhalt, rest, neu: true });
+    expect(k.s).toBeLessThan(0.9);
+    expect(k.s).toBeGreaterThanOrEqual(WERKSTATT_UEBERSICHT_MIN);
+    expect(ganzFrei(k, inhalt)).toBe(true);
+    // Ohne Bau-Aktion (nur wählen) wird nie gezoomt — nur so weit wie nötig verschoben, das Ziel ganz im freien Feld.
+    const w = kameraSicht(k0, neu, BUEHNE, { raender: RAENDER, inhalt, rest });
+    expect(w.s).toBe(0.9);
+    expect(ganzFrei(w, neu)).toBe(true);
+  });
+  it('wer bewusst hineingezoomt ist (Anfang nicht zu sehen), wird nicht herausgezoomt — das Neue kommt trotzdem ins freie Feld', () => {
+    const rest = { x: 0, y: 0, b: 3000, h: 500 };
+    const neu = { x: 3060, y: 200, b: 250, h: 150 };
+    const k0 = { s: 1, x: -2300, y: 300 };
+    const k = kameraSicht(k0, neu, BUEHNE, { raender: RAENDER, inhalt: boxUm([rest, neu]), rest, neu: true });
+    expect(k.s).toBe(1);
+    expect(ganzFrei(k, neu)).toBe(true);
+  });
+  it('Mehrfach-Rauten (m/10): die neuen Rauten lagen hinter dem Panel — danach liegen alle im freien Feld', () => {
+    const rest = { x: 0, y: 0, b: 700, h: 400 };
+    const rauten = [{ x: 760, y: 240, b: 184 + 66, h: 206 }, { x: 1016, y: 240, b: 184 + 66, h: 206 }, { x: 1272, y: 240, b: 184 + 66, h: 206 }];
+    const ziel = boxUm(rauten)!;
+    const k0 = { s: 1, x: 120, y: 260 };
+    expect(ganzFrei(k0, ziel)).toBe(false);
+    const k = kameraSicht(k0, ziel, BUEHNE, { raender: RAENDER, inhalt: boxUm([rest, ziel]), rest, neu: true });
+    for (const r of rauten) expect(ganzFrei(k, r)).toBe(true);
+    expect(ganzFrei(k, rest)).toBe(true);
+  });
+  it('die Oberfläche nimmt die Regel: Auswahl, neue Knoten und Mehrfach-Rauten über zeigeSicht mit den gemessenen Rändern', () => {
+    const w = lies('components/os/prozesse/Werkstatt.tsx');
+    expect(w).toContain("flaeche.current?.zeigeSicht(ids, { ausgaenge: true, neu: true })");
+    expect(w).toContain("flaeche.current?.zeigeSicht([einerGewaehlt], { ausgaenge: true })");
+    expect(w).toContain('if (anwenden(e) && e.waehle) zeigeNeu.current = e.waehle;');
+    expect(lies('components/os/prozesse/WerkstattFlaeche.tsx')).toContain('kameraSicht(kamera.current, ziel, groesse(), { raender: raender(), inhalt: allesBox(), rest, neu: !!o?.neu })');
   });
 });

@@ -18,7 +18,7 @@ import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL, TYP } from '@/lib/make-on
 import type { NotizZettel, ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { Ausgang } from '@/lib/prozesse/fluss';
 import {
-  WS, LEERE_PHASE_PLATZ, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, kantenPlus, titelBox, ausgangChips,
+  WS, LEERE_PHASE_PLATZ, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, kameraSicht, boxUm, chipBreite, kantenPlus, titelBox, ausgangChips,
   type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
 } from '@/lib/prozesse/werkstatt-lage';
 import { freiesFeld, type Raender } from '@/lib/einpassen';
@@ -44,6 +44,12 @@ export interface FlaecheSteuerung {
    * rechts am Knoten mit — sie liegen nie unter dem Seitenfeld.
    */
   insBild(id: string, o?: { ausgaenge?: boolean }): void;
+  /**
+   * Runde 4 (Bau-Test 3): nach dem Wählen, Anhängen und Anlegen (auch mehrerer Knoten, z. B. die Rauten der Mehrfach-Entscheidung) — gerechnet im freien Feld ohne
+   * Leiste und Panel (lib/prozesse/werkstatt-lage.ts `kameraSicht`): passt der ganze Inhalt, liegt er ganz darin; nach einer Bau-Aktion (`neu`) lieber herauszoomen
+   * (bis zur Übersicht) als den Anfang unter die Leiste zu schieben; sonst so wenig wie nötig.
+   */
+  zeigeSicht(ids: readonly string[], o?: { ausgaenge?: boolean; neu?: boolean }): void;
   /** Werkstatt-Fäden (24.10.): wo der Zeiger zuletzt auf der Fläche war (Welt-Koordinaten) — ⌘V fügt dort ein; null = noch nie bzw. nicht über der Fläche. */
   zeiger(): [number, number] | null;
   /** Feinschliff 22.10. (Vorlagen, Befund 6): die Größe der Bühne (für „Alles zeigen“ als Kacheln) und eine Phase einpassen (nach dem Aufklappen einer Kachel). */
@@ -214,6 +220,19 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       // Die „+“ der Ausgänge stehen rechts neben dem Körper (hinter Beschriftungen auch weiter) — mit ihnen, damit keines unter dem Seitenfeld liegt.
       const rechts = o?.ausgaenge ? Math.max(0, ...(chipsRef.current.get(id) ?? []).map(c => c.box.x + c.box.b - k.b)) + 2 * (WS.ausgang.abstand + WS.ausgang.r) : 0;
       const z = kameraZu(kamera.current, { x: k.x, y: k.y, b: k.b + rechts, h: k.h }, g, undefined, raender());
+      if (z !== kamera.current) fliege(z);
+    },
+    zeigeSicht: (ids, o) => {
+      const l = stand.current.lage;
+      const ks = ids.map(id => l.knoten.get(id)).filter((k): k is NonNullable<typeof k> => !!k);
+      if (!ks.length) return;
+      // Die „+“ rechts am Knoten (hinter Beschriftungen auch weiter) gehören dazu — keines liegt dann unter dem Seitenfeld.
+      const rechts = (id: string, b: number) => (o?.ausgaenge ? Math.max(0, ...(chipsRef.current.get(id) ?? []).map(c => c.box.x + c.box.b - b)) + 2 * (WS.ausgang.abstand + WS.ausgang.r) : 0);
+      const ziel = boxUm(ks.map(k => ({ x: k.x, y: k.y, b: k.b + rechts(k.id, k.b), h: k.h })))!;
+      const neuIds = new Set(ids);
+      const uebrig = [...l.knoten.values()].filter(k => !neuIds.has(k.id) && !k.zu);
+      const rest = o?.neu && uebrig.length ? inhaltBox({ knoten: new Map(uebrig.map(k => [k.id, k])), box: l.box }) : null;
+      const z = kameraSicht(kamera.current, ziel, groesse(), { raender: raender(), inhalt: allesBox(), rest, neu: !!o?.neu });
       if (z !== kamera.current) fliege(z);
     },
     zoomen: f => { const g = groesse(); fliege(zoomUm(kamera.current, f, g.b / 2, g.h / 2)); },

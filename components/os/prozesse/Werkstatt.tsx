@@ -181,7 +181,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const allesZeigenRef = useRef<() => void>(() => {});
   const [testErg, setTestErg] = useState<Map<string, TestErgebnis>>(new Map());
   /** Feinschliff 22.10. (Befund 2): ein neu angehängter Knoten — sobald die Lage ihn kennt, fährt die Kamera hin. */
-  const zeigeNeu = useRef<string | null>(null);
+  const zeigeNeu = useRef<string | string[] | null>(null);
+  /** Runde 4: der eben angelegte Knoten — die Kamera fährt schon über `zeigeNeu`, die Auswahl-Fahrt bleibt dann aus (nie zwei Fahrten gleichzeitig). */
+  const neuGezeigt = useRef<string | null>(null);
   const flaeche = useRef<FlaecheSteuerung>(null);
   const stand = useRef('');
   const fassungRef = useRef<Fassung | null>(null);
@@ -231,14 +233,25 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   }, [eintrag, fassung, versionAnsicht]);
   const zuWirksam = useMemo(() => (uebersicht?.size ? new Set([...zu, ...uebersicht]) : zu), [zu, uebersicht]);
   const lage = useMemo(() => (d ? werkstattLage(d, { team, zu: zuWirksam }) : null), [d, team, zuWirksam]);
-  useEffect(() => { const id = zeigeNeu.current; if (id && lage?.knoten.has(id)) { zeigeNeu.current = null; flaeche.current?.insBild(id, { ausgaenge: true }); } }, [lage]);
+  // Runde 4 (Bau-Test 3): neue Knoten (Anlegen, ⌘V, Mehrfach-Rauten, neues Schloss) kommen ins Bild — im freien Feld ohne Leiste und Panel, lieber etwas herausgezoomt
+  // als den Anfang unter die Leiste geschoben (lib/prozesse/werkstatt-lage.ts `kameraSicht`). Zwei Bilder später: dann steht das Seitenfeld und zählt.
+  useEffect(() => {
+    const z = zeigeNeu.current;
+    const ids = (typeof z === 'string' ? [z] : z ?? []).filter(id => lage?.knoten.has(id));
+    if (!ids.length) return;
+    zeigeNeu.current = null;
+    if (ids.length === 1) neuGezeigt.current = ids[0];
+    requestAnimationFrame(() => requestAnimationFrame(() => flaeche.current?.zeigeSicht(ids, { ausgaenge: true, neu: true })));
+  }, [lage]);
   // Werkstatt-Fäden (24.10., Bau-Test): ein gewählter Knoten samt seinen „+“ liegt nie unter dem Seitenfeld — die Kamera rückt nur so weit wie nötig (zwei Bilder
   // später: erst dann steht das Feld mit den Einstellungen und seine Breite zählt im freien Feld).
   const einerGewaehlt = auswahl.length === 1 ? auswahl[0] : null;
   useEffect(() => {
     if (!einerGewaehlt) return;
     let t2 = 0;
-    const t1 = requestAnimationFrame(() => { t2 = requestAnimationFrame(() => flaeche.current?.insBild(einerGewaehlt, { ausgaenge: true })); });
+    if (neuGezeigt.current === einerGewaehlt) { neuGezeigt.current = null; return; }
+    neuGezeigt.current = null;
+    const t1 = requestAnimationFrame(() => { t2 = requestAnimationFrame(() => flaeche.current?.zeigeSicht([einerGewaehlt], { ausgaenge: true })); });
     return () => { cancelAnimationFrame(t1); cancelAnimationFrame(t2); };
   }, [einerGewaehlt]);
   // Nach dem Umschalten der Übersicht (bzw. dem Aufklappen einer Kachel) die Kamera auf die neue Lage einpassen.
@@ -601,6 +614,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     const e = einfuegen(f, a, { phaseId, nach: ziel ?? null, kennung: () => neueKennung('fk'), ...(lagen?.size ? { lagen } : {}) });
     // Die Ansage sagt, ob verbunden oder lose — sichtbar als Meldung, nicht nur für den Vorleser.
     if (anwenden(e) && e.ok) {
+      zeigeNeu.current = (e.waehle ?? []).filter(id => e.fassung.knoten.some(k => k.id === id));
       setMeldung(ausFremd
         ? { text: `${e.ansage} Aus einem anderen Prozess${fremd!.hinweise.length ? ` — ${fremd!.hinweise.join(' ')}` : ''} Verweise auf Schritte, die es hier nicht gibt, meldet die Prüfung.`, art: 'info' }
         : { text: e.ansage, art: 'gut' });
@@ -625,10 +639,10 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
       case 'karte': karteUmschalten(); return true;
       case 'waehlen': {
         const boxen = [...lage.knoten.values()].filter(k => !k.zu).map(k => ({ id: k.id, x: k.x, y: k.y, b: k.b, h: k.h }));
-        if (!eine) { const erst = alleSchritte(d)[0]?.schritt.id; if (erst) { setAuswahl([erst]); flaeche.current?.zeige(erst); } return true; }
+        if (!eine) { const erst = alleSchritte(d)[0]?.schritt.id; if (erst) { setAuswahl([erst]); neuGezeigt.current = erst; flaeche.current?.zeige(erst); } return true; }
         const lk = lage.knoten.get(eine.id);
         const n = lk ? nachbar(lk, boxen.filter(b => b.id !== eine.id), a.richtung) : null;
-        if (n) { setAuswahl([n]); flaeche.current?.zeige(n); ansagen(`„${d.knoten.find(k => k.id === n)?.titel ?? ''}“ gewählt.`); }
+        if (n) { setAuswahl([n]); neuGezeigt.current = n; flaeche.current?.zeige(n); ansagen(`„${d.knoten.find(k => k.id === n)?.titel ?? ''}“ gewählt.`); }
         return true;
       }
       case 'kopieren': kopie(); return true;
@@ -1149,7 +1163,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
           if (!f) return 'Die Werkstatt lädt noch.';
           const e = mehrfachEntscheidung(f, { nach: mehrfach, faelle, sonst, kennung: () => neueKennung('fk'), feldName: feldTitelVon });
           if (!e.ok) return e.grund;
-          anwenden(e); setMehrfach(null);
+          if (anwenden(e) && e.waehle) zeigeNeu.current = e.waehle;
+          setMehrfach(null);
           return null;
         }} />
       )}

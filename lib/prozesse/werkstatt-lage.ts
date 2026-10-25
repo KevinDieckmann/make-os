@@ -630,6 +630,52 @@ export function kameraZu(k: { s: number; x: number; y: number }, box: Box, buehn
   else if (ry > f.h - rand) dy = f.h - rand - ry;
   return dx || dy ? { s: k.s, x: Math.round(k.x + dx), y: Math.round(k.y + dy) } : k;
 }
+/** Umschließende Box mehrerer Boxen (rein); leer → null. */
+export function boxUm(boxen: readonly Box[]): Box | null {
+  if (!boxen.length) return null;
+  const x0 = Math.min(...boxen.map(b => b.x)), y0 = Math.min(...boxen.map(b => b.y));
+  const x1 = Math.max(...boxen.map(b => b.x + b.b)), y1 = Math.max(...boxen.map(b => b.y + b.h));
+  return { x: x0, y: y0, b: x1 - x0, h: y1 - y0 };
+}
+/** Luft (Bildschirm-px) zwischen dem ganzen Inhalt und dem Rand des freien Felds — der Inhalt trägt seinen eigenen Rand schon (`inhaltBox`). */
+export const SICHT_INHALT_RAND = 8;
+/**
+ * Die Kamera beim Wählen, Anhängen und Anlegen (rein; Runde 4, Bau-Test 3: „die Kamera schiebt Knoten unter die linke Werkzeugleiste bzw. hinter das Panel“).
+ * Gerechnet wird im freien Feld OHNE Werkzeugleiste, Kopfzeile und Panel (`freiesFeld` mit den gemessenen `raender` — dieselbe Rechnung wie beim Öffnen,
+ * `startKamera`). Ziel: `ziel` (der gewählte bzw. die neuen Knoten samt „+“) ganz sichtbar. Dazu, der Reihe nach:
+ *   1. Passt der ganze Inhalt (`inhalt`, wie bei „Alles zeigen“) beim aktuellen Zoom ins freie Feld, liegt er danach GANZ darin — so wenig wie möglich verschoben,
+ *      nichts unter Leiste oder Panel.
+ *   2. Bei einer Bau-Aktion (`neu`): war der Anfang des übrigen Inhalts (`rest` — ohne die neuen Knoten) zu sehen, passt aber jetzt nicht mehr alles, wird
+ *      herausgezoomt, bis alles im freien Feld steht — höchstens bis zur Übersicht von „Alles zeigen“ (`WERKSTATT_UEBERSICHT_MIN`, wie beim Öffnen), nie hinein.
+ *   3. Sonst rückt die Kamera nur so weit wie nötig, dass `ziel` ganz zu sehen ist (`kameraZu`).
+ * Schon passend → dieselbe Kamera (gleiches Objekt).
+ */
+export function kameraSicht(k: { s: number; x: number; y: number }, ziel: Box, buehne: { b: number; h: number }, o: { raender?: Raender; inhalt?: Box | null; rest?: Box | null; neu?: boolean; rand?: number } = {}): { s: number; x: number; y: number } {
+  const rand = o.rand ?? 48, ri = SICHT_INHALT_RAND;
+  const f = freiesFeld(buehne, o.raender);
+  const inhalt = o.inhalt ? boxUm([o.inhalt, ziel])! : null;
+  // 1. Der ganze Inhalt passt: je Achse das kleinste Verschieben, das Inhalt (mit Luft) und Ziel (mit Rand) ins freie Feld bringt.
+  if (inhalt && inhalt.b * k.s + 2 * ri <= f.b && inhalt.h * k.s + 2 * ri <= f.h) {
+    const achse = (v: number, f0: number, fl: number, ib: number, il: number, zb: number, zl: number): number => {
+      const ilo = f0 + ri - ib * k.s, ihi = f0 + fl - ri - (ib + il) * k.s;
+      const zlo = f0 + rand - zb * k.s, zhi = f0 + fl - rand - (zb + zl) * k.s;
+      const lo = Math.max(ilo, zlo), hi = Math.min(ihi, zhi);
+      const [a, b] = lo <= hi ? [lo, hi] : [ilo, ihi];
+      return Math.round(Math.min(b, Math.max(a, v)));
+    };
+    const x = achse(k.x, f.x, f.b, inhalt.x, inhalt.b, ziel.x, ziel.b), y = achse(k.y, f.y, f.h, inhalt.y, inhalt.h, ziel.y, ziel.h);
+    return x === k.x && y === k.y ? k : { s: k.s, x, y };
+  }
+  // 2. Bau-Aktion: der Anfang war zu sehen → herauszoomen, bis alles im freien Feld steht (nicht unter die Übersicht, nie hinein).
+  if (inhalt && o.neu) {
+    const r = o.rest;
+    const anfangSichtbar = !r || (r.x * k.s + k.x >= f.x - 1 && r.y * k.s + k.y >= f.y - 1);
+    const s = Math.min(k.s, (f.b - 2 * ri) / Math.max(1, inhalt.b), (f.h - 2 * ri) / Math.max(1, inhalt.h));
+    if (anfangSichtbar && s >= WERKSTATT_UEBERSICHT_MIN) return einpassen(inhalt, buehne, { raender: o.raender, rand: ri, min: s, max: s });
+  }
+  // 3. Nur so weit wie nötig.
+  return kameraZu(k, ziel, buehne, rand, o.raender);
+}
 /** Wo „+“ und Name eines Ausgangs stehen (relativ zur Knoten-Box): `anker` des Namens, `name` = Name zeigen, `knick` = der Hilfsstrich zum „+“ biegt dort ab. */
 export interface AusgangMarke { plus: Pt; r: number; text: Pt; anker: 'start' | 'end'; name: boolean; knick?: Pt }
 /**
