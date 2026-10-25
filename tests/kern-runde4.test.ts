@@ -333,7 +333,7 @@ describe('9 · „Rechnung für … schreiben“ nennt nach dem Stellen den näc
 
 // ── 10 · Mandatsende: EIN Tag (inklusiv), EIN Format ──
 import { laufzeitEnde, endeText, geplantesEnde, mindestEnde } from '@/lib/crm/mandat-laufzeit';
-import { mandatFristen, mandatLage, beendenVorgabe, healthText, HEALTH_TRAGFAEHIG } from '@/lib/crm/kunden';
+import { mandatFristen, mandatLage, beendenVorgabe, healthText, liquiPostenText, HEALTH_TRAGFAEHIG } from '@/lib/crm/kunden';
 
 describe('10 · Mandatsende einheitlich: letzter Tag der Laufzeit, „14.03.2027“ in Fenster, Mandat, Kalender, „Mandat beenden“ und Liquidität', () => {
   const M = mandat();
@@ -375,6 +375,16 @@ describe('11 · „Gesundheit 100“ nur aus der Zahlung ist vorläufig — nie 
     const tragfaehig = mandatLage(mandat({ health: { ...ohne, beteiligung: 80, wirkung: 90 } }), HEUTE);
     expect(HEALTH_TRAGFAEHIG).toBe(50);
     expect([tragfaehig.health, tragfaehig.healthVorlaeufig, tragfaehig.ampel, healthText(tragfaehig)]).toEqual([85, undefined, 'gruen', '85']);
+  });
+});
+
+// ── 12 · Liquiplan-Zeile zählt die Posten ──
+describe('12 · „steht drin — 8 Posten“ (nie „7 Teilmonate“ bei acht Posten)', () => {
+  it('die Zahl ist die der Posten des Mandats', () => {
+    const posten = mandatPosten(mandat(), HEUTE, { katalog: KATALOG });
+    expect(liquiPostenText(posten)).toBe(`${posten.length} Posten`);
+    expect(liquiPostenText([posten[0]])).toBe('');
+    expect(quelle('components/os/crm/Kunden.tsx')).toMatch(/steht drin\{liquiPostenText\(lq\.soll\)/);
   });
 });
 

@@ -35,7 +35,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, Hinweis, useBreit, LEUCHT, ZeileAktionen, feld } from '../ui';
 import { useCrmAblage, PapierkorbKarte } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
-import { HEALTH_GEWICHTE, HEALTH_LABEL, healthText, kundenJePerson, gesellschaftFilterFuer, passtGesellschaft, beendenVorgabe, beendenHinweise, type GesellschaftFilter, type LiquiLageArt } from '@/lib/crm/kunden';
+import { HEALTH_GEWICHTE, HEALTH_LABEL, healthText, liquiPostenText, kundenJePerson, gesellschaftFilterFuer, passtGesellschaft, beendenVorgabe, beendenHinweise, type GesellschaftFilter, type LiquiLageArt } from '@/lib/crm/kunden';
 import { mandatName, titelOhneFirma } from '@/lib/crm/mandat-name';
 import { postenZeitText, type Planposten } from '@/lib/make-one/liquiditaet';
 import { werZahlen } from '@/lib/crm/pipeline';
@@ -387,7 +387,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m:
       </div>
       <Feldzeile label="Liquiditätsplan">
         {!lq && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>lädt …</span>}
-        {lq?.lage === 'ok' && <Link href={WEG.planposten(lq.vorhanden?.id)} style={{ fontSize: TYP.bedien, color: LEUCHT.gut, textDecoration: 'none' }}>steht drin{lq.soll.length > 1 ? ` — mit ${lq.soll.length - (lq.soll.some(p => p.rhythmus !== 'einmalig') ? 1 : 0)} Teilmonat${lq.soll.length > 2 ? 'en' : ''}` : ''} — Posten öffnen ›</Link>}
+        {lq?.lage === 'ok' && <Link href={WEG.planposten(lq.vorhanden?.id)} style={{ fontSize: TYP.bedien, color: LEUCHT.gut, textDecoration: 'none' }}>steht drin{liquiPostenText(lq.soll) ? ` — ${liquiPostenText(lq.soll)}` : ''} — Posten öffnen ›</Link>}
         {/* N14 (18.10.): der Satz je Fall — nie mehr „Status oder Honorar fehlt“ bei einem beendeten Mandat. */}
         {lq?.lage === 'kein-posten' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{lq.grund ?? 'kein Posten'}</span>}
         {lq?.lage === 'beendet' && (

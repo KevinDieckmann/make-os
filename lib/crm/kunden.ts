@@ -227,6 +227,12 @@ function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: s
   return raus.sort((x, y) => x.ab.localeCompare(y.ab));
 }
 
+/**
+ * Wie viele Posten ein Mandat im Liquiditätsplan einträgt, in Worten (25.10., Kern-Bau-Test 2: „mit 7 Teilmonaten“ bei acht Posten — gezählt waren alle Posten außer
+ * dem Monatsposten, auch Zusatzmodule, Anzahlung und Rest): „8 Posten“; ein einzelner Posten braucht keinen Zusatz (leer).
+ */
+export const liquiPostenText = (soll: readonly unknown[]): string => (soll.length > 1 ? anzahl(soll.length, 'Posten', 'Posten') : '');
+
 /** Der (Haupt-)Posten, den ein Mandat erzeugen würde: der Monatsposten, sonst der erste Teilmonat — null, wenn keiner entsteht. */
 export function planpostenAus(m: Mandat, heute: string, katalog?: Katalog): Planposten | null {
   const l = mandatPosten(m, heute, { katalog });
