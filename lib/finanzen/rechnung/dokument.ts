@@ -77,6 +77,7 @@ export function rechnungDokument(r: Rechnung, absender: AngebotAbsender, opt: Re
       ...(leistungText(r) ? [{ label: r.leistungBis && r.leistungBis !== r.leistungVon ? 'Leistungszeitraum' : 'Leistungsdatum', wert: leistungText(r) }] : []),
       ...(faellig ? [{ label: 'Fällig am', wert: datumDe(faellig) }] : []),
       ...(storno && opt.original?.nummer ? [{ label: 'Zu Rechnung', wert: opt.original.nummer }] : []),
+      ...(r.empfaenger?.kundennummer ? [{ label: 'Kundennummer', wert: r.empfaenger.kundennummer }] : []),
       ...(r.empfaenger?.referenz ? [{ label: 'Ihre Referenz', wert: r.empfaenger.referenz }] : []),
     ],
     titel: r.titel || 'Rechnung', einleitung: r.einleitung ?? '',

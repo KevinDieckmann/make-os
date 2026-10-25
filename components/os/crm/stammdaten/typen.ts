@@ -28,6 +28,8 @@ export interface WertelistenAntwort {
   ziele: { umsatzNeuMonat?: number; sqlMonat?: number; gespraecheWoche?: number };
   /** Ist zu den Zielen — null, solange nichts gemessen ist. */
   ist: { umsatzNeu30: number | null; sql30: number | null; gespraecheWoche: number | null; dealsOffen: number };
+  /** Kundennummern (25.10.): gespeichertes Format (null = Vorgabe), Vorgabe, wirksames Format, wie viele schon vergeben. */
+  kundennummer?: { format: string | null; vorgabe: string; wirksam: string; vergeben: number };
 }
 
 export interface StammdatenDaten {

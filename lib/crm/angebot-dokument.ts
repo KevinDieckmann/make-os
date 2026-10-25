@@ -34,12 +34,12 @@ export function absenderAus(roh: Gesellschaft, opt: { ibanVoll?: boolean } = {})
 }
 
 /** Empfänger aus Kontakt und Firma (Anschrift: Rechnungsempfänger der Zahlungsdaten, sonst Ort der Firma). */
-export function empfaengerAus(k: { vorname?: string; nachname?: string; email?: string; firma?: string } | undefined, f: { name: string; stadt?: string; zahlung?: { empfaenger?: { name?: string; anschrift?: string } } } | undefined): AngebotEmpfaenger {
+export function empfaengerAus(k: { vorname?: string; nachname?: string; email?: string; firma?: string } | undefined, f: { name: string; stadt?: string; zahlung?: { empfaenger?: { name?: string; anschrift?: string } }; kundennummer?: string } | undefined): AngebotEmpfaenger {
   const name = `${k?.vorname ?? ''} ${k?.nachname ?? ''}`.trim() || f?.zahlung?.empfaenger?.name || '';
   const firma = f?.name ?? k?.firma;
   const anschrift = (f?.zahlung?.empfaenger?.anschrift ?? '').split(/\n|,\s*(?=\d{4,5}\s)/).map(s => s.trim()).filter(Boolean);
   const zeilen = [firma ?? '', name && firma ? `z. Hd. ${name}` : name, ...(anschrift.length ? anschrift : f?.stadt ? [f.stadt] : [])].filter(Boolean);
-  return { name, ...(firma ? { firma } : {}), zeilen, ...(k?.email ? { email: k.email } : {}) };
+  return { name, ...(firma ? { firma } : {}), zeilen, ...(k?.email ? { email: k.email } : {}), ...(f?.kundennummer ? { kundennummer: f.kundennummer } : {}) };
 }
 
 export interface DokumentPosition { nr: string; titel: string; text: string; menge: string; einzelpreis: string; rabatt?: string; betrag: string; basis: string; /** Artikelnummer (25.10.) — Spalte „Art.-Nr.“ nur, wenn mindestens eine Position eine trägt. */ artikelnummer?: string }
@@ -100,6 +100,8 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
       { label: 'Angebot', wert: a.nummer ?? 'Entwurf' },
       { label: 'Datum', wert: datumDe(datum) },
       { label: 'Gültig bis', wert: datumDe(a.gueltigBis) },
+      // Kundennummer (25.10.) — nur, wenn die Firma eine trägt (sonst bit-gleich).
+      ...(empfaenger.kundennummer ? [{ label: 'Kundennummer', wert: empfaenger.kundennummer }] : []),
       ...(a.version > 1 ? [{ label: 'Fassung', wert: `Version ${a.version}` }] : []),
     ],
     titel: a.titel || 'Angebot', einleitung: a.einleitung,

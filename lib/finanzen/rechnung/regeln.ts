@@ -89,14 +89,14 @@ export function positionenSaeubern(roh: unknown): RechnungPosition[] {
   return l;
 }
 
-const EMPF_FELDER = ['name', 'firma', 'strasse', 'plz', 'ort', 'land', 'ustId', 'email', 'referenz'] as const;
+const EMPF_FELDER = ['name', 'firma', 'strasse', 'plz', 'ort', 'land', 'ustId', 'email', 'referenz', 'kundennummer'] as const;
 /** Empfänger säubern — nur bekannte Felder, Zeilen ohne Steuerzeichen; leer = undefined. */
 export function empfaengerSaeubern(roh: unknown): RechnungEmpfaenger | undefined {
   if (!roh || typeof roh !== 'object') return undefined;
   const o = roh as Record<string, unknown>;
   const e: RechnungEmpfaenger = {};
   for (const f of EMPF_FELDER) {
-    const max = f === 'plz' ? 12 : f === 'ustId' ? 20 : RECHNUNG_GRENZEN.empfaengerFeld;
+    const max = f === 'plz' ? 12 : f === 'ustId' ? 20 : f === 'kundennummer' ? 40 : RECHNUNG_GRENZEN.empfaengerFeld;
     const w = f === 'ustId' ? zeile(o[f], max).replace(/\s/g, '').toUpperCase() : zeile(o[f], max);
     if (w) e[f] = w;
   }
@@ -342,7 +342,7 @@ export function anschriftZerlegen(t: string | undefined): Pick<RechnungEmpfaenge
 }
 
 type KontaktTeil = Pick<Kontakt, 'id' | 'vorname' | 'nachname' | 'email' | 'firma' | 'zahlung'>;
-type FirmaTeil = Pick<Firma, 'id' | 'name' | 'stadt' | 'zahlung'>;
+type FirmaTeil = Pick<Firma, 'id' | 'name' | 'stadt' | 'zahlung'> & Partial<Pick<Firma, 'kundennummer'>>;
 
 /** Empfänger aus der Kartei: Rechnungsempfänger der Zahlungsdaten zuerst, sonst Firma/Person; USt-IdNr. und Referenz dazu. */
 export function empfaengerAusCrm(k: KontaktTeil | undefined, f: FirmaTeil | undefined): RechnungEmpfaenger {
@@ -356,6 +356,8 @@ export function empfaengerAusCrm(k: KontaktTeil | undefined, f: FirmaTeil | unde
     ...(z?.ustId ? { ustId: z.ustId.replace(/\s/g, '').toUpperCase() } : {}),
     ...(z?.empfaenger?.email ? { email: z.empfaenger.email } : k?.email ? { email: k.email } : {}),
     ...(z?.referenz ? { referenz: z.referenz } : {}),
+    // Kundennummer (25.10.) — nur, wenn die Firma eine trägt.
+    ...(f?.kundennummer ? { kundennummer: f.kundennummer } : {}),
   };
   return empfaengerSaeubern(e) ?? {};
 }

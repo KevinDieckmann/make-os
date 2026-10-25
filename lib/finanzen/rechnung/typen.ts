@@ -52,6 +52,8 @@ export interface RechnungEmpfaenger {
   email?: string;
   /** Bestellnummer / Referenz des Kunden (CRM › Zahlungsdaten). */
   referenz?: string;
+  /** Kundennummer der Firma (25.10., optional) — aus der Kartei beim Anlegen des Entwurfs, ab „gestellt“ fest (steht so im PDF). */
+  kundennummer?: string;
 }
 
 /** Absender beim Stellen — dieselbe Form wie beim Angebot (IBAN in der Momentaufnahme maskiert, im PDF voll). */

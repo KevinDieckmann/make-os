@@ -321,6 +321,8 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma, onLoeschen }: { f: Firm
       <div>
         <Ueberschrift>Stammdaten</Ueberschrift>
         <Feldzeile label="Name"><Feld wert={f.name} onFertig={name => name.trim() && setze({ name: name.trim() })} /></Feldzeile>
+        {/* Kundennummer (25.10.): vergibt der Server beim ersten Angebot bzw. Mandat — nur lesen. */}
+        <Feldzeile label="Kundennummer"><span style={{ fontSize: TYP.bedien, color: f.kundennummer ? C.ink : C.inkLeise }}>{f.kundennummer ?? 'kommt mit dem ersten Angebot bzw. Mandat'}</span></Feldzeile>
         <Feldzeile label="Rechtsform">
           <Wahl label="Rechtsform" liste={RECHTSFORMEN.map(r => ({ id: r, label: r }))} wert={f.rechtsform} onWahl={rechtsform => setze({ rechtsform })} onLeeren={() => setze({ rechtsform: undefined })} />
         </Feldzeile>

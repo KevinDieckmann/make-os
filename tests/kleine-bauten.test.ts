@@ -270,3 +270,52 @@ describe('5 · Import erweitert: Unterlagen, Prozess der Werkstatt, Begleit-Mail
     expect(loesen.ops[0]).toMatchObject({ felder: { prozessId: null } });
   });
 });
+
+describe('6 · Kundennummer an der Firma (eine Stelle, fortlaufend, nie doppelt)', () => {
+  const leer = async () => ({ ...(await import('@/lib/crm/speicher')).leererBestand() });
+  const firma = (id: string, x: Record<string, unknown> = {}) => ({ id, name: id, rolle: 'zielkunde', geaendert: J, ...x }) as never;
+  it('Vorgabe K-{NR4}; Format der Instanz; Zähler fällt nie; belegte Nummern werden übersprungen', async () => {
+    const { kundennummerVergeben, kundennummerFormatOk } = await import('@/lib/crm/kundennummer');
+    const b0 = { ...(await leer()), firmen: [firma('f-a'), firma('f-b'), firma('f-c', { kundennummer: 'K-0002' })] };
+    const b1 = kundennummerVergeben(b0, 'f-a', 2026);
+    expect(b1.firmen[0].kundennummer).toBe('K-0001');
+    expect(b1.kundennummern).toEqual({ zuletzt: 1 });
+    const b2 = kundennummerVergeben(b1, 'f-b', 2026);
+    expect(b2.firmen[1].kundennummer).toBe('K-0003');
+    expect(kundennummerVergeben(b2, 'f-a', 2026)).toBe(b2);
+    const eigen = kundennummerVergeben({ ...b0, kundennummern: { format: 'KD{JJ}-{NR5}', zuletzt: 41 } }, 'f-a', 2026);
+    expect(eigen.firmen[0].kundennummer).toBe('KD26-00042');
+    expect(kundennummerFormatOk('{KURZ}-{NR4}')).toBe(false);
+    expect(kundennummerFormatOk('K-{JAHR}')).toBe(false);
+  });
+  it('Auslöser: neues Mandat bzw. reserviertes/gestelltes Angebot — Entwurf nie, Altbestand nie still; vergebene Nummer bleibt fest, fremde fällt weg', async () => {
+    const { kundennummernNachziehen } = await import('@/lib/crm/kundennummer');
+    const basis = { ...(await leer()), firmen: [firma('f-a'), firma('f-b', { kundennummer: 'K-0007' }), firma('f-c')], kundennummern: { zuletzt: 7 },
+      mandate: [{ id: 'm-alt', firmaId: 'f-c' }] as never };
+    const mitMandat = kundennummernNachziehen(basis, { ...basis, mandate: [...basis.mandate, { id: 'm-neu', firmaId: 'f-a' }] as never }, 2026);
+    expect(mitMandat.firmen.map(f => f.kundennummer)).toEqual(['K-0008', 'K-0007', undefined]);
+    const entwurf = { ...basis, angebote: [{ id: 'ang-1', firmaId: 'f-a', status: 'entwurf' }] as never };
+    expect(kundennummernNachziehen(basis, entwurf, 2026)).toBe(entwurf);
+    const reserviert = kundennummernNachziehen(entwurf, { ...entwurf, angebote: [{ id: 'ang-1', firmaId: 'f-a', status: 'entwurf', lauf: { jahr: 2026, nr: 1 } }] as never }, 2026);
+    expect(reserviert.firmen[0].kundennummer).toBe('K-0008');
+    const geaendert = kundennummernNachziehen(basis, { ...basis, firmen: [firma('f-a', { kundennummer: 'K-9999' }), firma('f-b'), firma('f-c')], kundennummern: { zuletzt: 2 } }, 2026);
+    expect(geaendert.firmen.map(f => f.kundennummer)).toEqual([undefined, 'K-0007', undefined]);
+    expect(geaendert.kundennummern?.zuletzt).toBe(7);
+  });
+  it('Angebot- und Rechnungs-PDF, Rechnungsempfänger aus der Kartei, Export-Spalte am Ende', async () => {
+    const { empfaengerAus } = await import('@/lib/crm/angebot-dokument');
+    const { empfaengerAusCrm } = await import('@/lib/finanzen/rechnung/regeln');
+    const e = empfaengerAus({ vorname: 'Max', nachname: 'Muster' }, { name: 'Beispielkunde GmbH', kundennummer: 'K-0001' });
+    expect(e.kundennummer).toBe('K-0001');
+    const d = angebotDokument(GOLD_ANGEBOT, GOLD_ABSENDER, e, '2026-10-20');
+    expect(d.meta).toContainEqual({ label: 'Kundennummer', wert: 'K-0001' });
+    const re = empfaengerAusCrm(undefined, { id: 'f-a', name: 'Beispielkunde GmbH', kundennummer: 'K-0001' });
+    expect(re.kundennummer).toBe('K-0001');
+    expect(rechnungDokument({ ...GOLD_RECHNUNG, empfaenger: { ...GOLD_RECHNUNG.empfaenger, kundennummer: 'K-0001' } }, GOLD_ABSENDER, { datum: '2026-10-20' }).meta).toContainEqual({ label: 'Kundennummer', wert: 'K-0001' });
+    const { firmenCsv } = await import('@/lib/crm/export');
+    const csv = firmenCsv({ crm: { ...(await leer()), firmen: [firma('f-a', { kundennummer: 'K-0001' })] }, kontakte: [] } as never);
+    const [kopf, zeile] = csv.replace(/^﻿/, '').split(/\r?\n/);
+    expect(kopf.split(';').at(-1)).toBe('KUNDENNUMMER');
+    expect(zeile.split(';').at(-1)).toContain('K-0001');
+  });
+});

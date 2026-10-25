@@ -404,8 +404,8 @@ export interface AngebotPosition {
 }
 /** Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). */
 export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean }
-/** Festgehaltener Empfänger beim Stellen. */
-export interface AngebotEmpfaenger { name: string; firma?: string; zeilen: string[]; email?: string }
+/** Festgehaltener Empfänger beim Stellen. `kundennummer` (25.10., optional): die der Firma beim Stellen — steht so im PDF. */
+export interface AngebotEmpfaenger { name: string; firma?: string; zeilen: string[]; email?: string; kundennummer?: string }
 export interface Angebot {
   id: string;
   /** Vergibt nur der Server beim Stellen (Nummernformat der Gesellschaft). */
@@ -535,6 +535,12 @@ export interface Firma {
    * keine Kreise (Säuberung + `mutterPruefen` + Verbindungsprüfung). Töchter ergeben sich aus den Verweisen.
    */
   mutterId?: string;
+  /**
+   * Kundennummer (25.10., kleine Bauten — optional, additiv): vergibt NUR der Server beim ersten gestellten Angebot bzw. ersten Mandat der Firma
+   * (lib/crm/kundennummer.ts, Format je Instanz, Vorgabe `K-{NR4}`), fortlaufend und nie doppelt; danach unveränderlich. Steht auf Angebot und Rechnung.
+   * Der alte Stand verwirft das Feld beim nächsten Speichern der Firma — die PDFs behalten die gedruckte Nummer.
+   */
+  kundennummer?: string;
   /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
   archiviertAm?: string;
   /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit) — für alle Leser unsichtbar, 30 Tage wiederherstellbar. */
@@ -899,6 +905,8 @@ export interface CrmBestand {
   scoring?: import('./scoring').ScoringEinstellungen;
   /** Wahrscheinlichkeiten je Stufe, von Hand überschreibbar (wie in KEMARIS Operations „von_hand“). */
   wahrscheinlichkeiten?: Partial<Record<ChancenStufe, number>>;
+  /** Kundennummern (25.10., optional): Format der Instanz (Vorgabe `K-{NR4}`) und der höchste vergebene Zähler — schreibt nur der Server (lib/crm/kundennummer.ts). */
+  kundennummern?: { format?: string; zuletzt?: number };
 }
 
 export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen', 'segmente', 'beitraege', 'newsletter', 'kampagnen', 'followups', 'angebote'] as const;

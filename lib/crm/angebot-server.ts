@@ -296,7 +296,7 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   //       ablegen (kurz: verschlüsseln + fsync) und stellen; sonst Reservierung lösen, 409, nichts abgelegt.
   const jahr = jahrVon(heute);
   let res: { a: Angebot; nummer: string; stand: string; firma?: CrmBestand['firmen'][number] } | null = null;
-  await aendereCrmAsync(async b => {
+  const nachReservierung = await aendereCrmAsync(async b => {
     const liste = b.angebote ?? [];
     const a = liste.find(x => x.id === p.id);
     if (!a) throw new AngebotFehler('Angebot nicht gefunden.', 404);
@@ -314,6 +314,8 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   }, p.wer);
   const r0 = res as { a: Angebot; nummer: string; stand: string; firma?: CrmBestand['firmen'][number] } | null;
   if (!r0) throw new AngebotFehler('Nicht gestellt.', 500);
+  // Kundennummer (25.10.): die Reservierung ist der Auslöser (lib/crm/kundennummer.ts) — die Firma trägt sie danach, so steht sie im PDF.
+  if (firmaId) r0.firma = nachReservierung.firmen.find(f => f.id === firmaId) ?? r0.firma;
   const { nummer } = r0;
   /** Reservierung lösen, wenn sie noch unverändert am Entwurf hängt (nach einem Fehlschlag in b/c). */
   const reservierungLoesen = () => aendereCrm(b => {

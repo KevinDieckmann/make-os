@@ -117,6 +117,8 @@ const FIRMA_SPALTEN: Spalte<FirmaZeile>[] = [
   ['PERSONEN', z => z.personen], ['DEALS_OFFEN', z => z.dealsOffen], ['MANDATE_AKTIV', z => z.mandateAktiv], ['GEAENDERT', z => tagISO(z.f.geaendert)],
   // Mutterfirma (28.09., #7) — am Ende angehängt.
   ['MUTTER_ID', z => z.f.mutterId],
+  // Kundennummer (25.10.) — am Ende angehängt.
+  ['KUNDENNUMMER', z => z.f.kundennummer],
 ];
 export function firmenCsv(q: ExportQuelle): string {
   const zeilen = q.crm.firmen.map(f => ({
