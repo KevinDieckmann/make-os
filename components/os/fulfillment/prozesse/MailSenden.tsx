@@ -41,7 +41,8 @@ export function MailSenden({ titel, entwurf, hinweis, onZu, onGesendet }: { tite
   const [fertig, setFertig] = useState(false);
   const anfrageId = useRef(neueAnfrageId());
   useEffect(() => {
-    fetch('/api/inbox/postfaecher?space=business', { cache: 'no-store' }).then(r => r.json()).then((j: { postfaecher?: Postfach[] }) => {
+    // `einheit` (25.10.): der Server legt das Postfach der Einheit des Falls dazu, wenn sie unter Privat liegt und als Arbeit zählt (z. B. Selbstständigkeit).
+    fetch(`/api/inbox/postfaecher?space=business${entwurf.gesellschaft ? `&einheit=${encodeURIComponent(entwurf.gesellschaft)}` : ''}`, { cache: 'no-store' }).then(r => r.json()).then((j: { postfaecher?: Postfach[] }) => {
       const l = Array.isArray(j.postfaecher) ? j.postfaecher : [];
       setPostfaecher(l);
       const p = l.find(x => x.bereich === entwurf.gesellschaft) ?? l[0];
@@ -49,7 +50,7 @@ export function MailSenden({ titel, entwurf, hinweis, onZu, onGesendet }: { tite
     }).catch(() => setPostfaecher([]));
   }, [entwurf.gesellschaft]);
   const los = async (uwg = false): Promise<void> => {
-    if (!postfach) { setFehler('Bitte ein Postfach des Business-Bereichs wählen (Inbox › Postfächer).'); return; }
+    if (!postfach) { setFehler('Bitte ein Postfach des Business-Bereichs bzw. der Einheit dieses Falls wählen (Inbox › Postfächer).'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(an.trim())) { setFehler('Bitte eine gültige Empfänger-Adresse.'); return; }
     const r = await fetch('/api/inbox/senden', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
       neu: { postfach, betreff }, an: [{ email: an.trim(), ...(entwurf.an?.email === an.trim() && entwurf.an.name ? { name: entwurf.an.name } : {}) }], text,

@@ -106,9 +106,17 @@ export async function auswahlListen(h: string, person: string, datei?: ProzesseD
     return Array.from(vertraege().values()).filter(v => v.herkunft === 'zoe' && v.bereich !== 'privat').map(v => ({ id: v.name, label: v.name }));
   }, [] as { id: string; label: string }[]);
   const postfaecher = await sicher(async () => {
-    const { ladePostfaecher } = await import('@/lib/postfach/register');
-    return (await ladePostfaecher(person)).filter(p => !!p.bereich && p.bereich !== 'privat' && einheiten.bereichVonGesellschaft(p.bereich) === 'business').map(p => ({ id: p.id, label: p.anzeigename }));
-  }, [] as { id: string; label: string }[]);
+    const [{ ladePostfaecher }, { postfachSendetFuer, JEDE_ARBEITS_EINHEIT }, { einheitenSichtFuer }] = await Promise.all([
+      import('@/lib/postfach/register'), import('@/lib/postfach/bereich'), import('@/lib/gesellschaften/sicht-server'),
+    ]);
+    const eigene = await ladePostfaecher(person);
+    const business = eigene.filter(p => !!p.bereich && p.bereich !== 'privat' && einheiten.bereichVonGesellschaft(p.bereich) === 'business').map(p => ({ id: p.id, label: p.anzeigename }));
+    // 25.10. (kleine Bauten): dazu das Postfach einer Einheit unter Privat, deren Zeit als Arbeit zählt (z. B. Selbstständigkeit) — es sendet nur für Fälle
+    // DIESER Einheit (der Motor prüft je Fall, `postfachSendetFuer`). Ein Konto, das nur Business sieht, bekommt es nie (serverseitig).
+    const arbeit = eigene.filter(p => !!p.bereich && einheiten.bereichVon(p.bereich) === 'privat' && postfachSendetFuer(p.bereich, JEDE_ARBEITS_EINHEIT));
+    if (!arbeit.length || (await einheitenSichtFuer(person).catch(() => null))?.privat !== true) return business;
+    return [...business, ...arbeit.map(p => ({ id: p.id, label: p.anzeigename, hinweis: `nur für Fälle von ${einheiten.einheitName(p.bereich!)}` }))];
+  }, [] as { id: string; label: string; hinweis?: string }[]);
   // Feinschliff 24.10. (Werte für „nur wenn …“, lib/prozesse/feld-werte.ts): Produkte einer Business-Gesellschaft (ohne Papierkorb) und Pakete des Fulfillments —
   // nur Kennung + Name; Produkte einer Privat-Einheit kommen nie an (dieselbe Regel wie überall: `bereichVonGesellschaft`).
   const produkte = await sicher(async () => {

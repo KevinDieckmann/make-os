@@ -81,8 +81,8 @@ export interface MotorKontext {
     crm?: CrmBestand | null; kontakte?: Kontakt[]; leads?: LeadZeile[]; auftraege?: { name: string; tag: string; anlass?: string; eingabe?: Record<string, unknown> }[]; skills?: Map<string, string>;
     /** Agenten-Schritte, die in diesem Anstoß schon liefen (Drossel, E-V5). */
     agenten?: number;
-    /** Business-Postfächer je Person (Postfach-Platzhalter der Vorlagen). */
-    postfaecher?: Map<string, { gmail: boolean; imap: string[] }>;
+    /** Sende-Postfächer je Person und Gesellschaft des Falls (Postfach-Platzhalter der Vorlagen; Schlüssel `person|gesellschaft`). */
+    postfaecher?: Map<string, SendePostfaecher>;
   };
 }
 
@@ -402,12 +402,13 @@ export async function umfeldFuer(l: ProzessLauf, def: ProzessDefinition, kx: Mot
   };
   const eigner = mitKonto(def.eigner);
   const zustaendig = mitKonto(f.zustaendig);
-  // Postfach „des Laufs“ bzw. „der Nachricht“: nur Business-Postfächer der Person, als die der Lauf schreibt (Gmail bzw. IMAP mit Business-Bereich).
-  const mitMail = alleSchritte(def).some(x => x.schritt.katalog?.id === 'inbox.mail-entwurf');
-  const pf = mitMail && l.person ? await businessPostfaecher(l.person, kx) : null;
   // Gesellschaft des Falls: Deal bzw. Mandat — nur eine Business-Gesellschaft.
   const { bereichVonGesellschaft } = await import('@/lib/einheiten');
   const ges = [f.daten['deal.gesellschaft'], f.daten['mandat.gesellschaft']].find((g): g is string => typeof g === 'string' && !!g);
+  // Postfach „des Laufs“ bzw. „der Nachricht“: nur Sende-Postfächer der Person, als die der Lauf schreibt — Business-Bereich, und seit 25.10. auch das
+  // Postfach einer Arbeits-Einheit für Fälle DIESER Einheit (z. B. Selbstständigkeit; `postfachSendetFuer`, lib/postfach/bereich.ts).
+  const mitMail = alleSchritte(def).some(x => x.schritt.katalog?.id === 'inbox.mail-entwurf');
+  const pf = mitMail && l.person ? await sendePostfaecher(l.person, kx, ges) : null;
   return {
     rolle: w => (w === ROLLE_EIGNER ? eigner : w === ROLLE_ZUSTAENDIG ? zustaendig ?? eigner : null),
     gesellschaft: () => (ges && bereichVonGesellschaft(ges) === 'business' ? ges : null),
@@ -416,11 +417,13 @@ export async function umfeldFuer(l: ProzessLauf, def: ProzessDefinition, kx: Mot
       if (w === POSTFACH_DER_NACHRICHT) {
         const g = l.daten['bezug.gespraech'] ?? '';
         const id = g.startsWith('gm~') ? 'gmail' : g.startsWith('im~') ? g.split('~')[1] ?? '' : '';
-        // Antwort im Gespräch: nur das Postfach der Nachricht — gehört es nicht der Person bzw. nicht zum Business, hält der Schritt.
+        // Antwort im Gespräch: nur das Postfach der Nachricht — gehört es nicht der Person bzw. darf es für diesen Fall nicht senden, hält der Schritt.
         if (id) return id === 'gmail' ? (pf.gmail ? 'gmail' : null) : pf.imap.includes(id) ? id : null;
       }
-      if (w === POSTFACH_DES_LAUFS || w === POSTFACH_DER_NACHRICHT) return pf.gmail ? 'gmail' : pf.imap[0] ?? null;
-      return w;
+      // Das Postfach genau der Arbeits-Einheit des Falls zuerst (Fall der Selbstständigkeit → ihr Postfach); sonst wie bisher Gmail, dann IMAP.
+      if (w === POSTFACH_DES_LAUFS || w === POSTFACH_DER_NACHRICHT) return pf.eigen ?? (pf.gmail ? 'gmail' : pf.imap[0] ?? null);
+      // Ein festes eigenes Postfach, das für diesen Fall nicht senden darf (Privat bzw. eine andere Einheit unter Privat): der Schritt hält.
+      return pf.gesperrt.includes(w) ? null : w;
     },
     jetzt: iso, titel: def.titel, daten: { ...l.daten, ...f.daten }, platzhalter: { ...f.platzhalter, 'lauf.start': tagVonIso(l.start) },
     fallDatum: feld => f.datum[feld] ?? null,
@@ -447,17 +450,33 @@ const fallLaufVon = (l: Pick<ProzessLauf, 'id' | 'prozessId' | 'start' | 'person
   lauf: { id: l.id, prozessId: l.prozessId, start: l.start, person: l.person }, brauche: gelesenFelderMenge(def),
 });
 
-/** Business-Postfächer einer Person (Platzhalter der Vorlagen, nie ein privates): Gmail (verbunden, nicht unter Privat geführt) und IMAP mit Business-Bereich. */
-async function businessPostfaecher(person: string, kx: MotorKontext): Promise<{ gmail: boolean; imap: string[] }> {
+/** Sende-Postfächer einer Person für einen Fall: Gmail/IMAP, die senden dürfen; `eigen` = das Postfach genau der Arbeits-Einheit des Falls; `gesperrt` = eigene, die nicht dürfen. */
+interface SendePostfaecher { gmail: boolean; imap: string[]; eigen?: string; gesperrt: string[] }
+/**
+ * Die Postfächer einer Person, aus denen ein Fall der Gesellschaft `ges` senden darf — DIE Regel `postfachSendetFuer` (lib/postfach/bereich.ts): Business-Bereich
+ * wie bisher (Gmail verbunden und nicht unter Privat geführt, IMAP mit Business-Bereich), dazu (25.10.) das Postfach einer Einheit unter Privat, deren Zeit als
+ * Arbeit zählt, nur für Fälle DIESER Einheit — und nie für ein Konto, das nur Business sieht (`einheitenSichtFuer`, serverseitig). Nie ein privates.
+ */
+async function sendePostfaecher(person: string, kx: MotorKontext, ges: string | undefined): Promise<SendePostfaecher> {
   kx.cache.postfaecher ??= new Map();
-  const da = kx.cache.postfaecher.get(person);
+  const schluessel = `${person}|${ges ?? ''}`;
+  const da = kx.cache.postfaecher.get(schluessel);
   if (da) return da;
-  const [{ ladePostfaecher }, { gmailBereit }, { bereichVonGesellschaft }] = await Promise.all([import('@/lib/postfach/register'), import('@/lib/gmail/abgleich'), import('@/lib/einheiten')]);
+  const [{ ladePostfaecher }, { gmailBereit }, { bereichVon }, { postfachSendetFuer }, { einheitenSichtFuer }] = await Promise.all([
+    import('@/lib/postfach/register'), import('@/lib/gmail/abgleich'), import('@/lib/einheiten'), import('@/lib/postfach/bereich'), import('@/lib/gesellschaften/sicht-server'),
+  ]);
   const eigene = await ladePostfaecher(person).catch(() => []);
-  const business = (b: string | null) => !!b && b !== 'privat' && bereichVonGesellschaft(b) === 'business';
+  const unterPrivat = (b: string | null) => !!b && b !== 'privat' && bereichVon(b) === 'privat';
+  // Nur wer Privat sieht, bekommt ein Postfach einer Einheit unter Privat — gefragt wird nur, wenn es eins gibt (sonst bit-gleich wie bisher).
+  const privatSicht = eigene.some(p => unterPrivat(p.bereich)) ? (await einheitenSichtFuer(person).catch(() => null))?.privat === true : false;
+  const darf = (b: string | null) => postfachSendetFuer(b, ges) && (!unterPrivat(b) || privatSicht);
   const g = eigene.find(p => p.quelle === 'gmail');
-  const r = { gmail: (!g || g.bereich === null || business(g.bereich)) && await gmailBereit(person).catch(() => false), imap: eigene.filter(p => p.quelle === 'imap' && business(p.bereich)).map(p => p.id) };
-  kx.cache.postfaecher.set(person, r);
+  const gmail = (!g || g.bereich === null || darf(g.bereich)) && await gmailBereit(person).catch(() => false);
+  const imap = eigene.filter(p => p.quelle === 'imap' && darf(p.bereich)).map(p => p.id);
+  const eigen = ges && unterPrivat(ges) ? (gmail && g?.bereich === ges ? 'gmail' : eigene.find(p => p.quelle === 'imap' && p.bereich === ges && imap.includes(p.id))?.id) : undefined;
+  const gesperrt = eigene.filter(p => p.quelle === 'imap' && !!p.bereich && !darf(p.bereich)).map(p => p.id);
+  const r: SendePostfaecher = { gmail, imap, ...(eigen ? { eigen } : {}), gesperrt };
+  kx.cache.postfaecher.set(schluessel, r);
   return r;
 }
 

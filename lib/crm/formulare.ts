@@ -13,7 +13,8 @@ import type { AngebotPosition, Leistung, PreisTeil } from './typen';
 import { angebotPositionenAusProdukt, geplanteMenge, istSatz, preisteileVon, hauptpreis, teilLabel, preisText, mengeEinheit } from './produkt-karte';
 import { produktAngebotFehlt } from './angebote';
 import { istKalendertag } from '@/lib/zeit';
-import { bereichVon, istBusinessGesellschaft, istGesellschaft, zaehltAlsArbeit } from '@/lib/einheiten';
+import { istBusinessGesellschaft, istGesellschaft, zaehltAlsArbeit } from '@/lib/einheiten';
+import { JEDE_ARBEITS_EINHEIT, postfachSendetFuer } from '@/lib/postfach/bereich';
 
 // ── Bestand ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -357,8 +358,8 @@ export function angebotMail(e: Pick<FormularEinstellungen, 'betreff' | 'text'>, 
  * also die Business-Gesellschaften UND die Privat-Arbeits-Einheit (Selbstständigkeit). Nie eine feste Kennung abfragen, nie `privat`.
  */
 export const formularGesellschaftOk = (g: unknown): g is import('@/lib/einheiten').Gesellschaftskennung => istGesellschaft(g) && zaehltAlsArbeit(g);
-/** Darf ein Postfach Absender der Formular-Angebote sein? Ein Business-Bereich oder der Bereich einer Arbeits-Einheit (nie `privat`). */
-export const formularPostfachBereichOk = (bereich: unknown): boolean => !!bereich && bereich !== 'privat' && (bereichVon(bereich) === 'business' || zaehltAlsArbeit(bereich));
+/** Darf ein Postfach Absender der Formular-Angebote sein? Ein Business-Bereich oder der Bereich einer Arbeits-Einheit (nie `privat`) — DIE Regel `postfachSendetFuer`. */
+export const formularPostfachBereichOk = (bereich: unknown): boolean => typeof bereich === 'string' && postfachSendetFuer(bereich, JEDE_ARBEITS_EINHEIT);
 /** Ein Konto „nur Business“ sieht nur Eingänge einer Business-Gesellschaft (ohne Angabe: Altbestand aus der Zeit „nur Business“). */
 export const eingangFuerNurBusiness = (g: unknown): boolean => g === undefined || g === null || istBusinessGesellschaft(g);
 
