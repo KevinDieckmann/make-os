@@ -322,6 +322,14 @@ export function anzeigeName(g: Pick<RegisterGesellschaft, 'id' | 'name' | 'firmi
 }
 
 /**
+ * Die Firmierung als Absender (25.10., kleine Bauten — Platzhalter `{{absender.name}}` in Werkstatt, Willkommensmail, Begleit-Mail): eingetragene
+ * Firmierung zuerst (wie der Absender im Angebot, `mitVorgaben`), sonst der Name der festen Gesellschaft bzw. der Name im Register; nie eine Kennung.
+ */
+export function absenderFirmierung(g: Pick<RegisterGesellschaft, 'id'> & { name?: string; firmierung?: string }): string {
+  return g.firmierung?.trim() || KERN_EINHEITEN.find(e => e.id === g.id)?.label || g.name?.trim() || '';
+}
+
+/**
  * ALLE Gesellschaften des Haushalts: die drei festen (gespeichert oder leer) in fester Reihenfolge, danach die aus dem
  * Register (`g-…`) nach Name. `mitPapierkorb` nur für Papierkorb-Ansicht und Aufräumen.
  */

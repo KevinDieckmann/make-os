@@ -37,13 +37,13 @@ import { wer as teamWer, BEIDE, verantwortlich } from './team';
 import { datenschutzStempeln } from './datenschutz-stempel';
 import { standVon } from './crm-stand';
 import { AngebotFehler, angebotSpeichern, angebotStellen, angebotGesendet, gesellschaftenLaden } from './angebot-server';
-import { angebotHauptprodukt, angebotTitelAus, angebotVorlage, dealWertAusAngebot, istGesellschaft, plusTage, werktagePlus } from './angebote';
+import { angebotHauptprodukt, angebotTitelAus, angebotVorlage, dealWertAusAngebot, plusTage, produktTexteFuer, werktagePlus } from './angebote';
 import { mitVorgaben } from './gesellschaften';
 import { mandatArtVon } from './produkt-karte';
 import { datenschutzAngabenAus } from './netzwerken-recht';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
 import {
-  anfrageEingabePruefen, leitplanken, nurListenpreise, positionenAusWahl, linkVorsatz, linkLage, katalogProdukt, produktWaehlbar, mailOk, ANGEBOT_SEITE, FORMULAR_GRENZEN,
+  anfrageEingabePruefen, leitplanken, nurListenpreise, positionenAusWahl, linkVorsatz, linkLage, katalogProdukt, produktWaehlbar, mailOk, formularGesellschaftOk, ANGEBOT_SEITE, FORMULAR_GRENZEN,
   type AnfrageEingabe, type AnfrageQuelle, type Eingang, type ExternerLink, type FormularEinstellungen, type KatalogProdukt,
 } from './formulare';
 import { FormularFehler, aendereEingang, aendereFormular, empfaengerVon, formularHaushalt, ladeFormular, linkTokenHash, linkZuSlug } from './formulare-speicher';
@@ -112,13 +112,18 @@ export async function angebotAnfordern(roh: unknown, q: AnfrageQuelleKontext, o:
   const vorher = (await ladeFormular(h)).eingaenge.find(x => x.id === eingangId);
   if (vorher && vorher.status !== 'laeuft') return antwort(vorher, extern, e.person.email);
 
-  // Produkte, Gesellschaft (nur Business, eine je Angebot), Positionen.
+  // Produkte, Gesellschaft (eine je Angebot; Business oder die Privat-Arbeits-Einheit — `formularGesellschaftOk`), Positionen.
   const crm = await ladeCrm();
   const erlaubt = extern ? q.link.produkte : undefined;
   const ges = gesellschaftAus(e.produkte.map(w => crm.leistungen.find(l => l.id === w.id)).filter((l): l is Leistung => !!l));
   if (!ges.ok) return { status: 400, body: { ok: false, fehler: ges.fehler } };
   const gesellschaft = ges.g ?? await (await import('@/lib/gesellschaften/server')).absenderVorgabe(h);
-  if (!gesellschaft || !istGesellschaft(gesellschaft) || !istBusinessGesellschaft(gesellschaft)) return { status: 400, body: { ok: false, fehler: 'Für diese Produkte ist keine Business-Gesellschaft als Absender eingerichtet — bitte im Produkt die Gesellschaft wählen.' } };
+  if (!gesellschaft || !formularGesellschaftOk(gesellschaft)) return { status: 400, body: { ok: false, fehler: 'Für diese Produkte ist keine Gesellschaft als Absender eingerichtet, die Angebote stellt — bitte im Produkt die Gesellschaft wählen.' } };
+  // Trennung serverseitig (25.10.): ein Konto „nur Business“ stellt nie ein Angebot einer Privat-Arbeits-Einheit (Selbstständigkeit) — auch nicht übers Formular.
+  if (!extern && !istBusinessGesellschaft(gesellschaft)) {
+    const { privatAusgeblendetFuer } = await import('@/lib/zugang/konto-sicht-server');
+    if (await privatAusgeblendetFuer(q.person)) return { status: 403, body: { ok: false, fehler: 'Diese Produkte gehören zu einer Einheit im Privat-Bereich — für dieses Konto nicht freigegeben.' } };
+  }
   const g = (await gesellschaftenLaden(h)).find(x => x.id === gesellschaft);
   const pos = positionenAusWahl(e.produkte, crm.leistungen, { kleinunternehmer: !!g?.kleinunternehmer, ...(erlaubt ? { erlaubt } : {}) });
   if (!pos.ok) return { status: 400, body: { ok: false, fehler: pos.fehler } };
@@ -134,7 +139,7 @@ export async function angebotAnfordern(roh: unknown, q: AnfrageQuelleKontext, o:
   if (e.firmaId && !crm.firmen.some(f => f.id === e.firmaId && !f.geloeschtAm)) return { status: 400, body: { ok: false, fehler: 'Die gewählte Firma gibt es nicht (mehr) — bitte neu wählen.' } };
   const merkmale = { vorname: e.person.vorname, nachname: e.person.nachname, firma: e.firma.name, email: e.person.email, telefon: e.person.telefon };
   if (gewaehlt?.eingeschraenkt || trifftEingeschraenkte({ kontakt: merkmale }, alle, '')) {
-    const eingang: Eingang = { id: eingangId, am: jetzt.toISOString(), quelle: q.art, ...(extern ? { linkId: q.link.id } : { von: q.person }), status: 'abgelehnt', gruende: ['Verarbeitung eingeschränkt (Art. 18) — nichts angelegt.'], produkte: e.produkte.map(w => w.id), entschieden: { am: jetzt.toISOString(), von: 'system', art: 'abgelehnt', grund: 'Art. 18' } };
+    const eingang: Eingang = { id: eingangId, gesellschaft, am: jetzt.toISOString(), quelle: q.art, ...(extern ? { linkId: q.link.id } : { von: q.person }), status: 'abgelehnt', gruende: ['Verarbeitung eingeschränkt (Art. 18) — nichts angelegt.'], produkte: e.produkte.map(w => w.id), entschieden: { am: jetzt.toISOString(), von: 'system', art: 'abgelehnt', grund: 'Art. 18' } };
     await aendereFormular(b => (b.eingaenge.some(x => x.id === eingangId) ? b : { ...b, eingaenge: [...b.eingaenge, eingang], links: linkGezaehlt(b.links, q, heute) }), h);
     return extern ? { status: 200, body: { ok: true, status: 'freigabe', text: PRUEFUNG_TEXT } } : { status: 409, body: { ok: false, status: 'abgelehnt', eingangId, fehler: EINGESCHRAENKT_FEHLER, eingeschraenkt: true } };
   }
@@ -176,7 +181,7 @@ export function gesellschaftAus(ls: readonly Pick<Leistung, 'gesellschaft' | 'na
   const gs = [...new Set(ls.map(l => l.gesellschaft).filter(x => x && x !== 'offen'))];
   if (gs.length > 1) return { ok: false, fehler: 'Die Produkte gehören zu verschiedenen Gesellschaften — bitte je Gesellschaft ein Angebot anfordern.' };
   if (!gs.length) return { ok: true, g: null };
-  if (!istGesellschaft(gs[0]) || !istBusinessGesellschaft(gs[0])) return { ok: false, fehler: 'Diese Produkte gehören nicht zu einer Business-Gesellschaft — hier gehen nur Business-Angebote.' };
+  if (!formularGesellschaftOk(gs[0])) return { ok: false, fehler: 'Diese Produkte gehören zu keiner Gesellschaft, die Angebote stellt — hier gehen nur Angebote einer Business-Gesellschaft bzw. der Selbstständigkeit.' };
   return { ok: true, g: gs[0] };
 }
 
@@ -201,7 +206,7 @@ async function anfrageAusfuehren(h: string, absicht: import('@/lib/store/absicht
     const quelleText = D.quelle === 'link' ? `Vertrieb (Link: ${D.vertrieblerName})` : 'Vertrieb (Formular)';
 
     await v.schritt('eingang', async () => {
-      const eingang: Eingang = { id: D.eingangId, am: D.jetzt, quelle: D.quelle, ...(D.linkId ? { linkId: D.linkId } : { von: D.von }), status: 'laeuft', produkte: e.produkte.map(w => w.id), an: empfaengerVon(e.person.email) };
+      const eingang: Eingang = { id: D.eingangId, gesellschaft: D.gesellschaft, am: D.jetzt, quelle: D.quelle, ...(D.linkId ? { linkId: D.linkId } : { von: D.von }), status: 'laeuft', produkte: e.produkte.map(w => w.id), an: empfaengerVon(e.person.email) };
       await aendereFormular(b => (b.eingaenge.some(x => x.id === D.eingangId) ? b : {
         ...b, eingaenge: [...b.eingaenge, eingang],
         links: D.linkId ? b.links.map(l => (l.id === D.linkId ? { ...l, zuletzt: D.heute, anzahl: (l.anzahl ?? 0) + 1 } : l)) : b.links,
@@ -219,7 +224,9 @@ async function anfrageAusfuehren(h: string, absicht: import('@/lib/store/absicht
         const g = (await gesellschaftenLaden(h)).find(x => x.id === D.gesellschaft) ?? { id: D.gesellschaft };
         const gueltigBis = plusTage(D.heute, mitVorgaben(g).gueltigkeitTage);
         const titel = angebotTitelAus({ positionen: D.positionen }, crm.leistungen, d('firmaName') as string | undefined) || 'Angebot';
-        const vorlage = angebotVorlage({ anrede: e.person.anrede, vorname: e.person.vorname, nachname: e.person.nachname, titel, gueltigBis });
+        // 25.10.: Einleitung des Hauptprodukts (wenn gesetzt) statt der festen.
+        const firmaName = d('firmaName') as string | undefined;
+        const vorlage = angebotVorlage({ anrede: e.person.anrede, vorname: e.person.vorname, nachname: e.person.nachname, titel, gueltigBis, ...(firmaName ? { firma: firmaName } : {}), heute: D.heute }, produktTexteFuer({ positionen: D.positionen }, crm.leistungen));
         await angebotSpeichern({
           id: angebotId, person: D.person, haushalt: h, wer, jetzt: new Date(D.jetzt),
           felder: { gesellschaft: D.gesellschaft, kontaktId: d('kontaktId'), ...(d('firmaId') ? { firmaId: d('firmaId') } : {}), dealId: d('dealId'), dealWahl: 'deal', titel, positionen: D.positionen, einleitung: vorlage.einleitung, schluss: vorlage.schluss, gueltigBis },
@@ -459,7 +466,7 @@ async function freigabeSenden(h: string, eingangId: string, person: string): Pro
 
 // ── Links ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Produkte, die ein Link freigeben darf: aktive, aus einer Business-Gesellschaft (bzw. ohne Gesellschaft). */
+/** Produkte, die ein Link freigeben darf: aktive, aus einer Gesellschaft, die Angebote stellt (Business bzw. Privat-Arbeits-Einheit), oder ohne Gesellschaft. */
 function linkProdukteOk(ids: unknown, leistungen: readonly Leistung[]): string[] {
   if (!Array.isArray(ids)) throw new FormularFehler('produkte: Liste von Produkt-Kennungen.', 400);
   if (ids.length > FORMULAR_GRENZEN.linkProdukte) throw new FormularFehler(`Höchstens ${FORMULAR_GRENZEN.linkProdukte} Produkte je Link.`, 413);
@@ -468,7 +475,7 @@ function linkProdukteOk(ids: unknown, leistungen: readonly Leistung[]): string[]
   for (const id of l) {
     const p = leistungen.find(x => x.id === id);
     if (!p || !produktWaehlbar(p)) throw new FormularFehler('Ein Produkt ist nicht aktiv (mehr) — nur aktive Produkte gehen in einen Link.', 400);
-    if (p.gesellschaft !== 'offen' && !istBusinessGesellschaft(p.gesellschaft)) throw new FormularFehler(`„${p.name}“ gehört nicht zu einer Business-Gesellschaft.`, 400);
+    if (p.gesellschaft !== 'offen' && !formularGesellschaftOk(p.gesellschaft)) throw new FormularFehler(`„${p.name}“ gehört zu keiner Gesellschaft, die Angebote stellt.`, 400);
   }
   return l;
 }
@@ -551,10 +558,13 @@ export async function linkKatalog(l: ExternerLink): Promise<KatalogProdukt[]> {
   return l.produkte.map(id => crm.leistungen.find(x => x.id === id)).filter((x): x is Leistung => !!x && produktWaehlbar(x)).map(katalogProdukt);
 }
 
-/** Der interne Katalog (Formular des Teams): alle aktiven Produkte aus Business-Gesellschaften (bzw. ohne Gesellschaft). */
-export async function internerKatalog(): Promise<KatalogProdukt[]> {
+/**
+ * Der interne Katalog (Formular des Teams): alle aktiven Produkte einer Gesellschaft, die Angebote stellt (Business bzw. Privat-Arbeits-Einheit — 25.10.),
+ * bzw. ohne Gesellschaft. `nurBusiness` (Konto „nur Business“): nur Business — die Trennung liegt auf dem Server.
+ */
+export async function internerKatalog(o: { nurBusiness?: boolean } = {}): Promise<KatalogProdukt[]> {
   const crm = await ladeCrm();
-  return crm.leistungen.filter(l => produktWaehlbar(l) && (l.gesellschaft === 'offen' || istBusinessGesellschaft(l.gesellschaft))).map(katalogProdukt);
+  return crm.leistungen.filter(l => produktWaehlbar(l) && (l.gesellschaft === 'offen' || (o.nurBusiness ? istBusinessGesellschaft(l.gesellschaft) : formularGesellschaftOk(l.gesellschaft)))).map(katalogProdukt);
 }
 
 // ── Einstellungen ────────────────────────────────────────────────────────────────────────────────────────────────────────────────

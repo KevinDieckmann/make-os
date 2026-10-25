@@ -8,6 +8,9 @@
 //      `space=business` (07.10. abends, Kevin-Regel „Business sieht nie Privat“): NUR Postfächer mit Business-Bereich, nur Business-Bereiche
 //      zur Wahl, nur Absender-Entscheidungen zu Gesprächen dieser Postfächer — serverseitig gefiltert (`postfaecherSicht`, dieselbe Stelle
 //      `imBereich` wie der Strom). Ohne Parameter bzw. `space=privat`: alle EIGENEN Postfächer (die Person verwaltet ihre Postfächer).
+//      `&einheit=<Gesellschaft des Falls>` (25.10., kleine Bauten — Senden aus Fall und Prozess): zu den Business-Postfächern das EIGENE Postfach genau dieser
+//      Einheit, wenn sie unter Privat liegt und als Arbeit zählt (z. B. Selbstständigkeit; DIE Regel `postfachSendetFuer`) — nie für ein Konto, das nur
+//      Business sieht (serverseitig, `einheitenSichtFuer`). Bereiche und Absender bleiben die der Sicht.
 // POST { aktion: 'hinzufuegen', anbieter, adresse, passwort, bereich, anzeigename?, absenderName?, signatur?, imap?, smtp? }
 //        → prüft die Anmeldung beim Anbieter ZUERST; nur wenn sie klappt, werden Register + Passwort gespeichert (sonst 409, nichts gespeichert)
 //      { aktion: 'einstellen', id, bereich?, anzeigename?, absenderName?, signatur?, geteilt? }   (auch Gmail: Bereich festlegen)
@@ -32,6 +35,8 @@ import { ZustandFehler } from '@/lib/inbox/zustand';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { einheitenSichtFuer } from '@/lib/gesellschaften/sicht-server';
 import { kennungSichtbar, nurSichtbareKennungen } from '@/lib/gesellschaften/sicht';
+import { bereichVon, istGesellschaft, istRegisterKennung } from '@/lib/einheiten';
+import { postfachSendetFuer } from '@/lib/postfach/bereich';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,6 +46,8 @@ export async function GET(req: Request) {
   if (z instanceof NextResponse) return z;
   const angefragt = new URL(req.url).searchParams.get('space');
   if (angefragt && angefragt !== 'privat' && angefragt !== 'business') return NextResponse.json({ ok: false, fehler: 'space ist ungültig.' }, { status: 400 });
+  const einheit = new URL(req.url).searchParams.get('einheit');
+  if (einheit !== null && !(istGesellschaft(einheit) || istRegisterKennung(einheit))) return NextResponse.json({ ok: false, fehler: 'einheit ist ungültig.' }, { status: 400 });
   const [roh, bereicheRoh, absenderAlle, es] = await Promise.all([stromRoh(z.person), bereichWahlLaden(), absenderListe(z.person), einheitenSichtFuer(z.person)]);
   // Konto „nur Business“ (15.10., Abnahme 2 A1): immer die Business-Sicht — nie „Privat“, nie die Selbstständigkeit, ohne Zugang zur Firmen-Akte
   // keine Register-Gesellschaft zur Wahl (EINE Regel: lib/gesellschaften/sicht.ts).
@@ -53,9 +60,13 @@ export async function GET(req: Request) {
   // Team-Postfächer anderer Personen, die diese Person sieht — dieselbe Bereichs-Sicht (`imBereich` in postfaecherSicht).
   const mitDirGeteilt = postfaecherSicht({ postfaecher: roh.postfaecher.filter(p => p.oeffentlich.fremd).map(p => p.oeffentlich), gespraeche: [], bereiche: [], absender: [] }, space === 'business' || space === 'privat' ? space : null).postfaecher
     .map(p => ({ id: p.id, anzeigename: p.anzeigename, bereichName: p.bereichName, adresse: p.adresse, besitzerName: p.fremd?.besitzerName ?? '', zustand: p.zustand }));
+  // Senden aus einem Fall der Einheit `einheit` (25.10.): ihr eigenes Postfach dazu — nur Business-Sicht, nur wer Privat sieht, nur eine Einheit unter Privat.
+  const fuerFall = einheit && space === 'business' && es.privat && bereichVon(einheit) === 'privat'
+    ? eigene.map(p => p.oeffentlich).filter(p => p.bereich === einheit && postfachSendetFuer(p.bereich, einheit) && !sicht.postfaecher.some(x => x.id === p.id))
+    : [];
   return NextResponse.json({
     ok: true,
-    postfaecher: sicht.postfaecher,
+    postfaecher: [...sicht.postfaecher, ...fuerFall],
     bereiche: sicht.bereiche,
     ...(space === 'business' ? { nurBusiness: true } : {}),
     anbieter: anbieterFuerFormular(demo).map(a => { const v = VOREINSTELLUNGEN[a]; return { id: a, name: v.name, passwortWort: v.passwortWort, anleitung: v.anleitung, ...(v.link ? { link: v.link } : {}), ...(v.sendeHinweis ? { sendeHinweis: v.sendeHinweis } : {}), eigeneServer: a === 'eigen' }; }),

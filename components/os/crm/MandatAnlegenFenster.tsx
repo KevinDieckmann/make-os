@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Knopf, LEUCHT, Hinweis, feld } from '../ui';
+import { Knopf, LEUCHT, Hinweis, feld, Pillen } from '../ui';
 import { Fenster } from '../Fenster';
 import type { CrmApi } from './daten';
 import type { Mandat } from '@/lib/crm/typen';
@@ -22,6 +22,8 @@ interface Vorschau {
   mandat: Mandat; quelle: 'angebot' | 'produkt' | 'deal'; angebot?: { id: string; nummer?: string }; startVorschlag: string;
   /** Namen aus dem Katalog des Servers (Produkt, je Zusatzmodul Name + Beschreibung) — fehlen bei einem älteren Server, dann der Katalog des Browsers. */
   namen?: { produkt?: string; zusatz: { id: string; name: string; beschreibung: string }[] };
+  /** Wählbare Laufzeiten des Produkts (25.10.) — nur mit mehr als einer. */
+  laufzeiten?: number[];
 }
 
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
@@ -50,9 +52,11 @@ function MandatAnlegenFenster({ api, chanceId, onFertig }: { api?: Pick<CrmApi, 
   const katalog = api?.crm?.stand.leistungen ?? [];
   const [v, setV] = useState<Vorschau | null>(null);
   const [start, setStart] = useState('');
+  // Laufzeit wählbar (25.10.): leer = die vorbelegte (Angebot, Deal bzw. Produkt).
+  const [laufzeit, setLaufzeit] = useState<number | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
-  const laden = useCallback(async (s?: string) => {
-    const r = await postMandat({ chanceId, vorschau: true, ...(s ? { start: s } : {}) });
+  const laden = useCallback(async (s?: string, lz?: number | null) => {
+    const r = await postMandat({ chanceId, vorschau: true, ...(s ? { start: s } : {}), ...(lz ? { laufzeitMonate: lz } : {}) });
     if (!r.ok || !r.mandat) { setFehler(r.fehler ?? 'Vorbelegung nicht geladen.'); return; }
     setFehler(null);
     const neu = r as unknown as Vorschau;
@@ -65,7 +69,7 @@ function MandatAnlegenFenster({ api, chanceId, onFertig }: { api?: Pick<CrmApi, 
   const anlegen = async () => {
     if (laeuft.current || !start) return;
     laeuft.current = true;
-    const r = await postMandat({ chanceId, start });
+    const r = await postMandat({ chanceId, start, ...(laufzeit ? { laufzeitMonate: laufzeit } : {}) });
     laeuft.current = false;
     if (!r.ok) { setFehler(r.fehler ?? 'Mandat nicht angelegt.'); return; }
     onFertig({ ok: true, start, ...(typeof r.mandatId === 'string' ? { mandatId: r.mandatId } : {}), ...(typeof r.text === 'string' ? { text: r.text } : {}), ...(typeof r.hinweis === 'string' ? { hinweis: r.hinweis } : {}) });
@@ -98,8 +102,14 @@ function MandatAnlegenFenster({ api, chanceId, onFertig }: { api?: Pick<CrmApi, 
           )}
           <label style={{ display: 'grid', gap: 4 }}>
             <span style={{ ...klein, textTransform: 'uppercase', letterSpacing: '.08em', fontSize: TYP.mikro }}>Start</span>
-            <input type="date" value={start} onChange={e => { const s = e.target.value; setStart(s); if (s) void laden(s); }} aria-label="Start des Mandats" style={{ ...feld, fontSize: 16, maxWidth: 200, colorScheme: 'dark' }} />
+            <input type="date" value={start} onChange={e => { const s = e.target.value; setStart(s); if (s) void laden(s, laufzeit); }} aria-label="Start des Mandats" style={{ ...feld, fontSize: 16, maxWidth: 200, colorScheme: 'dark' }} />
           </label>
+          {(v.laufzeiten?.length ?? 0) > 1 && (
+            <div style={{ display: 'grid', gap: 4 }}>
+              <span style={{ ...klein, textTransform: 'uppercase', letterSpacing: '.08em', fontSize: TYP.mikro }}>Laufzeit</span>
+              <Pillen<string> liste={v.laufzeiten!.map(n => ({ id: String(n), label: `${n} Monate` }))} aktiv={String(m.mindestlaufzeitMonate ?? '')} onWahl={x => { const n = Number(x); setLaufzeit(n); void laden(start || undefined, n); }} />
+            </div>
+          )}
           <span style={klein}>
             {m.mindestlaufzeitMonate ? `${m.mindestlaufzeitMonate} Monate Mindestlaufzeit${ende ? ` · bis ${endeText(ende)}` : ''}` : 'ohne Mindestlaufzeit'} · Rechnung {m.rechnungsrhythmus === 'quartal' ? 'je Quartal' : m.rechnungsrhythmus} · Zahlungsziel {m.zahlungszielTage} Tage · {m.ustSatz} % USt
           </span>

@@ -16,6 +16,8 @@ const AKZENT = '#21B5AA';
 
 export function Blatt({ d, logoUrl }: { d: AngebotDokument; logoUrl?: string | null }) {
   const rechts = { textAlign: 'right' as const, whiteSpace: 'nowrap' as const };
+  // Spalte „Art.-Nr.“ (25.10.) wie im PDF: nur, wenn mindestens eine Position eine Artikelnummer trägt.
+  const mitArtNr = d.positionen.some(p => !!p.artikelnummer);
   return (
     <div role="document" aria-label={`${d.art ?? 'Angebot'} ${d.nummer}`} style={{ background: PAPIER, color: TINTE, borderRadius: 6, boxShadow: '0 12px 40px -12px rgba(0,0,0,.6)', padding: 'clamp(18px, 4vw, 44px)', fontFamily: 'Helvetica, Arial, sans-serif', fontSize: TYP.bedien, lineHeight: 1.45, width: '100%', maxWidth: 820, minWidth: 0, boxSizing: 'border-box', margin: '0 auto', position: 'relative', overflowWrap: 'anywhere' }}>
       {d.entwurf && <div aria-hidden style={{ position: 'absolute', top: 14, right: 18, fontSize: 12, fontWeight: 700, letterSpacing: '.12em', color: '#C0561A' }}>ENTWURF</div>}
@@ -49,6 +51,7 @@ export function Blatt({ d, logoUrl }: { d: AngebotDokument; logoUrl?: string | n
             <tr style={{ color: LEISE, fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
               {/* 25.10. (Kern-Bau-Test 2): „Pos.“ brach in der Spalte um („Pos“ / „.“) — breit genug und ohne Umbruch. */}
               <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}`, width: 38, whiteSpace: 'nowrap' }}>Pos.</th>
+              {mitArtNr && <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}`, whiteSpace: 'nowrap' }}>Art.-Nr.</th>}
               <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}` }}>Leistung</th>
               <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}`, ...rechts }}>Menge</th>
               <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}`, ...rechts }}>Einzelpreis</th>
@@ -59,6 +62,7 @@ export function Blatt({ d, logoUrl }: { d: AngebotDokument; logoUrl?: string | n
             {d.positionen.map(p => (
               <tr key={p.nr} style={{ verticalAlign: 'top' }}>
                 <td style={{ padding: '8px 4px', borderBottom: `1px solid ${LINIE}`, color: LEISE }}>{p.nr}</td>
+                {mitArtNr && <td style={{ padding: '8px 4px', borderBottom: `1px solid ${LINIE}`, color: LEISE, fontSize: 12 }}>{p.artikelnummer ?? ''}</td>}
                 <td style={{ padding: '8px 4px', borderBottom: `1px solid ${LINIE}` }}>
                   <div style={{ fontWeight: 700 }}>{p.titel}</div>
                   {(p.basis || p.rabatt) && <div style={{ fontSize: 12, color: AKZENT }}>{p.basis}{p.rabatt ? `${p.basis ? ' · ' : ''}Rabatt ${p.rabatt}` : ''}</div>}
@@ -69,7 +73,7 @@ export function Blatt({ d, logoUrl }: { d: AngebotDokument; logoUrl?: string | n
                 <td style={{ padding: '8px 4px', borderBottom: `1px solid ${LINIE}`, ...rechts, fontWeight: 700 }}>{p.betrag}</td>
               </tr>
             ))}
-            {!d.positionen.length && <tr><td colSpan={5} style={{ padding: 14, color: LEISE, textAlign: 'center' }}>Noch keine Position.</td></tr>}
+            {!d.positionen.length && <tr><td colSpan={mitArtNr ? 6 : 5} style={{ padding: 14, color: LEISE, textAlign: 'center' }}>Noch keine Position.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -84,9 +88,20 @@ export function Blatt({ d, logoUrl }: { d: AngebotDokument; logoUrl?: string | n
 
       <div style={{ marginTop: 18, fontSize: 12, color: LEISE }}>{d.hinweise.map((h, i) => <div key={i}>{h}</div>)}</div>
       {d.schluss && <div style={{ whiteSpace: 'pre-wrap', marginTop: 18 }}>{d.schluss}</div>}
+      {/* Annahmeblock (25.10.) wie im PDF: Ort/Datum und Unterschrift des Kunden. */}
+      {d.annahme && (
+        <div style={{ marginTop: 26 }}>
+          <div style={{ fontWeight: 700, marginBottom: 34 }}>Angebot angenommen</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 30, fontSize: 12, color: LEISE }}>
+            <div style={{ borderTop: `1px solid ${TINTE}`, paddingTop: 4 }}>Ort, Datum</div>
+            <div style={{ borderTop: `1px solid ${TINTE}`, paddingTop: 4 }}>Unterschrift und Name (Kunde)</div>
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: 30, paddingTop: 8, borderTop: `1px solid ${LINIE}`, fontSize: 12, color: LEISE, display: 'grid', gap: 2 }}>
         {d.absender.fuss.map((z, i) => <div key={i}>{z}</div>)}
+        {d.agb && <div>Es gelten unsere Allgemeinen Geschäftsbedingungen: <a href={d.agb} target="_blank" rel="noopener noreferrer" style={{ color: LEISE }}>{d.agb}</a></div>}
       </div>
     </div>
   );

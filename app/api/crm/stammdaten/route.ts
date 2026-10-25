@@ -9,6 +9,7 @@
 // POST { aktion: 'pflichtangaben' }                          → Vorschläge übernehmen (nur leere Felder)
 // POST { aktion: 'wahrscheinlichkeit', stufe, p | null }     → von Hand setzen / zurücksetzen
 // POST { aktion: 'wertelisten', wertelisten: Teil }          → Verlustgründe, Kadenz, Ergebnisse, Ziele
+// POST { aktion: 'kundennummer', format: string | null }      → Format der Kundennummern der Instanz (25.10., Vorgabe K-{NR4}; null = Vorgabe)
 //                                                              (Teil-Update, lib/crm/wertelisten.ts prüft und säubert)
 
 import { istBetreiberInstanz } from '@/lib/betrieb/betreiber-server';
@@ -37,6 +38,7 @@ import { befunde } from '@/lib/crm/befunde';
 import { localDay, tagVon } from '@/lib/zeit';
 import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
+import { KUNDENNUMMER_VORGABE, kundennummerFormat, kundennummerFormatOk } from '@/lib/crm/kundennummer';
 import { firmenAbgleichen } from '@/lib/crm/abgleich';
 import { firmenDubletten } from '@/lib/crm/firmen';
 import { dubletten } from '@/lib/crm/dubletten';
@@ -120,6 +122,8 @@ export async function GET(req: Request) {
       kadenzPersonen: Object.fromEntries((['A', 'B', 'C', 'D'] as const).map(k => [k, kontakte.filter(x => x.kreis === k && !ausgenommen(x)).length])),
       ergebnisse: voll.ergebnisse,
       ziele: voll.ziele,
+      // Kundennummern (25.10.): Format der Instanz, Vorgabe, wie viele schon vergeben sind (der Zähler fällt nie).
+      kundennummer: { format: crm.kundennummern?.format ?? null, vorgabe: KUNDENNUMMER_VORGABE, wirksam: kundennummerFormat(crm), vergeben: crm.kundennummern?.zuletzt ?? 0 },
       ist: { umsatzNeu30: crm.chancen.some(c => c.stufe === 'gewonnen') ? umsatzNeu30 : null, sql30: kpis.find(k => k.id === 'sql_30')?.wert ?? null, gespraecheWoche: kpis.find(k => k.id === 'gespraeche')?.wert ?? null, dealsOffen: crm.chancen.filter(c => OFFENE_STUFEN.includes(c.stufe)).length },
     },
     letzterImport: letzterImport ? { zeit: letzterImport.ts, text: letzterImport.title ?? '' } : null,
@@ -149,7 +153,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
-  let b: { aktion?: string; stufe?: string; p?: number | null; wertelisten?: unknown };
+  let b: { aktion?: string; stufe?: string; p?: number | null; wertelisten?: unknown; format?: unknown };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (b.aktion === 'firmen-abgleich') return NextResponse.json({ ok: true, ...(await firmenAbgleichen()) });
   if (b.aktion === 'pflichtangaben') {
@@ -177,6 +181,17 @@ export async function POST(req: Request) {
       if (p === null) delete w[s.id]; else w[s.id] = p;
       return { ...cur, wahrscheinlichkeiten: w };
     });
+    return NextResponse.json({ ok: true });
+  }
+  if (b.aktion === 'kundennummer') {
+    // Nur das Format — vergeben wird beim ersten Angebot bzw. Mandat (lib/crm/kundennummer.ts); vergebene Nummern bleiben, wie sie sind.
+    const f = b.format === null || b.format === '' ? null : typeof b.format === 'string' ? b.format.trim() : undefined;
+    if (f === undefined || (f !== null && (f.length > 40 || !kundennummerFormatOk(f)))) return NextResponse.json({ ok: false, fehler: 'Format: genau eine laufende Nummer ({NR} bzw. {NR3}–{NR6}), dazu Buchstaben, Ziffern, - _ . / und optional {JAHR}/{JJ} — höchstens 40 Zeichen.' }, { status: 400 });
+    await aendereCrm(cur => {
+      const k = { ...(cur.kundennummern ?? {}) };
+      if (f) k.format = f; else delete k.format;
+      return { ...cur, kundennummern: k };
+    }, werAus(req));
     return NextResponse.json({ ok: true });
   }
   if (b.aktion === 'wertelisten') {

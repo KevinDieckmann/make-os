@@ -13,7 +13,7 @@ import { gesellschaftenName } from '@/lib/crm/gesellschaften';
 import { istGesellschaft, type GesellschaftId, type Gesellschaftskennung } from '@/lib/einheiten';
 import { inPapierkorb, ausPapierkorb, imPapierkorb } from '@/lib/eintraege/sicher';
 import {
-  alleGesellschaften, gesellschaftVon, steckbriefAnwenden, gesellschafterSaeubern, beteiligungSaeubern, vertragSaeubern,
+  alleGesellschaften, absenderFirmierung, gesellschaftVon, steckbriefAnwenden, gesellschafterSaeubern, beteiligungSaeubern, vertragSaeubern,
   eintragAktion, gesellschaftArchiv, gesellschaftVerweise, verweiseAnzahl, verweiseSatz, registerAufraeumen, eintragVerweise, eintragVerweiseSatz, GRENZEN, PRAEFIX,
   type RegisterDatei, type RegisterGesellschaft, type RegisterFehler, type RegisterListe, type EintragAktion, type CrmVerweisTeil,
   beschlussSaeubern, organSaeubern, fassungSaeubern, faelligeErinnerungen, geloeschtVermerken, operativeBusinessGesellschaft,
@@ -26,6 +26,16 @@ export const standVon = (g: RegisterGesellschaft) => fingerabdruck(g as unknown 
 
 export async function ladeRegister(haushalt: string): Promise<RegisterDatei | null> {
   return loadJson<RegisterDatei>(registerName(haushalt));
+}
+
+/**
+ * Firmierung der Gesellschaft `id` als Absender (25.10., kleine Bauten — `{{absender.name}}`): aus dem Register dieses Haushalts (auch im Papierkorb —
+ * das Mandat gehört ihr weiter). „offen“, unbekannt oder ohne Haushalt → leer (der Platzhalter bleibt dann leer, wie jeder fehlende Wert).
+ */
+export async function absenderFirmierungLaden(haushalt: string | null | undefined, id: string | null | undefined): Promise<string> {
+  if (!id) return '';
+  const g = alleGesellschaften(haushalt ? await ladeRegister(haushalt) : null, { mitPapierkorb: true }).find(x => x.id === id);
+  return g ? absenderFirmierung(g) : '';
 }
 
 /**

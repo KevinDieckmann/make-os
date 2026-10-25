@@ -92,7 +92,7 @@ export async function POST(req: Request) {
   if (!zugang) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
   if (alterBau) return alterBau;
-  let b: { aktion?: string; id?: string; felder?: Record<string, unknown>; deal?: Record<string, unknown>; trotzdem?: boolean; zweiter?: boolean; chanceId?: string; an?: string; bis?: string; grundArt?: string; grund?: string; notiz?: string; personIds?: unknown[]; von?: string; nach?: string; leadMit?: boolean; dealsMit?: boolean; behalten?: string; weg?: string; start?: unknown; vorschau?: unknown };
+  let b: { aktion?: string; id?: string; felder?: Record<string, unknown>; deal?: Record<string, unknown>; trotzdem?: boolean; zweiter?: boolean; chanceId?: string; an?: string; bis?: string; grundArt?: string; grund?: string; notiz?: string; personIds?: unknown[]; von?: string; nach?: string; leadMit?: boolean; dealsMit?: boolean; behalten?: string; weg?: string; start?: unknown; vorschau?: unknown; laufzeitMonate?: unknown };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const person = personAus(req);
   const jetzt = new Date().toISOString();
@@ -147,7 +147,14 @@ export async function POST(req: Request) {
       start = s0;
     }
     const vorschau = b.vorschau === true;
-    const gebaut = mandatAusDeal(c, { leistungen: crm.leistungen, angebote: crm.angebote, firmen: crm.firmen, id: neueId('m'), jetzt, heute, person, start: vorschau ? start ?? startVorschlag(heute) : start });
+    // Laufzeit wählbar (25.10.): ganze Monate 1–120 aus dem Fenster — ersetzt die vorbelegte; Unsinn → 400.
+    let laufzeitMonate: number | undefined;
+    if (b.laufzeitMonate !== undefined && b.laufzeitMonate !== null && b.laufzeitMonate !== '') {
+      const n = Number(b.laufzeitMonate);
+      if (!Number.isInteger(n) || n < 1 || n > 120) return NextResponse.json({ ok: false, fehler: 'Laufzeit: ganze Monate von 1 bis 120.' }, { status: 400 });
+      laufzeitMonate = n;
+    }
+    const gebaut = mandatAusDeal(c, { leistungen: crm.leistungen, angebote: crm.angebote, firmen: crm.firmen, id: neueId('m'), jetzt, heute, person, start: vorschau ? start ?? startVorschlag(heute) : start, ...(laufzeitMonate ? { laufzeitMonate } : {}) });
     const m = gebaut.mandat;
     if (vorschau) {
       // Namen fürs Fenster (25.10., Kern-Reste 1): Produkt und Zusatzmodule mit dem Katalog des Servers benannt — so zeigt das Fenster dieselben Namen auch dort,
@@ -155,7 +162,10 @@ export async function POST(req: Request) {
       const { zusatzName, zusatzBeschreibung } = await import('@/lib/crm/mandat-zusatz');
       const produktName = m.leistungId ? crm.leistungen.find(l => l.id === m.leistungId)?.name : undefined;
       const namen = { ...(produktName ? { produkt: produktName } : {}), zusatz: (m.zusatz ?? []).map(z => ({ id: z.id, name: zusatzName(z, crm.leistungen), beschreibung: zusatzBeschreibung(z, crm.leistungen) })) };
-      return NextResponse.json({ ok: true, vorschau: true, mandat: m, quelle: gebaut.quelle, ...(gebaut.angebot ? { angebot: gebaut.angebot } : {}), startVorschlag: startVorschlag(heute), namen });
+      // Wählbare Laufzeiten des Produkts (25.10.) — das Fenster bietet sie zum Antippen an (nur bei laufendem Honorar).
+      const { laufzeitenZurWahl } = await import('@/lib/crm/produkt-karte');
+      const laufzeiten = m.honorar.basis !== 'einmalig' ? laufzeitenZurWahl(m.leistungId ? crm.leistungen.find(l => l.id === m.leistungId) : undefined) : [];
+      return NextResponse.json({ ok: true, vorschau: true, mandat: m, quelle: gebaut.quelle, ...(gebaut.angebot ? { angebot: gebaut.angebot } : {}), startVorschlag: startVorschlag(heute), namen, ...(laufzeiten.length > 1 ? { laufzeiten } : {}) });
     }
     // (die Prüfung läuft unten noch einmal INNERHALB der Sperre — ein Doppelklick legt kein zweites Mandat an, Stufe 2)
     const ids = new Set(c.kontaktIds);

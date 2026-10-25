@@ -11,17 +11,21 @@ import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import type { Gesellschaft } from '@/lib/crm/gesellschaften';
 import type { Mahnstufe, Mahnung, RechnungEmpfaenger, RechnungLauf, RechnungPosition, RechnungZusatz, SteuerHinweis } from './typen';
 import { RECHTSART, istGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
-import { positionNettoCent, ustCent, nummerAusFormat, euroCent, mengeText, KURZ_VORGABE, ZAHLUNGSZIEL_VORGABE_TAGE, UST_SAETZE } from '@/lib/crm/angebote';
+import { positionNettoCent, ustCent, nummerAusFormat, euroCent, mengeText, rechnungsformatOk, KURZ_VORGABE, ZAHLUNGSZIEL_VORGABE_TAGE, UST_SAETZE, RECHNUNG_NUMMER_VORGABE } from '@/lib/crm/angebote';
 import { istKontaktKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
 import { monatsGrenzen, monatsName, monatsHonorar, mandatLaeuftIm as mandatLaeuftImMonat, type Leistungsmonat } from '@/lib/crm/mandat-laufzeit';
 import { ANSCHRIFT_MAX } from '@/lib/crm/zahlung';
 import { ABGERECHNET_PRAEFIX } from '@/lib/make-one/liquiditaet';
+import { artikelnummerSaeubern } from '@/lib/crm/produkt-karte';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
 
-/** Nummernformat der Rechnungen (Kevin 08.10.: „wie beim Angebot“) — z. B. „KDV-R-2026-0001“. Gemeinsamer Kreis für Rechnungen und Stornorechnungen. */
-export const RECHNUNG_NUMMER_FORMAT = '{KURZ}-R-{JAHR}-{NR4}';
+/**
+ * Nummernformat der Rechnungen (Kevin 08.10.: „wie beim Angebot“) — z. B. „KDV-R-2026-0001“. Gemeinsamer Kreis für Rechnungen und Stornorechnungen.
+ * Seit 25.10. die VORGABE: je Gesellschaft einstellbar (`Gesellschaft.rechnungsformat`/`stornoformat`, `mitVorgaben`), der Kreis bleibt derselbe.
+ */
+export const RECHNUNG_NUMMER_FORMAT = RECHNUNG_NUMMER_VORGABE;
 /** Grenzen — darüber lehnt der Server ab (413), nie still kürzen. */
 export const RECHNUNG_GRENZEN = { positionen: 200, titel: 200, text: 6000, einleitung: 3000, schluss: 3000, grund: 300, empfaengerFeld: 160 } as const;
 /** Höchstwerte je Position (Schutz vor Tippfehlern). */
@@ -72,6 +76,8 @@ export function positionSaeubern(o: Record<string, unknown>, i: number): Rechnun
     id: typeof o.id === 'string' && ID.test(o.id) ? o.id : `p${i + 1}`, ...(typeof o.leistungId === 'string' && ID.test(o.leistungId) ? { leistungId: o.leistungId } : {}),
     titel, text: txt(o.text, RECHNUNG_GRENZEN.text), menge, einheit: zeile(o.einheit, 30) || 'pauschal', einzelpreisCent: preis,
     ...(rabatt ? { rabattProzent: rabatt } : {}), ustSatz: satz,
+    // Artikelnummer (25.10., optional) — aus Preis-Teil bzw. Angebotsposition; ohne diese Zeile fiele sie beim Speichern weg.
+    ...(artikelnummerSaeubern(o.artikelnummer) ? { artikelnummer: artikelnummerSaeubern(o.artikelnummer) } : {}),
   };
 }
 
@@ -83,14 +89,14 @@ export function positionenSaeubern(roh: unknown): RechnungPosition[] {
   return l;
 }
 
-const EMPF_FELDER = ['name', 'firma', 'strasse', 'plz', 'ort', 'land', 'ustId', 'email', 'referenz'] as const;
+const EMPF_FELDER = ['name', 'firma', 'strasse', 'plz', 'ort', 'land', 'ustId', 'email', 'referenz', 'kundennummer'] as const;
 /** Empfänger säubern — nur bekannte Felder, Zeilen ohne Steuerzeichen; leer = undefined. */
 export function empfaengerSaeubern(roh: unknown): RechnungEmpfaenger | undefined {
   if (!roh || typeof roh !== 'object') return undefined;
   const o = roh as Record<string, unknown>;
   const e: RechnungEmpfaenger = {};
   for (const f of EMPF_FELDER) {
-    const max = f === 'plz' ? 12 : f === 'ustId' ? 20 : RECHNUNG_GRENZEN.empfaengerFeld;
+    const max = f === 'plz' ? 12 : f === 'ustId' ? 20 : f === 'kundennummer' ? 40 : RECHNUNG_GRENZEN.empfaengerFeld;
     const w = f === 'ustId' ? zeile(o[f], max).replace(/\s/g, '').toUpperCase() : zeile(o[f], max);
     if (w) e[f] = w;
   }
@@ -210,11 +216,13 @@ export function hoechsteVergeben(rechnungen: readonly Pick<Rechnung, 'firmaId' |
  * Die nächste Nummer — lückenlos: höchste vergebene (Zähler-Bestand ODER Finanzplan, falls der Zähler nach einem Abbruch
  * hinterherhinkt) + 1. Belegt eine Nummer schon den Text (z. B. nach einem Kürzel-Wechsel), wird weitergezählt.
  */
-export function naechsteNummer(rechnungen: readonly Pick<Rechnung, 'firmaId' | 'lauf' | 'nummer'>[], zaehler: number | undefined, g: Gesellschaftskennung, jahr: number, kurz: string): { lauf: RechnungLauf; nummer: string } {
+export function naechsteNummer(rechnungen: readonly Pick<Rechnung, 'firmaId' | 'lauf' | 'nummer'>[], zaehler: number | undefined, g: Gesellschaftskennung, jahr: number, kurz: string, format: string = RECHNUNG_NUMMER_FORMAT): { lauf: RechnungLauf; nummer: string } {
+  // 25.10.: Format der Gesellschaft (Rechnung bzw. Storno) — ein ungültiges (ohne Jahr, ohne laufende Nummer) nie; dann die Vorgabe.
+  const f = rechnungsformatOk(format) ? format : RECHNUNG_NUMMER_FORMAT;
   let nr = Math.max(zaehler ?? 0, hoechsteVergeben(rechnungen, g, jahr)) + 1;
   const texte = new Set(rechnungen.map(r => r.nummer).filter(Boolean));
-  let nummer = nummerAusFormat(RECHNUNG_NUMMER_FORMAT, kurz, jahr, nr);
-  while (texte.has(nummer)) { nr++; nummer = nummerAusFormat(RECHNUNG_NUMMER_FORMAT, kurz, jahr, nr); }
+  let nummer = nummerAusFormat(f, kurz, jahr, nr);
+  while (texte.has(nummer)) { nr++; nummer = nummerAusFormat(f, kurz, jahr, nr); }
   return { lauf: { jahr, nr }, nummer };
 }
 
@@ -334,7 +342,7 @@ export function anschriftZerlegen(t: string | undefined): Pick<RechnungEmpfaenge
 }
 
 type KontaktTeil = Pick<Kontakt, 'id' | 'vorname' | 'nachname' | 'email' | 'firma' | 'zahlung'>;
-type FirmaTeil = Pick<Firma, 'id' | 'name' | 'stadt' | 'zahlung'>;
+type FirmaTeil = Pick<Firma, 'id' | 'name' | 'stadt' | 'zahlung'> & Partial<Pick<Firma, 'kundennummer'>>;
 
 /** Empfänger aus der Kartei: Rechnungsempfänger der Zahlungsdaten zuerst, sonst Firma/Person; USt-IdNr. und Referenz dazu. */
 export function empfaengerAusCrm(k: KontaktTeil | undefined, f: FirmaTeil | undefined): RechnungEmpfaenger {
@@ -348,6 +356,8 @@ export function empfaengerAusCrm(k: KontaktTeil | undefined, f: FirmaTeil | unde
     ...(z?.ustId ? { ustId: z.ustId.replace(/\s/g, '').toUpperCase() } : {}),
     ...(z?.empfaenger?.email ? { email: z.empfaenger.email } : k?.email ? { email: k.email } : {}),
     ...(z?.referenz ? { referenz: z.referenz } : {}),
+    // Kundennummer (25.10.) — nur, wenn die Firma eine trägt.
+    ...(f?.kundennummer ? { kundennummer: f.kundennummer } : {}),
   };
   return empfaengerSaeubern(e) ?? {};
 }
@@ -391,6 +401,7 @@ export function positionenAusAngebot(a: Pick<Angebot, 'positionen'>, kleinuntern
     id: `p${i + 1}`, ...(p.leistungId ? { leistungId: p.leistungId } : {}), titel: p.titel, text: p.text, menge: p.menge,
     einheit: p.basis === 'monat' && /^(pauschal|)$/i.test(p.einheit) ? 'Monat' : p.basis === 'jahr' && /^(pauschal|)$/i.test(p.einheit) ? 'Jahr' : p.einheit,
     einzelpreisCent: p.einzelpreisCent, ...(p.rabattProzent ? { rabattProzent: p.rabattProzent } : {}), ustSatz: kleinunternehmer ? 0 : p.ustSatz,
+    ...(p.artikelnummer ? { artikelnummer: p.artikelnummer } : {}),
   }));
 }
 
@@ -454,7 +465,7 @@ export function anteilText(l: Leistungsmonat): string {
  * (lib/finanzen/ust.ts) — gerechnet auf das Honorar, wie es am Mandat steht; die Position sagt „anteilig …, 15 von 31 Tagen“.
  * Ohne `anteil` bzw. voller Monat: wie bisher (bit-gleich).
  */
-export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen'>, monat: string, opt: { kleinunternehmer?: boolean; nettoAusBrutto: (b: number, s: number) => number; anteil?: Leistungsmonat | null }): RechnungPosition {
+export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen'>, monat: string, opt: { kleinunternehmer?: boolean; nettoAusBrutto: (b: number, s: number) => number; anteil?: Leistungsmonat | null; /** Artikelnummer des Hauptpreis-Teils (25.10.) — ohne: bit-gleich wie bisher. */ artikelnummer?: string }): RechnungPosition {
   const teil = opt.anteil?.anteilig && m.honorar.basis === 'monat' ? opt.anteil : null;
   const honorar = monatsHonorar(m, teil);
   const netto = m.honorar.netto ? honorar : opt.nettoAusBrutto(honorar, m.ustSatz);
@@ -462,6 +473,7 @@ export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz
   return {
     id: 'p1', titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}${teil ? ` (${anteilText(teil)})` : ''}`.slice(0, RECHNUNG_GRENZEN.titel), text: (m.leistungen ?? []).filter(Boolean).map(x => `• ${x}`).join('\n').slice(0, RECHNUNG_GRENZEN.text),
     menge: 1, einheit, einzelpreisCent: Math.max(0, Math.round(netto * 100)), ustSatz: opt.kleinunternehmer ? 0 : (UST_SAETZE as readonly number[]).includes(m.ustSatz) ? m.ustSatz : 19,
+    ...(opt.artikelnummer ? { artikelnummer: opt.artikelnummer } : {}),
   };
 }
 

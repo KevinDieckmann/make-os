@@ -51,7 +51,7 @@ export const BEISPIEL_FELDER: Readonly<Record<string, TestWert>> = {
 export const BEISPIEL_PLATZHALTER: Readonly<Record<string, string>> = {
   'kontakt.anrede': 'Sie', 'kontakt.vorname': 'Erika', 'kontakt.nachname': 'Beispiel', 'firma.name': 'Beispiel GmbH', 'deal.titel': 'Beispiel-Deal', 'mandat.titel': 'Beispiel-Mandat', 'event.titel': 'Beispiel-Abend', 'kampagne.titel': 'Beispiel-Kampagne',
   'kontakt.gruss': 'Guten Tag Erika Beispiel', 'kunde.gruss': 'Guten Tag Erika Beispiel', 'fall.phase': 'Umsetzung', 'fall.termin': '2026-11-05',
-  'deal.stufe': 'Angebot', 'deal.naechster-schritt': 'Rückfragen zum Angebot klären',
+  'absender.name': 'Beispiel Beratung GmbH', 'deal.stufe': 'Angebot', 'deal.naechster-schritt': 'Rückfragen zum Angebot klären',
 };
 export const BEISPIEL_EMPFAENGER_WERTE = { kontaktId: 'c-beispiel', name: 'Erika Beispiel', email: 'erika@example.invalid', telefon: '+49 000 0000000' } as const;
 

@@ -10,7 +10,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { AngebotBasis, AngebotPosition, Leistung } from '@/lib/crm/typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { feld, HakenZiel } from '../../ui';
+import { feld, HakenZiel, Pillen } from '../../ui';
 import { katalog, positionNettoCent, euroCent, centAusEingabe, eingabeAusCent, mengeAusEingabe, mengeText, BASIS_LABEL, UST_SAETZE, istSatzPosition } from '@/lib/crm/angebote';
 import { angebotPositionenAusProdukt, optionImAngebot, optionUmschalten } from '@/lib/crm/produkt-karte';
 import { angebotKachel } from '@/lib/crm/produkt-katalog';
@@ -99,8 +99,9 @@ export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, on
   );
 }
 
-export function PositionZeile({ p, nr, onAendern, onWeg, onHoch, kleinunternehmer, textFehlt, aus }: {
+export function PositionZeile({ p, nr, onAendern, onWeg, onHoch, kleinunternehmer, textFehlt, aus, laufzeiten }: {
   p: AngebotPosition; nr: number; onAendern: (teil: Partial<AngebotPosition>) => void; onWeg: () => void; onHoch?: () => void; kleinunternehmer: boolean; textFehlt?: boolean; aus?: boolean;
+  /** Wählbare Laufzeiten des Produkts (25.10., `laufzeitenZurWahl`) — mit mehr als einer stehen sie zum Antippen neben dem Feld. */ laufzeiten?: readonly number[];
 }) {
   const [offen, setOffen] = useState(false);
   const basen: AngebotBasis[] = ['einmalig', 'monat', 'jahr'];
@@ -122,6 +123,10 @@ export function PositionZeile({ p, nr, onAendern, onWeg, onHoch, kleinunternehme
         </select>
         {p.basis !== 'einmalig' && <ZahlFeld label="Laufzeit Monate" breite={70} rechts wert={p.laufzeitMonate ? String(p.laufzeitMonate) : ''} onWert={t => { const n = t.trim() ? Math.round(Number(t)) : 0; if (!Number.isFinite(n) || n < 0 || n > 600) return false; onAendern({ laufzeitMonate: n || undefined }); return true; }} />}
         {p.basis !== 'einmalig' && <span style={klein}>{p.laufzeitMonate ? 'Monate' : 'Monate (leer = 12 im Gesamtwert)'}</span>}
+        {/* 25.10. (Kevin: „Laufzeit wählbar“): die Laufzeiten des Produkts zum Antippen — Deal-Wert und Mandat folgen der Laufzeit der Position. */}
+        {p.basis !== 'einmalig' && (laufzeiten?.length ?? 0) > 1 && !aus && (
+          <Pillen<string> liste={laufzeiten!.map(m => ({ id: String(m), label: `${m} Monate` }))} aktiv={p.laufzeitMonate ? String(p.laufzeitMonate) : ''} onWahl={m => onAendern({ laufzeitMonate: Number(m) })} />
+        )}
         {/* 24.10.: Tages-/Stundensatz — die Menge ist die geplante je Monat, abgerechnet wird die echte (am Mandat „abrechnen“). */}
         {istSatzPosition(p) && <span style={klein}>Menge = geplante {p.satz === 'tag' ? 'Tage' : 'Stunden'} je Monat · abgerechnet nach {p.satz === 'tag' ? 'Tagen' : 'Stunden'}</span>}
         {!kleinunternehmer && (

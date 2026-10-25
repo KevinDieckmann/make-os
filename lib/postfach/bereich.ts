@@ -13,7 +13,7 @@
 // Namen kommen NIE aus dem Code: Gesellschaften aus lib/einheiten.ts bzw. dem Register, Kunden aus dem CRM (Firmenname). Der Aufrufer
 // reicht die Namen (`namen`, vom Server: `bereichNamen()` in lib/postfach/register.ts bzw. `bereiche` der Antworten).
 
-import { bereichVon, istGesellschaft, istRegisterKennung } from '@/lib/einheiten';
+import { bereichVon, istGesellschaft, istRegisterKennung, zaehltAlsArbeit } from '@/lib/einheiten';
 import { EINHEIT_FARBE, EINHEIT_GRAU } from '@/lib/aufgaben/einheit';
 import { istMandantSpace, mandantSpaceId, firmaVonSpace, mandantenSpaces, MANDANT_FARBE, PRIVAT_FARBE } from '@/lib/aufgaben/struktur';
 
@@ -47,6 +47,23 @@ export interface BereichEintrag { id: string; name: string; art: Exclude<Bereich
  * Rein, client-sicher.
  */
 export const postfachRaum = (bereich: string | null | undefined): 'privat' | 'business' => (bereich ? bereichVon(bereich) : 'privat');
+
+/** Für `postfachSendetFuer`: eine Auswahl-Liste, deren Fall noch nicht feststeht (Werkstatt-Maske, Formular-Absender). */
+export const JEDE_ARBEITS_EINHEIT = 'jede-arbeits-einheit' as const;
+/**
+ * Darf ein Postfach Mails aus einem Fall bzw. Prozess senden (Mail-Entwurf der Werkstatt, Willkommensmail, Fall-Mails, Angebote des Formulars)?
+ * DIE Regel (25.10., kleine Bauten — Kevin: auch die Selbstständigkeit stellt Angebote und hat Fälle):
+ *   · Business-Bereich (Gesellschaft, Kunde): ja — für jeden Fall, wie bisher.
+ *   · Bereich einer Einheit unter Privat, deren Zeit als Arbeit zählt (`zaehltAlsArbeit`, z. B. die Selbstständigkeit): nur für Fälle und Prozesse
+ *     DIESER Einheit (`fuer` = Gesellschaft des Falls) bzw. in Auswahl-Listen ohne Fall (`JEDE_ARBEITS_EINHEIT`). Nie eine feste Kennung abfragen.
+ *   · Privat oder ohne Bereich: nie.
+ * Ein Konto, das nur Business sieht, bekommt solche Postfächer gar nicht erst (die Aufrufer filtern serverseitig über `einheitenSichtFuer`). Rein.
+ */
+export function postfachSendetFuer(bereich: string | null | undefined, fuer?: string | null): boolean {
+  if (!bereich || bereich === 'privat') return false;
+  if (bereichVon(bereich) === 'business') return true;
+  return zaehltAlsArbeit(bereich) && (fuer === JEDE_ARBEITS_EINHEIT || fuer === bereich);
+}
 
 export interface BereichAnzeige {
   name: string;

@@ -13,7 +13,7 @@
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { KERN_EINHEITEN, RECHTSART, UG_NAME } from '@/lib/einheiten';
 import { ibanGueltig, ibanGrundform, ibanMaskiert } from './zahlung';
-import { GESELLSCHAFTEN, KURZ_VORGABE, NUMMER_VORGABE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE, nummernformatOk, istGesellschaft } from './angebote';
+import { GESELLSCHAFTEN, KURZ_VORGABE, NUMMER_VORGABE, RECHNUNG_NUMMER_VORGABE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE, nummernformatOk, rechnungsformatOk, istGesellschaft } from './angebote';
 
 export interface GesellschaftBank { inhaber?: string; bank?: string; iban?: string; bic?: string; /** Nur an den Browser: eine IBAN ist gespeichert (`iban` ist dann maskiert). */ ibanGesetzt?: boolean }
 export interface Gesellschaft {
@@ -40,11 +40,23 @@ export interface Gesellschaft {
   gueltigkeitTage?: number;
   /** Nummernformat für Angebote, Vorgabe `{KURZ}-A-{JAHR}-{NR4}`. */
   nummernformat?: string;
+  /**
+   * Nummernformat für Rechnungen (25.10., kleine Bauten — optional, additiv), Vorgabe `{KURZ}-R-{JAHR}-{NR4}` (= wie bis heute). Fortlaufend und lückenlos je
+   * Gesellschaft und Jahr bleibt (EIN Zähler für Rechnungen und Stornorechnungen) — darum muss das Jahr drinstehen. Der alte Stand verwirft das Feld und
+   * nummeriert wieder mit der Vorgabe weiter (die laufende Nummer bleibt dieselbe).
+   */
+  rechnungsformat?: string;
+  /** Nummernformat für Stornorechnungen (25.10., optional) — Vorgabe: das Rechnungsformat (wie heute: Stornos stehen im selben Kreis). */
+  stornoformat?: string;
   /** Kürzel für die Nummer, Vorgabe KDC · KDV · MOS. */
   kurz?: string;
   /** Logo in der Dateiablage (nur PNG/JPG). */
   logoDateiId?: string;
   fusstext?: string;
+  /** Annahmeblock im Angebots-PDF (25.10., optional): Ort, Datum, Unterschrift des Kunden — Vorgabe aus. */
+  annahmeblock?: boolean;
+  /** Link zu den AGB (25.10., optional, nur https) — steht im Fuß des Angebots-PDFs. */
+  agbUrl?: string;
   geaendert?: string;
   geaendertVon?: string;
 }
@@ -67,10 +79,12 @@ export function alleGesellschaften(d: GesellschaftenDatei | null | undefined): G
 }
 
 /** Werte zum Rechnen (Vorgaben, wo nichts steht). */
-export function mitVorgaben(g: Gesellschaft): Gesellschaft & { name: string; kurz: string; nummernformat: string; zahlungszielTage: number; gueltigkeitTage: number } {
+export function mitVorgaben(g: Gesellschaft): Gesellschaft & { name: string; kurz: string; nummernformat: string; rechnungsformat: string; stornoformat: string; zahlungszielTage: number; gueltigkeitTage: number } {
+  const rechnungsformat = g.rechnungsformat && rechnungsformatOk(g.rechnungsformat) ? g.rechnungsformat : RECHNUNG_NUMMER_VORGABE;
   return {
     ...g, name: g.firmierung || KERN_EINHEITEN.find(e => e.id === g.id)?.label || g.id, kurz: g.kurz || KURZ_VORGABE[g.id],
     nummernformat: g.nummernformat && nummernformatOk(g.nummernformat) ? g.nummernformat : NUMMER_VORGABE,
+    rechnungsformat, stornoformat: g.stornoformat && rechnungsformatOk(g.stornoformat) ? g.stornoformat : rechnungsformat,
     zahlungszielTage: g.zahlungszielTage ?? ZAHLUNGSZIEL_VORGABE_TAGE, gueltigkeitTage: g.gueltigkeitTage ?? GUELTIG_VORGABE_TAGE,
   };
 }
@@ -99,10 +113,24 @@ export function gesellschaftAnwenden(alt: Gesellschaft, roh: Record<string, unkn
     if (f && !nummernformatOk(f)) fehler.push({ feld: 'nummernformat', text: 'Nummernformat braucht genau eine laufende Nummer ({NR} bzw. {NR3}–{NR6}); erlaubt sind {KURZ}, {JAHR}, {JJ}, Buchstaben, Ziffern und - _ . /' });
     else setze('nummernformat', f);
   }
+  // Rechnungs- und Stornoformat (25.10.): dieselben Zeichen wie beim Angebot, dazu das Jahr — ungültig → Fehler (400), nie still verworfen.
+  for (const k of ['rechnungsformat', 'stornoformat'] as const) {
+    if (!hat(k)) continue;
+    const f = zeile(roh[k], 60);
+    if (f && !rechnungsformatOk(f)) fehler.push({ feld: k, text: `${k === 'rechnungsformat' ? 'Rechnungsnummer' : 'Stornonummer'}: genau eine laufende Nummer ({NR} bzw. {NR3}–{NR6}) und das Jahr ({JAHR} oder {JJ}) — der Kreis zählt je Gesellschaft und Jahr; erlaubt sind {KURZ}, Buchstaben, Ziffern und - _ . /` });
+    else setze(k, f);
+  }
   if (hat('kleinunternehmer')) setze('kleinunternehmer', roh.kleinunternehmer === true ? true : undefined);
   if (hat('zahlungszielTage')) setze('zahlungszielTage', ganz(roh.zahlungszielTage, 0, 180));
   if (hat('gueltigkeitTage')) setze('gueltigkeitTage', ganz(roh.gueltigkeitTage, 1, 365));
   if (hat('fusstext')) setze('fusstext', block(roh.fusstext, 600));
+  // Annahmeblock und AGB-Link (25.10.): Ein/Aus je Gesellschaft (Vorgabe aus), Link nur https — sonst Fehler (400), nie still.
+  if (hat('annahmeblock')) setze('annahmeblock', roh.annahmeblock === true ? true : undefined);
+  if (hat('agbUrl')) {
+    const u = zeile(roh.agbUrl, 300);
+    if (u && !/^https:\/\/[^\s]+\.[^\s]+$/i.test(u)) fehler.push({ feld: 'agbUrl', text: 'AGB-Link: nur eine https-Adresse (z. B. https://www.beispiel.de/agb).' });
+    else setze('agbUrl', u);
+  }
   if (hat('logoDateiId')) setze('logoDateiId', typeof roh.logoDateiId === 'string' && /^d-[a-z0-9-]{4,60}$/.test(roh.logoDateiId) ? roh.logoDateiId : undefined);
   if (hat('bank')) {
     const b = roh.bank && typeof roh.bank === 'object' ? roh.bank as Record<string, unknown> : {};
@@ -129,7 +157,7 @@ export function gesellschaftFuerAnzeige<G extends { bank?: GesellschaftBank }>(g
 
 /** Die Felder des Absenders — NUR diese gehen in eine Absender-Antwort (Angebots-Tool, Stammdaten), nie Cap-Table, Organe, Verträge, Notizen des Registers. */
 export const ABSENDER_FELDER = ['id', 'firmierung', 'strasse', 'plz', 'ort', 'land', 'email', 'telefon', 'web', 'steuernummer', 'ustId', 'geschaeftsfuehrung', 'register', 'bank',
-  'kleinunternehmer', 'zahlungszielTage', 'gueltigkeitTage', 'nummernformat', 'kurz', 'logoDateiId', 'fusstext', 'geaendert', 'geaendertVon'] as const satisfies readonly (keyof Gesellschaft)[];
+  'kleinunternehmer', 'zahlungszielTage', 'gueltigkeitTage', 'nummernformat', 'rechnungsformat', 'stornoformat', 'kurz', 'logoDateiId', 'fusstext', 'annahmeblock', 'agbUrl', 'geaendert', 'geaendertVon'] as const satisfies readonly (keyof Gesellschaft)[];
 
 /**
  * Ein Absender für den Browser (08.10., Sofort-Paket 3.1) — EINE Stelle für GET /api/crm/angebot und GET /api/crm/gesellschaften:

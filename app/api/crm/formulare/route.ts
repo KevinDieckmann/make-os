@@ -20,10 +20,9 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { ladeFormular } from '@/lib/crm/formulare-speicher';
 import { FormularFehler, angebotAnfordern, einstellungenSpeichern, internerKatalog, linkAendern, linkAnlegen } from '@/lib/crm/formulare-server';
 import { absenderPruefen } from '@/lib/crm/angebot-versand';
-import { linkLage, MAIL_PLATZHALTER, MAIL_STANDARD, type Eingang, type ExternerLink } from '@/lib/crm/formulare';
+import { eingangFuerNurBusiness, formularPostfachBereichOk, linkLage, MAIL_PLATZHALTER, MAIL_STANDARD, type Eingang, type ExternerLink } from '@/lib/crm/formulare';
 import { adresseMaskiert, namenVon } from '@/lib/zugang/konten';
 import { localDay } from '@/lib/zeit';
-import { bereichVon } from '@/lib/einheiten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,10 +39,14 @@ export async function GET(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return nurHaushalt();
   const heute = localDay();
-  const [inhaber, b, crm, katalog, namen] = await Promise.all([istInhaber(z.person), ladeFormular(), ladeCrm(), internerKatalog(), namenVon().catch(() => ({} as Record<string, string>))]);
+  // Trennung serverseitig (25.10.): ein Konto „nur Business“ sieht weder Produkte noch Eingänge einer Privat-Arbeits-Einheit (Selbstständigkeit).
+  const { privatAusgeblendetFuer } = await import('@/lib/zugang/konto-sicht-server');
+  const nurBusiness = await privatAusgeblendetFuer(z.person);
+  const [inhaber, b, crm, katalog, namen] = await Promise.all([istInhaber(z.person), ladeFormular(), ladeCrm(), internerKatalog({ nurBusiness }), namenVon().catch(() => ({} as Record<string, string>))]);
   const linkName = new Map(b.links.map(l => [l.id, l.name] as const));
-  // Trennung serverseitig: ein Inhaber sieht alle Eingänge, jede andere Person nur die eigenen.
-  const sichtbar = b.eingaenge.filter(e => inhaber || (e.quelle === 'intern' && e.von === z.person));
+  const gesellschaftVon = (e: Eingang) => e.gesellschaft ?? (e.angebotId ? (crm.angebote ?? []).find(x => x.id === e.angebotId)?.gesellschaft : undefined);
+  // Trennung serverseitig: ein Inhaber sieht alle Eingänge, jede andere Person nur die eigenen — ein Konto „nur Business“ nie die einer Privat-Einheit.
+  const sichtbar = b.eingaenge.filter(e => (inhaber || (e.quelle === 'intern' && e.von === z.person)) && (!nurBusiness || eingangFuerNurBusiness(gesellschaftVon(e))));
   const eingaenge = [...sichtbar].sort((x, y) => y.am.localeCompare(x.am)).slice(0, 200).map((e: Eingang) => {
     const a = e.angebotId ? (crm.angebote ?? []).find(x => x.id === e.angebotId) : undefined;
     return {
@@ -64,7 +67,7 @@ export async function GET(req: Request) {
   let absenderWahl: { id: string; name: string }[] | undefined;
   if (inhaber) {
     const { ladePostfaecher } = await import('@/lib/postfach/register');
-    absenderWahl = (await ladePostfaecher(z.person)).filter(p => p.quelle !== 'whatsapp' && p.bereich && bereichVon(p.bereich) === 'business').map(p => ({ id: p.id, name: `${p.anzeigename} · ${adresseMaskiert(p.adresse)}` }));
+    absenderWahl = (await ladePostfaecher(z.person)).filter(p => p.quelle !== 'whatsapp' && formularPostfachBereichOk(p.bereich)).map(p => ({ id: p.id, name: `${p.anzeigename} · ${adresseMaskiert(p.adresse)}` }));
   }
   return NextResponse.json({
     ok: true, istInhaber: inhaber, katalog,

@@ -242,9 +242,26 @@ export interface PreisTeil {
   mengeJeMonat?: number;
   /** Kurze Erklärung („Bonus bei erreichten Zielen“, „Erfolgsbeteiligung ab 2. Vertrag“). */
   text?: string;
+  /**
+   * Artikelnummer (25.10., kleine Bauten — optional, additiv): steht in der Angebots- und Rechnungsposition aus diesem Teil (Spalte „Art.-Nr.“ im PDF,
+   * nur wenn mindestens eine Position eine trägt). Form nur Buchstaben, Ziffern und - _ . / (höchstens 40). Der alte Stand verwirft das Feld beim
+   * nächsten Speichern der Karte — Positionen und Belege behalten ihre Nummer.
+   */
+  artikelnummer?: string;
+  /**
+   * Artikelnummer je gewählter Laufzeit (25.10., optional, additiv — „Ein Produkt, Laufzeit wählbar“: gleicher Preis, eigene Nummer für 12 Monate), z. B.
+   * `[{ monate: 12, nummer: 'XY-12' }]`. Passt die Laufzeit der Position bzw. des Mandats, gilt diese Nummer, sonst `artikelnummer`
+   * (`artikelnummerFuer`, lib/crm/produkt-karte.ts). Ersetzt eine zweite Preiszeile „option, ersetzt die Grundzeile“ — die braucht es dafür nicht.
+   */
+  artikelnummerJeLaufzeit?: { monate: number; nummer: string }[];
 }
 export interface ProduktVertrag {
   mindestlaufzeitMonate?: number;
+  /**
+   * Wählbare Laufzeiten (25.10., kleine Bauten — optional, additiv; Kevin: „Ein Produkt, Laufzeit wählbar“), z. B. [6, 12]: Vorschläge zum Antippen in Angebot
+   * und „Mandat anlegen“. Vorgabe bleibt `mindestlaufzeitMonate`. Der alte Stand verwirft das Feld beim nächsten Speichern des Vertrags.
+   */
+  laufzeitWahl?: number[];
   danach?: 'monatlich_kuendbar' | 'verlaengert_um_laufzeit' | 'endet';
   kuendigungsfristTage?: number;
   rechnungsrhythmus?: 'monatlich' | 'quartal' | 'einmalig';
@@ -342,10 +359,20 @@ export interface Leistung {
    * Neben einer Paket-Zuordnung des Fulfillments (`fulfillment--<h>.zuordnung`) steht immer nur eins — die Produktkarte („Ablauf“) wählt genau einen Weg.
    */
   prozessId?: string;
+  /**
+   * Willkommensmail je Produkt (25.10., kleine Bauten — optional, additiv): ersetzt beim Start eines Falls die Vorlage der Instanz (Bibliothek, Schlagwort
+   * „willkommen“) und die eines Pakets. Platzhalter der Werkstatt (`{{kontakt.gruss}}`, `{{mandat.titel}}` …) und die des Onboardings (`{{kickoff_vorschlaege}}`,
+   * `{{playbook_link}}`, `{{gruss}}` …) — lib/crm/vorlage-platzhalter.ts. Der alte Stand verwirft das Feld (dann gilt wieder die Vorlage der Instanz).
+   */
+  willkommen?: { betreff?: string; text?: string };
   geaendert: string;
 }
-/** Texte eines Produkts für Angebote (28.09.) — `leistungstext` ist Pflicht, der Rest optional. */
-export interface LeistungAngebot { titel?: string; einleitung?: string; leistungstext: string; ergebnis?: string; hinweise?: string }
+/**
+ * Texte eines Produkts für Angebote (28.09.) — `leistungstext` ist Pflicht, der Rest optional. Seit 25.10. (kleine Bauten): `einleitung` ersetzt im Angebot die
+ * feste Einleitung (Hauptprodukt), `mail` die feste Begleit-Mail (`mailVorlage`) — beide mit Platzhaltern `{{kontakt.gruss}}` … (lib/crm/vorlage-platzhalter.ts).
+ * `mail` ist optional und additiv; der alte Stand verwirft es beim nächsten Speichern der Texte (dann gilt wieder die feste Mail).
+ */
+export interface LeistungAngebot { titel?: string; einleitung?: string; leistungstext: string; ergebnis?: string; hinweise?: string; mail?: { betreff?: string; text?: string } }
 
 // ── Angebote (28.09., Angebots-Tool) ─────────────────────────────────────
 // Ein Angebot je Gesellschaft (kdc · kdv · ug) mit Positionen in CENT. Entwurf frei änderbar;
@@ -383,11 +410,16 @@ export interface AngebotPosition {
    * das Feld nicht: er zählt die Position als monatlich (dieselbe Menge × Satz).
    */
   satz?: 'tag' | 'stunde';
+  /** Artikelnummer aus dem Preis-Teil (25.10., optional, additiv) — wandert in die Rechnungsposition; der alte Stand verwirft sie beim Speichern des Entwurfs. */
+  artikelnummer?: string;
 }
-/** Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). */
-export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean }
-/** Festgehaltener Empfänger beim Stellen. */
-export interface AngebotEmpfaenger { name: string; firma?: string; zeilen: string[]; email?: string }
+/**
+ * Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). `annahme`/`agb` (25.10., optional, nur Angebote): Annahmeblock an und
+ * der AGB-Link der Gesellschaft beim Stellen — so bleibt das PDF reproduzierbar. Rechnungen tragen sie nie.
+ */
+export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean; annahme?: true; agb?: string }
+/** Festgehaltener Empfänger beim Stellen. `kundennummer` (25.10., optional): die der Firma beim Stellen — steht so im PDF. */
+export interface AngebotEmpfaenger { name: string; firma?: string; zeilen: string[]; email?: string; kundennummer?: string }
 export interface Angebot {
   id: string;
   /** Vergibt nur der Server beim Stellen (Nummernformat der Gesellschaft). */
@@ -517,6 +549,12 @@ export interface Firma {
    * keine Kreise (Säuberung + `mutterPruefen` + Verbindungsprüfung). Töchter ergeben sich aus den Verweisen.
    */
   mutterId?: string;
+  /**
+   * Kundennummer (25.10., kleine Bauten — optional, additiv): vergibt NUR der Server beim ersten gestellten Angebot bzw. ersten Mandat der Firma
+   * (lib/crm/kundennummer.ts, Format je Instanz, Vorgabe `K-{NR4}`), fortlaufend und nie doppelt; danach unveränderlich. Steht auf Angebot und Rechnung.
+   * Der alte Stand verwirft das Feld beim nächsten Speichern der Firma — die PDFs behalten die gedruckte Nummer.
+   */
+  kundennummer?: string;
   /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
   archiviertAm?: string;
   /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit) — für alle Leser unsichtbar, 30 Tage wiederherstellbar. */
@@ -881,6 +919,8 @@ export interface CrmBestand {
   scoring?: import('./scoring').ScoringEinstellungen;
   /** Wahrscheinlichkeiten je Stufe, von Hand überschreibbar (wie in KEMARIS Operations „von_hand“). */
   wahrscheinlichkeiten?: Partial<Record<ChancenStufe, number>>;
+  /** Kundennummern (25.10., optional): Format der Instanz (Vorgabe `K-{NR4}`) und der höchste vergebene Zähler — schreibt nur der Server (lib/crm/kundennummer.ts). */
+  kundennummern?: { format?: string; zuletzt?: number };
 }
 
 export const CRM_LISTEN = ['firmen', 'chancen', 'mandate', 'leistungen', 'events', 'teilnahmen', 'sitzungen', 'antraege', 'verarbeitungen', 'segmente', 'beitraege', 'newsletter', 'kampagnen', 'followups', 'angebote'] as const;

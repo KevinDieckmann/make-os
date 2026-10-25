@@ -16,7 +16,7 @@ import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Knopf, Chip, useRueckfrage } from '../../ui';
 import { Feldzeile, Feld } from '../teile';
 import { mitVorgaben, firmierungNochUG, firmierungVorschlag, type Gesellschaft } from '@/lib/crm/gesellschaften';
-import { nummerAusFormat, NUMMER_VORGABE } from '@/lib/crm/angebote';
+import { nummerAusFormat, NUMMER_VORGABE, RECHNUNG_NUMMER_VORGABE } from '@/lib/crm/angebote';
 import { gesellschaftKette, type GesellschaftAntwort } from '@/lib/crm/gesellschaft-kette';
 
 type G = Gesellschaft & { stand: string; luecken: string[] };
@@ -173,6 +173,23 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
           <span style={klein}>Nächstes Angebot etwa: {nummerAusFormat(v.nummernformat, v.kurz, jahr, 1)} — {'{KURZ}'} {'{JAHR}'} {'{JJ}'} {'{NR4}'} (laufend je Gesellschaft und Jahr, lückenlos)</span>
         </div>
       </Feldzeile>
+      {/* 25.10. (kleine Bauten): Rechnungs- und Stornonummern je Gesellschaft — leer = Vorgabe (wie bisher); ein Kreis, das Jahr ist Pflicht. */}
+      <Feldzeile label="Rechnungsnummern">
+        <div style={{ display: 'grid', gap: 4 }}>
+          <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Feld wert={g.rechnungsformat ?? ''} platzhalter={RECHNUNG_NUMMER_VORGABE} onFertig={t => void setze({ rechnungsformat: t.trim() }, 'Rechnungsnummern')} />
+            <Feld wert={g.stornoformat ?? ''} platzhalter={`Storno: wie Rechnung`} onFertig={t => void setze({ stornoformat: t.trim() }, 'Stornonummern')} />
+          </span>
+          <span style={klein}>Nächste Rechnung etwa: {nummerAusFormat(v.rechnungsformat, v.kurz, jahr, 1)} · Stornorechnung etwa: {nummerAusFormat(v.stornoformat, v.kurz, jahr, 2)} — ein Kreis für beide, fortlaufend und lückenlos je Gesellschaft und Jahr ({'{JAHR}'} oder {'{JJ}'} gehört hinein).</span>
+        </div>
+      </Feldzeile>
+      {/* 25.10. (kleine Bauten): Annahmeblock (Ort, Datum, Unterschrift des Kunden) im Angebots-PDF — Vorgabe aus; AGB-Link im Fuß (nur https). */}
+      <Feldzeile label="Angebot annehmen">
+        <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!g.annahmeblock} onChange={e => void setze({ annahmeblock: e.target.checked }, 'Annahmeblock')} /> Ort, Datum und Unterschrift des Kunden unter dem Angebot
+        </label>
+      </Feldzeile>
+      {feld('AGB-Link', 'agbUrl', 'https://www.beispiel.de/agb — steht im Fuß des Angebots')}
       <Feldzeile label="Logo">
         <span style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

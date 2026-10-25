@@ -245,9 +245,31 @@ describe('Angebot anfordern — von Ende zu Ende', () => {
     expect(r.d.gruende.join(' ')).toContain('Absender-Postfach fehlt');
   });
 
-  it('Privat-Gesellschaft nie; nicht aktive Produkte nie', async () => {
-    expect((await anfordern({ ...anfrage(`p@neu.${D}`), produkte: [{ id: 'l-privat' }] })).status).toBe(400);
+  // 25.10. (kleine Bauten, Kevin: „Mandate laufen vorerst über die Selbstständigkeit“): eine Privat-Einheit, deren Zeit als Arbeit zählt, stellt Angebote
+  // übers Formular — ein Konto „nur Business“ nie (403, Trennung auf dem Server). Nicht aktive Produkte nie.
+  it('Privat-Arbeits-Einheit (Selbstständigkeit) ja, aber nie für „nur Business“; nicht aktive Produkte nie', async () => {
+    const r = await anfordern({ ...anfrage(`p@neu.${D}`), produkte: [{ id: 'l-privat' }] });
+    expect(r.status, r.text).toBe(200);
+    expect((await formular()).eingaenge.find(x => x.id === `af-${r.anfrageId}`)?.gesellschaft).toBe('kdc');
+    expect((await crm()).angebote.find(x => x.id === `ang-af-${r.anfrageId}`)?.gesellschaft).toBe('kdc');
+    const partner = await anfordern({ ...anfrage(`p2@neu.${D}`), produkte: [{ id: 'l-privat' }] }, 'partner');
+    expect(partner.status).toBe(403);
+    expect((await crm()).angebote.some(x => x.id === `ang-af-${partner.anfrageId}`)).toBe(false);
     expect((await anfordern({ ...anfrage(`p@neu.${D}`), produkte: [{ id: 'l-entwurf' }] })).status).toBe(400);
+  });
+  it('Sicht „nur Business“: weder Produkte noch Eingänge der Selbstständigkeit; Absender-Postfach der Selbstständigkeit wählbar, Privat nie', async () => {
+    await anfordern({ ...anfrage(`s1@neu.${D}`), produkte: [{ id: 'l-privat' }] }, 'kevin');
+    await anfordern(anfrage(`s2@neu.${D}`), 'partner');
+    const kevin = await GET(formulare, '/api/crm/formulare');
+    expect(kevin.d.katalog.map((x: { id: string }) => x.id).sort()).toEqual(['l-beratung', 'l-privat']);
+    expect(kevin.d.eingaenge).toHaveLength(2);
+    const partner = await GET(formulare, '/api/crm/formulare', sitzung('partner'));
+    expect(partner.d.katalog.map((x: { id: string }) => x.id)).toEqual(['l-beratung']);
+    expect(partner.d.eingaenge).toHaveLength(1);
+    expect(partner.text).not.toContain('Privates Ding');
+    const pf = await postfachVerbinden('kdc');
+    const e = await POST(formulare, '/api/crm/formulare', { aktion: 'einstellungen', absender: pf });
+    expect(e.status, e.text).toBe(200);
   });
 
   for (const schritt of ['eingang', 'kunde', 'deal', 'angebot', 'entscheiden', 'stellen', 'senden', 'abschluss']) {

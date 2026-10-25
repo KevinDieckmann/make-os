@@ -31,7 +31,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { phaseHeben } from './lifecycle';
 import { kanalStatus } from './recht';
 import {
-  ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
+  ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat, produktTexteFuer,
   stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
   angebotHauptprodukt, dealProduktAnders, dealFrageText, dealTitelNachAngebot,
 } from './angebote';
@@ -296,7 +296,7 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   //       ablegen (kurz: verschlüsseln + fsync) und stellen; sonst Reservierung lösen, 409, nichts abgelegt.
   const jahr = jahrVon(heute);
   let res: { a: Angebot; nummer: string; stand: string; firma?: CrmBestand['firmen'][number] } | null = null;
-  await aendereCrmAsync(async b => {
+  const nachReservierung = await aendereCrmAsync(async b => {
     const liste = b.angebote ?? [];
     const a = liste.find(x => x.id === p.id);
     if (!a) throw new AngebotFehler('Angebot nicht gefunden.', 404);
@@ -314,6 +314,8 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   }, p.wer);
   const r0 = res as { a: Angebot; nummer: string; stand: string; firma?: CrmBestand['firmen'][number] } | null;
   if (!r0) throw new AngebotFehler('Nicht gestellt.', 500);
+  // Kundennummer (25.10.): die Reservierung ist der Auslöser (lib/crm/kundennummer.ts) — die Firma trägt sie danach, so steht sie im PDF.
+  if (firmaId) r0.firma = nachReservierung.firmen.find(f => f.id === firmaId) ?? r0.firma;
   const { nummer } = r0;
   /** Reservierung lösen, wenn sie noch unverändert am Entwurf hängt (nach einem Fehlschlag in b/c). */
   const reservierungLoesen = () => aendereCrm(b => {
@@ -328,12 +330,12 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   const { dealId: _alterDeal, ...ohneDeal } = r0.a;
   const gestellt: Angebot = {
     ...ohneDeal, nummer, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}), status: 'gestellt', gestelltAm: jetztIso, gestelltVon: p.person,
-    absender: absenderAus(g), empfaenger, geaendert: jetztIso, geaendertVon: p.person,
+    absender: absenderAus(g, { angebot: true }), empfaenger, geaendert: jetztIso, geaendertVon: p.person,
   };
   // b) Außerhalb der Sperre: das PDF (pdf-lib, Logo) und seine Prüfsumme — der teure Teil.
   const name = `Angebot ${nummer}.pdf`.replace(/[\\/]/g, '-');
   let bytes: Buffer;
-  try { bytes = Buffer.from(await angebotPdf(angebotDokument(gestellt, absenderAus(g, { ibanVoll: true }), empfaenger, heute), { logo, erstellt: jetzt })); }
+  try { bytes = Buffer.from(await angebotPdf(angebotDokument(gestellt, absenderAus(g, { ibanVoll: true, angebot: true }), empfaenger, heute), { logo, erstellt: jetzt })); }
   catch (err) { await reservierungLoesen(); throw err; }
   const pruefsumme = createHash('sha256').update(bytes).digest('hex');
   const brutto = angebotSummen(gestellt, { kleinunternehmer: !!gestellt.absender?.kleinunternehmer }).gesamt.brutto / 100;
@@ -408,7 +410,9 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   await absichtAbschliessen(ah, absicht.id, 'fertig');
   const fertig = e as { a: Angebot; pdf: { id: string; name: string } } | null;
   if (!fertig) throw new AngebotFehler('Nicht gestellt.', 500);
-  const mail = mailVorlage({ anrede: k.anrede, vorname: k.vorname, nachname: k.nachname, titel: fertig.a.titel, nummer: fertig.a.nummer, gueltigBis: fertig.a.gueltigBis, absender: v.name });
+  // 25.10.: die Begleit-Mail des Hauptprodukts (wenn gesetzt) statt der festen — `produktTexteFuer`.
+  const firmaName = (fertig.a.firmaId ? vor.firmen.find(f => f.id === fertig.a.firmaId)?.name : undefined) ?? fertig.a.empfaenger?.firma;
+  const mail = mailVorlage({ anrede: k.anrede, vorname: k.vorname, nachname: k.nachname, titel: fertig.a.titel, nummer: fertig.a.nummer, gueltigBis: fertig.a.gueltigBis, absender: v.name, ...(firmaName ? { firma: firmaName } : {}), heute }, produktTexteFuer(fertig.a, vor.leistungen));
   // Ereignis (22.10., Kundengewinnung E3): „Angebot gestellt“ — auch Version 2 eines Deals, der schon auf „angebot“ steht (dann bleibt `deal-stufe` still).
   await import('@/lib/ereignisse/quellen-kundengewinnung').then(q => q.angebotEreignis('gestellt', { angebotId: fertig.a.id, dealId, kontaktId: k.id, firmaId: fertig.a.firmaId, gesellschaft: fertig.a.gesellschaft })).catch(() => 0);
   return { angebot: mitStand(fertig.a), pdf: fertig.pdf, mail: { ...(k.email ? { an: k.email } : {}), ...mail }, ...(dealId ? { dealId } : {}), hinweise };

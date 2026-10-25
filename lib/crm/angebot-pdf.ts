@@ -128,12 +128,16 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
   if (d.einleitung.trim()) { absatz(d.einleitung, 10); y -= 10; }
 
   // ── Positionen ──
-  const X = { nr: RAND, titel: RAND + 22, menge: RAND + 300, preis: RAND + 385, betrag: A4[0] - RAND };
-  const TITEL_BREIT = 262;
+  // Spalte „Art.-Nr.“ (25.10.) nur, wenn mindestens eine Position eine Artikelnummer trägt — sonst genau der Aufbau von vorher (Byte für Byte).
+  const mitArtNr = d.positionen.some(p => !!p.artikelnummer);
+  const ART_BREIT = 58;
+  const X = { nr: RAND, art: RAND + 22, titel: RAND + 22 + (mitArtNr ? ART_BREIT + 6 : 0), menge: RAND + 300, preis: RAND + 385, betrag: A4[0] - RAND };
+  const TITEL_BREIT = 262 - (mitArtNr ? ART_BREIT + 6 : 0);
   const kopfzeile = () => {
     platz(26);
     y -= 14;
     text('Pos.', X.nr, y, 8, { fett: true, farbe: LEISE }); text('Leistung', X.titel, y, 8, { fett: true, farbe: LEISE });
+    if (mitArtNr) text('Art.-Nr.', X.art, y, 8, { fett: true, farbe: LEISE });
     text('Menge', X.menge, y, 8, { fett: true, farbe: LEISE, rechts: true }); text('Einzelpreis', X.preis, y, 8, { fett: true, farbe: LEISE, rechts: true });
     text('Betrag netto', X.betrag, y, 8, { fett: true, farbe: LEISE, rechts: true });
     y -= 6;
@@ -143,6 +147,7 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
   for (const p of d.positionen) {
     const titelZeilen = umbrechen(s(p.titel), fb, 9.5, TITEL_BREIT);
     const textZeilen = p.text.trim() ? umbrechen(s(p.text), f, 8.5, TITEL_BREIT) : [];
+    const artZeilen = mitArtNr && p.artikelnummer ? umbrechen(s(p.artikelnummer), f, 8, ART_BREIT) : [];
     const erste = 13 * titelZeilen.length + 12;
     if (y - erste < RAND + FUSS_HOEHE - 30) { neueSeite(); kopfzeile(); }
     y -= 14;
@@ -150,11 +155,15 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
     text(p.menge, X.menge, y, 9.5, { rechts: true });
     text(p.einzelpreis, X.preis, y, 9.5, { rechts: true });
     text(p.betrag, X.betrag, y, 9.5, { fett: true, rechts: true });
+    const zeileOben = y;
+    artZeilen.forEach((z, i) => text(z, X.art, zeileOben - i * 10.5, 8, { farbe: LEISE }));
     titelZeilen.forEach((z, i) => { if (i) { y -= 12.5; } text(z, X.titel, y, 9.5, { fett: true }); });
     y -= 11;
     // Rechnungen (08.10.) haben keine Basis — die Zeile steht nur, wenn es etwas zu sagen gibt (Angebote: immer).
     if (p.basis || p.rabatt) text(`${p.basis}${p.rabatt ? `${p.basis ? ' · ' : ''}Rabatt ${p.rabatt}` : ''}`, X.titel, y, 7.5, { farbe: AKZENT });
     for (const z of textZeilen) { if (y - 11 < RAND + FUSS_HOEHE - 30) { neueSeite(); kopfzeile(); y -= 4; } y -= 11; if (z) text(z, X.titel, y, 8.5, { farbe: LEISE }); }
+    // Eine lange Artikelnummer (mehrere Zeilen) darf nicht in die Trennlinie laufen.
+    if (artZeilen.length > 1) y = Math.min(y, zeileOben - (artZeilen.length - 1) * 10.5 - 4);
     y -= 6;
     seite.drawLine({ start: { x: RAND, y }, end: { x: A4[0] - RAND, y }, thickness: 0.3, color: LINIE });
   }
@@ -171,6 +180,19 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
   for (const h of d.hinweise) absatz(h, 8.5, { farbe: LEISE, zeile: 12 });
   y -= 10;
   if (d.schluss.trim()) absatz(d.schluss, 10);
+  // Annahmeblock (25.10., nur wenn die Gesellschaft ihn eingeschaltet hat): zwei Linien für Ort/Datum und Unterschrift des Kunden.
+  if (d.annahme) {
+    platz(86);
+    y -= 26;
+    text('Angebot angenommen', RAND, y, 10, { fett: true });
+    y -= 38;
+    const halb = (BREIT - 30) / 2;
+    seite.drawLine({ start: { x: RAND, y }, end: { x: RAND + halb, y }, thickness: 0.6, color: TINTE });
+    seite.drawLine({ start: { x: RAND + halb + 30, y }, end: { x: A4[0] - RAND, y }, thickness: 0.6, color: TINTE });
+    y -= 11;
+    text('Ort, Datum', RAND, y, 8, { farbe: LEISE });
+    text('Unterschrift und Name (Kunde)', RAND + halb + 30, y, 8, { farbe: LEISE });
+  }
 
   // ── Fuß auf jeder Seite ──
   const n = seiten.length;
@@ -183,6 +205,8 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
       text(zz, RAND, fy, 6.8, { farbe: LEISE });
       fy -= 9;
     }
+    // AGB-Link (25.10., nur Angebote): eine eigene Zeile unter dem Fuß — ohne Link genau wie bisher.
+    if (d.agb) text(umbrechen(s(`Es gelten unsere Allgemeinen Geschäftsbedingungen: ${d.agb}`), f, 6.8, BREIT - 90)[0] ?? '', RAND, fy, 6.8, { farbe: LEISE });
     text(`Seite ${i + 1} von ${n}`, A4[0] - RAND, RAND - 14, 7, { farbe: LEISE, rechts: true });
     text(`${art} ${d.nummer}`, RAND, RAND - 14, 7, { farbe: LEISE });
   });

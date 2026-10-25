@@ -13,6 +13,8 @@ import type { AngebotPosition, Leistung, PreisTeil } from './typen';
 import { angebotPositionenAusProdukt, geplanteMenge, istSatz, preisteileVon, hauptpreis, teilLabel, preisText, mengeEinheit } from './produkt-karte';
 import { produktAngebotFehlt } from './angebote';
 import { istKalendertag } from '@/lib/zeit';
+import { istBusinessGesellschaft, istGesellschaft, zaehltAlsArbeit } from '@/lib/einheiten';
+import { JEDE_ARBEITS_EINHEIT, postfachSendetFuer } from '@/lib/postfach/bereich';
 
 // ── Bestand ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -59,6 +61,11 @@ export interface ExternerLink {
 export interface Eingang {
   /** `af-<uuid>` — aus der Anfrage-Kennung des Browsers (eine Anfrage = ein Eingang, Wiederholung = derselbe). */
   id: string;
+  /**
+   * Absender-Gesellschaft (25.10., optional, additiv): seit das Formular auch die Selbstständigkeit kennt (Privat-Arbeits-Einheit), filtert die Route danach —
+   * ein Konto „nur Business“ sieht Eingänge einer Privat-Einheit nie. Altbestand ohne Feld stammt aus der Zeit „nur Business“.
+   */
+  gesellschaft?: import('@/lib/einheiten').Gesellschaftskennung;
   am: string;
   quelle: AnfrageQuelle;
   /** Intern: Speichername der Person; Link: Kennung des Links (der Name steht am Link). */
@@ -343,6 +350,18 @@ export function angebotMail(e: Pick<FormularEinstellungen, 'betreff' | 'text'>, 
   const roh = e.text?.trim() || (w.anrede === 'Du' ? MAIL_STANDARD.textDu : MAIL_STANDARD.text);
   return { betreff, text: `${vorlageFuellen(roh, w).trim()}\n\n--\n${datenschutzZeilen(d, w.anrede === 'Du')}` };
 }
+
+// ── Welche Gesellschaft, welches Postfach (25.10., Kevin: „Mandate laufen vorerst über die Selbstständigkeit“) ──────────────────────
+
+/**
+ * Darf eine Gesellschaft Angebote über das Formular stellen? Jede feste Gesellschaft, deren Zeit als ARBEIT zählt (`zaehltAlsArbeit`, lib/einheiten.ts) —
+ * also die Business-Gesellschaften UND die Privat-Arbeits-Einheit (Selbstständigkeit). Nie eine feste Kennung abfragen, nie `privat`.
+ */
+export const formularGesellschaftOk = (g: unknown): g is import('@/lib/einheiten').Gesellschaftskennung => istGesellschaft(g) && zaehltAlsArbeit(g);
+/** Darf ein Postfach Absender der Formular-Angebote sein? Ein Business-Bereich oder der Bereich einer Arbeits-Einheit (nie `privat`) — DIE Regel `postfachSendetFuer`. */
+export const formularPostfachBereichOk = (bereich: unknown): boolean => typeof bereich === 'string' && postfachSendetFuer(bereich, JEDE_ARBEITS_EINHEIT);
+/** Ein Konto „nur Business“ sieht nur Eingänge einer Business-Gesellschaft (ohne Angabe: Altbestand aus der Zeit „nur Business“). */
+export const eingangFuerNurBusiness = (g: unknown): boolean => g === undefined || g === null || istBusinessGesellschaft(g);
 
 // ── Öffentlicher Katalog eines Links ─────────────────────────────────────────────────────────────────────────────────────────────
 

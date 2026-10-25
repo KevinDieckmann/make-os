@@ -257,7 +257,7 @@ function EinstellungenKarte({ d, neu }: { d: Daten; neu: () => void }) {
         </Feldzeile>
         {e.absender && !e.absender.eigenes && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gewählt von {e.absender.person}{e.absender.adresse ? ` (${e.absender.adresse})` : ''} — mit „Speichern“ wird dein eigenes Postfach der Absender.</div>}
         {!e.absenderOk && e.absenderGrund && <Hinweis art="achtung">{e.absenderGrund}</Hinweis>}
-        {(d.absenderWahl ?? []).length === 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kein eigenes Postfach im Business-Bereich — unter <Link href={WEG.inbox()} style={{ color: C.aktiv }}>Inbox</Link> verbinden und dem Business zuordnen.</div>}
+        {(d.absenderWahl ?? []).length === 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kein eigenes Postfach im Business-Bereich bzw. bei der Selbstständigkeit — unter <Link href={WEG.inbox()} style={{ color: C.aktiv }}>Inbox</Link> verbinden und zuordnen.</div>}
         <Feldzeile label="Betreff (leer = Standard)"><input value={betreff} onChange={x => setBetreff(x.target.value)} placeholder={e.standard.betreff} style={eingabe} /></Feldzeile>
         <Feldzeile label="Text der Mail (leer = Standard)"><textarea value={text} onChange={x => setText(x.target.value)} placeholder={e.standard.text} rows={8} style={{ ...eingabe, minHeight: 180, resize: 'vertical' }} /></Feldzeile>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>Platzhalter: {e.platzhalter.join(' ')} — der Datenschutzhinweis (Art. 13) steht immer darunter. Text nur aus dieser Vorlage, keine KI.</div>

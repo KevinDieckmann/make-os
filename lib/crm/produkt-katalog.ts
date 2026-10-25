@@ -11,7 +11,7 @@ import type { TreppenStufe } from './treppe-daten';
 import { TREPPE_GRENZEN, TEXT_MAX } from './treppe-daten';
 import {
   katalogTreppe, produktKarte, preisText, preisteileVon, hatPreisteile, preisAusTeil, produktPruefen, wochenStunden, stufenTakt, vertragVon, hauptpreisAus,
-  PREIS_TEIL_ARTEN, PRODUKT_GRENZEN, type PruefFehler,
+  PREIS_TEIL_ARTEN, PRODUKT_GRENZEN, artikelnummerSaeubern, artikelJeLaufzeitSaeubern, type PruefFehler,
 } from './produkt-karte';
 import { produktZustand, linieVon, LINIEN } from './produkte';
 import { centAusEingabe, ANGEBOT_GRENZEN } from './angebote';
@@ -21,6 +21,7 @@ import { bereichVonGesellschaft } from '@/lib/einheiten';
 import { istFulfillmentMandat } from '@/lib/fulfillment/regeln';
 import { weglaenge, type FlowFaden, type FlowFarbe, type FlowPunkt } from '@/lib/lichtfaeden/flow';
 import { feldAbschluss } from '@/lib/make-one/feld-abschluss';
+import { platzhalterPruefen, PRODUKT_TEXT_GRENZEN } from './vorlage-platzhalter';
 
 // ── Die Treppe als Bild ──────────────────────────────────────────────────────
 
@@ -238,22 +239,24 @@ export function karteAusStufe(s: TreppenStufe, id: string): Leistung {
 
 // ── Preis-Teile bearbeiten ───────────────────────────────────────────────────
 
-export type PreisTeilFeld = 'betrag' | 'bis' | 'einheit' | 'anzahlung' | 'kontingent' | 'deckel' | 'menge' | 'text';
+export type PreisTeilFeld = 'betrag' | 'bis' | 'einheit' | 'anzahlung' | 'kontingent' | 'deckel' | 'menge' | 'text' | 'artikelnummer' | 'artikelLaufzeit';
 /** Je Preis-Form nur die passenden Felder (Reihenfolge = Anzeige). */
 export const PREIS_TEIL_FELDER: Record<PreisTeilArt, readonly PreisTeilFeld[]> = {
   kostenlos: ['text'],
-  fest: ['betrag', 'bis', 'anzahlung', 'text'],
-  monatlich: ['betrag', 'bis', 'text'],
-  jaehrlich: ['betrag', 'bis', 'kontingent', 'anzahlung', 'text'],
-  je_einheit: ['betrag', 'bis', 'einheit', 'anzahlung', 'text'],
+  // Artikelnummer (25.10.) je Teil, der auf Angebot und Rechnung steht — „kostenlos“ wird nie berechnet.
+  fest: ['betrag', 'bis', 'anzahlung', 'text', 'artikelnummer'],
+  // Artikelnummer je Laufzeit (25.10.) nur bei laufenden Preisen — „12: XY-12“ (gleicher Preis, eigene Nummer, wenn 12 Monate gewählt sind).
+  monatlich: ['betrag', 'bis', 'text', 'artikelnummer', 'artikelLaufzeit'],
+  jaehrlich: ['betrag', 'bis', 'kontingent', 'anzahlung', 'text', 'artikelnummer', 'artikelLaufzeit'],
+  je_einheit: ['betrag', 'bis', 'einheit', 'anzahlung', 'text', 'artikelnummer'],
   // Geplante Menge je Monat (21.10., Kevin: Tages-/Stundensätze „mit geplanter Menge je Monat“) — Planung und Liquidität rechnen Satz × Menge.
-  tagessatz: ['betrag', 'bis', 'menge', 'text'],
-  stundensatz: ['betrag', 'bis', 'deckel', 'menge', 'text'],
-  erfolg: ['betrag', 'text'],
+  tagessatz: ['betrag', 'bis', 'menge', 'text', 'artikelnummer', 'artikelLaufzeit'],
+  stundensatz: ['betrag', 'bis', 'deckel', 'menge', 'text', 'artikelnummer', 'artikelLaufzeit'],
+  erfolg: ['betrag', 'text', 'artikelnummer'],
 };
 export const PREIS_FELD_LABEL: Record<PreisTeilFeld, string> = {
   betrag: 'Betrag (€ netto)', bis: 'bis (€, optional)', einheit: 'Einheit (z. B. Event)', anzahlung: 'Anzahlung (%)', kontingent: 'Enthalten (Kontingent)',
-  deckel: 'Höchstens Std./Monat', menge: 'Geplant je Monat', text: 'Kurze Erklärung',
+  deckel: 'Höchstens Std./Monat', menge: 'Geplant je Monat', text: 'Kurze Erklärung', artikelnummer: 'Artikelnummer', artikelLaufzeit: 'Art.-Nr. je Laufzeit',
 };
 
 /** Den Teil auf eine andere Preis-Form stellen — Felder, die es dort nicht gibt, fallen weg (sonst lehnte der Server ab). */
@@ -269,6 +272,8 @@ export function teilFuerArt(t: PreisTeil, art: PreisTeilArt): PreisTeil {
     ...(f.includes('deckel') && t.deckel ? { deckel: t.deckel } : {}),
     ...(f.includes('menge') && typeof t.mengeJeMonat === 'number' ? { mengeJeMonat: t.mengeJeMonat } : {}),
     ...(t.text ? { text: t.text } : {}),
+    ...(f.includes('artikelnummer') && t.artikelnummer ? { artikelnummer: t.artikelnummer } : {}),
+    ...(f.includes('artikelLaufzeit') && t.artikelnummerJeLaufzeit ? { artikelnummerJeLaufzeit: t.artikelnummerJeLaufzeit } : {}),
   };
 }
 /** Ein neuer Preis-Teil der Form `art` mit freier Kennung `pt-<n>` (gilt immer — „optional“ stellt man danach um). */
@@ -329,6 +334,21 @@ export function teilFeldSetzen(t: PreisTeil, feld: PreisTeilFeld, roh: string): 
       if (t.deckel?.stundenJeMonat && n > t.deckel.stundenJeMonat) return { ok: false, fehler: 'Geplant je Monat: höchstens so viel wie der Deckel.' };
       return { ok: true, teil: { ...t, mengeJeMonat: Math.round(n * 100) / 100 } };
     }
+    case 'artikelLaufzeit': {
+      // „12: XY-12, 24: XY-24“ (auch „12=XY-12“) — je Laufzeit eine Nummer; leer = keine.
+      if (!v) return { ok: true, teil: ohne('artikelnummerJeLaufzeit') };
+      const roh = v.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean).map(x => { const m = /^(\d{1,3})\s*(?:[:=]|monate?:?)\s*(.+)$/i.exec(x); return m ? { monate: Number(m[1]), nummer: m[2].trim() } : null; });
+      if (roh.some(x => !x)) return { ok: false, fehler: 'Art.-Nr. je Laufzeit: je Eintrag „Monate: Nummer“, z. B. „12: XY-12“.' };
+      const l = artikelJeLaufzeitSaeubern(roh);
+      if (!l || l.length !== roh.length) return { ok: false, fehler: `Art.-Nr. je Laufzeit: Monate 1–${PRODUKT_GRENZEN.mindestlaufzeitMonate}, je Laufzeit eine gültige Nummer, höchstens ${PRODUKT_GRENZEN.laufzeiten}.` };
+      return { ok: true, teil: { ...t, artikelnummerJeLaufzeit: l } };
+    }
+    case 'artikelnummer': {
+      if (!v) return { ok: true, teil: ohne('artikelnummer') };
+      if (v.length > PRODUKT_GRENZEN.artikelnummer) return { ok: false, fehler: `Artikelnummer: höchstens ${PRODUKT_GRENZEN.artikelnummer} Zeichen — nicht gespeichert.` };
+      const a = artikelnummerSaeubern(v);
+      return a ? { ok: true, teil: { ...t, artikelnummer: a } } : { ok: false, fehler: 'Artikelnummer: nur Buchstaben, Ziffern, Leerzeichen und - _ . / (vorn ein Buchstabe oder eine Ziffer).' };
+    }
     case 'einheit': case 'kontingent': case 'text': {
       const max = feld === 'einheit' ? PRODUKT_GRENZEN.einheit : feld === 'kontingent' ? PRODUKT_GRENZEN.kontingent : PRODUKT_GRENZEN.text;
       if (v.length > max) return { ok: false, fehler: `Zu lang (höchstens ${max} Zeichen) — nicht gespeichert.` };
@@ -348,6 +368,8 @@ export function teilFeldWert(t: PreisTeil, feld: PreisTeilFeld): string {
     case 'einheit': return t.einheit ?? '';
     case 'kontingent': return t.kontingent ?? '';
     case 'text': return t.text ?? '';
+    case 'artikelnummer': return t.artikelnummer ?? '';
+    case 'artikelLaufzeit': return (t.artikelnummerJeLaufzeit ?? []).map(x => `${x.monate}: ${x.nummer}`).join(', ');
   }
 }
 /** Die Preis-Teile zum Bearbeiten (ohne eigene: der eine Teil aus dem alten Preis). */
@@ -368,12 +390,22 @@ export function vertragAenderung(l: Pick<Leistung, 'vertrag' | 'laufzeitMonate'>
   if (f.length) return { ok: false, fehler: f.map(x => x.text).join(' ') };
   return { ok: true, felder: { vertrag: Object.keys(v).length ? v : null, ...(feld === 'mindestlaufzeitMonate' && (wert === null || wert === undefined) && l.laufzeitMonate ? { laufzeitMonate: null } : {}) } };
 }
+/** Wählbare Laufzeiten aus einer Eingabe („6, 12“, „6/12“, „6 oder 12“) — leer = keine; Unsinn = Satz (25.10.). */
+export function laufzeitenAusText(t: string): number[] | null | string {
+  const teile = t.split(/[,;/\s]+|oder|und/i).map(x => x.trim()).filter(Boolean);
+  if (!teile.length) return null;
+  const n = teile.map(x => Number(x.replace(/monate?$/i, '')));
+  if (n.some(x => !Number.isInteger(x) || x < 1 || x > PRODUKT_GRENZEN.mindestlaufzeitMonate)) return `Wählbare Laufzeiten: ganze Monate von 1 bis ${PRODUKT_GRENZEN.mindestlaufzeitMonate}, z. B. „6, 12“.`;
+  const l = Array.from(new Set(n)).sort((a, b) => a - b);
+  return l.length > PRODUKT_GRENZEN.laufzeiten ? `Höchstens ${PRODUKT_GRENZEN.laufzeiten} Laufzeiten.` : l;
+}
 export const DANACH_LABEL: Record<NonNullable<ProduktVertrag['danach']>, string> = { monatlich_kuendbar: 'monatlich kündbar', verlaengert_um_laufzeit: 'verlängert sich um die Laufzeit', endet: 'endet' };
 export const RHYTHMUS_LABEL: Record<NonNullable<ProduktVertrag['rechnungsrhythmus']>, string> = { monatlich: 'monatlich', quartal: 'je Quartal', einmalig: 'einmalig' };
 /** Der Vertrag in einer Zeile („6 Monate, danach monatlich kündbar · 30 Tage Frist · Rechnung monatlich“); leer: „nichts festgelegt“. */
 export function vertragText(v: ProduktVertrag): string {
   const t = [
     v.mindestlaufzeitMonate ? `${v.mindestlaufzeitMonate} ${v.mindestlaufzeitMonate === 1 ? 'Monat' : 'Monate'}${v.danach ? `, danach ${DANACH_LABEL[v.danach]}` : ''}` : v.danach ? `danach ${DANACH_LABEL[v.danach]}` : '',
+    v.laufzeitWahl && v.laufzeitWahl.length > 1 ? `wählbar ${v.laufzeitWahl.join(' oder ')} Monate` : '',
     v.kuendigungsfristTage != null ? `${v.kuendigungsfristTage} Tage Frist` : '',
     v.rechnungsrhythmus ? `Rechnung ${RHYTHMUS_LABEL[v.rechnungsrhythmus]}` : '',
     v.zahlungszielTage != null ? `Ziel ${v.zahlungszielTage} Tage` : '',
@@ -415,7 +447,7 @@ export function zahlAus(t: string): number | null {
 // beiden Stellen derselbe Text (alle Leser — Angebot, Treppe, Mandat — sehen ihn). Standen bisher zwei verschiedene Texte, zeigt das Feld
 // beide (nichts geht verloren); beim nächsten Speichern gilt der eine.
 
-export type TextFeld = 'kurz' | 'leistungstext' | 'ergebnis' | 'grenzen' | 'titel' | 'einleitung';
+export type TextFeld = 'kurz' | 'leistungstext' | 'ergebnis' | 'grenzen' | 'titel' | 'einleitung' | 'mailBetreff' | 'mailText' | 'willkommenBetreff' | 'willkommenText';
 export const ERGEBNIS_MAX = 600;
 export const TEXT_FELDER: readonly { id: TextFeld; label: string; max: number; zeilen: number; platzhalter: string; nurWennDa?: true }[] = [
   { id: 'kurz', label: 'Kurzbeschreibung', max: 1500, zeilen: 2, platzhalter: 'Ein Satz: was es ist und für wen' },
@@ -423,8 +455,17 @@ export const TEXT_FELDER: readonly { id: TextFeld; label: string; max: number; z
   { id: 'ergebnis', label: 'Ergebnis', max: ERGEBNIS_MAX, zeilen: 2, platzhalter: 'Was der Kunde danach hat' },
   { id: 'grenzen', label: 'Grenzen & Hinweise', max: ERGEBNIS_MAX, zeilen: 2, platzhalter: 'Voraussetzungen, Mitwirkung, was nicht dazugehört' },
   { id: 'titel', label: 'Titel im Angebot', max: 200, zeilen: 1, platzhalter: 'leer = der Name', nurWennDa: true },
-  { id: 'einleitung', label: 'Einleitung im Angebot', max: 3000, zeilen: 2, platzhalter: 'optional', nurWennDa: true },
+  // 25.10. (kleine Bauten): die Einleitung ersetzt die feste im Angebot (Hauptprodukt) — immer sichtbar; dazu die Begleit-Mail zum Angebot. Platzhalter {{…}}.
+  { id: 'einleitung', label: 'Einleitung im Angebot', max: 3000, zeilen: 3, platzhalter: 'optional — ersetzt die feste Einleitung, z. B. „{{kontakt.gruss}},\n\nvielen Dank …“ (ohne Grußzeile steht der Gruß davor)' },
+  { id: 'mailBetreff', label: 'Begleit-Mail: Betreff', max: PRODUKT_TEXT_GRENZEN.betreff, zeilen: 1, platzhalter: 'optional, z. B. „Angebot {{angebot.nummer}} – {{angebot.titel}}“' },
+  { id: 'mailText', label: 'Begleit-Mail: Text', max: PRODUKT_TEXT_GRENZEN.text, zeilen: 4, platzhalter: 'optional — ersetzt die feste Mail; Platzhalter {{kontakt.gruss}} {{firma.name}} {{angebot.nummer}} {{angebot.gueltigBis}} {{person.name}} {{absender.name}}' },
+  // Willkommensmail je Produkt (25.10.) — ersetzt beim Start eines Falls die Vorlage der Instanz bzw. des Pakets.
+  { id: 'willkommenBetreff', label: 'Willkommensmail: Betreff', max: PRODUKT_TEXT_GRENZEN.betreff, zeilen: 1, platzhalter: 'optional, z. B. „Willkommen — so starten wir mit {{mandat.titel}}“' },
+  { id: 'willkommenText', label: 'Willkommensmail: Text', max: PRODUKT_TEXT_GRENZEN.text, zeilen: 4, platzhalter: 'optional — ersetzt die Vorlage der Bibliothek; Platzhalter {{kontakt.gruss}} {{mandat.titel}} {{mandat.start}} {{kickoff_vorschlaege}} {{playbook_link}} {{gruss}}' },
 ];
+/** Felder mit Platzhaltern (Angebot) — geprüft wie der Server (`platzhalterPruefen`). */
+const MIT_PLATZHALTERN: readonly TextFeld[] = ['einleitung', 'mailBetreff', 'mailText'];
+const WILLKOMMEN_FELDER: readonly TextFeld[] = ['willkommenBetreff', 'willkommenText'];
 const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
 /** Zwei Texte derselben Bedeutung: der eine, oder — wenn sie verschieden sind — beide untereinander (nichts geht verloren). */
 export function zusammen(a: string | undefined, b: string | undefined): string {
@@ -436,22 +477,25 @@ export function zusammen(a: string | undefined, b: string | undefined): string {
   return `${x}\n\n${y}`;
 }
 /** Die Texte der Karte (je Feld EIN Wert). */
-export function texteVon(l: Pick<Leistung, 'beschreibung' | 'ergebnis' | 'grenzen' | 'angebot'>): Record<TextFeld, string> {
+export function texteVon(l: Pick<Leistung, 'beschreibung' | 'ergebnis' | 'grenzen' | 'angebot'> & Partial<Pick<Leistung, 'willkommen'>>): Record<TextFeld, string> {
   const a = l.angebot;
   return {
     kurz: l.beschreibung?.trim() ?? '', leistungstext: a?.leistungstext?.trim() ?? '', ergebnis: zusammen(a?.ergebnis, l.ergebnis), grenzen: zusammen(a?.hinweise, l.grenzen),
-    titel: a?.titel?.trim() ?? '', einleitung: a?.einleitung?.trim() ?? '',
+    titel: a?.titel?.trim() ?? '', einleitung: a?.einleitung?.trim() ?? '', mailBetreff: a?.mail?.betreff?.trim() ?? '', mailText: a?.mail?.text?.trim() ?? '',
+    willkommenBetreff: l.willkommen?.betreff?.trim() ?? '', willkommenText: l.willkommen?.text?.trim() ?? '',
   };
 }
 /**
  * Einen Text speichern — an genau die Stellen, an denen er gelesen wird (Ergebnis: Produkt + Angebotstext, Grenzen: Produkt + Hinweise).
  * Zu lang → Satz, nichts gesendet (der Server kürzte sonst still). Ein aktives Produkt verliert den Leistungstext nicht.
  */
-export function textAenderung(l: Pick<Leistung, 'status' | 'angebot'>, feld: TextFeld, roh: string): { ok: true; felder: Record<string, unknown> } | { ok: false; fehler: string } {
+export function textAenderung(l: Pick<Leistung, 'status' | 'angebot'> & Partial<Pick<Leistung, 'willkommen'>>, feld: TextFeld, roh: string): { ok: true; felder: Record<string, unknown> } | { ok: false; fehler: string } {
   const wert = roh.replace(/\r\n?/g, '\n').trim();
   const def = TEXT_FELDER.find(f => f.id === feld)!;
   if (wert.length > def.max) return { ok: false, fehler: `${def.label} ist zu lang (${wert.length.toLocaleString('de-DE')} von höchstens ${def.max.toLocaleString('de-DE')} Zeichen) — nicht gespeichert.` };
   if (feld === 'leistungstext' && !wert && l.status === 'aktiv') return { ok: false, fehler: 'Das Produkt ist aktiv — der Leistungstext bleibt Pflicht. Erst auf „Entwurf“ stellen, dann leeren.' };
+  if (MIT_PLATZHALTERN.includes(feld)) { const p = platzhalterPruefen(wert, 'angebot', def.label); if (p.length) return { ok: false, fehler: p.join(' ') }; }
+  if (WILLKOMMEN_FELDER.includes(feld)) { const p = platzhalterPruefen(wert, 'willkommen', def.label); if (p.length) return { ok: false, fehler: p.join(' ') }; }
   const angebot = (k: 'leistungstext' | 'ergebnis' | 'hinweise' | 'titel' | 'einleitung') => {
     const a: Record<string, unknown> = { ...(l.angebot ?? {}), leistungstext: l.angebot?.leistungstext ?? '' };
     if (wert || k === 'leistungstext') a[k] = wert; else delete a[k];
@@ -464,6 +508,20 @@ export function textAenderung(l: Pick<Leistung, 'status' | 'angebot'>, feld: Tex
     case 'grenzen': return { ok: true, felder: { grenzen: wert || null, angebot: angebot('hinweise') } };
     case 'titel': return { ok: true, felder: { angebot: angebot('titel') } };
     case 'einleitung': return { ok: true, felder: { angebot: angebot('einleitung') } };
+    case 'mailBetreff': case 'mailText': {
+      const a: Record<string, unknown> = { ...(l.angebot ?? {}), leistungstext: l.angebot?.leistungstext ?? '' };
+      const mail: Record<string, string> = { ...(l.angebot?.mail ?? {}) };
+      const k = feld === 'mailBetreff' ? 'betreff' : 'text';
+      if (wert) mail[k] = feld === 'mailBetreff' ? wert.replace(/\s+/g, ' ') : wert; else delete mail[k];
+      if (Object.keys(mail).length) a.mail = mail; else delete a.mail;
+      return { ok: true, felder: { angebot: a } };
+    }
+    case 'willkommenBetreff': case 'willkommenText': {
+      const w: Record<string, string> = { ...(l.willkommen ?? {}) };
+      const k = feld === 'willkommenBetreff' ? 'betreff' : 'text';
+      if (wert) w[k] = feld === 'willkommenBetreff' ? wert.replace(/\s+/g, ' ') : wert; else delete w[k];
+      return { ok: true, felder: { willkommen: Object.keys(w).length ? w : null } };
+    }
   }
 }
 

@@ -35,9 +35,10 @@ import { kanalStatus } from '@/lib/crm/recht';
 import {
   angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionenAusDeal, aufwandLabel, istGesellschaft,
   NACHFASSEN_WERKTAGE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE,
-  angebotTitelAus, angebotTitelAutomatisch, angebotHauptprodukt, dealProduktAnders, dealFrageText, positionenErgaenzen,
+  angebotTitelAus, angebotTitelAutomatisch, angebotHauptprodukt, dealProduktAnders, dealFrageText, positionenErgaenzen, produktTexteFuer, produktTexteVon, positionNachLaufzeit,
 } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
+import { laufzeitenZurWahl } from '@/lib/crm/produkt-karte';
 import { absenderAus, empfaengerAus, angebotDokument } from '@/lib/crm/angebot-dokument';
 import { angebotPost, letzteGesellschaft, merkeGesellschaft, pdfLaden, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
 import { Katalog, PositionZeile, freiePosition } from './Positionen';
@@ -100,7 +101,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     // A1 (21.10.): der Titel kommt aus den Produkten, nicht mehr aus dem Deal — sonst hieß ein Workshop-Angebot nach dem alten Deal.
     const titel = angebotTitelAus({ positionen }, crm.stand.leistungen, firma?.name);
     const gueltigBis = plusTage(heute, v?.gueltigkeitTage ?? GUELTIG_VORGABE_TAGE);
-    const texte = angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel, gueltigBis });
+    // 25.10.: Einleitung des Hauptprodukts (wenn gesetzt) statt der festen — `produktTexteFuer`.
+    const texte = angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel, gueltigBis, firma: firma?.name, heute }, produktTexteFuer({ positionen }, crm.stand.leistungen));
     return {
       // B9 (21.10.): ein Deal, von dem aus das Angebot entsteht, ist bestätigt; ein still gefundener offener Deal nicht (Rückfrage bei anderem Produkt).
       ...(g ? { gesellschaft: g } : {}), ...(k ? { kontaktId: k.id } : {}), ...(firmaId ? { firmaId } : {}), ...(d ? { dealId: d.id, ...(d === deal ? { dealWahl: 'deal' as const } : {}) } : {}), titel,
@@ -196,6 +198,9 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   const hauptprodukt = angebotHauptprodukt(form, crm.stand.leistungen);
   const produktName = (lid: string | undefined) => (lid ? crm.stand.leistungen.find(l => l.id === lid)?.name : undefined);
   const dealFrage = !!deal && form.dealWahl !== 'deal' && dealProduktAnders(deal, hauptprodukt);
+  // Eigene Texte des Hauptprodukts (25.10.): Einleitung und Begleit-Mail ersetzen die festen Vorlagen, wenn gesetzt.
+  const texteProdukt = useMemo(() => produktTexteVon(hauptprodukt ? crm.stand.leistungen.find(l => l.id === hauptprodukt) : undefined), [hauptprodukt, crm.stand.leistungen]);
+  const vorlageEingabe = { anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, gueltigBis: form.gueltigBis, firma: firma?.name, heute };
   // A1 (21.10.): der Titel aus den Produkten — er gilt, solange der Titel nicht von Hand geschrieben ist.
   const titelAuto = angebotTitelAus(form, crm.stand.leistungen, firma?.name);
   const g = form.gesellschaft ? gesellschaftVon(form.gesellschaft) : null;
@@ -217,12 +222,12 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   // Vorlage nachziehen, solange die Texte nicht von Hand geändert wurden (Anrede, Name, Titel, gültig bis).
   useEffect(() => {
     if (vonHand.einleitung && vonHand.schluss) return;
-    const t = angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, gueltigBis: form.gueltigBis });
+    const t = angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, gueltigBis: form.gueltigBis, firma: firma?.name, heute }, texteProdukt);
     const teil: Partial<Form> = {};
     if (!vonHand.einleitung && t.einleitung !== formRef.current.einleitung) teil.einleitung = t.einleitung;
     if (!vonHand.schluss && t.schluss !== formRef.current.schluss) teil.schluss = t.schluss;
     if (Object.keys(teil).length) { setForm(f => ({ ...f, ...teil })); offen.current = true; } // gespeichert mit der nächsten Änderung bzw. vor der Vorschau
-  }, [k?.anrede, k?.vorname, k?.nachname, form.titel, form.gueltigBis, vonHand.einleitung, vonHand.schluss]);
+  }, [k?.anrede, k?.vorname, k?.nachname, form.titel, form.gueltigBis, vonHand.einleitung, vonHand.schluss, texteProdukt, firma?.name, heute]);
 
   function kontaktWaehlen(neu: Kontakt | null) {
     if (!neu) { aendern({ kontaktId: undefined, firmaId: undefined, dealId: undefined, dealWahl: undefined }); return; }
@@ -258,7 +263,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
 
   // ── Vorschau ──
   const empf = empfaengerAus(k, firma);
-  const dokEntwurf = angebotDokument({ ...form, id, status: 'entwurf', version: start?.version ?? 1, angelegt: '', geaendert: '' } as Angebot, absenderAus(g ?? { id: form.gesellschaft ?? GES_WAHL[0].id }), empf, heute);
+  const dokEntwurf = angebotDokument({ ...form, id, status: 'entwurf', version: start?.version ?? 1, angelegt: '', geaendert: '' } as Angebot, absenderAus(g ?? { id: form.gesellschaft ?? GES_WAHL[0].id }, { angebot: true }), empf, heute);
   const ampel = useMemo(() => {
     if (!k) return { hinweise: ['Kein Empfänger gewählt.'] };
     const ctx = { hatMandat: crm.stand.mandate.some(m => m.status === 'aktiv' && m.kontaktIds.includes(k.id)), hatChance: crm.stand.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(k.id)) };
@@ -272,7 +277,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   async function zurVorschau() {
     offen.current = true; // auch ein unveränderter, vorbelegter Entwurf wird vor der Vorschau gespeichert
     await speichernJetzt();
-    const m = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, nummer: NUMMER_PLATZHALTER, gueltigBis: form.gueltigBis, absender: v?.name ?? '' });
+    const m = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, nummer: NUMMER_PLATZHALTER, gueltigBis: form.gueltigBis, absender: v?.name ?? '', firma: firma?.name, heute }, texteProdukt);
     setMail({ an: k?.email ?? '', ...m });
     setMeldung(null);
     setAnsicht('vorschau');
@@ -375,9 +380,9 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
         </div>
         <div style={{ marginTop: 6 }}>
           {positionen.map((p, i) => (
-            <PositionZeile key={p.id} p={p} nr={i + 1} kleinunternehmer={ku}
+            <PositionZeile key={p.id} p={p} nr={i + 1} kleinunternehmer={ku} laufzeiten={laufzeitenZurWahl(p.leistungId ? crm.stand.leistungen.find(l => l.id === p.leistungId) : undefined)}
               textFehlt={!!p.leistungId && produktAngebotFehlt(crm.stand.leistungen.find(l => l.id === p.leistungId) ?? {}).length > 0}
-              onAendern={teil => setzePos(positionen.map(x => (x.id === p.id ? { ...x, ...teil } : x)))}
+              onAendern={teil => setzePos(positionen.map(x => (x.id !== p.id ? x : 'laufzeitMonate' in teil || 'basis' in teil ? positionNachLaufzeit({ ...x, ...teil }, crm.stand.leistungen) : { ...x, ...teil })))}
               onWeg={() => setzePos(positionen.filter(x => x.id !== p.id))}
               onHoch={i > 0 ? () => { const n = [...positionen]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; setzePos(n); } : undefined} />
           ))}
@@ -396,9 +401,9 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
           {ku && <Chip farbe={C.inkDim}>Kleinunternehmer · ohne USt</Chip>}
         </div>
         <TextFeld label="Einleitung" wert={form.einleitung} vonHand={vonHand.einleitung} onAendern={t => { setVonHand(h => ({ ...h, einleitung: true })); aendern({ einleitung: t }); }}
-          onVorlage={() => { setVonHand(h => ({ ...h, einleitung: false })); aendern({ einleitung: angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, gueltigBis: form.gueltigBis }).einleitung }); }} />
+          onVorlage={() => { setVonHand(h => ({ ...h, einleitung: false })); aendern({ einleitung: angebotVorlage(vorlageEingabe, texteProdukt).einleitung }); }} />
         <TextFeld label="Schluss" wert={form.schluss} vonHand={vonHand.schluss} onAendern={t => { setVonHand(h => ({ ...h, schluss: true })); aendern({ schluss: t }); }}
-          onVorlage={() => { setVonHand(h => ({ ...h, schluss: false })); aendern({ schluss: angebotVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: form.titel, gueltigBis: form.gueltigBis }).schluss }); }} />
+          onVorlage={() => { setVonHand(h => ({ ...h, schluss: false })); aendern({ schluss: angebotVorlage(vorlageEingabe, texteProdukt).schluss }); }} />
       </Karte>
 
       {/* Summenleiste (08.10., Woche 2 · 3.14): über den Baustein der Hauptaktion (.ui-aktion) — am Handy unten mitlaufend und über der

@@ -22,7 +22,7 @@ import { Wahl } from '../Wahl';
 import type { CrmApi } from '../daten';
 import { verlustgruende } from '@/lib/crm/pipeline';
 import { angebotDokument } from '@/lib/crm/angebot-dokument';
-import { ANGEBOT_STATUS_LABEL, angebotEinmalRest, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, mailtoLink } from '@/lib/crm/angebote';
+import { ANGEBOT_STATUS_LABEL, angebotEinmalRest, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, mailtoLink, produktTexteFuer } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { Blatt } from './Blatt';
 import { FallAmDeal } from '../../fulfillment/prozesse/FallAmDeal';
@@ -109,7 +109,9 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
     if (r.ok) void api.laden(true);
   }
   // „Über <Postfach> senden (mit PDF)“ (25.10.): die neue Mail in der Inbox mit dem PDF als Anhang; ohne Postfach der Rückfall `mailto`.
-  const mail = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: a.titel, nummer: a.nummer, gueltigBis: a.gueltigBis, absender: g ? mitVorgaben(g).name : undefined });
+  // 25.10.: Begleit-Mail des Hauptprodukts, wenn gesetzt (`produktTexteFuer`) — sonst die feste.
+  const firmaName = (a.firmaId ? crm.stand.firmen.find(f => f.id === a.firmaId)?.name : undefined) ?? a.empfaenger?.firma;
+  const mail = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: a.titel, nummer: a.nummer, gueltigBis: a.gueltigBis, absender: g ? mitVorgaben(g).name : undefined, ...(firmaName ? { firma: firmaName } : {}), heute: crm.heute }, produktTexteFuer(a, crm.stand.leistungen));
   const mailAn = a.empfaenger?.email ?? k?.email;
 
   return (

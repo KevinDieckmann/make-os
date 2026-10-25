@@ -22,6 +22,8 @@ import { ANGEBOT_GRENZEN, leistungAngebotSaeubern } from './angebote';
 import { csvLesenMitBefund } from '@/lib/make-one/csv';
 import { inCent } from '@/lib/finanzen/ust';
 import { KERN_EINHEITEN, gesellschaftAusEinheit, istRegisterKennung, bereichVonGesellschaft } from '@/lib/einheiten';
+import { mailTextePruefen, mailTexteSaeubern, platzhalterPruefen } from './vorlage-platzhalter';
+import { PROZESS_KENNUNG } from '@/lib/prozesse/definition';
 
 // ── Grenzen ──────────────────────────────────────────────────────────────────
 
@@ -31,7 +33,11 @@ export const IMPORT_GRENZEN = { produkte: 100, bytes: 1_000_000, ablauf: 200 } a
 export const TEXT_GRENZEN = {
   name: 160, beschreibung: 1500, ergebnis: 600, grenzen: 600, linie: 80, lieferumfangEintrag: 300, lieferumfang: 500,
   angebotTitel: 200, einleitung: 3000, leistungstext: ANGEBOT_GRENZEN.text, angebotErgebnis: 2000, hinweise: 2000,
+  // Unterlagen (25.10.): wie die Säuberung in lib/crm/speicher.ts (`leistung`, Liste 500, Titel 120, Link 500).
+  unterlagen: 500, unterlageTitel: 120, unterlageLink: 500, prozess: 200,
 } as const;
+/** Arten einer Unterlage (= lib/crm/typen.ts `UnterlageArt`), Synonyme für den Import. */
+const UNTERLAGE_ARTEN = ['angebot', 'vertrag', 'deck', 'onepager', 'sonstiges'] as const;
 
 // ── Das Format ───────────────────────────────────────────────────────────────
 
@@ -53,6 +59,10 @@ export interface PreisTeilImport {
   /** Nur Tages-/Stundensatz (21.10.): geplante Menge je Monat (Tage bzw. Stunden) für Planung und Liquidität. */
   mengeJeMonat?: number | string;
   text?: string;
+  /** Artikelnummer (25.10.) — steht auf Angebots- und Rechnungsposition; Buchstaben, Ziffern, - _ . / (höchstens 40). `null`/leer = keine. */
+  artikelnummer?: string | null;
+  /** Artikelnummer je Laufzeit (25.10., nur laufende Preise): [{ monate: 12, nummer: '…' }] — gilt, wenn diese Laufzeit gewählt ist. */
+  artikelnummerJeLaufzeit?: { monate: number | string; nummer: string }[] | null;
   id?: string;
 }
 /** Regeln im Import — Bezüge über Produkt-NAMEN (oder Kennung des Katalogs). */
@@ -93,15 +103,29 @@ export interface ProduktImport {
   ziel?: { umsatz?: number | string | null; kunden?: number | string | null } | null;
   /** Name einer Fulfillment-Vorlage (Ablauf der Lieferung) — zugeordnet, wenn es genau eine mit diesem Namen gibt, sonst Hinweis. */
   ablauf?: string | null;
+  /**
+   * Prozess der Werkstatt (25.10.): Kennung `pz-…` oder der Titel — gebunden, wenn es genau einen wählbaren Prozess (Fall-Art Mandat) dazu gibt, sonst Hinweis.
+   * Ein Produkt hat genau EINEN Ablauf: ein Prozess löst die Zuordnung eines Pakets und umgekehrt (`ablaufWechsel`); beides zugleich → Fehler. `null` löst.
+   * `prozessId` ist derselbe Wert unter dem Feldnamen der Karte.
+   */
+  prozess?: string | null;
+  prozessId?: string | null;
+  /** Unterlagen (25.10.): Titel, Art (angebot · vertrag · deck · onepager · sonstiges) und Link — nur https bzw. eine Notiz im Brain (`/os/wissen?n=…`). Ersetzt die Liste. */
+  unterlagen?: { titel: string; art?: string; url: string; id?: string }[] | null;
+  /** Willkommensmail je Produkt (25.10.): { betreff, text } mit Platzhaltern (lib/crm/vorlage-platzhalter.ts). `null` leert. */
+  willkommen?: { betreff?: string | null; text?: string | null } | null;
 }
 /** Die erlaubten Felder eines Produkts im Import (alles andere → Fehler, damit ein Tippfehler nie still verloren geht). */
 export const IMPORT_FELDER = [
   'name', 'status', 'gesellschaft', 'typ', 'linie', 'beschreibung', 'leistungstext', 'angebot', 'ergebnis', 'grenzen', 'lieferumfang',
   'preise', 'vertrag', 'regeln', 'rolle', 'ebene', 'aufgabe', 'kennzahl', 'dauerTage', 'aufwandStundenWoche', 'ziel', 'ablauf',
+  'prozess', 'prozessId', 'unterlagen', 'willkommen',
 ] as const;
-const PREIS_TEIL_FELDER = ['art', 'betrag', 'betragCent', 'bis', 'bisCent', 'einheit', 'rolle', 'optional', 'anzahlungProzent', 'zahlplan', 'kontingent', 'stundenJeMonat', 'deckel', 'mengeJeMonat', 'text', 'id'];
-const VERTRAG_FELDER = ['mindestlaufzeitMonate', 'danach', 'kuendigungsfristTage', 'rechnungsrhythmus', 'zahlungszielTage', 'ustSatz', 'reisekosten'] as const;
+const PREIS_TEIL_FELDER = ['art', 'betrag', 'betragCent', 'bis', 'bisCent', 'einheit', 'rolle', 'optional', 'anzahlungProzent', 'zahlplan', 'kontingent', 'stundenJeMonat', 'deckel', 'mengeJeMonat', 'text', 'artikelnummer', 'artikelnummerJeLaufzeit', 'id'];
+const VERTRAG_FELDER = ['mindestlaufzeitMonate', 'danach', 'kuendigungsfristTage', 'rechnungsrhythmus', 'zahlungszielTage', 'ustSatz', 'reisekosten', 'laufzeitWahl'] as const;
 const ANGEBOT_FELDER = ['titel', 'einleitung', 'leistungstext', 'ergebnis', 'hinweise'] as const;
+/** Im Objekt `angebot` zusätzlich erlaubt (25.10.): die Begleit-Mail { betreff, text }. */
+const ANGEBOT_OBJEKT_FELDER = [...ANGEBOT_FELDER, 'mail'] as const;
 
 // ── Das Ergebnis ─────────────────────────────────────────────────────────────
 
@@ -120,6 +144,8 @@ export interface ImportZeile {
   fehler: string[];
   hinweise: string[];
   ablauf?: { name: string; stand: 'neu' | 'gleich' | 'fehlt' | 'mehrdeutig' | 'entfernen'; vorlageId?: string };
+  /** Prozess der Werkstatt (25.10.): binden (neu), schon gebunden (gleich), gibt es nicht (fehlt), mehrdeutig, lösen (entfernen). */
+  prozess?: { name: string; stand: 'neu' | 'gleich' | 'fehlt' | 'mehrdeutig' | 'entfernen'; prozessId?: string };
   /** Gleichnamige Stufe der Leistungstreppe: verknüpfen (sie hat kein Produkt), gleich (schon verknüpft), mehrdeutig/vergeben (nur Hinweis). */
   stufe?: { id?: string; name: string; stand: 'verknuepfen' | 'gleich' | 'mehrdeutig' | 'vergeben' };
 }
@@ -149,6 +175,8 @@ export interface ImportKontext {
   /** Paket-Vorlagen des Fulfillments (Abläufe der Lieferung) und die bestehende Zuordnung Produkt → Vorlage. */
   vorlagen?: readonly { id: string; titel: string }[];
   zuordnung?: Readonly<Record<string, { vorlageId: string }>>;
+  /** Wählbare Prozesse der Werkstatt (Fall-Art Mandat, `fuerProduktWaehlbar`) — für `prozess` (Titel oder Kennung). Fehlt: nur Kennungen, ohne Prüfung. */
+  prozesse?: readonly { id: string; titel: string }[];
   /** Konto „nur Business“: Produkte einer Privat-Einheit sind dann Fehler (wie überall in der Markttraktion). */
   nurBusiness?: boolean;
   /**
@@ -239,10 +267,11 @@ const FELD_LABEL: Record<string, string> = {
   lieferumfang: 'Lieferumfang', 'angebot.titel': 'Titel im Angebot', 'angebot.einleitung': 'Einleitung', 'angebot.leistungstext': 'Leistungstext',
   'angebot.ergebnis': 'Ergebnis im Angebot', 'angebot.hinweise': 'Hinweise im Angebot', preise: 'Preis',
   'vertrag.mindestlaufzeitMonate': 'Mindestlaufzeit (Monate)', 'vertrag.danach': 'Danach', 'vertrag.kuendigungsfristTage': 'Kündigungsfrist (Tage)',
-  'vertrag.rechnungsrhythmus': 'Rechnung', 'vertrag.zahlungszielTage': 'Zahlungsziel (Tage)', 'vertrag.ustSatz': 'USt-Satz (%)', 'vertrag.reisekosten': 'Reisekosten',
+  'vertrag.rechnungsrhythmus': 'Rechnung', 'vertrag.zahlungszielTage': 'Zahlungsziel (Tage)', 'vertrag.ustSatz': 'USt-Satz (%)', 'vertrag.reisekosten': 'Reisekosten', 'vertrag.laufzeitWahl': 'Laufzeit wählbar (Monate)',
   'regeln.anrechnung': 'Anrechnung', 'regeln.maxGleichzeitig': 'Höchstens gleichzeitig', 'regeln.inklusive': 'Inklusive', rolle: 'Rolle', ebene: 'Stufe der Treppe',
   aufgabe: 'Aufgabe', kennzahl: 'Kennzahl', dauerTage: 'Dauer (Tage)', aufwandStundenWoche: 'Aufwand (Std./Woche)', 'ziel.umsatz': 'Umsatzziel (€)', 'ziel.kunden': 'Kundenziel',
   ablauf: 'Ablauf', stufe: 'Leistungstreppe',
+  'angebot.mail': 'Begleit-Mail zum Angebot', prozess: 'Prozess (Werkstatt)', unterlagen: 'Unterlagen', willkommen: 'Willkommensmail',
 };
 const DANACH_TEXT: Record<string, string> = { monatlich_kuendbar: 'monatlich kündbar', verlaengert_um_laufzeit: 'verlängert sich um die Laufzeit', endet: 'endet' };
 const ROLLE_TEXT: Record<string, string> = { haupt: 'Hauptprodukt', zusatz: 'Zusatzmodul', beides: 'Haupt- oder Zusatzmodul' };
@@ -256,13 +285,20 @@ export function gesellschaftName(g: string | undefined, register?: ImportKontext
 function wertText(feld: string, v: unknown, namen: (id: string) => string, register?: ImportKontext['register']): string {
   if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) return '—';
   switch (feld) {
-    case 'preise': return preiseText({ preis: { betrag: 0, einheit: '' }, preise: v as PreisTeil[] });
+    case 'preise': {
+      // Artikelnummern (25.10.) sichtbar mitnennen — sonst sähe eine geänderte Nummer in der Vorschau aus wie „gleich“.
+      const nr = (v as PreisTeil[]).flatMap(t => [t.artikelnummer, ...(t.artikelnummerJeLaufzeit ?? []).map(x => `${x.nummer} (${x.monate} Monate)`)]).filter(Boolean);
+      return `${preiseText({ preis: { betrag: 0, einheit: '' }, preise: v as PreisTeil[] })}${nr.length ? ` · Art.-Nr. ${nr.join(', ')}` : ''}`;
+    }
     case 'gesellschaft': return gesellschaftName(String(v), register);
     case 'vertrag.danach': return DANACH_TEXT[String(v)] ?? String(v);
     case 'rolle': return ROLLE_TEXT[String(v)] ?? String(v);
     case 'regeln.anrechnung': { const a = v as NonNullable<ProduktRegeln['anrechnung']>; return `${a.anteilProzent === 100 ? 'voll' : `zu ${a.anteilProzent} %`} angerechnet auf ${a.auf.map(namen).join(', ')}`; }
     case 'regeln.inklusive': return (v as NonNullable<ProduktRegeln['inklusive']>).map(x => `${x.menge} × ${namen(x.leistungId)} je ${JE_TEXT[x.je] ?? x.je}`).join(' · ');
     case 'ziel.umsatz': return `${Number(v).toLocaleString('de-DE')} €`;
+    // 25.10.: Unterlagen (Titel · Link), Mail-Texte (Betreff — Anfang des Textes).
+    case 'unterlagen': return kurz((v as { titel: string; url?: string }[]).map(u => `${u.titel}${u.url ? ` (${u.url})` : ''}`).join(' · '));
+    case 'angebot.mail': case 'willkommen': { const m = v as { betreff?: string; text?: string }; return kurz([m.betreff, m.text?.replace(/\s+/g, ' ')].filter(Boolean).join(' — ')); }
   }
   if (Array.isArray(v)) return kurz(v.map(String).join(' · '));
   if (typeof v === 'number') return v.toLocaleString('de-DE');
@@ -424,8 +460,8 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
     }
 
     // Angebotstexte: `angebot` (Teil-Merge je Text) und die Kurzform `leistungstext`.
-    const angebotAlt: Record<string, string> = { ...(alt?.angebot ?? {}) } as Record<string, string>;
-    const angebotNeu: Record<string, string> = { ...angebotAlt };
+    const angebotAlt: Record<string, unknown> = { ...(alt?.angebot ?? {}) };
+    const angebotNeu: Record<string, unknown> = { ...angebotAlt };
     let angebotBeruehrt = false;
     const AG: Record<(typeof ANGEBOT_FELDER)[number], number> = { titel: TEXT_GRENZEN.angebotTitel, einleitung: TEXT_GRENZEN.einleitung, leistungstext: TEXT_GRENZEN.leistungstext, ergebnis: TEXT_GRENZEN.angebotErgebnis, hinweise: TEXT_GRENZEN.hinweise };
     const angebotText = (sub: (typeof ANGEBOT_FELDER)[number], w: unknown) => {
@@ -433,22 +469,53 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
       if (w !== null && typeof w !== 'string') { f.push(fehler400(`${FELD_LABEL[`angebot.${sub}`]}: Text.`)); return; }
       const t = w === null ? '' : absatz(w);
       if (t.length > AG[sub]) { f.push(fehler413(`${FELD_LABEL[`angebot.${sub}`]} ist zu lang (höchstens ${AG[sub].toLocaleString('de-DE')} Zeichen) — nichts gekürzt.`)); return; }
+      // Die Einleitung ersetzt die feste im Angebot (25.10.) — Platzhalter nur die bekannten.
+      if (sub === 'einleitung') { const p = platzhalterPruefen(t, 'angebot', FELD_LABEL['angebot.einleitung']); if (p.length) { f.push(...p.map(fehler400)); return; } }
       if (t) angebotNeu[sub] = t; else delete angebotNeu[sub];
     };
     if (da('angebot')) {
       if (roh.angebot === null) { angebotBeruehrt = true; for (const s of ANGEBOT_FELDER) delete angebotNeu[s]; }
       else if (!istObj(roh.angebot)) f.push(fehler400('Angebot: ein Objekt mit titel, einleitung, leistungstext, ergebnis, hinweise.'));
       else {
-        const fremd = Object.keys(roh.angebot).filter(x => !(ANGEBOT_FELDER as readonly string[]).includes(x));
+        const fremd = Object.keys(roh.angebot).filter(x => !(ANGEBOT_OBJEKT_FELDER as readonly string[]).includes(x));
         if (fremd.length) f.push(fehler400(`Angebot: unbekannte Felder ${fremd.map(x => `„${kurz(x, 30)}“`).join(', ')}.`));
         for (const s of ANGEBOT_FELDER) if (roh.angebot[s] !== undefined) angebotText(s, roh.angebot[s]);
+        // Begleit-Mail (25.10.): { betreff, text } mit Platzhaltern — geprüft wie der Schreibweg (400/413), `null` leert.
+        if (roh.angebot.mail !== undefined) {
+          angebotBeruehrt = true;
+          const pm = roh.angebot.mail === null ? [] : mailTextePruefen(roh.angebot.mail, 'angebot', FELD_LABEL['angebot.mail']);
+          if (pm.length) f.push(...pm);
+          else { const m = mailTexteSaeubern(roh.angebot.mail); if (m) angebotNeu.mail = m; else delete angebotNeu.mail; }
+        }
       }
     }
     if (da('leistungstext')) angebotText('leistungstext', roh.leistungstext);
     const angebotA = leistungAngebotSaeubern(angebotAlt), angebotN = leistungAngebotSaeubern(angebotNeu);
     if (angebotBeruehrt && !gleich(angebotA, angebotN)) {
       felder.angebot = angebotN ?? null;
-      for (const s of ANGEBOT_FELDER) merke(`angebot.${s}`, (angebotA as Record<string, string> | undefined)?.[s], (angebotN as Record<string, string> | undefined)?.[s]);
+      for (const s of ANGEBOT_OBJEKT_FELDER) merke(`angebot.${s}`, (angebotA as Record<string, unknown> | undefined)?.[s], (angebotN as Record<string, unknown> | undefined)?.[s]);
+    }
+
+    // Unterlagen (25.10.): Liste ersetzen — Titel Pflicht, Link nur https bzw. Brain-Notiz, Art aus der Liste; Kennungen von der Stelle davor (stabil).
+    if (da('unterlagen')) {
+      const w = roh.unterlagen;
+      if (w !== null && !Array.isArray(w)) f.push(fehler400('Unterlagen: eine Liste { titel, art, url }.'));
+      else {
+        const liste = (w ?? []) as unknown[];
+        if (liste.length > TEXT_GRENZEN.unterlagen) f.push(fehler413(`Unterlagen: höchstens ${TEXT_GRENZEN.unterlagen} Einträge — nichts gekürzt.`));
+        const altU = alt?.unterlagen ?? [];
+        const neu = liste.map((x, i) => unterlageAus(x, i, altU, f)).filter((x): x is NonNullable<Leistung['unterlagen']>[number] => !!x);
+        if (!gleich(altU, neu)) { felder.unterlagen = neu.length ? neu : null; merke('unterlagen', altU, neu); }
+      }
+    }
+    // Willkommensmail (25.10.): { betreff, text } — geprüft wie der Schreibweg, `null` leert.
+    if (da('willkommen')) {
+      const pw = roh.willkommen === null ? [] : mailTextePruefen(roh.willkommen, 'willkommen', FELD_LABEL.willkommen);
+      if (pw.length) f.push(...pw);
+      else {
+        const n = roh.willkommen === null ? undefined : mailTexteSaeubern(roh.willkommen);
+        if (!gleich(alt?.willkommen, n)) { felder.willkommen = n ?? null; merke('willkommen', alt?.willkommen, n); }
+      }
     }
 
     // Felder der Karte: zusammenführen (vertrag/regeln/ziel je Unterfeld), Bezüge auflösen, prüfen, säubern, vergleichen.
@@ -525,6 +592,42 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
         else { zeile.ablauf = { name: t[0].titel, stand: 'neu', vorlageId: t[0].id }; plan.zuordnungen.push({ leistungId: v.id, vorlageId: t[0].id }); merke('ablauf', bisherName, t[0].titel); }
       }
     }
+    // Prozess der Werkstatt (25.10.): Kennung oder Titel; genau EIN Ablauf je Produkt — ein Prozess löst die Paket-Zuordnung, ein Paket den Prozess
+    // (dieselbe Regel wie die Karte, lib/prozesse/produkt-bindung.ts `ablaufWechsel`). Beides zugleich in einer Zeile → Fehler.
+    const prozRoh = da('prozess') ? roh.prozess : da('prozessId') ? roh.prozessId : undefined;
+    if (da('prozess') && da('prozessId') && roh.prozess !== roh.prozessId) f.push(fehler400('„prozess“ und „prozessId“ widersprechen sich — bitte nur eins.'));
+    const prozName = (id: string) => (k.prozesse ?? []).find(x => x.id === id)?.titel ?? id;
+    if (prozRoh !== undefined) {
+      const bisherP = alt?.prozessId;
+      if (prozRoh === null || prozRoh === '') {
+        if (bisherP) { zeile.prozess = { name: '', stand: 'entfernen' }; felder.prozessId = null; merke('prozess', prozName(bisherP), undefined); }
+      } else if (typeof prozRoh !== 'string') f.push(fehler400('Prozess: die Kennung (pz-…) oder der Titel eines Prozesses der Werkstatt (Text).'));
+      else {
+        const r = text(prozRoh);
+        if (r.length > TEXT_GRENZEN.prozess) f.push(fehler413(`Prozess: höchstens ${TEXT_GRENZEN.prozess} Zeichen.`));
+        const treffer = PROZESS_KENNUNG.test(r)
+          ? (!k.prozesse || k.prozesse.some(x => x.id === r) ? [{ id: r, titel: prozName(r) }] : [])
+          : (k.prozesse ?? []).filter(x => nameSchluessel(x.titel) === nameSchluessel(r));
+        if (!treffer.length) { zeile.prozess = { name: r, stand: 'fehlt' }; zeile.hinweise.push(`Einen wählbaren Prozess „${kurz(r, 60)}“ (Werkstatt, Fall-Art Mandat) gibt es nicht — Bindung übersprungen.`); }
+        else if (treffer.length > 1) { zeile.prozess = { name: r, stand: 'mehrdeutig' }; zeile.hinweise.push(`${treffer.length} Prozesse heißen „${kurz(r, 60)}“ — Bindung übersprungen, bitte in der Karte wählen (oder die Kennung mitliefern).`); }
+        else if (bisherP === treffer[0].id) zeile.prozess = { name: treffer[0].titel, stand: 'gleich', prozessId: treffer[0].id };
+        else { zeile.prozess = { name: treffer[0].titel, stand: 'neu', prozessId: treffer[0].id }; felder.prozessId = treffer[0].id; merke('prozess', bisherP ? prozName(bisherP) : undefined, treffer[0].titel); }
+      }
+    }
+    const prozessNeu = zeile.prozess?.stand === 'neu', paketNeu = zeile.ablauf?.stand === 'neu';
+    if (prozessNeu && paketNeu) f.push(fehler400('Ein Produkt hat genau EINEN Ablauf — „ablauf“ (Fulfillment-Paket) und „prozess“ (Werkstatt) nicht zugleich.'));
+    else if (prozessNeu && k.zuordnung?.[v.id] && !da('ablauf')) {
+      // Ein Prozess löst die Paket-Zuordnung (wie `ablaufWechsel`).
+      const bisherPaket = k.zuordnung[v.id].vorlageId;
+      plan.zuordnungen.push({ leistungId: v.id, vorlageId: null });
+      zeile.ablauf = { name: '', stand: 'entfernen' };
+      merke('ablauf', (k.vorlagen ?? []).find(x => x.id === bisherPaket)?.titel ?? 'ein Ablauf', undefined);
+    } else if (paketNeu && alt?.prozessId && prozRoh === undefined) {
+      // Ein Paket löst den Prozess (wie `ablaufWechsel`).
+      felder.prozessId = null;
+      zeile.prozess = { name: '', stand: 'entfernen' };
+      merke('prozess', prozName(alt.prozessId), undefined);
+    }
     // Gleichnamige Stufe der Leistungstreppe ohne Produkt → verknüpfen (nur eindeutig; schon vergeben bzw. mehrdeutig → nur Hinweis).
     const gleichnamig = gespeichert.filter(x => nameSchluessel(x.name) === v.schluessel);
     if (gleichnamig.length) {
@@ -559,6 +662,8 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
         return [{ feld: x, label: FELD_LABEL[x] ?? x, alt: '—', neu: wertText(x, w, nameVonId, k.register) }];
       });
       if (zeile.ablauf?.stand === 'neu') zeile.felder.push({ feld: 'ablauf', label: FELD_LABEL.ablauf, alt: '—', neu: zeile.ablauf.name });
+      // Der Prozess steht als `prozessId` in den Feldern — sichtbar mit seinem Titel (nicht mit der Kennung).
+      zeile.felder = zeile.felder.map(x => (x.feld === 'prozessId' ? { feld: 'prozess', label: FELD_LABEL.prozess, alt: '—', neu: zeile.prozess?.name ?? x.neu } : x));
       if (zeile.stufe?.stand === 'verknuepfen') zeile.felder.push({ feld: 'stufe', label: FELD_LABEL.stufe, alt: '—', neu: `verknüpft Stufe „${zeile.stufe.name}“` });
       const eintrag: Record<string, unknown> = { id: v.id, stufe: 'kern', lieferumfang: [], ...Object.fromEntries(Object.entries(felder).filter(([, w]) => w !== null && w !== undefined)) };
       plan.ops.push({ liste: 'leistungen', op: 'upsert', eintrag });
@@ -576,6 +681,30 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
     plan.ops = []; plan.zuordnungen = []; plan.stufen = [];
   }
   return plan;
+}
+
+/** Nur https-Links oder Notizen im Brain (/os/wissen?n=…) — dieselbe Regel wie der Säuberer (lib/crm/speicher.ts `unterlageLink`). */
+const unterlageLinkOk = (t: string) => /^https:\/\/[^\s]+$/i.test(t) || /^\/os\/wissen\?n=[^\s]+$/.test(t);
+const UNTERLAGE_ART_WORTE: Record<string, (typeof UNTERLAGE_ARTEN)[number]> = {
+  angebot: 'angebot', vertrag: 'vertrag', deck: 'deck', praesentation: 'deck', folien: 'deck', pitchdeck: 'deck', onepager: 'onepager', produktblatt: 'onepager', datenblatt: 'onepager',
+  sonstiges: 'sonstiges', sonstige: 'sonstiges', leistungsbeschreibung: 'sonstiges', vorlage: 'sonstiges', dokument: 'sonstiges',
+};
+/** Eine Unterlage aus dem Import — null bei Fehler (steht dann in `f`). Kennung von der Stelle davor, sonst `u<i>` (wie der Säuberer). */
+function unterlageAus(x: unknown, i: number, alt: readonly NonNullable<Leistung['unterlagen']>[number][], f: PruefFehler[]): NonNullable<Leistung['unterlagen']>[number] | null {
+  const nr = i + 1;
+  if (!istObj(x)) { f.push(fehler400(`Unterlage ${nr}: ein Objekt { titel, art, url }.`)); return null; }
+  const fremd = Object.keys(x).filter(k => !['titel', 'art', 'url', 'id'].includes(k));
+  if (fremd.length) f.push(fehler400(`Unterlage ${nr}: unbekannte Felder ${fremd.map(k => `„${kurz(k, 30)}“`).join(', ')}.`));
+  const titel = typeof x.titel === 'string' ? x.titel.replace(/\s+/g, ' ').trim() : '';
+  const url = typeof x.url === 'string' ? x.url.trim() : '';
+  if (!titel) { f.push(fehler400(`Unterlage ${nr}: der Titel fehlt.`)); return null; }
+  if (titel.length > TEXT_GRENZEN.unterlageTitel) { f.push(fehler413(`Unterlage ${nr}: Titel höchstens ${TEXT_GRENZEN.unterlageTitel} Zeichen — nichts gekürzt.`)); return null; }
+  if (url.length > TEXT_GRENZEN.unterlageLink) { f.push(fehler413(`Unterlage ${nr}: Link höchstens ${TEXT_GRENZEN.unterlageLink} Zeichen.`)); return null; }
+  if (!unterlageLinkOk(url)) { f.push(fehler400(`Unterlage ${nr} („${kurz(titel, 40)}“): nur ein https-Link oder eine Notiz im Brain (/os/wissen?n=…) — Dateien auf dem Rechner bitte erst ablegen.`)); return null; }
+  const art = x.art === undefined || x.art === null || x.art === '' ? 'sonstiges' : UNTERLAGE_ART_WORTE[wort(x.art)];
+  if (!art) { f.push(fehler400(`Unterlage ${nr}: Art ${UNTERLAGE_ARTEN.join(', ')}.`)); return null; }
+  const id = (typeof x.id === 'string' && /^[a-z0-9-]{1,40}$/.test(x.id) ? x.id : alt[i]?.id) || `u${i}`;
+  return { id, titel, art, url };
 }
 
 /** Gesellschaft aus Kennung oder Name — null, wenn unbekannt. Register-Kennungen nur, wenn das Register sie kennt (sofern übergeben). */
@@ -630,6 +759,10 @@ function preiseAus(w: unknown, alt: readonly PreisTeil[], f: PruefFehler[]): unk
       ...(stdZahl !== undefined ? { deckel: { stundenJeMonat: stdZahl } } : {}),
       ...(mjZahl !== undefined ? { mengeJeMonat: mjZahl } : {}),
       ...(typeof t.text === 'string' && text(t.text) ? { text: text(t.text) } : {}),
+      // Artikelnummer (25.10.): roh weiter — die Prüfung (`preisteilPruefen`) meldet zu lang (413) bzw. fremde Form (400), nie still verworfen.
+      ...(typeof t.artikelnummer === 'string' && text(t.artikelnummer) ? { artikelnummer: text(t.artikelnummer) } : t.artikelnummer != null && typeof t.artikelnummer !== 'string' ? { artikelnummer: t.artikelnummer } : {}),
+      // Je Laufzeit (25.10.): Monate auch als Text („12“) — die Prüfung meldet Unsinn (400) bzw. zu viele (413).
+      ...(Array.isArray(t.artikelnummerJeLaufzeit) ? { artikelnummerJeLaufzeit: t.artikelnummerJeLaufzeit.map(x => (istObj(x) ? { monate: zahlAus(x.monate), nummer: typeof x.nummer === 'string' ? text(x.nummer) : x.nummer } : x)) } : t.artikelnummerJeLaufzeit != null ? { artikelnummerJeLaufzeit: t.artikelnummerJeLaufzeit } : {}),
     };
   });
   return roh.every(Boolean) ? roh : undefined;
@@ -647,6 +780,13 @@ function vertragAus(w: unknown, alt: ProduktVertrag | undefined, f: PruefFehler[
     if (s === 'danach') { const x = aus(w[s], DANACH_WORTE); if (!x) f.push(fehler400(`Danach: ${VERTRAG_DANACH.join(', ')}.`)); else out[s] = x; continue; }
     if (s === 'rechnungsrhythmus') { const x = aus(w[s], RHYTHMUS_WORTE); if (!x) f.push(fehler400(`Rechnung: ${RECHNUNGS_RHYTHMEN.join(', ')}.`)); else out[s] = x; continue; }
     if (s === 'reisekosten') { const x = aus(w[s], REISE_WORTE); if (!x) f.push(fehler400('Reisekosten: separat oder inklusive.')); else out[s] = x; continue; }
+    // Wählbare Laufzeiten (25.10.): Liste [6, 12] oder Text „6, 12“ / „6 oder 12“ — die Prüfung (`produktPruefen`) lehnt Unsinn ab (400/413).
+    if (s === 'laufzeitWahl') {
+      const roh = Array.isArray(w[s]) ? w[s] as unknown[] : String(w[s]).split(/[,;/\s]+|oder|und/i).map(x => x.trim()).filter(Boolean);
+      const n = roh.map(x => zahlAus(x));
+      if (n.some(x => !Number.isFinite(x))) f.push(fehler400('Wählbare Laufzeiten: Monate als Zahlen, z. B. [6, 12].')); else out[s] = Array.from(new Set(n)).sort((a, b) => a - b);
+      continue;
+    }
     const n = zahlAus(w[s]);
     if (!Number.isFinite(n)) f.push(fehler400(`${FELD_LABEL[`vertrag.${s}`] ?? s}: eine Zahl.`)); else out[s] = n;
   }
@@ -708,7 +848,7 @@ type SpaltenZiel =
   | { ebene: 'ziel'; feld: 'umsatz' | 'kunden' }
   | { ebene: 'regel'; feld: 'anrechnungAuf' | 'anrechnungProzent' | 'maxGleichzeitig' | 'inklusive' }
   | { ebene: 'angebot'; feld: 'titel' | 'einleitung' | 'hinweise' }
-  | { ebene: 'preis'; feld: 'art' | 'betrag' | 'bis' | 'einheit' | 'optional' | 'anzahlung' | 'kontingent' | 'deckel' | 'mengeJeMonat' | 'text' };
+  | { ebene: 'preis'; feld: 'art' | 'betrag' | 'bis' | 'einheit' | 'optional' | 'anzahlung' | 'kontingent' | 'deckel' | 'mengeJeMonat' | 'text' | 'artikelnummer' };
 const P = (feld: string, art: 'text' | 'liste' | 'zahl' = 'text'): SpaltenZiel => ({ ebene: 'produkt', feld, art });
 /** Spaltennamen (klein, ohne Leer-/Sonderzeichen, Umlaute ausgeschrieben) → Ziel. */
 const SPALTEN: Record<string, SpaltenZiel> = {
@@ -719,6 +859,7 @@ const SPALTEN: Record<string, SpaltenZiel> = {
   ergebnis: P('ergebnis'), grenzen: P('grenzen'), lieferumfang: P('lieferumfang', 'liste'), aufgabe: P('aufgabe'), kennzahl: P('kennzahl'),
   dauer: P('dauerTage', 'zahl'), dauertage: P('dauerTage', 'zahl'), aufwand: P('aufwandStundenWoche', 'zahl'), aufwandstundenwoche: P('aufwandStundenWoche', 'zahl'),
   aufwandstdwoche: P('aufwandStundenWoche', 'zahl'), ablauf: P('ablauf'), ablaufvorlage: P('ablauf'), fulfillment: P('ablauf'),
+  prozess: P('prozess'), werkstatt: P('prozess'), werkstattprozess: P('prozess'),
   angebotstitel: { ebene: 'angebot', feld: 'titel' }, titelimangebot: { ebene: 'angebot', feld: 'titel' }, einleitung: { ebene: 'angebot', feld: 'einleitung' },
   hinweise: { ebene: 'angebot', feld: 'hinweise' },
   mindestlaufzeit: { ebene: 'vertrag', feld: 'mindestlaufzeitMonate' }, mindestlaufzeitmonate: { ebene: 'vertrag', feld: 'mindestlaufzeitMonate' }, laufzeit: { ebene: 'vertrag', feld: 'mindestlaufzeitMonate' },
@@ -740,6 +881,8 @@ const SPALTEN: Record<string, SpaltenZiel> = {
   geplantjemonat: { ebene: 'preis', feld: 'mengeJeMonat' }, mengejemonat: { ebene: 'preis', feld: 'mengeJeMonat' }, geplantemenge: { ebene: 'preis', feld: 'mengeJeMonat' },
   kontingent: { ebene: 'preis', feld: 'kontingent' }, deckel: { ebene: 'preis', feld: 'deckel' }, stundenjemonat: { ebene: 'preis', feld: 'deckel' }, deckelstundenjemonat: { ebene: 'preis', feld: 'deckel' },
   preistext: { ebene: 'preis', feld: 'text' }, preishinweis: { ebene: 'preis', feld: 'text' },
+  // Artikelnummer je Preis-Teil (25.10.) — z. B. aus einem Artikelstamm.
+  artikelnummer: { ebene: 'preis', feld: 'artikelnummer' }, artikelnr: { ebene: 'preis', feld: 'artikelnummer' }, artnr: { ebene: 'preis', feld: 'artikelnummer' }, sku: { ebene: 'preis', feld: 'artikelnummer' },
 };
 /** Listen in einer Zelle: „|“, Zeilenumbruch oder „•“ (linear geteilt, kein Rückverfolgen über lange Zellen). */
 const liste = (w: string) => w.split(/[|\n•]/).map(x => x.trim()).filter(Boolean);

@@ -75,9 +75,26 @@ export function Wertelisten({ w, post, laeuft, zuBereich }: { w: WertelistenAntw
     return i.gespraecheWoche === null ? 'noch kein Gespräch im Verlauf' : `zuletzt ${i.gespraecheWoche} in 7 Tagen`;
   };
 
+  const kn = lokal.kundennummer;
+  const setzeKundennummer = async (t: string) => {
+    setFehler(null);
+    const r = await post({ aktion: 'kundennummer', format: t.trim() || null });
+    if (!r.ok) setFehler(r.fehler ?? 'Nicht gespeichert.');
+  };
   return (
     <>
       {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
+      {kn && (
+        // Kundennummern (25.10.): Format je Instanz — vergeben beim ersten Angebot bzw. Mandat, fortlaufend und nie doppelt.
+        <Karte i={0}>
+          <Ueberschrift>Kundennummern</Ueberschrift>
+          <div style={{ ...hinweis, marginBottom: 8 }}>Jede Firma bekommt ihre Nummer beim ersten Angebot bzw. Mandat — fortlaufend, nie doppelt; sie steht auf Angebot und Rechnung. Ein neues Format gilt für neue Nummern, vergebene bleiben.</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Feld wert={kn.format ?? ''} platzhalter={kn.vorgabe} onFertig={x => void setzeKundennummer(x)} />
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{kn.vergeben ? `${kn.vergeben} vergeben` : 'noch keine vergeben'} · {'{NR4}'} = laufende Nummer, {'{JAHR}'} optional</span>
+          </div>
+        </Karte>
+      )}
       <Karte i={0}>
         <Ueberschrift>Deal-Stufen</Ueberschrift>
         <div style={{ ...hinweis, marginBottom: 8 }}>Die Wahrscheinlichkeiten sind vorsichtige Startwerte. Sobald je Stufe genug Abschlüsse da sind, ersetzt du sie durch gemessene Quoten — von Hand gesetzte Werte sind markiert.</div>

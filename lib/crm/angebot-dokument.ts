@@ -17,7 +17,7 @@ const datumDe = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(
  * Absender aus den Stammdaten der Gesellschaft. `ibanVoll` nur für das PDF auf dem Server — im Angebot
  * gespeichert (Schnappschuss beim Stellen) und in der Vorschau steht sie maskiert.
  */
-export function absenderAus(roh: Gesellschaft, opt: { ibanVoll?: boolean } = {}): AngebotAbsender {
+export function absenderAus(roh: Gesellschaft, opt: { ibanVoll?: boolean; /** Angebot (25.10.): Annahmeblock und AGB-Link der Gesellschaft mitnehmen — Rechnungen nie. */ angebot?: boolean } = {}): AngebotAbsender {
   const g = mitVorgaben(roh);
   const ort = [g.plz, g.ort].filter(Boolean).join(' ');
   const zeilen = [g.strasse, ort, g.land && g.land !== 'Deutschland' ? g.land : ''].filter((x): x is string => !!x);
@@ -30,19 +30,19 @@ export function absenderAus(roh: Gesellschaft, opt: { ibanVoll?: boolean } = {})
     [g.bank?.bank ?? '', iban ? `IBAN ${iban}` : '', g.bank?.bic ? `BIC ${g.bank.bic}` : '', g.bank?.inhaber ? `Inhaber ${g.bank.inhaber}` : ''].filter(Boolean).join(' · '),
     g.fusstext ?? '',
   ].filter(Boolean);
-  return { firmierung: g.name, zeilen, kontakt, fuss, kleinunternehmer: !!g.kleinunternehmer };
+  return { firmierung: g.name, zeilen, kontakt, fuss, kleinunternehmer: !!g.kleinunternehmer, ...(opt.angebot && g.annahmeblock ? { annahme: true as const } : {}), ...(opt.angebot && g.agbUrl ? { agb: g.agbUrl } : {}) };
 }
 
 /** Empfänger aus Kontakt und Firma (Anschrift: Rechnungsempfänger der Zahlungsdaten, sonst Ort der Firma). */
-export function empfaengerAus(k: { vorname?: string; nachname?: string; email?: string; firma?: string } | undefined, f: { name: string; stadt?: string; zahlung?: { empfaenger?: { name?: string; anschrift?: string } } } | undefined): AngebotEmpfaenger {
+export function empfaengerAus(k: { vorname?: string; nachname?: string; email?: string; firma?: string } | undefined, f: { name: string; stadt?: string; zahlung?: { empfaenger?: { name?: string; anschrift?: string } }; kundennummer?: string } | undefined): AngebotEmpfaenger {
   const name = `${k?.vorname ?? ''} ${k?.nachname ?? ''}`.trim() || f?.zahlung?.empfaenger?.name || '';
   const firma = f?.name ?? k?.firma;
   const anschrift = (f?.zahlung?.empfaenger?.anschrift ?? '').split(/\n|,\s*(?=\d{4,5}\s)/).map(s => s.trim()).filter(Boolean);
   const zeilen = [firma ?? '', name && firma ? `z. Hd. ${name}` : name, ...(anschrift.length ? anschrift : f?.stadt ? [f.stadt] : [])].filter(Boolean);
-  return { name, ...(firma ? { firma } : {}), zeilen, ...(k?.email ? { email: k.email } : {}) };
+  return { name, ...(firma ? { firma } : {}), zeilen, ...(k?.email ? { email: k.email } : {}), ...(f?.kundennummer ? { kundennummer: f.kundennummer } : {}) };
 }
 
-export interface DokumentPosition { nr: string; titel: string; text: string; menge: string; einzelpreis: string; rabatt?: string; betrag: string; basis: string }
+export interface DokumentPosition { nr: string; titel: string; text: string; menge: string; einzelpreis: string; rabatt?: string; betrag: string; basis: string; /** Artikelnummer (25.10.) — Spalte „Art.-Nr.“ nur, wenn mindestens eine Position eine trägt. */ artikelnummer?: string }
 export interface DokumentSumme { label: string; wert: string; stark?: boolean; leise?: boolean }
 export interface AngebotDokument {
   /**
@@ -66,6 +66,10 @@ export interface AngebotDokument {
   summen: DokumentSumme[];
   hinweise: string[];
   schluss: string;
+  /** Annahmeblock (25.10., nur Angebote): Ort, Datum, Unterschrift des Kunden unter dem Schluss — fehlt = keiner (bit-gleich). */
+  annahme?: true;
+  /** AGB-Link (25.10., nur Angebote) — eigene Zeile im Fuß. */
+  agb?: string;
 }
 
 function summenZeilen(label: string, s: Summe, ku: boolean): DokumentSumme[] {
@@ -100,6 +104,8 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
       { label: 'Angebot', wert: a.nummer ?? 'Entwurf' },
       { label: 'Datum', wert: datumDe(datum) },
       { label: 'Gültig bis', wert: datumDe(a.gueltigBis) },
+      // Kundennummer (25.10.) — nur, wenn die Firma eine trägt (sonst bit-gleich).
+      ...(empfaenger.kundennummer ? [{ label: 'Kundennummer', wert: empfaenger.kundennummer }] : []),
       ...(a.version > 1 ? [{ label: 'Fassung', wert: `Version ${a.version}` }] : []),
     ],
     titel: a.titel || 'Angebot', einleitung: a.einleitung,
@@ -107,6 +113,7 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
       nr: String(i + 1), titel: p.titel, text: p.text, menge: `${mengeText(p.menge)} ${p.einheit}`.trim(), einzelpreis: euroCent(p.einzelpreisCent),
       ...(p.rabattProzent ? { rabatt: `${p.rabattProzent.toLocaleString('de-DE')} %` } : {}), betrag: euroCent(positionNettoCent(p)),
       basis: p.basis === 'einmalig' ? BASIS_LABEL.einmalig : `${istSatzPosition(p) ? `nach ${p.satz === 'tag' ? 'Tagen' : 'Stunden'} · geplant je Monat` : BASIS_LABEL[p.basis]}${p.laufzeitMonate ? ` · ${p.laufzeitMonate} Monate` : ''}`,
+      ...(p.artikelnummer ? { artikelnummer: p.artikelnummer } : {}),
     })),
     summen,
     hinweise: [
@@ -116,5 +123,6 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
       'Alle Preise netto zuzüglich der gesetzlichen Umsatzsteuer, soweit ausgewiesen.',
     ].filter((x, i, l) => !(ku && x.startsWith('Alle Preise')) && l.indexOf(x) === i),
     schluss: a.schluss,
+    ...(absender.annahme ? { annahme: true as const } : {}), ...(absender.agb ? { agb: absender.agb } : {}),
   };
 }

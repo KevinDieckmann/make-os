@@ -30,6 +30,8 @@ import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
 import { kartenFelderSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktProzessKennung, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
+import { mailTexteSaeubern } from './vorlage-platzhalter';
+import { kundennummerOk, kundennummernNachziehen } from './kundennummer';
 import { personenSchranke, kampagnenHinweise, kanalWechselBereinigen, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
 import { ladeScoring } from './scoring-server';
 import { SEGMENT_VERNETZEN_ID, segmentVernetzen } from './import-konflikte';
@@ -262,6 +264,8 @@ function firma(o: Record<string, unknown>, jetzt: string): Firma | null {
     ...(istBean(o.bean) ? { bean: o.bean } : {}),
     // Mutterfirma (28.09., #7): Kennungsform und nie sie selbst; Kreis und tote Mutter prüft `mutterPruefen` gegen die ganze Liste.
     ...(/^f-[a-z0-9-]{2,63}$/.test(String(o.mutterId ?? '')) && o.mutterId !== o.id ? { mutterId: String(o.mutterId) } : {}),
+    // Kundennummer (25.10.): nur in ihrer Form durchgereicht — vergeben und festgehalten wird sie in crmSchreiben (`kundennummernNachziehen`).
+    ...(kundennummerOk(o.kundennummer) ? { kundennummer: o.kundennummer } : {}),
     geaendert: jetzt,
   } as Firma;
 }
@@ -437,10 +441,13 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       const { preise, vertrag, regeln, rolle, ebene, aufgabe, kennzahl, dauerTage, aufwandStundenWoche, ziel } = kartenFelderSaeubern(o);
       // Prozess der Werkstatt (22.10., Prozesse × Fulfillment): nur eine gültige Kennung `pz-…` — ohne diese Zeile fiele der Verweis beim Speichern weg.
       const prozessId = produktProzessKennung(o.prozessId);
+      // Willkommensmail je Produkt (25.10., kleine Bauten) — ohne diese Zeile fiele sie beim Speichern weg.
+      const willkommen = mailTexteSaeubern(o.willkommen);
       return {
         ...(preise ? { preise } : {}), ...(vertrag ? { vertrag } : {}), ...(regeln ? { regeln } : {}), ...(rolle ? { rolle } : {}), ...(ebene !== undefined ? { ebene } : {}),
         ...(aufgabe ? { aufgabe } : {}), ...(kennzahl ? { kennzahl } : {}), ...(dauerTage !== undefined ? { dauerTage } : {}),
         ...(aufwandStundenWoche !== undefined ? { aufwandStundenWoche } : {}), ...(ziel ? { ziel } : {}), ...(prozessId ? { prozessId } : {}),
+        ...(willkommen ? { willkommen } : {}),
       };
     }
     // Marke (27.09.): durchreichen, wenn gesetzt — ohne Eintrag gilt Make.One abgeleitet (lib/crm/events.ts markeVon), nichts wird zurückgeschrieben.
@@ -915,7 +922,8 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
     const jetzt = new Date().toISOString();
     // Firmen-Kennungen auch am ERGEBNIS nachziehen (29.09., F1): gespeicherter Stand = gelesener Stand (`ladeCrm`),
     // sonst weicht der Fingerabdruck ab und die nächste Änderung desselben Eintrags bekommt 409.
-    const neu = roh === basis ? roh : firmaIdsNachziehen(basis, crmFolgen(basis, roh, jetzt, person));
+    // Kundennummern (25.10., lib/crm/kundennummer.ts — EINE Stelle für jeden Schreibweg): neues Mandat bzw. Angebot → Nummer; vergebene bleiben fest.
+    const neu = roh === basis ? roh : kundennummernNachziehen(basis, firmaIdsNachziehen(basis, crmFolgen(basis, roh, jetzt, person)), Number(localDay(new Date(jetzt)).slice(0, 4)));
     const weg = geloeschteDeals(basis, neu);
     if (karteiBetroffen(kontakte, weg)) {
       // Absichtsprotokoll (29.09., Paket D-C #17): die Kartei wird HIER (innen) geschrieben, das CRM erst danach. Scheitert
