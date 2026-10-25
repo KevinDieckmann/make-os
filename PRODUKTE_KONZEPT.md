@@ -234,6 +234,33 @@ EINE Stelle `lib/crm/mandat-zusatz.ts` (rein, Server + Browser) für Zusatzmodul
 - **Platzgrenze (B3):** warnen, aber erlauben (`plaetzeVonProdukt`, `usePlatzLage`); Server liefert einen Hinweis. **B6** Onboarding-Frage nach dem Anlegen
   (vorhandener Start-Dialog). **B7** optionaler Teil eines Zusatzmoduls „abrechnen“ (`zusatzOptionen`, `teilId`). **B8** Rechnungsfenster → zurück (`zurueck`).
 
+## Preis-Kette 24.10. (Branch `kern-preise`, Bau-Test 24.10.) — ersetzt „Hauptpreis = der erste Grund-Teil“ (P1)
+Produkt mit 1.500 € fest (50/50) · 900 €/Monat · optional Tagessatz 1.200 € (2 Tage/Monat), Mindestlaufzeit 6 — die Kette zerfiel nach der Karte. Jetzt:
+- **Hauptpreis** (`hauptpreisAus`, lib/crm/produkt-karte.ts — EINE Regel für Spiegeln, Angebot, Mandat, Planung, Oberfläche `hauptpreisId`): unter den Grund-Teilen
+  der laufende — monatlich vor jährlich vor Stunden-/Tagessatz vor Festpreis vor je Einheit vor Erfolg vor kostenlos, bei gleicher Form der höhere Betrag, dann die
+  Kennung. Die Reihenfolge der Karte entscheidet nichts (nur die Anzeige).
+- **Angebot:** `angebotPositionenAusProdukt` stellt den Hauptpreis vorne (Titel/Text des Produkts, Lieferumfang als Punkte), danach die Teile wie auf der Karte. Tages-/
+  Stundensatz einer Kombination = Position „je Tag/Stunde“, Menge = geplante Menge je Monat, Basis „monat“ + `AngebotPosition.satz` (optional) — eigene Summe
+  `AngebotSummen.aufwand` („Tagessätze je Monat (geplant)“), nie unter „einmalig“. „Angebot erstellen“ aus dem Deal (`positionenAusDeal`): Kombination → jeder
+  Grund-Teil eine Position, der Deal-Wert ersetzt nie einen Teil; ein Preis → wie bisher (`dealWertUebernehmen`).
+- **Deal-Wert:** `Chance.wert.einmalBetrag` (optional, netto €, nur neben laufendem Wert) — `dealWertAusAngebot` trennt laufend und einmalig (vorher auf die Laufzeit
+  verteilt: „1.350 €/Monat“); `gesamtwert` zählt ihn dazu, Text EINE Stelle `dealWertText`. Deal-Formular und Deal-Akte: Produkt (nur aktive) belegt Wert
+  (`dealWertAusProdukt`), Art und Gesellschaft vor; ein gewonnener Deal bietet kein „Angebot erstellen“ mehr.
+- **Mandat:** Honorar = Hauptpreis-Position, jeder weitere eigene Teil ein Zusatzmodul über das vorhandene Modell — `MandatZusatz.preisTeilId` (optional, additiv),
+  `leistungId` = das Hauptprodukt, Kennung `mz-e-<Teil>` (`zusatzAusTeil`, `eigeneZusatzModule`, `angebotAufteilung`/`mandatVorbelegungKombi` mit dem vereinbarten
+  Preis aus dem Angebot). Name „<Produkt> · <Teil>“ (`zusatzName`), Prüfung im Schreibweg: Teil muss am Produkt stehen, nie der Hauptpreis, jeder Teil einmal.
+  „+ Zusatzmodul“ bietet die noch nicht übernommenen eigenen Teile an (`eigeneTeileOffen`). Erfolgsanteile werden ein offener Punkt.
+- **Mandat anlegen** = Fenster (`components/os/crm/MandatAnlegenFenster.tsx`, `useMandatAnlegen`): Vorschau über `/api/crm/lead` aktion „mandat“ `vorschau: true` (schreibt
+  nichts; Bau EINE Stelle `lib/crm/mandat-aus-deal.ts`), Start wählbar (Vorgabe erster Tag des Folgemonats, `startVorschlag`), erst „Anlegen“ schreibt mit `start`.
+- **Rechnung:** Fälligkeit EINE Regel `faelligAm` (Rechnungsdatum + Ziel, frühestens Leistungsbeginn + Ziel = Zahltag im Liquiplan); „Rechnung stellen“ fragt vorher;
+  „abrechnen“ schlägt die geplante Menge vor; „Einmalbetrag als Rechnung planen“ nur für Einmalposten, die das Mandat nicht trägt (`angebotEinmalRest`).
+- **Liquidität:** Rechnungen eines Mandats zählen unter „Mandate & Honorare“; ein Planposten, dessen Zahlung eine Rechnung ersetzt, trägt das Kennzeichen
+  `ersetztText` (dieselbe Regel `rechnungDeckung`). Mandat zeigt „Produkt kostet inzwischen … — dieses Mandat bleibt bei … (Vertrag)“ (`vertragsHinweise`).
+- **Rückweg:** live a05d8866 kennt keine Zusatzmodule (verwirft `zusatz`/`zahlplan`/`tageJeMonat` beim nächsten Speichern des Mandats und rechnet nur das Honorar),
+  verwirft `satz`/`preisTeilId` an Entwürfen (gestellte Angebote bleiben; die Position zählt dort als monatlich) und `einmalBetrag` am Deal. Der Stand 8d301a15
+  verwirft `preisTeilId` (das Modul bleibt mit eigenem Honorar gültig und wird abgerechnet), lehnt aber Änderungen an der Zusatzmodul-Liste dieses Mandats ab (400).
+  Tests: tests/kern-preise-kette.test.ts.
+
 ## Pakete
 
 - **P1 Kern** (`lib/crm/produkt-karte.ts`, Typen, Säuberer + Spiegeln in `lib/crm/speicher.ts` `zusatz('leistungen')`, `stufenAusKatalog`,
