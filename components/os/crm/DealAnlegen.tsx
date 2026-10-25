@@ -17,7 +17,8 @@ import { type CrmApi, plusTage } from './daten';
 import { Feldzeile } from './teile';
 import { Wahl } from './Wahl';
 import { ZustaendigWahl } from './team';
-import type { ChancenArt, Quelle, WertBasis } from '@/lib/crm/typen';
+import type { ChancenArt, Gesellschaft, Quelle, WertBasis } from '@/lib/crm/typen';
+import { dealWertAusProdukt, mandatArtVon } from '@/lib/crm/produkt-karte';
 
 const ARTEN: { id: ChancenArt; label: string }[] = [{ id: 'retainer', label: 'Retainer' }, { id: 'projekt', label: 'Projekt' }, { id: 'workshop', label: 'Workshop' }, { id: 'vermittlung', label: 'Vermittlung' }, { id: 'software', label: 'Software' }];
 const BASEN: { id: WertBasis; label: string }[] = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }];
@@ -35,6 +36,20 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
   const [betrag, setBetrag] = useState('');
   const [basis, setBasis] = useState<WertBasis>('monat');
   const [laufzeit, setLaufzeit] = useState('');
+  // 24.10. (Bau-Test): Produkt am Deal — belegt Wert (laufend + einmalig getrennt), Art und Gesellschaft vor; nur aktive Produkte.
+  const [leistungId, setLeistungId] = useState<string | undefined>(undefined);
+  const [einmal, setEinmal] = useState('');
+  const [gesellschaft, setGesellschaft] = useState<Gesellschaft | undefined>(undefined);
+  const produkte = (api.crm?.stand.leistungen ?? []).filter(l => l.status === 'aktiv' && !l.geloeschtAm);
+  const produktWahl = (id: string) => {
+    const l = produkte.find(x => x.id === id);
+    if (!l) return;
+    setLeistungId(l.id);
+    setArt(mandatArtVon(l));
+    if (l.gesellschaft && l.gesellschaft !== 'offen') setGesellschaft(l.gesellschaft);
+    const w = dealWertAusProdukt(l);
+    if (w && !betrag) { setBetrag(String(w.betrag)); setBasis(w.basis); setLaufzeit(w.laufzeitMonate ? String(w.laufzeitMonate) : ''); setEinmal(w.einmalBetrag ? String(w.einmalBetrag) : ''); }
+  };
   const [schritt, setSchritt] = useState({ text: '', datum: plusTage(heute, 3) });
   const [quelle, setQuelle] = useState<Quelle | undefined>(vorgabeQuelle);
   const [besitzer, setBesitzer] = useState<string | undefined>(vorgabeBesitzer && vorgabeBesitzer !== 'beide' ? vorgabeBesitzer : undefined);
@@ -50,7 +65,8 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
     if (!bereit || laeuft) return;
     setLaeuft(true); setFehler(null);
     const r = await fetch('/api/crm/deal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-      aktion: 'anlegen', titel: titel.trim() || undefined, kontaktIds: personen, firmaId: firma, art, wert: { betrag: Number(betrag) || 0, basis, laufzeitMonate: Number(laufzeit) || undefined },
+      aktion: 'anlegen', titel: titel.trim() || undefined, kontaktIds: personen, firmaId: firma, art, wert: { betrag: Number(betrag) || 0, basis, laufzeitMonate: Number(laufzeit) || undefined, ...(basis !== 'einmalig' && Number(einmal) > 0 ? { einmalBetrag: Number(einmal) } : {}) },
+      ...(leistungId ? { leistungId } : {}), ...(gesellschaft ? { gesellschaft } : {}),
       schritt, quelle, ...(quelle && quelle === vorgabeQuelle && quelleBezug ? { quelleBezug } : {}), besitzer, erwartetAm: erwartetAm || undefined, trotzdem,
     }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setLaeuft(false);
@@ -81,12 +97,16 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
         </div>
       </Feldzeile>
       <Feldzeile label="Titel"><input value={titel} onChange={e => setTitel(e.target.value)} placeholder={f ? `${f.name} · ${ARTEN.find(a => a.id === art)?.label}` : 'z. B. Acme · Retainer'} style={{ ...feld }} /></Feldzeile>
+      <Feldzeile label="Produkt">
+        <Wahl label="Produkt" liste={produkte.map(l => ({ id: l.id, label: l.name }))} wert={leistungId} leer="+ Produkt wählen" onWahl={produktWahl} onLeeren={() => setLeistungId(undefined)} />
+      </Feldzeile>
       <Feldzeile label="Art"><Wahl label="Art" liste={ARTEN} wert={art} onWahl={setArt} /></Feldzeile>
       <Feldzeile label="Wert">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input type="number" value={betrag} onChange={e => setBetrag(e.target.value)} placeholder="Betrag €" style={{ ...feld, width: 120 }} />
+          <input type="number" value={betrag} onChange={e => setBetrag(e.target.value)} placeholder="Betrag €" aria-label="Betrag" style={{ ...feld, width: 120 }} />
           <Wahl label="Wert-Basis" liste={BASEN} wert={basis} onWahl={setBasis} />
-          {basis !== 'einmalig' && <input type="number" value={laufzeit} onChange={e => setLaufzeit(e.target.value)} placeholder="Monate" style={{ ...feld, width: 100 }} />}
+          {basis !== 'einmalig' && <input type="number" value={laufzeit} onChange={e => setLaufzeit(e.target.value)} placeholder="Monate" aria-label="Laufzeit in Monaten" style={{ ...feld, width: 100 }} />}
+          {basis !== 'einmalig' && <input type="number" value={einmal} onChange={e => setEinmal(e.target.value)} placeholder="+ einmalig €" aria-label="Einmaliger Anteil" style={{ ...feld, width: 130 }} />}
         </div>
       </Feldzeile>
       <Feldzeile label="Nächster Schritt *">

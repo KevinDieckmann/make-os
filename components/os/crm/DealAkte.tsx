@@ -20,7 +20,7 @@ import { dealRolleVorschlag, besterEntscheider, entscheiderHinweis, offeneRollen
 import { Person } from './team';
 import { ChancenDetail } from './Pipeline';
 import { useFollowups } from './FollowUp';
-import { gesamtwert, OFFENE_STUFEN, WIN_RATE_TEXT, winRateStufe } from '@/lib/crm/pipeline';
+import { dealWertText, gesamtwert, OFFENE_STUFEN, WIN_RATE_TEXT, winRateStufe } from '@/lib/crm/pipeline';
 import { verschobenGelbAb } from '@/lib/crm/stellschrauben';
 import { verweildauer, verweildauerJeStufe, umwandlung, winLoss, zyklus, prognoseNachMonat, haengtNachWert, MINDESTMENGE } from '@/lib/crm/deal-auswertung';
 import { firmaVonDeal } from '@/lib/crm/firmen-bezug';
@@ -110,15 +110,17 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
             )}
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{c.wert.betrag ? euro(gesamtwert(c)) : '—'}</div>
-            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{c.wert.betrag ? `${euro(c.wert.betrag)} ${c.wert.basis === 'monat' ? 'je Monat' : c.wert.basis === 'jahr' ? 'je Jahr' : 'einmalig'}${c.wert.laufzeitMonate ? ` · ${anzahl(c.wert.laufzeitMonate, 'Monat', 'Monate')}` : ''}` : 'ohne Wert'}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{gesamtwert(c) > 0 ? euro(gesamtwert(c)) : '—'}</div>
+            {/* 24.10.: laufend und einmalig getrennt („900 € je Monat · 6 Monate + 1.500 € einmalig“) — nie ein verteilter Monatswert. */}
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{dealWertText(c)}</div>
             {/* Angebots-Tool (28.09.): vorbelegt mit Deal, Firma und erster Person. */}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: 8 }}>
               {angeboteZu(crm.stand.angebote, { dealId: c.id }).slice(0, 3).map(x => (
                 <Link key={x.id} href={angebotLink({ angebotId: x.id })} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>{x.nummer ?? 'Entwurf'} · {ANGEBOT_STATUS_LABEL[x.status]} ›</Link>
               ))}
-              {/* 3.3: zu einem geschlossenen Deal (Folgeauftrag) ohne Deal starten — beim Stellen entsteht ein neuer. */}
-              <Link href={angebotLink({ ...(OFFENE_STUFEN.includes(c.stufe) ? { dealId: c.id } : {}), kontaktId: c.kontaktIds[0], firmaId: c.firmaId })} style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.gut, textDecoration: 'none', border: `1px solid ${LEUCHT.gut}80`, background: `${LEUCHT.gut}24`, borderRadius: 10, padding: '6px 11px' }}>Angebot erstellen</Link>
+              {/* 3.3: zu einem geschlossenen Deal (Folgeauftrag) ohne Deal starten — beim Stellen entsteht ein neuer. 24.10. (Bau-Test): nicht am gewonnenen
+                  Deal — dort gilt das angenommene Angebot (Mandat anlegen); ein Folgeauftrag startet als neuer Deal. */}
+              {c.stufe !== 'gewonnen' && <Link href={angebotLink({ ...(OFFENE_STUFEN.includes(c.stufe) ? { dealId: c.id } : {}), kontaktId: c.kontaktIds[0], firmaId: c.firmaId })} style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.gut, textDecoration: 'none', border: `1px solid ${LEUCHT.gut}80`, background: `${LEUCHT.gut}24`, borderRadius: 10, padding: '6px 11px' }}>Angebot erstellen</Link>}
             </div>
           </div>
         </div>

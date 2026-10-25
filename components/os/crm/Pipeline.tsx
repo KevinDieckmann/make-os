@@ -24,7 +24,8 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, us
 import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
-import { gesamtwert, prognose, prognoseJePerson, werZahlen, verlustgruende, dealsOhneWert, WIN_RATE_TEXT } from '@/lib/crm/pipeline';
+import { gesamtwert, dealWertText, prognose, prognoseJePerson, werZahlen, verlustgruende, dealsOhneWert, WIN_RATE_TEXT } from '@/lib/crm/pipeline';
+import { dealWertAusProdukt } from '@/lib/crm/produkt-karte';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, kurzEuro, plusTage, nurFelder } from './daten';
@@ -51,7 +52,8 @@ const QUAL: { id: keyof Chance['qualifizierung']; label: string }[] = [
   { id: 'schmerz', label: 'Schmerz' }, { id: 'entscheider', label: 'Entscheider' }, { id: 'budget', label: 'Budget' }, { id: 'zeitpunkt', label: 'Zeitpunkt' }, { id: 'wirkung', label: 'Wirkung' }, { id: 'alternative', label: 'Alternative' },
 ];
 const BASEN = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr' }, { id: 'einmalig', label: 'einmalig' }] as const;
-const wertText = (c: Chance) => (c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : c.wert.basis === 'jahr' ? '/J' : ''}` : 'ohne Wert');
+// 24.10.: EINE Stelle (`dealWertText`) — mit Einmal-Anteil „900 €/M + 1.500 €“.
+const wertText = (c: Chance) => dealWertText(c, { kurz: true });
 
 export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, zurueck, zuOffen }: { api: CrmApi; ansicht?: DealsAnsicht; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void; /** Deal-Akte öffnen (27.09.). */ zuAkte?: (id: string) => void; zurueck?: () => void; /** „Gewonnen · Verloren · Geparkt“ aufgeklappt öffnen (Adresse `zu=1`, z. B. aus dem Flow der Auswertung, 22.10.). */ zuOffen?: boolean }) {
   // Offener Deal im Link (k): Zurück schließt ihn wieder.
@@ -321,7 +323,7 @@ function ChancenZeile({ c, api, offen, onKlick, zuKontakt, deal, wunsch, wunschW
       <Zeile onClick={onKlick} aktiv={offen} links={<Punkt farbe={a ? AMPEL[a.ampel] : C.inkLeise} />}
         titel={<>{c.titel}{firmenName(c, crm.stand.firmen) && <span style={{ color: C.inkLeise }}> · {firmenName(c, crm.stand.firmen)}</span>}</>}
         unter={[c.naechsterSchritt ? `→ ${c.naechsterSchritt.text} · ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt', a?.gruende[0]].filter(Boolean).join(' · ')}
-        rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><span style={{ fontVariantNumeric: 'tabular-nums', fontSize: TYP.bedien, color: C.inkDim }}>{c.wert.betrag ? wertText(c) : '—'}</span><Person id={zustaendig(c.besitzer, 'sales')} groesse={18} /></span>} />
+        rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><span style={{ fontVariantNumeric: 'tabular-nums', fontSize: TYP.bedien, color: C.inkDim }}>{gesamtwert(c) > 0 ? wertText(c) : '—'}</span><Person id={zustaendig(c.besitzer, 'sales')} groesse={18} /></span>} />
       </ZeileAktionen>
       {offen && <ChancenDetail c={c} api={api} personen={personen as NonNullable<typeof personen[number]>[]} zuKontakt={zuKontakt} wunsch={wunsch} wunschWeg={wunschWeg} />}
     </div>
@@ -405,6 +407,8 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
           <Feld typ="number" wert={c.wert.betrag ? String(c.wert.betrag) : ''} breite={120} platzhalter="Betrag €" onFertig={b => setze({ wert: { ...c.wert, betrag: Number(b) || 0 } })} />
           <Wahl label="Wert-Basis" liste={BASEN} wert={c.wert.basis} onWahl={basis => setze({ wert: { ...c.wert, basis } })} />
           {c.wert.basis !== 'einmalig' && <Feld typ="number" wert={c.wert.laufzeitMonate ? String(c.wert.laufzeitMonate) : ''} breite={110} platzhalter="Monate" onFertig={m => setze({ wert: { ...c.wert, laufzeitMonate: Number(m) || undefined } })} />}
+          {/* 24.10.: Einmal-Anteil neben dem laufenden Wert (nie auf die Laufzeit verteilt). */}
+          {c.wert.basis !== 'einmalig' && <Feld typ="number" wert={c.wert.einmalBetrag ? String(c.wert.einmalBetrag) : ''} breite={130} platzhalter="+ einmalig €" onFertig={x => setze({ wert: { ...c.wert, einmalBetrag: Number(x) > 0 ? Number(x) : undefined } })} />}
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>= {euro(gesamtwert(c))}</span>
         </div>
       </Feldzeile>
@@ -449,8 +453,13 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
       </div>
       )}
       <Feldzeile label="Produkt">
-        <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => (x.status !== 'eingestellt' && !x.geloeschtAm) || x.id === c.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={c.leistungId}
-          onWahl={leistungId => setze({ leistungId })} onLeeren={() => setze({ leistungId: undefined })} />
+        {/* 24.10. (Bau-Test): nur aktive Produkte (keine Entwürfe); die Gesellschaft folgt dem Produkt, ein Deal ohne Wert bekommt den Wert des Produkts. */}
+        <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => (x.status === 'aktiv' && !x.geloeschtAm) || x.id === c.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={c.leistungId}
+          onWahl={leistungId => {
+            const l = crm.stand.leistungen.find(x => x.id === leistungId);
+            const w = l && !(gesamtwert(c) > 0) ? dealWertAusProdukt(l) : null;
+            setze({ leistungId, ...(l?.gesellschaft && l.gesellschaft !== 'offen' && l.gesellschaft !== c.gesellschaft ? { gesellschaft: l.gesellschaft } : {}), ...(w ? { wert: w } : {}) });
+          }} onLeeren={() => setze({ leistungId: undefined })} />
       </Feldzeile>
       <Feldzeile label="Quelle"><Wahl label="Quelle" liste={QUELLEN} wert={c.quelle} onWahl={quelle => quelle !== c.quelle && setze({ quelle, quelleBezug: undefined })} onLeeren={() => setze({ quelle: undefined, quelleBezug: undefined })} /></Feldzeile>
       {(c.quelle === 'event' || c.quelle === 'content' || c.quelle === 'kampagne') && (
