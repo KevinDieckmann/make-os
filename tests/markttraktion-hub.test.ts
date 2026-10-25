@@ -30,7 +30,8 @@ describe('Hub-Menü — die Liste als Daten', () => {
       ['Marketing', ['Marketing', 'Events', 'Netzwerken']],
       ['Steuerung', ['Planung', 'Auswertung']],
     ]);
-    expect(HUB_MENUE.fuss.map(p => p.name)).toEqual(['Stammdaten']);
+    // 25.10.: Formulare im Fuß (die Gruppen tragen schon zwölf Punkte) — vor Stammdaten.
+    expect(HUB_MENUE.fuss.map(p => p.name)).toEqual(['Formulare', 'Stammdaten']);
     expect(HUB_MENUE.automation).toMatchObject({ name: 'Automationen & Head', gruppe: 'steuerung', prozessBereiche: ['marketing', 'sales', 'uebergabe'], heads: ['sales', 'marketing', 'event'] });
     // Zum Zeichnen steht „Automationen & Head“ am Ende seiner Gruppe — wie `alleUnterpunkte` im Werkzeug-Muster.
     expect(hubGruppenAnzeige().find(g => g.id === 'steuerung')!.punkte.map(p => p.id)).toEqual(['planung', 'auswertung', 'automationen']);
@@ -53,6 +54,8 @@ describe('Hub-Menü — die Liste als Daten', () => {
     expect(ziel('auswertung')).toBe(auswertungLink());
     expect(WEG.auswertung()).toBe('/os/markttraktion?s=auswertung');
     expect(ziel('stammdaten')).toBe(WEG.stammdaten());
+    expect(ziel('formulare')).toBe(WEG.formulare());
+    expect(WEG.formulare()).toBe('/os/markttraktion?s=formulare');
     for (const p of [...HUB_PUNKTE, HUB_MENUE.automation]) {
       const [pfad, suche] = p.ziel.split('?');
       expect(hubOrtFuer(pfad, suche ?? ''), p.id).toBe(p.id);
@@ -86,7 +89,7 @@ describe('punktVon — jede Adresse leuchtet genau einen Punkt', () => {
       ['kunden', undefined, 'auswertung'], ['auswertung', 'quatsch', 'auswertung'], ['angebot', undefined, 'angebot'], ['followup', 'powerhour', 'followup'],
       ['heute', undefined, 'followup'], ['marketing', 'kampagnen', 'marketing'], ['sales', 'kampagnen', 'marketing'], ['besuche', 'wirkung', 'events'],
       ['events', undefined, 'events'], ['event', undefined, 'events'], ['planung', 'challenges', 'planung'], ['stammdaten', 'datenschutz', 'stammdaten'],
-      ['automationen', undefined, 'automationen'], ['quatsch', undefined, 'ueberblick'],
+      ['automationen', undefined, 'automationen'], ['formulare', 'egal', 'formulare'], ['quatsch', undefined, 'ueberblick'],
     ];
     for (const [s, a, p] of fall) expect(punktVon(aufloesen(s, a)), `${s}/${a}`).toBe(p);
   });

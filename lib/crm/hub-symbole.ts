@@ -4,10 +4,10 @@
 // = Name in `HubSymbol` + Zeile hier (der Wächter tests/markttraktion-hub.test.ts prüft, dass jedes Symbol ein Bild hat).
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Users, Building2, Funnel, SquareKanban, FileSignature, PhoneCall, Megaphone, CalendarDays, Handshake, Goal, ChartNoAxesCombined, Bot, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Funnel, SquareKanban, FileSignature, PhoneCall, Megaphone, CalendarDays, Handshake, Goal, ChartNoAxesCombined, Bot, Settings, ClipboardList } from 'lucide-react';
 import type { HubSymbol } from './adresse';
 
 /** Das Symbol je Punkt (Namen aus `HUB_MENUE`). */
 export const HUB_SYMBOLE: Record<HubSymbol, LucideIcon> = {
-  LayoutDashboard, Users, Building2, Funnel, SquareKanban, FileSignature, PhoneCall, Megaphone, CalendarDays, Handshake, Goal, ChartNoAxesCombined, Bot, Settings,
+  LayoutDashboard, Users, Building2, Funnel, SquareKanban, FileSignature, PhoneCall, Megaphone, CalendarDays, Handshake, Goal, ChartNoAxesCombined, Bot, Settings, ClipboardList,
 };
