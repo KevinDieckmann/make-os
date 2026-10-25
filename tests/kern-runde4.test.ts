@@ -284,3 +284,23 @@ describe('7 · Der Haken an einer Option fügt sie sofort als Position hinzu (ab
   });
 });
 
+// ── 8 · Ein offener Entwurf je Deal ──
+import { offenerEntwurfFuerDeal } from '@/lib/crm/angebote';
+
+describe('8 · „Angebot erstellen“ am Deal öffnet dessen offenen Entwurf statt eines neuen', () => {
+  const a = (id: string, x: Record<string, unknown>) => ({ id, status: 'entwurf', geaendert: J, ...x }) as Parameters<typeof offenerEntwurfFuerDeal>[0][number];
+  it('der zuletzt geänderte Entwurf des Deals; gestellte und andere Deals zählen nicht', () => {
+    const l = [a('ang-1', { dealId: 'ch-1', geaendert: '2026-10-25T09:00:00.000Z' }), a('ang-2', { dealId: 'ch-1', geaendert: '2026-10-25T10:00:00.000Z' }), a('ang-3', { dealId: 'ch-1', status: 'gestellt', geaendert: '2026-10-25T11:00:00.000Z' }), a('ang-4', { dealId: 'ch-2' })];
+    expect(offenerEntwurfFuerDeal(l, 'ch-1')).toBe('ang-2');
+    expect(offenerEntwurfFuerDeal(l, 'ch-9')).toBeNull();
+    expect(offenerEntwurfFuerDeal(l, null)).toBeNull();
+    expect(offenerEntwurfFuerDeal([l[2]], 'ch-1')).toBeNull();
+  });
+  it('die Seite fragt die Regel, sobald die Angebote geladen sind, und öffnet den vorhandenen Entwurf (Adresse ersetzt)', () => {
+    const q = quelle('components/os/crm/angebot/AngebotStart.tsx');
+    expect(q).toMatch(/const vorhanden = offenerEntwurfFuerDeal\(daten\.angebote \?\? \[\], dealId\);/);
+    expect(q).toMatch(/if \(vorhanden\) \{ setNeu\(null\); router\.replace\(angebotLink\(\{ angebotId: vorhanden \}\)\); return; \}/);
+    expect(q).toMatch(/\[schluessel, geladen\]/);
+  });
+});
+

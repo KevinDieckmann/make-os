@@ -17,6 +17,7 @@ import { neueId } from '../daten';
 import { Karte, Leer, Knopf } from '../../ui';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { angebotLink } from '@/lib/crm/adresse';
+import { offenerEntwurfFuerDeal } from '@/lib/crm/angebote';
 import { useAngebote } from './angebot-daten';
 import { Editor, type Gestellt, type Vorbelegung } from './Editor';
 import { Ansicht } from './Ansicht';
@@ -40,12 +41,17 @@ export function AngebotStart({ api, kontaktId, firmaId, dealId, angebotId, zuKon
   const [neu, setNeu] = useState<{ id: string; vorbelegung: Vorbelegung } | null>(null);
   const [gestellt, setGestellt] = useState<Gestellt | null>(null);
 
-  // Vorbelegung in der Adresse (ohne Kennung) → neuer Entwurf für genau diese Vorbelegung.
+  // Vorbelegung in der Adresse (ohne Kennung) → neuer Entwurf für genau diese Vorbelegung. 25.10. (Kern-Bau-Test 2): hat der Deal schon einen offenen Entwurf, öffnet
+  // „Angebot erstellen“ DIESEN (`offenerEntwurfFuerDeal`) — vorher entstand bei jedem Öffnen über den Deal ein neuer, verwaister Entwurf. Erst entschieden, wenn die
+  // Angebote geladen sind.
   const schluessel = !angebotId && (kontaktId || firmaId || dealId) ? `${kontaktId ?? ''}|${firmaId ?? ''}|${dealId ?? ''}` : null;
+  const geladen = daten.angebote !== null;
   useEffect(() => {
-    if (!schluessel) return;
+    if (!schluessel || !geladen) return;
+    const vorhanden = offenerEntwurfFuerDeal(daten.angebote ?? [], dealId);
+    if (vorhanden) { setNeu(null); router.replace(angebotLink({ angebotId: vorhanden })); return; }
     setNeu(alt => (alt && alt.id && `${alt.vorbelegung.kontaktId ?? ''}|${alt.vorbelegung.firmaId ?? ''}|${alt.vorbelegung.dealId ?? ''}` === schluessel ? alt : { id: neueId('ang'), vorbelegung: { kontaktId, firmaId, dealId } }));
-  }, [schluessel]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [schluessel, geladen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const oeffnen = useCallback((id: string) => { setNeu(null); setGestellt(null); router.push(angebotLink({ angebotId: id })); }, [router]);
   const zurListe = useCallback(() => { setNeu(null); setGestellt(null); router.push(angebotLink({})); }, [router]);

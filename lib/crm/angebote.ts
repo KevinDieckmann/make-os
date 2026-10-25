@@ -51,6 +51,15 @@ export const POSITION_MAX = { menge: 100000, einzelpreisCent: 1_000_000_000, lau
 
 /** Nach dem Stellen unveränderlich — Status und die Felder, die der Server beim Übergang setzt. */
 export const istEntwurf = (a: Pick<Angebot, 'status'>) => a.status === 'entwurf';
+/**
+ * Der offene Entwurf eines Deals (25.10., Kern-Bau-Test 2: jedes erneute Öffnen über den Deal legte einen NEUEN Entwurf an — „Entwurf · Entwurf · Entwurf“ an der
+ * Deal-Akte): der zuletzt geänderte Entwurf mit diesem Deal; null ohne. „Angebot erstellen“ öffnet ihn statt eines neuen — eine neue Version legt man ausdrücklich an.
+ * Vorhandene Doppel bleiben, wie sie sind (nur keine neuen).
+ */
+export function offenerEntwurfFuerDeal(angebote: readonly Pick<Angebot, 'id' | 'status' | 'dealId' | 'geaendert'>[], dealId: string | null | undefined): string | null {
+  if (!dealId) return null;
+  return angebote.filter(a => istEntwurf(a) && a.dealId === dealId).sort((a, b) => (b.geaendert ?? '').localeCompare(a.geaendert ?? '') || a.id.localeCompare(b.id))[0]?.id ?? null;
+}
 /** Offen im Sinne von „wartet auf Antwort“ (BEAN: Angebotskunde). */
 export const istOffen = (a: Pick<Angebot, 'status'>) => a.status === 'gestellt';
 
