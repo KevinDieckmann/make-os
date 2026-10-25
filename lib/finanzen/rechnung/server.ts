@@ -490,7 +490,8 @@ export async function rechnungStellen(p: { id: string; stand: unknown; person: s
     const a = plan.rechnungen.find(r => r.id === p.id);
     if (!a || a.status !== 'geplant' || fassung(a) !== stand) throw new RechnungFehler('Wurde inzwischen geändert — der aktuelle Stand ist geladen, bitte noch einmal.', 409, { ...(a ? { aktuell: mitFassung(a) } : {}), grund: 'inzwischen geändert' });
     const schluessel = kreisSchluessel(r0.firmaId as Gesellschaftskennung, jahr);
-    const { lauf, nummer } = naechsteNummer(plan.rechnungen, cur?.zaehler?.[schluessel], r0.firmaId as Gesellschaftskennung, jahr, kurzVon(g));
+    // 25.10.: Format der Gesellschaft (`rechnungsformat`, Vorgabe wie bisher) — Kreis und Zähler bleiben dieselben.
+    const { lauf, nummer } = naechsteNummer(plan.rechnungen, cur?.zaehler?.[schluessel], r0.firmaId as Gesellschaftskennung, jahr, kurzVon(g), v.rechnungsformat);
     const positionen = (a.positionen ?? []).map(x => (ku ? { ...x, ustSatz: 0 } : { ...x }));
     const ziel = a.zahlungszielTage ?? v.zahlungszielTage;
     const bf = betragFelder(positionen, { kleinunternehmer: ku });
@@ -582,7 +583,8 @@ export async function rechnungStornieren(p: { id: string; grund: unknown; stand?
     const o = plan.rechnungen.find(r => r.id === p.id);
     if (!o || fassung(o) !== stand) throw new RechnungFehler('Wurde inzwischen geändert — der aktuelle Stand ist geladen, bitte noch einmal.', 409, { ...(o ? { aktuell: mitFassung(o) } : {}), grund: 'inzwischen geändert' });
     const schluessel = kreisSchluessel(o.firmaId as Gesellschaftskennung, jahr);
-    const { lauf, nummer } = naechsteNummer(plan.rechnungen, cur?.zaehler?.[schluessel], o.firmaId as Gesellschaftskennung, jahr, kurzVon(g));
+    // 25.10.: eigenes Storno-Format der Gesellschaft (Vorgabe: das Rechnungsformat — wie bisher derselbe Kreis).
+    const { lauf, nummer } = naechsteNummer(plan.rechnungen, cur?.zaehler?.[schluessel], o.firmaId as Gesellschaftskennung, jahr, kurzVon(g), mitVorgaben(g).stornoformat);
     const s: Rechnung = { ...stornoEntwurf(o, { id: neueKennung('r'), heute, grund, kleinunternehmer: ku }), nummer, lauf, absender: absenderAus(g), gestelltAm: jetztIso, gestelltVon: p.person };
     const bytes = Buffer.from(await belegPdf(rechnungDokument(s, absenderAus(g, { ibanVoll: true }), { datum: heute, kleinunternehmer: ku, original: o }), { logo, erstellt: jetzt }));
     const sha256 = createHash('sha256').update(bytes).digest('hex');

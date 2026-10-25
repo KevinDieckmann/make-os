@@ -105,3 +105,30 @@ describe('1 · Artikelnummer am Preis-Teil → Angebots- und Rechnungsposition �
   });
 });
 
+describe('2 · Rechnungsnummer-Format je Gesellschaft (Vorgabe wie heute, ein Kreis mit Storno)', () => {
+  it('Vorgabe ohne Einstellung = {KURZ}-R-{JAHR}-{NR4}, Storno wie Rechnung', async () => {
+    const { mitVorgaben } = await import('@/lib/crm/gesellschaften');
+    const v = mitVorgaben({ id: 'kdv' });
+    expect(v.rechnungsformat).toBe('{KURZ}-R-{JAHR}-{NR4}');
+    expect(v.stornoformat).toBe('{KURZ}-R-{JAHR}-{NR4}');
+    expect(mitVorgaben({ id: 'kdv', rechnungsformat: 'RE-{JJ}-{NR5}' }).stornoformat).toBe('RE-{JJ}-{NR5}');
+    expect(mitVorgaben({ id: 'kdv', rechnungsformat: 'RE-{NR5}' }).rechnungsformat).toBe('{KURZ}-R-{JAHR}-{NR4}');
+  });
+  it('Speichern: gültig → übernommen, ohne Jahr bzw. ohne laufende Nummer → Fehler (nichts still verworfen), leer → Vorgabe', async () => {
+    const { gesellschaftAnwenden } = await import('@/lib/crm/gesellschaften');
+    const a = gesellschaftAnwenden({ id: 'kdv' }, { rechnungsformat: 'RE-{JJ}-{NR5}', stornoformat: 'ST-{JAHR}-{NR4}' }, J, 'pa');
+    expect(a.fehler).toEqual([]);
+    expect(a.g).toMatchObject({ rechnungsformat: 'RE-{JJ}-{NR5}', stornoformat: 'ST-{JAHR}-{NR4}' });
+    const b = gesellschaftAnwenden(a.g, { rechnungsformat: 'RE-{NR5}' }, J, 'pa');
+    expect(b.fehler.map(f => f.feld)).toEqual(['rechnungsformat']);
+    expect(gesellschaftAnwenden(a.g, { stornoformat: 'ST-{JAHR}' }, J, 'pa').fehler.map(f => f.feld)).toEqual(['stornoformat']);
+    expect(gesellschaftAnwenden(a.g, { rechnungsformat: '' }, J, 'pa').g).not.toHaveProperty('rechnungsformat');
+  });
+  it('Nächste Nummer im eigenen Format — derselbe Zähler für Rechnung und Storno, lückenlos; ungültiges Format → Vorgabe', async () => {
+    const { naechsteNummer } = await import('@/lib/finanzen/rechnung/regeln');
+    const l = [{ firmaId: 'kdv', lauf: { jahr: 2026, nr: 4 }, nummer: 'RE-26-00004' }] as never;
+    expect(naechsteNummer(l, 4, 'kdv', 2026, 'BW', 'RE-{JJ}-{NR5}')).toEqual({ lauf: { jahr: 2026, nr: 5 }, nummer: 'RE-26-00005' });
+    expect(naechsteNummer(l, 4, 'kdv', 2026, 'BW', 'ST-{JAHR}-{NR4}')).toEqual({ lauf: { jahr: 2026, nr: 5 }, nummer: 'ST-2026-0005' });
+    expect(naechsteNummer(l, 4, 'kdv', 2026, 'BW', 'kaputt')).toEqual({ lauf: { jahr: 2026, nr: 5 }, nummer: 'BW-R-2026-0005' });
+  });
+});

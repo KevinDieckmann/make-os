@@ -38,6 +38,11 @@ export const gesellschaftLabel = (g: string | undefined) => KERN_EINHEITEN.find(
 
 /** Vorgabe des Nummernformats (Kevin 28.09.). */
 export const NUMMER_VORGABE = '{KURZ}-A-{JAHR}-{NR4}';
+/**
+ * Vorgabe des Rechnungsnummer-Formats (08.10.; seit 25.10. je Gesellschaft einstellbar, `Gesellschaft.rechnungsformat`) — dieselbe Regel wie beim Angebot
+ * (`nummernformatOk`), dazu Pflicht: das Jahr ({JAHR} oder {JJ}), weil die laufende Nummer je Gesellschaft und Jahr zählt (sonst gäbe es dieselbe Nummer zweimal).
+ */
+export const RECHNUNG_NUMMER_VORGABE = '{KURZ}-R-{JAHR}-{NR4}';
 /** Vorgaben je Gesellschaft, solange in den Stammdaten nichts steht. */
 export const GUELTIG_VORGABE_TAGE = 30;
 export const ZAHLUNGSZIEL_VORGABE_TAGE = 14;
@@ -182,6 +187,9 @@ export function nummernformatOk(f: string): boolean {
   return nr.length === 1 && !/[{}]/.test(rest);
 }
 
+/** Ein Format für Rechnungs- bzw. Stornonummern (25.10.): wie beim Angebot UND mit dem Jahr — der Nummernkreis zählt je Gesellschaft und Jahr. */
+export const rechnungsformatOk = (f: string): boolean => nummernformatOk(f) && /\{(JAHR|JJ)\}/.test(f);
+
 /** Nummer aus Format, Kürzel, Jahr und laufender Nummer: `{KURZ}-A-{JAHR}-{NR4}` → „KDV-A-2026-0001“. */
 export function nummerAusFormat(format: string, kurz: string, jahr: number, nr: number): string {
   const f = nummernformatOk(format) ? format : NUMMER_VORGABE;
@@ -247,6 +255,8 @@ export function positionSaeubern(o: Record<string, unknown>, i: number): Angebot
     ...(basis !== 'einmalig' && lz > 0 ? { laufzeitMonate: Math.min(POSITION_MAX.laufzeitMonate, lz) } : {}),
     // Tages-/Stundensatz mit geplanter Menge je Monat (24.10.) — nur bei Basis „monat“; wer die Basis umstellt, nimmt ihn weg.
     ...(basis === 'monat' && (o.satz === 'tag' || o.satz === 'stunde') ? { satz: o.satz } : {}),
+    // Artikelnummer (25.10., optional) — aus dem Preis-Teil bzw. von Hand; ohne diese Zeile fiele sie beim Speichern des Entwurfs weg.
+    ...(artikelnummerSaeubern(o.artikelnummer) ? { artikelnummer: artikelnummerSaeubern(o.artikelnummer) } : {}),
   };
 }
 
@@ -255,8 +265,6 @@ export const ENTWURF_FELDER = ['gesellschaft', 'kontaktId', 'firmaId', 'dealId',
 
 /**
  * Entwurf säubern: nur ENTWURF_FELDER aus `roh`, auf den bisherigen Entwurf gelegt. Status bleibt „entwurf“,
-    // Artikelnummer (25.10., optional) — aus dem Preis-Teil bzw. von Hand; ohne diese Zeile fiele sie beim Speichern des Entwurfs weg.
-    ...(artikelnummerSaeubern(o.artikelnummer) ? { artikelnummer: artikelnummerSaeubern(o.artikelnummer) } : {}),
  * Version/Vorgänger bleiben, wie der Server sie setzte. Kennungen nur in ihrer Form (tote prüft die Verbindungsprüfung).
  */
 /** `gesellschaftVorgabe` (08.10.): Absender eines NEUEN Entwurfs ohne Angabe — die operative Business-Gesellschaft (Server: `absenderVorgabe`). */
