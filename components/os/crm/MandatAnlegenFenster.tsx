@@ -15,7 +15,7 @@ import { Fenster } from '../Fenster';
 import type { CrmApi } from './daten';
 import type { Mandat } from '@/lib/crm/typen';
 import { honorarText, zusatzBeschreibung, zusatzName } from '@/lib/crm/mandat-zusatz';
-import { mindestEnde } from '@/lib/crm/mandat-laufzeit';
+import { endeText, laufzeitEnde } from '@/lib/crm/mandat-laufzeit';
 
 export interface MandatAnlegenErgebnis { ok: boolean; mandatId?: string; text?: string; fehler?: string; hinweis?: string; /** Der gewählte Start (25.10.) — Vorgabe für „Fall starten“. */ start?: string }
 interface Vorschau {
@@ -25,7 +25,6 @@ interface Vorschau {
 }
 
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
-const tagDe = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
 const QUELLE: Record<Vorschau['quelle'], string> = { angebot: 'aus dem angenommenen Angebot', produkt: 'aus dem Produkt', deal: 'aus dem Deal' };
 
 async function postMandat(body: Record<string, unknown>): Promise<Record<string, unknown> & { ok?: boolean; fehler?: string }> {
@@ -71,7 +70,8 @@ function MandatAnlegenFenster({ api, chanceId, onFertig }: { api?: Pick<CrmApi, 
     if (!r.ok) { setFehler(r.fehler ?? 'Mandat nicht angelegt.'); return; }
     onFertig({ ok: true, start, ...(typeof r.mandatId === 'string' ? { mandatId: r.mandatId } : {}), ...(typeof r.text === 'string' ? { text: r.text } : {}), ...(typeof r.hinweis === 'string' ? { hinweis: r.hinweis } : {}) });
   };
-  const ende = m ? m.ende ?? mindestEnde({ start, mindestlaufzeitMonate: m.mindestlaufzeitMonate }) : null;
+  // Das Ende der Laufzeit (letzter Tag) — dieselbe Regel und dasselbe Format wie im Mandat (`laufzeitEnde`, `endeText`, 25.10.).
+  const ende = m ? laufzeitEnde({ ...m, start, verlaengerung: undefined }, start) : null;
   const produktName = v?.namen?.produkt ?? (m?.leistungId ? katalog.find(l => l.id === m.leistungId)?.name : undefined);
   const zusatzText = (z: NonNullable<Mandat['zusatz']>[number]) => {
     const n = v?.namen?.zusatz.find(x => x.id === z.id);
@@ -101,7 +101,7 @@ function MandatAnlegenFenster({ api, chanceId, onFertig }: { api?: Pick<CrmApi, 
             <input type="date" value={start} onChange={e => { const s = e.target.value; setStart(s); if (s) void laden(s); }} aria-label="Start des Mandats" style={{ ...feld, fontSize: 16, maxWidth: 200, colorScheme: 'dark' }} />
           </label>
           <span style={klein}>
-            {m.mindestlaufzeitMonate ? `${m.mindestlaufzeitMonate} Monate Mindestlaufzeit${ende ? ` · bis ${tagDe(ende)}` : ''}` : 'ohne Mindestlaufzeit'} · Rechnung {m.rechnungsrhythmus === 'quartal' ? 'je Quartal' : m.rechnungsrhythmus} · Zahlungsziel {m.zahlungszielTage} Tage · {m.ustSatz} % USt
+            {m.mindestlaufzeitMonate ? `${m.mindestlaufzeitMonate} Monate Mindestlaufzeit${ende ? ` · bis ${endeText(ende)}` : ''}` : 'ohne Mindestlaufzeit'} · Rechnung {m.rechnungsrhythmus === 'quartal' ? 'je Quartal' : m.rechnungsrhythmus} · Zahlungsziel {m.zahlungszielTage} Tage · {m.ustSatz} % USt
           </span>
           {!!m.leistungen.length && <span style={klein}>Leistungen: {m.leistungen.join(' · ')}</span>}
           {!!m.offen.length && <span style={klein}>Offen: {m.offen.join(' · ')}</span>}

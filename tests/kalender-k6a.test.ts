@@ -114,12 +114,13 @@ describe('3 · Wiedervorlage am geparkten Deal kommt wieder hoch (eine Regel)', 
 describe('2 · Kündigungsfrist einmal gerechnet — Mandatsseite und Kalender gleich', () => {
   const m = { id: 'm-1', kunde: 'Testfirma', status: 'aktiv', start: '2026-01-01', mindestlaufzeitMonate: 12, kuendigungsfristTage: 90, verlaengerung: 'manuell' as const, zustaendig: 'malin' };
   it('ohne `ende`: Ende aus Start + Mindestlaufzeit, Frist davor (vorher im Kalender: keine)', () => {
-    expect(mandatFristen(m, HEUTE)).toEqual({ endeAm: '2027-01-01', frist: '2026-10-03' });
+    // 25.10. (Kern-Runde 4): das Ende ist der LETZTE Tag der Laufzeit (inklusiv) — 01.01. + 12 Monate → 31.12.; die Frist 90 Tage davor.
+    expect(mandatFristen(m, HEUTE)).toEqual({ endeAm: '2026-12-31', frist: '2026-10-02' });
     const f = fristen({ mandate: [m] }, HEUTE, '2027-02-01', HEUTE);
-    expect(f.find(x => x.id === 'md-frist-m-1')).toMatchObject({ tag: '2026-10-03', kuendigung: true, fuer: 'malin' });
-    expect(f.find(x => x.id === 'md-ende-m-1')).toMatchObject({ tag: '2027-01-01', titel: 'Laufzeit-Ende: Testfirma' });
+    expect(f.find(x => x.id === 'md-frist-m-1')).toMatchObject({ tag: '2026-10-02', kuendigung: true, fuer: 'malin' });
+    expect(f.find(x => x.id === 'md-ende-m-1')).toMatchObject({ tag: '2026-12-31', titel: 'Laufzeit-Ende: Testfirma' });
     const lage = mandatLage({ ...m, titel: 'x', kontaktIds: [], honorar: { betrag: 0, basis: 'monat' }, health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, offen: [], gesellschaft: 'kdc' } as unknown as Mandat, HEUTE);
-    expect(lage.fristBis).toBe('2026-10-03');
+    expect(lage.fristBis).toBe('2026-10-02');
   });
   it('Zahlung am Wochenende trägt den Werktag-Hinweis; Steuer-Vorlage mit Pflicht-Hinweis, ohne Betrag', () => {
     const f = fristen({ zahlungen: [{ id: 'z1', an: 'Vermieter', faellig: '2026-10-03', betrag: 100 }], steuer: [{ datum: '2026-10-12', art: 'kdc-ust', titel: 'Selbstständigkeit: Umsatzsteuer-Voranmeldung Q3/2026', hinweis: 'Anmeldung und Zahlung' }] }, HEUTE, '2026-11-01', HEUTE);

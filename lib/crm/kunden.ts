@@ -7,7 +7,7 @@
 
 import type { Mandat } from './typen';
 import { zahltage, letzterZahltag, type Planposten } from '@/lib/make-one/liquiditaet';
-import { geplantesEnde, leistungsmonat, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, zahlungsziel } from './mandat-laufzeit';
+import { geplantesEnde, laufzeitEnde, leistungsmonat, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, zahlungsziel } from './mandat-laufzeit';
 import { mandatName } from './mandat-name';
 import { zusatzLiquiditaet, anrechnungLiquiditaet, zahlplanMonate, zahlplanPosition, zahlplanSatz, type AnrechnungKontext } from './mandat-zusatz';
 import { rechnungSummen } from '@/lib/finanzen/rechnung/regeln';
@@ -19,14 +19,6 @@ import { anzahl } from '@/lib/text/zahlwort';
 import { KERN_EINHEITEN, gesellschaftAusEinheit, gehoertZuPrivat, istRegisterKennung, type Gesellschaftskennung } from '@/lib/einheiten';
 
 const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 864e5);
-function plusMonate(datum: string, n: number): string {
-  const d = new Date(`${datum}T12:00:00Z`);
-  const tag = d.getUTCDate();
-  d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + n);
-  const letzter = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
-  d.setUTCDate(Math.min(tag, letzter));
-  return d.toISOString().slice(0, 10);
-}
 const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 export const HEALTH_GEWICHTE = { beteiligung: 25, umsetzung: 25, wirkung: 30, zahlung: 10, stimmung: 10 } as const;
@@ -72,12 +64,9 @@ export type MandatFristFelder = Pick<Mandat, 'ende' | 'start' | 'mindestlaufzeit
  * Fristen und Glocke/Heute. `frist` = letzter Tag zum Kündigen/Verlängern, nur mit Kündigungsfrist (sonst null).
  */
 export function mandatFristen(m: Partial<MandatFristFelder>, heute: string): { endeAm: string | null; frist: string | null } {
-  let endeAm: string | null = m.ende ? m.ende.slice(0, 10) : null;
-  if (!endeAm && m.start && m.mindestlaufzeitMonate) {
-    endeAm = plusMonate(m.start.slice(0, 10), m.mindestlaufzeitMonate);
-    // Nach der Mindestlaufzeit verlängert sich ein Auto-Vertrag monatsweise.
-    while (m.verlaengerung === 'auto' && endeAm < heute) endeAm = plusMonate(endeAm, 1);
-  }
+  // 25.10. (Kern-Bau-Test 2): das Ende ist der LETZTE Tag der Laufzeit (inklusiv, `laufzeitEnde` — wie das gesetzte Ende und das Fenster „Mandat anlegen“); vorher
+  // Start + Monate, ein Tag zu spät („Ende 15.3.“ neben „bis 14.03.“). Nach der Mindestlaufzeit verlängert sich ein Auto-Vertrag monatsweise.
+  const endeAm = laufzeitEnde({ ...m, start: m.start?.slice(0, 10) }, heute);
   const frist = endeAm && m.kuendigungsfristTage && m.kuendigungsfristTage > 0 ? plusTage(endeAm, -m.kuendigungsfristTage) : null;
   return { endeAm, frist };
 }
@@ -346,8 +335,8 @@ export function postenAngleichen(alt: readonly Planposten[], m: Mandat, soll: re
  */
 export function beendenVorgabe(m: Pick<Mandat, 'ende' | 'start' | 'mindestlaufzeitMonate' | 'verlaengerung' | 'kuendigungsfristTage'>, heute: string): { tag: string; art: 'ende' | 'laufzeit' | 'heute' } {
   if (m.ende) return { tag: m.ende.slice(0, 10), art: 'ende' };
-  const { endeAm } = mandatFristen(m, heute);
-  const letzter = endeAm ? plusTage(endeAm, -1) : null;
+  // Das Ende der Laufzeit ist schon der letzte Tag (inklusiv, 25.10.).
+  const { endeAm: letzter } = mandatFristen(m, heute);
   return letzter && letzter >= heute ? { tag: letzter, art: 'laufzeit' } : { tag: heute, art: 'heute' };
 }
 

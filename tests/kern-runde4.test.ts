@@ -331,3 +331,31 @@ describe('9 · „Rechnung für … schreiben“ nennt nach dem Stellen den näc
   });
 });
 
+// ── 10 · Mandatsende: EIN Tag (inklusiv), EIN Format ──
+import { laufzeitEnde, endeText, geplantesEnde, mindestEnde } from '@/lib/crm/mandat-laufzeit';
+import { mandatFristen, mandatLage, beendenVorgabe } from '@/lib/crm/kunden';
+
+describe('10 · Mandatsende einheitlich: letzter Tag der Laufzeit, „14.03.2027“ in Fenster, Mandat, Kalender, „Mandat beenden“ und Liquidität', () => {
+  const M = mandat();
+  it('ab 15.11.2026, 4 Monate → 14.03.2027 überall', () => {
+    expect(laufzeitEnde(M, HEUTE)).toBe('2027-03-14');
+    expect(mandatFristen(M, HEUTE).endeAm).toBe('2027-03-14');
+    expect(mandatLage(M, HEUTE).endeAm).toBe('2027-03-14');
+    expect(beendenVorgabe(M, HEUTE)).toEqual({ tag: '2027-03-14', art: 'laufzeit' });
+    expect(geplantesEnde(M)).toBe('2027-03-14');
+    expect(mindestEnde(M)).toBe('2027-03-14');
+    expect(endeText('2027-03-14')).toBe('14.03.2027');
+    // Gesetztes Ende gilt wie es ist; Kündigungsfrist vom letzten Tag aus.
+    expect(mandatFristen(mandat({ ende: '2027-02-28', kuendigungsfristTage: 30 }), HEUTE)).toEqual({ endeAm: '2027-02-28', frist: '2027-01-29' });
+    // Automatische Verlängerung: die laufende Monatsperiode (letzter Tag).
+    expect(laufzeitEnde(mandat({ start: '2026-01-10', mindestlaufzeitMonate: 3, verlaengerung: 'auto' }), '2026-10-18')).toBe('2026-11-09');
+  });
+  it('Fenster und Mandat zeigen das Ende mit derselben Regel und demselben Format', () => {
+    expect(quelle('components/os/crm/MandatAnlegenFenster.tsx')).toMatch(/laufzeitEnde\(\{ \.\.\.m, start, verlaengerung: undefined \}, start\)/);
+    expect(quelle('components/os/crm/MandatAnlegenFenster.tsx')).toMatch(/bis \$\{endeText\(ende\)\}/);
+    const k = quelle('components/os/crm/Kunden.tsx');
+    expect(k).toMatch(/Ende \{endeText\(l\.endeAm\)\}/);
+    expect(k).toMatch(/bis \$\{endeText\(l\.endeAm\)\}/);
+  });
+});
+

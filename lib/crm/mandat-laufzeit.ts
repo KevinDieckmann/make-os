@@ -90,6 +90,22 @@ export function mindestEnde(m: Partial<Pick<Mandat, 'start' | 'mindestlaufzeitMo
 }
 
 /**
+ * Das Ende der laufenden Periode eines Mandats — der LETZTE Tag (inklusiv), EINE Regel für Fenster „Mandat anlegen“, Mandat, Kalender-Fristen, „Mandat beenden“
+ * (Fall) und Liquidität (25.10., Kern-Bau-Test 2: das Fenster sagte „bis 14.03.2027“, das Mandat „Ende Mo 15.3.“ — Start + Monate ohne den Tag davor): das gesetzte
+ * Ende; sonst das Ende der Mindestlaufzeit (`mindestEnde`); bei automatischer Verlängerung die laufende Monatsperiode danach (liegt das Ende zurück). null ohne Angaben.
+ */
+export function laufzeitEnde(m: Partial<Pick<Mandat, 'start' | 'ende' | 'mindestlaufzeitMonate' | 'verlaengerung'>>, heute: string): string | null {
+  if (m.ende) return m.ende.slice(0, 10);
+  if (!tagOk(m.start) || !m.mindestlaufzeitMonate || m.mindestlaufzeitMonate <= 0) return null;
+  let n = m.mindestlaufzeitMonate;
+  let e = plusMonateGekappt(m.start, n, -1);
+  while (m.verlaengerung === 'auto' && e < heute && n < 1200) e = plusMonateGekappt(m.start, ++n, -1);
+  return e;
+}
+/** Das Ende der Laufzeit in Worten — EIN Format überall, wo das Mandatsende steht: „14.03.2027“. */
+export const endeText = (tag: string): string => `${tag.slice(8, 10)}.${tag.slice(5, 7)}.${tag.slice(0, 4)}`;
+
+/**
  * Bis wann ein Mandat geplant läuft (letzter Tag): das Ende; ohne Ende und ohne automatische Verlängerung der letzte Tag der
  * Mindestlaufzeit; sonst offen (null). Die Monatsrechnung kennt nur das Ende (ein Mandat über die Mindestlaufzeit hinaus lässt sich
  * weiter abrechnen) — der Liquiplan plant mit diesem Tag, und „Mandat beenden“ schlägt ihn als Ende vor.
