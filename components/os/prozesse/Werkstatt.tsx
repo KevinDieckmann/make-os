@@ -595,7 +595,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     const haengt = !!ziel && hauptZiel(f.knoten, ziel) === null;
     const phaseId = (haengt ? phaseVon(f, ziel!) : null) ?? ort?.phaseId ?? (ziel && phaseVon(f, ziel)) ?? phasen(d).at(-1)?.id;
     if (!phaseId) return;
-    const lagen = punkt && lage ? einfuegeLagen(a.knoten, lage, punkt, phaseId) : undefined;
+    // Runde 4: hängt die Kopie am gewählten Knoten an, liegt sie in der Spalte dahinter (hinter seinem Schloss, wenn er eins hat) — der Faden läuft vorwärts.
+    const hinter = haengt && !o.neben ? f.knoten.find(k => k.schloss?.fuer === ziel)?.id ?? ziel : null;
+    const lagen = punkt && lage ? einfuegeLagen(a.knoten, lage, punkt, phaseId, { hinter }) : undefined;
     const e = einfuegen(f, a, { phaseId, nach: ziel ?? null, kennung: () => neueKennung('fk'), ...(lagen?.size ? { lagen } : {}) });
     // Die Ansage sagt, ob verbunden oder lose — sichtbar als Meldung, nicht nur für den Vorleser.
     if (anwenden(e) && e.ok) {

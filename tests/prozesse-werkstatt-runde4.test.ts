@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { neuerProzess } from '@/lib/prozesse/bestand';
 import { anlegen, kopieren, einfuegen, ausgangsWahl, ausgangSetzen, ausgangWahlAus, hauptZiel, mehrfachZiele, AUSGANG_NAECHSTER, AUSGANG_ENDE, type Ergebnis, type Fassung } from '@/lib/prozesse/werkstatt-aktionen';
-import { ausgaengeVon } from '@/lib/prozesse/werkstatt-lage';
+import { ausgaengeVon, einfuegeLagen, werkstattLage } from '@/lib/prozesse/werkstatt-lage';
 import { ausgangsZiele } from '@/lib/prozesse/fluss';
 import type { ProzessDefinition } from '@/lib/prozesse/definition';
 import { ALLE_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';
@@ -162,5 +162,34 @@ describe('(2) Ausgang-Menü: jedes Ziel genau einmal, das wirksame gewählt, Opt
     const f = gut(anlegen({ knoten: e.entwurf.knoten }, a, { nach: start.id, ausgang: 'weiter' }));
     const m = mehrfachZiele(f, start.id);
     expect(m.map(x => x.label)).toEqual(['Prüfen (folgt im Ablauf)']);
+  });
+});
+
+describe('(3) Eine angehängte Kopie liegt hinter ihrem Ziel — der Faden läuft vorwärts', () => {
+  it('Bau-Test 3: „Kick-off Diagnose“ gewählt, ⌘V mit der Maus darunter — die Kopie liegt in der Spalte danach auf derselben Höhe, nicht unter dem Original', () => {
+    const { e, start } = mandatProzess();
+    const kick = neuerKnoten(AUFGABE, kennung(), 'Kick-off Diagnose');
+    const f = gut(anlegen({ knoten: e.entwurf.knoten }, kick, { nach: start.id, ausgang: 'weiter' }));
+    const d = (x: Fassung) => ({ ...e.entwurf, knoten: x.knoten }) as ProzessDefinition;
+    const l = werkstattLage(d(f));
+    const ablage = kopieren(f, [kick.id])!;
+    const ph = phasen(f)[0].id;
+    const ziel = l.knoten.get(kick.id)!;
+    // Die Maus steht UNTER dem Original (wie im Bau-Test) — angehängt zählt das Ziel.
+    const unten: [number, number] = [ziel.x + ziel.b / 2, ziel.y + ziel.h + 200];
+    const lagen = einfuegeLagen(ablage.knoten, l, unten, ph, { hinter: kick.id });
+    const g = gut(einfuegen(f, ablage, { phaseId: ph, nach: kick.id, kennung, lagen }));
+    const kopie = g.knoten.find(k => !f.knoten.some(x => x.id === k.id))!;
+    const l2 = werkstattLage(d(g));
+    const z2 = l2.knoten.get(kick.id)!, k2 = l2.knoten.get(kopie.id)!;
+    expect(k2.x).toBeGreaterThan(z2.x + z2.b);
+    expect(k2.y).toBe(z2.y);
+    // Der Faden vom Original zur Kopie läuft vorwärts (kein „zurück“).
+    const faden = l2.kanten.find(k => k.von === kick.id && k.nach === kopie.id)!;
+    expect(faden.rueckwaerts ?? false).toBe(false);
+    // Ohne Anhängen (kein Ziel): weiter an der Maus.
+    const lose = einfuegeLagen(ablage.knoten, l, unten, ph);
+    expect(lose.get(kick.id)!.x).toBeLessThan(lagen.get(kick.id)!.x);
+    expect(lies('components/os/prozesse/Werkstatt.tsx')).toContain('einfuegeLagen(a.knoten, lage, punkt, phaseId, { hinter })');
   });
 });

@@ -496,11 +496,12 @@ export function ortBei(l: Pick<WerkstattLage, 'rahmen' | 'bahnen'>, x: number, y
 }
 
 /**
- * Wo Kopien beim Einfügen (⌘V) liegen (rein, Werkstatt-Fäden 24.10., Bau-Test): an der Mausposition (bzw. der Mitte des sichtbaren Bereichs) — die Gruppe behält ihre
- * Anordnung (Lage der Originale, sonst nebeneinander); liegt dort schon ein Knoten, rückt sie nach unten in freien Platz. Jede Kopie bleibt in ihrer Bahn (liegt der
+ * Wo Kopien beim Einfügen (⌘V) liegen (rein, Werkstatt-Fäden 24.10., Bau-Test): an der Mausposition (bzw. der Mitte des sichtbaren Bereichs) — hängen sie an einem
+ * gewählten Knoten (`hinter`, Runde 4), in der Spalte dahinter; die Gruppe behält ihre Anordnung (Lage der Originale, sonst nebeneinander); liegt dort schon ein
+ * Knoten, rückt sie nach unten in freien Platz. Jede Kopie bleibt in ihrer Bahn (liegt der
  * Punkt außerhalb, oben in ihrer Bahn). Liefert je ALTER Kennung die gespeicherte Lage (x relativ zum Rahmen der Phase, y relativ zur Bahn).
  */
-export function einfuegeLagen(kopien: readonly K[], l: Pick<WerkstattLage, 'knoten' | 'rahmen' | 'bahnen'>, punkt: Pt, phaseId: string): Map<string, KnotenLage> {
+export function einfuegeLagen(kopien: readonly K[], l: Pick<WerkstattLage, 'knoten' | 'rahmen' | 'bahnen'>, punkt: Pt, phaseId: string, wahl: { hinter?: string | null } = {}): Map<string, KnotenLage> {
   const r = l.rahmen.find(x => x.id === phaseId);
   const raus = new Map<string, KnotenLage>();
   if (!r || !kopien.length) return raus;
@@ -508,8 +509,12 @@ export function einfuegeLagen(kopien: readonly K[], l: Pick<WerkstattLage, 'knot
   const orig = kopien.map(k => l.knoten.get(k.id) ?? null);
   const x0 = Math.min(...orig.map(o => o?.x ?? Infinity)), y0 = Math.min(...orig.map(o => o?.y ?? Infinity));
   const rel: Pt[] = orig.every(Boolean) ? orig.map(o => [o!.x - x0, o!.y - y0]) : kopien.map((_, i) => [i * (WS.knotenB + WS.spaltenLuecke), 0]);
+  // Runde 4 (Bau-Test 3: die angehängte Kopie lag unter dem Original, der Faden sah nach einem Rücksprung aus): hängt sie an einem Knoten (`hinter`), liegt sie in
+  // der Spalte DANACH auf seiner Höhe — der Faden läuft vorwärts. Sonst an der Maus bzw. der Mitte des Bildes.
+  const h = wahl.hinter ? l.knoten.get(wahl.hinter) : undefined;
+  const ort: Pt = h && !h.zu ? [h.x + h.b + WS.spaltenLuecke + mass[0].b / 2, h.y + h.koerper.y + h.koerper.h / 2] : punkt;
   // Der Punkt ist die Mitte des ersten Körpers.
-  const p0: Pt = [punkt[0] - rel[0][0] - mass[0].b / 2, punkt[1] - rel[0][1] - mass[0].koerper.y - mass[0].koerper.h / 2];
+  const p0: Pt = [ort[0] - rel[0][0] - mass[0].b / 2, ort[1] - rel[0][1] - mass[0].koerper.y - mass[0].koerper.h / 2];
   // Je Kopie die Lage in Welt-Koordinaten: x am Punkt, y am Punkt — liegt der außerhalb ihrer Bahn, oben in ihrer Bahn.
   const bahnen = kopien.map(k => l.bahnen.find(x => x.schluessel === bahnSchluessel(k)) ?? null);
   const basis: Pt[] = kopien.map((_, j) => {
