@@ -149,7 +149,11 @@ describe('Saat', () => {
     expect(offenLena.length).toBeGreaterThanOrEqual(2);
     expect(offenLena.some(v => v.nachher?.includes('Angebot Grünfeld Bau nachfassen'))).toBe(true);
     const crm = await db.loadJson<{ chancen: { id: string; stufe: string }[]; mandate: unknown[]; leistungen: { status: string }[]; firmen: unknown[]; angebote?: { status: string; dealId?: string; nummer?: string }[]; wertelisten?: { reihen?: { id: string; name: string }[] } }>('crm');
-    expect(crm?.chancen).toHaveLength(4);
+    // 25.10.: dazu der Deal der Formular-Anfrage („Angebot anfordern“, zur Freigabe — die Demo verschickt nichts).
+    expect(crm?.chancen).toHaveLength(5);
+    const formular = await db.loadJson<{ links: unknown[]; eingaenge: { status: string }[] }>('angebot-formular--demo');
+    expect(formular?.links).toHaveLength(1);
+    expect(formular?.eingaenge.map(e => e.status)).toEqual(['freigabe']);
     // Abnahme 14.10. (B15): der Deal in Stufe „Angebot“ hat ein GESTELLTES Angebot (Nummer, über die Route) — keine neue Chance dafür.
     const gestellt = (crm?.angebote ?? []).filter(a => a.status === 'gestellt');
     expect(gestellt).toHaveLength(1);

@@ -138,6 +138,24 @@ const eintraegeRaus = (feld: string): Wirkung => (cur, m) => {
 const tilgen: Wirkung = (cur, m) => { const t = tilgeTief(cur, m); return { neu: t.wert, n: t.n }; };
 
 /**
+ * Formular „Angebot anfordern“ (25.10.): am Eingang der Person fällt der Empfänger (Fingerabdruck + maskierte Adresse) weg, die Kennung wird
+ * „[gelöscht]“ (`tilgeTief`) — der Nachweis „wann, über welchen Weg, welches Angebot“ bleibt. Art. 15 zählt die Eingänge der Person.
+ */
+export const formularEingaengeOhne: Wirkung = (cur, m) => {
+  const o = (cur ?? {}) as Obj;
+  let n = 0;
+  const eingaenge = liste(o, 'eingaenge').map(x => {
+    const e = x as Obj;
+    if (e?.kontaktId !== m.id) return e;
+    n++;
+    const { an: _an, ...rest } = e;
+    return rest;
+  });
+  const t = tilgeTief(n ? { ...o, eingaenge } : o, m);
+  return { neu: t.wert, n: n + t.n };
+};
+
+/**
  * Inbox-Zustand je Person (Inbox 2; WhatsApp-Screener 07.10. abends): wie `tilgen` (Adresse der Person als Schlüssel fällt weg, Kennung
  * getilgt) — dazu fallen die Screener-Entscheidung zu einer NUMMER der Person („+<Ziffern>“) und der Zustand ihrer WhatsApp-Gespräche
  * (Schlüssel `wa~<postfach>~<Nummer>`) weg: dort steht die Nummer nur im Schlüssel, die Freitext-Suche fände sie nicht.
@@ -360,6 +378,9 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'ki-tiefenbericht--*', muster: /^ki-tiefenbericht--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Übergabe-Journal (03.10., netz-recht): Kennungen der Person in `kontaktIds` → „[gelöscht]“, der Nachweis der Übergabe bleibt.
   { name: 'uebergabe-journal--*', muster: /^uebergabe-journal--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
+  // Formular „Angebot anfordern“ (25.10.): Kennung am Eingang → „[gelöscht]“, Empfänger-Fingerabdruck weg; der Nachweis der Sendung bleibt.
+  { name: 'angebot-formular--*', muster: /^angebot-formular--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: formularEingaengeOhne,
+    zaehlen: (cur, m) => liste((cur ?? {}) as Obj, 'eingaenge').filter(x => (x as Obj)?.kontaktId === m.id).length },
   // Gesellschafts-Register (04.10.): Kontakt-Kennungen in Gesellschaftern/Vertragsparteien → „[gelöscht]“, der Eintrag bleibt.
   { name: 'gesellschaften--*', muster: /^gesellschaften--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Austausch am Meilenstein (30.09.): Nachrichten, Notiz, Link-Titel können Dritte nennen — getilgt, der Raum bleibt.

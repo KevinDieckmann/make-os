@@ -492,6 +492,29 @@ export function verarbeitungenFulfillmentNachtragen(vorhanden: readonly Verarbei
   return fehlt.length ? [...vorhanden, ...fehlt] : [...vorhanden];
 }
 
+// ── Formular „Angebot anfordern“ (25.10., Markttraktion › Formulare) — idempotent nachgetragen ───────────────────────────────────────
+// Vertriebler (Team bzw. extern per Link) tragen Kunden ein, die ein Angebot angefragt haben; MAKE OS legt Kontakt/Firma/Deal/Angebot an und
+// verschickt das Angebot über ein Postfach des Haushalts — automatisch nur mit Leitplanken, sonst nach Freigabe. Hinweis, keine Rechtsberatung.
+export const VV_ANGEBOT_FORMULAR_ID = 'vv-angebot-formular';
+export function verarbeitungAngebotFormular(jetzt: string): Verarbeitung {
+  return {
+    id: VV_ANGEBOT_FORMULAR_ID, name: 'Angebot anfordern (Vertrieb, Formular und externe Links)',
+    zweck: 'Ein vom Kunden angefragtes Angebot erstellen und senden: der Vertrieb trägt Firma, Ansprechpartner und gewünschte Produkte ein; die Software legt Kontakt, Firma, Deal und Angebot an und verschickt das Angebot-PDF an die angegebene Adresse (automatisch nur zu Listenpreisen und ohne Sperren, sonst nach Freigabe).',
+    personen: 'Ansprechpartner des Kunden; Vertriebler des Haushalts bzw. externe Vertriebler mit eigenem Link',
+    daten: 'Firma (Name, optional Anschrift), Anrede, Vor- und Nachname, E-Mail, optional Telefon des Ansprechpartners; gewählte Produkte, gewünschter Start, interne Notiz (nur am Deal, nie im Angebot); Name und optional Adresse externer Vertriebler; Empfänger am Eingang nur als Fingerabdruck und maskiert',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Anbahnung eines Vertrags auf Anfrage des Kunden); Information nach Art. 13/14 im Datenschutzhinweis der Angebots-Mail; Werbung nur mit Einwilligung (§ 7 UWG)',
+    empfaenger: 'Der Kunde selbst (Angebots-Mail); Konten des Haushalts; Hetzner (Hosting); das in den Einstellungen gewählte Absender-Postfach (Google Workspace bzw. IMAP-Anbieter — siehe die Verarbeitungen „E-Mail“)',
+    empfaengerIds: ['hetzner'],
+    drittland: 'keins durch dieses Formular — für das Postfach gilt dessen Eintrag',
+    loeschfrist: 'Eingänge 24 Monate; Kontakt, Deal und Angebot nach den Fristen der Kartei bzw. als Geschäftsunterlage (§ 257 HGB); externe Links bis der Inhaber sie entfernt',
+    toms: 'externer Link nur als Fingerabdruck gespeichert (96 Bit), widerrufbar, mit Ablauf und freigegebenen Produkten; gleiche Antwort für jede Fehlerart, Drossel, Honigtopf, Formular-Stempel, Größengrenze; einem Externen nie Bestandsdaten; Art. 18 und Werbesperre greifen vor dem Versand; Versand nur über die eine Funktion „im Auftrag“ (nur dieses Angebot, nur diese Adresse, nur das gewählte Postfach)',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+export function verarbeitungAngebotFormularNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_ANGEBOT_FORMULAR_ID) ? [...vorhanden] : [...vorhanden, verarbeitungAngebotFormular(jetzt)];
+}
+
 // ── Verarbeitung „WhatsApp Business (Meta, Auftragsverarbeiter)“ (07.10., Inbox 2 Paket 5) — idempotent nachgetragen ──
 // Kevin 06.10.: eigene Business-Nummer direkt bei Meta (Cloud API). Fakten: research/inbox/FAKTEN_WHATSAPP_IMAP.md (A4). Hinweis, keine
 // Rechtsberatung — anwaltlich gegenlesen; Speicherort-Wahl (Local Storage „DE“ bzw. „No Storage“) vor der Registrierung ist ein To-do.
@@ -724,6 +747,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   l = verarbeitungEmailKundenNachtragen(l, jetzt);
   // Fulfillment (10.10.): Lieferung im Mandat, Analyse mit beruflicher Personenrecherche, Kunden-Link.
   l = verarbeitungenFulfillmentNachtragen(l, jetzt);
+  // Formular „Angebot anfordern“ (25.10.).
+  l = verarbeitungAngebotFormularNachtragen(l, jetzt);
   l = alteFassungenHeben(l);
   l = verantwortlichHeben(l);
   // Mac-Zulieferer aus (08.10., Lücke 10): die Verarbeitung „Zulieferung vom Rechner …“ findet nicht mehr statt → archiviert (nie gelöscht).

@@ -356,6 +356,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   }),
   // Gesundheits-Verlauf des Schilds (11.10., lib/gesellschaften/schild/verlauf.ts): je Tag Ton + vier Dimensionen je Business-Gesellschaft — nur Zahlen.
   K('unternehmen-verlauf--*', 'Gesundheits-Verlauf des Schilds je Haushalt (lib/gesellschaften/schild/verlauf.ts, Morgenlauf): je Tag Ton und vier ganze Prozentzahlen (Dokumente, Pflichten, Risiken, Schutz) je Business-Gesellschaft, nur deren Kennung — keine Personen, keine Titel; rollend 400 Tage, mit der Instanz gelöscht.'),
+  // Formulare „Angebot anfordern“ (25.10., lib/crm/formulare-speicher.ts): Einstellungen, externe Links (Name/Adresse des Vertrieblers, Token nur als
+  // Fingerabdruck), Eingänge (nur Kennungen von Kontakt/Firma/Deal/Angebot, Empfänger als Fingerabdruck + maskiert, Status, Gründe ohne Kundendaten).
+  mit(T('angebot-formular--*', 'Formular „Angebot anfordern“: Einstellungen (Absender-Postfach als Kennung, Mail-Vorlage), externe Links (Name und optional Adresse des Vertrieblers, freigegebene Produkte, Ablauf, Fingerabdruck des Tokens), Eingänge (Kennungen von Kontakt/Firma/Deal/Angebot, Empfänger nur als Fingerabdruck und maskiert, Status, Leitplanken-Gründe, Versand-Vermerk). Art. 17 eines Kontakts tilgt seine Kennung am Eingang (person-weitere.ts), der Nachweis der Sendung bleibt.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Anbahnung eines Vertrags auf Anfrage des Kunden über den Vertrieb); für die Vertriebler-Angaben Art. 6 Abs. 1 lit. b/f (Zusammenarbeit im Vertrieb)',
+    art15: 'Kontakte: die Eingänge der Person zählen in der Auskunft nach Art. 15 (weitere Speicher, person-weitere.ts); Vertriebler: unter Markttraktion › Formulare (Inhaber) — auf Anfrage über den Inhaber',
+    loeschfrist: 'Eingänge 24 Monate (rollend beim Schreiben, `EINGANG_FRIST_MONATE`); Links bis der Inhaber sie entfernt; die Angebote selbst als Geschäftsunterlage im CRM (§ 257 HGB)',
+  }),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):
@@ -880,7 +887,7 @@ const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
-  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)
