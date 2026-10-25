@@ -341,9 +341,14 @@ export async function nachrichtGrundlage(u: Umfeld, w: Fall, m: Mandat, knotenId
   const t = naechsterFallTermin({ fallRituale: w.rituale, terminTage: u.termine[m.id] ?? [], heute, rituale: u.vorlagen.rituale });
   const { vornameVon } = await import('@/lib/zoe/grundauftrag');
   const kk = em.kontakt;
+  // 25.10. (Produkt-Übernahme): `{{absender.name}}` = Firmierung der Gesellschaft des Mandats (EINE Stelle), dazu Mandat und heute für die Werkstatt-Form.
+  const { absenderFirmierungLaden } = await import('@/lib/gesellschaften/server');
+  const absenderName = await absenderFirmierungLaden(u.h, m.gesellschaft).catch(() => '');
+  const produkt = m.leistungId ? u.crm.leistungen?.find(x => x.id === m.leistungId)?.name : undefined;
   const mail = nachrichtEntwurf(b?.text, {
     anrede: kk?.anrede === 'Du' ? 'Du' : 'Sie', ...(kk?.vorname ? { vorname: kk.vorname } : {}), ...(kk?.nachname ? { nachname: kk.nachname } : {}),
     kunde: m.kunde, ...(t ? { termin: terminText(t) } : {}), absender: await vornameVon(person),
+    ...(absenderName ? { absenderName } : {}), mandatTitel: m.titel, ...(m.start ? { mandatStart: m.start } : {}), ...(produkt ? { produkt } : {}), heute,
   }, titelOhneZusatz(k.titel));
   return {
     ok: true, entwurf: { ...mail, an: kk?.email ? { email: kk.email, kontaktId: kk.id, ...(kk.vorname || kk.nachname ? { name: `${kk.vorname ?? ''} ${kk.nachname ?? ''}`.trim() } : {}) } : null, gesellschaft: m.gesellschaft },

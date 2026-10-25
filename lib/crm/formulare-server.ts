@@ -446,6 +446,12 @@ async function freigabeSenden(h: string, eingangId: string, person: string): Pro
   }
   const abs = await absenderPruefen((await ladeFormular(h)).einstellungen.absender);
   if (!abs.ok) return { ok: false, status: 409, fehler: abs.grund };
+  // 25.10. (Bau-Test vor dem Upload): Datenschutzhinweis VOR dem Stellen prüfen — sonst bekäme das Angebot eine Nummer und der Versand scheiterte erst danach.
+  {
+    const { verantwortlicherLaden } = await import('@/lib/datenschutz/einrichtung-server');
+    const { datenschutzAngabenAus } = await import('./netzwerken-recht');
+    if (datenschutzAngabenAus((await verantwortlicherLaden()).v).fehlt) return { ok: false, status: 409, fehler: 'Datenschutzhinweis unvollständig (Einstellungen › Datenschutz) — nichts gestellt, nichts verschickt.' };
+  }
   let a = ((await ladeCrm()).angebote ?? []).find(y => y.id === x.angebotId);
   if (!a) return { ok: false, status: 404, fehler: 'Das Angebot gibt es nicht (mehr) — bitte ablehnen.' };
   if (a.status === 'entwurf') {

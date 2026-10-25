@@ -20,6 +20,7 @@ import { neinZiele, phasenAbschnitte, phasenDer, phaseVonKnoten } from './fluss-
 import { fnv } from './pruefen';
 import { titelOhneZusatz } from './darstellung';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { formatieren, istFormatierer } from '@/lib/prozesse/formatierer';
 
 /** Höchstzahl der Runden auf dem Nein-Pfad, wenn der Ablauf nichts sagt (Vorgabe aus der Rückmeldung: „5 Kontaktversuche“). */
 export const VERSUCHE_VORGABE = 5;
@@ -496,6 +497,17 @@ export function ablaufStand(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben' | 
 
 export interface NachrichtWerte {
   anrede: 'Du' | 'Sie'; vorname?: string; nachname?: string; kunde?: string; termin?: string; absender?: string;
+  /** 25.10. (Produkt-Übernahme): Werte für die Platzhalter der Werkstatt-Form — Firmierung der Absender-Gesellschaft, Mandat, heute (`YYYY-MM-DD`). */
+  absenderName?: string; mandatTitel?: string; mandatStart?: string; produkt?: string; heute?: string;
+}
+/** Platzhalter der Werkstatt-Form (`{{kontakt.gruss}}`, `{{absender.name}}`, `{{mandat.start | datum-lang}}` …), die auch die Mail-Bausteine der Abläufe kennen. */
+const DATUMS_PLATZHALTER: ReadonlySet<string> = new Set(['mandat.start', 'heute']);
+function werkstattWerte(w: NachrichtWerte, gruss: string): Record<string, string | undefined> {
+  return {
+    'kontakt.gruss': gruss, 'kunde.gruss': gruss, 'kontakt.vorname': w.vorname ?? '', 'kontakt.nachname': w.nachname ?? '',
+    'firma.name': w.kunde ?? '', 'absender.name': w.absenderName ?? w.absender ?? '', 'mandat.titel': w.mandatTitel,
+    'mandat.produkt': w.produkt, 'mandat.start': w.mandatStart, heute: w.heute,
+  };
 }
 /** Die Grußzeile — dieselbe Regel wie die Willkommensmail: „Hallo Vorname“ bzw. „Guten Tag Vorname Nachname“. */
 export function grussZeile(w: Pick<NachrichtWerte, 'anrede' | 'vorname' | 'nachname'>): string {
@@ -517,8 +529,18 @@ export function nachrichtEntwurf(vorlage: string | undefined, w: NachrichtWerte,
   let betreff = betreffVorgabe;
   if (/^betreff:/i.test(zeilen[0] ?? '')) { betreff = zeilen.shift()!.replace(/^betreff:\s*/i, '').trim() || betreff; while (zeilen[0] === '') zeilen.shift(); }
   // Ohne Termin fällt der Satz mit {{termin}} weg (17.10., Gesamtprüfung L1 B12 — vorher ging „(Termin folgt)“ wörtlich an den Kunden).
-  const ohneTermin = (t: string) => (w.termin ? t : t.replace(/[^.!?\n]*\{\{\s*termin\s*\}\}[^.!?\n]*[.!?]?[ \t]*/g, ''));
-  const ersetze = (t: string) => ohneTermin(t)
+  // 25.10.: `{{fall.termin}}` (Werkstatt-Form) heißt dasselbe wie `{{termin}}`.
+  const ohneTermin = (t: string) => (w.termin ? t : t.replace(/[^.!?\n]*\{\{\s*(?:fall\.)?termin\s*\}\}[^.!?\n]*[.!?]?[ \t]*/g, ''));
+  // 25.10. (Produkt-Übernahme): die Platzhalter der Werkstatt-Form samt festen Formatierern — unbekannte bleiben stehen, damit man sie sieht.
+  const werte = werkstattWerte(w, gruss);
+  const werkstatt = (t: string) => t.replace(/\{\{\s*([a-z][a-z.]*)\s*(?:\|\s*([a-z-]+)\s*)?\}\}/g, (alles, schluessel: string, art?: string) => {
+    if (schluessel === 'fall.termin') return w.termin ?? '(Termin folgt)';
+    const v = werte[schluessel];
+    if (v === undefined) return alles;
+    if (art) return istFormatierer(art) ? formatieren(art, v) : alles;
+    return DATUMS_PLATZHALTER.has(schluessel) ? formatieren('datum', v) : v;
+  });
+  const ersetze = (t: string) => werkstatt(ohneTermin(t))
     .replace(/\{\{\s*anrede\s*\}\}/g, gruss).replace(/\{\{\s*vorname\s*\}\}/g, w.vorname ?? '').replace(/\{\{\s*nachname\s*\}\}/g, w.nachname ?? '')
     .replace(/\{\{\s*ansprechpartner\s*\}\}/g, ap).replace(/\{\{\s*(kunde|firma)\s*\}\}/g, w.kunde ?? '')
     // 17.10. spät: steht der Platzhalter schon in Klammern („… ab ({{termin}})“), kommt „(Termin folgt)“ ohne zweite Klammer — vorher „((Termin folgt))“.
