@@ -42,7 +42,7 @@ import {
   ausgangSetzen, ausloeserWechseln, hauptZiel,
   type Ablage, type Ergebnis, type Fassung, type Geschichte,
 } from '@/lib/prozesse/werkstatt-aktionen';
-import { neuerKnoten, knotenUnterzeile, maskeAnwenden, maskeWerte, nameSetzen } from '@/lib/prozesse/werkstatt-maske';
+import { neuerKnoten, knotenUnterzeile, maskeAnwenden, maskeWerte, nameSetzen, schleifeVorbelegen } from '@/lib/prozesse/werkstatt-maske';
 import { teilprozessFall, teilprozessTitel } from '@/lib/prozesse/teilprozess-neu';
 import { feldTitelVon } from '@/lib/prozesse/ausloeser';
 import { FALL_ARTEN } from '@/lib/prozesse/definition';
@@ -522,6 +522,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     else if (ziel.nach) { const b = bahnBeimAnhaengen(neu, d?.knoten.find(k => k.id === ziel.nach)); if (b) neu = inBahn(neu, b) ?? neu; }
     // Mitten auf einem Faden (Punkt 3): zwischen Quelle und Ziel — die Regel steht in lib/prozesse/werkstatt-aktionen.ts `zwischenEinfuegen`.
     const kante = ziel.zwischen ? lage?.kanten.find(k => k.id === ziel.zwischen) : undefined;
+    // Runde 4: eine Schleife belegt ihre Liste vor (die einzige bzw. die Abfrage davor) — der Filter der Teilprozesse greift sofort.
+    neu = schleifeVorbelegen(fassungRef.current?.knoten ?? [], neu, ziel.nach ?? kante?.von);
     const ok = kante
       ? mitFassung(f => zwischenEinfuegen(f, kante, neu, platzFuer(neu, { nach: kante.von })))
       : mitFassung(f => anlegen(f, neu, { nach: ziel.nach ?? null, ...(ziel.vor ? { vor: ziel.vor } : {}), ...(ziel.phaseId ? { phaseId: ziel.phaseId } : {}), ...(ziel.ausgang ? { ausgang: ziel.ausgang } : {}), ...platzFuer(neu, ziel) }));

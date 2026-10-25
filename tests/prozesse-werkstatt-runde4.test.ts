@@ -18,7 +18,8 @@ import { ALLE_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';
 import { MUSTER_PAKETE } from '@/lib/fulfillment/muster';
 import { paketAlsDefinition } from '@/lib/prozesse/fulfillment-modus';
 import { katalogEintrag, maskeSaeubern } from '@/lib/prozesse/baustein-katalog';
-import { maskeBefunde } from '@/lib/prozesse/werkstatt-maske';
+import { maskeBefunde, schleifeVorbelegen, schleifenListen } from '@/lib/prozesse/werkstatt-maske';
+import { schleifenElementFall, teilprozessOptionen } from '@/lib/prozesse/teilprozess-neu';
 import { knotenBefunde } from '@/lib/prozesse/definition-pruefen';
 import { neuerKnoten, nameSetzen, maskeWerte, titelSetzen } from '@/lib/prozesse/werkstatt-maske';
 import { phasen } from '@/lib/prozesse/fluss';
@@ -272,5 +273,37 @@ describe('(5) Befunde nennen den Schritt beim Namen', () => {
     expect(knotenBefunde(k, d).map(b => b.text)).toContain('„Danke senden“ › Postfach: fehlt.');
     // Ohne Namen: der Baustein.
     expect(maskeSaeubern(MAIL, {}, {}, k.id, '  ').befunde.map(b => b.text)).toContain('Mail-Entwurf › Postfach: fehlt.');
+  });
+});
+
+describe('(6) Schleife: die einzige passende Liste ist vorbelegt', () => {
+  const SCHLEIFE = katalogEintrag('schleife.je-eintrag')!;
+  const abfrage = (id: string, titel: string, art: string) => ({ id, titel, rang: 1, form: 'schritt', katalog: { id: 'crm.abfragen' }, abfrage: { art, hoechstens: 50 } }) as unknown as Fassung['knoten'][number];
+  it('Bau-Test 3 (d/10): nur „Ergebnis von „CRM abfragen““ — neu angelegt ist sie gewählt, und die Teilprozesse sind sofort nach Fall gefiltert', () => {
+    const knoten = [abfrage('fk-q', 'CRM abfragen', 'deals-ohne-schritt')];
+    const s0 = neuerKnoten(SCHLEIFE, 'fk-s');
+    expect(maskeWerte(s0, SCHLEIFE).liste ?? '').toBe('');
+    const s1 = schleifeVorbelegen(knoten, s0, 'fk-q');
+    expect(maskeWerte(s1, SCHLEIFE).liste).toBe('abfrage:fk-q');
+    expect(maskeWerte(s1, SCHLEIFE).hoechstens).toBe(50);
+    const d = { knoten: [...knoten, s1] };
+    expect(schleifenElementFall(d, s1)).toBe('deal');
+    const l = [{ id: 'pz-deal', label: 'Deal klären', fall: 'deal' as const }, { id: 'pz-mandat', label: 'Mandat', fall: 'mandat' as const }];
+    expect(teilprozessOptionen(l, schleifenElementFall(d, s1)).map(o => o.id)).toEqual(['pz-deal']);
+  });
+  it('mehrere Listen: die Abfrage, an die angehängt wird — sonst nichts vorbelegt; eine gewählte Liste bleibt; andere Bausteine unberührt', () => {
+    const knoten = [abfrage('fk-a', 'Leads', 'leads'), abfrage('fk-b', 'Deals', 'deals-haengen')];
+    const s0 = neuerKnoten(SCHLEIFE, 'fk-s');
+    expect(maskeWerte(schleifeVorbelegen(knoten, s0, 'fk-b'), SCHLEIFE).liste).toBe('abfrage:fk-b');
+    expect(maskeWerte(schleifeVorbelegen(knoten, s0, 'fk-x'), SCHLEIFE).liste ?? '').toBe('');
+    const gewaehlt = schleifeVorbelegen(knoten, s0, 'fk-a');
+    expect(schleifeVorbelegen(knoten, gewaehlt, 'fk-b')).toBe(gewaehlt);
+    const auf = neuerKnoten(AUFGABE, 'fk-t');
+    expect(schleifeVorbelegen(knoten, auf, 'fk-a')).toBe(auf);
+    expect(schleifenListen(knoten).map(x => x.label)).toEqual(['Ergebnis von „Leads“', 'Ergebnis von „Deals“']);
+  });
+  it('die Oberfläche belegt beim Anlegen vor und das Panel liest dieselben Listen', () => {
+    expect(lies('components/os/prozesse/Werkstatt.tsx')).toContain('neu = schleifeVorbelegen(fassungRef.current?.knoten ?? [], neu, ziel.nach ?? kante?.von);');
+    expect(lies('components/os/prozesse/WerkstattPanel.tsx')).toContain("if (q === 'liste') return schleifenListen(p.d.knoten, k.id);");
   });
 });

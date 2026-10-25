@@ -226,6 +226,26 @@ export function titelSetzen(k: K, e: KatalogEintrag, neu: MaskenWert, kx: Masken
   return folgt ? { ...n, titel: t } : n;
 }
 
+// ── Schleife: die Liste vorbelegen (Runde 4, Bau-Test 3: „nur „Ergebnis von „CRM abfragen““ gab es — trotzdem war nichts gewählt“) ─────────────────────────
+/** Die Listen, über die eine Schleife laufen kann: die Ergebnisse der CRM-Abfragen des Prozesses (`abfrage:<Knoten>`) — EINE Regel für Panel und Vorbelegung. */
+export function schleifenListen(knoten: readonly K[], ohne?: string): { id: string; label: string }[] {
+  return knoten.filter(x => x.id !== ohne && (x.abfrage || x.katalog?.id === 'crm.abfragen')).map(x => ({ id: `abfrage:${x.id}`, label: `Ergebnis von „${x.titel}“` }));
+}
+/**
+ * Eine neue Schleife belegt ihre Liste vor (rein): gibt es im Prozess genau EINE passende Liste, diese; sonst die Abfrage, an die sie angehängt wird (`nach`). Eine
+ * schon gewählte Liste bleibt; andere Knoten bleiben, wie sie sind. Mit der Liste greift auch der Filter der Teilprozesse (`schleifenElementFall`) sofort.
+ */
+export function schleifeVorbelegen(knoten: readonly K[], k: K, nach?: string | null): K {
+  if (k.form !== 'schleife') return k;
+  const e = katalogEintrag(k.katalog?.id);
+  if (!e) return k;
+  const w = maskeWerte(k, e);
+  if (text(w.liste)) return k;
+  const l = schleifenListen(knoten, k.id);
+  const wahl = l.length === 1 ? l[0].id : nach && l.some(x => x.id === `abfrage:${nach}`) ? `abfrage:${nach}` : null;
+  return wahl ? maskeAnwenden(k, e, { ...w, liste: wahl }) : k;
+}
+
 /** Ein neuer Knoten aus dem Katalog (rein): Form, Bahn, Name, Vorgaben der Maske. Agenten mit festem Agenten bekommen ihn gleich. */
 export function neuerKnoten(e: KatalogEintrag, id: string, titel?: string): K {
   const k: K = { id, titel: titel?.trim() || e.name, rang: 0, form: e.form, bahn: e.bahn, katalog: { id: e.id } };

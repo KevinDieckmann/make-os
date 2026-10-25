@@ -23,7 +23,7 @@ import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
 import { erlaubteWerkzeuge, rechteProfil } from '@/lib/prozesse/agent-schritt';
 import { schlossText } from '@/lib/prozesse/schloss';
 import { kundenFormErlaubt } from '@/lib/prozesse/produkt-bindung';
-import { maskeWerte, maskeAnwenden, formWort, nameSetzen, titelSetzen, amMandatSatz, startAmMandat, AM_MANDAT_NAME } from '@/lib/prozesse/werkstatt-maske';
+import { maskeWerte, maskeAnwenden, formWort, nameSetzen, titelSetzen, amMandatSatz, startAmMandat, AM_MANDAT_NAME, schleifenListen } from '@/lib/prozesse/werkstatt-maske';
 import { schleifenElementFall, teilprozessOptionen } from '@/lib/prozesse/teilprozess-neu';
 import { feldWerte } from '@/lib/prozesse/feld-werte';
 import { tageOptionen } from '@/lib/prozesse/zeitplan-tage';
@@ -182,7 +182,7 @@ function SteckbriefPanel(p: PanelProps) {
 function optionenFuer(q: AuswahlQuelle | undefined, p: PanelProps, k: K): Option[] {
   if (!q) return [];
   if (q === 'schritt') return alleSchritte(p.d).filter(x => x.schritt.id !== k.id && x.schritt.form !== 'ausloeser' && !x.schritt.schloss).map(x => ({ id: x.schritt.id, label: x.schritt.titel }));
-  if (q === 'liste') return p.d.knoten.filter(x => x.abfrage || x.katalog?.id === 'crm.abfragen').map(x => ({ id: `abfrage:${x.id}`, label: `Ergebnis von „${x.titel}“` }));
+  if (q === 'liste') return schleifenListen(p.d.knoten, k.id);
   const l = (p.auswahl[q] ?? []).map(o => ({ ...o }));
   if (q === 'werkzeug') {
     const erlaubt = k.agent ? erlaubteWerkzeuge(k.agent.wer) : null;
