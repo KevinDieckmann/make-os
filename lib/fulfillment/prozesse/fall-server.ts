@@ -103,7 +103,7 @@ export async function fallStartenServer(e: { mandatId: unknown; vorlageId: unkno
  * legt an einem Mandat mit laufendem Fall KEINEN zweiten Fall an: es hängt dort als eigener Abschnitt an (`zusatzAnhaengen`, `art: 'angehaengt'`); ohne Fall
  * startet es als normaler Fall ohne Onboarding (`art: 'neu'`).
  */
-export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId: unknown; start?: unknown; person: string; wer?: Wer; jetzt?: Date }): Promise<{ fall: Fall; art: 'neu' | 'angehaengt' }> {
+export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId: unknown; start?: unknown; person: string; wer?: Wer; jetzt?: Date; laeufeAnstossen?: boolean }): Promise<{ fall: Fall; art: 'neu' | 'angehaengt'; laeufe: number }> {
   const jetzt = e.jetzt ?? new Date();
   const iso = jetzt.toISOString(), heute = localDay(jetzt);
   const { h, crm, vorlagen } = await fallUmfeld([]);
@@ -139,7 +139,11 @@ export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId
     const f = neu!, leer: Fall = { ...f, knoten: [], freigaben: {} };
     await import('@/lib/ereignisse/quellen').then(q => q.fallEreignisse(leer, f, m, { vorher: leer, nachher: f, heute })).catch(() => 0);
   }
-  return { fall: neu!, art };
+  // 25.10. (Kern-Reste 2): „Mandat anlegen & Fall starten“ mit einem PAKET stößt die Starts über die Produkt-Bindung genauso einmal an wie der Prozess des Produkts
+  // (`prozessFallStarten`) — z. B. der Prozess eines Zusatzmoduls; derselbe Weg wie der Takt, ein Lauf je Fall und Prozess (der Takt legt danach nichts doppelt an).
+  // Nur auf Klick (`laeufeAnstossen`, Route) — ein Prozess-Schritt „Fall starten“ (`fallStartenServer`) läuft schon im Motor, dort bleibt es beim Takt.
+  const laeufe = art === 'neu' && e.laeufeAnstossen ? await import('@/lib/prozesse/lauf-server').then(l => l.produktLaeufeAnstossen(m.id, e.person, jetzt)).catch(() => 0) : 0;
+  return { fall: neu!, art, laeufe };
 }
 
 /**

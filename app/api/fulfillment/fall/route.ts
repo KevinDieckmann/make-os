@@ -207,9 +207,10 @@ export async function POST(req: Request) {
             const { fall, laeufe } = await prozessFallStarten({ mandatId: b.mandatId, prozessId: b.vorlageId, start: b.start, person: z.person, wer });
             return { status: 200, body: { ok: true, fall, laeufe, text: 'Fall angelegt — Onboarding beginnt; die Schritte kommen aus dem Ablauf des Produkts.' } };
           }
-          const { fall, art } = await fallStartenOderAnhaengen({ mandatId: b.mandatId, vorlageId: b.vorlageId, start: b.start, person: z.person, wer });
+          // Ein neuer Fall stößt auch hier die Produkt-Läufe einmal an (25.10., Kern-Reste 2 — wie beim Prozess des Produkts).
+          const { fall, art, laeufe } = await fallStartenOderAnhaengen({ mandatId: b.mandatId, vorlageId: b.vorlageId, start: b.start, person: z.person, wer, laeufeAnstossen: true });
           const text = art === 'angehaengt' ? 'Zusatzmodul an den laufenden Fall angehängt — ohne zweites Onboarding.' : fall.ohneOnboarding ? 'Fall angelegt — das Zusatzmodul läuft ohne Onboarding.' : 'Fall angelegt — Onboarding beginnt.';
-          return { status: 200, body: { ok: true, fall, text, ...(art === 'angehaengt' ? { angehaengt: true } : {}) } };
+          return { status: 200, body: { ok: true, fall, text, laeufe, ...(art === 'angehaengt' ? { angehaengt: true } : {}) } };
         } catch (e) { if (e instanceof FallFehler) return { status: e.status, body: { ok: false, fehler: e.message } }; throw e; }
       }, undefined, { wer: z.person });
       return NextResponse.json(r.body, { status: r.status });
