@@ -1301,6 +1301,11 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
 .wz-massstab { min-width: 52px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; color: #A2ADB0; }
 .wz-hinweise { position: absolute; z-index: 4; top: var(--wz-oben); left: 0; right: 0; margin: 0 auto; width: min(640px, calc(100% - 160px)); display: grid; gap: 8px; }
 .wz-hinweise:empty { display: none; }
+/* Werkstatt Runde 4 (Bau-Test 3: der Probelauf-Hinweis lag rechts unter dem offenen Panel): steht das Seitenfeld offen, enden die Hinweise davor — mittig im freien
+   Teil, so breit wie dort Platz ist (der Text bricht um). Am Handy liegt das Feld unten (eigene Regel weiter unten). */
+@media (min-width: 721px) {
+  .pw-raster:has(> .wz-feld) .wz-hinweise { right: calc(min(380px, 100% - 120px) + 24px); width: min(640px, calc(100% - min(380px, 100% - 120px) - 24px - 160px)); }
+}
 .pw-hinweise { display: contents; }
 .wz-feld { position: absolute; z-index: 4; top: var(--wz-oben); right: 12px; bottom: 76px; width: min(380px, calc(100% - 120px)); display: flex; flex-direction: column; border-radius: 16px; background: #161B1F; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 18px 50px -18px rgba(0,0,0,.85); overflow: hidden; box-sizing: border-box; }
 .wz-feld-kopf { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 4px 4px 14px; border-bottom: 1px solid rgba(255,255,255,.07); }

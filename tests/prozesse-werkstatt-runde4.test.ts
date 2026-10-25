@@ -307,3 +307,16 @@ describe('(6) Schleife: die einzige passende Liste ist vorbelegt', () => {
     expect(lies('components/os/prozesse/WerkstattPanel.tsx')).toContain("if (q === 'liste') return schleifenListen(p.d.knoten, k.id);");
   });
 });
+
+describe('(8) Probelauf-Hinweis bei offenem Panel', () => {
+  it('die schwebenden Hinweise enden vor dem offenen Seitenfeld (Breite bis zum Panel, der Text bricht um) — am Handy nicht', () => {
+    const css = lies('app/globals.css');
+    const i = css.indexOf('.pw-raster:has(> .wz-feld) .wz-hinweise');
+    expect(i).toBeGreaterThan(0);
+    const zeile = css.slice(i, css.indexOf('\n', i));
+    expect(zeile).toContain('right: calc(min(380px, 100% - 120px) + 24px)');
+    // Dieselbe Breite wie das Seitenfeld (.wz-feld).
+    expect(css).toContain('.wz-feld { position: absolute; z-index: 4; top: var(--wz-oben); right: 12px; bottom: 76px; width: min(380px, calc(100% - 120px));');
+    expect(css.slice(i - 40, i)).toContain('@media (min-width: 721px) {');
+  });
+});
