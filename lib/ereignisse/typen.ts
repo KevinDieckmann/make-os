@@ -50,6 +50,14 @@ export interface Ereignis {
   bezug: EreignisBezug;
   /** null = ohne Bereich (z. B. Gmail ohne Bereich im Postfach-Register) — dann gilt nur die Person. */
   bereich: EreignisBereich | null;
+  /**
+   * Arbeit im Privat-Bereich (25.10., Fulfillment für die Selbstständigkeit): NUR an Ereignissen mit `bereich: 'privat'`, deren Mandat bzw. Fall zur
+   * Privat-Arbeits-Einheit gehört (Mandat angelegt/beendet, Zusatzmodul, Fall-Ereignisse, Kunde hat geliefert). Gesetzt NUR von den Quellen über
+   * `mandatEreignisBereich` (lib/ereignisse/quellen.ts) — nie für Gesundheit, Familie oder Privat-Finanzen. Der Lauf-Motor lässt solche Ereignisse nur an
+   * Prozesse, die an das Produkt des Mandats gebunden sind oder als Begleit-Prozess am Fall andocken (`ausloeserPasst(…, arbeitErlaubt)`); alles andere
+   * Private bleibt wie bisher draußen. Ohne Feld = wie bisher (der alte Stand kennt es nicht: privat → nie an Prozesse).
+   */
+  arbeit?: true;
   /** Nur diese Person sieht/löst aus (Mail: die Person des Postfachs; „An ZOE geben“: die Auftraggeberin). */
   person?: string;
   /** Nur diese Personen (WhatsApp mit `WHATSAPP_PERSONEN`). Fehlen `person` und `personen`: alle im Haushalt, die den Bereich sehen. */
@@ -139,6 +147,7 @@ export function eingabeSauber(e: EreignisEingabe, istArt: (a: unknown) => boolea
   return {
     id: e.id, art: e.art, quelle: e.quelle, bezug,
     bereich: e.bereich === 'privat' || e.bereich === 'business' ? e.bereich : null,
+    ...(e.arbeit === true && e.bereich === 'privat' ? { arbeit: true as const } : {}),
     ...(typeof e.person === 'string' && PERSON.test(e.person) ? { person: e.person } : {}),
     ...(personen?.length ? { personen } : {}),
     ...(typeof e.stufe === 'string' && /^[a-z0-9_-]{1,40}$/.test(e.stufe) ? { stufe: e.stufe } : {}),

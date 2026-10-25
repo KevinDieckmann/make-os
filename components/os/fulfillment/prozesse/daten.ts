@@ -27,12 +27,17 @@ export const neueAnfrageId = () => `ff-${typeof crypto !== 'undefined' && 'rando
 export type MitStand<T> = T & { stand: string };
 export type BausteinKurz = MitStand<Omit<Baustein, 'text' | 'fragen' | 'gliederung'>> & { gliederungAnzahl: number; fragenAnzahl: number; nurIntern: boolean; rechtOffen: boolean; vorVerkaufOffen: boolean; steckt: number; /** läuft im Onboarding jedes Falls (Playbook, Willkommensmail) */ imOnboarding?: boolean };
 export type VorlageMitStand = MitStand<Omit<ProzessVorlage, 'knoten'>> & { knoten: MitStand<ProzessKnoten>[] };
-export interface Kandidat extends OnboardingKandidat { uhr: WillkommenUhr; vorlage?: { id: string; titel: string };
+export interface Kandidat extends OnboardingKandidat, BereichKurz { uhr: WillkommenUhr; vorlage?: { id: string; titel: string };
   /** 24.10. (Bau-Test Kern): das Produkt hat einen Werkstatt-Prozess — er ist der Ablauf des Falls (lib/prozesse/produkt-ablauf.ts `startVorbelegung`). */
   prozess?: ProduktProzessKurz; vorgeschlagen: boolean;
   /** 25.10.: Start des Mandats — Vorgabe des Starttags im Dialog „Fall starten“ (`fallStartVorgabe`). */
   start?: string }
-export interface FallZeile extends FallKurz { vorlageId: string; kunde: string; titel: string; /** Angehängte Zusatzmodule (Kennungen ihrer Vorlagen, 17.10. spät). */ zusaetze?: string[] }
+/**
+ * Bereichs-Kennzeichen (25.10., Fulfillment für die Selbstständigkeit): nur Fälle/Mandate einer Privat-Arbeits-Einheit tragen `bereich: 'privat'` und den Namen der
+ * Einheit (Server `bereichsKennzeichen`) — gezeigt mit `BereichMarke` (Privat-Farbe). Business ohne Feld.
+ */
+export interface BereichKurz { bereich?: 'privat'; einheit?: string }
+export interface FallZeile extends FallKurz, BereichKurz { vorlageId: string; kunde: string; titel: string; /** Angehängte Zusatzmodule (Kennungen ihrer Vorlagen, 17.10. spät). */ zusaetze?: string[] }
 export interface Uebersicht {
   inhaber: boolean;
   /** Darf Abläufe bearbeiten (volle Mitglieder; Rolle „nur Business“ sieht nur — Prozess-Editor, 17.10.). */
@@ -47,7 +52,7 @@ export interface Uebersicht {
   kandidaten: Kandidat[];
   faelle: Record<string, FallZeile>;
   zaehler: Record<string, Record<string, string[]>>;
-  mandate: Record<string, { kunde: string; titel: string; leistungId: string | null; status: string }>;
+  mandate: Record<string, { kunde: string; titel: string; leistungId: string | null; status: string } & BereichKurz>;
   kennzahlen: FfKennzahl[];
   leistungen: { id: string; name: string; status: string }[];
   /** E4 (22.10.): Pakete, die in der Werkstatt bearbeitet werden (`paketBearbeitenLink`). */
@@ -65,7 +70,7 @@ export interface UebersichtKurz {
   produktProzesse?: Record<string, ProduktProzessKurz>;
 }
 
-export interface MandatKurz { id: string; titel: string; kunde: string; firmaId: string | null; kontaktIds: string[]; leistungId: string | null; ziele: Mandat['ziele']; gesellschaft: string; status: string; start: string | null; zustaendig: string | null; business: boolean;
+export interface MandatKurz extends BereichKurz { id: string; titel: string; kunde: string; firmaId: string | null; kontaktIds: string[]; leistungId: string | null; ziele: Mandat['ziele']; gesellschaft: string; status: string; start: string | null; zustaendig: string | null; business: boolean;
   /** Zusatzmodule am Mandat (19.10., P3): Produkt und Beginn — für den Vorschlag „Zusatzmodul anhängen“. */
   zusatz?: { leistungId: string; ab?: string }[] }
 export interface FallAntwort {
@@ -149,10 +154,13 @@ function useLaden<T>(url: string | null) {
 }
 
 export const useUebersicht = () => useLaden<Uebersicht>('/api/fulfillment');
-/** `an: false` lädt nichts (17.10., Tempo B2: der Deal-Einhänger fragt nur bei gewonnenen Deals). */
-export const useUebersichtKurz = (an = true) => useLaden<UebersichtKurz>(an ? '/api/fulfillment?nur=kurz' : null);
+/**
+ * `an: false` lädt nichts (17.10., Tempo B2: der Deal-Einhänger fragt nur bei gewonnenen Deals). `sicht: 'business'` (25.10.) = die ausdrückliche Business-Sicht
+ * (z. B. Heute › Business): der Server lässt Fälle der Privat-Arbeits-Einheit weg (`?space=business`).
+ */
+export const useUebersichtKurz = (an = true, sicht?: 'business') => useLaden<UebersichtKurz>(an ? `/api/fulfillment?nur=kurz${sicht ? '&space=business' : ''}` : null);
 export const useFall = (mandatId: string) => useLaden<FallAntwort>(`/api/fulfillment/fall?m=${encodeURIComponent(mandatId)}`);
-export const useCockpit = () => useLaden<CockpitAntwort>('/api/fulfillment/cockpit');
+export const useCockpit = (sicht?: 'business') => useLaden<CockpitAntwort>(`/api/fulfillment/cockpit${sicht ? '?space=business' : ''}`);
 
 /**
  * Texte ohne Freigabe-Kürzel (F0–F7) für die Anzeige im Fall — „Abstimmungspunkt n („Titel“)“ mit den Nummern des Ablaufs dieses Falls (15.10., Abnahme B5).

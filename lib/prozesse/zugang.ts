@@ -18,7 +18,14 @@ import { prozessRechte, type ProzessRechte } from './rollen';
 /** Satz für Anfragen aus der Sicht Privat (eine Stelle). */
 export const NUR_BUSINESS_PROZESSE = 'Prozesse gehören zum Business — in der Sicht Privat gibt es nichts davon.';
 
-export interface ProzesseTor { person: string; dienst: boolean; haushalt: string; rechte: ProzessRechte }
+export interface ProzesseTor {
+  person: string; dienst: boolean; haushalt: string; rechte: ProzessRechte;
+  /**
+   * Sieht diese Person Läufe/Fälle der Privat-Arbeits-Einheit (25.10., Fulfillment für die Selbstständigkeit)? Nur ein Konto mit Privat-Recht — nie
+   * `finanzRecht: 'business'`. (Die Oberfläche der Prozesse schickt jede Anfrage als Business-Modul mit `?space=business`; die Trennung macht hier das Konto.)
+   */
+  privat: boolean;
+}
 
 export async function prozesseZugang(req: Request, opt: { schreiben?: boolean } = {}): Promise<ProzesseTor | NextResponse> {
   const z = await imHaushaltDesInhabers(req);
@@ -32,5 +39,5 @@ export async function prozesseZugang(req: Request, opt: { schreiben?: boolean } 
   const [{ kontoSicht }, { prozesseHaushalt }] = await Promise.all([import('@/lib/zugang/konto-sicht-server'), import('./werkstatt-server')]);
   const k = await kontoSicht(z.person);
   const rechte = prozessRechte({ imHaushalt: !!k?.imHaushalt, vollesMitglied: !!k?.vollesMitglied, inhaber: await istInhaber(z.person), nurBusiness: !!k?.nurBusiness, dienst: z.dienst });
-  return { ...z, haushalt: await prozesseHaushalt(), rechte };
+  return { ...z, haushalt: await prozesseHaushalt(), rechte, privat: !!k?.privat };
 }

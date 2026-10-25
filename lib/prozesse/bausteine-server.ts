@@ -138,10 +138,11 @@ async function fallVorlegen(w: Extract<VorschlagWirkung, { art: 'fulfillment' }>
   if (!crm) return { art: 'fehler', grund: 'voruebergehend', voruebergehend: true };
   const m = await mandatZum(w, crm);
   if (!m) return { art: 'weiter', grund: 'daten-fehlen' };
-  const [{ fulfillmentLesen, fulfillmentAendern }, { vorlageFuerProdukt }, { markeOnboardingVorschlag }, { lies }, { bereichVonGesellschaft }] = await Promise.all([
-    import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/vorlagen-anwenden'), import('@/lib/fulfillment/prozesse/server'), import('@/lib/zoe/stapel'), import('@/lib/einheiten'),
+  const [{ fulfillmentLesen, fulfillmentAendern }, { vorlageFuerProdukt }, { markeOnboardingVorschlag }, { lies }, { istFulfillmentMandat }] = await Promise.all([
+    import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/vorlagen-anwenden'), import('@/lib/fulfillment/prozesse/server'), import('@/lib/zoe/stapel'), import('@/lib/fulfillment/regeln'),
   ]);
-  if (bereichVonGesellschaft(m.gesellschaft) !== 'business') return { art: 'weiter', grund: 'nichts-vorzuschlagen' };
+  // Mandate mit Fulfillment (25.10.: auch die Privat-Arbeits-Einheit) — eine Privat-Einheit ohne Arbeit bekommt keinen Vorschlag.
+  if (!istFulfillmentMandat(m.gesellschaft)) return { art: 'weiter', grund: 'nichts-vorzuschlagen' };
   const [faelle, vorlagen] = await Promise.all([fulfillmentLesen('faelle', o.h), fulfillmentLesen('vorlagen', o.h)]);
   if (faelle.faelle[m.id]) return { art: 'weiter', grund: 'schon-erledigt' };
   // Schlägt der Morgenlauf ihn schon vor (offen im Stapel), nicht noch einmal.

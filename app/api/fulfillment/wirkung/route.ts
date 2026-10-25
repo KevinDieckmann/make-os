@@ -9,7 +9,7 @@
 // Nur per Sitzung (Dienstweg schreibt nie), Bau-Kennung.
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { fulfillmentZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, eintragStand, UNTERLAGEN_ORDNER } from '@/lib/fulfillment/speicher';
 import { fallUmfeld, ableitungFuer, wirkungVermerken } from '@/lib/fulfillment/prozesse/fall-server';
 import { fallWirksam } from '@/lib/fulfillment/prozesse/onboarding';
@@ -33,11 +33,12 @@ async function berichtLesen(name: string): Promise<Buffer | null> {
   try { return await bildOeffnen(UNTERLAGEN_ORDNER, name); } catch { return null; }
 }
 
-async function grundlage(mandatId: string, zitat?: { text: string; einwilligungAm: string; wie: string }) {
+async function grundlage(mandatId: string, privat: boolean, zitat?: { text: string; einwilligungAm: string; wie: string }) {
   const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
   const { h, crm, vorlagen, faelle, kunde, termine } = await fallUmfeld([mandatId]);
-  const { istBusinessMandat } = await import('@/lib/fulfillment/regeln');
-  const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm && istBusinessMandat(x.gesellschaft));
+  const { mandatInSicht } = await import('@/lib/fulfillment/regeln');
+  // Mandate mit Fulfillment — die der Privat-Arbeits-Einheit (25.10.) nur für eine Sicht mit Privat-Recht.
+  const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm && mandatInSicht(x.gesellschaft, privat));
   const f = faelle.faelle[mandatId];
   if (!m || !f) return null;
   const w = fallWirksam(f, ableitungFuer(f, m, crm, vorlagen, kunde[mandatId], iso, termine[mandatId]));
@@ -51,7 +52,7 @@ async function grundlage(mandatId: string, zitat?: { text: string; einwilligungA
       const [{ ladeTreppe }, { kundenZeilen, naechsteStufen }, { treppeMitKatalog }] = await Promise.all([import('@/lib/crm/treppe-server'), import('@/lib/crm/treppe'), import('@/lib/crm/produkt-karte')]);
       // Stufen aus dem Katalog (19.10.) — ohne Produkt-Karten genau die gespeicherten.
       const datei = treppeMitKatalog(await ladeTreppe(heute), crm.leistungen);
-      const zeile = kundenZeilen({ datei, crm: { ...crm, mandate: [{ ...m, status: m.status === 'beendet' ? 'aktiv' : m.status }] }, heute, reportTage: await (await import('@/lib/prozesse/stellschrauben-werte-server')).reportTageWirksam() })[0];
+      const zeile = kundenZeilen({ datei, crm: { ...crm, mandate: [{ ...m, status: m.status === 'beendet' ? 'aktiv' : m.status }] }, heute, reportTage: await (await import('@/lib/prozesse/stellschrauben-werte-server')).reportTageWirksam(), mitArbeit: true })[0];
       const stufe = zeile?.stufe ? datei.stufen.find(s => s.id === zeile.stufe!.id) : undefined;
       const n = stufe ? naechsteStufen(stufe, datei.stufen)[0] : undefined;
       return n ? { name: n.name, ...(n.ergebnis ? { text: n.ergebnis } : {}) } : undefined;
@@ -71,7 +72,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const m = url.searchParams.get('m') ?? '';
   if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt (?m=).' }, { status: 400 });
-  const g = await grundlage(m);
+  { const nein = await mandatAusserSicht(z, m, 'lesen'); if (nein) return nein; }
+  const g = await grundlage(m, z.privat);
   if (!g) return NextResponse.json({ ok: false, fehler: 'Für dieses Mandat gibt es keinen Fall.' }, { status: 404 });
   // Der Bericht nennt den Kunden (Firma) — Lese-Protokoll (Prüf-Fund 11.10.).
   leseZugriff(req, 'fulfillment', { ids: [m], anzahl: 1 });
@@ -93,6 +95,7 @@ export async function POST(req: Request) {
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const mid = typeof b.mandatId === 'string' && MANDAT_ID.test(b.mandatId) ? b.mandatId : '';
   if (!mid) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt.' }, { status: 400 });
+  { const nein = await mandatAusserSicht(z, mid, 'schreiben'); if (nein) return nein; }
   let zitat: { text: string; einwilligungAm: string; wie: string } | undefined;
   if (b.zitat !== undefined && b.zitat !== null) {
     const x = b.zitat as Record<string, unknown>;
@@ -101,7 +104,7 @@ export async function POST(req: Request) {
     if (text.length > 1000 || wie.length > 300) return NextResponse.json({ ok: false, fehler: 'Zitat höchstens 1.000 Zeichen.' }, { status: 413 });
     zitat = { text, einwilligungAm: am, wie };
   }
-  const g = await grundlage(mid, zitat);
+  const g = await grundlage(mid, z.privat, zitat);
   if (!g) return NextResponse.json({ ok: false, fehler: 'Für dieses Mandat gibt es keinen Fall.' }, { status: 404 });
   if (b.aktion === 'erstellen') {
     const { wirkungPdf } = await import('@/lib/fulfillment/prozesse/wirkung-pdf');

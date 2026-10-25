@@ -201,6 +201,34 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
     (Monatsabschluss-Route: Rechte, Bereichsgrenze, EIN Bestand; Kapazität mit Privat-Fokusblock).
   - **Plattform-Schuld (nicht gebaut):** Zuordnung je Einheit (Bereich, Arbeit) kommt heute nur aus der Build-Variable; aus Register/Inhaber-Einstellung braucht
     sie eine Laufzeit-Zuordnung statt Modul-Konstanten (Bauplan in UPDATES.md › selbst-privat-2).
+- **Teil 3 — Fulfillment für die Selbstständigkeit (25.10., Branch `fulfillment-selbst`, nur lokal):** bis zur Übernahme läuft die Lieferung über die Privat-Arbeits-
+  Einheit. **EINE Regel** in lib/fulfillment/regeln.ts: `istFulfillmentMandat` = Business wie bisher (`istBusinessMandat`, auch „offen“/`g-…`) ODER
+  `istPrivatArbeitsMandat` (Gesellschaft = `privatArbeitsEinheit`); eine Privat-Einheit ohne Arbeit (`{"kdc":{"arbeit":false}}`) → 400 „gehört zu Privat“ wie bisher.
+  Der BEREICH bleibt Privat: Finanzen, Liquidität, Steuern, Business-Index unverändert — Säule `ff` nur Business (`ffKennzahlenFuerIndex` filtert `istBusinessMandat`),
+  Zielbild/Kreislauf der Planung bleiben `imBusiness`, ZOE `fulfillment_lage` und Heads-Pakete nur Business. Gilt für Fall (starten/Reise/Ops), Kandidaten, Cockpit,
+  „Heute im Fulfillment“, Deal-/Mandat-Einhänger, Onboarding, Kunden-Link (`fulfillmentMandat`), Wirkungsbericht, Analyse/Dossier, Leistungstreppe (`kundenZeilen(…,
+  { mitArbeit })`, `imFulfillment`; Katalog-Stufen `katalogTreppe`/`katalogAnsicht` auch für Produkte der Einheit, das Head-Paket `treppeFuerHead` ohne sie) und
+  Report (Morgenlauf + fester Schritt mit DEMSELBEN Kreis).
+  - **Trennung serverseitig:** `FulfillmentTor.privat` = Konto-Sicht `privat` (nie `finanzRecht: 'business'`) UND nicht `?space=business`; jede Liste filtert
+    `mandatInSicht(g, z.privat)`, jede Route mit EINEM Mandat ruft `mandatAusserSicht(z, id, 'lesen'|'schreiben')` (404 bzw. 403; Link/Unterlage über
+    `mandatVonEintrag`). Prozesse: `ProzesseTor.privat` (nur das Konto — die Prozess-Oberfläche schickt `space=business` als Modul-Angabe), Läufe zu solchen Mandaten
+    über `verborgeneMandate` (Läufe-Route, Landkarten-Zahlen `landkarteLesen(…, { privat })`, Paket-Kunden `paketFuerWerkstatt(…, { privat })`, Produkt-Werte der Masken).
+    Leistungstreppe `treppeLage(person, heute, { nurBusiness })` (Kontosicht; `?space=business`), Treppen-Schritte/Report → 403. Stapel: Vorschläge mit Bezug
+    `fulfillment`/`produkte` am Mandat der Einheit bekommen den Bereich Privat (lib/zoe/bereich-server.ts — ein Konto „nur Business“ sieht sie nie); Vorschläge/Glocken/
+    Aufgaben nie an ein Konto „nur Business“ (`personenFuer`/`vorschlagPerson`, `verantwortung`, Puls-`empfaenger`). Heute › Business: `HeuteImFulfillment sicht="business"`.
+  - **Kennzeichen:** `bereichsKennzeichen(g)` → `{ bereich: 'privat', einheit }` an Cockpit-Zeile, Fällen, Mandaten, Kandidaten, Deals, Treppen-Zeile; Oberfläche
+    `BereichMarke` (components/os/fulfillment/reise/teile.tsx, Privat-Farbe `SPACE_FARBE.privat` wie der Einheiten-Chip) — Fall-Seite, Heute-Liste, Onboarding.
+  - **Aufgaben:** EINE Regel `fallAufgabeSpace` (Fulfillment UND Prozess-Läufe `aufgabeOrt`): Mandat der Einheit → `space: 'privat'`, `spaceId` = die Einheit (nie der
+    Mandanten-Space `m-<Firma>` — der steht im Business); sonst wie bisher.
+  - **Lauf-Motor:** Ereignisse an Mandat/Fall der Einheit bleiben `bereich: 'privat'` und tragen `arbeit: true` (NUR über `mandatEreignisBereich`, lib/ereignisse/
+    quellen.ts — nie Gesundheit, Familie, Finanzen). `ausloeserPasst(…, arbeitErlaubt)`/`ereignisArbeitPasst`: privat ohne Marke nie; mit Marke nur für Prozesse, auf
+    die das Produkt des Mandats zeigt oder die als Begleit-Prozess am Fall andocken (`arbeitErlaubtFuer`, lib/prozesse/produkt-bindung.ts) — ein allgemeiner Business-
+    Prozess hört nie darauf. Ebenso Wecken (`wartetAuf`), Datum-Auslöser (Start/Ende des Mandats, `fall.termin`), bestehende Fälle beim Scharfschalten; „Gesellschaft
+    des Falls“ am Mandat darf die Einheit sein (Deals der Einheit nicht — die Kundengewinnung bleibt Business).
+  - **Rückweg:** nur optionale Felder (`Ereignis.arbeit`, Antwort-Felder `bereich`/`einheit`); der alte Stand liest `arbeit` nicht (privat → nie an Prozesse), blendet
+    Fälle der Einheit aus (bleiben gespeichert) und liest die Aufgaben im Space der Einheit wie jede Privat-Aufgabe. Tests: tests/fulfillment-selbst.test.ts (Vorgabe:
+    Arbeit), tests/fulfillment-selbst-ohne-arbeit.test.ts; die älteren Grenz-Wächter (c1/c2/c3, fundament, prüf-funde, Werkstatt e1/Felder, Überführung-Gold) laufen
+    mit `{"kdc":{"arbeit":false}}` (per `vi.hoisted`) und prüfen so „Privat ohne Arbeit bekommt nichts“ unverändert.
 
 ## 0-Punkt (Eröffnung) je Business-Gesellschaft (05.10., Branch `nullpunkt`, nur lokal; UPDATES.md, FINANZPLANUNG_JETZT.md)
 Kevin 05.10.: „Bring in Business einen 0-Punkt rein. Ich lade alles hoch an Zahlen.“ Je Gesellschaft mit Bereich Business (`BUSINESS_GESELLSCHAFTEN`):
@@ -1590,12 +1618,13 @@ Regeln, Messgrößen sind Daten des Haushalts — nie Inhalte einer Instanz im C
   `fk-obf-playbook` folgt seinem Schritt (`fallWirksam`); der Schritt misst nur das Playbook (`KundeKurz.playbookProzent`). Bestandsmandate: erster Morgenlauf mit
   Business-Mandaten setzt nur `MARKE_FULFILLMENT_SEIT`; `istBestand` (vor dem Stichtag und > 14 Tage) → Kandidat `bestand` ohne Vorschlag/Glocke/Uhr, im Fall
   läuft die 24-h-Uhr ab Start. GET-Routen filtern Mandate einer Privat-Einheit (`istBusinessGesellschaft`, auch Fälle, deren Mandat privat wurde; `/fall`,
-  `/wirkung` → 404) und schreiben `leseZugriff(req, 'fulfillment')`. Ablauf-Import vergleicht über `vorlageAus` + sortierte Schlüssel; Rückgängig hebt die
+  `/wirkung` → 404; seit 25.10. nur noch Privat OHNE Arbeit — die Privat-Arbeits-Einheit bekommt Fulfillment, Abschnitt „Bereich je Einheit“ › Teil 3) und schreiben `leseZugriff(req, 'fulfillment')`. Ablauf-Import vergleicht über `vorlageAus` + sortierte Schlüssel; Rückgängig hebt die
   Fassung und lässt Bausteine stehen, die ein Fall nutzt. Aktive Inhalte (Makros, `embeddings/` außer OOXML, ActiveX, externe Verweise außer Hyperlinks, PDF-JS/
   Launch/Anhänge außer E-Rechnung-XML/OpenAction-Aktionen) → 415 über `aktiveInhalte` (lib/dateien/aktive-inhalte.ts, Kunden-Upload UND Aufgaben-Ablage).
 - **Server** `fall-server.ts` (EINE Schreibstelle der Fälle; `ziel-neu` legt das Ziel am Mandat an; Nachzug ins CRM: Phase nur vorwärts,
   Lieferobjekte über `treppeSchreiben`, Ist-Wert) und `server.ts` (`fallLesen` liefert den wirksamen Fall, Cockpit, `ffKennzahlenFuerIndex` → null ohne Fall,
-  Morgenlauf-Vorschläge Onboarding/Nachsorge über den Stapel, Fristen, Art. 15). Fall nur für Business-Mandate (sonst 400). Messwerte trägt nur das Team ein.
+  Morgenlauf-Vorschläge Onboarding/Nachsorge über den Stapel, Fristen, Art. 15). Fall nur für Mandate mit Fulfillment (`istFulfillmentMandat` — Business und seit 25.10. die
+  Privat-Arbeits-Einheit; sonst 400). Messwerte trägt nur das Team ein.
 - **Routen** `/api/fulfillment` (GET Übersicht, `?nur=kurz` für Einhänger, `?baustein=`; PATCH Vorlagen-Ops), `/fall` (GET `?m=`, `?willkommen=1`;
   POST `starten` idempotent über `anfrageId`, `vorlage-uebernehmen`, `nachziehen`; PATCH `{ mandatId, ops }`), `/import`, `/cockpit`, `/wirkung` (Bericht
   verschlüsselt als `wirkung-<fnv>-<tag>.bin` in `fulfillment-unterlagen`, Download/Anhang als `Wirkungsbericht-<tag>.pdf`; „Per Mail“ legt je erstellter Fassung

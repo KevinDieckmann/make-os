@@ -11,7 +11,7 @@
 //   terminAbsagenEreignisse iCloud-Abgleich: Termin mit CRM-Bezug vom Gegenüber abgesagt (Status alt → neu je UID)
 // Personen mit Art.-18-Einschränkung lösen nie etwas aus (kein Ereignis); im Bezug stehen nur Kennungen.
 
-import { bereichVon, bereichVonFirma, bereichVonGesellschaft } from '@/lib/einheiten';
+import { bereichVon, bereichVonFirma, bereichVonGesellschaft, privatArbeitsEinheit } from '@/lib/einheiten';
 import { tagePlus } from '@/lib/zeit';
 import { ereignis } from './server';
 import { ereignisKennung, type EreignisBereich, type EreignisEingabe } from './typen';
@@ -159,6 +159,18 @@ export async function rechnungBezahltEreignis(r: { id: string; firmaId?: string;
   } catch { return 0; }
 }
 
+// ── Bereich eines Mandats-Ereignisses (25.10.) ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Bereich (und Arbeits-Marke) eines Ereignisses an einem Mandat bzw. Fall: Business wie bisher (`bereichVonGesellschaft`); ein Mandat der Privat-Arbeits-Einheit
+ * (Selbstständigkeit — Arbeit, kein privater Lebensbereich) bleibt `privat`, trägt aber `arbeit: true` — produkt-gebundene Prozesse und Begleit-Prozesse am Fall
+ * dürfen darauf hören, sonst nichts. EINE Stelle für alle Mandats- und Fall-Ereignisse; nie für Gesundheit, Familie, Finanzen.
+ */
+export function mandatEreignisBereich(g: string | null | undefined): { bereich: EreignisBereich; arbeit?: true } {
+  const b = bereichVonGesellschaft(g);
+  return b === 'privat' && privatArbeitsEinheit(g ?? undefined) ? { bereich: b, arbeit: true } : { bereich: b };
+}
+
 // ── CRM und Kartei ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -185,15 +197,15 @@ export function crmDiff(vorher: CrmFuerDiff, nachher: CrmFuerDiff): EreignisEing
       if (m.geloeschtAm) continue;
       const a = mAlt.get(m.id);
       const bezug = { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}), ...(m.chanceId ? { dealId: m.chanceId } : {}) };
-      if (!a) raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'angelegt'), art: 'mandat-angelegt', quelle: 'crm', bereich: bereichVonGesellschaft(m.gesellschaft), bezug });
-      else if (m.status === 'beendet' && a.status !== 'beendet') raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'beendet', (m.ende ?? '').slice(0, 10)), art: 'mandat-beendet', quelle: 'crm', bereich: bereichVonGesellschaft(m.gesellschaft), bezug });
+      if (!a) raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'angelegt'), art: 'mandat-angelegt', quelle: 'crm', ...mandatEreignisBereich(m.gesellschaft), bezug });
+      else if (m.status === 'beendet' && a.status !== 'beendet') raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'beendet', (m.ende ?? '').slice(0, 10)), art: 'mandat-beendet', quelle: 'crm', ...mandatEreignisBereich(m.gesellschaft), bezug });
       // Zusatzmodul gebucht (22.10., Prozesse × Fulfillment): ein NEUER Eintrag in `zusatz` an einem bestehenden, nicht beendeten Mandat — je Modul einmal
       // (Kennung aus dem Modul `mz-…`). Beim Anlegen des Mandats nicht: dann liest der Motor die Zusatzmodule über „mandat-angelegt“ selbst.
       if (a && m.status !== 'beendet' && m.zusatz?.length) {
         const vorher = new Set((a.zusatz ?? []).map(z => z.id));
         for (const z of m.zusatz) {
           if (vorher.has(z.id)) continue;
-          raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'zusatz', z.id), art: 'zusatz-gebucht', quelle: 'crm', bereich: bereichVonGesellschaft(m.gesellschaft), bezug: { ...bezug, leistungId: z.leistungId } });
+          raus.push({ id: ereignisKennung('crm', 'mandat', m.id, 'zusatz', z.id), art: 'zusatz-gebucht', quelle: 'crm', ...mandatEreignisBereich(m.gesellschaft), bezug: { ...bezug, leistungId: z.leistungId } });
         }
       }
     }
@@ -412,16 +424,16 @@ export async function followupErledigtEreignis(f: { id: string; kontaktId?: stri
  */
 export function fallDiff(vorher: { knoten: readonly { id: string; status: string }[]; wertKonto?: Record<string, unknown> }, nachher: { knoten: readonly { id: string; status: string; erledigtAm?: string }[]; wertKonto?: Record<string, unknown> }, m: { id: string; firmaId?: string; gesellschaft: string; kontaktIds?: readonly string[] }, erreichung: (e: unknown) => number | null): EreignisEingabe[] {
   const alt = new Map(vorher.knoten.map(k => [k.id, k.status]));
-  const bereich = bereichVonGesellschaft(m.gesellschaft as never);
+  const bereich = mandatEreignisBereich(m.gesellschaft);
   const basis = { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}) };
   const raus: EreignisEingabe[] = [];
   for (const k of nachher.knoten) {
     if (k.status !== 'erledigt' || alt.get(k.id) === 'erledigt') continue;
-    raus.push({ id: ereignisKennung('fall', m.id, k.id, (k.erledigtAm ?? '').slice(0, 10)), art: 'fall-schritt-erledigt', quelle: 'fulfillment', bereich, bezug: { ...basis, knotenId: k.id } });
+    raus.push({ id: ereignisKennung('fall', m.id, k.id, (k.erledigtAm ?? '').slice(0, 10)), art: 'fall-schritt-erledigt', quelle: 'fulfillment', ...bereich, bezug: { ...basis, knotenId: k.id } });
   }
   for (const [ziel, e] of Object.entries(nachher.wertKonto ?? {})) {
     const jetzt = erreichung(e), vorhin = erreichung(vorher.wertKonto?.[ziel]);
-    if (jetzt === 100 && vorhin !== 100) raus.push({ id: ereignisKennung('fall', m.id, 'ziel', ziel), art: 'ziel-erreicht', quelle: 'fulfillment', bereich, bezug: { ...basis } });
+    if (jetzt === 100 && vorhin !== 100) raus.push({ id: ereignisKennung('fall', m.id, 'ziel', ziel), art: 'ziel-erreicht', quelle: 'fulfillment', ...bereich, bezug: { ...basis } });
   }
   return raus;
 }
@@ -468,7 +480,7 @@ export function fallBegleitStand(f: FallFuerBegleitung, r: { phasenStaende: (f: 
 }
 type MandatBasis = { id: string; firmaId?: string; gesellschaft: string; kontaktIds?: readonly string[] };
 const begleitBasis = (m: MandatBasis, vorlageId?: string) => ({
-  bereich: bereichVonGesellschaft(m.gesellschaft as never),
+  ...mandatEreignisBereich(m.gesellschaft),
   bezug: { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}), ...(vorlageId ? { vorlageId } : {}) },
 });
 
@@ -478,24 +490,25 @@ const begleitBasis = (m: MandatBasis, vorlageId?: string) => ({
  * Kennungen mit dem Tag (Phase, wartet) bzw. je Bestätigung einmal — dieselbe Kennung = dasselbe Ereignis.
  */
 export function fallBegleitDiff(vorher: FallBegleitStand, nachher: FallBegleitStand, m: MandatBasis, heute: string): EreignisEingabe[] {
-  const { bereich, bezug } = begleitBasis(m, nachher.vorlageId);
+  const { bereich, arbeit, bezug } = begleitBasis(m, nachher.vorlageId);
+  const ab = arbeit ? { arbeit } : {};
   const raus: EreignisEingabe[] = [];
   for (const [ph, z] of nachher.phasen) {
     const war = vorher.phasen.get(ph);
     const stufe = z === 'jetzt' && war !== 'jetzt' && war !== 'fertig' ? 'begonnen' : z === 'fertig' && war !== 'fertig' ? 'abgeschlossen' : null;
-    if (stufe) raus.push({ id: ereignisKennung('fall', m.id, 'phase', ph, stufe, heute), art: 'fall-phase', quelle: 'fulfillment', bereich, stufe, bezug: { ...bezug, knotenId: ph } });
+    if (stufe) raus.push({ id: ereignisKennung('fall', m.id, 'phase', ph, stufe, heute), art: 'fall-phase', quelle: 'fulfillment', bereich, ...ab, stufe, bezug: { ...bezug, knotenId: ph } });
   }
   const warKunde = new Set([...vorher.aktiv.filter(a => a.kunde).map(a => a.id), ...vorher.knoten.filter(k => k.status === 'wartet_kunde').map(k => k.id)]);
   const jetztKunde = new Set([...nachher.aktiv.filter(a => a.kunde).map(a => a.id), ...nachher.knoten.filter(k => k.status === 'wartet_kunde').map(k => k.id)]);
   for (const id of jetztKunde) {
     if (warKunde.has(id)) continue;
-    raus.push({ id: ereignisKennung('fall', m.id, 'kunde', id, heute), art: 'fall-wartet-kunde', quelle: 'fulfillment', bereich, stufe: 'begonnen', bezug: { ...bezug, knotenId: id } });
+    raus.push({ id: ereignisKennung('fall', m.id, 'kunde', id, heute), art: 'fall-wartet-kunde', quelle: 'fulfillment', bereich, ...ab, stufe: 'begonnen', bezug: { ...bezug, knotenId: id } });
   }
   const gegeben = new Set(vorher.freigaben);
   for (const f of nachher.freigaben) {
     if (gegeben.has(f)) continue;
     const phase = nachher.knoten.find(k => k.freigabe === f)?.id;
-    raus.push({ id: ereignisKennung('fall', m.id, 'freigabe', f), art: 'abstimmung-bestaetigt', quelle: 'fulfillment', bereich, bezug: { ...bezug, freigabeId: f, ...(phase ? { knotenId: phase } : {}) } });
+    raus.push({ id: ereignisKennung('fall', m.id, 'freigabe', f), art: 'abstimmung-bestaetigt', quelle: 'fulfillment', bereich, ...ab, bezug: { ...bezug, freigabeId: f, ...(phase ? { knotenId: phase } : {}) } });
   }
   return raus;
 }
@@ -509,10 +522,10 @@ export interface HaengerKurz { art: string; knotenId?: string; seit?: string }
 export function haengerEreignisse(zeilen: readonly { m: MandatBasis; vorlageId?: string; haengt: readonly HaengerKurz[] }[]): EreignisEingabe[] {
   const raus: EreignisEingabe[] = [];
   for (const z of zeilen) {
-    const { bereich, bezug } = begleitBasis(z.m, z.vorlageId);
+    const { bereich, arbeit, bezug } = begleitBasis(z.m, z.vorlageId);
     for (const h of z.haengt) {
       raus.push({
-        id: ereignisKennung('fall', z.m.id, 'haengt', h.art, h.knotenId ?? '-', (h.seit ?? '-').slice(0, 10)), art: 'fall-haengt', quelle: 'fulfillment', bereich, stufe: h.art,
+        id: ereignisKennung('fall', z.m.id, 'haengt', h.art, h.knotenId ?? '-', (h.seit ?? '-').slice(0, 10)), art: 'fall-haengt', quelle: 'fulfillment', bereich, ...(arbeit ? { arbeit } : {}), stufe: h.art,
         bezug: { ...bezug, ...(h.knotenId ? { knotenId: h.knotenId } : {}) },
       });
     }
@@ -532,7 +545,7 @@ export type KundeGeliefert = 'formular' | 'unterlage' | 'puls';
 /** Der Kunde hat geliefert (Kunden-Link bzw. Formular gemeinsam im Kick-off) → `kunde-geliefert` — beendet z. B. die Erinnerungskette „Unterlagen fehlen“. Wirft nie. */
 export async function kundeGeliefertEreignis(m: MandatBasis, was: KundeGeliefert, eintragId: string, vorlageId?: string): Promise<number> {
   try {
-    const { bereich, bezug } = begleitBasis(m, vorlageId);
-    return (await ereignis({ id: ereignisKennung('fall', m.id, 'geliefert', was, eintragId), art: 'kunde-geliefert', quelle: 'fulfillment', bereich, stufe: was, bezug })).neu;
+    const { bereich, arbeit, bezug } = begleitBasis(m, vorlageId);
+    return (await ereignis({ id: ereignisKennung('fall', m.id, 'geliefert', was, eintragId), art: 'kunde-geliefert', quelle: 'fulfillment', bereich, ...(arbeit ? { arbeit } : {}), stufe: was, bezug })).neu;
   } catch { return 0; }
 }

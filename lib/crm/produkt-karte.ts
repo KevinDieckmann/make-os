@@ -21,7 +21,7 @@ import type {
 import type { TreppeDatei, TreppenStufe } from './treppe-daten';
 import type { Rhythmus } from '@/lib/finanzen/szenarien';
 import { inCent } from '@/lib/finanzen/ust';
-import { bereichVonGesellschaft } from '@/lib/einheiten';
+import { istFulfillmentMandat } from '@/lib/fulfillment/regeln';
 import { PROZESS_KENNUNG } from '@/lib/prozesse/definition';
 
 export type { PreisTeil, PreisTeilArt, ProduktVertrag, ProduktRegeln, ProduktRolle, MandatZusatz, MandatZusatzBasis } from './typen';
@@ -371,7 +371,8 @@ function stufeAusKarte(l: Leistung, s: TreppenStufe | undefined, id: string, lei
  *    Ist dieses Produkt noch keine Karte (`istKarte`), bleibt die gespeicherte Stufe GENAU so (Altbestand bit-gleich); ist es eine Karte,
  *    gewinnt die Karte und die Stufe füllt nur Leeres — die Kennung der Stufe bleibt (Kundenfortschritt `stufeId`, Verlauf).
  *  · Jede weitere Karte mit Ebene (eigene oder aus einer verknüpften Stufe) bekommt eine eigene Stufe (`katalogStufeId`) und fällt aus den
- *    `leistungIds` der gespeicherten Stufe heraus. Neue Stufen nur für Business-Produkte, die nicht eingestellt sind.
+ *    `leistungIds` der gespeicherten Stufe heraus. Neue Stufen nur für Produkte, deren Gesellschaft Fulfillment bekommt (Business und die Privat-Arbeits-
+ *    Einheit, 25.10.), die nicht eingestellt sind.
  *  · Gespeicherte Stufen ohne vorhandenes Produkt bleiben in `stufen` (rechnen weiter mit) und stehen zusätzlich in `ohneProdukt`.
  */
 export function katalogTreppe(leistungen: readonly Leistung[], gespeicherte: readonly TreppenStufe[]): KatalogTreppe {
@@ -385,7 +386,8 @@ export function katalogTreppe(leistungen: readonly Leistung[], gespeicherte: rea
   }
   // Karten, die eine eigene (neue) Stufe bekommen: mit Ebene, nicht Besitzer einer gespeicherten Stufe.
   const verknuepft = (id: string) => gespeicherte.find(s => s.leistungIds.includes(id));
-  const eigene = alle.filter(l => istKarte(l) && !besessen.has(l.id) && l.status !== 'eingestellt' && bereichVonGesellschaft(l.gesellschaft) === 'business'
+  // Business-Produkte und seit 25.10. die der Privat-Arbeits-Einheit (Fulfillment für die Selbstständigkeit, `istFulfillmentMandat`) — eine Privat-Einheit ohne Arbeit nie.
+  const eigene = alle.filter(l => istKarte(l) && !besessen.has(l.id) && l.status !== 'eingestellt' && istFulfillmentMandat(l.gesellschaft ?? null)
     && (l.ebene ?? verknuepft(l.id)?.ebene) != null);
   const eigeneIds = new Set(eigene.map(l => l.id));
   const herkunft: KatalogTreppe['herkunft'] = {};

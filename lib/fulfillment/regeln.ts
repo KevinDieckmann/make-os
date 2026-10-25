@@ -7,7 +7,7 @@
 // Höchstens `EBENEN_MAX` (5). Ein Kreis hat keine Ebene (`KREIS` = -1) — der Schreibweg lehnt ihn mit 400 ab (`kreisBei`).
 
 import type { CrmBestand, Mandat } from '@/lib/crm/typen';
-import { bereichVonGesellschaft } from '@/lib/einheiten';
+import { bereichVonGesellschaft, privatArbeitsEinheit, finanzOrtName, istGesellschaft, type Bereich } from '@/lib/einheiten';
 import { tagVon, tagePlus } from '@/lib/zeit';
 import { mandatZieleLesen } from '@/lib/crm/mandat-ziele';
 import { MUSTER_ONBOARDING } from './muster';
@@ -387,6 +387,31 @@ export function pulsStufe(wert: number, schwelle = 6): PulsStufe {
  */
 export const istBusinessMandat = (g: unknown): boolean => bereichVonGesellschaft(typeof g === 'string' ? g : null) === 'business';
 
+// ── Fulfillment für die Arbeit: EINE Regel (25.10.: bis zur Übernahme läuft die Lieferung über die Selbstständigkeit — „Arbeit ≠ Bereich“) ──────────────
+// Fulfillment gilt für jedes Mandat, dessen Gesellschaft als ARBEIT zählt (`zaehltAlsArbeit`-Regel, lib/einheiten.ts — „Arbeit ≠ Bereich“, 05.10. abends): jede
+// Business-Gesellschaft wie bisher (auch „offen“, leer und Register `g-…` — `istBusinessMandat`) UND die Privat-Arbeits-Einheit (unsere Instanz: die Selbstständigkeit,
+// `privatArbeitsEinheit`). Eine Privat-Einheit, deren Zeit nicht als Arbeit zählt (Instanz `{"kdc":{"arbeit":false}}`), bekommt weiter kein Fulfillment (400
+// „gehört zu Privat“). Der BEREICH bleibt unverändert: Finanzen, Business-Index, Liquidität, Steuern führen die Privat-Arbeits-Einheit weiter als Privat — darum
+// fragen Business-Rechnungen (Säule „Fulfillment“ des Business-Index, Heads) weiter `istBusinessMandat`, und Business-Sichten bekommen solche Mandate NIE
+// (`mandatInSicht`, serverseitig in jeder Fulfillment-Antwort). Nie `kdc` abfragen — nur über diese Funktionen.
+
+/** Bekommt ein Mandat Fulfillment? Business-Gesellschaften (wie bisher) und die Privat-Arbeits-Einheit — eine Privat-Einheit ohne Arbeit nie. */
+export const istFulfillmentMandat = (g: unknown): boolean => istBusinessMandat(g) || istPrivatArbeitsMandat(g);
+/** Ein Fulfillment-Mandat im Bereich Privat (Gesellschaft = Privat-Arbeits-Einheit, z. B. die Selbstständigkeit) — Business-Sichten bekommen es nie. */
+export const istPrivatArbeitsMandat = (g: unknown): boolean => !istBusinessMandat(g) && !!privatArbeitsEinheit(typeof g === 'string' ? g : undefined);
+/**
+ * Sieht diese Sicht das Mandat im Fulfillment? `privat` = die Anfrage darf den Privat-Bereich sehen (Konto mit Privat-Recht — nie `finanzRecht: 'business'` — und
+ * nicht ausdrücklich die Business-Sicht `?space=business`; lib/fulfillment/zugang.ts `FulfillmentTor.privat`). Business-Mandate sieht jede Sicht.
+ */
+export const mandatInSicht = (g: unknown, privat: boolean): boolean => istBusinessMandat(g) || (privat && istPrivatArbeitsMandat(g));
+/** Bereich eines Fulfillment-Mandats (Kennzeichen, Ereignisse, Aufgaben): Business bzw. Privat (Privat-Arbeits-Einheit). */
+export const fulfillmentBereich = (g: unknown): Bereich => (istBusinessMandat(g) ? 'business' : 'privat');
+/** Das Bereichs-Kennzeichen eines Falls für die Oberfläche (Privat-Farbe wie der Einheiten-Chip): nur für Mandate einer Privat-Arbeits-Einheit, sonst nichts. */
+export function bereichsKennzeichen(g: unknown): { bereich: 'privat'; einheit: string } | null {
+  const e = istPrivatArbeitsMandat(g) ? privatArbeitsEinheit(typeof g === 'string' ? g : undefined) : undefined;
+  return e ? { bereich: 'privat', einheit: finanzOrtName(e) } : null;
+}
+
 // ── Mandat: Ende, Unterschrift, Onboarding-Kandidaten (3.1, 8.1) ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -427,12 +452,24 @@ export const markeOnboardingAus = (mandatId: string) => `onboarding-aus:${mandat
  * Gesellschaft und las sich wie eine Gründungsaufgabe): im Space des Mandanten (`m-<Firma>`, sonst die Gesellschaft des Mandats), mit Bezug zum Mandat
  * und dem Kunden im Titel. EINE Regel für jede Aufgabe, die Fulfillment anlegt.
  */
-export function fallAufgabeOrt(m: Pick<Mandat, 'id' | 'kunde' | 'gesellschaft' | 'firmaId'>): { space: 'business'; spaceId?: string; bezug: { mandatId: string; firmaId?: string }; titel: (t: string) => string } {
-  const spaceId = m.firmaId ? `m-${m.firmaId}` : ['kdc', 'kdv', 'ug'].includes(m.gesellschaft) ? m.gesellschaft : undefined;
+export function fallAufgabeOrt(m: Pick<Mandat, 'id' | 'kunde' | 'gesellschaft' | 'firmaId'>): { space: Bereich; spaceId?: string; bezug: { mandatId: string; firmaId?: string }; titel: (t: string) => string } {
+  const ort = fallAufgabeSpace(m);
   return {
-    space: 'business', ...(spaceId ? { spaceId } : {}), bezug: { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}) },
+    ...ort, bezug: { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}) },
     titel: (t: string) => `${t} — ${m.kunde}`.slice(0, 280),
   };
+}
+
+/**
+ * Der Space einer Aufgabe zu einem Fall (EINE Regel — auch für Aufgaben der Prozess-Läufe, lib/prozesse/lauf-server.ts `aufgabeOrt`): ein Mandat der
+ * Privat-Arbeits-Einheit (25.10.) im Firmen-Space dieser Einheit unter PRIVAT (nie im Mandanten-Space — der steht im Business und sähe ein Konto „nur Business“);
+ * sonst im Space des Mandanten (`m-<Firma>`), sonst in der Gesellschaft des Mandats (feste Gesellschaft), sonst ohne Space (Business).
+ */
+export function fallAufgabeSpace(m: Pick<Mandat, 'gesellschaft' | 'firmaId'>): { space: Bereich; spaceId?: string } {
+  const pa = istPrivatArbeitsMandat(m.gesellschaft) ? privatArbeitsEinheit(m.gesellschaft) : undefined;
+  if (pa) return { space: 'privat', spaceId: pa };
+  const spaceId = m.firmaId ? `m-${m.firmaId}` : istGesellschaft(m.gesellschaft) ? m.gesellschaft : undefined;
+  return { space: 'business', ...(spaceId ? { spaceId } : {}) };
 }
 
 /** Marke (in `vorlagen.marken`): Tag, an dem Fulfillment eingerichtet wurde — setzt der erste Morgenlauf (der legt dabei nichts an). */
@@ -452,7 +489,7 @@ export function istBestand(unterschrift: string | null | undefined, stichtag: st
 }
 
 /**
- * Mandate, für die „Kundenonboarding starten“ angeboten wird (3.1): Status aktiv oder Angebot, Business-Gesellschaft, nicht gelöscht, noch
+ * Mandate, für die „Kundenonboarding starten“ angeboten wird (3.1): Status aktiv oder Angebot, Fulfillment-Gesellschaft (`istFulfillmentMandat`), nicht gelöscht, noch
  * kein Fall, nicht ausgeblendet — UND unterschrieben, Angebot angenommen oder Deal gewonnen. Älteste Unterschrift zuerst.
  * `bestand: true` (Regel `istBestand`, Stichtag aus `marken`): nur ruhig „Fall starten?“ — kein Vorschlag, keine Glocke, keine Uhr.
  */
@@ -470,7 +507,7 @@ export function onboardingKandidaten(
   const raus: OnboardingKandidat[] = [];
   for (const m of crm.mandate ?? []) {
     if (m.status !== 'aktiv' && m.status !== 'angebot') continue;
-    if (!istBusinessMandat(m.gesellschaft) || m.geloeschtAm || faelle[m.id] || marken[markeOnboardingAus(m.id)] || mitProzessLauf?.has(m.id)) continue;
+    if (!istFulfillmentMandat(m.gesellschaft) || m.geloeschtAm || faelle[m.id] || marken[markeOnboardingAus(m.id)] || mitProzessLauf?.has(m.id)) continue;
     const angebot = (crm.angebote ?? []).some(a => a.status === 'angenommen' && (a.mandatId === m.id || (!!m.chanceId && a.dealId === m.chanceId)));
     const deal = !!m.chanceId && (crm.chancen ?? []).some(c => c.id === m.chanceId && c.stufe === 'gewonnen');
     const grund = m.vertragUnterschrieben ? 'vertrag' as const : angebot ? 'angebot' as const : deal ? 'deal' as const : null;

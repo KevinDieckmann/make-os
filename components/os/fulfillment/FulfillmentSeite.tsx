@@ -22,6 +22,8 @@ import { Prozesse, Bausteine, Onboarding, Kreislauf, FallZiele, FallMenschen } f
 import { FallKunde } from './kunde';
 import { Analysen } from './analyse';
 import { FallKopf } from './reise/FallKopf';
+import { BereichMarke } from './reise/teile';
+import { bereichsKennzeichen } from '@/lib/fulfillment/regeln';
 import { FallReise } from './reise/FallReise';
 import { LageStreifen } from './reise/LageStreifen';
 import { ProzessEditor } from './editor/ProzessEditor';
@@ -51,7 +53,7 @@ export function FulfillmentSeite() {
     // Firma genau einmal (25.10., Kern-Reste 4 — dieselbe Regel wie die Kunden-Seite, lib/fulfillment/kunde/kopf.ts): Titel ohne Firmennamen, die Firma darunter.
     const kopf = fallKopf(mandat ? { titel: mandat.titel, firma: firmaVonMandat(mandat, api.crm?.stand.firmen ?? [])?.name ?? mandat.kunde } : null);
     return (
-      <Seite titel={kopf.titel} unter={kopf.unter}>
+      <Seite titel={kopf.titel} unter={kopf.unter} rechts={<BereichMarke einheit={bereichsKennzeichen(mandat?.gesellschaft)?.einheit} />}>
         <FallKopf mandatId={m} mitKunde={!!mandat} />
         {api.crm && !mandat && <Hinweis art="achtung">Dieses Mandat gibt es nicht (mehr).</Hinweis>}
         <div className="ui-reiter-zeile">

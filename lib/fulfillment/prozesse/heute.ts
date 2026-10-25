@@ -51,6 +51,8 @@ export interface HeuteEintrag {
   jetzt: boolean;
   /** Wer das Mandat betreut (aus der Cockpit-Zeile; fehlt = niemand eingetragen). */
   zustaendig?: string;
+  /** Bereichs-Kennzeichen (25.10.): der Name der Privat-Arbeits-Einheit (z. B. Selbstständigkeit), wenn das Mandat zu ihr gehört — in Privat-Farbe gezeigt. */
+  einheit?: string;
   /** Der Punkt ist die Willkommensmail eines neuen Kunden (24-Stunden-Uhr) — immer „jetzt“, auch wenn die Frist erst morgen endet. */
   willkommen?: true;
   quelle: 'naechster' | 'haengt' | 'start' | 'deal';
@@ -89,9 +91,9 @@ export const OEFFNEN_TEXT: Readonly<Record<HaengerArt, string>> = {
 const WARTET_UNTER: Readonly<Record<WartetAuf, string>> = { intern: 'bei uns', kunde: 'wartet auf den Kunden', entscheidung: 'Entscheidung offen', abstimmung: 'Bestätigung offen' };
 
 /** Kandidaten, die auf ihren Start warten (Onboarding) — nur, was die Liste braucht. */
-export interface HeuteKandidat { mandatId: string; kunde: string; titel: string; bestand?: true; uhr?: { faellig?: string; ueberfaellig: boolean } }
-/** Ein gewonnener Deal (Business), zu dem es noch kein Mandat gibt — nur, was die Liste braucht. */
-export interface HeuteDeal { chanceId: string; kunde: string; titel: string; gewonnenAm?: string; leistungId?: string }
+export interface HeuteKandidat { mandatId: string; kunde: string; titel: string; bestand?: true; uhr?: { faellig?: string; ueberfaellig: boolean }; einheit?: string }
+/** Ein gewonnener Deal (Business bzw. seit 25.10. der Privat-Arbeits-Einheit — dann `einheit`), zu dem es noch kein Mandat gibt — nur, was die Liste braucht. */
+export interface HeuteDeal { chanceId: string; kunde: string; titel: string; gewonnenAm?: string; leistungId?: string; einheit?: string }
 
 /** Wie lange ein gewonnener Deal ohne Mandat in „Heute im Fulfillment“ steht (danach war es wohl Absicht — der Deal bleibt, wie er ist). */
 export const DEAL_OHNE_MANDAT_TAGE = 30;
@@ -188,6 +190,9 @@ export function heuteImFulfillment(zeilen: readonly CockpitZeile[], kandidaten: 
   // Wer zuständig ist, steht an jeder Zeile des Falls (17.10., Gesamtprüfung L1 B15).
   const wer = new Map(zeilen.filter(z => z.zustaendig).map(z => [z.mandatId, z.zustaendig!] as const));
   for (const e of raus) { const w = wer.get(e.mandatId); if (w) e.zustaendig = w; }
+  // Bereichs-Kennzeichen (25.10.): Fälle, Kandidaten und Deals der Privat-Arbeits-Einheit tragen den Namen der Einheit (Cockpit-Zeile bzw. Server).
+  const einheit = new Map<string, string>([...zeilen.filter(z => z.einheit).map(z => [z.mandatId, z.einheit!] as const), ...kandidaten.filter(k => k.einheit).map(k => [k.mandatId, k.einheit!] as const), ...deals.filter(d => d.einheit).map(d => [`${d.chanceId}|deal`, d.einheit!] as const)]);
+  for (const e of raus) { const x = einheit.get(e.quelle === 'deal' ? e.id : e.mandatId); if (x) e.einheit = x; }
   for (const e of raus) {
     if (e.quelle !== 'naechster') continue;
     const bereit = e.aktion.art === 'ja-nein' || e.aktion.art === 'entwurf';

@@ -111,9 +111,11 @@ export async function auswahlListen(h: string, person: string, datei?: ProzesseD
   }, [] as { id: string; label: string }[]);
   // Feinschliff 24.10. (Werte für „nur wenn …“, lib/prozesse/feld-werte.ts): Produkte einer Business-Gesellschaft (ohne Papierkorb) und Pakete des Fulfillments —
   // nur Kennung + Name; Produkte einer Privat-Einheit kommen nie an (dieselbe Regel wie überall: `bereichVonGesellschaft`).
+  // 25.10. (Fulfillment für die Selbstständigkeit): Produkte der Privat-Arbeits-Einheit dazu — nur für ein Konto mit Privat-Recht (nie „nur Business“).
   const produkte = await sicher(async () => {
-    const { ladeCrm } = await import('@/lib/crm/speicher');
-    return (await ladeCrm()).leistungen.filter(l => !l.geloeschtAm && einheiten.bereichVonGesellschaft(l.gesellschaft) === 'business')
+    const [{ ladeCrm }, { kontoSicht }, { mandatInSicht }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/zugang/konto-sicht-server'), import('@/lib/fulfillment/regeln')]);
+    const privat = !!(await kontoSicht(person))?.privat;
+    return (await ladeCrm()).leistungen.filter(l => !l.geloeschtAm && mandatInSicht(l.gesellschaft ?? null, privat))
       .map(l => ({ id: l.id, label: l.name, ...(l.status === 'aktiv' ? {} : { hinweis: l.status === 'eingestellt' ? 'eingestellt' : 'Entwurf' }) }));
   }, [] as { id: string; label: string; hinweis?: string }[]);
   const pakete = await sicher(async () => {

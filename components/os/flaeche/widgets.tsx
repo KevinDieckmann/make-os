@@ -226,7 +226,8 @@ function TermineWidget({ e, titel, i, seite }: WidgetProps) {
 // ── Heute im Fulfillment (17.10. spät, Branch `ff-einfach`) ─────────────────────────────────────────────────────────────────────────
 // Kevin: „Das Fulfillment soll maximal einfach für uns sein.“ Was in den Fällen jetzt dran ist — dieselbe Liste wie oben auf dem Fulfillment-Start
 // (lib/fulfillment/prozesse/heute.ts), mit dem Handgriff in der Zeile (abhaken, Ja/Nein, Entwurf öffnen, Fall starten). Nur Business; ohne Punkt keine Karte.
-function FulfillmentWidget({ titel, i }: WidgetProps) { return <HeuteImFulfillment kompakt i={i} {...(titel ? { titel } : {})} />; }
+// Auf Heute › Business (25.10.) ohne Fälle der Privat-Arbeits-Einheit (die Fläche bestimmt die Sicht, `spaceAusFlaeche`) — unter „Alles“ mit Kennzeichen.
+function FulfillmentWidget({ titel, i, seite }: WidgetProps) { return <HeuteImFulfillment kompakt i={i} {...(titel ? { titel } : {})} {...(spaceAusFlaeche(seite) === 'business' ? { sicht: 'business' as const } : {})} />; }
 // ── Prozesse heute (22.10., ANALYSE_100.md Punkt 69): „n gelaufen, m warten auf dich“ als eine Zeile mit Link zu Prozesse — nur Business; ohne Lauf keine Karte.
 function ProzesseWidget({ titel, i }: WidgetProps) { return <ProzesseHeuteZeile i={i} {...(titel ? { titel } : {})} />; }
 

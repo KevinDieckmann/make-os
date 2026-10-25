@@ -53,16 +53,17 @@ async function markttraktionZahlen(heute: string): Promise<Partial<Record<Zaehle
 }
 
 /** Fulfillment: laufende Fälle, Fälle im Onboarding und je Vorlage die Zahl an jedem Knoten. */
-async function fulfillmentZahlen(heute: string, vorlagen: readonly import('@/lib/fulfillment/typen').ProzessVorlage[]): Promise<{ arten: Partial<Record<ZaehlerArt, Zahl>>; knoten: Record<string, Zahl> }> {
-  const [{ cockpitDaten }, { fulfillmentLesen }, { kundenJeKnoten }, { phaseVonKnoten }, { WEG }] = await Promise.all([
+async function fulfillmentZahlen(heute: string, vorlagen: readonly import('@/lib/fulfillment/typen').ProzessVorlage[], privat: boolean): Promise<{ arten: Partial<Record<ZaehlerArt, Zahl>>; knoten: Record<string, Zahl> }> {
+  const [{ cockpitDaten }, { fulfillmentLesen }, { kundenJeKnoten, mandatInSicht }, { phaseVonKnoten }, { WEG }] = await Promise.all([
     import('@/lib/fulfillment/prozesse/server'), import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/regeln'), import('@/lib/fulfillment/prozesse/fluss-struktur'), import('@/lib/wege'),
   ]);
-  const { zeilen } = await cockpitDaten(heute);
+  // Fälle der Privat-Arbeits-Einheit (25.10.) zählen nur für ein Konto mit Privat-Recht — auch als Zahl nie für ein Konto „nur Business“.
+  const zeilen = (await cockpitDaten(heute)).zeilen.filter(z => mandatInSicht(z.gesellschaft, privat));
   const arten: Partial<Record<ZaehlerArt, Zahl>> = {};
   if (zeilen.length) arten.faelle = { wert: zeilen.length, wort: zeilen.length === 1 ? 'Fall läuft' : 'Fälle laufen', href: WEG.fulfillment() };
   const ob = zeilen.filter(z => z.status === 'onboarding').length;
   if (ob) arten.onboarding = { wert: ob, wort: 'im Onboarding', href: WEG.fulfillment('onboarding') };
-  // Nur Fälle, die das Cockpit zeigt (Mandate von Business-Gesellschaften) — dieselbe Grenze wie überall im Fulfillment.
+  // Nur Fälle, die das Cockpit zeigt und diese Sicht sehen darf (`mandatInSicht`) — dieselbe Grenze wie überall im Fulfillment.
   const sichtbar = new Set(zeilen.map(z => z.mandatId));
   const faelle = Object.values((await fulfillmentLesen('faelle')).faelle).filter(f => sichtbar.has(f.mandatId));
   const knoten: Record<string, Zahl> = {};
@@ -96,10 +97,12 @@ async function mitProdukten(l: readonly ProzessDef[], katalog: readonly import('
 }
 
 /** Die Landkarte (siehe Kopf). */
-export async function landkarteLesen(heute = localDay()): Promise<Omit<LandkarteDaten, 'ok'>> {
+export async function landkarteLesen(heute = localDay(), o: { privat?: boolean } = {}): Promise<Omit<LandkarteDaten, 'ok'>> {
   const { fulfillmentHaushalt } = await import('@/lib/fulfillment/speicher');
   const h = await fulfillmentHaushalt();
-  return merken(`prozesse-landkarte:${h}:${heute}`, 60_000, async () => {
+  // `privat` (25.10.): mit Privat-Recht zählen die Fälle der Privat-Arbeits-Einheit mit — der Merker trennt beide Fassungen.
+  const privat = o.privat === true;
+  return merken(`prozesse-landkarte:${h}:${heute}${privat ? ':privat' : ''}`, 60_000, async () => {
     const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
     const datei = await sicher(() => fulfillmentLesen('vorlagen'));
     // Die Landkarte des Fulfillments (Hochhaus) zuerst, dann Pakete, dann Abläufe — in der Reihenfolge des Bestands.
@@ -124,7 +127,7 @@ export async function landkarteLesen(heute = localDay()): Promise<Omit<Landkarte
     });
     // Überführung (22.10., Paket Ü): welche System-Prozesse in die Werkstatt umziehen können und wie es steht — dazu am Werkstatt-Prozess, wen er ersetzt.
     const prozesse = (eintraege ? await sicher(async () => (await import('./ueberfuehrung-server')).mitUeberfuehrung(mitSchrauben?.prozesse ?? mitProd, eintraege, h)) : null) ?? mitSchrauben?.prozesse ?? mitProd;
-    const [mt, ff] = await Promise.all([sicher(() => markttraktionZahlen(heute)), sicher(() => fulfillmentZahlen(heute, vorlagen))]);
+    const [mt, ff] = await Promise.all([sicher(() => markttraktionZahlen(heute)), sicher(() => fulfillmentZahlen(heute, vorlagen, privat))]);
     const arten = { ...(mt ?? {}), ...(ff?.arten ?? {}) };
     const zahlen: Record<string, Zahl> = { ...(ff?.knoten ?? {}) };
     for (const p of prozesse) if (p.zaehler && arten[p.zaehler]) zahlen[p.id] = arten[p.zaehler]!;

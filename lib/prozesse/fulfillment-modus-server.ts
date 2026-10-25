@@ -39,8 +39,8 @@ export interface PaketFuerWerkstatt {
 }
 
 /** Das Paket `id` (nur Paket-Vorlagen) — null, wenn es keins gibt. Wirft nur, wenn ein Bestand unlesbar ist. */
-export async function paketFuerWerkstatt(h: string, id: string): Promise<PaketFuerWerkstatt | null> {
-  const [{ fulfillmentLesen, eintragStand }, { vorlageStrukturPruefen }, { fuerKundenFrei }, { istBusinessMandat }, { produkteVonVorlage }, { WEG }] = await Promise.all([
+export async function paketFuerWerkstatt(h: string, id: string, o: { privat: boolean }): Promise<PaketFuerWerkstatt | null> {
+  const [{ fulfillmentLesen, eintragStand }, { vorlageStrukturPruefen }, { fuerKundenFrei }, { mandatInSicht }, { produkteVonVorlage }, { WEG }] = await Promise.all([
     import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/vorlagen-anwenden'), import('@/lib/fulfillment/prozesse/bausteine'),
     import('@/lib/fulfillment/regeln'), import('./produkt-bindung'), import('@/lib/wege'),
   ]);
@@ -58,7 +58,8 @@ export async function paketFuerWerkstatt(h: string, id: string): Promise<PaketFu
   let kunden: LaufenderKunde[] = []; let produkte: ProduktVerweis[] = [];
   try {
     const [faelle, crm, { vorlagenDiff, zusatzDiff, diffVorschau }] = await Promise.all([fulfillmentLesen('faelle', h), (await import('@/lib/crm/speicher')).ladeCrm(), import('@/lib/fulfillment/prozesse/fall')]);
-    const mandate = new Map(crm.mandate.filter(m => !m.geloeschtAm && istBusinessMandat(m.gesellschaft)).map(m => [m.id, m] as const));
+    // Laufende Kunden: Mandate mit Fulfillment — die der Privat-Arbeits-Einheit (25.10.) nur für ein Konto mit Privat-Recht (`o.privat`).
+    const mandate = new Map(crm.mandate.filter(m => !m.geloeschtAm && mandatInSicht(m.gesellschaft, o.privat)).map(m => [m.id, m] as const));
     for (const f of Object.values(faelle.faelle)) {
       const m = mandate.get(f.mandatId);
       if (!m || f.status === 'abgeschlossen') continue;
@@ -110,7 +111,8 @@ export async function paketEntwurfSchreiben(h: string, person: string, aktion: '
     return x;
   }, { art: 'person', person }, h);
   const paketId = typeof eingabe.paketId === 'string' ? eingabe.paketId : '';
-  const ansicht = paketId ? await paketFuerWerkstatt(h, paketId) : null;
+  // Schreiben dürfen nur volle Mitglieder (die Route prüft `darfVorlagenBearbeiten`) — sie haben Privat-Recht.
+  const ansicht = paketId ? await paketFuerWerkstatt(h, paketId, { privat: true }) : null;
   if (!r.ok) return { status: r.status, body: { ok: false, fehler: r.fehler, ...(befunde ? { befunde } : {}), ...(paketGeaendert ? { paketGeaendert: true } : {}), ...(r.status === 409 && ansicht ? { aktuell: ansicht } : {}) } };
   return { status: 200, body: { ok: true, geaendert: r.geaendert, ...(fassung ? { veroeffentlicht: fassung } : {}), ...(ansicht ?? {}) } };
 }

@@ -13,13 +13,13 @@
 // Nichts davon verschickt etwas — Links gehen nur per Klick in der Inbox hinaus.
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { fulfillmentZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { MANDAT_ID } from '@/lib/fulfillment/grenzen';
 import {
   kundeStand, kundenLinkSchalter, schalterSetzen, pulsSchwelleSetzen, linkAnlegen, linkAendern, pulsAnfrageAnlegen, pulsHandEintragen, pulsUebernehmen,
-  unterlageAendern, formularIntern, antwortenExport,
+  unterlageAendern, formularIntern, antwortenExport, mandatVonEintrag,
 } from '@/lib/fulfillment/kunde/server';
 import { dateinameAscii } from '@/lib/dateien/regeln';
 
@@ -36,6 +36,8 @@ export async function GET(req: Request) {
   const m = q.get('m');
   if (!m) return NextResponse.json({ ok: true, schalter: await kundenLinkSchalter(z.haushalt) }, { headers: KEIN_SPEICHER });
   if (!MANDAT_ID.test(m)) return fehler('Unzulässige Mandat-Kennung.', 400);
+  // Mandate der Privat-Arbeits-Einheit (25.10.) nur mit Privat-Recht — sonst 404 wie „gibt es nicht“.
+  { const nein = await mandatAusserSicht(z, m, 'lesen'); if (nein) return nein; }
   const exp = q.get('export');
   if (exp === 'csv' || exp === 'pdf') {
     const r = await antwortenExport(m, exp);
@@ -63,6 +65,13 @@ export async function POST(req: Request) {
   if (aktion === 'schalter') { const i = await fulfillmentZugang(req, { schreiben: true, inhaber: true }); if (i instanceof Response) return i; }
   const p = z.person;
   const mandatId = String(b.mandatId ?? '');
+  // Sicht (25.10.): ein Mandat der Privat-Arbeits-Einheit — direkt oder hinter Link bzw. Unterlage — ändert nur eine Sicht mit Privat-Recht (sonst 403).
+  {
+    const hinter = aktion === 'widerrufen' || aktion === 'verlaengern' || aktion === 'rechte' ? await mandatVonEintrag('link', b.linkId)
+      : aktion === 'unterlage-status' ? await mandatVonEintrag('unterlage', b.id) : mandatId;
+    const nein = await mandatAusserSicht(z, hinter, 'schreiben');
+    if (nein) return nein;
+  }
   const r = await (async () => {
     switch (aktion) {
       case 'schalter': return typeof b.an === 'boolean' ? schalterSetzen(b.an, p) : { status: 400, body: { ok: false, fehler: 'an: true oder false.' } };

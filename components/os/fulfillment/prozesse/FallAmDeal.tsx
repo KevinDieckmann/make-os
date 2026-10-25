@@ -13,7 +13,8 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Knopf, LEUCHT, Hinweis } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { mandateLink } from '@/lib/crm/adresse';
-import { istBusinessMandat } from '@/lib/fulfillment/regeln';
+import { mandatInSicht } from '@/lib/fulfillment/regeln';
+import { useNurBusiness } from '../../useInhaber';
 import type { CrmApi } from '../../crm/daten';
 import { useUebersichtKurz, startMandat } from './daten';
 import { StartDialog } from './Onboarding';
@@ -28,9 +29,11 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
   const [start, setStart] = useState<{ mandatId: string; kunde: string; leistungId?: string; start?: string } | null>(null);
   // 24.10. (Bau-Test, Branch `kern-preise`): „Mandat anlegen“ öffnet erst die Vorbelegung zum Prüfen (Start wählbar) — angelegt wird erst dort.
   const mandatFenster = useMandatAnlegen(api);
+  // 25.10.: auch Deals/Mandate der Privat-Arbeits-Einheit bekommen Fulfillment — außer für ein Konto „nur Business“ (der Server sperrt es ohnehin, 403/404).
+  const nurBusiness = useNurBusiness() === true;
   if (!crm || !c || c.stufe !== 'gewonnen') return null;
   const mandat = crm.stand.mandate.find(m => m.chanceId === c.id && !m.geloeschtAm);
-  const business = istBusinessMandat(mandat?.gesellschaft ?? c.gesellschaft) && !!kurz.daten;
+  const business = mandatInSicht(mandat?.gesellschaft ?? c.gesellschaft, !nurBusiness) && !!kurz.daten;
   const fall = mandat ? kurz.daten?.faelle[mandat.id] : undefined;
   const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
 

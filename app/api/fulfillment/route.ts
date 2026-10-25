@@ -10,7 +10,7 @@
 // Tor: `fulfillmentZugang` (Routen-Register, Modul fulfillment).
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang, darfVorlagenBearbeiten, VORLAGEN_NUR_LESEN } from '@/lib/fulfillment/zugang';
+import { fulfillmentZugang, darfVorlagenBearbeiten, mandatAusserSicht, VORLAGEN_NUR_LESEN } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
 import { kundenJeKnoten } from '@/lib/fulfillment/regeln';
 import { vorlagenAnwenden, mitStaenden, vorlagenMitBaustein, MUSTER_WAHL, musterFehlt } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
@@ -29,7 +29,7 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import { MANDAT_ID, KENNUNG } from '@/lib/fulfillment/grenzen';
-import { istBusinessMandat } from '@/lib/fulfillment/regeln';
+import { mandatInSicht, bereichsKennzeichen } from '@/lib/fulfillment/regeln';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { paketeInWerkstatt } from '@/lib/fulfillment/prozesse/werkstatt-marke';
 import { reportTageWirksam } from '@/lib/prozesse/stellschrauben-werte-server';
@@ -56,21 +56,29 @@ export async function GET(req: Request) {
   }
   const nurKurz = url.searchParams.get('nur') === 'kurz';
   const { crm, vorlagen, faelle: faelleRoh, kunde, termine } = await fallUmfeld(undefined, { termine: !nurKurz });
-  // Prüf-Fund 11.10.: nur Mandate von Business-Gesellschaften (die Selbstständigkeit gehört zu Privat) — auch Fälle, deren Mandat inzwischen privat
-  // ist, fallen heraus. Ein Fall ohne Mandat im CRM bleibt als „Mandat (gelöscht)“ (ohne Namen).
+  // Prüf-Fund 11.10.: nur Mandate, die Fulfillment bekommen — seit 25.10. Business UND die Privat-Arbeits-Einheit (Selbstständigkeit), diese aber NUR für eine Sicht
+  // mit Privat-Recht (`z.privat`: nie ein Konto „nur Business“, nie `?space=business`) — serverseitig, die Oberfläche blendet nie bloß aus. Fälle, deren Mandat
+  // inzwischen zu einer Privat-Einheit ohne Arbeit gehört, fallen heraus. Ein Fall ohne Mandat im CRM bleibt als „Mandat (gelöscht)“ (ohne Namen).
   const mandatVon = new Map(crm.mandate.map(m => [m.id, m] as const));
-  const imBusiness = (mandatId: string): boolean => { const m = mandatVon.get(mandatId); return !m || istBusinessMandat(m.gesellschaft); };
-  const faelle = { ...faelleRoh, faelle: Object.fromEntries(Object.entries(faelleRoh.faelle).filter(([id]) => imBusiness(id))) };
+  const sichtbar = (g: unknown): boolean => mandatInSicht(g, z.privat);
+  const imFulfillment = (mandatId: string): boolean => { const m = mandatVon.get(mandatId); return !m || sichtbar(m.gesellschaft); };
+  const faelle = { ...faelleRoh, faelle: Object.fromEntries(Object.entries(faelleRoh.faelle).filter(([id]) => imFulfillment(id))) };
   const kurz = await faelleKurz(Object.keys(faelle.faelle));
-  const mandate = Object.fromEntries(crm.mandate.filter(m => istBusinessMandat(m.gesellschaft) && (faelle.faelle[m.id] || !m.geloeschtAm)).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status }]));
-  const faelleAnsicht = Object.fromEntries(Object.values(faelle.faelle).map(f => [f.mandatId, { ...kurz[f.mandatId], vorlageId: f.vorlageId, ...(f.zusaetze?.length ? { zusaetze: f.zusaetze.map(z => z.vorlageId) } : {}), kunde: mandate[f.mandatId]?.kunde ?? 'Mandat (gelöscht)', titel: mandate[f.mandatId]?.titel ?? '' }]));
+  const mandate = Object.fromEntries(crm.mandate.filter(m => sichtbar(m.gesellschaft) && (faelle.faelle[m.id] || !m.geloeschtAm)).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status, ...(bereichsKennzeichen(m.gesellschaft) ?? {}) }]));
+  const faelleAnsicht = Object.fromEntries(Object.values(faelle.faelle).map(f => [f.mandatId, { ...kurz[f.mandatId], vorlageId: f.vorlageId, ...(f.zusaetze?.length ? { zusaetze: f.zusaetze.map(z => z.vorlageId) } : {}), kunde: mandate[f.mandatId]?.kunde ?? 'Mandat (gelöscht)', titel: mandate[f.mandatId]?.titel ?? '', ...(bereichsKennzeichen(mandatVon.get(f.mandatId)?.gesellschaft) ?? {}) }]));
   // Prozesse × Fulfillment (22.10., Entscheidung „dort ausblenden“): läuft für ein Mandat schon der Werkstatt-Prozess seines Produkts, ist es kein Kandidat „noch kein Fall“.
   const { mandateMitProduktLaufLesen, produktProzesseLesen } = await import('@/lib/prozesse/produkt-laeufe-server');
   // 24.10. (Bau-Test Kern): je Produkt sein Werkstatt-Prozess (Kennung, Titel, Lage) — er ist der Ablauf des Falls (Vorbelegung von „Fall starten“).
-  const produktProzesse = await produktProzesseLesen(crm);
-  const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso, await mandateMitProduktLaufLesen(crm), produktProzesse);
-  // „Heute im Fulfillment“ (17.10. spät): gewonnene Deals (Business) ohne Mandat — „Mandat anlegen & Fall starten“ direkt in der Liste.
-  const deals = gewonneneOhneMandat(crm, heute, istBusinessMandat, tageZwischen);
+  // Produkte einer Privat-Arbeits-Einheit (und ihr Prozess) nur für eine Sicht mit Privat-Recht (25.10.).
+  const leistungSichtbar = (l: { gesellschaft?: string | null }) => sichtbar(l.gesellschaft ?? null);
+  const produktProzesse = Object.fromEntries(Object.entries(await produktProzesseLesen(crm)).filter(([id]) => { const l = crm.leistungen.find(x => x.id === id); return !l || leistungSichtbar(l); }));
+  const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso, await mandateMitProduktLaufLesen(crm), produktProzesse)
+    .filter(k => { const m = mandatVon.get(k.mandatId); return !!m && sichtbar(m.gesellschaft); })
+    .map(k => ({ ...k, ...(bereichsKennzeichen(mandatVon.get(k.mandatId)?.gesellschaft) ?? {}) }));
+  // „Heute im Fulfillment“ (17.10. spät): gewonnene Deals ohne Mandat — „Mandat anlegen & Fall starten“ direkt in der Liste. Seit 25.10. auch Deals der
+  // Privat-Arbeits-Einheit (Selbstständigkeit), nur in einer Sicht mit Privat-Recht.
+  const dealVon = new Map(crm.chancen.map(c => [c.id, c] as const));
+  const deals = gewonneneOhneMandat(crm, heute, sichtbar, tageZwischen).map(d => ({ ...d, ...(bereichsKennzeichen(dealVon.get(d.chanceId)?.gesellschaft) ?? {}) }));
   // Firmen-/Kundennamen gehen raus → Lese-Protokoll (Prüf-Fund 11.10.), nur die Anzahl.
   leseZugriff(req, 'fulfillment', { anzahl: Object.keys(mandate).length + kandidaten.length + deals.length });
   if (nurKurz) {
@@ -114,7 +122,7 @@ export async function GET(req: Request) {
     importLaeufe: vorlagen.importLaeufe.map(l => ({ id: l.id, am: l.am, von: l.von, datei: l.datei, neu: l.neu.length, geaendert: l.geaendert.length })),
     musterOffen: MUSTER_WAHL.filter(w => musterFehlt(vorlagen, MUSTER_IDS[w.id])).map(w => w.id),
     kandidaten, faelle: faelleAnsicht, zaehler, mandate, kennzahlen,
-    leistungen: crm.leistungen.filter(l => !l.geloeschtAm).map(l => ({ id: l.id, name: l.name, status: l.status })),
+    leistungen: crm.leistungen.filter(l => !l.geloeschtAm && leistungSichtbar(l)).map(l => ({ id: l.id, name: l.name, status: l.status })),
   });
 }
 
@@ -134,6 +142,8 @@ export async function PATCH(req: Request) {
   for (const o of ops) if (o && typeof o === 'object' && (o as { op?: unknown }).op === 'onboarding-aus' && !(typeof (o as { mandatId?: unknown }).mandatId === 'string' && MANDAT_ID.test((o as { mandatId: string }).mandatId) && crm.mandate.some(m => m.id === (o as { mandatId: string }).mandatId))) {
     return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
   }
+  // Ein Mandat einer Privat-Arbeits-Einheit nur mit Privat-Recht (25.10.) — sonst 403, nichts geschrieben.
+  for (const o of ops) if (o && typeof o === 'object' && (o as { op?: unknown }).op === 'onboarding-aus') { const nein = await mandatAusserSicht(z, (o as { mandatId?: unknown }).mandatId, 'schreiben'); if (nein) return nein; }
   const r = await fulfillmentAendern('vorlagen', d => vorlagenAnwenden(d, b.ops, {
     person: z.person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), standVon: eintragStand, neueId: p => neueKennung(p),
     leistungen: crm.leistungen.filter(l => !l.geloeschtAm).map(l => l.id),

@@ -64,6 +64,12 @@ export async function POST(req: Request) {
   try { b = await jsonBegrenzt(req, 16_000); } catch (e) { return jsonZuGross(e) ?? fehler('Kein JSON.', 400); }
   const mandatId = typeof b.mandatId === 'string' && MANDAT_KENNUNG.test(b.mandatId) ? b.mandatId : null;
   if (!mandatId) return fehler('mandatId fehlt.', 400);
+  // 25.10.: ein Mandat der Privat-Arbeits-Einheit (Selbstständigkeit) nur mit Privat-Recht — ein Konto „nur Business“ bekommt 403, nichts erstellt.
+  {
+    const [{ mandatAusserSicht }, { kontoSicht }] = await Promise.all([import('@/lib/fulfillment/zugang'), import('@/lib/zugang/konto-sicht-server')]);
+    const nein = await mandatAusserSicht({ privat: !!(await kontoSicht(zugang.person))?.privat }, mandatId, 'schreiben');
+    if (nein) return nein;
+  }
   const absender = await absenderName(zugang.person);
   try {
     if (b.aktion === 'erstellen') {

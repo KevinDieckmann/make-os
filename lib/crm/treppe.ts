@@ -19,6 +19,7 @@ import { tagPlus } from '@/lib/kalender/zeit';
 import { tagVon } from '@/lib/zeit';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
 import { kickoffVermerkText } from '@/lib/fulfillment/prozesse/onboarding';
+import { istFulfillmentMandat } from '@/lib/fulfillment/regeln';
 import { wochenStunden, stufenTakt } from './produkt-karte';
 
 /**
@@ -26,6 +27,12 @@ import { wochenStunden, stufenTakt } from './produkt-karte';
  * Leistungstreppe, im Zielbild und im Kreislauf der Planung — die Treppe ist ein Business-Bestand. EINE Filterstelle (Server rechnet hiermit).
  */
 export const imBusiness = (x: { gesellschaft?: string | null }): boolean => bereichVonGesellschaft(x.gesellschaft) === 'business';
+/**
+ * 25.10. (Fulfillment für die Selbstständigkeit): die Zeilen „Fortschritt im Paket“ (`kundenZeilen`) gibt es auch für Mandate der Privat-Arbeits-Einheit — dieselbe
+ * EINE Regel wie das Fulfillment (`istFulfillmentMandat`, lib/fulfillment/regeln.ts). Nur mit `mitArbeit` (Sicht mit Privat-Recht, Report, Cockpit); Zielbild,
+ * Kreislauf der Planung und alles, was Business zählt, bleiben bei `imBusiness`.
+ */
+export const imFulfillment = (x: { gesellschaft?: string | null }): boolean => istFulfillmentMandat(x.gesellschaft ?? null);
 import type { TreppeDatei, TreppenStufe, KundenFortschritt, ReportStand } from './treppe-daten';
 
 /** Alle so viele Tage je aktivem Mandat ein Vorschlag „Fortschritts-Report“ (Entscheidung 10.10.) — die VORGABE; seit 22.10. einstellbar (Stellschraube `reportTage`). */
@@ -119,6 +126,8 @@ export interface KundenZeile {
   titel: string;
   status: Mandat['status'];
   zustaendig?: string;
+  /** 25.10.: Mandat der Privat-Arbeits-Einheit (nur mit `mitArbeit`) — Kennzeichen in Privat-Farbe; Business-Mandate ohne Feld. */
+  bereich?: 'privat';
   stufe: { id: string; name: string; ebene: number } | null;
   stufeQuelle: 'hand' | 'produkt' | null;
   stufeSeit?: string;
@@ -170,11 +179,14 @@ export function kundenAmpel(e: {
   return { gesamt: schlechteste([...teile.map(x => x.farbe), lage.ampel]), teile };
 }
 
-/** Je aktivem (bzw. pausiertem) Mandat die Zeile „Fortschritt im Paket“. */
-export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate' | 'leistungen'>; heute: string; zahlung?: Record<string, { wert: number } | undefined>; termine?: Readonly<Record<string, string | undefined>>; kickoffVermerkt?: Readonly<Record<string, string | undefined>>; reportTage?: number }): KundenZeile[] {
+/**
+ * Je aktivem (bzw. pausiertem) Mandat die Zeile „Fortschritt im Paket“ — Business-Mandate; mit `mitArbeit` (25.10.) auch die der Privat-Arbeits-Einheit
+ * (`imFulfillment`, gekennzeichnet über `bereich`).
+ */
+export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'mandate' | 'leistungen'>; heute: string; zahlung?: Record<string, { wert: number } | undefined>; termine?: Readonly<Record<string, string | undefined>>; kickoffVermerkt?: Readonly<Record<string, string | undefined>>; reportTage?: number; mitArbeit?: boolean }): KundenZeile[] {
   const { datei, crm, heute } = e;
   const leistung = new Map<string, Leistung>(crm.leistungen.map(l => [l.id, l]));
-  return crm.mandate.filter(m => !m.geloeschtAm && (m.status === 'aktiv' || m.status === 'pausiert') && imBusiness(m)).map(m => {
+  return crm.mandate.filter(m => !m.geloeschtAm && (m.status === 'aktiv' || m.status === 'pausiert') && (e.mitArbeit ? imFulfillment(m) : imBusiness(m))).map(m => {
     const f = datei.kunden[m.id];
     const st = stufeVonMandat(m, datei);
     const stufe = st?.stufe ?? null;
@@ -185,7 +197,7 @@ export function kundenZeilen(e: { datei: TreppeDatei; crm: Pick<CrmBestand, 'man
     const r = datei.reports[m.id];
     const rep = reportFaellig(m, r, heute, e.reportTage);
     return {
-      mandatId: m.id, kunde: m.kunde, titel: m.titel, status: m.status, ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}),
+      mandatId: m.id, kunde: m.kunde, titel: m.titel, status: m.status, ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}), ...(imBusiness(m) ? {} : { bereich: 'privat' as const }),
       stufe: stufe ? { id: stufe.id, name: stufe.name, ebene: stufe.ebene } : null, stufeQuelle: st?.quelle ?? null, ...(seit ? { stufeSeit: seit } : {}),
       schritt,
       lieferobjekte: (stufe?.lieferobjekte ?? []).map(was => { const x = f?.erledigt.find(y => y.was === was); return { was, erledigt: !!x, ...(x ? { am: x.am } : {}) }; }),

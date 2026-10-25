@@ -37,8 +37,13 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;
   const S = await import('@/lib/prozesse/lauf-server');
   const prozess = q.get('prozess'), lauf = q.get('lauf');
+  // Läufe zu Mandaten der Privat-Arbeits-Einheit (25.10.) nur für ein Konto mit Privat-Recht — serverseitig (nie ein Konto „nur Business“).
+  const { verborgeneMandate } = await import('@/lib/fulfillment/zugang');
+  const verborgen = await verborgeneMandate(z.privat);
+  const sichtbar = (f: { art: string; id?: string }) => !(f.art === 'mandat' && !!f.id && verborgen.has(f.id));
   if (lauf) {
     if (!LAUF_KENNUNG.test(lauf)) return nein(400, 'Welcher Lauf? (?lauf=pl-…)');
+    if (verborgen.size) { const l = (await S.laeufeLesen(z.haushalt)).laeufe.find(x => x.id === lauf); if (l && !sichtbar(l.fall)) return nein(404, 'Diesen Lauf gibt es nicht.'); }
     if (q.get('inhalte') === '1') {
       // Dienstweg ohne Sitzung bekommt keine Inhalte (sie hängen an den Rechten einer Person).
       if (z.dienst) return nein(403, 'Inhalte eines Laufs nur für eine angemeldete Person.');
@@ -55,6 +60,7 @@ export async function GET(req: Request) {
     const i = fall.indexOf(':');
     const art = i > 0 ? fall.slice(0, i) : '', id = i > 0 ? fall.slice(i + 1) : '';
     if (!(FALL_ART_IDS as readonly string[]).includes(art) || art === 'keiner' || !FALL_KENNUNG.test(id)) return nein(400, 'Welcher Fall? (?fall=mandat:<id>)');
+    if (!sichtbar({ art, id })) return NextResponse.json({ ok: true, laeufe: [], weitere: 0 });
     return NextResponse.json({ ok: true, ...(await S.laeufeDesFalls({ art, id }, z.haushalt)) });
   }
   if (prozess) {
@@ -62,7 +68,7 @@ export async function GET(req: Request) {
     const d = await S.laeufeLesen(z.haushalt);
     const r = await S.laeufeDesProzesses(prozess);
     const eingaenge = await S.webhookEingaengeKurz(prozess, z.haushalt);
-    return NextResponse.json({ ok: true, ...r, tests: r.stand?.tests ?? [], webhookEingaenge: eingaenge, zurueck: d.zurueckgehalten.filter(x => x.prozessId === prozess).map(x => ({ id: x.id, fall: x.fall, am: x.am, ausloeser: x.ausloeser.art })) });
+    return NextResponse.json({ ok: true, ...r, laeufe: r.laeufe.filter(l => sichtbar(l.fall)), tests: r.stand?.tests ?? [], webhookEingaenge: eingaenge, zurueck: d.zurueckgehalten.filter(x => x.prozessId === prozess && sichtbar(x.fall)).map(x => ({ id: x.id, fall: x.fall, am: x.am, ausloeser: x.ausloeser.art })) });
   }
   const d = await S.laeufeLesen(z.haushalt);
   if (q.get('heute') === '1') {

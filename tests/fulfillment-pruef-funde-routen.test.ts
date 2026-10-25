@@ -15,7 +15,9 @@ const ordner = await vi.hoisted(async () => {
   const { tmpdir } = await import('node:os');
   const path = await import('node:path');
   const o = mkdtempSync(path.join(tmpdir(), 'make-os-fulfillment-pruef-'));
-  Object.assign(process.env, { MAKE_OS_DATEN_DIR: o, MAKE_OS_KEY: 'pruef-schluessel-fulfillment-pruef', MAKE_OS_DOKU_WURZEL: 'aus', MAKE_OS_BRAIN_INDEX: 'aus' });
+  // 25.10. (Fulfillment für die Selbstständigkeit): diese Wächter prüfen „Privat bekommt kein Fulfillment“ wie bisher — mit einer Privat-Einheit OHNE Arbeit
+  // (Instanz `{"kdc":{"arbeit":false}}`). Die Selbstständigkeit als Arbeit (Vorgabe) und „Sicht Business bekommt nichts aus ihr“: tests/fulfillment-selbst.test.ts.
+  Object.assign(process.env, { MAKE_OS_DATEN_DIR: o, MAKE_OS_KEY: 'pruef-schluessel-fulfillment-pruef', MAKE_OS_DOKU_WURZEL: 'aus', MAKE_OS_BRAIN_INDEX: 'aus', NEXT_PUBLIC_MAKE_OS_EINHEITEN: JSON.stringify({ kdc: { arbeit: false } }) });
   for (const k of ['MAKE_OS_DATEN_SCHLUESSEL', 'ANTHROPIC_API_KEY', 'MAKE_OS_ADRESSE']) delete process.env[k];
   return o;
 });

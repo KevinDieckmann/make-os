@@ -32,6 +32,11 @@ export interface Haenger {
 export interface NaechsterHandgriffZeile { id: string; aktion: HeuteAktion; href: string; willkommen?: true }
 export interface CockpitZeile {
   mandatId: string; kunde: string; titel: string; paket?: string; status: Fall['status'];
+  /**
+   * Bereichs-Kennzeichen (25.10., Fulfillment für die Selbstständigkeit): nur ein Fall einer Privat-Arbeits-Einheit trägt `bereich: 'privat'` und den Namen der
+   * Einheit (`bereichsKennzeichen`, lib/fulfillment/regeln.ts) — die Oberfläche zeigt ihn in der Privat-Farbe wie den Einheiten-Chip. Business-Fälle ohne Feld.
+   */
+  bereich?: 'privat'; einheit?: string;
   /** Phase und „Als Nächstes“ aus `fallStelle` (lib/fulfillment/prozesse/reise.ts) — dieselbe Rechnung wie Fall-Kopf, Landkarte, Kunden-Seite. */
   phase?: string; phaseNr?: number; phasenAnzahl?: number; schritt?: string; fortschritt: number;
   /** 25.10.: der Ablauf eines Werkstatt-Prozesses läuft nicht scharf — seine Phasen zählen mit (`phasenZaehlung`), die Anzeige kennzeichnet sie. */

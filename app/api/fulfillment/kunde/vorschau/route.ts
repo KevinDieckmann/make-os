@@ -3,7 +3,7 @@
 // Seite. Mit aktivem Link: dessen Rechte; ohne: wie ein neuer Link. Nur lesen; Lese-Protokoll „fulfillment“ (Formular-Antworten können Personen nennen).
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { fulfillmentZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { MANDAT_ID } from '@/lib/fulfillment/grenzen';
 import { vorschauFuer } from '@/lib/fulfillment/kunde/server';
@@ -16,6 +16,7 @@ export async function GET(req: Request) {
   if (z instanceof Response) return z;
   const m = new URL(req.url).searchParams.get('m') ?? '';
   if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Unzulässige Mandat-Kennung.' }, { status: 400 });
+  { const nein = await mandatAusserSicht(z, m, 'lesen'); if (nein) return nein; }
   const v = await vorschauFuer(m);
   if (!v) return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr) — oder es gehört nicht zum Business.' }, { status: 404 });
   leseZugriff(req, 'fulfillment', { ids: [m] });

@@ -6,7 +6,7 @@
 //   · Preis-Teile bearbeiten (je Form nur passende Felder), Vertrag, Regeln, Texte an EINER Stelle (ohne Datenverlust), Lieferumfang (Enter + Verlassen)
 //   · Angebots-Tool: mehrere Preis-Teile → mehrere Positionen, Optionen zum Anhaken; Adressen „Mandat aus Produkt“ und „Finanzplanung mit Produkt“
 //   · Wächter: die Oberfläche liest die Ansicht aus den Karten (nie mehr die gespeicherte Treppe), der Katalog rendert
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -73,12 +73,21 @@ describe('katalogAnsicht: die Treppe aus den Karten', () => {
     expect(nurSoftware.ohneStufe.map(k => k.leistungId)).toEqual(['l-c']);
     expect(katalogAnsicht({ leistungen: ALT, gespeicherte: d.stufen }).linien).toEqual(['Beratung & Begleitung', 'Software']);
   });
-  it('Privat-Gesellschaft mit Ebene: nicht auf der Treppe, mit Satz; Mandate zählen „Ohne Stufe“ und Plätze', () => {
+  // 25.10. (Fulfillment für die Selbstständigkeit): Produkte der Privat-Arbeits-Einheit stehen auf der Treppe; nur eine Privat-Einheit OHNE Arbeit nicht.
+  it('Privat-Arbeits-Einheit mit Ebene: auf der Treppe; Privat-Einheit ohne Arbeit: nicht, mit Satz — Mandate zählen „Ohne Stufe“ und Plätze', async () => {
     const kdc = leistung({ id: 'l-kdc', name: 'Einzelleistung', gesellschaft: 'kdc', ebene: 2, preise: [teil({ art: 'tagessatz', betragCent: 90_000 })], regeln: { maxGleichzeitig: 1 } });
-    const a = katalogAnsicht({ leistungen: [kdc], gespeicherte: [], mandate: [mandat({ leistungId: 'l-kdc' }), mandat({ id: 'm-b', leistungId: 'l-kdc' }), mandat({ id: 'm-c', leistungId: 'l-kdc', status: 'beendet' })] });
-    expect(a.ebenen).toEqual([]);
-    expect(a.ohneStufe[0]).toMatchObject({ kunden: 2, plaetze: { max: 1, voll: true, ueber: true } });
-    expect(a.ohneStufe[0].hinweis).toMatch(/Privat/);
+    const mandate = [mandat({ leistungId: 'l-kdc' }), mandat({ id: 'm-b', leistungId: 'l-kdc' }), mandat({ id: 'm-c', leistungId: 'l-kdc', status: 'beendet' })];
+    const mitArbeit = katalogAnsicht({ leistungen: [kdc], gespeicherte: [], mandate });
+    expect(mitArbeit.ebenen.map(x => [x.ebene, x.kacheln.map(k => k.leistungId)])).toEqual([[2, ['l-kdc']]]);
+    vi.resetModules();
+    vi.stubEnv('NEXT_PUBLIC_MAKE_OS_EINHEITEN', JSON.stringify({ kdc: { arbeit: false } }));
+    try {
+      const { katalogAnsicht: ohneArbeit } = await import('@/lib/crm/produkt-katalog');
+      const a = ohneArbeit({ leistungen: [kdc], gespeicherte: [], mandate });
+      expect(a.ebenen).toEqual([]);
+      expect(a.ohneStufe[0]).toMatchObject({ kunden: 2, plaetze: { max: 1, voll: true, ueber: true } });
+      expect(a.ohneStufe[0].hinweis).toMatch(/Privat/);
+    } finally { vi.unstubAllEnvs(); vi.resetModules(); }
   });
   it('Preis einer Stufe ohne Produkt in der Sprache der Karten', () => {
     expect(preisTextStufe({ preis: { art: 'monat', betrag: 2500 } })).toBe('2.500 € netto/Monat');

@@ -10,7 +10,8 @@ import { useId, useRef, useState, type CSSProperties, type ReactNode } from 'rea
 import { useRouter } from 'next/navigation';
 import { MoreHorizontal } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, LEUCHT, ZeilenMenueFenster, zeilenMenueEintraege, useHandy, type ZeilenMehr, type ErklaerungsQuelle } from '../../ui';
+import { Karte, Ueberschrift, Chip, LEUCHT, ZeilenMenueFenster, zeilenMenueEintraege, useHandy, type ZeilenMehr, type ErklaerungsQuelle } from '../../ui';
+import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
 import { KREISLAUF_REIHE, KREISLAUF_NAME, type Antwort, type KreislaufStufeId } from '@/lib/fulfillment/prozesse/ansichten';
 import { AntwortKachel, Antworten, AMPEL_FARBE, JETZT } from './bilder';
 
@@ -186,4 +187,13 @@ export function KreislaufRad({ stufen, hier, durchlaufen = [], mitte, onStufe, o
       })}
     </div>
   );
+}
+
+/**
+ * Bereichs-Kennzeichen eines Falls der Privat-Arbeits-Einheit (25.10., Fulfillment für die Selbstständigkeit) — der Name der Einheit in der Privat-Farbe, wie der
+ * Einheiten-Chip in Planung und Aufgaben. Kommt vom Server (`bereichsKennzeichen`, lib/fulfillment/regeln.ts); Business-Fälle tragen keins — dann nichts.
+ */
+export function BereichMarke({ einheit }: { einheit?: string | null }) {
+  if (!einheit) return null;
+  return <Chip farbe={SPACE_FARBE.privat}>{einheit}</Chip>;
 }

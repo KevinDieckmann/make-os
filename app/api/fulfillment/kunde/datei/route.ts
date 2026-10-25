@@ -6,13 +6,13 @@
 // DELETE ?id=ud-…  → entfernen (Eintrag + Datei) — nicht, wenn als Beleg übernommen (409).
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { fulfillmentZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { begrenztLesen } from '@/lib/dateien/begrenzt-lesen';
 import { dateinameAscii } from '@/lib/dateien/regeln';
 import { MANDAT_ID } from '@/lib/fulfillment/grenzen';
 import { UPLOAD_GRENZEN, UMSCHLAG_BYTES } from '@/lib/fulfillment/kunde/upload';
-import { dateiPruefen, unterlageAblegen, unterlageLesen, unterlageEntfernen, businessMandat } from '@/lib/fulfillment/kunde/server';
+import { dateiPruefen, unterlageAblegen, unterlageLesen, unterlageEntfernen, fulfillmentMandat, mandatVonEintrag } from '@/lib/fulfillment/kunde/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -25,6 +25,7 @@ export async function GET(req: Request) {
   const id = new URL(req.url).searchParams.get('id') ?? '';
   const d = await unterlageLesen(id);
   if (!d) return fehler('Diese Unterlage gibt es nicht (mehr).', 404);
+  if (await mandatAusserSicht(z, d.eintrag.mandatId, 'lesen')) return fehler('Diese Unterlage gibt es nicht (mehr).', 404);
   leseZugriff(req, 'fulfillment', { ids: [d.eintrag.mandatId], anzahl: 1 });
   return new Response(new Uint8Array(d.bytes), {
     headers: {
@@ -47,8 +48,9 @@ export async function POST(req: Request) {
   try { form = await new Response(new Uint8Array(roh), { headers: { 'content-type': art } }).formData(); } catch { return fehler('Upload nicht lesbar.', 400); }
   const mandatId = String(form.get('mandatId') ?? '');
   if (!MANDAT_ID.test(mandatId)) return fehler('mandatId fehlt.', 400);
+  { const nein = await mandatAusserSicht(z, mandatId, 'schreiben'); if (nein) return nein; }
   const { ladeCrm } = await import('@/lib/crm/speicher');
-  if (!businessMandat(await ladeCrm(), mandatId)) return fehler('Dieses Mandat gibt es nicht (mehr) — oder es gehört nicht zum Business.', 404);
+  if (!fulfillmentMandat(await ladeCrm(), mandatId)) return fehler('Dieses Mandat gibt es nicht (mehr) — oder es bekommt kein Fulfillment.', 404);
   const dateien = form.getAll('datei');
   if (dateien.length !== 1 || typeof dateien[0] === 'string') return fehler('Bitte genau eine Datei je Upload.', 400);
   const datei = dateien[0] as File;
@@ -62,6 +64,8 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const z = await fulfillmentZugang(req, { schreiben: true });
   if (z instanceof Response) return z;
-  const r = await unterlageEntfernen(new URL(req.url).searchParams.get('id') ?? '', z.person);
+  const id = new URL(req.url).searchParams.get('id') ?? '';
+  { const nein = await mandatAusserSicht(z, await mandatVonEintrag('unterlage', id), 'schreiben'); if (nein) return nein; }
+  const r = await unterlageEntfernen(id, z.person);
   return NextResponse.json(r.body, { status: r.status });
 }

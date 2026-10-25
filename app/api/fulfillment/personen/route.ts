@@ -7,7 +7,7 @@
 // Logik: lib/fulfillment/analyse/personen-server.ts.
 
 import { NextResponse } from 'next/server';
-import { personenteilZugang } from '@/lib/fulfillment/zugang';
+import { personenteilZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
@@ -19,7 +19,9 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const z = await personenteilZugang(req);
   if (z instanceof Response) return z;
-  const r = await personenLage(new URL(req.url).searchParams.get('m') ?? '');
+  const m = new URL(req.url).searchParams.get('m') ?? '';
+  { const nein = await mandatAusserSicht(z, m, 'lesen'); if (nein) return nein; }
+  const r = await personenLage(m);
   if (r.status === 200) leseZugriff(req, 'personenrecherche', { ids: r.ids ?? [], anzahl: r.ids?.length ?? 0 }); // Lese-Protokoll: berufliche Personenkarten
   return NextResponse.json(r.body, { status: r.status });
 }
@@ -30,6 +32,7 @@ export async function POST(req: Request) {
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, 16_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (!b || typeof b !== 'object' || Array.isArray(b)) return NextResponse.json({ ok: false, fehler: 'Kein JSON-Objekt.' }, { status: 400 });
+  { const nein = await mandatAusserSicht(z, b.mandatId, 'schreiben'); if (nein) return nein; }
   const r = await personenAktion(b, z.person, werAus(req));
   if (r.status === 200) leseZugriff(req, 'personenrecherche', { anzahl: Array.isArray(r.body.karten) ? r.body.karten.length : 0 }); // die Antwort trägt die Karten
   return NextResponse.json(r.body, { status: r.status });

@@ -18,6 +18,7 @@ import { centAusEingabe, ANGEBOT_GRENZEN } from './angebote';
 import { planungFehlt } from '@/lib/finanzen/produkte';
 import { inCent } from '@/lib/finanzen/ust';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
+import { istFulfillmentMandat } from '@/lib/fulfillment/regeln';
 import { weglaenge, type FlowFaden, type FlowFarbe, type FlowPunkt } from '@/lib/lichtfaeden/flow';
 import { feldAbschluss } from '@/lib/make-one/feld-abschluss';
 
@@ -108,8 +109,9 @@ export function katalogAnsicht(e: {
   const aktive = e.leistungen.filter(l => produktZustand(l) === 'aktiv');
   const ohneStufe = aktive.filter(l => !gezeigt.has(l.id) && passt(linieVon(l))).map((l): KatalogKachel => {
     const verknuepft = e.gespeicherte.find(s => s.leistungIds.includes(l.id));
-    const hinweis = l.ebene != null && bereichVonGesellschaft(l.gesellschaft) !== 'business'
-      ? `Stufe ${l.ebene} gewählt — die Gesellschaft gehört zu Privat, auf der Treppe stehen nur Business-Produkte.`
+    // 25.10.: Produkte der Privat-Arbeits-Einheit (Selbstständigkeit) stehen auf der Treppe (`katalogTreppe`) — nur eine Privat-Einheit ohne Arbeit nicht.
+    const hinweis = l.ebene != null && !istFulfillmentMandat(l.gesellschaft ?? null)
+      ? `Stufe ${l.ebene} gewählt — die Gesellschaft gehört zu Privat und zählt nicht als Arbeit, auf der Treppe stehen nur Produkte mit Fulfillment.`
       : verknuepft ? `Mit der Stufe „${verknuepft.name}“ verknüpft, die ein anderes Produkt führt — eine eigene Stufe wählen, dann steht es auf der Treppe.` : undefined;
     const kunden = (e.mandate ?? []).filter(m => m.leistungId === l.id && m.status === 'aktiv').length;
     const max = l.regeln?.maxGleichzeitig;
