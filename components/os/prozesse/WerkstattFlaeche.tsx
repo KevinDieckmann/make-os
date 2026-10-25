@@ -18,7 +18,7 @@ import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL, TYP } from '@/lib/make-on
 import type { NotizZettel, ProzessDefinition, ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
 import type { Ausgang } from '@/lib/prozesse/fluss';
 import {
-  WS, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, kantenPlus, titelBox, ausgangChips,
+  WS, LEERE_PHASE_PLATZ, kantenWege, hilfslinien, startKamera, fadenWeg, anschlussAbs, einpassKamera, inhaltBox, kameraZu, chipBreite, kantenPlus, titelBox, ausgangChips,
   type WerkstattLage, type Hilfslinie, type Box, type BahnSchluessel,
 } from '@/lib/prozesse/werkstatt-lage';
 import { freiesFeld, type Raender } from '@/lib/einpassen';
@@ -79,7 +79,7 @@ export interface WerkstattFlaecheProps {
   onUnter: (id: string, art: string) => void;
   onZiehen: (ids: string[], dx: number, dy: number) => void;
   onVerbinden: (von: string, ausgang: Ausgang, nach: string) => void;
-  onAnhaengen: (ziel: AnhangZiel, bildschirm: [number, number]) => void;
+  onAnhaengen: (ziel: AnhangZiel & { bahn?: string }, bildschirm: [number, number]) => void;
   onZuklappen: (phaseId: string) => void;
   onTaste: (a: TastenAktion) => boolean;
   /** Werkzeug-Muster (22.10.): der Maßstab je gezeichnetem Bild (Zoom-Leiste „87 %“) — schreibt direkt, kein Zustand je Bild. */
@@ -255,7 +255,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
       kamera: () => kamera.current, setze,
       freiSchiebt: () => stand.current.nurLesen,
       radSchiebt: () => !!stand.current.radSchiebt,
-      istFrei: z => !(z as Element | null)?.closest?.('[data-ws-knoten],[data-ws-anschluss],[data-ws-plus],[data-ws-kante],[data-ws-zettel],[data-ws-rahmen],[data-ws-unter],[data-ws-zu],[data-ws-zwischen],[data-ws-ende],[data-ws-befund],[data-ws-groesse]'),
+      istFrei: z => !(z as Element | null)?.closest?.('[data-ws-knoten],[data-ws-anschluss],[data-ws-plus],[data-ws-plus-phase],[data-ws-kante],[data-ws-zettel],[data-ws-rahmen],[data-ws-unter],[data-ws-zu],[data-ws-zwischen],[data-ws-ende],[data-ws-befund],[data-ws-groesse]'),
     });
     return () => { e.abbauen(); if (bild.current) cancelAnimationFrame(bild.current); };
   }, [setze]);
@@ -336,7 +336,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
     svg.current?.focus({ preventScroll: true }); // Tastatur gehört danach der Fläche
     const t = e.target as Element;
     const w = welt0(e);
-    const plus = t.closest('[data-ws-plus],[data-ws-zwischen]');
+    const plus = t.closest('[data-ws-plus],[data-ws-zwischen],[data-ws-plus-phase]');
     if (plus) return; // Klick (onClick) öffnet die Formauswahl
     // Punkt 6: die Befund-Marke am Knoten — ein Klick springt in das betroffene Feld.
     const bf = t.closest('[data-ws-befund]')?.getAttribute('data-ws-befund');
@@ -467,6 +467,9 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
   const plusKlick = (e: RMouseEvent<SVGSVGElement>) => {
     const zw = (e.target as Element).closest('[data-ws-zwischen]')?.getAttribute('data-ws-zwischen');
     if (zw && !p.nurLesen) { const r = svg.current!.getBoundingClientRect(); p.onZwischen?.(zw, [e.clientX - r.left, e.clientY - r.top]); return; }
+    // Kern-Bau-Test 24.10.: „+ erster Schritt“ in einer leeren Phase (je Bahn) — der Neue steht IN dieser Phase (und Bahn), hinter dem letzten Schritt davor.
+    const ph = (e.target as Element).closest('[data-ws-plus-phase]')?.getAttribute('data-ws-plus-phase');
+    if (ph && !p.nurLesen) { const [phaseId, bahn] = ph.split('|'); const r = svg.current!.getBoundingClientRect(); p.onAnhaengen({ phaseId, ...(bahn ? { bahn } : {}) }, [e.clientX - r.left, e.clientY - r.top]); return; }
     const pl = (e.target as Element).closest('[data-ws-plus]')?.getAttribute('data-ws-plus');
     if (!pl || p.nurLesen) return;
     const [von, art] = pl.split('|');
@@ -521,6 +524,9 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
           {l.rahmen.map(r => {
             const zu = [...l.knoten.values()].some(k => k.zu?.phaseId === r.id);
             const Z = zu ? ChevronsLeftRight : ChevronsRightLeft;
+            // Kern-Bau-Test 24.10.: eine leere Phase bekommt „+ erster Schritt“ — je Bahn eines (sonst blieb ein neuer Schritt in der Phase seines Vorgängers).
+            const leer = !p.nurLesen && ![...l.knoten.values()].some(k => k.phaseId === r.id);
+            const plusOrte = leer ? (l.bahnen.length ? l.bahnen.map(b => ({ bahn: b.schluessel, y: b.y - r.y + Math.min(b.h / 2, LEERE_PHASE_PLATZ / 2 + 20), titel: b.titel })) : [{ bahn: '', y: WS.rahmenKopf + LEERE_PHASE_PLATZ / 2, titel: '' }]) : [];
             return (
               <g key={r.id} data-ws-rahmen={r.id} transform={`translate(${r.x} ${r.y})`}>
                 <rect width={r.b} height={r.h} rx={16} fill="none" stroke={p.rahmenWahl === r.id ? C.ink : RAND.stark} strokeWidth={p.rahmenWahl === r.id ? 2.2 : 1.4} style={{ pointerEvents: 'none' }} />
@@ -532,6 +538,14 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
                   <rect width={32} height={32} rx={10} fill={C.flaeche} stroke={RAND.stark} />
                   <Z x={7} y={7} width={18} height={18} color={C.inkDim} aria-hidden />
                 </g>
+                {plusOrte.map(o => (
+                  <g key={o.bahn || 'eins'} data-ws-plus-phase={`${r.id}|${o.bahn}`} transform={`translate(${r.b / 2} ${o.y})`} role="button" style={{ cursor: 'pointer' }}
+                    aria-label={`Ersten Schritt in Phase „${r.titel}“${o.titel ? ` (Bahn „${o.titel}“)` : ''} anlegen`}>
+                    <rect x={-74} y={-18} width={148} height={36} rx={18} fill={C.flaeche} stroke={C.aktiv} strokeWidth={1.4} strokeDasharray="5 4" />
+                    <Plus x={-62} y={-8} width={16} height={16} color={C.aktiv} aria-hidden />
+                    <text x={-40} y={0} dominantBaseline="central" fontSize={FLAECHE_SCHRIFT.unter} fontWeight={600} fill={C.aktiv}>erster Schritt</text>
+                  </g>
+                ))}
               </g>
             );
           })}

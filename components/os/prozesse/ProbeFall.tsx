@@ -10,7 +10,7 @@ import { Play, X } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Knopf, Segmente, SymbolKnopf, feld } from '../ui';
 import type { FallArt } from '@/lib/prozesse/definition';
-import { FALL_SUCHBAR, FALL_WORT, fallTreffer, type FallTreffer } from '@/lib/prozesse/laeufe-ansicht';
+import { FALL_SUCHBAR, FALL_WORT, echterFall, fallTreffer, type FallTreffer } from '@/lib/prozesse/laeufe-ansicht';
 import { useVerweise } from './laeufe-daten';
 
 export type FallWert = 'beispiel' | FallTreffer;
@@ -25,7 +25,7 @@ export function FallWahl({ fallArt, wert, onWert }: { fallArt: FallArt; wert: Fa
   const suchbar = FALL_SUCHBAR.has(fallArt);
   return (
     <div style={{ display: 'grid', gap: 8 }}>
-      <Segmente liste={[{ id: 'beispiel' as const, label: 'Beispiel-Fall' }, { id: 'echt' as const, label: `Echter ${FALL_WORT[fallArt]}` }]} aktiv={suchbar ? art : 'beispiel'}
+      <Segmente liste={[{ id: 'beispiel' as const, label: 'Beispiel-Fall' }, { id: 'echt' as const, label: echterFall(fallArt) }]} aktiv={suchbar ? art : 'beispiel'}
         onWahl={v => { if (v === 'echt' && !suchbar) return; setArt(v); if (v === 'beispiel') onWert('beispiel'); }} />
       {!suchbar && <p style={klein}>{fallArt === 'keiner' ? 'Dieser Prozess hängt an keinem Fall — der Probelauf nimmt das Beispiel.' : `Einen echten Fall der Art „${FALL_WORT[fallArt]}“ gibt es hier nicht zur Auswahl — der Probelauf nimmt das Beispiel.`}</p>}
       {suchbar && art === 'echt' && (

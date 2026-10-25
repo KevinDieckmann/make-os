@@ -276,6 +276,9 @@ export function heuteSatz(h: { gelaufen: number; aufDich: number } | null | unde
 // ══ Probelauf mit echtem Fall: Suche über die schlanken Verweise (GET /api/aufgaben/crm — Art. 18 fehlt dort schon) ═══════════════════════════════
 
 export const FALL_WORT: Readonly<Record<FallArt, string>> = { lead: 'Lead', deal: 'Deal', mandat: 'Mandat', event: 'Event', firma: 'Firma', kampagne: 'Kampagne', keiner: 'ohne Fall' };
+/** „Echter …“ mit dem Genus der Fall-Art (Kern-Bau-Test 24.10.: „Echter Mandat“) — der Lead/Deal, das Mandat/Event, die Firma/Kampagne. */
+const ECHT: Readonly<Record<FallArt, string>> = { lead: 'Echter', deal: 'Echter', mandat: 'Echtes', event: 'Echtes', firma: 'Echte', kampagne: 'Echte', keiner: 'Echter' };
+export const echterFall = (art: FallArt): string => (art === 'keiner' ? 'Echter Fall' : `${ECHT[art]} ${FALL_WORT[art]}`);
 export interface FallTreffer { art: FallArt; id: string; name: string; unter?: string }
 /** Welche Fall-Arten sich über die Verweise suchen lassen (Events und Kampagnen nur mit dem Beispiel). */
 export const FALL_SUCHBAR: ReadonlySet<FallArt> = new Set(['lead', 'deal', 'mandat', 'firma']);

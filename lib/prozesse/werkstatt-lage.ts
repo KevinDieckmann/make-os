@@ -585,8 +585,14 @@ export function startKamera(box: Box, buehne: { b: number; h: number }, rand = 3
 /** Höchster Zoom beim Einpassen („Alles zeigen“, Befund 4) — ein kleiner Prozess wird nie größer als 100 % gezeigt, aber auch nicht unnötig klein. */
 export const WERKSTATT_EINPASS_MAX = 1;
 /** Der Inhalt der Fläche: alle Knoten (mit Beschriftung) und Zettel — ohne die leeren Ränder der Bahnen und Rahmen. Ohne Knoten die ganze Box. */
-export function inhaltBox(l: Pick<WerkstattLage, 'knoten' | 'box'>, zettel: readonly { pos: { x: number; y: number; b?: number; h?: number } }[] = [], rand = 40): Box {
-  const teile: Box[] = [...l.knoten.values(), ...zettel.map(z => ({ x: z.pos.x, y: z.pos.y, b: z.pos.b ?? WS.zettel.b, h: z.pos.h ?? WS.zettel.h }))];
+/** Platz unter dem Kopf einer leeren Phase für „+ erster Schritt“ (Fläche und „Alles zeigen“). */
+export const LEERE_PHASE_PLATZ = 120;
+export function inhaltBox(l: Pick<WerkstattLage, 'knoten' | 'box'> & Partial<Pick<WerkstattLage, 'rahmen'>>, zettel: readonly { pos: { x: number; y: number; b?: number; h?: number } }[] = [], rand = 40): Box {
+  // Kern-Bau-Test 24.10. („Alles zeigen“ schnitt leere Phasen ab): eine Phase ohne Schritt zählt mit ihrem Kopf und dem Platz für „+ erster Schritt“ (nicht mit der
+  // ganzen Höhe der Bahnen — leere Bahnränder bleiben draußen, Befund 4).
+  const belegt = new Set([...l.knoten.values()].map(k => k.phaseId));
+  const leer = (l.rahmen ?? []).filter(r => !belegt.has(r.id)).map(r => ({ x: r.x, y: r.y, b: r.b, h: Math.min(r.h, WS.rahmenKopf + LEERE_PHASE_PLATZ) }));
+  const teile: Box[] = [...l.knoten.values(), ...leer, ...zettel.map(z => ({ x: z.pos.x, y: z.pos.y, b: z.pos.b ?? WS.zettel.b, h: z.pos.h ?? WS.zettel.h }))];
   if (!teile.length) return l.box;
   const x0 = Math.min(...teile.map(t => t.x)) - rand, y0 = Math.min(...teile.map(t => t.y)) - rand;
   const x1 = Math.max(...teile.map(t => t.x + t.b)) + rand, y1 = Math.max(...teile.map(t => t.y + t.h)) + rand;
