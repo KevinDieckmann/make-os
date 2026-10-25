@@ -327,7 +327,9 @@ describe('Wächter: Katalog und Karte', () => {
   });
   it('Angebots-Tool: Produktwahl über die Preis-Teile; Fulfillment hat einen Weg zur Karte (B14); Finanzplanung liest das Produkt (B15)', () => {
     const p = lies('components/os/crm/angebot/Positionen.tsx');
-    expect(p).toContain('angebotPositionenAusProdukt(p, optionen[p.id] ?? []');
+    // 25.10. (Kern-Runde 4 · 7): das Produkt bringt seine Grund-Teile, eine Option kommt mit EINEM Klick auf ihren Haken (`optionUmschalten`).
+    expect(p).toContain('angebotPositionenAusProdukt(p, [], ');
+    expect(p).toContain('optionUmschalten(p, teilId, positionen');
     expect(p).not.toMatch(/positionAusProdukt\(/);
     expect(lies('components/os/fulfillment/prozesse/Prozesse.tsx')).toMatch(/href=\{WEG\.produkt\(x\.id\)\}/);
     expect(lies('components/os/finanzplan/Baukasten.tsx')).toContain("params.get('produkt')");
