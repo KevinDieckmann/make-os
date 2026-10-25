@@ -60,6 +60,10 @@ const nextConfig = {
       // nicht indexieren, nicht zwischenspeichern, CSP ohne fremde Quellen).
       { source: '/kunde/:pfad*', headers: buchung },
       { source: '/api/kunde/:pfad*', headers: buchung },
+      // Formular „Angebot anfordern“ für externe Vertriebler (25.10.): das Token steht im Pfad — dieselbe strenge Richtlinie (kein Referrer, keine Rahmen,
+      // nicht indexieren, nicht zwischenspeichern, CSP ohne fremde Quellen).
+      { source: '/angebot/:pfad*', headers: buchung },
+      { source: '/api/angebot/:pfad*', headers: buchung },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten

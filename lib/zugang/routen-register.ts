@@ -341,6 +341,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/aktivitaet': r('POST', MT, 'Aktivität an einem Kontakt.'),
   'crm/anfrage': r('GET,POST', MT, 'Anfragen.'),
   'crm/angebot': r('GET,POST', MT, 'Angebote.'),
+  'crm/formulare': r('GET,POST', MT, 'Formulare › „Angebot anfordern“ (25.10.): Anfordern jede Person im Haushalt (auch „nur Business“), nur per Sitzung; Links und Einstellungen nur Inhaber; Eingänge: Inhaber alle, sonst nur die eigenen (serverseitig).'),
   'crm/ansprechen': r('GET', MT, 'Wen heute ansprechen.'),
   'crm/bestand': r('GET,PATCH', MT, 'CRM-Bestand.'),
   'crm/dateien': r('GET,POST,PATCH,DELETE', MT, 'Dateien an Kontakten/Firmen.'),
@@ -404,6 +405,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'prozesse/landkarte': r('GET,POST', 'modul:prozesse', 'Landkarte der Prozesse (Fliege): System-Prozesse aus dem Register, Fulfillment-Vorlagen und Zahl der Fälle aus den vorhandenen Lesewegen — nur Business, nur Zahlen und Titel, GET schreibt nie; POST (22.10.) „Landkarte anpassen“ (Bereiche benennen/färben/anlegen, Kacheln zuordnen/beschriften/ausblenden, Reihenfolge, zurück auf die Vorgabe) nur per Sitzung mit Bau-Kennung und Recht „Entwurf“, Stand/409, Grenzen 413, gespeichert nur Abweichungen.', 'prozesseZugang'),
   'fulfillment/dossier/leseteil': r('GET', 'person', 'Leseteil „Tiefenbericht — nur für dich“ (C3): nur die Person der Sitzung, die ihn ausgelöst hat (andere 404); nie Dienstweg.'),
   // ── Kunden-Link (öffentlich, C2) — kommt AUSGESCHALTET: enge Regex in der Middleware (KUNDE_OFFEN), handelt für niemanden, gleiche 404 für jede Fehlerart.
+  'angebot/[slug]': r('GET,POST', 'offen', 'Formular „Angebot anfordern“ für externe Vertriebler (25.10.): Link-Token nur als Fingerabdruck, enge Regex in der Middleware, Drossel je Netz und Link, Honigtopf, Stempel, Größe — gleiche 404 je Fehlerart, nie Bestandsdaten, handelt nie als Person.'),
   'kunde/[link]': r('GET', 'offen', 'Kunden-Sicht über den Kunden-Link (C2): Token im Kopf, nie als Person; Umgebung UND Instanz-Schalter müssen an sein, sonst dieselbe 404.'),
   'kunde/[link]/formular': r('POST', 'offen', 'Formular-Antworten eines Abschnitts über den Kunden-Link (C2): Stempel, Honigtopf, ≤ 64 KB, Drossel — sonst dieselbe 404.'),
   'kunde/[link]/upload': r('POST', 'offen', 'Eine Unterlage über den Kunden-Link (C2): nur mit Recht „upload“ (je neuem Link an, je Link abschaltbar — Entscheidung 10.10. 23:25), Typ am Inhalt, Größen, Drossel — sonst dieselbe 404.'),

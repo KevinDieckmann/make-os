@@ -47,6 +47,10 @@ const PROZESS_WEBHOOK = /^\/api\/prozesse\/webhook\/pw-[a-f0-9]{24}$/;
 // ihre Status-Seite und genau deren zwei Schnittstellen. Adresse = lesbarer Vorsatz + 96 Bit Zufall (lib/kalender/buchung.ts
 // `slugOk`); alles andere (auch /buchen ohne Adresse oder tiefere Pfade) bleibt zu. Die Routen drosseln selbst.
 const BUCHUNG_OFFEN = [/^\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/, /^\/api\/buchung\/[a-z0-9-]{1,40}-[a-f0-9]{24}(\/status)?$/];
+// Formular „Angebot anfordern“ für externe Vertriebler (25.10., lib/crm/formulare.ts `LINK_SLUG`): NUR die Seite eines Links und ihre eine Schnittstelle,
+// Adresse = lesbarer Vorsatz + 96 Bit Zufall (gespeichert nur als Fingerabdruck). Alles andere (auch /angebot ohne Adresse, tiefere Pfade) bleibt zu.
+// Handelt nie als Person (Köpfe gelöscht); die Route drosselt selbst, prüft Honigtopf, Stempel und Größe und antwortet für jede Fehlerart gleich.
+const ANGEBOT_OFFEN = [/^\/angebot\/[a-z0-9-]{1,40}-[a-f0-9]{24}$/, /^\/api\/angebot\/[a-z0-9-]{1,40}-[a-f0-9]{24}$/];
 // Abmeldelink (05.10., Betroffenenrechte v2, lib/datenschutz/abmelden.ts): die Seite und ihre Schnittstelle sind ohne Sitzung offen — NUR mit
 // einem Token der Form `a1-<32 hex>`. Die Seite zeigt nie Daten, die Schnittstelle kann nur abmelden (POST; auch One-Click nach RFC 8058 von den
 // Servern der Mail-Anbieter, ohne Origin) und antwortet immer gleich. GET auf die Schnittstelle (Mail-Programm öffnet den List-Unsubscribe-Link)
@@ -180,6 +184,8 @@ export async function middleware(req: NextRequest) {
   if (BUCHUNG_OFFEN.some(r => r.test(pfad))) return NextResponse.next({ request: { headers: kopf } });
   // Kunden-Link: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Routen handeln für niemanden.
   if (kundeOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
+  // Formular-Link „Angebot anfordern“: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung.
+  if (ANGEBOT_OFFEN.some(r => r.test(pfad)) && (req.method === 'GET' || req.method === 'HEAD' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
 
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);
   // Passt der Zettel noch zum Passwort? (nach einem Wechsel: alle anderen Geräte binnen einer Minute raus)

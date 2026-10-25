@@ -62,6 +62,8 @@ export const ROUTEN_BEREICH: Readonly<Record<string, Sicht>> = {
   // Fulfillment (10.10.): Vorlagen, Fälle, Kunden-Link intern, Dossiers, Personenteil — und der öffentliche Kunden-Link (Mandate sind Business).
   'fulfillment': 'business',
   'kunde': 'business',
+  // Formular „Angebot anfordern“ (25.10.): die öffentliche Schnittstelle der externen Links — nur Business.
+  'angebot': 'business',
   // Prozesse (21.10.): die Landkarte der Firma — Marketing, Sales, Fulfillment — ist Business.
   'prozesse': 'business',
 };

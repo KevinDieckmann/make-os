@@ -47,6 +47,14 @@
 		X-Robots-Tag "noindex, nofollow"
 		Cache-Control no-store
 	}
+	# Formular „Angebot anfordern“ für externe Vertriebler (25.10.): das Token steht im Pfad — dieselben strengen Werte wie der Kunden-Link.
+	@angebot path /angebot /angebot/* /api/angebot /api/angebot/*
+	header @angebot {
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		X-Robots-Tag "noindex, nofollow"
+		Cache-Control no-store
+	}
 	reverse_proxy app:3000
 }
 
