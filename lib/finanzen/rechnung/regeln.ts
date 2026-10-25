@@ -17,6 +17,7 @@ import { WEG } from '@/lib/wege';
 import { monatsGrenzen, monatsName, monatsHonorar, mandatLaeuftIm as mandatLaeuftImMonat, type Leistungsmonat } from '@/lib/crm/mandat-laufzeit';
 import { ANSCHRIFT_MAX } from '@/lib/crm/zahlung';
 import { ABGERECHNET_PRAEFIX } from '@/lib/make-one/liquiditaet';
+import { artikelnummerSaeubern } from '@/lib/crm/produkt-karte';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
 
@@ -75,6 +76,8 @@ export function positionSaeubern(o: Record<string, unknown>, i: number): Rechnun
   };
 }
 
+    // Artikelnummer (25.10., optional) — aus Preis-Teil bzw. Angebotsposition; ohne diese Zeile fiele sie beim Speichern weg.
+    ...(artikelnummerSaeubern(o.artikelnummer) ? { artikelnummer: artikelnummerSaeubern(o.artikelnummer) } : {}),
 /** Positionen säubern: ungültige fallen weg, doppelte Kennungen werden hinten nummeriert (nichts geht verloren). */
 export function positionenSaeubern(roh: unknown): RechnungPosition[] {
   const l = Array.isArray(roh) ? (roh as Record<string, unknown>[]).map((p, i) => positionSaeubern(p ?? {}, i)).filter((p): p is RechnungPosition => !!p) : [];
@@ -396,6 +399,7 @@ export function positionenAusAngebot(a: Pick<Angebot, 'positionen'>, kleinuntern
 
 // Monate und Teilmonat (Kevin 18.10.: „Anteilig“) — EINE Regel für Rechnung und Liquiditätsplan in lib/crm/mandat-laufzeit.ts (18.10., N4).
 export { monatsGrenzen, monatsName, leistungsmonat, mandatLaeuftIm, type Leistungsmonat } from '@/lib/crm/mandat-laufzeit';
+    ...(p.artikelnummer ? { artikelnummer: p.artikelnummer } : {}),
 
 /**
  * Vorgabe-Monat der Monatsrechnung, wenn keiner gewählt ist (z. B. „Erste Rechnung“ am Angebot): der laufende Monat, geklemmt in die
@@ -454,7 +458,7 @@ export function anteilText(l: Leistungsmonat): string {
  * (lib/finanzen/ust.ts) — gerechnet auf das Honorar, wie es am Mandat steht; die Position sagt „anteilig …, 15 von 31 Tagen“.
  * Ohne `anteil` bzw. voller Monat: wie bisher (bit-gleich).
  */
-export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen'>, monat: string, opt: { kleinunternehmer?: boolean; nettoAusBrutto: (b: number, s: number) => number; anteil?: Leistungsmonat | null }): RechnungPosition {
+export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen'>, monat: string, opt: { kleinunternehmer?: boolean; nettoAusBrutto: (b: number, s: number) => number; anteil?: Leistungsmonat | null; /** Artikelnummer des Hauptpreis-Teils (25.10.) — ohne: bit-gleich wie bisher. */ artikelnummer?: string }): RechnungPosition {
   const teil = opt.anteil?.anteilig && m.honorar.basis === 'monat' ? opt.anteil : null;
   const honorar = monatsHonorar(m, teil);
   const netto = m.honorar.netto ? honorar : opt.nettoAusBrutto(honorar, m.ustSatz);
@@ -467,6 +471,7 @@ export function positionAusMandat(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz
 
 // ── Rechnungsanschrift ↔ Firma (Kevin 18.10.: „An der Firma speichern“) ──────
 
+    ...(opt.artikelnummer ? { artikelnummer: opt.artikelnummer } : {}),
 type Anschrift = Pick<RechnungEmpfaenger, 'strasse' | 'plz' | 'ort' | 'land'>;
 const ANSCHRIFT_TEILE = ['strasse', 'plz', 'ort', 'land'] as const;
 

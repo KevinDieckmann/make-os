@@ -51,6 +51,8 @@ export const PRODUKT_GRENZEN = {
   preise: 12, betragCent: 1_000_000_000, text: 300, einheit: 40, kontingent: 300, aufgabe: 1000, kennzahl: 200, ebene: 12, dauerTage: 1100,
   aufwandStundenWoche: 168, mindestlaufzeitMonate: 120, kuendigungsfristTage: 365, zahlungszielTage: 120, maxGleichzeitig: 1000,
   anrechnungAuf: 10, inklusive: 10, inklusiveMenge: 1000, stundenJeMonat: 744, zielUmsatz: 1e9, zielKunden: 100_000, zusatz: 50,
+  /** Artikelnummer eines Preis-Teils (25.10.). */
+  artikelnummer: 40,
 } as const;
 
 /** Die Felder der Karte (19.10.) — trägt ein Produkt eines davon, ist es eine Karte (`istKarte`). */
@@ -734,6 +736,8 @@ export function angebotPositionenAusProdukt(l: Leistung, gewaehlteOptionen: read
       menge, einheit: t.art === 'je_einheit' ? einheitKurz(t.einheit) : POS_EINHEIT[t.art], einzelpreisCent: typeof t.betragCent === 'number' ? t.betragCent : 0, ustSatz: ust, basis,
       ...(satz ? { satz } : {}),
       ...(basis !== 'einmalig' && v.mindestlaufzeitMonate ? { laufzeitMonate: v.mindestlaufzeitMonate } : {}),
+      // Artikelnummer des Teils (25.10.) — ohne Nummer am Teil bleibt die Position bit-gleich.
+      ...(t.artikelnummer ? { artikelnummer: t.artikelnummer } : {}),
     };
   });
 }
@@ -846,6 +850,14 @@ const KENNUNG = /^[a-z0-9][a-z0-9-]{1,63}$/;
  */
 export const produktProzessKennung = (v: unknown): string | undefined => (typeof v === 'string' && PROZESS_KENNUNG.test(v) ? v : undefined);
 const TEIL_ID = /^pt-[a-z0-9-]{1,40}$/;
+/** Form einer Artikelnummer (25.10.): Buchstabe oder Ziffer vorn, dann Buchstaben, Ziffern, Leerzeichen und - _ . / — höchstens `PRODUKT_GRENZEN.artikelnummer`. */
+const ARTIKELNUMMER = /^[\p{L}\p{N}][\p{L}\p{N} ._\-/]*$/u;
+/** Eine Artikelnummer, gesäubert (Leerzeichen zusammengezogen, NFC) — undefined, wenn leer, zu lang oder in fremder Form (Säuberer: fällt weg; Prüfung: Fehler). */
+export function artikelnummerSaeubern(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  const t = v.normalize('NFC').replace(/\s+/g, ' ').trim();
+  return t && t.length <= PRODUKT_GRENZEN.artikelnummer && ARTIKELNUMMER.test(t) ? t : undefined;
+}
 const ZUSATZ_ID = /^mz-[a-z0-9-]{1,60}$/;
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 const G = PRODUKT_GRENZEN;
@@ -871,6 +883,8 @@ export function preisteilSaeubern(v: unknown, fallbackId: string): PreisTeil | n
     ...(dk !== undefined ? { deckel: { stundenJeMonat: dk } } : {}),
     ...(mj !== undefined ? { mengeJeMonat: mj } : {}),
     ...(zeile(v.text, G.text) ? { text: zeile(v.text, G.text) } : {}),
+    // Artikelnummer (25.10., optional) — ohne diese Zeile fiele sie beim Speichern der Karte weg.
+    ...(artikelnummerSaeubern(v.artikelnummer) ? { artikelnummer: artikelnummerSaeubern(v.artikelnummer) } : {}),
   };
 }
 function preiseSaeubern(v: unknown): PreisTeil[] | undefined {
@@ -1115,6 +1129,9 @@ export function preisteilPruefen(v: unknown, nr = 1): PruefFehler[] {
     istObj(v.zahlplan) ? zahlFehler(v.zahlplan.anzahlungProzent, `${p}, Anzahlung (%)`, 1, 99) : null,
     textFehler(v.kontingent, `${p}, Kontingent`, G.kontingent),
     textFehler(v.text, `${p}, Text`, G.text),
+    // Artikelnummer (25.10.): zu lang → 413, fremde Form → 400 (nie still verworfen).
+    textFehler(v.artikelnummer, `${p}, Artikelnummer`, G.artikelnummer)
+      ?? (v.artikelnummer != null && String(v.artikelnummer).trim() && !artikelnummerSaeubern(v.artikelnummer) ? { status: 400, text: `${p}: Artikelnummer nur aus Buchstaben, Ziffern, Leerzeichen und - _ . / (vorn ein Buchstabe oder eine Ziffer).` } : null),
   ]);
   return f;
 }

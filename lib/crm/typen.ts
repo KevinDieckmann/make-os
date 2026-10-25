@@ -242,6 +242,12 @@ export interface PreisTeil {
   mengeJeMonat?: number;
   /** Kurze Erklärung („Bonus bei erreichten Zielen“, „Erfolgsbeteiligung ab 2. Vertrag“). */
   text?: string;
+  /**
+   * Artikelnummer (25.10., kleine Bauten — optional, additiv): steht in der Angebots- und Rechnungsposition aus diesem Teil (Spalte „Art.-Nr.“ im PDF,
+   * nur wenn mindestens eine Position eine trägt). Form nur Buchstaben, Ziffern und - _ . / (höchstens 40). Der alte Stand verwirft das Feld beim
+   * nächsten Speichern der Karte — Positionen und Belege behalten ihre Nummer.
+   */
+  artikelnummer?: string;
 }
 export interface ProduktVertrag {
   mindestlaufzeitMonate?: number;
@@ -383,6 +389,8 @@ export interface AngebotPosition {
    * das Feld nicht: er zählt die Position als monatlich (dieselbe Menge × Satz).
    */
   satz?: 'tag' | 'stunde';
+  /** Artikelnummer aus dem Preis-Teil (25.10., optional, additiv) — wandert in die Rechnungsposition; der alte Stand verwirft sie beim Speichern des Entwurfs. */
+  artikelnummer?: string;
 }
 /** Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). */
 export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean }

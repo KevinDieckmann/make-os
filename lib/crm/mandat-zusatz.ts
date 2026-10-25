@@ -65,6 +65,17 @@ export function zusatzName(z: Pick<MandatZusatz, 'leistungId'> & Partial<Pick<Ma
 }
 
 /**
+ * Artikelnummer auf der Rechnung (25.10., kleine Bauten): der eigene Preis-Teil hinter dem Modul, sonst der Hauptpreis-Teil des Produkts — undefined ohne
+ * Katalog, ohne Preis-Teile oder ohne Nummer (dann bleibt die Position bit-gleich wie bisher).
+ */
+export function artikelnummerVon(leistungId: string | undefined, katalog?: Katalog, teil?: PreisTeil): string | undefined {
+  if (teil) return teil.artikelnummer;
+  const l = leistungId ? katalog?.find(x => x.id === leistungId) : undefined;
+  return l && hatPreisteile(l) ? hauptpreis(l)?.artikelnummer : undefined;
+}
+const mitNummer = (a: string | undefined) => (a ? { artikelnummer: a } : {});
+
+/**
  * Laufzeit eines Moduls: [ab, bis] ∩ [Beginn, Ende] des Mandats (beide Tage eingeschlossen). `ende` = das Ende, mit dem gerechnet wird —
  * die Rechnung kennt nur `m.ende`, der Liquiditätsplan das geplante Ende (lib/crm/mandat-laufzeit.ts `geplantesEnde`).
  */
@@ -127,7 +138,7 @@ export function zusatzPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz' | 
     const lm = leistungsmonat(zr, monat);
     if (!lm || !lm.tage) continue;
     const name = zusatzName(z, ctx.katalog);
-    const basis = { leistungId: z.leistungId, ustSatz: satz };
+    const basis = { leistungId: z.leistungId, ustSatz: satz, ...mitNummer(artikelnummerVon(z.leistungId, ctx.katalog, eigenerTeil(z, ctx.katalog))) };
     if (art === 'monat') {
       raus.push({ id: positionsId('monat', z.id), ...basis, titel: `${name} — ${monatsName(monat)}${lm.anteilig ? ` (${anteilText(lm)})` : ''}`.slice(0, 200), text: 'Zusatzmodul', menge: 1, einheit: lm.anteilig ? 'pauschal' : 'Monat', einzelpreisCent: monatsCent(z.honorar!.betragCent, lm) });
     } else if (art === 'inklusive') {
@@ -167,12 +178,12 @@ export function zahlplanMonate(m: Pick<Mandat, 'honorar' | 'start' | 'ende'> & P
   const r = restMonat(m, {});
   return r && r !== s ? [s, r] : [s];
 }
-export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan' | 'mindestlaufzeitMonate'>>, monat: string, ctx: Pick<PositionKontext, 'kleinunternehmer' | 'nettoAusBrutto'>): RechnungPosition[] | null {
+export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan' | 'mindestlaufzeitMonate' | 'leistungId'>>, monat: string, ctx: Pick<PositionKontext, 'kleinunternehmer' | 'nettoAusBrutto'> & Partial<Pick<PositionKontext, 'katalog'>>): RechnungPosition[] | null {
   const p = m.zahlplan?.anzahlungProzent;
   if (m.honorar.basis !== 'einmalig' || !p || !tagOk(m.start)) return null;
   const s = m.start.slice(0, 7);
   const r = restMonat(m, {});
-  const voll = positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: null });
+  const voll = positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: null, ...mitNummer(artikelnummerVon(m.leistungId, ctx.katalog)) });
   const titel = (zusatz: string) => `${m.titel || 'Leistung'} — ${zusatz}`.slice(0, 200);
   if (!r || r === s) return monat === s ? [voll] : [];
   const anzahlung = kaufmaennisch((voll.einzelpreisCent * p) / 100);
@@ -187,12 +198,13 @@ export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz'
  * und danach die Zusatzmodule (`zusatzPositionen`). Ohne `zusatz`: genau die eine Position wie bis 19.10. (bit-gleich). Ein einmaliges Honorar mit
  * Zahlplan (21.10.) steht nur im Monat der Anzahlung bzw. des Rests (`zahlplanPosition`).
  */
-export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'> & Partial<Pick<Mandat, 'zahlplan' | 'mindestlaufzeitMonate'>>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
+export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'> & Partial<Pick<Mandat, 'zahlplan' | 'mindestlaufzeitMonate' | 'leistungId'>>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
   const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}) }, monat);
   // Nur in Monaten, in denen das Mandat läuft (der Server prüft das vorher ohnehin — 409 „außerhalb der Laufzeit“).
   const laeuft = m.honorar.betrag > 0 && (lm?.tage ?? 0) > 0;
   const plan = laeuft ? zahlplanPosition(m, monat, ctx) : null;
-  const haupt = !laeuft ? [] : plan ?? [positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: lm })];
+  // Artikelnummer (25.10.): die des Hauptpreis-Teils des Produkts am Mandat — ohne Nummer bit-gleich.
+  const haupt = !laeuft ? [] : plan ?? [positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: lm, ...mitNummer(artikelnummerVon(m.leistungId, ctx.katalog)) })];
   return m.zusatz?.length ? [...haupt, ...zusatzPositionen(m, monat, ctx, ende)] : haupt;
 }
 
@@ -291,7 +303,7 @@ export function abrechnenPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz'
       raus.push({
         id: `${POS.abrechnen}${fnv(schluessel)}`, leistungId: z.leistungId, titel: `${name} · je ${einheit} — ${monatsName(monat)}`.slice(0, 200),
         text: berechnet < menge ? `${menge.toLocaleString('de-DE')} Stunden erfasst — berechnet höchstens ${deckel} Stunden je Monat (vereinbarter Deckel).` : (t.text?.trim() || 'Zusatzmodul, optional nach Menge'),
-        menge: berechnet, einheit, einzelpreisCent: t.betragCent!, ustSatz: satz,
+        menge: berechnet, einheit, einzelpreisCent: t.betragCent!, ustSatz: satz, ...mitNummer(t.artikelnummer),
       });
       continue;
     }
@@ -307,7 +319,7 @@ export function abrechnenPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz'
     raus.push({
       id: positionsId('abrechnen', z.id), leistungId: z.leistungId, titel: `${name} — ${monatsName(monat)}`.slice(0, 200),
       text: berechnet < menge ? `${menge.toLocaleString('de-DE')} Stunden erfasst — berechnet höchstens ${deckel} Stunden je Monat (vereinbarter Deckel).` : 'Zusatzmodul, nach Menge',
-      menge: berechnet, einheit, einzelpreisCent: z.honorar!.betragCent, ustSatz: satz,
+      menge: berechnet, einheit, einzelpreisCent: z.honorar!.betragCent, ustSatz: satz, ...mitNummer(teilFuer(z, ctx.katalog)?.artikelnummer ?? artikelnummerVon(z.leistungId, ctx.katalog)),
     });
   }
   return { ok: true, positionen: raus };

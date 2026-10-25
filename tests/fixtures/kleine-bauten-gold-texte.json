@@ -1,0 +1,37 @@
+{
+ "sie": [
+  {
+   "einleitung": "Guten Tag Max Muster,\n\nvielen Dank für das Gespräch und Ihr Interesse. Wie besprochen, erhalten Sie hier unser Angebot für „Begleitung“.",
+   "schluss": "Das Angebot gilt bis zum 30.11.2026. Bei Fragen oder Änderungswünschen melden Sie sich gern — wir freuen uns auf die Zusammenarbeit.\n\nMit freundlichen Grüßen"
+  },
+  {
+   "betreff": "Angebot BW-A-2026-0007 – Begleitung",
+   "text": "Guten Tag Max Muster,\n\nanbei erhalten Sie, wie besprochen, unser Angebot BW-A-2026-0007 für „Begleitung“ (gültig bis 30.11.2026).\n\nBei Fragen melden Sie sich gern.\n\nMit freundlichen Grüßen\nErika Muster\nBeispiel Werkstatt GmbH"
+  }
+ ],
+ "du": [
+  {
+   "einleitung": "Hallo Max,\n\nvielen Dank für das gute Gespräch. Wie besprochen, bekommst du hier unser Angebot für „Begleitung“.",
+   "schluss": "Das Angebot gilt bis zum 30.11.2026. Melde dich gern, wenn du Fragen hast oder etwas anpassen möchtest — ich freue mich auf die Zusammenarbeit.\n\nViele Grüße"
+  },
+  {
+   "betreff": "Angebot BW-A-2026-0007 – Begleitung",
+   "text": "Hallo Max,\n\nanbei, wie besprochen, unser Angebot BW-A-2026-0007 für „Begleitung“ (gültig bis 30.11.2026).\n\nMelde dich gern bei Fragen.\n\nViele Grüße\nErika Muster\nBeispiel Werkstatt GmbH"
+  }
+ ],
+ "ohne": {
+  "betreff": "Angebot – Angebot",
+  "text": "Guten Tag,\n\nanbei erhalten Sie, wie besprochen, unser Angebot für „die besprochene Leistung“.\n\nBei Fragen melden Sie sich gern.\n\nMit freundlichen Grüßen"
+ },
+ "rechnung": {
+  "betreff": "Rechnung BW-R-2026-0003 – Begleitung",
+  "text": "Guten Tag Max Muster,\n\nanbei erhalten Sie unsere Rechnung BW-R-2026-0003 über 2.975,00 €, zahlbar bis zum 03.11.2026.\n\nBei Fragen melden Sie sich gern.\n\nMit freundlichen Grüßen\nBeispiel Werkstatt GmbH"
+ },
+ "nummer": {
+  "lauf": {
+   "jahr": 2026,
+   "nr": 5
+  },
+  "nummer": "BW-R-2026-0005"
+ }
+}

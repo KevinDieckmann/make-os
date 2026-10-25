@@ -19,7 +19,7 @@ import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, Cr
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { KERN_EINHEITEN, UG_KURZ, EINHEITEN_UEBERSCHRIEBEN } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
-import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt, mandatZahlplanAusProdukt, hauptpreis, hauptpreisAus, istKombi, istSatz, zusatzAusTeil } from './produkt-karte';
+import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt, mandatZahlplanAusProdukt, hauptpreis, hauptpreisAus, istKombi, istSatz, zusatzAusTeil, artikelnummerSaeubern } from './produkt-karte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
 import { produktTitel, titelNurProdukt } from './titel-regel';
 
@@ -255,6 +255,8 @@ export const ENTWURF_FELDER = ['gesellschaft', 'kontaktId', 'firmaId', 'dealId',
 
 /**
  * Entwurf säubern: nur ENTWURF_FELDER aus `roh`, auf den bisherigen Entwurf gelegt. Status bleibt „entwurf“,
+    // Artikelnummer (25.10., optional) — aus dem Preis-Teil bzw. von Hand; ohne diese Zeile fiele sie beim Speichern des Entwurfs weg.
+    ...(artikelnummerSaeubern(o.artikelnummer) ? { artikelnummer: artikelnummerSaeubern(o.artikelnummer) } : {}),
  * Version/Vorgänger bleiben, wie der Server sie setzte. Kennungen nur in ihrer Form (tote prüft die Verbindungsprüfung).
  */
 /** `gesellschaftVorgabe` (08.10.): Absender eines NEUEN Entwurfs ohne Angabe — die operative Business-Gesellschaft (Server: `absenderVorgabe`). */

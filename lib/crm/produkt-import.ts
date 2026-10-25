@@ -53,6 +53,8 @@ export interface PreisTeilImport {
   /** Nur Tages-/Stundensatz (21.10.): geplante Menge je Monat (Tage bzw. Stunden) für Planung und Liquidität. */
   mengeJeMonat?: number | string;
   text?: string;
+  /** Artikelnummer (25.10.) — steht auf Angebots- und Rechnungsposition; Buchstaben, Ziffern, - _ . / (höchstens 40). `null`/leer = keine. */
+  artikelnummer?: string | null;
   id?: string;
 }
 /** Regeln im Import — Bezüge über Produkt-NAMEN (oder Kennung des Katalogs). */
@@ -99,7 +101,7 @@ export const IMPORT_FELDER = [
   'name', 'status', 'gesellschaft', 'typ', 'linie', 'beschreibung', 'leistungstext', 'angebot', 'ergebnis', 'grenzen', 'lieferumfang',
   'preise', 'vertrag', 'regeln', 'rolle', 'ebene', 'aufgabe', 'kennzahl', 'dauerTage', 'aufwandStundenWoche', 'ziel', 'ablauf',
 ] as const;
-const PREIS_TEIL_FELDER = ['art', 'betrag', 'betragCent', 'bis', 'bisCent', 'einheit', 'rolle', 'optional', 'anzahlungProzent', 'zahlplan', 'kontingent', 'stundenJeMonat', 'deckel', 'mengeJeMonat', 'text', 'id'];
+const PREIS_TEIL_FELDER = ['art', 'betrag', 'betragCent', 'bis', 'bisCent', 'einheit', 'rolle', 'optional', 'anzahlungProzent', 'zahlplan', 'kontingent', 'stundenJeMonat', 'deckel', 'mengeJeMonat', 'text', 'artikelnummer', 'id'];
 const VERTRAG_FELDER = ['mindestlaufzeitMonate', 'danach', 'kuendigungsfristTage', 'rechnungsrhythmus', 'zahlungszielTage', 'ustSatz', 'reisekosten'] as const;
 const ANGEBOT_FELDER = ['titel', 'einleitung', 'leistungstext', 'ergebnis', 'hinweise'] as const;
 
@@ -256,7 +258,11 @@ export function gesellschaftName(g: string | undefined, register?: ImportKontext
 function wertText(feld: string, v: unknown, namen: (id: string) => string, register?: ImportKontext['register']): string {
   if (v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length)) return '—';
   switch (feld) {
-    case 'preise': return preiseText({ preis: { betrag: 0, einheit: '' }, preise: v as PreisTeil[] });
+    case 'preise': {
+      // Artikelnummern (25.10.) sichtbar mitnennen — sonst sähe eine geänderte Nummer in der Vorschau aus wie „gleich“.
+      const nr = (v as PreisTeil[]).map(t => t.artikelnummer).filter(Boolean);
+      return `${preiseText({ preis: { betrag: 0, einheit: '' }, preise: v as PreisTeil[] })}${nr.length ? ` · Art.-Nr. ${nr.join(', ')}` : ''}`;
+    }
     case 'gesellschaft': return gesellschaftName(String(v), register);
     case 'vertrag.danach': return DANACH_TEXT[String(v)] ?? String(v);
     case 'rolle': return ROLLE_TEXT[String(v)] ?? String(v);
@@ -630,6 +636,8 @@ function preiseAus(w: unknown, alt: readonly PreisTeil[], f: PruefFehler[]): unk
       ...(stdZahl !== undefined ? { deckel: { stundenJeMonat: stdZahl } } : {}),
       ...(mjZahl !== undefined ? { mengeJeMonat: mjZahl } : {}),
       ...(typeof t.text === 'string' && text(t.text) ? { text: text(t.text) } : {}),
+      // Artikelnummer (25.10.): roh weiter — die Prüfung (`preisteilPruefen`) meldet zu lang (413) bzw. fremde Form (400), nie still verworfen.
+      ...(typeof t.artikelnummer === 'string' && text(t.artikelnummer) ? { artikelnummer: text(t.artikelnummer) } : t.artikelnummer != null && typeof t.artikelnummer !== 'string' ? { artikelnummer: t.artikelnummer } : {}),
     };
   });
   return roh.every(Boolean) ? roh : undefined;
@@ -708,7 +716,7 @@ type SpaltenZiel =
   | { ebene: 'ziel'; feld: 'umsatz' | 'kunden' }
   | { ebene: 'regel'; feld: 'anrechnungAuf' | 'anrechnungProzent' | 'maxGleichzeitig' | 'inklusive' }
   | { ebene: 'angebot'; feld: 'titel' | 'einleitung' | 'hinweise' }
-  | { ebene: 'preis'; feld: 'art' | 'betrag' | 'bis' | 'einheit' | 'optional' | 'anzahlung' | 'kontingent' | 'deckel' | 'mengeJeMonat' | 'text' };
+  | { ebene: 'preis'; feld: 'art' | 'betrag' | 'bis' | 'einheit' | 'optional' | 'anzahlung' | 'kontingent' | 'deckel' | 'mengeJeMonat' | 'text' | 'artikelnummer' };
 const P = (feld: string, art: 'text' | 'liste' | 'zahl' = 'text'): SpaltenZiel => ({ ebene: 'produkt', feld, art });
 /** Spaltennamen (klein, ohne Leer-/Sonderzeichen, Umlaute ausgeschrieben) → Ziel. */
 const SPALTEN: Record<string, SpaltenZiel> = {
@@ -740,6 +748,8 @@ const SPALTEN: Record<string, SpaltenZiel> = {
   geplantjemonat: { ebene: 'preis', feld: 'mengeJeMonat' }, mengejemonat: { ebene: 'preis', feld: 'mengeJeMonat' }, geplantemenge: { ebene: 'preis', feld: 'mengeJeMonat' },
   kontingent: { ebene: 'preis', feld: 'kontingent' }, deckel: { ebene: 'preis', feld: 'deckel' }, stundenjemonat: { ebene: 'preis', feld: 'deckel' }, deckelstundenjemonat: { ebene: 'preis', feld: 'deckel' },
   preistext: { ebene: 'preis', feld: 'text' }, preishinweis: { ebene: 'preis', feld: 'text' },
+  // Artikelnummer je Preis-Teil (25.10.) — z. B. aus einem Artikelstamm.
+  artikelnummer: { ebene: 'preis', feld: 'artikelnummer' }, artikelnr: { ebene: 'preis', feld: 'artikelnummer' }, artnr: { ebene: 'preis', feld: 'artikelnummer' }, sku: { ebene: 'preis', feld: 'artikelnummer' },
 };
 /** Listen in einer Zelle: „|“, Zeilenumbruch oder „•“ (linear geteilt, kein Rückverfolgen über lange Zellen). */
 const liste = (w: string) => w.split(/[|\n•]/).map(x => x.trim()).filter(Boolean);

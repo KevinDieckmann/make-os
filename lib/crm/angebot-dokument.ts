@@ -42,7 +42,7 @@ export function empfaengerAus(k: { vorname?: string; nachname?: string; email?: 
   return { name, ...(firma ? { firma } : {}), zeilen, ...(k?.email ? { email: k.email } : {}) };
 }
 
-export interface DokumentPosition { nr: string; titel: string; text: string; menge: string; einzelpreis: string; rabatt?: string; betrag: string; basis: string }
+export interface DokumentPosition { nr: string; titel: string; text: string; menge: string; einzelpreis: string; rabatt?: string; betrag: string; basis: string; /** Artikelnummer (25.10.) — Spalte „Art.-Nr.“ nur, wenn mindestens eine Position eine trägt. */ artikelnummer?: string }
 export interface DokumentSumme { label: string; wert: string; stark?: boolean; leise?: boolean }
 export interface AngebotDokument {
   /**
@@ -107,6 +107,7 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
       nr: String(i + 1), titel: p.titel, text: p.text, menge: `${mengeText(p.menge)} ${p.einheit}`.trim(), einzelpreis: euroCent(p.einzelpreisCent),
       ...(p.rabattProzent ? { rabatt: `${p.rabattProzent.toLocaleString('de-DE')} %` } : {}), betrag: euroCent(positionNettoCent(p)),
       basis: p.basis === 'einmalig' ? BASIS_LABEL.einmalig : `${istSatzPosition(p) ? `nach ${p.satz === 'tag' ? 'Tagen' : 'Stunden'} · geplant je Monat` : BASIS_LABEL[p.basis]}${p.laufzeitMonate ? ` · ${p.laufzeitMonate} Monate` : ''}`,
+      ...(p.artikelnummer ? { artikelnummer: p.artikelnummer } : {}),
     })),
     summen,
     hinweise: [

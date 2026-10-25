@@ -29,6 +29,8 @@ export interface RechnungPosition {
   rabattProzent?: number;
   /** 19, 7 oder 0. */
   ustSatz: number;
+  /** Artikelnummer (25.10., optional, additiv): aus dem Preis-Teil des Produkts bzw. der Angebotsposition — Spalte „Art.-Nr.“ im PDF, nur wenn eine Position sie trägt. */
+  artikelnummer?: string;
 }
 
 /**

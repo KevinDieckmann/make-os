@@ -11,7 +11,7 @@ import type { TreppenStufe } from './treppe-daten';
 import { TREPPE_GRENZEN, TEXT_MAX } from './treppe-daten';
 import {
   katalogTreppe, produktKarte, preisText, preisteileVon, hatPreisteile, preisAusTeil, produktPruefen, wochenStunden, stufenTakt, vertragVon, hauptpreisAus,
-  PREIS_TEIL_ARTEN, PRODUKT_GRENZEN, type PruefFehler,
+  PREIS_TEIL_ARTEN, PRODUKT_GRENZEN, artikelnummerSaeubern, type PruefFehler,
 } from './produkt-karte';
 import { produktZustand, linieVon, LINIEN } from './produkte';
 import { centAusEingabe, ANGEBOT_GRENZEN } from './angebote';
@@ -236,22 +236,23 @@ export function karteAusStufe(s: TreppenStufe, id: string): Leistung {
 
 // ── Preis-Teile bearbeiten ───────────────────────────────────────────────────
 
-export type PreisTeilFeld = 'betrag' | 'bis' | 'einheit' | 'anzahlung' | 'kontingent' | 'deckel' | 'menge' | 'text';
+export type PreisTeilFeld = 'betrag' | 'bis' | 'einheit' | 'anzahlung' | 'kontingent' | 'deckel' | 'menge' | 'text' | 'artikelnummer';
 /** Je Preis-Form nur die passenden Felder (Reihenfolge = Anzeige). */
 export const PREIS_TEIL_FELDER: Record<PreisTeilArt, readonly PreisTeilFeld[]> = {
   kostenlos: ['text'],
-  fest: ['betrag', 'bis', 'anzahlung', 'text'],
-  monatlich: ['betrag', 'bis', 'text'],
-  jaehrlich: ['betrag', 'bis', 'kontingent', 'anzahlung', 'text'],
-  je_einheit: ['betrag', 'bis', 'einheit', 'anzahlung', 'text'],
+  // Artikelnummer (25.10.) je Teil, der auf Angebot und Rechnung steht — „kostenlos“ wird nie berechnet.
+  fest: ['betrag', 'bis', 'anzahlung', 'text', 'artikelnummer'],
+  monatlich: ['betrag', 'bis', 'text', 'artikelnummer'],
+  jaehrlich: ['betrag', 'bis', 'kontingent', 'anzahlung', 'text', 'artikelnummer'],
+  je_einheit: ['betrag', 'bis', 'einheit', 'anzahlung', 'text', 'artikelnummer'],
   // Geplante Menge je Monat (21.10., Kevin: Tages-/Stundensätze „mit geplanter Menge je Monat“) — Planung und Liquidität rechnen Satz × Menge.
-  tagessatz: ['betrag', 'bis', 'menge', 'text'],
-  stundensatz: ['betrag', 'bis', 'deckel', 'menge', 'text'],
-  erfolg: ['betrag', 'text'],
+  tagessatz: ['betrag', 'bis', 'menge', 'text', 'artikelnummer'],
+  stundensatz: ['betrag', 'bis', 'deckel', 'menge', 'text', 'artikelnummer'],
+  erfolg: ['betrag', 'text', 'artikelnummer'],
 };
 export const PREIS_FELD_LABEL: Record<PreisTeilFeld, string> = {
   betrag: 'Betrag (€ netto)', bis: 'bis (€, optional)', einheit: 'Einheit (z. B. Event)', anzahlung: 'Anzahlung (%)', kontingent: 'Enthalten (Kontingent)',
-  deckel: 'Höchstens Std./Monat', menge: 'Geplant je Monat', text: 'Kurze Erklärung',
+  deckel: 'Höchstens Std./Monat', menge: 'Geplant je Monat', text: 'Kurze Erklärung', artikelnummer: 'Artikelnummer',
 };
 
 /** Den Teil auf eine andere Preis-Form stellen — Felder, die es dort nicht gibt, fallen weg (sonst lehnte der Server ab). */
@@ -267,6 +268,7 @@ export function teilFuerArt(t: PreisTeil, art: PreisTeilArt): PreisTeil {
     ...(f.includes('deckel') && t.deckel ? { deckel: t.deckel } : {}),
     ...(f.includes('menge') && typeof t.mengeJeMonat === 'number' ? { mengeJeMonat: t.mengeJeMonat } : {}),
     ...(t.text ? { text: t.text } : {}),
+    ...(f.includes('artikelnummer') && t.artikelnummer ? { artikelnummer: t.artikelnummer } : {}),
   };
 }
 /** Ein neuer Preis-Teil der Form `art` mit freier Kennung `pt-<n>` (gilt immer — „optional“ stellt man danach um). */
@@ -327,6 +329,12 @@ export function teilFeldSetzen(t: PreisTeil, feld: PreisTeilFeld, roh: string): 
       if (t.deckel?.stundenJeMonat && n > t.deckel.stundenJeMonat) return { ok: false, fehler: 'Geplant je Monat: höchstens so viel wie der Deckel.' };
       return { ok: true, teil: { ...t, mengeJeMonat: Math.round(n * 100) / 100 } };
     }
+    case 'artikelnummer': {
+      if (!v) return { ok: true, teil: ohne('artikelnummer') };
+      if (v.length > PRODUKT_GRENZEN.artikelnummer) return { ok: false, fehler: `Artikelnummer: höchstens ${PRODUKT_GRENZEN.artikelnummer} Zeichen — nicht gespeichert.` };
+      const a = artikelnummerSaeubern(v);
+      return a ? { ok: true, teil: { ...t, artikelnummer: a } } : { ok: false, fehler: 'Artikelnummer: nur Buchstaben, Ziffern, Leerzeichen und - _ . / (vorn ein Buchstabe oder eine Ziffer).' };
+    }
     case 'einheit': case 'kontingent': case 'text': {
       const max = feld === 'einheit' ? PRODUKT_GRENZEN.einheit : feld === 'kontingent' ? PRODUKT_GRENZEN.kontingent : PRODUKT_GRENZEN.text;
       if (v.length > max) return { ok: false, fehler: `Zu lang (höchstens ${max} Zeichen) — nicht gespeichert.` };
@@ -346,6 +354,7 @@ export function teilFeldWert(t: PreisTeil, feld: PreisTeilFeld): string {
     case 'einheit': return t.einheit ?? '';
     case 'kontingent': return t.kontingent ?? '';
     case 'text': return t.text ?? '';
+    case 'artikelnummer': return t.artikelnummer ?? '';
   }
 }
 /** Die Preis-Teile zum Bearbeiten (ohne eigene: der eine Teil aus dem alten Preis). */
