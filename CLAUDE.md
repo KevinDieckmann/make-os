@@ -272,6 +272,11 @@ alten Datenordner, schreibt NUR in einen leeren neuen (Standard Probelauf, `--au
    Freigabe von Kevin oder Malin. Interne Buchführung (Erfassungs-Werkzeuge) darf direkt schreiben.
    In den Kalender schreibt ZOE NUR über den Stapel (Kevin 29.09., F2 M8): `plan_block` ist freigabepflichtig
    (Gruppe „kalender“), erst der Klick legt den Block über `blockAnlegen` an.
+   **Dokumentierte Ausnahme (Kevin 25.10., Klickrunde „Angebot anfordern“: „Wenn er das eingetragen hat, muss automatisiert das Angebot
+   abgeschickt werden“ — Entscheidung „Versand automatisch MIT Leitplanken“):** NUR für den Weg Markttraktion › Formulare zählt das Absenden des
+   Vertrieblers als Freigabe — und nur, wenn ALLES stimmt (Listenpreise ohne Rabatt/eigenen Preis, gültige Adresse, keine Werbesperre, kein Art. 18,
+   Absender-Postfach gewählt, Datenschutzhinweis vollständig, Text nur aus Vorlagen, keine KI). Sonst Freigabe durch einen Inhaber (ein Klick „Senden“).
+   Versand NUR über `angebotVerschickenImAuftrag` (lib/crm/angebot-versand.ts, Abschnitt „Markttraktion › Formulare“); jede andere Mail bleibt Einzelklick.
 4. **Testdaten nach Tests zurücksetzen** — vorher prüfen, ob ein Wert wirklich
    vom Test stammt und nicht von Kevin/Malin echt eingetragen wurde.
 5. **Zugang je Person, nie Rückfall auf „kevin“:** Jede Route liest die Person aus der Sitzung
@@ -1449,7 +1454,7 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
   a=faellig|woche|powerhour|kadenz — Power Hour NUR hier) **· Marketing** (Marketing a=uebersicht|anfragen|segmente|kampagnen|redaktion|newsletter|positionierung —
   Kampagnen NUR hier · Events = `besuche` + `event` in EINER Reiterzeile Kalender · Wirkung · Im Kundenauftrag · Make.One, `EVENTS_REITER` · Netzwerken = eigene Seite
   `/os/netzwerken`, leuchtet dort) **· Steuerung** (Planung a=kreislauf|ziele|kanaele|challenges · Auswertung `auswertung` · Automationen & Head `automationen`), Fuß
-  Stammdaten (auch Einstellungen › Daten & Datenschutz › „Kartei-Pflege“). Höchstens zwölf Punkte in den Gruppen, jeder Bereich genau EINEM Punkt, dem Fuß oder
+  Formulare (25.10., Abschnitt „Markttraktion › Formulare“) · Stammdaten (auch Einstellungen › Daten & Datenschutz › „Kartei-Pflege“). Höchstens zwölf Punkte in den Gruppen, jeder Bereich genau EINEM Punkt, dem Fuß oder
   „Automationen & Head“ (Wächter `tests/aufraeumen-etappe3.test.ts`, `tests/markttraktion-hub.test.ts`). Welcher Punkt leuchtet NUR über `punktVon(aufloesen(s, a))`
   bzw. `hubOrtFuer(pfad, suche)` (auch Netzwerken); `deals&a=auswertung` (WEG.kunden, Kennzahlen, Widgets) zeigt die Auswertung und leuchtet dort. Hub-Punkte sind
   KEINE Einträge der Space-Leiste (Zeitmessung bleibt `business:markttraktion`); Produkte & Mandate bleibt ein eigenes Werkzeug, Kontakte stehen nur im Hub.
@@ -1494,6 +1499,35 @@ den ersten drei), `ziele` (Jahresziele mit Prozent + Link `WEG.ziel`, auch im Bu
   `besitzerAusOwner`, `moeglicheDubletten`. Route `POST /api/crm/import` mit `vorschau:true` (schreibt nichts), ohne → schreibt und legt Konflikte in
   `crm-import-konflikte` ab (`lib/crm/import-konflikte.ts`), `aktion:'konflikt'` entscheidet einzeln, GET liefert den Stand. Segment `seg-vernetzen` entsteht
   beim ersten Import. Neue Schreibwege für Stammdaten-Felder müssen `vonHandMarkieren` rufen — sonst überschreibt der nächste Import die Handarbeit.
+
+## Markttraktion › Formulare — „Angebot anfordern“ (25.10., Branch `angebotsformular`, nur lokal; UPDATES.md 25.10.)
+Kevin 25.10.: „Wir brauchen ein Formular, wo die Vertriebler Kunden eintragen können, die ein Angebot brauchen … wenn der Kunde nicht in der Datenbank
+ist, muss er angelegt werden … muss automatisiert das Angebot abgeschickt werden … am besten unter Formulare unter Markttraktion.“
+- **Ort:** Hub-Punkt „Formulare“ im FUSS (`HUB_MENUE.fuss`, vor Stammdaten — die Gruppen tragen schon zwölf Punkte), Bereich `formulare`, `WEG.formulare(anker?)`.
+  Eine Seite mit Karten `components/os/crm/formulare/Formulare.tsx`: „Angebot anfordern“ (Kundensuche über `Wahl` mit `onNeu`), „Eingänge“ (Inhaber alle, sonst
+  nur die eigenen; „Senden“/„Ablehnen“ für Inhaber), „Externe Links“ und „Einstellungen“ (nur Inhaber). Später gehören die Website-Formulare hierher.
+- **EIN Kern** `angebotAnfordern(eingabe, quelle)` (lib/crm/formulare-server.ts), Quellen `intern` (Sitzung) · `link` (externer Vertriebler) — eine dritte
+  (Brevo) = neue Art in `AnfrageQuelleKontext` mit eigener Herkunftsprüfung, sonst nichts. Regeln rein in lib/crm/formulare.ts (Eingabe, Positionen aus der
+  Produktwahl über `angebotPositionenAusProdukt`, Mengen in den Grenzen, `leitplanken`, `angebotMail` mit Datenschutzhinweis Art. 13, Katalog-Form).
+  EIN Vorgang über das Absichtsprotokoll (Art `angebot-anfrage`, Schritte eingang · kunde · deal · angebot · entscheiden · stellen · senden · abschluss),
+  feste Kennungen aus der Anfrage-Kennung (`af-`/`c-`/`ch-af-`/`ang-af-<uuid>`), `einmalig` an beiden Routen. Kunde NUR über `personAnlegen` (Weg `vertrieb`,
+  Herkunft `vertrag`, Quelle „Vertrieb (Formular)“ bzw. „Vertrieb (Link: <Name>)“) und `firmaSichern`; Art. 18 → abgelehnt VOR jeder Wirkung; Werbesperre → nur
+  verknüpfen, Freigabe; Deal NUR `dealAnlegen`; Angebot NUR `angebotSpeichern`/`angebotStellen`. Kein Versand → Entwurf + Stapel-Art `angebot-anfrage`
+  (Freigabe nur Inhaber aus der Sitzung, stellt und verschickt; Ablehnen lässt den Entwurf im Angebots-Tool). Glocke Art `angebot` an alle Inhaber, Telegram neutral.
+- **Versand** NUR `angebotVerschickenImAuftrag(eingangId, { ausgeloest })` (lib/crm/angebot-versand.ts): nimmt nur die Kennung des Eingangs — Text aus der
+  Vorlage, Empfänger = die Adresse der Anfrage (am Eingang nur Fingerabdruck, abgeglichen mit `alleAdressen` des Kontakts), Anhang = das PDF dieses Angebots,
+  Postfach = das vom Inhaber gewählte Business-Postfach (`absenderPruefen`), gesendet über `inboxSenden` (UWG/Art. 18 dort). Höchstens einmal je Eingang
+  (`versandBegonnen` → ein Abbruch beim Senden geht zur Freigabe, nie ein zweites Mal von selbst). Wächter: nur formulare-server.ts ruft sie.
+- **Bestand** `angebot-formular--<haushalt>` (IN_BUSINESS; Einstellungen, Links mit Token-Fingerabdruck, Eingänge nur mit Kennungen, Frist 24 Monate rollend);
+  lesen/schreiben NUR lib/crm/formulare-speicher.ts. Art. 15/17 `formularEingaengeOhne` (person-weitere.ts), Konto `formularEintraegeVon`/`formularOhnePerson`
+  (konto-daten.ts), VVT `vv-angebot-formular`.
+- **Externer Link** `/angebot/<vorsatz>-<24 hex>` + `POST /api/angebot/<slug>` (Middleware `ANGEBOT_OFFEN`, Register `offen`, Köpfe wie `buchung` in
+  next.config.mjs und Caddy `@angebot`): gleiche 404 für unbekannt/widerrufen/abgelaufen, Drossel je Netz und je Link, Honigtopf, Stempel (`angebotStempel`),
+  16 KB → 413, nur die freigegebenen Produkte, die Antwort nie mit Bestandsdaten (auch nicht „schon da“). Link nur einmal gezeigt („Neuer Link“ erneuert).
+- **„Über <Postfach> senden (mit PDF)“** (Angebot-Ansicht, Rechnungs-Ansicht inkl. Storno; `components/os/inbox/BelegSenden.tsx`): neue Mail in der Inbox
+  über `neueMailVorbereiten` mit `anhaenge` + `beleg`; der Server prüft „Anhang = GENAU das PDF dieses Belegs“ (lib/inbox/beleg-versand.ts) und vermerkt danach
+  `versendet` (Angebot `Angebot.versendet`, Rechnung `RechnungZusatz.versendet`, beide optional). Rechnungen gehen nie automatisch raus. Ohne Postfach `mailto`.
+- Tests: `tests/angebot-formular.test.ts`, `tests/angebot-formular-link.test.ts`, `tests/beleg-senden.test.ts`.
 
 ## Markttraktion › Planung (10.10., Branch `mt-planung`, nur lokal; UPDATES.md)
 Kevin 10.10.: „Planung“ (bis 21.10. Schnellknopf, seit 22.10. Hub-Punkt unter Steuerung, `HUB_MENUE`; `planungLink`/`WEG.vertriebsplanung`) — „Umsatzziele auf Aktivitäten
