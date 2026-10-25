@@ -40,8 +40,8 @@ export const HALTEN_TAGE = 30;
  *  `wochenplan-uebernahme` (29.09., K5): alte Wochenplan-Blöcke → iCloud-Termine (lib/planung/wochenplan-uebernahme-server.ts).
  *  `erinnerungen-uebernahme` (08.10., Lücke 10): Apple-Erinnerungen einmal als Aufgaben, dann der Übernahme-Stand (lib/zulieferer/server.ts).
  *  `kontoauszug` (09.10., B9 d): Kontoauszug übernehmen bzw. zurücknehmen — Lauf-Protokoll, Buchungen, Saldo (lib/finanzen/kontoauszug/server.ts). */
-export type AbsichtArt = 'art17' | 'zusammenfuehren' | 'import' | 'kennungen-umzug' | 'kennungen-rueckweg' | 'crm-folgen' | 'angebot-stellen' | 'buchung' | 'wochenplan-uebernahme' | 'firma-umhaengen' | 'erinnerungen-uebernahme' | 'kontoauszug';
-export const ABSICHT_ARTEN: readonly AbsichtArt[] = ['art17', 'zusammenfuehren', 'import', 'kennungen-umzug', 'kennungen-rueckweg', 'crm-folgen', 'angebot-stellen', 'buchung', 'wochenplan-uebernahme', 'firma-umhaengen', 'erinnerungen-uebernahme', 'kontoauszug'];
+export type AbsichtArt = 'art17' | 'zusammenfuehren' | 'import' | 'kennungen-umzug' | 'kennungen-rueckweg' | 'crm-folgen' | 'angebot-stellen' | 'buchung' | 'wochenplan-uebernahme' | 'firma-umhaengen' | 'erinnerungen-uebernahme' | 'kontoauszug' | 'angebot-anfrage';
+export const ABSICHT_ARTEN: readonly AbsichtArt[] = ['art17', 'zusammenfuehren', 'import', 'kennungen-umzug', 'kennungen-rueckweg', 'crm-folgen', 'angebot-stellen', 'buchung', 'wochenplan-uebernahme', 'firma-umhaengen', 'erinnerungen-uebernahme', 'kontoauszug', 'angebot-anfrage'];
 /**
  * offen          läuft oder wartet auf Wiederaufnahme
  * fertig         alle Schritte abgehakt

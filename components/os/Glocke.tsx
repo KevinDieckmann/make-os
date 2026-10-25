@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Erklaert } from './ui';
-import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, Moon, ImageIcon, Repeat, type LucideIcon } from 'lucide-react';
+import { Bell, UserPlus, MessageSquare, AtSign, Clock, AlertTriangle, Layers, Sparkles, Cake, CalendarPlus, CalendarClock, CalendarX, ClipboardCheck, Hourglass, PhoneForwarded, Handshake, Mail, ShieldCheck, Unplug, Moon, ImageIcon, Repeat, FileSignature, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { vorZeit, type GespeicherteArt, type AbgeleiteteArt, type Meldung, type MeldungenSicht } from '@/lib/meldungen/regeln';
 import { useTasks } from '@/context/TasksContext';
@@ -137,6 +137,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   produkte: { Icon: Sparkles, label: 'Produkte & Mandate', farbe: C.aktiv },
   // Prozesse (21.10., C1): Freigabe wartet, Fehler, Flutschutz, Budget, Notbremse — Titel ohne Inhalte.
   prozess: { Icon: Layers, label: 'Prozesse', farbe: C.aktiv },
+  // Formulare (25.10.): ein vom Vertrieb angefordertes Angebot ist verschickt bzw. wartet auf Freigabe.
+  angebot: { Icon: FileSignature, label: 'Angebote', farbe: C.aktiv },
   // 08.10. (Lücke 7): Business-Hinweise, die während einer Business-freien Zeit kamen — gesammelt, danach EINE Meldung.
   businessfrei: { Icon: Moon, label: 'Aus der freien Zeit', farbe: C.aktiv },
   // 09.10. (Schlaf-Hilfe): die eigene Abend-Erinnerung zur Schlafenszeit — neutral.

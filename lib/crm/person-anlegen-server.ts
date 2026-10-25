@@ -50,7 +50,8 @@ export async function firmaSichern(name: string | undefined, kontakt: { email?: 
 }
 
 /** Eine Person anlegen — der EINE Weg (siehe Kopf). `id`: feste Kennung (wiederholbar), sonst neu. */
-export async function personAnlegen(e: PersonEingabe, o: { weg: PersonWeg; person: string | null; wer?: Wer; id?: string }): Promise<PersonAnlegenErgebnis> {
+/** `vertrieb` (25.10.): nur vom Server (Formular „Angebot anfordern“, lib/crm/formulare-server.ts) — die Route /api/crm/person nimmt nur `PERSON_WEGE`. */
+export async function personAnlegen(e: PersonEingabe, o: { weg: PersonWeg | 'vertrieb'; person: string | null; wer?: Wer; id?: string }): Promise<PersonAnlegenErgebnis> {
   const regel = ANLEGE_REGELN[o.weg];
   const heute = localDay(), jetzt = new Date().toISOString();
   const id = o.id ?? neueKontaktKennung();

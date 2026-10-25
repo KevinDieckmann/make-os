@@ -54,7 +54,9 @@ export const ANSPRUCH_MS = 10 * 60_000;
 // abgelaufen als Äste), nach der Freigabe einer Mail/WhatsApp geht sie sofort raus — als die freigebende Person (lib/prozesse/lauf-stapel.ts).
 // Prozesse (22.10., Kundengewinnung „Heads setzen Prozesse mit auf“): `prozess-entwurf` — ein Head hat einen ganzen Prozess-Entwurf bzw. Bausteine für den
 // offenen Prozess vorgeschlagen; übernommen nur von der anfragenden Person, aus der Sitzung, über die Werkstatt (lib/prozesse/kundengewinnung/head-server.ts).
-export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | 'recht' | 'fulfillment' | 'inbox' | 'prozess' | 'prozess-entwurf' | AgentenStapelArt;
+// Formulare (25.10., „Angebot anfordern“): `angebot-anfrage` — ein vom Vertrieb angefordertes Angebot hielt eine Leitplanke nicht ein (Rabatt, Werbesperre,
+// Absender fehlt …) und wartet auf den Klick „Senden“ eines Inhabers (lib/crm/formulare-server.ts `ANGEBOT_ANFRAGE_STAPEL_ART`).
+export type StapelArt = 'aufgabe' | 'crm' | 'kalender' | 'medien' | 'produkte' | 'recht' | 'fulfillment' | 'inbox' | 'prozess' | 'prozess-entwurf' | 'angebot-anfrage' | AgentenStapelArt;
 export interface StapelBezug { art: StapelArt; id: string }
 
 export interface Vorschlag {

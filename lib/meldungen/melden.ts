@@ -32,8 +32,9 @@ export interface MeldungBezug { art: 'aufgabe' | 'buchung' | 'buchung-termin' | 
 /** `agenten` (09.10., Agenten-Bereich Paket 1): ein Lauf eines Heads bzw. Mitarbeiters ist fertig — Text neutral, ohne Inhalt; Link auf den Thread. */
 /** `medien` (09.10., Paket 4c): ein Medium wartet auf deine Freigabe (Vier-Augen) bzw. ein KI-Video ist fertig — Text neutral, Link auf das Medium. */
 /** `gesundheit` (09.10., Schlaf-Hilfe): die eigene Abend-Erinnerung zur Schlafenszeit — Titel IMMER neutral (keine Uhrzeit, keine Werte). */
+/** `angebot` (25.10., Formulare): ein vom Vertrieb angefordertes Angebot ist verschickt bzw. wartet auf Freigabe — an die Inhaber; Telegram nur neutral. */
 /** `prozess` (21.10., Prozesse C1 „Laufen intern“): ein Prozess wartet auf eine Freigabe, braucht Hilfe (Fehler), hat Läufe zurückgehalten oder pausiert (Budget, Notbremse) — Titel ohne Inhalte, nur Business. */
-export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender' | 'netzwerken' | 'sicherheit' | 'vertrag' | 'postfach' | 'verbindung' | 'agenten' | 'medien' | 'gesundheit' | 'produkte' | 'prozess';
+export type MeldungArt = 'zuweisung' | 'kommentar' | 'erwaehnung' | 'faellig' | 'ueberfaellig' | 'zoe' | 'buchung' | 'kalender' | 'netzwerken' | 'sicherheit' | 'vertrag' | 'postfach' | 'verbindung' | 'agenten' | 'medien' | 'gesundheit' | 'produkte' | 'prozess' | 'angebot';
 
 export interface MeldungEingabe {
   /** Empfänger: Speichername der Person (z. B. „malin“). Nie an sich selbst melden. */
