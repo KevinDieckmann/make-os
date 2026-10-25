@@ -23,7 +23,7 @@ import type { KanalStatus } from '@/lib/crm/recht';
 import type { FollowUpArt } from '@/lib/crm/typen';
 import { kanalLink } from '@/lib/crm/erfassen';
 import { profilAdresse, suchLink } from '@/lib/crm/netzwerk';
-import { OFFENE_STUFEN, STUFEN } from '@/lib/crm/pipeline';
+import { OFFENE_STUFEN, STUFEN, dealWertText } from '@/lib/crm/pipeline';
 import { faellige, FOLLOWUP_ARTEN } from '@/lib/crm/followup';
 import { ANRUF_ERGEBNISSE, ERGEBNIS_KURZ, followupAnker } from '@/lib/crm/aktivitaeten';
 import { MeetingNeu } from './kontakt/aktivitaeten-teile';
@@ -456,7 +456,7 @@ export function KontaktRechts({ k, api, heute, setze, klappen, zuFirma, zuAufgab
                 <Punkt farbe={!offen ? C.inkLeise : ampel === 'rot' ? LEUCHT.kritisch : ampel === 'gelb' ? LEUCHT.achtung : LEUCHT.gut} groesse={7} />
                 <b style={{ fontWeight: 600, fontSize: TYP.bedien, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.titel}</b>
               </span>
-              <span style={{ ...klein, paddingLeft: 14 }}>{STUFEN.find(s => s.id === c.stufe)?.label ?? c.stufe} · {c.wert.betrag ? `${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/Monat' : c.wert.basis === 'jahr' ? '/Jahr' : ''}` : 'ohne Wert'}</span>
+              <span style={{ ...klein, paddingLeft: 14 }}>{STUFEN.find(s => s.id === c.stufe)?.label ?? c.stufe} · {dealWertText(c, { kurz: true })}</span>
             </Link>
           );
         })}

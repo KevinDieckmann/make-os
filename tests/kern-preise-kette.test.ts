@@ -107,7 +107,7 @@ describe('Deal-Wert aus dem Angebot: laufend und einmalig getrennt', () => {
   });
   it('mit Option: der geplante Tagessatz zählt laufend — Gesamtwert = Gesamtwert des Angebots', () => {
     const w = dealWertAusAngebot({ positionen: mitOption });
-    expect(w).toEqual({ betrag: 3300, basis: 'monat', laufzeitMonate: 6, einmalBetrag: 1500 });
+    expect(w).toEqual({ betrag: 3300, basis: 'monat', laufzeitMonate: 6, einmalBetrag: 1500, geplantBetrag: 2400, geplantSatz: 'tag' });
     expect(gesamtwert({ wert: w }) * 100).toBe(angebotSummen({ positionen: mitOption }).gesamt.netto);
   });
   it('rein laufend bzw. rein einmalig: wie bisher (kein einmalBetrag)', () => {

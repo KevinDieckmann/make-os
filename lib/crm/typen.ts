@@ -83,8 +83,11 @@ export interface Chance {
    * Der Wert: `betrag` je `basis` (über `laufzeitMonate`). `einmalBetrag` (24.10., optional, additiv, netto €, nur bei laufender Basis): der Einmal-Anteil
    * eines gemischten Auftrags (z. B. 1.500 € einmalig neben 900 €/Monat) — vorher wurde er auf die Laufzeit verteilt („1.350 €/Monat“, eine erfundene Zahl).
    * Gesamtwert = laufend × Laufzeit + einmalBetrag (`gesamtwert`, lib/crm/pipeline.ts). Der alte Stand verwirft das Feld (er sieht dann nur den laufenden Teil).
+   * `geplantBetrag` (25.10., Kern-Bau-Test 2, optional, additiv, netto €, nur bei Basis „monat“): der Teil von `betrag`, der aus geplanten Tages-/Stundensätzen
+   * kommt (Satz × geplante Menge) — `betrag` bleibt der ganze Monatswert (Pipeline/Prognose rechnen wie bisher), das feste Honorar ist `betrag − geplantBetrag`
+   * (`festerMonatswert`); `geplantSatz` sagt, welche Sätze („tag“ | „stunde“, fehlt = gemischt). Der alte Stand verwirft beide (er sieht den ganzen Monatswert).
    */
-  wert: { betrag: number; basis: WertBasis; laufzeitMonate?: number; einmalBetrag?: number };
+  wert: { betrag: number; basis: WertBasis; laufzeitMonate?: number; einmalBetrag?: number; geplantBetrag?: number; geplantSatz?: 'tag' | 'stunde' };
   stufe: ChancenStufe;
   historie: { stufe: ChancenStufe; am: string; von: string }[];
   naechsterSchritt?: { text: string; datum: string };

@@ -745,16 +745,20 @@ export function angebotPositionenAusProdukt(l: Leistung, gewaehlteOptionen: read
  * + geplante Tages-/Stundensätze (Satz × geplante Menge), einmalig = Festpreise der Grund-Teile (`einmalBetrag` neben laufendem Wert); Laufzeit =
  * Mindestlaufzeit. Ohne laufenden Teil: jährlich bzw. einmalig. Je Einheit, Erfolg, Optionen und Kostenloses zählen nicht (ohne Menge keine Zahl). null ohne Betrag.
  */
-export function dealWertAusProdukt(l: Pick<Leistung, 'preis'> & Partial<Pick<Leistung, 'preise' | 'vertrag' | 'laufzeitMonate'>>): { betrag: number; basis: PreisBasis; laufzeitMonate?: number; einmalBetrag?: number } | null {
+export function dealWertAusProdukt(l: Pick<Leistung, 'preis'> & Partial<Pick<Leistung, 'preise' | 'vertrag' | 'laufzeitMonate'>>): { betrag: number; basis: PreisBasis; laufzeitMonate?: number; einmalBetrag?: number; geplantBetrag?: number; geplantSatz?: 'tag' | 'stunde' } | null {
   const teile = preisteileVon(l as Pick<Leistung, 'preis' | 'preise'>).filter(t => t.rolle === 'grund' && typeof t.betragCent === 'number' && t.betragCent > 0);
   const summe = (f: (t: PreisTeil) => number) => teile.reduce((x, t) => x + f(t), 0);
-  const monat = summe(t => (t.art === 'monatlich' ? t.betragCent! : istSatz(t.art) ? kaufmaennischCent(t.betragCent! * geplanteMenge(t)) : 0));
+  const saetze = summe(t => (istSatz(t.art) ? kaufmaennischCent(t.betragCent! * geplanteMenge(t)) : 0));
+  const monat = summe(t => (t.art === 'monatlich' ? t.betragCent! : 0)) + saetze;
   const jahr = summe(t => (t.art === 'jaehrlich' ? t.betragCent! : 0));
   const einmal = summe(t => (t.art === 'fest' ? t.betragCent! : 0));
   const lz = vertragVon({ vertrag: l.vertrag, laufzeitMonate: l.laufzeitMonate }).mindestlaufzeitMonate;
   const mitLz = lz ? { laufzeitMonate: lz } : {};
   const mitEinmal = einmal ? { einmalBetrag: einmal / 100 } : {};
-  if (monat) return { betrag: (monat + kaufmaennischCent(jahr / 12)) / 100, basis: 'monat', ...mitLz, ...mitEinmal };
+  // 25.10.: die geplanten Sätze getrennt benannt (`geplantBetrag`, wie `dealWertAusAngebot`).
+  const satzArten = new Set(teile.filter(t => istSatz(t.art) && geplanteMenge(t) > 0).map(t => (t.art === 'tagessatz' ? 'tag' : 'stunde') as 'tag' | 'stunde'));
+  const mitGeplant = saetze ? { geplantBetrag: saetze / 100, ...(satzArten.size === 1 ? { geplantSatz: [...satzArten][0] } : {}) } : {};
+  if (monat) return { betrag: (monat + kaufmaennischCent(jahr / 12)) / 100, basis: 'monat', ...mitLz, ...mitEinmal, ...mitGeplant };
   if (jahr) return { betrag: jahr / 100, basis: 'jahr', ...mitLz, ...mitEinmal };
   if (einmal) return { betrag: einmal / 100, basis: 'einmalig' };
   // Ein Tages-/Stundensatz ohne geplante Menge (bzw. je Einheit) allein: der Satz als einmaliger Wert (wie bisher der Hauptpreis).

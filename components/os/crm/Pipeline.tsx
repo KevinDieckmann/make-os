@@ -24,7 +24,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, us
 import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
-import { gesamtwert, dealWertText, prognose, prognoseJePerson, werZahlen, verlustgruende, dealsOhneWert, WIN_RATE_TEXT } from '@/lib/crm/pipeline';
+import { gesamtwert, dealWertText, geplanterMonatswert, prognose, prognoseJePerson, werZahlen, verlustgruende, dealsOhneWert, WIN_RATE_TEXT } from '@/lib/crm/pipeline';
 import { dealWertAusProdukt } from '@/lib/crm/produkt-karte';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
@@ -409,6 +409,8 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
           {c.wert.basis !== 'einmalig' && <Feld typ="number" wert={c.wert.laufzeitMonate ? String(c.wert.laufzeitMonate) : ''} breite={110} platzhalter="Monate" onFertig={m => setze({ wert: { ...c.wert, laufzeitMonate: Number(m) || undefined } })} />}
           {/* 24.10.: Einmal-Anteil neben dem laufenden Wert (nie auf die Laufzeit verteilt). */}
           {c.wert.basis !== 'einmalig' && <Feld typ="number" wert={c.wert.einmalBetrag ? String(c.wert.einmalBetrag) : ''} breite={130} platzhalter="+ einmalig €" onFertig={x => setze({ wert: { ...c.wert, einmalBetrag: Number(x) > 0 ? Number(x) : undefined } })} />}
+          {/* 25.10.: der geplante Teil (Tages-/Stundensätze) wird getrennt genannt — das feste Honorar ist der Rest. */}
+          {geplanterMonatswert(c) > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>davon ca. {euro(geplanterMonatswert(c))}/Monat geplante Sätze</span>}
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>= {euro(gesamtwert(c))}</span>
         </div>
       </Feldzeile>

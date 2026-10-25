@@ -36,7 +36,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Leer, Chip, Punkt, Knopf, LEUCHT, useBreit } from '../ui';
 import { anzeigename, STUFE_LABEL, type Kontakt, rollenVon, ROLLE_LABEL } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel } from '@/lib/crm/recht';
-import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
+import { OFFENE_STUFEN, dealWertText } from '@/lib/crm/pipeline';
 import { naechsterSchrittVon } from '@/lib/crm/followup';
 import { phaseVon } from '@/lib/crm/phase';
 import { leadScore, scoringKontext, temperaturFarbe, temperaturLabel } from '@/lib/crm/score';
@@ -285,7 +285,7 @@ export function KontaktAkte({ api, id, name, zurueck, zuFirma, zuAkte, t, u, set
           {v.kollegen.length > 12 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>… und {v.kollegen.length - 12} weitere in der Firmenkarte.</div>}
         </Abschnitt>}
         {firmenDeals.length > 0 && <Abschnitt titel="Deals der Firma">
-          {firmenDeals.map(d => <VZeile key={d.id} farbe={OFFENE_STUFEN.includes(d.stufe) ? LEUCHT.business : C.inkLeise} titel={d.titel} zusatz={`${crm?.stufen.find(s => s.id === d.stufe)?.label ?? d.stufe}${d.wert.betrag ? ` · ${euro(d.wert.betrag)}${d.wert.basis === 'monat' ? '/Monat' : ''}` : ''} · ohne diese Person`} am={d.geaendert} heute={heute} onClick={() => router.push(WEG.deal(d.id))} />)}
+          {firmenDeals.map(d => <VZeile key={d.id} farbe={OFFENE_STUFEN.includes(d.stufe) ? LEUCHT.business : C.inkLeise} titel={d.titel} zusatz={`${crm?.stufen.find(s => s.id === d.stufe)?.label ?? d.stufe}${d.wert.betrag || d.wert.einmalBetrag ? ` · ${dealWertText(d, { kurz: true })}` : ''} · ohne diese Person`} am={d.geaendert} heute={heute} onClick={() => router.push(WEG.deal(d.id))} />)}
         </Abschnitt>}
         {v.events.length > 0 && <Abschnitt titel="Events">
           {v.events.map(e => <VZeile key={e.teilnahme.id} farbe={e.teilnahme.status === 'da' ? LEUCHT.gut : e.teilnahme.status === 'no_show' || e.teilnahme.status === 'abgesagt' ? C.inkLeise : LEUCHT.puls} titel={istBesuch(e.event) ? e.event.titel : eventName(e.event)} zusatz={istBesuch(e.event) ? `besuchtes Event${e.event.fuer?.art === 'kunde' ? ` für ${crm?.stand.firmen.find(f => f.id === (e.event.fuer as { firmaId: string }).firmaId)?.name ?? 'einen Kunden'}` : ''} · ${TEILNAHME_LABEL[e.teilnahme.status]}` : TEILNAHME_LABEL[e.teilnahme.status]} am={e.event.datum} heute={heute} onClick={() => router.push(eventLink(e.event))} />)}

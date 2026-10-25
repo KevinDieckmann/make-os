@@ -13,6 +13,7 @@ import { Pillen, Chip, Hinweis, Knopf, SymbolKnopf, Liste, Zeile, Punkt, Leer, f
 import { Wahl, WahlMehrfach } from '../../crm/Wahl';
 import { WEG } from '@/lib/wege';
 import { mandateLink } from '@/lib/crm/adresse';
+import { dealWertText } from '@/lib/crm/pipeline';
 import { titelOhneFirma } from '@/lib/crm/mandat-name';
 import { vertragVon, PRODUKT_GRENZEN, INKLUSIVE_JE } from '@/lib/crm/produkt-karte';
 import {
@@ -259,7 +260,7 @@ export function MandateTeil({ l, crm, stufen }: { l: Leistung; crm: Pick<CrmBest
         <Liste>
           {deals.map(c => (
             <Zeile key={c.id} onClick={() => router.push(WEG.deal(c.id))} links={<Punkt farbe={c.stufe === 'gewonnen' ? LEUCHT.gut : c.stufe === 'verloren' ? C.inkLeise : LEUCHT.business} />} umbrechen
-              titel={c.titel} unter={`Deal · ${stufen.find(s => s.id === c.stufe)?.label ?? c.stufe}${c.wert.betrag ? ` · ${euro(c.wert.betrag)}` : ''}`} />
+              titel={c.titel} unter={`Deal · ${stufen.find(s => s.id === c.stufe)?.label ?? c.stufe}${c.wert.betrag || c.wert.einmalBetrag ? ` · ${dealWertText(c, { kurz: true })}` : ''}`} />
           ))}
         </Liste>
       )}

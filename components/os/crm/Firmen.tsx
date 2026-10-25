@@ -23,6 +23,7 @@ import type { CrmBestand } from '@/lib/crm/typen';
 import { anzeigename, type Aktivitaet } from '@/lib/make-one/crm';
 import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
 import { dealZuFirma, mandatZuFirma } from '@/lib/crm/firmen-bezug';
+import { dealWertText } from '@/lib/crm/pipeline';
 import { eventsFuerKunde, erfassteTeilnahmen, begegnungenFuerFirma, begegnungStatus } from '@/lib/crm/besuche';
 import type { Firma, FirmaRolle } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, nurFelder } from './daten';
@@ -280,7 +281,7 @@ export function FirmenKarte({ f, api, zuPerson, zuFirma, onLoeschen }: { f: Firm
       {(chancen.length > 0 || mandate.length > 0 || gruppe.length > 1) && (
         <div>
           <Ueberschrift rechts={gruppe.length > 1 ? <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, cursor: 'pointer' }}><input type="checkbox" checked={gruppeAn} onChange={e => setGruppeAn(e.target.checked)} />ganze Gruppe</label> : undefined}>Deals & Mandate</Ueberschrift>
-          {chancen.map(c => <Link key={c.id} href={WEG.deal(c.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{c.titel} <span style={{ color: C.inkLeise }}>· {crm.stufen.find(s => s.id === c.stufe)?.label}{c.wert.betrag ? ` · ${euro(c.wert.betrag)}${c.wert.basis === 'monat' ? '/M' : ''}` : ''} ›</span></Link>)}
+          {chancen.map(c => <Link key={c.id} href={WEG.deal(c.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{c.titel} <span style={{ color: C.inkLeise }}>· {crm.stufen.find(s => s.id === c.stufe)?.label}{c.wert.betrag || c.wert.einmalBetrag ? ` · ${dealWertText(c, { kurz: true })}` : ''} ›</span></Link>)}
           {mandate.map(m => <Link key={m.id} href={WEG.mandat(m.id)} style={{ display: 'block', fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>{m.titel.slice(0, 80)} <span style={{ color: C.inkLeise }}>· Mandat {m.status}{m.honorar.betrag ? ` · ${euro(m.honorar.betrag)}` : ''} ›</span></Link>)}
         </div>
       )}

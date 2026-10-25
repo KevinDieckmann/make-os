@@ -39,6 +39,8 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
   // 24.10. (Bau-Test): Produkt am Deal — belegt Wert (laufend + einmalig getrennt), Art und Gesellschaft vor; nur aktive Produkte.
   const [leistungId, setLeistungId] = useState<string | undefined>(undefined);
   const [einmal, setEinmal] = useState('');
+  // 25.10.: geplante Tages-/Stundensätze aus dem Produkt — gehen mit, solange der Monatswert der Vorgabe des Produkts entspricht.
+  const [produktWert, setProduktWert] = useState<ReturnType<typeof dealWertAusProdukt>>(null);
   const [gesellschaft, setGesellschaft] = useState<Gesellschaft | undefined>(undefined);
   const produkte = (api.crm?.stand.leistungen ?? []).filter(l => l.status === 'aktiv' && !l.geloeschtAm);
   const produktWahl = (id: string) => {
@@ -48,7 +50,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
     setArt(mandatArtVon(l));
     if (l.gesellschaft && l.gesellschaft !== 'offen') setGesellschaft(l.gesellschaft);
     const w = dealWertAusProdukt(l);
-    if (w && !betrag) { setBetrag(String(w.betrag)); setBasis(w.basis); setLaufzeit(w.laufzeitMonate ? String(w.laufzeitMonate) : ''); setEinmal(w.einmalBetrag ? String(w.einmalBetrag) : ''); }
+    if (w && !betrag) { setBetrag(String(w.betrag)); setBasis(w.basis); setLaufzeit(w.laufzeitMonate ? String(w.laufzeitMonate) : ''); setEinmal(w.einmalBetrag ? String(w.einmalBetrag) : ''); setProduktWert(w); }
   };
   const [schritt, setSchritt] = useState({ text: '', datum: plusTage(heute, 3) });
   const [quelle, setQuelle] = useState<Quelle | undefined>(vorgabeQuelle);
@@ -65,7 +67,7 @@ export function DealAnlegen({ api, kontaktId, firmaId, quelle: vorgabeQuelle, qu
     if (!bereit || laeuft) return;
     setLaeuft(true); setFehler(null);
     const r = await fetch('/api/crm/deal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-      aktion: 'anlegen', titel: titel.trim() || undefined, kontaktIds: personen, firmaId: firma, art, wert: { betrag: Number(betrag) || 0, basis, laufzeitMonate: Number(laufzeit) || undefined, ...(basis !== 'einmalig' && Number(einmal) > 0 ? { einmalBetrag: Number(einmal) } : {}) },
+      aktion: 'anlegen', titel: titel.trim() || undefined, kontaktIds: personen, firmaId: firma, art, wert: { betrag: Number(betrag) || 0, basis, laufzeitMonate: Number(laufzeit) || undefined, ...(basis !== 'einmalig' && Number(einmal) > 0 ? { einmalBetrag: Number(einmal) } : {}), ...(produktWert?.geplantBetrag && basis === 'monat' && Number(betrag) === produktWert.betrag ? { geplantBetrag: produktWert.geplantBetrag, ...(produktWert.geplantSatz ? { geplantSatz: produktWert.geplantSatz } : {}) } : {}) },
       ...(leistungId ? { leistungId } : {}), ...(gesellschaft ? { gesellschaft } : {}),
       schritt, quelle, ...(quelle && quelle === vorgabeQuelle && quelleBezug ? { quelleBezug } : {}), besitzer, erwartetAm: erwartetAm || undefined, trotzdem,
     }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));

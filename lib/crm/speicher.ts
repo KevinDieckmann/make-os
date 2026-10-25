@@ -168,7 +168,9 @@ function chance(o: Record<string, unknown>, jetzt: string, person: string): Chan
     art: aus(o.art, ARTEN, 'retainer'), ...(idOk(o.leistungId) ? { leistungId: String(o.leistungId) } : {}),
     wert: { betrag: zahl(w.betrag), basis: aus(w.basis, ['monat', 'jahr', 'einmalig'] as const, 'monat'), ...(zahl(w.laufzeitMonate, 0, 120) ? { laufzeitMonate: zahl(w.laufzeitMonate, 0, 120) } : {}),
       // 24.10.: Einmal-Anteil eines gemischten Deals (netto €, optional) — nur neben einem laufenden Wert.
-      ...(w.basis !== 'einmalig' && zahl(w.einmalBetrag) > 0 ? { einmalBetrag: zahl(w.einmalBetrag) } : {}) },
+      ...(w.basis !== 'einmalig' && zahl(w.einmalBetrag) > 0 ? { einmalBetrag: zahl(w.einmalBetrag) } : {}),
+      // 25.10.: davon geplante Tages-/Stundensätze (netto €/Monat, optional) — nur bei Basis „monat“ und höchstens der Monatswert.
+      ...(w.basis === 'monat' && zahl(w.geplantBetrag) > 0 && zahl(w.geplantBetrag) <= zahl(w.betrag) ? { geplantBetrag: zahl(w.geplantBetrag), ...(w.geplantSatz === 'tag' || w.geplantSatz === 'stunde' ? { geplantSatz: w.geplantSatz } : {}) } : {}) },
     stufe, historie: hist.length ? hist : [{ stufe, am: jetzt, von: person }],
     ...(ns && txt(ns.text) && tag(ns.datum) ? { naechsterSchritt: { text: txt(ns.text, 300), datum: tag(ns.datum)! } } : {}),
     ...(o.quelle ? { quelle: aus(o.quelle, ['empfehlung', 'event', 'content', 'outreach', 'bestand', 'inbound', 'kampagne'] as const, 'outreach') } : {}),

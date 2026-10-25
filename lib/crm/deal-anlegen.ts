@@ -45,7 +45,7 @@ export interface DealEingabe {
   kontaktIds?: string[];
   firmaId?: string;
   art?: ChancenArt;
-  wert?: { betrag?: number; basis?: WertBasis; laufzeitMonate?: number; /** Einmal-Anteil neben laufendem Wert (24.10.). */ einmalBetrag?: number };
+  wert?: { betrag?: number; basis?: WertBasis; laufzeitMonate?: number; /** Einmal-Anteil neben laufendem Wert (24.10.). */ einmalBetrag?: number; /** davon geplante Tages-/Stundensätze je Monat (25.10.). */ geplantBetrag?: number; geplantSatz?: 'tag' | 'stunde' };
   /** Pflicht: was als Nächstes passiert, mit Datum. */
   schritt?: { text?: string; datum?: string };
   quelle?: Quelle; quelleBezug?: string;
@@ -110,6 +110,9 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
   const basis: WertBasis = e.wert?.basis === 'jahr' || e.wert?.basis === 'einmalig' ? e.wert.basis : 'monat';
   const laufzeit = Number(e.wert?.laufzeitMonate) > 0 ? Math.min(120, Math.round(Number(e.wert!.laufzeitMonate))) : undefined;
   const einmalBetrag = basis !== 'einmalig' && Number(e.wert?.einmalBetrag) > 0 ? Math.min(1e9, Math.round(Number(e.wert!.einmalBetrag) * 100) / 100) : undefined;
+  // 25.10.: davon geplante Tages-/Stundensätze (nur bei Basis „monat“, höchstens der Monatswert) — das feste Honorar ist der Rest.
+  const geplantBetrag = basis === 'monat' && Number(e.wert?.geplantBetrag) > 0 ? Math.min(betrag, Math.round(Number(e.wert!.geplantBetrag) * 100) / 100) : undefined;
+  const geplantSatz = geplantBetrag && (e.wert?.geplantSatz === 'tag' || e.wert?.geplantSatz === 'stunde') ? e.wert.geplantSatz : undefined;
   const stufe: Chance['stufe'] = e.stufe && OFFENE_STUFEN.includes(e.stufe) ? e.stufe : 'qualifiziert';
   // Quelle (2.5): ausdrücklich, sonst aus der Herkunft des Leads — nie fest vorbelegt. Kommt der Deal von einem Event und nennt keins, ist es das jüngste
   // Event, bei dem eine Person des Deals da war (17.10., Gesamtprüfung L1 B13 — sonst zeigte die Event-Akte „0 Deals“, obwohl ein Mandat daraus entstand).
@@ -121,7 +124,7 @@ export function dealBauen(e: DealEingabe, ctx: { kontakte: Kontakt[]; firmen: { 
     id: ctx.id ?? neueDealId(), titel, kontaktIds: kontaktIds.length ? kontaktIds : [],
     ...(firma ? { firma: firma.name, firmaId: firma.id } : personen[0]?.firma ? { firma: personen[0].firma } : {}),
     art, ...(idOk(e.leistungId) ? { leistungId: e.leistungId } : {}),
-    wert: { betrag, basis, ...(laufzeit && basis !== 'einmalig' ? { laufzeitMonate: laufzeit } : {}), ...(einmalBetrag ? { einmalBetrag } : {}) },
+    wert: { betrag, basis, ...(laufzeit && basis !== 'einmalig' ? { laufzeitMonate: laufzeit } : {}), ...(einmalBetrag ? { einmalBetrag } : {}), ...(geplantBetrag ? { geplantBetrag, ...(geplantSatz ? { geplantSatz } : {}) } : {}) },
     stufe, historie: [{ stufe, am: ctx.jetzt, von: ctx.person }],
     naechsterSchritt: schritt, qualifizierung: kriterien,
     ...(quelle ? { quelle } : {}), ...(quelleBezug ? { quelleBezug } : {}),

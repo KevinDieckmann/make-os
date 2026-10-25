@@ -83,15 +83,36 @@ export function gesamtwert(c: Pick<Chance, 'wert'>): number {
 }
 const euroKurz = (n: number) => `${n.toLocaleString('de-DE', { maximumFractionDigits: 2 })} €`;
 /**
- * Der Wert eines Deals in Worten — EINE Stelle für Deal-Akte und Pipeline (24.10.): „900 € je Monat · 6 Monate + 1.500 € einmalig“; ohne Wert „ohne Wert“.
- * `kurz`: „900 €/M + 1.500 €“ für Karten.
+ * Der Teil des Monatswerts, der aus geplanten Tages-/Stundensätzen kommt (25.10., `wert.geplantBetrag`) — 0 ohne Angabe bzw. bei anderer Basis, nie mehr als der
+ * Monatswert. Pipeline und Prognose rechnen weiter mit dem ganzen Wert (`gesamtwert`); Kennzahlen „monatlich wiederkehrend“ nehmen `festerMonatswert`.
+ */
+export function geplanterMonatswert(c: Pick<Chance, 'wert'>): number {
+  const { betrag, basis, geplantBetrag } = c.wert;
+  return basis === 'monat' && betrag > 0 && typeof geplantBetrag === 'number' && geplantBetrag > 0 ? Math.min(geplantBetrag, betrag) : 0;
+}
+/** Das feste Honorar eines Deals je Monat bzw. Jahr (ohne geplante Sätze, ohne Einmal-Anteil) — für Kennzahlen „monatlich wiederkehrend“ (25.10.). */
+export const festerMonatswert = (c: Pick<Chance, 'wert'>): number => (c.wert.betrag > 0 && c.wert.basis !== 'einmalig' ? Math.round((c.wert.betrag - geplanterMonatswert(c)) * 100) / 100 : 0);
+/** „Tagessätze“, „Stundensätze“ bzw. „Sätze nach Aufwand“ — wie `aufwandLabel` im Angebot. */
+const saetzeText = (s: Chance['wert']['geplantSatz']) => (s === 'tag' ? 'Tagessätze' : s === 'stunde' ? 'Stundensätze' : 'Sätze nach Aufwand');
+/**
+ * Der Wert eines Deals in Worten — EINE Stelle für Deal-Akte, Pipeline, Akten und Zusammenfassung (24.10.): „900 € je Monat · 6 Monate + 1.500 € einmalig“; ohne Wert
+ * „ohne Wert“. `kurz`: „900 €/M + 1.500 €“ für Karten. Mit geplanten Sätzen (25.10.) getrennt: „1.100 €/Monat + ca. 3.000 €/Monat Tagessätze (geplant) · 4 Monate
+ * + 2.000 € einmalig“ bzw. kurz „1.100 €/M + ca. 3.000 €/M geplant + 2.000 €“ — nie wieder „4.100 € je Monat“ für ein Honorar von 1.100 €.
  */
 export function dealWertText(c: Pick<Chance, 'wert'>, opt: { kurz?: boolean } = {}): string {
   const { betrag, basis, laufzeitMonate, einmalBetrag } = c.wert;
   const einmal = basis !== 'einmalig' && typeof einmalBetrag === 'number' && einmalBetrag > 0 ? einmalBetrag : 0;
   if (!(betrag > 0) && !einmal) return 'ohne Wert';
+  const geplant = geplanterMonatswert(c);
+  const fest = betrag - geplant;
+  const dauer = basis !== 'einmalig' && laufzeitMonate ? ` · ${laufzeitMonate} ${laufzeitMonate === 1 ? 'Monat' : 'Monate'}` : '';
+  if (geplant) {
+    if (opt.kurz) return [fest > 0 ? `${euroKurz(fest)}/M` : '', `ca. ${euroKurz(geplant)}/M geplant`, einmal ? euroKurz(einmal) : ''].filter(Boolean).join(' + ');
+    const lauf = [fest > 0 ? `${euroKurz(fest)}/Monat` : '', `ca. ${euroKurz(geplant)}/Monat ${saetzeText(c.wert.geplantSatz)} (geplant)`].filter(Boolean).join(' + ');
+    return [`${lauf}${dauer}`, einmal ? `${euroKurz(einmal)} einmalig` : ''].filter(Boolean).join(' + ');
+  }
   if (opt.kurz) return [betrag > 0 ? `${euroKurz(betrag)}${basis === 'monat' ? '/M' : basis === 'jahr' ? '/J' : ''}` : '', einmal ? `${euroKurz(einmal)}${betrag > 0 ? '' : ' einmalig'}` : ''].filter(Boolean).join(' + ');
-  const lauf = betrag > 0 ? `${euroKurz(betrag)} ${basis === 'monat' ? 'je Monat' : basis === 'jahr' ? 'je Jahr' : 'einmalig'}${basis !== 'einmalig' && laufzeitMonate ? ` · ${laufzeitMonate} ${laufzeitMonate === 1 ? 'Monat' : 'Monate'}` : ''}` : '';
+  const lauf = betrag > 0 ? `${euroKurz(betrag)} ${basis === 'monat' ? 'je Monat' : basis === 'jahr' ? 'je Jahr' : 'einmalig'}${dauer}` : '';
   return [lauf, einmal ? `${euroKurz(einmal)} einmalig` : ''].filter(Boolean).join(' + ');
 }
 

@@ -543,7 +543,10 @@ export function dealWertAusAngebot(a: Pick<Angebot, 'positionen'>): Chance['wert
   const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
   const monatlich = s.monat.netto + s.aufwand.netto;
   const einmal = s.einmalig.netto > 0 ? { einmalBetrag: ausCent(s.einmalig.netto) } : {};
-  if (monatlich > 0) return { betrag: ausCent(monatlich + kaufmaennisch(s.jahr.netto / 12)), basis: 'monat', ...(lz ? { laufzeitMonate: lz } : {}), ...einmal };
+  // 25.10. (Kern-Bau-Test 2): die geplanten Tages-/Stundensätze stehen im Monatswert, aber getrennt benannt — sonst hieß ein Honorar von 1.100 € „4.100 € je Monat“.
+  const saetze = new Set(a.positionen.filter(istSatzPosition).map(p => p.satz));
+  const geplant = s.aufwand.netto > 0 ? { geplantBetrag: ausCent(s.aufwand.netto), ...(saetze.size === 1 ? { geplantSatz: [...saetze][0] as 'tag' | 'stunde' } : {}) } : {};
+  if (monatlich > 0) return { betrag: ausCent(monatlich + kaufmaennisch(s.jahr.netto / 12)), basis: 'monat', ...(lz ? { laufzeitMonate: lz } : {}), ...einmal, ...geplant };
   if (s.jahr.netto > 0) return { betrag: ausCent(s.jahr.netto), basis: 'jahr', ...(lz ? { laufzeitMonate: lz } : {}), ...einmal };
   return { betrag: ausCent(s.einmalig.netto), basis: 'einmalig' };
 }

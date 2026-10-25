@@ -15,7 +15,7 @@
 
 import type { Aktivitaet, Kontakt } from '@/lib/make-one/crm';
 import type { Chance, CrmBestand, Mandat } from './typen';
-import { echtesGespraech, OFFENE_STUFEN, STUFEN } from './pipeline';
+import { dealWertText, echtesGespraech, geplanterMonatswert, OFFENE_STUFEN, STUFEN } from './pipeline';
 import { ankerListe, berlin, meetingVon, type TerminZeiten } from './aktivitaeten';
 import { lifecycleVon, type LifecycleBestand } from './vorschlaege';
 import { LIFECYCLE_LABEL, type LifecyclePhase } from './lifecycle';
@@ -64,6 +64,8 @@ const stufeLabel = (c: Chance) => STUFEN.find(s => s.id === c.stufe)?.label ?? c
 function wertText(c: Chance): string {
   const { betrag, basis } = c.wert;
   if (!(betrag > 0)) return 'ohne Wert';
+  // 25.10.: mit geplanten Tages-/Stundensätzen getrennt („1.100 €/Monat + ca. 3.000 €/Monat Tagessätze (geplant) …“) — EINE Stelle `dealWertText`.
+  if (geplanterMonatswert(c) > 0) return dealWertText(c);
   return `${euro(betrag)}${basis === 'monat' ? ' im Monat' : basis === 'jahr' ? ' im Jahr' : ''}`;
 }
 const honorarText = (m: Mandat) => (m.honorar?.betrag > 0 ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? ' im Monat' : m.honorar.basis === 'tag' ? ' am Tag' : ' einmalig'}` : 'ohne Honorar');

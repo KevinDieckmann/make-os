@@ -78,3 +78,48 @@ describe('1 · Restzahlung bei Abschluss: im Monat des Mandatsendes — Rechnung
   });
 });
 
+// ── 2 · Deal-Wert: festes Honorar, geplante Sätze und einmalig getrennt ──
+import { dealWertAusAngebot } from '@/lib/crm/angebote';
+import { angebotPositionenAusProdukt, dealWertAusProdukt } from '@/lib/crm/produkt-karte';
+import { dealWertText, festerMonatswert, geplanterMonatswert, gesamtwert, prognose } from '@/lib/crm/pipeline';
+import { istBasisVorschlaege } from '@/lib/finanzen/produkte';
+import { saeubern } from '@/lib/crm/speicher';
+import type { Chance } from '@/lib/crm/typen';
+
+describe('2 · Deal-Wert: „1.100 €/Monat + ca. 3.000 €/Monat Tagessätze (geplant)“ statt „4.100 € je Monat“', () => {
+  const positionen = angebotPositionenAusProdukt(PAKET, ['pt-3']);
+  const w = dealWertAusAngebot({ positionen });
+  const deal = { wert: w } as Pick<Chance, 'wert'>;
+  it('Wert aus dem Angebot: Gesamt wie bisher, der geplante Teil getrennt benannt', () => {
+    expect(w).toEqual({ betrag: 4100, basis: 'monat', laufzeitMonate: 4, einmalBetrag: 2000, geplantBetrag: 3000, geplantSatz: 'tag' });
+    expect(gesamtwert(deal)).toBe(4100 * 4 + 2000);
+    expect(dealWertText(deal)).toBe('1.100 €/Monat + ca. 3.000 €/Monat Tagessätze (geplant) · 4 Monate + 2.000 € einmalig');
+    expect(dealWertText(deal, { kurz: true })).toBe('1.100 €/M + ca. 3.000 €/M geplant + 2.000 €');
+  });
+  it('Kennzahl „monatlich wiederkehrend“ nimmt nur das feste Honorar; Pipeline/Prognose rechnen mit dem Gesamtwert', () => {
+    expect(festerMonatswert(deal)).toBe(1100);
+    expect(geplanterMonatswert(deal)).toBe(3000);
+    const offen = { id: 'ch-1', stufe: 'angebot', wert: w, historie: [], angelegt: J, naechsterSchritt: { text: 'Nachfassen', datum: '2026-10-30' } } as unknown as Chance;
+    expect(prognose([offen], HEUTE).offen).toBe(gesamtwert(deal));
+    // Ist-Basis der Planung: festes Honorar als Hauptpreis, geplante Sätze als eigener Teil.
+    const gewonnen = { ...offen, titel: 'Wachstumspaket', firma: 'Beispiel Logistik AG', stufe: 'gewonnen', leistungId: 'l-paket', gesellschaft: 'ug' } as Chance;
+    const ist = istBasisVorschlaege({ mandate: [], chancen: [gewonnen], leistungen: KATALOG }, HEUTE);
+    expect(ist.map(x => [x.teil ?? 'haupt', x.betrag, x.rhythmus])).toEqual([['haupt', 1100, 'monatlich'], ['geplant', 3000, 'monatlich'], ['einmal', 2000, 'einmalig']]);
+  });
+  it('ohne geplante Sätze bleibt alles wie bisher (Text, Wert, Kennzahl)', () => {
+    const ohne = { wert: dealWertAusAngebot({ positionen: angebotPositionenAusProdukt(PAKET, []) }) };
+    expect(ohne.wert).toEqual({ betrag: 1100, basis: 'monat', laufzeitMonate: 4, einmalBetrag: 2000 });
+    expect(dealWertText(ohne)).toBe('1.100 € je Monat · 4 Monate + 2.000 € einmalig');
+    expect(festerMonatswert(ohne)).toBe(1100);
+  });
+  it('Produkt-Vorgabe trennt ebenso (nur Grund-Teile); der Säuberer hält das Feld nur bei Basis „monat“ und höchstens bis zum Monatswert', () => {
+    const grund = { ...PAKET, preise: PAKET.preise!.map(t => (t.id === 'pt-3' ? { ...t, rolle: 'grund' as const } : t)) };
+    expect(dealWertAusProdukt(grund)).toMatchObject({ betrag: 4100, geplantBetrag: 3000, geplantSatz: 'tag' });
+    expect(dealWertAusProdukt(PAKET)).toEqual({ betrag: 1100, basis: 'monat', laufzeitMonate: 4, einmalBetrag: 2000 });
+    const roh = (wert: Record<string, unknown>) => (saeubern('chancen', { id: 'ch-1', titel: 'Deal', kontaktIds: [], wert, stufe: 'angebot' }, J, 'kevin') as unknown as Chance | null)?.wert;
+    expect(roh({ betrag: 4100, basis: 'monat', geplantBetrag: 3000, geplantSatz: 'tag' })).toMatchObject({ geplantBetrag: 3000, geplantSatz: 'tag' });
+    expect(roh({ betrag: 2000, basis: 'monat', geplantBetrag: 3000 })).not.toHaveProperty('geplantBetrag');
+    expect(roh({ betrag: 4100, basis: 'einmalig', geplantBetrag: 3000 })).not.toHaveProperty('geplantBetrag');
+  });
+});
+

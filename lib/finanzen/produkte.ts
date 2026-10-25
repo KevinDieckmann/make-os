@@ -12,6 +12,7 @@ import type { Baustein, BausteinEinheit, Rhythmus } from './szenarien';
 import { neuerBaustein, RHYTHMUS_LABEL } from './szenarien';
 import { planMonat } from './rechenkern';
 import { zusatzName } from '@/lib/crm/mandat-zusatz';
+import { festerMonatswert, geplanterMonatswert } from '@/lib/crm/pipeline';
 import { preisBasisVon as kartenBasis, basisAusAltpreis, planBausteinAusProdukt, RHYTHMUS_AUS_BASIS as KARTE_RHYTHMUS, type PreisBasis as KartenPreisBasis } from '@/lib/crm/produkt-karte';
 
 export type PreisBasis = KartenPreisBasis;
@@ -182,7 +183,13 @@ export function istBasisVorschlaege(crm: Pick<CrmBestand, 'mandate' | 'chancen' 
   const gewonnen = crm.chancen.filter((c): c is Chance => c.stufe === 'gewonnen' && (c.wert.betrag > 0 || einmalVon(c) > 0) && !crm.mandate.some(m => m.chanceId === c.id));
   for (const c of gewonnen) {
     const l = produkt(c.leistungId);
-    if (c.wert.betrag > 0) out.push({ quelle: 'deal', quelleId: c.id, kunde: c.firma ?? c.titel, titel: c.titel, produktId: l?.id, produkt: l?.name, betrag: c.wert.betrag, rhythmus: c.wert.basis === 'monat' ? 'monatlich' : c.wert.basis === 'jahr' ? 'jaehrlich' : 'einmalig', laufzeit: c.wert.laufzeitMonate ?? l?.laufzeitMonate ?? null, start: startAus(), gesellschaft: c.gesellschaft });
+    // 25.10.: geplante Tages-/Stundensätze (`wert.geplantBetrag`) als eigener Eintrag — der Hauptpreis ist nur das feste Honorar (`festerMonatswert`).
+    const geplant = geplanterMonatswert(c);
+    const fest = geplant ? festerMonatswert(c) : c.wert.betrag;
+    const rhythmus: Rhythmus = c.wert.basis === 'monat' ? 'monatlich' : c.wert.basis === 'jahr' ? 'jaehrlich' : 'einmalig';
+    const laufzeit = c.wert.laufzeitMonate ?? l?.laufzeitMonate ?? null;
+    if (fest > 0) out.push({ quelle: 'deal', quelleId: c.id, kunde: c.firma ?? c.titel, titel: c.titel, produktId: l?.id, produkt: l?.name, betrag: fest, rhythmus, laufzeit, start: startAus(), gesellschaft: c.gesellschaft });
+    if (geplant) out.push({ quelle: 'deal', quelleId: c.id, teil: 'geplant', name: `${l?.name ?? c.titel} · ${c.wert.geplantSatz === 'stunde' ? 'Stundensätze' : c.wert.geplantSatz === 'tag' ? 'Tagessätze' : 'Sätze'} (geplant)`, kunde: c.firma ?? c.titel, titel: c.titel, betrag: geplant, rhythmus: 'monatlich', laufzeit, start: startAus(), gesellschaft: c.gesellschaft });
     const einmal = einmalVon(c);
     if (einmal) out.push({ quelle: 'deal', quelleId: c.id, teil: 'einmal', name: `${l?.name ?? c.titel} · einmalig`, kunde: c.firma ?? c.titel, titel: c.titel, betrag: einmal, rhythmus: 'einmalig', laufzeit: null, start: startAus(), gesellschaft: c.gesellschaft });
   }

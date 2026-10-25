@@ -92,7 +92,7 @@ function aktivitaetZeile(s: CrmSicht, a: Aktivitaet): string {
 
 function dealZeile(s: CrmSicht, c: Chance, heute: string, gesundheit?: (c: Chance, h: string, w?: CrmBestand['wertelisten']) => { ampel: string; gruende: string[] }): string {
   const g = gesundheit?.(c, heute, s.crm.wertelisten);
-  return `- ${c.id} · ${c.titel} · Stufe ${c.stufe} · ${eur(c.wert.betrag)} ${c.wert.basis}${c.firma ? ` · ${c.firma}` : ''} · zuständig ${c.besitzer}`
+  return `- ${c.id} · ${c.titel} · Stufe ${c.stufe} · ${eur(c.wert.betrag)} ${c.wert.basis}${c.wert.geplantBetrag ? ` (davon ca. ${eur(c.wert.geplantBetrag)} geplante Tages-/Stundensätze)` : ''}${c.wert.einmalBetrag ? ` + ${eur(c.wert.einmalBetrag)} einmalig` : ''}${c.firma ? ` · ${c.firma}` : ''} · zuständig ${c.besitzer}`
     + `${c.naechsterSchritt ? ` · nächster Schritt ${c.naechsterSchritt.datum}: ${c.naechsterSchritt.text}` : ' · ohne nächsten Schritt'}`
     + `${c.erwartetAm ? ` · Entscheidung bis ${c.erwartetAm}` : ''}${g ? ` · Ampel ${g.ampel}${g.gruende.length ? ` (${g.gruende.join('; ')})` : ''}` : ''}`
     + `${c.kontaktIds.length ? ` · Personen: ${c.kontaktIds.map(id => s.name(id)).join(', ')}` : ''}${c.grund ? ` · Grund ${c.grund}` : ''}`;
