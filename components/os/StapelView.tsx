@@ -251,6 +251,13 @@ export function StapelView() {
               <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Freigeben legt die Aufgabe an — mit Link zurück ins Gespräch. Erkannt ohne KI.</span>
             </div>
           )}
+          {/* Art „angebot-anfrage“ (25.10., Formulare): ein angefordertes Angebot — Freigeben stellt es und verschickt es über das Absender-Postfach. */}
+          {v.bezug?.art === 'angebot-anfrage' && typeof v.eingabe?.angebotId === 'string' && (
+            <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Knopf leise href={WEG.angebot({ angebotId: v.eingabe.angebotId })}>Angebot ansehen ›</Knopf>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Freigeben stellt das Angebot (Nummer, PDF) und verschickt es über das Absender-Postfach — nur ein Inhaber.</span>
+            </div>
+          )}
           <input value={grund[v.id] ?? ''} onChange={e => setGrund(x => ({ ...x, [v.id]: e.target.value }))} placeholder="Grund fürs Ablehnen (optional) — ZOE lernt daraus" style={{ ...feld, marginTop: 12 }} />
         </div>
       )}

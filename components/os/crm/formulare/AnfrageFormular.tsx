@@ -43,6 +43,7 @@ export function AnfrageFormular({ katalog, intern, kunde, werte, setWerte, feste
   const [notiz, setNotiz] = useState('');
   const [fehler, setFehler] = useState<string | null>(null);
   const [ergebnis, setErgebnis] = useState<AnfrageErgebnis | null>(null);
+  const [laeuft, setLaeuft] = useState(false);
   const anfrageId = useRef(neueId());
   const gewaehlt = useMemo(() => katalog.filter(p => wahl[p.id]), [katalog, wahl]);
   const f = werte.firma, p = werte.person;
@@ -68,7 +69,9 @@ export function AnfrageFormular({ katalog, intern, kunde, werte, setWerte, feste
       person: { anrede: p.anrede, vorname: p.vorname.trim(), nachname: p.nachname.trim(), email: p.email.trim(), ...(p.telefon.trim() ? { telefon: p.telefon.trim() } : {}) },
       produkte, ...(start ? { start } : {}), ...(intern && notiz.trim() ? { notiz: notiz.trim() } : {}),
     };
-    const r = await onSenden(anfrage, anfrageId.current);
+    if (laeuft) return;
+    setLaeuft(true);
+    const r = await onSenden(anfrage, anfrageId.current).finally(() => setLaeuft(false));
     if (r.ok === false && !r.status) { setFehler(r.fehler ?? 'Nicht angenommen.'); return; }
     setErgebnis(r);
   };
@@ -170,7 +173,7 @@ export function AnfrageFormular({ katalog, intern, kunde, werte, setWerte, feste
       {extra}
       {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
       {hinweisUnten}
-      <Knopf haupt voll typ="submit">Angebot anfordern</Knopf>
+      <Knopf haupt voll typ="submit" aus={laeuft}>{laeuft ? 'wird gesendet …' : 'Angebot anfordern'}</Knopf>
     </form>
   );
 }
