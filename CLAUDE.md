@@ -1692,6 +1692,15 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   kein Kandidat „noch kein Fall“ — EINE Regel `onboardingKandidaten(…, mitProzessLauf)` (Menge rein `mandateMitProduktLauf`, gelesen `mandateMitProduktLaufLesen`)
   für Liste/Heute/Onboarding (GET /api/fulfillment) UND Morgenlauf (Vorschlag + Glocke); ohne Menge bit-gleich.
   Tests `tests/prozesse-fulfillment-*.test.ts` (Gold: Paket-Mandat bit-gleich).
+  **Kern-Fall (24.10., Bau-Test Kern; Branch `kern-fall`):** hat das Produkt des Mandats einen Prozess, IST er der Ablauf des Falls — EINE Regel
+  `lib/prozesse/produkt-ablauf.ts` (`startVorbelegung`: Prozess > Paket DIESES Produkts > nichts — nie ein fremdes Paket; `ablaufLage` scharf/Schatten/Entwurf/
+  angehalten über `modusFuer`; `produktAblaufAnsicht`/`ablaufSpalten`: Phasen + Schritte mit dem Stand des Laufs, im Schatten nichts erledigt). Server
+  `produktProzesseLesen`/`produktAblaufLesen` (produkt-laeufe-server.ts, nur lesen); GET /api/fulfillment(+kurz) `produktProzesse`, Kandidat `prozess`, GET …/fall
+  `produktAblauf`. „Fall starten“ mit `pz-…` = `prozessFallStarten` (Akte + `produktLaeufeAnstossen` — derselbe Weg wie der Takt, ein Lauf je Fall und Prozess;
+  so gibt es auch ohne Arbeiter/Takt einen Lauf). Browser: Vorbelegung NUR über `startMandat` (daten.ts) → `StartDialog`; Reise der Akte hängt die Phasen des
+  Ablaufs an (`ProduktAblauf.tsx`, Hinweis „läuft im Schatten“ mit Weg in die Werkstatt). Werkstatt: offene Eingaben tragen ihr Ziel (`zielPuffer`, `useTippen
+  ziel`), Panel ändert per `knotenAendern` nur sein Feld am aktuellen Knoten, Name ↔ Titel (`nameSetzen`/`titelSetzen`), „+ erster Schritt“ in leeren Phasen
+  (`data-ws-plus-phase`). Tests `tests/kern-fall-{ablauf,werkstatt,kunde}.test.ts`.
 - **Lauf-Motor** (`lib/prozesse/lauf-server.ts`; rein und browser-sicher `lauf-regeln.ts`/`lauf-typen.ts` — Wächter `tests/prozesse-lauf-client.test.ts`:
   kein Server-Code in Modulen, die `components/os/prozesse/*` lädt; `next build` merkt es, tsc/vitest nicht): Bestand `prozess-laeufe--<haushalt>` (nur
   Kennungen/Status, 12 Monate), Wirkung = Kennung `<lauf>-<schritt>`, Flut-/Schleifenschutz (Herkunft, Tiefe 3), Warten mit Ablauf, Notbremse, HOI-Befund.
