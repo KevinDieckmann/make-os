@@ -132,3 +132,50 @@ describe('2 · Rechnungsnummer-Format je Gesellschaft (Vorgabe wie heute, ein Kr
     expect(naechsteNummer(l, 4, 'kdv', 2026, 'BW', 'kaputt')).toEqual({ lauf: { jahr: 2026, nr: 5 }, nummer: 'BW-R-2026-0005' });
   });
 });
+
+describe('3 · Einleitung und Begleit-Mail je Produkt im Angebot', () => {
+  const e = { anrede: 'Sie' as const, vorname: 'Max', nachname: 'Muster', titel: 'Begleitung', nummer: 'BW-A-2026-0007', gueltigBis: '2026-11-30', absender: 'Beispiel Werkstatt GmbH', person: 'Erika Muster', firma: 'Beispielkunde GmbH', heute: '2026-10-25' };
+  it('Einleitung des Hauptprodukts ersetzt die feste — ohne eigene Grußzeile steht der Gruß davor; Platzhalter gefüllt; Schluss bleibt', async () => {
+    const { angebotVorlage } = await import('@/lib/crm/angebote');
+    const fest = angebotVorlage(e);
+    const ohneGruss = angebotVorlage(e, { einleitung: 'danke für das Gespräch mit {{firma.name}}. Gültig bis {{angebot.gueltigBis}}.' });
+    expect(ohneGruss.einleitung).toBe('Guten Tag Max Muster,\n\ndanke für das Gespräch mit Beispielkunde GmbH. Gültig bis 30.11.2026.');
+    expect(ohneGruss.schluss).toBe(fest.schluss);
+    const mitGruss = angebotVorlage({ ...e, anrede: 'Du' }, { einleitung: '{{kontakt.gruss}},\n\nschön, dass es losgeht.' });
+    expect(mitGruss.einleitung).toBe('Hallo Max,\n\nschön, dass es losgeht.');
+    expect(angebotVorlage(e, null)).toEqual(fest);
+    expect(angebotVorlage(e, { mail: { text: 'x' } })).toEqual(fest);
+  });
+  it('Begleit-Mail des Produkts ersetzt Betreff bzw. Text (Unterschrift über Platzhalter); nur Betreff → fester Text', async () => {
+    const { mailVorlage } = await import('@/lib/crm/angebote');
+    const m = mailVorlage(e, { mail: { betreff: 'Ihr Angebot {{angebot.nummer}}', text: '{{kontakt.gruss}},\n\nanbei {{angebot.titel}} für {{firma.name}}.\n\nViele Grüße\n{{person.name}}\n{{absender.name}}' } });
+    expect(m).toEqual({ betreff: 'Ihr Angebot BW-A-2026-0007', text: 'Guten Tag Max Muster,\n\nanbei Begleitung für Beispielkunde GmbH.\n\nViele Grüße\nErika Muster\nBeispiel Werkstatt GmbH' });
+    const nurBetreff = mailVorlage(e, { mail: { betreff: 'Kurz: {{angebot.titel}}' } });
+    expect(nurBetreff.betreff).toBe('Kurz: Begleitung');
+    expect(nurBetreff.text).toBe(mailVorlage(e).text);
+  });
+  it('Hauptprodukt entscheidet (laufend vor einmalig, kein reines Zusatzmodul); ohne eigene Texte null', async () => {
+    const { produktTexteFuer } = await import('@/lib/crm/angebote');
+    const a = { positionen: [{ leistungId: 'l-modul', basis: 'monat' }, { leistungId: 'l-beispiel', basis: 'monat' }] } as never;
+    const katalog = [produkt({ angebot: { leistungstext: 'x', einleitung: 'Haupt-Einleitung' } }), produkt({ id: 'l-modul', rolle: 'zusatz', angebot: { leistungstext: 'y', einleitung: 'Modul-Einleitung' } })];
+    expect(produktTexteFuer(a, katalog)?.einleitung).toBe('Haupt-Einleitung');
+    expect(produktTexteFuer(a, [produkt()])).toBeNull();
+  });
+  it('Säubern behält die Begleit-Mail; Prüfung: unbekannter Platzhalter 400, zu lang 413; Karte prüft vorher', async () => {
+    const { leistungAngebotSaeubern } = await import('@/lib/crm/angebote');
+    const { produktPruefen } = await import('@/lib/crm/produkt-karte');
+    const { textAenderung } = await import('@/lib/crm/produkt-katalog');
+    expect(leistungAngebotSaeubern({ leistungstext: 'x', mail: { betreff: ' A\nB ', text: 'T' } })?.mail).toEqual({ betreff: 'A B', text: 'T' });
+    expect(produktPruefen({ angebot: { leistungstext: 'x', mail: { text: 'Hallo {{kunde.vorname}}' } } }).map(f => f.status)).toEqual([400]);
+    expect(produktPruefen({ angebot: { leistungstext: 'x', einleitung: 'Hallo {{kontakt.vorname}}' } })).toEqual([]);
+    expect(produktPruefen({ angebot: { leistungstext: 'x', einleitung: 'Hallo {{x}}' } }).map(f => f.status)).toEqual([400]);
+    expect(produktPruefen({ angebot: { leistungstext: 'x', mail: { text: 'a'.repeat(4001) } } }).map(f => f.status)).toEqual([413]);
+    const l = produkt();
+    const r = textAenderung(l, 'mailText', 'Text {{angebot.nummer}}');
+    expect(r.ok && (r.felder.angebot as { mail?: unknown }).mail).toEqual({ text: 'Text {{angebot.nummer}}' });
+    expect(textAenderung(l, 'mailText', '{{unbekannt}}').ok).toBe(false);
+    const leer = textAenderung({ ...l, angebot: { leistungstext: 'x', mail: { text: 'T' } } }, 'mailText', '');
+    expect(leer.ok && 'mail' in (leer.felder.angebot as object)).toBe(false);
+  });
+});
+

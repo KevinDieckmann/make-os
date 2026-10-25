@@ -23,6 +23,7 @@ import type { Rhythmus } from '@/lib/finanzen/szenarien';
 import { inCent } from '@/lib/finanzen/ust';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
 import { PROZESS_KENNUNG } from '@/lib/prozesse/definition';
+import { mailTextePruefen, platzhalterPruefen } from './vorlage-platzhalter';
 
 export type { PreisTeil, PreisTeilArt, ProduktVertrag, ProduktRegeln, ProduktRolle, MandatZusatz, MandatZusatzBasis } from './typen';
 
@@ -1204,6 +1205,11 @@ export function produktPruefen(felder: Record<string, unknown>, opt: { id?: stri
   if (d.ziel != null) {
     if (!istObj(d.ziel)) f.push({ status: 400, text: 'Ziel: { umsatz, kunden }.' });
     else f.push(...nur([zahlFehler(d.ziel.umsatz, 'Umsatzziel (Euro)', 0, G.zielUmsatz, false), zahlFehler(d.ziel.kunden, 'Kundenziel', 0, G.zielKunden)]));
+  }
+  // Texte mit Platzhaltern (25.10., kleine Bauten): Einleitung und Begleit-Mail im Angebot — unbekannte Platzhalter 400, zu lang 413 (nie still).
+  if (istObj(d.angebot)) {
+    if (typeof d.angebot.einleitung === 'string') f.push(...platzhalterPruefen(d.angebot.einleitung, 'angebot', 'Einleitung im Angebot').map(text => ({ status: 400 as const, text })));
+    f.push(...mailTextePruefen(d.angebot.mail, 'angebot', 'Begleit-Mail zum Angebot'));
   }
   f.push(...nur([
     // Prozess der Werkstatt (22.10.): nur eine Kennung `pz-…` — `null` löst den Verweis.

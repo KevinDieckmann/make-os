@@ -20,6 +20,7 @@ import { inCent } from '@/lib/finanzen/ust';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
 import { weglaenge, type FlowFaden, type FlowFarbe, type FlowPunkt } from '@/lib/lichtfaeden/flow';
 import { feldAbschluss } from '@/lib/make-one/feld-abschluss';
+import { platzhalterPruefen, PRODUKT_TEXT_GRENZEN } from './vorlage-platzhalter';
 
 // ── Die Treppe als Bild ──────────────────────────────────────────────────────
 
@@ -422,7 +423,7 @@ export function zahlAus(t: string): number | null {
 // beiden Stellen derselbe Text (alle Leser — Angebot, Treppe, Mandat — sehen ihn). Standen bisher zwei verschiedene Texte, zeigt das Feld
 // beide (nichts geht verloren); beim nächsten Speichern gilt der eine.
 
-export type TextFeld = 'kurz' | 'leistungstext' | 'ergebnis' | 'grenzen' | 'titel' | 'einleitung';
+export type TextFeld = 'kurz' | 'leistungstext' | 'ergebnis' | 'grenzen' | 'titel' | 'einleitung' | 'mailBetreff' | 'mailText';
 export const ERGEBNIS_MAX = 600;
 export const TEXT_FELDER: readonly { id: TextFeld; label: string; max: number; zeilen: number; platzhalter: string; nurWennDa?: true }[] = [
   { id: 'kurz', label: 'Kurzbeschreibung', max: 1500, zeilen: 2, platzhalter: 'Ein Satz: was es ist und für wen' },
@@ -430,8 +431,13 @@ export const TEXT_FELDER: readonly { id: TextFeld; label: string; max: number; z
   { id: 'ergebnis', label: 'Ergebnis', max: ERGEBNIS_MAX, zeilen: 2, platzhalter: 'Was der Kunde danach hat' },
   { id: 'grenzen', label: 'Grenzen & Hinweise', max: ERGEBNIS_MAX, zeilen: 2, platzhalter: 'Voraussetzungen, Mitwirkung, was nicht dazugehört' },
   { id: 'titel', label: 'Titel im Angebot', max: 200, zeilen: 1, platzhalter: 'leer = der Name', nurWennDa: true },
-  { id: 'einleitung', label: 'Einleitung im Angebot', max: 3000, zeilen: 2, platzhalter: 'optional', nurWennDa: true },
+  // 25.10. (kleine Bauten): die Einleitung ersetzt die feste im Angebot (Hauptprodukt) — immer sichtbar; dazu die Begleit-Mail zum Angebot. Platzhalter {{…}}.
+  { id: 'einleitung', label: 'Einleitung im Angebot', max: 3000, zeilen: 3, platzhalter: 'optional — ersetzt die feste Einleitung, z. B. „{{kontakt.gruss}},\n\nvielen Dank …“ (ohne Grußzeile steht der Gruß davor)' },
+  { id: 'mailBetreff', label: 'Begleit-Mail: Betreff', max: PRODUKT_TEXT_GRENZEN.betreff, zeilen: 1, platzhalter: 'optional, z. B. „Angebot {{angebot.nummer}} – {{angebot.titel}}“' },
+  { id: 'mailText', label: 'Begleit-Mail: Text', max: PRODUKT_TEXT_GRENZEN.text, zeilen: 4, platzhalter: 'optional — ersetzt die feste Mail; Platzhalter {{kontakt.gruss}} {{firma.name}} {{angebot.nummer}} {{angebot.gueltigBis}} {{person.name}} {{absender.name}}' },
 ];
+/** Felder mit Platzhaltern (Angebot) — geprüft wie der Server (`platzhalterPruefen`). */
+const MIT_PLATZHALTERN: readonly TextFeld[] = ['einleitung', 'mailBetreff', 'mailText'];
 const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
 /** Zwei Texte derselben Bedeutung: der eine, oder — wenn sie verschieden sind — beide untereinander (nichts geht verloren). */
 export function zusammen(a: string | undefined, b: string | undefined): string {
@@ -447,7 +453,7 @@ export function texteVon(l: Pick<Leistung, 'beschreibung' | 'ergebnis' | 'grenze
   const a = l.angebot;
   return {
     kurz: l.beschreibung?.trim() ?? '', leistungstext: a?.leistungstext?.trim() ?? '', ergebnis: zusammen(a?.ergebnis, l.ergebnis), grenzen: zusammen(a?.hinweise, l.grenzen),
-    titel: a?.titel?.trim() ?? '', einleitung: a?.einleitung?.trim() ?? '',
+    titel: a?.titel?.trim() ?? '', einleitung: a?.einleitung?.trim() ?? '', mailBetreff: a?.mail?.betreff?.trim() ?? '', mailText: a?.mail?.text?.trim() ?? '',
   };
 }
 /**
@@ -459,6 +465,7 @@ export function textAenderung(l: Pick<Leistung, 'status' | 'angebot'>, feld: Tex
   const def = TEXT_FELDER.find(f => f.id === feld)!;
   if (wert.length > def.max) return { ok: false, fehler: `${def.label} ist zu lang (${wert.length.toLocaleString('de-DE')} von höchstens ${def.max.toLocaleString('de-DE')} Zeichen) — nicht gespeichert.` };
   if (feld === 'leistungstext' && !wert && l.status === 'aktiv') return { ok: false, fehler: 'Das Produkt ist aktiv — der Leistungstext bleibt Pflicht. Erst auf „Entwurf“ stellen, dann leeren.' };
+  if (MIT_PLATZHALTERN.includes(feld)) { const p = platzhalterPruefen(wert, 'angebot', def.label); if (p.length) return { ok: false, fehler: p.join(' ') }; }
   const angebot = (k: 'leistungstext' | 'ergebnis' | 'hinweise' | 'titel' | 'einleitung') => {
     const a: Record<string, unknown> = { ...(l.angebot ?? {}), leistungstext: l.angebot?.leistungstext ?? '' };
     if (wert || k === 'leistungstext') a[k] = wert; else delete a[k];
@@ -471,6 +478,14 @@ export function textAenderung(l: Pick<Leistung, 'status' | 'angebot'>, feld: Tex
     case 'grenzen': return { ok: true, felder: { grenzen: wert || null, angebot: angebot('hinweise') } };
     case 'titel': return { ok: true, felder: { angebot: angebot('titel') } };
     case 'einleitung': return { ok: true, felder: { angebot: angebot('einleitung') } };
+    case 'mailBetreff': case 'mailText': {
+      const a: Record<string, unknown> = { ...(l.angebot ?? {}), leistungstext: l.angebot?.leistungstext ?? '' };
+      const mail: Record<string, string> = { ...(l.angebot?.mail ?? {}) };
+      const k = feld === 'mailBetreff' ? 'betreff' : 'text';
+      if (wert) mail[k] = feld === 'mailBetreff' ? wert.replace(/\s+/g, ' ') : wert; else delete mail[k];
+      if (Object.keys(mail).length) a.mail = mail; else delete a.mail;
+      return { ok: true, felder: { angebot: a } };
+    }
   }
 }
 

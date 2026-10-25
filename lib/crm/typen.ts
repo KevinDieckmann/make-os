@@ -350,8 +350,12 @@ export interface Leistung {
   prozessId?: string;
   geaendert: string;
 }
-/** Texte eines Produkts für Angebote (28.09.) — `leistungstext` ist Pflicht, der Rest optional. */
-export interface LeistungAngebot { titel?: string; einleitung?: string; leistungstext: string; ergebnis?: string; hinweise?: string }
+/**
+ * Texte eines Produkts für Angebote (28.09.) — `leistungstext` ist Pflicht, der Rest optional. Seit 25.10. (kleine Bauten): `einleitung` ersetzt im Angebot die
+ * feste Einleitung (Hauptprodukt), `mail` die feste Begleit-Mail (`mailVorlage`) — beide mit Platzhaltern `{{kontakt.gruss}}` … (lib/crm/vorlage-platzhalter.ts).
+ * `mail` ist optional und additiv; der alte Stand verwirft es beim nächsten Speichern der Texte (dann gilt wieder die feste Mail).
+ */
+export interface LeistungAngebot { titel?: string; einleitung?: string; leistungstext: string; ergebnis?: string; hinweise?: string; mail?: { betreff?: string; text?: string } }
 
 // ── Angebote (28.09., Angebots-Tool) ─────────────────────────────────────
 // Ein Angebot je Gesellschaft (kdc · kdv · ug) mit Positionen in CENT. Entwurf frei änderbar;

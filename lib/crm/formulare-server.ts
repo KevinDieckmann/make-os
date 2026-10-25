@@ -37,7 +37,7 @@ import { wer as teamWer, BEIDE, verantwortlich } from './team';
 import { datenschutzStempeln } from './datenschutz-stempel';
 import { standVon } from './crm-stand';
 import { AngebotFehler, angebotSpeichern, angebotStellen, angebotGesendet, gesellschaftenLaden } from './angebot-server';
-import { angebotHauptprodukt, angebotTitelAus, angebotVorlage, dealWertAusAngebot, istGesellschaft, plusTage, werktagePlus } from './angebote';
+import { angebotHauptprodukt, angebotTitelAus, angebotVorlage, dealWertAusAngebot, istGesellschaft, plusTage, produktTexteFuer, werktagePlus } from './angebote';
 import { mitVorgaben } from './gesellschaften';
 import { mandatArtVon } from './produkt-karte';
 import { datenschutzAngabenAus } from './netzwerken-recht';
@@ -219,7 +219,9 @@ async function anfrageAusfuehren(h: string, absicht: import('@/lib/store/absicht
         const g = (await gesellschaftenLaden(h)).find(x => x.id === D.gesellschaft) ?? { id: D.gesellschaft };
         const gueltigBis = plusTage(D.heute, mitVorgaben(g).gueltigkeitTage);
         const titel = angebotTitelAus({ positionen: D.positionen }, crm.leistungen, d('firmaName') as string | undefined) || 'Angebot';
-        const vorlage = angebotVorlage({ anrede: e.person.anrede, vorname: e.person.vorname, nachname: e.person.nachname, titel, gueltigBis });
+        // 25.10.: Einleitung des Hauptprodukts (wenn gesetzt) statt der festen.
+        const firmaName = d('firmaName') as string | undefined;
+        const vorlage = angebotVorlage({ anrede: e.person.anrede, vorname: e.person.vorname, nachname: e.person.nachname, titel, gueltigBis, ...(firmaName ? { firma: firmaName } : {}), heute: D.heute }, produktTexteFuer({ positionen: D.positionen }, crm.leistungen));
         await angebotSpeichern({
           id: angebotId, person: D.person, haushalt: h, wer, jetzt: new Date(D.jetzt),
           felder: { gesellschaft: D.gesellschaft, kontaktId: d('kontaktId'), ...(d('firmaId') ? { firmaId: d('firmaId') } : {}), dealId: d('dealId'), dealWahl: 'deal', titel, positionen: D.positionen, einleitung: vorlage.einleitung, schluss: vorlage.schluss, gueltigBis },

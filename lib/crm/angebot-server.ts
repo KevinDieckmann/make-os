@@ -31,7 +31,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { phaseHeben } from './lifecycle';
 import { kanalStatus } from './recht';
 import {
-  ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat,
+  ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat, produktTexteFuer,
   stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
   angebotHauptprodukt, dealProduktAnders, dealFrageText, dealTitelNachAngebot,
 } from './angebote';
@@ -408,7 +408,9 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   await absichtAbschliessen(ah, absicht.id, 'fertig');
   const fertig = e as { a: Angebot; pdf: { id: string; name: string } } | null;
   if (!fertig) throw new AngebotFehler('Nicht gestellt.', 500);
-  const mail = mailVorlage({ anrede: k.anrede, vorname: k.vorname, nachname: k.nachname, titel: fertig.a.titel, nummer: fertig.a.nummer, gueltigBis: fertig.a.gueltigBis, absender: v.name });
+  // 25.10.: die Begleit-Mail des Hauptprodukts (wenn gesetzt) statt der festen — `produktTexteFuer`.
+  const firmaName = (fertig.a.firmaId ? vor.firmen.find(f => f.id === fertig.a.firmaId)?.name : undefined) ?? fertig.a.empfaenger?.firma;
+  const mail = mailVorlage({ anrede: k.anrede, vorname: k.vorname, nachname: k.nachname, titel: fertig.a.titel, nummer: fertig.a.nummer, gueltigBis: fertig.a.gueltigBis, absender: v.name, ...(firmaName ? { firma: firmaName } : {}), heute }, produktTexteFuer(fertig.a, vor.leistungen));
   // Ereignis (22.10., Kundengewinnung E3): „Angebot gestellt“ — auch Version 2 eines Deals, der schon auf „angebot“ steht (dann bleibt `deal-stufe` still).
   await import('@/lib/ereignisse/quellen-kundengewinnung').then(q => q.angebotEreignis('gestellt', { angebotId: fertig.a.id, dealId, kontaktId: k.id, firmaId: fertig.a.firmaId, gesellschaft: fertig.a.gesellschaft })).catch(() => 0);
   return { angebot: mitStand(fertig.a), pdf: fertig.pdf, mail: { ...(k.email ? { an: k.email } : {}), ...mail }, ...(dealId ? { dealId } : {}), hinweise };

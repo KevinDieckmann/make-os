@@ -19,6 +19,7 @@ import { kontakteFuerVerarbeitung } from './verarbeitung';
 import { alleAdressen } from './emails';
 import { gesellschaftenLaden, angebotVersendetVermerken } from './angebot-server';
 import { mitVorgaben } from './gesellschaften';
+import { mailVorlage, produktTexteFuer } from './angebote';
 import { datenschutzAngabenAus } from './netzwerken-recht';
 import { angebotMail, ABSENDER_FEHLT, formularBestandName, type FormularEinstellungen } from './formulare';
 import { aendereEingang, empfaengerHash, formularHaushalt, ladeFormular } from './formulare-speicher';
@@ -90,7 +91,14 @@ export async function angebotVerschickenImAuftrag(eingangId: string, o: { ausgel
   const ds = datenschutzAngabenAus((await verantwortlicherLaden()).v);
   if (ds.fehlt) return nein(409, 'Datenschutzhinweis unvollständig (Einstellungen › Datenschutz) — nichts verschickt.');
   const firma = (a.firmaId ? crm.firmen.find(f => f.id === a.firmaId)?.name : undefined) ?? a.empfaenger?.firma;
-  const mail = angebotMail(b.einstellungen, { anrede: k.anrede === 'Du' ? 'Du' : 'Sie', vorname: k.vorname, nachname: k.nachname, ...(firma ? { firma } : {}), nummer: a.nummer, titel: a.titel, gueltigBis: a.gueltigBis, absender: mitVorgaben(g).name }, ds);
+  // 25.10.: ohne eigenen Text in den Formular-Einstellungen gilt die Begleit-Mail des Hauptprodukts (Platzhalter vorab gefüllt) — der Datenschutzhinweis
+  // hängt immer darunter (`angebotMail`). Gesetzte Formular-Texte gehen vor.
+  const pm = produktTexteFuer(a, crm.leistungen)?.mail;
+  const pmMail = pm && (!b.einstellungen.text?.trim() || !b.einstellungen.betreff?.trim())
+    ? mailVorlage({ anrede: k.anrede === 'Du' ? 'Du' : 'Sie', vorname: k.vorname, nachname: k.nachname, ...(firma ? { firma } : {}), nummer: a.nummer, titel: a.titel, gueltigBis: a.gueltigBis, absender: mitVorgaben(g).name }, { mail: pm })
+    : null;
+  const vorlageE = pmMail ? { betreff: b.einstellungen.betreff?.trim() || (pm?.betreff?.trim() ? pmMail.betreff : undefined), text: b.einstellungen.text?.trim() || (pm?.text?.trim() ? pmMail.text : undefined) } : b.einstellungen;
+  const mail = angebotMail(vorlageE, { anrede: k.anrede === 'Du' ? 'Du' : 'Sie', vorname: k.vorname, nachname: k.nachname, ...(firma ? { firma } : {}), nummer: a.nummer, titel: a.titel, gueltigBis: a.gueltigBis, absender: mitVorgaben(g).name }, ds);
 
   // Erst „begonnen“ festhalten — ein Abbruch danach sendet nie ein zweites Mal von selbst (die Wiederaufnahme legt es zur Freigabe).
   await aendereEingang(e.id, x => ({ ...x, versandBegonnen: new Date().toISOString() }), h);

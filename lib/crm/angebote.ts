@@ -22,6 +22,7 @@ import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust'
 import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt, mandatZahlplanAusProdukt, hauptpreis, hauptpreisAus, istKombi, istSatz, zusatzAusTeil, artikelnummerSaeubern } from './produkt-karte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
 import { produktTitel, titelNurProdukt } from './titel-regel';
+import { angebotWerte, hatGruss, mailTexteSaeubern, platzhalterFuellen } from './vorlage-platzhalter';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
 
@@ -384,7 +385,9 @@ export function leistungAngebotSaeubern(v: unknown): Leistung['angebot'] | undef
   if (!v || typeof v !== 'object') return undefined;
   const o = v as Record<string, unknown>;
   const t = (x: unknown, n: number) => { const s = txt(x, n); return s || undefined; };
-  const out = { ...(t(o.titel, 200) ? { titel: t(o.titel, 200) } : {}), ...(t(o.einleitung, 3000) ? { einleitung: t(o.einleitung, 3000) } : {}), leistungstext: txt(o.leistungstext, ANGEBOT_GRENZEN.text), ...(t(o.ergebnis, 2000) ? { ergebnis: t(o.ergebnis, 2000) } : {}), ...(t(o.hinweise, 2000) ? { hinweise: t(o.hinweise, 2000) } : {}) };
+  // Begleit-Mail je Produkt (25.10., optional) — ohne diese Zeile fiele sie beim Speichern der Texte weg.
+  const mail = mailTexteSaeubern(o.mail);
+  const out = { ...(t(o.titel, 200) ? { titel: t(o.titel, 200) } : {}), ...(t(o.einleitung, 3000) ? { einleitung: t(o.einleitung, 3000) } : {}), leistungstext: txt(o.leistungstext, ANGEBOT_GRENZEN.text), ...(t(o.ergebnis, 2000) ? { ergebnis: t(o.ergebnis, 2000) } : {}), ...(t(o.hinweise, 2000) ? { hinweise: t(o.hinweise, 2000) } : {}), ...(mail ? { mail } : {}) };
   return out.leistungstext || Object.keys(out).length > 1 ? out : undefined;
 }
 
@@ -521,26 +524,54 @@ export const dealFrageText = (produkt: string) => `Zu diesem Deal (${produkt}) o
 
 // ── Vorlagen (Anrede Sie/Du) ─────────────────────────────────────────────────
 
-export interface VorlageEingabe { anrede?: 'Sie' | 'Du'; vorname?: string; nachname?: string; titel: string; absender?: string; nummer?: string; gueltigBis?: string; person?: string }
+export interface VorlageEingabe { anrede?: 'Sie' | 'Du'; vorname?: string; nachname?: string; titel: string; absender?: string; nummer?: string; gueltigBis?: string; person?: string; /** Firma des Kunden — nur für `{{firma.name}}` (25.10.). */ firma?: string; /** Heute (JJJJ-MM-TT) — nur für `{{heute}}` (25.10.). */ heute?: string }
+/** Die Texte des Produkts, die Vorlagen ersetzen (25.10.): Einleitung und Begleit-Mail — `LeistungAngebot` bzw. ein Teil davon. */
+export type ProduktTexte = Pick<NonNullable<Leistung['angebot']>, 'einleitung' | 'mail'> | null | undefined;
+/**
+ * Die Texte des Hauptprodukts eines Angebots (25.10., kleine Bauten): EINE Regel für Editor, Vorschau, Server und Formular — das Hauptprodukt wie überall
+ * (`angebotHauptprodukt`), nur ein Produkt aus dem Katalog. null ohne Produkt bzw. ohne eigene Texte (dann gelten die festen Vorlagen wie bisher).
+ */
+export function produktTexteFuer(a: Pick<Angebot, 'positionen'>, leistungen: readonly Pick<Leistung, 'id' | 'rolle' | 'angebot'>[] | undefined): ProduktTexte {
+  const id = angebotHauptprodukt(a, leistungen);
+  return produktTexteVon(id ? leistungen?.find(l => l.id === id) : undefined);
+}
+/** Die eigenen Texte EINES Produkts (Einleitung, Begleit-Mail) — null ohne. */
+export function produktTexteVon(l: Pick<Leistung, 'angebot'> | undefined): ProduktTexte {
+  const t = l?.angebot;
+  return t && (t.einleitung?.trim() || t.mail?.text?.trim() || t.mail?.betreff?.trim()) ? { ...(t.einleitung ? { einleitung: t.einleitung } : {}), ...(t.mail ? { mail: t.mail } : {}) } : null;
+}
+const werteAus = (e: VorlageEingabe) => angebotWerte({ anrede: e.anrede, vorname: e.vorname, nachname: e.nachname, firma: e.firma, nummer: e.nummer, titel: e.titel, gueltigBis: e.gueltigBis, absender: e.absender, person: e.person, heute: e.heute });
 const datumLang = (d?: string) => (d && tagOk(d) ? new Date(`${d}T12:00:00Z`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }) : '');
 const gruss = (e: VorlageEingabe) => {
   const name = `${e.vorname ?? ''} ${e.nachname ?? ''}`.trim();
   return e.anrede === 'Du' ? `Hallo ${e.vorname?.trim() || name || ''},`.replace(' ,', ',') : name ? `Guten Tag ${name},` : 'Guten Tag,';
 };
-/** Einleitung und Schluss für das Angebot — Anrede aus dem Kontakt (Du nur, wenn dort „Du“ steht). */
-export function angebotVorlage(e: VorlageEingabe): { einleitung: string; schluss: string } {
+/**
+ * Einleitung und Schluss für das Angebot — Anrede aus dem Kontakt (Du nur, wenn dort „Du“ steht). Seit 25.10.: trägt das Hauptprodukt eine eigene Einleitung
+ * (`produkt.einleitung`), ersetzt sie den festen Satz — Platzhalter gefüllt; ohne eigene Grußzeile (`{{kontakt.gruss}}`) steht der Gruß davor. Ohne: wie bisher.
+ */
+export function angebotVorlage(e: VorlageEingabe, produkt?: ProduktTexte): { einleitung: string; schluss: string } {
   const du = e.anrede === 'Du';
+  const eigen = produkt?.einleitung?.trim();
+  const eigeneEinleitung = eigen ? (() => { const t = platzhalterFuellen(eigen, werteAus(e)).trim(); return hatGruss(eigen) ? t : `${gruss(e)}\n\n${t}`; })() : null;
   return {
-    einleitung: `${gruss(e)}\n\n${du ? 'vielen Dank für das gute Gespräch. Wie besprochen, bekommst du hier unser Angebot' : 'vielen Dank für das Gespräch und Ihr Interesse. Wie besprochen, erhalten Sie hier unser Angebot'} für „${e.titel || 'die besprochene Leistung'}“.`,
+    einleitung: eigeneEinleitung ?? `${gruss(e)}\n\n${du ? 'vielen Dank für das gute Gespräch. Wie besprochen, bekommst du hier unser Angebot' : 'vielen Dank für das Gespräch und Ihr Interesse. Wie besprochen, erhalten Sie hier unser Angebot'} für „${e.titel || 'die besprochene Leistung'}“.`,
     schluss: du
       ? `Das Angebot gilt bis zum ${datumLang(e.gueltigBis) || '…'}. Melde dich gern, wenn du Fragen hast oder etwas anpassen möchtest — ich freue mich auf die Zusammenarbeit.\n\nViele Grüße`
       : `Das Angebot gilt bis zum ${datumLang(e.gueltigBis) || '…'}. Bei Fragen oder Änderungswünschen melden Sie sich gern — wir freuen uns auf die Zusammenarbeit.\n\nMit freundlichen Grüßen`,
   };
 }
-/** Betreff und Text der Mail (Kevin: „Angebot {Nummer} – {Titel}“). Ohne Nummer (Entwurf): „Angebot – {Titel}“. */
-export function mailVorlage(e: VorlageEingabe): { betreff: string; text: string } {
+/**
+ * Betreff und Text der Mail (Kevin: „Angebot {Nummer} – {Titel}“). Ohne Nummer (Entwurf): „Angebot – {Titel}“. Seit 25.10.: die Begleit-Mail des Hauptprodukts
+ * (`produkt.mail`, Platzhalter gefüllt) ersetzt Betreff bzw. Text, wenn gesetzt — der Text schreibt Gruß und Unterschrift selbst ({{person.name}}, {{absender.name}}).
+ */
+export function mailVorlage(e: VorlageEingabe, produkt?: ProduktTexte): { betreff: string; text: string } {
   const du = e.anrede === 'Du';
-  const betreff = `Angebot${e.nummer ? ` ${e.nummer}` : ''} – ${e.titel || 'Angebot'}`;
+  const w = produkt?.mail ? werteAus(e) : null;
+  const eigenBetreff = w && produkt?.mail?.betreff?.trim() ? platzhalterFuellen(produkt.mail.betreff, w).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() : '';
+  const eigenText = w && produkt?.mail?.text?.trim() ? platzhalterFuellen(produkt.mail.text, w).replace(/\n{3,}/g, '\n\n').trim() : '';
+  const betreff = eigenBetreff || `Angebot${e.nummer ? ` ${e.nummer}` : ''} – ${e.titel || 'Angebot'}`;
+  if (eigenText) return { betreff, text: eigenText };
   const text = `${gruss(e)}\n\n${du ? 'anbei, wie besprochen, unser Angebot' : 'anbei erhalten Sie, wie besprochen, unser Angebot'}${e.nummer ? ` ${e.nummer}` : ''} für „${e.titel || 'die besprochene Leistung'}“${e.gueltigBis ? ` (gültig bis ${datumLang(e.gueltigBis)})` : ''}.\n\n${du ? 'Melde dich gern bei Fragen.' : 'Bei Fragen melden Sie sich gern.'}\n\n${du ? 'Viele Grüße' : 'Mit freundlichen Grüßen'}${e.person ? `\n${e.person}` : ''}${e.absender ? `\n${e.absender}` : ''}`;
   return { betreff, text };
 }
