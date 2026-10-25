@@ -197,6 +197,35 @@ export function maskeAnwenden(k: K, e: KatalogEintrag, werte: W, kx: MaskenUmfel
   return { ...k, katalog: Object.keys(w).length ? { id: e.id, werte: w } : { id: e.id } };
 }
 
+// ── Name und Titel gehören zusammen (Kern-Bau-Test 24.10.: „Aufgabe braucht Name UND Titel getrennt“) ────────────────────────────────────────────────
+// Ein Baustein mit Titel-Feld (Aufgabe, Termin, Follow-up …) trägt zwei Texte: den Namen des Schritts (Fläche, Liste) und den Titel dessen, was er anlegt. Regel:
+//   · der Titel folgt dem Namen, solange er leer ist bzw. noch dem bisherigen Namen gleicht — wer ihn selbst ändert, löst ihn;
+//   · der Name folgt dem Titel, solange er noch der Vorgabe des Bausteins (bzw. dem bisherigen Titel) gleicht — aber nur ohne Platzhalter (ein Name mit
+//     „{{firma.name}}“ wäre auf der Fläche unlesbar), höchstens `NAME_MAX` Zeichen.
+const TITEL_FELD = 'titel';
+/** So lang darf ein Name höchstens werden (wie das Feld auf der Fläche). */
+export const NAME_MAX = 120;
+const hatTitelFeld = (e: Pick<KatalogEintrag, 'maske'>): boolean => e.maske.some(f => f.id === TITEL_FELD);
+/** Den Namen eines Knotens setzen — der Titel folgt, solange er nicht selbst geändert wurde (rein). */
+export function nameSetzen(k: K, e: KatalogEintrag | null | undefined, neu: string, kx: MaskenUmfeld = {}): K {
+  const n: K = { ...k, titel: neu };
+  if (!e || !hatTitelFeld(e)) return n;
+  const w = maskeWerte(k, e);
+  const t = text(w[TITEL_FELD]).trim();
+  if (t && t !== k.titel.trim()) return n;
+  return maskeAnwenden(n, e, { ...w, [TITEL_FELD]: neu }, kx);
+}
+/** Den Titel (Maske) setzen — der Name folgt, solange er noch die Vorgabe des Bausteins bzw. der bisherige Titel ist und der Titel keinen Platzhalter trägt (rein). */
+export function titelSetzen(k: K, e: KatalogEintrag, neu: MaskenWert, kx: MaskenUmfeld = {}): K {
+  const w = maskeWerte(k, e);
+  const alt = text(w[TITEL_FELD]).trim();
+  const n = maskeAnwenden(k, e, { ...w, [TITEL_FELD]: neu }, kx);
+  const t = text(neu).trim();
+  const name = k.titel.trim();
+  const folgt = !!t && !t.includes('{{') && t.length <= NAME_MAX && (name === e.name || (!!alt && name === alt));
+  return folgt ? { ...n, titel: t } : n;
+}
+
 /** Ein neuer Knoten aus dem Katalog (rein): Form, Bahn, Name, Vorgaben der Maske. Agenten mit festem Agenten bekommen ihn gleich. */
 export function neuerKnoten(e: KatalogEintrag, id: string, titel?: string): K {
   const k: K = { id, titel: titel?.trim() || e.name, rang: 0, form: e.form, bahn: e.bahn, katalog: { id: e.id } };
@@ -331,11 +360,16 @@ export const formWort = (f: ProzessForm | undefined) => FORM_WORT[f ?? 'schritt'
  * Was unter dem Namen eines Knotens steht (rein): der Baustein bzw. die Regel dahinter, „· Stapel“, wenn hinter ihm ein Freigabe-Schloss steht (die Wirkung
  * geschieht erst nach dem Klick). `agentName` = wie der Agent heißt (ZOE, Head …) — vom Aufrufer, weil die Namen der Heads im Katalog der Agenten stehen.
  */
-export function knotenUnterzeile(k: K, o: { mitSchloss?: boolean; agentName?: string } = {}): string {
+/** Kurzzeile bzw. Satz des Starts eines Prozesses, der zu einem Produkt gehört (Fläche, Panel). */
+export const AM_MANDAT_KURZ = 'am Mandat · neues Mandat';
+export const amMandatSatz = (produkte: readonly string[]): string =>
+  `Startet am Mandat: ein neues Mandat ${produkte.length === 1 ? `des Produkts „${produkte[0]}“` : `der Produkte ${produkte.map(x => `„${x}“`).join(', ')}`} startet diesen Ablauf — im Fulfillment über „Fall starten“. Von Hand („Starten“) geht es zusätzlich.`;
+export function knotenUnterzeile(k: K, o: { mitSchloss?: boolean; agentName?: string; amMandat?: boolean } = {}): string {
   const e = katalogEintrag(k.katalog?.id);
   const stapel = o.mitSchloss ? ' · Stapel' : '';
   switch (k.form) {
-    case 'ausloeser': return k.ausloeser ? ausloeserKurz(k.ausloeser) : 'wie startet es?';
+    // Kern-Bau-Test 24.10.: der Start eines Prozesses, der zu einem Produkt gehört, startet am Mandat (neues Mandat bzw. „Fall starten“) — „von Hand“ wäre falsch.
+    case 'ausloeser': if (o.amMandat && (!k.ausloeser || k.ausloeser.art === 'hand')) return AM_MANDAT_KURZ; return k.ausloeser ? ausloeserKurz(k.ausloeser) : 'wie startet es?';
     case 'agent': return k.agent ? `${o.agentName ?? 'Agent'} · ${k.agent.modellWahl?.modell ?? k.agent.modell}${stapel}` : 'Agent wählen';
     case 'warten': {
       const w = k.warten;

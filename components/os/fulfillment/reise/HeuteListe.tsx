@@ -17,7 +17,7 @@ import { useIch, usePersonen } from '../../aufgaben/hilfe';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Punkt, Leerzustand, HakenZiel, Klappbar, LEUCHT } from '../../ui';
 import { WEG } from '@/lib/wege';
 import { heuteImFulfillment, heuteZahlen, meineHeute, type HeuteEintrag } from '@/lib/fulfillment/prozesse/heute';
-import { useCockpit, useUebersichtKurz, fallOps, holeJson, fehlerText, tagKurz, geaendert } from '../prozesse/daten';
+import { useCockpit, useUebersichtKurz, fallOps, holeJson, fehlerText, tagKurz, geaendert, startMandat } from '../prozesse/daten';
 import { MailSenden, type MailEntwurf } from '../prozesse/MailSenden';
 import { StartDialog } from '../prozesse/Onboarding';
 
@@ -62,8 +62,8 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
   if (kompakt && !jetzt.length) return null;
   const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
   // Der Start-Dialog: für einen wartenden Kandidaten mit dessen Vorwahl, für ein eben angelegtes Mandat mit der Zuordnung seines Produkts.
-  const vorlageZu = (leistungId?: string) => { const id = leistungId ? kurz.daten?.zuordnung[leistungId]?.vorlageId : undefined; const p = pakete.find(x => x.id === id); return p ? { vorlage: { id: p.id, titel: p.titel } } : {}; };
-  const kandidat = start ? (kurz.daten?.kandidaten.find(k => k.mandatId === start.mandatId) ?? { mandatId: start.mandatId, kunde: start.kunde ?? 'Kunde', ...(start.leistungId ? { leistungId: start.leistungId } : {}), ...vorlageZu(start.leistungId) }) : undefined;
+  // Vorbelegung nur nach der EINEN Regel (24.10., `startMandat` → `startVorbelegung`): Kandidat vom Server, sonst aus der Kurzform.
+  const kandidat = start ? (kurz.daten?.kandidaten.find(k => k.mandatId === start.mandatId) ?? startMandat(kurz.daten, { mandatId: start.mandatId, kunde: start.kunde ?? 'Kunde', leistungId: start.leistungId })) : undefined;
   const mandatUndStart = async (e: HeuteEintrag, chanceId: string, leistungId?: string) => {
     const a = await holeJson<{ mandatId?: string }>('/api/crm/lead', { method: 'POST', body: JSON.stringify({ aktion: 'mandat', chanceId }) });
     if (!a.ok || !a.j.mandatId) { setMeldung({ text: fehlerText(a), art: 'kritisch' }); return; }

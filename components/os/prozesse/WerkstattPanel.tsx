@@ -23,7 +23,7 @@ import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
 import { erlaubteWerkzeuge, rechteProfil } from '@/lib/prozesse/agent-schritt';
 import { schlossText } from '@/lib/prozesse/schloss';
 import { kundenFormErlaubt } from '@/lib/prozesse/produkt-bindung';
-import { maskeWerte, maskeAnwenden, formWort } from '@/lib/prozesse/werkstatt-maske';
+import { maskeWerte, maskeAnwenden, formWort, nameSetzen, titelSetzen, amMandatSatz } from '@/lib/prozesse/werkstatt-maske';
 import { schleifenElementFall, teilprozessOptionen } from '@/lib/prozesse/teilprozess-neu';
 import { feldWerte } from '@/lib/prozesse/feld-werte';
 import { tageOptionen } from '@/lib/prozesse/zeitplan-tage';
@@ -77,6 +77,16 @@ export interface PanelProps {
   andock: string | null;
   titelFokus: number;
   onKnoten: (k: K) => void;
+  /**
+   * Kern-Bau-Test 24.10.: eine Änderung am AKTUELLEN Stand eines Knotens (Kennung + Änderung, `knotenAendern`) — so ändert ein Feld nur sein Feld an seinem Knoten,
+   * nie mit einem älteren Abbild des ganzen Knotens. Ohne: wie bisher `onKnoten` mit dem Knoten, den das Panel zeigt.
+   */
+  onKnotenMit?: (id: string, f: (k: K) => K) => void;
+  /** Der Sprung ins Feld eines Befunds ist erledigt — danach springt ein neues Öffnen desselben Knotens nicht wieder hinein (der Fokus bleibt, wo er ist). */
+  onFeldFokusFertig?: () => void;
+  /** Eine eben angelegte Phase: ihr Namensfeld bekommt einmal den Fokus (Name gewählt), danach `onPhaseFokusFertig`. */
+  phaseFokus?: string | null;
+  onPhaseFokusFertig?: () => void;
   onSteckbrief: (felder: Record<string, unknown>) => void;
   onZweig: (von: string, ausgang: Ausgang, nach: string | null) => void;
   /** Werkstatt-Fäden (24.10.): wohin ein Ausgang führt — JEDER Ausgang (auch „weiter“), dieselbe Funktion wie der Faden (lib/prozesse/werkstatt-aktionen.ts `ausgangSetzen`). */
@@ -113,10 +123,12 @@ export interface PanelProps {
 /** Das Panel (siehe Kopf). */
 export function WerkstattPanel(p: PanelProps) {
   // Je Knoten frisch (key): Getipptes eines Felds wird beim Wechsel zum nächsten Knoten noch für DIESEN übernommen (Feinschliff 24.10.), nie für den neuen.
+  // Kern-Bau-Test 24.10.: ebenso Phase, Faden und Zettel (vorher ohne key — der Name einer Phase konnte nach dem Wechsel der Auswahl an die NEUE gehen); dazu
+  // trägt jedes Feld sein Ziel (Kennung + Feld, `useTippen`).
   if (p.knoten) return <KnotenPanel key={p.knoten.id} {...p} k={p.knoten} />;
-  if (p.phase) return <PhasePanel {...p} ph={p.phase} />;
-  if (p.kante) return <KantenPanel {...p} k={p.kante} />;
-  if (p.zettel) return <ZettelPanel {...p} z={p.zettel} />;
+  if (p.phase) return <PhasePanel key={p.phase.id} {...p} ph={p.phase} />;
+  if (p.kante) return <KantenPanel key={p.kante.id} {...p} k={p.kante} />;
+  if (p.zettel) return <ZettelPanel key={p.zettel.id} {...p} z={p.zettel} />;
   return <SteckbriefPanel {...p} />;
 }
 
@@ -188,12 +200,19 @@ function KnotenPanel(p: PanelProps & { k: K }) {
   const S = symbolVon(k);
   const ton = WERKSTATT_FORM_FARBE[k.form ?? 'schritt'];
   const werte = e ? maskeWerte(k, e) : {};
+  // Kern-Bau-Test 24.10.: jede Änderung wirkt auf den AKTUELLEN Stand DIESES Knotens (Kennung fest) — nur das eine Feld, nie ein älteres Abbild des ganzen Knotens.
+  const aendern = (f: (x: K) => K) => (p.onKnotenMit ? p.onKnotenMit(k.id, f) : p.onKnoten(f(k)));
   const setze = (id: string, v: MaskenWert) => {
     if (!e || p.nurLesen) return;
-    const neu = { ...werte, [id]: v };
-    // Feinschliff 24.10.: ein anderer Rhythmus hat andere Tage (Wochentage ↔ Monatstage) — die alten passen nicht mehr.
-    if (id === 'rhythmus' && v !== werte.rhythmus) delete neu.tage;
-    p.onKnoten(maskeAnwenden(k, e, neu, { modelle: p.modelle }));
+    aendern(x => {
+      // Name und Titel gehören zusammen (Bau-Test 24.10., lib/prozesse/werkstatt-maske.ts `titelSetzen`): der Name folgt dem Titel, solange er nicht selbst geändert wurde.
+      if (id === 'titel') return titelSetzen(x, e, v, { modelle: p.modelle });
+      const w = maskeWerte(x, e);
+      const neu = { ...w, [id]: v };
+      // Feinschliff 24.10.: ein anderer Rhythmus hat andere Tage (Wochentage ↔ Monatstage) — die alten passen nicht mehr.
+      if (id === 'rhythmus' && v !== w.rhythmus) delete neu.tage;
+      return maskeAnwenden(x, e, neu, { modelle: p.modelle });
+    });
   };
   const schloss = d.knoten.find(x => x.schloss?.fuer === k.id);
   const fuer = k.schloss ? d.knoten.find(x => x.id === k.schloss!.fuer) : null;
@@ -213,6 +232,10 @@ function KnotenPanel(p: PanelProps & { k: K }) {
     if (!ziel) return;
     ziel.scrollIntoView({ block: 'center', behavior: 'smooth' });
     (ziel.querySelector('input,textarea,select,button') as HTMLElement | null)?.focus({ preventScroll: true });
+    // Kern-Bau-Test 24.10.: nur EINMAL springen — sonst holte jedes neue Öffnen dieses Knotens (Panel, großes Fenster) den Fokus wieder ins Feld, und Getipptes
+    // landete dort statt auf der Fläche.
+    p.onFeldFokusFertig?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- nur, wenn ein neuer Sprung kommt
   }, [ff, k.id]);
   const optionenAnnahme = annahmeOptionen(k);
   const ausschaltbar = k.form !== 'ausloeser' && k.form !== 'ende' && !k.schloss;
@@ -264,16 +287,17 @@ function KnotenPanel(p: PanelProps & { k: K }) {
           <div style={{ fontSize: TYP.body, fontWeight: 650, color: C.ink, overflowWrap: 'anywhere' }}>{e?.name ?? k.titel}</div>
         </div>
       </div>
-      {e?.satz && <p style={klein}>{e.satz}</p>}
+      {/* Kern-Bau-Test 24.10.: der Start eines Prozesses, der zu einem Produkt gehört, startet am Mandat — nicht nur „wenn jemand auf Starten klickt“. */}
+      {e?.satz && <p style={klein}>{k.form === 'ausloeser' && p.produkte?.length && (!k.ausloeser || k.ausloeser.art === 'hand') ? amMandatSatz(p.produkte.map(x => x.name)) : e.satz}</p>}
       {k.deaktiviert && <Hinweis art="achtung" titel="Ausgeschaltet">Der Lauf überspringt diesen Schritt{schloss ? ' — sein Freigabe-Schloss mit' : ''}. Nichts davon wirkt, bis du ihn wieder einschaltest.</Hinweis>}
       <Feldzeile label="Name (Verb + Gegenstand)">
-        <TitelFeld eingabe={titel} wert={k.titel} aus={p.nurLesen || !!k.schloss} onWert={t => p.onKnoten({ ...k, titel: t })} />
+        <TitelFeld eingabe={titel} ziel={`${k.id}|name`} wert={k.titel} aus={p.nurLesen || !!k.schloss} onWert={t => aendern(x => nameSetzen(x, e, t, { modelle: p.modelle }))} />
       </Feldzeile>
       {/* Prozesse × Fulfillment (22.10.): ein Schritt, eine Nachricht oder ein Termin eines Mandats-Prozesses darf im Kunden-Link als Etappe erscheinen —
           nur ausdrücklich (lib/prozesse/kunden-etappen.ts); alles andere bleibt intern. */}
       {(d.fallArt ?? 'mandat') === 'mandat' && kundenFormErlaubt(k.form) && !k.schloss && (
         <Schalter an={k.kundeSichtbar === true} aus={p.nurLesen} erklaerung="prozesse.kundeSichtbar"
-          onChange={v => { if (v) p.onKnoten({ ...k, kundeSichtbar: true }); else { const { kundeSichtbar: _weg, ...ohne } = k; p.onKnoten(ohne); } }}>
+          onChange={v => aendern(x => { if (v) return { ...x, kundeSichtbar: true }; const { kundeSichtbar: _weg, ...ohne } = x; return ohne; })}>
           Dem Kunden zeigen
         </Schalter>
       )}
@@ -338,7 +362,7 @@ function KnotenPanel(p: PanelProps & { k: K }) {
                 </select>
                 {(a !== 'weiter' || kante) && (
                   <span style={{ gridColumn: '1 / -1' }}>
-                    <TextFeld label={`Beschriftung von ${ausgangName(k.form ?? 'schritt', a)}`} wert={(a === 'weiter' ? k.pfeilText?.weiter : k.pfeilText?.[a]) ?? ''} platz={`Beschriftung (Vorgabe „${ausgangName(k.form ?? 'schritt', a)}“)`}
+                    <TextFeld label={`Beschriftung von ${ausgangName(k.form ?? 'schritt', a)}`} ziel={`${k.id}|pfeil:${a}`} wert={(a === 'weiter' ? k.pfeilText?.weiter : k.pfeilText?.[a]) ?? ''} platz={`Beschriftung (Vorgabe „${ausgangName(k.form ?? 'schritt', a)}“)`}
                       onWert={t => p.onPfeilText(k.id, a, t || null)} />
                   </span>
                 )}
@@ -360,7 +384,7 @@ function KnotenPanel(p: PanelProps & { k: K }) {
       {ausschaltbar && (
         <Schalter an={k.deaktiviert === true} aus={p.nurLesen}
           erklaerung={[{ kopf: 'Schritt ausschalten', text: 'Ausgeschaltet überspringt der Lauf diesen Schritt und geht über den Hauptweg weiter. Ein Freigabe-Schloss dahinter wird mit übersprungen — es bleibt im Prozess. Beispiel: die Erinnerungs-Mail eine Woche lang aussetzen, ohne sie zu löschen.' }]}
-          onChange={v => { if (v) p.onKnoten({ ...k, deaktiviert: true }); else { const { deaktiviert: _d, ...ohne } = k; p.onKnoten(ohne); } }}>
+          onChange={v => aendern(x => { if (v) return { ...x, deaktiviert: true }; const { deaktiviert: _d, ...ohne } = x; return ohne; })}>
           Ausgeschaltet
         </Schalter>
       )}
@@ -378,8 +402,8 @@ function KnotenPanel(p: PanelProps & { k: K }) {
 }
 
 /** Der Name eines Schritts — beim Tippen übernommen (entprellt, nie leer), beim Verlassen gekürzt bzw. zurück auf den gespeicherten Namen (Feinschliff 24.10.). */
-function TitelFeld({ eingabe, wert, aus, onWert }: { eingabe: RefObject<HTMLInputElement>; wert: string; aus: boolean; onWert: (t: string) => void }) {
-  const e = useTippen(wert, onWert, { gueltig: v => !!v.trim() });
+function TitelFeld({ eingabe, wert, aus, onWert, ziel }: { eingabe: RefObject<HTMLInputElement>; wert: string; aus: boolean; onWert: (t: string) => void; ziel: string }) {
+  const e = useTippen(wert, onWert, { gueltig: v => !!v.trim(), ziel });
   const verlassen = () => {
     if (e.t.trim() !== e.t && e.t.trim()) e.tippe(e.t.trim());
     if (!e.fertig() && !e.t.trim()) e.zuruecksetzen();
@@ -396,10 +420,18 @@ function PhasePanel(p: PanelProps & { ph: K }) {
   const { ph, d } = p;
   const schritte = schritteDer(d, ph.id);
   const nr = phasen(d).findIndex(x => x.id === ph.id) + 1;
+  const wurzel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (p.phaseFokus !== ph.id) return;
+    const feld = wurzel.current?.querySelector<HTMLInputElement>('input[aria-label="Name der Phase"]');
+    feld?.focus({ preventScroll: true }); feld?.select();
+    p.onPhaseFokusFertig?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- nur für die eben angelegte Phase
+  }, [p.phaseFokus, ph.id]);
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div ref={wurzel} style={{ display: 'grid', gap: 12 }}>
       <Ueberschrift rechts={<Chip farbe={C.inkDim}>{`Phase ${nr}`}</Chip>}>{ph.titel}</Ueberschrift>
-      <Feldzeile label="Name der Phase"><TextFeld label="Name der Phase" wert={ph.titel} aus={p.nurLesen} onWert={v => v.trim() && p.onPhase('umbenennen', ph.id, v)} /></Feldzeile>
+      <Feldzeile label="Name der Phase"><TextFeld label="Name der Phase" ziel={`${ph.id}|titel`} wert={ph.titel} aus={p.nurLesen} onWert={v => v.trim() && p.onPhase('umbenennen', ph.id, v)} /></Feldzeile>
       <p style={klein}>{schritte.length} {schritte.length === 1 ? 'Schritt' : 'Schritte'}.</p>
       <BefundListe befunde={p.befunde.filter(b => b.knotenId === ph.id)} raete={p.raete.filter(r => r.phaseId === ph.id)} onTeilprozess={p.nurLesen ? undefined : id => p.onPhase('teilen', id)} />
       {!p.nurLesen && (
@@ -424,7 +456,7 @@ function KantenPanel(p: PanelProps & { k: KanteLage }) {
       <p style={klein}>„{von?.titel ?? ''}“ → „{nach?.titel ?? ''}“ · Ausgang {ausgangName(f, p.k.ausgang)}{p.k.rueckwaerts ? ' · zurück (Schleife)' : ''}</p>
       {von && !p.nurLesen && (
         <Feldzeile label="Beschriftung">
-          <TextFeld label="Beschriftung" wert={(p.k.ausgang === 'weiter' ? von.pfeilText?.weiter : von.pfeilText?.[p.k.ausgang]) ?? ''} platz={ausgangName(f, p.k.ausgang)} onWert={t => p.onPfeilText(von.id, p.k.ausgang, t || null)} />
+          <TextFeld label="Beschriftung" ziel={`${von.id}|pfeil:${p.k.ausgang}`} wert={(p.k.ausgang === 'weiter' ? von.pfeilText?.weiter : von.pfeilText?.[p.k.ausgang]) ?? ''} platz={ausgangName(f, p.k.ausgang)} onWert={t => p.onPfeilText(von.id, p.k.ausgang, t || null)} />
         </Feldzeile>
       )}
       {!p.nurLesen && (zweig
@@ -440,7 +472,7 @@ function ZettelPanel(p: PanelProps & { z: NotizZettel }) {
     <div style={{ display: 'grid', gap: 12 }}>
       <Ueberschrift>Notiz-Zettel</Ueberschrift>
       <p style={leise}>Nur Text auf der Fläche — kein Schritt, keine Wirkung, nie im Lauf.</p>
-      <Feldzeile label="Text"><TextFeld label="Text des Zettels" mehrzeilig wert={z.text} aus={p.nurLesen} platz="z. B. Auftrag an den Agenten" onWert={t => p.onZettel(z.id, { text: t })} /></Feldzeile>
+      <Feldzeile label="Text"><TextFeld label="Text des Zettels" ziel={`${z.id}|text`} mehrzeilig wert={z.text} aus={p.nurLesen} platz="z. B. Auftrag an den Agenten" onWert={t => p.onZettel(z.id, { text: t })} /></Feldzeile>
       <Feldzeile gruppe label="Farbe">
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {ZETTEL_FARBEN.map(f => (

@@ -37,12 +37,12 @@ import {
   werkstattLage, lagenFesthalten, ordnen, zettelFreiLegen, kachelnFuerAlles, ortBei, inBahn, bahnSchluessel, knotenMass, WS, einfuegeLagen, ausgangName, type TeamName, type KanteLage,
 } from '@/lib/prozesse/werkstatt-lage';
 import {
-  anlegen, verbinden, loesen, loeschen, ersetzen, umbenennen as umbenennen_, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
+  anlegen, verbinden, loesen, loeschen, ersetzen, knotenAendern, umbenennen as umbenennen_, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
   kopieren, einfuegen, merke, rueckgaengig, wiederholen, LEERE_GESCHICHTE, phaseVon, verbindenFrei, umhaengen, zwischenEinfuegen, zwischenGrund, mehrfachEntscheidung,
   ausgangSetzen, ausloeserWechseln, hauptZiel,
   type Ablage, type Ergebnis, type Fassung, type Geschichte,
 } from '@/lib/prozesse/werkstatt-aktionen';
-import { neuerKnoten, knotenUnterzeile, maskeAnwenden, maskeWerte } from '@/lib/prozesse/werkstatt-maske';
+import { neuerKnoten, knotenUnterzeile, maskeAnwenden, maskeWerte, nameSetzen } from '@/lib/prozesse/werkstatt-maske';
 import { teilprozessFall, teilprozessTitel } from '@/lib/prozesse/teilprozess-neu';
 import { feldTitelVon } from '@/lib/prozesse/ausloeser';
 import { FALL_ARTEN } from '@/lib/prozesse/definition';
@@ -134,6 +134,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const [auswahl, setAuswahl] = useState<string[]>([]);
   const [kanteWahl, setKanteWahl] = useState<string | null>(null);
   const [rahmenWahl, setRahmenWahl] = useState<string | null>(null);
+  /** Die eben angelegte Phase — ihr Namensfeld bekommt einmal den Fokus (Kern-Bau-Test 24.10.). */
+  const [phaseFokus, setPhaseFokus] = useState<string | null>(null);
   const [andockWahl, setAndockWahl] = useState<{ id: string; art: string } | null>(null);
   const [titelFokus] = useState(0);
   /** Werkstatt bau-fertig (Punkt 2): dieser Knoten wird gerade direkt auf der Fläche umbenannt. */
@@ -319,7 +321,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const probeMap = useMemo(() => (probe ? new Map(probe.schritte.map(s => [s.knotenId, s.status])) : null), [probe]);
   const probeSaetze = useMemo(() => (probe ? new Map<string, ProbeSchritt>(probe.schritte.map(s => [s.knotenId, s])) : null), [probe]);
   const agentName = useCallback((wer: AgentWer) => (wer.art === 'zoe' ? 'ZOE' : wer.art === 'head' ? headDef(wer.headId)?.kurz ?? 'Head' : wer.art === 'skill' ? 'Skill' : FACH_AGENTEN.find(f => f.id === wer.agentId)?.titel.split(' ')[0] ?? 'Agent'), []);
-  const unterzeile = useCallback((k: K) => knotenUnterzeile(k, { mitSchloss: mitSchloss.has(k.id), ...(k.agent ? { agentName: agentName(k.agent.wer) } : {}) }), [mitSchloss, agentName]);
+  // Kern-Bau-Test 24.10.: gehört der Prozess zu einem Produkt, startet er am Mandat — die Kurzzeile des Starts sagt das (statt „von Hand“).
+  const amMandat = !!daten?.produkte?.length;
+  const unterzeile = useCallback((k: K) => knotenUnterzeile(k, { mitSchloss: mitSchloss.has(k.id), amMandat, ...(k.agent ? { agentName: agentName(k.agent.wer) } : {}) }), [mitSchloss, agentName, amMandat]);
 
   const ansagen = (t: string) => setAnsage(t);
   // Punkt 1: gute Nachrichten verschwinden von selbst (sie schweben über der Fläche) — Warnungen und Fehler bleiben, bis man sie schließt.
@@ -829,7 +833,11 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     if (aktion === 'zuklappen') { zuklappen(id); return; }
     if (aktion === 'umbenennen' && wert) mitFassung(f => umbenennen_(f, id, wert));
     if (aktion === 'teilen') mitFassung(f => teilprozessBilden(f, id, { id: neueKennung('fk') }));
-    if (aktion === 'neu') mitFassung(f => phaseNeu(f, { id: neueKennung('fk'), titel: 'Neue Phase', nach: id }));
+    // Kern-Bau-Test 24.10.: eine neue Phase öffnet IHR Feld (Name gewählt zum Überschreiben) — nicht das Panel eines Schritts („keinen Baustein …“).
+    if (aktion === 'neu') {
+      const neuId = neueKennung('fk');
+      if (mitFassung(f => phaseNeu(f, { id: neuId, titel: 'Neue Phase', nach: id }), { auswahl: false })) { setAuswahl([]); setKanteWahl(null); setRahmenWahl(neuId); setPhaseFokus(neuId); }
+    }
     if (aktion === 'loeschen' && mitFassung(f => phaseLoeschen(f, id))) setRahmenWahl(null);
   };
   const karteUmschalten = () => { const n = !karte; setKarte(n); schreib(lokal(), KARTE_MERKER, n ? 'an' : null); ansagen(n ? 'Karte an.' : 'Karte aus.'); };
@@ -888,7 +896,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
     if (w.modus === 'ausloeser-wechseln') return `Auslöser ändern: „${k?.titel ?? ''}“`;
     if (w.modus === 'ausloeser-neu') return 'Weiterer Auslöser — führt in den ersten Schritt';
     if (z.zwischen) { const kn = lage.kanten.find(x => x.id === z.zwischen); return `Einfügen zwischen „${d.knoten.find(x => x.id === kn?.von)?.titel ?? ''}“ und „${d.knoten.find(x => x.id === kn?.nach)?.titel ?? ''}“`; }
-    if (!k) return 'Baustein anlegen';
+    if (!k) { const ph = z.phaseId ? d.knoten.find(x => x.id === z.phaseId) : undefined; return ph ? `Erster Schritt in „${ph.titel}“` : 'Baustein anlegen'; }
     const aus = z.ausgang ?? (k.form === 'entscheidung' || k.form === 'freigabe' ? 'ja' : 'weiter');
     return `Anhängen an „${k.titel}“ · Ausgang „${ausgangName(k.form ?? 'schritt', aus)}“`;
   };
@@ -903,7 +911,8 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const umbenannt = (id: string, t: string | null) => {
     setUmbenennen(u => (u === id ? null : u));
     const k = d.knoten.find(x => x.id === id);
-    if (t && k && t !== k.titel) mitFassung(f => umbenennen_(f, id, t), { auswahl: false });
+    // Der Titel einer Aufgabe folgt dem Namen, solange er nicht selbst geändert wurde (Kern-Bau-Test 24.10., `nameSetzen`).
+    if (t && k && t !== k.titel) mitFassung(f => umbenennen_(f, id, t, (x, neu) => nameSetzen(x, katalogEintrag(x.katalog?.id), neu, { modelle })), { auswahl: false });
     flaeche.current?.fokus();
   };
   // Überführung (22.10., Paket Ü): ersetzt dieser Prozess einen System-Ablauf — Band mit Vergleich, „Umschalten“ und „Zurück in den Schatten“.
@@ -918,6 +927,9 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
             onDuplizieren={() => { kopie(); einf({ neben: true }); }} onGross={id => setGross(id)} feldFokus={feldFokus} imFenster={o.imFenster}
             onTeilprozessNeu={nurLesen ? undefined : id => void teilprozessNeu(id)}
             onKnoten={k => mitFassung(f => ersetzen(f, k), { auswahl: false })}
+            onKnotenMit={(id, aendern) => mitFassung(f => knotenAendern(f, id, aendern), { auswahl: false })}
+            onFeldFokusFertig={() => setFeldFokus(null)}
+            phaseFokus={phaseFokus} onPhaseFokusFertig={() => setPhaseFokus(null)}
             onSteckbrief={steckbrief}
             onZweig={(von, ausgang, nach) => mitFassung(f => (nach ? verbinden(f, von, ausgang, nach) : loesen(f, von, ausgang)), { auswahl: false })}
             onAusgang={(von, ausgang, wahl) => mitFassung(f => ausgangSetzen(f, von, ausgang, wahl), { auswahl: false })}

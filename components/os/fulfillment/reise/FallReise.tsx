@@ -35,6 +35,9 @@ import { Fluss, FormenLegende } from '../../ui/reise/Fluss';
 import { useSprung, sprungAus, insBild, type Sprung } from './sprung';
 import { AblaufKarte } from './AblaufKarte';
 import { BegleitungLaeuft } from '../../prozesse/BegleitungLaeuft';
+import { fallAblauf } from '@/lib/fulfillment/prozesse/ablauf-art';
+import { ablaufSpalten, istAblaufPhase } from '@/lib/prozesse/produkt-ablauf';
+import { AblaufLageHinweis, AblaufPhaseKarte } from './ProduktAblauf';
 
 const ABSCHLUSS: ReadonlySet<FallStelleId> = new Set(['befaehigung', 'wirkung', 'abschliessen', 'mandat', 'nachsorge', 'kreislauf']);
 /** Frühere Stellen (bis 17.10. eigene Reiter) → Stelle im Fluss. */
@@ -77,10 +80,15 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
   const zeile = eingabe ? reiseZeile(eingabe) : null;
   const analyseId = f ? analysePhaseId(f) : null;
   const abschlussId = f ? abschlussPhaseId(f) : null;
-  const standard = zeile ? (zeile.hier?.phaseId ?? zeile.spalten.find(s => s.zustand === 'jetzt')?.id ?? zeile.spalten.at(-1)?.id ?? null) : null;
+  // 24.10. (Bau-Test Kern): die Akte eines Werkstatt-Prozesses zeigt nach dem Onboarding die Phasen DIESES Ablaufs (lib/prozesse/produkt-ablauf.ts) — die Reise
+  // des Falls kennt nur das Onboarding, den Rest führt der Lauf-Motor. Läuft das Onboarding noch, stehen begonnene Phasen als „läuft“ daneben (nie zweimal „Hier“).
+  const akte = f ? fallAblauf(f) : null;
+  const ablauf = akte && daten?.produktAblauf?.id === akte.prozessId ? daten.produktAblauf : null;
+  const ablaufZeile = ablauf && zeile ? ablaufSpalten(ablauf, zeile.spalten.length + 1, zeile.spalten.some(s => s.zustand === 'jetzt')) : [];
+  const standard = zeile ? (zeile.hier?.phaseId ?? zeile.spalten.find(s => s.zustand === 'jetzt')?.id ?? ablaufZeile.find(s => s.zustand === 'jetzt')?.id ?? zeile.spalten.at(-1)?.id ?? null) : null;
   const phase = wahl.phase ?? standard;
   const knoten = wahl.phase ? wahl.knoten : (wahl.knoten ?? (zeile?.hier && zeile.hier.phaseId === phase ? zeile.hier.id : null));
-  const fluss = eingabe && phase ? phasenFluss(eingabe, phase, daten?.unterschrift?.am ?? null) : null;
+  const fluss = eingabe && phase && !istAblaufPhase(phase) ? phasenFluss(eingabe, phase, daten?.unterschrift?.am ?? null) : null;
   const knotenListe = fluss ? flussKnoten(fluss) : [];
 
   // Einen Sprung auflösen, sobald der Fall da ist (Adresse beim Öffnen, Ereignis aus dem Kopf/Detail).
@@ -146,10 +154,13 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
     <div style={{ display: 'grid', gap: 14 }}>
       <Meldung text={meldung?.text ?? null} art={meldung?.art} />
       <VorlageGeaendert daten={daten} onMeldung={setMeldung} />
+      {ablauf && <AblaufLageHinweis ablauf={ablauf} />}
+      {/* Ein Fall nach einem Paket, dessen Produkt inzwischen einen eigenen Ablauf hat: nur sagen, nichts umstellen (der Fall läuft weiter nach seinem Paket). */}
+      {!akte && daten.produktAblauf && <Hinweis art="info">Das Produkt hat inzwischen den Ablauf „{daten.produktAblauf.titel}“ aus der Werkstatt — dieser Fall läuft weiter nach „{daten.vorlage?.titel ?? 'seinem bisherigen Ablauf'}“. Neue Fälle des Produkts bekommen den neuen Ablauf.</Hinweis>}
       {f.status !== 'abgeschlossen' && <KapazitaetVorschlag mandatId={mandatId} kunde={daten.mandat.kunde} zustaendig={daten.mandat.zustaendig} />}
       <Karte i={0} flach>
         <Ueberschrift erklaerung="fulfillment.reise" rechts={<Erklaert erklaerung="fulfillment.fortschritt" name="Fortschritt"><span>{daten.vorlage?.titel ?? ''}{daten.vorlage?.titel ? ' · ' : ''}{zeile.fortschritt} %</span></Erklaert>}>Reise des Kunden</Ueberschrift>
-        <ReiseBild spalten={bildSpalten(zeile)} aktiv={phase} gewaehlt={knoten} onPhase={phaseWaehlen} onKaestchen={waehle} onRaute={p => { const s = zeile.spalten.find(x => x.id === p); if (s?.abstimmung) waehle(p, `fg-${s.abstimmung.id}`); }} />
+        <ReiseBild spalten={[...bildSpalten(zeile), ...ablaufZeile]} aktiv={phase} gewaehlt={knoten} onPhase={phaseWaehlen} onKaestchen={waehle} onRaute={p => { const s = zeile.spalten.find(x => x.id === p); if (s?.abstimmung) waehle(p, `fg-${s.abstimmung.id}`); }} />
         {/* Was immer mitläuft (Vorbild: „CRM/Datenpflege“ zwischen den Stufen) — EIN Satz, ein Tipp führt zu den Terminen. */}
         <Link href={WEG.fall(mandatId, 'menschen', 'stelle-takt-leiste')} style={{ display: 'inline-flex', gap: 8, alignItems: 'center', minHeight: 44, fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>
           <RotateCw size={14} aria-hidden color={C.inkLeise} />
@@ -177,6 +188,10 @@ export function FallReise({ mandatId, anker }: { mandatId: string; anker?: strin
               onFreigabe={setFreigabe} willkommenAuf={willkommenAuf} setWillkommenAuf={setWillkommenAuf} setMeldung={setMeldung} fragen={frage.fragen} />
           </div>
         </div>
+      )}
+
+      {ablauf && phase && istAblaufPhase(phase) && (
+        <AblaufPhaseKarte ablauf={ablauf} phase={phase} gewaehlt={knoten} nr={ablaufZeile.find(x => x.id === phase)?.nr ?? 0} />
       )}
 
       {istAnalyse && (

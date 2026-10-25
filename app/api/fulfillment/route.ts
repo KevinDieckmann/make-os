@@ -2,7 +2,8 @@
 // GET  → Übersicht: Vorlagen (mit Stand je Kopf/Knoten), Bibliothek in Kurzform (lange Texte nur mit `?baustein=<id>`), Rituale, Zuordnung
 //        Produkt → Vorlage, Einstellungen, Onboarding-Kandidaten, Fälle (Kurzform), „welcher Kunde steht wo“, Kennzahlen (1.4), Import-Läufe.
 //        `?nur=kurz` → nur Kandidaten, Zuordnung, Vorlagen-Titel und Fälle (für die Einhänger in Produkte & Mandate), seit 17.10. spät dazu gewonnene
-//        Deals ohne Mandat (`deals`, für „Heute im Fulfillment“). Lesen schreibt nie.
+//        Deals ohne Mandat (`deals`, für „Heute im Fulfillment“). Seit 24.10. in beiden `produktProzesse` (je Produkt sein Werkstatt-Prozess: Kennung, Titel,
+//        Lage) und am Kandidaten `prozess` — der Ablauf des Falls. Lesen schreibt nie.
 // PATCH { ops } → Einzel-Ops mit Stand (lib/fulfillment/prozesse/vorlagen-anwenden.ts), alles oder nichts: 400/403/404/409/413. Ops an Abläufen
 //        (Vorlage, Knoten, Übergänge, Muster) nur volle Mitglieder (Rolle „nur Business“ 403, 17.10.) — den Editor im Miro-Stil bedient /api/fulfillment/editor.
 //        Kunden-Link-Schalter und Puls-Schwelle NICHT hier (400) — EIN Weg: POST /api/fulfillment/kunde (C2). Nur per Sitzung (Dienstweg 403), Bau-Kennung. `?space=privat` → 403 (Business only).
@@ -64,15 +65,17 @@ export async function GET(req: Request) {
   const mandate = Object.fromEntries(crm.mandate.filter(m => istBusinessMandat(m.gesellschaft) && (faelle.faelle[m.id] || !m.geloeschtAm)).map(m => [m.id, { kunde: m.kunde, titel: m.titel, leistungId: m.leistungId ?? null, status: m.status }]));
   const faelleAnsicht = Object.fromEntries(Object.values(faelle.faelle).map(f => [f.mandatId, { ...kurz[f.mandatId], vorlageId: f.vorlageId, ...(f.zusaetze?.length ? { zusaetze: f.zusaetze.map(z => z.vorlageId) } : {}), kunde: mandate[f.mandatId]?.kunde ?? 'Mandat (gelöscht)', titel: mandate[f.mandatId]?.titel ?? '' }]));
   // Prozesse × Fulfillment (22.10., Entscheidung „dort ausblenden“): läuft für ein Mandat schon der Werkstatt-Prozess seines Produkts, ist es kein Kandidat „noch kein Fall“.
-  const { mandateMitProduktLaufLesen } = await import('@/lib/prozesse/produkt-laeufe-server');
-  const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso, await mandateMitProduktLaufLesen(crm));
+  const { mandateMitProduktLaufLesen, produktProzesseLesen } = await import('@/lib/prozesse/produkt-laeufe-server');
+  // 24.10. (Bau-Test Kern): je Produkt sein Werkstatt-Prozess (Kennung, Titel, Lage) — er ist der Ablauf des Falls (Vorbelegung von „Fall starten“).
+  const produktProzesse = await produktProzesseLesen(crm);
+  const kandidaten = kandidatenAnsicht(crm, vorlagen, faelle.faelle, heute, iso, await mandateMitProduktLaufLesen(crm), produktProzesse);
   // „Heute im Fulfillment“ (17.10. spät): gewonnene Deals (Business) ohne Mandat — „Mandat anlegen & Fall starten“ direkt in der Liste.
   const deals = gewonneneOhneMandat(crm, heute, istBusinessMandat, tageZwischen);
   // Firmen-/Kundennamen gehen raus → Lese-Protokoll (Prüf-Fund 11.10.), nur die Anzahl.
   leseZugriff(req, 'fulfillment', { anzahl: Object.keys(mandate).length + kandidaten.length + deals.length });
   if (nurKurz) {
     return NextResponse.json({
-      ok: true, kandidaten, deals, zuordnung: vorlagen.zuordnung, faelle: faelleAnsicht,
+      ok: true, kandidaten, deals, zuordnung: vorlagen.zuordnung, produktProzesse, faelle: faelleAnsicht,
       prozesse: vorlagen.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, art: p.art, ...(p.zusatz ? { zusatz: true } : {}) })),
       // E4 (22.10.): Pakete, die in der Werkstatt bearbeitet werden (Links führen dorthin).
       werkstatt: paketeInWerkstatt(vorlagen),
@@ -107,7 +110,7 @@ export async function GET(req: Request) {
       ...b, gliederungAnzahl: gliederung.length, fragenAnzahl: fragen?.length ?? 0, nurIntern: nurIntern(b), rechtOffen: rechtOffen(b), vorVerkaufOffen: vorVerkaufOffen(b, vorlagen),
       steckt: vorlagenMitBaustein(vorlagen, b.id).length, imOnboarding: imOnboarding(b, vorlagen),
     })),
-    rituale: st.rituale, zuordnung: vorlagen.zuordnung, einstellungen: vorlagen.einstellungen, agentZusatz: vorlagen.agentZusatz,
+    rituale: st.rituale, zuordnung: vorlagen.zuordnung, produktProzesse, einstellungen: vorlagen.einstellungen, agentZusatz: vorlagen.agentZusatz,
     importLaeufe: vorlagen.importLaeufe.map(l => ({ id: l.id, am: l.am, von: l.von, datei: l.datei, neu: l.neu.length, geaendert: l.geaendert.length })),
     musterOffen: MUSTER_WAHL.filter(w => musterFehlt(vorlagen, MUSTER_IDS[w.id])).map(w => w.id),
     kandidaten, faelle: faelleAnsicht, zaehler, mandate, kennzahlen,

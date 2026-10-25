@@ -19,7 +19,8 @@ import { willkommenMail, willkommenBisText, WILLKOMMEN_GERUEST, TAG_WILLKOMMEN, 
 import { fallStartTag, diffVorschau } from '@/lib/fulfillment/prozesse/fall';
 import type { OnboardingSchluessel } from '@/lib/fulfillment/muster';
 import { linkAdresseAus } from '@/lib/fulfillment/kunde/link';
-import { useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, neueAnfrageId, type FallAntwort } from './daten';
+import { useUebersichtKurz, fallOps, fallAktion, vorlagenOps, holeJson, fehlerText, tagKurz, neueAnfrageId, startMandat, type FallAntwort } from './daten';
+import { ProduktAblaufKarte } from '../reise/ProduktAblauf';
 import { Wahl } from '../../crm/Wahl';
 import { localDay } from '@/lib/zeit';
 import { StartDialog } from './Onboarding';
@@ -182,16 +183,23 @@ export function KeinFall({ daten }: { daten: FallAntwort }) {
   const kurz = useUebersichtKurz();
   const [start, setStart] = useState(false);
   const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
-  const zu = daten.mandat.leistungId ? kurz.daten?.zuordnung[daten.mandat.leistungId]?.vorlageId : undefined;
-  const v = pakete.find(p => p.id === zu);
+  // 24.10. (Bau-Test Kern): EINE Vorbelegung (`startMandat` → `startVorbelegung`) — der Prozess des Produkts aus der Antwort des Falls gewinnt.
+  const pa = daten.produktAblauf;
+  const k = startMandat(kurz.daten ? { ...kurz.daten, ...(pa && daten.mandat.leistungId ? { produktProzesse: { ...(kurz.daten.produktProzesse ?? {}), [daten.mandat.leistungId]: { id: pa.id, titel: pa.titel, lage: pa.lage } } } : {}) } : null,
+    { mandatId: daten.mandat.id, kunde: daten.mandat.kunde, leistungId: daten.mandat.leistungId });
   if (!daten.mandat.business) return <Hinweis art="info">Fulfillment gibt es nur für Mandate einer Business-Gesellschaft — dieses Mandat gehört zu Privat.</Hinweis>;
   return (
-    <Karte i={1}>
-      <Ueberschrift>Noch kein Fall</Ueberschrift>
-      <div style={klein}>Für „{daten.mandat.titel}“ läuft noch kein Fulfillment. Der Fall kopiert den Ablauf des Produkts und legt die Onboarding-Schritte an — Mandate ohne Fall bleiben genau wie bisher.</div>
-      <div><Knopf haupt onClick={() => setStart(true)}>Fall starten</Knopf></div>
-      {start && <StartDialog k={{ mandatId: daten.mandat.id, kunde: daten.mandat.kunde, ...(daten.mandat.leistungId ? { leistungId: daten.mandat.leistungId } : {}), ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}) }} pakete={pakete} onZu={() => setStart(false)} />}
-    </Karte>
+    <div style={{ display: 'grid', gap: 14 }}>
+      <Karte i={1}>
+        <Ueberschrift>Noch kein Fall</Ueberschrift>
+        <div style={klein}>{pa
+          ? `Für „${daten.mandat.titel}“ läuft noch kein Fall. Das Produkt hat den Ablauf „${pa.titel}“ — der Fall legt das Onboarding an, die Schritte kommen aus diesem Ablauf.`
+          : `Für „${daten.mandat.titel}“ läuft noch kein Fulfillment. Der Fall kopiert den Ablauf des Produkts und legt die Onboarding-Schritte an — Mandate ohne Fall bleiben genau wie bisher.`}</div>
+        <div><Knopf haupt onClick={() => setStart(true)}>Fall starten</Knopf></div>
+        {start && <StartDialog k={k} pakete={pakete} onZu={() => setStart(false)} />}
+      </Karte>
+      {pa && <ProduktAblaufKarte ablauf={pa} />}
+    </div>
   );
 }
 

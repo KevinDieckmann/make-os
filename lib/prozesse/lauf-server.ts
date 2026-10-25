@@ -1250,6 +1250,34 @@ async function produktLaeufeStarten(e: Ereignis, kx: MotorKontext): Promise<numb
   }
   return n;
 }
+/**
+ * „Fall starten“ mit dem Prozess des Produkts (24.10., Bau-Test Kern: „0 Läufe nach 30 Min.“ — Starts über die Produkt-Bindung laufen sonst NUR im Takt, und die
+ * Demo hat keinen Arbeiter): die Starts für EIN Mandat einmal anstoßen — DERSELBE Weg wie der Takt (`produktLaeufeStarten` mit dem Ereignis „Mandat angelegt“
+ * dieses Mandats; die Kennung ist dieselbe wie die der Quelle, lib/ereignisse/quellen.ts), danach die neuen Läufe einmal voran. Ein Lauf je Fall und Prozess
+ * (`starten`): der Takt legt später nichts doppelt an. Schatten rechnet nur (schreibt nichts außer dem Lauf), scharf legt wie im Takt Aufgaben an. Schreibt als
+ * die Person, die den Fall startet. Wirft nie; liefert die Zahl neuer Läufe.
+ */
+export async function produktLaeufeAnstossen(mandatId: string, person: string | null, jetzt = new Date()): Promise<number> {
+  try {
+    const kx = await kontextLaden(jetzt);
+    const crm = await crmVon(kx);
+    const m = crm?.mandate.find(x => x.id === mandatId && !x.geloeschtAm);
+    if (!m) return 0;
+    const { ereignisKennung } = await import('@/lib/ereignisse/typen');
+    const e: Ereignis = {
+      nr: 0, id: ereignisKennung('crm', 'mandat', m.id, 'angelegt'), art: 'mandat-angelegt', quelle: 'crm', bereich: 'business', am: jetzt.toISOString(),
+      bezug: { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}), ...(m.chanceId ? { dealId: m.chanceId } : {}) },
+      ...(person ? { person } : {}),
+    };
+    const vorher = new Set((await laeufeLesen(kx.h)).laeufe.map(l => l.id));
+    const n = await produktLaeufeStarten(e, kx);
+    if (n) for (const l of (await laeufeLesen(kx.h)).laeufe) if (!vorher.has(l.id) && l.fall.art === 'mandat' && l.fall.id === m.id) await laufVoran(l.id, kx);
+    return n;
+  } catch (err) {
+    console.error(`[prozesse/anstoss] ${err instanceof Error ? err.message.slice(0, 200) : 'Fehler'}`);
+    return 0;
+  }
+}
 /** Was vom Ereignis im Lauf bleibt: nur Art, Quelle, Stufe und Kennungen (nie Text — auch nicht vom Webhook; dort nur die Eingangs-Kennung). */
 const kennungsDaten = (e: Ereignis): Record<string, string> => Object.fromEntries(Object.entries(ereignisDaten(e)).filter(([k]) => !k.startsWith('webhook.')));
 

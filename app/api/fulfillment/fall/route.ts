@@ -7,7 +7,8 @@
 //      ?m=&nachricht=<Knoten> → Entwurf einer Nachricht des Ablaufs (17.10. abends, Ausführung): Mail-Baustein des Knotens mit gefüllten Platzhaltern,
 //        Empfänger = erste Ansprechperson mit Adresse; Art. 18 bzw. Werbesperre → kein Entwurf, nur `gesperrt`. Gesendet wird nur per Klick (Inbox).
 //      Seit 17.10. abends trägt die Antwort `ablauf` (Stand der Ausführung je Knoten: dran, Runde, Frist, Aufgabe und ihr Stand).
-// POST { aktion: 'starten', mandatId, vorlageId, start?, anfrageId }  → Fall anlegen (Kopie der Paket-Vorlage), idempotent über anfrageId; ein Zusatzmodul
+// POST { aktion: 'starten', mandatId, vorlageId, start?, anfrageId }  → Fall anlegen (Kopie der Paket-Vorlage), idempotent über anfrageId; seit 24.10. mit
+//        `vorlageId` = Prozess des Produkts (`pz-…`): die Akte (Onboarding, `ablauf` = Prozess) + einmal die Läufe anstoßen (`laeufe` = neu gestartet); ein Zusatzmodul
 //        (17.10. spät, `zusatz`) hängt an einen laufenden Fall an (Antwort `angehaengt: true`) bzw. startet ohne Onboarding
 //      { aktion: 'vorlage-uebernehmen', mandatId, vorlageId? }        → neue Fassung der Vorlage (bzw. eines angehängten Zusatzmoduls) übernehmen (nie entfernen)
 //      { aktion: 'nachziehen', mandatId }                             → Phase/Lieferobjekte noch einmal nachziehen (idempotent)
@@ -27,9 +28,9 @@
 import { NextResponse } from 'next/server';
 import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
-import { fallUmfeld, ableitungFuer, fallSchreiben, fallStartenOderAnhaengen, fallVorlageUebernehmen, fallNachziehen, FallFehler } from '@/lib/fulfillment/prozesse/fall-server';
+import { fallUmfeld, ableitungFuer, fallSchreiben, fallStartenOderAnhaengen, prozessFallStarten, fallVorlageUebernehmen, fallNachziehen, FallFehler } from '@/lib/fulfillment/prozesse/fall-server';
 import { fallWirksam, onboardingStand, willkommenVorlage, vorschlagText, istKickoff } from '@/lib/fulfillment/prozesse/onboarding';
-import { vorlagenDiff, zusatzDiff, fallFreigaben } from '@/lib/fulfillment/prozesse/fall';
+import { vorlagenDiff, zusatzDiff, fallFreigaben, fallAblauf } from '@/lib/fulfillment/prozesse/fall';
 import { vorlagenAnwenden } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
 import { nurIntern, rechtOffen, vorVerkaufOffen } from '@/lib/fulfillment/prozesse/bausteine';
 import { naechsterTermin } from '@/lib/fulfillment/prozesse/rituale';
@@ -73,7 +74,13 @@ export async function GET(req: Request) {
   const f = faelle.faelle[m];
   const u = unterschriftAm(mandat, crm, f?.gestartetAm);
   // Lese-Protokoll immer, wenn Firma/Kontakte des Mandats ausgeliefert werden (Prüf-Fund 11.10.: vorher nur mit Stakeholdern).
-  if (!f) { leseZugriff(req, 'fulfillment', { ids: [mandat.id], anzahl: mandat.kontaktIds.length }); return NextResponse.json({ ok: true, fall: null, mandat: mandatKurz, unterschrift: u, inhaber: await istInhaber(z.person) }); }
+  // 24.10. (Bau-Test Kern): der Ablauf des Produkts (Werkstatt-Prozess) — Vorbelegung von „Fall starten“ und Reise (lib/prozesse/produkt-ablauf.ts).
+  const { produktAblaufLesen } = await import('@/lib/prozesse/produkt-laeufe-server');
+  if (!f) {
+    const produktAblauf = await produktAblaufLesen(mandat, crm, null);
+    leseZugriff(req, 'fulfillment', { ids: [mandat.id], anzahl: mandat.kontaktIds.length });
+    return NextResponse.json({ ok: true, fall: null, mandat: mandatKurz, unterschrift: u, inhaber: await istInhaber(z.person), ...(produktAblauf ? { produktAblauf } : {}) });
+  }
 
   const nachricht = url.searchParams.get('nachricht');
   if (nachricht) {
@@ -117,6 +124,7 @@ export async function GET(req: Request) {
 
   const abl = ableitungFuer(f, mandat, crm, vorlagen, kunde[m], iso, kalender[m]);
   const w = fallWirksam(f, abl);
+  const produktAblauf = await produktAblaufLesen(mandat, crm, f);
   const v = vorlagen.prozesse.find(p => p.id === f.vorlageId);
   // Abstimmungspunkte des Pakets UND der angehängten Zusatzmodule (17.10. spät) — EINE Stelle (`fallFreigaben`).
   const fg = v ? fallFreigaben(f, vorlagen.prozesse) : MUSTER_FREIGABEN;
@@ -154,7 +162,10 @@ export async function GET(req: Request) {
     ...(f.ohneOnboarding ? {} : { onboarding: onboardingStand(f, abl) }), diff: v ? vorlagenDiff(f, v) : null,
     // Alte Fälle ohne Formen (17.10. abends): die Ausführung startet erst mit „Vorlage übernehmen“ — der Fall zeigt dann einen Hinweis mit dem Weg dorthin.
     ausfuehrungWartet: v ? await import('@/lib/fulfillment/prozesse/ausfuehrung').then(a => a.ausfuehrungNachUebernahme(w, v, vorlagenDiff(f, v))) : false,
-    vorlage: v ? { id: v.id, titel: v.titel, fassung: v.fassung, freigaben: fg, rollen: v.rollen, ...(v.zusatz ? { zusatz: true } : {}) } : { id: f.vorlageId, titel: 'Vorlage entfernt', fassung: f.vorlageFassung, freigaben: MUSTER_FREIGABEN, rollen: [] },
+    // Die Akte eines Werkstatt-Prozesses (E5) hat kein Paket — ihr Ablauf heißt wie der Prozess (vorher „Vorlage entfernt“).
+    vorlage: v ? { id: v.id, titel: v.titel, fassung: v.fassung, freigaben: fg, rollen: v.rollen, ...(v.zusatz ? { zusatz: true } : {}) }
+      : { id: f.vorlageId, titel: fallAblauf(f) ? (produktAblauf?.id === fallAblauf(f)!.prozessId ? produktAblauf.titel : f.knoten.find(k => !k.elternId)?.titel ?? 'Ablauf') : 'Vorlage entfernt', fassung: f.vorlageFassung, freigaben: MUSTER_FREIGABEN, rollen: [] },
+    ...(produktAblauf ? { produktAblauf } : {}),
     // Angehängte Zusatzmodule (17.10. spät): je Modul Titel, Starttag und — bei neuer Fassung — der Diff („Vorlage geändert — übernehmen?“).
     zusaetze: (f.zusaetze ?? []).map(z => { const zv = vorlagen.prozesse.find(p => p.id === z.vorlageId); return { vorlageId: z.vorlageId, titel: zv?.titel ?? z.titel, startAm: z.startAm, fassung: z.vorlageFassung, diff: zv ? zusatzDiff(f, zv) : null }; }),
     wartet: wartetAufEuch(w, heute), wertKonto: wertKontoZeilen(w, mandat), fortschritt: fallFortschritt(w), aktuell: aktuellerKnoten(w),
@@ -191,6 +202,11 @@ export async function POST(req: Request) {
     if (b.aktion === 'starten') {
       const r = await einmalig<Record<string, unknown>>('fulfillment-starten', b.anfrageId, async () => {
         try {
+          // 24.10. (Bau-Test Kern): der Prozess des Produkts (`pz-…`) ist der Ablauf des Falls — Akte + einmaliger Anstoß der Läufe (fall-server `prozessFallStarten`).
+          if (typeof b.vorlageId === 'string' && /^pz-/.test(b.vorlageId)) {
+            const { fall, laeufe } = await prozessFallStarten({ mandatId: b.mandatId, prozessId: b.vorlageId, start: b.start, person: z.person, wer });
+            return { status: 200, body: { ok: true, fall, laeufe, text: 'Fall angelegt — Onboarding beginnt; die Schritte kommen aus dem Ablauf des Produkts.' } };
+          }
           const { fall, art } = await fallStartenOderAnhaengen({ mandatId: b.mandatId, vorlageId: b.vorlageId, start: b.start, person: z.person, wer });
           const text = art === 'angehaengt' ? 'Zusatzmodul an den laufenden Fall angehängt — ohne zweites Onboarding.' : fall.ohneOnboarding ? 'Fall angelegt — das Zusatzmodul läuft ohne Onboarding.' : 'Fall angelegt — Onboarding beginnt.';
           return { status: 200, body: { ok: true, fall, text, ...(art === 'angehaengt' ? { angehaengt: true } : {}) } };

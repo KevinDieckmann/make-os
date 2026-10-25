@@ -18,6 +18,7 @@ import type { Mandat } from '@/lib/crm/typen';
 import type { NachsorgePunkt } from '@/lib/fulfillment/prozesse/ansichten';
 import { abstimmungsNummern, ohneKuerzel } from '@/lib/fulfillment/prozesse/darstellung';
 import type { AblaufKnotenStand } from '@/lib/fulfillment/prozesse/ausfuehrung';
+import { startVorbelegung, type ProduktAblaufAnsicht, type ProduktProzessKurz } from '@/lib/prozesse/produkt-ablauf';
 
 export const EREIGNIS = 'make-fulfillment-geaendert';
 export const geaendert = () => { if (typeof window !== 'undefined') window.dispatchEvent(new Event(EREIGNIS)); };
@@ -26,7 +27,9 @@ export const neueAnfrageId = () => `ff-${typeof crypto !== 'undefined' && 'rando
 export type MitStand<T> = T & { stand: string };
 export type BausteinKurz = MitStand<Omit<Baustein, 'text' | 'fragen' | 'gliederung'>> & { gliederungAnzahl: number; fragenAnzahl: number; nurIntern: boolean; rechtOffen: boolean; vorVerkaufOffen: boolean; steckt: number; /** läuft im Onboarding jedes Falls (Playbook, Willkommensmail) */ imOnboarding?: boolean };
 export type VorlageMitStand = MitStand<Omit<ProzessVorlage, 'knoten'>> & { knoten: MitStand<ProzessKnoten>[] };
-export interface Kandidat extends OnboardingKandidat { uhr: WillkommenUhr; vorlage?: { id: string; titel: string }; vorgeschlagen: boolean }
+export interface Kandidat extends OnboardingKandidat { uhr: WillkommenUhr; vorlage?: { id: string; titel: string };
+  /** 24.10. (Bau-Test Kern): das Produkt hat einen Werkstatt-Prozess — er ist der Ablauf des Falls (lib/prozesse/produkt-ablauf.ts `startVorbelegung`). */
+  prozess?: ProduktProzessKurz; vorgeschlagen: boolean }
 export interface FallZeile extends FallKurz { vorlageId: string; kunde: string; titel: string; /** Angehängte Zusatzmodule (Kennungen ihrer Vorlagen, 17.10. spät). */ zusaetze?: string[] }
 export interface Uebersicht {
   inhaber: boolean;
@@ -47,6 +50,8 @@ export interface Uebersicht {
   leistungen: { id: string; name: string; status: string }[];
   /** E4 (22.10.): Pakete, die in der Werkstatt bearbeitet werden (`paketBearbeitenLink`). */
   werkstatt?: string[];
+  /** 24.10.: je Produkt sein Werkstatt-Prozess (Kennung, Titel, Lage). */
+  produktProzesse?: Record<string, ProduktProzessKurz>;
 }
 export interface UebersichtKurz {
   kandidaten: Kandidat[]; zuordnung: Record<string, { vorlageId: string }>; faelle: Record<string, FallZeile>; prozesse: { id: string; titel: string; art: string; zusatz?: true }[];
@@ -54,6 +59,8 @@ export interface UebersichtKurz {
   deals?: HeuteDeal[];
   /** E4 (22.10.): Pakete, die in der Werkstatt bearbeitet werden. */
   werkstatt?: string[];
+  /** 24.10. (Bau-Test Kern): je Produkt sein Werkstatt-Prozess — der Ablauf des Falls (`startVorbelegung`). */
+  produktProzesse?: Record<string, ProduktProzessKurz>;
 }
 
 export interface MandatKurz { id: string; titel: string; kunde: string; firmaId: string | null; kontaktIds: string[]; leistungId: string | null; ziele: Mandat['ziele']; gesellschaft: string; status: string; start: string | null; zustaendig: string | null; business: boolean;
@@ -98,6 +105,11 @@ export interface FallAntwort {
   ablauf?: { aktiv: boolean; knoten: Record<string, AblaufKnotenStand & { aufgabeStatus?: string }> };
   /** Angehängte Zusatzmodule (17.10. spät): Titel, Starttag, Fassung im Fall und — bei neuer Fassung — der Diff. */
   zusaetze?: { vorlageId: string; titel: string; startAm: string; fassung: number; diff: VorlagenDiff | null }[];
+  /**
+   * 24.10. (Bau-Test Kern): der Ablauf des Produkts aus der Werkstatt — Phasen und Schritte mit dem Stand des Laufs (lib/prozesse/produkt-ablauf.ts). Ohne Fall: die
+   * Vorbelegung von „Fall starten“; mit der Akte (`fallAblauf`): die Phasen der Reise; bei einem Paket-Fall nur der Hinweis, dass das Produkt jetzt einen hat.
+   */
+  produktAblauf?: ProduktAblaufAnsicht;
 }
 export interface CockpitAntwort { heute: string; zeilen: CockpitZeile[]; haengt: Haenger[]; kapa: { stundenWoche: number; frei: number | null; ueber: boolean } | null }
 export type { KnotenStatus };
@@ -175,3 +187,14 @@ export const STATUS_TEXT: Record<KnotenStatus, string> = { offen: 'offen', in_ar
 const berlinTag = (t: string) => (t.length > 10 && t.includes('T') ? tagVon(t) : t);
 export const tagKurz = (t?: string | null) => { const x = t ? berlinTag(t) : t; return x && /^\d{4}-\d{2}-\d{2}/.test(x) ? `${x.slice(8, 10)}.${x.slice(5, 7)}.` : '—'; };
 export const tagLang = (t?: string | null) => { const x = t ? berlinTag(t) : t; return x && /^\d{4}-\d{2}-\d{2}/.test(x) ? `${x.slice(8, 10)}.${x.slice(5, 7)}.${x.slice(0, 4)}` : '—'; };
+
+/** Was „Fall starten“ für ein Mandat braucht (24.10., Bau-Test Kern): Kunde, Produkt und die Vorbelegung des Ablaufs — EINE Regel `startVorbelegung` (der Prozess
+ * des Produkts; sonst das Paket DIESES Produkts; sonst nichts — nie das Paket eines anderen Produkts). Für alle Stellen mit dem Start-Dialog. */
+export interface StartMandat { mandatId: string; kunde: string; leistungId?: string; vorlage?: { id: string; titel: string }; prozess?: ProduktProzessKurz }
+export function startMandat(kurz: Pick<UebersichtKurz, 'zuordnung' | 'prozesse' | 'produktProzesse'> | null | undefined, m: { mandatId: string; kunde: string; leistungId?: string | null }): StartMandat {
+  const v = startVorbelegung(m.leistungId, { produktProzesse: kurz?.produktProzesse, zuordnung: kurz?.zuordnung, pakete: (kurz?.prozesse ?? []).filter(p => p.art === 'paket') });
+  return {
+    mandatId: m.mandatId, kunde: m.kunde, ...(m.leistungId ? { leistungId: m.leistungId } : {}),
+    ...(v?.art === 'prozess' ? { prozess: { id: v.id, titel: v.titel, lage: v.lage } } : v?.art === 'paket' ? { vorlage: { id: v.id, titel: v.titel } } : {}),
+  };
+}

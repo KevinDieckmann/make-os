@@ -16,7 +16,7 @@ import { BEDINGUNG_OPS, KENNUNG_ARTEN, WEBHOOK_FELD_ARTEN, type Bedingung, type 
 import { BEDINGUNG_NAME } from '@/lib/prozesse/bedingung';
 import { textvorlageFuellen, textvorlagePruefen, type MaskenFeld } from '@/lib/prozesse/baustein-katalog';
 import type { TestWert } from '@/lib/prozesse/testdaten';
-import { eingabePuffer, type Puffer } from '@/lib/prozesse/eingabe-puffer';
+import { zielPuffer, type ZielPuffer } from '@/lib/prozesse/eingabe-puffer';
 import { wertLage, type WertLage, type WertOption } from '@/lib/prozesse/feld-werte';
 import { MONATSTAGE, WOCHENTAGE, type TagOption } from '@/lib/prozesse/zeitplan-tage';
 
@@ -31,26 +31,36 @@ export const EingabeKontext = createContext<EingabeRegister | null>(null);
  * EIN Feld beim Tippen übernehmen (lib/prozesse/eingabe-puffer.ts): `tippe` bei jedem Tastendruck, `fertig` beim Verlassen/Enter; beim Verschwinden des Felds
  * (Fenster zu, anderer Knoten) wird Offenes übernommen. Ein Wert von außen ersetzt den Text nur, wenn nichts Getipptes offen ist (und nie, wenn er sich nur um
  * Leerzeichen am Rand unterscheidet — der Server kürzt manche Texte).
+ * `ziel` (Kern-Bau-Test 24.10.: „Text landet im Titel eines anderen Schritts“) = Kennung des Knotens + Feld: jeder offene Wert geht NUR an sein Ziel — auch wenn
+ * dasselbe Feld inzwischen einem anderen Knoten gehört (Auswahl gewechselt, bevor die Pause um ist). Übernommen wird mit der Übernahme, die dieses Ziel zuletzt hatte.
  */
-export function useTippen(wert: string, uebernehmen: (v: string) => void, o: { gueltig?: (v: string) => boolean; nurBeimVerlassen?: boolean } = {}) {
+export function useTippen(wert: string, uebernehmen: (v: string) => void, o: { gueltig?: (v: string) => boolean; nurBeimVerlassen?: boolean; ziel?: string } = {}) {
   const reg = useContext(EingabeKontext);
   const regRef = useRef(reg); regRef.current = reg;
-  const ueRef = useRef(uebernehmen); ueRef.current = uebernehmen;
   const gRef = useRef(o.gueltig); gRef.current = o.gueltig;
   const id = useRef(Symbol('eingabe'));
+  const ziel = o.ziel ?? '';
+  // Je Ziel die zuletzt bekannte Übernahme — ein offener Wert eines früheren Ziels geht an DESSEN Übernahme, nie an die des neuen.
+  const fuer = useRef(new Map<string, (v: string) => void>());
+  fuer.current.set(ziel, uebernehmen);
   const [t, setT] = useState(wert);
-  const puffer = useRef<Puffer | null>(null);
+  const puffer = useRef<ZielPuffer | null>(null);
   if (!puffer.current) {
-    puffer.current = eingabePuffer({
-      anfang: wert, uebernehmen: v => ueRef.current(v), gueltig: v => (gRef.current ? gRef.current(v) : true), ohneUhr: o.nurBeimVerlassen,
+    puffer.current = zielPuffer({
+      ziel, anfang: wert, uebernehmen: (z, v) => fuer.current.get(z)?.(v), gueltig: v => (gRef.current ? gRef.current(v) : true), ohneUhr: o.nurBeimVerlassen,
       onOffen: offen => regRef.current?.melde(id.current, offen ? () => { puffer.current?.jetzt(); } : null),
     });
   }
   useEffect(() => {
     const p = puffer.current!;
+    if (p.ziel() !== ziel) {
+      setT(p.wechsel(ziel, wert));
+      for (const z of [...fuer.current.keys()]) if (z !== ziel) fuer.current.delete(z);
+      return;
+    }
     if (wert.trim() === p.text().trim() && !p.offen()) return;
     setT(p.vonAussen(wert));
-  }, [wert]);
+  }, [wert, ziel]);
   useEffect(() => () => { const p = puffer.current; if (p) { p.jetzt(); p.stopp(); } regRef.current?.melde(id.current, null); }, []);
   return {
     t,
@@ -148,9 +158,10 @@ const zeile = { display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,1fr) aut
  * Ein Textfeld, das beim Tippen (entprellt) und beim Verlassen übernimmt (Enter auch, außer im Langtext). `pflicht`: leer wird nie übernommen — beim Verlassen
  * steht wieder der gespeicherte Text da. `gueltig`: nur passende Texte übernehmen (z. B. keine halbe Liste „a,“).
  */
-export function TextFeld({ wert, onWert, mehrzeilig, aus, platz, label, pflicht, gueltig, nurBeimVerlassen }: { wert: string; onWert: (v: string) => void; mehrzeilig?: boolean; aus?: boolean; platz?: string; label: string; pflicht?: boolean; gueltig?: (v: string) => boolean;
-  /** Nur beim Verlassen/Enter übernehmen (Felder außerhalb der Werkstatt, deren Übernahme z. B. eine Vorgabe zurückbringt). */ nurBeimVerlassen?: boolean }) {
-  const e = useTippen(wert, onWert, { gueltig: v => (!pflicht || !!v.trim()) && (!gueltig || gueltig(v)), nurBeimVerlassen });
+export function TextFeld({ wert, onWert, mehrzeilig, aus, platz, label, pflicht, gueltig, nurBeimVerlassen, ziel }: { wert: string; onWert: (v: string) => void; mehrzeilig?: boolean; aus?: boolean; platz?: string; label: string; pflicht?: boolean; gueltig?: (v: string) => boolean;
+  /** Nur beim Verlassen/Enter übernehmen (Felder außerhalb der Werkstatt, deren Übernahme z. B. eine Vorgabe zurückbringt). */ nurBeimVerlassen?: boolean;
+  /** Wem der Wert gehört (Kennung + Feld, `useTippen`) — Getipptes geht nur dorthin, auch wenn das Feld inzwischen einem anderen Knoten gehört. */ ziel?: string }) {
+  const e = useTippen(wert, onWert, { gueltig: v => (!pflicht || !!v.trim()) && (!gueltig || gueltig(v)), nurBeimVerlassen, ...(ziel !== undefined ? { ziel } : {}) });
   const fertig = () => { if (!e.fertig() && pflicht && !e.t.trim()) e.zuruecksetzen(); };
   return mehrzeilig
     ? <textarea aria-label={label} value={e.t} disabled={aus} placeholder={platz} onChange={ev => e.tippe(ev.target.value)} onBlur={fertig} rows={4} style={{ ...feld, resize: 'vertical', minHeight: 96 }} />
