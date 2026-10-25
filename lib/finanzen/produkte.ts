@@ -11,6 +11,7 @@ import type { Chance, CrmBestand, Leistung, Mandat } from '@/lib/crm/typen';
 import type { Baustein, BausteinEinheit, Rhythmus } from './szenarien';
 import { neuerBaustein, RHYTHMUS_LABEL } from './szenarien';
 import { planMonat } from './rechenkern';
+import { zusatzName } from '@/lib/crm/mandat-zusatz';
 import { preisBasisVon as kartenBasis, basisAusAltpreis, planBausteinAusProdukt, RHYTHMUS_AUS_BASIS as KARTE_RHYTHMUS, type PreisBasis as KartenPreisBasis } from '@/lib/crm/produkt-karte';
 
 export type PreisBasis = KartenPreisBasis;
@@ -122,25 +123,68 @@ export interface IstBasisVorschlag {
   /** Woher: aktives Mandat oder gewonnener Deal. */
   quelle: 'mandat' | 'deal'; quelleId: string; kunde: string; titel: string;
   produktId?: string; produkt?: string; betrag: number; rhythmus: Rhythmus; laufzeit: number | null; start: number; gesellschaft: Leistung['gesellschaft'] | 'offen';
+  /**
+   * Ein Teil neben dem Hauptpreis (25.10., Kern-Reste 3): ein Zusatzmodul des Mandats (`zusatz:<mz-…>`) bzw. der Einmal-Anteil eines gewonnenen Deals (`einmal`).
+   * Fehlt beim Hauptpreis. Ein eigener Preis-Teil des Produkts trägt kein `produktId` — das Produkt stünde sonst zweimal im Plan.
+   */
+  teil?: string;
+  /** Name des Bausteins für einen Teil („<Produkt> · Festpreis“) — sonst Produkt bzw. Titel. */
+  name?: string;
 }
-/** Aktive Mandate und gewonnene Deals mit Produkt — als Ist-Basis für Umsatzbausteine (lesend). */
+const monateZwischen = (von: string, bis: string) => Math.max(1, Math.round((Date.parse(bis) - Date.parse(von)) / (30.44 * 864e5)));
+/** Betrag und Rhythmus eines Zusatzmoduls im Plan — je Einheit bzw. Satz ohne geplante Menge nur nach Abrechnung (dann null), inklusive nie. */
+function zusatzImPlan(z: NonNullable<Mandat['zusatz']>[number]): { betrag: number; rhythmus: Rhythmus } | null {
+  const h = z.honorar;
+  if (z.inklusive || !h || !(h.betragCent > 0)) return null;
+  const satz = h.betragCent / 100;
+  switch (h.basis) {
+    case 'monat': return { betrag: satz, rhythmus: 'monatlich' };
+    case 'jahr': return { betrag: satz, rhythmus: 'jaehrlich' };
+    case 'einmalig': return { betrag: satz, rhythmus: 'einmalig' };
+    // Tages-/Stundensatz wie die Liquidität: Satz × geplante Menge je Monat.
+    case 'tag': return z.tageJeMonat ? { betrag: Math.round(satz * z.tageJeMonat * 100) / 100, rhythmus: 'monatlich' } : null;
+    case 'stunde': return z.stundenJeMonat ? { betrag: Math.round(satz * z.stundenJeMonat * 100) / 100, rhythmus: 'monatlich' } : null;
+    default: return null;
+  }
+}
+/**
+ * Aktive Mandate und gewonnene Deals mit Produkt — als Ist-Basis für Umsatzbausteine (lesend). Seit 25.10. (Kern-Reste 3) auch die Teile neben dem Hauptpreis:
+ * je Zusatzmodul ein Eintrag (eigene Preis-Teile „<Produkt> · <Teil>“, andere Produkte mit ihrem Produkt) und der Einmal-Anteil eines gewonnenen Deals
+ * (`wert.einmalBetrag`) — vorher fehlten beide in der Planung.
+ */
 export function istBasisVorschlaege(crm: Pick<CrmBestand, 'mandate' | 'chancen' | 'leistungen'>, heute: string): IstBasisVorschlag[] {
   const produkt = (id?: string) => (id ? crm.leistungen.find(l => l.id === id) : undefined);
   const startAus = (datum?: string) => (datum ? Math.max(1, planMonat(`${datum.slice(0, 7)}-01`)) : Math.max(1, planMonat(`${heute.slice(0, 7)}-01`)));
   const out: IstBasisVorschlag[] = [];
-  const mandate = crm.mandate.filter((m): m is Mandat => m.status === 'aktiv' && m.honorar.betrag > 0);
+  const mandate = crm.mandate.filter((m): m is Mandat => m.status === 'aktiv');
   for (const m of mandate) {
     const l = produkt(m.leistungId);
-    const laufzeit = m.ende && m.start ? Math.max(1, Math.round((Date.parse(m.ende) - Date.parse(m.start)) / (30.44 * 864e5))) : m.mindestlaufzeitMonate ?? l?.laufzeitMonate ?? null;
-    // Tagessatz mit geplanten Tagen (21.10., B4): Satz × Tage je Monat — sonst wie bisher.
-    const tage = m.honorar.basis === 'tag' && m.tageJeMonat ? m.tageJeMonat : 0;
-    const betrag = tage ? Math.round(m.honorar.betrag * tage * 100) / 100 : m.honorar.betrag;
-    out.push({ quelle: 'mandat', quelleId: m.id, kunde: m.kunde, titel: m.titel, produktId: l?.id, produkt: l?.name, betrag, rhythmus: m.honorar.basis === 'monat' || tage ? 'monatlich' : 'einmalig', laufzeit, start: startAus(m.start), gesellschaft: m.gesellschaft });
+    const laufzeit = m.ende && m.start ? monateZwischen(m.start, m.ende) : m.mindestlaufzeitMonate ?? l?.laufzeitMonate ?? null;
+    if (m.honorar.betrag > 0) {
+      // Tagessatz mit geplanten Tagen (21.10., B4): Satz × Tage je Monat — sonst wie bisher.
+      const tage = m.honorar.basis === 'tag' && m.tageJeMonat ? m.tageJeMonat : 0;
+      const betrag = tage ? Math.round(m.honorar.betrag * tage * 100) / 100 : m.honorar.betrag;
+      out.push({ quelle: 'mandat', quelleId: m.id, kunde: m.kunde, titel: m.titel, produktId: l?.id, produkt: l?.name, betrag, rhythmus: m.honorar.basis === 'monat' || tage ? 'monatlich' : 'einmalig', laufzeit, start: startAus(m.start), gesellschaft: m.gesellschaft });
+    }
+    for (const z of m.zusatz ?? []) {
+      const p = zusatzImPlan(z);
+      if (!p) continue;
+      const zl = z.preisTeilId ? undefined : produkt(z.leistungId);
+      const ab = z.ab ?? m.start;
+      const zLaufzeit = z.bis && ab ? monateZwischen(ab, z.bis) : laufzeit;
+      out.push({
+        quelle: 'mandat', quelleId: m.id, teil: `zusatz:${z.id}`, name: zusatzName(z, crm.leistungen), kunde: m.kunde, titel: m.titel, ...(zl ? { produktId: zl.id, produkt: zl.name } : {}),
+        betrag: p.betrag, rhythmus: p.rhythmus, laufzeit: p.rhythmus === 'einmalig' ? null : zLaufzeit, start: startAus(ab), gesellschaft: m.gesellschaft,
+      });
+    }
   }
-  const gewonnen = crm.chancen.filter((c): c is Chance => c.stufe === 'gewonnen' && c.wert.betrag > 0 && !crm.mandate.some(m => m.chanceId === c.id));
+  const einmalVon = (c: Chance) => (typeof c.wert.einmalBetrag === 'number' && c.wert.einmalBetrag > 0 ? c.wert.einmalBetrag : 0);
+  const gewonnen = crm.chancen.filter((c): c is Chance => c.stufe === 'gewonnen' && (c.wert.betrag > 0 || einmalVon(c) > 0) && !crm.mandate.some(m => m.chanceId === c.id));
   for (const c of gewonnen) {
     const l = produkt(c.leistungId);
-    out.push({ quelle: 'deal', quelleId: c.id, kunde: c.firma ?? c.titel, titel: c.titel, produktId: l?.id, produkt: l?.name, betrag: c.wert.betrag, rhythmus: c.wert.basis === 'monat' ? 'monatlich' : c.wert.basis === 'jahr' ? 'jaehrlich' : 'einmalig', laufzeit: c.wert.laufzeitMonate ?? l?.laufzeitMonate ?? null, start: startAus(), gesellschaft: c.gesellschaft });
+    if (c.wert.betrag > 0) out.push({ quelle: 'deal', quelleId: c.id, kunde: c.firma ?? c.titel, titel: c.titel, produktId: l?.id, produkt: l?.name, betrag: c.wert.betrag, rhythmus: c.wert.basis === 'monat' ? 'monatlich' : c.wert.basis === 'jahr' ? 'jaehrlich' : 'einmalig', laufzeit: c.wert.laufzeitMonate ?? l?.laufzeitMonate ?? null, start: startAus(), gesellschaft: c.gesellschaft });
+    const einmal = einmalVon(c);
+    if (einmal) out.push({ quelle: 'deal', quelleId: c.id, teil: 'einmal', name: `${l?.name ?? c.titel} · einmalig`, kunde: c.firma ?? c.titel, titel: c.titel, betrag: einmal, rhythmus: 'einmalig', laufzeit: null, start: startAus(), gesellschaft: c.gesellschaft });
   }
   return out;
 }

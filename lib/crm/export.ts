@@ -27,6 +27,7 @@ import { stationenVon, personenDerFirma, STATION_ART_LABEL } from './stationen';
 import { emailsVon, EMAIL_ART_LABEL } from './emails';
 import { typenVon, kategorienVon, labelsVon } from './mehrfach';
 import { nachweisVollstaendig } from './einwilligung';
+import { zusatzBeschreibung, zusatzName } from './mandat-zusatz';
 export const EXPORTE = ['kontakte', 'firmen', 'deals', 'followups', 'mandate'] as const;
 export type ExportArt = typeof EXPORTE[number];
 export const istExportArt = (v: unknown): v is ExportArt => typeof v === 'string' && (EXPORTE as readonly string[]).includes(v);
@@ -139,6 +140,8 @@ const DEAL_SPALTEN: Spalte<DealZeile>[] = [
   ['QUELLE', z => z.c.quelle], ['GESELLSCHAFT', z => z.c.gesellschaft], ['BESITZER', z => z.c.besitzer],
   ['NAECHSTER_SCHRITT_DATUM', z => z.c.naechsterSchritt?.datum], ['NAECHSTER_SCHRITT', z => z.c.naechsterSchritt?.text], ['ERWARTET_AM', z => z.c.erwartetAm],
   ['GRUND', z => z.c.grund], ['WIEDERVORLAGE', z => z.c.wiedervorlage], ['LETZTE_AKTIVITAET', z => tagISO(z.c.letzteAktivitaet)], ['ANGELEGT', z => tagISO(z.c.angelegt)], ['GEAENDERT', z => tagISO(z.c.geaendert)],
+  // 25.10. (Kern-Reste 3): der Einmal-Anteil eines gemischten Auftrags (`wert.einmalBetrag`, netto €) — am Ende angehängt, keine Spalte verschoben.
+  ['WERT_EINMALIG', z => zahlDE(z.c.wert.einmalBetrag)],
 ];
 export function dealsCsv(q: ExportQuelle): string {
   const kontakte = nachId(q.kontakte);
@@ -175,7 +178,7 @@ export function followupsCsv(q: ExportQuelle): string {
 }
 
 // ── Mandate ─────────────────────────────────────────────────────────────────
-type MandatZeile = { m: Mandat; firma?: Firma; personen: string };
+type MandatZeile = { m: Mandat; firma?: Firma; personen: string; katalog: CrmBestand['leistungen'] };
 const MANDAT_SPALTEN: Spalte<MandatZeile>[] = [
   ['ID', z => z.m.id], ['KUNDE', z => z.firma?.name ?? z.m.kunde], ['FIRMA_ID', z => z.firma?.id ?? z.m.firmaId], ['TITEL', z => z.m.titel], ['PERSONEN', z => z.personen],
   ['ART', z => z.m.art], ['STATUS', z => z.m.status], ['PHASE', z => z.m.phase], ['GESELLSCHAFT', z => z.m.gesellschaft], ['ZUSTAENDIG', z => z.m.zustaendig],
@@ -184,10 +187,12 @@ const MANDAT_SPALTEN: Spalte<MandatZeile>[] = [
   ['RECHNUNGSRHYTHMUS', z => z.m.rechnungsrhythmus], ['ZAHLUNGSZIEL_TAGE', z => z.m.zahlungszielTage], ['VERTRAG_UNTERSCHRIEBEN', z => z.m.vertragUnterschrieben], ['NAECHSTES_REVIEW', z => z.m.naechstesReview],
   ['HEALTH_BETEILIGUNG', z => z.m.health.beteiligung], ['HEALTH_UMSETZUNG', z => z.m.health.umsetzung], ['HEALTH_WIRKUNG', z => z.m.health.wirkung], ['HEALTH_ZAHLUNG', z => z.m.health.zahlung], ['HEALTH_STIMMUNG', z => z.m.health.stimmung],
   ['OFFENE_PUNKTE', z => z.m.offen.length], ['DEAL_ID', z => z.m.chanceId], ['QUELLE', z => z.m.quelle], ['GEAENDERT', z => tagISO(z.m.geaendert)],
+  // 25.10. (Kern-Reste 3): die Zusatzmodule (auch die eigenen Preis-Teile des Produkts, „<Produkt> · <Teil>“) — am Ende angehängt, keine Spalte verschoben.
+  ['ZUSATZMODULE', z => (z.m.zusatz ?? []).map(x => `${zusatzName(x, z.katalog)} — ${zusatzBeschreibung(x, z.katalog)}`).join(' · ')],
 ];
 export function mandateCsv(q: ExportQuelle): string {
   const kontakte = nachId(q.kontakte);
-  return csvTabelle(MANDAT_SPALTEN, q.crm.mandate.map(m => ({ m, firma: firmaVonMandat(m, q.crm.firmen), personen: personenNamen(m.kontaktIds, kontakte) })));
+  return csvTabelle(MANDAT_SPALTEN, q.crm.mandate.map(m => ({ m, firma: firmaVonMandat(m, q.crm.firmen), personen: personenNamen(m.kontaktIds, kontakte), katalog: q.crm.leistungen ?? [] })));
 }
 
 /** Die eine Einstiegsfunktion für die Route. */

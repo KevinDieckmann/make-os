@@ -237,10 +237,10 @@ export function Baukasten() {
                   <div style={{ ...MIKRO, marginTop: 12, marginBottom: 6 }}>Ist-Basis: aktive Mandate und gewonnene Deals</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {vorschlaege.istBasis.map(v => (
-                      <button key={`${v.quelle}-${v.quelleId}`} type="button" title={`${v.quelle === 'mandat' ? 'Mandat' : 'Gewonnener Deal'} · ${v.titel}${v.produkt ? ` · ${v.produkt}` : ' · ohne Produkt'}`}
+                      <button key={`${v.quelle}-${v.quelleId}-${v.teil ?? 'haupt'}`} type="button" title={`${v.quelle === 'mandat' ? 'Mandat' : 'Gewonnener Deal'} · ${v.titel}${v.name ? ` · ${v.name}` : v.produkt ? ` · ${v.produkt}` : ' · ohne Produkt'}`}
                         onClick={() => void bausteinDazu(istBaustein(v), `Umsatz aus ${v.quelle === 'mandat' ? 'Mandat' : 'Deal'} ${v.kunde}`)}
                         style={{ fontSize: TYP.bedien, fontWeight: 600, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: SCHRIFT.text, border: `1px solid ${LEUCHT.geld}55`, background: 'transparent', color: C.ink }}>
-                        + {v.kunde} · {eur(v.betrag)} € {RHYTHMUS_LABEL[v.rhythmus]}
+                        + {v.kunde}{v.teil && v.name ? ` · ${v.name}` : ''} · {eur(v.betrag)} € {RHYTHMUS_LABEL[v.rhythmus]}
                       </button>
                     ))}
                   </div>
@@ -354,9 +354,9 @@ export function Baukasten() {
   );
 }
 
-/** Umsatzbaustein aus einem Mandat oder gewonnenen Deal. */
+/** Umsatzbaustein aus einem Mandat oder gewonnenen Deal — auch je Zusatzmodul bzw. Einmal-Anteil (`teil`, 25.10.). */
 function istBaustein(v: IstBasisVorschlag): Baustein {
-  return neuerBaustein(neueKennung('b'), { art: 'umsatz', einheit: einheitAusGesellschaft(v.gesellschaft), name: v.produkt ?? v.titel, kunde: v.kunde, produkt: v.produkt, produktId: v.produktId, preis: v.betrag, menge: 1, rhythmus: v.rhythmus, start: v.start, ...(v.laufzeit && v.rhythmus !== 'einmalig' ? { laufzeit: v.laufzeit } : {}), notiz: `${v.quelle === 'mandat' ? 'Mandat' : 'Deal'} ${v.quelleId}` });
+  return neuerBaustein(neueKennung('b'), { art: 'umsatz', einheit: einheitAusGesellschaft(v.gesellschaft), name: v.name ?? v.produkt ?? v.titel, kunde: v.kunde, produkt: v.produkt, produktId: v.produktId, preis: v.betrag, menge: 1, rhythmus: v.rhythmus, start: v.start, ...(v.laufzeit && v.rhythmus !== 'einmalig' ? { laufzeit: v.laufzeit } : {}), notiz: `${v.quelle === 'mandat' ? 'Mandat' : 'Deal'} ${v.quelleId}${v.teil ? ` · ${v.teil}` : ''}` });
 }
 
 function NeuDialog({ neu, setNeu, treiber, onOk }: { neu: { name: string; basis: string }; setNeu: (v: { name: string; basis: string } | null) => void; treiber: { id: string; name: string }[]; onOk: () => void }) {
