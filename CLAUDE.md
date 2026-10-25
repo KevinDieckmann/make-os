@@ -1701,6 +1701,13 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Ablaufs an (`ProduktAblauf.tsx`, Hinweis „läuft im Schatten“ mit Weg in die Werkstatt). Werkstatt: offene Eingaben tragen ihr Ziel (`zielPuffer`, `useTippen
   ziel`), Panel ändert per `knotenAendern` nur sein Feld am aktuellen Knoten, Name ↔ Titel (`nameSetzen`/`titelSetzen`), „+ erster Schritt“ in leeren Phasen
   (`data-ws-plus-phase`). Tests `tests/kern-fall-{ablauf,werkstatt,kunde}.test.ts`.
+  **Kern-Reste (25.10., Branch `kern-rest`):** ein Mandat aus Deal/Angebot/Produkt entsteht NUR über `lib/crm/mandat-aus-deal.ts` (Route `/api/crm/lead` aktion
+  „mandat“; Vorschau liefert `namen` für Produkt/Zusatzmodule) — wo ein Mensch klickt, öffnet `useMandatAnlegen` (auch Fulfillment › Heute, ohne CRM im Browser:
+  `useMandatAnlegen(null)`); ZOE `mandat_anlegen` nimmt `start` aus dem Vorschlag, sonst `startVorschlag` beim Klick; „+ Mandat“ (`mandatEntwurf`) hat ein Feld
+  Start (Vorgabe Folgemonat, ohne Angabe heute). Wächter `tests/mandat-ein-aufbau.test.ts` (neue Anlege-Stelle → dort mit Grund). Ein PAKET-Fall stößt die
+  Produkt-Läufe auf Klick ebenso an (`fallStartenOderAnhaengen(…, { laeufeAnstossen: true })`, nur aus der Route — nie im Motor). Ist-Basis der Planung
+  (`istBasisVorschlaege`) je Zusatzmodul und Einmal-Anteil ein Eintrag (`teil`, `name`; eigene Preis-Teile ohne `produktId`); CSV-Export Deals `WERT_EINMALIG`,
+  Mandate `ZUSATZMODULE` (am Ende). Fall-Kopf intern NUR `fallKopf` (lib/fulfillment/kunde/kopf.ts). Tests `tests/kern-{lauf-anstoss,einmal-anteil}.test.ts`.
 - **Lauf-Motor** (`lib/prozesse/lauf-server.ts`; rein und browser-sicher `lauf-regeln.ts`/`lauf-typen.ts` — Wächter `tests/prozesse-lauf-client.test.ts`:
   kein Server-Code in Modulen, die `components/os/prozesse/*` lädt; `next build` merkt es, tsc/vitest nicht): Bestand `prozess-laeufe--<haushalt>` (nur
   Kennungen/Status, 12 Monate), Wirkung = Kennung `<lauf>-<schritt>`, Flut-/Schleifenschutz (Herkunft, Tiefe 3), Warten mit Ablauf, Notbremse, HOI-Befund.
