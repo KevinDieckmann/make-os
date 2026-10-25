@@ -13,7 +13,7 @@ import { Fenster } from '../Fenster';
 import { WEG } from '@/lib/wege';
 import { neueKennung } from '@/lib/kennung';
 import { PROZESS_BEREICHE, FALL_ARTEN, PROZESS_TEXT, type FallArt, type ProzessBereich } from '@/lib/prozesse/definition';
-import { PRODUKT_BEREICHE } from '@/lib/prozesse/produkt-bindung';
+import { PRODUKT_BEREICHE, produktProzessTitel } from '@/lib/prozesse/produkt-bindung';
 import { useKatalog, useWerkstattListe, werkstattSenden } from './werkstatt-daten';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.45 } as const;
@@ -21,12 +21,12 @@ const STATUS_WORT: Readonly<Record<string, string>> = { entwurf: 'Entwurf', prob
 
 /**
  * Der Dialog „Neuer Prozess“: Name, Bereich, Fall-Art, Eigner, Beschreibung → anlegen → in die Werkstatt. `fuerProdukt` (22.10., Prozesse × Fulfillment — von der
- * Produktkarte „Prozess für dieses Produkt anlegen“): Name = Produkt, Bereich nur Fulfillment · Übergabe · Ausbau, ein Lauf hängt immer am Mandat.
+ * Produktkarte „Prozess für dieses Produkt anlegen“): Name = „<Produkt> umsetzen“ (`produktProzessTitel`), Bereich nur Fulfillment · Übergabe · Ausbau, ein Lauf hängt immer am Mandat.
  */
 export function NeuerProzessFenster({ onZu, onAngelegt, bereichVorgabe, fuerProdukt }: { onZu: () => void; onAngelegt: (id: string) => Promise<void> | void; bereichVorgabe?: ProzessBereich; fuerProdukt?: { name: string } }) {
   const kat = useKatalog();
   const team = (kat.daten?.auswahl?.['team-person'] ?? []).filter(t => !t.id.startsWith('rolle:'));
-  const [titel, setTitel] = useState(fuerProdukt?.name.slice(0, PROZESS_TEXT.titel) ?? '');
+  const [titel, setTitel] = useState(fuerProdukt ? produktProzessTitel(fuerProdukt.name, PROZESS_TEXT.titel) : '');
   const [bereich, setBereich] = useState<ProzessBereich>(fuerProdukt ? 'fulfillment' : bereichVorgabe ?? 'sales');
   const [fallArt, setFallArt] = useState<FallArt>(fuerProdukt ? 'mandat' : 'lead');
   const bereiche = fuerProdukt ? PROZESS_BEREICHE.filter(b => PRODUKT_BEREICHE.includes(b.id)) : PROZESS_BEREICHE;

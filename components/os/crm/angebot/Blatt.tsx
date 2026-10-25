@@ -47,7 +47,8 @@ export function Blatt({ d, logoUrl }: { d: AngebotDokument; logoUrl?: string | n
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
           <thead>
             <tr style={{ color: LEISE, fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
-              <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}`, width: 30 }}>Pos.</th>
+              {/* 25.10. (Kern-Bau-Test 2): „Pos.“ brach in der Spalte um („Pos“ / „.“) — breit genug und ohne Umbruch. */}
+              <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}`, width: 38, whiteSpace: 'nowrap' }}>Pos.</th>
               <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}` }}>Leistung</th>
               <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}`, ...rechts }}>Menge</th>
               <th style={{ padding: '6px 4px', borderBottom: `1px solid ${LINIE}`, ...rechts }}>Einzelpreis</th>

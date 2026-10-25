@@ -21,6 +21,16 @@ import type { ProzessLauf } from './lauf-typen';
 /** In welchen Bereichen ein Prozess für ein Produkt stehen darf: dort, wo ein Mandat geliefert wird (Fliege rechts vom Knoten). */
 export const PRODUKT_BEREICHE: readonly ProzessBereich[] = ['fulfillment', 'uebergabe', 'ausbau'];
 
+/**
+ * Vorbelegung des Namens im Dialog „Prozess für dieses Produkt“ (25.10., Kern-Bau-Test 2: das Feld verlangt „Verb + Gegenstand“, vorbelegt war nur der Produktname):
+ * „<Produkt> umsetzen“ — der Produktname wird gekürzt, nie das Verb (`max` = Grenze des Namens).
+ */
+export function produktProzessTitel(produkt: string, max: number): string {
+  const verb = ' umsetzen';
+  const name = produkt.trim().slice(0, Math.max(0, max - verb.length)).trim();
+  return name ? `${name}${verb}` : '';
+}
+
 /** Darf dieser Prozess der Werkstatt einem Produkt zugeordnet werden? (Fall-Art Mandat, passender Bereich, nicht archiviert.) */
 export function fuerProduktWaehlbar(p: { quelle: 'werkstatt' | 'fulfillment'; fallArt: FallArt; bereich: ProzessBereich; status: ProzessStatus | null }): boolean {
   return p.quelle === 'werkstatt' && p.fallArt === 'mandat' && PRODUKT_BEREICHE.includes(p.bereich) && p.status !== 'archiviert';

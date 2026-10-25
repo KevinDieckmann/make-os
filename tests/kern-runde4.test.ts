@@ -405,3 +405,24 @@ describe('13 · Nach dem Veröffentlichen ist „Im Schatten laufen“ die Haupt
   });
 });
 
+// ── 14 · Kleinigkeiten ──
+import { produktProzessTitel } from '@/lib/prozesse/produkt-bindung';
+import { neuerProzess, werkstattAnwenden } from '@/lib/prozesse/bestand';
+describe('14 · Prozess-Name mit Verb, Eigner aus dem Anlege-Dialog, „Pos.“ ohne Umbruch', () => {
+  it('Vorbelegung „<Produkt> umsetzen“ — gekürzt wird der Name, nie das Verb', () => {
+    expect(produktProzessTitel('Wachstumspaket', 80)).toBe('Wachstumspaket umsetzen');
+    expect(produktProzessTitel('x'.repeat(100), 30)).toBe(`${'x'.repeat(21)} umsetzen`);
+    expect(quelle('components/os/prozesse/WerkstattUebersicht.tsx')).toMatch(/produktProzessTitel\(fuerProdukt\.name, PROZESS_TEXT\.titel\)/);
+  });
+  it('der im Dialog gewählte Eigner steht im Steckbrief (Schreibweg „anlegen“) — der Befund des Bau-Tests war die Bedienung des Auswahlfelds im Test-Browser', () => {
+    let n = 0;
+    const kx = { person: 'kevin', jetzt: J, rechte: { sehen: true, entwurf: true, veroeffentlichen: true, status: true, webhook: true }, standVon: (e: { entwurfAm?: string }) => `s-${e.entwurfAm}-${n}`, neueKennung: (p: 'pz' | 'fk') => `${p}-r4-${++n}` } as unknown as Parameters<typeof werkstattAnwenden>[2];
+    const r = werkstattAnwenden({ v: 1, prozesse: [] }, { aktion: 'anlegen', titel: 'Wachstumspaket umsetzen', bereich: 'fulfillment', fallArt: 'mandat', eigner: 'konto-lena' }, kx);
+    expect(r.ok && r.eintrag.entwurf.eigner).toBe('konto-lena');
+    expect(quelle('components/os/prozesse/WerkstattUebersicht.tsx')).toMatch(/\.\.\.\(eigner \? \{ eigner \} : \{\}\)/);
+    expect(neuerProzess({ id: 'pz-x', titel: 'X', bereich: 'fulfillment', fallArt: 'mandat', eigner: 'konto-jonas', von: 'kevin', jetzt: J, kennung: () => `fk-${++n}` }).entwurf.eigner).toBe('konto-jonas');
+  });
+  it('„Pos.“ bricht nicht um', () => {
+    expect(quelle('components/os/crm/angebot/Blatt.tsx')).toMatch(/width: 38, whiteSpace: 'nowrap' \}\}>Pos\.<\/th>/);
+  });
+});
