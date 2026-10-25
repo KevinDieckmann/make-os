@@ -34,7 +34,7 @@ import { FACH_AGENTEN } from '@/lib/prozesse/agent-schritt';
 import { alleSchritte, phasen, wurzel } from '@/lib/prozesse/fluss';
 import type { AgentWer, Befund, KnotenLage, ProzessDefinition, ProzessForm, ProzessKnoten, ProzessVersion } from '@/lib/prozesse/definition';
 import {
-  werkstattLage, lagenFesthalten, ordnen, zettelFreiLegen, kachelnFuerAlles, ortBei, inBahn, bahnSchluessel, knotenMass, WS, einfuegeLagen, ausgangName, type TeamName, type KanteLage,
+  werkstattLage, teamAusAuswahl, lagenFesthalten, ordnen, zettelFreiLegen, kachelnFuerAlles, ortBei, inBahn, bahnSchluessel, knotenMass, WS, einfuegeLagen, ausgangName, type TeamName, type KanteLage,
 } from '@/lib/prozesse/werkstatt-lage';
 import {
   anlegen, verbinden, loesen, loeschen, ersetzen, knotenAendern, umbenennen as umbenennen_, lageSetzen, inPhase, pfeilText, phaseNeu, phaseLoeschen, teilprozessBilden, zettelNeu, zettelAendern, zettelWeg,
@@ -121,7 +121,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const kat = useKatalog();
   const auswahlListen = useMemo(() => kat.daten?.auswahl ?? {}, [kat.daten]);
   const modelle = useMemo(() => kat.daten?.modelle ?? [], [kat.daten]);
-  const team = useMemo<TeamName[]>(() => (auswahlListen['team-person'] ?? []).filter(t => !t.id.startsWith('rolle:')).map(t => ({ id: t.id, name: t.label })), [auswahlListen]);
+  const team = useMemo<TeamName[]>(() => teamAusAuswahl(auswahlListen['team-person']), [auswahlListen]);
 
   const [eintrag, setEintrag] = useState<EintragAnsicht | null>(null);
   const [fassung, setFassungRoh] = useState<Fassung | null>(null);

@@ -27,7 +27,7 @@ import { maskeWerte, maskeAnwenden, formWort, nameSetzen, titelSetzen, amMandatS
 import { schleifenElementFall, teilprozessOptionen } from '@/lib/prozesse/teilprozess-neu';
 import { feldWerte } from '@/lib/prozesse/feld-werte';
 import { tageOptionen } from '@/lib/prozesse/zeitplan-tage';
-import { ausgaengeVon, ausgangName, type KanteLage } from '@/lib/prozesse/werkstatt-lage';
+import { ausgaengeVon, ausgangName, teamAusAuswahl, type KanteLage } from '@/lib/prozesse/werkstatt-lage';
 import { ausgangsWahl, ausgangWahlAus, type AusgangWahl } from '@/lib/prozesse/werkstatt-aktionen';
 import { PROBE_NAME, PROBE_BEDEUTUNG, centText, type ProbeSchritt, type Rat } from '@/lib/prozesse/werkstatt-hinweise';
 import { EINORDNUNG } from '@/lib/werkzeuge/einordnung';
@@ -354,9 +354,10 @@ function KnotenPanel(p: PanelProps & { k: K }) {
           <div style={{ ...MIKRO }}>Ausgänge</div>
           {ausgaenge.map(a => {
             const kante = p.kanten.find(x => x.von === k.id && (x.ausgang === a || (a === 'weiter' && x.ausgang === 'ja' && k.form !== 'entscheidung')));
-            const wahl = ausgangsWahl(d, k.id, a);
+            const wahl = ausgangsWahl(d, k.id, a, { team: teamAusAuswahl(p.auswahl['team-person']) });
             return (
-              <div key={a} style={{ display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,0.8fr) minmax(0,1.2fr)', alignItems: 'center' }}>
+              // Runde 4 (Bau-Test 3: das Ziel war im schmalen Feld abgeschnitten): der Name des Ausgangs steht über der Auswahl, die Auswahl nimmt die volle Breite.
+              <div key={a} style={{ display: 'grid', gap: 6, gridTemplateColumns: 'minmax(0,1fr)' }}>
                 <span style={{ fontSize: TYP.bedien, color: a === 'fehler' ? LEUCHT.kritisch : C.inkDim }}>{ausgangName(k.form ?? 'schritt', a)}</span>
                 <select aria-label={`Ausgang ${ausgangName(k.form ?? 'schritt', a)}`} value={wahl.wert} disabled={!p.onAusgang}
                   onChange={ev => p.onAusgang?.(k.id, a, ausgangWahlAus(ev.target.value))} style={{ ...auswahlStil, width: '100%' }}>

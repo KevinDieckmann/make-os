@@ -258,7 +258,8 @@ describe('(6) Ausgang-Menü: aufgelöstes Ziel, „(folgt im Ablauf)“, keine d
           const labels = w.optionen.map(o => o.label);
           expect(new Set(labels).size, `${name} ${k.titel} ${a}: ${labels.join(' | ')}`).toBe(labels.length);
           const n = w.optionen.find(o => o.wert === AUSGANG_NAECHSTER);
-          if (n) expect(n.label, `${name} ${k.titel}`).toMatch(/\(folgt im Ablauf( · Bahn (Mensch|System|Agent|Kunde))?\)$/);
+          // Runde 4: die Bahn so benannt wie auf der Fläche (in „…“).
+          if (n) expect(n.label, `${name} ${k.titel}`).toMatch(/\(folgt im Ablauf( · Bahn „[^“]+“)?\)$/);
           expect(labels.some(l => /der nächste Schritt/.test(l))).toBe(false);
         }
       }
@@ -278,13 +279,13 @@ describe('(6) Ausgang-Menü: aufgelöstes Ziel, „(folgt im Ablauf)“, keine d
     const gewaehlt = cockpit.optionen.find(o => o.wert === cockpit.wert)!;
     // Ob implizit oder ausdrücklich: die gewählte Option nennt „Kick-off Cockpit“.
     expect(ziel).toBe(kick.id);
-    expect(gewaehlt.label).toMatch(/„Kick-off Cockpit“/);
+    expect(gewaehlt.label).toMatch(/^Kick-off Cockpit/);
     // Die Sonst-Aufgabe (Bahn Mensch) endet ausdrücklich; der Strang dahinter steht mit Namen und — liegt er in einer anderen Bahn — mit der Bahn da.
     const so = r('Sonst: von Hand prüfen');
     const sonst = ausgangsWahl(f, so.id, 'weiter');
-    expect(sonst.optionen.find(o => o.wert === sonst.wert)!.label).toBe('— Lauf endet —');
+    expect(sonst.optionen.find(o => o.wert === sonst.wert)!.label).toBe('Lauf endet');
     const implizit = sonst.optionen.find(o => o.wert === AUSGANG_NAECHSTER)!.label;
-    expect(implizit).toMatch(/\(folgt im Ablauf( · Bahn (Mensch|System|Agent|Kunde))?\)$/);
+    expect(implizit).toMatch(/\(folgt im Ablauf( · Bahn „[^“]+“)?\)$/);
     expect(implizit).not.toMatch(/der nächste Schritt/);
   });
   it('gleiche Namen: andere Phase bzw. Bahn dazu, sonst „· 2“', () => {
@@ -295,18 +296,19 @@ describe('(6) Ausgang-Menü: aufgelöstes Ziel, „(folgt im Ablauf)“, keine d
     const c = { ...neuerKnoten(katalogEintrag('aufgabe.anlegen')!, kennung(), 'Prüfen'), bahn: 'system' as const };
     let f = gut(anlegen({ knoten: e.entwurf.knoten }, a, { nach: start.id, ausgang: 'weiter' }));
     f = gut(anlegen(f, b, { nach: a.id, ausgang: 'weiter' }));
-    expect([...zielNamen(f, [a.id, b.id]).values()]).toEqual(['„Prüfen“ · Mensch', '„Prüfen“ · System']);
+    expect([...zielNamen(f, [a.id, b.id]).values()]).toEqual(['Prüfen · Mensch (offen)', 'Prüfen · System · Regeln']);
     f = gut(anlegen(f, c, { nach: b.id, ausgang: 'weiter' }));
-    expect([...zielNamen(f, [b.id, c.id]).values()]).toEqual(['„Prüfen“', '„Prüfen“ · 2']);
-    expect([...zielNamen(f, [a.id, b.id, c.id]).values()]).toEqual(['„Prüfen“ · Mensch', '„Prüfen“ · System', '„Prüfen“ · System · 2']);
+    expect([...zielNamen(f, [b.id, c.id]).values()]).toEqual(['Prüfen', 'Prüfen · 2']);
+    expect([...zielNamen(f, [a.id, b.id, c.id]).values()]).toEqual(['Prüfen · Mensch (offen)', 'Prüfen · System · Regeln', 'Prüfen · System · Regeln · 2']);
     const m = mehrfachZiele(f, start.id);
-    expect(m[0].label).toBe('„Prüfen“ · Mensch (folgt im Ablauf)');
+    expect(m[0].label).toBe('Prüfen · Mensch (offen) (folgt im Ablauf)');
     // Der Strang hinter „Prüfen“ (Mensch) liegt in der Bahn System — das steht dabei.
     const w = ausgangsWahl(f, a.id, 'weiter');
-    expect(w.optionen.find(o => o.wert === AUSGANG_NAECHSTER)!.label).toBe('„Prüfen“ (folgt im Ablauf · Bahn System)');
-    expect(w.optionen.map(o => o.label)).toEqual(['„Prüfen“ (folgt im Ablauf · Bahn System)', '„Prüfen“', '„Prüfen“ · 2', '— Lauf endet —']);
+    expect(w.optionen.find(o => o.wert === AUSGANG_NAECHSTER)!.label).toBe('Prüfen (folgt im Ablauf · Bahn „System · Regeln“)');
+    // Runde 4: jedes Ziel genau einmal — das Ziel des Strangs steht nicht noch einmal ausdrücklich da.
+    expect(w.optionen.map(o => o.label)).toEqual(['Prüfen (folgt im Ablauf · Bahn „System · Regeln“)', 'Prüfen · 2', 'Lauf endet']);
     expect(new Set(m.map(x => x.label)).size).toBe(m.length);
-    expect(lies('components/os/prozesse/WerkstattMehrfach.tsx')).toContain('mehrfachZiele(d, nach)');
+    expect(lies('components/os/prozesse/WerkstattMehrfach.tsx')).toContain('mehrfachZiele(d, nach,');
   });
 });
 

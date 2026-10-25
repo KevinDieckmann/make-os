@@ -17,6 +17,7 @@ import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
 import { feldTitelVon } from '@/lib/prozesse/ausloeser';
 import { feldWerte } from '@/lib/prozesse/feld-werte';
 import { MEHRFACH_MAX, mehrfachZiele, type MehrfachFall } from '@/lib/prozesse/werkstatt-aktionen';
+import { teamAusAuswahl } from '@/lib/prozesse/werkstatt-lage';
 import type { Auswahl } from './werkstatt-daten';
 import { Fenster } from '../Fenster';
 import { MaskenEingabe } from './WerkstattMaske';
@@ -33,8 +34,9 @@ export function MehrfachFenster({ d, nach, auswahl, onAnlegen, onZu }: {
   const felder = useMemo(() => rautenFelder(d).map(id => ({ id, label: feldTitelVon(id) })), [d]);
   // Wie im Panel: Felder mit Werteliste bekommen eine Auswahl (Name sichtbar, Kennung gespeichert).
   const werteVon = (feldId: string) => feldWerte(feldId, auswahl, d);
-  // Runde 3: „weiter im Ablauf“ nennt sein aufgelöstes Ziel („folgt im Ablauf“), gleiche Namen werden unterschieden — dieselbe Regel wie im Panel.
-  const ziele = useMemo(() => mehrfachZiele(d, nach), [d, nach]);
+  // Runde 3: „weiter im Ablauf“ nennt sein aufgelöstes Ziel („folgt im Ablauf“), gleiche Namen werden unterschieden — dieselbe Regel wie im Panel; Runde 4: jedes
+  // Ziel genau einmal, Bahnen so benannt wie auf der Fläche.
+  const ziele = useMemo(() => mehrfachZiele(d, nach, { team: teamAusAuswahl(auswahl['team-person']) }), [d, nach, auswahl]);
   const setze = (i: number, t: Partial<MehrfachFall>) => setFaelle(l => l.map((x, j) => (j === i ? { ...x, ...t } : x)));
   const { bestaetigen, dialog } = useRueckfrage();
   // Etwas eingegeben? Dann fragt Schließen erst (Klick daneben, Esc, ×, Abbrechen).

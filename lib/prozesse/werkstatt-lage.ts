@@ -65,6 +65,9 @@ export const WS = {
 /** Eine Bahn: `kunde` · `person:<Team-Kennung>` · `mensch` (ohne Person) · `system` · `agent`. */
 export type BahnSchluessel = 'kunde' | 'mensch' | 'system' | 'agent' | `person:${string}`;
 export interface TeamName { id: string; name: string }
+/** Das Team für die Bahnen aus der Auswahlliste „team-person“ (Rollen wie „Zuständig im Fall“ sind keine Bahn) — EINE Regel für Fläche, Panel und Auswahl. */
+export const teamAusAuswahl = (liste: readonly { id: string; label: string }[] | undefined): TeamName[] =>
+  (liste ?? []).filter(t => !t.id.startsWith('rolle:')).map(t => ({ id: t.id, name: t.label }));
 
 /** Die Bahn eines Knotens (Feld `bahn`, sonst die des Bausteins, sonst aus der Form). */
 export function bahnVon(k: Pick<K, 'bahn' | 'katalog' | 'form'>): Bahn {

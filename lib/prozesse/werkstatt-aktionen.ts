@@ -18,7 +18,7 @@
 
 import { PROZESS_TEXT, type Befund, type KnotenLage, type NotizZettel, type ProzessForm, type ProzessKnoten, type Zweige } from './definition';
 import { alleSchritte, ausgangsZiele, flussPruefen, kinder, phasen, schritteDer, seitenZiele, wurzel, type Ausgang } from './fluss';
-import { bahnVon } from './werkstatt-lage';
+import { bahnSchluessel, bahnTitel, type TeamName } from './werkstatt-lage';
 import { katalogEintrag } from './baustein-katalog';
 import { nameSetzen } from './werkstatt-maske';
 
@@ -333,12 +333,17 @@ export function ausgangSetzen(f: Fassung, von: string, ausgang: Ausgang, w: Ausg
 export const AUSGANG_NAECHSTER = '__naechster', AUSGANG_ENDE = '__ende';
 /** Ein gewählter Wert der Auswahl → die Wahl für `ausgangSetzen`. */
 export const ausgangWahlAus = (v: string): AusgangWahl => (v === AUSGANG_NAECHSTER ? { art: 'naechster' } : v === AUSGANG_ENDE || !v ? { art: 'ende' } : { art: 'schritt', id: v });
-const BAHN_WORT: Readonly<Record<string, string>> = { mensch: 'Mensch', agent: 'Agent', system: 'System', kunde: 'Kunde' };
+/** Wie die Auswahl die Bahnen nennt: so wie die Fläche (`bahnTitel` — Personen mit ihrem Namen aus dem Team, „Mensch (offen)“, „System · Regeln“ …). */
+export interface ZielUmfeld { team?: readonly TeamName[] }
+const bahnName = (k: K, u: ZielUmfeld): string => bahnTitel(bahnSchluessel(k), u.team ?? []);
+/** Ein Name in der Auswahl beginnt mit dem Namen selbst (Runde 4: Tippen springt — nie mit „„“ oder „—“). Ohne Namen: „(ohne Namen)“. */
+const zielText = (t: string): string => t.trim() || '(ohne Namen)';
 /**
  * Eindeutige Namen für Schritte in einer Auswahl (rein; Runde 3, Bau-Test 2: „nie zweimal denselben Namen ohne Unterscheidung“): gleiche Titel bekommen die Phase
- * dazu, wenn die sich unterscheidet, sonst die Bahn, sonst „· 2“, „· 3“ (in der Reihenfolge der Auswahl). Kennung → Name in „…“.
+ * dazu, wenn die sich unterscheidet, sonst die Bahn (wie die Fläche sie nennt), sonst „· 2“, „· 3“ (in der Reihenfolge der Auswahl). Kennung → Name. Seit Runde 4
+ * ohne Anführungszeichen — die Option beginnt mit dem Namen.
  */
-export function zielNamen(f: Pick<Fassung, 'knoten'>, ids: readonly string[]): Map<string, string> {
+export function zielNamen(f: Pick<Fassung, 'knoten'>, ids: readonly string[], u: ZielUmfeld = {}): Map<string, string> {
   const nach = new Map(f.knoten.map(k => [k.id, k]));
   const phase = new Map(alleSchritte(f).map(x => [x.schritt.id, x.phase.titel]));
   const titelVon = (id: string) => (nach.get(id)?.titel ?? '').trim();
@@ -347,11 +352,11 @@ export function zielNamen(f: Pick<Fassung, 'knoten'>, ids: readonly string[]): M
   const raus = new Map<string, string>();
   for (const g of gruppen.values()) {
     // Unterscheidet sich die Phase (bzw. die Bahn) innerhalb der Gruppe, steht sie dabei; was dann noch gleich heißt, wird gezählt.
-    const kriterien: ((id: string) => string)[] = [id => phase.get(id) ?? '', id => { const k = nach.get(id); return k ? BAHN_WORT[bahnVon(k)] ?? '' : ''; }];
+    const kriterien: ((id: string) => string)[] = [id => phase.get(id) ?? '', id => { const k = nach.get(id); return k ? bahnName(k, u) : ''; }];
     const teile = kriterien.filter(c => g.length > 1 && new Set(g.map(c)).size > 1);
     const gezaehlt = new Map<string, number>();
     for (const id of g) {
-      const basis = [`„${titelVon(id)}“`, ...teile.map(c => c(id)).filter(Boolean)].join(' · ');
+      const basis = [zielText(titelVon(id)), ...teile.map(c => c(id)).filter(Boolean)].join(' · ');
       const n = (gezaehlt.get(basis) ?? 0) + 1;
       gezaehlt.set(basis, n);
       raus.set(id, n > 1 ? `${basis} · ${n}` : basis);
@@ -359,25 +364,31 @@ export function zielNamen(f: Pick<Fassung, 'knoten'>, ids: readonly string[]): M
   }
   return raus;
 }
+/** So heißt „Lauf endet“ bzw. „hält an“ in der Auswahl (Runde 4: ohne Striche, damit Tippen springt). */
+export const AUSGANG_TEXT = { ende: 'Lauf endet', haelt: 'Lauf hält an (Fehler)', folgt: 'folgt im Ablauf' } as const;
 /**
  * Das implizite Ziel (der Strang) in einer Auswahl — aufgelöst, mit Namen und gekennzeichnet (Runde 3). Liegt es in einer anderen Bahn als der Schritt, steht die
- * Bahn dabei (Bau-Test 2: die Sonst-Aufgabe „folgte“ still in einen Schritt einer anderen Bahn).
+ * Bahn dabei, so wie die Fläche sie nennt (Bau-Test 2: die Sonst-Aufgabe „folgte“ still in einen Schritt einer anderen Bahn; Runde 4: Person statt „Mensch“).
  */
-function folgt(f: Pick<Fassung, 'knoten'>, namen: ReadonlyMap<string, string>, ziel: string | null, von?: K): string {
-  if (ziel === null) return 'Lauf endet (folgt im Ablauf)';
+function folgt(f: Pick<Fassung, 'knoten'>, namen: ReadonlyMap<string, string>, ziel: string | null, von: K | undefined, u: ZielUmfeld): string {
+  if (ziel === null) return `${AUSGANG_TEXT.ende} (${AUSGANG_TEXT.folgt})`;
   const z = f.knoten.find(k => k.id === ziel);
   // Am Auslöser nicht (er steht für sich am Anfang; der erste Schritt liegt fast immer in einer anderen Bahn).
-  const bahn = von && von.form !== 'ausloeser' && z && bahnVon(z) !== bahnVon(von) ? ` · Bahn ${BAHN_WORT[bahnVon(z)] ?? bahnVon(z)}` : '';
-  return `${namen.get(ziel) ?? '„“'} (folgt im Ablauf${bahn})`;
+  const bahn = von && von.form !== 'ausloeser' && z && bahnSchluessel(z) !== bahnSchluessel(von) ? ` · Bahn „${bahnName(z, u)}“` : '';
+  return `${namen.get(ziel) ?? zielText('')} (${AUSGANG_TEXT.folgt}${bahn})`;
 }
 
+/** Eine Option der Auswahl „wohin führt dieser Ausgang?“: `ziel` = wohin sie aufgelöst führt (Kennung; null = der Lauf endet bzw. hält an). */
+export interface AusgangOption { wert: string; label: string; ziel: string | null }
 /**
- * Was das Panel an einem Ausgang zeigt (rein, Werkstatt-Fäden 24.10.): die gewählte Option und die Auswahl. Am Hauptausgang das Ziel, das der Strang gerade nimmt
- * („„X“ (folgt im Ablauf)“), jeder Schritt der Phase (ein festgelegtes Ziel in einer anderen Phase steht dazu) und „— Lauf endet —“; an einem Abzweig „leer“ (der Lauf
- * endet; am Warten: geht weiter; „Fehler“: hält an) und jeder Schritt der Phase. Dieselben Ziele, die der Faden kennt. Runde 3 (Bau-Test 2): jede Option nennt ihr
- * AUFGELÖSTES Ziel mit Namen, gleiche Namen werden unterschieden (`zielNamen`) — an der Verdrahtung ändert das nichts.
+ * Was das Panel an einem Ausgang zeigt (rein, Werkstatt-Fäden 24.10.): die gewählte Option und die Auswahl — dieselben Ziele, die der Faden kennt: jeder Schritt der
+ * Phase (ein festgelegtes Ziel in einer anderen Phase steht dazu) und „Lauf endet“; an einem Abzweig „leer“ (der Lauf endet; am Warten: geht weiter; „Fehler“:
+ * hält an) und jeder Schritt der Phase. Runde 3: jede Option nennt ihr AUFGELÖSTES Ziel mit Namen, gleiche Namen unterschieden (`zielNamen`).
+ * Runde 4 (Bau-Test 3: „„X“ (folgt im Ablauf)“ UND „„X““, „Lauf endet (folgt im Ablauf)“ neben „— Lauf endet —“): JEDES ZIEL GENAU EINMAL. Das Ziel des Strangs
+ * steht als „X (folgt im Ablauf)“ (Wert `AUSGANG_NAECHSTER`), solange es nicht ausdrücklich festgelegt ist — dann steht es als Schritt (bzw. „Lauf endet“) da.
+ * Gewählt ist immer das, was gerade gilt. An der Verdrahtung ändert das nichts: jede Option führt dorthin, wohin sie vorher führte.
  */
-export function ausgangsWahl(f: Pick<Fassung, 'knoten'>, id: string, a: Ausgang): { wert: string; optionen: { wert: string; label: string }[] } {
+export function ausgangsWahl(f: Pick<Fassung, 'knoten'>, id: string, a: Ausgang, u: ZielUmfeld = {}): { wert: string; optionen: AusgangOption[] } {
   const k = f.knoten.find(x => x.id === id);
   if (!k) return { wert: '', optionen: [] };
   const eigner = istSchloss(k) && (a === 'ja' || a === 'weiter') ? f.knoten.find(x => x.id === k.schloss!.fuer) ?? k : k;
@@ -387,21 +398,30 @@ export function ausgangsWahl(f: Pick<Fassung, 'knoten'>, id: string, a: Ausgang)
     const fest = eigner.form !== 'freigabe' && eigner.zweige?.ja ? eigner.zweige.ja : eigner.danach ? ('ende' in eigner.danach ? null : eigner.danach.ziel) : undefined;
     const strang = hauptZiel(f.knoten.map(x => (x.id === eigner.id ? ohneHaupt(x) : x)), eigner.id);
     const andere = typeof fest === 'string' && !ziele.some(x => x.id === fest) ? fest : null;
-    const namen = zielNamen(f, [...ziele.map(x => x.id), ...(andere ? [andere] : []), ...(strang ? [strang] : [])]);
-    return {
-      wert: fest === undefined ? AUSGANG_NAECHSTER : fest === null ? AUSGANG_ENDE : fest,
-      optionen: [
-        { wert: AUSGANG_NAECHSTER, label: folgt(f, namen, strang, eigner) },
-        ...ziele.map(x => ({ wert: x.id, label: namen.get(x.id)! })),
-        ...(andere ? [{ wert: andere, label: `${namen.get(andere)} (andere Phase)` }] : []),
-        { wert: AUSGANG_ENDE, label: '— Lauf endet —' },
-      ],
-    };
+    const namen = zielNamen(f, [...ziele.map(x => x.id), ...(andere ? [andere] : []), ...(strang ? [strang] : [])], u);
+    // Das Ziel des Strangs heißt „folgt im Ablauf“, solange es nicht ausdrücklich gewählt ist (dann steht es als Schritt bzw. „Lauf endet“ da).
+    const strangAusdruecklich = fest !== undefined && fest === strang;
+    const optionen: AusgangOption[] = [];
+    if (!strangAusdruecklich) optionen.push({ wert: AUSGANG_NAECHSTER, label: folgt(f, namen, strang, eigner, u), ziel: strang });
+    for (const x of ziele) if (x.id !== strang || strangAusdruecklich) optionen.push({ wert: x.id, label: namen.get(x.id)!, ziel: x.id });
+    if (andere && (andere !== strang || strangAusdruecklich)) optionen.push({ wert: andere, label: `${namen.get(andere)} (andere Phase)`, ziel: andere });
+    if (strang !== null || strangAusdruecklich) optionen.push({ wert: AUSGANG_ENDE, label: AUSGANG_TEXT.ende, ziel: null });
+    return { wert: fest === undefined ? AUSGANG_NAECHSTER : fest === null ? AUSGANG_ENDE : fest, optionen };
   }
   const weiter = a === 'abgelaufen' && k.form === 'warten' ? hauptZiel(f.knoten, id) : undefined;
-  const namen = zielNamen(f, [...ziele.map(x => x.id), ...(weiter ? [weiter] : [])]);
-  const leer = weiter !== undefined ? folgt(f, namen, weiter, k) : a === 'fehler' ? '— Lauf hält an (Fehler) —' : '— Lauf endet —';
-  return { wert: k.zweige?.[a as ZweigArt] ?? '', optionen: [{ wert: '', label: leer }, ...ziele.map(x => ({ wert: x.id, label: namen.get(x.id)! }))] };
+  const fest = k.zweige?.[a as ZweigArt];
+  const namen = zielNamen(f, [...ziele.map(x => x.id), ...(weiter ? [weiter] : [])], u);
+  // „leer“ am abgelaufenen Warten folgt dem Hauptweg — dessen Ziel steht dann nicht noch einmal ausdrücklich da (außer es IST ausdrücklich gewählt).
+  const leerZiel = weiter !== undefined ? weiter : null;
+  const leerAusdruecklich = weiter !== undefined && weiter !== null && fest === weiter;
+  const leer = weiter !== undefined ? folgt(f, namen, weiter, k, u) : a === 'fehler' ? AUSGANG_TEXT.haelt : AUSGANG_TEXT.ende;
+  return {
+    wert: fest ?? '',
+    optionen: [
+      ...(leerAusdruecklich ? [] : [{ wert: '', label: leer, ziel: leerZiel }]),
+      ...ziele.filter(x => leerAusdruecklich || weiter === undefined || x.id !== weiter).map(x => ({ wert: x.id, label: namen.get(x.id)!, ziel: x.id })),
+    ],
+  };
 }
 
 // ── Werkstatt bau-fertig (22.10., n8n-Niveau): nachgiebig bauen, ohne das Modell umzubauen ─────────────────────────────────────────────────────────────
@@ -571,15 +591,16 @@ export function mehrfachMeldung(faelle: readonly MehrfachFall[], feldName?: (id:
  * Die Ziele eines Falls der Mehrfach-Entscheidung (rein; Runde 3): „“ = weiter im Ablauf — mit dem aufgelösten Ziel und „(folgt im Ablauf)“ —, dann jeder Schritt der
  * Phase (gleiche Namen unterschieden, `zielNamen`). Dieselben Ziele, die `mehrfachEntscheidung` annimmt.
  */
-export function mehrfachZiele(f: Pick<Fassung, 'knoten'>, nach: string): { wert: string; label: string }[] {
+export function mehrfachZiele(f: Pick<Fassung, 'knoten'>, nach: string, u: ZielUmfeld = {}): { wert: string; label: string }[] {
   const q0 = f.knoten.find(k => k.id === nach);
   if (!q0) return [];
   const quelle = istSchloss(q0) ? f.knoten.find(k => k.id === q0.schloss!.fuer) ?? q0 : q0;
   const ph = phaseVon(f, quelle.id);
   const ziele = (ph ? schritteDer(f, ph) : []).filter(x => x.id !== quelle.id && x.id !== nach && x.form !== 'ausloeser' && !istSchloss(x));
   const weiter = hauptZiel(f.knoten, quelle.id);
-  const namen = zielNamen(f, [...ziele.map(x => x.id), ...(weiter ? [weiter] : [])]);
-  return [{ wert: '', label: folgt(f, namen, weiter, quelle) }, ...ziele.map(x => ({ wert: x.id, label: namen.get(x.id)! }))];
+  const namen = zielNamen(f, [...ziele.map(x => x.id), ...(weiter ? [weiter] : [])], u);
+  // Runde 4: jedes Ziel genau einmal — das Ziel „weiter im Ablauf“ steht nicht noch einmal als Schritt da (es führt dorthin, wohin „“ führt).
+  return [{ wert: '', label: folgt(f, namen, weiter, quelle, u) }, ...ziele.filter(x => x.id !== weiter).map(x => ({ wert: x.id, label: namen.get(x.id)! }))];
 }
 
 /**

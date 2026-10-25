@@ -9,7 +9,13 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { neuerProzess } from '@/lib/prozesse/bestand';
-import { anlegen, kopieren, einfuegen, type Ergebnis, type Fassung } from '@/lib/prozesse/werkstatt-aktionen';
+import { anlegen, kopieren, einfuegen, ausgangsWahl, ausgangSetzen, ausgangWahlAus, hauptZiel, mehrfachZiele, AUSGANG_NAECHSTER, AUSGANG_ENDE, type Ergebnis, type Fassung } from '@/lib/prozesse/werkstatt-aktionen';
+import { ausgaengeVon } from '@/lib/prozesse/werkstatt-lage';
+import { ausgangsZiele } from '@/lib/prozesse/fluss';
+import type { ProzessDefinition } from '@/lib/prozesse/definition';
+import { ALLE_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';
+import { MUSTER_PAKETE } from '@/lib/fulfillment/muster';
+import { paketAlsDefinition } from '@/lib/prozesse/fulfillment-modus';
 import { katalogEintrag } from '@/lib/prozesse/baustein-katalog';
 import { neuerKnoten, nameSetzen, maskeWerte, titelSetzen } from '@/lib/prozesse/werkstatt-maske';
 import { phasen } from '@/lib/prozesse/fluss';
@@ -68,5 +74,93 @@ describe('(1) ⌘V-Kopie: der Titel folgt dem Namen', () => {
   });
   it('die Regel steht an EINER Stelle (einfuegen nimmt nameSetzen)', () => {
     expect(lies('lib/prozesse/werkstatt-aktionen.ts')).toContain('nameSetzen(k, katalogEintrag(k.katalog?.id), name)');
+  });
+});
+
+describe('(2) Ausgang-Menü: jedes Ziel genau einmal, das wirksame gewählt, Optionen beginnen mit dem Namen', () => {
+  const FASSUNGEN: { name: string; d: Pick<ProzessDefinition, 'knoten'> }[] = [
+    ...ALLE_VORLAGEN.flatMap(v => [v.definition, ...v.teile.map(t => t.definition)]).map(d => ({ name: d.id, d })),
+    ...MUSTER_PAKETE.map(v => ({ name: v.id, d: paketAlsDefinition(v) as Pick<ProzessDefinition, 'knoten'> })),
+  ];
+  /** Wohin ein Ausgang gerade wirklich führt (dieselbe Auflösung wie Motor und Probelauf). */
+  const wirksam = (d: Pick<ProzessDefinition, 'knoten'>, id: string, a: string): string | null => {
+    const k = d.knoten.find(x => x.id === id)!;
+    const eigner = k.schloss && (a === 'ja' || a === 'weiter') ? d.knoten.find(x => x.id === k.schloss!.fuer)! : k;
+    if (eigner !== k || !(a === 'nein' || a === 'fehler' || a === 'abgelaufen')) return hauptZiel(d.knoten, eigner.id);
+    const z = ausgangsZiele({ knoten: d.knoten }).get(`${id}|${a}`);
+    return z !== undefined ? z : a === 'abgelaufen' && k.form === 'warten' ? hauptZiel(d.knoten, id) : null;
+  };
+  it('über alle Vorlagen: kein Ziel doppelt, gewählt = wirksam, jede Option beginnt mit dem Namen — und führt dorthin, wohin sie sagt', () => {
+    let menues = 0, gewechselt = 0;
+    for (const { name, d } of FASSUNGEN) {
+      for (const k of d.knoten.filter(x => x.form && x.form !== 'ende')) {
+        for (const a of ausgaengeVon(k)) {
+          const w = ausgangsWahl(d, k.id, a);
+          if (!w.optionen.length) continue;
+          menues++;
+          const wo = `${name} „${k.titel}“ ${a}: ${w.optionen.map(o => o.label).join(' | ')}`;
+          const ziele = w.optionen.map(o => o.ziel ?? '∅');
+          expect(new Set(ziele).size, wo).toBe(ziele.length);
+          // Jede Option beginnt mit dem Namen ihres Ziels (bzw. „Lauf endet“/„Lauf hält an“) — nie mit „—“ oder einem zusätzlichen „„“.
+          for (const o of w.optionen) {
+            expect(o.label, wo).not.toMatch(/^—/);
+            const t = o.ziel ? d.knoten.find(x => x.id === o.ziel)?.titel.trim() || '(ohne Namen)' : 'Lauf ';
+            expect(o.label.startsWith(t), `${wo} — ${o.label}`).toBe(true);
+          }
+          const gewaehlt = w.optionen.find(o => o.wert === w.wert);
+          expect(gewaehlt, wo).toBeTruthy();
+          expect(gewaehlt!.ziel, wo).toBe(wirksam(d, k.id, a));
+          // „(folgt im Ablauf)“ nur am impliziten Ziel des Strangs.
+          for (const o of w.optionen) if (o.label.includes('(folgt im Ablauf')) expect(o.wert === AUSGANG_NAECHSTER || o.wert === '', wo).toBe(true);
+          // Verdrahtung unverändert: jede andere Option führt nach dem Wählen genau zu ihrem Ziel; kein anderer Ausgang ändert sich (Regel der Werkstatt-Fäden).
+          for (const o of w.optionen.filter(x => x.wert !== w.wert)) {
+            const r = ausgangSetzen({ knoten: [...d.knoten] }, k.id, a, ausgangWahlAus(o.wert));
+            if (!r.ok) continue;
+            gewechselt++;
+            expect(wirksam(r.fassung, k.id, a), `${wo} → ${o.label}`).toBe(o.ziel);
+          }
+        }
+      }
+    }
+    expect(menues).toBeGreaterThan(100);
+    expect(gewechselt).toBeGreaterThan(200);
+  });
+  it('Bau-Test 3: „Lauf endet (folgt im Ablauf)“ steht nicht neben „Lauf endet“, ein implizites Ziel nicht neben sich selbst', () => {
+    const { e, start } = mandatProzess();
+    const a = neuerKnoten(AUFGABE, kennung(), 'Kick-off Cockpit planen');
+    let f = gut(anlegen({ knoten: e.entwurf.knoten }, a, { nach: start.id, ausgang: 'weiter' }));
+    // Am Ende des Strangs: das Ende ist implizit und steht genau einmal da.
+    const am = ausgangsWahl(f, a.id, 'weiter');
+    expect(am.optionen.filter(o => o.ziel === null).map(o => o.label)).toEqual(['Lauf endet (folgt im Ablauf)']);
+    expect(am.wert).toBe(AUSGANG_NAECHSTER);
+    const b = neuerKnoten(AUFGABE, kennung(), 'Kick-off Diagnose');
+    f = gut(anlegen(f, b, { nach: a.id, ausgang: 'weiter' }));
+    const w = ausgangsWahl(f, a.id, 'weiter');
+    expect(w.optionen.map(o => o.label)).toEqual(['Kick-off Diagnose (folgt im Ablauf)', 'Lauf endet']);
+    // Ausdrücklich „Lauf endet“: jetzt steht das Ende einmal (gewählt), das Ziel des Strangs weiter einmal als „folgt im Ablauf“.
+    f = gut(ausgangSetzen(f, a.id, 'weiter', ausgangWahlAus(AUSGANG_ENDE)));
+    const x = ausgangsWahl(f, a.id, 'weiter');
+    expect(x.wert).toBe(AUSGANG_ENDE);
+    expect(x.optionen.map(o => o.label)).toEqual(['Kick-off Diagnose (folgt im Ablauf)', 'Lauf endet']);
+  });
+  it('die Bahn heißt wie auf der Fläche — eine Person mit ihrem Namen statt „Mensch“', () => {
+    const { e, start } = mandatProzess();
+    const sys = neuerKnoten(katalogEintrag('glocke.melden')!, kennung(), 'Melden');
+    let f = gut(anlegen({ knoten: e.entwurf.knoten }, sys, { nach: start.id, ausgang: 'weiter' }));
+    const person = { ...neuerKnoten(AUFGABE, kennung(), 'Kick-off planen'), bahn: 'mensch' as const };
+    person.katalog = { id: 'aufgabe.anlegen', werte: { ...(person.katalog?.werte ?? {}), titel: 'Kick-off planen', wer: 'lena' } };
+    f = gut(anlegen(f, person, { nach: sys.id, ausgang: 'weiter' }));
+    const w = ausgangsWahl(f, sys.id, 'weiter', { team: [{ id: 'lena', name: 'Lena Beispiel' }] });
+    expect(w.optionen[0].label).toBe('Kick-off planen (folgt im Ablauf · Bahn „Lena Beispiel“)');
+    const ohne = ausgangsWahl(f, sys.id, 'weiter');
+    expect(ohne.optionen[0].label).toBe('Kick-off planen (folgt im Ablauf · Bahn „Person (nicht mehr im Team)“)');
+    expect(lies('components/os/prozesse/WerkstattPanel.tsx')).toContain("ausgangsWahl(d, k.id, a, { team: teamAusAuswahl(p.auswahl['team-person']) })");
+  });
+  it('Mehrfach-Dialog: das Ziel „weiter im Ablauf“ steht nicht noch einmal als Schritt da', () => {
+    const { e, start } = mandatProzess();
+    const a = neuerKnoten(AUFGABE, kennung(), 'Prüfen');
+    const f = gut(anlegen({ knoten: e.entwurf.knoten }, a, { nach: start.id, ausgang: 'weiter' }));
+    const m = mehrfachZiele(f, start.id);
+    expect(m.map(x => x.label)).toEqual(['Prüfen (folgt im Ablauf)']);
   });
 });
