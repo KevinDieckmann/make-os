@@ -388,3 +388,20 @@ describe('12 · „steht drin — 8 Posten“ (nie „7 Teilmonate“ bei acht P
   });
 });
 
+// ── 13 · Eine Hauptaktion: „Im Schatten laufen“ vor „Scharf schalten“ ──
+import { hauptAktion, werkstattZustand } from '@/lib/prozesse/laeufe-ansicht';
+describe('13 · Nach dem Veröffentlichen ist „Im Schatten laufen“ die Hauptaktion, „Scharf schalten“ ruhig daneben', () => {
+  it('Regel und Kopfzeile', () => {
+    expect(hauptAktion(werkstattZustand('entwurf', null, true).aktionen)).toBe('schatten');
+    expect(hauptAktion(werkstattZustand('probelauf', null, true).aktionen)).toBe('scharf');
+    expect(hauptAktion(werkstattZustand('pausiert', null, true).aktionen)).toBe('fortsetzen');
+    expect(hauptAktion(werkstattZustand('entwurf', null, false).aktionen)).toBeNull();
+    const s = quelle('components/os/prozesse/WerkstattSteuerung.tsx');
+    expect(s).toMatch(/<Knopf leise=\{leise\('schatten'\)\}/);
+    expect(s).toMatch(/<Knopf leise=\{leise\('scharf'\)\}/);
+    const w = quelle('components/os/prozesse/Werkstatt.tsx');
+    expect(w).toMatch(/<Knopf leise=\{!veroeffentlichenOffen\}/);
+    expect(w).toMatch(/hauptAnderswo=\{veroeffentlichenOffen\}/);
+  });
+});
+

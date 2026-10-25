@@ -873,12 +873,15 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const spText = { gespeichert: 'Entwurf gespeichert', ausstehend: 'wird gespeichert …', speichert: 'speichert …', fehler: 'nicht gespeichert', konflikt: 'Konflikt — deine Fassung bleibt', offline: 'offline — bleibt hier', tippt: 'Änderung wird übernommen …' }[spArt];
   const spFarbe = spArt === 'gespeichert' ? C.inkLeise : spArt === 'fehler' || spArt === 'konflikt' ? LEUCHT.kritisch : spArt === 'offline' ? LEUCHT.achtung : C.inkDim;
   const v = eintrag.versionen.at(-1);
+  // 25.10. (Kern-Bau-Test 2 — eine Hauptaktion je Ansicht): „Veröffentlichen“ ist nur hervorgehoben, solange es etwas zu veröffentlichen gibt (noch keine Version bzw.
+  // der Entwurf weicht ab); sonst ruhig, und die Steuerung trägt die Hauptaktion („Im Schatten laufen“).
+  const veroeffentlichenOffen = !!rechte?.veroeffentlichen && (!v || geaendertSeitVersion || ausstehend);
   // Die Teile der Kopfzeile — außerhalb in der Werkzeugzeile, im Werkzeugmodus an den Orten des Rahmens (dieselben Griffe, nur verteilt).
   const kopfZustand = (
     <>
       {v && <Chip farbe={C.inkDim}>{`Version ${v.nr}`}</Chip>}
       <WerkstattSteuerung prozessId={prozessId} def={d} status={eintrag.status} hatVersion={!!v} laufStand={laeufe.daten?.stand ?? null}
-        rechte={rechte} nurAnsehen={nurAnsehen} stand={() => stand.current} onStatus={statusSetzen} onGeaendert={neuLaden} onMeldung={(text, art) => setMeldung({ text, art })} vorher={sichern} />
+        rechte={rechte} nurAnsehen={nurAnsehen} stand={() => stand.current} onStatus={statusSetzen} onGeaendert={neuLaden} onMeldung={(text, art) => setMeldung({ text, art })} vorher={sichern} hauptAnderswo={veroeffentlichenOffen} />
       {reiter === 'bauen' && !nurLesen && <span role="status" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: spFarbe }}><SP size={14} aria-hidden />{spText}</span>}
       {reiter === 'bauen' && nurLesen && !versionAnsicht && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{nurAnsehen ? (mobilDarf ? 'Am Handy: Texte und Fristen ändern' : 'Am Handy nur ansehen') : !rechte?.entwurf ? 'Nur lesen' : eintrag.status === 'archiviert' ? 'Archiviert — nur lesen' : 'Nur lesen'}</span>}
     </>
@@ -887,7 +890,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
   const rasterKnopf = <SymbolKnopf ariaLabel="Raster an/aus" gedrueckt={raster} onClick={() => { const n = !raster; setRaster(n); schreib(lokal(), RASTER_MERKER, n ? null : 'aus'); }}><Grid3x3 size={16} /></SymbolKnopf>;
   const headKnopf = !nurLesen && <Knopf leise onClick={() => setHeadOffen(true)} titel="Head fragen — Bausteine oder einen ganzen Entwurf vorschlagen lassen (übernommen erst mit deinem Klick)"><span className="pz-knopf-inhalt"><Sparkles size={14} aria-hidden />Head fragen</span></Knopf>;
   const probeKnopf = <Knopf leise onClick={() => setProbeOffen(o => !o)} titel="Probelauf — zeigt Schritt für Schritt, was passieren würde (schreibt nichts); mit dem Beispiel oder einem echten Fall"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Probelauf</span></Knopf>;
-  const versionenKnopf = (!nurAnsehen || mobilDarf) && !versionAnsicht && <Knopf onClick={() => { setVersionenOffen(true); if (laeufe.daten?.tests.length) void testsAlle(); }} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>;
+  const versionenKnopf = (!nurAnsehen || mobilDarf) && !versionAnsicht && <Knopf leise={!veroeffentlichenOffen} onClick={() => { setVersionenOffen(true); if (laeufe.daten?.tests.length) void testsAlle(); }} titel="Veröffentlichen und Versionen"><span className="pz-knopf-inhalt"><Upload size={14} aria-hidden />{rechte?.veroeffentlichen ? 'Veröffentlichen' : 'Versionen'}</span></Knopf>;
   // ── Werkstatt bau-fertig: Titel der Knoten-Auswahl, Fäden mit „+“, Doppelklick und Umbenennen auf der Fläche ──
   // Werkstatt-Fäden (24.10.): der Kopf nennt auch den Ausgang — „Anhängen an „X“ · Ausgang „nein““.
   const auswahlTitel = (w: { ziel: AnhangZiel; modus?: 'ausloeser-wechseln' | 'ausloeser-neu' }): string => {

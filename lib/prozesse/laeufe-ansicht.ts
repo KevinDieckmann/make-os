@@ -48,6 +48,14 @@ export function werkstattZustand(status: ProzessStatus, st: Pick<ProzessLaufStan
       : { art: 'entwurf', satz: 'Entwurf — erst veröffentlichen, dann laufen lassen.', aktionen: [] };
   }
 }
+/**
+ * Die EINE hervorgehobene Aktion der Kopfzeile (25.10., Kern-Bau-Test 2: nach dem Veröffentlichen stand „Scharf schalten“ hervorgehoben neben „Im Schatten laufen“):
+ * der sichere nächste Schritt — „Im Schatten laufen“, sonst „Scharf schalten“, sonst „Fortsetzen“; alles andere ruhig daneben. null = keine.
+ */
+export function hauptAktion(aktionen: readonly ZustandAktion[]): ZustandAktion | null {
+  return (['schatten', 'scharf', 'fortsetzen'] as const).find(a => aktionen.includes(a)) ?? null;
+}
+
 /** Fortsetzen: ein scharf geschalteter Prozess wird wieder aktiv (scharf), sonst läuft er weiter im Schatten. */
 export const fortsetzenStatus = (st: Pick<ProzessLaufStand, 'einstellung'> | null | undefined): ProzessStatus => (st?.einstellung.scharf ? 'aktiv' : 'probelauf');
 

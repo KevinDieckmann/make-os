@@ -18,7 +18,7 @@ import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
 import { alleSchritte } from '@/lib/prozesse/fluss';
 import { istWebRecherche } from '@/lib/prozesse/agent-schritt';
 import {
-  werkstattZustand, fortsetzenStatus, ZUSTAND_NAME, ZUSTAND_BEDEUTUNG, kostenZeilen, budgetVorschlag, euroZuCent, centZuEuro, centWort, zeitText, type WerkstattZustand,
+  werkstattZustand, fortsetzenStatus, hauptAktion, ZUSTAND_NAME, ZUSTAND_BEDEUTUNG, kostenZeilen, budgetVorschlag, euroZuCent, centZuEuro, centWort, zeitText, type WerkstattZustand, type ZustandAktion,
 } from '@/lib/prozesse/laeufe-ansicht';
 import type { ProzessRechte } from '@/lib/prozesse/rollen';
 import { MaskenEingabe } from './WerkstattMaske';
@@ -46,6 +46,8 @@ export interface SteuerungProps {
   onMeldung: (text: string, art: 'gut' | 'achtung' | 'kritisch' | 'info') => void;
   /** Vor dem Scharfschalten: ungespeicherte Änderungen sichern (sonst passt der Stand nicht) — false = nicht gespeichert. */
   vorher?: () => Promise<boolean>;
+  /** Die Hauptaktion der Ansicht liegt woanders (z. B. ein ungespeichertes bzw. unveröffentlichtes „Veröffentlichen“) — dann sind alle Knöpfe hier ruhig. */
+  hauptAnderswo?: boolean;
 }
 
 /** Zustand + Knöpfe der Kopfzeile. */
@@ -56,15 +58,18 @@ export function WerkstattSteuerung(p: SteuerungProps) {
   const darf = !!p.rechte?.status && !p.nurAnsehen;
   const S = SYMBOL[z.art];
   const status = async (s: ProzessStatus, gut: string) => { const f = await p.onStatus(s); p.onMeldung(f ?? gut, f ? 'kritisch' : 'gut'); };
+  // 25.10.: EINE hervorgehobene Aktion — der sichere nächste Schritt (`hauptAktion`); „Scharf schalten“ steht ruhig daneben, solange „Im Schatten laufen“ geht.
+  const haupt = p.hauptAnderswo ? null : hauptAktion(z.aktionen);
+  const leise = (a: ZustandAktion) => haupt !== a;
   return (
     <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
       <Erklaert erklaerung="prozesse.zustand" name="Zustand des Prozesses">
         <span title={z.satz}><Chip farbe={BEDEUTUNG_FARBE[ZUSTAND_BEDEUTUNG[z.art]]}><span className="pz-knopf-inhalt"><S size={13} aria-hidden />{ZUSTAND_NAME[z.art]}</span></Chip></span>
       </Erklaert>
-      {darf && z.aktionen.includes('schatten') && <Knopf leise onClick={() => status('probelauf', 'Läuft jetzt im Schatten — Läufe rechnen und schreiben nichts.')} titel="Läufe rechnen mit echten Fällen und schreiben nichts"><span className="pz-knopf-inhalt"><FlaskConical size={14} aria-hidden />Im Schatten laufen</span></Knopf>}
-      {darf && z.aktionen.includes('scharf') && <Knopf onClick={() => setScharf(true)} titel="Kosten, bestehende Fälle und Budget prüfen — dann scharf schalten"><span className="pz-knopf-inhalt"><Zap size={14} aria-hidden />Scharf schalten</span></Knopf>}
+      {darf && z.aktionen.includes('schatten') && <Knopf leise={leise('schatten')} onClick={() => status('probelauf', 'Läuft jetzt im Schatten — Läufe rechnen und schreiben nichts.')} titel="Läufe rechnen mit echten Fällen und schreiben nichts"><span className="pz-knopf-inhalt"><FlaskConical size={14} aria-hidden />Im Schatten laufen</span></Knopf>}
+      {darf && z.aktionen.includes('scharf') && <Knopf leise={leise('scharf')} onClick={() => setScharf(true)} titel="Kosten, bestehende Fälle und Budget prüfen — dann scharf schalten"><span className="pz-knopf-inhalt"><Zap size={14} aria-hidden />Scharf schalten</span></Knopf>}
       {darf && z.aktionen.includes('pausieren') && <Knopf leise onClick={() => status('pausiert', 'Pausiert — offene Läufe halten an.')} titel="Offene Läufe halten an und gehen nach dem Fortsetzen dort weiter"><span className="pz-knopf-inhalt"><Pause size={14} aria-hidden />Pausieren</span></Knopf>}
-      {darf && z.aktionen.includes('fortsetzen') && <Knopf onClick={() => status(fortsetzenStatus(p.laufStand), 'Fortgesetzt.')} titel="Der Prozess läuft wieder"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Fortsetzen</span></Knopf>}
+      {darf && z.aktionen.includes('fortsetzen') && <Knopf leise={leise('fortsetzen')} onClick={() => status(fortsetzenStatus(p.laufStand), 'Fortgesetzt.')} titel="Der Prozess läuft wieder"><span className="pz-knopf-inhalt"><Play size={14} aria-hidden />Fortsetzen</span></Knopf>}
       {p.hatVersion && !p.nurAnsehen && <Knopf leise onClick={() => setEinst(true)} titel="Flutschutz, Notbremse, Wiedereintritt, Ziel und Abbruch, Budget"><span className="pz-knopf-inhalt"><Settings2 size={14} aria-hidden />Einstellungen</span></Knopf>}
       {scharf && <ScharfFenster {...p} onZu={() => setScharf(false)} />}
       {einst && <EinstellungenFenster {...p} darf={darf} onZu={() => setEinst(false)} />}
