@@ -10,7 +10,7 @@
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import {
   Zap, ListChecks, Mail, MessageCircle, GitBranch, BellRing, CalendarClock, Bot, Hourglass, Repeat, Workflow, Lock, Flag, Users, FileText, Receipt, Bell, Send,
-  Trash2, RotateCcw, Search, Handshake, Plus, AlertTriangle, Check, Clock, Minus, X, Brain, FolderOpen, Cpu, Wrench, Database, Webhook, CalendarDays, Hand, Play, Ban,
+  Trash2, RotateCcw, Search, Handshake, Plus, AlertTriangle, Check, Clock, Minus, X, Brain, FolderOpen, Cpu, Wrench, Database, Webhook, CalendarDays, Hand, Play, Ban, Briefcase,
 } from 'lucide-react';
 import { FARBE as C, TIEF, RAND, LEUCHT, FLAECHE_STIL } from '@/lib/make-one/design';
 import type { ProzessForm, ProzessKnoten } from '@/lib/prozesse/definition';
@@ -22,13 +22,16 @@ import { PROBE_NAME, type ProbeStatus } from '@/lib/prozesse/werkstatt-hinweise'
 import { textZeilen, FLAECHE_SCHRIFT } from '../ui/reise/flaeche-formen';
 import { BEDEUTUNG_FARBE } from '@/lib/make-one/design';
 import { PROBE_BEDEUTUNG } from '@/lib/prozesse/werkstatt-hinweise';
+import { startAmMandat } from '@/lib/prozesse/werkstatt-maske';
 
 type K = ProzessKnoten<ProzessForm>;
 type Symbol = ComponentType<SVGProps<SVGSVGElement> & { size?: number | string; color?: string }>;
 
 /** Das Symbol eines Knotens: nach Baustein (Anbindung), sonst nach Form. */
-export function symbolVon(k: Pick<K, 'form' | 'katalog' | 'ausloeser'>): Symbol {
+export function symbolVon(k: Pick<K, 'form' | 'katalog' | 'ausloeser'>, o: { amMandat?: boolean } = {}): Symbol {
   const id = k.katalog?.id ?? '';
+  // 25.10.: der Start am Mandat (produktgebundener Prozess) trägt nicht die Hand — dieselbe Regel wie Unterzeile und Panel (`startAmMandat`).
+  if (startAmMandat(k, o.amMandat)) return Briefcase;
   if (k.form === 'ausloeser') return k.ausloeser?.art === 'webhook' ? Webhook : k.ausloeser?.art === 'zeitplan' ? Clock : k.ausloeser?.art === 'datum' ? CalendarDays : k.ausloeser?.art === 'hand' ? Hand : Zap;
   if (id.startsWith('whatsapp.')) return MessageCircle;
   if (id.startsWith('inbox.')) return Mail;
@@ -82,6 +85,8 @@ export interface KnotenZeichnungProps {
   aus?: boolean;
   /** Feinschliff 1 (23.10.): die Beschriftungen der Fäden an diesem Knoten (relativ zur Box, lib/prozesse/werkstatt-lage.ts `ausgangChips`) — die „+“ weichen aus. */
   chips?: readonly { art: Anschluss['art']; box: Box }[];
+  /** Der Prozess gehört zu einem Produkt — sein Start startet am Mandat (`startAmMandat`, 25.10.). */
+  amMandat?: boolean;
 }
 
 /** Ein Knoten in seiner Gestalt (an 0, 0 der Knoten-Box). */
@@ -90,7 +95,7 @@ export function KnotenZeichnung(p: KnotenZeichnungProps) {
   const f = k.form ?? 'schritt';
   const ton = WERKSTATT_FORM_FARBE[f];
   const c = l.koerper;
-  const S = symbolVon(k);
+  const S = symbolVon(k, { amMandat: p.amMandat });
   const rand = p.ziel ? (p.zielNein ? LEUCHT.kritisch : C.aktiv) : p.gewaehlt ? C.ink : TIEF.rand(ton);
   const breit = p.ziel || p.gewaehlt ? 2.6 : 1.6;
   const probeFarbe = p.probe ? BEDEUTUNG_FARBE[PROBE_BEDEUTUNG[p.probe]] : null;

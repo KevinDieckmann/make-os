@@ -1062,7 +1062,7 @@ export function Werkstatt({ prozessId, nurAnsehen, onLandkarte, onGanzerBildschi
       {reiter === 'bauen' && <div className={`pw-raster${nurAnsehen ? ' pw-raster-schmal' : ''}`}>
         <div ref={rahmen} className="pw-flaeche-rahmen">
           <WerkstattFlaeche ref={flaeche} d={d} lage={lage} szene={`${prozessId}:${versionAnsicht?.nr ?? 'entwurf'}`} auswahl={auswahl} kanteWahl={kanteWahl} rahmenWahl={rahmenWahl} andockWahl={andockWahl}
-            probe={probeMap} befundJe={befundJe} unterzeile={unterzeile} mitSchloss={mitSchloss} nurLesen={nurLesen} raster={raster} handy={nurAnsehen}
+            probe={probeMap} befundJe={befundJe} unterzeile={unterzeile} amMandat={amMandat} mitSchloss={mitSchloss} nurLesen={nurLesen} raster={raster} handy={nurAnsehen}
             label={`Werkstatt „${d.titel}“: ${alleSchritte(d).length} Schritte in ${phasen(d).length} Phasen, ${lage.bahnen.length} Bahnen. Pfeile wählen, Alt + Pfeil legt an, Tab öffnet die Formauswahl.`}
             onAuswahl={(ids, o) => { setKanteWahl(null); setAndockWahl(null); setRahmenWahl(null); setAuswahl(a => (o?.erweitern ? [...a.filter(x => !ids.includes(x)), ...ids.filter(x => !a.includes(x))] : ids)); }}
             onKante={id => { setKanteWahl(id); setAuswahl([]); setRahmenWahl(null); }}

@@ -228,3 +228,29 @@ describe('4 · „Phase 1 von 3 · Onboarding“ überall — der Ablauf im Scha
   });
 });
 
+// ── 6 · Start-Panel: Kopf aus derselben Regel wie der Knoten ──
+import { startAmMandat, knotenUnterzeile, AM_MANDAT_KURZ, AM_MANDAT_NAME } from '@/lib/prozesse/werkstatt-maske';
+import { symbolVon } from '@/components/os/prozesse/WerkstattKnoten';
+import { Briefcase, Hand } from 'lucide-react';
+
+describe('6 · Start am Mandat: Unterzeile, Kopf, Satz und Symbol aus EINER Regel', () => {
+  const start = { id: 'fk-start', titel: 'Start', rang: 0, form: 'ausloeser' as const, ausloeser: { art: 'hand' as const }, katalog: { id: 'ausloeser.hand' } };
+  it('Regel und Symbol', () => {
+    expect(startAmMandat(start, true)).toBe(true);
+    expect(startAmMandat(start, false)).toBe(false);
+    expect(startAmMandat({ ...start, ausloeser: { art: 'zeitplan' } as never }, true)).toBe(false);
+    expect(knotenUnterzeile(start, { amMandat: true })).toBe(AM_MANDAT_KURZ);
+    expect(symbolVon(start, { amMandat: true })).toBe(Briefcase);
+    expect(symbolVon(start)).toBe(Hand);
+  });
+  it('das Panel nimmt Kopf, Satz und Symbol aus der Regel; die Fläche reicht sie an den Knoten', () => {
+    const panel = quelle('components/os/prozesse/WerkstattPanel.tsx');
+    expect(panel).toMatch(/const amMandat = startAmMandat\(k, !!p\.produkte\?\.length\)/);
+    expect(panel).toMatch(/amMandat \? AM_MANDAT_NAME : e\?\.name/);
+    expect(panel).toMatch(/symbolVon\(k, \{ amMandat: !!p\.produkte\?\.length \}\)/);
+    expect(AM_MANDAT_NAME).toBe('Am Mandat');
+    expect(quelle('components/os/prozesse/WerkstattFlaeche.tsx')).toMatch(/amMandat=\{p\.amMandat\}/);
+    expect(quelle('components/os/prozesse/Werkstatt.tsx')).toMatch(/amMandat=\{amMandat\}/);
+  });
+});
+

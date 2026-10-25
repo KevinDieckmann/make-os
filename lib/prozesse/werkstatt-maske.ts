@@ -362,6 +362,13 @@ export const formWort = (f: ProzessForm | undefined) => FORM_WORT[f ?? 'schritt'
  */
 /** Kurzzeile bzw. Satz des Starts eines Prozesses, der zu einem Produkt gehört (Fläche, Panel). */
 export const AM_MANDAT_KURZ = 'am Mandat · neues Mandat';
+/** Der Name dieses Starts im Kopf des Panels (25.10., Kern-Bau-Test 2: dort stand „Von Hand“ mit Hand-Symbol, Knoten und Satz sagten „am Mandat“). */
+export const AM_MANDAT_NAME = 'Am Mandat';
+/**
+ * Startet der Knoten am Mandat? — der Start (Auslöser „von Hand“ bzw. noch ohne) eines Prozesses, der zu einem Produkt gehört (`amMandat`). EINE Regel für Unterzeile
+ * des Knotens, Kopf und Satz des Panels und das Symbol (components/os/prozesse/WerkstattKnoten.tsx `symbolVon`).
+ */
+export const startAmMandat = (k: Pick<K, 'form' | 'ausloeser'>, amMandat: boolean | undefined): boolean => !!amMandat && k.form === 'ausloeser' && (!k.ausloeser || k.ausloeser.art === 'hand');
 export const amMandatSatz = (produkte: readonly string[]): string =>
   `Startet am Mandat: ein neues Mandat ${produkte.length === 1 ? `des Produkts „${produkte[0]}“` : `der Produkte ${produkte.map(x => `„${x}“`).join(', ')}`} startet diesen Ablauf — im Fulfillment über „Fall starten“. Von Hand („Starten“) geht es zusätzlich.`;
 export function knotenUnterzeile(k: K, o: { mitSchloss?: boolean; agentName?: string; amMandat?: boolean } = {}): string {
@@ -369,7 +376,7 @@ export function knotenUnterzeile(k: K, o: { mitSchloss?: boolean; agentName?: st
   const stapel = o.mitSchloss ? ' · Stapel' : '';
   switch (k.form) {
     // Kern-Bau-Test 24.10.: der Start eines Prozesses, der zu einem Produkt gehört, startet am Mandat (neues Mandat bzw. „Fall starten“) — „von Hand“ wäre falsch.
-    case 'ausloeser': if (o.amMandat && (!k.ausloeser || k.ausloeser.art === 'hand')) return AM_MANDAT_KURZ; return k.ausloeser ? ausloeserKurz(k.ausloeser) : 'wie startet es?';
+    case 'ausloeser': if (startAmMandat(k, o.amMandat)) return AM_MANDAT_KURZ; return k.ausloeser ? ausloeserKurz(k.ausloeser) : 'wie startet es?';
     case 'agent': return k.agent ? `${o.agentName ?? 'Agent'} · ${k.agent.modellWahl?.modell ?? k.agent.modell}${stapel}` : 'Agent wählen';
     case 'warten': {
       const w = k.warten;

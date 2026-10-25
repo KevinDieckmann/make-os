@@ -67,6 +67,8 @@ export interface WerkstattFlaecheProps {
   lauf?: { marken: ReadonlyMap<string, LaufMarke>; weg: ReadonlySet<string> } | null;
   befundJe: ReadonlyMap<string, 'fehler' | 'offen'>;
   unterzeile: (k: K) => string;
+  /** Der Prozess gehört zu einem Produkt — sein Start trägt das Symbol „am Mandat“ (`startAmMandat`, 25.10.). */
+  amMandat?: boolean;
   /** Knoten, hinter denen ein Freigabe-Schloss steht. */
   mitSchloss: ReadonlySet<string>;
   nurLesen: boolean;
@@ -596,7 +598,7 @@ export const WerkstattFlaeche = forwardRef<FlaecheSteuerung, WerkstattFlaechePro
                 style={{ cursor: lk.zu ? 'pointer' : p.nurLesen ? 'default' : 'grab' }} {...(lk.zu ? { role: 'button' } : {})}
                 aria-label={lk.zu ? `Phase „${lk.zu.titel}“ aufklappen (${lk.zu.schritte} Schritte)` : k ? `${k.titel} — ${p.unterzeile(k)}` : undefined}>
                 {lk.zu || !k ? <ZuKachel l={lk} /> : (
-                  <KnotenZeichnung k={k} l={lk} unterzeile={p.unterzeile(k)} gewaehlt={gewaehlt.has(k.id)} ziel={ziel} zielNein={ziel && fadenZiel?.nein} belegt={belegt.get(k.id) ?? new Set()} chips={chips.get(lk.id)}
+                  <KnotenZeichnung k={k} l={lk} unterzeile={p.unterzeile(k)} amMandat={p.amMandat} gewaehlt={gewaehlt.has(k.id)} ziel={ziel} zielNein={ziel && fadenZiel?.nein} belegt={belegt.get(k.id) ?? new Set()} chips={chips.get(lk.id)}
                     schloss={p.mitSchloss.has(k.id)} befund={p.befundJe.get(k.id) ?? null} probe={p.probe?.get(k.id)} nurLesen={p.nurLesen} aus={aus.has(k.id)}
                     {...(p.lauf ? { marke: p.lauf.marken.get(k.id), grau: !p.lauf.marken.has(k.id) } : {})}
                     andockGewaehlt={p.andockWahl?.id === k.id ? p.andockWahl.art : null} />

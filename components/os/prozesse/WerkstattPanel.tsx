@@ -23,7 +23,7 @@ import { rautenFelder } from '@/lib/prozesse/definition-pruefen';
 import { erlaubteWerkzeuge, rechteProfil } from '@/lib/prozesse/agent-schritt';
 import { schlossText } from '@/lib/prozesse/schloss';
 import { kundenFormErlaubt } from '@/lib/prozesse/produkt-bindung';
-import { maskeWerte, maskeAnwenden, formWort, nameSetzen, titelSetzen, amMandatSatz } from '@/lib/prozesse/werkstatt-maske';
+import { maskeWerte, maskeAnwenden, formWort, nameSetzen, titelSetzen, amMandatSatz, startAmMandat, AM_MANDAT_NAME } from '@/lib/prozesse/werkstatt-maske';
 import { schleifenElementFall, teilprozessOptionen } from '@/lib/prozesse/teilprozess-neu';
 import { feldWerte } from '@/lib/prozesse/feld-werte';
 import { tageOptionen } from '@/lib/prozesse/zeitplan-tage';
@@ -197,7 +197,9 @@ function optionenFuer(q: AuswahlQuelle | undefined, p: PanelProps, k: K): Option
 function KnotenPanel(p: PanelProps & { k: K }) {
   const { k, d } = p;
   const e: KatalogEintrag | undefined = katalogEintrag(k.katalog?.id) ?? undefined;
-  const S = symbolVon(k);
+  // 25.10. (Kern-Bau-Test 2): Kopf, Symbol und Satz aus DERSELBEN Regel wie die Unterzeile des Knotens (`startAmMandat`) — nie „Von Hand“ an einem Start am Mandat.
+  const amMandat = startAmMandat(k, !!p.produkte?.length);
+  const S = symbolVon(k, { amMandat: !!p.produkte?.length });
   const ton = WERKSTATT_FORM_FARBE[k.form ?? 'schritt'];
   const werte = e ? maskeWerte(k, e) : {};
   // Kern-Bau-Test 24.10.: jede Änderung wirkt auf den AKTUELLEN Stand DIESES Knotens (Kennung fest) — nur das eine Feld, nie ein älteres Abbild des ganzen Knotens.
@@ -284,11 +286,11 @@ function KnotenPanel(p: PanelProps & { k: K }) {
         <span aria-hidden style={{ display: 'inline-flex', width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', background: TIEF.flaeche(ton), border: `1px solid ${TIEF.rand(ton)}` }}><S width={20} height={20} color={ton} /></span>
         <div style={{ minWidth: 0 }}>
           <div style={{ ...MIKRO }}>{e ? `${e.anbindung} · ${formWort(k.form)}` : formWort(k.form)}</div>
-          <div style={{ fontSize: TYP.body, fontWeight: 650, color: C.ink, overflowWrap: 'anywhere' }}>{e?.name ?? k.titel}</div>
+          <div style={{ fontSize: TYP.body, fontWeight: 650, color: C.ink, overflowWrap: 'anywhere' }}>{amMandat ? AM_MANDAT_NAME : e?.name ?? k.titel}</div>
         </div>
       </div>
       {/* Kern-Bau-Test 24.10.: der Start eines Prozesses, der zu einem Produkt gehört, startet am Mandat — nicht nur „wenn jemand auf Starten klickt“. */}
-      {e?.satz && <p style={klein}>{k.form === 'ausloeser' && p.produkte?.length && (!k.ausloeser || k.ausloeser.art === 'hand') ? amMandatSatz(p.produkte.map(x => x.name)) : e.satz}</p>}
+      {e?.satz && <p style={klein}>{amMandat && p.produkte ? amMandatSatz(p.produkte.map(x => x.name)) : e.satz}</p>}
       {k.deaktiviert && <Hinweis art="achtung" titel="Ausgeschaltet">Der Lauf überspringt diesen Schritt{schloss ? ' — sein Freigabe-Schloss mit' : ''}. Nichts davon wirkt, bis du ihn wieder einschaltest.</Hinweis>}
       <Feldzeile label="Name (Verb + Gegenstand)">
         <TitelFeld eingabe={titel} ziel={`${k.id}|name`} wert={k.titel} aus={p.nurLesen || !!k.schloss} onWert={t => aendern(x => nameSetzen(x, e, t, { modelle: p.modelle }))} />
