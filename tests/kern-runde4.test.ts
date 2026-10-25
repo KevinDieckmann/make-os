@@ -145,3 +145,28 @@ describe('3 · „Fall starten“ belegt den Start des Mandats vor (liegt er zur
     expect(quelle('lib/fulfillment/prozesse/server.ts')).toMatch(/m\.start \? \{ start: m\.start \}/);
   });
 });
+
+// ── 5 · Onboarding-Zählung: „x von n“ und „+n“ aus derselben Menge ──
+import { reiseZeile, phasenFluss, flussKnoten, verborgeneSchritte, KAESTCHEN_MAX } from '@/lib/fulfillment/prozesse/reise-bild';
+import type { Fall, FallKnoten } from '@/lib/fulfillment/typen';
+
+describe('5 · Reise: „0 von 8“ mit vier Kästchen und „+4“ (nie „+9“ — die Abschluss-Stellen sind keine Schritte)', () => {
+  const kn = (id: string, elternId: string | undefined, titel: string, rang: number): FallKnoten => ({ id, ...(elternId ? { elternId } : {}), titel, rang, status: 'offen' } as FallKnoten);
+  const schritte = ['Willkommen', 'Kick-off', 'Vereinbarung', 'Playbook', 'Stakeholder', 'Wert-Konto', 'Entscheidungslog', 'Abstimmung'];
+  const fall = { status: 'onboarding', freigaben: {}, befaehigung: [], knoten: [kn('w', undefined, 'Akte', 1), kn('ob', 'w', 'Onboarding', 1), ...schritte.map((t, i) => kn(`s${i}`, 'ob', t, i + 1))] } as unknown as Fall;
+  const eingabe = { fall, freigaben: [], heute: HEUTE };
+  const z = reiseZeile(eingabe);
+  it('die einzige Phase trägt den Abschluss — gezählt werden nur ihre Schritte', () => {
+    const s = z.spalten[0];
+    expect(s.gesamt).toBe(8);
+    expect(s.kaestchen.length).toBe(KAESTCHEN_MAX);
+    expect(s.mehr).toBe(4);
+    expect(s.kaestchen.length + s.mehr).toBe(s.gesamt);
+  });
+  it('der Fluss der Phase zeigt dieselben acht Schritte (gezeigt + „+n weitere“ = 8), der Abschluss steht für sich', () => {
+    const fl = phasenFluss(eingabe, 'ob');
+    const alle = fl ? flussKnoten(fl).filter(k => schritte.some((_, i) => k.id === `s${i}`)) : [];
+    expect(alle).toHaveLength(8);
+    expect(verborgeneSchritte(schritte.map((_, i) => ({ knoten: { id: `s${i}` } as FallKnoten })), alle.slice(0, 6))).toBe(2);
+  });
+});

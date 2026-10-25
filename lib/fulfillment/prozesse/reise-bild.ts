@@ -229,6 +229,16 @@ export function abschlussKaestchen(e: ReiseBildEingabe, reise: Pick<Reise, 'fert
   return { kaestchen, hier };
 }
 
+/**
+ * „+n“ unter einer Phase der Reise (25.10., Kern-Bau-Test 2 — vorher „0 von 8“ mit vier Kästchen und „+9“, weil die Abschluss-Stellen mitzählten): die SCHRITTE der
+ * Phase, die die Kästchen nicht zeigen — dieselbe Menge wie der Zähler „x von n“ und wie der Fluss („+n weitere Schritte“): gezeigte Schritte + n = alle Schritte.
+ * Die Abschluss-Stellen (Befähigung, Fall abschließen …) sind keine Schritte; sie stehen im Fluss der Phase unter „Abschluss“.
+ */
+export function verborgeneSchritte(schritte: readonly Pick<SchrittZeile, 'knoten'>[], gezeigt: readonly { id: string }[]): number {
+  const ids = new Set(gezeigt.map(k => k.id));
+  return schritte.filter(z => !ids.has(z.knoten.id)).length;
+}
+
 const istPhasenAbstimmung = (hp: NaechsterPunkt | null): boolean => !!hp && hp.art === 'freigabe' && hp.id === hp.phaseId;
 
 /** Alle Kästchen einer Phase in der Reihenfolge des Flusses (Schritte, an der letzten Phase der Abschluss) — „hier“ an höchstens einer Stelle. */
@@ -277,7 +287,7 @@ export function reiseZeile(e: ReiseBildEingabe): ReiseZeile {
     return {
       id: p.id, nr: p.nr, titel: p.titel, ...(p.zusatz ? { zusatz: p.zusatz } : {}), zustand: p.zustand, erledigt: p.erledigt, gesamt: p.gesamt,
       ...(haengt ? { haengt } : {}),
-      kaestchen: zeigen, mehr: pk.kaestchen.length - zeigen.length,
+      kaestchen: zeigen, mehr: verborgeneSchritte(pk.zeilen, zeigen),
       ...(fg ? { abstimmung: { id: fg.id, ...(fg.nr ? { nr: fg.nr } : {}), titel: fg.titel, wer: fg.wer, gegeben: fg.gegeben, hier: abHier, ...(phk?.faelligAm ? { faelligAm: phk.faelligAm } : {}), ...(abHaengt ? { haengt: abHaengt } : {}) } } : {}),
       band: (() => {
         const offen = pk.kaestchen.filter(k => k.beimKunden && k.zustand !== 'erledigt' && k.zustand !== 'entfaellt');
