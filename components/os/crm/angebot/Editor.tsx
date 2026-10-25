@@ -33,7 +33,7 @@ import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { kanalStatus } from '@/lib/crm/recht';
 import {
-  angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionAusProdukt, dealWertUebernehmen, istGesellschaft,
+  angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionenAusDeal, aufwandLabel, istGesellschaft,
   NACHFASSEN_WERKTAGE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE,
   angebotTitelAus, angebotTitelAutomatisch, angebotHauptprodukt, dealProduktAnders, dealFrageText, positionenErgaenzen,
 } from '@/lib/crm/angebote';
@@ -95,7 +95,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     const firma = firmaId ? crm.stand.firmen.find(f => f.id === firmaId) : undefined;
     const ziel = firma?.zahlung?.zielTage ?? k?.zahlung?.zielTage ?? v?.zahlungszielTage ?? ZAHLUNGSZIEL_VORGABE_TAGE;
     const produkt = d?.leistungId ? crm.stand.leistungen.find(l => l.id === d.leistungId && l.status === 'aktiv') : undefined;
-    const positionen = produkt ? [dealWertUebernehmen(positionAusProdukt(produkt, 'p-1', { kleinunternehmer: !!v?.kleinunternehmer }), d?.wert)] : [];
+    // 24.10. (Bau-Test): eine Kombination bringt jeden Preis-Teil als eigene Position — der Deal-Wert ersetzt nie einen Preis-Teil (`positionenAusDeal`).
+    const positionen = produkt ? positionenAusDeal(produkt, d?.wert, { kleinunternehmer: !!v?.kleinunternehmer }) : [];
     // A1 (21.10.): der Titel kommt aus den Produkten, nicht mehr aus dem Deal — sonst hieß ein Workshop-Angebot nach dem alten Deal.
     const titel = angebotTitelAus({ positionen }, crm.stand.leistungen, firma?.name);
     const gueltigBis = plusTage(heute, v?.gueltigkeitTage ?? GUELTIG_VORGABE_TAGE);
@@ -406,6 +407,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
         <div className="angebot-summen" style={{ display: 'flex', gap: 16, alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', minWidth: 0 }}>
           <Summe label="einmalig" netto={s.einmalig.netto} brutto={s.einmalig.brutto} ku={ku} />
           <Summe label="monatlich" netto={s.monat.netto} brutto={s.monat.brutto} ku={ku} />
+          {/* 24.10.: Tages-/Stundensätze getrennt — geplante Menge je Monat, abgerechnet wird die echte (nie unter „einmalig“). */}
+          <Summe label={aufwandLabel(positionen)} netto={s.aufwand.netto} brutto={s.aufwand.brutto} ku={ku} />
           <Summe label="jährlich" netto={s.jahr.netto} brutto={s.jahr.brutto} ku={ku} />
           <Summe label="Gesamtwert" netto={s.gesamt.netto} brutto={s.gesamt.brutto} ku={ku} stark />
         </div>

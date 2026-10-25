@@ -57,6 +57,21 @@ describe('CRM-Säuberer kennen jedes Typ-Feld (#23)', () => {
       expect(felder.filter(f => !nennt(text, f)), `${typ}: diese Felder kennt ${fn}() nicht`).toEqual([]);
     }
   });
+  // 24.10. (Preis-Kette, `satz`/`preisTeilId` an der Position, `einmalBetrag` am Deal-Wert): ein neues Feld fiele sonst beim Speichern eines Entwurfs bzw.
+  // eines Deals still weg.
+  it('AngebotPosition ↔ positionSaeubern() (lib/crm/angebote.ts), Chance.wert ↔ chance()', () => {
+    const angebote = quelle('lib/crm/angebote.ts');
+    const text = funktion(angebote, 'positionSaeubern');
+    expect(text.length, 'Säuberer positionSaeubern nicht gefunden').toBeGreaterThan(0);
+    const felder = felderVon(typen, 'AngebotPosition');
+    expect(felder.length).toBeGreaterThan(0);
+    expect(felder.filter(f => !nennt(text, f)), 'AngebotPosition: diese Felder kennt positionSaeubern() nicht').toEqual([]);
+    const wert = /\bwert: \{([^}]*)\}/.exec(readFileSync('lib/crm/typen.ts', 'utf8'))?.[1] ?? '';
+    const wertFelder = Array.from(wert.matchAll(/(\w+)\??:/g)).map(m => m[1]);
+    expect(wertFelder).toContain('einmalBetrag');
+    const chance = funktion(speicher, 'chance');
+    expect(wertFelder.filter(f => !nennt(chance, f)), 'Chance.wert: diese Felder kennt chance() nicht').toEqual([]);
+  });
   it('Kontakt ↔ saeubereKontakt()', () => {
     const crm = quelle('lib/make-one/crm.ts');
     const text = funktion(crm, 'saeubereKontakt');

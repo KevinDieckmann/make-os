@@ -15,11 +15,11 @@
 //     Geschäftsunterlagen — der Bezug wird gelöst, das Angebot bleibt (§ 257 HGB, § 147 AO).
 // Keine Rechts- oder Steuerberatung — Pflichtangaben einmal mit dem Steuerberater abstimmen.
 
-import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, CrmBestand, FollowUp, Leistung, Mandat } from './typen';
+import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, CrmBestand, FollowUp, Leistung, Mandat, MandatZusatz, PreisTeil } from './typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { KERN_EINHEITEN, UG_KURZ, EINHEITEN_UEBERSCHRIEBEN } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
-import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt, mandatZahlplanAusProdukt } from './produkt-karte';
+import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt, mandatZahlplanAusProdukt, hauptpreis, hauptpreisAus, istKombi, istSatz, zusatzAusTeil } from './produkt-karte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
 import { produktTitel, titelNurProdukt } from './titel-regel';
 
@@ -70,7 +70,10 @@ export const ustCent = (nettoCent: number, satz: number) => inCent(ustAusNetto(a
 export interface Summe { netto: number; ust: number; brutto: number; /** Steuer je Satz (Cent). */ jeSatz: { satz: number; netto: number; ust: number }[] }
 export interface AngebotSummen {
   einmalig: Summe;
+  /** Monatlich — ohne Tages-/Stundensätze (die stehen unter `aufwand`). */
   monat: Summe;
+  /** Tages- und Stundensätze je Monat, geplant (Positionen mit `satz`, 24.10.): Satz × geplante Menge — abgerechnet wird die echte Menge. */
+  aufwand: Summe;
   jahr: Summe;
   /** Gesamtwert über die Laufzeit: einmalig + monatlich × Laufzeit (Vorgabe 12) + jährlich × Jahre (Vorgabe 1). */
   gesamt: Summe;
@@ -97,13 +100,17 @@ export function laufzeitFaktor(p: Pick<AngebotPosition, 'basis' | 'laufzeitMonat
   return p.basis === 'monat' ? m : m / 12;
 }
 
+/** Ist die Position ein Tages-/Stundensatz mit geplanter Menge je Monat (`satz`, nur mit Basis „monat“)? */
+export const istSatzPosition = (p: Pick<AngebotPosition, 'basis'> & Partial<Pick<AngebotPosition, 'satz'>>) => p.basis === 'monat' && (p.satz === 'tag' || p.satz === 'stunde');
+
 /** Alle Summen eines Angebots — in Cent, kaufmännisch je Angebot. Kleinunternehmer (§ 19 UStG): keine Steuer. */
 export function angebotSummen(a: Pick<Angebot, 'positionen'>, opt: { kleinunternehmer?: boolean } = {}): AngebotSummen {
   const ku = !!opt.kleinunternehmer;
-  const nach = (b: AngebotBasis) => a.positionen.filter(p => p.basis === b).map(p => ({ netto: positionNettoCent(p), satz: p.ustSatz }));
+  // Tages-/Stundensatz (24.10., `satz`): laufend je Monat, aber eine eigene Summe — nie unter „einmalig“, nie still im festen Monatsbetrag.
+  const nach = (b: AngebotBasis, satz: boolean) => a.positionen.filter(p => p.basis === b && istSatzPosition(p) === satz).map(p => ({ netto: positionNettoCent(p), satz: p.ustSatz }));
   const gesamt = a.positionen.map(p => ({ netto: kaufmaennisch(positionNettoCent(p) * laufzeitFaktor(p)), satz: p.ustSatz }));
   return {
-    einmalig: summeAus(nach('einmalig'), ku), monat: summeAus(nach('monat'), ku), jahr: summeAus(nach('jahr'), ku),
+    einmalig: summeAus(nach('einmalig', false), ku), monat: summeAus(nach('monat', false), ku), aufwand: summeAus(nach('monat', true), ku), jahr: summeAus(nach('jahr', false), ku),
     gesamt: gesamt.length ? summeAus(gesamt, ku) : leer(),
     ohneLaufzeit: a.positionen.filter(p => p.basis !== 'einmalig' && !(p.laufzeitMonate && p.laufzeitMonate > 0)).length,
     kleinunternehmer: ku,
@@ -229,6 +236,8 @@ export function positionSaeubern(o: Record<string, unknown>, i: number): Angebot
     titel, text: txt(o.text, ANGEBOT_GRENZEN.text), menge, einheit: zeile(o.einheit, 30) || 'pauschal', einzelpreisCent: preis,
     ...(rabatt ? { rabattProzent: rabatt } : {}), ustSatz: satz, basis,
     ...(basis !== 'einmalig' && lz > 0 ? { laufzeitMonate: Math.min(POSITION_MAX.laufzeitMonate, lz) } : {}),
+    // Tages-/Stundensatz mit geplanter Menge je Monat (24.10.) — nur bei Basis „monat“; wer die Basis umstellt, nimmt ihn weg.
+    ...(basis === 'monat' && (o.satz === 'tag' || o.satz === 'stunde') ? { satz: o.satz } : {}),
   };
 }
 
@@ -385,6 +394,21 @@ export function dealWertUebernehmen(p: AngebotPosition, w: { betrag: number; bas
 }
 
 /**
+ * Die Positionen, mit denen „Angebot erstellen“ aus einem Deal mit Produkt startet (24.10., Bau-Test): eine Kombination (mehrere Preis-Teile) bringt JEDEN
+ * Grund-Teil als eigene Position mit seinem eigenen Betrag und seiner Basis — der Deal-Wert ersetzt nie einen Preis-Teil (vorher stand er auf der ersten
+ * Position: „900 €/Monat“ mit der Kennung des Festpreises, die 1.500 € fehlten). Ein Produkt mit einem Preis wie bisher: der Deal-Wert gilt (`dealWertUebernehmen`).
+ */
+export function positionenAusDeal(l: Leistung, wert: { betrag: number; basis: AngebotBasis; laufzeitMonate?: number } | undefined, opt: { kleinunternehmer?: boolean } = {}): AngebotPosition[] {
+  if (istKombi(l)) return angebotPositionenAusProdukt(l, [], { idBasis: 'p-1', ...opt });
+  return [dealWertUebernehmen(positionAusProdukt(l, 'p-1', opt), wert)];
+}
+/** Beschriftung der Summe der Tages-/Stundensätze (`AngebotSummen.aufwand`): „Tagessätze je Monat (geplant)“, „Stundensätze …“ bzw. „nach Aufwand …“. */
+export function aufwandLabel(positionen: readonly Pick<AngebotPosition, 'basis' | 'satz'>[]): string {
+  const arten = new Set(positionen.filter(istSatzPosition).map(p => p.satz));
+  return `${arten.size === 1 ? (arten.has('tag') ? 'Tagessätze' : 'Stundensätze') : 'Nach Aufwand'} je Monat (geplant)`;
+}
+
+/**
  * Dieselbe Position? (21.10., Rundgang B5) — nur Positionen aus einem Produkt: tragen beide den Preis-Teil, entscheidet er; sonst (Altbestand,
  * Produkt ohne Preis-Teile) Titel, Basis und Einheit. Menge, Preis und Rabatt zählen nicht — die ändert man in der Zeile.
  */
@@ -509,17 +533,65 @@ export function mailtoLink(an: string | undefined, betreff: string, text: string
 
 // ── Verbindungen: Deal-Wert, Mandat-Vorbelegung ─────────────────────────────
 
-/** Deal-Wert aus dem Angebot (Euro): laufend monatlich (Jahr/12 dazu), sonst jährlich, sonst einmalig. */
+/**
+ * Deal-Wert aus dem Angebot (Euro, netto): laufend monatlich (fester Monatsbetrag + geplante Tages-/Stundensätze, Jahr/12 dazu), sonst jährlich, sonst
+ * einmalig. Ein gemischtes Angebot (einmalig + laufend) trägt den Einmal-Anteil getrennt in `einmalBetrag` (24.10., Bau-Test) — vorher verteilte er sich
+ * auf die Laufzeit (8.100 € ÷ 6 = „1.350 €/Monat“, eine Zahl, die nirgends vereinbart war). Gesamtwert des Deals = Gesamtwert des Angebots.
+ */
 export function dealWertAusAngebot(a: Pick<Angebot, 'positionen'>): Chance['wert'] {
   const s = angebotSummen(a);
   const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
-  // Gemischtes Angebot (einmalig + laufend): der Einmal-Anteil verteilt sich auf die Laufzeit (ohne Laufzeit: 12 Monate),
-  // damit der Deal den ganzen Auftragswert trägt — vorher fiel er weg (Sandbox-Prüfung 28.09.). Der Deal hat nur EINE Basis.
-  const laufzeit = lz || 12;
-  const einmalAnteil = s.einmalig.netto > 0 && (s.monat.netto > 0 || s.jahr.netto > 0);
-  if (s.monat.netto > 0) return { betrag: ausCent(s.monat.netto + kaufmaennisch(s.jahr.netto / 12) + (einmalAnteil ? kaufmaennisch(s.einmalig.netto / laufzeit) : 0)), basis: 'monat', ...(lz || einmalAnteil ? { laufzeitMonate: laufzeit } : {}) };
-  if (s.jahr.netto > 0) return { betrag: ausCent(s.jahr.netto + (einmalAnteil ? kaufmaennisch(s.einmalig.netto * 12 / laufzeit) : 0)), basis: 'jahr', ...(lz || einmalAnteil ? { laufzeitMonate: laufzeit } : {}) };
+  const monatlich = s.monat.netto + s.aufwand.netto;
+  const einmal = s.einmalig.netto > 0 ? { einmalBetrag: ausCent(s.einmalig.netto) } : {};
+  if (monatlich > 0) return { betrag: ausCent(monatlich + kaufmaennisch(s.jahr.netto / 12)), basis: 'monat', ...(lz ? { laufzeitMonate: lz } : {}), ...einmal };
+  if (s.jahr.netto > 0) return { betrag: ausCent(s.jahr.netto), basis: 'jahr', ...(lz ? { laufzeitMonate: lz } : {}), ...einmal };
   return { betrag: ausCent(s.einmalig.netto), basis: 'einmalig' };
+}
+
+// ── Kombination im Angebot → Mandat (24.10., Bau-Test „Mandat verliert Preis-Teile“) ────────────────────────────────────────────
+
+/** Welche Basis eine Position eines Preis-Teils im Angebot trägt (wie `angebotPositionenAusProdukt` sie anlegt). */
+const BASIS_DES_TEILS = (t: PreisTeil): AngebotBasis => (t.art === 'monatlich' || istSatz(t.art) ? 'monat' : t.art === 'jaehrlich' ? 'jahr' : 'einmalig');
+/**
+ * Wie das Mandat die Positionen eines angenommenen Angebots trägt, wenn das Hauptprodukt eine Kombination ist (mehrere Preis-Teile) und Positionen dessen
+ * Teile tragen (`preisTeilId`): die Position des Hauptpreises wird das Honorar, jede weitere eigene Position ein Zusatzmodul (`zusatzAusTeil`), alles Übrige
+ * (freie Positionen, andere Produkte, Positionen mit umgestellter Basis, Doppelte) bleibt „übrig“ — wie bisher. null = keine Kombination (alte Regel).
+ */
+export interface AngebotAufteilung { produkt: Leistung; haupt: { position: AngebotPosition; teil: PreisTeil }; zusatz: { position: AngebotPosition; teil: PreisTeil }[]; uebrig: AngebotPosition[] }
+export function angebotAufteilung(a: Pick<Angebot, 'positionen'>, leistungen?: readonly Leistung[]): AngebotAufteilung | null {
+  const hp = angebotHauptprodukt(a, leistungen);
+  const l = hp ? leistungen?.find(x => x.id === hp) : undefined;
+  if (!l || !istKombi(l)) return null;
+  const gesehen = new Set<string>();
+  const eigene: { position: AngebotPosition; teil: PreisTeil }[] = [];
+  const uebrig: AngebotPosition[] = [];
+  for (const p of a.positionen) {
+    const teil = p.leistungId === l.id && p.preisTeilId ? l.preise!.find(t => t.id === p.preisTeilId) : undefined;
+    if (!teil || gesehen.has(teil.id) || BASIS_DES_TEILS(teil) !== p.basis) { uebrig.push(p); continue; }
+    gesehen.add(teil.id);
+    eigene.push({ position: p, teil });
+  }
+  if (!eigene.length) return null;
+  const h = hauptpreis(l);
+  const haupt = eigene.find(x => x.teil === h) ?? eigene.find(x => x.teil === hauptpreisAus(eigene.map(e => e.teil)))!;
+  return { produkt: l, haupt, zusatz: eigene.filter(x => x !== haupt), uebrig };
+}
+/** Netto einer Position je Einheit (Cent, Rabatt kaufmännisch) — der Satz eines Tages-/Stundensatzes bzw. der Preis je Einheit. */
+const einzelNetto = (p: Pick<AngebotPosition, 'einzelpreisCent' | 'rabattProzent'>) => positionNettoCent({ menge: 1, einzelpreisCent: p.einzelpreisCent, rabattProzent: p.rabattProzent });
+/** Das Zusatzmodul einer eigenen Position: vereinbarter Preis aus dem Angebot (Monat/Jahr/einmalig: die Position netto; Satz/je Einheit: je Einheit). */
+function zusatzAusPosition(l: Leistung, x: { position: AngebotPosition; teil: PreisTeil }): MandatZusatz | null {
+  const nachMenge = istSatz(x.teil.art) || x.teil.art === 'je_einheit';
+  return zusatzAusTeil(l, x.teil, { honorarCent: nachMenge ? einzelNetto(x.position) : positionNettoCent(x.position), ...(istSatz(x.teil.art) ? { menge: x.position.menge } : {}) });
+}
+/**
+ * Die Einmalposten eines angenommenen Angebots, die eine eigene Rechnung werden („Einmalbetrag als Rechnung planen“, Woche 1 · 3.6 — die laufende Leistung
+ * rechnet das Mandat ab). Ohne Kombination wie bisher: alle Einmalposten. Mit Kombination (24.10.): nur die übrigen — die eigenen Teile (z. B. der
+ * Festpreis 50/50) rechnet das Mandat als Zusatzmodul ab, nie doppelt; ist der Hauptpreis selbst einmalig, trägt das Honorar die übrigen mit (keine).
+ */
+export function angebotEinmalRest(a: Pick<Angebot, 'positionen'>, leistungen?: readonly Leistung[]): AngebotPosition[] {
+  const t = angebotAufteilung(a, leistungen);
+  if (!t) return a.positionen.filter(p => p.basis === 'einmalig');
+  return t.haupt.position.basis === 'einmalig' ? [] : t.uebrig.filter(p => p.basis === 'einmalig');
 }
 
 /**
@@ -529,6 +601,9 @@ export function dealWertAusAngebot(a: Pick<Angebot, 'positionen'>): Chance['wert
  * Ohne Vertrag am Produkt genau wie bisher.
  */
 export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]): Partial<Mandat> {
+  // 24.10.: eine Kombination (Hauptprodukt mit mehreren Preis-Teilen) trägt jeden Teil — Honorar = Hauptpreis, die übrigen Teile Zusatzmodule.
+  const teile = angebotAufteilung(a, leistungen);
+  if (teile) return mandatVorbelegungKombi(a, teile, leistungen ?? []);
   const s = angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer });
   const laufend = s.monat.netto + kaufmaennisch(s.jahr.netto / 12);
   const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
@@ -561,6 +636,60 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
     ...(v.verlaengerung ? { verlaengerung: v.verlaengerung } : {}),
     ...(v.rechnungsrhythmus === 'quartal' ? { rechnungsrhythmus: 'quartal' as const } : {}),
     ...(inklusive?.length ? { zusatz: inklusive } : {}),
+  };
+}
+
+/**
+ * Mandat-Vorbelegung einer Kombination (24.10., Bau-Test): Honorar = die Position des Hauptpreises (der laufende Teil — monatlich netto, jährlich ÷ 12,
+ * Tagessatz je Tag mit den geplanten Tagen, Festpreis einmalig mit Zahlplan), jede weitere eigene Position ein Zusatzmodul mit dem vereinbarten Preis
+ * (`zusatzAusPosition`); übrige laufende Positionen kommen wie bisher zum Monatshonorar, übrige Einmalposten bleiben für die Einmal-Rechnung
+ * (`angebotEinmalRest`). Vertrag des Produkts füllt nur Lücken (wie bisher), Leistungen = Leistungstext + Lieferumfang des Produkts.
+ */
+function mandatVorbelegungKombi(a: Angebot, t: AngebotAufteilung, leistungen: readonly Leistung[]): Partial<Mandat> {
+  const ku = !!a.absender?.kleinunternehmer;
+  const l = t.produkt;
+  const hp = t.haupt.position;
+  const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
+  const uebrigLaufend = t.uebrig.filter(p => p.basis !== 'einmalig');
+  const uebrigMonat = uebrigLaufend.reduce((x, p) => x + (p.basis === 'jahr' ? kaufmaennisch(positionNettoCent(p) / 12) : positionNettoCent(p)), 0);
+  const offen: string[] = [];
+  let honorar: Mandat['honorar'];
+  let extra: Partial<Mandat> = {};
+  if (hp.basis === 'einmalig') {
+    // Festpreis (bzw. je Einheit) als Hauptpreis: einmalig — übrige Einmalposten wie bisher dazu, übrige laufende werden ein offener Punkt.
+    const einmal = t.uebrig.filter(p => p.basis === 'einmalig').reduce((x, p) => x + positionNettoCent(p), 0);
+    honorar = { betrag: ausCent(positionNettoCent(hp) + einmal), basis: 'einmalig', netto: true };
+    const zp = t.haupt.teil.art === 'fest' && t.haupt.teil.zahlplan?.anzahlungProzent ? { anzahlungProzent: t.haupt.teil.zahlplan.anzahlungProzent } : undefined;
+    if (zp) extra = { zahlplan: zp };
+    for (const p of uebrigLaufend) offen.push(`Position „${p.titel}“ (laufend) steht nicht im Honorar — als Zusatzmodul ergänzen.`);
+  } else if (t.haupt.teil.art === 'tagessatz') {
+    honorar = { betrag: ausCent(einzelNetto(hp)), basis: 'tag', netto: true };
+    extra = { tageJeMonat: hp.menge };
+    for (const p of uebrigLaufend) offen.push(`Position „${p.titel}“ (laufend) steht nicht im Honorar — als Zusatzmodul ergänzen.`);
+  } else {
+    // monatlich, jährlich (÷ 12 auf den Cent), Stundensatz (geplante Stunden × Satz wie `mandatVorlageAusProdukt`) — übrige laufende wie bisher dazu.
+    const netto = hp.basis === 'jahr' ? kaufmaennisch(positionNettoCent(hp) / 12) : positionNettoCent(hp);
+    honorar = { betrag: ausCent(netto + uebrigMonat), basis: 'monat', netto: true };
+    if (t.haupt.teil.art === 'stundensatz') offen.push(`Stundensatz ${euroCent(einzelNetto(hp))} netto, ${mengeText(hp.menge)} Std./Monat geplant — als Monatshonorar stehen die geplanten Stunden; nach Aufwand abrechnen.`);
+  }
+  const zusatz = t.zusatz.map(x => zusatzAusPosition(l, x)).filter((z): z is MandatZusatz => !!z);
+  const v = mandatVertragAusProdukt(l, honorar.basis);
+  const inklusive = l.regeln?.inklusive?.length ? mandatVorlageAusProdukt(l).zusatz?.filter(z => z.inklusive) ?? [] : [];
+  const vorlage = mandatVorlageAusProdukt(l);
+  const saetze = Array.from(new Set(a.positionen.map(p => p.ustSatz)));
+  const titel = angebotTitelFuerFolge(a, leistungen);
+  return {
+    gesellschaft: a.gesellschaft, titel: titel || undefined, honorar, ...extra,
+    ...(lz ? { mindestlaufzeitMonate: Math.min(120, lz) } : v.mindestlaufzeitMonate ? { mindestlaufzeitMonate: v.mindestlaufzeitMonate } : {}),
+    leistungId: l.id,
+    ustSatz: ku ? 0 : saetze.length === 1 && [0, 7, 19].includes(saetze[0]) ? saetze[0] : 19,
+    rechnungsrhythmus: honorar.basis === 'einmalig' ? 'einmalig' : v.rechnungsrhythmus === 'quartal' ? 'quartal' : 'monatlich', zahlungszielTage: a.zahlungszielTage,
+    // Leistungen: Leistungstext + Lieferumfang des Produkts (die Teile stehen als Zusatzmodule, nicht mehr nur als Namen), dazu die übrigen Positionen.
+    leistungen: [...(vorlage.leistungen.length ? vorlage.leistungen : [l.name]), ...t.uebrig.map(p => p.titel)],
+    ...(v.kuendigungsfristTage != null ? { kuendigungsfristTage: v.kuendigungsfristTage } : {}),
+    ...(v.verlaengerung ? { verlaengerung: v.verlaengerung } : {}),
+    ...(zusatz.length || inklusive.length ? { zusatz: [...zusatz, ...inklusive] } : {}),
+    ...(offen.length ? { offen } : {}),
   };
 }
 

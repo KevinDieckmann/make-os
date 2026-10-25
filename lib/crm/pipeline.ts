@@ -74,10 +74,25 @@ export const dealsOhneWert = (chancen: readonly Pick<Chance, 'wert' | 'stufe'>[]
 
 export function gesamtwert(c: Pick<Chance, 'wert'>): number {
   const { betrag, basis, laufzeitMonate } = c.wert;
-  if (!(betrag > 0)) return 0;
-  if (basis === 'monat') return betrag * (laufzeitMonate && laufzeitMonate > 0 ? laufzeitMonate : 12);
-  if (basis === 'jahr') return betrag * (laufzeitMonate && laufzeitMonate > 0 ? laufzeitMonate / 12 : 1);
+  // Einmal-Anteil eines gemischten Deals (24.10., `einmalBetrag`) — nur neben einem laufenden Wert; ohne ihn rechnet alles wie bisher.
+  const einmal = basis !== 'einmalig' && typeof c.wert.einmalBetrag === 'number' && c.wert.einmalBetrag > 0 ? c.wert.einmalBetrag : 0;
+  if (!(betrag > 0)) return einmal;
+  if (basis === 'monat') return betrag * (laufzeitMonate && laufzeitMonate > 0 ? laufzeitMonate : 12) + einmal;
+  if (basis === 'jahr') return betrag * (laufzeitMonate && laufzeitMonate > 0 ? laufzeitMonate / 12 : 1) + einmal;
   return betrag;
+}
+const euroKurz = (n: number) => `${n.toLocaleString('de-DE', { maximumFractionDigits: 2 })} €`;
+/**
+ * Der Wert eines Deals in Worten — EINE Stelle für Deal-Akte und Pipeline (24.10.): „900 € je Monat · 6 Monate + 1.500 € einmalig“; ohne Wert „ohne Wert“.
+ * `kurz`: „900 €/M + 1.500 €“ für Karten.
+ */
+export function dealWertText(c: Pick<Chance, 'wert'>, opt: { kurz?: boolean } = {}): string {
+  const { betrag, basis, laufzeitMonate, einmalBetrag } = c.wert;
+  const einmal = basis !== 'einmalig' && typeof einmalBetrag === 'number' && einmalBetrag > 0 ? einmalBetrag : 0;
+  if (!(betrag > 0) && !einmal) return 'ohne Wert';
+  if (opt.kurz) return [betrag > 0 ? `${euroKurz(betrag)}${basis === 'monat' ? '/M' : basis === 'jahr' ? '/J' : ''}` : '', einmal ? `${euroKurz(einmal)}${betrag > 0 ? '' : ' einmalig'}` : ''].filter(Boolean).join(' + ');
+  const lauf = betrag > 0 ? `${euroKurz(betrag)} ${basis === 'monat' ? 'je Monat' : basis === 'jahr' ? 'je Jahr' : 'einmalig'}${basis !== 'einmalig' && laufzeitMonate ? ` · ${laufzeitMonate} ${laufzeitMonate === 1 ? 'Monat' : 'Monate'}` : ''}` : '';
+  return [lauf, einmal ? `${euroKurz(einmal)} einmalig` : ''].filter(Boolean).join(' + ');
 }
 
 const tageZwischen = (a: string, b: string) => Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00Z`) - Date.parse(`${a.slice(0, 10)}T12:00:00Z`)) / 864e5);

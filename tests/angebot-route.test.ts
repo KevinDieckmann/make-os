@@ -129,7 +129,7 @@ describe('Stellen: Nummer, PDF, Verbindungen', () => {
     // Deal neu über dealAnlegen, Stufe Angebot, Wert aus dem Angebot, nächster Schritt = Nachfassen.
     const b = await crm();
     const deal = b.chancen.find(c => c.id === gestellt.dealId)!;
-    expect(deal).toMatchObject({ stufe: 'angebot', wert: { betrag: 2635, basis: 'monat', laufzeitMonate: 6 } /* 2.500 + (900 − 10 %) / 6 */, naechsterSchritt: { datum: NACHFASSEN }, gesellschaft: 'kdv', firmaId: 'f-muster' });
+    expect(deal).toMatchObject({ stufe: 'angebot', wert: { betrag: 2500, basis: 'monat', laufzeitMonate: 6, einmalBetrag: 810 } /* 24.10.: laufend 2.500 €/Monat, einmalig 900 − 10 % getrennt (nie verteilt) */, naechsterSchritt: { datum: NACHFASSEN }, gesellschaft: 'kdv', firmaId: 'f-muster' });
     expect(b.followups.find(f => f.id === 'fu-ang-entwurf1')).toMatchObject({ faellig: NACHFASSEN, status: 'offen', bezug: { art: 'chance', id: deal.id }, kontaktId: 'c-anna1' });
     const anna = (await kontakte()).find(x => x.id === 'c-anna1')!;
     // Woche 2 · 3.15 (08.10.): beim Stellen steht nur „gestellt“ (Notiz, kein Kontakt) — „gesendet“ erst nach Bestätigung (eigener Test).

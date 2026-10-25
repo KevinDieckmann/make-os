@@ -8,7 +8,7 @@
 import type { Angebot, AngebotAbsender, AngebotEmpfaenger } from './typen';
 import type { Gesellschaft } from './gesellschaften';
 import { mitVorgaben } from './gesellschaften';
-import { angebotSummen, euroCent, mengeText, positionNettoCent, BASIS_LABEL, type Summe } from './angebote';
+import { angebotSummen, aufwandLabel, euroCent, istSatzPosition, mengeText, positionNettoCent, BASIS_LABEL, type Summe } from './angebote';
 import { ibanMaskiert } from './zahlung';
 
 const datumDe = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
@@ -87,6 +87,8 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
   const summen: DokumentSumme[] = [
     ...summenZeilen('Einmalig', s.einmalig, ku),
     ...summenZeilen('Monatlich', s.monat, ku),
+    // 24.10.: Tages-/Stundensätze getrennt (geplante Menge je Monat, abgerechnet wird die echte).
+    ...summenZeilen(aufwandLabel(a.positionen), s.aufwand, ku),
     ...summenZeilen('Jährlich', s.jahr, ku),
     ...(laufend || arten.size > 1 ? [{ label: `Gesamtwert über die Laufzeit${ku ? '' : ' (netto)'}`, wert: euroCent(s.gesamt.netto), stark: true }, ...(ku ? [] : [{ label: 'Gesamtwert brutto', wert: euroCent(s.gesamt.brutto), leise: true }])] : []),
   ];
@@ -104,7 +106,7 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
     positionen: a.positionen.map((p, i) => ({
       nr: String(i + 1), titel: p.titel, text: p.text, menge: `${mengeText(p.menge)} ${p.einheit}`.trim(), einzelpreis: euroCent(p.einzelpreisCent),
       ...(p.rabattProzent ? { rabatt: `${p.rabattProzent.toLocaleString('de-DE')} %` } : {}), betrag: euroCent(positionNettoCent(p)),
-      basis: p.basis === 'einmalig' ? BASIS_LABEL.einmalig : `${BASIS_LABEL[p.basis]}${p.laufzeitMonate ? ` · ${p.laufzeitMonate} Monate` : ''}`,
+      basis: p.basis === 'einmalig' ? BASIS_LABEL.einmalig : `${istSatzPosition(p) ? `nach ${p.satz === 'tag' ? 'Tagen' : 'Stunden'} · geplant je Monat` : BASIS_LABEL[p.basis]}${p.laufzeitMonate ? ` · ${p.laufzeitMonate} Monate` : ''}`,
     })),
     summen,
     hinweise: [

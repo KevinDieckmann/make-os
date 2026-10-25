@@ -11,7 +11,7 @@ import type { AngebotBasis, AngebotPosition, Leistung } from '@/lib/crm/typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { feld, HakenZiel } from '../../ui';
-import { katalog, positionNettoCent, euroCent, centAusEingabe, eingabeAusCent, mengeAusEingabe, mengeText, BASIS_LABEL, UST_SAETZE } from '@/lib/crm/angebote';
+import { katalog, positionNettoCent, euroCent, centAusEingabe, eingabeAusCent, mengeAusEingabe, mengeText, BASIS_LABEL, UST_SAETZE, istSatzPosition } from '@/lib/crm/angebote';
 import { angebotPositionenAusProdukt } from '@/lib/crm/produkt-karte';
 import { angebotKachel } from '@/lib/crm/produkt-katalog';
 import { neueId } from '../daten';
@@ -112,11 +112,13 @@ export function PositionZeile({ p, nr, onAendern, onWeg, onHoch, kleinunternehme
         <button onClick={onWeg} disabled={aus} aria-label={`Position ${nr} entfernen`} title="Entfernen" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>×</button>
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', paddingLeft: 26 }}>
-        <select data-ang-feld value={p.basis} disabled={aus} aria-label="Basis" onChange={e => onAendern({ basis: e.target.value as AngebotBasis, ...(e.target.value === 'einmalig' ? { laufzeitMonate: undefined } : {}) })} onKeyDown={weiter} style={{ ...zelle, width: 118, padding: '6px 8px' }}>
+        <select data-ang-feld value={p.basis} disabled={aus} aria-label="Basis" onChange={e => onAendern({ basis: e.target.value as AngebotBasis, ...(e.target.value === 'einmalig' ? { laufzeitMonate: undefined } : {}), ...(e.target.value !== 'monat' ? { satz: undefined } : {}) })} onKeyDown={weiter} style={{ ...zelle, width: 118, padding: '6px 8px' }}>
           {basen.map(b => <option key={b} value={b}>{BASIS_LABEL[b]}</option>)}
         </select>
         {p.basis !== 'einmalig' && <ZahlFeld label="Laufzeit Monate" breite={70} rechts wert={p.laufzeitMonate ? String(p.laufzeitMonate) : ''} onWert={t => { const n = t.trim() ? Math.round(Number(t)) : 0; if (!Number.isFinite(n) || n < 0 || n > 600) return false; onAendern({ laufzeitMonate: n || undefined }); return true; }} />}
         {p.basis !== 'einmalig' && <span style={klein}>{p.laufzeitMonate ? 'Monate' : 'Monate (leer = 12 im Gesamtwert)'}</span>}
+        {/* 24.10.: Tages-/Stundensatz — die Menge ist die geplante je Monat, abgerechnet wird die echte (am Mandat „abrechnen“). */}
+        {istSatzPosition(p) && <span style={klein}>Menge = geplante {p.satz === 'tag' ? 'Tage' : 'Stunden'} je Monat · abgerechnet nach {p.satz === 'tag' ? 'Tagen' : 'Stunden'}</span>}
         {!kleinunternehmer && (
           <select data-ang-feld value={p.ustSatz} disabled={aus} aria-label="Umsatzsteuer" onChange={e => onAendern({ ustSatz: Number(e.target.value) })} onKeyDown={weiter} style={{ ...zelle, width: 92, padding: '6px 8px' }}>
             {UST_SAETZE.map(s => <option key={s} value={s}>{s} % USt</option>)}
