@@ -38,6 +38,7 @@ import {
   angebotTitelAus, angebotTitelAutomatisch, angebotHauptprodukt, dealProduktAnders, dealFrageText, positionenErgaenzen, produktTexteFuer, produktTexteVon, positionNachLaufzeit,
 } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
+import { zustaendigFuer } from '@/lib/crm/person-anlegen';
 import { laufzeitenZurWahl } from '@/lib/crm/produkt-karte';
 import { absenderAus, empfaengerAus, angebotDokument } from '@/lib/crm/angebot-dokument';
 import { angebotPost, letzteGesellschaft, merkeGesellschaft, pdfLaden, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
@@ -238,6 +239,16 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     if (d && istGesellschaft(d.gesellschaft)) teil.gesellschaft = d.gesellschaft;
     aendern(teil);
   }
+  // Neuer Kontakt direkt im Angebot (25.10., Kevin): derselbe Anlege-Weg wie die Kartei (POST /api/crm/person) — danach gleich gewählt.
+  async function neuerKontakt(p: { vorname: string; nachname: string; email: string; firma: string }): Promise<string | null> {
+    const r = await api.personAnlegen('kartei', {
+      vorname: p.vorname.trim(), nachname: p.nachname.trim(), ...(p.email.trim() ? { email: p.email.trim() } : {}), ...(p.firma.trim() ? { firma: p.firma.trim() } : {}),
+      lebensphase: 'kontakt', anrede: 'Sie', zustaendig: zustaendigFuer('kartei', undefined, api.ich),
+    });
+    if (!r.ok || !r.kontaktId) return r.fehler ?? 'Nicht angelegt.';
+    kontaktWaehlen({ id: r.kontaktId, ...(r.firmaId ? { firmaId: r.firmaId } : {}) } as Kontakt);
+    return null;
+  }
   const positionen = form.positionen;
   const setzePos = (l: AngebotPosition[]) => aendern({ positionen: l });
   // Erstes Produkt einer anderen Gesellschaft: der Absender folgt dem Produkt (sonst ginge ein KD-Ventures-Produkt
@@ -332,7 +343,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
             <button onClick={onListe} style={{ background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien }}>alle Angebote ›</button>
           </span>
         </div>
-        <KontaktSuche kontakte={kontakte} gewaehlt={k} firma={firma} onWahl={kontaktWaehlen} />
+        <KontaktSuche kontakte={kontakte} gewaehlt={k} firma={firma} onWahl={kontaktWaehlen} onNeu={neuerKontakt} />
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
           {/* B17 (14.10.): Konto „nur Business“ wählt nur unter den Gesellschaften, die der Server liefert (nie die Privat-Einheit). */}
           <Wahl<Gesellschaftskennung> label="Gesellschaft" liste={daten.nurEntwuerfe ? GES_WAHL.filter(g => daten.gesellschaften.some(x => x.id === g.id)) : GES_WAHL} wert={form.gesellschaft} onWahl={x => { merkeGesellschaft(x); aendern({ gesellschaft: x }); }} />
@@ -449,9 +460,10 @@ function TextFeld({ label, wert, vonHand, onAendern, onVorlage }: { label: strin
 }
 
 /** Schnellsuche nach Person (Name, Firma, E-Mail) — Enter nimmt den ersten Treffer. */
-function KontaktSuche({ kontakte, gewaehlt, firma, onWahl }: { kontakte: Kontakt[]; gewaehlt?: Kontakt; firma?: Firma; onWahl: (k: Kontakt | null) => void }) {
+function KontaktSuche({ kontakte, gewaehlt, firma, onWahl, onNeu }: { kontakte: Kontakt[]; gewaehlt?: Kontakt; firma?: Firma; onWahl: (k: Kontakt | null) => void; onNeu: (p: NeuPerson) => Promise<string | null> }) {
   const [q, setQ] = useState('');
   const [auf, setAuf] = useState(!gewaehlt);
+  const [neu, setNeu] = useState<NeuPerson | null>(null);
   const treffer = useMemo(() => (q.trim() ? kontakte.filter(k => !k.eingeschraenkt && suchPasst([anzeigename(k), k.firma, k.email, ...(k.emails ?? []).map(e => e.adresse)], q)).slice(0, 8) : []), [kontakte, q]);
   if (gewaehlt && !auf) {
     return (
@@ -483,9 +495,45 @@ function KontaktSuche({ kontakte, gewaehlt, firma, onWahl }: { kontakte: Kontakt
           ))}
         </div>
       )}
-      {q.trim() && !treffer.length && <div style={{ ...klein, marginTop: 6 }}>Niemand gefunden.</div>}
+      {q.trim() && !treffer.length && !neu && <div style={{ ...klein, marginTop: 6 }}>Niemand gefunden.</div>}
+      {neu ? <NeuerKontakt start={neu} onAbbruch={() => setNeu(null)} onAnlegen={async p => { const f = await onNeu(p); if (!f) { setNeu(null); setAuf(false); setQ(''); } return f; }} />
+        : <button type="button" onClick={() => setNeu(personAusSuche(q))} style={{ marginTop: 8, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, minHeight: 32 }}>+ Neuen Kontakt anlegen</button>}
       {gewaehlt && <button onClick={() => setAuf(false)} style={{ marginTop: 6, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: 0 }}>bei {anzeigename(gewaehlt)} bleiben</button>}
     </div>
+  );
+}
+
+type NeuPerson = { vorname: string; nachname: string; email: string; firma: string };
+/** Suchtext als Startwert: eine Adresse wird E-Mail, sonst „Vorname Nachname“. */
+function personAusSuche(q: string): NeuPerson {
+  const t = q.trim();
+  if (t.includes('@')) return { vorname: '', nachname: '', email: t, firma: '' };
+  const teile = t.split(/\s+/).filter(Boolean);
+  return { vorname: teile.length > 1 ? teile.slice(0, -1).join(' ') : '', nachname: teile.length ? teile[teile.length - 1] : '', email: '', firma: '' };
+}
+function NeuerKontakt({ start, onAnlegen, onAbbruch }: { start: NeuPerson; onAnlegen: (p: NeuPerson) => Promise<string | null>; onAbbruch: () => void }) {
+  const [p, setP] = useState(start);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const eingabe = (k: keyof NeuPerson, platz: string, auto: string, typ = 'text') => (
+    <input value={p[k]} type={typ} autoComplete={auto} placeholder={platz} aria-label={platz.replace(/ \*$/, '')}
+      onChange={e => setP(x => ({ ...x, [k]: e.target.value }))} onInput={e => { const v = (e.target as HTMLInputElement).value; setP(x => ({ ...x, [k]: v })); }}
+      style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
+  );
+  return (
+    <form onSubmit={async e => { e.preventDefault(); if (!p.nachname.trim()) return; setFehler(null); setFehler(await onAnlegen(p)); }}
+      style={{ marginTop: 8, display: 'grid', gap: 8, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 8 }}>
+        {eingabe('vorname', 'Vorname', 'given-name')}
+        {eingabe('nachname', 'Nachname *', 'family-name')}
+        {eingabe('email', 'E-Mail', 'email', 'email')}
+        {eingabe('firma', 'Firma (bestehend oder neu)', 'organization')}
+      </div>
+      {fehler && <div role="alert" style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch, lineHeight: 1.5 }}>{fehler}</div>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Knopf typ="submit" aus={!p.nachname.trim()}>Anlegen und wählen</Knopf>
+        <Knopf leise onClick={onAbbruch}>Abbrechen</Knopf>
+      </div>
+    </form>
   );
 }
 

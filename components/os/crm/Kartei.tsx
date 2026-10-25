@@ -38,7 +38,7 @@ import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { dubletten, wanderungText, type Wanderung } from '@/lib/crm/dubletten';
 import { type CrmApi, datum } from './daten';
-import { KanalAmpel, Grund, Feldzeile, Pillen, Feld, AMPEL_FARBE } from './teile';
+import { KanalAmpel, Grund, Feldzeile, Pillen, AMPEL_FARBE } from './teile';
 import { Wahl } from './Wahl';
 import { Firmen, neueFirma } from './Firmen';
 import { ZustaendigFeld, SchrittFelder, schrittEingabe } from './PersonAnlegen';
@@ -421,11 +421,12 @@ function Anlegen({ api, onFertig }: { api: CrmApi; heute: string; onFertig: (id:
           Herkunft „Veranstaltung“ (08.10., 5.1): eine überreichte Karte ist eine Begegnung — „selbst angegeben“ las der Kanal als Website-Anfrage (MQL). */}
       <VisitenkarteKnopf onErkannt={d => setE({ ...e, vorname: d.vorname ?? e.vorname, nachname: d.nachname ?? e.nachname, email: d.email ?? e.email, telefon: d.telefon ?? e.telefon, position: d.position ?? e.position, firma: d.firma ?? e.firma, linkedin: d.linkedin ?? e.linkedin, webseite: d.webseite ?? e.webseite, mobil: d.mobil ?? e.mobil, vonKarte: true, herkunft: e.herkunft ?? 'veranstaltung' })} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))', gap: 8 }}>
-        <Feld wert={e.vorname} platzhalter="Vorname" onFertig={vorname => setE({ ...e, vorname })} />
-        <Feld wert={e.nachname} platzhalter="Nachname *" onFertig={nachname => setE({ ...e, nachname })} />
-        <Feld wert={e.email} platzhalter="E-Mail (Dublettenschlüssel)" onFertig={email => setE({ ...e, email })} />
-        <Feld wert={e.telefon} platzhalter="Telefon" onFertig={telefon => setE({ ...e, telefon })} />
-        <Feld wert={e.position} platzhalter="Position" onFertig={position => setE({ ...e, position })} />
+        {/* Live-Felder (25.10.): `Feld` übernimmt erst beim Verlassen — nach dem automatischen Ausfüllen des Browsers blieb „Anlegen“ gesperrt. */}
+        <LiveFeld wert={e.vorname} platzhalter="Vorname" auto="given-name" onWert={vorname => setE(x => ({ ...x, vorname }))} />
+        <LiveFeld wert={e.nachname} platzhalter="Nachname *" auto="family-name" onWert={nachname => setE(x => ({ ...x, nachname }))} />
+        <LiveFeld wert={e.email} platzhalter="E-Mail (Dublettenschlüssel)" auto="email" typ="email" onWert={email => setE(x => ({ ...x, email }))} />
+        <LiveFeld wert={e.telefon} platzhalter="Telefon" auto="tel" typ="tel" onWert={telefon => setE(x => ({ ...x, telefon }))} />
+        <LiveFeld wert={e.position} platzhalter="Position" auto="organization-title" onWert={position => setE(x => ({ ...x, position }))} />
         <div>
           <input list="crm-firmen" value={e.firma} onChange={x => setE({ ...e, firma: x.target.value })} placeholder="Firma (bestehend oder neu)" aria-label="Firma" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
           <FirmenDatalist id="crm-firmen" firmen={firmen} suche={e.firma} />
@@ -443,6 +444,11 @@ function Anlegen({ api, onFertig }: { api: CrmApi; heute: string; onFertig: (id:
       <div style={{ display: 'flex', gap: 8 }}><Knopf aus={!ok} onClick={anlegen}>Anlegen</Knopf><Knopf leise onClick={() => onFertig(null)}>Abbrechen</Knopf><span style={{ fontSize: TYP.bedien, color: C.inkLeise, alignSelf: 'center' }}>* Pflichtfeld · Herkunft bestimmt die Art.-14-Pflicht</span></div>
     </div>
   );
+}
+
+/** Eingabe, die jeden Wert sofort übernimmt — auch das automatische Ausfüllen des Browsers (ohne Fokuswechsel). */
+function LiveFeld({ wert, platzhalter, auto, typ, onWert }: { wert: string; platzhalter: string; auto?: string; typ?: string; onWert: (v: string) => void }) {
+  return <input value={wert} type={typ ?? 'text'} autoComplete={auto} onChange={x => onWert(x.target.value)} onInput={x => onWert((x.target as HTMLInputElement).value)} placeholder={platzhalter} aria-label={platzhalter.replace(/ \*$/, '')} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />;
 }
 
 type Reiter = 'ueberblick' | 'verlauf' | 'stamm' | 'recht';
