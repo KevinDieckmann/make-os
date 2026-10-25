@@ -19,6 +19,7 @@ import { Karte, Knopf, Hinweis, Ueberschrift, Chip, Leer, Erfolg, Fortschritt, e
 import type { KundenFormular, KundenFrage, KundenSicht } from '@/lib/fulfillment/kunde/sicht';
 import { WORTE, brauchtAnzahl, entscheidungenTeilen, formularOffen, formularZaehlung, fragenText, kundenReise, uploadText, wertModell, type Worte } from '@/lib/fulfillment/kunde/bild';
 import { KUNDE_ANNEHMEN, KUNDE_TYPEN_TEXT } from '@/lib/fulfillment/kunde/upload';
+import { kundenKopf } from '@/lib/fulfillment/kunde/kopf';
 import { KundenWertBalken, LageBlock, FortschrittZahl, WEG_FARBE } from './bilder';
 import { ReiseBild } from '../../ui/reise/ReiseBild';
 
@@ -202,7 +203,8 @@ export function KundenAnsicht({ sicht, vorschau, praesentation, aktionen }: { si
 
 function Kopf({ sicht, w, gross }: { sicht: KundenSicht; w: Worte; gross?: boolean }) {
   const a = sicht.anbieter;
-  const titel = sicht.mandat || sicht.firma;
+  // Kern-Bau-Test 24.10.: Firma und Ablauf je nur einmal (lib/fulfillment/kunde/kopf.ts).
+  const k = kundenKopf({ ...(sicht.mandat ? { mandat: sicht.mandat } : {}), firma: sicht.firma, ...(sicht.paket ? { paket: sicht.paket } : {}) });
   return (
     <header className="kunde-kopf">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between', flexWrap: 'wrap', minWidth: 0 }}>
@@ -215,9 +217,9 @@ function Kopf({ sicht, w, gross }: { sicht: KundenSicht; w: Worte; gross?: boole
         </span>
         <span style={{ ...MIKRO }}>Stand {sicht.stand}</span>
       </div>
-      <h1 style={{ fontFamily: SCHRIFT.display, fontSize: gross ? 44 : 30, fontWeight: 700, letterSpacing: '-.02em', margin: '18px 0 0', color: C.ink, lineHeight: 1.12, overflowWrap: 'anywhere' }}>{titel}</h1>
+      <h1 style={{ fontFamily: SCHRIFT.display, fontSize: gross ? 44 : 30, fontWeight: 700, letterSpacing: '-.02em', margin: '18px 0 0', color: C.ink, lineHeight: 1.12, overflowWrap: 'anywhere' }}>{k.titel}</h1>
       <div style={{ ...text, color: C.inkDim, marginTop: 6, fontSize: gross ? 19 : TYP.body }}>
-        {sicht.mandat ? <>{w.fuerEuch} <b style={{ color: C.ink, fontWeight: 600 }}>{sicht.firma}</b></> : null}{sicht.paket ? <>{sicht.mandat ? ' · ' : ''}{sicht.paket}</> : null}
+        {k.firma ? <>{w.fuerEuch} <b style={{ color: C.ink, fontWeight: 600 }}>{k.firma}</b></> : null}{k.paket ? <>{k.firma ? ' · ' : ''}{k.paket}</> : null}
       </div>
     </header>
   );
