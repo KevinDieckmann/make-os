@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { kundenKopf, ohneFirma } from '@/lib/fulfillment/kunde/kopf';
+import { fallKopf, kundenKopf, ohneFirma } from '@/lib/fulfillment/kunde/kopf';
 import { phaseBegonnen } from '@/lib/reise/bild';
 
 describe('Kopf der Kunden-Seite: Firma und Ablauf je nur einmal', () => {
@@ -16,6 +16,20 @@ describe('Kopf der Kunden-Seite: Firma und Ablauf je nur einmal', () => {
     expect(ohneFirma('Probe GmbH', 'Probe GmbH')).toBe('Probe GmbH');
     expect(ohneFirma('Probe GmbH · ', 'Probe GmbH')).toBe('Probe GmbH ·');
     expect(kundenKopf({ firma: 'Probe GmbH' })).toEqual({ titel: 'Probe GmbH' });
+  });
+});
+
+describe('Kopf des Falls intern (25.10., Kern-Reste 4): Firma genau einmal — dieselbe Regel wie die Kunden-Seite', () => {
+  it('„<Firma> · <Produkt>“: Titel ohne Firma, darunter „Fulfillment · <Firma>“', () => {
+    expect(fallKopf({ titel: 'Probe GmbH · Vertriebssprint', firma: 'Probe GmbH' })).toEqual({ titel: 'Vertriebssprint', unter: 'Fulfillment · Probe GmbH' });
+    expect(fallKopf({ titel: 'Vertriebssprint', firma: 'Probe GmbH' })).toEqual({ titel: 'Vertriebssprint', unter: 'Fulfillment · Probe GmbH' });
+    expect(fallKopf({ titel: 'Probe GmbH', firma: 'Probe GmbH' })).toEqual({ titel: 'Probe GmbH', unter: 'Fulfillment · Probe GmbH' });
+    expect(fallKopf(null)).toEqual({ titel: 'Fall', unter: 'Fulfillment · Fall' });
+  });
+  it('die Fall-Seite liest den Kopf nur über `fallKopf` (kein „Firma · Titel“ plus „Fulfillment · Firma“ mehr)', () => {
+    const q = readFileSync(path.join(process.cwd(), 'components/os/fulfillment/FulfillmentSeite.tsx'), 'utf8');
+    expect(q).toMatch(/fallKopf\(/);
+    expect(q).not.toMatch(/titel=\{mandat \? mandat\.titel/);
   });
 });
 

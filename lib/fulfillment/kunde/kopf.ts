@@ -26,3 +26,13 @@ export function kundenKopf(s: { mandat?: string; firma: string; paket?: string }
   const paket = s.paket && !norm(titel).includes(norm(s.paket)) ? s.paket : undefined;
   return { titel, ...(s.mandat ? { firma: s.firma } : {}), ...(paket ? { paket } : {}) };
 }
+
+/**
+ * Der Kopf des Falls INTERN (25.10., Kern-Reste 4 — Fulfillment › Fall nannte die Firma zweimal: Titel „<Firma> · <Produkt>“ und darunter „Fulfillment · <Firma>“):
+ * dieselbe Regel wie die Kunden-Seite — der Titel ohne den Firmennamen (`ohneFirma`), die Firma genau einmal darunter. Ohne Mandat „Fall“.
+ */
+export function fallKopf(s: { titel?: string; firma?: string } | null): { titel: string; unter: string } {
+  if (!s?.titel) return { titel: 'Fall', unter: 'Fulfillment · Fall' };
+  const firma = s.firma?.trim() ?? '';
+  return { titel: firma ? ohneFirma(s.titel, firma) : s.titel, unter: firma ? `Fulfillment · ${firma}` : 'Fulfillment' };
+}

@@ -25,6 +25,8 @@ import { FallKopf } from './reise/FallKopf';
 import { FallReise } from './reise/FallReise';
 import { LageStreifen } from './reise/LageStreifen';
 import { ProzessEditor } from './editor/ProzessEditor';
+import { fallKopf } from '@/lib/fulfillment/kunde/kopf';
+import { firmaVonMandat } from '@/lib/crm/firmen-bezug';
 
 /** Ein Satz je Bereich unter dem Titel (der Bereich selbst steht im Menü der Leiste). */
 const UNTER: Record<FulfillmentBereich, string> = {
@@ -46,8 +48,10 @@ export function FulfillmentSeite() {
   if (adresse.m) {
     const m = adresse.m;
     const mandat = api.crm?.stand.mandate.find(x => x.id === m);
+    // Firma genau einmal (25.10., Kern-Reste 4 — dieselbe Regel wie die Kunden-Seite, lib/fulfillment/kunde/kopf.ts): Titel ohne Firmennamen, die Firma darunter.
+    const kopf = fallKopf(mandat ? { titel: mandat.titel, firma: firmaVonMandat(mandat, api.crm?.stand.firmen ?? [])?.name ?? mandat.kunde } : null);
     return (
-      <Seite titel={mandat ? mandat.titel : 'Fall'} unter={mandat ? `Fulfillment · ${mandat.kunde}` : 'Fulfillment · Fall'}>
+      <Seite titel={kopf.titel} unter={kopf.unter}>
         <FallKopf mandatId={m} mitKunde={!!mandat} />
         {api.crm && !mandat && <Hinweis art="achtung">Dieses Mandat gibt es nicht (mehr).</Hinweis>}
         <div className="ui-reiter-zeile">
