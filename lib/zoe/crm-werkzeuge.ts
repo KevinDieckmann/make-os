@@ -426,7 +426,7 @@ async function mandateLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> 
   const zeilen = alle.map(m => {
     const l = mandatLage(m, s.heute, rechnungen);
     const z = zeitVon.get(m.id);
-    return `${mandatZeile(s, m)}\n  Zeit diese Woche: ${z ? `${stundenText(z.sek)} (${z.bloecke} Blöcke)${z.euroJeStunde ? ` · ≈ ${eur(z.euroJeStunde)}/h (grober Hinweis)` : ''}` : '—'}\n  Lage: ${l.ampel ?? 'grau'}${l.health !== null ? ` · Health ${l.health}` : ''}${l.endeAm ? ` · Ende ${l.endeAm}` : ''}${l.fristBis ? ` · kündbar bis ${l.fristBis}` : ''}${l.gruende.length ? ` · ${l.gruende.join('; ')}` : ''}`
+    return `${mandatZeile(s, m)}\n  Zeit diese Woche: ${z ? `${stundenText(z.sek)} (${z.bloecke} Blöcke)${z.euroJeStunde ? ` · ≈ ${eur(z.euroJeStunde)}/h (grober Hinweis)` : ''}` : '—'}\n  Lage: ${l.ampel ?? 'grau'}${l.health !== null ? ` · Health ${l.health}${l.healthVorlaeufig ? ` (vorläufig, ${l.healthVorlaeufig.faktoren} von ${l.healthVorlaeufig.von} Faktoren)` : ''}` : ''}${l.endeAm ? ` · Ende ${l.endeAm}` : ''}${l.fristBis ? ` · kündbar bis ${l.fristBis}` : ''}${l.gruende.length ? ` · ${l.gruende.join('; ')}` : ''}`
       + `${m.ziele.length ? `\n  Ziele: ${m.ziele.map(z => `${z.text}${z.ziel ? ` (Ziel ${z.ziel}` : ''}${z.ist ? `, ist ${z.ist})` : z.ziel ? ')' : ''}`).join(' | ')}` : ''}${m.notiz ? `\n  Notiz: ${m.notiz}` : ''}`;
   });
   const zeitKopf = zeit ? `Zeit ${zeit.label} (${zeit.von} bis ${zeit.bis}): ${stundenText(zeit.gesamt.mitMandatSek)} mit Mandat · ${stundenText(zeit.gesamt.sek - zeit.gesamt.mitMandatSek)} ohne Mandat` : 'Zeit je Mandat: nicht lesbar';

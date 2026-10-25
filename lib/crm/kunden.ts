@@ -23,6 +23,11 @@ const plusTage = (datum: string, n: number) => { const d = new Date(`${datum}T12
 
 export const HEALTH_GEWICHTE = { beteiligung: 25, umsetzung: 25, wirkung: 30, zahlung: 10, stimmung: 10 } as const;
 export const HEALTH_LABEL: Record<keyof typeof HEALTH_GEWICHTE, string> = { beteiligung: 'Beteiligung', umsetzung: 'Umsetzung', wirkung: 'Wirkung', zahlung: 'Zahlung', stimmung: 'Stimmung' };
+/** Ab so viel Gewicht (von 100) der bewerteten Faktoren trägt die Gesundheit eines Mandats — darunter ist sie „vorläufig“ (25.10.). */
+export const HEALTH_TRAGFAEHIG = 50;
+/** Die Gesundheit in Worten — EINE Darstellung für Mandat, Liste und ZOE: „78“, „100 · vorläufig (1 von 5 Faktoren)“ bzw. „noch nicht bewertet“. */
+export const healthText = (l: Pick<MandatLage, 'health' | 'healthVorlaeufig'>): string =>
+  l.health === null ? 'noch nicht bewertet' : l.healthVorlaeufig ? `${l.health} · vorläufig (${l.healthVorlaeufig.faktoren} von ${l.healthVorlaeufig.von} Faktoren)` : String(l.health);
 
 export interface MandatLage {
   /** Ende der laufenden Periode (Vertragsende oder nächster Termin nach Mindestlaufzeit). */
@@ -33,6 +38,11 @@ export interface MandatLage {
   /** Tage bis zum Ende der Laufzeit — für die Power Hour. */
   kuendigungIn: number | null;
   health: number | null;
+  /**
+   * 25.10. (Kern-Bau-Test 2: „Gesundheit 100“ nur aus der Zahlung, 10 % Gewicht): die bewerteten Faktoren tragen weniger als `HEALTH_TRAGFAEHIG` Gewicht — der Wert
+   * ist vorläufig (Anzeige `healthText`: „100 · vorläufig (1 von 5 Faktoren)“) und färbt die Ampel nie grün. Fehlt bei tragfähiger bzw. fehlender Bewertung.
+   */
+  healthVorlaeufig?: { faktoren: number; von: number };
   ampel: 'gruen' | 'gelb' | 'rot' | null;
   gruende: string[];
   monatswert: number;
@@ -78,20 +88,22 @@ export function mandatLage(m: Mandat, heute: string, rechnungen?: RechnungKurz[]
   const endeIn = endeAm ? tage(heute, endeAm) : null;
   const fristBis = frist ?? endeAm;
   // Health: nur bewertete Faktoren zählen, anteilig neu gewichtet.
-  let summe = 0, gewicht = 0;
+  let summe = 0, gewicht = 0, faktoren = 0;
   for (const [k, g] of Object.entries(HEALTH_GEWICHTE) as [keyof typeof HEALTH_GEWICHTE, number][]) {
     const v = m.health[k];
-    if (typeof v === 'number') { summe += v * g; gewicht += g; }
+    if (typeof v === 'number') { summe += v * g; gewicht += g; faktoren++; }
   }
   const health = gewicht ? Math.round(summe / gewicht) : null;
+  // 25.10.: zu wenig bewertet (unter `HEALTH_TRAGFAEHIG`) → vorläufig — warnt (gelb/rot), meldet aber nie „grün“ auf dünner Grundlage.
+  const vorlaeufig = health !== null && gewicht < HEALTH_TRAGFAEHIG;
   const gruende: string[] = [];
-  let ampel: MandatLage['ampel'] = health === null ? null : health > 75 ? 'gruen' : health >= 60 ? 'gelb' : 'rot';
+  let ampel: MandatLage['ampel'] = health === null ? null : health > 75 ? (vorlaeufig ? null : 'gruen') : health >= 60 ? 'gelb' : 'rot';
   if (m.status === 'aktiv' && endeIn !== null && endeIn >= 0 && endeIn <= 60 && m.verlaengerung !== 'auto') { ampel = 'rot'; gruende.push(`Laufzeit endet in ${endeIn} Tagen — Verlängerung offen`); }
   if (health !== null && health < 60) gruende.push(`Gesundheit ${health}`);
   if (m.offen.length) gruende.push(anzahl(m.offen.length, 'offener Punkt', 'offene Punkte'));
   if (!m.vertragUnterschrieben && m.status === 'aktiv') gruende.push('Vertrag nicht unterschrieben');
   const monatswert = m.honorar.basis === 'monat' ? m.honorar.betrag : 0;
-  return { endeAm, endeIn, fristBis, kuendigungIn: endeIn, health, ampel, gruende, monatswert };
+  return { endeAm, endeIn, fristBis, kuendigungIn: endeIn, health, ...(vorlaeufig ? { healthVorlaeufig: { faktoren, von: Object.keys(HEALTH_GEWICHTE).length } } : {}), ampel, gruende, monatswert };
 }
 
 /** Wiederkehrender Umsatz aller aktiven Mandate (netto, je Monat). */

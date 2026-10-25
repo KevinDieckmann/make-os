@@ -333,7 +333,7 @@ describe('9 · „Rechnung für … schreiben“ nennt nach dem Stellen den näc
 
 // ── 10 · Mandatsende: EIN Tag (inklusiv), EIN Format ──
 import { laufzeitEnde, endeText, geplantesEnde, mindestEnde } from '@/lib/crm/mandat-laufzeit';
-import { mandatFristen, mandatLage, beendenVorgabe } from '@/lib/crm/kunden';
+import { mandatFristen, mandatLage, beendenVorgabe, healthText, HEALTH_TRAGFAEHIG } from '@/lib/crm/kunden';
 
 describe('10 · Mandatsende einheitlich: letzter Tag der Laufzeit, „14.03.2027“ in Fenster, Mandat, Kalender, „Mandat beenden“ und Liquidität', () => {
   const M = mandat();
@@ -356,6 +356,25 @@ describe('10 · Mandatsende einheitlich: letzter Tag der Laufzeit, „14.03.2027
     const k = quelle('components/os/crm/Kunden.tsx');
     expect(k).toMatch(/Ende \{endeText\(l\.endeAm\)\}/);
     expect(k).toMatch(/bis \$\{endeText\(l\.endeAm\)\}/);
+  });
+});
+
+// ── 11 · Gesundheit ohne Grundlage ──
+describe('11 · „Gesundheit 100“ nur aus der Zahlung ist vorläufig — nie grün auf dünner Grundlage', () => {
+  const ohne = { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null };
+  it('nichts bewertet: noch nicht bewertet; nur Zahlung (10 %): Wert mit „vorläufig (1 von 5 Faktoren)“, Ampel nicht grün; tragfähig wie bisher', () => {
+    const leer = mandatLage(mandat({ health: ohne }), HEUTE);
+    expect([leer.health, healthText(leer)]).toEqual([null, 'noch nicht bewertet']);
+    const nurZahlung = mandatLage(mandat({ health: { ...ohne, zahlung: 100 } }), HEUTE);
+    expect(nurZahlung.health).toBe(100);
+    expect(nurZahlung.healthVorlaeufig).toEqual({ faktoren: 1, von: 5 });
+    expect(healthText(nurZahlung)).toBe('100 · vorläufig (1 von 5 Faktoren)');
+    expect(nurZahlung.ampel).toBeNull();
+    // Schlecht bleibt eine Warnung, auch vorläufig.
+    expect(mandatLage(mandat({ health: { ...ohne, zahlung: 40 } }), HEUTE).ampel).toBe('rot');
+    const tragfaehig = mandatLage(mandat({ health: { ...ohne, beteiligung: 80, wirkung: 90 } }), HEUTE);
+    expect(HEALTH_TRAGFAEHIG).toBe(50);
+    expect([tragfaehig.health, tragfaehig.healthVorlaeufig, tragfaehig.ampel, healthText(tragfaehig)]).toEqual([85, undefined, 'gruen', '85']);
   });
 });
 
