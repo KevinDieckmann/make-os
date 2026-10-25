@@ -4,7 +4,7 @@
 // Rückmeldung 17.10.: „Ich will, dass das Fulfillment wirklich maximal einfach für uns ist.“ Gemessen: vom gewonnenen Deal bis zum laufenden Fall waren es sechs
 // Klicks über drei Seiten (Gewonnen → „Mandat anlegen“ ganz unten im Deal → „unter Produkte & Mandate öffnen“ → „Starten“ → „Fall anlegen“). Jetzt steht direkt
 // unter der Stufe EIN Knopf „Mandat anlegen & Fall starten“: legt das Mandat über den vorhandenen Weg an (POST /api/crm/lead `mandat`) und öffnet gleich den
-// vorhandenen Start-Dialog (Ablauf vorgewählt aus der Zuordnung des Produkts) — „Fall anlegen“ führt in den Fall. Gibt es das Mandat schon: „Fall starten“; läuft
+// vorhandenen Start-Dialog (Ablauf vorgewählt nach `startVorbelegung`: Prozess des Produkts, sonst sein Paket) — „Fall anlegen“ führt in den Fall. Gibt es das Mandat schon: „Fall starten“; läuft
 // der Fall: „Fall öffnen ›“. Mandate einer Privat-Einheit bekommen kein Fulfillment (wie bisher nur „Mandat anlegen“). Schreibt nichts Eigenes.
 
 import { useState } from 'react';
@@ -15,7 +15,7 @@ import { WEG } from '@/lib/wege';
 import { mandateLink } from '@/lib/crm/adresse';
 import { istBusinessMandat } from '@/lib/fulfillment/regeln';
 import type { CrmApi } from '../../crm/daten';
-import { useUebersichtKurz } from './daten';
+import { useUebersichtKurz, startMandat } from './daten';
 import { StartDialog } from './Onboarding';
 import { usePlatzLage } from '../../crm/plaetze';
 
@@ -30,11 +30,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
   const business = istBusinessMandat(mandat?.gesellschaft ?? c.gesellschaft) && !!kurz.daten;
   const fall = mandat ? kurz.daten?.faelle[mandat.id] : undefined;
   const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
-  const vorlageFuer = (leistungId?: string) => {
-    const id = leistungId ? kurz.daten?.zuordnung[leistungId]?.vorlageId : undefined;
-    const p = pakete.find(x => x.id === id);
-    return p ? { vorlage: { id: p.id, titel: p.titel } } : {};
-  };
+
   const anlegen = async (mitFall: boolean) => {
     const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId: c.id }) })
       .then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' })) as { ok?: boolean; fehler?: string; mandatId?: string };
@@ -61,7 +57,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
           <Link href={mandateLink('mandate', mandat.id)} style={{ ...klein, textDecoration: 'none' }}>Mandat öffnen ›</Link>
         </>
       )}
-      {start && <StartDialog k={{ mandatId: start.mandatId, kunde: start.kunde, ...(start.leistungId ? { leistungId: start.leistungId } : {}), ...vorlageFuer(start.leistungId) }} pakete={pakete} onZu={() => setStart(null)} />}
+      {start && <StartDialog k={startMandat(kurz.daten, start)} pakete={pakete} onZu={() => setStart(null)} />}
     </div>
   );
 }

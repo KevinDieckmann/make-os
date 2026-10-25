@@ -7,8 +7,10 @@
 // sonst bleibt die Seite genau wie bisher). Darunter die laufenden Onboardings und die Einstellungen (Willkommen in … Stunden, Nachsorge-Tage).
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FARBE as C, TIEF } from '@/lib/make-one/design';
+import { FARBE as C, TIEF, TYP } from '@/lib/make-one/design';
+import { LAGE_SATZ, LAGE_WORT } from '@/lib/prozesse/produkt-ablauf';
 import { MUSTER_ONBOARDING } from '@/lib/fulfillment/muster';
 import { willkommenBisText } from '@/lib/fulfillment/prozesse/onboarding';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, Punkt, LEUCHT } from '../../ui';
@@ -59,12 +61,15 @@ function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten:
 }
 
 /**
- * Start-Dialog: Ablauf (vorgewählt aus der Zuordnung des Produkts; ohne Zuordnung der erste Ablauf, der kein Zusatzmodul ist — 17.10. spät, vorher konnte das
- * ein Zusatzmodul sein) und Starttag (heute) — legt den Fall an (idempotent über die Anfrage) und öffnet ihn.
+ * Start-Dialog: Ablauf und Starttag (heute) — legt den Fall an (idempotent über die Anfrage) und öffnet ihn. Vorbelegt NUR nach der EINEN Regel
+ * (lib/prozesse/produkt-ablauf.ts `startVorbelegung`, Bau-Test 24.10.): hat das Produkt einen Prozess der Werkstatt, IST er der Ablauf (keine Auswahl — jedes
+ * Produkt hat genau einen); sonst das Paket DIESES Produkts; sonst bleibt die Auswahl leer, mit Satz (vorher: „der erste Ablauf, der kein Zusatzmodul ist“ — das
+ * war das Paket eines anderen Produkts).
  */
-export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage'> & { leistungId?: string }; pakete: { id: string; titel: string; zusatz?: true }[]; onZu: () => void }) {
+export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage' | 'prozess'> & { leistungId?: string }; pakete: { id: string; titel: string; zusatz?: true }[]; onZu: () => void }) {
   const router = useRouter();
-  const [vorlage, setVorlage] = useState<string | null>(k.vorlage?.id ?? pakete.find(p => !p.zusatz)?.id ?? pakete[0]?.id ?? null);
+  const prozess = k.prozess ?? null;
+  const [vorlage, setVorlage] = useState<string | null>(prozess ? prozess.id : k.vorlage?.id ?? null);
   const [tag, setTag] = useState(localDay());
   const [fehler, setFehler] = useState<string | null>(null);
   const [anfrage] = useState(neueAnfrageId);
@@ -72,22 +77,38 @@ export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' 
     if (!vorlage) { setFehler('Bitte einen Ablauf wählen.'); return; }
     const a = await fallAktion({ aktion: 'starten', mandatId: k.mandatId, vorlageId: vorlage, start: tag, anfrageId: anfrage });
     // Das Produkt merkt sich den Ablauf (17.10., Gesamtprüfung — maximal einfach): hatte es noch keinen, ist der gewählte beim nächsten Mal vorgewählt. Nur ein
-    // Ablauf des Pakets (kein Zusatzmodul); wer keine Abläufe bearbeiten darf, bekommt 403 — der Fall läuft trotzdem.
-    if (a.ok && k.leistungId && !k.vorlage && vorlage && !pakete.find(p => p.id === vorlage)?.zusatz) await vorlagenOps([{ op: 'zuordnung', leistungId: k.leistungId, vorlageId: vorlage }]).catch(() => null);
+    // Ablauf des Pakets (kein Zusatzmodul, kein Prozess); wer keine Abläufe bearbeiten darf, bekommt 403 — der Fall läuft trotzdem.
+    if (a.ok && !prozess && k.leistungId && !k.vorlage && vorlage && !pakete.find(p => p.id === vorlage)?.zusatz) await vorlagenOps([{ op: 'zuordnung', leistungId: k.leistungId, vorlageId: vorlage }]).catch(() => null);
     if (a.ok) { onZu(); router.push(WEG.fall(k.mandatId)); } else setFehler(fehlerText(a));
   };
+  const istZusatz = !prozess && !!pakete.find(p => p.id === vorlage)?.zusatz;
   return (
     <Fenster titel={`Fall starten: ${k.kunde}`} onZu={onZu} breit={560}>
       <form onSubmit={e => { e.preventDefault(); void los(); }} style={{ display: 'grid', gap: 12 }}>
         {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
-        {!pakete.length && <Hinweis art="achtung">Noch kein Ablauf — unter Fulfillment › Übersicht „Aus Muster anlegen“.</Hinweis>}
-        <Feldzeile label="Ablauf" erklaerung="fulfillment.zuordnung">
-          <Wahl label="Ablauf" liste={pakete.map(p => ({ id: p.id, label: p.zusatz ? `${p.titel} (Zusatzmodul)` : p.titel }))} wert={vorlage} onWahl={setVorlage} />
-        </Feldzeile>
+        {prozess ? (
+          <Feldzeile label="Ablauf des Produkts" gruppe erklaerung="fulfillment.zuordnung">
+            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              <Chip farbe={LEUCHT.gut}>{prozess.titel}</Chip>
+              <Chip farbe={prozess.lage === 'scharf' ? LEUCHT.gut : C.inkDim}>{LAGE_WORT[prozess.lage]}</Chip>
+              <Link href={WEG.prozesse({ p: prozess.id, ansicht: 'werkstatt' })} style={{ color: C.aktiv, fontSize: TYP.bedien }}>In der Werkstatt ›</Link>
+            </span>
+          </Feldzeile>
+        ) : (
+          <>
+            {!pakete.length && <Hinweis art="achtung">Noch kein Ablauf — unter Fulfillment › Übersicht „Aus Muster anlegen“.</Hinweis>}
+            <Feldzeile label="Ablauf" erklaerung="fulfillment.zuordnung">
+              <Wahl label="Ablauf" liste={pakete.map(p => ({ id: p.id, label: p.zusatz ? `${p.titel} (Zusatzmodul)` : p.titel }))} wert={vorlage} onWahl={setVorlage} />
+            </Feldzeile>
+            {!vorlage && pakete.length > 0 && <div style={klein}>{k.leistungId ? 'Dieses Produkt hat noch keinen eigenen Ablauf — bitte einen wählen; er wird dem Produkt zugeordnet.' : 'Das Mandat hat kein Produkt — bitte den Ablauf wählen.'}</div>}
+          </>
+        )}
         <Feldzeile label="Start"><input type="date" value={tag} onChange={e => setTag(e.target.value)} style={feld} /></Feldzeile>
-        <div style={klein}>{pakete.find(p => p.id === vorlage)?.zusatz
-          ? 'Zusatzmodul: der Fall übernimmt die Schritte des Ablaufs und startet ohne Onboarding — die erste Phase läuft sofort.'
-          : 'Der Fall übernimmt die Schritte des Ablaufs und legt die acht Onboarding-Schritte an. Danach bereitest du die Willkommensmail vor — gesendet wird erst mit deinem Klick.'}</div>
+        <div style={klein}>{prozess
+          ? `Der Fall legt die acht Onboarding-Schritte an; die Schritte des Ablaufs kommen aus der Werkstatt und stehen in der Reise. ${LAGE_SATZ[prozess.lage]}`
+          : istZusatz
+            ? 'Zusatzmodul: der Fall übernimmt die Schritte des Ablaufs und startet ohne Onboarding — die erste Phase läuft sofort.'
+            : 'Der Fall übernimmt die Schritte des Ablaufs und legt die acht Onboarding-Schritte an. Danach bereitest du die Willkommensmail vor — gesendet wird erst mit deinem Klick.'}</div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>
           <Knopf haupt typ="submit" aus={!vorlage}>Fall anlegen</Knopf>

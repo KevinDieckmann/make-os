@@ -12,18 +12,19 @@ import { Knopf } from '../../ui';
 import { Fenster } from '../../Fenster';
 import { istBusinessMandat } from '@/lib/fulfillment/regeln';
 import type { Mandat } from '@/lib/crm/typen';
-import { useUebersichtKurz } from './daten';
+import { useUebersichtKurz, startMandat } from './daten';
 import { StartDialog } from './Onboarding';
 
 export function OnboardingFrage({ m, produktName, onZu }: { m: Pick<Mandat, 'id' | 'kunde' | 'leistungId' | 'gesellschaft'>; produktName?: string; onZu: () => void }) {
   const kurz = useUebersichtKurz(istBusinessMandat(m.gesellschaft));
   const [start, setStart] = useState(false);
   const d = kurz.daten;
-  const vid = d && m.leistungId ? d.zuordnung[m.leistungId]?.vorlageId : undefined;
-  const ablauf = vid ? d?.prozesse.find(p => p.id === vid && p.art === 'paket' && !p.zusatz) : undefined;
-  if (!d || !ablauf || d.faelle[m.id]) return null;
+  // EINE Vorbelegung (24.10., `startMandat` → `startVorbelegung`): der Prozess des Produkts, sonst sein Paket (kein Zusatzmodul).
+  const sm = d ? startMandat(d, { mandatId: m.id, kunde: m.kunde, leistungId: m.leistungId }) : null;
+  const ablauf = sm?.prozess ?? (sm?.vorlage && d?.prozesse.some(p => p.id === sm.vorlage!.id && p.art === 'paket' && !p.zusatz) ? sm.vorlage : undefined);
+  if (!d || !sm || !ablauf || d.faelle[m.id]) return null;
   const pakete = d.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
-  if (start) return <StartDialog k={{ mandatId: m.id, kunde: m.kunde, ...(m.leistungId ? { leistungId: m.leistungId } : {}), vorlage: { id: ablauf.id, titel: ablauf.titel } }} pakete={pakete} onZu={onZu} />;
+  if (start) return <StartDialog k={sm} pakete={pakete} onZu={onZu} />;
   return (
     <Fenster titel="Kundenonboarding jetzt starten?" onZu={onZu} breit={480}>
       <div style={{ display: 'grid', gap: 12 }}>
