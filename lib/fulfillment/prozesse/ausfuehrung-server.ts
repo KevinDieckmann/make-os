@@ -38,9 +38,12 @@ export function mailBausteinVon(k: Pick<FallKnoten, 'id' | 'bausteinId'>, knoten
 }
 
 /** Wer die Aufgaben eines Falls bekommt: die zuständige Person des Mandats (im Haushalt), sonst die erste Person des Haushalts; „beide“ → die andere beteiligt. */
-async function verantwortung(m: Pick<Mandat, 'zustaendig'>): Promise<{ an: string; beteiligte: string[] } | null> {
+async function verantwortung(m: Pick<Mandat, 'zustaendig' | 'gesellschaft'>): Promise<{ an: string; beteiligte: string[] } | null> {
   const { haushaltsPersonen } = await import('@/lib/aufgaben/sicht');
-  const p = (await haushaltsPersonen()).map(x => x.speicher);
+  const { istPrivatArbeitsMandat } = await import('../regeln');
+  // Ein Mandat der Privat-Arbeits-Einheit (25.10.): nie ein Konto „nur Business“ — es sähe die Aufgaben (Space unter Privat) und den Fall ohnehin nicht.
+  const privat = istPrivatArbeitsMandat(m.gesellschaft);
+  const p = (await haushaltsPersonen()).filter(x => !(privat && x.nurBusiness)).map(x => x.speicher);
   if (!p.length) return null;
   if (m.zustaendig && p.includes(m.zustaendig)) return { an: m.zustaendig, beteiligte: [] };
   if (m.zustaendig === 'beide') return { an: p[0], beteiligte: p.slice(1) };
@@ -128,14 +131,14 @@ export async function ablaufNachziehen(o: { mandatId?: string; person?: string |
     const iso = jetzt.toISOString(), heute = o.heute ?? localDay(jetzt);
     const { fallUmfeld, ableitungFuer } = await import('./fall-server');
     const u = o.umfeld ?? await fallUmfeld(o.mandatId ? [o.mandatId] : undefined);
-    const { istBusinessMandat } = await import('../regeln');
+    const { istFulfillmentMandat } = await import('../regeln');
     const arbeit: { f: Fall; w: Fall; m: Mandat; soll: AusfuehrungSoll; an: { an: string; beteiligte: string[] } | null }[] = [];
     const abgeschlossen: string[] = [];
     for (const f of Object.values(u.faelle.faelle)) {
       if (o.mandatId && f.mandatId !== o.mandatId) continue;
       if (f.status === 'abgeschlossen') { if (Object.keys(f.marken).some(x => x.startsWith('ablauf-'))) abgeschlossen.push(f.mandatId); continue; }
       const m = u.crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
-      if (!m || !istBusinessMandat(m.gesellschaft)) continue;
+      if (!m || !istFulfillmentMandat(m.gesellschaft)) continue;
       const w = fallWirksam(f, ableitungFuer(f, m, u.crm, u.vorlagen, u.kunde[m.id], iso, u.termine[m.id]));
       if (!ablaufAktiv(w)) continue;
       const soll = ausfuehrungSoll(w, heute, k => !!mailBausteinVon(k, w.knoten, u.vorlagen));

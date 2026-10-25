@@ -9,7 +9,7 @@
 // Logik: lib/fulfillment/analyse/dossier-server.ts.
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { fulfillmentZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
@@ -26,11 +26,12 @@ export async function GET(req: Request) {
   if (z instanceof Response) return z;
   const q = new URL(req.url).searchParams;
   if (q.get('alle') === '1') {
-    const l = await dossierListe();
+    const l = await dossierListe(z.privat);
     leseZugriff(req, 'fulfillment', { anzahl: Array.isArray(l.body.dossiers) ? l.body.dossiers.length : 0 }); // Lese-Protokoll: Übersicht der Dossiers (nur Zahlen)
     return NextResponse.json(l.body, { status: l.status });
   }
   const m = q.get('m') ?? '';
+  { const nein = await mandatAusserSicht(z, m, 'lesen'); if (nein) return nein; }
   const r = await dossierLage(m, z.person);
   if (r.status === 200) leseZugriff(req, 'fulfillment', { ids: [m] }); // Lese-Protokoll: Dossier eines Mandats (Firma; Personen nur als Verweis)
   return NextResponse.json(r.body, { status: r.status });
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, MAX_BYTES); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   if (!b || typeof b !== 'object' || Array.isArray(b)) return NextResponse.json({ ok: false, fehler: 'Kein JSON-Objekt.' }, { status: 400 });
+  { const nein = await mandatAusserSicht(z, b.mandatId, 'schreiben'); if (nein) return nein; }
   const r = await dossierAktion(b, z.person, werAus(req));
   return NextResponse.json(r.body, { status: r.status });
 }

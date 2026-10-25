@@ -62,10 +62,13 @@ export async function dossierLage(mandatId: string, person: string): Promise<Ant
   };
 }
 
-/** GET `?alle=1`: alle Dossiers der Business-Mandate — Freigaben, Läufe, Kosten, Art.-14-Fristen (nur Zahlen, keine Namen). */
-export async function dossierListe(): Promise<Antwort> {
-  const [{ ladeCrm }, { bereichVonGesellschaft }, { dossierKurzFuer }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/einheiten'), import('./server')]);
-  const mandate = (await ladeCrm()).mandate.filter(m => bereichVonGesellschaft(m.gesellschaft) === 'business');
+/**
+ * GET `?alle=1`: alle Dossiers der Mandate mit Fulfillment — Freigaben, Läufe, Kosten, Art.-14-Fristen (nur Zahlen, keine Namen). `privat` (25.10.): die der
+ * Privat-Arbeits-Einheit nur für eine Sicht mit Privat-Recht (`FulfillmentTor.privat`).
+ */
+export async function dossierListe(privat = false): Promise<Antwort> {
+  const [{ ladeCrm }, { mandatInSicht }, { dossierKurzFuer }] = await Promise.all([import('@/lib/crm/speicher'), import('../regeln'), import('./server')]);
+  const mandate = (await ladeCrm()).mandate.filter(m => mandatInSicht(m.gesellschaft, privat));
   const kurz = await dossierKurzFuer(mandate.map(m => m.id));
   const liste = mandate.filter(m => kurz[m.id]?.vorhanden).map(m => ({ mandatId: m.id, titel: m.titel, kunde: m.kunde, status: m.status, ...kurz[m.id] }));
   const ohne = mandate.filter(m => !kurz[m.id]?.vorhanden && (m.status === 'aktiv' || m.status === 'angebot' || m.status === 'verhandlung')).map(m => ({ mandatId: m.id, titel: m.titel, kunde: m.kunde, status: m.status }));

@@ -78,6 +78,14 @@ async function bezugAufloesen(v: VorschlagRoh): Promise<BereichKontext['bezug']>
     return { bereich: spaceVonKalender(await ladeEinstellungen(), e.kalender) };
   }
   if (b?.art === 'crm') return (await import('./crm-sicht')).crmBezugBereich(b.id);
+  // Fulfillment und Leistungstreppe am Mandat (25.10., Fulfillment für die Selbstständigkeit): ein Mandat der Privat-Arbeits-Einheit → Privat (ein Konto „nur
+  // Business“ sieht solche Vorschläge nie — `vorschlagPrivat`); Business-Mandate wie bisher über die Gruppe (null = unverändert).
+  if ((b?.art === 'fulfillment' || b?.art === 'produkte') && typeof e.mandatId === 'string' && e.mandatId) {
+    const [{ ladeCrm }, { istPrivatArbeitsMandat }, { privatArbeitsEinheit, finanzOrtName }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/fulfillment/regeln'), import('@/lib/einheiten')]);
+    const m = (await ladeCrm()).mandate.find(x => x.id === e.mandatId);
+    const pa = m && istPrivatArbeitsMandat(m.gesellschaft) ? privatArbeitsEinheit(m.gesellschaft) : undefined;
+    return pa ? { bereich: 'privat', ort: { id: pa, name: finanzOrtName(pa) } } : null;
+  }
   if (b && ['skill', 'mitarbeiter', 'merksatz'].includes(b.art)) { const h = await headBereich(b.id); return h ? { bereich: h } : null; }
   if (b?.art === 'medien') { const h = await headBereich(e.head); return h ? { bereich: h } : null; }
   return null;

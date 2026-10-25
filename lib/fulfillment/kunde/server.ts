@@ -23,7 +23,7 @@ import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
 import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { Mandat, CrmBestand, FollowUp } from '@/lib/crm/typen';
 import { fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen, fulfillmentSpeicherFuer, eintragStand, UNTERLAGEN_ORDNER } from '../speicher';
-import { istBusinessMandat, mandatsEnde, pulsStufe } from '../regeln';
+import { istFulfillmentMandat, istPrivatArbeitsMandat, mandatsEnde, pulsStufe } from '../regeln';
 import { STAPEL_GRUPPE, KENNUNG } from '../grenzen';
 import { dateinameSaeubern } from '@/lib/dateien/regeln';
 import {
@@ -63,9 +63,19 @@ const ok = (body: Record<string, unknown> = {}): Ergebnis => ({ status: 200, bod
 const nein = (status: number, fehler: string, extra: Record<string, unknown> = {}): Ergebnis => ({ status, body: { ok: false, fehler, ...extra } });
 
 async function crmLaden(): Promise<CrmBestand> { const { ladeCrm } = await import('@/lib/crm/speicher'); return ladeCrm(); }
-/** Ein Mandat einer Business-Gesellschaft, nicht im Papierkorb — sonst null (Privat bekommt nichts). */
-export const businessMandat = (crm: Pick<CrmBestand, 'mandate'>, mandatId: string): Mandat | null =>
-  (crm.mandate ?? []).find(m => m.id === mandatId && !m.geloeschtAm && istBusinessMandat(m.gesellschaft)) ?? null;
+/**
+ * Ein Mandat mit Fulfillment (`istFulfillmentMandat`: Business und seit 25.10. die Privat-Arbeits-Einheit), nicht im Papierkorb — sonst null (eine Privat-Einheit ohne
+ * Arbeit bekommt nichts). Der Kunden-Link eines solchen Mandats bleibt erlaubt (der Kunde sieht nur seinen Fall); interne Routen prüfen die Sicht davor (`mandatAusserSicht`).
+ */
+export const fulfillmentMandat = (crm: Pick<CrmBestand, 'mandate'>, mandatId: string): Mandat | null =>
+  (crm.mandate ?? []).find(m => m.id === mandatId && !m.geloeschtAm && istFulfillmentMandat(m.gesellschaft)) ?? null;
+
+/** Das Mandat hinter einem Kunden-Link bzw. einer Unterlage (für die Sicht-Prüfung der internen Routen, 25.10.) — null, wenn es den Eintrag nicht gibt. Nur lesen. */
+export async function mandatVonEintrag(art: 'link' | 'unterlage', id: unknown): Promise<string | null> {
+  if (typeof id !== 'string' || !id) return null;
+  const k = await fulfillmentLesen('kunde', await fulfillmentHaushalt());
+  return (art === 'link' ? k.links.find(l => l.id === id) : k.unterlagen.find(u => u.id === id))?.mandatId ?? null;
+}
 
 /** Der Fall eines Mandats — über die Schnittstelle von C1 (`fallLesen`), nie schreibend. */
 async function fallVon(mandatId: string): Promise<Fall | null> {
@@ -179,13 +189,18 @@ export async function kundenUmfeld(m: Mandat, fall: (Pick<Fall, 'vorlageId'> & P
 }
 
 /** Wer etwas zu einem Mandat erfährt: die zuständige Team-Person, sonst das ganze Team (wie die Leistungstreppe; nie ein fester Name). */
-async function empfaenger(m: Pick<Mandat, 'zustaendig'>): Promise<string[]> {
+async function empfaenger(m: Pick<Mandat, 'zustaendig' | 'gesellschaft'>): Promise<string[]> {
   const { TEAM, BEIDE } = await import('@/lib/crm/team-liste');
   const { zustaendig } = await import('@/lib/crm/team');
   const z = zustaendig(m.zustaendig, 'sales');
-  return z && z !== BEIDE && TEAM.some(t => t.id === z) ? [z] : TEAM.map(t => t.id);
+  const l = z && z !== BEIDE && TEAM.some(t => t.id === z) ? [z] : TEAM.map(t => t.id);
+  // Mandat der Privat-Arbeits-Einheit (25.10.): nie an ein Konto „nur Business“ (es sieht den Fall nicht — die Glocke nennt den Mandats-Titel).
+  if (!istPrivatArbeitsMandat(m.gesellschaft)) return l;
+  const { haushaltsPersonen } = await import('@/lib/aufgaben/sicht');
+  const nurBusiness = new Set((await haushaltsPersonen()).filter(x => x.nurBusiness).map(x => x.speicher));
+  return l.filter(x => !nurBusiness.has(x));
 }
-const fuerPerson = async (m: Pick<Mandat, 'zustaendig'>): Promise<string | undefined> => { const l = await empfaenger(m); return l.length === 1 ? l[0] : undefined; };
+const fuerPerson = async (m: Pick<Mandat, 'zustaendig' | 'gesellschaft'>): Promise<string | undefined> => { const l = await empfaenger(m); return l.length === 1 ? l[0] : undefined; };
 
 const standVon = (f: FormularStand): string => eintragStand(f);
 const unterlagenDesLinks = (d: KundeDatei, linkId: string) => d.unterlagen.filter(u => u.linkId === linkId);
@@ -241,7 +256,7 @@ const zaehl = (z: { beantwortet: number; gesamt: number }) => ({ beantwortet: z.
 export async function vorschauFuer(mandatId: string, heute = localDay()): Promise<{ sicht: KundenSicht; schalter: SchalterStand } | null> {
   const h = await fulfillmentHaushalt();
   const [crm, kunde, vorlagen] = await Promise.all([crmLaden(), fulfillmentLesen('kunde', h), fulfillmentLesen('vorlagen', h)]);
-  const m = businessMandat(crm, mandatId);
+  const m = fulfillmentMandat(crm, mandatId);
   if (!m) return null;
   const link = aktiverLink(kunde, m.id, heute, mandatsEnde(m));
   return { sicht: await sichtFuer({ mandat: m, modus: 'voll', link, kunde, vorlagen, crm, heute }), schalter: schalterStand(vorlagen.einstellungen, umgebungAn()) };
@@ -293,7 +308,7 @@ function kurzAus(kunde: KundeDatei, mandatId: string, schalter: SchalterStand, f
 export async function kundeStand(mandatId: string, heute = localDay()): Promise<KundeStand | null> {
   const h = await fulfillmentHaushalt();
   const [crm, kunde, vorlagen] = await Promise.all([crmLaden(), fulfillmentLesen('kunde', h), fulfillmentLesen('vorlagen', h)]);
-  const m = businessMandat(crm, mandatId);
+  const m = fulfillmentMandat(crm, mandatId);
   if (!m) return null;
   const fall = await fallVon(m.id);
   const ende = mandatsEnde(m);
@@ -333,7 +348,7 @@ export async function pulsSchwelleSetzen(wert: unknown, person: string): Promise
 async function mandatMitFall(mandatId: string): Promise<{ m: Mandat; fall: Fall | null; crm: CrmBestand } | Ergebnis> {
   if (typeof mandatId !== 'string' || !mandatId) return nein(400, 'mandatId fehlt.');
   const crm = await crmLaden();
-  const m = businessMandat(crm, mandatId);
+  const m = fulfillmentMandat(crm, mandatId);
   if (!m) return nein(404, 'Dieses Mandat gibt es nicht (mehr) — oder es gehört nicht zum Business.');
   return { m, fall: await fallVon(m.id), crm };
 }
@@ -370,7 +385,7 @@ export async function linkAendern(art: 'widerrufen' | 'verlaengern' | 'rechte', 
   const l = kunde.links.find(y => y.id === id);
   if (!l) return nein(404, 'Diesen Kunden-Link gibt es nicht (mehr).');
   const crm = await crmLaden();
-  const m = businessMandat(crm, l.mandatId);
+  const m = fulfillmentMandat(crm, l.mandatId);
   if (!m) return nein(404, 'Das Mandat dieses Links gibt es nicht (mehr).');
   const op: LinkOp = art === 'widerrufen' ? { op: 'widerrufen', id } : art === 'verlaengern' ? { op: 'verlaengern', id, ...(typeof roh.tage === 'number' ? { tage: roh.tage } : {}) } : { op: 'rechte', id, rechte: (roh.rechte ?? {}) as Partial<KundenLink['rechte']> };
   const heute = localDay(jetzt);
@@ -441,7 +456,7 @@ export async function unterlageAendern(roh: { id?: unknown; status?: unknown; zw
   const crm = await crmLaden();
   const r = await fulfillmentAendern('kunde', d => {
     const i = d.unterlagen.findIndex(u => u.id === id);
-    if (i < 0 || !businessMandat(crm, d.unterlagen[i].mandatId)) return { ok: false, status: 404, fehler: 'Diese Unterlage gibt es nicht (mehr).' };
+    if (i < 0 || !fulfillmentMandat(crm, d.unterlagen[i].mandatId)) return { ok: false, status: 404, fehler: 'Diese Unterlage gibt es nicht (mehr).' };
     const alt = d.unterlagen[i];
     const neu: Unterlage = { ...alt, ...(status ? { status } : {}), ...(zweck ? { zweck } : {}) };
     if (roh.beleg === true) neu.beleg = true;
@@ -530,7 +545,7 @@ export async function unterlageLesen(id: string): Promise<{ eintrag: Unterlage; 
   if (!KENNUNG.unterlage.test(id)) return null;
   const [kunde, crm] = await Promise.all([fulfillmentLesen('kunde'), crmLaden()]);
   const u = kunde.unterlagen.find(x => x.id === id);
-  if (!u || !businessMandat(crm, u.mandatId)) return null;
+  if (!u || !fulfillmentMandat(crm, u.mandatId)) return null;
   const bytes = await bildOeffnen(UNTERLAGEN_ORDNER, unterlageDatei(id));
   return bytes ? { eintrag: u, bytes } : null;
 }
@@ -541,7 +556,7 @@ export async function unterlageEntfernen(id: string, person: string): Promise<Er
   const crm = await crmLaden();
   const r = await fulfillmentAendern('kunde', d => {
     const u = d.unterlagen.find(x => x.id === id);
-    if (!u || !businessMandat(crm, u.mandatId)) return { ok: false, status: 404, fehler: 'Diese Unterlage gibt es nicht (mehr).' };
+    if (!u || !fulfillmentMandat(crm, u.mandatId)) return { ok: false, status: 404, fehler: 'Diese Unterlage gibt es nicht (mehr).' };
     if (u.beleg) return { ok: false, status: 409, fehler: 'Diese Unterlage ist als Beleg übernommen und bleibt (§ 257 HGB) — erst „Beleg“ lösen.' };
     return { ok: true, datei: { ...d, unterlagen: d.unterlagen.filter(x => x.id !== id) }, geaendert: [id] };
   }, wer(person));
@@ -662,7 +677,7 @@ export async function kundeKurzFuer(mandatIds: readonly string[]): Promise<Recor
   const heute = localDay();
   const raus: Record<string, KundeKurz> = {};
   for (const id of mandatIds) {
-    const m = businessMandat(crm, id);
+    const m = fulfillmentMandat(crm, id);
     const fall = m ? faelle.faelle[id] ?? null : null;
     raus[id] = kurzAus(kunde, id, schalter, fall, vorlagen, heute, m ? mandatsEnde(m) : null);
   }
@@ -671,13 +686,13 @@ export async function kundeKurzFuer(mandatIds: readonly string[]): Promise<Recor
 
 /** Formular-Antworten eines Mandats (Playbook, Workbooks) — für die Analyse (C3) nur lesend. Nur Business-Mandate. */
 export async function formularAntwortenFuer(mandatId: string): Promise<FormularStand[]> {
-  if (!businessMandat(await crmLaden(), mandatId)) return [];
+  if (!fulfillmentMandat(await crmLaden(), mandatId)) return [];
   return (await fulfillmentLesen('kunde')).formulare.filter(f => f.mandatId === mandatId);
 }
 
 /** Unterlagen eines Mandats — NUR „freigegeben“ (nie ungeprüfte; Abschnitt 5.4) — für die Analyse (C3). */
 export async function unterlagenFuer(mandatId: string): Promise<Unterlage[]> {
-  if (!businessMandat(await crmLaden(), mandatId)) return [];
+  if (!fulfillmentMandat(await crmLaden(), mandatId)) return [];
   return (await fulfillmentLesen('kunde')).unterlagen.filter(u => u.mandatId === mandatId && u.status === 'freigegeben');
 }
 
@@ -704,7 +719,7 @@ export async function reportZusatzFuer(mandatId: string, heute: string): Promise
     if (!fall) return null;
     const h = await fulfillmentHaushalt();
     const [crm, kunde, vorlagen] = await Promise.all([crmLaden(), fulfillmentLesen('kunde', h), fulfillmentLesen('vorlagen', h)]);
-    const m = businessMandat(crm, mandatId);
+    const m = fulfillmentMandat(crm, mandatId);
     if (!m) return null;
     const link = schalterStand(vorlagen.einstellungen, umgebungAn()).an ? aktiverLink(kunde, m.id, heute, mandatsEnde(m)) : null;
     const u = await kundenUmfeld(m, fall, vorlagen, h);
@@ -739,7 +754,7 @@ export async function kundeMorgenlauf(h: string, heute: string): Promise<Morgenl
   for (const p of kunde.puls) {
     if (tagVon(p.am) < grenze || vorlagen.marken[pulsMarke(p.id)]) continue;
     if (pulsStufe(p.wert, vorlagen.einstellungen.pulsSchwelle) !== 'kritisch') continue;
-    const m = businessMandat(crm, p.mandatId);
+    const m = fulfillmentMandat(crm, p.mandatId);
     if (m && await pulsAufmerksamkeit(m, p, heute)) vorschlaege++;
   }
   return { vorschlaege, ...(markiert.n ? { info: `${markiert.n} Kunden-Link${markiert.n === 1 ? '' : 's'} abgelaufen` } : {}) };
@@ -846,7 +861,7 @@ export const KUNDE_STAPEL: StapelArtFreigabe = {
       const mandatId = String(v.eingabe.mandatId ?? ''), pulsId = String(v.eingabe.pulsId ?? '');
       const { aendereCrm } = await import('@/lib/crm/speicher');
       const crm = await crmLaden();
-      const m = businessMandat(crm, mandatId);
+      const m = fulfillmentMandat(crm, mandatId);
       if (!m || !KENNUNG.puls.test(pulsId)) { await loslassen(v.id); return { ok: false, status: 404, fehler: 'Dieses Mandat gibt es nicht (mehr).' }; }
       const { zustaendig } = await import('@/lib/crm/team');
       await aendereCrm(b => gespraechFollowup(b, m, pulsId, person, new Date(), zustaendig(m.zustaendig, 'sales')), { art: 'person', person });

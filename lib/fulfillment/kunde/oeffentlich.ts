@@ -13,7 +13,7 @@ import { mandatsEnde } from '../regeln';
 import { fulfillmentHaushalt, fulfillmentLesen } from '../speicher';
 import { linkStatus, schalterStand, NICHT_GUELTIG } from './link';
 import { tokenPasst } from './token';
-import { umgebungAn, businessMandat, type Zugriff } from './server';
+import { umgebungAn, fulfillmentMandat, type Zugriff } from './server';
 
 /** Köpfe jeder Antwort der öffentlichen Wege (dazu die strengen Köpfe aus next.config.mjs und Caddy). */
 export const KOPF_OEFFENTLICH = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow', 'Referrer-Policy': 'no-referrer' } as const;
@@ -47,7 +47,7 @@ export async function kundeZugriff(req: Request, linkRoh: string | undefined, we
   if (!link) return nicht();
   const { ladeCrm } = await import('@/lib/crm/speicher');
   const crm = await ladeCrm();
-  const mandat = businessMandat(crm, link.mandatId);
+  const mandat = fulfillmentMandat(crm, link.mandatId);
   const heute = localDay();
   if (!mandat || linkStatus(link, heute, mandatsEnde(mandat)) !== 'aktiv') return nicht();
   const tVoll = req.headers.get('x-kunde-token');

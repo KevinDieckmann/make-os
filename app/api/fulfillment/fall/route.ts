@@ -22,11 +22,11 @@
 //        (12.10.: `am` = nachtragen, was schon passiert ist — ein Tag, nie in der Zukunft; ohne `am` gilt heute.)
 //        fall-status { status } · onboarding-aus { aus } (ohne Fall: Karte „Kundenonboarding starten“ ausblenden) ·
 //        antwort { id, antwort: 'ja'|'nein', am?, stand? } (17.10. abends: Entscheidung im Ablauf — „nein“ startet ihre Erinnerung).
-// Nur per Sitzung (Dienstweg 403), Bau-Kennung, nur Mandate von Business-Gesellschaften. Wirkung nach außen: keine (Mails gehen per Klick
+// Nur per Sitzung (Dienstweg 403), Bau-Kennung, nur Mandate mit Fulfillment (Business und seit 25.10. die Privat-Arbeits-Einheit — diese nur mit Privat-Recht). Wirkung nach außen: keine (Mails gehen per Klick
 // über /api/inbox/senden, danach `willkommen-gesendet`).
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { fulfillmentZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
 import { fallUmfeld, ableitungFuer, fallSchreiben, fallStartenOderAnhaengen, prozessFallStarten, fallVorlageUebernehmen, fallNachziehen, FallFehler } from '@/lib/fulfillment/prozesse/fall-server';
 import { fallWirksam, onboardingStand, willkommenVorlage, vorschlagText, istKickoff } from '@/lib/fulfillment/prozesse/onboarding';
@@ -64,11 +64,13 @@ export async function GET(req: Request) {
   if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt (?m=).' }, { status: 400 });
   const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
   const { crm, vorlagen, faelle, kunde, termine: kalender } = await fallUmfeld([m]);
-  const { istBusinessMandat } = await import('@/lib/fulfillment/regeln');
-  // Prüf-Fund 11.10.: Mandate einer Privat-Einheit (z. B. die Selbstständigkeit) gibt es hier nicht — 404 VOR jedem Aufbau, derselbe Satz wie „fehlt“.
-  const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm && istBusinessMandat(x.gesellschaft));
+  const { mandatInSicht, istBusinessMandat, bereichsKennzeichen } = await import('@/lib/fulfillment/regeln');
+  // Prüf-Fund 11.10.: Mandate ohne Fulfillment (Privat-Einheit ohne Arbeit) gibt es hier nicht — 404 VOR jedem Aufbau, derselbe Satz wie „fehlt“. Seit 25.10.
+  // gehört die Privat-Arbeits-Einheit (Selbstständigkeit) dazu — aber nur für eine Sicht mit Privat-Recht (`z.privat`); sonst ebenfalls 404.
+  const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm && mandatInSicht(x.gesellschaft, z.privat));
   if (!mandat) return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
-  const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandatZieleLesen(mandat.ziele), gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null, business: true,
+  const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandatZieleLesen(mandat.ziele), gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null,
+    business: istBusinessMandat(mandat.gesellschaft), ...(bereichsKennzeichen(mandat.gesellschaft) ?? {}),
     // Zusatzmodule am Mandat (19.10., P3): nur Produkt und Beginn — „Zusatzmodul anhängen“ schlägt ihren Ablauf vor.
     ...(mandat.zusatz?.length ? { zusatz: mandat.zusatz.map(z => ({ leistungId: z.leistungId, ...(z.ab ? { ab: z.ab } : {}) })) } : {}) };
   const f = faelle.faelle[m];
@@ -197,6 +199,8 @@ export async function POST(req: Request) {
   if (z instanceof Response) return z;
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  // Ein Mandat einer Privat-Arbeits-Einheit nur mit Privat-Recht (25.10.) — sonst 403, nichts geschrieben.
+  { const nein = await mandatAusserSicht(z, b.mandatId, 'schreiben'); if (nein) return nein; }
   const wer = werAus(req);
   try {
     if (b.aktion === 'starten') {
@@ -226,6 +230,7 @@ export async function PATCH(req: Request) {
   if (z instanceof Response) return z;
   let b: { mandatId?: unknown; ops?: unknown };
   try { b = await jsonBegrenzt(req, 512 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  { const nein = await mandatAusserSicht(z, b.mandatId, 'schreiben'); if (nein) return nein; }
   const wer = werAus(req);
   const ops = Array.isArray(b.ops) ? b.ops : [];
   // Ohne Fall gibt es nur „Karte ausblenden“ (Marke im Vorlagen-Bestand).

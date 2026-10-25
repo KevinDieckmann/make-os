@@ -12,7 +12,7 @@ import type { CrmBestand, FollowUp, Mandat } from '@/lib/crm/typen';
 import type { DossierKurz, Fall, FallKurz, FristenKontext, KundeKurz, MorgenlaufTeil, StakeholderAuskunft, VorlagenDatei } from '../typen';
 import type { ProduktProzessKurz } from '@/lib/prozesse/produkt-ablauf';
 import { eintragStand, fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen } from '../speicher';
-import { istBusinessMandat, mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus, MARKE_FULFILLMENT_SEIT } from '../regeln';
+import { istBusinessMandat, istFulfillmentMandat, bereichsKennzeichen, mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { STAPEL_GRUPPE } from '../grenzen';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
@@ -95,7 +95,7 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
   const { kundenZeilen } = await import('@/lib/crm/treppe');
   // Stufen aus dem Katalog (19.10., lib/crm/produkt-karte.ts) — ohne Produkt-Karten genau die gespeicherten.
   const { treppeMitKatalog } = await import('@/lib/crm/produkt-karte');
-  const kz = treppe ? kundenZeilen({ datei: treppeMitKatalog(treppe, crm.leistungen), crm, heute, termine, reportTage: await (await import('@/lib/prozesse/stellschrauben-werte-server')).reportTageWirksam() }) : [];
+  const kz = treppe ? kundenZeilen({ datei: treppeMitKatalog(treppe, crm.leistungen), crm, heute, termine, reportTage: await (await import('@/lib/prozesse/stellschrauben-werte-server')).reportTageWirksam(), mitArbeit: true }) : [];
   const { kundenGesperrt } = await import('./bausteine');
   const gesperrt = kundenGesperrt(vorlagen.bausteine, vorlagen);
   // „Heute im Fulfillment“ (17.10. spät): trägt ein Knoten einen Mail-Baustein, ist sein Handgriff „Entwurf öffnen“ — dieselbe Regel wie die Ausführung.
@@ -114,7 +114,9 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
   const zeilen: (CockpitZeile & { gesellschaft: string })[] = [];
   for (const f of laufend) {
     const m = crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
-    if (!m || !istBusinessMandat(m.gesellschaft)) continue;
+    // Fälle aller Mandate mit Fulfillment (Business und seit 25.10. die Privat-Arbeits-Einheit) — Business-Rechnungen (Säule des Index) filtern selbst
+    // (`ffKennzahlenFuerIndex`), Antworten an Sichten filtern über `mandatInSicht` (lib/fulfillment/regeln.ts).
+    if (!m || !istFulfillmentMandat(m.gesellschaft)) continue;
     const abl = ableitungFuer(f, m, crm, vorlagen, kunde[m.id], jetzt, kalender[m.id]);
     const w = fallWirksam(f, abl);
     const z = kz.find(x => x.mandatId === m.id);
@@ -130,7 +132,8 @@ async function cockpitRechnen(heute: string, jetzt: string, nur?: string): Promi
     // Stand der gespeicherten Knoten, die die Handgriffe ändern (Schreibwege B3) — derselbe Stand, den der Schreibweg des Falls prüft.
     const ids = new Set(handgriffKnoten(zeile));
     const knotenStand = Object.fromEntries(f.knoten.filter(k => ids.has(k.id)).map(k => [k.id, { stand: eintragStand(k), status: k.status }]));
-    zeilen.push({ ...zeile, ...(Object.keys(knotenStand).length ? { knotenStand } : {}), ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}), gesellschaft: m.gesellschaft });
+    const kz2 = bereichsKennzeichen(m.gesellschaft);
+    zeilen.push({ ...zeile, ...(Object.keys(knotenStand).length ? { knotenStand } : {}), ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}), ...(kz2 ? { bereich: kz2.bereich, einheit: kz2.einheit } : {}), gesellschaft: m.gesellschaft });
   }
   return { zeilen, vorlagen };
 }
@@ -188,7 +191,8 @@ export async function naechsteFallTermine(heute = localDay()): Promise<Record<st
  */
 export async function ffKennzahlenFuerIndex(heute = localDay()): Promise<FfIndexDaten | null> {
   try {
-    const { zeilen } = await cockpitDaten(heute);
+    // Nur Business (25.10.): Fälle der Privat-Arbeits-Einheit (Selbstständigkeit) zählen im Business-Index nie — ohne Business-Fall ist der Index exakt der bisherige.
+    const zeilen = (await cockpitDaten(heute)).zeilen.filter(z => istBusinessMandat(z.gesellschaft));
     if (!zeilen.length) return null;
     const faelle = await fulfillmentLesen('faelle');
     return {
@@ -208,17 +212,35 @@ export async function ffKennzahlenFuerIndex(heute = localDay()): Promise<FfIndex
 export const markeOnboardingVorschlag = (mandatId: string) => `onboarding-vorschlag:${mandatId}`;
 export const WERKZEUG = { onboarding: 'fulfillment_onboarding', nachsorge: 'fulfillment_nachsorge', nachricht: ABLAUF_WERKZEUG_NACHRICHT } as const;
 
-/** Für wen ein Vorschlag ist: die zuständige Person des Mandats, wenn sie im Haushalt ist — sonst ohne Person (der Haushalt sieht ihn). */
-async function zustaendigePerson(m: Pick<Mandat, 'zustaendig'>): Promise<string | undefined> {
+/**
+ * Wer zu einem Mandat Vorschläge und Glocken bekommen darf: die Personen des Haushalts — bei einem Mandat der Privat-Arbeits-Einheit (25.10.) ohne Konten „nur
+ * Business“ (die sehen solche Fälle nie).
+ */
+async function personenFuer(m: Pick<Mandat, 'gesellschaft'>): Promise<string[]> {
   const { haushaltsPersonen } = await import('@/lib/aufgaben/sicht');
-  const p = (await haushaltsPersonen()).map(x => x.speicher);
+  const { istPrivatArbeitsMandat } = await import('../regeln');
+  const privat = istPrivatArbeitsMandat(m.gesellschaft);
+  return (await haushaltsPersonen()).filter(x => !(privat && x.nurBusiness)).map(x => x.speicher);
+}
+/** Für wen ein Vorschlag ist: die zuständige Person des Mandats, wenn sie ihn sehen darf — sonst ohne Person (der Haushalt sieht ihn). */
+async function zustaendigePerson(m: Pick<Mandat, 'zustaendig' | 'gesellschaft'>): Promise<string | undefined> {
+  const p = await personenFuer(m);
   return m.zustaendig && p.includes(m.zustaendig) ? m.zustaendig : undefined;
 }
-async function empfaenger(m: Pick<Mandat, 'zustaendig'>): Promise<string[]> {
+/**
+ * Für wen ein Vorschlag im Stapel liegt: die zuständige Person; bei einem Mandat der Privat-Arbeits-Einheit ohne sie die erste Person mit Privat-Recht (Inhaber
+ * zuerst) — ein Vorschlag OHNE Person sähe der ganze Haushalt (auch „nur Business“, Gruppe „kunden“ ist Business). Sonst ohne Person wie bisher.
+ */
+async function vorschlagPerson(m: Pick<Mandat, 'zustaendig' | 'gesellschaft'>): Promise<string | undefined> {
+  const p = await zustaendigePerson(m);
+  if (p) return p;
+  const { istPrivatArbeitsMandat } = await import('../regeln');
+  return istPrivatArbeitsMandat(m.gesellschaft) ? (await personenFuer(m))[0] : undefined;
+}
+async function empfaenger(m: Pick<Mandat, 'zustaendig' | 'gesellschaft'>): Promise<string[]> {
   const p = await zustaendigePerson(m);
   if (p) return [p];
-  const { haushaltsPersonen } = await import('@/lib/aufgaben/sicht');
-  return (await haushaltsPersonen()).map(x => x.speicher);
+  return personenFuer(m);
 }
 
 /** Was die Prozesse (Lauf-Motor) von einem Fall wissen dürfen (22.10., Begleit-Prozesse B1): nur Kennung des Pakets, Status und der nächste Termin mit dem Kunden. */
@@ -305,7 +327,7 @@ export async function onboardingVorschlaegeKern(h: string, heute: string, o: { s
     const am = vorgeschlagen(k.mandatId);
     if (am && am !== heute) continue;
     const m = crm.mandate.find(x => x.id === k.mandatId)!;
-    soll.push({ mandatId: m.id, fuer: (await zustaendigePerson(m)) ?? 'haushalt' });
+    soll.push({ mandatId: m.id, fuer: (await vorschlagPerson(m)) ?? 'haushalt' });
   }
   const kandidaten = alle.filter(k => !vorgeschlagen(k.mandatId));
   if (!o.schreiben || !kandidaten.length) return { vorschlaege: [], soll };
@@ -316,7 +338,7 @@ export async function onboardingVorschlaegeKern(h: string, heute: string, o: { s
   const neueMarken: Record<string, string> = {};
   for (const k of kandidaten) {
     const m = crm.mandate.find(x => x.id === k.mandatId)!;
-    const person = await zustaendigePerson(m);
+    const person = await vorschlagPerson(m);
     const v = vorlageFuerProdukt(vorlagen, m.leistungId);
     const x = await lege({
       werkzeug: WERKZEUG.onboarding, gruppe: STAPEL_GRUPPE, titel: `Fall starten: ${m.kunde}`.slice(0, 200),
@@ -339,7 +361,7 @@ async function prozesseMorgenlaufRest(h: string, heute: string, weg: import('@/l
   // laufende Mandat am ersten Morgen einen Vorschlag, eine Glocke und „Willkommensmail überfällig“.
   // Eine leere Instanz (kein Business-Mandat) schreibt nichts — die Marke entsteht beim ersten Lauf mit Mandaten.
   if (!vorlagen.marken[MARKE_FULFILLMENT_SEIT]) {
-    if (crm.mandate.some(m => !m.geloeschtAm && istBusinessMandat(m.gesellschaft))) {
+    if (crm.mandate.some(m => !m.geloeschtAm && istFulfillmentMandat(m.gesellschaft))) {
       await fulfillmentAendern('vorlagen', d => (d.marken[MARKE_FULFILLMENT_SEIT] ? { ok: true, datei: d, geaendert: [] } : { ok: true, datei: { ...d, marken: { ...d.marken, [MARKE_FULFILLMENT_SEIT]: heute } }, geaendert: [MARKE_FULFILLMENT_SEIT] }), { art: 'system' }, h);
     }
     return { vorschlaege: 0 };
@@ -361,7 +383,7 @@ async function prozesseMorgenlaufRest(h: string, heute: string, weg: import('@/l
   for (const x of nachsorge) {
     const m = crm.mandate.find(y => y.id === x.mandatId);
     if (!m) continue;
-    const person = await zustaendigePerson(m);
+    const person = await vorschlagPerson(m);
     await lege({
       werkzeug: WERKZEUG.nachsorge, gruppe: STAPEL_GRUPPE, titel: `${NACHSORGE_TEXT[x.art]}: ${m.kunde}`.slice(0, 200), vorher: `Mandat beendet (Tag +${x.tag})`,
       nachher: 'Follow-up am Mandat anlegen — gesprochen bzw. geschrieben wird erst per Klick', eingabe: { mandatId: m.id, tag: x.tag, art: x.art },

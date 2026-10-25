@@ -10,6 +10,7 @@ import type { Angebot, Chance, Firma, Leistung, Mandat } from './typen';
 import { honorarAusPreis, istKombi, mandatVertragAusProdukt, mandatVorlageAusProdukt } from './produkt-karte';
 import { angenommenZuDeal, mandatVorbelegung } from './angebote';
 import { istBusinessGesellschaft } from '@/lib/einheiten';
+import { istPrivatArbeitsMandat } from '@/lib/fulfillment/regeln';
 
 /** Der erste Tag des Folgemonats (Vorgabe des Starts im Fenster „Mandat anlegen“). */
 export function startVorschlag(heute: string): string {
@@ -82,9 +83,11 @@ export function mandatAusDeal(c: Chance, ctx: MandatAusDealKontext): MandatAusDe
     const { offen: vOffen, ...v } = mandatVorbelegung(angebot, ctx.leistungen);
     Object.assign(m, v, { quelle: `aus Angebot ${angebot.nummer ?? ''} (Deal „${c.titel}“)`.replace('  ', ' ') });
     if (!v.titel) m.titel = c.titel;
-    // Das angenommene Angebot IST die Unterschrift (17.10., Gesamtprüfung L1 B3). Den Kick-off führt bei Business-Mandaten der Fall — kein zweiter offener Punkt.
+    // Das angenommene Angebot IST die Unterschrift (17.10., Gesamtprüfung L1 B3). Den Kick-off führt bei Business-Mandaten der Fall — kein zweiter offener Punkt;
+    // seit 25.10. ebenso bei Mandaten der Privat-Arbeits-Einheit (sie bekommen Fulfillment, `istPrivatArbeitsMandat`).
     m.vertragUnterschrieben = true;
-    m.offen = [...m.offen.filter(x => x !== 'Vertrag unterschreiben lassen' && !(istBusinessGesellschaft(m.gesellschaft) && x === 'Kickoff-Termin festlegen')), ...(vOffen ?? [])];
+    const fallFuehrtKickoff = istBusinessGesellschaft(m.gesellschaft) || istPrivatArbeitsMandat(m.gesellschaft);
+    m.offen = [...m.offen.filter(x => x !== 'Vertrag unterschreiben lassen' && !(fallFuehrtKickoff && x === 'Kickoff-Termin festlegen')), ...(vOffen ?? [])];
   }
   return { mandat: m, quelle: angebot ? 'angebot' : produkt ? 'produkt' : 'deal', ...(angebot ? { angebot: { id: angebot.id, ...(angebot.nummer ? { nummer: angebot.nummer } : {}) } } : {}) };
 }

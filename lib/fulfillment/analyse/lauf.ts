@@ -119,12 +119,15 @@ export const registerAufgabeId = (mandatId: string): string => `ff-register-${fn
 export interface StartEingabe { mandatId: string; agent: AnalyseAgentId; bestaetigtCent: number; grund?: string; funktion?: string }
 export type StartAntwort = { status: number; body: Record<string, unknown> };
 
-/** Mandat lesen und Business prüfen (Fälle/Dossiers nur für Mandate von Business-Gesellschaften). */
+/**
+ * Mandat lesen und prüfen, ob es Fulfillment bekommt (Fälle/Dossiers für Business-Mandate und seit 25.10. die Privat-Arbeits-Einheit — `istFulfillmentMandat`;
+ * ob die anfragende Sicht ein Mandat der Privat-Arbeits-Einheit sehen darf, prüft die Route mit `mandatAusserSicht`).
+ */
 export async function mandatFuer(mandatId: string): Promise<{ ok: true; mandat: import('@/lib/crm/typen').Mandat } | { ok: false; status: 400 | 404; fehler: string }> {
-  const [{ ladeCrm }, { bereichVonGesellschaft, GEHOERT_ZU_PRIVAT }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/einheiten')]);
+  const [{ ladeCrm }, { GEHOERT_ZU_PRIVAT }, { istFulfillmentMandat }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/einheiten'), import('../regeln')]);
   const m = (await ladeCrm()).mandate.find(x => x.id === mandatId);
   if (!m) return { ok: false, status: 404, fehler: 'Dieses Mandat gibt es nicht (mehr).' };
-  if (bereichVonGesellschaft(m.gesellschaft) !== 'business') return { ok: false, status: 400, fehler: GEHOERT_ZU_PRIVAT(m.gesellschaft as never) };
+  if (!istFulfillmentMandat(m.gesellschaft)) return { ok: false, status: 400, fehler: GEHOERT_ZU_PRIVAT(m.gesellschaft as never) };
   return { ok: true, mandat: m };
 }
 

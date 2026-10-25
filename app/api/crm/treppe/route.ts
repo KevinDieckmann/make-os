@@ -29,7 +29,8 @@ export async function GET(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return nurHaushalt();
   if (new URL(req.url).searchParams.get('space') === 'privat') return NextResponse.json({ ok: false, fehler: NUR_BUSINESS_TREPPE }, { status: 400 });
-  const lage = await treppeLage(zugang.person);
+  // `?space=business` = die ausdrückliche Business-Sicht: ohne Mandate der Privat-Arbeits-Einheit (25.10.; ein Konto „nur Business“ bekommt sie ohnehin nie).
+  const lage = await treppeLage(zugang.person, undefined, { nurBusiness: new URL(req.url).searchParams.get('space') === 'business' });
   leseZugriff(req, 'firmen', { anzahl: lage.kunden.length }); // Lese-Protokoll: Mandate (Kunden) und ihr Fortschritt
   return jsonAntwort(req, { ok: true, ...lage });
 }
@@ -42,6 +43,15 @@ export async function PATCH(req: Request) {
   if (alterBau) return alterBau;
   let b: { ops?: unknown };
   try { b = await jsonBegrenzt(req, MAX_BYTES); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
+  // 25.10.: Schritte am Fortschritt eines Mandats der Privat-Arbeits-Einheit nur mit Privat-Recht (ein Konto „nur Business“ → 403, nichts geschrieben).
+  if (Array.isArray(b.ops)) {
+    const [{ mandatAusserSicht }, { kontoSicht }] = await Promise.all([import('@/lib/fulfillment/zugang'), import('@/lib/zugang/konto-sicht-server')]);
+    const sicht = { privat: !!(await kontoSicht(zugang.person))?.privat };
+    for (const id of new Set(b.ops.map(o => (o && typeof o === 'object' ? (o as { mandatId?: unknown }).mandatId : undefined)).filter((x): x is string => typeof x === 'string'))) {
+      const nein = await mandatAusserSicht(sicht, id, 'schreiben');
+      if (nein) return nein;
+    }
+  }
   const r = await treppeSchreiben(b.ops, zugang.person, werAus(req));
   if (r.ok) return NextResponse.json({ ok: true, geaendert: r.geaendert, datei: mitStaenden(r.datei) });
   if (r.status === 409) return NextResponse.json({ ok: false, fehler: 'Inzwischen hat jemand anderes geändert — neu geladen, bitte noch einmal.', konflikt: true, konflikte: r.konflikte, datei: mitStaenden(await ladeTreppe()) }, { status: 409 });

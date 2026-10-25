@@ -7,12 +7,13 @@
 //   2. Ein erledigter Baustein mit `lieferobjekt` hakt das Lieferobjekt der Leistungstreppe ab (`treppeSchreiben`, idempotent).
 //   3. Wert-Konto (7.5): eine neue Messung schreibt `Mandat.ziele[i].ist`; ein neues Ziel legt zuerst die Zeile in `Mandat.ziele` an.
 // Schlägt der Nachzug fehl, bleibt der Fall gespeichert und meldet „nicht nachgezogen — erneut“ (`nachziehen`); es bleibt nichts halb.
-// Fälle gibt es nur für Mandate von Business-Gesellschaften (sonst 400 „gehört zu Privat“). Mandate ohne Fall bleiben genau wie heute.
+// Fälle gibt es für Mandate mit Fulfillment (`istFulfillmentMandat`: Business und seit 25.10. die Privat-Arbeits-Einheit; eine Privat-Einheit ohne Arbeit → 400
+// „gehört zu Privat“). Ob die anfragende Sicht ein Mandat der Privat-Arbeits-Einheit ändern darf, prüft die Route (`mandatAusserSicht`). Mandate ohne Fall bleiben genau wie heute.
 
 import type { Fall, ProzessVorlage, VorlagenDatei, AnwendenErgebnis, KundeKurz } from '../typen';
 import type { CrmBestand, Mandat } from '@/lib/crm/typen';
 import { fulfillmentAendern, fulfillmentLesen, fulfillmentHaushalt, eintragStand } from '../speicher';
-import { aktuellerKnoten, istBusinessMandat, unterschriftAm, istBestand, MARKE_FULFILLMENT_SEIT } from '../regeln';
+import { aktuellerKnoten, istFulfillmentMandat, unterschriftAm, istBestand, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { istGesellschaft, GEHOERT_ZU_PRIVAT } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
@@ -84,12 +85,12 @@ export function ableitungFuer(fall: Fall, m: Mandat | undefined, crm: Pick<CrmBe
 }
 
 const MANDAT = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;
-export const NUR_BUSINESS_MANDAT = 'Fulfillment gibt es nur für Mandate einer Business-Gesellschaft — bitte am Mandat die Gesellschaft wählen.';
+export const NUR_BUSINESS_MANDAT = 'Fulfillment gibt es nur für Mandate einer Gesellschaft, deren Arbeit zählt — bitte am Mandat die Gesellschaft wählen.';
 function mandatPruefen(crm: Pick<CrmBestand, 'mandate'>, mandatId: unknown): Mandat {
   if (typeof mandatId !== 'string' || !MANDAT.test(mandatId)) throw new FallFehler('Mandat fehlt.', 400);
   const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm);
   if (!m) throw new FallFehler('Dieses Mandat gibt es nicht (mehr).', 404);
-  if (!istBusinessMandat(m.gesellschaft)) throw new FallFehler(istGesellschaft(m.gesellschaft) ? GEHOERT_ZU_PRIVAT(m.gesellschaft) : NUR_BUSINESS_MANDAT, 400);
+  if (!istFulfillmentMandat(m.gesellschaft)) throw new FallFehler(istGesellschaft(m.gesellschaft) ? GEHOERT_ZU_PRIVAT(m.gesellschaft) : NUR_BUSINESS_MANDAT, 400);
   return m;
 }
 
@@ -149,7 +150,7 @@ export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId
 /**
  * E5 (22.10., Entscheidung F3): die Akte für ein Mandat, dessen Produkt auf einen Prozess der WERKSTATT zeigt — angelegt, wenn dessen scharfer Lauf startet
  * (lib/prozesse/lauf-server.ts `produktLaeufeStarten`). Nur das Onboarding (Willkommens-Uhr, Kick-off, Playbook …), keine Paket-Knoten, `ablauf` zeigt auf den
- * Prozess. Idempotent: hat das Mandat schon einen Fall, bleibt er, wie er ist (`art: 'da'`). Nur Business-Mandate (`mandatPruefen`). Wirft bei Unsinn `FallFehler`.
+ * Prozess. Idempotent: hat das Mandat schon einen Fall, bleibt er, wie er ist (`art: 'da'`). Nur Mandate mit Fulfillment (`mandatPruefen`). Wirft bei Unsinn `FallFehler`.
  */
 export async function prozessAkteAnlegen(e: { mandatId: string; prozessId: string; titel: string; version: number; person: string; wer?: Wer; jetzt?: Date; start?: string }): Promise<{ fall: Fall; art: 'neu' | 'da' }> {
   const jetzt = e.jetzt ?? new Date();

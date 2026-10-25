@@ -8,7 +8,7 @@
 // Tor: `fulfillmentZugang` (schreiben nur per Sitzung + Bau-Kennung; der Dienstweg startet nie). Wiederholte Anfragen über `anfrageId` (`einmalig`).
 
 import { NextResponse } from 'next/server';
-import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
+import { fulfillmentZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { einmalig } from '@/lib/store/anfragen';
 import { MANDAT_ID } from '@/lib/fulfillment/grenzen';
@@ -26,6 +26,7 @@ export async function GET(req: Request) {
   if (z instanceof Response) return z;
   const m = new URL(req.url).searchParams.get('m') ?? '';
   if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt (?m=).' }, { status: 400 });
+  { const nein = await mandatAusserSicht(z, m, 'lesen'); if (nein) return nein; }
   const lage = await analyseLage(m, z.person);
   if (!lage) return NextResponse.json({ ok: false, fehler: 'Für dieses Mandat gibt es noch kein Dossier.' }, { status: 404 });
   return NextResponse.json({ ok: true, ...lage });
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
   try { b = await jsonBegrenzt(req, 16_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const mandatId = typeof b?.mandatId === 'string' ? b.mandatId : '';
   if (!MANDAT_ID.test(mandatId)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt.' }, { status: 400 });
+  { const nein = await mandatAusserSicht(z, mandatId, 'schreiben'); if (nein) return nein; }
   const aktion = b.aktion;
   if (aktion === 'starten') {
     const agent = typeof b.agent === 'string' && (ANALYSE_AGENTEN as readonly string[]).includes(b.agent) ? (b.agent as AnalyseAgentId) : null;
