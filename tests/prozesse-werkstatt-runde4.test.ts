@@ -320,3 +320,16 @@ describe('(8) Probelauf-Hinweis bei offenem Panel', () => {
     expect(css.slice(i - 40, i)).toContain('@media (min-width: 721px) {');
   });
 });
+
+describe('(9) Panel beim Knotenwechsel oben', () => {
+  it('wechselt die Auswahl, steht das Feld wieder oben — außer ein Befund springt gerade in sein Feld', () => {
+    const q = lies('components/os/prozesse/WerkstattPanel.tsx');
+    expect(q).toContain("const wahl = p.knoten?.id ?? p.phase?.id ?? p.kante?.id ?? p.zettel?.id ?? 'steckbrief';");
+    expect(q).toContain("const feld = anker.current?.closest('.wz-feld-inhalt, .pw-panel');");
+    expect(q).toContain('if (feld) feld.scrollTop = 0;');
+    expect(q).toContain('if (p.imFenster || (p.feldFokus && p.feldFokus.knoten === p.knoten?.id) || p.andock) return;');
+    // Die Behälter, in denen das Panel rollt, heißen so (Werkzeugmodus bzw. daneben).
+    expect(lies('components/os/werkzeug/rahmen.tsx')).toContain('<div className="wz-feld-inhalt">{children}</div>');
+    expect(lies('components/os/prozesse/Werkstatt.tsx')).toContain('<aside className="pw-panel" aria-label="Einstellungen">{panelInhalt}</aside>');
+  });
+});

@@ -122,14 +122,25 @@ export interface PanelProps {
 
 /** Das Panel (siehe Kopf). */
 export function WerkstattPanel(p: PanelProps) {
+  // Runde 4 (Bau-Test 3: „das Panel behält die Scrollposition beim Knotenwechsel“): wechselt die Auswahl, steht das Feld wieder oben — Kopf mit Typ und Name
+  // sichtbar. Nicht, wenn ein Befund gerade in sein Feld springt (`feldFokus`) bzw. ein Andockpunkt gewählt ist — die springen selbst.
+  const anker = useRef<HTMLSpanElement | null>(null);
+  const wahl = p.knoten?.id ?? p.phase?.id ?? p.kante?.id ?? p.zettel?.id ?? 'steckbrief';
+  useEffect(() => {
+    if (p.imFenster || (p.feldFokus && p.feldFokus.knoten === p.knoten?.id) || p.andock) return;
+    const feld = anker.current?.closest('.wz-feld-inhalt, .pw-panel');
+    if (feld) feld.scrollTop = 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim Wechsel der Auswahl
+  }, [wahl]);
   // Je Knoten frisch (key): Getipptes eines Felds wird beim Wechsel zum nächsten Knoten noch für DIESEN übernommen (Feinschliff 24.10.), nie für den neuen.
   // Kern-Bau-Test 24.10.: ebenso Phase, Faden und Zettel (vorher ohne key — der Name einer Phase konnte nach dem Wechsel der Auswahl an die NEUE gehen); dazu
   // trägt jedes Feld sein Ziel (Kennung + Feld, `useTippen`).
-  if (p.knoten) return <KnotenPanel key={p.knoten.id} {...p} k={p.knoten} />;
-  if (p.phase) return <PhasePanel key={p.phase.id} {...p} ph={p.phase} />;
-  if (p.kante) return <KantenPanel key={p.kante.id} {...p} k={p.kante} />;
-  if (p.zettel) return <ZettelPanel key={p.zettel.id} {...p} z={p.zettel} />;
-  return <SteckbriefPanel {...p} />;
+  const inhalt = p.knoten ? <KnotenPanel key={p.knoten.id} {...p} k={p.knoten} />
+    : p.phase ? <PhasePanel key={p.phase.id} {...p} ph={p.phase} />
+      : p.kante ? <KantenPanel key={p.kante.id} {...p} k={p.kante} />
+        : p.zettel ? <ZettelPanel key={p.zettel.id} {...p} z={p.zettel} />
+          : <SteckbriefPanel {...p} />;
+  return <><span ref={anker} hidden />{inhalt}</>;
 }
 
 function SteckbriefPanel(p: PanelProps) {
