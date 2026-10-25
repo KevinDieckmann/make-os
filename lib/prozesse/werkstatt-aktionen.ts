@@ -679,12 +679,22 @@ export function ersetzen(f: Fassung, k: K): Ergebnis {
   if (!alt) return nein('Diesen Knoten gibt es nicht (mehr).');
   return ok(f.knoten.map(x => (x.id === k.id ? { ...k, elternId: alt.elternId, rang: alt.rang } : x)), f, `${titel(k)} geändert.`);
 }
-export function umbenennen(f: Fassung, id: string, neuTitel: string): Ergebnis {
+export function umbenennen(f: Fassung, id: string, neuTitel: string, folge?: (k: K, t: string) => K): Ergebnis {
   const t = neuTitel.trim();
   const k = f.knoten.find(x => x.id === id);
   if (!k) return nein('Diesen Knoten gibt es nicht (mehr).');
   if (!t) return nein('Der Name darf nicht leer sein.');
-  return ok(f.knoten.map(x => (x.id === id ? { ...x, titel: t } : x)), f, `Umbenannt in „${t}“.`);
+  // `folge` (Kern-Bau-Test 24.10.): was mit dem Namen mitgeht — z. B. der Titel einer Aufgabe (lib/prozesse/werkstatt-maske.ts `nameSetzen`).
+  return ok(f.knoten.map(x => (x.id === id ? (folge ? { ...folge(x, t), elternId: x.elternId, rang: x.rang } : { ...x, titel: t }) : x)), f, `Umbenannt in „${t}“.`);
+}
+/**
+ * Eine Änderung am AKTUELLEN Stand eines Knotens (Kern-Bau-Test 24.10.): das Panel schickt nur „was sich an DIESEM Knoten ändert“ (Kennung + Änderung), nie ein
+ * älteres Abbild des ganzen Knotens — so ändert ein Feld nur sein Feld an seinem Knoten, auch wenn inzwischen etwas anderes geändert wurde. Platz bleibt.
+ */
+export function knotenAendern(f: Fassung, id: string, aendern: (k: K) => K): Ergebnis {
+  const alt = f.knoten.find(x => x.id === id);
+  if (!alt) return nein('Diesen Knoten gibt es nicht (mehr).');
+  return ersetzen(f, { ...aendern(alt), id });
 }
 /** Gespeicherte Lagen setzen (null = wieder automatisch). */
 export function lageSetzen(f: Fassung, eintraege: readonly { id: string; pos: KnotenLage | null }[]): Ergebnis {

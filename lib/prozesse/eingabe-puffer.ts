@@ -3,6 +3,7 @@
 // Verlassen, Schließen und `pagehide`; „Entwurf gespeichert“ steht erst, wenn der Server geantwortet hat UND kein Feld mehr Getipptes hält.
 //   · `eingabePuffer`  EIN Feld: tippen → nach der Pause übernehmen; `jetzt()` übernimmt sofort; ein Wert von außen ersetzt nur, solange nichts Getipptes offen ist.
 //   · `speicherAnzeige` was der Kopf zeigt (Zustand des Speicherns + offene Eingaben).
+//   · `zielPuffer`     (24.10.) ein Feld für wechselnde Ziele: jeder offene Wert geht nur an SEIN Ziel (Knoten + Feld), auch nach dem Wechsel der Auswahl.
 // Rein und client-sicher (eigene Uhr für Tests); die Werkstatt hängt es über `useTippen` (components/os/prozesse/WerkstattMaske.tsx) an die Felder.
 
 /** So lange nach dem letzten Tastendruck wird übernommen (ms) — kurz genug für „sofort“, lang genug, dass nicht jeder Buchstabe eine Fassung wird. */
@@ -76,6 +77,34 @@ export function eingabePuffer(o: PufferOptionen): Puffer {
     offen: () => text !== gesendet,
     text: () => text,
     stopp: halt,
+  };
+}
+
+/**
+ * Ein Feld, das nacheinander verschiedenen Zielen gehört (Kern-Bau-Test 24.10.: „Text landet im Titel eines anderen Schritts“) — z. B. das Namensfeld einer Phase,
+ * dessen Panel beim Wechsel der Auswahl stehen bleibt. Regel: jeder ausstehende Wert trägt SEIN Ziel (Kennung des Knotens + Feld) und wird nur dorthin übernommen —
+ * beim Wechsel sofort (vor dem neuen Wert), bei Ablauf der Pause, beim Verlassen, Schließen und `pagehide`. Ein neues Ziel beginnt mit seinem eigenen Wert.
+ */
+export interface ZielPuffer extends Puffer {
+  /** Das Feld gehört jetzt `ziel` mit dem gespeicherten Wert `wert`: Offenes geht vorher an das bisherige Ziel. Liefert den Text, den das Feld zeigen soll. */
+  wechsel: (ziel: string, wert: string) => string;
+  /** Wem das Feld gerade gehört. */
+  ziel: () => string;
+}
+export function zielPuffer(o: Omit<PufferOptionen, 'uebernehmen'> & { ziel: string; uebernehmen: (ziel: string, v: string) => void }): ZielPuffer {
+  const neu = (ziel: string, anfang: string): Puffer => eingabePuffer({ ...o, anfang, uebernehmen: v => o.uebernehmen(ziel, v) });
+  let ziel = o.ziel;
+  let p = neu(ziel, o.anfang);
+  return {
+    tippe: v => p.tippe(v), jetzt: () => p.jetzt(), offen: () => p.offen(), text: () => p.text(), stopp: () => p.stopp(),
+    vonAussen: v => p.vonAussen(v),
+    wechsel: (z, wert) => {
+      if (z === ziel) return p.vonAussen(wert);
+      p.jetzt(); p.stopp();
+      ziel = z; p = neu(z, wert);
+      return wert;
+    },
+    ziel: () => ziel,
   };
 }
 
