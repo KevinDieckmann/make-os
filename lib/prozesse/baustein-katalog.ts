@@ -461,6 +461,8 @@ export interface MaskenKontext {
 type O = Record<string, unknown>;
 const UHRZEIT = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+/** Wie ein Befund der Maske den Schritt nennt: „<Name des Schritts>“ — nur ohne Namen der Baustein (Runde 4). */
+export const befundName = (e: Pick<KatalogEintrag, 'name'>, schritt?: string): string => (schritt?.trim() ? `„${schritt.trim()}“` : e.name);
 /**
  * Die Werte einer Maske säubern und prüfen (rein): nur Felder der Maske (Unbekanntes fällt weg), feste Werte stehen nie darin; Typen geprüft (`fehler`),
  * fehlende Pflichtfelder bzw. nicht mehr vorhandene Auswahl-Werte sind `offen` (Entwurf ja, Veröffentlichen nein). Bausteine mit eigenem Feld
@@ -468,14 +470,16 @@ const UHRZEIT = /^([01]\d|2[0-3]):([0-5]\d)$/;
  * Platzhalter halb getippt, unbekannte Auswahl, Uhrzeit) ist `fehler` mit `nurWert` — rot am Feld, der Entwurf speichert trotzdem; zu lang bzw. zu viele
  * bleiben ungespeichert (Größe).
  */
-export function maskeSaeubern(e: KatalogEintrag, roh: unknown, k: MaskenKontext = {}, knotenId?: string): { werte: Record<string, MaskenWert>; befunde: Befund[] } {
+export function maskeSaeubern(e: KatalogEintrag, roh: unknown, k: MaskenKontext = {}, knotenId?: string, schritt?: string): { werte: Record<string, MaskenWert>; befunde: Befund[] } {
   const werte: Record<string, MaskenWert> = {};
   const befunde: Befund[] = [];
   if (e.feld) return { werte, befunde };
   const o: O = roh && typeof roh === 'object' && !Array.isArray(roh) ? roh as O : {};
-  const b = (stufe: Befund['stufe'], f: MaskenFeld, text: string) => befunde.push({ stufe, text: `${e.name} › ${f.label}: ${text}`, feld: f.id, ...(knotenId ? { knotenId } : {}) });
+  // Runde 4 (Bau-Test 3: „Mail-Entwurf › Postfach: fehlt.“ — welcher von mehreren Mail-Schritten?): der Befund nennt den Namen des Schritts, den Baustein nur ohne Namen.
+  const wer = befundName(e, schritt);
+  const b = (stufe: Befund['stufe'], f: MaskenFeld, text: string) => befunde.push({ stufe, text: `${wer} › ${f.label}: ${text}`, feld: f.id, ...(knotenId ? { knotenId } : {}) });
   /** Ein falscher Wert (nicht zu groß): rot, aber der Entwurf speichert (24.10.). */
-  const w = (f: MaskenFeld, text: string) => befunde.push({ stufe: 'fehler', nurWert: true, text: `${e.name} › ${f.label}: ${text}`, feld: f.id, ...(knotenId ? { knotenId } : {}) });
+  const w = (f: MaskenFeld, text: string) => befunde.push({ stufe: 'fehler', nurWert: true, text: `${wer} › ${f.label}: ${text}`, feld: f.id, ...(knotenId ? { knotenId } : {}) });
   for (const f of e.maske) {
     const v = o[f.id];
     const leer = v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length);

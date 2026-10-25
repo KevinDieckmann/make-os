@@ -72,7 +72,7 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
   if (k.katalog && !e) raus.push(b('fehler', `${titel}: diesen Baustein gibt es nicht.`, k.id));
   if (e && e.form !== (k.form ?? 'schritt')) raus.push(b('fehler', `${titel}: der Baustein „${e.name}“ passt nicht zur Form.`, k.id));
   if (e?.fest?.art && kx.vorschlagArten && !kx.vorschlagArten.includes(e.fest.art)) raus.push(b('fehler', `${titel}: Vorschlags-Art „${e.fest.art}“ gibt es nicht.`, k.id));
-  if (e && !e.feld) raus.push(...maskeSaeubern(e, k.katalog?.werte, { auswahl: kx.auswahl, platzhalter: platzhalterFuer(fall, webhookFelderVon(d)) }, k.id).befunde, ...rollenBefunde(k, e, d, kx, titel));
+  if (e && !e.feld) raus.push(...maskeSaeubern(e, k.katalog?.werte, { auswahl: kx.auswahl, platzhalter: platzhalterFuer(fall, webhookFelderVon(d)) }, k.id, k.titel).befunde, ...rollenBefunde(k, e, d, kx, titel));
   // Die Formen mit eigenem Feld
   switch (k.form) {
     case 'ausloeser':

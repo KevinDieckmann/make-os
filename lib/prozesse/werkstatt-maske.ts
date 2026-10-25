@@ -235,7 +235,7 @@ export function neuerKnoten(e: KatalogEintrag, id: string, titel?: string): K {
 /** Die Befunde der Maske eines Knotens (nur die Felder ohne eigenes Feld — die mit eigenem Feld prüft die Regel ihres Felds, lib/prozesse/definition-pruefen.ts). */
 export function maskeBefunde(k: K, kx: MaskenKontext = {}): Befund[] {
   const e = katalogEintrag(k.katalog?.id);
-  return e && !e.feld ? maskeSaeubern(e, k.katalog?.werte, kx, k.id).befunde : [];
+  return e && !e.feld ? maskeSaeubern(e, k.katalog?.werte, kx, k.id, k.titel).befunde : [];
 }
 
 // ── Suche der Knoten-Auswahl (Bau-Test 2, 24.10.: „mehrfach“ fand die Mehrfach-Entscheidung nicht) ─────────────────────────────────────────────────────

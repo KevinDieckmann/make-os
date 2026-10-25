@@ -17,7 +17,9 @@ import type { ProzessDefinition } from '@/lib/prozesse/definition';
 import { ALLE_VORLAGEN } from '@/lib/prozesse/kundengewinnung/bibliothek';
 import { MUSTER_PAKETE } from '@/lib/fulfillment/muster';
 import { paketAlsDefinition } from '@/lib/prozesse/fulfillment-modus';
-import { katalogEintrag } from '@/lib/prozesse/baustein-katalog';
+import { katalogEintrag, maskeSaeubern } from '@/lib/prozesse/baustein-katalog';
+import { maskeBefunde } from '@/lib/prozesse/werkstatt-maske';
+import { knotenBefunde } from '@/lib/prozesse/definition-pruefen';
 import { neuerKnoten, nameSetzen, maskeWerte, titelSetzen } from '@/lib/prozesse/werkstatt-maske';
 import { phasen } from '@/lib/prozesse/fluss';
 
@@ -254,5 +256,21 @@ describe('(4) Kamera: der sichtbare Bereich ist das freie Feld OHNE Werkzeugleis
     expect(w).toContain("flaeche.current?.zeigeSicht([einerGewaehlt], { ausgaenge: true })");
     expect(w).toContain('if (anwenden(e) && e.waehle) zeigeNeu.current = e.waehle;');
     expect(lies('components/os/prozesse/WerkstattFlaeche.tsx')).toContain('kameraSicht(kamera.current, ziel, groesse(), { raender: raender(), inhalt: allesBox(), rest, neu: !!o?.neu })');
+  });
+});
+
+describe('(5) Befunde nennen den Schritt beim Namen', () => {
+  const MAIL = katalogEintrag('inbox.mail-entwurf')!;
+  it('Bau-Test 3: „„Danke senden“ › Postfach: fehlt.“ statt „Mail-Entwurf › Postfach: fehlt.“ — der Baustein nur ohne Namen', () => {
+    const k = { ...neuerKnoten(MAIL, kennung(), 'Danke senden') };
+    const texte = maskeBefunde(k).map(b => b.text);
+    expect(texte).toContain('„Danke senden“ › Postfach: fehlt.');
+    expect(texte.some(t => t.startsWith('Mail-Entwurf ›'))).toBe(false);
+    // Dieselbe Regel in der Prüfung des Prozesses (Veröffentlichen).
+    const { e } = mandatProzess();
+    const d = { ...e.entwurf, knoten: [...e.entwurf.knoten, k] } as ProzessDefinition;
+    expect(knotenBefunde(k, d).map(b => b.text)).toContain('„Danke senden“ › Postfach: fehlt.');
+    // Ohne Namen: der Baustein.
+    expect(maskeSaeubern(MAIL, {}, {}, k.id, '  ').befunde.map(b => b.text)).toContain('Mail-Entwurf › Postfach: fehlt.');
   });
 });
