@@ -1851,6 +1851,13 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   „Auslöser ändern …“ statt eines zweiten; Warten mit fester Dauer ohne „abgelaufen“ (`ausgaengeVon`). Neue Bau-Hilfe = rein + `abschliessen`/`regel` + Eintrag in der
   Eigenschaft (tests/prozesse-werkstatt-faeden.test.ts: alle Vorlagen × jeder Ausgang/Faden/Kopie/Löschen). Ohne `danach` bit-gleich; im Paket des Fulfillments ein Fehler
   (`NUR_WERKSTATT_KNOTEN`). Rückweg: der alte Stand kennt `danach` nicht (verwirft es, die Ziele fallen auf den Strang zurück — der Fehler von vorher).
+- **Werkstatt Runde 4 (25.10., dritter Bau-Test; Branch `werkstatt-runde4`):** Ausgang-Menü (`ausgangsWahl`, `mehrfachZiele`) nennt **jedes Ziel genau einmal** — das
+  Ziel des Strangs als „X (folgt im Ablauf)“ (`AUSGANG_NAECHSTER`), solange es nicht ausdrücklich gewählt ist; jede Option trägt ihr aufgelöstes `ziel`, beginnt mit
+  dem Namen (nie „„“/„—“), die Bahn heißt wie auf der Fläche (`bahnTitel`, Team über `teamAusAuswahl`). ⌘V: der Titel einer Kopie folgt ihrem Namen über `nameSetzen`;
+  angehängt liegt sie in der Spalte hinter dem Ziel (`einfuegeLagen(…, { hinter })`). Kamera beim Wählen/Anlegen/Mehrfach NUR über `kameraSicht` (freies Feld ohne Leiste
+  und Panel: Inhalt passt → ganz darin; nach Bau-Aktion lieber herauszoomen bis `WERKSTATT_UEBERSICHT_MIN`; sonst so wenig wie nötig; Fläche `zeigeSicht`). Befunde der
+  Maske nennen den Schritt (`befundName`). Neue Schleife belegt die Liste vor (`schleifeVorbelegen`, Listen nur `schleifenListen`). Probelauf-Auswahl: Merkmal je Fall aus
+  `GET /api/aufgaben/crm?fall=1` (Produkt · Stufe · Status, nur Namen). Wächter `tests/prozesse-werkstatt-runde4{,-server}.test.ts`.
 - **Überführung — feste Abläufe ziehen echt in die Werkstatt (22.10., Paket Ü, Branch `prozesse-ueberfuehren`; Plan-Seite abgenommen: „zuerst ein paar Tage im
   Schatten neben dem alten Code, umgeschaltet wird erst, wenn beide dasselbe tun. Hältst du einen überführten Prozess an, läuft der alte Weg wieder.“):** feste Liste
   `UEBERFUEHRBAR` (lib/prozesse/ueberfuehrung.ts, rein): Mahnaufgaben (`sp-rechnung`), Fortschritts-Report (`sp-treppe`), Onboarding-Vorschlag „Fall starten“
