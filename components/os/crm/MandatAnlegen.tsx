@@ -9,6 +9,8 @@
 // 19.10. (P3, „Mandat übernimmt den Vertrag“): mit Produkt kommen Gesellschaft, Honorar, Vertrag und Leistungen vom Produkt vor
 // (`mandatVorlageAusProdukt`, dieselbe Regel wie der Server) — alles bleibt hier änderbar und geht als `vertrag` mit. Aus der Produkt-Karte
 // öffnet „Mandat aus diesem Produkt anlegen“ den Dialog vorbelegt (`/os/mandate?leistung=<Produkt>`, WEG.mandatAusProdukt).
+// 25.10. (Kern-Reste 1): Start wählbar wie im Fenster „Mandat anlegen“ — Vorgabe der erste Tag des Folgemonats (`startVorschlag`), für ein schon laufendes
+// Mandat einfach zurückdatieren. Die Zusatzmodule eines kombinierten Produkts baut der Server aus derselben Vorlage (`mandatVorlageAusProdukt`).
 
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -25,6 +27,8 @@ import { centAusEingabe, eingabeAusCent } from '@/lib/crm/angebote';
 import { inCent } from '@/lib/finanzen/ust';
 import type { CrmApi } from './daten';
 import { usePlatzLage } from './plaetze';
+import { startVorschlag } from '@/lib/crm/mandat-aus-deal';
+import { localDay } from '@/lib/zeit';
 
 const NEU_FIRMA = 'neu:firma';
 const NEU_PERSON = 'neu:person';
@@ -73,6 +77,7 @@ export function MandatAnlegen({ api, modus, mandatId, gesellschaft, stufe, leist
   const [personId, setPersonId] = useState<string | null>(null);
   const [neu, setNeu] = useState({ vorname: '', nachname: '', email: '', position: '', anrede: 'Sie' as 'Sie' | 'Du' });
   const [titel, setTitel] = useState('');
+  const [start, setStart] = useState(() => startVorschlag(localDay()));
   const katalog = useMemo(() => (api.crm?.stand.leistungen ?? []).filter(l => !l.geloeschtAm), [api.crm]);
   const startProdukt = stufe?.leistungId ?? vorgabeProdukt ?? null;
   const [leistungId, setLeistungIdRoh] = useState<string | null>(startProdukt);
@@ -136,7 +141,7 @@ export function MandatAnlegen({ api, modus, mandatId, gesellschaft, stufe, leist
     if (modus === 'neu' && platz.frage && !trotzdem) { setPlatzFragen(true); return; }
     setPlatzFragen(false);
     const body = modus === 'neu'
-      ? { aktion: 'mandat-neu', firma: firmaWert, person: personWert, gesellschaft: ges, ...(titel.trim() ? { titel: titel.trim() } : {}), ...(leistungId ? { leistungId } : {}), ...(leistungId && vertragBody ? { vertrag: vertragBody } : {}), ...(stufe ? { stufeId: stufe.id } : {}), ...(zustaendig ? { zustaendig } : {}), anfrageId: anfrageId.current }
+      ? { aktion: 'mandat-neu', firma: firmaWert, person: personWert, gesellschaft: ges, ...(titel.trim() ? { titel: titel.trim() } : {}), ...(leistungId ? { leistungId } : {}), ...(leistungId && vertragBody ? { vertrag: vertragBody } : {}), ...(start ? { start } : {}), ...(stufe ? { stufeId: stufe.id } : {}), ...(zustaendig ? { zustaendig } : {}), anfrageId: anfrageId.current }
       : { aktion: 'mandat-firma', mandatId, firma: firmaWert, ...(personWert ? { person: personWert } : {}) };
     const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
     const j = r ? await r.json().catch(() => ({})) : {};
@@ -174,6 +179,7 @@ export function MandatAnlegen({ api, modus, mandatId, gesellschaft, stufe, leist
           </div>
         )}
         {modus === 'neu' && reihe('Titel (optional)', <input value={titel} placeholder={leistungId ? leistungen.find(l => l.id === leistungId)?.label : 'z. B. Begleitung 2027'} onChange={e => setTitel(e.target.value)} style={{ ...feld, fontSize: 16 }} />)}
+        {modus === 'neu' && reihe('Start', <input type="date" value={start} onChange={e => setStart(e.target.value)} aria-label="Start des Mandats" style={{ ...feld, fontSize: 16, maxWidth: 200, colorScheme: 'dark' }} />)}
         {modus === 'neu' && reihe('Produkt (optional)', <Wahl label="Produkt" liste={leistungen} wert={leistungId} leer="ohne Produkt" onWahl={setLeistungId} onLeeren={() => setLeistungId(null)} />)}
         {modus === 'neu' && vertrag && (
           <div style={{ display: 'grid', gap: 10, padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)' }}>

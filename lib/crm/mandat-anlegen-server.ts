@@ -131,7 +131,7 @@ export async function mandatMitLeadAnlegen(e: MandatEingabe, person: string, wer
   const p = await personHolen(e.person, f.firma, person, wer);
   if (!p.ok) return p;
   const zustaendig = e.zustaendig && teamWer(e.zustaendig) ? e.zustaendig : undefined;
-  const m = mandatEntwurf({ id: neueKennung('m'), firma: f.firma, kontaktIds: [p.id], gesellschaft: e.gesellschaft, ...(e.titel ? { titel: e.titel } : {}), leistung: leistung ?? null, ...(zustaendig ? { zustaendig } : {}), ...(e.vertrag ? { vertrag: e.vertrag } : {}), jetzt, person });
+  const m = mandatEntwurf({ id: neueKennung('m'), firma: f.firma, kontaktIds: [p.id], gesellschaft: e.gesellschaft, ...(e.titel ? { titel: e.titel } : {}), leistung: leistung ?? null, ...(zustaendig ? { zustaendig } : {}), ...(e.vertrag ? { vertrag: e.vertrag } : {}), ...(e.start ? { start: e.start } : {}), jetzt, person });
   const platz = await platzHinweisFuer(leistung?.id, crm);
   await aendereCrm(b => ({ ...b, mandate: [...b.mandate, m], firmen: b.firmen.map(x => (x.id === f.firma.id ? firmaWirdKunde(x) : x)) }), wer);
   await personenWerdenKunde([p.id], jetzt, wer);

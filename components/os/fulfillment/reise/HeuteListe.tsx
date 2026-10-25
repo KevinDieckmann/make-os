@@ -8,6 +8,8 @@
 //     Klick), Fall starten, sonst „öffnen“ an der Stelle im Fall. Ein Tipp auf den Titel springt an die Stelle im Fall.
 //   · „Demnächst“ (Punkte mit späterer Frist) zugeklappt darunter — der Tag zeigt nur, was jetzt dran ist.
 // Rechnet nichts (lib/fulfillment/prozesse/heute.ts aus dem Cockpit); schreibt nur über die vorhandenen Fall-Ops und den vorhandenen Start-Dialog.
+// 25.10. (Kern-Reste 1): „Mandat anlegen & Fall starten“ öffnet das EINE Fenster „Mandat anlegen“ (Vorbelegung mit Zusatzmodulen, Start wählbar — Vorgabe erster
+// Tag des Folgemonats) statt das Mandat direkt mit Start „heute“ anzulegen; danach wie bisher der Start-Dialog.
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -20,6 +22,7 @@ import { heuteImFulfillment, heuteZahlen, meineHeute, type HeuteEintrag } from '
 import { useCockpit, useUebersichtKurz, fallOps, holeJson, fehlerText, tagKurz, geaendert, startMandat } from '../prozesse/daten';
 import { MailSenden, type MailEntwurf } from '../prozesse/MailSenden';
 import { StartDialog } from '../prozesse/Onboarding';
+import { useMandatAnlegen } from '../../crm/MandatAnlegenFenster';
 
 interface Grundlage { entwurf: MailEntwurf | null; gesperrt?: string; hinweis?: string; fehler?: string }
 type Meldung = { text: string; art: 'gut' | 'kritisch' | 'achtung' | 'info'; zurueck?: () => Promise<void> } | null;
@@ -47,6 +50,8 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
   const [nurMeine, setNurMeine] = useState(false);
   const ich = useIch();
   const personen = usePersonen();
+  // Vor jedem frühen Rücksprung (Haken-Reihenfolge): das Fenster braucht keine CRM-Daten im Browser — die Namen kommen mit der Vorschau.
+  const mandatFenster = useMandatAnlegen(null);
   useEffect(() => { if (!meldung?.zurueck) return; const t = setTimeout(() => setMeldung(null), 10_000); return () => clearTimeout(t); }, [meldung]);
   const d = cockpit.daten;
   if (!d) return kompakt ? null : cockpit.fehler ? <Hinweis art="kritisch">{cockpit.fehler}</Hinweis> : null;
@@ -65,9 +70,11 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
   // Vorbelegung nur nach der EINEN Regel (24.10., `startMandat` → `startVorbelegung`): Kandidat vom Server, sonst aus der Kurzform.
   const kandidat = start ? (kurz.daten?.kandidaten.find(k => k.mandatId === start.mandatId) ?? startMandat(kurz.daten, { mandatId: start.mandatId, kunde: start.kunde ?? 'Kunde', leistungId: start.leistungId })) : undefined;
   const mandatUndStart = async (e: HeuteEintrag, chanceId: string, leistungId?: string) => {
-    const a = await holeJson<{ mandatId?: string }>('/api/crm/lead', { method: 'POST', body: JSON.stringify({ aktion: 'mandat', chanceId }) });
-    if (!a.ok || !a.j.mandatId) { setMeldung({ text: fehlerText(a), art: 'kritisch' }); return; }
-    setStart({ mandatId: a.j.mandatId, kunde: e.kunde, ...(leistungId ? { leistungId } : {}) });
+    const r = await mandatFenster.oeffnen(chanceId);
+    if (!r) return;
+    if (!r.ok || !r.mandatId) { setMeldung({ text: r.fehler ?? 'Mandat nicht angelegt.', art: 'kritisch' }); return; }
+    if (r.hinweis) setMeldung({ text: r.hinweis, art: 'achtung' });
+    setStart({ mandatId: r.mandatId, kunde: e.kunde, ...(leistungId ? { leistungId } : {}) });
   };
 
   // Stand und Status der Knoten aus der Cockpit-Zeile (17.10., Schreibwege B3): jeder Haken bzw. jedes Ja/Nein schickt den Stand mit — aus einer veralteten Liste
@@ -162,6 +169,7 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
         <MailSenden titel="Nachricht senden" entwurf={entwurf.mail} {...(entwurf.hinweis ? { hinweis: entwurf.hinweis } : {})} onZu={() => setEntwurf(null)}
           onGesendet={async () => { const x = entwurf.e; if (x.aktion.art === 'entwurf') await ops(x, [{ op: 'knoten-status', id: x.aktion.knotenId, status: 'erledigt' }], `„${x.titel}“ gesendet — der Schritt ist erledigt.`); }} />
       )}
+      {mandatFenster.fenster}
       {kandidat && <StartDialog k={kandidat} pakete={pakete} onZu={() => { setStart(null); geaendert(); }} />}
     </Karte>
   );

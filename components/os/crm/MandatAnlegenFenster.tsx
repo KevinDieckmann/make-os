@@ -5,6 +5,8 @@
 // Fenster die Vorbelegung, wie der Server sie bauen würde (`/api/crm/lead` aktion „mandat“, `vorschau: true` — schreibt nichts; lib/crm/mandat-aus-deal.ts):
 // Hauptprodukt mit Honorar, Zusatzmodule (die weiteren Preis-Teile einer Kombination), Laufzeit, offene Punkte — Start wählbar (Vorgabe: erster Tag des
 // Folgemonats). Erst „Anlegen“ schreibt (derselbe Aufruf mit `start`). `useMandatAnlegen` gibt den Aufrufern ein Versprechen: Ergebnis oder null (abgebrochen).
+// 25.10. (Kern-Reste 1): JEDER Klick, der ein Mandat aus einem Deal anlegt, öffnet dieses Fenster — auch Fulfillment › Heute (dort ohne CRM-Daten im Browser:
+// die Namen von Produkt und Zusatzmodulen kommen mit der Vorschau vom Server, `namen`).
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -16,7 +18,11 @@ import { honorarText, zusatzBeschreibung, zusatzName } from '@/lib/crm/mandat-zu
 import { mindestEnde } from '@/lib/crm/mandat-laufzeit';
 
 export interface MandatAnlegenErgebnis { ok: boolean; mandatId?: string; text?: string; fehler?: string; hinweis?: string }
-interface Vorschau { mandat: Mandat; quelle: 'angebot' | 'produkt' | 'deal'; angebot?: { id: string; nummer?: string }; startVorschlag: string }
+interface Vorschau {
+  mandat: Mandat; quelle: 'angebot' | 'produkt' | 'deal'; angebot?: { id: string; nummer?: string }; startVorschlag: string;
+  /** Namen aus dem Katalog des Servers (Produkt, je Zusatzmodul Name + Beschreibung) — fehlen bei einem älteren Server, dann der Katalog des Browsers. */
+  namen?: { produkt?: string; zusatz: { id: string; name: string; beschreibung: string }[] };
+}
 
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
 const tagDe = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`;
@@ -33,7 +39,7 @@ async function postMandat(body: Record<string, unknown>): Promise<Record<string,
  * Das Fenster als Haken: `oeffnen(dealId)` zeigt die Vorbelegung und löst auf mit dem Ergebnis von „Anlegen“ (bzw. null, wenn abgebrochen). `fenster` an
  * beliebiger Stelle rendern.
  */
-export function useMandatAnlegen(api: Pick<CrmApi, 'crm'>): { oeffnen: (chanceId: string) => Promise<MandatAnlegenErgebnis | null>; fenster: ReactNode } {
+export function useMandatAnlegen(api?: Pick<CrmApi, 'crm'> | null): { oeffnen: (chanceId: string) => Promise<MandatAnlegenErgebnis | null>; fenster: ReactNode } {
   const [offen, setOffen] = useState<string | null>(null);
   const fertig = useRef<((r: MandatAnlegenErgebnis | null) => void) | null>(null);
   const oeffnen = useCallback((chanceId: string) => new Promise<MandatAnlegenErgebnis | null>(res => { fertig.current?.(null); fertig.current = res; setOffen(chanceId); }), []);
@@ -41,8 +47,8 @@ export function useMandatAnlegen(api: Pick<CrmApi, 'crm'>): { oeffnen: (chanceId
   return { oeffnen, fenster: offen ? <MandatAnlegenFenster api={api} chanceId={offen} onFertig={schliessen} /> : null };
 }
 
-function MandatAnlegenFenster({ api, chanceId, onFertig }: { api: Pick<CrmApi, 'crm'>; chanceId: string; onFertig: (r: MandatAnlegenErgebnis | null) => void }) {
-  const katalog = api.crm?.stand.leistungen ?? [];
+function MandatAnlegenFenster({ api, chanceId, onFertig }: { api?: Pick<CrmApi, 'crm'> | null; chanceId: string; onFertig: (r: MandatAnlegenErgebnis | null) => void }) {
+  const katalog = api?.crm?.stand.leistungen ?? [];
   const [v, setV] = useState<Vorschau | null>(null);
   const [start, setStart] = useState('');
   const [fehler, setFehler] = useState<string | null>(null);
@@ -66,7 +72,11 @@ function MandatAnlegenFenster({ api, chanceId, onFertig }: { api: Pick<CrmApi, '
     onFertig({ ok: true, ...(typeof r.mandatId === 'string' ? { mandatId: r.mandatId } : {}), ...(typeof r.text === 'string' ? { text: r.text } : {}), ...(typeof r.hinweis === 'string' ? { hinweis: r.hinweis } : {}) });
   };
   const ende = m ? m.ende ?? mindestEnde({ start, mindestlaufzeitMonate: m.mindestlaufzeitMonate }) : null;
-  const produkt = m?.leistungId ? katalog.find(l => l.id === m.leistungId) : undefined;
+  const produktName = v?.namen?.produkt ?? (m?.leistungId ? katalog.find(l => l.id === m.leistungId)?.name : undefined);
+  const zusatzText = (z: NonNullable<Mandat['zusatz']>[number]) => {
+    const n = v?.namen?.zusatz.find(x => x.id === z.id);
+    return n ? `${n.name} — ${n.beschreibung}` : `${zusatzName(z, katalog)} — ${zusatzBeschreibung(z, katalog)}`;
+  };
   return (
     <Fenster titel={m ? `Mandat anlegen: ${m.kunde}` : 'Mandat anlegen'} onZu={() => onFertig(null)} breit={560}>
       {!m && !fehler && <span style={klein}>Vorbelegung lädt …</span>}
@@ -76,13 +86,13 @@ function MandatAnlegenFenster({ api, chanceId, onFertig }: { api: Pick<CrmApi, '
           <span style={klein}>Vorbelegt {QUELLE[v.quelle]}{v.angebot?.nummer ? ` ${v.angebot.nummer}` : ''} — prüfen, Start wählen, dann anlegen. Alles bleibt am Mandat änderbar.</span>
           <div style={{ display: 'grid', gap: 4 }}>
             <span style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.ink }}>{m.titel}</span>
-            <span style={{ ...klein, color: C.inkDim }}>{produkt ? `${produkt.name}: ` : ''}{honorarText(m)}</span>
+            <span style={{ ...klein, color: C.inkDim }}>{produktName ? `${produktName}: ` : ''}{honorarText(m)}</span>
           </div>
           {!!m.zusatz?.length && (
             <div style={{ display: 'grid', gap: 4 }}>
               <span style={{ ...klein, textTransform: 'uppercase', letterSpacing: '.08em', fontSize: TYP.mikro }}>Zusatzmodule</span>
               {m.zusatz.map(z => (
-                <span key={z.id} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>• {zusatzName(z, katalog)} — {zusatzBeschreibung(z, katalog)}</span>
+                <span key={z.id} style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>• {zusatzText(z)}</span>
               ))}
             </div>
           )}

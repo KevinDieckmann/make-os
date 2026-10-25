@@ -11,7 +11,8 @@ import { honorarAusPreis, mandatVorlageAusProdukt } from './produkt-karte';
 import { istGesellschaft, istRegisterKennung } from '@/lib/einheiten';
 import { leereKriterien } from './leads';
 import { istKontaktKennung } from '@/lib/kennung';
-import { tagVon } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
+import { startAus } from './mandat-aus-deal';
 
 export type FirmaWahl = { id: string } | { name: string };
 export type PersonWahl = { id: string } | { neu: Record<string, unknown> };
@@ -29,6 +30,11 @@ export interface MandatEingabe {
    * Vorlage. Fehlt es, gilt die Vorlage des Produkts (wie bisher).
    */
   vertrag?: MandatVertragEingabe;
+  /**
+   * Start des Mandats (25.10., Kern-Reste 1 — derselbe Vorgabe-Start wie das Fenster „Mandat anlegen“: der Dialog belegt den ersten Tag des Folgemonats vor).
+   * Ohne Angabe wie bisher heute (ältere Aufrufer, Demo-Saat).
+   */
+  start?: string;
 }
 /** Die änderbaren Vertragsfelder beim Anlegen (alles optional). */
 export interface MandatVertragEingabe {
@@ -103,8 +109,8 @@ export function personWahlAus(v: unknown): { ok: true; wahl: PersonWahl } | { ok
   return { ok: false, status: 400, fehler: 'Bitte eine Ansprechperson wählen oder neu anlegen.' };
 }
 
-/** Die ganze Eingabe von „+ Mandat“. */
-export function mandatEingabeAus(roh: unknown): { ok: true; e: MandatEingabe } | { ok: false; status: 400 | 413; fehler: string } {
+/** Die ganze Eingabe von „+ Mandat“. `heute` nur für die Prüfung des Starts (höchstens zwei Jahre von heute). */
+export function mandatEingabeAus(roh: unknown, heute: string = localDay()): { ok: true; e: MandatEingabe } | { ok: false; status: 400 | 413; fehler: string } {
   const o = roh && typeof roh === 'object' ? roh as Record<string, unknown> : {};
   const f = firmaWahlAus(o.firma);
   if (!f.ok) return f;
@@ -119,7 +125,9 @@ export function mandatEingabeAus(roh: unknown): { ok: true; e: MandatEingabe } |
   if (stufeId && !STUFE_ID.test(stufeId)) return { ok: false, status: 400, fehler: 'Ungültige Stufe.' };
   const v = vertragEingabeAus(o.vertrag);
   if (!v.ok) return v;
-  return { ok: true, e: { firma: f.wahl, person: p.wahl, gesellschaft: g as Gesellschaft, ...(titel ? { titel } : {}), ...(leistungId ? { leistungId } : {}), ...(stufeId ? { stufeId } : {}), ...(text(o.zustaendig) ? { zustaendig: text(o.zustaendig) } : {}), ...(v.vertrag && Object.keys(v.vertrag).length ? { vertrag: v.vertrag } : {}) } };
+  const start = o.start === undefined || o.start === null || o.start === '' ? undefined : startAus(o.start, heute);
+  if (start === null) return { ok: false, status: 400, fehler: 'Start: ein Tag JJJJ-MM-TT (höchstens zwei Jahre von heute).' };
+  return { ok: true, e: { firma: f.wahl, person: p.wahl, gesellschaft: g as Gesellschaft, ...(titel ? { titel } : {}), ...(leistungId ? { leistungId } : {}), ...(stufeId ? { stufeId } : {}), ...(text(o.zustaendig) ? { zustaendig: text(o.zustaendig) } : {}), ...(v.vertrag && Object.keys(v.vertrag).length ? { vertrag: v.vertrag } : {}), ...(start ? { start } : {}) } };
 }
 
 /**
@@ -137,7 +145,7 @@ export type EntwurfLeistung = Pick<Leistung, 'id' | 'name'> & { preis: Pick<Leis
  * Zahlungsziel, USt), Leistungen und Hinweise. Die Gesellschaft der Eingabe gilt; steht sie auf „offen“, kommt sie vom Produkt. Ohne Karten-Felder
  * am Produkt genau wie bisher.
  */
-export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>; kontaktIds: string[]; gesellschaft: Gesellschaft; titel?: string; leistung?: EntwurfLeistung | null; zustaendig?: string; vertrag?: MandatVertragEingabe; jetzt: string; person: string }): Mandat {
+export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>; kontaktIds: string[]; gesellschaft: Gesellschaft; titel?: string; leistung?: EntwurfLeistung | null; zustaendig?: string; vertrag?: MandatVertragEingabe; start?: string; jetzt: string; person: string }): Mandat {
   // Ältere Aufrufer reichen nur Kennung, Name und Preis — ohne Karten-Felder nimmt die Vorlage genau den bisherigen Weg (Honorar aus dem Preis).
   const v0 = o.leistung ? mandatVorlageAusProdukt(o.leistung as Leistung) : null;
   // Was im Dialog geändert wurde (P3), gewinnt über die Vorlage; ein einmaliges Honorar ohne eigenen Rhythmus wird einmalig abgerechnet.
@@ -154,7 +162,7 @@ export function mandatEntwurf(o: { id: string; firma: Pick<Firma, 'id' | 'name'>
   const h = v ?? honorarAusPreis(undefined);
   return {
     id: o.id, kunde: o.firma.name, firmaId: o.firma.id, kontaktIds: o.kontaktIds, titel: o.titel || o.leistung?.name || 'Mandat', art: v?.art ?? 'retainer',
-    ...(o.leistung ? { leistungId: o.leistung.id } : {}), gesellschaft: o.gesellschaft !== 'offen' ? o.gesellschaft : v?.gesellschaft ?? 'offen', status: 'aktiv', vertragUnterschrieben: false, start: tagVon(o.jetzt),
+    ...(o.leistung ? { leistungId: o.leistung.id } : {}), gesellschaft: o.gesellschaft !== 'offen' ? o.gesellschaft : v?.gesellschaft ?? 'offen', status: 'aktiv', vertragUnterschrieben: false, start: o.start ?? tagVon(o.jetzt),
     ...(v?.mindestlaufzeitMonate ? { mindestlaufzeitMonate: v.mindestlaufzeitMonate } : {}), ...(v?.kuendigungsfristTage != null ? { kuendigungsfristTage: v.kuendigungsfristTage } : {}),
     verlaengerung: v?.verlaengerung ?? 'offen',
     honorar: h.honorar, ustSatz: v?.ustSatz ?? 19,

@@ -103,6 +103,7 @@ export const crmWerkzeugDefs = () => [
       gesellschaft: { type: 'string', enum: [...GESELLSCHAFTEN], description: GESELLSCHAFTEN.map(g => `${g} = ${finanzOrtName(g)}`).join(', ') },
       positionen: { type: 'array', items: { type: 'object', properties: { titel: { type: 'string' }, text: { type: 'string' }, menge: { type: 'number' }, einheit: { type: 'string' }, einzelpreis: { type: 'number', description: '€ netto' }, ust_satz: { type: 'number' }, basis: { type: 'string', enum: ['einmalig', 'monat', 'jahr'] }, laufzeit_monate: { type: 'number' }, leistung: { type: 'string' } } } },
       einleitung: { type: 'string' }, schluss: { type: 'string' }, gueltig_bis: { type: 'string' },
+      start: { type: 'string', description: 'mandat_anlegen: Start des Mandats YYYY-MM-DD (ohne Angabe: erster Tag des Folgemonats)' },
       kontakte: { type: 'array', items: { type: 'string' }, description: 'powerhour_reihenfolge / gaesteliste: Kennungen c-…' },
       beitrag_kanal: { type: 'string', enum: ['linkedin', 'newsletter', 'blog', 'podcast', 'vortrag', 'sonstig'] }, stimme: { type: 'string', enum: [...TEAM_IDS(), 'marke'], description: 'Stimme: Kennung aus dem Team oder die Marke' }, saeule: { type: 'string' },
       name: { type: 'string', description: 'segment: Name' }, aktiv_setzen: { type: 'boolean', description: 'leistungstext: Produkt danach aktiv' },

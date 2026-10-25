@@ -564,10 +564,16 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       if (d.stufe !== 'gewonnen') return fehlschlag('konflikt', 'Nicht vorgeschlagen: Nur ein gewonnener Deal wird Mandat.');
       if (crm.mandate.some(m => m.chanceId === d.id)) return fehlschlag('konflikt', 'Nicht vorgeschlagen: Zu diesem Deal gibt es schon ein Mandat.');
       if (d.kontaktIds.some(id => s.eingeschraenkt.has(id))) return fehlschlag('sperre', 'Nicht vorgeschlagen: Die Verarbeitung einer Person des Deals ist eingeschränkt (Art. 18 DSGVO).');
+      // 25.10. (Kern-Reste 1): derselbe Aufbau wie das Fenster „Mandat anlegen“ (lib/crm/mandat-aus-deal.ts über /api/crm/lead) — der Start kommt aus dem
+      // Vorschlag (`start`, JJJJ-MM-TT) bzw. ist die Vorgabe des Fensters (erster Tag des Folgemonats, gerechnet beim Klick), nie mehr still „heute“.
+      const { startAus, startVorschlag } = await import('@/lib/crm/mandat-aus-deal');
+      const startGewaehlt = i.start !== undefined && i.start !== null && i.start !== '' ? startAus(i.start, heute) : undefined;
+      if (startGewaehlt === null) return fehlschlag('eingabe', 'Fehlgeschlagen: start ist ein Tag JJJJ-MM-TT (höchstens zwei Jahre von heute).');
+      const startText = startGewaehlt ? `Start ${startGewaehlt}` : `Start ${startVorschlag(heute)} (Vorgabe: erster Tag des Folgemonats beim Klick)`;
       return {
         titel: `${ART_TITEL.mandat_anlegen}: ${kurz(d.titel, 70)}`, bezugId: `deal:${d.id}`,
-        vorher: 'gewonnen, ohne Mandat', nachher: 'Mandat aus dem Deal (Vorbelegung aus dem angenommenen Angebot bzw. der Produkt-Karte) · Honorar zählt danach in MRR und Index',
-        eingabe: { art, dealId: d.id, ...(d.firmaId ? { firmaId: d.firmaId } : {}) },
+        vorher: 'gewonnen, ohne Mandat', nachher: `Mandat aus dem Deal (Vorbelegung aus dem angenommenen Angebot bzw. der Produkt-Karte, mit Zusatzmodulen) · ${startText} · Honorar zählt danach in MRR und Index`,
+        eingabe: { art, dealId: d.id, ...(d.firmaId ? { firmaId: d.firmaId } : {}), ...(startGewaehlt ? { start: startGewaehlt } : {}) },
       };
     }
     case 'kampagnen_ergebnis': {
@@ -798,7 +804,10 @@ async function ausfuehren(e: Eingabe, person: string, vid: string): Promise<Erge
     case 'mandat_anlegen': {
       // Schon da (zweiter Klick, Wiederholung nach einem Abbruch, inzwischen von Hand): nichts doppelt.
       if ((await rohCrm()).mandate.some(m => m.chanceId === e.dealId && !m.geloeschtAm)) return SCHON('Mandat angelegt');
-      const r = await innen('/api/crm/lead', 'POST', { aktion: 'mandat', chanceId: e.dealId }, person);
+      // Start aus dem Vorschlag, sonst die Vorgabe des Fensters (erster Tag des Folgemonats) — derselbe Aufbau, dieselben Zusatzmodule (Kern-Reste 1).
+      const { startVorschlag } = await import('@/lib/crm/mandat-aus-deal');
+      const { localDay } = await import('@/lib/zeit');
+      const r = await innen('/api/crm/lead', 'POST', { aktion: 'mandat', chanceId: e.dealId, start: typeof e.start === 'string' && e.start ? e.start : startVorschlag(localDay()) }, person);
       return aus(r, r.json.text ? String(r.json.text) : 'Mandat angelegt.');
     }
     case 'kampagnen_ergebnis': {

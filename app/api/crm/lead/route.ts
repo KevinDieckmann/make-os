@@ -149,7 +149,14 @@ export async function POST(req: Request) {
     const vorschau = b.vorschau === true;
     const gebaut = mandatAusDeal(c, { leistungen: crm.leistungen, angebote: crm.angebote, firmen: crm.firmen, id: neueId('m'), jetzt, heute, person, start: vorschau ? start ?? startVorschlag(heute) : start });
     const m = gebaut.mandat;
-    if (vorschau) return NextResponse.json({ ok: true, vorschau: true, mandat: m, quelle: gebaut.quelle, ...(gebaut.angebot ? { angebot: gebaut.angebot } : {}), startVorschlag: startVorschlag(heute) });
+    if (vorschau) {
+      // Namen fürs Fenster (25.10., Kern-Reste 1): Produkt und Zusatzmodule mit dem Katalog des Servers benannt — so zeigt das Fenster dieselben Namen auch dort,
+      // wo der Browser den Katalog nicht geladen hat (Fulfillment › Heute).
+      const { zusatzName, zusatzBeschreibung } = await import('@/lib/crm/mandat-zusatz');
+      const produktName = m.leistungId ? crm.leistungen.find(l => l.id === m.leistungId)?.name : undefined;
+      const namen = { ...(produktName ? { produkt: produktName } : {}), zusatz: (m.zusatz ?? []).map(z => ({ id: z.id, name: zusatzName(z, crm.leistungen), beschreibung: zusatzBeschreibung(z, crm.leistungen) })) };
+      return NextResponse.json({ ok: true, vorschau: true, mandat: m, quelle: gebaut.quelle, ...(gebaut.angebot ? { angebot: gebaut.angebot } : {}), startVorschlag: startVorschlag(heute), namen });
+    }
     // (die Prüfung läuft unten noch einmal INNERHALB der Sperre — ein Doppelklick legt kein zweites Mandat an, Stufe 2)
     const ids = new Set(c.kontaktIds);
     // Platzgrenze (21.10., B3 — Kevin: warnen, aber erlauben): angelegt wird trotzdem, die Antwort trägt den Hinweis.
