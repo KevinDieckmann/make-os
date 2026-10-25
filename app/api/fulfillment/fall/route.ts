@@ -64,13 +64,14 @@ export async function GET(req: Request) {
   if (!MANDAT_ID.test(m)) return NextResponse.json({ ok: false, fehler: 'Mandat fehlt (?m=).' }, { status: 400 });
   const jetzt = new Date(), iso = jetzt.toISOString(), heute = localDay(jetzt);
   const { crm, vorlagen, faelle, kunde, termine: kalender } = await fallUmfeld([m]);
-  const { mandatInSicht, istBusinessMandat, bereichsKennzeichen } = await import('@/lib/fulfillment/regeln');
+  const { mandatInSicht, bereichsKennzeichen } = await import('@/lib/fulfillment/regeln');
   // Prüf-Fund 11.10.: Mandate ohne Fulfillment (Privat-Einheit ohne Arbeit) gibt es hier nicht — 404 VOR jedem Aufbau, derselbe Satz wie „fehlt“. Seit 25.10.
   // gehört die Privat-Arbeits-Einheit (Selbstständigkeit) dazu — aber nur für eine Sicht mit Privat-Recht (`z.privat`); sonst ebenfalls 404.
   const mandat = crm.mandate.find(x => x.id === m && !x.geloeschtAm && mandatInSicht(x.gesellschaft, z.privat));
   if (!mandat) return NextResponse.json({ ok: false, fehler: 'Dieses Mandat gibt es nicht (mehr).' }, { status: 404 });
   const mandatKurz = { id: mandat.id, titel: mandat.titel, kunde: mandat.kunde, firmaId: mandat.firmaId ?? null, kontaktIds: mandat.kontaktIds, leistungId: mandat.leistungId ?? null, ziele: mandatZieleLesen(mandat.ziele), gesellschaft: mandat.gesellschaft, status: mandat.status, start: mandat.start ?? null, zustaendig: mandat.zustaendig ?? null,
-    business: istBusinessMandat(mandat.gesellschaft), ...(bereichsKennzeichen(mandat.gesellschaft) ?? {}),
+    // `business` = „bekommt Fulfillment“ (die Route liefert nur solche Mandate; FallUeberblick fragt es) — der Bereich steht im Kennzeichen (25.10.).
+    business: true, ...(bereichsKennzeichen(mandat.gesellschaft) ?? {}),
     // Zusatzmodule am Mandat (19.10., P3): nur Produkt und Beginn — „Zusatzmodul anhängen“ schlägt ihren Ablauf vor.
     ...(mandat.zusatz?.length ? { zusatz: mandat.zusatz.map(z => ({ leistungId: z.leistungId, ...(z.ab ? { ab: z.ab } : {}) })) } : {}) };
   const f = faelle.faelle[m];

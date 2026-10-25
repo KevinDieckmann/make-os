@@ -60,6 +60,7 @@ import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
 import { OnboardingFrage } from '../fulfillment/prozesse/OnboardingFrage';
 import { MandatVertrag, MandatLeistungen, MandatZusatzModule } from './MandatZusatz';
 import { useNurBusiness } from '../useInhaber';
+import { istPrivatArbeitsMandat } from '@/lib/fulfillment/regeln';
 import { anzahl } from '@/lib/text/zahlwort';
 import { useSpace } from '@/hooks/useSpace';
 
@@ -291,6 +292,8 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
 function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m: Mandat; api: CrmApi; lq?: LiquiLage; frei: { id: string; titel: string; betrag: number }[]; neuLaden: () => void; zuKontakt: (id: string) => void; onBeenden: () => void }) {
   const crm = api.crm!;
   const l = crm.mandate[m.id];
+  // 25.10.: Fulfillment auch für Mandate der Privat-Arbeits-Einheit (Selbstständigkeit) — nicht für ein Konto „nur Business“ (der Server sperrt es ebenso).
+  const nurBusinessKonto = useNurBusiness() === true;
   // Nur die geänderten Felder — Kevin und Malin können gleichzeitig am selben Mandat arbeiten.
   const setze = (teil: Partial<Mandat>) => api.teil('mandate', m.id, nurFelder(teil));
   const produkt = m.leistungId ? crm.stand.leistungen.find(x => x.id === m.leistungId) : undefined;
@@ -320,7 +323,7 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m:
         </div>
       </Feldzeile>
       {m.chanceId && <Feldzeile label="Deal"><Link href={WEG.deal(m.chanceId)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Deal öffnen ›</Link></Feldzeile>}
-      {istBusinessGesellschaft(m.gesellschaft) && <Feldzeile label="Fulfillment"><Link href={WEG.fall(m.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Fulfillment öffnen ›</Link></Feldzeile>}
+      {(istBusinessGesellschaft(m.gesellschaft) || (!nurBusinessKonto && istPrivatArbeitsMandat(m.gesellschaft))) && <Feldzeile label="Fulfillment"><Link href={WEG.fall(m.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Fulfillment öffnen ›</Link></Feldzeile>}
       {/* „Beendet“ öffnet „Mandat beenden“ (18.10., N6: vorher sofort `ende = heute`, auch mitten in der Mindestlaufzeit). */}
       <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={m.status} onWahl={status => (status === 'beendet' && m.status !== 'beendet' ? onBeenden() : setze({ status }))} /></Feldzeile>
       <Feldzeile label="Vertrag"><Wahl label="Vertrag" liste={VERTRAG} wert={m.vertragUnterschrieben ? 'ja' : 'nein'} farbe={m.vertragUnterschrieben ? LEUCHT.gut : C.aktiv} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
