@@ -362,7 +362,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
 
       <Karte i={1}>
         <div style={{ ...kopf, marginBottom: 10 }}>2 · Was</div>
-        <Katalog leistungen={crm.stand.leistungen} gesellschaft={form.gesellschaft ?? null} kleinunternehmer={x => !!x && !!mitVorgaben(gesellschaftVon(x)).kleinunternehmer} onDazu={dazu} />
+        <Katalog leistungen={crm.stand.leistungen} gesellschaft={form.gesellschaft ?? null} kleinunternehmer={x => !!x && !!mitVorgaben(gesellschaftVon(x)).kleinunternehmer} onDazu={dazu} positionen={positionen} onWeg={ids => setzePos(positionen.filter(x => !ids.includes(x.id)))} />
         {mischHinweis && <div style={{ fontSize: TYP.bedien, color: LEUCHT.business, marginTop: 8 }}>{mischHinweis}</div>}
         {dazuHinweis && <div role="status" style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{dazuHinweis}</div>}
         <div style={{ marginTop: 14 }}>

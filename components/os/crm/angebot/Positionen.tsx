@@ -12,7 +12,7 @@ import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { feld, HakenZiel } from '../../ui';
 import { katalog, positionNettoCent, euroCent, centAusEingabe, eingabeAusCent, mengeAusEingabe, mengeText, BASIS_LABEL, UST_SAETZE, istSatzPosition } from '@/lib/crm/angebote';
-import { angebotPositionenAusProdukt } from '@/lib/crm/produkt-karte';
+import { angebotPositionenAusProdukt, optionImAngebot, optionUmschalten } from '@/lib/crm/produkt-karte';
 import { angebotKachel } from '@/lib/crm/produkt-katalog';
 import { neueId } from '../daten';
 
@@ -42,29 +42,34 @@ function ZahlFeld({ wert, onWert, breite, label, rechts }: { wert: string; onWer
 
 /**
  * Der Katalog im Angebots-Tool (19.10., P2): ein Klick auf ein Produkt = ALLE Preis-Teile, die immer gelten, als Positionen (`angebotPositionenAusProdukt`,
- * lib/crm/produkt-karte.ts) — dazu die angehakten Optionen (Rolle „option“, z. B. „je Event“ oder Mehrverbrauch). Ohne Preis-Teile genau eine Position
- * wie bisher.
+ * lib/crm/produkt-karte.ts). Ohne Preis-Teile genau eine Position wie bisher. Optionen (Rolle „option“, z. B. „je Event“ oder Tagessatz) seit 25.10. (Kern-Bau-Test 2:
+ * Haken + zweiter Klick aufs Produkt) mit EINEM Klick: der Haken fügt die Option sofort als Position hinzu, abhaken nimmt sie wieder heraus (`optionUmschalten`) —
+ * angehakt ist, was im Angebot steht.
  */
-export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, aus }: { leistungen: Leistung[]; /** null = Absender noch nicht gewählt (dann zählt jedes Produkt mit Gesellschaft als „andere“, alle sichtbar). */ gesellschaft: Gesellschaftskennung | null; kleinunternehmer: (g: Gesellschaftskennung | null) => boolean; onDazu: (p: AngebotPosition[], von: Gesellschaftskennung | null) => void; aus?: boolean }) {
+export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, onWeg, positionen = [], aus }: { leistungen: Leistung[]; /** null = Absender noch nicht gewählt (dann zählt jedes Produkt mit Gesellschaft als „andere“, alle sichtbar). */ gesellschaft: Gesellschaftskennung | null; kleinunternehmer: (g: Gesellschaftskennung | null) => boolean; onDazu: (p: AngebotPosition[], von: Gesellschaftskennung | null) => void;
+  /** Positionen herausnehmen (Kennungen) — nur im Entwurf. */ onWeg?: (ids: string[]) => void; /** Die Positionen des Angebots — welche Optionen schon drinstehen. */ positionen?: readonly AngebotPosition[]; aus?: boolean }) {
   const l = katalog(leistungen, gesellschaft);
   const [alle, setAlle] = useState(false);
-  // Angehakte Optionen je Produkt (Kennungen der Preis-Teile) — nur bis zum Hinzufügen.
-  const [optionen, setOptionen] = useState<Record<string, string[]>>({});
   // Hat die gewählte Gesellschaft kein eigenes Produkt, gleich alle zeigen — im Call zählt jeder Klick.
   const keineEigenen = !l.some(x => !x.andere);
   const sichtbar = alle || keineEigenen ? l : l.filter(x => !x.andere);
   if (!l.length) return <div style={klein}>Noch kein aktives Produkt — unter Produkte & Mandate › Produkte anlegen (mit Leistungstext), oder hier eine freie Position.</div>;
+  const vonProdukt = (p: Leistung) => (p.gesellschaft !== 'offen' ? p.gesellschaft as Gesellschaftskennung : null);
   const dazu = (p: Leistung) => {
-    const von = p.gesellschaft !== 'offen' ? p.gesellschaft as Gesellschaftskennung : null;
-    onDazu(angebotPositionenAusProdukt(p, optionen[p.id] ?? [], { idBasis: neueId('p'), kleinunternehmer: kleinunternehmer(von ?? gesellschaft) }), von);
-    setOptionen(o => { const n = { ...o }; delete n[p.id]; return n; });
+    const von = vonProdukt(p);
+    onDazu(angebotPositionenAusProdukt(p, [], { idBasis: neueId('p'), kleinunternehmer: kleinunternehmer(von ?? gesellschaft) }), von);
+  };
+  const option = (p: Leistung, teilId: string) => {
+    const u = optionUmschalten(p, teilId, positionen, { idBasis: neueId('p'), kleinunternehmer: kleinunternehmer(vonProdukt(p) ?? gesellschaft) });
+    if (u.weg.length) onWeg?.(u.weg);
+    else if (u.dazu.length) onDazu(u.dazu, vonProdukt(p));
   };
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 190px), 1fr))', gap: 8 }}>
         {sichtbar.map(({ l: p, textFehlt, andere }) => {
           const kachel = angebotKachel(p);
-          const gewaehlt = optionen[p.id] ?? [];
+          const gewaehlt = kachel.optionen.filter(o => optionImAngebot(p.id, o.id, positionen).length).map(o => o.id);
           return (
             <div key={p.id} style={{ display: 'grid', gap: 2, borderRadius: 12, border: `1px solid ${andere ? 'rgba(255,255,255,.08)' : `${LEUCHT.gut}55`}`, background: andere ? 'rgba(255,255,255,.03)' : `${LEUCHT.gut}12`, minWidth: 0 }}>
               <button disabled={aus} onClick={() => dazu(p)} className="fassbar"
@@ -80,7 +85,7 @@ export function Katalog({ leistungen, gesellschaft, kleinunternehmer, onDazu, au
                 const an = gewaehlt.includes(o.id);
                 return (
                   <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 13px 8px', fontSize: TYP.bedien, color: an ? C.ink : C.inkDim }}>
-                    <HakenZiel an={an} label={`Option ${o.text}`} farbe={LEUCHT.planung} onChange={() => setOptionen(x => ({ ...x, [p.id]: an ? gewaehlt.filter(i => i !== o.id) : [...gewaehlt, o.id] }))} />
+                    <HakenZiel an={an} farbe={LEUCHT.planung} ariaLabel={an ? `Option „${o.text}“ aus dem Angebot nehmen` : `Option „${o.text}“ ins Angebot`} onChange={() => { if (!aus && (!an || onWeg)) option(p, o.id); }} />
                     <span>optional: {o.text}</span>
                   </div>
                 );

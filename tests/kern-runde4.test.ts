@@ -254,3 +254,33 @@ describe('6 · Start am Mandat: Unterzeile, Kopf, Satz und Symbol aus EINER Rege
   });
 });
 
+// ── 7 · Option im Angebot: ein Klick ──
+import { optionImAngebot, optionUmschalten } from '@/lib/crm/produkt-karte';
+import { createElement as h } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+
+describe('7 · Der Haken an einer Option fügt sie sofort als Position hinzu (abhaken = herausnehmen)', () => {
+  const grund = angebotPositionenAusProdukt(PAKET, [], { idBasis: 'p-1' });
+  it('Regel: nur die Position der Option kommt dazu; steht sie drin, geht sie heraus', () => {
+    const u = optionUmschalten(PAKET, 'pt-3', grund, { idBasis: 'p-9' });
+    expect(u.weg).toEqual([]);
+    expect(u.dazu.map(p => [p.preisTeilId, p.menge, p.einheit, p.einzelpreisCent])).toEqual([['pt-3', 3, 'Tag', 100_000]]);
+    const mit = [...grund, ...u.dazu];
+    expect(optionImAngebot('l-paket', 'pt-3', mit)).toEqual([u.dazu[0].id]);
+    expect(optionUmschalten(PAKET, 'pt-3', mit)).toEqual({ dazu: [], weg: [u.dazu[0].id] });
+  });
+  it('die Karte zeigt den Haken nach dem Angebot und spricht „ins Angebot“ — kein zweiter Klick aufs Produkt nötig', async () => {
+    const { Katalog } = await import('@/components/os/crm/angebot/Positionen');
+    const zeichne = (positionen: typeof grund) => renderToStaticMarkup(h(Katalog, { leistungen: KATALOG, gesellschaft: 'ug', kleinunternehmer: () => false, onDazu: () => {}, onWeg: () => {}, positionen }));
+    const ohne = zeichne(grund);
+    expect(ohne).toContain('Option „1.000 € netto/Tag');
+    expect(ohne).toMatch(/aria-pressed="false"[^>]*aria-label="Option „[^"]*“ ins Angebot"/);
+    expect(ohne).not.toContain('als erledigt markieren');
+    const mit = zeichne([...grund, ...optionUmschalten(PAKET, 'pt-3', grund, { idBasis: 'p-9' }).dazu]);
+    expect(mit).toMatch(/aria-pressed="true"[^>]*aria-label="Option „[^"]*“ aus dem Angebot nehmen"/);
+    const q = quelle('components/os/crm/angebot/Positionen.tsx');
+    expect(q).toMatch(/onChange=\{\(\) => \{ if \(!aus && \(!an \|\| onWeg\)\) option\(p, o\.id\); \}\}/);
+    expect(q).not.toMatch(/setOptionen/);
+  });
+});
+

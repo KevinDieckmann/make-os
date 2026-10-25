@@ -738,6 +738,19 @@ export function angebotPositionenAusProdukt(l: Leistung, gewaehlteOptionen: read
   });
 }
 
+/** Die Positionen des Angebots, die diese Option des Produkts tragen (Kennungen) — „angehakt“ heißt: sie steht im Angebot (25.10.). */
+export const optionImAngebot = (produktId: string, teilId: string, positionen: readonly Pick<AngebotPosition, 'id' | 'leistungId' | 'preisTeilId'>[]): string[] =>
+  positionen.filter(x => x.leistungId === produktId && x.preisTeilId === teilId).map(x => x.id);
+/**
+ * Eine Option der Produktkarte im Angebot umschalten — EIN Klick (25.10., Kern-Bau-Test 2: vorher Haken + zweiter Klick aufs Produkt): steht sie drin, kommt sie
+ * heraus (`weg`, nur im Entwurf — der Aufrufer), sonst kommt NUR ihre Position dazu (`dazu`, dieselbe Position wie `angebotPositionenAusProdukt` sie baut).
+ */
+export function optionUmschalten(l: Leistung, teilId: string, positionen: readonly Pick<AngebotPosition, 'id' | 'leistungId' | 'preisTeilId'>[], opt: { idBasis?: string; kleinunternehmer?: boolean } = {}): { dazu: AngebotPosition[]; weg: string[] } {
+  const weg = optionImAngebot(l.id, teilId, positionen);
+  if (weg.length) return { dazu: [], weg };
+  return { dazu: angebotPositionenAusProdukt(l, [teilId], opt).filter(x => x.preisTeilId === teilId), weg: [] };
+}
+
 // ── Deal ─────────────────────────────────────────────────────────────────────
 
 /**
