@@ -50,6 +50,13 @@ async function kontextLaden(nurBusiness: boolean): Promise<ImportKontext> {
     k.vorlagen = v.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel }));
     k.zuordnung = v.zuordnung;
   } catch { k.vorlagen = []; }
+  try {
+    // Prozesse der Werkstatt (25.10.): nur die, die ein Produkt tragen darf (Fall-Art Mandat, `fuerProduktWaehlbar`) — für `prozess` (Titel oder Kennung).
+    const { prozesseLesen } = await import('@/lib/prozesse/werkstatt-server');
+    const { kurzAusEintrag } = await import('@/lib/prozesse/fulfillment-bruecke');
+    const { fuerProduktWaehlbar } = await import('@/lib/prozesse/produkt-bindung');
+    k.prozesse = (await prozesseLesen(haushalt ?? undefined)).prozesse.map(e => kurzAusEintrag(e)).filter(fuerProduktWaehlbar).map(p => ({ id: p.id, titel: p.titel }));
+  } catch { k.prozesse = []; }
   return k;
 }
 

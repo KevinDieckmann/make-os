@@ -214,3 +214,59 @@ describe('4 · Willkommensmail je Produkt bzw. Paket (Fulfillment-Onboarding)', 
     expect(textAenderung({ ...l, willkommen: { text: 'T' } }, 'willkommenText', '')).toEqual({ ok: true, felder: { willkommen: null } });
   });
 });
+
+describe('5 · Import erweitert: Unterlagen, Prozess der Werkstatt, Begleit-Mail, Willkommensmail', () => {
+  const PZ = 'pz-11111111-2222-4333-8444-555555555555', PZ2 = 'pz-11111111-2222-4333-8444-666666666666';
+  const k = () => ({ neueId: () => 'l-neu-5', prozesse: [{ id: PZ, titel: 'Beispiel-Lieferung' }, { id: PZ2, titel: 'Doppelt' }, { id: 'pz-11111111-2222-4333-8444-777777777777', titel: 'Doppelt' }], vorlagen: [{ id: 'fp-paket', titel: 'Paket A' }], zuordnung: {} as Record<string, { vorlageId: string }> });
+  const voll = {
+    name: 'Beispiel-Begleitung', leistungstext: 'x', gesellschaft: 'ug',
+    angebot: { einleitung: '{{kontakt.gruss}},\n\nschön.', mail: { betreff: 'Angebot {{angebot.nummer}}', text: '{{kontakt.gruss}},\n\nanbei.' } },
+    willkommen: { betreff: 'Willkommen', text: '{{kontakt.gruss}},\n\nlos geht es am {{mandat.start}}.' },
+    unterlagen: [{ titel: 'Produktblatt', art: 'Produktblatt', url: 'https://example.invalid/blatt.pdf' }, { titel: 'Notiz', url: '/os/wissen?n=Beispiel' }],
+    prozess: 'Beispiel-Lieferung',
+  };
+  it('neu: alle Felder in der Vorschau (mit Titel des Prozesses), im Eintrag die Kennung; zweiter Lauf „gleich“', () => {
+    const p = importPlanen({ leistungen: [] }, [voll], k());
+    expect(p.status, JSON.stringify(p.zeilen[0].fehler)).toBe(200);
+    expect(p.zeilen[0].art).toBe('neu');
+    const felder = Object.fromEntries(p.zeilen[0].felder.map(f => [f.feld, f.neu]));
+    expect(felder.prozess).toBe('Beispiel-Lieferung');
+    expect(felder['angebot.mail']).toContain('Angebot {{angebot.nummer}}');
+    expect(felder.willkommen).toContain('Willkommen');
+    expect(felder.unterlagen).toContain('Produktblatt');
+    const e = (p.ops[0] as { eintrag: Record<string, unknown> }).eintrag;
+    expect(e).toMatchObject({ prozessId: PZ, willkommen: voll.willkommen, unterlagen: [{ id: 'u0', titel: 'Produktblatt', art: 'onepager', url: 'https://example.invalid/blatt.pdf' }, { id: 'u1', titel: 'Notiz', art: 'sonstiges', url: '/os/wissen?n=Beispiel' }] });
+    expect((e.angebot as { mail: unknown }).mail).toEqual(voll.angebot.mail);
+    const bestand = { leistungen: [produkt({ id: 'l-neu-5', name: 'Beispiel-Begleitung', status: 'aktiv', ...(e as object) } as Partial<Leistung>)] };
+    const zweiter = importPlanen(bestand, [voll], k());
+    expect(zweiter.zeilen[0].art, JSON.stringify(zweiter.zeilen[0].felder)).toBe('gleich');
+    expect(zweiter.zeilen[0].prozess?.stand).toBe('gleich');
+  });
+  it('Fehler und Hinweise: lokale Datei 400, fremder Platzhalter 400, zu lang 413, Prozess fehlt/mehrdeutig nur Hinweis, Paket UND Prozess zugleich 400', () => {
+    const f = (x: Record<string, unknown>) => importPlanen({ leistungen: [] }, [{ name: 'Y', ...x }], k());
+    expect(f({ unterlagen: [{ titel: 'Lokal', url: 'Vorlagen/x.md' }] }).status).toBe(400);
+    expect(f({ willkommen: { text: '{{angebot.nummer}}' } }).status).toBe(400);
+    expect(f({ angebot: { mail: { text: 'a'.repeat(4001) } } }).status).toBe(413);
+    expect(f({ angebot: { einleitung: 'Hallo [Name] {{unbekannt}}' } }).status).toBe(400);
+    expect(f({ unterlagen: [{ titel: 'x'.repeat(121), url: 'https://example.invalid' }] }).status).toBe(413);
+    const fehlt = f({ prozess: 'Gibt es nicht' });
+    expect(fehlt.status).toBe(200);
+    expect(fehlt.zeilen[0].prozess?.stand).toBe('fehlt');
+    expect(f({ prozess: 'Doppelt' }).zeilen[0].prozess?.stand).toBe('mehrdeutig');
+    expect(f({ prozess: PZ }).zeilen[0].prozess).toMatchObject({ stand: 'neu', name: 'Beispiel-Lieferung' });
+    expect(f({ prozess: 'Beispiel-Lieferung', ablauf: 'Paket A' }).status).toBe(400);
+  });
+  it('genau EIN Ablauf: ein Prozess löst die Paket-Zuordnung, ein Paket den Prozess (wie die Karte)', () => {
+    const kx = k(); kx.zuordnung = { 'l-a1': { vorlageId: 'fp-paket' } };
+    const mitPaket = { leistungen: [produkt({ id: 'l-a1', name: 'A1' })] };
+    const p = importPlanen(mitPaket, [{ name: 'A1', prozess: 'Beispiel-Lieferung' }], kx);
+    expect(p.zuordnungen).toEqual([{ leistungId: 'l-a1', vorlageId: null }]);
+    expect(p.ops[0]).toMatchObject({ op: 'teil', felder: { prozessId: PZ } });
+    const mitProzess = { leistungen: [produkt({ id: 'l-a2', name: 'A2', prozessId: PZ })] };
+    const q = importPlanen(mitProzess, [{ name: 'A2', ablauf: 'Paket A' }], k());
+    expect(q.zuordnungen).toEqual([{ leistungId: 'l-a2', vorlageId: 'fp-paket' }]);
+    expect(q.ops[0]).toMatchObject({ op: 'teil', felder: { prozessId: null } });
+    const loesen = importPlanen(mitProzess, [{ name: 'A2', prozess: null }], k());
+    expect(loesen.ops[0]).toMatchObject({ felder: { prozessId: null } });
+  });
+});
