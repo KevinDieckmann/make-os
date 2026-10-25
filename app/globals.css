@@ -1088,7 +1088,8 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ff-reise-zwischen { display: none; }
   .ff-reise-spalte { grid-template-rows: none; row-gap: 6px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
   .ff-reise-spalte:last-of-type { border-bottom: none; }
-  .ff-reise-offen .ff-reise-kaestchen, .ff-reise-fertig .ff-reise-kaestchen, .ff-reise-laeuft:not(.ff-reise-aktiv) .ff-reise-kaestchen { display: none; }
+  /* Kern-Bau-Test 24.10.: die gewählte Phase (und eine begonnene mit offenem Schritt) bleibt am Handy aufgeklappt — vorher blieb eine angetippte Phase zu. */
+  .ff-reise-offen:not(.ff-reise-aktiv):not(.ff-reise-begonnen) .ff-reise-kaestchen, .ff-reise-fertig:not(.ff-reise-aktiv) .ff-reise-kaestchen, .ff-reise-laeuft:not(.ff-reise-aktiv) .ff-reise-kaestchen { display: none; }
   .ff-reise-raute-zeile { display: flex; }
   .ff-reise-spalte > .ff-reise-band { margin: 0; border-radius: 10px !important; white-space: normal !important; }
   .ff-reise-band-leer { display: none !important; }

@@ -62,6 +62,13 @@ export interface BildSpalte {
 }
 
 /**
+ * Eine Phase, die noch kommt, in der aber schon gearbeitet wurde und noch etwas offen ist (rein, Kern-Bau-Test 24.10.) — am Handy bleibt sie aufgeklappt wie die
+ * laufende (sonst sah man den offenen Schritt dort nicht).
+ */
+export const phaseBegonnen = (s: Pick<BildSpalte, 'zustand' | 'kaestchen'>): boolean =>
+  s.zustand === 'offen' && s.kaestchen.some(k => k.zustand === 'erledigt') && s.kaestchen.some(k => k.zustand === 'offen' || k.zustand === 'hier');
+
+/**
  * Die Abschnitte einer Reise (rein): zuerst die Stufen ohne Abschnitt, dann je Abschnitt seine Stufen (Reihenfolge des ersten Auftretens). Ohne Abschnitte
  * genau EIN Teil mit allen Stufen.
  */

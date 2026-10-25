@@ -18,7 +18,7 @@
 import { Fragment, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { Check, Mail, CalendarClock, BellRing, AlertCircle } from 'lucide-react';
 import { FARBE as C, TYP, MIKRO, TIEF, RAND, ECKE, SCHRIFT, LEUCHT } from '@/lib/make-one/design';
-import { reiseAbschnitte, type BildKaestchen, type BildSpalte, type FlussForm, type KaestchenZustand, type ReiseZustand } from '@/lib/reise/bild';
+import { reiseAbschnitte, phaseBegonnen, type BildKaestchen, type BildSpalte, type FlussForm, type KaestchenZustand, type ReiseZustand } from '@/lib/reise/bild';
 import { reiseFlow, reiseFaden, type ReiseLagen } from '@/lib/reise/flow';
 import { JETZT, FORM_FARBE, FLOW_TON, FreigabeRaute } from './formen';
 import { FlowLinie } from '../flow';
@@ -153,7 +153,7 @@ function ReiseZeile({ spalten, hierText = 'Hier', bandTitel = 'Kunde', band: mit
         const band = s.band;
         return (
           <Fragment key={s.id}>
-            <div role="listitem" data-flow-stufe={i} aria-current={s.zustand === 'jetzt' ? 'step' : undefined} className={`ff-reise-spalte ff-reise-${s.zustand}${aktiv === s.id ? ' ff-reise-aktiv' : ''}`}>
+            <div role="listitem" data-flow-stufe={i} aria-current={s.zustand === 'jetzt' ? 'step' : undefined} className={`ff-reise-spalte ff-reise-${s.zustand}${aktiv === s.id ? ' ff-reise-aktiv' : ''}${phaseBegonnen(s) ? ' ff-reise-begonnen' : ''}`}>
               <span className="ff-reise-marke" style={{ ...MIKRO, color: s.zustand === 'jetzt' ? JETZT : s.zustand === 'fertig' ? LEUCHT.gut : C.inkLeise, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {marke}<span className="ff-reise-nr">{marke ? ' · ' : ''}{wort} {s.nr}</span>
               </span>
