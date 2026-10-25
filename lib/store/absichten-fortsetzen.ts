@@ -37,6 +37,8 @@ const FORTSETZER: Record<AbsichtArt, () => Promise<Fortsetzer>> = {
   'firma-umhaengen': async () => (await import('@/lib/crm/firma-umhaengen-server')).firmaUmhaengenFortsetzen,
   'erinnerungen-uebernahme': async () => (await import('@/lib/zulieferer/server')).erinnerungenUebernahmeFortsetzen,
   'kontoauszug': async () => (await import('@/lib/finanzen/kontoauszug/server')).kontoauszugFortsetzen,
+  // 25.10. (Markttraktion › Formulare): „Angebot anfordern“ — Kunde, Deal, Angebot, stellen, senden bzw. Freigabe (lib/crm/formulare-server.ts).
+  'angebot-anfrage': async () => (await import('@/lib/crm/formulare-server')).angebotAnfrageFortsetzen,
 };
 
 export interface FortsetzenErgebnis { gefunden: number; fertig: number; weiterOffen: number; gescheitert: number; fehler: string[] }

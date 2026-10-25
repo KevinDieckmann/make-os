@@ -460,6 +460,24 @@ export async function angebotGesendet(p: { id: string; person: string; wer?: Wer
 }
 
 /**
+ * „Versendet am … über …“ (25.10.): ein gestelltes Angebot ging aus MAKE OS hinaus — über das Formular „Angebot anfordern“ (lib/crm/angebot-versand.ts)
+ * oder per Klick in der Inbox („Über <Postfach> senden“, lib/inbox/senden-server.ts). Nur der Server, nur nach dem Senden; `ueber` = Postfach maskiert,
+ * `von` = Speichername bzw. `link`. Kein Status-Wechsel (die Mail-Aktivität am Kontakt setzt `angebotGesendet`). Höchstens `VERSAND_MAX` Vermerke.
+ */
+export async function angebotVersendetVermerken(p: { id: string; ueber: string; von: string; wer?: Wer; jetzt?: Date }): Promise<boolean> {
+  const { VERSAND_MAX } = await import('@/lib/finanzen/rechnung/regeln');
+  let neu = false;
+  await aendereCrm(b => {
+    const a = (b.angebote ?? []).find(x => x.id === p.id);
+    if (!a || !a.nummer || istEntwurf(a) || (a.versendet?.length ?? 0) >= VERSAND_MAX) return b;
+    neu = true;
+    const versendet = [...(a.versendet ?? []), { am: (p.jetzt ?? new Date()).toISOString(), ueber: p.ueber.slice(0, 160), von: p.von.slice(0, 40) }];
+    return { ...b, angebote: b.angebote.map(x => (x.id === p.id ? { ...x, versendet } : x)) };
+  }, p.wer);
+  return neu;
+}
+
+/**
  * Wiederaufnahme „Angebot stellen“: war das Festschreiben noch nicht abgehakt, entscheidet der Bestand — ist das Angebot
  * mit der reservierten Nummer gestellt, hat es gewirkt (weiter mit dem Kontakt-Vermerk); steht es noch als Entwurf,
  * fand es nicht statt: ein beim Abbruch schon abgelegtes PDF (Beleg mit `angebotId`, nicht das `pdfDateiId` eines

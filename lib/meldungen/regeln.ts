@@ -42,7 +42,7 @@ export const PERSON_OK = /^[a-z0-9-]{1,40}$/;
 const BEZUG_ID_OK = /^[A-Za-z0-9_-]{1,80}$/;
 const BEZUG_ARTEN: readonly unknown[] = ['aufgabe', 'buchung', 'buchung-termin', 'netzwerken', 'kunden-link', 'prozess'];
 export const MELDUNG_ID_OK = /^[A-Za-z0-9:_.-]{1,160}$/;
-export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnung', 'faellig', 'ueberfaellig', 'zoe', 'buchung', 'kalender', 'netzwerken', 'sicherheit', 'vertrag', 'postfach', 'verbindung', 'agenten', 'medien', 'gesundheit', 'produkte', 'prozess'];
+export const ARTEN: readonly MeldungArt[] = ['zuweisung', 'kommentar', 'erwaehnung', 'faellig', 'ueberfaellig', 'zoe', 'buchung', 'kalender', 'netzwerken', 'sicherheit', 'vertrag', 'postfach', 'verbindung', 'agenten', 'medien', 'gesundheit', 'produkte', 'prozess', 'angebot'];
 
 /** Gespeicherte Arten: die fünf der Schnittstelle + die Sammelmeldung der Grenze. */
 export type GespeicherteArt = MeldungArt | 'sammel';
@@ -353,7 +353,7 @@ function kurzSchluessel(s: string): string {
  * Arten, die immer Business sind (Markttraktion, Netzwerken, Buchungsseiten, Verträge der Gesellschaften; Paket 4c: `medien` — Freigaben fürs Marketing
  * und KI-Videos aus dem Agenten-Bereich, beides nur im Business).
  */
-export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke', 'medien', 'produkte', 'prozess']);
+export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke', 'medien', 'produkte', 'prozess', 'angebot']);
 
 /**
  * Ist eine Meldung Business? Arten aus `BUSINESS_ARTEN`, Buchungs-Bezüge, abgeleitete Business-Fristen (`business`) und alles mit

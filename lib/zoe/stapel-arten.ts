@@ -59,6 +59,9 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   // Prozesse (22.10., Kundengewinnung): „Head fragen“ in der Werkstatt — ein ganzer Entwurf wird ein NEUER Prozess, Bausteine kommen nur DAZU (auf den aktuellen
   // Entwurf, über `werkstattAnwenden`); nur die anfragende Person, nur aus der Sitzung (lib/prozesse/kundengewinnung/head-server.ts).
   'prozess-entwurf': async () => (await import('@/lib/prozesse/kundengewinnung/head-server')).PROZESS_ENTWURF_STAPEL_ART,
+  // Formulare (25.10.): ein angefordertes Angebot wartet auf „Senden“ — nur ein Inhaber, nur aus der Sitzung; stellen und verschicken über die eine
+  // Versand-Funktion (lib/crm/angebot-versand.ts), Ablehnen vermerkt es am Eingang (der Entwurf bleibt im Angebots-Tool).
+  'angebot-anfrage': async () => (await import('@/lib/crm/formulare-server')).ANGEBOT_ANFRAGE_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

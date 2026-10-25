@@ -118,6 +118,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'ki-medien--*': 'Von der KI erzeugte Medien je Haushalt (Marketing-Material des Haushalts; „nur ich“-Medien sieht nur die auslösende Person) — seit Paket 4c nur Auftragsbuch laufender Videos und Altbestand; fertige KI-Medien liegen in medien--*/medien-privat--*',
   'brain-bruecke--*': 'Einstellung je Haushalt',
   'buchung--*': 'Buchungsseiten und Buchungen Dritter',
+  'angebot-formular--*': 'Formular „Angebot anfordern“ je Haushalt (Eingänge nur mit Kennungen, Links externer Vertriebler, Einstellungen) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“, das eigene Absender-Postfach fällt weg',
   'crm-dateien--*': 'Dateiablage der Kartei je Haushalt',
   'crm-import-laeufe--*': 'Import-Läufe der Kartei',
   'crm-sperrliste--*': 'Sperrliste (nur Fingerabdrücke)',
@@ -322,6 +323,9 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     if (treppeRoh) { const td = await import('@/lib/crm/treppe-daten'); merke(`produkt-treppe--${k.haushalt}`, td.treppeEintraegeVon(td.treppeAus(treppeRoh, jetzt.getUTCFullYear()), speicher)); }
     const planRoh = await loadJson<unknown>(`markttraktion-planung--${k.haushalt}`).catch(() => null);
     if (planRoh) { const pd = await import('@/lib/crm/planung-daten'); merke(`markttraktion-planung--${k.haushalt}`, pd.planungEintraegeVon(pd.planungAus(planRoh), speicher)); }
+    // Formular „Angebot anfordern“ (25.10.): die eigenen Stempel (Anfrage, Link, Einstellungen) — nur Kennung, Art, Zeit.
+    const formRoh = await loadJson<import('@/lib/crm/formulare').FormularBestand>(`angebot-formular--${k.haushalt}`).catch(() => null);
+    if (formRoh) merke(`angebot-formular--${k.haushalt}`, (await import('@/lib/crm/formulare')).formularEintraegeVon({ ...(await import('@/lib/crm/formulare')).leererFormularBestand(), ...formRoh }, speicher));
     const regRoh = await loadJson<import('@/lib/gesellschaften/modell').RegisterDatei>(`gesellschaften--${k.haushalt}`).catch(() => null);
     if (regRoh) merke(`gesellschaften--${k.haushalt}`, (await import('@/lib/gesellschaften/modell')).registerEintraegeVon(regRoh, speicher));
     const kapa = await loadJson<Obj>(`kapazitaet--${k.haushalt}`).catch(() => null);
@@ -564,6 +568,15 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       let n = 0;
       await updateJson<Obj>(planN, cur => { if (!cur) return cur as unknown as Obj; const r = planungOhnePerson(planungAus(cur), speicher); n = r.n; return n ? (r.neu as unknown as Obj) : cur; });
       if (n) await protokolliere(planN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['geaendertVon', 'von'] }], { art: 'system' });
+      return n;
+    });
+    // Formular „Angebot anfordern“ (25.10.): Einträge bleiben, der Speichername wird „[gelöscht]“; das eigene Absender-Postfach fällt weg.
+    const formN = `angebot-formular--${konto.haushalt}`;
+    await nurWenn(formN, async () => {
+      const f = await import('@/lib/crm/formulare');
+      let n = 0;
+      await updateJson<Obj>(formN, cur => { if (!cur) return cur as unknown as Obj; const r = f.formularOhnePerson({ ...f.leererFormularBestand(), ...(cur as unknown as import('@/lib/crm/formulare').FormularBestand) }, speicher); n = r.n; return n ? (r.neu as unknown as Obj) : cur; });
+      if (n) await protokolliere(formN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['von', 'angelegtVon', 'absender'] }], { art: 'system' });
       return n;
     });
     const regN = `gesellschaften--${konto.haushalt}`;

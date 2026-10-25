@@ -443,6 +443,12 @@ export interface Angebot {
   archiviertAm?: string;
   /** Papierkorb (04.10., optional): nur Entwürfe — gestellte sind Geschäftsunterlagen und werden nie gelöscht. 30 Tage, dann endgültig. */
   geloeschtAm?: string;
+  /**
+   * Versendet aus MAKE OS (25.10., optional, additiv — nur der Server): je Versand Tag/Zeit, über welches Postfach (Adresse maskiert) und wer
+   * auslöste (Speichername bzw. `link`). Gesetzt vom Formular „Angebot anfordern“ (lib/crm/angebot-versand.ts) und von „Über <Postfach> senden“
+   * in der Inbox (lib/inbox/senden-server.ts `bezug`). Der alte Stand verwirft das Feld beim nächsten Schreiben — die Mail-Aktivität am Kontakt bleibt.
+   */
+  versendet?: { am: string; ueber: string; von: string }[];
   geaendert: string;
   geaendertVon?: string;
 }

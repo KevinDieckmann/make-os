@@ -41,6 +41,8 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   'buchung/[slug]': ['GET', 'POST'], 'buchung/[slug]/status': ['POST'],
   // Kunden-Link (10.10., Fulfillment C2, kommt ausgeschaltet): Token im Kopf, gleiche 404 für jede Fehlerart — Middleware KUNDE_OFFEN (tests/fulfillment-fundament-middleware.test.ts).
   'kunde/[link]': ['GET'], 'kunde/[link]/formular': ['POST'], 'kunde/[link]/upload': ['POST'], 'kunde/[link]/puls': ['POST'],
+  // Formular „Angebot anfordern“ (25.10.): Link-Token im Pfad (nur Fingerabdruck gespeichert), gleiche 404 je Fehlerart, Stempel, Honigtopf, Drossel — Middleware ANGEBOT_OFFEN (tests/angebot-formular-link.test.ts).
+  'angebot/[slug]': ['GET', 'POST'],
   'kalender/google/meldung': ['POST'], 'google/gmail/meldung': ['POST'], 'hoi/csp': ['POST'],
   'prozesse/webhook/[kennung]': ['POST'], // Prozesse (21.10., B1): eigener Schlüssel je Adresse (Fingerabdruck, zeitkonstant), erst scharf nach Klick — prüft die Route selbst (tests/prozesse-webhook.test.ts)
   'whoop/webhook': ['POST'], // WHOOP: X-WHOOP-Signature über Zeitstempel + Rohkörper — prüft die Route selbst (tests/whoop-webhook.test.ts)

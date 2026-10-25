@@ -46,7 +46,7 @@ describe('Markttraktion — ein Hub mit höchstens zwölf Punkten, jede Ansicht 
     expect(HUB_PUNKTE.length).toBe(HUB_MENUE.gruppen.flatMap(g => g.punkte).length + HUB_MENUE.fuss.length);
     expect(HUB_MENUE.gruppen.map(g => g.titel)).toEqual([null, 'CRM', 'Vertrieb', 'Marketing', 'Steuerung']);
     expect(HUB_MENUE.gruppen.flatMap(g => g.punkte.map(p => p.id))).toEqual(['ueberblick', 'kontakte', 'firmen', 'qualifizierung', 'deals', 'angebot', 'followup', 'marketing', 'events', 'netzwerken', 'planung', 'auswertung']);
-    expect(HUB_MENUE.fuss.map(p => p.id)).toEqual(['stammdaten']);
+    expect(HUB_MENUE.fuss.map(p => p.id)).toEqual(['formulare', 'stammdaten']);
     expect(HUB_MENUE.automation.gruppe).toBe('steuerung');
   });
   it('jeder Bereich gehört genau einem Ort; „Sales“ ist kein Bereich mehr', () => {

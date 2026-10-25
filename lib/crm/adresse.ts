@@ -18,13 +18,15 @@
 //              Auswertung         auswertung (Flow Kontakte → gewonnen, Traktions-Index, Scoreboard, Kanal-Leistung, Kunden, Pipeline) —
 //                                 die alte Adresse deals&a=auswertung zeigt dasselbe und leuchtet hier
 //              Automationen & Head  automationen (Standard-Punkt des Werkzeug-Musters: Prozesse Marketing/Sales/Übergabe + Heads)
-//   Fuß        Stammdaten         stammdaten (Qualität, Wertelisten, Gesellschaften, Datenschutz, Import & Export)
+//   Fuß        Formulare          formulare (25.10.: „Angebot anfordern“ für Vertriebler, externe Links, Eingänge, Einstellungen — später auch die
+//                                 Website-Formulare; im Fuß, weil die Gruppen schon zwölf Punkte tragen)
+//              Stammdaten         stammdaten (Qualität, Wertelisten, Gesellschaften, Datenschutz, Import & Export)
 //   „Kontakt öffnen“: t = ueber (Start, ohne t) · aktivitaeten · umsatz · daten; u = Unter-Reiter der Aktivitäten; Anker #akt-… springt.
 // Alte Adressen bleiben gültig (nie brechen): /os/crm leitet um (next.config.mjs); `aufloesen` übersetzt die alten Bereiche
 // (heute/pipeline/kunden/events/kartei), den früheren Reiter „Sales“ (head/powerhour/kampagnen/auswertung und vom 25./26.09.
 // heute/leads/pipeline/kunden), Firmen › Leads und Deals › Kunden — so funktionieren Suche, Befunde, ZOE und Telegram weiter.
 
-export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'planung' | 'marketing' | 'besuche' | 'event' | 'stammdaten' | 'auswertung' | 'automationen';
+export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'planung' | 'marketing' | 'besuche' | 'event' | 'stammdaten' | 'auswertung' | 'automationen' | 'formulare';
 /** Events › Besuchte Events (03.10.): Kalender · Wirkung · Im Kundenauftrag — die Event-Akte steht in `k`. Die Kennung heißt `besuche`, weil `events` als alter Name von Make.One gültig bleibt. */
 export type BesucheAnsicht = 'kalender' | 'wirkung' | 'kunden';
 export const BESUCHE_ANSICHTEN: BesucheAnsicht[] = ['kalender', 'wirkung', 'kunden'];
@@ -34,7 +36,7 @@ export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'segmente' | 'kampagn
 export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'segmente', 'kampagnen', 'redaktion', 'newsletter', 'positionierung'];
 /** Der frühere Reiter „Sales“ (27.09.–08.10.) und der Sales-Reiter vom 25./26.09. — nur noch zum Übersetzen alter Adressen. */
 export const SALES_ALT_ANSICHTEN = ['head', 'powerhour', 'kampagnen', 'auswertung', 'heute', 'leads', 'pipeline', 'kunden'] as const;
-export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'planung', 'marketing', 'besuche', 'event', 'stammdaten', 'auswertung', 'automationen'];
+export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'planung', 'marketing', 'besuche', 'event', 'stammdaten', 'auswertung', 'automationen', 'formulare'];
 /** Alte Bereiche, die es als eigenen Ort nicht mehr gibt — `aufloesen` übersetzt sie (der Wächter prüft jede Kombination). */
 export const BEREICHE_ALT = ['sales', 'heute', 'pipeline', 'kunden', 'events', 'kartei'] as const;
 
@@ -98,8 +100,8 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
   if (s === 'sales') return salesAlt(ansicht) ? SALES_NEU[ansicht] : SALES_NEU.head;
   if (s && (BEREICHE as string[]).includes(s)) {
     const b = s as Bereich;
-    // Ohne eigene Ansichten: Überblick, Auswertung (22.10.) und Automationen & Head — eine Ansicht in der Adresse fällt weg.
-    if (b === 'ueberblick' || b === 'auswertung' || b === 'automationen') return { s: b };
+    // Ohne eigene Ansichten: Überblick, Auswertung (22.10.), Automationen & Head und Formulare (25.10., eine Seite mit Karten) — eine Ansicht fällt weg.
+    if (b === 'ueberblick' || b === 'auswertung' || b === 'automationen' || b === 'formulare') return { s: b };
     if (b === 'firmen' && ansicht === 'leads') return SALES_NEU.leads;
     // Die alte Qualifizierungs-Runde der Kartei (Chancen-Runde, 25.09.) ist die Runde unter „Leads & Qualifizierung“.
     if (b === 'kontakte' && ansicht === 'runde-chancen') return { s: 'qualifizierung' };
@@ -258,12 +260,14 @@ export const NETZWERKEN_PFAD = '/os/netzwerken';
 export const auswertungLink = (): string => markttraktion('auswertung');
 /** „Automationen & Head“ der Markttraktion (Ort auf der Seite, an dem das Werkzeug-Muster seinen Baustein einhängt). */
 export const automationenLink = (): string => markttraktion('automationen');
+/** Formulare (25.10.): „Angebot anfordern“, externe Links, Eingänge, Einstellungen — eine Seite. `#anker` springt zu einer Karte. */
+export const formulareLink = (anker?: 'anfordern' | 'links' | 'eingaenge' | 'einstellungen'): string => `${markttraktion('formulare')}${anker ? `#${anker}` : ''}`;
 
 /** Die Symbole der Punkte — Namen aus lucide-react (die Oberfläche löst sie auf; lib bleibt ohne React). */
 export type HubSymbol = 'LayoutDashboard' | 'Users' | 'Building2' | 'Funnel' | 'SquareKanban' | 'FileSignature' | 'PhoneCall' | 'Megaphone' | 'CalendarDays'
-  | 'Handshake' | 'Goal' | 'ChartNoAxesCombined' | 'Bot' | 'Settings';
+  | 'Handshake' | 'Goal' | 'ChartNoAxesCombined' | 'Bot' | 'Settings' | 'ClipboardList';
 export type HubPunktId = 'ueberblick' | 'kontakte' | 'firmen' | 'qualifizierung' | 'deals' | 'angebot' | 'followup' | 'marketing' | 'events' | 'netzwerken'
-  | 'planung' | 'auswertung' | 'stammdaten';
+  | 'planung' | 'auswertung' | 'formulare' | 'stammdaten';
 /** Wo man im Hub steht: ein Punkt oder „Automationen & Head“. */
 export type HubOrtId = HubPunktId | 'automationen';
 export type HubGruppeId = 'start' | 'crm' | 'vertrieb' | 'marketing' | 'steuerung';
@@ -327,7 +331,9 @@ export const HUB_MENUE: { gruppen: readonly HubGruppe[]; automation: HubAutomati
     prozessBereiche: ['marketing', 'sales', 'uebergabe'], heads: ['sales', 'marketing', 'event'], gruppe: 'steuerung',
     titel: 'Die Prozesse von Marketing, Sales und Übergabe — mit den Heads Sales, Marketing und Event',
   },
+  // Fuß (25.10.): Formulare vor Stammdaten — die Gruppen tragen schon zwölf Punkte (Kevins Grenze), der Fuß zählt nicht mit.
   fuss: [
+    { id: 'formulare', name: 'Formulare', symbol: 'ClipboardList', ziel: formulareLink(), bereiche: ['formulare'], titel: 'Angebot anfordern — für das Team und externe Vertriebler per Link' },
     { id: 'stammdaten', name: 'Stammdaten', symbol: 'Settings', ziel: markttraktion('stammdaten'), bereiche: ['stammdaten'], titel: 'Qualität, Wertelisten, Datenschutz, Import & Export' },
   ],
 };

@@ -2,7 +2,8 @@
 // Der Browser schickt NIE Bytes, nur Kennungen von Dateien der CRM-Ablage (`{ datei: 'd-…' }`): ein Report-PDF am Mandat, ein Angebot …
 // Geladen wird nur, was (a) zum Haushalt des Inhabers gehört und die sendende Person VOLLES Mitglied dieses Haushalts ist (`haushaltFuer` —
 // Prüf-Fund 11.10.: ein Konto „nur Business“ hätte sonst jede Datei der Ablage versenden können → 403), (b) einen CRM-Bezug trägt
-// (Kontakt, Firma, Mandat, Deal, Angebot — keine Gesellschafts-Logos, keine Aufgaben-Dateien), (c) einen der Ablage-Typen hat (PDF, PNG,
+// (Kontakt, Firma, Mandat, Deal, Angebot, seit 25.10. auch das PDF einer Rechnung — `rechnungsPdf`/`rechnungId`; keine Gesellschafts-Logos, keine
+// Aufgaben-Dateien), (c) einen der Ablage-Typen hat (PDF, PNG,
 // JPG, DOCX — geprüft beim Ablegen am Inhalt), (d) keinen Privat-Bezug hat (Datei mit Bereich Privat bzw. aus der Aufgaben-Ablage, Unterlage
 // einer Privat-Einheit → 403). Höchstens drei, zusammen 4 MB (lib/gmail/mime.ts `ANHANG_GRENZEN`) — darüber 413, nie gekürzt.
 
@@ -48,7 +49,7 @@ export async function anhaengeLaden(person: string, roh: unknown): Promise<MailA
   for (const id of ids) {
     const d = await lesen(h, id).catch(() => null);
     const e = d?.eintrag;
-    const bezug = !!e && !!(e.kontaktId || e.firmaId || e.mandatId || e.dealId || e.angebotId);
+    const bezug = !!e && !!(e.kontaktId || e.firmaId || e.mandatId || e.dealId || e.angebotId || e.rechnungsPdf || e.rechnungId);
     if (!d || !e?.datei || !bezug || !(e.datei.typ in ERLAUBTE_TYPEN)) throw new SendenFehler('nicht-gefunden', 'Diesen Anhang gibt es in der Ablage nicht (mehr) — nichts gesendet.', 404);
     if (anhangPrivat(e)) throw new SendenFehler('versand', 'Dieser Anhang gehört zum Bereich Privat — er geht nicht als Anhang aus der Ablage hinaus. Nichts gesendet.', 403);
     summe += d.bytes.length;

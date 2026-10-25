@@ -92,6 +92,8 @@ export const SEITEN_SUCHE: SeitenTreffer[] = [
   s('kampagnen', 'Markttraktion · Kampagnen', '/os/markttraktion?s=marketing&a=kampagnen', 'business'),
   s('events', 'Markttraktion · Events (besuchte Veranstaltungen)', WEG.besuch(), 'business'),
   s('makeone', `Markttraktion · ${MARKE_EVENTS} (eigene Abende)`, WEG.event(), 'business'),
+  // Formulare (25.10.): „Angebot anfordern“, externe Links, Eingänge, Einstellungen.
+  s('mt-formulare', 'Markttraktion · Formulare — Angebot anfordern, externe Links', WEG.formulare(), 'business'),
   s('mt-stammdaten', 'Markttraktion · Stammdaten', WEG.stammdaten(), 'business'),
   s('mandate', 'Produkte & Mandate · Mandate', WEG.mandat(), 'business'),
   s('produkte', 'Produkte & Mandate · Produkte (Leistungskatalog)', WEG.produkt(), 'business'),

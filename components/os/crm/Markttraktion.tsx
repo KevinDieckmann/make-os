@@ -11,7 +11,7 @@
 //                       Wirkung · Im Kundenauftrag · Make.One — EINE Reiterzeile) · Netzwerken (eigene Seite)
 //   Steuerung           Planung (Kreislauf · Ziele · Leadkanäle · Challenges) · Auswertung (Flow, Traktions-Index, Scoreboard, Kanäle, Kunden, Pipeline) ·
 //                       Automationen & Head (Standard-Punkt des Werkzeug-Musters)
-//   Fuß                 Stammdaten (Qualität, Wertelisten, Datenschutz, Import & Export)
+//   Fuß                 Formulare (25.10.: „Angebot anfordern“, externe Links, Eingänge, Einstellungen) · Stammdaten (Qualität, Wertelisten, Datenschutz, Import & Export)
 // Die dritte Ebene bleibt als Reiter IN der Seite. „+ Angebot“ steht im Kopf, sobald eine Kontakt-, Firmen- oder Deal-Akte offen ist, und nimmt sie
 // mit (`angebotVonHier`); „+ Aktivität“ und „ZOE fragen“ bleiben im Kopf. Alte Adressen (Reiter „Sales“, Firmen › Leads, Deals › Kunden …)
 // übersetzt `aufloesen` und die Seite schreibt sie still auf den neuen Ort um.
@@ -51,6 +51,7 @@ import { zoeBezugFuer } from '@/lib/zoe/crm-bezug';
 import { markttraktionHead } from '@/lib/agenten/kontext-head';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
 import { Auswertung } from './Auswertung';
+import { Formulare } from './formulare/Formulare';
 import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
 import { MARKTTRAKTION_WERKZEUG } from '@/lib/make-one/werkzeuge';
 
@@ -77,6 +78,7 @@ const UNTER: Record<Bereich, string> = {
   stammdaten: 'Qualität, Wertelisten, Datenschutz, Import und Export.',
   auswertung: 'Der Weg vom Kontakt zum Kunden — mit Traktions-Index, Scoreboard, Kanälen und Pipeline.',
   automationen: 'Die Abläufe von Marketing, Sales und Übergabe — mit ihren Heads.',
+  formulare: 'Angebot anfordern — für das Team und externe Vertriebler per Link, mit Eingängen und Einstellungen.',
 };
 
 export function MarkttraktionSeite() {
@@ -210,6 +212,7 @@ export function MarkttraktionSeite() {
         kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
       {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
       {!runde && !akteId && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => (a === 'chancen' ? gehe('qualifizierung') : gehe('kontakte', `runde-${a}`))} zuAkte={zuAkte} startBean={params.get('bean')} />}
+      {bereich === 'formulare' && <Formulare api={api} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
     </Seite>
   );

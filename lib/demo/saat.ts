@@ -108,6 +108,7 @@ const R = {
   absender: () => import('@/app/api/crm/gesellschaften/route') as Promise<Modul>,
   stammdaten: () => import('@/app/api/crm/stammdaten/route') as Promise<Modul>,
   angebot: () => import('@/app/api/crm/angebot/route') as Promise<Modul>,
+  formulare: () => import('@/app/api/crm/formulare/route') as Promise<Modul>,
   mandatLiquiplan: () => import('@/app/api/crm/liquiplan/route') as Promise<Modul>,
   liquiplan: () => import('@/app/api/state/liquiplan/route') as Promise<Modul>,
   finanzplanBestand: () => import('@/app/api/state/finanzplan/route') as Promise<Modul>,
@@ -494,6 +495,15 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   } })).angebot as { id: string; stand: string };
   await rufe(R.angebot(), 'POST', '/api/crm/angebot', LENA, { aktion: 'stellen', id: entwurfA.id, stand: entwurfA.stand, nachfassenAm: tagPlus(heute, 2) });
   schritt('Angebot (gestellt)', 1);
+  // Formulare (25.10., „Angebot anfordern“): ein erfundener externer Link und eine Anfrage über das Team-Formular — ohne Absender-Postfach liegt sie zur
+  // Freigabe (die Demo verschickt nie etwas). Über die Route wie in der Oberfläche; die Anfrage-Kennung ist fest (Zurücksetzen ergibt dieselben Kennungen).
+  await rufe(R.formulare(), 'POST', '/api/crm/formulare', LENA, { aktion: 'link-neu', name: 'Mara Vertrieb (Beispiel)', produkte: [diagnose.id], bis: tagPlus(heute, 60) });
+  await rufe(R.formulare(), 'POST', '/api/crm/formulare', JONAS, { aktion: 'anfordern', anfrageId: demoUuid('formular:anfrage-1', sha), anfrage: {
+    firma: { name: 'Beispielhaus Holzbau GmbH (Beispiel)', strasse: 'Holzweg 7', plz: '33602', ort: 'Bielefeld' },
+    person: { anrede: 'Sie', vorname: 'Tom', nachname: 'Beispiel', email: `tom.beispiel@${DEMO_DOMAIN}` },
+    produkte: [{ id: diagnose.id }], notiz: 'Erstgespräch auf der Messe (Beispiel).',
+  } });
+  schritt('Formulare (Link + Anfrage zur Freigabe)', 2);
 
   // 5) Ziele (Jahr, Business + Privat) und Meilensteine mit Aufwand, Personen, Kette.
   const opsLabel = einheitAusGesellschaft('ug') ?? 'Operativ';

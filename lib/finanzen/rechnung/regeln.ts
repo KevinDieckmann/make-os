@@ -35,7 +35,7 @@ export const mahnLabel = (s: Mahnstufe): string => MAHNSTUFEN.find(x => x.stufe 
 /** Satz unter jedem Werkzeug, das plant oder rechnet. */
 export const KEINE_STEUERBERATUNG = 'Hinweis, keine Steuerberatung — Pflichtangaben und Nummernkreis einmal mit dem Steuerberater abstimmen.';
 /** Die Felder, die NUR der Server setzt — der allgemeine Finanzplan-Weg übernimmt sie nie aus dem Browser. */
-export const RECHNUNG_SERVER_FELDER = ['absender', 'lauf', 'pdfDateiId', 'sha256', 'gestelltAm', 'gestelltVon', 'art', 'stornoZu', 'stornoRechnungId', 'mahnungen'] as const satisfies readonly (keyof RechnungZusatz)[];
+export const RECHNUNG_SERVER_FELDER = ['absender', 'lauf', 'pdfDateiId', 'sha256', 'gestelltAm', 'gestelltVon', 'art', 'stornoZu', 'stornoRechnungId', 'mahnungen', 'versendet'] as const satisfies readonly (keyof RechnungZusatz)[];
 /** Was ab „gestellt mit PDF“ feststeht (steht so im PDF) — ändern nur über Storno + neue Rechnung. */
 export const FEST_MIT_PDF = ['positionen', 'empfaenger', 'leistungVon', 'leistungBis', 'faellig', 'zahlungszielTage', 'steuerHinweis', 'steuerfreiGrund', 'einleitung', 'schluss', 'kunde', 'titel', 'firmaId', 'mandatId', 'kontaktId', 'kundeFirmaId', 'angebotId', 'angebot', 'angebotAm'] as const satisfies readonly (keyof Rechnung)[];
 
@@ -105,6 +105,16 @@ function absenderSaeubern(roh: unknown): RechnungZusatz['absender'] | undefined 
   return { firmierung: zeile(o.firmierung, 160), zeilen: liste(o.zeilen), kontakt: liste(o.kontakt), fuss: liste(o.fuss), kleinunternehmer: o.kleinunternehmer === true };
 }
 
+/** Versand-Vermerke (25.10.): Zeitpunkt (ISO), Postfach (maskiert), wer — nur gültige (die Grenze `VERSAND_MAX` prüft der Schreibweg, nie gekürzt). */
+export function versandSaeubern(roh: unknown): { am: string; ueber: string; von: string }[] | undefined {
+  if (!Array.isArray(roh)) return undefined;
+  const l = roh.filter((m): m is Record<string, unknown> => !!m && typeof m === 'object' && typeof m.am === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(m.am))
+    .map(m => ({ am: String(m.am).slice(0, 40), ueber: zeile(m.ueber, 160) || 'Postfach', von: zeile(m.von, 40) || 'unbekannt' }));
+  return l.length ? l : undefined;
+}
+/** Höchstens so viele Versand-Vermerke je Beleg — darüber vermerkt der Schreibweg keinen weiteren (409), nichts gekürzt. */
+export const VERSAND_MAX = 50;
+
 function mahnungenSaeubern(roh: unknown): Mahnung[] | undefined {
   if (!Array.isArray(roh)) return undefined;
   const l = roh.filter((m): m is Record<string, unknown> => !!m && typeof m === 'object')
@@ -140,6 +150,7 @@ export function zusatzSaeubern(x: Record<string, unknown>): RechnungZusatz {
   if (rechnungIdOk(x.stornoZu)) z.stornoZu = x.stornoZu;
   if (rechnungIdOk(x.stornoRechnungId)) z.stornoRechnungId = x.stornoRechnungId;
   const m = mahnungenSaeubern(x.mahnungen); if (m) z.mahnungen = m;
+  const v = versandSaeubern(x.versendet); if (v) z.versendet = v;
   return z;
 }
 

@@ -28,6 +28,8 @@ import { Blatt } from './Blatt';
 import { FallAmDeal } from '../../fulfillment/prozesse/FallAmDeal';
 import { angebotPost, pdfDateiHolen, pdfLaden, pdfTeilen, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
 import { useMandatAnlegen } from '../MandatAnlegenFenster';
+import { BelegSendenKnopf } from '../../inbox/BelegSenden';
+import { tagVon } from '@/lib/zeit';
 
 export const STATUS_FARBE: Record<Angebot['status'], string> = { entwurf: C.inkDim, gestellt: LEUCHT.business, angenommen: LEUCHT.gut, abgelehnt: LEUCHT.kritisch, abgelaufen: C.inkLeise, ersetzt: C.inkLeise };
 const datumDe = (d?: string) => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
@@ -106,10 +108,9 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
     setMeldung(r.ok ? String(r.text ?? 'Als gesendet vermerkt.') : r.fehler ?? 'Nicht vermerkt.');
     if (r.ok) void api.laden(true);
   }
-  function mailOeffnen() {
-    const m = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: a.titel, nummer: a.nummer, gueltigBis: a.gueltigBis, absender: g ? mitVorgaben(g).name : undefined });
-    window.location.href = mailtoLink(a.empfaenger?.email ?? k?.email, m.betreff, m.text);
-  }
+  // „Über <Postfach> senden (mit PDF)“ (25.10.): die neue Mail in der Inbox mit dem PDF als Anhang; ohne Postfach der Rückfall `mailto`.
+  const mail = mailVorlage({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, titel: a.titel, nummer: a.nummer, gueltigBis: a.gueltigBis, absender: g ? mitVorgaben(g).name : undefined });
+  const mailAn = a.empfaenger?.email ?? k?.email;
 
   return (
     // Raster ohne Spaltenvorgabe wächst auf die Mindestbreite seines breitesten Kinds (die Positions-Tabelle im Blatt) —
@@ -141,7 +142,7 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           <button onClick={onListe} style={link}>alle Angebote ›</button>
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6, lineHeight: 1.6, overflowWrap: 'anywhere' }}>
-          {[gesellschaftLabel(a.gesellschaft), a.gestelltAm ? `gestellt ${datumDe(a.gestelltAm.slice(0, 10))}` : '', `gültig bis ${datumDe(a.gueltigBis)}`, a.angenommenAm ? `angenommen ${datumDe(a.angenommenAm)}` : '', a.abgelehntAm ? `abgelehnt ${datumDe(a.abgelehntAm)}${a.grund ? ` — ${a.grund}` : ''}` : '', a.abgelaufenAm ? `abgelaufen ${datumDe(a.abgelaufenAm)}` : '', a.personGeloest ? 'Personenbezug gelöst (Art. 17)' : ''].filter(Boolean).join(' · ')}
+          {[gesellschaftLabel(a.gesellschaft), a.gestelltAm ? `gestellt ${datumDe(a.gestelltAm.slice(0, 10))}` : '', `gültig bis ${datumDe(a.gueltigBis)}`, a.angenommenAm ? `angenommen ${datumDe(a.angenommenAm)}` : '', a.abgelehntAm ? `abgelehnt ${datumDe(a.abgelehntAm)}${a.grund ? ` — ${a.grund}` : ''}` : '', a.abgelaufenAm ? `abgelaufen ${datumDe(a.abgelaufenAm)}` : '', a.personGeloest ? 'Personenbezug gelöst (Art. 17)' : '', ...(a.versendet ?? []).map(x => `versendet ${datumDe(tagVon(x.am))} über ${x.ueber}`)].filter(Boolean).join(' · ')}
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8, fontSize: TYP.bedien }}>
           {k && zuKontakt && <button onClick={() => zuKontakt(k.id)} style={link}>Kontakt: {`${k.vorname ?? ''} ${k.nachname ?? ''}`.trim()} ›</button>}
@@ -154,7 +155,9 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           {a.pdfDateiId && <Knopf leise onClick={() => pdfLaden(a.pdfDateiId!, `Angebot ${a.nummer}.pdf`)}>PDF laden</Knopf>}
           {a.pdfDateiId && !meldungStart && <PdfTeilenKnopf dateiId={a.pdfDateiId} name={`Angebot ${a.nummer}.pdf`} titel={a.titel} onText={setMeldung} knopf />}
           {(a.status === 'gestellt' || a.status === 'abgelaufen' || a.status === 'angenommen') && k && !gesendet && !meldungStart && !nur && <Knopf leise onClick={alsGesendet}>Mail ist raus — als gesendet vermerken</Knopf>}
-          {(a.status === 'gestellt' || a.status === 'abgelaufen') && <Knopf leise onClick={mailOeffnen}>Mail öffnen</Knopf>}
+          {(a.status === 'gestellt' || a.status === 'abgelaufen') && a.pdfDateiId && !nur && (
+            <BelegSendenKnopf an={mailAn} name={`${k?.vorname ?? ''} ${k?.nachname ?? ''}`.trim() || undefined} betreff={mail.betreff} text={mail.text} pdf={{ id: a.pdfDateiId, name: `Angebot ${a.nummer}.pdf` }} beleg={{ art: 'angebot', id: a.id }} mailto={mailtoLink(mailAn, mail.betreff, mail.text)} />
+          )}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && !nur && <Knopf farbe={LEUCHT.gut} onClick={annehmen}>Angenommen</Knopf>}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && !ablehnen && !nur && <Knopf leise onClick={() => setAblehnen(true)}>Abgelehnt …</Knopf>}
           {nur && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, alignSelf: 'center' }}>{NUR_ENTWURF}</span>}

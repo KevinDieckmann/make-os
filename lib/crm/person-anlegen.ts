@@ -30,7 +30,7 @@ import { firmaZurueckholen } from './ablage';
 import { MARKE_EVENTS } from './marke';
 import { istKunde } from './bean';
 
-export type AnlegeWeg = 'kartei' | 'firmenkarte' | 'schnell' | 'prospecting' | 'makeone' | 'anfrage' | 'netzwerken' | 'import';
+export type AnlegeWeg = 'kartei' | 'firmenkarte' | 'schnell' | 'prospecting' | 'makeone' | 'anfrage' | 'netzwerken' | 'import' | 'vertrieb';
 /** Die Wege, die über POST /api/crm/person anlegen (von Hand, eine Person). */
 export const PERSON_WEGE = ['kartei', 'firmenkarte', 'schnell', 'prospecting', 'makeone'] as const;
 export type PersonWeg = typeof PERSON_WEGE[number];
@@ -76,6 +76,9 @@ export const ANLEGE_REGELN: Record<AnlegeWeg, AnlegeRegel> = {
     anders: 'Die Person hat selbst angefragt (Art. 6 Abs. 1 lit. b) — wer die Anfrage aufnimmt, beantwortet sie (Follow-up heute).' },
   netzwerken: { label: 'Netzwerken', welt: 'sales', zustaendig: 'welt', herkunft: 'veranstaltung', rechtsgrundlage: 'berechtigt', lebensphase: 'kontakt', lead: 'kontaktiert', firmaAnlegen: true, followUp: 'immer', quelle: NETZWERKEN_QUELLE, vermerk: 'Per Visitenkarte erfasst — Netzwerken',
     anders: 'Eigene idempotente Schritte (Offline-Warteschlange, feste Kennungen); „Qualifizieren“ setzt den Lead auf Qualifizierung; Zuständig wählt man beim Erfassen.' },
+  // 25.10. (Markttraktion › Formulare, „Angebot anfordern“): ein Vertriebler trägt einen Kunden ein, der ein Angebot braucht — Vertragsanbahnung.
+  vertrieb: { label: 'Angebot anfordern (Vertrieb)', welt: 'sales', zustaendig: 'wer-anlegt', herkunft: 'vertrag', rechtsgrundlage: 'vertrag', lebensphase: 'interessent', lead: 'bleibt', firmaAnlegen: true, followUp: 'nie', quelle: 'Vertrieb (Formular)', vermerk: 'Angebot angefordert — Vertrieb (Formular)',
+    anders: 'Der Kunde hat über den Vertrieb ein Angebot angefragt (Art. 6 Abs. 1 lit. b) — Deal, Angebot und Nachfassen legt der Formular-Weg selbst an (lib/crm/formulare-server.ts); die Quelle nennt den Link, über den es kam.' },
   import: { label: 'Import (Liste)', welt: 'sales', zustaendig: 'welt', herkunft: null, lebensphase: 'kontakt', lead: 'bleibt', firmaAnlegen: true, followUp: 'nie', quelle: 'Liste', vermerk: '',
     anders: 'Massenweg: Herkunft und Besitzer kommen aus der Datei, Dubletten über den Schlüssel, Konflikte statt Überschreiben; kalte Leads gehen ins Segment „Vernetzen“, kein Follow-up.' },
 };
@@ -99,6 +102,11 @@ export interface PersonEingabe {
    * Nahtstellen 09.10.: vorher gingen sie nur über „aktion: firma“ mit — mit Ansprechpartner fielen Branche und Größe weg.
    */
   firmaZusatz?: { branche?: string; stadt?: string; mitarbeiter?: string };
+  /**
+   * Quelle als Text (25.10., nur der Server — nie aus dem Browser, `eingabeSaeubern` kennt das Feld nicht): „Vertrieb (Link: <Name>)“. Fehlt sie,
+   * gilt die Quelle des Wegs.
+   */
+  quelleText?: string;
 }
 export const PERSON_GRENZEN = { name: 80, email: 160, telefon: 60, position: 160, firma: 160, link: 300, schritt: 300, anlass: 300 } as const;
 
@@ -158,7 +166,7 @@ export function personEntwurf(e: PersonEingabe, weg: AnlegeWeg, o: { id: string;
   const herkunft = r.herkunft ?? e.herkunft ?? (e.vonKarte ? 'veranstaltung' : undefined);
   const herk = HERKUNFT.find(h => h.id === herkunft);
   const firma = o.firma?.name ?? e.firma;
-  const quelle = e.vonKarte ? 'Visitenkarte' : r.quelle;
+  const quelle = e.quelleText?.trim().slice(0, 160) || (e.vonKarte ? 'Visitenkarte' : r.quelle);
   const vermerk = e.anlass ?? (e.vonKarte && weg === 'kartei' ? 'Per Visitenkarte angelegt' : r.vermerk);
   return {
     id: o.id, vorname: e.vorname ?? '', nachname: e.nachname ?? '',

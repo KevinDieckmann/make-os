@@ -4,6 +4,27 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 25.10.2026 — Markttraktion › Formulare: „Angebot anfordern“ + „Über <Postfach> senden (mit PDF)“ (nur lokal — Branch `angebotsformular`, Basis 57dc4806)
+Kevin 25.10.: „Ein Formular, wo die Vertriebler Kunden eintragen können, die ein Angebot brauchen … automatisiert das Angebot abgeschickt … am besten unter
+Formulare unter Markttraktion.“ Entscheidungen (Klickrunde): Versand automatisch MIT Leitplanken (sonst Freigabe, ein Klick „Senden“), Absender = ein vom Inhaber
+gewähltes Postfach, Team mit Konto UND externe Vertriebler per Link (Brevo dockt später an denselben Kern an). Zusatz: Angebot und Rechnung „Über <Postfach> senden
+(mit PDF)“ — Rechnungen nur per Klick. Regeln: CLAUDE.md › „Markttraktion › Formulare“ und Eiserne Regel 3 (dokumentierte Ausnahme).
+- **So testet ihr:** (1) Einmalig: Markttraktion › Formulare (unten im Menü) › Einstellungen → Absender-Postfach wählen (ein eigenes Postfach mit Business-Bereich;
+  ohne geht alles zur Freigabe) → Speichern. (2) „Angebot anfordern“: Kunde suchen oder „neu“ tippen, Firma/Name/Adresse, ein Produkt anhaken → „Angebot anfordern“ →
+  „Verschickt“; in Inbox › Gesendet liegt die Mail mit dem PDF, in der Kontakt-Akte „Angebot … gesendet“, unter Eingänge „verschickt“. (3) Dasselbe mit „Rabatt“ (5 %) →
+  „Zur Prüfung“; unter Eingänge „Senden“ (nur Inhaber) → verschickt. (4) Externe Links › Name + Produkt → „Link anlegen“ → „Link kopieren“ → im privaten Fenster öffnen →
+  ausfüllen → „ist raus“ bzw. „liegt bei uns zur Prüfung“. „Widerrufen“ → der Link zeigt „gibt es nicht (mehr)“. (5) Angebot-Ansicht bzw. Rechnung (gestellt):
+  „Über <Postfach> senden (mit PDF)“ → die Inbox öffnet die Mail mit Anhang → Senden → am Beleg steht „versendet … über …“.
+- **Neu (additiv):** Bestand `angebot-formular--<haushalt>` (Business), optionale Felder `Angebot.versendet`, `RechnungZusatz.versendet`, Glocken-Art `angebot`,
+  Stapel-Art `angebot-anfrage`, Absichts-Art `angebot-anfrage`, Anlege-Weg `vertrieb`, Routen `/api/crm/formulare`, `/api/angebot/[slug]`, Seite `/angebot/[slug]`,
+  Hub-Punkt „Formulare“ im Fuß, VVT `vv-angebot-formular`. Inbox: `anhaenge` + `beleg` an einer neuen Mail (Server prüft „genau dieses PDF“); Anhänge aus der Ablage
+  zählen jetzt auch mit dem Bezug `rechnungsPdf`.
+- **Rückweg:** der alte Stand kennt die neuen Bestände/Arten nicht — Formular-Bestand ruht (nichts geht verloren); angelegte Kontakte, Deals und Angebote sind normale
+  Einträge. Glocken der Art `angebot` und offene Vorschläge `angebot-anfrage` erkennt der alte Stand nicht (der Entwurf bleibt im Angebots-Tool, dort weiter senden);
+  `versendet` verwirft der alte Stand beim nächsten Schreiben (die Mail-Aktivität am Kontakt bleibt). Caddy: neuer Block `@angebot` (nur Köpfe).
+- **Vor dem Upload:** Datenschutz-Einrichtung (Verantwortlicher + Kontaktweg) muss stehen, sonst geht nichts automatisch raus; den Text des Datenschutzhinweises in der
+  Angebots-Mail und auf der Link-Seite einmal anwaltlich gegenlesen (Hinweis, keine Rechtsberatung).
+
 ## 24.10.2026 — Restpunkte des großen Updates: Stellschrauben-Masken, Vorlagen bearbeitbar (nur lokal — Branch `prozesse-restpunkte`, Basis cf323838)
 Kevin 22.10.: „alles muss anpassbar sein und es muss auch immer mal wieder zu bearbeiten sein.“
 - **Masken im Steckbrief:** Scoring (MQL/SQL-Schwelle, Temperatur), Buchungsseiten (je Seite An/aus, Dauer, Vorlauf, je Tag, Puffer), Business-Heads (An/aus, Modell,

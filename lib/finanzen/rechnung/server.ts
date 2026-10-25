@@ -652,6 +652,31 @@ export async function mahnungVermerken(p: { id: string; stufe: unknown; person: 
   return { rechnung: mitFassung(r), mail: { ...(r.empfaenger?.email ? { an: r.empfaenger.email } : {}), ...mahnMail(stufe as Mahnstufe, r, { heute, ...(name ? { absender: name } : {}) }) } };
 }
 
+/** Das PDF einer Rechnung für den Versand aus der Inbox (25.10.): Kennung der Ablage-Datei, Status, Art — null ohne Rechnung bzw. ohne PDF. */
+export async function rechnungPdfKennung(id: string): Promise<{ pdfDateiId: string; status: Rechnung['status']; art?: 'storno'; nummer?: string; email?: string } | null> {
+  const r = (await planLaden()).rechnungen.find(x => x.id === id);
+  return r?.pdfDateiId ? { pdfDateiId: r.pdfDateiId, status: r.status, ...(r.art ? { art: r.art } : {}), ...(r.nummer ? { nummer: r.nummer } : {}), ...(r.empfaenger?.email ? { email: r.empfaenger.email } : {}) } : null;
+}
+
+/**
+ * „Versendet am … über …“ (25.10.): nach einem Versand aus der Inbox („Über <Postfach> senden (mit PDF)“) — nur der Server, nur nach dem Senden
+ * (lib/inbox/senden-server.ts `bezug`), nur Rechnungen mit PDF (auch Stornorechnungen). `ueber` = Postfach-Adresse maskiert. Kein Status-Wechsel.
+ */
+export async function rechnungVersendetVermerken(p: { id: string; ueber: string; person: string; wer?: Wer; jetzt?: Date }): Promise<boolean> {
+  const { versandSaeubern, VERSAND_MAX } = await import('./regeln');
+  let neu = false;
+  await updateJson<FinanzplanFile>('finanzplan', cur => {
+    const f = planBasis(cur);
+    const r = f.rechnungen.find(x => x.id === p.id);
+    if (!r || !r.pdfDateiId || (r.versendet?.length ?? 0) >= VERSAND_MAX) return f;
+    const n: Rechnung = { ...r, versendet: versandSaeubern([...(r.versendet ?? []), { am: (p.jetzt ?? new Date()).toISOString(), ueber: p.ueber, von: p.person }]) };
+    neu = true;
+    return { ...f, rechnungen: f.rechnungen.map(x => (x.id === p.id ? sauberFile({ rechnungen: [n] }).rechnungen[0] : x)) };
+  });
+  if (neu) await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: p.id, felder: ['versendet'] }], p.wer);
+  return neu;
+}
+
 export async function mahnTageSetzen(roh: unknown): Promise<[number, number, number]> {
   const t = mahnTageSaeubern(roh);
   if (!t) throw new RechnungFehler('Mahnstufen: drei steigende Tageszahlen zwischen 1 und 365 (z. B. 7 · 14 · 21).', 400);

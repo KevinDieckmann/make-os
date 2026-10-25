@@ -561,7 +561,7 @@ export function InboxZwei() {
           {neueMail && (
             <Karte i={0}>
               <Antwort allen={false} meldung={t => melden(t)} onZu={() => setNeueMail(null)} onGesendet={() => { setNeueMail(null); void laden(); }}
-                v={{ betreff: neueMail.betreff ?? '', von: [], postfaecher: s.postfaecher.filter(p => p.quelle !== 'whatsapp' && p.zustand.stufe !== 'anmeldung').map(p => ({ id: p.id, name: `${p.anzeigename} · ${p.bereichName}` })), start: { an: neueMail.an, text: neueMail.text, betreff: neueMail.betreff } }} />
+                v={{ betreff: neueMail.betreff ?? '', von: [], postfaecher: s.postfaecher.filter(p => p.quelle !== 'whatsapp' && p.zustand.stufe !== 'anmeldung').map(p => ({ id: p.id, name: `${p.anzeigename} · ${p.bereichName}` })), start: { an: neueMail.an, text: neueMail.text, betreff: neueMail.betreff }, ...(neueMail.anhaenge?.length ? { anhaenge: neueMail.anhaenge } : {}), ...(neueMail.beleg ? { beleg: neueMail.beleg } : {}) }} />
             </Karte>
           )}
         </div>
