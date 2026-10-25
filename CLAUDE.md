@@ -207,7 +207,8 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
   Der BEREICH bleibt Privat: Finanzen, Liquidität, Steuern, Business-Index unverändert — Säule `ff` nur Business (`ffKennzahlenFuerIndex` filtert `istBusinessMandat`),
   Zielbild/Kreislauf der Planung bleiben `imBusiness`, ZOE `fulfillment_lage` und Heads-Pakete nur Business. Gilt für Fall (starten/Reise/Ops), Kandidaten, Cockpit,
   „Heute im Fulfillment“, Deal-/Mandat-Einhänger, Onboarding, Kunden-Link (`fulfillmentMandat`), Wirkungsbericht, Analyse/Dossier, Leistungstreppe (`kundenZeilen(…,
-  { mitArbeit })`, `imFulfillment`) und Report (Morgenlauf + fester Schritt mit DEMSELBEN Kreis).
+  { mitArbeit })`, `imFulfillment`; Katalog-Stufen `katalogTreppe`/`katalogAnsicht` auch für Produkte der Einheit, das Head-Paket `treppeFuerHead` ohne sie) und
+  Report (Morgenlauf + fester Schritt mit DEMSELBEN Kreis).
   - **Trennung serverseitig:** `FulfillmentTor.privat` = Konto-Sicht `privat` (nie `finanzRecht: 'business'`) UND nicht `?space=business`; jede Liste filtert
     `mandatInSicht(g, z.privat)`, jede Route mit EINEM Mandat ruft `mandatAusserSicht(z, id, 'lesen'|'schreiben')` (404 bzw. 403; Link/Unterlage über
     `mandatVonEintrag`). Prozesse: `ProzesseTor.privat` (nur das Konto — die Prozess-Oberfläche schickt `space=business` als Modul-Angabe), Läufe zu solchen Mandaten
