@@ -1211,6 +1211,8 @@ export function produktPruefen(felder: Record<string, unknown>, opt: { id?: stri
     if (typeof d.angebot.einleitung === 'string') f.push(...platzhalterPruefen(d.angebot.einleitung, 'angebot', 'Einleitung im Angebot').map(text => ({ status: 400 as const, text })));
     f.push(...mailTextePruefen(d.angebot.mail, 'angebot', 'Begleit-Mail zum Angebot'));
   }
+  // Willkommensmail je Produkt (25.10.): Platzhalter der Werkstatt und des Onboardings.
+  f.push(...mailTextePruefen(d.willkommen, 'willkommen', 'Willkommensmail'));
   f.push(...nur([
     // Prozess der Werkstatt (22.10.): nur eine Kennung `pz-…` — `null` löst den Verweis.
     d.prozessId != null && !produktProzessKennung(d.prozessId) ? { status: 400, text: 'Prozess: eine Kennung aus der Werkstatt (pz-…).' } : null,

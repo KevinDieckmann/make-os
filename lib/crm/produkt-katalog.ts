@@ -423,7 +423,7 @@ export function zahlAus(t: string): number | null {
 // beiden Stellen derselbe Text (alle Leser — Angebot, Treppe, Mandat — sehen ihn). Standen bisher zwei verschiedene Texte, zeigt das Feld
 // beide (nichts geht verloren); beim nächsten Speichern gilt der eine.
 
-export type TextFeld = 'kurz' | 'leistungstext' | 'ergebnis' | 'grenzen' | 'titel' | 'einleitung' | 'mailBetreff' | 'mailText';
+export type TextFeld = 'kurz' | 'leistungstext' | 'ergebnis' | 'grenzen' | 'titel' | 'einleitung' | 'mailBetreff' | 'mailText' | 'willkommenBetreff' | 'willkommenText';
 export const ERGEBNIS_MAX = 600;
 export const TEXT_FELDER: readonly { id: TextFeld; label: string; max: number; zeilen: number; platzhalter: string; nurWennDa?: true }[] = [
   { id: 'kurz', label: 'Kurzbeschreibung', max: 1500, zeilen: 2, platzhalter: 'Ein Satz: was es ist und für wen' },
@@ -435,9 +435,13 @@ export const TEXT_FELDER: readonly { id: TextFeld; label: string; max: number; z
   { id: 'einleitung', label: 'Einleitung im Angebot', max: 3000, zeilen: 3, platzhalter: 'optional — ersetzt die feste Einleitung, z. B. „{{kontakt.gruss}},\n\nvielen Dank …“ (ohne Grußzeile steht der Gruß davor)' },
   { id: 'mailBetreff', label: 'Begleit-Mail: Betreff', max: PRODUKT_TEXT_GRENZEN.betreff, zeilen: 1, platzhalter: 'optional, z. B. „Angebot {{angebot.nummer}} – {{angebot.titel}}“' },
   { id: 'mailText', label: 'Begleit-Mail: Text', max: PRODUKT_TEXT_GRENZEN.text, zeilen: 4, platzhalter: 'optional — ersetzt die feste Mail; Platzhalter {{kontakt.gruss}} {{firma.name}} {{angebot.nummer}} {{angebot.gueltigBis}} {{person.name}} {{absender.name}}' },
+  // Willkommensmail je Produkt (25.10.) — ersetzt beim Start eines Falls die Vorlage der Instanz bzw. des Pakets.
+  { id: 'willkommenBetreff', label: 'Willkommensmail: Betreff', max: PRODUKT_TEXT_GRENZEN.betreff, zeilen: 1, platzhalter: 'optional, z. B. „Willkommen — so starten wir mit {{mandat.titel}}“' },
+  { id: 'willkommenText', label: 'Willkommensmail: Text', max: PRODUKT_TEXT_GRENZEN.text, zeilen: 4, platzhalter: 'optional — ersetzt die Vorlage der Bibliothek; Platzhalter {{kontakt.gruss}} {{mandat.titel}} {{mandat.start}} {{kickoff_vorschlaege}} {{playbook_link}} {{gruss}}' },
 ];
 /** Felder mit Platzhaltern (Angebot) — geprüft wie der Server (`platzhalterPruefen`). */
 const MIT_PLATZHALTERN: readonly TextFeld[] = ['einleitung', 'mailBetreff', 'mailText'];
+const WILLKOMMEN_FELDER: readonly TextFeld[] = ['willkommenBetreff', 'willkommenText'];
 const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
 /** Zwei Texte derselben Bedeutung: der eine, oder — wenn sie verschieden sind — beide untereinander (nichts geht verloren). */
 export function zusammen(a: string | undefined, b: string | undefined): string {
@@ -449,23 +453,25 @@ export function zusammen(a: string | undefined, b: string | undefined): string {
   return `${x}\n\n${y}`;
 }
 /** Die Texte der Karte (je Feld EIN Wert). */
-export function texteVon(l: Pick<Leistung, 'beschreibung' | 'ergebnis' | 'grenzen' | 'angebot'>): Record<TextFeld, string> {
+export function texteVon(l: Pick<Leistung, 'beschreibung' | 'ergebnis' | 'grenzen' | 'angebot'> & Partial<Pick<Leistung, 'willkommen'>>): Record<TextFeld, string> {
   const a = l.angebot;
   return {
     kurz: l.beschreibung?.trim() ?? '', leistungstext: a?.leistungstext?.trim() ?? '', ergebnis: zusammen(a?.ergebnis, l.ergebnis), grenzen: zusammen(a?.hinweise, l.grenzen),
     titel: a?.titel?.trim() ?? '', einleitung: a?.einleitung?.trim() ?? '', mailBetreff: a?.mail?.betreff?.trim() ?? '', mailText: a?.mail?.text?.trim() ?? '',
+    willkommenBetreff: l.willkommen?.betreff?.trim() ?? '', willkommenText: l.willkommen?.text?.trim() ?? '',
   };
 }
 /**
  * Einen Text speichern — an genau die Stellen, an denen er gelesen wird (Ergebnis: Produkt + Angebotstext, Grenzen: Produkt + Hinweise).
  * Zu lang → Satz, nichts gesendet (der Server kürzte sonst still). Ein aktives Produkt verliert den Leistungstext nicht.
  */
-export function textAenderung(l: Pick<Leistung, 'status' | 'angebot'>, feld: TextFeld, roh: string): { ok: true; felder: Record<string, unknown> } | { ok: false; fehler: string } {
+export function textAenderung(l: Pick<Leistung, 'status' | 'angebot'> & Partial<Pick<Leistung, 'willkommen'>>, feld: TextFeld, roh: string): { ok: true; felder: Record<string, unknown> } | { ok: false; fehler: string } {
   const wert = roh.replace(/\r\n?/g, '\n').trim();
   const def = TEXT_FELDER.find(f => f.id === feld)!;
   if (wert.length > def.max) return { ok: false, fehler: `${def.label} ist zu lang (${wert.length.toLocaleString('de-DE')} von höchstens ${def.max.toLocaleString('de-DE')} Zeichen) — nicht gespeichert.` };
   if (feld === 'leistungstext' && !wert && l.status === 'aktiv') return { ok: false, fehler: 'Das Produkt ist aktiv — der Leistungstext bleibt Pflicht. Erst auf „Entwurf“ stellen, dann leeren.' };
   if (MIT_PLATZHALTERN.includes(feld)) { const p = platzhalterPruefen(wert, 'angebot', def.label); if (p.length) return { ok: false, fehler: p.join(' ') }; }
+  if (WILLKOMMEN_FELDER.includes(feld)) { const p = platzhalterPruefen(wert, 'willkommen', def.label); if (p.length) return { ok: false, fehler: p.join(' ') }; }
   const angebot = (k: 'leistungstext' | 'ergebnis' | 'hinweise' | 'titel' | 'einleitung') => {
     const a: Record<string, unknown> = { ...(l.angebot ?? {}), leistungstext: l.angebot?.leistungstext ?? '' };
     if (wert || k === 'leistungstext') a[k] = wert; else delete a[k];
@@ -485,6 +491,12 @@ export function textAenderung(l: Pick<Leistung, 'status' | 'angebot'>, feld: Tex
       if (wert) mail[k] = feld === 'mailBetreff' ? wert.replace(/\s+/g, ' ') : wert; else delete mail[k];
       if (Object.keys(mail).length) a.mail = mail; else delete a.mail;
       return { ok: true, felder: { angebot: a } };
+    }
+    case 'willkommenBetreff': case 'willkommenText': {
+      const w: Record<string, string> = { ...(l.willkommen ?? {}) };
+      const k = feld === 'willkommenBetreff' ? 'betreff' : 'text';
+      if (wert) w[k] = feld === 'willkommenBetreff' ? wert.replace(/\s+/g, ' ') : wert; else delete w[k];
+      return { ok: true, felder: { willkommen: Object.keys(w).length ? w : null } };
     }
   }
 }

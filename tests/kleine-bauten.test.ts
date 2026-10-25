@@ -179,3 +179,38 @@ describe('3 · Einleitung und Begleit-Mail je Produkt im Angebot', () => {
   });
 });
 
+describe('4 · Willkommensmail je Produkt bzw. Paket (Fulfillment-Onboarding)', () => {
+  const b = (id: string, tags: string[], text: string) => ({ id, art: 'mail' as const, titel: id, text, tags, gliederung: [], platzhalter: [], wer: 'intern', kundeSichtbar: false, fassung: 1, geaendert: J, geaendertVon: 'pa' });
+  const bausteine = [b('fb-instanz', ['willkommen', 'sie'], 'Betreff: Instanz\n\n{{anrede}}, Instanz.'), b('fb-paket', ['willkommen'], 'Betreff: Paket\n\n{{anrede}}, Paket.')] as never;
+  const prozesse = [{ id: 'fp-1', knoten: [{ id: 'k5', bausteinId: 'fb-paket' }] }, { id: 'fp-2', knoten: [] }] as never;
+  const mandat = { titel: 'Begleitung Beispielkunde', start: '2026-11-01' };
+  it('Produkt (Platzhalter der Werkstatt gefüllt, die des Onboardings bleiben) → Paket → Instanz wie bisher', async () => {
+    const { willkommenQuelle } = await import('@/lib/crm/produkt-willkommen');
+    const mitProdukt = willkommenQuelle({ bausteine, prozesse, vorlageId: 'fp-1', produkt: { id: 'l-beispiel', name: 'Beispiel-Begleitung', willkommen: { betreff: 'Start: {{mandat.titel}}', text: '{{kontakt.gruss}},\n\nab {{mandat.start}} geht es los.\n\n{{kickoff_vorschlaege}}\n\n{{gruss}}' } }, mandat, anrede: 'Du', kontakt: { vorname: 'Max' }, heute: '2026-10-25' });
+    expect(mitProdukt).toEqual({ id: 'produkt:l-beispiel', titel: 'Willkommensmail · Beispiel-Begleitung', quelle: 'produkt', text: 'Betreff: Start: Begleitung Beispielkunde\n\nHallo Max,\n\nab 01.11.2026 geht es los.\n\n{{kickoff_vorschlaege}}\n\n{{gruss}}' });
+    // Die Mail entsteht danach wie bisher über `willkommenMail` (Onboarding füllt seine Platzhalter).
+    const { willkommenMail } = await import('@/lib/fulfillment/prozesse/onboarding');
+    const mail = willkommenMail(mitProdukt!.text, { anrede: 'Du', vorname: 'Max', kickoffVorschlaege: ['Di, 03.11., 10:00–11:30 Uhr'], absender: 'Erika' });
+    expect(mail.betreff).toBe('Start: Begleitung Beispielkunde');
+    expect(mail.text).toContain('– Di, 03.11., 10:00–11:30 Uhr');
+    expect(mail.text).toContain('Viele Grüße\nErika');
+    const paket = willkommenQuelle({ bausteine, prozesse, vorlageId: 'fp-1', produkt: { id: 'l-x', name: 'X' }, mandat, anrede: 'Sie', heute: '2026-10-25' });
+    expect(paket).toMatchObject({ id: 'fb-paket', quelle: 'paket' });
+    const { willkommenVorlage } = await import('@/lib/fulfillment/prozesse/onboarding');
+    const instanz = willkommenQuelle({ bausteine, prozesse, vorlageId: 'fp-2', produkt: null, mandat, anrede: 'Sie', heute: '2026-10-25' });
+    const alt = willkommenVorlage(bausteine, 'Sie')!;
+    expect(instanz).toEqual({ id: alt.id, titel: alt.titel, text: alt.text, quelle: 'instanz' });
+  });
+  it('Prüfung und Karte: Platzhalter der Werkstatt und des Onboardings erlaubt, fremde 400, zu lang 413; leeren entfernt das Feld', async () => {
+    const { produktPruefen } = await import('@/lib/crm/produkt-karte');
+    const { textAenderung, texteVon } = await import('@/lib/crm/produkt-katalog');
+    expect(produktPruefen({ willkommen: { text: '{{kontakt.gruss}} {{playbook_link}} {{mandat.titel}}' } })).toEqual([]);
+    expect(produktPruefen({ willkommen: { text: '{{angebot.nummer}}' } }).map(f => f.status)).toEqual([400]);
+    expect(produktPruefen({ willkommen: { betreff: 'x'.repeat(201) } }).map(f => f.status)).toEqual([413]);
+    const l = produkt();
+    const r = textAenderung(l, 'willkommenText', 'Hallo {{kontakt.vorname}}');
+    expect(r.ok && r.felder).toEqual({ willkommen: { text: 'Hallo {{kontakt.vorname}}' } });
+    expect(texteVon({ ...l, willkommen: { betreff: 'B' } }).willkommenBetreff).toBe('B');
+    expect(textAenderung({ ...l, willkommen: { text: 'T' } }, 'willkommenText', '')).toEqual({ ok: true, felder: { willkommen: null } });
+  });
+});

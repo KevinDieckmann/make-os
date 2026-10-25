@@ -29,7 +29,7 @@ import { NextResponse } from 'next/server';
 import { fulfillmentZugang } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
 import { fallUmfeld, ableitungFuer, fallSchreiben, fallStartenOderAnhaengen, prozessFallStarten, fallVorlageUebernehmen, fallNachziehen, FallFehler } from '@/lib/fulfillment/prozesse/fall-server';
-import { fallWirksam, onboardingStand, willkommenVorlage, vorschlagText, istKickoff } from '@/lib/fulfillment/prozesse/onboarding';
+import { fallWirksam, onboardingStand, vorschlagText, istKickoff } from '@/lib/fulfillment/prozesse/onboarding';
 import { vorlagenDiff, zusatzDiff, fallFreigaben, fallAblauf } from '@/lib/fulfillment/prozesse/fall';
 import { vorlagenAnwenden } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
 import { nurIntern, rechtOffen, vorVerkaufOffen } from '@/lib/fulfillment/prozesse/bausteine';
@@ -99,7 +99,11 @@ export async function GET(req: Request) {
     const entscheider = f.stakeholder.filter(s => s.rolle === 'entscheider').map(s => s.kontaktId);
     const k = [...entscheider, ...mandat.kontaktIds].map(id => kontakte.find(x => x.id === id)).find(x => !!x?.email);
     const anrede = k?.anrede === 'Du' ? 'Du' : 'Sie';
-    const vorlage = willkommenVorlage(vorlagen.bausteine, anrede);
+    // 25.10. (kleine Bauten): Willkommensmail des Produkts am Mandat → Vorlage im Paket dieses Falls → Vorlage der Instanz (wie bisher) — EINE Regel.
+    const { willkommenQuelle } = await import('@/lib/crm/produkt-willkommen');
+    const produkt = mandat.leistungId ? crm.leistungen.find(l => l.id === mandat.leistungId && !l.geloeschtAm) : undefined;
+    const firmaName = mandat.firmaId ? crm.firmen.find(x => x.id === mandat.firmaId)?.name : undefined;
+    const vorlage = willkommenQuelle({ bausteine: vorlagen.bausteine, prozesse: vorlagen.prozesse, vorlageId: f.vorlageId, produkt, mandat, anrede, kontakt: k ?? null, ...(firmaName ? { firma: firmaName } : {}), heute });
     const kickoff = vorlagen.rituale.find(istKickoff);
     let vorschlaege: string[] = [];
     try {

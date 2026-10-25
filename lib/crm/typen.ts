@@ -348,6 +348,12 @@ export interface Leistung {
    * Neben einer Paket-Zuordnung des Fulfillments (`fulfillment--<h>.zuordnung`) steht immer nur eins — die Produktkarte („Ablauf“) wählt genau einen Weg.
    */
   prozessId?: string;
+  /**
+   * Willkommensmail je Produkt (25.10., kleine Bauten — optional, additiv): ersetzt beim Start eines Falls die Vorlage der Instanz (Bibliothek, Schlagwort
+   * „willkommen“) und die eines Pakets. Platzhalter der Werkstatt (`{{kontakt.gruss}}`, `{{mandat.titel}}` …) und die des Onboardings (`{{kickoff_vorschlaege}}`,
+   * `{{playbook_link}}`, `{{gruss}}` …) — lib/crm/vorlage-platzhalter.ts. Der alte Stand verwirft das Feld (dann gilt wieder die Vorlage der Instanz).
+   */
+  willkommen?: { betreff?: string; text?: string };
   geaendert: string;
 }
 /**
