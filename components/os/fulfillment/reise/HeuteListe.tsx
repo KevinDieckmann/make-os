@@ -23,6 +23,7 @@ import { useCockpit, useUebersichtKurz, fallOps, holeJson, fehlerText, tagKurz, 
 import { MailSenden, type MailEntwurf } from '../prozesse/MailSenden';
 import { StartDialog } from '../prozesse/Onboarding';
 import { useMandatAnlegen } from '../../crm/MandatAnlegenFenster';
+import { BereichMarke } from './teile';
 
 interface Grundlage { entwurf: MailEntwurf | null; gesperrt?: string; hinweis?: string; fehler?: string }
 type Meldung = { text: string; art: 'gut' | 'kritisch' | 'achtung' | 'info'; zurueck?: () => Promise<void> } | null;
@@ -39,10 +40,11 @@ function frist(e: HeuteEintrag, heute: string): string | null {
  * Die Liste. `kompakt` (Heute-Karte): nur was jetzt dran ist, höchstens `max` Zeilen, Kopf-Link zum Fulfillment. Ohne laufenden Fall und ohne wartenden Start
  * zeichnet die Heute-Karte nichts; auf dem Fulfillment-Start steht dann ein Leerzustand mit dem nächsten Schritt.
  */
-export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: { kompakt?: boolean; max?: number; i?: number; titel?: string }) {
+export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel, sicht }: { kompakt?: boolean; max?: number; i?: number; titel?: string; sicht?: 'business' }) {
   const router = useRouter();
-  const cockpit = useCockpit();
-  const kurz = useUebersichtKurz();
+  // `sicht: 'business'` (25.10., Heute › Business): ohne Fälle der Privat-Arbeits-Einheit — der Server filtert (`?space=business`).
+  const cockpit = useCockpit(sicht);
+  const kurz = useUebersichtKurz(true, sicht);
   const [meldung, setMeldung] = useState<Meldung>(null);
   const [entwurf, setEntwurf] = useState<{ e: HeuteEintrag; mail: MailEntwurf; hinweis?: string } | null>(null);
   const [start, setStart] = useState<{ mandatId: string; kunde?: string; leistungId?: string; start?: string } | null>(null);
@@ -126,7 +128,7 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
         <Punkt farbe={farbe} groesse={8} />
         <button type="button" className="ui-zeile-text fassbar" onClick={oeffnen} aria-label={`${e.titel} — ${e.kunde}${f ? `, ${f}` : ''} — öffnen`}
           style={{ background: 'none', border: 'none', padding: '4px 0', minHeight: 44, cursor: 'pointer', textAlign: 'left', color: C.ink, fontFamily: SCHRIFT.text, minWidth: 0 }}>
-          <span className="ui-zeile-titel" style={{ display: 'block', overflowWrap: 'anywhere' }}>{e.titel} <span style={{ color: C.inkLeise, fontWeight: 400 }}>· {e.kunde}</span></span>
+          <span className="ui-zeile-titel" style={{ display: 'block', overflowWrap: 'anywhere' }}>{e.titel} <span style={{ color: C.inkLeise, fontWeight: 400 }}>· {e.kunde}</span>{e.einheit ? <> <BereichMarke einheit={e.einheit} /></> : null}</span>
           <span className="ui-zeile-unter" style={{ display: 'block', overflowWrap: 'anywhere', color: e.dringend ? LEUCHT.kritisch : e.ueberfaellig ? LEUCHT.achtung : undefined }}>
             {[e.haengt && e.haengt !== e.titel ? e.haengt : e.unter, f, werName(e)].filter(Boolean).join(' · ')}
           </span>

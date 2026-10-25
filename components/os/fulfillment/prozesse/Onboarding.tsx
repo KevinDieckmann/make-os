@@ -21,6 +21,7 @@ import { localDay } from '@/lib/zeit';
 import type { CrmApi } from '../../crm/daten';
 import { useUebersicht, useUebersichtKurz, fallAktion, vorlagenOps, holeJson, fehlerText, neueAnfrageId, geaendert, type Kandidat } from './daten';
 import { klein, feld, Leiste, Meldung } from './teile';
+import { BereichMarke } from '../reise/teile';
 
 const GRUND: Record<Kandidat['grund'], string> = { vertrag: 'Vertrag unterschrieben', angebot: 'Angebot angenommen', deal: 'Deal gewonnen' };
 
@@ -50,7 +51,7 @@ function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten:
           const u = uhrText(k);
           return (
             <Zeile key={k.mandatId} links={<Punkt farbe={u?.farbe ?? LEUCHT.gut} />} titel={k.kunde} umbrechen
-              unter={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>{k.titel} · {GRUND[k.grund]}{u && <Chip farbe={u.farbe}>{u.text}</Chip>}{k.vorgeschlagen && <Chip farbe={C.inkDim}>im Stapel vorgeschlagen</Chip>}</span>}
+              unter={<span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>{k.titel} · {GRUND[k.grund]}<BereichMarke einheit={k.einheit} />{u && <Chip farbe={u.farbe}>{u.text}</Chip>}{k.vorgeschlagen && <Chip farbe={C.inkDim}>im Stapel vorgeschlagen</Chip>}</span>}
               rechts={<Leiste><Knopf leise onClick={() => aus(k)}>Ausblenden</Knopf><Knopf haupt onClick={() => setStart(k)}>Fall starten</Knopf></Leiste>} />
           );
         })}

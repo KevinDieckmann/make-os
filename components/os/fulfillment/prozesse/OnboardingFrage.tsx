@@ -10,13 +10,16 @@ import { useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Knopf } from '../../ui';
 import { Fenster } from '../../Fenster';
-import { istBusinessMandat } from '@/lib/fulfillment/regeln';
+import { mandatInSicht } from '@/lib/fulfillment/regeln';
+import { useNurBusiness } from '../../useInhaber';
 import type { Mandat } from '@/lib/crm/typen';
 import { useUebersichtKurz, startMandat } from './daten';
 import { StartDialog } from './Onboarding';
 
 export function OnboardingFrage({ m, produktName, onZu }: { m: Pick<Mandat, 'id' | 'kunde' | 'leistungId' | 'gesellschaft'> & Partial<Pick<Mandat, 'start'>>; produktName?: string; onZu: () => void }) {
-  const kurz = useUebersichtKurz(istBusinessMandat(m.gesellschaft));
+  // 25.10.: Mandate mit Fulfillment — die der Privat-Arbeits-Einheit nicht für ein Konto „nur Business“ (`mandatInSicht`; der Server filtert ebenso).
+  const nurBusiness = useNurBusiness() === true;
+  const kurz = useUebersichtKurz(mandatInSicht(m.gesellschaft, !nurBusiness));
   const [start, setStart] = useState(false);
   const d = kurz.daten;
   // EINE Vorbelegung (24.10., `startMandat` → `startVorbelegung`): der Prozess des Produkts, sonst sein Paket (kein Zusatzmodul).
