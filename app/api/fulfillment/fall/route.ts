@@ -103,7 +103,9 @@ export async function GET(req: Request) {
     const { willkommenQuelle } = await import('@/lib/crm/produkt-willkommen');
     const produkt = mandat.leistungId ? crm.leistungen.find(l => l.id === mandat.leistungId && !l.geloeschtAm) : undefined;
     const firmaName = mandat.firmaId ? crm.firmen.find(x => x.id === mandat.firmaId)?.name : undefined;
-    const vorlage = willkommenQuelle({ bausteine: vorlagen.bausteine, prozesse: vorlagen.prozesse, vorlageId: f.vorlageId, produkt, mandat, anrede, kontakt: k ?? null, ...(firmaName ? { firma: firmaName } : {}), heute });
+    // `{{absender.name}}` (25.10.): Firmierung der Gesellschaft des Mandats — dieselbe Stelle wie im Werkstatt-Motor.
+    const absenderFirma = await (await import('@/lib/gesellschaften/server')).absenderFirmierungLaden(z.haushalt, mandat.gesellschaft).catch(() => '');
+    const vorlage = willkommenQuelle({ bausteine: vorlagen.bausteine, prozesse: vorlagen.prozesse, vorlageId: f.vorlageId, produkt, mandat, anrede, kontakt: k ?? null, ...(firmaName ? { firma: firmaName } : {}), heute, ...(absenderFirma ? { absender: absenderFirma } : {}) });
     const kickoff = vorlagen.rituale.find(istKickoff);
     let vorschlaege: string[] = [];
     try {

@@ -18,10 +18,12 @@ export function willkommenQuelle(p: {
   bausteine: readonly Baustein[]; prozesse: readonly Pick<ProzessVorlage, 'id' | 'knoten'>[]; vorlageId?: string;
   produkt?: Pick<Leistung, 'id' | 'name' | 'willkommen'> | null; mandat: Pick<Mandat, 'titel'> & Partial<Pick<Mandat, 'start'>>;
   anrede: 'Du' | 'Sie'; kontakt?: { vorname?: string; nachname?: string } | null; firma?: string; heute: string;
+  /** Firmierung der Gesellschaft des Mandats für `{{absender.name}}` (25.10.; Server: `absenderFirmierungLaden`). */
+  absender?: string;
 }): WillkommenQuelle | null {
   const w = p.produkt?.willkommen;
   if (w?.text?.trim()) {
-    const werte = willkommenWerte({ anrede: p.anrede, vorname: p.kontakt?.vorname, nachname: p.kontakt?.nachname, firma: p.firma, mandatTitel: p.mandat.titel, start: p.mandat.start, produkt: p.produkt?.name, heute: p.heute });
+    const werte = willkommenWerte({ anrede: p.anrede, vorname: p.kontakt?.vorname, nachname: p.kontakt?.nachname, firma: p.firma, mandatTitel: p.mandat.titel, start: p.mandat.start, produkt: p.produkt?.name, heute: p.heute, absender: p.absender });
     const betreff = platzhalterFuellen(w.betreff?.trim() || 'Willkommen', werte).replace(/[\r\n]+/g, ' ').trim();
     return { id: `produkt:${p.produkt!.id}`, titel: `Willkommensmail · ${p.produkt!.name}`, text: `Betreff: ${betreff}\n\n${platzhalterFuellen(w.text.trim(), werte)}`, quelle: 'produkt' };
   }

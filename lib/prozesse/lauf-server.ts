@@ -232,6 +232,8 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       const mf = mandatFristen(m, localDay(kx.jetzt));
       // Begleit-Prozesse (22.10., B1): Paket, Status und nächster Termin des Fulfillment-Falls (ohne Fall fehlen sie).
       const ff = (await faelleVon(kx))[m.id];
+      // `{{absender.name}}` (25.10., kleine Bauten): Firmierung der Gesellschaft des Mandats aus dem Register dieses Haushalts — EINE Stelle (`absenderFirmierungLaden`).
+      const absender = await (await import('@/lib/gesellschaften/server')).absenderFirmierungLaden(kx.h, m.gesellschaft).catch(() => '');
       return {
         fehlt: false, kontakt: k, personen: m.kontaktIds.map(nachId).filter((x): x is Kontakt => !!x), ...(m.zustaendig ? { zustaendig: m.zustaendig } : {}), ...hat(k),
         daten: {
@@ -240,7 +242,7 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
           ...(await kgLesen(k, m.kontaktIds.map(nachId).filter((y): y is Kontakt => !!y))).daten,
           ...(await mandatFelder(m, kx)), ...fallFelderVon(ff),
         },
-        platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde, ...(ff?.phase ? { 'fall.phase': ff.phase } : {}), ...(ff?.termin ? { 'fall.termin': ff.termin } : {}) },
+        platzhalter: { ...kontaktPlatzhalter(k), 'mandat.titel': m.titel, 'mandat.start': m.start ?? '', 'mandat.produkt': produkt ?? '', 'firma.name': m.kunde, ...(ff?.phase ? { 'fall.phase': ff.phase } : {}), ...(ff?.termin ? { 'fall.termin': ff.termin } : {}), ...(absender ? { 'absender.name': absender } : {}) },
         datum: { ...(m.start ? { 'mandat.start': m.start.slice(0, 10) } : {}), ...(mf.endeAm ? { 'mandat.ende': mf.endeAm } : {}), ...(m.naechstesReview ? { 'mandat.review': m.naechstesReview.slice(0, 10) } : {}), ...(mf.frist ? { 'mandat.kuendigungsfrist': mf.frist } : {}), ...(ff?.termin ? { 'fall.termin': ff.termin } : {}) },
       };
     }

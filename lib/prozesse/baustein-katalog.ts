@@ -22,6 +22,7 @@ import { IMMER_FREIGABE, type Rechteklasse } from '@/lib/werkzeuge/vertrag';
 import type { Kanal } from '@/lib/crm/recht';
 import { LIFECYCLE_WAHL } from '@/lib/crm/lifecycle';
 import { SYSTEM_SCHRITT_IDS, SYSTEM_SCHRITT_NAME } from './ueberfuehrung';
+import { FORMATIERER, FORMATIERER_IDS, formatieren, type FormatiererId } from './formatierer';
 import {
   ABFRAGE_DEAL_FILTER, ABFRAGE_LEAD_FILTER, ABFRAGE_MIT_TAGEN, CRM_ABFRAGE_ARTEN, FELD_KENNUNG, LOOP_ARTEN, PERSON_TAGE, PROZESS_GRENZEN, PROZESS_TEXT, SCORE_PRUEFUNGEN, TEMPERATUREN, VORSCHLAG_ZIELFELDER,
   type AgentWer, type Bahn, type Befund, type FallArt, type KiKategorie, type MaskenWert, type ProzessForm,
@@ -542,34 +543,8 @@ export function maskeVorgaben(e: KatalogEintrag): Record<string, MaskenWert> {
 
 // ── Feste Formatierer und Textvorlagen (kein Nutzer-Code) ─────────────────────────────────────────────────────────────────────────────────────────
 
-export type FormatiererId = 'datum' | 'datum-lang' | 'betrag' | 'zahl' | 'gross' | 'klein';
-export const FORMATIERER: readonly { id: FormatiererId; titel: string; beispiel: string }[] = [
-  { id: 'datum', titel: 'Datum', beispiel: '24.10.2026' },
-  { id: 'datum-lang', titel: 'Datum mit Wochentag', beispiel: 'Samstag, 24. Oktober 2026' },
-  { id: 'betrag', titel: 'Betrag (aus Cent)', beispiel: '1.234,50 €' },
-  { id: 'zahl', titel: 'Zahl', beispiel: '1.234' },
-  { id: 'gross', titel: 'GROSS', beispiel: 'TEXT' },
-  { id: 'klein', titel: 'klein', beispiel: 'text' },
-];
-const FORMATIERER_IDS = new Set<string>(FORMATIERER.map(f => f.id));
-const TAG = /^(\d{4})-(\d{2})-(\d{2})/;
-/** Einen Wert formatieren (rein, deutsch, Berliner Kalendertag aus `YYYY-MM-DD`). Unpassender Wert → als Text. */
-export function formatieren(art: FormatiererId, wert: unknown): string {
-  const text = wert === undefined || wert === null ? '' : String(wert);
-  switch (art) {
-    case 'datum': { const m = TAG.exec(text); return m ? `${m[3]}.${m[2]}.${m[1]}` : text; }
-    case 'datum-lang': {
-      const m = TAG.exec(text);
-      if (!m) return text;
-      const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12));
-      return new Intl.DateTimeFormat('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(d);
-    }
-    case 'betrag': { const n = typeof wert === 'number' ? wert : Number(text); return Number.isFinite(n) ? new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(Math.round(n) / 100) : text; }
-    case 'zahl': { const n = typeof wert === 'number' ? wert : Number(text); return Number.isFinite(n) ? new Intl.NumberFormat('de-DE').format(n) : text; }
-    case 'gross': return text.toLocaleUpperCase('de-DE');
-    case 'klein': return text.toLocaleLowerCase('de-DE');
-  }
-}
+// EINE Stelle seit 25.10. (kleine Bauten): lib/prozesse/formatierer.ts — auch die Texte je Produkt formatieren damit (lib/crm/vorlage-platzhalter.ts).
+export { FORMATIERER, formatieren, type FormatiererId };
 
 /** Platzhalter `{{feld}}` bzw. `{{feld|formatierer}}` — nur Kennungen, kein Ausdruck. */
 const PLATZHALTER = /\{\{\s*([a-z][a-z0-9_.-]{0,59})\s*(?:\|\s*([a-z-]{1,20})\s*)?\}\}/g;
@@ -581,7 +556,8 @@ export const PLATZHALTER_JE_FALL: Readonly<Record<FallArt, readonly string[]>> =
   lead: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'kontakt.gruss', 'firma.name', 'lead.status'],
   deal: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'kontakt.gruss', 'firma.name', 'deal.titel', 'deal.stufe', 'deal.naechster-schritt'],
   // Kunden-Begleitung (22.10., B2): Grußzeile nach Du/Sie aus der Akte, aktuelle Etappe und nächster Termin des Fulfillment-Falls.
-  mandat: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'kontakt.gruss', 'firma.name', 'mandat.titel', 'mandat.start', 'mandat.produkt', 'kunde.gruss', 'fall.phase', 'fall.termin'],
+  // `absender.name` (25.10., kleine Bauten): die Firmierung der Gesellschaft des Mandats (Absender) — gefüllt im Motor (lauf-server.ts `fallInfo`), Altbestand unberührt.
+  mandat: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'kontakt.gruss', 'firma.name', 'mandat.titel', 'mandat.start', 'mandat.produkt', 'kunde.gruss', 'fall.phase', 'fall.termin', 'absender.name'],
   event: ['kontakt.anrede', 'kontakt.vorname', 'kontakt.nachname', 'kontakt.gruss', 'event.titel', 'event.datum', 'event.ort'],
   firma: ['firma.name', 'firma.branche'],
   kampagne: ['kampagne.titel'],
