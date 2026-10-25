@@ -185,9 +185,10 @@ describe('Erste Rechnung: Handprobe auf den Cent', () => {
     const s = rechnungSummen([...nov, ...(tag.ok ? tag.positionen : [])]);
     expect([s.netto, s.ust, s.brutto]).toEqual([243_000, 46_170, 289_170]);
   });
-  it('Rest 750,00 im Folgemonat (vorhandene Regel ohne Ende), danach nur noch das Monatshonorar', () => {
-    expect(monatsPositionen(M, '2026-12', ctx).map(p => p.einzelpreisCent)).toEqual([90_000, 75_000]);
+  it('Rest 750,00 bei Abschluss: im Monat des Mandatsendes (Ende der Mindestlaufzeit 14.05.2027), dazwischen nur das Monatshonorar (25.10.)', () => {
+    expect(monatsPositionen(M, '2026-12', ctx).map(p => p.einzelpreisCent)).toEqual([90_000]);
     expect(monatsPositionen(M, '2027-01', ctx).map(p => p.einzelpreisCent)).toEqual([90_000]);
+    expect(monatsPositionen(M, '2027-05', ctx).map(p => p.einzelpreisCent)).toEqual([90_000, 75_000]);
   });
   it('Fälligkeit = Zahltag im Liquiplan: im Voraus gestellt frühestens Leistungsbeginn + Ziel', () => {
     expect(faelligAm('2026-10-24', 14, '2026-11-15')).toBe('2026-11-29');
@@ -206,7 +207,7 @@ describe('Liquidität: alle Teile, keine Doppelzählung, Summe Posten = Summe Re
   const zahlungen = (p: Planposten) => zahltage(p, '2026-01-01', '2028-12-31');
   it('Anzahlung und Rest je 892,50 € brutto, Tagessatz 2 × 1.200 × 1,19 je vollem Monat', () => {
     const fest = posten.filter(p => p.id.includes('~z-mz-e-1'));
-    expect(fest.map(p => [p.betrag, p.ab])).toEqual([[892.5, '2026-11-29'], [892.5, '2026-12-15']]);
+    expect(fest.map(p => [p.betrag, p.ab])).toEqual([[892.5, '2026-11-29'], [892.5, '2027-05-15']]);
     const tagessatz = posten.filter(p => p.id.includes('~z-mz-e-3'));
     expect(tagessatz.find(p => p.rhythmus === 'monatlich')?.betrag).toBe(2856);
     expect(tagessatz.find(p => p.leistungsmonat === '2026-11')?.betrag).toBe(1523.2);
@@ -224,7 +225,7 @@ describe('Liquidität: alle Teile, keine Doppelzählung, Summe Posten = Summe Re
     const novPosten = posten.filter(p => p.leistungsmonat === '2026-11');
     expect(novPosten.every(p => deckung(p, p.ab))).toBe(true);
     expect(novPosten.map(p => ersetztText(p, HEUTE, deckung))).toEqual(novPosten.map(() => 'durch Rechnung ersetzt'));
-    const dez = posten.find(p => p.id.includes('~z-mz-e-1') && p.leistungsmonat === '2026-12')!;
+    const dez = posten.find(p => p.id.includes('~z-mz-e-1') && p.leistungsmonat === '2027-05')!;
     expect(deckung(dez, dez.ab)).toBe(false);
     expect(ersetztText(dez, HEUTE, deckung)).toBeNull();
     const v = vorschau([{ id: 'ug', name: 'Beispiel', kontostand: 0, stand: HEUTE }], [r], [], [], HEUTE, 8, false, posten);

@@ -123,14 +123,18 @@ describe('Zusatzmodule auf der Monatsrechnung', () => {
     expect(monatsPositionen(m, '2026-12', ctx)[1]).toMatchObject({ einzelpreisCent: 49_000, einheit: 'Monat' });
     expect(zusatzArt(m.zusatz![0])).toBe('monat');
   });
-  it('einmalig 50/50: Anzahlung im Monat des Beginns, Rest im Monat von „bis“ (ohne „bis“ im Folgemonat)', () => {
+  it('einmalig 50/50: Anzahlung im Monat des Beginns, Rest im Monat von „bis“ (ohne „bis“ am Ende des Mandats, erst ohne beides im Folgemonat)', () => {
     const z = zusatz({ id: 'mz-ev', leistungId: 'l-event', honorar: { betragCent: 500_000, basis: 'einmalig' }, zahlplan: { anzahlungProzent: 50 }, ab: '2026-11-10', bis: '2027-01-09' });
     const m = mandat({ zusatz: [z] });
     expect(zusatzPositionen(m, '2026-11', ctx)).toMatchObject([{ titel: 'Messebegleitung — Anzahlung 50 %', einzelpreisCent: 250_000 }]);
     expect(zusatzPositionen(m, '2026-12', ctx)).toEqual([]);
     expect(zusatzPositionen(m, '2027-01', ctx)).toMatchObject([{ titel: 'Messebegleitung — Restzahlung 50 %', einzelpreisCent: 250_000 }]);
+    // Ohne „bis“: Ende der Mindestlaufzeit (01.11. + 6 Monate → 30.04.2027); mit gesetztem Ende dessen Monat; ohne beides der Folgemonat.
     const ohneBis = mandat({ zusatz: [{ ...z, bis: undefined }] });
-    expect(zusatzPositionen(ohneBis, '2026-12', ctx)).toMatchObject([{ einzelpreisCent: 250_000 }]);
+    expect(zusatzPositionen(ohneBis, '2026-12', ctx)).toEqual([]);
+    expect(zusatzPositionen(ohneBis, '2027-04', ctx)).toMatchObject([{ titel: 'Messebegleitung — Restzahlung 50 %', einzelpreisCent: 250_000 }]);
+    expect(zusatzPositionen(mandat({ ende: '2027-02-15', zusatz: [{ ...z, bis: undefined }] }), '2027-02', ctx)).toMatchObject([{ einzelpreisCent: 250_000 }]);
+    expect(zusatzPositionen(mandat({ mindestlaufzeitMonate: undefined, zusatz: [{ ...z, bis: undefined }] }), '2026-12', ctx)).toMatchObject([{ einzelpreisCent: 250_000 }]);
     // Ohne Zahlplan: voll im Monat des Beginns; 30 % Anzahlung kaufmännisch, Rest = Betrag − Anzahlung.
     expect(zusatzPositionen(mandat({ zusatz: [{ ...z, zahlplan: undefined }] }), '2026-11', ctx)).toMatchObject([{ titel: 'Messebegleitung', einzelpreisCent: 500_000 }]);
     const drittel = mandat({ zusatz: [{ ...z, honorar: { betragCent: 100_001, basis: 'einmalig' }, zahlplan: { anzahlungProzent: 30 } }] });

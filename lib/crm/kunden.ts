@@ -9,7 +9,7 @@ import type { Mandat } from './typen';
 import { zahltage, letzterZahltag, type Planposten } from '@/lib/make-one/liquiditaet';
 import { geplantesEnde, leistungsmonat, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, zahlungsziel } from './mandat-laufzeit';
 import { mandatName } from './mandat-name';
-import { zusatzLiquiditaet, anrechnungLiquiditaet, zahlplanMonate, zahlplanPosition, type AnrechnungKontext } from './mandat-zusatz';
+import { zusatzLiquiditaet, anrechnungLiquiditaet, zahlplanMonate, zahlplanPosition, zahlplanSatz, type AnrechnungKontext } from './mandat-zusatz';
 import { rechnungSummen } from '@/lib/finanzen/rechnung/regeln';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import type { Leistung } from './typen';
@@ -205,7 +205,7 @@ function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: s
       const tag = [lm?.von ?? `${mo}-01`, basis].sort().at(-1)!;
       const was = pos[0].titel.split(' — ').pop() ?? monatsName(mo);
       return [{ id: i ? teilPostenId(m, mo) : hauptPostenId(m), titel: titelMit(name, ` — ${was}`), betrag: rechnungSummen(pos).brutto / 100, rhythmus: 'einmalig', ab: plusTage(tag, ziel), ...gemeinsam, leistungsmonat: mo,
-        notiz: `Aus dem Mandat (CRM): ${was} — wie die Rechnung für ${monatsName(mo)}.` }];
+        notiz: `Aus dem Mandat (CRM): ${was} — ${zahlplanSatz(m.zahlplan!.anzahlungProzent).replace(/\.$/, '')}, wie die Rechnung für ${monatsName(mo)}.` }];
     });
   }
   if (einmalig || m.rechnungsrhythmus === 'quartal') {

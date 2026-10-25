@@ -13,7 +13,7 @@
 import type { Leistung, Mandat, MandatZusatz, PreisTeil } from './typen';
 import type { RechnungPosition } from '@/lib/finanzen/rechnung/typen';
 import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
-import { leistungsmonat, monatsHonorar, monatsName, plusMonateGekappt, zahlungsziel, type Leistungsmonat } from './mandat-laufzeit';
+import { leistungsmonat, mindestEnde, monatsHonorar, monatsName, plusMonateGekappt, zahlungsziel, type Leistungsmonat } from './mandat-laufzeit';
 import { ANRECHNUNG_PRAEFIX, anteilText, positionAusMandat, positionNetto, rechnungSummen } from '@/lib/finanzen/rechnung/regeln';
 import { UST_SAETZE } from './angebote';
 import { hatPreisteile, hauptpreis, preisteileVon, teilLabel } from './produkt-karte';
@@ -75,15 +75,24 @@ export function zusatzZeitraum(m: Partial<Pick<Mandat, 'start'>>, z: Pick<Mandat
 }
 
 /**
- * Der Monat, in dem der Rest eines einmaligen Moduls mit Zahlplan fällig wird: der Monat von „bis“ (bzw. dem gesetzten Ende des Mandats), ohne beides der
- * Folgemonat des Beginns. 21.10.: IMMER mit dem gesetzten Ende (`m.ende`) gerechnet — vorher nahm die Liquidität das geplante Ende (Mindestlaufzeit) und
- * legte den Rest ein halbes Jahr später als die Rechnung (Summe gleich, Monat falsch; „Rechnung statt Plan“ fand die Zahlung dann nicht).
+ * Der Monat, in dem der Rest eines einmaligen Honorars bzw. Moduls mit Zahlplan fällig wird — EINE Regel für Rechnung UND Liquidität („Rest bei Abschluss“,
+ * 25.10., Kern-Bau-Test 2: der Rest stand in der Liquidität im Folgemonat, obwohl Angebot und Rechnung „bei Abschluss“ sagen):
+ *   1. der Monat von „bis“ am Modul (höchstens das gesetzte Ende des Mandats),
+ *   2. sonst das Ende des Mandats: das gesetzte Ende (`m.ende`), sonst das Ende der Mindestlaufzeit ab Beginn (`mindestEnde`),
+ *   3. erst ohne beides der Folgemonat des Beginns.
+ * Hängt NIE vom geplanten Ende der Liquidität ab (21.10.: sonst lag der Rest in Plan und Rechnung in verschiedenen Monaten). Fällt der Rest in den Monat des
+ * Beginns (bzw. davor), gibt es nur eine Zahlung im Monat des Beginns. null = kein Beginn.
  */
-function restMonat(m: Partial<Pick<Mandat, 'start' | 'ende'>>, z: Pick<MandatZusatz, 'ab' | 'bis'>): string | null {
-  const zr = zusatzZeitraum(m, z, m.ende);
-  if (!zr.start) return null;
-  return zr.ende ? zr.ende.slice(0, 7) : monatPlus(zr.start.slice(0, 7), 1);
+export function restMonat(m: Partial<Pick<Mandat, 'start' | 'ende' | 'mindestlaufzeitMonate'>>, z: Pick<MandatZusatz, 'ab' | 'bis'> = {}): string | null {
+  const s = [z.ab, m.start].filter(tagOk).sort().at(-1);
+  if (!s) return null;
+  const bis = [z.bis, m.ende].filter(tagOk).sort()[0];
+  const ende = bis ?? (tagOk(m.ende) ? m.ende : mindestEnde(m));
+  const r = ende ? ende.slice(0, 7) : monatPlus(s.slice(0, 7), 1);
+  return r < s.slice(0, 7) ? s.slice(0, 7) : r;
 }
+/** Der Satz zum Zahlplan auf Rechnung und Liquidität: „Zahlung 50 % bei Beginn, Rest bei Abschluss.“ — EIN Wortlaut (das Angebot sagt „bei Auftrag“, lib/crm/produkt-karte.ts). */
+export const zahlplanSatz = (p: number) => `Zahlung ${p} % bei Beginn, Rest bei Abschluss.`;
 
 // ── Positionen der Monatsrechnung ────────────────────────────────────────────
 
@@ -106,10 +115,10 @@ const monatsCent = (betragCent: number, lm: Leistungsmonat) => inCent(monatsHono
  *   monat      jeder Monat der Laufzeit, angebrochen anteilig
  *   inklusive  0-€-Position mit Hinweis („im Honorar enthalten“, ggf. „1 je Quartal“) in jedem Monat der Laufzeit
  *   jahr       im Monat des Beginns und alle 12 Monate danach, voller Betrag
- *   einmalig   im Monat des Beginns (mit Zahlplan: Anzahlung; der Rest im Monat von „bis“ bzw. im Folgemonat)
+ *   einmalig   im Monat des Beginns (mit Zahlplan: Anzahlung; der Rest im Monat des Abschlusses — `restMonat`)
  *   abrechnen  (je Einheit, Tag, Stunde) nie automatisch — nur über `abrechnenPositionen`
  */
-export function zusatzPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz' | 'zusatz'>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
+export function zusatzPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz' | 'zusatz'> & Partial<Pick<Mandat, 'mindestlaufzeitMonate'>>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
   const raus: RechnungPosition[] = [];
   const satz = satzVon(m, ctx.kleinunternehmer);
   for (const z of zusatzReihe(m.zusatz ?? [])) {
@@ -137,7 +146,7 @@ export function zusatzPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz' | 
       const betrag = z.honorar!.betragCent;
       if (p && r && r !== s) {
         const anzahlung = kaufmaennisch((betrag * p) / 100);
-        if (monat === s) raus.push({ id: positionsId('einmalig', z.id), ...basis, titel: `${name} — Anzahlung ${p} %`.slice(0, 200), text: `Zusatzmodul, Zahlung ${p} % bei Beginn, Rest bei Abschluss.`, menge: 1, einheit: 'pauschal', einzelpreisCent: anzahlung });
+        if (monat === s) raus.push({ id: positionsId('einmalig', z.id), ...basis, titel: `${name} — Anzahlung ${p} %`.slice(0, 200), text: `Zusatzmodul, ${zahlplanSatz(p)}`, menge: 1, einheit: 'pauschal', einzelpreisCent: anzahlung });
         else if (monat === r) raus.push({ id: positionsId('einmalig', z.id), ...basis, titel: `${name} — Restzahlung ${100 - p} %`.slice(0, 200), text: 'Zusatzmodul, Restzahlung bei Abschluss.', menge: 1, einheit: 'pauschal', einzelpreisCent: betrag - anzahlung });
       } else if (monat === s) {
         raus.push({ id: positionsId('einmalig', z.id), ...basis, titel: name.slice(0, 200), text: 'Zusatzmodul, einmalig', menge: 1, einheit: 'pauschal', einzelpreisCent: betrag });
@@ -149,16 +158,16 @@ export function zusatzPositionen(m: Pick<Mandat, 'start' | 'ende' | 'ustSatz' | 
 
 /**
  * Das einmalige Honorar mit Zahlplan (21.10., Rundgang B2 — dieselbe Regel wie das einmalige Zusatzmodul): Anzahlung im Monat des Beginns, der Rest im
- * Monat des gesetzten Endes (ohne Ende im Folgemonat), in anderen Monaten nichts. null = kein Zahlplan (das Honorar steht wie bisher in jedem Monat).
+ * Monat des Abschlusses (`restMonat`), in anderen Monaten nichts. null = kein Zahlplan (das Honorar steht wie bisher in jedem Monat).
  */
 /** Die Monate der Zahlungen eines einmaligen Honorars mit Zahlplan: [Anzahlung, Rest] (bzw. nur einer, wenn beide in denselben Monat fallen); null ohne Zahlplan. */
-export function zahlplanMonate(m: Pick<Mandat, 'honorar' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan'>>): string[] | null {
+export function zahlplanMonate(m: Pick<Mandat, 'honorar' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan' | 'mindestlaufzeitMonate'>>): string[] | null {
   if (m.honorar.basis !== 'einmalig' || !m.zahlplan?.anzahlungProzent || !tagOk(m.start)) return null;
   const s = m.start.slice(0, 7);
   const r = restMonat(m, {});
   return r && r !== s ? [s, r] : [s];
 }
-export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan'>>, monat: string, ctx: Pick<PositionKontext, 'kleinunternehmer' | 'nettoAusBrutto'>): RechnungPosition[] | null {
+export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan' | 'mindestlaufzeitMonate'>>, monat: string, ctx: Pick<PositionKontext, 'kleinunternehmer' | 'nettoAusBrutto'>): RechnungPosition[] | null {
   const p = m.zahlplan?.anzahlungProzent;
   if (m.honorar.basis !== 'einmalig' || !p || !tagOk(m.start)) return null;
   const s = m.start.slice(0, 7);
@@ -168,7 +177,7 @@ export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz'
   if (!r || r === s) return monat === s ? [voll] : [];
   const anzahlung = kaufmaennisch((voll.einzelpreisCent * p) / 100);
   const satz = (t: string) => [voll.text, t].filter(Boolean).join('\n\n').slice(0, 6000);
-  if (monat === s) return [{ ...voll, titel: titel(`Anzahlung ${p} %`), text: satz(`Zahlung ${p} % bei Beginn, Rest bei Abschluss.`), einzelpreisCent: anzahlung }];
+  if (monat === s) return [{ ...voll, titel: titel(`Anzahlung ${p} %`), text: satz(zahlplanSatz(p)), einzelpreisCent: anzahlung }];
   if (monat === r) return [{ ...voll, titel: titel(`Restzahlung ${100 - p} %`), text: satz('Restzahlung bei Abschluss.'), einzelpreisCent: voll.einzelpreisCent - anzahlung }];
   return [];
 }
@@ -178,7 +187,7 @@ export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz'
  * und danach die Zusatzmodule (`zusatzPositionen`). Ohne `zusatz`: genau die eine Position wie bis 19.10. (bit-gleich). Ein einmaliges Honorar mit
  * Zahlplan (21.10.) steht nur im Monat der Anzahlung bzw. des Rests (`zahlplanPosition`).
  */
-export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'> & Partial<Pick<Mandat, 'zahlplan'>>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
+export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz' | 'leistungen' | 'start' | 'ende' | 'zusatz'> & Partial<Pick<Mandat, 'zahlplan' | 'mindestlaufzeitMonate'>>, monat: string, ctx: PositionKontext, ende: string | null | undefined = m.ende): RechnungPosition[] {
   const lm = leistungsmonat({ start: m.start, ...(ende ? { ende } : {}) }, monat);
   // Nur in Monaten, in denen das Mandat läuft (der Server prüft das vorher ohnehin — 409 „außerhalb der Laufzeit“).
   const laeuft = m.honorar.betrag > 0 && (lm?.tage ?? 0) > 0;
@@ -457,7 +466,7 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
   const horizont = ende ? ende.slice(0, 7) : monatPlus(ereignisse.sort().at(-1)!, 13);
   const brutto = (l: readonly RechnungPosition[]) => rechnungSummen(l).brutto;
   // Je Monat die Positionen der Monatsrechnung (einmal gerechnet, für alle Module) — mit dem geplanten Ende als Laufzeit (`ende`); das Mandat selbst
-  // bleibt unverändert (der Rest eines Zahlplans richtet sich nach dem gesetzten Ende, wie auf der Rechnung — `restMonat`).
+  // bleibt unverändert (der Rest eines Zahlplans fällt in den Monat des Abschlusses, wie auf der Rechnung — `restMonat`).
   const monate: string[] = [];
   const start = [abMonat, m.start?.slice(0, 7)].filter((x): x is string => !!x).sort().at(-1)!;
   for (let mo = start; mo <= horizont; mo = monatPlus(mo, 1)) monate.push(mo);
@@ -497,7 +506,13 @@ export function zusatzLiquiditaet(m: Mandat, abMonat: string, ende: string | nul
       const titelTeil = art === 'einmalig' ? (l[k].titel.includes(' — ') ? `${name} ${l[k].titel.split(' — ').pop()}` : name) : `${name} ${monatsName(mo)}${lm.anteilig ? ' anteilig' : ''}`;
       zahlungen.push({ monat: mo, cent, tag: plusTage(lm.von, ziel), voll: art === 'jahr' || (art === 'monat' && !lm.anteilig), titel: titelTeil });
     }
-    if (art === 'einmalig') raus.push(...zahlungen.map(x => ({ id: `z-${z.id}~${x.monat}`, titel: x.titel, betrag: x.cent / 100, rhythmus: 'einmalig' as const, ab: x.tag, notiz, monat: x.monat })));
+    if (art === 'einmalig') {
+      // Mit Zahlplan sagt der Posten dasselbe wie Angebot und Rechnung: Rest bei Abschluss — und in welchem Monat (`restMonat`).
+      const p = z.zahlplan?.anzahlungProzent;
+      const r = p ? restMonat(m, z) : null;
+      const plan = p && r ? `Aus dem Mandat (CRM): Zusatzmodul „${name}“ — ${zahlplanSatz(p).replace(/\.$/, '')} (${monatsName(r)}), wie die Monatsrechnung.` : notiz;
+      raus.push(...zahlungen.map(x => ({ id: `z-${z.id}~${x.monat}`, titel: x.titel, betrag: x.cent / 100, rhythmus: 'einmalig' as const, ab: x.tag, notiz: plan, monat: x.monat })));
+    }
     else raus.push(...buendeln(z.id, zahlungen, art === 'jahr' ? 12 : 1, offen, notiz, name));
   }
   return raus;

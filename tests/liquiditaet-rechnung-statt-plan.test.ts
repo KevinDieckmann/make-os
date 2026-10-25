@@ -44,8 +44,9 @@ describe('A2 · Rechnung statt Plan in der Vorschau', () => {
       ['lp-mandat-m-see~2026-10', 'm-see', '2026-10'],
       ['lp-mandat-m-see~z-mz-messe~2026-10', 'm-see', '2026-10'],
       ['lp-mandat-m-see', 'm-see', '2026-11'],
-      ['lp-mandat-m-see~z-mz-messe~2026-11', 'm-see', '2026-11'],
       ['lp-mandat-m-see~2027-04', 'm-see', '2027-04'],
+      // Rest bei Abschluss (25.10.): im Monat des Mandatsendes (Ende der Mindestlaufzeit), nicht mehr im Folgemonat des Beginns.
+      ['lp-mandat-m-see~z-mz-messe~2027-04', 'm-see', '2027-04'],
     ]);
   });
   it('gestellte Oktober-Rechnung: in der Woche ab 02.11. steht nur die Rechnung — die Posten des Oktobers zählen nicht mehr', () => {
