@@ -1,7 +1,7 @@
 {
  "meta": {
   "version": "1.0",
-  "stand": "2026-10-24 (Homepage-Pakete 18:15, Bereichsseiten 19:10, Hosting entfernt 19:15, CI Markenhandbuch 4.0 19:55)",
+  "stand": "2026-10-24 (Homepage-Pakete 18:15, Bereichsseiten 19:10, Hosting entfernt 19:15, CI Markenhandbuch 4.0 19:55); Produkte nach Kevins Produktblättern (freigegeben 25.10.2026)",
   "quelle": "Leistungsumfang 2.0 (Rev. 98, Kundenteil) und Konzept Innovations-Check (Rev. 33)",
   "ansprache": "Du",
   "preise": "alle Preise netto zuzüglich Umsatzsteuer, Angebot richtet sich an Unternehmen (B2B)",
@@ -141,7 +141,7 @@
   {
    "id": "fokus",
    "titel": "Fokus Innovation",
-   "text": "Unsere Bühne und unser Netzwerk für Menschen, die Neues umsetzen. Für Kunden kostenlos.",
+   "text": "Unsere Bühne und unser Netzwerk für Menschen, die Neues umsetzen. Alle zwei Monate, für Gäste kostenlos.",
    "cta": {
     "text": "Zum nächsten Abend anmelden",
     "ziel": "Anmeldeseite"
@@ -178,7 +178,10 @@
     "Einordnung: Markt- oder Produktproblem",
     "Eine Sache setzen wir am Tag direkt um"
    ],
-   "cta": "Workshop anfragen"
+   "cta": "Workshop anfragen",
+   "regeln": [
+    "Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse)"
+   ]
   },
   {
    "id": "head-of-sales",
@@ -186,23 +189,23 @@
    "name": "Head of Sales",
    "preis": "2.990 €",
    "preis_zusatz": "pro Monat, 6 oder 12 Monate",
-   "fuer_wen": "Für Unternehmen, die systematischen Vertrieb auf einer sauberen Datenbasis wollen.",
+   "fuer_wen": "Für Unternehmer mit fertigem Produkt, deren Vertrieb heute am Gründer hängt oder ohne System läuft.",
    "enthalten": [
-    "Start mit dem Fundament: Onboarding, Zielgruppenanalyse, Ansprache, Salesprozess, Setting-Skript mit BANT, Einwandbibliothek",
-    "Baustein Leadgenerierung: alle Kanäle ins CRM, Bestand reaktivieren, Empfehlungsprogramm, Lead-Magnete",
-    "Baustein Prozesse und Strukturen: CRM-Standard, Skripte, Angebotsvorlagen, Vertriebsrhythmus",
-    "Baustein KPIs: KPI-Trichter, Rückwärtsrechnung vom Umsatzziel, Wochenreport",
-    "Onboarding-Programm und Trainings für dein Team",
+    "Fundament: Zielgruppe, Salesprozess im CRM, Skripte und Einwandbibliothek",
+    "Quick Win aus deinem Bestand ab Monat 1",
+    "Leadgenerierung, Prozesse und KPIs nach dem größten Hebel",
+    "Wochenreport jeden Freitag ab Monat 3",
+    "Rollenspiele, Call-Reviews und Onboarding für dein Team",
     "Sales Playbook Teil 1 und 2"
    ],
    "nicht_enthalten": [
-    "Strategie, Teamaufbau, Recruiting, Führung des Teams",
+    "Strategie, Preislogik, Teamaufbau, Recruiting und Führung des Teams",
     "Intros aus dem Netzwerk",
-    "Telefonie für dich: wir machen vor, bis dein Team selbst abschließt"
+    "Telefonie für dich: dein Team führt die Gespräche, wir machen vor"
    ],
    "regeln": [
     "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist",
-    "Wechsel zum CSO jederzeit, der Preis wird angepasst"
+    "Wechsel zum CSO jederzeit"
    ],
    "cta": "Gespräch vereinbaren"
   },
@@ -212,16 +215,15 @@
    "name": "Chief Sales Officer (CSO)",
    "preis": "4.990 €",
    "preis_zusatz": "pro Monat, 6 oder 12 Monate",
-   "fuer_wen": "Für Unternehmen, die Vertrieb strategisch aufbauen und skalieren wollen.",
+   "fuer_wen": "Für Unternehmen, die ein Vertriebsteam aufbauen, einen neuen Markt angehen oder mit Partnern wachsen wollen.",
    "enthalten": [
     "Alles aus Head of Sales",
     "Strategie, Go-to-Market und Preislogik",
-    "Rollen, Vergütung, Recruiting und Teamaufbau",
-    "Strategische Partnerschaften, Investoren und Skalierung",
-    "Intros zu Kunden und Partnern aus dem Netzwerk",
-    "Führung des Teams bis 10 Vertriebler, je nach Kunde",
-    "Monatliche Produkt-Runde",
-    "Sales Playbook Teil 1 bis 3"
+    "Rollen, Vergütung und Recruiting",
+    "Führung von bis zu 10 Vertrieblern",
+    "Monatliche Produkt-Runde mit Kundenstimmen",
+    "Partnerschaften und Skalierung, Intros aus dem MAKE-Netzwerk nach 6 Monaten",
+    "Sales Playbook Teil 3 und Übergabeplan an deine Vertriebsleitung"
    ],
    "regeln": [
     "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist"
@@ -254,14 +256,15 @@
    "gruppe": "Homepage-Pakete",
    "name": "Homepage Landing",
    "preis": "2.990 €",
-   "preis_zusatz": "einmalig, zahlbar in bis zu 3 Raten",
-   "fuer_wen": "Coaches, kleine Agenturen, Solo-Unternehmer.",
+   "preis_zusatz": "einmalig, fertig in 10 Werktagen",
+   "fuer_wen": "Für Coaches, kleine Agenturen und Solo-Unternehmer mit einem klaren Angebot und einem Ziel.",
    "enthalten": [
-    "One-Pager mit Effekten",
-    "Impressum und Datenschutzseite",
-    "Lieferung in 10 Werktagen",
+    "One-Pager mit 6 bis 8 Sektionen und einem Effekt",
+    "Texte von uns, Design in deiner CI, mobil zuerst",
+    "Kontaktformular mit Eintrag in dein CRM",
+    "Impressum, Datenschutz, SEO-Grundlagen",
     "1 Korrekturschleife",
-    "Onboarding-Formular und 60 Minuten Kick-off"
+    "Kick-off 30 Minuten"
    ],
    "cta": "Landing anfragen"
   },
@@ -271,15 +274,15 @@
    "gruppe": "Homepage-Pakete",
    "name": "Homepage Story",
    "preis": "4.990 €",
-   "preis_zusatz": "einmalig, zahlbar in bis zu 3 Raten",
-   "fuer_wen": "Firmen, die ihre Geschichte schon kennen.",
+   "preis_zusatz": "einmalig, fertig in 15 Werktagen",
+   "fuer_wen": "Für Handwerk und Dienstleister, die ihre Geschichte kennen und mehr als eine Seite brauchen.",
    "enthalten": [
-    "Alles aus Landing",
-    "3D-Effekte",
-    "3 Unterseiten",
-    "Story liefert der Kunde",
+    "Startseite mit 8 bis 10 Sektionen und 3 Unterseiten",
+    "3D-Effekt im Hero und bis zu 3 Effekte aus dem Katalog",
+    "Deine Geschichte als Scroll-Erzählung",
     "2 Korrekturschleifen",
-    "Lieferzeit nach Kick-off"
+    "Kick-off 45 Minuten",
+    "Texte, CI, Formular, Rechtliches und SEO wie bei Landing"
    ],
    "cta": "Story anfragen",
    "hervorheben": true
@@ -290,15 +293,15 @@
    "gruppe": "Homepage-Pakete",
    "name": "Homepage Cinematic",
    "preis": "9.990 €",
-   "preis_zusatz": "einmalig, 50 % vorab, 50 % nach Abschluss",
-   "fuer_wen": "Firmen, die mit Wirkung auffallen wollen.",
+   "preis_zusatz": "einmalig, fertig in 25 Werktagen",
+   "fuer_wen": "Für Tech und Mittelstand, die mit Wirkung auffallen wollen. Die Story entwickeln wir mit dir.",
    "enthalten": [
-    "Story-Workshop, Skript und Storyboard: die Story entwickeln wir",
-    "3D-Szenen, 3 Effekte und Animationen",
-    "5 Unterseiten",
+    "Story-Workshop 90 Minuten: Geschichte und Claim",
+    "Startseite mit 10 bis 12 Sektionen und 5 Unterseiten",
+    "3 große Effekte, 3D-Szenen und Animationen auf allen Seiten",
     "Erklärvideo inklusive",
     "3 Korrekturschleifen",
-    "Lieferzeit nach Kick-off"
+    "Texte, CI, Formular, Rechtliches und SEO wie bei Landing"
    ],
    "cta": "Cinematic anfragen"
   },
@@ -308,12 +311,16 @@
    "gruppe": "Videos",
    "name": "Erklärvideo",
    "preis": "1.490 €",
-   "preis_zusatz": "einmalig",
+   "preis_zusatz": "einmalig, fertig in 10 Werktagen",
    "enthalten": [
-    "60 bis 90 Sekunden",
-    "erklärt dein Produkt oder deine Leistung"
+    "60 bis 90 Sekunden in einem Format aus unserem Videokatalog",
+    "Skript von uns",
+    "Formate 16:9, 9:16 und 1:1",
+    "Untertitel, lizenzfreie Musik, Thumbnails",
+    "KI-Stimme oder nur Untertitel"
    ],
-   "cta": "Video anfragen"
+   "cta": "Video anfragen",
+   "fuer_wen": "Für alle, deren Angebot man in 90 Sekunden besser versteht als in drei Absätzen Text."
   },
   {
    "id": "videostory",
@@ -321,27 +328,34 @@
    "gruppe": "Videos",
    "name": "Videostory",
    "preis": "1.990 €",
-   "preis_zusatz": "einmalig",
+   "preis_zusatz": "einmalig, fertig in 15 Werktagen",
    "enthalten": [
-    "60 bis 90 Sekunden",
-    "die Geschichte deines Unternehmens",
-    "Story von uns"
+    "60 Minuten Story-Interview: wir holen deine Geschichte heraus",
+    "60 bis 90 Sekunden in einem von 10 Story-Formaten",
+    "Skript und Storyboard von uns",
+    "KI-Stimme oder deine eigene",
+    "Formate 16:9, 9:16 und 1:1 mit Untertiteln"
    ],
-   "cta": "Video anfragen"
+   "cta": "Video anfragen",
+   "fuer_wen": "Für Firmen mit einer Geschichte, die Vertrauen schafft, ob Familienbetrieb oder Start-up."
   },
   {
    "id": "video-serie",
    "bereich": "Sichtbarkeit",
    "gruppe": "Videos",
    "name": "Video Serie",
-   "preis": "1.490 €",
+   "preis": "1.990 €",
    "preis_zusatz": "pro Monat, mindestens 3 Monate",
    "enthalten": [
-    "Jeden Monat ein Erklärvideo und eine Videostory",
-    "einzeln würden beide 3.480 € kosten"
+    "2 Videos im Monat aus unserem Videokatalog",
+    "Redaktionsplan für 3 Monate, 30 Minuten Planung am Monatsanfang",
+    "je 30 bis 90 Sekunden, fertig für LinkedIn, Instagram und Website",
+    "1 Korrektur je Video",
+    "KI-Stimme, deine eigene oder Untertitel"
    ],
    "cta": "Serie starten",
-   "hervorheben": true
+   "hervorheben": true,
+   "fuer_wen": "Für alle, die jeden Monat sichtbar sein wollen, ohne selbst Videos zu planen und zu bauen."
   },
   {
    "id": "positionierung",
@@ -370,15 +384,19 @@
      "ergebnis": "wie M, dazu Team-Interviews, persönliche Ebene des Gründers, neue Kategorie, Positionierungs-Canvas, Leistungspalette und Preislogik, Claim, Markenstory, Textbausteine"
     }
    ],
-   "cta": "Positionierung anfragen"
+   "cta": "Positionierung anfragen",
+   "regeln": [
+    "Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse)"
+   ]
   },
   {
    "id": "fokus-innovation",
    "bereich": "Sichtbarkeit",
    "name": "Fokus Innovation",
-   "preis": "für Kunden kostenlos",
+   "preis": "für Gäste kostenlos",
    "enthalten": [
-    "Abende mit Bühne und Netzwerk",
+    "Ein Abend alle zwei Monate",
+    "Bühne und Netzwerk für Menschen, die Neues umsetzen",
     "geführt von Malin",
     "Partner werden nur mit Zustimmung genannt"
    ],
@@ -410,7 +428,7 @@
    "name": "Upgrade",
    "fuer": "Homepage-Pakete",
    "preis": "nur die Differenz",
-   "leistung": "innerhalb von 3 Monaten auf das größere Paket"
+   "leistung": "innerhalb von 3 Monaten nach Abnahme auf das größere Paket"
   },
   {
    "name": "Bild- und Videoproduktion",
@@ -566,12 +584,12 @@
   {
    "id": "was-ist-der-unterschied-zwischen-head",
    "f": "Was ist der Unterschied zwischen Head of Sales und CSO?",
-   "a": "Der Head of Sales baut deinen Vertrieb operativ auf: Leads, Prozesse und Kennzahlen. Der CSO enthält das komplett und dazu Strategie, Teamaufbau, Recruiting, Partnerschaften und Intros aus unserem Netzwerk."
+   "a": "Der Head of Sales baut und führt deinen Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer enthält das komplett und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Du kannst jederzeit zum CSO wechseln."
   },
   {
    "id": "kann-ich-vorzeitig-kuendigen",
    "f": "Kann ich vorzeitig kündigen?",
-   "a": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist."
+   "a": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommst du dafür eine Zwischenbilanz mit Zahlen und Fahrplan. Die Video Serie läuft mindestens 3 Monate, danach ist sie monatlich kündbar."
   },
   {
    "id": "was-kostet-der-tagesworkshop-und-was",
@@ -581,12 +599,12 @@
   {
    "id": "wie-schnell-ist-meine-homepage-fertig",
    "f": "Wie schnell ist meine Homepage fertig?",
-   "a": "Landing in 10 Werktagen, mit Express in 5. Story und Cinematic legen wir im Kick-off fest. Express halbiert die Lieferzeit bei allen Paketen."
+   "a": "Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft ab vollständigem Formular und Zahlungseingang. Mit Express halbiert sich die Lieferzeit."
   },
   {
    "id": "kann-ich-spaeter-auf-ein-groesseres",
    "f": "Kann ich später auf ein größeres Homepage-Paket wechseln?",
-   "a": "Ja, innerhalb von 3 Monaten. Du zahlst nur die Differenz."
+   "a": "Ja, innerhalb von 3 Monaten nach Abnahme. Du zahlst nur die Differenz."
   },
   {
    "id": "sind-eure-videos-ki-generiert",
@@ -596,7 +614,7 @@
   {
    "id": "gibt-es-rabatt",
    "f": "Gibt es Rabatt?",
-   "a": "3 % Skonto bei Zahlung innerhalb der Frist, auch wenn du die volle Laufzeit vorab zahlst."
+   "a": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn du die volle Laufzeit vorab zahlst. Auf Monatsrechnungen, Homepages und Videos gibt es kein Skonto."
   },
   {
    "id": "sind-die-preise-netto",
@@ -606,9 +624,8 @@
  ],
  "konditionen": [
   "Alle Preise netto zuzüglich Umsatzsteuer",
-  "3 % Skonto bei Zahlung innerhalb der Frist, auch bei Vorauszahlung der vollen Laufzeit",
-  "Head of Sales und CSO monatlich abgerechnet",
-  "Homepage Landing und Story in bis zu 3 Raten, Cinematic 50 % vorab, 50 % nach Abschluss",
+  "Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn du die volle Laufzeit vorab zahlst",
+  "Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse)",
   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
  ],
  "seitenstruktur": [
@@ -688,7 +705,7 @@
     "Hero mit Erklärvideo",
     "Story in 4 Schritten",
     "Belege (35 Vertriebler geführt, 1.200 Verkäufe in 18 Monaten, Head of Sales bei einem FinTech)",
-    "Angebote: Tagesworkshop, Head of Sales, CSO, KI-CRM",
+    "Angebote: Tagesworkshop, Head of Sales, CSO",
     "Vergleich Head of Sales und CSO",
     "So läuft es ab: Check → 90-Tage-Gespräch → Tagesworkshop → Mandat",
     "Gratis Sales: Vertriebsanalyse, Starterkit, 10 Einwände, Umsatz-Rechner",
@@ -837,6 +854,6 @@
    "Innovation: Von Ausprobieren zu Umsetzen",
    "Landingpage Innovations-Check: So funktioniert der Check mit Zoe"
   ],
-  "verkauf": "Dieselbe Produktionsweise ist das Angebot Erklärvideo 1.490 € und Video Serie 1.490 €/Monat. Unsere eigenen Videos dienen als Referenz."
+  "verkauf": "Dieselbe Produktionsweise ist das Angebot Erklärvideo 1.490 € und Video Serie 1.990 €/Monat. Unsere eigenen Videos dienen als Referenz."
  }
 }

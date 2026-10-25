@@ -38,13 +38,32 @@ export function quellen() {
   // Die fünf Stufen kommen aus derselben Vorlage wie der Check in MAKE OS — EINE Quelle für Namen und Sätze.
   const stufen = JSON.parse(readFileSync(join(ORDNER, '..', 'lib/check/vorlagen/innovations-check/scoring.json'), 'utf8')).stufen;
   const katalog = JSON.parse(readFileSync(join(ORDNER, '..', 'lib/check/vorlagen/innovations-check/fragenkatalog.json'), 'utf8'));
-  return { inhalt, seite, stufen, katalog };
+  // Kevins Produktblätter (25.10.): Ausgangslage, Leistung, Ablauf, Konditionen und Fragen je Produktseite.
+  const produkte = lies('inhalt/produkte.json');
+  // Ausgeblendet bleibt in inhalt.json stehen, erscheint aber nirgends (Liste und Grund in seite.json).
+  const aus = seite.ausgeblendet ?? {};
+  inhalt.angebote = inhalt.angebote.filter((a) => !(aus.angebote ?? []).includes(a.id));
+  inhalt.zusatzoptionen = inhalt.zusatzoptionen.filter((z) => !(aus.zusatzoptionen ?? []).includes(z.name));
+  return { inhalt, seite, stufen, katalog, produkte };
 }
 
 // ── Seiten bauen ────────────────────────────────────────────────────────────────────────────────────────────────────
 export function seitenBauen(q = quellen()) {
-  const { inhalt, seite, stufen, katalog } = q;
+  const { inhalt, seite, stufen, katalog, produkte: blaetter } = q;
   const angebot = (id) => inhalt.angebote.find((a) => a.id === id);
+  /** Produktblatt eines Angebots: eigene Angaben über denen der Familie (Homepages, Videos); null, wenn es keins gibt. */
+  const produktBlatt = (a) => {
+    const p = blaetter.produkte[a.id];
+    if (!p) return null;
+    const f = p.familie ? blaetter.familien[p.familie] : {};
+    const passt = (x) => (!x.nur || x.nur.includes(a.id)) && !(x.ohne ?? []).includes(a.id);
+    return {
+      ...f, ...p,
+      konditionen: [...(p.konditionen_vorn ?? []), ...(p.konditionen ?? f.konditionen ?? [])],
+      fragen: (p.fragen ?? f.fragen ?? []).filter(passt),
+      katalog: p.katalog_auswahl ? p.katalog_auswahl.map((n) => f.katalog[n]) : null,
+    };
+  };
   const faqVon = (ids) => ids.map((id) => inhalt.faq.find((f) => f.id === id)).filter(Boolean);
   const start = Object.fromEntries(inhalt.startseite.map((s) => [s.id, s]));
   const bereichDaten = Object.fromEntries(start.bereiche.bereiche.map((b) => [bereichKey(b.name), b]));
@@ -162,6 +181,18 @@ ${mitListe && a.enthalten ? haken(a.enthalten.slice(0, 4)) : ''}
   const team = () => `<div class="team">${seite.team.map((p) => `<div class="person"><span class="kuerzel" aria-hidden="true">${e(p.kuerzel)}</span><div><span class="rolle">${e(p.rolle)}</span><b>${e(p.name)}</b><p>${t(p.text)}</p></div></div>`).join('')}</div>`;
   const faelle = (liste) => `<div class="faelle">${liste.map((f) => `<article class="fall"><h3>${t(f.titel)}</h3><dl><dt>Ausgangslage</dt><dd>${t(f.ausgangslage)}</dd><dt>Vorgehen</dt><dd>${t(f.vorgehen)}</dd><dt>Ergebnis</dt><dd>${t(f.ergebnis)}</dd></dl></article>`).join('')}</div>`;
   const netto = '<p class="netto">Alle Preise netto zuzüglich Umsatzsteuer. Unsere Angebote richten sich an Unternehmen.</p>';
+  // Bausteine der Produktblätter
+  const datenTabelle = (zeilen) => `<dl class="daten">${zeilen.map(([k, v]) => `<div><dt>${e(k)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl>`;
+  const zeitplan = (ab) => `<ol class="zeitplan">${ab.zeilen.map((z) => `<li><span class="wann">${e(z[0])}</span><div><b>${e(z[1])}</b>${z[2] ? `<span>${t(z[2])}</span>` : ''}</div></li>`).join('')}</ol>${ab.hinweis ? `<p class="zeitplan-hinweis">${t(ab.hinweis)}</p>` : ''}`;
+  const bausteinKarten = (liste) => `<div class="bausteine">${liste.map((x) => `<article class="baustein"><b>${e(x.name)}</b>${x.hinweis ? `<span class="hinweis">${e(x.hinweis)}</span>` : ''}<p>${t(x.text)}</p></article>`).join('')}</div>`;
+  const videokatalog = (gruppen) => `<div class="katalog n${gruppen.length}">${gruppen.map((g) => `<div><h3>${e(g.titel)}</h3><ul class="formate">${g.formate.map((f) => `<li${/\(später\)$/.test(f) ? ' class="spaeter"' : ''}>${e(f)}</li>`).join('')}</ul></div>`).join('')}</div>`;
+  /** Vergleich mit Text in den Zellen (Homepage-Pakete, Videos); am Handy wird jede Zeile eine Karte (data-name). */
+  const textVergleich = (v, id) => {
+    const liste = v.angebote.map(angebot).filter(Boolean);
+    return `<h3 class="gruppe-titel" id="${id}">${e(v.titel)}</h3>
+<div class="tabelle-huelle"><table class="vergleich text"><thead><tr><th scope="col"><span class="sr">Merkmal</span></th>${liste.map((a) => `<th scope="col"><a href="${produktPfad(a)}">${e(a.name.replace(/^Homepage /, ''))}</a><br><span class="zahl">${e(preisKurz(a))}</span></th>`).join('')}</tr></thead>
+<tbody>${v.zeilen.map(([k, ...w]) => `<tr><th scope="row">${e(k)}</th>${w.map((x, n) => `<td data-name="${e(liste[n]?.name.replace(/^Homepage /, '') ?? '')}">${t(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  };
   const gespraechKarte = (quelle) => `<div class="gespraech"><div class="gross verlauf" aria-hidden="true">90</div><div><span class="eb">Nach dem Check</span><h3>${e(start.gespraech.titel)}</h3><p>${t(start.gespraech.text)}</p><small>${t(start.gespraech.regel)}</small></div>${checkKnopf(quelle, start.gespraech.cta.text, 'zweit')}</div>`;
 
   /** Eine Ebene der Szene: Kachel, Name, Satz und ein kleines Bild davon, was dort passiert (Start- und Bereichsseiten). */
@@ -305,7 +336,8 @@ ${ende(e(start.abschluss.titel), start.abschluss.text, checkKnopf('start_ende', 
 <div class="tabelle-huelle"><table class="vergleich"><thead><tr><th scope="col">Leistung</th><th scope="col">Head of Sales<br><span class="zahl">${e(preisKurz(hos))}</span></th><th scope="col">CSO<br><span class="zahl">${e(preisKurz(cso))}</span></th></tr></thead>
 <tbody>${zeilen.map(([x, a, c]) => `<tr><th scope="row">${e(x)}</th>${zelle(a)}${zelle(c)}</tr>`).join('')}</tbody></table></div>
 <div class="knoepfe"><a class="textlink" href="${produktPfad(hos)}">Head of Sales im Detail ${PFEIL}</a><a class="textlink" href="${produktPfad(cso)}">CSO im Detail ${PFEIL}</a></div></div></section>`;
-    })() : '';
+    })() : (blaetter.vergleiche[b] ?? []).length ? `<section class="abschnitt hell" aria-labelledby="vergleich-titel"><div class="w">${kopfzeile('Vergleich', '<span id="vergleich-titel">Was in welchem Angebot steckt</span>')}
+${blaetter.vergleiche[b].map((v, n) => textVergleich(v, `vergleich-${n + 1}`)).join('\n')}${netto}</div></section>` : '';
     const zusatz = b === 'sichtbarkeit' ? `<section class="abschnitt hell" aria-labelledby="zusatz-titel"><div class="w">${kopfzeile('Zusatzoptionen', '<span id="zusatz-titel">Dazu buchbar</span>')}
 <div class="angebote n${inhalt.zusatzoptionen.length}">${inhalt.zusatzoptionen.map((z) => zusatzKarte(z)).join('')}</div>${netto}</div></section>` : '';
     const belege = b === 'vertrieb' ? inhalt.belege.slice(0, 3) : b === 'innovation' ? inhalt.belege.slice(4, 5) : [];
@@ -357,38 +389,70 @@ ${ende(e(start.abschluss.titel), start.abschluss.text, checkKnopf(`${b}_ende`, s
     const terminKnopf = istBald
       ? `<a class="knopf haupt" href="${mail(`Warteliste: ${a.name}`)}">Auf die Warteliste ${PFEIL}</a>`
       : `<a class="knopf haupt" href="${terminLink(a.name)}">${terminText} ${PFEIL}</a>`;
-    const regeln = [...(a.regeln ?? []), ...(seite.produkt_konditionen[a.id] ?? []), inhalt.konditionen[1]];
+    const pb = produktBlatt(a);
+    const regeln = [...(a.regeln ?? []), ...(seite.produkt_konditionen[a.id] ?? [])];
     const homepage = a.gruppe === 'Homepage-Pakete';
-    const zusatz = homepage ? inhalt.zusatzoptionen.filter((z) => /Homepage/.test(z.fuer)) : [];
-    const weitere = produkteIn(b).filter((x) => x.id !== a.id);
+    // Upgrade gibt es nur auf ein größeres Paket — beim größten Paket entfällt es.
+    const groesstes = homepage && produkteIn(b).filter((x) => x.gruppe === a.gruppe).at(-1)?.id === a.id;
+    const zusatz = homepage ? inhalt.zusatzoptionen.filter((z) => /Homepage/.test(z.fuer) && !(groesstes && z.name === 'Upgrade')) : [];
+    // Weitere Angebote: bei Paketen die anderen Pakete der Gruppe, sonst der Bereich (ohne Fokus Innovation, das hat eine eigene Seite).
+    const geschwister = a.gruppe ? produkteIn(b).filter((x) => x.gruppe === a.gruppe && x.id !== a.id) : [];
+    const weitere = geschwister.length ? geschwister : navProdukte(b).filter((x) => x.id !== a.id);
     const stufenHtml = a.stufen ? `<section class="abschnitt hell" aria-labelledby="pakete-titel"><div class="w">${kopfzeile('Drei Stufen', '<span id="pakete-titel">Wähle die Tiefe, die du brauchst</span>', a.preis_zusatz)}
 <div class="pakete">${a.stufen.map((s) => `<article class="angebot"><h3>Positionierung ${e(s.name)}</h3><div class="preis"><b>${e(s.preis)}</b><span>Workshop: ${e(s.workshop)}</span></div><p class="fuer">${t(s.ergebnis)}</p></article>`).join('')}</div>${netto}</div></section>` : '';
-    const gutZuWissen = `<div class="karte-hell">${a.nicht_enthalten ? `<h3>Nicht enthalten</h3><ul class="nicht">${a.nicht_enthalten.map((x) => `<li>${t(x)}</li>`).join('')}</ul>${a.id === 'head-of-sales' ? `<p class="leise">Das alles gehört zum <a class="textlink" href="${produktPfad(angebot('cso'))}">Chief Sales Officer ${PFEIL}</a></p>` : ''}` : ''}
+    const nichtEnthalten = pb?.nicht_enthalten ?? a.nicht_enthalten;
+    const nichtHtml = nichtEnthalten ? `<h3>Nicht enthalten</h3><ul class="nicht">${nichtEnthalten.map((x) => `<li>${t(x)}</li>`).join('')}</ul>${a.id === 'head-of-sales' ? `<p class="leise">Das alles gehört zum <a class="textlink" href="${produktPfad(angebot('cso'))}">Chief Sales Officer ${PFEIL}</a></p>` : ''}` : '';
+    const gutZuWissen = `<div class="karte-hell">${nichtHtml}
 <h3>Gut zu wissen</h3><ul class="regeln">${regeln.map((x) => `<li>${t(x)}</li>`).join('')}<li>${t(inhalt.konditionen[0])}</li></ul></div>`;
+    const terminZeile = `<div class="knoepfe">${terminKnopf}${checkKnopf(`produkt_${a.id}_ende`, 'Innovations-Check starten', 'zweit')}</div>`;
+    const fragenListe = pb ? [...pb.fragen.map((f) => ({ f: f.frage, a: f.antwort })), ...faqVon(['sind-die-preise-netto'])] : faqVon(seite.produkt_faq[a.id] ?? []);
+
+    // Mit Produktblatt: dunkel Ausgangslage und Ablauf, hell Leistung, Konditionen und Fragen (dieselbe Folge wie die Bereichsseiten).
+    const blattHtml = pb ? `<section class="abschnitt" aria-labelledby="lage-titel"><div class="w zwei">
+<div>${kopfzeile('Ausgangslage', '<span id="lage-titel">Woran es heute hakt</span>', pb.problem)}</div>
+<div class="karte-dunkel"><h3>Für wen</h3>${haken(pb.fuer)}<h3>Nicht für</h3><p>${t(pb.nicht_fuer)}</p></div>
+</div></section>
+
+<section class="abschnitt" aria-labelledby="ablauf-titel"><div class="w${pb.ergebnis ? ' zwei' : ''}">
+<div>${kopfzeile('Ablauf', '<span id="ablauf-titel">So läuft es</span>')}${zeitplan(pb.ablauf)}</div>
+${pb.ergebnis ? `<div class="karte-dunkel erfolg"><span class="eb">Ergebnis</span><h3>Woran du den Erfolg siehst</h3>${haken(pb.ergebnis)}${pb.ergebnis_hinweis ? `<p>${t(pb.ergebnis_hinweis)}</p>` : ''}</div>` : ''}
+</div></section>
+
+<section class="abschnitt hell" aria-labelledby="leistung-titel"><div class="w">
+${pb.bausteine ? `${kopfzeile('Leistung', '<span id="leistung-titel">Was du bekommst</span>', pb.loesung)}${bausteinKarten(pb.bausteine)}${pb.bausteine_satz ? `<p class="satz-unter">${t(pb.bausteine_satz)}</p>` : ''}${a.id === 'cso' ? `<p class="satz-unter"><a class="textlink" href="${produktPfad(angebot('head-of-sales'))}">Was im Head of Sales steckt ${PFEIL}</a></p>` : ''}`
+    : `<div class="spalten"><div><span class="eb">Das Paket</span><h2 id="leistung-titel">Was du bekommst</h2>${datenTabelle(pb.eckdaten)}</div><div class="karte-hell"><h3>Immer enthalten</h3>${haken(pb.immer)}</div></div>`}
+</div></section>
+${pb.katalog ? `<section class="abschnitt hell" aria-labelledby="katalog-titel"><div class="w">${kopfzeile('Videokatalog', '<span id="katalog-titel">Du wählst aus festen Formaten</span>', pb.katalog_hinweis)}${videokatalog(pb.katalog)}</div></section>` : ''}
+
+<section class="abschnitt hell" aria-labelledby="konditionen-titel"><div class="w spalten">
+<div><span class="eb">Konditionen</span><h2 id="konditionen-titel">Preis und Konditionen</h2>${datenTabelle(pb.konditionen)}${netto}</div>
+<div class="karte-hell"><h3>Was wir von dir brauchen</h3>${haken(pb.mitwirkung)}${nichtHtml}${pb.abgrenzung ? `<h3>Abgrenzung</h3><p class="leise">${t(pb.abgrenzung)}</p>` : ''}</div>
+</div></section>` : '';
+
     neu(`${pfad}index.html`, {
       titel: `${a.name} · MAKE Innovation`,
-      beschreibung: `${a.name}: ${a.fuer_wen ?? (a.enthalten ?? []).join(', ')} ${a.preis} ${a.preis_zusatz ?? ''}`.slice(0, 300),
+      beschreibung: `${a.name}: ${pb?.versprechen ?? a.fuer_wen ?? (a.enthalten ?? []).join(', ')} ${a.preis} ${a.preis_zusatz ?? ''}`.slice(0, 300),
       aktiv: b,
       main: `<section class="held klein" aria-labelledby="held-titel"><div class="w zwei mitte"><div>
 <nav class="brotkrumen" aria-label="Brotkrumen"><a href="/">Start</a><span aria-hidden="true">›</span><a href="/${seite.bereiche[b].pfad}/">${e(d.name)}</a><span aria-hidden="true">›</span><span>${e(a.name)}</span></nav>
 <div class="bereich-zeile">${kachel(b)}<span class="eb">${e(d.name)}${a.gruppe ? ` · ${e(a.gruppe)}` : ''}${istBald ? ' · <span class="bald dunkel-bald">Coming Soon</span>' : ''}</span></div>
 <h1 id="held-titel">${e(a.name)}</h1>
-${a.fuer_wen ? `<p class="lead">${t(a.fuer_wen)}</p>` : `<p class="lead">${t(d.satz)}</p>`}
+<p class="lead">${t(pb?.versprechen ?? a.fuer_wen ?? d.satz)}</p>
 </div>
 <aside class="preis-kasten" aria-label="Preis"><span class="eb">Preis</span><div class="betrag">${e(a.preis)}</div><div class="zusatz">${e(a.preis_zusatz ?? '')} · netto zuzüglich Umsatzsteuer</div>${terminKnopf}${checkKnopf(`produkt_${a.id}`, 'Erst den Check machen', 'zweit')}</aside>
 </div></section>
 
-${a.enthalten ? `<section class="abschnitt hell" aria-labelledby="inhalt-titel"><div class="w spalten">
+${pb ? blattHtml : `${a.enthalten ? `<section class="abschnitt hell" aria-labelledby="inhalt-titel"><div class="w spalten">
 <div><span class="eb">Was drin ist</span><h2 id="inhalt-titel">Enthalten</h2>${haken(a.enthalten)}</div>
 ${gutZuWissen}
 </div></section>` : ''}
 
 ${stufenHtml}
-${a.enthalten ? '' : `<section class="abschnitt hell" aria-label="Gut zu wissen"><div class="w">${gutZuWissen}</div></section>`}
-${zusatz.length ? `<section class="abschnitt hell" aria-labelledby="zusatz-titel"><div class="w">${kopfzeile('Zusatzoptionen', '<span id="zusatz-titel">Dazu buchbar</span>')}<div class="angebote">${zusatz.map((z) => zusatzKarte(z, a)).join('')}</div></div></section>` : ''}
-${fragen(faqVon(seite.produkt_faq[a.id] ?? []))}
-${weitere.length ? `<section class="abschnitt" aria-labelledby="weitere-titel"><div class="w">${kopfzeile(d.name, `<span id="weitere-titel">Weitere Angebote im Bereich ${e(d.name)}</span>`)}<div class="angebote dunkel-karten n${weitere.length}">${weitere.map((x) => `<a class="schritt" href="${produktPfad(x)}"><span class="nr">${e(preisKurz(x))}</span><b>${e(x.name)}</b><p>${t(x.fuer_wen ?? (x.enthalten ?? [])[0] ?? '')}</p></a>`).join('')}</div></div></section>` : ''}
-${ende('Bereit für den nächsten Schritt?', istBald ? 'Trag dich auf die Warteliste ein. Oder starte mit dem Innovations-Check, er zeigt in 10 Minuten, wo du stehst.' : 'Sprich mit uns über deinen Start. Oder mach zuerst den Innovations-Check, er zeigt in 10 Minuten, wo du stehst.', `<div class="knoepfe">${terminKnopf}${checkKnopf(`produkt_${a.id}_ende`, 'Innovations-Check starten', 'zweit')}</div>`)}`,
+${a.enthalten ? '' : `<section class="abschnitt hell" aria-label="Gut zu wissen"><div class="w">${gutZuWissen}</div></section>`}`}
+${zusatz.length ? `<section class="abschnitt hell" aria-labelledby="zusatz-titel"><div class="w">${kopfzeile('Zusatzoptionen', '<span id="zusatz-titel">Dazu buchbar</span>')}<div class="angebote n${zusatz.length}">${zusatz.map((z) => zusatzKarte(z, a)).join('')}</div></div></section>` : ''}
+${fragen(fragenListe)}
+${weitere.length ? `<section class="abschnitt" aria-labelledby="weitere-titel"><div class="w">${kopfzeile(geschwister.length ? a.gruppe : d.name, `<span id="weitere-titel">${geschwister.length ? `Die anderen ${e(a.gruppe)}` : `Weitere Angebote im Bereich ${e(d.name)}`}</span>`)}<div class="angebote dunkel-karten n${weitere.length}">${weitere.map((x) => `<a class="schritt" href="${produktPfad(x)}"><span class="nr">${e(preisKurz(x))}</span><b>${e(x.name)}</b><p>${t(x.fuer_wen ?? (x.enthalten ?? [])[0] ?? '')}</p></a>`).join('')}</div><p class="satz-unter"><a class="textlink" href="/${seite.bereiche[b].pfad}/#angebote">Alle Angebote im Bereich ${e(d.name)} ${PFEIL}</a></p></div></section>` : ''}
+${ende('Bereit für den nächsten Schritt?', pb?.naechster ?? (istBald ? 'Trag dich auf die Warteliste ein. Oder starte mit dem Innovations-Check, er zeigt in 10 Minuten, wo du stehst.' : 'Sprich mit uns über deinen Start. Oder mach zuerst den Innovations-Check, er zeigt in 10 Minuten, wo du stehst.'), terminZeile)}`,
     });
   }
 
@@ -489,6 +553,8 @@ ${k.telefon ? `<div><span class="eb">Telefon</span>${telefon()}</div>` : ''}
 
   // ── Rechtliches (Sie-Form; Hinweis, keine Rechtsberatung — vor dem Start anwaltlich prüfen) ──
   const an = seite.anbieter[seite.anbieter_aktiv];
+  // Kevin 25.10.: Betreiber (Anbieter) und Vertragspartner der Leistungen getrennt nennen, solange sie verschieden sind.
+  const vp = seite.vertragspartner;
   const anschrift = `<address>${e(an.name)}<br>${an.adresse.map(t).join('<br>')}</address>`;
   neu('impressum/index.html', {
     titel: 'Impressum · MAKE Innovation',
@@ -500,6 +566,7 @@ ${k.telefon ? `<div><span class="eb">Telefon</span>${telefon()}</div>` : ''}
 <h2>Kontakt</h2><p>E-Mail: <a class="textlink" href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a>${seite.kontakt.telefon ? `<br>Telefon: ${telefon()}` : ''}</p>
 <h2>Registereintrag</h2><p>${t(an.register)}</p>
 ${an.ustid ? `<h2>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG</h2><p>${t(an.ustid)}</p>` : ''}
+${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über die angebotenen Leistungen schließt derzeit:</p><address>${e(vp.name)}<br>${vp.adresse.map(t).join('<br>')}</address><p>E-Mail: <a class="textlink" href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a></p>${vp.ustid ? `<p>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: ${t(vp.ustid)}</p>` : ''}` : ''}
 <h2>Verantwortlich nach § 18 Abs. 2 MStV</h2><p>${t(an.vertreten)}, Anschrift wie oben</p>
 <h2>Verbraucherstreitbeilegung</h2><p>Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. Unsere Angebote richten sich an Unternehmen.</p>
 <p class="leise">Stand: Oktober 2026</p>

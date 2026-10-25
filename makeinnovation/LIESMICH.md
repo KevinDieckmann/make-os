@@ -43,7 +43,8 @@ offline und wird später in 4.0 neu gebaut — bis dahin kein Link dorthin) · k
 | Datei | Inhalt |
 |---|---|
 | `inhalt/inhalt.json` | Angebote, Startseiten-Texte, Bereichsseiten, Gratis, FAQ, Konditionen — Kevins `homepage-content.json` **ohne** interne Teile (Namen Dritter, Kapazitäten, Rechtsnotizen, offene Punkte, Zielgruppen, Formular-Plan); FAQ mit fester `id` |
-| `inhalt/seite.json` | Kontakt, Anbieter (KD Ventures UG / MAKE Innovation GmbH), Termin-Link, Team, Fallbeispiele, Fragen je Seite, Konditionen je Produkt, was der Check heute kann |
+| `inhalt/produkte.json` | Kevins Produktblätter (freigegeben 25.10.): je Produktseite Ausgangslage, Für wen / Nicht für, Ablauf, Ergebnis, Leistung (Bausteine bzw. Eckdaten), Videokatalog, Preis und Konditionen, Mitwirkung, Nicht enthalten, Fragen; `familien` (Homepages, Videos) für Gemeinsames, `vergleiche` für die Tabellen der Bereichsseite |
+| `inhalt/seite.json` | Kontakt, Anbieter (KD Ventures UG / MAKE Innovation GmbH), Termin-Link, Team, Fallbeispiele, Fragen je Seite, Konditionen der Angebote ohne Produktblatt, `ausgeblendet` (Angebote/Zusatzoptionen, die in inhalt.json bleiben, aber nicht erscheinen), was der Check heute kann |
 | `bauen.mjs` | Generator: schreibt alle 24 Seiten aus den beiden Dateien (+ Stempel `?v=` für css/js). `--pruefen` = passt alles zur Quelle? |
 | `pruefen.mjs` | Regeln vor der Freigabe (Fehler + Offenes, siehe unten) |
 | `css/marke.css` | Gestaltungsgrundlage 4.0 (Tokens aus Kap. 07/08, Bausteine) — eine Quelle für alle Seiten |
@@ -82,10 +83,26 @@ was fehlt, steht als gelber Platzhalter `[[KEVIN: …]]` und blockiert die Freig
 - **Ruhiger Aufbau:** je Seite erst die dunklen Abschnitte (Einstieg, Weg, Belege, Ablauf), dann die hellen zum Lesen (Angebote, Vergleich, Fragen),
   dann der Abschluss — kein Hin und Her mehr. Das 90-Tage-Gespräch steht direkt unter dem Check. Vier Angebote stehen in einer Reihe.
 
+## Produktblätter (25.10., Kevin: Ordner „Produkte“ — „schau, was zu übernehmen ist“)
+- **Übernommen (nur der Kundenteil):** Head of Sales, Chief Sales Officer, Homepage Landing/Story/Cinematic, Erklärvideo, Videostory, Video Serie bekommen
+  ihre Produktseite aus `inhalt/produkte.json` (dunkel: Ausgangslage, Ablauf mit Ergebnis · hell: Leistung, Videokatalog, Preis und Konditionen,
+  Mitwirkung, Fragen). Sichtbarkeit zeigt die Paket- und Video-Vergleiche (am Handy als Karten). Weitere Angebote auf Paketseiten = die anderen Pakete.
+- **Korrigiert nach dem Artikelstamm:** Video Serie 1.990 €/Monat mit 2 Videos aus dem Katalog (vorher 1.490 € „Erklärvideo + Videostory“) ·
+  Homepages und Videos Vorkasse, Raten nur auf Nachfrage, kein Skonto (vorher „3 Raten“/„50/50“) · Skonto 3 % nur bei Head of Sales/CSO mit voller
+  Laufzeit vorab · Lieferzeiten Story 15, Cinematic 25 Werktage · CSO-Intros frühestens nach 6 Monaten, ohne Provision · Fokus Innovation alle zwei
+  Monate, für Gäste kostenlos.
+- **Ausgeblendet (`seite.json › ausgeblendet`, Kevin entscheidet):** KI-CRM („kommt später, vorerst nicht aktiv angeboten“) · Zusatzoptionen
+  Bild- und Videoproduktion und Social Media Management (nicht im Artikelstamm; Videos „nicht für Dreh vor Ort“).
+- **Impressum nennt beide (Kevin 25.10.: „Beide nennen“):** Betreiber = `anbieter_aktiv` (KD Ventures UG), darunter „Vertragspartner für unsere
+  Leistungen“ = `seite.json › vertragspartner` (Kevin Dieckmann, Einzelunternehmen, bis zur Umschreibung der Kunden). Sind beide dieselbe Firma, `name` leeren.
+- **Nicht auf die Website:** Leistungsbeschreibung (Vertragsanlage), interner Ablauf mit Meilensteinen und Aufgaben, Onboarding, Kundenmails, KI-Prompts,
+  Vorlagen, Angebots- und Rechnungsvorlage, Artikelnummern — das gehört in die App (Produkte, Fulfillment, Angebote, Rechnungen).
+- **Noch nicht freigegeben, daher nicht übernommen:** Positionierung, Tagesworkshop, Innovations-Check/Gratis, Fokus-Partner (1.990 €), Scoping-Workshop
+  und Umsetzungsprojekte — die Ordner folgen laut Katalog.
+
 ## Offen vor der Freigabe (Stand 24.10. spät; `node makeinnovation/pruefen.mjs` listet es)
 - Telefon und Adresse · Anbieter-Daten der KD Ventures UG (Anschrift, Geschäftsführer, Register) und später der GmbH
 - Kurztexte zu Kevin und Malin · drei Fallbeispiele (anonymisiert, mit Zustimmung)
-- Preise der Homepage-Pakete bestätigen (2.990 / 4.990 / 9.990 €, „vorläufig“ seit der Inhaltsänderung 24.10.)
 - Buchungsseite in MAKE OS anlegen und `seite.json › termin.link` setzen (`/buchen/<name>-<24 Hex>`)
 - AGB auf die GmbH umstellen (noch nicht verlinkt) · Impressum und Datenschutz anwaltlich prüfen (Hinweis, keine Rechtsberatung)
 - Innovations-Check in MAKE OS einschalten (Markttraktion › Marketing › Innovations-Check, braucht den Verantwortlichen)

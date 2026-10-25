@@ -42,7 +42,34 @@ describe('makeinnovation.de', () => {
   });
 
   it('die Inhaltsdatei trägt keine internen Namen (Liste „nicht auf die Homepage“)', () => {
-    const roh = readFileSync(join(ORDNER, 'inhalt', 'inhalt.json'), 'utf8') + readFileSync(join(ORDNER, 'inhalt', 'seite.json'), 'utf8');
+    const roh = ['inhalt.json', 'seite.json', 'produkte.json'].map((d) => readFileSync(join(ORDNER, 'inhalt', d), 'utf8')).join('\n');
     for (const w of SPERRLISTE as RegExp[]) expect(w.test(roh), w.source).toBe(false);
+  });
+
+  // Kevins Produktblätter (25.10.): EINE Quelle je Produktseite, Preise und Konditionen passen zum Angebot.
+  it('jedes Produktblatt gehört zu einem Angebot mit Seite, Preis im Kasten = Preis in der Tabelle', () => {
+    const q = quellen();
+    for (const [id, blatt] of Object.entries(q.produkte.produkte) as [string, { familie?: string; konditionen_vorn?: string[][]; konditionen?: string[][] }][]) {
+      const a = q.inhalt.angebote.find((x: { id: string }) => x.id === id);
+      expect(a, id).toBeTruthy();
+      if (blatt.familie) expect(q.produkte.familien[blatt.familie], id).toBeTruthy();
+      const preis = [...(blatt.konditionen_vorn ?? []), ...(blatt.konditionen ?? [])].find((z) => z[0] === 'Preis')?.[1] ?? '';
+      expect(preis.startsWith(a.preis), `${id}: ${preis} ↔ ${a.preis}`).toBe(true);
+    }
+  });
+
+  it('ausgeblendete Angebote haben keine Seite und stehen nirgends im Menü', () => {
+    const s = JSON.parse(readFileSync(join(ORDNER, 'inhalt', 'seite.json'), 'utf8'));
+    const start = readFileSync(join(ORDNER, 'index.html'), 'utf8');
+    for (const id of s.ausgeblendet.angebote) {
+      expect(seitenBauen().some((x: { pfad: string }) => x.pfad.includes(`/${id}/`)), id).toBe(false);
+      expect(start.includes(`/${id}/`), id).toBe(false);
+    }
+  });
+
+  it('keine überholten Zahlungsregeln (Raten, Skonto auf alles) mehr auf der Seite', () => {
+    for (const x of seitenBauen() as { pfad: string; html: string }[]) {
+      expect(x.html, x.pfad).not.toMatch(/bis zu 3 Raten|50 % vorab|Skonto bei Zahlung innerhalb der Frist|einzeln würden beide/);
+    }
   });
 });

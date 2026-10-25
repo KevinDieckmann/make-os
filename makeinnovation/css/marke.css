@@ -170,6 +170,7 @@ a.schritt:hover { transform: translateY(-3px); }
 /* Angebotskarten (hell) */
 .angebote { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 @media (min-width: 1100px) { .angebote.n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 641px) { .angebote.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1000px) { .angebote { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .angebote { grid-template-columns: minmax(0, 1fr); } }
 .angebot { background: var(--weiss); border: 1px solid var(--papier-linie); border-radius: var(--ecke); padding: 26px; display: flex; flex-direction: column; gap: 12px; position: relative; }
@@ -282,6 +283,19 @@ a.schritt:hover { border-color: var(--linie-stark); }
 .vergleich .nein { color: #A9A39A; }
 .tabelle-huelle { overflow-x: auto; border-radius: var(--ecke); }
 @media (max-width: 560px) { .vergleich { font-size: 0.85rem; } .vergleich th, .vergleich td { padding: 10px 10px; } .vergleich td:not(:first-child), .vergleich th:not(:first-child) { width: 70px; } }
+.vergleich.text td:not(:first-child), .vergleich.text th:not(:first-child) { text-align: left; width: 26%; }
+.vergleich.text tbody th { font-weight: 700; }
+.vergleich.text thead a { color: var(--tinte); }
+.vergleich.text thead a:hover { color: var(--tiefviolett); }
+@media (max-width: 720px) {
+  .vergleich.text thead { display: none; }
+  .vergleich.text, .vergleich.text tbody, .vergleich.text tr { display: block; width: 100%; }
+  .vergleich.text { border: 0; background: transparent; }
+  .vergleich.text tr { background: var(--weiss); border: 1px solid var(--papier-linie); border-radius: 14px; margin-bottom: 10px; padding: 6px 0 8px; }
+  .vergleich.text tbody th { display: block; border-top: 0; padding: 10px 16px 4px; font-size: 1rem; }
+  .vergleich.text td:not(:first-child) { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; border-top: 0; padding: 4px 16px; width: auto; font-size: 0.92rem; }
+  .vergleich.text td::before { content: attr(data-name); font-weight: 700; color: var(--tinte); }
+}
 
 /* Stufen der Positionierung */
 .pakete { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -312,9 +326,46 @@ a.schritt:hover { border-color: var(--linie-stark); }
 .nicht { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
 .nicht li { display: flex; gap: 10px; color: var(--tinte-leise); font-size: 0.95rem; }
 .nicht li::before { content: "—"; color: #A9A39A; flex: none; }
-.spalten { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.spalten { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; }
 @media (max-width: 860px) { .spalten { grid-template-columns: 1fr; } }
 .karte-hell { background: var(--weiss); border: 1px solid var(--papier-linie); border-radius: var(--ecke); padding: 26px; display: flex; flex-direction: column; gap: 14px; }
+.karte-dunkel { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--ecke); padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+.karte-dunkel p { color: var(--leise); font-size: 0.98rem; }
+.karte-dunkel.erfolg { background: linear-gradient(var(--flaeche), var(--flaeche)) padding-box, linear-gradient(140deg, rgba(47, 191, 113, .5), rgba(124, 92, 255, .5)) border-box; border-color: transparent; }
+.karte-hell h3, .karte-dunkel h3 { font-size: 1.2rem; }
+.karte-hell > h3:not(:first-child), .karte-dunkel > h3:not(:first-child) { margin-top: 12px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Produktblatt: Zeitplan, Bausteine, Eckdaten, Videokatalog */
+.zeitplan { list-style: none; margin: 4px 0 0; padding: 0; }
+.zeitplan li { position: relative; padding: 0 0 24px 34px; }
+.zeitplan li::before { content: ""; position: absolute; left: 6px; top: 14px; bottom: -4px; width: 2px; background: var(--linie-stark); }
+.zeitplan li:last-child { padding-bottom: 0; }
+.zeitplan li:last-child::before { display: none; }
+.zeitplan li::after { content: ""; position: absolute; left: 0; top: 4px; width: 14px; height: 14px; border-radius: 50%; background: var(--verlauf); box-shadow: 0 0 12px rgba(124, 92, 255, .45); }
+.zeitplan .wann { display: block; font: 500 0.75rem/1.4 var(--s-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--lavendel); margin-bottom: 3px; }
+.zeitplan b { display: block; font-size: 1.08rem; }
+.zeitplan li div > span { display: block; color: var(--leise); font-size: 0.95rem; margin-top: 2px; }
+.zeitplan-hinweis { color: var(--leise); font-size: 0.92rem; margin-top: 22px; }
+.bausteine { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 16px; }
+.baustein { background: var(--weiss); border: 1px solid var(--papier-linie); border-radius: var(--ecke); padding: 24px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
+.baustein::before { content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 100%; background: var(--verlauf); opacity: .85; }
+.baustein b { font-size: 1.15rem; }
+.baustein .hinweis { font: 500 0.72rem/1.4 var(--s-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--tiefgruen); }
+.baustein p { color: var(--tinte-leise); font-size: 0.95rem; }
+.satz-unter { margin-top: 22px; color: var(--tinte-leise); }
+.daten { margin: 18px 0 0; border-top: 1px solid var(--papier-linie); }
+.daten > div { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; padding: 13px 0; border-bottom: 1px solid var(--papier-linie); }
+.daten dt { font-weight: 700; }
+.daten dd { margin: 0; color: var(--tinte-leise); }
+@media (max-width: 560px) { .daten > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+.katalog { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+.katalog.n1 { grid-template-columns: minmax(0, 1fr); }
+.katalog h3 { font-size: 1.15rem; margin-bottom: 14px; }
+.formate { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.formate li { border: 1px solid var(--papier-linie); background: var(--weiss); border-radius: 99px; padding: 8px 14px; font-size: 0.92rem; }
+.formate li.spaeter { color: var(--tinte-leise); border-style: dashed; background: transparent; }
+@media (max-width: 760px) { .katalog { grid-template-columns: minmax(0, 1fr); } }
 
 /* Kontakt */
 .kontakt-liste { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
@@ -365,7 +416,7 @@ a.schritt:hover { border-color: var(--linie-stark); }
   .zoe-knopf { view-transition-name: zoe-knopf; }
   /* Inhalte gleiten beim ersten Hineinscrollen ein — gerechnet vom Browser selbst (Scroll-Zeitleiste), kein Skript, kein Ruckeln. */
   @supports (animation-timeline: view()) {
-    .abschnitt :is(.kopfzeile, .bereich, .angebot, .schritt, .beleg, .person, .gespraech, .chat, .fall, .karte-hell, .vergleich, .stufen-lang li, .ablauf li, .kontakt-liste > div, .fragen details, .fokus-zeile, .ende .w > *, .preis-kasten, .gruppe-titel) {
+    .abschnitt :is(.kopfzeile, .bereich, .angebot, .schritt, .beleg, .person, .gespraech, .chat, .fall, .karte-hell, .karte-dunkel, .baustein, .zeitplan li, .daten, .katalog > div, .vergleich, .stufen-lang li, .ablauf li, .kontakt-liste > div, .fragen details, .fokus-zeile, .ende .w > *, .preis-kasten, .gruppe-titel) {
       animation: auftauchen linear both; animation-timeline: view(); animation-range: entry 0% entry 55%;
     }
     /* eigenes `translate` (nicht `transform`), damit das Anheben beim Zeigen weiter weich läuft */

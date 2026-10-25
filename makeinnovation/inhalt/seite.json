@@ -38,6 +38,15 @@
    "ustid": ""
   }
  },
+ "vertragspartner": {
+  "hinweis": "Kevin 25.10.: Betreiber der Website ist der Anbieter oben (§ 5 DDG); Verträge über die Leistungen schließt laut Produktblättern bis zur Umschreibung der Kunden das Einzelunternehmen. Leeren (name: \"\"), sobald Betreiber und Vertragspartner dieselbe Firma sind (z. B. nach der Umschreibung auf die GmbH).",
+  "name": "Kevin Dieckmann (Einzelunternehmen)",
+  "adresse": [
+   "Kurfürstendamm 96",
+   "10709 Berlin"
+  ],
+  "ustid": ""
+ },
  "check_punkte": {
   "hinweis": "Was der Check heute wirklich kann (Beta). Sprache und Datei-Upload kommen erst mit Phase 2 — deshalb hier nicht versprochen.",
   "punkte": [
@@ -141,10 +150,6 @@
    "gibt-es-rabatt",
    "sind-die-preise-netto"
   ],
-  "ki-crm": [
-   "gibt-es-rabatt",
-   "sind-die-preise-netto"
-  ],
   "homepage-landing": [
    "wie-schnell-ist-meine-homepage-fertig",
    "kann-ich-spaeter-auf-ein-groesseres",
@@ -189,33 +194,7 @@
   ]
  },
  "produkt_konditionen": {
-  "head-of-sales": [
-   "Head of Sales und CSO monatlich abgerechnet"
-  ],
-  "cso": [
-   "Head of Sales und CSO monatlich abgerechnet"
-  ],
-  "homepage-landing": [
-   "Homepage Landing und Story in bis zu 3 Raten, Cinematic 50 % vorab, 50 % nach Abschluss",
-   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
-  ],
-  "homepage-story": [
-   "Homepage Landing und Story in bis zu 3 Raten, Cinematic 50 % vorab, 50 % nach Abschluss",
-   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
-  ],
-  "homepage-cinematic": [
-   "Homepage Landing und Story in bis zu 3 Raten, Cinematic 50 % vorab, 50 % nach Abschluss",
-   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
-  ],
-  "erklaervideo": [
-   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
-  ],
-  "videostory": [
-   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
-  ],
-  "video-serie": [
-   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
-  ]
+  "hinweis": "Nur für Angebote ohne Eintrag in produkte.json (dort steht die Tabelle „Preis und Konditionen“)."
  },
  "fokus": {
   "titel": "Fokus Innovation",
@@ -227,5 +206,15 @@
  "fallbeispiele_zeigen": false,
  "indexieren_hinweis": "Kevin 24.10.: sofort indexieren — ohne noindex, robots.txt offen, sitemap.xml wird mitgebaut. Auf dem Server die Zeile X-Robots-Tag im Caddy-Block entfernen.",
  "indexieren": true,
- "abzeichen": "Empfohlen"
+ "abzeichen": "Empfohlen",
+ "ausgeblendet": {
+  "hinweis": "Kevins Inhalte bleiben in inhalt.json, erscheinen aber nicht auf der Seite. KI-CRM: laut Artikelstamm 25.10. „kommt später, wird vorerst nicht aktiv angeboten“. Bild- und Videoproduktion, Social Media Management: nicht im freigegebenen Artikelstamm, Videos „nicht für Dreh vor Ort“ — Kevin entscheidet.",
+  "angebote": [
+   "ki-crm"
+  ],
+  "zusatzoptionen": [
+   "Bild- und Videoproduktion",
+   "Social Media Management"
+  ]
+ }
 }
