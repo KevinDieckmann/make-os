@@ -14,8 +14,9 @@ import { RECHTSART, istGesellschaft, type Gesellschaftskennung } from '@/lib/ein
 import { positionNettoCent, ustCent, nummerAusFormat, euroCent, mengeText, KURZ_VORGABE, ZAHLUNGSZIEL_VORGABE_TAGE, UST_SAETZE } from '@/lib/crm/angebote';
 import { istKontaktKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
-import { monatsGrenzen, monatsName, monatsHonorar, type Leistungsmonat } from '@/lib/crm/mandat-laufzeit';
+import { monatsGrenzen, monatsName, monatsHonorar, mandatLaeuftIm as mandatLaeuftImMonat, type Leistungsmonat } from '@/lib/crm/mandat-laufzeit';
 import { ANSCHRIFT_MAX } from '@/lib/crm/zahlung';
+import { ABGERECHNET_PRAEFIX } from '@/lib/make-one/liquiditaet';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
 
@@ -394,6 +395,29 @@ export function mandatMonatVorgabe(m: Partial<Pick<Mandat, 'start' | 'ende'>>, h
   if (tagOk(m.start) && m.start.slice(0, 7) > mo) mo = m.start.slice(0, 7);
   if (tagOk(m.ende) && m.ende.slice(0, 7) < mo) mo = m.ende.slice(0, 7);
   return mo;
+}
+
+/**
+ * Die Leistungsmonate eines Mandats, für die die Monatsrechnung schon gestellt (bzw. bezahlt) ist (25.10., Kern-Bau-Test 2): gültige Rechnungen des Mandats (nicht
+ * storniert, keine Stornorechnung, nicht aus einem Angebot, nicht nur „abgerechnet“ nach Menge) mit Leistungsbeginn. Ein Entwurf hält den Monat nicht — der Knopf
+ * öffnet ihn dann.
+ */
+export function abgerechneteMonate(mandatId: string, rechnungen: readonly Partial<Pick<Rechnung, 'mandatId' | 'status' | 'art' | 'angebotId' | 'leistungVon' | 'positionen'>>[]): Set<string> {
+  const nurNachMenge = (r: Partial<Pick<Rechnung, 'positionen'>>) => !!r.positionen?.length && r.positionen.every(p => p.id.startsWith(ABGERECHNET_PRAEFIX));
+  return new Set(rechnungen
+    .filter(r => r.mandatId === mandatId && (r.status === 'gestellt' || r.status === 'bezahlt') && r.art !== 'storno' && !r.angebotId && typeof r.leistungVon === 'string' && !nurNachMenge(r))
+    .map(r => r.leistungVon!.slice(0, 7)));
+}
+/**
+ * Der nächste offene Leistungsmonat ab `ab` (25.10.: nach dem Stellen der November-Rechnung bot der Knopf weiter „Rechnung für November 2026 schreiben“ an): der
+ * erste Monat der Laufzeit ohne gestellte Monatsrechnung (`abgerechneteMonate`) — null, wenn das Mandat danach nicht mehr läuft.
+ */
+export function naechsterOffenerMonat(m: Partial<Pick<Mandat, 'start' | 'ende'>>, ab: string, abgerechnet: ReadonlySet<string>): string | null {
+  if (!monatsGrenzen(ab)) return null;
+  const weiter = (mo: string) => new Date(Date.UTC(Number(mo.slice(0, 4)), Number(mo.slice(5, 7)), 1)).toISOString().slice(0, 7);
+  let mo = ab;
+  for (let i = 0; i < 240 && abgerechnet.has(mo); i++) mo = weiter(mo);
+  return mandatLaeuftImMonat(m, mo) && !abgerechnet.has(mo) ? mo : null;
 }
 
 /** Der Satz, wenn das Mandat im gewählten Monat nicht läuft (409) — mit dem Monat, für den es eine Rechnung gibt. */

@@ -304,3 +304,30 @@ describe('8 · „Angebot erstellen“ am Deal öffnet dessen offenen Entwurf st
   });
 });
 
+// ── 9 · Nach dem Stellen: der nächste offene Leistungsmonat ──
+import { abgerechneteMonate, naechsterOffenerMonat } from '@/lib/finanzen/rechnung/regeln';
+
+describe('9 · „Rechnung für … schreiben“ nennt nach dem Stellen den nächsten offenen Leistungsmonat', () => {
+  const M = mandat();
+  const r = (x: Record<string, unknown>) => ({ mandatId: 'm-paket', status: 'gestellt', leistungVon: '2026-11-15', positionen: [{ id: 'p1' }], ...x }) as Parameters<typeof abgerechneteMonate>[1][number];
+  it('November gestellt → Dezember; Entwurf, Storno, Angebots- und Mengen-Rechnungen halten den Monat nicht', () => {
+    expect(naechsterOffenerMonat(M, '2026-11', abgerechneteMonate('m-paket', []))).toBe('2026-11');
+    const nov = abgerechneteMonate('m-paket', [r({})]);
+    expect([...nov]).toEqual(['2026-11']);
+    expect(naechsterOffenerMonat(M, '2026-11', nov)).toBe('2026-12');
+    expect([...abgerechneteMonate('m-paket', [r({ status: 'entwurf' }), r({ status: 'storniert' }), r({ art: 'storno' }), r({ angebotId: 'ang-1' }), r({ positionen: [{ id: 'za-1' }] }), r({ mandatId: 'm-anders' })])]).toEqual([]);
+    // Bezahlt zählt wie gestellt; zwei Monate hintereinander.
+    expect(naechsterOffenerMonat(M, '2026-11', abgerechneteMonate('m-paket', [r({ status: 'bezahlt' }), r({ leistungVon: '2026-12-01' })]))).toBe('2027-01');
+  });
+  it('am Ende der Laufzeit nichts mehr', () => {
+    const kurz = mandat({ ende: '2026-12-31' });
+    expect(naechsterOffenerMonat(kurz, '2026-12', abgerechneteMonate('m-paket', [r({ leistungVon: '2026-12-01' })]))).toBeNull();
+  });
+  it('das Mandat fragt die Regel (ein Knopf für den nächsten offenen Monat)', () => {
+    const q = quelle('components/os/crm/Kunden.tsx');
+    expect(q).toMatch(/const naechster = basisMonat \? naechsterOffenerMonat\(m, basisMonat, abgerechnet\) : null;/);
+    expect(q).toMatch(/onClick=\{\(\) => monatsrechnung\(naechster\)\}/);
+    expect(q).not.toMatch(/monatsrechnung\(andererMonat\)/);
+  });
+});
+

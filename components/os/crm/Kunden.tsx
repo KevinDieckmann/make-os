@@ -53,7 +53,7 @@ import { HeadPanel } from './HeadPanel';
 import { useZiel, useZuZiel } from '../ziel';
 import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
 import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
-import { monatsName, mandatLaeuftIm, mandatMonatVorgabe } from '@/lib/finanzen/rechnung/regeln';
+import { monatsName, mandatLaeuftIm, mandatMonatVorgabe, abgerechneteMonate, naechsterOffenerMonat } from '@/lib/finanzen/rechnung/regeln';
 import { MandatFortschritt, FallPhase } from '../mandate/treppe/Fortschritt';
 import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
 import { OnboardingFrage } from '../fulfillment/prozesse/OnboardingFrage';
@@ -488,7 +488,8 @@ export function KundenKurz({ api }: { api: CrmApi }) {
   );
 }
 
-interface RechnungKurz { id: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string; bezahltAm?: string; mandatId?: string; firmaId?: string }
+interface RechnungKurz { id: string; kunde: string; titel: string; betrag: number; status: string; faellig?: string; bezahltAm?: string; mandatId?: string; firmaId?: string;
+  /** Für „welcher Monat ist schon gestellt“ (25.10., `abgerechneteMonate`). */ leistungVon?: string; art?: 'rechnung' | 'storno' | 'mahnung'; angebotId?: string; positionen?: { id: string }[] }
 
 /**
  * Rechnungen zum Mandat (26.09.): was gestellt, offen, überfällig ist — je Zeile die Rechnung. Neue Rechnung NUR über den einen Anleger
@@ -527,6 +528,11 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   const monatLaeuft = mandatLaeuftIm(m, monat);
   // Läuft es in keinem der beiden (beginnt später bzw. endete früher): sein nächster bzw. letzter Monat.
   const andererMonat = !vormonatLief && !monatLaeuft ? mandatMonatVorgabe(m, heute) : null;
+  // 25.10. (Kern-Bau-Test 2): ein Monat mit gestellter Monatsrechnung wird nicht mehr angeboten — der Knopf nennt den nächsten offenen Leistungsmonat.
+  const abgerechnet = abgerechneteMonate(m.id, eigene as Parameters<typeof abgerechneteMonate>[1]);
+  const vormonatOffen = vormonatLief && !abgerechnet.has(vormonat);
+  const basisMonat = monatLaeuft ? monat : andererMonat;
+  const naechster = basisMonat ? naechsterOffenerMonat(m, basisMonat, abgerechnet) : null;
   const monatsrechnung = async (mo: string) => {
     const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: m.id, monat: mo });
     if (!e.id) { setFehler(e.fehler ?? 'Nicht angelegt.'); return; }
@@ -550,9 +556,8 @@ function MandatRechnungen({ m }: { m: Mandat }) {
         ))}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Den Vormonat nur, wenn das Mandat da schon lief (17.10., Gesamtprüfung L1 B9 — vorher „Rechnung für September“ bei Start am 17.10.). */}
-          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && vormonatLief && <Knopf leise onClick={() => monatsrechnung(vormonat)}>Rechnung für {monatsName(vormonat)} schreiben</Knopf>}
-          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && andererMonat && mandatLaeuftIm(m, andererMonat) && <Knopf leise onClick={() => monatsrechnung(andererMonat)}>Rechnung für {monatsName(andererMonat)} schreiben</Knopf>}
-          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && monatLaeuft && <Knopf leise onClick={() => monatsrechnung(monat)}>{vormonatLief ? '… für' : 'Rechnung für'} {monatsName(monat)}{vormonatLief ? '' : ' schreiben'}</Knopf>}
+          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && vormonatOffen && <Knopf leise onClick={() => monatsrechnung(vormonat)}>Rechnung für {monatsName(vormonat)} schreiben</Knopf>}
+          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && naechster && <Knopf leise onClick={() => monatsrechnung(naechster)}>{vormonatOffen ? '… für' : 'Rechnung für'} {monatsName(naechster)}{vormonatOffen ? '' : ' schreiben'}</Knopf>}
           {liste !== 'kein' && offenGes && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Gesellschaft noch „offen“ — oben wählen, dann lässt sich die Rechnung schreiben.</span>}
           {liste !== 'kein' && m.honorar.betrag > 0 && !finanzFirma && !offenGes && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{NUR_GRUNDDATEN}</span>}
           {ueber.length > 0 && <span style={{ fontSize: TYP.bedien, color: LEUCHT.kritisch }}>{ueber.length} überfällig</span>}
