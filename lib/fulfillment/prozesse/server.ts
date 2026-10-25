@@ -10,6 +10,7 @@ import type { StapelArtFreigabe } from '@/lib/zoe/stapel-arten';
 import type { Vorschlag } from '@/lib/zoe/stapel';
 import type { CrmBestand, FollowUp, Mandat } from '@/lib/crm/typen';
 import type { DossierKurz, Fall, FallKurz, FristenKontext, KundeKurz, MorgenlaufTeil, StakeholderAuskunft, VorlagenDatei } from '../typen';
+import type { ProduktProzessKurz } from '@/lib/prozesse/produkt-ablauf';
 import { eintragStand, fulfillmentAendern, fulfillmentHaushalt, fulfillmentLesen } from '../speicher';
 import { istBusinessMandat, mandatsEnde, onboardingKandidaten, unterschriftAm, wartetAufEuch, markeOnboardingAus, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { STAPEL_GRUPPE } from '../grenzen';
@@ -495,12 +496,15 @@ export const PROZESSE_STAPEL: StapelArtFreigabe = {
  * Onboarding-Kandidaten mit Uhr und vorgeschlagener Vorlage (für Produkte & Mandate und Fulfillment › Onboarding). `mitProzessLauf` (22.10.): Mandate, deren Ablauf
  * ein laufender Prozess der Werkstatt ist (`mandateMitProduktLaufLesen`) — sie fehlen; ohne Angabe wie vorher.
  */
-export function kandidatenAnsicht(crm: Pick<CrmBestand, 'mandate' | 'angebote' | 'chancen'>, vorlagen: VorlagenDatei, faelle: Record<string, Fall>, heute: string, jetzt: string, mitProzessLauf?: ReadonlySet<string>) {
+export function kandidatenAnsicht(crm: Pick<CrmBestand, 'mandate' | 'angebote' | 'chancen'>, vorlagen: VorlagenDatei, faelle: Record<string, Fall>, heute: string, jetzt: string, mitProzessLauf?: ReadonlySet<string>,
+  /** 24.10. (Bau-Test Kern): je Produkt sein Werkstatt-Prozess (`produktProzesseLesen`) — er ist der Ablauf des Falls (Vorbelegung `prozess`, lib/prozesse/produkt-ablauf.ts). */
+  produktProzesse?: Readonly<Record<string, ProduktProzessKurz>>) {
   return onboardingKandidaten(crm, faelle, vorlagen.marken, heute, mitProzessLauf).map(k => {
     const m = crm.mandate.find(x => x.id === k.mandatId)!;
-    const v = vorlageFuerProdukt(vorlagen, m.leistungId);
+    const pz = m.leistungId ? produktProzesse?.[m.leistungId] : undefined;
+    const v = pz ? null : vorlageFuerProdukt(vorlagen, m.leistungId);
     // Bestand: keine 24-h-Uhr (kein „überfällig“) — die Uhr beginnt erst mit dem Start des Falls (`ableitungFuer`).
-    return { ...k, uhr: k.bestand ? { ueberfaellig: false } : willkommenUhr(k.unterschrift?.am, vorlagen.einstellungen.willkommenStunden, undefined, jetzt), ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}), vorgeschlagen: !!vorlagen.marken[markeOnboardingVorschlag(k.mandatId)] };
+    return { ...k, uhr: k.bestand ? { ueberfaellig: false } : willkommenUhr(k.unterschrift?.am, vorlagen.einstellungen.willkommenStunden, undefined, jetzt), ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}), ...(pz ? { prozess: pz } : {}), vorgeschlagen: !!vorlagen.marken[markeOnboardingVorschlag(k.mandatId)] };
   });
 }
 export { markeOnboardingAus, unterschriftAm };

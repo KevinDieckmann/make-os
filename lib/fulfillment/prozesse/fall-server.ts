@@ -147,9 +147,11 @@ export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId
  * (lib/prozesse/lauf-server.ts `produktLaeufeStarten`). Nur das Onboarding (Willkommens-Uhr, Kick-off, Playbook …), keine Paket-Knoten, `ablauf` zeigt auf den
  * Prozess. Idempotent: hat das Mandat schon einen Fall, bleibt er, wie er ist (`art: 'da'`). Nur Business-Mandate (`mandatPruefen`). Wirft bei Unsinn `FallFehler`.
  */
-export async function prozessAkteAnlegen(e: { mandatId: string; prozessId: string; titel: string; version: number; person: string; wer?: Wer; jetzt?: Date }): Promise<{ fall: Fall; art: 'neu' | 'da' }> {
+export async function prozessAkteAnlegen(e: { mandatId: string; prozessId: string; titel: string; version: number; person: string; wer?: Wer; jetzt?: Date; start?: string }): Promise<{ fall: Fall; art: 'neu' | 'da' }> {
   const jetzt = e.jetzt ?? new Date();
   const iso = jetzt.toISOString(), heute = localDay(jetzt);
+  // „Fall starten“ von Hand (24.10.) bringt den gewählten Starttag mit — derselbe wie beim Paket (`fallStartTag`); der Motor startet heute.
+  const start = e.start && /^\d{4}-\d{2}-\d{2}$/.test(e.start) ? e.start : heute;
   const { h, crm, vorlagen } = await fallUmfeld([]);
   const m = mandatPruefen(crm, e.mandatId);
   const u = unterschriftAm(m, crm, iso);
@@ -161,7 +163,7 @@ export async function prozessAkteAnlegen(e: { mandatId: string; prozessId: strin
     const da = d.faelle[m.id];
     if (da) { fall = da; art = 'da'; return { ok: true, datei: d, geaendert: [] }; }
     const pb = playbookBaustein(vorlagen);
-    fall = prozessAkteStarten({ mandatId: m.id, prozessId: e.prozessId, titel: e.titel, version: e.version, person: e.person, jetzt: iso, start: heute, ...(bis ? { willkommenBis: bis } : {}), ...(pb ? { playbookId: pb.id } : {}), neueId: p => neueKennung(p) });
+    fall = prozessAkteStarten({ mandatId: m.id, prozessId: e.prozessId, titel: e.titel, version: e.version, person: e.person, jetzt: iso, start, ...(bis ? { willkommenBis: bis } : {}), ...(pb ? { playbookId: pb.id } : {}), neueId: p => neueKennung(p) });
     return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: fall } }, geaendert: [m.id] };
   }, e.wer ?? { art: 'person', person: e.person }, h);
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
@@ -171,6 +173,31 @@ export async function prozessAkteAnlegen(e: { mandatId: string; prozessId: strin
     await import('@/lib/ereignisse/quellen').then(q => q.fallEreignisse(leer, f, m, { vorher: leer, nachher: f, heute })).catch(() => 0);
   }
   return { fall: fall!, art };
+}
+
+/**
+ * „Fall starten“ mit dem Prozess des Produkts (24.10., Bau-Test Kern — Regel: lib/prozesse/produkt-ablauf.ts): hat das Produkt des Mandats einen Prozess der
+ * Werkstatt, IST er der Ablauf des Falls. Nur dieser Prozess (sonst 400 — nie der Prozess eines anderen Produkts), nicht archiviert. Legt die Akte an
+ * (`prozessAkteAnlegen`: Onboarding, `ablauf` = Prozess, gewählter Starttag; ein Fall schon da → 409) und stößt die Starts über die Produkt-Bindung einmal an
+ * (lib/prozesse/lauf-server.ts `produktLaeufeAnstossen` — Schatten rechnet nur, scharf legt Aufgaben an; so sieht man auch ohne Takt den Lauf). Wirft `FallFehler`.
+ */
+export async function prozessFallStarten(e: { mandatId: unknown; prozessId: string; start?: unknown; person: string; wer?: Wer; jetzt?: Date }): Promise<{ fall: Fall; laeufe: number }> {
+  const jetzt = e.jetzt ?? new Date();
+  const { crm } = await fallUmfeld([]);
+  const m = mandatPruefen(crm, e.mandatId);
+  const { prozessDesProdukts } = await import('@/lib/prozesse/produkt-bindung');
+  if (prozessDesProdukts(crm.leistungen, m.leistungId) !== e.prozessId) throw new FallFehler('Dieser Ablauf gehört nicht zum Produkt des Mandats — bitte den Ablauf des Produkts wählen.', 400);
+  const { prozesseLesen } = await import('@/lib/prozesse/werkstatt-server');
+  const p = (await prozesseLesen()).prozesse.find(x => x.id === e.prozessId);
+  if (!p || p.status === 'archiviert') throw new FallFehler('Den Ablauf dieses Produkts gibt es nicht (mehr) — in der Werkstatt prüfen.', 404);
+  const v = p.versionen.at(-1);
+  const r = await prozessAkteAnlegen({
+    mandatId: m.id, prozessId: p.id, titel: (v?.definition ?? p.entwurf).titel, version: v?.nr ?? 0, person: e.person, ...(e.wer ? { wer: e.wer } : {}), jetzt,
+    ...(typeof e.start === 'string' ? { start: e.start } : {}),
+  });
+  if (r.art === 'da') throw new FallFehler('Für dieses Mandat läuft schon ein Fall.', 409);
+  const laeufe = await import('@/lib/prozesse/lauf-server').then(l => l.produktLaeufeAnstossen(m.id, e.person, jetzt)).catch(() => 0);
+  return { fall: r.fall, laeufe };
 }
 
 /** Die Phase des Mandats nachziehen — nur vorwärts im Ablauf des Produkts. Liefert, ob gesetzt wurde. */
