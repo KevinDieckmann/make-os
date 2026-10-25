@@ -3,7 +3,10 @@
 // Inhaber. Update-Probe: Mandate ohne Fall bleiben, wie sie sind (CRM unverändert nach Lesen und nach Vorlagen-Arbeit), der Business-Index
 // bekommt ohne Fall nichts (null). Fall nur für Business-Mandate, idempotent über `anfrageId`; Import mit veralteter Vorschau → 409.
 // Eigener Datenordner, erfundene Konten (@example.invalid), kein Netz.
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+// 25.10. (Fulfillment für die Selbstständigkeit): dieser Test prüft die Grenze „Privat bekommt kein Fulfillment“ wie bisher — mit einer Privat-Einheit OHNE
+// Arbeit (Instanz `{"kdc":{"arbeit":false}}`). Die Selbstständigkeit als Arbeit (Vorgabe) prüft tests/fulfillment-selbst.test.ts.
+vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ kdc: { arbeit: false } }); });
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

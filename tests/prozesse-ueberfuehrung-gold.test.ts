@@ -8,6 +8,9 @@
 //   · hin und zurück umschalten (anhalten, wieder aktiv, zurück in den Schatten): nichts doppelt (Kennungs-Brücke), nichts verloren (jede fällige Stufe hat ihre Aufgabe)
 //   · Weiche nicht lesbar (Werkstatt-Bestand gesperrt) → der alte Weg arbeitet, der neue nicht — nie keiner, nie beide
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+// 25.10. (Fulfillment für die Selbstständigkeit): dieser Test prüft die Grenze „Privat bekommt kein Fulfillment“ wie bisher — mit einer Privat-Einheit OHNE
+// Arbeit (Instanz `{"kdc":{"arbeit":false}}`). Die Selbstständigkeit als Arbeit (Vorgabe) prüft tests/fulfillment-selbst.test.ts.
+vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ kdc: { arbeit: false } }); });
 import { mkdtempSync, rmSync, chmodSync, utimesSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

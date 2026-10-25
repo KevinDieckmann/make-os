@@ -13,7 +13,8 @@ describe('B6 · Kundenonboarding nach dem Anlegen', () => {
     expect(frage).toMatch(/startMandat\(d, \{ mandatId: m\.id/);
     expect(frage).toMatch(/sm\?\.prozess \?\?/);
     expect(frage).toMatch(/p\.art === 'paket' && !p\.zusatz/);
-    expect(frage).toMatch(/istBusinessMandat\(m\.gesellschaft\)/);
+    // 25.10.: Mandate mit Fulfillment in der Sicht der Person (Business und die Privat-Arbeits-Einheit — nie für ein Konto „nur Business“).
+    expect(frage).toMatch(/mandatInSicht\(m\.gesellschaft, !nurBusiness\)/);
     expect(frage).toMatch(/d\.faelle\[m\.id\]/);
   });
   it('startet über den vorhandenen Start-Dialog — nie selbst (kein fallAktion, kein Automatismus)', () => {

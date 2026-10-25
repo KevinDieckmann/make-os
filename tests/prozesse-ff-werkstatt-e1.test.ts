@@ -10,7 +10,10 @@
 //   5. Ansicht: Bahnen Kunde/Team, Bestätigung als Raute am Ende der Phase, Gruppen, Bausteine nicht als Knoten, Lage rechnet.
 //   6. Route GET ?paket=: Rechte (fremder Haushalt/Testkunde/Dienstweg ohne Person 403, Privat 403), 400/404, Inhalt (Stand, Befunde, Kunden-Regel, laufende
 //      Kunden nur Business, Produkte) — und Lesen schreibt nie (Bytes des Datenordners vorher = nachher: Fall vorher = Fall nachher).
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+// 25.10. (Fulfillment für die Selbstständigkeit): dieser Test prüft die Grenze „Privat bekommt kein Fulfillment“ wie bisher — mit einer Privat-Einheit OHNE
+// Arbeit (Instanz `{"kdc":{"arbeit":false}}`). Die Selbstständigkeit als Arbeit (Vorgabe) prüft tests/fulfillment-selbst.test.ts.
+vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ kdc: { arbeit: false } }); });
 import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';

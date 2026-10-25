@@ -8,6 +8,9 @@
 //   · Personenteil getrennt (Dossier-Antwort ohne Namen), Lese-Protokoll „personenrecherche“, Löschfrist entfernt Karten und lässt nur den Vermerk,
 //     Art. 15 nennt die Karte; Wächter: kein Modul unter lib/fulfillment/** liest den Leseteil.
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+// 25.10. (Fulfillment für die Selbstständigkeit): dieser Test prüft die Grenze „Privat bekommt kein Fulfillment“ wie bisher — mit einer Privat-Einheit OHNE
+// Arbeit (Instanz `{"kdc":{"arbeit":false}}`). Die Selbstständigkeit als Arbeit (Vorgabe) prüft tests/fulfillment-selbst.test.ts.
+vi.hoisted(() => { process.env.NEXT_PUBLIC_MAKE_OS_EINHEITEN = JSON.stringify({ kdc: { arbeit: false } }); });
 import { mkdtempSync, rmSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
