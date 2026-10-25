@@ -11,7 +11,7 @@ import type { TreppenStufe } from './treppe-daten';
 import { TREPPE_GRENZEN, TEXT_MAX } from './treppe-daten';
 import {
   katalogTreppe, produktKarte, preisText, preisteileVon, hatPreisteile, preisAusTeil, produktPruefen, wochenStunden, stufenTakt, vertragVon, hauptpreisAus,
-  PREIS_TEIL_ARTEN, PRODUKT_GRENZEN, artikelnummerSaeubern, type PruefFehler,
+  PREIS_TEIL_ARTEN, PRODUKT_GRENZEN, artikelnummerSaeubern, artikelJeLaufzeitSaeubern, type PruefFehler,
 } from './produkt-karte';
 import { produktZustand, linieVon, LINIEN } from './produkte';
 import { centAusEingabe, ANGEBOT_GRENZEN } from './angebote';
@@ -237,23 +237,24 @@ export function karteAusStufe(s: TreppenStufe, id: string): Leistung {
 
 // ── Preis-Teile bearbeiten ───────────────────────────────────────────────────
 
-export type PreisTeilFeld = 'betrag' | 'bis' | 'einheit' | 'anzahlung' | 'kontingent' | 'deckel' | 'menge' | 'text' | 'artikelnummer';
+export type PreisTeilFeld = 'betrag' | 'bis' | 'einheit' | 'anzahlung' | 'kontingent' | 'deckel' | 'menge' | 'text' | 'artikelnummer' | 'artikelLaufzeit';
 /** Je Preis-Form nur die passenden Felder (Reihenfolge = Anzeige). */
 export const PREIS_TEIL_FELDER: Record<PreisTeilArt, readonly PreisTeilFeld[]> = {
   kostenlos: ['text'],
   // Artikelnummer (25.10.) je Teil, der auf Angebot und Rechnung steht — „kostenlos“ wird nie berechnet.
   fest: ['betrag', 'bis', 'anzahlung', 'text', 'artikelnummer'],
-  monatlich: ['betrag', 'bis', 'text', 'artikelnummer'],
-  jaehrlich: ['betrag', 'bis', 'kontingent', 'anzahlung', 'text', 'artikelnummer'],
+  // Artikelnummer je Laufzeit (25.10.) nur bei laufenden Preisen — „12: XY-12“ (gleicher Preis, eigene Nummer, wenn 12 Monate gewählt sind).
+  monatlich: ['betrag', 'bis', 'text', 'artikelnummer', 'artikelLaufzeit'],
+  jaehrlich: ['betrag', 'bis', 'kontingent', 'anzahlung', 'text', 'artikelnummer', 'artikelLaufzeit'],
   je_einheit: ['betrag', 'bis', 'einheit', 'anzahlung', 'text', 'artikelnummer'],
   // Geplante Menge je Monat (21.10., Kevin: Tages-/Stundensätze „mit geplanter Menge je Monat“) — Planung und Liquidität rechnen Satz × Menge.
-  tagessatz: ['betrag', 'bis', 'menge', 'text', 'artikelnummer'],
-  stundensatz: ['betrag', 'bis', 'deckel', 'menge', 'text', 'artikelnummer'],
+  tagessatz: ['betrag', 'bis', 'menge', 'text', 'artikelnummer', 'artikelLaufzeit'],
+  stundensatz: ['betrag', 'bis', 'deckel', 'menge', 'text', 'artikelnummer', 'artikelLaufzeit'],
   erfolg: ['betrag', 'text', 'artikelnummer'],
 };
 export const PREIS_FELD_LABEL: Record<PreisTeilFeld, string> = {
   betrag: 'Betrag (€ netto)', bis: 'bis (€, optional)', einheit: 'Einheit (z. B. Event)', anzahlung: 'Anzahlung (%)', kontingent: 'Enthalten (Kontingent)',
-  deckel: 'Höchstens Std./Monat', menge: 'Geplant je Monat', text: 'Kurze Erklärung', artikelnummer: 'Artikelnummer',
+  deckel: 'Höchstens Std./Monat', menge: 'Geplant je Monat', text: 'Kurze Erklärung', artikelnummer: 'Artikelnummer', artikelLaufzeit: 'Art.-Nr. je Laufzeit',
 };
 
 /** Den Teil auf eine andere Preis-Form stellen — Felder, die es dort nicht gibt, fallen weg (sonst lehnte der Server ab). */
@@ -270,6 +271,7 @@ export function teilFuerArt(t: PreisTeil, art: PreisTeilArt): PreisTeil {
     ...(f.includes('menge') && typeof t.mengeJeMonat === 'number' ? { mengeJeMonat: t.mengeJeMonat } : {}),
     ...(t.text ? { text: t.text } : {}),
     ...(f.includes('artikelnummer') && t.artikelnummer ? { artikelnummer: t.artikelnummer } : {}),
+    ...(f.includes('artikelLaufzeit') && t.artikelnummerJeLaufzeit ? { artikelnummerJeLaufzeit: t.artikelnummerJeLaufzeit } : {}),
   };
 }
 /** Ein neuer Preis-Teil der Form `art` mit freier Kennung `pt-<n>` (gilt immer — „optional“ stellt man danach um). */
@@ -330,6 +332,15 @@ export function teilFeldSetzen(t: PreisTeil, feld: PreisTeilFeld, roh: string): 
       if (t.deckel?.stundenJeMonat && n > t.deckel.stundenJeMonat) return { ok: false, fehler: 'Geplant je Monat: höchstens so viel wie der Deckel.' };
       return { ok: true, teil: { ...t, mengeJeMonat: Math.round(n * 100) / 100 } };
     }
+    case 'artikelLaufzeit': {
+      // „12: XY-12, 24: XY-24“ (auch „12=XY-12“) — je Laufzeit eine Nummer; leer = keine.
+      if (!v) return { ok: true, teil: ohne('artikelnummerJeLaufzeit') };
+      const roh = v.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean).map(x => { const m = /^(\d{1,3})\s*(?:[:=]|monate?:?)\s*(.+)$/i.exec(x); return m ? { monate: Number(m[1]), nummer: m[2].trim() } : null; });
+      if (roh.some(x => !x)) return { ok: false, fehler: 'Art.-Nr. je Laufzeit: je Eintrag „Monate: Nummer“, z. B. „12: XY-12“.' };
+      const l = artikelJeLaufzeitSaeubern(roh);
+      if (!l || l.length !== roh.length) return { ok: false, fehler: `Art.-Nr. je Laufzeit: Monate 1–${PRODUKT_GRENZEN.mindestlaufzeitMonate}, je Laufzeit eine gültige Nummer, höchstens ${PRODUKT_GRENZEN.laufzeiten}.` };
+      return { ok: true, teil: { ...t, artikelnummerJeLaufzeit: l } };
+    }
     case 'artikelnummer': {
       if (!v) return { ok: true, teil: ohne('artikelnummer') };
       if (v.length > PRODUKT_GRENZEN.artikelnummer) return { ok: false, fehler: `Artikelnummer: höchstens ${PRODUKT_GRENZEN.artikelnummer} Zeichen — nicht gespeichert.` };
@@ -356,6 +367,7 @@ export function teilFeldWert(t: PreisTeil, feld: PreisTeilFeld): string {
     case 'kontingent': return t.kontingent ?? '';
     case 'text': return t.text ?? '';
     case 'artikelnummer': return t.artikelnummer ?? '';
+    case 'artikelLaufzeit': return (t.artikelnummerJeLaufzeit ?? []).map(x => `${x.monate}: ${x.nummer}`).join(', ');
   }
 }
 /** Die Preis-Teile zum Bearbeiten (ohne eigene: der eine Teil aus dem alten Preis). */
@@ -376,12 +388,22 @@ export function vertragAenderung(l: Pick<Leistung, 'vertrag' | 'laufzeitMonate'>
   if (f.length) return { ok: false, fehler: f.map(x => x.text).join(' ') };
   return { ok: true, felder: { vertrag: Object.keys(v).length ? v : null, ...(feld === 'mindestlaufzeitMonate' && (wert === null || wert === undefined) && l.laufzeitMonate ? { laufzeitMonate: null } : {}) } };
 }
+/** Wählbare Laufzeiten aus einer Eingabe („6, 12“, „6/12“, „6 oder 12“) — leer = keine; Unsinn = Satz (25.10.). */
+export function laufzeitenAusText(t: string): number[] | null | string {
+  const teile = t.split(/[,;/\s]+|oder|und/i).map(x => x.trim()).filter(Boolean);
+  if (!teile.length) return null;
+  const n = teile.map(x => Number(x.replace(/monate?$/i, '')));
+  if (n.some(x => !Number.isInteger(x) || x < 1 || x > PRODUKT_GRENZEN.mindestlaufzeitMonate)) return `Wählbare Laufzeiten: ganze Monate von 1 bis ${PRODUKT_GRENZEN.mindestlaufzeitMonate}, z. B. „6, 12“.`;
+  const l = Array.from(new Set(n)).sort((a, b) => a - b);
+  return l.length > PRODUKT_GRENZEN.laufzeiten ? `Höchstens ${PRODUKT_GRENZEN.laufzeiten} Laufzeiten.` : l;
+}
 export const DANACH_LABEL: Record<NonNullable<ProduktVertrag['danach']>, string> = { monatlich_kuendbar: 'monatlich kündbar', verlaengert_um_laufzeit: 'verlängert sich um die Laufzeit', endet: 'endet' };
 export const RHYTHMUS_LABEL: Record<NonNullable<ProduktVertrag['rechnungsrhythmus']>, string> = { monatlich: 'monatlich', quartal: 'je Quartal', einmalig: 'einmalig' };
 /** Der Vertrag in einer Zeile („6 Monate, danach monatlich kündbar · 30 Tage Frist · Rechnung monatlich“); leer: „nichts festgelegt“. */
 export function vertragText(v: ProduktVertrag): string {
   const t = [
     v.mindestlaufzeitMonate ? `${v.mindestlaufzeitMonate} ${v.mindestlaufzeitMonate === 1 ? 'Monat' : 'Monate'}${v.danach ? `, danach ${DANACH_LABEL[v.danach]}` : ''}` : v.danach ? `danach ${DANACH_LABEL[v.danach]}` : '',
+    v.laufzeitWahl && v.laufzeitWahl.length > 1 ? `wählbar ${v.laufzeitWahl.join(' oder ')} Monate` : '',
     v.kuendigungsfristTage != null ? `${v.kuendigungsfristTage} Tage Frist` : '',
     v.rechnungsrhythmus ? `Rechnung ${RHYTHMUS_LABEL[v.rechnungsrhythmus]}` : '',
     v.zahlungszielTage != null ? `Ziel ${v.zahlungszielTage} Tage` : '',

@@ -16,7 +16,7 @@ import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import { leistungsmonat, mindestEnde, monatsHonorar, monatsName, plusMonateGekappt, zahlungsziel, type Leistungsmonat } from './mandat-laufzeit';
 import { ANRECHNUNG_PRAEFIX, anteilText, positionAusMandat, positionNetto, rechnungSummen } from '@/lib/finanzen/rechnung/regeln';
 import { UST_SAETZE } from './angebote';
-import { hatPreisteile, hauptpreis, preisteileVon, teilLabel } from './produkt-karte';
+import { artikelnummerFuer, hatPreisteile, hauptpreis, preisteileVon, teilLabel } from './produkt-karte';
 import { ABGERECHNET_PRAEFIX } from '@/lib/make-one/liquiditaet';
 import { inCent, kaufmaennisch } from '@/lib/finanzen/ust';
 
@@ -68,10 +68,11 @@ export function zusatzName(z: Pick<MandatZusatz, 'leistungId'> & Partial<Pick<Ma
  * Artikelnummer auf der Rechnung (25.10., kleine Bauten): der eigene Preis-Teil hinter dem Modul, sonst der Hauptpreis-Teil des Produkts — undefined ohne
  * Katalog, ohne Preis-Teile oder ohne Nummer (dann bleibt die Position bit-gleich wie bisher).
  */
-export function artikelnummerVon(leistungId: string | undefined, katalog?: Katalog, teil?: PreisTeil): string | undefined {
-  if (teil) return teil.artikelnummer;
+export function artikelnummerVon(leistungId: string | undefined, katalog?: Katalog, teil?: PreisTeil, laufzeitMonate?: number): string | undefined {
+  if (teil) return artikelnummerFuer(teil, laufzeitMonate);
   const l = leistungId ? katalog?.find(x => x.id === leistungId) : undefined;
-  return l && hatPreisteile(l) ? hauptpreis(l)?.artikelnummer : undefined;
+  // Laufzeit wählbar (25.10.): die Nummer der vereinbarten Laufzeit (Mindestlaufzeit des Mandats), sonst die allgemeine.
+  return l && hatPreisteile(l) ? artikelnummerFuer(hauptpreis(l), laufzeitMonate) : undefined;
 }
 const mitNummer = (a: string | undefined) => (a ? { artikelnummer: a } : {});
 
@@ -183,7 +184,7 @@ export function zahlplanPosition(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz'
   if (m.honorar.basis !== 'einmalig' || !p || !tagOk(m.start)) return null;
   const s = m.start.slice(0, 7);
   const r = restMonat(m, {});
-  const voll = positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: null, ...mitNummer(artikelnummerVon(m.leistungId, ctx.katalog)) });
+  const voll = positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: null, ...mitNummer(artikelnummerVon(m.leistungId, ctx.katalog, undefined, m.mindestlaufzeitMonate)) });
   const titel = (zusatz: string) => `${m.titel || 'Leistung'} — ${zusatz}`.slice(0, 200);
   if (!r || r === s) return monat === s ? [voll] : [];
   const anzahlung = kaufmaennisch((voll.einzelpreisCent * p) / 100);
@@ -204,7 +205,7 @@ export function monatsPositionen(m: Pick<Mandat, 'titel' | 'honorar' | 'ustSatz'
   const laeuft = m.honorar.betrag > 0 && (lm?.tage ?? 0) > 0;
   const plan = laeuft ? zahlplanPosition(m, monat, ctx) : null;
   // Artikelnummer (25.10.): die des Hauptpreis-Teils des Produkts am Mandat — ohne Nummer bit-gleich.
-  const haupt = !laeuft ? [] : plan ?? [positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: lm, ...mitNummer(artikelnummerVon(m.leistungId, ctx.katalog)) })];
+  const haupt = !laeuft ? [] : plan ?? [positionAusMandat(m, monat, { kleinunternehmer: ctx.kleinunternehmer, nettoAusBrutto: ctx.nettoAusBrutto, anteil: lm, ...mitNummer(artikelnummerVon(m.leistungId, ctx.katalog, undefined, m.mindestlaufzeitMonate)) })];
   return m.zusatz?.length ? [...haupt, ...zusatzPositionen(m, monat, ctx, ende)] : haupt;
 }
 

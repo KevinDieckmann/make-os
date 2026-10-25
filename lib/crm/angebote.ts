@@ -19,7 +19,7 @@ import type { Angebot, AngebotBasis, AngebotPosition, AngebotsStatus, Chance, Cr
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { KERN_EINHEITEN, UG_KURZ, EINHEITEN_UEBERSCHRIEBEN } from '@/lib/einheiten';
 import { inCent, ausCent, ustAusNetto, kaufmaennisch } from '@/lib/finanzen/ust';
-import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt, mandatZahlplanAusProdukt, hauptpreis, hauptpreisAus, istKombi, istSatz, zusatzAusTeil, artikelnummerSaeubern } from './produkt-karte';
+import { angebotPositionenAusProdukt, positionsText, ANGEBOT_EINHEIT_JE_BASIS, POSITION_GRENZEN, mandatVertragAusProdukt, mandatVorlageAusProdukt, mandatZahlplanAusProdukt, hauptpreis, hauptpreisAus, istKombi, istSatz, zusatzAusTeil, artikelnummerSaeubern, artikelnummerFuer } from './produkt-karte';
 import { werktagePlus as kernWerktagePlus } from '@/lib/zeit/kalender-kern';
 import { produktTitel, titelNurProdukt } from './titel-regel';
 import { angebotWerte, hatGruss, mailTexteSaeubern, platzhalterFuellen } from './vorlage-platzhalter';
@@ -428,6 +428,19 @@ export function positionenAusDeal(l: Leistung, wert: { betrag: number; basis: An
 export function aufwandLabel(positionen: readonly Pick<AngebotPosition, 'basis' | 'satz'>[]): string {
   const arten = new Set(positionen.filter(istSatzPosition).map(p => p.satz));
   return `${arten.size === 1 ? (arten.has('tag') ? 'Tagessätze' : 'Stundensätze') : 'Nach Aufwand'} je Monat (geplant)`;
+}
+
+/**
+ * Laufzeit einer Position geändert (25.10., „Laufzeit wählbar“): die Artikelnummer folgt dem Preis-Teil des Produkts für diese Laufzeit
+ * (`artikelnummerFuer` — eigene Nummer je Laufzeit, sonst die allgemeine). Ohne Produkt bzw. Preis-Teil bleibt die Position, wie sie ist.
+ */
+export function positionNachLaufzeit(p: AngebotPosition, leistungen: readonly Pick<Leistung, 'id' | 'preise'>[]): AngebotPosition {
+  const t = p.leistungId && p.preisTeilId ? leistungen.find(l => l.id === p.leistungId)?.preise?.find(x => x.id === p.preisTeilId) : undefined;
+  if (!t) return p;
+  const nr = artikelnummerFuer(t, p.basis !== 'einmalig' ? p.laufzeitMonate : undefined);
+  if (nr === p.artikelnummer) return p;
+  const { artikelnummer: _a, ...ohne } = p;
+  return nr ? { ...ohne, artikelnummer: nr } : ohne;
 }
 
 /**

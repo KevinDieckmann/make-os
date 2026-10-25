@@ -19,7 +19,7 @@ import {
 import type { Leistung } from '@/lib/crm/typen';
 import { TextFeld } from './felder';
 
-const FELD_MAX: Record<PreisTeilFeld, number> = { betrag: 20, bis: 20, anzahlung: 3, deckel: 4, menge: 6, einheit: PRODUKT_GRENZEN.einheit, kontingent: PRODUKT_GRENZEN.kontingent, text: PRODUKT_GRENZEN.text, artikelnummer: PRODUKT_GRENZEN.artikelnummer };
+const FELD_MAX: Record<PreisTeilFeld, number> = { betrag: 20, bis: 20, anzahlung: 3, deckel: 4, menge: 6, einheit: PRODUKT_GRENZEN.einheit, kontingent: PRODUKT_GRENZEN.kontingent, text: PRODUKT_GRENZEN.text, artikelnummer: PRODUKT_GRENZEN.artikelnummer, artikelLaufzeit: 200 };
 
 export function PreisTeile({ l, speichern }: { l: Leistung; speichern: (felder: Record<string, unknown>) => Promise<boolean> }) {
   const preise = preiseZumBearbeiten(l);
@@ -79,7 +79,7 @@ function TeilZeile({ t, nr, haupt, anzahl, onAendern, onSchieben, onWeg }: {
       <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', minWidth: 0 }}>
         {PREIS_TEIL_FELDER[t.art].map(name => (
           <TextFeld key={`${t.id}-${t.art}-${name}`} label={PREIS_FELD_LABEL[name]} wert={teilFeldWert(t, name)} max={FELD_MAX[name]} modus={name === 'betrag' || name === 'bis' || name === 'menge' ? 'decimal' : name === 'anzahlung' || name === 'deckel' ? 'numeric' : undefined}
-            platzhalter={name === 'betrag' ? 'z. B. 2.500' : name === 'anzahlung' ? '50 = 50/50' : name === 'menge' ? (t.art === 'tagessatz' ? 'Tage, z. B. 2' : 'Stunden — leer = der Deckel') : name === 'text' ? (t.art === 'erfolg' ? 'z. B. Bonus bei erreichten Zielen' : 'optional') : name === 'artikelnummer' ? 'optional — steht auf Angebot und Rechnung' : undefined}
+            platzhalter={name === 'betrag' ? 'z. B. 2.500' : name === 'anzahlung' ? '50 = 50/50' : name === 'menge' ? (t.art === 'tagessatz' ? 'Tage, z. B. 2' : 'Stunden — leer = der Deckel') : name === 'text' ? (t.art === 'erfolg' ? 'z. B. Bonus bei erreichten Zielen' : 'optional') : name === 'artikelnummer' ? 'optional — steht auf Angebot und Rechnung' : name === 'artikelLaufzeit' ? 'optional, z. B. „12: XY-12“ — gilt, wenn diese Laufzeit gewählt ist' : undefined}
             onFertig={roh => feld(name, roh)} />
         ))}
       </div>

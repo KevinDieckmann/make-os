@@ -37,6 +37,8 @@ export interface MandatAusDealKontext {
   person: string;
   /** Gewählter Start (sonst heute — wie bisher). */
   start?: string;
+  /** Gewählte Laufzeit in Monaten (25.10., „Laufzeit wählbar“ im Fenster „Mandat anlegen“) — ersetzt die vorbelegte Mindestlaufzeit. */
+  laufzeitMonate?: number;
 }
 export interface MandatAusDeal { mandat: Mandat; quelle: 'angebot' | 'produkt' | 'deal'; angebot?: Pick<Angebot, 'id' | 'nummer'> }
 
@@ -77,6 +79,8 @@ export function mandatAusDeal(c: Chance, ctx: MandatAusDealKontext): MandatAusDe
     // Zahlplan (21.10., B2): nur bei einmaligem Honorar (der Deal-Wert gewinnt — seine Basis entscheidet).
     if (v.zahlplan && m.honorar.basis === 'einmalig') m.zahlplan = v.zahlplan;
     if (v.tageJeMonat && m.honorar.basis === 'tag') m.tageJeMonat = v.tageJeMonat;
+    // Laufzeit (25.10.): die am Deal vereinbarte (Deal-Formular, Vorgabe = Mindestlaufzeit des Produkts) gewinnt — vorher nahm das Mandat immer die des Produkts.
+    if (m.honorar.basis !== 'einmalig' && c.wert?.laufzeitMonate && c.wert.laufzeitMonate > 0) m.mindestlaufzeitMonate = Math.min(120, Math.round(c.wert.laufzeitMonate));
   }
   if (angebot) {
     const { offen: vOffen, ...v } = mandatVorbelegung(angebot, ctx.leistungen);
@@ -86,5 +90,7 @@ export function mandatAusDeal(c: Chance, ctx: MandatAusDealKontext): MandatAusDe
     m.vertragUnterschrieben = true;
     m.offen = [...m.offen.filter(x => x !== 'Vertrag unterschreiben lassen' && !(istBusinessGesellschaft(m.gesellschaft) && x === 'Kickoff-Termin festlegen')), ...(vOffen ?? [])];
   }
+  // Gewählte Laufzeit (25.10., Fenster „Mandat anlegen“): ersetzt die vorbelegte — Liquidität, Rechnung und Fristen folgen dem Mandat (`laufzeitEnde`).
+  if (ctx.laufzeitMonate && ctx.laufzeitMonate > 0 && m.honorar.basis !== 'einmalig') m.mindestlaufzeitMonate = Math.min(120, Math.round(ctx.laufzeitMonate));
   return { mandat: m, quelle: angebot ? 'angebot' : produkt ? 'produkt' : 'deal', ...(angebot ? { angebot: { id: angebot.id, ...(angebot.nummer ? { nummer: angebot.nummer } : {}) } } : {}) };
 }

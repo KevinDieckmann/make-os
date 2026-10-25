@@ -35,9 +35,10 @@ import { kanalStatus } from '@/lib/crm/recht';
 import {
   angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionenAusDeal, aufwandLabel, istGesellschaft,
   NACHFASSEN_WERKTAGE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE,
-  angebotTitelAus, angebotTitelAutomatisch, angebotHauptprodukt, dealProduktAnders, dealFrageText, positionenErgaenzen, produktTexteFuer, produktTexteVon,
+  angebotTitelAus, angebotTitelAutomatisch, angebotHauptprodukt, dealProduktAnders, dealFrageText, positionenErgaenzen, produktTexteFuer, produktTexteVon, positionNachLaufzeit,
 } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
+import { laufzeitenZurWahl } from '@/lib/crm/produkt-karte';
 import { absenderAus, empfaengerAus, angebotDokument } from '@/lib/crm/angebot-dokument';
 import { angebotPost, letzteGesellschaft, merkeGesellschaft, pdfLaden, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
 import { Katalog, PositionZeile, freiePosition } from './Positionen';
@@ -379,9 +380,9 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
         </div>
         <div style={{ marginTop: 6 }}>
           {positionen.map((p, i) => (
-            <PositionZeile key={p.id} p={p} nr={i + 1} kleinunternehmer={ku}
+            <PositionZeile key={p.id} p={p} nr={i + 1} kleinunternehmer={ku} laufzeiten={laufzeitenZurWahl(p.leistungId ? crm.stand.leistungen.find(l => l.id === p.leistungId) : undefined)}
               textFehlt={!!p.leistungId && produktAngebotFehlt(crm.stand.leistungen.find(l => l.id === p.leistungId) ?? {}).length > 0}
-              onAendern={teil => setzePos(positionen.map(x => (x.id === p.id ? { ...x, ...teil } : x)))}
+              onAendern={teil => setzePos(positionen.map(x => (x.id !== p.id ? x : 'laufzeitMonate' in teil || 'basis' in teil ? positionNachLaufzeit({ ...x, ...teil }, crm.stand.leistungen) : { ...x, ...teil })))}
               onWeg={() => setzePos(positionen.filter(x => x.id !== p.id))}
               onHoch={i > 0 ? () => { const n = [...positionen]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; setzePos(n); } : undefined} />
           ))}

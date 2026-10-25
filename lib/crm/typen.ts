@@ -248,9 +248,20 @@ export interface PreisTeil {
    * nächsten Speichern der Karte — Positionen und Belege behalten ihre Nummer.
    */
   artikelnummer?: string;
+  /**
+   * Artikelnummer je gewählter Laufzeit (25.10., optional, additiv — „Ein Produkt, Laufzeit wählbar“: gleicher Preis, eigene Nummer für 12 Monate), z. B.
+   * `[{ monate: 12, nummer: 'XY-12' }]`. Passt die Laufzeit der Position bzw. des Mandats, gilt diese Nummer, sonst `artikelnummer`
+   * (`artikelnummerFuer`, lib/crm/produkt-karte.ts). Ersetzt eine zweite Preiszeile „option, ersetzt die Grundzeile“ — die braucht es dafür nicht.
+   */
+  artikelnummerJeLaufzeit?: { monate: number; nummer: string }[];
 }
 export interface ProduktVertrag {
   mindestlaufzeitMonate?: number;
+  /**
+   * Wählbare Laufzeiten (25.10., kleine Bauten — optional, additiv; Kevin: „Ein Produkt, Laufzeit wählbar“), z. B. [6, 12]: Vorschläge zum Antippen in Angebot
+   * und „Mandat anlegen“. Vorgabe bleibt `mindestlaufzeitMonate`. Der alte Stand verwirft das Feld beim nächsten Speichern des Vertrags.
+   */
+  laufzeitWahl?: number[];
   danach?: 'monatlich_kuendbar' | 'verlaengert_um_laufzeit' | 'endet';
   kuendigungsfristTage?: number;
   rechnungsrhythmus?: 'monatlich' | 'quartal' | 'einmalig';

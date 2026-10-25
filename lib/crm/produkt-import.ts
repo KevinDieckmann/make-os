@@ -61,6 +61,8 @@ export interface PreisTeilImport {
   text?: string;
   /** Artikelnummer (25.10.) — steht auf Angebots- und Rechnungsposition; Buchstaben, Ziffern, - _ . / (höchstens 40). `null`/leer = keine. */
   artikelnummer?: string | null;
+  /** Artikelnummer je Laufzeit (25.10., nur laufende Preise): [{ monate: 12, nummer: '…' }] — gilt, wenn diese Laufzeit gewählt ist. */
+  artikelnummerJeLaufzeit?: { monate: number | string; nummer: string }[] | null;
   id?: string;
 }
 /** Regeln im Import — Bezüge über Produkt-NAMEN (oder Kennung des Katalogs). */
@@ -119,8 +121,8 @@ export const IMPORT_FELDER = [
   'preise', 'vertrag', 'regeln', 'rolle', 'ebene', 'aufgabe', 'kennzahl', 'dauerTage', 'aufwandStundenWoche', 'ziel', 'ablauf',
   'prozess', 'prozessId', 'unterlagen', 'willkommen',
 ] as const;
-const PREIS_TEIL_FELDER = ['art', 'betrag', 'betragCent', 'bis', 'bisCent', 'einheit', 'rolle', 'optional', 'anzahlungProzent', 'zahlplan', 'kontingent', 'stundenJeMonat', 'deckel', 'mengeJeMonat', 'text', 'artikelnummer', 'id'];
-const VERTRAG_FELDER = ['mindestlaufzeitMonate', 'danach', 'kuendigungsfristTage', 'rechnungsrhythmus', 'zahlungszielTage', 'ustSatz', 'reisekosten'] as const;
+const PREIS_TEIL_FELDER = ['art', 'betrag', 'betragCent', 'bis', 'bisCent', 'einheit', 'rolle', 'optional', 'anzahlungProzent', 'zahlplan', 'kontingent', 'stundenJeMonat', 'deckel', 'mengeJeMonat', 'text', 'artikelnummer', 'artikelnummerJeLaufzeit', 'id'];
+const VERTRAG_FELDER = ['mindestlaufzeitMonate', 'danach', 'kuendigungsfristTage', 'rechnungsrhythmus', 'zahlungszielTage', 'ustSatz', 'reisekosten', 'laufzeitWahl'] as const;
 const ANGEBOT_FELDER = ['titel', 'einleitung', 'leistungstext', 'ergebnis', 'hinweise'] as const;
 /** Im Objekt `angebot` zusätzlich erlaubt (25.10.): die Begleit-Mail { betreff, text }. */
 const ANGEBOT_OBJEKT_FELDER = [...ANGEBOT_FELDER, 'mail'] as const;
@@ -265,7 +267,7 @@ const FELD_LABEL: Record<string, string> = {
   lieferumfang: 'Lieferumfang', 'angebot.titel': 'Titel im Angebot', 'angebot.einleitung': 'Einleitung', 'angebot.leistungstext': 'Leistungstext',
   'angebot.ergebnis': 'Ergebnis im Angebot', 'angebot.hinweise': 'Hinweise im Angebot', preise: 'Preis',
   'vertrag.mindestlaufzeitMonate': 'Mindestlaufzeit (Monate)', 'vertrag.danach': 'Danach', 'vertrag.kuendigungsfristTage': 'Kündigungsfrist (Tage)',
-  'vertrag.rechnungsrhythmus': 'Rechnung', 'vertrag.zahlungszielTage': 'Zahlungsziel (Tage)', 'vertrag.ustSatz': 'USt-Satz (%)', 'vertrag.reisekosten': 'Reisekosten',
+  'vertrag.rechnungsrhythmus': 'Rechnung', 'vertrag.zahlungszielTage': 'Zahlungsziel (Tage)', 'vertrag.ustSatz': 'USt-Satz (%)', 'vertrag.reisekosten': 'Reisekosten', 'vertrag.laufzeitWahl': 'Laufzeit wählbar (Monate)',
   'regeln.anrechnung': 'Anrechnung', 'regeln.maxGleichzeitig': 'Höchstens gleichzeitig', 'regeln.inklusive': 'Inklusive', rolle: 'Rolle', ebene: 'Stufe der Treppe',
   aufgabe: 'Aufgabe', kennzahl: 'Kennzahl', dauerTage: 'Dauer (Tage)', aufwandStundenWoche: 'Aufwand (Std./Woche)', 'ziel.umsatz': 'Umsatzziel (€)', 'ziel.kunden': 'Kundenziel',
   ablauf: 'Ablauf', stufe: 'Leistungstreppe',
@@ -285,7 +287,7 @@ function wertText(feld: string, v: unknown, namen: (id: string) => string, regis
   switch (feld) {
     case 'preise': {
       // Artikelnummern (25.10.) sichtbar mitnennen — sonst sähe eine geänderte Nummer in der Vorschau aus wie „gleich“.
-      const nr = (v as PreisTeil[]).map(t => t.artikelnummer).filter(Boolean);
+      const nr = (v as PreisTeil[]).flatMap(t => [t.artikelnummer, ...(t.artikelnummerJeLaufzeit ?? []).map(x => `${x.nummer} (${x.monate} Monate)`)]).filter(Boolean);
       return `${preiseText({ preis: { betrag: 0, einheit: '' }, preise: v as PreisTeil[] })}${nr.length ? ` · Art.-Nr. ${nr.join(', ')}` : ''}`;
     }
     case 'gesellschaft': return gesellschaftName(String(v), register);
@@ -616,9 +618,9 @@ export function importPlanen(bestand: Pick<CrmBestand, 'leistungen'>, eingaben: 
     if (prozessNeu && paketNeu) f.push(fehler400('Ein Produkt hat genau EINEN Ablauf — „ablauf“ (Fulfillment-Paket) und „prozess“ (Werkstatt) nicht zugleich.'));
     else if (prozessNeu && k.zuordnung?.[v.id] && !da('ablauf')) {
       // Ein Prozess löst die Paket-Zuordnung (wie `ablaufWechsel`).
+      const bisherPaket = k.zuordnung[v.id].vorlageId;
       plan.zuordnungen.push({ leistungId: v.id, vorlageId: null });
       zeile.ablauf = { name: '', stand: 'entfernen' };
-      const bisherPaket = k.zuordnung[v.id].vorlageId;
       merke('ablauf', (k.vorlagen ?? []).find(x => x.id === bisherPaket)?.titel ?? 'ein Ablauf', undefined);
     } else if (paketNeu && alt?.prozessId && prozRoh === undefined) {
       // Ein Paket löst den Prozess (wie `ablaufWechsel`).
@@ -759,6 +761,8 @@ function preiseAus(w: unknown, alt: readonly PreisTeil[], f: PruefFehler[]): unk
       ...(typeof t.text === 'string' && text(t.text) ? { text: text(t.text) } : {}),
       // Artikelnummer (25.10.): roh weiter — die Prüfung (`preisteilPruefen`) meldet zu lang (413) bzw. fremde Form (400), nie still verworfen.
       ...(typeof t.artikelnummer === 'string' && text(t.artikelnummer) ? { artikelnummer: text(t.artikelnummer) } : t.artikelnummer != null && typeof t.artikelnummer !== 'string' ? { artikelnummer: t.artikelnummer } : {}),
+      // Je Laufzeit (25.10.): Monate auch als Text („12“) — die Prüfung meldet Unsinn (400) bzw. zu viele (413).
+      ...(Array.isArray(t.artikelnummerJeLaufzeit) ? { artikelnummerJeLaufzeit: t.artikelnummerJeLaufzeit.map(x => (istObj(x) ? { monate: zahlAus(x.monate), nummer: typeof x.nummer === 'string' ? text(x.nummer) : x.nummer } : x)) } : t.artikelnummerJeLaufzeit != null ? { artikelnummerJeLaufzeit: t.artikelnummerJeLaufzeit } : {}),
     };
   });
   return roh.every(Boolean) ? roh : undefined;
@@ -776,6 +780,13 @@ function vertragAus(w: unknown, alt: ProduktVertrag | undefined, f: PruefFehler[
     if (s === 'danach') { const x = aus(w[s], DANACH_WORTE); if (!x) f.push(fehler400(`Danach: ${VERTRAG_DANACH.join(', ')}.`)); else out[s] = x; continue; }
     if (s === 'rechnungsrhythmus') { const x = aus(w[s], RHYTHMUS_WORTE); if (!x) f.push(fehler400(`Rechnung: ${RECHNUNGS_RHYTHMEN.join(', ')}.`)); else out[s] = x; continue; }
     if (s === 'reisekosten') { const x = aus(w[s], REISE_WORTE); if (!x) f.push(fehler400('Reisekosten: separat oder inklusive.')); else out[s] = x; continue; }
+    // Wählbare Laufzeiten (25.10.): Liste [6, 12] oder Text „6, 12“ / „6 oder 12“ — die Prüfung (`produktPruefen`) lehnt Unsinn ab (400/413).
+    if (s === 'laufzeitWahl') {
+      const roh = Array.isArray(w[s]) ? w[s] as unknown[] : String(w[s]).split(/[,;/\s]+|oder|und/i).map(x => x.trim()).filter(Boolean);
+      const n = roh.map(x => zahlAus(x));
+      if (n.some(x => !Number.isFinite(x))) f.push(fehler400('Wählbare Laufzeiten: Monate als Zahlen, z. B. [6, 12].')); else out[s] = Array.from(new Set(n)).sort((a, b) => a - b);
+      continue;
+    }
     const n = zahlAus(w[s]);
     if (!Number.isFinite(n)) f.push(fehler400(`${FELD_LABEL[`vertrag.${s}`] ?? s}: eine Zahl.`)); else out[s] = n;
   }

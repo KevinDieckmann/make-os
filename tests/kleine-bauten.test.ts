@@ -355,3 +355,87 @@ describe('7 · Angebots-PDF: Annahmeblock (Ein/Aus, Vorgabe aus) und AGB-Link im
   });
 });
 
+describe('8 · Laufzeit wählbar (ein Produkt, z. B. 6 oder 12 Monate)', () => {
+  it('Vertrag: wählbare Laufzeiten säubern/prüfen, Eingabe „6, 12“, Text der Karte; Vorgabe bleibt die Mindestlaufzeit', async () => {
+    const { laufzeitenSaeubern, laufzeitenZurWahl, produktPruefen } = await import('@/lib/crm/produkt-karte');
+    const { laufzeitenAusText, vertragText } = await import('@/lib/crm/produkt-katalog');
+    expect(laufzeitenSaeubern([12, 6, 6, 0, 1.5, 'x'])).toEqual([6, 12]);
+    expect(laufzeitenZurWahl(produkt({ vertrag: { mindestlaufzeitMonate: 6, laufzeitWahl: [6, 12] } }))).toEqual([6, 12]);
+    expect(laufzeitenZurWahl(produkt({ vertrag: { mindestlaufzeitMonate: 6 } }))).toEqual([6]);
+    expect(produktPruefen({ vertrag: { laufzeitWahl: [6, 0] } }).map(f => f.status)).toEqual([400]);
+    expect(produktPruefen({ vertrag: { laufzeitWahl: [1, 2, 3, 4, 5, 6, 7] } }).map(f => f.status)).toEqual([413]);
+    expect(laufzeitenAusText('12 oder 6')).toEqual([6, 12]);
+    expect(laufzeitenAusText('')).toBeNull();
+    expect(typeof laufzeitenAusText('sechs')).toBe('string');
+    expect(vertragText({ mindestlaufzeitMonate: 6, laufzeitWahl: [6, 12] })).toContain('wählbar 6 oder 12 Monate');
+  });
+  it('Angebot → Deal-Wert und Mandat folgen der gewählten Laufzeit; Deal ohne Angebot: die Laufzeit des Deals gewinnt; Fenster: gewählte Laufzeit', async () => {
+    const { dealWertAusAngebot, mandatVorbelegung } = await import('@/lib/crm/angebote');
+    const { mandatAusDeal } = await import('@/lib/crm/mandat-aus-deal');
+    const l = produkt({ vertrag: { mindestlaufzeitMonate: 6, laufzeitWahl: [6, 12] } });
+    const pos = angebotPositionenAusProdukt(l).map(p => ({ ...p, laufzeitMonate: 12 }));
+    expect(dealWertAusAngebot({ positionen: pos })).toMatchObject({ basis: 'monat', laufzeitMonate: 12 });
+    expect(mandatVorbelegung({ ...GOLD_ANGEBOT, positionen: pos }, [l]).mindestlaufzeitMonate).toBe(12);
+    const deal = { id: 'ch-1', titel: 'Begleitung', kontaktIds: [], art: 'retainer', gesellschaft: 'ug', stufe: 'gewonnen', leistungId: l.id, besitzer: 'pa', wert: { betrag: 2000, basis: 'monat', laufzeitMonate: 12 } } as never;
+    const ctx = { leistungen: [l], firmen: [], id: 'm-1', jetzt: J, heute: '2026-10-25', person: 'pa' };
+    expect(mandatAusDeal(deal, ctx).mandat.mindestlaufzeitMonate).toBe(12);
+    expect(mandatAusDeal({ ...(deal as object), wert: { betrag: 2000, basis: 'monat' } } as never, ctx).mandat.mindestlaufzeitMonate).toBe(6);
+    expect(mandatAusDeal(deal, { ...ctx, laufzeitMonate: 6 }).mandat.mindestlaufzeitMonate).toBe(6);
+  });
+  it('Import: vertrag.laufzeitWahl als Liste oder Text, zweiter Lauf „gleich“', () => {
+    const k = { neueId: () => 'l-neu-8' };
+    const p = importPlanen({ leistungen: [] }, [{ name: 'Z', vertrag: { mindestlaufzeitMonate: 6, laufzeitWahl: '6, 12' } }], k);
+    expect(p.status, JSON.stringify(p.zeilen[0].fehler)).toBe(200);
+    const e = (p.ops[0] as { eintrag: Record<string, unknown> }).eintrag;
+    expect(e.vertrag).toEqual({ mindestlaufzeitMonate: 6, laufzeitWahl: [6, 12] });
+    const zweiter = importPlanen({ leistungen: [produkt({ id: 'l-neu-8', name: 'Z', status: 'entwurf', vertrag: e.vertrag as never })] }, [{ name: 'Z', vertrag: { laufzeitWahl: [12, 6] } }], k);
+    expect(zweiter.zeilen[0].art).toBe('gleich');
+  });
+});
+
+describe('8b · Artikelnummer je Laufzeit (statt zweiter Preiszeile „ersetzt die Grundzeile“)', () => {
+  const hos = () => produkt({
+    vertrag: { mindestlaufzeitMonate: 6, laufzeitWahl: [6, 12] },
+    preise: [{ id: 'pt-1', art: 'monatlich', betragCent: 200_000, rolle: 'grund', artikelnummer: 'BSP-06', artikelnummerJeLaufzeit: [{ monate: 12, nummer: 'BSP-12' }] }],
+  });
+  it('Säubern/Prüfen: nur laufende Teile, je Laufzeit eine Nummer; Karte liest/schreibt „12: Nummer“', async () => {
+    const { artikelJeLaufzeitSaeubern, artikelnummerFuer } = await import('@/lib/crm/produkt-karte');
+    expect(artikelJeLaufzeitSaeubern([{ monate: 12, nummer: 'A-12' }, { monate: 12, nummer: 'B' }, { monate: 0, nummer: 'C' }])).toEqual([{ monate: 12, nummer: 'A-12' }]);
+    expect(preisteilSaeubern({ id: 'pt-1', art: 'fest', betragCent: 1, artikelnummerJeLaufzeit: [{ monate: 12, nummer: 'A' }] }, 'x')).not.toHaveProperty('artikelnummerJeLaufzeit');
+    expect(preisteilPruefen({ art: 'fest', artikelnummerJeLaufzeit: [{ monate: 12, nummer: 'A' }] }).map(f => f.status)).toEqual([400]);
+    expect(preisteilPruefen({ art: 'monatlich', artikelnummerJeLaufzeit: [{ monate: 12, nummer: 'A' }, { monate: 12, nummer: 'B' }] }).map(f => f.status)).toEqual([400]);
+    expect(preisteilPruefen({ art: 'monatlich', artikelnummerJeLaufzeit: [{ monate: 12, nummer: 'A' }] })).toEqual([]);
+    const t = hos().preise![0];
+    expect(artikelnummerFuer(t, 12)).toBe('BSP-12');
+    expect(artikelnummerFuer(t, 6)).toBe('BSP-06');
+    expect(artikelnummerFuer(t, undefined)).toBe('BSP-06');
+    const { teilFeldSetzen, teilFeldWert } = await import('@/lib/crm/produkt-katalog');
+    const r = teilFeldSetzen({ id: 'pt-1', art: 'monatlich', rolle: 'grund' }, 'artikelLaufzeit', '12: BSP-12, 24=BSP-24');
+    expect(r.ok && r.teil.artikelnummerJeLaufzeit).toEqual([{ monate: 12, nummer: 'BSP-12' }, { monate: 24, nummer: 'BSP-24' }]);
+    expect(r.ok && teilFeldWert(r.teil, 'artikelLaufzeit')).toBe('12: BSP-12, 24: BSP-24');
+    expect(teilFeldSetzen({ id: 'pt-1', art: 'monatlich', rolle: 'grund' }, 'artikelLaufzeit', 'zwölf').ok).toBe(false);
+  });
+  it('Angebot: Laufzeit 12 gewählt → Nummer für 12 Monate; Mandat mit 12 Monaten → Monatsrechnung trägt sie', async () => {
+    const { positionNachLaufzeit } = await import('@/lib/crm/angebote');
+    const l = hos();
+    const [p6] = angebotPositionenAusProdukt(l);
+    expect(p6).toMatchObject({ laufzeitMonate: 6, artikelnummer: 'BSP-06' });
+    expect(positionNachLaufzeit({ ...p6, laufzeitMonate: 12 }, [l]).artikelnummer).toBe('BSP-12');
+    expect(positionNachLaufzeit({ ...p6, laufzeitMonate: 9 }, [l]).artikelnummer).toBe('BSP-06');
+    const frei = { id: 'p9', titel: 'frei', text: '', menge: 1, einheit: 'Monat', einzelpreisCent: 1, ustSatz: 19, basis: 'monat' as const, laufzeitMonate: 12 };
+    expect(positionNachLaufzeit(frei, [l])).toBe(frei);
+    const m = { titel: 'Begleitung', honorar: { betrag: 2000, basis: 'monat', netto: true }, ustSatz: 19, leistungen: [], start: '2026-10-01', leistungId: l.id, mindestlaufzeitMonate: 12 } as unknown as Mandat;
+    expect(monatsPositionen(m, '2026-11', { katalog: [l], nettoAusBrutto: (b: number) => b })[0].artikelnummer).toBe('BSP-12');
+    expect(monatsPositionen({ ...m, mindestlaufzeitMonate: 6 } as Mandat, '2026-11', { katalog: [l], nettoAusBrutto: (b: number) => b })[0].artikelnummer).toBe('BSP-06');
+  });
+  it('Import: artikelnummerJeLaufzeit je Preis-Teil, Vorschau nennt beide Nummern, zweiter Lauf „gleich“', () => {
+    const k = { neueId: () => 'l-neu-8b' };
+    const roh = { name: 'Q', leistungstext: 'x', vertrag: { mindestlaufzeitMonate: 6, laufzeitWahl: [6, 12] }, preise: [{ art: 'monatlich', betrag: 2000, artikelnummer: 'Q-06', artikelnummerJeLaufzeit: [{ monate: '12', nummer: 'Q-12' }] }] };
+    const p = importPlanen({ leistungen: [] }, [roh], k);
+    expect(p.status, JSON.stringify(p.zeilen[0].fehler)).toBe(200);
+    expect(p.zeilen[0].felder.find(f => f.feld === 'preise')?.neu).toContain('Q-12 (12 Monate)');
+    const e = (p.ops[0] as { eintrag: Record<string, unknown> }).eintrag;
+    const zweiter = importPlanen({ leistungen: [produkt({ id: 'l-neu-8b', name: 'Q', ...(e as object) } as Partial<Leistung>)] }, [roh], k);
+    expect(zweiter.zeilen[0].art, JSON.stringify(zweiter.zeilen[0].felder)).toBe('gleich');
+  });
+});

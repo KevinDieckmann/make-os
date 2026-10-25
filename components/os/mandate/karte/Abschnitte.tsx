@@ -17,7 +17,7 @@ import { dealWertText } from '@/lib/crm/pipeline';
 import { titelOhneFirma } from '@/lib/crm/mandat-name';
 import { vertragVon, PRODUKT_GRENZEN, INKLUSIVE_JE } from '@/lib/crm/produkt-karte';
 import {
-  vertragAenderung, regelnAenderung, textAenderung, texteVon, lieferumfangDazu, lieferumfangBeimSchliessen, aufwandText, planungsSicht, DANACH_LABEL, RHYTHMUS_LABEL, TEXT_FELDER, LIEFER_MAX,
+  vertragAenderung, regelnAenderung, textAenderung, texteVon, laufzeitenAusText, lieferumfangDazu, lieferumfangBeimSchliessen, aufwandText, planungsSicht, DANACH_LABEL, RHYTHMUS_LABEL, TEXT_FELDER, LIEFER_MAX,
 } from '@/lib/crm/produkt-katalog';
 import { planungFehlt, margeVon } from '@/lib/finanzen/produkte';
 import type { CrmBestand, Leistung, ProduktVertrag, Unterlage, UnterlageArt } from '@/lib/crm/typen';
@@ -43,6 +43,9 @@ export function VertragTeil({ l, speichern }: { l: Leistung; speichern: Speicher
     <div style={raster}>
       <ZahlFeld label="Mindestlaufzeit (Monate)" wert={v.mindestlaufzeitMonate} min={1} max={PRODUKT_GRENZEN.mindestlaufzeitMonate} onFertig={n => setze('mindestlaufzeitMonate', n)}
         hinweis={ausAlt ? 'aus der bisherigen Laufzeit' : 'leer = ohne Mindestlaufzeit'} />
+      {/* 25.10. (Kevin: „Ein Produkt, Laufzeit wählbar“): Vorschläge zum Antippen in Angebot und „Mandat anlegen“; Vorgabe bleibt die Mindestlaufzeit. */}
+      <TextFeld label="Laufzeit wählbar (Monate)" wert={(v.laufzeitWahl ?? []).join(', ')} max={40} platzhalter="z. B. 6, 12 — leer = nur die Mindestlaufzeit"
+        onFertig={async t => { const l = laufzeitenAusText(t); return typeof l === 'string' ? l : setze('laufzeitWahl', l); }} />
       <Feld label="Danach"><div><Wahl label="Danach" liste={(Object.keys(DANACH_LABEL) as (keyof typeof DANACH_LABEL)[]).map(id => ({ id, label: DANACH_LABEL[id] }))} wert={v.danach ?? null} leer="offen" onWahl={x => void setze('danach', x)} onLeeren={() => void setze('danach', null)} /></div></Feld>
       <ZahlFeld label="Kündigungsfrist (Tage)" wert={v.kuendigungsfristTage} max={PRODUKT_GRENZEN.kuendigungsfristTage} onFertig={n => setze('kuendigungsfristTage', n)} />
       <Feld label="Rechnung"><div><Wahl label="Rechnung" liste={(Object.keys(RHYTHMUS_LABEL) as (keyof typeof RHYTHMUS_LABEL)[]).map(id => ({ id, label: RHYTHMUS_LABEL[id] }))} wert={v.rechnungsrhythmus ?? null} leer="wie das Honorar" onWahl={x => void setze('rechnungsrhythmus', x)} onLeeren={() => void setze('rechnungsrhythmus', null)} /></div></Feld>

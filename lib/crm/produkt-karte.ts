@@ -54,6 +54,8 @@ export const PRODUKT_GRENZEN = {
   anrechnungAuf: 10, inklusive: 10, inklusiveMenge: 1000, stundenJeMonat: 744, zielUmsatz: 1e9, zielKunden: 100_000, zusatz: 50,
   /** Artikelnummer eines Preis-Teils (25.10.). */
   artikelnummer: 40,
+  /** Wählbare Laufzeiten am Vertrag (25.10.) — höchstens so viele. */
+  laufzeiten: 6,
 } as const;
 
 /** Die Felder der Karte (19.10.) — trägt ein Produkt eines davon, ist es eine Karte (`istKarte`). */
@@ -737,8 +739,8 @@ export function angebotPositionenAusProdukt(l: Leistung, gewaehlteOptionen: read
       menge, einheit: t.art === 'je_einheit' ? einheitKurz(t.einheit) : POS_EINHEIT[t.art], einzelpreisCent: typeof t.betragCent === 'number' ? t.betragCent : 0, ustSatz: ust, basis,
       ...(satz ? { satz } : {}),
       ...(basis !== 'einmalig' && v.mindestlaufzeitMonate ? { laufzeitMonate: v.mindestlaufzeitMonate } : {}),
-      // Artikelnummer des Teils (25.10.) — ohne Nummer am Teil bleibt die Position bit-gleich.
-      ...(t.artikelnummer ? { artikelnummer: t.artikelnummer } : {}),
+      // Artikelnummer des Teils (25.10.; je Laufzeit, wenn der Teil eine für die Mindestlaufzeit trägt) — ohne Nummer am Teil bleibt die Position bit-gleich.
+      ...(artikelnummerFuer(t, basis !== 'einmalig' ? v.mindestlaufzeitMonate : undefined) ? { artikelnummer: artikelnummerFuer(t, basis !== 'einmalig' ? v.mindestlaufzeitMonate : undefined) } : {}),
     };
   });
 }
@@ -886,7 +888,26 @@ export function preisteilSaeubern(v: unknown, fallbackId: string): PreisTeil | n
     ...(zeile(v.text, G.text) ? { text: zeile(v.text, G.text) } : {}),
     // Artikelnummer (25.10., optional) — ohne diese Zeile fiele sie beim Speichern der Karte weg.
     ...(artikelnummerSaeubern(v.artikelnummer) ? { artikelnummer: artikelnummerSaeubern(v.artikelnummer) } : {}),
+    // Artikelnummer je Laufzeit (25.10., optional, nur laufende Teile) — ohne diese Zeile fiele sie beim Speichern weg.
+    ...(art !== 'fest' && art !== 'kostenlos' && art !== 'erfolg' && art !== 'je_einheit' && artikelJeLaufzeitSaeubern(v.artikelnummerJeLaufzeit) ? { artikelnummerJeLaufzeit: artikelJeLaufzeitSaeubern(v.artikelnummerJeLaufzeit) } : {}),
   };
+}
+/** Artikelnummern je Laufzeit (25.10.): je Monatszahl höchstens eine, Monate 1 … Grenze, Nummer in Form, aufsteigend; leer → undefined. */
+export function artikelJeLaufzeitSaeubern(v: unknown): { monate: number; nummer: string }[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const je = new Map<number, string>();
+  for (const x of v) {
+    if (!istObj(x) || typeof x.monate !== 'number' || !Number.isInteger(x.monate) || x.monate < 1 || x.monate > G.mindestlaufzeitMonate) continue;
+    const n = artikelnummerSaeubern(x.nummer);
+    if (n && !je.has(x.monate)) je.set(x.monate, n);
+  }
+  const l = Array.from(je.entries()).sort((a, b) => a[0] - b[0]).slice(0, G.laufzeiten).map(([monate, nummer]) => ({ monate, nummer }));
+  return l.length ? l : undefined;
+}
+/** Die Artikelnummer eines Teils für eine Laufzeit (Monate): die eigene der Laufzeit, sonst die allgemeine (25.10.). */
+export function artikelnummerFuer(t: Pick<PreisTeil, 'artikelnummer'> & Partial<Pick<PreisTeil, 'artikelnummerJeLaufzeit'>> | null | undefined, monate?: number | null): string | undefined {
+  if (!t) return undefined;
+  return (monate ? t.artikelnummerJeLaufzeit?.find(x => x.monate === monate)?.nummer : undefined) ?? t.artikelnummer;
 }
 function preiseSaeubern(v: unknown): PreisTeil[] | undefined {
   if (!Array.isArray(v)) return undefined;
@@ -910,8 +931,22 @@ function vertragSaeubern(v: unknown): ProduktVertrag | undefined {
     ...(ganz(v.zahlungszielTage, 0, G.zahlungszielTage) !== undefined ? { zahlungszielTage: v.zahlungszielTage as number } : {}),
     ...((UST_SAETZE_KARTE as readonly number[]).includes(v.ustSatz as number) ? { ustSatz: v.ustSatz as number } : {}),
     ...(aus(v.reisekosten, REISEKOSTEN) ? { reisekosten: v.reisekosten as ProduktVertrag['reisekosten'] } : {}),
+    // Wählbare Laufzeiten (25.10.): ganze Monate 1–120, ohne Doppelte, aufsteigend — ohne diese Zeile fielen sie beim Speichern weg.
+    ...(laufzeitenSaeubern(v.laufzeitWahl) ? { laufzeitWahl: laufzeitenSaeubern(v.laufzeitWahl) } : {}),
   };
   return Object.keys(out).length ? out : undefined;
+}
+/** Wählbare Laufzeiten (25.10.): ganze Monate 1 … Mindestlaufzeit-Grenze, ohne Doppelte, aufsteigend; leer → undefined. */
+export function laufzeitenSaeubern(v: unknown): number[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const l = Array.from(new Set(v.filter((x): x is number => typeof x === 'number' && Number.isInteger(x) && x >= 1 && x <= G.mindestlaufzeitMonate))).sort((a, b) => a - b).slice(0, G.laufzeiten);
+  return l.length ? l : undefined;
+}
+/** Die Laufzeiten zum Antippen (25.10.): die wählbaren des Vertrags, sonst die Mindestlaufzeit allein (bzw. keine). */
+export function laufzeitenZurWahl(l: Pick<Leistung, 'vertrag' | 'laufzeitMonate'> | undefined): number[] {
+  if (!l) return [];
+  const v = vertragVon(l);
+  return v.laufzeitWahl?.length ? v.laufzeitWahl : v.mindestlaufzeitMonate ? [v.mindestlaufzeitMonate] : [];
 }
 function regelnSaeubern(v: unknown): ProduktRegeln | undefined {
   if (!istObj(v)) return undefined;
@@ -1133,6 +1168,14 @@ export function preisteilPruefen(v: unknown, nr = 1): PruefFehler[] {
     // Artikelnummer (25.10.): zu lang → 413, fremde Form → 400 (nie still verworfen).
     textFehler(v.artikelnummer, `${p}, Artikelnummer`, G.artikelnummer)
       ?? (v.artikelnummer != null && String(v.artikelnummer).trim() && !artikelnummerSaeubern(v.artikelnummer) ? { status: 400, text: `${p}: Artikelnummer nur aus Buchstaben, Ziffern, Leerzeichen und - _ . / (vorn ein Buchstabe oder eine Ziffer).` } : null),
+    // Artikelnummer je Laufzeit (25.10.): nur laufende Teile, Liste { monate, nummer } — zu viele 413, Unsinn 400.
+    v.artikelnummerJeLaufzeit == null ? null
+      : !Array.isArray(v.artikelnummerJeLaufzeit) ? { status: 400, text: `${p}: Artikelnummer je Laufzeit als Liste { monate, nummer }.` }
+      : (art === 'fest' || art === 'kostenlos' || art === 'erfolg' || art === 'je_einheit') ? { status: 400, text: `${p}: Artikelnummern je Laufzeit gibt es nur bei laufenden Preisen (monatlich, jährlich, Tages-/Stundensatz).` }
+      : v.artikelnummerJeLaufzeit.length > G.laufzeiten ? { status: 413, text: `${p}: höchstens ${G.laufzeiten} Artikelnummern je Laufzeit.` }
+      : v.artikelnummerJeLaufzeit.some(x => !istObj(x) || typeof x.monate !== 'number' || !Number.isInteger(x.monate) || x.monate < 1 || x.monate > G.mindestlaufzeitMonate || !artikelnummerSaeubern(x.nummer))
+        || new Set(v.artikelnummerJeLaufzeit.map(x => (istObj(x) ? x.monate : null))).size !== v.artikelnummerJeLaufzeit.length
+        ? { status: 400, text: `${p}: Artikelnummer je Laufzeit: je Laufzeit (1–${G.mindestlaufzeitMonate} Monate) eine gültige Nummer.` } : null,
   ]);
   return f;
 }
@@ -1160,6 +1203,10 @@ export function produktPruefen(felder: Record<string, unknown>, opt: { id?: stri
       const v = d.vertrag;
       f.push(...nur([
         zahlFehler(v.mindestlaufzeitMonate, 'Mindestlaufzeit (Monate)', 1, G.mindestlaufzeitMonate),
+        // Wählbare Laufzeiten (25.10.): Liste ganzer Monate — zu viele 413, sonst Unsinn 400.
+        v.laufzeitWahl != null && !Array.isArray(v.laufzeitWahl) ? { status: 400, text: 'Wählbare Laufzeiten: eine Liste von Monaten, z. B. [6, 12].' }
+          : Array.isArray(v.laufzeitWahl) && v.laufzeitWahl.length > G.laufzeiten ? { status: 413, text: `Wählbare Laufzeiten: höchstens ${G.laufzeiten} — nichts gespeichert.` }
+          : Array.isArray(v.laufzeitWahl) && v.laufzeitWahl.some(x => typeof x !== 'number' || !Number.isInteger(x) || x < 1 || x > G.mindestlaufzeitMonate) ? { status: 400, text: `Wählbare Laufzeiten: ganze Monate von 1 bis ${G.mindestlaufzeitMonate}.` } : null,
         v.danach != null && !aus(v.danach, VERTRAG_DANACH) ? { status: 400, text: `Danach: ${VERTRAG_DANACH.join(', ')}.` } : null,
         zahlFehler(v.kuendigungsfristTage, 'Kündigungsfrist (Tage)', 0, G.kuendigungsfristTage),
         v.rechnungsrhythmus != null && !aus(v.rechnungsrhythmus, RECHNUNGS_RHYTHMEN) ? { status: 400, text: `Rechnungsrhythmus: ${RECHNUNGS_RHYTHMEN.join(', ')}.` } : null,
