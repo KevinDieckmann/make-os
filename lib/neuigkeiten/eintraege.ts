@@ -33,8 +33,8 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
-    id: 'u-2026-10-21',
-    datum: '2026-10-21',
+    id: 'u-2026-10-25',
+    datum: '2026-10-25',
     titel: 'Prozesse, zwei Scores, Produkte & Mandate',
     kurz: 'Neu unter Business: „Prozesse“ — alle Abläufe von Marketing bis Fulfillment als Landkarte, in der Werkstatt selbst bauen und intern laufen lassen. Oben auf „Heute“ stehen nur noch zwei Scores, und ein Produkt ist jetzt eine Karte.',
     kurzBusiness: 'Neu: „Prozesse“ — alle Abläufe von Marketing bis Fulfillment als Landkarte, in der Werkstatt selbst bauen und intern laufen lassen. Oben auf „Heute“ steht der Business-Score, und ein Produkt ist jetzt eine Karte.',
@@ -68,6 +68,12 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { bereich: 'business', text: 'Angebot je Preis-Teil: jeder Teil eine eigene Position, Tagessätze „je Tag“ mit der geplanten Menge; der Deal trennt laufend und einmalig.' },
         { bereich: 'business', text: '„Mandat anlegen“ öffnet erst ein Fenster: Honorar, Zusatzmodule und Laufzeit zum Prüfen, Start wählbar — Vorgabe ist der Erste des nächsten Monats. Überall gleich: am Deal, am Angebot, im Fulfillment, über ZOE und bei „+ Mandat“.', weg: WEG.mandat() },
         { bereich: 'business', text: 'Die erste Rechnung kennt Anzahlung und Tagessatz; „Rechnung stellen“ fragt vorher, und die Fälligkeit ist der Zahltag im Liquiplan.' },
+        { bereich: 'business', text: 'Formular „Angebot anfordern“ unter Markttraktion › Formulare: Kunde suchen oder neu anlegen, Produkte wählen — Kunde, Deal und Angebot entstehen in einem Schritt. Stimmen Listenpreis, Adresse und Datenschutz, geht das Angebot mit PDF aus eurem Postfach raus, sonst liegt es zur Freigabe.', weg: WEG.formulare() },
+        { bereich: 'business', text: 'Externe Vertriebler bekommen einen eigenen Link zum Formular — ohne Einblick in eure Kartei, jederzeit widerrufbar.', weg: WEG.formulare() },
+        { bereich: 'alle', text: 'Angebote und Rechnungen „Über <Postfach> senden (mit PDF)“: die Mail öffnet sich in der Inbox mit dem PDF im Anhang, ihr klickt nur noch „Senden“; danach steht am Beleg, wann und worüber er raus ist.' },
+        { bereich: 'business', text: 'Artikelnummern an Preis-Teilen, Angebot und Rechnung, eine Kundennummer je Firma, das Rechnungsnummer-Format je Gesellschaft und — wenn gewünscht — ein Annahmeblock und der AGB-Link im Angebot.' },
+        { bereich: 'business', text: 'Je Produkt eigene Einleitung, Begleit-Mail und Willkommensmail; die Laufzeit (z. B. 6 oder 12 Monate) wählt ihr im Angebot und am Mandat.', weg: WEG.produkt() },
+        { bereich: 'privat', text: 'Auch Mandate der Selbstständigkeit bekommen Fulfillment: Fall, Ablauf, Onboarding und Kunden-Link — die Finanzen bleiben unter Privat.' },
         { bereich: 'business', text: 'Ein Fall nutzt den Ablauf seines Produkts aus der Werkstatt: „Fall starten“ belegt ihn vor, die Reise zeigt seine Phasen, und „Fall anlegen“ startet die Abläufe gleich mit.', weg: WEG.fulfillment() },
         { bereich: 'business', text: 'Werkstatt: Entscheidungen mit mehreren Ausgängen, einen Teilprozess direkt an Ort und Stelle anlegen, und „Schritt testen“ zeigt, was er finden würde.', weg: WEG.prozesse({ ansicht: 'werkstatt' }) },
         { bereich: 'business', text: 'Markttraktion ist ein eigenes Werkzeug wie HubSpot: die Leiste links klappt auf ihr Menü um — Kontakte und Firmen, Vertrieb, Marketing samt Netzwerken, Steuerung mit „Automationen & Head“, unten die Stammdaten. Neu „Auswertung“: der Weg vom Kontakt zum gewonnenen Deal als Lichtfaden, dazu Traktions-Index, Scoreboard, Kanäle und Pipeline. „+ Angebot“ steht in Kontakt-, Firmen- und Deal-Akte.', weg: WEG.auswertung() },
