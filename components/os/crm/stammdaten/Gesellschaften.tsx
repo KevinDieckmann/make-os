@@ -183,6 +183,13 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
           <span style={klein}>Nächste Rechnung etwa: {nummerAusFormat(v.rechnungsformat, v.kurz, jahr, 1)} · Stornorechnung etwa: {nummerAusFormat(v.stornoformat, v.kurz, jahr, 2)} — ein Kreis für beide, fortlaufend und lückenlos je Gesellschaft und Jahr ({'{JAHR}'} oder {'{JJ}'} gehört hinein).</span>
         </div>
       </Feldzeile>
+      {/* 25.10. (kleine Bauten): Annahmeblock (Ort, Datum, Unterschrift des Kunden) im Angebots-PDF — Vorgabe aus; AGB-Link im Fuß (nur https). */}
+      <Feldzeile label="Angebot annehmen">
+        <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer' }}>
+          <input type="checkbox" checked={!!g.annahmeblock} onChange={e => void setze({ annahmeblock: e.target.checked }, 'Annahmeblock')} /> Ort, Datum und Unterschrift des Kunden unter dem Angebot
+        </label>
+      </Feldzeile>
+      {feld('AGB-Link', 'agbUrl', 'https://www.beispiel.de/agb — steht im Fuß des Angebots')}
       <Feldzeile label="Logo">
         <span style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -180,6 +180,19 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
   for (const h of d.hinweise) absatz(h, 8.5, { farbe: LEISE, zeile: 12 });
   y -= 10;
   if (d.schluss.trim()) absatz(d.schluss, 10);
+  // Annahmeblock (25.10., nur wenn die Gesellschaft ihn eingeschaltet hat): zwei Linien für Ort/Datum und Unterschrift des Kunden.
+  if (d.annahme) {
+    platz(86);
+    y -= 26;
+    text('Angebot angenommen', RAND, y, 10, { fett: true });
+    y -= 38;
+    const halb = (BREIT - 30) / 2;
+    seite.drawLine({ start: { x: RAND, y }, end: { x: RAND + halb, y }, thickness: 0.6, color: TINTE });
+    seite.drawLine({ start: { x: RAND + halb + 30, y }, end: { x: A4[0] - RAND, y }, thickness: 0.6, color: TINTE });
+    y -= 11;
+    text('Ort, Datum', RAND, y, 8, { farbe: LEISE });
+    text('Unterschrift und Name (Kunde)', RAND + halb + 30, y, 8, { farbe: LEISE });
+  }
 
   // ── Fuß auf jeder Seite ──
   const n = seiten.length;
@@ -192,6 +205,8 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
       text(zz, RAND, fy, 6.8, { farbe: LEISE });
       fy -= 9;
     }
+    // AGB-Link (25.10., nur Angebote): eine eigene Zeile unter dem Fuß — ohne Link genau wie bisher.
+    if (d.agb) text(umbrechen(s(`Es gelten unsere Allgemeinen Geschäftsbedingungen: ${d.agb}`), f, 6.8, BREIT - 90)[0] ?? '', RAND, fy, 6.8, { farbe: LEISE });
     text(`Seite ${i + 1} von ${n}`, A4[0] - RAND, RAND - 14, 7, { farbe: LEISE, rechts: true });
     text(`${art} ${d.nummer}`, RAND, RAND - 14, 7, { farbe: LEISE });
   });

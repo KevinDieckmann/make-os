@@ -17,7 +17,7 @@ const datumDe = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(
  * Absender aus den Stammdaten der Gesellschaft. `ibanVoll` nur für das PDF auf dem Server — im Angebot
  * gespeichert (Schnappschuss beim Stellen) und in der Vorschau steht sie maskiert.
  */
-export function absenderAus(roh: Gesellschaft, opt: { ibanVoll?: boolean } = {}): AngebotAbsender {
+export function absenderAus(roh: Gesellschaft, opt: { ibanVoll?: boolean; /** Angebot (25.10.): Annahmeblock und AGB-Link der Gesellschaft mitnehmen — Rechnungen nie. */ angebot?: boolean } = {}): AngebotAbsender {
   const g = mitVorgaben(roh);
   const ort = [g.plz, g.ort].filter(Boolean).join(' ');
   const zeilen = [g.strasse, ort, g.land && g.land !== 'Deutschland' ? g.land : ''].filter((x): x is string => !!x);
@@ -30,7 +30,7 @@ export function absenderAus(roh: Gesellschaft, opt: { ibanVoll?: boolean } = {})
     [g.bank?.bank ?? '', iban ? `IBAN ${iban}` : '', g.bank?.bic ? `BIC ${g.bank.bic}` : '', g.bank?.inhaber ? `Inhaber ${g.bank.inhaber}` : ''].filter(Boolean).join(' · '),
     g.fusstext ?? '',
   ].filter(Boolean);
-  return { firmierung: g.name, zeilen, kontakt, fuss, kleinunternehmer: !!g.kleinunternehmer };
+  return { firmierung: g.name, zeilen, kontakt, fuss, kleinunternehmer: !!g.kleinunternehmer, ...(opt.angebot && g.annahmeblock ? { annahme: true as const } : {}), ...(opt.angebot && g.agbUrl ? { agb: g.agbUrl } : {}) };
 }
 
 /** Empfänger aus Kontakt und Firma (Anschrift: Rechnungsempfänger der Zahlungsdaten, sonst Ort der Firma). */
@@ -66,6 +66,10 @@ export interface AngebotDokument {
   summen: DokumentSumme[];
   hinweise: string[];
   schluss: string;
+  /** Annahmeblock (25.10., nur Angebote): Ort, Datum, Unterschrift des Kunden unter dem Schluss — fehlt = keiner (bit-gleich). */
+  annahme?: true;
+  /** AGB-Link (25.10., nur Angebote) — eigene Zeile im Fuß. */
+  agb?: string;
 }
 
 function summenZeilen(label: string, s: Summe, ku: boolean): DokumentSumme[] {
@@ -119,5 +123,6 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
       'Alle Preise netto zuzüglich der gesetzlichen Umsatzsteuer, soweit ausgewiesen.',
     ].filter((x, i, l) => !(ku && x.startsWith('Alle Preise')) && l.indexOf(x) === i),
     schluss: a.schluss,
+    ...(absender.annahme ? { annahme: true as const } : {}), ...(absender.agb ? { agb: absender.agb } : {}),
   };
 }

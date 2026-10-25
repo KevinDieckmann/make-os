@@ -88,9 +88,20 @@ export function Blatt({ d, logoUrl }: { d: AngebotDokument; logoUrl?: string | n
 
       <div style={{ marginTop: 18, fontSize: 12, color: LEISE }}>{d.hinweise.map((h, i) => <div key={i}>{h}</div>)}</div>
       {d.schluss && <div style={{ whiteSpace: 'pre-wrap', marginTop: 18 }}>{d.schluss}</div>}
+      {/* Annahmeblock (25.10.) wie im PDF: Ort/Datum und Unterschrift des Kunden. */}
+      {d.annahme && (
+        <div style={{ marginTop: 26 }}>
+          <div style={{ fontWeight: 700, marginBottom: 34 }}>Angebot angenommen</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 30, fontSize: 12, color: LEISE }}>
+            <div style={{ borderTop: `1px solid ${TINTE}`, paddingTop: 4 }}>Ort, Datum</div>
+            <div style={{ borderTop: `1px solid ${TINTE}`, paddingTop: 4 }}>Unterschrift und Name (Kunde)</div>
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: 30, paddingTop: 8, borderTop: `1px solid ${LINIE}`, fontSize: 12, color: LEISE, display: 'grid', gap: 2 }}>
         {d.absender.fuss.map((z, i) => <div key={i}>{z}</div>)}
+        {d.agb && <div>Es gelten unsere Allgemeinen Geschäftsbedingungen: <a href={d.agb} target="_blank" rel="noopener noreferrer" style={{ color: LEISE }}>{d.agb}</a></div>}
       </div>
     </div>
   );

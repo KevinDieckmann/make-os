@@ -262,7 +262,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
 
   // ── Vorschau ──
   const empf = empfaengerAus(k, firma);
-  const dokEntwurf = angebotDokument({ ...form, id, status: 'entwurf', version: start?.version ?? 1, angelegt: '', geaendert: '' } as Angebot, absenderAus(g ?? { id: form.gesellschaft ?? GES_WAHL[0].id }), empf, heute);
+  const dokEntwurf = angebotDokument({ ...form, id, status: 'entwurf', version: start?.version ?? 1, angelegt: '', geaendert: '' } as Angebot, absenderAus(g ?? { id: form.gesellschaft ?? GES_WAHL[0].id }, { angebot: true }), empf, heute);
   const ampel = useMemo(() => {
     if (!k) return { hinweise: ['Kein Empfänger gewählt.'] };
     const ctx = { hatMandat: crm.stand.mandate.some(m => m.status === 'aktiv' && m.kontaktIds.includes(k.id)), hatChance: crm.stand.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(k.id)) };

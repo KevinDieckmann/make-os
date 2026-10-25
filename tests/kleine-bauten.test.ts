@@ -319,3 +319,39 @@ describe('6 · Kundennummer an der Firma (eine Stelle, fortlaufend, nie doppelt)
     expect(zeile.split(';').at(-1)).toContain('K-0001');
   });
 });
+
+describe('7 · Angebots-PDF: Annahmeblock (Ein/Aus, Vorgabe aus) und AGB-Link im Fuß', () => {
+  async function pdfText(bytes: Uint8Array): Promise<string> {
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs') as unknown as { getDocument: (o: object) => { promise: Promise<{ numPages: number; getPage: (n: number) => Promise<{ getTextContent: () => Promise<{ items: { str?: string }[] }> }> }> } };
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes), isEvalSupported: false, disableFontFace: true }).promise;
+    let t = '';
+    for (let i = 1; i <= doc.numPages; i++) t += (await (await doc.getPage(i)).getTextContent()).items.map(x => x.str ?? '').join(' ') + '\n';
+    return t;
+  }
+  it('Einstellung je Gesellschaft: Vorgabe aus, AGB nur https (sonst Fehler), Absender nimmt beides nur fürs Angebot', async () => {
+    const { gesellschaftAnwenden, mitVorgaben } = await import('@/lib/crm/gesellschaften');
+    const { absenderAus } = await import('@/lib/crm/angebot-dokument');
+    expect(mitVorgaben({ id: 'ug' }).annahmeblock).toBeUndefined();
+    const a = gesellschaftAnwenden({ id: 'ug' }, { annahmeblock: true, agbUrl: 'https://www.example.invalid/agb' }, J, 'pa');
+    expect(a.fehler).toEqual([]);
+    expect(gesellschaftAnwenden({ id: 'ug' }, { agbUrl: 'http://www.example.invalid/agb' }, J, 'pa').fehler.map(f => f.feld)).toEqual(['agbUrl']);
+    expect(gesellschaftAnwenden(a.g, { annahmeblock: false, agbUrl: '' }, J, 'pa').g).not.toHaveProperty('agbUrl');
+    expect(absenderAus(a.g, { angebot: true })).toMatchObject({ annahme: true, agb: 'https://www.example.invalid/agb' });
+    expect(absenderAus(a.g)).not.toHaveProperty('annahme');
+    expect(absenderAus(a.g)).not.toHaveProperty('agb');
+  });
+  it('PDF und Vorschau: Block „Angebot angenommen“ mit Ort/Datum/Unterschrift, AGB-Zeile im Fuß; ohne beides bit-gleich (Gold)', async () => {
+    const d = angebotDokument(GOLD_ANGEBOT, { ...GOLD_ABSENDER, annahme: true, agb: 'https://www.example.invalid/agb' }, { name: 'Max Muster', zeilen: ['Beispielkunde GmbH'] }, '2026-10-20');
+    expect(d).toMatchObject({ annahme: true, agb: 'https://www.example.invalid/agb' });
+    const t = await pdfText(await angebotPdf(d, { erstellt: new Date(J) }));
+    expect(t).toContain('Angebot angenommen');
+    expect(t).toContain('Ort, Datum');
+    expect(t).toContain('Unterschrift und Name (Kunde)');
+    expect(t).toContain('https://www.example.invalid/agb');
+    const { Blatt } = await import('@/components/os/crm/angebot/Blatt');
+    const html = renderToStaticMarkup(createElement(Blatt, { d }));
+    expect(html).toContain('Angebot angenommen');
+    expect(html).toContain('href="https://www.example.invalid/agb"');
+  });
+});
+

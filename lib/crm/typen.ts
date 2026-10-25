@@ -402,8 +402,11 @@ export interface AngebotPosition {
   /** Artikelnummer aus dem Preis-Teil (25.10., optional, additiv) — wandert in die Rechnungsposition; der alte Stand verwirft sie beim Speichern des Entwurfs. */
   artikelnummer?: string;
 }
-/** Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). */
-export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean }
+/**
+ * Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). `annahme`/`agb` (25.10., optional, nur Angebote): Annahmeblock an und
+ * der AGB-Link der Gesellschaft beim Stellen — so bleibt das PDF reproduzierbar. Rechnungen tragen sie nie.
+ */
+export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean; annahme?: true; agb?: string }
 /** Festgehaltener Empfänger beim Stellen. `kundennummer` (25.10., optional): die der Firma beim Stellen — steht so im PDF. */
 export interface AngebotEmpfaenger { name: string; firma?: string; zeilen: string[]; email?: string; kundennummer?: string }
 export interface Angebot {

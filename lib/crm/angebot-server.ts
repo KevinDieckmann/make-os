@@ -330,12 +330,12 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   const { dealId: _alterDeal, ...ohneDeal } = r0.a;
   const gestellt: Angebot = {
     ...ohneDeal, nummer, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}), status: 'gestellt', gestelltAm: jetztIso, gestelltVon: p.person,
-    absender: absenderAus(g), empfaenger, geaendert: jetztIso, geaendertVon: p.person,
+    absender: absenderAus(g, { angebot: true }), empfaenger, geaendert: jetztIso, geaendertVon: p.person,
   };
   // b) Außerhalb der Sperre: das PDF (pdf-lib, Logo) und seine Prüfsumme — der teure Teil.
   const name = `Angebot ${nummer}.pdf`.replace(/[\\/]/g, '-');
   let bytes: Buffer;
-  try { bytes = Buffer.from(await angebotPdf(angebotDokument(gestellt, absenderAus(g, { ibanVoll: true }), empfaenger, heute), { logo, erstellt: jetzt })); }
+  try { bytes = Buffer.from(await angebotPdf(angebotDokument(gestellt, absenderAus(g, { ibanVoll: true, angebot: true }), empfaenger, heute), { logo, erstellt: jetzt })); }
   catch (err) { await reservierungLoesen(); throw err; }
   const pruefsumme = createHash('sha256').update(bytes).digest('hex');
   const brutto = angebotSummen(gestellt, { kleinunternehmer: !!gestellt.absender?.kleinunternehmer }).gesamt.brutto / 100;

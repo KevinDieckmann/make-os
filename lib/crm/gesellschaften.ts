@@ -53,6 +53,10 @@ export interface Gesellschaft {
   /** Logo in der Dateiablage (nur PNG/JPG). */
   logoDateiId?: string;
   fusstext?: string;
+  /** Annahmeblock im Angebots-PDF (25.10., optional): Ort, Datum, Unterschrift des Kunden — Vorgabe aus. */
+  annahmeblock?: boolean;
+  /** Link zu den AGB (25.10., optional, nur https) — steht im Fuß des Angebots-PDFs. */
+  agbUrl?: string;
   geaendert?: string;
   geaendertVon?: string;
 }
@@ -120,6 +124,13 @@ export function gesellschaftAnwenden(alt: Gesellschaft, roh: Record<string, unkn
   if (hat('zahlungszielTage')) setze('zahlungszielTage', ganz(roh.zahlungszielTage, 0, 180));
   if (hat('gueltigkeitTage')) setze('gueltigkeitTage', ganz(roh.gueltigkeitTage, 1, 365));
   if (hat('fusstext')) setze('fusstext', block(roh.fusstext, 600));
+  // Annahmeblock und AGB-Link (25.10.): Ein/Aus je Gesellschaft (Vorgabe aus), Link nur https — sonst Fehler (400), nie still.
+  if (hat('annahmeblock')) setze('annahmeblock', roh.annahmeblock === true ? true : undefined);
+  if (hat('agbUrl')) {
+    const u = zeile(roh.agbUrl, 300);
+    if (u && !/^https:\/\/[^\s]+\.[^\s]+$/i.test(u)) fehler.push({ feld: 'agbUrl', text: 'AGB-Link: nur eine https-Adresse (z. B. https://www.beispiel.de/agb).' });
+    else setze('agbUrl', u);
+  }
   if (hat('logoDateiId')) setze('logoDateiId', typeof roh.logoDateiId === 'string' && /^d-[a-z0-9-]{4,60}$/.test(roh.logoDateiId) ? roh.logoDateiId : undefined);
   if (hat('bank')) {
     const b = roh.bank && typeof roh.bank === 'object' ? roh.bank as Record<string, unknown> : {};
@@ -146,7 +157,7 @@ export function gesellschaftFuerAnzeige<G extends { bank?: GesellschaftBank }>(g
 
 /** Die Felder des Absenders — NUR diese gehen in eine Absender-Antwort (Angebots-Tool, Stammdaten), nie Cap-Table, Organe, Verträge, Notizen des Registers. */
 export const ABSENDER_FELDER = ['id', 'firmierung', 'strasse', 'plz', 'ort', 'land', 'email', 'telefon', 'web', 'steuernummer', 'ustId', 'geschaeftsfuehrung', 'register', 'bank',
-  'kleinunternehmer', 'zahlungszielTage', 'gueltigkeitTage', 'nummernformat', 'rechnungsformat', 'stornoformat', 'kurz', 'logoDateiId', 'fusstext', 'geaendert', 'geaendertVon'] as const satisfies readonly (keyof Gesellschaft)[];
+  'kleinunternehmer', 'zahlungszielTage', 'gueltigkeitTage', 'nummernformat', 'rechnungsformat', 'stornoformat', 'kurz', 'logoDateiId', 'fusstext', 'annahmeblock', 'agbUrl', 'geaendert', 'geaendertVon'] as const satisfies readonly (keyof Gesellschaft)[];
 
 /**
  * Ein Absender für den Browser (08.10., Sofort-Paket 3.1) — EINE Stelle für GET /api/crm/angebot und GET /api/crm/gesellschaften:
