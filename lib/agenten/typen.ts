@@ -818,7 +818,8 @@ export const GRENZEN = {
   skillTestsMin: 3,
   skillTestsMax: 20,
   skillEingabeFelder: 12,
-  skillsJeHead: 50,
+  /** 25.10. (kleine Bauten): 50 → 100 — ein Head mit vielen Produkten braucht mehr (Lieferung: 54). Im Prompt steht je Skill nur Name + Beschreibung (`skillsBlock`). */
+  skillsJeHead: 100,
   mitarbeiterJeHead: 20,
   mitarbeiterAnleitung: 20_000,
   merksaetzeJeAgent: 100,
