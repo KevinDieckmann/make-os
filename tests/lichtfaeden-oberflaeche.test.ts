@@ -25,9 +25,10 @@ const A = ansicht(baum, { wurzel: 'gesamt', von: '2026-10-01', bis: '2027-03-31'
 const E: Engstelle[] = [{ woche: '2026-10-26', kw: 44, last: 9, ziele: 3, fristen: 9, termine: 4, buendel: 3, text: 'KW 44: 3 Ziele · 9 Fristen · 4 Termine', top: [{ id: 'ms:1', titel: 'Neun Mandate', tag: '2026-10-30', quelle: 'meilenstein', link: '/os/planung/meilenstein/1', buendel: 'space:business', ueberfaellig: false }] }];
 
 describe('Bauteile zeichnen (Server)', () => {
+  // 25.10.: „heute“ fest wie die Ansicht (A) — ohne lag HEUTE am Testtag neben dem Nov-Tick und blendete ihn aus (Test hing am Datum).
   it('Faedenband: Leinwand aria-hidden, Markierungen als Links, Engstelle als Knopf, Monate und HEUTE', async () => {
     const { Faedenband } = await import('@/components/os/lichtfaeden/Faedenband');
-    const html = renderToStaticMarkup(h(Faedenband, { ansicht: A, engstellen: E, uebergang: null, hervor: null, onHervor: () => {}, onTiefer: () => {}, label: 'Lichtfäden Gesamt' }));
+    const html = renderToStaticMarkup(h(Faedenband, { ansicht: A, heute: '2026-10-03', engstellen: E, uebergang: null, hervor: null, onHervor: () => {}, onTiefer: () => {}, label: 'Lichtfäden Gesamt' }));
     expect(html).toContain('<canvas aria-hidden="true" data-lichtfaeden=""');
     expect(html).toContain('role="group" aria-label="Lichtfäden Gesamt"');
     expect(html).toMatch(/<a[^>]+class="licht-marke"[^>]+href="\/os\/planung\/meilenstein\/1"/);
