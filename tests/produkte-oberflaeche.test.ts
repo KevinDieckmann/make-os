@@ -178,10 +178,10 @@ describe('Preis-Teile bearbeiten', () => {
     expect(teilFeldSetzen(b.teil, 'betrag', '')).toEqual({ ok: true, teil: t });
     expect(teilFeldSetzen(t, 'text', 'x'.repeat(301))).toMatchObject({ ok: false });
   });
-  it('Reihenfolge: der erste, der immer gilt, ist der Hauptpreis; neue Kennungen frei', () => {
+  it('Reihenfolge: Hauptpreis ist der laufende Teil, der immer gilt — Verschieben ändert ihn nicht (24.10.); neue Kennungen frei', () => {
     const p = [teil({ id: 'pt-1', rolle: 'option' }), teil({ id: 'pt-2', art: 'monatlich' }), teil({ id: 'pt-3', art: 'erfolg' })];
     expect(hauptpreisId(p)).toBe('pt-2');
-    expect(hauptpreisId(preiseVerschieben(p, 2, -1))).toBe('pt-3');
+    expect(hauptpreisId(preiseVerschieben(p, 2, -1))).toBe('pt-2');
     expect(preiseVerschieben(p, 0, -1)).toEqual(p);
     expect(neuerPreisTeil(p, 'tagessatz')).toEqual({ id: 'pt-4', art: 'tagessatz', rolle: 'grund' });
     expect(neuerPreisTeil([teil({ id: 'pt-2' })], 'fest').id).toBe('pt-3');
@@ -287,7 +287,8 @@ describe('Angebots-Tool: mehrere Preis-Teile, Optionen zum Anhaken', () => {
   });
   it('ohne Option zwei Positionen, mit angehakter Option drei', () => {
     expect(angebotPositionenAusProdukt(EVENT, [], { idBasis: 'p-x' }).map(p => p.id)).toEqual(['p-x', 'p-x-2']);
-    expect(angebotPositionenAusProdukt(EVENT, ['pt-je'], { idBasis: 'p-x' }).map(p => p.einheit)).toEqual(['pauschal', 'Monat', 'Event']);
+    // 24.10. (Bau-Test): der Hauptpreis (laufend) steht vorne, danach die Teile wie auf der Karte.
+    expect(angebotPositionenAusProdukt(EVENT, ['pt-je'], { idBasis: 'p-x' }).map(p => p.einheit)).toEqual(['Monat', 'pauschal', 'Event']);
   });
 });
 

@@ -79,7 +79,12 @@ export interface Chance {
   personenRollen?: Record<string, DealRolle>;
   art: ChancenArt;
   leistungId?: string;
-  wert: { betrag: number; basis: WertBasis; laufzeitMonate?: number };
+  /**
+   * Der Wert: `betrag` je `basis` (über `laufzeitMonate`). `einmalBetrag` (24.10., optional, additiv, netto €, nur bei laufender Basis): der Einmal-Anteil
+   * eines gemischten Auftrags (z. B. 1.500 € einmalig neben 900 €/Monat) — vorher wurde er auf die Laufzeit verteilt („1.350 €/Monat“, eine erfundene Zahl).
+   * Gesamtwert = laufend × Laufzeit + einmalBetrag (`gesamtwert`, lib/crm/pipeline.ts). Der alte Stand verwirft das Feld (er sieht dann nur den laufenden Teil).
+   */
+  wert: { betrag: number; basis: WertBasis; laufzeitMonate?: number; einmalBetrag?: number };
   stufe: ChancenStufe;
   historie: { stufe: ChancenStufe; am: string; von: string }[];
   naechsterSchritt?: { text: string; datum: string };
@@ -174,6 +179,12 @@ export interface MandatZusatz {
   /** `mz-…` */
   id: string;
   leistungId: string;
+  /**
+   * Ein eigener Preis-Teil des Produkts (`PreisTeil.id`, „pt-…“ — 24.10., optional, additiv): `leistungId` ist dann das Hauptprodukt des Mandats selbst
+   * (z. B. der Festpreis 50/50 und der Tagessatz neben dem Monatshonorar). Rechnung, Liquidität und „+ Zusatzmodul“ erkennen den Teil daran. Der alte
+   * Stand kennt das Feld nicht und verwirft es — das Modul bleibt mit seinem eigenen Honorar gültig.
+   */
+  preisTeilId?: string;
   /** YYYY-MM-DD */
   ab?: string;
   bis?: string;
@@ -363,6 +374,12 @@ export interface AngebotPosition {
   basis: AngebotBasis;
   /** Nur bei monatlich/jährlich: Laufzeit, über die der Gesamtwert gerechnet wird. */
   laufzeitMonate?: number;
+  /**
+   * Tages- bzw. Stundensatz (24.10., Bau-Test — optional, additiv, nur mit Basis „monat“): die Menge ist die GEPLANTE Menge je Monat, abgerechnet wird
+   * die echte („abrechnen“ am Mandat). Die Summen führen solche Positionen getrennt („je Tag/Stunde, geplant“), nie unter „einmalig“. Der alte Stand kennt
+   * das Feld nicht: er zählt die Position als monatlich (dieselbe Menge × Satz).
+   */
+  satz?: 'tag' | 'stunde';
 }
 /** Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). */
 export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean }

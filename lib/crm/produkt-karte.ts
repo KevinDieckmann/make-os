@@ -101,11 +101,33 @@ export function teilAusAltpreis(p: Leistung['preis'] | undefined): PreisTeil {
 export function preisteileVon(l: Pick<Leistung, 'preis' | 'preise'>): PreisTeil[] {
   return hatPreisteile(l) ? l.preise! : [teilAusAltpreis(l.preis)];
 }
-/** Der Hauptpreis-Teil: der erste Teil mit Rolle „grund“ (sonst der erste). Er wird ins alte `preis` gespiegelt. */
-export function hauptpreis(l: Pick<Leistung, 'preis' | 'preise'>): PreisTeil | null {
-  const t = preisteileVon(l);
-  return t.find(x => x.rolle === 'grund') ?? t[0] ?? null;
+/**
+ * Rang der Preis-Formen für den Hauptpreis (Kevin 24.10., Bau-Test: „der laufende Preis-Teil, monatlich vor jährlich vor …“ — NIE „der erste, der
+ * immer gilt“): laufend vor einmalig, Kostenloses zuletzt. Tages-/Stundensatz zählen als laufend (geplant Satz × Menge je Monat).
+ */
+const HAUPT_RANG: Record<PreisTeilArt, number> = { monatlich: 0, jaehrlich: 1, stundensatz: 2, tagessatz: 3, fest: 4, je_einheit: 5, erfolg: 6, kostenlos: 7 };
+/**
+ * Der Hauptpreis-Teil einer Liste — EINE Regel (Server, Browser, Spiegeln, Angebot, Mandat): unter den Teilen mit Rolle „grund“ (ohne solche unter
+ * allen) der mit dem besten Rang der Form (`HAUPT_RANG`), bei gleicher Form der höhere Betrag, dann die Kennung. Die Reihenfolge der Teile auf der Karte
+ * entscheidet NICHTS (bis 24.10.: „der erste, der immer gilt“ — ein Festpreis vor dem Monatspreis wurde so das Mandat-Honorar).
+ */
+export function hauptpreisAus(teile: readonly PreisTeil[]): PreisTeil | null {
+  const grund = teile.filter(x => x.rolle === 'grund');
+  const l = grund.length ? grund : teile;
+  if (l.length <= 1) return l[0] ?? null;
+  return [...l].sort((a, b) => HAUPT_RANG[a.art] - HAUPT_RANG[b.art] || (b.betragCent ?? -1) - (a.betragCent ?? -1) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
 }
+/** Der Hauptpreis-Teil eines Produkts (`hauptpreisAus`). Er wird ins alte `preis` gespiegelt und ist das Honorar des Mandats. */
+export function hauptpreis(l: Pick<Leistung, 'preis' | 'preise'>): PreisTeil | null {
+  return hauptpreisAus(preisteileVon(l));
+}
+/** Die Teile in der Reihenfolge für Angebot und Mandat: der Hauptpreis zuerst, danach die übrigen wie auf der Karte. */
+export function teileHauptZuerst(teile: readonly PreisTeil[]): PreisTeil[] {
+  const h = hauptpreisAus(teile);
+  return h ? [h, ...teile.filter(t => t !== h)] : [...teile];
+}
+/** Wie ein Preis-Teil neben dem Produktnamen heißt: „Festpreis“, „Tagessatz“, „monatlich“, „je Event“ … */
+export const teilLabel = (t: Pick<PreisTeil, 'art' | 'einheit'>): string => (t.art === 'je_einheit' ? jeText(t.einheit) : preisArtLabel(t.art));
 const BASIS_JE_ART: Record<PreisTeilArt, PreisBasis> = {
   kostenlos: 'einmalig', fest: 'einmalig', monatlich: 'monat', jaehrlich: 'jahr', je_einheit: 'einmalig', tagessatz: 'einmalig', stundensatz: 'einmalig', erfolg: 'einmalig',
 };
@@ -271,7 +293,7 @@ export function produktKarte(l: Leistung, stufe?: TreppenStufe | null, alle?: re
     const b = stufe.preis.art !== 'kostenlos' && typeof stufe.preis.betrag === 'number' ? inCent(stufe.preis.betrag) : undefined;
     preise = [{ id: ALT_TEIL_ID, art: STUFEN_ART[stufe.preis.art], ...(b !== undefined ? { betragCent: b } : {}), rolle: 'grund' }];
   }
-  const h = preise.find(x => x.rolle === 'grund') ?? preise[0] ?? null;
+  const h = hauptpreisAus(preise);
   const r = l.regeln ?? {};
   const erfolg = preise.find(x => x.art === 'erfolg');
   const anrechnungText = r.anrechnung?.auf.length ? `${r.anrechnung.anteilProzent === 100 ? 'voll' : `zu ${r.anrechnung.anteilProzent} %`} angerechnet auf ${r.anrechnung.auf.map(id => nameVon(id, alle)).join(', ')}` : stufe?.regeln.anrechnung;
@@ -445,26 +467,69 @@ export function mandatArtVon(l: Pick<Leistung, 'typ' | 'preis' | 'preise'>): Cha
   return h?.art === 'monatlich' || h?.art === 'jaehrlich' ? 'retainer' : h?.art === 'erfolg' ? 'vermittlung' : 'projekt';
 }
 const ZUSATZ_BASIS: Partial<Record<PreisTeilArt, MandatZusatzBasis>> = { monatlich: 'monat', jaehrlich: 'jahr', fest: 'einmalig', je_einheit: 'einheit', tagessatz: 'tag', stundensatz: 'stunde' };
-/** Honorar eines Zusatzmoduls aus seinem Hauptpreis (Cent) — ohne Betrag bzw. kostenlos/Erfolg: keins. */
+/** Honorar eines Zusatzmoduls aus einem Preis-Teil (Cent) — ohne Betrag bzw. kostenlos/Erfolg: keins. */
+export function teilHonorar(t: PreisTeil | null | undefined): MandatZusatz['honorar'] | undefined {
+  const basis = t ? ZUSATZ_BASIS[t.art] : undefined;
+  return t && basis && typeof t.betragCent === 'number' ? { betragCent: t.betragCent, basis } : undefined;
+}
+/** Honorar eines Zusatzmoduls aus dem Hauptpreis seines Produkts (Cent) — ohne Betrag bzw. kostenlos/Erfolg: keins. */
 export function zusatzHonorar(l: Pick<Leistung, 'preis' | 'preise'>): MandatZusatz['honorar'] | undefined {
-  const h = hauptpreis(l);
-  const basis = h ? ZUSATZ_BASIS[h.art] : undefined;
-  return h && basis && typeof h.betragCent === 'number' ? { betragCent: h.betragCent, basis } : undefined;
+  return teilHonorar(hauptpreis(l));
+}
+/**
+ * Was ein Zusatzmodul zusätzlich von einem Preis-Teil übernimmt: den Zahlplan eines Festpreises (z. B. 50/50), beim Stundensatz die geplanten Stunden
+ * (`mengeJeMonat`, sonst der Deckel), beim Tagessatz die geplanten Tage (21.10., B4). Ohne beides: `{}`.
+ */
+export function teilExtras(t: PreisTeil | null | undefined): Pick<MandatZusatz, 'zahlplan' | 'stundenJeMonat' | 'tageJeMonat'> {
+  if (!t) return {};
+  const menge = geplanteMenge(t);
+  return {
+    ...(t.art === 'fest' && t.zahlplan?.anzahlungProzent ? { zahlplan: { anzahlungProzent: t.zahlplan.anzahlungProzent } } : {}),
+    ...(t.art === 'stundensatz' && menge > 0 ? { stundenJeMonat: menge } : {}),
+    ...(t.art === 'tagessatz' && menge > 0 ? { tageJeMonat: menge } : {}),
+  };
 }
 /**
  * Was ein Zusatzmodul zusätzlich vom Hauptpreis seines Produkts übernimmt (P3, 19.10.): den Zahlplan eines einmaligen Preises (z. B. 50/50) und beim
  * Stundensatz den Deckel als geplante Stunden je Monat (Liquidität). Ohne Preis-Teile bzw. ohne beides: `{}`.
  */
 export function zusatzExtras(l: Pick<Leistung, 'preis' | 'preise'>): Pick<MandatZusatz, 'zahlplan' | 'stundenJeMonat' | 'tageJeMonat'> {
-  if (!hatPreisteile(l)) return {};
-  const h = hauptpreis(l);
-  // Geplante Menge (21.10., B4): `mengeJeMonat` des Produkts, beim Stundensatz sonst der Deckel.
-  const menge = h ? geplanteMenge(h) : 0;
+  return hatPreisteile(l) ? teilExtras(hauptpreis(l)) : {};
+}
+
+// ── Eigene Preis-Teile als Zusatzmodule (24.10., Bau-Test: „Mandat verliert Preis-Teile“) ─────────────────────────────────────────────
+
+/** Kennung des Zusatzmoduls für einen eigenen Preis-Teil des Hauptprodukts — fest aus der Teil-Kennung (mehrfach gerechnet = dieselbe). */
+export const eigeneZusatzId = (teilId: string) => `mz-e-${teilId.replace(/^pt-/, '').slice(0, 56)}`;
+/** Ist das Produkt eine Kombination (mehr als ein Preis-Teil)? Nur dann tragen weitere Teile eigene Zusatzmodule — ein Preis bleibt bit-gleich. */
+export const istKombi = (l: Pick<Leistung, 'preise'>): boolean => Array.isArray(l.preise) && l.preise.length > 1;
+/**
+ * Ein eigener Preis-Teil des Hauptprodukts als Zusatzmodul des Mandats (24.10.) — über das VORHANDENE Modell (`MandatZusatz`, Rechnung und Liquidität in
+ * lib/crm/mandat-zusatz.ts): `leistungId` = das Hauptprodukt, `preisTeilId` = der Teil; Honorar und Extras aus dem Teil (Festpreis mit Zahlplan → Anzahlung
+ * im Monat des Beginns, Rest nach der vorhandenen Regel; Tagessatz mit geplanten Tagen → Liquidität plant Satz × Tage, abgerechnet über „abrechnen“).
+ * `honorarCent`/`menge` überschreiben (Angebot: verhandelter Preis, geplante Menge). null ohne Betrag (kostenlos, Erfolg ohne Betrag).
+ */
+export function zusatzAusTeil(l: Pick<Leistung, 'id'>, t: PreisTeil, opt: { honorarCent?: number; menge?: number; ab?: string } = {}): MandatZusatz | null {
+  const h = teilHonorar(t);
+  if (!h) return null;
+  const extras = teilExtras(t);
+  const menge = opt.menge !== undefined && opt.menge > 0 ? Math.round(opt.menge * 100) / 100 : undefined;
   return {
-    ...(h?.art === 'fest' && h.zahlplan?.anzahlungProzent ? { zahlplan: { anzahlungProzent: h.zahlplan.anzahlungProzent } } : {}),
-    ...(h?.art === 'stundensatz' && menge > 0 ? { stundenJeMonat: menge } : {}),
-    ...(h?.art === 'tagessatz' && menge > 0 ? { tageJeMonat: menge } : {}),
+    id: eigeneZusatzId(t.id), leistungId: l.id, preisTeilId: t.id, ...(opt.ab ? { ab: opt.ab } : {}),
+    honorar: { betragCent: opt.honorarCent ?? h.betragCent, basis: h.basis },
+    ...extras,
+    ...(menge !== undefined && t.art === 'tagessatz' ? { tageJeMonat: menge } : {}),
+    ...(menge !== undefined && t.art === 'stundensatz' ? { stundenJeMonat: Math.min(menge, t.deckel?.stundenJeMonat ?? menge) } : {}),
   };
+}
+/**
+ * Die eigenen Preis-Teile eines Produkts, die ein Mandat noch als Zusatzmodul aufnehmen kann („+ Zusatzmodul“, 24.10.): nur bei einer Kombination, ohne den
+ * Hauptpreis (er ist das Honorar), ohne Teile ohne Betrag und ohne die schon übernommenen (`vorhanden` = `preisTeilId` der Module).
+ */
+export function eigeneTeileOffen(l: Pick<Leistung, 'preis' | 'preise'>, vorhanden: readonly (string | undefined)[]): PreisTeil[] {
+  if (!istKombi(l)) return [];
+  const h = hauptpreis(l);
+  return l.preise!.filter(t => t !== h && !!teilHonorar(t) && !vorhanden.includes(t.id));
 }
 const VERLAENGERUNG: Record<NonNullable<ProduktVertrag['danach']>, Mandat['verlaengerung']> = { monatlich_kuendbar: 'auto', verlaengert_um_laufzeit: 'auto', endet: 'manuell' };
 export type MandatVertragsFelder = Partial<Pick<Mandat, 'mindestlaufzeitMonate' | 'kuendigungsfristTage' | 'verlaengerung' | 'rechnungsrhythmus' | 'zahlungszielTage' | 'ustSatz'>>;
@@ -491,9 +556,12 @@ export function mandatVertragAusProdukt(l: Leistung, honorarBasis?: Mandat['hono
  * Mandat aus Deal/angenommenem Angebot (`mandatVorbelegung`) und künftig „Mandat aus Produkt anlegen“ (P3).
  * Ohne Karten-Felder genau wie bisher „+ Mandat“: Titel, Produkt, Art „retainer“, Honorar aus dem alten Preis (`honorarAusPreis`), keine Leistungen.
  */
-export function mandatVorlageAusProdukt(l: Leistung, zusatz: readonly ZusatzWahl[] = []): MandatVorlage {
+export function mandatVorlageAusProdukt(l: Leistung, zusatz: readonly ZusatzWahl[] = [], opt: { optionen?: readonly string[] } = {}): MandatVorlage {
   const gesellschaft = l.gesellschaft && l.gesellschaft !== 'offen' ? { gesellschaft: l.gesellschaft } : {};
-  const zu = zusatzListe(l, zusatz);
+  // 24.10. (Bau-Test): jeder weitere Preis-Teil einer Kombination wird ein Zusatzmodul (Grund-Teile immer, Optionen nur gewählt) — vorher standen sie nur
+  // als Namen unter „Leistungen“ und wurden nie abgerechnet. Ein Produkt mit EINEM Preis: keine (bit-gleich).
+  const eigene = eigeneZusatzModule(l, opt.optionen ?? []);
+  const zu = [...eigene.module, ...zusatzListe(l, zusatz)];
   const mitZusatz = zu.length ? { zusatz: zu } : {};
   if (!istKarte(l)) return { titel: l.name, leistungId: l.id, art: 'retainer', ...gesellschaft, ...honorarAusPreis(l.preis), leistungen: [], ...mitZusatz, hinweise: [] };
   const hinweise: string[] = [];
@@ -524,8 +592,25 @@ export function mandatVorlageAusProdukt(l: Leistung, zusatz: readonly ZusatzWahl
   const tage = h?.art === 'tagessatz' ? geplanteMenge(h) : 0;
   return {
     titel: l.name, leistungId: l.id, art: mandatArtVon(l), ...gesellschaft, ...honorar, ...mandatVertragAusProdukt(l, honorar.honorar.basis),
-    leistungen: texte, ...mitZusatz, ...(zahlplan ? { zahlplan } : {}), ...(tage > 0 ? { tageJeMonat: tage } : {}), hinweise,
+    leistungen: texte, ...mitZusatz, ...(zahlplan ? { zahlplan } : {}), ...(tage > 0 ? { tageJeMonat: tage } : {}), hinweise: [...hinweise, ...eigene.hinweise],
   };
+}
+/**
+ * Die eigenen Preis-Teile einer Kombination als Zusatzmodule (`zusatzAusTeil`): alle Grund-Teile außer dem Hauptpreis, dazu die gewählten Optionen.
+ * Teile ohne Betrag (Erfolgsanteil) werden ein offener Punkt. Ohne Kombination: keine.
+ */
+export function eigeneZusatzModule(l: Pick<Leistung, 'id' | 'preis' | 'preise'>, optionen: readonly string[]): { module: MandatZusatz[]; hinweise: string[] } {
+  if (!istKombi(l)) return { module: [], hinweise: [] };
+  const h = hauptpreis(l);
+  const liste: MandatZusatz[] = [];
+  const hinweise: string[] = [];
+  for (const t of l.preise!) {
+    if (t === h || !(t.rolle === 'grund' || optionen.includes(t.id))) continue;
+    const z = zusatzAusTeil(l, t);
+    if (z) liste.push(z);
+    else if (t.art === 'erfolg') hinweise.push(`Erfolgsanteil: ${preisText(t)} — Höhe beim Abrechnen festlegen.`);
+  }
+  return { module: liste, hinweise };
 }
 /**
  * Der Zahlplan eines Mandats aus dem Produkt (21.10., Rundgang B2 — EINE Regel für „+ Mandat“, Mandat aus Deal und aus angenommenem Angebot): der
@@ -581,9 +666,14 @@ export const POSITION_GRENZEN = { titel: 200, text: 6000 } as const;
 export const ANGEBOT_EINHEIT_JE_BASIS: Record<AngebotBasis, string> = { einmalig: 'pauschal', monat: 'Monat', jahr: 'Jahr' };
 
 /** Positionstext aus den Angebotstexten des Produkts (Leistungstext, Ergebnis, Hinweise) — ohne Angebotstext: Beschreibung + Lieferumfang. */
-export function positionsText(l: Pick<Leistung, 'angebot' | 'beschreibung' | 'lieferumfang' | 'ergebnis'>): string {
+export function positionsText(l: Pick<Leistung, 'angebot' | 'beschreibung' | 'lieferumfang' | 'ergebnis'>, opt: { lieferumfang?: boolean } = {}): string {
   const a = l.angebot;
-  if (a?.leistungstext?.trim()) return [a.leistungstext.trim(), a.ergebnis?.trim() ? `Ergebnis: ${a.ergebnis.trim()}` : '', a.hinweise?.trim() ?? ''].filter(Boolean).join('\n\n');
+  if (a?.leistungstext?.trim()) {
+    // 24.10. (Bau-Test, Reibung): der Lieferumfang der Karte steht im Angebot (Punkte, nur was der Leistungstext nicht schon sagt) — nur für Karten.
+    const lt = a.leistungstext.trim();
+    const punkte = opt.lieferumfang ? (l.lieferumfang ?? []).map(x => x.trim()).filter(x => x && !lt.includes(x)) : [];
+    return [lt, punkte.length ? punkte.map(x => `• ${x}`).join('\n') : '', a.ergebnis?.trim() ? `Ergebnis: ${a.ergebnis.trim()}` : '', a.hinweise?.trim() ?? ''].filter(Boolean).join('\n\n');
+  }
   // Altbestand ohne Angebotstext: Beschreibung + Lieferumfang als Vorschlag (die Oberfläche markiert „Text fehlt“).
   return [l.beschreibung?.trim() ?? '', l.lieferumfang?.length ? l.lieferumfang.map(x => `• ${x}`).join('\n') : '', l.ergebnis?.trim() ? `Ergebnis: ${l.ergebnis.trim()}` : ''].filter(Boolean).join('\n\n');
 }
@@ -616,7 +706,10 @@ function teilHinweise(t: PreisTeil): string[] {
 export function angebotPositionenAusProdukt(l: Leistung, gewaehlteOptionen: readonly string[] = [], opt: { idBasis?: string; kleinunternehmer?: boolean } = {}): AngebotPosition[] {
   const idBasis = opt.idBasis ?? 'p-1';
   if (!hatPreisteile(l)) return [altePosition(l, idBasis, !!opt.kleinunternehmer)];
-  const teile = l.preise!.filter(t => t.rolle === 'grund' || gewaehlteOptionen.includes(t.id));
+  const kombi = istKombi(l);
+  // 24.10. (Bau-Test): der Hauptpreis (laufend vor einmalig, `hauptpreis`) steht vorne und trägt Titel und Text des Produkts — die Reihenfolge der Karte
+  // entscheidet nicht mehr, welcher Teil die erste Position ist. Ein Produkt mit einem Preis: wie bisher.
+  const teile = (kombi ? teileHauptZuerst(l.preise!) : l.preise!).filter(t => t.rolle === 'grund' || gewaehlteOptionen.includes(t.id));
   const erfolg = teile.filter(t => t.art === 'erfolg');
   const bezahlt = teile.filter(t => t.art !== 'erfolg' && t.art !== 'kostenlos');
   const kostenlos = teile.filter(t => t.art === 'kostenlos');
@@ -624,20 +717,51 @@ export function angebotPositionenAusProdukt(l: Leistung, gewaehlteOptionen: read
   const v = vertragVon(l);
   const ust = opt.kleinunternehmer ? 0 : v.ustSatz ?? 19;
   return pos.map((t, i) => {
-    const basis: AngebotBasis = t.art === 'monatlich' ? 'monat' : t.art === 'jaehrlich' ? 'jahr' : 'einmalig';
+    // Tages-/Stundensatz in einer Kombination (24.10.): „je Tag“ mit der geplanten Menge je Monat, gezählt als laufend (nie mehr „1 Tag einmalig“).
+    // Abgerechnet wird die echte Menge („abrechnen“ am Mandat). Allein (ein Preis) bleibt er wie bisher.
+    const satz = kombi && istSatz(t.art) ? (t.art === 'tagessatz' ? 'tag' as const : 'stunde' as const) : undefined;
+    const basis: AngebotBasis = t.art === 'monatlich' || satz ? 'monat' : t.art === 'jaehrlich' ? 'jahr' : 'einmalig';
+    const menge = satz ? geplanteMenge(t) || 1 : 1;
+    const satzText = satz ? `Abgerechnet nach ${satz === 'tag' ? 'Tagen' : 'Stunden'} — geplant ${menge.toLocaleString('de-DE')} ${satz === 'tag' ? (menge === 1 ? 'Tag' : 'Tage') : 'Std.'} je Monat.` : '';
     const saetze = i === 0
-      ? [positionsText(l), ...teilHinweise(t), ...erfolg.map(e => `Zusätzlich: ${e.text?.trim() || preisText(e)}.`), v.reisekosten === 'separat' ? 'Reisekosten werden separat abgerechnet.' : '']
-      : [t.text?.trim() ?? '', ...teilHinweise(t)];
+      ? [positionsText(l, { lieferumfang: true }), ...teilHinweise(t), satzText, ...erfolg.map(e => `Zusätzlich: ${e.text?.trim() || preisText(e)}.`), v.reisekosten === 'separat' ? 'Reisekosten werden separat abgerechnet.' : '']
+      : [t.text?.trim() ?? '', ...teilHinweise(t), satzText];
     return {
       id: i === 0 ? idBasis : `${idBasis}-${i + 1}`, leistungId: l.id,
       preisTeilId: t.id,
-      titel: (i === 0 ? l.angebot?.titel?.trim() || l.name : `${l.name} · ${t.art === 'je_einheit' ? jeText(t.einheit) : preisArtLabel(t.art)}`).slice(0, POSITION_GRENZEN.titel),
+      titel: (i === 0 ? l.angebot?.titel?.trim() || l.name : `${l.name} · ${teilLabel(t)}`).slice(0, POSITION_GRENZEN.titel),
       text: saetze.filter(Boolean).join('\n\n').slice(0, POSITION_GRENZEN.text),
-      menge: 1, einheit: t.art === 'je_einheit' ? einheitKurz(t.einheit) : POS_EINHEIT[t.art], einzelpreisCent: typeof t.betragCent === 'number' ? t.betragCent : 0, ustSatz: ust, basis,
+      menge, einheit: t.art === 'je_einheit' ? einheitKurz(t.einheit) : POS_EINHEIT[t.art], einzelpreisCent: typeof t.betragCent === 'number' ? t.betragCent : 0, ustSatz: ust, basis,
+      ...(satz ? { satz } : {}),
       ...(basis !== 'einmalig' && v.mindestlaufzeitMonate ? { laufzeitMonate: v.mindestlaufzeitMonate } : {}),
     };
   });
 }
+
+// ── Deal ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Vorgabe des Deal-Werts aus einem Produkt (24.10., Bau-Test: Deal-Formular mit Produktfeld) — netto Euro. Laufend = monatliche Grund-Teile + jährliche ÷ 12
+ * + geplante Tages-/Stundensätze (Satz × geplante Menge), einmalig = Festpreise der Grund-Teile (`einmalBetrag` neben laufendem Wert); Laufzeit =
+ * Mindestlaufzeit. Ohne laufenden Teil: jährlich bzw. einmalig. Je Einheit, Erfolg, Optionen und Kostenloses zählen nicht (ohne Menge keine Zahl). null ohne Betrag.
+ */
+export function dealWertAusProdukt(l: Pick<Leistung, 'preis'> & Partial<Pick<Leistung, 'preise' | 'vertrag' | 'laufzeitMonate'>>): { betrag: number; basis: PreisBasis; laufzeitMonate?: number; einmalBetrag?: number } | null {
+  const teile = preisteileVon(l as Pick<Leistung, 'preis' | 'preise'>).filter(t => t.rolle === 'grund' && typeof t.betragCent === 'number' && t.betragCent > 0);
+  const summe = (f: (t: PreisTeil) => number) => teile.reduce((x, t) => x + f(t), 0);
+  const monat = summe(t => (t.art === 'monatlich' ? t.betragCent! : istSatz(t.art) ? kaufmaennischCent(t.betragCent! * geplanteMenge(t)) : 0));
+  const jahr = summe(t => (t.art === 'jaehrlich' ? t.betragCent! : 0));
+  const einmal = summe(t => (t.art === 'fest' ? t.betragCent! : 0));
+  const lz = vertragVon({ vertrag: l.vertrag, laufzeitMonate: l.laufzeitMonate }).mindestlaufzeitMonate;
+  const mitLz = lz ? { laufzeitMonate: lz } : {};
+  const mitEinmal = einmal ? { einmalBetrag: einmal / 100 } : {};
+  if (monat) return { betrag: (monat + kaufmaennischCent(jahr / 12)) / 100, basis: 'monat', ...mitLz, ...mitEinmal };
+  if (jahr) return { betrag: jahr / 100, basis: 'jahr', ...mitLz, ...mitEinmal };
+  if (einmal) return { betrag: einmal / 100, basis: 'einmalig' };
+  // Ein Tages-/Stundensatz ohne geplante Menge (bzw. je Einheit) allein: der Satz als einmaliger Wert (wie bisher der Hauptpreis).
+  const h = hauptpreis(l as Pick<Leistung, 'preis' | 'preise'>);
+  return h && typeof h.betragCent === 'number' && h.betragCent > 0 && h.art !== 'erfolg' ? { betrag: h.betragCent / 100, basis: 'einmalig' } : null;
+}
+const kaufmaennischCent = (c: number) => Math.round(c);
 
 // ── Finanzplanung ────────────────────────────────────────────────────────────
 
@@ -819,7 +943,10 @@ export function mandatZusatzSaeubern(v: unknown): MandatZusatz[] | undefined {
     const std = dezimal(x.stundenJeMonat, 0.25, G.stundenJeMonat);
     const tage = dezimal(x.tageJeMonat, 0.25, G.stundenJeMonat);
     return [{
-      id: x.id, leistungId: x.leistungId, ...(typeof x.ab === 'string' && TAG.test(x.ab) ? { ab: x.ab } : {}), ...(typeof x.bis === 'string' && TAG.test(x.bis) ? { bis: x.bis } : {}),
+      id: x.id, leistungId: x.leistungId,
+      // 24.10.: ein eigener Preis-Teil des Produkts (`pt-…`, optional) — der alte Stand verwirft das Feld, das Modul bleibt mit seinem Honorar gültig.
+      ...(typeof x.preisTeilId === 'string' && TEIL_ID.test(x.preisTeilId) ? { preisTeilId: x.preisTeilId } : {}),
+      ...(typeof x.ab === 'string' && TAG.test(x.ab) ? { ab: x.ab } : {}), ...(typeof x.bis === 'string' && TAG.test(x.bis) ? { bis: x.bis } : {}),
       ...(betrag !== undefined && basis ? { honorar: { betragCent: betrag, basis } } : {}), ...(x.inklusive === true ? { inklusive: true } : {}),
       ...(menge !== undefined ? { menge } : {}), ...(je ? { je } : {}),
       ...(ap !== undefined ? { zahlplan: { anzahlungProzent: ap } } : {}), ...(std !== undefined ? { stundenJeMonat: std } : {}), ...(tage !== undefined ? { tageJeMonat: tage } : {}),
@@ -835,7 +962,7 @@ export function mandatZusatzSaeubern(v: unknown): MandatZusatz[] | undefined {
  *   · ohne „inklusive“: nur Produkte mit Rolle „zusatz“ bzw. „beides“ (inklusive darf jedes — die Regel kommt vom Hauptprodukt)
  *   · ab ≤ bis, Honorar mit Basis, Zahlplan 1–99 %, geplante Stunden nur beim Stundensatz
  */
-export function mandatZusatzPruefen(roh: unknown, alt: readonly MandatZusatz[] | undefined, ctx: { katalog: readonly Pick<Leistung, 'id' | 'name' | 'rolle' | 'geloeschtAm'>[]; hauptId?: string }): PruefFehler[] {
+export function mandatZusatzPruefen(roh: unknown, alt: readonly MandatZusatz[] | undefined, ctx: { katalog: readonly (Pick<Leistung, 'id' | 'name' | 'rolle' | 'geloeschtAm'> & Partial<Pick<Leistung, 'preis' | 'preise'>>)[]; hauptId?: string }): PruefFehler[] {
   if (roh === undefined || roh === null || roh === '') return [];
   if (!Array.isArray(roh)) return [{ status: 400, text: 'Zusatzmodule: eine Liste.' }];
   if (roh.length > G.zusatz) return [{ status: 413, text: `Höchstens ${G.zusatz} Zusatzmodule je Mandat — nichts gespeichert.` }];
@@ -850,8 +977,18 @@ export function mandatZusatzPruefen(roh: unknown, alt: readonly MandatZusatz[] |
     const l = typeof x.leistungId === 'string' ? ctx.katalog.find(k => k.id === x.leistungId && !k.geloeschtAm) : undefined;
     const name = l ? `„${l.name}“` : 'Zusatzmodul';
     if (!l) { f.push({ status: 400, text: 'Zusatzmodul: das Produkt gibt es nicht (mehr) im Katalog.' }); continue; }
-    if (l.id === ctx.hauptId) f.push({ status: 400, text: `${name} ist schon das Hauptprodukt dieses Mandats — nicht zugleich Zusatzmodul.` });
-    if (x.inklusive !== true && l.rolle !== 'zusatz' && l.rolle !== 'beides') f.push({ status: 400, text: `${name} ist kein Zusatzmodul (Rolle am Produkt „Zusatz“ bzw. „beides“) — oder als „inklusive“ eintragen.` });
+    // 24.10.: ein eigener Preis-Teil (`preisTeilId`) — nur einer, den das Produkt trägt, nie der Hauptpreis (der ist das Honorar), jeder Teil nur einmal.
+    const teilId = x.preisTeilId;
+    if (teilId !== undefined && teilId !== null) {
+      const teil = typeof teilId === 'string' && TEIL_ID.test(teilId) && l.preise?.length ? l.preise.find(t => t.id === teilId) : undefined;
+      if (!teil) { f.push({ status: 400, text: `${name}: diesen Preis-Teil gibt es am Produkt nicht (mehr).` }); continue; }
+      if (l.id === ctx.hauptId && hauptpreis({ preis: l.preis ?? { betrag: 0, einheit: '' }, preise: l.preise }) === teil) f.push({ status: 400, text: `${name}: dieser Preis-Teil ist schon das Honorar des Mandats — nicht zugleich Zusatzmodul.` });
+      if ((roh as unknown[]).filter(y => istObj(y) && y.preisTeilId === teilId && y.leistungId === x.leistungId).length > 1) f.push({ status: 400, text: `${name}: jeder Preis-Teil nur einmal als Zusatzmodul.` });
+      if (l.id !== ctx.hauptId && x.inklusive !== true && l.rolle !== 'zusatz' && l.rolle !== 'beides') f.push({ status: 400, text: `${name} ist kein Zusatzmodul (Rolle am Produkt „Zusatz“ bzw. „beides“) — oder als „inklusive“ eintragen.` });
+    } else {
+      if (l.id === ctx.hauptId) f.push({ status: 400, text: `${name} ist schon das Hauptprodukt dieses Mandats — nicht zugleich Zusatzmodul.` });
+      if (x.inklusive !== true && l.rolle !== 'zusatz' && l.rolle !== 'beides') f.push({ status: 400, text: `${name} ist kein Zusatzmodul (Rolle am Produkt „Zusatz“ bzw. „beides“) — oder als „inklusive“ eintragen.` });
+    }
     for (const k of ['ab', 'bis'] as const) if (x[k] != null && x[k] !== '' && !(typeof x[k] === 'string' && TAG.test(x[k] as string))) f.push({ status: 400, text: `${name}: ${k} als Tag JJJJ-MM-TT.` });
     if (typeof x.ab === 'string' && typeof x.bis === 'string' && TAG.test(x.ab) && TAG.test(x.bis) && x.bis < x.ab) f.push({ status: 400, text: `${name}: „bis“ liegt vor „ab“.` });
     if (x.honorar != null) {

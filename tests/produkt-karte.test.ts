@@ -184,7 +184,8 @@ describe('Angebot: Positionen aus der Karte', () => {
     const p = angebotPositionenAusProdukt(HOS, [], { idBasis: 'p-1' });
     expect(p).toHaveLength(1);
     expect(p[0]).toMatchObject({ id: 'p-1', leistungId: 'l-hos', titel: 'Vertriebsleitung auf Zeit', menge: 1, einheit: 'Monat', einzelpreisCent: 250_000, ustSatz: 19, basis: 'monat', laufzeitMonate: 6 });
-    expect(p[0].text).toBe('Führung des Vertriebs.\n\nZusätzlich: Bonus bei Zielen.');
+    // 24.10. (Bau-Test, Reibung): der Lieferumfang der Karte steht im Angebot.
+    expect(p[0].text).toBe('Führung des Vertriebs.\n\n• Wochenplan\n• Pipeline-Review\n\nZusätzlich: Bonus bei Zielen.');
     expect(angebotPositionenAusProdukt(HOS, [], { kleinunternehmer: true })[0].ustSatz).toBe(0);
   });
   it('einmalig + je Event: die Option nur, wenn gewählt — mit eigener Einheit und Zahlplan', () => {
@@ -380,7 +381,9 @@ describe('Mandat-Vorlage aus dem Produkt', () => {
     const v = mandatVorlageAusProdukt(HOS);
     expect(v).toEqual({
       titel: 'Vertriebsleitung auf Zeit', leistungId: 'l-hos', art: 'retainer', gesellschaft: 'ug', honorar: { betrag: 2500, basis: 'monat', netto: true }, rechnungsrhythmus: 'monatlich',
-      mindestlaufzeitMonate: 6, kuendigungsfristTage: 30, verlaengerung: 'auto', zahlungszielTage: 10, leistungen: ['Führung des Vertriebs.', 'Wochenplan', 'Pipeline-Review'], hinweise: [],
+      mindestlaufzeitMonate: 6, kuendigungsfristTage: 30, verlaengerung: 'auto', zahlungszielTage: 10, leistungen: ['Führung des Vertriebs.', 'Wochenplan', 'Pipeline-Review'],
+      // 24.10.: der Erfolgsanteil einer Kombination geht nicht mehr still verloren — ein offener Punkt am Mandat.
+      hinweise: ['Erfolgsanteil: Bonus bei Zielen — Höhe beim Abrechnen festlegen.'],
     });
     const m = mandatEntwurf({ id: 'm-neu', firma: { id: 'f-a', name: 'B' }, kontaktIds: [], gesellschaft: 'ug', leistung: HOS, jetzt: J, person: 'pa' });
     expect(m).toMatchObject({ mindestlaufzeitMonate: 6, kuendigungsfristTage: 30, verlaengerung: 'auto', zahlungszielTage: 10, honorar: { betrag: 2500, basis: 'monat' }, leistungen: v.leistungen });

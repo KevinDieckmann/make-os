@@ -16,7 +16,7 @@ import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import { leistungsmonat, monatsHonorar, monatsName, plusMonateGekappt, zahlungsziel, type Leistungsmonat } from './mandat-laufzeit';
 import { ANRECHNUNG_PRAEFIX, anteilText, positionAusMandat, positionNetto, rechnungSummen } from '@/lib/finanzen/rechnung/regeln';
 import { UST_SAETZE } from './angebote';
-import { hatPreisteile, hauptpreis, preisteileVon } from './produkt-karte';
+import { hatPreisteile, hauptpreis, preisteileVon, teilLabel } from './produkt-karte';
 import { ABGERECHNET_PRAEFIX } from '@/lib/make-one/liquiditaet';
 import { inCent, kaufmaennisch } from '@/lib/finanzen/ust';
 
@@ -47,8 +47,22 @@ const monatPlus = (monat: string, n: number) => plusMonateGekappt(`${monat}-01`,
 const monateZwischen = (a: string, b: string) => (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7));
 
 type Katalog = readonly Pick<Leistung, 'id' | 'name' | 'preis' | 'preise'>[];
-/** Name des Produkts hinter einem Modul (ohne Katalog bzw. gelöscht: „Zusatzmodul“). */
-export const zusatzName = (z: Pick<MandatZusatz, 'leistungId'>, katalog?: Katalog) => katalog?.find(l => l.id === z.leistungId)?.name ?? 'Zusatzmodul';
+/** Der eigene Preis-Teil hinter einem Modul (24.10., `preisTeilId`) — undefined ohne Teil bzw. ohne Katalog. */
+export function eigenerTeil(z: Pick<MandatZusatz, 'leistungId'> & Partial<Pick<MandatZusatz, 'preisTeilId'>>, katalog?: Katalog): PreisTeil | undefined {
+  if (!z.preisTeilId) return undefined;
+  const l = katalog?.find(x => x.id === z.leistungId);
+  return l && hatPreisteile(l) ? l.preise!.find(t => t.id === z.preisTeilId) : undefined;
+}
+/**
+ * Name des Produkts hinter einem Modul (ohne Katalog bzw. gelöscht: „Zusatzmodul“). Ein eigener Preis-Teil des Produkts (24.10.) heißt
+ * „<Produkt> · <Teil>“ („… · Festpreis“, „… · Tagessatz“) — so steht er auf Rechnung und Liquiplan neben dem Monatshonorar desselben Produkts.
+ */
+export function zusatzName(z: Pick<MandatZusatz, 'leistungId'> & Partial<Pick<MandatZusatz, 'preisTeilId'>>, katalog?: Katalog): string {
+  const l = katalog?.find(x => x.id === z.leistungId);
+  if (!l) return 'Zusatzmodul';
+  const t = eigenerTeil(z, katalog);
+  return t ? `${l.name} · ${teilLabel(t)}` : l.name;
+}
 
 /**
  * Laufzeit eines Moduls: [ab, bis] ∩ [Beginn, Ende] des Mandats (beide Tage eingeschlossen). `ende` = das Ende, mit dem gerechnet wird —
@@ -200,6 +214,8 @@ export function abrechnenWahlAus(v: unknown): { ok: true; wahl: AbrechnenWahl[] 
 const EINHEIT_BASIS: Record<string, string> = { tag: 'Tag', stunde: 'Stunde' };
 /** Der Preis-Teil des Produkts, der zur Basis des Moduls passt (Einheit, Deckel). */
 function teilFuer(z: MandatZusatz, katalog?: Katalog): PreisTeil | undefined {
+  const eigen = eigenerTeil(z, katalog);
+  if (eigen) return eigen;
   const l = katalog?.find(x => x.id === z.leistungId);
   if (!l || !hatPreisteile(l)) return undefined;
   const art = z.honorar?.basis === 'einheit' ? 'je_einheit' : z.honorar?.basis === 'tag' ? 'tagessatz' : z.honorar?.basis === 'stunde' ? 'stundensatz' : null;
@@ -211,7 +227,9 @@ const NACH_MENGE: readonly PreisTeil['art'][] = ['je_einheit', 'tagessatz', 'stu
  * Die optionalen Teile des Produkts hinter einem Modul, die sich am Mandat abrechnen lassen (21.10., Rundgang B7): Rolle „option“, nach Menge (je Einheit,
  * Tag, Stunde), mit Betrag — z. B. „je Messe“ neben dem Festpreis eines Messe-Moduls. Ohne Preis-Teile bzw. ohne Katalog: keine.
  */
-export function zusatzOptionen(z: Pick<MandatZusatz, 'leistungId'>, katalog?: Katalog): PreisTeil[] {
+export function zusatzOptionen(z: Pick<MandatZusatz, 'leistungId'> & Partial<Pick<MandatZusatz, 'preisTeilId'>>, katalog?: Katalog): PreisTeil[] {
+  // Ein eigener Preis-Teil des Hauptprodukts (24.10.) bringt keine Optionen mit — die Optionen des Produkts sind dort eigene Zusatzmodule.
+  if (z.preisTeilId) return [];
   const l = katalog?.find(x => x.id === z.leistungId);
   if (!l || !hatPreisteile(l)) return [];
   return preisteileVon(l).filter(t => t.rolle === 'option' && NACH_MENGE.includes(t.art) && typeof t.betragCent === 'number');
@@ -554,4 +572,39 @@ export function zusatzBeschreibung(z: MandatZusatz, katalog?: Katalog): string {
   else if (h.basis === 'tag') kern = `${euro(h.betragCent)} netto/Tag${z.tageJeMonat ? ` · ${z.tageJeMonat.toLocaleString('de-DE')} Tage/Monat geplant` : ''}`;
   else kern = `${euro(h.betragCent)} netto je ${zusatzEinheit(z, katalog)}`;
   return [kern, zeit].filter(Boolean).join(' · ');
+}
+
+/** Das Honorar eines Mandats in einem Satz (24.10., Fenster „Mandat anlegen“): „900 € netto je Monat“, „1.500 € netto einmalig · Zahlung 50/50“, „1.200 € netto je Tag · 2 Tage/Monat geplant“. */
+export function honorarText(m: Pick<Mandat, 'honorar'> & Partial<Pick<Mandat, 'zahlplan' | 'tageJeMonat'>>): string {
+  const h = m.honorar;
+  const betrag = `${euro(inCent(h.betrag))} ${h.netto ? 'netto' : 'brutto'}`;
+  if (h.basis === 'einmalig') return `${betrag} einmalig${m.zahlplan ? ` · ${m.zahlplan.anzahlungProzent === 50 ? 'Zahlung 50/50' : `${m.zahlplan.anzahlungProzent} % Anzahlung`}` : ''}`;
+  if (h.basis === 'tag') return `${betrag} je Tag${m.tageJeMonat ? ` · ${m.tageJeMonat.toLocaleString('de-DE')} Tage/Monat geplant` : ''}`;
+  return `${betrag} je Monat`;
+}
+
+/**
+ * Was das Produkt heute kostet, wenn das Mandat (Vertrag) etwas anderes vereinbart hat (24.10., Bau-Test: nach einer Preisänderung am Produkt stand am Mandat
+ * nur kommentarlos der neue Produktpreis): je Abweichung ein Satz „Produkt kostet inzwischen 950 € netto/Monat — dieses Mandat bleibt bei 900 € (Vertrag)“.
+ * Verglichen werden das Honorar mit dem Hauptpreis (gleiche Form) und die eigenen Preis-Teile der Zusatzmodule. Nichts ändert sich am Mandat.
+ */
+export function vertragsHinweise(m: Pick<Mandat, 'honorar' | 'zusatz'>, produkt: Pick<Leistung, 'id' | 'name' | 'preis' | 'preise'> | undefined): string[] {
+  if (!produkt || !hatPreisteile(produkt)) return [];
+  const raus: string[] = [];
+  const h = hauptpreis(produkt);
+  const art = m.honorar.basis === 'monat' ? 'monatlich' : m.honorar.basis === 'tag' ? 'tagessatz' : 'fest';
+  const jahrAlsMonat = h?.art === 'jaehrlich' && m.honorar.basis === 'monat';
+  if (h && typeof h.betragCent === 'number' && m.honorar.netto && (h.art === art || jahrAlsMonat)) {
+    const soll = jahrAlsMonat ? kaufmaennisch(h.betragCent / 12) : h.betragCent;
+    const ist = inCent(m.honorar.betrag);
+    const einheit = m.honorar.basis === 'monat' ? 'netto/Monat' : m.honorar.basis === 'tag' ? 'netto/Tag' : 'netto einmalig';
+    if (soll !== ist) raus.push(`Produkt kostet inzwischen ${euro(soll)} ${einheit} — dieses Mandat bleibt bei ${euro(ist)} (Vertrag).`);
+  }
+  for (const z of m.zusatz ?? []) {
+    if (!z.preisTeilId || z.leistungId !== produkt.id || !z.honorar) continue;
+    const t = produkt.preise!.find(x => x.id === z.preisTeilId);
+    if (!t || typeof t.betragCent !== 'number' || t.betragCent === z.honorar.betragCent) continue;
+    raus.push(`${zusatzName(z, [produkt])}: Produkt kostet inzwischen ${euro(t.betragCent)} — dieses Mandat bleibt bei ${euro(z.honorar.betragCent)} (Vertrag).`);
+  }
+  return raus;
 }

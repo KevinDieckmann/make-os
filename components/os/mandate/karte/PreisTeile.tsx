@@ -2,8 +2,9 @@
 
 // ─── Produkt-Karte · Preis (P2, 19.10. — PRODUKTE_KONZEPT.md „Preis-Formen kombinierbar“) ───────────────────────────────────────────
 // Die Preis-Teile einer Karte als Liste: je Teil die Form (Festpreis, monatlich, je Einheit …), „gilt immer“ oder „optional“, und NUR die
-// Felder, die zu dieser Form gehören (lib/crm/produkt-katalog.ts `PREIS_TEIL_FELDER`). Die Reihenfolge ist sichtbar — der erste Teil, der
-// immer gilt, ist der Hauptpreis (er steht im alten Preisfeld, in der Treppe und als erste Angebots-Position). Geschrieben wird die ganze Liste
+// Felder, die zu dieser Form gehören (lib/crm/produkt-katalog.ts `PREIS_TEIL_FELDER`). Die Reihenfolge ist sichtbar; Hauptpreis ist seit 24.10. der
+// laufende Teil, der immer gilt (`hauptpreisAus` — die Reihenfolge entscheidet nicht; er steht im alten Preisfeld, in der Treppe und als erste
+// Angebots-Position). Geschrieben wird die ganze Liste
 // über den Bestand-Schreibweg; vorher prüft `preisePruefen` dieselben Regeln wie der Server.
 
 import { useState } from 'react';
@@ -34,7 +35,7 @@ export function PreisTeile({ l, speichern }: { l: Leistung; speichern: (felder: 
   return (
     <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
-        Mehrere Teile lassen sich kombinieren (z. B. monatlich + Bonus, einmalig + je Event). Der erste Teil, der immer gilt, ist der Hauptpreis; „optional“ hakt man im Angebot an.
+        Mehrere Teile lassen sich kombinieren (z. B. monatlich + Bonus, einmalig + je Event). Hauptpreis ist der laufende Teil, der immer gilt (monatlich vor jährlich vor Tages-/Stundensatz vor Festpreis) — er wird das Honorar des Mandats, jeder weitere Teil ein Zusatzmodul; die Reihenfolge ändert daran nichts. „optional“ hakt man im Angebot an.
       </div>
       {preise.map((t, i) => (
         <TeilZeile key={t.id} t={t} nr={i + 1} haupt={t.id === haupt} anzahl={preise.length}

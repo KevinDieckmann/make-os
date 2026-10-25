@@ -10,7 +10,7 @@ import type { Gesellschaft, Leistung, Mandat, PreisTeil, PreisTeilArt, ProduktRo
 import type { TreppenStufe } from './treppe-daten';
 import { TREPPE_GRENZEN, TEXT_MAX } from './treppe-daten';
 import {
-  katalogTreppe, produktKarte, preisText, preisteileVon, hatPreisteile, preisAusTeil, produktPruefen, wochenStunden, stufenTakt, vertragVon,
+  katalogTreppe, produktKarte, preisText, preisteileVon, hatPreisteile, preisAusTeil, produktPruefen, wochenStunden, stufenTakt, vertragVon, hauptpreisAus,
   PREIS_TEIL_ARTEN, PRODUKT_GRENZEN, type PruefFehler,
 } from './produkt-karte';
 import { produktZustand, linieVon, LINIEN } from './produkte';
@@ -276,15 +276,15 @@ export function neuerPreisTeil(preise: readonly PreisTeil[], art: PreisTeilArt):
   while (ids.has(`pt-${n}`)) n++;
   return { id: `pt-${n}`, art, rolle: 'grund' };
 }
-/** Teil `i` um `d` verschieben (der erste Teil mit „gilt immer“ ist der Hauptpreis). */
+/** Teil `i` um `d` verschieben (nur die Anzeige-Reihenfolge — den Hauptpreis bestimmt seit 24.10. die Form, `hauptpreisAus`). */
 export function preiseVerschieben(preise: readonly PreisTeil[], i: number, d: -1 | 1): PreisTeil[] {
   const n = [...preise]; const j = i + d;
   if (i < 0 || i >= n.length || j < 0 || j >= n.length) return n;
   [n[i], n[j]] = [n[j], n[i]];
   return n;
 }
-/** Kennung des Hauptpreis-Teils (der erste mit „gilt immer“). */
-export const hauptpreisId = (preise: readonly PreisTeil[]): string | null => (preise.find(t => t.rolle === 'grund') ?? preise[0])?.id ?? null;
+/** Kennung des Hauptpreis-Teils — dieselbe Regel wie überall (`hauptpreisAus`, 24.10.: laufend vor einmalig; die Reihenfolge entscheidet nicht). */
+export const hauptpreisId = (preise: readonly PreisTeil[]): string | null => hauptpreisAus(preise)?.id ?? null;
 
 /** Eingabe eines Feldes in den Teil übernehmen — leer = entfernen; Unsinn = Satz. */
 export function teilFeldSetzen(t: PreisTeil, feld: PreisTeilFeld, roh: string): { ok: true; teil: PreisTeil } | { ok: false; fehler: string } {
