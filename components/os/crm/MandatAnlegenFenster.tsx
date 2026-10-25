@@ -17,7 +17,7 @@ import type { Mandat } from '@/lib/crm/typen';
 import { honorarText, zusatzBeschreibung, zusatzName } from '@/lib/crm/mandat-zusatz';
 import { mindestEnde } from '@/lib/crm/mandat-laufzeit';
 
-export interface MandatAnlegenErgebnis { ok: boolean; mandatId?: string; text?: string; fehler?: string; hinweis?: string }
+export interface MandatAnlegenErgebnis { ok: boolean; mandatId?: string; text?: string; fehler?: string; hinweis?: string; /** Der gewählte Start (25.10.) — Vorgabe für „Fall starten“. */ start?: string }
 interface Vorschau {
   mandat: Mandat; quelle: 'angebot' | 'produkt' | 'deal'; angebot?: { id: string; nummer?: string }; startVorschlag: string;
   /** Namen aus dem Katalog des Servers (Produkt, je Zusatzmodul Name + Beschreibung) — fehlen bei einem älteren Server, dann der Katalog des Browsers. */
@@ -69,7 +69,7 @@ function MandatAnlegenFenster({ api, chanceId, onFertig }: { api?: Pick<CrmApi, 
     const r = await postMandat({ chanceId, start });
     laeuft.current = false;
     if (!r.ok) { setFehler(r.fehler ?? 'Mandat nicht angelegt.'); return; }
-    onFertig({ ok: true, ...(typeof r.mandatId === 'string' ? { mandatId: r.mandatId } : {}), ...(typeof r.text === 'string' ? { text: r.text } : {}), ...(typeof r.hinweis === 'string' ? { hinweis: r.hinweis } : {}) });
+    onFertig({ ok: true, start, ...(typeof r.mandatId === 'string' ? { mandatId: r.mandatId } : {}), ...(typeof r.text === 'string' ? { text: r.text } : {}), ...(typeof r.hinweis === 'string' ? { hinweis: r.hinweis } : {}) });
   };
   const ende = m ? m.ende ?? mindestEnde({ start, mindestlaufzeitMonate: m.mindestlaufzeitMonate }) : null;
   const produktName = v?.namen?.produkt ?? (m?.leistungId ? katalog.find(l => l.id === m.leistungId)?.name : undefined);

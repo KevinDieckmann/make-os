@@ -29,7 +29,9 @@ export type BausteinKurz = MitStand<Omit<Baustein, 'text' | 'fragen' | 'gliederu
 export type VorlageMitStand = MitStand<Omit<ProzessVorlage, 'knoten'>> & { knoten: MitStand<ProzessKnoten>[] };
 export interface Kandidat extends OnboardingKandidat { uhr: WillkommenUhr; vorlage?: { id: string; titel: string };
   /** 24.10. (Bau-Test Kern): das Produkt hat einen Werkstatt-Prozess — er ist der Ablauf des Falls (lib/prozesse/produkt-ablauf.ts `startVorbelegung`). */
-  prozess?: ProduktProzessKurz; vorgeschlagen: boolean }
+  prozess?: ProduktProzessKurz; vorgeschlagen: boolean;
+  /** 25.10.: Start des Mandats — Vorgabe des Starttags im Dialog „Fall starten“ (`fallStartVorgabe`). */
+  start?: string }
 export interface FallZeile extends FallKurz { vorlageId: string; kunde: string; titel: string; /** Angehängte Zusatzmodule (Kennungen ihrer Vorlagen, 17.10. spät). */ zusaetze?: string[] }
 export interface Uebersicht {
   inhaber: boolean;
@@ -190,11 +192,11 @@ export const tagLang = (t?: string | null) => { const x = t ? berlinTag(t) : t; 
 
 /** Was „Fall starten“ für ein Mandat braucht (24.10., Bau-Test Kern): Kunde, Produkt und die Vorbelegung des Ablaufs — EINE Regel `startVorbelegung` (der Prozess
  * des Produkts; sonst das Paket DIESES Produkts; sonst nichts — nie das Paket eines anderen Produkts). Für alle Stellen mit dem Start-Dialog. */
-export interface StartMandat { mandatId: string; kunde: string; leistungId?: string; vorlage?: { id: string; titel: string }; prozess?: ProduktProzessKurz }
-export function startMandat(kurz: Pick<UebersichtKurz, 'zuordnung' | 'prozesse' | 'produktProzesse'> | null | undefined, m: { mandatId: string; kunde: string; leistungId?: string | null }): StartMandat {
+export interface StartMandat { mandatId: string; kunde: string; leistungId?: string; vorlage?: { id: string; titel: string }; prozess?: ProduktProzessKurz; /** Start des Mandats (25.10.). */ start?: string }
+export function startMandat(kurz: Pick<UebersichtKurz, 'zuordnung' | 'prozesse' | 'produktProzesse'> | null | undefined, m: { mandatId: string; kunde: string; leistungId?: string | null; start?: string | null }): StartMandat {
   const v = startVorbelegung(m.leistungId, { produktProzesse: kurz?.produktProzesse, zuordnung: kurz?.zuordnung, pakete: (kurz?.prozesse ?? []).filter(p => p.art === 'paket') });
   return {
-    mandatId: m.mandatId, kunde: m.kunde, ...(m.leistungId ? { leistungId: m.leistungId } : {}),
+    mandatId: m.mandatId, kunde: m.kunde, ...(m.leistungId ? { leistungId: m.leistungId } : {}), ...(m.start ? { start: m.start } : {}),
     ...(v?.art === 'prozess' ? { prozess: { id: v.id, titel: v.titel, lage: v.lage } } : v?.art === 'paket' ? { vorlage: { id: v.id, titel: v.titel } } : {}),
   };
 }

@@ -504,7 +504,7 @@ export function kandidatenAnsicht(crm: Pick<CrmBestand, 'mandate' | 'angebote' |
     const pz = m.leistungId ? produktProzesse?.[m.leistungId] : undefined;
     const v = pz ? null : vorlageFuerProdukt(vorlagen, m.leistungId);
     // Bestand: keine 24-h-Uhr (kein „überfällig“) — die Uhr beginnt erst mit dem Start des Falls (`ableitungFuer`).
-    return { ...k, uhr: k.bestand ? { ueberfaellig: false } : willkommenUhr(k.unterschrift?.am, vorlagen.einstellungen.willkommenStunden, undefined, jetzt), ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}), ...(pz ? { prozess: pz } : {}), vorgeschlagen: !!vorlagen.marken[markeOnboardingVorschlag(k.mandatId)] };
+    return { ...k, uhr: k.bestand ? { ueberfaellig: false } : willkommenUhr(k.unterschrift?.am, vorlagen.einstellungen.willkommenStunden, undefined, jetzt), ...(v ? { vorlage: { id: v.id, titel: v.titel } } : {}), ...(pz ? { prozess: pz } : {}), vorgeschlagen: !!vorlagen.marken[markeOnboardingVorschlag(k.mandatId)], ...(m.start ? { start: m.start } : {}) };
   });
 }
 export { markeOnboardingAus, unterschriftAm };

@@ -123,3 +123,25 @@ describe('2 · Deal-Wert: „1.100 €/Monat + ca. 3.000 €/Monat Tagessätze (
   });
 });
 
+// ── 3 · Fall-Dialog: Startdatum = Start des Mandats ──
+import { fallStartVorgabe } from '@/lib/prozesse/produkt-ablauf';
+import { readFileSync } from 'node:fs';
+const quelle = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
+
+describe('3 · „Fall starten“ belegt den Start des Mandats vor (liegt er zurück: heute)', () => {
+  it('Regel', () => {
+    expect(fallStartVorgabe('2026-11-15', HEUTE)).toBe('2026-11-15');
+    expect(fallStartVorgabe('2026-10-01', HEUTE)).toBe(HEUTE);
+    expect(fallStartVorgabe(null, HEUTE)).toBe(HEUTE);
+    expect(fallStartVorgabe('kaputt', HEUTE)).toBe(HEUTE);
+  });
+  it('der Dialog nimmt die Regel; jede Stelle mit dem Dialog reicht den Start des Mandats herein', () => {
+    expect(quelle('components/os/fulfillment/prozesse/Onboarding.tsx')).toMatch(/useState\(\(\) => fallStartVorgabe\(k\.start, localDay\(\)\)\)/);
+    expect(quelle('components/os/fulfillment/prozesse/FallAmDeal.tsx')).toMatch(/start: mandat\.start/);
+    expect(quelle('components/os/fulfillment/prozesse/FallAmDeal.tsx')).toMatch(/start: r\.start/);
+    expect(quelle('components/os/fulfillment/prozesse/FallUeberblick.tsx')).toMatch(/start: daten\.mandat\.start/);
+    expect(quelle('components/os/fulfillment/prozesse/OnboardingFrage.tsx')).toMatch(/start: m\.start/);
+    expect(quelle('components/os/fulfillment/reise/HeuteListe.tsx')).toMatch(/start: r\.start/);
+    expect(quelle('lib/fulfillment/prozesse/server.ts')).toMatch(/m\.start \? \{ start: m\.start \}/);
+  });
+});

@@ -25,7 +25,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
   const c = crm?.stand.chancen.find(x => x.id === chanceId);
   // Nur am gewonnenen Deal fragen (17.10., Gesamtprüfung Tempo B2) — vorher holte jeder geöffnete Deal das Fulfillment.
   const kurz = useUebersichtKurz(c?.stufe === 'gewonnen');
-  const [start, setStart] = useState<{ mandatId: string; kunde: string; leistungId?: string } | null>(null);
+  const [start, setStart] = useState<{ mandatId: string; kunde: string; leistungId?: string; start?: string } | null>(null);
   // 24.10. (Bau-Test, Branch `kern-preise`): „Mandat anlegen“ öffnet erst die Vorbelegung zum Prüfen (Start wählbar) — angelegt wird erst dort.
   const mandatFenster = useMandatAnlegen(api);
   if (!crm || !c || c.stufe !== 'gewonnen') return null;
@@ -39,7 +39,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
     if (!r) return;
     await api.laden(true);
     if (!r.ok) { api.setFehler(r.fehler ?? 'Mandat nicht angelegt.'); return; }
-    if (mitFall && r.mandatId) setStart({ mandatId: r.mandatId, kunde: c.firma ?? c.titel, ...(c.leistungId ? { leistungId: c.leistungId } : {}) });
+    if (mitFall && r.mandatId) setStart({ mandatId: r.mandatId, kunde: c.firma ?? c.titel, ...(c.leistungId ? { leistungId: c.leistungId } : {}), ...(r.start ? { start: r.start } : {}) });
   };
   const box = { padding: '10px 12px', borderRadius: 12, background: `${LEUCHT.gut}12`, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' as const, marginTop: 8 };
   const klein = { fontSize: TYP.bedien, color: C.inkDim };
@@ -56,7 +56,7 @@ export function FallAmDeal({ api, chanceId }: { api: CrmApi; chanceId: string })
       ) : (
         <>
           <span style={{ fontSize: TYP.bedien, flex: '1 1 260px', color: LEUCHT.gut }}>Mandat angelegt{business ? ' — jetzt den Fall starten.' : '.'}</span>
-          {business && <Knopf haupt farbe={LEUCHT.gut} onClick={() => setStart({ mandatId: mandat.id, kunde: mandat.kunde, ...(mandat.leistungId ? { leistungId: mandat.leistungId } : {}) })}>Fall starten</Knopf>}
+          {business && <Knopf haupt farbe={LEUCHT.gut} onClick={() => setStart({ mandatId: mandat.id, kunde: mandat.kunde, ...(mandat.leistungId ? { leistungId: mandat.leistungId } : {}), ...(mandat.start ? { start: mandat.start } : {}) })}>Fall starten</Knopf>}
           <Link href={mandateLink('mandate', mandat.id)} style={{ ...klein, textDecoration: 'none' }}>Mandat öffnen ›</Link>
         </>
       )}

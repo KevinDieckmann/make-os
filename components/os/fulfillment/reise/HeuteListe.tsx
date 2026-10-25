@@ -45,7 +45,7 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
   const kurz = useUebersichtKurz();
   const [meldung, setMeldung] = useState<Meldung>(null);
   const [entwurf, setEntwurf] = useState<{ e: HeuteEintrag; mail: MailEntwurf; hinweis?: string } | null>(null);
-  const [start, setStart] = useState<{ mandatId: string; kunde?: string; leistungId?: string } | null>(null);
+  const [start, setStart] = useState<{ mandatId: string; kunde?: string; leistungId?: string; start?: string } | null>(null);
   const [demnaechstAuf, setDemnaechstAuf] = useState(false);
   const [nurMeine, setNurMeine] = useState(false);
   const ich = useIch();
@@ -68,13 +68,13 @@ export function HeuteImFulfillment({ kompakt = false, max = 5, i = 0, titel }: {
   const pakete = (kurz.daten?.prozesse ?? []).filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));
   // Der Start-Dialog: für einen wartenden Kandidaten mit dessen Vorwahl, für ein eben angelegtes Mandat mit der Zuordnung seines Produkts.
   // Vorbelegung nur nach der EINEN Regel (24.10., `startMandat` → `startVorbelegung`): Kandidat vom Server, sonst aus der Kurzform.
-  const kandidat = start ? (kurz.daten?.kandidaten.find(k => k.mandatId === start.mandatId) ?? startMandat(kurz.daten, { mandatId: start.mandatId, kunde: start.kunde ?? 'Kunde', leistungId: start.leistungId })) : undefined;
+  const kandidat = start ? (kurz.daten?.kandidaten.find(k => k.mandatId === start.mandatId) ?? startMandat(kurz.daten, { mandatId: start.mandatId, kunde: start.kunde ?? 'Kunde', leistungId: start.leistungId, start: start.start })) : undefined;
   const mandatUndStart = async (e: HeuteEintrag, chanceId: string, leistungId?: string) => {
     const r = await mandatFenster.oeffnen(chanceId);
     if (!r) return;
     if (!r.ok || !r.mandatId) { setMeldung({ text: r.fehler ?? 'Mandat nicht angelegt.', art: 'kritisch' }); return; }
     if (r.hinweis) setMeldung({ text: r.hinweis, art: 'achtung' });
-    setStart({ mandatId: r.mandatId, kunde: e.kunde, ...(leistungId ? { leistungId } : {}) });
+    setStart({ mandatId: r.mandatId, kunde: e.kunde, ...(leistungId ? { leistungId } : {}), ...(r.start ? { start: r.start } : {}) });
   };
 
   // Stand und Status der Knoten aus der Cockpit-Zeile (17.10., Schreibwege B3): jeder Haken bzw. jedes Ja/Nein schickt den Stand mit — aus einer veralteten Liste

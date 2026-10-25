@@ -186,7 +186,7 @@ export function KeinFall({ daten }: { daten: FallAntwort }) {
   // 24.10. (Bau-Test Kern): EINE Vorbelegung (`startMandat` → `startVorbelegung`) — der Prozess des Produkts aus der Antwort des Falls gewinnt.
   const pa = daten.produktAblauf;
   const k = startMandat(kurz.daten ? { ...kurz.daten, ...(pa && daten.mandat.leistungId ? { produktProzesse: { ...(kurz.daten.produktProzesse ?? {}), [daten.mandat.leistungId]: { id: pa.id, titel: pa.titel, lage: pa.lage } } } : {}) } : null,
-    { mandatId: daten.mandat.id, kunde: daten.mandat.kunde, leistungId: daten.mandat.leistungId });
+    { mandatId: daten.mandat.id, kunde: daten.mandat.kunde, leistungId: daten.mandat.leistungId, start: daten.mandat.start });
   if (!daten.mandat.business) return <Hinweis art="info">Fulfillment gibt es nur für Mandate einer Business-Gesellschaft — dieses Mandat gehört zu Privat.</Hinweis>;
   return (
     <div style={{ display: 'grid', gap: 14 }}>

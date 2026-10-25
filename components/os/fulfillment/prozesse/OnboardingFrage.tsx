@@ -15,12 +15,12 @@ import type { Mandat } from '@/lib/crm/typen';
 import { useUebersichtKurz, startMandat } from './daten';
 import { StartDialog } from './Onboarding';
 
-export function OnboardingFrage({ m, produktName, onZu }: { m: Pick<Mandat, 'id' | 'kunde' | 'leistungId' | 'gesellschaft'>; produktName?: string; onZu: () => void }) {
+export function OnboardingFrage({ m, produktName, onZu }: { m: Pick<Mandat, 'id' | 'kunde' | 'leistungId' | 'gesellschaft'> & Partial<Pick<Mandat, 'start'>>; produktName?: string; onZu: () => void }) {
   const kurz = useUebersichtKurz(istBusinessMandat(m.gesellschaft));
   const [start, setStart] = useState(false);
   const d = kurz.daten;
   // EINE Vorbelegung (24.10., `startMandat` → `startVorbelegung`): der Prozess des Produkts, sonst sein Paket (kein Zusatzmodul).
-  const sm = d ? startMandat(d, { mandatId: m.id, kunde: m.kunde, leistungId: m.leistungId }) : null;
+  const sm = d ? startMandat(d, { mandatId: m.id, kunde: m.kunde, leistungId: m.leistungId, start: m.start }) : null;
   const ablauf = sm?.prozess ?? (sm?.vorlage && d?.prozesse.some(p => p.id === sm.vorlage!.id && p.art === 'paket' && !p.zusatz) ? sm.vorlage : undefined);
   if (!d || !sm || !ablauf || d.faelle[m.id]) return null;
   const pakete = d.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel, ...(p.zusatz ? { zusatz: true as const } : {}) }));

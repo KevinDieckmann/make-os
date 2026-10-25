@@ -10,7 +10,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TIEF, TYP } from '@/lib/make-one/design';
-import { LAGE_SATZ, LAGE_WORT } from '@/lib/prozesse/produkt-ablauf';
+import { LAGE_SATZ, LAGE_WORT, fallStartVorgabe } from '@/lib/prozesse/produkt-ablauf';
 import { MUSTER_ONBOARDING } from '@/lib/fulfillment/muster';
 import { willkommenBisText } from '@/lib/fulfillment/prozesse/onboarding';
 import { Karte, Ueberschrift, Knopf, Hinweis, Liste, Zeile, Chip, Feldzeile, Punkt, LEUCHT } from '../../ui';
@@ -61,16 +61,16 @@ function KandidatenKarte({ kandidaten, pakete, i, ruhig = false }: { kandidaten:
 }
 
 /**
- * Start-Dialog: Ablauf und Starttag (heute) — legt den Fall an (idempotent über die Anfrage) und öffnet ihn. Vorbelegt NUR nach der EINEN Regel
+ * Start-Dialog: Ablauf und Starttag (Vorgabe: Start des Mandats, liegt er zurück heute — `fallStartVorgabe`, 25.10.) — legt den Fall an (idempotent über die Anfrage) und öffnet ihn. Vorbelegt NUR nach der EINEN Regel
  * (lib/prozesse/produkt-ablauf.ts `startVorbelegung`, Bau-Test 24.10.): hat das Produkt einen Prozess der Werkstatt, IST er der Ablauf (keine Auswahl — jedes
  * Produkt hat genau einen); sonst das Paket DIESES Produkts; sonst bleibt die Auswahl leer, mit Satz (vorher: „der erste Ablauf, der kein Zusatzmodul ist“ — das
  * war das Paket eines anderen Produkts).
  */
-export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage' | 'prozess'> & { leistungId?: string }; pakete: { id: string; titel: string; zusatz?: true }[]; onZu: () => void }) {
+export function StartDialog({ k, pakete, onZu }: { k: Pick<Kandidat, 'mandatId' | 'kunde' | 'vorlage' | 'prozess'> & { leistungId?: string; start?: string | null }; pakete: { id: string; titel: string; zusatz?: true }[]; onZu: () => void }) {
   const router = useRouter();
   const prozess = k.prozess ?? null;
   const [vorlage, setVorlage] = useState<string | null>(prozess ? prozess.id : k.vorlage?.id ?? null);
-  const [tag, setTag] = useState(localDay());
+  const [tag, setTag] = useState(() => fallStartVorgabe(k.start, localDay()));
   const [fehler, setFehler] = useState<string | null>(null);
   const [anfrage] = useState(neueAnfrageId);
   const los = async () => {

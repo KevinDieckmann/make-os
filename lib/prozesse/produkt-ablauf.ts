@@ -65,6 +65,14 @@ export function startVorbelegung(leistungId: string | null | undefined, q: {
   return pk ? { art: 'paket', id: pk.id, titel: pk.titel } : null;
 }
 
+/**
+ * Der Starttag, den „Fall starten“ vorbelegt (25.10., Kern-Bau-Test 2 — vorher immer heute, auch für ein Mandat ab dem 15.11.): der Start des Mandats; liegt er in
+ * der Vergangenheit (bzw. fehlt er), heute. Reine Vorgabe — der Dialog lässt jeden Tag zu.
+ */
+export function fallStartVorgabe(mandatStart: string | null | undefined, heute: string): string {
+  return typeof mandatStart === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(mandatStart) && Number.isFinite(Date.parse(`${mandatStart}T12:00:00Z`)) && mandatStart > heute ? mandatStart : heute;
+}
+
 // ══ Die Ansicht für die Reise ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 export type AblaufSchrittZustand = KaestchenZustand;
