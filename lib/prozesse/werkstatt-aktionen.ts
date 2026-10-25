@@ -19,6 +19,8 @@
 import { PROZESS_TEXT, type Befund, type KnotenLage, type NotizZettel, type ProzessForm, type ProzessKnoten, type Zweige } from './definition';
 import { alleSchritte, ausgangsZiele, flussPruefen, kinder, phasen, schritteDer, seitenZiele, wurzel, type Ausgang } from './fluss';
 import { bahnVon } from './werkstatt-lage';
+import { katalogEintrag } from './baustein-katalog';
+import { nameSetzen } from './werkstatt-maske';
 
 type K = ProzessKnoten<ProzessForm>;
 /** Was die Werkstatt ändert: die Knoten und die Notiz-Zettel des Entwurfs. */
@@ -901,7 +903,9 @@ export function einfuegen(f: Fassung, a: Ablage, o: { phaseId: string; nach?: st
   const neu = a.knoten.map(k => {
     const name = kopieTitel(k.titel, belegt);
     belegt.add(name.toLowerCase());
-    const x: K = { ...k, id: neuId.get(k.id)!, elternId, titel: name };
+    // Runde 4 (Bau-Test 3: Kopie hieß „X (Kopie)“, ihr Titel blieb „X“ und zog beim Umbenennen nicht mehr mit): der Titel einer Kopie folgt ihrem Namen, solange er
+    // am Original dem Namen folgte (leer bzw. gleich dem Namen) — `nameSetzen` mit dem Namen des Originals; ein selbst geänderter Titel bleibt.
+    const x: K = { ...(name === k.titel ? k : nameSetzen(k, katalogEintrag(k.katalog?.id), name)), id: neuId.get(k.id)!, elternId, titel: name };
     if (k.zweige) { const z: Zweige = {}; for (const art of ZWEIGE) if (k.zweige[art]) z[art] = um(k.zweige[art]); x.zweige = z; }
     if (k.danach) { if ('ende' in k.danach) x.danach = { ende: true }; else if (neuId.has(k.danach.ziel)) x.danach = { ziel: neuId.get(k.danach.ziel)! }; else delete x.danach; }
     if (k.erneut) x.erneut = { ...k.erneut, ab: um(k.erneut.ab)! };
