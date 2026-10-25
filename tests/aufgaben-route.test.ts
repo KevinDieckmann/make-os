@@ -167,7 +167,8 @@ describe('Schreiben', () => {
     const e = p.filter(x => x.bestand === 'tasks' && x.id === 'a1').at(-1)!;
     expect(e).toMatchObject({ op: 'geaendert', person: 'malin', wer: 'person', liste: 'tasks' });
     expect(e.felder).toEqual(expect.arrayContaining(['title', 'description']));
-    expect(JSON.stringify(p)).not.toMatch(/Geheimer|4711|1234/);
+    // Nur die Werte selbst suchen — Prüfsummen der Hash-Kette und Kennungen können zufällig „1234“/„4711“ enthalten (CI 25.10.: flackerte).
+    expect(JSON.stringify(p)).not.toMatch(/Geheimer|Titel 4711|Betrag 1234/);
   });
 });
 

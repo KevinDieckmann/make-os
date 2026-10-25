@@ -295,7 +295,8 @@ describe('Quellen → Ereignisse (Fakes)', () => {
     const b = await bestand();
     expect(b.eintraege.map(e => e.id)).toEqual(['rechnung:r-e1:bezahlt']);
     expect(b.eintraege[0]).toMatchObject({ art: 'zahlungseingang', quelle: 'finanzplan', bereich: 'business', bezug: { rechnungId: 'r-e1' } });
-    expect(JSON.stringify(b)).not.toMatch(/4711/);
+    // Den Betrag als Wert suchen — Kennungen/Prüfsummen können „4711“ zufällig enthalten.
+    expect(JSON.stringify(b)).not.toMatch(/[:\[,]4711[,}\]]/);
   });
   it('Kontoauszug: Zahlungseingänge Business (Gesellschaft) bzw. Haushalt (privat)', async () => {
     expect(await Q.auszugEreignisse({ art: 'business', ort: 'ug' }, 'kt-1', ['bu-ka-1'])).toBe(1);
