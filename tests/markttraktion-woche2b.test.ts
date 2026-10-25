@@ -63,8 +63,9 @@ describe('3.10 · Angenommenes Tool-Angebot führt im Umsatz-Reiter weiter zum M
     expect(s).toContain('angebotMandatWeg(');
     expect(s).toContain('Mandat anlegen ›');
     expect(s).toContain('Mandat ›');
-    expect(s).toContain('mandatAusDeal(');
-    expect(quelle('components/os/crm/angebot/Ansicht.tsx')).toContain('mandatAusDeal(');
+    // 24.10.: DERSELBE Weg ist jetzt das Fenster „Mandat anlegen“ (Vorschau, Start wählbar — `useMandatAnlegen`, components/os/crm/MandatAnlegenFenster.tsx).
+    expect(s).toContain('useMandatAnlegen(');
+    expect(quelle('components/os/crm/angebot/Ansicht.tsx')).toContain('useMandatAnlegen(');
   });
 });
 

@@ -77,17 +77,8 @@ export function pdfLaden(dateiId: string, name?: string) {
   a.remove();
 }
 
-/**
- * Mandat aus dem gewonnenen Deal eines angenommenen Angebots anlegen — DER Weg (`/api/crm/lead` aktion „mandat“, vorbelegt aus dem
- * Angebot). Genutzt von der Angebots-Ansicht und von Kontakt › Umsatz (08.10., Woche 2 · 3.10).
- */
-export async function mandatAusDeal(chanceId: string): Promise<{ ok: boolean; mandatId?: string; text?: string; fehler?: string }> {
-  try {
-    const r = await fetch('/api/crm/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'mandat', chanceId }) });
-    const d = await r.json().catch(() => ({ ok: false, fehler: `Antwort ${r.status}` })) as { ok?: boolean; mandatId?: unknown; text?: string; fehler?: string };
-    return d.ok ? { ok: true, ...(typeof d.mandatId === 'string' ? { mandatId: d.mandatId } : {}), ...(d.text ? { text: d.text } : {}) } : { ok: false, fehler: d.fehler ?? 'Mandat nicht angelegt.' };
-  } catch { return { ok: false, fehler: 'Keine Verbindung — nichts angelegt.' }; }
-}
+// „Mandat aus dem Deal“ (bis 24.10. `mandatAusDeal` hier): seit 24.10. das Fenster `useMandatAnlegen` (components/os/crm/MandatAnlegenFenster.tsx) —
+// Vorschau, Start wählbar, erst „Anlegen“ schreibt (derselbe Aufruf `/api/crm/lead` aktion „mandat“).
 
 /** Kann dieses Gerät eine DATEI teilen (Web Share API Level 2)? Rein, damit der Rückfall (Download) prüfbar ist. */
 export function kannDateiTeilen(nav: { canShare?: (d: { files?: File[] }) => boolean; share?: unknown } | undefined, datei: File): boolean {
