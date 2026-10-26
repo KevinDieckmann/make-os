@@ -64,8 +64,9 @@
 # `node website/pruefen.mjs` „freigabefähig“ meldet: die X-Robots-Tag-Zeile entfernen und website/robots.txt öffnen.
 # HSTS hier bewusst OHNE includeSubDomains (Mail-Autokonfiguration des Domain-Anbieters).
 # ─── OFFLINE (Kevin 08.10.: „beide Seiten offline nehmen“) ────────────────────────────────────────────────────
-# makeinnovation.de und fokusinnovation.de liefern nichts aus (503), bis Kevin sie wieder freigibt. Die App läuft unter {$MAKE_OS_DOMAIN}.
-makeinnovation.de, www.makeinnovation.de, fokusinnovation.de, www.fokusinnovation.de {
+# makeinnovation.de liefert nichts aus (503), bis Kevin sie wieder freigibt. Die App läuft unter {$MAKE_OS_DOMAIN}.
+# fokusinnovation.de ist seit 26.10. wieder da (Abschnitt unten).
+makeinnovation.de, www.makeinnovation.de {
 	header {
 		Strict-Transport-Security "max-age=31536000"
 		X-Robots-Tag "noindex, nofollow"
@@ -120,35 +121,51 @@ makeinnovation.de, www.makeinnovation.de, fokusinnovation.de, www.fokusinnovatio
 # }
 # ▲ FREIGABE-FASSUNG
 
-# ─── fokusinnovation.de + www — Event-Seite „Fokus Innovation“ (Ordner fokus/, Kevin 04.10.) ─────────────────────
-# VORSCHAU wie makeinnovation.de: noindex über landingpage_koepfe + fokus/robots.txt (Disallow). Erst wenn beworben wird und
-# `node fokus/pruefen.mjs` „freigabefähig“ meldet: noindex entfernen (eigene Kopf-Gruppe) und fokus/robots.txt öffnen.
-# ▼ FOKUS-FASSUNG (auskommentiert — OFFLINE seit 08.10., Kevin; zum Wiedereinschalten „# “ entfernen und den OFFLINE-Block löschen)
-# www.fokusinnovation.de {
-# 	header -Server
-# 	redir https://fokusinnovation.de{uri} 301
-# }
-# fokusinnovation.de {
-# 	root * /srv/fokus
-# 	encode zstd gzip
-# 	import landingpage_koepfe
-# 	# Arbeitsdateien werden nie ausgeliefert (wie NICHT_OEFFENTLICH in fokus/pruefen.mjs).
-# 	@intern path /LIESMICH.md /pruefen.mjs *.md *.mjs
-# 	respond @intern 404
-# 	@seiten path / /*.html
-# 	header @seiten Cache-Control "no-cache"
-# 	@schriften path /assets/fonts/*
-# 	header @schriften Cache-Control "public, max-age=2592000, immutable"
-# 	@stile path /css/* /js/* /favicon.svg /assets/logo/* /assets/film/*
-# 	header @stile Cache-Control "public, max-age=86400"
-# 	file_server {
-# 		hide LIESMICH.md pruefen.mjs
-# 	}
-# 	handle_errors {
-# 		root * /srv/fokus
-# 		import landingpage_koepfe
-# 		rewrite * /404.html
-# 		file_server
-# 	}
-# }
-# ▲ FOKUS-FASSUNG
+# ─── fokusinnovation.de + www — die Website von Fokus Innovation (Ordner fokusinnovation/, Kevin 26.10.: „online bringen“) ───
+# VORSCHAU (Kevin 26.10.: „erst Vorschau“, „nur für intern gerade“): erreichbar für jeden mit Link, aber Suchmaschinen bekommen
+# `X-Robots-Tag: noindex, nofollow`, jede Seite trägt <meta name="robots" content="noindex"> und robots.txt sperrt alles.
+# Freischalten: die X-Robots-Tag-Zeile unten entfernen und im Generator (prototype/fokus-innovation/bauen.mjs) noindex und robots.txt öffnen.
+# Der Ordner ist gebaut (statisch, eigene Schrift, keine fremden Quellen) — Quelle: prototype/fokus-innovation/ auf dem Zweig innovations-check.
+# Der frühere Ordner fokus/ (Event-Seite) wird nicht mehr ausgeliefert.
+(fokus_koepfe) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Robots-Tag "noindex, nofollow"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+		X-Frame-Options DENY
+		Cross-Origin-Opener-Policy same-origin
+		Cross-Origin-Resource-Policy same-origin
+		-Server
+	}
+}
+www.fokusinnovation.de {
+	header -Server
+	redir https://fokusinnovation.de{uri} 301
+}
+fokusinnovation.de {
+	root * /srv/fokusinnovation
+	encode zstd gzip
+	import fokus_koepfe
+	# Arbeitsdateien werden nie ausgeliefert.
+	@intern path *.md *.mjs
+	respond @intern 404
+	# Caching: Seiten immer frisch nachfragen, Schrift lange, Stile und Skripte (tragen ?v=…) einen Tag.
+	@seiten path / */ *.html
+	header @seiten Cache-Control "no-cache"
+	@schriften path /assets/schriften/*
+	header @schriften Cache-Control "public, max-age=2592000, immutable"
+	@stile path /css/* /js/* /assets/zeichen.svg
+	header @stile Cache-Control "public, max-age=86400"
+	file_server {
+		hide *.md
+	}
+	handle_errors {
+		root * /srv/fokusinnovation
+		import fokus_koepfe
+		rewrite * /404.html
+		file_server
+	}
+}

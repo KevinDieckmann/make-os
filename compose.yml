@@ -112,6 +112,8 @@ services:
       - ./website:/srv/website:ro
       # Event-Seite „Fokus Innovation“ (04.10.): statische Dateien aus fokus/ — nur lesen, wie website/.
       - ./fokus:/srv/fokus:ro
+      # Website von Fokus Innovation (26.10.): gebaute statische Seite aus fokusinnovation/ — nur lesen, wie website/.
+      - ./fokusinnovation:/srv/fokusinnovation:ro
       - caddy_daten:/data
       - caddy_konfig:/config
     depends_on: [app]
