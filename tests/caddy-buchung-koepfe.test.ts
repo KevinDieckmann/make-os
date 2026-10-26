@@ -113,7 +113,7 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     }
   });
 
-  it('fokusinnovation.de (04.10.): www → 301, Seite read-only aus /srv/fokus mit denselben strengen Köpfen, Vorschau mit noindex + robots.txt', () => {
+  it('fokusinnovation.de (26.10.): www → 301, gebaute Website read-only aus /srv/fokusinnovation mit denselben strengen Köpfen, Vorschau mit noindex + robots.txt', () => {
     // OFFLINE (Kevin 08.10.): beide Adressen im Offline-Block mit 503, nichts ausgeliefert.
     const offline = Array.from(aktiv.entries()).find(([k]) => k.split(',').map(a => a.trim()).includes('fokusinnovation.de'));
     if (offline && /^respond 503$/m.test(offline[1])) {
@@ -125,15 +125,31 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     const www = aktiv.get('www.fokusinnovation.de');
     expect(www).toMatch(/^redir https:\/\/fokusinnovation\.de\{uri\} 301$/m);
     const seite = aktiv.get('fokusinnovation.de') ?? '';
-    expect(seite).toMatch(/^root \* \/srv\/fokus$/m);
-    expect(seite).toMatch(/^import landingpage_koepfe$/m);
+    expect(seite).toMatch(/^root \* \/srv\/fokusinnovation$/m);
+    expect(seite).toMatch(/^import fokus_koepfe$/m);
+    // Arbeitsdateien (LIESMICH.md u. a.) antworten 404 — auch in Unterordnern.
+    expect(seite).toMatch(/^@intern path \*\.md \*\.mjs$/m);
     expect(seite).toMatch(/^respond @intern 404$/m);
-    expect(seite).toMatch(/^hide LIESMICH\.md pruefen\.mjs$/m);
+    expect(seite).toMatch(/^hide \*\.md$/m);
     expect(seite).not.toMatch(/reverse_proxy|browse/);
-    const kopf = aktiv.get('(landingpage_koepfe)') ?? '';
+    // Die Köpfe gelten auch für die 404-Seite (eigene Route-Kette).
+    expect(seite).toMatch(/handle_errors \{[\s\S]*import fokus_koepfe[\s\S]*rewrite \* \/404\.html/);
+    const kopf = aktiv.get('(fokus_koepfe)') ?? '';
     expect(kopf, 'Vorschau ohne noindex').toMatch(/^X-Robots-Tag "noindex, nofollow"$/m);
-    expect(readFileSync(join(process.cwd(), 'fokus', 'robots.txt'), 'utf8')).toMatch(/^Disallow: \/$/m);
-    expect(readFileSync(join(process.cwd(), 'compose.yml'), 'utf8')).toMatch(/^\s+- \.\/fokus:\/srv\/fokus:ro$/m);
+    expect(/Content-Security-Policy "([^"]+)"/.exec(kopf)?.[1]).toBe(LANDING_CSP);
+    expect(/Permissions-Policy "([^"]+)"/.exec(kopf)?.[1]).toBe('camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+    expect(kopf).toMatch(/^X-Frame-Options DENY$/m);
+    const ordner = join(process.cwd(), 'fokusinnovation');
+    expect(readFileSync(join(ordner, 'robots.txt'), 'utf8')).toMatch(/^Disallow: \/$/m);
+    // Jede Seite trägt noindex, keine lädt Fremdes oder führt Inline-Skripte aus (die CSP oben würde sie ohnehin sperren).
+    for (const datei of ['index.html', 'impressum/index.html', 'datenschutz/index.html', '404.html']) {
+      const html = readFileSync(join(ordner, datei), 'utf8');
+      expect(html, datei).toMatch(/<meta name="robots" content="noindex">/);
+      expect(html, datei).not.toMatch(/<(script|link|img)\b[^>]*\s(src|href)="https?:/);
+      expect(html, datei).not.toMatch(/<script(?![^>]*\ssrc=)[^>]*>/);
+      expect(html, datei).not.toMatch(/\sstyle="/);
+    }
+    expect(readFileSync(join(process.cwd(), 'compose.yml'), 'utf8')).toMatch(/^\s+- \.\/fokusinnovation:\/srv\/fokusinnovation:ro$/m);
   });
 
   it('Freigabe-Fassung (kommentiert oder aktiv): www → 301, Landingpage read-only mit strengen Köpfen', () => {

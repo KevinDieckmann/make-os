@@ -1,0 +1,92 @@
+/* Fokus Innovation · der Film der Startseite (nur auf /). Farben und Schrift aus fokus.css.
+   Ruhig heißt: ein Motiv (das Logo), ein flacher dunkler Grund, Worte in der Mitte unten, keine Effekte um ihrer selbst willen. */
+
+/* ── Der Kopf liegt über dem Film und ist dort hell auf dunkel ── */
+.start .kopf { position: fixed; left: 0; right: 0; }
+.kopf.ueber-film { color: var(--hell); border-color: transparent; }
+.kopf.ueber-film::before { opacity: 0; }
+.kopf.ueber-film .wortbild small { color: var(--grau); }
+.kopf.ueber-film .zeichen .kern { fill: var(--akzent); }
+.kopf.ueber-film .haupt-nav > a, .kopf.ueber-film .nav-punkt > a, .kopf.ueber-film .kopf-kontakt { color: rgba(242, 243, 243, .78); }
+.kopf.ueber-film .haupt-nav > a:hover, .kopf.ueber-film .nav-punkt > a:hover, .kopf.ueber-film .kopf-kontakt:hover { color: var(--hell); background: rgba(242, 243, 243, .08); }
+.kopf.ueber-film .knopf { background: var(--hell); color: var(--nacht); border-color: var(--hell); }
+.kopf.ueber-film .menue summary { border-color: rgba(242, 243, 243, .34); }
+
+/* ── Der Film: eine Bühne, die beim Scrollen steht ── */
+.film { position: relative; height: 440vh; background: var(--nacht); color: var(--hell); }
+.buehne { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; --r: min(15vh, 24vw); --r: min(15dvh, 24vw); }
+.szene, .ersatz { position: absolute; inset: 0; width: 100%; height: 100%; }
+.szene { display: block; opacity: 0; transition: opacity 1.4s ease; }
+.szene.da { opacity: 1; }
+.ersatz { display: none; }
+.keingl .ersatz { display: block; }
+.ersatz .gross { position: absolute; left: 50%; top: 44%; width: calc(var(--r) * 3); height: auto; translate: -50% -50%; color: var(--hell); }
+.ersatz .gross .kern { fill: var(--akzent); }
+
+.block { position: absolute; inset: 0; pointer-events: none; opacity: 0; visibility: hidden; }
+.block.da { visibility: visible; }
+.film-text { position: absolute; left: 50%; bottom: max(8vh, 56px); translate: -50% 0; width: min(54rem, calc(100% - 2 * var(--rand))); text-align: center; }
+.film-titel .zeile { display: block; }
+.film-titel { margin: 0; color: var(--hell); font-size: clamp(2rem, min(5vw, 7.2vh), 4.3rem); font-weight: 600; letter-spacing: -.035em; line-height: 1.05; text-wrap: balance; }
+.film-satz { margin: 18px auto 0; max-width: 34rem; color: var(--leise-dunkel); font-size: clamp(1rem, 1.2vw, 1.12rem); line-height: 1.5; opacity: 0; transition: opacity 1s var(--ease) .45s; }
+.block.an .film-satz { opacity: 1; }
+.fw { display: inline-block; opacity: 0; translate: 0 .35em; transition: opacity .8s var(--ease), translate 1s var(--ease); transition-delay: calc(var(--i, 0) * 80ms); }
+.block.an .fw { opacity: 1; translate: 0 0; }
+
+.hinweis { position: absolute; left: 50%; bottom: 0; translate: -50% 0; display: flex; flex-direction: column; align-items: center; gap: 10px; padding-bottom: 0; font-size: .7rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--leise-dunkel); }
+.hinweis-strich { display: block; width: 1px; height: 28px; background: linear-gradient(var(--leise-dunkel), transparent); transform-origin: top; }
+@media (prefers-reduced-motion: no-preference) { .hinweis-strich { animation: strich 2.6s var(--ease) infinite; } }
+@keyframes strich { 0% { transform: scaleY(0); } 55% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0; } }
+.block[data-block="laerm"] .film-text { bottom: max(11vh, 80px); }
+
+/* Die Aufgaben rund um den Gründer: leise, langsam schwebend, sie ziehen sich zur Mitte und treten zurück */
+.aufgaben { position: absolute; inset: 0; pointer-events: none; opacity: 0; transform-origin: 50% 44%; transition: opacity .9s ease; }
+.aufgabe { position: absolute; display: inline-flex; align-items: center; gap: 9px; white-space: nowrap; color: rgba(242, 243, 243, .5); font-size: clamp(.82rem, 1vw, .98rem); font-weight: 500; }
+.aufgabe::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(242, 243, 243, .42); flex: none; }
+.aufgabe:nth-child(1) { left: 9%; top: 19%; } .aufgabe:nth-child(2) { left: 31%; top: 14%; } .aufgabe:nth-child(3) { left: 61%; top: 17%; }
+.aufgabe:nth-child(4) { left: 81%; top: 24%; } .aufgabe:nth-child(5) { left: 15%; top: 35%; } .aufgabe:nth-child(6) { left: 41%; top: 29%; }
+.aufgabe:nth-child(7) { left: 68%; top: 37%; } .aufgabe:nth-child(8) { left: 87%; top: 47%; } .aufgabe:nth-child(9) { left: 5%; top: 53%; }
+.aufgabe:nth-child(10) { left: 27%; top: 48%; } .aufgabe:nth-child(11) { left: 54%; top: 51%; } .aufgabe:nth-child(12) { left: 76%; top: 60%; }
+.aufgabe:nth-child(3n+2) { color: rgba(242, 243, 243, .38); }
+@media (prefers-reduced-motion: no-preference) {
+  .aufgabe { animation: schweben 9s ease-in-out infinite; }
+  .aufgabe:nth-child(2n) { animation-duration: 11s; animation-delay: -3s; }
+  .aufgabe:nth-child(3n) { animation-duration: 13s; animation-delay: -6s; }
+}
+@keyframes schweben { 0%, 100% { translate: 0 0; } 50% { translate: 6px -8px; } }
+
+/* Das Ende: die Wortmarke unter dem Zeichen, wie im gestapelten Logo */
+.ende-marke { position: absolute; left: 50%; top: calc(44% + var(--r) + 4.5vh); translate: -50% 0; display: flex; flex-direction: column; align-items: center; text-align: center; width: min(40rem, calc(100% - 2 * var(--rand))); }
+.ende-wort { font-size: clamp(1.7rem, min(3vw, 4.6vh), 2.6rem); font-weight: 650; letter-spacing: .16em; padding-left: .16em; line-height: 1; color: var(--hell); }
+.ende-unter { margin-top: .55em; font-size: clamp(.86rem, min(1.2vw, 1.8vh), 1.05rem); font-weight: 500; letter-spacing: .1em; color: var(--grau); }
+.ende-claim { margin-top: max(3vh, 20px); color: var(--leise-dunkel); font-size: clamp(1rem, 1.2vw, 1.1rem); }
+.ende-marke > * { opacity: 0; translate: 0 .5em; transition: opacity .9s var(--ease), translate 1s var(--ease); }
+.ende-marke > :nth-child(2) { transition-delay: .15s; }
+.ende-marke > :nth-child(3) { transition-delay: .5s; }
+.block.an .ende-marke > * { opacity: 1; translate: 0 0; }
+
+/* Übergang vom Film ins Papier: Titel über die ganze Breite, darunter Einleitung und Index */
+.start-held { padding-top: clamp(96px, 10vw, 144px); }
+.start-held .held-raster { align-items: start; row-gap: clamp(36px, 4vw, 56px); }
+.start-held .start-titel { grid-column: 1 / -1; }
+.start-held h1 { font-size: clamp(2.4rem, 5vw, 4.5rem); max-width: 23ch; }
+.start-held .lead { margin-top: 0; }
+
+/* ── Ruhig: „Bewegung reduzieren“ oder kein WebGL → Standbild mit fertigem Logo ── */
+.ruhig .film { height: auto; }
+.ruhig .buehne { position: relative; height: 100vh; height: 100svh; min-height: 560px; }
+.ruhig .szene { opacity: 1; transition: none; }
+.ruhig .block, .ruhig .aufgaben { display: none; }
+.ruhig .block[data-block="ende"] { display: block; opacity: 1; visibility: visible; }
+.ruhig .ende-marke > * { opacity: 1; translate: none; transition: none; }
+
+@media (max-width: 760px) {
+  .film { height: 400vh; }
+  .aufgabe:nth-child(n+8) { display: none; }
+  .aufgabe:nth-child(1) { left: 6%; top: 15%; } .aufgabe:nth-child(2) { left: 52%; top: 12%; } .aufgabe:nth-child(3) { left: 14%; top: 27%; }
+  .aufgabe:nth-child(4) { left: 58%; top: 24%; } .aufgabe:nth-child(5) { left: 4%; top: 40%; } .aufgabe:nth-child(6) { left: 48%; top: 37%; }
+  .aufgabe:nth-child(7) { left: 22%; top: 50%; }
+  .film-text { bottom: max(9vh, 48px); }
+  .film-titel { font-size: clamp(1.9rem, 8.6vw, 2.6rem); }
+  .block[data-block="laerm"] .film-text { bottom: max(12vh, 84px); }
+}
