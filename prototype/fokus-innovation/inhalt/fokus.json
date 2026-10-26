@@ -1,0 +1,449 @@
+{
+  "hinweis": "Texte der Marke Fokus Innovation aus dem Positionierungs-Doc (25.10.2026). Angebote, Preise, Produktblätter und Fragen kommen aus makeinnovation/inhalt/*.json. Statistiken nur mit Quelle und nur die, die im Doc als „Website, geprüft“ stehen.",
+  "marke": {
+    "name": "Fokus Innovation",
+    "claim": "Innovation braucht Fokus.",
+    "leitidee": "Wir rücken Innovation in den Fokus.",
+    "kurz": "Sichtbar, verkauft, verbunden.",
+    "beschreibung": "Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um."
+  },
+  "domain": "fokusinnovation.de",
+  "film": {
+    "hinweis": "Die Story der Startseite (Kevin 25.10. spät): der Gründer, der sich um alles kümmert, ein starkes Produkt hat, aber Markt, Kunden und Sichtbarkeit nicht mit System bekommt.",
+    "laerm": {
+      "titel": "Du kümmerst dich um alles.",
+      "satz": "Produkt, Angebote, Website, Rechnungen, Termine. Und nebenbei noch die Kunden."
+    },
+    "fokus": {
+      "titel": "Dein Produkt ist richtig gut.",
+      "satz": "Monate an Arbeit, jedes Detail durchdacht."
+    },
+    "luecke": {
+      "titel": "Nur weiß es der Markt noch nicht.",
+      "satz": "Kunden kommen zufällig, Vertrieb passiert nebenbei, und für Sichtbarkeit fehlt die Zeit."
+    },
+    "momentum": {
+      "titel": "Jetzt braucht es Fokus.",
+      "satz": "Sichtbarkeit, Vertrieb und die richtigen Menschen. Mit System, Woche für Woche."
+    },
+    "durchbruch": {
+      "titel": "Dein Produkt kommt in den Markt.",
+      "satz": "Gesehen, verkauft, verbunden."
+    }
+  },
+  "start": {
+    "titel": "Wir bringen Neues aus Deutschland und Europa nach vorne.",
+    "ruhig": "Sichtbar, verkauft, verbunden.",
+    "lead": "Du hast ein starkes Produkt und kümmerst dich um alles andere gleich mit. Wir geben ihm eine Bühne, machen es sichtbar, verkaufen es mit System und verbinden dich mit den richtigen Menschen. Für innovative Start-ups, Unternehmer und den Mittelstand, der Neues einführt."
+  },
+  "leitidee": {
+    "titel": "Wir rücken Innovation in den Fokus.",
+    "lead": "Wir erleben es immer wieder: Gute Ideen und starke Produkte bleiben unter ihren Möglichkeiten, weil sie zu wenige sehen und niemand sie systematisch verkauft. Das wollen wir ändern, für Deutschland und Europa.",
+    "absaetze": [
+      "Wir wissen, wovon wir reden: Wir kommen aus dem Vertrieb, arbeiten selbst jeden Tag mit KI, bauen unsere eigene Software und schrauben, wenn es sein muss, am Produkt mit.",
+      "Und wir bringen die Menschen zusammen, die Neues umsetzen: in unserem Netzwerk und an unseren Abenden."
+    ],
+    "zitat": {
+      "text": "Das Problem ist nicht, dass es Europa an Ideen oder Ehrgeiz fehlt. … Es gelingt uns nicht, Innovation in den Markt zu bringen.",
+      "wer": "Mario Draghi",
+      "quelle": "Die Zukunft der europäischen Wettbewerbsfähigkeit, Teil A, September 2024, S. 8, eigene Übersetzung",
+      "link": "https://commission.europa.eu/document/download/97e481fd-2dc3-412d-be4c-f152a8232961_en?filename=The%20future%20of%20European%20competitiveness%20_%20A%20competitiveness%20strategy%20for%20Europe.pdf"
+    },
+    "ursprung": [
+      {
+        "titel": "Der Blick nach außen",
+        "text": "Wir sehen in Deutschland und Europa viele gute Ideen, die nie bei ihren Kunden ankommen."
+      },
+      {
+        "titel": "Der Vertrieb",
+        "text": "Wir haben oft gesehen, wie gute Produkte scheitern: nicht an der Idee, sondern daran, dass sie niemand sieht und niemand verkauft."
+      },
+      {
+        "titel": "Das Bauen",
+        "text": "Wir bauen selbst jeden Tag mit KI. Wir wissen, wie schnell Neues heute entstehen kann."
+      },
+      {
+        "titel": "Die Abende",
+        "text": "Und wir haben erlebt, was passiert, wenn die richtigen Menschen an einem Tisch sitzen."
+      }
+    ]
+  },
+  "belege": {
+    "startup": {
+      "wert": "63,5 %",
+      "text": "der Start-ups in Deutschland nennen Vertrieb und Kundengewinnung ihre größte Herausforderung, vor Produktentwicklung und Kapital.",
+      "quelle": "Deutscher Startup Monitor 2025, S. 56",
+      "link": "https://startupverband.de/fileadmin/startupverband/mediaarchiv/research/dsm/Deutscher_Startup_Monitor_2025.pdf"
+    },
+    "ki_potenzial": {
+      "wert": "3 %",
+      "text": "der Unternehmen schöpfen das Potenzial von KI eher stark aus, keines vollständig. 59 % gar nicht.",
+      "quelle": "Bitkom, 14.09.2026, 603 Unternehmen ab 20 Beschäftigten",
+      "link": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI"
+    },
+    "daten": {
+      "wert": "44 %",
+      "text": "der Unternehmen, die KI erwogen und nicht eingeführt haben, nennen Probleme mit Verfügbarkeit oder Qualität ihrer Daten.",
+      "quelle": "Destatis, Gründe gegen KI, 2025",
+      "link": "https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-gegen-nutzung-kuenstliche-intelligenz.html"
+    },
+    "mittelstand": {
+      "wert": "37 %",
+      "text": "der kleinen Mittelständler schlossen 2022 bis 2024 Innovationsprojekte ab, bei den großen waren es 73 %.",
+      "quelle": "KfW Research, Innovationen, 2026",
+      "link": "https://www.kfw.de/%C3%9Cber-die-KfW/KfW-Research/Innovationen.html"
+    },
+    "roboter": {
+      "wert": "Platz 3",
+      "text": "weltweit bei der Roboterdichte in der Industrie: 449 Roboter je 10.000 Beschäftigte.",
+      "quelle": "IFR, Roboterdichte, 08.04.2026, S. 2",
+      "link": "https://www.ifr.org/downloads/press_docs/DE-2026-APRIL-_8-IFR_PRESSMELDUNG_Roboterdichte-deutsch.pdf"
+    }
+  },
+  "bereiche": {
+    "sichtbarkeit": {
+      "nr": "01",
+      "name": "Sichtbarkeit",
+      "paar": "Gesehen werden.",
+      "satz": "Positionierung, Homepage, Videos, Kommunikation und Netzwerk: damit man in Sekunden versteht, was du machst.",
+      "problem": "Besucher verstehen in fünf Sekunden nicht, was du machst und warum sie dich anrufen sollen. Die Website ist alt, auf dem Handy schwach, und Anfragen bleiben aus.",
+      "weg": [
+        "Unklare Botschaft, kaum Anfragen",
+        "Positionierung, Homepage, Videos, Kommunikation und Netzwerk",
+        "Man versteht dich in fünf Sekunden, Anfragen kommen an"
+      ],
+      "held": {
+        "titel": "Wer dich nicht versteht, kauft nicht.",
+        "text": "Wir machen dich sichtbar und verständlich: mit einer Positionierung, die hängen bleibt, einer Homepage, die in fünf Sekunden klar ist, und Videos, die erklären. Dazu Kommunikation und Netzwerk, damit die Richtigen dich finden."
+      },
+      "schritte": [
+        {
+          "titel": "Ausgangslage",
+          "text": "Dein Angebot ist neu, aber auf der Website versteht man es erst nach drei Absätzen. Besucher gehen, bevor sie verstehen, was du machst."
+        },
+        {
+          "titel": "Wendepunkt",
+          "text": "Sichtbarkeit beginnt mit Klarheit: ein Satz, ein Bild, eine Geschichte."
+        },
+        {
+          "titel": "Unser Weg",
+          "text": "Wir schärfen deine Positionierung, erzählen deine Geschichte und bauen Homepage und Videos, die sie in Sekunden zeigen."
+        },
+        {
+          "titel": "Ergebnis",
+          "text": "Du wirst gesehen, verstanden und auf die Bühne geholt, zum Beispiel bei einem Fokus Innovation · Abend."
+        }
+      ],
+      "auch": {
+        "titel": "Kommunikation und Netzwerk",
+        "text": "Sichtbar wird, wer auch dort auftaucht, wo die Richtigen sind. Wir bringen dich in unser Netzwerk, an den Tisch unserer Abende und in Gespräche, die zu dir passen. Was du dafür brauchst, besprechen wir im Gespräch."
+      }
+    },
+    "vertrieb": {
+      "nr": "02",
+      "name": "Vertrieb",
+      "paar": "Verkauft werden.",
+      "satz": "Zielgruppe, Prozess, Kennzahlen und ein Team, das selbst abschließt.",
+      "problem": "Der Gründer verkauft selbst, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.",
+      "weg": [
+        "Vertrieb hängt am Gründer",
+        "Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Wochenreport, Training",
+        "Dein Team schließt selbst ab, planbar"
+      ],
+      "beleg": "startup",
+      "held": {
+        "titel": "Dein Produkt ist gut. Jetzt muss es sich verkaufen.",
+        "text": "Wir bauen deinen Vertrieb so auf, dass er ohne Zufall funktioniert: mit klaren Prozessen, sauberen Zahlen und einem Team, das selbst abschließt. Wir beraten nicht nur, wir setzen mit um."
+      },
+      "schritte": [
+        {
+          "titel": "Ausgangslage",
+          "text": "Viele Gründer verkaufen selbst und nebenbei. Neue Kunden kommen über Empfehlungen, aber nicht planbar."
+        },
+        {
+          "titel": "Wendepunkt",
+          "text": "Vertrieb ist kein Talent, sondern ein System: wer angesprochen wird, was gesagt wird, was gemessen wird."
+        },
+        {
+          "titel": "Unser Weg",
+          "text": "Wir starten mit dem Fundament: Zielgruppe, Ansprache, Salesprozess. Dann bauen wir Leadgenerierung, Prozesse und Kennzahlen auf und machen vor, bis dein Team selbst abschließt."
+        },
+        {
+          "titel": "Ergebnis",
+          "text": "Ein Vertrieb, den du steuern kannst: Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt."
+        }
+      ],
+      "ablauf": [
+        {
+          "titel": "Innovations-Check",
+          "text": "Rund 10 Minuten, Ergebnis sofort, kostenlos"
+        },
+        {
+          "titel": "90-Tage-Umsetzungsgespräch",
+          "text": "60 Minuten mit Kevin, kostenlos"
+        },
+        {
+          "titel": "Tagesworkshop",
+          "text": "1.900 €, wird beim Mandatsstart voll angerechnet"
+        },
+        {
+          "titel": "Mandat",
+          "text": "Head of Sales oder Chief Sales Officer"
+        }
+      ]
+    },
+    "innovation": {
+      "nr": "03",
+      "name": "Innovation",
+      "paar": "Im Alltag ankommen.",
+      "satz": "KI, Automatisierung und neue Werkzeuge einführen, bis sie genutzt werden. Mit der Datenbasis, die dafür nötig ist.",
+      "problem": "KI wird ausprobiert, aber kaum genutzt. Oft liegen die Daten verstreut, neue Werkzeuge versanden, und der Chef bleibt der Engpass.",
+      "weg": [
+        "Werkzeuge ausprobiert, Daten verstreut",
+        "Datenbasis aufbauen, Werkzeuge einführen, Team befähigen",
+        "Neues arbeitet im Alltag mit, Abläufe laufen ohne den Chef"
+      ],
+      "beleg": "ki_potenzial",
+      "held": {
+        "titel": "Neues einführen, bis es genutzt wird.",
+        "text": "Wir führen KI, Automatisierung und Software in deinem Unternehmen ein, bis sie im Alltag genutzt werden: mit einer sauberen Datenbasis, klaren Abläufen und einem Team, das damit arbeitet."
+      },
+      "schritte": [
+        {
+          "titel": "Ausgangslage",
+          "text": "Alle reden von KI. Einzelne im Team probieren Werkzeuge aus, aber nichts davon steckt in den Abläufen."
+        },
+        {
+          "titel": "Wendepunkt",
+          "text": "Erst messen, wo du stehst, dann die drei Hebel mit der größten Wirkung angehen."
+        },
+        {
+          "titel": "Unser Weg",
+          "text": "Der Innovations-Check zeigt deine Stufe. Im 90-Tage-Umsetzungsgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit dir, bis sie laufen."
+        },
+        {
+          "titel": "Ergebnis",
+          "text": "Weniger Handarbeit, verbundene Daten und Abläufe, die ohne den Chef laufen."
+        }
+      ],
+      "mehr_als_ki": "Innovation heißt auch Automatisierung, Robotik, neue Software und die Daten dahinter. Bei der Automatisierung gehört Deutschland zur Spitze. Diesen Schwung wollen wir auch in die Büros bringen.",
+      "brain": {
+        "titel": "KI-Brain",
+        "stand": "In Vorbereitung",
+        "text": "KI ist nur so gut wie die Datenbasis. Wir bauen mit dir auf, was sie braucht: Wissen, Abläufe und Daten sauber an einem Ort, damit KI im Alltag wirklich funktioniert.",
+        "betreff": "Interesse: KI-Brain"
+      }
+    }
+  },
+  "abend": {
+    "titel": "Fokus Innovation · Abend",
+    "satz": "Ein Abend. Ein langer Tisch. Menschen, die Neues umsetzen.",
+    "text": "Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.",
+    "kosten": "Für Gäste kostenlos",
+    "termine": "Termine und Orte folgen. Trag dich auf die Gästeliste ein, dann bekommst du die nächste Einladung.",
+    "betreff": "Fokus Innovation · Abend – Gästeliste",
+    "merkmale": [
+      {
+        "titel": "Kuratiert",
+        "text": "Wir laden ein und mischen bewusst: Start-ups neben Mittelstand, Gründer neben Entscheidern, Technik neben Vertrieb."
+      },
+      {
+        "titel": "Klein",
+        "text": "Ein langer Tisch statt Bühne und Bestuhlung. So kommt jeder mit jedem ins Gespräch."
+      },
+      {
+        "titel": "Verbindend",
+        "text": "Malin setzt die richtigen Menschen nebeneinander. Wer zusammenpasst, den verbinden wir nach dem Abend gezielt."
+      }
+    ],
+    "warum": "Wir bringen die richtigen Menschen an einen Tisch, beim Abend und im Netzwerk, für den Standort und nicht nur für uns."
+  },
+  "warum_wir": [
+    {
+      "titel": "Wir setzen selbst mit um",
+      "text": "Im Team des Kunden, bis es läuft, wenn es sein muss am Produkt.",
+      "beleg": "Head of Sales und CSO: Wir machen vor, bis das Team selbst abschließt."
+    },
+    {
+      "titel": "Wir kommen aus dem Vertrieb",
+      "text": "Zahlen und Abschlüsse statt Folien.",
+      "beleg": "Head of Sales bei einem FinTech, Vertrieb aufgebaut, geführt und skaliert."
+    },
+    {
+      "titel": "Bühne und Netzwerk gehören dazu",
+      "text": "Sichtbarkeit, Vertrieb und die richtigen Menschen aus einer Hand.",
+      "beleg": "Eigene Abende und über 250 Entscheider im Netzwerk."
+    },
+    {
+      "titel": "Feste Preise, feste Abläufe",
+      "text": "Jedes Angebot steht mit Preis, Ablauf und Konditionen auf seiner Seite.",
+      "beleg": "Homepages und Videos mit Lieferzeit in Werktagen, Mandate mit festem Monatspreis und klarer Laufzeit."
+    }
+  ],
+  "zahlen": [
+    {
+      "wert": "35",
+      "text": "Vertriebler geführt, in Kevins Zeit im Telesales"
+    },
+    {
+      "wert": "1.200",
+      "text": "Verkäufe in 18 Monaten mit 60 Partnern, in Kevins Zeit im Empfehlungsvertrieb"
+    },
+    {
+      "wert": "250+",
+      "text": "Entscheider in unserem Netzwerk"
+    }
+  ],
+  "fuer_wen": [
+    {
+      "titel": "Innovative Start-ups",
+      "richtung": "Neues in den Markt",
+      "text": "Ihr baut etwas Neues und braucht die ersten Kunden.",
+      "einstieg": "Sichtbarkeit, Positionierung und der Abend. Vertrieb, sobald das Produkt fertig ist."
+    },
+    {
+      "titel": "Innovative Unternehmer",
+      "richtung": "Neues in den Markt",
+      "text": "Fertiges Produkt, 5 bis 50 Mitarbeitende: Tech, KI, FinTech, innovative Dienstleister und Handwerk, Gesundheit, Sport, Ernährung.",
+      "einstieg": "Vertrieb und Sichtbarkeit."
+    },
+    {
+      "titel": "Mittelstand, der Neues einführt",
+      "richtung": "Neues ins Unternehmen",
+      "text": "Ihr wollt KI und neue Werkzeuge nicht nur ausprobieren, sondern im Alltag nutzen.",
+      "einstieg": "Innovation: KI einführen, Datenbasis, Umsetzungsprojekte. Dazu Vertrieb."
+    }
+  ],
+  "werte": [
+    {
+      "titel": "Mutig",
+      "text": "Wir sagen, was wir denken, probieren Neues, bevor es alle tun, und glauben, dass es hier geht."
+    },
+    {
+      "titel": "Umsetzung mit System",
+      "text": "Wir machen mit, bis es läuft: Prozess im CRM, Kennzahlen, Wochenreport. Kein Konzept für die Schublade."
+    },
+    {
+      "titel": "Verbindend",
+      "text": "Wir bringen die richtigen Menschen an einen Tisch, beim Abend und im Netzwerk, für den Standort und nicht nur für uns."
+    }
+  ],
+  "arbeitsweise": [
+    {
+      "titel": "Fortschrittlich",
+      "text": "Wir arbeiten mit dem, was morgen Standard ist, auch selbst mit KI, und werden jede Woche besser."
+    },
+    {
+      "titel": "Tempo",
+      "text": "Termine in Werktagen, feste Lieferzeiten, erste Ergebnisse im ersten Monat."
+    }
+  ],
+  "grundregel": "Was hier steht, können wir belegen. Quellen verlinken wir.",
+  "nicht": [
+    {
+      "titel": "Keine reine Werbeagentur",
+      "text": "Keine Kampagne ohne Vertrieb dahinter."
+    },
+    {
+      "titel": "Keine Folien-Beratung",
+      "text": "Kein Konzept, das in der Schublade landet."
+    },
+    {
+      "titel": "Kein Callcenter",
+      "text": "Dein Team verkauft selbst, wir machen vor."
+    },
+    {
+      "titel": "Kein Inkubator",
+      "text": "Wir vermitteln kein Kapital und leben nicht von Beteiligungen."
+    }
+  ],
+  "team": [
+    {
+      "name": "Kevin Dieckmann",
+      "kuerzel": "KD",
+      "rolle": "Vertrieb und Umsetzung",
+      "text": "Kevin kommt aus dem Vertrieb: Er hat Vertriebsteams geführt, Partnernetze aufgebaut und war Head of Sales bei einem FinTech. Bei Fokus Innovation baut er Vertrieb so auf, dass er ohne Zufall läuft, und setzt selbst mit um."
+    },
+    {
+      "name": "Malin",
+      "kuerzel": "MA",
+      "rolle": "Bühne und Netzwerk",
+      "text": "Malin ist Mitgründerin und Gastgeberin der Abende. Sie bringt Menschen an einen Tisch, die Neues umsetzen, und sorgt dafür, dass aus Begegnungen Verbindungen werden."
+    }
+  ],
+  "einstieg": [
+    {
+      "titel": "Innovations-Check",
+      "text": "Rund 10 Minuten, kostenlos. Fast alles per Klick."
+    },
+    {
+      "titel": "Ergebnis sofort",
+      "text": "Deine Stufe, ein Netzdiagramm und der Vergleich mit deiner Branche."
+    },
+    {
+      "titel": "90-Tage-Umsetzungsgespräch",
+      "text": "60 Minuten mit Kevin. Deine Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden."
+    }
+  ],
+  "kurztexte": {
+    "hinweis": "Ein Satz je Angebot in den Listen, wo das Produktblatt keinen hat.",
+    "positionierung": "In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.",
+    "umsetzungsprojekte": "KI und Software einführen, bis sie im Alltag genutzt werden. Festpreis mit klarem Umfang.",
+    "tagesworkshop": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen."
+  },
+  "kurznamen": {
+    "hinweis": "Kürzere Namen fürs Menü; auf den Seiten steht der volle Name.",
+    "tagesworkshop": "Tagesworkshop",
+    "umsetzungsprojekte": "Umsetzungsprojekte",
+    "cso": "Chief Sales Officer"
+  },
+  "check": {
+    "hinweis": "Text der Fokus-Seite zum Check (ruhiger als die Vorlage).",
+    "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo dein Unternehmen steht: bei Strategie, KI im Alltag, Automatisierung, Daten und Team."
+  },
+  "angebote_lead": {
+    "sichtbarkeit": "Feste Preise und feste Lieferzeiten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
+    "vertrieb": "Feste Monatspreise und klare Laufzeiten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
+    "innovation": "Der Check ist kostenlos. Projekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht."
+  },
+  "fragen_zuschnitt": {
+    "hinweis": "Antworten aus den gemeinsamen Fragen, auf den Bereich zugeschnitten (nur gekürzt, nichts Neues).",
+    "sichtbarkeit": {
+      "gibt-es-rabatt": "Homepages, Videos und Positionierung haben Festpreise. Skonto gibt es darauf nicht.",
+      "kann-ich-vorzeitig-kuendigen": "Die Video Serie läuft mindestens 3 Monate, danach ist sie monatlich kündbar."
+    },
+    "vertrieb": {
+      "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn du die volle Laufzeit vorab zahlst.",
+      "kann-ich-vorzeitig-kuendigen": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommst du dafür eine Zwischenbilanz mit Zahlen und Fahrplan."
+    }
+  },
+  "produkt_anpassung": {
+    "hinweis": "Kleine Korrekturen an Produktblättern nur für diese Seite; die Vorlage in makeinnovation/inhalt bleibt unberührt.",
+    "homepage-cinematic": {
+      "fuer": [
+        "Tech und Mittelstand, die mit Wirkung auffallen wollen",
+        "Firmen, deren Geschichte erst noch erzählt werden will: Die Story entwickeln wir mit dir"
+      ]
+    },
+    "erklaervideo": {
+      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, was du machst. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
+    },
+    "videostory": {
+      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, wer hinter deiner Firma steht. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
+    }
+  },
+  "aufgaben": [
+    "Angebot schreiben",
+    "Website",
+    "Rechnungen",
+    "LinkedIn",
+    "Kundentermin",
+    "Steuerberater",
+    "Produkt-Update",
+    "Messe",
+    "Bewerbungen",
+    "Förderantrag",
+    "Support",
+    "Pitch-Deck"
+  ]
+}
