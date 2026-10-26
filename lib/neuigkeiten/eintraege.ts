@@ -33,6 +33,24 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-26',
+    datum: '2026-10-26',
+    titel: 'Angebote: Raten, Standardtext, PDF und Gmail-Entwurf',
+    kurz: 'Angebote schreiben geht jetzt runder: Zahlung in Raten oder mit Anzahlung, ein Standardtext, das Angebot vorher als PDF ansehen und die Mail mit PDF als Entwurf in eurem Gmail.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { bereich: 'business', text: 'Zahlung anpassen: unter den Positionen „Zahlung anpassen“ — in Raten, mit Anzahlung und Rest oder als eigener Satz. Die Beträge rechnet das Angebot auf den Cent, der Satz steht im PDF.', weg: WEG.angebot() },
+        { bereich: 'business', text: 'Standardtext: unter „Rahmen“ wählt ihr zwischen dem Text des Produkts und einem neutralen Satz („Vielen Dank für Ihr Interesse … unverbindliches Angebot“).' },
+        { bereich: 'business', text: '„Angebot ansehen & herunterladen“: erst als Entwurf-PDF ansehen (ohne Nummer, nichts wird festgeschrieben), dann stellen — die Mail mit dem PDF liegt danach als Entwurf in eurem Gmail und geht von dort raus.' },
+        { bereich: 'business', text: '„+ Neuer Kunde“ neben „+ Neues Angebot“: jemand ist noch nicht im System? Direkt anlegen und das Angebot für ihn schreiben.' },
+      ] },
+      { art: 'behoben', punkte: [
+        { bereich: 'business', text: 'Der Firmenname aus dem Produkttext steht jetzt richtig im Titel und in den Positionen — kein „{{firma.name}}“ mehr im PDF. Steht noch „[von Hand: …]“ im Text, weist das Angebot vor dem Stellen darauf hin.' },
+        { bereich: 'alle', text: 'Kontakt anlegen: was der Browser selbst ausfüllt (Name, E-Mail), wird jetzt sicher übernommen.' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-25',
     datum: '2026-10-25',
     titel: 'Prozesse, zwei Scores, Produkte & Mandate',
