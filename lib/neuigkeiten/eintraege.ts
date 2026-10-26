@@ -33,6 +33,23 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-26-2',
+    datum: '2026-10-26',
+    titel: 'Rechnungen nach Raten und Anzahlung',
+    kurz: 'Steht im Angebot eine Ratenzahlung oder Anzahlung, übernimmt das Mandat sie: die Rechnungen heißen „Rate 1 von 6“ bzw. Anzahlung und Rest, die Liquidität plant dieselben Beträge.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { bereich: 'business', text: 'Mandat aus einem angenommenen Angebot mit Raten: am Mandat steht „6 Raten (monatlich)“, der Knopf heißt „Rate 1 von 6 schreiben“ — jede Rate eine eigene Rechnung, gleich große Beträge auf den Cent.' },
+        { bereich: 'business', text: 'Anzahlung aus dem Angebot (z. B. 30 %): erste Rechnung die Anzahlung, die zweite den Rest — dazwischen entsteht keine leere Rechnung mehr.' },
+        { bereich: 'business', text: 'Ein eigener Satz zur Zahlung im Angebot steht am Mandat als offener Punkt, damit ihr die Rechnungen danach schreibt.' },
+      ] },
+      { art: 'behoben', punkte: [
+        { bereich: 'business', text: 'Zahlung anpassen im Angebot: die Anzahl der Raten lässt sich frei eintippen (2 bis 12) — das Feld springt nicht mehr. Was nicht passt, wird nicht gespeichert, und das Angebot lässt sich dann nicht stellen.' },
+        { bereich: 'business', text: 'Raten und Anzahlung stehen im Angebot netto (zzgl. USt) — genau wie auf den Rechnungen.' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-26',
     datum: '2026-10-26',
     titel: 'Angebote: Raten, Standardtext, PDF und Gmail-Entwurf',
