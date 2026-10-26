@@ -23,12 +23,24 @@ import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { angeboteFiltern, angebotSummen, euroCent, ANGEBOT_STATUS_LABEL, gesellschaftLabel } from '@/lib/crm/angebote';
 import { STATUS_FARBE } from './Ansicht';
 import { angebotPost, type AngebotDaten } from './angebot-daten';
+import { NeuerKontakt, kundeAnlegen, type NeuPerson } from './Editor';
 
 type Filter = 'alle' | 'entwurf' | 'offen' | 'angenommen' | 'abgelehnt' | 'abgelaufen' | 'archiv' | 'papierkorb';
 const FILTER: { id: Filter; label: string }[] = [{ id: 'alle', label: 'Alle' }, { id: 'entwurf', label: 'Entwürfe' }, { id: 'offen', label: 'Offen' }, { id: 'angenommen', label: 'Angenommen' }, { id: 'abgelehnt', label: 'Abgelehnt' }, { id: 'abgelaufen', label: 'Abgelaufen' }, { id: 'archiv', label: 'Archiv' }, { id: 'papierkorb', label: 'Papierkorb' }];
 const GES: { id: Gesellschaftskennung | 'alle'; label: string }[] = [{ id: 'alle', label: 'Alle Gesellschaften' }, ...KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label }))];
 
-export function AngebotListe({ api, daten, onOeffnen, onNeu }: { api: CrmApi; daten: AngebotDaten; onOeffnen: (id: string) => void; onNeu: () => void }) {
+export function AngebotListe({ api, daten, onOeffnen, onNeu }: { api: CrmApi; daten: AngebotDaten; onOeffnen: (id: string) => void; onNeu: (fuer?: { kontaktId: string; firmaId?: string }) => void }) {
+  // Neuer Kunde direkt neben „+ Neues Angebot“ (26.10., Kevin): wer noch nicht im System ist, wird hier angelegt — derselbe Weg wie die Kartei
+  // (`kundeAnlegen`); danach „Angebot für … schreiben“ öffnet den Entwurf mit dem Kunden vorbelegt.
+  const [kundeNeu, setKundeNeu] = useState(false);
+  const [angelegt, setAngelegt] = useState<{ kontaktId: string; firmaId?: string; name: string } | null>(null);
+  const kundeSpeichern = async (p: NeuPerson): Promise<string | null> => {
+    const r = await kundeAnlegen(api, p);
+    if ('fehler' in r) return r.fehler;
+    setKundeNeu(false);
+    setAngelegt({ kontaktId: r.kontaktId, ...(r.firmaId ? { firmaId: r.firmaId } : {}), name: [p.vorname.trim(), p.nachname.trim()].filter(Boolean).join(' ') });
+    return null;
+  };
   const [filter, setFilter] = useState<Filter>('alle');
   const [ges, setGes] = useState<Gesellschaftskennung | 'alle'>('alle');
   const [suche, setSuche] = useState('');
@@ -75,7 +87,18 @@ export function AngebotListe({ api, daten, onOeffnen, onNeu }: { api: CrmApi; da
   return (
     <>
       <Karte i={0}>
-        <Ueberschrift rechts={<Knopf farbe={LEUCHT.gut} onClick={onNeu}>+ Neues Angebot</Knopf>}>Angebote</Ueberschrift>
+        <Ueberschrift rechts={<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Knopf leise onClick={() => { setAngelegt(null); setKundeNeu(x => !x); }}>+ Neuer Kunde</Knopf>
+          <Knopf farbe={LEUCHT.gut} onClick={() => onNeu()}>+ Neues Angebot</Knopf>
+        </div>}>Angebote</Ueberschrift>
+        {kundeNeu && <div style={{ marginBottom: 12 }}><NeuerKontakt start={{ vorname: '', nachname: '', email: '', firma: '' }} onAnlegen={kundeSpeichern} onAbbruch={() => setKundeNeu(false)} /></div>}
+        {angelegt && (
+          <div role="status" style={{ marginBottom: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', fontSize: TYP.bedien }}>
+            <span>{angelegt.name || 'Kunde'} ist angelegt.</span>
+            <Knopf farbe={LEUCHT.gut} onClick={() => onNeu({ kontaktId: angelegt.kontaktId, ...(angelegt.firmaId ? { firmaId: angelegt.firmaId } : {}) })}>Angebot für {angelegt.name || 'den Kunden'} schreiben</Knopf>
+            <Knopf leise onClick={() => setAngelegt(null)}>Fertig</Knopf>
+          </div>
+        )}
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>{offen.length ? `${offen.length} offen · ${euroCent(offenWert)} netto Gesamtwert` : 'Kein offenes Angebot.'}{alle.filter(a => a.status === 'entwurf').length ? ` · ${alle.filter(a => a.status === 'entwurf').length} Entwürfe` : ''}</div>
         <div style={{ display: 'grid', gap: 8 }}>
           <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={setFilter} /></div>

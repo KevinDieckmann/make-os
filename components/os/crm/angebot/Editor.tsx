@@ -240,12 +240,9 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     aendern(teil);
   }
   // Neuer Kontakt direkt im Angebot (25.10., Kevin): derselbe Anlege-Weg wie die Kartei (POST /api/crm/person) — danach gleich gewählt.
-  async function neuerKontakt(p: { vorname: string; nachname: string; email: string; firma: string }): Promise<string | null> {
-    const r = await api.personAnlegen('kartei', {
-      vorname: p.vorname.trim(), nachname: p.nachname.trim(), ...(p.email.trim() ? { email: p.email.trim() } : {}), ...(p.firma.trim() ? { firma: p.firma.trim() } : {}),
-      lebensphase: 'kontakt', anrede: 'Sie', zustaendig: zustaendigFuer('kartei', undefined, api.ich),
-    });
-    if (!r.ok || !r.kontaktId) return r.fehler ?? 'Nicht angelegt.';
+  async function neuerKontakt(p: NeuPerson): Promise<string | null> {
+    const r = await kundeAnlegen(api, p);
+    if ('fehler' in r) return r.fehler;
     kontaktWaehlen({ id: r.kontaktId, ...(r.firmaId ? { firmaId: r.firmaId } : {}) } as Kontakt);
     return null;
   }
@@ -503,15 +500,24 @@ function KontaktSuche({ kontakte, gewaehlt, firma, onWahl, onNeu }: { kontakte: 
   );
 }
 
-type NeuPerson = { vorname: string; nachname: string; email: string; firma: string };
+export type NeuPerson = { vorname: string; nachname: string; email: string; firma: string };
+/** EIN Anlege-Weg für neue Kunden aus dem Angebots-Bereich (Editor und Liste) — derselbe wie die Kartei (POST /api/crm/person). */
+export async function kundeAnlegen(api: CrmApi, p: NeuPerson): Promise<{ kontaktId: string; firmaId?: string } | { fehler: string }> {
+  const r = await api.personAnlegen('kartei', {
+    vorname: p.vorname.trim(), nachname: p.nachname.trim(), ...(p.email.trim() ? { email: p.email.trim() } : {}), ...(p.firma.trim() ? { firma: p.firma.trim() } : {}),
+    lebensphase: 'kontakt', anrede: 'Sie', zustaendig: zustaendigFuer('kartei', undefined, api.ich),
+  });
+  if (!r.ok || !r.kontaktId) return { fehler: r.fehler ?? 'Nicht angelegt.' };
+  return { kontaktId: r.kontaktId, ...(r.firmaId ? { firmaId: r.firmaId } : {}) };
+}
 /** Suchtext als Startwert: eine Adresse wird E-Mail, sonst „Vorname Nachname“. */
-function personAusSuche(q: string): NeuPerson {
+export function personAusSuche(q: string): NeuPerson {
   const t = q.trim();
   if (t.includes('@')) return { vorname: '', nachname: '', email: t, firma: '' };
   const teile = t.split(/\s+/).filter(Boolean);
   return { vorname: teile.length > 1 ? teile.slice(0, -1).join(' ') : '', nachname: teile.length ? teile[teile.length - 1] : '', email: '', firma: '' };
 }
-function NeuerKontakt({ start, onAnlegen, onAbbruch }: { start: NeuPerson; onAnlegen: (p: NeuPerson) => Promise<string | null>; onAbbruch: () => void }) {
+export function NeuerKontakt({ start, onAnlegen, onAbbruch }: { start: NeuPerson; onAnlegen: (p: NeuPerson) => Promise<string | null>; onAbbruch: () => void }) {
   const [p, setP] = useState(start);
   const [fehler, setFehler] = useState<string | null>(null);
   const eingabe = (k: keyof NeuPerson, platz: string, auto: string, typ = 'text') => (

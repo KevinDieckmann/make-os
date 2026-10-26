@@ -63,7 +63,7 @@ export function AngebotStart({ api, kontaktId, firmaId, dealId, angebotId, zuKon
   }
 
   const offenId = angebotId ?? neu?.id ?? null;
-  if (!offenId) return <AngebotListe api={api} daten={daten} onOeffnen={oeffnen} onNeu={() => setNeu({ id: neueId('ang'), vorbelegung: {} })} />;
+  if (!offenId) return <AngebotListe api={api} daten={daten} onOeffnen={oeffnen} onNeu={fuer => setNeu({ id: neueId('ang'), vorbelegung: fuer ?? {} })} />;
 
   const a = daten.angebote.find(x => x.id === offenId) ?? null;
   if (a && a.status !== 'entwurf') {
