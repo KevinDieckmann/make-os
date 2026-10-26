@@ -62,6 +62,12 @@ Zeigt der Head of IT „Abgebrochene Vorgänge“ **rot** (nach 3 Versuchen nich
 
 ### Rückweg zum alten Stand nach einem Upload (Kompatibilitätsmodus, seit 29.09. abends)
 
+**Seit 26.10.:** Das Ausrollen merkt das laufende Bild vor jedem Tausch als `make-os:vorher` und räumt danach alle übrigen
+`make-os:<stand>`-Bilder weg (die Platte lief am 25.10. voll). Zurück zum letzten Stand also:
+`cd /srv/make-os/app && docker tag make-os:vorher make-os:aktuell && docker compose up -d --no-build` — danach `main` per Revert
+auf diesen Stand bringen (sonst rollt die nächste Action wieder aus). Ein eigenes Bild von Hand (`docker tag make-os:aktuell
+make-os:<stand>`) überlebt nur bis zum nächsten Ausrollen. Die Schritte unten gelten weiter für Datenformat und Caddy.
+
 Stand 29.09. spät (Upload U1): online läuft **af4679a**; das Bild dieses Stands heißt vor dem Upload `make-os:af4679a`
 (GO_LIVE_CHECKLISTE.md › Vor dem Upload 6, Probe `ALTES-BILD-OK`). af4679a hat den Kompatibilitätsmodus schon: er liest
 v1 und v2, den Schlüssel aus `.env` ODER Schlüssel-Datei. Solange `MAKE_OS_FORMAT` nicht auf `v2` steht (Standard:
