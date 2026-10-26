@@ -36,7 +36,7 @@ import {
   angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionenAusDeal, aufwandLabel, istGesellschaft,
   NACHFASSEN_WERKTAGE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE,
   angebotTitelAus, angebotTitelAutomatisch, angebotHauptprodukt, dealProduktAnders, dealFrageText, positionenErgaenzen, produktTexteFuer, produktTexteVon, positionNachLaufzeit,
-  angebotStandardtext, angebotLuecken, angebotPlatzhalterFuellen, angebotPlatzhalterWerte,
+  angebotStandardtext, angebotLuecken, angebotPlatzhalterFuellen, angebotPlatzhalterWerte, zahlweiseProblem,
 } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { zustaendigFuer } from '@/lib/crm/person-anlegen';
@@ -130,6 +130,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   const [nachfassen, setNachfassen] = useState(() => werktagePlus(heute, NACHFASSEN_WERKTAGE));
   /** Mail mit PDF nach dem Stellen als Entwurf ins eigene Gmail (26.10., Kevin) — Vorgabe an. */
   const [gmailEntwurf, setGmailEntwurf] = useState(true);
+  /** Satz, solange „Zahlung anpassen“ eine Eingabe hat, die nicht passt (26.10.) — dann wird nicht gestellt. */
+  const [zahlFehler, setZahlFehler] = useState<string | null>(null);
 
   // ── Automatisch speichern: nacheinander, mit dem Stand der letzten Antwort ──
   const formRef = useRef(form); formRef.current = form;
@@ -298,7 +300,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     if (st.grund === 'keine Adresse') return { hinweise: ['Keine E-Mail-Adresse am Kontakt — das PDF entsteht trotzdem; bitte auf anderem Weg senden.'] };
     return { hinweise: st.farbe === 'gruen' ? [] : [`Kanal-Ampel ${st.farbe}: ${st.grund}. Ein angefragtes Angebot ist Vertragsanbahnung (Art. 6 Abs. 1 lit. b DSGVO) — nur senden, wenn es angefragt wurde, ohne Werbung.`] };
   }, [k, crm.stand.mandate, crm.stand.chancen]);
-  const fehlt = [!form.gesellschaft ? 'Absender (Gesellschaft)' : '', dealFrage ? 'Deal wählen (dieser oder neu)' : '', absenderFehlt.length ? `Absender: ${absenderFehlt.join(', ')}` : '', !k ? 'Empfänger' : '', !positionen.length ? 'mindestens eine Position' : positionen.length && !(s.gesamt.netto > 0) ? 'eine Summe über 0 €' : '', !form.titel.trim() ? 'Titel' : '', form.gueltigBis < heute ? '„gültig bis“ in der Zukunft' : ''].filter(Boolean);
+  const fehlt = [!form.gesellschaft ? 'Absender (Gesellschaft)' : '', dealFrage ? 'Deal wählen (dieser oder neu)' : '', absenderFehlt.length ? `Absender: ${absenderFehlt.join(', ')}` : '', !k ? 'Empfänger' : '', !positionen.length ? 'mindestens eine Position' : positionen.length && !(s.gesamt.netto > 0) ? 'eine Summe über 0 €' : '', !form.titel.trim() ? 'Titel' : '', form.gueltigBis < heute ? '„gültig bis“ in der Zukunft' : '', zahlFehler ?? zahlweiseProblem(form) ?? ''].filter(Boolean);
 
   async function zurVorschau() {
     offen.current = true; // auch ein unveränderter, vorbelegter Entwurf wird vor der Vorschau gespeichert
@@ -422,7 +424,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
           <button onClick={() => setzePos([...positionen, freiePosition(ku)])} style={{ marginTop: 8, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 13, padding: 0 }}>+ freie Position</button>
         </div>
         {/* 26.10. (Kevin): Zahlung anpassen — Raten, Anzahlung + Rest oder ein eigener Satz; steht so im PDF. */}
-        {positionen.length > 0 && <ZahlweiseWahl wert={form.zahlweise} positionen={positionen} ku={ku} onAendern={z => aendern({ zahlweise: z ?? undefined })} />}
+        {positionen.length > 0 && <ZahlweiseWahl wert={form.zahlweise} positionen={positionen} ku={ku} onAendern={z => aendern({ zahlweise: z ?? undefined })} onFehler={setZahlFehler} />}
       </Karte>
 
       <Karte i={2}>

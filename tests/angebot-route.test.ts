@@ -339,6 +339,9 @@ describe('26.10.: Platzhalter, Zahlungsweise, Entwurf-PDF, Gmail-Entwurf', () =>
     expect(r.status).toBe(200);
     expect(r.d.angebot.titel).toBe('Landing für Muster GmbH');
     expect(r.d.angebot.positionen[0]).toMatchObject({ titel: 'Landing für Muster GmbH', text: 'Seite für Muster GmbH' });
+    // Neue Version behält die Zahlungsweise.
+    const v = await post({ aktion: 'version', id: a.id });
+    expect(v.d.angebot.zahlweise).toEqual({ art: 'raten', anzahl: 2, abstandMonate: 1 });
     const pdf = await ablage.lesen('test-haus', r.d.pdf.id);
     const { text } = await pdfText(new Uint8Array(pdf!.bytes));
     expect(text).not.toContain('{{');
@@ -356,6 +359,16 @@ describe('26.10.: Platzhalter, Zahlungsweise, Entwurf-PDF, Gmail-Entwurf', () =>
     expect((await crm()).angebote?.find(x => x.id === a.id)).toMatchObject({ status: 'entwurf' });
     expect((await crm()).angebote?.find(x => x.id === a.id)?.nummer).toBeUndefined();
     expect((await post({ aktion: 'entwurf-pdf', id: 'ang-platzhalter1' })).status).toBe(409);
+  });
+  it('unbrauchbare Zahlungsweise → 400, nichts gespeichert (nie still verworfen)', async () => {
+    const a = await neuerEntwurf({ kontaktId: 'c-erika26', zahlweise: { art: 'raten', anzahl: 3, abstandMonate: 1 } }, 'ang-zahlweise1');
+    const r = await post({ aktion: 'speichern', id: a.id, stand: a.stand, felder: { zahlweise: { art: 'raten', anzahl: 26, abstandMonate: 1 } } });
+    expect(r.status).toBe(400);
+    expect(r.d.fehler).toMatch(/2 bis 12/);
+    expect((await crm()).angebote?.find(x => x.id === a.id)?.zahlweise).toEqual({ art: 'raten', anzahl: 3, abstandMonate: 1 });
+    const ok = await post({ aktion: 'speichern', id: a.id, stand: a.stand, felder: { zahlweise: { art: 'raten', anzahl: 12, abstandMonate: 1 } } });
+    expect(ok.status).toBe(200);
+    expect(ok.d.angebot.zahlweise).toEqual({ art: 'raten', anzahl: 12, abstandMonate: 1 });
   });
   it('Gmail-Entwurf: nur per Klick einer Person, nie der Dienstweg', async () => {
     const r = await post({ aktion: 'gmail-entwurf', id: 'ang-platzhalter1', an: 'c-erika26@example.invalid', betreff: 'Angebot', text: 'Hallo' });

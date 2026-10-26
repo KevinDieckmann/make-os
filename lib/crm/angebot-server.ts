@@ -33,7 +33,7 @@ import { kanalStatus } from './recht';
 import {
   ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat, produktTexteFuer,
   stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
-  angebotHauptprodukt, dealProduktAnders, dealFrageText, dealTitelNachAngebot, angebotPlatzhalterFuellen, angebotPlatzhalterWerte,
+  angebotHauptprodukt, dealProduktAnders, dealFrageText, dealTitelNachAngebot, angebotPlatzhalterFuellen, angebotPlatzhalterWerte, zahlweisePruefen,
 } from './angebote';
 import { alleGesellschaften, gesellschaftenName, gesellschaftLuecken, mitVorgaben, type Gesellschaft, type GesellschaftenDatei } from './gesellschaften';
 import { WEG } from '@/lib/wege';
@@ -69,6 +69,9 @@ function standPruefen(a: Angebot, stand: unknown) {
 export async function angebotSpeichern(p: { id?: unknown; felder: Record<string, unknown>; stand?: unknown; person: string; haushalt?: string | null; wer?: Wer; jetzt?: Date }): Promise<Angebot> {
   const zuLang = angebotGrenzen(p.felder);
   if (zuLang.length) throw new AngebotFehler(zuLang.join(' · '), 413);
+  // Zahlungsweise (26.10.): eine unbrauchbare Angabe wird abgelehnt, nie still verworfen (sonst stünde danach „Ganze Summe“ da).
+  const zw = 'zahlweise' in p.felder ? zahlweisePruefen(p.felder.zahlweise) : null;
+  if (zw) throw new AngebotFehler(`${zw} Nichts gespeichert.`, 400);
   const jetzt = p.jetzt ?? new Date();
   const heute = localDay(jetzt);
   // Ohne Absender im Körper (z. B. der Entwurf aus „Netzwerken“) gilt für einen NEUEN Entwurf die operative Business-Gesellschaft des Registers
@@ -161,6 +164,8 @@ export async function angebotVersion(p: { id: string; person: string; haushalt?:
       // Die neue Fassung gehört zum Deal des Vorgängers (bestätigt, B9) und behält, ob der Titel von Hand ist (A1) — 21.10.
       ...(a.dealId ? { dealId: a.dealId, dealWahl: 'deal' as const } : {}), ...(a.mandatId ? { mandatId: a.mandatId } : {}), titel: a.titel, ...(a.titelVonHand ? { titelVonHand: true as const } : {}), positionen: a.positionen.map(x => ({ ...x })),
       einleitung: a.einleitung, schluss: a.schluss, gueltigBis: plusTage(heute, v.gueltigkeitTage), zahlungszielTage: a.zahlungszielTage,
+      // Die Zahlungsweise (26.10.) geht mit in die neue Fassung — sonst stünde dort still wieder „ganze Summe“.
+      ...(a.zahlweise ? { zahlweise: { ...a.zahlweise } } : {}),
       status: 'entwurf', version: (a.version || 1) + 1, vorgaengerId: a.id, angelegt: jetzt.toISOString(), angelegtVon: p.person, geaendert: jetzt.toISOString(), geaendertVon: p.person,
     };
     ergebnis = neu;

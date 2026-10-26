@@ -326,6 +326,9 @@ export function stellenFehlt(a: Angebot, heute: string): string[] {
   if (a.positionen.length && !(angebotSummen(a).gesamt.netto > 0)) f.push(SUMME_NULL);
   if (!a.titel.trim()) f.push('Titel fehlt.');
   if (a.gueltigBis < heute) f.push('„Gültig bis“ liegt in der Vergangenheit.');
+  // Zahlungsweise (26.10.): passt sie nicht zum Angebot, geht nichts hinaus — nie ein PDF ohne den vereinbarten Satz.
+  const zp = zahlweisePruefen(a.zahlweise) ?? zahlweiseProblem(a);
+  if (zp) f.push(zp);
   return f;
 }
 
@@ -645,7 +648,47 @@ export function angebotLuecken(a: Pick<Angebot, 'titel' | 'positionen' | 'einlei
 
 // ── Zahlungsweise: Raten, Anzahlung, eigener Satz (26.10., Kevin) ─────────────────────────────────────────────────────────────────
 
-export const ZAHLWEISE_GRENZEN = { raten: { min: 2, max: 24 }, abstand: { min: 1, max: 12 }, prozent: { min: 1, max: 99 }, rest: 80, text: 500 } as const;
+/** Grenzen (26.10., Kevin: „sauber 1–12 eintippen, alles andere ist unrealistisch“): 2–12 Raten (1 Rate = ganze Summe), Abstand 1–12 Monate. */
+export const ZAHLWEISE_GRENZEN = { raten: { min: 2, max: 12 }, abstand: { min: 1, max: 12 }, prozent: { min: 1, max: 99 }, rest: 80, text: 500 } as const;
+/** Wann der Rest fällig ist, wenn nichts eingetragen ist. */
+export const ANZAHLUNG_REST_VORGABE = 'bei Abnahme';
+
+/**
+ * Die Zahlungsweise prüfen (26.10.): `null` = in Ordnung, sonst EIN Satz, was nicht passt. Dieselbe Regel für das Eingabefeld (nichts wird gespeichert,
+ * solange etwas nicht passt) und den Server (400 statt still verwerfen). `null`/fehlend = ganze Summe = in Ordnung.
+ */
+export function zahlweisePruefen(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v !== 'object' || Array.isArray(v)) return 'Zahlung: unbekannte Angabe.';
+  const o = v as Record<string, unknown>;
+  const G = ZAHLWEISE_GRENZEN;
+  const ganz = (x: unknown) => (typeof x === 'number' ? x : typeof x === 'string' && /^\s*\d+\s*$/.test(x) ? Number(x) : NaN);
+  const zwischen = (x: unknown, min: number, max: number) => { const n = ganz(x); return Number.isInteger(n) && n >= min && n <= max; };
+  if (o.art === 'raten') {
+    if (!zwischen(o.anzahl, G.raten.min, G.raten.max)) return `Anzahl Raten: eine ganze Zahl von ${G.raten.min} bis ${G.raten.max}.`;
+    if (!zwischen(o.abstandMonate ?? 1, G.abstand.min, G.abstand.max)) return `Abstand der Raten: ${G.abstand.min} bis ${G.abstand.max} Monate.`;
+    return null;
+  }
+  if (o.art === 'anzahlung') {
+    if (!zwischen(o.prozent, G.prozent.min, G.prozent.max)) return `Anzahlung: ${G.prozent.min} bis ${G.prozent.max} Prozent.`;
+    if (o.rest !== undefined && typeof o.rest !== 'string') return 'Anzahlung: wann der Rest fällig ist, als Text.';
+    if (typeof o.rest === 'string' && o.rest.trim().length > G.rest) return `Anzahlung: „Rest“ höchstens ${G.rest} Zeichen.`;
+    return null;
+  }
+  if (o.art === 'frei') {
+    if (typeof o.text !== 'string' || !o.text.trim()) return 'Eigener Text zur Zahlung: bitte etwas eintragen — oder „Ganze Summe“ wählen.';
+    if (o.text.trim().length > G.text) return `Eigener Text zur Zahlung: höchstens ${G.text} Zeichen.`;
+    return null;
+  }
+  return 'Zahlung: unbekannte Art.';
+}
+
+/** Passt die Zahlungsweise zum Angebot? Raten/Anzahlung brauchen einen einmaligen Betrag (laufende Positionen zahlt man je Monat/Jahr). `null` = passt. */
+export function zahlweiseProblem(a: Pick<Angebot, 'positionen' | 'zahlweise'>): string | null {
+  const z = a.zahlweise;
+  if (!z || z.art === 'frei') return null;
+  return angebotSummen(a).einmalig.netto > 0 ? null : `Zahlung in ${z.art === 'raten' ? 'Raten' : 'Anzahlung + Rest'} geht nur mit einem einmaligen Betrag — dieses Angebot hat keinen. „Ganze Summe“ oder „Eigener Text“ wählen.`;
+}
 const ganzIn = (v: unknown, min: number, max: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n >= min && n <= max ? n : null; };
 
 /** Säubern — unbrauchbar → undefined (dann gilt die ganze Summe wie bisher). */
@@ -659,7 +702,7 @@ export function zahlweiseSaeubern(v: unknown): Angebot['zahlweise'] {
   }
   if (o.art === 'anzahlung') {
     const prozent = ganzIn(o.prozent, G.prozent.min, G.prozent.max);
-    const rest = zeile(o.rest, G.rest) || 'bei Abnahme';
+    const rest = zeile(o.rest, G.rest) || ANZAHLUNG_REST_VORGABE;
     return prozent ? { art: 'anzahlung', prozent, rest } : undefined;
   }
   if (o.art === 'frei') { const text = txt(o.text, G.text); return text ? { art: 'frei', text } : undefined; }
@@ -687,7 +730,7 @@ export function zahlweiseText(a: Pick<Angebot, 'positionen' | 'zahlweise'>, opt:
   const inkl = opt.kleinunternehmer || !s.ust ? '' : ' (inkl. USt)';
   if (z.art === 'anzahlung') {
     const an = Math.round(summe * z.prozent / 100);
-    return `Zahlung des einmaligen Betrags${inkl}: ${z.prozent} % Anzahlung (${euroCent(an)}) bei Auftrag, Rest (${euroCent(summe - an)}) ${z.rest}.`;
+    return `Zahlung des einmaligen Betrags${inkl}: ${z.prozent} % Anzahlung (${euroCent(an)}) bei Auftrag, Rest (${euroCent(summe - an)}) ${z.rest.trim() || ANZAHLUNG_REST_VORGABE}.`;
   }
   const raten = ratenCent(summe, z.anzahl);
   const wann = (i: number) => (i === 0 ? 'bei Auftrag' : `nach ${i * z.abstandMonate} ${i * z.abstandMonate === 1 ? 'Monat' : 'Monaten'}`);
