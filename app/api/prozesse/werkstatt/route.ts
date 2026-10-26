@@ -3,12 +3,14 @@
 // GET ?vorlagen=1  die Galerie der Vorlagen (Kundengewinnung, 22.10.) — Kurzform + welche schon übernommen sind; `?vorlage=<id>` eine mit Vorschau.
 // GET ?paket=<fp-…> ein Paket des Fulfillments für die Werkstatt (22.10., Etappe 1 „Öffnen & Rundweg“ — lib/prozesse/fulfillment-modus-server.ts): das Paket aus
 //                  `fulfillment--<h>` (keine Kopie), Stand, Befunde des Fulfillment-Modus, Bausteine mit der Kunden-Regel, Zahl der laufenden Kunden, Produkte. Nur lesen.
+// GET ?id=&datei=1 (26.10.) der Entwurf als Datei `make-os/prozess` (ohne Personen, attachment) — lib/prozesse/datei-import.ts.
 // GET ?id=         ein Prozess: Entwurf mit Stand, Versionen (kurz), Befunde (alle — die Werkstatt zeigt sie am Knoten), Kanten des Flusses, Webhook (ohne
 //                  Schlüssel), Produkte, die auf ihn zeigen (22.10., nur Kennung + Name). `&version=<nr>` eine Version ganz; `&vergleich=<a>,<b>` (Nummer oder „entwurf“) der Vergleich (nur Feldnamen, nie Werte).
 //                  `&datum=<Knoten>` (22.10.) die nächsten Starts eines Datums-Auslösers (nur Tage + Anzahlen).
 // POST { aktion }  paket-entwurf { paketId, stand, vorlage } · paket-verwerfen { paketId } — der Entwurf eines Fulfillment-Pakets (22.10., E2; nur volle Mitglieder)
 //                  · paket-neu { titel, phase?, anfrageId } (E4) — „Neuer Ablauf“ aus der Werkstatt: Paket des Fulfillments mit Marke `werkstatt:`
 //                  anlegen (anfrageId) · steckbrief · entwurf · veroeffentlichen · version-uebernehmen · status (lib/prozesse/bestand.ts `werkstattAnwenden`)
+//                  · datei-vorschau { datei } (liest nur) · datei-import { datei, dateiName?, anfrageId } (26.10.) — Werkstatt-Prozesse aus einer Datei als Entwurf
 //                  · aus-vorlage { vorlageId, eigner?, anfrageId } (22.10.) · webhook-schluessel · webhook-scharf · webhook-entfernen (lib/prozesse/webhook-server.ts). Stand je Prozess → 409 mit der aktuellen Fassung.
 //                  · Kopieren und eigene Vorlagen (22.10., lib/prozesse/kopie.ts): kopieren { id, anfrageId } · als-vorlage { id, titel?, beschreibung?, anfrageId }
 //                    · vorlage-loeschen { vorlageId } · aus-vorlage mit `ev-…` (eigene Vorlage) — Bestand `prozess-vorlagen--<h>`, ohne Personen und Fall-Daten.
@@ -89,6 +91,16 @@ export async function GET(req: Request) {
     // E2 (22.10.): bearbeiten wie im Editor des Fulfillments — nur volle Mitglieder (`darfVorlagenBearbeiten`); mit `&bibliothek=1` die ganze Bibliothek in Kürze.
     const [{ darfVorlagenBearbeiten }, { bibliothekKurz }] = await Promise.all([import('@/lib/fulfillment/zugang'), import('@/lib/prozesse/fulfillment-modus-server')]);
     return NextResponse.json({ ok: true, rechte: z.rechte, ...p, bearbeiten: !z.dienst && await darfVorlagenBearbeiten(z.person), ...(q.get('bibliothek') === '1' ? { bibliothekAlle: await bibliothekKurz(z.haushalt) } : {}) });
+  }
+  // 26.10. (Werkstatt-Import): `?id=&datei=1` — der Entwurf als Datei `make-os/prozess`, ohne Personen und Fall-Daten (lib/prozesse/datei-import.ts).
+  if (id && q.get('datei') === '1') {
+    const e = d.prozesse.find(p => p.id === id);
+    if (!e) return nein(404, 'Diesen Prozess gibt es nicht (mehr).');
+    const { prozessAlsDatei, prozessDateiName } = await import('@/lib/prozesse/datei-import');
+    return new NextResponse(JSON.stringify(prozessAlsDatei(e).datei, null, 1), { headers: {
+      'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="${prozessDateiName(e.entwurf.titel)}"`,
+      'x-content-type-options': 'nosniff', 'cache-control': 'no-store',
+    } });
   }
   if (!id) {
     const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
@@ -223,6 +235,14 @@ export async function POST(req: Request) {
     return { status: 200, body: { ok: true, ...ansicht(r.haupt), teile: r.teile.map(t => ({ id: t.id, titel: t.entwurf.titel, status: t.status })), befunde: r.befunde, hinweise, probelauf: r.probelauf } };
   };
   // Kopieren, als eigene Vorlage speichern, eigene Vorlage übernehmen bzw. löschen (22.10., lib/prozesse/kopie.ts) — eigene Stelle, derselbe Rahmen.
+  // 26.10. (Werkstatt-Import): Datei lesen (Vorschau, schreibt nichts) bzw. ihre Prozesse als Entwurf anlegen (einmalig über `anfrageId`).
+  if (aktion === 'datei-vorschau' || aktion === 'datei-import') {
+    const { dateiAktion } = await import('@/lib/prozesse/kopie-server');
+    const k = aktion === 'datei-vorschau'
+      ? await dateiAktion(aktion, b, { person: z.person, rechte: z.rechte, haushalt: z.haushalt, wer })
+      : await einmalig<Record<string, unknown>>('prozess-datei-import', b.anfrageId, () => dateiAktion(aktion, b, { person: z.person, rechte: z.rechte, haushalt: z.haushalt, wer }), undefined, { wer: z.person });
+    return NextResponse.json(k.body, { status: k.status });
+  }
   if (aktion === 'kopieren' || aktion === 'als-vorlage' || aktion === 'vorlage-loeschen' || (aktion === 'aus-vorlage' && typeof b.vorlageId === 'string' && b.vorlageId.startsWith('ev-'))) {
     const { kopieAktion } = await import('@/lib/prozesse/kopie-server');
     const ausfuehrenKopie = () => kopieAktion(aktion, b, { person: z.person, rechte: z.rechte, haushalt: z.haushalt, wer });

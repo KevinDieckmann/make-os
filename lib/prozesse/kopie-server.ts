@@ -21,6 +21,24 @@ type Antwort = { status: number; body: Record<string, unknown> };
 const nein = (status: number, fehler: string, extra: Record<string, unknown> = {}): Antwort => ({ status, body: { ok: false, fehler, ...extra } });
 const ansicht = (e: ProzessEintrag) => ({ eintrag: { ...e, versionen: e.versionen.map(versionKurz) }, stand: standVon(e), entwurfGeaendert: entwurfGeaendert(e) });
 
+/** Werkstatt-Import (26.10., lib/prozesse/datei-import.ts): `datei-vorschau { datei }` liest nur, `datei-import { datei, dateiName? }` legt Entwürfe an. */
+export async function dateiAktion(aktion: 'datei-vorschau' | 'datei-import', b: Record<string, unknown>, u: KopieUmfeld): Promise<Antwort> {
+  if (!u.rechte.entwurf) return nein(403, 'Prozesse bauen nur Personen im Haushalt.');
+  const { prozessDateiAnwenden, prozessDateiLesen } = await import('./datei-import');
+  const pruef = await pruefKontextFuer(u.haushalt, u.person);
+  const kx = { neueKennung: (p: 'pz' | 'fk') => neueKennung(p), pruef };
+  if (aktion === 'datei-vorschau') {
+    const g = prozessDateiLesen(b.datei, kx);
+    return g.ok ? { status: 200, body: { ok: true, vorschau: g.prozesse.map(p => p.vorschau) } } : nein(g.status, g.fehler);
+  }
+  const dateiName = typeof b.dateiName === 'string' ? b.dateiName : undefined;
+  const r = await prozesseAendern<{ angelegt: { id: string; titel: string }[]; hinweise: string[] }>(
+    dd => prozessDateiAnwenden(dd, b.datei, { ...kx, person: u.person, jetzt: new Date().toISOString(), rechte: u.rechte, ...(dateiName ? { dateiName } : {}) }) as never, u.wer, u.haushalt,
+  ) as Awaited<ReturnType<typeof prozessDateiAnwenden>>;
+  if (!r.ok) return nein(r.status, r.fehler, r.vorschau ? { vorschau: r.vorschau } : {});
+  return { status: 200, body: { ok: true, angelegt: r.angelegt, hinweise: r.hinweise } };
+}
+
 export async function kopieAktion(aktion: string, b: Record<string, unknown>, u: KopieUmfeld): Promise<Antwort> {
   const jetzt = new Date().toISOString();
   const kx = { person: u.person, jetzt, rechte: u.rechte, neueKennung: (p: 'pz' | 'fk' | 'ev') => neueKennung(p) };

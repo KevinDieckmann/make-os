@@ -26,6 +26,7 @@ import { Werkstatt } from './Werkstatt';
 import { PaketWerkstatt } from './PaketWerkstatt';
 import { WerkstattUebersicht, NeuerProzessFenster } from './WerkstattUebersicht';
 import { VorlagenGalerie } from './VorlagenGalerie';
+import { ProzessAusDatei } from './ProzessDatei';
 import { HeadFragenFenster } from './HeadFragen';
 import { FARBE as C, TYP, MIKRO, SCHRIFT } from '@/lib/make-one/design';
 import { Seite, Karte, Knopf, Segmente, Hinweis, Leerzustand, Wahl, SymbolKnopf, useHandy, useMedien } from '../ui';
@@ -92,6 +93,8 @@ export function ProzesseSeite() {
   const [neuOffen, setNeuOffen] = useState(false);
   // „Aus Vorlage anlegen“ (22.10., Kundengewinnung): die Galerie der 18 Vorlagen.
   const [vorlageOffen, setVorlageOffen] = useState(false);
+  // 26.10.: „Aus Datei“ — Werkstatt-Prozesse als Datei importieren (Vorschau → Entwurf).
+  const [dateiOffen, setDateiOffen] = useState(false);
   // „Head fragen“ (22.10.): ein ganzer Entwurf als Vorschlag in den Stapel — übernommen erst per Klick.
   const [headOffen, setHeadOffen] = useState(false);
   const vollbild = useVollbild();
@@ -348,8 +351,8 @@ export function ProzesseSeite() {
   if (!daten) inhalt = fehler ? <Hinweis art="kritisch">{fehler}</Hinweis> : <p style={{ color: C.inkDim, fontSize: TYP.bedien }}>Die Landkarte lädt …</p>;
   else if (!prozesse.length) inhalt = <Leerzustand symbol={<Workflow size={20} />} titel="Noch keine Prozesse">Sobald Abläufe im System oder im Fulfillment stehen, erscheinen sie hier.</Leerzustand>;
   else if (ansicht === 'werkstatt') inhalt = p?.quelle === 'system' && schrauben
-    ? <div className="pz-mit-schrauben"><WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} onGanz={voll ? undefined : () => vollbild.an()} />{schrauben}</div>
-    : <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} onGanz={voll ? undefined : () => vollbild.an()} />;
+    ? <div className="pz-mit-schrauben"><WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onDatei={() => setDateiOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} onGanz={voll ? undefined : () => vollbild.an()} />{schrauben}</div>
+    : <WerkstattBereich p={p} schmal={schmal} onNeu={() => setNeuOffen(true)} onVorlage={() => setVorlageOffen(true)} onDatei={() => setDateiOffen(true)} onHead={() => setHeadOffen(true)} onLandkarte={() => void landkarteNeu()} onGanz={voll ? undefined : () => vollbild.an()} />;
   else if (ansicht === 'liste') inhalt = schrauben
     ? <div className="pz-mit-schrauben"><ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} bereiche={anp.ansicht.bereiche} />{schrauben}</div>
     : <ProzessListe prozesse={prozesse} zahlen={zahlen} pfad={pfad} bereiche={anp.ansicht.bereiche} />;
@@ -374,6 +377,10 @@ export function ProzesseSeite() {
   const vorlageFenster = vorlageOffen && (
     <VorlagenGalerie onZu={() => setVorlageOffen(false)}
       onAngelegt={async id => { await landkarteNeu(); setVorlageOffen(false); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt', ...(adr.voll ? { voll: true } : {}) }), { scroll: false }); }} />
+  );
+  const dateiFenster = dateiOffen && (
+    <ProzessAusDatei onZu={() => setDateiOffen(false)}
+      onAngelegt={async id => { await landkarteNeu(); setDateiOffen(false); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt', ...(adr.voll ? { voll: true } : {}) }), { scroll: false }); }} />
   );
   const headFenster = headOffen && (
     <HeadFragenFenster onZu={() => setHeadOffen(false)}
@@ -421,6 +428,7 @@ export function ProzesseSeite() {
         {bildFlaeche ? <>{inhalt}{feld && <WerkzeugFeld titel={feldTitel} oeffnenBei={anpassFeld ? 'anpassen' : pfad.s ?? pfad.ph ?? pfad.p ?? null}>{feld}</WerkzeugFeld>}</> : raster}
         {neuFenster}
         {vorlageFenster}
+        {dateiFenster}
         {headFenster}
       </WerkzeugRahmen>
     );
@@ -437,6 +445,7 @@ export function ProzesseSeite() {
         {raster}
  {neuFenster}
         {vorlageFenster}
+        {dateiFenster}
         {headFenster}
         {ansicht === 'bild' && daten && ebene === 1 && <p className="pz-legende" style={{ ...MIKRO, margin: 0, textTransform: 'none', letterSpacing: 0, fontWeight: 400, fontSize: TYP.bedien, color: C.inkLeise }}>Ein Klick fährt hinein · Überfahren zeigt alle Übergaben einer Kachel · Zahl = Fälle, ein Klick darauf zeigt sie · „System“ = schon im Code gebaut, nur lesbar</p>}
       </Karte>
@@ -450,9 +459,9 @@ export function ProzesseSeite() {
  * nur lesbar. Pakete des Fulfillments öffnen sich seit 22.10. (Fulfillment in die Werkstatt, Etappe 1) auf derselben Fläche zum Ansehen (./PaketWerkstatt.tsx);
  * Landkarte (Hochhaus) und gezeichnete Abläufe sind Bilder und bleiben ein Hinweis mit Sprung.
  */
-function WerkstattBereich({ p, schmal, onNeu, onVorlage, onHead, onLandkarte, onGanz }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onVorlage: () => void; onHead: () => void; onLandkarte: () => void;
+function WerkstattBereich({ p, schmal, onNeu, onVorlage, onDatei, onHead, onLandkarte, onGanz }: { p: ReturnType<typeof prozessVon>; schmal: boolean; onNeu: () => void; onVorlage: () => void; onDatei: () => void; onHead: () => void; onLandkarte: () => void;
   /** Werkzeug-Muster (22.10.): der Pfeil ⤢ oben rechts in der Fläche — fehlt im Werkzeugmodus (dort trägt ihn die Kopfzeile). */ onGanz?: () => void }) {
-  if (!p) return <WerkstattUebersicht onNeu={onNeu} onVorlage={onVorlage} onHead={onHead} />;
+  if (!p) return <WerkstattUebersicht onNeu={onNeu} onVorlage={onVorlage} onDatei={onDatei} onHead={onHead} />;
   if (p.quelle === 'werkstatt') return <Werkstatt key={p.id} prozessId={p.id} nurAnsehen={schmal} onLandkarte={onLandkarte} onGanzerBildschirm={onGanz} />;
   // Fulfillment in die Werkstatt (22.10., Etappe 1): ein Paket öffnet sich auf derselben Fläche — nur ansehen; bearbeitet wird bis Etappe 2 im Editor des Fulfillments.
   if (p.quelle === 'vorlage' && p.editor) return <PaketWerkstatt key={p.id} paketId={p.id} schmal={schmal} onGanzerBildschirm={onGanz} />;

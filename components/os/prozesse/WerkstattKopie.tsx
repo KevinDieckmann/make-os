@@ -12,6 +12,7 @@ import { Knopf, Hinweis, Feldzeile, feld } from '../ui';
 import { neueKennung } from '@/lib/kennung';
 import { PROZESS_TEXT } from '@/lib/prozesse/definition';
 import { werkstattSenden } from './werkstatt-daten';
+import { ProzessAlsDateiKnopf } from './ProzessDatei';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.45 } as const;
 
@@ -54,6 +55,7 @@ export function ProzessKopieren({ prozessId, titel, vorher, onKopiert }: {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         <Knopf leise onClick={kopieren} titel="Einen neuen Prozess aus diesem Entwurf anlegen (neue Kennungen, Probelauf bzw. Entwurf)"><span className="pz-knopf-inhalt"><Copy size={14} aria-hidden />Kopie anlegen</span></Knopf>
         <Knopf leise onClick={() => setVorlageOffen(o => !o)} titel="Struktur und Texte als eigene Vorlage des Haushalts speichern — ohne Personen und Fall-Daten"><span className="pz-knopf-inhalt"><LayoutTemplate size={14} aria-hidden />Als Vorlage speichern</span></Knopf>
+        <ProzessAlsDateiKnopf prozessId={prozessId} vorher={vorher} />
       </div>
       {vorlageOffen && (
         <form onSubmit={async e => { e.preventDefault(); await alsVorlage(); }} style={{ display: 'grid', gap: 8 }}>
