@@ -124,7 +124,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, ...r, text: r.schonDa ? `Angebot ${r.nummer} war schon als gesendet vermerkt.` : `Angebot ${r.nummer} als gesendet vermerkt — steht im Verlauf der Person.` });
       }
       case 'entwurf-pdf': {
-        // 26.10. (Kevin: „anzeigen und runterladen“): der Entwurf als PDF — nichts gespeichert, keine Nummer, IBAN maskiert.
+        // 26.10. (Kevin: „anzeigen und runterladen“): der Entwurf als PDF — nichts gespeichert, keine Nummer, volle IBAN wie im gestellten PDF.
         if (!h) return fehler('PDF nur mit angemeldeter Person und Haushalt — Absender und Logo liegen je Haushalt.', 403);
         const pdf = await angebotEntwurfPdf({ id, haushalt: h.haushalt });
         return new NextResponse(Buffer.from(pdf.bytes), { headers: {

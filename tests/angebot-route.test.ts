@@ -351,6 +351,7 @@ describe('26.10.: Platzhalter, Zahlungsweise, Entwurf-PDF, Gmail-Entwurf', () =>
     expect(r.headers.get('content-type')).toBe('application/pdf');
     const { text } = await pdfText(new Uint8Array(await r.arrayBuffer()));
     expect(text).toContain('ENTWURF');
+    expect(text).toContain(BEISPIEL_IBAN_LESBAR); // volle IBAN auch im Entwurf-PDF — sonst wüsste niemand, wohin überweisen
     expect(text.replace(/\s+/g, ' ')).toContain('Für Muster GmbH');
     expect((await crm()).angebote?.find(x => x.id === a.id)).toMatchObject({ status: 'entwurf' });
     expect((await crm()).angebote?.find(x => x.id === a.id)?.nummer).toBeUndefined();

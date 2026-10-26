@@ -589,7 +589,7 @@ async function logoLaden(haushalt: string, g: Gesellschaft): Promise<PdfLogo | n
 }
 
 /**
- * Den ENTWURF als PDF zum Ansehen (mit „ENTWURF — noch nicht gestellt“, ohne Nummer, IBAN maskiert): nichts wird gespeichert, keine Nummer vergeben.
+ * Den ENTWURF als PDF zum Ansehen (mit „ENTWURF — noch nicht gestellt“, ohne Nummer, volle IBAN wie im gestellten PDF): nichts wird gespeichert, keine Nummer vergeben.
  * Platzhalter wie beim Stellen gefüllt — das PDF zeigt, was hinausginge.
  */
 export async function angebotEntwurfPdf(p: { id: string; haushalt: string; jetzt?: Date }): Promise<{ bytes: Uint8Array; name: string }> {
@@ -603,7 +603,8 @@ export async function angebotEntwurfPdf(p: { id: string; haushalt: string; jetzt
   const g = (await gesellschaftenLaden(p.haushalt)).find(x => x.id === a.gesellschaft) ?? { id: a.gesellschaft };
   const empfaenger = empfaengerAus(k, firma);
   const gefuellt = angebotPlatzhalterFuellen(a, angebotPlatzhalterWerte({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, firma: empfaenger.firma, titel: a.titel, gueltigBis: a.gueltigBis, absender: mitVorgaben(g).name, heute }));
-  const bytes = await angebotPdf(angebotDokument(gefuellt, absenderAus(g, { angebot: true }), empfaenger, heute), { logo: await logoLaden(p.haushalt, g), erstellt: p.jetzt ?? new Date() });
+  // Volle IBAN wie im gestellten PDF (26.10., Kevin: „sonst wissen die nicht, wohin sie überweisen“) — maskiert bleibt sie nur in der Vorschau im Browser.
+  const bytes = await angebotPdf(angebotDokument(gefuellt, absenderAus(g, { angebot: true, ibanVoll: true }), empfaenger, heute), { logo: await logoLaden(p.haushalt, g), erstellt: p.jetzt ?? new Date() });
   return { bytes, name: `Angebot Entwurf – ${(gefuellt.titel || 'Angebot').replace(/[\\/:*?"<>|]/g, '-').slice(0, 80)}.pdf` };
 }
 

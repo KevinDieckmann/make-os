@@ -94,7 +94,7 @@ export function Vorschau({ dok, logoUrl, mail, setMail, ampel, luecken, absender
           {angebotId && <Knopf leise onClick={async () => { setPdfMeldung(await entwurfPdfLaden(angebotId)); }}>Entwurf als PDF</Knopf>}
           {!nurEntwurf && <Knopf farbe={LEUCHT.gut} aus={gesperrt} onClick={onSenden}>Angebot stellen &amp; PDF laden</Knopf>}
         </div>
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{nurEntwurf ?? '„Entwurf als PDF“ zum Ansehen — ohne Nummer, nichts wird gespeichert. „Angebot stellen“ vergibt die Nummer und schreibt das Angebot fest (Änderungen nur als neue Version); Deal, Follow-up und Verlauf ziehen mit.'}</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 }}>{nurEntwurf ?? 'Die IBAN ist hier nur gekürzt zu sehen — im PDF steht sie vollständig. „Entwurf als PDF“ zum Ansehen — ohne Nummer, nichts wird gespeichert. „Angebot stellen“ vergibt die Nummer und schreibt das Angebot fest (Änderungen nur als neue Version); Deal, Follow-up und Verlauf ziehen mit.'}</div>
       </div>
       <Blatt d={dok} logoUrl={logoUrl} />
     </div>
