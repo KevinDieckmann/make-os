@@ -19,6 +19,9 @@ import type { CockpitZeile } from '@/lib/fulfillment/prozesse/cockpit';
 import { AMPEL_FARBE, AMPEL_TEXT } from './bilder';
 import { DemKundenZeigen } from './Praesentation';
 import { springe, sprungAnker, type Sprung } from './sprung';
+import { lieferSatz, lieferStand } from '@/lib/fulfillment/prozesse/lieferzeit';
+import { formatieren } from '@/lib/prozesse/formatierer';
+import { localDay } from '@/lib/zeit';
 
 /** Wohin ein Sprung führt — gleicher Reiter: Ereignis, sonst Adresse mit Anker. */
 export function useFallSprung(mandatId: string, reiter: FallReiter) {
@@ -56,6 +59,10 @@ export function FallKopf({ mandatId, mitKunde = true }: { mandatId: string; mitK
   const k = zeile?.kundeSieht;
   // Was der Kunde liest, nur wenn es abweicht (andere Ampel oder ein Grund) — sonst wäre es doppelt.
   const weicht = !!k && !!zeile && (!!k.grund || k.ampel !== kundenAmpel(zeile));
+  // 26.10.: Lieferzeit ab dem Ereignis (Formular) — EINE Rechnung (`lieferStand`), nichts gespeichert. Nur bei laufenden Fällen.
+  const lief = f && f.status !== 'abgeschlossen' ? lieferStand(f) : null;
+  const heute = localDay();
+  const lieferUeber = !!lief?.bisAm && lief.bisAm < heute;
   const satz = ampel && (
     <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.ink, minWidth: 0, overflowWrap: 'anywhere' }}>
       <Punkt farbe={ampel.farbe} groesse={9} />{ampel.text}{h.length ? ' ›' : ''}
@@ -68,6 +75,7 @@ export function FallKopf({ mandatId, mitKunde = true }: { mandatId: string; mitK
         {satz && (h[0]
           ? <button type="button" className="fassbar" onClick={() => router.push(h[0].href)} aria-label={`${ampel!.text} — zur Stelle`} style={{ background: 'none', border: 'none', padding: 0, minHeight: 44, cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text, minWidth: 0 }}>{satz}</button>
           : satz)}
+        {lief && <span className="ff-lieferzeit" title={lief.startAm ? `Lieferzeit ${lief.werktage} Werktage ab ${formatieren('datum', lief.startAm)} („${lief.titel}“)` : undefined} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: lieferUeber ? C.ink : C.inkDim, minWidth: 0, overflowWrap: 'anywhere' }}><Punkt farbe={lief.bisAm ? (lieferUeber ? AMPEL_FARBE.rot : AMPEL_FARBE.gruen) : C.inkLeise} groesse={7} />{lieferSatz(lief, heute, t => formatieren('datum', t))}</span>}
         {weicht && k && <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, minWidth: 0, overflowWrap: 'anywhere' }}><Punkt farbe={AMPEL_FARBE[k.ampel]} groesse={7} />Der Kunde sieht: „{k.titel}“{k.grund ? ` (${k.grund})` : ''}</span>}
       </span>
       {mitKunde && f && <DemKundenZeigen mandatId={mandatId} leise />}

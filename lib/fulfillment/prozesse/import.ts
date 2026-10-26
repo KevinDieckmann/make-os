@@ -18,7 +18,7 @@
 //                  { id, titel, abstimmung?, dauerTage?, ziel?, warum?, kundeSichtbar?, kreislauf?, fluss: [ Schritt | { gruppe, id, fluss: [Schritt] } ] } ] } ],
 //                  vorlagen?: [...] }`
 //     Schritt = `{ id, titel, form?, frist?, zweige?: { ja?, nein? }, zustaendig?, kundeSichtbar?, ziel?, ergebnis?, kennzahl?, rolle?, dauerTage?, abstimmung?,
-//     versuche?, pos?: { x, y }, pfeilText?: { weiter?, ja?, nein? }, bausteine?: [Kennung] }` — Formen, Fristen, Zweige, Versuche (1–20), Lage und Pfeil-
+//     versuche?, lieferzeit? (Werktage ab diesem Schritt, 26.10.), pos?: { x, y }, pfeilText?: { weiter?, ja?, nein? }, bausteine?: [Kennung] }` — Formen, Fristen, Zweige, Versuche (1–20), Lage und Pfeil-
 //     Beschriftung wie im Editor (dieselben Werkzeuge, `zweigePruefen`, `vorlageStrukturPruefen`, `lageAus`, `pfeilTextAus`; seit 17.10. spät), Bausteine per
 //     Kennung der Quelle (→ `fb-imp-<id>`) oder als vorhandene Kennung `fb-…`; sie müssen in der Bibliothek ODER im `vorlagen`-Teil derselben Datei stehen,
 //     sonst blockiert die Datei (nichts still ohne Baustein). Eine Paket-Vorlage bekommt `fp-imp-pk-<slug>`, ihre Knoten feste Kennungen aus den Quell-Kennungen
@@ -39,7 +39,7 @@ import { PHASEN, SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE, phaseEinfu
 import { TAG_NUR_INTERN, TAG_VOR_VERKAUF, GLIEDERUNG_PUNKT_MAX } from './bausteine';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
 import { zweigePruefen } from './fluss-struktur';
-import { FRIST_MAX, lageAus, pfeilTextAus } from './editor';
+import { FRIST_MAX, LIEFERZEIT_MAX, lageAus, pfeilTextAus } from './editor';
 import { rahmenOrdnen, umrissVon } from './flaeche-lage';
 import { ausfuehren, fnv, istObj, nein, optBool, optText, optWahl, optZahl, pflichtText, slug, titelForm } from './pruefen';
 import { anzahl } from '@/lib/text/zahlwort';
@@ -384,11 +384,14 @@ function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
     // Versuche (Runden auf dem Nein-Pfad), Lage auf der Fläche und Beschriftung der Pfeile — geprüft wie im Editor (17.10. spät; vorher fielen sie weg).
     const versuche = optZahl(x.versuche, 1, 20, `${w}: Versuche`);
     if (versuche !== undefined && versuche !== null && !Number.isInteger(versuche)) nein(`${w}: Versuche — ganze Zahl von 1 bis 20.`);
+    // Lieferzeit (26.10.): ab diesem Schritt so viele Werktage bis zur Lieferung.
+    const lieferzeit = optZahl(x.lieferzeit, 1, LIEFERZEIT_MAX, `${w}: Lieferzeit (Werktage)`);
+    if (lieferzeit !== undefined && lieferzeit !== null && !Number.isInteger(lieferzeit)) nein(`${w}: Lieferzeit — ganze Werktage von 1 bis ${LIEFERZEIT_MAX}.`);
     knoten.push(ohneLeer<ProzessKnoten>({
       id: kid, elternId: eltern, titel: pflichtText(x.titel, 'titel', `${w}: Titel`), rang, form,
       frist: ganzeTage(x.frist, FRIST_MAX, `${w}: Frist (Tage)`), dauerTage: ganzeTage(x.dauerTage, 3650, `${w}: Dauer (Tage)`),
       zustaendig: optWahl(x.zustaendig, ZUST, `${w}: Verantwortung`), kundeSichtbar: optBool(x.kundeSichtbar, `${w}: für den Kunden sichtbar`), freigabe, ...texte,
-      versuche, pos: x.pos === undefined ? undefined : lageAus(x.pos, false), pfeilText: pfeilTextAus(x.pfeilText ?? x.pfeil_text, `${w}: Beschriftung der Pfeile`),
+      versuche, lieferzeit: lieferzeit ?? undefined, pos: x.pos === undefined ? undefined : lageAus(x.pos, false), pfeilText: pfeilTextAus(x.pfeilText ?? x.pfeil_text, `${w}: Beschriftung der Pfeile`),
     }));
     schrittKnoten.set(sq, kid);
     if (x.zweige !== undefined) zweigeRoh.push({ knotenId: kid, wo: w, z: x.zweige });

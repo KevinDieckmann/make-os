@@ -76,7 +76,7 @@ export interface PaketEntwurf {
 }
 
 export type KnotenStatus = 'offen' | 'in_arbeit' | 'wartet_kunde' | 'erledigt' | 'entfaellt';
-export interface FallKnoten extends Pick<ProzessKnoten, 'id' | 'elternId' | 'titel' | 'rang' | 'ziel' | 'ergebnis' | 'kennzahl' | 'zustaendig' | 'freigabe' | 'kundeSichtbar' | 'phaseId' | 'bausteinId' | 'dauerTage' | 'form' | 'frist' | 'zweige' | 'versuche'> {
+export interface FallKnoten extends Pick<ProzessKnoten, 'id' | 'elternId' | 'titel' | 'rang' | 'ziel' | 'ergebnis' | 'kennzahl' | 'zustaendig' | 'freigabe' | 'kundeSichtbar' | 'phaseId' | 'bausteinId' | 'dauerTage' | 'form' | 'frist' | 'zweige' | 'versuche' | 'lieferzeit'> {
   status: KnotenStatus; seit?: string; faelligAm?: string; erledigtAm?: string; erledigtVon?: string; grund?: string; extra?: true;
   // ── Ausführung der Abläufe (17.10. abends; lib/fulfillment/prozesse/ausfuehrung.ts) — alle optional, setzt nur der Schreibweg des Falls ──
   /** Entscheidung: die letzte Antwort („nein“ = ihr Nein-Zweig läuft gerade) und ihr Tag. */

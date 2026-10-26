@@ -119,6 +119,8 @@ export interface PaketKnotenInfo {
   form: KnotenForm; formTitel: string; formGesetzt: boolean;
   phase: string; gruppe?: string;
   frist?: number; versuche?: number; zustaendig?: Zustaendig; kundeSichtbar?: boolean;
+  /** Ab diesem Schritt läuft die Lieferzeit — so viele Werktage (26.10.). */
+  lieferzeit?: number;
   /** Bausteine (Ebene 5) am Schritt — `knotenId` = ihr Knoten im Paket (Entfernen), `bausteinId` = der Baustein der Bibliothek. */
   bausteine: { knotenId: string; bausteinId: string; titel: string; art?: string; kundeFrei?: boolean; grund?: string }[];
   /** Zweige in Worten („ja → …“, „nein → …“). */
@@ -159,7 +161,7 @@ export function paketAnsicht(v: ProzessVorlage, bibliothek: readonly BibliothekK
   const schritt = (e: EditorKnoten, elternId: string, rang: number, phase: string, gruppe?: string): K => {
     info[e.id] = {
       id: e.id, titel: e.titel, art: 'schritt', form: e.form, formTitel: FORM_TITEL[e.form], formGesetzt: e.gesetzt, phase, ...(gruppe ? { gruppe } : {}),
-      ...(e.frist !== undefined ? { frist: e.frist } : {}), ...(e.versuche !== undefined ? { versuche: e.versuche } : {}),
+      ...(e.frist !== undefined ? { frist: e.frist } : {}), ...(e.versuche !== undefined ? { versuche: e.versuche } : {}), ...(e.lieferzeit !== undefined ? { lieferzeit: e.lieferzeit } : {}),
       ...(e.zustaendig ? { zustaendig: e.zustaendig } : {}), ...(e.kundeSichtbar !== undefined ? { kundeSichtbar: e.kundeSichtbar } : {}),
       bausteine: e.bausteine.map(b => { const x = bibliothek.find(y => y.id === b.bausteinId); return { knotenId: b.knotenId, bausteinId: b.bausteinId, titel: b.titel, ...(b.art ? { art: b.art } : {}), ...(x ? { kundeFrei: x.kundeFrei, ...(x.grund ? { grund: x.grund } : {}) } : {}) }; }),
       zweige: zweigText(e),
@@ -210,6 +212,7 @@ export function paketKnotenZeilen(i: PaketKnotenInfo): { name: string; wert: str
   if (i.art === 'abstimmung') { if (i.wer) z.push({ name: 'Wer bestätigt', wert: werText(i.wer) }); return z; }
   if (i.frist !== undefined) z.push({ name: 'Frist', wert: `${i.frist} Tage ab Ankunft` });
   if (i.versuche !== undefined) z.push({ name: 'Versuche', wert: String(i.versuche) });
+  if (i.lieferzeit !== undefined) z.push({ name: 'Lieferzeit', wert: `startet hier: ${i.lieferzeit} Werktage` });
   z.push({ name: 'Zuständig', wert: i.zustaendig === 'kunde' ? 'Kunde' : i.zustaendig === 'beide' ? 'Kunde und Team' : 'Team' });
   z.push({ name: 'Kunde sieht es', wert: i.kundeSichtbar ? 'ja' : 'nein' });
   for (const t of i.zweige) z.push({ name: 'Weg', wert: t });

@@ -49,6 +49,8 @@ export const FRIST_MAX = 365;
 /** Runden einer Erinnerung auf dem Nein-Pfad (Feld „Versuche“ im Seitenfeld; fehlt = 5, `VERSUCHE_VORGABE`). Dieselbe Grenze liest lib/fulfillment/lesen.ts. */
 export const VERSUCHE_MIN = 1;
 export const VERSUCHE_MAX = 20;
+/** Lieferzeit ab einem Schritt in Werktagen (26.10.; Feld „Lieferzeit startet hier“). Dieselbe Grenze lesen lib/fulfillment/lesen.ts und der Import. */
+export const LIEFERZEIT_MAX = 250;
 /** Name der Formen (Palette, Seitenfeld, Vorleser). */
 export const FORM_TITEL: Readonly<Record<KnotenForm, string>> = { schritt: 'Schritt', nachricht: 'Nachricht', entscheidung: 'Entscheidung', erinnerung: 'Erinnerung', termin: 'Termin', abstimmung: 'Bestätigung' };
 /** Vorgabe-Titel eines neuen Knotens je Form (kurz, ohne Inhalte — der Mensch benennt ihn um). */
@@ -67,6 +69,8 @@ export interface EditorKnoten {
   frist?: number; zustaendig?: Zustaendig; kundeSichtbar?: boolean; freigabe?: string;
   /** Erinnerung auf dem Nein-Pfad: höchstens so viele Runden, dann „eskaliert“ (fehlt = Vorgabe 5, lib/fulfillment/prozesse/ausfuehrung.ts). */
   versuche?: number;
+  /** Ab diesem Schritt läuft die Lieferzeit — so viele Werktage (26.10.). */
+  lieferzeit?: number;
   bausteine: EditorBaustein[];
   zweige?: Zweige;
   /** Nein-Zweig dieser Entscheidung — steht im Bild neben ihr, nicht im Strang. */
@@ -99,7 +103,7 @@ export function editorModell(v: ProzessVorlage, bausteine: readonly (Pick<Bauste
     id: k.id, titel: k.titel, form: wirksameForm(k, kn, art), gesetzt: !!k.form,
     ...(k.frist !== undefined ? { frist: k.frist } : {}), ...(k.zustaendig ? { zustaendig: k.zustaendig } : {}),
     ...(k.kundeSichtbar !== undefined ? { kundeSichtbar: k.kundeSichtbar } : {}), ...(k.freigabe ? { freigabe: k.freigabe } : {}),
-    ...(k.versuche !== undefined ? { versuche: k.versuche } : {}),
+    ...(k.versuche !== undefined ? { versuche: k.versuche } : {}), ...(k.lieferzeit !== undefined ? { lieferzeit: k.lieferzeit } : {}),
     bausteine: kinderVon(k.id, kn).filter(c => c.bausteinId).map(c => {
       const b = bausteine.find(x => x.id === c.bausteinId);
       return { knotenId: c.id, bausteinId: c.bausteinId!, titel: c.titel || b?.titel || 'Baustein', ...(b ? { art: b.art } : {}) };
@@ -188,6 +192,9 @@ function schrittFelder(o: Record<string, unknown>): Record<string, unknown> {
   // Ausführung (17.10. abends): an einer Erinnerung auf dem Nein-Pfad höchstens so viele Runden (fehlt = 5).
   const v = optZahl(o.versuche, VERSUCHE_MIN, VERSUCHE_MAX, 'Versuche');
   if (v !== undefined) { if (v !== null && !Number.isInteger(v)) nein(`Versuche: ganze Zahl von ${VERSUCHE_MIN} bis ${VERSUCHE_MAX}.`); t.versuche = v; }
+  // Lieferzeit (26.10.): ab diesem Schritt so viele Werktage bis zur Lieferung (null = entfernen).
+  const lz = optZahl(o.lieferzeit, 1, LIEFERZEIT_MAX, 'Lieferzeit (Werktage)');
+  if (lz !== undefined) { if (lz !== null && !Number.isInteger(lz)) nein(`Lieferzeit: ganze Werktage von 1 bis ${LIEFERZEIT_MAX}.`); t.lieferzeit = lz; }
   return t;
 }
 const setzeFelder = (k: ProzessKnoten, t: Record<string, unknown>): ProzessKnoten => {
@@ -200,7 +207,7 @@ const setzeFelder = (k: ProzessKnoten, t: Record<string, unknown>): ProzessKnote
  * Die Änderungen des Editors an EINER Paket-Vorlage — alles oder nichts. Ops (je `{ op, … }`):
  *   titel { titel } · zusatz { an } (Zusatzmodul, 17.10. spät) · phase-neu { id, titel, nach?: Phase|null } · phase { id, titel?, kundeSichtbar? } · phase-schieben { id, nach: Phase|null }
  *   abstimmung { phaseId, an, titel?, wer? } · schritt-neu { id, ziel, form, titel, frist?, zustaendig?, kundeSichtbar?, versuche? }
- *   schritt { id, titel?, form?, frist?, zustaendig?, kundeSichtbar?, versuche? } · schritt-schieben { id, ziel } · zweig { id, ja?: id|null, nein?: id|null }
+ *   schritt { id, titel?, form?, frist?, zustaendig?, kundeSichtbar?, versuche?, lieferzeit? } · schritt-schieben { id, ziel } · zweig { id, ja?: id|null, nein?: id|null }
  *   nein-erinnerung { id, entscheidungId, titel? } · baustein-dazu { id, schrittId, bausteinId, titel? } · gruppe { id, titel }
  *   weg { id, still? } · zurueck { id } · papierkorb-leeren { id? }
  * Fläche (17.10., ./flaeche.ts): lage { eintraege: [{ id, pos: { x, y, b?, h? } | null }] } (Phase = Rahmen absolut mit Größe, Schritt relativ zu seinem Rahmen;

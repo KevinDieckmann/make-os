@@ -96,6 +96,9 @@ export function PaketPanel(p: {
           <span style={klein}>Frist (Tage ab Ankunft)</span>
           <ZahlFeld label="Frist in Tagen" wert={i.frist ?? null} min={0} max={365} onWert={n => p.onOps([{ op: 'schritt', id, frist: n }])} />
           {knoten?.form === 'erinnerung' && (<><span style={klein}>Höchstens Runden</span><ZahlFeld label="Versuche" wert={i.versuche ?? null} min={1} max={20} onWert={n => p.onOps([{ op: 'schritt', id, versuche: n }])} /></>)}
+          {/* 26.10.: „Lieferzeit startet hier“ — ab dem Tag, an dem dieser Schritt erledigt ist (Entscheidung: mit „ja“), so viele Werktage bis zur Lieferung. */}
+          <span style={klein}>Lieferzeit startet hier (Werktage, leer = nein)</span>
+          <ZahlFeld label="Lieferzeit in Werktagen" wert={i.lieferzeit ?? null} min={1} max={250} onWert={n => p.onOps([{ op: 'schritt', id, lieferzeit: n }])} />
           <span style={klein}>Zuständig</span>
           <Pillen liste={ZUSTAENDIG} aktiv={i.zustaendig ?? 'intern'} onWahl={z => p.onOps([{ op: 'schritt', id, zustaendig: z }])} />
           <Schalter an={!!i.kundeSichtbar} onChange={an => p.onOps([{ op: 'schritt', id, kundeSichtbar: an }])} erklaerung={ERKL_KUNDE_SIEHT}>Kunde sieht es</Schalter>

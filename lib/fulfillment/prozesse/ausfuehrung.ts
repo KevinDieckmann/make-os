@@ -499,14 +499,18 @@ export interface NachrichtWerte {
   anrede: 'Du' | 'Sie'; vorname?: string; nachname?: string; kunde?: string; termin?: string; absender?: string;
   /** 25.10. (Produkt-Übernahme): Werte für die Platzhalter der Werkstatt-Form — Firmierung der Absender-Gesellschaft, Mandat, heute (`YYYY-MM-DD`). */
   absenderName?: string; mandatTitel?: string; mandatStart?: string; produkt?: string; heute?: string;
+  /** 26.10. (Lieferzeit ab Formular): geplante Lieferung (`YYYY-MM-DD`) und die Lieferzeit in Werktagen — aus `lieferStand` (lib/fulfillment/prozesse/lieferzeit.ts). */
+  lieferdatum?: string; lieferzeit?: number;
 }
 /** Platzhalter der Werkstatt-Form (`{{kontakt.gruss}}`, `{{absender.name}}`, `{{mandat.start | datum-lang}}` …), die auch die Mail-Bausteine der Abläufe kennen. */
-const DATUMS_PLATZHALTER: ReadonlySet<string> = new Set(['mandat.start', 'heute']);
+const DATUMS_PLATZHALTER: ReadonlySet<string> = new Set(['mandat.start', 'heute', 'fall.lieferdatum']);
 function werkstattWerte(w: NachrichtWerte, gruss: string): Record<string, string | undefined> {
   return {
     'kontakt.gruss': gruss, 'kunde.gruss': gruss, 'kontakt.vorname': w.vorname ?? '', 'kontakt.nachname': w.nachname ?? '',
     'firma.name': w.kunde ?? '', 'absender.name': w.absenderName ?? w.absender ?? '', 'mandat.titel': w.mandatTitel,
     'mandat.produkt': w.produkt, 'mandat.start': w.mandatStart, heute: w.heute,
+    // Lieferzeit (26.10.): ohne gestartete Lieferzeit bleibt `{{fall.lieferdatum}}` sichtbar stehen — der Mensch sieht es vor dem Senden.
+    'fall.lieferdatum': w.lieferdatum, 'fall.lieferzeit': w.lieferzeit ? `${w.lieferzeit} ${w.lieferzeit === 1 ? 'Werktag' : 'Werktage'}` : undefined,
   };
 }
 /** Die Grußzeile — dieselbe Regel wie die Willkommensmail: „Hallo Vorname“ bzw. „Guten Tag Vorname Nachname“. */

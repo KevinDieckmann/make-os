@@ -184,6 +184,7 @@ export function knotenAus(o: O): K | null {
     form: wahl(o.form, PROZESS_FORMEN), frist: (() => { const x = n(o.frist); return x !== undefined && Number.isInteger(x) && x >= 0 && x <= 3650 ? x : undefined; })(),
     zweige: zweige(o.zweige), pos: lage(o.pos), pfeilText: pfeilText(o.pfeilText),
     versuche: (() => { const x = n(o.versuche); return x !== undefined && Number.isInteger(x) && x >= 1 && x <= 20 ? x : undefined; })(),
+    lieferzeit: (() => { const x = n(o.lieferzeit); return x !== undefined && Number.isInteger(x) && x >= 1 && x <= 250 ? x : undefined; })(),
     katalog: katalog(o.katalog), ausloeser: ausloeser(o.ausloeser), agent: agent(o.agent), raute: raute(o.raute), warten: warten(o.warten),
     schleife: schleife(o.schleife), teilprozess: teilprozess(o.teilprozess), ende: ende(o.ende), schloss: schloss(o.schloss),
     bahn: wahl(o.bahn, BAHNEN), abfrage: abfrage(o.abfrage), erneut: erneut(o.erneut),

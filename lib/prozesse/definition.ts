@@ -58,6 +58,12 @@ export interface ProzessKnoten<F extends string = KnotenForm> {
    * Fehlt = `VERSUCHE_VORGABE` (5 — „5 Kontaktversuche“; lib/fulfillment/prozesse/ausfuehrung.ts). Ganze Zahl 1 … 20.
    */
   versuche?: number;
+  /**
+   * Lieferzeit (26.10.: „die Lieferzeit startet mit dem Formular“): ab diesem Schritt läuft die Lieferzeit — so viele WERKTAGE (NRW) ab dem Tag, an
+   * dem er erledigt ist (eine Entscheidung: mit „ja“). Das Lieferdatum rechnet nur `lieferStand` (lib/fulfillment/prozesse/lieferzeit.ts); Mails nennen es
+   * über `{{fall.lieferdatum}}`. Ganze Zahl 1 … 250. Fehlt = keine Lieferzeit an diesem Schritt.
+   */
+  lieferzeit?: number;
   // ── B1 (21.10.) — allgemeine Prozesse, alle optional (Säuberer lib/prozesse/bestand.ts; Regeln in lib/prozesse/*) ──
   /** Welcher Baustein des Katalogs (lib/prozesse/baustein-katalog.ts) und die Werte seiner Maske. */
   katalog?: KatalogBezug;
