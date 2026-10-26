@@ -168,6 +168,12 @@ export interface Mandat {
    */
   zahlplan?: { anzahlungProzent: number };
   /**
+   * Raten eines einmaligen Honorars (26.10., Kevin: Raten aus dem Angebot in die Rechnungsstellung — optional, nur bei `honorar.basis` „einmalig“, schließt
+   * `zahlplan` aus): `anzahl` Raten, die erste im Monat des Beginns, dann alle `abstandMonate` Monate — Rechnung „Rate i von n“ und Liquidität nach
+   * derselben Regel (`zahlplanMonate`/`zahlplanPosition`, lib/crm/mandat-zusatz.ts). Vorgabe: die Zahlungsweise des angenommenen Angebots.
+   */
+  raten?: { anzahl: number; abstandMonate: number };
+  /**
    * Nur bei `honorar.basis` „tag“ (21.10., Rundgang B4): geplante Tage je Monat — die Liquidität plant Tagessatz × Tage monatlich (wie die Planung); die
    * Rechnung nimmt die echten Tage. Vorgabe: die geplante Menge des Produkts.
    */

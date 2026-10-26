@@ -62,7 +62,7 @@ describe('Zahlungsweise', () => {
     const a = { positionen: [pos()] };
     expect(n(zahlweiseText({ ...a, zahlweise: { art: 'raten', anzahl: 2, abstandMonate: 1 } }, { kleinunternehmer: true }))).toBe('Zahlung des einmaligen Betrags in 2 Raten (monatlich): je 1.495,00 €, die erste bei Auftrag.');
     expect(n(zahlweiseText({ ...a, zahlweise: { art: 'raten', anzahl: 3, abstandMonate: 2 } }, { kleinunternehmer: true }))).toBe('Zahlung des einmaligen Betrags in 3 Raten (alle 2 Monate): 996,67 € bei Auftrag, 996,67 € nach 2 Monaten, 996,66 € nach 4 Monaten.');
-    expect(n(zahlweiseText({ ...a, zahlweise: { art: 'anzahlung', prozent: 50, rest: 'bei Abnahme' } }))).toBe('Zahlung des einmaligen Betrags (inkl. USt): 50 % Anzahlung (1.779,05 €) bei Auftrag, Rest (1.779,05 €) bei Abnahme.');
+    expect(n(zahlweiseText({ ...a, zahlweise: { art: 'anzahlung', prozent: 50, rest: 'bei Abnahme' } }))).toBe('Zahlung des einmaligen Betrags (netto, zzgl. USt): 50 % Anzahlung (1.495,00 €) bei Auftrag, Rest (1.495,00 €) bei Abnahme.');
     expect(n(zahlweiseText({ ...a, zahlweise: { art: 'frei', text: '50 % bei Auftrag, 50 % nach Go-live' } }))).toBe('Zahlung: 50 % bei Auftrag, 50 % nach Go-live.');
     expect(n(zahlweiseText(a))).toBeNull();
     // Ohne einmaligen Betrag: Raten gelten nicht.

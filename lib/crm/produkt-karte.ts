@@ -997,6 +997,13 @@ export function zahlplanSaeubern(v: unknown): { anzahlungProzent: number } | und
   return ap !== undefined ? { anzahlungProzent: ap } : undefined;
 }
 
+/** Raten eines einmaligen Mandats-Honorars (26.10.) — 2–12 Raten, Abstand 1–12 Monate (= `ZAHLWEISE_GRENZEN` des Angebots), sonst undefined. */
+export function mandatRatenSaeubern(v: unknown): { anzahl: number; abstandMonate: number } | undefined {
+  if (!istObj(v)) return undefined;
+  const anzahl = ganz(v.anzahl, 2, 12), abstandMonate = ganz(v.abstandMonate ?? 1, 1, 12);
+  return anzahl !== undefined && abstandMonate !== undefined ? { anzahl, abstandMonate } : undefined;
+}
+
 /** Zusatzmodule eines Mandats, gesäubert (lib/crm/speicher.ts `zusatz('mandate')`) — ungültige Einträge fallen weg; leer → undefined. */
 export function mandatZusatzSaeubern(v: unknown): MandatZusatz[] | undefined {
   if (!Array.isArray(v)) return undefined;

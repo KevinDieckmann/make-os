@@ -325,7 +325,9 @@ describe('9 · „Rechnung für … schreiben“ nennt nach dem Stellen den näc
   });
   it('das Mandat fragt die Regel (ein Knopf für den nächsten offenen Monat)', () => {
     const q = quelle('components/os/crm/Kunden.tsx');
-    expect(q).toMatch(/const naechster = basisMonat \? naechsterOffenerMonat\(m, basisMonat, abgerechnet\) : null;/);
+    // 26.10.: mit Raten bzw. Zahlplan nennt der Knopf die nächste offene Zahlung statt des Kalendermonats.
+    expect(q).toMatch(/const naechster = !zp && basisMonat \? naechsterOffenerMonat\(m, basisMonat, abgerechnet\) : null;/);
+    expect(q).toMatch(/monatsrechnung\(zp\[zpOffen\]\)/);
     expect(q).toMatch(/onClick=\{\(\) => monatsrechnung\(naechster\)\}/);
     expect(q).not.toMatch(/monatsrechnung\(andererMonat\)/);
   });

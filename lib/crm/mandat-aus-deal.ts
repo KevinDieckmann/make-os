@@ -86,6 +86,9 @@ export function mandatAusDeal(c: Chance, ctx: MandatAusDealKontext): MandatAusDe
   if (angebot) {
     const { offen: vOffen, ...v } = mandatVorbelegung(angebot, ctx.leistungen);
     Object.assign(m, v, { quelle: `aus Angebot ${angebot.nummer ?? ''} (Deal „${c.titel}“)`.replace('  ', ' ') });
+    // Raten aus dem Angebot (26.10.) ersetzen den Zahlplan des Produkts — und gelten nur bei einmaligem Honorar.
+    if (m.raten) delete m.zahlplan;
+    if (m.raten && m.honorar.basis !== 'einmalig') delete m.raten;
     if (!v.titel) m.titel = c.titel;
     // Das angenommene Angebot IST die Unterschrift (17.10., Gesamtprüfung L1 B3). Den Kick-off führt bei Business-Mandaten der Fall — kein zweiter offener Punkt;
     // seit 25.10. ebenso bei Mandaten der Privat-Arbeits-Einheit (sie bekommen Fulfillment, `istPrivatArbeitsMandat`).

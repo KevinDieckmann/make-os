@@ -717,17 +717,18 @@ export function ratenCent(summeCent: number, anzahl: number): number[] {
 }
 
 /**
- * Der Satz zur Zahlungsweise für das PDF (und die Vorschau) — null ohne Zahlungsweise. Beträge auf den einmaligen Betrag (brutto, beim Kleinunternehmer
- * netto = gesamt). Ohne einmaligen Betrag gilt nur der eigene Satz.
+ * Der Satz zur Zahlungsweise für das PDF (und die Vorschau) — null ohne Zahlungsweise. Beträge netto auf den einmaligen Betrag (wie die Rechnungen
+ * der Raten bzw. der Anzahlung: Netto geteilt, USt je Rechnung). Ohne einmaligen Betrag gilt nur der eigene Satz.
  */
 export function zahlweiseText(a: Pick<Angebot, 'positionen' | 'zahlweise'>, opt: { kleinunternehmer?: boolean } = {}): string | null {
   const z = a.zahlweise;
   if (!z) return null;
   if (z.art === 'frei') return `Zahlung: ${z.text.replace(/\s+$/, '')}${/[.!?]$/.test(z.text.trim()) ? '' : '.'}`;
+  // Netto (26.10.): die Rechnungen teilen das Netto in Raten und rechnen die USt je Rechnung — so stimmen Angebot und Rechnungen auf den Cent.
   const s = angebotSummen(a, opt).einmalig;
-  const summe = opt.kleinunternehmer ? s.netto : s.brutto;
+  const summe = s.netto;
   if (!(summe > 0)) return null;
-  const inkl = opt.kleinunternehmer || !s.ust ? '' : ' (inkl. USt)';
+  const inkl = opt.kleinunternehmer || !s.ust ? '' : ' (netto, zzgl. USt)';
   if (z.art === 'anzahlung') {
     const an = Math.round(summe * z.prozent / 100);
     return `Zahlung des einmaligen Betrags${inkl}: ${z.prozent} % Anzahlung (${euroCent(an)}) bei Auftrag, Rest (${euroCent(summe - an)}) ${z.rest.trim() || ANZAHLUNG_REST_VORGABE}.`;
@@ -810,10 +811,23 @@ export function angebotEinmalRest(a: Pick<Angebot, 'positionen'>, leistungen?: r
  * `leistungen` übergeben) nur, was das Angebot nicht sagt: Kündigungsfrist, Verlängerung, Rhythmus „Quartal“, Mindestlaufzeit ohne Laufzeit.
  * Ohne Vertrag am Produkt genau wie bisher.
  */
+/**
+ * Die Zahlungsweise des Angebots am Mandat (26.10., Kevin: „die Rechnungsstellung darauf anpassen“) — sie gewinnt vor dem Zahlplan des Produkts:
+ * Raten → `raten` (ohne Zahlplan), Anzahlung → `zahlplan` mit dem Prozentsatz des Angebots, eigener Text → ein offener Punkt (die Rechnungen folgen ihm von
+ * Hand). Nur bei einmaligem Honorar; bei laufendem Honorar wird aus Raten/Anzahlung ebenfalls ein offener Punkt (nie still verloren). Ohne Zahlungsweise: {}.
+ */
+export function zahlweiseFuerMandat(a: Pick<Angebot, 'zahlweise'>, honorarBasis: Mandat['honorar']['basis']): Pick<Partial<Mandat>, 'raten' | 'zahlplan' | 'offen'> {
+  const z = a.zahlweise;
+  if (!z) return {};
+  if (z.art === 'frei') return { offen: [`Zahlung laut Angebot: „${z.text}“ — die Rechnungen entsprechend schreiben.`] };
+  if (honorarBasis !== 'einmalig') return { offen: [`Zahlung laut Angebot (${z.art === 'raten' ? `${z.anzahl} Raten` : `${z.prozent} % Anzahlung`}) gilt für den einmaligen Betrag — am Mandat mit laufendem Honorar bitte von Hand abrechnen.`] };
+  return z.art === 'raten' ? { raten: { anzahl: z.anzahl, abstandMonate: z.abstandMonate } } : { zahlplan: { anzahlungProzent: z.prozent } };
+}
+
 export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]): Partial<Mandat> {
   // 24.10.: eine Kombination (Hauptprodukt mit mehreren Preis-Teilen) trägt jeden Teil — Honorar = Hauptpreis, die übrigen Teile Zusatzmodule.
   const teile = angebotAufteilung(a, leistungen);
-  if (teile) return mandatVorbelegungKombi(a, teile, leistungen ?? []);
+  if (teile) return mitZahlweise(mandatVorbelegungKombi(a, teile, leistungen ?? []), a);
   const s = angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer });
   const laufend = s.monat.netto + kaufmaennisch(s.jahr.netto / 12);
   const lz = Math.max(0, ...a.positionen.filter(p => p.basis !== 'einmalig').map(p => p.laufzeitMonate ?? 0));
@@ -838,7 +852,7 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
   const inklusive = produkt?.regeln?.inklusive?.length ? mandatVorlageAusProdukt(produkt).zusatz?.filter(z => z.inklusive) : undefined;
   // Zahlplan (21.10., Rundgang B2): ein einmaliges Angebot über ein Produkt mit Anzahlung (z. B. 50/50) wird zwei Zahlungen — wie das Zusatzmodul.
   const zahlplan = produkt ? mandatZahlplanAusProdukt(produkt, basis.honorar!.basis) : undefined;
-  return {
+  return mitZahlweise({
     ...basis,
     ...(zahlplan ? { zahlplan } : {}),
     ...(!lz && v.mindestlaufzeitMonate ? { mindestlaufzeitMonate: v.mindestlaufzeitMonate } : {}),
@@ -846,7 +860,14 @@ export function mandatVorbelegung(a: Angebot, leistungen?: readonly Leistung[]):
     ...(v.verlaengerung ? { verlaengerung: v.verlaengerung } : {}),
     ...(v.rechnungsrhythmus === 'quartal' ? { rechnungsrhythmus: 'quartal' as const } : {}),
     ...(inklusive?.length ? { zusatz: inklusive } : {}),
-  };
+  }, a);
+}
+/** Die Zahlungsweise des Angebots auf die Vorbelegung legen: Raten ersetzen den Zahlplan des Produkts, die Anzahlung des Angebots gewinnt, offene Punkte kommen dazu. */
+function mitZahlweise(v: Partial<Mandat>, a: Pick<Angebot, 'zahlweise'>): Partial<Mandat> {
+  const z = zahlweiseFuerMandat(a, v.honorar?.basis ?? 'einmalig');
+  if (!z.raten && !z.zahlplan && !z.offen) return v;
+  const { zahlplan: _alt, ...ohne } = v;
+  return { ...(z.raten ? ohne : v), ...(z.raten ? { raten: z.raten } : {}), ...(z.zahlplan ? { zahlplan: z.zahlplan } : {}), ...(z.offen ? { offen: [...(v.offen ?? []), ...z.offen] } : {}) };
 }
 
 /**

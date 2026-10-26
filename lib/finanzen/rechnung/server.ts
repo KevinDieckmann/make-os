@@ -33,11 +33,11 @@ import {
   MAHN_VORGABE_TAGE, EINLEITUNG_VORLAGE, SCHLUSS_VORLAGE, entwurfAnwenden, entwurfGrenzen, empfaengerAusCrm, kundeAus, kurzVon, mahnLabel, mahnMail,
   mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
-  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen, faelligAm,
+  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, abgerechneteMonate, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen, faelligAm,
   type MahnVorschlag, type Pflicht,
 } from './regeln';
 import { angenommenZuDeal, angebotEinmalRest, angebotTitelFuerFolge } from '@/lib/crm/angebote';
-import { abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, istAnrechnung, monatsPositionen, nurAbgerechnet } from '@/lib/crm/mandat-zusatz';
+import { abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, istAnrechnung, monatsPositionen, nurAbgerechnet, zahlplanMonate } from '@/lib/crm/mandat-zusatz';
 import type { RechnungPosition } from './typen';
 import { rechnungDokument, bankZeile } from './dokument';
 import type { AnschriftAnFirma, Mahnstufe } from './typen';
@@ -206,10 +206,16 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const m = typeof p.mandatId === 'string' ? crm.mandate.find(x => x.id === p.mandatId && !x.geloeschtAm) : undefined;
     if (!m) throw new RechnungFehler('Mandat nicht gefunden.', 404);
     // Ohne gewählten Monat (z. B. „Erste Rechnung“ am Angebot): der laufende, geklemmt in die Laufzeit des Mandats (18.10.).
-    const monat = typeof p.monat === 'string' && monatsGrenzen(p.monat) ? p.monat : mandatMonatVorgabe(m, heute);
+    // Raten bzw. Zahlplan (21.10./26.10.): ohne gewählten Monat die nächste noch nicht gestellte Zahlung.
+    const zpMonate = zahlplanMonate(m);
+    const zpOffen = zpMonate ? zpMonate.find(mo => !abgerechneteMonate(m.id, plan.rechnungen).has(mo)) : undefined;
+    const monat = typeof p.monat === 'string' && monatsGrenzen(p.monat) ? p.monat : zpOffen ?? mandatMonatVorgabe(m, heute);
     const grenzen = monatsGrenzen(monat)!;
-    // Teilmonat (Kevin 18.10.: „Anteilig“): Leistungszeitraum = Monat ∩ [Beginn, Ende]; der Betrag folgt in `positionAusMandat`.
-    const lm = leistungsmonat(m, monat)!;
+    // Teilmonat (Kevin 18.10.: „Anteilig“): Leistungszeitraum = Monat ∩ [Beginn, Ende]; der Betrag folgt in `positionAusMandat`. Eine Rate nach dem Ende
+    // des Mandats (26.10.) trägt als Zeitraum den ganzen Monat — die Rate ist eine Zahlung, kein neuer Leistungsmonat.
+    const lm0 = leistungsmonat(m, monat)!;
+    const ratenMonat = !!m.raten && !!zpMonate?.includes(monat);
+    const lm = !lm0.tage && ratenMonat ? { ...lm0, von: grenzen.von, bis: grenzen.bis, tage: lm0.monatsTage, anteilig: false } : lm0;
     // Zusatzmodule „abrechnen“ (19.10., P3): je Einheit / Tag / Stunde mit Menge — nur auf Klick, nie von selbst.
     const wahl = abrechnenWahlAus(p.einheiten);
     if (!wahl.ok) throw new RechnungFehler(wahl.fehler, wahl.status);
@@ -224,6 +230,10 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
       return { rechnung: mitFassung(da), vorhanden: true };
     }
     if (!lm.tage) throw new RechnungFehler(ausserhalbLaufzeit(m, monat), 409, { grund: 'ausserhalb-laufzeit', monat: mandatMonatVorgabe(m, heute) });
+    // Raten bzw. Zahlplan (26.10.): nur in einem Monat, in dem eine Zahlung fällig ist — sonst entstünde eine leere Rechnung (abrechnen nach Menge geht immer).
+    if (zpMonate && !zpMonate.includes(monat) && !wahl.wahl.length) {
+      throw new RechnungFehler(`Für ${monatsName(monat)} ist laut ${m.raten ? 'Ratenplan' : 'Zahlplan'} keine Zahlung fällig${zpOffen ? ` — die nächste ist für ${monatsName(zpOffen)}` : ' — alle Zahlungen sind gestellt'}.`, 409, { grund: 'keine-zahlung', ...(zpOffen ? { monat: zpOffen } : {}) });
+    }
     // 08.10. (Woche 2 · 3.13): ein Mandat mit Gesellschaft „offen“ (angelegt ohne Deal) nimmt NICHT still die Vorgabe — erst wählen.
     if (!gesellschaftAusEinheit(m.gesellschaft) && !istRegisterKennung(m.gesellschaft) && !istGesellschaft(p.firmaId)) throw new RechnungFehler('Am Mandat ist die Gesellschaft noch „offen“ — bitte erst am Mandat wählen, für welche Gesellschaft es läuft; dann die Rechnung schreiben.', 409, { grund: 'gesellschaft' });
     const g = gesellschaftFuer(m.gesellschaft);

@@ -55,6 +55,7 @@ import { useZiel, useZuZiel } from '../ziel';
 import { MandatZeitMonat } from '../zeit/ZeitJeMandat';
 import { entwurfAnlegen, KEIN_RECHNUNGS_ZUGANG } from '../rechnung/daten';
 import { monatsName, mandatLaeuftIm, mandatMonatVorgabe, abgerechneteMonate, naechsterOffenerMonat } from '@/lib/finanzen/rechnung/regeln';
+import { zahlplanMonate } from '@/lib/crm/mandat-zusatz';
 import { MandatFortschritt, FallPhase } from '../mandate/treppe/Fortschritt';
 import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
 import { OnboardingFrage } from '../fulfillment/prozesse/OnboardingFrage';
@@ -534,9 +535,13 @@ function MandatRechnungen({ m }: { m: Mandat }) {
   const andererMonat = !vormonatLief && !monatLaeuft ? mandatMonatVorgabe(m, heute) : null;
   // 25.10. (Kern-Bau-Test 2): ein Monat mit gestellter Monatsrechnung wird nicht mehr angeboten — der Knopf nennt den nächsten offenen Leistungsmonat.
   const abgerechnet = abgerechneteMonate(m.id, eigene as Parameters<typeof abgerechneteMonate>[1]);
-  const vormonatOffen = vormonatLief && !abgerechnet.has(vormonat);
+  // Raten bzw. Zahlplan (26.10.): nicht nach Kalendermonaten, sondern die nächste noch nicht gestellte Zahlung — „Rate 2 von 6“, „Anzahlung“, „Restzahlung“.
+  const zp = zahlplanMonate(m);
+  const zpOffen = zp ? zp.findIndex(mo => !abgerechnet.has(mo)) : -1;
+  const zpName = (i: number) => (m.raten ? `Rate ${i + 1} von ${m.raten.anzahl}` : zp && zp.length > 1 ? (i === 0 ? 'Anzahlung' : 'Restzahlung') : 'Rechnung');
+  const vormonatOffen = !zp && vormonatLief && !abgerechnet.has(vormonat);
   const basisMonat = monatLaeuft ? monat : andererMonat;
-  const naechster = basisMonat ? naechsterOffenerMonat(m, basisMonat, abgerechnet) : null;
+  const naechster = !zp && basisMonat ? naechsterOffenerMonat(m, basisMonat, abgerechnet) : null;
   const monatsrechnung = async (mo: string) => {
     const e = await entwurfAnlegen({ quelle: 'mandat', mandatId: m.id, monat: mo });
     if (!e.id) { setFehler(e.fehler ?? 'Nicht angelegt.'); return; }
@@ -561,6 +566,8 @@ function MandatRechnungen({ m }: { m: Mandat }) {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Den Vormonat nur, wenn das Mandat da schon lief (17.10., Gesamtprüfung L1 B9 — vorher „Rechnung für September“ bei Start am 17.10.). */}
           {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && vormonatOffen && <Knopf leise onClick={() => monatsrechnung(vormonat)}>Rechnung für {monatsName(vormonat)} schreiben</Knopf>}
+          {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && zp && zpOffen >= 0 && <Knopf leise onClick={() => monatsrechnung(zp[zpOffen])}>{zpName(zpOffen)} schreiben ({monatsName(zp[zpOffen])})</Knopf>}
+          {liste !== 'kein' && zp && zpOffen < 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Alle {m.raten ? `${m.raten.anzahl} Raten` : 'Zahlungen'} gestellt.</span>}
           {liste !== 'kein' && m.honorar.betrag > 0 && finanzFirma && naechster && <Knopf leise onClick={() => monatsrechnung(naechster)}>{vormonatOffen ? '… für' : 'Rechnung für'} {monatsName(naechster)}{vormonatOffen ? '' : ' schreiben'}</Knopf>}
           {liste !== 'kein' && offenGes && <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Gesellschaft noch „offen“ — oben wählen, dann lässt sich die Rechnung schreiben.</span>}
           {liste !== 'kein' && m.honorar.betrag > 0 && !finanzFirma && !offenGes && <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{NUR_GRUNDDATEN}</span>}
