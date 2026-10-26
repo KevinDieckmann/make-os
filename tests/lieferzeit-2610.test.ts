@@ -52,10 +52,10 @@ describe('lieferStand (rein)', () => {
 });
 
 describe('Mail-Platzhalter {{fall.lieferdatum}} und {{fall.lieferzeit}}', () => {
-  const vorlage = 'Betreff: Alles da\n\n{{kontakt.gruss}},\n\ndamit startet heute die Lieferzeit von {{fall.lieferzeit}}.\nGeplante Lieferung: {{fall.lieferdatum}}\nLang: {{fall.lieferdatum | datum-lang}}';
+  const vorlage = 'Betreff: Alles da\n\n{{kontakt.gruss}},\n\ndamit beginnt heute die Lieferzeit ({{fall.lieferzeit}}).\nGeplante Lieferung: {{fall.lieferdatum}}\nLang: {{fall.lieferdatum | datum-lang}}';
   it('mit gestarteter Lieferzeit: Datum und Werktage gefüllt', () => {
     const m = nachrichtEntwurf(vorlage, { anrede: 'Sie', vorname: 'Erika', nachname: 'Beispiel', lieferzeit: 10, lieferdatum: '2026-11-09' }, 'x');
-    expect(m.text).toContain('Lieferzeit von 10 Werktage');
+    expect(m.text).toContain('Lieferzeit (10 Werktage)');
     expect(m.text).toContain('Geplante Lieferung: 09.11.2026');
     expect(m.text).not.toContain('{{');
   });

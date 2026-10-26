@@ -40,7 +40,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     abschnitte: [
       { art: 'neu', punkte: [
         { bereich: 'business', text: 'Ein Schritt im Ablauf kann „Lieferzeit startet hier“ tragen (Werktage). Ist er erledigt, steht oben im Fall „Lieferung bis …“ — kommt das Formular später, verschiebt sich das Datum von selbst.' },
-        { bereich: 'business', text: 'Mails im Ablauf kennen {{fall.lieferdatum}} und {{fall.lieferzeit}}: „Geplante Lieferung: Montag, 9. November 2026“ statt „[von Hand: Datum]“.' },
+        { bereich: 'business', text: 'Mails im Ablauf kennen {{fall.lieferdatum}} und {{fall.lieferzeit}}: „Geplante Lieferung: Montag, 9. November 2026“ statt „[von Hand: Datum]“, „Lieferzeit (10 Werktage)“.' },
         { bereich: 'business', text: 'Korrekturschleife: bei „Korrekturen abgeschlossen? — nein“ laufen „Korrekturen sammeln“ und „umsetzen“ noch einmal, mit eigener Aufgabe je Runde („Runde 2“). Sind alle inklusiven Schleifen genutzt, wird die Entscheidung rot.' },
         { bereich: 'business', text: 'Im Paket: „Danach — Ablauf endet hier“ bzw. „weiter bei …“ (auch in eine spätere Phase); an einer Entscheidung „Wenn nein, noch einmal ab …“.' },
       ] },

@@ -8,7 +8,7 @@
 // alles oder nichts, nie still gekürzt (Grenzen → 413). Rein und client-sicher; die Route (app/api/prozesse/werkstatt) schreibt in EINER Sperre.
 
 import {
-  BEREICH_IDS, FALL_ART_IDS, PROZESS_BEREICHE, FALL_ARTEN, PROZESS_GRENZEN,
+  BEREICH_IDS, FALL_ART_IDS, PROZESS_BEREICHE, FALL_ARTEN, PROZESS_GRENZEN, PROZESS_TEXT,
   type Befund, type ProzessDefinition, type ProzessEintrag, type ProzesseDatei,
 } from './definition';
 import { definitionAus } from './bestand';
@@ -132,8 +132,14 @@ export function prozessDateiAnwenden(
   }
   if (datei.prozesse.length + g.prozesse.length > PROZESS_GRENZEN.prozesse) return { ok: false, status: 413, fehler: `Höchstens ${PROZESS_GRENZEN.prozesse} Prozesse — nichts übernommen.` };
   const name = kx.dateiName && /^[\w .()-]{1,120}$/.test(kx.dateiName) ? kx.dateiName : undefined;
+  // Gibt es den Namen schon (z. B. die eigene Datei wieder eingespielt), heißt der neue „<Name> (Import)“ — zwei gleiche Namen in der Liste verwechselt man.
+  const namen = new Set(datei.prozesse.map(p => p.entwurf.titel.trim().toLowerCase()));
   const neu: ProzessEintrag[] = g.prozesse.map(({ definition }) => {
-    const d: ProzessDefinition = { ...definition, fassung: 1, geaendert: kx.jetzt, geaendertVon: kx.person, herkunft: { art: 'import', ...(name ? { datei: name } : {}), am: kx.jetzt } };
+    const doppelt = namen.has(definition.titel.trim().toLowerCase()) && `${definition.titel} (Import)`.length <= PROZESS_TEXT.titel;
+    const titel = doppelt ? `${definition.titel} (Import)` : definition.titel;
+    namen.add(titel.trim().toLowerCase());
+    const knoten = doppelt ? definition.knoten.map(k => (k.elternId ? k : { ...k, titel })) : definition.knoten;
+    const d: ProzessDefinition = { ...definition, titel, knoten, fassung: 1, geaendert: kx.jetzt, geaendertVon: kx.person, herkunft: { art: 'import', ...(name ? { datei: name } : {}), am: kx.jetzt } };
     return { id: d.id, entwurf: d, versionen: [], status: 'entwurf', angelegtAm: kx.jetzt, angelegtVon: kx.person, entwurfAm: kx.jetzt, entwurfVon: kx.person };
   });
   const hinweise = Array.from(new Set(g.prozesse.flatMap(p => p.vorschau.hinweise)));

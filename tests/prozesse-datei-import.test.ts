@@ -38,6 +38,10 @@ describe('Als Datei sichern → importieren', () => {
     expect(r.datei.prozesse[0]).toMatchObject({ status: 'entwurf', versionen: [] });
     expect(r.datei.prozesse[0].entwurf.herkunft).toEqual({ art: 'import', datei: 'prozess-probe.json', am: J });
     expect(r.datei.prozesse[0].entwurf).not.toHaveProperty('eigner');
+    // Dieselbe Datei noch einmal: der zweite heißt „… (Import)“ (Liste ohne doppelte Namen), auch sein oberster Knoten.
+    const r2 = prozessDateiAnwenden(r.datei, json(datei), { person: 'pia', jetzt: J, rechte: VOLL, neueKennung });
+    expect(r2.ok && r2.datei.prozesse[1].entwurf.titel).toBe(`${MIT_AGENT.definition.titel} (Import)`);
+    expect(r2.ok && r2.datei.prozesse[1].entwurf.knoten.find(k => !k.elternId)?.titel).toBe(`${MIT_AGENT.definition.titel} (Import)`);
   });
   it('lesbare Kennungen in einer handgeschriebenen Datei — Verweise folgen den neuen Kennungen', () => {
     const quelle = MIT_AGENT.definition;
