@@ -15,8 +15,8 @@
 // Tests: tests/fulfillment-ablauf-rein.test.ts.
 
 import type { Fall, FallKnoten, KnotenStatus } from '../typen';
-import { abschnitteDes, abschnittVon, aktiverNeinZweig, ausfuehrbar, haeltAn, kinderVon, mitAusfuehrung, phaseFertig, phasenGang, teilbaum } from '../regeln';
-import { neinZiele, phasenAbschnitte, phasenDer, phaseVonKnoten } from './fluss-struktur';
+import { abschnitteDes, abschnittVon, aktiverNeinZweig, ausfuehrbar, haeltAn, kinderVon, mitAusfuehrung, phaseFertig, phasenGang, teilbaum, vorfahren } from '../regeln';
+import { hauptstrang, neinZiele, phasenAbschnitte, phasenDer, phaseVonKnoten } from './fluss-struktur';
 import { fnv } from './pruefen';
 import { titelOhneZusatz } from './darstellung';
 import { tagPlus } from '@/lib/kalender/zeit';
@@ -54,7 +54,9 @@ export function ausfuehrungNachUebernahme(f: Pick<Fall, 'knoten'>, vorlage: { kn
 }
 
 /** Die Grenze der Runden an einer Entscheidung: `versuche` ihres Nein-Zweigs (bzw. ihr eigener), sonst die Vorgabe. */
-export function versucheFuer(kn: readonly FallKnoten[], e: Pick<FallKnoten, 'zweige' | 'versuche'>): number {
+export function versucheFuer(kn: readonly FallKnoten[], e: Pick<FallKnoten, 'zweige' | 'versuche' | 'erneut'>): number {
+  // 26.10.: „erneut ab …“ ohne Nein-Zweig — die Grenze steht am Sprung selbst.
+  if (e.erneut && !e.zweige?.nein) return e.erneut.hoechstens;
   const r = e.zweige?.nein ? kn.find(x => x.id === e.zweige!.nein) : undefined;
   return r?.versuche ?? e.versuche ?? VERSUCHE_VORGABE;
 }
@@ -140,6 +142,10 @@ function phasenStart(f: Pick<Fall, 'knoten' | 'freigaben' | 'startAm' | 'gestart
   return tage.at(-1) ?? (phaseFertig(v, f.knoten) ? abschnittStart(f, abschnitt) : phasenStart(f, v.id));
 }
 
+/** Die Runde eines Knotens im Hauptstrang: Entscheidung = so oft kam „nein“; Schritt/Nachricht = sein Durchlauf (0 = der erste); Erinnerung ab 1. */
+const rundeVon = (s: Pick<FallKnoten, 'runden' | 'durchlauf'>, art: AusfuehrungsArt | null): number =>
+  art === 'entscheidung' ? s.runden ?? 0 : art === 'erinnerung' ? 1 + (s.durchlauf ?? 0) : s.durchlauf ?? 0;
+
 export interface AktiverKnoten {
   knoten: FallKnoten; art: AusfuehrungsArt | null; phaseId: string;
   /** 0 = Schritt; Entscheidung: so oft kam bisher „nein“; Erinnerung: die laufende Runde (ab 1). */
@@ -178,7 +184,10 @@ function aktiveInPhase(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startA
       // Angekommen mit dem letzten fertigen Schritt davor — über Schritte hinweg, die nur nebenher laufen (18.10., L1b N2; ohne solche: der Schritt davor).
       let j = i - 1;
       while (j > 0 && !schrittFertig(bahn[j], kn)) j--;
-      const ankunft = i > 0 ? fertigTag(bahn[j], kn) ?? start : start;
+      const ankunft0 = i > 0 ? fertigTag(bahn[j], kn) ?? start : start;
+      // „erneut ab …“ (26.10.): ein Schritt, der noch einmal läuft, kam mit dem Rücksprung an (`seit`) — nicht mit dem alten Durchlauf davor.
+      const neuSeit = s.durchlauf && s.seit ? s.seit.slice(0, 10) : undefined;
+      const ankunft = neuSeit && (!ankunft0 || neuSeit > ankunft0) ? neuSeit : ankunft0;
       const r = s.form === 'entscheidung' ? aktiverNeinZweig(kn, s) : null;
       if (r) {
         const runde = s.runden ?? 1;
@@ -187,7 +196,7 @@ function aktiveInPhase(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startA
       }
       const art = ausfuehrungsArt(s);
       const faellig = s.faelligAm ?? (s.frist !== undefined && ankunft ? tagPlus(ankunft, s.frist) : undefined);
-      imBlock.push({ knoten: s, art, phaseId: p.id, runde: art === 'erinnerung' ? 1 : art === 'entscheidung' ? s.runden ?? 0 : 0, ...(ankunft ? { ankunft } : {}), ...(faellig ? { faellig } : {}) });
+      imBlock.push({ knoten: s, art, phaseId: p.id, runde: rundeVon(s, art), ...(ankunft ? { ankunft } : {}), ...(faellig ? { faellig } : {}) });
     }
     if (imBlock.length) { raus.push(...imBlock); break; }
     vorherEnde = enden.sort().at(-1) ?? vorherEnde;
@@ -235,6 +244,41 @@ export function nachErledigung(kn0: readonly FallKnoten[], id: string, am: strin
     const x = t ? hol(t.id) : undefined;
     if (x && x.frist !== undefined && !x.faelligAm && x.status === 'offen') setze({ ...x, faelligAm: tagPlus(am, x.frist) });
   };
+  /**
+   * „danach“ (26.10.): der Ablauf endet hier (alles Offene des Abschnitts entfällt) bzw. weiter bei einem späteren Schritt — auch in einer späteren Phase; was
+   * dazwischen steht, entfällt (übersprungene Phasen ganz, damit ihre Bestätigung nicht anhält). `von` = wo gezählt wird (beim Nein-Zweig: seine Entscheidung).
+   */
+  const springe = (quelle: FallKnoten, von: string): boolean => {
+    const d = quelle.danach;
+    if (!d) return false;
+    const phase = phaseVonKnoten(kn, von);
+    const ab = abschnittVon(kn.find(p => p.id === phase) ?? {});
+    const phasen = phasenDer(kn).filter(p => abschnittVon(p) === ab);
+    const imAbschnitt = new Set(phasen.flatMap(p => teilbaum(p.id, kn)));
+    if ('ende' in d) {
+      const bleibt = new Set([quelle.id, von, ...vorfahren(quelle.id, kn), ...vorfahren(von, kn)]);
+      for (const x of kn) if (imAbschnitt.has(x.id) && !bleibt.has(x.id) && !fertig(x)) setze(entfallen(x, am, `Ablauf endet nach „${titelOhneZusatz(quelle.titel)}“`));
+      return true;
+    }
+    const haupt = hauptstrang(kn, nz).filter(s => imAbschnitt.has(s.id));
+    const qi = haupt.findIndex(s => s.id === von), zi = haupt.findIndex(s => s.id === d.ziel);
+    if (qi < 0 || zi <= qi) return false;
+    const grund = `übersprungen (weiter bei „${titelOhneZusatz(haupt[zi].titel)}“)`;
+    const zwischen = haupt.slice(qi + 1, zi);
+    const zwischenIds = new Set(zwischen.map(s => s.id));
+    for (const s of zwischen) { const x = hol(s.id)!; if (!fertig(x)) setze(entfallen(x, am, grund)); }
+    // Nein-Zweige übersprungener Entscheidungen fallen mit.
+    for (const [r, e] of nz) if (zwischenIds.has(e)) { const x = hol(r); if (x && !fertig(x)) setze(entfallen(x, am, grund)); }
+    // Phasen ganz dazwischen (weder die des Sprungs noch die des Ziels) entfallen samt Bestätigung.
+    const vonPh = phase, zielPh = phaseVonKnoten(kn, d.ziel);
+    for (const p of phasen) {
+      if (p.id === vonPh || p.id === zielPh) continue;
+      const pi = haupt.findIndex(s => phaseVonKnoten(kn, s.id) === p.id);
+      if (pi > qi && pi < zi) for (const id of teilbaum(p.id, kn)) { const x = hol(id)!; if (!fertig(x)) setze(entfallen(x, am, grund)); }
+    }
+    fristAb(haupt[zi]);
+    return true;
+  };
   /** Weiter von `quelle` zu `ziel` (Ja-Zweig) bzw. zum nächsten der Bahn; was im Strang dazwischen steht, entfällt. */
   const weiter = (quelle: string, ziel?: string) => {
     if (ziel) {
@@ -258,6 +302,7 @@ export function nachErledigung(kn0: readonly FallKnoten[], id: string, am: strin
     const r = n.zweige?.nein ? hol(n.zweige.nein) : undefined;
     if (r && !fertig(r)) setze(entfallen(r, am, 'Entscheidung: ja'));
     setze({ ...hol(id)!, antwort: 'ja', antwortAm: am });
+    if (!n.zweige?.ja && springe(n, id)) return kn;
     weiter(id, n.zweige?.ja);
     return kn;
   }
@@ -278,9 +323,16 @@ export function nachErledigung(kn0: readonly FallKnoten[], id: string, am: strin
     }
     setze({ ...n, runden });
     if (!fertig(e)) { const { grund: _g, ...er } = e; setze({ ...er, status: 'erledigt', seit: am, erledigtAm: am, erledigtVon: person, antwort: 'nein', antwortAm: e.antwortAm ?? am }); }
+    if (!n.zweige?.ja && springe(n, e.id)) return kn;
     weiter(e.id, n.zweige?.ja);
     return kn;
   }
+  // 26.10.: ein Nein-Zweig mit „danach“ (z. B. „Folgeangebot senden — Ablauf endet“) entscheidet seine Entscheidung mit „nein“ und springt von dort.
+  if (e && n.danach) {
+    if (!fertig(e)) { const { grund: _g, ...er } = e; setze({ ...er, status: 'erledigt', seit: am, erledigtAm: am, erledigtVon: person, antwort: 'nein', antwortAm: e.antwortAm ?? am }); }
+    if (springe(n, e.id)) return kn;
+  }
+  if (!e && springe(n, id)) return kn;
   weiter(id, n.form === 'erinnerung' ? n.zweige?.ja : undefined);
   return kn;
 }
@@ -307,6 +359,9 @@ export function antwortAnwenden(kn0: readonly FallKnoten[], id: string, antwort:
     // Ausgeschöpft: keine neue Runde — die Entscheidung bleibt offen und hängt rot, bis jemand entscheidet.
     return { knoten: kn0.map(k => (k.id === id ? { ...k, antwortAm: am, eskaliertAm: k.eskaliertAm ?? am } : k)) };
   }
+  // „erneut ab …“ (26.10.): die Schritte ab dem Ziel bis zur Entscheidung laufen noch einmal — je eine neue Runde (eigene Aufgaben), die Entscheidung fragt am Ende
+  // wieder. Nein-Zweige dazwischen laufen mit ihrer Rundenzählung weiter; Bausteine unter den Schritten öffnen mit.
+  if (e.erneut && !e.zweige?.nein) return { knoten: erneutAb(kn0, e, am, runden) };
   if (r && !fertig(r)) {
     const { faelligAm: _f, ...er } = e;
     return { knoten: kn0.map(k => {
@@ -318,6 +373,32 @@ export function antwortAnwenden(kn0: readonly FallKnoten[], id: string, antwort:
   // Ohne Nein-Zweig: noch einmal fragen.
   const { antwort: _a, ...er } = e;
   return { knoten: kn0.map(k => (k.id === id ? { ...er, antwortAm: am, runden, faelligAm: tagPlus(am, Math.max(1, e.frist ?? 1)) } : k)) };
+}
+
+/** Der Rücksprung „erneut ab …“ (rein): Schritte von `e.erneut.ab` bis vor `e` (Hauptstrang der Phase) wieder offen, je ein Durchlauf mehr. */
+function erneutAb(kn0: readonly FallKnoten[], e: FallKnoten, am: string, runden: number): FallKnoten[] {
+  const ph = phaseVonKnoten(kn0, e.id);
+  const nz = neinZiele(kn0);
+  const haupt = ph ? phasenBloecke(kn0, ph, nz).flat(2) : [];
+  const ai = haupt.findIndex(s => s.id === e.erneut!.ab), ei = haupt.findIndex(s => s.id === e.id);
+  if (ai < 0 || ei <= ai) return kn0.map(k => (k.id === e.id ? { ...k, antwortAm: am, runden } : k));
+  const schritte = new Set(haupt.slice(ai, ei).map(s => s.id));
+  const mit = new Set<string>();
+  for (const [r, d] of nz) if (schritte.has(d)) mit.add(r);
+  for (const k of kn0) if (k.bausteinId && k.elternId && (schritte.has(k.elternId) || mit.has(k.elternId))) mit.add(k.id);
+  const auf = (k: FallKnoten): FallKnoten => {
+    const { erledigtAm: _a, erledigtVon: _b, faelligAm: _f, grund: _g, antwort: _x, antwortAm: _y, eskaliertAm: _z, ...r } = k;
+    return { ...r, status: 'offen', seit: am };
+  };
+  const ab = haupt[ai];
+  return kn0.map(k => {
+    if (k.id === e.id) { const { faelligAm: _f, ...er } = k; return { ...er, antwort: 'nein' as const, antwortAm: am, runden, durchlauf: (k.durchlauf ?? 0) + 1 }; }
+    if (schritte.has(k.id)) {
+      const neu: FallKnoten = { ...auf(k), durchlauf: (k.durchlauf ?? 0) + 1 };
+      return k.id === ab.id && k.frist !== undefined ? { ...neu, faelligAm: tagPlus(am, k.frist) } : neu;
+    }
+    return mit.has(k.id) && fertig(k) ? auf(k) : k;
+  });
 }
 
 // ── Was die Ausführung jetzt braucht ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -375,12 +456,14 @@ export function ausfuehrungSoll(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben
     const kunde = k.zustaendig === 'kunde';
     if (kunde && k.status === 'offen' && (a.art === 'aufgabe' || a.art === 'entscheidung')) { op.status = 'wartet_kunde'; op.am = a.ankunft && a.ankunft <= heute ? a.ankunft : heute; }
     if (Object.keys(op).length) soll.ops.push({ op: 'knoten-status', id: k.id, ...op });
+    // „erneut ab …“ (26.10.): jeder Durchlauf eines Schritts ist eine eigene Runde (eigene Aufgabe, eigener Entwurf) — der erste trägt Runde 0 wie bisher.
+    const rt = a.runde > 0 && (a.art === 'aufgabe' || a.art === 'nachricht') ? `${titel} (Runde ${a.runde + 1})` : titel;
     if (a.art === 'aufgabe') {
-      const marke = ABLAUF_MARKE.aufgabe(k.id, 0);
-      if (neu(marke)) soll.aufgaben.push({ id: ablaufAufgabeId(f.mandatId, k.id, 0), knotenId: k.id, runde: 0, titel: kunde ? `Beim Kunden: ${titel}` : titel, ...(a.faellig ? { faellig: a.faellig } : {}), kunde, art: k.form === 'termin' ? 'termin' : 'schritt', marke });
+      const marke = ABLAUF_MARKE.aufgabe(k.id, a.runde);
+      if (neu(marke)) soll.aufgaben.push({ id: ablaufAufgabeId(f.mandatId, k.id, a.runde), knotenId: k.id, runde: a.runde, titel: kunde ? `Beim Kunden: ${rt}` : rt, ...(a.faellig ? { faellig: a.faellig } : {}), kunde, art: k.form === 'termin' ? 'termin' : 'schritt', marke });
     } else if (a.art === 'nachricht') {
-      const marke = ABLAUF_MARKE.nachricht(k.id, 0);
-      if (neu(marke)) soll.nachrichten.push({ bezugId: nachrichtBezugId(f.mandatId, k.id, 0), knotenId: k.id, runde: 0, titel, marke });
+      const marke = ABLAUF_MARKE.nachricht(k.id, a.runde);
+      if (neu(marke)) soll.nachrichten.push({ bezugId: nachrichtBezugId(f.mandatId, k.id, a.runde), knotenId: k.id, runde: a.runde, titel: rt, marke });
     } else if (a.art === 'entscheidung') {
       if (k.eskaliertAm) { const m = ABLAUF_MARKE.eskaliert(k.id); if (neu(m)) soll.glocken.push({ art: 'eskaliert', knotenId: k.id, titel, marke: m }); }
       else if (a.faellig && a.faellig < heute) { const m = ABLAUF_MARKE.frage(k.id, a.runde); if (neu(m)) soll.glocken.push({ art: 'frage', knotenId: k.id, titel, marke: m }); }
@@ -419,7 +502,7 @@ export function ablaufAbschluesse(f: Pick<Fall, 'mandatId' | 'knoten'>): AblaufA
       if (laufend > erledigt && (fertig(k) || fertig(e) || e.antwort !== 'nein')) raus.push(zu(k.id, laufend, k.status === 'erledigt' ? 'done' : 'cancelled'));
       continue;
     }
-    const runde = art === 'erinnerung' ? 1 : 0;
+    const runde = rundeVon(k, art);
     if (schrittFertig(k, kn)) raus.push(zu(k.id, runde, k.status === 'entfaellt' ? 'cancelled' : 'done'));
   }
   return raus;
@@ -433,9 +516,9 @@ export function aufgabeZuKnoten(f: Pick<Fall, 'mandatId' | 'knoten'>, aufgabeId:
   if (!aufgabeId.startsWith(ABLAUF_AUFGABE_PRAEFIX)) return null;
   for (const k of f.knoten) {
     const art = ausfuehrungsArt(k);
-    if (art === 'aufgabe' && ablaufAufgabeId(f.mandatId, k.id, 0) === aufgabeId) return { knotenId: k.id, runde: 0 };
+    if (art === 'aufgabe') for (let r = 0; r <= (k.durchlauf ?? 0); r++) if (ablaufAufgabeId(f.mandatId, k.id, r) === aufgabeId) return { knotenId: k.id, runde: r };
     if (art === 'erinnerung') {
-      const bis = Math.max(VERSUCHE_VORGABE, k.versuche ?? 0, k.runden ?? 0) + 2;
+      const bis = Math.max(VERSUCHE_VORGABE, k.versuche ?? 0, k.runden ?? 0) + 2 + (k.durchlauf ?? 0);
       for (let r = 1; r <= bis; r++) if (ablaufAufgabeId(f.mandatId, k.id, r) === aufgabeId) return { knotenId: k.id, runde: r };
     }
   }
@@ -449,6 +532,8 @@ export function aufgabeZuKnoten(f: Pick<Fall, 'mandatId' | 'knoten'>, aufgabeId:
 export function opNachAufgabe(f: Pick<Fall, 'knoten' | 'freigaben' | 'status' | 'startAm' | 'gestartetAm'> & MitZusaetzen, knotenId: string, runde: number): Record<string, unknown> | null {
   const k = f.knoten.find(x => x.id === knotenId);
   if (!k || fertig(k)) return null;
+  // Eine Aufgabe aus einem früheren Durchlauf („erneut ab …“) erledigt den laufenden nicht.
+  if (ausfuehrungsArt(k) === 'aufgabe' && runde !== (k.durchlauf ?? 0)) return null;
   if (ausfuehrungsArt(k) === 'erinnerung' && runde > 0) {
     const a = aktiveKnoten(f).find(x => x.knoten.id === knotenId);
     if (!a || a.runde !== runde) return null;
@@ -480,14 +565,14 @@ export function ablaufStand(f: Pick<Fall, 'mandatId' | 'knoten' | 'freigaben' | 
     const faellig = a?.faellig ?? (fertig(k) ? undefined : k.faelligAm);
     const eId = nz.get(k.id);
     const e = eId ? kn.find(x => x.id === eId) : undefined;
-    const runde = a?.runde ?? (art === 'entscheidung' ? k.runden ?? 0 : art === 'erinnerung' ? (e ? (e.runden ?? 0) : 1) : 0);
+    const runde = a?.runde ?? (art === 'erinnerung' && e ? (e.runden ?? 0) : rundeVon(k, art));
     const nein = art === 'entscheidung' && k.zweige?.nein ? k.zweige.nein : undefined;
     raus[k.id] = {
       art, aktiv: !!a, runde, ueberfaellig: !!a && !!faellig && faellig < heute,
       ...(faellig ? { faellig } : {}), ...(k.eskaliertAm ? { eskaliert: k.eskaliertAm } : {}), ...(k.antwort ? { antwort: k.antwort } : {}),
       ...(art === 'entscheidung' || e ? { versuche: versucheFuer(kn, e ?? k) } : {}),
       ...(nein ? { nein, neinLaeuft: laufend.has(nein) } : {}), ...(e ? { entscheidung: e.id } : {}),
-      ...(art === 'aufgabe' ? { aufgabe: ablaufAufgabeId(f.mandatId, k.id, 0) } : art === 'erinnerung' && runde > 0 ? { aufgabe: ablaufAufgabeId(f.mandatId, k.id, runde) } : {}),
+      ...(art === 'aufgabe' ? { aufgabe: ablaufAufgabeId(f.mandatId, k.id, runde) } : art === 'erinnerung' && runde > 0 ? { aufgabe: ablaufAufgabeId(f.mandatId, k.id, runde) } : {}),
     };
   }
   return { aktiv: true, knoten: raus };

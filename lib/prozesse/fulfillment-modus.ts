@@ -14,7 +14,7 @@
 //                                     (`fuerKundenFrei` rechnet der Server; hier kommt nur ihr Ergebnis an).
 // Etappe 1 liest nur (GET /api/prozesse/werkstatt?paket=); geschrieben wird erst ab Etappe 2 — über die Schreibstelle des Fulfillments.
 
-import type { Befund, KnotenForm, ProzessDefinition, ProzessForm, ProzessKnoten, ProzessVorlage, Zustaendig } from './definition';
+import type { Befund, Danach, ErneutAb, KnotenForm, ProzessDefinition, ProzessForm, ProzessKnoten, ProzessVorlage, Zustaendig } from './definition';
 import { BEREICH_VORGABE, FALL_ART_VORGABE } from './definition';
 import { KNOTEN_FORMEN, vorlageAus } from '@/lib/fulfillment/lesen';
 import { editorModell, FORM_TITEL, type EditorKnoten } from '@/lib/fulfillment/prozesse/editor';
@@ -29,7 +29,7 @@ export const FULFILLMENT_FORMEN: readonly KnotenForm[] = KNOTEN_FORMEN;
 export const istFulfillmentForm = (f: unknown): f is KnotenForm => typeof f === 'string' && (FULFILLMENT_FORMEN as readonly string[]).includes(f);
 
 /** Felder eines Knotens, die nur die Werkstatt (der Lauf-Motor) ausführt — im Paket nie. */
-export const NUR_WERKSTATT_KNOTEN = ['katalog', 'ausloeser', 'agent', 'raute', 'warten', 'schleife', 'abfrage', 'erneut', 'teilprozess', 'ende', 'schloss', 'bahn', 'deaktiviert', 'danach'] as const satisfies readonly (keyof K)[];
+export const NUR_WERKSTATT_KNOTEN = ['katalog', 'ausloeser', 'agent', 'raute', 'warten', 'schleife', 'abfrage', 'teilprozess', 'ende', 'schloss', 'bahn', 'deaktiviert'] as const satisfies readonly (keyof K)[];
 /** Felder einer Definition, die nur Prozesse der Werkstatt tragen. */
 export const NUR_WERKSTATT_DEFINITION = ['eigner', 'laeuftAls', 'startKriterium', 'endKriterium', 'schnittstelle', 'zettel'] as const satisfies readonly (keyof ProzessDefinition)[];
 const FELD_NAME: Readonly<Record<string, string>> = {
@@ -121,6 +121,10 @@ export interface PaketKnotenInfo {
   frist?: number; versuche?: number; zustaendig?: Zustaendig; kundeSichtbar?: boolean;
   /** Ab diesem Schritt läuft die Lieferzeit — so viele Werktage (26.10.). */
   lieferzeit?: number;
+  /** Sprünge (26.10.) in Worten: „Ablauf endet hier“, „weiter bei …“, „bei nein erneut ab … (höchstens n)“. */
+  spruenge?: string[];
+  /** Sprünge als Werte (Seitenfeld). */
+  danach?: Danach; erneut?: ErneutAb;
   /** Bausteine (Ebene 5) am Schritt — `knotenId` = ihr Knoten im Paket (Entfernen), `bausteinId` = der Baustein der Bibliothek. */
   bausteine: { knotenId: string; bausteinId: string; titel: string; art?: string; kundeFrei?: boolean; grund?: string }[];
   /** Zweige in Worten („ja → …“, „nein → …“). */
@@ -162,6 +166,11 @@ export function paketAnsicht(v: ProzessVorlage, bibliothek: readonly BibliothekK
     info[e.id] = {
       id: e.id, titel: e.titel, art: 'schritt', form: e.form, formTitel: FORM_TITEL[e.form], formGesetzt: e.gesetzt, phase, ...(gruppe ? { gruppe } : {}),
       ...(e.frist !== undefined ? { frist: e.frist } : {}), ...(e.versuche !== undefined ? { versuche: e.versuche } : {}), ...(e.lieferzeit !== undefined ? { lieferzeit: e.lieferzeit } : {}),
+      ...(e.danach ? { danach: e.danach } : {}), ...(e.erneut ? { erneut: e.erneut } : {}),
+      ...(e.danach || e.erneut ? { spruenge: [
+        ...(e.danach ? ['ende' in e.danach ? 'Ablauf endet hier' : `weiter bei → ${titelVon.get(e.danach.ziel) ?? '…'}`] : []),
+        ...(e.erneut ? [`bei nein erneut ab → ${titelVon.get(e.erneut.ab) ?? '…'} (höchstens ${e.erneut.hoechstens}×)`] : []),
+      ] } : {}),
       ...(e.zustaendig ? { zustaendig: e.zustaendig } : {}), ...(e.kundeSichtbar !== undefined ? { kundeSichtbar: e.kundeSichtbar } : {}),
       bausteine: e.bausteine.map(b => { const x = bibliothek.find(y => y.id === b.bausteinId); return { knotenId: b.knotenId, bausteinId: b.bausteinId, titel: b.titel, ...(b.art ? { art: b.art } : {}), ...(x ? { kundeFrei: x.kundeFrei, ...(x.grund ? { grund: x.grund } : {}) } : {}) }; }),
       zweige: zweigText(e),
@@ -216,5 +225,6 @@ export function paketKnotenZeilen(i: PaketKnotenInfo): { name: string; wert: str
   z.push({ name: 'Zuständig', wert: i.zustaendig === 'kunde' ? 'Kunde' : i.zustaendig === 'beide' ? 'Kunde und Team' : 'Team' });
   z.push({ name: 'Kunde sieht es', wert: i.kundeSichtbar ? 'ja' : 'nein' });
   for (const t of i.zweige) z.push({ name: 'Weg', wert: t });
+  for (const t of i.spruenge ?? []) z.push({ name: 'Sprung', wert: t });
   return z;
 }

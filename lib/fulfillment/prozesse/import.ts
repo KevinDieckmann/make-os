@@ -18,7 +18,7 @@
 //                  { id, titel, abstimmung?, dauerTage?, ziel?, warum?, kundeSichtbar?, kreislauf?, fluss: [ Schritt | { gruppe, id, fluss: [Schritt] } ] } ] } ],
 //                  vorlagen?: [...] }`
 //     Schritt = `{ id, titel, form?, frist?, zweige?: { ja?, nein? }, zustaendig?, kundeSichtbar?, ziel?, ergebnis?, kennzahl?, rolle?, dauerTage?, abstimmung?,
-//     versuche?, lieferzeit? (Werktage ab diesem Schritt, 26.10.), pos?: { x, y }, pfeilText?: { weiter?, ja?, nein? }, bausteine?: [Kennung] }` — Formen, Fristen, Zweige, Versuche (1–20), Lage und Pfeil-
+//     versuche?, lieferzeit? (Werktage ab diesem Schritt, 26.10.), danach? ('ende' | { ziel }), erneut? ({ ab, hoechstens } an einer Entscheidung, 26.10.), pos?: { x, y }, pfeilText?: { weiter?, ja?, nein? }, bausteine?: [Kennung] }` — Formen, Fristen, Zweige, Versuche (1–20), Lage und Pfeil-
 //     Beschriftung wie im Editor (dieselben Werkzeuge, `zweigePruefen`, `vorlageStrukturPruefen`, `lageAus`, `pfeilTextAus`; seit 17.10. spät), Bausteine per
 //     Kennung der Quelle (→ `fb-imp-<id>`) oder als vorhandene Kennung `fb-…`; sie müssen in der Bibliothek ODER im `vorlagen`-Teil derselben Datei stehen,
 //     sonst blockiert die Datei (nichts still ohne Baustein). Eine Paket-Vorlage bekommt `fp-imp-pk-<slug>`, ihre Knoten feste Kennungen aus den Quell-Kennungen
@@ -38,7 +38,7 @@ import { ebeneVon, kinderVon, vorfahren } from '../regeln';
 import { PHASEN, SAMMEL_ALLGEMEIN, SAMMEL_SCHRITT, WEITERE_BAUSTEINE, phaseEinfuegen, phaseFinden, phaseTitel, phaseVon } from './phasen';
 import { TAG_NUR_INTERN, TAG_VOR_VERKAUF, GLIEDERUNG_PUNKT_MAX } from './bausteine';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
-import { zweigePruefen } from './fluss-struktur';
+import { ERNEUT_MAX, sprungPruefen, zweigePruefen } from './fluss-struktur';
 import { FRIST_MAX, LIEFERZEIT_MAX, lageAus, pfeilTextAus } from './editor';
 import { rahmenOrdnen, umrissVon } from './flaeche-lage';
 import { ausfuehren, fnv, istObj, nein, optBool, optText, optWahl, optZahl, pflichtText, slug, titelForm } from './pruefen';
@@ -367,6 +367,8 @@ function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
   const verweise: PaketGelesen['verweise'] = [];
   const schrittKnoten = new Map<string, string>();
   const zweigeRoh: { knotenId: string; wo: string; z: unknown }[] = [];
+  // Sprünge (26.10.): „danach“ und „erneut“ zeigen auf Kennungen der Quelle — aufgelöst, wenn alle Schritte gelesen sind.
+  const spruengeRoh: { knotenId: string; wo: string; danach?: unknown; erneut?: unknown }[] = [];
   const schritt = (x: Record<string, unknown>, eltern: string, rang: number, mitBausteinen: boolean) => {
     if (x.gruppe !== undefined) nein(`${wo}: Gruppen stehen nur direkt in einer Phase, nicht in einer Gruppe.`);
     const sq = quelle(x.id, 'Ein Schritt');
@@ -395,6 +397,7 @@ function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
     }));
     schrittKnoten.set(sq, kid);
     if (x.zweige !== undefined) zweigeRoh.push({ knotenId: kid, wo: w, z: x.zweige });
+    if (x.danach !== undefined || x.erneut !== undefined) spruengeRoh.push({ knotenId: kid, wo: w, danach: x.danach, erneut: x.erneut });
     if (refs.length) verweise.push({ knotenId: kid, schritt: sq, refs });
     // `verbindungen` (freie Pfeile) und jedes andere unbekannte Feld: ignoriert.
   };
@@ -457,7 +460,26 @@ function paketLesen(p: Record<string, unknown>, nr: number): PaketGelesen {
     }
     if (zw.ja || zw.nein) { const i = knoten.findIndex(x => x.id === knotenId); knoten[i] = { ...knoten[i], zweige: zw }; }
   }
-  zweigePruefen(knoten);
+  for (const { knotenId, wo: w, danach, erneut } of spruengeRoh) {
+    const ziel = (q: unknown, was: string) => {
+      const k = typeof q === 'string' ? schrittKnoten.get(q) : undefined;
+      return k ?? nein(`${w}: ${was} zeigt auf „${String(q)}“ — diesen Schritt gibt es im Paket nicht.`);
+    };
+    const teil: Partial<ProzessKnoten> = {};
+    if (danach !== undefined && danach !== null) {
+      if (danach === 'ende' || (istObj(danach) && danach.ende === true)) teil.danach = { ende: true };
+      else if (istObj(danach) && danach.ziel !== undefined) teil.danach = { ziel: ziel(danach.ziel, '„danach“') };
+      else nein(`${w}: „danach“ ist „ende“ oder { ziel: <Schritt> }.`);
+    }
+    if (erneut !== undefined && erneut !== null) {
+      if (!istObj(erneut)) nein(`${w}: „erneut“ ist { ab: <Schritt>, hoechstens }.`);
+      const h = (erneut as Record<string, unknown>).hoechstens;
+      if (typeof h !== 'number' || !Number.isInteger(h) || h < 1 || h > ERNEUT_MAX) nein(`${w}: „erneut“ höchstens 1 bis ${ERNEUT_MAX} Runden.`);
+      teil.erneut = { ab: ziel((erneut as Record<string, unknown>).ab, '„erneut ab“'), hoechstens: h as number };
+    }
+    const i = knoten.findIndex(x => x.id === knotenId); knoten[i] = { ...knoten[i], ...teil };
+  }
+  zweigePruefen(knoten); sprungPruefen(knoten);
   const beschreibung = optText(p.beschreibung, 'beschreibung', `${wo}: Beschreibung`);
   const vorbehalt = optText(p.vorbehalt, 'hinweis', `${wo}: Vorbehalt`);
   const q = optText(p.quelle, 'kurz', `${wo}: Quelle`);
@@ -870,7 +892,7 @@ export function importAnwenden(d0: VorlagenDatei, roh: unknown, wahl: ImportWahl
       // Der Papierkorb einer schon bearbeiteten Vorlage bleibt (nichts geht still verloren); die Vorher-Fassung merkt der Lauf für „Rückgängig“.
       const neu: ProzessVorlage = { ...(v as ProzessVorlage), ...(alt?.papierkorb ? { papierkorb: alt.papierkorb } : {}), fassung: (alt?.fassung ?? 0) + 1, herkunft: herkunft(), geaendert: k.jetzt, geaendertVon: k.person };
       vorlageStrukturPruefen(neu, d);
-      zweigePruefen(neu.knoten);
+      zweigePruefen(neu.knoten); sprungPruefen(neu.knoten);
       if (alt) { merkeVorlage(alt); d.prozesse = d.prozesse.map(x => (x.id === alt.id ? neu : x)); }
       else { d.prozesse.push(neu); lauf.neu.push(neu.id); }
       geaendert.push(neu.id);

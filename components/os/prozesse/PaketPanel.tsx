@@ -12,6 +12,7 @@ import { paketKnotenZeilen, werText, type BibliothekKurz, type PaketKnotenInfo }
 import { FORM_VORGABE, PALETTE_FORMEN, phaseVerschieben, schrittVerschieben, schritteDerPhase, type EditorOp } from '@/lib/prozesse/fulfillment-bearbeiten';
 import type { ProzessVorlage, Zustaendig } from '@/lib/prozesse/definition';
 import { FORM_TITEL } from '@/lib/fulfillment/prozesse/editor';
+import { hauptstrang, neinZiele, phaseVonKnoten } from '@/lib/fulfillment/prozesse/fluss-struktur';
 import { TextFeld, ZahlFeld } from './WerkstattMaske';
 
 const ERKL_KUNDE_SIEHT = [{ kopf: 'Was es bedeutet', text: 'Der Schritt erscheint auf der Kunden-Seite und im Report — nur, wenn auch seine Bausteine für Kunden frei sind.' }, { kopf: 'Beispiel', text: '„Unterlagen schicken“ sieht der Kunde, „Angebot intern prüfen“ nicht.' }];
@@ -78,6 +79,14 @@ export function PaketPanel(p: {
   const hoch = schrittVerschieben(p.fassung, id, 'hoch'), runter = schrittVerschieben(p.fassung, id, 'runter');
   const ziele = schritteDerPhase(p.fassung, id);
   const knoten = p.fassung.knoten.find(k => k.id === id);
+  // Sprünge (26.10.): „weiter bei“ nur nach vorn (auch in spätere Phasen), „erneut ab“ nur zurück in derselben Phase (Regel `sprungPruefen`).
+  const nz = neinZiele(p.fassung.knoten);
+  const haupt = hauptstrang(p.fassung.knoten, nz);
+  const von = haupt.findIndex(s => s.id === (nz.get(id) ?? id));
+  const spaeter = von >= 0 ? haupt.slice(von + 1) : [];
+  const phaseHier = phaseVonKnoten(p.fassung.knoten, id);
+  const frueher = von >= 0 ? haupt.slice(0, von).filter(s => phaseVonKnoten(p.fassung.knoten, s.id) === phaseHier) : [];
+  const danachWert = knoten?.danach ? ('ende' in knoten.danach ? 'ende' : knoten.danach.ziel) : '';
   const frei = p.bibliothek.filter(x => !i.bausteine.some(y => y.bausteinId === x.id));
   return (
     <>
@@ -109,7 +118,27 @@ export function PaketPanel(p: {
                 <option value="">dem nächsten Schritt</option>
                 {ziele.map(z => <option key={z.id} value={z.id}>{z.titel}</option>)}
               </select>
-              {!knoten.zweige?.nein && <Knopf leise onClick={() => p.onOps([{ op: 'nein-erinnerung', id: p.neueId(), entscheidungId: id }])}>+ Erinnerung, wenn nein</Knopf>}
+              {!knoten.zweige?.nein && !knoten.erneut && <Knopf leise onClick={() => p.onOps([{ op: 'nein-erinnerung', id: p.neueId(), entscheidungId: id }])}>+ Erinnerung, wenn nein</Knopf>}
+              {!knoten.zweige?.nein && frueher.length > 0 && (
+                <>
+                  <span style={klein}>Wenn nein, noch einmal ab (z. B. Korrekturschleife)</span>
+                  <select aria-label="Wenn nein, noch einmal ab" value={knoten.erneut?.ab ?? ''} onChange={e => p.onOps([{ op: 'schritt', id, erneut: e.target.value ? { ab: e.target.value, hoechstens: knoten.erneut?.hoechstens ?? 2 } : null }])} style={auswahlStil}>
+                    <option value="">nicht zurück (fragt wieder)</option>
+                    {frueher.map(z => <option key={z.id} value={z.id}>{z.titel}</option>)}
+                  </select>
+                  {knoten.erneut && (<><span style={klein}>Höchstens so oft</span><ZahlFeld label="Höchstens Runden zurück" wert={knoten.erneut.hoechstens} min={1} max={20} onWert={n => n && p.onOps([{ op: 'schritt', id, erneut: { ab: knoten.erneut!.ab, hoechstens: n } }])} /></>)}
+                </>
+              )}
+            </>
+          )}
+          {knoten?.form !== 'abstimmung' && (
+            <>
+              <span style={klein}>Danach</span>
+              <select aria-label="Danach" value={danachWert} onChange={e => p.onOps([{ op: 'schritt', id, danach: e.target.value === '' ? null : e.target.value === 'ende' ? { ende: true } : { ziel: e.target.value } }])} style={auswahlStil}>
+                <option value="">wie im Ablauf (nächster Schritt)</option>
+                <option value="ende">Ablauf endet hier</option>
+                {spaeter.map(z => <option key={z.id} value={z.id}>{`weiter bei: ${z.titel}`}</option>)}
+              </select>
             </>
           )}
         </>

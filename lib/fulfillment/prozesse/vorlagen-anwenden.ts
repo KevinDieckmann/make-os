@@ -20,7 +20,7 @@ import { MUSTER_LANDKARTE, MUSTER_P1, MUSTER_P2, MUSTER_P3, MUSTER_RITUALE, MUST
 import { istOrt } from '../orte';
 import { bausteinAusEingabe, markeUrheberGeprueft, MESSE_NACHFASS_TAGE } from './bausteine';
 import { ausfuehren, istObj, mischen, nein, optBool, optText, optWahl, optZahl, pflichtText, standPruefen, textListe } from './pruefen';
-import { zweigeOhne, zweigePruefen } from './fluss-struktur';
+import { sprungPruefen, zweigeOhne, zweigePruefen } from './fluss-struktur';
 import { inWerkstatt, IN_WERKSTATT_TEXT } from './werkstatt-marke';
 
 export interface VorlagenKontext {
@@ -88,6 +88,8 @@ export function vorlageStrukturPruefen(v: ProzessVorlage, d: Pick<VorlagenDatei,
   for (const k of v.knoten) if (k.elternId && !ids.has(k.elternId)) nein(`„${k.titel}“ hängt an einem Knoten, den es nicht gibt.`);
   const kreis = kreisBei(v.knoten);
   if (kreis) nein(`Kreis in „${v.titel}“ — ein Knoten kann nicht unter sich selbst hängen. Nichts gespeichert.`);
+  // 26.10.: Sprünge („weiter bei“, „Ablauf endet“, „erneut ab“) — dieselbe Regel für Editor, Import und Werkstatt-Entwurf.
+  sprungPruefen(v.knoten);
   const wurzeln = v.knoten.filter(k => !k.elternId);
   if (wurzeln.length !== 1) nein(`„${v.titel}“ braucht genau einen obersten Knoten (Ebene 1) — jetzt ${wurzeln.length}.`);
   const bausteine = new Set(d.bausteine.map(b => b.id));
@@ -492,7 +494,7 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
     d.prozesse = d.prozesse.map(p => {
       if (!beruehrt.has(p.id)) return p;
       vorlageStrukturPruefen(p, d);
-      zweigePruefen(p.knoten);
+      zweigePruefen(p.knoten); sprungPruefen(p.knoten);
       const alt = vorher.get(p.id);
       if (alt === JSON.stringify(p)) return p;
       if (!alt) return { ...p, fassung: Math.max(1, p.fassung), geaendert: k.jetzt, geaendertVon: k.person };

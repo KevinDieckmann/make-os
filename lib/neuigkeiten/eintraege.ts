@@ -33,6 +33,23 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-26-3',
+    datum: '2026-10-26',
+    titel: 'Lieferzeit ab Formular und echte Korrekturschleifen',
+    kurz: 'Die Lieferzeit startet, sobald das Formular vollständig ist — das Lieferdatum steht im Fall und in der Mail. Korrekturschleifen laufen als echte Runden, und ein Ablauf kann an einer Stelle enden oder über Phasen springen.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { bereich: 'business', text: 'Ein Schritt im Ablauf kann „Lieferzeit startet hier“ tragen (Werktage). Ist er erledigt, steht oben im Fall „Lieferung bis …“ — kommt das Formular später, verschiebt sich das Datum von selbst.' },
+        { bereich: 'business', text: 'Mails im Ablauf kennen {{fall.lieferdatum}} und {{fall.lieferzeit}}: „Geplante Lieferung: Montag, 9. November 2026“ statt „[von Hand: Datum]“.' },
+        { bereich: 'business', text: 'Korrekturschleife: bei „Korrekturen abgeschlossen? — nein“ laufen „Korrekturen sammeln“ und „umsetzen“ noch einmal, mit eigener Aufgabe je Runde („Runde 2“). Sind alle inklusiven Schleifen genutzt, wird die Entscheidung rot.' },
+        { bereich: 'business', text: 'Im Paket: „Danach — Ablauf endet hier“ bzw. „weiter bei …“ (auch in eine spätere Phase); an einer Entscheidung „Wenn nein, noch einmal ab …“.' },
+      ] },
+      { art: 'behoben', punkte: [
+        { bereich: 'business', text: 'Mit einer Laufzeit von 6 Monaten (Folgeangebot statt Verlängerung) liefen die Schritte der Verlängerung nicht mehr unnötig an — der Ablauf endet nach dem Folgeangebot (mit der neuen Ablauf-Datei).' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-26-2',
     datum: '2026-10-26',
     titel: 'Rechnungen nach Raten und Anzahlung',

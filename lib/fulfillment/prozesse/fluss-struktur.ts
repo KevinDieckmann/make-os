@@ -8,11 +8,12 @@
 // Rein und client-sicher; Server (Schreibwege) und Browser (Editor) rechnen nur hiermit. Tests: tests/fulfillment-editor-modell.test.ts.
 
 import type { KnotenForm, ProzessKnoten, Zweige } from '../typen';
+import type { Danach, ErneutAb } from '@/lib/prozesse/definition';
 import { kinderVon, wurzelVon } from '../regeln';
 import { istSammelTeil } from './reise';
 import { nein } from './pruefen';
 
-type K = Pick<ProzessKnoten, 'id' | 'elternId' | 'titel' | 'rang'> & { bausteinId?: string; form?: KnotenForm; zweige?: Zweige };
+type K = Pick<ProzessKnoten, 'id' | 'elternId' | 'titel' | 'rang'> & { bausteinId?: string; form?: KnotenForm; zweige?: Zweige; danach?: Danach; erneut?: ErneutAb };
 
 /** Ein Abschnitt im Fluss einer Phase: ein Strang (Schritte untereinander) oder eine Gruppe (benannter Teilprozess mit seinen Schritten). */
 export interface FlussAbschnitt<T> { art: 'strang' | 'gruppe'; gruppe?: T; schritte: T[] }
@@ -142,10 +143,59 @@ export function zweigePruefen(kn: readonly K[]): void {
   }
 }
 
+/** Höchstens so viele Runden „erneut ab …“ an einer Entscheidung im Paket (26.10.; dieselbe Grenze wie die Versuche einer Erinnerung). */
+export const ERNEUT_MAX = 20;
+/** Alle Schritte des Ablaufs in Lese-Reihenfolge über alle Phasen (ohne Nein-Zweige) — für „weiter bei …“ nach vorn. */
+export function hauptstrang<T extends K>(kn: readonly T[], nz: ReadonlyMap<string, string> = neinZiele(kn)): T[] {
+  return phasenDer(kn).flatMap(p => phasenSchritte(kn, p.id).filter(s => !nz.has(s.id)));
+}
+/**
+ * Sprünge im Paket (26.10., Zweige über Phasen und Korrekturschleifen) — wirft bei Unsinn (nichts gespeichert):
+ *   · `danach` an einem Schritt: `{ ende: true }` = der Ablauf endet hier, `{ ziel }` = weiter bei einem SPÄTEREN Schritt (auch in einer späteren Phase) —
+ *     was dazwischen steht, entfällt. Zurück geht nur „erneut ab …“. Ein Nein-Zweig springt aus Sicht seiner Entscheidung.
+ *   · `erneut` an einer Entscheidung ohne Nein-Zweig: bei „nein“ zurück zu einem FRÜHEREN Schritt derselben Phase (Hauptstrang) — die Schritte dazwischen
+ *     laufen noch einmal (neue Runde), höchstens `hoechstens`-mal (1 … ERNEUT_MAX), danach hängt die Entscheidung rot („eskaliert“).
+ */
+export function sprungPruefen(kn: readonly K[]): void {
+  if (!kn.some(k => k.danach || k.erneut)) return;
+  const nz = neinZiele(kn);
+  const haupt = hauptstrang(kn, nz);
+  const stelle = new Map(haupt.map((s, i) => [s.id, i]));
+  const schrittPhase = new Map<string, string>();
+  for (const p of phasenDer(kn)) for (const s of phasenSchritte(kn, p.id)) schrittPhase.set(s.id, p.id);
+  const titel = (id: string) => kn.find(x => x.id === id)?.titel ?? '';
+  for (const k of kn) {
+    if (k.danach) {
+      if (!schrittPhase.has(k.id)) nein(`„${k.titel}“ ist kein Schritt eines Ablaufs — „danach“ gibt es nur dort.`);
+      if (k.form === 'abstimmung') nein(`„${k.titel}“: an einer Bestätigung gibt es kein „danach“.`);
+      if ('ziel' in k.danach) {
+        const z = k.danach.ziel;
+        if (z === k.id) nein(`„${k.titel}“: „weiter bei“ zeigt auf sich selbst.`);
+        if (!stelle.has(z)) nein(`„${k.titel}“: „weiter bei“ zeigt auf keinen Schritt im Ablauf (ein Nein-Zweig ist kein Ziel).`);
+        const von = stelle.get(nz.get(k.id) ?? k.id);
+        if (von === undefined || stelle.get(z)! <= von) nein(`„${k.titel}“: „weiter bei „${titel(z)}““ geht nur nach vorn — zurück geht es mit „erneut ab …“ an einer Entscheidung.`, 409);
+      }
+    }
+    if (k.erneut) {
+      if (k.form !== 'entscheidung') nein(`„${k.titel}“: „erneut ab …“ gibt es nur an einer Entscheidung.`);
+      if (k.zweige?.nein) nein(`„${k.titel}“: entweder ein Nein-Zweig oder „erneut ab …“ — nicht beides. Erst den Nein-Zweig lösen.`, 409);
+      const h = k.erneut.hoechstens;
+      if (!Number.isInteger(h) || h < 1 || h > ERNEUT_MAX) nein(`„${k.titel}“: „erneut ab …“ höchstens 1 bis ${ERNEUT_MAX} Runden.`);
+      const a = k.erneut.ab;
+      if (!stelle.has(a) || schrittPhase.get(a) !== schrittPhase.get(k.id)) nein(`„${k.titel}“: „erneut ab“ zeigt auf keinen Schritt dieser Phase.`, 409);
+      if (stelle.get(a)! >= (stelle.get(k.id) ?? -1)) nein(`„${k.titel}“: „erneut ab „${titel(a)}““ geht nur zurück zu einem Schritt davor.`, 409);
+    }
+  }
+}
+
 /** Zweige, die auf gelöschte Knoten zeigen, entfernen — mit den gelösten Verweisen (für „Zurückholen“). */
 export function zweigeOhne<T extends K>(kn: readonly T[], weg: ReadonlySet<string>): { knoten: T[]; verweise: { knotenId: string; zweig: 'ja' | 'nein' }[] } {
   const verweise: { knotenId: string; zweig: 'ja' | 'nein' }[] = [];
-  const knoten = kn.map(k => {
+  const knoten = kn.map(k0 => {
+    // 26.10.: Sprünge („weiter bei“, „erneut ab“) auf einen gelöschten Schritt fallen mit weg — der Schritt läuft dann wie im Strang weiter.
+    let k = k0;
+    if (!weg.has(k.id) && k.danach && 'ziel' in k.danach && weg.has(k.danach.ziel)) { const { danach: _d, ...r } = k; k = r as T; }
+    if (!weg.has(k.id) && k.erneut && weg.has(k.erneut.ab)) { const { erneut: _e, ...r } = k; k = r as T; }
     if (!k.zweige || weg.has(k.id)) return k;
     const z = { ...k.zweige };
     for (const art of ['ja', 'nein'] as const) if (z[art] && weg.has(z[art]!)) { verweise.push({ knotenId: k.id, zweig: art }); delete z[art]; }

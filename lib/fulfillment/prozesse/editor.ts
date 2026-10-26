@@ -22,13 +22,15 @@
 // Tests: tests/fulfillment-editor-modell.test.ts.
 
 import type { AnwendenErgebnis, Baustein, Freigabepunkt, KnotenForm, KnotenLage, PfeilText, ProzessKnoten, ProzessVorlage, VorlagenDatei, VorlagenPapierkorb, Zustaendig, Zweige } from '../typen';
-import { GRENZEN, LAGE } from '../grenzen';
+import { GRENZEN, KENNUNG, LAGE } from '../grenzen';
+import type { Danach, ErneutAb } from '@/lib/prozesse/definition';
+import { ERNEUT_MAX } from './fluss-struktur';
 import { KNOTEN_FORMEN } from '../lesen';
 import { kinderVon, teilbaum, wurzelVon } from '../regeln';
 import { istSammelTeil } from './reise';
 import { knotenForm } from './reise-bild';
 import { abstimmungsNummern } from './darstellung';
-import { phasenAbschnitte, phasenDer, phasenSchritte, phaseVonKnoten, neinZiele, zweigeOhne, zweigePruefen } from './fluss-struktur';
+import { phasenAbschnitte, phasenDer, phasenSchritte, phaseVonKnoten, neinZiele, sprungPruefen, zweigeOhne, zweigePruefen } from './fluss-struktur';
 import { vorlageStrukturPruefen } from './vorlagen-anwenden';
 import { ausfuehren, fnv, istObj, nein, optBool, optText, optWahl, optZahl, pflichtText, standPruefen } from './pruefen';
 import { rahmenOrdnen, umrissVon } from './flaeche-lage';
@@ -71,6 +73,8 @@ export interface EditorKnoten {
   versuche?: number;
   /** Ab diesem Schritt läuft die Lieferzeit — so viele Werktage (26.10.). */
   lieferzeit?: number;
+  /** Festgelegter Ausgang (26.10.): „Ablauf endet“ bzw. „weiter bei …“ (nach vorn). An einer Entscheidung ohne Nein-Zweig: „bei nein erneut ab …“. */
+  danach?: Danach; erneut?: ErneutAb;
   bausteine: EditorBaustein[];
   zweige?: Zweige;
   /** Nein-Zweig dieser Entscheidung — steht im Bild neben ihr, nicht im Strang. */
@@ -104,6 +108,7 @@ export function editorModell(v: ProzessVorlage, bausteine: readonly (Pick<Bauste
     ...(k.frist !== undefined ? { frist: k.frist } : {}), ...(k.zustaendig ? { zustaendig: k.zustaendig } : {}),
     ...(k.kundeSichtbar !== undefined ? { kundeSichtbar: k.kundeSichtbar } : {}), ...(k.freigabe ? { freigabe: k.freigabe } : {}),
     ...(k.versuche !== undefined ? { versuche: k.versuche } : {}), ...(k.lieferzeit !== undefined ? { lieferzeit: k.lieferzeit } : {}),
+    ...(k.danach ? { danach: k.danach } : {}), ...(k.erneut ? { erneut: k.erneut } : {}),
     bausteine: kinderVon(k.id, kn).filter(c => c.bausteinId).map(c => {
       const b = bausteine.find(x => x.id === c.bausteinId);
       return { knotenId: c.id, bausteinId: c.bausteinId!, titel: c.titel || b?.titel || 'Baustein', ...(b ? { art: b.art } : {}) };
@@ -195,7 +200,25 @@ function schrittFelder(o: Record<string, unknown>): Record<string, unknown> {
   // Lieferzeit (26.10.): ab diesem Schritt so viele Werktage bis zur Lieferung (null = entfernen).
   const lz = optZahl(o.lieferzeit, 1, LIEFERZEIT_MAX, 'Lieferzeit (Werktage)');
   if (lz !== undefined) { if (lz !== null && !Number.isInteger(lz)) nein(`Lieferzeit: ganze Werktage von 1 bis ${LIEFERZEIT_MAX}.`); t.lieferzeit = lz; }
+  // Sprünge (26.10.): `danach` = 'ende' | { ende: true } | { ziel } | null, `erneut` = { ab, hoechstens } | null — die Regel prüft `sprungPruefen` am Ende.
+  if (o.danach !== undefined) t.danach = danachEingabe(o.danach);
+  if (o.erneut !== undefined) t.erneut = erneutEingabe(o.erneut);
   return t;
+}
+/** „danach“ aus der Eingabe (Editor und Import): null = lösen. */
+export function danachEingabe(v: unknown, name = 'Danach'): Danach | null {
+  if (v === null) return null;
+  if (v === 'ende' || (istObj(v) && v.ende === true)) return { ende: true };
+  if (istObj(v) && typeof v.ziel === 'string' && KENNUNG.knoten.test(v.ziel)) return { ziel: v.ziel };
+  return nein(`${name}: „ende“ oder { ziel: <Schritt> }.`);
+}
+/** „erneut ab …“ aus der Eingabe: null = lösen. */
+export function erneutEingabe(v: unknown, name = 'Erneut ab'): ErneutAb | null {
+  if (v === null) return null;
+  if (!istObj(v) || typeof v.ab !== 'string' || !KENNUNG.knoten.test(v.ab)) return nein(`${name}: { ab: <Schritt>, hoechstens: 1 … ${ERNEUT_MAX} }.`);
+  const h = v.hoechstens;
+  if (typeof h !== 'number' || !Number.isInteger(h) || h < 1 || h > ERNEUT_MAX) return nein(`${name}: höchstens 1 bis ${ERNEUT_MAX} Runden.`);
+  return { ab: v.ab, hoechstens: h };
 }
 const setzeFelder = (k: ProzessKnoten, t: Record<string, unknown>): ProzessKnoten => {
   const raus: Record<string, unknown> = { ...k };
@@ -207,7 +230,7 @@ const setzeFelder = (k: ProzessKnoten, t: Record<string, unknown>): ProzessKnote
  * Die Änderungen des Editors an EINER Paket-Vorlage — alles oder nichts. Ops (je `{ op, … }`):
  *   titel { titel } · zusatz { an } (Zusatzmodul, 17.10. spät) · phase-neu { id, titel, nach?: Phase|null } · phase { id, titel?, kundeSichtbar? } · phase-schieben { id, nach: Phase|null }
  *   abstimmung { phaseId, an, titel?, wer? } · schritt-neu { id, ziel, form, titel, frist?, zustaendig?, kundeSichtbar?, versuche? }
- *   schritt { id, titel?, form?, frist?, zustaendig?, kundeSichtbar?, versuche?, lieferzeit? } · schritt-schieben { id, ziel } · zweig { id, ja?: id|null, nein?: id|null }
+ *   schritt { id, titel?, form?, frist?, zustaendig?, kundeSichtbar?, versuche?, lieferzeit?, danach?, erneut? } · schritt-schieben { id, ziel } · zweig { id, ja?: id|null, nein?: id|null }
  *   nein-erinnerung { id, entscheidungId, titel? } · baustein-dazu { id, schrittId, bausteinId, titel? } · gruppe { id, titel }
  *   weg { id, still? } · zurueck { id } · papierkorb-leeren { id? }
  * Fläche (17.10., ./flaeche.ts): lage { eintraege: [{ id, pos: { x, y, b?, h? } | null }] } (Phase = Rahmen absolut mit Größe, Schritt relativ zu seinem Rahmen;
@@ -611,7 +634,7 @@ export function editorAnwenden(datei: VorlagenDatei, eingabe: unknown, k: Editor
     if (pk.length) v.papierkorb = pk; else delete v.papierkorb;
     if (pk.length > GRENZEN.papierkorbJeVorlage) nein(`Papierkorb von „${v.titel}“: höchstens ${GRENZEN.papierkorbJeVorlage} Einträge — bitte erst leeren. Nichts gespeichert.`, 413);
     vorlageStrukturPruefen(v, d);
-    zweigePruefen(v.knoten);
+    zweigePruefen(v.knoten); sprungPruefen(v.knoten);
     if (JSON.stringify(v) === JSON.stringify(alt)) return { datei: datei, geaendert: [] };
     // Reine Lage (Fläche) ist keine neue Fassung — laufende Fälle zeigen dadurch kein „Vorlage geändert“.
     v = { ...v, fassung: ohneLage(v) === ohneLage(alt) ? alt.fassung : alt.fassung + 1, geaendert: k.jetzt, geaendertVon: k.person };

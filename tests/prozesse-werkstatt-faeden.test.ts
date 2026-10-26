@@ -318,13 +318,14 @@ describe('(d) `danach` — der festgelegte Hauptausgang; ohne Feld bit-gleich', 
     expect(texte({ danach: { ziel: 'nichts' } })).toMatch(/keinen Schritt/);
     expect(texte({ form: 'ende', danach: { ende: true } })).toMatch(/keinen eigenen Ausgang/);
   });
-  it('Säuberer: ohne Feld nichts (bit-gleich), mit Feld nur die zwei Formen; im Paket des Fulfillments ein Fehler; eine Kopie folgt den neuen Kennungen', () => {
+  it('Säuberer: ohne Feld nichts (bit-gleich), mit Feld nur die zwei Formen; im Paket des Fulfillments erlaubt (26.10.); eine Kopie folgt den neuen Kennungen', () => {
     const roh = { id: 'fk-1', titel: 'A', rang: 1, form: 'schritt' };
     expect(knotenAus(roh)).not.toHaveProperty('danach');
     expect(JSON.stringify(knotenAus(roh))).toBe(JSON.stringify(knotenAus({ ...roh, danach: { quatsch: 1 } })));
     expect(knotenAus({ ...roh, danach: { ende: true } })?.danach).toEqual({ ende: true });
     expect(knotenAus({ ...roh, danach: { ziel: 'fk-2', mehr: 'x' } })?.danach).toEqual({ ziel: 'fk-2' });
-    expect(fulfillmentModusBefunde({ knoten: [{ id: 'k', titel: 'K', rang: 1, danach: { ende: true } }] } as never).some(b => b.feld === 'danach')).toBe(true);
+    // Seit 26.10. (Zweige über Phasen, Korrekturschleifen) kann auch das Paket „danach“ und „erneut ab …“ — kein Befund mehr (Regel: `sprungPruefen`).
+    expect(fulfillmentModusBefunde({ knoten: [{ id: 'k', titel: 'K', rang: 1, danach: { ende: true } }] } as never).some(b => b.feld === 'danach')).toBe(false);
     const d = { ...def({ a: { danach: { ziel: 'b' } } }), id: 'pz-alt', art: 'paket' } as unknown as ProzessDefinition;
     const k = mitNeuenKnoten(d, { id: 'pz-neu', neu: kennung });
     expect(k.definition.knoten.find(x => x.id === k.karte.get('a'))?.danach).toEqual({ ziel: k.karte.get('b') });

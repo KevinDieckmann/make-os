@@ -76,7 +76,7 @@ export interface PaketEntwurf {
 }
 
 export type KnotenStatus = 'offen' | 'in_arbeit' | 'wartet_kunde' | 'erledigt' | 'entfaellt';
-export interface FallKnoten extends Pick<ProzessKnoten, 'id' | 'elternId' | 'titel' | 'rang' | 'ziel' | 'ergebnis' | 'kennzahl' | 'zustaendig' | 'freigabe' | 'kundeSichtbar' | 'phaseId' | 'bausteinId' | 'dauerTage' | 'form' | 'frist' | 'zweige' | 'versuche' | 'lieferzeit'> {
+export interface FallKnoten extends Pick<ProzessKnoten, 'id' | 'elternId' | 'titel' | 'rang' | 'ziel' | 'ergebnis' | 'kennzahl' | 'zustaendig' | 'freigabe' | 'kundeSichtbar' | 'phaseId' | 'bausteinId' | 'dauerTage' | 'form' | 'frist' | 'zweige' | 'versuche' | 'lieferzeit' | 'danach' | 'erneut'> {
   status: KnotenStatus; seit?: string; faelligAm?: string; erledigtAm?: string; erledigtVon?: string; grund?: string; extra?: true;
   // ── Ausführung der Abläufe (17.10. abends; lib/fulfillment/prozesse/ausfuehrung.ts) — alle optional, setzt nur der Schreibweg des Falls ──
   /** Entscheidung: die letzte Antwort („nein“ = ihr Nein-Zweig läuft gerade) und ihr Tag. */
@@ -85,6 +85,11 @@ export interface FallKnoten extends Pick<ProzessKnoten, 'id' | 'elternId' | 'tit
   runden?: number;
   /** Entscheidung: Tag, an dem die Runden ausgeschöpft waren — dann hängt sie rot, bis jemand entscheidet. */
   eskaliertAm?: string;
+  /**
+   * „Erneut ab …“ (26.10.): der wievielte Durchlauf dieses Schritts nach einem Rücksprung (fehlt = der erste). Setzt nur `antwortAnwenden`; Aufgaben und Marken
+   * der Ausführung tragen ihn als Runde, damit jeder Durchlauf eine eigene Aufgabe bekommt.
+   */
+  durchlauf?: number;
   /**
    * Zusatzmodul (17.10. spät): NUR an Phasen (Ebene 2) — Kennung der Paket-Vorlage des Zusatzmoduls, dessen Abschnitt diese Phase ist (`Fall.zusaetze`). Fehlt:
    * die Phase gehört zum Paket des Falls. Setzt nur `zusatzAnhaengen`/`zusatzUebernehmen` (lib/fulfillment/prozesse/fall.ts).

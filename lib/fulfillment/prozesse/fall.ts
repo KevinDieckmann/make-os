@@ -26,7 +26,7 @@ import { antwortAnwenden, nachErledigung } from './ausfuehrung';
 const STAKEHOLDER_GETILGT = '[gelöscht]';
 
 /** Felder, die beim Start aus der Vorlage kopiert werden (7.2). */
-export const STRUKTUR_FELDER = ['elternId', 'titel', 'rang', 'ziel', 'ergebnis', 'kennzahl', 'zustaendig', 'freigabe', 'kundeSichtbar', 'phaseId', 'bausteinId', 'dauerTage', 'form', 'frist', 'zweige', 'versuche', 'lieferzeit'] as const;
+export const STRUKTUR_FELDER = ['elternId', 'titel', 'rang', 'ziel', 'ergebnis', 'kennzahl', 'zustaendig', 'freigabe', 'kundeSichtbar', 'phaseId', 'bausteinId', 'dauerTage', 'form', 'frist', 'zweige', 'versuche', 'lieferzeit', 'danach', 'erneut'] as const;
 /** Felder, die ein Diff vergleicht (ohne Rang — die Reihenfolge darf der Fall behalten). */
 const DIFF_FELDER = STRUKTUR_FELDER.filter(f => f !== 'rang');
 
@@ -151,7 +151,7 @@ export interface VorlagenDiff {
 /** Die Felder eines Diffs in Worten (Vorschau „was sich ändert“ im Fall). */
 export const DIFF_FELD_NAME: Readonly<Record<string, string>> = {
   elternId: 'Platz', titel: 'Titel', ziel: 'Ziel', ergebnis: 'Ergebnis', kennzahl: 'Kennzahl', zustaendig: 'Verantwortung', freigabe: 'Bestätigung',
-  kundeSichtbar: 'Sichtbarkeit', phaseId: 'Phase', bausteinId: 'Baustein', dauerTage: 'Dauer', form: 'Form', frist: 'Frist', zweige: 'Zweige', versuche: 'Versuche', lieferzeit: 'Lieferzeit',
+  kundeSichtbar: 'Sichtbarkeit', phaseId: 'Phase', bausteinId: 'Baustein', dauerTage: 'Dauer', form: 'Form', frist: 'Frist', zweige: 'Zweige', versuche: 'Versuche', lieferzeit: 'Lieferzeit', danach: 'Danach', erneut: 'Erneut ab',
 };
 
 /** Die Vorschau „was sich ändert“ eines Diffs in Worten — Abschnitte mit Zeilen (leere fallen weg). Eine Stelle für Fall-Hinweis und Tests. */

@@ -108,7 +108,7 @@ type FfKnotenFeld = Exclude<keyof ProzessKnoten<KnotenForm>, (typeof NUR_WERKSTA
 const KNOTEN_FELDER: Record<FfKnotenFeld, true> = {
   id: true, elternId: true, titel: true, rang: true, zone: true, kreislauf: true, ort: true, verweis: true, ziel: true, warum: true, eingang: true, ergebnis: true, kennzahl: true,
   zustaendig: true, rolle: true, dauerTage: true, aufwandStunden: true, freigabe: true, kundeSichtbar: true, phaseId: true, bausteinId: true, heute: true, werkzeuge: true,
-  dokumentation: true, art: true, optional: true, ausgang: true, original: true, beleg: true, form: true, frist: true, zweige: true, pos: true, pfeilText: true, versuche: true, lieferzeit: true,
+  dokumentation: true, art: true, optional: true, ausgang: true, original: true, beleg: true, form: true, frist: true, zweige: true, pos: true, pfeilText: true, versuche: true, lieferzeit: true, danach: true, erneut: true,
 };
 type FfVorlageFeld = Exclude<keyof ProzessVorlage<KnotenForm>, (typeof NUR_WERKSTATT_DEFINITION)[number] | 'bereich' | 'fallArt'>;
 const VORLAGE_FELDER: Record<FfVorlageFeld, true> = {
@@ -130,7 +130,8 @@ function vollPaket(): ProzessVorlage {
       { id: 'fk-v3', elternId: 'fk-v2', titel: 'Schritt', rang: 1, zustaendig: 'kunde', rolle: 'r-1', dauerTage: 3, aufwandStunden: 2, phaseId: 'fk-v1', heute: 'so heute', werkzeuge: ['Tabelle'],
         dokumentation: 'Doku', art: 'stufe', optional: true, ausgang: 'weiter', original: 'Original', beleg: 'quelle', form: 'entscheidung', frist: 5,
         zweige: { ja: 'fk-v4', nein: 'fk-v5' }, pos: { x: 40, y: 80 }, pfeilText: { weiter: 'dann', ja: 'passt', nein: 'nicht' }, versuche: 4, lieferzeit: 10 },
-      { id: 'fk-v4', elternId: 'fk-v2', titel: 'Weiter', rang: 2, form: 'schritt', verweis: 'fp-voll-ziel' },
+      { id: 'fk-v4', elternId: 'fk-v2', titel: 'Weiter', rang: 2, form: 'schritt', verweis: 'fp-voll-ziel', danach: { ziel: 'fk-v7' } },
+      { id: 'fk-v7', elternId: 'fk-v2', titel: 'Noch einmal?', rang: 4, form: 'entscheidung', erneut: { ab: 'fk-v4', hoechstens: 2 } },
       { id: 'fk-v5', elternId: 'fk-v2', titel: 'Erinnern', rang: 3, form: 'erinnerung', zweige: { ja: 'fk-v3' } },
       { id: 'fk-v6', elternId: 'fk-v3', titel: 'Mail', rang: 1, bausteinId: 'fb-mail', kundeSichtbar: false },
     ],
