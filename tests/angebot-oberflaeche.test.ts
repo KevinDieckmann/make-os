@@ -31,7 +31,7 @@ describe('Angebots-Tool zeichnet', () => {
     expect(html).toContain('KD Ventures');
     expect(html).toContain('value="Strategie-Retainer"');
     expect(html).toContain('2.500,00');
-    expect(html).toContain('Mail versenden');
+    expect(html).toContain('Ansehen &amp; PDF');
   });
   it('Vorschau: Mail klein, Angebot groß', async () => {
     const { Vorschau } = await import('@/components/os/crm/angebot/Vorschau');
@@ -40,7 +40,7 @@ describe('Angebots-Tool zeichnet', () => {
     const html = renderToStaticMarkup(h(Vorschau, { dok, mail: { an: 'c-anna1@example.invalid', betreff: 'Angebot {Nummer} – Retainer', text: 'Guten Tag' }, setMail: () => {}, ampel: { hinweise: ['Hinweis gelb'] }, luecken: [], nachfassen: '2026-10-05', setNachfassen: () => {}, onZurueck: () => {}, onSenden: async () => {} }));
     expect(html).toContain('Mail-Entwurf');
     expect(html).toContain('ENTWURF');
-    expect(html).toContain('Senden');
+    expect(html).toContain('Angebot stellen &amp; PDF laden');
     expect(html).toContain('Hinweis gelb');
   });
   it('Ansicht eines gestellten Angebots und die Liste', async () => {

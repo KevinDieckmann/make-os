@@ -29,7 +29,7 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ladeCrmMitPapierkorb } from '@/lib/crm/speicher';
 import { absenderFuerAnzeige } from '@/lib/crm/gesellschaften';
 import { absenderVorgabe } from '@/lib/gesellschaften/server';
-import { AngebotFehler, ablaufNachziehen, angebotAblage, angebotAblehnen, angebotAnnehmen, angebotGesendet, angebotLoeschen, angebotSpeichern, angebotStellen, angebotVersion, gesellschaftenLaden, mitStand } from '@/lib/crm/angebot-server';
+import { AngebotFehler, ablaufNachziehen, angebotAblage, angebotEntwurfPdf, angebotGmailEntwurf, angebotAblehnen, angebotAnnehmen, angebotGesendet, angebotLoeschen, angebotSpeichern, angebotStellen, angebotVersion, gesellschaftenLaden, mitStand } from '@/lib/crm/angebot-server';
 import { istDienst } from '@/lib/zugang/dienst';
 
 export const runtime = 'nodejs';
@@ -123,7 +123,24 @@ export async function POST(req: Request) {
         const r = await angebotGesendet({ id, person, wer });
         return NextResponse.json({ ok: true, ...r, text: r.schonDa ? `Angebot ${r.nummer} war schon als gesendet vermerkt.` : `Angebot ${r.nummer} als gesendet vermerkt — steht im Verlauf der Person.` });
       }
-      default: return fehler('aktion: speichern, stellen, annehmen, ablehnen, version, ablage, gesendet oder loeschen.', 400);
+      case 'entwurf-pdf': {
+        // 26.10. (Kevin: „anzeigen und runterladen“): der Entwurf als PDF — nichts gespeichert, keine Nummer, IBAN maskiert.
+        if (!h) return fehler('PDF nur mit angemeldeter Person und Haushalt — Absender und Logo liegen je Haushalt.', 403);
+        const pdf = await angebotEntwurfPdf({ id, haushalt: h.haushalt });
+        return new NextResponse(Buffer.from(pdf.bytes), { headers: {
+          'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(pdf.name)}`,
+          'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', 'Content-Security-Policy': "sandbox; default-src 'none'",
+        } });
+      }
+      case 'gmail-entwurf': {
+        // 26.10.: Mail + PDF als Entwurf im EIGENEN Gmail — nur per Klick der Person (Dienstweg/ZOE nie), gesendet wird in Gmail.
+        if (istDienst(req)) return fehler('Den Gmail-Entwurf legt nur ein Mensch per Klick an — nicht der Dienstweg.', 403);
+        if (!h || h.nurBusiness) return fehler('Gmail-Entwurf nur mit angemeldeter Person und Haushalt.', 403);
+        const m = b as { an?: unknown; betreff?: unknown; text?: unknown };
+        const r = await angebotGmailEntwurf({ id, person: h.person, haushalt: h.haushalt, an: m.an, betreff: m.betreff, text: m.text });
+        return NextResponse.json({ ok: true, ...r, text: `Die Mail mit dem PDF liegt als Entwurf in deinem Gmail (${r.von}) — dort öffnen und senden.` });
+      }
+      default: return fehler('aktion: speichern, stellen, annehmen, ablehnen, version, ablage, gesendet, entwurf-pdf, gmail-entwurf oder loeschen.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }

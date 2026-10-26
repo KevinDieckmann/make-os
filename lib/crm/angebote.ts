@@ -262,7 +262,7 @@ export function positionSaeubern(o: Record<string, unknown>, i: number): Angebot
 }
 
 /** Die Felder, die ein Browser an einem ENTWURF setzen darf. Alles andere (Nummer, Status, Prüfsumme …) setzt der Server. */
-export const ENTWURF_FELDER = ['gesellschaft', 'kontaktId', 'firmaId', 'dealId', 'mandatId', 'titel', 'positionen', 'einleitung', 'schluss', 'gueltigBis', 'zahlungszielTage', 'titelVonHand', 'dealWahl'] as const;
+export const ENTWURF_FELDER = ['gesellschaft', 'kontaktId', 'firmaId', 'dealId', 'mandatId', 'titel', 'positionen', 'einleitung', 'schluss', 'gueltigBis', 'zahlungszielTage', 'titelVonHand', 'dealWahl', 'zahlweise'] as const;
 
 /**
  * Entwurf säubern: nur ENTWURF_FELDER aus `roh`, auf den bisherigen Entwurf gelegt. Status bleibt „entwurf“,
@@ -295,6 +295,8 @@ export function entwurfSaeubern(roh: Record<string, unknown>, alt: Angebot | nul
     einleitung: txt(r('einleitung'), ANGEBOT_GRENZEN.einleitung), schluss: txt(r('schluss'), ANGEBOT_GRENZEN.schluss),
     gueltigBis: tagOk(gb) ? gb : plusTage(basis.heute, basis.gueltigTage ?? GUELTIG_VORGABE_TAGE),
     zahlungszielTage: Number.isFinite(ziel) && ziel >= 0 ? Math.min(180, ziel) : basis.zielTage ?? ZAHLUNGSZIEL_VORGABE_TAGE,
+    // Zahlungsweise (26.10.) — `null` nimmt sie weg (= ganze Summe wie bisher).
+    ...(zahlweiseSaeubern(r('zahlweise')) ? { zahlweise: zahlweiseSaeubern(r('zahlweise')) } : {}),
     status: 'entwurf', version: alt?.version ?? 1, ...(alt?.vorgaengerId ? { vorgaengerId: alt.vorgaengerId } : {}),
     angelegt: alt?.angelegt ?? basis.jetzt, ...(alt?.angelegtVon ? { angelegtVon: alt.angelegtVon } : { angelegtVon: basis.person }),
     geaendert: basis.jetzt, geaendertVon: basis.person,
@@ -485,8 +487,13 @@ export function angebotTitelAus(a: Pick<Angebot, 'positionen'>, leistungen: read
   const hp = angebotHauptprodukt(a, leistungen);
   const l = hp ? leistungen.find(x => x.id === hp) : undefined;
   const produkt = l ? produktName(l) : (hp ? a.positionen.find(p => p.leistungId === hp) : a.positionen[0])?.titel ?? '';
+  // 26.10. (Kevin: „der Name oben wird nicht richtig übernommen“): nennt der Produkttitel die Firma selbst ({{firma.name}}), wird sie dort eingesetzt —
+  // ohne „<Firma> · “ davor (sonst stand sie doppelt bzw. der Platzhalter roh im PDF). Ohne Firma bleibt der Platzhalter stehen, bis sie gewählt ist.
+  if (NENNT_FIRMA.test(produkt)) return firma?.trim() ? platzhalterFuellen(produkt, { 'firma.name': firma.trim() }).replace(/\s+/g, ' ').trim().slice(0, ANGEBOT_GRENZEN.titel) : produkt;
   return produktTitel(produkt, firma, ANGEBOT_GRENZEN.titel);
 }
+/** Ein Text, der die Firma als Platzhalter nennt (`{{firma.name}}`). */
+const NENNT_FIRMA = /\{\{\s*firma\.name\s*(\|[^}]*)?\}\}/;
 
 /**
  * Ist der gespeicherte Titel eines älteren Entwurfs (ohne `titelVonHand`) automatisch entstanden? Leer, gleich dem Titel des Deals (den das Tool bis
@@ -496,7 +503,11 @@ export function angebotTitelAutomatisch(titel: string, ctx: { firma?: string | n
   if (!titel.trim()) return true;
   const n = (t: string) => t.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
   if (ctx.dealTitel && n(ctx.dealTitel) === n(titel)) return true;
-  return titelNurProdukt(titel, { firma: ctx.firma, produkte: [...(ctx.leistungen ?? []).flatMap(l => [l.name, l.angebot?.titel]), ...(ctx.positionen ?? []).map(p => p.titel)] });
+  // Produkttitel mit {{firma.name}} (26.10.) zählen auch gefüllt — so bleibt ein automatisch entstandener Titel automatisch.
+  // Der Kern eines Titels lässt die Firma weg (`titelKern`) — darum auch die Fassung ohne Firma.
+  const mitFirma = (t?: string) => (t && NENNT_FIRMA.test(t) ? [platzhalterFuellen(t, { 'firma.name': ctx.firma?.trim() ?? '' }), platzhalterFuellen(t, { 'firma.name': '' })] : []);
+  const namen = [...(ctx.leistungen ?? []).flatMap(l => [l.name, l.angebot?.titel, ...mitFirma(l.angebot?.titel)]), ...(ctx.positionen ?? []).flatMap(p => [p.titel, ...mitFirma(p.titel)])];
+  return titelNurProdukt(titel, { firma: ctx.firma, produkte: namen });
 }
 
 /**
@@ -592,6 +603,96 @@ export function mailVorlage(e: VorlageEingabe, produkt?: ProduktTexte): { betref
 export function mailtoLink(an: string | undefined, betreff: string, text: string): string {
   const enc = (s: string) => encodeURIComponent(s).replace(/%20/g, '%20');
   return `mailto:${an ? encodeURIComponent(an).replace(/%40/g, '@') : ''}?subject=${enc(betreff)}&body=${enc(text)}`;
+}
+
+// ── Platzhalter im ganzen Angebot, Standardtext, offene Lücken (26.10., Kevin: „die Daten müssen da sauber reinlaufen“) ─────────────────
+
+/** Werte der Platzhalter aus Kontakt, Firma und Angebot — leere Werte fehlen, damit ihr Platzhalter stehen bleibt (statt still leer zu werden). */
+export function angebotPlatzhalterWerte(e: VorlageEingabe): Record<string, string> {
+  return Object.fromEntries(Object.entries(werteAus(e)).filter(([k, v]) => !!v && !(k === 'kontakt.anrede' && !e.anrede) && !(k === 'kontakt.gruss' && !e.vorname && !e.nachname)));
+}
+/**
+ * Platzhalter in Titel, Positionen (Titel + Text), Einleitung und Schluss füllen — EINE Stelle für Editor, Vorschau und Stellen. Produkttexte schreiben z. B.
+ * „Homepage Landing für {{firma.name}}“; bis 26.10. stand das roh im PDF. Was `werte` nicht kennt, bleibt stehen. Ohne Änderung: dasselbe Objekt.
+ */
+export function angebotPlatzhalterFuellen<T extends Pick<Angebot, 'titel' | 'positionen' | 'einleitung' | 'schluss'>>(a: T, werte: Readonly<Record<string, string>>): T {
+  const f = (t: string) => (t.includes('{{') ? platzhalterFuellen(t, werte) : t);
+  const positionen = a.positionen.map(p => { const titel = f(p.titel), text = f(p.text); return titel === p.titel && text === p.text ? p : { ...p, titel, text }; });
+  const t = f(a.titel), titel = t === a.titel ? t : t.replace(/\s+/g, ' ').trim(), einleitung = f(a.einleitung), schluss = f(a.schluss);
+  if (titel === a.titel && einleitung === a.einleitung && schluss === a.schluss && positionen.every((p, i) => p === a.positionen[i])) return a;
+  return { ...a, titel, positionen, einleitung, schluss };
+}
+
+/**
+ * Der Standardtext (26.10., Kevin: „wenn wir keinen sauberen Prozess haben, einfach Standardsatz“) — immer in der Sie-Form, unabhängig vom Produkt.
+ */
+export function angebotStandardtext(e: Pick<VorlageEingabe, 'vorname' | 'nachname' | 'gueltigBis'>): { einleitung: string; schluss: string } {
+  const sie: VorlageEingabe = { ...e, anrede: 'Sie', titel: '' };
+  return {
+    einleitung: `${gruss(sie)}\n\nvielen Dank für Ihr Interesse an unseren Produkten. Hiermit unterbreiten wir Ihnen ein unverbindliches Angebot.`,
+    schluss: angebotVorlage(sie).schluss,
+  };
+}
+
+/** Wo im Angebot noch eine Lücke steht — „[von Hand: …]“ aus den Produkttexten oder ein ungefüllter Platzhalter. Leer = alles ausgefüllt. */
+export function angebotLuecken(a: Pick<Angebot, 'titel' | 'positionen' | 'einleitung' | 'schluss'>): string[] {
+  const offen = (t: string) => /\[von Hand:/i.test(t) || /\{\{[^}]*\}\}/.test(t);
+  return [
+    ...(offen(a.titel) ? ['Titel'] : []), ...(offen(a.einleitung) ? ['Einleitung'] : []),
+    ...a.positionen.flatMap((p, i) => (offen(`${p.titel}\n${p.text}`) ? [`Position ${i + 1}`] : [])), ...(offen(a.schluss) ? ['Schluss'] : []),
+  ];
+}
+
+// ── Zahlungsweise: Raten, Anzahlung, eigener Satz (26.10., Kevin) ─────────────────────────────────────────────────────────────────
+
+export const ZAHLWEISE_GRENZEN = { raten: { min: 2, max: 24 }, abstand: { min: 1, max: 12 }, prozent: { min: 1, max: 99 }, rest: 80, text: 500 } as const;
+const ganzIn = (v: unknown, min: number, max: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n >= min && n <= max ? n : null; };
+
+/** Säubern — unbrauchbar → undefined (dann gilt die ganze Summe wie bisher). */
+export function zahlweiseSaeubern(v: unknown): Angebot['zahlweise'] {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+  const o = v as Record<string, unknown>;
+  const G = ZAHLWEISE_GRENZEN;
+  if (o.art === 'raten') {
+    const anzahl = ganzIn(o.anzahl, G.raten.min, G.raten.max), abstandMonate = ganzIn(o.abstandMonate ?? 1, G.abstand.min, G.abstand.max);
+    return anzahl && abstandMonate ? { art: 'raten', anzahl, abstandMonate } : undefined;
+  }
+  if (o.art === 'anzahlung') {
+    const prozent = ganzIn(o.prozent, G.prozent.min, G.prozent.max);
+    const rest = zeile(o.rest, G.rest) || 'bei Abnahme';
+    return prozent ? { art: 'anzahlung', prozent, rest } : undefined;
+  }
+  if (o.art === 'frei') { const text = txt(o.text, G.text); return text ? { art: 'frei', text } : undefined; }
+  return undefined;
+}
+
+/** Die Raten in Cent: gleich große Raten, der Rundungsrest auf der letzten — die Summe stimmt immer auf den Cent. */
+export function ratenCent(summeCent: number, anzahl: number): number[] {
+  const n = Math.max(1, Math.round(anzahl));
+  const rate = Math.round(summeCent / n);
+  return Array.from({ length: n }, (_, i) => (i < n - 1 ? rate : summeCent - rate * (n - 1)));
+}
+
+/**
+ * Der Satz zur Zahlungsweise für das PDF (und die Vorschau) — null ohne Zahlungsweise. Beträge auf den einmaligen Betrag (brutto, beim Kleinunternehmer
+ * netto = gesamt). Ohne einmaligen Betrag gilt nur der eigene Satz.
+ */
+export function zahlweiseText(a: Pick<Angebot, 'positionen' | 'zahlweise'>, opt: { kleinunternehmer?: boolean } = {}): string | null {
+  const z = a.zahlweise;
+  if (!z) return null;
+  if (z.art === 'frei') return `Zahlung: ${z.text.replace(/\s+$/, '')}${/[.!?]$/.test(z.text.trim()) ? '' : '.'}`;
+  const s = angebotSummen(a, opt).einmalig;
+  const summe = opt.kleinunternehmer ? s.netto : s.brutto;
+  if (!(summe > 0)) return null;
+  const inkl = opt.kleinunternehmer || !s.ust ? '' : ' (inkl. USt)';
+  if (z.art === 'anzahlung') {
+    const an = Math.round(summe * z.prozent / 100);
+    return `Zahlung des einmaligen Betrags${inkl}: ${z.prozent} % Anzahlung (${euroCent(an)}) bei Auftrag, Rest (${euroCent(summe - an)}) ${z.rest}.`;
+  }
+  const raten = ratenCent(summe, z.anzahl);
+  const wann = (i: number) => (i === 0 ? 'bei Auftrag' : `nach ${i * z.abstandMonate} ${i * z.abstandMonate === 1 ? 'Monat' : 'Monaten'}`);
+  const gleich = raten.every(r => r === raten[0]);
+  return `Zahlung des einmaligen Betrags${inkl} in ${z.anzahl} Raten${z.abstandMonate === 1 ? ' (monatlich)' : ` (alle ${z.abstandMonate} Monate)`}: ${gleich ? `je ${euroCent(raten[0])}` : raten.map((r, i) => `${euroCent(r)} ${wann(i)}`).join(', ')}${gleich ? `, die erste bei Auftrag` : ''}.`;
 }
 
 // ── Verbindungen: Deal-Wert, Mandat-Vorbelegung ─────────────────────────────

@@ -167,6 +167,36 @@ export async function gmailSenden(e: SendenEingabe): Promise<SendenErgebnis> {
   return { id: r.json.id, threadId: r.json.threadId ?? antwortAuf?.threadId ?? '', von: absender.email, an: an.map(a => a.email) };
 }
 
+/**
+ * Eine Mail als ENTWURF im Gmail der Person ablegen (26.10., Kevin: „die E-Mail so vorbereitet bei Google Mail — da verschicke ich sie“). Nichts geht raus:
+ * der Entwurf liegt nur im eigenen Postfach, abgeschickt wird in Gmail von Hand. Art. 18 gilt trotzdem (eingeschränkte Personen bekommen nie etwas
+ * vorbereitet); die Rückfrage zu § 7 UWG entfällt, weil hier nicht gesendet wird. Nur auf den Einzelklick der Person (die Route prüft Sitzung/Dienstweg).
+ */
+export async function gmailEntwurfAnlegen(e: Pick<SendenEingabe, 'person' | 'an' | 'betreff' | 'text' | 'anhaenge' | 'von'>): Promise<{ id: string; von: string; an: string[] }> {
+  const stand = await ladeGmailStand(e.person);
+  if (!stand) throw new SendenFehler('nicht-verbunden', 'Gmail ist für dich nicht verbunden — unter Inbox „Gmail verbinden“, dann noch einmal.', 409);
+  const text = String(e.text ?? '').replace(/\r\n?/g, '\n').replace(/\u0000/g, '');
+  if (!text.trim()) throw new SendenFehler('kein-text', 'Die Mail hat keinen Text.', 400);
+  if (text.length > TEXT_MAX) throw new SendenFehler('zu-lang', `Der Text ist zu lang (höchstens ${TEXT_MAX} Zeichen).`, 413);
+  const an = adressenSauber(e.an);
+  if (!an.length) throw new SendenFehler('kein-empfaenger', 'Es fehlt die E-Mail-Adresse des Empfängers.', 400);
+  if (an.length > EMPFAENGER_MAX) throw new SendenFehler('zu-viele', `Höchstens ${EMPFAENGER_MAX} Empfänger.`, 400);
+  const betreff = zeilenfrei(e.betreff ?? '');
+  if (!betreff) throw new SendenFehler('betreff', 'Es fehlt ein Betreff.', 400);
+  const aliase = await aliaseSicherstellen(e.person).catch(() => stand.aliase ?? []);
+  const absender = absenderFuer(null, aliase, stand.email, e.von);
+  if (!absender) throw new SendenFehler('absender', 'Diese Absender-Adresse gehört nicht zu deinem Postfach („Senden als“ in Gmail).', 400);
+  const pr = await pruefeEmpfaenger(an.map(a => a.email), text);
+  if (pr.eingeschraenkt.length) throw new SendenFehler('eingeschraenkt', `${pr.eingeschraenkt.join(', ')}: Verarbeitung eingeschränkt (Art. 18) — keine Mail aus MAKE OS. Erst unter Kontakt › Datenschutz klären.`, 409);
+  const roh = mimeBauen({ von: { ...(absender.name ? { name: absender.name } : {}), email: absender.email }, an, betreff, text, ...(e.anhaenge?.length ? { anhaenge: e.anhaenge } : {}) });
+  const r = await googleAnfrage<{ id?: string }>(e.person, 'gmail', `${GMAIL_API}/drafts`, { method: 'POST', body: { message: { raw: bytesBase64url(roh) } }, zeitMs: 60_000 });
+  if (r.status !== 200 || !r.json.id) {
+    const grund = r.status === 403 ? 'Google erlaubt keinen Entwurf (403) — bitte unter Inbox „Gmail verbinden“ erneut.' : `Google hat den Entwurf nicht angelegt (${r.status}).`;
+    throw new SendenFehler('google', grund, r.status === 403 ? 409 : 502);
+  }
+  return { id: r.json.id, von: absender.email, an: an.map(a => a.email) };
+}
+
 /** Die gerade gesendete Nachricht holen und in Spiegel + Verlauf legen — sie steht so sofort im Thread. */
 async function gesendetSpiegeln(person: string, id: string): Promise<void> {
   const m = await nachrichtHolen(person, id);

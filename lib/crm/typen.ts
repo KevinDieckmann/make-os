@@ -420,6 +420,12 @@ export interface AngebotPosition {
 export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean; annahme?: true; agb?: string }
 /** Festgehaltener Empfänger beim Stellen. `kundennummer` (25.10., optional): die der Firma beim Stellen — steht so im PDF. */
 export interface AngebotEmpfaenger { name: string; firma?: string; zeilen: string[]; email?: string; kundennummer?: string }
+/** Zahlungsweise eines Angebots (26.10.): Raten · Anzahlung + Rest · eigener Satz. Säuberung `zahlweiseSaeubern` (lib/crm/angebote.ts). */
+export type AngebotZahlweise =
+  | { art: 'raten'; /** 2–24 */ anzahl: number; /** Abstand in Monaten, 1–12 */ abstandMonate: number }
+  | { art: 'anzahlung'; /** Anteil bei Auftrag in Prozent, 1–99 */ prozent: number; /** Wann der Rest fällig ist, z. B. „bei Abnahme“ */ rest: string }
+  | { art: 'frei'; text: string };
+
 export interface Angebot {
   id: string;
   /** Vergibt nur der Server beim Stellen (Nummernformat der Gesellschaft). */
@@ -439,6 +445,11 @@ export interface Angebot {
   /** YYYY-MM-DD */
   gueltigBis: string;
   zahlungszielTage: number;
+  /**
+   * Zahlungsweise (26.10., Kevin: „Zahlungsmodalität anpassen, z. B. in Raten“; optional — fehlt = wie bisher: ganze Summe mit Zahlungsziel).
+   * Gilt für den einmaligen Betrag des Angebots; laufende Positionen werden je Monat/Jahr bezahlt. Steht als Satz im PDF (`zahlweiseText`).
+   */
+  zahlweise?: AngebotZahlweise;
   status: AngebotsStatus;
   version: number;
   vorgaengerId?: string;

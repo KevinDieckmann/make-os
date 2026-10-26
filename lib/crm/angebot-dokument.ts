@@ -8,7 +8,7 @@
 import type { Angebot, AngebotAbsender, AngebotEmpfaenger } from './typen';
 import type { Gesellschaft } from './gesellschaften';
 import { mitVorgaben } from './gesellschaften';
-import { angebotSummen, aufwandLabel, euroCent, istSatzPosition, mengeText, positionNettoCent, BASIS_LABEL, type Summe } from './angebote';
+import { angebotSummen, aufwandLabel, euroCent, istSatzPosition, mengeText, positionNettoCent, zahlweiseText, BASIS_LABEL, type Summe } from './angebote';
 import { ibanMaskiert } from './zahlung';
 
 const datumDe = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
@@ -119,6 +119,8 @@ export function angebotDokument(a: Angebot, absender: AngebotAbsender, empfaenge
     hinweise: [
       ...(ku ? ['Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.'] : []),
       ...(s.ohneLaufzeit ? ['Laufende Positionen ohne Laufzeit sind im Gesamtwert mit 12 Monaten gerechnet.'] : []),
+      // Zahlungsweise (26.10.: Raten, Anzahlung, eigener Satz) — fehlt sie, bit-gleich wie vorher.
+      ...(zahlweiseText(a, { kleinunternehmer: ku }) ? [zahlweiseText(a, { kleinunternehmer: ku })!] : []),
       `Zahlungsziel: ${a.zahlungszielTage ? `${a.zahlungszielTage} Tage nach Rechnungsstellung ohne Abzug` : 'sofort nach Rechnungsstellung'}.`,
       'Alle Preise netto zuzüglich der gesetzlichen Umsatzsteuer, soweit ausgewiesen.',
     ].filter((x, i, l) => !(ku && x.startsWith('Alle Preise')) && l.indexOf(x) === i),

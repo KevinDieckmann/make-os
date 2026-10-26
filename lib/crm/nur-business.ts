@@ -21,7 +21,7 @@ export const NUR_LESEN = 'Dieses Konto liest hier nur — ändern, löschen und 
 export const NUR_BUSINESS_SICHT = 'Gehört nicht zum Business-Bereich — für dieses Konto nicht freigegeben.';
 
 /** Aktionen am Angebot, die die Rolle „nur Business“ darf: Entwurf speichern, Entwurf in Archiv/Papierkorb und zurück, Entwurf aus dem Papierkorb löschen. */
-export const ANGEBOT_ENTWURF_AKTIONEN: readonly string[] = ['speichern', 'ablage', 'loeschen'];
+export const ANGEBOT_ENTWURF_AKTIONEN: readonly string[] = ['speichern', 'ablage', 'loeschen', 'entwurf-pdf'];
 
 /** Sieht die Rolle „nur Business“ dieses Angebot? Nur Angebote einer Business-Gesellschaft. */
 export const angebotFuerNurBusiness = (a: Pick<Angebot, 'gesellschaft'>): boolean => imBusiness(a);

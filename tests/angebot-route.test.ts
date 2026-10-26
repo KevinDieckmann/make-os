@@ -327,3 +327,37 @@ describe('Absichtsprotokoll beim Stellen (Paket D-C #17)', () => {
 
 // Deal-Typ nur für Lesbarkeit der Erwartungen.
 export type _D = Chance;
+
+describe('26.10.: Platzhalter, Zahlungsweise, Entwurf-PDF, Gmail-Entwurf', () => {
+  beforeAll(async () => { await db.saveJson('kontakte', { kontakte: [...await kontakte(), k('c-erika26', { vorname: 'Erika', firmaId: 'f-muster', firma: 'Muster GmbH', anrede: 'Sie' })] }); });
+  it('stellen füllt {{firma.name}} in Titel und Positionen; die Zahlungsweise steht im PDF', async () => {
+    const a = await neuerEntwurf({ kontaktId: 'c-erika26', firmaId: 'f-muster', titel: 'Landing für {{firma.name}}', positionen: [{ id: 'p1', titel: 'Landing für {{firma.name}}', text: 'Seite für {{firma.name}}', menge: 1, einheit: 'pauschal', einzelpreisCent: 299000, ustSatz: 19, basis: 'einmalig' }], zahlweise: { art: 'raten', anzahl: 2, abstandMonate: 1 } }, 'ang-platzhalter1');
+    expect(a.zahlweise).toEqual({ art: 'raten', anzahl: 2, abstandMonate: 1 });
+    const { standVon } = await import('@/lib/crm/crm-stand');
+    const r = await post({ aktion: 'stellen', id: a.id, stand: standVon(a), nachfassenAm: NACHFASSEN });
+    expect(r.d.fehler ?? '').toBe('');
+    expect(r.status).toBe(200);
+    expect(r.d.angebot.titel).toBe('Landing für Muster GmbH');
+    expect(r.d.angebot.positionen[0]).toMatchObject({ titel: 'Landing für Muster GmbH', text: 'Seite für Muster GmbH' });
+    const pdf = await ablage.lesen('test-haus', r.d.pdf.id);
+    const { text } = await pdfText(new Uint8Array(pdf!.bytes));
+    expect(text).not.toContain('{{');
+    expect(text.replace(/\s+/g, ' ')).toContain('in 2 Raten');
+  });
+  it('Entwurf als PDF: ohne Nummer, nichts gespeichert; gestellte → 409', async () => {
+    const a = await neuerEntwurf({ kontaktId: 'c-erika26', titel: 'Für {{firma.name}}' }, 'ang-entwurfpdf1');
+    const r = await angebot.POST(new Request('http://test/api/crm/angebot', { method: 'POST', headers: kopf('kevin'), body: JSON.stringify({ aktion: 'entwurf-pdf', id: a.id }) }));
+    expect(r.status).toBe(200);
+    expect(r.headers.get('content-type')).toBe('application/pdf');
+    const { text } = await pdfText(new Uint8Array(await r.arrayBuffer()));
+    expect(text).toContain('ENTWURF');
+    expect(text.replace(/\s+/g, ' ')).toContain('Für Muster GmbH');
+    expect((await crm()).angebote?.find(x => x.id === a.id)).toMatchObject({ status: 'entwurf' });
+    expect((await crm()).angebote?.find(x => x.id === a.id)?.nummer).toBeUndefined();
+    expect((await post({ aktion: 'entwurf-pdf', id: 'ang-platzhalter1' })).status).toBe(409);
+  });
+  it('Gmail-Entwurf: nur per Klick einer Person, nie der Dienstweg', async () => {
+    const r = await post({ aktion: 'gmail-entwurf', id: 'ang-platzhalter1', an: 'c-erika26@example.invalid', betreff: 'Angebot', text: 'Hallo' });
+    expect(r.status).toBe(403);
+  });
+});

@@ -68,7 +68,7 @@ export function AngebotStart({ api, kontaktId, firmaId, dealId, angebotId, zuKon
   const a = daten.angebote.find(x => x.id === offenId) ?? null;
   if (a && a.status !== 'entwurf') {
     const start = gestellt && gestellt.angebot.id === a.id
-      ? { text: `Angebot ${a.nummer} gestellt.${gestellt.hinweise.length ? ` Hinweis: ${gestellt.hinweise.join(' ')}` : ''}`, mailto: gestellt.mailto, pdf: gestellt.pdf } : null;
+      ? { text: `Angebot ${a.nummer} gestellt.${gestellt.hinweise.length ? ` Hinweis: ${gestellt.hinweise.join(' ')}` : ''}`, mailto: gestellt.mailto, pdf: gestellt.pdf, ...(gestellt.gmail ? { gmail: gestellt.gmail } : {}) } : null;
     return <Ansicht key={a.id} a={a} api={api} daten={daten} meldungStart={start} onOeffnen={oeffnen} onListe={zurListe} zuKontakt={zuKontakt} zuDeal={zuDeal} />;
   }
   if (!a && neu?.id !== offenId) {

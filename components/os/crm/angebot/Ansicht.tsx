@@ -22,20 +22,19 @@ import { Wahl } from '../Wahl';
 import type { CrmApi } from '../daten';
 import { verlustgruende } from '@/lib/crm/pipeline';
 import { angebotDokument } from '@/lib/crm/angebot-dokument';
-import { ANGEBOT_STATUS_LABEL, angebotEinmalRest, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, mailtoLink, produktTexteFuer } from '@/lib/crm/angebote';
+import { ANGEBOT_STATUS_LABEL, angebotEinmalRest, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, produktTexteFuer } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { Blatt } from './Blatt';
 import { FallAmDeal } from '../../fulfillment/prozesse/FallAmDeal';
 import { angebotPost, pdfDateiHolen, pdfLaden, pdfTeilen, NUR_ENTWURF, type AngebotDaten, type AngebotMitStand } from './angebot-daten';
 import { useMandatAnlegen } from '../MandatAnlegenFenster';
-import { BelegSendenKnopf } from '../../inbox/BelegSenden';
 import { tagVon } from '@/lib/zeit';
 
 export const STATUS_FARBE: Record<Angebot['status'], string> = { entwurf: C.inkDim, gestellt: LEUCHT.business, angenommen: LEUCHT.gut, abgelehnt: LEUCHT.kritisch, abgelaufen: C.inkLeise, ersetzt: C.inkLeise };
 const datumDe = (d?: string) => (d ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
 
 export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKontakt, zuDeal }: {
-  a: AngebotMitStand; api: CrmApi; daten: AngebotDaten; meldungStart?: { text: string; mailto?: string; pdf?: { id: string; name: string } } | null;
+  a: AngebotMitStand; api: CrmApi; daten: AngebotDaten; meldungStart?: { text: string; mailto?: string; pdf?: { id: string; name: string }; gmail?: { ok: true; von: string; text: string } | { ok: false; text: string } } | null;
   onOeffnen: (id: string) => void; onListe: () => void; zuKontakt?: (id: string) => void; zuDeal?: (id: string) => void;
 }) {
   const crm = api.crm!;
@@ -122,11 +121,16 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
         <Karte i={0} ton={LEUCHT.gut}>
           <div style={{ display: 'grid', gap: 8, fontSize: TYP.bedien, lineHeight: 1.5 }}>
             <div style={{ fontWeight: 700, color: LEUCHT.gut }}>{meldungStart.text}</div>
-            <div style={{ color: C.inkDim }}>Das PDF wurde heruntergeladen und das Mail-Programm geöffnet — <b>PDF anhängen und abschicken</b>. Am Handy geht es schneller über „Teilen“ (das PDF hängt dann schon an).</div>
+            {/* 26.10. (Kevin): die Mail liegt als Entwurf in Gmail — dort senden. Ohne Gmail bleibt das Mail-Programm als Rückfall (PDF selbst anhängen). */}
+            <div style={{ color: C.inkDim }}>Das PDF wurde heruntergeladen.{' '}
+              {meldungStart.gmail?.ok ? <>{meldungStart.gmail.text}</> : meldungStart.gmail ? <span style={{ color: LEUCHT.achtung }}>Gmail-Entwurf nicht angelegt: {meldungStart.gmail.text}</span> : 'Die Mail schreibst du selbst — oder unten als Gmail-Entwurf anlegen.'}
+            </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              {meldungStart.gmail?.ok && <Knopf farbe={LEUCHT.gut} href={gmailEntwuerfe(meldungStart.gmail.von)}>Gmail öffnen ›</Knopf>}
+              {!meldungStart.gmail?.ok && a.pdfDateiId && !nur && <GmailEntwurfKnopf id={a.id} an={mailAn} betreff={mail.betreff} text={mail.text} onText={setMeldung} />}
               {meldungStart.pdf && <PdfTeilenKnopf dateiId={meldungStart.pdf.id} name={meldungStart.pdf.name} titel={a.titel} onText={setMeldung} />}
               {meldungStart.pdf && <button onClick={() => pdfLaden(meldungStart.pdf!.id, meldungStart.pdf!.name)} style={link}>PDF noch einmal laden</button>}
-              {meldungStart.mailto && <a href={meldungStart.mailto} style={link}>Mail noch einmal öffnen</a>}
+              {meldungStart.mailto && !meldungStart.gmail?.ok && <a href={meldungStart.mailto} style={link}>Mail-Programm öffnen (PDF selbst anhängen)</a>}
             </div>
             {k && !gesendet && <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', color: C.inkDim }}>Ist die Mail raus? <Knopf farbe={LEUCHT.gut} onClick={alsGesendet}>Ja, gesendet</Knopf></div>}
           </div>
@@ -157,9 +161,8 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           {a.pdfDateiId && <Knopf leise onClick={() => pdfLaden(a.pdfDateiId!, `Angebot ${a.nummer}.pdf`)}>PDF laden</Knopf>}
           {a.pdfDateiId && !meldungStart && <PdfTeilenKnopf dateiId={a.pdfDateiId} name={`Angebot ${a.nummer}.pdf`} titel={a.titel} onText={setMeldung} knopf />}
           {(a.status === 'gestellt' || a.status === 'abgelaufen' || a.status === 'angenommen') && k && !gesendet && !meldungStart && !nur && <Knopf leise onClick={alsGesendet}>Mail ist raus — als gesendet vermerken</Knopf>}
-          {(a.status === 'gestellt' || a.status === 'abgelaufen') && a.pdfDateiId && !nur && (
-            <BelegSendenKnopf an={mailAn} name={`${k?.vorname ?? ''} ${k?.nachname ?? ''}`.trim() || undefined} betreff={mail.betreff} text={mail.text} pdf={{ id: a.pdfDateiId, name: `Angebot ${a.nummer}.pdf` }} beleg={{ art: 'angebot', id: a.id }} mailto={mailtoLink(mailAn, mail.betreff, mail.text)} />
-          )}
+          {/* 26.10. (Kevin): statt „Über … senden“ die Mail mit PDF als Entwurf ins eigene Gmail — gesendet wird dort. */}
+          {(a.status === 'gestellt' || a.status === 'abgelaufen') && a.pdfDateiId && !nur && !meldungStart && <GmailEntwurfKnopf id={a.id} an={mailAn} betreff={mail.betreff} text={mail.text} onText={setMeldung} knopf />}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && !nur && <Knopf farbe={LEUCHT.gut} onClick={annehmen}>Angenommen</Knopf>}
           {(a.status === 'gestellt' || a.status === 'abgelaufen') && !ablehnen && !nur && <Knopf leise onClick={() => setAblehnen(true)}>Abgelehnt …</Knopf>}
           {nur && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, alignSelf: 'center' }}>{NUR_ENTWURF}</span>}
@@ -234,5 +237,24 @@ function RechnungAusAngebot({ angebotId, onFehler }: { angebotId: string; onFehl
       if (!e.id) { onFehler(e.fehler ?? 'Rechnung nicht angelegt.'); return; }
       router.push(WEG.rechnungSchreiben(e.id));
     }}>Rechnung schreiben</Knopf>
+  );
+}
+
+/** Die Entwürfe im Gmail eines Kontos (öffnet das richtige Konto über die Adresse). */
+export const gmailEntwuerfe = (von: string) => `https://mail.google.com/mail/u/${encodeURIComponent(von || '0')}/#drafts`;
+
+/**
+ * „Als Entwurf in Gmail (mit PDF)“ (26.10., Kevin: „die E-Mail so vorbereitet bei Google Mail — da verschicke ich sie“): legt die Mail mit dem PDF dieses
+ * Angebots als Entwurf im EIGENEN Gmail ab (POST /api/crm/angebot `gmail-entwurf`). Nichts wird gesendet; danach „Gmail öffnen“.
+ */
+function GmailEntwurfKnopf({ id, an, betreff, text, onText, knopf }: { id: string; an?: string; betreff: string; text: string; onText: (t: string) => void; knopf?: boolean }) {
+  const [von, setVon] = useState<string | null>(null);
+  if (von !== null) return <Knopf farbe={LEUCHT.gut} href={gmailEntwuerfe(von)}>Gmail öffnen ›</Knopf>;
+  return (
+    <Knopf leise={!!knopf} farbe={knopf ? undefined : LEUCHT.gut} onClick={async () => {
+      const r = await angebotPost({ aktion: 'gmail-entwurf', id, an: an ?? '', betreff, text });
+      onText(r.ok ? String(r.text ?? 'Entwurf liegt in Gmail.') : r.fehler ?? 'Gmail-Entwurf nicht angelegt.');
+      if (r.ok) setVon(String(r.von ?? ''));
+    }}>Als Entwurf in Gmail (mit PDF)</Knopf>
   );
 }

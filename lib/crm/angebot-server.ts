@@ -33,7 +33,7 @@ import { kanalStatus } from './recht';
 import {
   ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat, produktTexteFuer,
   stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
-  angebotHauptprodukt, dealProduktAnders, dealFrageText, dealTitelNachAngebot,
+  angebotHauptprodukt, dealProduktAnders, dealFrageText, dealTitelNachAngebot, angebotPlatzhalterFuellen, angebotPlatzhalterWerte,
 } from './angebote';
 import { alleGesellschaften, gesellschaftenName, gesellschaftLuecken, mitVorgaben, type Gesellschaft, type GesellschaftenDatei } from './gesellschaften';
 import { WEG } from '@/lib/wege';
@@ -42,6 +42,7 @@ import { absenderAus, empfaengerAus, angebotDokument } from './angebot-dokument'
 import { angebotPdf, type PdfLogo } from './angebot-pdf';
 import { ablegen, lesen } from '@/lib/dateien/ablage';
 import { neueKennung } from '@/lib/kennung';
+import { GoogleApiFehler } from '@/lib/google/http';
 
 export class AngebotFehler extends Error {
   constructor(msg: string, readonly status: number, readonly extra: Record<string, unknown> = {}) { super(msg); }
@@ -328,8 +329,12 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
   const empfaenger = empfaengerAus(k, r0.firma);
   // Ein geschlossener Deal am Entwurf (3.3) fällt weg, wenn kein offener an seine Stelle trat.
   const { dealId: _alterDeal, ...ohneDeal } = r0.a;
+  // Platzhalter (26.10.): „{{firma.name}}“ & Co. aus Produkttexten werden hier endgültig gefüllt — das gestellte Angebot und sein PDF tragen nie einen rohen Platzhalter.
+  const gefuellt = angebotPlatzhalterFuellen(ohneDeal, angebotPlatzhalterWerte({
+    anrede: k.anrede, vorname: k.vorname, nachname: k.nachname, firma: empfaenger.firma, nummer, titel: ohneDeal.titel, gueltigBis: ohneDeal.gueltigBis, absender: v.name, heute,
+  }));
   const gestellt: Angebot = {
-    ...ohneDeal, nummer, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}), status: 'gestellt', gestelltAm: jetztIso, gestelltVon: p.person,
+    ...gefuellt, nummer, ...(firmaId ? { firmaId } : {}), ...(dealId ? { dealId } : {}), status: 'gestellt', gestelltAm: jetztIso, gestelltVon: p.person,
     absender: absenderAus(g, { angebot: true }), empfaenger, geaendert: jetztIso, geaendertVon: p.person,
   };
   // b) Außerhalb der Sperre: das PDF (pdf-lib, Logo) und seine Prüfsumme — der teure Teil.
@@ -572,4 +577,53 @@ export function angebotAblehnen(p: { id: string; stand?: unknown; person: string
   if (!grund) return Promise.reject(new AngebotFehler('Abgelehnt braucht einen Grund (Verlustgrund) — nur so lernt die Pipeline.', 400));
   if (grund.length > ANGEBOT_GRENZEN.grund) return Promise.reject(new AngebotFehler(`Grund ist länger als ${ANGEBOT_GRENZEN.grund} Zeichen.`, 413));
   return antwortSetzen(p, 'abgelehnt', grund);
+}
+
+// ── Entwurf als PDF ansehen, Mail als Gmail-Entwurf (26.10., Kevin: „anzeigen und runterladen“ · „E-Mail vorbereitet bei Google Mail“) ─────────────
+
+/** Logo der Gesellschaft für das PDF (nur PNG/JPG aus der Ablage) — ohne Logo null. */
+async function logoLaden(haushalt: string, g: Gesellschaft): Promise<PdfLogo | null> {
+  if (!g.logoDateiId) return null;
+  const d = await lesen(haushalt, g.logoDateiId).catch(() => null);
+  return d && (d.eintrag.datei?.typ === 'image/png' || d.eintrag.datei?.typ === 'image/jpeg') ? { bytes: new Uint8Array(d.bytes), typ: d.eintrag.datei.typ } : null;
+}
+
+/**
+ * Den ENTWURF als PDF zum Ansehen (mit „ENTWURF — noch nicht gestellt“, ohne Nummer, IBAN maskiert): nichts wird gespeichert, keine Nummer vergeben.
+ * Platzhalter wie beim Stellen gefüllt — das PDF zeigt, was hinausginge.
+ */
+export async function angebotEntwurfPdf(p: { id: string; haushalt: string; jetzt?: Date }): Promise<{ bytes: Uint8Array; name: string }> {
+  const heute = localDay(p.jetzt ?? new Date());
+  const crm = await ladeCrm();
+  const a = (crm.angebote ?? []).find(x => x.id === p.id);
+  if (!a) throw new AngebotFehler('Angebot nicht gefunden.', 404);
+  if (!istEntwurf(a)) throw new AngebotFehler(`Schon gestellt (${a.nummer ?? a.status}) — das PDF liegt in der Ablage.`, 409);
+  const k = a.kontaktId ? ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(x => x.id === a.kontaktId) : undefined;
+  const firma = (a.firmaId ?? k?.firmaId) ? crm.firmen.find(f => f.id === (a.firmaId ?? k?.firmaId)) : undefined;
+  const g = (await gesellschaftenLaden(p.haushalt)).find(x => x.id === a.gesellschaft) ?? { id: a.gesellschaft };
+  const empfaenger = empfaengerAus(k, firma);
+  const gefuellt = angebotPlatzhalterFuellen(a, angebotPlatzhalterWerte({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, firma: empfaenger.firma, titel: a.titel, gueltigBis: a.gueltigBis, absender: mitVorgaben(g).name, heute }));
+  const bytes = await angebotPdf(angebotDokument(gefuellt, absenderAus(g, { angebot: true }), empfaenger, heute), { logo: await logoLaden(p.haushalt, g), erstellt: p.jetzt ?? new Date() });
+  return { bytes, name: `Angebot Entwurf – ${(gefuellt.titel || 'Angebot').replace(/[\\/:*?"<>|]/g, '-').slice(0, 80)}.pdf` };
+}
+
+/**
+ * Die Angebots-Mail mit dem PDF als ENTWURF im eigenen Gmail ablegen — nur ein gestelltes Angebot (das PDF ist der Beleg). Betreff/Text/Empfänger kommen
+ * aus der Vorschau der Person (ihr eigener Text, wie in der Inbox); der Anhang ist IMMER das PDF dieses Angebots aus der Ablage. Gesendet wird in Gmail.
+ */
+export async function angebotGmailEntwurf(p: { id: string; person: string; haushalt: string; an?: unknown; betreff?: unknown; text?: unknown }): Promise<{ von: string; an: string[] }> {
+  const a = ((await ladeCrm()).angebote ?? []).find(x => x.id === p.id);
+  if (!a) throw new AngebotFehler('Angebot nicht gefunden.', 404);
+  if (!a.nummer || !a.pdfDateiId || istEntwurf(a)) throw new AngebotFehler('Erst stellen — der Gmail-Entwurf trägt das fertige PDF.', 409);
+  const d = await lesen(p.haushalt, a.pdfDateiId).catch(() => null);
+  if (!d) throw new AngebotFehler('Das PDF des Angebots ist nicht lesbar — bitte „PDF laden“ prüfen.', 409);
+  const an = String(p.an ?? '').split(/[,;\s]+/).map(x => x.trim()).filter(Boolean).map(email => ({ email }));
+  const { gmailEntwurfAnlegen, SendenFehler } = await import('@/lib/gmail/senden');
+  try {
+    return await gmailEntwurfAnlegen({ person: p.person, an, betreff: String(p.betreff ?? ''), text: String(p.text ?? ''), anhaenge: [{ name: `Angebot ${a.nummer}.pdf`.replace(/[\\/]/g, '-'), typ: 'application/pdf', bytes: new Uint8Array(d.bytes) }] });
+  } catch (e) {
+    if (e instanceof SendenFehler) throw new AngebotFehler(e.message, e.status, { code: e.code });
+    if (e instanceof GoogleApiFehler) throw new AngebotFehler('Gmail ist gerade nicht erreichbar oder nicht verbunden — unter Inbox „Gmail verbinden“, dann noch einmal.', 409);
+    throw e;
+  }
 }

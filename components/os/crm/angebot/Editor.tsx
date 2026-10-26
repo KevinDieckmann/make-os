@@ -36,6 +36,7 @@ import {
   angebotSummen, angebotVorlage, mailVorlage, euroCent, plusTage, werktagePlus, produktAngebotFehlt, positionenAusDeal, aufwandLabel, istGesellschaft,
   NACHFASSEN_WERKTAGE, GUELTIG_VORGABE_TAGE, ZAHLUNGSZIEL_VORGABE_TAGE,
   angebotTitelAus, angebotTitelAutomatisch, angebotHauptprodukt, dealProduktAnders, dealFrageText, positionenErgaenzen, produktTexteFuer, produktTexteVon, positionNachLaufzeit,
+  angebotStandardtext, angebotLuecken, angebotPlatzhalterFuellen, angebotPlatzhalterWerte,
 } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { zustaendigFuer } from '@/lib/crm/person-anlegen';
@@ -45,21 +46,22 @@ import { angebotPost, letzteGesellschaft, merkeGesellschaft, pdfLaden, NUR_ENTWU
 import { Katalog, PositionZeile, freiePosition } from './Positionen';
 import { TerminVorschlag } from './TerminVorschlag';
 import { Vorschau, NUMMER_PLATZHALTER, type MailEntwurf } from './Vorschau';
+import { ZahlweiseWahl } from './Zahlweise';
 import { mailtoLink } from '@/lib/crm/angebote';
 
 // Der Absender kann im Editor offen sein (08.10., Sofort-Paket 3.2): ohne Deal, Merker oder eindeutige operative Business-Gesellschaft
 // wird er gewählt — nie mehr still die Selbstständigkeit. Solange er fehlt, speichert der Entwurf nicht (Hinweis oben, Warnung beim Verlassen).
-type Form = Pick<Angebot, 'kontaktId' | 'firmaId' | 'dealId' | 'mandatId' | 'titel' | 'positionen' | 'einleitung' | 'schluss' | 'gueltigBis' | 'zahlungszielTage' | 'titelVonHand' | 'dealWahl'> & { gesellschaft?: Gesellschaftskennung };
+type Form = Pick<Angebot, 'kontaktId' | 'firmaId' | 'dealId' | 'mandatId' | 'titel' | 'positionen' | 'einleitung' | 'schluss' | 'gueltigBis' | 'zahlungszielTage' | 'titelVonHand' | 'dealWahl' | 'zahlweise'> & { gesellschaft?: Gesellschaftskennung };
 type VonHand = { titel: boolean; einleitung: boolean; schluss: boolean };
 export interface Vorbelegung { kontaktId?: string | null; firmaId?: string | null; dealId?: string | null }
-export interface Gestellt { angebot: AngebotMitStand; pdf: { id: string; name: string }; mailto: string; hinweise: string[]; dealId?: string }
+export interface Gestellt { angebot: AngebotMitStand; pdf: { id: string; name: string }; mailto: string; hinweise: string[]; dealId?: string; /** Gmail-Entwurf (26.10.): angelegt (Absender) oder der Grund, warum nicht. */ gmail?: { ok: true; von: string; text: string } | { ok: false; text: string } }
 
 const GES_WAHL: WahlEintrag<Gesellschaftskennung>[] = KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label }));
 const kopf = { fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkDim } as const;
 const klein = { fontSize: TYP.bedien, color: C.inkLeise, lineHeight: 1.5 } as const;
-const nurForm = (a: Angebot): Form => ({ gesellschaft: a.gesellschaft, kontaktId: a.kontaktId, firmaId: a.firmaId, dealId: a.dealId, mandatId: a.mandatId, titel: a.titel, positionen: a.positionen, einleitung: a.einleitung, schluss: a.schluss, gueltigBis: a.gueltigBis, zahlungszielTage: a.zahlungszielTage, titelVonHand: a.titelVonHand, dealWahl: a.dealWahl });
+const nurForm = (a: Angebot): Form => ({ gesellschaft: a.gesellschaft, kontaktId: a.kontaktId, firmaId: a.firmaId, dealId: a.dealId, mandatId: a.mandatId, titel: a.titel, positionen: a.positionen, einleitung: a.einleitung, schluss: a.schluss, gueltigBis: a.gueltigBis, zahlungszielTage: a.zahlungszielTage, titelVonHand: a.titelVonHand, dealWahl: a.dealWahl, ...(a.zahlweise ? { zahlweise: a.zahlweise } : {}) });
 /** Felder, die der Entwurf leeren kann: fehlen sie in der Form, gehen sie als `null` an den Server (JSON verwirft `undefined` — der alte Wert bliebe). */
-const LEERBAR = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'titelVonHand', 'dealWahl'] as const;
+const LEERBAR = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'titelVonHand', 'dealWahl', 'zahlweise'] as const;
 const mitLeeren = (f: Form): Record<string, unknown> => ({ ...f, ...Object.fromEntries(LEERBAR.filter(x => f[x] === undefined).map(x => [x, null])) });
 
 /** Offene Deals einer Person bzw. ihrer Firma — jüngste zuerst. */
@@ -126,6 +128,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
   const [ansicht, setAnsicht] = useState<'bearbeiten' | 'vorschau'>('bearbeiten');
   const [mail, setMail] = useState<MailEntwurf>({ an: '', betreff: '', text: '' });
   const [nachfassen, setNachfassen] = useState(() => werktagePlus(heute, NACHFASSEN_WERKTAGE));
+  /** Mail mit PDF nach dem Stellen als Entwurf ins eigene Gmail (26.10., Kevin) — Vorgabe an. */
+  const [gmailEntwurf, setGmailEntwurf] = useState(true);
 
   // ── Automatisch speichern: nacheinander, mit dem Stand der letzten Antwort ──
   const formRef = useRef(form); formRef.current = form;
@@ -230,6 +234,18 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     if (Object.keys(teil).length) { setForm(f => ({ ...f, ...teil })); offen.current = true; } // gespeichert mit der nächsten Änderung bzw. vor der Vorschau
   }, [k?.anrede, k?.vorname, k?.nachname, form.titel, form.gueltigBis, vonHand.einleitung, vonHand.schluss, texteProdukt, firma?.name, heute]);
 
+  // Platzhalter aus Produkttexten füllen (26.10., Kevin: „die Daten müssen da sauber reinlaufen“): sobald Kontakt/Firma bekannt sind, steht in Positionen,
+  // Titel und Texten der echte Name statt „{{firma.name}}“. Nur bekannte Werte — was noch fehlt (z. B. die Nummer), bleibt bis zum Stellen stehen.
+  const platzhalterWerte = useMemo(() => angebotPlatzhalterWerte({ anrede: k?.anrede, vorname: k?.vorname, nachname: k?.nachname, firma: firma?.name ?? k?.firma, titel: '', gueltigBis: form.gueltigBis, absender: v?.name, heute }), [k?.anrede, k?.vorname, k?.nachname, k?.firma, firma?.name, form.gueltigBis, v?.name, heute]);
+  useEffect(() => {
+    const f = formRef.current;
+    const neu = angebotPlatzhalterFuellen(f, { ...platzhalterWerte, ...(f.titel && !f.titel.includes('{{') ? { 'angebot.titel': f.titel } : {}) });
+    if (neu === f) return;
+    setForm(neu); offen.current = true; setStatus('wartet');
+    if (uhr.current) clearTimeout(uhr.current);
+    uhr.current = setTimeout(() => { void speichernJetzt(); }, 700);
+  }, [platzhalterWerte, form.positionen, form.einleitung, form.schluss, form.titel, speichernJetzt]);
+
   function kontaktWaehlen(neu: Kontakt | null) {
     if (!neu) { aendern({ kontaktId: undefined, firmaId: undefined, dealId: undefined, dealWahl: undefined }); return; }
     const d = offeneDeals(crm.stand.chancen, neu, neu.firmaId)[0];
@@ -271,7 +287,9 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
 
   // ── Vorschau ──
   const empf = empfaengerAus(k, firma);
-  const dokEntwurf = angebotDokument({ ...form, id, status: 'entwurf', version: start?.version ?? 1, angelegt: '', geaendert: '' } as Angebot, absenderAus(g ?? { id: form.gesellschaft ?? GES_WAHL[0].id }, { angebot: true }), empf, heute);
+  // Vorschau wie das spätere PDF: Platzhalter gefüllt (die Nummer kommt erst beim Stellen).
+  const luecken2 = angebotLuecken(form);
+  const dokEntwurf = angebotDokument({ ...angebotPlatzhalterFuellen(form, platzhalterWerte), id, status: 'entwurf', version: start?.version ?? 1, angelegt: '', geaendert: '' } as Angebot, absenderAus(g ?? { id: form.gesellschaft ?? GES_WAHL[0].id }, { angebot: true }), empf, heute);
   const ampel = useMemo(() => {
     if (!k) return { hinweise: ['Kein Empfänger gewählt.'] };
     const ctx = { hatMandat: crm.stand.mandate.some(m => m.status === 'aktiv' && m.kontaktIds.includes(k.id)), hatChance: crm.stand.chancen.some(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(k.id)) };
@@ -308,13 +326,19 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
     daten.uebernehmen(r.angebot);
     if (form.gesellschaft) merkeGesellschaft(form.gesellschaft);
     pdfLaden(pdf.id, pdf.name);
-    setTimeout(() => { window.location.href = link; }, 500);
+    // 26.10. (Kevin): die Mail mit dem PDF als Entwurf ins eigene Gmail — dort wird gesendet. Das Mail-Programm öffnet sich nicht mehr von selbst.
+    let gmail: Gestellt['gmail'];
+    if (gmailEntwurf) {
+      const g2 = await angebotPost({ aktion: 'gmail-entwurf', id, an: mail.an.trim(), betreff: ein(mail.betreff), text: ein(mail.text) });
+      gmail = g2.ok ? { ok: true, von: String(g2.von ?? ''), text: String(g2.text ?? 'Entwurf liegt in Gmail.') } : { ok: false, text: g2.fehler ?? 'Gmail-Entwurf nicht angelegt.' };
+    }
     void api.laden(true);
-    onGestellt({ angebot: r.angebot, pdf, mailto: link, hinweise: (r.hinweise as string[] | undefined) ?? [], ...(typeof r.dealId === 'string' ? { dealId: r.dealId } : {}) });
+    onGestellt({ angebot: r.angebot, pdf, mailto: link, hinweise: (r.hinweise as string[] | undefined) ?? [], ...(typeof r.dealId === 'string' ? { dealId: r.dealId } : {}), ...(gmail ? { gmail } : {}) });
   }
 
   if (ansicht === 'vorschau') {
-    return <Vorschau dok={dokEntwurf} logoUrl={logoUrl} mail={mail} setMail={setMail} ampel={ampel} luecken={luecken} absenderWeg={absenderWeg} nachfassen={nachfassen} setNachfassen={setNachfassen} onZurueck={() => setAnsicht('bearbeiten')} onSenden={senden} meldung={meldung} nurEntwurf={daten.nurEntwuerfe ? NUR_ENTWURF : null} />;
+    return <Vorschau dok={dokEntwurf} logoUrl={logoUrl} mail={mail} setMail={setMail} ampel={ampel} luecken={luecken} absenderWeg={absenderWeg} nachfassen={nachfassen} setNachfassen={setNachfassen} onZurueck={() => setAnsicht('bearbeiten')} onSenden={senden} meldung={meldung} nurEntwurf={daten.nurEntwuerfe ? NUR_ENTWURF : null}
+      angebotId={id} gmailEntwurf={gmailEntwurf} setGmailEntwurf={setGmailEntwurf} luecken2={luecken2} />;
   }
 
   const statusText = { ruhig: 'noch nicht gespeichert', wartet: 'Änderung …', speichert: 'speichert …', gespeichert: 'Entwurf gespeichert', fehler: 'nicht gespeichert' }[status];
@@ -397,6 +421,8 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
           {!positionen.length && <div style={{ ...klein, padding: '10px 0' }}>Produkt oben anklicken — oder eine freie Position.</div>}
           <button onClick={() => setzePos([...positionen, freiePosition(ku)])} style={{ marginTop: 8, background: 'none', border: 'none', color: C.aktiv, cursor: 'pointer', fontSize: 13, padding: 0 }}>+ freie Position</button>
         </div>
+        {/* 26.10. (Kevin): Zahlung anpassen — Raten, Anzahlung + Rest oder ein eigener Satz; steht so im PDF. */}
+        {positionen.length > 0 && <ZahlweiseWahl wert={form.zahlweise} positionen={positionen} ku={ku} onAendern={z => aendern({ zahlweise: z ?? undefined })} />}
       </Karte>
 
       <Karte i={2}>
@@ -408,10 +434,26 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
             <input inputMode="numeric" value={String(form.zahlungszielTage)} onChange={e => { const n = Math.round(Number(e.target.value)); if (e.target.value === '' || (Number.isFinite(n) && n >= 0 && n <= 180)) aendern({ zahlungszielTage: e.target.value === '' ? 0 : n }); }} style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', width: 70, textAlign: 'right' }} aria-label="Zahlungsziel in Tagen" /> Tage</label>
           {ku && <Chip farbe={C.inkDim}>Kleinunternehmer · ohne USt</Chip>}
         </div>
+        {/* 26.10. (Kevin): Standardtext wählbar — wenn es keinen sauberen Prozess/kein Gespräch gab, der neutrale Satz statt des Produkttexts. */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>
+          Text:
+          <button type="button" onClick={() => { setVonHand(h => ({ ...h, einleitung: true, schluss: true })); aendern(angebotStandardtext({ vorname: k?.vorname, nachname: k?.nachname, gueltigBis: form.gueltigBis })); }}
+            style={{ background: 'none', border: `1px solid ${C.linie}`, borderRadius: 999, color: form.einleitung === angebotStandardtext({ vorname: k?.vorname, nachname: k?.nachname, gueltigBis: form.gueltigBis }).einleitung ? LEUCHT.gut : C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: '5px 12px' }}>Standardtext (unverbindliches Angebot)</button>
+          {texteProdukt?.einleitung && <button type="button" onClick={() => { setVonHand(h => ({ ...h, einleitung: false, schluss: false })); aendern(angebotVorlage(vorlageEingabe, texteProdukt)); }}
+            style={{ background: 'none', border: `1px solid ${C.linie}`, borderRadius: 999, color: C.aktiv, cursor: 'pointer', fontSize: TYP.bedien, padding: '5px 12px' }}>Text des Produkts</button>}
+        </div>
         <TextFeld label="Einleitung" wert={form.einleitung} vonHand={vonHand.einleitung} onAendern={t => { setVonHand(h => ({ ...h, einleitung: true })); aendern({ einleitung: t }); }}
           onVorlage={() => { setVonHand(h => ({ ...h, einleitung: false })); aendern({ einleitung: angebotVorlage(vorlageEingabe, texteProdukt).einleitung }); }} />
         <TextFeld label="Schluss" wert={form.schluss} vonHand={vonHand.schluss} onAendern={t => { setVonHand(h => ({ ...h, schluss: true })); aendern({ schluss: t }); }}
           onVorlage={() => { setVonHand(h => ({ ...h, schluss: false })); aendern({ schluss: angebotVorlage(vorlageEingabe, texteProdukt).schluss }); }} />
+        {luecken2.length > 0 && (
+          <div style={{ marginTop: 10 }}><Hinweis art="achtung" rolle="status" titel="Noch Lücken im Text">{luecken2.join(', ')}: dort steht noch „[von Hand: …]“ bzw. ein Platzhalter — ausfüllen oder oben den Standardtext nehmen. So ginge es sonst ins PDF.</Hinweis></div>
+        )}
+        {/* 26.10. (Kevin): unter Rahmen das Ganze ansehen und herunterladen. */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
+          <Knopf farbe={LEUCHT.gut} aus={!daten.nurEntwuerfe && fehlt.length > 0} onClick={zurVorschau}>Angebot ansehen &amp; herunterladen ›</Knopf>
+          {!daten.nurEntwuerfe && fehlt.length > 0 && <span style={klein}>fehlt: {fehlt.join(', ')}</span>}
+        </div>
       </Karte>
 
       {/* Summenleiste (08.10., Woche 2 · 3.14): über den Baustein der Hauptaktion (.ui-aktion) — am Handy unten mitlaufend und über der
@@ -430,7 +472,7 @@ export function Editor({ api, daten, id, start, vorbelegung, onGespeichert, onGe
             ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 180px', minWidth: 0 }}>{NUR_ENTWURF}</span>
             : fehlt.length > 0 && <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 180px', minWidth: 0 }}>fehlt: {fehlt.join(', ')}</span>}
           {/* Rolle „nur Business“ (13.10.): nur die Vorschau — gestellt wird durch Inhaber oder volle Mitglieder (Server: 403). */}
-          <Knopf farbe={LEUCHT.gut} aus={!daten.nurEntwuerfe && fehlt.length > 0} onClick={zurVorschau}>{daten.nurEntwuerfe ? 'Vorschau ›' : 'Mail versenden ›'}</Knopf>
+          <Knopf farbe={LEUCHT.gut} aus={!daten.nurEntwuerfe && fehlt.length > 0} onClick={zurVorschau}>{daten.nurEntwuerfe ? 'Vorschau ›' : 'Ansehen & PDF ›'}</Knopf>
         </div>
       </Aktionsleiste>
     </div>
