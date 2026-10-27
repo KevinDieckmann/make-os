@@ -455,6 +455,76 @@ html.menue-offen { overflow: hidden; }
 .js .tafel.erscheint .faden { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.6s var(--ease) .4s; }
 .js .tafel.erscheint.sichtbar .faden { stroke-dashoffset: 0; }
 .js .tafel.erscheint.sichtbar .faden:nth-of-type(2n) { transition-delay: .8s; }
+/* ── Wissen, Fakten, Begriffe, Preise (27.10.): Lesen und Nachschlagen, ruhig wie der Rest ── */
+.blick-band { padding: 0 0 var(--abschnitt); }
+.blick { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); column-gap: var(--rinne); border-top: 1px solid var(--tinte); }
+.blick div { min-width: 0; padding: 20px 0; border-bottom: 1px solid var(--haar); }
+.blick dt { font-size: .76rem; font-weight: 600; letter-spacing: .14em; line-height: 1.4; text-transform: uppercase; color: var(--tinte-leise); }
+.blick dd { margin-top: 8px; color: var(--tinte); line-height: 1.5; }
+.kurz-gesagt { max-width: 52rem; margin-bottom: 40px; padding: 22px 26px; border-left: 3px solid var(--akzent-papier); border-radius: 0 4px 4px 0; background: var(--papier-hell); }
+.kurz-gesagt .etikett { margin-bottom: 8px; color: var(--akzent-papier); }
+.kurz-gesagt p:not(.etikett) { font-size: var(--t-lead); line-height: 1.55; color: var(--tinte); }
+
+.wissen-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 40px var(--rinne); }
+.wissen-liste li { min-width: 0; border-top: 1px solid var(--tinte); }
+.wissen-liste a { display: flex; flex-direction: column; gap: 12px; height: 100%; padding-top: 22px; }
+.wissen-liste h3 { font-size: var(--t-unter); line-height: 1.25; transition: color .2s ease; }
+.wissen-liste a:hover h3 { text-decoration: underline; text-decoration-color: var(--akzent-papier); text-decoration-thickness: 1.5px; text-underline-offset: .2em; }
+.wissen-liste .textlink { margin-top: auto; }
+.wissen-liste a:hover .pfeil { translate: 4px 0; }
+* + .knoepfe.erscheint { margin-top: 40px; }
+
+.artikel-held h1 { font-size: clamp(2.1rem, 4.4vw, 3.7rem); }
+.autor-zeile { margin-top: 26px; font-size: .95rem; color: var(--tinte-leise); }
+.artikel-raster { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 8fr); gap: 40px var(--rinne); align-items: start; }
+.inhaltsangabe { position: sticky; top: calc(var(--kopf) + 28px); padding-top: 22px; border-top: 1px solid var(--tinte); }
+.inhaltsangabe ol { margin-top: 12px; counter-reset: ia; }
+.inhaltsangabe li { counter-increment: ia; }
+.inhaltsangabe a { display: grid; grid-template-columns: 30px minmax(0, 1fr); padding: 7px 0; font-size: .93rem; line-height: 1.4; color: var(--tinte-text); transition: color .2s ease; }
+.inhaltsangabe a::before { content: counter(ia, decimal-leading-zero); padding-top: .08em; font-size: .8rem; font-weight: 600; color: var(--akzent-papier); }
+.inhaltsangabe a:hover { color: var(--tinte); }
+.artikel { min-width: 0; max-width: 46rem; }
+.artikel-teil + .artikel-teil { margin-top: 60px; }
+.artikel h2 { margin-bottom: 18px; font-size: clamp(1.45rem, 2.2vw, 1.95rem); scroll-margin-top: calc(var(--kopf) + 24px); }
+.artikel p:not(.etikett) { font-size: 1.08rem; line-height: 1.7; }
+.artikel p:not(.etikett) + p { margin-top: 1em; }
+.artikel .punkte, .artikel .schritte, .artikel .zahl, .artikel .tabelle-figur, .artikel .zeitplan, .artikel-vergleich { margin: 26px 0; }
+.artikel .zahl + p, .artikel .punkte + p { margin-top: 0; }
+.artikel-vergleich .gruppe-titel { margin-top: 0; }
+.schritte { border-top: 1px solid var(--tinte); }
+.schritte li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 12px; padding: 18px 0; border-bottom: 1px solid var(--haar); }
+.schritte .nr { padding-top: .2em; font-weight: 600; }
+.schritte h3 { font-size: 1.12rem; }
+.schritte p:not(.etikett) { margin-top: 6px; font-size: 1rem; }
+.tabelle-figur figcaption { margin-top: 12px; }
+.tabelle-titel, .artikel p.tabelle-titel { margin-bottom: 12px; font-size: .76rem; font-weight: 600; letter-spacing: .14em; line-height: 1.4; text-transform: uppercase; color: var(--akzent-papier); }
+.quellen { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--haar); }
+.quellen h2 { margin-bottom: 8px; font-size: 1rem; letter-spacing: 0; }
+.quellen ol { padding-left: 1.3em; list-style: decimal; }
+.quellen li { padding: 4px 0; font-size: .95rem; }
+.quellen a { text-decoration: underline; text-decoration-color: var(--haar-mittel); text-underline-offset: .2em; }
+.quellen a:hover { text-decoration-color: var(--akzent-papier); }
+
+.az { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 34px; }
+.az a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 14px; border: 1px solid var(--haar-mittel); border-radius: 999px; font-weight: 600; color: var(--tinte); transition: border-color .2s ease, background-color .2s ease; }
+.az a:hover { border-color: var(--tinte); background: rgba(17, 19, 22, .04); }
+.begriffe { border-top: 1px solid var(--tinte); }
+.begriff-gruppe { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 10fr); gap: 0 var(--rinne); padding: 26px 0; border-bottom: 1px solid var(--haar); }
+.buchstabe { font-size: var(--t-titel); line-height: 1; color: var(--akzent-papier); scroll-margin-top: calc(var(--kopf) + 24px); }
+.begriff-gruppe dl > div { padding: 2px 0 20px; scroll-margin-top: calc(var(--kopf) + 24px); }
+.begriff-gruppe dl > div + div { padding-top: 20px; border-top: 1px solid var(--haar); }
+.begriff-gruppe dl > div:last-child { padding-bottom: 0; }
+.begriff-gruppe dl > div:target dt { text-decoration: underline; text-decoration-color: var(--akzent-papier); text-decoration-thickness: 2px; text-underline-offset: .25em; }
+.begriff-gruppe dt { font-size: 1.12rem; font-weight: 600; color: var(--tinte); }
+.begriff-gruppe dd p { max-width: 44rem; margin-top: 6px; }
+.begriff-gruppe dd .textlink { margin-top: 2px; }
+
+.preis-tabelle { table-layout: fixed; }
+.preis-tabelle thead th:nth-child(1) { width: 38%; } .preis-tabelle thead th:nth-child(2) { width: 22%; }
+.vergleich.text.preis-tabelle tbody th { width: auto; }
+.tabelle-huelle + .gruppe-titel, .tabelle-huelle + .tabelle-huelle { margin-top: 40px; }
+.preis-tabelle td:nth-child(2) { font-weight: 600; color: var(--tinte); white-space: nowrap; }
+
 @media (prefers-reduced-motion: reduce) {
   .js .erscheint, .js .weg.erscheint .station { opacity: 1; translate: none; transition: none; }
   .js .weg.erscheint::after { transform: none; transition: none; }
@@ -516,6 +586,17 @@ html.menue-offen { overflow: hidden; }
   .fuss-raster { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fragen details p { padding-right: 0; }
   .check-knopf { right: 12px; bottom: 12px; }
+}
+@media (max-width: 1020px) {
+  .artikel-raster { grid-template-columns: minmax(0, 1fr); }
+  .inhaltsangabe { position: static; }
+}
+@media (max-width: 820px) {
+  .begriff-gruppe { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .buchstabe { font-size: 1.9rem; }
+  .kurz-gesagt { padding: 18px 20px; }
+  .preis-tabelle td:nth-child(2) { white-space: normal; }
+  .artikel p:not(.etikett):not(.tabelle-titel) { font-size: 1.04rem; }
 }
 @media (max-width: 420px) {
   .knoepfe:not(.senkrecht) { flex-direction: column; align-items: stretch; }

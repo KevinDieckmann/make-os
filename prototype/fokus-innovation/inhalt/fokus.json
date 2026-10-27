@@ -98,6 +98,12 @@
       "text": "weltweit bei der Roboterdichte in der Industrie: 449 Roboter je 10.000 Beschäftigte.",
       "quelle": "IFR, Roboterdichte, 08.04.2026, S. 2",
       "link": "https://www.ifr.org/downloads/press_docs/DE-2026-APRIL-_8-IFR_PRESSMELDUNG_Roboterdichte-deutsch.pdf"
+    },
+    "ki_nutzung": {
+      "wert": "26 %",
+      "text": "der Unternehmen ab 10 Beschäftigten nutzen KI. Bei 10 bis 49 Beschäftigten sind es 23 %, ab 250 Beschäftigten 57 %.",
+      "quelle": "Destatis, KI in Unternehmen, 2025",
+      "link": "https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-unternehmen-kuenstliche-intelligenz.html"
     }
   },
   "bereiche": {
@@ -137,7 +143,8 @@
       "auch": {
         "titel": "Kommunikation und Netzwerk",
         "text": "Sichtbar wird, wer auch dort auftaucht, wo die Richtigen sind. Wir bringen dich in unser Netzwerk, an den Tisch unserer Abende und in Gespräche, die zu dir passen. Was du dafür brauchst, besprechen wir im Gespräch."
-      }
+      },
+      "kurz": "Wir machen dein Angebot in Sekunden verständlich: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen und Erklärvideos ab {preis:erklaervideo}, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns."
     },
     "vertrieb": {
       "nr": "02",
@@ -190,7 +197,8 @@
           "titel": "Mandat",
           "text": "Head of Sales oder Chief Sales Officer"
         }
-      ]
+      ],
+      "kurz": "Wir bauen deinen Vertrieb auf, bis dein Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit übernehmen wir als Head of Sales für {preis:head-of-sales} oder als Chief Sales Officer für {preis:cso} netto im Monat, jeweils für 6 oder 12 Monate."
     },
     "innovation": {
       "nr": "03",
@@ -226,13 +234,14 @@
           "text": "Weniger Handarbeit, verbundene Daten und Abläufe, die ohne den Chef laufen."
         }
       ],
-      "mehr_als_ki": "Innovation heißt auch Automatisierung, Robotik, neue Software und die Daten dahinter. Bei der Automatisierung gehört Deutschland zur Spitze. Diesen Schwung wollen wir auch in die Büros bringen.",
+      "mehr_als_ki": "Innovation heißt auch Automatisierung, Robotik, neue Software und die Daten dahinter. Bei der Roboterdichte in der Industrie liegt Deutschland weltweit auf Platz 3. Diesen Schwung wollen wir auch in die Büros bringen.",
       "brain": {
         "titel": "KI-Brain",
         "stand": "In Vorbereitung",
         "text": "KI ist nur so gut wie die Datenbasis. Wir bauen mit dir auf, was sie braucht: Wissen, Abläufe und Daten sauber an einem Ort, damit KI im Alltag wirklich funktioniert.",
         "betreff": "Interesse: KI-Brain"
-      }
+      },
+      "kurz": "Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im 90-Tage-Umsetzungsgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte ab {ab:umsetzungsprojekte} netto, jeweils mit Festpreis und klarem Umfang vorab, starten in Kürze."
     }
   },
   "abend": {
@@ -409,12 +418,13 @@
   "fragen_zuschnitt": {
     "hinweis": "Antworten aus den gemeinsamen Fragen, auf den Bereich zugeschnitten (nur gekürzt, nichts Neues).",
     "sichtbarkeit": {
-      "gibt-es-rabatt": "Homepages, Videos und Positionierung haben Festpreise. Skonto gibt es darauf nicht.",
+      "gibt-es-rabatt": "Auf Tagesworkshop, Positionierung, Homepages und Videos gibt es kein Skonto.",
       "kann-ich-vorzeitig-kuendigen": "Die Video Serie läuft mindestens 3 Monate, danach ist sie monatlich kündbar."
     },
     "vertrieb": {
       "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn du die volle Laufzeit vorab zahlst.",
-      "kann-ich-vorzeitig-kuendigen": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommst du dafür eine Zwischenbilanz mit Zahlen und Fahrplan."
+      "kann-ich-vorzeitig-kuendigen": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommst du dafür eine Zwischenbilanz mit Zahlen und Fahrplan.",
+      "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Du bekommst ein Protokoll mit den Top 5 nach Aufwand und Wirkung und einen 90-Tage-Plan, eine Sache setzen wir am Tag direkt um. Startest du danach ein Mandat, rechnen wir den Workshop voll an."
     }
   },
   "produkt_anpassung": {
@@ -445,5 +455,160 @@
     "Förderantrag",
     "Support",
     "Pitch-Deck"
-  ]
+  ],
+  "fakten": [
+    [
+      "Was wir sind",
+      "Eine Agentur für Sichtbarkeit, Vertrieb und Innovation, die selbst mit umsetzt."
+    ],
+    [
+      "Sitz",
+      "Berlin"
+    ],
+    [
+      "Für wen",
+      "Innovative Start-ups, Unternehmer mit 5 bis 50 Mitarbeitenden und Mittelstand, der Neues einführt"
+    ],
+    [
+      "Leistungen",
+      "Positionierung, Homepages und Videos; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovations-Check zu KI und Automatisierung, Umsetzungsprojekte starten in Kürze; Abende und Netzwerk"
+    ],
+    [
+      "Einstieg",
+      "Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose 90-Tage-Umsetzungsgespräch"
+    ],
+    [
+      "Gründer",
+      "Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)"
+    ],
+    [
+      "Preise",
+      "Fest und offen auf jeder Angebotsseite, alle netto zuzüglich Umsatzsteuer"
+    ],
+    [
+      "Arbeitsgebiet",
+      "Deutschland und Europa, auf Deutsch"
+    ]
+  ],
+  "seo": {
+    "hinweis": "Suchmaschinen und KI-Suchen (27.10.2026). „oeffentlich“ bleibt false, bis Kevin die Seite für Google freigibt: dann robots, robots.txt und der Kopf X-Robots-Tag im Caddyfile öffnen. Titel ≤ 65 Zeichen, Beschreibungen 120–165 Zeichen (der Prüfer meldet Abweichungen). Platzhalter wie in wissen.json.",
+    "oeffentlich": false,
+    "stand": "2026-10-27",
+    "same_as": [],
+    "indexnow": "9e808dbefe5dc092174a334135f7d894",
+    "wissen_gebiete": [
+      "Vertriebsaufbau",
+      "Vertriebsleitung auf Zeit",
+      "Go-to-Market",
+      "Positionierung",
+      "Webdesign",
+      "Erklärvideos",
+      "KI-Einführung im Mittelstand",
+      "Automatisierung",
+      "Netzwerk-Abende"
+    ],
+    "seiten": {
+      "start": {
+        "titel": "Fokus Innovation · Agentur für Sichtbarkeit, Vertrieb und KI",
+        "beschreibung": "Agentur aus Berlin für Start-ups, Unternehmer und Mittelstand: Wir machen dein Produkt sichtbar, bauen deinen Vertrieb auf und führen KI ein. Mit festen Preisen."
+      },
+      "sichtbarkeit": {
+        "titel": "Positionierung, Homepage und Erklärvideo · Fokus Innovation",
+        "beschreibung": "Sichtbarkeit mit festen Preisen und Lieferzeiten: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing} in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo}."
+      },
+      "vertrieb": {
+        "titel": "Vertrieb: Tagesworkshop, Head of Sales und CSO · Fokus Innovation",
+        "beschreibung": "Wir bauen deinen Vertrieb auf, bis dein Team selbst abschließt: Tagesworkshop für {preis:tagesworkshop}, Head of Sales auf Zeit für {preis:head-of-sales} im Monat, CSO für {preis:cso}."
+      },
+      "innovation": {
+        "titel": "KI und Automatisierung einführen · Fokus Innovation",
+        "beschreibung": "Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start mit dem kostenlosen Innovations-Check in rund 10 Minuten."
+      },
+      "tagesworkshop": {
+        "titel": "Tagesworkshop Vertrieb und Markteintritt · Fokus Innovation",
+        "beschreibung": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten umsetzen. {preis:tagesworkshop} netto, beim Mandat angerechnet."
+      },
+      "head-of-sales": {
+        "titel": "Head of Sales auf Zeit · Fokus Innovation",
+        "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen deinen Vertrieb auf, machen deinem Team vor und übergeben ein System. {preis:head-of-sales} netto im Monat."
+      },
+      "cso": {
+        "titel": "Chief Sales Officer auf Zeit (CSO) · Fokus Innovation",
+        "beschreibung": "Vertriebsleitung mit Strategie, Preisen, Teamaufbau und Recruiting für 6 oder 12 Monate. {preis:cso} netto im Monat, Wechsel vom Head of Sales jederzeit."
+      },
+      "homepage-landing": {
+        "titel": "Homepage Landing: One-Pager in 10 Werktagen · Fokus Innovation",
+        "beschreibung": "Eine Seite, die in fünf Sekunden klar ist: One-Pager mit Texten von uns, SEO-Grundlagen und Anfragen direkt ins CRM. {preis:homepage-landing} netto, in 10 Werktagen."
+      },
+      "homepage-story": {
+        "titel": "Homepage Story: Website mit Unterseiten · Fokus Innovation",
+        "beschreibung": "Deine Geschichte als Website: Startseite mit 3D-Effekt und drei Unterseiten, Texte von uns, fertig in 15 Werktagen. {preis:homepage-story} netto, einmalig."
+      },
+      "homepage-cinematic": {
+        "titel": "Homepage Cinematic: Website mit 3D-Szenen · Fokus Innovation",
+        "beschreibung": "Startseite mit 3D-Szenen, fünf Unterseiten, Story-Workshop und Erklärvideo inklusive, fertig in 25 Werktagen. {preis:homepage-cinematic} netto, einmalig."
+      },
+      "erklaervideo": {
+        "titel": "Erklärvideo in 10 Werktagen · Fokus Innovation",
+        "beschreibung": "Dein Angebot in 90 Sekunden verstanden: Erklärvideo in deiner CI, ohne Dreh vor Ort, in drei Bildformaten mit Untertiteln. {preis:erklaervideo} netto, in 10 Werktagen."
+      },
+      "videostory": {
+        "titel": "Videostory: die Geschichte deiner Firma · Fokus Innovation",
+        "beschreibung": "Die Geschichte deiner Firma in 90 Sekunden, ehrlich und in deiner CI, mit KI-Stimme oder deiner eigenen. {preis:videostory} netto, fertig in 15 Werktagen."
+      },
+      "video-serie": {
+        "titel": "Video Serie: zwei Videos im Monat · Fokus Innovation",
+        "beschreibung": "Jeden Monat zwei neue Videos nach Redaktionsplan: Du planst 30 Minuten mit, Skript und Schnitt machen wir. {preis:video-serie} netto im Monat, mindestens 3 Monate."
+      },
+      "positionierung": {
+        "titel": "Positionierung entwickeln in drei Tiefen · Fokus Innovation",
+        "beschreibung": "Positionierung S, M oder L: von fünf klaren Sätzen bis zur Markenstory, mit KI vorbereitet und im Workshop mit Kevin geschärft. Ab {ab:positionierung} netto."
+      },
+      "umsetzungsprojekte": {
+        "titel": "Umsetzungsprojekte: KI und Software einführen · Fokus Innovation",
+        "beschreibung": "KI und Software einführen, bis sie im Alltag genutzt werden: Projekte mit Festpreis und klarem Umfang ab {ab:umsetzungsprojekte}. Die Projekte starten in Kürze."
+      },
+      "innovations-check": {
+        "titel": "Innovations-Check: kostenlos in 10 Minuten · Fokus Innovation",
+        "beschreibung": "Wo steht dein Unternehmen bei Strategie, KI, Automatisierung, Daten und Team? Der kostenlose Innovations-Check zeigt es in rund 10 Minuten, mit Branchenvergleich."
+      },
+      "abend": {
+        "titel": "Fokus Innovation · Abend: Menschen an einem langen Tisch",
+        "beschreibung": "Kuratiert und auf Einladung: Gründer, Mittelständler und Macher aus KI und Technik an einem langen Tisch. Für Gäste kostenlos, Gastgeberin ist Malin."
+      },
+      "ueber-uns": {
+        "titel": "Über uns: Kevin Dieckmann und Malin · Fokus Innovation",
+        "beschreibung": "Warum es Fokus Innovation gibt, wer dahintersteht und woran du uns messen kannst: Werte, Arbeitsweise und was wir vorher im Vertrieb aufgebaut haben."
+      },
+      "kontakt": {
+        "titel": "Kontakt · Fokus Innovation",
+        "beschreibung": "So erreichst du Fokus Innovation in Berlin: per E-Mail, über den kostenlosen Innovations-Check oder mit einer Anfrage für ein erstes Gespräch."
+      },
+      "impressum": {
+        "titel": "Impressum · Fokus Innovation",
+        "beschreibung": "Impressum von Fokus Innovation: Anbieter nach § 5 DDG, Vertretung, Registereintrag, Kontakt und Vertragspartner für unsere Leistungen."
+      },
+      "datenschutz": {
+        "titel": "Datenschutz · Fokus Innovation",
+        "beschreibung": "Datenschutzhinweis von Fokus Innovation: keine Cookies, kein Tracking, Hosting in Deutschland. Was wir verarbeiten, wenn Sie den Check nutzen oder uns schreiben."
+      },
+      "wissen": {
+        "titel": "Wissen: Vertrieb, Sichtbarkeit und KI · Fokus Innovation",
+        "beschreibung": "Ratgeber aus unserer Arbeit: Vertrieb aufbauen, Head of Sales auf Zeit, Positionierung, Homepage, Erklärvideo und KI im Mittelstand. Praktisch und mit Quellen."
+      },
+      "preise": {
+        "titel": "Preise: alle Angebote im Überblick · Fokus Innovation",
+        "beschreibung": "Alle Preise von Fokus Innovation auf einer Seite: Positionierung, Homepages, Videos, Tagesworkshop, Head of Sales und CSO. Netto, mit Laufzeit und Lieferzeit."
+      },
+      "fragen": {
+        "titel": "Häufige Fragen · Fokus Innovation",
+        "beschreibung": "Antworten auf die häufigsten Fragen zu Innovations-Check, Vertrieb, Homepages, Videos, Preisen und Verträgen bei Fokus Innovation in Berlin."
+      },
+      "begriffe": {
+        "titel": "Begriffe von A bis Z: Vertrieb, Marketing, KI · Fokus Innovation",
+        "beschreibung": "Was ist ein Sales Playbook, eine Pipeline oder Lead-Scoring? Kurze, klare Erklärungen der Begriffe aus Vertrieb, Sichtbarkeit und der Einführung von KI."
+      }
+    }
+  },
+  "preise_nebenkosten": "Head of Sales und CSO: Termine vor Ort nach Absprache, Reisekosten gegen Beleg. Beim CSO trägst du Stellenanzeigen, Recruiting-Tools, Probetag-Vergütung und Werbebudget direkt. Homepages: Hosting und Domain laufen über dich, die laufenden Kosten zahlst du direkt an deinen Anbieter."
 }

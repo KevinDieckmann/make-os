@@ -1,0 +1,796 @@
+{
+  "hinweis": "Ratgeber und Begriffe der Website (27.10.2026). Alles aus den Produktblättern, dem Positionierungs-Doc und den dort als „Website, geprüft“ markierten Zahlen. Platzhalter {preis:id}, {ab:id}, {zusatz:id} setzt der Generator aus makeinnovation/inhalt/inhalt.json ein, damit Preise nur an einer Stelle stehen. Rechenbeispiele sind als solche gekennzeichnet.",
+  "artikel": [
+    {
+      "id": "vertrieb-aufbauen",
+      "bereich": "vertrieb",
+      "titel": "Vertrieb aufbauen: vom Gründer zum System",
+      "seo_titel": "Vertrieb aufbauen im Start-up: fünf Schritte zum System",
+      "beschreibung": "So baust du Vertrieb auf, der ohne den Gründer läuft: Zielgruppe, Ansprache, Prozess im CRM, Kennzahlen und ein trainiertes Team, in dieser Reihenfolge.",
+      "veroeffentlicht": "2026-10-27",
+      "aktualisiert": "2026-10-27",
+      "kurz": "Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein Team, das trainiert ist. Die Reihenfolge zählt. Wer mit einem neuen Werkzeug oder dem ersten Vertriebler beginnt, baut ohne Fundament.",
+      "abschnitte": [
+        {
+          "h": "Warum Vertrieb so oft am Gründer hängt",
+          "absaetze": [
+            "Am Anfang verkauft der Gründer selbst. Das ist richtig, denn niemand kennt das Produkt besser. Schwierig wird es, wenn es so bleibt: Dann hängt jeder Abschluss an einer Person, Anfragen bleiben liegen, Angebote gehen zu spät raus, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.",
+            "Damit sind Gründer nicht allein. Das zeigt der Deutsche Startup Monitor:"
+          ],
+          "beleg": "startup"
+        },
+        {
+          "h": "Schritt 1: Die Zielgruppe schärfen",
+          "absaetze": [
+            "Beschreibe so genau wie möglich, wer kauft: Branche, Größe, die Rolle der Person, die entscheidet, und den Anlass, zu dem sie sucht. „Der Mittelstand“ ist keine Zielgruppe. „Geschäftsführer von Handwerksbetrieben mit 10 bis 50 Mitarbeitenden, die neue Kunden außerhalb ihrer Region suchen“ ist eine.",
+            "Aus der Beschreibung werden wenige Personas und eine einfache Einteilung deiner Kontakte in A, B und C. A-Kontakte passen am besten und bekommen zuerst Zeit."
+          ]
+        },
+        {
+          "h": "Schritt 2: Ansprache und Gesprächsleitfäden",
+          "absaetze": [
+            "Formuliere deine Botschaft in einem Satz: was du für wen löst. Daraus entsteht ein kurzer Pitch für das erste Gespräch.",
+            "Leitfäden geben jedem Gespräch eine Richtung: Welche Fragen klären Bedarf, Budget, Entscheidung und Zeitpunkt? Dazu gehört eine Sammlung der häufigsten Einwände mit guten Antworten. Ein Leitfaden ist kein Text zum Ablesen, sondern ein Geländer."
+          ]
+        },
+        {
+          "h": "Schritt 3: Der Prozess im CRM",
+          "absaetze": [
+            "Jede Anfrage bekommt eine Stufe, eine nächste Aktion und ein Datum. So geht nichts verloren, und jeder im Team sieht, wo ein Kunde steht. Welches CRM du nutzt, ist zweitrangig. Wichtig ist, dass alle es gleich nutzen."
+          ],
+          "punkte": [
+            "Stufen vom Erstkontakt bis zum Abschluss",
+            "Pflichtfelder für alles, was später ausgewertet wird",
+            "eine Wiedervorlage für jede offene Anfrage",
+            "ein fester Standard für Gesprächsnotizen",
+            "ein Ziel für die Zeit bis zum Angebot, zum Beispiel 24 Stunden"
+          ]
+        },
+        {
+          "h": "Schritt 4: Wenige Kennzahlen, jede Woche",
+          "absaetze": [
+            "Rechne vom Umsatzziel rückwärts: Wie viele Abschlüsse brauchst du, wie viele Angebote führen dahin, wie viele Termine braucht es dafür? Daraus werden Wochenziele, die jeder versteht.",
+            "Ein kurzer Wochenreport jeden Freitag zeigt, ob der Plan hält. Er braucht nicht mehr als die Zahlen des Trichters und einen Satz dazu, was nächste Woche anders läuft."
+          ],
+          "tabelle": {
+            "titel": "Rechenbeispiel mit angenommenen Werten",
+            "kopf": [
+              "Schritt",
+              "Rechnung",
+              "Ergebnis"
+            ],
+            "zeilen": [
+              [
+                "Umsatzziel im Jahr",
+                "Beispielwert",
+                "240.000 €"
+              ],
+              [
+                "Abschlüsse",
+                "240.000 € ÷ 8.000 € je Auftrag",
+                "30"
+              ],
+              [
+                "Angebote",
+                "jedes dritte Angebot wird ein Auftrag",
+                "90"
+              ],
+              [
+                "Termine",
+                "aus jedem zweiten Termin wird ein Angebot",
+                "180"
+              ],
+              [
+                "Je Woche",
+                "180 Termine ÷ 45 Arbeitswochen",
+                "4 Termine"
+              ]
+            ],
+            "hinweis": "Alle Werte sind angenommen. Deine eigenen Quoten kennst du nach einigen Wochen mit sauberen Zahlen im CRM."
+          }
+        },
+        {
+          "h": "Schritt 5: Das Team befähigen",
+          "absaetze": [
+            "Neue Vertriebler bringen wenig, wenn sie bei null anfangen. Mit Zielgruppe, Leitfäden und Prozess steigen sie in ein System ein: eine Einarbeitung in festen Stationen, Rollenspiele vor dem ersten echten Gespräch und gemeinsame Nachbesprechungen echter Gespräche.",
+            "Am Ende steht ein Sales Playbook: das Nachschlagewerk, in dem alles steht, was im Vertrieb gilt. So bleibt das Wissen im Unternehmen, auch wenn Menschen wechseln."
+          ]
+        },
+        {
+          "h": "Häufige Fehler",
+          "punkte": [
+            "Erst das Werkzeug kaufen, dann über den Prozess nachdenken.",
+            "Den ersten Vertriebler einstellen, bevor es ein System gibt, in das er einsteigen kann.",
+            "Zwanzig Kennzahlen messen und keine davon besprechen.",
+            "Alle ansprechen statt der Kontakte, die am besten passen.",
+            "Angebote ohne Wiedervorlage verschicken und auf eine Antwort warten."
+          ]
+        },
+        {
+          "h": "Selbst aufbauen oder Hilfe holen?",
+          "absaetze": [
+            "Vieles davon kannst du selbst anstoßen. Hilfe lohnt sich, wenn der Gründer nicht mehr zum Produkt kommt, wenn neue Vertriebler nicht ankommen oder wenn seit Monaten niemand sagen kann, wie viele Gespräche es für das Ziel braucht.",
+            "Für einen ersten Blick reicht ein Tag: Im Tagesworkshop finden wir die größten Hebel und setzen den ersten direkt um. Soll jemand den Vertrieb aufbauen und führen, bis dein Team selbst abschließt, ist ein Head of Sales auf Zeit der nächste Schritt."
+          ]
+        }
+      ],
+      "fragen": [
+        {
+          "f": "Wann sollte ein Start-up den ersten Vertriebler einstellen?",
+          "a": "Sobald es ein System gibt, in das er einsteigen kann: eine klare Zielgruppe, Leitfäden und einen Prozess im CRM. Ohne dieses Fundament verbringt ein neuer Vertriebler die ersten Monate damit, es selbst zu suchen."
+        },
+        {
+          "f": "Welches CRM brauche ich für den Anfang?",
+          "a": "Eines, das dein Team jeden Tag nutzt. Wichtiger als das Werkzeug sind klare Stufen, Pflichtfelder und Wiedervorlagen. Fang einfach an und erweitere erst, wenn die Grundlagen sitzen."
+        },
+        {
+          "f": "Wie viele Kennzahlen braucht ein kleiner Vertrieb?",
+          "a": "Wenige: Erstkontakte, Termine, Angebote und Abschlüsse je Woche, dazu die Quoten zwischen den Stufen. Wichtiger als die Zahl der Kennzahlen ist, dass sie jede Woche besprochen werden."
+        },
+        {
+          "f": "Wie lange dauert es, bis Vertrieb planbar läuft?",
+          "a": "Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales läuft ab Monat 3 jedes Gespräch nach Prozess im CRM, und jeden Freitag kommt der Wochenreport. Ziel bis Monat 6 ist, dass dein Team ohne den Gründer abschließt. Wir schulden die Leistung, nicht den Umsatz."
+        }
+      ],
+      "angebote": [
+        "tagesworkshop",
+        "head-of-sales"
+      ],
+      "weiter": [
+        "head-of-sales-auf-zeit",
+        "positionierung-in-fuenf-saetzen"
+      ]
+    },
+    {
+      "id": "head-of-sales-auf-zeit",
+      "bereich": "vertrieb",
+      "titel": "Head of Sales auf Zeit: was er macht und wann er sich lohnt",
+      "seo_titel": "Head of Sales auf Zeit: Aufgaben, Ablauf und Kosten",
+      "beschreibung": "Was ein Head of Sales auf Zeit in sechs Monaten aufbaut, wann er sich gegenüber einer festen Einstellung lohnt und was das Mandat bei Fokus Innovation kostet.",
+      "veroeffentlicht": "2026-10-27",
+      "aktualisiert": "2026-10-27",
+      "kurz": "Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit deinem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei Fokus Innovation kostet das Mandat {preis:head-of-sales} netto im Monat, bei 6 oder 12 Monaten Laufzeit.",
+      "abschnitte": [
+        {
+          "h": "Was ein Head of Sales auf Zeit macht",
+          "absaetze": [
+            "Er übernimmt die Rolle der Vertriebsleitung, ohne dauerhaft angestellt zu sein. Er bleibt nicht bei Empfehlungen: Er baut das System, setzt es mit deinem Team um und macht Gespräche vor, bis dein Team sie selbst führt. Teamführung, Recruiting und Strategie gehören zum Chief Sales Officer."
+          ],
+          "punkte": [
+            "Fundament: Zielgruppe, Botschaft, Salesprozess im CRM, Gesprächsleitfäden und Antworten auf Einwände",
+            "Leadgenerierung: Bestandskunden reaktivieren, Kanäle ans CRM anbinden, Empfehlungen, Erstansprache",
+            "Prozesse: Wiedervorlagen, Angebot in 24 Stunden, ein fester Vertriebsrhythmus",
+            "Kennzahlen: Rückwärtsrechnung vom Umsatzziel, Wochenreport jeden Freitag",
+            "Befähigen: Einarbeitung, Rollenspiele, Nachbesprechung echter Gespräche"
+          ]
+        },
+        {
+          "h": "Wie die sechs Monate aussehen",
+          "absaetze": [
+            "So läuft unser Mandat als Head of Sales. Jeder Monat hat ein Ergebnis, das du sehen kannst."
+          ],
+          "zeitplan_von": "head-of-sales"
+        },
+        {
+          "h": "Auf Zeit oder fest einstellen?",
+          "absaetze": [
+            "Beides hat seinen Platz. Eine feste Vertriebsleitung lohnt sich, wenn das System steht und es vor allem um Führung und Wachstum geht. Auf Zeit lohnt sich, wenn das System erst entstehen muss."
+          ],
+          "tabelle": {
+            "titel": "Head of Sales auf Zeit und feste Vertriebsleitung im Vergleich",
+            "kopf": [
+              "",
+              "Head of Sales auf Zeit",
+              "Feste Vertriebsleitung"
+            ],
+            "zeilen": [
+              [
+                "Start",
+                "nach dem Kick-off",
+                "nach Suche, Auswahl und Kündigungsfrist"
+              ],
+              [
+                "Bindung",
+                "6 oder 12 Monate, einmalig zum Ende des dritten Monats mit 30 Tagen Frist kündbar",
+                "unbefristeter Arbeitsvertrag"
+              ],
+              [
+                "Kosten",
+                "fester Monatspreis, Reisekosten nach Absprache gegen Beleg",
+                "Gehalt, Nebenkosten, Suche und Einarbeitung"
+              ],
+              [
+                "Ziel",
+                "System aufbauen und übergeben",
+                "Vertrieb dauerhaft führen"
+              ],
+              [
+                "Danach",
+                "Playbook, Leitfäden und Prozesse bleiben bei dir",
+                "die Leitung bleibt im Unternehmen"
+              ]
+            ]
+          }
+        },
+        {
+          "h": "Head of Sales oder Chief Sales Officer?",
+          "faq": "was-ist-der-unterschied-zwischen-head",
+          "absaetze": [
+            "Den Chief Sales Officer wählen Firmen, die ein Vertriebsteam aufbauen oder vergrößern, einen neuen Markt angehen oder mit Partnern wachsen wollen. Wechselst du vom Head of Sales zum CSO, gilt der neue Preis ab dem Folgemonat."
+          ]
+        },
+        {
+          "h": "Woran du ein gutes Mandat erkennst",
+          "punkte": [
+            "Es gibt feste Ergebnisse mit Terminen, nicht nur Stunden.",
+            "Dein Team führt die Gespräche, die Vertriebsleitung auf Zeit macht vor.",
+            "Die Zahlen kommen jede Woche, nicht erst am Ende.",
+            "Vorlagen, Leitfäden und Playbook darfst du danach dauerhaft nutzen.",
+            "Es gibt einen frühen Punkt, an dem du aussteigen kannst."
+          ]
+        },
+        {
+          "h": "Was es bei uns kostet",
+          "absaetze": [
+            "Der Head of Sales kostet {preis:head-of-sales} netto im Monat bei 6 oder 12 Monaten Laufzeit. Der Tagesworkshop für {preis:tagesworkshop} wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Wir übernehmen höchstens zwei Vertriebsmandate gleichzeitig, damit jedes die Zeit bekommt, die es braucht."
+          ]
+        }
+      ],
+      "fragen": [
+        {
+          "aus": "head-of-sales",
+          "frage": "Brauche ich schon ein CRM?"
+        },
+        {
+          "aus": "head-of-sales",
+          "frage": "Wer führt die Verkaufsgespräche?"
+        },
+        {
+          "aus": "head-of-sales",
+          "frage": "Wie viel Zeit kostet mich das?"
+        },
+        {
+          "aus": "head-of-sales",
+          "frage": "Was, wenn es nach 3 Monaten nicht passt?"
+        },
+        {
+          "aus": "head-of-sales",
+          "frage": "Gehören Skripte und Playbooks danach mir?"
+        },
+        {
+          "f": "Für wen passt ein Head of Sales auf Zeit nicht?",
+          "a": "Für Firmen ohne fertiges Produkt, Konzerne mit Einkaufsabteilung, reine Kaltakquise-Telefonteams und Network-Marketing."
+        }
+      ],
+      "angebote": [
+        "head-of-sales",
+        "cso",
+        "tagesworkshop"
+      ],
+      "weiter": [
+        "vertrieb-aufbauen",
+        "ki-im-mittelstand-einfuehren"
+      ]
+    },
+    {
+      "id": "positionierung-in-fuenf-saetzen",
+      "bereich": "sichtbarkeit",
+      "titel": "Positionierung: in fünf Sätzen sagen, was du machst",
+      "seo_titel": "Positionierung entwickeln: in fünf Sätzen klar werden",
+      "beschreibung": "Fünf Fragen, die eine klare Positionierung beantwortet, ein einfacher Test für deine Startseite und die häufigsten Fehler. Für Gründer und Unternehmer.",
+      "veroeffentlicht": "2026-10-27",
+      "aktualisiert": "2026-10-27",
+      "kurz": "Eine klare Positionierung beantwortet fünf Fragen in je einem Satz: Für wen bist du da? Welches Problem löst du? Wie löst du es? Was unterscheidet dich? Woran sieht man, dass es stimmt? Wenn diese Sätze stehen, werden Website, Präsentation und Verkaufsgespräch leichter, weil alle dieselbe Geschichte erzählen.",
+      "abschnitte": [
+        {
+          "h": "Warum die Positionierung vor der Website kommt",
+          "absaetze": [
+            "Viele beginnen mit dem Sichtbaren: Logo, Farben, eine neue Website. Wenn aber unklar ist, für wen du da bist und warum man ausgerechnet dich wählen sollte, sieht auch die neue Seite gut aus und bleibt trotzdem stumm. Besucher gehen, bevor sie verstanden haben, was du machst.",
+            "Die Positionierung ist die Arbeit davor. Sie entscheidet, welche Worte auf der Website stehen, was im Video gesagt wird und wie das erste Verkaufsgespräch beginnt."
+          ]
+        },
+        {
+          "h": "Die fünf Sätze",
+          "schritte": [
+            {
+              "titel": "Für wen",
+              "text": "Beschreibe die Menschen, für die du am meisten bewirkst. Je genauer, desto besser. Wer alle anspricht, erreicht niemanden richtig."
+            },
+            {
+              "titel": "Das Problem",
+              "text": "Nenne das Problem in den Worten deiner Kunden, nicht in deinen. Was kostet es sie heute: Zeit, Geld, Nerven?"
+            },
+            {
+              "titel": "Die Lösung",
+              "text": "Sag in einem Satz, was du tust. Ohne Fachwörter, so, dass es auch jemand außerhalb deiner Branche versteht."
+            },
+            {
+              "titel": "Der Unterschied",
+              "text": "Was machst du anders als die naheliegende Alternative? Dazu zählt auch „wir machen es selbst“ oder „wir machen erst mal nichts“."
+            },
+            {
+              "titel": "Der Beleg",
+              "text": "Woran sieht man, dass es stimmt? Zahlen mit Quelle, echte Ergebnisse, ein klarer Ablauf, feste Preise."
+            }
+          ]
+        },
+        {
+          "h": "Aus fünf Sätzen wird einer",
+          "absaetze": [
+            "Wenn die fünf Sätze stehen, verdichtest du sie: zu einem Satz für die Startseite und zu wenigen Worten für die Unterzeile. Unser eigener Satz lautet „Wir bringen Neues aus Deutschland und Europa nach vorne.“ Die Kurzform: „Sichtbar, verkauft, verbunden.“",
+            "Der Claim ist noch kürzer und trägt die Haltung. Unserer heißt „Innovation braucht Fokus.“"
+          ]
+        },
+        {
+          "h": "Der Fünf-Sekunden-Test",
+          "absaetze": [
+            "Zeig deine Startseite jemandem aus deiner Zielgruppe für fünf Sekunden. Dann frag: Was macht diese Firma? Für wen? Und was würdest du als Nächstes tun? Kommen drei klare Antworten, sitzt die Botschaft. Kommen Schulterzucken oder Fachwörter, liegt die Arbeit noch in den fünf Sätzen, nicht im Design."
+          ]
+        },
+        {
+          "h": "Häufige Fehler",
+          "punkte": [
+            "Für alle da sein wollen.",
+            "Eigenschaften aufzählen, statt zu sagen, was sich für den Kunden ändert.",
+            "Fachwörter, die nur die eigene Branche versteht.",
+            "Große Worte ohne Beleg.",
+            "Die Positionierung einmal schreiben und nie mit echten Kunden prüfen."
+          ]
+        },
+        {
+          "h": "Wie wir dabei arbeiten",
+          "absaetze": [
+            "Unsere Positionierung gibt es in drei Tiefen. S liefert deine Positionierung in fünf Sätzen, in einem Satz und in sieben Wörtern und prüft sie gegen zehn Grundsätze. M ergänzt Kundeninterviews, den Blick auf den Wettbewerb und einen Elevator Pitch. L reicht bis zur Markenstory mit Claim und Textbausteinen. Jede Stufe ist mit KI vorbereitet und endet in einem Workshop mit Kevin. S kostet 1.990 €, M 2.990 €, L 4.990 €, jeweils netto und einmalig."
+          ]
+        }
+      ],
+      "fragen": [
+        {
+          "f": "Wie lange dauert der Workshop?",
+          "a": "Zwei Stunden per Video bei S, ein halber Tag bei M, ein ganzer Tag bei L."
+        },
+        {
+          "f": "Was kostet eine Positionierung?",
+          "a": "S 1.990 €, M 2.990 €, L 4.990 €, jeweils netto und einmalig."
+        },
+        {
+          "f": "Brauche ich eine Positionierung, bevor ich eine Website baue?",
+          "a": "Ja, zumindest die fünf Sätze. Sonst schreibst du die Texte der Website ohne Richtung und musst sie später neu schreiben."
+        },
+        {
+          "f": "Was ist der Unterschied zwischen Positionierung und Claim?",
+          "a": "Die Positionierung beschreibt, für wen du was löst und warum man dich wählt. Der Claim ist ein kurzer Satz, der diese Haltung trägt."
+        }
+      ],
+      "angebote": [
+        "positionierung",
+        "homepage-landing"
+      ],
+      "weiter": [
+        "homepage-fuenf-sekunden",
+        "erklaervideo-fuer-unternehmen"
+      ]
+    },
+    {
+      "id": "homepage-fuenf-sekunden",
+      "bereich": "sichtbarkeit",
+      "titel": "Homepage: was Besucher in fünf Sekunden verstehen müssen",
+      "seo_titel": "B2B-Homepage: was Besucher in 5 Sekunden verstehen müssen",
+      "beschreibung": "Was auf die erste Ansicht einer Unternehmens-Homepage gehört, wie Belege Vertrauen schaffen und warum Handy, Ladezeit und Suche von Anfang an mitgedacht werden.",
+      "veroeffentlicht": "2026-10-27",
+      "aktualisiert": "2026-10-27",
+      "kurz": "Eine Homepage muss in fünf Sekunden drei Fragen beantworten: Was machst du? Für wen? Was soll ich als Nächstes tun? Danach zählen Belege statt Behauptungen, eine ruhige Gestaltung, die auch auf dem Handy funktioniert, und eine kurze Ladezeit. Erst die Botschaft, dann das Design.",
+      "abschnitte": [
+        {
+          "h": "Die erste Ansicht",
+          "absaetze": [
+            "Was ohne Scrollen zu sehen ist, entscheidet, ob jemand bleibt. Dort gehören drei Dinge hin:"
+          ],
+          "punkte": [
+            "ein Satz, der sagt, was du für wen tust",
+            "eine Unterzeile, die den Nutzen konkret macht",
+            "ein Hauptknopf mit einem klaren nächsten Schritt"
+          ],
+          "absaetze_danach": [
+            "Alles andere darf weiter unten stehen. Ein zweiter Knopf ist in Ordnung, fünf sind zu viele."
+          ]
+        },
+        {
+          "h": "Belege statt Behauptungen",
+          "absaetze": [
+            "Vertrauen entsteht durch Dinge, die man prüfen kann: ein klarer Ablauf, feste Preise oder zumindest ein Preisrahmen, Zahlen mit Quelle und Stimmen echter Kunden, die zugestimmt haben. Eine Reihe von Logos ohne Zusammenhang überzeugt weniger als ein ehrlicher Satz darüber, wie du arbeitest."
+          ]
+        },
+        {
+          "h": "Das Handy zuerst",
+          "absaetze": [
+            "Viele sehen deine Seite zuerst auf dem Handy, oft zwischen zwei Terminen. Plane deshalb für den kleinen Bildschirm: kurze Sätze, große Knöpfe, keine Tabellen, die man seitlich schieben muss, und Kontakt mit einem Fingertipp."
+          ]
+        },
+        {
+          "h": "Schnell laden",
+          "absaetze": [
+            "Jede Sekunde Warten kostet Aufmerksamkeit. Kleine Bilder in modernen Formaten, Schriften vom eigenen Server statt von fremden Diensten und kein unnötiges Skript machen den Unterschied. Bei unseren Homepage-Paketen ist eine Ladezeit unter drei Sekunden auf dem Handy Teil der Leistung."
+          ]
+        },
+        {
+          "h": "Gefunden werden, auch von KI-Suchen",
+          "absaetze": [
+            "Eine Seite, die niemand findet, kann nicht überzeugen. Dazu gehören ein klarer Titel und eine Beschreibung für jede Unterseite, saubere Überschriften, strukturierte Daten für Suchmaschinen und die Anmeldung in der Google Search Console.",
+            "Auch KI-Assistenten werden nach Anbietern gefragt. Für sie gilt dasselbe wie für Menschen: Eine Seite hilft, wenn sie eine Frage direkt beantwortet, mit kurzen, klaren Sätzen, Fragen mit Antworten, Fakten mit Quelle und Preisen, die man nicht erst erfragen muss."
+          ]
+        },
+        {
+          "h": "Welches Paket passt",
+          "absaetze": [
+            "Unsere drei Homepage-Pakete unterscheiden sich vor allem im Umfang, in den Effekten und darin, wer die Geschichte liefert."
+          ],
+          "vergleich_von": "sichtbarkeit:0"
+        }
+      ],
+      "fragen": [
+        {
+          "f": "Was kostet eine Homepage bei euch?",
+          "a": "Landing {preis:homepage-landing}, Story {preis:homepage-story}, Cinematic {preis:homepage-cinematic}, jeweils netto und einmalig. Hosting und Domain laufen über dich, die laufenden Kosten zahlst du direkt an deinen Anbieter."
+        },
+        {
+          "aus": "homepage-story",
+          "frage": "Wie schnell ist meine Seite online?"
+        },
+        {
+          "aus": "homepage-story",
+          "frage": "Muss ich die Texte selbst schreiben?"
+        },
+        {
+          "f": "Was ist nicht enthalten?",
+          "a": "Shops, Mitgliederbereiche, Buchungssysteme, mehrsprachige Seiten, ein Fotoshooting oder Dreh vor Ort, Anzeigen und laufende Pflege."
+        },
+        {
+          "faq": "kann-ich-spaeter-auf-ein-groesseres"
+        }
+      ],
+      "angebote": [
+        "homepage-landing",
+        "homepage-story",
+        "homepage-cinematic"
+      ],
+      "weiter": [
+        "positionierung-in-fuenf-saetzen",
+        "erklaervideo-fuer-unternehmen"
+      ]
+    },
+    {
+      "id": "erklaervideo-fuer-unternehmen",
+      "bereich": "sichtbarkeit",
+      "titel": "Erklärvideo für Unternehmen: Aufbau, Länge und Ablauf",
+      "seo_titel": "Erklärvideo für Unternehmen: Aufbau, Länge und Ablauf",
+      "beschreibung": "Wann sich ein Erklärvideo lohnt, wie ein gutes in 60 bis 90 Sekunden aufgebaut ist und wie es ohne Dreh vor Ort in zehn Werktagen entsteht.",
+      "veroeffentlicht": "2026-10-27",
+      "aktualisiert": "2026-10-27",
+      "kurz": "Ein Erklärvideo lohnt sich, wenn man dein Angebot in 90 Sekunden besser versteht als in drei Absätzen Text. Ein gutes folgt einem einfachen Bogen: Problem, Lösung, Ablauf, nächster Schritt. Einen Dreh vor Ort braucht es nicht: Bei uns entsteht es aus KI-Szenen, deinem Material und einer KI-Stimme oder Untertiteln, in zehn Werktagen ab vollständigem Formular und Zahlungseingang.",
+      "abschnitte": [
+        {
+          "h": "Wann sich ein Erklärvideo lohnt",
+          "punkte": [
+            "Dein Angebot ist neu oder braucht eine Erklärung.",
+            "Besucher verlassen die Seite, bevor sie verstanden haben, was du machst.",
+            "Im Vertrieb erklärst du immer wieder dasselbe.",
+            "Du willst auf LinkedIn oder in Anzeigen etwas zeigen, statt nur zu schreiben."
+          ]
+        },
+        {
+          "h": "Der Aufbau in 60 bis 90 Sekunden",
+          "schritte": [
+            {
+              "titel": "Das Problem",
+              "text": "Die ersten Sekunden zeigen ein Problem, das deine Kunden kennen. Wer sich darin wiederfindet, schaut weiter."
+            },
+            {
+              "titel": "Die Lösung",
+              "text": "Ein Satz dazu, was du anders machst. Kein Katalog aller Funktionen."
+            },
+            {
+              "titel": "Der Ablauf",
+              "text": "Wie die Zusammenarbeit läuft, in drei Schritten. Das nimmt die Unsicherheit vor dem ersten Kontakt."
+            },
+            {
+              "titel": "Der nächste Schritt",
+              "text": "Ein klarer Abschluss: Termin, Check oder Anfrage. Nur einer."
+            }
+          ]
+        },
+        {
+          "h": "Kurz ist schwerer als lang",
+          "absaetze": [
+            "Neunzig Sekunden zwingen zur Auswahl. Was nicht in einen Satz passt, gehört nicht ins Video, sondern ins Gespräch danach. Deshalb beginnt jedes Video bei uns mit einem Skript, das du freigibst, bevor ein Bild entsteht."
+          ]
+        },
+        {
+          "h": "Ohne Dreh vor Ort",
+          "absaetze": [
+            "Ein klassischer Dreh braucht Team, Termin und Schnitt. Wir arbeiten mit KI-Szenen, deinem eigenen Material und einer KI-Stimme oder Untertiteln. Wo es nötig ist, kennzeichnen wir KI-Inhalte. So läuft ein Erklärvideo bei uns ab:"
+          ],
+          "zeitplan_von": "erklaervideo"
+        },
+        {
+          "h": "Wo das Video wirkt",
+          "punkte": [
+            "auf der Startseite, gleich unter der ersten Ansicht",
+            "im Vertrieb, als Link nach dem ersten Gespräch",
+            "auf LinkedIn im Hochformat",
+            "in Anzeigen, denn die Nutzungsrechte schließen sie ein"
+          ]
+        }
+      ],
+      "fragen": [
+        {
+          "f": "Was kostet ein Erklärvideo?",
+          "a": "{preis:erklaervideo} netto, einmalig, fertig in 10 Werktagen ab vollständigem Formular und Zahlungseingang."
+        },
+        {
+          "aus": "erklaervideo",
+          "frage": "Muss ich vor die Kamera?"
+        },
+        {
+          "aus": "erklaervideo",
+          "frage": "Darf ich das Video überall nutzen?"
+        },
+        {
+          "faq": "sind-eure-videos-ki-generiert"
+        }
+      ],
+      "angebote": [
+        "erklaervideo",
+        "videostory",
+        "video-serie"
+      ],
+      "weiter": [
+        "homepage-fuenf-sekunden",
+        "positionierung-in-fuenf-saetzen"
+      ]
+    },
+    {
+      "id": "ki-im-mittelstand-einfuehren",
+      "bereich": "innovation",
+      "titel": "KI im Mittelstand einführen: erst die Daten, dann die Werkzeuge",
+      "seo_titel": "KI im Mittelstand einführen: fünf Schritte in den Alltag",
+      "beschreibung": "Wo der Mittelstand bei KI steht, warum es so oft an den Daten hakt und wie KI in fünf Schritten im Alltag ankommt. Mit Zahlen von Destatis, KfW und IFR.",
+      "veroeffentlicht": "2026-10-27",
+      "aktualisiert": "2026-10-27",
+      "kurz": "KI kommt im Alltag an, wenn drei Dinge zusammenkommen: ein klarer Anwendungsfall mit messbarem Nutzen, eine Datenbasis, auf die das Werkzeug zugreifen kann, und ein Team, das damit arbeitet. Wir gehen dafür in fünf Schritten vor: Stand messen, drei Hebel wählen, Daten ordnen, im Ablauf einführen, Team befähigen und messen.",
+      "abschnitte": [
+        {
+          "h": "Wo der Mittelstand steht",
+          "absaetze": [
+            "Das Statistische Bundesamt misst, wie viele Unternehmen KI nutzen:"
+          ],
+          "beleg": "ki_nutzung",
+          "absaetze_danach": [
+            "Dieselbe Lücke zeigt sich bei Neuem insgesamt. Die KfW misst, wie viele Mittelständler Innovationsprojekte abschließen:"
+          ],
+          "beleg_danach": "mittelstand"
+        },
+        {
+          "h": "Woran es hakt",
+          "absaetze": [
+            "Fast die Hälfte der Unternehmen, die KI erwogen und nicht eingeführt haben, nennt Probleme mit der Verfügbarkeit oder Qualität ihrer Daten. Das lässt sich klären, bevor ein Werkzeug gekauft wird."
+          ],
+          "beleg": "daten"
+        },
+        {
+          "h": "In fünf Schritten in den Alltag",
+          "schritte": [
+            {
+              "titel": "Stand messen",
+              "text": "Bevor du Werkzeuge kaufst, schau, wo du stehst: Strategie, KI im Alltag, Automatisierung, Daten und Team. Genau das misst unser kostenloser Innovations-Check in rund 10 Minuten."
+            },
+            {
+              "titel": "Drei Hebel wählen",
+              "text": "Wähle die drei Anwendungsfälle mit der größten Wirkung und einem klaren Nutzen: weniger Handarbeit, schnellere Antworten, weniger Fehler. Mehr als drei auf einmal versanden."
+            },
+            {
+              "titel": "Datenbasis ordnen",
+              "text": "Lege fest, wo Wissen, Abläufe und Daten liegen, die das Werkzeug braucht, und bring sie an einen Ort. Ohne diese Arbeit bleibt KI eine Spielerei."
+            },
+            {
+              "titel": "Im Ablauf einführen",
+              "text": "Führe das Werkzeug in einem echten Ablauf ein, mit einer Person, die es verantwortet, und einem Termin, an dem ihr messt. Nicht daneben, sondern mittendrin."
+            },
+            {
+              "titel": "Team befähigen und messen",
+              "text": "Zeig dem Team, wie es mit dem Werkzeug arbeitet, sammle Fragen und miss nach einigen Wochen, ob der Nutzen eintritt. Dann folgt der nächste Hebel."
+            }
+          ]
+        },
+        {
+          "h": "Innovation ist mehr als KI",
+          "absaetze": [
+            "KI ist ein Werkzeug unter mehreren. Automatisierung, Robotik und neue Software gehören genauso dazu. Bei der Roboterdichte in der Industrie liegt Deutschland weltweit auf Platz 3:"
+          ],
+          "beleg": "roboter",
+          "absaetze_danach": [
+            "Diesen Schwung wollen wir auch in die Büros bringen: in Angebote, Anfragen, Abläufe und das Wissen eines Unternehmens."
+          ]
+        },
+        {
+          "h": "Was nicht funktioniert",
+          "punkte": [
+            "Werkzeuge abonnieren, ohne einen Anwendungsfall zu kennen.",
+            "Ein Pilotprojekt starten, für das niemand verantwortlich ist.",
+            "Erst die Technik wählen, dann fragen, welche Daten sie braucht.",
+            "Das Team erst am Ende einbinden.",
+            "KI im Unternehmen ohne klare Regeln für den Einsatz nutzen."
+          ]
+        },
+        {
+          "h": "So arbeiten wir",
+          "absaetze": [
+            "Der Innovations-Check zeigt deine Stufe und den Vergleich mit deiner Branche. Im kostenlosen 90-Tage-Umsetzungsgespräch legen wir deine Top 3 fest. In Umsetzungsprojekten bauen wir sie mit dir, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
+          ]
+        }
+      ],
+      "fragen": [
+        {
+          "f": "Womit sollte ein Mittelständler bei KI anfangen?",
+          "a": "Mit einem ehrlichen Blick auf den eigenen Stand. Danach wählst du die drei Anwendungsfälle mit dem größten Nutzen und führst sie nacheinander ein: Erst wenn der erste im Alltag läuft, kommt der nächste."
+        },
+        {
+          "f": "Welche Daten braucht KI im Unternehmen?",
+          "a": "Die Daten des Ablaufs, den sie unterstützen soll, zum Beispiel Kundenanfragen, Angebote, Produktwissen oder Arbeitsanweisungen. Wichtig ist, dass sie aktuell, vollständig und an einem Ort zugänglich sind."
+        },
+        {
+          "f": "Was kostet es, KI einzuführen?",
+          "a": "Der Innovations-Check und das 90-Tage-Umsetzungsgespräch sind kostenlos. Umsetzungsprojekte beginnen ab {ab:umsetzungsprojekte} netto, mit Festpreis und klarem Umfang vorab, und starten in Kürze."
+        },
+        {
+          "faq": "was-kostet-der-innovations-check"
+        }
+      ],
+      "angebote": [
+        "umsetzungsprojekte"
+      ],
+      "weiter": [
+        "vertrieb-aufbauen",
+        "head-of-sales-auf-zeit"
+      ]
+    }
+  ],
+  "begriffe": [
+    {
+      "id": "automatisierung",
+      "name": "Automatisierung",
+      "text": "Abläufe, die ohne Handarbeit laufen. Zum Beispiel landet eine Anfrage von der Website automatisch im CRM, mit Wiedervorlage."
+    },
+    {
+      "id": "chief-sales-officer",
+      "name": "Chief Sales Officer (CSO)",
+      "text": "Die oberste Verantwortung für den Vertrieb. Bei uns als Mandat auf Zeit: alles aus dem Head of Sales, dazu Strategie, Preise, Teamaufbau, Recruiting und die Führung von bis zu 10 Vertrieblern.",
+      "link": "/vertrieb/cso/"
+    },
+    {
+      "id": "claim",
+      "name": "Claim",
+      "text": "Ein kurzer Satz, der die Haltung einer Marke trägt. Unserer lautet „Innovation braucht Fokus.“"
+    },
+    {
+      "id": "crm",
+      "name": "CRM",
+      "text": "Kurz für Customer Relationship Management: das System, in dem alle Kontakte, Gespräche, Angebote und nächsten Schritte stehen."
+    },
+    {
+      "id": "elevator-pitch",
+      "name": "Elevator Pitch",
+      "text": "Eine Erklärung deines Angebots, die in eine Aufzugfahrt passt, meist 30 Sekunden bis 2 Minuten."
+    },
+    {
+      "id": "erklaervideo",
+      "name": "Erklärvideo",
+      "text": "Ein kurzes Video, bei uns 60 bis 90 Sekunden, das erklärt, was du machst, für wen und wie man startet.",
+      "link": "/sichtbarkeit/erklaervideo/"
+    },
+    {
+      "id": "fokus-innovation-abend",
+      "name": "Fokus Innovation · Abend",
+      "text": "Unser kuratierter Abend an einem langen Tisch: Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.",
+      "link": "/abend/"
+    },
+    {
+      "id": "go-to-market",
+      "name": "Go-to-Market",
+      "text": "Der Weg eines Produkts in den Markt: Zielgruppe, Botschaft, Kanäle, Vertrieb und Preise. Im Deutschen oft Markteintritt."
+    },
+    {
+      "id": "head-of-sales-auf-zeit",
+      "name": "Head of Sales auf Zeit",
+      "text": "Eine Vertriebsleitung für einige Monate, die das System aufbaut, mit deinem Team umsetzt und so übergibt, dass der Vertrieb ohne sie läuft. Auch Interim Head of Sales genannt.",
+      "link": "/vertrieb/head-of-sales/"
+    },
+    {
+      "id": "innovations-check",
+      "name": "Innovations-Check",
+      "text": "Unser kostenloser Check in rund 10 Minuten. Er zeigt, wo dein Unternehmen bei Strategie, KI im Alltag, Automatisierung, Daten und Team steht.",
+      "link": "/innovations-check/"
+    },
+    {
+      "id": "ki-brain",
+      "name": "KI-Brain",
+      "text": "Wissen, Abläufe und Daten eines Unternehmens sauber an einem Ort, damit KI im Alltag darauf zugreifen kann. Bei uns in Vorbereitung.",
+      "link": "/innovation/#ki-brain"
+    },
+    {
+      "id": "landingpage",
+      "name": "Landingpage",
+      "text": "Eine einzelne Seite, die ein Angebot und einen nächsten Schritt in den Mittelpunkt stellt, oft als Ziel einer Anzeige. Eine ganze Website auf einer Seite heißt One-Pager; unser Paket Homepage Landing ist so eine.",
+      "link": "/sichtbarkeit/homepage-landing/"
+    },
+    {
+      "id": "lead",
+      "name": "Lead",
+      "text": "Ein Kontakt, der Interesse an deinem Angebot gezeigt hat oder gut zu deiner Zielgruppe passt."
+    },
+    {
+      "id": "lead-scoring",
+      "name": "Lead-Scoring",
+      "text": "Eine Einteilung der Kontakte danach, wie gut sie passen, zum Beispiel in A, B und C. A-Kontakte bekommen zuerst Zeit."
+    },
+    {
+      "id": "persona",
+      "name": "Persona",
+      "text": "Die Beschreibung eines typischen Käufers: Rolle, Ziele, Probleme und der Anlass, zu dem er nach einer Lösung sucht."
+    },
+    {
+      "id": "pipeline",
+      "name": "Pipeline",
+      "text": "Alle offenen Verkaufschancen, geordnet nach Stufe vom Erstkontakt bis zum Abschluss. Sie zeigt, was in den nächsten Wochen zum Abschluss kommen kann."
+    },
+    {
+      "id": "positionierung",
+      "name": "Positionierung",
+      "text": "Die Antwort darauf, für wen du da bist, welches Problem du löst und warum man dich wählt. Grundlage für Website, Videos und Verkaufsgespräche.",
+      "link": "/wissen/positionierung-in-fuenf-saetzen/"
+    },
+    {
+      "id": "rueckwaertsrechnung",
+      "name": "Rückwärtsrechnung",
+      "text": "Vom Umsatzziel zurück zu den nötigen Abschlüssen, Angeboten und Terminen je Woche.",
+      "link": "/wissen/vertrieb-aufbauen/#schritt-4-wenige-kennzahlen-jede-woche"
+    },
+    {
+      "id": "sales-playbook",
+      "name": "Sales Playbook",
+      "text": "Das Nachschlagewerk des Vertriebs: Zielgruppe, Botschaft, Prozess, Leitfäden, Antworten auf Einwände und Kennzahlen an einem Ort."
+    },
+    {
+      "id": "salesprozess",
+      "name": "Salesprozess",
+      "text": "Die festen Stufen, die jede Anfrage bis zum Abschluss durchläuft, mit einer klaren nächsten Aktion je Stufe."
+    },
+    {
+      "id": "tagesworkshop",
+      "name": "Tagesworkshop",
+      "text": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.",
+      "link": "/vertrieb/tagesworkshop/"
+    },
+    {
+      "id": "umsetzungsgespraech",
+      "name": "90-Tage-Umsetzungsgespräch",
+      "text": "60 Minuten mit Kevin nach dem Innovations-Check: deine Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden. Kostenlos und kein Verkaufsgespräch."
+    },
+    {
+      "id": "videostory",
+      "name": "Videostory",
+      "text": "Ein Video, das die Geschichte deiner Firma in 90 Sekunden erzählt: warum es euch gibt und wofür ihr steht.",
+      "link": "/sichtbarkeit/videostory/"
+    },
+    {
+      "id": "wiedervorlage",
+      "name": "Wiedervorlage",
+      "text": "Ein fester Termin im CRM, an dem eine offene Anfrage wieder bearbeitet wird. So bleibt keine Anfrage liegen."
+    },
+    {
+      "id": "wochenreport",
+      "name": "Wochenreport",
+      "text": "Ein kurzer Bericht jeden Freitag: die Zahlen des Vertriebs und ein Satz dazu, was nächste Woche anders läuft."
+    }
+  ]
+}
