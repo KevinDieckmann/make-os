@@ -11,6 +11,8 @@ import { Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Hinweis, Leerzustand, K
 import { URTEIL_TEXT, type Urteil } from '@/lib/social/analyse';
 import { PLATTFORM_NAME, SOCIAL_PLATTFORMEN, type SocialPlattform, type SocialKanal } from '@/lib/social/typen';
 import type { ImportVorschau } from '@/lib/social/csv';
+import { localDay } from '@/lib/zeit';
+import { datumKurz } from '@/lib/make-one/faelligkeit';
 import type { MitStand, SocialApi } from './daten';
 
 const URTEIL_FARBE: Record<Urteil, string> = { 'mehr-davon': LEUCHT.gut, hook: LEUCHT.achtung, kuerzen: LEUCHT.achtung, streichen: LEUCHT.kritisch, beobachten: C.inkDim, 'zu-wenig-daten': C.inkLeise };
@@ -93,10 +95,17 @@ export function Formate({ api, kanal }: { api: SocialApi; kanal: MitStand<Social
   );
 }
 
+const SPALTE_NAME: Record<string, string> = {
+  titel: 'Titel', link: 'Link', veroeffentlicht: 'Veröffentlicht', views: 'Aufrufe', likes: 'Likes', kommentare: 'Kommentare', shares: 'Geteilt',
+  saves: 'Gespeichert', follows: 'Neue Follower', halte3s: 'Halterate 3 s', durchsehen: 'Durchsehquote', schnittSek: 'Ø Wiedergabe (s)',
+};
+
 export function Import({ api, kanal }: { api: SocialApi; kanal: SocialKanal }) {
   const [plattform, setPlattform] = useState<SocialPlattform>(kanal.plattformen[0] ?? 'tiktok');
   const [text, setText] = useState('');
   const [name, setName] = useState('');
+  // Stand der Zahlen = Tag des Exports (die Datei kennt nur den Tag der Veröffentlichung).
+  const [stand, setStand] = useState(() => localDay());
   const [vorschau, setVorschau] = useState<ImportVorschau | null>(null);
   const [zuordnung, setZuordnung] = useState<Record<string, string>>({});
   const [ergebnis, setErgebnis] = useState<string | null>(null);
@@ -108,7 +117,7 @@ export function Import({ api, kanal }: { api: SocialApi; kanal: SocialKanal }) {
   };
   return (
     <Karte>
-      <form onSubmit={async e => { e.preventDefault(); const r = await api.importieren('import-vorschau', kanal.id, plattform, text); setVorschau(r?.vorschau ?? null); }} style={{ display: 'grid', gap: 12 }}>
+      <form onSubmit={async e => { e.preventDefault(); const r = await api.importieren('import-vorschau', kanal.id, plattform, text, stand); setVorschau(r?.vorschau ?? null); }} style={{ display: 'grid', gap: 12 }}>
         <Ueberschrift>Zahlen aus der Plattform importieren</Ueberschrift>
         <p style={{ color: C.inkLeise, fontSize: TYP.bedien, margin: 0 }}>Export aus TikTok Studio, Meta Business Suite oder YouTube Studio als CSV. Erst die Vorschau — übernommen wird nur, was eindeutig zu einer Folge passt.</p>
         <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))' }}>
@@ -116,22 +125,23 @@ export function Import({ api, kanal }: { api: SocialApi; kanal: SocialKanal }) {
             <select style={feld} value={plattform} onChange={e => setPlattform(e.target.value as SocialPlattform)}>{SOCIAL_PLATTFORMEN.map(p => <option key={p} value={p}>{PLATTFORM_NAME[p]}</option>)}</select>
           </Feldzeile>
           <Feldzeile label="Datei (CSV)"><input type="file" accept=".csv,text/csv" style={feld} onChange={e => void datei(e.target.files?.[0])} /></Feldzeile>
+          <Feldzeile label="Stand der Zahlen (Tag des Exports)"><input type="date" style={feld} value={stand} max={localDay()} onChange={e => { setStand(e.target.value); setVorschau(null); }} /></Feldzeile>
         </div>
         <div><Knopf typ="submit" aus={!text}>Vorschau{name ? ` · ${name}` : ''}</Knopf></div>
       </form>
       {vorschau && (
         <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
           {vorschau.fehler.map((f, i) => <Hinweis key={i} art="achtung">{f}</Hinweis>)}
-          <span style={{ color: C.inkDim, fontSize: TYP.bedien }}>Erkannte Spalten: {Object.entries(vorschau.spalten).map(([k, v]) => `${k} = „${v}“`).join(' · ') || '—'}</span>
+          <span style={{ color: C.inkDim, fontSize: TYP.bedien }}>Erkannte Spalten: {Object.entries(vorschau.spalten).map(([k, v]) => `${SPALTE_NAME[k] ?? k} = „${v}“`).join(' · ') || '—'}</span>
           <Liste>{vorschau.zeilen.map(z => (
-            <Zeile key={z.zeile} titel={z.titel || `Zeile ${z.zeile}`} unter={`${z.messung.views.toLocaleString('de-DE')} Aufrufe · Stand ${z.messung.am}${z.hinweis ? ` · ${z.hinweis}` : ''}`}
+            <Zeile key={z.zeile} titel={z.titel || `Zeile ${z.zeile}`} unter={`${z.messung.views.toLocaleString('de-DE')} Aufrufe · Stand ${datumKurz(z.messung.am)}${z.veroeffentlichtAm ? ` · veröffentlicht ${datumKurz(z.veroeffentlichtAm)}` : ''}${z.hinweis ? ` · ${z.hinweis}` : ''}`}
               rechts={<select style={{ ...feld, minHeight: 40, width: 'auto', maxWidth: 220 }} value={zuordnung[String(z.zeile)] ?? z.folgeId ?? ''} onChange={e => setZuordnung(m => ({ ...m, [String(z.zeile)]: e.target.value }))}>
                 <option value="">nicht übernehmen</option>
                 {folgen.map(f => <option key={f.id} value={f.id}>{f.titel}</option>)}
               </select>} />
           ))}</Liste>
           <div><Knopf haupt onClick={async () => {
-            const r = await api.importieren('import', kanal.id, plattform, text, zuordnung);
+            const r = await api.importieren('import', kanal.id, plattform, text, stand, zuordnung);
             if (r?.uebernommen !== undefined) { setErgebnis(`${r.uebernommen} Messungen übernommen, ${r.uebersprungen ?? 0} übersprungen.`); setVorschau(null); }
           }}>Übernehmen</Knopf></div>
         </div>

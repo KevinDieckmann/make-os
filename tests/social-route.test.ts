@@ -83,6 +83,19 @@ describe('Social — schreiben und lernen', () => {
     expect(uj.uebersprungen).toBe(1);
     expect(uj.analyse[kanalId].folgenMitZahlen).toBe(1);
   });
+  it('Import: Stand der Zahlen = gewählter Tag (nie Post time), Zukunft → 400', async () => {
+    const csv = 'Video title,Post time,Total views\nDay 1,2026-01-02,2000';
+    const { localDay } = await import('@/lib/zeit');
+    const { tagPlus } = await import('@/lib/zeit/kalender-kern');
+    const vor2 = tagPlus(localDay(), -2);
+    const v = await route.POST(sende('POST', 'pa', { aktion: 'import-vorschau', kanalId, plattform: 'tiktok', text: csv, stand: vor2 }));
+    const vj = await v.json() as { vorschau: { zeilen: { veroeffentlichtAm?: string; messung: { am: string } }[] } };
+    expect(vj.vorschau.zeilen[0].messung.am).toBe(vor2);
+    expect(vj.vorschau.zeilen[0].veroeffentlichtAm).toBe('2026-01-02');
+    expect((await route.POST(sende('POST', 'pa', { aktion: 'import-vorschau', kanalId, plattform: 'tiktok', text: csv, stand: tagPlus(localDay(), 1) }))).status).toBe(400);
+    expect((await route.POST(sende('POST', 'pa', { aktion: 'import-vorschau', kanalId, plattform: 'tiktok', text: csv, stand: tagPlus(localDay(), -400) }))).status).toBe(400);
+    expect((await route.POST(sende('POST', 'pa', { aktion: 'import-vorschau', kanalId, plattform: 'tiktok', text: csv, stand: '2026-02-30' }))).status).toBe(400);
+  });
   it('Import in einen unbekannten Kanal: 404; falsche Plattform: 400', async () => {
     expect((await route.POST(sende('POST', 'pa', { aktion: 'import', kanalId: 'sk-gibtsnicht', plattform: 'tiktok', text: 'a' }))).status).toBe(404);
     expect((await route.POST(sende('POST', 'pa', { aktion: 'import', kanalId, plattform: 'facebook', text: 'a' }))).status).toBe(400);

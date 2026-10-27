@@ -216,8 +216,11 @@ describe('CSV-Import', () => {
     const v = importVorschau(csv, 'tiktok', fs, '2026-10-26');
     expect(v.spalten.views).toBe('Total views');
     expect(v.zeilen.map(z => z.folgeId)).toEqual(['sv-1', null, null]);
-    expect(v.zeilen[0].messung).toMatchObject({ views: 1234, shares: 12, schnittSek: 9.5, am: '2026-10-21', quelle: 'import' });
+    // Stand der Zahlen = Tag des Exports für JEDE Zeile; „Post time“ bleibt nur Anzeige (Fund 27.10.: sonst galt eine ältere Handmessung als jüngste).
+    expect(v.zeilen[0].messung).toMatchObject({ views: 1234, shares: 12, schnittSek: 9.5, am: '2026-10-26', quelle: 'import' });
+    expect(v.zeilen[0].veroeffentlichtAm).toBe('2026-10-21');
     expect(v.zeilen[2].messung.am).toBe('2026-10-26');
+    expect(v.zeilen[2].veroeffentlichtAm).toBeUndefined();
     expect(v.zeilen[1].hinweis).toMatch(/Mehrere/);
     expect(v.fehler.length).toBe(1);
   });

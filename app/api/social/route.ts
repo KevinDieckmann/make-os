@@ -4,7 +4,7 @@
 // GET   → Bestand (jeder Eintrag mit `stand`), je Folge Prüfung + Leitplanken-Entscheidung, je Kanal Analyse + Woche
 //         `?space=privat` → 400: Social gehört zu Business, der Privat-Bereich bekommt hier nichts
 // PATCH { ops }  → Einzel-Schritte (lib/social/daten.ts `SocialOp`): Ändern/Entfernen nur mit Stand (409), über den Grenzen 413, Unsinn 400
-// POST  { aktion: 'import-vorschau' | 'import', kanalId, plattform, text, zuordnung? } → Kennzahlen aus einem Plattform-Export (CSV):
+// POST  { aktion: 'import-vorschau' | 'import', kanalId, plattform, text, stand?, zuordnung? } → Kennzahlen aus einem Plattform-Export (CSV):
 //         erst Vorschau (schreibt nichts), dann übernehmen (nur Zeilen mit eindeutiger Folge bzw. ausdrücklicher Zuordnung)
 // Zugang: Haushalt des Inhabers (Modul Markttraktion), auch ein Konto mit `finanzRecht: 'business'`. Schreiben nur eine angemeldete Person
 // (Dienstweg 403) — der Agent schreibt später nur über den Freigabe-Stapel bzw. die Leitplanken-Entscheidung, nie direkt.
@@ -16,7 +16,8 @@ import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { jsonAntwort } from '@/lib/http/json-antwort';
-import { localDay } from '@/lib/zeit';
+import { localDay, istKalendertag } from '@/lib/zeit';
+import { tagPlus } from '@/lib/zeit/kalender-kern';
 import { NUR_BUSINESS, SOCIAL_PLATTFORMEN, SOCIAL_GRENZEN, type SocialPlattform } from '@/lib/social/typen';
 import { importVorschau } from '@/lib/social/csv';
 import { ladeSocial, socialLage, socialSchreiben, lageAus } from '@/lib/social/server';
@@ -54,16 +55,20 @@ export async function POST(req: Request) {
   if (!zugang) return nurHaushalt();
   if (zugang.dienst) return NUR_SITZUNG();
   const bau = bauPruefen(req); if (bau) return bau;
-  let b: { aktion?: unknown; kanalId?: unknown; plattform?: unknown; text?: unknown; zuordnung?: unknown };
+  let b: { aktion?: unknown; kanalId?: unknown; plattform?: unknown; text?: unknown; stand?: unknown; zuordnung?: unknown };
   try { b = await jsonBegrenzt(req, MAX_IMPORT_BYTES); } catch (e) { return jsonZuGross(e) ?? fehlerAntwort(400, 'Kein JSON.'); }
   if (b.aktion !== 'import-vorschau' && b.aktion !== 'import') return fehlerAntwort(400, 'aktion: import-vorschau oder import.');
   if (!(SOCIAL_PLATTFORMEN as readonly unknown[]).includes(b.plattform)) return fehlerAntwort(400, 'plattform: tiktok, instagram oder youtube.');
   if (typeof b.text !== 'string' || !b.text.trim()) return fehlerAntwort(400, 'Die Datei ist leer.');
+  // Stand der Zahlen = Tag des Exports (Vorgabe heute); nie in der Zukunft, höchstens ein Jahr zurück.
+  const heute = localDay();
+  const stand = b.stand === undefined || b.stand === '' ? heute : b.stand;
+  if (!istKalendertag(stand) || stand > heute || stand < tagPlus(heute, -366)) return fehlerAntwort(400, 'Stand der Zahlen: ein Tag bis heute (höchstens ein Jahr zurück).');
   const datei = await ladeSocial();
   const kanal = datei.kanaele.find(k => k.id === b.kanalId);
   if (!kanal) return fehlerAntwort(404, 'Kanal nicht gefunden.');
   const folgen = datei.folgen.filter(f => f.kanalId === kanal.id);
-  const vorschau = importVorschau(b.text, b.plattform as SocialPlattform, folgen, localDay());
+  const vorschau = importVorschau(b.text, b.plattform as SocialPlattform, folgen, stand);
   if (b.aktion === 'import-vorschau') return NextResponse.json({ ok: true, vorschau });
   // Ausdrückliche Zuordnung (Zeile → Folge bzw. '' = nicht übernehmen) gewinnt; nur Folgen DIESES Kanals.
   const z = (b.zuordnung && typeof b.zuordnung === 'object' ? b.zuordnung : {}) as Record<string, unknown>;

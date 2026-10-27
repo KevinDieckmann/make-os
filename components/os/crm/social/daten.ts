@@ -26,7 +26,7 @@ export interface SocialApi {
   laden: () => Promise<void>;
   /** Einzel-Schritte schreiben; die neue Lage = gespeichert, null = nicht gespeichert (Satz in `fehler`). */
   schreiben: (ops: unknown[]) => Promise<Lage | null>;
-  importieren: (aktion: 'import-vorschau' | 'import', kanalId: string, plattform: SocialPlattform, text: string, zuordnung?: Record<string, string>) => Promise<{ vorschau?: ImportVorschau; uebernommen?: number; uebersprungen?: number } | null>;
+  importieren: (aktion: 'import-vorschau' | 'import', kanalId: string, plattform: SocialPlattform, text: string, stand: string, zuordnung?: Record<string, string>) => Promise<{ vorschau?: ImportVorschau; uebernommen?: number; uebersprungen?: number } | null>;
   setFehler: (f: string | null) => void;
 }
 
@@ -52,9 +52,9 @@ export function useSocial(): SocialApi {
       return j as Lage;
     } catch { setFehler('Keine Verbindung — nicht gespeichert.'); return null; }
   }, []);
-  const importieren = useCallback<SocialApi['importieren']>(async (aktion, kanalId, plattform, text, zuordnung) => {
+  const importieren = useCallback<SocialApi['importieren']>(async (aktion, kanalId, plattform, text, stand, zuordnung) => {
     try {
-      const r = await fetch('/api/social', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion, kanalId, plattform, text, zuordnung }) });
+      const r = await fetch('/api/social', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion, kanalId, plattform, text, stand, zuordnung }) });
       const j = await r.json();
       if (j.datei) setLage(j as Lage);
       if (!r.ok || !j.ok) { setFehler(j.fehler ?? 'Import nicht möglich.'); return j.vorschau ? { vorschau: j.vorschau } : null; }

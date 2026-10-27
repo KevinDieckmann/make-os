@@ -8,13 +8,14 @@ import { csvLesenMitBefund } from '@/lib/make-one/csv';
 import { istKalendertag } from '@/lib/zeit';
 import type { SocialFolge, SocialPlattform } from './typen';
 
-type Feld = 'titel' | 'link' | 'am' | 'views' | 'likes' | 'kommentare' | 'shares' | 'saves' | 'follows' | 'halte3s' | 'durchsehen' | 'schnittSek';
+type Feld = 'titel' | 'link' | 'veroeffentlicht' | 'views' | 'likes' | 'kommentare' | 'shares' | 'saves' | 'follows' | 'halte3s' | 'durchsehen' | 'schnittSek';
 
 /** Spaltennamen (klein, ohne Satzzeichen) → Feld. Erweiterbar, sobald ein Export anders heißt. */
 const SYNONYME: Record<Feld, string[]> = {
   titel: ['titel', 'title', 'video title', 'videotitel', 'beschreibung', 'description', 'caption', 'inhalt'],
   link: ['link', 'url', 'permalink', 'video link', 'videolink', 'post link'],
-  am: ['datum', 'date', 'post time', 'veröffentlicht', 'veroeffentlicht', 'publish time', 'video publish time', 'veröffentlichungszeit', 'posted', 'erstellt'],
+  // Tag der Veröffentlichung — nur zur Anzeige. Der Stand der Zahlen ist der Tag des Exports (`stand`), nie dieser Tag.
+  veroeffentlicht: ['datum', 'date', 'post time', 'veröffentlicht', 'veroeffentlicht', 'publish time', 'video publish time', 'veröffentlichungszeit', 'posted', 'erstellt'],
   // YouTube zählt seit 31.03.2025 (Shorts) jeden Start als Aufruf — „Engaged views“ (die alte Zählung) geht vor, wenn der Export sie hat.
   views: ['engaged views', 'engagierte aufrufe', 'views', 'aufrufe', 'video views', 'total views', 'plays', 'wiedergaben', 'videoaufrufe', 'ansichten'],
   likes: ['likes', 'total likes', 'gefällt mir', 'gefaellt mir', 'reactions', 'reaktionen'],
@@ -75,6 +76,8 @@ export interface ImportZeile {
   folgeId: string | null;
   /** Warum keine Folge passt (oder mehrere). */
   hinweis?: string;
+  /** Tag der Veröffentlichung laut Datei (nur Anzeige). */
+  veroeffentlichtAm?: string;
   messung: { plattform: SocialPlattform; am: string; views: number; likes?: number; kommentare?: number; shares?: number; saves?: number; follows?: number; halte3s?: number; durchsehen?: number; schnittSek?: number; quelle: 'import' };
 }
 
@@ -87,10 +90,12 @@ export interface ImportVorschau {
 const titelNorm = (s: string) => norm(s).replace(/[^\p{L}\p{N} ]/gu, '').trim();
 
 /**
- * Datei lesen und den Folgen eines Kanals zuordnen. `heute` gilt, wenn die Datei keinen Tag trägt (die Zahlen sind „Stand heute“).
+ * Datei lesen und den Folgen eines Kanals zuordnen. `stand` = Tag, an dem die Zahlen galten (Tag des Exports, Vorgabe heute) — er wird das
+ * Datum JEDER Messung. Die Spalte „Post time“/„Datum“ ist der Tag der Veröffentlichung und bleibt nur Anzeige: als Messdatum ließe sie eine
+ * ältere Handmessung als „jüngste“ gelten (Fund Sichtprüfung 27.10.).
  * Trenner wird erkannt (Semikolon, Komma, Tab). Ohne Spalte für Aufrufe: Fehler, keine Zeilen.
  */
-export function importVorschau(text: string, plattform: SocialPlattform, folgen: SocialFolge[], heute: string): ImportVorschau {
+export function importVorschau(text: string, plattform: SocialPlattform, folgen: SocialFolge[], stand: string): ImportVorschau {
   const ersteZeile = text.replace(/^﻿/, '').split(/\r?\n/)[0] ?? '';
   const trenner = [';', '\t', ','].map(t => ({ t, n: ersteZeile.split(t).length })).sort((a, b) => b.n - a.n)[0].t;
   const { kopf, zeilen, zeileNr } = csvLesenMitBefund(text, trenner);
@@ -107,7 +112,7 @@ export function importVorschau(text: string, plattform: SocialPlattform, folgen:
     if (views === undefined) { fehler.push(`Zeile ${zeileNr[i]}: keine Zahl bei den Aufrufen — übersprungen.`); return; }
     const titel = (spalten.titel ? z[spalten.titel] : '')?.trim() ?? '';
     const link = spalten.link ? (z[spalten.link] ?? '').trim() : '';
-    const am = (spalten.am ? tagAus(z[spalten.am]) : undefined) ?? heute;
+    const veroeffentlichtAm = spalten.veroeffentlicht ? tagAus(z[spalten.veroeffentlicht]) : undefined;
     let folgeId: string | null = null, hinweis: string | undefined;
     if (link && jeLink.has(link.replace(/\/$/, ''))) folgeId = jeLink.get(link.replace(/\/$/, ''))!;
     else {
@@ -118,9 +123,9 @@ export function importVorschau(text: string, plattform: SocialPlattform, folgen:
     const n = (f: Feld) => (spalten[f] ? zahlAus(z[spalten[f]!]) : undefined);
     const pz = (f: Feld) => { const v = n(f); return v !== undefined && v <= 1 && v > 0 && !String(z[spalten[f]!] ?? '').includes('%') ? Math.round(v * 1000) / 10 : v; };
     aus.push({
-      zeile: zeileNr[i], titel: titel.slice(0, 200), link: /^https:\/\//.test(link) ? link : undefined, folgeId, hinweis,
+      zeile: zeileNr[i], titel: titel.slice(0, 200), link: /^https:\/\//.test(link) ? link : undefined, folgeId, hinweis, ...(veroeffentlichtAm ? { veroeffentlichtAm } : {}),
       messung: Object.fromEntries(Object.entries({
-        plattform, am, views: Math.round(views), likes: n('likes'), kommentare: n('kommentare'), shares: n('shares'), saves: n('saves'), follows: n('follows'),
+        plattform, am: stand, views: Math.round(views), likes: n('likes'), kommentare: n('kommentare'), shares: n('shares'), saves: n('saves'), follows: n('follows'),
         halte3s: pz('halte3s'), durchsehen: pz('durchsehen'), schnittSek: n('schnittSek'), quelle: 'import' as const,
       }).filter(([, v]) => v !== undefined)) as ImportZeile['messung'],
     });
