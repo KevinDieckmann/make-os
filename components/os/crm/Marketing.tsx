@@ -42,11 +42,12 @@ import { Segmente } from './marketing/Segmente';
 import { Redaktionsplan } from './marketing/Redaktionsplan';
 import { Newsletter } from './marketing/Newsletter';
 import { Positionierung } from './marketing/Positionierung';
+import { Social } from './social/Social';
 
-type Unter = 'uebersicht' | 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung';
+type Unter = 'uebersicht' | 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'social' | 'newsletter' | 'positionierung';
 const UNTER: { id: Unter; label: string }[] = [
   { id: 'uebersicht', label: 'Übersicht' }, { id: 'anfragen', label: 'Anfragen' }, { id: 'segmente', label: 'Segmente' }, { id: 'kampagnen', label: 'Kampagnen' },
-  { id: 'redaktion', label: 'Redaktionsplan' }, { id: 'newsletter', label: 'Newsletter' }, { id: 'positionierung', label: 'Positionierung' },
+  { id: 'redaktion', label: 'Redaktionsplan' }, { id: 'social', label: 'Social' }, { id: 'newsletter', label: 'Newsletter' }, { id: 'positionierung', label: 'Positionierung' },
 ];
 /** Der Start wurde in dieser Sitzung übersprungen — nicht wieder aufdrängen. */
 const START_SCHLUESSEL = 'crm-marketing-start-uebersprungen';
@@ -104,7 +105,7 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
         <AuchHier passt={p => p.includes('s=marketing')} was="im Marketing" />
       </div>
       {/* Die Kampagnen-Ansicht bringt ihren eigenen Head-Lauf (Modus „kampagne“) mit. */}
-      {unter !== 'kampagnen' && <HeadPanel head="marketing" standardModus="wochenplan" zuKontakt={zuKontakt} i={0} />}
+      {unter !== 'kampagnen' && unter !== 'social' && <HeadPanel head="marketing" standardModus="wochenplan" zuKontakt={zuKontakt} i={0} />}
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={liste} aktiv={unter} onWahl={u => { setFokus(null); waehle(u); }} /></div>
       {unter === 'uebersicht' && (startAktiv ? <Start api={api} onFertig={() => startBeenden(false)} onUeberspringen={() => startBeenden(true)} /> : <Uebersicht api={api} zuKontakt={zuKontakt} zu={zuEintrag} zuAnsicht={a => { setFokus(null); waehle(a); }} />)}
       {unter === 'anfragen' && <Anfragen api={api} zuKontakt={zuKontakt} />}
@@ -113,6 +114,7 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
       {unter === 'redaktion' && <Redaktionsplan api={api} zuKontakt={zuKontakt} fokus={fokus?.ansicht === 'redaktion' ? fokus.id : undefined} />}
       {unter === 'newsletter' && <Newsletter api={api} fokus={fokus?.ansicht === 'newsletter' ? fokus.id : undefined} />}
       {unter === 'positionierung' && <Positionierung api={api} />}
+      {unter === 'social' && <Social />}
     </>
   );
 }

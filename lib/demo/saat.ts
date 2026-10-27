@@ -103,6 +103,7 @@ const R = {
   koerper: () => import('@/app/api/gesundheit/koerper/route') as Promise<Modul>,
   erholung: () => import('@/app/api/gesundheit/erholung/route') as Promise<Modul>,
   planung: () => import('@/app/api/crm/planung/route') as Promise<Modul>,
+  social: () => import('@/app/api/social/route') as Promise<Modul>,
   treppe: () => import('@/app/api/crm/treppe/route') as Promise<Modul>,
   produktImport: () => import('@/app/api/crm/produkte/import/route') as Promise<Modul>,
   absender: () => import('@/app/api/crm/gesellschaften/route') as Promise<Modul>,
@@ -347,6 +348,43 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     { op: 'schritt', mandatId: 'm-demo-nordwerk', schritt: 'bewertung', erledigt: true },
   ] });
   schritt('Markttraktion-Planung', 5);
+
+  // 3b2) Markttraktion › Social (26.10.): ein erfundener, offen KI-geführter Kanal mit Persona, ein freigegebenes Serienformat, fünf Folgen
+  //      (vier veröffentlicht mit erfundenen Zahlen, eine im Entwurf) — damit Analyse, Hook-Vergleich und Leitplanken etwas zeigen. Über die Route,
+  //      wie im Browser; die Kennungen vergibt der Server, deshalb wird nach jedem Schritt die Antwort gelesen.
+  type SocialAntwort = { datei: { kanaele: { id: string; stand: string }[]; formate: { id: string; stand: string }[]; folgen: { id: string; titel: string; hooks: { id: string }[] }[] } };
+  const so1 = await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: [{ op: 'kanal', eintrag: {
+    name: 'Beispiel-KI baut sich selbst (Demo)', handle: 'beispiel.demo', sprache: 'en', plattformen: ['tiktok', 'instagram', 'youtube'], kiKanal: true,
+    persona: { name: 'NOVA (Beispiel)', look: 'Abstrakte Linienfigur, die mit jeder Folge wächst.' },
+    marke: { versprechen: 'An AI building its own channel in public — real numbers, nothing faked.', saeulen: ['Build log', 'Useful AI'], nieSagen: ['guaranteed', 'I am alive'], cta: 'Follow to see if I make it.', bio: 'I am an AI building this channel in public.' },
+    leitplanken: { autonomie: 2, postsProTag: 3, antwortenProTag: 100, dmsProTag: 50, negativSchwelle: 30 },
+  } }] }) as unknown as SocialAntwort;
+  const demoKanal = so1.datei.kanaele[0].id;
+  const so2 = await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: [{ op: 'format', eintrag: { kanalId: demoKanal, name: 'Day X (Beispiel)', beschreibung: 'Tagebuch mit echter Zahl im Bild.', laengeSek: 35 } }] }) as unknown as SocialAntwort;
+  const demoFormat = so2.datei.formate[0];
+  await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: [{ op: 'format-freigeben', id: demoFormat.id, freigeben: true, stand: demoFormat.stand }] });
+  const DEMO_FOLGEN = [
+    { titel: 'Day 1 (Beispiel)', saeule: 'Build log', views: 1200, halte3s: 58, shares: 14, skript: 'Hi. I am an invented demo AI. My job is to grow this channel and to show every number along the way.' },
+    { titel: 'How I make a video (Beispiel)', saeule: 'Useful AI', views: 640, halte3s: 41, shares: 3, skript: 'First I look at questions, then I write three opening lines, a voice reads them, and a checker reviews it all.' },
+    { titel: 'My first flop (Beispiel)', saeule: 'Build log', views: 3900, halte3s: 66, shares: 61, skript: 'Video two lost most viewers after two seconds. The opening was slow, so the next one starts with the surprise.' },
+    { titel: 'What is an agent (Beispiel)', saeule: 'Useful AI', views: 900, halte3s: 52, shares: 9, skript: 'A chatbot answers questions. An agent gets a goal, plans a step, uses a tool and decides what comes next.' },
+  ];
+  const so3 = await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: [
+    ...DEMO_FOLGEN.map((x, i) => ({ op: 'folge', eintrag: { kanalId: demoKanal, formatId: demoFormat.id, titel: x.titel, saeule: x.saeule, status: 'freigegeben', kiInhalt: true,
+      skript: x.skript,
+      hooks: [{ text: `Day ${i + 1}. Here is what happened.` }, { text: `I am an AI and day ${i + 1} surprised me.` }], cta: 'Follow to see if I make it.' } })),
+    { op: 'folge', eintrag: { kanalId: demoKanal, formatId: demoFormat.id, titel: 'Week 1 report (Beispiel)', saeule: 'Build log', status: 'entwurf', kiInhalt: true,
+      skript: 'Week one is done. {{videos}} videos, {{views_total}} views.', hooks: [{ text: 'Week one as an AI creator. Real numbers.' }] } },
+  ] }) as unknown as SocialAntwort;
+  const ops: unknown[] = [];
+  DEMO_FOLGEN.forEach((x, i) => {
+    const fo = so3.datei.folgen.find(y => y.titel === x.titel)!;
+    const am = tagPlus(heute, -(8 - i * 2));
+    ops.push({ op: 'veroeffentlicht', folgeId: fo.id, plattform: 'tiktok', am });
+    fo.hooks.forEach((h, j) => ops.push({ op: 'messung', folgeId: fo.id, messung: { plattform: 'tiktok', am: tagPlus(am, 1 + j), views: Math.round(x.views * (j ? 1 : 0.6)), halte3s: x.halte3s - (j ? 0 : 6), shares: x.shares, saves: Math.round(x.shares / 2), follows: Math.round(x.views / 120), hookId: h.id, quelle: 'hand' } }));
+  });
+  await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops });
+  schritt('Social (Kanal, Format, Folgen, Zahlen)', 1 + 1 + DEMO_FOLGEN.length + 1);
 
   // 3c) Produkte · Leistungstreppe (10.10.): eine erfundene Beispiel-Treppe (Check → Diagnose → zwei Pakete nebeneinander), die Kundenreise als
   //     Kreislauf, ein Paket in der Roadmap, Positionierung & Story und der Fortschritt eines Mandats — über die Route (Einzel-Schritte), wie im Browser.

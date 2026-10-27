@@ -142,6 +142,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
   'fokus-privat--*': 'Unser Fokus · Privat je Haushalt (Freitext der Mitglieder, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
+  'social--*': 'Social je Haushalt (26.10.: Kanäle, Serienformate, Folgen, Messungen — Dritte stehen hier nicht; „geändert von“/„freigegeben von“ als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
   'markttraktion-planung--*': 'Vertriebsplanung je Haushalt (Leadkanäle, Umsatzziele, Challenges — Personen als Team-Kürzel, Dritte nur als Mandat-Kennung; „geändert von“/„abgehakt von“ als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
   // Fulfillment (10.10.): Bestände je Haushalt — keine Einträge je Person; beim Konto-Löschen wird der Speichername „[gelöscht]“ (fulfillmentKontoLoeschen).
   'fulfillment--*': 'Fulfillment je Haushalt (Vorlagen, Bausteine, Rituale, Einstellungen — Geschäftswissen, Personen nur als Speichername)',
@@ -323,6 +324,9 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     if (treppeRoh) { const td = await import('@/lib/crm/treppe-daten'); merke(`produkt-treppe--${k.haushalt}`, td.treppeEintraegeVon(td.treppeAus(treppeRoh, jetzt.getUTCFullYear()), speicher)); }
     const planRoh = await loadJson<unknown>(`markttraktion-planung--${k.haushalt}`).catch(() => null);
     if (planRoh) { const pd = await import('@/lib/crm/planung-daten'); merke(`markttraktion-planung--${k.haushalt}`, pd.planungEintraegeVon(pd.planungAus(planRoh), speicher)); }
+    // Social (26.10.): die eigenen Stempel (geändert, freigegeben) — nur Kennung, Art, Zeit.
+    const socialRoh = await loadJson<unknown>(`social--${k.haushalt}`).catch(() => null);
+    if (socialRoh) { const sd = await import('@/lib/social/daten'); merke(`social--${k.haushalt}`, sd.socialEintraegeVon(sd.socialAus(socialRoh), speicher)); }
     // Formular „Angebot anfordern“ (25.10.): die eigenen Stempel (Anfrage, Link, Einstellungen) — nur Kennung, Art, Zeit.
     const formRoh = await loadJson<import('@/lib/crm/formulare').FormularBestand>(`angebot-formular--${k.haushalt}`).catch(() => null);
     if (formRoh) merke(`angebot-formular--${k.haushalt}`, (await import('@/lib/crm/formulare')).formularEintraegeVon({ ...(await import('@/lib/crm/formulare')).leererFormularBestand(), ...formRoh }, speicher));
@@ -568,6 +572,15 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       let n = 0;
       await updateJson<Obj>(planN, cur => { if (!cur) return cur as unknown as Obj; const r = planungOhnePerson(planungAus(cur), speicher); n = r.n; return n ? (r.neu as unknown as Obj) : cur; });
       if (n) await protokolliere(planN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['geaendertVon', 'von'] }], { art: 'system' });
+      return n;
+    });
+    // Social (26.10.): Einträge bleiben, der Speichername („geändert von“, „freigegeben von“) wird „[gelöscht]“.
+    const socialN = `social--${konto.haushalt}`;
+    await nurWenn(socialN, async () => {
+      const { socialAus, socialOhnePerson } = await import('@/lib/social/daten');
+      let n = 0;
+      await updateJson<Obj>(socialN, cur => { if (!cur) return cur as unknown as Obj; const r = socialOhnePerson(socialAus(cur), speicher); n = r.n; return n ? (r.neu as unknown as Obj) : cur; });
+      if (n) await protokolliere(socialN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['geaendertVon', 'freigegebenVon'] }], { art: 'system' });
       return n;
     });
     // Formular „Angebot anfordern“ (25.10.): Einträge bleiben, der Speichername wird „[gelöscht]“; das eigene Absender-Postfach fällt weg.

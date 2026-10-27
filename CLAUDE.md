@@ -2029,6 +2029,28 @@ sowie Kalender, Inbox, Aufgaben, Gesundheit, Familie und ZOE (Gruppe B) — zwö
 - **ZOE** (`ZOE_WERKZEUG`, Privat + Business): Freigaben · Agenten · Agenten-Werkzeuge (Research · Content · Meeting · Board · Prospecting) · Loops · Brain · Fuß Empfang
   (`/zoe`); ersetzt die Reiterzeile `ZoeReiter` (gelöscht), `ZOE_BEREICH` bleibt als Liste für die Wächter. Kein „Automationen & Head“.
 
+## Social — Kanäle, Folgen, Lernschleife (26.10., Branch `social-modul`, nur lokal; Plan `SOCIAL_PLAN.md`, Material `social/phase0/`)
+Kevin 26.10.: „Ein Agent, der unser Social Media aufbaut und verwaltet … dass wir Reichweite aufbauen.“ Entscheidungen: drei Kanäle (Persönlichkeit DE,
+Start-up DE, KI EN offen KI-geführt), Absender Fokus Innovation, Autonomie **Stufe 2 „selbstständig mit Leitplanken“**. Ort: Markttraktion › Marketing ›
+Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub-Punkt (Menü hat Kevins Höchstzahl zwölf).
+- **EIN Bestand** `social--<haushalt>` (Haushalt des Inhabers, Business, Speicher-Register): Kanäle (Markenprofil, Persona, Leitplanken), Serienformate,
+  Folgen (Skript, Hooks, Quellen, KI-Inhalt, Status), Veröffentlichungen, Messungen. Schreiben NUR über Einzel-Schritte `SocialOp` (lib/social/daten.ts) mit
+  Stand (409), Grenzen 413, Server-Felder (geändert/freigegeben von, Kennungen, Messungen im Eintrag) nie aus dem Browser; Format-Inhalt geändert → Freigabe weg;
+  Not-Aus nur über den eigenen Schritt; veröffentlichte Folgen mit Zahlen nur verwerfen, nie löschen. Route `/api/social` (GET/PATCH/POST Import), Klasse
+  `modul:markttraktion`, `?space=privat` → 400, Schreiben nur per Sitzung (Dienstweg 403).
+- **Prüfer** (lib/social/pruefer.ts, Regelwerk ohne Modell): `stopp` (Platzhalter `{{…}}`, kein Hook, „sagen wir nie“, KI-Persona behauptet Gefühl/Bewusstsein,
+  Wiederholung ≥ 50 % Ähnlichkeit zu den letzten 20) · `mensch` (Beratung Gesundheit/Geld/Recht, Angebot/Preis, Zahlen ohne Quelle, Länge) · `hinweis` (KI-Label, CTA).
+- **Leitplanken-Entscheidung NUR `autonomieFuer`** (lib/social/autonomie.ts): selbst nur bei Stufe 2 + Kanal aktiv + kein Not-Aus + freigegebenes Format + Prüfung
+  ohne Stopp/Person + unter dem Tageslimit; sonst Stapel mit Grund oder gesperrt. **Jeder künftige Veröffentlichungs-Weg (Plattform-API, Scheduler, ZOE) fragt nur dort.**
+  Heute veröffentlicht MAKE OS NICHTS — die Ausnahme von Regel 3 greift erst mit der Plattform-Anbindung (nach den API-Prüfungen von TikTok/Meta/Google).
+- **Analyse** (lib/social/analyse.ts): nur echte Messungen (jüngste je Plattform), Wirkung = geometrisches Mittel der Verhältnisse zum Kanal-Median (Aufrufe doppelt),
+  Urteile mehr-davon/hook/kuerzen/streichen erst ab 5 Folgen mit Zahlen (absolute Signale sofort), Schwellen `START_SCHWELLEN` sind Startannahmen; Hook-Vergleich nur
+  als Tendenz. Nie Viralität versprechen. **Import** (lib/social/csv.ts): Plattform-Export → Vorschau → übernehmen, Zuordnung über Link, sonst eindeutigen Titel, nie raten;
+  „Engaged views“ vor „Views“.
+- **Nicht hier:** Kommentare/DMs Dritter (kommen mit der Plattform-Anbindung in einen eigenen Bestand mit Register, Art. 15/17, Löschfrist, Art. 50 KI-VO-Hinweis);
+  KI-Aufrufe (dann über `askText` mit `ki: {…}`, Kategorie neu). Konto löschen: Speichername → „[gelöscht]“ (`socialOhnePerson`, Export `socialEintraegeVon`).
+- Tests `tests/social-kern.test.ts`, `tests/social-route.test.ts`; Demo-Saat Abschnitt 3b2 (erfundener KI-Kanal „NOVA (Beispiel)“).
+
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
 - **Eine Stelle je Aufgabe:** rein `lib/crm/netzwerken.ts` (Schritte, `erfassungPruefen`, `kenntWirSchon`, `firmaVorschlaege`, Danke-Entwurf, `berichtAus`), Server `lib/crm/netzwerken-server.ts` (`erfassungAusfuehren`, `dankeRausVermerken`, `freieVorschlaege`), Route `app/api/netzwerken` (GET Personen/`?frei=`, POST `erfassen`/`danke-raus`), Warteschlange `lib/netzwerken/warteschlange.ts`, Karte-Auslesen (aus) `lib/crm/netzwerken-karte.ts`. Nie neben diesen Stellen eine zweite Dublettenprüfung, Erfassungslogik oder Offline-Warteschlange bauen.

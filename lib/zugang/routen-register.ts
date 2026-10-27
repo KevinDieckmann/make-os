@@ -373,6 +373,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Abläufe über den Fulfillment-Weg. Dienstweg nur MIT Person des Haushalts (Import im Namen einer Person), Konto „nur Business“ darf (Business).
   'crm/produkte/import': r('POST', 'haushalt', 'Produkt-Import (Karten als JSON oder Tabelle): Vorschau neu/ändert/gleich/Fehler, dann anlegen bzw. Teil-Merge — nur Haushalt des Inhabers, Grenzen 413.'),
   'crm/scoring': r('GET,PATCH', MT, 'Lead-Scoring.'),
+  'social': r('GET,PATCH,POST', MT, 'Markttraktion › Social (26.10.): Kanäle, Serienformate, Folgen, Messungen, Prüfung + Leitplanken-Entscheidung, Analyse; POST = Kennzahlen-Import aus Plattform-Exporten (erst Vorschau). Business; Schreiben nur per Sitzung (Dienstweg 403). Veröffentlicht nichts.'),
   'crm/planung': r('GET,PATCH', MT, 'Markttraktion-Planung (10.10., seit 22.10. Hub-Punkt „Planung“ unter Steuerung): Leadkanäle, Kreislauf, Umsatzziele, Challenges — Business; Schreiben nur per Sitzung (Dienstweg 403).'),
   // Produkte & Mandate · Leistungstreppe (10.10.): Treppe, Kundenreise, Zielbild, Roadmap, Positionierung, Fortschritt je Mandat — Business; Schreiben nur per Sitzung.
   'crm/treppe': r('GET,PATCH', MT, 'Leistungstreppe (Produkte & Mandate, 10.10.): Stufen, Kundenreise, Zielbild, Roadmap, Positionierung, Fortschritt je Mandat — Business; Schreiben nur per Sitzung (Dienstweg 403), Stand/409.'),

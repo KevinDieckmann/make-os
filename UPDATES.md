@@ -4,6 +4,19 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 26.10.2026 nachts — Markttraktion › Marketing › Social: Grundlage des Social-Agenten (nur lokal — Branch `social-modul`, Basis update-0910b a0e401c2)
+Kevin 26.10.: „Bau alles Grundlegende für die Software … mach Analysen, dass wir viral gehen und Aufrufe generieren.“ Plan `SOCIAL_PLAN.md`, Material + Viral-Analyse
+in `social/phase0/` (außerhalb des Repos der App, nicht committet). Regeln: CLAUDE.md › „Social — Kanäle, Folgen, Lernschleife“. **Veröffentlicht nichts** — die
+Plattform-Anbindung folgt nach den API-Prüfungen (TikTok Audit, Google Audit, Meta App Review), die Kevin beantragt.
+- **Neu:** Bestand `social--<haushalt>` (additiv, kein Umbau bestehender Daten), Route `/api/social`, Unterreiter „Social“ unter Marketing, Demo-Saat 3b2, Startpaket-Lader
+  (JSON), Kennzahlen-Import (CSV mit Vorschau). Keine neuen Umgebungsvariablen, keine Einmal-Schritte am Server.
+- **So testet ihr:** (1) Markttraktion › Marketing › Social → „Startpaket laden“ → `social/phase0/startpaket.json` wählen → „Anlegen“: drei Kanäle mit 30 Folgen.
+  (2) Kanal ZERO wählen → Folgen: „Day 1“ öffnen — oben steht, ob der Agent sie selbst posten dürfte; die Prüfung listet Befunde (z. B. KI-Label). (3) Formate → „Day X“/
+  „Build log“ freigeben → die Folge springt auf „würde selbst posten“, wenn die Prüfung sauber ist; Not-Aus „Posten anhalten“ → „gesperrt“. (4) Eine Folge öffnen →
+  „Veröffentlichung eintragen“ + „Messung eintragen“ (Aufrufe, % nach 3 s …) → Analyse zeigt Wirkung und Urteil; ab 5 Folgen mit Zahlen die Vergleiche.
+  (5) Import → Plattform + CSV-Export → Vorschau → Übernehmen.
+- **Rückweg:** nur ein neuer Bestand und neue Dateien — der alte Stand kennt `social--*` nicht und lässt ihn liegen.
+
 ## 25.10.2026 abends — großes Update geht online (main a05d8866 → update-0910b, „Was ist neu“ u-2026-10-25)
 Kevin 25.10.: „Dann machen wir heute Abend das große Update.“ Inhalt: Prozesse/Werkstatt (Runden 1–4), Kern-Modul Produkte → Angebot → Mandat → Rechnung →
 Liquidität (Preis-Kette, Runde 4), Fulfillment inkl. Selbstständigkeit (Arbeit), Formular „Angebot anfordern“, Belege über Postfach mit PDF, kleine Bauten (Artikel-/
