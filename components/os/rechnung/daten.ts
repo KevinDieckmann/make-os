@@ -22,6 +22,10 @@ export interface RechnungStand {
   vorgabe: Gesellschaftskennung | null;
   mahnTage: [number, number, number];
   mahnvorschlaege: MahnVorschlag[];
+  /** Der Bereich der Liste (27.10.) — Business bzw. Privat (Selbstständigkeit). */
+  bereich?: 'privat' | 'business';
+  /** Die gewünschte Rechnung steht im anderen Bereich — dorthin umleiten (27.10.). */
+  ort?: 'privat' | 'business';
 }
 export interface RechnungAntwort {
   ok: boolean; status: number; fehler?: string;
@@ -44,7 +48,7 @@ export async function rechnungPost(body: Record<string, unknown>, opt: { keepali
   } catch { return { ok: false, fehler: 'Keine Verbindung — nichts geändert.', status: 0 }; }
 }
 
-export function useRechnungen() {
+export function useRechnungen(o: { bereich?: 'privat' | 'business'; re?: string | null } = {}) {
   const [stand, setStand] = useState<RechnungStand | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
   const [gesperrt, setGesperrt] = useState(false);
@@ -53,14 +57,17 @@ export function useRechnungen() {
     if (laeuft.current) return;
     laeuft.current = true;
     try {
-      const r = await fetch('/api/rechnung', { cache: 'no-store' });
+      const p = new URLSearchParams();
+      if (o.bereich) p.set('bereich', o.bereich);
+      if (o.re) p.set('re', o.re);
+      const r = await fetch(`/api/rechnung${p.toString() ? `?${p.toString()}` : ''}`, { cache: 'no-store' });
       if (r.status === 403) { setGesperrt(true); return; }
       const d = await r.json().catch(() => null) as (RechnungStand & { ok?: boolean; fehler?: string }) | null;
-      if (d?.ok) { setStand({ sicht: d.sicht, rechnungen: d.rechnungen ?? [], gesellschaften: d.gesellschaften ?? [], vorgabe: d.vorgabe ?? null, mahnTage: d.mahnTage, mahnvorschlaege: d.mahnvorschlaege ?? [] }); setFehler(null); }
+      if (d?.ok) { setStand({ sicht: d.sicht, rechnungen: d.rechnungen ?? [], gesellschaften: d.gesellschaften ?? [], vorgabe: d.vorgabe ?? null, mahnTage: d.mahnTage, mahnvorschlaege: d.mahnvorschlaege ?? [], ...(d.bereich ? { bereich: d.bereich } : {}), ...(d.ort ? { ort: d.ort } : {}) }); setFehler(null); }
       else setFehler(d?.fehler ?? `Antwort ${r.status}.`);
     } catch { setFehler('Keine Verbindung.'); }
     finally { laeuft.current = false; }
-  }, []);
+  }, [o.bereich, o.re]);
   useEffect(() => { void laden(); }, [laden]);
   /** Eine Rechnung aus einer Server-Antwort übernehmen (ohne die ganze Liste neu zu laden). */
   const uebernehmen = useCallback((r: RechnungMitFassung) => setStand(s => (s ? { ...s, rechnungen: s.rechnungen.some(x => x.id === r.id) ? s.rechnungen.map(x => (x.id === r.id ? r : x)) : [...s.rechnungen, r] } : s)), []);
@@ -105,4 +112,15 @@ export async function entwurfAnlegen(body: EntwurfNeu): Promise<{ id?: string; f
   const r = await rechnungPost({ aktion: 'neu', ...body, anfrageId: neueAnfrage() });
   if (r.ok && r.rechnung) return { id: r.rechnung.id, vorhanden: !!r.vorhanden };
   return { fehler: r.status === 403 ? KEIN_RECHNUNGS_ZUGANG : r.fehler ?? 'Nicht angelegt.', status: r.status };
+}
+
+/** Produkte und Kartei für den Editor (27.10.) — erst auf Klick, einmal je Fenster. */
+export interface RechnungKatalog { produkte: import('@/lib/crm/typen').Leistung[]; firmen: { id: string; name: string }[]; personen: { id: string; name: string; firma?: string }[] }
+export async function katalogLaden(): Promise<RechnungKatalog | { fehler: string }> {
+  try {
+    const r = await fetch('/api/rechnung?katalog=1', { cache: 'no-store' });
+    const d = await r.json().catch(() => null) as (RechnungKatalog & { ok?: boolean; fehler?: string }) | null;
+    if (d?.ok) return { produkte: d.produkte ?? [], firmen: d.firmen ?? [], personen: d.personen ?? [] };
+    return { fehler: r.status === 403 ? KEIN_RECHNUNGS_ZUGANG : d?.fehler ?? `Antwort ${r.status}.` };
+  } catch { return { fehler: 'Keine Verbindung.' }; }
 }

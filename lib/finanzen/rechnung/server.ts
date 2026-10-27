@@ -20,7 +20,7 @@ import { createHash } from 'crypto';
 import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { localDay, tagVon } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
-import { BUSINESS_GESELLSCHAFTEN, bereichVon, gesellschaftAusEinheit, istBusinessGesellschaft, istGesellschaft, istRegisterKennung, NUR_GRUNDDATEN, type Gesellschaftskennung } from '@/lib/einheiten';
+import { BUSINESS_GESELLSCHAFTEN, bereichVon, bereichVonFirma, gesellschaftAusEinheit, istBusinessGesellschaft, istGesellschaft, istRegisterKennung, NUR_GRUNDDATEN, type Gesellschaftskennung } from '@/lib/einheiten';
 import { SEED, sauberFile, fassung, ugFirmaNachziehen, ueberGrenze, rechnungSchutz, type FinanzplanFile, type Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import { gegenbuchungAnlegen } from '@/lib/finanzen/finanzplan-buchung';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
@@ -75,19 +75,34 @@ export async function mahnTageLaden(): Promise<[number, number, number]> {
   return t ?? [MAHN_VORGABE_TAGE[0], MAHN_VORGABE_TAGE[1], MAHN_VORGABE_TAGE[2]];
 }
 
-/** Alles für die Oberfläche — serverseitig nach Sicht gefiltert (Rechnungen, Absender, Mahnvorschläge). */
-export async function rechnungsStand(z: { haushalt: string; sicht: Sicht }, heute = localDay()) {
+/** In welchem Bereich steht eine Rechnung? Der Bereich ihrer Gesellschaft (Selbstständigkeit → Privat, 05.10.) — eine Stelle für Liste und Umleitung. */
+export const rechnungBereich = (r: Pick<Rechnung, 'firmaId'>): 'privat' | 'business' => (bereichVonFirma(r.firmaId) === 'privat' ? 'privat' : 'business');
+
+/**
+ * Alles für die Oberfläche — serverseitig nach Sicht gefiltert (Rechnungen, Absender, Mahnvorschläge). `bereich` (27.10., Rechnungs-Kreislauf):
+ * nur die Rechnungen und Absender dieses Bereichs — Business › Rechnungen zeigt keine Rechnung der Selbstständigkeit mehr (sie gehört zu Privat),
+ * Privat › Konten & Buchungen › Selbstständigkeit zeigt genau sie. Ein Konto „nur Business“ bekommt immer Business. `re` = die Rechnung, die die
+ * Oberfläche öffnen will: steht sie im anderen Bereich (und darf das Konto sie sehen), sagt `ort`, wohin — die Rechnung selbst kommt nicht mit.
+ */
+export async function rechnungsStand(z: { haushalt: string; sicht: Sicht; bereich?: 'privat' | 'business'; re?: string }, heute = localDay()) {
   const f = await planLaden();
-  const liste = f.rechnungen.filter(r => inSicht(r, z.sicht));
+  const bereich = z.sicht === 'business' ? 'business' : z.bereich;
+  const imBereich = (id: string) => !bereich || rechnungBereich({ firmaId: id }) === bereich;
+  const sichtbar = f.rechnungen.filter(r => inSicht(r, z.sicht));
+  const liste = sichtbar.filter(r => imBereich(r.firmaId));
   const tage = await mahnTageLaden();
   const { absenderVorgabe } = await import('@/lib/gesellschaften/server');
   const v = await absenderVorgabe(z.haushalt).catch(() => null);
+  const gs = (await gesellschaften(z.haushalt)).filter(g => gesellschaftInSicht(g.id, z.sicht) && imBereich(g.id));
+  const anders = z.re && !liste.some(r => r.id === z.re) ? sichtbar.find(r => r.id === z.re) : undefined;
   return {
     rechnungen: liste.map(mitFassung),
-    gesellschaften: (await gesellschaften(z.haushalt)).filter(g => gesellschaftInSicht(g.id, z.sicht)).map(absenderFuerAnzeige),
-    vorgabe: v && gesellschaftInSicht(v, z.sicht) ? v : null,
+    gesellschaften: gs.map(absenderFuerAnzeige),
+    vorgabe: v && gesellschaftInSicht(v, z.sicht) && imBereich(v) ? v : gs[0]?.id ?? null,
     mahnTage: tage,
     mahnvorschlaege: mahnVorschlaege(liste, heute, tage),
+    ...(bereich ? { bereich } : {}),
+    ...(anders ? { ort: rechnungBereich(anders) } : {}),
   };
 }
 
@@ -115,6 +130,9 @@ export interface NeuEingabe { quelle?: unknown; firmaId?: unknown; kontaktId?: u
 export const einmalRechnungId = (angebotId: string) => `r-e${createHash('sha256').update(`einmalig|${angebotId}`).digest('hex').slice(0, 24)}`;
 /** Die Einmalposten-Rechnung eines Angebots, solange sie gilt (nicht storniert). */
 const einmalSchon = (l: readonly Rechnung[], fest: string) => l.find(r => r.id === fest && r.status !== 'storniert');
+/** Eine gültige gestellte (oder bezahlte) Rechnung über ein Angebot — ohne die Einmalposten-Rechnung und ohne Stornos (27.10.). */
+export const schonAusAngebot = (l: readonly Rechnung[], angebotId: string, einmalId: string) =>
+  l.find(r => r.angebotId === angebotId && r.id !== einmalId && r.art !== 'storno' && (r.status === 'gestellt' || r.status === 'bezahlt'));
 export const EINMAL_SCHON = 'Die Einmalposten dieses Angebots stehen schon in einer eigenen Rechnung — keine zweite Rechnung über alle Positionen (sie verrechnete sie doppelt). Die laufende Leistung rechnet das Mandat ab (Monatsrechnung); sonst die Rechnung frei schreiben.';
 
 /**
@@ -185,6 +203,10 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
       sperreEinmal = fest;
       const einmal = einmalSchon(plan.rechnungen, fest);
       if (einmal) throw new RechnungFehler(EINMAL_SCHON, 409, { grund: 'einmalposten-schon', rechnungId: einmal.id });
+      // 27.10. (Rechnungs-Kreislauf): ist aus diesem Angebot schon eine Rechnung gestellt (nicht storniert), entsteht keine zweite volle Rechnung —
+      // vorher suchte die Prüfung nur Entwürfe, ein zweiter Klick nach dem Stellen rechnete das Angebot doppelt ab. Weitere Beträge: frei schreiben.
+      const gestellt = schonAusAngebot(plan.rechnungen, a.id, fest);
+      if (gestellt) throw new RechnungFehler(`Aus diesem Angebot ist schon die Rechnung ${gestellt.nummer ?? ''} gestellt — keine zweite über dasselbe Angebot. Eine weitere Rechnung bitte frei schreiben (oder die gestellte kopieren).`.replace('  ', ' '), 409, { grund: 'angebot-schon-gestellt', rechnungId: gestellt.id });
     }
     const k = kontakt(a.kontaktId);
     const f = firma(a.firmaId ?? k?.firmaId);
@@ -443,6 +465,97 @@ export async function entwurfLoeschen(p: { id: string; stand: unknown; sicht: Si
     return { ...f, rechnungen: f.rechnungen.filter(r => r.id !== p.id) };
   });
   await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geloescht', id: p.id }], p.wer);
+}
+
+// ── Kunde aus der Kartei, Kopie, Katalog (27.10., Rechnungs-Kreislauf) ──────────
+
+/**
+ * Den Kunden eines Entwurfs aus der Kartei setzen: Empfänger (Momentaufnahme) aus Firma bzw. Person über `empfaengerAusCrm`, dazu `kundeFirmaId`/`kontaktId`
+ * — so hängt auch eine frei geschriebene Rechnung an ihrer Akte (Umsatz-Reiter, „Anschrift an der Firma speichern“). Eine Firma löst die Person, eine Person
+ * nimmt ihre Firma mit. Eingeschränkte Personen (Art. 18) fehlen in der Kartei-Sicht → 404. Derselbe Schreibweg wie „speichern“ (Stand/409).
+ */
+export async function entwurfKunde(p: { id: string; stand: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; haushalt: string; sicht: Sicht; wer?: Wer }): Promise<Rechnung & { fassung: string }> {
+  const [{ ladeCrm }, { kontakteFuerVerarbeitung }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/verarbeitung')]);
+  const crm = await ladeCrm();
+  const firma = (fid: unknown) => (firmaIdOk(fid) ? crm.firmen.find(f => f.id === fid && !f.geloeschtAm) : undefined);
+  let k: Awaited<ReturnType<typeof kontakteFuerVerarbeitung>>[number] | undefined;
+  let f: ReturnType<typeof firma>;
+  if (kontaktIdOk(p.kontaktId)) {
+    k = (await kontakteFuerVerarbeitung()).find(x => x.id === p.kontaktId);
+    if (!k) throw new RechnungFehler('Diese Person gibt es in der Kartei nicht (mehr).', 404);
+    f = firma(k.firmaId);
+  } else {
+    f = firma(p.kundeFirmaId);
+    if (!f) throw new RechnungFehler('Diese Firma gibt es in der Kartei nicht (mehr).', 404);
+  }
+  const empf = empfaengerAusCrm(k, f);
+  const zielTage = f?.zahlung?.zielTage ?? k?.zahlung?.zielTage;
+  const { anFirma: _a, ...r } = await entwurfSpeichern({
+    id: p.id, stand: p.stand, haushalt: p.haushalt, sicht: p.sicht, wer: p.wer,
+    felder: { empfaenger: empf, kunde: kundeAus(empf), kontaktId: k?.id ?? null, kundeFirmaId: f?.id ?? null, ...(zielTage ? { zahlungszielTage: zielTage } : {}) },
+  });
+  return r;
+}
+
+/**
+ * Eine Rechnung als neuen Entwurf kopieren — Vorlage („dieselbe Rechnung nächsten Monat“) oder Korrektur nach einem Storno. Übernommen: Absender,
+ * Empfänger, Kunde aus der Kartei, Titel, Positionen, Steuerhinweis, Texte, Zahlungsziel. Nie: Nummer, PDF, Status, Mahnungen, Versand, Angebotsbezug
+ * (eine Kopie ist keine zweite Rechnung über das Angebot). Ist das Original storniert (Korrektur), bleiben Leistungszeitraum und Mandat — die korrigierte
+ * Rechnung ersetzt sie; sonst sind beide leer (der neue Zeitraum gehört eingetragen, und ein Mandat zählte den Monat sonst doppelt).
+ */
+export async function entwurfKopie(p: { id: string; haushalt: string; sicht: Sicht; wer?: Wer; jetzt?: Date }): Promise<Rechnung & { fassung: string }> {
+  const heute = localDay(p.jetzt ?? new Date());
+  const gs = await gesellschaften(p.haushalt);
+  const id = neueKennung('r');
+  let gespeichert: Rechnung | null = null;
+  await updateJson<FinanzplanFile>('finanzplan', cur => {
+    const f = planBasis(cur);
+    const x = f.rechnungen.find(r => r.id === p.id);
+    // Aus der Stornorechnung heraus: kopiert wird das Original (die korrigierte Rechnung ersetzt es).
+    const o = x?.art === 'storno' && x.stornoZu ? f.rechnungen.find(r => r.id === x.stornoZu) : x;
+    if (!o || !inSicht(o, p.sicht)) throw new RechnungFehler('Rechnung nicht gefunden.', 404);
+    if (o.art === 'storno') throw new RechnungFehler('Eine Stornorechnung wird nicht kopiert — bitte die ursprüngliche Rechnung kopieren.', 409);
+    if (!istGesellschaft(o.firmaId)) throw new RechnungFehler(NUR_GRUNDDATEN, 409, { grund: 'nur-grunddaten' });
+    const korrektur = o.status === 'storniert';
+    const ku = !!gs.find(x => x.id === o.firmaId)?.kleinunternehmer;
+    const positionen: RechnungPosition[] = (o.positionen?.length ? o.positionen : o.betrag > 0 ? [positionAusBrutto(o.titel || 'Leistung', Math.round(o.betrag * 100), { kleinunternehmer: ku, nettoAusBrutto })] : [])
+      .filter(x => !istAnrechnung(x)).map((x, i) => ({ ...x, id: `p${i + 1}` }));
+    const e = neuerEntwurf({
+      id, firmaId: o.firmaId as Gesellschaftskennung, kunde: o.kunde, titel: o.titel, ...(o.empfaenger ? { empfaenger: o.empfaenger } : {}), positionen,
+      zahlungszielTage: o.zahlungszielTage, heute, ...(o.kontaktId ? { kontaktId: o.kontaktId } : {}), ...(o.kundeFirmaId ? { kundeFirmaId: o.kundeFirmaId } : {}),
+      ...(korrektur && o.mandatId ? { mandatId: o.mandatId } : {}), ...(korrektur && o.leistungVon ? { leistungVon: o.leistungVon } : {}), ...(korrektur && o.leistungBis ? { leistungBis: o.leistungBis } : {}),
+      ...(o.steuerHinweis ? { steuerHinweis: o.steuerHinweis } : {}), ...(o.einleitung ? { einleitung: o.einleitung } : {}), ...(o.schluss ? { schluss: o.schluss } : {}),
+    }, { kleinunternehmer: ku });
+    const notiz = korrektur && o.nummer ? `Korrektur zu Rechnung ${o.nummer}` : o.nummer ? `Kopie von Rechnung ${o.nummer}` : undefined;
+    const sauber = sauberFile({ rechnungen: [{ ...e, ...(o.steuerfreiGrund ? { steuerfreiGrund: o.steuerfreiGrund } : {}), ...(notiz ? { notiz } : {}) }] }).rechnungen[0];
+    const neu = ugFirmaNachziehen({ ...f, rechnungen: [...f.rechnungen, sauber] });
+    const grenze = ueberGrenze(neu, f);
+    if (grenze) throw new RechnungFehler(grenze, 413);
+    gespeichert = sauber;
+    return neu;
+  });
+  const r = gespeichert as Rechnung | null;
+  if (!r) throw new RechnungFehler('Nicht angelegt.', 500);
+  await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'neu', id: r.id, felder: Object.keys(r).filter(k => k !== 'id') }], p.wer);
+  return mitFassung(r);
+}
+
+/**
+ * Für den Editor (27.10.): die aktiven Produkte (für „+ aus Produkt“) und die Kartei zum Wählen des Kunden — nur Kennung und Name (Firmen; Personen mit
+ * ihrer Firma), eingeschränkte Personen (Art. 18) fehlen. Erst auf Klick geladen, nie mit der Liste.
+ */
+export async function rechnungKatalog(): Promise<{ produkte: import('@/lib/crm/typen').Leistung[]; firmen: { id: string; name: string }[]; personen: { id: string; name: string; firma?: string }[] }> {
+  const [{ ladeCrm }, { kontakteFuerVerarbeitung }, { anzeigename }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/verarbeitung'), import('@/lib/make-one/crm')]);
+  const crm = await ladeCrm();
+  const firmenName = new Map(crm.firmen.map(f => [f.id, f.name]));
+  return {
+    produkte: crm.leistungen.filter(l => l.status === 'aktiv'),
+    firmen: crm.firmen.filter(f => !f.geloeschtAm).map(f => ({ id: f.id, name: f.name })).sort((a, b) => a.name.localeCompare(b.name, 'de')),
+    personen: (await kontakteFuerVerarbeitung()).map(k => {
+      const firma = (k.firmaId && firmenName.get(k.firmaId)) || k.firma;
+      return { id: k.id, name: anzeigename(k), ...(firma ? { firma } : {}) };
+    }).sort((a, b) => a.name.localeCompare(b.name, 'de')),
+  };
 }
 
 // ── Stellen ──────────────────────────────────────────────────────────────────

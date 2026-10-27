@@ -118,7 +118,10 @@ export const WEG = {
    * Rechnung schreiben (08.10.): öffnet den Rechnungs-Editor über Rechnungen & Zahlungen (`re` = Entwurf bzw. Rechnung). `zurueck` (21.10., Rundgang B8):
    * wohin „Schließen“ führt — z. B. ins Mandat, aus dem der Editor geöffnet wurde (nur eigene Pfade `/os/…`, `zurueckZiel`); ohne: bleibt in den Rechnungen.
    */
-  rechnungSchreiben: (id?: string, zurueck?: string) => q('/os/finanzen', { s: 'rechnungen', space: 'business', re: id, zurueck: zurueck && zurueckZiel(zurueck) ? zurueck : undefined }),
+  rechnungSchreiben: (id?: string, zurueck?: string, bereich: 'privat' | 'business' = 'business') => q('/os/finanzen', {
+    // 27.10.: Rechnungen der Selbstständigkeit (Privat) liegen unter Privat › Konten & Buchungen › Selbstständigkeit — die Business-Liste leitet dorthin um.
+    ...(bereich === 'privat' ? { s: 'buchungen', space: 'privat' } : { s: 'rechnungen', space: 'business' }), re: id, zurueck: zurueck && zurueckZiel(zurueck) ? zurueck : undefined,
+  }),
   zahlung: (id?: string): string => (id?.startsWith('er-') ? q('/os/finanzen', { s: 'business' }, 'eroeffnung') : q('/os/finanzen', { s: 'rechnungen', space: 'business', z: id })),
   planposten: (id?: string) => q('/os/finanzen', { s: 'liquiditaet', space: 'business', p: id }),
   kontostaende: () => q('/os/finanzen', { s: 'liquiditaet', space: 'business' }, 'kontostaende'),

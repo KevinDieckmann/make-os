@@ -66,7 +66,9 @@ export const ANRECHNUNG_PRAEFIX = 'anr-';
 /** Eine Position säubern — null, wenn sie nichts taugt (kein Titel). Einzelpreis nie negativ — außer einer Anrechnung (`anr-…`, Minusposition). */
 export function positionSaeubern(o: Record<string, unknown>, i: number): RechnungPosition | null {
   const titel = zeile(o.titel, RECHNUNG_GRENZEN.titel);
-  if (!titel) return null;
+  // 27.10.: eine Position ohne Bezeichnung, aber mit Preis oder Text bleibt im ENTWURF stehen (vorher verwarf der Server sie beim automatischen
+  // Speichern still — schloss man den Editor, war sie samt Preis weg). Stellen geht erst mit Bezeichnung (`pflichtFehlt`).
+  if (!titel && !(Number(o.einzelpreisCent) || txt(o.text, RECHNUNG_GRENZEN.text))) return null;
   const menge = Math.max(0, Math.min(RECHNUNG_POSITION_MAX.menge, Math.round((Number(o.menge) || 0) * 1000) / 1000));
   const anrechnung = typeof o.id === 'string' && o.id.startsWith(ANRECHNUNG_PRAEFIX) && ID.test(o.id);
   const preis = Math.max(anrechnung ? -RECHNUNG_POSITION_MAX.einzelpreisCent : 0, Math.min(anrechnung ? 0 : RECHNUNG_POSITION_MAX.einzelpreisCent, Math.round(Number(o.einzelpreisCent) || 0)));
@@ -261,6 +263,7 @@ export function pflichtFehlt(r: EntwurfFelder, g: Gesellschaft | null | undefine
   const pos = r.positionen ?? [];
   if (!pos.length) f.push({ text: 'Mindestens eine Position — Menge und Art der Leistung (§ 14 Abs. 4 Nr. 5 UStG).' });
   if (pos.some(p => !(p.menge > 0))) f.push({ text: 'Eine Position hat Menge 0.' });
+  if (pos.some(p => !p.titel.trim())) f.push({ text: 'Eine Position hat noch keine Bezeichnung.' });
   const ku = !!g?.kleinunternehmer;
   // Eine Anrechnung (19.10., P3) darf die Rechnung auf 0 € bringen (das Entgelt wurde mit dem angerechneten Produkt bezahlt) — nie darunter.
   const netto = pos.length ? rechnungSummen(pos, { kleinunternehmer: ku }).netto : 1;
@@ -323,6 +326,9 @@ export function entwurfAnwenden(alt: Rechnung, roh: Record<string, unknown>, opt
     const b = betragFelder(n.positionen, opt);
     n.betrag = b.betrag; n.netto = b.netto;
     if (b.ustSatz !== undefined) n.ustSatz = b.ustSatz; else delete n.ustSatz;
+  } else if (alt.positionen) {
+    // 27.10.: alle Positionen entfernt → 0 € (vorher blieb der alte Betrag stehen, und die Liquidität zeigte einen Phantom-Eingang).
+    n.betrag = 0; n.netto = 0; delete n.ustSatz;
   }
   return n;
 }

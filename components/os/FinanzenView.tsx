@@ -114,7 +114,8 @@ function Inhalt({ ort, punkt, zugang, inhaber, planZugang, altbestand, u, t }: {
     );
   }
   if (bereich === 'privat') {
-    if (reiter === 'konten') return ort.unter === 'firma' ? <BuchungenView bereich="privat" /> : <HaushaltView ansicht="konten" reiter={t} />;
+    // 27.10.: unter der Selbstständigkeit (Privat) auch ihre Rechnungen — dieselbe Übersicht wie unter Business, der Server filtert nach Bereich.
+    if (reiter === 'konten') return ort.unter === 'firma' ? <><RechnungenKarte bereich="privat" /><BuchungenView bereich="privat" /></> : <HaushaltView ansicht="konten" reiter={t} />;
     return (
       <>
         <HaushaltView ansicht="uebersicht" reiter={null} />
@@ -123,7 +124,7 @@ function Inhalt({ ort, punkt, zugang, inhaber, planZugang, altbestand, u, t }: {
       </>
     );
   }
-  // Rechnungen schreiben mit PDF (08.10.) oben, darunter die bisherige Pipeline (nur mit Haushaltszugang — sie trägt Privates).
+  // Rechnungen (seit 27.10. die EINE Übersicht) oben, darunter Planposten & ältere Rechnungen ohne Positionen (nur mit Haushaltszugang — trägt Privates).
   if (reiter === 'rechnungen') return <><RechnungenKarte />{zugang && <FinanzplanungView />}</>;
   if (reiter === 'liquiditaet') return <LiquiditaetView />;
   if (reiter === 'buchungen') return <BuchungenView bereich="business" />;

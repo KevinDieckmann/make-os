@@ -12,11 +12,11 @@ import { loadJson, updateJson, updateJsonAsync, updateGeschuetztListen } from '@
 import { localDay } from '@/lib/zeit';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import {
-  SEED, ugFirmaNachziehen, sauberFile, ueberGrenze, istGrenzFehler, bezahltAnwenden, mitFassung, fassung, fpOpsLesen, fpOpsAnwenden,
+  SEED, ugFirmaNachziehen, sauberFile, ueberGrenze, istGrenzFehler, mitFassung, fassung, fpOpsLesen, fpOpsAnwenden,
   rechnungenSchutzVoll, rechnungenMitServerFeldern, stornoAnwenden,
-  type FinanzplanFile, type BezahltErgebnis, type FpErgebnis, type StornoErgebnis,
+  type FinanzplanFile, type FpErgebnis, type StornoErgebnis,
 } from '@/lib/finanzen/finanzplan-bestand';
-import { buchungAnlegen, gegenbuchungAnlegen } from '@/lib/finanzen/finanzplan-buchung';
+import { gegenbuchungAnlegen } from '@/lib/finanzen/finanzplan-buchung';
 import { istDienst } from '@/lib/zugang/dienst';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { kontostandAusAltweg } from '@/lib/finanzen/konten/server';
@@ -195,37 +195,12 @@ class KeinSchreiben extends Error {}
 async function bezahlt(body: { rechnungId?: unknown; am?: unknown; stand?: unknown }, req: Request) {
   const id = typeof body.rechnungId === 'string' ? body.rechnungId.slice(0, 40) : '';
   if (!id) return NextResponse.json({ ok: false, error: 'rechnungId fehlt.' }, { status: 400 });
-  const am = typeof body.am === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.am) ? body.am : localDay();
-  const stand = typeof body.stand === 'string' && body.stand ? body.stand : undefined;
-  let erg: BezahltErgebnis | null = null;
-  let gebucht: 'neu' | 'vorhanden' | 'verknuepft' | null = null;
-  let vorherRechnung: FinanzplanFile['rechnungen'][number] | undefined;
-  try {
-    await updateJsonAsync<FinanzplanFile>('finanzplan', async current => {
-      if (!current) { erg = { ok: false, status: 404, fehler: 'Noch kein Finanzplan angelegt.' }; throw new KeinSchreiben(); }
-      vorherRechnung = sauberFile(current).rechnungen.find(r => r.id === id);
-      const e = bezahltAnwenden(sauberFile(current), id, am, stand);
-      erg = e;
-      if (!e.ok) throw new KeinSchreiben();
-      // Steht der Zahlungseingang schon aus dem Kontoauszug da, wird er verknüpft statt verdoppelt (09.10., lib/finanzen/zahlung-abgleich.ts).
-      if (e.buchung) gebucht = await buchungAnlegen(e.buchung, { ...(e.rechnung.nummer ? { nummer: e.rechnung.nummer } : {}) });
-      return e.schonBezahlt ? current : e.datei;
-    });
-  } catch (err) {
-    if (!(err instanceof KeinSchreiben)) {
-      console.error('[finanzplan] bezahlt fehlgeschlagen', err);
-      return NextResponse.json({ ok: false, error: 'Nicht gespeichert — Rechnung und Buchung sind unverändert. Bitte noch einmal.' }, { status: 500 });
-    }
-  }
-  const e = erg as BezahltErgebnis | null;
-  if (!e) return NextResponse.json({ ok: false, error: 'Nicht gespeichert.' }, { status: 500 });
+  // 27.10.: EINE Stelle für den Zahlungseingang (lib/finanzen/rechnung/bezahlt-server.ts) — auch /api/rechnung nimmt sie.
+  const { rechnungBezahltVermerken } = await import('@/lib/finanzen/rechnung/bezahlt-server');
+  const e = await rechnungBezahltVermerken({ id, am: body.am, stand: body.stand, sicht: 'privat', wer: werAus(req) });
   const stand2 = mitFassung(sauberFile(await loadJson<FinanzplanFile>('finanzplan')));
-  if (!e.ok) return NextResponse.json({ ok: false, error: e.fehler, ...(e.aktuell ? { aktuell: { ...e.aktuell, fassung: fassung(e.aktuell) } } : {}), ...stand2, stand: stand2 }, { status: e.status });
-  // Änderungsprotokoll (09.10.): nur Kennung + Feldnamen (status, bezahltAm) — die Buchung protokolliert ihr eigener Schreibweg.
-  if (!e.schonBezahlt) await protokolliereBestand('finanzplan', { rechnungen: [vorherRechnung ?? e.rechnung] }, { rechnungen: [e.rechnung] }, werAus(req));
-  // Ereignis (09.10., E1): Zahlungseingang → Agenten (nur Kennungen, nie Beträge) — nach dem Speichern, wirft nie.
-  if (!e.schonBezahlt) await import('@/lib/ereignisse/quellen').then(q => q.rechnungBezahltEreignis(e.rechnung)).catch(() => 0);
-  return NextResponse.json({ ok: true, rechnung: e.rechnung, schonBezahlt: e.schonBezahlt, buchung: e.buchung ? { id: e.buchung.id, gebucht } : null, ...stand2, stand: stand2 });
+  if (!e.ok) return NextResponse.json({ ok: false, error: e.fehler, ...(e.aktuell ? { aktuell: e.aktuell } : {}), ...stand2, stand: stand2 }, { status: e.status });
+  return NextResponse.json({ ok: true, rechnung: e.rechnung, schonBezahlt: e.schonBezahlt, buchung: e.buchung, ...stand2, stand: stand2 });
 }
 
 /**

@@ -315,7 +315,7 @@ export function buchungFuer(r: Rechnung, am: string): RechnungsBuchung {
 
 export type BezahltErgebnis =
   | { ok: true; datei: FinanzplanFile; rechnung: Rechnung; schonBezahlt: boolean; buchung: RechnungsBuchung | null }
-  | { ok: false; status: 404 | 409; fehler: string; aktuell?: Rechnung };
+  | { ok: false; status: 400 | 404 | 409; fehler: string; aktuell?: Rechnung };
 
 /**
  * Rein: Rechnung `id` auf bezahlt setzen (Status + `bezahltAm`). `stand` (optional)
@@ -323,14 +323,19 @@ export type BezahltErgebnis =
  * Eintrag. Schon bezahlt → nichts ändern, aber die Buchung trotzdem liefern (so
  * heilt ein Wiederholen eine fehlende Buchung). Betrag 0 → keine Buchung.
  */
-export function bezahltAnwenden(f: FinanzplanFile, id: string, am: string, stand?: string): BezahltErgebnis {
+export function bezahltAnwenden(f: FinanzplanFile, id: string, am: string, stand?: string, heute?: string): BezahltErgebnis {
   const alt = f.rechnungen.find(r => r.id === id);
   if (!alt) return { ok: false, status: 404, fehler: 'Die Rechnung gibt es nicht (mehr).' };
   if (stand && fassung(alt) !== stand) {
     return { ok: false, status: 409, fehler: 'Jemand hat die Rechnung inzwischen geändert — Stand neu geladen, bitte noch einmal.', aktuell: alt };
   }
   if (alt.status === 'storniert') return { ok: false, status: 409, fehler: 'Die Rechnung ist storniert — bezahlt geht nicht mehr. Bei Bedarf neu stellen.', aktuell: alt };
+  // 27.10. (Rechnungs-Kreislauf): ein Entwurf aus dem Editor (mit Positionen) wird erst gestellt — Nummer und PDF —, dann bezahlt. Vorher sprang er
+  // serverseitig (auch über ZOE) von „geplant“ direkt auf „bezahlt“. Ein Planposten ohne Positionen (Altbestand, Liquidität) bleibt wie bisher.
+  if (alt.status === 'geplant' && alt.positionen) return { ok: false, status: 409, fehler: 'Die Rechnung ist noch ein Entwurf — erst stellen (Nummer und PDF), dann den Zahlungseingang vermerken.', aktuell: alt };
   const schonBezahlt = alt.status === 'bezahlt';
+  if (!schonBezahlt && heute && am > heute) return { ok: false, status: 400, fehler: '„Bezahlt am“ liegt in der Zukunft.', aktuell: alt };
+  if (!schonBezahlt && alt.datum && am < alt.datum) return { ok: false, status: 400, fehler: '„Bezahlt am“ liegt vor dem Rechnungsdatum.', aktuell: alt };
   const rechnung: Rechnung = schonBezahlt ? alt : { ...alt, status: 'bezahlt', bezahltAm: am };
   const datei = schonBezahlt ? f : { ...f, rechnungen: f.rechnungen.map(r => (r.id === id ? rechnung : r)) };
   return { ok: true, datei, rechnung, schonBezahlt, buchung: rechnung.betrag > 0 ? buchungFuer(rechnung, rechnung.bezahltAm ?? am) : null };

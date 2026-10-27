@@ -18,13 +18,16 @@ import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { absenderAus } from '@/lib/crm/angebot-dokument';
 import { euroCent, centAusEingabe, eingabeAusCent, mengeAusEingabe, mengeText, mailtoLink, UST_SAETZE } from '@/lib/crm/angebote';
 import {
-  pflichtFehlt, rechnungSummen, kundeAus, mahnVorschlag, mahnMail, rechnungMail, positionNetto, mahnstufeVon, mahnLabel, KEINE_STEUERBERATUNG,
-  RECHNUNG_GRENZEN,
+  pflichtFehlt, rechnungSummen, kundeAus, mahnVorschlag, mahnMail, rechnungMail, positionNetto, mahnstufeVon, mahnLabel, KEINE_STEUERBERATUNG, statusWechselFehlt,
+  RECHNUNG_GRENZEN, positionenAusAngebot,
 } from '@/lib/finanzen/rechnung/regeln';
 import { rechnungDokument, bankZeile } from '@/lib/finanzen/rechnung/dokument';
 import { Blatt } from '../crm/angebot/Blatt';
 import { Karte, Knopf, Chip, Hinweis, Pillen, Segmente, Feldzeile, Ueberschrift, Schalter, feld, useRueckfrage } from '../ui';
-import { neueAnfrage, pdfLaden, rechnungPost, type RechnungDaten, type RechnungMitFassung, type AbsenderAnzeige } from './daten';
+import { katalogLaden, neueAnfrage, pdfLaden, rechnungPost, type RechnungDaten, type RechnungMitFassung, type AbsenderAnzeige, type RechnungKatalog } from './daten';
+import { angebotPositionenAusProdukt } from '@/lib/crm/produkt-karte';
+import { Wahl } from '../crm/Wahl';
+import { WEG } from '@/lib/wege';
 import { localDay, tagVon } from '@/lib/zeit';
 import { BelegSendenKnopf } from '../inbox/BelegSenden';
 import { neueKennung } from '@/lib/kennung';
@@ -47,13 +50,14 @@ function formAus(r: Rechnung): Form {
   }] : [];
   return {
     firmaId: r.firmaId, titel: r.titel, leistungVon: r.leistungVon, leistungBis: r.leistungBis, notiz: r.notiz,
-    empfaenger: r.empfaenger ?? (r.kunde ? { firma: r.kunde } : {}), positionen, zahlungszielTage: r.zahlungszielTage ?? 14,
+    // „Kunde“ ist nur der Platzhalter eines neuen Entwurfs (27.10.: stand vorher als Firma im Feld).
+    empfaenger: r.empfaenger ?? (r.kunde && r.kunde !== 'Kunde' ? { firma: r.kunde } : {}), positionen, zahlungszielTage: r.zahlungszielTage ?? 14,
     steuerHinweis: r.steuerHinweis, steuerfreiGrund: r.steuerfreiGrund, einleitung: r.einleitung, schluss: r.schluss,
   };
 }
 
-export function RechnungEditor({ start, daten, onZu }: { start: RechnungMitFassung; daten: RechnungDaten; onZu: () => void }) {
-  if (start.status !== 'geplant') return <RechnungAnsicht r={start} daten={daten} onZu={onZu} />;
+export function RechnungEditor({ start, daten, onZu, onOeffnen }: { start: RechnungMitFassung; daten: RechnungDaten; onZu: () => void; /** Eine andere Rechnung öffnen (Kopie, Storno, 27.10.). */ onOeffnen?: (id: string) => void }) {
+  if (start.status !== 'geplant') return <RechnungAnsicht r={start} daten={daten} onZu={onZu} onOeffnen={onOeffnen} />;
   return <Entwurf start={start} daten={daten} onZu={onZu} />;
 }
 
@@ -63,13 +67,28 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
   const heute = localDay();
   const gesellschaften = daten.stand?.gesellschaften ?? [];
   const [form, setForm] = useState<Form>(() => formAus(start));
+  // Zahlungsziel als Text (27.10.): leer heißt „Vorgabe der Gesellschaft“ beim Verlassen — vorher wurde ein geleertes Feld still 0 Tage.
+  const [zielText, setZielText] = useState(() => String(formAus(start).zahlungszielTage));
+  useEffect(() => { setZielText(t => (t === '' ? t : String(form.zahlungszielTage))); }, [form.zahlungszielTage]);
   // Ein Altbestand-Entwurf ohne Positionen wird beim bloßen Öffnen nicht umgeschrieben — erst eine Änderung oder „stellen“ speichert ihn.
   const [status, setStatus] = useState<'neu' | 'gespeichert' | 'wartet' | 'speichert' | 'fehler'>(start.positionen ? 'gespeichert' : 'neu');
   const [meldung, setMeldung] = useState<string | null>(null);
   const [serverFehlt, setServerFehlt] = useState<{ text: string; weg?: string }[] | null>(null);
   const [meine, setMeine] = useState<Form | null>(null);
   const [ansicht, setAnsicht] = useState<'bearbeiten' | 'vorschau'>('bearbeiten');
-  const [fertig, setFertig] = useState<{ r: RechnungMitFassung; pdf: { id: string; name: string }; mailto: string } | null>(null);
+  // Kunde aus der Kartei und Positionen aus Produkten (27.10.) — der Katalog kommt erst auf Klick.
+  const [katalog, setKatalog] = useState<RechnungKatalog | null>(null);
+  const [katalogLaedt, setKatalogLaedt] = useState(false);
+  const [kundeId, setKundeId] = useState<string | null>(start.kontaktId ?? start.kundeFirmaId ?? null);
+  const katalogHolen = useCallback(async () => {
+    if (katalog || katalogLaedt) return;
+    setKatalogLaedt(true);
+    const k = await katalogLaden();
+    setKatalogLaedt(false);
+    if ('fehler' in k) setMeldung(k.fehler); else setKatalog(k);
+  }, [katalog, katalogLaedt]);
+  // Gleich beim Öffnen laden (Rundgang 27.10.: sonst brauchte „Kunde aus der Kartei“ zwei Klicks, und der gewählte Kunde stand nicht da).
+  useEffect(() => { void katalogHolen(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- einmal je Fenster
   const [loeschFrage, setLoeschFrage] = useState(false);
   const { bestaetigen, dialog: rueckfrage } = useRueckfrage();
   // Rechnungsanschrift an der Firma (19.10., B12): was der Server zuletzt meldete; der Haken überschreibt eine ANDERE Anschrift der Firma.
@@ -132,13 +151,31 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
   const ku = !!g?.kleinunternehmer;
   const s = rechnungSummen(form.positionen, { kleinunternehmer: ku });
   // Eine neue Position ohne Bezeichnung (24.10.: „Leistung“ ist nur noch Platzhalter) würde der Server verwerfen — erst benennen, dann stellen.
-  const fehlt = [...pflichtFehlt(form, g ?? null), ...(form.positionen.some(p => !p.titel.trim()) ? [{ text: 'Eine Position hat noch keine Bezeichnung.' }] : [])];
+  const fehlt = pflichtFehlt(form, g ?? null);
   const nullSatz = !ku && form.positionen.some(p => p.ustSatz === 0);
   const entwurfAlsRechnung: Rechnung = { ...start, ...form, kunde: kundeAus(form.empfaenger, start.kunde), betrag: s.brutto / 100, status: 'geplant' };
   const dok = useMemo(() => rechnungDokument(entwurfAlsRechnung, absenderAus(g ?? { id: (form.firmaId || 'kdc') as Gesellschaftskennung }), { datum: heute, bank: bankZeile(g?.bank), kleinunternehmer: ku }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- die Vorschau folgt dem Formular
     [form, g, ku, heute]);
   const setzePos = (l: RechnungPosition[]) => aendern({ positionen: l });
+
+  /** Kunde aus der Kartei (27.10.): der Server belegt den Empfänger vor und hängt die Rechnung an Firma bzw. Person — im selben Speicher-Takt (Stand). */
+  async function kundeWaehlen(id: string) {
+    await speichernJetzt();
+    const r = await rechnungPost({ aktion: 'kunde', id: start.id, stand: standRef.current, ...(id.startsWith('f-') ? { kundeFirmaId: id } : { kontaktId: id }) });
+    if (!r.ok || !r.rechnung) { setMeldung(r.fehler ?? 'Kunde nicht übernommen.'); if (r.status === 409 && r.aktuell) { standRef.current = r.aktuell.fassung; daten.uebernehmen(r.aktuell); setForm(formAus(r.aktuell)); } return; }
+    standRef.current = r.rechnung.fassung; daten.uebernehmen(r.rechnung); setForm(formAus(r.rechnung)); setStatus('gespeichert');
+    setKundeId(r.rechnung.kontaktId ?? r.rechnung.kundeFirmaId ?? null);
+  }
+  /** Positionen aus einem Produkt anhängen (alle Preis-Teile, die immer gelten — wie ein Klick im Angebots-Katalog). */
+  function produktDazu(id: string) {
+    const p = katalog?.produkte.find(x => x.id === id);
+    if (!p) return;
+    const neu = positionenAusAngebot({ positionen: angebotPositionenAusProdukt(p, [], { idBasis: neueKennung('p').slice(0, 16), kleinunternehmer: ku }) }, ku)
+      .map(x => ({ ...x, id: neueKennung('p').slice(0, 20), leistungId: p.id }));
+    // Ein Titel, der nur der Platzhalter ist, nimmt den Namen des Produkts (sonst stand „Rechnung: Rechnung“ im PDF).
+    aendern({ positionen: [...form.positionen, ...neu], ...(!form.titel.trim() || form.titel === 'Rechnung' ? { titel: p.name.slice(0, RECHNUNG_GRENZEN.titel) } : {}) });
+  }
 
   async function stellen() {
     // 24.10. (Bau-Test, Reibung): wie „Angebot annehmen“ erst eine Rückfrage — Nummer und Betrag werden festgeschrieben (nur noch Storno).
@@ -155,8 +192,7 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
     }
     daten.uebernehmen(r.rechnung);
     pdfLaden(r.rechnung.id, r.pdf.name);
-    const mail: { an?: string; betreff: string; text: string } = r.mail ?? { ...rechnungMail(r.rechnung), an: r.rechnung.empfaenger?.email };
-    setFertig({ r: r.rechnung, pdf: r.pdf, mailto: mailtoLink(mail.an, mail.betreff, mail.text) });
+    // Danach wechselt das Fenster in die Ansicht der gestellten Rechnung (Bestätigung, Versand über das Postfach, Zahlungseingang).
     void daten.laden();
   }
   async function loeschen() {
@@ -166,20 +202,6 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
     daten.entfernen(start.id); onZu();
   }
 
-  if (fertig) {
-    return (
-      <div style={{ display: 'grid', gap: 14 }}>
-        <Hinweis art="gut" titel={`Rechnung ${fertig.r.nummer ?? ''} gestellt`}>
-          Nummer vergeben, PDF erstellt und als Beleg abgelegt (nicht löschbar, Prüfsumme gespeichert). Das PDF wird heruntergeladen — im Mail-Programm anhängen und abschicken. MAKE OS verschickt nichts.
-        </Hinweis>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Knopf haupt href={fertig.mailto}>Mail-Programm öffnen</Knopf>
-          <Knopf leise onClick={() => pdfLaden(fertig.r.id, fertig.pdf.name)}>PDF noch einmal laden</Knopf>
-          <Knopf leise onClick={onZu}>Schließen</Knopf>
-        </div>
-      </div>
-    );
-  }
 
   const statusText = { neu: 'noch nicht gespeichert', gespeichert: 'Entwurf gespeichert', wartet: 'Änderung …', speichert: 'speichert …', fehler: 'nicht gespeichert' }[status];
   const zeigFehlt = serverFehlt ?? fehlt;
@@ -207,7 +229,11 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
         </Karte>
 
         <Karte flach>
-          <Ueberschrift>Empfänger</Ueberschrift>
+          <Ueberschrift rechts={katalog
+            ? <Wahl<string> label="Kunde aus der Kartei" leer="Kunde aus der Kartei wählen" wert={kundeId}
+                liste={[...katalog.firmen.map(f => ({ id: f.id, label: f.name, hinweis: 'Firma' })), ...katalog.personen.map(k => ({ id: k.id, label: k.name, hinweis: k.firma ? `Person · ${k.firma}` : 'Person' }))]}
+                onWahl={id => { void kundeWaehlen(id); }} />
+            : <Knopf leise onClick={() => { void katalogHolen(); }}>{katalogLaedt ? 'lädt …' : 'Kunde aus der Kartei wählen'}</Knopf>}>Empfänger</Ueberschrift>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
             <Feldzeile label="Firma"><input value={form.empfaenger.firma ?? ''} onChange={e => empf({ firma: e.target.value })} style={feld} /></Feldzeile>
             <Feldzeile label="z. Hd. / Name"><input value={form.empfaenger.name ?? ''} onChange={e => empf({ name: e.target.value })} style={feld} /></Feldzeile>
@@ -234,7 +260,8 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
             <Feldzeile label="Leistung von (bzw. Leistungsdatum)"><input type="date" value={form.leistungVon ?? ''} onChange={e => aendern({ leistungVon: e.target.value || undefined })} style={{ ...feld, width: 180, colorScheme: 'dark' }} /></Feldzeile>
             <Feldzeile label="bis (leer = ein Tag)"><input type="date" value={form.leistungBis ?? ''} min={form.leistungVon} onChange={e => aendern({ leistungBis: e.target.value || undefined })} style={{ ...feld, width: 180, colorScheme: 'dark' }} /></Feldzeile>
-            <Feldzeile label="Zahlungsziel (Tage)"><input inputMode="numeric" value={String(form.zahlungszielTage)} onChange={e => { const n = Math.round(Number(e.target.value)); if (e.target.value === '' || (Number.isFinite(n) && n >= 0 && n <= 365)) aendern({ zahlungszielTage: e.target.value === '' ? 0 : n }); }} style={{ ...feld, width: 110, textAlign: 'right' }} /></Feldzeile>
+            <Feldzeile label="Zahlungsziel (Tage)"><input inputMode="numeric" value={zielText} onChange={e => { const v = e.target.value; const n = Math.round(Number(v)); if (v !== '' && !(Number.isFinite(n) && n >= 0 && n <= 365)) return; setZielText(v); if (v !== '') aendern({ zahlungszielTage: n }); }}
+              onBlur={() => { if (zielText !== '') return; const n = mitVorgaben(g ?? { id: (form.firmaId || 'kdc') as Gesellschaftskennung }).zahlungszielTage; setZielText(String(n)); aendern({ zahlungszielTage: n }); }} style={{ ...feld, width: 110, textAlign: 'right' }} /></Feldzeile>
           </div>
           <div style={{ marginTop: 12 }}>
             <div style={kopf}>Positionen</div>
@@ -245,7 +272,13 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
             ))}
             {!form.positionen.length && <div style={{ ...klein, padding: '10px 0' }}>Noch keine Position — Menge und Art der Leistung gehören auf jede Rechnung.</div>}
             {/* 24.10. (Bau-Test, Reibung): „Leistung“ ist Platzhalter, kein Wert — die neue Position startet leer. */}
-            <div style={{ marginTop: 8 }}><Knopf leise onClick={() => setzePos([...form.positionen, { id: neueKennung('p').slice(0, 20), titel: '', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 0, ustSatz: ku ? 0 : 19 }])}>+ Position</Knopf></div>
+            <div style={{ marginTop: 8, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Knopf leise onClick={() => setzePos([...form.positionen, { id: neueKennung('p').slice(0, 20), titel: '', text: '', menge: 1, einheit: 'pauschal', einzelpreisCent: 0, ustSatz: ku ? 0 : 19 }])}>+ freie Position</Knopf>
+              {/* 27.10.: Position aus einem Produkt (Titel, Text, Preis, Einheit, Artikelnummer) — dieselben Preis-Teile wie im Angebot; frei bleibt der Normalfall. */}
+              {katalog
+                ? katalog.produkte.length > 0 && <Wahl<string> label="Produkt" leer="+ aus Produkt" wert={null} liste={katalog.produkte.map(p => ({ id: p.id, label: p.name, ...(p.linie ? { hinweis: p.linie } : {}) }))} onWahl={produktDazu} />
+                : <Knopf leise onClick={() => { void katalogHolen(); }}>{katalogLaedt ? 'lädt …' : '+ aus Produkt'}</Knopf>}
+            </div>
           </div>
           {nullSatz && (
             <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
@@ -329,8 +362,28 @@ function ZahlFeld({ wert, onWert, breite, label }: { wert: string; onWert: (t: s
 
 // ── Gestellte Rechnung: lesen, PDF, Mail, Storno, Mahnung ────────────────────
 
-function RechnungAnsicht({ r, daten, onZu }: { r: RechnungMitFassung; daten: RechnungDaten; onZu: () => void }) {
+function RechnungAnsicht({ r, daten, onZu, onOeffnen }: { r: RechnungMitFassung; daten: RechnungDaten; onZu: () => void; onOeffnen?: (id: string) => void }) {
   const heute = localDay();
+  // Zahlungseingang (27.10.): vorher gab es „bezahlt“ nur in der früheren Pipeline unter Finanzen (und nicht für Konten „nur Business“).
+  const [bezahltAm, setBezahltAm] = useState<string | null>(null);
+  const bezahltFehlt = bezahltAm === null ? [] : statusWechselFehlt(r, 'bezahlt', { am: bezahltAm }, [], heute);
+  async function bezahlt() {
+    if (bezahltAm === null || bezahltFehlt.length) return;
+    const a = await rechnungPost({ aktion: 'bezahlt', id: r.id, am: bezahltAm, stand: r.fassung });
+    if (!a.ok || !a.rechnung) { setMeldung(a.fehler ?? 'Nicht als bezahlt vermerkt.'); if (a.aktuell) daten.uebernehmen(a.aktuell); return; }
+    daten.uebernehmen(a.rechnung); setBezahltAm(null);
+    setMeldung(`Zahlungseingang vermerkt (${bezahltAm.split('-').reverse().join('.')}) — die Buchung ist angelegt.`);
+  }
+  /** Als neuen Entwurf kopieren (27.10.) — Vorlage bzw. nach dem Storno die korrigierte Rechnung. */
+  async function kopieren() {
+    const a = await rechnungPost({ aktion: 'kopie', id: r.art === 'storno' && r.stornoZu ? r.stornoZu : r.id, anfrageId: neueAnfrage() });
+    if (!a.ok || !a.rechnung) { setMeldung(a.fehler ?? 'Nicht kopiert.'); return; }
+    daten.uebernehmen(a.rechnung);
+    if (onOeffnen) onOeffnen(a.rechnung.id); else setMeldung('Kopie als Entwurf angelegt — sie steht in der Liste unter „Entwürfe“.');
+  }
+  const korrigiert = r.status === 'storniert' || r.art === 'storno';
+  // Gerade eben gestellt (Rundgang 27.10.): die Bestätigung mit dem nächsten Schritt — das Fenster wechselt nach dem Stellen gleich in diese Ansicht.
+  const [frisch] = useState(() => r.status === 'gestellt' && !!r.gestelltAm && Date.now() - Date.parse(r.gestelltAm) < 120_000);
   const g = daten.stand?.gesellschaften.find(x => x.id === r.firmaId);
   const original = r.stornoZu ? daten.stand?.rechnungen.find(x => x.id === r.stornoZu) : undefined;
   const dok = rechnungDokument(r, r.absender ?? absenderAus(g ?? { id: (r.firmaId || 'kdc') as Gesellschaftskennung }), { datum: r.datum ?? heute, bank: bankZeile(g?.bank), ...(original ? { original } : {}) });
@@ -349,7 +402,10 @@ function RechnungAnsicht({ r, daten, onZu }: { r: RechnungMitFassung; daten: Rec
     const a = await rechnungPost({ aktion: 'storno', id: r.id, grund: grund.trim(), stand: r.fassung, anfrageId: neueAnfrage() });
     if (!a.ok) { setMeldung(a.fehler ?? 'Nicht storniert.'); return; }
     setGrund(null);
-    setMeldung(`Storniert — Stornorechnung ${a.storno?.nummer ?? ''} mit eigenem PDF angelegt${a.gegenbuchung === 'neu' ? ', Gegenbuchung zum Zahlungseingang gebucht' : ''}.`);
+    if (a.original) daten.uebernehmen(a.original);
+    setMeldung(a.storno
+      ? `Storniert — Stornorechnung ${a.storno.nummer ?? ''} mit eigenem PDF angelegt${a.gegenbuchung === 'neu' ? ', Gegenbuchung zum Zahlungseingang gebucht' : ''}. Eine korrigierte Rechnung: „Korrigierte Rechnung schreiben“.`
+      : `Storniert${a.gegenbuchung === 'neu' ? ' — zum Zahlungseingang ist die Gegenbuchung angelegt' : ''}.`);
     if (a.storno) pdfLaden(a.storno.id, a.pdf?.name);
     void daten.laden();
   }
@@ -365,6 +421,9 @@ function RechnungAnsicht({ r, daten, onZu }: { r: RechnungMitFassung; daten: Rec
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
       {meldung && <Hinweis art={meldung.startsWith('Storniert') || meldung.includes('vermerkt') ? 'gut' : 'achtung'} rolle="status" aktion={<Knopf leise onClick={() => setMeldung(null)}>ok</Knopf>}>{meldung}</Hinweis>}
+      {frisch && !meldung && r.art !== 'storno' && (
+        <Hinweis art="gut" titel={`Rechnung ${r.nummer ?? ''} gestellt`}>Nummer vergeben, PDF erstellt und als Beleg abgelegt (heruntergeladen). Jetzt versenden — über dein Postfach mit dem PDF als Anhang (gesendet wird erst auf deinen Klick) oder im Mail-Programm.</Hinweis>
+      )}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <Chip farbe={r.status === 'bezahlt' ? LEUCHT.gut : r.status === 'storniert' ? C.inkLeise : LEUCHT.achtung}>{r.art === 'storno' ? 'Stornorechnung' : r.status}</Chip>
         {r.pdfDateiId && <Chip farbe={C.inkDim}>PDF · Prüfsumme gespeichert</Chip>}
@@ -383,12 +442,43 @@ function RechnungAnsicht({ r, daten, onZu }: { r: RechnungMitFassung; daten: Rec
           <div style={{ whiteSpace: 'pre-wrap', fontSize: TYP.bedien }}>{vorschlagText.betreff}{'\n\n'}{vorschlagText.text}</div>
         </Hinweis>
       )}
+      {/* Woher die Rechnung kommt (27.10.): Angebot, Mandat, Kunde in der Kartei, Original bzw. Stornorechnung — vorher kein Weg zurück. */}
+      {(r.angebotId || r.mandatId || r.kundeFirmaId || r.kontaktId || r.stornoZu || r.stornoRechnungId) && (
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: TYP.bedien }}>
+          {r.angebotId && <Link href={WEG.angebot({ angebotId: r.angebotId })} style={{ color: C.aktiv }}>Angebot {r.angebot ?? ''} ›</Link>}
+          {r.mandatId && <Link href={WEG.mandat(r.mandatId)} style={{ color: C.aktiv }}>Mandat ›</Link>}
+          {r.kundeFirmaId && <Link href={WEG.firma(r.kundeFirmaId)} style={{ color: C.aktiv }}>Firma in der Kartei ›</Link>}
+          {r.kontaktId && <Link href={WEG.kontakt(r.kontaktId)} style={{ color: C.aktiv }}>Kontakt ›</Link>}
+          {r.stornoZu && onOeffnen && <button onClick={() => onOeffnen(r.stornoZu!)} style={{ background: 'none', border: 0, padding: 0, color: C.aktiv, cursor: 'pointer', font: 'inherit' }}>{`Zur Rechnung ${original?.nummer ?? ''} ›`}</button>}
+          {r.stornoRechnungId && onOeffnen && <button onClick={() => onOeffnen(r.stornoRechnungId!)} style={{ background: 'none', border: 0, padding: 0, color: C.aktiv, cursor: 'pointer', font: 'inherit' }}>Stornorechnung ›</button>}
+        </div>
+      )}
+      {r.status === 'gestellt' && r.art !== 'storno' && (
+        <Karte flach>
+          <Ueberschrift>Zahlungseingang</Ueberschrift>
+          {bezahltAm === null
+            ? <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span style={klein}>Ist das Geld da? Vermerken legt die Buchung an (bzw. verknüpft den Eingang aus dem Kontoauszug) und nimmt die Rechnung aus den offenen.</span><Knopf onClick={() => setBezahltAm(heute)}>Zahlungseingang vermerken</Knopf></div>
+            : <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Feldzeile label="bezahlt am"><input type="date" value={bezahltAm} max={heute} min={r.datum} onChange={e => setBezahltAm(e.target.value)} style={{ ...feld, width: 180, colorScheme: 'dark' }} /></Feldzeile>
+              <Knopf farbe={LEUCHT.gut} aus={bezahltFehlt.length > 0} onClick={bezahlt}>Bezahlt</Knopf>
+              <Knopf leise onClick={() => setBezahltAm(null)}>Abbrechen</Knopf>
+              {bezahltFehlt.length > 0 && <span style={{ flexBasis: '100%', color: LEUCHT.achtung, fontSize: TYP.bedien }}>{bezahltFehlt.join(' ')}</span>}
+            </div>}
+        </Karte>
+      )}
+      {r.status === 'bezahlt' && r.bezahltAm && <div style={klein}>Bezahlt am {r.bezahltAm.split('-').reverse().join('.')} — <Link href={WEG.buchungen({ q: r.nummer ?? r.kunde })} style={{ color: C.aktiv }}>Buchung ansehen ›</Link></div>}
       <Blatt d={dok} />
-      {(r.status === 'gestellt' || r.status === 'bezahlt') && r.art !== 'storno' && r.pdfDateiId && (
+      {r.positionen && (
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Knopf leise={!korrigiert} haupt={korrigiert} onClick={kopieren}>{korrigiert ? 'Korrigierte Rechnung schreiben' : 'Als neue Rechnung kopieren'}</Knopf>
+          <span style={klein}>{korrigiert ? 'Neuer Entwurf mit Empfänger, Positionen und Leistungszeitraum der stornierten Rechnung — anpassen und neu stellen.' : 'Neuer Entwurf mit Empfänger und Positionen — z. B. dieselbe Rechnung für den nächsten Zeitraum.'}</span>
+        </div>
+      )}
+      {(r.status === 'gestellt' || r.status === 'bezahlt') && r.art !== 'storno' && (
         <Karte flach>
           <Ueberschrift>Stornieren</Ueberschrift>
           {grund === null
-            ? <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span style={klein}>Eine gestellte Rechnung wird nie geändert oder gelöscht — Storno legt eine Stornorechnung mit eigener Nummer und eigenem PDF an.</span><Knopf leise onClick={() => setGrund('')}>Stornorechnung anlegen</Knopf></div>
+            ? <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}><span style={klein}>{r.pdfDateiId ? 'Eine gestellte Rechnung wird nie geändert oder gelöscht — Storno legt eine Stornorechnung mit eigener Nummer und eigenem PDF an.' : 'Diese Rechnung wurde außerhalb von MAKE OS gestellt — Storno vermerkt sie als storniert (der Eintrag bleibt), eine Gegenbuchung kommt dazu, falls schon bezahlt.'}</span><Knopf leise onClick={() => setGrund('')}>{r.pdfDateiId ? 'Stornorechnung anlegen' : 'Stornieren'}</Knopf></div>
             : <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <input value={grund} onChange={e => setGrund(e.target.value)} placeholder="Grund des Stornos" aria-label="Grund des Stornos" style={{ ...feld, flex: '1 1 220px' }} />
               <Knopf farbe={LEUCHT.kritisch} aus={grund.trim().length < 3} onClick={stornieren}>Stornieren</Knopf>

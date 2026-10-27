@@ -14,6 +14,11 @@
 //   storno    { id, grund, stand?, anfrageId? } → Stornorechnung (eigene Nummer, eigenes PDF) — nie der Dienstweg
 //   mahnung   { id, stufe, anfrageId? }      → Stufe vermerken + Mail-Entwurf (der Browser öffnet das Mail-Programm) — nie der Dienstweg
 //   mahntage  { tage: [n, n, n] }            → Mahnstufen-Tage (nur volle Haushaltsmitglieder)
+//   bezahlt   { id, am?, stand? }            → Zahlungseingang: Status + Buchung bu-re-<id> in einer Sperre (27.10.)
+//   kunde     { id, stand, kontaktId | kundeFirmaId } → Empfänger eines Entwurfs aus der Kartei (27.10.)
+//   kopie     { id, anfrageId? }             → neuer Entwurf als Kopie (Vorlage bzw. Korrektur nach Storno, 27.10.)
+// GET ?bereich=privat|business (27.10.) → nur dieser Bereich (Selbstständigkeit = Privat); ?re=<id> → `ort`, wenn sie im anderen Bereich steht
+// GET ?katalog=1 (27.10.)                → aktive Produkte + Kartei (Kennung/Name) für den Editor
 // Zugang wie die Rechnungen des Finanzplans: Haushalt des Inhabers. Konten mit `finanzRecht: 'business'` bekommen die Business-Sicht —
 // nur Rechnungen der Business-Gesellschaften, Schreiben auf andere → 403/404 (lib/finanzen/rechnung/server.ts `inSicht`).
 // Hinweis, keine Steuerberatung.
@@ -29,9 +34,10 @@ import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { einmalig } from '@/lib/store/anfragen';
 import { dateinameAscii } from '@/lib/dateien/regeln';
 import {
-  RechnungFehler, entwurfLoeschen, entwurfNeu, entwurfSpeichern, mahnTageSetzen, mahnungVermerken, rechnungPdf, rechnungStellen, rechnungStornieren, rechnungsStand,
-  type Sicht,
+  RechnungFehler, entwurfKopie, entwurfKunde, entwurfLoeschen, entwurfNeu, entwurfSpeichern, mahnTageSetzen, mahnungVermerken, mitFassung, rechnungKatalog,
+  rechnungPdf, rechnungStellen, rechnungStornieren, rechnungsStand, type Sicht,
 } from '@/lib/finanzen/rechnung/server';
+import { rechnungBezahltVermerken, stornoOhnePdf } from '@/lib/finanzen/rechnung/bezahlt-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -72,7 +78,15 @@ export async function GET(req: Request) {
         },
       });
     }
-    const stand = await rechnungsStand(z);
+    // Editor (27.10.): Produkte und Kartei zum Wählen — erst auf Klick.
+    if (url.searchParams.get('katalog') === '1') {
+      const k = await rechnungKatalog();
+      leseZugriff(req, 'kontakte', { anzahl: k.personen.length + k.firmen.length });
+      return NextResponse.json({ ok: true, ...k }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+    const b = url.searchParams.get('bereich');
+    const re = url.searchParams.get('re');
+    const stand = await rechnungsStand({ ...z, ...(b === 'privat' || b === 'business' ? { bereich: b } : {}), ...(re && /^[a-z0-9][a-z0-9-]{0,39}$/.test(re) ? { re } : {}) });
     leseZugriff(req, 'rechnungen', { anzahl: stand.rechnungen.length });
     return NextResponse.json({ ok: true, sicht: z.sicht, ...stand }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return ausFehler(e); }
@@ -120,7 +134,17 @@ export async function POST(req: Request) {
       case 'storno': {
         const nein = vonHand(); if (nein) return nein;
         if (!id) return fehler('id fehlt.', 400);
-        const r = await einmalig('rechnung-storno', b.anfrageId, async () => ({ status: 200, body: { ok: true, ...(await rechnungStornieren({ id, grund: b.grund, ...(b.stand !== undefined ? { stand: b.stand } : {}), person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer })) } }), undefined, { wer: z.person });
+        const r = await einmalig<Record<string, unknown>>('rechnung-storno', b.anfrageId, async () => {
+          try {
+            return { status: 200, body: { ok: true, ...(await rechnungStornieren({ id, grund: b.grund, ...(b.stand !== undefined ? { stand: b.stand } : {}), person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer })) } };
+          } catch (e) {
+            // Altbestand ohne PDF (27.10.): Status „storniert“ + Gegenbuchung — vorher nur über die frühere Pipeline unter Finanzen.
+            if (!(e instanceof RechnungFehler) || e.extra.grund !== 'ohne-pdf') throw e;
+            const o = await stornoOhnePdf({ id, grund: b.grund, stand: b.stand, sicht: z.sicht, wer });
+            if (!o.ok) return { status: o.status, body: { ok: false, fehler: o.fehler, error: o.fehler, ...(o.aktuell ? { aktuell: o.aktuell } : {}) } };
+            return { status: 200, body: { ok: true, original: mitFassung(o.rechnung), gegenbuchung: o.gegenbuchung, schonStorniert: o.schonStorniert } };
+          }
+        }, undefined, { wer: z.person });
         return NextResponse.json(r.body, { status: r.status });
       }
       case 'mahnung': {
@@ -129,11 +153,27 @@ export async function POST(req: Request) {
         const r = await einmalig('rechnung-mahnung', b.anfrageId, async () => ({ status: 200, body: { ok: true, ...(await mahnungVermerken({ id, stufe: b.stufe, person: z.person, haushalt: z.haushalt, sicht: z.sicht, wer })) } }), undefined, { wer: z.person });
         return NextResponse.json(r.body, { status: r.status });
       }
+      // Zahlungseingang (27.10.): Status + Buchung in EINER Sperre (lib/finanzen/rechnung/bezahlt-server.ts) — auch Konten „nur Business“ für ihre Gesellschaften.
+      case 'bezahlt': {
+        if (!id) return fehler('id fehlt.', 400);
+        const e = await rechnungBezahltVermerken({ id, am: b.am, stand: b.stand, sicht: z.sicht, wer });
+        if (!e.ok) return fehler(e.fehler, e.status, e.aktuell ? { aktuell: e.aktuell } : {});
+        return NextResponse.json({ ok: true, rechnung: mitFassung(e.rechnung), schonBezahlt: e.schonBezahlt, buchung: e.buchung });
+      }
+      case 'kunde': {
+        if (!id) return fehler('id fehlt.', 400);
+        return NextResponse.json({ ok: true, rechnung: await entwurfKunde({ id, stand: b.stand, kontaktId: b.kontaktId, kundeFirmaId: b.kundeFirmaId, haushalt: z.haushalt, sicht: z.sicht, wer }) });
+      }
+      case 'kopie': {
+        if (!id) return fehler('id fehlt.', 400);
+        const r = await einmalig('rechnung-kopie', b.anfrageId, async () => ({ status: 200, body: { ok: true, rechnung: await entwurfKopie({ id, haushalt: z.haushalt, sicht: z.sicht, wer }) } }), undefined, { wer: z.person });
+        return NextResponse.json(r.body, { status: r.status });
+      }
       case 'mahntage': {
         if (z.sicht !== 'privat') return fehler('Die Mahnstufen stellt ein volles Haushaltsmitglied ein.', 403);
         return NextResponse.json({ ok: true, mahnTage: await mahnTageSetzen(b.tage) });
       }
-      default: return fehler('aktion: neu, speichern, loeschen, stellen, storno, mahnung oder mahntage.', 400);
+      default: return fehler('aktion: neu, speichern, kunde, kopie, loeschen, stellen, bezahlt, storno, mahnung oder mahntage.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }

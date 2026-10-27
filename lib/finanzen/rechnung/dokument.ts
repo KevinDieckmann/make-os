@@ -67,7 +67,7 @@ export function rechnungDokument(r: Rechnung, absender: AngebotAbsender, opt: Re
     ...(!storno && faellig ? [`Zahlbar ohne Abzug bis zum ${datumDe(faellig)}${opt.bank ? ` auf das Konto ${opt.bank}` : ' auf das unten genannte Konto'} unter Angabe der Rechnungsnummer.`] : []),
   ];
   return {
-    art, ueberschrift: storno ? `Stornorechnung zu Rechnung ${opt.original?.nummer ?? ''}`.trim() : `Rechnung: ${r.titel || 'Leistung'}`,
+    art, ueberschrift: storno ? `Stornorechnung zu Rechnung ${opt.original?.nummer ?? ''}`.trim() : (r.titel && r.titel !== 'Rechnung' ? `Rechnung: ${r.titel}` : 'Rechnung'),
     absender, absenderZeile: [absender.firmierung, ...absender.zeilen].join(' · '),
     empfaenger: empfaengerZeilen(r.empfaenger).length ? empfaengerZeilen(r.empfaenger) : [r.kunde || '—'],
     nummer, entwurf: !r.nummer,
@@ -77,6 +77,8 @@ export function rechnungDokument(r: Rechnung, absender: AngebotAbsender, opt: Re
       ...(leistungText(r) ? [{ label: r.leistungBis && r.leistungBis !== r.leistungVon ? 'Leistungszeitraum' : 'Leistungsdatum', wert: leistungText(r) }] : []),
       ...(faellig ? [{ label: 'Fällig am', wert: datumDe(faellig) }] : []),
       ...(storno && opt.original?.nummer ? [{ label: 'Zu Rechnung', wert: opt.original.nummer }] : []),
+      // 27.10.: die Angebotsnummer steht im PDF (vorher nur im Datensatz) — der Kunde ordnet die Rechnung seinem Angebot zu.
+      ...(!storno && r.angebot ? [{ label: 'Zu Angebot', wert: `${r.angebot}${r.angebotAm ? ` vom ${datumDe(r.angebotAm)}` : ''}` }] : []),
       ...(r.empfaenger?.kundennummer ? [{ label: 'Kundennummer', wert: r.empfaenger.kundennummer }] : []),
       ...(r.empfaenger?.referenz ? [{ label: 'Ihre Referenz', wert: r.empfaenger.referenz }] : []),
     ],

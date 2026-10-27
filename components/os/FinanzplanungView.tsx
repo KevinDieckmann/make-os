@@ -26,8 +26,6 @@ import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Haken, Zahl, feld, auswahl, LEUCHT, Hinweis } from './ui';
 import { MandantLink } from './crm/MandantLink';
-import { useRouter } from 'next/navigation';
-import { entwurfAnlegen } from './rechnung/daten';
 import { statusWechselFehlt } from '@/lib/finanzen/rechnung/regeln';
 import { neueKennung } from '@/lib/kennung';
 import { anzahl } from '@/lib/text/zahlwort';
@@ -99,7 +97,6 @@ export function FinanzplanungView() {
    * Statuswechsel: „gestellt“ fragt Nummer und Rechnungsdatum (Nummer im Kreis der Gesellschaft frei), „bezahlt“ das Datum des Eingangs.
    */
   const [frage, setFrage] = useState<{ id: string; art: 'loeschen' | 'storno' | 'gestellt' | 'bezahlt'; grund: string; nummer?: string; datum?: string; am?: string } | null>(null);
-  const router = useRouter();
   /** Hinweis nach einer Ablehnung (409: inzwischen geändert / nicht erlaubt) — der Stand ist dann schon neu geladen. */
   const [hinweis, setHinweis] = useState<string | null>(null);
   const heute = localDay();
@@ -139,7 +136,9 @@ export function FinanzplanungView() {
   // Speicher bleibt ganz (der Schreibweg mit Fassung je Eintrag braucht sie) — gezeigt wird nur, was zur Business-Sicht gehört.
   const imBusiness = (firmaId: string) => bereichVonFirma(firmaId) === 'business' && firmaId !== 'privat';
   const firmenB = ab.firmen.filter(f => imBusiness(f.id));
-  const rechnungenB = plan.rechnungen.filter(r => imBusiness(r.firmaId));
+  // 27.10. (Rechnungs-Kreislauf): Rechnungen aus dem Editor (mit Positionen) stehen in der EINEN Übersicht darüber (RechnungenKarte: Filter, Zahlungseingang,
+  // Storno, Kopie). Hier bleiben die Planposten und älteren Rechnungen ohne Positionen — mit ihren Feldern von Hand (Nummer extern, Angebot, Betrag).
+  const rechnungenB = plan.rechnungen.filter(r => imBusiness(r.firmaId) && !r.positionen);
   const zahlungenB = plan.zahlungen.filter(z => imBusiness(z.firmaId));
   const cash = firmenB.reduce((s, f) => s + (f.kontostand ?? 0), 0);
   const gestellt = ab.rechnungen.filter(r => r.status === 'gestellt');
@@ -283,7 +282,7 @@ export function FinanzplanungView() {
 
       {/* Rechnungs-Pipeline */}
       <Karte i={3 + firmenB.length}>
-        <Ueberschrift farbe={LEUCHT.gut} rechts="Klick auf den Status: geplant → gestellt → bezahlt · ab gestellt stornieren statt löschen">Rechnungen</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.gut} rechts="Klick auf den Status: geplant → gestellt → bezahlt · ab gestellt stornieren statt löschen">Planposten & ältere Rechnungen</Ueberschrift>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {rechnungenB.map(r => {
             const spaet = r.status === 'gestellt' && r.faellig && r.faellig < heute;
@@ -366,13 +365,7 @@ export function FinanzplanungView() {
               </div>
             );
           })}
-          {!rechnungenB.length && <Leer>Keine Rechnungen — unten anlegen.</Leer>}
-        </div>
-        {/* Neu anlegen (08.10., Woche 2 · 3.13): EIN Rechnungs-Anleger — derselbe Entwurf wie „+ Rechnung schreiben“ oben, aus dem Mandat,
-            dem Kontakt und dem Angebot (Status „geplant“, Gesellschaft = Vorgabe bzw. im Editor wählen; Nummer und PDF beim Stellen). */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Knopf onClick={async () => { const e = await entwurfAnlegen({ quelle: 'frei' }); if (!e.id) { setHinweis(e.fehler ?? 'Rechnung nicht angelegt.'); return; } router.push(WEG.rechnungSchreiben(e.id), { scroll: false }); }}>+ Rechnung</Knopf>
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>öffnet den Entwurf — Kunde, Positionen und Gesellschaft dort, gestellt wird mit Nummer und PDF.</span>
+          {!rechnungenB.length && <Leer>Keine Planposten und keine älteren Rechnungen ohne Positionen — neue Rechnungen stehen oben in der Übersicht.</Leer>}
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
           Bezahlt? Der Zahlungseingang wird automatisch als Buchung angelegt; der Monatsumsatz kommt aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss</Link> (Finanzen › Business) — dort zählt er aufs Jahresziel.

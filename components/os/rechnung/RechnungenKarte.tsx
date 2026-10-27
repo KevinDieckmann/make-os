@@ -1,10 +1,11 @@
 'use client';
 
-// ─── Rechnungen schreiben · Karte unter Finanzen › Business › Rechnungen & Zahlungen (08.10.) ───
-// Oben in „Rechnungen & Zahlungen“ (kein eigener Reiter, keine dritte Ebene): Rechnung schreiben, offene Entwürfe, fällige
-// Mahnstufen (nur Vorschlag — verschickt wird per Klick im Mail-Programm), zuletzt gestellte mit PDF. Der Editor öffnet als
-// Fenster; `?re=<Rechnung>` (WEG.rechnungSchreiben) öffnet ihn direkt — so führen Kontakt › Umsatz, Mandatsakte und Angebot hierher.
-// Die Liste kommt serverseitig nach Sicht gefiltert (Business-Konten: nur Business-Gesellschaften).
+// ─── Rechnungen · die EINE Übersicht (08.10., seit 27.10. mit allen Rechnungen) ───
+// Business › Rechnungen & Zahlungen bzw. (27.10.) Privat › Konten & Buchungen › Selbstständigkeit — je Bereich nur seine Rechnungen (der Server
+// filtert: `?bereich=`). Kevin 27.10.: „Den ganzen Rechnungsprozess sauber ziehen.“ Oben die Summen (offen, überfällig, bezahlt im Jahr, Entwürfe),
+// darunter Filter, Suche und ALLE Rechnungen — vorher nur Entwürfe und die zwölf zuletzt gestellten, die volle Liste stand getrennt darunter (nur mit
+// Haushaltszugang). Fällige Mahnstufen bleiben ein Vorschlag (verschickt wird per Klick). Der Editor öffnet als Fenster über `?re=<Rechnung>`
+// (WEG.rechnungSchreiben; `?r=` aus den Kennzahl-Links öffnet ebenso); steht die Rechnung im anderen Bereich, leitet die Karte dorthin um.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -13,39 +14,56 @@ import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { euroCent } from '@/lib/crm/angebote';
 import { KEINE_STEUERBERATUNG, mahnTageSaeubern } from '@/lib/finanzen/rechnung/regeln';
+import { RECHNUNGS_FILTER, ZUSTAND_NAME, rechnungenFiltern, rechnungsSummen, rechnungsZeile, rechnungsZustand, type RechnungsFilter, type RechnungsZustand } from '@/lib/finanzen/rechnung/uebersicht';
+import { localDay } from '@/lib/zeit';
 import { Fenster } from '../Fenster';
-import { Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leer, feld } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Hinweis, Leer, Pillen, Kennzahl, Raster, feld } from '../ui';
 import { entwurfAnlegen, pdfLaden, rechnungPost, useRechnungen, type RechnungMitFassung } from './daten';
 import { RechnungEditor } from './Editor';
 import { anzahl } from '@/lib/text/zahlwort';
-import { zurueckZiel } from '@/lib/wege';
+import { WEG, zurueckZiel } from '@/lib/wege';
 import { useZurueck } from '../Verlauf';
 
 const datumDe = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}` : '');
 const gesKurz = (g: string) => KERN_EINHEITEN.find(e => e.id === g)?.kurz ?? (g || 'ohne Gesellschaft');
-const betrag = (r: RechnungMitFassung) => euroCent(Math.round(r.betrag * 100));
+const betrag = (r: RechnungMitFassung) => euroCent(Math.round(r.betrag * 100) * (r.art === 'storno' ? -1 : 1));
+const ZUSTAND_FARBE: Record<RechnungsZustand, string> = {
+  entwurf: C.inkDim, geplant: C.inkLeise, offen: LEUCHT.achtung, ueberfaellig: LEUCHT.kritisch, bezahlt: LEUCHT.gut, storniert: C.inkLeise, storno: C.inkLeise,
+};
+/** So viele Zeilen zeigt die Liste zuerst — „weitere zeigen“ holt den Rest (nie still gekürzt). */
+const ERST = 40;
 
-export function RechnungenKarte() {
-  const daten = useRechnungen();
+export function RechnungenKarte({ bereich = 'business' }: { bereich?: 'privat' | 'business' }) {
   const router = useRouter();
   const pfad = usePathname();
   const q = useSearchParams();
-  const offenId = q.get('re');
+  const offenId = q.get('re') ?? q.get('r');
+  const daten = useRechnungen({ bereich, re: offenId });
+  const heute = localDay();
   const [meldung, setMeldung] = useState<string | null>(null);
   const [tageOffen, setTageOffen] = useState(false);
   const [tage, setTage] = useState('');
+  const [filter, setFilter] = useState<RechnungsFilter>('alle');
+  const [suche, setSuche] = useState('');
+  const [ges, setGes] = useState<string | null>(null);
+  const [alle, setAlle] = useState(false);
   const stand = daten.stand;
 
   /** Editor öffnen/schließen über die Adresse (Zurück schließt ihn). */
-  const oeffnen = (id: string) => { const p = new URLSearchParams(q.toString()); p.set('re', id); p.delete('zurueck'); router.push(`${pfad}?${p.toString()}`, { scroll: false }); };
+  const oeffnen = (id: string) => { const p = new URLSearchParams(q.toString()); p.set('re', id); p.delete('r'); p.delete('zurueck'); router.push(`${pfad}?${p.toString()}`, { scroll: false }); };
   // Aus dem Mandat (bzw. einer anderen Seite) geöffnet (21.10., Rundgang B8): „Schließen“ führt dorthin zurück — ein echter Schritt zurück, sonst die Seite
   // aus `zurueck` (nur eigene Pfade, `zurueckZiel`). Vorher landete man in Finanzen › Rechnungen.
   const zurueck = useZurueck();
   const zurueckNach = zurueckZiel(q.get('zurueck'));
   const schliessen = () => {
     if (zurueckNach) { zurueck(zurueckNach); return; }
-    const p = new URLSearchParams(q.toString()); p.delete('re'); router.replace(`${pfad}${p.toString() ? `?${p.toString()}` : ''}`, { scroll: false }); void daten.laden();
+    const p = new URLSearchParams(q.toString()); p.delete('re'); p.delete('r'); router.replace(`${pfad}${p.toString() ? `?${p.toString()}` : ''}`, { scroll: false }); void daten.laden();
   };
+  // Die Rechnung steht im anderen Bereich (27.10.): z. B. eine Rechnung der Selbstständigkeit, geöffnet über einen Business-Link → dorthin, `zurueck` bleibt.
+  useEffect(() => {
+    if (!offenId || !stand?.ort || stand.ort === bereich) return;
+    router.replace(WEG.rechnungSchreiben(offenId, q.get('zurueck') ?? undefined, stand.ort), { scroll: false });
+  }, [offenId, stand?.ort, bereich, router, q]);
   // Ein Entwurf, der gerade erst (außerhalb) angelegt wurde, steht vielleicht noch nicht in der Liste — EINMAL je Kennung nachladen.
   const nachgeladen = useRef<string | null>(null);
   const { laden } = daten;
@@ -55,17 +73,20 @@ export function RechnungenKarte() {
     void laden();
   }, [offenId, stand, laden]);
 
-  const rechnungen = useMemo(() => stand?.rechnungen ?? [], [stand]);
-  // Entwürfe: mit Haushaltszugang nur die aus dem Editor (die übrigen stehen in der Liste darunter); Business-Konten sehen die Liste
-  // darunter nicht — für sie stehen hier alle geplanten Rechnungen ihrer Gesellschaften.
-  const entwuerfe = rechnungen.filter(r => r.status === 'geplant' && r.art !== 'storno' && (r.positionen || stand?.sicht === 'business')).reverse(); // jüngste zuerst (Reihenfolge im Bestand = Anlage)
-  const gestellt = rechnungen.filter(r => r.pdfDateiId).sort((a, b) => (b.gestelltAm ?? '').localeCompare(a.gestelltAm ?? '')).slice(0, 12);
-  const offen = offenId ? rechnungen.find(r => r.id === offenId) : undefined;
+  // Planposten (geplant, ohne Positionen) sind keine Rechnungen — sie stehen weiter darunter in „Planposten & ältere Rechnungen“ (Liquidität).
+  const rechnungen = useMemo(() => (stand?.rechnungen ?? []).filter(r => rechnungsZustand(r, heute) !== 'geplant'), [stand, heute]);
+  const summen = useMemo(() => rechnungsSummen(rechnungen, heute), [rechnungen, heute]);
+  const liste = useMemo(() => rechnungenFiltern(rechnungen, { filter, suche, gesellschaft: ges }, heute), [rechnungen, filter, suche, ges, heute]);
+  const gezeigt = alle ? liste : liste.slice(0, ERST);
+  const offen = offenId ? stand?.rechnungen.find(r => r.id === offenId) : undefined;
+  const gesellschaften = stand?.gesellschaften ?? [];
+  const firmenInListe = [...new Set(rechnungen.map(r => r.firmaId))];
 
   if (daten.gesperrt) return null;
 
   async function neu() {
-    const e = await entwurfAnlegen({ quelle: 'frei', ...(stand?.vorgabe ? { firmaId: stand.vorgabe } : {}) });
+    const firmaId = stand?.vorgabe ?? gesellschaften[0]?.id;
+    const e = await entwurfAnlegen({ quelle: 'frei', ...(firmaId ? { firmaId } : {}) });
     if (!e.id) { setMeldung(e.fehler ?? 'Nicht angelegt.'); return; }
     await daten.laden();
     oeffnen(e.id);
@@ -77,16 +98,24 @@ export function RechnungenKarte() {
     if (!r.ok) { setMeldung(r.fehler ?? 'Nicht gespeichert.'); return; }
     setTageOffen(false); void daten.laden();
   }
+  const filterAuf = (f: RechnungsFilter) => { setFilter(f); setAlle(false); };
 
   return (
     <>
       <Karte i={0} ton={LEUCHT.gut}>
-        <Ueberschrift farbe={LEUCHT.gut} rechts={<Knopf onClick={neu}>+ Rechnung schreiben</Knopf>}>Rechnungen schreiben</Ueberschrift>
+        <Ueberschrift farbe={LEUCHT.gut} rechts={<Knopf haupt onClick={neu}>+ Rechnung schreiben</Knopf>}>{bereich === 'privat' ? 'Rechnungen der Selbstständigkeit' : 'Rechnungen'}</Ueberschrift>
         {meldung && <div style={{ marginBottom: 10 }}><Hinweis art="achtung" rolle="status" aktion={<Knopf leise onClick={() => setMeldung(null)}>ok</Knopf>}>{meldung}</Hinweis></div>}
         {daten.fehler && <Hinweis art="kritisch" rolle="alert">{daten.fehler}</Hinweis>}
         {!stand ? <Leer>lade …</Leer> : <>
+          <Raster min={150}>
+            <Kennzahl klein label="Offen" wert={euroCent(summen.offenCent)} unter={anzahl(summen.offen, 'Rechnung', 'Rechnungen')} onClick={() => filterAuf('offen')} />
+            <Kennzahl klein label="Überfällig" wert={euroCent(summen.ueberfaelligCent)} ton={summen.ueberfaellig ? LEUCHT.kritisch : undefined} unter={anzahl(summen.ueberfaellig, 'Rechnung', 'Rechnungen')} onClick={() => filterAuf('ueberfaellig')} />
+            <Kennzahl klein label={`Bezahlt ${heute.slice(0, 4)}`} wert={euroCent(summen.bezahltJahrCent)} ton={summen.bezahltJahr ? LEUCHT.gut : undefined} unter={anzahl(summen.bezahltJahr, 'Rechnung', 'Rechnungen')} onClick={() => filterAuf('bezahlt')} />
+            <Kennzahl klein label="Entwürfe" wert={String(summen.entwuerfe)} unter="noch nicht gestellt" onClick={() => filterAuf('entwuerfe')} />
+          </Raster>
+
           {stand.mahnvorschlaege.length > 0 && <>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: LEUCHT.achtung, margin: '4px 0' }}>Mahnstufe dran · nur Vorschlag</div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: LEUCHT.achtung, margin: '14px 0 4px' }}>Mahnstufe dran · nur Vorschlag</div>
             <Liste>
               {stand.mahnvorschlaege.map(v => {
                 const r = rechnungen.find(x => x.id === v.rechnungId);
@@ -95,26 +124,36 @@ export function RechnungenKarte() {
               })}
             </Liste>
           </>}
-          {entwuerfe.length > 0 && <>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkDim, margin: '10px 0 4px' }}>Entwürfe</div>
-            <Liste>
-              {entwuerfe.map(r => <Zeile key={r.id} onClick={() => oeffnen(r.id)} links={<FileText size={18} color={C.inkDim} />} titel={`${r.kunde} · ${r.titel}`}
-                unter={`${gesKurz(r.firmaId)} · ${r.positionen?.length ?? 0} Position${r.positionen?.length === 1 ? '' : 'en'}${r.leistungVon ? ` · Leistung ab ${datumDe(r.leistungVon)}` : ''}`} rechts={<span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{betrag(r)}</span>} />)}
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '14px 0 6px' }}>
+            <Pillen<RechnungsFilter> liste={RECHNUNGS_FILTER} aktiv={filter} onWahl={filterAuf} />
+            <input value={suche} onChange={e => { setSuche(e.target.value); setAlle(false); }} placeholder="Suchen: Kunde, Nummer, Titel" aria-label="Rechnungen durchsuchen" type="search" style={{ ...feld, flex: '1 1 200px', maxWidth: 320 }} />
+          </div>
+          {firmenInListe.length > 1 && (
+            <div style={{ marginBottom: 6 }}>
+              <Pillen<string> liste={[{ id: '', label: 'Alle Gesellschaften' }, ...firmenInListe.map(id => ({ id, label: gesKurz(id) }))]} aktiv={ges ?? ''} onWahl={id => setGes(id || null)} />
+            </div>
+          )}
+
+          {gezeigt.length > 0
+            ? <Liste>
+              {gezeigt.map(r => {
+                const z = rechnungsZustand(r, heute);
+                const zeile = rechnungsZeile(r);
+                const wann = z === 'bezahlt' ? `bezahlt ${datumDe(r.bezahltAm)}` : z === 'offen' || z === 'ueberfaellig' ? `fällig ${datumDe(r.faellig)}` : r.datum ? datumDe(r.datum) : r.leistungVon ? `Leistung ab ${datumDe(r.leistungVon)}` : '';
+                return <Zeile key={r.id} onClick={() => oeffnen(r.id)} links={<FileText size={18} color={ZUSTAND_FARBE[z]} />} titel={zeile.titel}
+                  unter={[zeile.unter, gesKurz(r.firmaId), wann].filter(Boolean).join(' · ')}
+                  rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                    <Chip farbe={ZUSTAND_FARBE[z]}>{ZUSTAND_NAME[z]}</Chip>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, textDecoration: z === 'storniert' ? 'line-through' : 'none', minWidth: 92, textAlign: 'right' }}>{betrag(r)}</span>
+                    {r.pdfDateiId && <button onClick={e => { e.stopPropagation(); pdfLaden(r.id); }} aria-label={`PDF der Rechnung ${r.nummer ?? ''} herunterladen`} className="fassbar" style={{ minHeight: 40, padding: '0 10px', borderRadius: 10, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.04)', color: C.ink, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer' }}>PDF ↓</button>}
+                  </span>} />;
+              })}
             </Liste>
-          </>}
-          {gestellt.length > 0 && <>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkDim, margin: '10px 0 4px' }}>Zuletzt gestellt</div>
-            <Liste>
-              {gestellt.map(r => <Zeile key={r.id} onClick={() => oeffnen(r.id)} titel={`${r.nummer ?? ''} · ${r.kunde}`}
-                unter={`${r.art === 'storno' ? 'Stornorechnung' : r.status}${r.datum ? ` · ${datumDe(r.datum)}` : ''}${r.faellig && r.status === 'gestellt' ? ` · fällig ${datumDe(r.faellig)}` : ''}`}
-                rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{betrag(r)}</span>
-                  <button onClick={e => { e.stopPropagation(); pdfLaden(r.id); }} aria-label={`PDF der Rechnung ${r.nummer ?? ''} herunterladen`} className="fassbar" style={{ minHeight: 40, padding: '0 10px', borderRadius: 10, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.04)', color: C.ink, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer' }}>PDF ↓</button>
-                </span>} />)}
-            </Liste>
-          </>}
-          {!entwuerfe.length && !gestellt.length && !stand.mahnvorschlaege.length && <Leer>Noch keine Rechnung mit PDF — „+ Rechnung schreiben“, oder aus einem angenommenen Angebot bzw. einem Mandat.</Leer>}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 12, fontSize: TYP.bedien, color: C.inkLeise }}>
+            : <Leer>{rechnungen.length ? 'Keine Rechnung passt zu Filter und Suche.' : 'Noch keine Rechnung — „+ Rechnung schreiben“, oder aus einem angenommenen Angebot bzw. einem Mandat.'}</Leer>}
+          {liste.length > gezeigt.length && <div style={{ marginTop: 8 }}><Knopf leise onClick={() => setAlle(true)}>{`Weitere ${liste.length - gezeigt.length} zeigen`}</Knopf></div>}
+
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 14, fontSize: TYP.bedien, color: C.inkLeise }}>
             {tageOffen
               ? <>
                 <input value={tage} onChange={e => setTage(e.target.value)} placeholder="7 · 14 · 21" aria-label="Mahnstufen in Tagen nach Fälligkeit" style={{ ...feld, width: 160 }} />
@@ -130,10 +169,10 @@ export function RechnungenKarte() {
       </Karte>
       {offenId && offen && (
         <Fenster titel={offen.status === 'geplant' ? 'Rechnung schreiben' : `${offen.art === 'storno' ? 'Stornorechnung' : 'Rechnung'} ${offen.nummer ?? ''}`} onZu={schliessen} breit={980}>
-          <RechnungEditor key={offen.id} start={offen} daten={daten} onZu={schliessen} />
+          <RechnungEditor key={offen.id} start={offen} daten={daten} onZu={schliessen} onOeffnen={oeffnen} />
         </Fenster>
       )}
-      {offenId && stand && !offen && (
+      {offenId && stand && !offen && !stand.ort && (
         <Fenster titel="Rechnung" onZu={schliessen}>
           <Hinweis art="info">Diese Rechnung gibt es nicht (mehr) — oder sie gehört zu einer Gesellschaft, die dieses Konto nicht sieht.</Hinweis>
         </Fenster>

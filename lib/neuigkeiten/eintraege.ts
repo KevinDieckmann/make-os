@@ -33,6 +33,31 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-27',
+    datum: '2026-10-27',
+    titel: 'Rechnungen: der ganze Kreislauf an einer Stelle',
+    kurz: 'Alle Rechnungen stehen in einer Übersicht mit Filter, Suche und Summen. Den Zahlungseingang vermerkst du direkt in der Rechnung, eine stornierte Rechnung kopierst du als korrigierte — und freie Rechnungen holen Kunden aus der Kartei und Positionen aus Produkten.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Eine Übersicht aller Rechnungen: offen, überfällig, bezahlt im Jahr und Entwürfe als Zahlen oben, darunter Filter, Suche und die ganze Liste.', bereich: 'business', weg: WEG.rechnungen() },
+        { text: 'Zahlungseingang direkt in der Rechnung vermerken — die Buchung entsteht dabei mit.', bereich: 'business' },
+        { text: 'Freie Rechnung: Kunde aus der Kartei wählen (Anschrift und Zahlungsziel kommen mit) und Positionen aus einem Produkt einfügen — oder alles frei schreiben.', bereich: 'business' },
+        { text: 'Rechnung kopieren: als Vorlage für den nächsten Zeitraum oder nach einem Storno als korrigierte Rechnung.', bereich: 'business' },
+        { text: 'Die Rechnungen der Selbstständigkeit stehen jetzt unter Privat › Konten & Buchungen bei der Selbstständigkeit — nicht mehr in der Business-Liste.', bereich: 'privat' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Nach dem Stellen direkt über das eigene Postfach senden, mit dem PDF als Anhang.', bereich: 'business' },
+        { text: 'Die Rechnung zeigt, woher sie kommt: Angebot, Mandat, Firma oder Kontakt. Die Angebotsnummer steht im PDF.', bereich: 'business' },
+        { text: 'Ein geleertes Zahlungsziel nimmt die Vorgabe der Gesellschaft statt 0 Tagen.', bereich: 'business' },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Aus einem Angebot entsteht nach dem Stellen keine zweite volle Rechnung mehr.', bereich: 'business' },
+        { text: 'Ein Entwurf kann nicht mehr als bezahlt markiert werden, ohne gestellt zu sein; das Datum des Eingangs liegt nie in der Zukunft.', bereich: 'business' },
+        { text: 'Eine Position ohne Bezeichnung geht beim Speichern nicht mehr verloren, und ein Entwurf ohne Positionen zählt nicht mehr mit dem alten Betrag.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-26-3',
     datum: '2026-10-26',
     titel: 'Lieferzeit ab Formular und echte Korrekturschleifen',
