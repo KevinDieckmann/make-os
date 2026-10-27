@@ -131,11 +131,13 @@ describe('3.13 · EIN Rechnungs-Anleger', () => {
     expect(mandatGesellschaftOffen('g-0f8fad5b-d9cb-469f-a165-70867728950e')).toBe(false);
   });
   it('kein Anleger schreibt mehr an /api/rechnung vorbei in den Finanzplan; „+ Mandat“ fragt zuerst die Gesellschaft', () => {
-    for (const f of ['components/os/crm/kontakt/UmsatzReiter.tsx', 'components/os/crm/Kunden.tsx', 'components/os/FinanzplanungView.tsx']) {
+    // 27.10.: „+ Rechnung“ steht in der EINEN Übersicht (RechnungenKarte), nicht mehr in der Planposten-Liste der Finanzplanung.
+    for (const f of ['components/os/crm/kontakt/UmsatzReiter.tsx', 'components/os/crm/Kunden.tsx', 'components/os/rechnung/RechnungenKarte.tsx']) {
       const s = quelle(f);
       expect(s, f).not.toMatch(/liste: 'rechnungen', op: 'upsert'/);
       expect(s, f).toContain('entwurfAnlegen(');
     }
+    expect(quelle('components/os/FinanzplanungView.tsx')).not.toMatch(/liste: 'rechnungen', op: 'upsert'/);
     expect(quelle('components/os/FinanzplanungView.tsx')).not.toMatch(/rechnungen: \[\.\.\.plan\.rechnungen, \{ id: neueKennung\('r'\)/);
     expect(quelle('components/os/crm/Kunden.tsx')).not.toContain('nur planen (ohne PDF)');
     // Seit 10.10. (Produkte & Mandate: „+ Mandat“ immer mit Lead) fragt der Dialog MandatAnlegen die Gesellschaft — „offen“ legt nicht an.

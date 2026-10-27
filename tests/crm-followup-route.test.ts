@@ -41,7 +41,7 @@ beforeAll(async () => {
       { id: 't2', eventId: 'ev1', kontaktId: 'c-b', status: 'da', geaendert: jetzt },
       { id: 't3', eventId: 'ev1', kontaktId: 'c-c', status: 'da', geaendert: jetzt },
     ],
-    chancen: [{ id: 'ch1', titel: 'Pilot', kontaktIds: ['c-a'], stufe: 'angebot', historie: [{ stufe: 'angebot', am: jetzt, von: 'kevin' }], wert: { betrag: 1000, basis: 'monat' }, art: 'retainer', gesellschaft: 'offen', besitzer: 'kevin', naechsterSchritt: { text: 'Angebot besprechen', datum: H }, angelegt: jetzt, geaendert: jetzt }],
+    chancen: [{ id: 'ch1', titel: 'Pilot', kontaktIds: ['c-a'], stufe: 'angebot', historie: [{ stufe: 'angebot', am: jetzt, von: 'kevin' }], wert: { betrag: 1000, basis: 'monat' }, art: 'retainer', gesellschaft: 'offen', besitzer: 'kevin', naechsterSchritt: { text: 'Angebot besprechen', datum: tag(-10) } /* 27.10.: nie am Tag des Nachfassens (48 h in Werktagen — an einem Dienstag nach einem Samstag-Event fiel er sonst auf heute, und der Deal-Schritt belegte den Tag) */, angelegt: jetzt, geaendert: jetzt }],
     followups: [{ id: 'fu-c', bezug: { art: 'event', id: 'ev1' }, kontaktId: 'c-c', art: 'mail', text: 'Cem nachfassen', faellig: H, zustaendig: 'kevin', status: 'offen', quelle: 'event', angelegt: jetzt, geaendert: jetzt }],
   });
 });
