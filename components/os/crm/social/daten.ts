@@ -11,6 +11,7 @@ import type { AutonomieErgebnis } from '@/lib/social/autonomie';
 import type { KanalAnalyse, Wochenbericht } from '@/lib/social/analyse';
 import type { ImportVorschau } from '@/lib/social/csv';
 import type { ZielStand } from '@/lib/social/ziele';
+import type { AutomatikLage } from '@/lib/social/server';
 
 export type MitStand<T> = T & { stand: string };
 export interface Lage {
@@ -23,6 +24,8 @@ export interface Lage {
   folgen: Record<string, { befunde: Befund[]; weg: AutonomieErgebnis }>;
   analyse: Record<string, KanalAnalyse>;
   woche: Record<string, Wochenbericht>;
+  /** Automatik (27.10.): je Folge und Plattform der Zustand, Verbindungen (ohne Token), Wege, letzte Läufe, freie Plätze. */
+  automatik: AutomatikLage;
 }
 
 export interface SocialApi {
@@ -33,6 +36,8 @@ export interface SocialApi {
   schreiben: (ops: unknown[]) => Promise<Lage | null>;
   importieren: (aktion: 'import-vorschau' | 'import', kanalId: string, plattform: SocialPlattform, text: string, stand: string, zuordnung?: Record<string, string>) => Promise<{ vorschau?: ImportVorschau; uebernommen?: number; uebersprungen?: number } | null>;
   setFehler: (f: string | null) => void;
+  /** Automatik-Aktionen (Entwürfe schreiben, Verbinden, Trennen) — die Antwort trägt die neue Lage. */
+  aktion: (body: Record<string, unknown>) => Promise<Record<string, unknown> | null>;
 }
 
 export function useSocial(): SocialApi {
@@ -67,7 +72,17 @@ export function useSocial(): SocialApi {
       return j;
     } catch { setFehler('Keine Verbindung — nichts übernommen.'); return null; }
   }, []);
-  return { lage, fehler, laden, schreiben, importieren, setFehler };
+  const aktion = useCallback<SocialApi['aktion']>(async body => {
+    try {
+      const r = await fetch('/api/social', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json();
+      if (j.datei) setLage(j as Lage);
+      if (!r.ok || !j.ok) { setFehler(j.fehler ?? 'Nicht möglich.'); return null; }
+      setFehler(null);
+      return j;
+    } catch { setFehler('Keine Verbindung — bitte gleich noch einmal.'); return null; }
+  }, []);
+  return { lage, fehler, laden, schreiben, importieren, setFehler, aktion };
 }
 
 /** Komma- oder zeilengetrennte Wortliste aus einem Eingabefeld. */

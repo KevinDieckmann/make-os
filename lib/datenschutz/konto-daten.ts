@@ -142,6 +142,8 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
   'fokus-privat--*': 'Unser Fokus · Privat je Haushalt (Freitext der Mitglieder, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
+  'social-verbindungen--*': 'Verbindungen der Social-Kanäle je Haushalt (27.10.: Anbieter, Zustand, Token verschlüsselt, „verbunden von“ als Speichername) — nie im Export (Zugangsdaten); beim Löschen fallen die Verbindungen weg, die die Person angelegt hat (ihr Token)',
+  'social-lauf--*': 'Stand der automatischen Social-Läufe je Haushalt (Zeit, Zahlen, Grund; die auslösende Person nur als Speichername) — technisch, ohne Inhalte',
   'social--*': 'Social je Haushalt (26.10.: Kanäle, Serienformate, Folgen, Messungen — Dritte stehen hier nicht; „geändert von“/„freigegeben von“ und die Person einer Personenmarke als Speichername) — im Export die eigenen Stempel und Personenmarken, beim Löschen wird der Speichername „[gelöscht]“ bzw. die Marke von der Person gelöst',
   'markttraktion-planung--*': 'Vertriebsplanung je Haushalt (Leadkanäle, Umsatzziele, Challenges — Personen als Team-Kürzel, Dritte nur als Mandat-Kennung; „geändert von“/„abgehakt von“ als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
   // Fulfillment (10.10.): Bestände je Haushalt — keine Einträge je Person; beim Konto-Löschen wird der Speichername „[gelöscht]“ (fulfillmentKontoLoeschen).
@@ -581,6 +583,20 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       let n = 0;
       await updateJson<Obj>(socialN, cur => { if (!cur) return cur as unknown as Obj; const r = socialOhnePerson(socialAus(cur), speicher); n = r.n; return n ? (r.neu as unknown as Obj) : cur; });
       if (n) await protokolliere(socialN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['geaendertVon', 'freigegebenVon'] }], { art: 'system' });
+      return n;
+    });
+    // Social-Verbindungen (27.10.): die Verbindungen, die die Person angelegt hat, tragen IHREN Zugang (z. B. LinkedIn-Token) — sie fallen weg.
+    const swN = `social-verbindungen--${konto.haushalt}`;
+    await nurWenn(swN, async () => {
+      let n = 0;
+      await updateJson<Obj>(swN, cur => {
+        if (!cur) return cur as unknown as Obj;
+        const l = Array.isArray((cur as { eintraege?: unknown }).eintraege) ? (cur as { eintraege: { verbundenVon?: string }[] }).eintraege : [];
+        const rest = l.filter(v => v.verbundenVon !== speicher);
+        n = l.length - rest.length;
+        return n ? ({ ...cur, eintraege: rest } as unknown as Obj) : cur;
+      });
+      if (n) await protokolliere(swN, [{ liste: 'verbindungen', op: 'geloescht', id: 'konto' }], { art: 'system' });
       return n;
     });
     // Formular „Angebot anfordern“ (25.10.): Einträge bleiben, der Speichername wird „[gelöscht]“; das eigene Absender-Postfach fällt weg.

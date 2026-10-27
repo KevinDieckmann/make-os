@@ -60,6 +60,25 @@ export interface KanalZiel {
 /** Follower eines Accounts an einem Tag (aus den Plattform-Insights, von Hand oder später per API) — nie geschätzt. */
 export interface KontoStand { id: string; plattform: SocialPlattform; am: string; follower: number; quelle: 'hand' | 'import' | 'api' }
 
+/**
+ * Redaktionsplan eines Kanals (27.10., Kevin: „bau tiefer und besser — es soll voll automatisiert laufen“). Der Redaktions-Agent
+ * (lib/social/agent-server.ts) füllt die freien Termine der nächsten `vorlauf` Tage mit Entwürfen; was die Leitplanken erlauben
+ * (autonomie.ts), plant er ein, der Veröffentlicher (lib/social/veroeffentlichen-server.ts) postet es zum Termin. Ohne Plan: Vorgabe.
+ */
+export interface Redaktionsplan {
+  /** Der Agent schreibt im Takt selbst Entwürfe. Aus = nur auf Knopfdruck. */
+  agent: boolean;
+  /** Beiträge je Woche — fehlt: aus dem Ziel „Veröffentlichungen je Woche“, sonst 3. */
+  proWoche?: number;
+  /** Wochentage 1 = Mo … 7 = So. */
+  tage: number[];
+  /** Uhrzeit (Berliner Zeit, HH:MM) — Startannahme, die Analyse zeigt später, was wirkt. */
+  uhrzeit: string;
+  /** So viele Tage im Voraus füllt der Agent (1–21). */
+  vorlauf: number;
+}
+export const PLAN_VORGABE: Redaktionsplan = { agent: false, tage: [2, 4, 6], uhrzeit: '18:00', vorlauf: 7 };
+
 /** Autonomie-Stufe eines Kanals (SOCIAL_PLAN.md › 4): 0 Entwurf · 1 Freigabe per Klick · 2 selbstständig mit Leitplanken. */
 export type AutonomieStufe = 0 | 1 | 2;
 
@@ -102,6 +121,8 @@ export interface SocialKanal {
   vorlage?: string;
   ziele: KanalZiel[];
   staende: KontoStand[];
+  /** Redaktionsplan — fehlt = `PLAN_VORGABE` (Agent aus). */
+  plan?: Redaktionsplan;
   /** Handle ohne @ (gleich auf allen Plattformen, wenn möglich). */
   handle?: string;
   sprache: 'de' | 'en';
@@ -164,7 +185,18 @@ export interface Messung {
   quelle: 'hand' | 'import' | 'api';
 }
 
-export interface Veroeffentlichung { plattform: SocialPlattform; am: string; link?: string }
+export interface Veroeffentlichung {
+  plattform: SocialPlattform;
+  am: string;
+  link?: string;
+  /** Kennung des Beitrags bei der Plattform (nur automatisch veröffentlicht) — für die Zahlen. */
+  externeId?: string;
+  /** 'automatik' = vom Veröffentlicher gepostet, sonst von Hand eingetragen. */
+  durch?: 'automatik' | 'hand';
+}
+
+/** Ein Veröffentlichungs-Versuch, der gerade läuft oder unklar endete — nie automatisch wiederholt (sonst doppelt online). */
+export interface PostVersuch { plattform: SocialPlattform; seit: string; zustand: 'laeuft' | 'fehler' | 'unklar'; text?: string }
 
 export interface SocialFolge {
   id: string;
@@ -188,6 +220,14 @@ export interface SocialFolge {
   freigegebenVon?: string;
   status: FolgeStatus;
   geplantAm?: string;
+  /** Uhrzeit des Termins (Berliner Zeit, HH:MM) — fehlt = Uhrzeit des Redaktionsplans. */
+  geplantUm?: string;
+  /** Vom Redaktions-Agenten geschrieben (Herkunft; die Prüfung ist dieselbe). */
+  quelle?: 'agent';
+  /** Termin-Platz des Redaktionsplans (`JJJJ-MM-TTTHH:MM`) — der Agent füllt jeden Platz höchstens einmal. */
+  platz?: string;
+  /** Laufende bzw. gescheiterte Veröffentlichungs-Versuche je Plattform (setzt nur der Server). */
+  versuche?: PostVersuch[];
   veroeffentlicht: Veroeffentlichung[];
   messungen: Messung[];
   geaendert: string;

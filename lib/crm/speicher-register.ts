@@ -751,6 +751,14 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'die Konten des Haushalts sehen sie unter Markttraktion › Social (GET /api/social) — einen Kanal „nur die Person der Marke“ nur diese Person; Dritte stehen hier nicht (gezeigte Personen nur als „Einwilligung liegt vor/fehlt“, ohne Namen)',
     loeschfrist: 'bis der Haushalt Kanäle und Folgen entfernt bzw. die Instanz gelöscht wird; Konto löschen setzt den Speichernamen auf „[gelöscht]“ und löst die Personenmarke von der Person',
   }),
+  // Social-Automatik (27.10.): Verbindungen je Kanal und Plattform (Token verschlüsselt, nie an den Browser), Stand der Läufe, offene LinkedIn-Anmeldungen.
+  mit(H('social-verbindungen--*', 'Verbindungen der Social-Kanäle: Kanal, Plattform, Anbieter, Zustand, Anzeige-Name des Plattform-Kontos, Zugangstoken (verschlüsselt, nur Server), wer verbunden hat (Speichername), wann.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — die Person verbindet ihr eigenes Plattform-Konto für die eigene Marketingarbeit',
+    art15: 'Status ohne Zugangsdaten unter Markttraktion › Social › Automatik (GET /api/social); das Token selbst wird nie herausgegeben',
+    loeschfrist: 'bis zum Trennen (dann ohne Token als „getrennt“) bzw. Konto löschen (Verbindungen der Person fallen weg)',
+  }),
+  K('social-lauf--*', 'Stand der automatischen Social-Läufe (Zeit, Zahlen, Grund) — keine Inhalte.'),
+  K('social-linkedin-zustand', 'Offene LinkedIn-Anmeldungen (state, Speichername, Kanal, 15 Minuten) — wird beim Rückruf eingelöst.'),
   mit(H('markttraktion-planung--*', 'Vertriebsplanung des Haushalts: Leadkanäle (Name, Herkunft, Bezug Kampagne/Eventreihe als Kennung, Plan-Leads, Sales Cycle, Plan-Quoten, Kosten/Zeit je Lead, verantwortlich = Team-Kürzel), Umsatzziele je Business-Gesellschaft, Wochen-Challenges (Team-Kürzel, Ziel, Rückblick), Minuten je Aktivität, Schritte nach der Leistung je Mandat-Kennung; wer zuletzt geändert hat (Speichername).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung der eigenen Vertriebsarbeit durch die Mitglieder des Haushalts (§ 26 BDSG, soweit Wochenziele je Person)',
     art15: 'alle Konten des Haushalts sehen sie unter Markttraktion › Planung (GET /api/crm/planung); Kontakte Dritter stehen hier nicht — Mandate nur als Kennung',
@@ -895,7 +903,7 @@ const IN_PRIVAT: readonly string[] = [
 const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
-  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
+  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
   'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',

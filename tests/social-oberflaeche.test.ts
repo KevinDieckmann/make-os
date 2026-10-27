@@ -33,10 +33,10 @@ function aufbau(): Lage {
   ]);
   const f = d.folgen[0];
   d = schritt(d, [{ op: 'veroeffentlicht', folgeId: f.id, plattform: 'tiktok', am: '2026-10-25' }, { op: 'messung', folgeId: f.id, messung: { plattform: 'tiktok', am: '2026-10-26', views: 800, halte3s: 40 } }]);
-  return lageAus(d, '2026-10-26', 'pa') as unknown as Lage;
+  return { ...lageAus(d, '2026-10-26', 'pa'), automatik: { folgen: {}, verbindungen: [], wege: { linkedin: false, probe: false }, lauf: {}, luecken: {} } } as unknown as Lage;
 }
 
-const apiAus = (lage: Lage): SocialApi => ({ lage, fehler: null, laden: async () => {}, schreiben: async () => lage, importieren: async () => null, setFehler: () => {} });
+const apiAus = (lage: Lage): SocialApi => ({ lage, fehler: null, laden: async () => {}, schreiben: async () => lage, importieren: async () => null, setFehler: () => {}, aktion: async () => null });
 
 describe('Social — Oberfläche', () => {
   const lage = aufbau();

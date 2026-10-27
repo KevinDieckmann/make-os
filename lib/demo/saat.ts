@@ -401,8 +401,31 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   const zieleOps = so5.datei.kanaele.map(k => ({ op: 'ziel', kanalId: k.id, stand: k.stand, eintrag: k.id === demoKanal
     ? { metrik: 'follower', plattform: 'tiktok', zielwert: 1000, von: tagPlus(heute, -10), bis: tagPlus(heute, 50) }
     : { metrik: 'follower', plattform: 'linkedin', zielwert: 1000, von: tagPlus(heute, -28), bis: tagPlus(heute, 120) } }));
-  await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: zieleOps });
-  schritt('Social (Kanäle aus Vorlagen, Format, Folgen, Zahlen, Ziele)', 3 + 1 + DEMO_FOLGEN.length + 1);
+  const so6 = await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: zieleOps }) as unknown as { datei: { kanaele: { id: string; stand: string; name: string }[]; formate: { id: string; stand: string; name: string; kanalId: string }[] } };
+  // 27.10. („voll automatisiert“): der Firmenaccount läuft auf Stufe 2 mit Redaktionsplan; ein freigegebener Textbeitrag und ein Karussell sind
+  // eingeplant, verbunden ist er nur mit der PROBE (nichts verlässt die Demo) — so zeigt „Automatik“ den ganzen Weg. Alles erfunden.
+  const nord = so6.datei.kanaele.find(k => k.name === 'Nordlicht (Beispiel)');
+  if (nord) {
+    const fmt = (name: string) => so6.datei.formate.find(f => f.kanalId === nord.id && f.name === name);
+    const karussell = fmt('So arbeiten wir'), text = fmt('Ergebnis in Zahlen');
+    const so7 = await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: [
+      { op: 'plan', kanalId: nord.id, stand: nord.stand, plan: { agent: true, tage: [2, 4], uhrzeit: '09:00', vorlauf: 7 } },
+      ...(karussell ? [{ op: 'format-freigeben', id: karussell.id, freigeben: true, stand: karussell.stand }] : []),
+    ] }) as unknown as SocialAntwort;
+    const n2 = so7.datei.kanaele.find(k => k.id === nord.id)!;
+    await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: [
+      { op: 'kanal', eintrag: { id: nord.id, leitplanken: { autonomie: 2 } }, stand: n2.stand },
+      { op: 'folge', eintrag: { kanalId: nord.id, formatId: text?.id, titel: 'Was ein guter Projektstart braucht (Beispiel)', status: 'freigegeben', geplantAm: tagPlus(heute, 1), geplantUm: '09:00',
+        skript: 'Ein Projekt entscheidet sich oft in der ersten Woche. Nicht am Plan, sondern daran, ob alle dieselbe Frage beantworten wollen. Deshalb beginnen wir jedes Projekt mit einer Seite: Was soll danach anders sein?',
+        hooks: [{ text: 'Woran scheitern Projekte zuerst?' }], cta: 'Wie startet ihr? Schreibt es in die Kommentare.', kiInhalt: false } },
+      ...(karussell ? [{ op: 'folge', eintrag: { kanalId: nord.id, formatId: karussell.id, titel: 'Drei Fragen vor jedem Projekt (Beispiel)', status: 'geplant', geplantAm: tagPlus(heute, 3), geplantUm: '09:00',
+        skript: 'Drei Fragen vor jedem Projekt\nSo sparen wir beiden Seiten Zeit.\n---\nWas soll danach anders sein?\nEin Satz, den beide unterschreiben.\n---\nWer entscheidet?\nNicht die Person, die fragt, sondern die, die zahlt.\n---\nWas passiert, wenn nichts passiert?\nDie ehrlichste Frage von allen.',
+        hooks: [{ text: 'Drei Fragen, bevor wir anfangen.' }], cta: 'Speichern für das nächste Erstgespräch.', kiInhalt: false } }] : []),
+    ] });
+    // Probe-Verbindung (nur in einer Demo-Instanz erlaubt; ohne MAKE_OS_DEMO bleibt der Kanal unverbunden).
+    await rufe(R.social(), 'POST', '/api/social', LENA, { aktion: 'probe-verbinden', kanalId: nord.id, plattform: 'linkedin' }).catch(() => null);
+  }
+  schritt('Social (Kanäle aus Vorlagen, Format, Folgen, Zahlen, Ziele, Automatik mit Probe)', 3 + 1 + DEMO_FOLGEN.length + 1);
 
   // 3c) Produkte · Leistungstreppe (10.10.): eine erfundene Beispiel-Treppe (Check → Diagnose → zwei Pakete nebeneinander), die Kundenreise als
   //     Kreislauf, ein Paket in der Roadmap, Positionierung & Story und der Fortschritt eines Mandats — über die Route (Einzel-Schritte), wie im Browser.

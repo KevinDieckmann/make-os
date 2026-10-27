@@ -2042,7 +2042,7 @@ Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub
   Wiederholung ≥ 50 % Ähnlichkeit zu den letzten 20) · `mensch` (Beratung Gesundheit/Geld/Recht, Angebot/Preis, Zahlen ohne Quelle, Länge) · `hinweis` (KI-Label, CTA).
 - **Leitplanken-Entscheidung NUR `autonomieFuer`** (lib/social/autonomie.ts): selbst nur bei Stufe 2 + Kanal aktiv + kein Not-Aus + freigegebenes Format + Prüfung
   ohne Stopp/Person + unter dem Tageslimit; sonst Stapel mit Grund oder gesperrt. **Jeder künftige Veröffentlichungs-Weg (Plattform-API, Scheduler, ZOE) fragt nur dort.**
-  Heute veröffentlicht MAKE OS NICHTS — die Ausnahme von Regel 3 greift erst mit der Plattform-Anbindung (nach den API-Prüfungen von TikTok/Meta/Google).
+  Veröffentlicht wird nur über die Automatik (unten, seit 27.10.) und nur mit einer Plattform-Verbindung — die Ausnahme von Regel 3 greift erst damit.
 - **Analyse** (lib/social/analyse.ts): nur echte Messungen (jüngste je Plattform), Wirkung = geometrisches Mittel der Verhältnisse zum Kanal-Median (Aufrufe doppelt),
   Urteile mehr-davon/hook/kuerzen/streichen erst ab 5 Folgen mit Zahlen (absolute Signale sofort), Schwellen `START_SCHWELLEN` sind Startannahmen; Hook-Vergleich nur
   als Tendenz. Nie Viralität versprechen. **Import** (lib/social/csv.ts): Plattform-Export → Vorschau → übernehmen, Zuordnung über Link, sonst eindeutigen Titel, nie raten;
@@ -2061,6 +2061,22 @@ Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub
   **Ziele** (lib/social/ziele.ts, rein): follower/aufrufe mit Linie (Startwert NUR vom Server), posts-woche/halte3s/shares-je-tsd laufend; nur aus eingetragenen Zahlen
   (`KontoStand` je Plattform und Tag, op `kontostand`), sonst „ohne Daten“. **Vorlagen** (lib/social/vorlagen.ts, op `vorlage`: Kanal + Formate + Ziel-Vorschläge mit
   Wert in EINEM Schritt) — nur neutrale Muster, nie Namen/Firmen (Wächter im Test). LinkedIn ist Plattform (CSV „Impressions“ = Aufrufe).
+- **Automatik (27.10., Kevin: „bau tiefer und besser — es soll voll automatisiert laufen“; Fakten `research/social/FAKTEN_VEROEFFENTLICHEN.md`, UPDATES.md 27.10.):**
+  Die Ausnahme von Regel 3 (Stufe 2) greift jetzt — **hinaus geht nur so:** Takt (`lib/social/takt.ts`) → `socialVeroeffentlichenLauf` → je Folge und Plattform `postPlan`
+  (lib/social/veroeffentlichen.ts, DIESELBE Regel für Anzeige „Automatik“ und Lauf) mit `autonomieFuer` + Prüfer, Not-Aus/„Head aus“ des Head of Marketing (`headAngehalten`),
+  aktive Verbindung, Anbieter `kann`, Termin erreicht und ≤ 12 h zu spät (nie still nachholen). Vor dem Senden belegt `post-start` die Plattform (409 = nicht doppelt);
+  keine Antwort → `unklar`, nie automatisch wiederholen (nur `versuch-loesen` per Klick). **Server-Schritte** `entwurf`/`post-start|ok|fehler` nur mit `system` (Browser 403,
+  `NUR_SYSTEM_OPS`), Stempel `AGENT_STEMPEL` (`socialSystemSchreiben`). **Redaktions-Agent** (`lib/social/agent-server.ts`): freie Plätze NUR aus `planLuecken` (lib/social/plan.ts:
+  Tage × Uhrzeit, ≤ `proWoche` je Woche inkl. Geplantem, nie < 90 Min. vor dem Termin, Format freigegeben zuerst, Säulen rotieren), ein Modellaufruf je Platz ohne Werkzeuge
+  (`REDAKTION_SYSTEM`, nur eigene Daten im `<daten>`-Rahmen, keine Zahlen/Beratung/erfundenen Erlebnisse — Personenmarke: `{{Erlebnis: …}}` → Stopp), `ki: { lauf, person, ['crm'] }`,
+  `laufSperre(person, 'marketing')`; eingeplant nur, wenn `autonomieFuer` „selbst“ sagt — geprüft gegen den Stand NACH jedem geschriebenen Entwurf (Wiederholung!), sonst Entwurf +
+  EINE neutrale Glocke. Ohne KI: nichts geschrieben, Grund im Lauf-Stand (`social-lauf--<haushalt>`). **Anbieter** (`lib/social/anbieter/`): EINE Schnittstelle `SocialAnbieter`
+  (kann · posten · messen); `linkedin` = Person über Share on LinkedIn (`/rest/posts`, `LinkedIn-Version` aus `LINKEDIN_VERSION`/Vorgabe, Karussell → PDF `karussell-pdf.ts` über die
+  Documents-API, Token 60 Tage ohne Refresh → Glocke 7 Tage vorher, keine Zahlen ohne Antrag); `probe` NUR mit `MAKE_OS_DEMO=1`/Tests (`probeErlaubt`). Neue Plattform = neuer Anbieter
+  + Eintrag in `anbieterFuer`, Fakten nur aus offizieller Doku. **Verbindungen** `social-verbindungen--<haushalt>` (lib/social/verbindungen.ts): eine je Kanal + Plattform, Token nur
+  serverseitig (`verbindungSicht` ohne `geheim` — Wächter „kein Token in der Antwort“), Personenmarke verbindet nur die Person (403), fremde „nur ich“-Kanäle samt Verbindung 404/unsichtbar,
+  Konto löschen entfernt die Verbindungen, die die Person angelegt hat. LinkedIn-Anmeldung: `linkedinStart`/`linkedinAbschliessen` (state einmalig, 15 Min., je Person, nennt den Kanal),
+  Rückruf `/api/social/linkedin/rueckruf` (Cross-Site-Ausnahme `LINKEDIN_RUECKRUF`), Umgebung nur über `deploy/linkedin-verbinden.sh`. Tests `tests/social-automatik.test.ts`.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.

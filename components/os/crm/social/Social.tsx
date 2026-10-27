@@ -3,8 +3,8 @@
 // ─── Markttraktion · Marketing › Social (26.10.2026) ────────────────────────────────────────────────────────────────────────────────
 // Kevin 26.10.: „Ein Agent, der unser Social Media aufbaut und verwaltet.“ Diese Ansicht ist die Grundlage: Kanäle (Markenprofil, Persona,
 // Leitplanken), Serienformate, Folgen mit Prüfung und Leitplanken-Entscheidung, Messungen, Analyse und Import der Plattform-Zahlen.
-// MAKE OS veröffentlicht nichts selbst — die Anbindung an TikTok, Instagram und YouTube folgt, wenn die API-Prüfungen der Plattformen durch
-// sind. Bis dahin zeigt jede Folge, was der Agent nach den Leitplanken selbst dürfte. Daten nur über `useSocial` (/api/social).
+// Seit 27.10. („voll automatisiert“) mit dem Bereich „Automatik“: Redaktionsplan, Verbindungen, Warteschlange — gepostet wird nur über den
+// Takt nach den Leitplanken und nur mit einer Plattform-Verbindung (heute LinkedIn als Person). Daten nur über `useSocial` (/api/social).
 
 import { useState } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
@@ -20,10 +20,11 @@ import { KanalForm } from './KanalForm';
 import { Folgen } from './Folgen';
 import { Analyse, Formate, Import } from './Analyse';
 import { Startpaket } from './Startpaket';
+import { Automatik } from './Automatik';
 
-type Bereich = 'folgen' | 'ziele' | 'formate' | 'analyse' | 'import' | 'kanal';
+type Bereich = 'folgen' | 'automatik' | 'ziele' | 'formate' | 'analyse' | 'import' | 'kanal';
 const BEREICHE: { id: Bereich; label: string }[] = [
-  { id: 'folgen', label: 'Folgen' }, { id: 'ziele', label: 'Ziele' }, { id: 'formate', label: 'Formate' }, { id: 'analyse', label: 'Analyse' }, { id: 'import', label: 'Import' }, { id: 'kanal', label: 'Kanal' },
+  { id: 'folgen', label: 'Folgen' }, { id: 'automatik', label: 'Automatik' }, { id: 'ziele', label: 'Ziele' }, { id: 'formate', label: 'Formate' }, { id: 'analyse', label: 'Analyse' }, { id: 'import', label: 'Import' }, { id: 'kanal', label: 'Kanal' },
 ];
 const STUFEN: { id: `${AutonomieStufe}`; label: string }[] = [
   { id: '0', label: 'Nur Entwürfe' }, { id: '1', label: 'Freigabe per Klick' }, { id: '2', label: 'Selbstständig mit Leitplanken' },
@@ -61,6 +62,7 @@ export function Social() {
           <KanalKopf api={api} kanal={kanal} />
           <Segmente liste={BEREICHE} aktiv={bereich} onWahl={setBereich} umbrechen />
           {bereich === 'folgen' && <Folgen key={kanal.id} api={api} kanal={kanal} />}
+          {bereich === 'automatik' && <Automatik key={kanal.stand} api={api} kanal={kanal} />}
           {bereich === 'ziele' && <Ziele key={kanal.id} api={api} kanal={kanal} />}
           {bereich === 'formate' && <Formate api={api} kanal={kanal} />}
           {bereich === 'analyse' && <Analyse api={api} kanal={kanal} />}
@@ -92,6 +94,7 @@ function KanalKopf({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal
   const selbst = folgen.filter(f => api.lage!.folgen[f.id]?.weg.weg === 'selbst').length;
   const stapel = folgen.filter(f => api.lage!.folgen[f.id]?.weg.weg === 'stapel').length;
   const bereit = folgen.filter(f => api.lage!.folgen[f.id]?.weg.weg === 'bereit').length;
+  const verbunden = api.lage!.automatik.verbindungen.filter(v => v.kanalId === kanal.id && v.zustand === 'aktiv').length;
   return (
     <Karte>
       <Ueberschrift rechts={<span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -117,7 +120,9 @@ function KanalKopf({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal
         <Knopf farbe={lp.antwortenAus ? LEUCHT.gut : LEUCHT.kritisch} onClick={() => api.schreiben([{ op: 'notaus', id: kanal.id, antworten: !lp.antwortenAus, stand: kanal.stand }])}>{lp.antwortenAus ? 'Antworten fortsetzen' : 'Not-Aus: Antworten anhalten'}</Knopf>
         <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Tageslimit {lp.postsProTag} Posts · {lp.antwortenProTag} Antworten · {lp.dmsProTag} DMs</span>
       </div>
-      <p style={{ color: C.inkLeise, fontSize: TYP.bedien, margin: '12px 0 0' }}>MAKE OS veröffentlicht noch nichts selbst — die Plattform-Anbindung folgt nach den API-Prüfungen. Bis dahin zeigt jede Folge, was der Agent nach diesen Leitplanken dürfte.</p>
+      <p style={{ color: C.inkLeise, fontSize: TYP.bedien, margin: '12px 0 0' }}>{verbunden
+        ? `Verbunden mit ${verbunden} Plattform${verbunden === 1 ? '' : 'en'}: MAKE OS postet zum Termin, was diese Leitplanken erlauben — der Rest wartet auf euch (Automatik).`
+        : 'Noch keine Plattform verbunden — MAKE OS postet nichts selbst. Unter „Automatik“ verbinden; bis dahin zeigt jede Folge, was der Agent dürfte.'}</p>
     </Karte>
   );
 }

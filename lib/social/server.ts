@@ -9,10 +9,15 @@ import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { protokolliereBestand, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
+import { wandzeit } from '@/lib/kalender/zeit';
+import type { PostSchritt } from './veroeffentlichen';
+import type { VerbindungSicht } from './verbindungen';
+import type { LaufStand } from './lauf-stand';
+import type { PlanLuecke } from './plan';
 import { tagPlus } from '@/lib/zeit/kalender-kern';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
-import { socialAus, socialAnwenden, socialFuerPerson, type AnwendenErgebnis } from './daten';
+import { socialAus, socialAnwenden, socialFuerPerson, AGENT_STEMPEL, type AnwendenErgebnis } from './daten';
 import { folgePruefen, kanalPruefen, type Befund } from './pruefer';
 import { kanalZiele, type ZielStand } from './ziele';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
@@ -39,7 +44,11 @@ async function schreibUmfeld(): Promise<{ personen: string[]; gesellschaften: st
   return { personen: konten.map(k => k.speicher), gesellschaften: [...BUSINESS_GESELLSCHAFTEN, ...weitere] };
 }
 
-export async function socialSchreiben(ops: unknown, person: string, wer?: Wer, jetzt = new Date()): Promise<AnwendenErgebnis> {
+/** Der Agent bzw. Veröffentlicher schreibt (Systemlauf): stempelt als `AGENT_STEMPEL`, sieht alle Kanäle, darf die Server-Schritte. */
+export const socialSystemSchreiben = (ops: unknown, jetzt = new Date()): Promise<AnwendenErgebnis> =>
+  socialSchreiben(ops, AGENT_STEMPEL, { art: 'zoe' }, jetzt, { system: true });
+
+export async function socialSchreiben(ops: unknown, person: string, wer?: Wer, jetzt = new Date(), opt: { system?: boolean } = {}): Promise<AnwendenErgebnis> {
   const name = await socialSpeicher();
   const umfeld = await schreibUmfeld();
   let ergebnis: AnwendenErgebnis = { ok: false, status: 400, fehler: 'Nichts geändert.' };
@@ -47,7 +56,7 @@ export async function socialSchreiben(ops: unknown, person: string, wer?: Wer, j
   const nachher = await updateJson<SocialDatei>(name, cur => {
     const d = socialAus(cur);
     vorher = d;
-    ergebnis = socialAnwenden(d, ops, { person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), ...umfeld, standVon: eintragStand, neueId: p => neueKennung(p) });
+    ergebnis = socialAnwenden(d, ops, { person, jetzt: jetzt.toISOString(), heute: localDay(jetzt), ...umfeld, standVon: eintragStand, neueId: p => neueKennung(p), system: opt.system === true });
     return ergebnis.ok ? ergebnis.datei : (cur as SocialDatei | null) ?? d;
   });
   if (ergebnis.ok) await protokolliereBestand(name, vorher, nachher, wer);
@@ -97,6 +106,34 @@ export function lageAus(alle: SocialDatei, heute: string, person: string | null)
   return { heute, ich: person, kanaele: kanalLage, datei: mitStaenden(d), folgen, analyse, woche };
 }
 
-export async function socialLage(person: string | null, jetzt = new Date()): Promise<SocialLage> {
-  return lageAus(await ladeSocial(), localDay(jetzt), person);
+/** Automatik (27.10.): je Folge und Plattform, was der Veröffentlicher tun wird (dieselbe Regel wie der Lauf), Verbindungen ohne Geheimteil. */
+export interface AutomatikLage {
+  folgen: Record<string, PostSchritt[]>;
+  verbindungen: VerbindungSicht[];
+  wege: { linkedin: boolean; probe: boolean };
+  lauf: LaufStand;
+  /** Je Kanal: die nächsten freien Plätze des Plans (Vorschau dessen, was der Agent füllen würde). */
+  luecken: Record<string, PlanLuecke[]>;
+}
+
+export async function socialLage(person: string | null, jetzt = new Date()): Promise<SocialLage & { automatik: AutomatikLage }> {
+  const alle = await ladeSocial();
+  const lage = lageAus(alle, localDay(jetzt), person);
+  const d = socialFuerPerson(alle, person);
+  const [{ planFuer }, { ladeVerbindungen, verbindungSicht }, { ladeLaufStand }, { linkedinEingerichtet }, { probeErlaubt }, { planLuecken }] = await Promise.all([
+    import('./veroeffentlichen-server'), import('./verbindungen'), import('./lauf-stand'), import('./anbieter/linkedin'), import('./anbieter/probe'), import('./plan'),
+  ]);
+  const verbindungen = (await ladeVerbindungen().catch(() => [])).filter(v => d.kanaele.some(k => k.id === v.kanalId));
+  const jetztWand = wandzeit(jetzt).slice(0, 16);
+  const folgen: AutomatikLage['folgen'] = {};
+  for (const f of d.folgen) {
+    if (f.status === 'verworfen' || f.status === 'idee') continue;
+    const k = d.kanaele.find(x => x.id === f.kanalId);
+    if (!k) continue;
+    const format = f.formatId ? d.formate.find(x => x.id === f.formatId) ?? null : null;
+    folgen[f.id] = await planFuer(f, k, format, d, verbindungen, lage.heute, jetztWand);
+  }
+  const luecken: AutomatikLage['luecken'] = {};
+  for (const k of d.kanaele) luecken[k.id] = planLuecken(k, d.formate, d.folgen, jetztWand).slice(0, 7);
+  return { ...lage, automatik: { folgen, verbindungen: verbindungen.map(verbindungSicht), wege: { linkedin: linkedinEingerichtet(), probe: probeErlaubt() }, lauf: await ladeLaufStand().catch(() => ({})), luecken } };
 }

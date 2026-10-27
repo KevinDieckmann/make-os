@@ -7,9 +7,9 @@
 import { istKalendertag, tagVon } from '@/lib/zeit';
 import { gehoertZuPrivat } from '@/lib/einheiten';
 import {
-  SOCIAL_PLATTFORMEN, FOLGE_STATUS, LEITPLANKEN_VORGABE, SOCIAL_GRENZEN as G, leereSocial, KONTO_ARTEN, INHALT_ARTEN, ZIEL_METRIKEN, ZIEL_MIT_LINIE,
+  SOCIAL_PLATTFORMEN, FOLGE_STATUS, LEITPLANKEN_VORGABE, PLAN_VORGABE, SOCIAL_GRENZEN as G, leereSocial, KONTO_ARTEN, INHALT_ARTEN, ZIEL_METRIKEN, ZIEL_MIT_LINIE,
   type SocialDatei, type SocialKanal, type SocialFormat, type SocialFolge, type Messung, type Hook, type Leitplanken, type SocialPlattform,
-  type FolgeStatus, type Veroeffentlichung, type AutonomieStufe, type KontoArt, type InhaltArt, type KanalZiel, type KontoStand, type ZielMetrik,
+  type FolgeStatus, type Veroeffentlichung, type AutonomieStufe, type Redaktionsplan, type PostVersuch, type KontoArt, type InhaltArt, type KanalZiel, type KontoStand, type ZielMetrik,
 } from './typen';
 import { zielStartwert } from './ziele';
 import { vorlageVon } from './vorlagen';
@@ -47,6 +47,22 @@ function leitplankenAus(v: unknown): Leitplanken {
   };
 }
 
+const UHRZEIT = /^([01]\d|2[0-3]):[0-5]\d$/;
+export const istUhrzeit = (v: unknown): v is string => typeof v === 'string' && UHRZEIT.test(v);
+
+/** Redaktionsplan säubern — fehlt er ganz, bleibt er weg (dann gilt `PLAN_VORGABE`). */
+export function planAus(v: unknown): Redaktionsplan | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  const tage = [...new Set((Array.isArray(o.tage) ? o.tage : []).filter((t): t is number => Number.isInteger(t) && (t as number) >= 1 && (t as number) <= 7))].sort();
+  const pw = zahl(o.proWoche, 1, 21);
+  return ohneLeere({
+    agent: o.agent === true, proWoche: pw === undefined ? undefined : Math.round(pw),
+    tage: tage.length ? tage : [...PLAN_VORGABE.tage], uhrzeit: istUhrzeit(o.uhrzeit) ? o.uhrzeit : PLAN_VORGABE.uhrzeit,
+    vorlauf: Math.round(zahl(o.vorlauf, 1, 21) ?? PLAN_VORGABE.vorlauf),
+  }) as Redaktionsplan;
+}
+
 export function kanalAus(o: Record<string, unknown>): SocialKanal | null {
   if (!istKennung(o.id) || !text(o.name, G.text)) return null;
   const m = (o.marke && typeof o.marke === 'object' ? o.marke : {}) as Record<string, unknown>;
@@ -70,6 +86,7 @@ export function kanalAus(o: Record<string, unknown>): SocialKanal | null {
     leitplanken: leitplankenAus(o.leitplanken),
     ziele: liste(o.ziele, zielAus),
     staende: liste(o.staende, standAus),
+    plan: planAus(o.plan),
     status: o.status === 'pausiert' ? 'pausiert' : 'aktiv',
     archiviertAm: typeof o.archiviertAm === 'string' ? o.archiviertAm : undefined,
     geaendert: typeof o.geaendert === 'string' ? o.geaendert : '',
@@ -126,7 +143,15 @@ export function messungAus(o: Record<string, unknown>): Messung | null {
 }
 
 function veroeffentlichungAus(o: Record<string, unknown>): Veroeffentlichung | null {
-  return istPlattform(o.plattform) && istKalendertag(o.am) ? ohneLeere({ plattform: o.plattform, am: o.am, link: nurHttps(o.link) }) as Veroeffentlichung : null;
+  return istPlattform(o.plattform) && istKalendertag(o.am) ? ohneLeere({
+    plattform: o.plattform, am: o.am, link: nurHttps(o.link), externeId: text(o.externeId, 200) || undefined, durch: o.durch === 'automatik' ? 'automatik' : undefined,
+  }) as Veroeffentlichung : null;
+}
+
+function versuchAus(o: Record<string, unknown>): PostVersuch | null {
+  if (!istPlattform(o.plattform) || typeof o.seit !== 'string') return null;
+  const zustand = o.zustand === 'laeuft' || o.zustand === 'unklar' ? o.zustand : 'fehler';
+  return ohneLeere({ plattform: o.plattform, seit: o.seit, zustand, text: text(o.text, G.text) || undefined }) as PostVersuch;
 }
 
 export function folgeAus(o: Record<string, unknown>): SocialFolge | null {
@@ -145,6 +170,10 @@ export function folgeAus(o: Record<string, unknown>): SocialFolge | null {
     werbung: o.werbung === true ? true : undefined,
     freigegebenAm: typeof o.freigegebenAm === 'string' ? o.freigegebenAm : undefined, freigegebenVon: text(o.freigegebenVon, 60) || undefined,
     status: st, geplantAm: istKalendertag(o.geplantAm) ? o.geplantAm : undefined,
+    geplantUm: istKalendertag(o.geplantAm) && istUhrzeit(o.geplantUm) ? o.geplantUm : undefined,
+    quelle: o.quelle === 'agent' ? 'agent' : undefined,
+    platz: typeof o.platz === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(o.platz) ? o.platz : undefined,
+    versuche: (() => { const l = liste(o.versuche, versuchAus); return l.length ? l : undefined; })(),
     veroeffentlicht: liste(o.veroeffentlicht, veroeffentlichungAus),
     messungen: liste(o.messungen, messungAus),
     geaendert: typeof o.geaendert === 'string' ? o.geaendert : '', geaendertVon: text(o.geaendertVon, 60) || undefined,
@@ -173,7 +202,19 @@ export type SocialOp =
   | { op: 'vorlage'; vorlageId: string; eintrag: Record<string, unknown> }
   | { op: 'ziel'; kanalId: string; eintrag: Record<string, unknown>; stand: string }
   | { op: 'ziel-weg'; kanalId: string; id: string; stand: string }
-  | { op: 'kontostand'; kanalId: string; plattform: SocialPlattform; am: string; follower: number };
+  | { op: 'kontostand'; kanalId: string; plattform: SocialPlattform; am: string; follower: number }
+  | { op: 'plan'; kanalId: string; plan: Record<string, unknown>; stand: string }
+  | { op: 'versuch-loesen'; folgeId: string; plattform: SocialPlattform; stand: string }
+  // ── nur der Server (Redaktions-Agent, Veröffentlicher) — aus dem Browser 403 ──
+  | { op: 'entwurf'; kanalId: string; platz: string; eintrag: Record<string, unknown> }
+  | { op: 'post-start'; folgeId: string; plattform: SocialPlattform }
+  | { op: 'post-ok'; folgeId: string; plattform: SocialPlattform; externeId?: string; link?: string }
+  | { op: 'post-fehler'; folgeId: string; plattform: SocialPlattform; text: string; unklar?: boolean };
+
+/** Schritte, die nur der Server selbst schreibt (Agent, Veröffentlicher) — nie aus dem Browser. */
+export const NUR_SYSTEM_OPS: readonly string[] = ['entwurf', 'post-start', 'post-ok', 'post-fehler'];
+/** Speichername, unter dem der Agent stempelt („geändert von“). */
+export const AGENT_STEMPEL = 'zoe';
 
 export interface AnwendenKontext {
   /** Speichername der schreibenden Person (nie aus dem Körper). */
@@ -187,6 +228,8 @@ export interface AnwendenKontext {
   gesellschaften?: readonly string[];
   standVon: (x: object) => string;
   neueId: (praefix: string) => string;
+  /** Systemlauf (Agent/Veröffentlicher): sieht alle Kanäle und darf die Server-Schritte (`NUR_SYSTEM_OPS`). Nie aus einer Anfrage. */
+  system?: boolean;
 }
 
 export type AnwendenErgebnis =
@@ -214,10 +257,16 @@ const folgeInhalt = (f: SocialFolge) => JSON.stringify([f.titel, f.skript, f.hoo
 
 /** Server-Felder, die der Browser nie setzen darf. */
 const OHNE_SERVERFELDER = (e: Record<string, unknown>) => {
-  const { geaendert: _g, geaendertVon: _v, freigegebenAm: _f, freigegebenVon: _fv, messungen: _m, veroeffentlicht: _ve, stand: _s, ziele: _z, staende: _st, ...rest } = e;
-  void _g; void _v; void _f; void _fv; void _m; void _ve; void _s; void _z; void _st;
+  const { geaendert: _g, geaendertVon: _v, freigegebenAm: _f, freigegebenVon: _fv, messungen: _m, veroeffentlicht: _ve, stand: _s, ziele: _z, staende: _st, quelle: _q, platz: _p, versuche: _vs, plan: _pl, ...rest } = e;
+  void _g; void _v; void _f; void _fv; void _m; void _ve; void _s; void _z; void _st; void _q; void _p; void _vs; void _pl;
   return rest;
 };
+
+/** Termin-Platz → Tag + Uhrzeit. */
+export const platzTeile = (platz: string): { tag: string; um: string } => ({ tag: platz.slice(0, 10), um: platz.slice(11, 16) });
+/** Ist der Platz belegt? (eine nicht verworfene Folge des Kanals auf diesem Platz bzw. Termin). */
+export const platzBelegt = (folgen: readonly SocialFolge[], kanalId: string, platz: string, uhrzeitVorgabe: string): boolean =>
+  folgen.some(f => f.kanalId === kanalId && f.status !== 'verworfen' && (f.platz === platz || (!!f.geplantAm && `${f.geplantAm}T${f.geplantUm ?? uhrzeitVorgabe}` === platz)));
 
 /**
  * Schritte der Reihe nach auf eine Kopie anwenden — alles oder nichts. Neue Einträge (ohne `id`) bekommen eine Kennung vom Server;
@@ -240,7 +289,7 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
   /** Kanal, den die schreibende Person sehen darf — sonst „nicht gefunden“ (wer ihn nicht sieht, erfährt nicht, dass es ihn gibt). */
   const sichtbarerKanal = (id: unknown): number => {
     const j = typeof id === 'string' ? d.kanaele.findIndex(x => x.id === id) : -1;
-    if (j < 0 || !kanalSichtbar(d.kanaele[j], k.person)) nein('Kanal nicht gefunden.', 404);
+    if (j < 0 || (!k.system && !kanalSichtbar(d.kanaele[j], k.person))) nein('Kanal nicht gefunden.', 404);
     return j;
   };
   const folgeSichtbar = (id: unknown): number => { const j = finde(d.folgen, id, 'Folge'); sichtbarerKanal(d.folgen[j].kanalId); return j; };
@@ -260,6 +309,7 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
     opsRoh.forEach((roh, i) => {
       if (!roh || typeof roh !== 'object') nein(`Änderung ${i + 1} ist kein Objekt.`);
       const op = roh as SocialOp & Record<string, unknown>;
+      if (NUR_SYSTEM_OPS.includes(String(op.op)) && !k.system) nein('Diesen Schritt schreibt nur der Server (Redaktions-Agent, Veröffentlicher).', 403);
       switch (op.op) {
         case 'kanal': {
           const e = OHNE_SERVERFELDER((op.eintrag ?? {}) as Record<string, unknown>);
@@ -445,6 +495,65 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
           // Ein Stand je Plattform und Tag — ein neuer Wert am selben Tag ersetzt den alten.
           d.kanaele[j] = { ...c, staende: [...c.staende.filter(x => !(x.plattform === st!.plattform && x.am === st!.am)), st!], ...vermerk };
           geaendert.push(c.id);
+          break;
+        }
+        case 'plan': {
+          const j = sichtbarerKanal(op.kanalId);
+          standPasst(d.kanaele[j], op.stand, i, d.kanaele[j].id);
+          const plan = planAus(op.plan);
+          if (!plan) nein('Plan: Tage, Uhrzeit (HH:MM), Vorlauf.');
+          d.kanaele[j] = { ...d.kanaele[j], plan, ...vermerk };
+          geaendert.push(d.kanaele[j].id);
+          break;
+        }
+        case 'versuch-loesen': {
+          // Eine Person hat bei der Plattform nachgesehen: der gescheiterte bzw. unklare Versuch geht weg — der nächste Lauf darf wieder posten.
+          const j = folgeSichtbar(op.folgeId);
+          standPasst(d.folgen[j], op.stand, i, d.folgen[j].id);
+          const f = d.folgen[j];
+          if (!(f.versuche ?? []).some(v => v.plattform === op.plattform && v.zustand !== 'laeuft')) nein('Kein gescheiterter Versuch für diese Plattform.', 404);
+          d.folgen[j] = folgeAus({ ...f, versuche: (f.versuche ?? []).filter(v => v.plattform !== op.plattform), ...vermerk })!;
+          geaendert.push(f.id);
+          break;
+        }
+        case 'entwurf': {
+          // Redaktions-Agent: EIN Entwurf je Termin-Platz — ist der Platz schon belegt (zweiter Lauf, Person hat dort etwas geplant), passiert nichts.
+          const j = sichtbarerKanal(op.kanalId);
+          const c = d.kanaele[j];
+          if (typeof op.platz !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(op.platz) || !istKalendertag(op.platz.slice(0, 10))) nein('Platz: JJJJ-MM-TTTHH:MM.');
+          if (platzBelegt(d.folgen, c.id, op.platz, (c.plan ?? PLAN_VORGABE).uhrzeit)) break;
+          const e = OHNE_SERVERFELDER((op.eintrag ?? {}) as Record<string, unknown>);
+          if (istKennung(e.formatId) && !d.formate.some(f => f.id === e.formatId && f.kanalId === c.id)) nein('Das Format gehört nicht zu diesem Kanal.');
+          const { tag, um } = platzTeile(op.platz);
+          const hooks = Array.isArray(e.hooks) ? e.hooks.slice(0, G.hooks).map(h => ({ ...(h as object), id: k.neueId('hk') })) : [];
+          const neu = folgeAus({
+            ...e, hooks, id: k.neueId('sv'), kanalId: c.id, quelle: 'agent', platz: op.platz, geplantAm: tag, geplantUm: um,
+            status: e.status === 'geplant' ? 'geplant' : 'entwurf', veroeffentlicht: [], messungen: [], ...vermerk,
+          });
+          if (!neu) nein('Ein Entwurf braucht einen Titel.');
+          if (neu!.skript.length >= G.skript) nein(`Das Skript ist länger als ${G.skript} Zeichen.`, 413);
+          if (d.folgen.length >= G.folgen) nein(`Höchstens ${G.folgen} Folgen.`, 413);
+          d.folgen.push({ ...neu!, hookId: neu!.hooks[0]?.id });
+          geaendert.push(neu!.id);
+          break;
+        }
+        case 'post-start': case 'post-ok': case 'post-fehler': {
+          const j = folgeSichtbar(op.folgeId);
+          const f = d.folgen[j];
+          if (!istPlattform(op.plattform)) nein('Unbekannte Plattform.');
+          const andere = (f.versuche ?? []).filter(v => v.plattform !== op.plattform);
+          const meiner = (f.versuche ?? []).find(v => v.plattform === op.plattform);
+          if (op.op === 'post-start') {
+            // Nie doppelt: schon online, ein Versuch läuft oder endete unklar → abgelehnt (der Lauf fragt vorher, das hier ist die Sperre).
+            if (f.veroeffentlicht.some(v => v.plattform === op.plattform) || meiner) { konflikte.push({ op: i, id: f.id }); break; }
+            d.folgen[j] = folgeAus({ ...f, versuche: [...andere, { plattform: op.plattform, seit: k.jetzt, zustand: 'laeuft' }], ...vermerk })!;
+          } else if (op.op === 'post-ok') {
+            const v = veroeffentlichungAus({ plattform: op.plattform, am: heute, link: op.link, externeId: op.externeId, durch: 'automatik' });
+            d.folgen[j] = folgeAus({ ...f, status: 'veroeffentlicht', versuche: andere, veroeffentlicht: [...f.veroeffentlicht.filter(x => x.plattform !== op.plattform), v!], ...vermerk })!;
+          } else {
+            d.folgen[j] = folgeAus({ ...f, versuche: [...andere, { plattform: op.plattform, seit: meiner?.seit ?? k.jetzt, zustand: op.unklar ? 'unklar' : 'fehler', text: text(op.text, G.text) }], ...vermerk })!;
+          }
+          geaendert.push(f.id);
           break;
         }
         default: nein(`Unbekannte Änderung „${String((op as { op?: unknown }).op)}“.`);

@@ -4,6 +4,24 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 27.10.2026 abends — Social läuft automatisch: Redaktions-Agent, Veröffentlicher, LinkedIn (nur lokal — Branch `social-modul`)
+Kevin 27.10.: „Bau tiefer und besser — es soll voll automatisiert laufen.“ Regeln: CLAUDE.md › Social › „Automatik (27.10.)“. Fakten zu den Plattformen nur aus
+offizieller Doku: `research/social/FAKTEN_VEROEFFENTLICHEN.md`.
+- **Neu:** Redaktionsplan je Kanal (Agent an/aus, Tage, Uhrzeit, Beiträge je Woche, Vorlauf), Redaktions-Agent im Takt (alle 6 h, 6–22 Uhr; Hintergrund-KI, Not-Aus und
+  Budget des Head of Marketing gelten), Veröffentlicher im Takt (nur nach `autonomieFuer`, nie doppelt, „unklar“ nur von Hand lösen, > 12 h zu spät nie nachholen),
+  LinkedIn als Person (Text + Karussell als PDF), Probe-Verbindung nur in der Demo, Reiter „Automatik“. Neue Bestände `social-verbindungen--<haushalt>`, `social-lauf--<haushalt>`,
+  `social-linkedin-zustand` (additiv); neue optionale Felder an Kanal (`plan`) und Folge (`geplantUm`, `quelle`, `platz`, `versuche`, Veröffentlichung `externeId`/`durch`).
+- **Schritte für Kevin (erst, wenn das Update online ist):**
+  1. developer.linkedin.com › Create app (mit der LinkedIn-Seite der Firma als „Company“) → Products: „Share on LinkedIn“ und „Sign in with LinkedIn using OpenID Connect“ hinzufügen
+     (ohne Antrag) → Auth: Redirect URL `<MAKE_OS_ADRESSE>/api/social/linkedin/rueckruf`.
+  2. `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/linkedin-verbinden.sh` — fragt Client-ID und Secret verdeckt.
+  3. In MAKE OS: Social › Kanal (z. B. deine Personenmarke) › Automatik › „Mit LinkedIn verbinden“. Alle 60 Tage neu bestätigen (Glocke 7 Tage vorher).
+  4. Optional beantragen: LinkedIn „Community Management API“ (Firmenseiten + Zahlen eigener Beiträge). Instagram/YouTube: eigene Pakete; TikTok erlaubt kein Posten ohne Klick.
+- **So testet ihr (Demo):** Social › „Nordlicht (Beispiel)“ › Automatik: Plan, Probe-Verbindung, Warteschlange („geht automatisch raus“ für den freigegebenen Textbeitrag und
+  das Karussell). Nach dem Termin postet der Takt sie über die Probe (nichts verlässt die Demo) → Zustand „online“. Not-Aus im Kanal-Kopf → nichts geht raus.
+- **Rückweg:** additiv — der alte Stand kennt die neuen Felder nicht und lässt sie beim nächsten Speichern einer Folge/eines Kanals fallen (Plan, Termin-Uhrzeit, Versuche);
+  Verbindungen bleiben im eigenen Bestand liegen. Vor dem Rückweg Posten per Not-Aus anhalten.
+
 ## 26.10.2026 nachts — Markttraktion › Marketing › Social: Grundlage des Social-Agenten (nur lokal — Branch `social-modul`, Basis update-0910b a0e401c2)
 Kevin 26.10.: „Bau alles Grundlegende für die Software … mach Analysen, dass wir viral gehen und Aufrufe generieren.“ Plan `SOCIAL_PLAN.md`, Material + Viral-Analyse
 in `social/phase0/` (außerhalb des Repos der App, nicht committet). Regeln: CLAUDE.md › „Social — Kanäle, Folgen, Lernschleife“. **Veröffentlicht nichts** — die
