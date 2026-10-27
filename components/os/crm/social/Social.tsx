@@ -9,7 +9,11 @@
 import { useState } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Leerzustand, Pillen, Segmente } from '../../ui';
-import { PLATTFORM_NAME, type AutonomieStufe } from '@/lib/social/typen';
+import { PLATTFORM_NAME, KONTO_ART_NAME, type AutonomieStufe } from '@/lib/social/typen';
+import { Ziele } from './Ziele';
+import { NeuerKanal, usePersonen } from './KanalArt';
+import { useGesellschaftenKurz } from '@/lib/gesellschaften/client';
+import { einheitAusGesellschaft, istGesellschaft } from '@/lib/einheiten';
 import { useSocial, type SocialApi, type MitStand } from './daten';
 import type { SocialKanal } from '@/lib/social/typen';
 import { KanalForm } from './KanalForm';
@@ -17,9 +21,9 @@ import { Folgen } from './Folgen';
 import { Analyse, Formate, Import } from './Analyse';
 import { Startpaket } from './Startpaket';
 
-type Bereich = 'folgen' | 'formate' | 'analyse' | 'import' | 'kanal';
+type Bereich = 'folgen' | 'ziele' | 'formate' | 'analyse' | 'import' | 'kanal';
 const BEREICHE: { id: Bereich; label: string }[] = [
-  { id: 'folgen', label: 'Folgen' }, { id: 'formate', label: 'Formate' }, { id: 'analyse', label: 'Analyse' }, { id: 'import', label: 'Import' }, { id: 'kanal', label: 'Kanal' },
+  { id: 'folgen', label: 'Folgen' }, { id: 'ziele', label: 'Ziele' }, { id: 'formate', label: 'Formate' }, { id: 'analyse', label: 'Analyse' }, { id: 'import', label: 'Import' }, { id: 'kanal', label: 'Kanal' },
 ];
 const STUFEN: { id: `${AutonomieStufe}`; label: string }[] = [
   { id: '0', label: 'Nur Entwürfe' }, { id: '1', label: 'Freigabe per Klick' }, { id: '2', label: 'Selbstständig mit Leitplanken' },
@@ -28,7 +32,7 @@ const STUFEN: { id: `${AutonomieStufe}`; label: string }[] = [
 export function Social() {
   const api = useSocial();
   const [kanalId, setKanalId] = useState<string | null>(null);
-  const [neu, setNeu] = useState(false);
+  const [neu, setNeu] = useState<false | 'vorlage' | 'frei'>(false);
   const [bereich, setBereich] = useState<Bereich>('folgen');
   const kanaele = (api.lage?.datei.kanaele ?? []).filter(k => !k.archiviertAm);
   const kanal = kanaele.find(k => k.id === kanalId) ?? kanaele[0];
@@ -38,10 +42,11 @@ export function Social() {
     <>
       {api.fehler && <Hinweis art="achtung" rolle="alert" aktion={<Knopf leise onClick={() => api.setFehler(null)}>OK</Knopf>}>{api.fehler}</Hinweis>}
       {neu || !kanal ? (
-        neu ? <KanalForm api={api} onFertig={() => { setNeu(false); setKanalId(null); }} />
+        neu === 'frei' ? <KanalForm api={api} onFertig={id => { setNeu(false); setKanalId(id ?? null); setBereich('folgen'); }} />
+          : neu === 'vorlage' ? <NeuerKanal api={api} onFertig={id => { setNeu(false); setKanalId(id ?? null); setBereich(id ? 'ziele' : 'folgen'); }} ohneVorlage={() => setNeu('frei')} />
           : <>
-            <Karte><Leerzustand symbol="◎" titel="Noch kein Social-Kanal" aktion={<Knopf haupt onClick={() => setNeu(true)}>Ersten Kanal anlegen</Knopf>}>
-              Ein Kanal bündelt die Plattformen eines Accounts mit Markenprofil und Leitplanken. Danach: Formate, Folgen, Zahlen — und die Analyse sagt, was trägt.
+            <Karte><Leerzustand symbol="◎" titel="Noch kein Social-Kanal" aktion={<Knopf haupt onClick={() => setNeu('vorlage')}>Ersten Kanal anlegen</Knopf>}>
+              Ein Kanal ist ein Account — ohne Gesicht, die Marke einer Person oder der Account einer Gesellschaft. Er bündelt die Plattformen mit Markenprofil, Leitplanken und Zielen.
             </Leerzustand></Karte>
             <Startpaket api={api} />
           </>
@@ -51,11 +56,12 @@ export function Social() {
             <div style={{ overflowX: 'auto', scrollbarWidth: 'none', minWidth: 0 }}>
               <Pillen einzeilig liste={kanaele.map(k => ({ id: k.id, label: k.name }))} aktiv={kanal.id} onWahl={id => { setKanalId(id); setBereich('folgen'); }} />
             </div>
-            <Knopf leise onClick={() => setNeu(true)}>+ Kanal</Knopf>
+            <Knopf leise onClick={() => setNeu('vorlage')}>+ Kanal</Knopf>
           </div>
           <KanalKopf api={api} kanal={kanal} />
           <Segmente liste={BEREICHE} aktiv={bereich} onWahl={setBereich} umbrechen />
           {bereich === 'folgen' && <Folgen key={kanal.id} api={api} kanal={kanal} />}
+          {bereich === 'ziele' && <Ziele key={kanal.id} api={api} kanal={kanal} />}
           {bereich === 'formate' && <Formate api={api} kanal={kanal} />}
           {bereich === 'analyse' && <Analyse api={api} kanal={kanal} />}
           {bereich === 'import' && <><Import key={kanal.id} api={api} kanal={kanal} /><Startpaket api={api} /></>}
@@ -71,23 +77,40 @@ export function Social() {
 
 function KanalKopf({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal> }) {
   const lp = kanal.leitplanken;
+  const personen = usePersonen();
+  const register = useGesellschaftenKurz();
+  const kl = api.lage!.kanaele[kanal.id];
+  const einrichtung = (kl?.befunde ?? []).filter(b => b.stufe !== 'hinweis');
+  const hinweise = (kl?.befunde ?? []).filter(b => b.stufe === 'hinweis');
+  const zielWarn = (kl?.ziele ?? []).filter(z => z.ampel === 'hinter' || z.ampel === 'verfehlt').length;
+  const personName = kanal.person ? personen.find(p => p.speicher === kanal.person)?.name ?? 'Person' : null;
+  const absender = kanal.gesellschaft ? register?.find(g => g.id === kanal.gesellschaft)?.name ?? (istGesellschaft(kanal.gesellschaft) ? einheitAusGesellschaft(kanal.gesellschaft) : 'Gesellschaft') : null;
+  // Personenmarke: Stufe 2 schaltet nur die Person selbst ein (Server: 403) — die anderen sehen die Stufen 0 und 1.
+  const stufen = kanal.art === 'person' && kanal.person && kanal.person !== api.lage!.ich && lp.autonomie !== 2 ? STUFEN.filter(s => s.id !== '2') : STUFEN;
   const w = api.lage!.woche[kanal.id];
   const folgen = api.lage!.datei.folgen.filter(f => f.kanalId === kanal.id);
   const selbst = folgen.filter(f => api.lage!.folgen[f.id]?.weg.weg === 'selbst').length;
   const stapel = folgen.filter(f => api.lage!.folgen[f.id]?.weg.weg === 'stapel').length;
+  const bereit = folgen.filter(f => api.lage!.folgen[f.id]?.weg.weg === 'bereit').length;
   return (
     <Karte>
       <Ueberschrift rechts={<span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {kanal.plattformen.map(p => <Chip key={p} farbe={C.aktiv}>{PLATTFORM_NAME[p]}</Chip>)}
+        <Chip farbe={C.inkDim}>{KONTO_ART_NAME[kanal.art ?? 'faceless']}{personName ? ` · ${personName}` : ''}</Chip>
+        {absender && <Chip farbe={C.inkDim}>{absender}</Chip>}
+        {kanal.sichtbarkeit === 'person' && <Chip farbe={C.inkDim}>nur die Person</Chip>}
         {kanal.kiKanal && <Chip farbe={LEUCHT.achtung}>KI-Kanal{kanal.persona ? ` · ${kanal.persona.name}` : ''}</Chip>}
       </span>}>{kanal.name}{kanal.handle ? <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}> · @{kanal.handle}</span> : null}</Ueberschrift>
       {kanal.marke.versprechen && <p style={{ color: C.inkDim, margin: '0 0 12px' }}>{kanal.marke.versprechen}</p>}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: C.inkDim, fontSize: TYP.bedien, marginBottom: 12 }}>
         <span>{folgen.length} Folgen</span>
         <span>Woche: {w?.veroeffentlicht ?? 0} veröffentlicht · {(w?.views ?? 0).toLocaleString('de-DE')} Aufrufe · {w?.follows ?? 0} neue Follower</span>
-        <span>{selbst} würde der Agent selbst posten · {stapel} warten auf Freigabe</span>
+        <span>{selbst} würde der Agent selbst posten · {bereit ? `${bereit} freigegeben · ` : ''}{stapel} warten auf Freigabe</span>
+        {(kl?.ziele.length ?? 0) > 0 && <span>{kl!.ziele.length} Ziel{kl!.ziele.length === 1 ? '' : 'e'}{zielWarn ? ` · ${zielWarn} dahinter` : ''}</span>}
       </div>
-      <Segmente liste={STUFEN} aktiv={`${lp.autonomie}`} umbrechen
+      {einrichtung.length > 0 && <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>{einrichtung.map(b => <Hinweis key={b.code} art="achtung">{b.text}</Hinweis>)}</div>}
+      {hinweise.length > 0 && <div style={{ display: 'grid', gap: 4, marginBottom: 12, color: C.inkLeise, fontSize: TYP.bedien }}>{hinweise.map(b => <span key={b.code}>· {b.text}</span>)}</div>}
+      <Segmente liste={stufen} aktiv={`${lp.autonomie}`} umbrechen
         onWahl={s => api.schreiben([{ op: 'kanal', eintrag: { id: kanal.id, leitplanken: { ...lp, autonomie: Number(s) } }, stand: kanal.stand }])} />
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
         <Knopf farbe={lp.postenAus ? LEUCHT.gut : LEUCHT.kritisch} onClick={() => api.schreiben([{ op: 'notaus', id: kanal.id, posten: !lp.postenAus, stand: kanal.stand }])}>{lp.postenAus ? 'Posten fortsetzen' : 'Not-Aus: Posten anhalten'}</Knopf>

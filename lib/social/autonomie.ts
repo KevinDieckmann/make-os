@@ -6,10 +6,11 @@
 // Stopp und ohne „Person nötig“ · Tageslimit nicht erreicht · Status „Entwurf“ oder „Freigegeben“. Sonst Stapel mit Grund — oder gar nicht.
 
 import type { SocialFolge, SocialKanal, SocialFormat } from './typen';
-import { hatStopp, brauchtMensch, type Befund } from './pruefer';
+import { hatStopp, brauchtMensch, BLEIBT_NACH_FREIGABE, type Befund } from './pruefer';
 
 export type AutonomieErgebnis =
   | { weg: 'selbst'; grund: string }
+  | { weg: 'bereit'; grund: string }
   | { weg: 'stapel'; grund: string }
   | { weg: 'gesperrt'; grund: string };
 
@@ -17,6 +18,8 @@ export interface AutonomieKontext {
   kanal: SocialKanal;
   format: SocialFormat | null | undefined;
   befunde: Befund[];
+  /** Einrichtung des Kanals (pruefer.ts `kanalPruefen`) — fehlt etwas Wichtiges, darf der Agent nichts selbst. */
+  kanalBefunde?: Befund[];
   /** Heute schon veröffentlicht in diesem Kanal (alle Plattformen zusammen). */
   heutePosts: number;
 }
@@ -28,10 +31,21 @@ export function autonomieFuer(f: SocialFolge, k: AutonomieKontext): AutonomieErg
   if (k.kanal.archiviertAm || k.kanal.status === 'pausiert') return { weg: 'gesperrt', grund: 'Der Kanal ist pausiert oder archiviert.' };
   if (lp.postenAus) return { weg: 'gesperrt', grund: 'Not-Aus: Posten ist für diesen Kanal angehalten.' };
   if (f.status === 'idee') return { weg: 'gesperrt', grund: 'Noch eine Idee — erst ein Entwurf mit Skript und Hook.' };
+  const einrichtung = (k.kanalBefunde ?? []).filter(b => b.stufe !== 'hinweis');
+  // Eine Person hat GENAU diesen Inhalt freigegeben (27.10.): dann geht er zum Termin raus — außer bei dem, was eine Freigabe nicht klärt
+  // (eigenes Erlebnis einer Personenmarke ohne ihre Freigabe, Personen im Bild ohne Einwilligung) und über dem Tageslimit.
+  if (f.freigegebenAm) {
+    const offen = k.befunde.find(b => b.stufe === 'mensch' && BLEIBT_NACH_FREIGABE.includes(b.code)) ?? einrichtung[0];
+    if (offen) return { weg: 'stapel', grund: offen.text };
+    if (k.heutePosts >= lp.postsProTag) return { weg: 'stapel', grund: `Freigegeben — Tageslimit erreicht (${lp.postsProTag} Posts), geht morgen raus.` };
+    return { weg: 'bereit', grund: 'Von einer Person freigegeben — geht zum geplanten Termin raus.' };
+  }
   if (lp.autonomie === 0) return { weg: 'stapel', grund: 'Stufe 0: Der Agent bereitet nur vor, ihr veröffentlicht selbst.' };
   if (lp.autonomie === 1) return { weg: 'stapel', grund: 'Stufe 1: Jede Veröffentlichung braucht einen Klick.' };
   if (!k.format) return { weg: 'stapel', grund: 'Ohne Serienformat — Neues geht immer über den Stapel.' };
   if (!k.format.freigegebenAm) return { weg: 'stapel', grund: `Das Format „${k.format.name}“ ist noch nicht freigegeben.` };
+  if (k.kanal.art === 'person' && k.kanal.person && k.format.freigegebenVon !== k.kanal.person) return { weg: 'stapel', grund: 'Bei einer Personenmarke gilt nur ein Format, das die Person selbst freigegeben hat.' };
+  if (einrichtung.length) return { weg: 'stapel', grund: `Einrichtung des Kanals: ${einrichtung[0].text}` };
   if (brauchtMensch(k.befunde)) return { weg: 'stapel', grund: k.befunde.filter(b => b.stufe === 'mensch').map(b => b.text)[0] ?? 'Eine Person muss es sehen.' };
   if (k.heutePosts >= lp.postsProTag) return { weg: 'stapel', grund: `Tageslimit erreicht (${lp.postsProTag} Posts) — der Rest wartet im Stapel.` };
   return { weg: 'selbst', grund: `Freigegebenes Format „${k.format.name}“, Prüfung ohne Befund, unter dem Tageslimit.` };

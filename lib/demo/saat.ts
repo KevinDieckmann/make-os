@@ -384,7 +384,25 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     fo.hooks.forEach((h, j) => ops.push({ op: 'messung', folgeId: fo.id, messung: { plattform: 'tiktok', am: tagPlus(am, 1 + j), views: Math.round(x.views * (j ? 1 : 0.6)), halte3s: x.halte3s - (j ? 0 : 6), shares: x.shares, saves: Math.round(x.shares / 2), follows: Math.round(x.views / 120), hookId: h.id, quelle: 'hand' } }));
   });
   await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops });
-  schritt('Social (Kanal, Format, Folgen, Zahlen)', 1 + 1 + DEMO_FOLGEN.length + 1);
+  // 27.10.: Kontotypen — eine Personenmarke (Lena) und ein Firmenaccount, beide aus einer Vorlage; dazu Follower-Stände und Ziele, damit
+  // „Ziele“ eine Linie, eine Ampel und „ab jetzt je Woche“ zeigen. Alles erfunden.
+  const so4 = await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: [
+    { op: 'vorlage', vorlageId: 'person-gruendung', eintrag: { name: 'Lena baut (Beispiel)', handle: 'lena.beispiel', person: 'lena', gesellschaft: 'ug', versprechen: 'Was ich beim Aufbau einer Beratung lerne — ehrlich, jede Woche.' } },
+    { op: 'vorlage', vorlageId: 'firma-dienstleistung', eintrag: { name: 'Nordlicht (Beispiel)', handle: 'nordlicht.beispiel', gesellschaft: 'ug', versprechen: 'So arbeiten wir — mit echten Ergebnissen.' } },
+  ] }) as unknown as SocialAntwort;
+  const zielOps: unknown[] = [];
+  for (const k of so4.datei.kanaele.filter(x => x.id !== demoKanal)) {
+    zielOps.push({ op: 'kontostand', kanalId: k.id, plattform: 'linkedin', am: tagPlus(heute, -28), follower: 380 });
+    zielOps.push({ op: 'kontostand', kanalId: k.id, plattform: 'linkedin', am: tagPlus(heute, -1), follower: 455 });
+  }
+  zielOps.push({ op: 'kontostand', kanalId: demoKanal, plattform: 'tiktok', am: tagPlus(heute, -10), follower: 40 });
+  zielOps.push({ op: 'kontostand', kanalId: demoKanal, plattform: 'tiktok', am: tagPlus(heute, -1), follower: 310 });
+  const so5 = await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: zielOps }) as unknown as SocialAntwort;
+  const zieleOps = so5.datei.kanaele.map(k => ({ op: 'ziel', kanalId: k.id, stand: k.stand, eintrag: k.id === demoKanal
+    ? { metrik: 'follower', plattform: 'tiktok', zielwert: 1000, von: tagPlus(heute, -10), bis: tagPlus(heute, 50) }
+    : { metrik: 'follower', plattform: 'linkedin', zielwert: 1000, von: tagPlus(heute, -28), bis: tagPlus(heute, 120) } }));
+  await rufe(R.social(), 'PATCH', '/api/social', LENA, { ops: zieleOps });
+  schritt('Social (Kanäle aus Vorlagen, Format, Folgen, Zahlen, Ziele)', 3 + 1 + DEMO_FOLGEN.length + 1);
 
   // 3c) Produkte · Leistungstreppe (10.10.): eine erfundene Beispiel-Treppe (Check → Diagnose → zwei Pakete nebeneinander), die Kundenreise als
   //     Kreislauf, ein Paket in der Roadmap, Positionierung & Story und der Fortschritt eines Mandats — über die Route (Einzel-Schritte), wie im Browser.

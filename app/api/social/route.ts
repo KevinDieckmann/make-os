@@ -6,6 +6,8 @@
 // PATCH { ops }  → Einzel-Schritte (lib/social/daten.ts `SocialOp`): Ändern/Entfernen nur mit Stand (409), über den Grenzen 413, Unsinn 400
 // POST  { aktion: 'import-vorschau' | 'import', kanalId, plattform, text, stand?, zuordnung? } → Kennzahlen aus einem Plattform-Export (CSV):
 //         erst Vorschau (schreibt nichts), dann übernehmen (nur Zeilen mit eindeutiger Folge bzw. ausdrücklicher Zuordnung)
+// Sicht (27.10.): ein Kanal mit „nur die Person der Marke“ fehlt für alle anderen ganz — in GET, PATCH (404) und Import (404), eine Regel
+// `kanalSichtbar`/`socialFuerPerson` (lib/social/daten.ts). Personenmarke: Formate freigeben und Stufe 2 nur die Person selbst (403).
 // Zugang: Haushalt des Inhabers (Modul Markttraktion), auch ein Konto mit `finanzRecht: 'business'`. Schreiben nur eine angemeldete Person
 // (Dienstweg 403) — der Agent schreibt später nur über den Freigabe-Stapel bzw. die Leitplanken-Entscheidung, nie direkt.
 // MAKE OS veröffentlicht von hier aus NICHTS auf einer Plattform.
@@ -21,6 +23,7 @@ import { tagPlus } from '@/lib/zeit/kalender-kern';
 import { NUR_BUSINESS, SOCIAL_PLATTFORMEN, SOCIAL_GRENZEN, type SocialPlattform } from '@/lib/social/typen';
 import { importVorschau } from '@/lib/social/csv';
 import { ladeSocial, socialLage, socialSchreiben, lageAus } from '@/lib/social/server';
+import { socialFuerPerson } from '@/lib/social/daten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +37,7 @@ export async function GET(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return nurHaushalt();
   if (new URL(req.url).searchParams.get('space') === 'privat') return fehlerAntwort(400, NUR_BUSINESS);
-  return jsonAntwort(req, { ok: true, ...(await socialLage()) });
+  return jsonAntwort(req, { ok: true, ...(await socialLage(zugang.person)) });
 }
 
 export async function PATCH(req: Request) {
@@ -45,8 +48,8 @@ export async function PATCH(req: Request) {
   let b: { ops?: unknown };
   try { b = await jsonBegrenzt(req, MAX_BYTES); } catch (e) { return jsonZuGross(e) ?? fehlerAntwort(400, 'Kein JSON.'); }
   const r = await socialSchreiben(b.ops, zugang.person, werAus(req));
-  if (r.ok) return NextResponse.json({ ok: true, geaendert: r.geaendert, ...lageAus(r.datei, localDay()) });
-  if (r.status === 409) return fehlerAntwort(409, 'Inzwischen hat jemand anderes geändert — neu geladen, bitte noch einmal.', { konflikt: true, konflikte: r.konflikte, ...(await socialLage()) });
+  if (r.ok) return NextResponse.json({ ok: true, geaendert: r.geaendert, ...lageAus(r.datei, localDay(), zugang.person) });
+  if (r.status === 409) return fehlerAntwort(409, 'Inzwischen hat jemand anderes geändert — neu geladen, bitte noch einmal.', { konflikt: true, konflikte: r.konflikte, ...(await socialLage(zugang.person)) });
   return fehlerAntwort(r.status, r.fehler);
 }
 
@@ -58,13 +61,14 @@ export async function POST(req: Request) {
   let b: { aktion?: unknown; kanalId?: unknown; plattform?: unknown; text?: unknown; stand?: unknown; zuordnung?: unknown };
   try { b = await jsonBegrenzt(req, MAX_IMPORT_BYTES); } catch (e) { return jsonZuGross(e) ?? fehlerAntwort(400, 'Kein JSON.'); }
   if (b.aktion !== 'import-vorschau' && b.aktion !== 'import') return fehlerAntwort(400, 'aktion: import-vorschau oder import.');
-  if (!(SOCIAL_PLATTFORMEN as readonly unknown[]).includes(b.plattform)) return fehlerAntwort(400, 'plattform: tiktok, instagram oder youtube.');
+  if (!(SOCIAL_PLATTFORMEN as readonly unknown[]).includes(b.plattform)) return fehlerAntwort(400, `plattform: ${SOCIAL_PLATTFORMEN.join(', ')}.`);
   if (typeof b.text !== 'string' || !b.text.trim()) return fehlerAntwort(400, 'Die Datei ist leer.');
   // Stand der Zahlen = Tag des Exports (Vorgabe heute); nie in der Zukunft, höchstens ein Jahr zurück.
   const heute = localDay();
   const stand = b.stand === undefined || b.stand === '' ? heute : b.stand;
   if (!istKalendertag(stand) || stand > heute || stand < tagPlus(heute, -366)) return fehlerAntwort(400, 'Stand der Zahlen: ein Tag bis heute (höchstens ein Jahr zurück).');
-  const datei = await ladeSocial();
+  // Nur Kanäle, die diese Person sehen darf — ein fremder „nur ich“-Kanal ist hier „nicht gefunden“.
+  const datei = socialFuerPerson(await ladeSocial(), zugang.person);
   const kanal = datei.kanaele.find(k => k.id === b.kanalId);
   if (!kanal) return fehlerAntwort(404, 'Kanal nicht gefunden.');
   const folgen = datei.folgen.filter(f => f.kanalId === kanal.id);
@@ -85,5 +89,5 @@ export async function POST(req: Request) {
     letzte = await socialSchreiben(ops.slice(i, i + SOCIAL_GRENZEN.ops), zugang.person, werAus(req));
     if (!letzte.ok) return fehlerAntwort(letzte.status, `${letzte.fehler} (ab Zeile ${i + 1} nicht übernommen)`, { uebernommen: i });
   }
-  return NextResponse.json({ ok: true, uebernommen: ops.length, uebersprungen: vorschau.zeilen.length - ops.length, ...(await socialLage()) });
+  return NextResponse.json({ ok: true, uebernommen: ops.length, uebersprungen: vorschau.zeilen.length - ops.length, ...(await socialLage(zugang.person)) });
 }

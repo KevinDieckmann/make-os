@@ -4,14 +4,21 @@
 // Grenzen (`SOCIAL_GRENZEN`) wird die GANZE Änderung abgelehnt (413), nie gekürzt; Unsinn → 400. Kein Schritt setzt Server-Felder aus dem
 // Browser: `geaendert`/`geaendertVon`, die Freigabe eines Formats und die Kennungen neuer Einträge setzt nur der Schreibweg.
 
-import { istKalendertag } from '@/lib/zeit';
+import { istKalendertag, tagVon } from '@/lib/zeit';
+import { gehoertZuPrivat } from '@/lib/einheiten';
 import {
-  SOCIAL_PLATTFORMEN, FOLGE_STATUS, LEITPLANKEN_VORGABE, SOCIAL_GRENZEN as G, leereSocial,
+  SOCIAL_PLATTFORMEN, FOLGE_STATUS, LEITPLANKEN_VORGABE, SOCIAL_GRENZEN as G, leereSocial, KONTO_ARTEN, INHALT_ARTEN, ZIEL_METRIKEN, ZIEL_MIT_LINIE,
   type SocialDatei, type SocialKanal, type SocialFormat, type SocialFolge, type Messung, type Hook, type Leitplanken, type SocialPlattform,
-  type FolgeStatus, type Veroeffentlichung, type AutonomieStufe,
+  type FolgeStatus, type Veroeffentlichung, type AutonomieStufe, type KontoArt, type InhaltArt, type KanalZiel, type KontoStand, type ZielMetrik,
 } from './typen';
+import { zielStartwert } from './ziele';
+import { vorlageVon } from './vorlagen';
 
 const KENNUNG = /^[a-z]{2}-[a-z0-9-]{1,64}$/;
+/** Speichername eines Kontos (wie `x-make-user`). */
+const SPEICHER = /^[a-z0-9-]{1,40}$/;
+/** Feste Gesellschaft (kdc · kdv · ug) oder Register-Kennung `g-…` — ob sie existiert und Business ist, prüft der Schreibweg. */
+const GESELLSCHAFT = /^(kdc|kdv|ug|g-[a-z0-9][a-z0-9-]{3,62})$/;
 const istKennung = (v: unknown): v is string => typeof v === 'string' && KENNUNG.test(v);
 const text = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim() : '').slice(0, max);
 const zahl = (v: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number | undefined => {
@@ -44,8 +51,14 @@ export function kanalAus(o: Record<string, unknown>): SocialKanal | null {
   if (!istKennung(o.id) || !text(o.name, G.text)) return null;
   const m = (o.marke && typeof o.marke === 'object' ? o.marke : {}) as Record<string, unknown>;
   const p = o.persona && typeof o.persona === 'object' ? o.persona as Record<string, unknown> : null;
+  const art: KontoArt = (KONTO_ARTEN as readonly unknown[]).includes(o.art) ? o.art as KontoArt : 'faceless';
+  const person = art === 'person' && typeof o.person === 'string' && SPEICHER.test(o.person) ? o.person : undefined;
   return ohneLeere({
-    id: o.id, name: text(o.name, G.text), handle: text(o.handle, 60).replace(/^@/, '') || undefined,
+    id: o.id, name: text(o.name, G.text), art: art === 'faceless' ? undefined : art, person,
+    gesellschaft: typeof o.gesellschaft === 'string' && GESELLSCHAFT.test(o.gesellschaft) ? o.gesellschaft : undefined,
+    sichtbarkeit: o.sichtbarkeit === 'person' && person ? 'person' : undefined,
+    vorlage: typeof o.vorlage === 'string' && /^[a-z0-9-]{1,40}$/.test(o.vorlage) ? o.vorlage : undefined,
+    handle: text(o.handle, 60).replace(/^@/, '') || undefined,
     sprache: o.sprache === 'en' ? 'en' : 'de',
     plattformen: [...new Set((Array.isArray(o.plattformen) ? o.plattformen : []).filter(istPlattform))],
     kiKanal: o.kiKanal === true,
@@ -55,6 +68,8 @@ export function kanalAus(o: Record<string, unknown>): SocialKanal | null {
       nieSagen: woerter(m.nieSagen), saeulen: woerter(m.saeulen), cta: text(m.cta, G.text) || undefined, bio: text(m.bio, G.text) || undefined,
     }),
     leitplanken: leitplankenAus(o.leitplanken),
+    ziele: liste(o.ziele, zielAus),
+    staende: liste(o.staende, standAus),
     status: o.status === 'pausiert' ? 'pausiert' : 'aktiv',
     archiviertAm: typeof o.archiviertAm === 'string' ? o.archiviertAm : undefined,
     geaendert: typeof o.geaendert === 'string' ? o.geaendert : '',
@@ -62,10 +77,30 @@ export function kanalAus(o: Record<string, unknown>): SocialKanal | null {
   }) as SocialKanal;
 }
 
+function zielAus(o: Record<string, unknown>): KanalZiel | null {
+  const metrik = (ZIEL_METRIKEN as readonly unknown[]).includes(o.metrik) ? o.metrik as ZielMetrik : null;
+  const zielwert = zahl(o.zielwert, 0, 1e12);
+  if (!istKennung(o.id) || !metrik || zielwert === undefined || zielwert <= 0 || !istKalendertag(o.von)) return null;
+  const linie = (ZIEL_MIT_LINIE as readonly ZielMetrik[]).includes(metrik);
+  const bis = istKalendertag(o.bis) && o.bis > o.von ? o.bis : undefined;
+  if (linie && !bis) return null;
+  return ohneLeere({
+    id: o.id, metrik, zielwert, plattform: istPlattform(o.plattform) ? o.plattform : undefined, von: o.von, bis: linie ? bis : undefined,
+    startwert: zahl(o.startwert, 0, 1e12) ?? 0, notiz: text(o.notiz, G.text) || undefined,
+  }) as KanalZiel;
+}
+
+function standAus(o: Record<string, unknown>): KontoStand | null {
+  const follower = zahl(o.follower, 0, 1e10);
+  if (!istKennung(o.id) || !istPlattform(o.plattform) || !istKalendertag(o.am) || follower === undefined) return null;
+  return { id: o.id, plattform: o.plattform, am: o.am, follower: Math.round(follower), quelle: o.quelle === 'import' || o.quelle === 'api' ? o.quelle : 'hand' };
+}
+
 export function formatAus(o: Record<string, unknown>): SocialFormat | null {
   if (!istKennung(o.id) || !istKennung(o.kanalId) || !text(o.name, G.text)) return null;
   return ohneLeere({
     id: o.id, kanalId: o.kanalId, name: text(o.name, G.text), beschreibung: text(o.beschreibung, G.langtext) || undefined,
+    art: (INHALT_ARTEN as readonly unknown[]).includes(o.art) && o.art !== 'video' ? o.art as InhaltArt : undefined,
     laengeSek: zahl(o.laengeSek, 3, 3600),
     freigegebenAm: typeof o.freigegebenAm === 'string' ? o.freigegebenAm : undefined, freigegebenVon: text(o.freigegebenVon, 60) || undefined,
     geaendert: typeof o.geaendert === 'string' ? o.geaendert : '', geaendertVon: text(o.geaendertVon, 60) || undefined,
@@ -106,6 +141,9 @@ export function folgeAus(o: Record<string, unknown>): SocialFolge | null {
     cta: text(o.cta, G.text) || undefined,
     quellen: liste(Array.isArray(o.quellen) ? o.quellen.map(q => ({ q })) : [], x => text(x.q, 500) || null),
     kiInhalt: o.kiInhalt !== false,
+    personenImBild: o.personenImBild === 'offen' || o.personenImBild === 'einwilligung' ? o.personenImBild : undefined,
+    werbung: o.werbung === true ? true : undefined,
+    freigegebenAm: typeof o.freigegebenAm === 'string' ? o.freigegebenAm : undefined, freigegebenVon: text(o.freigegebenVon, 60) || undefined,
     status: st, geplantAm: istKalendertag(o.geplantAm) ? o.geplantAm : undefined,
     veroeffentlicht: liste(o.veroeffentlicht, veroeffentlichungAus),
     messungen: liste(o.messungen, messungAus),
@@ -131,27 +169,53 @@ export type SocialOp =
   | { op: 'folge'; eintrag: Record<string, unknown>; stand?: string }
   | { op: 'folge-weg'; id: string; stand: string }
   | { op: 'messung'; folgeId: string; messung: Record<string, unknown> }
-  | { op: 'veroeffentlicht'; folgeId: string; plattform: SocialPlattform; am: string; link?: string };
+  | { op: 'veroeffentlicht'; folgeId: string; plattform: SocialPlattform; am: string; link?: string }
+  | { op: 'vorlage'; vorlageId: string; eintrag: Record<string, unknown> }
+  | { op: 'ziel'; kanalId: string; eintrag: Record<string, unknown>; stand: string }
+  | { op: 'ziel-weg'; kanalId: string; id: string; stand: string }
+  | { op: 'kontostand'; kanalId: string; plattform: SocialPlattform; am: string; follower: number };
 
 export interface AnwendenKontext {
   /** Speichername der schreibenden Person (nie aus dem Körper). */
   person: string;
   jetzt: string;
+  /** Heutiger Berliner Tag (Ziele, Kontostände). Fehlt = Tag aus `jetzt`. */
+  heute?: string;
+  /** Speichernamen der Konten im Haushalt — eine Personenmarke gehört nur einer davon. Fehlt = keine Prüfung (Tests, Altweg). */
+  personen?: readonly string[];
+  /** Gültige Business-Gesellschaften (feste + Register) — fehlt = nur die Form wird geprüft. */
+  gesellschaften?: readonly string[];
   standVon: (x: object) => string;
   neueId: (praefix: string) => string;
 }
 
 export type AnwendenErgebnis =
   | { ok: true; datei: SocialDatei; geaendert: string[] }
-  | { ok: false; status: 400 | 404 | 409 | 413; fehler: string; konflikte?: { op: number; id: string }[] };
+  | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; konflikte?: { op: number; id: string }[] };
 
-class Abgelehnt extends Error { constructor(readonly status: 400 | 404 | 413, msg: string) { super(msg); } }
-const nein = (msg: string, status: 400 | 404 | 413 = 400): never => { throw new Abgelehnt(status, msg); };
+class Abgelehnt extends Error { constructor(readonly status: 400 | 403 | 404 | 413, msg: string) { super(msg); } }
+const nein = (msg: string, status: 400 | 403 | 404 | 413 = 400): never => { throw new Abgelehnt(status, msg); };
+
+/** Sieht `person` diesen Kanal? „Nur die Person der Marke“ sieht nur sie — die EINE Regel für Lesen (Server) und Schreiben. */
+export const kanalSichtbar = (k: Pick<SocialKanal, 'sichtbarkeit' | 'person'>, person: string | null | undefined): boolean =>
+  k.sichtbarkeit !== 'person' || !k.person || k.person === person;
+
+/** Die Datei so, wie `person` sie sehen darf: fremde „nur ich“-Kanäle samt Formaten und Folgen fehlen ganz. Rein. */
+export function socialFuerPerson(d: SocialDatei, person: string | null | undefined): SocialDatei {
+  const weg = new Set(d.kanaele.filter(k => !kanalSichtbar(k, person)).map(k => k.id));
+  if (!weg.size) return d;
+  return { kanaele: d.kanaele.filter(k => !weg.has(k.id)), formate: d.formate.filter(f => !weg.has(f.kanalId)), folgen: d.folgen.filter(f => !weg.has(f.kanalId)) };
+}
+
+export const NUR_PERSON_SELBST = 'Bei einer Personenmarke entscheidet das nur die Person selbst.';
+export const GEHOERT_ZU_PRIVAT_SOCIAL = 'Diese Einheit gehört zu Privat — Social ist Business. Bitte eine Business-Gesellschaft wählen.';
+/** Inhalt einer Folge, den eine Freigabe gesehen haben muss — ändert sich einer davon, fällt die Freigabe weg. */
+const folgeInhalt = (f: SocialFolge) => JSON.stringify([f.titel, f.skript, f.hooks.map(h => [h.text, h.bildschirm ?? '']), f.cta ?? '', f.personenImBild ?? 'keine', f.werbung === true, f.quellen]);
 
 /** Server-Felder, die der Browser nie setzen darf. */
 const OHNE_SERVERFELDER = (e: Record<string, unknown>) => {
-  const { geaendert: _g, geaendertVon: _v, freigegebenAm: _f, freigegebenVon: _fv, messungen: _m, veroeffentlicht: _ve, stand: _s, ...rest } = e;
-  void _g; void _v; void _f; void _fv; void _m; void _ve; void _s;
+  const { geaendert: _g, geaendertVon: _v, freigegebenAm: _f, freigegebenVon: _fv, messungen: _m, veroeffentlicht: _ve, stand: _s, ziele: _z, staende: _st, ...rest } = e;
+  void _g; void _v; void _f; void _fv; void _m; void _ve; void _s; void _z; void _st;
   return rest;
 };
 
@@ -172,6 +236,26 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
     return i;
   };
   const standPasst = (x: object, stand: unknown, i: number, id: string) => { if (stand !== k.standVon(x)) konflikte.push({ op: i, id }); };
+  const heute = k.heute ?? tagVon(k.jetzt);
+  /** Kanal, den die schreibende Person sehen darf — sonst „nicht gefunden“ (wer ihn nicht sieht, erfährt nicht, dass es ihn gibt). */
+  const sichtbarerKanal = (id: unknown): number => {
+    const j = typeof id === 'string' ? d.kanaele.findIndex(x => x.id === id) : -1;
+    if (j < 0 || !kanalSichtbar(d.kanaele[j], k.person)) nein('Kanal nicht gefunden.', 404);
+    return j;
+  };
+  const folgeSichtbar = (id: unknown): number => { const j = finde(d.folgen, id, 'Folge'); sichtbarerKanal(d.folgen[j].kanalId); return j; };
+  const formatSichtbar = (id: unknown): number => { const j = finde(d.formate, id, 'Format'); sichtbarerKanal(d.formate[j].kanalId); return j; };
+  /** Regeln für einen Kanal nach der Änderung (Personenmarke, Absender, Sichtbarkeit, Stufe 2). */
+  const kanalRegeln = (neu: SocialKanal, alt: SocialKanal | null) => {
+    if (neu.art === 'person' && neu.person && k.personen && !k.personen.includes(neu.person)) nein('Diese Person gehört nicht zum Haushalt.');
+    if (neu.gesellschaft) {
+      if (gehoertZuPrivat(neu.gesellschaft)) nein(GEHOERT_ZU_PRIVAT_SOCIAL);
+      if (k.gesellschaften && !k.gesellschaften.includes(neu.gesellschaft) && neu.gesellschaft !== alt?.gesellschaft) nein('Diese Gesellschaft gibt es nicht (mehr) — im Register prüfen.');
+    }
+    const personenmarke = neu.art === 'person' && neu.person;
+    if (neu.sichtbarkeit === 'person' && neu.person !== k.person && (alt?.sichtbarkeit !== 'person' || alt.person !== neu.person)) nein(`Nur die Person der Marke kann den Kanal auf „nur ich“ stellen. ${NUR_PERSON_SELBST}`, 403);
+    if (personenmarke && neu.leitplanken.autonomie === 2 && alt?.leitplanken.autonomie !== 2 && k.person !== neu.person) nein(`Stufe 2 (selbstständig) schaltet nur die Person der Marke ein. ${NUR_PERSON_SELBST}`, 403);
+  };
   try {
     opsRoh.forEach((roh, i) => {
       if (!roh || typeof roh !== 'object') nein(`Änderung ${i + 1} ist kein Objekt.`);
@@ -179,7 +263,7 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
       switch (op.op) {
         case 'kanal': {
           const e = OHNE_SERVERFELDER((op.eintrag ?? {}) as Record<string, unknown>);
-          const alt = istKennung(e.id) ? d.kanaele.findIndex(x => x.id === e.id) : -1;
+          const alt = istKennung(e.id) ? d.kanaele.findIndex(x => x.id === e.id && kanalSichtbar(x, k.person)) : -1;
           if (alt >= 0) standPasst(d.kanaele[alt], op.stand, i, d.kanaele[alt].id);
           else if (e.id !== undefined) nein('Diesen Kanal gibt es nicht (mehr) — neu laden.', 404);
           // Leitplanken: der Not-Aus wird nur über den eigenen Schritt geschaltet — beim Bearbeiten bleibt er, wie er war.
@@ -187,12 +271,13 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
           if (alt >= 0) { lp.postenAus = d.kanaele[alt].leitplanken.postenAus; lp.antwortenAus = d.kanaele[alt].leitplanken.antwortenAus; }
           const neu = kanalAus({ ...(alt >= 0 ? d.kanaele[alt] : {}), ...e, leitplanken: lp, id: alt >= 0 ? d.kanaele[alt].id : k.neueId('sk'), ...vermerk });
           if (!neu) nein('Ein Kanal braucht einen Namen.');
+          kanalRegeln(neu!, alt >= 0 ? d.kanaele[alt] : null);
           if (alt >= 0) d.kanaele[alt] = neu!; else { if (d.kanaele.length >= G.kanaele) nein(`Höchstens ${G.kanaele} Kanäle.`, 413); d.kanaele.push(neu!); }
           geaendert.push(neu!.id);
           break;
         }
         case 'kanal-archiv': case 'notaus': {
-          const j = finde(d.kanaele, op.id, 'Kanal');
+          const j = sichtbarerKanal(op.id);
           standPasst(d.kanaele[j], op.stand, i, d.kanaele[j].id);
           const c = d.kanaele[j];
           d.kanaele[j] = op.op === 'kanal-archiv'
@@ -203,30 +288,32 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
         }
         case 'format': {
           const e = OHNE_SERVERFELDER((op.eintrag ?? {}) as Record<string, unknown>);
-          const alt = istKennung(e.id) ? d.formate.findIndex(x => x.id === e.id) : -1;
+          const alt = istKennung(e.id) ? d.formate.findIndex(x => x.id === e.id && d.kanaele.some(c => c.id === x.kanalId && kanalSichtbar(c, k.person))) : -1;
           if (alt >= 0) standPasst(d.formate[alt], op.stand, i, d.formate[alt].id);
           else if (e.id !== undefined) nein('Dieses Format gibt es nicht (mehr) — neu laden.', 404);
           const kanalId = alt >= 0 ? d.formate[alt].kanalId : e.kanalId;
-          if (!d.kanaele.some(c => c.id === kanalId)) nein('Das Format braucht einen vorhandenen Kanal.');
+          if (!d.kanaele.some(c => c.id === kanalId && kanalSichtbar(c, k.person))) nein('Das Format braucht einen vorhandenen Kanal.');
           const vorher = alt >= 0 ? d.formate[alt] : null;
           // Inhalt geändert → Freigabe fällt weg (der Agent darf nur, was eine Person so gesehen hat).
           const neu = formatAus({ ...(vorher ?? {}), ...e, kanalId, id: vorher?.id ?? k.neueId('sf'), ...vermerk });
           if (!neu) nein('Ein Format braucht einen Namen.');
-          const inhaltNeu = vorher && (vorher.name !== neu!.name || vorher.beschreibung !== neu!.beschreibung || vorher.laengeSek !== neu!.laengeSek);
+          const inhaltNeu = vorher && (vorher.name !== neu!.name || vorher.beschreibung !== neu!.beschreibung || vorher.laengeSek !== neu!.laengeSek || vorher.art !== neu!.art);
           const fertig = inhaltNeu ? formatAus({ ...neu!, freigegebenAm: undefined, freigegebenVon: undefined })! : neu!;
           if (alt >= 0) d.formate[alt] = fertig; else { if (d.formate.length >= G.formate) nein(`Höchstens ${G.formate} Formate.`, 413); d.formate.push(fertig); }
           geaendert.push(fertig.id);
           break;
         }
         case 'format-freigeben': {
-          const j = finde(d.formate, op.id, 'Format');
+          const j = formatSichtbar(op.id);
           standPasst(d.formate[j], op.stand, i, d.formate[j].id);
+          const kn = d.kanaele.find(c => c.id === d.formate[j].kanalId)!;
+          if (op.freigeben && kn.art === 'person' && kn.person && kn.person !== k.person) nein(`Formate einer Personenmarke gibt nur die Person selbst frei. ${NUR_PERSON_SELBST}`, 403);
           d.formate[j] = formatAus({ ...d.formate[j], freigegebenAm: op.freigeben ? k.jetzt : undefined, freigegebenVon: op.freigeben ? k.person : undefined, ...vermerk })!;
           geaendert.push(d.formate[j].id);
           break;
         }
         case 'format-weg': {
-          const j = finde(d.formate, op.id, 'Format');
+          const j = formatSichtbar(op.id);
           standPasst(d.formate[j], op.stand, i, d.formate[j].id);
           const id = d.formate[j].id;
           d.formate.splice(j, 1);
@@ -237,26 +324,34 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
         }
         case 'folge': {
           const e = OHNE_SERVERFELDER((op.eintrag ?? {}) as Record<string, unknown>);
-          const alt = istKennung(e.id) ? d.folgen.findIndex(x => x.id === e.id) : -1;
+          const alt = istKennung(e.id) ? d.folgen.findIndex(x => x.id === e.id && d.kanaele.some(c => c.id === x.kanalId && kanalSichtbar(c, k.person))) : -1;
           if (alt >= 0) standPasst(d.folgen[alt], op.stand, i, d.folgen[alt].id);
           else if (e.id !== undefined) nein('Diese Folge gibt es nicht (mehr) — neu laden.', 404);
           const vorher = alt >= 0 ? d.folgen[alt] : null;
           const kanalId = vorher?.kanalId ?? e.kanalId;
-          if (!d.kanaele.some(c => c.id === kanalId)) nein('Die Folge braucht einen vorhandenen Kanal.');
+          if (!d.kanaele.some(c => c.id === kanalId && kanalSichtbar(c, k.person))) nein('Die Folge braucht einen vorhandenen Kanal.');
           if (istKennung(e.formatId) && !d.formate.some(f => f.id === e.formatId && f.kanalId === kanalId)) nein('Das Format gehört nicht zu diesem Kanal.');
           if (typeof e.skript === 'string' && e.skript.length > G.skript) nein(`Das Skript ist länger als ${G.skript} Zeichen — nichts gespeichert.`, 413);
           if (Array.isArray(e.hooks) && e.hooks.length > G.hooks) nein(`Höchstens ${G.hooks} Hook-Varianten.`, 413);
           if (Array.isArray(e.quellen) && e.quellen.length > G.quellen) nein(`Höchstens ${G.quellen} Quellen.`, 413);
           // Hooks ohne Kennung bekommen eine vom Server.
           const hooks = Array.isArray(e.hooks) ? e.hooks.map(h => (h && typeof h === 'object' ? { ...(h as object), id: istKennung((h as { id?: unknown }).id) ? (h as { id: string }).id : k.neueId('hk') } : h)) : undefined;
-          const neu = folgeAus({ ...(vorher ?? {}), ...e, ...(hooks ? { hooks } : {}), kanalId, id: vorher?.id ?? k.neueId('sv'), ...vermerk });
-          if (!neu) nein('Eine Folge braucht einen Titel.');
-          if (alt >= 0) d.folgen[alt] = neu!; else { if (d.folgen.length >= G.folgen) nein(`Höchstens ${G.folgen} Folgen.`, 413); d.folgen.push(neu!); }
-          geaendert.push(neu!.id);
+          const roh = folgeAus({ ...(vorher ?? {}), ...e, ...(hooks ? { hooks } : {}), kanalId, id: vorher?.id ?? k.neueId('sv'), ...vermerk });
+          if (!roh) nein('Eine Folge braucht einen Titel.');
+          // Freigabe = eine Person hat GENAU diesen Inhalt gesehen: Status „Freigegeben“ neu gesetzt → stempeln; Inhalt geändert ohne neue
+          // Freigabe → die alte fällt weg (aus „Freigegeben“/„Geplant“ wird wieder „Entwurf“).
+          const freigebenNeu = roh!.status === 'freigegeben' && (vorher?.status !== 'freigegeben' || e.status === 'freigegeben' && !vorher?.freigegebenAm);
+          const inhaltGeaendert = vorher && folgeInhalt(vorher) !== folgeInhalt(roh!);
+          let neu = roh!;
+          if (freigebenNeu || (inhaltGeaendert && e.status === 'freigegeben')) neu = { ...neu, freigegebenAm: k.jetzt, freigegebenVon: k.person };
+          else if (inhaltGeaendert && neu.freigegebenAm) neu = folgeAus({ ...neu, freigegebenAm: undefined, freigegebenVon: undefined, status: neu.status === 'freigegeben' || neu.status === 'geplant' ? 'entwurf' : neu.status })!;
+          else if (!['freigegeben', 'geplant', 'veroeffentlicht'].includes(neu.status) && neu.freigegebenAm) neu = folgeAus({ ...neu, freigegebenAm: undefined, freigegebenVon: undefined })!;
+          if (alt >= 0) d.folgen[alt] = neu; else { if (d.folgen.length >= G.folgen) nein(`Höchstens ${G.folgen} Folgen.`, 413); d.folgen.push(neu); }
+          geaendert.push(neu.id);
           break;
         }
         case 'folge-weg': {
-          const j = finde(d.folgen, op.id, 'Folge');
+          const j = folgeSichtbar(op.id);
           standPasst(d.folgen[j], op.stand, i, d.folgen[j].id);
           // Veröffentlichtes mit Messungen bleibt (Lerngrundlage) — nur verwerfen, nie löschen.
           if (d.folgen[j].veroeffentlicht.length || d.folgen[j].messungen.length) nein('Veröffentlichte Folgen mit Zahlen bleiben als Lerngrundlage — stattdessen „Verworfen“ setzen.', 400);
@@ -265,7 +360,7 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
           break;
         }
         case 'messung': {
-          const j = finde(d.folgen, op.folgeId, 'Folge');
+          const j = folgeSichtbar(op.folgeId);
           const m = messungAus({ ...((op.messung ?? {}) as Record<string, unknown>), id: k.neueId('sm') });
           if (!m) nein('Eine Messung braucht Plattform, Tag (JJJJ-MM-TT) und Aufrufe.');
           if (d.folgen[j].messungen.length >= G.messungenJeFolge) nein(`Höchstens ${G.messungenJeFolge} Messungen je Folge.`, 413);
@@ -274,12 +369,82 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
           break;
         }
         case 'veroeffentlicht': {
-          const j = finde(d.folgen, op.folgeId, 'Folge');
+          const j = folgeSichtbar(op.folgeId);
           const v = veroeffentlichungAus({ plattform: op.plattform, am: op.am, link: op.link });
           if (!v) nein('Veröffentlichung braucht Plattform und Tag (JJJJ-MM-TT); Links nur https.');
           if (d.folgen[j].veroeffentlicht.length >= G.veroeffentlichungen) nein('Zu viele Veröffentlichungen für eine Folge.', 413);
           d.folgen[j] = { ...d.folgen[j], status: 'veroeffentlicht', veroeffentlicht: [...d.folgen[j].veroeffentlicht.filter(x => x.plattform !== v!.plattform), v!], ...vermerk };
           geaendert.push(d.folgen[j].id);
+          break;
+        }
+        case 'vorlage': {
+          // Neuer Kanal aus einer Vorlage (lib/social/vorlagen.ts): Markenprofil, Leitplanken, Ziel-Vorschläge mit Wert und die Serienformate
+          // in EINEM Schritt — Formate nie freigegeben. Name, Handle, Sprache, Person und Gesellschaft kommen aus der Eingabe.
+          const v = vorlageVon(op.vorlageId);
+          if (!v) nein('Diese Vorlage gibt es nicht.', 404);
+          const e = OHNE_SERVERFELDER((op.eintrag ?? {}) as Record<string, unknown>);
+          if (d.kanaele.length >= G.kanaele) nein(`Höchstens ${G.kanaele} Kanäle.`, 413);
+          if (d.formate.length + v!.formate.length > G.formate) nein(`Höchstens ${G.formate} Formate.`, 413);
+          const id = k.neueId('sk');
+          const neu = kanalAus({
+            id, name: e.name, handle: e.handle, sprache: e.sprache, art: v!.art, person: e.person, gesellschaft: e.gesellschaft,
+            sichtbarkeit: e.sichtbarkeit, vorlage: v!.id, kiKanal: v!.kiKanal === true, persona: e.persona,
+            plattformen: Array.isArray(e.plattformen) && e.plattformen.length ? e.plattformen : v!.plattformen,
+            marke: { ton: v!.ton, saeulen: v!.saeulen, nieSagen: v!.nieSagen, cta: v!.cta, versprechen: e.versprechen, zielgruppe: e.zielgruppe },
+            leitplanken: { ...LEITPLANKEN_VORGABE, ...v!.leitplanken, postenAus: false, antwortenAus: false },
+            ziele: [], staende: [], ...vermerk,
+          });
+          if (!neu) nein('Ein Kanal braucht einen Namen.');
+          kanalRegeln(neu!, null);
+          const ziele = v!.ziele.filter(z => z.zielwert !== undefined && !(ZIEL_MIT_LINIE as readonly ZielMetrik[]).includes(z.metrik))
+            .filter(z => !z.plattform || neu!.plattformen.includes(z.plattform))
+            .map(z => zielAus({ id: k.neueId('sz'), metrik: z.metrik, zielwert: z.zielwert, plattform: z.plattform, von: heute, startwert: 0 })!).filter(Boolean);
+          d.kanaele.push({ ...neu!, ziele });
+          for (const f of v!.formate) d.formate.push(formatAus({ id: k.neueId('sf'), kanalId: id, name: f.name, beschreibung: f.beschreibung, art: f.art, laengeSek: f.laengeSek, ...vermerk })!);
+          geaendert.push(id);
+          break;
+        }
+        case 'ziel': case 'ziel-weg': {
+          const j = sichtbarerKanal(op.kanalId);
+          standPasst(d.kanaele[j], op.stand, i, d.kanaele[j].id);
+          const c = d.kanaele[j];
+          if (op.op === 'ziel-weg') {
+            if (!c.ziele.some(z => z.id === op.id)) nein('Ziel nicht gefunden.', 404);
+            d.kanaele[j] = { ...c, ziele: c.ziele.filter(z => z.id !== op.id), ...vermerk };
+          } else {
+            const e = (op.eintrag ?? {}) as Record<string, unknown>;
+            const altZ = istKennung(e.id) ? c.ziele.find(z => z.id === e.id) : undefined;
+            if (e.id !== undefined && !altZ) nein('Ziel nicht gefunden.', 404);
+            if (!altZ && c.ziele.length >= G.ziele) nein(`Höchstens ${G.ziele} Ziele je Kanal.`, 413);
+            const metrik = (ZIEL_METRIKEN as readonly unknown[]).includes(e.metrik) ? e.metrik as ZielMetrik : nein('Welche Kennzahl? (follower, aufrufe, posts-woche, halte3s, shares-je-tsd)');
+            const vonRoh = e.von === undefined || e.von === '' ? altZ?.von ?? heute : e.von;
+            if (!istKalendertag(vonRoh) || vonRoh > heute) nein('Start: ein Tag bis heute.');
+            const von = vonRoh as string;
+            const linie = (ZIEL_MIT_LINIE as readonly ZielMetrik[]).includes(metrik);
+            if (linie && !(istKalendertag(e.bis) && e.bis > von)) nein('Bis wann? Ein Tag nach dem Start.');
+            if (istPlattform(e.plattform) && !c.plattformen.includes(e.plattform)) nein('Diese Plattform gehört nicht zum Kanal.');
+            const grundlage = { metrik, plattform: istPlattform(e.plattform) ? e.plattform : undefined, von: von as string };
+            // Startwert rechnet der Server — neu nur, wenn sich Kennzahl, Plattform oder Start ändern.
+            const gleich = altZ && altZ.metrik === grundlage.metrik && altZ.plattform === grundlage.plattform && altZ.von === grundlage.von;
+            const startwert = gleich ? altZ!.startwert : zielStartwert(grundlage, c, d.folgen, heute);
+            const z = zielAus({ ...grundlage, id: altZ?.id ?? k.neueId('sz'), zielwert: e.zielwert, bis: e.bis, notiz: e.notiz, startwert });
+            if (!z) nein('Ein Ziel braucht einen Zielwert über 0.');
+            d.kanaele[j] = { ...c, ziele: altZ ? c.ziele.map(x => (x.id === altZ.id ? z! : x)) : [...c.ziele, z!], ...vermerk };
+          }
+          geaendert.push(c.id);
+          break;
+        }
+        case 'kontostand': {
+          const j = sichtbarerKanal(op.kanalId);
+          const c = d.kanaele[j];
+          const st = standAus({ id: k.neueId('ks'), plattform: op.plattform, am: op.am, follower: op.follower, quelle: 'hand' });
+          if (!st) nein('Kontostand: Plattform, Tag (JJJJ-MM-TT) und Follower.');
+          if (st!.am > heute) nein('Ein Kontostand gilt höchstens bis heute.');
+          if (!c.plattformen.includes(st!.plattform)) nein('Diese Plattform gehört nicht zum Kanal.');
+          if (c.staende.length >= G.staende) nein(`Höchstens ${G.staende} Kontostände je Kanal.`, 413);
+          // Ein Stand je Plattform und Tag — ein neuer Wert am selben Tag ersetzt den alten.
+          d.kanaele[j] = { ...c, staende: [...c.staende.filter(x => !(x.plattform === st!.plattform && x.am === st!.am)), st!], ...vermerk };
+          geaendert.push(c.id);
           break;
         }
         default: nein(`Unbekannte Änderung „${String((op as { op?: unknown }).op)}“.`);
@@ -305,12 +470,20 @@ export function socialOhnePerson(d: SocialDatei, speicher: string): { neu: Socia
     if (y.freigegebenVon === speicher) { n++; y = { ...y, freigegebenVon: SOCIAL_GETILGT }; }
     return y;
   };
-  return { neu: { kanaele: d.kanaele.map(v), formate: d.formate.map(v), folgen: d.folgen.map(v) }, n };
+  // Personenmarke einer gelöschten Person: der Kanal bleibt (Arbeit des Haushalts), ohne Person und ohne „nur ich“ — sonst sähe ihn niemand mehr.
+  const kanaele = d.kanaele.map(v).map(k => {
+    if (k.person !== speicher) return k;
+    n++;
+    const { person: _p, sichtbarkeit: _s, ...rest } = k; void _p; void _s;
+    return rest as SocialKanal;
+  });
+  return { neu: { kanaele, formate: d.formate.map(v), folgen: d.folgen.map(v) }, n };
 }
 
 /** Export: was die Person in Social gestempelt hat — Art, Kennung, Zeit. Rein. */
 export function socialEintraegeVon(d: SocialDatei, speicher: string): { art: string; id: string; am?: string }[] {
   const raus: { art: string; id: string; am?: string }[] = [];
+  for (const k of d.kanaele) if (k.person === speicher) raus.push({ art: 'Personenmarke', id: k.id, am: k.geaendert });
   for (const [art, l] of [['kanal', d.kanaele], ['format', d.formate], ['folge', d.folgen]] as const) {
     for (const x of l as readonly { id: string; geaendert: string; geaendertVon?: string; freigegebenVon?: string; freigegebenAm?: string }[]) {
       if (x.geaendertVon === speicher) raus.push({ art: `${art} geändert`, id: x.id, am: x.geaendert });

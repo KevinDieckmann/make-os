@@ -2050,6 +2050,17 @@ Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub
 - **Nicht hier:** Kommentare/DMs Dritter (kommen mit der Plattform-Anbindung in einen eigenen Bestand mit Register, Art. 15/17, Löschfrist, Art. 50 KI-VO-Hinweis);
   KI-Aufrufe (dann über `askText` mit `ki: {…}`, Kategorie neu). Konto löschen: Speichername → „[gelöscht]“ (`socialOhnePerson`, Export `socialEintraegeVon`).
 - Tests `tests/social-kern.test.ts`, `tests/social-route.test.ts`; Demo-Saat Abschnitt 3b2 (erfundener KI-Kanal „NOVA (Beispiel)“).
+- **Kontotypen, Ziele, Vorlagen (27.10., Kevin: „überall anders nutzen … Faceless, unsere Personenmarken, die Firmenaccounts“; Belege `social/07_beispiele-kontotypen.md`):**
+  `SocialKanal.art` = faceless (fehlt = faceless) · person (`person` = Speichername eines Kontos im Haushalt) · firma; `gesellschaft` = Absender/Impressum (nur Business —
+  Privat-Einheit 400, unbekannte 400, Liste `schreibUmfeld` in server.ts). **Personenmarke: nur die Person selbst** gibt Formate frei, schaltet Stufe 2 ein, stellt auf
+  „nur ich“ (`sichtbarkeit: 'person'`) → sonst 403; ein eigenes Erlebnis („ich habe …“) hält der Prüfer an, bis SIE die Folge freigibt (`erlebnis`). **Sicht serverseitig:**
+  `kanalSichtbar`/`socialFuerPerson` (daten.ts) — EINE Regel für GET, Lage, PATCH (fremd → 404) und Import (404); Wächter in `tests/social-kontotypen.test.ts` und
+  `tests/social-route.test.ts`. **Folgen-Freigabe** stempelt der Server (Status „Freigegeben“ → `freigegebenAm/Von`), jede Inhaltsänderung nimmt sie zurück; Weg
+  `bereit` = von einer Person freigegeben (außer `BLEIBT_NACH_FREIGABE`: erlebnis, personen). Folge: `personenImBild` (offen → Person nötig, KUG § 22), `werbung`.
+  Formate: `art` video/karussell/text/bild (Länge nur bei Video). **Einrichtung** `kanalPruefen` (Firma ohne Absender, Marke ohne Person, KI-Bio ohne KI-Hinweis bremsen Stufe 2).
+  **Ziele** (lib/social/ziele.ts, rein): follower/aufrufe mit Linie (Startwert NUR vom Server), posts-woche/halte3s/shares-je-tsd laufend; nur aus eingetragenen Zahlen
+  (`KontoStand` je Plattform und Tag, op `kontostand`), sonst „ohne Daten“. **Vorlagen** (lib/social/vorlagen.ts, op `vorlage`: Kanal + Formate + Ziel-Vorschläge mit
+  Wert in EINEM Schritt) — nur neutrale Muster, nie Namen/Firmen (Wächter im Test). LinkedIn ist Plattform (CSV „Impressions“ = Aufrufe).
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.

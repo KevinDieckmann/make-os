@@ -10,10 +10,15 @@ import type { Befund } from '@/lib/social/pruefer';
 import type { AutonomieErgebnis } from '@/lib/social/autonomie';
 import type { KanalAnalyse, Wochenbericht } from '@/lib/social/analyse';
 import type { ImportVorschau } from '@/lib/social/csv';
+import type { ZielStand } from '@/lib/social/ziele';
 
 export type MitStand<T> = T & { stand: string };
 export interface Lage {
   heute: string;
+  ich: string | null;
+  /** Kennungen, die der letzte Schreibschritt geändert bzw. neu angelegt hat (nur in der Antwort auf PATCH). */
+  geaendert?: string[];
+  kanaele: Record<string, { befunde: Befund[]; ziele: ZielStand[] }>;
   datei: { kanaele: MitStand<SocialKanal>[]; formate: MitStand<SocialFormat>[]; folgen: MitStand<SocialFolge>[] };
   folgen: Record<string, { befunde: Befund[]; weg: AutonomieErgebnis }>;
   analyse: Record<string, KanalAnalyse>;

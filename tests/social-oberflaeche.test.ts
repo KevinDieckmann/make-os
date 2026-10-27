@@ -13,6 +13,9 @@ import { leereSocial, type SocialDatei } from '@/lib/social/typen';
 import type { SocialApi, Lage } from '@/components/os/crm/social/daten';
 import { Folgen } from '@/components/os/crm/social/Folgen';
 import { Analyse, Formate, Import } from '@/components/os/crm/social/Analyse';
+import { Ziele } from '@/components/os/crm/social/Ziele';
+import { NeuerKanal } from '@/components/os/crm/social/KanalArt';
+import { KanalForm } from '@/components/os/crm/social/KanalForm';
 
 let n = 0;
 const ctx: AnwendenKontext = { person: 'pa', jetzt: '2026-10-26T20:00:00.000Z', standVon: x => String(JSON.stringify(x).length), neueId: p => `${p}-o${++n}` };
@@ -30,7 +33,7 @@ function aufbau(): Lage {
   ]);
   const f = d.folgen[0];
   d = schritt(d, [{ op: 'veroeffentlicht', folgeId: f.id, plattform: 'tiktok', am: '2026-10-25' }, { op: 'messung', folgeId: f.id, messung: { plattform: 'tiktok', am: '2026-10-26', views: 800, halte3s: 40 } }]);
-  return lageAus(d, '2026-10-26') as unknown as Lage;
+  return lageAus(d, '2026-10-26', 'pa') as unknown as Lage;
 }
 
 const apiAus = (lage: Lage): SocialApi => ({ lage, fehler: null, laden: async () => {}, schreiben: async () => lage, importieren: async () => null, setFehler: () => {} });
@@ -54,5 +57,27 @@ describe('Social — Oberfläche', () => {
   it('Formate und Import rendern', () => {
     expect(renderToStaticMarkup(createElement(Formate, { api, kanal: k1 }))).toContain('Freigabe zurücknehmen');
     expect(renderToStaticMarkup(createElement(Import, { api, kanal: k1 }))).toContain('Zahlen aus der Plattform importieren');
+  });
+  it('Ziele: Stand mit Ampel und Satz, Vorschläge der Vorlage, Follower eintragen', () => {
+    let d: SocialDatei = schritt(leereSocial(), [{ op: 'vorlage', vorlageId: 'firma-dienstleistung', eintrag: { name: 'Firmenkanal (Beispiel)', gesellschaft: 'ug' } }]);
+    const id = d.kanaele[0].id;
+    d = schritt(d, [{ op: 'kontostand', kanalId: id, plattform: 'linkedin', am: '2026-10-01', follower: 200 }]);
+    d = schritt(d, [{ op: 'ziel', kanalId: id, eintrag: { metrik: 'follower', zielwert: 1000, von: '2026-10-01', bis: '2026-12-31' }, stand: ctx.standVon(d.kanaele[0]) }]);
+    const l = lageAus(d, '2026-10-26', 'pa') as unknown as Lage;
+    const html = renderToStaticMarkup(createElement(Ziele, { api: apiAus(l), kanal: l.datei.kanaele[0] }));
+    expect(html).toContain('Follower: 1.000 bis 31.12.2026');
+    expect(html).toContain('dahinter');
+    expect(html).toContain('Follower eintragen');
+    expect(html).toContain('LinkedIn: 200');
+  });
+  it('Neuer Kanal: Vorlagen je Kontotyp, Kanal-Formular mit Kontotyp und Absender', () => {
+    const html = renderToStaticMarkup(createElement(NeuerKanal, { api, onFertig: () => {}, ohneVorlage: () => {} }));
+    expect(html).toContain('Faceless');
+    expect(html).toContain('Personenmarke');
+    expect(html).toContain('Firmenaccount');
+    expect(html).toContain('Wissen ohne Gesicht');
+    const form = renderToStaticMarkup(createElement(KanalForm, { api, kanal: k1, onFertig: () => {} }));
+    expect(form).toContain('Art des Accounts');
+    expect(form).toContain('Absender fürs Impressum');
   });
 });

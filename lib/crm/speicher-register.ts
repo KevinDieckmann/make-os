@@ -744,11 +744,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // abgehakte Schritte „nach der Leistung“ je Mandat (nur Kennung + Tag + Team-Kürzel) — keine Daten Dritter, Personen nur als Team-Kürzel.
   // Social (26.10., Markttraktion › Social, lib/social/): Kanäle mit Markenprofil und Leitplanken, Serienformate, Folgen (Skript, Hooks, Quellen),
   // Veröffentlichungen und Messungen aus den Plattform-Insights — Zahlen je Video, keine Personendaten Dritter (Kommentare/DMs kommen erst mit den
-  // Plattform-Anbindungen in einen eigenen Bestand). Personen nur als Speichername (geändert/freigegeben von).
-  mit(H('social--*', 'Social des Haushalts: Kanäle (Name, Handle, Markenprofil, Persona, Leitplanken), Serienformate, Folgen (Skript, Hooks, Quellen), Veröffentlichungen und Messungen (Aufrufe, Haltequote, Shares …); wer zuletzt geändert bzw. freigegeben hat (Speichername).'), {
-    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — eigene Marketingarbeit des Haushalts',
-    art15: 'alle Konten des Haushalts sehen sie unter Markttraktion › Social (GET /api/social); Dritte stehen hier nicht',
-    loeschfrist: 'bis der Haushalt Kanäle und Folgen entfernt bzw. die Instanz gelöscht wird; Konto löschen setzt den Speichernamen auf „[gelöscht]“',
+  // Plattform-Anbindungen in einen eigenen Bestand). Personen nur als Speichername (geändert/freigegeben von, seit 27.10. auch die Person einer
+  // Personenmarke). Ein Kanal „nur die Person der Marke“ geht nur an sie (Server-Filter `socialFuerPerson`).
+  mit(H('social--*', 'Social des Haushalts: Kanäle (Art Faceless/Personenmarke/Firmenaccount, Name, Handle, Markenprofil, Persona, Absender-Gesellschaft, Person der Marke als Speichername, Sichtbarkeit, Leitplanken, Ziele, Follower-Stände), Serienformate, Folgen (Skript, Hooks, Quellen, Personen im Bild ja/nein, Werbung ja/nein), Veröffentlichungen und Messungen (Aufrufe, Haltequote, Shares …); wer zuletzt geändert bzw. freigegeben hat (Speichername).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — eigene Marketingarbeit des Haushalts; Personenmarke: Art. 6 Abs. 1 lit. a/b (die Person führt ihre Marke selbst)',
+    art15: 'die Konten des Haushalts sehen sie unter Markttraktion › Social (GET /api/social) — einen Kanal „nur die Person der Marke“ nur diese Person; Dritte stehen hier nicht (gezeigte Personen nur als „Einwilligung liegt vor/fehlt“, ohne Namen)',
+    loeschfrist: 'bis der Haushalt Kanäle und Folgen entfernt bzw. die Instanz gelöscht wird; Konto löschen setzt den Speichernamen auf „[gelöscht]“ und löst die Personenmarke von der Person',
   }),
   mit(H('markttraktion-planung--*', 'Vertriebsplanung des Haushalts: Leadkanäle (Name, Herkunft, Bezug Kampagne/Eventreihe als Kennung, Plan-Leads, Sales Cycle, Plan-Quoten, Kosten/Zeit je Lead, verantwortlich = Team-Kürzel), Umsatzziele je Business-Gesellschaft, Wochen-Challenges (Team-Kürzel, Ziel, Rückblick), Minuten je Aktivität, Schritte nach der Leistung je Mandat-Kennung; wer zuletzt geändert hat (Speichername).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung der eigenen Vertriebsarbeit durch die Mitglieder des Haushalts (§ 26 BDSG, soweit Wochenziele je Person)',

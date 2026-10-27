@@ -101,3 +101,31 @@ describe('Social — schreiben und lernen', () => {
     expect((await route.POST(sende('POST', 'pa', { aktion: 'import', kanalId, plattform: 'facebook', text: 'a' }))).status).toBe(400);
   });
 });
+
+describe('Social — Sicht X bekommt nichts aus Y (Personenmarke „nur ich“, 27.10.)', () => {
+  it('die andere Person sieht den Kanal nicht (GET), schreibt nicht darauf (404), importiert nicht hinein (404); Stufe 2 nur die Person selbst (403)', async () => {
+    const r = await route.PATCH(sende('PATCH', 'pa', { ops: [
+      { op: 'kanal', eintrag: { name: 'Nur-ich-Marke (Beispiel)', art: 'person', person: 'pa', sichtbarkeit: 'person', plattformen: ['linkedin'] } },
+      { op: 'kanal', eintrag: { name: 'Offene Marke (Beispiel)', art: 'person', person: 'pa', plattformen: ['linkedin'] } },
+    ] }));
+    expect(r.status).toBe(200);
+    const l = await r.json() as Lage;
+    const geheim = l.datei.kanaele.find(k => k.name.startsWith('Nur-ich'))!;
+    const offen = l.datei.kanaele.find(k => k.name.startsWith('Offene'))!;
+    const b = await (await route.GET(get('pb'))).text();
+    expect(b).not.toContain(geheim.id);
+    expect(b).not.toContain('Nur-ich-Marke');
+    expect(b).toContain('Offene Marke');
+    const w = await route.PATCH(sende('PATCH', 'pb', { ops: [{ op: 'kanal', eintrag: { id: geheim.id, name: 'Übernommen' }, stand: geheim.stand }] }));
+    expect(w.status).toBe(404);
+    expect(await w.text()).not.toContain('Nur-ich-Marke');
+    expect((await route.POST(sende('POST', 'pb', { aktion: 'import-vorschau', kanalId: geheim.id, plattform: 'linkedin', text: 'Title,Impressions\nA,1' }))).status).toBe(404);
+    const zwei = await route.PATCH(sende('PATCH', 'pb', { ops: [{ op: 'kanal', eintrag: { id: offen.id, leitplanken: { autonomie: 2 } }, stand: offen.stand }] }));
+    expect(zwei.status).toBe(403);
+    expect(JSON.stringify(await (await route.GET(get('pa'))).json())).toContain('Nur-ich-Marke');
+  });
+  it('Absender aus Privat (Selbstständigkeit) → 400', async () => {
+    expect((await route.PATCH(sende('PATCH', 'pa', { ops: [{ op: 'kanal', eintrag: { name: 'X', art: 'firma', gesellschaft: 'kdc' } }] }))).status).toBe(400);
+  });
+});
+

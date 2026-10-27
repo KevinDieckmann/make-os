@@ -8,13 +8,15 @@
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Hinweis, Leerzustand, Feldzeile, feld, eingabe, Pillen } from '../../ui';
-import { FOLGE_STATUS, FOLGE_STATUS_NAME, PLATTFORM_NAME, type FolgeStatus, type SocialPlattform, type SocialFolge, type SocialKanal } from '@/lib/social/typen';
+import { FOLGE_STATUS, FOLGE_STATUS_NAME, PLATTFORM_NAME, SOCIAL_PLATTFORMEN, type FolgeStatus, type SocialPlattform, type SocialFolge, type SocialKanal, type PersonenImBild } from '@/lib/social/typen';
+import { datumKurz } from '@/lib/make-one/faelligkeit';
+import { tagVon } from '@/lib/zeit';
 import type { Befund } from '@/lib/social/pruefer';
 import type { AutonomieErgebnis } from '@/lib/social/autonomie';
 import type { MitStand, SocialApi } from './daten';
 
-const WEG_FARBE: Record<AutonomieErgebnis['weg'], string> = { selbst: LEUCHT.gut, stapel: LEUCHT.achtung, gesperrt: LEUCHT.kritisch };
-const WEG_TEXT: Record<AutonomieErgebnis['weg'], string> = { selbst: 'würde selbst posten', stapel: 'Freigabe-Stapel', gesperrt: 'gesperrt' };
+const WEG_FARBE: Record<AutonomieErgebnis['weg'], string> = { selbst: LEUCHT.gut, bereit: LEUCHT.gut, stapel: LEUCHT.achtung, gesperrt: LEUCHT.kritisch };
+const WEG_TEXT: Record<AutonomieErgebnis['weg'], string> = { selbst: 'würde selbst posten', bereit: 'freigegeben', stapel: 'Freigabe-Stapel', gesperrt: 'gesperrt' };
 const BEFUND_ART: Record<Befund['stufe'], 'kritisch' | 'achtung' | 'info'> = { stopp: 'kritisch', mensch: 'achtung', hinweis: 'info' };
 const STATUS_FARBE: Record<FolgeStatus, string> = { idee: C.inkLeise, entwurf: C.inkDim, freigegeben: C.aktiv, geplant: C.aktiv, veroeffentlicht: LEUCHT.gut, verworfen: C.inkLeise };
 
@@ -70,6 +72,8 @@ function FolgeEditor({ api, kanal, folge, onZu }: { api: SocialApi; kanal: MitSt
   const [cta, setCta] = useState(folge?.cta ?? kanal.marke.cta ?? '');
   const [quellen, setQuellen] = useState((folge?.quellen ?? []).join('\n'));
   const [kiInhalt, setKiInhalt] = useState(folge?.kiInhalt ?? true);
+  const [personenImBild, setPersonenImBild] = useState<PersonenImBild>(folge?.personenImBild ?? 'keine');
+  const [werbung, setWerbung] = useState(folge?.werbung === true);
   const [status, setStatus] = useState<FolgeStatus>(folge?.status ?? 'entwurf');
   const befunde = folge ? lage.folgen[folge.id]?.befunde ?? [] : [];
   const weg = folge ? lage.folgen[folge.id]?.weg : undefined;
@@ -79,6 +83,7 @@ function FolgeEditor({ api, kanal, folge, onZu }: { api: SocialApi; kanal: MitSt
       ...(folge ? { id: folge.id } : { kanalId: kanal.id }), titel, formatId: formatId || undefined, saeule, skript,
       hooks: hooks.filter(h => h.text.trim()).map(h => ({ ...(h.id ? { id: h.id } : {}), text: h.text, bildschirm: h.bildschirm })),
       hookId: hookId || undefined, cta, quellen: quellen.split('\n').map(q => q.trim()).filter(Boolean), kiInhalt, status,
+      personenImBild: personenImBild === 'keine' ? undefined : personenImBild, werbung,
     };
     if (await api.schreiben([{ op: 'folge', eintrag, ...(folge ? { stand: folge.stand } : {}) }]) && !folge) onZu();
   };
@@ -88,7 +93,8 @@ function FolgeEditor({ api, kanal, folge, onZu }: { api: SocialApi; kanal: MitSt
       <Karte>
         <form onSubmit={e => { e.preventDefault(); void speichern(); }} style={{ display: 'grid', gap: 12 }}>
           <Ueberschrift rechts={<Knopf leise onClick={onZu}>← Folgen</Knopf>}>{folge ? folge.titel : 'Neue Folge'}</Ueberschrift>
-          {weg && <Hinweis art={weg.weg === 'selbst' ? 'gut' : weg.weg === 'stapel' ? 'achtung' : 'kritisch'} titel={WEG_TEXT[weg.weg]}>{weg.grund}</Hinweis>}
+          {weg && <Hinweis art={weg.weg === 'selbst' || weg.weg === 'bereit' ? 'gut' : weg.weg === 'stapel' ? 'achtung' : 'kritisch'} titel={WEG_TEXT[weg.weg]}>{weg.grund}</Hinweis>}
+          {folge?.freigegebenAm && <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Freigegeben {folge.freigegebenVon === lage.ich ? 'von dir' : 'von einer Person des Haushalts'} am {datumKurz(tagVon(folge.freigegebenAm))} — jede Änderung am Inhalt nimmt die Freigabe zurück.</span>}
           <Feldzeile label="Titel"><input style={eingabe} value={titel} onChange={e => setTitel(e.target.value)} required maxLength={300} /></Feldzeile>
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))' }}>
             <Feldzeile label="Format">
@@ -122,6 +128,16 @@ function FolgeEditor({ api, kanal, folge, onZu }: { api: SocialApi; kanal: MitSt
           <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 }}>
             <input type="checkbox" checked={kiInhalt} onChange={e => setKiInhalt(e.target.checked)} /> Bild oder Stimme von einer KI (Plattform-Label setzen)
           </label>
+          <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 }}>
+            <input type="checkbox" checked={werbung} onChange={e => setWerbung(e.target.checked)} /> Werbung oder Kooperation mit Gegenleistung (kennzeichnen)
+          </label>
+          <Feldzeile label="Erkennbare Personen im Bild">
+            <select style={feld} value={personenImBild} onChange={e => setPersonenImBild(e.target.value as PersonenImBild)}>
+              <option value="keine">keine</option>
+              <option value="offen">ja — Einwilligung fehlt noch</option>
+              <option value="einwilligung">ja — Einwilligung liegt vor</option>
+            </select>
+          </Feldzeile>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}><Knopf haupt typ="submit">Speichern</Knopf></div>
         </form>
       </Karte>
@@ -140,7 +156,7 @@ function FolgeEditor({ api, kanal, folge, onZu }: { api: SocialApi; kanal: MitSt
 function PlattformWahl({ kanal, wert, onWert }: { kanal: SocialKanal; wert: SocialPlattform; onWert: (p: SocialPlattform) => void }) {
   return (
     <select style={feld} value={wert} onChange={e => onWert(e.target.value as SocialPlattform)}>
-      {(kanal.plattformen.length ? kanal.plattformen : (['tiktok', 'instagram', 'youtube'] as SocialPlattform[])).map(p => <option key={p} value={p}>{PLATTFORM_NAME[p]}</option>)}
+      {(kanal.plattformen.length ? kanal.plattformen : SOCIAL_PLATTFORMEN).map(p => <option key={p} value={p}>{PLATTFORM_NAME[p]}</option>)}
     </select>
   );
 }

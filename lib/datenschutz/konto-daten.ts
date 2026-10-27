@@ -142,7 +142,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',
   'planung-einheiten--*': 'Einheiten der Planung je Haushalt',
   'fokus-privat--*': 'Unser Fokus · Privat je Haushalt (Freitext der Mitglieder, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
-  'social--*': 'Social je Haushalt (26.10.: Kanäle, Serienformate, Folgen, Messungen — Dritte stehen hier nicht; „geändert von“/„freigegeben von“ als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
+  'social--*': 'Social je Haushalt (26.10.: Kanäle, Serienformate, Folgen, Messungen — Dritte stehen hier nicht; „geändert von“/„freigegeben von“ und die Person einer Personenmarke als Speichername) — im Export die eigenen Stempel und Personenmarken, beim Löschen wird der Speichername „[gelöscht]“ bzw. die Marke von der Person gelöst',
   'markttraktion-planung--*': 'Vertriebsplanung je Haushalt (Leadkanäle, Umsatzziele, Challenges — Personen als Team-Kürzel, Dritte nur als Mandat-Kennung; „geändert von“/„abgehakt von“ als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
   // Fulfillment (10.10.): Bestände je Haushalt — keine Einträge je Person; beim Konto-Löschen wird der Speichername „[gelöscht]“ (fulfillmentKontoLoeschen).
   'fulfillment--*': 'Fulfillment je Haushalt (Vorlagen, Bausteine, Rituale, Einstellungen — Geschäftswissen, Personen nur als Speichername)',

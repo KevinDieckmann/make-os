@@ -1,6 +1,6 @@
 // ─── MAKE OS — Social: Kennzahlen aus Plattform-Exporten (CSV, rein) — 26.10.2026 ─────────────────────────────────────────────────────
 // Bis die API-Prüfungen von TikTok, Meta und Google durch sind, kommen die Zahlen als Export aus TikTok Studio, Meta Business Suite bzw.
-// YouTube Studio. Die Spaltennamen unterscheiden sich je Plattform, Sprache und Version — deshalb eine Liste von Synonymen (DE/EN) statt fester
+// YouTube Studio bzw. LinkedIn (Beitrags-Export als CSV gespeichert, „Impressions“ zählt als Aufrufe). Die Spaltennamen unterscheiden sich je Plattform, Sprache und Version — deshalb eine Liste von Synonymen (DE/EN) statt fester
 // Formate. Ablauf wie überall: erst Vorschau (nichts geschrieben), dann übernehmen. Zuordnung zu Folgen über den Link, sonst über den Titel;
 // was nicht eindeutig passt, bleibt in der Vorschau stehen und wird nicht geraten.
 
@@ -17,12 +17,12 @@ const SYNONYME: Record<Feld, string[]> = {
   // Tag der Veröffentlichung — nur zur Anzeige. Der Stand der Zahlen ist der Tag des Exports (`stand`), nie dieser Tag.
   veroeffentlicht: ['datum', 'date', 'post time', 'veröffentlicht', 'veroeffentlicht', 'publish time', 'video publish time', 'veröffentlichungszeit', 'posted', 'erstellt'],
   // YouTube zählt seit 31.03.2025 (Shorts) jeden Start als Aufruf — „Engaged views“ (die alte Zählung) geht vor, wenn der Export sie hat.
-  views: ['engaged views', 'engagierte aufrufe', 'views', 'aufrufe', 'video views', 'total views', 'plays', 'wiedergaben', 'videoaufrufe', 'ansichten'],
+  views: ['engaged views', 'engagierte aufrufe', 'views', 'aufrufe', 'video views', 'total views', 'plays', 'wiedergaben', 'videoaufrufe', 'ansichten', 'impressions', 'impressionen'],
   likes: ['likes', 'total likes', 'gefällt mir', 'gefaellt mir', 'reactions', 'reaktionen'],
   kommentare: ['comments', 'kommentare', 'total comments'],
-  shares: ['shares', 'geteilt', 'teilungen', 'total shares', 'sends'],
+  shares: ['shares', 'geteilt', 'teilungen', 'total shares', 'sends', 'reposts', 'direkt geteilt'],
   saves: ['saves', 'gespeichert', 'total saves', 'favorites', 'favoriten'],
-  follows: ['follows', 'new followers', 'neue follower', 'follower gewonnen', 'subscribers', 'abonnenten', 'subscribers gained', 'abonnenten gewonnen'],
+  follows: ['follows', 'new followers', 'neue follower', 'follower gewonnen', 'subscribers', 'abonnenten', 'subscribers gained', 'abonnenten gewonnen', 'followers gained'],
   halte3s: ['3s retention', 'hook rate', '3 sekunden', 'halterate 3s', 'retention 3s', 'stayed to watch'],
   durchsehen: ['completion rate', 'watched full video', 'full video watch rate', 'durchsehquote', 'vollständig angesehen', 'average percentage viewed', 'durchschnittlich angesehen in prozent'],
   schnittSek: ['average watch time', 'durchschnittliche wiedergabedauer', 'avg watch time', 'average view duration', 'durchschnittliche anzeigedauer'],

@@ -8,6 +8,7 @@
 // Hinweis, keine Rechtsberatung. Die Wortlisten sind bewusst klein und sprechen beide Sprachen; ein Treffer heißt „anschauen“, nicht „verboten“.
 
 import type { SocialFolge, SocialKanal, SocialFormat } from './typen';
+import { ZIEL_MIT_LINIE } from './typen';
 
 export type BefundStufe = 'stopp' | 'mensch' | 'hinweis';
 export interface Befund { stufe: BefundStufe; code: string; text: string }
@@ -24,7 +25,13 @@ const BERATUNG = [
   'diagnose', 'heilt', 'heilung', 'therapie', 'medikament', 'symptom', 'abnehmen garantiert', 'cure', 'diagnosis', 'medication', 'treatment',
   'investier', 'aktie', 'aktien', 'rendite', 'krypto', 'bitcoin', 'steuern sparen', 'steuertipp', 'invest in', 'stocks', 'crypto', 'returns', 'financial advice',
   'rechtsberatung', 'abmahnung', 'verklagen', 'anwalt sagt', 'legal advice', 'sue',
+  // Fitness/Ernährung (Heilmittelwerberecht § 3 HWG: keine Heil- oder sicheren Erfolgsversprechen) — 27.10., Vorlage Sportler:in.
+  'nahrungsergänzung', 'supplement', 'fatburner', 'entgiften', 'detox', 'garantiert abnehmen',
 ];
+/** Eigenes Erlebnis in erster Person — bei einer Personenmarke bestätigt nur die Person selbst, dass es so war (der Agent erfindet nie ein „ich habe …“). */
+const ICH_ERLEBNIS = /(^|[^\p{L}])(ich (habe|hab|hatte|war|bin gestern|bin letzte)|mir ist|letzte woche habe ich|bei mir war|mein(e|em|en)? (kunde|kundin|team|fehler|erster|erste|größter|größte)|i (have|had|was|did|made|learned|lost|built|failed)|my (client|team|first|biggest|mistake))([^\p{L}]|$)/iu;
+/** KI-Hinweis in einer Bio (Art. 50 KI-VO, „Antworten teils von KI“). */
+const KI_HINWEIS = /(\bKI\b|\bAI\b|künstlich|artificial|automatisiert|automated)/iu;
 /** Angebot/Preis/Werbung → immer eine Person (Leitplanke). */
 const ANGEBOT = /(\d[\d.,]*\s?(€|eur|euro|\$|usd)|(€|\$)\s?\d|\b(rabatt|gutschein|angebot|preis|kaufen|discount|coupon|price|buy now|promo code)\b)/iu;
 /** KI-Kanal: keine Behauptung von Leben, Gefühl oder Bewusstsein. */
@@ -81,12 +88,38 @@ export function folgePruefen(f: SocialFolge, k: PruefKontext): Befund[] {
   if (beratung.length) b.push({ stufe: 'mensch', code: 'beratung', text: `Klingt nach Beratung (${beratung.slice(0, 3).join(', ')}) — eine Person schaut drüber.` });
   if (ANGEBOT.test(alles)) b.push({ stufe: 'mensch', code: 'angebot', text: 'Angebot, Preis oder Werbung — geht nie ohne Person raus (und ist als Werbung zu kennzeichnen).' });
   if (BELEGPFLICHT.test(f.skript) && !f.quellen.length) b.push({ stufe: 'mensch', code: 'ohne-quelle', text: 'Zahlen oder Jahreszahlen ohne Quelle — Quelle eintragen oder Aussage entschärfen.' });
-  const soll = k.format?.laengeSek;
+  const soll = !k.format?.art || k.format.art === 'video' ? k.format?.laengeSek : undefined;
   const ist = sekundenAus(f.skript);
   if (soll && f.skript.trim() && (ist > soll * 1.6 || ist < soll * 0.4)) b.push({ stufe: 'mensch', code: 'laenge', text: `Gesprochen etwa ${ist} s, das Format sieht ${soll} s vor.` });
+  if (k.kanal.art === 'person' && ICH_ERLEBNIS.test(alles) && (!k.kanal.person || f.freigegebenVon !== k.kanal.person)) {
+    b.push({ stufe: 'mensch', code: 'erlebnis', text: 'Erzählt ein eigenes Erlebnis — nur die Person der Marke bestätigt, dass es so war (ihre Freigabe).' });
+  }
+  if (f.personenImBild === 'offen') b.push({ stufe: 'mensch', code: 'personen', text: 'Erkennbare Personen im Bild — erst mit ihrer Einwilligung (KUG § 22, DSGVO).' });
+  if (f.werbung) b.push({ stufe: 'mensch', code: 'werbung', text: 'Werbung oder Kooperation — geht nie ohne Person raus und wird beim Hochladen gekennzeichnet (§ 5a UWG).' });
 
   if (f.kiInhalt) b.push({ stufe: 'hinweis', code: 'ki-label', text: 'Beim Hochladen das KI-Label der Plattform setzen (KI-Bild oder KI-Stimme).' });
   if (!f.cta?.trim()) b.push({ stufe: 'hinweis', code: 'ohne-cta', text: 'Kein Aufruf am Ende (Kommentar, Speichern, Folgen).' });
+  if (f.personenImBild === 'einwilligung') b.push({ stufe: 'hinweis', code: 'einwilligung', text: 'Einwilligung der gezeigten Personen ablegen — sie ist jederzeit widerruflich.' });
+  return b;
+}
+
+/** Befunde, die eine Freigabe durch eine Person NICHT auflöst — sie bremsen auch eine freigegebene Folge. */
+export const BLEIBT_NACH_FREIGABE: readonly string[] = ['erlebnis', 'personen'];
+
+/**
+ * Einrichtung eines Kanals (27.10.): was am Account selbst fehlt. „stopp“/„mensch“ bremsen die Stufe 2 für ALLE Folgen des Kanals
+ * (autonomie.ts), „hinweis“ zeigt nur an. Hinweis, keine Rechtsberatung.
+ */
+export function kanalPruefen(k: SocialKanal): Befund[] {
+  const b: Befund[] = [];
+  if (!k.plattformen.length) b.push({ stufe: 'mensch', code: 'ohne-plattform', text: 'Noch keine Plattform gewählt.' });
+  if (k.art === 'person' && !k.person) b.push({ stufe: 'mensch', code: 'ohne-person', text: 'Personenmarke ohne Person — wessen Marke ist das? Ohne sie gibt niemand frei.' });
+  if (k.art === 'firma' && !k.gesellschaft) b.push({ stufe: 'mensch', code: 'ohne-absender', text: 'Firmenaccount ohne Gesellschaft — Absender und Impressum fehlen.' });
+  else if (!k.gesellschaft) b.push({ stufe: 'hinweis', code: 'impressum', text: 'Absender fürs Impressum wählen — auch ein geschäftlicher Account ohne Gesicht braucht einen Impressum-Link in der Bio (§ 5 DDG).' });
+  if (k.kiKanal && !KI_HINWEIS.test(k.marke.bio ?? '')) b.push({ stufe: 'mensch', code: 'ki-bio', text: 'Die Bio sagt nicht, dass hier eine KI spricht (Art. 50 KI-VO) — Instagram verlangt dafür auch das Label „KI-generiertes Profil“.' });
+  else if (k.leitplanken.autonomie === 2 && !k.leitplanken.antwortenAus && !KI_HINWEIS.test(k.marke.bio ?? '')) b.push({ stufe: 'hinweis', code: 'antworten-ki', text: 'Antwortet der Agent selbst, gehört „Antworten teils von KI“ in die Bio (Art. 50 KI-VO).' });
+  if (!k.ziele.length) b.push({ stufe: 'hinweis', code: 'ohne-ziel', text: 'Noch kein Ziel — ohne Ziel misst die Analyse nur gegen den eigenen Schnitt.' });
+  else if (!k.ziele.some(z => (ZIEL_MIT_LINIE as readonly string[]).includes(z.metrik))) b.push({ stufe: 'hinweis', code: 'ohne-zahlziel', text: 'Kein Ziel mit Termin (Follower oder Aufrufe bis …) — nur Takt und Qualität.' });
   return b;
 }
 

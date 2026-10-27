@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Hinweis, Leerzustand, Kennzahl, Raster, Feldzeile, feld, eingabe } from '../../ui';
 import { URTEIL_TEXT, type Urteil } from '@/lib/social/analyse';
-import { PLATTFORM_NAME, SOCIAL_PLATTFORMEN, type SocialPlattform, type SocialKanal } from '@/lib/social/typen';
+import { PLATTFORM_NAME, SOCIAL_PLATTFORMEN, INHALT_ARTEN, INHALT_ART_NAME, type SocialPlattform, type SocialKanal, type InhaltArt } from '@/lib/social/typen';
 import type { ImportVorschau } from '@/lib/social/csv';
 import { localDay } from '@/lib/zeit';
 import { datumKurz } from '@/lib/make-one/faelligkeit';
@@ -71,23 +71,30 @@ export function Formate({ api, kanal }: { api: SocialApi; kanal: MitStand<Social
   const [name, setName] = useState('');
   const [beschreibung, setBeschreibung] = useState('');
   const [laenge, setLaenge] = useState('');
+  const [art, setArt] = useState<InhaltArt>('video');
+  // Personenmarke: nur die Person selbst gibt frei (der Server lehnt sonst mit 403 ab) — der Knopf sagt es vorher.
+  const nurPerson = kanal.art === 'person' && !!kanal.person && kanal.person !== api.lage!.ich;
   return (
     <>
       <Karte>
         <Ueberschrift>Serienformate</Ueberschrift>
-        <p style={{ color: C.inkLeise, fontSize: TYP.bedien, marginTop: 0 }}>Ein freigegebenes Format darf der Agent in Stufe 2 selbst weiterführen. Wird es geändert, ist die Freigabe weg.</p>
+        <p style={{ color: C.inkLeise, fontSize: TYP.bedien, marginTop: 0 }}>Ein freigegebenes Format darf der Agent in Stufe 2 selbst weiterführen. Wird es geändert, ist die Freigabe weg.{nurPerson ? ' Bei dieser Personenmarke gibt nur die Person selbst frei.' : ''}</p>
         {formate.length === 0 ? <Leerzustand symbol="▤" titel="Noch keine Formate">Zum Beispiel „Day X“, „Der Fall“ oder „Ein Gedanke“ — mit Ziel-Länge.</Leerzustand>
           : <Liste>{formate.map(f => (
-            <Zeile key={f.id} titel={f.name} unter={[f.beschreibung, f.laengeSek ? `${f.laengeSek} s` : null].filter(Boolean).join(' · ') || undefined}
-              rechts={<Knopf leise={!!f.freigegebenAm} onClick={() => api.schreiben([{ op: 'format-freigeben', id: f.id, freigeben: !f.freigegebenAm, stand: f.stand }])}>{f.freigegebenAm ? 'Freigabe zurücknehmen' : 'Freigeben'}</Knopf>} />
+            <Zeile key={f.id} titel={f.name} unter={[INHALT_ART_NAME[f.art ?? 'video'], f.beschreibung, f.laengeSek ? `${f.laengeSek} s` : null].filter(Boolean).join(' · ') || undefined}
+              rechts={nurPerson && !f.freigegebenAm ? <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>wartet auf die Person</span>
+                : <Knopf leise={!!f.freigegebenAm} onClick={() => api.schreiben([{ op: 'format-freigeben', id: f.id, freigeben: !f.freigegebenAm, stand: f.stand }])}>{f.freigegebenAm ? 'Freigabe zurücknehmen' : 'Freigeben'}</Knopf>} />
           ))}</Liste>}
       </Karte>
       <Karte>
-        <form onSubmit={async e => { e.preventDefault(); if (await api.schreiben([{ op: 'format', eintrag: { kanalId: kanal.id, name, beschreibung, laengeSek: laenge ? Number(laenge) : undefined } }])) { setName(''); setBeschreibung(''); setLaenge(''); } }} style={{ display: 'grid', gap: 12 }}>
+        <form onSubmit={async e => { e.preventDefault(); if (await api.schreiben([{ op: 'format', eintrag: { kanalId: kanal.id, name, beschreibung, art, laengeSek: art === 'video' && laenge ? Number(laenge) : undefined } }])) { setName(''); setBeschreibung(''); setLaenge(''); } }} style={{ display: 'grid', gap: 12 }}>
           <Ueberschrift>Neues Format</Ueberschrift>
           <Feldzeile label="Name"><input style={eingabe} value={name} onChange={e => setName(e.target.value)} required maxLength={300} /></Feldzeile>
           <Feldzeile label="Was gehört dazu"><textarea style={{ ...feld, minHeight: 72 }} value={beschreibung} onChange={e => setBeschreibung(e.target.value)} maxLength={2000} /></Feldzeile>
-          <Feldzeile label="Ziel-Länge (Sekunden)"><input style={eingabe} inputMode="numeric" value={laenge} onChange={e => setLaenge(e.target.value)} /></Feldzeile>
+          <Feldzeile label="Art">
+            <select style={feld} value={art} onChange={e => setArt(e.target.value as InhaltArt)}>{INHALT_ARTEN.map(a => <option key={a} value={a}>{INHALT_ART_NAME[a]}</option>)}</select>
+          </Feldzeile>
+          {art === 'video' && <Feldzeile label="Ziel-Länge (Sekunden)"><input style={eingabe} inputMode="numeric" value={laenge} onChange={e => setLaenge(e.target.value)} /></Feldzeile>}
           <div><Knopf typ="submit">Format anlegen</Knopf></div>
         </form>
       </Karte>
