@@ -542,6 +542,33 @@ export function verarbeitungWhatsappNachtragen(vorhanden: readonly Verarbeitung[
   return vorhanden.some(v => v.id === VV_WHATSAPP_ID) ? [...vorhanden] : [...vorhanden, verarbeitungWhatsapp(jetzt)];
 }
 
+// ── Verarbeitung „Innovations-Check der Website“ (24.10., lib/check/*) — idempotent nachgetragen, sobald der Check eingeschaltet ist ──
+// Beta: Zoe mit festen Texten, keine Antwort an ein KI-Modell, Kontaktdaten erst nach dem Kurzcheck und freiwillig. Hinweis, keine
+// Rechtsberatung — anwaltlich gegenlesen (offener Punkt der Bauanleitung); bei Live-KI, Sprache, Upload oder Mail-Strecke neu fassen.
+
+export const VV_CHECK_ID = 'vv-innovations-check';
+
+export function verarbeitungCheck(jetzt: string): Verarbeitung {
+  return {
+    id: VV_CHECK_ID, name: 'Innovations-Check der Website',
+    zweck: 'Kostenlose Standortbestimmung für Unternehmen: Antworten per Klick auswerten (Stufe, Dimensionen, Branchenvergleich), auf Wunsch Bericht und kostenloses Gespräch, Anfrage im Kundensystem (Follow-up), Kennzahlen des Checks',
+    personen: 'Unternehmerinnen, Unternehmer und Mitarbeitende, die den Check ausfüllen; Konten des Haushalts (Bearbeitung)',
+    daten: 'Antworten zur Firma (Klicks, Beispiel-Texte), Profil (Branche, Größe, Rolle, Ziel), freiwillig Vorname, E-Mail, Firma, Telefon, Newsletter-Wunsch, Fassung des Hinweises, Herkunft (Quelle), Ergebnis und Lead-Klasse, Zeitpunkte; Zugang je Sitzung nur über ein Zufalls-Token (gespeichert als Fingerabdruck)',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (vom Teilnehmer angefragte Auswertung, Bericht und Gespräch); Newsletter nur mit eigener Checkbox und Double-Opt-in (Art. 6 Abs. 1 lit. a, § 7 UWG)',
+    empfaenger: 'Konten des Haushalts (Business-Bereich); Hetzner (Hosting) — keine Weitergabe an ein KI-Modell in dieser Fassung',
+    empfaengerIds: ['hetzner'],
+    drittland: 'keine',
+    loeschfrist: 'ohne Kontaktdaten 30 Tage, mit Kontaktdaten 24 Monate nach der letzten Änderung (für den kostenlosen Re-Check); Anfrage im Kundensystem nach den Fristen der Kartei; Art. 17 sofort',
+    toms: 'Öffentliche Strecke nur über eine eng gefasste Adresse, kommt ausgeschaltet; Token je Sitzung (nur als Fingerabdruck gespeichert), Drossel je Netz, Honigtopf, Mindestzeit vor den Kontaktdaten, Größengrenzen; strenge Sicherheits-Köpfe (keine Rahmen, kein Referrer, nicht indexieren); Punkte und Bewertungen nie im Browser; Bestände verschlüsselt auf der Platte, Server in Deutschland (Hetzner); Zugang zur Auswertung nur im Haushalt',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „Innovations-Check der Website“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungCheckNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_CHECK_ID) ? [...vorhanden] : [...vorhanden, verarbeitungCheck(jetzt)];
+}
+
 // ── Verarbeitung „ZOE auf WhatsApp (Meta, ZOE-Kanal)“ (08.10., Roadmap Lücke 5) — idempotent nachgetragen, sobald die ZOE-Nummer eingerichtet ist ──
 // Kevin 08.10. (R5): „Zweite Business-Nummer nur für ZOE.“ Nur die Personen des Haushalts, je Person mit Einwilligung. Hinweis, keine
 // Rechtsberatung — anwaltlich gegenlesen; Speicherort-Wahl (Local Storage „DE“ bzw. „No Storage“) vor der Registrierung der Nummer.
@@ -730,7 +757,7 @@ export function verarbeitungNeutral(v: Verarbeitung): Verarbeitung {
   return v.empfaengerIds ? { ...aus, empfaengerIds: v.empfaengerIds.filter(id => !NUR_BETREIBER_EMPFAENGER.includes(id)) } : aus;
 }
 
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -742,6 +769,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   if (opt.whoop) l = verarbeitungWhoopNachtragen(l, jetzt);
   // ZOE auf WhatsApp (08.10.): sobald die ZOE-Nummer eingerichtet ist (`zoeWhatsappEingerichtet`).
   if (opt.zoeWhatsapp) l = verarbeitungZoeWhatsappNachtragen(l, jetzt);
+  // Innovations-Check der Website (24.10.): sobald er eingeschaltet ist (`ladeCheckEinstellungen().aktiv`).
+  if (opt.check) l = verarbeitungCheckNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = verarbeitungEmailKundenNachtragen(l, jetzt);

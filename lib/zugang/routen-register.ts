@@ -429,6 +429,10 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'buchung/[slug]': r('GET,POST', 'offen', 'Öffentliche Buchungsseite (K4): enge Regex in der Middleware, Drossel, Honigtopf, Stempel, Größe — handelt nie als Person.'),
   'buchung/[slug]/status': r('POST', 'offen', 'Status einer Buchung (K4) — wie oben, mit Token.'),
 
+  // ── Innovations-Check (öffentlich, 24.10.) ─────────────────────────────────────────────────────────────────
+  'check': r('POST', 'offen', 'Öffentliche Strecke des Innovations-Checks: enge Regex in der Middleware, kommt AUS (404), Token je Sitzung (nur SHA-256), Drossel, Honigtopf, Mindestzeit, Größe — handelt nie als Person.'),
+  'check/intern': r('GET,POST', 'haushalt', 'Eingegangene Checks, Beleg-Bewertung, Lead nachholen, Löschen — Haushalt des Inhabers mit Person; Einstellungen (an/aus, Buchungsseite, Gastgeber) nur der Inhaber.'),
+
   // ── Konto, Anmeldung, System ───────────────────────────────────────────────────────────────────────────────
   // ── Datenschutz (05.10., DSGVO-Pakete) ────────────────────────────────────────────────────────────────────
   'datenschutz/einrichtung': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Verantwortlicher, Empfänger/AVV der Instanz: ansehen im Haushalt, pflegen nur der Inhaber von Hand.'),

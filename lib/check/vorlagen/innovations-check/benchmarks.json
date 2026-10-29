@@ -1,0 +1,21 @@
+{
+ "version": "1.0",
+ "stand": "2026-10-24",
+ "hinweis": "Öffentliche Zahlen als Start. Ab 20 Teilnehmern je Branche zusätzlich eigener Vergleich ('Unternehmen wie Ihres im Check'). Immer Quelle und Jahr im Bericht nennen. Werte je Wirtschaftszweig aus den Destatis-Tabellen zur IKT-Erhebung werden vor dem Start ergänzt, der Inhaber prüft Stichproben. Jährlich aktualisieren.",
+ "quellen": [
+  {"id": "bitkom_2026", "quelle": "Bitkom", "datum": "2026-09-14", "kennzahl": "Unternehmen ab 20 Beschäftigten, die KI einsetzen", "werte": {"nutzen": 57, "nutzen_vorjahr_2025": 36, "planen_oder_diskutieren": 38, "kein_thema": 4}, "einheit": "%", "einsatz": "Grundvergleich KI im Alltag"},
+  {"id": "destatis_2024_groesse", "quelle": "Destatis", "datum": "2024-11-25", "jahr_der_daten": 2024, "kennzahl": "KI-Nutzung nach Größe", "werte": {"10-49": 17, "50-249": 28, "250+": 48}, "einheit": "%", "einsatz": "Vergleich nach Unternehmensgröße"},
+  {"id": "destatis_2024_bereiche", "quelle": "Destatis", "datum": "2024-11-25", "kennzahl": "Wofür KI genutzt wird (Anteil der KI-nutzenden Unternehmen)", "werte": {"marketing_vertrieb": 33, "produktion_service": 25, "verwaltung": 24, "buchhaltung_finanzen": 24}, "einheit": "%", "einsatz": "Vergleich der Einsatzbereiche (Frage C4)"},
+  {"id": "iw_eco_2026", "quelle": "IW Consult für eco", "datum": "2026-07-08", "kennzahl": "Unternehmen, die KI nutzen, und Gründe dagegen", "werte": {"nutzen": 40, "nutzen_unter_50_beschaeftigte": 40, "grund_kein_bezug": 61, "grund_keine_kapazitaet": 34, "grund_datenschutz": 29}, "einheit": "%", "einsatz": "kleine Unternehmen, Einwände in der E-Mail-Strecke"},
+  {"id": "ifr_2026", "quelle": "IFR", "datum": "2026-04-08", "kennzahl": "Roboter je 10.000 Beschäftigte in der Industrie", "werte": {"deutschland": 449, "eu": 231, "welt": 132}, "einheit": "Anzahl", "einsatz": "Robotik bei Produktion und Handwerk"}
+ ],
+ "dimension_benchmark_start": {
+  "status": "Startwerte (Annahme aus den Quellen oben), werden durch eigene Daten ersetzt, sobald 20 Checks je Branche und Größe vorliegen",
+  "werte_0_100": {
+   "default":        {"strategie": 35, "ki": 40, "automatisierung": 35, "daten": 45, "robotik": 15, "team": 35},
+   "handwerk":       {"strategie": 25, "ki": 25, "automatisierung": 25, "daten": 30, "robotik": 15, "team": 25},
+   "dienstleistung": {"strategie": 35, "ki": 45, "automatisierung": 35, "daten": 45, "robotik": 0,  "team": 40},
+   "tech":           {"strategie": 50, "ki": 60, "automatisierung": 50, "daten": 60, "robotik": 0,  "team": 55}
+  }
+ }
+}

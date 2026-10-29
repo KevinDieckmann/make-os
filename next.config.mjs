@@ -64,6 +64,10 @@ const nextConfig = {
       // nicht indexieren, nicht zwischenspeichern, CSP ohne fremde Quellen).
       { source: '/angebot/:pfad*', headers: buchung },
       { source: '/api/angebot/:pfad*', headers: buchung },
+      // Innovations-Check (24.10., lib/check/*): öffentliche Strecke — dieselbe strenge Richtlinie (kein Referrer, keine Rahmen, nicht indexieren,
+      // nicht zwischenspeichern, CSP ohne fremde Quellen; das Token liegt nur im Browser).
+      { source: '/check', headers: buchung },
+      { source: '/api/check', headers: buchung },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten
