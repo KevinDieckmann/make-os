@@ -13,7 +13,7 @@
 .kopf.ueber-film .menue summary { border-color: rgba(242, 243, 243, .34); }
 
 /* ── Der Film: eine Bühne, die beim Scrollen steht ── */
-.film { position: relative; height: 440vh; background: var(--nacht); color: var(--hell); }
+.film { position: relative; height: 300vh; background: var(--nacht); color: var(--hell); }
 .buehne { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: hidden; --r: min(15vh, 24vw); --r: min(15dvh, 24vw); }
 .szene, .ersatz { position: absolute; inset: 0; width: 100%; height: 100%; }
 .szene { display: block; opacity: 0; transition: opacity 1.4s ease; }
@@ -40,7 +40,7 @@
 .block[data-block="laerm"] .film-text { bottom: max(11vh, 80px); }
 
 /* Die Aufgaben rund um den Gründer: leise, langsam schwebend, sie ziehen sich zur Mitte und treten zurück */
-.aufgaben { position: absolute; inset: 0; pointer-events: none; opacity: 0; transform-origin: 50% 44%; transition: opacity .9s ease; }
+.aufgaben { position: absolute; inset: 7vh 0 0 0; pointer-events: none; opacity: 0; transform-origin: 50% 44%; transition: opacity .9s ease; }
 .aufgabe { position: absolute; display: inline-flex; align-items: center; gap: 9px; white-space: nowrap; color: rgba(242, 243, 243, .5); font-size: clamp(.82rem, 1vw, .98rem); font-weight: 500; }
 .aufgabe::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid rgba(242, 243, 243, .42); flex: none; }
 .aufgabe:nth-child(1) { left: 9%; top: 19%; } .aufgabe:nth-child(2) { left: 31%; top: 14%; } .aufgabe:nth-child(3) { left: 61%; top: 17%; }
@@ -81,7 +81,7 @@
 .ruhig .ende-marke > * { opacity: 1; translate: none; transition: none; }
 
 @media (max-width: 760px) {
-  .film { height: 400vh; }
+  .film { height: 280vh; }
   .aufgabe:nth-child(n+8) { display: none; }
   .aufgabe:nth-child(1) { left: 6%; top: 15%; } .aufgabe:nth-child(2) { left: 52%; top: 12%; } .aufgabe:nth-child(3) { left: 14%; top: 27%; }
   .aufgabe:nth-child(4) { left: 58%; top: 24%; } .aufgabe:nth-child(5) { left: 4%; top: 40%; } .aufgabe:nth-child(6) { left: 48%; top: 37%; }
@@ -89,4 +89,15 @@
   .film-text { bottom: max(9vh, 48px); }
   .film-titel { font-size: clamp(1.9rem, 8.6vw, 2.6rem); }
   .block[data-block="laerm"] .film-text { bottom: max(12vh, 84px); }
+}
+
+/* Die Agentur ist ab dem ersten Bild erkennbar; „Film überspringen“ führt direkt zum Einstieg (29.10.). */
+.film-marke { position: absolute; left: 50%; top: calc(var(--kopf) + max(3vh, 16px)); translate: -50% 0; width: calc(100% - 2 * var(--rand)); margin: 0; text-align: center; font-size: .74rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--leise-dunkel); }
+.ueberspringen { position: absolute; z-index: 3; right: var(--rand); bottom: max(3vh, 18px); display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid rgba(242, 243, 243, .28); border-radius: 999px; color: var(--hell); font-size: .86rem; font-weight: 500; background: rgba(11, 12, 15, .4); transition: background-color .2s ease, border-color .2s ease; }
+.ueberspringen:hover { background: rgba(242, 243, 243, .1); border-color: rgba(242, 243, 243, .5); }
+.ruhig .ueberspringen { display: none; }
+@media (max-width: 760px) {
+  .film-marke { font-size: .66rem; letter-spacing: .12em; }
+  .ueberspringen { bottom: 12px; min-height: 40px; font-size: .8rem; }
+  .block[data-block="laerm"] .film-text { bottom: max(14vh, 96px); }
 }

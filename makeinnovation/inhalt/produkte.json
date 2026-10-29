@@ -3,21 +3,21 @@
   "quelle": "Kevins Produktblätter (freigegeben am 25.10.2026): Head of Sales, Chief Sales Officer, Homepages, Videos. Nur die Teile für Kunden — Ablauf intern, Aufgaben, Mails, Prompts und Vorlagen gehören in die App, nicht auf die Website.",
   "familien": {
     "homepages": {
-      "problem": "Die Website ist alt, sieht auf dem Handy schlecht aus und bringt keine Anfragen. Besucher verstehen in 5 Sekunden nicht, was du machst und warum sie dich anrufen sollen. Selbst bauen kostet Wochen, eine klassische Agentur Monate und fünfstellige Summen.",
+      "problem": "Die Website ist alt, sieht auf dem Handy schlecht aus und bringt keine Anfragen. Besucher verstehen in 5 Sekunden nicht, was Sie machen und warum sie bei Ihnen anrufen sollen. Selbst bauen kostet Wochen, eine klassische Agentur Monate und fünfstellige Summen.",
       "nicht_fuer": "Shops, Mitgliederbereiche, Buchungssysteme, mehrsprachige Seiten.",
       "immer": [
-        "Design in deiner CI, mobil zuerst",
-        "Texte von uns, auf Basis deines Onboarding-Formulars",
+        "Design in Ihrer CI, mobil zuerst",
+        "Texte von uns, auf Basis Ihres Onboarding-Formulars",
         "Impressum, Datenschutz, Cookie-Hinweis",
-        "Kontaktformular mit Eintrag in dein CRM",
+        "Kontaktformular mit Eintrag in Ihr CRM",
         "SEO-Grundlagen und Google Search Console",
         "Ladezeit unter 3 Sekunden auf dem Handy",
         "Kalender-Link, Social-Media-Links, Google Maps",
         "Einweisung 30 Minuten"
       ],
       "ergebnis": [
-        "Eine Seite, auf der Besucher in 5 Sekunden verstehen, was du machst, und mit einem Klick anfragen.",
-        "Jede Anfrage landet direkt in deinem CRM.",
+        "Eine Seite, auf der Besucher in 5 Sekunden verstehen, was Sie machen, und mit einem Klick anfragen.",
+        "Jede Anfrage landet direkt in Ihrem CRM.",
         "Nach 30 Tagen schauen wir gemeinsam, wie viele Anfragen die Seite gebracht hat."
       ],
       "konditionen": [
@@ -31,7 +31,7 @@
         ],
         [
           "Hosting und Domain",
-          "laufen über dich, damit dir alles gehört; wir richten alles ein"
+          "laufen über Sie, damit Ihnen alles gehört; wir richten alles ein"
         ],
         [
           "Abnahme",
@@ -44,7 +44,7 @@
       ],
       "mitwirkung": [
         "Das Onboarding-Formular vollständig ausgefüllt (etwa 20 Minuten). Die Lieferzeit startet, sobald Formular und Zahlung da sind.",
-        "Logo, Fotos und 3 Kundenstimmen oder den Link zu deinem Google-Profil",
+        "Logo, Fotos und 3 Kundenstimmen oder den Link zu Ihrem Google-Profil",
         "Freigaben innerhalb von 3 Werktagen",
         "Korrekturen gesammelt in einer Liste pro Schleife"
       ],
@@ -62,11 +62,11 @@
         },
         {
           "frage": "Muss ich die Texte selbst schreiben?",
-          "antwort": "Nein. Wir schreiben alle Texte auf Basis deines Formulars und des Kick-offs. Du gibst nur frei oder korrigierst."
+          "antwort": "Nein. Wir schreiben alle Texte auf Basis Ihres Formulars und des Kick-offs. Sie geben nur frei oder korrigieren."
         },
         {
           "frage": "Wo liegt die Seite und was kostet das laufend?",
-          "antwort": "Domain und Hosting laufen über dich, damit dir alles gehört. Wir richten es ein. Die laufenden Kosten zahlst du direkt an deinen Anbieter."
+          "antwort": "Domain und Hosting laufen über Sie, damit Ihnen alles gehört. Wir richten es ein. Die laufenden Kosten zahlen Sie direkt an Ihren Anbieter."
         },
         {
           "frage": "Was zählt als Korrektur, was als Nachtrag?",
@@ -74,20 +74,20 @@
         },
         {
           "frage": "Kann ich später auf ein größeres Paket wechseln?",
-          "antwort": "Ja, innerhalb von 3 Monaten nach Abnahme. Du zahlst nur die Differenz.",
+          "antwort": "Ja, innerhalb von 3 Monaten nach Abnahme. Sie zahlen nur die Differenz.",
           "ohne": [
             "homepage-cinematic"
           ]
         },
         {
-          "frage": "Kümmert ihr euch um Impressum und Datenschutz?",
-          "antwort": "Wir binden Impressum und Datenschutzerklärung ein. Die Inhalte lieferst du oder dein Datenschutz-Generator. Rechtsberatung ist nicht enthalten."
+          "frage": "Kümmern Sie sich um Impressum und Datenschutz?",
+          "antwort": "Wir binden Impressum und Datenschutzerklärung ein. Die Inhalte liefern Sie oder Ihr Datenschutz-Generator. Rechtsberatung ist nicht enthalten."
         }
       ],
-      "naechster": "Wähl direkt dein Paket, oder mach zuerst den kostenlosen Innovations-Check und kläre im 90-Tage-Umsetzungsgespräch danach, was am meisten bringt."
+      "naechster": "Wählen Sie direkt Ihr Paket, oder machen Sie zuerst den kostenlosen Innovations-Check und klären Sie im 90-Tage-Umsetzungsgespräch danach, was am meisten bringt."
     },
     "videos": {
-      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, was du machst. Text wird überflogen, ein Dreh mit Agentur kostet Tausende Euro und Wochen. Und wer einmal ein Video hat, weiß nicht, was er nächsten Monat posten soll.",
+      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, was Sie machen. Text wird überflogen, ein Dreh mit Agentur kostet Tausende Euro und Wochen. Und wer einmal ein Video hat, weiß nicht, was er nächsten Monat posten soll.",
       "nicht_fuer": "Imagefilme mit Dreh vor Ort, Studiosprecher, Videos über 90 Sekunden.",
       "immer": [
         "Formate 16:9, 9:16 und 1:1",
@@ -95,7 +95,7 @@
         "lizenzfreie Musik",
         "Thumbnails",
         "KI-Kennzeichnung, wo nötig",
-        "Design in deiner CI"
+        "Design in Ihrer CI"
       ],
       "katalog": [
         {
@@ -146,7 +146,7 @@
       ],
       "mitwirkung": [
         "Onboarding-Formular, Logo, CI-Farben",
-        "Fotos oder Videos, wenn du eigenes Material zeigen willst (sonst KI-Bilder)",
+        "Fotos oder Videos, wenn Sie eigenes Material zeigen wollen (sonst KI-Bilder)",
         "Bei eigener Stimme: Aufnahme mit dem Handy nach unserer Anleitung",
         "Freigaben innerhalb von 3 Werktagen"
       ],
@@ -159,7 +159,7 @@
       "fragen": [
         {
           "frage": "Muss ich vor die Kamera?",
-          "antwort": "Nein. Wir arbeiten mit KI-Szenen, deinem Material und einer KI-Stimme. Bei Videostory und Video Serie kannst du auch selbst sprechen, mit unserer Anleitung für die Handy-Aufnahme."
+          "antwort": "Nein. Wir arbeiten mit KI-Szenen, Ihrem Material und einer KI-Stimme. Bei Videostory und Video Serie können Sie auch selbst sprechen, mit unserer Anleitung für die Handy-Aufnahme."
         },
         {
           "frage": "Wie schnell ist das Video fertig?",
@@ -167,7 +167,7 @@
         },
         {
           "frage": "Darf ich das Video überall nutzen?",
-          "antwort": "Ja. Nach voller Zahlung darfst du es unbefristet nutzen, auch für bezahlte Anzeigen. Du bekommst 16:9, 9:16 und 1:1, Untertitel und Thumbnails."
+          "antwort": "Ja. Nach voller Zahlung dürfen Sie es unbefristet nutzen, auch für bezahlte Anzeigen. Sie bekommen 16:9, 9:16 und 1:1, Untertitel und Thumbnails."
         },
         {
           "frage": "Was passiert mit Videos der Serie, die ich nicht abrufe?",
@@ -188,12 +188,12 @@
           "antwort": "Formate wie Kundenergebnis oder „Unser Kunde erzählt“ bieten wir an, sobald echte Kunden mit schriftlicher Zustimmung dabei sind."
         }
       ],
-      "naechster": "Wähl ein Format, oder mach zuerst den kostenlosen Innovations-Check. Beliebt zusammen mit einer Homepage: Bei Cinematic ist ein Erklärvideo schon drin."
+      "naechster": "Wählen Sie ein Format, oder machen Sie zuerst den kostenlosen Innovations-Check. Beliebt zusammen mit einer Homepage: Bei Cinematic ist ein Erklärvideo schon drin."
     }
   },
   "produkte": {
     "head-of-sales": {
-      "versprechen": "Aus Interesse werden planbar Kunden: Dein Vertrieb läuft nach einem System, das dein Team ohne dich bedient.",
+      "versprechen": "Aus Interesse werden planbar Kunden: Ihr Vertrieb läuft nach einem System, das Ihr Team ohne Sie bedient.",
       "fuer": [
         "Innovationsbegeisterte Unternehmer mit fertigem Produkt, 5 bis 50 Mitarbeitende",
         "Tech, KI, FinTech, innovative Dienstleister und Handwerk, Gesundheit, Sport, Ernährung",
@@ -201,7 +201,7 @@
       ],
       "nicht_fuer": "Firmen ohne fertiges Produkt, Konzerne mit Einkaufsabteilung, reine Kaltakquise-Telefonteams, Network-Marketing.",
       "problem": "Der Gründer verkauft selbst, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, niemand weiß, wie viele Gespräche es für das Jahresziel braucht. Neue Vertriebler kosten Monate und bringen wenig, weil es kein System gibt, in das sie einsteigen können.",
-      "loesung": "Wir übernehmen die Rolle des Vertriebsleiters auf Zeit. Wir bauen das System, setzen es mit deinem Team um und übergeben es so, dass es ohne uns weiterläuft. Wir beraten nicht nur, wir setzen mit um.",
+      "loesung": "Wir übernehmen die Rolle des Vertriebsleiters auf Zeit. Wir bauen das System, setzen es mit Ihrem Team um und übergeben es so, dass es ohne uns weiterläuft. Wir beraten nicht nur, wir setzen mit um.",
       "bausteine": [
         {
           "name": "Fundament",
@@ -231,7 +231,7 @@
           [
             "Monat 1",
             "Ankommen und analysieren",
-            "Ergebnisbild, Quick Win aus deinem Bestand"
+            "Ergebnisbild, Quick Win aus Ihrem Bestand"
           ],
           [
             "Monat 2",
@@ -258,8 +258,8 @@
       },
       "ergebnis": [
         "Ab Monat 3 läuft jedes Gespräch nach Prozess im CRM und ist sauber dokumentiert.",
-        "Ab Monat 3 kommt jeden Freitag der Wochenreport mit deinen Zahlen.",
-        "Ziel bis Monat 6: Dein Team erreicht die Terminzahl aus der Rückwärtsrechnung und schließt ohne dich ab."
+        "Ab Monat 3 kommt jeden Freitag der Wochenreport mit Ihren Zahlen.",
+        "Ziel bis Monat 6: Ihr Team erreicht die Terminzahl aus der Rückwärtsrechnung und schließt ohne Sie ab."
       ],
       "ergebnis_hinweis": "Wir schulden die Leistung, nicht den Umsatz. Was wir zusagen, liefern wir.",
       "konditionen": [
@@ -305,38 +305,38 @@
         "Sales Playbook Teil 1 ausgefüllt innerhalb von 4 Wochen",
         "einen festen Ansprechpartner mit Entscheidungsbefugnis",
         "Teilnahme am wöchentlichen Vertriebs-Call (30 Minuten)",
-        "Dein Team führt die Gespräche selbst, wir machen vor."
+        "Ihr Team führt die Gespräche selbst, wir machen vor."
       ],
       "fragen": [
         {
           "frage": "Brauche ich schon ein CRM?",
-          "antwort": "Nein. Wenn du keins hast, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stages, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten trägst du."
+          "antwort": "Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stages, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie."
         },
         {
           "frage": "Wer führt die Verkaufsgespräche?",
-          "antwort": "Dein Team. Wir machen vor, trainieren mit Rollenspielen und besprechen echte Calls nach. So bleibt das Wissen bei dir, wenn wir gehen."
+          "antwort": "Ihr Team. Wir machen vor, trainieren mit Rollenspielen und besprechen echte Calls nach. So bleibt das Wissen bei Ihnen, wenn wir gehen."
         },
         {
           "frage": "Wie viel Zeit kostet mich das?",
-          "antwort": "Rund 3 bis 4 Stunden für das Sales Playbook Teil 1 im ersten Monat, danach 30 Minuten Wochen-Call und kurze Freigaben. Dein Team braucht Zeit für Training und Gespräche."
+          "antwort": "Rund 3 bis 4 Stunden für das Sales Playbook Teil 1 im ersten Monat, danach 30 Minuten Wochen-Call und kurze Freigaben. Ihr Team braucht Zeit für Training und Gespräche."
         },
         {
           "frage": "Was, wenn es nach 3 Monaten nicht passt?",
-          "antwort": "Du kannst einmalig zum Ende des dritten Monats kündigen, mit 30 Tagen Frist. In Woche 8 bekommst du dafür eine Zwischenbilanz mit Zahlen und Fahrplan."
+          "antwort": "Sie können einmalig zum Ende des dritten Monats kündigen, mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Fahrplan."
         },
         {
           "frage": "Was ist der Unterschied zum Chief Sales Officer?",
-          "antwort": "Der Head of Sales baut und führt den Vertrieb. Der Chief Sales Officer macht das auch und verantwortet dazu Strategie, Preise, Teamaufbau und Recruiting. Du kannst jederzeit zum CSO wechseln."
+          "antwort": "Der Head of Sales baut und führt den Vertrieb. Der Chief Sales Officer macht das auch und verantwortet dazu Strategie, Preise, Teamaufbau und Recruiting. Sie können jederzeit zum CSO wechseln."
         },
         {
           "frage": "Gehören Skripte und Playbooks danach mir?",
-          "antwort": "Ja. Nach Zahlung darfst du alle Vorlagen, Skripte und Playbooks in deinem Unternehmen zeitlich unbegrenzt nutzen."
+          "antwort": "Ja. Nach Zahlung dürfen Sie alle Vorlagen, Skripte und Playbooks in Ihrem Unternehmen zeitlich unbegrenzt nutzen."
         }
       ],
-      "naechster": "Mach zuerst den kostenlosen Innovations-Check. Im 90-Tage-Umsetzungsgespräch danach klären wir, ob der Head of Sales dein nächster Schritt ist. Wer erst testen will, startet mit dem Tagesworkshop (1.900 €), der beim Mandat voll angerechnet wird."
+      "naechster": "Machen Sie zuerst den kostenlosen Innovations-Check. Im 90-Tage-Umsetzungsgespräch danach klären wir, ob der Head of Sales Ihr nächster Schritt ist. Wer erst testen will, startet mit dem Tagesworkshop (1.900 €), der beim Mandat voll angerechnet wird."
     },
     "cso": {
-      "versprechen": "Wir führen deinen Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis deine eigene Vertriebsleitung übernimmt.",
+      "versprechen": "Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.",
       "fuer": [
         "Alle Firmen, für die auch der Head of Sales passt",
         "Firmen, die ein Vertriebsteam aufbauen oder vergrößern wollen (mindestens eine neue Vertriebsrolle in 12 Monaten)",
@@ -357,7 +357,7 @@
         },
         {
           "name": "Recruiting, Teamaufbau und Führung",
-          "text": "Stellenanzeige und Bewerbertrichter, Interview und bezahlter Probetag, Onboarding mit Stempelkarte (10 Stationen), Führung von bis zu 10 Vertrieblern, Übergabe an deine interne Vertriebsleitung"
+          "text": "Stellenanzeige und Bewerbertrichter, Interview und bezahlter Probetag, Onboarding mit Stempelkarte (10 Stationen), Führung von bis zu 10 Vertrieblern, Übergabe an Ihre interne Vertriebsleitung"
         },
         {
           "name": "Produktfeedback und Markt",
@@ -401,7 +401,7 @@
             "Vertrieb ohne Gründer, Playbook Teil 2 und 3, Übergabeplan, Abschlussbericht"
           ]
         ],
-        "hinweis": "Bei 12 Monaten: Monate 7 bis 9 Team ausbauen, Partnerschaften und Testmarkt; Monate 10 bis 12 übernimmt deine interne Vertriebsleitung."
+        "hinweis": "Bei 12 Monaten: Monate 7 bis 9 Team ausbauen, Partnerschaften und Testmarkt; Monate 10 bis 12 übernimmt Ihre interne Vertriebsleitung."
       },
       "ergebnis": [
         "Bis Ende Monat 2 sind Go-to-Market-Plan, Preislogik sowie Rollen- und Vergütungsmodell freigegeben.",
@@ -436,7 +436,7 @@
         ],
         [
           "Fremdkosten",
-          "Stellenanzeigen, Recruiting-Tools, Probetag-Vergütung und Werbebudget trägst du direkt"
+          "Stellenanzeigen, Recruiting-Tools, Probetag-Vergütung und Werbebudget tragen Sie direkt"
         ],
         [
           "Reisekosten",
@@ -455,7 +455,7 @@
         "Alles, was der Head of Sales braucht",
         "Die Geschäftsführung ist beim Strategie-Workshop (3 Stunden) und im monatlichen Strategie-Call dabei",
         "Zugang zu Marge oder Deckungsbeitrag je Produkt, Preisliste, Rabattpraxis und Vertriebskosten",
-        "Du stellst ein: Arbeitsverträge, Gehälter und Personalentscheidungen liegen bei dir",
+        "Sie stellen ein: Arbeitsverträge, Gehälter und Personalentscheidungen liegen bei Ihnen",
         "Strategie-Entscheidungen innerhalb von 2 Wochen"
       ],
       "abgrenzung": "Keine Personalvermittlung, keine Anlage- oder Kapitalvermittlung, keine Arbeits-, Steuer- oder Rechtsberatung. Intros aus dem MAKE-Netzwerk frühestens nach 6 Monaten, nur nach Freigabe beider Seiten und ohne Provision.",
@@ -465,15 +465,15 @@
           "antwort": "Der Chief Sales Officer enthält den Head of Sales komplett. Dazu kommen Strategie, Markt und Segmente, Preislogik, Wachstumsplan, Rollen und Vergütung, Recruiting und die Führung des Vertriebsteams."
         },
         {
-          "frage": "Wie viel Zeit bringt ihr ein?",
+          "frage": "Wie viel Zeit bringen Sie ein?",
           "antwort": "30 bis 35 Stunden im Monat, fest eingeplant. Dazu kommen der Wochen-Call und ein monatlicher Strategie-Call mit der Geschäftsführung."
         },
         {
-          "frage": "Stellt ihr unsere Vertriebler ein?",
-          "antwort": "Wir bauen Rollenmodell, Stellenanzeige, Interviewleitfaden und Probetag und führen die Interviews mit dir. Die Entscheidung und den Arbeitsvertrag machst du. Stellenanzeigen und Recruiting-Tools zahlst du direkt."
+          "frage": "Stellen Sie unsere Vertriebler ein?",
+          "antwort": "Wir bauen Rollenmodell, Stellenanzeige, Interviewleitfaden und Probetag und führen die Interviews mit Ihnen. Die Entscheidung und den Arbeitsvertrag machen Sie. Stellenanzeigen und Recruiting-Tools zahlen Sie direkt."
         },
         {
-          "frage": "Bringt ihr Kontakte oder Investoren mit?",
+          "frage": "Bringen Sie Kontakte oder Investoren mit?",
           "antwort": "Intros zu Partnern gibt es frühestens nach 6 Monaten und nur bei langfristiger Zusammenarbeit. Für Investoren und Banken bereiten wir das Datenblatt Vertrieb vor. Eine Anlage- oder Kapitalvermittlung machen wir nicht."
         },
         {
@@ -482,14 +482,14 @@
         },
         {
           "frage": "Was passiert am Ende?",
-          "antwort": "Wir übergeben an deine interne Vertriebsleitung, mit Übergabeplan in 4 Schritten und dem Sales Playbook Teil 3."
+          "antwort": "Wir übergeben an Ihre interne Vertriebsleitung, mit Übergabeplan in 4 Schritten und dem Sales Playbook Teil 3."
         }
       ],
-      "naechster": "Mach zuerst den kostenlosen Innovations-Check und kläre im 90-Tage-Umsetzungsgespräch danach, ob der Chief Sales Officer passt. Oder starte mit dem Tagesworkshop (1.900 €), er wird beim Mandat angerechnet."
+      "naechster": "Machen Sie zuerst den kostenlosen Innovations-Check und klären Sie im 90-Tage-Umsetzungsgespräch danach, ob der Chief Sales Officer passt. Oder starten Sie mit dem Tagesworkshop (1.900 €), er wird beim Mandat angerechnet."
     },
     "homepage-landing": {
       "familie": "homepages",
-      "versprechen": "Deine Seite, die verkauft: ein One-Pager in deiner CI, fertig in 10 Werktagen.",
+      "versprechen": "Ihre Seite, die verkauft: ein One-Pager in Ihrer CI, fertig in 10 Werktagen.",
       "fuer": [
         "Coaches, kleine Agenturen, Solo-Unternehmer",
         "ein klares Angebot, ein Ziel"
@@ -558,7 +558,7 @@
     },
     "homepage-story": {
       "familie": "homepages",
-      "versprechen": "Deine Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.",
+      "versprechen": "Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.",
       "fuer": [
         "Handwerk und Dienstleister, die ihre Geschichte kennen",
         "Firmen, die mehr als eine Seite brauchen"
@@ -574,7 +574,7 @@
         ],
         [
           "Story",
-          "lieferst du, wir machen sie zur Scroll-Erzählung"
+          "liefern Sie, wir machen sie zur Scroll-Erzählung"
         ],
         [
           "Kick-off",
@@ -634,7 +634,7 @@
       "versprechen": "Eine Website, über die man spricht: Story-Workshop, 3D-Szenen und Erklärvideo in 25 Werktagen.",
       "fuer": [
         "Tech und Mittelstand, die mit Wirkung auffallen wollen",
-        "Die Story entwickeln wir mit dir."
+        "Die Story entwickeln wir mit Ihnen."
       ],
       "eckdaten": [
         [
@@ -647,7 +647,7 @@
         ],
         [
           "Story",
-          "entwickeln wir im Story-Workshop (90 Minuten), mit deinem Claim"
+          "entwickeln wir im Story-Workshop (90 Minuten), mit Ihrem Claim"
         ],
         [
           "Erklärvideo",
@@ -704,7 +704,7 @@
     },
     "erklaervideo": {
       "familie": "videos",
-      "versprechen": "Dein Angebot in 90 Sekunden verstanden: ein Erklärvideo in deiner CI, fertig in 10 Werktagen.",
+      "versprechen": "Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.",
       "fuer": [
         "alle, deren Angebot man in 90 Sekunden besser versteht als in drei Absätzen Text"
       ],
@@ -718,7 +718,7 @@
           "60 bis 90 Sekunden"
         ],
         [
-          "Dein Input",
+          "Ihr Input",
           "Formular und 30 Minuten Abstimmung"
         ],
         [
@@ -775,21 +775,21 @@
     },
     "videostory": {
       "familie": "videos",
-      "versprechen": "Die Geschichte deiner Firma in 90 Sekunden: ehrlich, emotional und in deiner CI.",
+      "versprechen": "Die Geschichte Ihrer Firma in 90 Sekunden: ehrlich, emotional und in Ihrer CI.",
       "fuer": [
         "Firmen mit einer Geschichte, die Vertrauen schafft, ob Familienbetrieb oder Start-up"
       ],
       "eckdaten": [
         [
           "Was",
-          "die Geschichte deiner Firma, einmal je Kunde, in einem von 10 Story-Formaten"
+          "die Geschichte Ihrer Firma, einmal je Kunde, in einem von 10 Story-Formaten"
         ],
         [
           "Länge",
           "60 bis 90 Sekunden"
         ],
         [
-          "Dein Input",
+          "Ihr Input",
           "Formular und 60 Minuten Story-Interview"
         ],
         [
@@ -802,7 +802,7 @@
         ],
         [
           "Stimme",
-          "KI-Stimme oder deine eigene"
+          "KI-Stimme oder Ihre eigene"
         ]
       ],
       "katalog_auswahl": [
@@ -846,7 +846,7 @@
     },
     "video-serie": {
       "familie": "videos",
-      "versprechen": "Jeden Monat 2 neue Videos, ohne dass du planen oder schneiden musst.",
+      "versprechen": "Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.",
       "fuer": [
         "alle, die jeden Monat sichtbar sein wollen, ohne selbst Videos zu planen und zu bauen"
       ],
@@ -860,7 +860,7 @@
           "je 30 bis 90 Sekunden"
         ],
         [
-          "Dein Input",
+          "Ihr Input",
           "Kick-off 45 Minuten, 30 Minuten Planung je Monat"
         ],
         [
@@ -873,7 +873,7 @@
         ],
         [
           "Stimme",
-          "KI-Stimme, deine eigene oder Untertitel"
+          "KI-Stimme, Ihre eigene oder Untertitel"
         ]
       ],
       "katalog_auswahl": [
@@ -938,7 +938,7 @@
           [
             "Story",
             "keine",
-            "lieferst du, wir machen sie zur Scroll-Erzählung",
+            "liefern Sie, wir machen sie zur Scroll-Erzählung",
             "entwickeln wir im Story-Workshop (90 Min)"
           ],
           [
@@ -984,7 +984,7 @@
           [
             "Was",
             "ein Format aus dem Videokatalog",
-            "die Geschichte deiner Firma, einmal je Kunde",
+            "die Geschichte Ihrer Firma, einmal je Kunde",
             "2 Videos im Monat nach Redaktionsplan"
           ],
           [
@@ -994,7 +994,7 @@
             "je 30 bis 90 Sekunden"
           ],
           [
-            "Dein Input",
+            "Ihr Input",
             "Formular + 30 Min Abstimmung",
             "Formular + 60 Min Story-Interview",
             "Kick-off 45 Min, 30 Min Planung je Monat"
@@ -1014,8 +1014,8 @@
           [
             "Stimme",
             "KI-Stimme oder nur Untertitel",
-            "KI-Stimme oder deine eigene",
-            "KI-Stimme, deine eigene oder Untertitel"
+            "KI-Stimme oder Ihre eigene",
+            "KI-Stimme, Ihre eigene oder Untertitel"
           ]
         ]
       }

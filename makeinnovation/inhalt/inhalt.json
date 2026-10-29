@@ -3,7 +3,7 @@
   "version": "1.0",
   "stand": "2026-10-24 (Homepage-Pakete 18:15, Bereichsseiten 19:10, Hosting entfernt 19:15, CI Markenhandbuch 4.0 19:55); Produkte nach Kevins Produktblättern (freigegeben 25.10.2026)",
   "quelle": "Leistungsumfang 2.0 (Rev. 98, Kundenteil) und Konzept Innovations-Check (Rev. 33)",
-  "ansprache": "Du",
+  "ansprache": "Sie",
   "preise": "alle Preise netto zuzüglich Umsatzsteuer, Angebot richtet sich an Unternehmen (B2B)",
   "quelle_datei": "homepage-content.json (Stand 24.10.2026), interne Teile entfernt"
  },
@@ -37,7 +37,7 @@
   {
    "id": "hero",
    "titel": "Innovation braucht Umsetzung.",
-   "text": "Wir sind dein Umsetzungs- und Wachstumspartner für Vertrieb, Sichtbarkeit und Innovation. Wir beraten nicht nur, wir setzen mit um.",
+   "text": "Wir sind Ihr Umsetzungs- und Wachstumspartner für Vertrieb, Sichtbarkeit und Innovation. Wir beraten nicht nur, wir setzen mit um.",
    "cta_primaer": {
     "text": "Innovations-Check starten",
     "ziel": "Zoe-Chat öffnen, Check startet"
@@ -55,13 +55,13 @@
   },
   {
    "id": "innovations-check",
-   "titel": "Wie innovativ ist dein Unternehmen wirklich?",
-   "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo du im Vergleich zu deiner Branche stehst: bei Strategie, KI im Alltag, Automatisierung, Daten und Team. Spielt ihr nur mit KI, oder nutzt ihr sie wirklich?",
+   "titel": "Wie innovativ ist Ihr Unternehmen wirklich?",
+   "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo Sie im Vergleich zu Ihrer Branche stehen: bei Strategie, KI im Alltag, Automatisierung, Daten und Team. Spielen Sie nur mit KI, oder nutzen Sie sie wirklich?",
    "punkte": [
     "15 Fragen im Chat mit Zoe, auf Wunsch mehr für einen genaueren Bericht",
     "Antworten per Klick, Text oder Sprachnachricht, Dateien hochladen möglich",
-    "Sofort: deine Stufe, ein Netzdiagramm und der Vergleich mit deiner Branche",
-    "Per E-Mail: dein persönlicher IST-Bericht als PDF",
+    "Sofort: Ihre Stufe, ein Netzdiagramm und der Vergleich mit Ihrer Branche",
+    "Per E-Mail: Ihr persönlicher IST-Bericht als PDF",
     "Danach: kostenloses 90-Tage-Umsetzungsgespräch mit Kevin"
    ],
    "stufen": [
@@ -80,8 +80,8 @@
   {
    "id": "gespraech",
    "titel": "Das 90-Tage-Umsetzungsgespräch",
-   "text": "Der Check zeigt, wo du stehst. Im Gespräch legen wir fest, wie es weitergeht: 60 Minuten per Video-Call mit Kevin, kostenlos. Du gehst mit deinen Top 3 Handlungsempfehlungen für die nächsten 90 Tage raus, klar und messbar. Innerhalb von 24 Stunden bekommst du sie schriftlich. Kein Verkaufsgespräch.",
-   "regel": "5 Gespräche pro Woche. Ist die Woche voll, bekommst du den nächsten freien Termin oder einen Platz auf der Warteliste.",
+   "text": "Der Check zeigt, wo Sie stehen. Im Gespräch legen wir fest, wie es weitergeht: 60 Minuten per Video-Call mit Kevin, kostenlos. Sie gehen mit Ihren Top 3 Handlungsempfehlungen für die nächsten 90 Tage raus, klar und messbar. Innerhalb von 24 Stunden bekommen Sie sie schriftlich. Kein Verkaufsgespräch.",
+   "regel": "5 Gespräche pro Woche. Ist die Woche voll, bekommen Sie den nächsten freien Termin oder einen Platz auf der Warteliste.",
    "cta": {
     "text": "Gespräch buchen",
     "ziel": "erst Check, dann Termin im Chat"
@@ -127,8 +127,8 @@
   },
   {
    "id": "gratis",
-   "titel": "Gratis: Wissen, das dich weiterbringt",
-   "text": "Dir fehlt es nicht an Informationen, sondern an Klarheit, welchen Weg du gehen sollst. Deshalb geben wir großzügig Wissen heraus.",
+   "titel": "Gratis: Wissen, das Sie weiterbringt",
+   "text": "Ihnen fehlt es nicht an Informationen, sondern an Klarheit, welchen Weg Sie gehen sollen. Deshalb geben wir großzügig Wissen heraus.",
    "verweis": "gratis"
   },
   {
@@ -155,7 +155,7 @@
   {
    "id": "abschluss",
    "titel": "Bereit für den nächsten Schritt?",
-   "text": "Starte mit dem Innovations-Check. In 10 Minuten weißt du, wo du stehst.",
+   "text": "Starten Sie mit dem Innovations-Check. In 10 Minuten wissen Sie, wo Sie stehen.",
    "cta": {
     "text": "Innovations-Check starten",
     "ziel": "Zoe-Chat"
@@ -192,16 +192,16 @@
    "fuer_wen": "Für Unternehmer mit fertigem Produkt, deren Vertrieb heute am Gründer hängt oder ohne System läuft.",
    "enthalten": [
     "Fundament: Zielgruppe, Salesprozess im CRM, Skripte und Einwandbibliothek",
-    "Quick Win aus deinem Bestand ab Monat 1",
+    "Quick Win aus Ihrem Bestand ab Monat 1",
     "Leadgenerierung, Prozesse und KPIs nach dem größten Hebel",
     "Wochenreport jeden Freitag ab Monat 3",
-    "Rollenspiele, Call-Reviews und Onboarding für dein Team",
+    "Rollenspiele, Call-Reviews und Onboarding für Ihr Team",
     "Sales Playbook Teil 1 und 2"
    ],
    "nicht_enthalten": [
     "Strategie, Preislogik, Teamaufbau, Recruiting und Führung des Teams",
     "Intros aus dem Netzwerk",
-    "Telefonie für dich: dein Team führt die Gespräche, wir machen vor"
+    "Telefonie für Sie: Ihr Team führt die Gespräche, wir machen vor"
    ],
    "regeln": [
     "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist",
@@ -223,7 +223,7 @@
     "Führung von bis zu 10 Vertrieblern",
     "Monatliche Produkt-Runde mit Kundenstimmen",
     "Partnerschaften und Skalierung, Intros aus dem MAKE-Netzwerk nach 6 Monaten",
-    "Sales Playbook Teil 3 und Übergabeplan an deine Vertriebsleitung"
+    "Sales Playbook Teil 3 und Übergabeplan an Ihre Vertriebsleitung"
    ],
    "regeln": [
     "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist"
@@ -243,7 +243,7 @@
     "Notizenstandard",
     "Lead-Scoring",
     "KPI-Trichter",
-    "Einweisung, danach betreibst du es selbst"
+    "Einweisung, danach betreiben Sie es selbst"
    ],
    "regeln": [
     "Größere Ausbauten individuell"
@@ -260,8 +260,8 @@
    "fuer_wen": "Für Coaches, kleine Agenturen und Solo-Unternehmer mit einem klaren Angebot und einem Ziel.",
    "enthalten": [
     "One-Pager mit 6 bis 8 Sektionen und einem Effekt",
-    "Texte von uns, Design in deiner CI, mobil zuerst",
-    "Kontaktformular mit Eintrag in dein CRM",
+    "Texte von uns, Design in Ihrer CI, mobil zuerst",
+    "Kontaktformular mit Eintrag in Ihr CRM",
     "Impressum, Datenschutz, SEO-Grundlagen",
     "1 Korrekturschleife",
     "Kick-off 30 Minuten"
@@ -279,7 +279,7 @@
    "enthalten": [
     "Startseite mit 8 bis 10 Sektionen und 3 Unterseiten",
     "3D-Effekt im Hero und bis zu 3 Effekte aus dem Katalog",
-    "Deine Geschichte als Scroll-Erzählung",
+    "Ihre Geschichte als Scroll-Erzählung",
     "2 Korrekturschleifen",
     "Kick-off 45 Minuten",
     "Texte, CI, Formular, Rechtliches und SEO wie bei Landing"
@@ -294,7 +294,7 @@
    "name": "Homepage Cinematic",
    "preis": "9.990 €",
    "preis_zusatz": "einmalig, fertig in 25 Werktagen",
-   "fuer_wen": "Für Tech und Mittelstand, die mit Wirkung auffallen wollen. Die Story entwickeln wir mit dir.",
+   "fuer_wen": "Für Tech und Mittelstand, die mit Wirkung auffallen wollen. Die Story entwickeln wir mit Ihnen.",
    "enthalten": [
     "Story-Workshop 90 Minuten: Geschichte und Claim",
     "Startseite mit 10 bis 12 Sektionen und 5 Unterseiten",
@@ -330,10 +330,10 @@
    "preis": "1.990 €",
    "preis_zusatz": "einmalig, fertig in 15 Werktagen",
    "enthalten": [
-    "60 Minuten Story-Interview: wir holen deine Geschichte heraus",
+    "60 Minuten Story-Interview: wir holen Ihre Geschichte heraus",
     "60 bis 90 Sekunden in einem von 10 Story-Formaten",
     "Skript und Storyboard von uns",
-    "KI-Stimme oder deine eigene",
+    "KI-Stimme oder Ihre eigene",
     "Formate 16:9, 9:16 und 1:1 mit Untertiteln"
    ],
    "cta": "Video anfragen",
@@ -351,7 +351,7 @@
     "Redaktionsplan für 3 Monate, 30 Minuten Planung am Monatsanfang",
     "je 30 bis 90 Sekunden, fertig für LinkedIn, Instagram und Website",
     "1 Korrektur je Video",
-    "KI-Stimme, deine eigene oder Untertitel"
+    "KI-Stimme, Ihre eigene oder Untertitel"
    ],
    "cta": "Serie starten",
    "hervorheben": true,
@@ -434,7 +434,7 @@
    "name": "Bild- und Videoproduktion",
    "fuer": "Sichtbarkeit",
    "preis": "auf Anfrage",
-   "leistung": "Fotoshooting und Videodreh bei dir: Team, Räume, Produkt, Interviews"
+   "leistung": "Fotoshooting und Videodreh bei Ihnen: Team, Räume, Produkt, Interviews"
   },
   {
    "name": "Social Media Management",
@@ -457,7 +457,7 @@
      "format": "Google Docs/Sheets + PDF"
     },
     {
-     "name": "Die 10 häufigsten Einwände und wie du antwortest",
+     "name": "Die 10 häufigsten Einwände und wie Sie antworten",
      "format": "PDF"
     },
     {
@@ -474,7 +474,7 @@
    "rubrik": "Sichtbarkeit",
    "angebote": [
     {
-     "name": "Homepage-Check: Ist deine Botschaft in 5 Sekunden klar?",
+     "name": "Homepage-Check: Ist Ihre Botschaft in 5 Sekunden klar?",
      "format": "Online-Tool mit KI",
      "start": true
     },
@@ -536,7 +536,7 @@
    "rubrik": "AI",
    "angebote": [
     {
-     "name": "So baust du dir ein KI-Brain auf",
+     "name": "So bauen Sie sich ein KI-Brain auf",
      "format": "5-Tage-Kurs per E-Mail",
      "start": true
     },
@@ -569,32 +569,32 @@
   {
    "id": "wie-lange-dauert-der-check",
    "f": "Wie lange dauert der Check?",
-   "a": "Rund 10 Minuten für die 15 Kernfragen. Wenn du mehr beantwortest, wird dein Bericht genauer. Du kannst jederzeit pausieren und später weitermachen."
+   "a": "Rund 10 Minuten für die 15 Kernfragen. Wenn Sie mehr beantworten, wird Ihr Bericht genauer. Sie können jederzeit pausieren und später weitermachen."
   },
   {
    "id": "ist-zoe-ein-mensch",
    "f": "Ist Zoe ein Mensch?",
-   "a": "Nein. Zoe ist unsere KI-Assistentin. Sie sagt das auch am Anfang jedes Gesprächs. Wenn du lieber mit einem Menschen sprichst, gibt sie dich an Kevin weiter."
+   "a": "Nein. Zoe ist unsere KI-Assistentin. Sie sagt das auch am Anfang jedes Gesprächs. Wenn Sie lieber mit einem Menschen sprechen, gibt Zoe Sie an Kevin weiter."
   },
   {
    "id": "was-passiert-im-90-tage-umsetzungsgespraech",
    "f": "Was passiert im 90-Tage-Umsetzungsgespräch?",
-   "a": "60 Minuten per Video-Call mit Kevin. Wir gehen dein Ergebnis durch und legen deine Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch."
+   "a": "60 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch."
   },
   {
    "id": "was-ist-der-unterschied-zwischen-head",
    "f": "Was ist der Unterschied zwischen Head of Sales und CSO?",
-   "a": "Der Head of Sales baut und führt deinen Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer enthält das komplett und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Du kannst jederzeit zum CSO wechseln."
+   "a": "Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer enthält das komplett und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln."
   },
   {
    "id": "kann-ich-vorzeitig-kuendigen",
    "f": "Kann ich vorzeitig kündigen?",
-   "a": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommst du dafür eine Zwischenbilanz mit Zahlen und Fahrplan. Die Video Serie läuft mindestens 3 Monate, danach ist sie monatlich kündbar."
+   "a": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Fahrplan. Die Video Serie läuft mindestens 3 Monate, danach ist sie monatlich kündbar."
   },
   {
    "id": "was-kostet-der-tagesworkshop-und-was",
    "f": "Was kostet der Tagesworkshop, und was passiert danach?",
-   "a": "1.900 €. Startest du danach ein Mandat, rechnen wir den Workshop voll an."
+   "a": "1.900 €. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
   },
   {
    "id": "wie-schnell-ist-meine-homepage-fertig",
@@ -604,17 +604,17 @@
   {
    "id": "kann-ich-spaeter-auf-ein-groesseres",
    "f": "Kann ich später auf ein größeres Homepage-Paket wechseln?",
-   "a": "Ja, innerhalb von 3 Monaten nach Abnahme. Du zahlst nur die Differenz."
+   "a": "Ja, innerhalb von 3 Monaten nach Abnahme. Sie zahlen nur die Differenz."
   },
   {
    "id": "sind-eure-videos-ki-generiert",
-   "f": "Sind eure Videos KI-generiert?",
-   "a": "Sie entstehen aus KI-Szenen und deinem eigenen Material. Wo es nötig ist, kennzeichnen wir KI-Inhalte."
+   "f": "Sind Ihre Videos KI-generiert?",
+   "a": "Die Videos entstehen aus KI-Szenen und Ihrem eigenen Material. Wo es nötig ist, kennzeichnen wir KI-Inhalte."
   },
   {
    "id": "gibt-es-rabatt",
    "f": "Gibt es Rabatt?",
-   "a": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn du die volle Laufzeit vorab zahlst. Auf Monatsrechnungen, Homepages und Videos gibt es kein Skonto."
+   "a": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen. Auf Monatsrechnungen, Homepages und Videos gibt es kein Skonto."
   },
   {
    "id": "sind-die-preise-netto",
@@ -624,7 +624,7 @@
  ],
  "konditionen": [
   "Alle Preise netto zuzüglich Umsatzsteuer",
-  "Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn du die volle Laufzeit vorab zahlst",
+  "Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen",
   "Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse)",
   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
  ],
@@ -678,8 +678,8 @@
    "kachel": "MAKE/Bereiche/MAKE_Kachel_Vertrieb.svg",
    "story_kern": "Aus Interesse werden planbar Kunden.",
    "hero": {
-    "titel": "Dein Produkt ist gut. Jetzt muss es sich verkaufen.",
-    "text": "Wir bauen deinen Vertrieb so auf, dass er ohne Zufall funktioniert: mit klaren Prozessen, sauberen Zahlen und einem Team, das selbst abschließt. Wir beraten nicht nur, wir setzen mit um.",
+    "titel": "Ihr Produkt ist gut. Jetzt muss es sich verkaufen.",
+    "text": "Wir bauen Ihren Vertrieb so auf, dass er ohne Zufall funktioniert: mit klaren Prozessen, sauberen Zahlen und einem Team, das selbst abschließt. Wir beraten nicht nur, wir setzen mit um.",
     "cta": "Innovations-Check starten",
     "cta2": "Gespräch vereinbaren"
    },
@@ -694,11 +694,11 @@
     },
     {
      "schritt": "Unser Weg",
-     "text": "Wir starten mit dem Fundament: Zielgruppe, Ansprache, Salesprozess. Dann bauen wir Leadgenerierung, Prozesse und Kennzahlen auf und machen vor, bis dein Team selbst abschließt."
+     "text": "Wir starten mit dem Fundament: Zielgruppe, Ansprache, Salesprozess. Dann bauen wir Leadgenerierung, Prozesse und Kennzahlen auf und machen vor, bis Ihr Team selbst abschließt."
     },
     {
      "schritt": "Ergebnis",
-     "text": "Ein Vertrieb, den du steuern kannst: Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt."
+     "text": "Ein Vertrieb, den Sie steuern können: Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt."
     }
    ],
    "abschnitte": [
@@ -732,15 +732,15 @@
    "kachel": "MAKE/Bereiche/MAKE_Kachel_Sichtbarkeit.svg",
    "story_kern": "Gesehen werden. Verstanden werden. Auf die Bühne kommen.",
    "hero": {
-    "titel": "Wer dich nicht versteht, kauft nicht.",
-    "text": "Wir machen dich sichtbar und verständlich: mit einer Homepage, die in 5 Sekunden klar ist, Videos, die erklären, und einer Positionierung, die hängen bleibt.",
+    "titel": "Wer Sie nicht versteht, kauft nicht.",
+    "text": "Wir machen Sie sichtbar und verständlich: mit einer Homepage, die in 5 Sekunden klar ist, Videos, die erklären, und einer Positionierung, die hängen bleibt.",
     "cta": "Homepage-Check starten",
     "cta2": "Pakete ansehen"
    },
    "story": [
     {
      "schritt": "Ausgangslage",
-     "text": "Dein Angebot ist innovativ, aber auf der Website versteht man es erst nach drei Absätzen. Besucher gehen, bevor sie verstehen, was du machst."
+     "text": "Ihr Angebot ist innovativ, aber auf der Website versteht man es erst nach drei Absätzen. Besucher gehen, bevor sie verstehen, was Sie machen."
     },
     {
      "schritt": "Wendepunkt",
@@ -748,11 +748,11 @@
     },
     {
      "schritt": "Unser Weg",
-     "text": "Wir schärfen deine Positionierung, erzählen deine Geschichte und bauen Homepage und Videos, die sie in Sekunden zeigen."
+     "text": "Wir schärfen Ihre Positionierung, erzählen Ihre Geschichte und bauen Homepage und Videos, die sie in Sekunden zeigen."
     },
     {
      "schritt": "Ergebnis",
-     "text": "Du wirst gesehen, verstanden und auf die Bühne geholt, zum Beispiel bei Fokus Innovation."
+     "text": "Sie werden gesehen, verstanden und auf die Bühne geholt, zum Beispiel bei Fokus Innovation."
     }
    ],
    "abschnitte": [
@@ -788,8 +788,8 @@
    "status": "Coming Soon",
    "story_kern": "Neues einführen, bis es genutzt wird.",
    "hero": {
-    "titel": "Spielt dein Team mit KI, oder arbeitet es damit?",
-    "text": "Wir führen KI und Software in deinem Unternehmen ein, bis sie im Alltag genutzt werden. Prozesse, die ohne den Chef laufen, und Werkzeuge, die wirklich Zeit sparen.",
+    "titel": "Spielt Ihr Team mit KI, oder arbeitet es damit?",
+    "text": "Wir führen KI und Software in Ihrem Unternehmen ein, bis sie im Alltag genutzt werden. Prozesse, die ohne den Chef laufen, und Werkzeuge, die wirklich Zeit sparen.",
     "cta": "Innovations-Check starten",
     "cta2": "Auf die Warteliste"
    },
@@ -800,11 +800,11 @@
     },
     {
      "schritt": "Wendepunkt",
-     "text": "Innovation braucht Umsetzung: erst messen, wo du stehst, dann die drei Hebel mit der größten Wirkung angehen."
+     "text": "Innovation braucht Umsetzung: erst messen, wo Sie stehen, dann die drei Hebel mit der größten Wirkung angehen."
     },
     {
      "schritt": "Unser Weg",
-     "text": "Der Innovations-Check zeigt deine Stufe. Im 90-Tage-Umsetzungsgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit dir, bis sie laufen."
+     "text": "Der Innovations-Check zeigt Ihre Stufe. Im 90-Tage-Umsetzungsgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen."
     },
     {
      "schritt": "Ergebnis",
@@ -843,7 +843,7 @@
    "Schrift Schibsted Grotesk, Zahlen IBM Plex Mono",
    "Animiertes MAKE-Logo als Intro (MAKE_Innovation_Logo_animiert_auf-dunkel.svg), Ring und Funke als wiederkehrendes Motiv",
    "60 bis 90 Sekunden, Formate 16:9 für die Website, 9:16 und 1:1 für Social und Ads",
-   "Untertitel immer, Du-Ansprache, Sprecher ruhig und klar",
+   "Untertitel immer, Sie-Ansprache, Sprecher ruhig und klar",
    "Am Ende Claim „Innovation braucht Umsetzung.“ und ein Button",
    "KI-erzeugte Inhalte kennzeichnen, wo nötig (Art. 50 AI Act, Hinweis, keine Rechtsberatung)"
   ],

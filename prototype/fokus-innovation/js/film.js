@@ -12,6 +12,7 @@ const canvas = document.querySelector('.szene');
 const kopf = document.querySelector('.kopf');
 const hinweis = document.querySelector('.hinweis');
 const aufgaben = document.querySelector('.aufgaben');
+const ueberspringen = document.querySelector('.ueberspringen');
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 const span = (p, [a, b]) => clamp01((p - a) / (b - a));
@@ -92,6 +93,12 @@ function rohFortschritt() {
 
 function anwenden(p, bereit) {
   if (hinweis) hinweis.style.opacity = String(1 - span(p, [0.005, 0.04]));
+  if (ueberspringen) {
+    // „Film überspringen“ tritt zurück, sobald das Ende erreicht ist (sonst rutscht er beim Weiterscrollen unter den Kopf)
+    const weg = span(p, [0.84, 0.92]);
+    ueberspringen.style.opacity = (1 - weg).toFixed(3);
+    ueberspringen.style.visibility = weg >= 1 ? 'hidden' : '';
+  }
   if (aufgaben) {
     // Die Aufgaben ziehen sich zur Mitte und treten zurück, sobald der Fokus beginnt
     const weg = span(p, ABLAUF.aufgaben);

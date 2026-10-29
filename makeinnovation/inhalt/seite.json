@@ -51,8 +51,8 @@
   "hinweis": "Was der Check heute wirklich kann (Beta). Sprache und Datei-Upload kommen erst mit Phase 2 — deshalb hier nicht versprochen.",
   "punkte": [
    "15 Fragen mit Zoe, fast alles per Klick, auf Wunsch mehr für einen genaueren Bericht",
-   "Sofort: deine Stufe, ein Netzdiagramm und der Vergleich mit deiner Branche",
-   "Auf Wunsch: dein persönlicher Bericht per E-Mail",
+   "Sofort: Ihre Stufe, ein Netzdiagramm und der Vergleich mit Ihrer Branche",
+   "Auf Wunsch: Ihr persönlicher Bericht per E-Mail",
    "Danach: das kostenlose 90-Tage-Umsetzungsgespräch mit Kevin"
   ]
  },
@@ -199,7 +199,7 @@
  "fokus": {
   "titel": "Fokus Innovation",
   "satz": "Ein Abend. Ein langer Tisch. Menschen, die Neues umsetzen.",
-  "termine": "Termine und Orte folgen. Trag dich auf die Gästeliste ein, dann bekommst du die nächste Einladung.",
+  "termine": "Termine und Orte folgen. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste Einladung.",
   "mail_betreff": "Fokus Innovation – Gästeliste"
  },
  "fallbeispiele_hinweis": "Kevin 24.10.: erst ohne, ausgeblendet — fallbeispiele_zeigen auf true stellen, sobald die drei Fälle (mit Zustimmung) eingetragen sind.",

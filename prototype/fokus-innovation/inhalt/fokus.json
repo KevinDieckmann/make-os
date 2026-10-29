@@ -9,32 +9,35 @@
   },
   "domain": "fokusinnovation.de",
   "film": {
-    "hinweis": "Die Story der Startseite (Kevin 25.10. spät): der Gründer, der sich um alles kümmert, ein starkes Produkt hat, aber Markt, Kunden und Sichtbarkeit nicht mit System bekommt.",
+    "hinweis": "Die Story der Startseite (Kevin 25.10. spät, geschärft 29.10.): der Gründer, der alles selbst macht, ein fertiges Produkt hat, aber Markt, Kunden und Sichtbarkeit nicht mit System bekommt. Echte Momente statt Schmeichelei; Block 4 nennt genau den Teil, den wir übernehmen.",
+    "marke": "Fokus Innovation · Agentur für Vertrieb, Sichtbarkeit und Innovation",
     "laerm": {
-      "titel": "Du kümmerst dich um alles.",
-      "satz": "Produkt, Angebote, Website, Rechnungen, Termine. Und nebenbei noch die Kunden."
+      "titel": "Sie machen alles selbst.",
+      "satz": "Produkt, Team, Angebote, Website, Buchhaltung. Der Vertrieb kommt dran, wenn abends noch Zeit bleibt."
     },
     "fokus": {
-      "titel": "Dein Produkt ist richtig gut.",
-      "satz": "Monate an Arbeit, jedes Detail durchdacht."
+      "titel": "Das Produkt ist fertig.",
+      "satz": "Wer es nutzt, ist zufrieden. Es nutzen nur noch zu wenige."
     },
     "luecke": {
-      "titel": "Nur weiß es der Markt noch nicht.",
-      "satz": "Kunden kommen zufällig, Vertrieb passiert nebenbei, und für Sichtbarkeit fehlt die Zeit."
+      "titel": "Der Markt kennt es noch nicht.",
+      "satz": "Die Website erklärt es erst nach drei Absätzen. Messekontakte warten auf ein Angebot. Neue Kunden kommen nur über Empfehlung."
     },
     "momentum": {
-      "titel": "Jetzt braucht es Fokus.",
-      "satz": "Sichtbarkeit, Vertrieb und die richtigen Menschen. Mit System, Woche für Woche."
+      "titel": "Diesen Teil übernehmen wir.",
+      "satz": "Botschaft, Website und Vertrieb bauen wir mit Ihnen auf. Wir arbeiten mit, bis Ihr Team es allein kann."
     },
     "durchbruch": {
-      "titel": "Dein Produkt kommt in den Markt.",
-      "satz": "Gesehen, verkauft, verbunden."
+      "titel": "Freitag, 16 Uhr: Sie wissen, wo Sie stehen.",
+      "satz": "Der Wochenreport zeigt, welche Gespräche laufen. Und Sie haben wieder Zeit für Ihr Produkt."
     }
   },
   "start": {
-    "titel": "Wir bringen Neues aus Deutschland und Europa nach vorne.",
-    "ruhig": "Sichtbar, verkauft, verbunden.",
-    "lead": "Du hast ein starkes Produkt und kümmerst dich um alles andere gleich mit. Wir geben ihm eine Bühne, machen es sichtbar, verkaufen es mit System und verbinden dich mit den richtigen Menschen. Für innovative Start-ups, Unternehmer und den Mittelstand, der Neues einführt."
+    "vorzeile": "Agentur für Vertrieb, Sichtbarkeit und Innovation · Berlin",
+    "titel": "Gute Produkte verkaufen sich nicht von selbst.",
+    "ruhig": "Wir sorgen dafür, dass der Markt sie kennt.",
+    "lead": "Wir schärfen Ihre Botschaft, bauen Website und Vertrieb auf und führen Neues dort ein, wo es Arbeit spart. Für Start-ups und Unternehmen mit 5 bis 50 Mitarbeitenden, die etwas Neues verkaufen oder einführen. Mit festen Preisen, festen Abläufen und einem Team, das selbst mitarbeitet.",
+    "kernsatz": "Wir bringen Neues aus Deutschland und Europa nach vorne."
   },
   "leitidee": {
     "titel": "Wir rücken Innovation in den Fokus.",
@@ -111,21 +114,21 @@
       "nr": "01",
       "name": "Sichtbarkeit",
       "paar": "Gesehen werden.",
-      "satz": "Positionierung, Homepage, Videos, Kommunikation und Netzwerk: damit man in Sekunden versteht, was du machst.",
-      "problem": "Besucher verstehen in fünf Sekunden nicht, was du machst und warum sie dich anrufen sollen. Die Website ist alt, auf dem Handy schwach, und Anfragen bleiben aus.",
+      "satz": "Positionierung, Website, Videos und Netzwerk: damit man in Sekunden versteht, was Sie machen.",
+      "problem": "Besucher verstehen in fünf Sekunden nicht, was Sie machen und warum sie Sie anrufen sollten. Die Website ist alt, auf dem Handy schwach, und Anfragen bleiben aus.",
       "weg": [
         "Unklare Botschaft, kaum Anfragen",
-        "Positionierung, Homepage, Videos, Kommunikation und Netzwerk",
-        "Man versteht dich in fünf Sekunden, Anfragen kommen an"
+        "Positionierung, Website, Videos und Netzwerk",
+        "Man versteht Sie in fünf Sekunden, Anfragen kommen an"
       ],
       "held": {
-        "titel": "Wer dich nicht versteht, kauft nicht.",
-        "text": "Wir machen dich sichtbar und verständlich: mit einer Positionierung, die hängen bleibt, einer Homepage, die in fünf Sekunden klar ist, und Videos, die erklären. Dazu Kommunikation und Netzwerk, damit die Richtigen dich finden."
+        "titel": "Wer Sie nicht versteht, kauft nicht.",
+        "text": "Wir machen Sie sichtbar und verständlich: mit einer Positionierung, die hängen bleibt, einer Website, die in fünf Sekunden klar ist, und Videos, die erklären. Dazu Netzwerk und unsere Abende, damit die Richtigen Sie finden."
       },
       "schritte": [
         {
           "titel": "Ausgangslage",
-          "text": "Dein Angebot ist neu, aber auf der Website versteht man es erst nach drei Absätzen. Besucher gehen, bevor sie verstehen, was du machst."
+          "text": "Ihr Angebot ist neu, aber auf der Website versteht man es erst nach drei Absätzen. Besucher gehen, bevor sie verstehen, was Sie machen."
         },
         {
           "titel": "Wendepunkt",
@@ -133,39 +136,39 @@
         },
         {
           "titel": "Unser Weg",
-          "text": "Wir schärfen deine Positionierung, erzählen deine Geschichte und bauen Homepage und Videos, die sie in Sekunden zeigen."
+          "text": "Wir schärfen Ihre Positionierung, erzählen Ihre Geschichte und bauen Website und Videos, die sie in Sekunden zeigen."
         },
         {
           "titel": "Ergebnis",
-          "text": "Du wirst gesehen, verstanden und auf die Bühne geholt, zum Beispiel bei einem Fokus Innovation · Abend."
+          "text": "Sie werden gesehen und verstanden, und Anfragen kommen an."
         }
       ],
       "auch": {
-        "titel": "Kommunikation und Netzwerk",
-        "text": "Sichtbar wird, wer auch dort auftaucht, wo die Richtigen sind. Wir bringen dich in unser Netzwerk, an den Tisch unserer Abende und in Gespräche, die zu dir passen. Was du dafür brauchst, besprechen wir im Gespräch."
+        "titel": "Netzwerk und Abende",
+        "text": "Sichtbar wird, wer auch dort auftaucht, wo die Richtigen sind. Wir laden Sie an den Tisch unserer Abende und stellen Kontakte her, wo es passt. Was Sie dafür brauchen, besprechen wir im Gespräch."
       },
-      "kurz": "Wir machen dein Angebot in Sekunden verständlich: Positionierung ab {ab:positionierung}, Homepages ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen und Erklärvideos ab {preis:erklaervideo}, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns."
+      "kurz": "Wir machen Ihr Angebot in Sekunden verständlich: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen und Erklärvideos ab {preis:erklaervideo}, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns."
     },
     "vertrieb": {
       "nr": "02",
       "name": "Vertrieb",
       "paar": "Verkauft werden.",
       "satz": "Zielgruppe, Prozess, Kennzahlen und ein Team, das selbst abschließt.",
-      "problem": "Der Gründer verkauft selbst, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.",
+      "problem": "Vertrieb hängt an der Geschäftsführung, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.",
       "weg": [
-        "Vertrieb hängt am Gründer",
+        "Vertrieb hängt an Ihnen",
         "Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Wochenreport, Training",
-        "Dein Team schließt selbst ab, planbar"
+        "Ihr Team schließt selbst ab, planbar"
       ],
       "beleg": "startup",
       "held": {
-        "titel": "Dein Produkt ist gut. Jetzt muss es sich verkaufen.",
-        "text": "Wir bauen deinen Vertrieb so auf, dass er ohne Zufall funktioniert: mit klaren Prozessen, sauberen Zahlen und einem Team, das selbst abschließt. Wir beraten nicht nur, wir setzen mit um."
+        "titel": "Ihr Produkt ist gut. Jetzt muss es sich verkaufen.",
+        "text": "Wir bauen Ihren Vertrieb so auf, dass er ohne Zufall funktioniert: mit klaren Prozessen, sauberen Zahlen und einem Team, das selbst abschließt. Wir beraten nicht nur, wir arbeiten mit."
       },
       "schritte": [
         {
           "titel": "Ausgangslage",
-          "text": "Viele Gründer verkaufen selbst und nebenbei. Neue Kunden kommen über Empfehlungen, aber nicht planbar."
+          "text": "Viele Gründer und Geschäftsführer verkaufen selbst und nebenbei. Neue Kunden kommen über Empfehlungen, aber nicht planbar."
         },
         {
           "titel": "Wendepunkt",
@@ -173,21 +176,21 @@
         },
         {
           "titel": "Unser Weg",
-          "text": "Wir starten mit dem Fundament: Zielgruppe, Ansprache, Salesprozess. Dann bauen wir Leadgenerierung, Prozesse und Kennzahlen auf und machen vor, bis dein Team selbst abschließt."
+          "text": "Wir starten mit dem Fundament: Zielgruppe, Ansprache, Salesprozess. Dann bauen wir Leadgenerierung, Prozesse und Kennzahlen auf und machen vor, bis Ihr Team selbst abschließt."
         },
         {
           "titel": "Ergebnis",
-          "text": "Ein Vertrieb, den du steuern kannst: Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt."
+          "text": "Ein Vertrieb, den Sie steuern können: Pipeline im CRM, Wochenreport, klare Rollen und ein Sales Playbook, das bleibt."
         }
       ],
       "ablauf": [
         {
-          "titel": "Innovations-Check",
-          "text": "Rund 10 Minuten, Ergebnis sofort, kostenlos"
+          "titel": "Erstgespräch oder Check",
+          "text": "Kostenlos: ein kurzes Gespräch oder rund 10 Minuten Check"
         },
         {
-          "titel": "90-Tage-Umsetzungsgespräch",
-          "text": "60 Minuten mit Kevin, kostenlos"
+          "titel": "Vorschlag",
+          "text": "Welches Angebot passt, mit festem Preis und Ablauf"
         },
         {
           "titel": "Tagesworkshop",
@@ -198,23 +201,27 @@
           "text": "Head of Sales oder Chief Sales Officer"
         }
       ],
-      "kurz": "Wir bauen deinen Vertrieb auf, bis dein Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit übernehmen wir als Head of Sales für {preis:head-of-sales} oder als Chief Sales Officer für {preis:cso} netto im Monat, jeweils für 6 oder 12 Monate."
+      "kurz": "Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.",
+      "leiter": {
+        "titel": "Ihr Vertriebsleiter kommt nicht in Fahrt?",
+        "text": "Das liegt selten an der Person, oft am fehlenden System. Wir bauen den Prozess, mit dem er führt, arbeiten ihn ein und übergeben ihm den Vertrieb. Ein Vertrieb, der nicht mehr an der Geschäftsführung hängt."
+      }
     },
     "innovation": {
       "nr": "03",
       "name": "Innovation",
       "paar": "Im Alltag ankommen.",
-      "satz": "KI, Automatisierung und neue Werkzeuge einführen, bis sie genutzt werden. Mit der Datenbasis, die dafür nötig ist.",
-      "problem": "KI wird ausprobiert, aber kaum genutzt. Oft liegen die Daten verstreut, neue Werkzeuge versanden, und der Chef bleibt der Engpass.",
+      "satz": "KI, Automatisierung, neue Software und die Daten dahinter: einführen, bis es im Alltag genutzt wird.",
+      "problem": "Neues wird ausprobiert, aber kaum genutzt. Oft liegen die Daten verstreut, neue Werkzeuge versanden, und die Geschäftsführung bleibt der Engpass.",
       "weg": [
         "Werkzeuge ausprobiert, Daten verstreut",
-        "Datenbasis aufbauen, Werkzeuge einführen, Team befähigen",
-        "Neues arbeitet im Alltag mit, Abläufe laufen ohne den Chef"
+        "Datenbasis aufbauen, Neues einführen, Team befähigen",
+        "Neues arbeitet im Alltag mit, Abläufe laufen ohne die Geschäftsführung"
       ],
       "beleg": "ki_potenzial",
       "held": {
         "titel": "Neues einführen, bis es genutzt wird.",
-        "text": "Wir führen KI, Automatisierung und Software in deinem Unternehmen ein, bis sie im Alltag genutzt werden: mit einer sauberen Datenbasis, klaren Abläufen und einem Team, das damit arbeitet."
+        "text": "Innovation heißt für uns: KI, Automatisierung und neue Software so in Ihr Unternehmen bringen, dass sie im Alltag genutzt werden. Mit einer sauberen Datenbasis, klaren Abläufen und einem Team, das damit arbeitet."
       },
       "schritte": [
         {
@@ -223,25 +230,43 @@
         },
         {
           "titel": "Wendepunkt",
-          "text": "Erst messen, wo du stehst, dann die drei Hebel mit der größten Wirkung angehen."
+          "text": "Erst messen, wo Sie stehen, dann die drei Hebel mit der größten Wirkung angehen."
         },
         {
           "titel": "Unser Weg",
-          "text": "Der Innovations-Check zeigt deine Stufe. Im 90-Tage-Umsetzungsgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit dir, bis sie laufen."
+          "text": "Der Innovations-Check zeigt Ihre Stufe. Im 90-Tage-Umsetzungsgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen."
         },
         {
           "titel": "Ergebnis",
-          "text": "Weniger Handarbeit, verbundene Daten und Abläufe, die ohne den Chef laufen."
+          "text": "Weniger Handarbeit, verbundene Daten und Abläufe, die ohne die Geschäftsführung laufen."
         }
       ],
       "mehr_als_ki": "Innovation heißt auch Automatisierung, Robotik, neue Software und die Daten dahinter. Bei der Roboterdichte in der Industrie liegt Deutschland weltweit auf Platz 3. Diesen Schwung wollen wir auch in die Büros bringen.",
       "brain": {
         "titel": "KI-Brain",
         "stand": "In Vorbereitung",
-        "text": "KI ist nur so gut wie die Datenbasis. Wir bauen mit dir auf, was sie braucht: Wissen, Abläufe und Daten sauber an einem Ort, damit KI im Alltag wirklich funktioniert.",
+        "text": "KI ist nur so gut wie die Datenbasis. Wir bauen mit Ihnen auf, was sie braucht: Wissen, Abläufe und Daten sauber an einem Ort, damit KI im Alltag wirklich funktioniert.",
         "betreff": "Interesse: KI-Brain"
       },
-      "kurz": "Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im 90-Tage-Umsetzungsgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte ab {ab:umsetzungsprojekte} netto, jeweils mit Festpreis und klarem Umfang vorab, starten in Kürze."
+      "kurz": "Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im 90-Tage-Umsetzungsgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.",
+      "felder": [
+        {
+          "titel": "KI im Alltag",
+          "text": "Werkzeuge, die Ihr Team wirklich nutzt: für Angebote, Anfragen, Texte und Wissen. Mit Regeln, wer was wofür nutzt."
+        },
+        {
+          "titel": "Automatisierung",
+          "text": "Abläufe, die ohne Handarbeit laufen: Anfragen landen im CRM, Erinnerungen kommen von selbst, Berichte entstehen automatisch."
+        },
+        {
+          "titel": "Neue Software und Werkzeuge",
+          "text": "Auswählen, einführen, einrichten, bis das Team damit arbeitet. Statt eines weiteren Abos, das versandet."
+        },
+        {
+          "titel": "Daten und Wissen",
+          "text": "Wissen, Abläufe und Daten sauber an einem Ort, damit KI und Automatisierung darauf zugreifen können. Wir nennen es KI-Brain."
+        }
+      ]
     }
   },
   "abend": {
@@ -249,7 +274,7 @@
     "satz": "Ein Abend. Ein langer Tisch. Menschen, die Neues umsetzen.",
     "text": "Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.",
     "kosten": "Für Gäste kostenlos",
-    "termine": "Termine und Orte folgen. Trag dich auf die Gästeliste ein, dann bekommst du die nächste Einladung.",
+    "termine": "Termine und Orte folgen. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste Einladung.",
     "betreff": "Fokus Innovation · Abend – Gästeliste",
     "merkmale": [
       {
@@ -281,7 +306,7 @@
     {
       "titel": "Bühne und Netzwerk gehören dazu",
       "text": "Sichtbarkeit, Vertrieb und die richtigen Menschen aus einer Hand.",
-      "beleg": "Eigene Abende und über 250 Entscheider im Netzwerk."
+      "beleg": "Über 250 Entscheider in unserem Netzwerk. Der erste Fokus Innovation · Abend ist in Planung."
     },
     {
       "titel": "Feste Preise, feste Abläufe",
@@ -307,7 +332,7 @@
     {
       "titel": "Innovative Start-ups",
       "richtung": "Neues in den Markt",
-      "text": "Ihr baut etwas Neues und braucht die ersten Kunden.",
+      "text": "Sie bauen etwas Neues und brauchen die ersten Kunden.",
       "einstieg": "Sichtbarkeit, Positionierung und der Abend. Vertrieb, sobald das Produkt fertig ist."
     },
     {
@@ -359,7 +384,7 @@
     },
     {
       "titel": "Kein Callcenter",
-      "text": "Dein Team verkauft selbst, wir machen vor."
+      "text": "Ihr Team verkauft selbst, wir machen vor."
     },
     {
       "titel": "Kein Inkubator",
@@ -382,22 +407,22 @@
   ],
   "einstieg": [
     {
-      "titel": "Innovations-Check",
-      "text": "Rund 10 Minuten, kostenlos. Fast alles per Klick."
+      "titel": "Erstgespräch oder Check",
+      "text": "Ein kurzes Gespräch per Video oder der Innovations-Check in rund 10 Minuten. Beides kostenlos."
     },
     {
-      "titel": "Ergebnis sofort",
-      "text": "Deine Stufe, ein Netzdiagramm und der Vergleich mit deiner Branche."
+      "titel": "Ihr Vorschlag",
+      "text": "Welches Angebot passt, mit festem Preis, festem Ablauf und klaren Konditionen."
     },
     {
-      "titel": "90-Tage-Umsetzungsgespräch",
-      "text": "60 Minuten mit Kevin. Deine Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden."
+      "titel": "Start",
+      "text": "Zum vereinbarten Termin, mit ersten Ergebnissen im ersten Monat."
     }
   ],
   "kurztexte": {
     "hinweis": "Ein Satz je Angebot in den Listen, wo das Produktblatt keinen hat.",
     "positionierung": "In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.",
-    "umsetzungsprojekte": "KI und Software einführen, bis sie im Alltag genutzt werden. Festpreis mit klarem Umfang.",
+    "umsetzungsprojekte": "KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang, Start in Kürze.",
     "tagesworkshop": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen."
   },
   "kurznamen": {
@@ -408,12 +433,12 @@
   },
   "check": {
     "hinweis": "Text der Fokus-Seite zum Check (ruhiger als die Vorlage).",
-    "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo dein Unternehmen steht: bei Strategie, KI im Alltag, Automatisierung, Daten und Team."
+    "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Strategie, KI im Alltag, Automatisierung, Daten und Team."
   },
   "angebote_lead": {
     "sichtbarkeit": "Feste Preise und feste Lieferzeiten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
     "vertrieb": "Feste Monatspreise und klare Laufzeiten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
-    "innovation": "Der Check ist kostenlos. Projekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht."
+    "innovation": "Der Check ist kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Sie starten in Kürze."
   },
   "fragen_zuschnitt": {
     "hinweis": "Antworten aus den gemeinsamen Fragen, auf den Bereich zugeschnitten (nur gekürzt, nichts Neues).",
@@ -422,9 +447,9 @@
       "kann-ich-vorzeitig-kuendigen": "Die Video Serie läuft mindestens 3 Monate, danach ist sie monatlich kündbar."
     },
     "vertrieb": {
-      "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn du die volle Laufzeit vorab zahlst.",
-      "kann-ich-vorzeitig-kuendigen": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommst du dafür eine Zwischenbilanz mit Zahlen und Fahrplan.",
-      "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Du bekommst ein Protokoll mit den Top 5 nach Aufwand und Wirkung und einen 90-Tage-Plan, eine Sache setzen wir am Tag direkt um. Startest du danach ein Mandat, rechnen wir den Workshop voll an."
+      "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
+      "kann-ich-vorzeitig-kuendigen": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Fahrplan.",
+      "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Sie bekommen ein Protokoll mit den Top 5 nach Aufwand und Wirkung und einen 90-Tage-Plan, eine Sache setzen wir am Tag direkt um. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
     }
   },
   "produkt_anpassung": {
@@ -432,29 +457,35 @@
     "homepage-cinematic": {
       "fuer": [
         "Tech und Mittelstand, die mit Wirkung auffallen wollen",
-        "Firmen, deren Geschichte erst noch erzählt werden will: Die Story entwickeln wir mit dir"
+        "Firmen, deren Geschichte erst noch erzählt werden will: Die Story entwickeln wir mit Ihnen"
       ]
     },
     "erklaervideo": {
-      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, was du machst. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
+      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, was Sie machen. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
     },
     "videostory": {
-      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, wer hinter deiner Firma steht. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
+      "problem": "Kunden scrollen weiter, bevor sie verstanden haben, wer hinter Ihrer Firma steht. Text wird überflogen, ein Dreh kostet Tausende Euro und Wochen."
+    },
+    "homepage-landing": {
+      "fuer": [
+        "Start-ups und kleine Unternehmen mit einem klaren Angebot",
+        "ein Angebot, ein Ziel, eine Seite"
+      ]
     }
   },
   "aufgaben": [
-    "Angebot schreiben",
-    "Website",
+    "Angebot nachfassen",
+    "Website-Text",
     "Rechnungen",
-    "LinkedIn",
+    "LinkedIn-Post",
     "Kundentermin",
     "Steuerberater",
     "Produkt-Update",
-    "Messe",
-    "Bewerbungen",
-    "Förderantrag",
-    "Support",
-    "Pitch-Deck"
+    "Messekontakte",
+    "Bewerbungsgespräch",
+    "Pitch-Deck",
+    "Support-Anfrage",
+    "CRM pflegen"
   ],
   "fakten": [
     [
@@ -471,7 +502,7 @@
     ],
     [
       "Leistungen",
-      "Positionierung, Homepages und Videos; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovations-Check zu KI und Automatisierung, Umsetzungsprojekte starten in Kürze; Abende und Netzwerk"
+      "Positionierung, Websites und Videos; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, Umsetzungsprojekte starten in Kürze; Abende und Netzwerk"
     ],
     [
       "Einstieg",
@@ -509,8 +540,8 @@
     ],
     "seiten": {
       "start": {
-        "titel": "Fokus Innovation · Agentur für Sichtbarkeit, Vertrieb und KI",
-        "beschreibung": "Agentur aus Berlin für Start-ups, Unternehmer und Mittelstand: Wir machen dein Produkt sichtbar, bauen deinen Vertrieb auf und führen KI ein. Mit festen Preisen."
+        "titel": "Fokus Innovation · Agentur für Vertrieb, Sichtbarkeit, Innovation",
+        "beschreibung": "Agentur aus Berlin für Start-ups, Unternehmer und Mittelstand: Wir machen Ihr Produkt sichtbar, bauen Ihren Vertrieb auf und führen Neues ein. Mit festen Preisen."
       },
       "sichtbarkeit": {
         "titel": "Positionierung, Homepage und Erklärvideo · Fokus Innovation",
@@ -518,10 +549,10 @@
       },
       "vertrieb": {
         "titel": "Vertrieb: Tagesworkshop, Head of Sales und CSO · Fokus Innovation",
-        "beschreibung": "Wir bauen deinen Vertrieb auf, bis dein Team selbst abschließt: Tagesworkshop für {preis:tagesworkshop}, Head of Sales auf Zeit für {preis:head-of-sales} im Monat, CSO für {preis:cso}."
+        "beschreibung": "Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt: Tagesworkshop für {preis:tagesworkshop}, Head of Sales und Chief Sales Officer auf Zeit für 6 oder 12 Monate."
       },
       "innovation": {
-        "titel": "KI und Automatisierung einführen · Fokus Innovation",
+        "titel": "Innovation: KI, Automatisierung, Software · Fokus Innovation",
         "beschreibung": "Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start mit dem kostenlosen Innovations-Check in rund 10 Minuten."
       },
       "tagesworkshop": {
@@ -530,7 +561,7 @@
       },
       "head-of-sales": {
         "titel": "Head of Sales auf Zeit · Fokus Innovation",
-        "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen deinen Vertrieb auf, machen deinem Team vor und übergeben ein System. {preis:head-of-sales} netto im Monat."
+        "beschreibung": "Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen Ihren Vertrieb auf, machen Ihrem Team vor und übergeben ein System. {preis:head-of-sales} netto im Monat."
       },
       "cso": {
         "titel": "Chief Sales Officer auf Zeit (CSO) · Fokus Innovation",
@@ -542,7 +573,7 @@
       },
       "homepage-story": {
         "titel": "Homepage Story: Website mit Unterseiten · Fokus Innovation",
-        "beschreibung": "Deine Geschichte als Website: Startseite mit 3D-Effekt und drei Unterseiten, Texte von uns, fertig in 15 Werktagen. {preis:homepage-story} netto, einmalig."
+        "beschreibung": "Ihre Geschichte als Website: Startseite mit 3D-Effekt und drei Unterseiten, Texte von uns, fertig in 15 Werktagen. {preis:homepage-story} netto, einmalig."
       },
       "homepage-cinematic": {
         "titel": "Homepage Cinematic: Website mit 3D-Szenen · Fokus Innovation",
@@ -550,15 +581,15 @@
       },
       "erklaervideo": {
         "titel": "Erklärvideo in 10 Werktagen · Fokus Innovation",
-        "beschreibung": "Dein Angebot in 90 Sekunden verstanden: Erklärvideo in deiner CI, ohne Dreh vor Ort, in drei Bildformaten mit Untertiteln. {preis:erklaervideo} netto, in 10 Werktagen."
+        "beschreibung": "Ihr Angebot in 90 Sekunden verstanden: Erklärvideo in Ihrer CI, ohne Dreh vor Ort, in drei Bildformaten mit Untertiteln. {preis:erklaervideo} netto, in 10 Werktagen."
       },
       "videostory": {
-        "titel": "Videostory: die Geschichte deiner Firma · Fokus Innovation",
-        "beschreibung": "Die Geschichte deiner Firma in 90 Sekunden, ehrlich und in deiner CI, mit KI-Stimme oder deiner eigenen. {preis:videostory} netto, fertig in 15 Werktagen."
+        "titel": "Videostory: die Geschichte Ihrer Firma · Fokus Innovation",
+        "beschreibung": "Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich und in Ihrer CI, mit KI-Stimme oder Ihrer eigenen. {preis:videostory} netto, fertig in 15 Werktagen."
       },
       "video-serie": {
-        "titel": "Video Serie: zwei Videos im Monat · Fokus Innovation",
-        "beschreibung": "Jeden Monat zwei neue Videos nach Redaktionsplan: Du planst 30 Minuten mit, Skript und Schnitt machen wir. {preis:video-serie} netto im Monat, mindestens 3 Monate."
+        "titel": "Videoserie: zwei Videos im Monat · Fokus Innovation",
+        "beschreibung": "Jeden Monat zwei neue Videos nach Redaktionsplan: Sie planen 30 Minuten mit, Skript und Schnitt machen wir. {preis:video-serie} netto im Monat, mindestens 3 Monate."
       },
       "positionierung": {
         "titel": "Positionierung entwickeln in drei Tiefen · Fokus Innovation",
@@ -566,11 +597,11 @@
       },
       "umsetzungsprojekte": {
         "titel": "Umsetzungsprojekte: KI und Software einführen · Fokus Innovation",
-        "beschreibung": "KI und Software einführen, bis sie im Alltag genutzt werden: Projekte mit Festpreis und klarem Umfang ab {ab:umsetzungsprojekte}. Die Projekte starten in Kürze."
+        "beschreibung": "KI und Software einführen, bis sie im Alltag genutzt werden: Projekte mit Festpreis und klarem Umfang, vorab vereinbart. Start in Kürze, jetzt auf die Warteliste."
       },
       "innovations-check": {
         "titel": "Innovations-Check: kostenlos in 10 Minuten · Fokus Innovation",
-        "beschreibung": "Wo steht dein Unternehmen bei Strategie, KI, Automatisierung, Daten und Team? Der kostenlose Innovations-Check zeigt es in rund 10 Minuten, mit Branchenvergleich."
+        "beschreibung": "Wo steht Ihr Unternehmen bei Strategie, KI, Automatisierung, Daten und Team? Der kostenlose Innovations-Check zeigt es in rund 10 Minuten, mit Branchenvergleich."
       },
       "abend": {
         "titel": "Fokus Innovation · Abend: Menschen an einem langen Tisch",
@@ -578,11 +609,11 @@
       },
       "ueber-uns": {
         "titel": "Über uns: Kevin Dieckmann und Malin · Fokus Innovation",
-        "beschreibung": "Warum es Fokus Innovation gibt, wer dahintersteht und woran du uns messen kannst: Werte, Arbeitsweise und was wir vorher im Vertrieb aufgebaut haben."
+        "beschreibung": "Warum es Fokus Innovation gibt, wer dahintersteht und woran Sie uns messen können: Werte, Arbeitsweise und was wir vorher im Vertrieb aufgebaut haben."
       },
       "kontakt": {
         "titel": "Kontakt · Fokus Innovation",
-        "beschreibung": "So erreichst du Fokus Innovation in Berlin: per E-Mail, über den kostenlosen Innovations-Check oder mit einer Anfrage für ein erstes Gespräch."
+        "beschreibung": "So erreichen Sie Fokus Innovation in Berlin: Erstgespräch vereinbaren, per E-Mail schreiben oder mit dem kostenlosen Innovations-Check in 10 Minuten starten."
       },
       "impressum": {
         "titel": "Impressum · Fokus Innovation",
@@ -610,5 +641,203 @@
       }
     }
   },
-  "preise_nebenkosten": "Head of Sales und CSO: Termine vor Ort nach Absprache, Reisekosten gegen Beleg. Beim CSO trägst du Stellenanzeigen, Recruiting-Tools, Probetag-Vergütung und Werbebudget direkt. Homepages: Hosting und Domain laufen über dich, die laufenden Kosten zahlst du direkt an deinen Anbieter."
+  "preise_nebenkosten": "Head of Sales und CSO: Termine vor Ort nach Absprache, Reisekosten gegen Beleg. Beim CSO tragen Sie Stellenanzeigen, Recruiting-Tools, Probetag-Vergütung und Werbebudget direkt. Websites: Hosting und Domain laufen über Sie, die laufenden Kosten zahlen Sie direkt an Ihren Anbieter.",
+  "tueren": [
+    {
+      "id": "markt",
+      "etikett": "Neues in den Markt",
+      "titel": "Wir haben ein starkes Produkt und brauchen Kunden.",
+      "text": "Positionierung, Website, Videos und ein Vertrieb, der ohne Sie läuft."
+    },
+    {
+      "id": "unternehmen",
+      "etikett": "Neues ins Unternehmen",
+      "titel": "Wir wollen Neues im Alltag nutzen, nicht nur ausprobieren.",
+      "text": "KI, Automatisierung und neue Werkzeuge, bis sie genutzt werden."
+    }
+  ],
+  "bekannt": {
+    "titel": "Kommt Ihnen das bekannt vor?",
+    "lead": "Sechs Momente, die wir von Gründern und Geschäftsführern immer wieder hören.",
+    "momente": [
+      "Ein Interessent von der Messe hat vor drei Wochen um ein Angebot gebeten. Der Entwurf liegt noch in Ihrem Postfach.",
+      "Im Gespräch erklären Sie Ihr Produkt in zwei Minuten. Auf Ihrer Website gelingt das niemandem.",
+      "Ein Wettbewerber mit dem schwächeren Produkt bekommt den Auftrag, weil er schneller nachgefasst hat.",
+      "Wie viele neue Kunden nächsten Monat kommen, kann niemand sagen. Es hängt an Empfehlungen und an Ihnen.",
+      "Ihr neuer Vertriebsmitarbeiter ist seit drei Monaten da und fragt bei jedem Angebot noch Sie.",
+      "Im Team nutzen einige ChatGPT. Wofür, mit welchen Daten und mit welchem Nutzen, weiß niemand."
+    ],
+    "schluss": "Wenn Sie zwei davon kennen, lohnt sich ein Gespräch."
+  },
+  "wegweiser": {
+    "titel": "Womit anfangen?",
+    "lead": "Sie müssen nicht alles auf einmal angehen. Suchen Sie die Lage, die am besten passt.",
+    "markt": [
+      {
+        "lage": "Ihre Website erklärt nicht, was Sie tun.",
+        "angebot": "positionierung"
+      },
+      {
+        "lage": "Besucher verstehen Ihr Angebot nicht schnell genug.",
+        "angebot": "erklaervideo"
+      },
+      {
+        "lage": "Sie wollen wissen, wo der größte Hebel liegt.",
+        "angebot": "tagesworkshop"
+      },
+      {
+        "lage": "Der Vertrieb hängt an Ihnen.",
+        "angebot": "head-of-sales"
+      }
+    ],
+    "unternehmen": [
+      {
+        "lage": "KI wird ausprobiert, aber nicht genutzt.",
+        "ziel": "/innovations-check/",
+        "name": "Innovations-Check",
+        "preis": "kostenlos"
+      },
+      {
+        "lage": "Ihr neuer Vertriebsleiter kommt nicht in Fahrt.",
+        "angebot": "head-of-sales"
+      },
+      {
+        "lage": "Abläufe hängen an einer Person, Daten liegen verstreut.",
+        "ziel": "/innovation/",
+        "name": "Innovation",
+        "preis": "Erstgespräch"
+      }
+    ]
+  },
+  "einwaende": [
+    {
+      "f": "Sie sind nur zu zweit. Reicht das?",
+      "a": "Für Sie ist das ein Vorteil: Sie arbeiten direkt mit den Menschen, die Ihr Projekt machen, und niemand muss erst eingearbeitet werden. Deshalb nehmen wir höchstens zwei Vertriebsmandate gleichzeitig an."
+    },
+    {
+      "f": "Warum stehen hier keine Kundenlogos?",
+      "a": "Fokus Innovation ist eine junge Marke. Logos und Fallstudien zeigen wir erst, wenn Kunden sie freigeben. Bis dahin können Sie uns hieran messen: an Kevins Laufbahn im Vertrieb, an dieser Website und unseren Ratgebern, an festen Preisen und Abläufen und an einem Ausstieg nach drei Monaten, falls ein Vertriebsmandat nicht passt."
+    },
+    {
+      "f": "Was, wenn es nicht klappt?",
+      "a": "Umsatz kann niemand seriös versprechen, er hängt auch an Produkt und Team. Wir versprechen, was wir liefern: im Vertriebsmandat den Prozess im CRM bis Ende Monat 2, eine Zwischenbilanz in Woche 8 und ab Monat 3 jeden Freitag den Wochenreport. Passt es nicht, steigen Sie zum Ende von Monat 3 aus."
+    },
+    {
+      "f": "Wirken Videos mit KI nicht billig?",
+      "a": "Das hängt davon ab, wie man sie macht. Sie geben zuerst das Skript frei, bevor ein Bild entsteht. Wir arbeiten mit ruhigen Bildern, wo es geht mit Ihrem eigenen Material, und bei Videostory und Videoserie auf Wunsch mit Ihrer eigenen Stimme. KI-Inhalte kennzeichnen wir, wo es nötig ist."
+    },
+    {
+      "f": "Ist das Erstgespräch ein Verkaufsgespräch?",
+      "a": "Es ist ein Gespräch über Ihre Lage. Am Ende sagen wir Ihnen, ob wir helfen können und womit. Wenn nicht, sagen wir das auch."
+    },
+    {
+      "f": "Kommen Sie auch zu uns?",
+      "a": "Ja, nach Absprache. Vieles läuft per Video. Termine vor Ort vereinbaren wir vorher, Reisekosten rechnen wir gegen Beleg ab."
+    }
+  ],
+  "erstgespraech": {
+    "name": "Erstgespräch",
+    "knopf": "Erstgespräch vereinbaren",
+    "kurz": "kostenlos, per Video",
+    "betreff": "Erstgespräch",
+    "mail_text": "Guten Tag,\n\nich möchte ein Erstgespräch vereinbaren.\n\nUnternehmen:\nWorum es geht:\nWas soll in 90 Tagen anders sein:\nWann passt ein Gespräch:\n\nViele Grüße"
+  },
+  "risiko": {
+    "titel": "Ihr Risiko bleibt klein",
+    "punkte": [
+      "Ausstieg einmalig zum Ende von Monat 3, mit 30 Tagen Frist.",
+      "In Woche 8 bekommen Sie eine Zwischenbilanz mit Zahlen und Fahrplan.",
+      "Was bis dahin entstanden ist, dürfen Sie nach Zahlung weiter nutzen."
+    ]
+  },
+  "arbeitsprobe": {
+    "titel": "Diese Website ist unsere Arbeitsprobe.",
+    "text": "Scroll-Film mit eigener Szene, Texte, Ratgeber, Vorschaubilder und strukturierte Daten für Google und KI-Suchen. Ohne Cookies, ohne Tracking, ohne fremde Dienste. So bauen wir auch Ihre.",
+    "punkte": [
+      "Startseite als Film, Unterseiten ruhig zum Lesen",
+      "Texte und Ratgeber aus einer Quelle, Preise nur an einer Stelle",
+      "Für Google und KI-Suchen aufbereitet",
+      "Schnell auf dem Handy, ohne fremde Schriften und Dienste"
+    ]
+  },
+  "muster_positionierung": {
+    "titel": "Muster: unsere eigene Positionierung",
+    "lead": "So sieht das Ergebnis der Stufe S aus, an unserem eigenen Beispiel.",
+    "saetze": [
+      [
+        "Für wen",
+        "Für Start-ups und Unternehmen mit 5 bis 50 Mitarbeitenden, die etwas Neues verkaufen oder im Unternehmen einführen."
+      ],
+      [
+        "Das Problem",
+        "Gute Produkte bleiben unter ihren Möglichkeiten, weil sie zu wenige sehen und niemand sie mit System verkauft."
+      ],
+      [
+        "Die Lösung",
+        "Wir machen sie sichtbar, bauen den Vertrieb auf und führen Neues ein, bis es im Alltag läuft."
+      ],
+      [
+        "Der Unterschied",
+        "Wir setzen selbst mit um, zu festen Preisen und festen Abläufen, statt nur zu beraten."
+      ],
+      [
+        "Der Beleg",
+        "Jedes Angebot steht mit Preis, Ablauf und Konditionen offen auf unserer Website."
+      ]
+    ],
+    "ein_satz": "Wir bringen Neues aus Deutschland und Europa nach vorne.",
+    "sieben_woerter": "Neues sichtbar machen und mit System verkaufen.",
+    "claim": "Innovation braucht Fokus."
+  },
+  "wochenreport_muster": {
+    "titel": "So sieht ein Wochenreport aus",
+    "hinweis": "Beispielwerte, kein Kunde. Die Ziele kommen aus der Rückwärtsrechnung vom Umsatzziel.",
+    "woche": "Kalenderwoche 12",
+    "zeilen": [
+      [
+        "Erstkontakte",
+        "38",
+        "40"
+      ],
+      [
+        "Termine",
+        "5",
+        "4"
+      ],
+      [
+        "Angebote",
+        "3",
+        "2"
+      ],
+      [
+        "Abschlüsse",
+        "1",
+        "1"
+      ]
+    ],
+    "satz": "Nächste Woche: Messekontakte nachfassen, die zwei größten offenen Angebote zuerst."
+  },
+  "rechner": {
+    "titel": "Rechnen Sie nach: Wie viele Termine braucht Ihr Ziel?",
+    "lead": "Tragen Sie Ihre Werte ein. Die Rechnung bleibt in Ihrem Browser, nichts wird gesendet."
+  },
+  "check_einstieg": [
+    {
+      "titel": "Innovations-Check",
+      "text": "Rund 10 Minuten, kostenlos. Fast alles per Klick."
+    },
+    {
+      "titel": "Ergebnis sofort",
+      "text": "Ihre Stufe, ein Netzdiagramm und der Vergleich mit Ihrer Branche."
+    },
+    {
+      "titel": "90-Tage-Umsetzungsgespräch",
+      "text": "60 Minuten mit Kevin. Ihre Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden."
+    }
+  ],
+  "umfang": {
+    "hinweis": "Umfang der Mandate je Monat (Kevin liefert die Stunden beim Head of Sales). Leer = steht nicht auf der Seite.",
+    "head-of-sales": "",
+    "cso": "30 bis 35 Stunden im Monat, fest eingeplant"
+  }
 }
