@@ -25,13 +25,13 @@
 import { suchPasst } from '@/lib/text/such-norm';
 import { useNachfrage } from './Nachfrage';
 import { localDay } from '@/lib/zeit';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { zoeFragen } from './ZoeFragen';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { SearchX } from 'lucide-react';
-import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, Spalten, Spalte, useBreit, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE, useRueckgaengig, useRueckfrage } from '../ui';
+import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE, useRueckgaengig, useRueckfrage, Arbeitsflaeche, FilterKnopf, FilterGruppe } from '../ui';
 import { useArt17 } from './kontakt/art17';
 import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, rollenVon, ROLLE_LABEL, zuletztTag } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
@@ -66,10 +66,11 @@ type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anre
 const ANSICHT_IDS: Ansicht[] = ['alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten', 'dublette-pruefen', 'lead-pruefen', 'archiv'];
 const istAnsicht = (a?: string): a is Ansicht => !!a && (ANSICHT_IDS as string[]).includes(a);
 
-export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde, zuAkte, startBean }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void;
+export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde, zuAkte, startBean, kopf: seitenKopf }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void;
   /** BEAN-Filter aus der Adresse (`bean=`), z. B. aus der Verteilungskarte im Überblick. */
-  startBean?: string | null }) {
-  const breit = useBreit();
+  startBean?: string | null;
+  /** Arbeitsfläche (29.10.): die Kopf-Teile der Seite (ZOE/Head daneben, „+ Aktivität“ und „+ Angebot“ im „⋯“) — die Kartei der Personen ist dann die Seite. */
+  kopf?: { neben?: ReactNode; mehr?: ReactNode } }) {
   const [suche, setSuche] = useState('');
   // Die Ansicht kommt aus der Adresse (?a=art14|anreichern|gesperrt|…) — Befunde, Index-Punkte und Übergaben landen so auf der richtigen Liste (26.09.).
   const [ansicht, setAnsicht] = useState<Ansicht>(istAnsicht(start) ? start : 'alle');
@@ -218,12 +219,11 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
   const { frage, dialog: nachfrage } = useNachfrage();
   const kopf = (
     <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-      <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder={modus === 'personen' ? 'Suchen: Name, Firma, Branche, Ort …  ( / )' : 'Firma, Domain, Branche, Ort …'} aria-label="Suchen" style={{ ...feld, flex: 1, minWidth: 200, padding: '9px 13px', fontSize: TYP.bedien }} />
-      {modus === 'personen' && zuRunde && <><Knopf leise onClick={() => zuRunde('kreis')}>Kreis-Runde</Knopf><Knopf leise onClick={() => zuRunde('chancen')}>Qualifizierung</Knopf><Knopf leise onClick={() => zuRunde('vernetzen')}>Vernetzen-Runde</Knopf></>}
+      {/* Die Firmen-Kartei (die Kartei der Personen ist seit 29.10. eine Arbeitsfläche, siehe unten). */}
+      <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder="Firma, Domain, Branche, Ort …" aria-label="Suchen" style={{ ...feld, flex: 1, minWidth: 200, padding: '9px 13px', fontSize: TYP.bedien }} />
       {/* 1.14 (09.10.): die Zielliste (Prospecting) auch aus der Markttraktion — kein neuer Reiter, ein Link bei den Firmen. */}
-      {modus === 'firmen' && <Link href={WEG.prospecting()} className="fassbar" style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Zielliste (Prospecting) ›</Link>}
-      {modus === 'personen' ? <Knopf haupt onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>
-        : <Knopf haupt onClick={async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const da = bestehendeFirma(api.crm?.stand.firmen ?? [], n); if (da) { zuFirma(da.id); return; } const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>}
+      <Link href={WEG.prospecting()} className="fassbar" style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Zielliste (Prospecting) ›</Link>
+      <Knopf haupt onClick={async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const da = bestehendeFirma(api.crm?.stand.firmen ?? [], n); if (da) { zuFirma(da.id); return; } const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>
       {nachfrage}
     </div>
   );
@@ -237,46 +237,65 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     );
   }
 
-  return (
+  // ── Arbeitsfläche (29.10., Kevin: „bei den Kontakten … das Thema mit Scrolling macht manchmal keinen Sinn“) ─────────────────────────────────────
+  // Kopf in EINER Zeile (Kontakte · Zahl · ⋯ · „+ Person“), Suche + Wer + „Filter ▾“ in EINER Zeile (Ansicht, BEAN, Einordnung, Lifecycle im Popover —
+  // nie eine abgeschnittene Chip-Reihe), darunter Liste und Karteikarte nebeneinander, jede rollt für sich; der Tabellenkopf klebt oben in der Liste.
+  // Die Runden (Kreis, Vernetzen) und „Qualifizierung“ stehen im „⋯“ und im Werkzeug-Menü (Leads & Qualifizierung) — ihre Adressen bleiben.
+  const ansichtName = ANSICHTEN.find(a => a.id === ansicht)?.label.replace(/\s\d+$/, '') ?? '';
+  const filterZahl = (ansicht !== 'alle' ? 1 : 0) + (bn ? 1 : 0) + (lc ? 1 : 0) + (ein ? 1 : 0);
+  const filterWeg = () => { setAnsicht('alle'); setBn(null); setLc(null); setEin(null); setMehr(80); };
+  const chipWeg = (text: string, weg: () => void) => <button type="button" className="af-chip-weg fassbar" onClick={() => { weg(); setMehr(80); }} title="Filter aufheben">{text} <span aria-hidden>✕</span></button>;
+  const leisteZeile = (
     <>
-      <Karte i={0}>
-        {kopf}
-        {anlegen && <Anlegen api={api} heute={heute} onFertig={id => { setAnlegen(false); if (id) setAuswahl(id); }} />}
-      </Karte>
-      <Spalten verhaeltnis="3:2">
-        <Spalte>
-          <Karte i={1}>
-            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>
-              <span><b style={{ color: C.ink }}>{eingegrenzt ? treffer.length : kontakte.length}</b> {eingegrenzt ? 'Treffer' : 'Personen'}</span>
-              <span title="Mail oder Telefon vorhanden"><b style={{ color: C.ink }}>{erreichbar}</b> erreichbar</span>
-              <span title="Werbung per Mail zulässig (Einwilligung oder Bestandskunde)"><b style={{ color: C.ink }}>{freigegeben}</b> Mail freigegeben</span>
-              {breit && <span style={{ marginLeft: 'auto', color: C.inkLeise, fontSize: TYP.bedien }}>/ suchen · j k blättern · Enter öffnen</span>}
-            </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-              <WerFilter wahl={wer} onWahl={w => { setWer(w); setMehr(80); }} ich={ich} zahlen={werZahlen} />
-              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>nach „Zuständig“ · ohne Eintrag bei {nameVon(verantwortlich('sales'))} (Sales-Verantwortung)</span>
-              <span style={{ marginLeft: 'auto' }} title="BEAN: Bestandskunde · Ehemalig · Angebotskunde · Neu — von Hand oder abgeleitet">
-                <Wahl label="BEAN" klein liste={BEAN_IDS.map(b => ({ id: b, label: `${b} · ${BEAN_LABEL[b]} · ${bnZahl.get(b) ?? 0}`, hinweis: BEAN_HINWEIS[b] }))}
-                  wert={bn} leer="BEAN: alle ▾" farbe={bn ? BEAN_FARBE[bn] : undefined} onWahl={b => { setBn(b); setMehr(80); }} onLeeren={() => setBn(null)} leerenLabel="alle Gruppen" />
-              </span>
-              {einordnung.length > 0 && (
-                <span title="Typ, Kategorie oder Label — trifft, wer den Wert trägt (mehrfach an der Person)">
-                  <Wahl label="Einordnung" klein liste={einordnung} wert={ein} leer="Typ/Kategorie/Label: alle ▾" onWahl={x => { setEin(x); setMehr(80); }} onLeeren={() => setEin(null)} leerenLabel="alle" />
-                </span>
-              )}
-              <span title="Lifecycle: gesetzt, sonst Lead">
-                <Wahl label="Lifecycle" klein liste={LIFECYCLE_PHASEN.map(p => ({ id: p, label: `${LIFECYCLE_KURZ[p]} · ${lcZahl.get(p) ?? 0}`, ...(LIFECYCLE_KURZ[p] !== LIFECYCLE_LABEL[p] ? { hinweis: LIFECYCLE_LABEL[p] } : {}) }))}
-                  wert={lc} leer="Lifecycle: alle ▾" farbe={lc ? lifecycleFarbe(lc) : undefined} onWahl={p => { setLc(p); setMehr(80); }} onLeeren={() => setLc(null)} leerenLabel="alle Lifecycle" />
-              </span>
-            </div>
-            <div style={{ marginBottom: 10, overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={ANSICHTEN} aktiv={ansicht} onWahl={a => { setAnsicht(a); setMehr(80); }} /></div>
-            {sammel.length > 0 && ansicht !== 'dubletten' && (
-              <div style={{ marginBottom: 10 }}>
-                <Uebergeben api={api} art="kontakte" ids={sammel.map(x => x.id)} titel={`Diese ${sammel.length} übergeben`} klein />
-              </div>
-            )}
-            {ansicht === 'dubletten' ? (
-              <div style={{ display: 'grid', gap: 10 }}>
+      <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen: Name, Firma, Branche, Ort …  ( / )" aria-label="Suchen" className="af-suche" style={{ ...feld, padding: '9px 13px', fontSize: TYP.bedien, minHeight: 40 }} />
+      <WerFilter wahl={wer} onWahl={w => { setWer(w); setMehr(80); }} ich={ich} zahlen={werZahlen} />
+      <FilterKnopf aktiv={filterZahl} onZuruecksetzen={filterWeg}>
+        <FilterGruppe titel="Ansicht">
+          <Pillen liste={ANSICHTEN} aktiv={ansicht} onWahl={a => { setAnsicht(a); setMehr(80); }} />
+        </FilterGruppe>
+        <FilterGruppe titel="Einordnung">
+          <span title="BEAN: Bestandskunde · Ehemalig · Angebotskunde · Neu — von Hand oder abgeleitet">
+            <Wahl label="BEAN" klein liste={BEAN_IDS.map(b => ({ id: b, label: `${b} · ${BEAN_LABEL[b]} · ${bnZahl.get(b) ?? 0}`, hinweis: BEAN_HINWEIS[b] }))}
+              wert={bn} leer="BEAN: alle ▾" farbe={bn ? BEAN_FARBE[bn] : undefined} onWahl={b => { setBn(b); setMehr(80); }} onLeeren={() => setBn(null)} leerenLabel="alle Gruppen" />
+          </span>
+          <span title="Lifecycle: gesetzt, sonst Lead">
+            <Wahl label="Lifecycle" klein liste={LIFECYCLE_PHASEN.map(p => ({ id: p, label: `${LIFECYCLE_KURZ[p]} · ${lcZahl.get(p) ?? 0}`, ...(LIFECYCLE_KURZ[p] !== LIFECYCLE_LABEL[p] ? { hinweis: LIFECYCLE_LABEL[p] } : {}) }))}
+              wert={lc} leer="Lifecycle: alle ▾" farbe={lc ? lifecycleFarbe(lc) : undefined} onWahl={p => { setLc(p); setMehr(80); }} onLeeren={() => setLc(null)} leerenLabel="alle Lifecycle" />
+          </span>
+          {einordnung.length > 0 && (
+            <span title="Typ, Kategorie oder Label — trifft, wer den Wert trägt (mehrfach an der Person)">
+              <Wahl label="Einordnung" klein liste={einordnung} wert={ein} leer="Typ/Kategorie/Label: alle ▾" onWahl={x => { setEin(x); setMehr(80); }} onLeeren={() => setEin(null)} leerenLabel="alle" />
+            </span>
+          )}
+        </FilterGruppe>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>„Wer“ richtet sich nach „Zuständig“ · ohne Eintrag bei {nameVon(verantwortlich('sales'))} (Sales-Verantwortung).</div>
+      </FilterKnopf>
+      {ansicht !== 'alle' && chipWeg(ansichtName, () => setAnsicht('alle'))}
+      {bn && chipWeg(`BEAN ${bn}`, () => setBn(null))}
+      {lc && chipWeg(LIFECYCLE_KURZ[lc], () => setLc(null))}
+      {ein && chipWeg(einordnung.find(x => x.id === ein)?.label.replace(/ · \d+$/, '') ?? 'Einordnung', () => setEin(null))}
+    </>
+  );
+  const zaehlerText = (
+    <span title={`${erreichbar} erreichbar (Mail oder Telefon) · ${freigegeben} mit freigegebener Mail (Einwilligung oder Bestandskunde)`}>
+      <b style={{ color: C.ink, fontWeight: 600 }}>{eingegrenzt ? treffer.length : kontakte.length}</b> {eingegrenzt ? `von ${kontakte.length}` : 'Personen'} · {erreichbar} erreichbar · {freigegeben} Mail frei
+    </span>
+  );
+  const hinweise = (anlegen || (sammel.length > 0 && ansicht !== 'dubletten')) ? (
+    <>
+      {anlegen && <Karte i={0} dicht><Anlegen api={api} heute={heute} onFertig={id => { setAnlegen(false); if (id) setAuswahl(id); }} /></Karte>}
+      {sammel.length > 0 && ansicht !== 'dubletten' && <div><Uebergeben api={api} art="kontakte" ids={sammel.map(x => x.id)} titel={`Diese ${sammel.length} übergeben`} klein /></div>}
+    </>
+  ) : undefined;
+  const tabellenKopf = (
+    <div className="kartei-liste">
+      <div className="kartei-zeile" style={{ display: 'grid', gap: 12, padding: `0 ${8 + ZEILE_MEHR_BREITE}px 0 8px`, fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600 }}>
+        <span /><span /><span>Name</span><span>Firma</span><span title="BEAN-Kundengruppe">BEAN</span><span>Lifecycle</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
+      </div>
+    </div>
+  );
+  const listeInhalt = (zwei: boolean) => (ansicht === 'dubletten' ? (
+    <div style={{ paddingTop: 12 }}>              <div style={{ display: 'grid', gap: 10 }}>
                 {paare.map(([a, b]) => (
                   <div key={`${a.id}|${b.id}`} style={{ padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', display: 'grid', gap: 8 }}>
                     {[a, b].map(x => <div key={x.id} style={{ fontSize: TYP.bedien }}><b style={{ fontWeight: 600 }}>{anzeigename(x)}</b> <span style={{ color: C.inkLeise }}>· {x.email ?? 'ohne Mail'} · {x.firma ?? '—'} · {(x.aktivitaeten ?? []).length} Einträge</span></div>)}
@@ -296,43 +315,46 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
                   </div>
                 )}
                 <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gleicher Name und ein zweites Merkmal (Firma, Domain, LinkedIn, Telefon). Verlauf, Einwilligungen und die zweite Mailadresse bleiben erhalten; eine Sperre gilt weiter. Vor dem Zusammenführen steht, was wandert; 30 Tage lang rückgängig.</div>
-              </div>
-            ) : (
-              <div className="kartei-liste">
-                {breit && (
-                  <div className="kartei-zeile" style={{ display: 'grid', gap: 12, padding: `0 ${8 + ZEILE_MEHR_BREITE}px 6px 8px`, fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-                    <span /><span /><span>Name</span><span>Firma</span><span title="BEAN-Kundengruppe">BEAN</span><span>Lifecycle</span><span>Phase</span><span>Kanal</span><span style={{ textAlign: 'right' }}>Zuletzt</span>
-                  </div>
-                )}
-                <div>
-                  {sichtbar.map((x, i) => (
-                    <div key={x.id} data-kid={x.id}>
-                      <ZeileAktionen titel={anzeigename(x)} archiviert={!!x.archiviertAm} onArchivieren={() => archivieren(x)} onLoeschen={() => void art17.loeschen(x, () => { if (auswahl === x.id) setAuswahl(null); })}
-                        loeschenFragt href={WEG.akte(x.id)} onOeffnen={zuAkte ? () => zuAkte(x.id) : undefined}
-                        mehr={[...(x.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => zuFirma(x.firmaId!) }] : []), { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'kontakt', id: x.id }) }]}>
-                      <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} lifecycle={lifecycle.get(x.id)} bean={beans.get(x.id)} breit={breit} aktiv={auswahl === x.id} markiert={i === markiert && breit}
-                        chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); setAuswahl(auswahl === x.id ? null : x.id); }} />
-                      </ZeileAktionen>
-                      {auswahl === x.id && !breit && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /></div>}
-                    </div>
-                  ))}
-                </div>
-                {treffer.length > mehr && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehr(mehr + 150)}>Weitere {Math.min(150, treffer.length - mehr)} zeigen</Knopf></div>}
-                {!treffer.length && (ansicht === 'archiv'
-                  ? <Leer>Das Archiv ist leer. Archivierte Personen sind nur aus der Kartei ausgeblendet — Deals, Segmente, Verlauf und Recht bleiben, zurückholen jederzeit.</Leer>
-                  : <Leerzustand symbol={<SearchX size={26} />} titel="Niemand gefunden">Suche zurücksetzen oder eine andere Ansicht wählen.</Leerzustand>)}
-              </div>
-            )}
-          </Karte>
-        </Spalte>
-        {breit && (
-          <Spalte klebt>
-            <Karte i={2} akzent={k ? phaseFarbe(k.lebensphase) : undefined}>
-              {k ? <Karteikarte k={k} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /> : <Leer>Eine Person anklicken oder mit j/k wählen und Enter — Verlauf, Notiz, Kanäle, Stammdaten und Recht erscheinen hier. „Kontakt öffnen“ zeigt alles auf einer Seite.</Leer>}
-            </Karte>
-          </Spalte>
-        )}
-      </Spalten>
+              </div></div>
+  ) : (
+    <div className="kartei-liste" style={{ paddingTop: zwei ? 2 : 8 }}>
+      <div>
+        {sichtbar.map((x, i) => (
+          <div key={x.id} data-kid={x.id}>
+            <ZeileAktionen titel={anzeigename(x)} archiviert={!!x.archiviertAm} onArchivieren={() => archivieren(x)} onLoeschen={() => void art17.loeschen(x, () => { if (auswahl === x.id) setAuswahl(null); })}
+              loeschenFragt href={WEG.akte(x.id)} onOeffnen={zuAkte ? () => zuAkte(x.id) : undefined}
+              mehr={[...(x.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => zuFirma(x.firmaId!) }] : []), { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'kontakt', id: x.id }) }]}>
+            <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} lifecycle={lifecycle.get(x.id)} bean={beans.get(x.id)} breit={zwei} aktiv={auswahl === x.id} markiert={i === markiert && zwei}
+              chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); setAuswahl(auswahl === x.id ? null : x.id); }} />
+            </ZeileAktionen>
+            {auswahl === x.id && !zwei && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /></div>}
+          </div>
+        ))}
+      </div>
+      {treffer.length > mehr && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehr(mehr + 150)}>Weitere {Math.min(150, treffer.length - mehr)} zeigen</Knopf></div>}
+      {!treffer.length && (ansicht === 'archiv'
+        ? <Leer>Das Archiv ist leer. Archivierte Personen sind nur aus der Kartei ausgeblendet — Deals, Segmente, Verlauf und Recht bleiben, zurückholen jederzeit.</Leer>
+        : <Leerzustand symbol={<SearchX size={26} />} titel="Niemand gefunden">Suche zurücksetzen oder eine andere Ansicht wählen.</Leerzustand>)}
+      {zwei && treffer.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '12px 2px 0' }}>/ suchen · j k blättern · Enter öffnen · Esc schließen</div>}
+    </div>
+  ));
+
+  return (
+    <>
+      <Arbeitsflaeche titel="Kontakte" label="Kontakte" zaehler={zaehlerText} verhaeltnis="3:2"
+        neben={seitenKopf?.neben}
+        mehr={<>
+          {seitenKopf?.mehr}
+          {zuRunde && <><Knopf leise onClick={() => zuRunde('kreis')}>Kreis-Runde</Knopf><Knopf leise onClick={() => zuRunde('chancen')}>Qualifizierung</Knopf><Knopf leise onClick={() => zuRunde('vernetzen')}>Vernetzen-Runde</Knopf></>}
+        </>}
+        haupt={<Knopf haupt onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>}
+        leiste={leisteZeile} hinweise={hinweise}
+        listeKopf={st => (st.zwei && ansicht !== 'dubletten' ? tabellenKopf : null)}
+        liste={st => listeInhalt(st.zwei)}
+        detail={st => (st.zwei && k ? <div data-karteikarte="" style={{ minWidth: 0 }}><Karteikarte k={k} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /></div> : null)}
+        detailKennung={k?.id ?? null}
+        leer={<Leer>Eine Person anklicken oder mit j/k wählen und Enter — Verlauf, Notiz, Kanäle, Stammdaten und Recht erscheinen hier. „Kontakt öffnen“ zeigt alles auf einer Seite.</Leer>} />
+      {nachfrage}
       {rueckfrage}
       {art17.dialog}
       {hinweis}
