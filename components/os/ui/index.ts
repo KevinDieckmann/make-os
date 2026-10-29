@@ -31,3 +31,6 @@ export { Ring, Balken, Punkt, Haken, Spalten, Spalte, aufZwei, useHochzaehlen, L
 export { FlussKarte, useFluss, flussPunkte, type FlussKarteProps } from './fluss';
 // Daten-Assistenten (09.10., ONBOARDING_PLAN.md › B9 a–c): aus Excel/BWA-CSV einfügen — Zuordnung, Vorschau vom Server, Übernehmen, Rückgängig.
 export { EinfuegeTabelle, type EinfuegeTabelleProps, type EinfuegeErgebnis } from './einfuegen';
+// Arbeitsfläche (29.10., DESIGN_STANDARD.md › Arbeitsfläche): Listen-/Detail-Seiten — Kopf in einer Zeile, Suche + Filter in einer Zeile, Liste und Detail
+// füllen die Höhe und rollen je für sich; „⋯“ für Nebenaktionen, „Filter ▾“ als Popover, Abschnittsköpfe in der Liste.
+export { Arbeitsflaeche, MehrMenue, FilterKnopf, FilterGruppe, ListenAbschnitt, useArbeitsflaeche, useBreite, ZWEI_AB } from './arbeitsflaeche';
