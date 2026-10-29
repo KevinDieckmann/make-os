@@ -21,10 +21,11 @@ import {
   KARTE_FELDER, ABFRAGE_NAME, type KatalogEintrag,
 } from './baustein-katalog';
 import { textGeruest } from './kundengewinnung/text-geruest';
+import { GELD_AKTION_VON, GELD_TEXT, geldMonat, type GeldAktion } from './geld-bausteine';
 import type { AnspracheUrteil } from './ansprache';
 import { istRolle } from './kundengewinnung/rollen';
 import {
-  bereichVon, fallArtVon, PROZESS_GRENZEN,
+  bereichVon, fallArtVon, wartenArten, PROZESS_GRENZEN,
   type AgentSchritt, type Befund, type Bedingung, type CrmAbfrage, type DatumsFeld, type FallArt, type MaskenWert, type ProzessDefinition, type ProzessEintrag, type ProzessForm,
   type ProzessKnoten, type SkillEreignis, type Verknuepfung,
 } from './definition';
@@ -206,7 +207,9 @@ export interface AufgabeBezug { kontaktId?: string; firmaId?: string; dealId?: s
 export type VorschlagWirkung =
   | { art: 'crm'; eingabe: Record<string, unknown>; gaeste?: { n: number; zielkunden: number; kunden: number }; webhook?: true }
   | { art: 'fulfillment'; mandatId?: string; dealId?: string; vorlageId?: string }
-  | { art: 'termin'; titel: string; dauerMin: number; an: Empfaenger; bezug: AufgabeBezug; start?: string; ende?: string; kalender?: string; uid?: string };
+  | { art: 'termin'; titel: string; dauerMin: number; an: Empfaenger; bezug: AufgabeBezug; start?: string; ende?: string; kalender?: string; uid?: string }
+  /** 29.10. (Kreislauf W-B2): Geld-Bausteine — Rechnungsentwurf des Mandats, Rechnung stellen, Angebot stellen (lib/prozesse/geld-bausteine.ts). */
+  | { art: 'geld'; aktion: GeldAktion; mandatId?: string; dealId?: string; monat?: string; rechnungId?: string; angebotId?: string };
 
 /** Was nach der Freigabe gesendet wird (N12) — Empfänger aus dem Fall, Text aus der Vorlage; geändert werden darf nur Betreff/Text. */
 export type SendeAuftrag =
@@ -498,7 +501,9 @@ function crmVorschlagEingabe(l: ProzessLauf, k: K, e: KatalogEintrag, u: LaufUmf
       // „Gesellschaft des Falls“ (Vorlagen): nur eine Business-Gesellschaft des Deals bzw. Mandats — ohne sie hält der Schritt.
       const g = w.gesellschaft === GESELLSCHAFT_DES_FALLS && u.gesellschaft ? u.gesellschaft() : w.gesellschaft;
       if (!g) return { fehler: 'gesellschaft-fehlt' };
-      return { art: 'angebot_entwurf', gesellschaft: g, ...(b.kontaktId ? { kontakt: b.kontaktId } : {}), ...(b.firmaId ? { firma: b.firmaId } : {}), ...(b.dealId ? { deal: b.dealId } : {}) };
+      // 29.10. (Kreislauf W-B1): Positionen aus dem Fall (jüngstes Angebot am Deal bzw. Mandat, sonst das Produkt) — vorher schickte der Schritt keine, und
+      // `crm_vorschlag` lehnte jeden Entwurf ab.
+      return { art: 'angebot_entwurf', gesellschaft: g, positionen_aus: 'fall', ...(b.kontaktId ? { kontakt: b.kontaktId } : {}), ...(b.firmaId ? { firma: b.firmaId } : {}), ...(b.dealId ? { deal: b.dealId } : {}), ...(b.mandatId ? { mandat: b.mandatId } : {}) };
     }
     // Seit 22.10. spät (Vorlagen der Kundengewinnung): dieselben Vorschlags-Arten wie ZOE — übernommen erst per Klick.
     case 'crm.deal-vorschlagen': return b.kontaktId ? { art: 'deal_anlegen', kontakt: b.kontaktId, titel: fuellen(w.titel, u) || k.titel, naechster_schritt: fuellen(w.naechsterSchritt, u) || k.titel, faellig: in_(w.inTagen) } : null;
@@ -585,6 +590,14 @@ function eigenerWegPlan(l: ProzessLauf, k: K, e: KatalogEintrag | null, werte: R
 function schlossWirkung(l: ProzessLauf, x: K, e: KatalogEintrag, werte: Readonly<Record<string, MaskenWert>>, u: LaufUmfeld): VorschlagWirkung | null {
   const b = bezugAus(l, u);
   if (e.id === 'crm.mandat-anlegen') return b.dealId ? { art: 'crm', eingabe: { art: 'mandat_anlegen', deal: b.dealId } } : null;
+  // 29.10. (Kreislauf W-B2): Geld-Bausteine — EIN Klick im Stapel führt aus (Klasse geld/außen = immer Freigabe, nie automatisch). Welcher Entwurf, sucht der
+  // Server beim Vorlegen (`wirkungVorlegen`); ohne Mandat bzw. Deal → Freigabe + „von Hand“ wie bisher.
+  const geld = GELD_AKTION_VON[e.id];
+  if (geld) {
+    if (geld === 'angebot-stellen' ? !b.dealId && !b.mandatId : !b.mandatId) return null;
+    const monat = geld === 'rechnung-entwurf' ? geldMonat(werte.monat, tagVonIso(u.jetzt)) : undefined;
+    return { art: 'geld', aktion: geld, ...(b.mandatId ? { mandatId: b.mandatId } : {}), ...(b.dealId ? { dealId: b.dealId } : {}), ...(monat ? { monat } : {}) };
+  }
   if (e.id === 'kalender.einladung') {
     const an = u.empfaenger?.(typeof werte.gaeste === 'string' && werte.gaeste ? werte.gaeste : 'fall.kontakt') ?? null;
     if (!an?.email) return null;
@@ -668,7 +681,8 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
       }
       const ober = w.hoechstensStunden ? (w.arbeitszeit ? arbeitsstundenPlus(u.jetzt, w.hoechstensStunden) : zeitPlus(u.jetzt, { stunden: w.hoechstensStunden }))
         : zeitPlus(u.jetzt, { tage: Math.max(1, w.hoechstensTage), arbeitszeit: w.arbeitszeit });
-      return { art: 'warten', ausgangSchatten: 'eingetreten', warten: { art: 'ereignis', ereignis: w.ereignis, bis: ober } };
+      // 29.10. (W-B5): „eines von mehreren“ — die weiteren Arten stehen im Warten des Laufs (der Takt fragt nur danach, ohne die Version zu lesen).
+      return { art: 'warten', ausgangSchatten: 'eingetreten', warten: { art: 'ereignis', ereignis: w.ereignis, ...(w.ereignisse?.length ? { ereignisse: wartenArten(w).slice(1) } : {}), bis: ober } };
     }
     case 'agent': {
       const a = k.agent;
@@ -1026,6 +1040,9 @@ export function weckenZeit(l: ProzessLauf, def: ProzessDefinition, jetzt: string
   return l;
 }
 
+/** Wartet dieses Warten (des Laufs) auf diese Art? — `ereignis` oder eines der weiteren (29.10., W-B5). Rein. */
+export const laufWartetAufArt = (w: Pick<NonNullable<ProzessLauf['wartet']>, 'ereignis' | 'ereignisse'>, art: SkillEreignis): boolean => w.ereignis === art || !!w.ereignisse?.includes(art);
+
 /** Ein Ereignis ist eingetreten, auf das der Lauf wartet (rein) — Art, Fall und „nur wenn …“ prüft der Aufrufer über `wartetAuf`. */
 export function ereignisEingetreten(l: ProzessLauf, def: ProzessDefinition, jetzt: string): ProzessLauf {
   return l.status === 'wartet' && l.wartet?.art === 'ereignis' ? verlassen(l, def, 'eingetreten', jetzt) : l;
@@ -1035,9 +1052,9 @@ export function ereignisEingetreten(l: ProzessLauf, def: ProzessDefinition, jetz
 export function wartetAuf(l: ProzessLauf, def: ProzessDefinition, e: { art: SkillEreignis; bezug: Readonly<Record<string, string | undefined>>; bereich: 'privat' | 'business' | null; arbeit?: true }, daten: Readonly<Record<string, unknown>>): boolean {
   // Privat nie — außer Arbeit (25.10.): ein Ereignis mit Arbeits-Marke weckt einen Lauf, dessen Fall DIESES Mandat ist (`ereignisZumFall` unten); den Lauf gibt es
   // nur, wenn der Prozess für das Mandat der Privat-Arbeits-Einheit freigegeben war (Produkt-Bindung, Begleitung) bzw. ein Mensch ihn für den Fall startete.
-  if (l.status !== 'wartet' || l.wartet?.art !== 'ereignis' || l.wartet.ereignis !== e.art || (e.bereich === 'privat' && !(e.arbeit === true && l.fall.art === 'mandat'))) return false;
+  if (l.status !== 'wartet' || l.wartet?.art !== 'ereignis' || !laufWartetAufArt(l.wartet, e.art) || (e.bereich === 'privat' && !(e.arbeit === true && l.fall.art === 'mandat'))) return false;
   const k = def.knoten.find(x => x.id === l.wartet!.knoten);
-  if (k?.warten?.art !== 'ereignis') return false;
+  if (k?.warten?.art !== 'ereignis' || !wartenArten(k.warten).includes(e.art)) return false;
   if (!ereignisZumFall(l.fall, e.bezug)) return false;
   return bedingungenTreffen(k.warten.bedingungen, daten, k.warten.verknuepfung);
 }
@@ -1113,6 +1130,18 @@ export function abbrechen(l: ProzessLauf, jetzt: string, grund: LaufGrund = 'han
   const n = kopie(l);
   beenden(n, 'abgebrochen', jetzt, { ergebnis: 'abbruch', grund });
   return n;
+}
+
+/**
+ * Mandat beendet (29.10., Kevin): welche offenen Läufe am Fall enden — alle Läufe mit Fall = dieses Mandat, AUSSER sie gehören zur Zeit danach (gestartet durch
+ * „Fall abgeschlossen“ bzw. „Mandat beendet“ oder ein Datum am Ende des Mandats — Nachsorge, Verlängerung, Empfehlung). Rein.
+ */
+export const NACH_MANDATSENDE: ReadonlySet<string> = new Set(['fall-abgeschlossen', 'mandat-beendet']);
+export function laufEndetMitMandat(l: Pick<ProzessLauf, 'fall' | 'daten' | 'status'>, mandatId: string): boolean {
+  if (!laufOffen(l as ProzessLauf) || l.fall.art !== 'mandat' || l.fall.id !== mandatId) return false;
+  if (NACH_MANDATSENDE.has(l.daten['ereignis.art'] ?? '')) return false;
+  if (l.daten['datum.feld'] === 'mandat.ende') return false;
+  return true;
 }
 
 /** Prozess pausiert/zurückgestellt → offene Läufe halten an; fortgesetzt → sie gehen dort weiter (rein). */
@@ -1214,7 +1243,9 @@ export function starten(datei: LaeufeDatei, a: StartAnfrage): StartErgebnis {
   if (tiefe > LAUF_GRENZEN.kettenTiefe) return { ok: false, datei: mit(nichtZaehlen(st, 'kette')), grund: 'kette' };
   if (a.modus === 'scharf' && !a.person) return { ok: false, datei: mit(nichtZaehlen(st, 'ohnePerson')), grund: 'ohne-person' };
   const schluessel = fallSchluessel(a.prozessId, a.fall, a.periode);
-  const gleiche = datei.laeufe.filter(l => l.schluessel === schluessel);
+  // 29.10. (Kreislauf, F-B1): ein Schatten-/Probelauf sperrt nie einen SCHARFEN Lauf desselben Falls — er schrieb nichts; ohne diese Regel hieß der scharfe Start
+  // nach „scharf schalten“ „schon“, und das Mandat bekam weder Lauf noch Akte. Ein Schatten-Start sieht dagegen alle Läufe (kein Schatten neben einem scharfen).
+  const gleiche = datei.laeufe.filter(l => l.schluessel === schluessel && (a.modus !== 'scharf' || l.modus === 'scharf'));
   const offen = gleiche.find(laufOffen);
   if (offen) return { ok: false, datei, grund: 'offen', lauf: offen };
   // Datum am Fall (22.10., lib/prozesse/datum-start.ts): je Fall und Stichtag höchstens EIN Lauf (die Periode steht im Lauf als `ausloeser.quelle`) — ein Lauf
@@ -1452,7 +1483,7 @@ export function probeAusgabe(b: ProbeBeobachtung, def: Pick<ProzessDefinition, '
         } else {
           z.push({ feld: 'Wirkung', wert: a.sorte === 'entscheidung' ? 'würde eine Person entscheiden lassen (Stapel: freigeben = ja, ablehnen = nein)' : 'würde zur Freigabe in den Stapel legen' }, { feld: 'Titel', wert: a.titel });
           if (a.nachher) z.push({ feld: 'Text', wert: kurz(a.nachher) });
-          if (a.wirkung) z.push({ feld: 'Nach der Freigabe', wert: a.wirkung.art === 'crm' ? 'über den CRM-Vorschlag (vorhandener Schreibweg)' : a.wirkung.art === 'fulfillment' ? 'startet den Fulfillment-Fall' : `Termin mit Einladung an ${a.wirkung.an.name} (erst nach der Rückfrage)` });
+          if (a.wirkung) z.push({ feld: 'Nach der Freigabe', wert: a.wirkung.art === 'crm' ? 'über den CRM-Vorschlag (vorhandener Schreibweg)' : a.wirkung.art === 'fulfillment' ? 'startet den Fulfillment-Fall' : a.wirkung.art === 'geld' ? GELD_TEXT[a.wirkung.aktion] : `Termin mit Einladung an ${a.wirkung.an.name} (erst nach der Rückfrage)` });
           else if (a.danach) z.push({ feld: 'Nach der Freigabe', wert: `Aufgabe „${a.danach.titel}“ (von Hand)` });
         }
         z.push({ feld: 'Freigabe durch', wert: a.fuer ?? 'die zuständige Person des Falls' }, { feld: 'Frist', wert: zeit(a.bis) });

@@ -228,6 +228,12 @@ export async function POST(req: Request) {
     const hinweise = [...r.hinweise];
     const { vorlageVon } = await import('@/lib/prozesse/kundengewinnung/bibliothek');
     const erneut = typeof b.vorlageId === 'string' ? vorlageVon(b.vorlageId)?.erneutNachTagen : undefined;
+    // 29.10. (Kreislauf W-B5): Ziel-Kriterium der Vorlage (z. B. „Angebot entschieden“) — derselbe Weg der Läufe-Einstellungen, nur für volle Mitglieder.
+    const ziel = typeof b.vorlageId === 'string' ? vorlageVon(b.vorlageId)?.ziel : undefined;
+    if (ziel) {
+      if (z.rechte.status && (await (await import('@/lib/prozesse/lauf-server')).einstellungSetzen(r.haupt.id, z.person, { ziel })).ok) hinweise.push('Ein Lauf endet von selbst, sobald sein Ziel erreicht ist (Läufe › Einstellungen › Ziel).');
+      else hinweise.push('Das Ziel-Kriterium der Vorlage setzt ein volles Mitglied unter Läufe › Einstellungen.');
+    }
     if (erneut) {
       if (z.rechte.status && (await (await import('@/lib/prozesse/lauf-server')).einstellungSetzen(r.haupt.id, z.person, { erneutNachTagen: erneut })).ok) hinweise.push(`Läuft je Mandat erneut, frühestens nach ${erneut === 1 ? 'einem Tag' : `${erneut} Tagen`} (Läufe › Einstellungen).`);
       else hinweise.push(`Läuft je Mandat nur einmal — „erneut nach ${erneut} Tagen“ setzt ein volles Mitglied unter Läufe › Einstellungen.`);

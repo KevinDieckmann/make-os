@@ -89,6 +89,12 @@ export interface KgVorlage {
    * „Aus Vorlage“ setzt sie für volle Mitglieder; fehlt = einmal je Fall.
    */
   erneutNachTagen?: number;
+  /**
+   * Ziel-Kriterium der Läufe (29.10., Kreislauf W-B5): trifft es zu, endet ein wartender Lauf als „Ziel erreicht“ (lib/prozesse/lauf-server.ts `wachePruefen`) —
+   * z. B. „Angebot nachfassen“ endet, sobald das Angebot angenommen bzw. abgelehnt oder der Deal geschlossen ist. „Aus Vorlage“ setzt es für volle Mitglieder
+   * (Läufe › Einstellungen); fehlt = keins.
+   */
+  ziel?: { bedingungen: Bedingung[]; verknuepfung?: 'und' | 'oder' };
   definition: ProzessDefinition;
   teile: KgTeil[];
 }
@@ -214,9 +220,10 @@ export const S = {
     return sch(id, titel, 'warten.dauer', { feld: { warten: { art: 'dauer', tage, ...(stunden ? { stunden } : {}), ...(arbeitszeit ? { arbeitszeit } : {}) } }, ...rest });
   },
   /** Warten auf ein Ereignis zum Fall — Obergrenze in Tagen bzw. (M1) in Stunden, optional in Arbeitszeit (Werktage, 9–18 Uhr). */
-  wartenEreignis: (id: string, titel: string, ereignis: SkillEreignis, hoechstensTage: number, o: Opt & { stunden?: number; arbeitszeit?: boolean } = {}): Schritt => {
-    const { stunden, arbeitszeit, ...rest } = o;
-    return sch(id, titel, 'warten.ereignis', { feld: { warten: { art: 'ereignis', ereignis, hoechstensTage, ...(stunden ? { hoechstensStunden: stunden } : {}), ...(arbeitszeit ? { arbeitszeit } : {}) } as WartenRegel }, ...rest });
+  wartenEreignis: (id: string, titel: string, ereignis: SkillEreignis, hoechstensTage: number, o: Opt & { stunden?: number; arbeitszeit?: boolean; auch?: SkillEreignis[] } = {}): Schritt => {
+    // `auch` (29.10., W-B5): weitere Ereignisse — eines von mehreren weckt den Lauf.
+    const { stunden, arbeitszeit, auch, ...rest } = o;
+    return sch(id, titel, 'warten.ereignis', { feld: { warten: { art: 'ereignis', ereignis, ...(auch?.length ? { ereignisse: auch } : {}), hoechstensTage, ...(stunden ? { hoechstensStunden: stunden } : {}), ...(arbeitszeit ? { arbeitszeit } : {}) } as WartenRegel }, ...rest });
   },
   wartenDatum: (id: string, titel: string, feld: DatumsFeld, versatzTage: number, hoechstensTage: number, o: Opt = {}): Schritt =>
     sch(id, titel, 'warten.datum', { feld: { warten: { art: 'datum', feld, versatzTage, hoechstensTage } }, ...o }),

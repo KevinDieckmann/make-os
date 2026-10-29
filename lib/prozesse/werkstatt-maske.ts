@@ -13,7 +13,7 @@
 import {
   type AgentSchritt, type AgentWer, type Ausloeser, type Bedingung, type Befund, type CrmAbfrage, type EndeAngabe, type ErneutAb, type MaskenWert,
   type ModellWahl, type ModelTier, type ProzessForm, type ProzessKnoten, type RautenRegel, type SchleifeRegel, type TeilprozessAufruf, type VertragFeld,
-  type WartenRegel, type WebhookFeld,
+  type WartenRegel, type WebhookFeld, wartenArten,
 } from './definition';
 import { katalogEintrag, maskeSaeubern, maskeVorgaben, type KatalogEintrag, type KatalogKategorie, type MaskenKontext } from './baustein-katalog';
 import { suchPasst } from '@/lib/text/such-norm';
@@ -84,7 +84,7 @@ export function maskeWerte(k: K, e: KatalogEintrag): W {
       if (w.art === 'datum') return ohneLeere({ feld: w.feld, versatzTage: w.versatzTage, werktage: w.werktage ?? false, hoechstensTage: w.hoechstensTage || undefined });
       // 22.10.: „Höchstens (Stunden)“ und „Arbeitszeit zählen“ (z. B. „Antwort binnen 4 Stunden“ der Vorlagen) stehen jetzt auch im Panel — vorher leer und
       // beim nächsten Speichern verloren.
-      return ohneLeere({ ereignis: w.ereignis, bedingungen: w.bedingungen ?? [], verknuepfung: w.verknuepfung, hoechstensTage: w.hoechstensTage || undefined, hoechstensStunden: w.hoechstensStunden, arbeitszeit: w.arbeitszeit });
+      return ohneLeere({ ereignis: w.ereignis, ereignisse: w.ereignisse?.length ? w.ereignisse : undefined, bedingungen: w.bedingungen ?? [], verknuepfung: w.verknuepfung, hoechstensTage: w.hoechstensTage || undefined, hoechstensStunden: w.hoechstensStunden, arbeitszeit: w.arbeitszeit });
     }
     case 'schleife': return k.schleife ? ohneLeere({ liste: k.schleife.liste, prozessId: k.schleife.prozessId, hoechstens: k.schleife.hoechstens || undefined }) : {};
     case 'teilprozess': return k.teilprozess ? ohneLeere({ prozessId: k.teilprozess.prozessId, warten: k.teilprozess.warten }) : {};
@@ -160,7 +160,7 @@ function feldAus(e: KatalogEintrag, w: W, alt: K, kx: MaskenUmfeld): Partial<K> 
       let x: WartenRegel | undefined;
       if (e.id === 'warten.dauer') x = sauber<WartenRegel>({ art: 'dauer', tage: zahl(w.tage) ?? 0, stunden: zahl(w.stunden), arbeitszeit: w.arbeitszeit === true ? true : undefined });
       else if (e.id === 'warten.datum') x = text(w.feld) ? sauber<WartenRegel>({ art: 'datum', feld: w.feld, versatzTage: zahl(w.versatzTage), hoechstensTage: zahl(w.hoechstensTage) ?? 0, werktage: w.werktage === true ? true : undefined }) : undefined;
-      else if (e.id === 'warten.ereignis') x = text(w.ereignis) ? sauber<WartenRegel>({ art: 'ereignis', ereignis: w.ereignis, bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung), hoechstensTage: zahl(w.hoechstensTage) ?? 0, hoechstensStunden: zahl(w.hoechstensStunden), arbeitszeit: w.arbeitszeit === true ? true : undefined }) : undefined;
+      else if (e.id === 'warten.ereignis') x = text(w.ereignis) ? sauber<WartenRegel>({ art: 'ereignis', ereignis: w.ereignis, ereignisse: texte(w.ereignisse).filter(a => a !== w.ereignis).length ? texte(w.ereignisse).filter(a => a !== w.ereignis) : undefined, bedingungen: bedingungen(w.bedingungen).length ? bedingungen(w.bedingungen) : undefined, verknuepfung: verkn(w.verknuepfung), hoechstensTage: zahl(w.hoechstensTage) ?? 0, hoechstensStunden: zahl(w.hoechstensStunden), arbeitszeit: w.arbeitszeit === true ? true : undefined }) : undefined;
       return { warten: x };
     }
     case 'schleife': return { schleife: text(w.liste) && text(w.prozessId) ? { liste: text(w.liste), prozessId: text(w.prozessId), hoechstens: zahl(w.hoechstens) ?? 0 } as SchleifeRegel : undefined };
@@ -407,7 +407,8 @@ export function knotenUnterzeile(k: K, o: { mitSchloss?: boolean; agentName?: st
       }
       const hoechstens = w.art === 'ereignis' && w.hoechstensStunden ? `${w.hoechstensStunden} h` : `${w.hoechstensTage} T.`;
       if (w.art === 'datum') return kurz(`bis ${DATUMS_FELDER.find(x => x.id === w.feld)?.titel ?? 'Datum'} · höchstens ${hoechstens}`);
-      return kurz(`auf „${istEreignisArt(w.ereignis) ? EREIGNIS_NAME[w.ereignis] : w.ereignis}“ · höchstens ${hoechstens}`);
+      const name = (a: string) => `„${istEreignisArt(a) ? EREIGNIS_NAME[a] : a}“`;
+      return kurz(`auf ${wartenArten(w).map(name).join(' oder ')} · höchstens ${hoechstens}`);
     }
     case 'entscheidung': return !k.raute ? 'Mensch entscheidet' : k.raute.art === 'regel' ? 'nach Regel' : k.raute.art === 'score' ? 'nach Score' : 'Modell entscheidet';
     case 'ende': return k.ende?.ergebnis === 'abbruch' ? 'Abbruch' : k.ende?.ergebnis === 'uebergabe' ? 'Übergabe' : 'Ziel erreicht';

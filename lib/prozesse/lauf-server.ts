@@ -22,7 +22,7 @@ import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import type { TasksState } from '@/types/tasks';
 import {
   aufgabeFertig, budgetReicht, ereignisEingetreten, fallAusEreignis, fallSchluessel, freigabeEntschieden, kostenBuchen, laeufeAus, monatVon, nachAktion,
-  starten, teilprozessFertig, voran, wartetAuf, weckenZeit, wirkungZaehlen, anhalten, fortsetzen, abbrechen, verlaufAnhaengen, tagVonIso, startGesperrt, rechercheVorTagen, datumSchonGestartet,
+  starten, teilprozessFertig, voran, wartetAuf, laufWartetAufArt, weckenZeit, wirkungZaehlen, anhalten, fortsetzen, abbrechen, verlaufAnhaengen, tagVonIso, startGesperrt, rechercheVorTagen, datumSchonGestartet,
   type Aktion, type AktionErgebnis, type Empfaenger, type LaufUmfeld, type StartAnfrage, type StartErgebnis, type AgentFreigabe, type ProbeBeobachtung,
 } from './lauf-regeln';
 import { istWebRecherche, oeffentlichModus, OEFFENTLICH_KATEGORIEN } from './agent-schritt';
@@ -212,8 +212,11 @@ async function fallInfo(fall: LaufFall, kx: MotorKontext, daten: Readonly<Record
       const { gesundheit } = await import('@/lib/crm/pipeline');
       const mandat = crm.mandate.find(m => m.chanceId === c.id && !m.geloeschtAm);
       const nachfass = !!angebot && (crm.followups ?? []).some(x => x.id === `fu-${angebot.id}` && x.status === 'offen');
+      // 29.10. (W-B5): das jüngste Angebot des Deals (ohne ersetzte Fassungen) ist angenommen bzw. abgelehnt.
+      const juengstes = (crm.angebote ?? []).filter(a => a.dealId === c.id && a.status !== 'ersetzt').sort((a, b) => (a.geaendert < b.geaendert ? 1 : -1))[0];
+      const entschieden = juengstes?.status === 'angenommen' || juengstes?.status === 'abgelehnt';
       const x = await kgLesen(k, c.kontaktIds.map(nachId).filter((y): y is Kontakt => !!y));
-      const kg = { ...x.daten, 'deal.ampel': gesundheit(c, localDay(kx.jetzt), crm.wertelisten).ampel, 'deal.verschoben': c.erwartetVerschoben ?? 0, 'deal.offen': OFFENE_STUFEN.includes(c.stufe), 'deal.mandat-da': !!mandat, 'deal.nachfass-followup': nachfass,
+      const kg = { ...x.daten, 'deal.ampel': gesundheit(c, localDay(kx.jetzt), crm.wertelisten).ampel, 'deal.verschoben': c.erwartetVerschoben ?? 0, 'deal.offen': OFFENE_STUFEN.includes(c.stufe), 'deal.mandat-da': !!mandat, 'deal.nachfass-followup': nachfass, 'deal.angebot-entschieden': entschieden,
         ...(mandat ? { 'deal.vertrag-unterschrieben': !!mandat.vertragUnterschrieben } : {}), ...(c.grund ? { 'deal.grund': c.grund } : {}), ...(await kanalFelder(k, hat(k), 'deal')) };
       return {
         fehlt: false, kontakt: k, personen: c.kontaktIds.map(nachId).filter((x): x is Kontakt => !!x), zustaendig: c.besitzer, ...hat(k),
@@ -948,7 +951,30 @@ async function teilLaufStarten(l: ProzessLauf, a: Extract<Aktion, { art: 'teilpr
 export async function prozessLaufStarten(a: StartAnfrage, h?: string): Promise<StartErgebnis> {
   const r = await laeufeAendern(d => { const x = starten(d, a); return { datei: x.datei, r: x }; }, h);
   if (!r.ok && r.grund === 'flut') await flutMelden(a.prozessId, h).catch(() => null);
+  // 29.10. (Kreislauf, F-B2): JEDER scharfe Lauf eines Mandats, dessen Hauptprodukt auf diesen Prozess zeigt, legt die Akte an — egal über welchen Weg er startet
+  // (Produkt-Bindung, eigener Auslöser, „scharf schalten“ für alle bestehenden, von Hand, zurückgehalten → starten). Idempotent, wirft nie.
+  if (r.ok) await akteFuerScharfenLauf(r.lauf, (a.def as Partial<ProzessDefinition>).titel, a.person ?? null);
   return r;
+}
+
+/**
+ * Die Akte (Fulfillment-Fall mit `ablauf` = Prozess) für einen scharfen Lauf eines Mandats — nur, wenn das HAUPTprodukt des Mandats auf diesen Prozess zeigt
+ * (ein Zusatzmodul bzw. ein fremder Prozess legt nie eine Akte an), nur Mandate mit Fulfillment (`prozessAkteAnlegen` prüft). Schatten nie. Wirft nie.
+ */
+async function akteFuerScharfenLauf(l: Pick<ProzessLauf, 'modus' | 'fall' | 'prozessId' | 'version' | 'person'>, titelEin: string | undefined, person: string | null): Promise<void> {
+  if (l.modus !== 'scharf' || l.fall.art !== 'mandat' || !l.fall.id) return;
+  try {
+    const [{ ladeCrm }, { prozessDesProdukts }] = await Promise.all([import('@/lib/crm/speicher'), import('./produkt-bindung')]);
+    const crm = await ladeCrm();
+    const m = crm.mandate.find(x => x.id === l.fall.id && !x.geloeschtAm);
+    if (!m || prozessDesProdukts(crm.leistungen, m.leistungId) !== l.prozessId) return;
+    // Schon eine Akte bzw. ein Fall da → nichts (ohne die Sperre des Fall-Bestands und ohne das Umfeld des Fulfillments zu laden).
+    if ((await (await import('@/lib/fulfillment/speicher')).fulfillmentLesen('faelle')).faelle[m.id]) return;
+    // Der Titel der Version (die Anfrage trägt die Definition nicht immer ganz).
+    const titel = titelEin ?? await import('./werkstatt-server').then(async w => { const e = (await w.prozesseLesen()).prozesse.find(p => p.id === l.prozessId); return (e?.versionen.find(v => v.nr === l.version)?.definition ?? e?.entwurf)?.titel ?? ''; });
+    const { prozessAkteAnlegen } = await import('@/lib/fulfillment/prozesse/fall-server');
+    await prozessAkteAnlegen({ mandatId: m.id, prozessId: l.prozessId, titel: titel ?? '', version: l.version, person: person ?? l.person ?? 'system', wer: { art: 'system' } });
+  } catch { /* ohne Akte läuft der Prozess trotzdem — der nächste scharfe Start bzw. der Anstoß holt sie nach */ }
 }
 async function flutMelden(prozessId: string, h?: string): Promise<void> {
   const kx = await kontextLaden(new Date(), h);
@@ -1044,6 +1070,7 @@ export async function laufVoran(laufId: string, kxEin?: MotorKontext): Promise<P
       }
     }
     if (letzter && !laufOffen(letzter) && letzter.herkunft) await elternWecken(letzter, kx);
+    if (letzter) await akteMelden(letzter, kx);
     return letzter;
   } catch (err) {
     console.error(`[prozesse/lauf] ${laufId}: ${err instanceof Error ? err.message.slice(0, 200) : 'Fehler'}`);
@@ -1070,6 +1097,50 @@ async function festenSchrittVergleichen(e: ProzessEintrag, schritt: SystemSchrit
   } catch (err) {
     console.error(`[prozesse/ueberfuehrung] Schatten-Vergleich ausgefallen — ${err instanceof Error ? err.message.slice(0, 160) : 'Fehler'}`);
   }
+}
+
+/**
+ * 29.10. (Kreislauf, F-B4): der scharfe Lauf eines Mandats, dessen Akte auf seinen Prozess zeigt (`Fall.ablauf`), meldet „Schritt im Fall erledigt“ und „Phase
+ * begonnen/abgeschlossen“ wie ein Paket-Fall (lib/prozesse/akte-ereignisse.ts — dieselben Kennungen; die Ereignisstelle nimmt jedes nur einmal). So greifen
+ * Begleit-Vorlagen auch nach dem Onboarding einer Akte. Wirft nie.
+ */
+async function akteMelden(l: ProzessLauf, kx: MotorKontext): Promise<void> {
+  if (l.modus !== 'scharf' || l.fall.art !== 'mandat' || !l.fall.id) return;
+  try {
+    const def = defVon(eintragVon(kx, l.prozessId), l.version);
+    if (!def) return;
+    const [{ fulfillmentLesen }, { fallAblauf }] = await Promise.all([import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/ablauf-art')]);
+    const f = (await fulfillmentLesen('faelle')).faelle[l.fall.id];
+    if (!f || fallAblauf(f)?.prozessId !== l.prozessId) return;
+    const crm = await crmVon(kx);
+    const m = crm?.mandate.find(x => x.id === l.fall.id && !x.geloeschtAm);
+    if (!m) return;
+    const [{ akteEreignisse }, { mandatEreignisBereich }, { ereignis }] = await Promise.all([import('./akte-ereignisse'), import('@/lib/ereignisse/quellen'), import('@/lib/ereignisse/server')]);
+    const liste = akteEreignisse(l, def, { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}), ...mandatEreignisBereich(m.gesellschaft) }, kx.jetzt.toISOString());
+    // Im Zusammenhang des Laufs gemeldet: die Herkunft schützt vor Schleifen (dieser Prozess startet nie an seinen eigenen Meldungen).
+    if (liste.length) await mitLaufHerkunft({ prozessId: l.prozessId, laufId: l.id, tiefe: l.tiefe }, () => ereignis(liste, { jetzt: kx.jetzt }));
+  } catch { /* Meldungen fehlen dann für diesen Anstoß — der nächste holt sie nach (gleiche Kennungen) */ }
+}
+
+/**
+ * Mandat beendet (29.10., Kevin): offene Läufe am Fall enden mit Grund „Mandat beendet“ — außer Nachsorge/Verlängerung (`laufEndetMitMandat`). Offene Vorschläge
+ * dieser Läufe räumt die Wache ab. Gerufen vom Fulfillment, BEVOR „Fall abgeschlossen“ gemeldet wird (was danach startet, bleibt). Liefert die Zahl. Wirft nie.
+ */
+export async function mandatsendeLaeufeAbbrechen(mandatId: string, jetzt = new Date()): Promise<number> {
+  try {
+    const { laufEndetMitMandat } = await import('./lauf-regeln');
+    const iso = jetzt.toISOString();
+    const h = await laeufeHaushalt();
+    return await laeufeAendern(d => {
+      let neu = d, n = 0;
+      for (const l of d.laeufe) {
+        if (!laufEndetMitMandat(l, mandatId)) continue;
+        const y = abbrechen(l, iso, 'mandat-beendet');
+        if (y) { neu = mitLauf(neu, y); n++; }
+      }
+      return { datei: neu, r: n };
+    }, h);
+  } catch { return 0; }
 }
 
 /** Ein beendeter Teil-Lauf weckt den Lauf, der auf ihn wartet. */
@@ -1162,7 +1233,11 @@ export async function prozesseImTakt(jetzt = new Date()): Promise<TaktErgebnis |
 
     // 5) Feste Wache (Art. 18, Werbesperre, Fall weg, Ziel/Abbruch) — nur, wenn sich Kartei oder CRM geändert haben.
     const s = await speicherStand(['kontakte', 'crm']).catch(() => '');
-    if (s && s !== wacheStand) { wacheStand = s; erg.beendet += await wachePruefen(kx); }
+    if (s && s !== wacheStand) {
+      wacheStand = s; erg.beendet += await wachePruefen(kx);
+      // 29.10. (Kreislauf): Lead wird MQL — die EINE Stelle (nur wenn Kartei/CRM sich geändert haben, höchstens einmal je Minute; nie im Lese-/Schreibpfad). Wirft nie.
+      await import('@/lib/ereignisse/quellen').then(q => q.mqlEreignisse()).catch(() => 0);
+    }
 
     // 6) Bereite Läufe voran (höchstens `laeufeJeTakt`).
     d = await laeufeLesen(kx.h);
@@ -1279,10 +1354,10 @@ async function produktLaeufeStarten(e: Ereignis, kx: MotorKontext): Promise<numb
     }, kx.h);
     if (r.ok) n++;
     // E5 (22.10., Entscheidung F3): ein SCHARFER Lauf eines Hauptprodukts legt die Akte des Mandats an (Onboarding, keine Paket-Knoten; idempotent — ein Fall je
-    // Mandat) — auch, wenn derselbe Prozess über seinen eigenen Auslöser schon lief (Bindung + Auslöser, „offen“). Schatten/Probelauf legt nie eine Akte an.
-    // Wirft nie: ohne Akte läuft der Prozess trotzdem.
-    const scharfLaeuft = r.ok ? r.lauf.modus === 'scharf' : (r.grund === 'offen' || r.grund === 'schon') && r.lauf?.modus === 'scharf' && r.lauf.fall.id === mandatId;
-    if (scharfLaeuft && b.rolle === 'haupt') {
+    // Mandat). Ein NEUER scharfer Lauf macht das seit 29.10. selbst (`prozessLaufStarten` → `akteFuerScharfenLauf`); hier nur noch der Fall, dass derselbe Prozess
+    // über seinen eigenen Auslöser schon lief (Bindung + Auslöser, „offen“). Schatten/Probelauf legt nie eine Akte an. Wirft nie.
+    const schonScharf = !r.ok && (r.grund === 'offen' || r.grund === 'schon') && r.lauf?.modus === 'scharf' && r.lauf.fall.id === mandatId;
+    if (schonScharf && b.rolle === 'haupt') {
       await import('@/lib/fulfillment/prozesse/fall-server').then(f => f.prozessAkteAnlegen({
         mandatId, prozessId: p.id, titel: j.def.titel, version: j.nr, person: personFuer(j.def, kx, e.person ?? null) ?? 'system', wer: { art: 'system' }, jetzt: kx.jetzt,
       })).catch(() => null);
@@ -1323,7 +1398,7 @@ const kennungsDaten = (e: Ereignis): Record<string, string> => Object.fromEntrie
 
 async function aufEreignisWecken(e: Ereignis, kx: MotorKontext): Promise<number> {
   const d = await laeufeLesen(kx.h);
-  const kandidaten = d.laeufe.filter(l => l.status === 'wartet' && l.wartet?.art === 'ereignis' && l.wartet.ereignis === e.art);
+  const kandidaten = d.laeufe.filter(l => l.status === 'wartet' && l.wartet?.art === 'ereignis' && laufWartetAufArt(l.wartet, e.art));
   if (!kandidaten.length) return 0;
   const herkunft = herkunftAus(e.herkunft);
   let n = 0;
@@ -1490,7 +1565,7 @@ async function datumKandidaten(feld: DatumsFeld, von: string, bis: string, kx: M
     const { fristenLesen } = await import('@/lib/kalender/fristen-server');
     const fristen = await fristenLesen(von, tagPlus(bis, 1), heute, null).catch(() => null);
     if (!fristen) return null;
-    const rechnungen = feld === 'rechnung.faellig' ? (await loadJson<{ rechnungen?: { id: string; mandatId?: string }[] }>('finanzplan').catch(() => null))?.rechnungen ?? [] : [];
+    const rechnungen = feld === 'rechnung.faellig' ? (await loadJson<{ rechnungen?: { id: string; mandatId?: string; kundeFirmaId?: string; kontaktId?: string }[] }>('finanzplan').catch(() => null))?.rechnungen ?? [] : [];
     for (const f of fristen) {
       if (f.bereich !== 'business' || f.erledigt || !f.id.startsWith(praefix) || !imFenster(f.tag)) continue;
       const id = f.id.slice(praefix.length);
@@ -1500,8 +1575,18 @@ async function datumKandidaten(feld: DatumsFeld, von: string, bis: string, kx: M
         if (c && business(c.gesellschaft)) raus.push({ fall: { art: 'deal', id: c.id }, datum: f.tag, bezug: { 'bezug.dealid': c.id, ...(c.firmaId ? { 'bezug.firmaid': c.firmaId } : {}), ...(feld === 'angebot.gueltig-bis' ? { 'bezug.angebotid': id } : {}) }, vor: { 'deal.stufe': c.stufe } });
         continue;
       }
-      const m = mandatVon(feld === 'rechnung.faellig' ? rechnungen.find(r => r.id === id)?.mandatId : id);
+      const r = feld === 'rechnung.faellig' ? rechnungen.find(x => x.id === id) : undefined;
+      const m = mandatVon(feld === 'rechnung.faellig' ? r?.mandatId : id);
       if (m && business(m.gesellschaft)) raus.push({ fall: { art: 'mandat', id: m.id }, datum: f.tag, bezug: { ...mandatBezug(m), ...(feld === 'rechnung.faellig' ? { 'bezug.rechnungid': id } : {}) }, vor: { 'mandat.status': m.status } });
+      // 29.10. (Kreislauf): eine Rechnung — auch OHNE Mandat (Kunde aus der Kartei) — ist außerdem ein Fall ihrer Firma bzw. ihres Leads (Firma, sonst Person);
+      // welcher zählt, entscheidet die Fall-Art des Prozesses (`datumFaelle`). Die Frist ist schon Business (`f.bereich`).
+      if (r && (!r.mandatId || m) && (!m || business(m.gesellschaft))) {
+        const firma = r.kundeFirmaId ?? m?.firmaId;
+        const kontakt = r.kontaktId ?? m?.kontaktIds?.[0];
+        const bezug = { 'bezug.rechnungid': id, ...(firma ? { 'bezug.firmaid': firma } : {}), ...(kontakt ? { 'bezug.kontaktid': kontakt } : {}), ...(m ? { 'bezug.mandatid': m.id } : {}) };
+        if (firma) raus.push({ fall: { art: 'firma', id: firma }, datum: f.tag, bezug, vor: {} });
+        if (firma ?? kontakt) raus.push({ fall: { art: 'lead', id: (firma ?? kontakt)! }, datum: f.tag, bezug, vor: {} });
+      }
     }
     return raus;
   }
@@ -1547,7 +1632,8 @@ async function datumPasst(a: DatumAusloeserDef, k: DatumKandidat, daten: Record<
 async function datumFaelle(a: DatumAusloeserDef, knotenId: string, def: ProzessDefinition, tage: readonly string[], kx: MotorKontext): Promise<{ k: DatumKandidat; stichtag: string; periode: string; daten: Record<string, string> }[] | null> {
   if (!tage.length) return [];
   const fallArt = fallArtVon(def);
-  if (DATUMS_FELDER.find(x => x.id === a.feld)?.fall !== fallArt) return [];
+  const df = DATUMS_FELDER.find(x => x.id === a.feld);
+  if (!df || (df.fall !== fallArt && !df.auch?.includes(fallArt))) return [];
   const sortiert = [...tage].sort();
   const fen = datumFeldFenster(sortiert[0], sortiert.at(-1)!, a);
   const kandidaten = await datumKandidaten(a.feld, fen.von, fen.bis, kx);

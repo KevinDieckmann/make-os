@@ -233,9 +233,10 @@ describe('Sichtbar: Landkarte, Werkstatt, Verbindungsprüfung', () => {
 });
 
 describe('Fulfillment: ein Mandat, dessen Ablauf ein laufender Werkstatt-Prozess ist, ist KEIN Kandidat „noch kein Fall“ (Kevin 22.10.: „Dort ausblenden“)', () => {
+  // 29.10. (Kreislauf F-B1): ein Schatten-Lauf blendet NICHT mehr aus — er legt keine Akte an; das Mandat bliebe sonst ohne Fall und ohne Vorschlag.
   const MIT_LAUF = ['ma-doppel', 'ma-probe', 'ma-scharf', 'ma-v2'];
-  const OHNE = ['ma-alt', 'ma-entwurf', 'ma-mit-zusatz', 'ma-paket'];
-  it('Liste (GET /api/fulfillment?nur=kurz): scharf und Schatten fehlen; Entwurf, Bestandsmandat ohne Lauf, Paket und nur Zusatz-Lauf bleiben — das Paket-Mandat bit-gleich', async () => {
+  const OHNE = ['ma-alt', 'ma-entwurf', 'ma-mit-zusatz', 'ma-paket', 'ma-probe'];
+  it('Liste (GET /api/fulfillment?nur=kurz): scharf fehlt; Schatten, Entwurf, Bestandsmandat ohne Lauf, Paket und nur Zusatz-Lauf bleiben — das Paket-Mandat bit-gleich', async () => {
     const { aendereCrm } = await import('@/lib/crm/speicher');
     const { localDay } = await import('@/lib/zeit');
     // Unterschrieben und frisch (kein Bestand) — sonst wäre keines ein Kandidat mit Vorschlag.
@@ -251,7 +252,7 @@ describe('Fulfillment: ein Mandat, dessen Ablauf ein laufender Werkstatt-Prozess
     // E5: Mandate mit scharfem Lauf ihres Hauptprodukts haben eine Akte — Kandidat XOR Fall; ohne die Menge fehlt also nur noch der Schatten-Lauf nicht.
     const mitAkte = Object.keys((await fulfillmentLesen('faelle', H)).faelle);
     expect(MIT_LAUF.filter(m => !mitAkte.includes(m))).toEqual(['ma-probe']);
-    expect(ohneMenge.map(k => k.mandatId).sort()).toEqual([...MIT_LAUF.filter(m => !mitAkte.includes(m)), ...OHNE].sort());
+    expect(ohneMenge.map(k => k.mandatId).sort()).toEqual([...new Set([...MIT_LAUF.filter(m => !mitAkte.includes(m)), ...OHNE])].sort());
     expect(ohneMenge.some(k => mitAkte.includes(k.mandatId))).toBe(false);
     const paket = (l: { mandatId: string }[]) => JSON.stringify({ ...l.find(k => k.mandatId === 'ma-paket'), uhr: undefined });
     expect(paket(j.kandidaten)).toBe(paket(ohneMenge));

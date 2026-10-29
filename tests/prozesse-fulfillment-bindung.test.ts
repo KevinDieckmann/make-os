@@ -177,7 +177,7 @@ describe('Fulfillment-Kandidaten: „Dort ausblenden“ (Kevin 22.10.) — EINE 
     mandat('m-paket', { leistungId: 'p-paket', vertragUnterschrieben: true, zusatz: [{ id: 'mz-1', leistungId: 'p-zusatz' }] }), mandat('m-ab', { leistungId: 'p-haupt', vertragUnterschrieben: true }),
     mandat('m-fertig', { leistungId: 'p-haupt', vertragUnterschrieben: true }),
   ];
-  it('Lauf des Prozesses des HAUPTprodukts (scharf oder Schatten, auch fertig) → ausgeblendet; abgebrochen, nur Zusatz-Lauf, ohne Lauf → nicht', () => {
+  it('Lauf des Prozesses des HAUPTprodukts (scharf, auch fertig) → ausgeblendet; abgebrochen, Schatten (29.10., F-B1), nur Zusatz-Lauf, ohne Lauf → nicht', () => {
     const l = [lauf('m-haupt', PZ), lauf('m-paket', PZ2), lauf('m-ab', PZ, 'abgebrochen'), lauf('m-fertig', PZ, 'fertig'), lauf('m-fremd', PZ)];
     expect([...mandateMitProduktLauf(l, { mandate, leistungen: katalog })].sort()).toEqual(['m-fertig', 'm-haupt']);
     // Ein Lauf eines anderen Prozesses (z. B. eigener Auslöser „Mandat angelegt“ ohne Bindung) ist nicht der Ablauf des Produkts.

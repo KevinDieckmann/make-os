@@ -93,6 +93,8 @@ export type LaufGrund =
   | 'schon-erledigt' | 'nichts-vorzuschlagen' | 'keine-zeit' | 'kein-ablauf'
   // 22.10. (Werkstatt bau-fertig, Punkt 14): der Schritt ist in der Werkstatt ausgeschaltet.
   | 'deaktiviert'
+  // 29.10. (Kreislauf, Kevin): das Mandat ist beendet — offene Läufe am Fall enden (außer Nachsorge/Verlängerung, `mandatsendeLaeufeAbbrechen`).
+  | 'mandat-beendet'
   // 22.10. (Paket Ü): ein fester Schritt läuft nur im Prozess, der den System-Ablauf ersetzt (sonst arbeitet der alte Weg).
   | 'ueberfuehrung-fehlt';
 
@@ -145,6 +147,8 @@ export interface LaufWarten {
   wirkung?: string;
   /** Warten auf ein Ereignis: welche Art (die Bedingungen stehen am Knoten der Version). */
   ereignis?: SkillEreignis;
+  /** 29.10. (W-B5, optional): weitere Arten — eines von mehreren weckt den Lauf. Fehlt bei älteren Läufen (dann nur `ereignis`). */
+  ereignisse?: SkillEreignis[];
   /** Warten auf ein Datum, das schon erreicht ist (Ausgang „eingetreten“) bzw. die Obergrenze (Ausgang „abgelaufen“). */
   ziel?: string;
 }
@@ -398,6 +402,7 @@ export const GRUND_TEXT: Readonly<Record<LaufGrund, string>> = {
   abgelaufen: 'Frist abgelaufen',
   ziel: 'Ziel erreicht',
   'abbruch-kriterium': 'Abbruch-Kriterium erfüllt',
+  'mandat-beendet': 'Mandat beendet',
   hand: 'von Hand abgebrochen',
   'fall-weg': 'den Fall gibt es nicht mehr',
   archiviert: 'Prozess archiviert',

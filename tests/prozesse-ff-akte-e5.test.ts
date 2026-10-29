@@ -131,12 +131,13 @@ describe('Akte beim Start des scharfen Laufs', () => {
     await S.prozesseImTakt();
     expect(JSON.stringify(await faelle())).toBe(vorher);
   });
-  it('Kandidat XOR Fall: die Akte ist kein Kandidat „noch kein Fall“; der Schatten-Lauf bleibt wie bisher kein Kandidat; das Paket-Mandat schon', async () => {
+  // 29.10. (Kreislauf, F-B1): ein Schatten-Lauf blendet das Mandat NICHT mehr aus — er legt keine Akte an, sonst bliebe es ohne Fall und ohne Vorschlag.
+  it('Kandidat XOR Fall: die Akte ist kein Kandidat „noch kein Fall“; das Mandat mit Schatten-Lauf und das Paket-Mandat schon', async () => {
     const { GET } = await import('@/app/api/fulfillment/route');
     const r = await GET(new Request('http://test/api/fulfillment?nur=kurz&space=business', { headers: sitzung('pia') }));
     expect(r.status).toBe(200);
     const j = await r.json() as { kandidaten: { mandatId: string }[]; faelle: Record<string, unknown> };
-    expect(j.kandidaten.map(k => k.mandatId)).toEqual(['m-paket']);
+    expect(j.kandidaten.map(k => k.mandatId).sort()).toEqual(['m-paket', 'm-probe']);
     expect(Object.keys(j.faelle)).toEqual(['m-scharf']);
   });
   it('die Leser laufen mit der Akte: Übersicht (voll), Fall, Cockpit, Kunden-Vorschau', async () => {

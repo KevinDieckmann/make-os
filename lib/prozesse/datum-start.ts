@@ -79,7 +79,7 @@ export const DATUM_QUELLE: Readonly<Record<DatumsFeld, string>> = {
   'mandat.ende': 'das Ende des Mandats — eingetragen bzw. aus Start und Mindestlaufzeit (dieselbe Regel wie im Kalender), auch bei beendeten Mandaten',
   'deal.entscheidung': '„Entscheidung bis“ offener Deals aus den Kalender-Fristen',
   'angebot.gueltig-bis': '„Gültig bis“ gestellter Angebote aus den Kalender-Fristen — der Fall ist der Deal des Angebots',
-  'rechnung.faellig': 'die Fälligkeit gestellter Rechnungen aus den Kalender-Fristen — der Fall ist das Mandat der Rechnung',
+  'rechnung.faellig': 'die Fälligkeit gestellter Rechnungen aus den Kalender-Fristen — der Fall ist das Mandat der Rechnung bzw. (29.10.) ihre Firma bzw. ihr Lead, auch ohne Mandat',
   'event.datum': 'den Tag des Events (eigene und besuchte Events — „Nur wenn …“ grenzt ein)',
   'lead.wiedervorlage': 'die Wiedervorlage der Leads (ohne eingeschränkte Personen)',
   'fall.termin': 'den nächsten Termin mit dem Kunden im Fulfillment-Fall (Kick-off, Review, Rituale und Kalender-Termine mit dem Kunden — dieselbe Rechnung wie das Cockpit)',

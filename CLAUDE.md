@@ -1963,6 +1963,27 @@ Fulfillment und Marketing“ — „gesteuert wird intern über MAKE OS“ — �
   Netzwerken › Heute). Tests `tests/prozesse-ausloeser-person.test.ts`, `tests/prozesse-ueberfuehrung-{powerhour,ausbau}.test.ts`.
 - Tests `tests/prozesse-*.test.ts`. Rückweg: nur neue Bestände/optionale Felder; Fulfillment-Ausführung unverändert.
 
+- **Kreislauf Werkstatt (29.10., Branch `kreislauf-werkstatt`; Kevin: „Alle Automatisierungen kommen aus der Werkstatt“, „Mandat beendet → Fall automatisch abschließen“):**
+  - **EIN Start für jeden Fall:** `mandatFallStarten` (lib/fulfillment/prozesse/fall-server.ts) für Stapel-Freigabe, Morgenlauf-Vorschlag, Baustein „Fall starten“ und
+    Fall-Route — Ablauf ausdrücklich gewählt bzw. nach `ablaufFuerMandat` (= `startVorbelegung`: Prozess des Produkts, sonst Paket des Produkts), ohne Ablauf 409.
+    Zusatzmodule am Mandat hängen beim Start gleich an (`zusaetzeAnhaengen`). Nie wieder `vorlageFuerProdukt` allein für einen Start.
+  - **Akte bei JEDEM scharfen Lauf** (`prozessLaufStarten` → `akteFuerScharfenLauf`, nur Hauptprodukt). Schatten/Probelauf: legt nie eine Akte an, blendet kein Mandat
+    aus (`mandateMitProduktLauf`) und sperrt keinen scharfen Lauf (`starten`). Der scharfe Lauf einer Akte meldet `fall-schritt-erledigt`/`fall-phase` mit denselben
+    Kennungen wie ein Paket-Fall (lib/prozesse/akte-ereignisse.ts, Ende von `laufVoran`).
+  - **Mandat beendet → Fall abgeschlossen:** `fallNachMandatsende` (nach dem CRM-Speichern in `crmEreignisse`; Netz `mandatsendeNetz` im Fulfillment-Morgenlauf, erst
+    ab `MARKE_MANDATSENDE_SEIT`, nie rückwirkend): Status + Marke, Aufgaben der Ausführung zu, offene Läufe am Fall enden (`mandatsendeLaeufeAbbrechen`, Grund
+    `mandat-beendet`; Läufe aus `fall-abgeschlossen`/`mandat-beendet`/Datum `mandat.ende` bleiben — `laufEndetMitMandat`), DANN Ereignis `fall-abgeschlossen`
+    (Stufe `mandatsende` | `hand`) für Nachsorge/Verlängerung.
+  - **Geld aus der Werkstatt:** Bausteine `rechnung.mandat-entwurf`, `rechnung.stellen` (Klasse geld) und `angebot.stellen` gehen hinter dem Schloss als Wirkung `geld`
+    (Regeln lib/prozesse/geld-bausteine.ts, Server `geldVorlegen`/`geldUebernehmen` in bausteine-server.ts → `entwurfNeu` quelle mandat / `rechnungStellen` /
+    `angebotStellen`) — EIN Klick im Stapel führt aus, Mail bleibt eigener Schritt. Angebots-Entwurf aus dem Prozess: `positionen_aus: 'fall'` → Positionen des
+    jüngsten Angebots bzw. des Produkts (lib/prozesse/geld-positionen.ts, nur Server). Neue Geld-Bausteine dort, nie „von Hand“-Aufgabe, wenn ein Schreibweg da ist.
+  - **Warten auf eines von mehreren Ereignissen:** `WartenRegel.ereignisse` (optional, `wartenArten`, im Lauf `wartet.ereignisse`, `laufWartetAufArt`), Maske „oder eines
+    davon“. Vorlagen: V10 (Antwort/Stufe + Raute „Schon entschieden?“ + `KgVorlage.ziel` über `deal.angebot-entschieden`/`deal.offen`), V09A, V12 (Willkommen vor den Aufgaben).
+  - **Ereignisse:** `lead-mql` (NUR im Takt des Motors bei geänderter Kartei/CRM, `mqlEreignisse`, Stand im Arbeitsspeicher — nie im Lese-/Schreibpfad), `neuer-lead` auch
+    von Hand in der Kartei/aus dem Formular (`personNeuEreignis`, nie Import), `fall-abgeschlossen`. Datum „Rechnung fällig“ auch ohne Mandat (Fall Firma bzw. Lead,
+    `DATUMS_FELDER.auch`). Tests `tests/kreislauf-fall-2910.test.ts`, `tests/kreislauf-werkstatt-2910.test.ts`.
+
 ## Werkzeug-Muster — jeder große Bereich ein eigenes Werkzeug (22.10., Branch `werkzeuge`, nur lokal)
 Kevin 22.10.: „Wenn ich Prozesse aufmache, kommt im Grunde ein neues Tool — wie bei Miro. Genauso bei Markttraktion wie bei HubSpot … dann bekommt jeder Bereich
 mehr Power“ — „Innerhalb der Maske auf jeden Fall einen Pfeil oben rechts, der diesen Bereich einfach als Ganzes macht.“ Prozesse ist das erste Werkzeug (Miro-Art),

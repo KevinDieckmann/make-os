@@ -28,7 +28,7 @@
 import { NextResponse } from 'next/server';
 import { fulfillmentZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
-import { fallUmfeld, ableitungFuer, fallSchreiben, fallStartenOderAnhaengen, prozessFallStarten, fallVorlageUebernehmen, fallNachziehen, FallFehler } from '@/lib/fulfillment/prozesse/fall-server';
+import { fallUmfeld, ableitungFuer, fallSchreiben, mandatFallStarten, fallVorlageUebernehmen, fallNachziehen, FallFehler } from '@/lib/fulfillment/prozesse/fall-server';
 import { fallWirksam, onboardingStand, vorschlagText, istKickoff } from '@/lib/fulfillment/prozesse/onboarding';
 import { vorlagenDiff, zusatzDiff, fallFreigaben, fallAblauf } from '@/lib/fulfillment/prozesse/fall';
 import { vorlagenAnwenden } from '@/lib/fulfillment/prozesse/vorlagen-anwenden';
@@ -213,13 +213,10 @@ export async function POST(req: Request) {
     if (b.aktion === 'starten') {
       const r = await einmalig<Record<string, unknown>>('fulfillment-starten', b.anfrageId, async () => {
         try {
-          // 24.10. (Bau-Test Kern): der Prozess des Produkts (`pz-…`) ist der Ablauf des Falls — Akte + einmaliger Anstoß der Läufe (fall-server `prozessFallStarten`).
-          if (typeof b.vorlageId === 'string' && /^pz-/.test(b.vorlageId)) {
-            const { fall, laeufe } = await prozessFallStarten({ mandatId: b.mandatId, prozessId: b.vorlageId, start: b.start, person: z.person, wer });
-            return { status: 200, body: { ok: true, fall, laeufe, text: 'Fall angelegt — Onboarding beginnt; die Schritte kommen aus dem Ablauf des Produkts.' } };
-          }
-          // Ein neuer Fall stößt auch hier die Produkt-Läufe einmal an (25.10., Kern-Reste 2 — wie beim Prozess des Produkts).
-          const { fall, art, laeufe } = await fallStartenOderAnhaengen({ mandatId: b.mandatId, vorlageId: b.vorlageId, start: b.start, person: z.person, wer, laeufeAnstossen: true });
+          // 29.10. (Kreislauf, F-B3): EIN Start für jeden Fall (fall-server `mandatFallStarten`) — der Prozess des Produkts (`pz-…`: Akte + einmaliger Anstoß der
+          // Läufe), sonst ein Paket (ein neuer Fall stößt die Produkt-Läufe ebenso einmal an); ohne Wahl die Regel `startVorbelegung`.
+          const { fall, art, ablauf, laeufe } = await mandatFallStarten({ mandatId: b.mandatId, ...(typeof b.vorlageId === 'string' && b.vorlageId ? { ablauf: b.vorlageId } : {}), start: b.start, person: z.person, wer, laeufeAnstossen: true });
+          if (ablauf === 'prozess') return { status: 200, body: { ok: true, fall, laeufe, text: 'Fall angelegt — Onboarding beginnt; die Schritte kommen aus dem Ablauf des Produkts.' } };
           const text = art === 'angehaengt' ? 'Zusatzmodul an den laufenden Fall angehängt — ohne zweites Onboarding.' : fall.ohneOnboarding ? 'Fall angelegt — das Zusatzmodul läuft ohne Onboarding.' : 'Fall angelegt — Onboarding beginnt.';
           return { status: 200, body: { ok: true, fall, text, laeufe, ...(art === 'angehaengt' ? { angehaengt: true } : {}) } };
         } catch (e) { if (e instanceof FallFehler) return { status: e.status, body: { ok: false, fehler: e.message } }; throw e; }

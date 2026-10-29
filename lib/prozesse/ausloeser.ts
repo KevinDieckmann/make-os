@@ -115,20 +115,21 @@ const FELD_TITEL_ALLE: ReadonlyMap<string, string> = new Map([...EREIGNIS_FELDER
 export const feldTitelVon = (id: string): string => FELD_TITEL_ALLE.get(id) ?? (id.startsWith('webhook.') ? `Webhook: ${id.slice(8)}` : id.startsWith('agent.') ? `Agent-Ausgabe: ${id.slice(6)}` : id);
 
 /** Datumsfelder am Fall (Auslöser „Datum“, Warten bis Datum) — je Fall-Art. */
-export const DATUMS_FELDER: readonly { id: DatumsFeld; titel: string; fall: FallArt }[] = [
+/** `auch` (29.10., Kreislauf): weitere Fall-Arten — eine Rechnung ohne Mandat (Kunde aus der Kartei) läuft als Fall ihrer Firma bzw. ihres Leads. */
+export const DATUMS_FELDER: readonly { id: DatumsFeld; titel: string; fall: FallArt; auch?: readonly FallArt[] }[] = [
   { id: 'mandat.kuendigungsfrist', titel: 'Kündigungsfrist des Mandats', fall: 'mandat' },
   { id: 'mandat.review', titel: 'Nächstes Review', fall: 'mandat' },
   { id: 'mandat.start', titel: 'Start des Mandats', fall: 'mandat' },
   { id: 'mandat.ende', titel: 'Ende des Mandats', fall: 'mandat' },
   { id: 'deal.entscheidung', titel: 'Entscheidung bis', fall: 'deal' },
   { id: 'angebot.gueltig-bis', titel: 'Angebot gültig bis', fall: 'deal' },
-  { id: 'rechnung.faellig', titel: 'Rechnung fällig', fall: 'mandat' },
+  { id: 'rechnung.faellig', titel: 'Rechnung fällig', fall: 'mandat', auch: ['firma', 'lead'] },
   { id: 'event.datum', titel: 'Tag des Events', fall: 'event' },
   { id: 'lead.wiedervorlage', titel: 'Wiedervorlage des Leads', fall: 'lead' },
   // Begleit-Prozesse am Fall (22.10., B1): Termin-Vorbereitung n Werktage vorher.
   { id: 'fall.termin', titel: 'Nächster Termin mit dem Kunden (Fulfillment-Fall)', fall: 'mandat' },
 ];
-export const datumsFelderFuer = (fall: FallArt): readonly DatumsFeld[] => DATUMS_FELDER.filter(d => d.fall === fall).map(d => d.id);
+export const datumsFelderFuer = (fall: FallArt): readonly DatumsFeld[] => DATUMS_FELDER.filter(d => d.fall === fall || d.auch?.includes(fall)).map(d => d.id);
 
 /** Webhook-Felder heißen im Lauf `webhook.<id>`. */
 export const webhookFeldSchluessel = (id: string): string => `webhook.${id}`;
@@ -207,7 +208,7 @@ export function ausloeserAus(roh: unknown, fall: FallArt, knotenId?: string): { 
       const erlaubt = datumsFelderFuer(fall);
       const feld = roh.feld as DatumsFeld;
       const raus: Befund[] = [];
-      if (!erlaubt.includes(feld)) raus.push(b('offen', erlaubt.length ? `Datum: eines von ${DATUMS_FELDER.filter(d => d.fall === fall).map(d => d.titel).join(', ')}.` : 'Datum am Fall gibt es nur mit einem Fall (Lead, Deal, Mandat, Event).'));
+      if (!erlaubt.includes(feld)) raus.push(b('offen', erlaubt.length ? `Datum: eines von ${DATUMS_FELDER.filter(d => erlaubt.includes(d.id)).map(d => d.titel).join(', ')}.` : 'Datum am Fall gibt es nur mit einem Fall (Lead, Deal, Mandat, Event).'));
       const vt = roh.versatzTage;
       const versatz = typeof vt === 'number' && Number.isInteger(vt) && Math.abs(vt) <= 365 ? vt : null;
       if (versatz === null) raus.push(b('offen', 'Datum: Versatz in ganzen Tagen (−365 bis 365).'));

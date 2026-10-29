@@ -13,7 +13,7 @@
 import type { Fall, ProzessVorlage, VorlagenDatei, AnwendenErgebnis, KundeKurz } from '../typen';
 import type { CrmBestand, Mandat } from '@/lib/crm/typen';
 import { fulfillmentAendern, fulfillmentLesen, fulfillmentHaushalt, eintragStand } from '../speicher';
-import { aktuellerKnoten, istFulfillmentMandat, unterschriftAm, istBestand, MARKE_FULFILLMENT_SEIT } from '../regeln';
+import { aktuellerKnoten, istFulfillmentMandat, unterschriftAm, istBestand, mandatsEnde, MARKE_FULFILLMENT_SEIT } from '../regeln';
 import { istGesellschaft, GEHOERT_ZU_PRIVAT } from '@/lib/einheiten';
 import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
@@ -130,6 +130,8 @@ export async function fallStartenOderAnhaengen(e: { mandatId: unknown; vorlageId
     if (da) return { ok: false, status: 409, fehler: 'Für dieses Mandat läuft schon ein Fall.' };
     const pb = playbookBaustein(vorlagen);
     neu = fallStarten({ mandatId: m.id, vorlage: v, person: e.person, jetzt: iso, start, ...(bis ? { willkommenBis: bis } : {}), ...(pb ? { playbookId: pb.id } : {}), neueId: p => neueKennung(p) });
+    // 29.10. (Kreislauf, F-B8): die Zusatzmodule, die beim Start schon am Mandat hängen (z. B. aus dem Deal), kommen gleich als Abschnitt dazu — idempotent.
+    if (!v.zusatz) neu = zusaetzeAnhaengen(neu, m, vorlagen, { person: e.person, jetzt: iso, start });
     return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: neu } }, geaendert: [m.id] };
   }, e.wer ?? { art: 'person', person: e.person }, h);
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
@@ -168,7 +170,7 @@ export async function prozessAkteAnlegen(e: { mandatId: string; prozessId: strin
     const da = d.faelle[m.id];
     if (da) { fall = da; art = 'da'; return { ok: true, datei: d, geaendert: [] }; }
     const pb = playbookBaustein(vorlagen);
-    fall = prozessAkteStarten({ mandatId: m.id, prozessId: e.prozessId, titel: e.titel, version: e.version, person: e.person, jetzt: iso, start, ...(bis ? { willkommenBis: bis } : {}), ...(pb ? { playbookId: pb.id } : {}), neueId: p => neueKennung(p) });
+    fall = zusaetzeAnhaengen(prozessAkteStarten({ mandatId: m.id, prozessId: e.prozessId, titel: e.titel, version: e.version, person: e.person, jetzt: iso, start, ...(bis ? { willkommenBis: bis } : {}), ...(pb ? { playbookId: pb.id } : {}), neueId: p => neueKennung(p) }), m, vorlagen, { person: e.person, jetzt: iso, start });
     return { ok: true, datei: { ...d, faelle: { ...d.faelle, [m.id]: fall } }, geaendert: [m.id] };
   }, e.wer ?? { art: 'person', person: e.person }, h);
   if (!r.ok) throw new FallFehler(r.fehler, r.status === 403 ? 403 : r.status);
@@ -203,6 +205,122 @@ export async function prozessFallStarten(e: { mandatId: unknown; prozessId: stri
   if (r.art === 'da') throw new FallFehler('Für dieses Mandat läuft schon ein Fall.', 409);
   const laeufe = await import('@/lib/prozesse/lauf-server').then(l => l.produktLaeufeAnstossen(m.id, e.person, jetzt)).catch(() => 0);
   return { fall: r.fall, laeufe };
+}
+
+// ══ EIN Start für jeden Fall (29.10., Kreislauf P3) ════════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Die Zusatzmodule eines Mandats an seinen NEUEN Fall hängen (29.10., F-B8 — vorher nur später per Klick in der Mandatsakte): je Modul, dessen Produkt ein Paket
+ * mit dem Schalter „Zusatzmodul“ zugeordnet ist, ein Abschnitt (`zusatzAnhaengen`), Start = Beginn des Moduls bzw. des Falls. Idempotent (schon dran → nichts);
+ * ein Modul, das nicht passt (beendet vor dem Start, Knoten doppelt, Grenze), wird übersprungen — der Fall startet trotzdem. Rein.
+ */
+export function zusaetzeAnhaengen(fall: Fall, m: Pick<Mandat, 'zusatz'>, vorlagen: Pick<VorlagenDatei, 'zuordnung' | 'prozesse'>, e: { person: string; jetzt: string; start: string }): Fall {
+  let f = fall;
+  for (const z of m.zusatz ?? []) {
+    if (z.bis && z.bis < e.start) continue;
+    const vid = vorlagen.zuordnung[z.leistungId]?.vorlageId;
+    const v = vid ? vorlagen.prozesse.find(p => p.id === vid && p.art === 'paket' && p.zusatz) : undefined;
+    if (!v || f.vorlageId === v.id || f.zusaetze?.some(x => x.vorlageId === v.id)) continue;
+    const r = zusatzAnhaengen(f, { vorlage: v, person: e.person, jetzt: e.jetzt, start: z.ab && z.ab > e.start ? z.ab : e.start });
+    if (r.ok) f = r.datei;
+  }
+  return f;
+}
+
+export const KEIN_ABLAUF = 'Erst dem Produkt einen Ablauf zuordnen (Produkte & Mandate › Produkte) — oder in „Heute im Fulfillment“ bzw. am Deal „Fall starten“ und den Ablauf wählen.';
+
+/**
+ * Welcher Ablauf den Fall eines Mandats trägt — EINE Regel (`startVorbelegung`, lib/prozesse/produkt-ablauf.ts): der Prozess des Produkts (Werkstatt), sonst das
+ * Paket, das DIESEM Produkt zugeordnet ist, sonst null. Liest nur.
+ */
+export async function ablaufFuerMandat(m: Pick<Mandat, 'leistungId'>, crm: Pick<CrmBestand, 'leistungen'>, vorlagen: Pick<VorlagenDatei, 'zuordnung' | 'prozesse'>,
+  /** Schon gelesen (`produktProzesseLesen`) — z. B. einmal je Morgenlauf statt je Kandidat. */ produktProzesse?: Readonly<Record<string, import('@/lib/prozesse/produkt-ablauf').ProduktProzessKurz>>): Promise<import('@/lib/prozesse/produkt-ablauf').StartAblauf> {
+  const [{ startVorbelegung }, { produktProzesseLesen }] = await Promise.all([import('@/lib/prozesse/produkt-ablauf'), import('@/lib/prozesse/produkt-laeufe-server')]);
+  return startVorbelegung(m.leistungId, { produktProzesse: produktProzesse ?? await produktProzesseLesen(crm), zuordnung: vorlagen.zuordnung, pakete: vorlagen.prozesse.filter(p => p.art === 'paket').map(p => ({ id: p.id, titel: p.titel })) });
+}
+
+/**
+ * „Fall eines Mandats starten“ — die EINE Stelle für Stapel-Freigabe (Morgenlauf-Vorschlag), Baustein „Fall starten“ der Werkstatt, Fall-Dialog am Deal/Mandat
+ * (Route) und „Mandat anlegen & Fall starten“. Ablauf: ausdrücklich gewählt (`ablauf`: `pz-…` = Prozess des Produkts, sonst ein Paket) bzw. nach
+ * `ablaufFuerMandat`; Prozess → `prozessFallStarten` (Akte + Anstoß der Läufe), Paket → `fallStartenOderAnhaengen` (ein Zusatzmodul hängt an einen laufenden Fall
+ * an). Ohne Ablauf 409 `KEIN_ABLAUF`. Wirft `FallFehler`.
+ */
+export async function mandatFallStarten(e: { mandatId: unknown; ablauf?: unknown; start?: unknown; person: string; wer?: Wer; jetzt?: Date; laeufeAnstossen?: boolean }): Promise<{ fall: Fall; art: 'neu' | 'angehaengt'; ablauf: 'prozess' | 'paket'; laeufe: number }> {
+  const jetzt = e.jetzt ?? new Date();
+  let wahl = typeof e.ablauf === 'string' && e.ablauf ? e.ablauf : null;
+  if (!wahl) {
+    const { crm, vorlagen } = await fallUmfeld([]);
+    const m = mandatPruefen(crm, e.mandatId);
+    wahl = (await ablaufFuerMandat(m, crm, vorlagen))?.id ?? null;
+    if (!wahl) throw new FallFehler(KEIN_ABLAUF, 409);
+  }
+  const basis = { mandatId: e.mandatId, person: e.person, jetzt, ...(e.wer ? { wer: e.wer } : {}), ...(e.start !== undefined ? { start: e.start } : {}) };
+  if (/^pz-/.test(wahl)) {
+    const r = await prozessFallStarten({ ...basis, prozessId: wahl });
+    return { fall: r.fall, art: 'neu', ablauf: 'prozess', laeufe: r.laeufe };
+  }
+  const r = await fallStartenOderAnhaengen({ ...basis, vorlageId: wahl, ...(e.laeufeAnstossen ? { laeufeAnstossen: true } : {}) });
+  return { fall: r.fall, art: r.art, ablauf: 'paket', laeufe: r.laeufe };
+}
+
+// ══ Mandat beendet → Fall abgeschlossen (29.10., Kevin: „automatisch abschließen“) ═══════════════════════════════════════════════════════════════
+
+/** Marke am Fall: wann ihn das Ende des Mandats abgeschlossen hat (Tag). */
+export const MARKE_MANDATSENDE = 'abgeschlossen:mandatsende';
+/** Marke im Vorlagen-Bestand: ab wann das Netz im Morgenlauf greift — Fälle von Mandaten, die VORHER endeten, bleiben, wie sie sind (Altbestand). */
+export const MARKE_MANDATSENDE_SEIT = 'mandatsende-schliesst-seit';
+
+/**
+ * Ein Mandat ist beendet → sein Fall wird abgeschlossen (Status „abgeschlossen“ + Marke; Hänger, Report-Fristen, Erinnerungen und offene Aufgaben der Ausführung
+ * hören damit auf — dieselben Regeln wie „Fall abschließen“ von Hand). Danach das Ereignis `fall-abgeschlossen` (Stufe `mandatsende`), auf das Nachsorge- bzw.
+ * Verlängerungs-Prozesse der Werkstatt hören. Idempotent (schon abgeschlossen bzw. ohne Fall → nichts), nur Mandate mit Status „beendet“. Wirft nie.
+ */
+export async function fallNachMandatsende(mandatId: string, jetzt = new Date()): Promise<boolean> {
+  try {
+    const iso = jetzt.toISOString(), heute = localDay(jetzt);
+    const { h, crm, faelle } = await fallUmfeld([]);
+    const m = crm.mandate.find(x => x.id === mandatId && !x.geloeschtAm);
+    const alt = faelle.faelle[mandatId];
+    if (!m || m.status !== 'beendet' || !alt || alt.status === 'abgeschlossen') return false;
+    let neu: Fall | null = null;
+    const r = await fulfillmentAendern('faelle', d => {
+      const f = d.faelle[mandatId];
+      if (!f || f.status === 'abgeschlossen') return { ok: true, datei: d, geaendert: [] };
+      neu = { ...f, status: 'abgeschlossen', marken: { ...f.marken, [MARKE_MANDATSENDE]: heute }, geaendert: iso, geaendertVon: 'system' };
+      return { ok: true, datei: { ...d, faelle: { ...d.faelle, [mandatId]: neu } }, geaendert: [mandatId] };
+    }, { art: 'system' }, h);
+    if (!r.ok || !neu) return false;
+    // Offene Aufgaben der Ausführung schließen (die Ausführung räumt abgeschlossene Fälle auf), offene Werkstatt-Läufe am Fall beenden (Kevin 29.10.: außer
+    // Nachsorge/Verlängerung) — DANN melden, damit die Läufe, die an „Fall abgeschlossen“ starten, nicht mit enden. Alles wirft nie.
+    await import('./ausfuehrung-server').then(a => a.ablaufNachziehen({ mandatId, person: null, wer: { art: 'system' }, jetzt })).catch(() => null);
+    await import('@/lib/prozesse/lauf-server').then(l => l.mandatsendeLaeufeAbbrechen(mandatId, jetzt)).catch(() => 0);
+    await import('@/lib/ereignisse/quellen').then(q => q.fallEreignisse(alt, neu!, m, undefined, 'mandatsende')).catch(() => 0);
+    return true;
+  } catch { return false; }
+}
+
+/**
+ * Das Netz im Morgenlauf: Fälle, deren Mandat seit der Einführung (`MARKE_MANDATSENDE_SEIT`) beendet ist und die noch laufen — z. B. weil das Ereignis gerade nicht
+ * schreiben konnte. Beim ersten Lauf wird nur der Tag gemerkt (nie rückwirkend Altbestand schließen). Liefert die Zahl geschlossener Fälle. Wirft nie.
+ */
+export async function mandatsendeNetz(h: string, heute: string, jetzt = new Date()): Promise<number> {
+  try {
+    const { crm, vorlagen, faelle } = await fallUmfeld([]);
+    const seit = vorlagen.marken[MARKE_MANDATSENDE_SEIT];
+    if (!seit) {
+      await fulfillmentAendern('vorlagen', d => (d.marken[MARKE_MANDATSENDE_SEIT] ? { ok: true, datei: d, geaendert: [] } : { ok: true, datei: { ...d, marken: { ...d.marken, [MARKE_MANDATSENDE_SEIT]: heute } }, geaendert: [MARKE_MANDATSENDE_SEIT] }), { art: 'system' }, h);
+      return 0;
+    }
+    let n = 0;
+    for (const f of Object.values(faelle.faelle)) {
+      if (f.status === 'abgeschlossen') continue;
+      const m = crm.mandate.find(x => x.id === f.mandatId && !x.geloeschtAm);
+      const ende = m && m.status === 'beendet' ? mandatsEnde(m) : null;
+      if (!ende || ende < seit) continue;
+      if (await fallNachMandatsende(f.mandatId, jetzt)) n++;
+    }
+    return n;
+  } catch { return 0; }
 }
 
 /** Die Phase des Mandats nachziehen — nur vorwärts im Ablauf des Produkts. Liefert, ob gesetzt wurde. */

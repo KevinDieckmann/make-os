@@ -30,6 +30,10 @@
 //   abstimmung-bestaetigt  nach dem Schreiben eines Falls: eine Bestätigung (F0 …) ist neu gegeben — Bezug `freigabeId`
 //   fall-haengt            Morgenlauf: ein Hänger des Cockpits (`wasHaengt` — Willkommen-Uhr, Bestätigung, wartet, überfällig, Puls, Report), Stufe = Art, je Hänger einmal
 //   kunde-geliefert        Kunden-Link bzw. Formular im Kick-off: Formular vollständig (Stufe `formular`), Unterlage hochgeladen (`unterlage`), Puls beantwortet (`puls`)
+// Kreislauf Werkstatt (29.10., „Alle Automatisierungen kommen aus der Werkstatt“):
+//   lead-mql               Firmen- bzw. Personen-Lead erreicht MQL (CRM- bzw. Kartei-Diff, EINE Regel `mqlErreicht` aus lib/crm/leads.ts — nur Marketing-Herkunft)
+//   neuer-lead             zusätzlich: Person von Hand in der Kartei angelegt (nie beim Massen-Import) und Formular „Angebot anfordern“ (neue Person)
+//   fall-abgeschlossen     Fulfillment-Fall neu auf „abgeschlossen“ — Stufe `mandatsende` (automatisch, wenn das Mandat endet) bzw. `hand`
 
 import type { SkillEreignis } from '@/lib/agenten/typen';
 
@@ -70,6 +74,8 @@ export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
   // ── Begleit-Prozesse am Fall (22.10., B1 — Quellen in ./quellen.ts: `fallEreignisse`, `fallHaengtEreignisse`, `kundeGeliefertEreignis`) ──
   'fall-phase': 'Phase im Fall begonnen bzw. abgeschlossen', 'fall-wartet-kunde': 'Schritt wartet auf den Kunden', 'abstimmung-bestaetigt': 'Bestätigung im Fall gegeben',
   'fall-haengt': 'Im Fall hängt etwas', 'kunde-geliefert': 'Kunde hat geliefert',
+  // ── Kreislauf Werkstatt (29.10.) ──
+  'lead-mql': 'Lead wird MQL', 'fall-abgeschlossen': 'Fall abgeschlossen',
   // ── Kundengewinnung (22.10., E2/E3/E5/E6/E7/E10/E11 — Quellen in ./quellen-kundengewinnung.ts) ──
   ...EREIGNIS_NAME_KUNDENGEWINNUNG,
 };
@@ -82,6 +88,8 @@ export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'ne
   'zusatz-gebucht',
   // Begleit-Prozesse am Fall (22.10., B1)
   'fall-phase', 'fall-wartet-kunde', 'abstimmung-bestaetigt', 'fall-haengt', 'kunde-geliefert',
+  // Kreislauf Werkstatt (29.10.)
+  'lead-mql', 'fall-abgeschlossen',
   // Kundengewinnung (22.10.): ein eigener Block — jede Art hat ihre Quelle in ./quellen-kundengewinnung.ts.
   ...EREIGNISSE_KUNDENGEWINNUNG];
 /** Arten, die nur intern etwas anstoßen (kein Skill-Auslöser). */
