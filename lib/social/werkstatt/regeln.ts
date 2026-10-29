@@ -24,11 +24,16 @@ export interface WerkstattClip { id: string; mediumId: string; von: number; bis:
 export interface Einblendung { id: string; text: string; von: number; bis: number; lage: EinblendungLage }
 
 export type WerkstattStatus = 'entwurf' | 'arbeitet' | 'fertig' | 'fehler';
+export type AutoSchritt = 'transkript' | 'schnitt' | 'render' | 'beitrag' | 'fertig';
+export const AUTO_SCHRITTE: readonly AutoSchritt[] = ['transkript', 'schnitt', 'render', 'beitrag', 'fertig'];
 export interface WerkstattArbeit { art: 'transkript' | 'render'; seit: string; versuche: number; gestartet?: string }
 
 export interface SchnittVorschlag {
   clips: Omit<WerkstattClip, 'id'>[];
   einblendungen: Omit<Einblendung, 'id'>[];
+  /** Titel und Beschriftung (Text unter dem Reel, mit Hashtags) — für den Beitrag, den Auto-Reel anlegt. */
+  titel?: string;
+  beschriftung?: string;
   /** Begründung in einem Satz (für die Person, warum so geschnitten). */
   warum?: string;
   am: string;
@@ -56,6 +61,8 @@ export interface WerkstattAuftrag {
   ergebnis?: string;
   fehler?: string;
   vorschlag?: SchnittVorschlag;
+  /** Auto-Reel (28.10.): der Auftrag läuft ohne Klick weiter — Schritt der Kette (setzt nur der Server). */
+  auto?: { schritt: AutoSchritt; titel?: string; beschriftung?: string; hook?: string };
   von: string;
   angelegt: string;
   geaendert: string;
@@ -208,6 +215,10 @@ export function auftragAus(o: unknown): WerkstattAuftrag | null {
     ...(typeof x.ergebnis === 'string' && MEDIUM.test(x.ergebnis) ? { ergebnis: x.ergebnis } : {}),
     ...(typeof x.fehler === 'string' ? { fehler: x.fehler.slice(0, 400) } : {}),
     ...(x.vorschlag && typeof x.vorschlag === 'object' ? { vorschlag: x.vorschlag as SchnittVorschlag } : {}),
+    ...(x.auto && typeof x.auto === 'object' && (AUTO_SCHRITTE as readonly unknown[]).includes((x.auto as { schritt?: unknown }).schritt) ? { auto: {
+      schritt: (x.auto as { schritt: AutoSchritt }).schritt,
+      ...(['titel', 'beschriftung', 'hook'] as const).reduce((o, f) => { const v = (x.auto as Record<string, unknown>)[f]; return typeof v === 'string' && v.trim() ? { ...o, [f]: v.trim().slice(0, f === 'beschriftung' ? 2200 : 300) } : o; }, {}),
+    } } : {}),
     von: x.von, angelegt: String(x.angelegt ?? ''), geaendert: String(x.geaendert ?? ''), ...(typeof x.geaendertVon === 'string' ? { geaendertVon: x.geaendertVon } : {}),
   };
 }

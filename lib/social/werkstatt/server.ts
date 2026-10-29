@@ -173,7 +173,7 @@ export async function werkstattSchreiben(person: string, op: WerkstattOp, jetzt 
 }
 
 /** Ein Feld des Auftrags vom Server setzen (Arbeit, Ergebnis, Vorschlag) — ohne Stand-Prüfung, nur hier im Modul. */
-async function auftragServer(id: string, fn: (a: WerkstattAuftrag) => Partial<WerkstattAuftrag> | null): Promise<WerkstattAuftrag | null> {
+export async function auftragServer(id: string, fn: (a: WerkstattAuftrag) => Partial<WerkstattAuftrag> | null): Promise<WerkstattAuftrag | null> {
   let neu: WerkstattAuftrag | null = null;
   await updateJson<Datei>(await werkstattSpeicher(), cur => {
     const liste = (cur?.auftraege ?? []).map(auftragAus).filter((a): a is WerkstattAuftrag => !!a);
@@ -227,6 +227,10 @@ export async function werkstattJobsImTakt(jetzt = new Date()): Promise<{ erledig
       erledigt++;
       if (!r.ok) await auftragServer(a.id, () => ({ status: 'fehler', arbeit: undefined, fehler: r.fehler }));
     }
+    // Auto-Reel (28.10.): Aufträge ohne Klick einen Schritt weiter (Schnitt, Rendern einreihen, Beitrag anlegen). Reiht es neue Arbeit ein,
+    // läuft sie in der nächsten Runde dieses Laufs bzw. im nächsten Takt.
+    const { autoWeiter } = await import('./auto');
+    await autoWeiter(jetzt).catch(e => console.warn(`[werkstatt] Auto-Reel: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`));
   } finally { laeuft = false; }
   return { erledigt };
 }
@@ -322,7 +326,8 @@ async function renderLauf(a: WerkstattAuftrag): Promise<LaufR> {
     const { socialSystemSchreiben } = await import('../server');
     await socialSystemSchreiben([{ op: 'medien-setzen', folgeId: a.folgeId, medien: [ergebnis.id] }], new Date()).catch(() => null);
   }
-  await melde({ an: a.von, art: 'medien', titel: `Werkstatt: „${a.titel}“ ist fertig — ansehen und freigeben`, link: WEG.marketing('social'), von: 'zoe' }).catch(() => {});
+  // Auto-Reel meldet sich selbst, wenn der Beitrag steht (lib/social/werkstatt/auto.ts) — hier nur von Hand angestoßene Aufträge.
+  if (!a.auto) await melde({ an: a.von, art: 'medien', titel: `Werkstatt: „${a.titel}“ ist fertig — ansehen und freigeben`, link: WEG.marketing('social'), von: 'zoe' }).catch(() => {});
   return { ok: true };
 }
 

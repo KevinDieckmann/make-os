@@ -59,7 +59,9 @@ export interface SocialAnbieter {
 }
 
 /** Text eines Beitrags aus der Folge: Skript, dann der Aufruf (wenn er nicht schon drinsteht). Rein. */
-export function postText(f: Pick<SocialFolge, 'skript' | 'cta'>): string {
+export function postText(f: Pick<SocialFolge, 'skript' | 'cta' | 'beschriftung'>): string {
+  // Beschriftung (28.10.) gewinnt: bei Bild/Karussell/Reel ist sie der Post-Text (das Skript ist gesprochen).
+  if (f.beschriftung?.trim()) return f.beschriftung.trim();
   const s = f.skript.trim();
   const cta = f.cta?.trim();
   return cta && !s.toLowerCase().includes(cta.toLowerCase()) ? `${s}\n\n${cta}` : s;

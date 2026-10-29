@@ -436,3 +436,95 @@ describe('Kommentare & DMs (Server)', () => {
     expect(JSON.stringify(b)).not.toMatch(/tok2|Wie lange/);
   });
 });
+
+// ── Malin-Paket Teil 2: Beschriftung, Kalender, beste Zeiten, Auto-Reel ──
+describe('Beschriftung, Kalender, beste Zeiten (rein)', () => {
+  it('Beschriftung ist der Post-Text; zu viele Hashtags stoppt; der Agent schreibt sie nur für Bild/Karussell/Video', async () => {
+    const { postText } = await import('@/lib/social/anbieter/typen');
+    expect(postText({ skript: 'Gesprochen', cta: 'Folgen', beschriftung: 'Unter dem Reel #a' })).toBe('Unter dem Reel #a');
+    expect(postText({ skript: 'Text', cta: 'Folgen' })).toBe('Text\n\nFolgen');
+    const { folgePruefen } = await import('@/lib/social/pruefer');
+    const kanal = { id: 'sk-1', name: 'K', ziele: [], staende: [], sprache: 'de', plattformen: ['instagram'], kiKanal: false, marke: { nieSagen: [], saeulen: [] }, leitplanken: LEITPLANKEN_VORGABE, status: 'aktiv', geaendert: '' } as SocialKanal;
+    const f = { id: 'sv-1', kanalId: 'sk-1', titel: 'T', skript: 'Ein Satz.', hooks: [{ id: 'hk-1', text: 'H' }], quellen: [], kiInhalt: false, status: 'entwurf', veroeffentlicht: [], messungen: [], geaendert: '', beschriftung: Array.from({ length: 31 }, (_, i) => `#t${i}`).join(' ') } as never;
+    expect(folgePruefen(f, { kanal, andere: [] }).some(b => b.code === 'hashtags' && b.stufe === 'stopp')).toBe(true);
+    const { entwurfAus } = await import('@/lib/social/agent');
+    const l = { platz: '2026-11-03T18:00' };
+    expect(entwurfAus({ titel: 'T', hooks: [{ text: 'H' }], skript: 'S', cta: 'C', beschriftung: 'B #x' }, kanal, l, 'video')).toMatchObject({ beschriftung: 'B #x' });
+    expect(entwurfAus({ titel: 'T', hooks: [{ text: 'H' }], skript: 'S', cta: 'C', beschriftung: 'B #x' }, kanal, l, 'text')?.beschriftung).toBeUndefined();
+  });
+  it('Kalender: Woche Mo–So, Monat volle Wochen; Beiträge + freie Plätze je Tag, Farbe aus den Post-Schritten', async () => {
+    const { kalenderTage, kalenderEintraege, tonVon } = await import('@/lib/social/kalender');
+    expect(kalenderTage('woche', '2026-11-05')).toEqual(['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08']);
+    const m = kalenderTage('monat', '2026-11-15');
+    expect(m[0]).toBe('2026-10-26'); expect(m[m.length - 1]).toBe('2026-12-06'); expect(m.length % 7).toBe(0);
+    const folgen = [{ id: 'sv-a', kanalId: 'sk-1', titel: 'A', status: 'geplant', geplantAm: '2026-11-03', geplantUm: '09:00', medien: [MD(1)] }, { id: 'sv-b', kanalId: 'sk-1', titel: 'B', status: 'entwurf', geplantAm: '2026-11-03' }, { id: 'sv-c', kanalId: 'sk-2', titel: 'fremd', status: 'geplant', geplantAm: '2026-11-03' }] as never[];
+    const e = kalenderEintraege({ id: 'sk-1', plan: undefined }, folgen, [{ platz: '2026-11-05T18:00', saeule: 'Mut' }], { 'sv-a': [{ plattform: 'instagram', zustand: 'geplant', grund: '' }] }, kalenderTage('woche', '2026-11-05'));
+    expect(e.get('2026-11-03')!.map(x => [x.id, x.uhrzeit, x.ton])).toEqual([['sv-a', '09:00', 'automatisch'], ['sv-b', '18:00', 'entwurf']]);
+    expect(e.get('2026-11-05')![0]).toMatchObject({ art: 'platz', ton: 'frei', titel: 'frei · Mut' });
+    expect(tonVon({ status: 'geplant' }, [{ plattform: 'instagram', zustand: 'unklar', grund: '' }])).toBe('problem');
+  });
+  it('Beste Zeiten: erst ab 8 eigenen Beiträgen, Median je Tag und Stunde, nie aus fremden Daten', async () => {
+    const { besteZeiten } = await import('@/lib/social/zeiten');
+    const b = (i: number, tag: string, um: string, views: number) => ({ id: `sv-z${i}`, kanalId: 'sk-1', titel: `${i}`, status: 'veroeffentlicht', geplantAm: tag, geplantUm: um, veroeffentlicht: [{ plattform: 'instagram', am: tag }], messungen: [{ id: `m${i}`, plattform: 'instagram', am: tag, views, quelle: 'api' }] });
+    const wenige = besteZeiten({ id: 'sk-1' }, [b(1, '2026-11-03', '18:00', 100)] as never[]);
+    expect(wenige.genug).toBe(false);
+    // Di 07:00 klar besser als Do 18:00.
+    const l = [b(1, '2026-11-03', '07:00', 900), b(2, '2026-11-10', '07:00', 1100), b(3, '2026-11-17', '07:00', 1000), b(4, '2026-11-24', '07:00', 950),
+      b(5, '2026-11-05', '18:00', 200), b(6, '2026-11-12', '18:00', 300), b(7, '2026-11-19', '18:00', 250), b(8, '2026-11-26', '18:00', 280)];
+    const z = besteZeiten({ id: 'sk-1' }, l as never[]);
+    expect(z.genug).toBe(true);
+    expect(z.empfehlung).toEqual({ tag: 2, stunde: 7 });
+    expect(z.tage[0]).toMatchObject({ name: 'Di', median: 975, beitraege: 4 });
+  });
+});
+
+describe('Auto-Reel (Server, Werkzeuge und KI nachgebaut)', () => {
+  it('neuer Rohclip im Album → Untertitel → KI-Schnitt → Rendern → Entwurf im nächsten freien Termin mit Reel, Hook und Beschriftung; kein zweites Mal', async () => {
+    const db = await import('@/lib/store/local-db');
+    const { karteiHaushalt } = await import('@/lib/crm/sperrliste');
+    const roh = MD(30);
+    ablage.medien.set(roh, { id: roh, art: 'video', dauerSek: 40, ton: 'an' });
+    await db.saveJson(`medien--${await karteiHaushalt()}`, { medien: [{ id: roh, art: 'video', bereich: 'business', album: 'al-rohclips', hochgeladen: new Date().toISOString(), ton: 'an', personen: [], marketing: { status: 'intern' }, urheber: { art: 'team' } }], alben: [], einwilligungen: [] });
+    const { socialSchreiben, ladeSocial, eintragStand } = await import('@/lib/social/server');
+    let r = await socialSchreiben([{ op: 'kanal', eintrag: { name: 'Auto-Kanal', plattformen: ['instagram'], marke: { saeulen: ['Alltag'], nieSagen: [], cta: 'Folgen!' } } }], 'pa');
+    if (!r.ok) throw new Error(r.fehler);
+    const kanalId = r.geaendert[0];
+    const k = r.datei.kanaele.find(x => x.id === kanalId)!;
+    r = await socialSchreiben([{ op: 'plan', kanalId, stand: eintragStand(k), plan: { tage: [1, 2, 3, 4, 5, 6, 7], uhrzeit: '18:00', vorlauf: 7, autoReel: true, rohAlbum: 'al-rohclips' } }], 'pa');
+    if (!r.ok) throw new Error(r.fehler);
+    werkzeug.whisper = { transcription: [{ offsets: { from: 1000, to: 6000 }, text: ' Mein Morgen beginnt draußen.' }, { offsets: { from: 6000, to: 12000 }, text: ' Zehn Minuten ohne Handy.' }] };
+    modell.text = JSON.stringify({ clips: [{ quelle: 'Q1', von: 1, bis: 12 }], hook: 'Mein Morgen ohne Handy', einblendungen: [], titel: 'Morgen draußen', beschriftung: 'Zehn Minuten nur für mich. Wie startest du? #morgenroutine #alltag' });
+    const { autoReelScan } = await import('@/lib/social/werkstatt/auto');
+    const { werkstattJobsImTakt, werkstattLaeuft, ladeWerkstatt } = await import('@/lib/social/werkstatt/server');
+    expect((await autoReelScan()).neu).toBe(1);
+    for (let i = 0; i < 4; i++) { for (let j = 0; j < 100 && werkstattLaeuft(); j++) await new Promise(x => setTimeout(x, 20)); await werkstattJobsImTakt(); }
+    const a = (await ladeWerkstatt()).find(x => x.clips.some(c => c.mediumId === roh))!;
+    expect(a).toMatchObject({ status: 'fertig', auto: { schritt: 'fertig' }, ergebnis: expect.stringMatching(/^md-/) });
+    expect(a.clips).toEqual([expect.objectContaining({ mediumId: roh, von: 1, bis: 12 })]);
+    const f = (await ladeSocial()).folgen.find(x => x.kanalId === kanalId)!;
+    expect(f).toMatchObject({ status: 'entwurf', quelle: 'agent', medien: [a.ergebnis], beschriftung: expect.stringContaining('#morgenroutine'), cta: 'Folgen!', titel: 'Morgen draußen' });
+    expect(f.hooks[0].text).toBe('Mein Morgen ohne Handy');
+    expect(f.skript).toContain('Zehn Minuten ohne Handy.');
+    expect(f.geplantAm).toBeTruthy();
+    expect(a.folgeId).toBe(f.id);
+    expect((await autoReelScan()).neu).toBe(0);
+  });
+  it('ohne KI: der Anfang des Clips (≤ 60 s), Beitrag trotzdem als Entwurf', async () => {
+    const db = await import('@/lib/store/local-db');
+    const { karteiHaushalt } = await import('@/lib/crm/sperrliste');
+    const name = `medien--${await karteiHaushalt()}`;
+    const kat = await db.loadJson<{ medien: unknown[] }>(name);
+    const roh = MD(31);
+    ablage.medien.set(roh, { id: roh, art: 'video', dauerSek: 90, ton: 'keiner' });
+    await db.saveJson(name, { ...kat, medien: [...(kat?.medien ?? []), { id: roh, art: 'video', bereich: 'business', album: 'al-rohclips', hochgeladen: new Date().toISOString(), ton: 'keiner', personen: [], marketing: { status: 'intern' }, urheber: { art: 'team' } }] });
+    modell.text = 'kein json';
+    const { autoReelScan } = await import('@/lib/social/werkstatt/auto');
+    const { werkstattJobsImTakt, werkstattLaeuft, ladeWerkstatt } = await import('@/lib/social/werkstatt/server');
+    expect((await autoReelScan()).neu).toBe(1);
+    for (let i = 0; i < 4; i++) { for (let j = 0; j < 100 && werkstattLaeuft(); j++) await new Promise(x => setTimeout(x, 20)); await werkstattJobsImTakt(); }
+    const a = (await ladeWerkstatt()).find(x => x.clips.some(c => c.mediumId === roh))!;
+    expect(a.clips[0]).toMatchObject({ von: 0, bis: 60 });
+    expect(a.auto?.schritt).toBe('fertig');
+    expect(a.folgeId).toBeTruthy();
+  });
+});

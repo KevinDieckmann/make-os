@@ -23,10 +23,11 @@ import { Startpaket } from './Startpaket';
 import { Automatik } from './Automatik';
 import { Werkstatt, type WerkstattStart } from './Werkstatt';
 import { Community } from './Community';
+import { Kalender } from './Kalender';
 
-type Bereich = 'folgen' | 'werkstatt' | 'community' | 'automatik' | 'ziele' | 'formate' | 'analyse' | 'import' | 'kanal';
+type Bereich = 'kalender' | 'folgen' | 'werkstatt' | 'community' | 'automatik' | 'ziele' | 'formate' | 'analyse' | 'import' | 'kanal';
 const BEREICHE: { id: Bereich; label: string }[] = [
-  { id: 'folgen', label: 'Folgen' }, { id: 'werkstatt', label: 'Werkstatt' }, { id: 'community', label: 'Kommentare & DMs' }, { id: 'automatik', label: 'Automatik' }, { id: 'ziele', label: 'Ziele' }, { id: 'formate', label: 'Formate' }, { id: 'analyse', label: 'Analyse' }, { id: 'import', label: 'Import' }, { id: 'kanal', label: 'Kanal' },
+  { id: 'kalender', label: 'Kalender' }, { id: 'folgen', label: 'Beiträge' }, { id: 'werkstatt', label: 'Werkstatt' }, { id: 'community', label: 'Kommentare & DMs' }, { id: 'automatik', label: 'Automatik' }, { id: 'ziele', label: 'Ziele' }, { id: 'formate', label: 'Formate' }, { id: 'analyse', label: 'Analyse' }, { id: 'import', label: 'Import' }, { id: 'kanal', label: 'Kanal' },
 ];
 const STUFEN: { id: `${AutonomieStufe}`; label: string }[] = [
   { id: '0', label: 'Nur Entwürfe' }, { id: '1', label: 'Freigabe per Klick' }, { id: '2', label: 'Selbstständig mit Leitplanken' },
@@ -36,8 +37,9 @@ export function Social() {
   const api = useSocial();
   const [kanalId, setKanalId] = useState<string | null>(null);
   const [neu, setNeu] = useState<false | 'vorlage' | 'frei'>(false);
-  const [bereich, setBereich] = useState<Bereich>('folgen');
+  const [bereich, setBereich] = useState<Bereich>('kalender');
   const [werkstattStart, setWerkstattStart] = useState<WerkstattStart | null>(null);
+  const [folgeOffen, setFolgeOffen] = useState<string | null>(null);
   const kanaele = (api.lage?.datei.kanaele ?? []).filter(k => !k.archiviertAm);
   const kanal = kanaele.find(k => k.id === kanalId) ?? kanaele[0];
 
@@ -58,13 +60,14 @@ export function Social() {
         <>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ overflowX: 'auto', scrollbarWidth: 'none', minWidth: 0 }}>
-              <Pillen einzeilig liste={kanaele.map(k => ({ id: k.id, label: k.name }))} aktiv={kanal.id} onWahl={id => { setKanalId(id); setBereich('folgen'); }} />
+              <Pillen einzeilig liste={kanaele.map(k => ({ id: k.id, label: k.name }))} aktiv={kanal.id} onWahl={id => { setKanalId(id); setBereich('kalender'); setFolgeOffen(null); }} />
             </div>
             <Knopf leise onClick={() => setNeu('vorlage')}>+ Kanal</Knopf>
           </div>
           <KanalKopf api={api} kanal={kanal} />
           <Segmente liste={BEREICHE} aktiv={bereich} onWahl={setBereich} umbrechen />
-          {bereich === 'folgen' && <Folgen key={kanal.id} api={api} kanal={kanal} zurWerkstatt={st => { setWerkstattStart(st); setBereich('werkstatt'); }} />}
+          {bereich === 'kalender' && <Kalender key={kanal.id} api={api} kanal={kanal} oeffnen={id => { setFolgeOffen(id); setBereich('folgen'); }} />}
+          {bereich === 'folgen' && <Folgen key={`${kanal.id}-${folgeOffen ?? ''}`} api={api} kanal={kanal} start={folgeOffen} zurWerkstatt={st => { setWerkstattStart(st); setBereich('werkstatt'); }} />}
           {bereich === 'werkstatt' && <Werkstatt key={kanal.id} api={api} kanal={kanal} start={werkstattStart} onStartVerbraucht={() => setWerkstattStart(null)} />}
           {bereich === 'community' && <Community key={kanal.id} api={api} kanal={kanal} />}
           {bereich === 'automatik' && <Automatik key={kanal.stand} api={api} kanal={kanal} />}

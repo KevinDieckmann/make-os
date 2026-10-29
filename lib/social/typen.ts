@@ -76,6 +76,12 @@ export interface Redaktionsplan {
   uhrzeit: string;
   /** So viele Tage im Voraus füllt der Agent (1–21). */
   vorlauf: number;
+  /**
+   * Auto-Reel (28.10., Malin-Paket): neue Videos im Album `rohAlbum` der Medien-Ablage werden ohne Klick zu Reels — Untertitel, Schnitt (KI),
+   * Rendern, Beitrag mit Beschriftung im nächsten freien Termin. Raus geht es erst nach der Freigabe eines Menschen (Ablage + Beitrag).
+   */
+  autoReel?: boolean;
+  rohAlbum?: string;
 }
 export const PLAN_VORGABE: Redaktionsplan = { agent: false, tage: [2, 4, 6], uhrzeit: '18:00', vorlauf: 7 };
 
@@ -215,6 +221,11 @@ export interface SocialFolge {
   hooks: Hook[];
   hookId?: string;
   cta?: string;
+  /**
+   * Beschriftung (28.10.): der Text UNTER einem Bild/Karussell/Reel — kurz, mit Aufruf und Hashtags (Instagram: ≤ 2.200 Zeichen, ≤ 30 Hashtags).
+   * Bei Reels ist das Skript gesprochen und nicht der Post-Text. Fehlt sie, gilt wie bisher Skript + Aufruf (Textbeiträge).
+   */
+  beschriftung?: string;
   quellen: string[];
   /**
    * Fotos und Videos des Beitrags (28.10., Malin-Paket): Kennungen `md-…` aus der Medien-Ablage (Business), in Reihenfolge — beim Karussell
@@ -263,7 +274,7 @@ export const LEITPLANKEN_VORGABE: Leitplanken = {
 /** Grenzen — darüber lehnt der Schreibweg ab (413), nie still gekürzt. */
 export const SOCIAL_GRENZEN = {
   ops: 60, kanaele: 40, formate: 400, folgen: 5000, hooks: 8, quellen: 20, messungenJeFolge: 400, veroeffentlichungen: 12, ziele: 20, staende: 2000,
-  skript: 12_000, text: 300, langtext: 2_000, woerterListe: 100, medien: 20,
+  skript: 12_000, text: 300, langtext: 2_000, woerterListe: 100, medien: 20, beschriftung: 2200,
 } as const;
 
 /** Business-Bereich: Social gehört zur Markttraktion, Privat bekommt hier nichts. */

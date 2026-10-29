@@ -75,7 +75,7 @@ export async function socialRedaktionLauf(opt: { person: string | null; kanalId?
           erg.uebersprungen.push({ kanalId: k.id, grund });
           continue;
         }
-        const eintrag = entwurfAus(extractJson<Record<string, unknown>>(r.text), k, l);
+        const eintrag = entwurfAus(extractJson<Record<string, unknown>>(r.text), k, l, format?.art);
         if (!eintrag) { erg.uebersprungen.push({ kanalId: k.id, grund: 'Antwort ohne verwertbaren Entwurf.' }); continue; }
         const geplant = darfEinplanen(k, eintrag, format, d, l.platz);
         const w = await socialSystemSchreiben([{ op: 'entwurf', kanalId: k.id, platz: l.platz, eintrag: { ...eintrag, status: geplant ? 'geplant' : 'entwurf' } }], jetzt);

@@ -60,6 +60,8 @@ export function planAus(v: unknown): Redaktionsplan | undefined {
     agent: o.agent === true, proWoche: pw === undefined ? undefined : Math.round(pw),
     tage: tage.length ? tage : [...PLAN_VORGABE.tage], uhrzeit: istUhrzeit(o.uhrzeit) ? o.uhrzeit : PLAN_VORGABE.uhrzeit,
     vorlauf: Math.round(zahl(o.vorlauf, 1, 21) ?? PLAN_VORGABE.vorlauf),
+    autoReel: o.autoReel === true ? true : undefined,
+    rohAlbum: typeof o.rohAlbum === 'string' && /^al-[a-z0-9][a-z0-9-]{0,94}$/.test(o.rohAlbum) ? o.rohAlbum : undefined,
   }) as Redaktionsplan;
 }
 
@@ -172,6 +174,7 @@ export function folgeAus(o: Record<string, unknown>): SocialFolge | null {
     skript: typeof o.skript === 'string' ? o.skript.slice(0, G.skript) : '',
     hooks, hookId: istKennung(o.hookId) && hooks.some(h => h.id === o.hookId) ? o.hookId : undefined,
     cta: text(o.cta, G.text) || undefined,
+    beschriftung: typeof o.beschriftung === 'string' && o.beschriftung.trim() ? o.beschriftung.trim().slice(0, G.beschriftung) : undefined,
     quellen: liste(Array.isArray(o.quellen) ? o.quellen.map(q => ({ q })) : [], x => text(x.q, 500) || null),
     medien: medienAus(o.medien),
     kiInhalt: o.kiInhalt !== false,
@@ -264,7 +267,7 @@ export function socialFuerPerson(d: SocialDatei, person: string | null | undefin
 export const NUR_PERSON_SELBST = 'Bei einer Personenmarke entscheidet das nur die Person selbst.';
 export const GEHOERT_ZU_PRIVAT_SOCIAL = 'Diese Einheit gehört zu Privat — Social ist Business. Bitte eine Business-Gesellschaft wählen.';
 /** Inhalt einer Folge, den eine Freigabe gesehen haben muss — ändert sich einer davon, fällt die Freigabe weg. */
-const folgeInhalt = (f: SocialFolge) => JSON.stringify([f.titel, f.skript, f.hooks.map(h => [h.text, h.bildschirm ?? '']), f.cta ?? '', f.personenImBild ?? 'keine', f.werbung === true, f.quellen, f.medien ?? []]);
+const folgeInhalt = (f: SocialFolge) => JSON.stringify([f.titel, f.skript, f.hooks.map(h => [h.text, h.bildschirm ?? '']), f.cta ?? '', f.personenImBild ?? 'keine', f.werbung === true, f.quellen, f.medien ?? [], f.beschriftung ?? '']);
 
 /** Server-Felder, die der Browser nie setzen darf. */
 const OHNE_SERVERFELDER = (e: Record<string, unknown>) => {
@@ -395,6 +398,7 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
           if (typeof e.skript === 'string' && e.skript.length > G.skript) nein(`Das Skript ist länger als ${G.skript} Zeichen — nichts gespeichert.`, 413);
           if (Array.isArray(e.hooks) && e.hooks.length > G.hooks) nein(`Höchstens ${G.hooks} Hook-Varianten.`, 413);
           if (Array.isArray(e.quellen) && e.quellen.length > G.quellen) nein(`Höchstens ${G.quellen} Quellen.`, 413);
+          if (typeof e.beschriftung === 'string' && e.beschriftung.trim().length > G.beschriftung) nein(`Die Beschriftung ist länger als ${G.beschriftung} Zeichen (Instagram-Grenze) — nichts gespeichert.`, 413);
           if (Array.isArray(e.medien) && e.medien.length > G.medien) nein(`Höchstens ${G.medien} Fotos oder Videos je Beitrag (Instagram-Karussell: 20).`, 413);
           // Hooks ohne Kennung bekommen eine vom Server.
           const hooks = Array.isArray(e.hooks) ? e.hooks.map(h => (h && typeof h === 'object' ? { ...(h as object), id: istKennung((h as { id?: unknown }).id) ? (h as { id: string }).id : k.neueId('hk') } : h)) : undefined;

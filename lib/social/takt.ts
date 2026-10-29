@@ -16,11 +16,18 @@ import { ladeLaufStand } from './lauf-stand';
 export const REDAKTION_ABSTAND_STD = 6;
 export const COMMUNITY_ABSTAND_MIN = 15;
 let letzteCommunity = 0;
+let letzterScan = 0;
 
 export async function socialJobsImTakt(jetzt = new Date()): Promise<void> {
   const { socialVeroeffentlichenLauf, socialMessenLauf } = await import('./veroeffentlichen-server');
   await socialVeroeffentlichenLauf(jetzt).catch(e => console.warn(`[social] Veröffentlichen: ${e instanceof Error ? e.name : 'Fehler'}`));
   const { werkstattAnstossen } = await import('./werkstatt/server');
+  // Auto-Reel (28.10.): alle 30 Minuten neue Rohclips suchen (nur Kanäle mit „Auto-Reels“ und Album), dann die Werkstatt anstoßen.
+  if (Date.now() - letzterScan >= 30 * 60_000) {
+    letzterScan = Date.now();
+    const { autoReelScan } = await import('./werkstatt/auto');
+    await autoReelScan(jetzt).catch(e => console.warn(`[social] Auto-Reel: ${e instanceof Error ? e.name : 'Fehler'}`));
+  }
   werkstattAnstossen();
   // Kommentare und DMs (28.10.): alle 15 Minuten abholen (Merker im Prozess) — vermerkt wird nur, wenn ein Kanal verbunden ist.
   if (Date.now() - letzteCommunity >= COMMUNITY_ABSTAND_MIN * 60_000) {

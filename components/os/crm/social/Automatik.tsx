@@ -6,12 +6,13 @@
 //   Zustand mit Grund — dieselbe Regel wie der Veröffentlicher, `postPlan`) → letzte Läufe. Alles kommt vom Server (`lage.automatik`);
 //   hier wird nichts entschieden. Tokens sieht der Browser nie.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Hinweis, Schalter, Feldzeile, eingabe, feld } from '../../ui';
 import { PLAN_VORGABE, PLATTFORM_NAME, type SocialKanal, type SocialPlattform } from '@/lib/social/typen';
 import { POST_ZUSTAND_NAME, type PostZustand } from '@/lib/social/veroeffentlichen';
 import { proWocheVon } from '@/lib/social/plan';
+import { besteZeiten } from '@/lib/social/zeiten';
 import type { SocialApi, MitStand } from './daten';
 
 const TAGE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
@@ -27,6 +28,7 @@ export function Automatik({ api, kanal }: { api: SocialApi; kanal: MitStand<Soci
     <>
       <Ablauf api={api} kanal={kanal} />
       <Plan api={api} kanal={kanal} />
+      <AutoReel api={api} kanal={kanal} />
       <Verbindungen api={api} kanal={kanal} />
       <Warteschlange api={api} kanal={kanal} />
       <Laeufe api={api} />
@@ -71,7 +73,7 @@ function Plan({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal> }) 
   const [ergebnis, setErgebnis] = useState<string | null>(null);
   const luecken = api.lage!.automatik.luecken[kanal.id] ?? [];
   const formatName = (id?: string) => (id ? api.lage!.datei.formate.find(f => f.id === id)?.name : undefined);
-  const speichern = (agent = p.agent) => api.schreiben([{ op: 'plan', kanalId: kanal.id, stand: kanal.stand, plan: { agent, tage, uhrzeit, proWoche: proWoche ? Number(proWoche) : undefined, vorlauf: Number(vorlauf) } }]);
+  const speichern = (agent = p.agent) => api.schreiben([{ op: 'plan', kanalId: kanal.id, stand: kanal.stand, plan: { ...p, agent, tage, uhrzeit, proWoche: proWoche ? Number(proWoche) : undefined, vorlauf: Number(vorlauf) } }]);
   return (
     <Karte>
       <Ueberschrift>Redaktionsplan</Ueberschrift>
@@ -107,10 +109,49 @@ function Plan({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal> }) 
         </div>
         {ergebnis && <Hinweis art={ergebnis.startsWith('Nichts geschrieben') ? 'achtung' : 'info'} rolle="status">{ergebnis}</Hinweis>}
       </form>
+      {(() => {
+        const z = besteZeiten(kanal, api.lage!.datei.folgen);
+        const um = z.empfehlung?.stunde !== undefined ? `${String(z.empfehlung.stunde).padStart(2, '0')}:00` : null;
+        return (
+          <Hinweis art={z.genug ? 'gut' : 'info'} titel="Wann wirkt es bei euch?" aktion={z.genug && um && um !== p.uhrzeit ? <Knopf leise onClick={() => api.schreiben([{ op: 'plan', kanalId: kanal.id, stand: kanal.stand, plan: { ...p, uhrzeit: um } }])}>{`${um} übernehmen`}</Knopf> : undefined}>
+            {z.satz}
+          </Hinweis>
+        );
+      })()}
       <div style={{ marginTop: 12, display: 'grid', gap: 4, color: C.inkDim, fontSize: TYP.bedien }}>
         <strong style={{ color: C.ink }}>Nächste freie Termine</strong>
         {luecken.length ? luecken.map(l => <span key={l.platz}>{termin(l.platz)} · {formatName(l.formatId) ?? 'ohne Format'}{l.saeule ? ` · ${l.saeule}` : ''}</span>)
           : <span>Alle Termine der nächsten {p.vorlauf} Tage sind belegt.</span>}
+      </div>
+    </Karte>
+  );
+}
+
+/** Auto-Reel (28.10.): neue Clips im gewählten Album werden ohne Klick zu Reels und Beiträgen — raus erst nach eurer Freigabe. */
+function AutoReel({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal> }) {
+  const p = kanal.plan ?? PLAN_VORGABE;
+  const [alben, setAlben] = useState<{ id: string; titel: string; anzahl: number }[] | null>(null);
+  const [album, setAlbum] = useState(p.rohAlbum ?? '');
+  useEffect(() => {
+    void fetch('/api/medien', { cache: 'no-store' }).then(r => r.json()).then(j => setAlben(((j.alben ?? []) as { id: string; titel: string; anzahl: number; bereich: string; geloeschtAm?: string }[])
+      .filter(a => a.bereich === 'business' && !a.geloeschtAm).map(a => ({ id: a.id, titel: a.titel, anzahl: a.anzahl })))).catch(() => setAlben([]));
+  }, []);
+  const speichern = (autoReel: boolean, rohAlbum = album) => api.schreiben([{ op: 'plan', kanalId: kanal.id, stand: kanal.stand, plan: { ...p, autoReel, rohAlbum: rohAlbum || undefined } }]);
+  const verbunden = api.lage!.automatik.verbindungen.some(v => v.kanalId === kanal.id && v.zustand === 'aktiv');
+  return (
+    <Karte>
+      <Ueberschrift>Auto-Reels aus euren Clips</Ueberschrift>
+      <div style={{ display: 'grid', gap: 12 }}>
+        <span style={{ color: C.inkDim, fontSize: TYP.bedien }}>Clips in ein Album laden (am Handy: Medien › Aufnehmen, Ton „an“) — MAKE OS erkennt die Untertitel, die KI schneidet und schreibt Hook und Beschriftung, das Reel wird gerendert und als Entwurf in den nächsten freien Termin gelegt. Ihr seht es an, gebt frei — dann geht es zum Termin raus.</span>
+        <Feldzeile label="Album mit Rohclips">
+          <select style={feld} value={album} onChange={e => { setAlbum(e.target.value); if (p.autoReel) void speichern(true, e.target.value); }}>
+            <option value="">— Album wählen —</option>
+            {(alben ?? []).map(a => <option key={a.id} value={a.id}>{a.titel} ({a.anzahl})</option>)}
+          </select>
+        </Feldzeile>
+        <Schalter an={!!p.autoReel} onChange={v => { if (v && !album) return; void speichern(v); }} erklaerungOhne="Nur Videos der letzten 14 Tage, höchstens zwei je halbe Stunde. Nichts geht ohne eure Freigabe raus.">Auto-Reels an</Schalter>
+        {!album && <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Erst ein Album wählen (oder unter Medien eins anlegen, z. B. „Rohclips“).</span>}
+        {p.autoReel && !verbunden && <Hinweis art="info">Fertige Reels liegen als Entwürfe im Kalender — gepostet wird erst mit einer Verbindung (Verbindungen unten).</Hinweis>}
       </div>
     </Karte>
   );

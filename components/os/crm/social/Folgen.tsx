@@ -26,9 +26,9 @@ const STATUS_FARBE: Record<FolgeStatus, string> = { idee: C.inkLeise, entwurf: C
 
 type Filter = 'offen' | 'veroeffentlicht' | 'alle';
 
-export function Folgen({ api, kanal, zurWerkstatt }: { api: SocialApi; kanal: MitStand<SocialKanal>; zurWerkstatt?: ZurWerkstatt }) {
+export function Folgen({ api, kanal, zurWerkstatt, start }: { api: SocialApi; kanal: MitStand<SocialKanal>; zurWerkstatt?: ZurWerkstatt; start?: string | null }) {
   const lage = api.lage!;
-  const [offen, setOffen] = useState<string | 'neu' | null>(null);
+  const [offen, setOffen] = useState<string | 'neu' | null>(start ?? null);
   const [filter, setFilter] = useState<Filter>('offen');
   const folgen = useMemo(() => lage.datei.folgen.filter(f => f.kanalId === kanal.id)
     .filter(f => filter === 'alle' || (filter === 'veroeffentlicht' ? f.status === 'veroeffentlicht' : f.status !== 'veroeffentlicht' && f.status !== 'verworfen'))
@@ -80,6 +80,7 @@ function FolgeEditor({ api, kanal, folge, onZu, zurWerkstatt }: { api: SocialApi
   const [werbung, setWerbung] = useState(folge?.werbung === true);
   const [status, setStatus] = useState<FolgeStatus>(folge?.status ?? 'entwurf');
   const [medien, setMedien] = useState<string[]>(folge?.medien ?? []);
+  const [beschriftung, setBeschriftung] = useState(folge?.beschriftung ?? '');
   const befunde = folge ? lage.folgen[folge.id]?.befunde ?? [] : [];
   const weg = folge ? lage.folgen[folge.id]?.weg : undefined;
 
@@ -88,7 +89,7 @@ function FolgeEditor({ api, kanal, folge, onZu, zurWerkstatt }: { api: SocialApi
       ...(folge ? { id: folge.id } : { kanalId: kanal.id }), titel, formatId: formatId || undefined, saeule, skript,
       hooks: hooks.filter(h => h.text.trim()).map(h => ({ ...(h.id ? { id: h.id } : {}), text: h.text, bildschirm: h.bildschirm })),
       hookId: hookId || undefined, cta, quellen: quellen.split('\n').map(q => q.trim()).filter(Boolean), kiInhalt, status,
-      personenImBild: personenImBild === 'keine' ? undefined : personenImBild, werbung, medien,
+      personenImBild: personenImBild === 'keine' ? undefined : personenImBild, werbung, medien, beschriftung: beschriftung.trim() || undefined,
     };
     if (await api.schreiben([{ op: 'folge', eintrag, ...(folge ? { stand: folge.stand } : {}) }]) && !folge) onZu();
   };
@@ -130,6 +131,11 @@ function FolgeEditor({ api, kanal, folge, onZu, zurWerkstatt }: { api: SocialApi
           <Feldzeile label="Skript (gesprochen)"><textarea style={{ ...feld, minHeight: 180, fontSize: 16 }} value={skript} onChange={e => setSkript(e.target.value)} maxLength={12000} /></Feldzeile>
           <FolgeMedien medien={medien} setMedien={setMedien} info={lage.medien ?? {}}
             onWerkstatt={zurWerkstatt && folge ? () => zurWerkstatt({ folgeId: folge.id, medien, titel: titel || folge.titel, ziel: formate.find(f => f.id === formatId)?.art === 'bild' ? 'bild' : 'reel' }) : undefined} />
+          {(formate.find(f => f.id === formatId)?.art ?? 'video') !== 'text' && (
+            <Feldzeile label={`Beschriftung (Text unter dem Beitrag, mit Hashtags) · ${beschriftung.length}/2200 · ${(beschriftung.match(/#[\p{L}\p{N}_]+/gu) ?? []).length}/30 #`}>
+              <textarea style={{ ...feld, minHeight: 96, fontSize: 16 }} value={beschriftung} onChange={e => setBeschriftung(e.target.value)} maxLength={2200} placeholder="Ein bis drei Sätze, Aufruf, dann Hashtags — leer = Skript + Aufruf" />
+            </Feldzeile>
+          )}
           <Feldzeile label="Aufruf am Ende (CTA)"><input style={eingabe} value={cta} onChange={e => setCta(e.target.value)} maxLength={300} /></Feldzeile>
           <Feldzeile label="Quellen (eine je Zeile)"><textarea style={{ ...feld, minHeight: 72 }} value={quellen} onChange={e => setQuellen(e.target.value)} /></Feldzeile>
           <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 }}>

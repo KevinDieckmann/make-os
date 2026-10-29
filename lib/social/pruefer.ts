@@ -73,12 +73,14 @@ export interface PruefKontext {
 export function folgePruefen(f: SocialFolge, k: PruefKontext): Befund[] {
   const b: Befund[] = [];
   const hookText = f.hooks.find(h => h.id === f.hookId)?.text ?? f.hooks[0]?.text ?? '';
-  const alles = [f.titel, hookText, f.skript, f.cta ?? '', ...f.hooks.map(h => `${h.text} ${h.bildschirm ?? ''}`)].join('\n');
+  const alles = [f.titel, hookText, f.skript, f.cta ?? '', f.beschriftung ?? '', ...f.hooks.map(h => `${h.text} ${h.bildschirm ?? ''}`)].join('\n');
 
   if (!f.skript.trim()) b.push({ stufe: 'stopp', code: 'skript-leer', text: 'Das Skript ist leer.' });
   if (!f.hooks.length) b.push({ stufe: 'stopp', code: 'kein-hook', text: 'Kein Hook — die ersten Sekunden entscheiden, ob jemand bleibt.' });
   if (PLATZHALTER.test(alles)) b.push({ stufe: 'stopp', code: 'platzhalter', text: 'Offene Platzhalter {{…}} — erst echte Werte einsetzen. Nie geschätzte Zahlen.' });
   for (const w of k.kanal.marke.nieSagen) if (enthaeltWort(alles, w)) b.push({ stufe: 'stopp', code: 'nie-sagen', text: `„${w}“ steht auf der Liste „sagen wir nie“.` });
+  const tags = f.beschriftung?.match(/#[\p{L}\p{N}_]+/gu)?.length ?? 0;
+  if (tags > 30) b.push({ stufe: 'stopp', code: 'hashtags', text: `${tags} Hashtags — Instagram nimmt höchstens 30.` });
   if (k.kanal.kiKanal && KI_BEHAUPTUNG.test(alles)) b.push({ stufe: 'stopp', code: 'ki-behauptung', text: 'Die KI-Persona behauptet Gefühle oder Bewusstsein — das sagen wir nie.' });
 
   const vergleich = k.andere.filter(x => x.id !== f.id && x.kanalId === f.kanalId && x.status !== 'verworfen')
