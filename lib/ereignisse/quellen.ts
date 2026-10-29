@@ -4,6 +4,7 @@
 //   whatsappEreignisse      WhatsApp-Webhook: neue eingehende Nachrichten der Business-Nummer
 //   auszugEreignisse        Kontoauszug übernommen: Eingänge (Betrag > 0) der letzten `AUSZUG_TAGE` Tage
 //   rechnungBezahltEreignis Rechnung „bezahlt“ (Finanzplan)
+//   rechnungStorniertEreignis · rechnungUeberfaelligEreignisse · angebotAbgelaufenEreignisse (29.10., Kreislauf Geld)
 //   crmEreignisse           CRM-Schreibweg: Deal neu/andere Stufe, Firmen-Lead wird SQL (Diff vorher → nachher)
 //   karteiEreignisse        Kartei-Schreibweg: Personen-Lead wird SQL
 //   anfrageEreignis         neue Anfrage (Lead)
@@ -150,12 +151,62 @@ export async function auszugEreignisse(ziel: { art: string; ort?: string }, kont
   } catch { return 0; }
 }
 
+/**
+ * Bereich (und Arbeits-Marke) eines Rechnungs-Ereignisses (29.10., Kreislauf Geld B7): der Bereich der Gesellschaft der Rechnung (`bereichVonFirma`, wie bisher);
+ * eine Rechnung der Privat-Arbeits-Einheit (Selbstständigkeit) bleibt `privat`, trägt aber `arbeit: true` — dieselbe Regel wie die Mandats-Ereignisse
+ * (`mandatEreignisBereich`), damit ein produkt-gebundener Prozess der Selbstständigkeit auch auf ihre Rechnungen hören darf. Rein.
+ */
+export function rechnungEreignisBereich(firmaId: string | null | undefined): { bereich: EreignisBereich; arbeit?: true } {
+  const b = bereichVonFirma(firmaId ?? undefined);
+  return b === 'privat' && privatArbeitsEinheit(firmaId ?? undefined) ? { bereich: b, arbeit: true } : { bereich: b };
+}
+
 /** Rechnung bezahlt (Finanzplan): Gesellschaft der Rechnung bestimmt den Bereich, Mandat/CRM-Firma als Bezug. Wirft nie. */
 export async function rechnungBezahltEreignis(r: { id: string; firmaId?: string; mandatId?: string }): Promise<number> {
   try {
     let firma: string | undefined;
     if (r.mandatId) firma = (await crmLaden())?.mandate.find(m => m.id === r.mandatId)?.firmaId;
-    return (await ereignis({ id: ereignisKennung('rechnung', r.id, 'bezahlt'), art: 'zahlungseingang', quelle: 'finanzplan', bezug: { rechnungId: r.id, ...(r.mandatId ? { mandatId: r.mandatId } : {}), ...(firma ? { firmaId: firma } : {}) }, bereich: bereichVonFirma(r.firmaId) })).neu;
+    return (await ereignis({ id: ereignisKennung('rechnung', r.id, 'bezahlt'), art: 'zahlungseingang', quelle: 'finanzplan', bezug: { rechnungId: r.id, ...(r.mandatId ? { mandatId: r.mandatId } : {}), ...(firma ? { firmaId: firma } : {}) }, ...rechnungEreignisBereich(r.firmaId) })).neu;
+  } catch { return 0; }
+}
+
+/** Bezug eines Rechnungs-Ereignisses (nur Kennungen): Rechnung, Mandat, Kundenfirma, Kontakt. */
+const rechnungBezug = (r: { id: string; mandatId?: string; kundeFirmaId?: string; kontaktId?: string }) =>
+  ({ rechnungId: r.id, ...(r.mandatId ? { mandatId: r.mandatId } : {}), ...(r.kundeFirmaId ? { firmaId: r.kundeFirmaId } : {}), ...(r.kontaktId ? { kontaktId: r.kontaktId } : {}) });
+
+/** Rechnung storniert (29.10., B7) — nach dem Speichern des Stornos (jeder der drei Wege). Kennung je Rechnung: ein Storno meldet sich einmal. Wirft nie. */
+export async function rechnungStorniertEreignis(r: { id: string; firmaId?: string; mandatId?: string; kundeFirmaId?: string; kontaktId?: string }): Promise<number> {
+  try {
+    return (await ereignis({ id: ereignisKennung('rechnung', r.id, 'storniert'), art: 'rechnung-storniert', quelle: 'rechnung', ...rechnungEreignisBereich(r.firmaId), bezug: rechnungBezug(r) })).neu;
+  } catch { return 0; }
+}
+
+/**
+ * Rechnung überfällig (29.10., B7) — aus dem Morgenlauf neben den Mahnaufgaben: je Rechnung und frisch fällig gewordener Mahnstufe EIN Ereignis (Stufe 1 · 2 · 3,
+ * Kennung `rechnung:<id>:ueberfaellig:<stufe>`). Welche Stufen frisch sind, rechnet `ueberfaelligFrisch` (lib/finanzen/rechnung/kreislauf-regeln.ts). Wirft nie.
+ */
+export async function rechnungUeberfaelligEreignisse(l: readonly { r: { id: string; firmaId?: string; mandatId?: string; kundeFirmaId?: string; kontaktId?: string }; stufe: number }[]): Promise<number> {
+  try {
+    if (!l.length) return 0;
+    return (await ereignis(l.map(({ r, stufe }) => ({ id: ereignisKennung('rechnung', r.id, 'ueberfaellig', String(stufe)), art: 'rechnung-ueberfaellig' as const, quelle: 'rechnung' as const, stufe: String(stufe), ...rechnungEreignisBereich(r.firmaId), bezug: rechnungBezug(r) })))).neu;
+  } catch { return 0; }
+}
+
+/**
+ * Angebot abgelaufen (29.10., B7) — dort, wo der Status gespeichert wird (lib/crm/angebot-server.ts `ablaufNachziehen`), nur für die Angebote, die GERADE abgelaufen
+ * sind. Bereich aus der Gesellschaft wie die übrigen Angebots-Ereignisse (privat → keins); eingeschränkte Personen (Art. 18) lösen nichts aus. Wirft nie.
+ */
+export async function angebotAbgelaufenEreignisse(l: readonly { id: string; dealId?: string; kontaktId?: string; firmaId?: string; gesellschaft?: string }[], eingeschraenkt: (kontaktId: string) => boolean = () => false): Promise<number> {
+  try {
+    const raus: EreignisEingabe[] = [];
+    for (const a of l) {
+      if (a.kontaktId && eingeschraenkt(a.kontaktId)) continue;
+      const bereich = bereichVonGesellschaft(a.gesellschaft ?? 'offen');
+      if (bereich === 'privat') continue;
+      raus.push({ id: ereignisKennung('crm', 'angebot', a.id, 'abgelaufen'), art: 'angebot-abgelaufen', quelle: 'crm', bereich,
+        bezug: { angebotId: a.id, ...(a.dealId ? { dealId: a.dealId } : {}), ...(a.kontaktId ? { kontaktId: a.kontaktId } : {}), ...(a.firmaId ? { firmaId: a.firmaId } : {}) } });
+    }
+    return raus.length ? (await ereignis(raus)).neu : 0;
   } catch { return 0; }
 }
 
@@ -320,8 +371,7 @@ export async function terminAbsagenEreignisse(alt: { kalender: { id: string }[];
 /** Rechnung gestellt (Rechnungswesen „Rechnung stellen“) — Bereich aus der Gesellschaft der Rechnung, Mandat/Kunde/Kontakt als Bezug. Wirft nie. */
 export async function rechnungGestelltEreignis(r: { id: string; firmaId?: string; mandatId?: string; kundeFirmaId?: string; kontaktId?: string }): Promise<number> {
   try {
-    return (await ereignis({ id: ereignisKennung('rechnung', r.id, 'gestellt'), art: 'rechnung-gestellt', quelle: 'rechnung', bereich: bereichVonFirma(r.firmaId),
-      bezug: { rechnungId: r.id, ...(r.mandatId ? { mandatId: r.mandatId } : {}), ...(r.kundeFirmaId ? { firmaId: r.kundeFirmaId } : {}), ...(r.kontaktId ? { kontaktId: r.kontaktId } : {}) } })).neu;
+    return (await ereignis({ id: ereignisKennung('rechnung', r.id, 'gestellt'), art: 'rechnung-gestellt', quelle: 'rechnung', ...rechnungEreignisBereich(r.firmaId), bezug: rechnungBezug(r) })).neu;
   } catch { return 0; }
 }
 

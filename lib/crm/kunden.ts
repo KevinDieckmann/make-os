@@ -10,7 +10,7 @@ import { zahltage, letzterZahltag, type Planposten } from '@/lib/make-one/liquid
 import { geplantesEnde, laufzeitEnde, leistungsmonat, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, zahlungsziel } from './mandat-laufzeit';
 import { mandatName } from './mandat-name';
 import { zusatzLiquiditaet, anrechnungLiquiditaet, zahlplanMonate, zahlplanPosition, zahlplanBeschreibung, type AnrechnungKontext } from './mandat-zusatz';
-import { rechnungSummen } from '@/lib/finanzen/rechnung/regeln';
+import { rechnungSummen, abgerechneteMonate } from '@/lib/finanzen/rechnung/regeln';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import type { Leistung } from './typen';
 import { PLANPOSTEN_MANDAT, PLANPOSTEN_TEIL } from './mandant-link';
@@ -150,7 +150,9 @@ export type AnrechnungBestand = Pick<AnrechnungKontext, 'mandate' | 'rechnungen'
 export const anrechnungPostenId = (m: Pick<Mandat, 'id'>, monat?: string) => `${PLANPOSTEN_MANDAT}${m.id}${PLANPOSTEN_TEIL}anrechnung${monat ? `${PLANPOSTEN_TEIL}${monat}` : ''}`;
 export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean; katalog?: Katalog; anrechnung?: AnrechnungBestand } = {}): Planposten[] {
   const beendet = m.status === 'beendet';
-  if (beendet ? !opt.beendet : m.status !== 'aktiv' && m.status !== 'verhandlung') return [];
+  // Raten bzw. Zahlplan (29.10., Kreislauf Geld B2): ein beendetes Mandat (z. B. nach der Lieferung) hat noch offene Raten — die bleiben im Soll
+  // (auch für „Plan angleichen“); abgerechnete Raten der Vergangenheit fallen weg (`hauptPosten`).
+  if (beendet ? !opt.beendet && !zahlplanMonate(m) : m.status !== 'aktiv' && m.status !== 'verhandlung') return [];
   const ende = beendet ? (m.ende ?? heute) : geplantesEnde(m);
   const sicher = m.status !== 'verhandlung' && m.vertragUnterschrieben;
   // Register-Gesellschaften (`g-…`, 04.10.) führt der Liquiplan noch nicht — dann ohne Firma (wie „offen“), nie still bei kdc.
@@ -176,12 +178,12 @@ export function mandatPosten(m: Mandat, heute: string, opt: { beendet?: boolean;
     return { id: anrechnungPostenId(m, i ? a.monat : undefined), titel: titelMit(name, ` — ${a.titel}${teil}`.slice(0, 60)), betrag: a.cent / 100, rhythmus: 'einmalig' as const, ab: plusTage(lm?.tage ? lm.von : `${a.monat}-01`, zahlungsziel(m)), ...gemeinsam, leistungsmonat: a.monat,
       notiz: `Aus dem Mandat (CRM): ${a.titel} — auf der Rechnung für ${monatsName(a.monat)} (höchstens bis zum Betrag des Monats; ein Rest folgt im nächsten Monat).` };
   });
-  const haupt = hauptPosten(m, { ende, basis, name, gemeinsam });
+  const haupt = hauptPosten(m, { ende, basis, name, gemeinsam, ...(opt.anrechnung?.rechnungen ? { rechnungen: opt.anrechnung.rechnungen } : {}) });
   return zusatz.length || anrechnung.length ? [...haupt, ...zusatz, ...anrechnung].sort((x, y) => x.ab.localeCompare(y.ab)) : haupt;
 }
 
 /** Die Posten des Honorars (ohne Zusatzmodule) — genau wie bis 19.10. */
-function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: string; gemeinsam: Pick<Planposten, 'sicher' | 'wahrscheinlich' | 'firmaId' | 'kategorie' | 'mandatId'> }): Planposten[] {
+function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: string; gemeinsam: Pick<Planposten, 'sicher' | 'wahrscheinlich' | 'firmaId' | 'kategorie' | 'mandatId'>; rechnungen?: AnrechnungBestand['rechnungen'] }): Planposten[] {
   if (!(m.honorar.betrag > 0)) return [];
   // Tagessatz (21.10., Rundgang B4): mit geplanten Tagen je Monat plant die Liquidität Tagessatz × Tage — wie ein Monatshonorar (Teilmonat anteilig, volle
   // Monate ein Monatsposten); abgerechnet werden die echten Tage. Ohne geplante Tage: kein Posten (wie bisher).
@@ -198,8 +200,12 @@ function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: s
   // ihrer Rechnung (`zahlplanPosition`, dieselbe Regel). Liegt ein Monat schon hinter uns (noch nicht abgerechnet), zahlt er ab heute + Zahlungsziel.
   const zpMonate = zahlplanMonate(m);
   if (zpMonate) {
-    if (ende && ende < basis) return [];
+    // 29.10. (Kreislauf Geld B2): kein Schnitt am Ende des Mandats mehr — Raten laufen nach der Lieferung weiter (`zahlplanMonate`), ein noch offener
+    // Rest ebenso. Abgerechnete Monate VOR dem laufenden fallen weg (sonst stünden sie ab heute + Zahlungsziel noch einmal im Plan); künftige bleiben
+    // (die Rechnung ersetzt sie in der Vorschau, `rechnungDeckung`). Ohne Rechnungen (andere Aufrufer) wie bisher.
+    const abgerechnet = o.rechnungen ? abgerechneteMonate(m.id, o.rechnungen) : null;
     return zpMonate.flatMap((mo, i): Planposten[] => {
+      if (abgerechnet?.has(mo) && mo < basis.slice(0, 7)) return [];
       const pos = zahlplanPosition(m, mo, { nettoAusBrutto }) ?? [];
       if (!pos.length) return [];
       const lm = leistungsmonat({ start: m.start }, mo);
@@ -284,7 +290,9 @@ export function mandatLiquiLage(m: Mandat, posten: readonly Planposten[], heute:
   const beendet = m.status === 'beendet';
   const soll = mandatPosten(m, heute, { beendet, katalog, anrechnung });
   // Beendet ohne Posten (bzw. ohne Plan): nichts einzutragen — der Satz sagt, warum.
-  if (beendet ? !ist.length : !soll.length) return { lage: 'kein-posten', soll: beendet ? [] : soll, vorhanden, grund: keinPostenGrund(m) };
+  // Beendet mit offenen Raten (29.10., B2): fehlen sie im Plan, ist das „fehlt“, nicht „kein Posten“.
+  const offeneRaten = beendet && !!zahlplanMonate(m) && soll.length > 0;
+  if (beendet ? !ist.length && !offeneRaten : !soll.length) return { lage: 'kein-posten', soll: beendet ? [] : soll, vorhanden, grund: keinPostenGrund(m) };
   if (!ist.length) return { lage: 'fehlt', soll, vorhanden: null };
   // Vergleichsfenster: bis gut ein Jahr nach der letzten geplanten Zahlung (offene Posten: ein Jahr ab heute).
   const sollLetzte = soll.reduce<string | null>((x, p) => { const l = letzterZahltag(p); return l && (!x || l > x) ? l : x; }, null);

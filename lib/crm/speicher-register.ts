@@ -386,7 +386,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Rechnungen an eine Person (Kontakt-Kennung) nennt die Auskunft (`personAufzaehlen` › rechnungen); sonst Finanzen › Rechnungen & Zahlungen bzw. Kontakt › Umsatz',
     loeschfrist: '10 Jahre ab Ende des Jahres der Rechnung (§ 147 AO); Art. 17 löscht in dieser Zeit nicht (Art. 17 Abs. 3 lit. b) — Entwürfe ohne Nummer löscht der Haushalt selbst',
   }),
-  mit(K('rechnungswesen', 'Nummernkreise der Rechnungen (je Gesellschaft und Jahr die zuletzt vergebene laufende Nummer) und die Mahnstufen-Tage — keine Personen.'), {
+  mit(K('rechnungswesen', 'Nummernkreise der Rechnungen (je Gesellschaft und Jahr die zuletzt vergebene laufende Nummer), die Mahnstufen-Tage und seit 29.10. der Kreislauf (Stellschraube und Merker „Rechnungen vorbereiten“ je Mandat und Monat, automatisch angelegte Mandate je Angebot) — nur Kennungen, keine Personen.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 14 Abs. 4 Nr. 4 UStG (fortlaufende Nummer) — enthält keine personenbezogenen Daten',
     art15: 'keine Personendaten',
     loeschfrist: 'solange Rechnungen gestellt werden (Zähler je Jahr)',

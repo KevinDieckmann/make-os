@@ -273,11 +273,11 @@ describe('G · gemischtes Angebot: Einmalposten-Rechnung (Woche 1) und „Rechnu
     const zahl = async () => (await db.loadJson<{ rechnungen: { angebotId?: string }[] }>('finanzplan'))!.rechnungen.filter(r => r.angebotId === 'ang-gemischt1').length;
     await expect(entwurfNeu({ quelle: 'angebot', angebotId: 'ang-gemischt1', ...z })).rejects.toMatchObject({ status: 409 });
     expect(await zahl()).toBe(1);
-    // Storniert → die Einmalposten sind nicht mehr verrechnet: eine Rechnung über alle Positionen geht wieder.
+    // Storniert → die Einmalposten sind nicht mehr verrechnet — aber am Angebot hängt ein Mandat: seit 29.10. (Kreislauf Geld B1) rechnet DAS die
+    // laufende Leistung ab, eine Rechnung über alle Positionen bleibt gesperrt (409 `mandat-vorhanden`, sonst stünde die Leistung doppelt in der Liquidität).
     await db.updateJson<{ rechnungen: { id: string; status: string }[] }>('finanzplan', cur => ({ ...cur!, rechnungen: cur!.rechnungen.map(r => (r.id === e1.rechnung.id ? { ...r, status: 'storniert' } : r)) }));
-    const voll = await entwurfNeu({ quelle: 'angebot', angebotId: 'ang-gemischt1', ...z });
-    expect(voll.vorhanden).toBe(false);
-    expect(await zahl()).toBe(2);
+    await expect(entwurfNeu({ quelle: 'angebot', angebotId: 'ang-gemischt1', ...z })).rejects.toMatchObject({ status: 409, extra: { grund: 'mandat-vorhanden' } });
+    expect(await zahl()).toBe(1);
   });
 });
 

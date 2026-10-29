@@ -352,6 +352,8 @@ export function haushaltZeilen(p: Plan, auszug: Auszug, h: { regeln: Regel[]; ka
 
 export interface OffenerPostenKurz {
   art: 'rechnung' | 'forderung' | 'verbindlichkeit' | 'zahlung';
+  /** Kennung der Rechnung (29.10., Kreislauf Geld B5) — nur bei `rechnung`: dann bietet die Übernahme „als bezahlt vermerken“ an. */
+  id?: string;
   name: string;
   /** Cent, mit Vorzeichen aus Sicht des Kontos: + erwarteter Eingang, − erwarteter Ausgang. */
   cent: number;
@@ -367,20 +369,33 @@ const ART_TEXT: Record<OffenerPostenKurz['art'], (o: OffenerPostenKurz) => strin
   zahlung: o => `zur offenen Zahlung an ${o.name} — dort als bezahlt vermerken`,
 };
 
-/** Hinweise: welcher NEUE Umsatz welchen offenen Posten begleicht (je Posten höchstens ein Umsatz). Rein. */
-export function offeneHinweise(p: Plan, auszug: Auszug, offene: readonly OffenerPostenKurz[]): string[] {
+/** Welcher NEUE Umsatz welchen offenen Posten begleicht (je Posten höchstens ein Umsatz) — die EINE Zuordnung für Hinweise und „als bezahlt vermerken“. Rein. */
+export function offeneTreffer(p: Plan, auszug: Auszug, offene: readonly OffenerPostenKurz[]): { o: OffenerPostenKurz; datum: string; cent: number }[] {
   const frei = [...offene];
-  const raus: string[] = [];
+  const raus: { o: OffenerPostenKurz; datum: string; cent: number }[] = [];
   for (const z of p.zeilen) {
     if (z.status !== 'neu') continue;
     const e = auszug.eintraege[z.i];
     const i = frei.findIndex(o => o.cent === e.cent && (!o.datum || e.datum >= o.datum)
       && ((o.nummer && nummerImText(o.nummer, `${e.zweck} ${e.gegenpartei}`)) || namenPassen(e.gegenpartei || e.zweck, o.name)));
     if (i < 0) continue;
-    const o = frei.splice(i, 1)[0];
-    raus.push(`Der Umsatz vom ${e.datum.split('-').reverse().join('.')} (${(Math.abs(e.cent) / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €) passt ${ART_TEXT[o.art](o)} — sonst zählt die Liquidität dasselbe Geld zweimal.`);
+    raus.push({ o: frei.splice(i, 1)[0], datum: e.datum, cent: e.cent });
   }
   return raus;
+}
+
+/** Hinweise: welcher NEUE Umsatz welchen offenen Posten begleicht (je Posten höchstens ein Umsatz). Rein. */
+export function offeneHinweise(p: Plan, auszug: Auszug, offene: readonly OffenerPostenKurz[]): string[] {
+  return offeneTreffer(p, auszug, offene).map(({ o, datum, cent }) =>
+    `Der Umsatz vom ${datum.split('-').reverse().join('.')} (${(Math.abs(cent) / 100).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €) passt ${ART_TEXT[o.art](o)} — sonst zählt die Liquidität dasselbe Geld zweimal.`);
+}
+
+/**
+ * Die Rechnungen, die nach dem Übernehmen „als bezahlt vermerkt“ werden können (29.10., Kreislauf Geld B5): nur echte Rechnungen mit Kennung, `am` = Tag des
+ * Umsatzes. Vermerkt wird erst per Klick (derselbe Weg wie in der Rechnungsansicht — die Buchung des Auszugs wird verknüpft, nicht verdoppelt). Rein.
+ */
+export function bezahltVorschlaege(p: Plan, auszug: Auszug, offene: readonly OffenerPostenKurz[]): { rechnungId: string; nummer?: string; am: string }[] {
+  return offeneTreffer(p, auszug, offene).filter(t => t.o.art === 'rechnung' && t.o.id).map(t => ({ rechnungId: t.o.id!, ...(t.o.nummer ? { nummer: t.o.nummer } : {}), am: t.datum }));
 }
 
 /** Für die Anzeige: Ziel in einem Satz. */

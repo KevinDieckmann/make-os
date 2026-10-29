@@ -98,6 +98,12 @@ export function RechnungenKarte({ bereich = 'business' }: { bereich?: 'privat' |
     if (!r.ok) { setMeldung(r.fehler ?? 'Nicht gespeichert.'); return; }
     setTageOffen(false); void daten.laden();
   }
+  /** 29.10. (Kreislauf Geld): Stellschraube „Rechnungen vorbereiten“ — der Morgenlauf legt fällige Raten/Monatsrechnungen als Entwurf an (nie gestellt). */
+  async function vorbereitenUmschalten(an: boolean) {
+    const r = await rechnungPost({ aktion: 'vorbereiten', an });
+    if (!r.ok) { setMeldung(r.fehler ?? 'Nicht gespeichert.'); return; }
+    void daten.laden();
+  }
   const filterAuf = (f: RechnungsFilter) => { setFilter(f); setAlle(false); };
 
   return (
@@ -164,6 +170,12 @@ export function RechnungenKarte({ bereich = 'business' }: { bereich?: 'privat' |
                 {stand.sicht === 'privat' && <Knopf leise onClick={() => { setTage(stand.mahnTage.join(' · ')); setTageOffen(true); }}>ändern</Knopf>}
               </>}
           </div>
+          {typeof stand.vorbereiten === 'boolean' && (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: TYP.bedien, color: C.inkLeise }}>
+              <span>Fällige Raten und Monatsrechnungen aus Mandaten: {stand.vorbereiten ? 'der Morgenlauf legt den Entwurf an (Stellen bleibt dein Klick)' : 'nur auf Klick in der Mandatsakte'}</span>
+              {stand.sicht === 'privat' && <Knopf leise onClick={() => vorbereitenUmschalten(!stand.vorbereiten)}>{stand.vorbereiten ? 'ausschalten' : 'einschalten'}</Knopf>}
+            </div>
+          )}
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>{KEINE_STEUERBERATUNG}</div>
         </>}
       </Karte>

@@ -47,6 +47,8 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   const [mandat, setMandat] = useState<string | null>(null);
   const [mandatId, setMandatId] = useState<string | null>(null);
   const [einmal, setEinmal] = useState<{ id?: string; fehler?: string } | null>(null);
+  /** Automatik nach „angenommen“ (29.10., Kreislauf Geld): Mandat + Liquiplan sind angelegt — mit „Rückgängig“. */
+  const [auto, setAuto] = useState<{ mandatId: string; text: string; hinweis?: string } | null>(null);
   const { bestaetigen, dialog } = useRueckfrage();
   // 24.10.: „Mandat anlegen“ öffnet erst die Vorbelegung zum Prüfen (Start wählbar) — angelegt wird erst dort.
   const mandatFenster = useMandatAnlegen(api);
@@ -97,8 +99,20 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   }
   async function annehmen() {
     // 3.4: nicht rückgängig — der Deal wird gewonnen, das Angebot ist danach festgeschrieben.
-    if (!(await bestaetigen({ titel: 'Angebot als angenommen vermerken?', text: `${a.nummer ?? 'Das Angebot'} gilt dann als angenommen${deal ? ` und der Deal „${deal.titel}“ als gewonnen` : ''}. Das lässt sich nicht zurücknehmen.`, ja: 'Angenommen' }))) return;
-    await aktion({ aktion: 'annehmen' }, deal ? 'Angenommen — Deal gewonnen.' : 'Angenommen.');
+    if (!(await bestaetigen({ titel: 'Angebot als angenommen vermerken?', text: `${a.nummer ?? 'Das Angebot'} gilt dann als angenommen${deal ? ` und der Deal „${deal.titel}“ als gewonnen — das Mandat und seine Posten im Liquiplan entstehen gleich mit (Rückgängig möglich)` : ''}. Das Annehmen selbst lässt sich nicht zurücknehmen.`, ja: 'Angenommen' }))) return;
+    const r = await angebotPost({ aktion: 'annehmen', id: a.id, stand: a.stand });
+    if (!r.ok || !r.angebot) { if (r.aktuell) daten.uebernehmen(r.aktuell); setMeldung(r.fehler ?? 'Nicht gespeichert.'); return; }
+    daten.uebernehmen(r.angebot); void api.laden(true);
+    // 29.10.: Mandat + Liquiplan automatisch — angelegt → Hinweis mit „Rückgängig“; nicht angelegt → der Grund (dann „Mandat anlegen“ von Hand).
+    const au = r.automatik as { angelegt?: boolean; mandatId?: string; text?: string; hinweis?: string; grund?: string } | undefined;
+    if (au?.angelegt && au.mandatId) { setAuto({ mandatId: au.mandatId, text: au.text ?? 'Mandat angelegt.', ...(au.hinweis ? { hinweis: au.hinweis } : {}) }); setMandatId(au.mandatId); }
+    setMeldung([deal ? 'Angenommen — Deal gewonnen.' : 'Angenommen.', typeof r.hinweis === 'string' ? r.hinweis : '', au && !au.angelegt && au.grund ? au.grund : ''].filter(Boolean).join(' '));
+  }
+  /** „Rückgängig“ der Automatik: Mandat + Posten wieder weg — nur solange keine Rechnung und kein Fall daran hängt (sonst sagt der Server warum). */
+  async function autoZurueck() {
+    const r = await angebotPost({ aktion: 'mandat-zurueck', id: a.id });
+    setMeldung(r.ok ? String(r.text ?? 'Zurückgenommen.') : r.fehler ?? 'Nicht zurückgenommen.');
+    if (r.ok) { setAuto(null); setMandatId(null); void api.laden(true); }
   }
   /** „Mail ist raus“ (Woche 2 · 3.15): erst jetzt entsteht die Mail-Aktivität am Kontakt — beim Stellen steht nur „gestellt“. */
   const gesendet = angebotGesendetVermerkt(k, a.nummer);
@@ -173,6 +187,8 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
               Mandat hier an (danach plant es den Einmalbetrag). */}
           {!nur && a.status === 'angenommen' && deal && !hatMandat && !mandat && gemischt && <Knopf farbe={LEUCHT.gut} onClick={mandatAnlegen}>Mandat anlegen</Knopf>}
           {mandat && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, alignSelf: 'center' }}>{mandat}</span>}
+          {auto && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, alignSelf: 'center' }}>{auto.text}{auto.hinweis ? ` ${auto.hinweis}` : ''}</span>}
+          {auto && !nur && <Knopf leise onClick={autoZurueck}>Rückgängig</Knopf>}
           {a.status === 'angenommen' && hatMandat && !mandat && <Chip farbe={LEUCHT.gut}>Mandat angelegt</Chip>}
           {a.status === 'angenommen' && mandatZiel && <Link href={WEG.mandat(mandatZiel)} style={{ ...link, alignSelf: 'center' }}>Zum Mandat ›</Link>}
           {!nur && a.status === 'angenommen' && mandatZiel && <Knopf leise onClick={ersteRechnung}>Erste Rechnung</Knopf>}

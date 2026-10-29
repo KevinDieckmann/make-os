@@ -17,14 +17,11 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { planpostenAus, mandatPosten, mandatLiquiLage, postenAngleichen, postenVomMandat, hauptPostenId, keinPostenGrund, type AnrechnungBestand } from '@/lib/crm/kunden';
-import { sauberFile, type FinanzplanFile } from '@/lib/finanzen/finanzplan-bestand';
-import type { CrmBestand } from '@/lib/crm/typen';
+import { planpostenAus, mandatPosten, mandatLiquiLage, postenAngleichen, postenVomMandat } from '@/lib/crm/kunden';
+import { anrechnungBestand, mandatLiquiplanEintragen } from '@/lib/crm/mandat-automatik-server';
 
-/** Was die Anrechnung im Plan braucht (P3b): alle Mandate und die Rechnungen des Finanzplans — nur zum Rechnen, nichts davon geht an den Browser. */
-async function anrechnungBestand(crm: Pick<CrmBestand, 'mandate'>): Promise<AnrechnungBestand> {
-  return { mandate: crm.mandate, rechnungen: sauberFile(await loadJson<FinanzplanFile>('finanzplan')).rechnungen };
-}
+// Was die Anrechnung im Plan braucht (P3b): alle Mandate und die Rechnungen des Finanzplans — nur zum Rechnen, nichts davon geht an den Browser
+// (`anrechnungBestand`, seit 29.10. in lib/crm/mandat-automatik-server.ts).
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,7 +37,7 @@ export async function GET(req: Request) {
     mandate: crm.mandate.map(m => {
       const l = mandatLiquiLage(m, posten, heute, crm.leistungen, anrechnung);
       return {
-        id: m.id, kunde: m.kunde, titel: m.titel, status: m.status, vorschlag: planpostenAus(m, heute, crm.leistungen), soll: l.soll,
+        id: m.id, kunde: m.kunde, titel: m.titel, status: m.status, gesellschaft: m.gesellschaft, vorschlag: planpostenAus(m, heute, crm.leistungen), soll: l.soll,
         vorhanden: l.vorhanden, lage: l.lage, ...(l.grund ? { grund: l.grund } : {}), ...(l.letzteZahlung ? { letzteZahlung: l.letzteZahlung } : {}),
       };
     }),
@@ -64,13 +61,10 @@ export async function POST(req: Request) {
   }
   if (b.aktion === 'anlegen') {
     // Anlegen bzw. „Plan angleichen“: Monatsposten und Teilmonate wie der Zahlplan (ein vorhandener Monatsposten übernimmt die Werte des Mandats).
-    const heute = localDay();
-    const soll = mandatPosten(m, heute, { katalog: crm.leistungen, anrechnung: await anrechnungBestand(crm) });
-    if (!soll.length) return NextResponse.json({ ok: false, fehler: `Aus diesem Mandat entsteht kein Posten: ${keinPostenGrund(m)}` }, { status: 400 });
-    await updateJson<{ posten: Planposten[] }>('liquiplan', cur => ({ posten: postenAngleichen(cur?.posten ?? [], m, soll, heute) }));
-    const haupt = soll.find(p => p.id === hauptPostenId(m));
-    if (!m.planpostenId && haupt) await aendereCrm(cur => ({ ...cur, mandate: cur.mandate.map(x => (x.id === m.id ? { ...x, planpostenId: haupt.id } : x)) }));
-    return NextResponse.json({ ok: true, posten: haupt ?? soll[0], soll });
+    // 29.10. (Kreislauf Geld): EINE Stelle — dieselbe, die „Angebot angenommen“ automatisch nutzt (lib/crm/mandat-automatik-server.ts).
+    const r = await mandatLiquiplanEintragen(m, crm, localDay());
+    if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
+    return NextResponse.json({ ok: true, posten: r.haupt ?? r.soll[0], soll: r.soll });
   }
   if (b.aktion === 'beenden') {
     // Beendetes Mandat (17.10., L1 A2; 18.10. N4): die Posten enden mit dem Mandat — der letzte Monat anteilig wie die Rechnung. Am Monatsposten

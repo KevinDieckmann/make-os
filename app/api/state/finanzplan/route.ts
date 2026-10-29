@@ -255,5 +255,7 @@ async function storno(body: { rechnungId?: unknown; am?: unknown; stand?: unknow
   if (!e) return NextResponse.json({ ok: false, error: 'Nicht gespeichert.' }, { status: 500 });
   const stand2 = mitFassung(sauberFile(await loadJson<FinanzplanFile>('finanzplan')));
   if (!e.ok) return NextResponse.json({ ok: false, error: e.fehler, ...(e.aktuell ? { aktuell: { ...e.aktuell, fassung: fassung(e.aktuell) } } : {}), ...stand2, stand: stand2 }, { status: e.status });
+  // Kreislauf Geld (29.10., B6/B7): Ereignis „Rechnung storniert“ + offene Mahnaufgaben abbrechen — wirft nie.
+  if (!e.schonStorniert) await import('@/lib/finanzen/rechnung/kreislauf').then(k => k.nachRechnungStorniert(e.rechnung)).catch(() => undefined);
   return NextResponse.json({ ok: true, rechnung: e.rechnung, schonStorniert: e.schonStorniert, gegenbuchung: gegen, ...stand2, stand: stand2 });
 }

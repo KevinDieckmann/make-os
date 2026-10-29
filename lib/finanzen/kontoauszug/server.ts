@@ -29,7 +29,7 @@ import type { Buchung as HaushaltBuchung, Konto as HaushaltKonto } from '@/lib/f
 import { auszugLesen } from './lesen';
 import { centZuEuro, vergleichsText } from './text';
 import {
-  auszugZuordnen, planBauen, planHatWirkung, businessZeilen, haushaltZeilen, fpBusiness, fpHaushalt, zielSatz, BUSINESS_PRAEFIX, kontoMarke, offeneHinweise,
+  auszugZuordnen, planBauen, planHatWirkung, businessZeilen, haushaltZeilen, fpBusiness, fpHaushalt, zielSatz, BUSINESS_PRAEFIX, kontoMarke, offeneHinweise, bezahltVorschlaege,
   type BusinessBuchung, type OffenerPostenKurz, type Plan, type PlanZeile, type Ziel,
 } from './plan';
 import type { Auszug, CsvInfo, Pruefsumme } from './typen';
@@ -112,6 +112,8 @@ type HaushaltDaten = Awaited<ReturnType<typeof ladeHaushalt>>;
 interface Vorbereitet {
   ok: true;
   plan: Plan;
+  /** Rechnungen, die ein neuer Umsatz begleicht (29.10., B5) — „als bezahlt vermerken“ nach dem Übernehmen. */
+  bezahlbar: BezahltVorschlag[];
   konto: RegisterKonto;
   auszug: Auszug;
   format: 'camt' | 'csv';
@@ -137,7 +139,7 @@ async function offenePosten(ort: Gesellschaftskennung): Promise<OffenerPostenKur
     const meine = (f?: string) => (istGesellschaft(f) ? f : finanzOrtAus(f)) === ort;
     return [
       ...(b.rechnungen ?? []).filter(r => meine(r.firmaId) && r.art !== 'storno' && !['geplant', 'bezahlt', 'storniert'].includes(r.status) && r.betrag > 0)
-        .map(r => ({ art: r.eroeffnung ? 'forderung' as const : 'rechnung' as const, name: r.kunde, cent: Math.round(r.betrag * 100), ...(r.nummer ? { nummer: r.nummer } : {}), ...(r.datum ? { datum: r.datum } : {}) })),
+        .map(r => ({ art: r.eroeffnung ? 'forderung' as const : 'rechnung' as const, ...(r.eroeffnung ? {} : { id: r.id }), name: r.kunde, cent: Math.round(r.betrag * 100), ...(r.nummer ? { nummer: r.nummer } : {}), ...(r.datum ? { datum: r.datum } : {}) })),
       ...(b.zahlungen ?? []).filter(z => meine(z.firmaId) && z.status === 'offen' && z.betrag > 0)
         .map(z => ({ art: z.eroeffnung ? 'verbindlichkeit' as const : 'zahlung' as const, name: z.an, cent: -Math.round(z.betrag * 100) })),
     ];
@@ -234,11 +236,14 @@ async function vorbereiten(ctx: Kontext, kontoId: unknown, bytes: Uint8Array, sp
     ...(business ? { business, abgeglichen, rechnungNummern } : {}), ...(haushalt ? { haushalt } : {}), eigeneIbans, heute: localDay(ctx.jetzt ?? new Date()), hinweise: e.hinweise,
   });
   // Nahtstellen 09.10.: Hinweise, wo dasselbe Geld sonst doppelt zählt bzw. still wegfällt (ändern nichts — die Vorschau-Kennung bleibt gleich).
-  if (ziel.art === 'business') plan.hinweise.push(...offeneHinweise(plan, e.auszug, await offenePosten(ziel.ort)));
+  const offen = ziel.art === 'business' ? await offenePosten(ziel.ort) : [];
+  if (ziel.art === 'business') plan.hinweise.push(...offeneHinweise(plan, e.auszug, offen));
+  // 29.10. (Kreislauf Geld B5): die Rechnungen, die nach dem Übernehmen per Klick „bezahlt“ werden können.
+  const bezahlbar = ziel.art === 'business' ? bezahltVorschlaege(plan, e.auszug, offen) : [];
   plan.hinweise.push(...uebergangHinweise(plan, konto, register.konten));
   if (plan.saldo?.status === 'neu' && istPrivatOrt(konto.ort) && !regiert(register.konten, istPrivatOrt)) plan.hinweise.push(...await privatPlanHinweis(ctx.haushalt, register.konten));
   return {
-    ok: true, plan, konto, auszug: e.auszug, format: e.format, ...('csv' in e && e.csv ? { csv: e.csv } : {}), eigeneIbans,
+    ok: true, plan, konto, auszug: e.auszug, format: e.format, ...('csv' in e && e.csv ? { csv: e.csv } : {}), eigeneIbans, bezahlbar,
     ...(neu ? { haushaltKontoNeu: neu } : {}), ...(tot ? { toteVerknuepfung: tot } : {}), ...(hh ? { haushaltStamm: { regeln: hh.stamm.regeln, kategorien: hh.stamm.kategorien } } : {}),
   };
 }
@@ -311,8 +316,10 @@ interface EinDaten {
 }
 interface ZurueckDaten { richtung: 'zurueck'; laufId: string; ziel: AuszugLauf['ziel']; buchungen: AuszugLauf['buchungen']; ort?: KontoOrt; firmaVorher?: FirmaVorher; entfernt?: number; konflikte?: { id: string }[]; schonWeg?: number; standZurueck?: number }
 
+/** Eine Rechnung, die ein übernommener Umsatz begleicht (29.10., B5) — `am` = Tag des Umsatzes; vermerkt wird erst per Klick. */
+export interface BezahltVorschlag { rechnungId: string; nummer?: string; am: string }
 export type UebernahmeErgebnis =
-  | { ok: true; lauf: AuszugLauf | null; angelegt: number; doppelt: number; saldo: 'neu' | 'vorhanden' | 'nicht' | null; nichtsNeu?: true; /** Umsätze, die schon gebucht waren (Rechnung bezahlt, Beleg, von Hand) — zugeordnet, nicht angelegt. */ zugeordnet?: number }
+  | { ok: true; lauf: AuszugLauf | null; angelegt: number; doppelt: number; saldo: 'neu' | 'vorhanden' | 'nicht' | null; nichtsNeu?: true; /** Umsätze, die schon gebucht waren (Rechnung bezahlt, Beleg, von Hand) — zugeordnet, nicht angelegt. */ zugeordnet?: number; /** 29.10. (B5): offene Rechnungen, die ein neuer Umsatz begleicht. */ bezahlbar?: BezahltVorschlag[] }
   | (Fehler & { vorschau?: VorschauAntwort });
 
 /**
@@ -360,7 +367,7 @@ export async function auszugUebernehmen(ctx: Kontext, kontoId: unknown, bytes: U
     const ids = auszugEingaenge(zeilen as { id: string; datum: string; betrag: number }[], new Set(r.lauf.buchungen.map(x => x.id)), localDay(ctx.jetzt ?? new Date()));
     if (ids.length) await auszugEreignisse(p.ziel, v.konto.id, ids).catch(() => 0);
   }
-  return { ok: true, lauf: r.lauf, angelegt: r.angelegt, doppelt: r.doppelt, saldo: p.saldo ? (p.saldo.status === 'neu' && !r.standId ? 'vorhanden' : p.saldo.status) : null, ...(p.abgleiche.length ? { zugeordnet: p.abgleiche.length } : {}) };
+  return { ok: true, lauf: r.lauf, angelegt: r.angelegt, doppelt: r.doppelt, saldo: p.saldo ? (p.saldo.status === 'neu' && !r.standId ? 'vorhanden' : p.saldo.status) : null, ...(p.abgleiche.length ? { zugeordnet: p.abgleiche.length } : {}), ...(v.bezahlbar.length ? { bezahlbar: v.bezahlbar } : {}) };
 }
 
 /** Business-Bestand, der für dieses Register-Konto als Dublette zählen kann: gleiche Gesellschaft, nicht aus dem Auszug eines anderen Kontos. */

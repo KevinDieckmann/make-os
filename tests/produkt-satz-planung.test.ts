@@ -106,7 +106,8 @@ describe('B4 · Mandat und Zusatzmodul: geplante Tage bzw. Stunden, änderbar �
   it('Ist-Basis der Planung: ein Mandat je Tag mit geplanten Tagen ist monatlich Satz × Tage', () => {
     const v = istBasisVorschlaege({ mandate: [mandat({ tageJeMonat: 2 })], chancen: [], leistungen: [] }, '2026-10-20');
     expect(v[0]).toMatchObject({ betrag: 2800, rhythmus: 'monatlich' });
-    expect(istBasisVorschlaege({ mandate: [mandat()], chancen: [], leistungen: [] }, '2026-10-20')[0]).toMatchObject({ betrag: 1400, rhythmus: 'einmalig' });
+    // 29.10. (Kreislauf Geld B9): ohne geplante Tage kein Eintrag (vorher „einmalig ein Tagessatz“ — eine erfundene Zahl; die Liquidität plant ebenso nichts).
+    expect(istBasisVorschlaege({ mandate: [mandat()], chancen: [], leistungen: [] }, '2026-10-20')).toEqual([]);
   });
 });
 

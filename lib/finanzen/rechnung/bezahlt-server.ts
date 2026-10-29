@@ -56,6 +56,8 @@ export async function rechnungBezahltVermerken(p: { id: string; am?: unknown; st
   if (!e.schonBezahlt) await protokolliereBestand('finanzplan', { rechnungen: [vorher ?? e.rechnung] }, { rechnungen: [e.rechnung] }, p.wer);
   // Ereignis (09.10., E1): Zahlungseingang → Agenten (nur Kennungen, nie Beträge) — nach dem Speichern, wirft nie.
   if (!e.schonBezahlt) await import('@/lib/ereignisse/quellen').then(q => q.rechnungBezahltEreignis(e.rechnung)).catch(() => 0);
+  // Kreislauf Geld (29.10., B6): offene Mahnaufgaben dieser Rechnung sind erledigt — auch bei „schon bezahlt“ (räumt Reste auf; ohne offene schreibt es nichts).
+  await import('./kreislauf').then(k => k.nachRechnungBezahlt(e.rechnung)).catch(() => undefined);
   return { ok: true, rechnung: e.rechnung, schonBezahlt: e.schonBezahlt, buchung: e.buchung ? { id: e.buchung.id, gebucht } : null };
 }
 
@@ -103,5 +105,7 @@ export async function stornoOhnePdf(p: { id: string; grund: unknown; stand?: unk
   if (!e) return { ok: false, status: 500, fehler: 'Nicht gespeichert.' };
   if (!e.ok) return { ok: false, status: e.status, fehler: e.fehler, ...(e.aktuell ? { aktuell: { ...e.aktuell, fassung: fassung(e.aktuell) } } : {}) };
   if (!e.schonStorniert) await protokolliereBestand('finanzplan', { rechnungen: [vorher ?? e.rechnung] }, { rechnungen: [e.rechnung] }, p.wer);
+  // Kreislauf Geld (29.10., B6/B7): Ereignis „Rechnung storniert“ + offene Mahnaufgaben abbrechen — wirft nie.
+  if (!e.schonStorniert) await import('./kreislauf').then(k => k.nachRechnungStorniert(e.rechnung)).catch(() => undefined);
   return { ok: true, rechnung: e.rechnung, schonStorniert: e.schonStorniert, gegenbuchung: gegen };
 }

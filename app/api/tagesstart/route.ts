@@ -234,10 +234,28 @@ export async function POST(req: Request) {
     else {
       const { mahnAufgabenNachziehen } = await import('@/lib/finanzen/rechnung/server');
       const m = await mahnAufgabenNachziehen();
-      schritte.push({ name: 'Mahnvorschläge', ok: true, info: m.neu ? `${m.neu} neue Mahn-Aufgabe${m.neu === 1 ? '' : 'n'}` : 'nichts fällig' });
+      // Kreislauf Geld (29.10., B7): Ereignis „Rechnung überfällig“ je frisch fälliger Mahnstufe (einmal je Stufe) — nur Kennungen, wirft nie.
+      const { ueberfaelligNachziehen } = await import('@/lib/finanzen/rechnung/kreislauf');
+      const ue = await ueberfaelligNachziehen();
+      schritte.push({ name: 'Mahnvorschläge', ok: true, info: [m.neu ? `${m.neu} neue Mahn-Aufgabe${m.neu === 1 ? '' : 'n'}` : 'nichts fällig', ue ? `${ue} Überfällig-Ereignis${ue === 1 ? '' : 'se'}` : ''].filter(Boolean).join(' · ') });
     }
   } catch (err) {
     schritte.push({ name: 'Mahnvorschläge', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
+  // 0f3) Rechnungen vorbereiten (29.10., Kevin: „der Morgenlauf legt den Rechnungs-ENTWURF automatisch an + Aufgabe ‚Rechnung prüfen & stellen‘“): je aktivem
+  //      Mandat höchstens EIN Entwurf für die fällige Rate bzw. den fälligen Leistungsmonat — nur ab dem Monat des ersten Laufs, je Mandat und Monat einmal.
+  //      Gestellt wird nie (Klick im Editor). Stellschraube unter Finanzen › Rechnungen & Zahlungen (Vorgabe an).
+  try {
+    const h = (await imHaushaltOderSystemlauf(req)) ? await haushaltDesInhabers() : null;
+    if (!h) schritte.push({ name: 'Rechnungen vorbereiten', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { rechnungenVorbereiten } = await import('@/lib/finanzen/rechnung/kreislauf');
+      const v = await rechnungenVorbereiten(h, today);
+      schritte.push({ name: 'Rechnungen vorbereiten', ok: true, info: v.aus ? 'ausgeschaltet' : [v.entwuerfe ? `${v.entwuerfe} Entwurf${v.entwuerfe === 1 ? '' : 'e'} angelegt` : 'nichts fällig', v.aufgaben ? `${v.aufgaben} Aufgabe${v.aufgaben === 1 ? '' : 'n'}` : '', v.uebersprungen ? `${v.uebersprungen} übersprungen` : ''].filter(Boolean).join(' · ') });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Rechnungen vorbereiten', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
   // 0g) Kapazität deaktivierter Team-Personen (DSGVO-Nachtrag 04.10.): 30 Tage nach dem Deaktivieren Grundwert, Urlaub/Blöcke,

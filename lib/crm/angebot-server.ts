@@ -190,11 +190,13 @@ export async function ablaufNachziehen(jetzt = new Date()): Promise<number> {
   if (!vorher.ids.length) return 0;
   const gesperrt = new Set(((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).filter(k => k.eingeschraenkt).map(k => k.id));
   let n = 0;
+  let abgelaufen: Angebot[] = [];
   await aendereCrm(b => {
     const r = ablaufen(b.angebote ?? [], heute, jetztIso);
     n = r.ids.length;
     if (!n) return b;
     const neu = new Set(r.ids);
+    abgelaufen = r.liste.filter(a => neu.has(a.id));
     const deals = new Map(b.chancen.map(c => [c.id, c]));
     const followups = ablaufFollowUps(b.followups ?? [], r.liste.filter(a => neu.has(a.id)), {
       heute, jetzt: jetztIso, ausgenommen: id => gesperrt.has(id),
@@ -202,6 +204,8 @@ export async function ablaufNachziehen(jetzt = new Date()): Promise<number> {
     });
     return { ...b, angebote: r.liste, followups };
   }, { art: 'system' });
+  // Ereignis „Angebot abgelaufen“ (29.10., Kreislauf Geld B7) — dort, wo der Status gespeichert wird; nur Kennungen, Art. 18 nie, wirft nie.
+  if (abgelaufen.length) await import('@/lib/ereignisse/quellen').then(q => q.angebotAbgelaufenEreignisse(abgelaufen, id => gesperrt.has(id))).catch(() => 0);
   return n;
 }
 
@@ -575,7 +579,17 @@ async function antwortSetzen(p: { id: string; stand?: unknown; person: string; w
   return ergebnis!;
 }
 
-export const angebotAnnehmen = (p: { id: string; stand?: unknown; person: string; wer?: Wer; jetzt?: Date }) => antwortSetzen(p, 'angenommen');
+/**
+ * Angenommen (29.10., Kevin: „Mandat + Liquiplan-Posten entstehen AUTOMATISCH (mit Rückgängig), der Fall bleibt Vorschlag“): nach dem Speichern legt
+ * `mandatAusAngebotAutomatisch` das Mandat über denselben Bau wie „Mandat anlegen“ an und trägt die Posten in den Liquiplan ein (nur Business). `automatik`
+ * sagt, was geschah (bzw. warum nicht) — die Oberfläche zeigt „Mandat angelegt · im Liquiplan eingetragen · Rückgängig“.
+ */
+export async function angebotAnnehmen(p: { id: string; stand?: unknown; person: string; wer?: Wer; jetzt?: Date }) {
+  const r = await antwortSetzen(p, 'angenommen');
+  const { mandatAusAngebotAutomatisch } = await import('./mandat-automatik-server');
+  const automatik = await mandatAusAngebotAutomatisch({ angebotId: r.angebot.id, person: p.person, wer: p.wer, jetzt: p.jetzt });
+  return { ...r, ...(automatik ? { automatik } : {}) };
+}
 
 export function angebotAblehnen(p: { id: string; stand?: unknown; person: string; grund?: unknown; wer?: Wer; jetzt?: Date }) {
   const grund = String(p.grund ?? '').replace(/\s+/g, ' ').trim();

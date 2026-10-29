@@ -4,7 +4,8 @@
 // POST { aktion, … }:
 //   speichern  { id?, felder, stand? }      → Entwurf anlegen/ändern (Stand/409, Grenzen 413)
 //   stellen    { id, stand, nachfassenAm? } → Nummer, PDF in die Ablage, Deal/Follow-up/Aktivität (409 bei Sperre)
-//   annehmen   { id, stand }                → Deal gewonnen (danach „Mandat anlegen“, vorbelegt)
+//   annehmen   { id, stand }                → Deal gewonnen; seit 29.10. Mandat + Liquiplan automatisch (`automatik`, mit Rückgängig)
+//   mandat-zurueck { id }                   → Rückgängig der Automatik (nur ohne Rechnung/Fall; nie Dienstweg)
 //   ablehnen   { id, stand, grund }         → Deal verloren mit Grund (Grund Pflicht)
 //   version    { id }                       → neue Fassung als Entwurf mit Bezug
 //   loeschen   { id, stand }                → nur Entwürfe, nur aus dem Papierkorb (endgültig, 04.10.)
@@ -98,7 +99,15 @@ export async function POST(req: Request) {
       }
       case 'annehmen': {
         const r = await angebotAnnehmen({ id, stand: b.stand, person, wer });
-        return NextResponse.json({ ok: true, angebot: mitStand(r.angebot), dealId: r.dealId, ...(r.dealFehler ? { hinweis: r.dealFehler } : {}) });
+        return NextResponse.json({ ok: true, angebot: mitStand(r.angebot), dealId: r.dealId, ...(r.dealFehler ? { hinweis: r.dealFehler } : {}), ...(r.automatik ? { automatik: r.automatik } : {}) });
+      }
+      case 'mandat-zurueck': {
+        // 29.10. (Kreislauf Geld P2a): „Rückgängig“ der Automatik nach „angenommen“ — nur von Hand, nur ein automatisch angelegtes Mandat ohne Rechnung/Fall.
+        if (istDienst(req)) return fehler('„Rückgängig“ nur von Hand — nicht der Dienstweg.', 403);
+        const { mandatAutomatikZurueck } = await import('@/lib/crm/mandat-automatik-server');
+        const r = await mandatAutomatikZurueck({ angebotId: id, wer });
+        if (!r.ok) return fehler(r.fehler, r.status, r.grund ? { grund: r.grund } : {});
+        return NextResponse.json({ ...r, text: r.schonZurueck ? 'Schon zurückgenommen.' : `Mandat wieder entfernt${r.posten ? ` · ${r.posten} Posten aus dem Liquiplan genommen` : ''}.` });
       }
       case 'ablehnen': {
         const r = await angebotAblehnen({ id, stand: b.stand, person, grund: b.grund, wer });
@@ -140,7 +149,7 @@ export async function POST(req: Request) {
         const r = await angebotGmailEntwurf({ id, person: h.person, haushalt: h.haushalt, an: m.an, betreff: m.betreff, text: m.text });
         return NextResponse.json({ ok: true, ...r, text: `Die Mail mit dem PDF liegt als Entwurf in deinem Gmail (${r.von}) — dort öffnen und senden.` });
       }
-      default: return fehler('aktion: speichern, stellen, annehmen, ablehnen, version, ablage, gesendet, entwurf-pdf, gmail-entwurf oder loeschen.', 400);
+      default: return fehler('aktion: speichern, stellen, annehmen, mandat-zurueck, ablehnen, version, ablage, gesendet, entwurf-pdf, gmail-entwurf oder loeschen.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }

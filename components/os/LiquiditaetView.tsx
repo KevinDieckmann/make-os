@@ -21,8 +21,9 @@ import {
   type Firma, type Rechnung, type Zahlung, type Merkposten, type Planposten, type Rhythmus, type Szenario, type Woche,
 } from '@/lib/make-one/liquiditaet';
 import { useZiel, useZuZiel, zielRahmen } from './ziel';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, auswahl, LEUCHT, FadenLinie } from './ui';
-import { bereichVonFirma, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Knopf, Zahl, Fortschritt, Segmente, feld, auswahl, LEUCHT, FadenLinie, Hinweis } from './ui';
+import { bereichVonFirma, bereichVonGesellschaft, finanzOrtName, istGesellschaft } from '@/lib/einheiten';
+import { mandateNichtImLiquiplan } from '@/lib/finanzen/rechnung/kreislauf-regeln';
 import { mandatAusPlanposten, PLANPOSTEN_MANDAT } from '@/lib/crm/mandant-link';
 import { MandantLink } from './crm/MandantLink';
 import { useMandate } from './zeit/useMandate';
@@ -158,6 +159,11 @@ export function LiquiditaetView() {
     void ladePosten();
   }, [ladePlan, ladePosten]);
   useAbgleich(() => { void ladePlan(); void ladePosten(); }, { pausiert: () => speichernHook.hatOffenes() || planSpeichern.hatOffenes() });
+  // 29.10. (Kreislauf Geld P2c): „n Mandate nicht im Liquiplan“ — dieselbe Lage wie die Mandatsliste (GET /api/crm/liquiplan); ohne Zugang einfach nichts.
+  const [mandateFehlen, setMandateFehlen] = useState(0);
+  useEffect(() => {
+    fetch('/api/crm/liquiplan').then(r => (r.ok ? r.json() : null)).then(d => { if (d?.ok && Array.isArray(d.mandate)) setMandateFehlen(mandateNichtImLiquiplan(d.mandate, bereichVonGesellschaft)); }).catch(() => {});
+  }, [posten.length]);
   function setzePosten(next: Planposten[]) {
     setPosten(next);
     speichernHook.speichern({ posten: next });
@@ -296,6 +302,11 @@ export function LiquiditaetView() {
     <>
       <div className="ui-reiter-zeile"><Segmente liste={WOCHEN} aktiv={String(wochen)} onWahl={id => setWochen(Number(id))} /></div>
       {!v && <Karte i={0}><Leer>lädt …</Leer></Karte>}
+      {mandateFehlen > 0 && (
+        <Hinweis art="achtung" aktion={<Link href={WEG.mandat()}>Zu den Mandaten ›</Link>}>
+          {mandateFehlen === 1 ? '1 Mandat steht nicht im Liquiplan' : `${mandateFehlen} Mandate stehen nicht im Liquiplan`} — in der Mandatsakte „Eintragen“, sonst fehlt das Geld hier.
+        </Hinweis>
+      )}
 
       {v && (
         <>

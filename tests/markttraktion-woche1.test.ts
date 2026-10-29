@@ -330,14 +330,13 @@ describe('B · Angebot: Folgeauftrag, Rückfrage, Mandat-Link, Einmalposten, Sum
     const crm = await ladeCrm();
     expect(crm.chancen.find(c => c.id === 'ch-alt-gewonnen')!.stufe).toBe('gewonnen');
     expect(crm.chancen.find(c => c.id === d.angebot.dealId)!.stufe).toBe('angebot');
-    // Angenommen → der NEUE Deal ist gewonnen, „Mandat anlegen“ gelingt (vorher 400).
+    // Angenommen → der NEUE Deal ist gewonnen, das Mandat entsteht (vorher 400) — seit 29.10. automatisch beim Annehmen (Kreislauf Geld).
     const an = await route.POST(anfrage('/api/crm/angebot', sitzung('kevin'), 'POST', { aktion: 'annehmen', id: 'ang-woche1-folge', stand: d.angebot.stand }));
     expect(an.status).toBe(200);
-    const lead = await import('@/app/api/crm/lead/route');
-    const m = await lead.POST(anfrage('/api/crm/lead', sitzung('kevin'), 'POST', { aktion: 'mandat', chanceId: d.angebot.dealId }));
-    const md = await m.json() as { ok: boolean; mandatId?: string };
-    expect(md.ok).toBe(true);
-    expect(md.mandatId).toMatch(/^m-/);
+    const ad = await an.json() as { automatik?: { angelegt: boolean; mandatId?: string } };
+    expect(ad.automatik?.angelegt).toBe(true);
+    expect(ad.automatik?.mandatId).toMatch(/^m-/);
+    expect((await ladeCrm()).mandate.find(m => m.chanceId === d.angebot.dealId)?.id).toBe(ad.automatik?.mandatId);
   });
 
   it('3.6 · gemischtes Angebot: die Einmalposten werden EINE geplante Rechnung (feste Kennung, idempotent, nur einmalige Positionen)', async () => {

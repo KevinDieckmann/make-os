@@ -26,6 +26,8 @@ export interface RechnungStand {
   bereich?: 'privat' | 'business';
   /** Die gewünschte Rechnung steht im anderen Bereich — dorthin umleiten (27.10.). */
   ort?: 'privat' | 'business';
+  /** 29.10. (Kreislauf Geld): legt der Morgenlauf fällige Rechnungen aus Mandaten als Entwurf an? (Vorgabe an) */
+  vorbereiten?: boolean;
 }
 export interface RechnungAntwort {
   ok: boolean; status: number; fehler?: string;
@@ -63,7 +65,7 @@ export function useRechnungen(o: { bereich?: 'privat' | 'business'; re?: string 
       const r = await fetch(`/api/rechnung${p.toString() ? `?${p.toString()}` : ''}`, { cache: 'no-store' });
       if (r.status === 403) { setGesperrt(true); return; }
       const d = await r.json().catch(() => null) as (RechnungStand & { ok?: boolean; fehler?: string }) | null;
-      if (d?.ok) { setStand({ sicht: d.sicht, rechnungen: d.rechnungen ?? [], gesellschaften: d.gesellschaften ?? [], vorgabe: d.vorgabe ?? null, mahnTage: d.mahnTage, mahnvorschlaege: d.mahnvorschlaege ?? [], ...(d.bereich ? { bereich: d.bereich } : {}), ...(d.ort ? { ort: d.ort } : {}) }); setFehler(null); }
+      if (d?.ok) { setStand({ sicht: d.sicht, rechnungen: d.rechnungen ?? [], gesellschaften: d.gesellschaften ?? [], vorgabe: d.vorgabe ?? null, mahnTage: d.mahnTage, mahnvorschlaege: d.mahnvorschlaege ?? [], ...(d.bereich ? { bereich: d.bereich } : {}), ...(d.ort ? { ort: d.ort } : {}), ...(typeof d.vorbereiten === 'boolean' ? { vorbereiten: d.vorbereiten } : {}) }); setFehler(null); }
       else setFehler(d?.fehler ?? `Antwort ${r.status}.`);
     } catch { setFehler('Keine Verbindung.'); }
     finally { laeuft.current = false; }

@@ -15,7 +15,7 @@ import { auszugLesen, bytesZuBase64 } from '@/lib/finanzen/kontoauszug/lesen';
 import { spaltenVollstaendig } from '@/lib/finanzen/kontoauszug/csv';
 import { SPALTEN_NAME, type CsvInfo, type Spalten, type SpaltenFeld } from '@/lib/finanzen/kontoauszug/typen';
 import type { KontoAnzeige, KontenSicht } from '@/lib/finanzen/konten/register';
-import type { VorschauAntwort, AuszugLauf } from '@/lib/finanzen/kontoauszug/server';
+import type { VorschauAntwort, AuszugLauf, BezahltVorschlag } from '@/lib/finanzen/kontoauszug/server';
 
 const euro = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const tag = (t?: string | null) => (t ? `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(0, 4)}` : '—');
@@ -32,7 +32,7 @@ const FELDER: Exclude<SpaltenFeld, 'zweck'>[] = ['datum', 'betrag', 'soll', 'hab
 const ERWEITERT: ReadonlySet<SpaltenFeld> = new Set(['valuta', 'waehrung', 'iban', 'kennung', 'status', 'kategorie', 'gebuehr', 'eigeneIban', 'kennzeichen']);
 
 type Fehler = { ok: false; fehler?: string; csv?: Omit<CsvInfo, 'beispiel'>; anderesKonto?: { id: string; name: string }; vorschau?: VorschauAntwort; pruefung?: unknown };
-type Uebernahme = { ok: true; lauf: AuszugLauf | null; angelegt: number; doppelt: number; saldo: 'neu' | 'vorhanden' | 'nicht' | null; nichtsNeu?: true; zugeordnet?: number };
+type Uebernahme = { ok: true; lauf: AuszugLauf | null; angelegt: number; doppelt: number; saldo: 'neu' | 'vorhanden' | 'nicht' | null; nichtsNeu?: true; zugeordnet?: number; bezahlbar?: BezahltVorschlag[] };
 type Zurueck = { ok: true; lauf: AuszugLauf; entfernt: number; konflikte: { datum: string; betrag: number; wer: string }[]; schonWeg: number; standZurueck: number; hinweis?: string };
 
 async function post<T>(sicht: KontenSicht, body: unknown): Promise<T | Fehler> {
@@ -56,6 +56,14 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
   const [anfrageId, setAnfrageId] = useState('');
   const [laeufe, setLaeufe] = useState<AuszugLauf[]>([]);
   const [konflikte, setKonflikte] = useState<Zurueck['konflikte']>([]);
+  /** 29.10. (Kreislauf Geld B5): offene Rechnungen, die ein übernommener Umsatz begleicht — „als bezahlt vermerken“ per Klick (Weg der Rechnungsansicht). */
+  const [bezahlbar, setBezahlbar] = useState<(BezahltVorschlag & { erledigt?: string })[]>([]);
+  const alsBezahlt = async (b: BezahltVorschlag) => {
+    const r = await fetch('/api/rechnung', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'bezahlt', id: b.rechnungId, am: b.am }) })
+      .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung — nichts vermerkt.' }));
+    setBezahlbar(l => l.map(x => (x.rechnungId === b.rechnungId ? { ...x, erledigt: r.ok ? `bezahlt am ${tag(b.am)} vermerkt` : (r.fehler ?? 'Nicht vermerkt.') } : x)));
+    if (r.ok) await onGeaendert();
+  };
   const { bestaetigen, dialog } = useRueckfrage();
 
   const laeufeLaden = useCallback(async () => {
@@ -114,6 +122,7 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
     if (r.zugeordnet) teile.push(`${r.zugeordnet} schon gebucht (Rechnung bezahlt, Beleg oder von Hand) — zugeordnet, nicht doppelt.`);
     if (r.saldo === 'neu') teile.push('Saldo als Stand eingetragen.');
     setMeldung({ art: 'gut', text: teile.join(' ') });
+    setBezahlbar(r.bezahlbar ?? []);
     zuruecksetzen();
     await onGeaendert();
     await laeufeLaden();
@@ -198,6 +207,18 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
       )}
 
       {meldung && <Hinweis art={meldung.art} rolle="status">{meldung.text}</Hinweis>}
+      {bezahlbar.length > 0 && (
+        <Hinweis art="info" titel="Diese Umsätze begleichen offene Rechnungen">
+          <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
+            {bezahlbar.map(b => (
+              <div key={b.rechnungId} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span>Rechnung {b.nummer ?? ''} · Eingang am {tag(b.am)}</span>
+                {b.erledigt ? <span style={{ color: C.inkDim }}>{b.erledigt}</span> : <Knopf leise onClick={() => alsBezahlt(b)}>Als bezahlt vermerken</Knopf>}
+              </div>
+            ))}
+          </div>
+        </Hinweis>
+      )}
       {laeuft && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Einen Moment …</div>}
 
       {vorschau && (

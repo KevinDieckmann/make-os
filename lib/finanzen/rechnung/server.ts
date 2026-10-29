@@ -101,6 +101,8 @@ export async function rechnungsStand(z: { haushalt: string; sicht: Sicht; bereic
     vorgabe: v && gesellschaftInSicht(v, z.sicht) && imBereich(v) ? v : gs[0]?.id ?? null,
     mahnTage: tage,
     mahnvorschlaege: mahnVorschlaege(liste, heute, tage),
+    // 29.10. (Kreislauf Geld): Stellschraube „Rechnungen vorbereiten“ (Morgenlauf; Vorgabe an).
+    vorbereiten: await import('./kreislauf').then(async k => k.vorbereitenAn(await k.kreislaufLaden())).catch(() => true),
     ...(bereich ? { bereich } : {}),
     ...(anders ? { ort: rechnungBereich(anders) } : {}),
   };
@@ -133,6 +135,11 @@ const einmalSchon = (l: readonly Rechnung[], fest: string) => l.find(r => r.id =
 /** Eine gültige gestellte (oder bezahlte) Rechnung über ein Angebot — ohne die Einmalposten-Rechnung und ohne Stornos (27.10.). */
 export const schonAusAngebot = (l: readonly Rechnung[], angebotId: string, einmalId: string) =>
   l.find(r => r.angebotId === angebotId && r.id !== einmalId && r.art !== 'storno' && (r.status === 'gestellt' || r.status === 'bezahlt'));
+/** Das Mandat zu einem Angebot (am Angebot vermerkt, sonst über den Deal) — nie eines im Papierkorb (29.10., B1). */
+export const mandatZumAngebot = <M extends { id: string; chanceId?: string; geloeschtAm?: string }>(mandate: readonly M[], a: { mandatId?: string; dealId?: string }): M | undefined =>
+  (a.mandatId ? mandate.find(m => m.id === a.mandatId && !m.geloeschtAm) : undefined) ?? (a.dealId ? mandate.find(m => m.chanceId === a.dealId && !m.geloeschtAm) : undefined);
+export const MANDAT_VORHANDEN = 'Zu diesem Angebot läuft schon ein Mandat — es rechnet die Leistung ab (Monatsrechnung bzw. Raten in der Mandatsakte). Eine zweite Rechnung über alle Positionen verrechnete sie doppelt; nur die Einmalposten lassen sich hier noch eigens abrechnen.';
+export const MANDAT_RECHNET_EINMAL = 'Das Mandat zu diesem Angebot rechnet den Einmalbetrag selbst ab (einmaliges Honorar bzw. Raten/Anzahlung) — eine eigene Rechnung über die Einmalposten verrechnete ihn doppelt. Die Rechnung in der Mandatsakte schreiben.';
 export const EINMAL_SCHON = 'Die Einmalposten dieses Angebots stehen schon in einer eigenen Rechnung — keine zweite Rechnung über alle Positionen (sie verrechnete sie doppelt). Die laufende Leistung rechnet das Mandat ab (Monatsrechnung); sonst die Rechnung frei schreiben.';
 
 /**
@@ -184,6 +191,10 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     if (!a) throw new RechnungFehler('Angebot nicht gefunden.', 404);
     if (a.status !== 'angenommen') throw new RechnungFehler('Eine Rechnung entsteht nur aus einem angenommenen Angebot — erst „angenommen“ vermerken.', 409, { grund: 'nicht-angenommen' });
     const nurEinmalig = p.nur === 'einmalig';
+    // 29.10. (Kreislauf Geld B1): hängt am Angebot schon ein Mandat, rechnet DAS die Leistung ab (Monatsrechnung bzw. Raten) — eine Rechnung über alle
+    // Positionen verrechnete sie ein zweites Mal (und stünde in der Liquidität doppelt). Nur die Einmalposten (`nur: 'einmalig'`) gehen weiter.
+    const mandatDa = mandatZumAngebot(crm.mandate, a);
+    if (!nurEinmalig && mandatDa) throw new RechnungFehler(MANDAT_VORHANDEN, 409, { grund: 'mandat-vorhanden', mandatId: mandatDa.id });
     // 24.10.: nur die Einmalposten, die das Mandat NICHT selbst abrechnet (`angebotEinmalRest`) — die eigenen Teile einer Kombination (z. B. der Festpreis
     // 50/50) stehen als Zusatzmodul am Mandat und kämen sonst doppelt auf eine Rechnung.
     const einmalRest = angebotEinmalRest(a, crm.leistungen);
@@ -196,6 +207,11 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     if (offen) {
       if (!inSicht(offen, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
       return { rechnung: mitFassung(offen), vorhanden: true };
+    }
+    // 29.10. (Kreislauf Geld, Kevin): rechnet das Mandat selbst einen Einmalbetrag ab (einmaliges Honorar bzw. Zahlplan/Raten), entsteht auch für die
+    // Einmalposten keine eigene Rechnung — sie verrechnete denselben Betrag ein zweites Mal. Der Weg ist dann die Mandatsakte („Rechnung schreiben“).
+    if (nurEinmalig && mandatDa && (mandatDa.honorar?.basis === 'einmalig' || zahlplanMonate(mandatDa))) {
+      throw new RechnungFehler(MANDAT_RECHNET_EINMAL, 409, { grund: 'mandat-rechnet-einmal', mandatId: mandatDa.id });
     }
     // Nahtstellen 09.10.: stehen die Einmalposten schon in ihrer eigenen Rechnung (feste Kennung, auch gestellt/bezahlt), entsteht keine zweite
     // Rechnung über ALLE Positionen — sie verrechnete die Einmalposten ein zweites Mal (die laufende Leistung rechnet das Mandat ab).
@@ -214,7 +230,7 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     // (dieselbe Regel wie das Mandat aus dem Angebot, `angebotTitelFuerFolge`). Gespeichertes bleibt unverändert.
     const titelAusAngebot = angebotTitelFuerFolge(a, crm.leistungen);
     const empf = empfaengerAusCrm(k, f);
-    const mandat = a.mandatId ? crm.mandate.find(m => m.id === a.mandatId) : a.dealId ? crm.mandate.find(m => m.chanceId === a.dealId && !m.geloeschtAm) : undefined;
+    const mandat = mandatDa;
     // Gesellschaft wie überall (08.10., 3.6): eine Register-Gesellschaft führt der Finanzplan nicht (409 „nur Grunddaten“), nie still kdc.
     const g = gesellschaftFuer(a.gesellschaft);
     if (!g) throw new RechnungFehler('Für dieses Angebot steht keine Gesellschaft fest — die Rechnung frei schreiben.', 409, { grund: 'gesellschaft' });
@@ -740,6 +756,8 @@ export async function rechnungStornieren(p: { id: string; grund: unknown; stand?
     { liste: 'rechnungen', op: 'geaendert', id: e.o.id, felder: ['status', 'storniertAm', 'stornoGrund', 'stornoRechnungId'] },
     { liste: 'rechnungen', op: 'neu', id: e.s.id, felder: ['art', 'stornoZu', 'nummer', 'pdfDateiId', 'sha256'] },
   ], p.wer);
+  // Kreislauf Geld (29.10., B6/B7): Ereignis „Rechnung storniert“ + offene Mahnaufgaben abbrechen — wirft nie.
+  await import('./kreislauf').then(k => k.nachRechnungStorniert(e.o)).catch(() => undefined);
   return { original: mitFassung(e.o), storno: mitFassung(e.s), pdf: e.pdf, gegenbuchung: e.gegen, schonStorniert: false };
 }
 

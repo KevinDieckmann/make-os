@@ -173,7 +173,15 @@ export async function POST(req: Request) {
         if (z.sicht !== 'privat') return fehler('Die Mahnstufen stellt ein volles Haushaltsmitglied ein.', 403);
         return NextResponse.json({ ok: true, mahnTage: await mahnTageSetzen(b.tage) });
       }
-      default: return fehler('aktion: neu, speichern, kunde, kopie, loeschen, stellen, bezahlt, storno, mahnung oder mahntage.', 400);
+      case 'vorbereiten': {
+        // 29.10. (Kreislauf Geld): Stellschraube „Rechnungen vorbereiten“ (Morgenlauf) — nur ein volles Haushaltsmitglied, nur von Hand.
+        if (z.sicht !== 'privat') return fehler('Das stellt ein volles Haushaltsmitglied ein.', 403);
+        const nein = vonHand(); if (nein) return nein;
+        if (typeof b.an !== 'boolean') return fehler('an: true oder false.', 400);
+        const { vorbereitenSetzen } = await import('@/lib/finanzen/rechnung/kreislauf');
+        return NextResponse.json({ ok: true, vorbereiten: await vorbereitenSetzen(b.an) });
+      }
+      default: return fehler('aktion: neu, speichern, kunde, kopie, loeschen, stellen, bezahlt, storno, mahnung, mahntage oder vorbereiten.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }

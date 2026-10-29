@@ -161,11 +161,14 @@ export function istBasisVorschlaege(crm: Pick<CrmBestand, 'mandate' | 'chancen' 
   for (const m of mandate) {
     const l = produkt(m.leistungId);
     const laufzeit = m.ende && m.start ? monateZwischen(m.start, m.ende) : m.mindestlaufzeitMonate ?? l?.laufzeitMonate ?? null;
-    if (m.honorar.betrag > 0) {
+    // 29.10. (Kreislauf Geld B9): ein Tagessatz OHNE geplante Tage ist kein Betrag für die Planung (vorher „einmalig ein Tagessatz“) — wie die Liquidität: kein Eintrag.
+    if (m.honorar.betrag > 0 && !(m.honorar.basis === 'tag' && !(m.tageJeMonat && m.tageJeMonat > 0))) {
       // Tagessatz mit geplanten Tagen (21.10., B4): Satz × Tage je Monat — sonst wie bisher.
       const tage = m.honorar.basis === 'tag' && m.tageJeMonat ? m.tageJeMonat : 0;
-      const betrag = tage ? Math.round(m.honorar.betrag * tage * 100) / 100 : m.honorar.betrag;
-      out.push({ quelle: 'mandat', quelleId: m.id, kunde: m.kunde, titel: m.titel, produktId: l?.id, produkt: l?.name, betrag, rhythmus: m.honorar.basis === 'monat' || tage ? 'monatlich' : 'einmalig', laufzeit, start: startAus(m.start), gesellschaft: m.gesellschaft });
+      // Raten (29.10., B9): monatliche Raten eines einmaligen Honorars als Monatsbetrag über die Zahl der Raten (auf den Cent; ein Rundungsrest bleibt außen vor).
+      const raten = m.honorar.basis === 'einmalig' && m.raten && m.raten.abstandMonate === 1 && m.raten.anzahl > 1 ? m.raten : null;
+      const betrag = tage ? Math.round(m.honorar.betrag * tage * 100) / 100 : raten ? Math.round((m.honorar.betrag / raten.anzahl) * 100) / 100 : m.honorar.betrag;
+      out.push({ quelle: 'mandat', quelleId: m.id, kunde: m.kunde, titel: m.titel, produktId: l?.id, produkt: l?.name, betrag, rhythmus: m.honorar.basis === 'monat' || tage || raten ? 'monatlich' : 'einmalig', laufzeit: raten ? raten.anzahl : laufzeit, start: startAus(m.start), gesellschaft: m.gesellschaft });
     }
     for (const z of m.zusatz ?? []) {
       const p = zusatzImPlan(z);

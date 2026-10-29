@@ -362,7 +362,9 @@ export type SkillEreignis = 'neue-mail' | 'neuer-lead' | 'zahlungseingang' | 'ne
   | 'event-vorbei' | 'event-status' | 'linkedin-antwort' | 'vernetzt' | 'kampagne-aktiv' | 'kampagnen-ergebnis'
   // Begleit-Prozesse am Fall (22.10., Fulfillment in die Werkstatt B1 — research/prozesse/FULFILLMENT_WERKSTATT_PLAN.md): Phase begonnen/abgeschlossen, ein Schritt
   // wartet auf den Kunden, Bestätigung gegeben, etwas hängt (dieselbe Regel wie Cockpit/Heute: `wasHaengt`), der Kunde hat geliefert (Kunden-Link).
-  | 'fall-phase' | 'fall-wartet-kunde' | 'abstimmung-bestaetigt' | 'fall-haengt' | 'kunde-geliefert';
+  | 'fall-phase' | 'fall-wartet-kunde' | 'abstimmung-bestaetigt' | 'fall-haengt' | 'kunde-geliefert'
+  // Kreislauf Geld (29.10.): Rechnung storniert, Rechnung überfällig (einmal je Mahnstufe, Morgenlauf), Angebot abgelaufen (Status-Übergang) — lib/ereignisse/quellen.ts.
+  | 'rechnung-storniert' | 'rechnung-ueberfaellig' | 'angebot-abgelaufen';
 export type SkillAusloeser =
   | { art: 'hand' }
   | { art: 'zeitplan'; rhythmus: Rhythmus; /** „HH:MM“ Berliner Zeit */ uhrzeit: string; /** 1 = Montag … 7 = Sonntag (woechentlich) bzw. Monatstag (monatlich) */ tage?: number[] }

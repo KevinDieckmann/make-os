@@ -269,10 +269,14 @@ describe('Storno = Stornorechnung mit eigener Nummer und PDF', () => {
 
 describe('Angebot → Rechnung, Mandat → Monatsentwurf', () => {
   it('aus dem angenommenen Angebot: Positionen, Kunde, Mandat, Gesellschaft, Angebotsnummer — zweimal = derselbe Entwurf', async () => {
-    const a = await post({ aktion: 'neu', quelle: 'angebot', angebotId: 'ang-test-angenommen' });
+    // 29.10. (Kreislauf Geld B1): am Angebot hängt das Mandat m-test1 — eine Rechnung über ALLE Positionen ist gesperrt (409), nur die Einmalposten gehen.
+    const voll = await post({ aktion: 'neu', quelle: 'angebot', angebotId: 'ang-test-angenommen' });
+    expect(voll.status).toBe(409);
+    expect(voll.d.grund).toBe('mandat-vorhanden');
+    const a = await post({ aktion: 'neu', quelle: 'angebot', angebotId: 'ang-test-angenommen', nur: 'einmalig' });
     expect(a.status).toBe(200);
     expect(a.d.rechnung).toMatchObject({ firmaId: 'kdv', mandatId: 'm-test1', kontaktId: 'c-anna1', kundeFirmaId: 'f-muster', angebotId: 'ang-test-angenommen', angebot: `KDV-A-${JAHR}-0001`, zahlungszielTage: 21, betrag: 5950, positionen: [{ titel: 'Sprint', einzelpreisCent: 500000, ustSatz: 19 }] });
-    expect((await post({ aktion: 'neu', quelle: 'angebot', angebotId: 'ang-test-angenommen' })).d).toMatchObject({ vorhanden: true, rechnung: { id: a.d.rechnung.id } });
+    expect((await post({ aktion: 'neu', quelle: 'angebot', angebotId: 'ang-test-angenommen', nur: 'einmalig' })).d).toMatchObject({ vorhanden: true, rechnung: { id: a.d.rechnung.id } });
     expect((await post({ aktion: 'neu', quelle: 'angebot', angebotId: 'ang-test-gestellt' })).status).toBe(409);
   });
   it('Monatsrechnung aus dem Mandat: Leistungsmonat, Honorar netto, nie gestellt — je Monat einer', async () => {

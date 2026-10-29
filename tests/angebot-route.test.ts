@@ -165,9 +165,12 @@ describe('Stellen: Nummer, PDF, Verbindungen', () => {
     const b = await crm();
     expect(b.chancen.find(c => c.id === gestellt.dealId)!.stufe).toBe('gewonnen');
     expect(b.followups.find(f => f.id === `fu-${gestellt.id}`)!.status).toBe('erledigt');
+    // 29.10. (Kreislauf Geld, Kevin): das Mandat entsteht beim Annehmen AUTOMATISCH (derselbe Bau wie „Mandat anlegen“) — ein zweites gibt es nicht.
+    expect(r.d.automatik).toMatchObject({ angelegt: true });
     const m = await lead.POST(new Request('http://test/api/crm/lead', { method: 'POST', headers: kopf('kevin'), body: JSON.stringify({ aktion: 'mandat', chanceId: gestellt.dealId }) }));
-    expect(m.status).toBe(200);
+    expect(m.status).toBe(409);
     const mandat = (await crm()).mandate.find(x => x.chanceId === gestellt.dealId)!;
+    expect(r.d.automatik.mandatId).toBe(mandat.id);
     expect(mandat).toMatchObject({ gesellschaft: 'kdv', honorar: { betrag: 2500, basis: 'monat' }, mindestlaufzeitMonate: 6, leistungId: 'l-strategie', zahlungszielTage: 14, rechnungsrhythmus: 'monatlich' });
     // 17.10. (Gesamtprüfung L1 B3): das angenommene Angebot ist die Unterschrift — kein „ohne Vertrag“, kein doppelter Kick-off-Punkt.
     expect(mandat.vertragUnterschrieben).toBe(true);

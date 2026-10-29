@@ -811,6 +811,24 @@ Kevin 21.10.: „Am Ende müssen wir Privat wie auch im Business einen Score hab
   npx next build`, dann Vorschau „make-os-pruefbau“ (Port 3011, mit CSP) — danach `.next-pruefbau` löschen.
 - Next 15.5 (seit 26.09.): `params`/`searchParams`/`cookies()` sind Promises (`await`).
 
+## Kreislauf Geld (29.10., Branch `kreislauf-geld`, nur lokal; Tests `tests/kreislauf-geld-2910.test.ts`)
+Kevin 29.10.: „Angebot angenommen → Mandat + Liquiplan-Posten AUTOMATISCH (mit Rückgängig), der Fall bleibt Vorschlag“ · „fällige Rate/Monatsrechnung → der
+Morgenlauf legt den Rechnungs-ENTWURF an + Aufgabe ‚Rechnung prüfen & stellen‘ (Stellen bleibt Klick)“.
+- **Angenommen** (`angebotAnnehmen` → `lib/crm/mandat-automatik-server.ts`): Mandat über DENSELBEN Bau wie „Mandat anlegen“ (`mandatAusDeal`), Posten über
+  DIESELBE Stelle wie „Eintragen“ (`mandatLiquiplanEintragen`, auch POST /api/crm/liquiplan `anlegen`) — nur Business; idempotent; nichts bei fehlendem
+  gewonnenem Deal, Gesellschaft „offen“, Art. 18/Werbesperre. Merker `rechnungswesen.kreislauf.mandatAuto`; Rückgängig `POST /api/crm/angebot
+  { aktion: 'mandat-zurueck' }` nur ohne Rechnung (auch Entwurf) und ohne Fall (409 mit `grund`), nie Dienstweg.
+- **Angebot mit Mandat → keine Rechnung über alle Positionen** (409 `mandat-vorhanden`, `mandatZumAngebot`); nur `nur: 'einmalig'` geht — und auch das nicht, wenn das Mandat den Einmalbetrag selbst abrechnet (einmaliges Honorar, Raten/Zahlplan → 409 `mandat-rechnet-einmal`).
+- **Morgenlauf „Rechnungen vorbereiten“** (`rechnungenVorbereiten`, lib/finanzen/rechnung/kreislauf.ts; Regeln rein in `kreislauf-regeln.ts`): je aktivem Mandat
+  (Gesellschaft gewählt, `finanzFirmaFuer`) höchstens EIN Entwurf je Lauf über `entwurfNeu` (quelle mandat) + Aufgabe `rv-<mandat>-<monat>`; Raten/Zahlplan und
+  Monatshonorar (monatlich), nie Tagessatz/Quartal/einmalig ohne Zahlplan; erst ab dem Monat NACH dem ersten Lauf (`vorbereitenAbMonat`, Kevin 29.10.), je Mandat und Monat
+  einmal (Merker — ein gelöschter Entwurf kommt nicht wieder). Stellschraube `POST /api/rechnung { aktion: 'vorbereiten', an }` (Vorgabe an).
+- **Bezahlt/Storno schließen Mahnaufgaben** (`nachRechnungBezahlt`/`nachRechnungStorniert`, alle Storno-Wege); Ereignisse `rechnung-storniert`,
+  `rechnung-ueberfaellig` (Morgenlauf, je Stufe einmal, nur frisch ≤ 7 Tage), `angebot-abgelaufen` (in `ablaufNachziehen`); Rechnungs-Ereignisse tragen die
+  Arbeits-Marke über `rechnungEreignisBereich`. Kontoauszug: nach dem Übernehmen „Als bezahlt vermerken“ (`bezahltVorschlaege`, Weg der Rechnungsansicht).
+- **Raten nach dem Mandatsende** bleiben im Soll (`mandatPosten`, auch beendet); abgerechnete Raten VOR dem laufenden Monat fallen weg. Liquidität zeigt
+  „n Mandate nicht im Liquiplan“ (`mandateNichtImLiquiplan`).
+
 ## Gesundheits-Index & Traktions-Index (seit 26.09.2026, online)
 - **Ein Kern für alle Indizes:** `lib/kennzahlen/kern.ts` (`berechneModell`, `geometrisch` für den
   Traktions-Score) + `lib/kennzahlen/speicher.ts` (Verlauf 400 Tage, Schwellen, `fortschreiben`,
@@ -2982,8 +3000,9 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   (`lib/crm/recht.ts`) gilt für jede Karte, jeden Entwurf, jedes Agentenpaket**:
   LinkedIn-Nachricht = elektronische Post, Kaltanruf nur mit Anlass, Werbesperre
   sperrt alles — keine Rechtsberatung, einmal anwaltlich gegenlesen. Kunden
-  = Mandate (`kundenAusMandaten` für Score/ZOE); Mandat → Liquiplan nur als
-  Vorschlag (`/api/crm/liquiplan`), nie automatisch. **Firmen** sind eigene
+  = Mandate (`kundenAusMandaten` für Score/ZOE); Mandat → Liquiplan: automatisch bei
+  angenommenem Angebot (Kevin 29.10., Abschnitt „Kreislauf Geld“), sonst nur als
+  Vorschlag (`/api/crm/liquiplan`). **Firmen** sind eigene
   Stammdaten (`crm.firmen`, Kontakt.firmaId, Abgleich `lib/crm/abgleich.ts` nach
   jedem Import — füllt nur leere Felder). **Stammdaten-Bereich**: Selbstprüfung,
   Pflichtangaben (Herkunft Art. 14 / Rechtsgrundlage Art. 6 nur als Vorschlag,

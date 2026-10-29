@@ -255,9 +255,10 @@ describe('Annehmen: Deal folgt im Titel nur, wenn er automatisch war — Mandat 
     expect(g.titel).toBe('Atlas Beispiel GmbH · Strategie-Workshop');
     expect((await post(angebotRoute, '/api/crm/angebot', { aktion: 'annehmen', id: g.id, stand: g.stand })).status).toBe(200);
     expect((await crm()).chancen.find(c => c.id === 'ch-va')).toMatchObject({ stufe: 'gewonnen', leistungId: 'l-ws', titel: 'Atlas Beispiel GmbH · Strategie-Workshop' });
-    // Mandat aus dem Deal: der Titel des Angebots (nie der alte Deal-Titel) — Fall und Monatsrechnung lesen ihn vom Mandat.
+    // Mandat aus dem Deal: der Titel des Angebots (nie der alte Deal-Titel) — Fall und Monatsrechnung lesen ihn vom Mandat. Seit 29.10. entsteht es beim
+    // Annehmen automatisch (derselbe Bau wie „Mandat anlegen“) — ein zweites „Mandat anlegen“ antwortet 409.
     const m = await post(leadRoute, '/api/crm/lead', { aktion: 'mandat', chanceId: 'ch-va' });
-    expect(m.status).toBe(200);
+    expect(m.status).toBe(409);
     const mandat = (await crm()).mandate.find(x => x.chanceId === 'ch-va')!;
     expect(mandat.titel).toBe('Atlas Beispiel GmbH · Strategie-Workshop');
     const { entwurfNeu } = await import('@/lib/finanzen/rechnung/server');
