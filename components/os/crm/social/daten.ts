@@ -12,6 +12,7 @@ import type { KanalAnalyse, Wochenbericht } from '@/lib/social/analyse';
 import type { ImportVorschau } from '@/lib/social/csv';
 import type { ZielStand } from '@/lib/social/ziele';
 import type { AutomatikLage } from '@/lib/social/server';
+import type { SocialMedium } from '@/lib/social/medien';
 
 export type MitStand<T> = T & { stand: string };
 export interface Lage {
@@ -26,6 +27,8 @@ export interface Lage {
   woche: Record<string, Wochenbericht>;
   /** Automatik (27.10.): je Folge und Plattform der Zustand, Verbindungen (ohne Token), Wege, letzte Läufe, freie Plätze. */
   automatik: AutomatikLage;
+  /** Angehängte Medien der sichtbaren Folgen (Lese-Form vom Server: Art, Freigabe für Social, Werkstatt-Ergebnis). */
+  medien: Record<string, SocialMedium | null>;
 }
 
 export interface SocialApi {

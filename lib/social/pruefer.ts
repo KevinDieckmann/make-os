@@ -9,6 +9,7 @@
 
 import type { SocialFolge, SocialKanal, SocialFormat } from './typen';
 import { ZIEL_MIT_LINIE } from './typen';
+import { medienBefunde, type SocialMedium } from './medien';
 
 export type BefundStufe = 'stopp' | 'mensch' | 'hinweis';
 export interface Befund { stufe: BefundStufe; code: string; text: string }
@@ -65,6 +66,8 @@ export interface PruefKontext {
   format?: SocialFormat | null;
   /** Andere Folgen desselben Kanals (die jüngsten 20 werden verglichen). */
   andere: SocialFolge[];
+  /** Die angehängten Medien, frisch aus der Ablage gelesen (`socialMedienLesen`) — fehlt es, prüft der Prüfer die Medien nicht. */
+  medien?: ReadonlyMap<string, SocialMedium | null>;
 }
 
 export function folgePruefen(f: SocialFolge, k: PruefKontext): Befund[] {
@@ -100,6 +103,7 @@ export function folgePruefen(f: SocialFolge, k: PruefKontext): Befund[] {
   if (f.kiInhalt) b.push({ stufe: 'hinweis', code: 'ki-label', text: 'Beim Hochladen das KI-Label der Plattform setzen (KI-Bild oder KI-Stimme).' });
   if (!f.cta?.trim()) b.push({ stufe: 'hinweis', code: 'ohne-cta', text: 'Kein Aufruf am Ende (Kommentar, Speichern, Folgen).' });
   if (f.personenImBild === 'einwilligung') b.push({ stufe: 'hinweis', code: 'einwilligung', text: 'Einwilligung der gezeigten Personen ablegen — sie ist jederzeit widerruflich.' });
+  b.push(...medienBefunde(f, k.medien));
   return b;
 }
 

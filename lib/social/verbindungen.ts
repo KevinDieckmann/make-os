@@ -85,3 +85,16 @@ export async function verbindungenOhne(pred: (v: SocialVerbindung) => boolean): 
 export async function verbindungVermerken(id: string, teil: Pick<SocialVerbindung, 'erinnertAblauf'>): Promise<void> {
   await updateJson<VerbindungenDatei>(await verbindungenSpeicher(), cur => ({ eintraege: (cur?.eintraege ?? []).filter(ok).map(v => (v.id === id ? { ...v, ...teil } : v)) }));
 }
+
+/** Den Geheimteil einer AKTIVEN Verbindung ersetzen (Token verlängert) — nur der Server, nie aus dem Browser. */
+export async function verbindungGeheimSetzen(id: string, geheim: VerbindungGeheim): Promise<boolean> {
+  let gesetzt = false;
+  await updateJson<VerbindungenDatei>(await verbindungenSpeicher(), cur => ({
+    eintraege: (cur?.eintraege ?? []).filter(ok).map(v => {
+      if (v.id !== id || v.zustand !== 'aktiv') return v;
+      gesetzt = true;
+      return { ...v, geheim };
+    }),
+  }));
+  return gesetzt;
+}

@@ -7,15 +7,19 @@ import { randomUUID } from 'node:crypto';
 import { nurText, type SocialAnbieter } from './typen';
 import { folienAus } from './karussell-pdf';
 import type { SocialPlattform } from '../typen';
+import { instagramMedien } from '../medien';
 
 export const probeErlaubt = (): boolean => process.env.MAKE_OS_DEMO === '1' || process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
 
 export const probeAnbieter = (plattform: SocialPlattform): SocialAnbieter => ({
   id: 'probe', plattform, name: 'Probe (nichts verlässt MAKE OS)',
-  // Wie LinkedIn: Text und Karussell (als PDF aus den Folien) gehen ohne eigene Datei, Video/Bild nicht.
-  // Instagram, TikTok und YouTube nehmen keinen reinen Text — dort sagt die Probe ehrlich „von Hand“ (wie es ein echter Anbieter auch täte).
-  kann: (f, format) => (plattform !== 'linkedin' ? { ok: false, grund: 'Diese Plattform braucht eine Bild- oder Videodatei — MAKE OS erzeugt sie (noch) nicht.' }
-    : (format?.art ?? 'video') === 'karussell' && folienAus(f.skript).length >= 2 ? { ok: true } : nurText(f, format)),
+  // LinkedIn: Text und Karussell (als PDF aus den Folien). Instagram: dieselbe Regel wie der echte Anbieter (Bild/Karussell/Reel aus
+  // freigegebenen Medien — instagramMedien). TikTok und YouTube: ehrlich „von Hand“ (wie es ein echter Weg heute auch täte).
+  kann: (f, format, medien) => {
+    if (plattform === 'instagram') { const p = instagramMedien(f, format, medien); return p.ok ? { ok: true } : p; }
+    if (plattform !== 'linkedin') return { ok: false, grund: 'Diese Plattform braucht eine Bild- oder Videodatei, die MAKE OS dort nicht selbst hochlädt — von Hand posten.' };
+    return (format?.art ?? 'video') === 'karussell' && folienAus(f.skript).length >= 2 ? { ok: true } : nurText(f, format);
+  },
   async posten() {
     if (!probeErlaubt()) return { ok: false, text: 'Probe-Verbindung gibt es nur in einer Demo-Instanz.' };
     return { ok: true, externeId: `probe-${randomUUID()}` };

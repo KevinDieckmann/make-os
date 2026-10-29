@@ -21,10 +21,12 @@ import { Folgen } from './Folgen';
 import { Analyse, Formate, Import } from './Analyse';
 import { Startpaket } from './Startpaket';
 import { Automatik } from './Automatik';
+import { Werkstatt, type WerkstattStart } from './Werkstatt';
+import { Community } from './Community';
 
-type Bereich = 'folgen' | 'automatik' | 'ziele' | 'formate' | 'analyse' | 'import' | 'kanal';
+type Bereich = 'folgen' | 'werkstatt' | 'community' | 'automatik' | 'ziele' | 'formate' | 'analyse' | 'import' | 'kanal';
 const BEREICHE: { id: Bereich; label: string }[] = [
-  { id: 'folgen', label: 'Folgen' }, { id: 'automatik', label: 'Automatik' }, { id: 'ziele', label: 'Ziele' }, { id: 'formate', label: 'Formate' }, { id: 'analyse', label: 'Analyse' }, { id: 'import', label: 'Import' }, { id: 'kanal', label: 'Kanal' },
+  { id: 'folgen', label: 'Folgen' }, { id: 'werkstatt', label: 'Werkstatt' }, { id: 'community', label: 'Kommentare & DMs' }, { id: 'automatik', label: 'Automatik' }, { id: 'ziele', label: 'Ziele' }, { id: 'formate', label: 'Formate' }, { id: 'analyse', label: 'Analyse' }, { id: 'import', label: 'Import' }, { id: 'kanal', label: 'Kanal' },
 ];
 const STUFEN: { id: `${AutonomieStufe}`; label: string }[] = [
   { id: '0', label: 'Nur Entwürfe' }, { id: '1', label: 'Freigabe per Klick' }, { id: '2', label: 'Selbstständig mit Leitplanken' },
@@ -35,6 +37,7 @@ export function Social() {
   const [kanalId, setKanalId] = useState<string | null>(null);
   const [neu, setNeu] = useState<false | 'vorlage' | 'frei'>(false);
   const [bereich, setBereich] = useState<Bereich>('folgen');
+  const [werkstattStart, setWerkstattStart] = useState<WerkstattStart | null>(null);
   const kanaele = (api.lage?.datei.kanaele ?? []).filter(k => !k.archiviertAm);
   const kanal = kanaele.find(k => k.id === kanalId) ?? kanaele[0];
 
@@ -61,7 +64,9 @@ export function Social() {
           </div>
           <KanalKopf api={api} kanal={kanal} />
           <Segmente liste={BEREICHE} aktiv={bereich} onWahl={setBereich} umbrechen />
-          {bereich === 'folgen' && <Folgen key={kanal.id} api={api} kanal={kanal} />}
+          {bereich === 'folgen' && <Folgen key={kanal.id} api={api} kanal={kanal} zurWerkstatt={st => { setWerkstattStart(st); setBereich('werkstatt'); }} />}
+          {bereich === 'werkstatt' && <Werkstatt key={kanal.id} api={api} kanal={kanal} start={werkstattStart} onStartVerbraucht={() => setWerkstattStart(null)} />}
+          {bereich === 'community' && <Community key={kanal.id} api={api} kanal={kanal} />}
           {bereich === 'automatik' && <Automatik key={kanal.stand} api={api} kanal={kanal} />}
           {bereich === 'ziele' && <Ziele key={kanal.id} api={api} kanal={kanal} />}
           {bereich === 'formate' && <Formate api={api} kanal={kanal} />}

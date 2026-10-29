@@ -10,7 +10,7 @@
 // `kanalSichtbar`/`socialFuerPerson` (lib/social/daten.ts). Personenmarke: Formate freigeben und Stufe 2 nur die Person selbst (403).
 // Zugang: Haushalt des Inhabers (Modul Markttraktion), auch ein Konto mit `finanzRecht: 'business'`. Schreiben nur eine angemeldete Person
 // (Dienstweg 403) — der Agent schreibt später nur über den Freigabe-Stapel bzw. die Leitplanken-Entscheidung, nie direkt.
-// POST { aktion: 'entwuerfe', kanalId } → Redaktions-Agent für diesen Kanal (als die Person, `modellSchranke`) · 'linkedin-start' → Anmelde-Adresse
+// POST { aktion: 'entwuerfe', kanalId } → Redaktions-Agent für diesen Kanal (als die Person, `modellSchranke`) · 'linkedin-start' / 'instagram-start' → Anmelde-Adresse
 //         (Personenmarke nur die Person selbst) · 'probe-verbinden' (nur Demo/Tests) · 'trennen' { verbindungId }.
 // Veröffentlicht wird von hier aus nichts — das macht allein der Takt (lib/social/veroeffentlichen-server.ts) nach den Leitplanken.
 
@@ -31,6 +31,7 @@ import { protokolliere } from '@/lib/store/aenderungsprotokoll';
 import { socialRedaktionLauf } from '@/lib/social/agent-server';
 import { ladeVerbindungen, verbindungSetzen, verbindungTrennen } from '@/lib/social/verbindungen';
 import { linkedinEingerichtet, linkedinStart } from '@/lib/social/anbieter/linkedin';
+import { instagramEingerichtet, instagramStart } from '@/lib/social/anbieter/instagram';
 import { probeErlaubt } from '@/lib/social/anbieter/probe';
 
 export const runtime = 'nodejs';
@@ -102,7 +103,7 @@ export async function POST(req: Request) {
 }
 
 // ── Automatik (27.10.): Entwürfe auf Knopfdruck, Verbindungen ─────────────────────────────────────────────────────────────────────
-const AUTOMATIK_AKTIONEN = ['entwuerfe', 'linkedin-start', 'probe-verbinden', 'trennen'];
+const AUTOMATIK_AKTIONEN = ['entwuerfe', 'linkedin-start', 'instagram-start', 'probe-verbinden', 'trennen'];
 
 async function automatik(req: Request, person: string, b: { aktion?: unknown; kanalId?: unknown; plattform?: unknown; verbindungId?: unknown }) {
   const datei = socialFuerPerson(await ladeSocial(), person);
@@ -126,6 +127,11 @@ async function automatik(req: Request, person: string, b: { aktion?: unknown; ka
     if (!kanal.plattformen.includes('linkedin')) return fehlerAntwort(400, 'Der Kanal ist nicht auf LinkedIn.');
     if (!linkedinEingerichtet()) return fehlerAntwort(409, 'LinkedIn ist in dieser Instanz noch nicht eingerichtet (Server-Umgebung, siehe UPDATES.md).');
     return NextResponse.json({ ok: true, url: await linkedinStart(person, kanal.id) });
+  }
+  if (b.aktion === 'instagram-start') {
+    if (!kanal.plattformen.includes('instagram')) return fehlerAntwort(400, 'Der Kanal ist nicht auf Instagram.');
+    if (!instagramEingerichtet()) return fehlerAntwort(409, 'Instagram ist in dieser Instanz noch nicht eingerichtet (Server-Umgebung, siehe UPDATES.md).');
+    return NextResponse.json({ ok: true, url: await instagramStart(person, kanal.id) });
   }
   // probe-verbinden: nur in einer Demo-Instanz bzw. in Tests — nichts verlässt MAKE OS.
   if (!probeErlaubt()) return fehlerAntwort(404, 'Probe-Verbindungen gibt es nur in einer Demo-Instanz.');

@@ -22,14 +22,19 @@ import { folgePruefen, kanalPruefen } from './pruefer';
 import { autonomieFuer } from './autonomie';
 import { postPlan } from './veroeffentlichen';
 import { terminVon } from './plan';
-import { ladeVerbindungen, aktiveVerbindung, verbindungTrennen, verbindungVermerken, type SocialVerbindung } from './verbindungen';
+import { ladeVerbindungen, aktiveVerbindung, verbindungTrennen, verbindungVermerken, verbindungGeheimSetzen, type SocialVerbindung } from './verbindungen';
 import { anbieterFuer } from './anbieter';
-import { postText, type PostErgebnis } from './anbieter/typen';
+import { postText, type PostErgebnis, type PostEingabe, type SocialAnbieter, type VerbindungGeheim } from './anbieter/typen';
+import { socialMedienLesen, type SocialMedium } from './medien';
+import { linkAnlegen, linksAufraeumen } from './medien-link';
 import { laufVermerken } from './lauf-stand';
 import type { SocialDatei, SocialFolge, SocialKanal, SocialPlattform } from './typen';
 import { PLATTFORM_NAME } from './typen';
 
 let laeuft = false;
+
+/** Ein Versuch ohne Zwischenstand, der so lange „läuft“, ist abgebrochen (Neustart mitten im Senden) → „unklar“, nie still neu. */
+export const LAEUFT_MAX_MIN = 15;
 
 async function hausKonten(): Promise<string[]> {
   const h = await haushaltDesInhabers().catch(() => null);
@@ -54,34 +59,39 @@ export async function socialVeroeffentlichenLauf(jetzt = new Date()): Promise<Ve
     const { headAngehalten } = await import('@/lib/agenten/einstellung');
     const halt = await headAngehalten('marketing', { haushalt: await haushaltDesInhabers() });
     if (halt) return { ...erg, gestoppt: halt.text };
+    await tokenVerlaengern(verbindungen, jetzt).catch(() => {});
+    await linksAufraeumen(jetzt.getTime()).catch(() => 0);
     const d = await ladeSocial();
     const heute = localDay(jetzt);
     const jetztWand = wandzeit(jetzt).slice(0, 16);
+    const medien = await socialMedienLesen(d.folgen.filter(f => ['geplant', 'freigegeben', 'veroeffentlicht'].includes(f.status)).flatMap(f => f.medien ?? []));
     for (const f of d.folgen) {
       const k = d.kanaele.find(x => x.id === f.kanalId);
-      if (!k || !['geplant', 'freigegeben', 'veroeffentlicht'].includes(f.status)) continue;
+      if (!k) continue;
+      const format = f.formatId ? d.formate.find(x => x.id === f.formatId) ?? null : null;
+      // 1. Laufende Versuche fortsetzen (Instagram verarbeitet noch) bzw. abgebrochene als „unklar“ markieren.
+      for (const v of (f.versuche ?? []).filter(x => x.zustand === 'laeuft')) {
+        const vb = aktiveVerbindung(verbindungen, k.id, v.plattform);
+        const a = vb ? await anbieterFuer(vb.anbieter, v.plattform) : null;
+        if (v.warten && vb?.geheim && a?.weiter) {
+          const r = await a.weiter(vb.geheim, v.warten, eingabe(k, f, format, medien)).catch((): PostErgebnis => ({ ok: false, unklar: true, text: 'Unerwarteter Fehler beim Fortsetzen.' }));
+          await ergebnisVermerken(r, f, k, v.plattform, vb, jetzt, erg);
+        } else if (Date.parse(v.seit) < jetzt.getTime() - LAEUFT_MAX_MIN * 60_000) {
+          await socialSystemSchreiben([{ op: 'post-fehler', folgeId: f.id, plattform: v.plattform, text: 'Der Versuch brach mittendrin ab — bitte bei der Plattform nachsehen, ob der Beitrag online ist.', unklar: true }], jetzt);
+        }
+      }
+      if (!['geplant', 'freigegeben', 'veroeffentlicht'].includes(f.status)) continue;
       const termin = terminVon(f, k);
       if (!termin || termin > jetztWand) continue;
-      const format = f.formatId ? d.formate.find(x => x.id === f.formatId) ?? null : null;
-      const schritte = await planFuer(f, k, format, d, verbindungen, heute, jetztWand);
+      const schritte = await planFuer(f, k, format, d, verbindungen, heute, jetztWand, medien);
       for (const s of schritte.filter(x => x.zustand === 'faellig')) {
         const v = aktiveVerbindung(verbindungen, k.id, s.plattform)!;
         const a = await anbieterFuer(v.anbieter, s.plattform);
         if (!a || !v.geheim) continue;
         const start = await socialSystemSchreiben([{ op: 'post-start', folgeId: f.id, plattform: s.plattform }], jetzt);
         if (!start.ok) continue; // ein anderer Lauf ist schneller, oder die Folge ist weg
-        const r: PostErgebnis = await a.posten(v.geheim, { kanal: k, folge: f, format, text: postText(f) }).catch((): PostErgebnis => ({ ok: false, unklar: true, text: 'Unerwarteter Fehler beim Senden.' }));
-        if (r.ok) {
-          await socialSystemSchreiben([{ op: 'post-ok', folgeId: f.id, plattform: s.plattform, externeId: r.externeId, link: r.link }], jetzt);
-          erg.gepostet.push({ folgeId: f.id, plattform: s.plattform });
-        } else {
-          await socialSystemSchreiben([{ op: 'post-fehler', folgeId: f.id, plattform: s.plattform, text: r.text, unklar: r.unklar === true }], jetzt);
-          erg.fehler.push({ folgeId: f.id, plattform: s.plattform, text: r.text });
-          if (r.erneuern) await verbindungTrennen(v.id, r.text, jetzt.toISOString());
-          for (const p of await empfaenger(k)) {
-            await melde({ an: p, art: 'verbindung', titel: r.erneuern ? `Social: Verbindung zu ${PLATTFORM_NAME[s.plattform]} erneuern` : `Social: ein Beitrag auf ${PLATTFORM_NAME[s.plattform]} ging nicht raus`, link: WEG.marketing('social'), von: 'zoe' });
-          }
-        }
+        const r: PostErgebnis = await a.posten(v.geheim, eingabe(k, f, format, medien)).catch((): PostErgebnis => ({ ok: false, unklar: true, text: 'Unerwarteter Fehler beim Senden.' }));
+        await ergebnisVermerken(r, f, k, s.plattform, v, jetzt, erg);
       }
     }
     return erg;
@@ -92,16 +102,53 @@ export async function socialVeroeffentlichenLauf(jetzt = new Date()): Promise<Ve
 }
 
 /** Der Plan einer Folge (Server): Prüfer → Leitplanken → `postPlan` mit den Verbindungen. Auch für die Lage. */
-export async function planFuer(f: SocialFolge, k: SocialKanal, format: SocialDatei['formate'][number] | null, d: SocialDatei, verbindungen: readonly SocialVerbindung[], heute: string, jetztWand: string) {
-  const befunde = folgePruefen(f, { kanal: k, format, andere: d.folgen });
+export async function planFuer(f: SocialFolge, k: SocialKanal, format: SocialDatei['formate'][number] | null, d: SocialDatei, verbindungen: readonly SocialVerbindung[], heute: string, jetztWand: string, medien?: ReadonlyMap<string, SocialMedium | null>) {
+  const befunde = folgePruefen(f, { kanal: k, format, andere: d.folgen, medien });
   const weg = autonomieFuer(f.status === 'veroeffentlicht' ? { ...f, status: 'geplant' } : f, { kanal: k, format, befunde, kanalBefunde: kanalPruefen(k), heutePosts: heutePosts(d, k.id, heute, f.id) });
   const kann = new Map<SocialPlattform, { kann: { ok: true } | { ok: false; grund: string } } | null>();
   for (const p of k.plattformen) {
     const v = aktiveVerbindung(verbindungen, k.id, p);
     const a = v ? await anbieterFuer(v.anbieter, p) : null;
-    kann.set(p, v && a ? { kann: a.kann(f, format) } : null);
+    kann.set(p, v && a ? { kann: a.kann(f, format, medien) } : null);
   }
   return postPlan(f, { termin: terminVon(f, k), jetzt: jetztWand, weg, plattformen: k.plattformen, verbindung: p => kann.get(p) ?? null });
+}
+
+/** Was ein Anbieter zum Posten bekommt: Text, Medien in Reihenfolge, und Links, die Meta abholen kann (je Versuch neu, 60 Min.). */
+function eingabe(k: SocialKanal, f: SocialFolge, format: SocialDatei['formate'][number] | null, medien: ReadonlyMap<string, SocialMedium | null>): PostEingabe {
+  const basis = (process.env.MAKE_OS_ADRESSE ?? '').trim().replace(/\/+$/, '');
+  return {
+    kanal: k, folge: f, format, text: postText(f),
+    medien: (f.medien ?? []).map(id => medien.get(id)).filter((m): m is SocialMedium => !!m),
+    link: async m => (/^https:\/\//.test(basis) ? `${basis}${await linkAnlegen(m.id, m.art === 'bild' ? 'jpg' : 'mp4')}` : null),
+  };
+}
+
+/** Das Ergebnis eines Sende- oder Fortsetzungsschritts festhalten (online · wartet weiter · gescheitert) und bei Fehlern melden. */
+async function ergebnisVermerken(r: PostErgebnis, f: SocialFolge, k: SocialKanal, plattform: SocialPlattform, v: SocialVerbindung, jetzt: Date, erg: VeroeffentlichenErgebnis): Promise<void> {
+  if (r.ok === 'warten') { await socialSystemSchreiben([{ op: 'post-warten', folgeId: f.id, plattform, warten: r.warten }], jetzt); return; }
+  if (r.ok) {
+    await socialSystemSchreiben([{ op: 'post-ok', folgeId: f.id, plattform, externeId: r.externeId, link: r.link }], jetzt);
+    erg.gepostet.push({ folgeId: f.id, plattform });
+    return;
+  }
+  await socialSystemSchreiben([{ op: 'post-fehler', folgeId: f.id, plattform, text: r.text, unklar: r.unklar === true }], jetzt);
+  erg.fehler.push({ folgeId: f.id, plattform, text: r.text });
+  if (r.erneuern) await verbindungTrennen(v.id, r.text, jetzt.toISOString());
+  for (const p of await empfaenger(k)) {
+    await melde({ an: p, art: 'verbindung', titel: r.erneuern ? `Social: Verbindung zu ${PLATTFORM_NAME[plattform]} erneuern` : `Social: ein Beitrag auf ${PLATTFORM_NAME[plattform]} ging nicht raus`, link: WEG.marketing('social'), von: 'zoe' });
+  }
+}
+
+/** Tokens verlängern, die es können (Instagram: ab 7 Tagen Restlaufzeit, frühestens 24 h nach Ausstellung) — still; scheitert es, erinnert die Glocke. */
+async function tokenVerlaengern(l: readonly SocialVerbindung[], jetzt: Date): Promise<void> {
+  for (const v of l) {
+    if (v.zustand !== 'aktiv' || !v.geheim) continue;
+    const a: SocialAnbieter | null = await anbieterFuer(v.anbieter, v.plattform);
+    if (!a?.erneuern) continue;
+    const neu: VerbindungGeheim | null = await a.erneuern(v.geheim, jetzt.getTime()).catch(() => null);
+    if (neu) await verbindungGeheimSetzen(v.id, neu);
+  }
 }
 
 /** EINE Glocke, wenn ein Token in 7 Tagen abläuft (LinkedIn: 60 Tage, kein Refresh) — je Token einmal. */

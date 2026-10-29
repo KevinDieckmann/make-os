@@ -196,7 +196,14 @@ export interface Veroeffentlichung {
 }
 
 /** Ein Veröffentlichungs-Versuch, der gerade läuft oder unklar endete — nie automatisch wiederholt (sonst doppelt online). */
-export interface PostVersuch { plattform: SocialPlattform; seit: string; zustand: 'laeuft' | 'fehler' | 'unklar'; text?: string }
+export interface PostVersuch {
+  plattform: SocialPlattform; seit: string; zustand: 'laeuft' | 'fehler' | 'unklar'; text?: string;
+  /**
+   * Läuft beim Anbieter weiter (28.10., Instagram: der Container verarbeitet ein Video Minuten lang) — der Zustand des Anbieters (z. B. die
+   * Container-Kennung), den der nächste Lauf mit `weiter` fortsetzt. Nie ein Token. Setzt nur der Server.
+   */
+  warten?: string;
+}
 
 export interface SocialFolge {
   id: string;
@@ -209,6 +216,12 @@ export interface SocialFolge {
   hookId?: string;
   cta?: string;
   quellen: string[];
+  /**
+   * Fotos und Videos des Beitrags (28.10., Malin-Paket): Kennungen `md-…` aus der Medien-Ablage (Business), in Reihenfolge — beim Karussell
+   * je Element eins, beim Reel das fertige Video aus der Reel-Werkstatt. Nur Kennungen: ob ein Medium für Social freigegeben ist, prüft der
+   * Server bei jeder Prüfung und vor dem Posten neu (Einwilligungen, Widerruf, Ablauf wirken sofort).
+   */
+  medien?: string[];
   /** Bild oder Stimme stammen von einer KI → Plattform-Label Pflicht (Art. 50 KI-VO, Plattformregeln). */
   kiInhalt: boolean;
   /** Erkennbare Personen im Bild — 'offen' bremst bis zur Einwilligung. */
@@ -250,7 +263,7 @@ export const LEITPLANKEN_VORGABE: Leitplanken = {
 /** Grenzen — darüber lehnt der Schreibweg ab (413), nie still gekürzt. */
 export const SOCIAL_GRENZEN = {
   ops: 60, kanaele: 40, formate: 400, folgen: 5000, hooks: 8, quellen: 20, messungenJeFolge: 400, veroeffentlichungen: 12, ziele: 20, staende: 2000,
-  skript: 12_000, text: 300, langtext: 2_000, woerterListe: 100,
+  skript: 12_000, text: 300, langtext: 2_000, woerterListe: 100, medien: 20,
 } as const;
 
 /** Business-Bereich: Social gehört zur Markttraktion, Privat bekommt hier nichts. */

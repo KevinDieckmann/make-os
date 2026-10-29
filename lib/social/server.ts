@@ -19,6 +19,7 @@ import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { socialAus, socialAnwenden, socialFuerPerson, AGENT_STEMPEL, type AnwendenErgebnis } from './daten';
 import { folgePruefen, kanalPruefen, type Befund } from './pruefer';
+import type { SocialMedium } from './medien';
 import { kanalZiele, type ZielStand } from './ziele';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
 import { ladeRegister } from '@/lib/gesellschaften/server';
@@ -74,6 +75,8 @@ export interface SocialLage {
   folgen: Record<string, FolgeLage>;
   analyse: Record<string, KanalAnalyse>;
   woche: Record<string, Wochenbericht>;
+  /** Die angehängten Medien der sichtbaren Folgen (Lese-Form, ohne Schlüssel) — für Vorschau und Freigabe-Status. */
+  medien: Record<string, SocialMedium | null>;
 }
 
 /** Die Datei für den Browser: jeder Eintrag mit `stand`. */
@@ -83,7 +86,7 @@ export function mitStaenden(d: SocialDatei) {
 }
 
 /** Die Lage für EINE Person: fremde „nur ich“-Kanäle fehlen ganz (Filter vor jeder Rechnung, `socialFuerPerson`). */
-export function lageAus(alle: SocialDatei, heute: string, person: string | null): SocialLage {
+export function lageAus(alle: SocialDatei, heute: string, person: string | null, medien?: ReadonlyMap<string, SocialMedium | null>): SocialLage {
   const d = socialFuerPerson(alle, person);
   const kanalLage: SocialLage['kanaele'] = {};
   for (const k of d.kanaele) kanalLage[k.id] = { befunde: kanalPruefen(k), ziele: kanalZiele(k, d.folgen, heute) };
@@ -93,7 +96,7 @@ export function lageAus(alle: SocialDatei, heute: string, person: string | null)
     const kanal = d.kanaele.find(k => k.id === f.kanalId);
     if (!kanal) continue;
     const format = f.formatId ? d.formate.find(x => x.id === f.formatId) ?? null : null;
-    const befunde = folgePruefen(f, { kanal, format, andere: d.folgen });
+    const befunde = folgePruefen(f, { kanal, format, andere: d.folgen, medien });
     folgen[f.id] = { befunde, weg: autonomieFuer(f, { kanal, format, befunde, kanalBefunde: kanalLage[kanal.id].befunde, heutePosts: heutePosts(kanal.id) }) };
   }
   const formatName = (id: string) => d.formate.find(x => x.id === id)?.name ?? id;
@@ -103,14 +106,16 @@ export function lageAus(alle: SocialDatei, heute: string, person: string | null)
     analyse[k.id] = kanalAnalyse(d.folgen, k.id, { formatName });
     woche[k.id] = wochenbericht(d.folgen, k.id, heute, (t, n) => tagPlus(t, -n));
   }
-  return { heute, ich: person, kanaele: kanalLage, datei: mitStaenden(d), folgen, analyse, woche };
+  const sichtbareMedien: Record<string, SocialMedium | null> = {};
+  for (const id of d.folgen.flatMap(f => f.medien ?? [])) sichtbareMedien[id] = medien?.get(id) ?? null;
+  return { heute, ich: person, kanaele: kanalLage, datei: mitStaenden(d), folgen, analyse, woche, medien: sichtbareMedien };
 }
 
 /** Automatik (27.10.): je Folge und Plattform, was der Veröffentlicher tun wird (dieselbe Regel wie der Lauf), Verbindungen ohne Geheimteil. */
 export interface AutomatikLage {
   folgen: Record<string, PostSchritt[]>;
   verbindungen: VerbindungSicht[];
-  wege: { linkedin: boolean; probe: boolean };
+  wege: { linkedin: boolean; instagram: boolean; probe: boolean };
   lauf: LaufStand;
   /** Je Kanal: die nächsten freien Plätze des Plans (Vorschau dessen, was der Agent füllen würde). */
   luecken: Record<string, PlanLuecke[]>;
@@ -118,10 +123,12 @@ export interface AutomatikLage {
 
 export async function socialLage(person: string | null, jetzt = new Date()): Promise<SocialLage & { automatik: AutomatikLage }> {
   const alle = await ladeSocial();
-  const lage = lageAus(alle, localDay(jetzt), person);
   const d = socialFuerPerson(alle, person);
-  const [{ planFuer }, { ladeVerbindungen, verbindungSicht }, { ladeLaufStand }, { linkedinEingerichtet }, { probeErlaubt }, { planLuecken }] = await Promise.all([
-    import('./veroeffentlichen-server'), import('./verbindungen'), import('./lauf-stand'), import('./anbieter/linkedin'), import('./anbieter/probe'), import('./plan'),
+  const { socialMedienLesen } = await import('./medien');
+  const medien = await socialMedienLesen(d.folgen.flatMap(f => f.medien ?? []));
+  const lage = lageAus(alle, localDay(jetzt), person, medien);
+  const [{ planFuer }, { ladeVerbindungen, verbindungSicht }, { ladeLaufStand }, { linkedinEingerichtet }, { instagramEingerichtet }, { probeErlaubt }, { planLuecken }] = await Promise.all([
+    import('./veroeffentlichen-server'), import('./verbindungen'), import('./lauf-stand'), import('./anbieter/linkedin'), import('./anbieter/instagram'), import('./anbieter/probe'), import('./plan'),
   ]);
   const verbindungen = (await ladeVerbindungen().catch(() => [])).filter(v => d.kanaele.some(k => k.id === v.kanalId));
   const jetztWand = wandzeit(jetzt).slice(0, 16);
@@ -131,9 +138,9 @@ export async function socialLage(person: string | null, jetzt = new Date()): Pro
     const k = d.kanaele.find(x => x.id === f.kanalId);
     if (!k) continue;
     const format = f.formatId ? d.formate.find(x => x.id === f.formatId) ?? null : null;
-    folgen[f.id] = await planFuer(f, k, format, d, verbindungen, lage.heute, jetztWand);
+    folgen[f.id] = await planFuer(f, k, format, d, verbindungen, lage.heute, jetztWand, medien);
   }
   const luecken: AutomatikLage['luecken'] = {};
   for (const k of d.kanaele) luecken[k.id] = planLuecken(k, d.formate, d.folgen, jetztWand).slice(0, 7);
-  return { ...lage, automatik: { folgen, verbindungen: verbindungen.map(verbindungSicht), wege: { linkedin: linkedinEingerichtet(), probe: probeErlaubt() }, lauf: await ladeLaufStand().catch(() => ({})), luecken } };
+  return { ...lage, automatik: { folgen, verbindungen: verbindungen.map(verbindungSicht), wege: { linkedin: linkedinEingerichtet(), instagram: instagramEingerichtet(), probe: probeErlaubt() }, lauf: await ladeLaufStand().catch(() => ({})), luecken } };
 }

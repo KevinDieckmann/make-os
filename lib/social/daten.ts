@@ -151,7 +151,15 @@ function veroeffentlichungAus(o: Record<string, unknown>): Veroeffentlichung | n
 function versuchAus(o: Record<string, unknown>): PostVersuch | null {
   if (!istPlattform(o.plattform) || typeof o.seit !== 'string') return null;
   const zustand = o.zustand === 'laeuft' || o.zustand === 'unklar' ? o.zustand : 'fehler';
-  return ohneLeere({ plattform: o.plattform, seit: o.seit, zustand, text: text(o.text, G.text) || undefined }) as PostVersuch;
+  return ohneLeere({ plattform: o.plattform, seit: o.seit, zustand, text: text(o.text, G.text) || undefined, warten: zustand === 'laeuft' && typeof o.warten === 'string' && o.warten.length <= 2000 ? o.warten : undefined }) as PostVersuch;
+}
+
+/** Medien-Kennungen einer Folge: nur `md-<uuid>`, jede einmal, Reihenfolge bleibt — nie gekürzt (die Grenze prüft der Schreibweg vorher → 413). */
+export const MEDIUM_KENNUNG = /^md-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+function medienAus(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const l = Array.from(new Set(v.filter((x): x is string => typeof x === 'string' && MEDIUM_KENNUNG.test(x))));
+  return l.length ? l : undefined;
 }
 
 export function folgeAus(o: Record<string, unknown>): SocialFolge | null {
@@ -165,6 +173,7 @@ export function folgeAus(o: Record<string, unknown>): SocialFolge | null {
     hooks, hookId: istKennung(o.hookId) && hooks.some(h => h.id === o.hookId) ? o.hookId : undefined,
     cta: text(o.cta, G.text) || undefined,
     quellen: liste(Array.isArray(o.quellen) ? o.quellen.map(q => ({ q })) : [], x => text(x.q, 500) || null),
+    medien: medienAus(o.medien),
     kiInhalt: o.kiInhalt !== false,
     personenImBild: o.personenImBild === 'offen' || o.personenImBild === 'einwilligung' ? o.personenImBild : undefined,
     werbung: o.werbung === true ? true : undefined,
@@ -209,10 +218,12 @@ export type SocialOp =
   | { op: 'entwurf'; kanalId: string; platz: string; eintrag: Record<string, unknown> }
   | { op: 'post-start'; folgeId: string; plattform: SocialPlattform }
   | { op: 'post-ok'; folgeId: string; plattform: SocialPlattform; externeId?: string; link?: string }
-  | { op: 'post-fehler'; folgeId: string; plattform: SocialPlattform; text: string; unklar?: boolean };
+  | { op: 'post-fehler'; folgeId: string; plattform: SocialPlattform; text: string; unklar?: boolean }
+  | { op: 'post-warten'; folgeId: string; plattform: SocialPlattform; warten: string }
+  | { op: 'medien-setzen'; folgeId: string; medien: string[] };
 
 /** Schritte, die nur der Server selbst schreibt (Agent, Veröffentlicher) — nie aus dem Browser. */
-export const NUR_SYSTEM_OPS: readonly string[] = ['entwurf', 'post-start', 'post-ok', 'post-fehler'];
+export const NUR_SYSTEM_OPS: readonly string[] = ['entwurf', 'post-start', 'post-ok', 'post-fehler', 'post-warten', 'medien-setzen'];
 /** Speichername, unter dem der Agent stempelt („geändert von“). */
 export const AGENT_STEMPEL = 'zoe';
 
@@ -253,7 +264,7 @@ export function socialFuerPerson(d: SocialDatei, person: string | null | undefin
 export const NUR_PERSON_SELBST = 'Bei einer Personenmarke entscheidet das nur die Person selbst.';
 export const GEHOERT_ZU_PRIVAT_SOCIAL = 'Diese Einheit gehört zu Privat — Social ist Business. Bitte eine Business-Gesellschaft wählen.';
 /** Inhalt einer Folge, den eine Freigabe gesehen haben muss — ändert sich einer davon, fällt die Freigabe weg. */
-const folgeInhalt = (f: SocialFolge) => JSON.stringify([f.titel, f.skript, f.hooks.map(h => [h.text, h.bildschirm ?? '']), f.cta ?? '', f.personenImBild ?? 'keine', f.werbung === true, f.quellen]);
+const folgeInhalt = (f: SocialFolge) => JSON.stringify([f.titel, f.skript, f.hooks.map(h => [h.text, h.bildschirm ?? '']), f.cta ?? '', f.personenImBild ?? 'keine', f.werbung === true, f.quellen, f.medien ?? []]);
 
 /** Server-Felder, die der Browser nie setzen darf. */
 const OHNE_SERVERFELDER = (e: Record<string, unknown>) => {
@@ -384,6 +395,7 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
           if (typeof e.skript === 'string' && e.skript.length > G.skript) nein(`Das Skript ist länger als ${G.skript} Zeichen — nichts gespeichert.`, 413);
           if (Array.isArray(e.hooks) && e.hooks.length > G.hooks) nein(`Höchstens ${G.hooks} Hook-Varianten.`, 413);
           if (Array.isArray(e.quellen) && e.quellen.length > G.quellen) nein(`Höchstens ${G.quellen} Quellen.`, 413);
+          if (Array.isArray(e.medien) && e.medien.length > G.medien) nein(`Höchstens ${G.medien} Fotos oder Videos je Beitrag (Instagram-Karussell: 20).`, 413);
           // Hooks ohne Kennung bekommen eine vom Server.
           const hooks = Array.isArray(e.hooks) ? e.hooks.map(h => (h && typeof h === 'object' ? { ...(h as object), id: istKennung((h as { id?: unknown }).id) ? (h as { id: string }).id : k.neueId('hk') } : h)) : undefined;
           const roh = folgeAus({ ...(vorher ?? {}), ...e, ...(hooks ? { hooks } : {}), kanalId, id: vorher?.id ?? k.neueId('sv'), ...vermerk });
@@ -537,7 +549,19 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
           geaendert.push(neu!.id);
           break;
         }
-        case 'post-start': case 'post-ok': case 'post-fehler': {
+        case 'medien-setzen': {
+          // Die Reel-Werkstatt hängt ihr Ergebnis an (nur der Server). Neuer Inhalt → die Freigabe fällt zurück (wie bei jeder Inhaltsänderung);
+          // ein schon veröffentlichter Beitrag wird nie angefasst.
+          const j = folgeSichtbar(op.folgeId);
+          const f = d.folgen[j];
+          if (f.status === 'veroeffentlicht' || f.veroeffentlicht.length) { konflikte.push({ op: i, id: f.id }); break; }
+          if (!Array.isArray(op.medien) || op.medien.length > G.medien || !op.medien.every(x => MEDIUM_KENNUNG.test(x))) nein('Ungültige Medien.');
+          const zurueck = f.freigegebenAm ? { freigegebenAm: undefined, freigegebenVon: undefined, status: f.status === 'freigegeben' || f.status === 'geplant' ? 'entwurf' : f.status } : {};
+          d.folgen[j] = folgeAus({ ...f, medien: op.medien, ...zurueck, ...vermerk })!;
+          geaendert.push(f.id);
+          break;
+        }
+        case 'post-start': case 'post-ok': case 'post-fehler': case 'post-warten': {
           const j = folgeSichtbar(op.folgeId);
           const f = d.folgen[j];
           if (!istPlattform(op.plattform)) nein('Unbekannte Plattform.');
@@ -547,6 +571,10 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
             // Nie doppelt: schon online, ein Versuch läuft oder endete unklar → abgelehnt (der Lauf fragt vorher, das hier ist die Sperre).
             if (f.veroeffentlicht.some(v => v.plattform === op.plattform) || meiner) { konflikte.push({ op: i, id: f.id }); break; }
             d.folgen[j] = folgeAus({ ...f, versuche: [...andere, { plattform: op.plattform, seit: k.jetzt, zustand: 'laeuft' }], ...vermerk })!;
+          } else if (op.op === 'post-warten') {
+            // Nur ein laufender Versuch darf weiter warten (der Anbieter verarbeitet noch) — nie ein neuer.
+            if (meiner?.zustand !== 'laeuft' || typeof op.warten !== 'string' || op.warten.length > 2000) { konflikte.push({ op: i, id: f.id }); break; }
+            d.folgen[j] = folgeAus({ ...f, versuche: [...andere, { ...meiner, warten: op.warten }], ...vermerk })!;
           } else if (op.op === 'post-ok') {
             const v = veroeffentlichungAus({ plattform: op.plattform, am: heute, link: op.link, externeId: op.externeId, durch: 'automatik' });
             d.folgen[j] = folgeAus({ ...f, status: 'veroeffentlicht', versuche: andere, veroeffentlicht: [...f.veroeffentlicht.filter(x => x.plattform !== op.plattform), v!], ...vermerk })!;

@@ -7,7 +7,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 
-export type LaufArt = 'redaktion' | 'veroeffentlichen' | 'messen';
+export type LaufArt = 'redaktion' | 'veroeffentlichen' | 'messen' | 'community';
 export interface LaufEintrag { am: string; von?: string; geschrieben?: number; eingeplant?: number; gepostet?: number; fehler?: number; gemessen?: number; gestoppt?: string; uebersprungen?: { kanalId: string; grund: string }[] }
 export type LaufStand = Partial<Record<LaufArt, LaufEintrag>>;
 

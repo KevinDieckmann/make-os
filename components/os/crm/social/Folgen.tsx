@@ -14,6 +14,10 @@ import { tagVon } from '@/lib/zeit';
 import type { Befund } from '@/lib/social/pruefer';
 import type { AutonomieErgebnis } from '@/lib/social/autonomie';
 import type { MitStand, SocialApi } from './daten';
+import { FolgeMedien } from './Medien';
+
+/** Aus einem Beitrag in die Reel-Werkstatt (Social.tsx legt den Auftrag an und wechselt den Bereich). */
+export type ZurWerkstatt = (s: { folgeId?: string; medien: string[]; titel: string; ziel: 'reel' | 'bild' }) => void;
 
 const WEG_FARBE: Record<AutonomieErgebnis['weg'], string> = { selbst: LEUCHT.gut, bereit: LEUCHT.gut, stapel: LEUCHT.achtung, gesperrt: LEUCHT.kritisch };
 const WEG_TEXT: Record<AutonomieErgebnis['weg'], string> = { selbst: 'würde selbst posten', bereit: 'freigegeben', stapel: 'Freigabe-Stapel', gesperrt: 'gesperrt' };
@@ -22,7 +26,7 @@ const STATUS_FARBE: Record<FolgeStatus, string> = { idee: C.inkLeise, entwurf: C
 
 type Filter = 'offen' | 'veroeffentlicht' | 'alle';
 
-export function Folgen({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal> }) {
+export function Folgen({ api, kanal, zurWerkstatt }: { api: SocialApi; kanal: MitStand<SocialKanal>; zurWerkstatt?: ZurWerkstatt }) {
   const lage = api.lage!;
   const [offen, setOffen] = useState<string | 'neu' | null>(null);
   const [filter, setFilter] = useState<Filter>('offen');
@@ -31,7 +35,7 @@ export function Folgen({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialK
     .sort((a, b) => (b.geaendert ?? '').localeCompare(a.geaendert ?? '')), [lage, kanal.id, filter]);
   const auf = offen && offen !== 'neu' ? lage.datei.folgen.find(f => f.id === offen) : undefined;
 
-  if (offen) return <FolgeEditor api={api} kanal={kanal} folge={auf} onZu={() => setOffen(null)} />;
+  if (offen) return <FolgeEditor api={api} kanal={kanal} folge={auf} onZu={() => setOffen(null)} zurWerkstatt={zurWerkstatt} />;
   return (
     <Karte>
       <Ueberschrift rechts={<Knopf onClick={() => setOffen('neu')}>+ Folge</Knopf>}>Folgen</Ueberschrift>
@@ -56,7 +60,7 @@ export function Folgen({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialK
   );
 }
 
-function FolgeEditor({ api, kanal, folge, onZu }: { api: SocialApi; kanal: MitStand<SocialKanal>; folge?: MitStand<SocialFolge>; onZu: () => void }) {
+function FolgeEditor({ api, kanal, folge, onZu, zurWerkstatt }: { api: SocialApi; kanal: MitStand<SocialKanal>; folge?: MitStand<SocialFolge>; onZu: () => void; zurWerkstatt?: ZurWerkstatt }) {
   const lage = api.lage!;
   const formate = lage.datei.formate.filter(f => f.kanalId === kanal.id);
   const [titel, setTitel] = useState(folge?.titel ?? '');
@@ -75,6 +79,7 @@ function FolgeEditor({ api, kanal, folge, onZu }: { api: SocialApi; kanal: MitSt
   const [personenImBild, setPersonenImBild] = useState<PersonenImBild>(folge?.personenImBild ?? 'keine');
   const [werbung, setWerbung] = useState(folge?.werbung === true);
   const [status, setStatus] = useState<FolgeStatus>(folge?.status ?? 'entwurf');
+  const [medien, setMedien] = useState<string[]>(folge?.medien ?? []);
   const befunde = folge ? lage.folgen[folge.id]?.befunde ?? [] : [];
   const weg = folge ? lage.folgen[folge.id]?.weg : undefined;
 
@@ -83,7 +88,7 @@ function FolgeEditor({ api, kanal, folge, onZu }: { api: SocialApi; kanal: MitSt
       ...(folge ? { id: folge.id } : { kanalId: kanal.id }), titel, formatId: formatId || undefined, saeule, skript,
       hooks: hooks.filter(h => h.text.trim()).map(h => ({ ...(h.id ? { id: h.id } : {}), text: h.text, bildschirm: h.bildschirm })),
       hookId: hookId || undefined, cta, quellen: quellen.split('\n').map(q => q.trim()).filter(Boolean), kiInhalt, status,
-      personenImBild: personenImBild === 'keine' ? undefined : personenImBild, werbung,
+      personenImBild: personenImBild === 'keine' ? undefined : personenImBild, werbung, medien,
     };
     if (await api.schreiben([{ op: 'folge', eintrag, ...(folge ? { stand: folge.stand } : {}) }]) && !folge) onZu();
   };
@@ -123,6 +128,8 @@ function FolgeEditor({ api, kanal, folge, onZu }: { api: SocialApi; kanal: MitSt
             </div>
           ))}
           <Feldzeile label="Skript (gesprochen)"><textarea style={{ ...feld, minHeight: 180, fontSize: 16 }} value={skript} onChange={e => setSkript(e.target.value)} maxLength={12000} /></Feldzeile>
+          <FolgeMedien medien={medien} setMedien={setMedien} info={lage.medien ?? {}}
+            onWerkstatt={zurWerkstatt && folge ? () => zurWerkstatt({ folgeId: folge.id, medien, titel: titel || folge.titel, ziel: formate.find(f => f.id === formatId)?.art === 'bild' ? 'bild' : 'reel' }) : undefined} />
           <Feldzeile label="Aufruf am Ende (CTA)"><input style={eingabe} value={cta} onChange={e => setCta(e.target.value)} maxLength={300} /></Feldzeile>
           <Feldzeile label="Quellen (eine je Zeile)"><textarea style={{ ...feld, minHeight: 72 }} value={quellen} onChange={e => setQuellen(e.target.value)} /></Feldzeile>
           <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 }}>

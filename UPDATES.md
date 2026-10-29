@@ -4,6 +4,36 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 28.10.2026 — Social für Malin: Fotos/Videos am Beitrag, Instagram, Reel-Werkstatt, Kommentare & DMs (nur lokal — Branch `social-modul`)
+Kevin 28.10.: „Malin muss grundsätzlich alles machen können und ihr Profil maximal gut steuern — Reels schneiden, erstellen lassen, planen.“ Klickrunde: Untertitel
+LOKAL auf dem Server, Rendern auf dem Server (Server wird größer), „das Maximale rausholen“, Kommentare/DMs mit ins Paket. Regeln: CLAUDE.md › Social › „Malin-Paket
+(28.10.)“. Fakten: `research/social/FAKTEN_MALIN_PAKET.md` (nur offizielle Doku; Offenes ist dort markiert).
+- **Neu:** Beiträge tragen Fotos/Videos aus der Medien-Ablage (Freigabe „Social Media“ prüft der Prüfer); Instagram als zweiter echter Weg (Bild, Karussell bis 20, Reel; Container
+  in Schritten, KI-Kennzeichnung `is_ai_generated`, Zahlen über Insights, Token verlängert sich selbst); kurzlebiger öffentlicher Medien-Link (60 Min., nur Fingerabdruck); Reel-Werkstatt
+  (Clips + Fotos schneiden, 9:16/4:5/1:1, Untertitel per whisper.cpp auf dem Server und korrigierbar, Hook/Einblendungen, Lautheit, KI-Schnittvorschlag nur per Klick, Rendern mit
+  ffmpeg, Ergebnis = neues Medium, raus erst nach Freigabe); Kommentare & DMs von Instagram (alle 15 Min. abholen, ZOE-Vorschlag, Antwort per Klick, Not-Aus/Limits,
+  DM nur im 24-h-Fenster). Neue Bestände `social-werkstatt--<haushalt>`, `social-community--<haushalt>`, `social-medien-links`, `social-instagram-zustand` (additiv);
+  optionale Felder `SocialFolge.medien`, `PostVersuch.warten`, `Medium.abgeleitetVon.art = 'schnitt'` + `quellen`.
+- **Server (Einmal-Schritte, erst mit dem Update):**
+  1. **Server vergrößern** (Hetzner Cloud Console › Server › Rescale): mindestens 2 vCPU / 4 GB (z. B. CX22 → CX32). Danach in `/srv/make-os/app/.env`
+     `MAKE_OS_APP_MEM=2560m` setzen und `docker compose up -d app`. Ohne Vergrößerung rendert die Werkstatt trotzdem, die App wird dabei aber spürbar langsamer.
+  2. **Sprachmodell laden:** `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/whisper-modell.sh` (small, ≈ 466 MB, Prüfsumme wird verglichen). ffmpeg und
+     whisper.cpp kommen mit dem Bild (Dockerfile; das Bild wird dadurch ≈ 150–250 MB größer — nicht gemessen, bitte beim ersten Bau ansehen).
+  3. **Instagram (für jede Person, die ihr Konto verbindet):** Instagram-Konto auf **Professional** (Creator oder Business) stellen. developers.facebook.com › App anlegen
+     (Typ Business) › Produkt „Instagram“ › „API setup with Instagram login“ › Redirect `<MAKE_OS_ADRESSE>/api/social/instagram/rueckruf`; unter „App roles“ die Person als
+     Instagram-Tester eintragen und die Einladung in Instagram (Einstellungen › Apps und Websites › Tester-Einladungen) annehmen. Standard Access reicht für eigene Konten
+     (kein App Review). Für DMs in Instagram „Zugriff auf Nachrichten erlauben“ prüfen (in der offiziellen Doku nicht belegt — am echten Konto testen).
+     Dann `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/instagram-verbinden.sh` (fragt App-ID und Secret verdeckt) und in MAKE OS: Social › Kanal › Automatik ›
+     „Mit Instagram verbinden“.
+  4. **Erster echter Test:** einen Testbeitrag mit einem freigegebenen JPEG auf „freigegeben“ + Termin in 5 Minuten stellen und zusehen (Automatik › Warteschlange).
+- **So testet ihr (lokal/Demo):** Social › Kanal › Folge öffnen › „Fotos und Videos“ → aus der Ablage wählen (Status-Chip „darf raus“/„nicht freigegeben“), „In der Werkstatt
+  schneiden“ → Auftrag mit den Clips. Werkstatt: Ausschnitte, Einblendungen, „Speichern“; ohne ffmpeg zeigt sie ehrlich „Rendern ist auf dieser Instanz noch aus“.
+  Kommentare & DMs: ohne Instagram-Verbindung der Leerzustand mit dem Weg dorthin.
+- **Nicht gebaut (bewusst):** Kommentare/DMs im allgemeinen Inbox-Strom (heute unter Social; Anbindung = eigener Schritt, ~20 Dateien der Inbox), Antworten durch den Agenten
+  selbst (nur Vorschlag + Klick), Webhook für Echtzeit (heute 15-Min.-Abholen), Musik/Trend-Sounds (nur in der Instagram-App), YouTube-Upload.
+- **Rückweg:** additiv — der alte Stand kennt `medien` an Folgen nicht und lässt sie beim nächsten Speichern fallen; neue Bestände bleiben liegen. Vor dem Rückweg Not-Aus „Posten“
+  und „Antworten“ im Kanal. Das Bild ohne ffmpeg/whisper ist das alte Dockerfile.
+
 ## 27.10.2026 abends — Social läuft automatisch: Redaktions-Agent, Veröffentlicher, LinkedIn (nur lokal — Branch `social-modul`)
 Kevin 27.10.: „Bau tiefer und besser — es soll voll automatisiert laufen.“ Regeln: CLAUDE.md › Social › „Automatik (27.10.)“. Fakten zu den Plattformen nur aus
 offizieller Doku: `research/social/FAKTEN_VEROEFFENTLICHEN.md`.

@@ -120,8 +120,8 @@ function Verbindungen({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKa
   const a = api.lage!.automatik;
   const fremdeMarke = kanal.art === 'person' && kanal.person && kanal.person !== api.lage!.ich;
   const verbinde = async (p: SocialPlattform) => {
-    if (p === 'linkedin' && a.wege.linkedin) {
-      const r = await api.aktion({ aktion: 'linkedin-start', kanalId: kanal.id });
+    if ((p === 'linkedin' && a.wege.linkedin) || (p === 'instagram' && a.wege.instagram)) {
+      const r = await api.aktion({ aktion: p === 'linkedin' ? 'linkedin-start' : 'instagram-start', kanalId: kanal.id });
       if (r && typeof r.url === 'string') window.location.assign(r.url);
       return;
     }
@@ -134,7 +134,7 @@ function Verbindungen({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKa
         {kanal.plattformen.map(p => {
           const v = a.verbindungen.find(x => x.kanalId === kanal.id && x.plattform === p && x.zustand === 'aktiv');
           const tage = v?.tokenAblauf ? Math.ceil((v.tokenAblauf - Date.now()) / 86_400_000) : null;
-          const echt = p === 'linkedin' && a.wege.linkedin;
+          const echt = (p === 'linkedin' && a.wege.linkedin) || (p === 'instagram' && a.wege.instagram);
           return (
             <div key={p} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', minHeight: 44 }}>
               <strong style={{ minWidth: 90 }}>{PLATTFORM_NAME[p]}</strong>
@@ -156,7 +156,7 @@ function Verbindungen({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKa
 /** Ehrlich, was je Plattform fehlt (research/social/FAKTEN_VEROEFFENTLICHEN.md). */
 const WEG_FEHLT: Record<SocialPlattform, string> = {
   linkedin: 'LinkedIn ist in dieser Instanz noch nicht eingerichtet (eine LinkedIn-App mit „Share on LinkedIn“ — Schritte in UPDATES.md).',
-  instagram: 'Anbindung folgt — Instagram geht für eigene Konten ohne Antrag, braucht aber öffentlich abrufbare Bilddateien.',
+  instagram: 'Instagram ist in dieser Instanz noch nicht eingerichtet (eine Meta-App mit „Instagram API with Instagram Login“, Professional-Konto — Schritte in UPDATES.md).',
   youtube: 'Anbindung folgt — YouTube-Upload braucht eine Google-App „in Produktion“ und eine Videodatei.',
   tiktok: 'TikTok erlaubt kein Posten ohne Klick je Beitrag — hier bleibt es beim Entwurf, ihr postet in der App.',
 };

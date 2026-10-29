@@ -333,6 +333,9 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   // Gmail in der Inbox (03.10.): Spiegel je Person (Köpfe, Texte) — Nachrichten, die die Person nennen, raus; das Original bleibt in Gmail.
   { name: 'gmail-stand--*', muster: /^gmail-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
   { name: 'gmail-text--*', muster: /^gmail-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },
+  // Social (28.10.): Kommentare/DMs von Instagram — Einträge, die die Person nennen, raus (Original bleibt bei Instagram); Werkstatt-Transkripte tilgen.
+  { name: 'social-community--*', muster: /^social-community--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('eintraege') },
+  { name: 'social-werkstatt--*', muster: /^social-werkstatt--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Inbox 2 (06.10.): IMAP-Spiegel je Person (Köpfe, Texte) wie Gmail; Inbox-Zustand: Absender-Adresse fällt weg, Kontakt-Kennung getilgt.
   { name: 'imap-stand--*', muster: /^imap-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
   { name: 'imap-text--*', muster: /^imap-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },

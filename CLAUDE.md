@@ -2077,6 +2077,26 @@ Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub
   serverseitig (`verbindungSicht` ohne `geheim` — Wächter „kein Token in der Antwort“), Personenmarke verbindet nur die Person (403), fremde „nur ich“-Kanäle samt Verbindung 404/unsichtbar,
   Konto löschen entfernt die Verbindungen, die die Person angelegt hat. LinkedIn-Anmeldung: `linkedinStart`/`linkedinAbschliessen` (state einmalig, 15 Min., je Person, nennt den Kanal),
   Rückruf `/api/social/linkedin/rueckruf` (Cross-Site-Ausnahme `LINKEDIN_RUECKRUF`), Umgebung nur über `deploy/linkedin-verbinden.sh`. Tests `tests/social-automatik.test.ts`.
+- **Malin-Paket (28.10., Kevin: „Malin muss alles machen können — Reels schneiden, erstellen lassen, planen“; UPDATES.md 28.10.):**
+  **Medien am Beitrag:** `SocialFolge.medien` = NUR Kennungen `md-…` der EINEN Medien-Ablage (Business, ≤ 20, 413), Lese-Form `SocialMedium` nur über `socialMedienLesen`
+  (lib/social/medien.ts — nie Kataloge roh); ob es raus darf, entscheidet die Ablage (`wirksamerStatus` + Kanal „social“) → Prüfer-Befunde `medienBefunde` (stopp), Prüfer-Kontext
+  `medien`. Medienwechsel nimmt die Freigabe des Beitrags zurück (`folgeInhalt`). **Instagram** (`lib/social/anbieter/instagram.ts`, Instagram Login, Graph `igGraph`): was geht NUR
+  über `instagramMedien` (Bild = 1 JPEG, Reel = 1 Werkstatt-Video, Karussell 2–20, kein Text); Container → `status_code` → `media_publish`; Video wartet über Läufe: `PostErgebnis`
+  `{ ok: 'warten' }` → Server-Schritt `post-warten` (`PostVersuch.warten`, nie ein Token) → `weiter`; ein „läuft“ ohne Zwischenstand > 15 Min. → „unklar“ (`LAEUFT_MAX_MIN`);
+  KI-Inhalt → `is_ai_generated`; Token verlängert `erneuern` (≥ 24 h alt, ≤ 7 Tage Rest); Rückruf `/api/social/instagram/rueckruf` (Cross-Site-Ausnahme `INSTAGRAM_RUECKRUF`),
+  Umgebung nur über `deploy/instagram-verbinden.sh`. **Öffentlicher Medien-Link** (lib/social/medien-link.ts): `/api/social/medien/sm-<32 hex>(.jpg|.mp4)` (Middleware
+  `SOCIAL_MEDIEN_LINK`, nur GET/HEAD, Register `offen`), Token je Versuch, nur Fingerabdruck in `social-medien-links`, 60 Min., liefert nur, solange das Medium für Social frei
+  ist — gleiche 404 für alles andere. Neue Plattform, die selbst abholt: denselben Link nehmen, nie einen zweiten öffentlichen Weg. **Reel-Werkstatt** (`lib/social/werkstatt/`):
+  Regeln rein in `regeln.ts` (Zeitachse `untertitelZeilen`, ASS `assDatei` — `assText` lässt keine Override-Blöcke durch, ffmpeg-Argumente `reelArgumente`/`bildArgumente` nur mit
+  sicheren Pfaden, `werkstattPruefen`, `whisperSegmente`); Transkripte je QUELLE sind die EINE Wahrheit der Untertitel (korrigiert wird dort); Werkzeuge nur über `werkzeuge.ts`
+  (`ausfuehren`: keine Shell, Priorität 15, Zeitlimit; `imArbeitsordner`: 0700, IMMER gelöscht); Arbeit (Transkript/Render) EIN Lauf zur Zeit im App-Prozess (`werkstattAnstossen`
+  von Route und Takt); Ergebnis NUR über `schnittMediumAblegen` (lib/medien/schnitt-ablage.ts: neues Medium, `abgeleitetVon.art = 'schnitt'` + `quellen`, Personen/Einwilligungen
+  aller Quellen mit, strengste „erkennbare Personen“, Freigabe „intern“) und am Beitrag über den Server-Schritt `medien-setzen` (Freigabe fällt zurück). KI-Schnittvorschlag
+  (`vorschlag.ts`): Quellen als Q1…Qn, Transkript in `fremd()`, Ergebnis nur aus vorhandenen Quellen, übernommen nur per Klick. ffmpeg/whisper.cpp im Bild (Dockerfile, festgenagelter
+  Commit, GGML_NATIVE/OPENMP aus), Modell in `/modelle/whisper` (`deploy/whisper-modell.sh`), `MAKE_OS_APP_MEM` (compose). **Kommentare & DMs** (`lib/social/community.ts`,
+  `/api/social/community`): Abholen alle 15 Min. (nur mit Instagram-Verbindung), Spiegel `social-community--<haushalt>` (180 Tage, Art. 17 über person-weitere), Antworten NUR per
+  Klick (`antwortenErlaubt`: Not-Aus „Antworten“, Tageslimits, Personenmarke nur die Person; `antwortTextPruefen`; DM nur im 24-h-Fenster), ZOE-Vorschlag mit `fremd()`.
+  Noch NICHT im Inbox-Strom (bewusst, eigener Schritt). Tests `tests/social-instagram.test.ts` (Meta/ffmpeg/whisper/Ablage nachgebaut).
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.

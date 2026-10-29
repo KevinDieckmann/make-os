@@ -759,6 +759,19 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   }),
   K('social-lauf--*', 'Stand der automatischen Social-Läufe (Zeit, Zahlen, Grund) — keine Inhalte.'),
   K('social-linkedin-zustand', 'Offene LinkedIn-Anmeldungen (state, Speichername, Kanal, 15 Minuten) — wird beim Rückruf eingelöst.'),
+  // Malin-Paket (28.10.): Instagram-Anmeldung, kurzlebige Medien-Links, Kommentare/DMs, Reel-Werkstatt.
+  K('social-instagram-zustand', 'Offene Instagram-Anmeldungen (state, Speichername, Kanal, 15 Minuten) — wird beim Rückruf eingelöst.'),
+  K('social-medien-links', 'Kurzlebige öffentliche Links für EIN Medium (nur Fingerabdruck des Tokens, Medium-Kennung, Ablauf 60 Min.) — Instagram holt Bild/Video darüber ab; abgelaufene räumt der Takt weg.'),
+  mit(E('social-community--*', 'Kommentare und Direktnachrichten von Instagram je Haushalt (Kennung und Benutzername des Gegenübers, Text, Zeit, Beitrag; eigene Antworten mit Speichername) und je Gespräch „gelesen/erledigt bis“. Art. 17: Einträge, die die Person nennen, raus (person-weitere.ts); das Original bleibt bei Instagram.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Antworten auf Nachrichten an den eigenen Account) bzw. lit. b (Anfragen); Antworten nur per Klick, DMs nur im 24-h-Fenster',
+    art15: 'Kontakt-Auskunft über den Namen; die Einträge sehen die Konten, die den Kanal sehen (Markttraktion › Social › Kommentare & DMs)',
+    loeschfrist: 'Einträge älter als 180 Tage fallen beim nächsten Abholen weg (lib/social/community.ts `COMMUNITY_TAGE`); Art. 17 sofort; Kanal ohne Verbindung: kein neues Abholen',
+  }),
+  mit({ muster: 'social-werkstatt--*', bezug: 'haushalt', behandlung: 'tilgen', grund: 'Aufträge der Reel-Werkstatt je Haushalt: Clips (nur Medien-Kennungen), Transkripte der Tonspur (Spracherkennung lokal), Einblendungen, Ergebnis-Kennung, wer angelegt/geändert hat (Speichername). Transkripte können Namen Dritter enthalten — Art. 17 tilgt sie (person-weitere.ts).' }, {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — eigene Marketingarbeit; Ton nur von Videos, deren Ton beim Hochladen bewusst behalten wurde (§ 201 StGB-Hinweis der Ablage)',
+    art15: 'die Konten des Haushalts sehen die Aufträge unter Markttraktion › Social › Werkstatt (Kanal „nur die Person“: nur diese Person)',
+    loeschfrist: 'bis der Auftrag entfernt wird; das Ergebnis ist ein Medium der Ablage und folgt deren Fristen; Konto löschen → Speichername „[gelöscht]“',
+  }),
   mit(H('markttraktion-planung--*', 'Vertriebsplanung des Haushalts: Leadkanäle (Name, Herkunft, Bezug Kampagne/Eventreihe als Kennung, Plan-Leads, Sales Cycle, Plan-Quoten, Kosten/Zeit je Lead, verantwortlich = Team-Kürzel), Umsatzziele je Business-Gesellschaft, Wochen-Challenges (Team-Kürzel, Ziel, Rückblick), Minuten je Aktivität, Schritte nach der Leistung je Mandat-Kennung; wer zuletzt geändert hat (Speichername).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung der eigenen Vertriebsarbeit durch die Mitglieder des Haushalts (§ 26 BDSG, soweit Wochenziele je Person)',
     art15: 'alle Konten des Haushalts sehen sie unter Markttraktion › Planung (GET /api/crm/planung); Kontakte Dritter stehen hier nicht — Mandate nur als Kennung',
@@ -903,7 +916,7 @@ const IN_PRIVAT: readonly string[] = [
 const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
-  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
+  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
   'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
