@@ -13,7 +13,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Hinweis, Leerzustand, F
 import { WERKSTATT_FORMATE, gesamtDauer, untertitelZeilen, type WerkstattAuftrag, type WerkstattClip, type Einblendung, type QuellInfo, type WerkstattFormat, type Segment } from '@/lib/social/werkstatt/regeln';
 import type { SocialKanal } from '@/lib/social/typen';
 import type { MitStand, SocialApi } from './daten';
-import { AblageWahl, Vorschau, useAblage, vorschauUrl } from './Medien';
+import { AblageWahl, Vorschau, useAblage, vorschauUrl, fuerSocialFreigeben } from './Medien';
 
 type Auftrag = WerkstattAuftrag & { stand: string; pruefung: string[] };
 interface WerkstattLage { auftraege: Auftrag[]; quellen: Record<string, QuellInfo | null>; bereit: { rendern: boolean; untertitel: boolean } }
@@ -190,7 +190,8 @@ function AuftragEditor({ w, api, a, onZu }: { w: W; api: SocialApi; a: Auftrag; 
           {a.ziel === 'reel' && <>
             <label style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 }}><input type="checkbox" checked={untertitel.an} onChange={e => setUntertitel(u => ({ ...u, an: e.target.checked }))} /> Untertitel einbrennen</label>
             {untertitel.an && <Segmente liste={[{ id: 'klar', label: 'Klar (weiß, Kontur)' }, { id: 'kraeftig', label: 'Kräftig (im Kasten)' }]} aktiv={untertitel.stil} onWahl={(s: 'klar' | 'kraeftig') => setUntertitel(u => ({ ...u, stil: s }))} umbrechen />}
-            {untertitel.an && (
+            {untertitel.an && !clips.some(c => quellen[c.mediumId]?.art === 'video' && quellen[c.mediumId]?.ton === 'an') && <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Untertitel entstehen aus dem Ton — dafür ein Video mit Ton „an“ hinzufügen. Einblendungen gehen auch ohne.</span>}
+            {untertitel.an && clips.some(c => quellen[c.mediumId]?.art === 'video' && quellen[c.mediumId]?.ton === 'an') && (
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Knopf aus={!bereit.untertitel || geaendert || a.status === 'arbeitet'} onClick={() => w.aktion({ aktion: 'untertitel', id: a.id, stand: a.stand })}>
                   {ohneTranskript ? `Untertitel erkennen (${ohneTranskript} Clip${ohneTranskript === 1 ? '' : 's'})` : 'Untertitel neu erkennen'}
@@ -282,21 +283,9 @@ function Ergebnis({ a, folgeTitel, onFertig }: { a: Auftrag; folgeTitel?: string
   const [text, setText] = useState<string | null>(null);
   const [art, setArt] = useState<'gut' | 'achtung'>('gut');
   const freigeben = async () => {
-    const senden = async (schritt: 'freigeben' | 'anfragen') => {
-      const r = await fetch('/api/medien', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion: 'freigabe', schritt, id: a.ergebnis, kanaele: ['social'] }) });
-      return { ok: r.ok, j: await r.json().catch(() => ({})) as { fehler?: string } };
-    };
-    const r = await senden('freigeben');
-    if (r.ok) { setArt('gut'); setText('Für Social freigegeben — der Beitrag darf es jetzt zeigen.'); onFertig(); return; }
-    // Erkennbare Personen: Vier-Augen-Prinzip der Ablage → anfragen, eine andere Person gibt frei.
-    if (/Vier-Augen/.test(r.j.fehler ?? '')) {
-      const q = await senden('anfragen');
-      setArt(q.ok ? 'gut' : 'achtung');
-      setText(q.ok ? 'Freigabe angefragt — weil Personen erkennbar sind, gibt eine andere Person frei (Glocke).' : q.j.fehler ?? 'Nicht angefragt.');
-      onFertig();
-      return;
-    }
-    setArt('achtung'); setText(r.j.fehler ?? 'Nicht freigegeben.');
+    const r = await fuerSocialFreigeben(a.ergebnis!);
+    setArt(r.ok ? 'gut' : 'achtung'); setText(r.ok && r.text === 'Für Social freigegeben.' ? 'Für Social freigegeben — der Beitrag darf es jetzt zeigen.' : r.text);
+    if (r.ok) onFertig();
   };
   return (
     <Karte>

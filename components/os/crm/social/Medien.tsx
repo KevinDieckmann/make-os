@@ -20,6 +20,24 @@ export interface AblageMedium {
   albumTitel?: string;
 }
 
+/**
+ * Ein Medium für „Social Media“ freigeben — über die Freigabe der Ablage (Pflichten, Einwilligungen, Vier-Augen). Sind Personen erkennbar,
+ * wird angefragt und eine andere Person gibt frei. Antwort = Satz für die Oberfläche.
+ */
+export async function fuerSocialFreigeben(id: string): Promise<{ ok: boolean; text: string }> {
+  const senden = async (schritt: 'freigeben' | 'anfragen') => {
+    const r = await fetch('/api/medien', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion: 'freigabe', schritt, id, kanaele: ['social'] }) }).catch(() => null);
+    return { ok: !!r?.ok, fehler: r ? ((await r.json().catch(() => ({}))) as { fehler?: string }).fehler : 'Keine Verbindung.' };
+  };
+  const r = await senden('freigeben');
+  if (r.ok) return { ok: true, text: 'Für Social freigegeben.' };
+  if (/Vier-Augen/.test(r.fehler ?? '')) {
+    const q = await senden('anfragen');
+    return q.ok ? { ok: true, text: 'Freigabe angefragt — weil Personen erkennbar sind, gibt eine andere Person frei (Glocke).' } : { ok: false, text: q.fehler ?? 'Nicht angefragt.' };
+  }
+  return { ok: false, text: r.fehler ?? 'Nicht freigegeben.' };
+}
+
 export const vorschauUrl = (id: string, v: 'raster' | 'poster' | 'ansicht' | 'original' = 'raster') => `/api/medien/inhalt?id=${encodeURIComponent(id)}&v=${v}`;
 
 /** Die Business-Ablage (nur lesen) — einmal laden, bei Bedarf neu. */
@@ -60,10 +78,11 @@ function StatusChip({ m }: { m: SocialMedium | null | undefined }) {
 }
 
 /** Medien am Beitrag (im Folgen-Editor). `medien` = gewählte Kennungen (Reihenfolge), `info` = Lese-Form vom Server. */
-export function FolgeMedien({ medien, setMedien, info, onWerkstatt }: {
-  medien: string[]; setMedien: (l: string[]) => void; info: Record<string, SocialMedium | null>; onWerkstatt?: () => void;
+export function FolgeMedien({ medien, setMedien, info, onWerkstatt, onGeaendert }: {
+  medien: string[]; setMedien: (l: string[]) => void; info: Record<string, SocialMedium | null>; onWerkstatt?: () => void; onGeaendert?: () => void;
 }) {
   const [waehlen, setWaehlen] = useState(false);
+  const [meldung, setMeldung] = useState<{ ok: boolean; text: string } | null>(null);
   const ablage = useAblage(waehlen || medien.some(id => !(id in info)));
   const nachId = new Map((ablage.medien ?? []).map(m => [m.id, m] as const));
   const schiebe = (i: number, d: -1 | 1) => { const l = [...medien]; const j = i + d; if (j < 0 || j >= l.length) return; [l[i], l[j]] = [l[j], l[i]]; setMedien(l); };
@@ -82,6 +101,9 @@ export function FolgeMedien({ medien, setMedien, info, onWerkstatt }: {
               <div key={id} style={{ display: 'grid', gap: 6, justifyItems: 'center', minWidth: 88 }}>
                 <Vorschau id={id} art={m?.art ?? a?.art ?? 'bild'} varianten={a?.varianten} />
                 <StatusChip m={m ?? (a ? { id, art: a.art, typ: a.typ, ki: a.urheber.art === 'ki', schnitt: a.abgeleitetVon?.art === 'schnitt', status: a.marketing.wirksam as SocialMedium['status'], social: (a.marketing.kanaele ?? []).includes('social'), geloescht: false } : null)} />
+                {m && m.status !== 'freigegeben' && m.status !== 'angefragt' && m.status !== 'gesperrt' && (
+                  <Knopf leise onClick={async () => { const r = await fuerSocialFreigeben(id); setMeldung(r); if (r.ok) onGeaendert?.(); }}>Freigeben</Knopf>
+                )}
                 <div style={{ display: 'flex', gap: 2 }}>
                   <Knopf leise onClick={() => schiebe(i, -1)} ariaLabel="nach vorn">◀</Knopf>
                   <Knopf leise onClick={() => setMedien(medien.filter(x => x !== id))} ariaLabel="entfernen">✕</Knopf>
@@ -92,6 +114,7 @@ export function FolgeMedien({ medien, setMedien, info, onWerkstatt }: {
           })}
         </div>
       )}
+      {meldung && <Hinweis art={meldung.ok ? 'gut' : 'achtung'}>{meldung.text}</Hinweis>}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <Knopf onClick={() => setWaehlen(w => !w)}>{waehlen ? 'Auswahl schließen' : '+ Aus der Medien-Ablage'}</Knopf>
         {onWerkstatt && <Knopf onClick={onWerkstatt}>In der Werkstatt schneiden</Knopf>}

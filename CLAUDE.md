@@ -2097,6 +2097,13 @@ Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub
   `/api/social/community`): Abholen alle 15 Min. (nur mit Instagram-Verbindung), Spiegel `social-community--<haushalt>` (180 Tage, Art. 17 über person-weitere), Antworten NUR per
   Klick (`antwortenErlaubt`: Not-Aus „Antworten“, Tageslimits, Personenmarke nur die Person; `antwortTextPruefen`; DM nur im 24-h-Fenster), ZOE-Vorschlag mit `fremd()`.
   Noch NICHT im Inbox-Strom (bewusst, eigener Schritt). Tests `tests/social-instagram.test.ts` (Meta/ffmpeg/whisper/Ablage nachgebaut).
+  **Teil 2:** Kalender rein in `lib/social/kalender.ts` (`kalenderTage`, `kalenderEintraege`, Farbe `tonVon` aus den Post-Schritten) — Umplanen = normale Folgen-Änderung
+  (`geplantAm`/`geplantUm`, Freigabe bleibt). `SocialFolge.beschriftung` ist der Post-Text (`postText`: Beschriftung vor Skript + Aufruf), Prüfer stoppt > 30 Hashtags.
+  **Auto-Reel** (`lib/social/werkstatt/auto.ts`): Scan alle 30 Min. (`plan.autoReel` + `plan.rohAlbum`, ≤ 2 je Lauf, Videos ≤ 14 Tage, noch in keinem Auftrag) →
+  `WerkstattAuftrag.auto.schritt` transkript → schnitt (KI-Vorschlag im HINTERGRUND, `laufSperre` Marketing; ohne KI der Anfang ≤ 60 s) → render → beitrag (Server-Schritt
+  `entwurf` im nächsten freien Platz, Reel + Hook + Beschriftung, Entwurf) → fertig; Schritte nur in `autoWeiter` am Ende jedes Werkstatt-Laufs. Nie selbst freigeben.
+  Beste Zeiten rein in `lib/social/zeiten.ts` (Median der eigenen Aufrufe je Wochentag/Stunde, ab 8 Beiträgen, je Feld ≥ 2). Community-Antworten über die Probe (Demo)
+  speichern nur lokal.
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.

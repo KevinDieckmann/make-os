@@ -424,6 +424,23 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     ] });
     // Probe-Verbindung (nur in einer Demo-Instanz erlaubt; ohne MAKE_OS_DEMO bleibt der Kanal unverbunden).
     await rufe(R.social(), 'POST', '/api/social', LENA, { aktion: 'probe-verbinden', kanalId: nord.id, plattform: 'linkedin' }).catch(() => null);
+    // 28.10. (Malin-Paket): auch Instagram mit der Probe, dazu erfundene Kommentare und eine DM — AUSNAHME vom Routen-Weg: eingehende
+    // Nachrichten schreibt nur das Abholen bei Instagram (lib/social/community.ts), eine Route dafür gibt es bewusst nicht.
+    await rufe(R.social(), 'POST', '/api/social', LENA, { aktion: 'probe-verbinden', kanalId: nord.id, plattform: 'instagram' }).catch(() => null);
+    const { communitySpeicher } = await import('@/lib/social/community');
+    const { updateJson } = await import('@/lib/store/local-db');
+    const vor = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+    const e = (id: string, art: 'kommentar' | 'dm', gegen: string, name: string, text: string, min: number, mediaId?: string) =>
+      ({ id, art, kanalId: nord.id, richtung: 'ein' as const, gegen: { id: gegen, name }, text, am: vor(min), ...(mediaId ? { mediaId } : {}) });
+    await updateJson(await communitySpeicher(), () => ({
+      eintraege: Object.fromEntries([
+        e('9100000000000001', 'kommentar', '7100000001', 'kennzahlen.kaffee', 'Die Frage „Was soll danach anders sein?“ klaue ich mir fürs nächste Meeting. (Beispiel)', 95, '9000000000000001'),
+        e('9100000000000002', 'kommentar', '7100000002', 'mia.beispiel', 'Gilt das auch für kleine Teams mit drei Leuten? (Beispiel)', 40, '9000000000000001'),
+        e('dm-beispiel-1', 'dm', '7100000003', 'werkstatt.nord', 'Hallo! Macht ihr auch Workshops vor Ort? (Beispiel)', 25),
+      ].map(x => [x.id, x])),
+      faeden: { [`km~${nord.id}~9000000000000001`]: { beitrag: 'Drei Fragen vor jedem Projekt (Beispiel)' } },
+      abgeholt: { [nord.id]: vor(10) },
+    }));
   }
   schritt('Social (Kanäle aus Vorlagen, Format, Folgen, Zahlen, Ziele, Automatik mit Probe)', 3 + 1 + DEMO_FOLGEN.length + 1);
 

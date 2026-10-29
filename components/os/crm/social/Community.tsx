@@ -45,7 +45,7 @@ export function Community({ api, kanal }: { api: SocialApi; kanal: MitStand<Soci
   const c = useCommunity();
   const [offen, setOffen] = useState<string | null>(null);
   const [filter, setFilter] = useState<'offen' | 'alle'>('offen');
-  const verbunden = api.lage!.automatik.verbindungen.some(v => v.kanalId === kanal.id && v.plattform === 'instagram' && v.zustand === 'aktiv' && v.anbieter === 'instagram');
+  const verbunden = api.lage!.automatik.verbindungen.some(v => v.kanalId === kanal.id && v.plattform === 'instagram' && v.zustand === 'aktiv' && (v.anbieter === 'instagram' || v.anbieter === 'probe'));
   if (!kanal.plattformen.includes('instagram')) return <Karte><Leerzustand symbol="✉" titel="Dieser Kanal ist nicht auf Instagram">Kommentare und DMs holt MAKE OS heute von Instagram. Plattform am Kanal ergänzen, dann unter „Automatik“ verbinden.</Leerzustand></Karte>;
   if (!c.lage) return c.fehler ? <Hinweis art="kritisch">{c.fehler}</Hinweis> : <Karte><span style={{ color: C.inkLeise }}>Lädt …</span></Karte>;
   const faeden = c.lage.faeden.filter(f => f.kanalId === kanal.id && (filter === 'alle' || f.offen));

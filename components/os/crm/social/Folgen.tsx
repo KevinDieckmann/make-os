@@ -129,7 +129,7 @@ function FolgeEditor({ api, kanal, folge, onZu, zurWerkstatt }: { api: SocialApi
             </div>
           ))}
           <Feldzeile label="Skript (gesprochen)"><textarea style={{ ...feld, minHeight: 180, fontSize: 16 }} value={skript} onChange={e => setSkript(e.target.value)} maxLength={12000} /></Feldzeile>
-          <FolgeMedien medien={medien} setMedien={setMedien} info={lage.medien ?? {}}
+          <FolgeMedien medien={medien} setMedien={setMedien} info={lage.medien ?? {}} onGeaendert={() => void api.laden()}
             onWerkstatt={zurWerkstatt && folge ? () => zurWerkstatt({ folgeId: folge.id, medien, titel: titel || folge.titel, ziel: formate.find(f => f.id === formatId)?.art === 'bild' ? 'bild' : 'reel' }) : undefined} />
           {(formate.find(f => f.id === formatId)?.art ?? 'video') !== 'text' && (
             <Feldzeile label={`Beschriftung (Text unter dem Beitrag, mit Hashtags) · ${beschriftung.length}/2200 · ${(beschriftung.match(/#[\p{L}\p{N}_]+/gu) ?? []).length}/30 #`}>

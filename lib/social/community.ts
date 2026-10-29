@@ -228,22 +228,30 @@ export async function communityAntworten(person: string, kanal: SocialKanal, fad
   const { ladeVerbindungen, aktiveVerbindung } = await import('./verbindungen');
   const v = aktiveVerbindung(await ladeVerbindungen(), kanal.id, 'instagram');
   const { igGraph, instagramKonfig } = await import('./anbieter/instagram');
+  const { probeErlaubt } = await import('./anbieter/probe');
+  // Probe (nur Demo/Tests): die Antwort wird nur hier gespeichert — nichts verlässt MAKE OS.
+  const probe = v?.anbieter === 'probe' && probeErlaubt();
   const k = instagramKonfig();
-  if (!v?.geheim || v.anbieter !== 'instagram' || !k) return { ok: false, status: 409, fehler: 'Instagram ist für diesen Kanal nicht verbunden.' };
+  if (!probe && (!v?.geheim || v.anbieter !== 'instagram' || !k)) return { ok: false, status: 409, fehler: 'Instagram ist für diesen Kanal nicht verbunden.' };
   let id: string | undefined;
   let gegen = faden.gegen ?? { id: 'unbekannt' };
   let mediaId: string | undefined, parentId: string | undefined;
   if (art === 'dm') {
     if (!faden.fensterOffen) return { ok: false, status: 409, fehler: 'Die letzte Nachricht ist älter als 24 Stunden — Instagram erlaubt dann keine Antwort per Schnittstelle (in der App antworten).' };
-    const r = await igGraph<{ message_id?: string }>(v.geheim, k, 'me/messages', { methode: 'POST', params: { recipient: JSON.stringify({ id: gegen.id }), message: JSON.stringify({ text: text.trim() }) } });
+    if (probe) id = undefined; else {
+    const r = await igGraph<{ message_id?: string }>(v!.geheim!, k!, 'me/messages', { methode: 'POST', params: { recipient: JSON.stringify({ id: gegen.id }), message: JSON.stringify({ text: text.trim() }) } });
     if (!r.ok) return { ok: false, status: r.status === 0 ? 504 : 502, fehler: r.status === 0 ? 'Keine Antwort von Instagram — bitte dort nachsehen, ob die Nachricht ankam.' : `Instagram: ${r.text}` };
     id = r.daten.message_id ? `dm-${r.daten.message_id}` : undefined;
+    }
   } else {
     const ziel = faden.eintraege.find(e => e.id === antwortAuf && e.richtung === 'ein') ?? [...faden.eintraege].reverse().find(e => e.richtung === 'ein');
     if (!ziel) return { ok: false, status: 409, fehler: 'Kein Kommentar zum Antworten.' };
-    const r = await igGraph<{ id?: string }>(v.geheim, k, `${ziel.parentId ?? ziel.id}/replies`, { methode: 'POST', params: { message: text.trim() } });
-    if (!r.ok) return { ok: false, status: r.status === 0 ? 504 : 502, fehler: r.status === 0 ? 'Keine Antwort von Instagram — bitte dort nachsehen, ob die Antwort online ist.' : `Instagram: ${r.text}` };
-    id = r.daten.id; gegen = ziel.gegen; mediaId = ziel.mediaId; parentId = ziel.parentId ?? ziel.id;
+    if (!probe) {
+      const r = await igGraph<{ id?: string }>(v!.geheim!, k!, `${ziel.parentId ?? ziel.id}/replies`, { methode: 'POST', params: { message: text.trim() } });
+      if (!r.ok) return { ok: false, status: r.status === 0 ? 504 : 502, fehler: r.status === 0 ? 'Keine Antwort von Instagram — bitte dort nachsehen, ob die Antwort online ist.' : `Instagram: ${r.text}` };
+      id = r.daten.id;
+    }
+    gegen = ziel.gegen; mediaId = ziel.mediaId; parentId = ziel.parentId ?? ziel.id;
   }
   const eintrag: IgEintrag = { id: id ?? neueKennung('ig'), art, kanalId: kanal.id, richtung: 'aus', gegen, text: text.trim(), am: jetzt.toISOString(), durch: person, ...(mediaId ? { mediaId } : {}), ...(parentId ? { parentId } : {}) };
   await updateJson<CommunityDatei>(await communitySpeicher(), cur => ({

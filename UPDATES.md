@@ -14,6 +14,12 @@ LOKAL auf dem Server, Rendern auf dem Server (Server wird größer), „das Maxi
   ffmpeg, Ergebnis = neues Medium, raus erst nach Freigabe); Kommentare & DMs von Instagram (alle 15 Min. abholen, ZOE-Vorschlag, Antwort per Klick, Not-Aus/Limits,
   DM nur im 24-h-Fenster). Neue Bestände `social-werkstatt--<haushalt>`, `social-community--<haushalt>`, `social-medien-links`, `social-instagram-zustand` (additiv);
   optionale Felder `SocialFolge.medien`, `PostVersuch.warten`, `Medium.abgeleitetVon.art = 'schnitt'` + `quellen`.
+- **Teil 2 (Kevin: „Bau ihr das Beste, das sie maximal automatisieren und planen kann“):** Social öffnet jetzt im **Kalender** (Woche/Monat: Beiträge mit
+  Zustand, freie Plätze des Plans, Umplanen per Ziehen bzw. Antippen; „Ohne Termin“ zum Einplanen); **Beschriftung** je Beitrag (Text unter Bild/Karussell/Reel mit
+  Hashtags, Zähler 2.200/30 — der Agent schreibt sie mit); **Auto-Reels** (Automatik › „Auto-Reels aus euren Clips“: Album wählen, einschalten — neue Videos werden ohne
+  Klick zu Reels mit Untertiteln, KI-Schnitt, Hook und Beschriftung und liegen als Entwurf im nächsten freien Termin; Glocke; raus erst nach Freigabe); **Wann wirkt es?**
+  (beste Wochentage/Uhrzeiten aus den eigenen Zahlen ab 8 Beiträgen, Uhrzeit übernehmen per Klick); Medien im Beitrag direkt **freigeben**. Neue optionale Felder
+  `SocialFolge.beschriftung`, `Redaktionsplan.autoReel`/`rohAlbum`, `WerkstattAuftrag.auto`.
 - **Server (Einmal-Schritte, erst mit dem Update):**
   1. **Server vergrößern** (Hetzner Cloud Console › Server › Rescale): mindestens 2 vCPU / 4 GB (z. B. CX22 → CX32). Danach in `/srv/make-os/app/.env`
      `MAKE_OS_APP_MEM=2560m` setzen und `docker compose up -d app`. Ohne Vergrößerung rendert die Werkstatt trotzdem, die App wird dabei aber spürbar langsamer.
