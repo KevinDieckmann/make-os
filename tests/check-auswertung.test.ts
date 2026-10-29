@@ -104,11 +104,11 @@ describe('Hilfen', () => {
   it('Zoes Sätze: gleichauf statt „am stärksten“, Lücke nur bei echtem Abstand', () => {
     const basis = { stufe: 3, stufe_name: 'Anwender', gesamt: 50, genauigkeit: 'genau' as const };
     const gleich = ergebnisSaetze({ ...basis, dimensionen: { strategie: 50, ki: 50, automatisierung: 50, daten: 50, team: 50 } }, []);
-    expect(gleich[1]).toBe('In allen Bereichen liegst du gleichauf bei 50 Punkten.');
-    expect(gleich[2]).toBe('In keinem Bereich liegst du unter dem Branchenwert.');
+    expect(gleich[1]).toBe('In allen Bereichen liegen Sie gleichauf bei 50 Punkten.');
+    expect(gleich[2]).toBe('In keinem Bereich liegen Sie unter dem Branchenwert.');
     const ungleich = ergebnisSaetze({ ...basis, dimensionen: { strategie: 70, ki: 30, automatisierung: 50, daten: 50, team: 50 } },
       [{ dimension: 'ki', wert: 30, branche: 45, abstand: 15 }]);
-    expect(ungleich[1]).toBe('Am stärksten bist du bei Strategie und Führung mit 70 Punkten.');
+    expect(ungleich[1]).toBe('Am stärksten sind Sie bei Strategie und Führung mit 70 Punkten.');
     expect(ungleich[2]).toContain('KI im Alltag: 30 gegenüber 45 Punkten');
   });
 });

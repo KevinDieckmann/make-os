@@ -35,7 +35,10 @@
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  color-scheme: light;
 }
+/* Die App ist dunkel (html: color-scheme dark) — hier hell, auch für Häkchen und den Rand beim Überscrollen am Handy. */
+:global(html):has(.seite), :global(body):has(.seite) { background: #F6F4F0; color-scheme: light; }
 
 .rahmen { max-width: 720px; margin: 0 auto; padding: 20px 16px 96px; }
 

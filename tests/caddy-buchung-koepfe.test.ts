@@ -113,7 +113,7 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     }
   });
 
-  it('fokusinnovation.de (26.10.): www → 301, gebaute Website read-only aus /srv/fokusinnovation mit denselben strengen Köpfen, Vorschau mit noindex + robots.txt', () => {
+  it('fokusinnovation.de (26.10., Welle 3 29.10.): www → 301, gebaute Website read-only aus /srv/fokusinnovation mit strengen Köpfen, Vorschau mit noindex + robots.txt, nur Check und Buchung an die App', () => {
     // OFFLINE (Kevin 08.10.): beide Adressen im Offline-Block mit 503, nichts ausgeliefert.
     const offline = Array.from(aktiv.entries()).find(([k]) => k.split(',').map(a => a.trim()).includes('fokusinnovation.de'));
     if (offline && /^respond 503$/m.test(offline[1])) {
@@ -131,7 +131,13 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     expect(seite).toMatch(/^@intern path \*\.md \*\.mjs$/m);
     expect(seite).toMatch(/^respond @intern 404$/m);
     expect(seite).toMatch(/^hide \*\.md$/m);
-    expect(seite).not.toMatch(/reverse_proxy|browse/);
+    expect(seite).not.toMatch(/browse/);
+    // Welle 3 (29.10.): NUR Check und Buchung (samt ihren Skripten und der Schrift) gehen an die App — nie /os, nie /api allgemein.
+    expect(seite).toMatch(/^@app path \/check \/api\/check \/buchen \/buchen\/\* \/api\/buchung \/api\/buchung\/\* \/_next\/\* \/schriften\/\*$/m);
+    expect(seite.match(/reverse_proxy/g)?.length).toBe(1);
+    expect(seite).toMatch(/handle @app \{[\s\S]*?reverse_proxy app:3000/);
+    expect(seite).toMatch(/^request_header -x-middleware-subrequest$/m);
+    expect(seite).toMatch(/^request_header X-Make-Vorbau "1"$/m);
     // Die Köpfe gelten auch für die 404-Seite (eigene Route-Kette).
     expect(seite).toMatch(/handle_errors \{[\s\S]*import fokus_koepfe[\s\S]*rewrite \* \/404\.html/);
     const kopf = aktiv.get('(fokus_koepfe)') ?? '';

@@ -8,7 +8,7 @@
 // Kalender nicht frisch ist (#73, `hinweis` vom Server) · zweite Uhrzeit in der Zone des Gasts (#74, nur im Browser).
 
 import { useEffect, useMemo, useState } from 'react';
-import { C, AKZENT, seite, rahmen, karte, titel, leise, klein, feld, label, knopf, chip, tagText, zeitText } from './stil';
+import { C, AKZENT, seite, seiteKlasse, rahmen, karte, titel, leise, klein, feld, label, knopf, chip, tagText, zeitText } from './hell';
 import { gastZeitText, zweiteZone, zonenOrt } from '@/lib/kalender/gast-zeit';
 
 interface Daten {
@@ -91,13 +91,13 @@ export function Buchen({ slug }: { slug: string }) {
     setSendet(false);
   };
 
-  if (ladeFehler) return <main style={seite}><div style={rahmen}><div style={karte}><h1 style={titel}>Termin buchen</h1><p style={leise}>{ladeFehler}</p><button style={knopf(true, true)} onClick={() => void laden()}>Noch einmal laden</button></div></div></main>;
-  if (!d) return <main style={seite}><div style={rahmen}><div style={karte}><p style={leise}>Freie Zeiten werden geladen …</p></div></div></main>;
+  if (ladeFehler) return <main className={seiteKlasse} style={seite}><div style={rahmen}><div style={karte}><h1 style={titel}>Termin buchen</h1><p style={leise}>{ladeFehler}</p><button style={knopf(true, true)} onClick={() => void laden()}>Noch einmal laden</button></div></div></main>;
+  if (!d) return <main className={seiteKlasse} style={seite}><div style={rahmen}><div style={karte}><p style={leise}>Freie Zeiten werden geladen …</p></div></div></main>;
 
   const s = d.seite;
   const platzBei = platz ? bei(platz.start) : null;
   return (
-    <main style={seite}>
+    <main className={seiteKlasse} style={seite}>
       <div style={rahmen}>
         <header style={{ display: 'grid', gap: 6 }}>
           <span style={{ ...klein, textTransform: 'uppercase', letterSpacing: '.12em', color: AKZENT, fontWeight: 700 }}>Termin buchen</span>

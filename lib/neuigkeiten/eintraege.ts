@@ -33,6 +33,22 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-29',
+    datum: '2026-10-29',
+    titel: 'Innovations-Check für die Website',
+    kurz: 'Besucher der Website können einen Innovations-Check machen: Fragen beantworten, Stufe sofort sehen, Termin buchen. Der Check kommt ausgeschaltet — einschalten unter Markttraktion › Marketing › Innovations-Check.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Innovations-Check: eine öffentliche Fragenstrecke mit Ergebnis und Stufe. Wer seine Kontaktdaten angibt, steht danach als Lead in der Kartei.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Ein- und ausschalten, Buchungsseite für das Gespräch wählen und den Namen festlegen, der im Check steht — alles an einer Stelle unter Marketing.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Antworten mit Belegen bewertest du nach einer festen Rubrik; die Stufe rechnet danach neu.', bereich: 'business' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Check und Terminbuchung sind auch über die Adresse der Website erreichbar, ohne dass Besucher die Software sehen.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-27',
     datum: '2026-10-27',
     titel: 'Rechnungen: der ganze Kreislauf an einer Stelle',
