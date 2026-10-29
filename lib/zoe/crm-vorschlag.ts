@@ -374,13 +374,22 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const d = dealAus(s, i.deal); if (istFehler(d)) return d;
       const g = text(i.gesellschaft, 3) || alt?.gesellschaft;
       if (!A.istGesellschaft(g)) return fehlschlag('eingabe', `Fehlgeschlagen: gesellschaft ist ${GESELLSCHAFTEN.join(', ')}.`);
-      const pos = Array.isArray(i.positionen) ? (i.positionen as Eingabe[]).slice(0, A.ANGEBOT_GRENZEN.positionen).map((p, n) => ({
+      let pos = Array.isArray(i.positionen) ? (i.positionen as Eingabe[]).slice(0, A.ANGEBOT_GRENZEN.positionen).map((p, n) => ({
         id: `p${n + 1}`, titel: text(p.titel, A.ANGEBOT_GRENZEN.titel), text: text(p.text, A.ANGEBOT_GRENZEN.text), menge: Number(p.menge) > 0 ? Number(p.menge) : 1, einheit: text(p.einheit, 30) || 'pauschal',
         einzelpreisCent: Math.round((Number(p.einzelpreis) || 0) * 100), ustSatz: [19, 7, 0].includes(Number(p.ust_satz)) ? Number(p.ust_satz) : 19,
         basis: ['einmalig', 'monat', 'jahr'].includes(String(p.basis)) ? String(p.basis) : 'einmalig', ...(Number(p.laufzeit_monate) > 0 ? { laufzeitMonate: Math.round(Number(p.laufzeit_monate)) } : {}),
         ...(text(p.leistung, 80) && crm.leistungen.some(l => l.id === text(p.leistung, 80)) ? { leistungId: text(p.leistung, 80) } : {}),
       })).filter(p => p.titel) : [];
-      if (!pos.length && !alt) return fehlschlag('eingabe', 'Fehlgeschlagen: positionen fehlen (titel, text, menge, einheit, einzelpreis in €, ust_satz, basis).');
+      // 29.10. (Kreislauf W-B1): ein Prozess-Schritt schickt keine Positionen, sondern `positionen_aus: 'fall'` — dann die des jüngsten Angebots am Deal bzw.
+      // Mandat, sonst die des Produkts (dieselbe Regel wie „Angebot erstellen“ am Deal, lib/prozesse/geld-positionen.ts). ZOE gibt Positionen wie bisher selbst an.
+      let posHerkunft = '';
+      if (!pos.length && !alt && i.positionen_aus === 'fall') {
+        const { angebotPositionenFuerFall } = await import('@/lib/prozesse/geld-positionen');
+        const mid = text(i.mandat, 80);
+        const v = angebotPositionenFuerFall(crm, { ...(d ? { dealId: d.id } : {}), ...(mid ? { mandatId: mid } : {}) });
+        if (v) { pos = v.positionen as unknown as typeof pos; posHerkunft = v.quelle === 'vorgaenger' ? 'Positionen aus dem letzten Angebot' : 'Positionen aus dem Produkt'; }
+      }
+      if (!pos.length && !alt) return fehlschlag('eingabe', i.positionen_aus === 'fall' ? 'Fehlgeschlagen: kein Angebot und kein Produkt am Deal bzw. Mandat — Positionen bitte im Angebots-Tool wählen.' : 'Fehlgeschlagen: positionen fehlen (titel, text, menge, einheit, einzelpreis in €, ust_satz, basis).');
       const felder: Eingabe = {
         gesellschaft: g, ...(k ? { kontaktId: k.id } : {}), ...(fi ? { firmaId: fi.id } : k?.firmaId ? { firmaId: k.firmaId } : {}), ...(d ? { dealId: d.id } : {}),
         ...(text(i.titel, 200) ? { titel: text(i.titel, 200) } : {}), ...(pos.length ? { positionen: pos } : {}),
@@ -391,7 +400,7 @@ async function planen(art: VorschlagArt, i: Eingabe, s: CrmSicht): Promise<Gepla
       const rohA = alt ? (await rohCrm()).angebote.find(a => a.id === alt.id) : undefined;
       return {
         titel: `${ART_TITEL.angebot_entwurf}${alt ? ' (ändern)' : ''}: ${text(i.titel, 80) || alt?.titel || 'neues Angebot'}`, bezugId: k ? `kontakt:${k.id}` : alt ? `angebot:${alt.id}` : fi ? `firma:${fi.id}` : d ? `deal:${d.id}` : 'markttraktion',
-        nachher: [`Entwurf ${g}`, summe && `netto ${A.euroCent(summe.gesamt.netto)}`, `${pos.length} Positionen`, 'bleibt Entwurf — stellen nur im Angebots-Tool'].filter(Boolean).join(' · '),
+        nachher: [`Entwurf ${g}`, summe && `netto ${A.euroCent(summe.gesamt.netto)}`, `${pos.length} Positionen`, posHerkunft, 'bleibt Entwurf — stellen nur im Angebots-Tool'].filter(Boolean).join(' · '),
         eingabe: { art, ...(alt ? { angebotId: alt.id, _stand: stand(rohA) } : {}), felder, ...(felder.firmaId ? { firmaId: felder.firmaId } : {}) },
       };
     }

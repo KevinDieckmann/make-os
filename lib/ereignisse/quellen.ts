@@ -49,7 +49,9 @@ async function personBezug(k: Kontakt | undefined, crm: () => Promise<CrmBestand
   if (k.eingeschraenkt) return null;
   const c = await crm();
   const { OFFENE_STUFEN } = await import('@/lib/crm/pipeline');
-  const deal = c?.chancen.find(x => OFFENE_STUFEN.includes(x.stufe) && x.kontaktIds.includes(k.id));
+  // 29.10. (Kreislauf W-B6): bei mehreren offenen Deals der mit der jüngsten Aktivität (sonst der zuletzt geänderte) — vorher der erste in der Liste.
+  const zeit = (x: { letzteAktivitaet?: string; geaendert?: string }) => x.letzteAktivitaet ?? x.geaendert ?? '';
+  const deal = c?.chancen.filter(x => OFFENE_STUFEN.includes(x.stufe) && x.kontaktIds.includes(k.id)).sort((a, b) => (zeit(a) < zeit(b) ? 1 : zeit(a) > zeit(b) ? -1 : 0))[0];
   return { kontaktId: k.id, ...(k.firmaId ? { firmaId: k.firmaId } : {}), ...(deal ? { dealId: deal.id } : {}) };
 }
 
@@ -270,7 +272,15 @@ export async function crmEreignisse(vorher: CrmFuerDiff & Partial<Pick<CrmBestan
     // Kundengewinnung (22.10., E7/E11): Events und Kampagnen — eigener Block in ./quellen-kundengewinnung.ts.
     const { crmDiffKundengewinnung } = await import('./quellen-kundengewinnung');
     const l = [...crmDiff(vorher, nachher), ...crmDiffKundengewinnung(vorher, nachher)];
-    return l.length ? (await ereignis(l)).neu : 0;
+    const n = l.length ? (await ereignis(l)).neu : 0;
+    // 29.10. (Kreislauf, Kevin): Mandat beendet → sein Fall wird sofort abgeschlossen (+ Ereignis `fall-abgeschlossen`). Idempotent; das Netz im Fulfillment-Morgenlauf
+    // holt nach, was hier nicht schreiben konnte (`mandatsendeNetz`).
+    const beendet = l.filter(e => e.art === 'mandat-beendet' && e.bezug.mandatId).map(e => e.bezug.mandatId!);
+    if (beendet.length) {
+      const { fallNachMandatsende } = await import('@/lib/fulfillment/prozesse/fall-server');
+      for (const id of beendet) await fallNachMandatsende(id).catch(() => false);
+    }
+    return n;
   } catch { return 0; }
 }
 
@@ -300,6 +310,52 @@ export async function anfrageEreignis(a: { followUpId: string; kontaktId: string
     return (await ereignis({ id: ereignisKennung('crm', 'anfrage', a.followUpId), art: 'neuer-lead', quelle: 'anfrage', bereich: 'business', bezug: { kontaktId: a.kontaktId, followupId: a.followUpId, ...(a.firmaId ? { firmaId: a.firmaId } : {}) } })).neu;
   } catch { return 0; }
 }
+
+// ── Kreislauf Werkstatt (29.10.): neuer Lead von Hand bzw. aus dem Formular, Lead wird MQL ─────────────────────────────────────────────────────
+
+/**
+ * Neuer Lead (29.10.): eine Person wurde von Hand in der Kartei angelegt (`weg` „kartei“) bzw. kam aus dem Formular „Angebot anfordern“ („vertrieb“) — nie beim
+ * Massen-Import, nie aus anderen Wegen (Firmenkarte beim Mandat, Netzwerken, Prospecting haben eigene Ereignisse bzw. Läufe). Eingeschränkte nie. Wirft nie.
+ */
+export async function personNeuEreignis(k: { id: string; firmaId?: string; eingeschraenkt?: unknown }, weg: string): Promise<number> {
+  try {
+    if (k.eingeschraenkt || (weg !== 'kartei' && weg !== 'vertrieb')) return 0;
+    return (await ereignis({ id: ereignisKennung('crm', 'person', k.id, 'neu'), art: 'neuer-lead', quelle: weg === 'vertrieb' ? 'anfrage' : 'kartei', bereich: 'business', stufe: weg,
+      bezug: { kontaktId: k.id, ...(k.firmaId ? { firmaId: k.firmaId } : {}) } })).neu;
+  } catch { return 0; }
+}
+
+/** Neu MQL (rein): Leads, die jetzt MQL sind und es vorher nicht waren — als Ereignisse (Firma bzw. Person). */
+export function mqlDiff(vorher: ReadonlySet<string>, jetzt: readonly { id: string; art: 'firma' | 'person'; firmaId?: string }[]): EreignisEingabe[] {
+  return jetzt.filter(z => !vorher.has(z.id)).map(z => ({
+    id: ereignisKennung('crm', 'lead', z.id, 'mql'), art: 'lead-mql' as const, quelle: (z.art === 'firma' ? 'crm' : 'kartei') as 'crm' | 'kartei', bereich: 'business' as const,
+    bezug: z.art === 'firma' ? { firmaId: z.id } : { kontaktId: z.id, ...(z.firmaId ? { firmaId: z.firmaId } : {}) },
+  }));
+}
+/** Die MQL-Leads des letzten Blicks (nur im Prozess — beim ersten Blick nach dem Start nur gemerkt: nie eine Flut über Altbestand). */
+let mqlStand: { ids: Set<string>; am: number } | null = null;
+const MQL_ABSTAND_MS = 60_000;
+/**
+ * Lead wird MQL (29.10.): die Regel ist abgeleitet (`mqlErreicht`, lib/crm/leads.ts — nur Marketing-Herkunft), darum kein Feld-Diff: die Leads rechnen und mit dem
+ * letzten Blick vergleichen. NUR im Takt des Lauf-Motors, und nur, wenn sich Kartei oder CRM geändert haben (dort gemerkt) — nie im Lese- oder Schreibpfad; dazu
+ * höchstens einmal je Minute (außer `sofort`). Eingeschränkte Personen fehlen (`kontakteFuerVerarbeitung`). Wirft nie.
+ */
+export async function mqlEreignisse(o: { sofort?: boolean; jetzt?: Date } = {}): Promise<number> {
+  try {
+    const jetzt = o.jetzt ?? new Date();
+    if (!o.sofort && mqlStand && jetzt.getTime() - mqlStand.am < MQL_ABSTAND_MS) return 0;
+    const [crm, { kontakteFuerVerarbeitung }, { leads, mqlErreicht }, { localDay }] = await Promise.all([crmLaden(), import('@/lib/crm/verarbeitung'), import('@/lib/crm/leads'), import('@/lib/zeit')]);
+    if (!crm) return 0;
+    const jetztMql = leads(await kontakteFuerVerarbeitung(), crm, localDay(jetzt)).filter(mqlErreicht).map(z => ({ id: z.id, art: z.art, ...(z.firmaId ? { firmaId: z.firmaId } : {}) }));
+    const vorher = mqlStand;
+    mqlStand = { ids: new Set(jetztMql.map(z => z.id)), am: jetzt.getTime() };
+    if (!vorher) return 0;
+    const l = mqlDiff(vorher.ids, jetztMql);
+    return l.length ? (await ereignis(l, { jetzt })).neu : 0;
+  } catch { return 0; }
+}
+/** Nur für Tests: den letzten Blick vergessen. */
+export const _mqlStandLeeren = () => { mqlStand = null; };
 
 // ── „An ZOE geben“ ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -472,7 +528,7 @@ export async function followupErledigtEreignis(f: { id: string; kontaktId?: stri
  * Fulfillment-Fall (rein, nach dem Schreiben des Falls): Schritte, die neu auf „erledigt“ stehen (Kennung mit dem Tag der Erledigung — ein wieder
  * geöffneter und erneut erledigter Schritt meldet sich erneut), und Ziele des Wert-Kontos, deren Erreichung mit dieser Messung 100 % erreicht.
  */
-export function fallDiff(vorher: { knoten: readonly { id: string; status: string }[]; wertKonto?: Record<string, unknown> }, nachher: { knoten: readonly { id: string; status: string; erledigtAm?: string }[]; wertKonto?: Record<string, unknown> }, m: { id: string; firmaId?: string; gesellschaft: string; kontaktIds?: readonly string[] }, erreichung: (e: unknown) => number | null): EreignisEingabe[] {
+export function fallDiff(vorher: { knoten: readonly { id: string; status: string }[]; wertKonto?: Record<string, unknown>; status?: string }, nachher: { knoten: readonly { id: string; status: string; erledigtAm?: string }[]; wertKonto?: Record<string, unknown>; status?: string; geaendert?: string; vorlageId?: string }, m: { id: string; firmaId?: string; gesellschaft: string; kontaktIds?: readonly string[] }, erreichung: (e: unknown) => number | null, abschluss: 'mandatsende' | 'hand' = 'hand'): EreignisEingabe[] {
   const alt = new Map(vorher.knoten.map(k => [k.id, k.status]));
   const bereich = mandatEreignisBereich(m.gesellschaft);
   const basis = { mandatId: m.id, ...(m.firmaId ? { firmaId: m.firmaId } : {}), ...(m.kontaktIds?.[0] ? { kontaktId: m.kontaktIds[0] } : {}) };
@@ -485,16 +541,22 @@ export function fallDiff(vorher: { knoten: readonly { id: string; status: string
     const jetzt = erreichung(e), vorhin = erreichung(vorher.wertKonto?.[ziel]);
     if (jetzt === 100 && vorhin !== 100) raus.push({ id: ereignisKennung('fall', m.id, 'ziel', ziel), art: 'ziel-erreicht', quelle: 'fulfillment', ...bereich, bezug: { ...basis } });
   }
+  // 29.10. (Kreislauf, Kevin: „Mandat beendet → Fall automatisch abschließen“): der Fall steht neu auf „abgeschlossen“ → `fall-abgeschlossen` (Stufe: durch das
+  // Mandatsende bzw. von Hand) — daran starten Nachsorge und Verlängerung in der Werkstatt. Kennung mit dem Tag (wieder geöffnet und erneut geschlossen = neu).
+  if (nachher.status === 'abgeschlossen' && vorher.status !== undefined && vorher.status !== 'abgeschlossen') {
+    raus.push({ id: ereignisKennung('fall', m.id, 'abgeschlossen', (nachher.geaendert ?? '').slice(0, 10)), art: 'fall-abgeschlossen', quelle: 'fulfillment', ...bereich, stufe: abschluss,
+      bezug: { ...basis, ...(nachher.vorlageId ? { vorlageId: nachher.vorlageId } : {}) } });
+  }
   return raus;
 }
 /**
  * Nach dem Schreiben eines Fulfillment-Falls (lib/fulfillment/prozesse/fall-server.ts — die Ausführung bleibt unberührt). Wirft nie. `wirksam` (22.10., B1): die
  * Fälle vorher/nachher MIT abgeleitetem Onboarding (`fallWirksam`) — daraus die Begleit-Ereignisse (Phase, wartet auf Kunde, Bestätigung); ohne `wirksam` wie bisher.
  */
-export async function fallEreignisse(vorher: Parameters<typeof fallDiff>[0], nachher: Parameters<typeof fallDiff>[1], m: Parameters<typeof fallDiff>[2], wirksam?: { vorher: FallFuerBegleitung; nachher: FallFuerBegleitung; heute: string }): Promise<number> {
+export async function fallEreignisse(vorher: Parameters<typeof fallDiff>[0], nachher: Parameters<typeof fallDiff>[1], m: Parameters<typeof fallDiff>[2], wirksam?: { vorher: FallFuerBegleitung; nachher: FallFuerBegleitung; heute: string }, abschluss: 'mandatsende' | 'hand' = 'hand'): Promise<number> {
   try {
     const { zielErreichung } = await import('@/lib/fulfillment/prozesse/wert');
-    const l = fallDiff(vorher, nachher, m, e => zielErreichung(e as never));
+    const l = fallDiff(vorher, nachher, m, e => zielErreichung(e as never), abschluss);
     if (wirksam) {
       const [{ phasenStaende }, { aktiveKnoten }] = await Promise.all([import('@/lib/fulfillment/regeln'), import('@/lib/fulfillment/prozesse/ausfuehrung')]);
       const r = { phasenStaende, aktiveKnoten };

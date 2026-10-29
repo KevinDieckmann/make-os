@@ -119,7 +119,8 @@ export function AblaufTeil({ l, mandateJePhase, speichern }: { l: Leistung; mand
             {darfAnlegen && <Knopf leise onClick={() => setNeuOffen(true)}>Prozess für dieses Produkt anlegen</Knopf>}
           </div>
           <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
-            {paket ? `Ein neuer Kunde dieses Produkts bekommt den Ablauf „${paket.titel}“ als Fall.`
+            {/* 29.10. (Kreislauf, F-B10): der Fall entsteht nicht von selbst — der Morgenlauf schlägt „Fall starten“ vor, angelegt wird per Klick. */}
+            {paket ? `Für einen neuen Kunden dieses Produkts liegt „Fall starten“ mit dem Ablauf „${paket.titel}“ als Vorschlag im Stapel — angelegt wird per Klick (oder am Deal bzw. Mandat „Fall starten“).`
               : wahl?.art === 'prozess' ? `Ein neues Mandat mit diesem Produkt${l.rolle === 'zusatz' || l.rolle === 'beides' ? ' (bzw. dieses Produkt als gebuchtes Zusatzmodul)' : ''} startet den Prozess „${prozess?.titel ?? '…'}“${prozess ? (prozess.status === 'aktiv' ? '.' : prozess.status === 'probelauf' ? ' — im Probelauf zuerst ohne Wirkung (Schatten).' : ' — sobald er veröffentlicht und im Probelauf bzw. aktiv ist.') : '.'}`
               : 'Ohne Ablauf startet ein neuer Kunde ohne Fall — „+ neuer Ablauf“ legt einen Ablauf im Fulfillment mit dem Namen des Produkts an, „Prozess für dieses Produkt anlegen“ einen Prozess in der Werkstatt.'}
           </div>

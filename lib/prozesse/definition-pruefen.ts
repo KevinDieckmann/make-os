@@ -128,6 +128,9 @@ export function knotenBefunde(k: K, d: ProzessDefinition, kx: PruefKontext = {})
         if (w.art === 'datum' && !datumsFelderFuer(fall).includes(w.feld)) raus.push(b('offen', `${titel}: dieses Datum gibt es bei diesem Fall nicht.`, k.id));
         if (w.art === 'ereignis') {
           if (!istEreignisArt(w.ereignis) || !ereignisStartetProzess(w.ereignis)) raus.push(b('offen', `${titel}: auf dieses Ereignis kann ein Prozess nicht warten.`, k.id));
+          // 29.10. (W-B5): auch jedes weitere Ereignis („eines von mehreren“) muss eines sein, auf das ein Prozess warten kann; höchstens 8.
+          if ((w.ereignisse ?? []).some(x => !istEreignisArt(x) || !ereignisStartetProzess(x))) raus.push(b('offen', `${titel}: auf eines der weiteren Ereignisse kann ein Prozess nicht warten.`, k.id, 'ereignisse'));
+          if ((w.ereignisse?.length ?? 0) > 8) raus.push(b('offen', `${titel}: höchstens 8 weitere Ereignisse.`, k.id, 'ereignisse'));
           raus.push(...bedingungenAus(w.bedingungen, rautenFelder(d), titel).befunde.map(y => ({ ...y, knotenId: k.id, feld: 'bedingungen' })), ...wertBefunde(w.bedingungen, d, kx, titel, k.id));
         }
       }

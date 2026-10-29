@@ -6,7 +6,7 @@
 //                        Klick (CRM: `crmVorschlagPlanen` — Art. 18, Werbesperre, Kanal-Ampel, Stände) und den Text des Vorschlags bauen. Nichts zu tun →
 //                        der Lauf geht weiter (Grund am Schritt); kein eigener Weg (kein Ablauf, keine freie Zeit, kein Kalender) → Ersatz „von Hand“.
 //   wirkungUebernehmen   bei der Freigabe (lib/prozesse/lauf-stapel.ts) — NUR aus der Sitzung der freigebenden Person: CRM über `crmVorschlagUebernehmen`
-//                        (dieselben Routen wie ein Klick), Fall über `fallStartenServer`, Termin über den Termin-Schreibweg (POST /api/kalender/termin) mit
+//                        (dieselben Routen wie ein Klick), Fall über `mandatFallStarten` (Paket oder Prozess des Produkts), Termin über den Termin-Schreibweg (POST /api/kalender/termin) mit
 //                        `einladungBestaetigt` — die Freigabe IST die Rückfrage „Einladung an n Personen …?“, der Dienstweg lädt nie ein.
 // Läufe rechnen mit der Person des Vorschlags (für wen er ist) bzw. der Person des Laufs — nie mit dem Inhaber als Rückfall (Regel 5). Nur Business.
 
@@ -69,6 +69,7 @@ export async function wirkungVorlegen(w: VorschlagWirkung, l: Pick<ProzessLauf, 
   try {
     if (w.art === 'crm') return await crmVorlegen(w, l, person, o);
     if (w.art === 'fulfillment') return await fallVorlegen(w, person, o);
+    if (w.art === 'geld') return await geldVorlegen(w);
     return await terminVorlegen(w, person, o);
   } catch (e) {
     console.error(`[prozesse/bausteine] vorlegen — ${e instanceof Error ? e.message.slice(0, 160) : 'Fehler'}`);
@@ -138,8 +139,8 @@ async function fallVorlegen(w: Extract<VorschlagWirkung, { art: 'fulfillment' }>
   if (!crm) return { art: 'fehler', grund: 'voruebergehend', voruebergehend: true };
   const m = await mandatZum(w, crm);
   if (!m) return { art: 'weiter', grund: 'daten-fehlen' };
-  const [{ fulfillmentLesen, fulfillmentAendern }, { vorlageFuerProdukt }, { markeOnboardingVorschlag }, { lies }, { istFulfillmentMandat }] = await Promise.all([
-    import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/vorlagen-anwenden'), import('@/lib/fulfillment/prozesse/server'), import('@/lib/zoe/stapel'), import('@/lib/fulfillment/regeln'),
+  const [{ fulfillmentLesen, fulfillmentAendern }, { ablaufFuerMandat }, { markeOnboardingVorschlag }, { lies }, { istFulfillmentMandat }] = await Promise.all([
+    import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/fall-server'), import('@/lib/fulfillment/prozesse/server'), import('@/lib/zoe/stapel'), import('@/lib/fulfillment/regeln'),
   ]);
   // Mandate mit Fulfillment (25.10.: auch die Privat-Arbeits-Einheit) — eine Privat-Einheit ohne Arbeit bekommt keinen Vorschlag.
   if (!istFulfillmentMandat(m.gesellschaft)) return { art: 'weiter', grund: 'nichts-vorzuschlagen' };
@@ -147,7 +148,8 @@ async function fallVorlegen(w: Extract<VorschlagWirkung, { art: 'fulfillment' }>
   if (faelle.faelle[m.id]) return { art: 'weiter', grund: 'schon-erledigt' };
   // Schlägt der Morgenlauf ihn schon vor (offen im Stapel), nicht noch einmal.
   if ((await lies()).some(v => v.status === 'offen' && v.bezug?.art === 'fulfillment' && v.bezug.id === `p:onboarding:${m.id}`)) return { art: 'weiter', grund: 'schon-erledigt' };
-  const v = vorlageFuerProdukt(vorlagen, m.leistungId);
+  // 29.10. (Kreislauf, F-B3): DIESELBE Regel wie der Fall-Dialog (`startVorbelegung`) — der Prozess des Produkts (Werkstatt), sonst das Paket des Produkts.
+  const v = await ablaufFuerMandat(m, crm, vorlagen);
   if (!v) return { art: 'weiter', grund: 'kein-ablauf' };
   // Die Marke, die auch der Morgenlauf setzt — damit er denselben Fall nicht noch einmal vorschlägt (ein Vorschlag je Mandat).
   await fulfillmentAendern('vorlagen', d => (d.marken[markeOnboardingVorschlag(m.id)] ? { ok: true, datei: d, geaendert: [] } : { ok: true, datei: { ...d, marken: { ...d.marken, [markeOnboardingVorschlag(m.id)]: localDay() } }, geaendert: [markeOnboardingVorschlag(m.id)] }), { art: 'person', person }, o.h).catch(() => null);
@@ -182,18 +184,90 @@ export async function wirkungUebernehmen(person: string, w: VorschlagWirkung, o:
     return r.ok ? { ok: true, text: r.text } : { ok: false, status: status(r.status), fehler: r.fehler };
   }
   if (w.art === 'fulfillment') {
-    const [{ fulfillmentLesen }, { fallStartenServer, FallFehler }] = await Promise.all([import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/fall-server')]);
+    const [{ fulfillmentLesen }, { mandatFallStarten, FallFehler }] = await Promise.all([import('@/lib/fulfillment/speicher'), import('@/lib/fulfillment/prozesse/fall-server')]);
     if (!w.mandatId || !w.vorlageId) return { ok: false, status: 409, fehler: 'Ohne Mandat bzw. Ablauf lässt sich kein Fall starten — nichts angelegt.' };
     if ((await fulfillmentLesen('faelle')).faelle[w.mandatId]) return { ok: true, text: 'Für dieses Mandat läuft schon ein Fall — nichts doppelt angelegt.' };
     try {
-      await fallStartenServer({ mandatId: w.mandatId, vorlageId: w.vorlageId, person });
-      return { ok: true, text: 'Fall angelegt — unter Fulfillment › Fall: Willkommensmail vorbereiten (gesendet wird erst per Klick).' };
+      // 29.10. (Kreislauf, F-B3): EIN Start — Paket oder Prozess des Produkts (`vorlageId` = `pz-…`).
+      const r = await mandatFallStarten({ mandatId: w.mandatId, ablauf: w.vorlageId, person });
+      return { ok: true, text: r.ablauf === 'prozess' ? 'Fall angelegt — Onboarding beginnt; die Schritte kommen aus dem Ablauf des Produkts.' : 'Fall angelegt — unter Fulfillment › Fall: Willkommensmail vorbereiten (gesendet wird erst per Klick).' };
     } catch (e) {
       if (e instanceof FallFehler) return { ok: false, status: e.status, fehler: e.message };
       throw e;
     }
   }
+  if (w.art === 'geld') return geldUebernehmen(person, w);
   return terminUebernehmen(person, w);
+}
+
+// ══ Geld-Bausteine (29.10., Kreislauf W-B2 — Regeln: lib/prozesse/geld-bausteine.ts) ═════════════════════════════════════════════════════════════════
+
+/** Den Finanzplan lesen (nur die Rechnungen) — derselbe Bestand wie das Rechnungswesen. */
+async function rechnungenLesen() {
+  const [{ loadJson }, { sauberFile }] = await Promise.all([import('@/lib/store/local-db'), import('@/lib/finanzen/finanzplan-bestand')]);
+  return sauberFile(await loadJson<import('@/lib/finanzen/finanzplan-bestand').FinanzplanFile>('finanzplan')).rechnungen;
+}
+
+/** Beim Vorlegen: welcher Entwurf gemeint ist (der jüngste des Falls) und der Text — keiner bzw. schon erledigt → der Lauf geht weiter. */
+async function geldVorlegen(w: Extract<VorschlagWirkung, { art: 'geld' }>): Promise<Vorlage> {
+  const crm = await crmLaden();
+  if (!crm) return { art: 'fehler', grund: 'voruebergehend', voruebergehend: true };
+  const { GELD_TEXT, rechnungZumStellen, angebotZumStellen } = await import('./geld-bausteine');
+  const m = w.mandatId ? crm.mandate.find(x => x.id === w.mandatId && !x.geloeschtAm) : undefined;
+  if (w.aktion === 'rechnung-entwurf') {
+    if (!m) return { art: 'weiter', grund: 'daten-fehlen' };
+    return { art: 'vorlegen', titel: `Rechnung erstellen: ${m.kunde}`.slice(0, 200), nachher: `Der Prozess ${GELD_TEXT[w.aktion]}${w.monat ? ` (${w.monat})` : ''} — Mandat „${m.titel}“. Gestellt wird nicht.`, wirkung: w };
+  }
+  if (w.aktion === 'rechnung-stellen') {
+    const id = rechnungZumStellen(await rechnungenLesen(), m?.id);
+    if (!m || !id) return { art: 'weiter', grund: 'daten-fehlen' };
+    return { art: 'vorlegen', titel: `Rechnung stellen: ${m.kunde}`.slice(0, 200), nachher: `Der Prozess ${GELD_TEXT[w.aktion]} — der jüngste Entwurf des Mandats „${m.titel}“. Fehlen Pflichtangaben, bleibt der Vorschlag offen.`, wirkung: { ...w, rechnungId: id } };
+  }
+  const id = angebotZumStellen(crm.angebote ?? [], { ...(w.dealId ? { dealId: w.dealId } : {}), ...(w.mandatId ? { mandatId: w.mandatId } : {}) });
+  const a = id ? (crm.angebote ?? []).find(x => x.id === id) : undefined;
+  if (!a) return { art: 'weiter', grund: 'daten-fehlen' };
+  return { art: 'vorlegen', titel: `Angebot stellen: ${a.titel || 'Entwurf'}`.slice(0, 200), nachher: `Der Prozess ${GELD_TEXT[w.aktion]} — Entwurf „${a.titel || a.id}“.`, wirkung: { ...w, angebotId: a.id } };
+}
+
+/**
+ * Bei der Freigabe (nur aus der Sitzung der Person): über die vorhandenen Schreibwege des Rechnungswesens bzw. des Angebots-Tools — mit der Sicht der Person
+ * (`planZugangFuer`: „nur Business“ sieht und schreibt nur Business-Rechnungen, stellt nie ein Angebot). Fehler (Pflichtangaben, Stand) → der Vorschlag bleibt offen.
+ */
+async function geldUebernehmen(person: string, w: Extract<VorschlagWirkung, { art: 'geld' }>): Promise<Uebernahme> {
+  const [{ planZugangFuer }, { haushaltDesInhabers }] = await Promise.all([import('@/lib/finanzen/haushalt/zugriff'), import('@/lib/zugang/haushalt-inhaber')]);
+  const z = await planZugangFuer(person);
+  if (!z || z.haushalt !== await haushaltDesInhabers()) return { ok: false, status: 403, fehler: 'Rechnungen und Angebote nur im Haushalt des Inhabers — nichts geändert.' };
+  const wer = { art: 'person' as const, person };
+  try {
+    if (w.aktion === 'rechnung-entwurf') {
+      if (!w.mandatId) return { ok: false, status: 409, fehler: 'Ohne Mandat entsteht kein Rechnungsentwurf — nichts angelegt.' };
+      const { entwurfNeu } = await import('@/lib/finanzen/rechnung/server');
+      const r = await entwurfNeu({ quelle: 'mandat', mandatId: w.mandatId, ...(w.monat ? { monat: w.monat } : {}), person, haushalt: z.haushalt, sicht: z.sicht, wer });
+      return { ok: true, text: r.vorhanden ? 'Den Rechnungsentwurf für diesen Monat gibt es schon — nichts doppelt angelegt.' : 'Rechnungsentwurf angelegt — unter Finanzen › Rechnungen prüfen; gestellt wird erst dort bzw. im nächsten Schritt.' };
+    }
+    if (w.aktion === 'rechnung-stellen') {
+      if (!w.rechnungId) return { ok: false, status: 409, fehler: 'Kein Rechnungsentwurf gewählt — nichts gestellt.' };
+      const [{ rechnungStellen }, { fassung }] = await Promise.all([import('@/lib/finanzen/rechnung/server'), import('@/lib/finanzen/finanzplan-bestand')]);
+      const r0 = (await rechnungenLesen()).find(r => r.id === w.rechnungId);
+      if (!r0) return { ok: false, status: 404, fehler: 'Diesen Rechnungsentwurf gibt es nicht mehr — nichts gestellt.' };
+      if (r0.status !== 'geplant') return { ok: true, text: `Die Rechnung ist schon gestellt${r0.nummer ? ` (${r0.nummer})` : ''} — nichts doppelt.` };
+      const r = await rechnungStellen({ id: r0.id, stand: fassung(r0), person, haushalt: z.haushalt, sicht: z.sicht, wer });
+      return { ok: true, text: `Rechnung ${r.rechnung.nummer ?? ''} gestellt — das PDF liegt bei der Rechnung; die Mail an den Kunden bereitet der nächste Schritt vor.`.replace('  ', ' ') };
+    }
+    if (z.sicht === 'business') return { ok: false, status: 403, fehler: 'Angebote stellt ein volles Haushaltsmitglied — nichts gestellt.' };
+    if (!w.angebotId) return { ok: false, status: 409, fehler: 'Kein Angebots-Entwurf gewählt — nichts gestellt.' };
+    const crm = await crmLaden();
+    const a = crm?.angebote?.find(x => x.id === w.angebotId);
+    if (!a) return { ok: false, status: 404, fehler: 'Diesen Angebots-Entwurf gibt es nicht mehr — nichts gestellt.' };
+    if (a.status !== 'entwurf') return { ok: true, text: `Das Angebot ist schon ${a.status} — nichts doppelt.` };
+    const { angebotStellen } = await import('@/lib/crm/angebot-server');
+    const r = await angebotStellen({ id: a.id, person, haushalt: z.haushalt, wer });
+    return { ok: true, text: `Angebot ${r.angebot.nummer ?? ''} gestellt — PDF und Nachfass-Follow-up sind da; die Mail an den Kunden bereitet der nächste Schritt vor.`.replace('  ', ' ') };
+  } catch (e) {
+    const s = (e as { status?: unknown })?.status;
+    if (e instanceof Error && typeof s === 'number') return { ok: false, status: status(s), fehler: e.message };
+    throw e;
+  }
 }
 
 /**

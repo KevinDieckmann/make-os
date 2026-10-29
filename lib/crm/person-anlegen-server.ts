@@ -112,6 +112,8 @@ export async function personAnlegen(e: PersonEingabe, o: { weg: PersonWeg | 'ver
   if (!k) return { ok: false, status: 500, fehler: 'Nicht angelegt.' };
   if (schonInSperre) return { ok: true, kontaktId: k.id, neu: false, kontakt: fuerPerson(k, o.person ?? ''), hinweise: [] };
   if (k.werbesperre) await sperren([k], 'werbesperre', heute); // Sperrliste trägt die neue Person (idempotent)
+  // 29.10. (Kreislauf): neuer Lead — nur von Hand in der Kartei bzw. aus dem Formular „Angebot anfordern“ (nie Import); nach dem Speichern, wirft nie.
+  await import('@/lib/ereignisse/quellen').then(q => q.personNeuEreignis(k, o.weg)).catch(() => 0);
 
   // 5 · Follow-up aus dem nächsten Schritt.
   let followUpId: string | undefined;

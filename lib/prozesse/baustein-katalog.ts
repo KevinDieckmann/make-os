@@ -286,10 +286,19 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
   // ── Angebot, Rechnung ──
   { id: 'angebot.entwurf', name: 'Angebots-Entwurf', satz: 'Bereitet einen Angebots-Entwurf vor — nie gestellt, übernommen per Klick.', anbindung: 'Angebot', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'crm_vorschlag', fest: { art: 'angebot_entwurf' },
     maske: [FIRMA_GESELLSCHAFT] },
-  { id: 'angebot.stellen', name: 'Angebot stellen', satz: 'Schreibt das Angebot fest und schickt es dem Kunden — erst nach der Freigabe.', anbindung: 'Angebot', form: 'nachricht', kategorie: 'aktion', bahn: 'system', rechte: 'aussen', ki: ['crm', 'finanzen'], ansprache: { kanal: 'mail' },
+  // 29.10. (Kreislauf W-B2): „Angebot stellen“ führt nach dem Klick im Stapel selbst aus (`angebotStellen` — Nummer, PDF, Nachfass-Follow-up) statt einer Aufgabe
+  // „von Hand“; die Mail an den Kunden bleibt ein eigener Mail-Entwurf-Schritt.
+  { id: 'angebot.stellen', name: 'Angebot stellen', satz: 'Stellt den jüngsten Angebots-Entwurf des Falls (Nummer, PDF) — erst nach der Freigabe, ein Klick.', anbindung: 'Angebot', form: 'nachricht', kategorie: 'aktion', bahn: 'system', rechte: 'aussen', ki: ['crm', 'finanzen'], ansprache: { kanal: 'mail' },
+    schreibweg: 'Wirkung geld (lib/prozesse/bausteine-server.ts) → angebotStellen (lib/crm/angebot-server.ts) — das Freigabe-Schloss IST der Klick; ohne Entwurf am Deal bzw. Mandat → weiter ohne Vorschlag',
     maske: [AN_FALL] },
   { id: 'rechnung.erfassen', name: 'Rechnung erfassen', satz: 'Erfasst eine Rechnung zur Gesellschaft — erst nach der Freigabe.', anbindung: 'Rechnung', form: 'schritt', kategorie: 'aktion', bahn: 'system', werkzeug: 'erfasse_rechnung',
     maske: [FIRMA_GESELLSCHAFT, TV('beschreibung', 'Leistung')] },
+  { id: 'rechnung.mandat-entwurf', name: 'Rechnung für Mandat erstellen', satz: 'Legt den Rechnungsentwurf des Mandats für den Leistungsmonat an — je Monat höchstens einer, erst nach der Freigabe (ein Klick).', anbindung: 'Rechnung', form: 'schritt', kategorie: 'aktion', bahn: 'system', rechte: 'geld', ki: ['finanzen'],
+    schreibweg: 'Wirkung geld (lib/prozesse/bausteine-server.ts) → entwurfNeu quelle mandat (lib/finanzen/rechnung/server.ts: Honorar, Zahlplan/Raten, anteiliger Monat; vorhanden → derselbe Entwurf) — nie gestellt',
+    maske: [{ id: 'monat', label: 'Leistungsmonat', typ: 'auswahl', optionen: [{ id: 'vorgabe', label: 'nächste fällige Zahlung bzw. laufender Monat' }, { id: 'vormonat', label: 'Vormonat' }], vorgabe: 'vorgabe' }] },
+  { id: 'rechnung.stellen', name: 'Rechnung stellen', satz: 'Stellt den jüngsten Rechnungsentwurf des Mandats (Nummer, PDF) — erst nach der Freigabe, ein Klick. Die Mail bereitet ein eigener Schritt vor.', anbindung: 'Rechnung', form: 'schritt', kategorie: 'aktion', bahn: 'system', rechte: 'geld', ki: ['finanzen'],
+    schreibweg: 'Wirkung geld (lib/prozesse/bausteine-server.ts) → rechnungStellen (lib/finanzen/rechnung/server.ts: Pflichtangaben, Nummernkreis, PDF) — ohne Entwurf → weiter ohne Vorschlag',
+    maske: [] },
   // ── Glocke, Telegram (nur intern bzw. neutral an die eigene Person) ──
   { id: 'glocke.melden', name: 'Glocke', satz: 'Meldet etwas in der Glocke einer Person (nur intern).', anbindung: 'Glocke', form: 'nachricht', kategorie: 'aktion', bahn: 'system', rechte: 'intern', ki: [],
     maske: [WER('An', true), TV('text', 'Text')] },
@@ -326,7 +335,10 @@ export const BAUSTEIN_KATALOG: readonly KatalogEintrag[] = [
     maske: [{ id: 'feld', label: 'Datum', typ: 'auswahl', quelle: 'datumsfeld', pflicht: true }, { id: 'versatzTage', label: 'Tage (negativ = vorher)', typ: 'zahl', min: -365, max: 365 },
       { id: 'werktage', label: 'Werktage zählen (Mo–Fr ohne Feiertage NRW)', typ: 'ja-nein', vorgabe: false }, HOECHSTENS()] },
   { id: 'warten.ereignis', name: 'Warten auf Ereignis', satz: 'Wartet, bis ein Ereignis zum Fall passiert — höchstens n Tage.', anbindung: 'Ablauf', form: 'warten', kategorie: 'warten', bahn: 'system', rechte: 'lesen', ki: [], feld: 'warten',
-    maske: [{ id: 'ereignis', label: 'Ereignis', typ: 'auswahl', quelle: 'ereignis', pflicht: true }, BEDINGUNGEN(), VERKNUEPFUNG, HOECHSTENS(false),
+    maske: [{ id: 'ereignis', label: 'Ereignis', typ: 'auswahl', quelle: 'ereignis', pflicht: true },
+      // 29.10. (Kreislauf W-B5): „eines von mehreren“ — der Lauf geht weiter, sobald EINES dieser Ereignisse (oder das obere) zum Fall passiert.
+      { id: 'ereignisse', label: 'oder eines davon', typ: 'mehrfach', quelle: 'ereignis', hilfe: 'Weitere Ereignisse — eines genügt (z. B. Antwort auf das Angebot ODER Deal in neuer Stufe).' },
+      BEDINGUNGEN(), VERKNUEPFUNG, HOECHSTENS(false),
       { id: 'hoechstensStunden', label: 'Höchstens (Stunden)', typ: 'zahl', min: 1, max: PROZESS_GRENZEN.wartenStundenMax, hilfe: 'Statt Tagen — z. B. „Antwort binnen 4 Stunden“.' },
       { id: 'arbeitszeit', label: 'Arbeitszeit zählen (Werktage, 9–18 Uhr)', typ: 'ja-nein', vorgabe: false }] },
 

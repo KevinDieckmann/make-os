@@ -92,15 +92,16 @@ export function produktMandate<M extends MandatTeil>(prozessId: string, crm: { m
 
 /**
  * Mandate, deren Ablauf ein Prozess der Werkstatt IST (Kevin 22.10.: „Dort ausblenden“ — im Fulfillment kein Kandidat „noch kein Fall“ mehr, nichts doppelt): es gibt
- * einen Lauf (scharf ODER Probelauf/Schatten, auch fertig — nur nicht abgebrochen) mit Fall = dieses Mandat des Prozesses, auf den das HAUPTprodukt des Mandats zeigt.
+ * einen SCHARFEN Lauf (auch fertig — nur nicht abgebrochen) mit Fall = dieses Mandat des Prozesses, auf den das HAUPTprodukt des Mandats zeigt.
+ * 29.10. (Kreislauf, F-B1): ein Probelauf/Schatten zählt NICHT mehr — er legt keine Akte an, das Mandat bliebe sonst ohne Fall und ohne Vorschlag „Fall starten“.
  * Zusatzmodule zählen nicht (ihr Prozess ersetzt den Ablauf des Hauptprodukts nicht); ohne Lauf (Entwurf, noch nicht gestartet) bleibt das Mandat Kandidat. Rein.
  */
-export function mandateMitProduktLauf(laeufe: readonly Pick<ProzessLauf, 'prozessId' | 'fall' | 'status'>[], crm: { mandate: readonly Pick<Mandat, 'id' | 'leistungId'>[]; leistungen: Katalog }): Set<string> {
+export function mandateMitProduktLauf(laeufe: readonly (Pick<ProzessLauf, 'prozessId' | 'fall' | 'status'> & Partial<Pick<ProzessLauf, 'modus'>>)[], crm: { mandate: readonly Pick<Mandat, 'id' | 'leistungId'>[]; leistungen: Katalog }): Set<string> {
   const raus = new Set<string>();
   if (!laeufe.length) return raus;
   const haupt = new Map(crm.mandate.map(m => [m.id, prozessDesProdukts(crm.leistungen, m.leistungId)] as const));
   for (const l of laeufe) {
-    if (l.status === 'abgebrochen' || l.fall.art !== 'mandat' || !l.fall.id) continue;
+    if (l.status === 'abgebrochen' || l.modus === 'schatten' || l.fall.art !== 'mandat' || !l.fall.id) continue;
     if (haupt.get(l.fall.id) === l.prozessId) raus.add(l.fall.id);
   }
   return raus;

@@ -42,6 +42,8 @@ export const KG_FALL_FELDER: Readonly<Record<FallArt, readonly KgFeld[]>> = {
     f('deal.ampel-mail', 'Mail-Ampel (Hauptkontakt)', 'text', 'kanalStatus(…, mail) des Hauptkontakts (lib/crm/recht.ts)'),
     f('deal.nachfass-followup', 'Nachfass-Follow-up offen', 'ja-nein', 'Follow-up fu-<angebot> offen (lib/crm/angebot-server.ts)'),
     f('deal.offen', 'Deal offen', 'ja-nein', 'OFFENE_STUFEN (lib/crm/pipeline.ts)'),
+    // 29.10. (Kreislauf W-B5): das jüngste Angebot des Deals ist angenommen bzw. abgelehnt — Ziel von „Angebot nachfassen“ (V10).
+    f('deal.angebot-entschieden', 'Angebot entschieden', 'ja-nein', 'jüngstes Angebot des Deals angenommen bzw. abgelehnt (CRM-Bestand `angebote`, ohne „ersetzt“)'),
   ],
   mandat: [
     f('mandat.ampel', 'Ampel des Mandats', 'text', 'mandatLage (lib/crm/kunden.ts) — gruen · gelb · rot'),

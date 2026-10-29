@@ -34,6 +34,10 @@
 //   rechnung-storniert     Storno einer gestellten Rechnung (Stornorechnung mit PDF, Altbestand ohne PDF, Finanzplan-Weg)
 //   rechnung-ueberfaellig  Morgenlauf neben den Mahnaufgaben: eine Mahnstufe wird fällig (Stufe = 1 · 2 · 3) — je Rechnung und Stufe einmal
 //   angebot-abgelaufen     „gültig bis“ verstrichen — dort, wo der Status gespeichert wird (lib/crm/angebot-server.ts `ablaufNachziehen`)
+// Kreislauf Werkstatt (29.10., „Alle Automatisierungen kommen aus der Werkstatt“):
+//   lead-mql               Firmen- bzw. Personen-Lead erreicht MQL (CRM- bzw. Kartei-Diff, EINE Regel `mqlErreicht` aus lib/crm/leads.ts — nur Marketing-Herkunft)
+//   neuer-lead             zusätzlich: Person von Hand in der Kartei angelegt (nie beim Massen-Import) und Formular „Angebot anfordern“ (neue Person)
+//   fall-abgeschlossen     Fulfillment-Fall neu auf „abgeschlossen“ — Stufe `mandatsende` (automatisch, wenn das Mandat endet) bzw. `hand`
 
 import type { SkillEreignis } from '@/lib/agenten/typen';
 
@@ -76,6 +80,8 @@ export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
   'fall-haengt': 'Im Fall hängt etwas', 'kunde-geliefert': 'Kunde hat geliefert',
   // ── Kreislauf Geld (29.10. — Quellen in ./quellen.ts) ──
   'rechnung-storniert': 'Rechnung storniert', 'rechnung-ueberfaellig': 'Rechnung überfällig', 'angebot-abgelaufen': 'Angebot abgelaufen',
+  // ── Kreislauf Werkstatt (29.10.) ──
+  'lead-mql': 'Lead wird MQL', 'fall-abgeschlossen': 'Fall abgeschlossen',
   // ── Kundengewinnung (22.10., E2/E3/E5/E6/E7/E10/E11 — Quellen in ./quellen-kundengewinnung.ts) ──
   ...EREIGNIS_NAME_KUNDENGEWINNUNG,
 };
@@ -90,6 +96,8 @@ export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'ne
   'fall-phase', 'fall-wartet-kunde', 'abstimmung-bestaetigt', 'fall-haengt', 'kunde-geliefert',
   // Kreislauf Geld (29.10.)
   'rechnung-storniert', 'rechnung-ueberfaellig', 'angebot-abgelaufen',
+  // Kreislauf Werkstatt (29.10.)
+  'lead-mql', 'fall-abgeschlossen',
   // Kundengewinnung (22.10.): ein eigener Block — jede Art hat ihre Quelle in ./quellen-kundengewinnung.ts.
   ...EREIGNISSE_KUNDENGEWINNUNG];
 /** Arten, die nur intern etwas anstoßen (kein Skill-Auslöser). */

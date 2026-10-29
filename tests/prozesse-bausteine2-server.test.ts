@@ -40,9 +40,12 @@ vi.mock('@/lib/kalender/google/ziel', async () => ({
   ...await vi.importActual<object>('@/lib/kalender/google/ziel'),
   kalenderZiel: async () => ({ kalender: 'MAKE Probe (Google)', quelle: 'google' }),
 }));
+// 29.10. (Kreislauf F-B3): EIN Start für jeden Fall — `ablaufFuerMandat` (Regel `startVorbelegung`) und `mandatFallStarten` statt Paket-Zuordnung + `fallStartenServer`.
 vi.mock('@/lib/fulfillment/prozesse/fall-server', async () => ({
   ...await vi.importActual<object>('@/lib/fulfillment/prozesse/fall-server'),
   fallStartenServer: async (e: Record<string, unknown>) => { nach.faelle.push(e); return { mandatId: e.mandatId }; },
+  mandatFallStarten: async (e: Record<string, unknown>) => { nach.faelle.push({ mandatId: e.mandatId, vorlageId: e.ablauf, person: e.person }); return { fall: { mandatId: e.mandatId }, art: 'neu', ablauf: 'paket', laeufe: 0 }; },
+  ablaufFuerMandat: async (m: { leistungId?: string }) => (m.leistungId === 'l-1' ? { art: 'paket', id: 'vl-1', titel: 'Beispiel-Ablauf' } : null),
 }));
 vi.mock('@/lib/fulfillment/prozesse/vorlagen-anwenden', async () => ({
   ...await vi.importActual<object>('@/lib/fulfillment/prozesse/vorlagen-anwenden'),
@@ -247,7 +250,7 @@ describe('Anfrage übernehmen — aus einem Webhook-Eingang', () => {
 });
 
 describe('Fall starten — über den Fulfillment-Weg', () => {
-  it('Ablauf aus der Produkt-Karte → Vorschlag; Freigabe startet den Fall (fallStartenServer) als die Person', async () => {
+  it('Ablauf aus der Produkt-Karte → Vorschlag; Freigabe startet den Fall (mandatFallStarten) als die Person', async () => {
     const id = await start(FALL, 'f1', { art: 'deal', id: 'ch-g' });
     await voran(id);
     const v = await wartetAuf(id);

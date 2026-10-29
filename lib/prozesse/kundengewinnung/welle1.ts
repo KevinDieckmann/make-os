@@ -29,7 +29,8 @@ const V09A: KgTeil = {
       ] },
       { titel: 'Nachhalten', schritte: [
         S.dealSchritt('a3', 'Nächsten Schritt setzen', 2, 'Nächster Schritt (aus dem Vorschlag)'),
-        S.wartenEreignis('a4', 'Bewegung abwarten', 'deal-stufe', 5, { zweige: { abgelaufen: 'a7' } }),
+        // 29.10. (W-B5): Bewegung = neue Stufe ODER erledigtes Follow-up ODER eigene Antwort an den Kontakt.
+        S.wartenEreignis('a4', 'Bewegung abwarten', 'deal-stufe', 5, { auch: ['followup-erledigt', 'antwort-gesendet'], zweige: { abgelaufen: 'a7' } }),
         S.glocke('a7', 'Eskalieren', 'Ein Deal bewegt sich nicht — bitte ansehen.', EIGNER),
         S.ziel('ez', 'Deal hat einen nächsten Schritt'),
       ] },
@@ -168,22 +169,24 @@ const V12: KgVorlage = {
     beschreibung: 'Ohne Lücke von „gewonnen“ zum Kickoff: Mandat (ein Klick), acht Übergabe-Blöcke, Vertrag, Fall-Start, Willkommen, Kickoff — danach führt der Fulfillment-Prozess.',
     startKriterium: 'Ein Business-Deal wechselt auf „gewonnen“ (auch über ein angenommenes Angebot).', endKriterium: 'Fall gestartet, Willkommen gesendet, Kickoff terminiert.',
     zettel: STANDARD_ABBRUCH,
+    // 29.10. (Kreislauf W-B5): Willkommen ZUERST — vorher warteten Fall-Start und Willkommens-Mail hinter den Aufgaben „Übergabe vervollständigen“ und
+    // „Vertrag unterschreiben lassen“ (ein Lauf wartet auf jede Aufgabe), die 24-Stunden-Uhr lief ab. Jetzt: Mandat → Fall → Willkommen, danach Übergabe und Kickoff.
     phasen: [
-      { titel: 'Mandat & Übergabe', schritte: [
+      { titel: 'Mandat & Fall', schritte: [
         S.ereignis('t', 'Deal gewonnen', 'deal-stufe', [B.ist('ereignis.stufe', 'gewonnen')]),
         S.regel('a1', 'Mandat schon da?', [B.ist('deal.mandat-da', true)], { zweige: { nein: 'a2' } }),
         S.mandat('a2', 'Mandat anlegen', { schloss: { nein: 'a2g' } }),
         S.glocke('a2g', 'Mandat abgelehnt', 'Das Mandat zum gewonnenen Deal wurde nicht angelegt — bitte ansehen.', EIGNER, { zweige: { ja: 'e0' } }),
+        S.fallStarten('a5', 'Fall starten'),
+        S.abbruch('e0', 'Ohne Mandat beendet'),
+      ] },
+      { titel: 'Willkommen & Übergabe', schritte: [
+        S.regel('a6', 'Darf die Willkommens-Mail raus?', [B.ist('deal.ampel-mail', 'gruen')], { zweige: { nein: 'a6p' } }),
+        S.aufgabe('a6p', 'Persönlich begrüßen', { titel: 'Persönlich begrüßen (Mail nicht frei)', fristTage: 1 }, { zweige: { ja: 'a3' } }),
+        S.mail('a7', 'Willkommen in 24 Stunden', { betreff: 'Willkommen — so starten wir', text: '{{kontakt.gruss}},\n\nschön, dass wir mit „{{deal.titel}}“ starten. In den nächsten Tagen melden wir uns mit dem Termin für den Auftakt.' }),
         S.aufgabe('a3', 'Übergabe vervollständigen', { titel: 'Übergabe vervollständigen (acht Blöcke)', fristTage: 2, prioritaet: 'high', beschreibung: 'Kunde · Umfang · Zeit · Geld · Personal · Risiken · Erwartungen · Kickoff.' }),
         S.regel('a4', 'Vertrag unterschrieben?', [B.ist('deal.vertrag-unterschrieben', true)], { zweige: { nein: 'a4v' } }),
         S.aufgabe('a4v', 'Vertrag unterschreiben lassen', { titel: 'Vertrag unterschreiben lassen', fristTage: 5, prioritaet: 'high' }),
-        S.abbruch('e0', 'Ohne Mandat beendet'),
-      ] },
-      { titel: 'Start', schritte: [
-        S.fallStarten('a5', 'Fall starten'),
-        S.regel('a6', 'Darf die Willkommens-Mail raus?', [B.ist('deal.ampel-mail', 'gruen')], { zweige: { nein: 'a6p' } }),
-        S.aufgabe('a6p', 'Persönlich begrüßen', { titel: 'Persönlich begrüßen (Mail nicht frei)', fristTage: 1 }, { zweige: { ja: 'a8' } }),
-        S.mail('a7', 'Willkommen in 24 Stunden', { betreff: 'Willkommen — so starten wir', text: '{{kontakt.gruss}},\n\nschön, dass wir mit „{{deal.titel}}“ starten. In den nächsten Tagen melden wir uns mit dem Termin für den Auftakt.' }),
         S.einladung('a8', 'Kickoff terminieren', { titel: 'Auftakt', dauerMin: 60, gaeste: AN_ANSPRECHPARTNER }),
         S.ziel('ez', 'Startklar — weiter im Fulfillment'),
       ] },

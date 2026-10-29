@@ -16,7 +16,7 @@ import { istBusinessMandat, istFulfillmentMandat, bereichsKennzeichen, mandatsEn
 import { STAPEL_GRUPPE } from '../grenzen';
 import { localDay } from '@/lib/zeit';
 import { tagPlus } from '@/lib/kalender/zeit';
-import { fallUmfeld, ableitungFuer, fallStartenServer, FallFehler } from './fall-server';
+import { fallUmfeld, ableitungFuer, mandatFallStarten, FallFehler } from './fall-server';
 import { fallFreigaben } from './fall';
 import { fallWirksam, onboardingStand, onboardingZaehlung, willkommenUhr } from './onboarding';
 import { cockpitZeile, handgriffKnoten, type CockpitZeile, type HaengerArt } from './cockpit';
@@ -336,10 +336,13 @@ export async function onboardingVorschlaegeKern(h: string, heute: string, o: { s
   const { WEG } = await import('@/lib/wege');
   const vorschlaege: string[] = [];
   const neueMarken: Record<string, string> = {};
+  const { ablaufFuerMandat } = await import('./fall-server');
+  const produktProzesse = await (await import('@/lib/prozesse/produkt-laeufe-server')).produktProzesseLesen(crm);
   for (const k of kandidaten) {
     const m = crm.mandate.find(x => x.id === k.mandatId)!;
     const person = await vorschlagPerson(m);
-    const v = vorlageFuerProdukt(vorlagen, m.leistungId);
+    // 29.10. (Kreislauf, F-B3): DIESELBE Regel wie der Fall-Dialog (`startVorbelegung`) — der Prozess des Produkts, sonst sein Paket.
+    const v = await ablaufFuerMandat(m, crm, vorlagen, produktProzesse);
     const x = await lege({
       werkzeug: WERKZEUG.onboarding, gruppe: STAPEL_GRUPPE, titel: `Fall starten: ${m.kunde}`.slice(0, 200),
       nachher: v ? `Fall nach „${v.titel}“ anlegen — die Willkommensmail bereitest du danach vor, gesendet wird erst per Klick` : 'Fall anlegen — vorher dem Produkt einen Ablauf zuordnen (Produkte & Mandate › Produkte)',
@@ -372,6 +375,8 @@ async function prozesseMorgenlaufRest(h: string, heute: string, weg: import('@/l
     const [ue, { onboardingBild }] = await Promise.all([import('@/lib/prozesse/ueberfuehrung-server'), import('@/lib/prozesse/system-schritte-server')]);
     await ue.vergleichMeldenServer('sp-uebergabe', 'alt', heute, onboardingBild(ob.soll, heute));
   }
+  // 29.10. (Kreislauf, Kevin): Mandat beendet → Fall abgeschlossen — das Netz hinter dem CRM-Schreibweg (ab Einführung, nie rückwirkend). Wirft nie.
+  await (await import('./fall-server')).mandatsendeNetz(h, heute).catch(() => 0);
   const enden: Record<string, string | null> = Object.fromEntries(crm.mandate.map(m => [m.id, mandatsEnde(m)]));
   const nachsorge = nachsorgeFaellig({ faelle: Object.values(faelle.faelle), enden, tage: vorlagen.einstellungen.nachsorgeTage, heute });
   let n = ob.vorschlaege.length;
@@ -496,14 +501,13 @@ export const PROZESSE_STAPEL: StapelArtFreigabe = {
         const faelle = await fulfillmentLesen('faelle');
         if (faelle.faelle[mandatId]) text = 'Für dieses Mandat läuft schon ein Fall — nichts doppelt angelegt.';
         else {
-          const vorlageId = (typeof opt.eingabe?.vorlageId === 'string' ? opt.eingabe.vorlageId : undefined) ?? (typeof v.eingabe.vorlageId === 'string' ? v.eingabe.vorlageId : undefined) ?? await (async () => {
-            const { ladeCrm } = await import('@/lib/crm/speicher');
-            const m = (await ladeCrm()).mandate.find(x => x.id === mandatId);
-            return vorlageFuerProdukt(await fulfillmentLesen('vorlagen'), m?.leistungId)?.id;
-          })();
-          if (!vorlageId) { await loslassen(v.id); return { ok: false, status: 409, fehler: 'Erst dem Produkt einen Ablauf zuordnen (Produkte & Mandate › Produkte) — oder in „Heute im Fulfillment“ bzw. am Deal „Fall starten“ und den Ablauf wählen.' }; }
-          await fallStartenServer({ mandatId, vorlageId, person });
-          text = 'Fall angelegt — unter Fulfillment › Fall: Willkommensmail vorbereiten (gesendet wird erst per Klick).';
+          // 29.10. (Kreislauf, F-B3): EIN Start für jeden Fall (`mandatFallStarten`) — gewählter Ablauf (Paket ODER Prozess des Produkts), sonst die Regel
+          // `startVorbelegung`; ohne Ablauf 409 (der Vorschlag bleibt offen).
+          const gewaehlt = (typeof opt.eingabe?.vorlageId === 'string' ? opt.eingabe.vorlageId : undefined) ?? (typeof v.eingabe.vorlageId === 'string' ? v.eingabe.vorlageId : undefined);
+          const r = await mandatFallStarten({ mandatId, ...(gewaehlt ? { ablauf: gewaehlt } : {}), person });
+          text = r.ablauf === 'prozess'
+            ? 'Fall angelegt — Onboarding beginnt; die Schritte kommen aus dem Ablauf des Produkts.'
+            : 'Fall angelegt — unter Fulfillment › Fall: Willkommensmail vorbereiten (gesendet wird erst per Klick).';
         }
       } else {
         const art = NACHSORGE_ARTEN.includes(v.eingabe.art as NachsorgeArt) ? v.eingabe.art as NachsorgeArt : 'checkin';

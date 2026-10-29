@@ -310,7 +310,10 @@ export type WartenRegel =
   | { art: 'dauer'; tage: number; stunden?: number; arbeitszeit?: boolean }
   /** `werktage` (22.10., optional): der Versatz zählt Werktage NRW — dieselbe Regel wie der Datums-Auslöser (lib/prozesse/datum-start.ts `stichtagVon`). */
   | { art: 'datum'; feld: DatumsFeld; versatzTage?: number; hoechstensTage: number; werktage?: boolean }
-  | { art: 'ereignis'; ereignis: SkillEreignis; bedingungen?: Bedingung[]; verknuepfung?: Verknuepfung; hoechstensTage: number; hoechstensStunden?: number; arbeitszeit?: boolean };
+  /** `ereignisse` (29.10., Kreislauf W-B5, optional): weitere Arten — der Lauf geht weiter, sobald EINES davon (oder `ereignis`) zum Fall passiert. Fehlt = nur `ereignis`. */
+  | { art: 'ereignis'; ereignis: SkillEreignis; ereignisse?: SkillEreignis[]; bedingungen?: Bedingung[]; verknuepfung?: Verknuepfung; hoechstensTage: number; hoechstensStunden?: number; arbeitszeit?: boolean };
+/** Alle Arten, auf die ein „Warten auf Ereignis“ hört (die erste zuerst, ohne Doppelte) — EINE Stelle für Motor, Prüfung und Anzeige. */
+export const wartenArten = (w: { ereignis: SkillEreignis; ereignisse?: readonly SkillEreignis[] }): SkillEreignis[] => [...new Set([w.ereignis, ...(w.ereignisse ?? [])])];
 /**
  * Schleife „je Eintrag einer Liste“: ruft je Eintrag (je Fall) einen veröffentlichten Teilprozess auf. `liste` = `abfrage:<Knoten>` (Ergebnis einer
  * CRM-Abfrage dieses Prozesses) oder eine Liste am Fall. Harte Obergrenze JE LAUF: mehr Einträge werden nie still gekürzt — der Rest bleibt mit

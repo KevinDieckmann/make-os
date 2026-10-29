@@ -125,6 +125,8 @@ const V10: KgVorlage = {
   ],
   offen: [],
   demo: 'Das Saat-Angebot ist seit 6 Werktagen gestellt, ohne Antwort: ein Anruf-Leitfaden liegt im Stapel, die Erinnerung ist 3 Tage vor Ablauf geplant.',
+  // 29.10. (W-B5): Angebot angenommen bzw. abgelehnt oder Deal geschlossen → der Lauf endet, auch mitten im Warten (keine Erinnerung an ein entschiedenes Angebot).
+  ziel: { bedingungen: [B.ist('deal.angebot-entschieden', true), B.ist('deal.offen', false)], verknuepfung: 'oder' },
   teile: [],
   definition: prozess({
     id: 'kg-v10', titel: 'Angebot nachfassen', bereich: 'sales', fallArt: 'deal',
@@ -138,7 +140,9 @@ const V10: KgVorlage = {
         S.followup('a1f', 'Nachfass-Follow-up sichern', { text: 'Angebot nachfassen', inTagen: 5 }),
       ] },
       { titel: 'Nachfassen & entscheiden', schritte: [
-        S.wartenEreignis('a2', 'Reaktion abwarten', 'neue-mail', 5, { arbeitszeit: true, zweige: { abgelaufen: 'a4' } }),
+        // 29.10. (Kreislauf W-B5): wartet auf eine Mail ODER die Antwort aufs Angebot ODER eine neue Stufe des Deals — ist schon entschieden, endet der Lauf.
+        S.wartenEreignis('a2', 'Reaktion abwarten', 'neue-mail', 5, { arbeitszeit: true, auch: ['angebot-antwort', 'deal-stufe'], zweige: { abgelaufen: 'a4' } }),
+        S.regel('a2e', 'Schon entschieden?', [B.ist('deal.angebot-entschieden', true), B.ist('deal.offen', false)], { oder: true, zweige: { ja: 'ea', nein: 'a3' } }),
         S.text('a4', 'Nachfassen am Telefon', { art: 'anruf_leitfaden', kanal: 'telefon', anlass: 'Gestelltes Angebot' }, { zweige: { ja: 'a5' } }),
         S.mensch('a3', 'Frage oder Änderungswunsch?', 'Ist die Antwort eine Frage bzw. ein Änderungswunsch (ja) — oder schon Zusage bzw. Absage (nein, dann in der Angebots-Ansicht setzen)?', ZUSTAENDIG, { zweige: { ja: 'a6', nein: 'ea' }, frist: 2 }),
         S.ziel('ea', 'Entschieden — weiter über „Gewonnen“ bzw. „Verloren“'),
