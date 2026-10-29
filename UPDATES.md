@@ -20,6 +20,13 @@ LOKAL auf dem Server, Rendern auf dem Server (Server wird größer), „das Maxi
   Klick zu Reels mit Untertiteln, KI-Schnitt, Hook und Beschriftung und liegen als Entwurf im nächsten freien Termin; Glocke; raus erst nach Freigabe); **Wann wirkt es?**
   (beste Wochentage/Uhrzeiten aus den eigenen Zahlen ab 8 Beiträgen, Uhrzeit übernehmen per Klick); Medien im Beitrag direkt **freigeben**. Neue optionale Felder
   `SocialFolge.beschriftung`, `Redaktionsplan.autoReel`/`rohAlbum`, `WerkstattAuftrag.auto`.
+- **Teil 3 — Antworten durch ZOE (Kevin: „automatisiert bei unseren eigenen kommentieren … nicht, dass wir gesperrt werden“; Fakten
+  `research/social/FAKTEN_AUTO_KOMMENTARE.md`):** je Kanal Aus · Vorschlag (Vorgabe) · Auto. Auto antwortet SELBST nur auf Fragen und freundliche Kommentare unter
+  eigenen Beiträgen (DMs nur mit eigenem Schalter, im 24-h-Fenster) — Kritik, Beschwerden, Gesundheit/Geld/Preise, Spam und Unklares werden Entwürfe für euch; keine fast
+  gleichen Antworten, Tageslimits, 90 s Abstand, Not-Aus; KI-Hinweis in der ersten automatischen DM und Zeichen am Ende jeder automatischen Kommentar-Antwort (KI-VO Art. 50).
+  „Bei anderen kommentieren“: Beitrags-Link (+ optional Text) → Entwurf → kopieren, Beitrag öffnen, selbst posten, abhaken (Ziel je Tag) — automatisch bei anderen geht
+  per Instagram-Schnittstelle nicht und ist bei LinkedIn/YouTube verboten (Sperrgefahr). Bei einer Personenmarke schaltet „Auto“ nur die Person selbst ein.
+  Offen (am echten Konto prüfen): genauer Wortlaut der Meta-Spam-Regeln/Frequenzgrenzen; ob Instagram „Zugriff auf Nachrichten erlauben“ verlangt.
 - **Server (Einmal-Schritte, erst mit dem Update):**
   1. **Server vergrößern** (Hetzner Cloud Console › Server › Rescale): mindestens 2 vCPU / 4 GB (z. B. CX22 → CX32). Danach in `/srv/make-os/app/.env`
      `MAKE_OS_APP_MEM=2560m` setzen und `docker compose up -d app`. Ohne Vergrößerung rendert die Werkstatt trotzdem, die App wird dabei aber spürbar langsamer.

@@ -2,7 +2,9 @@
 // GET  → Fäden der Kanäle, die diese Person sieht (Kommentare je Beitrag, DMs je Gegenüber), mit Stand des letzten Abholens.
 // POST { aktion } — nur eine angemeldete Person (Dienstweg 403), Bau-Kennung:
 //   abholen { kanalId } · antworten { kanalId, faden, text, antwortAuf? } (per Klick; Not-Aus, Tageslimits, Personenmarke nur die Person,
-//   DM nur im 24-h-Fenster) · vorschlag { kanalId, faden } (ZOE, `modellSchranke`, Text Dritter gekapselt) · gelesen/erledigt { kanalId, faden }.
+//   DM nur im 24-h-Fenster) · vorschlag { kanalId, faden } (ZOE, `modellSchranke`, Text Dritter gekapselt) · gelesen/erledigt { kanalId, faden }
+//   · fremd-entwurf { kanalId, link, text? } (Kommentar-Entwurf für den Beitrag eines ANDEREN Accounts — gepostet wird von Hand) · fremd-erledigt/-weg { kanalId, id }.
+// Automatische Antworten schickt nur der Takt (lib/social/community-agent.ts, Modus „auto“ am Kanal).
 // Nichts geht automatisch raus.
 import { NextResponse } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -12,7 +14,7 @@ import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { ladeSocial } from '@/lib/social/server';
 import { socialFuerPerson } from '@/lib/social/daten';
-import { antwortVorschlag, communityAbholen, communityAntworten, fadenMarkieren, faedenAus, ladeCommunity } from '@/lib/social/community';
+import { antwortVorschlag, communityAbholen, communityAntworten, fadenMarkieren, faedenAus, ladeCommunity, fremdEntwurf, fremdMarkieren } from '@/lib/social/community';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,7 +25,14 @@ async function lage(person: string) {
   const sicht = socialFuerPerson(await ladeSocial(), person);
   const ids = new Set(sicht.kanaele.filter(k => k.plattformen.includes('instagram')).map(k => k.id));
   const d = await ladeCommunity();
-  return { faeden: faedenAus(d, ids), abgeholt: Object.fromEntries(Object.entries(d.abgeholt ?? {}).filter(([k]) => ids.has(k))) };
+  const faeden = faedenAus(d, ids);
+  const sichtbar = new Set(faeden.map(f => f.id));
+  const alle = new Set(sicht.kanaele.map(k => k.id));
+  return {
+    faeden, abgeholt: Object.fromEntries(Object.entries(d.abgeholt ?? {}).filter(([k]) => ids.has(k))),
+    entwuerfe: Object.fromEntries(Object.entries(d.entwuerfe ?? {}).filter(([f]) => sichtbar.has(f))),
+    fremd: (d.fremd ?? []).filter(f => alle.has(f.kanalId)),
+  };
 }
 
 export async function GET(req: Request) {
@@ -42,6 +51,15 @@ export async function POST(req: Request) {
   const sicht = socialFuerPerson(await ladeSocial(), z.person);
   const kanal = sicht.kanaele.find(k => k.id === b.kanalId);
   if (!kanal) return fehler(404, 'Kanal nicht gefunden.');
+  if (b.aktion === 'fremd-entwurf') {
+    const schranke = modellSchranke(req); if (schranke) return schranke;
+    const r = await fremdEntwurf(z.person, kanal, String(b.link ?? '').trim(), typeof b.text === 'string' ? b.text : '');
+    return r.ok ? NextResponse.json({ ok: true, ki: true, ...(await lage(z.person)) }) : fehler(r.status, r.fehler);
+  }
+  if (b.aktion === 'fremd-erledigt' || b.aktion === 'fremd-weg') {
+    const ok = await fremdMarkieren(String(b.id ?? ''), kanal.id, b.aktion === 'fremd-weg' ? 'weg' : 'erledigt');
+    return ok ? NextResponse.json({ ok: true, ...(await lage(z.person)) }) : fehler(404, 'Eintrag nicht gefunden.');
+  }
   const fadenId = typeof b.faden === 'string' ? b.faden : '';
   const meinFaden = fadenId.startsWith(`dm~${kanal.id}~`) || fadenId.startsWith(`km~${kanal.id}~`);
   if (b.aktion === 'abholen') {
@@ -68,5 +86,5 @@ export async function POST(req: Request) {
     await protokolliere('social', [{ liste: 'community', op: 'neu', id: fadenId.split('~')[0] }], werAus(req)).catch(() => {});
     return NextResponse.json({ ok: true, ...(await lage(z.person)) });
   }
-  return fehler(400, 'aktion: abholen, antworten, vorschlag, gelesen, erledigt.');
+  return fehler(400, 'aktion: abholen, antworten, vorschlag, gelesen, erledigt, fremd-entwurf, fremd-erledigt, fremd-weg.');
 }

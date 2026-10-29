@@ -7,7 +7,7 @@
 import { istKalendertag, tagVon } from '@/lib/zeit';
 import { gehoertZuPrivat } from '@/lib/einheiten';
 import {
-  SOCIAL_PLATTFORMEN, FOLGE_STATUS, LEITPLANKEN_VORGABE, PLAN_VORGABE, SOCIAL_GRENZEN as G, leereSocial, KONTO_ARTEN, INHALT_ARTEN, ZIEL_METRIKEN, ZIEL_MIT_LINIE,
+  SOCIAL_PLATTFORMEN, FOLGE_STATUS, LEITPLANKEN_VORGABE, PLAN_VORGABE, COMMUNITY_VORGABE, type CommunityEinstellung, SOCIAL_GRENZEN as G, leereSocial, KONTO_ARTEN, INHALT_ARTEN, ZIEL_METRIKEN, ZIEL_MIT_LINIE,
   type SocialDatei, type SocialKanal, type SocialFormat, type SocialFolge, type Messung, type Hook, type Leitplanken, type SocialPlattform,
   type FolgeStatus, type Veroeffentlichung, type AutonomieStufe, type Redaktionsplan, type PostVersuch, type KontoArt, type InhaltArt, type KanalZiel, type KontoStand, type ZielMetrik,
 } from './typen';
@@ -65,6 +65,22 @@ export function planAus(v: unknown): Redaktionsplan | undefined {
   }) as Redaktionsplan;
 }
 
+/** Antwort-Einstellung säubern (rein) — fehlt = Vorgabe beim Lesen (`communityVon`), hier nur, was gesetzt ist. */
+export function communityAus(v: unknown): CommunityEinstellung | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const o = v as Record<string, unknown>;
+  const V = COMMUNITY_VORGABE;
+  return {
+    modus: o.modus === 'aus' || o.modus === 'auto' ? o.modus : 'vorschlag',
+    dmsAuto: o.dmsAuto === true,
+    hinweisDm: text(o.hinweisDm, 200) || V.hinweisDm,
+    zeichen: typeof o.zeichen === 'string' ? o.zeichen.slice(0, 40) : V.zeichen,
+    wunsch: [...new Set((Array.isArray(o.wunsch) ? o.wunsch : []).filter((h): h is string => typeof h === 'string').map(h => h.trim().replace(/^@/, '').toLowerCase()).filter(h => /^[a-z0-9._]{1,30}$/.test(h)))],
+    fremdJeTag: Math.round(zahl(o.fremdJeTag, 0, 30) ?? V.fremdJeTag),
+  };
+}
+export const communityVon = (k: Pick<SocialKanal, 'community'>): CommunityEinstellung => k.community ?? COMMUNITY_VORGABE;
+
 export function kanalAus(o: Record<string, unknown>): SocialKanal | null {
   if (!istKennung(o.id) || !text(o.name, G.text)) return null;
   const m = (o.marke && typeof o.marke === 'object' ? o.marke : {}) as Record<string, unknown>;
@@ -89,6 +105,7 @@ export function kanalAus(o: Record<string, unknown>): SocialKanal | null {
     ziele: liste(o.ziele, zielAus),
     staende: liste(o.staende, standAus),
     plan: planAus(o.plan),
+    community: communityAus(o.community),
     status: o.status === 'pausiert' ? 'pausiert' : 'aktiv',
     archiviertAm: typeof o.archiviertAm === 'string' ? o.archiviertAm : undefined,
     geaendert: typeof o.geaendert === 'string' ? o.geaendert : '',
@@ -318,6 +335,8 @@ export function socialAnwenden(datei: SocialDatei, opsRoh: unknown, k: AnwendenK
     const personenmarke = neu.art === 'person' && neu.person;
     if (neu.sichtbarkeit === 'person' && neu.person !== k.person && (alt?.sichtbarkeit !== 'person' || alt.person !== neu.person)) nein(`Nur die Person der Marke kann den Kanal auf „nur ich“ stellen. ${NUR_PERSON_SELBST}`, 403);
     if (personenmarke && neu.leitplanken.autonomie === 2 && alt?.leitplanken.autonomie !== 2 && k.person !== neu.person) nein(`Stufe 2 (selbstständig) schaltet nur die Person der Marke ein. ${NUR_PERSON_SELBST}`, 403);
+    // Automatische Antworten sprechen im Namen der Marke — bei einer Personenmarke schaltet sie nur die Person selbst ein (28.10.).
+    if (personenmarke && neu.community?.modus === 'auto' && alt?.community?.modus !== 'auto' && k.person !== neu.person) nein(`Automatische Antworten schaltet nur die Person der Marke ein. ${NUR_PERSON_SELBST}`, 403);
   };
   try {
     opsRoh.forEach((roh, i) => {

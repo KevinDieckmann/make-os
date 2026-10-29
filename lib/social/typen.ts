@@ -85,6 +85,30 @@ export interface Redaktionsplan {
 }
 export const PLAN_VORGABE: Redaktionsplan = { agent: false, tage: [2, 4, 6], uhrzeit: '18:00', vorlauf: 7 };
 
+/**
+ * Antworten auf Kommentare und DMs (28.10., Kevin: „automatisiert bei unseren eigenen kommentieren — ohne gesperrt zu werden“; Fakten:
+ * research/social/FAKTEN_AUTO_KOMMENTARE.md). `aus` = nichts · `vorschlag` = ZOE schreibt Entwürfe, ein Mensch sendet · `auto` = ZOE antwortet
+ * SELBST, aber nur auf Fragen und freundliche Kommentare unter EIGENEN Beiträgen (DMs nur mit `dmsAuto`) — Kritik, Beschwerden, Beratungs-
+ * themen, Werbung, Spam gehen immer als Entwurf an einen Menschen. Bei anderen kommentiert NIE die Maschine: dort gibt es Entwürfe, gepostet
+ * wird von Hand (Instagram erlaubt das per Schnittstelle gar nicht, LinkedIn/YouTube verbieten Automatik). KI-Hinweis Pflicht (KI-VO Art. 50).
+ */
+export interface CommunityEinstellung {
+  modus: 'aus' | 'vorschlag' | 'auto';
+  /** Auto auch für DMs (sonst nur Kommentare automatisch). */
+  dmsAuto: boolean;
+  /** Satz, den die ERSTE automatische DM eines Gesprächs trägt (Offenlegung). */
+  hinweisDm: string;
+  /** Zeichen am Ende jeder automatischen Kommentar-Antwort. */
+  zeichen: string;
+  /** Accounts, bei denen ihr regelmäßig mitreden wollt (ohne @) — nur Liste + Entwürfe. */
+  wunsch: string[];
+  /** Ziel: so viele Kommentare bei anderen je Tag (Anzeige). */
+  fremdJeTag: number;
+}
+export const COMMUNITY_VORGABE: CommunityEinstellung = {
+  modus: 'vorschlag', dmsAuto: false, hinweisDm: 'Kurzer Hinweis: Diese Antwort ist KI-unterstützt — ein Mensch aus dem Team liest mit.', zeichen: ' · KI-unterstützt', wunsch: [], fremdJeTag: 3,
+};
+
 /** Autonomie-Stufe eines Kanals (SOCIAL_PLAN.md › 4): 0 Entwurf · 1 Freigabe per Klick · 2 selbstständig mit Leitplanken. */
 export type AutonomieStufe = 0 | 1 | 2;
 
@@ -129,6 +153,8 @@ export interface SocialKanal {
   staende: KontoStand[];
   /** Redaktionsplan — fehlt = `PLAN_VORGABE` (Agent aus). */
   plan?: Redaktionsplan;
+  /** Antworten auf Kommentare/DMs und Kommentieren bei anderen (28.10.) — fehlt = `COMMUNITY_VORGABE` (Vorschlag). */
+  community?: CommunityEinstellung;
   /** Handle ohne @ (gleich auf allen Plattformen, wenn möglich). */
   handle?: string;
   sprache: 'de' | 'en';

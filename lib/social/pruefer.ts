@@ -22,7 +22,7 @@ const enthaeltWort = (hay: string, wort: string) => {
 };
 
 /** Wörter, die auf Beratung in Gesundheit, Geld oder Recht hindeuten (YouTube: KI-Personas zu diesen Themen nicht monetarisierbar). */
-const BERATUNG = [
+export const BERATUNG = [
   'diagnose', 'heilt', 'heilung', 'therapie', 'medikament', 'symptom', 'abnehmen garantiert', 'cure', 'diagnosis', 'medication', 'treatment',
   'investier', 'aktie', 'aktien', 'rendite', 'krypto', 'bitcoin', 'steuern sparen', 'steuertipp', 'invest in', 'stocks', 'crypto', 'returns', 'financial advice',
   'rechtsberatung', 'abmahnung', 'verklagen', 'anwalt sagt', 'legal advice', 'sue',

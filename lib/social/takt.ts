@@ -34,8 +34,13 @@ export async function socialJobsImTakt(jetzt = new Date()): Promise<void> {
     letzteCommunity = Date.now();
     const { communityAbholen } = await import('./community');
     const { laufVermerken } = await import('./lauf-stand');
+    const { communityAgentLauf } = await import('./community-agent');
     void communityAbholen(undefined, jetzt)
-      .then(r => (r.kanaele ? laufVermerken('community', { am: jetzt.toISOString(), gemessen: r.neu, ...(r.fehler ? { gestoppt: r.fehler.slice(0, 160) } : {}) }) : undefined))
+      .then(async r => {
+        // Danach der Antwort-Agent (Modus „vorschlag“/„auto“ am Kanal) — Hintergrund-KI, Not-Aus und Budget gelten.
+        const a = await communityAgentLauf(jetzt).catch(() => ({ gesendet: 0, entwuerfe: 0, gestoppt: 'Fehler' }));
+        if (r.kanaele || a.gesendet || a.entwuerfe) await laufVermerken('community', { am: jetzt.toISOString(), gemessen: r.neu, gepostet: a.gesendet, geschrieben: a.entwuerfe, ...(r.fehler || a.gestoppt ? { gestoppt: (r.fehler ?? a.gestoppt ?? '').slice(0, 160) } : {}) });
+      })
       .catch(e => console.warn(`[social] Community: ${e instanceof Error ? e.name : 'Fehler'}`));
   }
   const stunde = Number(wandzeit(jetzt).slice(11, 13));

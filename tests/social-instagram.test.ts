@@ -528,3 +528,97 @@ describe('Auto-Reel (Server, Werkzeuge und KI nachgebaut)', () => {
     expect(a.folgeId).toBeTruthy();
   });
 });
+
+// ── Antwort-Agent (28.10.): Auto nur mit Leitplanken, nie bei anderen ──
+describe('Antwort-Agent (rein)', () => {
+  it('Einordnung: Spam, Beratung/Preis, Kritik → Mensch; Frage und Freundliches → Auto möglich', async () => {
+    const { antwortKlasse } = await import('@/lib/social/community-agent');
+    expect(antwortKlasse('Check my page https://x.example')).toBe('spam');
+    expect(antwortKlasse('Was kostet das Coaching?')).toBe('heikel');
+    expect(antwortKlasse('Hilft das bei Rückenschmerzen? Diagnose?')).toBe('heikel');
+    expect(antwortKlasse('Ehrlich enttäuscht von dem Video')).toBe('kritik');
+    expect(antwortKlasse('Wie lange trainierst du schon?')).toBe('frage');
+    expect(antwortKlasse('Mega stark 🔥')).toBe('freundlich');
+    expect(antwortKlasse('ok')).toBe('sonst');
+  });
+  it('Leitplanken: Modus, Not-Aus, DMs nur mit Schalter + Fenster, Limit, Mindestabstand; Hinweis und Zeichen; Ähnlichkeit', async () => {
+    const { autoGrund, mitHinweis, zuAehnlich, AGENT } = await import('@/lib/social/community-agent');
+    const k = (c: Partial<import('@/lib/social/typen').CommunityEinstellung> = {}, lp = {}) => ({ id: 'sk-1', name: 'K', ziele: [], staende: [], sprache: 'de', plattformen: ['instagram'], kiKanal: false, marke: { nieSagen: [], saeulen: [] }, leitplanken: { ...LEITPLANKEN_VORGABE, antwortenProTag: 3, ...lp }, status: 'aktiv', geaendert: '', community: { modus: 'auto', dmsAuto: false, hinweisDm: 'KI-Hinweis.', zeichen: ' · KI', wunsch: [], fremdJeTag: 3, ...c } }) as SocialKanal;
+    const o = { heuteSchon: 0, jetzt: 1_000_000 };
+    expect(autoGrund(k({ modus: 'vorschlag' }), { art: 'kommentar' }, 'frage', o)).toMatch(/Vorschlag/);
+    expect(autoGrund(k({}, { antwortenAus: true }), { art: 'kommentar' }, 'frage', o)).toMatch(/Not-Aus/);
+    expect(autoGrund(k(), { art: 'dm', fensterOffen: true }, 'frage', o)).toMatch(/DMs/);
+    expect(autoGrund(k({ dmsAuto: true }), { art: 'dm', fensterOffen: false }, 'frage', o)).toMatch(/24/);
+    expect(autoGrund(k(), { art: 'kommentar' }, 'kritik', o)).toMatch(/Kritik/);
+    expect(autoGrund(k(), { art: 'kommentar' }, 'frage', { ...o, heuteSchon: 3 })).toMatch(/Tageslimit/);
+    expect(autoGrund(k(), { art: 'kommentar' }, 'frage', { ...o, letzteAutoMs: 1_000_000 - 30_000 })).toMatch(/Mindestabstand/);
+    expect(autoGrund(k(), { art: 'kommentar' }, 'freundlich', o)).toBeNull();
+    expect(mitHinweis('Danke!', k(), { art: 'kommentar', eintraege: [] })).toBe('Danke! · KI');
+    expect(mitHinweis('Gern', k(), { art: 'dm', eintraege: [] })).toBe('Gern\n\nKI-Hinweis.');
+    expect(mitHinweis('Gern', k(), { art: 'dm', eintraege: [{ richtung: 'aus', durch: AGENT } as never] })).toBe('Gern');
+    expect(zuAehnlich('Danke dir, das freut uns sehr!', ['Danke dir, das freut uns sehr! · KI'])).toBe(true);
+    expect(zuAehnlich('Seit zwei Jahren, jeden Morgen.', ['Danke dir, das freut uns sehr!'])).toBe(false);
+  });
+});
+
+describe('Antwort-Agent (Server, Probe)', () => {
+  it('Auto: Frage beantwortet ZOE selbst (mit Zeichen), Kritik und DM werden Entwürfe; gleiche Antwort nie zweimal; Personenmarke-Auto nur die Person', async () => {
+    const { socialSchreiben, eintragStand } = await import('@/lib/social/server');
+    let r = await socialSchreiben([{ op: 'kanal', eintrag: { name: 'Antwort-Kanal', plattformen: ['instagram'], community: { modus: 'auto', zeichen: ' · KI' } } }], 'pa');
+    if (!r.ok) throw new Error(r.fehler);
+    const kanalId = r.geaendert[0];
+    const res = await (await import('@/app/api/social/route')).POST(new Request('http://test/api/social', { method: 'POST', headers: { 'content-type': 'application/json', 'x-make-user': 'pa' }, body: JSON.stringify({ aktion: 'probe-verbinden', kanalId, plattform: 'instagram' }) }));
+    expect(res.status).toBe(200);
+    const db = await import('@/lib/store/local-db');
+    const { communitySpeicher, ladeCommunity } = await import('@/lib/social/community');
+    const jetzt = new Date();
+    const e = (id: string, art: 'kommentar' | 'dm', text: string, mediaId?: string) => ({ id, art, kanalId, richtung: 'ein', gegen: { id: `g-${id}`, name: `n${id}` }, text, am: new Date(jetzt.getTime() - 60_000).toISOString(), ...(mediaId ? { mediaId } : {}) });
+    const alt = (await db.loadJson<Record<string, unknown>>(await communitySpeicher())) ?? {};
+    await db.saveJson(await communitySpeicher(), { ...alt, eintraege: { ...((alt.eintraege as object) ?? {}), a1: e('a1', 'kommentar', 'Wie oft trainierst du pro Woche?', 'm1'), a2: e('a2', 'kommentar', 'Total enttäuscht von dem Tipp', 'm2'), a3: e('a3', 'dm', 'Hi, eine Frage?') }, faeden: (alt.faeden as object) ?? {} });
+    modell.text = 'Meist viermal, mit einem Ruhetag dazwischen.';
+    const { communityAgentLauf } = await import('@/lib/social/community-agent');
+    const erg = await communityAgentLauf(jetzt);
+    expect(erg).toMatchObject({ gesendet: 1, entwuerfe: 2 });
+    let d = await ladeCommunity();
+    const aus = Object.values(d.eintraege).filter(x => x.kanalId === kanalId && x.richtung === 'aus');
+    expect(aus).toHaveLength(1);
+    expect(aus[0]).toMatchObject({ durch: 'zoe', text: 'Meist viermal, mit einem Ruhetag dazwischen. · KI', parentId: 'a1' });
+    expect(d.entwuerfe![`km~${kanalId}~m2`].grund).toMatch(/Kritik/);
+    expect(d.entwuerfe![`dm~${kanalId}~g-a3`].grund).toMatch(/DMs/);
+    // Zweiter Lauf: nichts doppelt.
+    expect(await communityAgentLauf(new Date(jetzt.getTime() + 200_000))).toMatchObject({ gesendet: 0, entwuerfe: 0 });
+    // Neue Frage, gleiche KI-Antwort → zu ähnlich → Entwurf statt Senden.
+    d = await ladeCommunity();
+    await db.saveJson(await communitySpeicher(), { ...d, eintraege: { ...d.eintraege, a4: { ...e('a4', 'kommentar', 'Wie oft machst du Pause?', 'm3'), am: new Date(jetzt.getTime() + 100_000).toISOString() } } });
+    const erg2 = await communityAgentLauf(new Date(jetzt.getTime() + 300_000));
+    expect(erg2).toMatchObject({ gesendet: 0, entwuerfe: 1 });
+    expect((await ladeCommunity()).entwuerfe![`km~${kanalId}~m3`].grund).toMatch(/ähnlich/);
+    // Personenmarke: Auto schaltet nur die Person selbst.
+    r = await socialSchreiben([{ op: 'kanal', eintrag: { name: 'Annas Marke IG', art: 'person', person: 'pa', plattformen: ['instagram'] } }], 'pa');
+    if (!r.ok) throw new Error(r.fehler);
+    const marke = r.datei.kanaele.find(x => x.id === r.geaendert[0])!;
+    const nein = await socialSchreiben([{ op: 'kanal', eintrag: { id: marke.id, community: { modus: 'auto' } }, stand: eintragStand(marke) }], 'pb');
+    expect(nein.ok ? 200 : nein.status).toBe(403);
+    const ja = await socialSchreiben([{ op: 'kanal', eintrag: { id: marke.id, community: { modus: 'auto' } }, stand: eintragStand(marke) }], 'pa');
+    expect(ja.ok).toBe(true);
+  });
+  it('Bei anderen: nur Beitrags-Links, Entwurf gespeichert, fremder Text NICHT', async () => {
+    const route = (await import('@/app/api/social/community/route')) as unknown as Route;
+    const { socialSchreiben } = await import('@/lib/social/server');
+    const r = await socialSchreiben([{ op: 'kanal', eintrag: { name: 'Fremd-Kanal', plattformen: ['instagram'] } }], 'pa');
+    if (!r.ok) throw new Error(r.fehler);
+    const kanalId = r.geaendert[0];
+    const URL_C = 'http://test/api/social/community';
+    expect((await route.POST(anfrage(URL_C, 'pa', { aktion: 'fremd-entwurf', kanalId, link: 'https://evil.example/p/abc', text: 'x' }))).status).toBe(400);
+    modell.text = 'Spannender Gedanke — wie hältst du das im Winter durch?';
+    const res = await route.POST(anfrage(URL_C, 'pa', { aktion: 'fremd-entwurf', kanalId, link: 'https://www.instagram.com/p/AbCdEf123/', text: 'GEHEIMER FREMDTEXT über Wintertraining' }));
+    expect(res.status).toBe(200);
+    const j = await res.json();
+    const f = j.fremd.find((x: { kanalId: string }) => x.kanalId === kanalId);
+    expect(f).toMatchObject({ entwurf: 'Spannender Gedanke — wie hältst du das im Winter durch?', link: 'https://www.instagram.com/p/AbCdEf123/' });
+    const { communitySpeicher } = await import('@/lib/social/community');
+    const db = await import('@/lib/store/local-db');
+    expect(JSON.stringify(await db.loadJson(await communitySpeicher()))).not.toContain('GEHEIMER FREMDTEXT');
+    expect((await route.POST(anfrage(URL_C, 'pa', { aktion: 'fremd-erledigt', kanalId, id: f.id }))).status).toBe(200);
+  });
+});

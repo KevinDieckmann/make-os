@@ -2104,6 +2104,12 @@ Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub
   `entwurf` im nächsten freien Platz, Reel + Hook + Beschriftung, Entwurf) → fertig; Schritte nur in `autoWeiter` am Ende jedes Werkstatt-Laufs. Nie selbst freigeben.
   Beste Zeiten rein in `lib/social/zeiten.ts` (Median der eigenen Aufrufe je Wochentag/Stunde, ab 8 Beiträgen, je Feld ≥ 2). Community-Antworten über die Probe (Demo)
   speichern nur lokal.
+  **Teil 3 — Antwort-Agent** (`lib/social/community-agent.ts`, Fakten `research/social/FAKTEN_AUTO_KOMMENTARE.md`): `SocialKanal.community` (`CommunityEinstellung`,
+  `communityAus`/`communityVon`, Vorgabe `COMMUNITY_VORGABE` = vorschlag); Auto NUR über `autoGrund` (Modus, Not-Aus, DMs nur `dmsAuto` + 24 h, Klasse `frage`/`freundlich` aus
+  `antwortKlasse`, Tageslimit, `ABSTAND_SEK`) + `zuAehnlich` (letzte 30 eigene Antworten, ≥ 0,6) + `antwortTextPruefen`; Offenlegung `mitHinweis` (erste Auto-DM: Satz, Kommentar:
+  Zeichen); gesendet über `communityAntworten(…, durch = AGENT)`; alles andere → `CommunityDatei.entwuerfe[faden]` mit Grund. Lauf nach dem Abholen im Takt (Hintergrund-KI,
+  `laufSperre` Marketing, ≤ `LAUF_MAX`). Personenmarke: Auto nur die Person (Kanal-Regel 403). Bei ANDEREN nie automatisch: `fremdEntwurf` (Link nur `FREMD_LINK`, fremder Text
+  nur gekapselt an die KI, nie gespeichert) + `fremdMarkieren`. Schreiber auf `social-community--*` IMMER mit `...cur` (sonst fallen Entwürfe/fremd weg).
 
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
