@@ -82,5 +82,12 @@ rsync -a --delete --exclude '*.mjs' --exclude inhalt/ --exclude '*.md' prototype
 - Ratgeber lesen: Sie stehen unter Kevins Namen.
 - Porträtfotos von Kevin und Malin würden „Über uns“, den Abend und die Autorenzeile stärken; bis dahin stehen Kürzel.
 - LinkedIn-Profile oder eine LinkedIn-Firmenseite in `seo.same_as` eintragen. Das hilft Google und KI-Suchen, die Firma zuzuordnen.
-- Der Check-Link `/check` braucht auf fokusinnovation.de dieselbe Weiterleitung an die Anwendung wie auf makeinnovation.de. Bis dahin führen die Check-Knöpfe auf die 404-Seite. Vor der Freigabe für Google muss das gelöst sein.
+- **Check und Erstgespräch über fokusinnovation.de (29.10., Zweig `fokus-check`):** Caddy reicht `/check`, `/api/check`, `/buchen/*`, `/api/buchung/*`,
+  `/_next/*` und `/schriften/*` an die Anwendung durch, alles andere bleibt die statische Seite. Danach in MAKE OS:
+  1. Markttraktion › Marketing › Innovations-Check: einschalten (braucht den Verantwortlichen unter Einstellungen › Datenschutz), „Name im Check“ = Fokus Innovation.
+  2. Kalender › Buchungsseiten: eine Seite „Erstgespräch“ anlegen (30 Minuten, Verantwortlicher eingetragen), Link kopieren.
+  3. Dieselbe Seite im Check als Buchungsseite für das Gespräch wählen.
+  4. Den Pfad (`/buchen/<name>-<24 Hex>`, ohne Domain) in `makeinnovation/inhalt/seite.json › termin.link` eintragen, `node bauen.mjs`, hochladen.
+     Der Bau bricht ab, wenn der Pfad eine andere Form hat. Solange `termin.link` leer ist, öffnet „Erstgespräch“ eine vorbereitete Mail.
+  Solange der Check aus ist, antwortet `/check` mit „gibt es nicht“ — vor der Freigabe für Google muss er an sein.
 - Rubrik „Im Fokus“ und Gratis-Seite fehlen bewusst: Es gibt dafür noch nichts Fertiges.

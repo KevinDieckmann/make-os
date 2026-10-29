@@ -20,6 +20,8 @@ import { fileURLToPath } from 'node:url';
 export const ORDNER = dirname(fileURLToPath(import.meta.url));
 const REPO = join(ORDNER, '..', '..');
 const lies = (p) => JSON.parse(readFileSync(p, 'utf8'));
+/** Buchungsseite der eigenen Anwendung — dieselbe Form wie BUCHUNG_OFFEN in middleware.ts. */
+const BUCHUNG = /^\/buchen\/[a-z0-9-]{1,40}-[a-f0-9]{24}$/;
 
 // ── Hilfen ────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const e = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -100,6 +102,8 @@ export function seitenBauen(q = quellen()) {
   const mail = (betreff) => `mailto:${seite.kontakt.mail}?subject=${encodeURIComponent(betreff)}`;
   const terminLink = (betreff) => (seite.termin.link ? seite.termin.link : mail(`Gespräch: ${betreff}`));
   /** Erstgespräch: die Buchungsseite aus MAKE OS, solange es keine gibt eine vorbereitete Mail mit drei Fragen. */
+  // Die Buchungsseite läuft in der eigenen Anwendung (Caddy reicht /buchen/* durch) — nur diese Form, sonst bricht der Bau ab.
+  if (seite.termin.link && !BUCHUNG.test(seite.termin.link)) throw new Error(`termin.link muss /buchen/<name>-<24 Hex> sein, ist ${seite.termin.link}`);
   const erstLink = () => seite.termin.link || `mailto:${seite.kontakt.mail}?subject=${encodeURIComponent(F.erstgespraech.betreff)}&body=${encodeURIComponent(F.erstgespraech.mail_text)}`;
   const bald = (a) => a.status === 'Coming Soon';
   const monatlich = (a) => /^pro Monat/.test(a.preis_zusatz ?? '');
@@ -1106,7 +1110,7 @@ export function pruefen(seiten) {
     if (/<form\b/.test(s.html)) fehler.push(`${s.pfad}: Formular`);
     platzhalter += (s.html.match(/class="ph"/g) ?? []).length;
     for (const [, href] of s.html.matchAll(/\shref="([^"]+)"/g)) {
-      if (/^(https?:|mailto:|tel:)/.test(href) || href.startsWith('/check') || href.startsWith('/css/') || href.startsWith('/assets/') || ['/favicon.ico', '/site.webmanifest'].includes(href)) continue;
+      if (/^(https?:|mailto:|tel:)/.test(href) || href.startsWith('/check') || BUCHUNG.test(href) || href.startsWith('/css/') || href.startsWith('/assets/') || ['/favicon.ico', '/site.webmanifest'].includes(href)) continue;
       const [teil, hash] = href.split('#');
       const seite = teil ? ziel(teil.split('?')[0]) : s.pfad;
       if (!pfade.has(seite)) { fehler.push(`${s.pfad}: Link ins Leere ${href}`); continue; }
