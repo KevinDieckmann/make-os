@@ -125,12 +125,12 @@ async function automatik(req: Request, person: string, b: { aktion?: unknown; ka
   if (kanal.art === 'person' && kanal.person && kanal.person !== person) return fehlerAntwort(403, `Eine Personenmarke verbindet nur die Person selbst. ${NUR_PERSON_SELBST}`);
   if (b.aktion === 'linkedin-start') {
     if (!kanal.plattformen.includes('linkedin')) return fehlerAntwort(400, 'Der Kanal ist nicht auf LinkedIn.');
-    if (!linkedinEingerichtet()) return fehlerAntwort(409, 'LinkedIn ist in dieser Instanz noch nicht eingerichtet (Server-Umgebung, siehe UPDATES.md).');
+    if (!linkedinEingerichtet()) return fehlerAntwort(409, 'LinkedIn ist in dieser Instanz noch nicht eingerichtet.');
     return NextResponse.json({ ok: true, url: await linkedinStart(person, kanal.id) });
   }
   if (b.aktion === 'instagram-start') {
     if (!kanal.plattformen.includes('instagram')) return fehlerAntwort(400, 'Der Kanal ist nicht auf Instagram.');
-    if (!instagramEingerichtet()) return fehlerAntwort(409, 'Instagram ist in dieser Instanz noch nicht eingerichtet (Server-Umgebung, siehe UPDATES.md).');
+    if (!instagramEingerichtet()) return fehlerAntwort(409, 'Instagram ist in dieser Instanz noch nicht eingerichtet.');
     return NextResponse.json({ ok: true, url: await instagramStart(person, kanal.id) });
   }
   // probe-verbinden: nur in einer Demo-Instanz bzw. in Tests — nichts verlässt MAKE OS.

@@ -77,7 +77,7 @@ function Plan({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal> }) 
   return (
     <Karte>
       <Ueberschrift>Redaktionsplan</Ueberschrift>
-      <Schalter an={p.agent} onChange={v => speichern(v)} erklaerungOhne="Der Agent füllt im Takt (alle 6 Stunden, 6–22 Uhr) die freien Termine mit Entwürfen. Was die Leitplanken erlauben, plant er ein — sonst wartet es auf euch.">Agent schreibt selbst</Schalter>
+      <Schalter an={p.agent} onChange={v => speichern(v)} erklaerung="social.agent">Agent schreibt selbst</Schalter>
       <form onSubmit={e => { e.preventDefault(); void speichern(); }} style={{ display: 'grid', gap: 12, marginTop: 12 }}>
         <Feldzeile label="Tage">
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -149,7 +149,7 @@ function AutoReel({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal>
             {(alben ?? []).map(a => <option key={a.id} value={a.id}>{a.titel} ({a.anzahl})</option>)}
           </select>
         </Feldzeile>
-        <Schalter an={!!p.autoReel} onChange={v => { if (v && !album) return; void speichern(v); }} erklaerungOhne="Nur Videos der letzten 14 Tage, höchstens zwei je halbe Stunde. Nichts geht ohne eure Freigabe raus.">Auto-Reels an</Schalter>
+        <Schalter an={!!p.autoReel} onChange={v => { if (v && !album) return; void speichern(v); }} erklaerung="social.autoReel">Auto-Reels an</Schalter>
         {!album && <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Erst ein Album wählen (oder unter Medien eins anlegen, z. B. „Rohclips“).</span>}
         {p.autoReel && !verbunden && <Hinweis art="info">Fertige Reels liegen als Entwürfe im Kalender — gepostet wird erst mit einer Verbindung (Verbindungen unten).</Hinweis>}
       </div>
@@ -196,8 +196,8 @@ function Verbindungen({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKa
 
 /** Ehrlich, was je Plattform fehlt (research/social/FAKTEN_VEROEFFENTLICHEN.md). */
 const WEG_FEHLT: Record<SocialPlattform, string> = {
-  linkedin: 'LinkedIn ist in dieser Instanz noch nicht eingerichtet (eine LinkedIn-App mit „Share on LinkedIn“ — Schritte in UPDATES.md).',
-  instagram: 'Instagram ist in dieser Instanz noch nicht eingerichtet (eine Meta-App mit „Instagram API with Instagram Login“, Professional-Konto — Schritte in UPDATES.md).',
+  linkedin: 'LinkedIn ist in dieser Instanz noch nicht eingerichtet — danach verbindet ihr hier euer Konto.',
+  instagram: 'Instagram ist in dieser Instanz noch nicht eingerichtet — danach verbindet ihr hier ein Professional-Konto (Creator oder Business).',
   youtube: 'Anbindung folgt — YouTube-Upload braucht eine Google-App „in Produktion“ und eine Videodatei.',
   tiktok: 'TikTok erlaubt kein Posten ohne Klick je Beitrag — hier bleibt es beim Entwurf, ihr postet in der App.',
 };

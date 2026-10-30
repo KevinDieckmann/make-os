@@ -107,7 +107,7 @@ function Einstellung({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKan
           ? 'ZOE antwortet selbst auf Fragen und freundliche Kommentare unter euren Beiträgen — nie auf Kritik, Beschwerden, Gesundheits-, Geld- oder Preisthemen, nie auf Spam, nie zweimal fast gleich. Alles andere bekommt ihr als Entwurf. Tageslimits und Not-Aus gelten.'
           : c.modus === 'vorschlag' ? 'ZOE legt zu jeder neuen Nachricht einen Entwurf bereit — ihr lest und sendet mit einem Tipp.' : 'Keine Entwürfe — ihr antwortet selbst.'}
           {fremdeMarke ? ' Automatisch antworten schaltet bei einer Personenmarke nur die Person selbst ein.' : ''}</span>
-        {c.modus === 'auto' && <Schalter an={c.dmsAuto} onChange={v => void speichern({ dmsAuto: v })} erklaerungOhne="Nur innerhalb von 24 Stunden nach der Nachricht der Person; die erste automatische DM trägt den KI-Hinweis.">Auch DMs automatisch beantworten</Schalter>}
+        {c.modus === 'auto' && <Schalter an={c.dmsAuto} onChange={v => void speichern({ dmsAuto: v })} erklaerung="social.dmsAuto">Auch DMs automatisch beantworten</Schalter>}
         <form onSubmit={e => { e.preventDefault(); void speichern({ hinweisDm: hinweis, zeichen, wunsch: wunsch.split(/[,\s]+/).filter(Boolean), fremdJeTag: Number(ziel) || 0 }); }} style={{ display: 'grid', gap: 12 }}>
           <Feldzeile label="KI-Hinweis in der ersten automatischen DM (Pflicht, KI-VO Art. 50)"><input style={eingabe} value={hinweis} maxLength={200} onChange={e => setHinweis(e.target.value)} /></Feldzeile>
           <Feldzeile label="Zeichen am Ende automatischer Kommentar-Antworten"><input style={eingabe} value={zeichen} maxLength={40} onChange={e => setZeichen(e.target.value)} /></Feldzeile>

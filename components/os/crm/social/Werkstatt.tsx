@@ -82,7 +82,7 @@ export function Werkstatt({ api, kanal, start, onStartVerbraucht }: { api: Socia
   return (
     <>
       {w.fehler && <Hinweis art="achtung" aktion={<Knopf leise onClick={() => w.setFehler(null)}>OK</Knopf>}>{w.fehler}</Hinweis>}
-      {!w.lage.bereit.rendern && <Hinweis art="info" titel="Rendern ist auf dieser Instanz noch aus">Ihr könnt Aufträge schon anlegen, schneiden und Einblendungen setzen — gerendert wird, sobald der Server eingerichtet ist (ffmpeg, Sprachmodell; UPDATES.md).</Hinweis>}
+      {!w.lage.bereit.rendern && <Hinweis art="info" titel="Rendern ist auf dieser Instanz noch aus">Ihr könnt Aufträge schon anlegen, schneiden und Einblendungen setzen — gerendert wird, sobald Rendern und Untertitel in dieser Instanz eingerichtet sind.</Hinweis>}
       <Karte>
         <Ueberschrift rechts={<span style={{ display: 'flex', gap: 8 }}><Knopf onClick={() => { setNeu('reel'); setWahl([]); }}>+ Reel</Knopf><Knopf leise onClick={() => { setNeu('bild'); setWahl([]); }}>+ Bild</Knopf></span>}>Werkstatt</Ueberschrift>
         {neu && (

@@ -82,8 +82,8 @@ export async function POST(req: Request) {
     const a = (await ladeWerkstatt()).find(x => x.id === id && auftragSichtbar(x, social, z.person));
     if (!a) return fehler(404, 'Auftrag nicht gefunden.');
     const bereit = await werkstattBereit();
-    if (op.art === 'render' && !bereit.rendern) return fehler(409, 'Rendern ist auf dieser Instanz noch nicht eingerichtet (ffmpeg fehlt — UPDATES.md).');
-    if (op.art === 'transkript' && !bereit.untertitel) return fehler(409, 'Untertitel sind auf dieser Instanz noch nicht eingerichtet (Sprachmodell fehlt — UPDATES.md).');
+    if (op.art === 'render' && !bereit.rendern) return fehler(409, 'Rendern ist auf dieser Instanz noch nicht eingerichtet.');
+    if (op.art === 'transkript' && !bereit.untertitel) return fehler(409, 'Untertitel sind auf dieser Instanz noch nicht eingerichtet.');
     if (op.art === 'render') {
       const g = werkstattPruefen(a, await quellenLesen(z.person, a.clips.map(c => c.mediumId)));
       if (g.length) return fehler(400, g[0]);
