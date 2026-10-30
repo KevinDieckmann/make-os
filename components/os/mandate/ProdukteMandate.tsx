@@ -53,18 +53,30 @@ export function ProdukteMandate() {
       </Seite>
     );
   }
+  // Mandate (31.10., DESIGN_STANDARD.md › Arbeitsfläche): die Liste IST die Seite (Kopf „Mandate“ · Zahl · ⋯ · „+ Mandat“) — Liste und Mandat rollen je
+  // für sich. Hinweise der Seite stehen über der Liste, Index-Streifen und Weg zu den Deals rechts unter dem Überblick, der Excel-Import im „⋯“.
+  if (reiter === 'mandate') {
+    return (
+      <MandateUebersicht api={api} zuKontakt={zuKontakt}
+        hinweise={<>
+          {api.fehler && <Hinweis art="kritisch">{api.fehler}</Hinweis>}
+          {/* Fulfillment (10.10.): „Kundenonboarding starten“ für unterschriebene Mandate ohne Fall (Paket C1; bis dahin leer). */}
+          <OnboardingHinweis api={api} />
+          <GewonneneOhneMandat api={api} />
+        </>}
+        unten={<>
+          <IndexStreifen ids={STREIFEN.mandate} titel="Business-Score · Kunden" />
+          <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Neue Mandate entstehen meist aus einem gewonnenen Deal — <Link href={WEG.deals()} style={{ color: C.inkDim }}>Deals öffnen ›</Link></div>
+        </>}
+        // Daten-Assistent B9 c (09.10.): mehrere Mandate aus Excel/CSV — Vorschau, Übernehmen, Rückgängig.
+        importieren={<MandateTabelle onGeaendert={() => api.laden(true)} />} />
+    );
+  }
   return (
     // Produkte & Mandate (10.10.): das Gesellschafts-Register ist ein eigener Punkt in der Leiste (/os/unternehmen), kein Reiter mehr hier.
     <Seite titel="Produkte & Mandate" unter={UNTER[reiter]}>
       {api.fehler && <Hinweis art="kritisch">{api.fehler}</Hinweis>}
-      {/* Fulfillment (10.10.): „Kundenonboarding starten“ für unterschriebene Mandate ohne Fall (Paket C1; bis dahin leer). */}
-      {reiter === 'mandate' && <OnboardingHinweis api={api} />}
-      {/* Antwort zuerst (11.10.): oben der Überblick mit „Als Nächstes“ und die Liste — die Index-Kennzahlen (meist „fehlt“) stehen als Hintergrund darunter. */}
-      {reiter === 'mandate' ? <MandateUebersicht api={api} zuKontakt={zuKontakt} /> : <Produkte api={api} />}
-      {reiter === 'mandate' && <GewonneneOhneMandat api={api} />}
-      {reiter === 'mandate' && <IndexStreifen ids={STREIFEN.mandate} titel="Business-Score · Kunden" />}
-      {/* Daten-Assistent B9 c (09.10.): mehrere Mandate aus Excel/CSV — Vorschau, Übernehmen, Rückgängig. */}
-      {reiter === 'mandate' && <MandateTabelle onGeaendert={() => api.laden(true)} />}
+      <Produkte api={api} />
       <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Neue Mandate entstehen meist aus einem gewonnenen Deal — <Link href={WEG.deals()} style={{ color: C.inkDim }}>Deals öffnen ›</Link></div>
     </Seite>
   );

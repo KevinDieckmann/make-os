@@ -164,3 +164,21 @@ describe('Angebote als Arbeitsfläche', () => {
   });
 });
 
+describe('Mandate als Arbeitsfläche', () => {
+  const k = lies('components/os/crm/Kunden.tsx');
+  const pm = lies('components/os/mandate/ProdukteMandate.tsx');
+  it('Kopf „Mandate“ · aktiv/MRR · ⋯ (Excel-Import, Papierkorb) · „+ Mandat“; Gesellschaft und Beendete im Popover', () => {
+    expect(k).toContain('<Arbeitsflaeche titel="Mandate"');
+    expect(k).toContain('haupt={<Knopf haupt onClick={() => setNeuWahl(true)}>+ Mandat</Knopf>}');
+    expect(k).toContain('<FilterGruppe titel="Gesellschaft">');
+    expect(k).toContain('<FilterGruppe titel="Beendete">');
+    expect(k).toContain('{importAuf && importieren}');
+    expect(pm).toContain("if (reiter === 'mandate') {");
+  });
+  it('nach Status als Abschnitte EINER Liste; rechts das Mandat, ohne Auswahl der Überblick (Zahlen, Head, Index)', () => {
+    expect(k).toContain('<ListenAbschnitt key={g.id} id={g.id} titel={g.label}');
+    expect(k).toContain('{auswahl === m.id && !zwei && <MandatDetail');
+    expect(k).toContain('leer={st => ueberblick(st.zwei)} leerOben');
+    expect(k).toContain('{voll && <HeadPanel head="sales" standardModus="kundenreview"');
+  });
+});
