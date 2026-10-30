@@ -33,6 +33,23 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-30-3',
+    datum: '2026-10-30',
+    titel: 'Social: Beiträge planen, schneiden und veröffentlichen',
+    kurz: 'Unter Markttraktion › Marketing gibt es jetzt Social: Kanäle und Beiträge im Kalender planen, Reels aus eigenen Clips schneiden, Freigegebenes zum Termin veröffentlichen und Kommentare mit Vorschlägen beantworten.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Social unter Marketing: Kanäle mit Zielen, Beiträge mit Text, Beschriftung und Fotos oder Videos aus der Medien-Ablage. Vor jedem Beitrag sagt eine Prüfung, ob er raus darf.', bereich: 'business', weg: WEG.marketing('social') },
+        { text: 'Kalender für Woche und Monat: Beiträge mit ihrem Zustand, freie Plätze des Redaktionsplans, Umplanen per Ziehen und „Ohne Termin“ zum Einplanen.', bereich: 'business' },
+        { text: 'Automatik: Ein Redaktions-Agent bereitet Beiträge für die freien Termine vor. Was freigegeben ist, geht zum Termin raus. Der Not-Aus im Kanal hält alles an.', bereich: 'business' },
+        { text: 'Reel-Werkstatt: Clips und Fotos schneiden, Untertitel erzeugen und korrigieren, Einblendungen setzen. Auf Wunsch werden neue Videos eines Albums von selbst zu Reel-Entwürfen. Raus geht ein Reel erst nach Freigabe.', bereich: 'business' },
+        { text: 'Kommentare und Nachrichten: ZOE schlägt Antworten vor, ihr antwortet per Klick. Auf Wunsch antwortet ZOE auf einfache Fragen selbst, mit Tageslimit und KI-Hinweis.', bereich: 'business' },
+        { text: 'Zahlen aus den Plattformen übernehmen und auswerten: welche Beiträge wirken und welche Tage und Uhrzeiten am besten laufen.', bereich: 'business' },
+        { text: 'Veröffentlichen braucht eine Verbindung zum Konto: unter Automatik „Mit LinkedIn verbinden“ bzw. „Mit Instagram verbinden“, sobald die Einrichtung dafür gemacht ist.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-30-2',
     datum: '2026-10-30',
     titel: 'Angebot, Mandat, Rechnung, Lieferung: ein Kreislauf',
