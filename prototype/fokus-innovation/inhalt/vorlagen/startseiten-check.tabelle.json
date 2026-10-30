@@ -1,0 +1,1237 @@
+{
+  "blaetter": [
+    {
+      "name": "Check",
+      "spalten": [
+        {
+          "titel": "Nr.",
+          "breite": 5,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Gruppe",
+          "breite": 16,
+          "stil": "text"
+        },
+        {
+          "titel": "Prüfpunkt",
+          "breite": 46,
+          "stil": "text"
+        },
+        {
+          "titel": "So prüfen Sie",
+          "breite": 52,
+          "stil": "hinweis"
+        },
+        {
+          "titel": "Ergebnis (ja · teilweise · nein)",
+          "breite": 15,
+          "stil": "eingabe"
+        },
+        {
+          "titel": "Punkte",
+          "breite": 8,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Notiz",
+          "breite": 34,
+          "stil": "eingabe"
+        }
+      ],
+      "zeilen": [
+        [
+          1,
+          "Erste Ansicht",
+          "Ganz oben steht ein Satz, der sagt, was Sie für wen tun.",
+          "Ohne Scrollen sichtbar. Nicht „Willkommen“ und nicht nur der Firmenname.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          2,
+          "Erste Ansicht",
+          "Eine Unterzeile macht den Nutzen konkret.",
+          "Sie nennt, was sich für den Kunden ändert: Zeit, Geld, Sicherheit, Ruhe.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          3,
+          "Erste Ansicht",
+          "Es gibt einen Hauptknopf mit einem klaren Wort.",
+          "Zum Beispiel „Termin buchen“. Höchstens ein zweiter, leiserer Weg daneben.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          4,
+          "Erste Ansicht",
+          "Das Bild zeigt Ihr Angebot, Ihre Menschen oder ein Ergebnis.",
+          "Kein austauschbares Archivbild, das auch auf jeder anderen Seite stehen könnte.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          5,
+          "Erste Ansicht",
+          "Fremde verstehen in fünf Sekunden, was Sie anbieten.",
+          "Fünf-Sekunden-Test mit drei Personen aus Ihrer Zielgruppe. Ja nur, wenn alle drei es richtig sagen.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          6,
+          "Erste Ansicht",
+          "Die erste Ansicht kommt ohne Fachwörter aus.",
+          "Lesen Sie sie jemandem außerhalb der Branche vor. Jede Rückfrage zeigt ein Fachwort.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          7,
+          "Belege",
+          "Echte Kundenstimmen mit Namen und Firma sind zu sehen.",
+          "Mit schriftlicher Freigabe. Am besten mit einem Ergebnis, nicht nur mit Lob.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          8,
+          "Belege",
+          "Ein Ablauf in drei bis fünf Schritten zeigt, wie die Zusammenarbeit läuft.",
+          "Vom ersten Kontakt bis zum Ergebnis, mit Dauer, wo es geht.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          9,
+          "Belege",
+          "Preise oder ein Preisrahmen sind zu finden.",
+          "Auf der Startseite oder eine Seite weiter. „Auf Anfrage“ allein zählt als nein.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          10,
+          "Belege",
+          "Die Menschen hinter der Firma sind zu sehen.",
+          "Foto, Name und ein paar Sätze dazu, mit wem man es zu tun hat.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          11,
+          "Belege",
+          "Jede Zahl und jede Aussage lässt sich belegen.",
+          "Keine leeren Wörter wie „kompetent, innovativ, zuverlässig“. Zahlen nur mit Quelle oder eigenem Nachweis.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          12,
+          "Nächster Schritt",
+          "Der Hauptknopf steht auch am Ende der Seite.",
+          "Wer bis unten gelesen hat, muss nicht wieder nach oben.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          13,
+          "Nächster Schritt",
+          "Das Formular fragt nur das Nötige.",
+          "Für den Anfang reichen Name, Kontakt und eine Zeile zum Anliegen.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          14,
+          "Nächster Schritt",
+          "Telefon und E-Mail sind ohne Suchen zu finden.",
+          "In der ersten Ansicht oder im Fuß jeder Seite.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          15,
+          "Nächster Schritt",
+          "Anfragen werden innerhalb eines Werktags beantwortet.",
+          "Schicken Sie selbst eine Testanfrage und notieren Sie, wann die Antwort kommt.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          16,
+          "Handy",
+          "Kernsatz und Hauptknopf sind auf dem Handy ohne Scrollen zu sehen.",
+          "Auf dem eigenen Handy prüfen, nicht in einer verkleinerten Ansicht am Rechner.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          17,
+          "Handy",
+          "Text ist ohne Zoomen lesbar, Knöpfe treffen Sie mit dem Daumen.",
+          "Keine Tabellen, die man seitlich schieben muss.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          18,
+          "Handy",
+          "Die Telefonnummer lässt sich antippen und ruft direkt an.",
+          "Einmal selbst ausprobieren.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          19,
+          "Ladezeit und Technik",
+          "Die Seite lädt auf dem Handy schnell.",
+          "Kostenlos prüfen mit PageSpeed Insights von Google (pagespeed.web.dev), Ansicht für Mobilgeräte. Ja ohne rote Werte, teilweise bei orangen.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          20,
+          "Ladezeit und Technik",
+          "Die Technik ist sauber.",
+          "Die Adresse beginnt mit https, der Browser zeigt keine Warnung, kein Link führt auf eine Fehlerseite.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          21,
+          "Ladezeit und Technik",
+          "Impressum und Datenschutzerklärung sind von jeder Seite mit einem Klick erreichbar.",
+          "Meist als Link im Fuß der Seite.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          22,
+          "Auffindbarkeit",
+          "Die Startseite hat einen eigenen Seitentitel mit Leistung und Zielgruppe oder Ort.",
+          "Zu sehen im Reiter des Browsers und als Titel in den Suchergebnissen. Nur der Firmenname zählt als teilweise.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          23,
+          "Auffindbarkeit",
+          "Eine kurze Beschreibung sagt, was man auf der Seite findet.",
+          "Im Website-Baukasten meist als „Beschreibung“ oder „Meta-Beschreibung“ einzutragen. Ein bis zwei Sätze.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          24,
+          "Auffindbarkeit",
+          "Ihr Unternehmensprofil bei Google ist angelegt und aktuell.",
+          "Gleiche Adresse, Telefonnummer und Öffnungszeiten wie auf der Website.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ],
+        [
+          25,
+          "Auffindbarkeit",
+          "Jedes Angebot hat eine eigene Seite, die von der Startseite aus verlinkt ist.",
+          "Mit eigenem Titel, Ablauf, Preis oder Preisrahmen und demselben Hauptknopf.",
+          null,
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          null
+        ]
+      ],
+      "auswahl": [
+        {
+          "spalte": "E",
+          "werte": [
+            "ja",
+            "teilweise",
+            "nein"
+          ]
+        }
+      ],
+      "fixieren": true
+    },
+    {
+      "name": "Auswertung",
+      "spalten": [
+        {
+          "titel": "Gruppe",
+          "breite": 30,
+          "stil": "text"
+        },
+        {
+          "titel": "Höchstwert",
+          "breite": 12,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Ihre Punkte",
+          "breite": 12,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Anteil",
+          "breite": 10,
+          "stil": "prozent"
+        },
+        {
+          "titel": "Anzahl nein",
+          "breite": 12,
+          "stil": "zahl"
+        },
+        {
+          "titel": "",
+          "breite": 60,
+          "stil": "text"
+        }
+      ],
+      "zeilen": [
+        [
+          "Erste Ansicht",
+          {
+            "f": "COUNTIF(Check!$B$2:$B$26,A{r})*2"
+          },
+          {
+            "f": "SUMIF(Check!$B$2:$B$26,A{r},Check!$F$2:$F$26)"
+          },
+          {
+            "f": "IF(B{r}=0,\"\",C{r}/B{r})"
+          },
+          {
+            "f": "COUNTIFS(Check!$B$2:$B$26,A{r},Check!$E$2:$E$26,\"nein\")"
+          },
+          null
+        ],
+        [
+          "Belege",
+          {
+            "f": "COUNTIF(Check!$B$2:$B$26,A{r})*2"
+          },
+          {
+            "f": "SUMIF(Check!$B$2:$B$26,A{r},Check!$F$2:$F$26)"
+          },
+          {
+            "f": "IF(B{r}=0,\"\",C{r}/B{r})"
+          },
+          {
+            "f": "COUNTIFS(Check!$B$2:$B$26,A{r},Check!$E$2:$E$26,\"nein\")"
+          },
+          null
+        ],
+        [
+          "Nächster Schritt",
+          {
+            "f": "COUNTIF(Check!$B$2:$B$26,A{r})*2"
+          },
+          {
+            "f": "SUMIF(Check!$B$2:$B$26,A{r},Check!$F$2:$F$26)"
+          },
+          {
+            "f": "IF(B{r}=0,\"\",C{r}/B{r})"
+          },
+          {
+            "f": "COUNTIFS(Check!$B$2:$B$26,A{r},Check!$E$2:$E$26,\"nein\")"
+          },
+          null
+        ],
+        [
+          "Handy",
+          {
+            "f": "COUNTIF(Check!$B$2:$B$26,A{r})*2"
+          },
+          {
+            "f": "SUMIF(Check!$B$2:$B$26,A{r},Check!$F$2:$F$26)"
+          },
+          {
+            "f": "IF(B{r}=0,\"\",C{r}/B{r})"
+          },
+          {
+            "f": "COUNTIFS(Check!$B$2:$B$26,A{r},Check!$E$2:$E$26,\"nein\")"
+          },
+          null
+        ],
+        [
+          "Ladezeit und Technik",
+          {
+            "f": "COUNTIF(Check!$B$2:$B$26,A{r})*2"
+          },
+          {
+            "f": "SUMIF(Check!$B$2:$B$26,A{r},Check!$F$2:$F$26)"
+          },
+          {
+            "f": "IF(B{r}=0,\"\",C{r}/B{r})"
+          },
+          {
+            "f": "COUNTIFS(Check!$B$2:$B$26,A{r},Check!$E$2:$E$26,\"nein\")"
+          },
+          null
+        ],
+        [
+          "Auffindbarkeit",
+          {
+            "f": "COUNTIF(Check!$B$2:$B$26,A{r})*2"
+          },
+          {
+            "f": "SUMIF(Check!$B$2:$B$26,A{r},Check!$F$2:$F$26)"
+          },
+          {
+            "f": "IF(B{r}=0,\"\",C{r}/B{r})"
+          },
+          {
+            "f": "COUNTIFS(Check!$B$2:$B$26,A{r},Check!$E$2:$E$26,\"nein\")"
+          },
+          null
+        ],
+        [
+          {
+            "v": "Gesamt",
+            "stil": "fett"
+          },
+          {
+            "f": "SUM(B2:B7)",
+            "stil": "zahl"
+          },
+          {
+            "f": "SUM(C2:C7)",
+            "stil": "zahl"
+          },
+          {
+            "f": "IF(B8=0,\"\",C8/B8)",
+            "stil": "prozent"
+          },
+          {
+            "f": "SUM(E2:E7)",
+            "stil": "zahl"
+          },
+          null
+        ],
+        [
+          {
+            "v": "Noch nicht bewertet",
+            "stil": "text"
+          },
+          null,
+          {
+            "f": "COUNTBLANK(Check!$E$2:$E$26)"
+          },
+          null,
+          null,
+          null
+        ],
+        [
+          {
+            "v": "Einordnung",
+            "stil": "fett"
+          },
+          {
+            "f": "IF(C9>0,\"Erst alle 25 Punkte bewerten\",IF(C8>=40,\"Solide Grundlage: offene Punkte angehen, in vier Wochen wieder prüfen\",IF(C8>=25,\"Spürbare Lücken: die drei wichtigsten Änderungen zuerst\",\"Grundlagen fehlen: mit Kernsatz und Hauptknopf beginnen\")))",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          {
+            "v": "Die drei wichtigsten Änderungen",
+            "stil": "fett"
+          },
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          {
+            "v": "Zuerst jedes Nein aus „Erste Ansicht“ und „Nächster Schritt“, dann die Belege, dann der Rest.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          {
+            "v": "Was genau?",
+            "stil": "kopf"
+          },
+          {
+            "v": "Prüfpunkt Nr.",
+            "stil": "kopf"
+          },
+          {
+            "v": "Wer?",
+            "stil": "kopf"
+          },
+          {
+            "v": "Bis wann?",
+            "stil": "kopf"
+          },
+          null,
+          null
+        ],
+        [
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          {
+            "v": null,
+            "stil": "eingabe-datum"
+          },
+          null,
+          null
+        ],
+        [
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          {
+            "v": null,
+            "stil": "eingabe-datum"
+          },
+          null,
+          null
+        ],
+        [
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          {
+            "v": null,
+            "stil": "eingabe-datum"
+          },
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          {
+            "v": "Die Grenzen 40 und 25 Punkte sind eine Orientierung von Fokus Innovation, keine Norm. Wichtiger als die Summe ist, welche Punkte fehlen.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "name": "Beispiel",
+      "spalten": [
+        {
+          "titel": "Nr.",
+          "breite": 5,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Gruppe",
+          "breite": 16,
+          "stil": "text"
+        },
+        {
+          "titel": "Prüfpunkt",
+          "breite": 46,
+          "stil": "text"
+        },
+        {
+          "titel": "So prüfen Sie",
+          "breite": 52,
+          "stil": "hinweis"
+        },
+        {
+          "titel": "Ergebnis",
+          "breite": 15,
+          "stil": "text"
+        },
+        {
+          "titel": "Punkte",
+          "breite": 8,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Notiz",
+          "breite": 34,
+          "stil": "text"
+        }
+      ],
+      "zeilen": [
+        [
+          1,
+          "Erste Ansicht",
+          "Ganz oben steht ein Satz, der sagt, was Sie für wen tun.",
+          "Ohne Scrollen sichtbar. Nicht „Willkommen“ und nicht nur der Firmenname.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": "Oben steht nur „Willkommen bei uns“.",
+            "stil": "text"
+          }
+        ],
+        [
+          2,
+          "Erste Ansicht",
+          "Eine Unterzeile macht den Nutzen konkret.",
+          "Sie nennt, was sich für den Kunden ändert: Zeit, Geld, Sicherheit, Ruhe.",
+          {
+            "v": "teilweise",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          3,
+          "Erste Ansicht",
+          "Es gibt einen Hauptknopf mit einem klaren Wort.",
+          "Zum Beispiel „Termin buchen“. Höchstens ein zweiter, leiserer Weg daneben.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": "Drei gleich große Knöpfe: Leistungen, Galerie, Kontakt.",
+            "stil": "text"
+          }
+        ],
+        [
+          4,
+          "Erste Ansicht",
+          "Das Bild zeigt Ihr Angebot, Ihre Menschen oder ein Ergebnis.",
+          "Kein austauschbares Archivbild, das auch auf jeder anderen Seite stehen könnte.",
+          {
+            "v": "ja",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          5,
+          "Erste Ansicht",
+          "Fremde verstehen in fünf Sekunden, was Sie anbieten.",
+          "Fünf-Sekunden-Test mit drei Personen aus Ihrer Zielgruppe. Ja nur, wenn alle drei es richtig sagen.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": "Zwei von drei Testpersonen hielten uns für ein Möbelhaus.",
+            "stil": "text"
+          }
+        ],
+        [
+          6,
+          "Erste Ansicht",
+          "Die erste Ansicht kommt ohne Fachwörter aus.",
+          "Lesen Sie sie jemandem außerhalb der Branche vor. Jede Rückfrage zeigt ein Fachwort.",
+          {
+            "v": "teilweise",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          7,
+          "Belege",
+          "Echte Kundenstimmen mit Namen und Firma sind zu sehen.",
+          "Mit schriftlicher Freigabe. Am besten mit einem Ergebnis, nicht nur mit Lob.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          8,
+          "Belege",
+          "Ein Ablauf in drei bis fünf Schritten zeigt, wie die Zusammenarbeit läuft.",
+          "Vom ersten Kontakt bis zum Ergebnis, mit Dauer, wo es geht.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          9,
+          "Belege",
+          "Preise oder ein Preisrahmen sind zu finden.",
+          "Auf der Startseite oder eine Seite weiter. „Auf Anfrage“ allein zählt als nein.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": "Überall „Preise auf Anfrage“.",
+            "stil": "text"
+          }
+        ],
+        [
+          10,
+          "Belege",
+          "Die Menschen hinter der Firma sind zu sehen.",
+          "Foto, Name und ein paar Sätze dazu, mit wem man es zu tun hat.",
+          {
+            "v": "ja",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          11,
+          "Belege",
+          "Jede Zahl und jede Aussage lässt sich belegen.",
+          "Keine leeren Wörter wie „kompetent, innovativ, zuverlässig“. Zahlen nur mit Quelle oder eigenem Nachweis.",
+          {
+            "v": "teilweise",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          12,
+          "Nächster Schritt",
+          "Der Hauptknopf steht auch am Ende der Seite.",
+          "Wer bis unten gelesen hat, muss nicht wieder nach oben.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          13,
+          "Nächster Schritt",
+          "Das Formular fragt nur das Nötige.",
+          "Für den Anfang reichen Name, Kontakt und eine Zeile zum Anliegen.",
+          {
+            "v": "teilweise",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": "Formular mit neun Pflichtfeldern.",
+            "stil": "text"
+          }
+        ],
+        [
+          14,
+          "Nächster Schritt",
+          "Telefon und E-Mail sind ohne Suchen zu finden.",
+          "In der ersten Ansicht oder im Fuß jeder Seite.",
+          {
+            "v": "ja",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          15,
+          "Nächster Schritt",
+          "Anfragen werden innerhalb eines Werktags beantwortet.",
+          "Schicken Sie selbst eine Testanfrage und notieren Sie, wann die Antwort kommt.",
+          {
+            "v": "teilweise",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": "Testanfrage am Montag, Antwort am Donnerstag.",
+            "stil": "text"
+          }
+        ],
+        [
+          16,
+          "Handy",
+          "Kernsatz und Hauptknopf sind auf dem Handy ohne Scrollen zu sehen.",
+          "Auf dem eigenen Handy prüfen, nicht in einer verkleinerten Ansicht am Rechner.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          17,
+          "Handy",
+          "Text ist ohne Zoomen lesbar, Knöpfe treffen Sie mit dem Daumen.",
+          "Keine Tabellen, die man seitlich schieben muss.",
+          {
+            "v": "teilweise",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          18,
+          "Handy",
+          "Die Telefonnummer lässt sich antippen und ruft direkt an.",
+          "Einmal selbst ausprobieren.",
+          {
+            "v": "ja",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          19,
+          "Ladezeit und Technik",
+          "Die Seite lädt auf dem Handy schnell.",
+          "Kostenlos prüfen mit PageSpeed Insights von Google (pagespeed.web.dev), Ansicht für Mobilgeräte. Ja ohne rote Werte, teilweise bei orangen.",
+          {
+            "v": "teilweise",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          20,
+          "Ladezeit und Technik",
+          "Die Technik ist sauber.",
+          "Die Adresse beginnt mit https, der Browser zeigt keine Warnung, kein Link führt auf eine Fehlerseite.",
+          {
+            "v": "ja",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          21,
+          "Ladezeit und Technik",
+          "Impressum und Datenschutzerklärung sind von jeder Seite mit einem Klick erreichbar.",
+          "Meist als Link im Fuß der Seite.",
+          {
+            "v": "ja",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          22,
+          "Auffindbarkeit",
+          "Die Startseite hat einen eigenen Seitentitel mit Leistung und Zielgruppe oder Ort.",
+          "Zu sehen im Reiter des Browsers und als Titel in den Suchergebnissen. Nur der Firmenname zählt als teilweise.",
+          {
+            "v": "teilweise",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          23,
+          "Auffindbarkeit",
+          "Eine kurze Beschreibung sagt, was man auf der Seite findet.",
+          "Im Website-Baukasten meist als „Beschreibung“ oder „Meta-Beschreibung“ einzutragen. Ein bis zwei Sätze.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": "Keine Beschreibung eingetragen.",
+            "stil": "text"
+          }
+        ],
+        [
+          24,
+          "Auffindbarkeit",
+          "Ihr Unternehmensprofil bei Google ist angelegt und aktuell.",
+          "Gleiche Adresse, Telefonnummer und Öffnungszeiten wie auf der Website.",
+          {
+            "v": "ja",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          25,
+          "Auffindbarkeit",
+          "Jedes Angebot hat eine eigene Seite, die von der Startseite aus verlinkt ist.",
+          "Mit eigenem Titel, Ablauf, Preis oder Preisrahmen und demselben Hauptknopf.",
+          {
+            "v": "nein",
+            "stil": "text"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}=\"ja\",2,IF(E{r}=\"teilweise\",1,0)))"
+          },
+          {
+            "v": null,
+            "stil": "text"
+          }
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          {
+            "v": "Beispiel: frei erfundene Tischlerei mit zwölf Beschäftigten",
+            "stil": "fett"
+          },
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "Erste Ansicht",
+          null,
+          null,
+          {
+            "v": "von 12",
+            "stil": "hinweis"
+          },
+          {
+            "f": "SUMIF(B$2:B$26,\"Erste Ansicht\",F$2:F$26)"
+          },
+          null
+        ],
+        [
+          null,
+          "Belege",
+          null,
+          null,
+          {
+            "v": "von 10",
+            "stil": "hinweis"
+          },
+          {
+            "f": "SUMIF(B$2:B$26,\"Belege\",F$2:F$26)"
+          },
+          null
+        ],
+        [
+          null,
+          "Nächster Schritt",
+          null,
+          null,
+          {
+            "v": "von 8",
+            "stil": "hinweis"
+          },
+          {
+            "f": "SUMIF(B$2:B$26,\"Nächster Schritt\",F$2:F$26)"
+          },
+          null
+        ],
+        [
+          null,
+          "Handy",
+          null,
+          null,
+          {
+            "v": "von 6",
+            "stil": "hinweis"
+          },
+          {
+            "f": "SUMIF(B$2:B$26,\"Handy\",F$2:F$26)"
+          },
+          null
+        ],
+        [
+          null,
+          "Ladezeit und Technik",
+          null,
+          null,
+          {
+            "v": "von 6",
+            "stil": "hinweis"
+          },
+          {
+            "f": "SUMIF(B$2:B$26,\"Ladezeit und Technik\",F$2:F$26)"
+          },
+          null
+        ],
+        [
+          null,
+          "Auffindbarkeit",
+          null,
+          null,
+          {
+            "v": "von 8",
+            "stil": "hinweis"
+          },
+          {
+            "f": "SUMIF(B$2:B$26,\"Auffindbarkeit\",F$2:F$26)"
+          },
+          null
+        ],
+        [
+          null,
+          {
+            "v": "Gesamt",
+            "stil": "fett"
+          },
+          null,
+          null,
+          {
+            "v": "von 50",
+            "stil": "hinweis"
+          },
+          {
+            "f": "SUM(F$2:F$26)"
+          },
+          {
+            "f": "IF(COUNTBLANK(E$2:E26)>0,\"Erst alle 25 Punkte bewerten\",IF(SUM(F$2:F26)>=40,\"Solide Grundlage: offene Punkte angehen, in vier Wochen wieder prüfen\",IF(SUM(F$2:F26)>=25,\"Spürbare Lücken: die drei wichtigsten Änderungen zuerst\",\"Grundlagen fehlen: mit Kernsatz und Hauptknopf beginnen\")))",
+            "stil": "standard"
+          }
+        ]
+      ],
+      "fixieren": true
+    }
+  ]
+}

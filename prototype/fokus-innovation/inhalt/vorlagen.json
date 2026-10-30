@@ -10,14 +10,126 @@
     {
       "id": "kernsatz-in-fuenf-schritten",
       "titel": "Ihr Kernsatz in fünf Schritten",
-      "text": "Mit vier kurzen Fragen und einem frei erfundenen Beispiel formulieren Sie den einen Satz, der sagt, für wen Sie da sind, was Sie lösen und warum man Ihnen glauben kann.",
-      "bereich": "sichtbarkeit"
+      "text": "Mit vier Fragen, drei erfundenen Beispielen und einem Test mit drei Personen formulieren Sie den einen Satz, der sagt, für wen Sie da sind, was Sie lösen und warum man Ihnen glauben kann.",
+      "bereich": "sichtbarkeit",
+      "ratgeber": "positionierung-in-fuenf-saetzen",
+      "phase": [
+        "start",
+        "aufbau"
+      ],
+      "inhalt": [
+        "Anleitung",
+        "Drei ausgefüllte Beispiele",
+        "Vier Fragen",
+        "Satz und Prüfliste",
+        "Fünf-Sekunden-Test",
+        "Liste: wo der Satz hingehört",
+        "Nächste Schritte"
+      ]
+    },
+    {
+      "id": "startseiten-check",
+      "titel": "Startseiten-Check",
+      "text": "Prüfen Sie Ihre Startseite an 25 Punkten, von der ersten Ansicht bis zur Auffindbarkeit, und finden Sie die drei Änderungen, die Ihnen am meisten bringen. Als PDF und als Tabelle, die selbst rechnet.",
+      "bereich": "sichtbarkeit",
+      "ratgeber": "homepage-fuenf-sekunden",
+      "phase": [
+        "start",
+        "aufbau",
+        "wachstum"
+      ],
+      "inhalt": [
+        "Anleitung",
+        "Ausgefülltes Beispiel",
+        "25 Prüfpunkte in sechs Gruppen",
+        "Auswertung mit Punkten",
+        "Die drei wichtigsten Änderungen",
+        "Tabelle mit Formeln"
+      ]
+    },
+    {
+      "id": "kundenstimmen-einholen",
+      "titel": "Kundenstimmen einholen",
+      "text": "Vom Anfragen bis zur unterschriebenen Freigabe: Vorlagen für E-Mail und Gespräch, ein Bogen, der aus Antworten Kundenstimmen macht, und eine Einwilligung zum Unterschreiben. Keine Rechtsberatung.",
+      "bereich": "sichtbarkeit",
+      "ratgeber": "kundenstimmen-die-ueberzeugen",
+      "phase": [
+        "start",
+        "aufbau",
+        "wachstum"
+      ],
+      "inhalt": [
+        "Anleitung",
+        "Liste: wen und wann fragen",
+        "Vorlagen für E-Mail und Nachricht",
+        "Gespräch mit acht Fragen",
+        "Bogen: kurz, lang, Zahl",
+        "Ausgefülltes Beispiel",
+        "Einwilligung zum Unterschreiben",
+        "Überblick über Freigaben"
+      ]
     },
     {
       "id": "ki-regeln-fuer-ihr-team",
       "titel": "KI-Regeln für Ihr Team",
-      "text": "Legen Sie auf einer Seite fest, welche Werkzeuge Ihr Team mit Firmenlizenz nutzt, was nie hineinkommt, wer prüft, wie Sie kennzeichnen und wann Sie die Regeln wieder ansehen. Eine Vorlage, keine Rechtsberatung.",
-      "bereich": "innovation"
+      "text": "Legen Sie fest, welche Werkzeuge Ihr Team nutzt, was nie hineinkommt, wer prüft und wie Sie kennzeichnen. Mit ausgefülltem Beispiel, Artikel 4 der KI-Verordnung im Wortlaut und einer Teilnehmerliste für Schulungen. Keine Rechtsberatung.",
+      "bereich": "innovation",
+      "ratgeber": "erste-30-tage-mit-ki",
+      "phase": [
+        "aufbau",
+        "wachstum"
+      ],
+      "inhalt": [
+        "Anleitung",
+        "Ausgefülltes Beispiel",
+        "Bogen in zwei Teilen",
+        "KI-Kompetenz: Artikel 4 im Wortlaut",
+        "Teilnehmerliste für Schulungen",
+        "Nächste Schritte"
+      ]
+    },
+    {
+      "id": "ki-anwendungsfall-bewerten",
+      "titel": "KI-Anwendungsfälle bewerten",
+      "text": "Beschreiben Sie jeden Ablauf in einem Steckbrief, vergeben Sie Punkte nach sechs Kriterien und finden Sie den Ablauf, mit dem sich der erste Versuch mit KI lohnt. Als PDF und als Tabelle, die selbst rechnet.",
+      "bereich": "innovation",
+      "ratgeber": "ki-anwendungsfaelle-finden",
+      "phase": [
+        "start",
+        "aufbau",
+        "wachstum"
+      ],
+      "inhalt": [
+        "Anleitung",
+        "Fragen zum Ideensammeln",
+        "Skala mit sechs Kriterien",
+        "Ausgefüllter Steckbrief",
+        "Beispiel: vier Abläufe im Vergleich",
+        "Steckbrief",
+        "Übersicht zum Vergleichen",
+        "Tabelle mit Formeln"
+      ]
+    },
+    {
+      "id": "ki-pilot-30-tage",
+      "titel": "KI-Pilot in 30 Tagen",
+      "text": "Ein Ablauf, ein Monat, eine Entscheidung: Mit Steckbrief, Wochenplan, Messbogen und Auswertung prüfen Sie, ob KI einen Ablauf wirklich verbessert. Den Messbogen gibt es auch als Tabelle.",
+      "bereich": "innovation",
+      "ratgeber": "erste-30-tage-mit-ki",
+      "phase": [
+        "aufbau",
+        "wachstum"
+      ],
+      "inhalt": [
+        "Anleitung",
+        "Ausgefülltes Beispiel",
+        "Steckbrief des Versuchs",
+        "Wochenplan",
+        "Messbogen",
+        "Notizen für Wochentermine",
+        "Auswertung und Entscheidung",
+        "Tabelle mit Formeln"
+      ]
     }
   ]
 }

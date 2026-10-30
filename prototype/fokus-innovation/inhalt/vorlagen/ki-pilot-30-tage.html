@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>KI-Pilot in 30 Tagen</title>
+<link rel="stylesheet" href="basis.css">
+<style>
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 166mm; }
+  .abschnitt-titel { margin-top: 5.5mm; padding-bottom: 1.8mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+  .abschnitt-titel.mit-feld { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 1.2mm; }
+  .abschnitt-titel .feld { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 9pt; width: 60mm; }
+  .abschnitt-titel .feld .strich { height: 5mm; }
+  h2.blatt { margin-top: 6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  h2.blatt + .unter { margin-top: 1.6mm; max-width: 166mm; font-size: 10.5pt; line-height: 1.45; }
+  h3 { font-size: 11pt; line-height: 1.25; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  .klein { font-size: 9pt; line-height: 1.4; color: var(--tinte-leise); }
+  .ein { color: var(--akzent); font-weight: 500; }
+  .lk { display: inline-block; width: 38mm; height: 4mm; border-bottom: var(--linie) solid var(--haar-schreib); vertical-align: -1mm; }
+  .lk.kurz { width: 16mm; }
+
+  /* So nutzen Sie die Vorlage */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3.2mm; margin-top: 3.6mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 10pt; line-height: 1.42; }
+  .ablauf { margin-top: 2.6mm; }
+  .ablauf li { display: grid; grid-template-columns: 9mm 1fr 25mm; padding: 2.5mm 0 2.3mm; border-bottom: var(--linie) solid var(--haar); }
+  .ablauf li:last-child { border-bottom: 0; }
+  .ablauf .nr { font-size: 12pt; line-height: 1.2; }
+  .ablauf h3 { font-size: 10.5pt; }
+  .ablauf p { margin-top: .6mm; font-size: 9.8pt; line-height: 1.42; }
+  .ablauf.ohne-s li { grid-template-columns: 9mm 1fr; }
+  .ablauf .s { text-align: right; font-size: 8.5pt; color: var(--tinte-leise); padding-top: .6mm; }
+
+  .hinweis { margin-top: 4mm; padding: .8mm 0 .8mm 5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; color: var(--tinte-text); }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .hilfe { margin-top: 1.4mm; font-size: 9pt; line-height: 1.42; color: var(--tinte-leise); }
+  .hilfe b { color: var(--tinte-text); font-weight: 600; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 7pt; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+  .bsp-kopf { margin-top: 3mm; padding-left: 5mm; border-left: .9pt solid var(--akzent); }
+  .bsp-kopf p { font-size: 10pt; line-height: 1.42; }
+
+  /* Linien und Formularraster */
+  .linien .zeile-frei { height: 7.6mm; }
+  table.raster { width: 100%; margin-top: 2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 2mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.6pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.8pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.2mm 2mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster td.n { color: var(--tinte-leise); font-size: 8.5pt; font-variant-numeric: tabular-nums; }
+  .raster td.mitte, .raster th.mitte { text-align: center; }
+  .raster td.ein { color: var(--akzent); }
+  .raster tr.gruppe td { height: auto; padding-top: 3mm; padding-bottom: 1.2mm; border-left: 0; font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); border-bottom: var(--linie) solid var(--haar); }
+
+  /* Kontrollliste */
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.8pt; line-height: 1.4; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste .kreuz { margin-top: .5mm; }
+  .liste b { color: var(--tinte); font-weight: 600; }
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
+  .drei { display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 7mm; }
+
+  /* Nächste Schritte */
+  .weiter-liste { margin-top: 3mm; }
+  .weiter-liste li { display: grid; grid-template-columns: 38mm 1fr; column-gap: 6mm; padding: 3.6mm 0 3.4mm; border-bottom: var(--linie) solid var(--haar); }
+  .weiter-liste li:last-child { border-bottom: 0; }
+  .weiter-liste .art { font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); padding-top: .8mm; }
+  .weiter-liste h3 { font-size: 11.5pt; }
+  .weiter-liste p { margin-top: .8mm; font-size: 10pt; line-height: 1.42; }
+  .weiter-liste a, a.url { color: var(--akzent); text-decoration: none; font-weight: 600; font-size: 9.8pt; }
+  .weiter-liste .url { display: block; margin-top: 1.2mm; }
+
+  .steck { margin-top: 2.6mm; border-top: .9pt solid var(--haar-stark); }
+  .steck .z { display: grid; grid-template-columns: 40mm 1fr; column-gap: 5mm; padding: 2.1mm 0 1.7mm; border-bottom: var(--linie) solid var(--haar); }
+  .steck .z:last-child { border-bottom: 0; }
+  .steck h3 { font-size: 9.8pt; }
+  .steck .klein { margin-top: .4mm; font-size: 8.3pt; }
+  .steck .linien .zeile-frei { height: 8.4mm; }
+  .steck .linien .zeile-frei:first-child { height: 5mm; }
+  .steck p.ein { font-size: 9.6pt; line-height: 1.42; }
+  .wahlen { display: flex; flex-wrap: wrap; gap: 1.4mm 5mm; margin-top: 1.2mm; font-size: 9.4pt; }
+  .wahlen span { display: inline-flex; align-items: center; gap: 1.8mm; }
+  .pruefliste li { display: flex; gap: 2.4mm; padding: 1.5mm 0; font-size: 9.4pt; line-height: 1.38; }
+  .pruefliste .kreuz { margin-top: .5mm; }
+
+  table.plan td { height: auto; padding-top: 1.9mm; padding-bottom: 1.7mm; vertical-align: top; }
+  table.plan td.woche { font-weight: 600; color: var(--tinte); }
+  table.plan td.woche small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 8.2pt; }
+  table.plan td.leer { width: 26mm; }
+  table.plan tr.neu td { border-top: .9pt solid var(--haar-stark); }
+  table.mess td { height: 8.2mm; }
+  table.mess tr.schnitt td { border-top: .9pt solid var(--haar-stark); font-weight: 600; color: var(--tinte); }
+  table.rechnung td { height: 9mm; vertical-align: middle; }
+  table.rechnung td b { color: var(--tinte); font-weight: 600; }
+
+  .woche-box { padding: 2.4mm 0 1.6mm; border-bottom: var(--linie) solid var(--haar); }
+  .woche-box:first-of-type { border-top: .9pt solid var(--haar-stark); }
+  .woche-box .kopfzeile { display: flex; justify-content: space-between; align-items: flex-end; }
+  .woche-box h3 { font-size: 10.6pt; }
+  .woche-box .kopfzeile .feld { width: 54mm; }
+  .woche-box .zwei .feld { font-size: 8.8pt; }
+  .woche-box .linien .zeile-frei { height: 7.8mm; }
+
+  .optionen { display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 6mm; margin-top: 2.6mm; }
+  .optionen div { padding: 2.6mm 3.4mm; border: var(--linie) solid var(--haar); border-radius: 1.4mm; }
+  .optionen h3 { display: flex; gap: 2mm; align-items: center; font-size: 10.4pt; }
+  .optionen p { margin-top: 1mm; font-size: 8.8pt; line-height: 1.38; color: var(--tinte-text); }
+  .optionen div.an { border-color: var(--akzent); }
+  .optionen p.ein { color: var(--akzent); }
+  table.rechnung td.einheit { text-align: right; font-size: 8.4pt; color: var(--tinte-leise); }
+
+  .zahlen-bsp { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 5mm; margin-top: 3mm; }
+  .zahlen-bsp div { border-top: .9pt solid var(--haar-stark); padding-top: 2mm; }
+  .zahlen-bsp b { display: block; font-size: 17pt; line-height: 1.1; color: var(--akzent); font-weight: 600; letter-spacing: -.02em; }
+  .zahlen-bsp span { display: block; margin-top: 1mm; font-size: 8.8pt; line-height: 1.35; color: var(--tinte-leise); }
+  .bsp-liste li { display: grid; grid-template-columns: 34mm 1fr; column-gap: 5mm; padding: 1.5mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.5pt; line-height: 1.4; }
+  .bsp-liste li:last-child { border-bottom: 0; }
+  .bsp-liste b { color: var(--tinte); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="37.2" cy="9.3" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+  <symbol id="x" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="haken" viewBox="0 0 12 12"><path d="M2.6 6.4 L5 8.8 L9.6 3.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<div class="titel">
+    <p class="vorzeile">Vorlage · Innovation</p>
+    <h1>KI-Pilot in 30 Tagen</h1>
+    <p class="lead">Ein Ablauf, ein Monat, eine Entscheidung. Mit Steckbrief des Versuchs, Wochenplan, Messbogen, Notizen für die Wochentermine und einer Auswertung, die Zahlen statt Eindrücke liefert.</p>
+  </div>
+  <p class="abschnitt-titel">So nutzen Sie die Vorlage</p>
+  <div class="fakten"><div><b>Ziel</b><p>In 30 Tagen herausfinden, ob ein Ablauf mit KI wirklich besser läuft, und dann bewusst entscheiden: ausweiten, anpassen oder aufhören.</p></div><div><b>Wer macht mit</b><p>Eine Person verantwortet den Versuch. Dazu wenige Menschen, die den Ablauf regelmäßig erledigen.</p></div><div><b>Zeitbedarf</b><p>Für die verantwortliche Person etwa eine Stunde je Woche. Für alle anderen ein kurzer Wochentermin und ein paar Sekunden je Aufgabe zum Notieren.</p></div><div><b>Am Rechner</b><p>Den Messbogen gibt es als Tabelle für Excel, Numbers oder Google Tabellen. Sie rechnet Durchschnitte und Ersparnis selbst.</p></div></div>
+  <p class="abschnitt-titel">Ablauf</p>
+  <ol class="ablauf"><li><span class="nr">1</span><div><h3>Beispiel ansehen</h3><p>Ein frei erfundenes Planungsbüro zeigt einen Versuch von Anfang bis Ende.</p></div><span class="s">Seite 2</span></li><li><span class="nr">2</span><div><h3>Den Versuch festlegen</h3><p>Ablauf, Beteiligte, Ziel, Abbruchgrund, Lizenz und Regeln. Alles in Woche 1.</p></div><span class="s">Seite 3</span></li><li><span class="nr">3</span><div><h3>Dem Plan folgen</h3><p>Was in welcher Woche passiert, zum Abhaken.</p></div><span class="s">Seite 4</span></li><li><span class="nr">4</span><div><h3>Messen</h3><p>Minuten je Aufgabe ohne KI in Woche 1 und mit KI in Woche 3, mit Prüfen und Nacharbeit.</p></div><span class="s">Seite 5</span></li><li><span class="nr">5</span><div><h3>Wöchentlich kurz sprechen</h3><p>Ein gutes und ein schlechtes Beispiel, fehlendes Wissen und gute Anweisungen festhalten.</p></div><span class="s">Seite 6</span></li><li><span class="nr">6</span><div><h3>Auswerten und entscheiden</h3><p>Ersparnis rechnen, Qualität und Team ansehen und die Entscheidung schriftlich festhalten.</p></div><span class="s">Seite 7</span></li></ol>
+  <p class="hinweis"><b>Passt zusammen:</b> Den Ablauf wählen Sie mit der Vorlage „KI-Anwendungsfälle bewerten“. Die Regeln für das Team stehen in „KI-Regeln für Ihr Team“. Die Schritte erklärt der Ratgeber „Die ersten 30 Tage mit KI im Team“.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 1 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm;color:var(--akzent)">Beispiel · frei erfunden</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Ein Versuch von Anfang bis Ende</h2>
+  <p class="unter">Ein Planungsbüro für Haustechnik mit 22 Beschäftigten testet 30 Tage lang, ob Angebotstexte mit KI schneller entstehen. Drei Projektleitungen machen mit, eine verantwortet den Versuch.</p>
+  <div class="zahlen-bsp">
+    <div><b>45 Min.</b><span>je Angebotstext vorher, Schnitt aus 6 Messungen in Woche 1</span></div>
+    <div><b>28 Min.</b><span>mit KI in Woche 3, mit Prüfen und Nacharbeit, 7 Messungen</span></div>
+    <div><b>17 Min.</b><span>Ersparnis je Angebot</span></div>
+    <div><b>6,8 Std.</b><span>im Monat bei 24 Angeboten: 17 mal 24, geteilt durch 60</span></div>
+  </div>
+  <ul class="bsp-liste" style="margin-top:3mm">
+    <li><b>Woche 1, ohne KI</b><span class="ein">40 · 50 · 45 · 55 · 38 · 42 Minuten, Schnitt 45</span></li>
+    <li><b>Woche 3, mit KI</b><span class="ein">25 · 30 · 22 · 35 · 28 · 26 · 30 Minuten, Schnitt 28</span></li>
+  </ul>
+  <p class="abschnitt-titel akzent">Was das Büro festgehalten hat</p>
+  <ul class="bsp-liste">
+    <li><b>Zeitraum</b><span class="ein">Start am 09.02., Wochentermin dienstags um 8:30 Uhr, Entscheidung am 11.03.</span></li>
+    <li><b>Ziel</b><span class="ein">Mindestens zehn Minuten weniger je Angebot, bei gleicher Qualität.</span></li>
+    <li><b>Abbruchgrund</b><span class="ein">Kundendaten geraten in das Werkzeug, oder die Nacharbeit dauert länger als das Schreiben vorher.</span></li>
+    <li><b>Lizenz und Regeln</b><span class="ein">Firmenlizenz vorhanden, Vertrag geprüft. KI-Regeln am 28.01. besprochen.</span></li>
+    <li><b>Qualität</b><span class="ein">Gleich gut, einheitlicher. Zwei von sieben Texten brauchten mehr Nacharbeit, beide zu Sonderanlagen.</span></li>
+    <li><b>Fehlendes Wissen</b><span class="ein">Textbausteine für Sonderanlagen gibt es nicht, der Leistungskatalog ist veraltet.</span></li>
+    <li><b>Team</b><span class="ein">Die Beteiligten wollen weitermachen. Gewünscht: eine gemeinsame Sammlung guter Anweisungen.</span></li>
+    <li><b>Kosten</b><span class="ein">Keine zusätzlichen, die Lizenzen waren schon da.</span></li>
+  </ul>
+  <p class="abschnitt-titel akzent">Entscheidung am 11.03.</p>
+  <div class="optionen">
+    <div class="an"><h3><span class="kreuz" style="position:relative"><svg style="position:absolute;inset:-.2mm;width:3.6mm;height:3.6mm;color:var(--akzent)"><use href="#x"/></svg></span>Ausweiten</h3><p class="ein">Ab 16.03. für alle vier Projektleitungen. Bausteine für Sonderanlagen bis Ende März ergänzen.</p></div>
+    <div><h3><span class="kreuz"></span>Anpassen</h3><p>Nutzen da, aber es hakt. Beheben und weitere 30 Tage messen.</p></div>
+    <div><h3><span class="kreuz"></span>Aufhören</h3><p>Spart kaum Zeit. Das Gelernte in den nächsten Versuch mitnehmen.</p></div>
+  </div>
+  <p class="klein" style="margin-top:3mm">Nächster Ablauf: Protokolle der Baubesprechungen. Büro, Zahlen und Termine sind frei erfunden. Lila steht für Einträge.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 2 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Woche 1</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Den Versuch festlegen</h2>
+  
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Füllen Sie diese Seite vor dem Start aus. Was hier fehlt, sorgt später für Streit über das Ergebnis.</p>
+  <div class="steck">
+    <div class="z"><div><h3>Ablauf</h3><p class="klein">ein einziger</p></div><div class="linien"><div class="zeile-frei"></div></div></div>
+    <div class="z"><div><h3>Wer</h3></div><div class="zwei"><p class="feld"><span>Verantwortlich</span><span class="strich"></span></p><p class="feld"><span>Beteiligte</span><span class="strich"></span></p></div></div>
+    <div class="z"><div><h3>Wann</h3></div><div><div class="zwei"><p class="feld"><span>Start am</span><span class="strich"></span></p><p class="feld"><span>Entscheidung am</span><span class="strich"></span></p></div><p class="feld"><span>Wochentermin, Tag und Uhrzeit</span><span class="strich"></span></p></div></div>
+    <div class="z"><div><h3>Ziel</h3><p class="klein">Woran merken Sie nach 30 Tagen, dass es sich lohnt? Am besten mit Zahl.</p></div><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+    <div class="z"><div><h3>Abbruchgrund</h3><p class="klein">Wann hören Sie früher auf?</p></div><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+    <div class="z"><div><h3>Werkzeug und Lizenz</h3><p class="klein">vor dem Start klären</p></div><div><p class="feld"><span>Werkzeug</span><span class="strich"></span></p>
+      <ul class="pruefliste" style="margin-top:1.6mm">
+        <li><span class="kreuz"></span><span>Firmenlizenz, kein privates oder kostenloses Konto</span></li>
+        <li><span class="kreuz"></span><span>Der Vertrag schließt aus, dass Eingaben zum Trainieren genutzt werden</span></li>
+        <li><span class="kreuz"></span><span>Ein Vertrag zur Auftragsverarbeitung nach DSGVO liegt vor</span></li>
+        <li><span class="kreuz"></span><span>Bekannt, wo die Daten verarbeitet und gespeichert werden</span></li>
+        <li><span class="kreuz"></span><span>Konten lassen sich zentral anlegen und wieder sperren</span></li>
+      </ul>
+      <div class="zwei" style="margin-top:1mm"><p class="feld"><span>Geprüft von</span><span class="strich"></span></p><p class="feld"><span>am</span><span class="strich"></span></p></div></div></div>
+    <div class="z"><div><h3>Regeln</h3></div><div><div class="wahlen"><span><span class="kreuz"></span>KI-Regeln im Team besprochen am <span class="lk" style="width:28mm"></span></span></div><p class="klein" style="margin-top:1.2mm">Vorlage dafür: „KI-Regeln für Ihr Team“ auf fokusinnovation.de/kostenlos/</p></div></div>
+    <div class="z"><div><h3>Ausgangswert</h3></div><p class="text">In Woche 1 notieren alle Beteiligten die Minuten je Aufgabe, noch ohne KI, auf dem Messbogen (Seite 5).</p></div>
+  </div>
+  <p class="hinweis">Diese Fragen ersetzen keine Rechtsberatung. Lassen Sie die Antworten von der Person prüfen, die bei Ihnen für Datenschutz zuständig ist.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 3 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Plan</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Woche für Woche</h2>
+  <p class="unter">Haken Sie ab, was erledigt ist, und tragen Sie ein, wer zuständig ist.</p>
+  <table class="raster plan" style="margin-top:3mm"><colgroup><col style="width:24mm"><col style="width:8mm"><col><col style="width:30mm"><col style="width:23mm"></colgroup>
+    <thead><tr><th>Woche</th><th></th><th>Was</th><th>Wer</th><th>Erledigt am</th></tr></thead>
+    <tbody><tr class="neu"><td class="woche">Woche 1<small>Tag 1 bis 7</small></td><td><span class="kreuz"></span></td><td>Ablauf, Ziel und Abbruchgrund festlegen (Seite 3)</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>Lizenz und Vertrag klären, Konten anlegen</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>KI-Regeln im Team besprechen</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>Ausgangswert messen: Minuten je Aufgabe ohne KI</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>Eine erste Anweisung für die KI schreiben und an einem Ort ablegen</td><td></td><td></td></tr><tr class="neu"><td class="woche">Woche 2<small>Tag 8 bis 14</small></td><td><span class="kreuz"></span></td><td>Der Ablauf läuft mit KI, jedes Mal, nicht nur, wenn Zeit ist</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>Gute Anweisungen in der gemeinsamen Sammlung ablegen</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>Wochentermin: ein gutes und ein schlechtes Beispiel</td><td></td><td></td></tr><tr class="neu"><td class="woche">Woche 3<small>Tag 15 bis 21</small></td><td><span class="kreuz"></span></td><td>Messwoche: Minuten je Aufgabe mit KI, mit Prüfen und Nacharbeit</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>Fehlendes Wissen notieren: Preise, Produkte, Abläufe</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>Wochentermin</td><td></td><td></td></tr><tr class="neu"><td class="woche">Woche 4<small>Tag 22 bis 30</small></td><td><span class="kreuz"></span></td><td>Zahlen auswerten (Seite 7)</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>Beteiligte nach Qualität und Belastung fragen</td><td></td><td></td></tr><tr><td class="woche"></td><td><span class="kreuz"></span></td><td>Tag 30: entscheiden und schriftlich festhalten</td><td></td><td></td></tr></tbody></table>
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Fällt eine Woche aus, etwa durch Urlaub, verschieben Sie den ganzen Plan. Gemessen wird nur in Wochen, in denen der Ablauf normal läuft.</p>
+  <p class="abschnitt-titel">Wenn es hakt</p>
+  <ul class="bsp-liste">
+    <li><b>Zu allgemein</b><span>Die Ergebnisse klingen austauschbar? Geben Sie der KI ein gutes Beispiel aus Ihrem Haus mit und sagen Sie, für wen der Text ist.</span></li>
+    <li><b>Jeder anders</b><span>Jeder arbeitet mit eigenen Anweisungen? Einigen Sie sich auf eine gemeinsame und legen Sie sie in die Sammlung.</span></li>
+    <li><b>Falsche Fakten</b><span>Die KI erfindet Preise, Normen oder Namen? Diese Angaben kommen immer aus Ihren Unterlagen, nie aus der KI.</span></li>
+    <li><b>Keine Zeit zum Notieren</b><span>Ein Zettel neben dem Bildschirm reicht. Datum, Minuten, fertig.</span></li>
+  </ul>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 4 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Messen</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Messbogen</h2>
+  <p class="unter">Notieren Sie direkt nach jeder Aufgabe, nicht am Ende der Woche. Gemessen wird die ganze Zeit bis zum fertigen Ergebnis.</p>
+  <p class="abschnitt-titel">Vorher · Woche 1, ohne KI</p>
+  <table class="raster mess"><colgroup><col style="width:7mm"><col style="width:20mm"><col style="width:30mm"><col><col style="width:18mm"></colgroup>
+    <thead><tr><th></th><th>Datum</th><th>Wer</th><th>Aufgabe, kurz</th><th class="mitte">Minuten</th></tr></thead>
+    <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td></td></tr><tr><td class="n">2</td><td></td><td></td><td></td><td></td></tr><tr><td class="n">3</td><td></td><td></td><td></td><td></td></tr><tr><td class="n">4</td><td></td><td></td><td></td><td></td></tr><tr><td class="n">5</td><td></td><td></td><td></td><td></td></tr><tr><td class="n">6</td><td></td><td></td><td></td><td></td></tr><tr><td class="n">7</td><td></td><td></td><td></td><td></td></tr><tr><td class="n">8</td><td></td><td></td><td></td><td></td></tr>
+    <tr class="schnitt"><td></td><td colspan="3">Schnitt: Summe der Minuten geteilt durch Anzahl</td><td></td></tr></tbody></table>
+  <p class="abschnitt-titel">Mit KI · Woche 3, mit Prüfen und Nacharbeit</p>
+  <table class="raster mess"><colgroup><col style="width:7mm"><col style="width:20mm"><col style="width:30mm"><col><col style="width:18mm"><col style="width:22mm"></colgroup>
+    <thead><tr><th></th><th>Datum</th><th>Wer</th><th>Aufgabe, kurz</th><th class="mitte">Minuten</th><th class="mitte">Nacharbeit?</th></tr></thead>
+    <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr><tr><td class="n">2</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr><tr><td class="n">3</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr><tr><td class="n">4</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr><tr><td class="n">5</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr><tr><td class="n">6</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr><tr><td class="n">7</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr><tr><td class="n">8</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr><tr><td class="n">9</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr><tr><td class="n">10</td><td></td><td></td><td></td><td></td><td class="mitte" style="font-size:8.5pt;color:var(--tinte-leise)">ja · nein</td></tr>
+    <tr class="schnitt"><td></td><td colspan="3">Schnitt: Summe der Minuten geteilt durch Anzahl</td><td></td><td></td></tr></tbody></table>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 5 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Wochentermine</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Fünfzehn Minuten je Woche</h2>
+  <p class="unter">Jeder zeigt ein Beispiel, das gut lief, und eins, das nicht lief. Notieren Sie, welches Wissen der KI gefehlt hat und welche Anweisung sich bewährt hat.</p>
+  <div style="margin-top:3mm"><div class="woche-box"><div class="kopfzeile"><h3>Woche 1</h3><p class="feld"><span>Termin am</span><span class="strich"></span></p></div>
+    <div class="zwei"><div><p class="klein" style="margin-top:1.6mm">Gut gelaufen</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div><div><p class="klein" style="margin-top:1.6mm">Nicht gut gelaufen</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div></div>
+    <div class="zwei"><p class="feld"><span>Fehlendes Wissen</span><span class="strich"></span></p><p class="feld"><span>Gute Anweisung abgelegt</span><span class="strich"></span></p></div></div><div class="woche-box"><div class="kopfzeile"><h3>Woche 2</h3><p class="feld"><span>Termin am</span><span class="strich"></span></p></div>
+    <div class="zwei"><div><p class="klein" style="margin-top:1.6mm">Gut gelaufen</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div><div><p class="klein" style="margin-top:1.6mm">Nicht gut gelaufen</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div></div>
+    <div class="zwei"><p class="feld"><span>Fehlendes Wissen</span><span class="strich"></span></p><p class="feld"><span>Gute Anweisung abgelegt</span><span class="strich"></span></p></div></div><div class="woche-box"><div class="kopfzeile"><h3>Woche 3</h3><p class="feld"><span>Termin am</span><span class="strich"></span></p></div>
+    <div class="zwei"><div><p class="klein" style="margin-top:1.6mm">Gut gelaufen</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div><div><p class="klein" style="margin-top:1.6mm">Nicht gut gelaufen</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div></div>
+    <div class="zwei"><p class="feld"><span>Fehlendes Wissen</span><span class="strich"></span></p><p class="feld"><span>Gute Anweisung abgelegt</span><span class="strich"></span></p></div></div><div class="woche-box"><div class="kopfzeile"><h3>Woche 4</h3><p class="feld"><span>Termin am</span><span class="strich"></span></p></div>
+    <div class="zwei"><div><p class="klein" style="margin-top:1.6mm">Gut gelaufen</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div><div><p class="klein" style="margin-top:1.6mm">Nicht gut gelaufen</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div></div>
+    <div class="zwei"><p class="feld"><span>Fehlendes Wissen</span><span class="strich"></span></p><p class="feld"><span>Gute Anweisung abgelegt</span><span class="strich"></span></p></div></div></div>
+  <p class="abschnitt-titel">Gemeinsame Sammlung guter Anweisungen</p>
+  <div class="zwei" style="margin-top:1mm"><p class="feld"><span>Liegt unter</span><span class="strich"></span></p><p class="feld"><span>Pflegt</span><span class="strich"></span></p></div>
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Fehlendes Wissen ist ein Ergebnis des Versuchs. Es zeigt, welche Daten Sie als Nächstes ordnen sollten, etwa Preise, Produkte oder Abläufe.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 6 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Tag 30</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Auswerten und entscheiden</h2>
+  <p class="unter">Rechnen Sie mit den notierten Minuten, nicht mit einer Schätzung. Prüfen und Nacharbeit gehören zur Zeit mit KI.</p>
+  <table class="raster rechnung" style="margin-top:3mm"><colgroup><col style="width:52mm"><col><col style="width:30mm"></colgroup>
+    <thead><tr><th>Größe</th><th>So rechnen Sie</th><th>Ihr Wert</th></tr></thead>
+    <tbody>
+      <tr><td><b>Zeit vorher</b></td><td>Schnitt aus Woche 1, Minuten je Aufgabe</td><td class="einheit">Min.</td></tr>
+      <tr><td><b>Zeit mit KI</b></td><td>Schnitt aus Woche 3, mit Prüfen und Nacharbeit</td><td class="einheit">Min.</td></tr>
+      <tr><td><b>Ersparnis je Aufgabe</b></td><td>Zeit vorher minus Zeit mit KI, in Minuten</td><td class="einheit">Min.</td></tr>
+      <tr><td><b>Aufgaben im Monat</b></td><td>Wie oft der Ablauf in einem normalen Monat vorkommt</td><td class="einheit"></td></tr>
+      <tr><td><b>Ersparnis im Monat</b></td><td>Ersparnis je Aufgabe mal Aufgaben im Monat, geteilt durch 60, in Stunden</td><td class="einheit">Std.</td></tr>
+      <tr><td><b>Kosten im Monat</b></td><td>Lizenzen der Beteiligten, in Euro</td><td class="einheit">€</td></tr>
+    </tbody></table>
+  <p class="abschnitt-titel">Mehr als Zeit</p>
+  <div class="zwei" style="row-gap:.4mm">
+    <div><p class="text" style="margin-top:1.6mm">Qualität im Vergleich zu vorher</p><div class="wahlen"><span><span class="kreuz"></span>besser</span><span><span class="kreuz"></span>gleich</span><span><span class="kreuz"></span>schlechter</span></div></div>
+    <div><p class="text" style="margin-top:1.6mm">Antwort an Kunden</p><div class="wahlen"><span><span class="kreuz"></span>schneller</span><span><span class="kreuz"></span>gleich</span><span><span class="kreuz"></span>langsamer</span></div></div>
+  </div>
+  <p class="text" style="margin-top:2.6mm">Wie geht es den Beteiligten damit?</p>
+  <div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div>
+  <p class="text" style="margin-top:2.6mm">Welches Wissen hat gefehlt, was ordnen Sie als Nächstes?</p>
+  <div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div>
+  <p class="abschnitt-titel">Entscheidung</p>
+  <div class="optionen">
+    <div><h3><span class="kreuz"></span>Ausweiten</h3><p>Spart spürbar Zeit, die Qualität stimmt. Wird Standard, der nächste Ablauf folgt.</p></div>
+    <div><h3><span class="kreuz"></span>Anpassen</h3><p>Nutzen da, aber es hakt, etwa an Daten oder Vorlagen. Beheben und weitere 30 Tage messen.</p></div>
+    <div><h3><span class="kreuz"></span>Aufhören</h3><p>Spart kaum Zeit oder kostet mehr Prüfung, als es bringt. Das Gelernte mitnehmen.</p></div>
+  </div>
+  <p class="text" style="margin-top:3mm">Begründung in zwei, drei Sätzen</p>
+  <div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div>
+  <div class="drei" style="margin-top:2mm"><p class="feld"><span>Nächster Ablauf</span><span class="strich"></span></p><p class="feld"><span>Entschieden am</span><span class="strich"></span></p><p class="feld"><span>Von</span><span class="strich"></span></p></div>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 7 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Zum Schluss</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Nächste Schritte</h2>
+  <p class="unter">Nach einigen solchen Runden haben Sie keine Sammlung von Versuchen mehr, sondern Abläufe, die mit KI laufen und deren Nutzen Sie kennen. Der nächste Ablauf steht schon in Ihrer Übersicht.</p>
+  <p class="abschnitt-titel">Ihre nächsten drei Schritte</p>
+  <table class="raster"><colgroup><col style="width:7mm"><col><col style="width:38mm"><col style="width:28mm"></colgroup>
+    <thead><tr><th></th><th>Was genau?</th><th>Wer?</th><th>Bis wann?</th></tr></thead>
+    <tbody><tr><td class="n" style="height:10mm">1</td><td></td><td></td><td></td></tr><tr><td class="n" style="height:10mm">2</td><td></td><td></td><td></td></tr><tr><td class="n" style="height:10mm">3</td><td></td><td></td><td></td></tr></tbody></table>
+  
+  <p class="abschnitt-titel">Weiter geht es hier</p>
+  <ul class="weiter-liste"><li><span class="art">Weiterlesen</span><div><h3>Ratgeber: Die ersten 30 Tage mit KI im Team</h3><p>Woche für Woche erklärt, mit den häufigsten Fehlern und der Rechnung für die Ersparnis.</p><a class="url" href="https://fokusinnovation.de/wissen/erste-30-tage-mit-ki/">fokusinnovation.de/wissen/erste-30-tage-mit-ki/</a></div></li><li><span class="art">Weiterlesen</span><div><h3>Ratgeber: KI-Anwendungsfälle finden und bewerten</h3><p>Wie Sie den nächsten Ablauf auswählen, mit sechs Kriterien und zwei Regeln.</p><a class="url" href="https://fokusinnovation.de/wissen/ki-anwendungsfaelle-finden/">fokusinnovation.de/wissen/ki-anwendungsfaelle-finden/</a></div></li><li><span class="art">Selbst prüfen</span><div><h3>Innovations-Check</h3><p>Rund zehn Minuten, fast alles per Klick. Sie bekommen Ihre Stufe, den Vergleich mit Ihrer Branche und zwei nächste Schritte.</p><a class="url" href="https://fokusinnovation.de/innovations-check/">fokusinnovation.de/innovations-check/</a></div></li><li><span class="art">Mit uns sprechen</span><div><h3>Kostenloses Erstgespräch</h3><p>60 Minuten per Video. Wir schauen gemeinsam auf Ihren Stand und legen Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden.</p><a class="url" href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></div></li></ul>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 8 von 8</span></footer>
+</section>
+</body>
+</html>

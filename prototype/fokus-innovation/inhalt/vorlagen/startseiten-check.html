@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Startseiten-Check</title>
+<link rel="stylesheet" href="basis.css">
+<style>
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 166mm; }
+  .abschnitt-titel { margin-top: 5.5mm; padding-bottom: 1.8mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+  .abschnitt-titel.mit-feld { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 1.2mm; }
+  .abschnitt-titel .feld { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 9pt; width: 60mm; }
+  .abschnitt-titel .feld .strich { height: 5mm; }
+  h2.blatt { margin-top: 6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  h2.blatt + .unter { margin-top: 1.6mm; max-width: 166mm; font-size: 10.5pt; line-height: 1.45; }
+  h3 { font-size: 11pt; line-height: 1.25; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  .klein { font-size: 9pt; line-height: 1.4; color: var(--tinte-leise); }
+  .ein { color: var(--akzent); font-weight: 500; }
+  .lk { display: inline-block; width: 38mm; height: 4mm; border-bottom: var(--linie) solid var(--haar-schreib); vertical-align: -1mm; }
+  .lk.kurz { width: 16mm; }
+
+  /* So nutzen Sie die Vorlage */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3.2mm; margin-top: 3.6mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 10pt; line-height: 1.42; }
+  .ablauf { margin-top: 2.6mm; }
+  .ablauf li { display: grid; grid-template-columns: 9mm 1fr 25mm; padding: 2.5mm 0 2.3mm; border-bottom: var(--linie) solid var(--haar); }
+  .ablauf li:last-child { border-bottom: 0; }
+  .ablauf .nr { font-size: 12pt; line-height: 1.2; }
+  .ablauf h3 { font-size: 10.5pt; }
+  .ablauf p { margin-top: .6mm; font-size: 9.8pt; line-height: 1.42; }
+  .ablauf.ohne-s li { grid-template-columns: 9mm 1fr; }
+  .ablauf .s { text-align: right; font-size: 8.5pt; color: var(--tinte-leise); padding-top: .6mm; }
+
+  .hinweis { margin-top: 4mm; padding: .8mm 0 .8mm 5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; color: var(--tinte-text); }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .hilfe { margin-top: 1.4mm; font-size: 9pt; line-height: 1.42; color: var(--tinte-leise); }
+  .hilfe b { color: var(--tinte-text); font-weight: 600; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 7pt; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+  .bsp-kopf { margin-top: 3mm; padding-left: 5mm; border-left: .9pt solid var(--akzent); }
+  .bsp-kopf p { font-size: 10pt; line-height: 1.42; }
+
+  /* Linien und Formularraster */
+  .linien .zeile-frei { height: 7.6mm; }
+  table.raster { width: 100%; margin-top: 2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 2mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.6pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.8pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.2mm 2mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster td.n { color: var(--tinte-leise); font-size: 8.5pt; font-variant-numeric: tabular-nums; }
+  .raster td.mitte, .raster th.mitte { text-align: center; }
+  .raster td.ein { color: var(--akzent); }
+  .raster tr.gruppe td { height: auto; padding-top: 3mm; padding-bottom: 1.2mm; border-left: 0; font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); border-bottom: var(--linie) solid var(--haar); }
+
+  /* Kontrollliste */
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.8pt; line-height: 1.4; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste .kreuz { margin-top: .5mm; }
+  .liste b { color: var(--tinte); font-weight: 600; }
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
+  .drei { display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 7mm; }
+
+  /* Nächste Schritte */
+  .weiter-liste { margin-top: 3mm; }
+  .weiter-liste li { display: grid; grid-template-columns: 38mm 1fr; column-gap: 6mm; padding: 3.6mm 0 3.4mm; border-bottom: var(--linie) solid var(--haar); }
+  .weiter-liste li:last-child { border-bottom: 0; }
+  .weiter-liste .art { font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); padding-top: .8mm; }
+  .weiter-liste h3 { font-size: 11.5pt; }
+  .weiter-liste p { margin-top: .8mm; font-size: 10pt; line-height: 1.42; }
+  .weiter-liste a, a.url { color: var(--akzent); text-decoration: none; font-weight: 600; font-size: 9.8pt; }
+  .weiter-liste .url { display: block; margin-top: 1.2mm; }
+
+  table.check td { height: auto; padding-top: 1.5mm; padding-bottom: 1.3mm; vertical-align: top; }
+  table.check td.punkt b { display: block; color: var(--tinte); font-weight: 600; font-size: 9.6pt; line-height: 1.32; }
+  table.check td.punkt span { display: block; margin-top: .5mm; font-size: 8.6pt; line-height: 1.35; color: var(--tinte-leise); }
+  table.check td.wahl { text-align: center; vertical-align: middle; }
+  table.check th.wahl { text-align: center; font-size: 8pt; padding-left: 0; padding-right: 0; }
+  table.summen td { height: 8.4mm; vertical-align: middle; }
+  table.summen tr.gesamt td { border-top: .9pt solid var(--haar-stark); font-weight: 600; color: var(--tinte); }
+  .baender li { display: grid; grid-template-columns: 31mm 1fr; column-gap: 5mm; padding: 1.9mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.8pt; line-height: 1.4; }
+  .baender li:last-child { border-bottom: 0; }
+  .baender b { color: var(--tinte); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .baender li.treffer b, .baender li.treffer span { color: var(--akzent); }
+  table.aenderung td { height: 13mm; }
+  .notizen li { display: grid; grid-template-columns: 16mm 1fr; padding: 1.3mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.38; }
+  .notizen li:last-child { border-bottom: 0; }
+  .notizen b { color: var(--akzent); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="37.2" cy="9.3" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+  <symbol id="x" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="haken" viewBox="0 0 12 12"><path d="M2.6 6.4 L5 8.8 L9.6 3.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<div class="titel">
+    <p class="vorzeile">Vorlage · Sichtbarkeit</p>
+    <h1>Startseiten-Check</h1>
+    <p class="lead">25 Prüfpunkte in sechs Gruppen: erste Ansicht, Belege, nächster Schritt, Handy, Technik und Auffindbarkeit. Am Ende stehen eine Punktzahl und die drei Änderungen, die Ihnen am meisten bringen.</p>
+  </div>
+  <p class="abschnitt-titel">So nutzen Sie die Vorlage</p>
+  <div class="fakten"><div><b>Ziel</b><p>Ehrlich sehen, warum Besucher bleiben oder gehen, und die drei Änderungen finden, die zuerst dran sind.</p></div><div><b>Zeitbedarf</b><p>Etwa eine Stunde für die Prüfung. Den Fünf-Sekunden-Test und die Testanfrage planen Sie ein paar Tage vorher ein.</p></div><div><b>Sie brauchen</b><p>Ihre Startseite auf dem Rechner und auf dem eigenen Handy, drei Menschen aus Ihrer Zielgruppe und einen Stift.</p></div><div><b>Am Rechner</b><p>Dieselbe Liste gibt es als Tabelle für Excel, Numbers oder Google Tabellen. Sie zählt die Punkte und ordnet das Ergebnis ein.</p></div></div>
+  <p class="abschnitt-titel">Ablauf</p>
+  <ol class="ablauf"><li><span class="nr">1</span><div><h3>Beispiel ansehen</h3><p>Eine frei erfundene Tischlerei zeigt, wie ein ausgefüllter Check und die drei Änderungen aussehen.</p></div><span class="s">Seite 2</span></li><li><span class="nr">2</span><div><h3>Jeden Punkt prüfen</h3><p>Kreuzen Sie ja, teilweise oder nein an. Im Zweifel teilweise. Wer streng prüft, findet mehr.</p></div><span class="s">Seite 3 und 4</span></li><li><span class="nr">3</span><div><h3>Punkte zählen</h3><p>Ja zählt 2, teilweise 1, nein 0. Tragen Sie die Summe je Gruppe ein.</p></div><span class="s">Seite 5</span></li><li><span class="nr">4</span><div><h3>Drei Änderungen wählen</h3><p>Zuerst jedes Nein aus „Erste Ansicht“ und „Nächster Schritt“, dann die Belege. Mit Name und Termin.</p></div><span class="s">Seite 5</span></li><li><span class="nr">5</span><div><h3>Wieder prüfen</h3><p>Nach vier Wochen denselben Check noch einmal, am besten mit neuen Testpersonen.</p></div><span class="s">Seite 5</span></li></ol>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 1 von 6</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm;color:var(--akzent)">Beispiel · frei erfunden</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Eine Tischlerei prüft ihre Startseite</h2>
+  <p class="unter">Zwölf Beschäftigte, Möbel nach Maß, die Website ist einige Jahre alt. Die Inhaberin hat den Check an einem Vormittag gemacht.</p>
+  <p class="abschnitt-titel akzent">Punkte je Gruppe</p>
+  <table class="raster summen"><colgroup><col><col style="width:30mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th>Gruppe</th><th class="mitte">Höchstwert</th><th class="mitte">Punkte</th></tr></thead>
+    <tbody><tr><td>Erste Ansicht</td><td class="mitte">12</td><td class="mitte ein">4</td></tr><tr><td>Belege</td><td class="mitte">10</td><td class="mitte ein">3</td></tr><tr><td>Nächster Schritt</td><td class="mitte">8</td><td class="mitte ein">4</td></tr><tr><td>Handy</td><td class="mitte">6</td><td class="mitte ein">3</td></tr><tr><td>Ladezeit und Technik</td><td class="mitte">6</td><td class="mitte ein">5</td></tr><tr><td>Auffindbarkeit</td><td class="mitte">8</td><td class="mitte ein">3</td></tr>
+    <tr class="gesamt"><td>Gesamt</td><td class="mitte">50</td><td class="mitte ein">22</td></tr></tbody></table>
+  <p class="hinweis"><b class="ein">22 von 50 Punkten:</b> Die Grundlagen fehlen. Kernsatz und Hauptknopf kommen zuerst, die Gestaltung bleibt vorerst, wie sie ist.</p>
+  <p class="abschnitt-titel akzent">Notizen beim Prüfen</p>
+  <ul class="notizen"><li><b>Punkt 1</b><span class="ein">Oben steht nur „Willkommen bei uns“.</span></li><li><b>Punkt 3</b><span class="ein">Drei gleich große Knöpfe: Leistungen, Galerie, Kontakt.</span></li><li><b>Punkt 5</b><span class="ein">Zwei von drei Testpersonen hielten uns für ein Möbelhaus.</span></li><li><b>Punkt 9</b><span class="ein">Überall „Preise auf Anfrage“.</span></li><li><b>Punkt 13</b><span class="ein">Formular mit neun Pflichtfeldern.</span></li><li><b>Punkt 15</b><span class="ein">Testanfrage am Montag, Antwort am Donnerstag.</span></li><li><b>Punkt 23</b><span class="ein">Keine Beschreibung eingetragen.</span></li></ul>
+  <p class="abschnitt-titel akzent">Die drei wichtigsten Änderungen</p>
+  <table class="raster"><colgroup><col style="width:7mm"><col><col style="width:20mm"><col style="width:26mm"><col style="width:20mm"></colgroup>
+    <thead><tr><th></th><th>Was genau?</th><th>Prüfpunkt</th><th>Wer?</th><th>Bis wann?</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td class="ein">Kernsatz nach oben: „Möbel nach Maß für Küche, Bad und Büro im Umkreis von 40 km. Aufmaß kostenlos, Termin in zwei Wochen.“</td><td class="ein">1, 5</td><td class="ein">Inhaberin</td><td class="ein">14.11.</td></tr>
+      <tr><td class="n">2</td><td class="ein">Ein Hauptknopf „Aufmaß anfragen“ oben und am Ende, Formular auf drei Felder kürzen.</td><td class="ein">3, 12, 13</td><td class="ein">Büro</td><td class="ein">21.11.</td></tr>
+      <tr><td class="n">3</td><td class="ein">Drei Kundenstimmen mit Freigabe einholen und den Ablauf in vier Schritten zeigen.</td><td class="ein">7, 8</td><td class="ein">Inhaberin</td><td class="ein">05.12.</td></tr>
+    </tbody></table>
+  <p class="klein" style="margin-top:2.6mm">Firma, Punkte, Sätze und Termine sind frei erfunden. Lila steht für Einträge.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 2 von 6</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Prüfen · Teil 1</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Erste Ansicht, Belege, nächster Schritt</h2>
+  
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Ein Kreuz je Zeile. Ja nur, wenn der Punkt ganz erfüllt ist. Prüfen Sie die erste Ansicht ohne zu scrollen.</p>
+  <table class="raster check"><colgroup><col style="width:8mm"><col><col style="width:12mm"><col style="width:16mm"><col style="width:12mm"></colgroup>
+    <thead><tr><th>Nr.</th><th>Prüfpunkt <small>und so prüfen Sie ihn</small></th><th class="wahl">ja</th><th class="wahl">teilweise</th><th class="wahl">nein</th></tr></thead>
+    <tbody><tr class="gruppe"><td colspan="5">Erste Ansicht</td></tr><tr><td class="n">1</td><td class="punkt"><b>Ganz oben steht ein Satz, der sagt, was Sie für wen tun.</b><span>Ohne Scrollen sichtbar. Nicht „Willkommen“ und nicht nur der Firmenname.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">2</td><td class="punkt"><b>Eine Unterzeile macht den Nutzen konkret.</b><span>Sie nennt, was sich für den Kunden ändert: Zeit, Geld, Sicherheit, Ruhe.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">3</td><td class="punkt"><b>Es gibt einen Hauptknopf mit einem klaren Wort.</b><span>Zum Beispiel „Termin buchen“. Höchstens ein zweiter, leiserer Weg daneben.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">4</td><td class="punkt"><b>Das Bild zeigt Ihr Angebot, Ihre Menschen oder ein Ergebnis.</b><span>Kein austauschbares Archivbild, das auch auf jeder anderen Seite stehen könnte.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">5</td><td class="punkt"><b>Fremde verstehen in fünf Sekunden, was Sie anbieten.</b><span>Fünf-Sekunden-Test mit drei Personen aus Ihrer Zielgruppe. Ja nur, wenn alle drei es richtig sagen.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">6</td><td class="punkt"><b>Die erste Ansicht kommt ohne Fachwörter aus.</b><span>Lesen Sie sie jemandem außerhalb der Branche vor. Jede Rückfrage zeigt ein Fachwort.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr class="gruppe"><td colspan="5">Belege</td></tr><tr><td class="n">7</td><td class="punkt"><b>Echte Kundenstimmen mit Namen und Firma sind zu sehen.</b><span>Mit schriftlicher Freigabe. Am besten mit einem Ergebnis, nicht nur mit Lob.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">8</td><td class="punkt"><b>Ein Ablauf in drei bis fünf Schritten zeigt, wie die Zusammenarbeit läuft.</b><span>Vom ersten Kontakt bis zum Ergebnis, mit Dauer, wo es geht.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">9</td><td class="punkt"><b>Preise oder ein Preisrahmen sind zu finden.</b><span>Auf der Startseite oder eine Seite weiter. „Auf Anfrage“ allein zählt als nein.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">10</td><td class="punkt"><b>Die Menschen hinter der Firma sind zu sehen.</b><span>Foto, Name und ein paar Sätze dazu, mit wem man es zu tun hat.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">11</td><td class="punkt"><b>Jede Zahl und jede Aussage lässt sich belegen.</b><span>Keine leeren Wörter wie „kompetent, innovativ, zuverlässig“. Zahlen nur mit Quelle oder eigenem Nachweis.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr class="gruppe"><td colspan="5">Nächster Schritt</td></tr><tr><td class="n">12</td><td class="punkt"><b>Der Hauptknopf steht auch am Ende der Seite.</b><span>Wer bis unten gelesen hat, muss nicht wieder nach oben.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">13</td><td class="punkt"><b>Das Formular fragt nur das Nötige.</b><span>Für den Anfang reichen Name, Kontakt und eine Zeile zum Anliegen.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">14</td><td class="punkt"><b>Telefon und E-Mail sind ohne Suchen zu finden.</b><span>In der ersten Ansicht oder im Fuß jeder Seite.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">15</td><td class="punkt"><b>Anfragen werden innerhalb eines Werktags beantwortet.</b><span>Schicken Sie selbst eine Testanfrage und notieren Sie, wann die Antwort kommt.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr></tbody></table>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 3 von 6</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Prüfen · Teil 2</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Handy, Technik, Auffindbarkeit</h2>
+  
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Die Punkte zum Handy prüfen Sie auf Ihrem eigenen Gerät, nicht am Rechner.</p>
+  <table class="raster check"><colgroup><col style="width:8mm"><col><col style="width:12mm"><col style="width:16mm"><col style="width:12mm"></colgroup>
+    <thead><tr><th>Nr.</th><th>Prüfpunkt <small>und so prüfen Sie ihn</small></th><th class="wahl">ja</th><th class="wahl">teilweise</th><th class="wahl">nein</th></tr></thead>
+    <tbody><tr class="gruppe"><td colspan="5">Handy</td></tr><tr><td class="n">16</td><td class="punkt"><b>Kernsatz und Hauptknopf sind auf dem Handy ohne Scrollen zu sehen.</b><span>Auf dem eigenen Handy prüfen, nicht in einer verkleinerten Ansicht am Rechner.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">17</td><td class="punkt"><b>Text ist ohne Zoomen lesbar, Knöpfe treffen Sie mit dem Daumen.</b><span>Keine Tabellen, die man seitlich schieben muss.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">18</td><td class="punkt"><b>Die Telefonnummer lässt sich antippen und ruft direkt an.</b><span>Einmal selbst ausprobieren.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr class="gruppe"><td colspan="5">Ladezeit und Technik</td></tr><tr><td class="n">19</td><td class="punkt"><b>Die Seite lädt auf dem Handy schnell.</b><span>Kostenlos prüfen mit PageSpeed Insights von Google (pagespeed.web.dev), Ansicht für Mobilgeräte. Ja ohne rote Werte, teilweise bei orangen.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">20</td><td class="punkt"><b>Die Technik ist sauber.</b><span>Die Adresse beginnt mit https, der Browser zeigt keine Warnung, kein Link führt auf eine Fehlerseite.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">21</td><td class="punkt"><b>Impressum und Datenschutzerklärung sind von jeder Seite mit einem Klick erreichbar.</b><span>Meist als Link im Fuß der Seite.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr class="gruppe"><td colspan="5">Auffindbarkeit</td></tr><tr><td class="n">22</td><td class="punkt"><b>Die Startseite hat einen eigenen Seitentitel mit Leistung und Zielgruppe oder Ort.</b><span>Zu sehen im Reiter des Browsers und als Titel in den Suchergebnissen. Nur der Firmenname zählt als teilweise.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">23</td><td class="punkt"><b>Eine kurze Beschreibung sagt, was man auf der Seite findet.</b><span>Im Website-Baukasten meist als „Beschreibung“ oder „Meta-Beschreibung“ einzutragen. Ein bis zwei Sätze.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">24</td><td class="punkt"><b>Ihr Unternehmensprofil bei Google ist angelegt und aktuell.</b><span>Gleiche Adresse, Telefonnummer und Öffnungszeiten wie auf der Website.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr><tr><td class="n">25</td><td class="punkt"><b>Jedes Angebot hat eine eigene Seite, die von der Startseite aus verlinkt ist.</b><span>Mit eigenem Titel, Ablauf, Preis oder Preisrahmen und demselben Hauptknopf.</span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td><td class="wahl"><span class="kreuz"></span></td></tr></tbody></table>
+  <p class="abschnitt-titel">Notizen</p>
+  <div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 4 von 6</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Auswerten</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Punkte und die drei wichtigsten Änderungen</h2>
+  <p class="unter">Ja zählt 2 Punkte, teilweise 1, nein 0. Höchstens 50 Punkte.</p>
+  <table class="raster summen" style="margin-top:4mm"><colgroup><col><col style="width:30mm"><col style="width:30mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th>Gruppe</th><th class="mitte">Höchstwert</th><th class="mitte">Ihre Punkte</th><th class="mitte">Anzahl nein</th></tr></thead>
+    <tbody><tr><td>Erste Ansicht</td><td class="mitte">12</td><td></td><td></td></tr><tr><td>Belege</td><td class="mitte">10</td><td></td><td></td></tr><tr><td>Nächster Schritt</td><td class="mitte">8</td><td></td><td></td></tr><tr><td>Handy</td><td class="mitte">6</td><td></td><td></td></tr><tr><td>Ladezeit und Technik</td><td class="mitte">6</td><td></td><td></td></tr><tr><td>Auffindbarkeit</td><td class="mitte">8</td><td></td><td></td></tr>
+    <tr class="gesamt"><td>Gesamt</td><td class="mitte">50</td><td></td><td></td></tr></tbody></table>
+  <p class="abschnitt-titel">So ordnen Sie das Ergebnis ein</p>
+  <ul class="baender"><li><b>40 bis 50 Punkte</b><span>Solide Grundlage. Gehen Sie die offenen Punkte an und prüfen Sie in vier Wochen wieder.</span></li><li><b>25 bis 39 Punkte</b><span>Spürbare Lücken. Die drei wichtigsten Änderungen bringen hier am meisten.</span></li><li><b>0 bis 24 Punkte</b><span>Die Grundlagen fehlen. Beginnen Sie mit Kernsatz und Hauptknopf, bevor Sie an Gestaltung denken.</span></li></ul>
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Die Grenzen sind eine Orientierung von uns, keine Norm. Wichtiger als die Summe ist, welche Punkte fehlen.</p>
+  <p class="abschnitt-titel">Die drei wichtigsten Änderungen</p>
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Zuerst jedes Nein aus „Erste Ansicht“ und „Nächster Schritt“, dann die Belege, dann der Rest. Bei Gleichstand: was am schnellsten geht.</p>
+  <table class="raster aenderung"><colgroup><col style="width:7mm"><col><col style="width:20mm"><col style="width:28mm"><col style="width:22mm"></colgroup>
+    <thead><tr><th></th><th>Was genau?</th><th>Prüfpunkt</th><th>Wer?</th><th>Bis wann?</th></tr></thead>
+    <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td></td></tr><tr><td class="n">2</td><td></td><td></td><td></td><td></td></tr><tr><td class="n">3</td><td></td><td></td><td></td><td></td></tr></tbody></table>
+  <div class="zwei" style="margin-top:3.6mm"><p class="feld"><span>Geprüft am</span><span class="strich"></span></p><p class="feld"><span>Wieder prüfen am</span><span class="strich"></span></p></div>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 5 von 6</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Zum Schluss</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Nächste Schritte</h2>
+  <p class="unter">Ändern Sie zuerst die drei gewählten Punkte, nicht alles auf einmal. Nach vier Wochen zeigt ein zweiter Check, was sich bewegt hat. Zählen Sie ab jetzt jeden Monat die Anfragen über die Website.</p>
+  
+  
+  <p class="abschnitt-titel">Weiter geht es hier</p>
+  <ul class="weiter-liste"><li><span class="art">Weiterlesen</span><div><h3>Ratgeber: Warum Ihre Website keine Anfragen bringt</h3><p>Fünf Änderungen, die Sie in einer Woche schaffen, Tag für Tag, mit Test vorher und nachher.</p><a class="url" href="https://fokusinnovation.de/wissen/website-ohne-anfragen/">fokusinnovation.de/wissen/website-ohne-anfragen/</a></div></li><li><span class="art">Weiterlesen</span><div><h3>Ratgeber: Was Besucher in fünf Sekunden verstehen müssen</h3><p>Erste Ansicht, Belege, Handy, Ladezeit und Auffindbarkeit, ausführlich erklärt.</p><a class="url" href="https://fokusinnovation.de/wissen/homepage-fuenf-sekunden/">fokusinnovation.de/wissen/homepage-fuenf-sekunden/</a></div></li><li><span class="art">Passende Vorlagen</span><div><h3>Kernsatz in fünf Schritten · Kundenstimmen einholen</h3><p>Für die Punkte 1, 5 und 7: der Satz für ganz oben und Kundenstimmen mit sauberer Freigabe.</p><a class="url" href="https://fokusinnovation.de/kostenlos/">fokusinnovation.de/kostenlos/</a></div></li><li><span class="art">Selbst prüfen</span><div><h3>Sichtbarkeitstest</h3><p>Zwölf Fragen zu Botschaft, Website und Reichweite, rund fünf Minuten. Sie sehen sofort, ob man Sie versteht und findet.</p><a class="url" href="https://fokusinnovation.de/check?thema=sichtbarkeit">fokusinnovation.de/check?thema=sichtbarkeit</a></div></li><li><span class="art">Mit uns sprechen</span><div><h3>Kostenloses Erstgespräch</h3><p>60 Minuten per Video. Wir schauen gemeinsam auf Ihren Stand und legen Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden.</p><a class="url" href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></div></li></ul>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 6 von 6</span></footer>
+</section>
+</body>
+</html>

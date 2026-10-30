@@ -380,6 +380,9 @@
       ],
       "phase": [
         "start"
+      ],
+      "vorlagen": [
+        "kernsatz-in-fuenf-schritten"
       ]
     },
     {
@@ -472,6 +475,9 @@
       "phase": [
         "start",
         "aufbau"
+      ],
+      "vorlagen": [
+        "startseiten-check"
       ]
     },
     {
@@ -674,6 +680,10 @@
       "phase": [
         "aufbau",
         "wachstum"
+      ],
+      "vorlagen": [
+        "ki-anwendungsfall-bewerten",
+        "ki-regeln-fuer-ihr-team"
       ]
     },
     {
@@ -976,6 +986,10 @@
       "phase": [
         "start",
         "aufbau"
+      ],
+      "vorlagen": [
+        "startseiten-check",
+        "kernsatz-in-fuenf-schritten"
       ]
     },
     {
@@ -1164,6 +1178,432 @@
       "phase": [
         "start",
         "aufbau"
+      ],
+      "vorlagen": [
+        "ki-pilot-30-tage",
+        "ki-regeln-fuer-ihr-team"
+      ]
+    },
+    {
+      "id": "kundenstimmen-die-ueberzeugen",
+      "bereich": "sichtbarkeit",
+      "titel": "Kundenstimmen, die überzeugen: einholen, freigeben, einsetzen",
+      "seo_titel": "Kundenstimmen einholen, freigeben, einsetzen",
+      "beschreibung": "Kundenstimmen, die überzeugen: wen Sie wann fragen, welche Fragen Ergebnisse hervorbringen, wie Sie die Freigabe einholen und wo die Stimme wirkt.",
+      "veroeffentlicht": "2026-10-30",
+      "aktualisiert": "2026-10-30",
+      "kurz": "Eine Kundenstimme überzeugt, wenn sie ein Ergebnis nennt, von einer echten Person mit Namen und Firma stammt und schriftlich freigegeben ist. Fragen Sie kurz nach einem sichtbaren Erfolg, führen Sie ein Gespräch statt einen Fragebogen zu schicken, schreiben Sie den Text selbst und lassen Sie ihn freigeben. Dann setzen Sie die Stimme dort ein, wo Interessenten entscheiden.",
+      "abschnitte": [
+        {
+          "h": "Warum viele Kundenstimmen nicht wirken",
+          "absaetze": [
+            "„Super Zusammenarbeit, sehr zu empfehlen!“ steht auf vielen Websites. Solche Sätze schaden nicht, aber sie überzeugen kaum: Sie könnten über jede Firma geschrieben sein, und man weiß nicht, wer sie gesagt hat.",
+            "Eine Kundenstimme wirkt, wenn sie drei Dinge leistet: Sie nennt ein Ergebnis, sie stammt erkennbar von einer echten Person, und Ihr nächster Kunde erkennt sich darin wieder. Das gelingt selten zufällig. Es braucht die richtigen Fragen und etwas Arbeit von Ihnen.",
+            "Dazu kommt: Bei Geschäftskunden entscheidet selten eine Person allein."
+          ],
+          "zahl": "forrester-kaufgruppe",
+          "absaetze_danach": [
+            "Eine Kundenstimme mit klarem Ergebnis hilft Ihrem Ansprechpartner, auch die zu überzeugen, die Sie nie kennenlernen."
+          ]
+        },
+        {
+          "h": "Wen und wann Sie fragen",
+          "absaetze": [
+            "Fragen Sie Kunden, bei denen ein Ergebnis sichtbar ist und die zu den Kunden passen, die Sie künftig gewinnen wollen. Mischen Sie Branchen und Größen, damit sich mehr Leser wiederfinden. Gute Momente sind:"
+          ],
+          "punkte": [
+            "kurz nach einem sichtbaren Erfolg, etwa wenn ein Projekt fertig oder ein Ziel erreicht ist",
+            "wenn ein Kunde von sich aus lobt: Fragen Sie im selben Gespräch",
+            "beim Abschlussgespräch eines Projekts",
+            "einige Wochen nach dem Start, wenn die erste Wirkung da ist"
+          ],
+          "absaetze_danach": [
+            "Fragen Sie zuerst persönlich und schicken Sie danach eine kurze E-Mail, die das Ergebnis im ersten Satz nennt und den Aufwand klein macht. Bieten Sie keine Gegenleistung an: Eine Stimme, für die es etwas gab, ist keine ehrliche Empfehlung mehr."
+          ]
+        },
+        {
+          "h": "Gespräch statt Fragebogen",
+          "absaetze": [
+            "Ein Fragebogen per E-Mail macht Ihrem Kunden Arbeit und bringt meist allgemeines Lob. Ein Gespräch von etwa 15 Minuten bringt Geschichten und Zahlen. Danach schreiben Sie den Text, Ihr Kunde liest nur noch und gibt frei. Diese Fragen bringen Ergebnisse hervor:"
+          ],
+          "schritte": [
+            {
+              "titel": "Vorher",
+              "text": "Wie sah es aus, bevor wir zusammengearbeitet haben? Was hat gestört, was hat es gekostet?"
+            },
+            {
+              "titel": "Der Ausschlag",
+              "text": "Was gab den Ausschlag, es mit uns zu versuchen? Welche Bedenken hatten Sie?"
+            },
+            {
+              "titel": "Das Ergebnis",
+              "text": "Was hat sich verändert, und woran merken Sie das im Alltag?"
+            },
+            {
+              "titel": "Die Zahl",
+              "text": "Gibt es eine Zahl dazu: Zeit, Anfragen, Kosten oder Fehler, vorher und nachher?"
+            },
+            {
+              "titel": "Die Empfehlung",
+              "text": "Wem würden Sie uns empfehlen, und warum?"
+            }
+          ],
+          "absaetze_danach": [
+            "Fragen Sie nach, bis ein Beispiel oder eine Zahl kommt: „Woran merken Sie das?“ oder „Was heißt das in Stunden?“ Schreiben Sie wörtlich mit. Ein Gespräch zeichnen Sie nur auf, wenn Ihr Kunde vorher zustimmt."
+          ]
+        },
+        {
+          "h": "Aus der Antwort wird eine Kundenstimme",
+          "absaetze": [
+            "Aus einem Gespräch entstehen drei Fassungen für verschiedene Orte. Kürzen ist erlaubt, den Sinn verändern nicht. Die Worte Ihres Kunden bleiben seine Worte."
+          ],
+          "tabelle": {
+            "titel": "Drei Fassungen einer Kundenstimme",
+            "kopf": [
+              "Fassung",
+              "Umfang",
+              "Wofür"
+            ],
+            "zeilen": [
+              [
+                "Kurzfassung",
+                "ein Satz, höchstens 20 Wörter, Ergebnis zuerst",
+                "Startseite, Angebote, Profile"
+              ],
+              [
+                "Langfassung",
+                "drei bis vier Sätze: vorher, was passiert ist, nachher",
+                "Seite des Angebots, Präsentationen"
+              ],
+              [
+                "Die Zahl",
+                "ein Ergebnis mit Zahl und Zeitraum, vom Kunden bestätigt",
+                "Überschriften, Vorträge, Gespräche"
+              ]
+            ],
+            "hinweis": "Unter jede Fassung gehören Name, Funktion und Firma, am besten mit Foto."
+          },
+          "absaetze_danach": [
+            "Ein frei erfundenes Beispiel: Der Inhaber eines Dachdeckerbetriebs erzählt seinem Lohnbüro, er habe die Abrechnung früher abends am Küchentisch gemacht und seit 14 Monaten keine Nachzahlung mehr gehabt. Daraus wird die Kurzfassung „Fotos der Stundenzettel bis zum 25., am 28. ist die Abrechnung fertig, und ich habe meine Abende wieder.“ Die Zahl lässt sich das Lohnbüro vom Kunden bestätigen."
+          ]
+        },
+        {
+          "h": "Die Freigabe schriftlich einholen",
+          "absaetze": [
+            "Veröffentlichen Sie eine Kundenstimme erst, wenn die Person die Endfassung schriftlich freigegeben hat. Halten Sie in der Freigabe fest, welcher Text mit welchen Angaben an welchen Stellen und wie lange erscheint.",
+            "Dazu gehört der Hinweis auf den Widerruf. Nach Artikel 7 Absatz 3 der Datenschutz-Grundverordnung kann eine Einwilligung jederzeit widerrufen werden. Was bis dahin auf ihrer Grundlage geschehen ist, bleibt rechtmäßig, und der Widerruf muss so einfach sein wie die Erteilung. Darauf muss die Person hingewiesen werden, bevor sie einwilligt.",
+            "Für Fotos gilt zusätzlich das Recht am eigenen Bild: Nach § 22 Kunsturhebergesetz dürfen Bildnisse nur mit Einwilligung der abgebildeten Person verbreitet werden. Das Logo einer Firma zeigen Sie nur mit Zustimmung von jemandem, der dafür entscheiden darf.",
+            "Das ist ein Hinweis, keine Rechtsberatung. Lassen Sie Ihre Freigabe einmal prüfen, bevor Sie sie einsetzen. Ein Muster zum Anpassen steckt in unserer kostenlosen Vorlage „Kundenstimmen einholen“."
+          ]
+        },
+        {
+          "h": "Wo Kundenstimmen wirken",
+          "punkte": [
+            "auf der Startseite in der Nähe des Hauptknopfs, als Kurzfassung mit Foto",
+            "auf der Seite des Angebots, das die Stimme betrifft",
+            "in Angeboten und Präsentationen, passend zur Branche des Empfängers",
+            "in Profilen in sozialen Netzwerken, wenn die Freigabe diesen Ort nennt",
+            "im Gespräch als Geschichte: vorher, was passiert ist, nachher"
+          ],
+          "absaetze_danach": [
+            "Führen Sie eine Liste Ihrer Freigaben mit Datum und Orten. Sehen Sie sie einmal im Jahr durch: Arbeitet die Person noch dort, stimmt die Aussage noch? Nach einem Widerruf entfernen Sie die Stimme überall dort, wo Sie es selbst können."
+          ]
+        },
+        {
+          "h": "Häufige Fehler",
+          "punkte": [
+            "Kundenstimmen erfinden oder umschreiben, bis sie nach Werbung klingen.",
+            "Nur Vornamen oder Initialen zeigen, ohne Firma und Funktion.",
+            "Lob ohne Ergebnis veröffentlichen: „Sehr kompetent“ sagt wenig.",
+            "Den Text ändern, nachdem der Kunde ihn freigegeben hat.",
+            "Stimmen jahrelang stehen lassen, ohne zu prüfen, ob sie noch stimmen."
+          ]
+        },
+        {
+          "h": "Selbst machen oder Hilfe holen?",
+          "absaetze": [
+            "Kundenstimmen einholen können Sie selbst. Die kostenlose Vorlage „Kundenstimmen einholen“ führt Sie Schritt für Schritt durch, mit E-Mail, Gesprächsfragen und Freigabe. Hilfe lohnt sich, wenn der Satz für ganz oben noch fehlt oder Ihre Website den Belegen keinen guten Platz gibt.",
+            "Unsere Positionierung beginnt bei den fünf Sätzen. Die Homepage Landing ist ein One-Pager mit Texten von uns, fertig in 10 Werktagen ab vollständigem Formular und Zahlungseingang."
+          ]
+        }
+      ],
+      "fragen": [
+        {
+          "f": "Darf ich eine Kundenstimme umformulieren?",
+          "a": "Kürzen und glätten ja, solange der Sinn bleibt und Ihr Kunde die Endfassung freigibt. Was er nicht gesagt hat, gehört nicht hinein."
+        },
+        {
+          "f": "Was, wenn ein Kunde nicht mit Namen genannt werden möchte?",
+          "a": "Fragen Sie, ob Funktion, Branche und Größe der Firma genügen, etwa „Inhaber eines Dachdeckerbetriebs mit 14 Beschäftigten“. Das wirkt schwächer als ein Name, ist aber ehrlich. Erfinden Sie keinen Namen."
+        },
+        {
+          "f": "Wie viele Kundenstimmen brauche ich?",
+          "a": "Für den Anfang reichen drei mit klarem Ergebnis, am besten aus verschiedenen Branchen oder Größen. Mehr lohnt sich, wenn Sie jedem Angebot eine passende Stimme zuordnen können."
+        },
+        {
+          "f": "Brauche ich eine schriftliche Freigabe?",
+          "a": "Holen Sie sie immer ein. Sie legt fest, welcher Text wo erscheinen darf, und Sie können zeigen, dass Ihr Kunde zugestimmt hat. Das ist ein Hinweis, keine Rechtsberatung."
+        },
+        {
+          "faq": "wie-schnell-ist-meine-homepage-fertig"
+        }
+      ],
+      "angebote": [
+        "positionierung",
+        "homepage-landing",
+        "homepage-story"
+      ],
+      "weiter": [
+        "website-ohne-anfragen",
+        "homepage-fuenf-sekunden"
+      ],
+      "vorlagen": [
+        "kundenstimmen-einholen"
+      ],
+      "phase": [
+        "start",
+        "aufbau",
+        "wachstum"
+      ]
+    },
+    {
+      "id": "ki-anwendungsfaelle-finden",
+      "bereich": "innovation",
+      "titel": "KI-Anwendungsfälle finden und bewerten",
+      "seo_titel": "KI-Anwendungsfälle finden und richtig bewerten",
+      "beschreibung": "KI-Anwendungsfälle finden und bewerten: Fragen für die Suche, sechs Kriterien mit Punkten, zwei Regeln vorab und ein Beispiel für die Wahl des ersten Ablaufs.",
+      "veroeffentlicht": "2026-10-30",
+      "aktualisiert": "2026-10-30",
+      "kurz": "Den ersten Anwendungsfall für KI finden Sie, indem Sie Ideen sammeln, jeden Kandidaten in einem kurzen Steckbrief beschreiben und nach sechs Kriterien bewerten: Zeit heute, weiterer Nutzen, gleiche Form, Datenlage, Fehlerfolgen und Aufwand. Zwei Regeln gelten vor der Punktzahl: kein Ablauf mit hohen Fehlerfolgen zuerst und keiner ohne greifbare Daten. Dann wählen Sie einen einzigen Ablauf für 30 Tage.",
+      "abschnitte": [
+        {
+          "h": "Warum die Auswahl entscheidet",
+          "absaetze": [
+            "Viele Unternehmen ahnen, dass KI ihnen helfen könnte, wissen aber nicht, wo sie anfangen sollen. Unter den Unternehmen, die KI erwogen und noch nicht eingeführt haben, steht fehlendes Wissen als Grund vorn:"
+          ],
+          "zahl": "destatis-ki-hemmnis-wissen",
+          "absaetze_danach": [
+            "Der erste Anwendungsfall prägt, wie Ihr Team über KI denkt. Ein Ablauf, der sichtbar Zeit spart und bei dem nichts schiefgeht, öffnet die Tür für den nächsten. Ein Fehlgriff kostet Vertrauen. Deshalb lohnt sich eine Stunde Bewertung, bevor Sie loslegen."
+          ]
+        },
+        {
+          "h": "Kandidaten finden",
+          "absaetze": [
+            "Gute Kandidaten haben viel Text, eine wiederkehrende Form und kosten spürbar Zeit. Fragen Sie im Team:"
+          ],
+          "punkte": [
+            "Wo schreiben wir immer wieder ähnliche Texte, etwa Angebote, Antworten oder Berichte?",
+            "Wo suchen wir Informationen aus mehreren Quellen zusammen?",
+            "Welche Fragen von Kunden oder Kollegen beantworten wir jede Woche wieder?",
+            "Wo übertragen wir Angaben von einem Ort an einen anderen?",
+            "Wo warten Kunden auf eine Antwort, weil sie Zeit kostet?",
+            "Was schieben alle vor sich her, weil es lästig ist?"
+          ],
+          "absaetze_danach": [
+            "Sammeln Sie erst und bewerten Sie danach. Schätzen Sie beim Sammeln nur grob, wie oft ein Ablauf vorkommt. Genauer wird es im Steckbrief."
+          ]
+        },
+        {
+          "h": "Ein Steckbrief je Ablauf",
+          "absaetze": [
+            "Beschreiben Sie jeden Kandidaten auf einer Seite, gemeinsam mit den Menschen, die den Ablauf heute machen. Sie kennen die Stolpersteine. Halten Sie fest:"
+          ],
+          "punkte": [
+            "was heute passiert, Schritt für Schritt",
+            "wie oft der Ablauf im Monat vorkommt und wie lange er je Durchgang dauert",
+            "wer ihn macht",
+            "welche Daten er braucht, wo sie liegen und ob personenbezogene oder vertrauliche Daten dabei sind",
+            "was bei einem Fehler passiert",
+            "was besser werden soll und was die Einführung braucht"
+          ],
+          "absaetze_danach": [
+            "Häufigkeit und Dauer notieren Sie am besten eine Woche lang, statt sie zu schätzen. Häufigkeit im Monat mal Minuten je Durchgang, geteilt durch 60, ergibt die Stunden, die der Ablauf heute im Monat kostet."
+          ]
+        },
+        {
+          "h": "Sechs Kriterien mit Punkten",
+          "absaetze": [
+            "Jedes Kriterium bekommt 1 bis 5 Punkte, zusammen höchstens 30. Bei Fehlerfolgen und Aufwand gilt: Viele Punkte heißen geringe Folgen und wenig Aufwand."
+          ],
+          "tabelle": {
+            "titel": "Die Skala",
+            "kopf": [
+              "Kriterium",
+              "1 Punkt",
+              "5 Punkte"
+            ],
+            "zeilen": [
+              [
+                "Zeit heute",
+                "unter 2 Stunden im Monat",
+                "20 Stunden im Monat und mehr"
+              ],
+              [
+                "Weiterer Nutzen",
+                "kaum spürbar",
+                "Kunden merken es, oder mehrere Personen werden deutlich entlastet"
+              ],
+              [
+                "Gleiche Form",
+                "jedes Mal anders, viel Erfahrung und Bauchgefühl",
+                "immer gleicher Aufbau, viel Text oder feste Regeln"
+              ],
+              [
+                "Datenlage",
+                "steckt in Köpfen, nichts aufgeschrieben",
+                "aktuell, vollständig, an einem Ort"
+              ],
+              [
+                "Fehlerfolgen",
+                "ein Fehler geht unbemerkt an Kunden oder betrifft Geld, Recht, Gesundheit oder Menschen",
+                "das Ergebnis wird immer geprüft, Fehler sind leicht zu sehen"
+              ],
+              [
+                "Aufwand",
+                "neue Software, Schnittstellen, mehrere Monate",
+                "geht mit vorhandenem Werkzeug in wenigen Tagen"
+              ]
+            ],
+            "hinweis": "Dazwischen vergeben Sie 2, 3 oder 4 Punkte. Für die Zeit gilt: 2 Punkte ab 2 Stunden, 3 ab 5, 4 ab 10 Stunden im Monat. Die Grenzen sind eine Orientierung von uns, keine Norm."
+          }
+        },
+        {
+          "h": "Zwei Regeln vor der Punktzahl",
+          "absaetze": [
+            "Bevor Sie die Punkte zusammenzählen, prüfen Sie zwei Regeln. Sie gehen jeder Summe vor:"
+          ],
+          "schritte": [
+            {
+              "titel": "Hohe Fehlerfolgen: nicht zuerst",
+              "text": "Bekommt ein Ablauf bei den Fehlerfolgen nur 1 Punkt, wählen Sie ihn nicht für den ersten Versuch, egal wie viele Punkte er sonst hat."
+            },
+            {
+              "titel": "Keine greifbaren Daten: erst ordnen",
+              "text": "Bekommt die Datenlage 1 oder 2 Punkte, ordnen Sie zuerst die Daten und bewerten dann neu. Ohne greifbares Wissen kann KI nur raten."
+            }
+          ],
+          "beleg": "daten",
+          "absaetze_danach": [
+            "Enthält ein Ablauf personenbezogene oder vertrauliche Daten, klären Sie vor dem Start Datenschutz und Vertrag des Werkzeugs mit der Person, die bei Ihnen dafür zuständig ist."
+          ]
+        },
+        {
+          "h": "Vergleichen und entscheiden",
+          "absaetze": [
+            "Tragen Sie alle Fälle in eine Übersicht und lesen Sie die Summe so:"
+          ],
+          "punkte": [
+            "22 bis 30 Punkte, und keine der beiden Regeln greift: Kandidat für den ersten Versuch",
+            "15 bis 21 Punkte: später, mit der Hürde, die zuerst weg muss",
+            "6 bis 14 Punkte: nicht jetzt"
+          ],
+          "absaetze_danach": [
+            "Bei Gleichstand kommt der Fall mit weniger Aufwand zuerst. Wählen Sie einen einzigen Ablauf für die nächsten 30 Tage, nicht drei. Alle anderen bekommen ein Datum, an dem Sie sie wieder ansehen."
+          ]
+        },
+        {
+          "h": "Ein Beispiel",
+          "absaetze": [
+            "Ein frei erfundenes Planungsbüro für Haustechnik mit 22 Beschäftigten hat vier Abläufe bewertet:"
+          ],
+          "tabelle": {
+            "titel": "Vier Abläufe im Vergleich, frei erfunden",
+            "kopf": [
+              "Ablauf",
+              "Stunden im Monat",
+              "Summe",
+              "Regel greift",
+              "Entscheidung"
+            ],
+            "zeilen": [
+              [
+                "Angebotstexte aus Stichpunkten entwerfen",
+                "18",
+                "23",
+                "keine",
+                "erster Versuch"
+              ],
+              [
+                "Protokolle der Baubesprechungen zusammenfassen",
+                "8",
+                "21",
+                "keine",
+                "nach dem ersten Versuch"
+              ],
+              [
+                "Antworten auf Anfragen zu Wartungsterminen",
+                "6",
+                "19",
+                "Datenlage",
+                "erst Verträge digital erfassen"
+              ],
+              [
+                "Berechnungen von Anlagen gegenprüfen",
+                "15",
+                "18",
+                "Fehlerfolgen",
+                "bleibt bei Menschen"
+              ]
+            ],
+            "hinweis": "Büro, Abläufe und Zahlen sind frei erfunden und dienen nur der Anschauung."
+          },
+          "absaetze_danach": [
+            "Die Angebotstexte haben die höchste Summe, und keine Regel greift. Wichtig ist auch, was nicht in die KI geht: Die Projektleitung fasst ihre Notizen vorher zu Stichpunkten ohne Namen und Adressen zusammen, und Preise kommen weiter aus der Kalkulation."
+          ]
+        },
+        {
+          "h": "Häufige Fehler",
+          "punkte": [
+            "Den spannendsten Fall wählen statt den, der heute am meisten Zeit kostet.",
+            "Häufigkeit und Dauer schätzen statt notieren.",
+            "Ohne die Menschen bewerten, die den Ablauf heute machen.",
+            "Einen Ablauf wählen, bei dem ein Fehler teuer wird, bevor ihn jemand sieht.",
+            "Drei Fälle gleichzeitig starten."
+          ]
+        },
+        {
+          "h": "So arbeiten wir",
+          "absaetze": [
+            "Welcher Ablauf sich bei Ihnen zuerst lohnt, klärt oft ein Blick von außen. Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
+          ]
+        }
+      ],
+      "fragen": [
+        {
+          "f": "Wie viele Anwendungsfälle sollte ich bewerten?",
+          "a": "Alle Ideen, die nach dem Sammeln ernsthaft in Frage kommen. Wichtig ist nicht die Zahl, sondern dass Sie am Ende einen einzigen Ablauf für den ersten Versuch wählen."
+        },
+        {
+          "f": "Wer sollte die Punkte vergeben?",
+          "a": "Die Person, die den Versuch verantwortet, gemeinsam mit den Menschen, die den Ablauf heute machen. Sie wissen, wie oft er vorkommt, wie lange er dauert und wo Fehler passieren."
+        },
+        {
+          "f": "Was, wenn kein Fall auf 22 Punkte kommt?",
+          "a": "Dann schauen Sie, woran es liegt. Oft ist es die Datenlage: Ordnen Sie die Daten des vielversprechendsten Falls und bewerten Sie ihn neu. Manchmal sollte auch der Ablauf selbst erst einfacher werden."
+        },
+        {
+          "f": "Brauche ich für die Bewertung schon ein KI-Werkzeug?",
+          "a": "Nein. Die Bewertung beschreibt Ihren Ablauf, nicht ein Werkzeug. Welches Werkzeug passt, klären Sie danach für den gewählten Fall, mit Firmenlizenz und geprüftem Vertrag."
+        },
+        {
+          "faq": "was-kostet-der-innovations-check"
+        }
+      ],
+      "angebote": [
+        "umsetzungsprojekte"
+      ],
+      "weiter": [
+        "erste-30-tage-mit-ki",
+        "ki-im-mittelstand-einfuehren"
+      ],
+      "vorlagen": [
+        "ki-anwendungsfall-bewerten",
+        "ki-pilot-30-tage"
+      ],
+      "phase": [
+        "start",
+        "aufbau",
+        "wachstum"
       ]
     }
   ],

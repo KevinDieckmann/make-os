@@ -1,0 +1,581 @@
+{
+  "blaetter": [
+    {
+      "name": "Fälle",
+      "spalten": [
+        {
+          "titel": "Nr.",
+          "breite": 5,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Ablauf",
+          "breite": 36,
+          "stil": "eingabe"
+        },
+        {
+          "titel": "Wie oft im Monat",
+          "breite": 10,
+          "stil": "eingabe-zahl"
+        },
+        {
+          "titel": "Minuten je Durchgang",
+          "breite": 11,
+          "stil": "eingabe-zahl"
+        },
+        {
+          "titel": "Stunden im Monat",
+          "breite": 10,
+          "stil": "standard"
+        },
+        {
+          "titel": "Zeit heute (Punkte)",
+          "breite": 10,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Weiterer Nutzen (1 bis 5)",
+          "breite": 11,
+          "stil": "eingabe-zahl"
+        },
+        {
+          "titel": "Gleiche Form (1 bis 5)",
+          "breite": 11,
+          "stil": "eingabe-zahl"
+        },
+        {
+          "titel": "Datenlage (1 bis 5)",
+          "breite": 11,
+          "stil": "eingabe-zahl"
+        },
+        {
+          "titel": "Fehlerfolgen (5 = gering)",
+          "breite": 11,
+          "stil": "eingabe-zahl"
+        },
+        {
+          "titel": "Aufwand (5 = gering)",
+          "breite": 11,
+          "stil": "eingabe-zahl"
+        },
+        {
+          "titel": "Summe (max. 30)",
+          "breite": 9,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Regel greift",
+          "breite": 18,
+          "stil": "text"
+        },
+        {
+          "titel": "Vorschlag",
+          "breite": 16,
+          "stil": "text"
+        },
+        {
+          "titel": "Rang",
+          "breite": 6,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Ihre Entscheidung",
+          "breite": 14,
+          "stil": "eingabe"
+        },
+        {
+          "titel": "Notiz",
+          "breite": 30,
+          "stil": "eingabe"
+        }
+      ],
+      "wiederholen": {
+        "zeile": [
+          {
+            "f": "ROW()-1"
+          },
+          null,
+          null,
+          null,
+          {
+            "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",ROUND(C{r}*D{r}/60,1))"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}<2,1,IF(E{r}<5,2,IF(E{r}<10,3,IF(E{r}<20,4,5)))))"
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          {
+            "f": "IF(COUNT(F{r}:K{r})<6,\"\",SUM(F{r}:K{r}))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Fehlerfolgen hoch\",IF(I{r}<=2,\"Erst Daten ordnen\",\"\")))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Nicht als Erstes\",IF(AND(L{r}>=22,M{r}=\"\"),\"Jetzt angehen\",IF(L{r}>=15,\"Später\",\"Nicht jetzt\"))))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",RANK(L{r},$L$2:$L$21))"
+          },
+          null,
+          null
+        ],
+        "anzahl": 20
+      },
+      "auswahl": [
+        {
+          "spalte": "P",
+          "werte": [
+            "jetzt",
+            "später",
+            "nicht jetzt"
+          ]
+        }
+      ],
+      "fixieren": true
+    },
+    {
+      "name": "Beispiel",
+      "spalten": [
+        {
+          "titel": "Nr.",
+          "breite": 5,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Ablauf",
+          "breite": 36,
+          "stil": "text"
+        },
+        {
+          "titel": "Wie oft im Monat",
+          "breite": 10,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Minuten je Durchgang",
+          "breite": 11,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Stunden im Monat",
+          "breite": 10,
+          "stil": "standard"
+        },
+        {
+          "titel": "Zeit heute (Punkte)",
+          "breite": 10,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Weiterer Nutzen (1 bis 5)",
+          "breite": 11,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Gleiche Form (1 bis 5)",
+          "breite": 11,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Datenlage (1 bis 5)",
+          "breite": 11,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Fehlerfolgen (5 = gering)",
+          "breite": 11,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Aufwand (5 = gering)",
+          "breite": 11,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Summe (max. 30)",
+          "breite": 9,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Regel greift",
+          "breite": 18,
+          "stil": "text"
+        },
+        {
+          "titel": "Vorschlag",
+          "breite": 16,
+          "stil": "text"
+        },
+        {
+          "titel": "Rang",
+          "breite": 6,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Ihre Entscheidung",
+          "breite": 14,
+          "stil": "eingabe"
+        },
+        {
+          "titel": "Notiz",
+          "breite": 30,
+          "stil": "text"
+        }
+      ],
+      "zeilen": [
+        [
+          1,
+          "Angebotstexte aus Stichpunkten entwerfen",
+          24,
+          45,
+          {
+            "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",ROUND(C{r}*D{r}/60,1))"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}<2,1,IF(E{r}<5,2,IF(E{r}<10,3,IF(E{r}<20,4,5)))))"
+          },
+          4,
+          4,
+          3,
+          4,
+          4,
+          {
+            "f": "IF(COUNT(F{r}:K{r})<6,\"\",SUM(F{r}:K{r}))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Fehlerfolgen hoch\",IF(I{r}<=2,\"Erst Daten ordnen\",\"\")))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Nicht als Erstes\",IF(AND(L{r}>=22,M{r}=\"\"),\"Jetzt angehen\",IF(L{r}>=15,\"Später\",\"Nicht jetzt\"))))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",RANK(L{r},$L$2:$L$5))"
+          },
+          {
+            "v": "jetzt, Start 09.02.",
+            "stil": "text"
+          },
+          null
+        ],
+        [
+          2,
+          "Protokolle der Baubesprechungen zusammenfassen",
+          8,
+          60,
+          {
+            "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",ROUND(C{r}*D{r}/60,1))"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}<2,1,IF(E{r}<5,2,IF(E{r}<10,3,IF(E{r}<20,4,5)))))"
+          },
+          3,
+          4,
+          3,
+          3,
+          5,
+          {
+            "f": "IF(COUNT(F{r}:K{r})<6,\"\",SUM(F{r}:K{r}))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Fehlerfolgen hoch\",IF(I{r}<=2,\"Erst Daten ordnen\",\"\")))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Nicht als Erstes\",IF(AND(L{r}>=22,M{r}=\"\"),\"Jetzt angehen\",IF(L{r}>=15,\"Später\",\"Nicht jetzt\"))))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",RANK(L{r},$L$2:$L$5))"
+          },
+          {
+            "v": "nach dem ersten Versuch",
+            "stil": "text"
+          },
+          null
+        ],
+        [
+          3,
+          "Antworten auf Anfragen zu Wartungsterminen",
+          60,
+          6,
+          {
+            "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",ROUND(C{r}*D{r}/60,1))"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}<2,1,IF(E{r}<5,2,IF(E{r}<10,3,IF(E{r}<20,4,5)))))"
+          },
+          4,
+          5,
+          2,
+          3,
+          2,
+          {
+            "f": "IF(COUNT(F{r}:K{r})<6,\"\",SUM(F{r}:K{r}))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Fehlerfolgen hoch\",IF(I{r}<=2,\"Erst Daten ordnen\",\"\")))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Nicht als Erstes\",IF(AND(L{r}>=22,M{r}=\"\"),\"Jetzt angehen\",IF(L{r}>=15,\"Später\",\"Nicht jetzt\"))))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",RANK(L{r},$L$2:$L$5))"
+          },
+          {
+            "v": "Wartungsverträge erst digital erfassen",
+            "stil": "text"
+          },
+          null
+        ],
+        [
+          4,
+          "Berechnungen von Anlagen gegenprüfen",
+          10,
+          90,
+          {
+            "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",ROUND(C{r}*D{r}/60,1))"
+          },
+          {
+            "f": "IF(E{r}=\"\",\"\",IF(E{r}<2,1,IF(E{r}<5,2,IF(E{r}<10,3,IF(E{r}<20,4,5)))))"
+          },
+          4,
+          3,
+          4,
+          1,
+          2,
+          {
+            "f": "IF(COUNT(F{r}:K{r})<6,\"\",SUM(F{r}:K{r}))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Fehlerfolgen hoch\",IF(I{r}<=2,\"Erst Daten ordnen\",\"\")))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",IF(J{r}=1,\"Nicht als Erstes\",IF(AND(L{r}>=22,M{r}=\"\"),\"Jetzt angehen\",IF(L{r}>=15,\"Später\",\"Nicht jetzt\"))))"
+          },
+          {
+            "f": "IF(L{r}=\"\",\"\",RANK(L{r},$L$2:$L$5))"
+          },
+          {
+            "v": "nicht mit KI",
+            "stil": "text"
+          },
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          {
+            "v": "Frei erfundenes Planungsbüro für Haustechnik, 22 Beschäftigte. Zahlen und Entscheidungen sind erfunden.",
+            "stil": "standard"
+          }
+        ]
+      ],
+      "fixieren": true
+    },
+    {
+      "name": "Skala",
+      "spalten": [
+        {
+          "titel": "Kriterium",
+          "breite": 18,
+          "stil": "fett"
+        },
+        {
+          "titel": "Was es misst",
+          "breite": 30,
+          "stil": "text"
+        },
+        {
+          "titel": "1 Punkt",
+          "breite": 34,
+          "stil": "text"
+        },
+        {
+          "titel": "3 Punkte",
+          "breite": 34,
+          "stil": "text"
+        },
+        {
+          "titel": "5 Punkte",
+          "breite": 34,
+          "stil": "text"
+        }
+      ],
+      "zeilen": [
+        [
+          "Zeit heute",
+          "Stunden im Monat aus Häufigkeit mal Dauer",
+          "unter 2 Stunden",
+          "5 bis unter 10 Stunden",
+          "20 Stunden und mehr"
+        ],
+        [
+          "Weiterer Nutzen",
+          "Was außer Zeit besser wird",
+          "kaum spürbar",
+          "merklich für die Beteiligten",
+          "Kunden merken es, oder mehrere Personen werden deutlich entlastet"
+        ],
+        [
+          "Gleiche Form",
+          "Wie gleichförmig der Ablauf ist",
+          "jedes Mal anders, viel Erfahrung und Bauchgefühl",
+          "ähnlich, mit Ausnahmen",
+          "immer gleicher Aufbau, viel Text oder feste Regeln"
+        ],
+        [
+          "Datenlage",
+          "Ob das nötige Wissen greifbar ist",
+          "steckt in Köpfen, nichts aufgeschrieben",
+          "vorhanden, aber verstreut oder veraltet",
+          "aktuell, vollständig, an einem Ort"
+        ],
+        [
+          "Fehlerfolgen",
+          "Hohe Punkte = geringe Folgen",
+          "Fehler geht unbemerkt an Kunden oder betrifft Geld, Recht, Gesundheit oder Menschen",
+          "Fehler fallen meist intern auf und kosten Nacharbeit",
+          "Ergebnis wird immer geprüft, Fehler sind leicht zu sehen"
+        ],
+        [
+          "Aufwand",
+          "Hohe Punkte = wenig Aufwand für die Einführung",
+          "neue Software, Schnittstellen, mehrere Monate",
+          "vorhandenes Werkzeug, Daten ordnen, einige Wochen",
+          "geht mit vorhandenem Werkzeug in wenigen Tagen"
+        ],
+        [
+          {
+            "v": "Zeit heute: 2 Punkte ab 2 Stunden, 4 Punkte ab 10 Stunden im Monat. Bei den anderen Kriterien vergeben Sie 2 oder 4 Punkte, wenn ein Fall dazwischen liegt.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          {
+            "v": "Zwei Regeln vor der Punktzahl",
+            "stil": "fett"
+          },
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "Fehlerfolgen 1 Punkt",
+          {
+            "v": "Nicht als ersten Versuch wählen, egal wie viele Punkte.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null
+        ],
+        [
+          "Datenlage 1 oder 2",
+          {
+            "v": "Erst die Daten ordnen, dann noch einmal bewerten.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          {
+            "v": "Summe lesen",
+            "stil": "fett"
+          },
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          "22 bis 30",
+          {
+            "v": "Kandidat für den ersten Versuch, wenn keine Regel greift.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null
+        ],
+        [
+          "15 bis 21",
+          {
+            "v": "Später. Notieren Sie, welche Hürde zuerst weg muss.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null
+        ],
+        [
+          "6 bis 14",
+          {
+            "v": "Nicht jetzt.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          {
+            "v": "Die Grenzen sind eine Orientierung von Fokus Innovation, keine Norm. Bei personenbezogenen oder vertraulichen Daten vor dem Start Datenschutz und Vertrag des Werkzeugs klären.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null,
+          null
+        ]
+      ]
+    }
+  ]
+}

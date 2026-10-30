@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>KI-Regeln für Ihr Team</title>
+<link rel="stylesheet" href="basis.css">
+<style>
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 166mm; }
+  .abschnitt-titel { margin-top: 5.5mm; padding-bottom: 1.8mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+  .abschnitt-titel.mit-feld { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 1.2mm; }
+  .abschnitt-titel .feld { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 9pt; width: 60mm; }
+  .abschnitt-titel .feld .strich { height: 5mm; }
+  h2.blatt { margin-top: 6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  h2.blatt + .unter { margin-top: 1.6mm; max-width: 166mm; font-size: 10.5pt; line-height: 1.45; }
+  h3 { font-size: 11pt; line-height: 1.25; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  .klein { font-size: 9pt; line-height: 1.4; color: var(--tinte-leise); }
+  .ein { color: var(--akzent); font-weight: 500; }
+  .lk { display: inline-block; width: 38mm; height: 4mm; border-bottom: var(--linie) solid var(--haar-schreib); vertical-align: -1mm; }
+  .lk.kurz { width: 16mm; }
+
+  /* So nutzen Sie die Vorlage */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3.2mm; margin-top: 3.6mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 10pt; line-height: 1.42; }
+  .ablauf { margin-top: 2.6mm; }
+  .ablauf li { display: grid; grid-template-columns: 9mm 1fr 25mm; padding: 2.5mm 0 2.3mm; border-bottom: var(--linie) solid var(--haar); }
+  .ablauf li:last-child { border-bottom: 0; }
+  .ablauf .nr { font-size: 12pt; line-height: 1.2; }
+  .ablauf h3 { font-size: 10.5pt; }
+  .ablauf p { margin-top: .6mm; font-size: 9.8pt; line-height: 1.42; }
+  .ablauf.ohne-s li { grid-template-columns: 9mm 1fr; }
+  .ablauf .s { text-align: right; font-size: 8.5pt; color: var(--tinte-leise); padding-top: .6mm; }
+
+  .hinweis { margin-top: 4mm; padding: .8mm 0 .8mm 5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; color: var(--tinte-text); }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .hilfe { margin-top: 1.4mm; font-size: 9pt; line-height: 1.42; color: var(--tinte-leise); }
+  .hilfe b { color: var(--tinte-text); font-weight: 600; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 7pt; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+  .bsp-kopf { margin-top: 3mm; padding-left: 5mm; border-left: .9pt solid var(--akzent); }
+  .bsp-kopf p { font-size: 10pt; line-height: 1.42; }
+
+  /* Linien und Formularraster */
+  .linien .zeile-frei { height: 7.6mm; }
+  table.raster { width: 100%; margin-top: 2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 2mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.6pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.8pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.2mm 2mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster td.n { color: var(--tinte-leise); font-size: 8.5pt; font-variant-numeric: tabular-nums; }
+  .raster td.mitte, .raster th.mitte { text-align: center; }
+  .raster td.ein { color: var(--akzent); }
+  .raster tr.gruppe td { height: auto; padding-top: 3mm; padding-bottom: 1.2mm; border-left: 0; font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); border-bottom: var(--linie) solid var(--haar); }
+
+  /* Kontrollliste */
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.8pt; line-height: 1.4; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste .kreuz { margin-top: .5mm; }
+  .liste b { color: var(--tinte); font-weight: 600; }
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
+  .drei { display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 7mm; }
+
+  /* Nächste Schritte */
+  .weiter-liste { margin-top: 3mm; }
+  .weiter-liste li { display: grid; grid-template-columns: 38mm 1fr; column-gap: 6mm; padding: 3.6mm 0 3.4mm; border-bottom: var(--linie) solid var(--haar); }
+  .weiter-liste li:last-child { border-bottom: 0; }
+  .weiter-liste .art { font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); padding-top: .8mm; }
+  .weiter-liste h3 { font-size: 11.5pt; }
+  .weiter-liste p { margin-top: .8mm; font-size: 10pt; line-height: 1.42; }
+  .weiter-liste a, a.url { color: var(--akzent); text-decoration: none; font-weight: 600; font-size: 9.8pt; }
+  .weiter-liste .url { display: block; margin-top: 1.2mm; }
+
+  .meta { display: grid; grid-template-columns: 1fr 44mm 1fr; column-gap: 7mm; margin-top: 4mm; }
+  .meta .feld { font-size: 9.5pt; color: var(--tinte); }
+  .meta .feld span:first-child { font-weight: 600; }
+  .regeln { margin-top: 4mm; display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
+  .regel { display: grid; grid-template-columns: 7mm 1fr; padding: 3.4mm 0 3.2mm; border-top: var(--linie) solid var(--haar); }
+  .regel.breit { grid-column: 1 / -1; }
+  .regel:first-child { border-top: .9pt solid var(--haar-stark); }
+  .regel .nr { font-size: 11.5pt; line-height: 1.25; }
+  .regel h2 { font-size: 11.5pt; line-height: 1.25; }
+  .regel p.text { margin-top: .8mm; }
+  .regel .feld { margin-top: 1.2mm; font-size: 9.5pt; }
+  .regel .feld .strich { height: 6.5mm; }
+  .regel .ein-feld { display: flex; gap: 2.5mm; margin-top: 1.4mm; font-size: 9.5pt; color: var(--tinte-leise); }
+  .regel .ein-feld b { font-weight: 400; flex: none; }
+  .regel .ein-feld span { color: var(--akzent); font-weight: 500; }
+
+  table.werkzeuge { width: 100%; margin-top: 1.6mm; border-collapse: collapse; table-layout: fixed; }
+  .werkzeuge th { text-align: left; padding: 0 2mm 1mm 0; font-size: 8.5pt; font-weight: 600; color: var(--tinte-leise); border-bottom: var(--linie) solid var(--haar); }
+  .werkzeuge td { height: 7.8mm; padding: 1mm 2mm 1mm 0; font-size: 9.4pt; line-height: 1.32; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); }
+  .werkzeuge td + td, .werkzeuge th + th { padding-left: 2mm; }
+  .werkzeuge td:first-child { border-left: 0; }
+  .werkzeuge td.ein { color: var(--akzent); font-weight: 500; }
+
+  .nie { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 1.4mm; margin-top: 1.8mm; }
+  .nie li { display: grid; grid-template-columns: 4.6mm 1fr; font-size: 9.8pt; line-height: 1.38; }
+  .nie svg { width: 2.8mm; height: 2.8mm; margin-top: .9mm; color: var(--akzent); }
+  .nie b { font-weight: 600; color: var(--tinte); }
+  .wahl { display: flex; flex-wrap: wrap; gap: 1.6mm 5mm; margin-top: 1.6mm; font-size: 9.8pt; }
+  .wahl span { display: inline-flex; align-items: center; gap: 1.8mm; }
+  .jn { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; margin-top: 1.6mm; }
+  .jn h3 { font-size: 9.6pt; display: flex; gap: 1.6mm; align-items: center; }
+  .jn h3 svg { width: 3mm; height: 3mm; color: var(--akzent); }
+
+  .recht { margin-top: 3mm; padding: 3.2mm 6mm; background: #fff; border: var(--linie) solid var(--haar); border-radius: 1.6mm; }
+  .recht p { font-size: 9.8pt; line-height: 1.48; }
+  .recht p + p { margin-top: 2mm; }
+  .recht blockquote { margin: 2.6mm 0 0; padding-left: 5mm; border-left: .9pt solid var(--akzent); font-size: 10pt; line-height: 1.5; color: var(--tinte); }
+  .recht .quelle { margin-top: 2mm; font-size: 8.4pt; color: var(--tinte-leise); line-height: 1.4; }
+  .heisst li { display: grid; grid-template-columns: 5mm 1fr; padding: 1.5mm 0; font-size: 9.8pt; line-height: 1.42; border-bottom: var(--linie) solid var(--haar); }
+  .heisst li:last-child { border-bottom: 0; }
+  .heisst svg { width: 3mm; height: 3mm; margin-top: .9mm; color: var(--akzent); }
+  table.uebersicht td { height: 9mm; }
+  table.teilnehmer td { height: 9.4mm; }
+  .inhalte { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 1.8mm; margin-top: 2.4mm; }
+  .inhalte li { display: flex; gap: 2.4mm; font-size: 9.6pt; line-height: 1.38; }
+  .inhalte .kreuz { margin-top: .5mm; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="37.2" cy="9.3" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+  <symbol id="x" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="haken" viewBox="0 0 12 12"><path d="M2.6 6.4 L5 8.8 L9.6 3.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<div class="titel">
+    <p class="vorzeile">Vorlage · Innovation</p>
+    <h1>KI-Regeln für Ihr Team</h1>
+    <p class="lead">Eine Vorlage für klare Regeln, die alle im Team kennen: welche Werkzeuge, welche Daten nie, wer prüft, wie Sie kennzeichnen. Mit ausgefülltem Beispiel und einer Teilnehmerliste für Ihre Schulungen.</p>
+  </div>
+  <p class="abschnitt-titel">So nutzen Sie die Vorlage</p>
+  <div class="fakten"><div><b>Wer füllt aus</b><p>Die Geschäftsführung oder die Person, die KI im Haus verantwortet, zusammen mit jemandem, der den Arbeitsalltag gut kennt.</p></div><div><b>Mit wem besprechen</b><p>Vorher mit der Person, die bei Ihnen für Datenschutz zuständig ist, und, falls vorhanden, mit dem Betriebsrat. Danach mit dem ganzen Team.</p></div><div><b>Wie oft prüfen</b><p>Alle sechs Monate, und immer dann, wenn ein neues Werkzeug dazukommt oder etwas schiefgegangen ist.</p></div><div><b>Zeitbedarf</b><p>Etwa eine Stunde für den Entwurf, ein Teamtermin von 30 bis 45 Minuten und eine Stunde je Prüfung.</p></div></div>
+  <p class="abschnitt-titel">Ablauf</p>
+  <ol class="ablauf"><li><span class="nr">1</span><div><h3>Beispiel ansehen</h3><p>Ein frei erfundenes Planungsbüro zeigt, wie ausgefüllte Regeln aussehen.</p></div><span class="s">Seite 2</span></li><li><span class="nr">2</span><div><h3>Regeln entwerfen</h3><p>Füllen Sie die beiden Bögen aus. Markieren Sie offene Fragen, statt zu raten.</p></div><span class="s">Seite 3 und 4</span></li><li><span class="nr">3</span><div><h3>Offene Fragen klären</h3><p>Datenschutz, Verträge der Anbieter und Vorgaben Ihrer Kunden. Die Antworten gehören in Regel 1 und 2.</p></div><span class="s"></span></li><li><span class="nr">4</span><div><h3>Im Team besprechen</h3><p>Regeln vorstellen, an zwei, drei Beispielen aus dem Alltag zeigen, Fragen sammeln und die Regeln anpassen.</p></div><span class="s">Seite 5 und 6</span></li><li><span class="nr">5</span><div><h3>Festhalten und aushängen</h3><p>Teilnahme und Inhalte in der Teilnehmerliste eintragen. Die Regeln dort aufhängen, wo gearbeitet wird.</p></div><span class="s">Seite 6</span></li><li><span class="nr">6</span><div><h3>Wieder ansehen</h3><p>Den Termin für die nächste Prüfung in den Kalender. Neue Werkzeuge erst nach Eintrag in Regel 1.</p></div><span class="s">Seite 4</span></li></ol>
+  <p class="hinweis"><b>Vorlage, keine Rechtsberatung.</b> Sie ersetzt keine Prüfung durch Fachleute. Was die KI-Verordnung der EU zur KI-Kompetenz sagt, steht wörtlich auf Seite 5.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 1 von 7</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm;color:var(--akzent)">Beispiel · frei erfunden</p>
+  <h2 class="blatt" style="margin-top:1.6mm">So sehen ausgefüllte Regeln aus</h2>
+  <p class="unter">Ein Planungsbüro für Haustechnik mit 22 Beschäftigten. Die Geschäftsführerin hat die Regeln mit einer Projektleiterin entworfen und im Team besprochen.</p>
+  <div class="meta"><p class="feld"><span>Firma / Team</span><span class="ein" style="flex:1">Planungsbüro, alle 22</span></p><p class="feld"><span>Gültig ab</span><span class="ein" style="flex:1">01.02.</span></p><p class="feld"><span>Verantwortlich</span><span class="ein" style="flex:1">Geschäftsführerin</span></p></div>
+  <ol class="regeln">
+    <li class="regel breit"><span class="nr">1</span><div><h2>Diese Werkzeuge nutzen wir</h2>
+      <table class="werkzeuge"><colgroup><col style="width:34%"><col style="width:42%"><col></colgroup>
+        <thead><tr><th>Werkzeug</th><th>Wofür wir es nutzen</th><th>Lizenz / Konto über</th></tr></thead>
+        <tbody><tr><td class="ein">KI-Assistent im Büropaket, Firmenlizenz</td><td class="ein">Texte entwerfen, interne Protokolle zusammenfassen, Mails vorformulieren</td><td class="ein">Geschäftsführung, Konten über die IT</td></tr>
+        <tr><td class="ein">Übersetzungsdienst, Firmenkonto</td><td class="ein">Unterlagen von Partnern im Ausland verstehen</td><td class="ein">Sekretariat</td></tr></tbody></table>
+      <p class="klein" style="margin-top:1.4mm">Weitere Werkzeuge nur nach Freigabe durch die Geschäftsführung.</p></div></li>
+    <li class="regel breit"><span class="nr">2</span><div><h2>Das kommt nie hinein</h2>
+      <ul class="nie"><li><svg><use href="#x"/></svg><span><b>Kundendaten</b> und Gesprächsnotizen</span></li><li><svg><use href="#x"/></svg><span><b>Personaldaten</b> aller Art</span></li><li><svg><use href="#x"/></svg><span><b>Vertrauliches</b>, Preise, Kalkulationen</span></li><li><svg><use href="#x"/></svg><span><b>Zugangsdaten</b> und Kontonummern</span></li></ul>
+      <p class="ein-feld"><b>Außerdem bei uns:</b><span>Pläne und Leistungsverzeichnisse von Kunden mit Geheimhaltung</span></p></div></li>
+    <li class="regel breit"><span class="nr">3</span><div><h2>Dafür ja, dafür nicht</h2>
+      <div class="jn"><div><h3><svg><use href="#haken"/></svg> Ja</h3><p class="ein" style="font-size:9.6pt;margin-top:.8mm">Angebotstexte aus Stichpunkten ohne Kundendaten, interne Protokolle, Anleitungen, Übersetzungen zum Verstehen</p></div><div><h3><svg><use href="#x"/></svg> Nein</h3><p class="ein" style="font-size:9.6pt;margin-top:.8mm">Auslegung und Berechnung von Anlagen, Entscheidungen über Bewerbungen oder Leistung, Rechtsfragen</p></div></div></div></li>
+    <li class="regel"><span class="nr">4</span><div><h2>Wer prüft</h2><p class="ein-feld"><b>Prüft vor dem Versand</b><span>Projektleitung</span></p><p class="ein-feld"><b>Vertretung</b><span>Stellvertretung im Projekt</span></p></div></li>
+    <li class="regel"><span class="nr">5</span><div><h2>Kennzeichnung</h2><div class="wahl"><span><span class="kreuz" style="position:relative"><svg style="position:absolute;inset:-.2mm;width:3.6mm;height:3.6mm;color:var(--akzent)"><use href="#x"/></svg></span>Hinweis im Text</span><span><span class="kreuz" style="position:relative"><svg style="position:absolute;inset:-.2mm;width:3.6mm;height:3.6mm;color:var(--akzent)"><use href="#x"/></svg></span>im Bildnachweis</span></div></div></li>
+    <li class="regel"><span class="nr">6</span><div><h2>Ansprechperson bei Fehlern</h2><p class="ein-feld"><b>Name</b><span>Geschäftsführerin</span></p><p class="ein-feld"><b>Erreichbar über</b><span>Durchwahl 10 oder Mail</span></p></div></li>
+    <li class="regel"><span class="nr">7</span><div><h2>Nächste Prüfung</h2><p class="ein-feld"><b>Am</b><span>im August</span></p><p class="ein-feld"><b>Besprochen im Team am</b><span>28.01.</span></p></div></li>
+    <li class="regel breit"><span class="nr">8</span><div><h2>Eigene Regeln</h2><p class="ein-feld"><span>Bei Aufträgen der öffentlichen Hand vorher in den Vertrag schauen, ob der Auftraggeber den Einsatz von KI regelt.</span></p><p class="ein-feld"><span>Neue Kolleginnen und Kollegen bekommen die Regeln am ersten Tag und kommen zur nächsten Schulung.</span></p></div></li>
+  </ol>
+  <p class="hinweis" style="margin-top:3mm"><b class="ein">Schulung am 28.01.:</b> 45 Minuten, alle 22 auf der Teilnehmerliste, Inhalte: Regeln, Bedienung, typische Fehler, Datenschutz.</p>
+  <p class="klein" style="margin-top:2mm">Büro, Werkzeuge und Angaben sind frei erfunden. Lila steht für Einträge.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 2 von 7</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Bogen · Teil 1</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Werkzeuge, Daten, Einsatz</h2>
+  
+  <div class="meta"><p class="feld"><span>Firma / Team</span><span class="strich"></span></p><p class="feld"><span>Gültig ab</span><span class="strich"></span></p><p class="feld"><span>Verantwortlich</span><span class="strich"></span></p></div>
+  <ol class="regeln">
+    <li class="regel breit"><span class="nr">1</span><div><h2>Diese Werkzeuge nutzen wir</h2>
+      <p class="text">Nur mit Firmenlizenz oder Firmenkonto, nie über private oder kostenlose Zugänge.</p>
+      <table class="werkzeuge"><colgroup><col style="width:34%"><col style="width:42%"><col></colgroup>
+        <thead><tr><th>Werkzeug</th><th>Wofür wir es nutzen</th><th>Lizenz / Konto über</th></tr></thead>
+        <tbody><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr></tbody></table>
+      <p class="hilfe"><b>Ausfüllhilfe:</b> Klären Sie vor dem Eintrag: Werden Eingaben zum Trainieren genutzt? Gibt es einen Vertrag zur Auftragsverarbeitung? Wo werden die Daten verarbeitet? Lassen sich Konten zentral sperren?</p></div></li>
+    <li class="regel breit"><span class="nr">2</span><div><h2>Das kommt nie hinein</h2>
+      <ul class="nie">
+        <li><svg><use href="#x"/></svg><span><b>Kundendaten</b>: Namen, Kontaktdaten, Verträge, Gesprächsnotizen</span></li>
+        <li><svg><use href="#x"/></svg><span><b>Personaldaten</b>: Gehälter, Krankmeldungen, Bewerbungen, Beurteilungen</span></li>
+        <li><svg><use href="#x"/></svg><span><b>Vertrauliches</b>: Angebote, Preise, Zahlen, Pläne, alles unter Geheimhaltung</span></li>
+        <li><svg><use href="#x"/></svg><span><b>Zugangsdaten</b>: Passwörter, Schlüssel, Kontonummern</span></li>
+      </ul>
+      <p class="text" style="margin-top:2mm">Im Zweifel: weglassen, unkenntlich machen oder fragen. Außerdem bei uns:</p>
+      <div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div></li>
+    <li class="regel breit"><span class="nr">3</span><div><h2>Dafür ja, dafür nicht</h2>
+      <p class="text">Wofür KI bei uns helfen darf, und wofür wir sie bewusst nicht einsetzen.</p>
+      <div class="jn"><div><h3><svg><use href="#haken"/></svg> Ja</h3><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div><div><h3><svg><use href="#x"/></svg> Nein</h3><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div></div>
+      <p class="hilfe"><b>Ausfüllhilfe:</b> Unter „Nein“ gehören Aufgaben, bei denen ein Fehler teuer wird, bevor ihn jemand sieht, und Entscheidungen über Menschen.</p></div></li>
+  </ol>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 3 von 7</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Bogen · Teil 2</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Prüfen, kennzeichnen, melden</h2>
+  
+  <ol class="regeln" style="grid-template-columns:1fr">
+    <li class="regel"><span class="nr">4</span><div><h2>Wer prüft</h2>
+      <p class="text">Was das Haus verlässt, liest vorher ein Mensch und prüft Zahlen, Namen, Zitate und Quellen. Die Verantwortung bleibt bei uns.</p>
+      <div class="zwei"><p class="feld"><span>Prüft vor dem Versand</span><span class="strich"></span></p><p class="feld"><span>Vertretung</span><span class="strich"></span></p></div></div></li>
+    <li class="regel"><span class="nr">5</span><div><h2>Kennzeichnung</h2>
+      <p class="text">Wir sagen offen, wenn ein Inhalt überwiegend mit KI entstanden ist. Wo eine Kennzeichnung vorgeschrieben ist, gilt sie immer.</p>
+      <div class="wahl"><span><span class="kreuz"></span>Hinweis im Text</span><span><span class="kreuz"></span>im Bildnachweis</span><span><span class="kreuz"></span>anders: <span class="lk" style="width:70mm"></span></span></div></div></li>
+    <li class="regel"><span class="nr">6</span><div><h2>Ansprechperson bei Fragen und Fehlern</h2>
+      <p class="text">Ist doch Vertrauliches hineingeraten oder ein falsches Ergebnis rausgegangen: sofort melden, ohne Schuldfrage. Je früher, desto leichter lässt es sich beheben.</p>
+      <div class="zwei"><p class="feld"><span>Name</span><span class="strich"></span></p><p class="feld"><span>Erreichbar über</span><span class="strich"></span></p></div></div></li>
+    <li class="regel"><span class="nr">7</span><div><h2>Nächste Prüfung</h2>
+      <p class="text">Werkzeuge ändern sich schnell. Wir sehen uns diese Regeln regelmäßig gemeinsam an.</p>
+      <div class="zwei"><p class="feld"><span>Nächste Prüfung am</span><span class="strich"></span></p><p class="feld"><span>Besprochen im Team am</span><span class="strich"></span></p></div></div></li>
+    <li class="regel"><span class="nr">8</span><div><h2>Eigene Regeln</h2>
+      <p class="text">Was bei Ihnen außerdem gilt, zum Beispiel Vorgaben von Kunden oder aus Ihrer Branche.</p>
+      <div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div></li>
+  </ol>
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Hängen Sie beide Bögen dort auf, wo gearbeitet wird, und legen Sie sie neuen Kolleginnen und Kollegen am ersten Tag vor.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 4 von 7</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Zum Nachlesen</p>
+  <h2 class="blatt" style="margin-top:1.6mm">KI-Kompetenz: was die KI-Verordnung sagt</h2>
+  <p class="unter">Die KI-Verordnung der EU enthält in Artikel 4 eine Pflicht zur KI-Kompetenz. Hier steht sie im Wortlaut, damit Sie nicht auf Zusammenfassungen angewiesen sind.</p>
+  <div class="recht">
+    <p>Die Pflicht gilt für Anbieter und für Betreiber von KI-Systemen. Betreiber ist nach Artikel 3 Nummer 4, wer ein KI-System in eigener Verantwortung verwendet, es sei denn, das geschieht im Rahmen einer persönlichen und nicht beruflichen Tätigkeit.</p>
+    <p>Artikel 4 gilt seit dem 2. Februar 2025. Seit dem 27. Juli 2026 gilt er in der Fassung der Verordnung (EU) 2026/1744. Absatz 1 lautet seitdem:</p>
+    <blockquote>„Die Anbieter und Betreiber von KI-Systemen ergreifen Maßnahmen, um die Entwicklung der KI-Kompetenz ihres Personals und anderer Personen zu unterstützen, die in ihrem Auftrag mit dem Betrieb und der Nutzung von KI-Systemen befasst sind, wobei ihre technischen Kenntnisse, ihre Erfahrung, ihre Aus- und Fortbildung und der Kontext, in dem die KI-Systeme eingesetzt werden sollen, sowie die Personen oder Personengruppen, bei denen die KI-Systeme eingesetzt werden sollen, zu berücksichtigen sind. Diese Verpflichtung verpflichtet Anbieter oder Betreiber nicht, für irgendeine Person ein bestimmtes Niveau an KI-Kompetenz zu garantieren.“</blockquote>
+    <p class="quelle">Verordnung (EU) 2024/1689, Artikel 4 Absatz 1, konsolidierte Fassung vom 27.07.2026; Artikel 3 Nummer 4; Artikel 113. Abgerufen am 30.10.2026 auf eur-lex.europa.eu.</p>
+  </div>
+  <p class="abschnitt-titel">Was das für die Praxis heißt</p>
+  <ul class="heisst">
+    <li><svg><use href="#haken"/></svg><span>Zur Einordnung: In der ersten Fassung hieß es, Anbieter und Betreiber ergreifen Maßnahmen, um „nach besten Kräften sicherzustellen“, dass ihr Personal und andere Personen in ihrem Auftrag „über ein ausreichendes Maß an KI-Kompetenz verfügen“. Achten Sie bei Texten zum Thema darauf, welche Fassung zitiert wird.</span></li>
+    <li><svg><use href="#haken"/></svg><span>Artikel 4 schreibt keine bestimmte Form vor, wie Sie Ihre Maßnahmen festhalten. Eine Teilnehmerliste mit Datum und Inhalten zeigt, was Sie getan haben.</span></li>
+    <li><svg><use href="#haken"/></svg><span>Der Artikel nennt, was dabei zu berücksichtigen ist, unter anderem Kenntnisse, Erfahrung, Aus- und Fortbildung und den Kontext, in dem KI eingesetzt wird. Naheliegend ist deshalb, an den eigenen Werkzeugen und Abläufen zu schulen.</span></li>
+    <li><svg><use href="#haken"/></svg><span>Ob und wie die Verordnung im Einzelnen für Ihr Unternehmen gilt, klären Sie mit Ihrer Beratung. Diese Seite ist keine Rechtsberatung.</span></li>
+  </ul>
+  <p class="abschnitt-titel">Übersicht Ihrer Schulungen</p>
+  <table class="raster uebersicht"><colgroup><col style="width:22mm"><col><col style="width:18mm"><col style="width:36mm"><col style="width:24mm"></colgroup>
+    <thead><tr><th>Datum</th><th>Thema</th><th>Dauer</th><th>Leitung</th><th>Teilnehmende</th></tr></thead>
+    <tbody><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 5 von 7</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Schulung nachweisen</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Teilnehmerliste</h2>
+  
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Eine Liste je Termin. Bewahren Sie sie zusammen mit Ihren Regeln auf. Wer fehlt, holt die Schulung nach und wird mit eigenem Datum nachgetragen.</p>
+  <div class="drei" style="margin-top:3mm"><p class="feld"><span>Datum</span><span class="strich"></span></p><p class="feld"><span>Dauer</span><span class="strich"></span></p><p class="feld"><span>Leitung</span><span class="strich"></span></p></div>
+  <p class="abschnitt-titel">Inhalte</p>
+  <ul class="inhalte">
+    <li><span class="kreuz"></span><span>Unsere KI-Regeln, Punkt für Punkt</span></li>
+    <li><span class="kreuz"></span><span>Bedienung der freigegebenen Werkzeuge</span></li>
+    <li><span class="kreuz"></span><span>Was KI kann und wo sie Fehler macht, etwa erfundene Fakten oder Quellen</span></li>
+    <li><span class="kreuz"></span><span>Datenschutz und vertrauliche Daten</span></li>
+    <li><span class="kreuz"></span><span>Prüfen vor dem Versand und Kennzeichnen</span></li>
+    <li><span class="kreuz"></span><span>Beispiele aus unserem Alltag</span></li>
+    <li><span class="kreuz"></span><span>Fehler melden: an wen und wie</span></li>
+    <li><span class="kreuz"></span><span>Weiteres: <span class="lk" style="width:52mm"></span></span></li>
+  </ul>
+  <table class="raster teilnehmer" style="margin-top:4mm"><colgroup><col style="width:8mm"><col style="width:58mm"><col style="width:46mm"><col></colgroup>
+    <thead><tr><th>Nr.</th><th>Name</th><th>Funktion oder Bereich</th><th>Unterschrift</th></tr></thead>
+    <tbody><tr><td class="n">1</td><td></td><td></td><td></td></tr><tr><td class="n">2</td><td></td><td></td><td></td></tr><tr><td class="n">3</td><td></td><td></td><td></td></tr><tr><td class="n">4</td><td></td><td></td><td></td></tr><tr><td class="n">5</td><td></td><td></td><td></td></tr><tr><td class="n">6</td><td></td><td></td><td></td></tr><tr><td class="n">7</td><td></td><td></td><td></td></tr><tr><td class="n">8</td><td></td><td></td><td></td></tr><tr><td class="n">9</td><td></td><td></td><td></td></tr><tr><td class="n">10</td><td></td><td></td><td></td></tr><tr><td class="n">11</td><td></td><td></td><td></td></tr><tr><td class="n">12</td><td></td><td></td><td></td></tr><tr><td class="n">13</td><td></td><td></td><td></td></tr><tr><td class="n">14</td><td></td><td></td><td></td></tr><tr><td class="n">15</td><td></td><td></td><td></td></tr><tr><td class="n">16</td><td></td><td></td><td></td></tr><tr><td class="n">17</td><td></td><td></td><td></td></tr></tbody></table>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 6 von 7</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Zum Schluss</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Nächste Schritte</h2>
+  <p class="unter">Regeln sind die Grundlage. Nutzen entsteht, wenn ein konkreter Ablauf mit KI besser läuft. Wählen Sie dafür einen Ablauf, messen Sie vorher und nachher und entscheiden Sie nach 30 Tagen.</p>
+  <p class="abschnitt-titel">Ihre nächsten drei Schritte</p>
+  <table class="raster"><colgroup><col style="width:7mm"><col><col style="width:38mm"><col style="width:28mm"></colgroup>
+    <thead><tr><th></th><th>Was genau?</th><th>Wer?</th><th>Bis wann?</th></tr></thead>
+    <tbody><tr><td class="n" style="height:10mm">1</td><td></td><td></td><td></td></tr><tr><td class="n" style="height:10mm">2</td><td></td><td></td><td></td></tr><tr><td class="n" style="height:10mm">3</td><td></td><td></td><td></td></tr></tbody></table>
+  
+  <p class="abschnitt-titel">Weiter geht es hier</p>
+  <ul class="weiter-liste"><li><span class="art">Weiterlesen</span><div><h3>Ratgeber: Die ersten 30 Tage mit KI im Team</h3><p>Einen Ablauf wählen, Firmenlizenz und Regeln klären, messen, was es spart, und dann entscheiden.</p><a class="url" href="https://fokusinnovation.de/wissen/erste-30-tage-mit-ki/">fokusinnovation.de/wissen/erste-30-tage-mit-ki/</a></div></li><li><span class="art">Weiterlesen</span><div><h3>Ratgeber: KI-Anwendungsfälle finden und bewerten</h3><p>Wie Sie aus vielen Ideen den Ablauf finden, mit dem sich der erste Versuch lohnt.</p><a class="url" href="https://fokusinnovation.de/wissen/ki-anwendungsfaelle-finden/">fokusinnovation.de/wissen/ki-anwendungsfaelle-finden/</a></div></li><li><span class="art">Selbst prüfen</span><div><h3>Innovations-Check</h3><p>Rund zehn Minuten, fast alles per Klick. Sie bekommen Ihre Stufe, den Vergleich mit Ihrer Branche und zwei nächste Schritte.</p><a class="url" href="https://fokusinnovation.de/innovations-check/">fokusinnovation.de/innovations-check/</a></div></li><li><span class="art">Mit uns sprechen</span><div><h3>Kostenloses Erstgespräch</h3><p>60 Minuten per Video. Wir schauen gemeinsam auf Ihren Stand und legen Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden.</p><a class="url" href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></div></li></ul>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 7 von 7</span></footer>
+</section>
+</body>
+</html>

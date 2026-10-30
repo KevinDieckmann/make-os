@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>KI-Anwendungsfälle bewerten</title>
+<link rel="stylesheet" href="basis.css">
+<style>
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 166mm; }
+  .abschnitt-titel { margin-top: 5.5mm; padding-bottom: 1.8mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+  .abschnitt-titel.mit-feld { display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 1.2mm; }
+  .abschnitt-titel .feld { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 9pt; width: 60mm; }
+  .abschnitt-titel .feld .strich { height: 5mm; }
+  h2.blatt { margin-top: 6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  h2.blatt + .unter { margin-top: 1.6mm; max-width: 166mm; font-size: 10.5pt; line-height: 1.45; }
+  h3 { font-size: 11pt; line-height: 1.25; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  .klein { font-size: 9pt; line-height: 1.4; color: var(--tinte-leise); }
+  .ein { color: var(--akzent); font-weight: 500; }
+  .lk { display: inline-block; width: 38mm; height: 4mm; border-bottom: var(--linie) solid var(--haar-schreib); vertical-align: -1mm; }
+  .lk.kurz { width: 16mm; }
+
+  /* So nutzen Sie die Vorlage */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3.2mm; margin-top: 3.6mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 10pt; line-height: 1.42; }
+  .ablauf { margin-top: 2.6mm; }
+  .ablauf li { display: grid; grid-template-columns: 9mm 1fr 25mm; padding: 2.5mm 0 2.3mm; border-bottom: var(--linie) solid var(--haar); }
+  .ablauf li:last-child { border-bottom: 0; }
+  .ablauf .nr { font-size: 12pt; line-height: 1.2; }
+  .ablauf h3 { font-size: 10.5pt; }
+  .ablauf p { margin-top: .6mm; font-size: 9.8pt; line-height: 1.42; }
+  .ablauf.ohne-s li { grid-template-columns: 9mm 1fr; }
+  .ablauf .s { text-align: right; font-size: 8.5pt; color: var(--tinte-leise); padding-top: .6mm; }
+
+  .hinweis { margin-top: 4mm; padding: .8mm 0 .8mm 5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; color: var(--tinte-text); }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .hilfe { margin-top: 1.4mm; font-size: 9pt; line-height: 1.42; color: var(--tinte-leise); }
+  .hilfe b { color: var(--tinte-text); font-weight: 600; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 7pt; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+  .bsp-kopf { margin-top: 3mm; padding-left: 5mm; border-left: .9pt solid var(--akzent); }
+  .bsp-kopf p { font-size: 10pt; line-height: 1.42; }
+
+  /* Linien und Formularraster */
+  .linien .zeile-frei { height: 7.6mm; }
+  table.raster { width: 100%; margin-top: 2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 2mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.6pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.8pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.2mm 2mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster td.n { color: var(--tinte-leise); font-size: 8.5pt; font-variant-numeric: tabular-nums; }
+  .raster td.mitte, .raster th.mitte { text-align: center; }
+  .raster td.ein { color: var(--akzent); }
+  .raster tr.gruppe td { height: auto; padding-top: 3mm; padding-bottom: 1.2mm; border-left: 0; font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); border-bottom: var(--linie) solid var(--haar); }
+
+  /* Kontrollliste */
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.8pt; line-height: 1.4; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste .kreuz { margin-top: .5mm; }
+  .liste b { color: var(--tinte); font-weight: 600; }
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; }
+  .drei { display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 7mm; }
+
+  /* Nächste Schritte */
+  .weiter-liste { margin-top: 3mm; }
+  .weiter-liste li { display: grid; grid-template-columns: 38mm 1fr; column-gap: 6mm; padding: 3.6mm 0 3.4mm; border-bottom: var(--linie) solid var(--haar); }
+  .weiter-liste li:last-child { border-bottom: 0; }
+  .weiter-liste .art { font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); padding-top: .8mm; }
+  .weiter-liste h3 { font-size: 11.5pt; }
+  .weiter-liste p { margin-top: .8mm; font-size: 10pt; line-height: 1.42; }
+  .weiter-liste a, a.url { color: var(--akzent); text-decoration: none; font-weight: 600; font-size: 9.8pt; }
+  .weiter-liste .url { display: block; margin-top: 1.2mm; }
+
+  .fragen-ideen li { display: grid; grid-template-columns: 5mm 1fr; padding: 1.4mm 0; font-size: 9.8pt; line-height: 1.4; border-bottom: var(--linie) solid var(--haar); }
+  .fragen-ideen li:last-child { border-bottom: 0; }
+  .fragen-ideen svg { width: 3mm; height: 3mm; margin-top: .9mm; color: var(--akzent); }
+  table.ideen td { height: 9.6mm; }
+  table.skala td { height: auto; padding-top: 1.8mm; padding-bottom: 1.6mm; font-size: 9pt; line-height: 1.36; }
+  table.skala td b { display: block; color: var(--tinte); font-weight: 600; font-size: 9.6pt; }
+  table.skala td small { display: block; color: var(--tinte-leise); font-size: 8.2pt; margin-top: .3mm; }
+  .regel-liste li { display: grid; grid-template-columns: 42mm 1fr; column-gap: 5mm; padding: 1.35mm 0; font-size: 9.6pt; line-height: 1.4; border-bottom: var(--linie) solid var(--haar); }
+  .regel-liste li:last-child { border-bottom: 0; }
+  .regel-liste b { color: var(--tinte); font-weight: 600; }
+
+  .steck { margin-top: 2.6mm; border-top: .9pt solid var(--haar-stark); }
+  .steck .z { display: grid; grid-template-columns: 38mm 1fr; column-gap: 5mm; padding: 2mm 0 1.6mm; border-bottom: var(--linie) solid var(--haar); }
+  .steck .z:last-child { border-bottom: 0; }
+  .steck h3 { font-size: 9.8pt; }
+  .steck .klein { margin-top: .4mm; font-size: 8.3pt; }
+  .steck .linien .zeile-frei { height: 7.8mm; }
+  .steck .linien .zeile-frei:first-child { height: 5mm; }
+  .steck p.ein { font-size: 9.6pt; line-height: 1.42; }
+  .zahlen3 { display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 6mm; }
+  .zahlen3 .feld { font-size: 9pt; }
+  .zahlen3 .feld .strich { min-width: 12mm; }
+  .wahlen { display: flex; flex-wrap: wrap; gap: 1.4mm 5mm; margin-top: 1.4mm; font-size: 9.3pt; }
+  .wahlen span { display: inline-flex; align-items: center; gap: 1.8mm; }
+
+  table.punkte { margin-top: 0; }
+  table.punkte td { height: 6.4mm; padding-top: .8mm; padding-bottom: .6mm; vertical-align: middle; font-size: 9pt; }
+  table.punkte th { font-size: 8.2pt; }
+  table.punkte td.zahl { text-align: center; font-variant-numeric: tabular-nums; color: var(--tinte-leise); }
+  table.punkte td.zahl.an { color: var(--akzent); font-weight: 700; }
+  table.punkte td.zahl.an span { display: inline-block; width: 5.4mm; height: 5.4mm; line-height: 5.2mm; border: .9pt solid var(--akzent); border-radius: 50%; }
+  table.punkte tr.summe td { border-top: .9pt solid var(--haar-stark); font-weight: 600; color: var(--tinte); }
+
+  table.vergleich td { height: 11mm; vertical-align: middle; font-size: 9pt; }
+  table.vergleich th { font-size: 7.8pt; padding-left: 1mm; padding-right: 1mm; }
+  table.vergleich td.p { text-align: center; padding-left: 0; padding-right: 0; font-variant-numeric: tabular-nums; }
+  table.vergleich td.s { text-align: center; font-weight: 600; color: var(--tinte); }
+  table.vergleich th.p { text-align: center; }
+  .dreh { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; display: inline-block; text-align: left; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="37.2" cy="9.3" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+  <symbol id="x" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="haken" viewBox="0 0 12 12"><path d="M2.6 6.4 L5 8.8 L9.6 3.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<div class="titel">
+    <p class="vorzeile">Vorlage · Innovation</p>
+    <h1>KI-Anwendungsfälle bewerten</h1>
+    <p class="lead">Ein Steckbrief je Ablauf, sechs Kriterien mit Punkten und eine Übersicht zum Vergleichen. So finden Sie den Ablauf, mit dem sich der erste Versuch mit KI lohnt.</p>
+  </div>
+  <p class="abschnitt-titel">So nutzen Sie die Vorlage</p>
+  <div class="fakten"><div><b>Ziel</b><p>Aus vielen Ideen den einen Ablauf wählen, der oft vorkommt, Zeit kostet, sich gut beschreiben lässt und bei dem ein Fehler nicht teuer wird.</p></div><div><b>Zeitbedarf</b><p>Eine halbe Stunde für die Ideen, etwa 20 Minuten je Steckbrief und eine halbe Stunde für den Vergleich.</p></div><div><b>Wer macht mit</b><p>Die Person, die den Versuch verantwortet, und die Menschen, die den Ablauf heute machen. Sie kennen Häufigkeit, Dauer und Stolpersteine.</p></div><div><b>Am Rechner</b><p>Die Übersicht gibt es als Tabelle für Excel, Numbers oder Google Tabellen. Sie rechnet Stunden, Punkte, Hinweise und Reihenfolge.</p></div></div>
+  <p class="abschnitt-titel">Ablauf</p>
+  <ol class="ablauf"><li><span class="nr">1</span><div><h3>Ideen sammeln</h3><p>Mit sechs Fragen Abläufe finden, die Zeit kosten und sich wiederholen.</p></div><span class="s">Seite 2</span></li><li><span class="nr">2</span><div><h3>Die Skala kennenlernen</h3><p>Sechs Kriterien mit je 1 bis 5 Punkten und zwei Regeln, die vor der Punktzahl gelten.</p></div><span class="s">Seite 3</span></li><li><span class="nr">3</span><div><h3>Beispiel ansehen</h3><p>Ein frei erfundenes Planungsbüro bewertet vier Abläufe.</p></div><span class="s">Seite 4 und 5</span></li><li><span class="nr">4</span><div><h3>Steckbriefe ausfüllen</h3><p>Einen je Ablauf, gemeinsam mit den Menschen, die ihn machen. Häufigkeit und Dauer möglichst gemessen.</p></div><span class="s">Seite 6</span></li><li><span class="nr">5</span><div><h3>Vergleichen und entscheiden</h3><p>Alle Fälle in die Übersicht, Reihenfolge bilden, einen Ablauf für die nächsten 30 Tage wählen.</p></div><span class="s">Seite 7</span></li></ol>
+  <p class="hinweis"><b>Danach:</b> Für den gewählten Ablauf gibt es die Vorlage „KI-Pilot in 30 Tagen“ mit Plan, Messbogen und Entscheidung.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 1 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Schritt 1</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Ideen sammeln</h2>
+  <p class="unter">Gute Kandidaten sind Abläufe mit viel Text, wiederkehrender Form und spürbarem Zeitaufwand. Diese Fragen helfen beim Suchen, am besten gemeinsam im Team.</p>
+  <ul class="fragen-ideen" style="margin-top:3mm">
+    <li><svg><use href="#haken"/></svg><span>Wo schreiben wir immer wieder ähnliche Texte, etwa Angebote, Antworten oder Berichte?</span></li>
+    <li><svg><use href="#haken"/></svg><span>Wo suchen wir Informationen aus mehreren Quellen zusammen?</span></li>
+    <li><svg><use href="#haken"/></svg><span>Welche Fragen von Kunden oder Kollegen beantworten wir jede Woche wieder?</span></li>
+    <li><svg><use href="#haken"/></svg><span>Wo übertragen wir Angaben von einem Ort an einen anderen?</span></li>
+    <li><svg><use href="#haken"/></svg><span>Wo warten Kunden auf eine Antwort, weil sie Zeit kostet?</span></li>
+    <li><svg><use href="#haken"/></svg><span>Was schieben alle vor sich her, weil es lästig ist?</span></li>
+  </ul>
+  <p class="abschnitt-titel">Ihre Ideen</p>
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Erst sammeln, dann bewerten. Schätzen Sie nur grob, wie oft ein Ablauf vorkommt. Genau gemessen wird später im Steckbrief.</p>
+  <table class="raster ideen"><colgroup><col style="width:7mm"><col><col style="width:30mm"><col style="width:26mm"><col style="width:22mm"></colgroup>
+    <thead><tr><th></th><th>Ablauf</th><th>Wer macht ihn?</th><th>Wie oft im Monat?</th><th>Steckbrief</th></tr></thead>
+    <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">2</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">3</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">4</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">5</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">6</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">7</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">8</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">9</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">10</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">11</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr><tr><td class="n">12</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr></tbody></table>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 2 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Schritt 2</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Die Skala</h2>
+  <p class="unter">Jedes Kriterium bekommt 1 bis 5 Punkte. Die Beschreibungen zeigen, wofür 1, 3 und 5 Punkte stehen. Höchstens 30 Punkte.</p>
+  <table class="raster skala" style="margin-top:3mm"><colgroup><col style="width:36mm"><col><col><col></colgroup>
+    <thead><tr><th>Kriterium</th><th>1 Punkt</th><th>3 Punkte</th><th>5 Punkte</th></tr></thead>
+    <tbody><tr><td><b>Zeit heute</b><small>Stunden im Monat aus Häufigkeit mal Dauer</small></td><td>unter 2 Stunden</td><td>5 bis unter 10 Stunden</td><td>20 Stunden und mehr</td></tr><tr><td><b>Weiterer Nutzen</b><small>Was außer Zeit besser wird</small></td><td>kaum spürbar</td><td>merklich für die Beteiligten</td><td>Kunden merken es, oder mehrere Personen werden deutlich entlastet</td></tr><tr><td><b>Gleiche Form</b><small>Wie gleichförmig der Ablauf ist</small></td><td>jedes Mal anders, viel Erfahrung und Bauchgefühl</td><td>ähnlich, mit Ausnahmen</td><td>immer gleicher Aufbau, viel Text oder feste Regeln</td></tr><tr><td><b>Datenlage</b><small>Ob das nötige Wissen greifbar ist</small></td><td>steckt in Köpfen, nichts aufgeschrieben</td><td>vorhanden, aber verstreut oder veraltet</td><td>aktuell, vollständig, an einem Ort</td></tr><tr><td><b>Fehlerfolgen</b><small>Hohe Punkte = geringe Folgen</small></td><td>Fehler geht unbemerkt an Kunden oder betrifft Geld, Recht, Gesundheit oder Menschen</td><td>Fehler fallen meist intern auf und kosten Nacharbeit</td><td>Ergebnis wird immer geprüft, Fehler sind leicht zu sehen</td></tr><tr><td><b>Aufwand</b><small>Hohe Punkte = wenig Aufwand für die Einführung</small></td><td>neue Software, Schnittstellen, mehrere Monate</td><td>vorhandenes Werkzeug, Daten ordnen, einige Wochen</td><td>geht mit vorhandenem Werkzeug in wenigen Tagen</td></tr></tbody></table>
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Liegt ein Fall dazwischen, geben Sie 2 oder 4 Punkte. Die Zeit rechnen Sie aus: Häufigkeit im Monat mal Minuten je Durchgang, geteilt durch 60. Dabei gibt es 2 Punkte ab 2 Stunden und 4 Punkte ab 10 Stunden.</p>
+  <p class="abschnitt-titel">Zwei Regeln, die vor der Punktzahl gelten</p>
+  <ul class="regel-liste">
+    <li><b>Fehlerfolgen 1 Punkt</b><span>Nicht als ersten Versuch wählen, egal wie viele Punkte der Fall hat. Ein teurer Fehler kostet das Vertrauen des Teams.</span></li>
+    <li><b>Datenlage 1 oder 2 Punkte</b><span>Erst die Daten ordnen, dann noch einmal bewerten. Ohne greifbares Wissen kann KI nur raten.</span></li>
+  </ul>
+  <p class="abschnitt-titel">So lesen Sie die Summe</p>
+  <ul class="regel-liste">
+    <li><b>22 bis 30 Punkte</b><span>Kandidat für den ersten Versuch, wenn keine der beiden Regeln greift.</span></li>
+    <li><b>15 bis 21 Punkte</b><span>Später. Notieren Sie, welche Hürde zuerst weg muss.</span></li>
+    <li><b>6 bis 14 Punkte</b><span>Nicht jetzt. Der Aufwand steht in keinem guten Verhältnis zum Nutzen.</span></li>
+  </ul>
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Die Grenzen sind eine Orientierung von uns, keine Norm. Enthält ein Ablauf personenbezogene oder vertrauliche Daten, klären Sie vor dem Start Datenschutz und Vertrag des Werkzeugs.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 3 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm;color:var(--akzent)">Beispiel · frei erfunden</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Ein Steckbrief, ausgefüllt</h2>
+  <p class="unter">Ein Planungsbüro für Haustechnik mit 22 Beschäftigten. Die Projektleitungen haben eine Woche lang notiert, wie oft und wie lange sie Angebotstexte schreiben.</p>
+  <div class="steck">
+    <div class="z"><div><h3>Ablauf</h3></div><p class="ein">Angebotstexte aus Stichpunkten entwerfen · verantwortlich: eine Projektleiterin · 03.02.</p></div>
+    <div class="z"><div><h3>Was passiert heute?</h3></div><p class="ein">Nach dem Ortstermin schreibt die Projektleitung aus Notizen den Angebotstext: Ausgangslage, Leistungen, Ablauf, Annahmen. Preise kommen aus der Kalkulation.</p></div>
+    <div class="z"><div><h3>Wie oft, wie lange?</h3></div><p class="ein">24 Angebote im Monat · 45 Minuten je Angebot · 18 Stunden im Monat</p></div>
+    <div class="z"><div><h3>Wer macht es?</h3></div><p class="ein">Vier Projektleitungen</p></div>
+    <div class="z"><div><h3>Welche Daten?</h3></div><p class="ein">Notizen vom Ortstermin, Textbausteine aus alten Angeboten, verstreut in Projektordnern. Kundendaten bleiben draußen: Die Notizen werden vorher zu Stichpunkten ohne Namen und Adressen.</p></div>
+    <div class="z"><div><h3>Was passiert bei einem Fehler?</h3></div><p class="ein">Ein falscher Leistungsumfang im Angebot. Die Projektleitung liest jedes Angebot vor dem Versand, Preise kommen nie von der KI.</p></div>
+    <div class="z"><div><h3>Was soll besser werden?</h3></div><p class="ein">Angebote gehen schneller raus, die Texte werden einheitlicher.</p></div>
+    <div class="z"><div><h3>Was braucht die Einführung?</h3></div><p class="ein">Firmenlizenz ist da. Gute Textbausteine an einem Ort sammeln: etwa zwei Tage.</p></div>
+  </div>
+  <div class="zwei" style="margin-top:3mm;align-items:start">
+    <table class="raster punkte"><colgroup><col><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"></colgroup>
+      <thead><tr><th>Kriterium <small>Punkte ankreuzen oder einkreisen</small></th><th class="mitte">1</th><th class="mitte">2</th><th class="mitte">3</th><th class="mitte">4</th><th class="mitte">5</th></tr></thead>
+      <tbody><tr><td>Zeit heute</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl an"><span>4</span></td><td class="zahl">5</td></tr><tr><td>Weiterer Nutzen</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl an"><span>4</span></td><td class="zahl">5</td></tr><tr><td>Gleiche Form</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl an"><span>4</span></td><td class="zahl">5</td></tr><tr><td>Datenlage</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl an"><span>3</span></td><td class="zahl">4</td><td class="zahl">5</td></tr><tr><td>Fehlerfolgen</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl an"><span>4</span></td><td class="zahl">5</td></tr><tr><td>Aufwand</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl an"><span>4</span></td><td class="zahl">5</td></tr>
+      <tr class="summe"><td>Summe</td><td colspan="5" class="mitte ein">23 von 30</td></tr></tbody></table>
+    <div>
+      <p class="vorzeile" style="color:var(--akzent)">Regeln vor der Punktzahl</p>
+      <div class="wahlen" style="flex-direction:column;gap:1.6mm"><span><span class="kreuz"></span>Fehlerfolgen 1 Punkt</span><span><span class="kreuz"></span>Datenlage 1 oder 2 Punkte</span></div>
+      <p class="vorzeile" style="color:var(--akzent);margin-top:4mm">Entscheidung</p>
+      <div class="wahlen" style="flex-direction:column;gap:1.6mm"><span><span class="kreuz" style="position:relative"><svg style="position:absolute;inset:-.2mm;width:3.6mm;height:3.6mm;color:var(--akzent)"><use href="#x"/></svg></span><span class="ein">Jetzt angehen, Start am 09.02.</span></span><span><span class="kreuz"></span>Später</span><span><span class="kreuz"></span>Nicht jetzt</span></div>
+    </div>
+  </div>
+  <p class="abschnitt-titel akzent">Warum diese Punkte</p>
+  <ul class="regel-liste">
+    <li><b>Zeit heute · 4</b><span class="ein">18 Stunden im Monat liegen zwischen 10 und 20.</span></li>
+    <li><b>Weiterer Nutzen · 4</b><span class="ein">Kunden bekommen ihr Angebot schneller, die Texte werden einheitlicher.</span></li>
+    <li><b>Gleiche Form · 4</b><span class="ein">Der Aufbau ist immer gleich, nur die Inhalte wechseln je Projekt.</span></li>
+    <li><b>Datenlage · 3</b><span class="ein">Gute Textbausteine gibt es, aber verstreut in alten Projekten.</span></li>
+    <li><b>Fehlerfolgen · 4</b><span class="ein">Jedes Angebot wird vor dem Versand gelesen, Preise kommen nicht von der KI.</span></li>
+    <li><b>Aufwand · 4</b><span class="ein">Lizenz vorhanden, etwa zwei Tage Arbeit für die Bausteine.</span></li>
+  </ul>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 4 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm;color:var(--akzent)">Beispiel · frei erfunden</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Vier Abläufe im Vergleich</h2>
+  <p class="unter">Das Planungsbüro hat vier Steckbriefe ausgefüllt und in die Übersicht übertragen. Die Punkte stehen in der Reihenfolge der Skala.</p>
+  <table class="raster vergleich" style="margin-top:3mm"><colgroup><col style="width:6mm"><col><col style="width:13mm"><col style="width:11mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:11mm"><col style="width:9mm"><col style="width:29mm"></colgroup>
+    <thead><tr><th></th><th>Ablauf</th><th class="p">Std. im Monat</th><th class="p"><span class="dreh">Zeit heute</span></th><th class="p"><span class="dreh">Weiterer Nutzen</span></th><th class="p"><span class="dreh">Gleiche Form</span></th><th class="p"><span class="dreh">Datenlage</span></th><th class="p"><span class="dreh">Fehlerfolgen</span></th><th class="p"><span class="dreh">Aufwand</span></th><th class="p"><span class="dreh">Regel greift</span></th><th class="p">Summe</th><th class="p">Rang</th><th>Entscheidung</th></tr></thead>
+    <tbody><tr><td class="n">1</td><td class="ein">Angebotstexte aus Stichpunkten entwerfen</td><td class="p ein">18</td><td class="p ein">4</td><td class="p ein">4</td><td class="p ein">4</td><td class="p ein">3</td><td class="p ein">4</td><td class="p ein">4</td><td class="p ein" style="font-size:7.6pt"></td><td class="s ein">23</td><td class="p ein">1</td><td class="ein">jetzt, Start 09.02.</td></tr><tr><td class="n">2</td><td class="ein">Protokolle der Baubesprechungen zusammenfassen</td><td class="p ein">8</td><td class="p ein">3</td><td class="p ein">3</td><td class="p ein">4</td><td class="p ein">3</td><td class="p ein">3</td><td class="p ein">5</td><td class="p ein" style="font-size:7.6pt"></td><td class="s ein">21</td><td class="p ein">2</td><td class="ein">nach dem ersten Versuch</td></tr><tr><td class="n">3</td><td class="ein">Antworten auf Anfragen zu Wartungsterminen</td><td class="p ein">6</td><td class="p ein">3</td><td class="p ein">4</td><td class="p ein">5</td><td class="p ein">2</td><td class="p ein">3</td><td class="p ein">2</td><td class="p ein" style="font-size:7.6pt">Daten</td><td class="s ein">19</td><td class="p ein">3</td><td class="ein">Wartungsverträge erst digital erfassen</td></tr><tr><td class="n">4</td><td class="ein">Berechnungen von Anlagen gegenprüfen</td><td class="p ein">15</td><td class="p ein">4</td><td class="p ein">4</td><td class="p ein">3</td><td class="p ein">4</td><td class="p ein">1</td><td class="p ein">2</td><td class="p ein" style="font-size:7.6pt">Fehler</td><td class="s ein">18</td><td class="p ein">4</td><td class="ein">nicht mit KI</td></tr></tbody></table>
+  <p class="abschnitt-titel akzent">So hat das Büro entschieden</p>
+  <ul class="regel-liste">
+    <li><b>1 · Angebotstexte</b><span class="ein">Höchste Summe, keine Regel greift. Wird der Versuch für die nächsten 30 Tage.</span></li>
+    <li><b>2 · Protokolle</b><span class="ein">Knapp unter 22 Punkten. Kommt nach dem ersten Versuch dran, mit den Erfahrungen daraus.</span></li>
+    <li><b>3 · Wartungsanfragen</b><span class="ein">Datenlage 2: Die Wartungsverträge liegen nur auf Papier. Erst erfassen, dann neu bewerten.</span></li>
+    <li><b>4 · Berechnungen</b><span class="ein">Fehlerfolgen 1: Ein Fehler in einer Anlagenberechnung kann teuer werden. Bleibt bei Menschen.</span></li>
+  </ul>
+  <p class="abschnitt-titel">So kommen Sie zur Reihenfolge</p>
+  <ol class="ablauf ohne-s">
+    <li><span class="nr">1</span><div><h3>Regeln prüfen</h3><p>Fälle mit Fehlerfolgen 1 scheiden für den ersten Versuch aus, Fälle mit Datenlage 1 oder 2 warten auf geordnete Daten.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Nach Summe ordnen</h3><p>Die übrigen Fälle von der höchsten zur niedrigsten Summe. Bei Gleichstand kommt der mit weniger Aufwand zuerst.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Einen wählen</h3><p>Der erste Fall wird der Versuch für 30 Tage. Alle anderen bekommen ein Datum, an dem Sie sie wieder ansehen.</p></div></li>
+  </ol>
+  <p class="klein" style="margin-top:3mm">Büro, Abläufe, Zahlen und Entscheidungen sind frei erfunden. Lila steht für Einträge.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 5 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Bogen</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Steckbrief für einen Ablauf</h2>
+  
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Ein Steckbrief je Ablauf, gemeinsam mit den Menschen, die ihn machen. Häufigkeit und Dauer am besten eine Woche lang notieren, nicht schätzen.</p>
+  <div class="steck">
+    <div class="z"><div><h3>Ablauf</h3></div><div><p class="feld"><span>Name</span><span class="strich"></span></p><div class="zwei" style="grid-template-columns:2fr 1fr"><p class="feld"><span>Verantwortlich</span><span class="strich"></span></p><p class="feld"><span>Datum</span><span class="strich"></span></p></div></div></div>
+    <div class="z"><div><h3>Was passiert heute?</h3><p class="klein">Schritte in Stichworten</p></div><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+    <div class="z"><div><h3>Wie oft, wie lange?</h3></div><div class="zahlen3"><p class="feld"><span>Mal im Monat</span><span class="strich"></span></p><p class="feld"><span>Minuten je Mal</span><span class="strich"></span></p><p class="feld"><span>Std. im Monat</span><span class="strich"></span></p></div></div>
+    <div class="z"><div><h3>Wer macht es?</h3><p class="klein">Rollen und Anzahl</p></div><div class="linien"><div class="zeile-frei"></div></div></div>
+    <div class="z"><div><h3>Welche Daten?</h3><p class="klein">Was braucht es, wo liegt es?</p></div><div><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div><div class="wahlen"><span><span class="kreuz"></span>enthält personenbezogene Daten</span><span><span class="kreuz"></span>enthält vertrauliche Daten</span></div></div></div>
+    <div class="z"><div><h3>Was passiert bei einem Fehler?</h3></div><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+    <div class="z"><div><h3>Was soll besser werden?</h3></div><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+    <div class="z"><div><h3>Was braucht die Einführung?</h3><p class="klein">Werkzeug, Daten, Zeit</p></div><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+  </div>
+  <div class="zwei" style="margin-top:3mm;align-items:start">
+    <table class="raster punkte"><colgroup><col><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"></colgroup>
+      <thead><tr><th>Kriterium <small>Punkte ankreuzen oder einkreisen</small></th><th class="mitte">1</th><th class="mitte">2</th><th class="mitte">3</th><th class="mitte">4</th><th class="mitte">5</th></tr></thead>
+      <tbody><tr><td>Zeit heute</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl">4</td><td class="zahl">5</td></tr><tr><td>Weiterer Nutzen</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl">4</td><td class="zahl">5</td></tr><tr><td>Gleiche Form</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl">4</td><td class="zahl">5</td></tr><tr><td>Datenlage</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl">4</td><td class="zahl">5</td></tr><tr><td>Fehlerfolgen</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl">4</td><td class="zahl">5</td></tr><tr><td>Aufwand</td><td class="zahl">1</td><td class="zahl">2</td><td class="zahl">3</td><td class="zahl">4</td><td class="zahl">5</td></tr>
+      <tr class="summe"><td>Summe</td><td colspan="5" class="mitte"></td></tr></tbody></table>
+    <div>
+      <p class="vorzeile">Regeln vor der Punktzahl</p>
+      <div class="wahlen" style="flex-direction:column;gap:1.6mm"><span><span class="kreuz"></span>Fehlerfolgen 1 Punkt</span><span><span class="kreuz"></span>Datenlage 1 oder 2 Punkte</span></div>
+      <p class="vorzeile" style="margin-top:4mm">Entscheidung</p>
+      <div class="wahlen" style="flex-direction:column;gap:1.6mm"><span><span class="kreuz"></span>Jetzt angehen, Start am <span class="lk" style="width:22mm"></span></span><span><span class="kreuz"></span>Später, erst: <span class="lk" style="width:32mm"></span></span><span><span class="kreuz"></span>Nicht jetzt</span></div>
+    </div>
+  </div>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 6 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Bogen</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Übersicht zum Vergleichen</h2>
+  <p class="unter">Übertragen Sie Stunden und Punkte aus jedem Steckbrief. Rang nach Summe, die beiden Regeln gehen vor.</p>
+  <table class="raster vergleich" style="margin-top:3mm"><colgroup><col style="width:6mm"><col><col style="width:13mm"><col style="width:11mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:11mm"><col style="width:9mm"><col style="width:29mm"></colgroup>
+    <thead><tr><th></th><th>Ablauf</th><th class="p">Std. im Monat</th><th class="p"><span class="dreh">Zeit heute</span></th><th class="p"><span class="dreh">Weiterer Nutzen</span></th><th class="p"><span class="dreh">Gleiche Form</span></th><th class="p"><span class="dreh">Datenlage</span></th><th class="p"><span class="dreh">Fehlerfolgen</span></th><th class="p"><span class="dreh">Aufwand</span></th><th class="p"><span class="dreh">Regel greift</span></th><th class="p">Summe</th><th class="p">Rang</th><th>Entscheidung</th></tr></thead>
+    <tbody><tr><td class="n">1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">3</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">4</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">5</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">6</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">7</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">8</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">9</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">10</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">11</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">12</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">13</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td class="n">14</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody></table>
+  <p class="hilfe"><b>Ausfüllhilfe:</b> Wählen Sie einen Ablauf für die nächsten 30 Tage, nicht drei. Die anderen bekommen ein Datum, an dem Sie sie wieder ansehen.</p>
+  <div class="zwei" style="margin-top:3mm;grid-template-columns:2fr 1fr"><p class="feld"><span>Gewählt für den ersten Versuch</span><span class="strich"></span></p><p class="feld"><span>Start am</span><span class="strich"></span></p></div>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 7 von 8</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+<p class="vorzeile" style="margin-top:6mm">Zum Schluss</p>
+  <h2 class="blatt" style="margin-top:1.6mm">Nächste Schritte</h2>
+  <p class="unter">Ein gewählter Ablauf ist noch kein Ergebnis. In 30 Tagen messen Sie, ob er mit KI wirklich besser läuft, und entscheiden dann bewusst: ausweiten, anpassen oder aufhören.</p>
+  
+  
+  <p class="abschnitt-titel">Weiter geht es hier</p>
+  <ul class="weiter-liste"><li><span class="art">Weiterlesen</span><div><h3>Ratgeber: KI-Anwendungsfälle finden und bewerten</h3><p>Wie Sie Kandidaten finden, die sechs Kriterien anwenden und den ersten Ablauf wählen.</p><a class="url" href="https://fokusinnovation.de/wissen/ki-anwendungsfaelle-finden/">fokusinnovation.de/wissen/ki-anwendungsfaelle-finden/</a></div></li><li><span class="art">Weiterlesen</span><div><h3>Ratgeber: Die ersten 30 Tage mit KI im Team</h3><p>Woche für Woche vom gewählten Ablauf zur Entscheidung, mit Messung vorher und nachher.</p><a class="url" href="https://fokusinnovation.de/wissen/erste-30-tage-mit-ki/">fokusinnovation.de/wissen/erste-30-tage-mit-ki/</a></div></li><li><span class="art">Passende Vorlage</span><div><h3>KI-Pilot in 30 Tagen</h3><p>Plan, Messbogen, Wochentermine und Entscheidung für Ihren ersten Versuch.</p><a class="url" href="https://fokusinnovation.de/kostenlos/">fokusinnovation.de/kostenlos/</a></div></li><li><span class="art">Selbst prüfen</span><div><h3>Innovations-Check</h3><p>Rund zehn Minuten, fast alles per Klick. Sie bekommen Ihre Stufe, den Vergleich mit Ihrer Branche und zwei nächste Schritte.</p><a class="url" href="https://fokusinnovation.de/innovations-check/">fokusinnovation.de/innovations-check/</a></div></li><li><span class="art">Mit uns sprechen</span><div><h3>Kostenloses Erstgespräch</h3><p>60 Minuten per Video. Wir schauen gemeinsam auf Ihren Stand und legen Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden.</p><a class="url" href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></div></li></ul>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 8 von 8</span></footer>
+</section>
+</body>
+</html>

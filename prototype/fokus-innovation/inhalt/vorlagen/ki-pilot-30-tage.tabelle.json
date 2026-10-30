@@ -1,0 +1,504 @@
+{
+  "blaetter": [
+    {
+      "name": "Messung",
+      "spalten": [
+        {
+          "titel": "Datum",
+          "breite": 12,
+          "stil": "eingabe-datum"
+        },
+        {
+          "titel": "Wer",
+          "breite": 16,
+          "stil": "eingabe"
+        },
+        {
+          "titel": "Aufgabe, kurz",
+          "breite": 36,
+          "stil": "eingabe"
+        },
+        {
+          "titel": "Phase (vorher · mit KI)",
+          "breite": 14,
+          "stil": "eingabe"
+        },
+        {
+          "titel": "Minuten bis zum fertigen Ergebnis",
+          "breite": 14,
+          "stil": "eingabe-zahl"
+        },
+        {
+          "titel": "Nacharbeit nötig? (ja · nein)",
+          "breite": 14,
+          "stil": "eingabe"
+        },
+        {
+          "titel": "Notiz",
+          "breite": 34,
+          "stil": "eingabe"
+        }
+      ],
+      "wiederholen": {
+        "zeile": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "anzahl": 40
+      },
+      "auswahl": [
+        {
+          "spalte": "D",
+          "werte": [
+            "vorher",
+            "mit KI"
+          ]
+        },
+        {
+          "spalte": "F",
+          "werte": [
+            "ja",
+            "nein"
+          ]
+        }
+      ],
+      "fixieren": true
+    },
+    {
+      "name": "Auswertung",
+      "spalten": [
+        {
+          "titel": "Größe",
+          "breite": 34,
+          "stil": "fett"
+        },
+        {
+          "titel": "Wert",
+          "breite": 12,
+          "stil": "standard"
+        },
+        {
+          "titel": "So entsteht der Wert",
+          "breite": 62,
+          "stil": "standard"
+        }
+      ],
+      "zeilen": [
+        [
+          "Zeit vorher (Minuten je Aufgabe)",
+          {
+            "f": "IFERROR(ROUND(AVERAGEIF(Messung!$D$2:$D$41,\"vorher\",Messung!$E$2:$E$41),1),\"\")"
+          },
+          "Schnitt aller Zeilen mit Phase „vorher“"
+        ],
+        [
+          "Messungen vorher",
+          {
+            "f": "COUNTIFS(Messung!$D$2:$D$41,\"vorher\",Messung!$E$2:$E$41,\"<>\")"
+          },
+          "Anzahl Zeilen mit Phase „vorher“ und Minuten"
+        ],
+        [
+          "Zeit mit KI (Minuten je Aufgabe)",
+          {
+            "f": "IFERROR(ROUND(AVERAGEIF(Messung!$D$2:$D$41,\"mit KI\",Messung!$E$2:$E$41),1),\"\")"
+          },
+          "Schnitt aller Zeilen mit Phase „mit KI“, mit Prüfen und Nacharbeit"
+        ],
+        [
+          "Messungen mit KI",
+          {
+            "f": "COUNTIFS(Messung!$D$2:$D$41,\"mit KI\",Messung!$E$2:$E$41,\"<>\")"
+          },
+          "Anzahl Zeilen mit Phase „mit KI“ und Minuten"
+        ],
+        [
+          "Anteil mit Nacharbeit",
+          {
+            "f": "IFERROR(COUNTIFS(Messung!$D$2:$D$41,\"mit KI\",Messung!$F$2:$F$41,\"ja\")/COUNTIF(Messung!$D$2:$D$41,\"mit KI\"),\"\")",
+            "stil": "prozent"
+          },
+          "Zeilen „mit KI“ mit Nacharbeit „ja“"
+        ],
+        [
+          "Ersparnis je Aufgabe (Minuten)",
+          {
+            "f": "IF(OR(B2=\"\",B4=\"\"),\"\",B2-B4)"
+          },
+          "Zeit vorher minus Zeit mit KI"
+        ],
+        [
+          "Aufgaben im Monat",
+          {
+            "v": null,
+            "stil": "eingabe-zahl"
+          },
+          "Hier eintragen: wie oft der Ablauf in einem normalen Monat vorkommt"
+        ],
+        [
+          "Ersparnis im Monat (Stunden)",
+          {
+            "f": "IF(OR(B7=\"\",B8=\"\"),\"\",ROUND(B7*B8/60,1))"
+          },
+          "Ersparnis je Aufgabe mal Aufgaben im Monat, geteilt durch 60"
+        ],
+        [
+          "Kosten im Monat (Euro)",
+          {
+            "v": null,
+            "stil": "eingabe-euro"
+          },
+          "Hier eintragen: Lizenzen der Beteiligten"
+        ],
+        [
+          null,
+          null,
+          null
+        ],
+        [
+          "Qualität (besser · gleich · schlechter)",
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          null
+        ],
+        [
+          "Antwort an Kunden (schneller · gleich · langsamer)",
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          null
+        ],
+        [
+          "Entscheidung (ausweiten · anpassen · aufhören)",
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          null
+        ],
+        [
+          "Begründung",
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          null
+        ],
+        [
+          "Nächster Ablauf",
+          {
+            "v": null,
+            "stil": "eingabe"
+          },
+          null
+        ]
+      ]
+    },
+    {
+      "name": "Beispiel",
+      "spalten": [
+        {
+          "titel": "Datum",
+          "breite": 12,
+          "stil": "datum"
+        },
+        {
+          "titel": "Wer",
+          "breite": 16,
+          "stil": "text"
+        },
+        {
+          "titel": "Aufgabe, kurz",
+          "breite": 36,
+          "stil": "text"
+        },
+        {
+          "titel": "Phase",
+          "breite": 14,
+          "stil": "text"
+        },
+        {
+          "titel": "Minuten",
+          "breite": 14,
+          "stil": "zahl"
+        },
+        {
+          "titel": "Nacharbeit nötig?",
+          "breite": 14,
+          "stil": "text"
+        },
+        {
+          "titel": "Notiz",
+          "breite": 34,
+          "stil": "text"
+        }
+      ],
+      "zeilen": [
+        [
+          {
+            "f": "DATE(2027,2,9)",
+            "stil": "datum"
+          },
+          "Projektleitung A",
+          "Angebotstext",
+          "vorher",
+          40,
+          null,
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,10)",
+            "stil": "datum"
+          },
+          "Projektleitung B",
+          "Angebotstext",
+          "vorher",
+          50,
+          null,
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,11)",
+            "stil": "datum"
+          },
+          "Projektleitung C",
+          "Angebotstext",
+          "vorher",
+          45,
+          null,
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,12)",
+            "stil": "datum"
+          },
+          "Projektleitung A",
+          "Angebotstext",
+          "vorher",
+          55,
+          null,
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,13)",
+            "stil": "datum"
+          },
+          "Projektleitung B",
+          "Angebotstext",
+          "vorher",
+          38,
+          null,
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,14)",
+            "stil": "datum"
+          },
+          "Projektleitung C",
+          "Angebotstext",
+          "vorher",
+          42,
+          null,
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,23)",
+            "stil": "datum"
+          },
+          "Projektleitung A",
+          "Angebotstext",
+          "mit KI",
+          25,
+          "nein",
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,24)",
+            "stil": "datum"
+          },
+          "Projektleitung B",
+          "Angebotstext",
+          "mit KI",
+          30,
+          "nein",
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,25)",
+            "stil": "datum"
+          },
+          "Projektleitung C",
+          "Angebotstext",
+          "mit KI",
+          22,
+          "nein",
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,26)",
+            "stil": "datum"
+          },
+          "Projektleitung A",
+          "Angebotstext, Sonderanlage",
+          "mit KI",
+          35,
+          "ja",
+          "Bausteine für Sonderanlagen fehlen"
+        ],
+        [
+          {
+            "f": "DATE(2027,2,27)",
+            "stil": "datum"
+          },
+          "Projektleitung B",
+          "Angebotstext",
+          "mit KI",
+          28,
+          "nein",
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,23)",
+            "stil": "datum"
+          },
+          "Projektleitung C",
+          "Angebotstext",
+          "mit KI",
+          26,
+          "nein",
+          null
+        ],
+        [
+          {
+            "f": "DATE(2027,2,24)",
+            "stil": "datum"
+          },
+          "Projektleitung A",
+          "Angebotstext, Sonderanlage",
+          "mit KI",
+          30,
+          "ja",
+          "Bausteine für Sonderanlagen fehlen"
+        ],
+        [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          {
+            "v": "Auswertung",
+            "stil": "fett"
+          },
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        [
+          null,
+          "Zeit vorher (Minuten)",
+          null,
+          null,
+          {
+            "f": "ROUND(AVERAGEIF(D$2:D$14,\"vorher\",E$2:E$14),1)"
+          },
+          null,
+          null
+        ],
+        [
+          null,
+          "Zeit mit KI (Minuten)",
+          null,
+          null,
+          {
+            "f": "ROUND(AVERAGEIF(D$2:D$14,\"mit KI\",E$2:E$14),1)"
+          },
+          null,
+          null
+        ],
+        [
+          null,
+          "Ersparnis je Aufgabe (Minuten)",
+          null,
+          null,
+          {
+            "f": "E17-E18"
+          },
+          null,
+          null
+        ],
+        [
+          null,
+          "Aufgaben im Monat",
+          null,
+          null,
+          24,
+          null,
+          null
+        ],
+        [
+          null,
+          "Ersparnis im Monat (Stunden)",
+          null,
+          null,
+          {
+            "f": "ROUND(E19*E20/60,1)",
+            "stil": "standard"
+          },
+          null,
+          null
+        ],
+        [
+          null,
+          "Anteil mit Nacharbeit",
+          null,
+          null,
+          {
+            "f": "COUNTIFS(D$2:D$14,\"mit KI\",F$2:F$14,\"ja\")/COUNTIF(D$2:D$14,\"mit KI\")",
+            "stil": "prozent"
+          },
+          null,
+          null
+        ],
+        [
+          null,
+          {
+            "v": "Frei erfundenes Planungsbüro. Ergebnis: ausweiten.",
+            "stil": "standard"
+          },
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      ],
+      "fixieren": true
+    }
+  ]
+}
