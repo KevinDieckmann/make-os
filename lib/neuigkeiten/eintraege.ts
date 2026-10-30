@@ -33,6 +33,23 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-31-5',
+    datum: '2026-10-31',
+    titel: 'Akten öffnen groß',
+    kurz: 'Ein Klick auf einen Kontakt, eine Firma, ein Mandat oder einen Deal öffnet jetzt die ganze Akte auf einer eigenen, breiten Seite. „‹ Zurück“ bringt dich genau dorthin in der Liste, wo du warst.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Firmenakte: jede Firma auf einer eigenen Seite — Rolle, BEAN, Mutter und Töchter, Lead, Personen, Deals und Mandate, Umsatz und Rechnungen, Dateien, Termine, Aufgaben, Verlauf und ZOE-Vorschläge, alles bearbeitbar.', bereich: 'business', weg: WEG.firma() },
+        { text: 'Mandatsakte: das Mandat breit in zwei Spalten — mit Kreislauf, Zuständig, Fulfillment, Status, Zusatzmodulen, Zeit, Terminen und Rechnungen.', bereich: 'business', weg: WEG.mandat() },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Kontakte: ein Klick (oder Enter) öffnet direkt „Kontakt öffnen“ statt der schmalen Karte rechts — die Liste nutzt die ganze Breite.', bereich: 'business', weg: WEG.kontakt() },
+        { text: 'Deals › Liste: ein Klick öffnet die Deal-Akte; rechts bleibt die Prognose.', bereich: 'business', weg: WEG.deals() },
+        { text: 'Alte Links auf eine Person, Firma oder ein Mandat (aus Meldungen, Aufgaben, Brain) öffnen dieselbe Akte.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31-3',
     datum: '2026-10-31',
     titel: 'Neue Farben für Privat und Business',

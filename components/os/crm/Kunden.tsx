@@ -21,7 +21,7 @@
 
 import { TermineAkte } from '../kalender/TermineAkte';
 import { localDay, tagePlus } from '@/lib/zeit';
-import { useLinkAuswahl } from '../Verlauf';
+import { useLinkAuswahl, useZurueck } from '../Verlauf';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -31,9 +31,9 @@ import { zoeFragen } from './ZoeFragen';
 import { rechnungPasst } from '@/lib/crm/kunden';
 import { endeText } from '@/lib/crm/mandat-laufzeit';
 import { mandatPhase, portfolio } from '@/lib/crm/produkte';
-import { FARBE as C, TYP } from '@/lib/make-one/design';
+import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { suchPasst } from '@/lib/text/such-norm';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, Hinweis, useBreit, LEUCHT, ZeileAktionen, feld, Arbeitsflaeche, FilterKnopf, FilterGruppe, ListenAbschnitt } from '../ui';
+import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, Hinweis, useBreit, useBreite, LEUCHT, ZeileAktionen, feld, Arbeitsflaeche, FilterKnopf, FilterGruppe, ListenAbschnitt } from '../ui';
 import { useCrmAblage, PapierkorbKarte } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
 import { HEALTH_GEWICHTE, HEALTH_LABEL, healthText, liquiPostenText, kundenJePerson, gesellschaftFilterFuer, passtGesellschaft, beendenVorgabe, beendenHinweise, type GesellschaftFilter, type LiquiLageArt } from '@/lib/crm/kunden';
@@ -92,6 +92,8 @@ export function MandateUebersicht({ api, zuKontakt, hinweise: seitenHinweise, un
   // Offenes Mandat bzw. offene Leistung im Link (k): Zurück schließt es wieder.
   const [auswahl, setAuswahl] = useLinkAuswahl();
   const router = useRouter();
+  // „‹ Zurück“ aus der Mandatsakte (30.10.): ein echter Schritt zurück in die Liste (dort, wo man war), sonst die Liste.
+  const zurueckWie = useZurueck();
   // Am Handy: Hinweise in die Zeile darunter — sonst drücken die Chips den Kundennamen weg.
   const breit = useBreit();
   const [liqui, setLiqui] = useState<{ mandate: LiquiLage[]; freiePosten: { id: string; titel: string; betrag: number }[] } | null>(null);
@@ -204,9 +206,9 @@ export function MandateUebersicht({ api, zuKontakt, hinweise: seitenHinweise, un
 
   // ── Arbeitsfläche (31.10., DESIGN_STANDARD.md › Arbeitsfläche) ───────────────────────────────────────────────────────────────────────────────
   // Kopf in EINER Zeile (Mandate · aktiv/MRR · ⋯ · „+ Mandat“), Wer, Suche und „Filter ▾“ (Gesellschaft, Beendete) in EINER Zeile. Die Mandate
-  // stehen nach Status als Abschnitte EINER Liste; rechts das gewählte Mandat, ohne Auswahl der Überblick (Zahlen, „Als Nächstes“, Head of Sales).
+  // stehen nach Status als Abschnitte EINER Liste; rechts der Überblick (Zahlen, „Als Nächstes“, Head of Sales). Ein Mandat öffnet als Akte (30.10.).
   // Papierkorb und „Mandate aus Excel einfügen“ im „⋯“.
-  /** Eine Mandatszeile; `zwei` = Detail steht rechts (sonst unter der Zeile), Hinweis-Chips rechts nur bei breiter Liste. */
+  /** Eine Mandatszeile; ein Klick öffnet die Mandatsakte als eigene Seite (30.10.). Hinweis-Chips rechts nur bei breiter Liste. */
   const zeileVon = (m: Mandat, zwei: boolean) => {
     const chipsRechts = breit && !zwei;
     const l = crm.mandate[m.id];
@@ -220,7 +222,7 @@ export function MandateUebersicht({ api, zuKontakt, hinweise: seitenHinweise, un
             ...(m.kontaktIds[0] ? [{ id: 'kontakt', label: 'Ansprechpartner öffnen', tun: () => zuKontakt(m.kontaktIds[0]) }] : []),
             { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'mandat', id: m.id }) },
           ]}>
-        <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
+        <Zeile onClick={() => setAuswahl(m.id)}
           links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
           titel={<MandatTitel m={m} />}
           unter={[produktName(m), ...(!chipsRechts ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? abweichText(lq) : lq?.lage === 'endet' ? 'Liquiplan läuft weiter' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${endeText(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${healthText(l)}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
@@ -234,7 +236,6 @@ export function MandateUebersicht({ api, zuKontakt, hinweise: seitenHinweise, un
             <Person id={zustaendig(m.zustaendig, 'sales')} groesse={18} />
           </span>} />
         </ZeileAktionen>
-        {auswahl === m.id && !zwei && <MandatDetail m={m} api={api} lq={lq} frei={liqui?.freiePosten ?? []} neuLaden={ladeLiqui} zuKontakt={zuKontakt} onBeenden={() => mandatBeenden(m)} />}
       </div>
     );
   };
@@ -312,6 +313,19 @@ export function MandateUebersicht({ api, zuKontakt, hinweise: seitenHinweise, un
     </>
   );
 
+  // Die Mandatsakte (30.10.): `?k=<Mandat>` (WEG.mandat) öffnet das Mandat als eigene, breite Seite — mit „‹ Zurück“ in die Liste.
+  if (sel) {
+    return (
+      <>
+        <MandatAkte m={sel} api={api} lq={liqui?.mandate.find(x => x.id === sel.id)} frei={liqui?.freiePosten ?? []} neuLaden={ladeLiqui} zuKontakt={zuKontakt}
+          onBeenden={() => mandatBeenden(sel)} zurueck={() => zurueckWie(mandateLink())} />
+        {onboardingFuer && (() => { const nm = crm.stand.mandate.find(x => x.id === onboardingFuer); return nm ? <OnboardingFrage m={nm} produktName={crm.stand.leistungen.find(l => l.id === nm.leistungId)?.name} onZu={() => setOnboardingFuer(null)} /> : null; })()}
+        {ablage.dialog}
+        {ablage.hinweis}
+      </>
+    );
+  }
+
   return (
     <>
       <Arbeitsflaeche titel="Mandate" label="Mandate" verhaeltnis="1:1" zweiAb={880}
@@ -332,13 +346,8 @@ export function MandateUebersicht({ api, zuKontakt, hinweise: seitenHinweise, un
             {!sichtbar.length && <div style={{ paddingTop: 12 }}><Leer>{suche.trim() ? 'Kein Mandat passt zur Suche.' : mandate.length && wahl !== 'alle' ? `Hier liegt kein laufendes Mandat bei ${wahl === 'ich' ? 'dir' : nameVon(wahl)} — „Alle“ zeigen oder ein Mandat übergeben.` : 'Noch keine Mandate.'}</Leer></div>}
           </div>
         )}
-        detail={st => (st.zwei && sel ? (
-          <div style={{ minWidth: 0 }}>
-            <Ueberschrift rechts={<button onClick={() => setAuswahl(null)} aria-label="Mandat schließen" className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, minWidth: 44, minHeight: 44 }}>✕</button>}><MandatTitel m={sel} /></Ueberschrift>
-            <MandatDetail m={sel} api={api} lq={liqui?.mandate.find(x => x.id === sel.id)} frei={liqui?.freiePosten ?? []} neuLaden={ladeLiqui} zuKontakt={zuKontakt} onBeenden={() => mandatBeenden(sel)} />
-          </div>
-        ) : null)}
-        detailKennung={sel?.id ?? null}
+        // Kein Detail rechts (30.10., Kevin: „die Kundenakte wirklich groß öffnen“) — ein Klick öffnet die Mandatsakte; rechts bleibt der Überblick.
+        detail={null}
         leer={st => ueberblick(st.zwei)} leerOben />
       {ablage.dialog}
       {ablage.hinweis}
@@ -346,7 +355,71 @@ export function MandateUebersicht({ api, zuKontakt, hinweise: seitenHinweise, un
   );
 }
 
-function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m: Mandat; api: CrmApi; lq?: LiquiLage; frei: { id: string; titel: string; betrag: number }[]; neuLaden: () => void; zuKontakt: (id: string) => void; onBeenden: () => void }) {
+type MandatDetailProps = { m: Mandat; api: CrmApi; lq?: LiquiLage; frei: { id: string; titel: string; betrag: number }[]; neuLaden: () => void; zuKontakt: (id: string) => void; onBeenden: () => void };
+
+/**
+ * Die Mandatsakte (30.10., Kevin: „Wenn ich auf einen Kunden gehe, möchte ich, dass sich die Kundenakte wirklich groß öffnet … sauber in die Akte gehen
+ * und alles sauber anpassen“): das Mandat als eigene, breite Seite — Kopf (Zurück, Kunde · Titel, Status, Produkt, Kennzahlen) und darunter
+ * `MandatDetail` in zwei Spalten, sobald Platz ist. Adresse bleibt `/os/mandate?k=<Mandat>` (WEG.mandat), alle alten Links öffnen so die Akte.
+ */
+function MandatAkte({ zurueck, ...p }: MandatDetailProps & { zurueck: () => void }) {
+  const { m, api } = p;
+  const crm = api.crm!;
+  const l = crm.mandate[m.id];
+  const [huelle, breite] = useBreite();
+  const zwei = (breite ?? 0) >= 980;
+  const produkt = m.leistungId ? crm.stand.leistungen.find(x => x.id === m.leistungId) : undefined;
+  const ph = mandatPhase(m, produkt);
+  // Esc = zurück, außer beim Tippen oder wenn ein Fenster offen ist (wie in „Kontakt öffnen“).
+  useEffect(() => {
+    const taste = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      const el = e.target as HTMLElement;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"], [data-wahl-menue]')) return;
+      zurueck();
+    };
+    window.addEventListener('keydown', taste);
+    return () => window.removeEventListener('keydown', taste);
+  }, [zurueck]);
+  const farbe = l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status);
+  const kurz = (label: string, wert: ReactNode, f?: string) => (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+      <span style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, whiteSpace: 'nowrap' }}>{label}</span>
+      <b style={{ fontSize: 13, fontWeight: 700, color: f ?? C.ink, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{wert}</b>
+    </span>
+  );
+  return (
+    <Seite titel="Mandate" breit={1600}>
+      <div ref={huelle} style={{ display: 'grid', gap: 14, minWidth: 0, overflowWrap: 'anywhere' }}>
+        <Karte i={0} ton={farbe}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+            <button onClick={zurueck} className="fassbar" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px 7px 10px', borderRadius: 11, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.04)', color: C.ink, cursor: 'pointer', fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700 }}>
+              <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>‹</span> Zurück zu Mandate
+            </button>
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Mandat{m.geaendert ? ` · geändert ${datum(m.geaendert.slice(0, 10), crm.heute)}` : ''}{zwei ? ' · Esc schließt' : ''}</span>
+          </div>
+          <h2 style={{ fontFamily: SCHRIFT.display, fontSize: 'clamp(20px, 2.2vw, 25px)', fontWeight: 700, letterSpacing: '-.02em', margin: 0, lineHeight: 1.2 }}><MandatTitel m={m} /></h2>
+          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Chip farbe={statusFarbe(m.status)}>{STATUS.find(x => x.id === m.status)?.label ?? m.status}</Chip>
+            {produkt && <Chip farbe={LEUCHT.business}>{`${produkt.name.slice(0, 48)}${ph ? ` · Phase ${ph.nr}/${ph.von}` : ''}`}</Chip>}
+            {!m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim }}><Person id={zustaendig(m.zustaendig, 'sales')} groesse={18} /> {nameVon(zustaendig(m.zustaendig, 'sales'))}</span>
+          </div>
+          <div style={{ display: 'flex', gap: '8px 22px', flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>
+            {kurz('Honorar', m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'offen', m.honorar.betrag ? LEUCHT.geld : C.inkLeise)}
+            {kurz('Laufzeit', l?.endeAm ? `bis ${endeText(l.endeAm)}` : m.start ? `seit ${datum(m.start)}` : 'offen', l?.endeIn != null && l.endeIn <= 90 ? LEUCHT.achtung : undefined)}
+            {kurz('Gesundheit', l?.health != null ? healthText(l) : 'nicht bewertet', l?.ampel ? AMPEL[l.ampel] : C.inkLeise)}
+            {kurz('Offen', m.offen.length ? anzahl(m.offen.length, 'Punkt', 'Punkte') : 'nichts', m.offen.length ? LEUCHT.achtung : C.inkLeise)}
+          </div>
+        </Karte>
+        <MandatDetail {...p} zwei={zwei} />
+      </div>
+    </Seite>
+  );
+}
+
+function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden, zwei = false }: MandatDetailProps & { /** In der Akte (30.10.): zwei Spalten, sobald Platz ist. */ zwei?: boolean }) {
   const crm = api.crm!;
   const l = crm.mandate[m.id];
   // 25.10.: Fulfillment auch für Mandate der Privat-Arbeits-Einheit (Selbstständigkeit) — nicht für ein Konto „nur Business“ (der Server sperrt es ebenso).
@@ -360,128 +433,149 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m:
     await fetch('/api/crm/liquiplan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mandatId: m.id, aktion, postenId }) });
     neuLaden(); void api.laden();
   };
+  const oben = (
+    <>
+        {/* 30.10. (Kreislauf sehen): Angebot → Mandat → Raten/Monatsrechnungen → Fall auf einen Blick, oben der nächste Schritt (lib/crm/kunden-zeitleiste.ts). */}
+        <MandatZeitleiste m={m} angebote={crm.stand.angebote} />
+        {m.offen.length > 0 && (
+          <div style={{ padding: 12, borderRadius: 12, background: `${LEUCHT.achtung}10`, display: 'grid', gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: LEUCHT.achtung, letterSpacing: '.06em', textTransform: 'uppercase' }}>Offen & widersprüchlich</div>
+            {m.offen.map((o, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
+                <span style={{ flex: 1 }}>{o}</span>
+                <button onClick={() => setze({ offen: m.offen.filter((_, j) => j !== i) })} title="Geklärt" aria-label="Geklärt" style={{ background: 'none', border: 'none', color: LEUCHT.gut, cursor: 'pointer' }}>✓</button>
+              </div>
+            ))}
+          </div>
+        )}
+    </>
+  );
+  const links = (
+    <>
+        <Feldzeile label="Zuständig">
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <ZustaendigWahl wert={m.zustaendig} welt="sales" onWahl={z => void api.teil('mandate', m.id, { zustaendig: z })} />
+            <Uebergeben api={api} art="mandat" id={m.id} jetzt={zustaendig(m.zustaendig, 'sales')} klein />
+          </div>
+        </Feldzeile>
+        {m.chanceId && <Feldzeile label="Deal"><Link href={WEG.deal(m.chanceId)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Deal öffnen ›</Link></Feldzeile>}
+        {(istBusinessGesellschaft(m.gesellschaft) || (!nurBusinessKonto && istPrivatArbeitsMandat(m.gesellschaft))) && <Feldzeile label="Fulfillment"><Link href={WEG.fall(m.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Fulfillment öffnen ›</Link></Feldzeile>}
+        {/* „Beendet“ öffnet „Mandat beenden“ (18.10., N6: vorher sofort `ende = heute`, auch mitten in der Mindestlaufzeit). */}
+        <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={m.status} onWahl={status => (status === 'beendet' && m.status !== 'beendet' ? onBeenden() : setze({ status }))} /></Feldzeile>
+        <Feldzeile label="Vertrag"><Wahl label="Vertrag" liste={VERTRAG} wert={m.vertragUnterschrieben ? 'ja' : 'nein'} farbe={m.vertragUnterschrieben ? LEUCHT.gut : C.aktiv} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
+        <Feldzeile label="Kunde"><Feld wert={m.kunde} onFertig={kunde => kunde.trim() && setze({ kunde: kunde.trim() })} /></Feldzeile>
+        {/* Mandanten klickbar (28.09.): das Mandat führt zurück in die Firmenakte (per Kennung, sonst eindeutiger Name). */}
+        {firma ? <Feldzeile label="Firma"><span style={{ fontSize: TYP.bedien }}><MandantLink firmaId={firma.id} firmaDa name={firma.name} /></span></Feldzeile>
+          : <Feldzeile label="Firma"><span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>{m.firmaId && <MandantLink firmaId={m.firmaId} firmaDa={false} name={m.kunde} />}<FirmaZuordnen api={api} mandatId={m.id} /></span></Feldzeile>}
+        <Feldzeile label="Titel"><Feld wert={m.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
+        <Feldzeile label="Produkt">
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => (x.status !== 'eingestellt' && !x.geloeschtAm) || x.id === m.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={m.leistungId}
+              onWahl={leistungId => leistungId !== m.leistungId && setze({ leistungId, phase: undefined })} onLeeren={() => setze({ leistungId: undefined, phase: undefined })} />
+            {produkt && <Link href={mandateLink('produkte', produkt.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Produkt öffnen ›</Link>}
+          </div>
+        </Feldzeile>
+        {/* 17.10. (dritte Abnahme B6): läuft ein Fulfillment-Fall, steht hier SEINE Phase mit dem Sprung in die Reise — der Ablauf des Produkts nur ohne Fall. */}
+        <FallPhase mandatId={m.id} rahmen={inhalt => <Feldzeile label="Phase">{inhalt}</Feldzeile>}
+          ohne={produkt ? (produkt.phasen?.length
+            ? <Wahl label="Phase" liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} wert={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} />
+            : <Link href={WEG.fall(m.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Kein laufender Fall — im Fulfillment ansehen ›</Link>) : null} />
+        {/* Leistungstreppe (10.10.): Fortschritt im Paket, Health-Ampel, nächste Stufe und der Fortschritts-Report an den Kunden. */}
+        <MandatFortschritt mandatId={m.id} />
+        <Feldzeile label="Honorar">
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Feld typ="number" wert={m.honorar.betrag ? String(m.honorar.betrag) : ''} breite={120} platzhalter="€" onFertig={b => setze({ honorar: { ...m.honorar, betrag: Number(b) || 0 } })} />
+            <Wahl label="Honorar-Basis" liste={HONORAR_BASIS} wert={m.honorar.basis} onWahl={basis => setze({ honorar: { ...m.honorar, basis } })} />
+            <Wahl label="netto oder brutto" liste={NETTO} wert={m.honorar.netto ? 'netto' : 'brutto'} onWahl={x => setze({ honorar: { ...m.honorar, netto: x === 'netto' } })} />
+            <Wahl label="Umsatzsteuer" liste={UST} wert={String(m.ustSatz) === '0' ? '0' : String(m.ustSatz) === '19' ? '19' : null} onWahl={x => setze({ ustSatz: Number(x) })} />
+          </div>
+        </Feldzeile>
+        {/* Mandat = Hauptprodukt + Zusatzmodule (19.10., P3): Module mit Honorar, inklusive, „abrechnen“; Rechnung und Liquidität kennen sie. */}
+        <MandatZusatzModule m={m} katalog={crm.stand.leistungen} setze={setze} />
+        <Feldzeile label="Laufzeit">
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Feld typ="date" wert={m.start} breite={150} platzhalter="Start" onFertig={start => setze({ start: start || undefined })} />
+            <span style={{ color: C.inkLeise }}>bis</span>
+            <Feld typ="date" wert={m.ende} breite={150} platzhalter="Ende" onFertig={ende => setze({ ende: ende || undefined })} />
+            <Feld typ="number" wert={m.kuendigungsfristTage ? String(m.kuendigungsfristTage) : ''} breite={120} platzhalter="Frist Tage" onFertig={f => setze({ kuendigungsfristTage: Number(f) || undefined })} />
+            <Wahl label="Verlängerung" liste={VERLAENGERUNG} wert={m.verlaengerung} onWahl={verlaengerung => setze({ verlaengerung })} />
+          </div>
+          {l?.endeAm && <div style={{ fontSize: TYP.bedien, color: l.endeIn !== null && l.endeIn <= 90 ? LEUCHT.achtung : C.inkLeise, marginTop: 4 }}>Ende {endeText(l.endeAm)} ({l.endeIn} Tage){l.fristBis && l.fristBis !== l.endeAm ? ` · kündbar bis ${datum(l.fristBis)}` : ''}</div>}
+        </Feldzeile>
+        {/* Vertrag (19.10., P3): Mindestlaufzeit, Rhythmus, Zahlungsziel — pflegbar, daneben was das Produkt vorsieht. */}
+        <MandatVertrag m={m} produkt={produkt} setze={setze} />
+        <Feldzeile label="Gesellschaft"><GesellschaftWahl wert={m.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
+        <Feldzeile label="Nächstes Review"><Feld typ="date" wert={m.naechstesReview} breite={160} platzhalter="Datum" onFertig={r => setze({ naechstesReview: r || undefined })} /></Feldzeile>
+    </>
+  );
+  // Rechts: Gesundheit, Liquidität, Ansprechpartner, Zeit, Termine, Rechnungen, Leistungen und offene Punkte (in einer Spalte darunter).
+  const rechts = (
+    <>
+        <div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Gesundheit des Mandats {l?.health != null ? `· ${healthText(l)}` : '— noch nicht bewertet'} (unter 60 rot, bis 75 gelb){m.health.zahlung === null && crm.zahlung?.[m.id] ? ` · Zahlung aus dem Finanzplan: ${crm.zahlung[m.id]!.wert} (${crm.zahlung[m.id]!.text})` : ''}</div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {(Object.keys(HEALTH_GEWICHTE) as (keyof typeof HEALTH_GEWICHTE)[]).map(f => (
+              <div key={f} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 44px', gap: 10, alignItems: 'center' }}>
+                <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{HEALTH_LABEL[f]} <span style={{ color: C.inkLeise }}>{HEALTH_GEWICHTE[f]}</span></span>
+                {m.health[f] == null
+                  ? <button onClick={() => setze({ health: { ...m.health, [f]: 70 } })} style={{ justifySelf: 'start', background: 'none', border: '1px dashed rgba(255,255,255,.15)', borderRadius: 8, color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: '3px 10px' }}>bewerten</button>
+                  : <input type="range" min={0} max={100} step={5} value={m.health[f]!} aria-label={HEALTH_LABEL[f]} onChange={e => setze({ health: { ...m.health, [f]: Number(e.target.value) } })} style={{ accentColor: m.health[f]! >= 75 ? LEUCHT.gut : m.health[f]! >= 60 ? LEUCHT.achtung : LEUCHT.kritisch }} />}
+                <span style={{ fontSize: TYP.bedien, color: m.health[f] == null ? C.inkLeise : C.ink, textAlign: 'right' }}>{m.health[f] ?? '–'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <Feldzeile label="Liquiditätsplan">
+          {!lq && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>lädt …</span>}
+          {lq?.lage === 'ok' && <Link href={WEG.planposten(lq.vorhanden?.id)} style={{ fontSize: TYP.bedien, color: LEUCHT.gut, textDecoration: 'none' }}>steht drin{liquiPostenText(lq.soll) ? ` — ${liquiPostenText(lq.soll)}` : ''} — Posten öffnen ›</Link>}
+          {/* N14 (18.10.): der Satz je Fall — nie mehr „Status oder Honorar fehlt“ bei einem beendeten Mandat. */}
+          {lq?.lage === 'kein-posten' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{lq.grund ?? 'kein Posten'}</span>}
+          {lq?.lage === 'beendet' && (
+            <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+              <span>{lq.grund}</span>
+              {lq.vorhanden && <Link href={WEG.planposten(lq.vorhanden.id)} style={{ color: C.inkLeise, textDecoration: 'none' }}>Posten öffnen ›</Link>}
+            </span>
+          )}
+          {lq?.lage === 'endet' && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{lq.grund}</span>
+              <Knopf leise onClick={() => liquiplan('beenden')}>{lq.letzteZahlung ? `Posten zum Mandatsende angleichen (letzte Zahlung ${datum(lq.letzteZahlung)})` : 'Posten zum Mandatsende angleichen'}</Knopf>
+            </div>
+          )}
+          {(lq?.lage === 'fehlt' || lq?.lage === 'abweichend') && (
+            <div style={{ display: 'grid', gap: 6 }}>
+              <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{lq.lage === 'fehlt' ? 'Fehlt im Liquiditätsplan — würde eintragen:' : `Weicht ab: ${lq.grund ?? ''} Angeglichen hieße das:`}</span>
+              <SollListe soll={lq.soll} heute={crm.heute} />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <Knopf leise onClick={() => liquiplan('anlegen')}>{lq.lage === 'fehlt' ? 'Eintragen' : 'Plan angleichen'}</Knopf>
+                {lq.lage === 'fehlt' && frei.slice(0, 4).map(p => <Knopf key={p.id} leise onClick={() => liquiplan('verknuepfen', p.id)}>= {p.titel.slice(0, 26)} ({euro(p.betrag)})</Knopf>)}
+              </div>
+            </div>
+          )}
+        </Feldzeile>
+        <Feldzeile label="Ansprechpartner">
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{personen.map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 999, padding: '5px 10px', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien }}>{anzeigename(k)}</button>)}{!personen.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>—</span>}</div>
+        </Feldzeile>
+        <MandatRechnungen m={m} />
+        <MandatLeistungen m={m} setze={setze} />
+        <Feldzeile label="Offener Punkt"><Feld leeren platzhalter="Neuer offener Punkt …" onFertig={t => t.trim() && setze({ offen: [...m.offen, t.trim()] })} /></Feldzeile>
+        {m.quelle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Quelle: {m.quelle}</div>}
+        {/* Mandat an Zielen und Zeit (28.09.): erfasste Fokus-Zeit dieses Mandats im laufenden Monat */}
+        <Feldzeile label="Zeit"><MandatZeitMonat mandatId={m.id} /></Feldzeile>
+        {/* K3 (30.09.): am Mandat verknüpfte Termine (kalender-bezug), Klick öffnet den Kalender. */}
+        <Feldzeile label="Termine"><TermineAkte frage={{ mandate: [m.id] }} heute={crm.heute} /></Feldzeile>
+    </>
+  );
+  const spalte = { display: 'grid', gap: 12, alignContent: 'start', minWidth: 0 } as const;
   return (
-    <div style={{ padding: '10px 2px 18px', display: 'grid', gap: 12, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-      {/* 30.10. (Kreislauf sehen): Angebot → Mandat → Raten/Monatsrechnungen → Fall auf einen Blick, oben der nächste Schritt (lib/crm/kunden-zeitleiste.ts). */}
-      <MandatZeitleiste m={m} angebote={crm.stand.angebote} />
-      {m.offen.length > 0 && (
-        <div style={{ padding: 12, borderRadius: 12, background: `${LEUCHT.achtung}10`, display: 'grid', gap: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: LEUCHT.achtung, letterSpacing: '.06em', textTransform: 'uppercase' }}>Offen & widersprüchlich</div>
-          {m.offen.map((o, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>
-              <span style={{ flex: 1 }}>{o}</span>
-              <button onClick={() => setze({ offen: m.offen.filter((_, j) => j !== i) })} title="Geklärt" aria-label="Geklärt" style={{ background: 'none', border: 'none', color: LEUCHT.gut, cursor: 'pointer' }}>✓</button>
-            </div>
-          ))}
+    <div style={{ padding: '10px 2px 18px', display: 'grid', gap: 12 }}>
+      {oben}
+      {zwei ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, alignItems: 'start' }}>
+          <div style={spalte}>{links}</div>
+          <div style={spalte}>{rechts}</div>
         </div>
-      )}
-      <Feldzeile label="Zuständig">
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <ZustaendigWahl wert={m.zustaendig} welt="sales" onWahl={z => void api.teil('mandate', m.id, { zustaendig: z })} />
-          <Uebergeben api={api} art="mandat" id={m.id} jetzt={zustaendig(m.zustaendig, 'sales')} klein />
-        </div>
-      </Feldzeile>
-      {m.chanceId && <Feldzeile label="Deal"><Link href={WEG.deal(m.chanceId)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Deal öffnen ›</Link></Feldzeile>}
-      {(istBusinessGesellschaft(m.gesellschaft) || (!nurBusinessKonto && istPrivatArbeitsMandat(m.gesellschaft))) && <Feldzeile label="Fulfillment"><Link href={WEG.fall(m.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Fulfillment öffnen ›</Link></Feldzeile>}
-      {/* „Beendet“ öffnet „Mandat beenden“ (18.10., N6: vorher sofort `ende = heute`, auch mitten in der Mindestlaufzeit). */}
-      <Feldzeile label="Status"><Wahl label="Status" liste={STATUS} wert={m.status} onWahl={status => (status === 'beendet' && m.status !== 'beendet' ? onBeenden() : setze({ status }))} /></Feldzeile>
-      <Feldzeile label="Vertrag"><Wahl label="Vertrag" liste={VERTRAG} wert={m.vertragUnterschrieben ? 'ja' : 'nein'} farbe={m.vertragUnterschrieben ? LEUCHT.gut : C.aktiv} onWahl={x => setze({ vertragUnterschrieben: x === 'ja' })} /></Feldzeile>
-      <Feldzeile label="Kunde"><Feld wert={m.kunde} onFertig={kunde => kunde.trim() && setze({ kunde: kunde.trim() })} /></Feldzeile>
-      {/* Mandanten klickbar (28.09.): das Mandat führt zurück in die Firmenakte (per Kennung, sonst eindeutiger Name). */}
-      {firma ? <Feldzeile label="Firma"><span style={{ fontSize: TYP.bedien }}><MandantLink firmaId={firma.id} firmaDa name={firma.name} /></span></Feldzeile>
-        : <Feldzeile label="Firma"><span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien }}>{m.firmaId && <MandantLink firmaId={m.firmaId} firmaDa={false} name={m.kunde} />}<FirmaZuordnen api={api} mandatId={m.id} /></span></Feldzeile>}
-      <Feldzeile label="Titel"><Feld wert={m.titel} onFertig={titel => titel.trim() && setze({ titel: titel.trim() })} /></Feldzeile>
-      <Feldzeile label="Produkt">
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Wahl label="Produkt" liste={crm.stand.leistungen.filter(x => (x.status !== 'eingestellt' && !x.geloeschtAm) || x.id === m.leistungId).map(x => ({ id: x.id, label: x.name }))} wert={m.leistungId}
-            onWahl={leistungId => leistungId !== m.leistungId && setze({ leistungId, phase: undefined })} onLeeren={() => setze({ leistungId: undefined, phase: undefined })} />
-          {produkt && <Link href={mandateLink('produkte', produkt.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none' }}>Produkt öffnen ›</Link>}
-        </div>
-      </Feldzeile>
-      {/* 17.10. (dritte Abnahme B6): läuft ein Fulfillment-Fall, steht hier SEINE Phase mit dem Sprung in die Reise — der Ablauf des Produkts nur ohne Fall. */}
-      <FallPhase mandatId={m.id} rahmen={inhalt => <Feldzeile label="Phase">{inhalt}</Feldzeile>}
-        ohne={produkt ? (produkt.phasen?.length
-          ? <Wahl label="Phase" liste={produkt.phasen.map(p => ({ id: p.id, label: p.name }))} wert={m.phase ?? produkt.phasen[0].id} onWahl={phase => setze({ phase })} farbe={LEUCHT.business} />
-          : <Link href={WEG.fall(m.id)} style={{ fontSize: TYP.bedien, color: C.inkDim, textDecoration: 'none', minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Kein laufender Fall — im Fulfillment ansehen ›</Link>) : null} />
-      {/* Leistungstreppe (10.10.): Fortschritt im Paket, Health-Ampel, nächste Stufe und der Fortschritts-Report an den Kunden. */}
-      <MandatFortschritt mandatId={m.id} />
-      <Feldzeile label="Honorar">
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Feld typ="number" wert={m.honorar.betrag ? String(m.honorar.betrag) : ''} breite={120} platzhalter="€" onFertig={b => setze({ honorar: { ...m.honorar, betrag: Number(b) || 0 } })} />
-          <Wahl label="Honorar-Basis" liste={HONORAR_BASIS} wert={m.honorar.basis} onWahl={basis => setze({ honorar: { ...m.honorar, basis } })} />
-          <Wahl label="netto oder brutto" liste={NETTO} wert={m.honorar.netto ? 'netto' : 'brutto'} onWahl={x => setze({ honorar: { ...m.honorar, netto: x === 'netto' } })} />
-          <Wahl label="Umsatzsteuer" liste={UST} wert={String(m.ustSatz) === '0' ? '0' : String(m.ustSatz) === '19' ? '19' : null} onWahl={x => setze({ ustSatz: Number(x) })} />
-        </div>
-      </Feldzeile>
-      {/* Mandat = Hauptprodukt + Zusatzmodule (19.10., P3): Module mit Honorar, inklusive, „abrechnen“; Rechnung und Liquidität kennen sie. */}
-      <MandatZusatzModule m={m} katalog={crm.stand.leistungen} setze={setze} />
-      {/* Mandat an Zielen und Zeit (28.09.): erfasste Fokus-Zeit dieses Mandats im laufenden Monat */}
-      <Feldzeile label="Zeit"><MandatZeitMonat mandatId={m.id} /></Feldzeile>
-      {/* K3 (30.09.): am Mandat verknüpfte Termine (kalender-bezug), Klick öffnet den Kalender. */}
-      <Feldzeile label="Termine"><TermineAkte frage={{ mandate: [m.id] }} heute={crm.heute} /></Feldzeile>
-      <Feldzeile label="Laufzeit">
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Feld typ="date" wert={m.start} breite={150} platzhalter="Start" onFertig={start => setze({ start: start || undefined })} />
-          <span style={{ color: C.inkLeise }}>bis</span>
-          <Feld typ="date" wert={m.ende} breite={150} platzhalter="Ende" onFertig={ende => setze({ ende: ende || undefined })} />
-          <Feld typ="number" wert={m.kuendigungsfristTage ? String(m.kuendigungsfristTage) : ''} breite={120} platzhalter="Frist Tage" onFertig={f => setze({ kuendigungsfristTage: Number(f) || undefined })} />
-          <Wahl label="Verlängerung" liste={VERLAENGERUNG} wert={m.verlaengerung} onWahl={verlaengerung => setze({ verlaengerung })} />
-        </div>
-        {l?.endeAm && <div style={{ fontSize: TYP.bedien, color: l.endeIn !== null && l.endeIn <= 90 ? LEUCHT.achtung : C.inkLeise, marginTop: 4 }}>Ende {endeText(l.endeAm)} ({l.endeIn} Tage){l.fristBis && l.fristBis !== l.endeAm ? ` · kündbar bis ${datum(l.fristBis)}` : ''}</div>}
-      </Feldzeile>
-      {/* Vertrag (19.10., P3): Mindestlaufzeit, Rhythmus, Zahlungsziel — pflegbar, daneben was das Produkt vorsieht. */}
-      <MandatVertrag m={m} produkt={produkt} setze={setze} />
-      <Feldzeile label="Gesellschaft"><GesellschaftWahl wert={m.gesellschaft} onWahl={gesellschaft => setze({ gesellschaft })} /></Feldzeile>
-      <Feldzeile label="Nächstes Review"><Feld typ="date" wert={m.naechstesReview} breite={160} platzhalter="Datum" onFertig={r => setze({ naechstesReview: r || undefined })} /></Feldzeile>
-      <div>
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Gesundheit des Mandats {l?.health != null ? `· ${healthText(l)}` : '— noch nicht bewertet'} (unter 60 rot, bis 75 gelb){m.health.zahlung === null && crm.zahlung?.[m.id] ? ` · Zahlung aus dem Finanzplan: ${crm.zahlung[m.id]!.wert} (${crm.zahlung[m.id]!.text})` : ''}</div>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {(Object.keys(HEALTH_GEWICHTE) as (keyof typeof HEALTH_GEWICHTE)[]).map(f => (
-            <div key={f} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 44px', gap: 10, alignItems: 'center' }}>
-              <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{HEALTH_LABEL[f]} <span style={{ color: C.inkLeise }}>{HEALTH_GEWICHTE[f]}</span></span>
-              {m.health[f] == null
-                ? <button onClick={() => setze({ health: { ...m.health, [f]: 70 } })} style={{ justifySelf: 'start', background: 'none', border: '1px dashed rgba(255,255,255,.15)', borderRadius: 8, color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: '3px 10px' }}>bewerten</button>
-                : <input type="range" min={0} max={100} step={5} value={m.health[f]!} aria-label={HEALTH_LABEL[f]} onChange={e => setze({ health: { ...m.health, [f]: Number(e.target.value) } })} style={{ accentColor: m.health[f]! >= 75 ? LEUCHT.gut : m.health[f]! >= 60 ? LEUCHT.achtung : LEUCHT.kritisch }} />}
-              <span style={{ fontSize: TYP.bedien, color: m.health[f] == null ? C.inkLeise : C.ink, textAlign: 'right' }}>{m.health[f] ?? '–'}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <Feldzeile label="Liquiditätsplan">
-        {!lq && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>lädt …</span>}
-        {lq?.lage === 'ok' && <Link href={WEG.planposten(lq.vorhanden?.id)} style={{ fontSize: TYP.bedien, color: LEUCHT.gut, textDecoration: 'none' }}>steht drin{liquiPostenText(lq.soll) ? ` — ${liquiPostenText(lq.soll)}` : ''} — Posten öffnen ›</Link>}
-        {/* N14 (18.10.): der Satz je Fall — nie mehr „Status oder Honorar fehlt“ bei einem beendeten Mandat. */}
-        {lq?.lage === 'kein-posten' && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{lq.grund ?? 'kein Posten'}</span>}
-        {lq?.lage === 'beendet' && (
-          <span style={{ display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
-            <span>{lq.grund}</span>
-            {lq.vorhanden && <Link href={WEG.planposten(lq.vorhanden.id)} style={{ color: C.inkLeise, textDecoration: 'none' }}>Posten öffnen ›</Link>}
-          </span>
-        )}
-        {lq?.lage === 'endet' && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{lq.grund}</span>
-            <Knopf leise onClick={() => liquiplan('beenden')}>{lq.letzteZahlung ? `Posten zum Mandatsende angleichen (letzte Zahlung ${datum(lq.letzteZahlung)})` : 'Posten zum Mandatsende angleichen'}</Knopf>
-          </div>
-        )}
-        {(lq?.lage === 'fehlt' || lq?.lage === 'abweichend') && (
-          <div style={{ display: 'grid', gap: 6 }}>
-            <span style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{lq.lage === 'fehlt' ? 'Fehlt im Liquiditätsplan — würde eintragen:' : `Weicht ab: ${lq.grund ?? ''} Angeglichen hieße das:`}</span>
-            <SollListe soll={lq.soll} heute={crm.heute} />
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-              <Knopf leise onClick={() => liquiplan('anlegen')}>{lq.lage === 'fehlt' ? 'Eintragen' : 'Plan angleichen'}</Knopf>
-              {lq.lage === 'fehlt' && frei.slice(0, 4).map(p => <Knopf key={p.id} leise onClick={() => liquiplan('verknuepfen', p.id)}>= {p.titel.slice(0, 26)} ({euro(p.betrag)})</Knopf>)}
-            </div>
-          </div>
-        )}
-      </Feldzeile>
-      <Feldzeile label="Ansprechpartner">
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{personen.map(k => <button key={k.id} onClick={() => zuKontakt(k.id)} style={{ background: 'rgba(255,255,255,.06)', border: 'none', borderRadius: 999, padding: '5px 10px', color: C.ink, cursor: 'pointer', fontSize: TYP.bedien }}>{anzeigename(k)}</button>)}{!personen.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>—</span>}</div>
-      </Feldzeile>
-      <MandatRechnungen m={m} />
-      <MandatLeistungen m={m} setze={setze} />
-      <Feldzeile label="Offener Punkt"><Feld leeren platzhalter="Neuer offener Punkt …" onFertig={t => t.trim() && setze({ offen: [...m.offen, t.trim()] })} /></Feldzeile>
-      {m.quelle && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Quelle: {m.quelle}</div>}
+      ) : <div style={spalte}>{links}{rechts}</div>}
     </div>
   );
 }

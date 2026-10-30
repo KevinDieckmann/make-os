@@ -76,10 +76,10 @@ describe('Verbindungen', () => {
 });
 
 describe('Adresse der Akte', () => {
-  it('Kontakte › Akte einer Person — der Zurück-Weg ist die Kartei mit derselben Person', () => {
+  it('Kontakte › Akte einer Person — eine Person in Kontakte öffnet immer die Akte (30.10.: groß statt Karteikarte)', () => {
     expect(markttraktion('kontakte', 'akte', 'c-a')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
     expect(aufloesen('kontakte', 'akte')).toEqual({ s: 'kontakte', a: 'akte' });
-    expect(markttraktion('kontakte', undefined, 'c-a')).toBe('/os/markttraktion?s=kontakte&k=c-a');
+    expect(markttraktion('kontakte', undefined, 'c-a')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
   });
   it('Reiter (28.09.): t nur bei „Kontakt öffnen“ und nie für „Über“ — alte Adressen ohne t bleiben gültig, alte Reiter werden übersetzt', () => {
     expect(kontaktAkte('c-a')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
@@ -90,9 +90,9 @@ describe('Adresse der Akte', () => {
     expect(kontaktAkte('c-a', 'stammdaten')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=daten');
     expect(markttraktion('kontakte', 'akte', 'c-a', 'datenschutz')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=daten');
     expect(kontaktAkte('c-a', 'verlauf')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=aktivitaeten');
-    // Unbekannter Reiter → Über; außerhalb von „Kontakt öffnen“ zählt t nicht.
+    // Unbekannter Reiter → Über; außerhalb von „Kontakt öffnen“ zählt t nicht. Eine Person in Kontakte IST „Kontakt öffnen“ (30.10.).
     expect(kontaktAkte('c-a', 'geheim')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a');
-    expect(markttraktion('kontakte', undefined, 'c-a', 'aktivitaeten')).toBe('/os/markttraktion?s=kontakte&k=c-a');
+    expect(markttraktion('kontakte', undefined, 'c-a', 'aktivitaeten')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=aktivitaeten');
     expect(markttraktion('deals', 'akte', 'ch-1', 'aktivitaeten')).toBe('/os/markttraktion?s=deals&a=akte&k=ch-1');
   });
   it('akteReiter: leer, null und Unbekanntes heißen Über; jeder Reiter der Leiste löst sich auf', () => {

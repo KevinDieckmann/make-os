@@ -13,7 +13,9 @@
 //     der App einen gibt — sonst (direkt über einen Link gekommen) zur
 //     übergeordneten Seite, die der Knopf nennt.
 //   · Die Scrollposition im Inhaltsbereich (<main>) wird je Eintrag gemerkt
-//     und beim Zurück/Vor wiederhergestellt.
+//     und beim Zurück/Vor wiederhergestellt — seit 30.10. auch die der Liste
+//     einer Arbeitsfläche (`[data-af="liste"]` rollt für sich): aus einer Akte
+//     zurück steht die Liste wieder dort, wo man sie verlassen hat.
 // Regel für neue Oberflächen: Ort wechseln (Bereich, Reiter, etwas öffnen)
 // = router.push; nur Gleichrangiges austauschen (in einer Liste die nächste
 // Person) = router.replace. Zurück-Knöpfe nehmen useZurueck().
@@ -25,7 +27,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 const FELD = '__makeOs';
 interface Stand { tiefe: number; id: string }
 const neueId = () => Math.random().toString(36).slice(2, 10);
-const positionen = new Map<string, number>();
+const positionen = new Map<string, { main: number; liste: number }>();
 let installiert = false;
 
 /** Stand des aktuellen Verlaufseintrags — ohne Eintrag (erster Aufruf): Tiefe 0. */
@@ -44,6 +46,10 @@ const inhalt = () => document.querySelector('main');
  * immer der der Seite, die man gerade verlässt.
  */
 let zuletzt = 0;
+/** Dasselbe für die Liste einer Arbeitsfläche (eigene Scrollfläche, 30.10.) — beginnt mit jedem neuen Eintrag bei 0. */
+let zuletztListe = 0;
+const LISTE = '[data-af="liste"]';
+const liste = () => document.querySelector<HTMLElement>(LISTE);
 /** Bis hierhin zählt Scrollen nicht als Position der Seite (die App springt selbst nach oben). */
 let ruheBis = 0;
 
@@ -58,15 +64,19 @@ export function nachOben() {
 }
 
 function merken() {
-  positionen.set(verlaufStand().id, zuletzt);
+  positionen.set(verlaufStand().id, { main: zuletzt, liste: zuletztListe });
 }
 
 function wiederherstellen() {
   const ziel = positionen.get(verlaufStand().id);
-  if (ziel === undefined) return;
-  // Der Inhalt baut sich nach dem Zurück erst auf — mehrmals versuchen, bis die Höhe reicht.
-  zuletzt = ziel;
-  for (const ms of [0, 60, 200, 450, 900]) setTimeout(() => { const m = inhalt(); if (m && Math.abs(m.scrollTop - ziel) > 2) m.scrollTop = ziel; }, ms);
+  if (ziel === undefined) { zuletztListe = 0; return; }
+  // Der Inhalt baut sich nach dem Zurück erst auf — mehrmals versuchen, bis die Höhe reicht (die Liste lädt oft noch Daten).
+  zuletzt = ziel.main;
+  zuletztListe = ziel.liste;
+  for (const ms of [0, 60, 200, 450, 900, 1500]) setTimeout(() => {
+    const m = inhalt(); if (m && Math.abs(m.scrollTop - ziel.main) > 2) m.scrollTop = ziel.main;
+    const l = liste(); if (l && ziel.liste && Math.abs(l.scrollTop - ziel.liste) > 2) l.scrollTop = ziel.liste;
+  }, ms);
 }
 
 function installieren() {
@@ -80,6 +90,7 @@ function installieren() {
     merken();
     const s: Stand = { tiefe: verlaufStand().tiefe + 1, id: neueId() };
     push({ ...((state as object | null) ?? {}), [FELD]: s }, unused, url);
+    zuletztListe = 0;
   };
   window.history.replaceState = (state: unknown, unused: string, url?: string | URL | null) => {
     const eigener = (state as Record<string, unknown> | null)?.[FELD];
@@ -89,6 +100,9 @@ function installieren() {
   // Laufend mitschreiben, damit auch „Vor“ an die richtige Stelle springt.
   let geplant = false;
   document.addEventListener('scroll', e => {
+    // Die Liste einer Arbeitsfläche rollt für sich — ihre Position zählt zum selben Eintrag.
+    const t = e.target as Element | null;
+    if (t && t !== inhalt() && typeof t.matches === 'function' && t.matches(LISTE)) { zuletztListe = (t as HTMLElement).scrollTop; merken(); return; }
     if (geplant || e.target !== inhalt()) return;
     geplant = true;
     requestAnimationFrame(() => { geplant = false; if (Date.now() < ruheBis) return; zuletzt = inhalt()?.scrollTop ?? 0; merken(); });

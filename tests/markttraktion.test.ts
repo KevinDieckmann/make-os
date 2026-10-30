@@ -129,7 +129,7 @@ describe('Adressen — alte CRM-Links bleiben gültig', () => {
     expect(markttraktion()).toBe('/os/markttraktion');
     expect(markttraktion('heute')).toBe('/os/markttraktion?s=followup&a=powerhour');
     expect(markttraktion('pipeline')).toBe('/os/markttraktion?s=deals');
-    expect(markttraktion('kontakte', undefined, 'c-1')).toBe('/os/markttraktion?s=kontakte&k=c-1');
+    expect(markttraktion('kontakte', undefined, 'c-1')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-1');
     expect(markttraktion('events')).toBe('/os/markttraktion?s=event');
   });
 });

@@ -23,7 +23,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Seite, Knopf } from '../ui';
-import { aufloesen, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, planungLink, punktVon, eventsReiterVon, EVENTS_REITER, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht, type PlanungAnsicht, type EventsReiterId } from '@/lib/crm/adresse';
+import { aufloesen, mitAkte, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, planungLink, punktVon, eventsReiterVon, EVENTS_REITER, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht, type PlanungAnsicht, type EventsReiterId } from '@/lib/crm/adresse';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
@@ -43,6 +43,7 @@ import { Leads, SalesTrichter } from './Leads';
 import { QualifizierungScoring } from './quali/QualifizierungScoring';
 import { useZurueck, nachOben } from '../Verlauf';
 import { KontaktAkte } from './Akte';
+import { FirmenAkte } from './Firmen';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 import { AngebotStart } from './angebot/AngebotStart';
 import { MtPlanung } from './planung/Planung';
@@ -61,6 +62,8 @@ const DEALS: { id: DealsAnsicht; label: string }[] = [{ id: 'board', label: 'Boa
 const FOLLOWUP: { id: FollowupAnsicht; label: string }[] = [{ id: 'faellig', label: 'Fällig' }, { id: 'woche', label: 'Woche' }, { id: 'powerhour', label: 'Power Hour' }, { id: 'kadenz', label: 'Kadenz' }];
 const EVENTS_NAME: Record<EventsReiterId, string> = { kalender: 'Kalender', wirkung: 'Wirkung', kunden: 'Im Kundenauftrag', makeone: MARKE_EVENTS };
 const EVENTS: { id: EventsReiterId; label: string }[] = EVENTS_REITER.map(r => ({ id: r.id, label: EVENTS_NAME[r.id] }));
+/** Breite einer offenen Akte (30.10.) — dieselbe wie die der Arbeitsflächen (volle Breite des Inhaltsbereichs). */
+const AKTE_BREIT = 1600;
 
 // Untertitel: eine Zeile (Aufräumen Etappe 3) — was hier passiert, kein Werbesatz.
 const UNTER: Record<Bereich, string> = {
@@ -83,7 +86,8 @@ const UNTER: Record<Bereich, string> = {
 
 export function MarkttraktionSeite() {
   const router = useRouter(); const params = useSearchParams();
-  const { s: bereich, a: ansicht } = aufloesen(params.get('s'), params.get('a'));
+  // Eine Kennung in Kontakte, Firmen oder Deals › Liste öffnet die ganze Akte (30.10., `mitAkte`) — alte Links mit `?k=` landen dort.
+  const { s: bereich, a: ansicht } = mitAkte(aufloesen(params.get('s'), params.get('a')), params.get('k'));
   // Alte Adressen (Reiter „Sales“, Firmen › Leads, Deals › Kunden …) still auf den neuen Ort schreiben — so leuchtet der richtige Punkt
   // und Bausteine, die selbst in der Adresse lesen, sehen dieselbe Ansicht. Alle übrigen Parameter (k, t, u, r, bean …) bleiben.
   useEffect(() => {
@@ -126,8 +130,9 @@ export function MarkttraktionSeite() {
   const setAuswahl = (id: string | null) => gehe(bereich, ansicht, id ?? undefined, auswahl && id ? 'replace' : id ? 'push' : 'replace');
   // Ziel mit Objekt (Person, Deal, Event): der Team-Feed und die Index-Punkte geben `k` mit (26.09.).
   const zuBereich = (b: string, a?: string, k?: string) => { const z = aufloesen(b, a); gehe(z.s, z.a, k); };
-  const zuKontakt = (id: string) => gehe('kontakte', undefined, id);
-  const zuFirma = (id: string) => gehe('firmen', undefined, id);
+  // Personen und Firmen öffnen als Akte auf einer eigenen Seite (30.10.) — nie mehr ein schmales Detail rechts.
+  const zuKontakt = (id: string) => gehe('kontakte', 'akte', id);
+  const zuFirma = (id: string) => gehe('firmen', 'akte', id);
   const zuDeal = (id: string) => gehe('deals', 'akte', id);
   const name = (p: string) => (p ? p.charAt(0).toUpperCase() + p.slice(1) : '—');
   const dealsAnsicht = (bereich === 'deals' ? (ansicht ?? 'board') : 'board') as DealsAnsicht;
@@ -188,8 +193,9 @@ export function MarkttraktionSeite() {
       </>
     );
   }
-  // Ebenso die Firmen (31.10.): Kopf „Firmen“ · Zahl · ⋯ · „+ Firma“, Liste und Firmenkarte rollen je für sich.
-  if (bereich === 'firmen') {
+  // Ebenso die Firmen (31.10.): Kopf „Firmen“ · Zahl · ⋯ · „+ Firma“, die Liste rollt für sich; ein Klick öffnet die Firmenakte (30.10.).
+  const firmaAkteId = bereich === 'firmen' && ansicht === 'akte' ? kParam : null;
+  if (bereich === 'firmen' && !firmaAkteId) {
     return (
       <>
         {mitlaeufer}
@@ -218,7 +224,8 @@ export function MarkttraktionSeite() {
 
   return (
     // „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar.
-    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>{zoeKnopf}{kopfAktionen}</>}>
+    // Eine offene Akte (Kontakt, Firma, Deal) nutzt die ganze Breite des Inhaltsbereichs (30.10.) — wie die Arbeitsflächen.
+    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>{zoeKnopf}{kopfAktionen}</>} {...(akteId || firmaAkteId || (bereich === 'deals' && ansicht === 'akte') ? { breit: AKTE_BREIT } : {})}>
       {mitlaeufer}
 
       {/* Antwort zuerst (11.10.): „Für dich“ und was zu tun ist oben — die Index-Kennzahlen (oft noch „fehlt“) als Hintergrund darunter. */}
@@ -253,7 +260,8 @@ export function MarkttraktionSeite() {
 
       {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
         kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
-      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
+      {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte'))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
+      {firmaAkteId && <FirmenAkte api={api} id={firmaAkteId} zurueck={() => zurueckWie(markttraktion('firmen'))} zuPerson={zuKontakt} zuFirma={zuFirma} />}
       {bereich === 'formulare' && <Formulare api={api} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
     </Seite>

@@ -235,8 +235,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
     const offenGesamt = chancen.filter(istOffen).length;
     const filterZahl = (stufeFilter !== 'alle' ? 1 : 0) + (geschlossen ? 1 : 0);
     const filterWeg = () => { setStufeFilter('alle'); setGeschlossen(false); };
-    const sel = gewaehlt ?? null;
-    const zeileVon = (c: Chance, zwei: boolean) => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} inline={!zwei} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />;
+    // Ein Klick öffnet die Deal-Akte als eigene Seite (30.10., Kevin: „sauber in die Akte gehen“) — ohne `zuAkte` (eingebettet) wie bisher unter der Zeile.
+    const zeileVon = (c: Chance) => <ChancenZeile key={c.id} c={c} api={api} offen={!zuAkte && auswahl === c.id} inline onKlick={() => (zuAkte ? zuAkte(c.id) : setAuswahl(auswahl === c.id ? null : c.id))} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />;
     const leiste = (
       <>
         {ansichtWahl}
@@ -253,7 +253,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
         {stufeFilter !== 'alle' && <button type="button" className="af-chip-weg fassbar" onClick={() => setStufeFilter('alle')} title="Filter aufheben">{offen.find(s => s.id === stufeFilter)?.label ?? 'Stufe'} <span aria-hidden>✕</span></button>}
       </>
     );
-    const liste = (zwei: boolean) => (
+    const liste = () => (
       <div style={{ paddingBottom: 12 }}>
         {stufen.map(s => {
           const l = chancen.filter(c => c.stufe === s.id && passtSuche(c));
@@ -261,7 +261,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
           return (
             <ListenAbschnitt key={s.id} id={s.id} titel={<span title={`Weiter, wenn: ${s.weiterWenn}`}>{s.label}</span>} farbe={LEUCHT.business}
               rechts={`${s.p} % · ${l.length} · ${kurzEuro(js?.wert ?? 0)}${dealsOhneWert(l) ? ` · ${dealsOhneWert(l)} ohne Wert` : ''}${js?.haengt ? ` · ${js.haengt} hängt` : ''}`}>
-              <Liste>{l.map(c => zeileVon(c, zwei))}</Liste>
+              <Liste>{l.map(c => zeileVon(c))}</Liste>
               {!l.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 0' }}>{suche.trim() ? 'Kein Treffer in dieser Stufe.' : 'Kein Deal in dieser Stufe.'}</div>}
             </ListenAbschnitt>
           );
@@ -279,7 +279,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
         <div id="deals-geschlossen">
           <ListenAbschnitt id="geschlossen" titel="Gewonnen · Verloren · Geparkt" farbe={C.inkLeise}
             rechts={<button onClick={() => { if (zeigeZu && gewaehlt && !istOffen(gewaehlt)) setAuswahl(null); setGeschlossen(!zeigeZu); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 36 }}>{zeigeZu ? 'ausblenden' : `${zu.length} zeigen`}</button>}>
-            {zeigeZu && <Liste>{zuGefiltert.map(c => zeileVon(c, zwei))}</Liste>}
+            {zeigeZu && <Liste>{zuGefiltert.map(c => zeileVon(c))}</Liste>}
           </ListenAbschnitt>
         </div>
       </div>
@@ -290,15 +290,9 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
           zaehler={<span title={`${kurzEuro(p.offen)} offen · ${kurzEuro(p.gewichtet)} gewichtet`}><b style={{ color: C.ink, fontWeight: 600 }}>{offenGesamt}</b> offen · {kurzEuro(p.gewichtet)} gewichtet{p.ohneSchritt ? ` · ${p.ohneSchritt} ohne nächsten Schritt` : ''}</span>}
           neben={kopf?.neben} mehr={kopf?.mehr} haupt={neuKnopf}
           leiste={leiste} hinweise={anlegenFeld || undefined}
-          liste={st => liste(st.zwei)}
-          detail={st => (st.zwei && sel ? (
-            <div style={{ minWidth: 0 }}>
-              <Ueberschrift rechts={<button onClick={() => setAuswahl(null)} aria-label="Deal schließen" className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, minWidth: 44, minHeight: 44 }}>✕</button>}>{sel.titel}</Ueberschrift>
-              {zuAkte && <div style={{ marginBottom: 8 }}><Knopf leise onClick={() => zuAkte(sel.id)}>Akte öffnen ›</Knopf></div>}
-              <ChancenDetail c={sel} api={api} personen={sel.kontaktIds.map(id => (api.kontakte ?? []).find(k => k.id === id)).filter((k): k is NonNullable<typeof k> => !!k)} zuKontakt={zuKontakt} wunsch={wunsch?.id === sel.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />
-            </div>
-          ) : null)}
-          detailKennung={sel?.id ?? null}
+          liste={() => liste()}
+          // Rechts nur die Prognose mit dem Head of Sales — der Deal öffnet als Akte (30.10.).
+          detail={null}
           leer={st => {
             const voll = <div style={{ display: 'grid', gap: 14 }}>{prognoseKarte(false)}<HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={1} nachEntscheid={() => void api.laden()} /></div>;
             return st.zwei ? voll : <Klappbar id="deals-prognose" titel="Prognose & Head of Sales" offen={prognoseOffen} umschalten={() => setPrognoseOffen(o => !o)}>{voll}</Klappbar>;

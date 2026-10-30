@@ -88,7 +88,7 @@ describe('Markttraktion › Kontakte als Arbeitsfläche', () => {
     expect(k).toContain('haupt={<Knopf haupt onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>}');
     expect(m).toContain("if (!runde && !akteId && bereich === 'kontakte') {");
     expect(m).toContain('kopf={{ neben: zoeKnopf, mehr: kopfAktionen }}');
-    expect(m).toContain("if (bereich === 'firmen') {");
+    expect(m).toContain("if (bereich === 'firmen' && !firmaAkteId) {");
   });
   it('Filter im Popover (Ansicht, BEAN, Lifecycle, Einordnung) mit Zähler; aktive Filter als Chips — keine abgeschnittene Chip-Reihe', () => {
     expect(k).toContain('<FilterKnopf aktiv={filterZahl} onZuruecksetzen={filterWeg}>');
@@ -114,7 +114,8 @@ describe('Markttraktion › Firmen als Arbeitsfläche', () => {
     expect(k).toContain('WEG.prospecting()');
     expect(m).toContain('<Kartei {...karteiProps} modus="firmen" kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} />');
   });
-  it('Ansichten im Filter-Popover statt einer abgeschnittenen Pillenreihe; Tabellenkopf klebt; Firmenkarte rechts bzw. unter der Zeile', () => {
+  it('Ansichten im Filter-Popover statt einer abgeschnittenen Pillenreihe; Tabellenkopf klebt; die Firma öffnet als Akte (30.10.)', () => {
+    expect(f).toContain('detail={null} />');
     expect(f).toContain('<FilterKnopf aktiv={ansicht !== \'alle\' ? 1 : 0} onZuruecksetzen={filterWeg}>');
     expect(f).not.toContain('<Pillen einzeilig');
     expect(f).toContain('listeKopf={st => (st.zwei && tabelle ? tabellenKopf : null)}');
@@ -141,7 +142,9 @@ describe('Markttraktion › Deals › Liste als Arbeitsfläche', () => {
     expect(p).toContain('{prognoseKarte(false)}<HeadPanel head="sales"');
     // In einer Spalte (Handy) zugeklappt über der Liste, damit die große Karte die Deals nicht aus dem Bild schiebt.
     expect(p).toContain('st.zwei ? voll : <Klappbar id="deals-prognose"');
-    expect(p).toContain('inline={!zwei}');
+    // 30.10.: kein Deal rechts — ein Klick öffnet die Deal-Akte als eigene Seite (eingebettet ohne `zuAkte` weiter unter der Zeile).
+    expect(p).toContain('onKlick={() => (zuAkte ? zuAkte(c.id) : setAuswahl(auswahl === c.id ? null : c.id))}');
+    expect(p).toContain('detail={null}');
     // Der Link aus der Auswertung (zu=1) findet die geschlossenen Deals weiter.
     expect(p).toContain('<div id="deals-geschlossen">');
   });
@@ -177,9 +180,11 @@ describe('Mandate als Arbeitsfläche', () => {
     expect(k).toContain('{importAuf && importieren}');
     expect(pm).toContain("if (reiter === 'mandate') {");
   });
-  it('nach Status als Abschnitte EINER Liste; rechts das Mandat, ohne Auswahl der Überblick (Zahlen, Head, Index)', () => {
+  it('nach Status als Abschnitte EINER Liste; rechts der Überblick (Zahlen, Head, Index) — das Mandat öffnet als Akte (30.10.)', () => {
     expect(k).toContain('<ListenAbschnitt key={g.id} id={g.id} titel={g.label}');
-    expect(k).toContain('{auswahl === m.id && !zwei && <MandatDetail');
+    expect(k).toContain('detail={null}');
+    expect(k).toContain('if (sel) {');
+    expect(k).toContain('<MandatAkte m={sel}');
     expect(k).toContain('leer={st => ueberblick(st.zwei)} leerOben');
     expect(k).toContain('{voll && <HeadPanel head="sales" standardModus="kundenreview"');
   });

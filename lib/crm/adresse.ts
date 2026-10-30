@@ -6,7 +6,7 @@
 // gehört genau einem Punkt, dem Fuß oder „Automationen & Head“; die dritte Ebene (Board · Liste, Fällig · Woche …) bleibt als Reiter IN der Seite.
 //   Überblick                     ueberblick
 //   CRM        Kontakte           kontakte (Personen; a = gespeicherte Ansicht, runde-…, akte)
-//              Firmen             firmen (Firmen-Kartei)
+//              Firmen             firmen (Firmen-Kartei; akte = Firmenakte zu k, 30.10.)
 //   Vertrieb   Leads & Qualifiz.  qualifizierung (Runde · leads · scoring · scoring-sales; k = Lead)
 //              Deals              deals: board (Start) · liste · akte (Deal-Akte zu k)
 //              Angebote           angebot (k = Angebot, kontakt/firma/deal)
@@ -118,9 +118,23 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
   return { s: 'ueberblick' };
 }
 
+/**
+ * Akte statt schmalem Detail (30.10., Kevin: „Wenn ich auf einen Kunden gehe, möchte ich, dass sich die Akte wirklich groß öffnet … auch wenn ich in
+ * Firmen bin“): eine Kennung in Kontakte, Firmen oder Deals › Liste öffnet die ganze Akte als eigene Seite — `a=akte`. Alte Adressen
+ * (`?s=kontakte&k=…`, `?s=firmen&k=…`, `?s=deals&a=liste&k=…`, eine Firma `f-…` unter Kontakte) landen so in derselben Akte. Die Runden
+ * (`runde-…`, `k` = Kampagne) bleiben, wie sie sind; das Board der Deals ebenso.
+ */
+export function mitAkte(z: { s: Bereich; a?: string }, k?: string | null): { s: Bereich; a?: string } {
+  if (!k) return z;
+  if (z.s === 'kontakte' && !z.a?.startsWith('runde-')) return k.startsWith('f-') ? { s: 'firmen', a: 'akte' } : { s: 'kontakte', a: 'akte' };
+  if (z.s === 'firmen') return { s: 'firmen', a: 'akte' };
+  if (z.s === 'deals' && z.a === 'liste') return { s: 'deals', a: 'akte' };
+  return z;
+}
+
 /** Link in die Markttraktion — für Suche, Startseite, Befunde, ZOE. `t` zählt nur bei „Kontakt öffnen“ (Reiter außer „Über“), `u` nur im Reiter Aktivitäten. */
 export function markttraktion(s?: string, a?: string, k?: string, t?: string | null, u?: string | null): string {
-  const z = aufloesen(s, a);
+  const z = mitAkte(aufloesen(s, a), k);
   const q = new URLSearchParams();
   if (z.s !== 'ueberblick') q.set('s', z.s);
   if (z.a) q.set('a', z.a);
@@ -188,6 +202,8 @@ export const karteiBean = (b: string): string => (/^[BEAN]$/.test(b) ? `${PFAD}?
 
 /** Die Deal-Akte (27.09.): eine ganze Seite je Deal. */
 export const dealAkte = (id: string): string => markttraktion('deals', 'akte', id);
+/** Die Firmenakte (30.10.): die ganze Firma als eigene Seite — dieselbe Adresse wie `WEG.firma(id)`. */
+export const firmaAkte = (id: string): string => markttraktion('firmen', 'akte', id);
 
 /**
  * Produkte & Mandate (25.09.): eigener Bereich links unter Aufgaben — s: mandate (Start) · produkte · automationen („Automationen & Head“ des Werkzeugs,
@@ -212,8 +228,8 @@ export function mandateLink(s?: MandateOrt, k?: string): string {
 // hier (Baustein components/os/crm/MandantLink.tsx) — nie Pfade von Hand.
 //   privat               → 'aus'       (Privat kennt keine Mandanten — nichts anzeigen)
 //   kein Zugang zum CRM  → 'text'      (nur der Name, die Akte ginge ohnehin nicht auf)
-//   Mandat da            → 'mandat'    /os/mandate?k=<Mandat>
-//   Mandat weg, Firma da → 'firma'     /os/markttraktion?s=firmen&k=<Firma> (mandatGeloescht)
+//   Mandat da            → 'mandat'    /os/mandate?k=<Mandat> (die Mandatsakte, 30.10.)
+//   Mandat weg, Firma da → 'firma'     /os/markttraktion?s=firmen&a=akte&k=<Firma> (mandatGeloescht)
 //   beides weg           → 'geloescht' (Text mit „(gelöscht)“)
 //   keine Kennung        → 'text'
 // `…Da` = undefined heißt „nicht geprüft“ und gilt als vorhanden (die Akte zeigt dann selbst, was fehlt).

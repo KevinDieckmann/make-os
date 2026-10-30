@@ -66,7 +66,7 @@ type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anre
 const ANSICHT_IDS: Ansicht[] = ['alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten', 'dublette-pruefen', 'lead-pruefen', 'archiv'];
 const istAnsicht = (a?: string): a is Ansicht => !!a && (ANSICHT_IDS as string[]).includes(a);
 
-export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFirma, start, zuRunde, zuAkte, startBean, kopf: seitenKopf }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void;
+export function Kartei({ api, name, modus, auswahl, setAuswahl, zuFirma, start, zuRunde, zuAkte, startBean, kopf: seitenKopf }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void;
   /** BEAN-Filter aus der Adresse (`bean=`), z. B. aus der Verteilungskarte im Überblick. */
   startBean?: string | null;
   /** Arbeitsfläche (29.10.): die Kopf-Teile der Seite (ZOE/Head daneben, „+ Aktivität“ und „+ Angebot“ im „⋯“) — die Kartei der Personen ist dann die Seite. */
@@ -164,11 +164,12 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
       if (e.key === '/') { e.preventDefault(); sucheRef.current?.focus(); }
       else if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); setMarkiert(m => Math.min(sichtbar.length - 1, m + 1)); }
       else if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); setMarkiert(m => Math.max(0, m - 1)); }
-      else if (e.key === 'Enter' && sichtbar[markiert]) setAuswahl(sichtbar[markiert].id);
+      // Enter öffnet die Akte (30.10.: „Kontakt öffnen“ als eigene Seite statt der Karteikarte rechts).
+      else if (e.key === 'Enter' && sichtbar[markiert]) { if (zuAkte) zuAkte(sichtbar[markiert].id); else setAuswahl(sichtbar[markiert].id); }
     };
     window.addEventListener('keydown', taste);
     return () => window.removeEventListener('keydown', taste);
-  }, [modus, sichtbar, markiert, setAuswahl]);
+  }, [modus, sichtbar, markiert, setAuswahl, zuAkte]);
   useEffect(() => { setMarkiert(0); }, [suche, ansicht]);
   // Zurück aus „Kontakt öffnen“ (oder ein Link mit ?k=): die gewählte Person steht einmal sichtbar in der Liste — späteres Anklicken springt nicht.
   const erstesMal = useRef(true);
@@ -208,7 +209,6 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     else if (r.hinweis) api.setHinweis(r.hinweis);
   };
 
-  const k = auswahl && !auswahl.startsWith('f-') ? (api.kontakte ?? []).find(x => x.id === auswahl) ?? null : null;
   // Archivieren (04.10.): nur aus der Kartei ausblenden — mit „Rückgängig“; Zurückholen aus der Ansicht „Archiv“.
   const archivieren = (x: Kontakt) => {
     if (auswahl === x.id) setAuswahl(null);
@@ -224,7 +224,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     const firmaNeu = async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const da = bestehendeFirma(api.crm?.stand.firmen ?? [], n); if (da) { zuFirma(da.id); return; } const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } };
     return (
       <>
-        <Firmen api={api} auswahl={auswahl?.startsWith('f-') ? auswahl : null} setAuswahl={setAuswahl} zuPerson={zuKontakt} suche={suche}
+        <Firmen api={api} zuAkte={zuFirma} suche={suche}
           suchfeld={<input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen: Firma, Domain, Branche, Ort …" aria-label="Suchen" className="af-suche" style={{ ...feld, padding: '9px 13px', fontSize: TYP.bedien, minHeight: 40 }} />}
           kopf={{
             neben: seitenKopf?.neben,
@@ -325,9 +325,9 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
               loeschenFragt href={WEG.akte(x.id)} onOeffnen={zuAkte ? () => zuAkte(x.id) : undefined}
               mehr={[...(x.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => zuFirma(x.firmaId!) }] : []), { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'kontakt', id: x.id }) }]}>
             <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} lifecycle={lifecycle.get(x.id)} bean={beans.get(x.id)} breit={zwei} aktiv={auswahl === x.id} markiert={i === markiert && zwei}
-              chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); setAuswahl(auswahl === x.id ? null : x.id); }} />
+              chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); if (zuAkte) zuAkte(x.id); else setAuswahl(auswahl === x.id ? null : x.id); }} />
             </ZeileAktionen>
-            {auswahl === x.id && !zwei && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /></div>}
+            {auswahl === x.id && !zuAkte && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} /></div>}
           </div>
         ))}
       </div>
@@ -335,7 +335,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
       {!treffer.length && (ansicht === 'archiv'
         ? <Leer>Das Archiv ist leer. Archivierte Personen sind nur aus der Kartei ausgeblendet — Deals, Segmente, Verlauf und Recht bleiben, zurückholen jederzeit.</Leer>
         : <Leerzustand symbol={<SearchX size={26} />} titel="Niemand gefunden">Suche zurücksetzen oder eine andere Ansicht wählen.</Leerzustand>)}
-      {zwei && treffer.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '12px 2px 0' }}>/ suchen · j k blättern · Enter öffnen · Esc schließen</div>}
+      {zwei && treffer.length > 0 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '12px 2px 0' }}>/ suchen · j k blättern · Enter öffnet die Akte</div>}
     </div>
   ));
 
@@ -351,9 +351,9 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
         leiste={leisteZeile} hinweise={hinweise}
         listeKopf={st => (st.zwei && ansicht !== 'dubletten' ? tabellenKopf : null)}
         liste={st => listeInhalt(st.zwei)}
-        detail={st => (st.zwei && k ? <div data-karteikarte="" style={{ minWidth: 0 }}><Karteikarte k={k} api={api} name={name} zuFirma={zuFirma} zuAkte={zuAkte} /></div> : null)}
-        detailKennung={k?.id ?? null}
-        leer={<Leer>Eine Person anklicken oder mit j/k wählen und Enter — Verlauf, Notiz, Kanäle, Stammdaten und Recht erscheinen hier. „Kontakt öffnen“ zeigt alles auf einer Seite.</Leer>} />
+        // Kein Detail rechts (30.10., Kevin: „die Kundenakte wirklich groß öffnen“): ein Klick bzw. Enter öffnet „Kontakt öffnen“ als eigene Seite,
+        // die Liste nutzt die ganze Breite. Ohne `zuAkte` (eingebettet) öffnet die Karteikarte unter der Zeile wie bisher.
+        detail={null} />
       {nachfrage}
       {rueckfrage}
       {art17.dialog}

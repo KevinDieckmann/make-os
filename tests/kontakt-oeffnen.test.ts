@@ -30,7 +30,8 @@ describe('Adresse von „Kontakt öffnen“', () => {
     // u nur im Reiter Aktivitäten und nur als kurzes Kennwort.
     expect(kontaktAkte('c-a', 'daten', 'notizen')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=daten');
     expect(kontaktAkte('c-a', 'aktivitaeten', '<script>')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=aktivitaeten');
-    expect(markttraktion('kontakte', undefined, 'c-a', 'aktivitaeten', 'alle')).toBe('/os/markttraktion?s=kontakte&k=c-a');
+    // Eine Person in Kontakte öffnet die Akte (30.10.) — Reiter und Unter-Reiter gelten dann mit.
+    expect(markttraktion('kontakte', undefined, 'c-a', 'aktivitaeten', 'alle')).toBe('/os/markttraktion?s=kontakte&a=akte&k=c-a&t=aktivitaeten&u=alle');
     expect(akteUnter('alle')).toBe('alle');
     expect(akteUnter('')).toBeNull();
     expect(akteUnter('../x')).toBeNull();
