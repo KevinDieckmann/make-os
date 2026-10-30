@@ -396,7 +396,7 @@ function KontaktKarte({ rollen, laedt, senden, ohne, ohneText, newsletter: nl }:
         <label><span className={s.feldName}>Telefon (freiwillig)</span><input className={s.eingabe} type="tel" value={telefon} onChange={e => setTelefon(e.target.value)} maxLength={40} autoComplete="tel" /></label>
       </div>
       <div className={s.falle} aria-hidden><label>Webseite<input tabIndex={-1} autoComplete="off" value={falle} onChange={e => setFalle(e.target.value)} name="webseite" /></label></div>
-      {nl && <label className={s.haken}><input type="checkbox" checked={newsletter} onChange={e => setNewsletter(e.target.checked)} /><span>{nl.wortlaut} Er kommt erst, wenn Sie die Anmeldung über den Link in unserer E-Mail bestätigen.</span></label>}
+      {nl && <label className={s.haken}><input type="checkbox" checked={newsletter} onChange={e => setNewsletter(e.target.checked)} /><span>{nl.wortlaut} Der Newsletter kommt erst, wenn Sie die Anmeldung über den Link in unserer E-Mail bestätigen.</span></label>}
       <p className={s.hilfe} style={{ marginTop: 10 }}>Ihre Angaben nutzen wir für Ihren Bericht und Ihr Gespräch. Mehr im Datenschutzhinweis unten.</p>
       <div className={s.zeile}>
         <button type="submit" className={s.knopf} disabled={laedt || !fertig}>Bericht anfordern</button>
