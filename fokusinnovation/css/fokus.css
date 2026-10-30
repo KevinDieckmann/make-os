@@ -799,5 +799,102 @@ html.menue-offen { overflow: hidden; }
   .raster .spalte .nr, .momente li::before { transition: color .3s ease, translate .35s var(--ease); }
   .momente li:hover::before, .raster .spalte:hover .nr { translate: 4px 0; color: var(--akzent-papier); }
   .wl a:hover, .zeilen a:hover { background: linear-gradient(90deg, var(--akzent-zart), transparent 80%); }
+  /* Einstiege und Listen mit Pfeil (Kevin 30.10.: „ein bisschen lila im Schein“): lila Verlauf von links, der Pfeil leuchtet im Kern-Ton */
+  .index a { transition: background-color .3s ease, background .3s ease; }
+  .index a:hover { background: linear-gradient(90deg, rgba(124, 58, 237, .1), rgba(124, 58, 237, .03) 60%, transparent 90%); }
+  .index a:hover .pfeil, .wl a:hover .pfeil, .zeilen a:hover .pfeil { color: var(--akzent-papier); }
 }
 @media (hover: hover) and (prefers-reduced-motion: reduce) { .momente li:hover::before, .raster .spalte:hover .nr { translate: none; } }
+
+/* ── Problem-Bilder rechts im Kopf (30.10., problembilder.mjs): erst „Heute“, dann einmal „Mit Fokus“. Ohne Skript und bei
+      „Bewegung reduzieren“ gleich der Endzustand. Vorher-Zustand nur unter .js … :not(.sichtbar). ── */
+.held-raster:has(> .problem-bild), .held-raster:has(> .video-buehne) { align-items: center; }
+.problem-bild { padding: 22px 24px 20px; background: var(--papier-hell); border: 1px solid var(--haar); border-radius: 10px; }
+.pb-kopf { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.pb-zustand { display: inline-grid; font-size: .82rem; font-weight: 600; letter-spacing: .01em; }
+.pb-zustand > span { grid-area: 1 / 1; justify-self: end; transition: opacity .5s var(--ease) 1.6s; }
+.pb-heute { color: var(--tinte-leise); opacity: 0; }
+.pb-fokus { color: var(--akzent-papier); }
+.js .problem-bild:not(.sichtbar) .pb-heute { opacity: 1; }
+.js .problem-bild:not(.sichtbar) .pb-fokus { opacity: 0; }
+.pb-svg { width: 100%; height: auto; margin-top: 16px; overflow: visible; }
+.pb-satz { margin-top: 14px; font-size: .95rem; line-height: 1.55; color: var(--tinte-text); }
+.pb-svg text { font-family: var(--schrift); }
+.pb-text { fill: var(--tinte-text); font-size: 13px; font-weight: 500; }
+.pb-klein { fill: var(--tinte-leise); font-size: 12px; }
+.pb-gross { fill: var(--tinte-leise); font-size: 22px; font-weight: 600; }
+.pb-titel-text { fill: var(--tinte); font-size: 15px; font-weight: 600; }
+.pb-akzent-text { fill: var(--akzent-papier); font-weight: 600; }
+.pb-achse { stroke: var(--haar-mittel); stroke-width: 1; }
+.pb-grau { fill: rgba(17, 19, 22, .13); }
+.pb-grau-zart { fill: rgba(17, 19, 22, .07); }
+.pb-punkt { fill: var(--akzent-papier); transform-box: fill-box; transform-origin: center; transition: opacity .6s var(--ease) 3s; }
+.js .problem-bild:not(.sichtbar) .pb-punkt { opacity: 0; }
+.problem-bild.sichtbar .pb-punkt, html:not(.js) .pb-punkt { animation: pbPuls 2.8s ease-in-out 3.6s infinite; }
+@keyframes pbPuls { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.28); } }
+/* Linien, die sich einmal zeichnen (pathLength="1"). */
+.pb-verbindung, .pb-fuehrung { fill: none; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 1.3s var(--ease) 2.2s; }
+.js .problem-bild:not(.sichtbar) :is(.pb-verbindung, .pb-fuehrung) { stroke-dashoffset: 1; }
+
+/* In den Markt: Produkt hoch, Umsatz niedrig — die Lücke schließt sich. */
+.pb-produkt { fill: var(--tinte); }
+.pb-umsatz { fill: var(--akzent-papier); transform-box: fill-box; transform-origin: 50% 100%; transition: transform 1.5s var(--ease) 1.8s, fill .9s var(--ease) 1.8s; }
+.js .pb-produkt-umsatz:not(.sichtbar) .pb-umsatz { transform: scaleY(.32); fill: rgba(17, 19, 22, .22); }
+.pb-moeglich { stroke: var(--akzent-papier); stroke-width: 1.2; stroke-dasharray: 4 5; opacity: .75; }
+.pb-luecke { opacity: 0; transition: opacity .5s var(--ease) 1.7s; }
+.pb-luecke line, .pb-luecke path { fill: none; stroke: var(--tinte-leise); stroke-width: 1.3; }
+.js .pb-produkt-umsatz:not(.sichtbar) .pb-luecke { opacity: 1; }
+
+/* Sichtbarkeit: in der Antwort fehlen — dann oben stehen. */
+.pb-feld { fill: none; stroke: var(--haar-mittel); }
+.pb-funke { fill: var(--akzent-papier); opacity: .55; }
+.pb-gefunden .pb-zeile { transform: translateY(40px); transition: transform 1s var(--ease) 1.9s; }
+.pb-eigen { transform: translateY(-120px); transition: transform 1s var(--ease) 1.9s; }
+.pb-eigen-rahmen { fill: var(--akzent-zart); stroke: var(--akzent-papier); stroke-width: 1.2; transition: fill .6s var(--ease) 2.6s, stroke .6s var(--ease) 2.6s; }
+.pb-eigen-punkt { fill: var(--akzent-papier); transition: fill .6s var(--ease) 2.6s; }
+.pb-eigen-vorher { opacity: 0; transition: opacity .4s var(--ease) 1.8s; }
+.pb-eigen-nachher { fill: var(--tinte); font-weight: 600; transition: opacity .4s var(--ease) 2.4s; }
+.js .pb-gefunden:not(.sichtbar) :is(.pb-zeile, .pb-eigen) { transform: none; }
+.js .pb-gefunden:not(.sichtbar) .pb-eigen-rahmen { fill: transparent; stroke: var(--haar-mittel); stroke-dasharray: 5 5; }
+.js .pb-gefunden:not(.sichtbar) .pb-eigen-punkt { fill: rgba(17, 19, 22, .13); }
+.js .pb-gefunden:not(.sichtbar) .pb-eigen-vorher { opacity: 1; }
+.js .pb-gefunden:not(.sichtbar) .pb-eigen-nachher { opacity: 0; }
+
+/* Ins Unternehmen / Innovation: Inseln — dann ein Ablauf. */
+.pb-knoten rect { fill: var(--papier-hell); stroke: var(--tinte); stroke-width: 1.2; transition: stroke .6s var(--ease) 1.8s; }
+.js .pb-inseln:not(.sichtbar) .pb-knoten rect { stroke: var(--haar-mittel); stroke-dasharray: 4 4; }
+.pb-verbindung { stroke: var(--akzent-papier); stroke-width: 1.4; }
+.pb-mitte-text { transition: opacity .6s var(--ease) 3s; }
+.pb-schild { fill: var(--papier-hell); }
+.pb-nachher { transition: opacity .6s var(--ease) 3s; }
+.js .problem-bild:not(.sichtbar) .pb-nachher { opacity: 0; }
+.js .problem-bild:not(.sichtbar) .pb-mitte-text { opacity: 0; }
+
+/* Über uns: fünf Abstimmungen — dann ein Kernteam. */
+.pb-wirr { stroke: rgba(17, 19, 22, .28); stroke-width: 1.1; stroke-dasharray: 3 4; opacity: 0; transition: opacity .7s var(--ease) 1.8s; }
+.js .pb-netzwerk:not(.sichtbar) .pb-wirr { opacity: 1; }
+.pb-fuehrung { stroke: var(--akzent-papier); stroke-width: 2.2; transition-delay: 2.4s; }
+.pb-netzwerk .pb-verbindung { transition-delay: 2.9s; }
+.pb-sie { fill: var(--tinte); }
+.pb-kern { transition: opacity .6s var(--ease) 2.2s; }
+.js .pb-netzwerk:not(.sichtbar) .pb-kern { opacity: 0; }
+
+/* Preise: Stunden ohne Ende — dann fest. */
+.pb-stunden { opacity: .32; transition: opacity .7s var(--ease) 1.8s; }
+.js .pb-festpreis:not(.sichtbar) .pb-stunden { opacity: 1; }
+.pb-preis { transition: opacity .8s var(--ease) 2.2s, transform .8s var(--ease) 2.2s; }
+.js .pb-festpreis:not(.sichtbar) .pb-preis { opacity: 0; transform: translateX(14px); }
+.pb-preis-karte { fill: var(--papier); stroke: var(--akzent-papier); stroke-width: 1.4; }
+.pb-haken-punkt { fill: var(--akzent-papier); }
+
+/* Video-Platz (wird sichtbar, sobald in fokus.json › videos ein Video steht). */
+.video-buehne video { display: block; width: 100%; aspect-ratio: 16 / 9; background: var(--nacht); border-radius: 10px; }
+.video-buehne figcaption { margin-top: 10px; }
+.video-abschnitt { padding-top: 0; }
+.video-abschnitt .video-buehne { max-width: 960px; }
+
+@media (max-width: 1020px) { .problem-bild, .held-raster > .video-buehne { max-width: 560px; } }
+@media (prefers-reduced-motion: reduce) {
+  .problem-bild, .problem-bild * { transition: none !important; animation: none !important; }
+}
+@media (max-width: 560px) { .pb-text { font-size: 14px; } .pb-klein { font-size: 13px; } }

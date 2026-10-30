@@ -51,8 +51,8 @@ Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen w
 
 Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Abläufe fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
 
-- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Sichtbarkeit, Vertrieb und Innovation, mit zwei nächsten Schritten für Ihre größten Hebel.
-- [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): Start in Kürze, Preis folgt zum Start. Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang, Start in Kürze. Startet in Kürze.
+- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten oder ausführlich in rund 25.
+- [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): bald, Anfrage schon jetzt möglich, Preis auf Anfrage. Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an. Startet in Kürze.
 
 Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse); Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
 
@@ -62,7 +62,7 @@ Frage: Was kostet der Innovations-Check?
 Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
 
 Frage: Wie lange dauert der Check?
-Antwort: Rund 10 Minuten für die 15 Kernfragen. Wenn Sie mehr beantworten, wird Ihr Bericht genauer. Sie können jederzeit pausieren und später weitermachen.
+Antwort: Sie wählen am Anfang: kurz mit 19 Fragen in rund 10 Minuten oder ausführlich mit rund 50 Fragen in rund 25 Minuten. Die ausführliche Fassung fragt zusätzlich nach Ihrer Branche und wird genauer. Auswerten können Sie jederzeit, und auf demselben Gerät später weitermachen.
 
 Frage: Ist Zoe ein Mensch?
 Antwort: Nein. Zoe ist unsere KI-Assistentin. Sie sagt das auch am Anfang jedes Gesprächs. Wenn Sie lieber mit einem Menschen sprechen, gibt Zoe Sie an Kevin weiter.
@@ -106,7 +106,7 @@ Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich a
 - Fokus Innovation · Events: Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.
 - Go-to-Market: Der Weg eines Produkts in den Markt: Zielgruppe, Botschaft, Kanäle, Vertrieb und Preise. Im Deutschen oft Markteintritt.
 - Head of Sales auf Zeit: Eine Vertriebsleitung für einige Monate, die das System aufbaut, mit Ihrem Team umsetzt und so übergibt, dass der Vertrieb ohne sie läuft. Auch Interim Head of Sales genannt.
-- Innovations-Check: Unser kostenloser Check in rund 10 Minuten. Er zeigt, wo Ihr Unternehmen bei Sichtbarkeit, Vertrieb und Innovation steht, und nennt die nächsten Schritte.
+- Innovations-Check: Unser kostenloser Check, kurz in rund 10 oder ausführlich in rund 25 Minuten. Er zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, und nennt die nächsten Schritte.
 - KI-Brain: Wissen, Abläufe und Daten eines Unternehmens sauber an einem Ort, damit KI im Alltag darauf zugreifen kann. Bei uns in Vorbereitung.
 - Landingpage: Eine einzelne Seite, die ein Angebot und einen nächsten Schritt in den Mittelpunkt stellt, oft als Ziel einer Anzeige. Eine ganze Website auf einer Seite heißt One-Pager; unser Paket Homepage Landing ist so eine.
 - Lead: Ein Kontakt, der Interesse an Ihrem Angebot gezeigt hat oder gut zu Ihrer Zielgruppe passt.
@@ -134,9 +134,9 @@ Kurz gesagt: Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgrup
 
 Am Anfang verkauft der Gründer selbst. Das ist richtig, denn niemand kennt das Produkt besser. Schwierig wird es, wenn es so bleibt: Dann hängt jeder Abschluss an einer Person, Anfragen bleiben liegen, Angebote gehen zu spät raus, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.
 
-Damit sind Gründer nicht allein. Das zeigt der Deutsche Startup Monitor:
+Kunden zu gewinnen, ist für junge Unternehmen das wichtigste Ziel. Das zeigt der Deutsche Startup Monitor 2026:
 
-63,5 % der Start-ups in Deutschland nennen Vertrieb und Kundengewinnung ihre größte Herausforderung, vor Produktentwicklung und Kapital. (Quelle: Deutscher Startup Monitor 2025, S. 56, https://startupverband.de/fileadmin/startupverband/mediaarchiv/research/dsm/Deutscher_Startup_Monitor_2025.pdf)
+72,3 % der Start-ups in Deutschland suchen bei Kooperationen mit etablierten Unternehmen vor allem Referenzkunden, 59,6 % neue Vertriebskanäle. (Quelle: Deutscher Startup Monitor 2026, S. 43, https://startupverband.de/media/file/rs-deutscherstartupmonitor2026)
 
 ### Schritt 1: Die Zielgruppe schärfen
 
@@ -456,9 +456,9 @@ Dieselbe Lücke zeigt sich bei Neuem insgesamt. Die KfW misst, wie viele Mittels
 
 ### Woran es hakt
 
-Fast die Hälfte der Unternehmen, die KI erwogen und nicht eingeführt haben, nennt Probleme mit der Verfügbarkeit oder Qualität ihrer Daten. Das lässt sich klären, bevor ein Werkzeug gekauft wird.
+Das Teure an KI sind selten die Lizenzen. Es sind die Daten und die Anbindung an Ihre Systeme. Das lässt sich klären, bevor ein Werkzeug gekauft wird.
 
-44 % der Unternehmen, die KI erwogen und nicht eingeführt haben, nennen Probleme mit Verfügbarkeit oder Qualität ihrer Daten. (Quelle: Destatis, Gründe gegen KI, 2025, https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-gegen-nutzung-kuenstliche-intelligenz.html)
+50 % der Unternehmen, die KI nutzen, nennen die Aufbereitung von Daten als großen Kostenpunkt, 41 % die Einbindung in bestehende Systeme. Lizenzen für KI-Software nennen nur 21 %. (Quelle: Bitkom, KI-Studie 2026, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
 
 ### In fünf Schritten in den Alltag
 
@@ -484,7 +484,7 @@ Deshalb bringen wir sie dorthin, wo sie im Alltag wirken: in Angebote, Anfragen,
 
 ### So arbeiten wir
 
-Der Innovations-Check zeigt Ihre Stufe in Sichtbarkeit, Vertrieb und Innovation und für die Innovation den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
+Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
 
 Frage: Womit sollte ein Mittelständler bei KI anfangen?
 Antwort: Mit einem ehrlichen Blick auf den eigenen Stand. Danach wählen Sie die drei Anwendungsfälle mit dem größten Nutzen und führen sie nacheinander ein: Erst wenn der erste im Alltag läuft, kommt der nächste.
@@ -493,7 +493,7 @@ Frage: Welche Daten braucht KI im Unternehmen?
 Antwort: Die Daten des Ablaufs, den sie unterstützen soll, zum Beispiel Kundenanfragen, Angebote, Produktwissen oder Arbeitsanweisungen. Wichtig ist, dass sie aktuell, vollständig und an einem Ort zugänglich sind.
 
 Frage: Was kostet es, KI einzuführen?
-Antwort: Der Innovations-Check und das Erstgespräch sind kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Sie starten in Kürze; den Preis nennen wir zum Start.
+Antwort: Der Innovations-Check und das Erstgespräch sind kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Haben Sie ein Vorhaben, sprechen Sie uns an; den Preis nennen wir im Gespräch.
 
 Frage: Was kostet der Innovations-Check?
 Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
@@ -510,7 +510,7 @@ Viele kleine Unternehmen steuern ihren Vertrieb nach Gefühl. Mal läuft es, mal
 
 Die fünf Zahlen hier hängen zusammen: Sie zeigen, wie viel in Ihren Vertrieb hineinkommt, wie viel davon zum Auftrag wird, wie schnell das geht und was als Nächstes kommen kann. Sie lassen sich mit wenig Aufwand erfassen und zeigen früh, wenn etwas klemmt. Wie oft gerade der Vertrieb klemmt, zeigt der Deutsche Startup Monitor:
 
-63,5 % der Start-ups in Deutschland nennen Vertrieb und Kundengewinnung ihre größte Herausforderung, vor Produktentwicklung und Kapital. (Quelle: Deutscher Startup Monitor 2025, S. 56, https://startupverband.de/fileadmin/startupverband/mediaarchiv/research/dsm/Deutscher_Startup_Monitor_2025.pdf)
+29 % der kleinen und mittleren Unternehmen erwarten in drei Jahren höhere Umsätze, genauso viele niedrigere. Unterm Strich Stillstand. (Quelle: KfW-Mittelstandspanel 2026, https://www.kfw.de/PDF/Download-Center/Konzernthemen/Research/PDF-Dokumente-KfW-Mittelstandspanel/KfW-Mittelstandspanel-2026.pdf)
 
 ### Zahl 1: Angebote im Monat
 
@@ -896,9 +896,9 @@ Kurz gesagt: Den ersten Anwendungsfall für KI finden Sie, indem Sie Ideen samme
 
 ### Warum die Auswahl entscheidet
 
-Viele Unternehmen ahnen, dass KI ihnen helfen könnte, wissen aber nicht, wo sie anfangen sollen. Unter den Unternehmen, die KI erwogen und noch nicht eingeführt haben, steht fehlendes Wissen als Grund vorn:
+Viele Unternehmen ahnen, dass KI ihnen helfen könnte, wissen aber nicht, wo sie anfangen sollen. Ausprobiert wird viel, ausgeschöpft wenig:
 
-72 %: Von den Unternehmen in Deutschland, die den Einsatz von KI erwogen, aber noch nicht umgesetzt haben, nannten 2025 72 % fehlendes Wissen als Grund. (Quelle: Statistisches Bundesamt (Destatis), https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-gegen-nutzung-kuenstliche-intelligenz.html)
+3 %: Nur 3 % der Unternehmen ab 20 Beschäftigten in Deutschland schöpfen das Potenzial von KI nach eigener Einschätzung eher stark aus, keines vollständig. (Quelle: Bitkom, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
 
 Der erste Anwendungsfall prägt, wie Ihr Team über KI denkt. Ein Ablauf, der sichtbar Zeit spart und bei dem nichts schiefgeht, öffnet die Tür für den nächsten. Ein Fehlgriff kostet Vertrauen. Deshalb lohnt sich eine Stunde Bewertung, bevor Sie loslegen.
 
@@ -947,7 +947,7 @@ Bevor Sie die Punkte zusammenzählen, prüfen Sie zwei Regeln. Sie gehen jeder S
 1. Hohe Fehlerfolgen: nicht zuerst: Bekommt ein Ablauf bei den Fehlerfolgen nur 1 Punkt, wählen Sie ihn nicht für den ersten Versuch, egal wie viele Punkte er sonst hat.
 2. Keine greifbaren Daten: erst ordnen: Bekommt die Datenlage 1 oder 2 Punkte, ordnen Sie zuerst die Daten und bewerten dann neu. Ohne greifbares Wissen kann KI nur raten.
 
-44 % der Unternehmen, die KI erwogen und nicht eingeführt haben, nennen Probleme mit Verfügbarkeit oder Qualität ihrer Daten. (Quelle: Destatis, Gründe gegen KI, 2025, https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-gegen-nutzung-kuenstliche-intelligenz.html)
+50 % der Unternehmen, die KI nutzen, nennen die Aufbereitung von Daten als großen Kostenpunkt, 41 % die Einbindung in bestehende Systeme. Lizenzen für KI-Software nennen nur 21 %. (Quelle: Bitkom, KI-Studie 2026, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
 
 Enthält ein Ablauf personenbezogene oder vertrauliche Daten, klären Sie vor dem Start Datenschutz und Vertrag des Werkzeugs mit der Person, die bei Ihnen dafür zuständig ist.
 
@@ -1017,7 +1017,7 @@ Die drei Phasen eines Vertriebs (Stehen Sie zwischen zwei Phasen, gilt die früh
 - Aufbau | Eine bis drei Personen verkaufen mit. Der Gründer schließt die meisten Aufträge noch selbst ab und beantwortet viele Fragen. | erste Vertriebler, der Gründer schließt ab | Einarbeitung, Erwartungen je Rolle und Kennzahlen je Person
 - Wachstum | Mehrere Personen arbeiten in unterschiedlichen Rollen. Eine Person führt den Vertrieb, der Gründer gibt vor allem die Richtung vor. | ein Team mit Vertriebsleitung | ein fester Führungsrhythmus, verlässliche Prognosen und eine klare Vergütung
 
-63,5 % der Start-ups in Deutschland nennen Vertrieb und Kundengewinnung ihre größte Herausforderung, vor Produktentwicklung und Kapital. (Quelle: Deutscher Startup Monitor 2025, S. 56, https://startupverband.de/fileadmin/startupverband/mediaarchiv/research/dsm/Deutscher_Startup_Monitor_2025.pdf)
+72,3 % der Start-ups in Deutschland suchen bei Kooperationen mit etablierten Unternehmen vor allem Referenzkunden, 59,6 % neue Vertriebskanäle. (Quelle: Deutscher Startup Monitor 2026, S. 43, https://startupverband.de/media/file/rs-deutscherstartupmonitor2026)
 
 Die Zahl betrifft Start-ups, das Muster kennen auch gestandene Betriebe: Solange eine Person allein verkauft, wächst der Vertrieb nur so weit, wie ihr Kalender reicht. Jede Phase in diesem Leitfaden löst diesen Engpass ein Stück weiter.
 
@@ -1107,8 +1107,6 @@ Im Vertrieb täuscht der erste Eindruck oft: Wer im Vorstellungsgespräch gut re
 3. Kurzes Telefonat: Fünfzehn Minuten am Telefon zeigen viel: Wie klingt die Person, hört sie zu, stellt sie Fragen? Für Rollen am Telefon ist das die wichtigste Vorauswahl.
 4. Strukturiertes Gespräch mit Bewertungsbogen: Alle Bewerber bekommen dieselben Fragen und ein kurzes Rollenspiel, etwa ein Erstgespräch mit einem typischen Einwand. Zwei Personen bewerten getrennt auf einem Bogen und vergleichen erst danach.
 5. Bezahlter Probetag: Ein Tag im echten Umfeld zeigt, ob die Person Rückmeldung annimmt und umsetzt. Diese Lernfähigkeit sagt mehr voraus als jede Antwort im Gespräch.
-
-über 40 %: Mehr als 40 % der kleinen und mittleren Unternehmen in Deutschland haben Schwierigkeiten, offene Stellen zu besetzen. (Quelle: DIHK, https://www.dihk.de/de/newsroom/dihk-legt-fachkraeftereport-2025-2026-vor-159712)
 
 Bewerten Sie im Gespräch und am Probetag dieselben Fähigkeiten: Gesprächsführung, Fragen und Zuhören, Umgang mit Einwänden, Verbindlichkeit und Lernfähigkeit. Fragen Sie getrennt davon, ob die Person zu Ihren Werten passt und ob sie Ihre Zielgruppe kennt. Wer die Zielgruppe nicht kennt, kann trotzdem gut sein, braucht aber länger.
 
@@ -1243,7 +1241,7 @@ Kennzahlen am Start (Dazu gilt die Regel aus dem Ratgeber zu den fünf Vertriebs
 - Offene Chancen mit Wert | Summe der Werte aller offenen Chancen mit vereinbartem nächstem Schritt | zeigt, was in den nächsten Monaten kommen kann | Wert und nächster Schritt mit Datum je Zeile
 - Herkunft der Aufträge | Aufträge je Quelle ÷ alle Aufträge | zeigt, welcher Weg trägt und was eine erste Vertriebsperson übernehmen kann | Spalte „Quelle“: Empfehlung, Netzwerk, Website, eigene Ansprache
 
-47,3 %: Im Juli 2026 berichteten 47,3 % der Selbstständigen in Deutschland von fehlenden Aufträgen. (Quelle: ifo Institut, https://www.ifo.de/fakten/2026-08-07/knapp-die-haelfte-der-selbstaendigen-klagt-ueber-auftragsmangel)
+36,3 %: Im Januar 2026 meldeten 36,3 % der Unternehmen in Deutschland zu wenig Aufträge. Am stärksten betroffen waren Unternehmensberater (53,8 %), die Werbebranche (51,2 %) und IT-Dienstleister (48,1 %). (Quelle: ifo Institut, https://www.ifo.de/fakten/2026-01-29/auftragslage-der-unternehmen-entspannt-sich-nur-geringfuegig)
 
 Gerade wenn Aufträge knapp sind, sind die Eingaben der Hebel, den Sie selbst bewegen: Vertriebsstunden und Erstgespräche. Zählen Sie diese beiden jede Woche, auch wenn sonst keine Zeit bleibt.
 
