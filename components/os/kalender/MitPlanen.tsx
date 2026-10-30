@@ -16,6 +16,7 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, LEUCHT } from '../ui';
 import { personLesen } from '@/lib/make-one/arbeitsplatz-browser';
 import { usePersonen } from '../aufgaben/hilfe';
+import { FAECHER, fachDerPerson } from '@/lib/make-one/fach-namen';
 import { FreieZeiten } from './FreieZeiten';
 import { Buchungsseiten, useBuchungen } from './Buchungsseiten';
 import type { KTermin, Wer } from './teile';
@@ -92,7 +93,9 @@ export function useTermineFinden({ alle = KEINE, onVorschlag }: { alle?: KTermin
   }, [buchungen]);
 
   const vorlegen = (f: FreieZeit) => {
-    const wer: Wer = planen && planen.personen.length > 1 ? 'beide' : ((planen?.personen[0] ?? 'kevin') as Wer);
+    // Eine Person → ihr Fach der Kalender-Zuordnung (30.10., neutral: über die Konten, vorher Speichername als Fach gecastet).
+    const fach = fachDerPerson(planen?.personen[0], personen.map(p => ({ id: p.speicher, name: p.name }))) ?? FAECHER[0];
+    const wer: Wer = planen && planen.personen.length > 1 ? 'beide' : fach;
     onVorschlag({ tag: f.tag, von: f.start.slice(11, 16), bis: f.ende.slice(11, 16), wer });
   };
 

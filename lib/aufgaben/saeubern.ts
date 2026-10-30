@@ -144,7 +144,8 @@ export function taskSauber(o: unknown): Task | null {
     id, title, projectId: S(t.projectId, 80) ?? '', description: S(t.description, 4000),
     status: TASK_STATUS.includes(t.status as TaskStatus) ? (t.status as TaskStatus) : 'todo',
     priority: PRIO.includes(t.priority as Priority) ? (t.priority as Priority) : 'medium',
-    assignee: (S(t.assignee, 40) ?? 'kevin') as Owner,
+    // Ohne Angabe „both“ (30.10., neutral — vorher eine feste Person): der Schreibweg löst es auf eine Person des Haushalts auf (`beideAufloesen`).
+    assignee: (S(t.assignee, 40) ?? 'both') as Owner,
     tags: Array.isArray(t.tags) ? (t.tags.map(x => String(x).slice(0, 40)) as unknown as Task['tags']) : [],
     dueDate: S(t.dueDate, 40), completedAt: S(t.completedAt, 40),
     // Uhrzeit der Deadline (29.09., Kalender K1) — nur „HH:MM“ und nur mit Deadline.
@@ -206,7 +207,7 @@ export function projektSauber(o: unknown): Project | null {
   const jetzt = new Date().toISOString();
   const category = KATEGORIEN.includes(p.category as ProjectCategory) ? (p.category as ProjectCategory) : spaceId === 'privat' ? 'joint' : 'business';
   const raus: Project = {
-    id, title, description: S(p.description, 2000), category, owner: (p.owner === 'malin' || p.owner === 'kevin' ? p.owner : 'both') as Owner,
+    id, title, description: S(p.description, 2000), category, owner: (ownerSauber(p.owner) ?? 'both') as Owner,
     color: typeof p.color === 'string' && FARBE.test(p.color) ? p.color : '#58D9CD',
     tags: Array.isArray(p.tags) ? (p.tags.slice(0, AUFGABEN_GRENZEN.tags) as Project['tags']) : [],
     archived: p.archived === true, dueDate: typeof p.dueDate === 'string' && TAG.test(p.dueDate) ? p.dueDate : undefined,
@@ -253,7 +254,11 @@ const PROJEKT_STATUS: readonly ProjektStatus[] = ['aktiv', 'pausiert', 'abgeschl
 const FELD_TYPEN: readonly FeldTyp[] = ['text', 'zahl', 'betrag', 'datum', 'auswahl', 'link', 'person'];
 const REGELN: readonly WiederholungRegel[] = ['taeglich', 'woechentlich', 'monatlich', 'jaehrlich', 'werktage'];
 const ZOE_STATUS: readonly ZoeStatus[] = ['offen', 'in_arbeit', 'wartet_freigabe', 'freigegeben', 'abgelehnt'];
-const OWNER = ['kevin', 'malin', 'both'] as const;
+/**
+ * Besitz/Zuständigkeit (30.10., neutral — vorher nur zwei feste Speichernamen): ein Speichername (Konto) oder „both“. Welche Person es
+ * gibt, prüft der Schreibweg gegen die Konten (`aufgabePruefen`); hier nur die Form. Altbestand liest sich bit-gleich.
+ */
+export const ownerSauber = (v: unknown): string | undefined => (v === 'both' || (typeof v === 'string' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(v)) ? v : undefined);
 
 /** Text mit Grenze: länger → ZuGross (413), nie still gekürzt. Leer → undefined. */
 function textOderAblehnen(v: unknown, max: number, was: string): string | undefined {
@@ -452,7 +457,7 @@ function vorlageAufgabeSauber(o: unknown, tiefe: number, zaehler: { n: number })
   const r: VorlageAufgabe = { titel };
   const b = textOderAblehnen(a.beschreibung, 4000, 'Beschreibung'); if (b) r.beschreibung = b;
   if (PRIO.includes(a.prioritaet as Priority)) r.prioritaet = a.prioritaet as Priority;
-  if ((OWNER as readonly string[]).includes(a.zustaendig as string)) r.zustaendig = a.zustaendig as Owner;
+  const zustaendig = ownerSauber(a.zustaendig); if (zustaendig) r.zustaendig = zustaendig as Owner;
   const v = Number(a.versatzTage); if (Number.isInteger(v) && Math.abs(v) <= 3650) r.versatzTage = v;
   const n = notizSauber(a.notiz, 'Notiz in der Vorlage'); if (n) r.notiz = n;
   const f = feldWerteSauber(a.felder); if (f) r.felder = f;

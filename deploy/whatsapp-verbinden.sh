@@ -86,7 +86,7 @@ done
 unset ROH
 if [[ -z "$GEHEIMNIS" ]]; then unset ZUGRIFF; echo "Abbruch nach drei Versuchen — nichts gespeichert."; exit 1; fi
 
-read -rp "Bereich der Nummer (ug = MAKE Innovation, kdv = KD Ventures, g-… aus dem Register) [ug]: " BEREICH
+read -rp "Bereich der Nummer (ug, kdv = feste Gesellschaften der Instanz, g-… aus dem Register) [ug]: " BEREICH
 BEREICH="$(printf '%s' "${BEREICH:-ug}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
 if [[ ! "$BEREICH" =~ ^(kdv|ug|g-[a-z0-9][a-z0-9-]{3,62})$ ]]; then unset ZUGRIFF GEHEIMNIS; echo "Abbruch: „$BEREICH“ ist kein Business-Bereich (WhatsApp Business gehört nie zu Privat)."; exit 1; fi
 
@@ -118,7 +118,10 @@ echo "Gespeichert (nur für den Nutzer make lesbar)."
 neu_starten
 echo
 echo "Jetzt bei Meta (App-Dashboard › WhatsApp › Konfiguration › Webhook › Bearbeiten) eintragen:"
-echo "  Rückruf-URL:      https://app.makeinnovation.de/api/whatsapp/webhook"
+# Adresse der Instanz aus der .env (30.10., neutral — vorher eine feste Domain im Skript).
+ADRESSE="$(grep -E '^MAKE_OS_ADRESSE=' "$ENV_DATEI" | head -1 | cut -d= -f2- | tr -d '"' || true)"
+ADRESSE="${ADRESSE%/}"; [[ -n "$ADRESSE" ]] || ADRESSE="https://<Adresse eurer Instanz>"
+echo "  Rückruf-URL:      ${ADRESSE}/api/whatsapp/webhook"
 echo "  Verify-Token:     ${VERIFY}"
 echo "Dann „Überprüfen und speichern“ und unter Webhook-Felder „messages“ abonnieren."
 echo "Danach in MAKE OS: Verbindungen › WhatsApp Business › „Verbindung prüfen“."

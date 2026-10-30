@@ -41,6 +41,7 @@ import { LEUCHT } from '../ui';
 import { spaltenLegen, ziehSpanne, spanneText, rasterLage, zeitumstellung, letzterTag, verschiebeDifferenz, endeAmTag, startMinute } from '@/lib/kalender/layout';
 import { ART_INFO, ARBEITSORTE } from '@/lib/kalender/arten';
 import { ART_FARBE } from '@/types/planer';
+import { FAECHER, istFach } from '@/lib/make-one/fach-namen';
 import { WER_FARBE, useWerLabel, istVorlaeufig, istGoogleTermin, type KTermin, type KFrist, type KErinnerung, type Wer } from './teile';
 import { mitZeitAm, zeitAusMinuten, type KalenderAufgabe } from '@/lib/kalender/aufgaben';
 import { aufgabeZiehStart, aufgabeAusZiehen, ziehtAufgabe } from './aufgaben';
@@ -287,12 +288,12 @@ export function Zeitraster({ tage, heute, termine, fristen, erinnerungen, aufgab
   const arbeitsorte = useMemo(() => {
     const zeilen = new Map<Wer, Map<string, KTermin>>();
     for (const t of termine.filter(x => x.art === 'arbeitsort')) {
-      const wer: Wer = t.wer === 'beide' && (t.von === 'kevin' || t.von === 'malin') ? t.von : t.wer;
+      const wer: Wer = t.wer === 'beide' && istFach(t.von) ? t.von : t.wer;
       const z = zeilen.get(wer) ?? new Map<string, KTermin>();
       for (const tag of tage) if (t.start.slice(0, 10) <= tag && (t.ende.slice(0, 10) > tag || (!t.ganztags && t.start.slice(0, 10) === tag))) z.set(tag, t);
       zeilen.set(wer, z);
     }
-    return (['kevin', 'malin', 'beide'] as Wer[]).filter(w => zeilen.get(w)?.size).map(w => ({ wer: w, tage: zeilen.get(w)! }));
+    return ([...FAECHER, 'beide'] as Wer[]).filter(w => zeilen.get(w)?.size).map(w => ({ wer: w, tage: zeilen.get(w)! }));
   }, [termine, tage]);
 
   const spalteAus = (clientX: number) => { const r = spalten.current?.getBoundingClientRect(); if (!r) return 0; return Math.max(0, Math.min(tage.length - 1, Math.floor(((clientX - r.left) / r.width) * tage.length))); };

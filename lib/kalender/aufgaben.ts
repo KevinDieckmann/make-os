@@ -17,8 +17,10 @@ import { suchPasst } from '@/lib/text/such-norm';
 import { istTag, tageZwischen } from '@/lib/aufgaben/ansichten';
 import { tagPlus } from './zeit';
 import { vorfahren } from '@/lib/aufgaben/ebenen';
+import type { Fach } from '@/lib/make-one/fach-namen';
 
-export type Sicht = 'alle' | 'kevin' | 'malin' | 'beide';
+/** Sicht: alle, ein Fach der Kalender-Zuordnung (Kennungen aus dem Altbestand, lib/make-one/fach-namen.ts) oder gemeinsam. */
+export type Sicht = 'alle' | Fach | 'beide';
 export type Bereich = 'alle' | 'privat' | 'business';
 
 /** Eine Aufgabe, wie Raster, Monat und Termine sie zeigen. `tag` = Deadline, `start` = Start (nur wenn früher). */

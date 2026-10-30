@@ -21,6 +21,7 @@ import { anteilStand } from '@/lib/kennzahlen/anteil';
 import { luecken } from '@/lib/finanzen/luecken';
 import { nurBusinessPunkte, nurBusinessTermine } from '@/lib/finanzen/plan/sicht';
 import { usePlan } from './daten';
+import { usePersonen } from '../aufgaben/hilfe';
 import { Geld, Kachel, Kacheln, Etikett, StatusPille, PersonMarke, AnteilBalken, KnopfKlein, Auswahl, ampel, personName, KUPFER, LILA, Nichts, Hinweis, Legende } from './teile';
 import { Linie } from './diagramme';
 /** Name der Gesellschaft `kdv` aus den Einstellungen (lib/einheiten.ts) — nie fest im Code. */
@@ -355,7 +356,11 @@ export function Check() {
     `${ford.length} offene Forderungen · ${eur(ford.reduce((s, p) => s + (p.betrag ?? 0), 0))} €`, `Privat nächste 14 Tage: ${eur(aus14)} €`, `${d.fokus.schritte.filter(s => !s.erledigt).length} offene Schritte`];
   const [notiz, setNotiz] = useState(e.notiz);
   const [notizFokus, setNotizFokus] = useState(false);
-  const ich = person || 'kevin';
+  // Die Person der Sitzung (vom Server) — ohne sie (noch nicht geladen) wird nichts bestätigt (30.10., neutral: kein fester Rückfall).
+  const ich = person;
+  // Wer bestätigen kann: die Konten des Haushalts, dazu jede, die schon bestätigt hat (Altbestand) — nie feste Namen.
+  const kontoPersonen = usePersonen();
+  const bestaetiger = Array.from(new Set([...kontoPersonen.map(p => p.speicher), ...e.wer.map(x => x.toLowerCase())]));
 
   /** Eintrag von heute ändern — anlegen, wenn es ihn noch nicht gibt. */
   const setzeEintrag = (teil: Partial<typeof e>, feld: string) => {
@@ -364,6 +369,7 @@ export function Check() {
     return aendere(ops, feld);
   };
   const bestaetigen = () => {
+    if (!ich) return;
     const wer = e.wer.includes(ich) ? e.wer : [...e.wer, ich];
     const teil: Partial<typeof e> = { wer, notiz };
     void (async () => {
@@ -391,9 +397,9 @@ export function Check() {
             onBlur={() => { setNotizFokus(false); if (notiz !== e.notiz) void setzeEintrag({ notiz }, 'Check-Notiz'); }} style={{ ...feld, resize: 'vertical', fontSize: TYP.bedien, lineHeight: 1.5 }} />
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Bestätigt:</span>
-            {['kevin', 'malin'].map(w => <span key={w} style={{ opacity: e.wer.map(x => x.toLowerCase()).includes(w) ? 1 : 0.35 }}><PersonMarke wer={w} mitName /></span>)}
+            {bestaetiger.map(w => <span key={w} style={{ opacity: e.wer.map(x => x.toLowerCase()).includes(w) ? 1 : 0.35 }}><PersonMarke wer={w} mitName /></span>)}
             <span style={{ flex: 1 }} />
-            <Knopf onClick={bestaetigen}>Als {personName(ich)} bestätigen</Knopf>
+            {ich && <Knopf onClick={bestaetigen}>Als {personName(ich)} bestätigen</Knopf>}
           </div>
         </Karte>
       </Spalte>

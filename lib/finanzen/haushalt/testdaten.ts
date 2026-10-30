@@ -8,7 +8,7 @@ import { vollMonate, heuteBerlin, monatVon, tagPlus } from './monat';
 import { fingerabdruck } from './import';
 import { ENTNAHME_NAME } from './einordnung';
 
-/** Malins Kategorien (Schema + Einnahme-Arten + was die alten Daten brauchten). */
+/** Die Kategorien des Altsystems (Schema + Einnahme-Arten + was die alten Daten brauchten). */
 export const START_KATEGORIEN: [string, Kategorie['typ'], number][] = [
   ['Gehalt', 'einnahme', 11], [ENTNAHME_NAME, 'einnahme', 12], ['Aktien & Krypto', 'einnahme', 13],
   ['Kredit erhalten', 'einnahme', 14], ['Erstattung / Retoure', 'einnahme', 15], ['Geschenk & Familie', 'einnahme', 16],
@@ -27,8 +27,8 @@ function zufall(saat: number) { let x = saat; return () => { x = (x * 1103515245
 export function testHaushalt(heute: string = heuteBerlin()): Haushalt {
   const jetzt = new Date().toISOString();
   const konten: Konto[] = [
-    { id: 'test-konto-a', stand: 1, name: 'Testkonto Kevin (Beispiel)', inhaber: 'Kevin', einheit: 'privat', iban_suffix: '0001', bank: 'Beispielbank', waehrung: 'EUR', aktiv: true },
-    { id: 'test-konto-b', stand: 1, name: 'Testkonto Malin (Beispiel)', inhaber: 'Malin', einheit: 'privat', iban_suffix: '0002', bank: 'Beispielbank', waehrung: 'EUR', aktiv: true },
+    { id: 'test-konto-a', stand: 1, name: 'Testkonto Person A (Beispiel)', inhaber: 'Person A', einheit: 'privat', iban_suffix: '0001', bank: 'Beispielbank', waehrung: 'EUR', aktiv: true },
+    { id: 'test-konto-b', stand: 1, name: 'Testkonto Person B (Beispiel)', inhaber: 'Person B', einheit: 'privat', iban_suffix: '0002', bank: 'Beispielbank', waehrung: 'EUR', aktiv: true },
     { id: 'test-konto-g', stand: 1, name: 'Gemeinsames Testkonto', inhaber: 'gemeinsam', einheit: 'privat', iban_suffix: '0003', bank: 'Beispielbank', waehrung: 'EUR', aktiv: true },
   ];
   const kategorien: Kategorie[] = START_KATEGORIEN.map(([name, typ, sortierung], i) => ({ id: `test-kat-${i}`, stand: 1, name, typ, sortierung, monatsbudget: name === 'Lebensmittel' ? 60000 : name === 'Essen auswärts' ? 20000 : null }));
@@ -62,7 +62,7 @@ export function testHaushalt(heute: string = heuteBerlin()): Haushalt {
       if (r() < 0.2) add('test-konto-b', tag(t + 1), -Math.round(900 + r() * 4000), 'Apotheke Beispiel', 'Gesundheit');
       if (r() < 0.15) add('test-konto-a', tag(t), -Math.round(2000 + r() * 12000), 'Onlineshop Beispiel', r() < 0.7 ? 'Shopping' : null);
     }
-    if (i === 2) { add('test-konto-a', tag(12), 300000, 'Beispielbank Kredit', 'Kredit erhalten'); add('test-konto-b', tag(14), 4500, 'Rückzahlung Kevin Beispiel', 'Rücküberweisung / Auslage'); }
+    if (i === 2) { add('test-konto-a', tag(12), 300000, 'Beispielbank Kredit', 'Kredit erhalten'); add('test-konto-b', tag(14), 4500, 'Rückzahlung Person A Beispiel', 'Rücküberweisung / Auslage'); }
     if (i === 4) add('test-konto-a', tag(20), -24000, 'Jahresbeitrag Verein Beispiel', 'Sport', { ist_fixkosten: true, turnus: 'jahr' });
     if (i === 5) add('test-konto-b', tag(15), 12000, 'Finanzamt Beispiel', 'Steuererstattung');
   });
@@ -76,9 +76,9 @@ export function testHaushalt(heute: string = heuteBerlin()): Haushalt {
     { id: 'test-s-2', stand: 1, bezeichnung: 'Kredit Beispielbank', glaeubiger: 'Beispielbank', einheit: 'privat', startbetrag: 300000, restbetrag: 300000, rate: null, zinssatz: null, rhythmus: 'monatlich', naechste_faelligkeit: null, endet_am: null, notiz: 'Automatisch aus der Einnahme angelegt.', aus_buchung_id: kreditBuchung?.id ?? null },
   ];
   const belege: Beleg[] = [
-    { id: 'test-bl-1', stand: 1, art: 'rechnung', bezeichnung: 'Nebenkostenabrechnung Beispiel', empfaenger: 'Hausverwaltung Beispiel', betrag: 18400, faellig_am: tagPlus(heute, 5), verursacher: 'Malin', einheit: 'privat', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
-    { id: 'test-bl-2', stand: 1, art: 'rechnung', bezeichnung: 'Handwerker Beispiel', empfaenger: 'Handwerk Beispiel', betrag: 26000, faellig_am: tagPlus(heute, -3), verursacher: 'Kevin', einheit: 'privat', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
-    { id: 'test-bl-3', stand: 1, art: 'beleg', bezeichnung: 'Quittung Hotel Beispielstadt', empfaenger: null, betrag: null, faellig_am: tagPlus(heute, 10), verursacher: 'Kevin', einheit: 'kdc', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
+    { id: 'test-bl-1', stand: 1, art: 'rechnung', bezeichnung: 'Nebenkostenabrechnung Beispiel', empfaenger: 'Hausverwaltung Beispiel', betrag: 18400, faellig_am: tagPlus(heute, 5), verursacher: 'Person B', einheit: 'privat', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
+    { id: 'test-bl-2', stand: 1, art: 'rechnung', bezeichnung: 'Handwerker Beispiel', empfaenger: 'Handwerk Beispiel', betrag: 26000, faellig_am: tagPlus(heute, -3), verursacher: 'Person A', einheit: 'privat', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
+    { id: 'test-bl-3', stand: 1, art: 'beleg', bezeichnung: 'Quittung Hotel Beispielstadt', empfaenger: null, betrag: null, faellig_am: tagPlus(heute, 10), verursacher: 'Person A', einheit: 'kdc', erledigt: false, bezahlt_am: null, notiz: null, buchung_id: null },
   ];
   const m = monatVon(heute);
   const planwerte: Planwert[] = [

@@ -106,7 +106,7 @@ export const DEPARTMENTS: Department[] = [
     ],
   },
   {
-    id: 'strategie', name: 'Strategie / Ventures', mission: 'Richtung, Markt-Edge, KD-Ventures-Pipeline.', color: '#005F73', lead: 'Strategy Lead',
+    id: 'strategie', name: 'Strategie / Ventures', mission: 'Richtung, Markt-Edge, Beteiligungs-Pipeline.', color: '#005F73', lead: 'Strategy Lead',
     agents: [
       { id: 'research', name: 'Markt-/Research-Agent', role: 'Belegte Recherche, Wettbewerb (parallel)', status: 'live', autonomy: 'autonom', model: 'schnell', href: '/os/research',
         funktionen: ['Markt-/Wettbewerbs-Recherche mit Web-Suche', 'Belegte Reports mit Quellen', 'Förderfragen recherchieren'],

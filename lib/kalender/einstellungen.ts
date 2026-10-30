@@ -7,7 +7,7 @@
 import { loadJson } from '@/lib/store/local-db';
 import { freieTageSauber, FREIE_TAGE_STANDARD, type FreierTag } from './freie-tage';
 import { zuordnung } from './belegt';
-import { FACH_ERSATZ, fachPersonen, vorname } from '@/lib/make-one/fach-namen';
+import { FACH_ERSATZ, FAECHER, fachPersonen, istFach, vorname } from '@/lib/make-one/fach-namen';
 
 export type Wer = 'kevin' | 'malin' | 'beide';
 export interface KalenderEinstellungen {
@@ -160,6 +160,19 @@ export async function fachKonten(): Promise<Partial<Record<Exclude<Wer, 'beide'>
     .filter(k => k === inhaber || (k.finanzRecht !== 'business' && (inhaber?.haushalt ? k.haushalt === inhaber.haushalt : !k.haushalt)))
     .sort((a, b) => Number(b === inhaber) - Number(a === inhaber) || String(a.angelegt ?? '').localeCompare(String(b.angelegt ?? '')));
   return fachPersonen(haus.map(k => ({ id: k.speicher, name: String(k.name ?? '').trim() })));
+}
+
+/**
+ * In welchem Fach der Kalender-Zuordnung steht diese Person (Speichername)? Über die Konten (`fachKonten`), nie über einen festen Namen
+ * (30.10., neutral). `null`, wenn sie in keinem steht.
+ */
+export async function fachVonPerson(person: string | null | undefined): Promise<Exclude<Wer, 'beide'> | null> {
+  if (!person) return null;
+  const p = await fachKonten().catch(() => ({} as Awaited<ReturnType<typeof fachKonten>>));
+  if (p.kevin?.id === person) return FAECHER[0];
+  if (p.malin?.id === person) return FAECHER[1];
+  // Ohne Konto dahinter gilt die Regel „gleicher Speichername gewinnt“ (fach-namen.ts) auch hier: ein freies Fach mit diesem Namen.
+  return istFach(person) && !p[person] ? person : null;
 }
 
 /** Nur die Vornamen der Fach-Personen (leere fallen weg). Rein. */

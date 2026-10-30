@@ -82,7 +82,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
         )}
         <div style={{ display: 'grid', gap: 12, marginTop: 8 }}>
           <Schalter an={d.einstellungen.aktiv} onChange={an => void tun({ aktion: 'einstellungen', aktiv: an })} aus={!d.verantwortlichDa && !d.einstellungen.aktiv}
-            erklaerungOhne="Öffentlich erreichbar unter /check, auch unter fokusinnovation.de/check. Kommt ausgeschaltet; ausgeschaltet antwortet die Seite mit „gibt es nicht“.">
+            erklaerungOhne="Öffentlich erreichbar unter /check dieser Instanz (auch über eine eigene Website-Adresse, wenn sie dorthin weiterleitet). Kommt ausgeschaltet; ausgeschaltet antwortet die Seite mit „gibt es nicht“.">
             Check öffentlich
           </Schalter>
           <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>

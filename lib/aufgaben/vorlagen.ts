@@ -14,7 +14,7 @@
 
 import type { Task, TasksState, Project, AufgabenListe, AufgabenVorlage, VorlageAufgabe, VorlageInhalt } from '@/types/tasks';
 import type { Owner } from '@/types/common';
-import { AUFGABEN_GRENZEN } from './saeubern';
+import { AUFGABEN_GRENZEN, ownerSauber } from './saeubern';
 import { bereichVonSpace, einheitVonSpace, firmaVonSpace, istSonstigeProjekt, sonstigeProjektId, SONSTIGE_PRAEFIX, nachReihe } from './struktur';
 import { istTag, tagPlus, tageZwischen, titelMitPlatzhaltern } from './wiederholung';
 import { istWerktag, werktagAbOder, werktagePlus } from './feiertage';
@@ -23,7 +23,6 @@ import { AUFGABEN_EBENEN_MAX, nachfahren } from './ebenen';
 
 export { STARTVORLAGEN };
 
-const OWNER: readonly string[] = ['kevin', 'malin', 'both'];
 /** Farben der Listen aus früheren Gruppen ohne Farbe (der Reihe nach). */
 const LISTEN_FARBEN_VORLAGE = ['#E27FD0', '#6E7EF5', '#58D9CD', '#FFC93C', '#3DE28B', '#FF8A5C'];
 
@@ -120,7 +119,7 @@ function alsVorlageAufgabe(t: Task, kinder: Map<string, Task[]>, bezug: string |
   const b = (t.description ?? '').trim();
   if (b) r.beschreibung = b.slice(0, 4000);
   if (t.priority && t.priority !== 'medium') r.prioritaet = t.priority;
-  if (OWNER.includes(t.assignee)) r.zustaendig = t.assignee;
+  if (ownerSauber(t.assignee)) r.zustaendig = t.assignee;
   const due = tagDer(t.dueDate);
   if (bezug && due) { const v = werktage ? werktageZwischen(werktagAbOder(bezug, 'NRW'), due) : tageZwischen(bezug, due); if (Math.abs(v) <= 3650) r.versatzTage = v; }
   // Mehrstufig (01.10.): Unteraufgaben aller Ebenen bis zur Grenze (Hauptaufgabe = Tiefe 0).
@@ -199,7 +198,7 @@ export function aufgabenAusVorlage(liste: readonly VorlageAufgabe[], z: Aufgaben
   const einheit = einheitVonSpace(z.spaceId);
   const basis = (a: VorlageAufgabe, id: string, sortOrder: number): Task => ({
     id, projectId: z.projectId, title: a.titel.slice(0, 300), status: 'todo', priority: a.prioritaet ?? 'medium',
-    assignee: (a.zustaendig && OWNER.includes(a.zustaendig) ? a.zustaendig : z.owner) as Owner,
+    assignee: (ownerSauber(a.zustaendig) ?? z.owner) as Owner,
     tags: [], subTasks: [], dependencies: [], sortOrder, createdAt: z.jetzt, updatedAt: z.jetzt,
     spaceId: z.spaceId, space: bereichVonSpace(z.spaceId),
     ...(einheit ? { einheit } : {}),

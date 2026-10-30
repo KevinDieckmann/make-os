@@ -39,6 +39,7 @@ import { wiederholungVorlagen, wiederholungBeschreiben, wochentagVon, wochentagN
 import { neueTerminUid } from '@/lib/kalender/eingabe';
 import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, vonAendern, speicherFehlerText, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
 import { FarbPunkte, WER_FARBE, useWerLabel, type Wer } from './teile';
+import { FAECHER } from '@/lib/make-one/fach-namen';
 import { TerminVerknuepfen, GaesteWahl, EinladungFrage } from './verknuepfen';
 import { BUSINESS_FREI_FRAGE, BUSINESS_FREI_HINWEIS } from '@/lib/arbeitsrahmen/regel';
 
@@ -85,7 +86,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
   const setF = (n: Formular) => { setFRoh(n); if (entwurfWertvoll(n)) schreibe({ f: n, am: new Date().toISOString() }); };
 
   // „@<Vorname>“ (14.10.): Vornamen der belegten Fächer aus den Konten — nie fest im Code.
-  const schnellNamen = useMemo(() => ({ ...(WER_LABEL.belegt.includes('kevin') ? { kevin: WER_LABEL.kevin } : {}), ...(WER_LABEL.belegt.includes('malin') ? { malin: WER_LABEL.malin } : {}) }), [WER_LABEL]);
+  const schnellNamen = useMemo(() => Object.fromEntries(FAECHER.filter(f => WER_LABEL.belegt.includes(f)).map(f => [f, WER_LABEL[f]])) as Partial<Record<(typeof FAECHER)[number], string>>, [WER_LABEL]);
   const schnell = useMemo(() => (f.titel.trim() && f.art !== 'arbeitsort' ? schnellLesen(f.titel, heute, f.art === 'fokus' ? fokusDauer : standardDauer, schnellNamen) : null), [f.titel, f.art, heute, standardDauer, fokusDauer, schnellNamen]);
   const schnellAnwenden = (x: Formular): Formular => {
     if (!schnell?.erkannt.length) return x;

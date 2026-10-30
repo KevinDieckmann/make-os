@@ -421,25 +421,33 @@ export function termineImZeitraum(s: IcloudStand, von: string, bis: string): Ter
   return raus;
 }
 
-/** Wie der Mac-Kalender die Kalender eingeordnet hat — manche Leser färben danach. */
-const EINORDNUNG: Record<string, { category: string; owner: string }> = {
-  'privat kevin': { category: 'private-kevin', owner: 'kevin' },
-  'privat malin': { category: 'private-malin', owner: 'malin' },
-  'kevin dieckmann': { category: 'holding', owner: 'kevin' },
-};
+/**
+ * Wie der Mac-Kalender die Kalender eingeordnet hat — manche Leser färben danach. Seit 30.10. (neutral, vorher drei feste Namen im Code)
+ * dieselbe Zuordnung wie der Altweg (lib/kalender/apple-altweg.ts): Namen aus den Kalender-Einstellungen (Fach → Name, sonst
+ * „Privat <Vorname>“) und der volle Name der Person im ersten Fach (Konto) = Holding. Schlüssel klein geschrieben. Fehler → leer (alles „joint“).
+ */
+type Einordnung = Record<string, { category: string; owner: string }>;
+async function einordnungLaden(): Promise<Einordnung> {
+  try {
+    const [{ ladeEinstellungen, fachKonten, EINSTELLUNGEN_LEER }, { altwegKalender }] = await Promise.all([import('./einstellungen'), import('./apple-altweg')]);
+    const [einst, voll] = await Promise.all([ladeEinstellungen().catch(() => null), fachKonten().then(p => p.kevin?.name ?? null).catch(() => null)]);
+    const z = altwegKalender(einst?.kalender ?? EINSTELLUNGEN_LEER.kalender, voll).zuordnung;
+    return Object.fromEntries(Object.entries(z).map(([n, e]) => [n.toLowerCase(), e]));
+  } catch { return {}; }
+}
 
 /**
  * Für alle bisherigen Leser: aufgefaltet im alten Format (Mac-Kalender). Seit 29.09. (K1) mit Art, frei/beschäftigt
  * und „privat“ (+ `von`, wer ihn angelegt hat) — die Leser (Heute, ZOE, Signale) müssen private Termine anderer
  * Personen selbst als „Belegt“ zeigen (Verbindungsrunde K6).
  */
-function cacheFormat(t: Termin, bezuege: BezugBestand | null) {
+function cacheFormat(t: Termin, bezuege: BezugBestand | null, einordnung: Einordnung) {
   const m = mitBezug(t, bezuege);
   // Google (03.10.): der Kalender „MAKE (Google)“ ist der Business-Kalender der Person — `holding` (Leser färben/ordnen danach).
   const google = /^google:/.test(t.kalenderId) ? kalenderKennung(t.kalenderId).replace(/^google-/, '') : null;
   // iCloud je Person (06.10.): privat der Person (`von` = Eigentümer), neutraler Kalendername — die Leser maskieren für andere.
   const eigen = t.persoenlich;
-  const e = eigen ? { category: `private-${eigen}`, owner: eigen } : google ? { category: 'holding', owner: google } : EINORDNUNG[t.kalender.trim().toLowerCase()] ?? { category: 'joint', owner: 'both' };
+  const e = eigen ? { category: `private-${eigen}`, owner: eigen } : google ? { category: 'holding', owner: google } : einordnung[t.kalender.trim().toLowerCase()] ?? { category: 'joint', owner: 'both' };
   return {
     id: t.id, uid: t.uid, title: t.titel, ...e, startDate: t.start, endDate: t.ende, allDay: t.ganztags,
     calendarName: eigen ? t.persoenlichName ?? t.kalender : t.kalender, ...(t.ort ? { location: t.ort } : {}), source: 'icloud', serie: t.serie, bearbeitbar: t.bearbeitbar,
@@ -493,7 +501,8 @@ export async function abgleichen(opt: { erzwingen?: boolean; nur?: string } = {}
       await import('@/lib/ereignisse/quellen').then(q => q.terminAbsagenEreignisse(alt, neu)).catch(() => 0);
       const heute = localDay();
       const gesamt = await mitUeberlagerung(neu);
-      await saveJson(CACHE, { events: termineImZeitraum(gesamt, tagPlus(heute, CACHE_VON), tagPlus(heute, CACHE_BIS)).map(t => cacheFormat(t, bezuege)), at: neu.at, quelle: 'icloud' });
+      const einordnung = await einordnungLaden();
+      await saveJson(CACHE, { events: termineImZeitraum(gesamt, tagPlus(heute, CACHE_VON), tagPlus(heute, CACHE_BIS)).map(t => cacheFormat(t, bezuege, einordnung)), at: neu.at, quelle: 'icloud' });
       // Gespeichert ist nur der iCloud-Stand; die Leser (frischerStand, Routen) bekommen ihn MIT den Google-Kalendern.
       return gesamt;
     } catch (e) {
@@ -562,7 +571,8 @@ export async function cacheNeuSchreiben(): Promise<void> {
     let bezuege: BezugBestand | null = null;
     try { bezuege = await ladeBezuege(); } catch { /* ohne Bezug */ }
     const heute = localDay();
-    await saveJson(CACHE, { events: termineImZeitraum(s, tagPlus(heute, CACHE_VON), tagPlus(heute, CACHE_BIS)).map(t => cacheFormat(t, bezuege)), at: s.at ?? new Date().toISOString(), quelle: 'icloud' });
+    const einordnung = await einordnungLaden();
+    await saveJson(CACHE, { events: termineImZeitraum(s, tagPlus(heute, CACHE_VON), tagPlus(heute, CACHE_BIS)).map(t => cacheFormat(t, bezuege, einordnung)), at: s.at ?? new Date().toISOString(), quelle: 'icloud' });
   } catch (e) {
     console.warn(`[kalender] Zwischenspeicher nicht geschrieben: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`);
   }

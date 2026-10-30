@@ -11,7 +11,9 @@ set -euo pipefail
 HIER="$(cd "$(dirname "$0")" && pwd)"
 STANDARD="$HOME/Vaults/MAKE/Make.Claude"; [ -d "$STANDARD" ] || STANDARD="$HOME/Desktop/MAKE/Make.Claude"
 VAULT="${1:-$STANDARD}"
-REPO="${2:-git@github.com:KevinDieckmann/make-vault.git}"
+# Ziel-Repo je Instanz (30.10., neutral — vorher fest im Skript): zweites Argument oder MAKE_VAULT_REPO.
+REPO="${2:-${MAKE_VAULT_REPO:-}}"
+[ -n "$REPO" ] || { echo "Kein Ziel-Repo: zweites Argument oder MAKE_VAULT_REPO setzen (z. B. git@github.com:<konto>/<vault>.git)."; exit 1; }
 [ -d "$VAULT" ] || { echo "Vault nicht gefunden: $VAULT"; exit 1; }
 cd "$VAULT"
 

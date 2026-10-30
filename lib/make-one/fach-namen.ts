@@ -21,6 +21,16 @@ export function fachPersonen(personen: readonly FachPerson[]): Partial<Record<Fa
   return { ...(eins ? { kevin: eins } : {}), ...(zwei ? { malin: zwei } : {}) };
 }
 
+/** In welchem Fach steht diese Person (Speichername)? `null`, wenn sie in keinem steht. Rein (30.10., neutral-nacht). */
+export function fachDerPerson(speicher: string | null | undefined, personen: readonly FachPerson[]): Fach | null {
+  if (!speicher) return null;
+  const p = fachPersonen(personen);
+  if (p.kevin?.id === speicher) return FAECHER[0];
+  if (p.malin?.id === speicher) return FAECHER[1];
+  // Ohne Person dahinter (Konten noch nicht geladen): „gleicher Speichername gewinnt“ — ein freies Fach mit diesem Namen.
+  return istFach(speicher) && !p[speicher] ? speicher : null;
+}
+
 /** Namen der Fächer und welche belegt sind (für Auswahl-Leisten: ein leeres Fach zeigt man nicht). Rein. */
 export function fachNamen(personen: readonly FachPerson[]): Record<Fach, string> & { belegt: Fach[] } {
   const p = fachPersonen(personen);

@@ -11,6 +11,7 @@ import { ladeBezuege } from '@/lib/kalender/bezug-server';
 import type { BezugBestand } from '@/lib/kalender/bezug';
 import { EINSTELLUNGEN_LEER, fachKonten, ladeEinstellungen, wemGehoert } from '@/lib/kalender/einstellungen';
 import { altwegKalender, altwegSkript, type AltwegKalender } from '@/lib/kalender/apple-altweg';
+import { istFach } from '@/lib/make-one/fach-namen';
 
 // Apple Kalender via osascript ist zäh (whose-Datumsfilter) und wird unter Last
 // >60s → Timeout. Deshalb Cache: frische Reads werden gespeichert, bei
@@ -103,7 +104,7 @@ async function sichtFuer(person: string | null, bereich: 'privat' | 'business' |
   let bezuege: BezugBestand | null = null, bezugFehlt = false;
   try { bezuege = await ladeBezuege(); } catch { bezugFehlt = true; }
   return events => (events as CacheEreignis[]).filter(imBereich).map(e => {
-    const wer = einst && e.calendarName ? wemGehoert(einst, e.calendarName) : e.owner === 'kevin' || e.owner === 'malin' ? e.owner : undefined;
+    const wer = einst && e.calendarName ? wemGehoert(einst, e.calendarName) : istFach(e.owner) ? e.owner : undefined;
     const mit = cacheMitBezug(e, bezuege);
     return cacheFuerPerson(bezugFehlt ? { ...mit, privat: true } : mit, person, wer);
   });

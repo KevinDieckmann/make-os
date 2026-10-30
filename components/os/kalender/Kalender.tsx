@@ -61,7 +61,8 @@ import { ART_INFO, TERMIN_ARTEN, type TerminArt } from '@/lib/kalender/arten';
 import { aufgabenFuerKalender, ohneTermin, type KalenderAufgabe } from '@/lib/kalender/aufgaben';
 import { useAufgabenImKalender, OhneTerminListe } from './aufgaben';
 import { useTerminAusAdresse } from './verknuepfen';
-import { useIch } from '../aufgaben/hilfe';
+import { useIch, usePersonen } from '../aufgaben/hilfe';
+import { istFach, fachDerPerson } from '@/lib/make-one/fach-namen';
 // R-K2 (29.09.): Suche mit Umlaut-Faltung (#94), Verschieben mit „Rückgängig“ (#92), belegt/freie Tage (#69/#72).
 import { suchPasst } from '@/lib/text/such-norm';
 import { useVerschieben } from './verschieben';
@@ -314,11 +315,14 @@ export function Kalender() {
   const erinnerungen = useMemo(() => (ebenen.erinnerungen && !such ? daten?.erinnerungen ?? [] : (daten?.erinnerungen ?? []).filter(e => such && suchPasst([e.titel], such))), [daten, ebenen.erinnerungen, such]);
   // Aufgaben (K3): Start bis Deadline, ohne Abgebrochene/Papierkorb/Archiv/fremde „nur ich“ — lib/kalender/aufgaben.ts.
   const ich = useIch();
+  // Das eigene Fach der Kalender-Zuordnung über die Konten (30.10., neutral — vorher nur zwei feste Speichernamen).
+  const kontoPersonen = usePersonen();
+  const ichFach = useMemo(() => fachDerPerson(ich, kontoPersonen.map(p => ({ id: p.speicher, name: p.name }))), [ich, kontoPersonen]);
   const aufgabenImZeitraum = useMemo<KalenderAufgabe[]>(() => (ebenen.aufgaben ? aufgabenFuerKalender(aufgabenStand.tasks, von, bis, { sicht, bereich, suche: such, ich }) : []), [aufgabenStand.tasks, ebenen.aufgaben, von, bis, such, sicht, bereich, ich]);
   const ohne = useMemo(() => (ebenen.aufgaben ? ohneTermin(aufgabenStand.tasks, { sicht, bereich, suche: such, ich }) : []), [aufgabenStand.tasks, ebenen.aufgaben, such, sicht, bereich, ich]);
   const ka = useAufgabenImKalender();
   useTerminAusAdresse(daten?.termine, setAnker, setOffen);
-  const neuVon = (art: TerminArt, tag = ansicht === 'tag' ? anker : heute): Vorgabe => ({ tag, art, ...(art === 'abwesend' || art === 'arbeitsort' ? { ganztags: true } : { von: '09:00' }), ...(sicht === 'kevin' || sicht === 'malin' || sicht === 'beide' ? { wer: sicht } : ich === 'kevin' || ich === 'malin' ? { wer: ich } : {}), ...(bereich === 'business' ? { spaceId: BUSINESS_GESELLSCHAFTEN[0] ?? 'kdv' } : {}) });
+  const neuVon = (art: TerminArt, tag = ansicht === 'tag' ? anker : heute): Vorgabe => ({ tag, art, ...(art === 'abwesend' || art === 'arbeitsort' ? { ganztags: true } : { von: '09:00' }), ...(istFach(sicht) || sicht === 'beide' ? { wer: sicht } : ichFach ? { wer: ichFach } : {}), ...(bereich === 'business' ? { spaceId: BUSINESS_GESELLSCHAFTEN[0] ?? 'kdv' } : {}) });
   const neuImRaster = (tag: string, m: number, ende?: number) => {
     // Planen: ist ein Baustein gewählt, entsteht hier der Block (kein Dialog).
     if (planen.platzieren(tag, m, ende)) return;
