@@ -77,8 +77,8 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
       ] },
       { art: 'besser', punkte: [
         { text: 'Der Innovations-Check vergleicht nach Unternehmensgröße jetzt mit den Destatis-Zahlen von 2025.', bereich: 'business', weg: WEG.marketing('check') },
-        { text: 'Die drei Checks sehen aus wie die Website: Kopf mit Logo, das zur Website führt, breite Einstiegsseite und daneben eine Karte mit den drei Bereichen. Logo und Website-Adresse stellt ihr unter Marketing › Innovations-Check ein.', bereich: 'business', weg: WEG.marketing('check') },
-        { text: 'Der Fokus-Punkt im Film der Startseite pulsiert, die Hauptknöpfe tragen einen leichten Lichtschein und einen beleuchteten Pfeil.', bereich: 'business' },
+        { text: 'Die drei Checks im dunklen Design der App: Karten mit Tiefe und Lichtkante, ein Leuchtfaden führt durch das Gespräch, Kopf mit Logo, das zur Website führt. Logo (für dunklen Grund) und Website-Adresse stellt ihr unter Marketing › Innovations-Check ein.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Website: neuer Film auf der Startseite mit Raum-Schein und pulsierendem Fokus-Punkt, überall ab-Preise, Zahlen aus 2026, Über uns mit dem Team dahinter.', bereich: 'business' },
       ] },
     ],
   },
