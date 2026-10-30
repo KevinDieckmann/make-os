@@ -132,13 +132,15 @@ export function RechnungenKarte({ bereich = 'business' }: { bereich?: 'privat' |
             </Liste>
           </>}
 
+          {/* 30.10. nachts: Filter am Handy EINE wischbare Zeile (`einzeilig`), Platzhalter kurz genug fürs Feld — gesucht wird weiter in Kunde,
+              Firma, Person, Nummer und Titel (aria-label sagt es vollständig). */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '14px 0 6px' }}>
-            <Pillen<RechnungsFilter> liste={RECHNUNGS_FILTER} aktiv={filter} onWahl={filterAuf} />
-            <input value={suche} onChange={e => { setSuche(e.target.value); setAlle(false); }} placeholder="Suchen: Kunde, Firma, Person, Nummer, Titel" aria-label="Rechnungen durchsuchen" type="search" style={{ ...feld, flex: '1 1 200px', maxWidth: 320 }} />
+            <div style={{ minWidth: 0, maxWidth: '100%' }}><Pillen<RechnungsFilter> liste={RECHNUNGS_FILTER} aktiv={filter} onWahl={filterAuf} einzeilig /></div>
+            <input value={suche} onChange={e => { setSuche(e.target.value); setAlle(false); }} placeholder="Suchen: Kunde, Nummer …" aria-label="Rechnungen durchsuchen: Kunde, Firma, Person, Nummer, Titel" type="search" style={{ ...feld, flex: '1 1 220px', minWidth: 0, maxWidth: 360 }} />
           </div>
           {firmenInListe.length > 1 && (
-            <div style={{ marginBottom: 6 }}>
-              <Pillen<string> liste={[{ id: '', label: 'Alle Gesellschaften' }, ...firmenInListe.map(id => ({ id, label: gesKurz(id) }))]} aktiv={ges ?? ''} onWahl={id => setGes(id || null)} />
+            <div style={{ marginBottom: 6, minWidth: 0, maxWidth: '100%' }}>
+              <Pillen<string> liste={[{ id: '', label: 'Alle Gesellschaften' }, ...firmenInListe.map(id => ({ id, label: gesKurz(id) }))]} aktiv={ges ?? ''} onWahl={id => setGes(id || null)} einzeilig />
             </div>
           )}
 
