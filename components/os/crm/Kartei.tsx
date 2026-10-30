@@ -3,12 +3,9 @@
 // ─── Markttraktion · Kontakte und Firmen (die Kartei) ────────────────────────────────────
 // Personen: Kennzahlen im Kopf, gespeicherte Ansichten, Suche, Tastatur
 // (/ sucht, j/k blättert, Enter öffnet, Esc schließt), Anlegen mit
-// Dublettenprüfung. Die Karteikarte hat vier Reiter: Überblick (Kanäle,
-// Beziehung, nächster Schritt, Deals, Entwurf) · Verlauf (Notizvorlage,
-// Filter) · Stammdaten (die Matrix aller Felder der Masterdatei) · Recht
-// (Art. 6/14/15/17/21, Einwilligungen, Werbesperre). Oben rechts „Kontakt
-// öffnen“: dieselbe Person auf einer ganzen Seite (Akte.tsx), mit Zurück in die
-// Kartei. Die Bausteine teilen sich Karte und „Kontakt öffnen“ (kontakt-teile.tsx).
+// Dublettenprüfung. Ein Klick (oder Enter) öffnet „Kontakt öffnen“: die Person auf einer ganzen Seite (Akte.tsx), mit
+// Zurück in die Kartei. Die frühere Karteikarte unter der Zeile ist seit 30.10. nachts entfernt — sie wurde nicht mehr gezeigt
+// (die Markttraktion gibt immer `zuAkte` mit); ihre Bausteine leben in der Akte weiter (kontakt-teile.tsx).
 // Lifecycle (28.09.): Filter als Wahl-Chip und eigene Spalte — gesetzt, sonst
 // (leiser) „Lead“ (lib/crm/vorschlaege.ts `lifecycleVon`, H4).
 // BEAN (28.09., H4): Filter als Wahl-Chip (auch aus der Adresse `bean=B|E|A|N`,
@@ -29,26 +26,25 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { zoeFragen } from './ZoeFragen';
-import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { SearchX } from 'lucide-react';
 import { Karte, Ueberschrift, Leer, Leerzustand, Knopf, Chip, Punkt, feld, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE, useRueckgaengig, useRueckfrage, Arbeitsflaeche, FilterKnopf, FilterGruppe } from '../ui';
 import { useArt17 } from './kontakt/art17';
-import { anzeigename, STUFE_LABEL, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, rollenVon, ROLLE_LABEL, zuletztTag } from '@/lib/make-one/crm';
+import { anzeigename, HERKUNFT, type Kontakt, type Lebensphase, type Herkunft, zuletztTag } from '@/lib/make-one/crm';
 import { ampel as kanalAmpel, art14, besterKanal } from '@/lib/crm/recht';
 import { OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { dubletten, wanderungText, type Wanderung } from '@/lib/crm/dubletten';
 import { type CrmApi, datum } from './daten';
-import { KanalAmpel, Grund, Feldzeile, Pillen, AMPEL_FARBE } from './teile';
+import { Feldzeile, Pillen, AMPEL_FARBE } from './teile';
 import { Wahl } from './Wahl';
 import { Firmen, neueFirma } from './Firmen';
 import { ZustaendigFeld, SchrittFelder, schrittEingabe } from './PersonAnlegen';
 import { zustaendigFuer } from '@/lib/crm/person-anlegen';
 import { FirmenDatalist } from './FirmenDatalist';
 import { bestehendeFirma } from '@/lib/crm/firmen';
-import { Person, WerFilter, useWerFilter, passtWer, Uebergeben, AuchHier } from './team';
+import { Person, WerFilter, useWerFilter, passtWer, Uebergeben } from './team';
 import { VisitenkarteKnopf } from './Visitenkarte';
-import { LeadBlock } from './Leads';
-import { PHASEN, phaseFarbe, phaseLabel, lifecycleFarbe, Hinweise, NaechsterSchrittTeil, BeziehungTeil, DealsTeil, EntwurfTeil, VerlaufTeil, RechtTeil, Matrix, LinkedInTeil } from './kontakt-teile';
+import { PHASEN, phaseFarbe, phaseLabel, lifecycleFarbe } from './kontakt-teile';
 import { gleicherName } from '@/lib/crm/visitenkarte';
 import { haeltBeziehung, anderer, nameVon, verantwortlich } from '@/lib/crm/team';
 import { lifecycleVon } from '@/lib/crm/vorschlaege';
@@ -59,14 +55,13 @@ import { typenVon, kategorienVon, labelsVon, enthaeltEinenVon } from '@/lib/crm/
 import { LABEL_DUBLETTE, LABEL_LEAD_PRUEFEN } from '@/lib/crm/netzwerken';
 import { alleAdressen, hatAdresse } from '@/lib/crm/emails';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
-import { useNaechsterTermin } from '../kalender/TermineAkte';
 
 type Modus = 'personen' | 'firmen';
 type Ansicht = 'alle' | 'kunden' | 'kreis' | 'prio' | 'chancen' | 'mail' | 'anreichern' | 'art14' | 'gesperrt' | 'dubletten' | 'dublette-pruefen' | 'lead-pruefen' | 'archiv';
 const ANSICHT_IDS: Ansicht[] = ['alle', 'kunden', 'kreis', 'prio', 'chancen', 'mail', 'anreichern', 'art14', 'gesperrt', 'dubletten', 'dublette-pruefen', 'lead-pruefen', 'archiv'];
 const istAnsicht = (a?: string): a is Ansicht => !!a && (ANSICHT_IDS as string[]).includes(a);
 
-export function Kartei({ api, name, modus, auswahl, setAuswahl, zuFirma, start, zuRunde, zuAkte, startBean, kopf: seitenKopf }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void;
+export function Kartei({ api, modus, auswahl, setAuswahl, zuFirma, start, zuRunde, zuAkte, startBean, kopf: seitenKopf }: { api: CrmApi; name: (p: string) => string; modus: Modus; auswahl: string | null; setAuswahl: (id: string | null) => void; zuKontakt: (id: string) => void; zuFirma: (id: string) => void; start?: string; zuRunde?: (art: 'kreis' | 'chancen' | 'vernetzen') => void; zuAkte?: (id: string) => void;
   /** BEAN-Filter aus der Adresse (`bean=`), z. B. aus der Verteilungskarte im Überblick. */
   startBean?: string | null;
   /** Arbeitsfläche (29.10.): die Kopf-Teile der Seite (ZOE/Head daneben, „+ Aktivität“ und „+ Angebot“ im „⋯“) — die Kartei der Personen ist dann die Seite. */
@@ -239,7 +234,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuFirma, start, 
 
   // ── Arbeitsfläche (29.10., Kevin: „bei den Kontakten … das Thema mit Scrolling macht manchmal keinen Sinn“) ─────────────────────────────────────
   // Kopf in EINER Zeile (Kontakte · Zahl · ⋯ · „+ Person“), Suche + Wer + „Filter ▾“ in EINER Zeile (Ansicht, BEAN, Einordnung, Lifecycle im Popover —
-  // nie eine abgeschnittene Chip-Reihe), darunter Liste und Karteikarte nebeneinander, jede rollt für sich; der Tabellenkopf klebt oben in der Liste.
+  // nie eine abgeschnittene Chip-Reihe), darunter die Liste in voller Breite; der Tabellenkopf klebt oben in der Liste.
   // Die Runden (Kreis, Vernetzen) und „Qualifizierung“ stehen im „⋯“ und im Werkzeug-Menü (Leads & Qualifizierung) — ihre Adressen bleiben.
   const ansichtName = ANSICHTEN.find(a => a.id === ansicht)?.label.replace(/\s\d+$/, '') ?? '';
   const filterZahl = (ansicht !== 'alle' ? 1 : 0) + (bn ? 1 : 0) + (lc ? 1 : 0) + (ein ? 1 : 0);
@@ -327,7 +322,6 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuFirma, start, 
             <KarteiZeile k={x} firma={x.firmaId ? firmen.get(x.firmaId)?.name : undefined} lifecycle={lifecycle.get(x.id)} bean={beans.get(x.id)} breit={zwei} aktiv={auswahl === x.id} markiert={i === markiert && zwei}
               chance={mitChance.has(x.id)} mandat={mitMandat.has(x.id)} heute={heute} onClick={() => { setMarkiert(i); if (zuAkte) zuAkte(x.id); else setAuswahl(auswahl === x.id ? null : x.id); }} />
             </ZeileAktionen>
-            {auswahl === x.id && !zuAkte && <div style={{ padding: '8px 0 18px' }}><Karteikarte k={x} api={api} name={name} zuFirma={zuFirma} /></div>}
           </div>
         ))}
       </div>
@@ -352,7 +346,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuFirma, start, 
         listeKopf={st => (st.zwei && ansicht !== 'dubletten' ? tabellenKopf : null)}
         liste={st => listeInhalt(st.zwei)}
         // Kein Detail rechts (30.10., Kevin: „die Kundenakte wirklich groß öffnen“): ein Klick bzw. Enter öffnet „Kontakt öffnen“ als eigene Seite,
-        // die Liste nutzt die ganze Breite. Ohne `zuAkte` (eingebettet) öffnet die Karteikarte unter der Zeile wie bisher.
+        // die Liste nutzt die ganze Breite. Die frühere Karteikarte unter der Zeile ist entfernt (30.10. nachts).
         detail={null} />
       {nachfrage}
       {rueckfrage}
@@ -471,71 +465,4 @@ function Anlegen({ api, onFertig }: { api: CrmApi; heute: string; onFertig: (id:
 /** Eingabe, die jeden Wert sofort übernimmt — auch das automatische Ausfüllen des Browsers (ohne Fokuswechsel). */
 function LiveFeld({ wert, platzhalter, auto, typ, onWert }: { wert: string; platzhalter: string; auto?: string; typ?: string; onWert: (v: string) => void }) {
   return <input value={wert} type={typ ?? 'text'} autoComplete={auto} onChange={x => onWert(x.target.value)} onInput={x => onWert((x.target as HTMLInputElement).value)} placeholder={platzhalter} aria-label={platzhalter.replace(/ \*$/, '')} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />;
-}
-
-type Reiter = 'ueberblick' | 'verlauf' | 'stamm' | 'recht';
-function Karteikarte({ k, api, name, zuFirma, zuAkte }: { k: Kontakt; api: CrmApi; name: (p: string) => string; zuFirma: (id: string) => void; zuAkte?: (id: string) => void }) {
-  const crm = api.crm;
-  const heute = crm?.heute ?? localDay();
-  const [reiter, setReiter] = useState<Reiter>('ueberblick');
-  // Nächster Termin (F3, 29.09.): derselbe Kalender-Leser wie die Kontaktakte — über den Bezug, abgesagte nie.
-  const termin = useNaechsterTermin(k.id);
-  const firma = k.firmaId ? crm?.stand.firmen.find(f => f.id === k.firmaId) : undefined;
-  const chancen = (crm?.stand.chancen ?? []).filter(c => c.kontaktIds.includes(k.id));
-  const mandate = (crm?.stand.mandate ?? []).filter(m => m.kontaktIds.includes(k.id));
-  const ctx = { hatMandat: mandate.some(m => m.status === 'aktiv'), hatChance: chancen.some(c => OFFENE_STUFEN.includes(c.stufe)) };
-  const ampel = kanalAmpel(k, ctx);
-  const setze = (teil: Partial<Kontakt>) => api.kontaktTeil(k.id, teil);
-  const mailOk = ampel.some(s => s.kanal === 'mail' && s.farbe !== 'rot');
-
-  return (
-    <div style={{ display: 'grid', gap: 14 }}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: SCHRIFT.display, fontSize: 21, fontWeight: 700, letterSpacing: '-.015em' }}>{anzeigename(k)}</div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>
-            {k.position ?? k.jobtitel ?? ''}{(k.position ?? k.jobtitel) && (firma || k.firma) ? ' · ' : ''}
-            {firma ? <button onClick={() => zuFirma(firma.id)} style={{ background: 'none', border: 'none', padding: 0, color: C.ink, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(255,255,255,.2)', fontSize: TYP.bedien }}>{firma.name}</button> : k.firma}
-          </div>
-        </div>
-        {/* Kevin 25.09.: „rechts in dem Feld oben“ — die ganze Person auf einer Seite, mit Zurück in die Kartei (28.09.: „Kontakt öffnen“). */}
-        {zuAkte && <button onClick={() => zuAkte(k.id)} className="fassbar" title="Alle Stammdaten, der ganze Verlauf und jede Verbindung auf einer Seite"
-          style={{ flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', borderRadius: 11, cursor: 'pointer', border: `1px solid ${LEUCHT.business}55`, background: `${LEUCHT.business}14`, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 700, whiteSpace: 'nowrap' }}>
-          Kontakt öffnen <span aria-hidden style={{ color: LEUCHT.business }}>⤢</span>
-        </button>}
-      </div>
-      <div style={{ display: 'flex', gap: 6, marginTop: -6, flexWrap: 'wrap' }}>
-        <Chip farbe={phaseFarbe(k.lebensphase)}>{phaseLabel(k.lebensphase)}</Chip>{rollenVon(k).map(r => <Chip key={r} farbe={LEUCHT.business}>{ROLLE_LABEL[r]}</Chip>)}{k.kreis && <Chip farbe={LEUCHT.beziehung}>Kreis {k.kreis}</Chip>}
-        <Chip farbe={C.inkDim}>{STUFE_LABEL[k.stufe] ?? k.stufe}</Chip>{k.prio && <Chip farbe={C.inkDim}>Prio {k.prio}</Chip>}
-        <AuchHier passt={p => p.includes(`k=${k.id}`)} was="bei dieser Person" />
-      </div>
-      <Hinweise k={k} heute={heute} setze={setze} />
-      <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen liste={[{ id: 'ueberblick', label: 'Überblick' }, { id: 'verlauf', label: `Verlauf ${(k.aktivitaeten ?? []).length}` }, { id: 'stamm', label: 'Stammdaten' }, { id: 'recht', label: 'Recht' }]} aktiv={reiter} onWahl={setReiter} farbe={LEUCHT.business} einzeilig /></div>
-
-      {reiter === 'ueberblick' && (
-        <>
-          {termin && <div style={{ padding: '10px 12px', borderRadius: 10, background: `${LEUCHT.puls}14`, fontSize: TYP.bedien, color: C.ink }}>Nächster Termin: <b style={{ fontWeight: 600 }}>{termin.titel}</b> · {datum(termin.start.slice(0, 10), heute)}{termin.ganztags ? '' : ` ${termin.start.slice(11, 16)}`}</div>}
-          <div><Ueberschrift>Kanäle</Ueberschrift><KanalAmpel ampel={ampel} ziele={{ telefon: k.telefon ?? k.sms, email: k.email, linkedin: k.linkedin }} /><Grund ampel={ampel} /></div>
-          <NaechsterSchrittTeil k={k} heute={heute} setze={setze} />
-          <LinkedInTeil k={k} api={api} />
-          <LeadBlock api={api} leadId={k.firmaId ?? k.id} />
-          <BeziehungTeil k={k} api={api} setze={setze} />
-          <DealsTeil k={k} api={api} />
-          {(k.aufhaenger || k.signale || k.marktinfo) && (
-            <div>
-              <Ueberschrift>Einordnung</Ueberschrift>
-              {k.aufhaenger && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginBottom: 6 }}><span style={{ color: C.inkLeise }}>Aufhänger:</span> {k.aufhaenger}</div>}
-              {k.signale && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5, marginBottom: 6 }}><span style={{ color: C.inkLeise }}>Signale:</span> {k.signale}</div>}
-              {k.marktinfo && <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}><span style={{ color: C.inkLeise }}>Markt:</span> {k.marktinfo}</div>}
-            </div>
-          )}
-          <EntwurfTeil k={k} mailOk={mailOk} />
-        </>
-      )}
-
-      {reiter === 'verlauf' && <VerlaufTeil k={k} api={api} name={name} heute={heute} />}
-      {reiter === 'stamm' && <Matrix k={k} api={api} setze={setze} zuFirma={zuFirma} />}
-      {reiter === 'recht' && <RechtTeil k={k} api={api} heute={heute} setze={setze} />}
-    </div>
-  );
 }

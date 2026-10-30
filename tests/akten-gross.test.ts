@@ -87,6 +87,9 @@ describe('Oberfläche — die Listen öffnen die Akte, kein schmales Detail rech
     expect(k).toContain("e.key === 'Enter' && sichtbar[markiert]) { if (zuAkte) zuAkte(sichtbar[markiert].id)");
     expect(k).toContain('detail={null} />');
     expect(k).not.toContain('data-karteikarte');
+    // Die tote Karteikarte (nur ohne `zuAkte`, die Markttraktion gibt es immer mit) ist entfernt (30.10. nachts).
+    expect(k).not.toContain('function Karteikarte(');
+    expect(k).not.toContain('<Karteikarte ');
   });
   it('Firmen: Klick öffnet die Firmenakte; Karte und Akte teilen EINE Stelle für die Teile (keine zweite Logik)', () => {
     expect(f).toContain('onClick={() => zuAkte(x.id)}');
