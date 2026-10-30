@@ -155,7 +155,8 @@ fokusinnovation.de {
 	# Welle 3 (29.10.): Innovations-Check und Terminbuchung laufen in MAKE OS (beide kommen dort ausgeschaltet bzw. ohne Seite, bis Kevin sie
 	# einschaltet). Nur diese Pfade gehen an die App; die App setzt für sie ihre eigenen strengen Köpfe (next.config.mjs, `buchung`).
 	# /_next/* sind die Skripte und Stile dieser Seiten, /schriften/* die Schrift des Checks.
-	@app path /check /api/check /buchen /buchen/* /api/buchung /api/buchung/* /_next/* /schriften/*
+	# 30.10.: die Newsletter-Anmeldung (/newsletter, POST /api/newsletter — kommt ausgeschaltet; das Token steht nur im Fragment).
+	@app path /check /api/check /newsletter /api/newsletter /buchen /buchen/* /api/buchung /api/buchung/* /_next/* /schriften/*
 	handle @app {
 		header {
 			Strict-Transport-Security "max-age=31536000"

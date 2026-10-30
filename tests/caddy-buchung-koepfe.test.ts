@@ -113,7 +113,7 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     }
   });
 
-  it('fokusinnovation.de (26.10., Welle 3 29.10.): www → 301, gebaute Website read-only aus /srv/fokusinnovation mit strengen Köpfen, Vorschau mit noindex + robots.txt, nur Check und Buchung an die App', () => {
+  it('fokusinnovation.de (26.10., Welle 3 29.10.): www → 301, gebaute Website read-only aus /srv/fokusinnovation mit strengen Köpfen, Vorschau mit noindex + robots.txt, nur Check, Newsletter-Anmeldung und Buchung an die App', () => {
     // OFFLINE (Kevin 08.10.): beide Adressen im Offline-Block mit 503, nichts ausgeliefert.
     const offline = Array.from(aktiv.entries()).find(([k]) => k.split(',').map(a => a.trim()).includes('fokusinnovation.de'));
     if (offline && /^respond 503$/m.test(offline[1])) {
@@ -132,8 +132,9 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     expect(seite).toMatch(/^respond @intern 404$/m);
     expect(seite).toMatch(/^hide \*\.md$/m);
     expect(seite).not.toMatch(/browse/);
-    // Welle 3 (29.10.): NUR Check und Buchung (samt ihren Skripten und der Schrift) gehen an die App — nie /os, nie /api allgemein.
-    expect(seite).toMatch(/^@app path \/check \/api\/check \/buchen \/buchen\/\* \/api\/buchung \/api\/buchung\/\* \/_next\/\* \/schriften\/\*$/m);
+    // Welle 3 (29.10.): NUR Check, Newsletter-Anmeldung (30.10.) und Buchung (samt ihren Skripten und der Schrift) gehen an die App — nie /os,
+    // nie /api allgemein (auch nicht /api/newsletter/intern — die Pfadliste trägt kein /api/newsletter/*).
+    expect(seite).toMatch(/^@app path \/check \/api\/check \/newsletter \/api\/newsletter \/buchen \/buchen\/\* \/api\/buchung \/api\/buchung\/\* \/_next\/\* \/schriften\/\*$/m);
     expect(seite.match(/reverse_proxy/g)?.length).toBe(1);
     expect(seite).toMatch(/handle @app \{[\s\S]*?reverse_proxy app:3000/);
     expect(seite).toMatch(/^request_header -x-middleware-subrequest$/m);
