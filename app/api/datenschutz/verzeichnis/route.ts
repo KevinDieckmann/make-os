@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   let crm = await ladeCrm();
   // Startwerte je Instanz (15.10., Abnahme 2 C22): die Infrastruktur des Betreibers nur in seiner Instanz.
   const betreiber = await istBetreiberInstanz();
-  const vvOpt = { betreiber, google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()), check: (await (await import('@/lib/check/speicher')).ladeCheckEinstellungen()).aktiv };
+  const vvOpt = { betreiber, google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()), check: (await (await import('@/lib/check/speicher')).ladeCheckEinstellungen()).aktiv, social: await (await import('@/lib/social/anbieter')).socialEingerichtet() };
   if (verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, vvOpt).geaendert) crm = await aendereCrm(c => { const r = verzeichnisVervollstaendigen(c.verarbeitungen, jetzt, vvOpt); return r.geaendert ? { ...c, verarbeitungen: r.liste } : c; });
   const e = await ladeEinrichtung();
   const fristen = fristenWirksam(((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER)) ?? {}).fristen);
