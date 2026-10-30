@@ -579,7 +579,7 @@ ${rechner()}
 ${weg(b.ablauf, { klasse: 'vier', etiketten: ['01', '02', '03', '04'], label: 'Ablauf bis zum Mandat' })}</div></section>`,
       innovation: () => `<section class="abschnitt" aria-labelledby="felder-titel"><div class="w">${abKopf({ marke: 'Was dazugehört', h2: b.felder_titel ?? 'Innovation ist mehr als KI.', lead: b.felder_lead ?? b.mehr_als_ki, id: 'felder-titel' })}
 ${raster(b.felder, 4)}
-<div class="zwei-teile belege-paar">${zahl(F.belege.ki_daten)}${zahl(F.belege.daten)}</div></div></section>
+<div class="zwei-teile belege-paar">${zahl(F.belege.ki_daten)}${zahl(F.belege.systeme)}</div></div></section>
 
 <section class="abschnitt" aria-labelledby="check-titel"><div class="w">${abKopf({ marke: 'Innovations-Check', h2: start['innovations-check'].titel, lead: F.check.text, id: 'check-titel' })}
 <ol class="stufen breit erscheint" aria-label="Die fünf Stufen">${stufen.map((s) => `<li><span class="stufe-balken" aria-hidden="true"></span><b>${e(s.name.replace(/ \(.*\)$/, ''))}</b><span>${e(s.kurz)}</span></li>`).join('')}</ol>
@@ -954,7 +954,8 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
     });
   };
   /** Eine belegte Zahl im Stil der Belege der Website (`zahl`), mit Herausgeber und Jahr. */
-  const zahlKarte = (z) => zahl({ wert: z.wert, text: z.satz, link: z.url, quelle: `${z.quelle}, ${z.jahr_der_daten ?? String(z.datum).slice(0, 4)}` });
+  // Zitiert wird wie üblich mit Herausgeber und Erscheinungsjahr; das Jahr der Daten steht, wo es abweicht, im Satz selbst.
+  const zahlKarte = (z) => zahl({ wert: z.wert, text: z.satz, link: z.url, quelle: `${z.quelle}, ${String(z.datum).slice(0, 4)}` });
   neu('kostenlos/index.html', {
     seo: 'kostenlos',
     bildVorzeile: 'Kostenlos',

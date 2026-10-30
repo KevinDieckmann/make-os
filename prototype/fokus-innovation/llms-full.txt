@@ -446,9 +446,9 @@ Kurz gesagt: KI kommt im Alltag an, wenn drei Dinge zusammenkommen: ein klarer A
 
 ### Wo der Mittelstand steht
 
-Das Statistische Bundesamt misst, wie viele Unternehmen KI nutzen:
+Das ifo Institut fragt regelmäßig, wie viele Unternehmen KI nutzen:
 
-26 % der Unternehmen ab 10 Beschäftigten nutzen KI. Bei 10 bis 49 Beschäftigten sind es 23 %, ab 250 Beschäftigten 57 %. (Quelle: Destatis, KI in Unternehmen, 2025, https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-unternehmen-kuenstliche-intelligenz.html)
+54,5 % der Unternehmen in Deutschland nutzten im Mai 2026 KI in ihren Geschäftsprozessen, ein Jahr zuvor waren es 40,9 %. (Quelle: ifo Institut, 05.06.2026, https://www.ifo.de/fakten/2026-06-05/mehr-als-die-haelfte-der-unternehmen-nutzt-kuenstliche-intelligenz)
 
 37 % der kleinen Mittelständler schlossen 2022 bis 2024 Innovationsprojekte ab, bei den großen waren es 73 %. (Quelle: KfW Research, Innovationen, 2026, https://www.kfw.de/%C3%9Cber-die-KfW/KfW-Research/Innovationen.html)
 

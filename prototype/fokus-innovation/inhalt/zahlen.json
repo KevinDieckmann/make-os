@@ -3,17 +3,31 @@
   "hinweis": "Jede Zahl am 30.10.2026 am Original geprüft (Feld „geprueft“); nur Zahlen mit Primärquelle. Verworfenes mit Grund unter „verworfen“. Jährlich aktualisieren.",
   "zahlen": [
     {
-      "id": "eurostat-website-kleinstunternehmen",
+      "id": "reuters-ki-suche-2026",
       "bereich": "sichtbarkeit",
-      "wert": "65 %",
-      "satz": "2023 hatten 65 % der Kleinstunternehmen in Deutschland (0 bis 9 Beschäftigte) eine eigene Website.",
+      "wert": "57 %",
+      "satz": "2026 sahen oder nutzten 57 % der Befragten in neun Ländern binnen einer Woche KI-Antworten oder KI-Zusammenfassungen in Suchmaschinen. Deutschland war nicht Teil der Stichprobe.",
+      "quelle": "Reuters Institute (Universität Oxford)",
+      "titel": "Generative AI and News Report 2026",
+      "datum": "2026-10-29",
+      "jahr_der_daten": 2026,
+      "url": "https://reutersinstitute.politics.ox.ac.uk/generative-ai-and-news-report-2026-standalone-tools-information-infrastructure",
+      "zitat": "57% across nine countries say they saw or engaged with AI-generated answers",
+      "geprueft": "Originalseite am 30.10.2026 geprüft. Befragung durch YouGov vom 14.08. bis 28.09.2026, online, rund 2.000 je Land; Länder AR, AU, DK, FI, FR, JP, NO, UK, US.",
+      "vorn": true
+    },
+    {
+      "id": "eurostat-info-online-2026",
+      "bereich": "sichtbarkeit",
+      "wert": "77 %",
+      "satz": "2025 suchten 77 % der Internetnutzenden in der EU (16 bis 74 Jahre) online nach Informationen über Waren und Dienstleistungen.",
       "quelle": "Eurostat",
-      "titel": "Websites and functionalities by size class of enterprise (isoc_ciweb)",
-      "datum": "2026-02-27",
-      "jahr_der_daten": 2023,
-      "url": "https://ec.europa.eu/eurostat/databrowser/view/isoc_ciweb/default/table?lang=de",
-      "zitat": "Websites and functionalities by size class of enterprise – DE, 0-9, E_WEB, 2023: 64.99",
-      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (isoc_ciweb, geo=DE, unit=PC_ENT, Wirtschaftszweige ohne Finanzsektor und Landwirtschaft, Stand des Datensatzes 27.02.2026). Kleinstunternehmen werden nur in ungeraden Jahren erhoben; 2023 ist der jüngste Wert. Zum Vergleich 2025: 90 % der Unternehmen mit 10 bis 49 Beschäftigten."
+      "titel": "Digitalisation in Europe – 2026 edition",
+      "datum": "2026-04-23",
+      "jahr_der_daten": 2025,
+      "url": "https://ec.europa.eu/eurostat/web/interactive-publications/digitalisation-2026",
+      "zitat": "Finding information about goods and services (77%)",
+      "geprueft": "Originalseite am 30.10.2026 geprüft; EU-Wert für Personen mit Internetnutzung in den letzten 3 Monaten."
     },
     {
       "id": "eurostat-social-media-groesse",
@@ -29,31 +43,17 @@
       "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (isoc_cismt, Indikator E_SM1_ANY, geo=DE, unit=PC_ENT, Stand 27.02.2026). Mittlere Unternehmen (50–249): 77 %."
     },
     {
-      "id": "bitkom-linkedin-profil",
+      "id": "forrester-ki-einkauf-2026",
       "bereich": "sichtbarkeit",
-      "wert": "36 %",
-      "satz": "36 % der Unternehmen ab 20 Beschäftigten in Deutschland haben ein Profil auf LinkedIn; mindestens ein Social-Media-Profil haben 80 %.",
-      "quelle": "Bitkom",
-      "titel": "8 von 10 Unternehmen haben Social-Media-Profil (Presseinformation)",
-      "datum": "2025-08-26",
+      "wert": "94 %",
+      "satz": "94 % der Geschäftskunden nutzen KI im Kaufprozess. Grundlage ist eine weltweite Befragung von knapp 18.000 Einkaufsentscheidern im B2B.",
+      "quelle": "Forrester",
+      "titel": "The State Of Business Buying, 2026",
+      "datum": "2026-01-21",
       "jahr_der_daten": 2025,
-      "url": "https://www.bitkom.org/Presse/Presseinformation/8-von-10-Unternehmen-haben-Social-Media-Profil",
-      "zitat": "„YouTube (43 Prozent) und LinkedIn (36 Prozent)“",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen. Telefonische, repräsentative Befragung durch Bitkom Research, KW 10 bis 16 2025, Unternehmen ab 20 Beschäftigten (die Seite nennt 604 im Text und 602 im Methodikhinweis). Wortlaut zu 80 %: „Insgesamt geben demnach 80 Prozent der befragten Unternehmen an, über mindestens ein Profil …“."
-    },
-    {
-      "id": "bitkom-ki-chats-statt-suche",
-      "bereich": "sichtbarkeit",
-      "wert": "50 %",
-      "satz": "Die Hälfte der Internetnutzerinnen und Internetnutzer ab 16 Jahren in Deutschland nutzt zumindest manchmal einen KI-Chat statt der klassischen Internetsuche.",
-      "quelle": "Bitkom",
-      "titel": "Internet-Suche im Wandel: Die Hälfte nutzt bereits KI-Chats (Presseinformation)",
-      "datum": "2025-11-20",
-      "jahr_der_daten": 2025,
-      "url": "https://www.bitkom.org/Presse/Presseinformation/Internet-Suche-Wandel-Haelfte-nutzt-KI-Chats",
-      "zitat": "„Die Hälfte (50 Prozent) nutzt zumindest manchmal den Chat mit einer KI“",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen. Telefonische Befragung von 1.156 Personen ab 16 Jahren (davon 1.030 Internetnutzende) durch Bitkom Research, KW 39 bis 43 2025. Bezieht sich auf alle Internetnutzenden, nicht speziell auf B2B-Käufer. Auf derselben Seite: 24 % nutzen häufig die KI-Zusammenfassung von Google/Bing, ohne die Suchergebnisse zu betrachten.",
-      "vorn": true
+      "url": "https://www.forrester.com/blogs/state-of-business-buying-2026/",
+      "zitat": "Nearly all business buyers (94%) report using AI during their buying process.",
+      "geprueft": "Forrester-Blog am 30.10.2026 geprüft. Datengrundlage Buyers' Journey Survey 2025, weltweit; Vorjahr 89 %."
     },
     {
       "id": "forrester-kaufgruppe",
@@ -69,20 +69,6 @@
       "geprueft": "Pressemitteilung auf forrester.com am 2026-10-30 abgerufen (Cambridge, Mass., 21.01.2026). International, kein Deutschland-Wert. Stichprobe und Erhebungszeitraum nennt die Seite nicht, deshalb jahr_der_daten leer."
     },
     {
-      "id": "eurostat-crm-groesse",
-      "bereich": "vertrieb",
-      "wert": "26 %",
-      "satz": "2025 nutzten 26 % der kleinen Unternehmen in Deutschland (10 bis 49 Beschäftigte) eine CRM-Software, bei mittleren Unternehmen (50 bis 249) waren es 44 % und bei großen (ab 250) 61 %.",
-      "quelle": "Eurostat",
-      "titel": "Integration of internal processes by size class of enterprise (isoc_eb_iip)",
-      "datum": "2026-02-27",
-      "jahr_der_daten": 2025,
-      "url": "https://ec.europa.eu/eurostat/databrowser/view/isoc_eb_iip/default/table?lang=de",
-      "zitat": "Enterprises using Customer Relationship Management (CRM) software – DE, 10-49, 2025: 25.95",
-      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_CRM1, geo=DE, unit=PC_ENT, Stand 27.02.2026). Werte 2025: 10–49: 25,95; 50–249: 43,53; ab 250: 61,07; alle ab 10: 29,64.",
-      "vorn": true
-    },
-    {
       "id": "ifo-selbststaendige-auftragsmangel",
       "bereich": "vertrieb",
       "wert": "47,3 %",
@@ -93,7 +79,21 @@
       "jahr_der_daten": 2026,
       "url": "https://www.ifo.de/fakten/2026-08-07/knapp-die-haelfte-der-selbstaendigen-klagt-ueber-auftragsmangel",
       "zitat": "„Etwa jeder zweite Selbständige (47,3%) in Deutschland berichtet von fehlenden Aufträgen.“",
-      "geprueft": "Originalseite (deutsch und englisch) am 2026-10-30 abgerufen. Grundlage: Jimdo-ifo-Geschäftsklimaindex, ifo-Umfrage Juli 2026, Solo-Selbstständige und Kleinstunternehmen mit weniger als neun Beschäftigten. Dieselbe Seite: 21,2 % sehen ihre wirtschaftliche Existenz akut gefährdet."
+      "geprueft": "Originalseite (deutsch und englisch) am 2026-10-30 abgerufen. Grundlage: Jimdo-ifo-Geschäftsklimaindex, ifo-Umfrage Juli 2026, Solo-Selbstständige und Kleinstunternehmen mit weniger als neun Beschäftigten. Dieselbe Seite: 21,2 % sehen ihre wirtschaftliche Existenz akut gefährdet.",
+      "vorn": true
+    },
+    {
+      "id": "dsm-referenzkunden-2026",
+      "bereich": "vertrieb",
+      "wert": "72,3 %",
+      "satz": "72,3 % der Start-ups in Deutschland nennen die Gewinnung von Referenzkunden als Ziel bei Kooperationen mit etablierten Unternehmen, 59,6 % neue Vertriebskanäle.",
+      "quelle": "Startup-Verband",
+      "titel": "Deutscher Startup Monitor 2026, S. 43",
+      "datum": "2026-09-28",
+      "jahr_der_daten": 2026,
+      "url": "https://startupverband.de/media/file/rs-deutscherstartupmonitor2026",
+      "zitat": "72,3 % nennen die Gewinnung von Referenzkunden als Ziel (S. 43, Abb. 28)",
+      "geprueft": "Original-PDF am 30.10.2026 im Volltext geprüft. 1.803 Datensätze, Feldzeit 15.06. bis 31.08.2026; gewonnen über Multiplikatoren."
     },
     {
       "id": "dihk-inlandsnachfrage-risiko",
@@ -109,30 +109,30 @@
       "geprueft": "Originalseite am 2026-10-30 abgerufen. Mehr als 23.000 Unternehmen aus nahezu allen Branchen und Regionen. Häufigstes Risiko war in dieser Umfrage die Energie- und Rohstoffpreise (70 %). Eine bundesweite Herbstumfrage 2026 war bei der Recherche noch nicht auffindbar."
     },
     {
-      "id": "dihk-kmu-stellenbesetzung",
+      "id": "eurostat-crm-groesse",
       "bereich": "vertrieb",
-      "wert": "über 40 %",
-      "satz": "Mehr als 40 % der kleinen und mittleren Unternehmen in Deutschland haben Schwierigkeiten, offene Stellen zu besetzen.",
-      "quelle": "DIHK",
-      "titel": "DIHK legt Fachkräftereport 2025/2026 vor",
-      "datum": "2025-12-19",
+      "wert": "26 %",
+      "satz": "2025 nutzten 26 % der kleinen Unternehmen in Deutschland (10 bis 49 Beschäftigte) eine CRM-Software, bei mittleren Unternehmen (50 bis 249) waren es 44 % und bei großen (ab 250) 61 %.",
+      "quelle": "Eurostat",
+      "titel": "Integration of internal processes by size class of enterprise (isoc_eb_iip)",
+      "datum": "2026-02-27",
       "jahr_der_daten": 2025,
-      "url": "https://www.dihk.de/de/newsroom/dihk-legt-fachkraeftereport-2025-2026-vor-159712",
-      "zitat": "„Mehr als 40 Prozent der kleinen und mittleren Unternehmen kämpfen mit Stellenbesetzungsschwierigkeiten.“",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen (veröffentlicht 19.12.2025, aktualisiert 07.01.2026). Grundlage: DIHK-Konjunkturumfrage Herbst 2025 mit fast 22.000 Unternehmen. Über alle Unternehmen: 36 % können offene Stellen zumindest teilweise nicht besetzen. Die Zahl gilt für alle Berufe, nicht nur den Vertrieb."
+      "url": "https://ec.europa.eu/eurostat/databrowser/view/isoc_eb_iip/default/table?lang=de",
+      "zitat": "Enterprises using Customer Relationship Management (CRM) software – DE, 10-49, 2025: 25.95",
+      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_CRM1, geo=DE, unit=PC_ENT, Stand 27.02.2026). Werte 2025: 10–49: 25,95; 50–249: 43,53; ab 250: 61,07; alle ab 10: 29,64."
     },
     {
-      "id": "eurostat-online-verkauf",
+      "id": "salesforce-verkaufszeit-2026",
       "bereich": "vertrieb",
-      "wert": "21 %",
-      "satz": "21 % der kleinen Unternehmen in Deutschland (10 bis 49 Beschäftigte) erzielten 2024 Umsätze über E-Commerce, bei Unternehmen ab 250 Beschäftigten waren es 44 %.",
-      "quelle": "Eurostat",
-      "titel": "E-commerce sales of enterprises by size class of enterprise (isoc_ec_esels)",
-      "datum": "2026-06-15",
-      "jahr_der_daten": 2024,
-      "url": "https://ec.europa.eu/eurostat/databrowser/view/isoc_ec_esels/default/table?lang=de",
-      "zitat": "Enterprises with e-commerce sales – DE, 10-49, 2025: 21.11; GE250, 2025: 43.97",
-      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_AESELL, geo=DE, unit=PC_ENT, Stand 15.06.2026). Erhebungsjahr 2025; laut Eurostat-Metadaten (isoc_e_esms) beziehen sich die E-Commerce-Fragen auf das vorangegangene Kalenderjahr, daher Daten 2024."
+      "wert": "40 %",
+      "satz": "Vertriebsmitarbeitende verbringen im Schnitt nur 40 % ihrer Arbeitszeit mit dem Verkaufen. Befragt wurden 4.050 Vertriebsprofis in 22 Ländern, darunter Deutschland.",
+      "quelle": "Salesforce",
+      "titel": "State of Sales Report, 7. Ausgabe",
+      "datum": "2026-02-03",
+      "jahr_der_daten": 2025,
+      "url": "https://www.salesforce.com/news/stories/state-of-sales-report-announcement-2026/",
+      "zitat": "the average seller spends 40% of their time selling",
+      "geprueft": "Salesforce-Newsroom am 30.10.2026 geprüft. Doppelt anonyme Befragung August/September 2025. Der Herausgeber verkauft selbst Vertriebssoftware."
     },
     {
       "id": "forrester-testphase",
@@ -148,6 +148,33 @@
       "geprueft": "Pressemitteilung auf forrester.com am 2026-10-30 abgerufen. International, kein Deutschland-Wert; Stichprobe und Erhebungszeitraum nennt die Seite nicht. Dieselbe Seite: Bei Käufen ab 10 Mio. US-Dollar testen 78 % vorher."
     },
     {
+      "id": "dihk-kmu-stellenbesetzung",
+      "bereich": "vertrieb",
+      "wert": "über 40 %",
+      "satz": "Mehr als 40 % der kleinen und mittleren Unternehmen in Deutschland haben Schwierigkeiten, offene Stellen zu besetzen.",
+      "quelle": "DIHK",
+      "titel": "DIHK legt Fachkräftereport 2025/2026 vor",
+      "datum": "2025-12-19",
+      "jahr_der_daten": 2025,
+      "url": "https://www.dihk.de/de/newsroom/dihk-legt-fachkraeftereport-2025-2026-vor-159712",
+      "zitat": "„Mehr als 40 Prozent der kleinen und mittleren Unternehmen kämpfen mit Stellenbesetzungsschwierigkeiten.“",
+      "geprueft": "Originalseite am 2026-10-30 abgerufen (veröffentlicht 19.12.2025, aktualisiert 07.01.2026). Grundlage: DIHK-Konjunkturumfrage Herbst 2025 mit fast 22.000 Unternehmen. Über alle Unternehmen: 36 % können offene Stellen zumindest teilweise nicht besetzen. Die Zahl gilt für alle Berufe, nicht nur den Vertrieb."
+    },
+    {
+      "id": "ifo-ki-nutzung-2026",
+      "bereich": "innovation",
+      "wert": "54,5 %",
+      "satz": "Im Mai 2026 nutzten 54,5 % der Unternehmen in Deutschland KI in ihren Geschäftsprozessen, ein Jahr zuvor waren es 40,9 %.",
+      "quelle": "ifo Institut",
+      "titel": "Mehr als die Hälfte der Unternehmen nutzt Künstliche Intelligenz",
+      "datum": "2026-06-05",
+      "jahr_der_daten": 2026,
+      "url": "https://www.ifo.de/fakten/2026-06-05/mehr-als-die-haelfte-der-unternehmen-nutzt-kuenstliche-intelligenz",
+      "zitat": "54,5% der Unternehmen nutzen Künstliche Intelligenz",
+      "geprueft": "Originalseite am 30.10.2026 geprüft. ifo-Konjunkturumfrage Mai 2026; groß 67,2 %, mittel 47,2 %, klein 51,2 %.",
+      "vorn": true
+    },
+    {
       "id": "bitkom-ki-mehrheit-2026",
       "bereich": "innovation",
       "wert": "57 %",
@@ -158,60 +185,7 @@
       "jahr_der_daten": 2026,
       "url": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-die-Mehrheit-der-Unternehmen-KI",
       "zitat": "„Erstmals setzt mit 57 Prozent der Großteil der Unternehmen KI ein.“",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen. Bereits genutzte Zahl stimmt. Telefonische, repräsentative Befragung von 603 Unternehmen ab 20 Beschäftigten durch Bitkom Research, KW 28 bis 33 2026.",
-      "vorn": true
-    },
-    {
-      "id": "destatis-ki-groesse-2025",
-      "bereich": "innovation",
-      "wert": "26 %",
-      "satz": "2025 nutzten 26 % der Unternehmen ab 10 Beschäftigten in Deutschland KI: 23 % der kleinen (10 bis 49), 36 % der mittleren (50 bis 249) und 57 % der großen Unternehmen (ab 250).",
-      "quelle": "Statistisches Bundesamt (Destatis)",
-      "titel": "Unternehmen mit Nutzung von Technologien der künstlichen Intelligenz nach Beschäftigtengrößenklassen",
-      "datum": "2025-11-24",
-      "jahr_der_daten": 2025,
-      "url": "https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-unternehmen-kuenstliche-intelligenz.html",
-      "zitat": "Unternehmen, die künstliche Intelligenz nutzen: 26 %/23 %/36 %/57 %",
-      "geprueft": "Tabelle auf destatis.de am 2026-10-30 abgerufen (Stand 24.11.2025, Berichtsjahr 2025). Hinweis der Tabelle: Ab dem Berichtsjahr 2025 gilt der EU-Unternehmensbegriff, der Vorjahresvergleich ist daher nur eingeschränkt möglich. Diese Zahl ersetzt die Werte von 2024."
-    },
-    {
-      "id": "kfw-ki-kleinstunternehmen",
-      "bereich": "innovation",
-      "wert": "19 %",
-      "satz": "In den Jahren 2022 bis 2024 nutzten 19 % der mittelständischen Unternehmen mit weniger als fünf Beschäftigten KI; im gesamten Mittelstand waren es 20 %.",
-      "quelle": "KfW Research",
-      "titel": "Pressemitteilung vom 11.02.2026 – Sonderauswertung des KfW-Mittelstandspanels zur KI-Nutzung",
-      "datum": "2026-02-11",
-      "jahr_der_daten": 2024,
-      "url": "https://www.kfw.de/%C3%9Cber-die-KfW/Newsroom/Aktuelles/Pressemitteilungen-Details_880896.html",
-      "zitat": "„unter fünf Beschäftigten nutzten in den Jahren 2022 bis 2024 immerhin 19 Prozent KI“",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen. Grundlage: Sonderauswertung des KfW-Mittelstandspanels (repräsentative Befragung mittelständischer Unternehmen). Weitere Werte auf der Seite: ab 50 Mitarbeitenden 36 %, wissensbasierte Dienstleistungen 28 %, Baugewerbe 8 %."
-    },
-    {
-      "id": "destatis-ki-hemmnis-wissen",
-      "bereich": "innovation",
-      "wert": "72 %",
-      "satz": "Von den Unternehmen in Deutschland, die den Einsatz von KI erwogen, aber noch nicht umgesetzt haben, nannten 2025 72 % fehlendes Wissen als Grund.",
-      "quelle": "Statistisches Bundesamt (Destatis)",
-      "titel": "Gründe gegen die Nutzung von Technologien der künstlichen Intelligenz nach Beschäftigtengrößenklassen",
-      "datum": "2025-11-24",
-      "jahr_der_daten": 2025,
-      "url": "https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-gegen-nutzung-kuenstliche-intelligenz.html",
-      "zitat": "Fehlendes Wissen: 72 (Insgesamt) · 73 (10 bis 49 Beschäftigte)",
-      "geprueft": "Tabelle auf destatis.de am 2026-10-30 abgerufen (Stand 24.11.2025, Berichtsjahr 2025). Basis: Unternehmen, die KI in Betracht gezogen haben, sie aber bisher nicht nutzen (20 % aller Unternehmen). Weitere Gründe: Unklarheit über rechtliche Folgen 62 %, Datenschutz 60 %, zu hohe Kosten 32 %."
-    },
-    {
-      "id": "eurostat-digitale-intensitaet",
-      "bereich": "innovation",
-      "wert": "29 %",
-      "satz": "2025 hatten 29 % der kleinen Unternehmen in Deutschland (10 bis 49 Beschäftigte) eine sehr niedrige digitale Intensität nach dem Digital Intensity Index von Eurostat.",
-      "quelle": "Eurostat",
-      "titel": "Digital Intensity by size class of enterprise (isoc_e_dii)",
-      "datum": "2026-02-27",
-      "jahr_der_daten": 2025,
-      "url": "https://ec.europa.eu/eurostat/databrowser/view/isoc_e_dii/default/table?lang=de",
-      "zitat": "Enterprises with very low digital intensity index (DII version 3) – DE, 10-49, 2025: 29.01",
-      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_DI3_VLO, geo=DE, unit=PC_ENT, Stand 27.02.2026). Der Index zählt, wie viele von zwölf digitalen Technologien ein Unternehmen nutzt; die Indikatoren wechseln je Erhebungsjahr (2025: Version 3). Mindestens grundlegende digitale Intensität hatten 2025 74 % der KMU (10–249)."
+      "geprueft": "Originalseite am 2026-10-30 abgerufen. Bereits genutzte Zahl stimmt. Telefonische, repräsentative Befragung von 603 Unternehmen ab 20 Beschäftigten durch Bitkom Research, KW 28 bis 33 2026."
     },
     {
       "id": "bitkom-ki-datenaufbereitung",
@@ -227,17 +201,69 @@
       "geprueft": "Originalseite am 2026-10-30 abgerufen (Presseinformation 14.09.2026, 603 Unternehmen ab 20 Beschäftigten, KW 28 bis 33 2026). Dieselbe Seite: 40 % der Unternehmen ohne KI fehlen die notwendigen Daten."
     },
     {
-      "id": "bitkom-ki-agenten",
+      "id": "zew-genai-bereitstellung-2026",
       "bereich": "innovation",
-      "wert": "11 %",
-      "satz": "11 % der Unternehmen ab 20 Beschäftigten in Deutschland setzen bereits KI-Agenten ein, weitere 29 % planen den Einsatz.",
-      "quelle": "Bitkom",
-      "titel": "Erstmals nutzt die Mehrheit der Unternehmen KI (Presseinformation)",
-      "datum": "2026-09-14",
+      "wert": "fast 60 %",
+      "satz": "Fast 60 % der Unternehmen der Informationswirtschaft stellen ihren Beschäftigten gezielt generative KI bereit, im Verarbeitenden Gewerbe sind es 30 %.",
+      "quelle": "ZEW Mannheim",
+      "titel": "Kaum Unternehmen verbieten KI-Einsatz",
+      "datum": "2026-06-08",
       "jahr_der_daten": 2026,
-      "url": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-die-Mehrheit-der-Unternehmen-KI",
-      "zitat": "„11 Prozent setzen solche Agenten schon ein, 29 Prozent planen den Einsatz“",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen; dieselbe Befragung wie die 57 % (603 Unternehmen ab 20 Beschäftigten, KW 28 bis 33 2026). Laut Seite haben 24 % kein Interesse, 31 % diskutieren den Einsatz."
+      "url": "https://www.zew.de/presse/pressearchiv/kaum-unternehmen-verbieten-ki-einsatz",
+      "zitat": "Im Verarbeitenden Gewerbe liegt dieser Anteil bei 30 Prozent.",
+      "geprueft": "Pressemitteilung am 30.10.2026 geprüft. ZEW-Branchenreport März/April 2026, rund 1.500 Unternehmen, repräsentativ."
+    },
+    {
+      "id": "eurostat-digitale-intensitaet",
+      "bereich": "innovation",
+      "wert": "29 %",
+      "satz": "2025 hatten 29 % der kleinen Unternehmen in Deutschland (10 bis 49 Beschäftigte) eine sehr niedrige digitale Intensität nach dem Digital Intensity Index von Eurostat.",
+      "quelle": "Eurostat",
+      "titel": "Digital Intensity by size class of enterprise (isoc_e_dii)",
+      "datum": "2026-02-27",
+      "jahr_der_daten": 2025,
+      "url": "https://ec.europa.eu/eurostat/databrowser/view/isoc_e_dii/default/table?lang=de",
+      "zitat": "Enterprises with very low digital intensity index (DII version 3) – DE, 10-49, 2025: 29.01",
+      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_DI3_VLO, geo=DE, unit=PC_ENT, Stand 27.02.2026). Der Index zählt, wie viele von zwölf digitalen Technologien ein Unternehmen nutzt; die Indikatoren wechseln je Erhebungsjahr (2025: Version 3). Mindestens grundlegende digitale Intensität hatten 2025 74 % der KMU (10–249)."
+    },
+    {
+      "id": "salesforce-daten-ki-2026",
+      "bereich": "innovation",
+      "wert": "51 %",
+      "satz": "51 % der Vertriebsleitungen mit KI sagen, dass unverbundene Systeme ihre KI-Vorhaben bremsen. 74 % der Vertriebsprofis arbeiten an der Bereinigung ihrer Daten.",
+      "quelle": "Salesforce",
+      "titel": "State of Sales Report, 7. Ausgabe",
+      "datum": "2026-02-03",
+      "jahr_der_daten": 2025,
+      "url": "https://www.salesforce.com/news/stories/state-of-sales-report-announcement-2026/",
+      "zitat": "Over half of sales leaders with AI (51%) say disconnected systems are slowing down their AI initiatives.",
+      "geprueft": "Wie oben: 4.050 Befragte in 22 Ländern inkl. Deutschland, August/September 2025. Der Herausgeber verkauft selbst Software."
+    },
+    {
+      "id": "dihk-ki-produktivitaet-2026",
+      "bereich": "innovation",
+      "wert": "41 %",
+      "satz": "Von den Unternehmen, die KI bereits praktisch einsetzen, bewerten 41 % den Effekt auf ihre Produktivität als hoch.",
+      "quelle": "DIHK",
+      "titel": "DIHK-Digitalisierungsumfrage 2026",
+      "datum": "2026-01-28",
+      "jahr_der_daten": 2025,
+      "url": "https://www.dihk.de/de/newsroom/digitalisierung-2026-unternehmen-halten-kurs-163290",
+      "zitat": "41 Prozent den Produktivitätseffekt als hoch",
+      "geprueft": "Pressemitteilung und PDF am 30.10.2026 geprüft. 4.686 Unternehmen, Feldzeit 10. bis 28.11.2025; Grundgesamtheit: Unternehmen mit praktischem KI-Einsatz."
+    },
+    {
+      "id": "destatis-ki-hemmnis-wissen",
+      "bereich": "innovation",
+      "wert": "72 %",
+      "satz": "Von den Unternehmen in Deutschland, die den Einsatz von KI erwogen, aber noch nicht umgesetzt haben, nannten 2025 72 % fehlendes Wissen als Grund.",
+      "quelle": "Statistisches Bundesamt (Destatis)",
+      "titel": "Gründe gegen die Nutzung von Technologien der künstlichen Intelligenz nach Beschäftigtengrößenklassen",
+      "datum": "2025-11-24",
+      "jahr_der_daten": 2025,
+      "url": "https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-gegen-nutzung-kuenstliche-intelligenz.html",
+      "zitat": "Fehlendes Wissen: 72 (Insgesamt) · 73 (10 bis 49 Beschäftigte)",
+      "geprueft": "Tabelle auf destatis.de am 2026-10-30 abgerufen (Stand 24.11.2025, Berichtsjahr 2025). Basis: Unternehmen, die KI in Betracht gezogen haben, sie aber bisher nicht nutzen (20 % aller Unternehmen). Weitere Gründe: Unklarheit über rechtliche Folgen 62 %, Datenschutz 60 %, zu hohe Kosten 32 %."
     }
   ],
   "verworfen": [
@@ -288,6 +314,34 @@
     {
       "was": "Reserve, am Original geprüft, aber wegen der Begrenzung auf 18 nicht aufgenommen",
       "warum": "ifo 21.08.2026: 23,2 % der Unternehmen fehlen Fachkräfte (Juli 2026; Handel 16,2 %). Bitkom 20.11.2025: 24 % nutzen häufig die KI-Zusammenfassung von Suchmaschinen, ohne die Ergebnisse anzusehen. Eurostat isoc_cismt: 33 % der kleinen Unternehmen (10–49) nutzten 2023 Plattformen zum Teilen von Videos und Medien (z. B. YouTube); 2024 schalteten 36 % von ihnen bezahlte Online-Werbung. Eurostat isoc_ciweb: 90 % der kleinen Unternehmen (10–49) hatten 2025 eine Website. Bitkom 14.09.2026: 85 % der Unternehmen ohne KI fehlt technisches Know-how."
+    },
+    {
+      "was": "Eurostat: 2023 hatten 65 % der Kleinstunternehmen in Deutschland (0 bis 9 Beschäftigte) eine eigene Website.",
+      "warum": "Am 30.10.2026 ersetzt (Kevin: Zahlen aus 2026, nicht nur Bitkom): Daten von 2023."
+    },
+    {
+      "was": "Bitkom: 36 % der Unternehmen ab 20 Beschäftigten in Deutschland haben ein Profil auf LinkedIn; mindestens ein Social-Media-Profil haben 80 %.",
+      "warum": "Am 30.10.2026 ersetzt (Kevin: Zahlen aus 2026, nicht nur Bitkom): erschienen 2025."
+    },
+    {
+      "was": "Bitkom: Die Hälfte der Internetnutzerinnen und Internetnutzer ab 16 Jahren in Deutschland nutzt zumindest manchmal einen KI-Chat statt der klassischen Internetsuche.",
+      "warum": "Am 30.10.2026 ersetzt (Kevin: Zahlen aus 2026, nicht nur Bitkom): erschienen 2025, ersetzt durch Reuters Institute 2026."
+    },
+    {
+      "was": "Eurostat: 21 % der kleinen Unternehmen in Deutschland (10 bis 49 Beschäftigte) erzielten 2024 Umsätze über E-Commerce, bei Unternehmen ab 250 Beschäftigten waren es 44 %.",
+      "warum": "Am 30.10.2026 ersetzt (Kevin: Zahlen aus 2026, nicht nur Bitkom): Daten von 2024."
+    },
+    {
+      "was": "Statistisches Bundesamt (Destatis): 2025 nutzten 26 % der Unternehmen ab 10 Beschäftigten in Deutschland KI: 23 % der kleinen (10 bis 49), 36 % der mittleren (50 bis 249) und 57 % der großen Unternehmen (ab 250).",
+      "warum": "Am 30.10.2026 ersetzt (Kevin: Zahlen aus 2026, nicht nur Bitkom): ersetzt durch ifo Mai 2026."
+    },
+    {
+      "was": "KfW Research: In den Jahren 2022 bis 2024 nutzten 19 % der mittelständischen Unternehmen mit weniger als fünf Beschäftigten KI; im gesamten Mittelstand waren es 20 %.",
+      "warum": "Am 30.10.2026 ersetzt (Kevin: Zahlen aus 2026, nicht nur Bitkom): Daten von 2024."
+    },
+    {
+      "was": "Bitkom: 11 % der Unternehmen ab 20 Beschäftigten in Deutschland setzen bereits KI-Agenten ein, weitere 29 % planen den Einsatz.",
+      "warum": "Am 30.10.2026 ersetzt (Kevin: Zahlen aus 2026, nicht nur Bitkom): zu viele Bitkom-Zahlen."
     }
   ]
 }

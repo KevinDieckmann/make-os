@@ -97,16 +97,28 @@
       "link": "https://www.kfw.de/%C3%9Cber-die-KfW/KfW-Research/Innovationen.html"
     },
     "ki_nutzung": {
-      "wert": "26 %",
-      "text": "der Unternehmen ab 10 Beschäftigten nutzen KI. Bei 10 bis 49 Beschäftigten sind es 23 %, ab 250 Beschäftigten 57 %.",
-      "quelle": "Destatis, KI in Unternehmen, 2025",
-      "link": "https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-unternehmen-kuenstliche-intelligenz.html"
+      "wert": "54,5 %",
+      "text": "der Unternehmen in Deutschland nutzten im Mai 2026 KI in ihren Geschäftsprozessen, ein Jahr zuvor waren es 40,9 %.",
+      "quelle": "ifo Institut, 05.06.2026",
+      "link": "https://www.ifo.de/fakten/2026-06-05/mehr-als-die-haelfte-der-unternehmen-nutzt-kuenstliche-intelligenz"
     },
     "ki_daten": {
       "wert": "50 %",
       "text": "der Unternehmen, die KI nutzen, nennen die Aufbereitung von Daten als großen Kostenpunkt, 41 % die Einbindung in bestehende Systeme. Lizenzen für KI-Software nennen nur 21 %.",
       "quelle": "Bitkom, KI-Studie 2026",
       "link": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI"
+    },
+    "auftraege": {
+      "wert": "47,3 %",
+      "text": "der Selbständigen und Kleinstunternehmen in Deutschland klagten im Juli 2026 über fehlende Aufträge.",
+      "quelle": "ifo Institut, 07.08.2026",
+      "link": "https://www.ifo.de/fakten/2026-08-07/knapp-die-haelfte-der-selbstaendigen-klagt-ueber-auftragsmangel"
+    },
+    "systeme": {
+      "wert": "51 %",
+      "text": "der Vertriebsleitungen mit KI sagen, dass unverbundene Systeme ihre KI-Vorhaben bremsen.",
+      "quelle": "Salesforce, State of Sales, 2026",
+      "link": "https://www.salesforce.com/news/stories/state-of-sales-report-announcement-2026/"
     }
   },
   "bereiche": {
@@ -160,7 +172,7 @@
         "Zielgruppe, Prozess im CRM, Gesprächsleitfäden, Wochenreport, Training",
         "Ihr Team schließt selbst ab, planbar"
       ],
-      "beleg": "startup",
+      "beleg": "auftraege",
       "held": {
         "titel": "Ihr Produkt ist gut. Jetzt muss es sich verkaufen.",
         "text": "Wir bauen Ihren Vertrieb so auf, dass er ohne Zufall funktioniert: mit klaren Prozessen, sauberen Zahlen und einem Team, das selbst abschließt. Wir beraten nicht nur, wir arbeiten mit."
@@ -414,7 +426,14 @@
     "titel": "Das Team dahinter",
     "rolle": "Feste Partner aus unserem Netzwerk",
     "text": "Für jedes Projekt stellen wir das Team zusammen, das es braucht: Spezialisten, mit denen wir eingespielt sind. Sie haben trotzdem eine Ansprechperson, die für das Ergebnis geradesteht.",
-    "felder": ["Film und Video", "Design und Websites", "Entwicklung und Automatisierung", "PR und Redaktion", "Daten und KI", "Leadgenerierung"]
+    "felder": [
+      "Film und Video",
+      "Design und Websites",
+      "Entwicklung und Automatisierung",
+      "PR und Redaktion",
+      "Daten und KI",
+      "Leadgenerierung"
+    ]
   },
   "team": [
     {
