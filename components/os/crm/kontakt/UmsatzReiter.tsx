@@ -119,8 +119,8 @@ function DateiLink({ e }: { e: DateiEintrag }) {
   return <a href={`/api/crm/dateien?id=${encodeURIComponent(e.id)}`} download={e.datei.name} style={leiseLink} title={`${e.datei.name} · ${groesseText(e.datei.groesse)}`}>↓ {e.datei.name.length > 28 ? `${e.datei.name.slice(0, 26)}…` : e.datei.name}</a>;
 }
 
-/** Datei wählen (unsichtbares Feld) — prüft Größe schon hier, der Server prüft Typ und Inhalt. */
-function DateiWahl({ datei, setDatei, text = 'PDF wählen' }: { datei: File | null; setDatei: (f: File | null) => void; text?: string }) {
+/** Datei wählen (unsichtbares Feld) — prüft Größe schon hier, der Server prüft Typ und Inhalt. Auch in der Firmenakte (30.10.). */
+export function DateiWahl({ datei, setDatei, text = 'PDF wählen' }: { datei: File | null; setDatei: (f: File | null) => void; text?: string }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
     <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -131,7 +131,8 @@ function DateiWahl({ datei, setDatei, text = 'PDF wählen' }: { datei: File | nu
   );
 }
 
-async function hochladen(meta: Record<string, unknown>, datei: File | null): Promise<{ ok: boolean; fehler?: string; eintrag?: DateiEintrag }> {
+/** Ablegen in der CRM-Ablage (`POST /api/crm/dateien`) — EIN Weg für Kontakt- und Firmenakte (30.10.); Typ, Grenze und Bezug prüft der Server. */
+export async function hochladen(meta: Record<string, unknown>, datei: File | null): Promise<{ ok: boolean; fehler?: string; eintrag?: DateiEintrag }> {
   if (datei && datei.size > MAX_DATEI_BYTES) return { ok: false, fehler: 'Datei zu groß (höchstens 15 MB).' };
   try {
     if (datei) {

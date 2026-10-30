@@ -16,7 +16,7 @@ import { WEG, eventLink } from '@/lib/wege';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, feld, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE, Arbeitsflaeche, FilterKnopf, FilterGruppe, useBreit, useBreite } from '../ui';
+import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Hinweis, Punkt, Zahl, Raster, feld, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE, Arbeitsflaeche, FilterKnopf, FilterGruppe, useBreit, useBreite } from '../ui';
 import { useCrmAblage, PapierkorbKarte, type CrmAblage } from './ablage';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
@@ -25,7 +25,8 @@ import { firmenId, firmenDubletten } from '@/lib/crm/firmen';
 import { dealZuFirma, mandatZuFirma } from '@/lib/crm/firmen-bezug';
 import { dealWertText, OFFENE_STUFEN } from '@/lib/crm/pipeline';
 import { umsatzBezug, umsatzKennzahlen, type UmsatzRechnung, type UmsatzKennzahlen, type ZugeordneteRechnung } from '@/lib/crm/umsatz';
-import { DATEI_ARTEN, groesseText, type DateiEintrag } from '@/lib/dateien/regeln';
+import { DATEI_ARTEN, groesseText, type DateiArt, type DateiEintrag } from '@/lib/dateien/regeln';
+import { DateiWahl, hochladen } from './kontakt/UmsatzReiter';
 import { eventsFuerKunde, erfassteTeilnahmen, begegnungenFuerFirma, begegnungStatus } from '@/lib/crm/besuche';
 import type { Firma, FirmaRolle } from '@/lib/crm/typen';
 import { type CrmApi, datum, euro, nurFelder } from './daten';
@@ -564,21 +565,27 @@ function FirmaUmsatzKarte({ u }: { u: UmsatzStand }) {
   );
 }
 
-/** Unterlagen der Firma (30.10.): die CRM-Ablage zu Firma, Deals und Mandaten — nur lesen und herunterladen; hochladen geht in der Akte einer Person bzw. am Mandat. */
+/**
+ * Unterlagen der Firma (30.10.): die CRM-Ablage zu Firma, Deals und Mandaten — lesen, herunterladen und seit 30.10. nachts auch direkt an der
+ * Firma ablegen (Bezug `firmaId`). Derselbe Weg wie in der Kontakt-Akte (`hochladen`/`DateiWahl` aus dem Reiter Umsatz): Typ am Inhalt,
+ * Grenze und Bezug prüft der Server (`/api/crm/dateien`).
+ */
 function FirmaDateien({ f, chancen, mandate }: { f: Firma; chancen: string[]; mandate: string[] }) {
   const [liste, setListe] = useState<DateiEintrag[] | null | 'fehler'>(null);
+  const [neu, setNeu] = useState(0);
   const filter = new URLSearchParams({ firma: f.id, ...(mandate.length ? { mandat: mandate.join(',') } : {}), ...(chancen.length ? { deal: chancen.join(',') } : {}) }).toString();
   useEffect(() => {
     let aus = false;
     fetch(`/api/crm/dateien?${filter}`, { cache: 'no-store' }).then(r => r.json()).then((d: { ok?: boolean; eintraege?: DateiEintrag[] }) => { if (!aus) setListe(d.ok ? d.eintraege ?? [] : 'fehler'); }).catch(() => { if (!aus) setListe('fehler'); });
     return () => { aus = true; };
-  }, [filter]);
+  }, [filter, neu]);
   return (
     <div>
       <Ueberschrift rechts={Array.isArray(liste) && liste.length ? `${liste.length}` : undefined}>Dateien</Ueberschrift>
+      <FirmaDateiAblegen firmaId={f.id} onFertig={() => setNeu(n => n + 1)} />
       {liste === null && <Leer>lädt …</Leer>}
       {liste === 'fehler' && <Leer>Die Ablage ist gerade nicht erreichbar.</Leer>}
-      {Array.isArray(liste) && !liste.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Unterlagen — Verträge und Angebote legt man in der Akte einer Person (Reiter Umsatz) ab.</div>}
+      {Array.isArray(liste) && !liste.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Unterlagen an dieser Firma.</div>}
       {Array.isArray(liste) && liste.slice(0, 12).map(e => (
         <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: TYP.bedien, padding: '4px 0' }}>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.titel ?? e.datei?.name ?? 'Unterlage'}<span style={{ color: C.inkLeise }}> · {DATEI_ARTEN.find(a => a.id === e.art)?.label ?? e.art}{e.datei ? ` · ${groesseText(e.datei.groesse)}` : ''}</span></span>
@@ -586,6 +593,33 @@ function FirmaDateien({ f, chancen, mandate }: { f: Firma; chancen: string[]; ma
         </div>
       ))}
       {Array.isArray(liste) && liste.length > 12 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{`und ${liste.length - 12} weitere`}</div>}
+    </div>
+  );
+}
+
+/** „+ Datei ablegen“ an der Firma: Art (Vorgabe Sonstiges), optional Titel, Datei — Bezug ist die Firma selbst. */
+function FirmaDateiAblegen({ firmaId, onFertig }: { firmaId: string; onFertig: () => void }) {
+  const [offen, setOffen] = useState(false);
+  const [datei, setDatei] = useState<File | null>(null);
+  const [art, setArt] = useState<DateiArt>('sonstig');
+  const [titel, setTitel] = useState('');
+  const [fehler, setFehler] = useState<string | null>(null);
+  if (!offen) return <div style={{ marginBottom: 6 }}><Knopf leise onClick={() => setOffen(true)}>+ Datei ablegen</Knopf></div>;
+  async function ablegen() {
+    if (!datei) { setFehler('Bitte zuerst eine Datei wählen.'); return; }
+    setFehler(null);
+    const r = await hochladen({ art, ...(titel.trim() ? { titel: titel.trim() } : {}), firmaId }, datei);
+    if (!r.ok) { setFehler(r.fehler ?? 'Nicht abgelegt.'); return; }
+    setDatei(null); setTitel(''); setArt('sonstig'); setOffen(false);
+    onFertig();
+  }
+  return (
+    <div style={{ display: 'grid', gap: 8, padding: '6px 0 12px', borderBottom: '1px solid rgba(255,255,255,.06)', marginBottom: 6 }}>
+      <Feldzeile label="Datei"><DateiWahl datei={datei} setDatei={setDatei} text="Datei wählen (PDF, DOCX, Bild)" /></Feldzeile>
+      <Feldzeile label="Art"><Wahl<DateiArt> liste={DATEI_ARTEN} wert={art} label="Art der Unterlage" onWahl={v => setArt(v)} /></Feldzeile>
+      <Feldzeile label="Titel"><input value={titel} onChange={e => setTitel(e.target.value)} placeholder="optional, sonst der Dateiname" aria-label="Titel der Unterlage" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} /></Feldzeile>
+      {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><Knopf onClick={ablegen} aus={!datei}>Ablegen</Knopf><Knopf leise onClick={() => { setOffen(false); setFehler(null); }}>Abbrechen</Knopf></div>
     </div>
   );
 }

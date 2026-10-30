@@ -102,6 +102,14 @@ describe('Oberfläche — die Listen öffnen die Akte, kein schmales Detail rech
     expect(f).toContain('<AufgabenAkte');
     expect(f).toContain('<ZoeVorschlaege');
   });
+  it('Firmenakte › Dateien: ablegen direkt an der Firma (Bezug firmaId) über denselben Weg wie die Kontakt-Akte', () => {
+    expect(f).toContain("import { DateiWahl, hochladen } from './kontakt/UmsatzReiter';");
+    expect(f).toContain('<FirmaDateiAblegen firmaId={f.id}');
+    expect(f).toContain('await hochladen({ art, ...(titel.trim() ? { titel: titel.trim() } : {}), firmaId }, datei)');
+    const u = lies('components/os/crm/kontakt/UmsatzReiter.tsx');
+    expect(u).toContain('export async function hochladen(meta');
+    expect(u).toContain("fetch('/api/crm/dateien', { method: 'POST', body: f })");
+  });
   it('Mandate: ein Mandat (`?k=`) öffnet die Mandatsakte, breit und zweispaltig; der Überblick bleibt in der Liste', () => {
     expect(kd).toContain('if (sel) {');
     expect(kd).toContain('function MandatAkte(');
