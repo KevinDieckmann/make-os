@@ -5,6 +5,7 @@
 
 import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import { suchPasst } from '@/lib/text/such-norm';
+import { istZugeordnet, zuordnungNamen } from './regeln';
 
 /**
  * Zustand für die Anzeige: `entwurf` (geplant, mit Positionen — aus dem Editor), `geplant` (Planposten ohne Positionen, Altbestand/Liquidität),
@@ -25,14 +26,16 @@ export const ZUSTAND_NAME: Record<RechnungsZustand, string> = {
 };
 
 /** Die Filter der Übersicht. `offen` schließt `ueberfaellig` ein (beides wartet auf Geld). */
-export type RechnungsFilter = 'alle' | 'entwuerfe' | 'offen' | 'ueberfaellig' | 'bezahlt' | 'storniert';
+export type RechnungsFilter = 'alle' | 'entwuerfe' | 'offen' | 'ueberfaellig' | 'bezahlt' | 'storniert' | 'ohne-zuordnung';
 export const RECHNUNGS_FILTER: { id: RechnungsFilter; label: string }[] = [
   { id: 'alle', label: 'Alle' }, { id: 'entwuerfe', label: 'Entwürfe' }, { id: 'offen', label: 'Offen' }, { id: 'ueberfaellig', label: 'Überfällig' },
   { id: 'bezahlt', label: 'Bezahlt' }, { id: 'storniert', label: 'Storniert' },
+  // 30.10.: Altbestand und Entwürfe, die noch keinem Kunden der Markttraktion zugeordnet sind (sie gehen so nicht raus).
+  { id: 'ohne-zuordnung', label: 'Ohne Zuordnung' },
 ];
 
 const passtFilter = (z: RechnungsZustand, f: RechnungsFilter) =>
-  f === 'alle' ? true
+  f === 'alle' || f === 'ohne-zuordnung' ? true
   : f === 'entwuerfe' ? z === 'entwurf' || z === 'geplant'
   : f === 'offen' ? z === 'offen' || z === 'ueberfaellig'
   : f === 'ueberfaellig' ? z === 'ueberfaellig'
@@ -52,12 +55,20 @@ function vergleich(heute: string) {
   };
 }
 
-/** Filtern + Suche (Kunde, Nummer, Titel, Empfänger) + Gesellschaft, sortiert. */
-export function rechnungenFiltern<R extends Rechnung>(liste: readonly R[], o: { filter: RechnungsFilter; suche?: string; gesellschaft?: string | null }, heute: string): R[] {
+/**
+ * Filtern + Suche (Kunde, Nummer, Titel, Empfänger, seit 30.10. auch Firma/Person/Mandat der Zuordnung über `namen`) + Gesellschaft, sortiert.
+ * „Ohne Zuordnung“ (30.10.): Rechnungen ohne Firma, Person und Mandat aus der Kartei (Stornorechnungen zählen nicht — sie folgen dem Original).
+ */
+export function rechnungenFiltern<R extends Rechnung>(liste: readonly R[], o: { filter: RechnungsFilter; suche?: string; gesellschaft?: string | null; namen?: Readonly<Record<string, string>> }, heute: string): R[] {
   const q = (o.suche ?? '').trim();
-  const gefiltert = liste.filter(r => passtFilter(rechnungsZustand(r, heute), o.filter)
-    && (!o.gesellschaft || r.firmaId === o.gesellschaft)
-    && (!q || suchPasst([r.kunde, r.nummer, r.titel, r.empfaenger?.firma, r.empfaenger?.name, r.angebot], q)));
+  const gefiltert = liste.filter(r => {
+    if (!passtFilter(rechnungsZustand(r, heute), o.filter)) return false;
+    if (o.filter === 'ohne-zuordnung' && (r.art === 'storno' || istZugeordnet(r))) return false;
+    if (o.gesellschaft && r.firmaId !== o.gesellschaft) return false;
+    if (!q) return true;
+    const z = zuordnungNamen(r, o.namen);
+    return suchPasst([r.kunde, r.nummer, r.titel, r.empfaenger?.firma, r.empfaenger?.name, r.angebot, z.firma, z.person, z.mandat], q);
+  });
   // Entwürfe: jüngste zuerst (der Bestand ist in Anlage-Reihenfolge) — stabil sortieren über die umgedrehte Liste.
   return [...gefiltert].reverse().sort(vergleich(heute));
 }

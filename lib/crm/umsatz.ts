@@ -11,6 +11,10 @@
 //     Kundennamen (Firmenname bzw. Name der Person) als Rückfall — mit Hinweis
 //     „per Name zugeordnet“. Eine Rechnung, die auf ein ANDERES Mandat zeigt, wird
 //     nie per Name hergeholt. Private Posten (firmaId „privat“) zählen nie.
+//   · Seit 30.10. (Kevin: „Rechnungen … immer mit der Markttraktion abgleichen“) zuerst über die Zuordnung der Rechnung selbst: `kontaktId`
+//     = diese Person bzw. `kundeFirmaId` = ihre Firma (bzw. eine Firma der Gruppe) — auch Rechnungen der Selbstständigkeit (Privat-Einheit).
+//     Welche Rechnungen überhaupt ankommen, entscheidet der Server nach Sicht (GET /api/rechnung?umsatz=1): ein Konto „nur Business“ bekommt
+//     nie eine Rechnung einer Privat-Einheit. Eine Rechnung, die einer ANDEREN Person/Firma zugeordnet ist, kommt nie per Name.
 // Client-sicher: keine Server-Importe.
 
 import type { Angebot, AngebotsStatus, Chance, CrmBestand, Firma, Mandat } from './typen';
@@ -18,7 +22,7 @@ import { angebotSummen } from './angebote';
 import type { DateiEintrag, AngebotStatus } from '@/lib/dateien/regeln';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { rechnungPasst, mrr } from './kunden';
-import { einheitAusGesellschaft, finanzFirmaFuer, gesellschaftAusEinheit, istRegisterKennung, NUR_GRUNDDATEN, type Gesellschaftskennung } from '@/lib/einheiten';
+import { einheitAusGesellschaft, finanzFirmaFuer, gehoertZuPrivat, gesellschaftAusEinheit, istRegisterKennung, NUR_GRUNDDATEN, type Gesellschaftskennung } from '@/lib/einheiten';
 import { istPrivatPosten } from '@/lib/make-one/liquiditaet';
 import { firmenGruppe } from './konzern';
 
@@ -42,12 +46,21 @@ export interface UmsatzRechnung {
   stornoGrund?: string;
   /** Fingerabdruck vom GET — geht beim Ändern als `stand` zurück (409 bei fremder Änderung). */
   fassung?: string;
+  /** Zuordnung zur Markttraktion (30.10.): Person bzw. Kundenfirma aus der Kartei. */
+  kontaktId?: string;
+  kundeFirmaId?: string;
+  /** Stornorechnung (eigene Nummer, negativ) — zählt nirgends mit. */
+  art?: 'storno';
+  /** Mit PDF aus MAKE OS geschrieben (Stellen/Storno über den Editor). */
+  pdf?: boolean;
 }
 
 export interface ZugeordneteRechnung {
   r: UmsatzRechnung;
   /** Über den Kundennamen gefunden, nicht über das Mandat — Hinweis „per Name zugeordnet“. */
   perName: boolean;
+  /** Rechnung einer Privat-Einheit (Selbstständigkeit) — Kennzeichen „Privat · <Name>“ (30.10.). */
+  privat?: boolean;
   /** Das Mandat, aus dem sie stammt (wenn bekannt). */
   mandat?: Mandat;
   /** Einheit (Selbstständigkeit · KD Ventures · MAKE Innovation GmbH) — aus dem Mandat, sonst aus der Firma der Rechnung. */
@@ -91,21 +104,25 @@ export function umsatzBezug(k: KontaktKurz, crm: Pick<CrmBestand, 'firmen' | 'ch
   const alleMandatIds = new Set(crm.mandate.map(m => m.id));
   const name = kundenName(k, firma);
   const weitereNamen = firmen.filter(f => f.id !== firma?.id).map(f => f.name);
+  const firmenIds = new Set(firmen.map(f => f.id));
   const zugeordnet: ZugeordneteRechnung[] = [];
   for (const r of rechnungen) {
     if (istPrivatPosten(r)) continue;
     const m = r.mandatId ? nachId.get(r.mandatId) : undefined;
+    // Zuordnung der Rechnung selbst (30.10.): Person oder Kundenfirma der Kartei.
+    const direkt = r.kontaktId === k.id || (!!r.kundeFirmaId && firmenIds.has(r.kundeFirmaId));
     let perName = false;
-    if (!m) {
-      // Zeigt die Rechnung auf ein anderes (bekanntes) Mandat, gehört sie nicht hierher.
+    if (!m && !direkt) {
+      // Zeigt die Rechnung auf ein anderes (bekanntes) Mandat bzw. eine andere Person/Firma, gehört sie nicht hierher.
       if (r.mandatId && alleMandatIds.has(r.mandatId)) continue;
+      if (r.kontaktId || r.kundeFirmaId) continue;
       if (![name, ...weitereNamen].some(n => !!n && (gleicherName(n, r.kunde) || rechnungPasst({ kunde: n }, r)))) continue;
       perName = true;
     }
     const einheit = einheitAusGesellschaft(m?.gesellschaft) ?? einheitAusGesellschaft(r.firmaId);
     const ueberfaellig = r.status === 'gestellt' && !!r.faellig && r.faellig < heute;
     const verzugTage = r.status === 'bezahlt' && r.faellig && r.bezahltAm ? tage(r.faellig, r.bezahltAm) : undefined;
-    zugeordnet.push({ r, perName, ...(m ? { mandat: m } : {}), ...(einheit ? { einheit } : {}), ueberfaellig, ...(verzugTage != null ? { verzugTage } : {}) });
+    zugeordnet.push({ r, perName, ...(m ? { mandat: m } : {}), ...(einheit ? { einheit } : {}), ...(gehoertZuPrivat(r.firmaId) ? { privat: true } : {}), ueberfaellig, ...(verzugTage != null ? { verzugTage } : {}) });
   }
   // Neueste zuerst: nach Zahlung, Rechnungsdatum, Fälligkeit.
   const wann = (z: ZugeordneteRechnung) => z.r.bezahltAm ?? z.r.datum ?? z.r.faellig ?? z.r.angebotAm ?? '';

@@ -19,7 +19,7 @@ import { absenderAus } from '@/lib/crm/angebot-dokument';
 import { euroCent, centAusEingabe, eingabeAusCent, mengeAusEingabe, mengeText, mailtoLink, UST_SAETZE } from '@/lib/crm/angebote';
 import {
   pflichtFehlt, rechnungSummen, kundeAus, mahnVorschlag, mahnMail, rechnungMail, positionNetto, mahnstufeVon, mahnLabel, KEINE_STEUERBERATUNG, statusWechselFehlt,
-  RECHNUNG_GRENZEN, positionenAusAngebot,
+  RECHNUNG_GRENZEN, positionenAusAngebot, istZugeordnet, ZUORDNUNG_FEHLT, ZUORDNUNG_NACHTRAGEN, type Zuordnung,
 } from '@/lib/finanzen/rechnung/regeln';
 import { rechnungDokument, bankZeile } from '@/lib/finanzen/rechnung/dokument';
 import { Blatt } from '../crm/angebot/Blatt';
@@ -32,6 +32,13 @@ import { localDay, tagVon } from '@/lib/zeit';
 import { BelegSendenKnopf } from '../inbox/BelegSenden';
 import { neueKennung } from '@/lib/kennung';
 import { anzahl } from '@/lib/text/zahlwort';
+import { KundeSuche, ZuordnungChip } from './KundeZuordnen';
+
+/** Namen für den Zuordnungs-Chip: was der Server zur Liste mitgab, dazu die Kartei des Editors (frisch gewählte Kunden). */
+function namenAus(stand: Record<string, string> | undefined, k: RechnungKatalog | null): Record<string, string> {
+  return { ...(stand ?? {}), ...Object.fromEntries([...(k?.firmen ?? []), ...(k?.personen ?? [])].map(x => [x.id, x.name])) };
+}
+const zuordnungVon = (r: Zuordnung): Zuordnung => ({ ...(r.kundeFirmaId ? { kundeFirmaId: r.kundeFirmaId } : {}), ...(r.kontaktId ? { kontaktId: r.kontaktId } : {}), ...(r.mandatId ? { mandatId: r.mandatId } : {}) });
 
 type Form = Pick<Rechnung, 'firmaId' | 'titel' | 'leistungVon' | 'leistungBis' | 'notiz'> & {
   empfaenger: RechnungEmpfaenger; positionen: RechnungPosition[]; zahlungszielTage: number;
@@ -79,7 +86,10 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
   // Kunde aus der Kartei und Positionen aus Produkten (27.10.) — der Katalog kommt erst auf Klick.
   const [katalog, setKatalog] = useState<RechnungKatalog | null>(null);
   const [katalogLaedt, setKatalogLaedt] = useState(false);
-  const [kundeId, setKundeId] = useState<string | null>(start.kontaktId ?? start.kundeFirmaId ?? null);
+  // 30.10.: die Zuordnung zur Markttraktion (Firma, Person, Mandat) — ohne sie bleibt „Rechnung stellen“ aus (der Server prüft dasselbe, 409).
+  const [zu, setZu] = useState<Zuordnung>(() => zuordnungVon(start));
+  const [kundeSuchen, setKundeSuchen] = useState(false);
+  const zugeordnet = istZugeordnet(zu);
   const katalogHolen = useCallback(async () => {
     if (katalog || katalogLaedt) return;
     setKatalogLaedt(true);
@@ -159,13 +169,21 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
     [form, g, ku, heute]);
   const setzePos = (l: RechnungPosition[]) => aendern({ positionen: l });
 
-  /** Kunde aus der Kartei (27.10.): der Server belegt den Empfänger vor und hängt die Rechnung an Firma bzw. Person — im selben Speicher-Takt (Stand). */
-  async function kundeWaehlen(id: string) {
+  /**
+   * Kunde aus der Kartei (27.10.): der Server belegt den Empfänger vor und hängt die Rechnung an Firma bzw. Person — im selben Speicher-Takt (Stand).
+   * `neu` (30.10.): gerade in der Markttraktion angelegt — die schon getippten Empfängerfelder bleiben, wo die Kartei (noch) nichts weiß.
+   */
+  async function kundeWaehlen(id: string, neu = false) {
     await speichernJetzt();
-    const r = await rechnungPost({ aktion: 'kunde', id: start.id, stand: standRef.current, ...(id.startsWith('f-') ? { kundeFirmaId: id } : { kontaktId: id }) });
-    if (!r.ok || !r.rechnung) { setMeldung(r.fehler ?? 'Kunde nicht übernommen.'); if (r.status === 409 && r.aktuell) { standRef.current = r.aktuell.fassung; daten.uebernehmen(r.aktuell); setForm(formAus(r.aktuell)); } return; }
+    const r = await rechnungPost({ aktion: 'kunde', id: start.id, stand: standRef.current, ...(id.startsWith('f-') ? { kundeFirmaId: id } : { kontaktId: id }), ...(neu ? { anschriftBehalten: true } : {}) });
+    if (!r.ok || !r.rechnung) { setMeldung(r.fehler ?? 'Kunde nicht übernommen.'); if (r.status === 409 && r.aktuell) { standRef.current = r.aktuell.fassung; daten.uebernehmen(r.aktuell); setForm(formAus(r.aktuell)); setZu(zuordnungVon(r.aktuell)); } return; }
     standRef.current = r.rechnung.fassung; daten.uebernehmen(r.rechnung); setForm(formAus(r.rechnung)); setStatus('gespeichert');
-    setKundeId(r.rechnung.kontaktId ?? r.rechnung.kundeFirmaId ?? null);
+    setZu(zuordnungVon(r.rechnung)); setKundeSuchen(false);
+    // Ein gerade angelegter Kunde steht noch nicht in der Kartei des Editors — einmal neu laden (Name im Chip, Treffer der Suche).
+    let kat = katalog;
+    if (neu) { const k = await katalogLaden(); if (!('fehler' in k)) { setKatalog(k); kat = k; } }
+    const n = namenAus(undefined, kat);
+    datenRef.current.namenDazu(Object.fromEntries([r.rechnung.kundeFirmaId, r.rechnung.kontaktId].filter((x): x is string => !!x && !!n[x]).map(x => [x, n[x]])));
   }
   /** Positionen aus einem Produkt anhängen (alle Preis-Teile, die immer gelten — wie ein Klick im Angebots-Katalog). */
   function produktDazu(id: string) {
@@ -183,6 +201,7 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
     if (!start.positionen) offen.current = true; // Altbestand: die vorbelegte Position erst jetzt speichern
     await speichernJetzt();
     if (offen.current) { setMeldung('Der Entwurf ist noch nicht gespeichert — bitte kurz warten und noch einmal.'); return; }
+    if (!zugeordnet) { setMeldung(ZUORDNUNG_FEHLT); return; }
     const r = await rechnungPost({ aktion: 'stellen', id: start.id, stand: standRef.current, anfrageId: neueAnfrage() });
     if (!r.ok || !r.rechnung || !r.pdf) {
       if (r.fehlt) setServerFehlt(r.fehlt);
@@ -236,11 +255,20 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
         </Karte>
 
         <Karte flach>
-          <Ueberschrift rechts={katalog
-            ? <Wahl<string> label="Kunde aus der Kartei" leer="Kunde aus der Kartei wählen" wert={kundeId}
-                liste={[...katalog.firmen.map(f => ({ id: f.id, label: f.name, hinweis: 'Firma' })), ...katalog.personen.map(k => ({ id: k.id, label: k.name, hinweis: k.firma ? `Person · ${k.firma}` : 'Person' }))]}
-                onWahl={id => { void kundeWaehlen(id); }} />
-            : <Knopf leise onClick={() => { void katalogHolen(); }}>{katalogLaedt ? 'lädt …' : 'Kunde aus der Kartei wählen'}</Knopf>}>Empfänger</Ueberschrift>
+          <Ueberschrift>Empfänger</Ueberschrift>
+          {/* 30.10. (Kevin: „Es geht keine Rechnung raus, ohne dass das Ganze zugeordnet ist“): erst der Kunde aus der Markttraktion — oben, vor den Feldern. */}
+          <div style={{ marginBottom: 12 }}>
+            {zugeordnet && !kundeSuchen
+              ? <ZuordnungChip {...zu} namen={namenAus(daten.stand?.namen, katalog)} onAendern={() => setKundeSuchen(true)} />
+              : <Hinweis art={zugeordnet ? 'info' : 'achtung'} titel={zugeordnet ? 'Anderen Kunden zuordnen' : 'Kunde aus der Markttraktion'}
+                  aktion={zugeordnet ? <Knopf leise onClick={() => setKundeSuchen(false)}>Abbrechen</Knopf> : undefined}>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {!zugeordnet && <span>Jede Rechnung hängt an einer Firma oder Person der Kartei — frei getippte Felder reichen nicht.</span>}
+                    <KundeSuche katalog={katalog} laedt={katalogLaedt} autoFokus={kundeSuchen} onWahl={id => kundeWaehlen(id)} onNeu={id => kundeWaehlen(id, true)}
+                      vorschlag={{ firma: form.empfaenger.firma, name: form.empfaenger.name, email: form.empfaenger.email }} />
+                  </div>
+                </Hinweis>}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
             <Feldzeile label="Firma"><input value={form.empfaenger.firma ?? ''} onChange={e => empf({ firma: e.target.value })} style={feld} /></Feldzeile>
             <Feldzeile label="z. Hd. / Name"><input value={form.empfaenger.name ?? ''} onChange={e => empf({ name: e.target.value })} style={feld} /></Feldzeile>
@@ -321,7 +349,8 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
         {loeschFrage
           ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>Entwurf löschen? <Knopf farbe={LEUCHT.kritisch} onClick={loeschen}>Löschen</Knopf><Knopf leise onClick={() => setLoeschFrage(false)}>Nein</Knopf></span>
           : <Knopf leise onClick={() => setLoeschFrage(true)}>Entwurf löschen</Knopf>}
-        <Knopf haupt farbe={LEUCHT.gut} aus={fehlt.length > 0} onClick={stellen}>Rechnung stellen</Knopf>
+        {!zugeordnet && <span role="status" style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, maxWidth: 320 }}>Erst den Kunden aus der Markttraktion zuordnen</span>}
+        <Knopf haupt farbe={LEUCHT.gut} aus={fehlt.length > 0 || !zugeordnet} onClick={stellen}>Rechnung stellen</Knopf>
       </div>
       <div style={klein}>Stellen vergibt die nächste fortlaufende Nummer der Gesellschaft, schreibt das PDF fest (danach nicht mehr änderbar) und legt es als Beleg ab. {KEINE_STEUERBERATUNG}</div>
       {rueckfrage}
@@ -389,6 +418,27 @@ function RechnungAnsicht({ r, daten, onZu, onOeffnen }: { r: RechnungMitFassung;
     if (onOeffnen) onOeffnen(a.rechnung.id); else setMeldung('Kopie als Entwurf angelegt — sie steht in der Liste unter „Entwürfe“.');
   }
   const korrigiert = r.status === 'storniert' || r.art === 'storno';
+  // 30.10.: eine gestellte Rechnung ohne Zuordnung (Altbestand) geht erst raus — Versand, Mahnung —, wenn sie einem Kunden der Markttraktion
+  // zugeordnet ist. Nachtragen ändert nur den Verweis (Beleg und PDF bleiben). Stornorechnungen folgen dem Original und gehen immer.
+  const zugeordnet = istZugeordnet(r);
+  const mussZuordnen = !zugeordnet && r.art !== 'storno';
+  const [katalog, setKatalog] = useState<RechnungKatalog | null>(null);
+  const [katalogLaedt, setKatalogLaedt] = useState(false);
+  useEffect(() => {
+    if (!mussZuordnen || katalog || katalogLaedt) return;
+    setKatalogLaedt(true);
+    void katalogLaden().then(k => { setKatalogLaedt(false); if ('fehler' in k) setMeldung(k.fehler); else setKatalog(k); });
+  }, [mussZuordnen, katalog, katalogLaedt]);
+  async function zuordnen(id: string) {
+    const a = await rechnungPost({ aktion: 'zuordnen', id: r.id, stand: r.fassung, ...(id.startsWith('f-') ? { kundeFirmaId: id } : { kontaktId: id }) });
+    if (!a.ok || !a.rechnung) { setMeldung(a.fehler ?? 'Nicht zugeordnet.'); if (a.aktuell) daten.uebernehmen(a.aktuell); return; }
+    let kat = katalog;
+    if (!kat || ![...kat.firmen, ...kat.personen].some(x => x.id === id)) { const k = await katalogLaden(); if (!('fehler' in k)) { setKatalog(k); kat = k; } }
+    const n = namenAus(undefined, kat);
+    daten.namenDazu(Object.fromEntries([a.rechnung.kundeFirmaId, a.rechnung.kontaktId].filter((x): x is string => !!x && !!n[x]).map(x => [x, n[x]])));
+    daten.uebernehmen(a.rechnung);
+    setMeldung('Zugeordnet — die Rechnung selbst ist unverändert; sie kann jetzt versendet werden.');
+  }
   // Gerade eben gestellt (Rundgang 27.10.): die Bestätigung mit dem nächsten Schritt — das Fenster wechselt nach dem Stellen gleich in diese Ansicht.
   const [frisch] = useState(() => r.status === 'gestellt' && !!r.gestelltAm && Date.now() - Date.parse(r.gestelltAm) < 120_000);
   const g = daten.stand?.gesellschaften.find(x => x.id === r.firmaId);
@@ -439,23 +489,29 @@ function RechnungAnsicht({ r, daten, onZu, onOeffnen }: { r: RechnungMitFassung;
         <span style={{ flex: 1 }} />
         {r.pdfDateiId && <Knopf leise onClick={() => pdfLaden(r.id)}>PDF herunterladen</Knopf>}
         {/* 25.10.: „Über <Postfach> senden (mit PDF)“ — neue Mail in der Inbox mit dem PDF als Anhang, gesendet nur per Klick; ohne Postfach `mailto`. Auch Storno. */}
-        {r.pdfDateiId && (r.art === 'storno' || r.status === 'gestellt') && (
+        {r.pdfDateiId && (r.art === 'storno' || (r.status === 'gestellt' && zugeordnet)) && (
           <BelegSendenKnopf an={r.empfaenger?.email} betreff={mail.betreff} text={mail.text} pdf={{ id: r.pdfDateiId, name: `${r.art === 'storno' ? 'Stornorechnung' : 'Rechnung'} ${r.nummer ?? r.id}.pdf` }} beleg={{ art: 'rechnung', id: r.id }} mailto={mailtoLink(r.empfaenger?.email, mail.betreff, mail.text)} />
         )}
       </div>
       {vorschlag && vorschlagText && (
         <Hinweis art="achtung" titel={`${vorschlag.label} ist dran — ${anzahl(vorschlag.tageUeberfaellig, 'Tag', 'Tage')} überfällig`}
-          aktion={<Knopf onClick={() => mahnen(vorschlag.stufe)}>Im Mail-Programm öffnen</Knopf>}>
+          aktion={zugeordnet ? <Knopf onClick={() => mahnen(vorschlag.stufe)}>Im Mail-Programm öffnen</Knopf> : undefined}>
           <div style={{ whiteSpace: 'pre-wrap', fontSize: TYP.bedien }}>{vorschlagText.betreff}{'\n\n'}{vorschlagText.text}</div>
         </Hinweis>
       )}
+      {mussZuordnen && (
+        <Hinweis art="achtung" titel="Keinem Kunden der Markttraktion zugeordnet">
+          <div style={{ display: 'grid', gap: 8 }}>
+            <span>{ZUORDNUNG_NACHTRAGEN}</span>
+            <KundeSuche katalog={katalog} laedt={katalogLaedt} onWahl={zuordnen} onNeu={zuordnen} vorschlag={{ firma: r.empfaenger?.firma, name: r.empfaenger?.name, email: r.empfaenger?.email }} />
+          </div>
+        </Hinweis>
+      )}
       {/* Woher die Rechnung kommt (27.10.): Angebot, Mandat, Kunde in der Kartei, Original bzw. Stornorechnung — vorher kein Weg zurück. */}
-      {(r.angebotId || r.mandatId || r.kundeFirmaId || r.kontaktId || r.stornoZu || r.stornoRechnungId) && (
+      {zugeordnet && <ZuordnungChip {...zuordnungVon(r)} namen={daten.stand?.namen ?? {}} />}
+      {(r.angebotId || r.stornoZu || r.stornoRechnungId) && (
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: TYP.bedien }}>
           {r.angebotId && <Link href={WEG.angebot({ angebotId: r.angebotId })} style={{ color: C.aktiv }}>Angebot {r.angebot ?? ''} ›</Link>}
-          {r.mandatId && <Link href={WEG.mandat(r.mandatId)} style={{ color: C.aktiv }}>Mandat ›</Link>}
-          {r.kundeFirmaId && <Link href={WEG.firma(r.kundeFirmaId)} style={{ color: C.aktiv }}>Firma in der Kartei ›</Link>}
-          {r.kontaktId && <Link href={WEG.kontakt(r.kontaktId)} style={{ color: C.aktiv }}>Kontakt ›</Link>}
           {r.stornoZu && onOeffnen && <button onClick={() => onOeffnen(r.stornoZu!)} style={{ background: 'none', border: 0, padding: 0, color: C.aktiv, cursor: 'pointer', font: 'inherit' }}>{`Zur Rechnung ${original?.nummer ?? ''} ›`}</button>}
           {r.stornoRechnungId && onOeffnen && <button onClick={() => onOeffnen(r.stornoRechnungId!)} style={{ background: 'none', border: 0, padding: 0, color: C.aktiv, cursor: 'pointer', font: 'inherit' }}>Stornorechnung ›</button>}
         </div>

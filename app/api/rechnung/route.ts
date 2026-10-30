@@ -15,10 +15,15 @@
 //   mahnung   { id, stufe, anfrageId? }      → Stufe vermerken + Mail-Entwurf (der Browser öffnet das Mail-Programm) — nie der Dienstweg
 //   mahntage  { tage: [n, n, n] }            → Mahnstufen-Tage (nur volle Haushaltsmitglieder)
 //   bezahlt   { id, am?, stand? }            → Zahlungseingang: Status + Buchung bu-re-<id> in einer Sperre (27.10.)
-//   kunde     { id, stand, kontaktId | kundeFirmaId } → Empfänger eines Entwurfs aus der Kartei (27.10.)
+//   kunde     { id, stand, kontaktId | kundeFirmaId, anschriftBehalten? } → Empfänger eines Entwurfs aus der Kartei (27.10.; 30.10.: nach „neu in
+//             der Markttraktion anlegen“ bleiben getippte Felder, wo die Kartei nichts weiß)
+//   zuordnen  { id, stand, kontaktId | kundeFirmaId } → Zuordnung an einer GESTELLTEN Rechnung ohne Zuordnung nachtragen (30.10., Altbestand;
+//             Beleg und PDF bleiben unverändert)
+// Stellen, Versand und Mahnung nur mit Zuordnung (Firma, Person oder Mandat der Markttraktion) → sonst 409 `grund: 'zuordnung'` (30.10.).
 //   kopie     { id, anfrageId? }             → neuer Entwurf als Kopie (Vorlage bzw. Korrektur nach Storno, 27.10.)
 // GET ?bereich=privat|business (27.10.) → nur dieser Bereich (Selbstständigkeit = Privat); ?re=<id> → `ort`, wenn sie im anderen Bereich steht
-// GET ?katalog=1 (27.10.)                → aktive Produkte + Kartei (Kennung/Name) für den Editor
+// GET ?katalog=1 (27.10.)                → aktive Produkte + Kartei (Kennung/Name/Ort) für den Editor
+// GET ?umsatz=1 (30.10.)                 → Rechnungen für den Reiter „Umsatz“ der Akte — nach Sicht gefiltert (Business-Konten nie Privat-Einheiten)
 // Zugang wie die Rechnungen des Finanzplans: Haushalt des Inhabers. Konten mit `finanzRecht: 'business'` bekommen die Business-Sicht —
 // nur Rechnungen der Business-Gesellschaften, Schreiben auf andere → 403/404 (lib/finanzen/rechnung/server.ts `inSicht`).
 // Hinweis, keine Steuerberatung.
@@ -35,7 +40,7 @@ import { einmalig } from '@/lib/store/anfragen';
 import { dateinameAscii } from '@/lib/dateien/regeln';
 import {
   RechnungFehler, entwurfKopie, entwurfKunde, entwurfLoeschen, entwurfNeu, entwurfSpeichern, mahnTageSetzen, mahnungVermerken, mitFassung, rechnungKatalog,
-  rechnungPdf, rechnungStellen, rechnungStornieren, rechnungsStand, type Sicht,
+  rechnungPdf, rechnungStellen, rechnungStornieren, rechnungsStand, rechnungZuordnen, rechnungenFuerUmsatz, type Sicht,
 } from '@/lib/finanzen/rechnung/server';
 import { rechnungBezahltVermerken, stornoOhnePdf } from '@/lib/finanzen/rechnung/bezahlt-server';
 
@@ -83,6 +88,12 @@ export async function GET(req: Request) {
       const k = await rechnungKatalog();
       leseZugriff(req, 'kontakte', { anzahl: k.personen.length + k.firmen.length });
       return NextResponse.json({ ok: true, ...k }, { headers: { 'Cache-Control': 'no-store' } });
+    }
+    // Reiter „Umsatz“ der Akte (30.10.): Sicht-Filter auf dem Server — Rechnungen der Selbstständigkeit nur für volle Haushaltsmitglieder.
+    if (url.searchParams.get('umsatz') === '1') {
+      const rechnungen = await rechnungenFuerUmsatz(z);
+      leseZugriff(req, 'rechnungen', { anzahl: rechnungen.length });
+      return NextResponse.json({ ok: true, sicht: z.sicht, rechnungen }, { headers: { 'Cache-Control': 'no-store' } });
     }
     const b = url.searchParams.get('bereich');
     const re = url.searchParams.get('re');
@@ -162,7 +173,11 @@ export async function POST(req: Request) {
       }
       case 'kunde': {
         if (!id) return fehler('id fehlt.', 400);
-        return NextResponse.json({ ok: true, rechnung: await entwurfKunde({ id, stand: b.stand, kontaktId: b.kontaktId, kundeFirmaId: b.kundeFirmaId, haushalt: z.haushalt, sicht: z.sicht, wer }) });
+        return NextResponse.json({ ok: true, rechnung: await entwurfKunde({ id, stand: b.stand, kontaktId: b.kontaktId, kundeFirmaId: b.kundeFirmaId, haushalt: z.haushalt, sicht: z.sicht, wer, anschriftBehalten: b.anschriftBehalten === true }) });
+      }
+      case 'zuordnen': {
+        if (!id) return fehler('id fehlt.', 400);
+        return NextResponse.json({ ok: true, rechnung: await rechnungZuordnen({ id, stand: b.stand, kontaktId: b.kontaktId, kundeFirmaId: b.kundeFirmaId, sicht: z.sicht, wer }) });
       }
       case 'kopie': {
         if (!id) return fehler('id fehlt.', 400);
@@ -181,7 +196,7 @@ export async function POST(req: Request) {
         const { vorbereitenSetzen } = await import('@/lib/finanzen/rechnung/kreislauf');
         return NextResponse.json({ ok: true, vorbereiten: await vorbereitenSetzen(b.an) });
       }
-      default: return fehler('aktion: neu, speichern, kunde, kopie, loeschen, stellen, bezahlt, storno, mahnung, mahntage oder vorbereiten.', 400);
+      default: return fehler('aktion: neu, speichern, kunde, zuordnen, kopie, loeschen, stellen, bezahlt, storno, mahnung, mahntage oder vorbereiten.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }

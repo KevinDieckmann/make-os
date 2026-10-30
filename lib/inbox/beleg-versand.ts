@@ -31,6 +31,11 @@ async function pdfVon(b: Beleg): Promise<string> {
   const r = await import('@/lib/finanzen/rechnung/server').then(m => m.rechnungPdfKennung(b.id));
   if (!r) throw new SendenFehler('nicht-gefunden', 'Zu dieser Rechnung gibt es kein PDF aus MAKE OS — nichts gesendet.', 404);
   if (r.status === 'geplant') throw new SendenFehler('versand', 'Erst stellen — eine geplante Rechnung geht nicht hinaus. Nichts gesendet.', 409);
+  // 30.10. (Kevin: „Es geht keine Rechnung raus, ohne dass das Ganze zugeordnet ist“) — Stornorechnungen folgen dem Original und gehen immer.
+  if (r.art !== 'storno' && !r.zugeordnet) {
+    const { ZUORDNUNG_NACHTRAGEN } = await import('@/lib/finanzen/rechnung/regeln');
+    throw new SendenFehler('versand', `${ZUORDNUNG_NACHTRAGEN} Nichts gesendet.`, 409);
+  }
   return r.pdfDateiId;
 }
 
