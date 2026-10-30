@@ -90,6 +90,8 @@ describe('Erinnerungs-Titel: aussagekräftig, eindeutig, Glocke neutral', () => 
 const D = 'example.invalid';
 const H = 'h-titel';
 const heute = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
+// Fester Stichtag (31.10.: der Test kippte mit dem Kalender — Pflichten älter als 60 Tage werden keine neue Aufgabe mehr).
+const STICHTAG = '2026-10-30';
 const plus = (n: number) => { const d = new Date(`${heute()}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 let db: typeof import('@/lib/store/local-db');
 
@@ -111,7 +113,7 @@ afterAll(async () => {
 describe('Server: offene Aufgaben mit dem alten neutralen Titel ziehen nach — nur Titel, idempotent, nur unerledigte', () => {
   it('alter Titel offen → neuer Titel; erledigt bzw. von Hand geändert → bleibt; zweiter Lauf ändert nichts; Glocke neutral, „nur Business“ ohne Glocke', async () => {
     const { schildErinnerungen, unternehmenLage } = await import('@/lib/gesellschaften/schild-server');
-    const e = faelligeSchildErinnerungen(await unternehmenLage(H)).filter(x => x.aufgabeId.startsWith('usp-') && !x.erledigt);
+    const e = faelligeSchildErinnerungen(await unternehmenLage(H, STICHTAG)).filter(x => x.aufgabeId.startsWith('usp-') && !x.erledigt);
     expect(e.length).toBeGreaterThanOrEqual(3);
     const [a, b, c] = e;
     const J = '2026-10-01T08:00:00.000Z';
@@ -124,7 +126,7 @@ describe('Server: offene Aufgaben mit dem alten neutralen Titel ziehen nach — 
       t(b.aufgabeId, b.glocke!, 'done', { completedAt: J }),
       t(c.aufgabeId, 'Von Hand umbenannt', 'todo'),
     ] });
-    const r = await schildErinnerungen(H);
+    const r = await schildErinnerungen(H, STICHTAG);
     expect(r.umbenannt).toBe(1);
     const nach = (await db.loadJson<{ tasks: { id: string; title: string; status: string; description?: string }[] }>('tasks'))!.tasks;
     const von = (id: string) => nach.find(x => x.id === id)!;
@@ -144,7 +146,7 @@ describe('Server: offene Aufgaben mit dem alten neutralen Titel ziehen nach — 
     for (const x of usp) expect(telegramText(x as Parameters<typeof telegramText>[0])).toBe('Eine Unternehmens-Pflicht naht — Details in MAKE OS');
     expect(await db.loadJson('meldungen--tb')).toBeNull();
     // Zweiter Lauf: nichts mehr nachzuziehen, nichts neu.
-    const r2 = await schildErinnerungen(H);
+    const r2 = await schildErinnerungen(H, STICHTAG);
     expect(r2.umbenannt).toBeUndefined();
     expect(r2.neu).toBe(0);
   });

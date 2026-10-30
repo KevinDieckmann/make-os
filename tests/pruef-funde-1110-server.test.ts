@@ -56,7 +56,8 @@ describe('H4 / Fund 11 — Firmen-Akte nur mit Zugang: Fristen, Aufgaben-Texte, 
   it('Erinnerungen: Aufgaben neutral, Glocke NUR an Konten mit Zugang zur Firmen-Akte', async () => {
     const { schildErinnerungen } = await import('@/lib/gesellschaften/schild-server');
     const { vertragsErinnerungen } = await import('@/lib/gesellschaften/server');
-    expect((await schildErinnerungen(H)).neu).toBeGreaterThan(0);
+    // Fester Stichtag (31.10.: der Test kippte mit dem Kalender — die Pflicht der 2023 gegründeten GmbH ist seither älter als 60 Tage).
+    expect((await schildErinnerungen(H, '2026-10-10')).neu).toBeGreaterThan(0);
     expect((await vertragsErinnerungen(H)).neu).toBe(1);
     const tasks = (await db.loadJson<{ tasks: { id: string; title: string; description?: string }[] }>('tasks'))!.tasks.filter(t => /^(usp|usd|usm|usr|vte)-/.test(t.id));
     expect(tasks.length).toBeGreaterThan(1);
