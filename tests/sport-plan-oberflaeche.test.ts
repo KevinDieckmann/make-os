@@ -50,7 +50,9 @@ describe('Ziele & Plan (statisch gerendert)', () => {
     expect(html).toContain('Diese Woche');
     expect(html).toContain('Wochenplan bauen');
     expect(html).not.toMatch(/Dein Ziel/); // die Ziel-Karte weicht dem Wettkampf (eine getönte Karte je Ansicht)
-  });
+    // Seit 30.10. steht „Ziele & Plan“ auf einer anpassbaren Fläche: der erste Import zieht den Widget-Katalog mit — mehr Zeit.
+    expect(html).toContain('flaeche');
+  }, 180_000);
   it('Tagesform rot → Hinweis an der Einheit von heute; „Erledigt“ als Hauptaktion', async () => {
     const { DieseWoche } = await import('@/components/os/sport/DieseWoche');
     const html = renderToStaticMarkup(createElement(DieseWoche, { stand: STAND, heute: HEUTE, vitals: { [HEUTE]: { recovery: 30 } }, schicke: async () => true }));

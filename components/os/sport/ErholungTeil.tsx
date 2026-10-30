@@ -12,6 +12,7 @@ import { tagPlus } from '@/lib/sport/pace';
 import { PLAN_LABEL, WOCHENTAGE, WOCHENTAG_LABEL, type ErholungTag, type Op, type SportStand } from '@/lib/sport/modell';
 import type { VitalTag } from '@/app/api/sport/route';
 import { WEG } from '@/lib/wege';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 
 const F = SPORT_FARBE.erholung;
 const AMPEL_FARBE: Record<Stufe, string> = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch, unbekannt: C.inkLeise };
@@ -37,6 +38,8 @@ export function ErholungTeil({ stand, heute, vitals, schicke }: { stand: SportSt
 
   return (
     <>
+      <Flaeche seite="sport-erholung">
+      <Kachel id="heute" titel="Heute trainieren?" breite={6}>
       <Karte i={0} ton={fa}>
         <Ueberschrift farbe={fa} rechts={`Plan heute: ${PLAN_LABEL[geplant]}`}>Heute trainieren?</Ueberschrift>
         <div style={{ display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -48,7 +51,9 @@ export function ErholungTeil({ stand, heute, vitals, schicke }: { stand: SportSt
           </div>
         </div>
       </Karte>
+      </Kachel>
 
+      <Kachel id="eintragen" titel="Heute eintragen" breite={6}>
       <Karte i={1} akzent={F}>
         <Ueberschrift farbe={F} rechts={ausVitals ? 'Schlaf, Puls, HRV aus Vitalwerten vorbelegt' : undefined}>Heute eintragen · {datumLang(heute)}</Ueberschrift>
         <Raster min={130}>
@@ -65,7 +70,9 @@ export function ErholungTeil({ stand, heute, vitals, schicke }: { stand: SportSt
         </div>
         {bezug.hrv7 == null && bezug.ruhepuls7 == null && <Hinweis>HRV und Ruhepuls zählen in der Ampel erst, wenn drei Tage als Vergleich da sind — dann gegen deinen eigenen 7-Tage-Schnitt.</Hinweis>}
       </Karte>
+      </Kachel>
 
+      <Kachel id="verlauf" titel="Verlauf" breite={6}>
       <Karte i={2}>
         <Ueberschrift rechts="14 Tage">Verlauf</Ueberschrift>
         <div style={{ display: 'grid', gap: 18 }}>
@@ -74,7 +81,9 @@ export function ErholungTeil({ stand, heute, vitals, schicke }: { stand: SportSt
           <div><div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 6 }}>Muskelkater <span style={{ color: C.inkLeise }}>· 1–5, niedriger ist besser</span></div><Balken werte={kater} max={5} farbe={LEUCHT.achtung} hoehe={32} titel={tage.map((d, i) => `${datumKurz(d)} · ${kater[i] ?? '—'}`)} /></div>
         </div>
       </Karte>
+      </Kachel>
 
+      <Kachel id="ruhe" titel="Ruhe & Deload" breite={6}>
       <Karte i={3} akzent={dl?.jetzt ? LEUCHT.achtung : undefined}>
         <Ueberschrift>Ruhe & Deload</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14 }}>
@@ -84,6 +93,8 @@ export function ErholungTeil({ stand, heute, vitals, schicke }: { stand: SportSt
         </div>
         <Hinweis>Alle 4 Wochen eine leichte Woche (Umfang etwa halbieren, Intensität raus) — ein üblicher Rhythmus, kein Muss. {!ruhetage.length && 'Kein Ruhetag im Plan: unter „Ziele & Plan“ einen Tag auf Ruhe stellen.'} Keine Trainingsberatung; bei Beschwerden führen Ärztin oder Physio.</Hinweis>
       </Karte>
+      </Kachel>
+      </Flaeche>
     </>
   );
 }
