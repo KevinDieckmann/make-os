@@ -33,6 +33,33 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-30-2',
+    datum: '2026-10-30',
+    titel: 'Angebot, Mandat, Rechnung, Lieferung: ein Kreislauf',
+    kurz: 'Ein angenommenes Angebot legt das Mandat samt Liquiditätsposten selbst an, fällige Raten und Monatsrechnungen liegen morgens als Entwurf zum Prüfen bereit, und ein beendetes Mandat schließt seinen Fall. Die Mandatsakte zeigt den ganzen Weg auf einer Linie.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Angebot angenommen: Mandat und Posten in der Liquidität entstehen automatisch — mit „Rückgängig“, solange es noch keine Rechnung und keinen Fall gibt. Den Fall startest du weiter selbst (Vorschlag).', bereich: 'business' },
+        { text: 'Fällige Raten und Monatsrechnungen: der Morgenlauf legt den Rechnungsentwurf an und eine Aufgabe „Rechnung prüfen & stellen“. Stellen bleibt dein Klick. Startet ab dem nächsten Monat, nie für alte Monate.', bereich: 'business', weg: WEG.rechnungen() },
+        { text: 'Mandat beendet: der Fall wird abgeschlossen, offene Schritte enden — Nachsorge und Verlängerung laufen weiter.', bereich: 'business' },
+        { text: 'Mandatsakte: eine Zeitleiste von Angebot über Mandat und Raten bis bezahlt, mit der aktuellen Phase und dem nächsten Schritt in einem Satz.', bereich: 'business' },
+        { text: 'Bei Produkte & Mandate, Finanzen und Markttraktion zeigt eine Karte, was heute von selbst erledigt wurde; die Prozess-Landkarte zeigt auch für eigene Prozesse offene und fertige Fälle.', bereich: 'business' },
+        { text: 'Kontoauszug: nach dem Übernehmen schlägt MAKE OS passende Rechnungen vor — „Als bezahlt vermerken“ mit einem Klick.', bereich: 'business' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Bezahlt oder storniert schließt die Mahnaufgabe der Rechnung von selbst.', bereich: 'business' },
+        { text: 'Ein Fall startet immer mit dem Ablauf des Produkts — egal ob aus dem Vorschlag, dem Morgenlauf oder einem Prozess.', bereich: 'business' },
+        { text: 'Werkstatt: ein Warte-Schritt kann auf eines von mehreren Ereignissen warten; Prozesse können Rechnungen entwerfen und stellen sowie Angebote stellen (immer erst nach Freigabe).', bereich: 'business' },
+        { text: 'Liquidität zeigt, welche Mandate noch nicht im Liquiplan stehen; Raten nach dem Mandatsende fehlen dort nicht mehr.', bereich: 'business' },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Zu einem Angebot mit Mandat entsteht keine zweite Rechnung über alle Positionen mehr.', bereich: 'business' },
+        { text: 'Vorlage „Gewonnen → Kickoff“: der Ablauf endet nicht mehr vor „Fall starten“. Wer die Vorlage schon übernommen hat, übernimmt sie einmal neu.', bereich: 'business' },
+        { text: '„Angebot nachfassen“ endet, sobald das Angebot entschieden ist — keine Erinnerung an ein schon angenommenes Angebot.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-30',
     datum: '2026-10-30',
     titel: 'Inbox und Kontakte: klarer aufgeteilt',
