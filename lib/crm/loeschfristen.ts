@@ -54,6 +54,8 @@ export type FristArt = 'kontakte' | 'import-konflikte' | 'import-laeufe' | 'head
   | 'whatsapp-spiegel' | 'whatsapp-medien'
   // 09.10. (Medien unterwegs, Paket 5): offene Uploads, Papierkorb, Rohmaterial mit erkennbaren Personen (nur Prüf-Aufgabe).
   | 'medien-upload' | 'medien-papierkorb' | 'medien-roh'
+  // 30.10. (Kampagne „Homepage“, lib/funde): nicht übernommene Funde aus öffentlichen Quellen (Art. 14 Abs. 3 lit. a — höchstens ein Monat).
+  | 'kampagne-funde'
   // 09.10. (E1 Ereignisstelle): Ereignisse für die Agenten (nur Kennungen) — rollend.
   | 'ereignisse'
   // 10.10. (Fulfillment, FULFILLMENT_KONZEPT.md 8.1): Personenkarten, Unterlagen und Mandatsdaten — je ab Mandatsende.
@@ -108,6 +110,7 @@ export const LOESCHFRISTEN: readonly FristDef[] = [
   { id: 'netzwerken-kontakte', titel: 'Netzwerken: Kontakte ohne weitere Interaktion', einheit: 'monate', standard: 12, min: 6, max: 60, wirkung: 'aufgabe', norm: 'Art. 5 Abs. 1 lit. e DSGVO', hinweis: 'Nie automatisch gelöscht: Personen aus Netzwerken ohne Beziehung, Deal und Aktivität seit der Frist zählen in die Löschfrist-Aufgabe (prüfen: löschen oder begründen).' },
   { id: 'netzwerken-info', titel: 'Netzwerken: Gesprächs-Info und Zielpersonen', einheit: 'monate', standard: 12, min: 3, max: 60, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Info zum Gespräch (Teilnahme) und die Personen auf der Zielliste eines Events fallen 12 Monate nach dem Event weg — Teilnahme, Termin und Kennzahlen bleiben.' },
   { id: 'uebergabe-protokolle', titel: 'Übergabe-Protokolle (Kunden-Events)', einheit: 'monate', standard: 36, min: 12, max: 120, wirkung: 'automatisch', norm: 'Art. 5 Abs. 2, Art. 15, Art. 19 DSGVO', hinweis: 'Nachweis, wann welche Personen an welchen Kunden übergeben wurden (am Event bzw. im Übergabe-Journal) — danach weg.' },
+  { id: 'kampagne-funde', titel: 'Homepage-Funde (nicht übernommen)', einheit: 'tage', standard: 21, min: 7, max: 30, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. e, Art. 14 Abs. 3 DSGVO', hinweis: 'Betriebe aus öffentlichen Quellen (OpenStreetMap, von Hand), die niemand übernommen hat — danach weg (nur die OSM-Kennung bleibt, damit sie nicht wiederkommen). Übernommene stehen in der Kartei; ihr Fund mit Vorschau bleibt 60 Tage.' },
   // 03.10. (gmail): Gmail-Spiegel je Person — nur eine Kopie zum Lesen/Zuordnen/Antworten in MAKE OS; das Original bleibt bei Google.
   { id: 'mail-spiegel', titel: 'Mail-Spiegel (Gmail in der Inbox)', einheit: 'tage', standard: 180, min: 30, max: 730, wirkung: 'automatisch', norm: 'Art. 5 Abs. 1 lit. c, e DSGVO', hinweis: 'Kopie der Gmail-Nachrichten je Person (Kopf, Ausschnitt, Text) — ältere fallen im Spiegel weg, in Gmail bleiben sie (dort gilt die Aufbewahrung des Postfachs). Anhänge liegen nie im Spiegel.' },
   // 07.10. (WhatsApp Business, lib/whatsapp/*): anders als beim Mail-Spiegel ist das die EINZIGE dauerhafte Kopie (Meta hält höchstens 30 Tage).

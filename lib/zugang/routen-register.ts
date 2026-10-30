@@ -343,6 +343,8 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/anfrage': r('GET,POST', MT, 'Anfragen.'),
   'crm/angebot': r('GET,POST', MT, 'Angebote.'),
   'crm/formulare': r('GET,POST', MT, 'Formulare › „Angebot anfordern“ (25.10.): Anfordern jede Person im Haushalt (auch „nur Business“), nur per Sitzung; Links und Einstellungen nur Inhaber; Eingänge: Inhaber alle, sonst nur die eigenen (serverseitig).'),
+  'crm/funde': r('GET,POST', MT, 'Kampagne „Homepage“ (30.10., lib/funde): Funde, Einstellungen, Fund von Hand, verwerfen, nachsenden — nur per Sitzung (Dienstweg 403); Einrichten, Einstellungen, „eigenes Risiko“ und Lauf nur Inhaber. Übernommen wird über den ZOE-Stapel (Art `fund`).'),
+  'crm/funde/vorschau': r('GET', MT, 'Interne Vorschau eines Funds als HTML (ohne Skripte, maskiert, noindex) — der öffentliche Link /vorschau/<token> entsteht erst bei der Freigabe.'),
   'crm/ansprechen': r('GET', MT, 'Wen heute ansprechen.'),
   'crm/bestand': r('GET,PATCH', MT, 'CRM-Bestand.'),
   'crm/dateien': r('GET,POST,PATCH,DELETE', MT, 'Dateien an Kontakten/Firmen.'),

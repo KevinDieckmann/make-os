@@ -382,6 +382,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Kontakte: die Eingänge der Person zählen in der Auskunft nach Art. 15 (weitere Speicher, person-weitere.ts); Vertriebler: unter Markttraktion › Formulare (Inhaber) — auf Anfrage über den Inhaber',
     loeschfrist: 'Eingänge 24 Monate (rollend beim Schreiben, `EINGANG_FRIST_MONATE`); Links bis der Inhaber sie entfernt; die Angebote selbst als Geschäftsunterlage im CRM (§ 257 HGB)',
   }),
+  // Kampagne „Homepage“ (30.10., lib/funde): Betriebe aus OpenStreetMap bzw. von Hand (Name, Adresse, Branche, Website, geschäftliche Mail/Telefon,
+  // Bewertung, Vorschau-Texte, Mail-Entwurf), Einstellungen (Absender-Kennung, Gebiete), bekannte OSM-Kennungen. Bei Einzelunternehmen personenbezogen.
+  mit(E('kampagne-funde--*', 'Homepage-Funde: Betriebe aus öffentlichen Quellen (OpenStreetMap, von Hand) mit Bewertung der Website, Vorschau-Texten und Mail-Entwurf; Token der öffentlichen Vorschau nur als Fingerabdruck. Art. 17 entfernt die Funde der Person (Mail, Name, Kennung), die OSM-Kennung bleibt als „bekannt“.', 'kampagne-funde'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Direktwerbung gegenüber Betrieben, ErwG 47; Interessenabwägung im Plan KAMPAGNE_HOMEPAGE_PLAN.md) — die Ansprache selbst nur nach Freigabe; Mail/Anruf ohne Einwilligung nur auf eigenes Risiko des Inhabers (§ 7 UWG)',
+    art15: 'Funde der Person zählen in der Auskunft (weitere Speicher, person-weitere.ts); nach der Übernahme stehen die Angaben in der Kartei (Herkunft „Recherche“, Art.-14-Uhr)',
+    loeschfrist: 'Nicht übernommen: Vorgabe 21 Tage (höchstens 30, Art. 14 Abs. 3 lit. a), übernommen: 60 Tage (Gültigkeit der Vorschau) — Morgenlauf-Schritt „kampagne-funde“',
+  }),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):

@@ -393,6 +393,9 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   // Formular „Angebot anfordern“ (25.10.): Kennung am Eingang → „[gelöscht]“, Empfänger-Fingerabdruck weg; der Nachweis der Sendung bleibt.
   { name: 'angebot-formular--*', muster: /^angebot-formular--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: formularEingaengeOhne,
     zaehlen: (cur, m) => liste((cur ?? {}) as Obj, 'eingaenge').filter(x => (x as Obj)?.kontaktId === m.id).length },
+  // Kampagne „Homepage“ (30.10.): Funde, die die Person nennen (Kennung, Mail, Name), fallen weg (lib/funde).
+  { name: 'kampagne-funde--*', muster: /^kampagne-funde--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('funde'),
+    zaehlen: (cur, m) => liste((cur ?? {}) as Obj, 'funde').filter(x => (x as Obj)?.kontaktId === m.id || (!!(x as Obj)?.email && m.emails.includes(String((x as Obj).email)))).length },
   // Gesellschafts-Register (04.10.): Kontakt-Kennungen in Gesellschaftern/Vertragsparteien → „[gelöscht]“, der Eintrag bleibt.
   { name: 'gesellschaften--*', muster: /^gesellschaften--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Austausch am Meilenstein (30.09.): Nachrichten, Notiz, Link-Titel können Dritte nennen — getilgt, der Raum bleibt.

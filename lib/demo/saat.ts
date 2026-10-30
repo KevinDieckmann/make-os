@@ -110,6 +110,7 @@ const R = {
   stammdaten: () => import('@/app/api/crm/stammdaten/route') as Promise<Modul>,
   angebot: () => import('@/app/api/crm/angebot/route') as Promise<Modul>,
   formulare: () => import('@/app/api/crm/formulare/route') as Promise<Modul>,
+  funde: () => import('@/app/api/crm/funde/route') as Promise<Modul>,
   mandatLiquiplan: () => import('@/app/api/crm/liquiplan/route') as Promise<Modul>,
   liquiplan: () => import('@/app/api/state/liquiplan/route') as Promise<Modul>,
   finanzplanBestand: () => import('@/app/api/state/finanzplan/route') as Promise<Modul>,
@@ -600,6 +601,16 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     produkte: [{ id: diagnose.id }], notiz: 'Erstgespräch auf der Messe (Beispiel).',
   } });
   schritt('Formulare (Link + Anfrage zur Freigabe)', 2);
+  // Kampagne „Homepage“ (30.10., lib/funde): eingerichtet, Gebiete aus der Vorlage, drei erfundene Funde von Hand — sie liegen im ZOE-Stapel zur Freigabe.
+  // „Eigenes Risiko“ bleibt AUS (die Demo verschickt nie etwas); der Abendlauf fragt OpenStreetMap nur in einer echten Instanz mit aktivem Agenten.
+  await rufe(R.funde(), 'POST', '/api/crm/funde', LENA, { aktion: 'einrichten' });
+  await rufe(R.funde(), 'POST', '/api/crm/funde', LENA, { aktion: 'einstellungen', stadt: 'Beispielstadt', gebiete: ['Altstadt', 'Neustadt'], produktId: diagnose.id });
+  for (const fund of [
+    { name: 'Café Morgenrot (Beispiel)', branche: 'gastro', strasse: 'Marktplatz 3', plz: '12345', ort: 'Beispielstadt', email: `hallo@cafe-morgenrot.${DEMO_DOMAIN}` },
+    { name: 'Salon Schnittpunkt (Beispiel)', branche: 'handwerk', strasse: 'Lindenweg 12', plz: '12345', ort: 'Beispielstadt', website: `http://salon-schnittpunkt.${DEMO_DOMAIN}`, telefon: '+49 30 0000001' },
+    { name: 'Papeterie Federleicht (Beispiel)', branche: 'einzelhandel', strasse: 'Bahnhofstraße 8', plz: '12345', ort: 'Beispielstadt' },
+  ]) await rufe(R.funde(), 'POST', '/api/crm/funde', LENA, { aktion: 'hand', fund });
+  schritt('Homepage-Funde (Kampagne + 3 Funde zur Freigabe)', 3);
 
   // 5) Ziele (Jahr, Business + Privat) und Meilensteine mit Aufwand, Personen, Kette.
   const opsLabel = einheitAusGesellschaft('ug') ?? 'Operativ';

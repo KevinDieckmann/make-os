@@ -62,6 +62,9 @@ const ARTEN: Partial<Record<StapelArt, () => Promise<StapelArtFreigabe>>> = {
   // Formulare (25.10.): ein angefordertes Angebot wartet auf „Senden“ — nur ein Inhaber, nur aus der Sitzung; stellen und verschicken über die eine
   // Versand-Funktion (lib/crm/angebot-versand.ts), Ablehnen vermerkt es am Eingang (der Entwurf bleibt im Angebots-Tool).
   'angebot-anfrage': async () => (await import('@/lib/crm/formulare-server')).ANGEBOT_ANFRAGE_STAPEL_ART,
+  // Kampagne „Homepage“ (30.10., KAMPAGNE_HOMEPAGE_PLAN.md): der Abendlauf hat einen Betrieb gefunden — übernehmen über den EINEN Anlege-Weg
+  // (Kontakt + Firma + Lead + Kampagne), Vorschau-Link freischalten, Mail nur mit „eigenem Risiko“ und nur aus der Sitzung (lib/funde/uebernehmen.ts).
+  fund: async () => (await import('@/lib/funde/uebernehmen')).FUND_STAPEL_ART,
 };
 
 /** Die Freigabe der Art dieses Vorschlags — `null` für gewöhnliche Werkzeug-Vorschläge (ohne Bezug). */

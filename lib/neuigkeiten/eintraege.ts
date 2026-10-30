@@ -33,6 +33,21 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-01',
+    datum: '2026-11-01',
+    titel: 'Kampagne „Homepage“: Betriebe ohne gute Website finden',
+    kurz: 'Neu unter Markttraktion › Marketing › Homepage-Funde: jeden Abend sucht ein Agent Betriebe ohne oder mit schwacher Website, prüft sie und bereitet eine Vorschau der neuen Seite, eine Mail und einen Anruf-Leitfaden vor. Nichts geht raus, bevor jemand im ZOE-Stapel freigibt.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Homepage-Funde: Gebiete und Branchen wählen, der Agent sucht ab 20 Uhr (oder „Jetzt suchen“) und bewertet jede Website ohne KI — fehlend, unsicher, nicht fürs Handy, langsam, veraltet.', bereich: 'business', weg: '/os/markttraktion?s=marketing&a=funde' },
+        { text: 'Je Betrieb eine Vorschau „So könnte Ihre neue Seite aussehen“ — nur mit öffentlichen Angaben, ohne fremde Bilder oder Texte. Öffentlich erst nach der Freigabe, über einen eigenen Link.', bereich: 'business' },
+        { text: 'Freigeben im ZOE-Stapel übernimmt den Betrieb in die Markttraktion: Kontakt, Firma, Lead, Kampagne und das Segment „Homepage-Funnel“, dazu eine Erinnerung zum Anruf nach drei Tagen.', bereich: 'business' },
+        { text: 'Mail und Anruf ohne Einwilligung sind rechtlich riskant (§ 7 UWG) — sie gehen nur raus, wenn ein Inhaber „auf eigenes Risiko“ einschaltet. Der Hinweis bleibt sichtbar.', bereich: 'business' },
+        { text: 'Betriebe, die man selbst sieht (zum Beispiel auf Google Maps), lassen sich von Hand als Fund eintragen.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31',
     datum: '2026-10-31',
     titel: 'Firmen, Deals, Angebote und Mandate: klarer aufgeteilt',

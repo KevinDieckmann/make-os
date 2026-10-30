@@ -4,6 +4,30 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 30.10.2026 abends — Kampagne „Homepage“: Betriebe ohne gute Website finden (nur lokal — Branch `homepage-funnel`, Basis origin/main bbf5f652)
+
+Kevin 30.10.: „okay bau es sauber in make os ein und baue alles zusammen was zusammen muss mit agenten etc das das alles laufen kann“ — Plan und
+Entscheidungen in `KAMPAGNE_HOMEPAGE_PLAN.md` (Mail + Anruf auf eigenes Risiko, OSM je Bezirk + Google Maps nur von Hand, 20 je Abend, Fokus
+Innovation als Absender, Gastro/Handwerk/Einzelhandel, Preis offen).
+
+- **Was neu ist:** `lib/funde/*` (Typen, Bewertung ohne KI, OSM/Overpass, sicherer Website-Abruf + PageSpeed, Vorschau, Mail-Entwurf/Anruf-Leitfaden,
+  Abendlauf, Übernahme + Versand, Einrichten, Löschfrist), Route `/api/crm/funde` (+ `/vorschau`), öffentliche Seite `/vorschau/v1-<32 hex>`
+  (Middleware `VORSCHAU_OFFEN`, strenge Köpfe), Ansicht Markttraktion › Marketing › Homepage-Funde, Stapel-Art `fund`, Takt-Lauf `funde` (ab 20 Uhr,
+  `KI_LAEUFE`), Agent „Homepage-Funde“ unter /os/agenten, Playbook `homepage-funde` (Kanal „mix“), Segment `seg-homepage-funnel`.
+- **Recht:** Ampel bleibt rot; Mail nur mit Schalter „eigenes Risiko“ (nur Inhaber, Rückfrage, Vorgabe AUS) und nur per Freigabe aus der Sitzung, je
+  Betrieb genau eine Mail mit Art.-14-Hinweis und Abmeldelink. Speicher-Register `kampagne-funde--*` (mit Angaben), Art. 15/17 (`person-weitere.ts`),
+  Löschfrist `kampagne-funde` (21 Tage, höchstens 30), Konto-Daten (`NICHT_PERSOENLICH`), Routen-Register.
+- **Neue Bestände (additiv):** `kampagne-funde--<haushalt>`; neue optionale Felder keine an bestehenden Typen (nur Union-Erweiterungen:
+  `StapelArt` `fund`, `MarketingAnsicht` `funde`, `FristArt` `kampagne-funde`). Rückweg: der alte Stand ignoriert den Bestand; Stapel-Vorschläge der
+  Art `fund` kann er nicht freigeben (ablehnen geht).
+- **Umgebung (optional, Server-.env):** `PAGESPEED_API_KEY` (Google PageSpeed, ohne Schlüssel keine PageSpeed-Messung), `OVERPASS_URL` (eigene
+  Overpass-Instanz). `MAKE_OS_ADRESSE` muss gesetzt sein (Vorschau-Link in der Mail).
+- **Einmal-Schritte nach dem Upload (Kevin):** Markttraktion › Marketing › Homepage-Funde → „Kampagne und Segment einrichten“ → Gebiete „Berlin
+  (12 Bezirke)“ → Angebot wählen (Produktkarte „Website“ vorher im Katalog anlegen) → Absender-Postfach → erst nach anwaltlicher Prüfung „Mail senden
+  (eigenes Risiko)“. Agent „Homepage-Funde“ unter /os/agenten ist an; Hintergrund-KI muss an sein.
+- **Tests:** `tests/funde.test.ts` (rein + von Ende zu Ende mit nachgebautem Postfach und OSM); Wächter routen-register, datenschutz-register,
+  betroffenenrechte, ki-datenschutz u. a. grün.
+
 ## 30.10.2026 — Kalender: weitere Google-Konten je Person, nur lesen (nur lokal — Branch `weitere-kalender`, Basis main 91d0e277)
 Kevin 30.10.: „Ich möchte, dass wir einfach ein zweites Konto bei MAKE OS anlegen können — es geht erstmal um uns, also Malin und mich.“ Wer auch für andere Firmen
 arbeitet, hat dort einen Google-Kalender; ohne Abgleich entstehen Doppelbuchungen. Regeln: CLAUDE.md › Kalender — Google Workspace › „Weitere Konten“.

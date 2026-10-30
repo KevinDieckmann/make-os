@@ -9,6 +9,7 @@
 //   Anfragen        der Eingang (27.09.): Anfrage erfassen → Person, Verlauf,
 //                   Follow-up, Lead; Liste der letzten 30 Tage
 //   Innovations-Check  der Check der Website (24.10.): an/aus, Buchungsseite, eingegangene Checks, Beleg-Bewertung
+//   Homepage-Funde     Kampagne „Homepage“ (30.10.): Abendlauf, Funde, Vorschau, Freigabe (components/os/crm/marketing/Funde.tsx)
 //   Segmente        gespeicherte Filter über die Kartei, Export nur mit Ampel
 //   Kampagnen       Playbooks auf Basis der Kunden (./Kampagnen.tsx)
 //   Redaktionsplan  Beiträge von der Idee bis zur Wirkung je Person
@@ -39,6 +40,7 @@ import { Kampagnen } from './Kampagnen';
 import { Uebersicht } from './marketing/Uebersicht';
 import { Anfragen } from './marketing/Anfragen';
 import { Checks } from './marketing/Checks';
+import { Funde } from './marketing/Funde';
 import { Start } from './marketing/Start';
 import { Segmente } from './marketing/Segmente';
 import { Redaktionsplan } from './marketing/Redaktionsplan';
@@ -46,9 +48,9 @@ import { Newsletter } from './marketing/Newsletter';
 import { Positionierung } from './marketing/Positionierung';
 import { Social } from './social/Social';
 
-type Unter = 'uebersicht' | 'anfragen' | 'check' | 'segmente' | 'kampagnen' | 'redaktion' | 'social' | 'newsletter' | 'positionierung';
+type Unter = 'uebersicht' | 'anfragen' | 'check' | 'funde' | 'segmente' | 'kampagnen' | 'redaktion' | 'social' | 'newsletter' | 'positionierung';
 const UNTER: { id: Unter; label: string }[] = [
-  { id: 'uebersicht', label: 'Übersicht' }, { id: 'anfragen', label: 'Anfragen' }, { id: 'check', label: 'Innovations-Check' }, { id: 'segmente', label: 'Segmente' }, { id: 'kampagnen', label: 'Kampagnen' },
+  { id: 'uebersicht', label: 'Übersicht' }, { id: 'anfragen', label: 'Anfragen' }, { id: 'check', label: 'Innovations-Check' }, { id: 'funde', label: 'Homepage-Funde' }, { id: 'segmente', label: 'Segmente' }, { id: 'kampagnen', label: 'Kampagnen' },
   { id: 'redaktion', label: 'Redaktionsplan' }, { id: 'social', label: 'Social' }, { id: 'newsletter', label: 'Newsletter' }, { id: 'positionierung', label: 'Positionierung' },
 ];
 /** Der Start wurde in dieser Sitzung übersprungen — nicht wieder aufdrängen. */
@@ -112,6 +114,7 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
       {unter === 'uebersicht' && (startAktiv ? <Start api={api} onFertig={() => startBeenden(false)} onUeberspringen={() => startBeenden(true)} /> : <Uebersicht api={api} zuKontakt={zuKontakt} zu={zuEintrag} zuAnsicht={a => { setFokus(null); waehle(a); }} />)}
       {unter === 'anfragen' && <Anfragen api={api} zuKontakt={zuKontakt} />}
       {unter === 'check' && <Checks zuKontakt={zuKontakt} />}
+      {unter === 'funde' && <Funde zuKontakt={zuKontakt} />}
       {unter === 'segmente' && <Segmente api={api} zuKontakt={zuKontakt} zuKampagne={zuKampagne} />}
       {unter === 'kampagnen' && <Kampagnen api={api} zuKontakt={zuKontakt} />}
       {unter === 'redaktion' && <Redaktionsplan api={api} zuKontakt={zuKontakt} fokus={fokus?.ansicht === 'redaktion' ? fokus.id : undefined} />}
