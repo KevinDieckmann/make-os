@@ -688,3 +688,11 @@ html.menue-offen { overflow: hidden; }
   .knoepfe .textlink { justify-content: center; }
   .fuss-raster { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Kostenlos › Zahlen (30.10.): belegte Zahlen im Raster, Stil der Belege (.zahl). */
+.zahlen-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 40px 48px; margin-top: 8px; }
+/* Ratgeber (30.10.): der passende kostenlose Check am Ende des Artikels, ruhig wie „Kurz gesagt“. */
+.artikel-check { max-width: 52rem; margin: 48px 0 8px; padding: 24px 26px; border: 1px solid var(--haar-mittel); border-radius: 4px; }
+.artikel-check .etikett { margin-bottom: 8px; color: var(--akzent-papier); }
+.artikel-check-titel { font-size: var(--t-lead); font-weight: 600; color: var(--tinte); margin-bottom: 6px; }
+.artikel-check .knopf { margin-top: 18px; }

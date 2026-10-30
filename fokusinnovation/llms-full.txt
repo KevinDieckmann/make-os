@@ -10,7 +10,7 @@ Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Inn
 - Sitz: Berlin
 - Für wen: Innovative Start-ups, Unternehmer mit 5 bis 50 Mitarbeitenden und Mittelstand, der Neues einführt
 - Leistungen: Positionierung, Websites und Videos; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, Umsetzungsprojekte starten in Kürze; Abende und Netzwerk
-- Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose 90-Tage-Umsetzungsgespräch
+- Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch
 - Gründer: Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)
 - Preise: Fest und offen auf jeder Angebotsseite, alle netto zuzüglich Umsatzsteuer
 - Arbeitsgebiet: Deutschland und Europa, auf Deutsch
@@ -46,9 +46,9 @@ Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen w
 
 ### Innovation: Im Alltag ankommen.
 
-Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im 90-Tage-Umsetzungsgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
+Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
 
-- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Strategie, KI im Alltag, Automatisierung, Daten und Team.
+- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Sichtbarkeit, Vertrieb und Innovation, mit zwei nächsten Schritten für Ihre größten Hebel.
 - [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): Start in Kürze, Preis folgt zum Start. KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang, Start in Kürze. Startet in Kürze.
 
 Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse); Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
@@ -56,7 +56,7 @@ Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sale
 ## Häufige Fragen
 
 Frage: Was kostet der Innovations-Check?
-Antwort: Nichts. Der Check, der Bericht und das 90-Tage-Umsetzungsgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
+Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
 
 Frage: Wie lange dauert der Check?
 Antwort: Rund 10 Minuten für die 15 Kernfragen. Wenn Sie mehr beantworten, wird Ihr Bericht genauer. Sie können jederzeit pausieren und später weitermachen.
@@ -64,7 +64,7 @@ Antwort: Rund 10 Minuten für die 15 Kernfragen. Wenn Sie mehr beantworten, wird
 Frage: Ist Zoe ein Mensch?
 Antwort: Nein. Zoe ist unsere KI-Assistentin. Sie sagt das auch am Anfang jedes Gesprächs. Wenn Sie lieber mit einem Menschen sprechen, gibt Zoe Sie an Kevin weiter.
 
-Frage: Was passiert im 90-Tage-Umsetzungsgespräch?
+Frage: Was passiert im Erstgespräch?
 Antwort: 60 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch.
 
 Frage: Was ist der Unterschied zwischen Head of Sales und CSO?
@@ -93,17 +93,17 @@ Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich a
 
 ## Begriffe
 
-- 90-Tage-Umsetzungsgespräch: 60 Minuten mit Kevin nach dem Innovations-Check: Ihre Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden. Kostenlos und kein Verkaufsgespräch.
 - Automatisierung: Abläufe, die ohne Handarbeit laufen. Zum Beispiel landet eine Anfrage von der Website automatisch im CRM, mit Wiedervorlage.
 - Chief Sales Officer (CSO): Die oberste Verantwortung für den Vertrieb. Bei uns als Mandat auf Zeit: alles aus dem Head of Sales, dazu Strategie, Preise, Teamaufbau, Recruiting und die Führung von bis zu 10 Vertrieblern.
 - Claim: Ein kurzer Satz, der die Haltung einer Marke trägt. Unserer lautet „Fortschritt braucht Fokus.“
 - CRM: Kurz für Customer Relationship Management: das System, in dem alle Kontakte, Gespräche, Angebote und nächsten Schritte stehen.
 - Elevator Pitch: Eine Erklärung Ihres Angebots, die in eine Aufzugfahrt passt, meist 30 Sekunden bis 2 Minuten.
 - Erklärvideo: Ein kurzes Video, bei uns 60 bis 90 Sekunden, das erklärt, was Sie machen, für wen und wie man startet.
+- Erstgespräch: 60 Minuten mit Kevin nach dem Innovations-Check: Ihre Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden. Kostenlos und kein Verkaufsgespräch.
 - Fokus Innovation · Abend: Unser kuratierter Abend an einem langen Tisch: Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.
 - Go-to-Market: Der Weg eines Produkts in den Markt: Zielgruppe, Botschaft, Kanäle, Vertrieb und Preise. Im Deutschen oft Markteintritt.
 - Head of Sales auf Zeit: Eine Vertriebsleitung für einige Monate, die das System aufbaut, mit Ihrem Team umsetzt und so übergibt, dass der Vertrieb ohne sie läuft. Auch Interim Head of Sales genannt.
-- Innovations-Check: Unser kostenloser Check in rund 10 Minuten. Er zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Automatisierung, Daten und Team steht.
+- Innovations-Check: Unser kostenloser Check in rund 10 Minuten. Er zeigt, wo Ihr Unternehmen bei Sichtbarkeit, Vertrieb und Innovation steht, und nennt die nächsten Schritte.
 - KI-Brain: Wissen, Abläufe und Daten eines Unternehmens sauber an einem Ort, damit KI im Alltag darauf zugreifen kann. Bei uns in Vorbereitung.
 - Landingpage: Eine einzelne Seite, die ein Angebot und einen nächsten Schritt in den Mittelpunkt stellt, oft als Ziel einer Anzeige. Eine ganze Website auf einer Seite heißt One-Pager; unser Paket Homepage Landing ist so eine.
 - Lead: Ein Kontakt, der Interesse an Ihrem Angebot gezeigt hat oder gut zu Ihrer Zielgruppe passt.
@@ -483,7 +483,7 @@ Diesen Schwung wollen wir auch in die Büros bringen: in Angebote, Anfragen, Abl
 
 ### So arbeiten wir
 
-Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen 90-Tage-Umsetzungsgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
+Der Innovations-Check zeigt Ihre Stufe in Sichtbarkeit, Vertrieb und Innovation und für die Innovation den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
 
 Frage: Womit sollte ein Mittelständler bei KI anfangen?
 Antwort: Mit einem ehrlichen Blick auf den eigenen Stand. Danach wählen Sie die drei Anwendungsfälle mit dem größten Nutzen und führen sie nacheinander ein: Erst wenn der erste im Alltag läuft, kommt der nächste.
@@ -492,7 +492,296 @@ Frage: Welche Daten braucht KI im Unternehmen?
 Antwort: Die Daten des Ablaufs, den sie unterstützen soll, zum Beispiel Kundenanfragen, Angebote, Produktwissen oder Arbeitsanweisungen. Wichtig ist, dass sie aktuell, vollständig und an einem Ort zugänglich sind.
 
 Frage: Was kostet es, KI einzuführen?
-Antwort: Der Innovations-Check und das 90-Tage-Umsetzungsgespräch sind kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Sie starten in Kürze; den Preis nennen wir zum Start.
+Antwort: Der Innovations-Check und das Erstgespräch sind kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Sie starten in Kürze; den Preis nennen wir zum Start.
 
 Frage: Was kostet der Innovations-Check?
-Antwort: Nichts. Der Check, der Bericht und das 90-Tage-Umsetzungsgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
+Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
+
+## Fünf Vertriebszahlen, die jedes kleine Unternehmen kennen sollte
+
+Quelle: https://fokusinnovation.de/wissen/fuenf-vertriebszahlen/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Fünf Zahlen reichen, um einen kleinen Vertrieb zu steuern: wie viele Angebote im Monat rausgehen, wie viele davon zum Auftrag werden, wie lange es vom ersten Gespräch bis zum Abschluss dauert, welche Chancen offen sind und mit welchem Wert, und ob jedes offene Angebot ein Datum zum Nachfassen hat. Ein teures Werkzeug braucht es dafür nicht. Eine Tabelle genügt, wenn sie gepflegt und jede Woche besprochen wird.
+
+### Warum gerade diese fünf
+
+Viele kleine Unternehmen steuern ihren Vertrieb nach Gefühl. Mal läuft es, mal nicht, und niemand kann sagen, warum. Andere messen zwanzig Kennzahlen und besprechen keine davon. Beides hilft nicht weiter.
+
+Die fünf Zahlen hier hängen zusammen: Sie zeigen, wie viel in Ihren Vertrieb hineinkommt, wie viel davon zum Auftrag wird, wie schnell das geht und was als Nächstes kommen kann. Sie lassen sich mit wenig Aufwand erfassen und zeigen früh, wenn etwas klemmt. Wie oft gerade der Vertrieb klemmt, zeigt der Deutsche Startup Monitor:
+
+63,5 % der Start-ups in Deutschland nennen Vertrieb und Kundengewinnung ihre größte Herausforderung, vor Produktentwicklung und Kapital. (Quelle: Deutscher Startup Monitor 2025, S. 56, https://startupverband.de/fileadmin/startupverband/mediaarchiv/research/dsm/Deutscher_Startup_Monitor_2025.pdf)
+
+### Zahl 1: Angebote im Monat
+
+Zählen Sie, wie viele Angebote Sie in einem Monat verschicken. Nicht Gespräche und nicht Anfragen, sondern schriftliche Angebote mit Preis und Datum. Die Zahl zeigt, ob genug in Ihren Vertrieb hineinkommt.
+
+Legen Sie einmal fest, was als Angebot zählt, und bleiben Sie dabei, sonst vergleichen Sie jeden Monat etwas anderes. Sinkt die Zahl über mehrere Monate, spüren Sie das oft erst später, wenn die Aufträge fehlen.
+
+### Zahl 2: Die Abschlussquote
+
+Die Abschlussquote ist der Anteil Ihrer Angebote, aus denen ein Auftrag wird. Zählen Sie dafür nur Angebote, die entschieden sind, also angenommen oder abgelehnt. Offene Angebote gehören noch nicht in die Rechnung.
+
+Rechnen Sie die Quote über mehrere Monate, denn bei wenigen Angeboten verändert ein einzelner Auftrag das Bild. Sinkt sie, lohnt die Frage, ob die Angebote an die richtigen Kontakte gehen, ob sie rechtzeitig kommen und ob jemand nachfragt.
+
+### Zahl 3: Zeit bis zum Abschluss
+
+Messen Sie, wie viele Tage zwischen dem ersten Gespräch und dem unterschriebenen Auftrag liegen. Notieren Sie dafür bei jeder Chance zwei Daten: den Tag des ersten Gesprächs und den Tag der Entscheidung. Der Durchschnitt Ihrer letzten Aufträge genügt.
+
+Die Zahl hilft beim Planen. Wenn ein Abschluss bei Ihnen meist mehrere Monate braucht, entscheidet sich der Umsatz im nächsten Quartal an den Gesprächen, die Sie heute führen. Wird die Zeit länger, schauen Sie, wo Chancen hängen bleiben: vor dem Angebot, bei der Freigabe auf Kundenseite oder beim Nachfassen.
+
+### Zahl 4: Offene Chancen mit Wert
+
+Eine Chance ist jedes Gespräch, in dem ein Kunde ernsthaft über einen Auftrag nachdenkt. Führen Sie zu jeder Chance drei Angaben: den erwarteten Auftragswert, die Stufe, auf der sie steht, und das Datum des nächsten Schritts. Die Summe der Werte ist Ihre Pipeline.
+
+Die Summe allein täuscht leicht, denn nicht jede Chance ist gleich weit. Ehrlicher wird sie, wenn Sie nur Chancen zählen, bei denen der nächste Schritt fest vereinbart ist. Eine Chance ohne nächsten Schritt ist oft keine mehr: Nehmen Sie sie heraus.
+
+### Zahl 5: Nachfassen
+
+Die fünfte Zahl ist eine einfache Frage: Hat jedes offene Angebot ein Datum, an dem Sie nachfragen? Zählen Sie jede Woche die offenen Angebote ohne dieses Datum. Das Ziel ist null.
+
+Ein Angebot ohne Nachfrage bleibt liegen, auch wenn der Kunde eigentlich will: Entscheidungen werden verschoben, Postfächer laufen voll. Legen Sie deshalb eine feste Regel fest, zum Beispiel: nachfassen drei Werktage nach dem Angebot und noch einmal eine Woche später.
+
+### Ohne teures Werkzeug erfassen
+
+Für den Anfang reicht eine Tabelle mit einer Zeile je Chance. Wichtiger als das Werkzeug ist, dass jede Zeile dieselben Spalten hat und dass jemand die Tabelle aktuell hält. Nutzen Sie schon ein CRM, legen Sie dieselben Angaben dort als Pflichtfelder an.
+
+Die Spalten einer einfachen Vertriebstabelle (Mehr Spalten brauchen Sie für die fünf Zahlen nicht. Was Sie auswerten wollen, gehört in eine eigene Spalte, nicht in eine Notiz.):
+- Kunde | Firma und Ansprechpartner | alle
+- Erstes Gespräch | Datum | Zeit bis zum Abschluss
+- Stufe | zum Beispiel Gespräch, Angebot, Entscheidung | offene Chancen
+- Wert | erwarteter Auftragswert, netto | offene Chancen
+- Angebot verschickt | Datum | Angebote im Monat
+- Nächster Schritt | was als Nächstes passiert und bis wann | Nachfassen, offene Chancen
+- Ergebnis | gewonnen, verloren oder offen, mit Datum | Abschlussquote, Zeit bis zum Abschluss
+
+Aus diesen Spalten zählen Sie alle fünf Zahlen in wenigen Minuten aus. Ein Filter nach Monat und Ergebnis genügt.
+
+### Einmal in der Woche draufschauen
+
+Zahlen helfen nur, wenn sie besprochen werden. Gehen Sie die Tabelle jede Woche zu einem festen Termin durch, zum Beispiel freitags: Welche Angebote sind rausgegangen? Welche Chancen haben keinen nächsten Schritt? Wo muss nachgefasst werden? Danach schreiben Sie einen Satz auf, was nächste Woche anders laufen soll.
+
+Nach einigen Wochen kennen Sie Ihre eigenen Quoten. Dann können Sie vom Umsatzziel rückwärts rechnen: Wie viele Aufträge brauchen Sie, wie viele Angebote führen dahin, und wie viele Gespräche braucht es dafür? Wie das geht, steht in unserem Ratgeber zum Vertriebsaufbau.
+
+### Häufige Fehler
+
+- Gespräche als Angebote zählen und die Zahl so schönrechnen.
+- Die Abschlussquote nach wenigen Angeboten bewerten.
+- Chancen ohne nächsten Schritt in der Pipeline lassen.
+- Die Tabelle anlegen und nach zwei Wochen nicht mehr pflegen.
+- Zahlen sammeln, aber nie gemeinsam besprechen.
+
+### Selbst anfangen oder Hilfe holen?
+
+Die fünf Zahlen können Sie ab morgen selbst erfassen. Hilfe lohnt sich, wenn die Zahlen zeigen, dass etwas klemmt, aber unklar ist, woran. Im Tagesworkshop ordnen wir an einem Tag, wo die Hebel liegen, und setzen den ersten direkt um. Soll jemand den Vertrieb aufbauen und führen, bis Ihr Team selbst abschließt, ist ein Head of Sales auf Zeit der nächste Schritt.
+
+Frage: Was zählt als Angebot?
+Antwort: Ein schriftliches Angebot mit Preis und Datum. Ein Preis, der im Gespräch fällt, zählt nicht. Wichtig ist, dass Sie die Regel einmal festlegen und dann jeden Monat gleich zählen.
+
+Frage: Ab wann ist die Abschlussquote aussagekräftig?
+Antwort: Je mehr entschiedene Angebote eingehen, desto verlässlicher wird sie. Rechnen Sie sie deshalb über mehrere Monate und achten Sie auf die Richtung, nicht auf einzelne Prozentpunkte.
+
+Frage: Reicht eine Tabelle, oder brauche ich ein CRM?
+Antwort: Für den Anfang reicht eine Tabelle, solange sie gepflegt wird. Ein CRM lohnt sich, sobald mehrere Personen verkaufen, Wiedervorlagen von selbst kommen sollen oder Anfragen von der Website direkt hineinlaufen sollen.
+
+Frage: Wer pflegt die Zahlen?
+Antwort: Wer eine Chance führt, trägt sie ein und hält sie aktuell. Eine Person achtet darauf, dass die Tabelle vollständig ist, und bringt sie zum Wochentermin mit.
+
+## Warum Ihre Website keine Anfragen bringt, und was Sie in einer Woche ändern können
+
+Quelle: https://fokusinnovation.de/wissen/website-ohne-anfragen/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Eine Website bringt kaum Anfragen, wenn Besucher nicht schnell verstehen, was Sie machen, und nicht wissen, was sie als Nächstes tun sollen. Fünf Änderungen schaffen Sie in einer Woche: ein Kernsatz ganz oben, ein klarer nächster Schritt, Belege statt Behauptungen, ein kurzes Video und eine eigene Seite je Angebot. Neu bauen müssen Sie die Seite dafür meist nicht.
+
+### Woran es liegt
+
+Wer Ihre Website besucht, kommt mit einer Frage: Kann diese Firma mein Problem lösen? Beantwortet die Seite das nicht schnell, gehen Besucher wieder, ohne Bescheid zu sagen. Sie merken davon nur, dass die Anfragen ausbleiben.
+
+Selten liegt es an Farben oder Schrift. Häufiger fehlen drei Dinge: ein Satz, der sagt, was Sie für wen tun, ein klarer nächster Schritt und ein Grund, Ihnen zu glauben. Das lässt sich in einer Woche ändern, Tag für Tag.
+
+### Vorher: der Fünf-Sekunden-Test
+
+Zeigen Sie Ihre Startseite drei Menschen aus Ihrer Zielgruppe für fünf Sekunden. Fragen Sie dann: Was macht diese Firma? Für wen? Und was würden Sie als Nächstes tun? Schreiben Sie die Antworten wörtlich auf. Am Ende der Woche wiederholen Sie den Test mit anderen Personen.
+
+### Tag 1: Der Kernsatz ganz oben
+
+Ganz oben, ohne Scrollen, steht ein Satz, der sagt, was Sie für wen tun. Nicht der Firmenname, nicht „Willkommen“ und nicht „Ihr Partner für alle Fragen rund um …“. Darunter steht eine Unterzeile, die den Nutzen konkret macht. Prüfen Sie den Satz mit drei Fragen:
+
+- Versteht ihn jemand außerhalb Ihrer Branche?
+- Steht darin, für wen Sie da sind?
+- Kommt er ohne Fachwörter und große Worte aus?
+
+Fällt Ihnen der Satz schwer, liegt die Arbeit in der Positionierung: für wen, welches Problem, wie Sie es lösen, was Sie unterscheidet und woran man sieht, dass es stimmt. Unser Ratgeber zur Positionierung führt durch diese fünf Sätze.
+
+### Tag 2: Ein klarer nächster Schritt
+
+Entscheiden Sie, was ein interessierter Besucher tun soll: anrufen, einen Termin buchen oder eine Anfrage schicken. Wählen Sie einen Weg. Er kommt als Hauptknopf in die erste Ansicht und noch einmal ans Ende der Seite. Ein zweiter, leiserer Weg ist in Ordnung, fünf sind zu viele.
+
+Machen Sie den Schritt so klein wie möglich. Ein langes Formular schreckt ab, für den Anfang genügen Name, Kontakt und eine Zeile zum Anliegen. Prüfen Sie auch, was nach dem Klick passiert: Kommt die Anfrage bei jemandem an, der innerhalb eines Werktags antwortet?
+
+### Tag 3: Belege statt Behauptungen
+
+„Kompetent, zuverlässig, innovativ“ steht auf vielen Websites und überzeugt kaum jemanden. Vertrauen entsteht durch Dinge, die man prüfen kann. Sammeln Sie an diesem Tag, was Sie zeigen können:
+
+- einen Ablauf in drei bis fünf Schritten, wie die Zusammenarbeit läuft
+- Preise oder zumindest einen Preisrahmen
+- Stimmen echter Kunden, die der Veröffentlichung zugestimmt haben
+- Zahlen nur mit Quelle
+- ein Foto und ein paar Sätze zu den Menschen, mit denen man arbeitet
+
+Haben Sie noch keine Kundenstimmen, erfinden Sie keine. Ein klarer Ablauf und offene Preise sind auch Belege: Sie zeigen, dass Sie wissen, was Sie tun.
+
+### Tag 4: Ein kurzes Video
+
+Manches versteht man schneller, wenn man es sieht. Ein Video von 60 bis 90 Sekunden unter der ersten Ansicht kann zeigen, welches Problem Sie lösen, was Sie anders machen, wie die Zusammenarbeit abläuft und was der nächste Schritt ist.
+
+Für den Anfang muss es nicht aufwendig sein: Es reicht ein ruhiges Video, in dem Sie selbst erklären, was Sie tun, mit gutem Ton und mit Untertiteln, damit man es auch ohne Ton versteht. Schreiben Sie vorher ein Skript und kürzen Sie es, bis jeder Satz zählt.
+
+Schaffen Sie in dieser Woche nur vier der fünf Punkte, lassen Sie das Video weg. Die anderen wirken auch ohne.
+
+### Tag 5: Eine Seite je Angebot
+
+Wer drei Leistungen auf einer Seite erklärt, erklärt keine richtig. Geben Sie jedem Angebot eine eigene Seite. Darauf gehören:
+
+- eine Überschrift, die das Angebot und die Zielgruppe nennt
+- was enthalten ist und was nicht
+- wie es abläuft, Schritt für Schritt
+- was es kostet, oder ein Preisrahmen
+- ein Hauptknopf mit demselben nächsten Schritt wie auf der Startseite
+
+Das hilft Besuchern, die mit einer bestimmten Frage kommen, und es hilft bei der Suche: Eine Seite, die genau eine Frage beantwortet, können Suchmaschinen und KI-Assistenten leichter einordnen. Geben Sie jeder Seite einen eigenen Titel und eine kurze Beschreibung.
+
+### Nach der Woche: prüfen und zählen
+
+Wiederholen Sie den Fünf-Sekunden-Test und vergleichen Sie die Antworten mit denen vom Anfang. Zählen Sie ab jetzt jeden Monat die Anfragen über die Website und notieren Sie, über welche Seite sie kamen. So sehen Sie nach einigen Wochen, was wirkt.
+
+Erwarten Sie nicht, dass sich in einer Woche alles ändert. Die Woche räumt auf, was Besucher heute abhält. Wie viele Anfragen kommen, hängt auch davon ab, wie viele Menschen Ihre Seite überhaupt finden.
+
+### Häufige Fehler
+
+- Mit Farben und Bildern anfangen, bevor der Kernsatz steht.
+- Fünf Knöpfe mit fünf Zielen in die erste Ansicht stellen.
+- Alle Leistungen auf einer einzigen Seite erklären.
+- Ein Kontaktformular anbieten, dessen Anfragen niemand zeitnah beantwortet.
+- Änderungen machen und nie prüfen, ob Besucher die Seite jetzt verstehen.
+
+### Selbst machen oder Hilfe holen?
+
+Die fünf Punkte können Sie selbst angehen, in vielen Systemen ohne Programmierer. Hilfe lohnt sich, wenn der Kernsatz nicht gelingt, weil die Positionierung noch offen ist, oder wenn die Seite so alt ist, dass jede Änderung Tage dauert.
+
+Unsere Positionierung beginnt bei den fünf Sätzen. Die Homepage Landing ist ein One-Pager mit Texten von uns, fertig in 10 Werktagen ab vollständigem Formular und Zahlungseingang. Ein Erklärvideo entsteht bei uns ohne Dreh vor Ort.
+
+Frage: Muss ich meine Website neu bauen lassen?
+Antwort: Nicht unbedingt. Die fünf Änderungen lassen sich in vielen Systemen selbst machen. Neu bauen lohnt sich, wenn die Seite auf dem Handy nicht funktioniert, langsam lädt oder sich nur mit viel Aufwand ändern lässt.
+
+Frage: Wie lang darf der Kernsatz sein?
+Antwort: So lang, dass man ihn in einem Atemzug vorlesen kann. Er nennt, was Sie tun und für wen. Alles Weitere gehört in die Unterzeile.
+
+Frage: Was, wenn ich mehrere Zielgruppen habe?
+Antwort: Dann gilt der Kernsatz der Startseite für die Gruppe, auf die Sie sich zuerst konzentrieren wollen. Jede weitere Gruppe bekommt eine eigene Seite mit eigenem Kernsatz.
+
+Frage: Wie schnell ist meine Homepage fertig?
+Antwort: Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft ab vollständigem Formular und Zahlungseingang. Mit Express halbiert sich die Lieferzeit.
+
+## Die ersten 30 Tage mit KI im Team
+
+Quelle: https://fokusinnovation.de/wissen/erste-30-tage-mit-ki/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Die ersten 30 Tage mit KI gelingen, wenn Sie klein anfangen: ein Ablauf statt zehn, eine Firmenlizenz statt privater Konten, wenige schriftliche Regeln und eine Messung vorher und nachher. Am Ende steht eine bewusste Entscheidung: ausweiten, anpassen oder aufhören. So wird aus Ausprobieren ein Ergebnis.
+
+### Vom Ausprobieren zum Ergebnis
+
+In vielen Teams läuft KI schon nebenbei. Einzelne lassen sich Texte entwerfen oder Notizen zusammenfassen, mit eigenen Konten und eigenen Regeln. Wofür, mit welchen Daten und mit welchem Nutzen, weiß oft niemand genau. Wie weit der Weg vom Ausprobieren zum Nutzen ist, zeigt eine Umfrage des Bitkom:
+
+3 % der Unternehmen schöpfen das Potenzial von KI eher stark aus, keines vollständig. 59 % gar nicht. (Quelle: Bitkom, 14.09.2026, 603 Unternehmen ab 20 Beschäftigten, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
+
+30 Tage sind lang genug, um einen echten Ablauf zu verändern, und kurz genug, um dranzubleiben. Danach wissen Sie, ob sich der Einsatz lohnt, und haben Zahlen statt Eindrücke.
+
+### Woche 1: Einen Ablauf wählen
+
+Wählen Sie einen einzigen Ablauf, der oft vorkommt, sich gut beschreiben lässt und heute spürbar Zeit kostet. Geeignet sind Aufgaben mit viel Text und wiederkehrender Form, zum Beispiel:
+
+- Antworten auf häufige Kundenanfragen vorbereiten
+- Angebotstexte aus Gesprächsnotizen entwerfen
+- Protokolle aus Besprechungsnotizen zusammenfassen
+- Anleitungen und Arbeitsanweisungen schreiben oder aktualisieren
+
+Weniger geeignet sind Abläufe, bei denen ein Fehler teuer wird, bevor ihn jemand sieht. In den ersten 30 Tagen prüft immer ein Mensch, was die KI vorschlägt. Eine Person verantwortet den Versuch, einige wenige machen mit.
+
+Messen Sie noch in dieser Woche den Ausgangswert: Die Beteiligten notieren einige Tage lang, wie viele Minuten jede Aufgabe heute braucht. Ohne diesen Wert können Sie nach 30 Tagen nur schätzen.
+
+### Firmenlizenz statt privater Konten
+
+Wer mit einem privaten Konto arbeitet, entscheidet allein, welche Daten er eingibt, und das Unternehmen weiß nicht, wo sie landen. Nutzen Sie für den Versuch eine Firmenlizenz, die das Unternehmen verwaltet. Klären Sie vor dem Kauf:
+
+- Schließt der Vertrag aus, dass Ihre Eingaben zum Trainieren des Modells genutzt werden?
+- Gibt es einen Vertrag zur Auftragsverarbeitung nach DSGVO?
+- Wo werden die Daten verarbeitet und gespeichert?
+- Lassen sich Konten zentral anlegen und wieder sperren, wenn jemand geht?
+
+Lassen Sie die Antworten von der Person prüfen, die bei Ihnen für Datenschutz zuständig ist. Diese Liste ersetzt keine Rechtsberatung, sie sammelt nur die Fragen vor dem Start.
+
+### Wenige Regeln, schriftlich
+
+Regeln müssen nicht lang sein. Eine Seite reicht, wenn sie klar sagt, was gilt. Schreiben Sie auf:
+
+- welche Daten hinein dürfen und welche nicht, zum Beispiel keine Passwörter, keine Gesundheitsdaten und keine vertraulichen Kundendaten ohne Freigabe
+- dass ein Mensch jedes Ergebnis prüft, bevor es an Kunden geht
+- wann Sie kennzeichnen, dass ein Text oder Bild mit KI entstanden ist
+- wen man fragt, wenn etwas unklar ist
+
+Besprechen Sie die Regeln im Team, bevor es losgeht. Wer weiß, was erlaubt ist, muss nicht raten.
+
+### Woche 2 und 3: Im Alltag nutzen
+
+Jetzt läuft der gewählte Ablauf mit KI, jedes Mal und nicht nur, wenn Zeit ist. Die Beteiligten notieren weiter die Minuten je Aufgabe, dazu, was gut lief und was nachgearbeitet werden musste.
+
+Sammeln Sie Anweisungen, die gut funktioniert haben, an einem Ort, damit nicht jeder von vorn anfängt. Ein kurzer Termin am Ende jeder Woche hilft: Jeder zeigt ein Beispiel, das gut lief, und eins, das nicht lief.
+
+Hakt es, liegt es oft an fehlendem Wissen: Die KI kennt Ihre Preise, Produkte oder Abläufe nicht, weil sie nirgends sauber beschrieben sind. Notieren Sie solche Lücken. Sie sind ein Ergebnis des Versuchs und zeigen, welche Daten Sie als Nächstes ordnen sollten.
+
+### Woche 4: Messen, was es spart
+
+Vergleichen Sie die Minuten je Aufgabe vor dem Start mit denen aus Woche 3. Rechnen Sie das Prüfen und die Nacharbeit mit ein, sonst sieht der Gewinn größer aus, als er ist.
+
+So rechnen Sie die Ersparnis (Nehmen Sie die notierten Minuten, keine Schätzung aus dem Gedächtnis.):
+- Zeit vorher | Minuten je Aufgabe im Schnitt, gemessen in Woche 1 | Minuten
+- Zeit mit KI | Minuten je Aufgabe in Woche 3, mit Prüfen und Nacharbeit | Minuten
+- Ersparnis je Aufgabe | Zeit vorher minus Zeit mit KI | Minuten
+- Ersparnis im Monat | Ersparnis je Aufgabe mal Aufgaben im Monat, geteilt durch 60 | Stunden
+- Kosten im Monat | Lizenzen der Beteiligten | Euro
+
+Zählen Sie nicht nur Zeit: Ist das Ergebnis mindestens so gut wie vorher? Gehen Antworten an Kunden schneller raus? Wie geht es den Beteiligten damit? Eine Ersparnis, die das Team nicht mitträgt, hält nicht lange.
+
+### Tag 30: Entscheiden
+
+Am Ende steht eine bewusste Entscheidung, keine stille Gewöhnung. Es gibt drei Möglichkeiten:
+
+1. Ausweiten: Der Ablauf spart spürbar Zeit, und die Qualität stimmt. Dann wird er Standard für alle, die ihn machen, und Sie wählen den nächsten Ablauf.
+2. Anpassen: Der Nutzen ist da, aber es hakt, zum Beispiel an fehlenden Daten oder unklaren Vorlagen. Dann beheben Sie das und messen weitere 30 Tage.
+3. Aufhören: Der Ablauf spart kaum Zeit oder kostet mehr Prüfung, als er bringt. Dann lassen Sie ihn und nehmen das Gelernte in den nächsten Versuch mit. Auch das ist ein Ergebnis.
+
+Halten Sie die Entscheidung mit den Zahlen schriftlich fest. Nach einigen solchen Runden haben Sie keine Sammlung von Versuchen mehr, sondern Abläufe, die mit KI laufen und deren Nutzen Sie kennen.
+
+### Häufige Fehler
+
+- Zehn Abläufe gleichzeitig angehen.
+- Mit privaten Konten arbeiten, weil es schneller geht.
+- Ohne Ausgangswert starten und am Ende nur schätzen.
+- Ergebnisse ungeprüft an Kunden schicken.
+- Nach 30 Tagen nicht entscheiden und einfach so weitermachen.
+
+### So arbeiten wir
+
+Welcher Ablauf sich bei Ihnen zuerst lohnt, klärt oft ein Blick von außen. Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
+
+Frage: Brauche ich für den Anfang eine eigene KI-Lösung?
+Antwort: Nein. Für die ersten 30 Tage reicht ein allgemeines KI-Werkzeug mit Firmenlizenz. Eine eigene Lösung lohnt sich erst, wenn Sie wissen, welcher Ablauf welchen Nutzen bringt und welche Daten er braucht.
+
+Frage: Wie viele Personen sollten mitmachen?
+Antwort: Wenige, die den gewählten Ablauf regelmäßig machen, und eine Person, die den Versuch verantwortet. So bleibt er überschaubar, und die Erfahrungen lassen sich vergleichen.
+
+Frage: Dürfen Kundendaten in ein KI-Werkzeug?
+Antwort: Das hängt vom Werkzeug, vom Vertrag und von den Daten ab. Klären Sie das vor dem Start mit der Person, die bei Ihnen für Datenschutz zuständig ist, und schreiben Sie die Antwort in Ihre Regeln. Bis dahin gilt: keine vertraulichen Kundendaten.
+
+Frage: Was kostet der Innovations-Check?
+Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.

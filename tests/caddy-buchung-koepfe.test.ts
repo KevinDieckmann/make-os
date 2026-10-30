@@ -140,6 +140,9 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     expect(seite).toMatch(/^request_header X-Make-Vorbau "1"$/m);
     // Die Köpfe gelten auch für die 404-Seite (eigene Route-Kette).
     expect(seite).toMatch(/handle_errors \{[\s\S]*import fokus_koepfe[\s\S]*rewrite \* \/404\.html/);
+    // Kostenlos (30.10.): die alte Übersicht /wissen/ leitet dauerhaft um, die Ratgeber /wissen/<id>/ bleiben, wo sie sind.
+    expect(seite).toMatch(/^@altwissen path \/wissen \/wissen\/ \/wissen\/index\.html$/m);
+    expect(seite).toMatch(/^redir @altwissen \/kostenlos\/ 301$/m);
     const kopf = aktiv.get('(fokus_koepfe)') ?? '';
     expect(kopf, 'Vorschau ohne noindex').toMatch(/^X-Robots-Tag "noindex, nofollow"$/m);
     expect(/Content-Security-Policy "([^"]+)"/.exec(kopf)?.[1]).toBe(LANDING_CSP);
@@ -149,7 +152,7 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     expect(readFileSync(join(ordner, 'robots.txt'), 'utf8')).toMatch(/^Disallow: \/$/m);
     // Jede Seite trägt noindex, keine lädt Fremdes oder führt Inline-Skripte aus (die CSP oben würde sie ohnehin sperren).
     // Erlaubt (27.10., Suche): <link rel="canonical|alternate"> mit voller Adresse und der JSON-LD-Datenblock (wird nie ausgeführt).
-    for (const datei of ['index.html', 'impressum/index.html', 'datenschutz/index.html', 'wissen/index.html', 'preise/index.html', '404.html']) {
+    for (const datei of ['index.html', 'impressum/index.html', 'datenschutz/index.html', 'kostenlos/index.html', 'wissen/vertrieb-aufbauen/index.html', 'preise/index.html', '404.html']) {
       const html = readFileSync(join(ordner, datei), 'utf8');
       expect(html, datei).toMatch(/<meta name="robots" content="noindex">/);
       expect(html.replace(/<link rel="(canonical|alternate)"[^>]*>/g, ''), datei).not.toMatch(/<(script|link|img)\b[^>]*\s(src|href)="https?:/);
