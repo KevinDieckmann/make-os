@@ -51,6 +51,26 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-10-31-7',
+    datum: '2026-10-31',
+    titel: 'Mehr Seiten selbst anpassen',
+    kurz: 'Auf weiteren Seiten ordnest du die Karten jetzt selbst: oben rechts „✎ Anpassen“ oder eine Karte länger gedrückt halten — verschieben, Breite wählen, ausblenden. Das Anpassen geht schneller und merkt sich alles.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Sport: alle Reiter — Ziele & Plan, Training, Hyrox, Running, Gym und Erholung — sind anpassbar.', bereich: 'privat', weg: WEG.sport() },
+        { text: 'Finanzen › Privat › Überblick: Privat-Index, Für dich, Dieser Monat, Wichtig diese Woche und Größte Ausgaben als Karten zum Anordnen.', bereich: 'privat', weg: WEG.privat() },
+        { text: 'Finanzen › Business › Controlling & Ziele: die Karten lassen sich anordnen und ausblenden.', bereich: 'business', weg: WEG.controlling() },
+        { text: 'Aufgaben › Überblick: Für dich, die Zahlen und die Bereiche Privat, Firmen und Mandanten — je Sicht (alles, Privat, Business) eigens gemerkt.', bereich: 'alle', weg: WEG.aufgaben() },
+        { text: 'Planung › Tag, Monat, Quartal und Jahr: Fokus, Strahl, Forecast, Ziele & Meilensteine und Fälliges als Karten zum Anordnen.', bereich: 'alle', weg: WEG.jahr() },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Anpassen geht flüssiger: beim Ziehen und Breite-Wählen zeichnen sich nur die betroffenen Karten neu, große Karten springen nicht mehr hin und her, und beim Zurückkommen steht deine Anordnung sofort da.', bereich: 'alle' },
+        { text: 'Karten, die nur manchmal erscheinen, behalten ihren Platz und bleiben ausgeblendet, auch wenn du in der Zwischenzeit etwas anderes verschoben hast.', bereich: 'alle' },
+        { text: 'Gesundheit: Schlaf, Körperwerte und die Karten der eigenen Ansicht verlieren beim Anpassen ihren Platz nicht mehr — auch nicht, wenn du zwischendurch die geteilte Ansicht der anderen Person angepasst hast.', bereich: 'privat', weg: WEG.gesundheit() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31-5',
     datum: '2026-10-31',
     titel: 'Akten öffnen groß',

@@ -53,6 +53,7 @@ import { useKapazitaet } from './kapazitaet/useKapazitaet';
 import { LastBand } from './kapazitaet/teile';
 import { wirksamerSpace } from '@/lib/planung/bereich';
 import { useNurBusiness } from './useInhaber';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 type Horizont = 'monat' | 'quartal' | 'jahr';
 
@@ -210,15 +211,20 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
 
       {/* Fokus dieses Horizonts — die eine Richtung, gegen die geplant wird. Seit 09.10. Unser + Mein Fokus aus den getrennten Beständen
           (FokusTafel, lib/planung/fokus.ts) — im Bereich des Filters; in „Alles“ wählbar. Nichts mehr in den gemischten Bestand `ziele`. */}
+      {/* Anpassbar (30.10., Kevin: „Karten überall selbst anpassen“): eine Fläche je Horizont (planung-monat · -quartal · -jahr), Standard = der bisherige Aufbau. */}
+      <Flaeche seite={`planung-${horizont}`}>
+      <Kachel id="fokus" titel="Fokus" breite={6}>
       <Karte i={0} akzent={farbe}>
         <Ueberschrift farbe={farbe} rechts="Sichtbar auf Heute, im Kalender › Planen und in der Tagesplanung — ZOE plant dagegen.">{fokusTitel}</Ueberschrift>
         <FokusTafel {...(spaceFilter === 'alle' ? { vorgabe: nurBusiness ? 'business' as const : 'privat' as const } : { bereich: spaceFilter })} horizonte={[horizont]} {...(istJahr ? { jahr: planJahr } : {})} />
       </Karte>
+      </Kachel>
       {/* Erholungs-Ziele (10.10.): die EIGENEN des Monats (die der Woche stehen in Kalender › Planen) — nur Privat/Alles, nie für ein Konto „nur Business“; Daten über die
           Erholungs-Route (nur die Person selbst). Zeichnet nichts ohne Erholungs-Ziel des Zeitraums. */}
-      {horizont === 'monat' && spaceFilter !== 'business' && !nurBusiness && <ErholungZielePlanung zeitraum="monat" i={1} />}
+      <Kachel id="erholung" titel="Erholungs-Ziele" breite={6}>{horizont === 'monat' && spaceFilter !== 'business' && !nurBusiness && <ErholungZielePlanung zeitraum="monat" i={1} />}</Kachel>
 
       {/* Zeitstrahl — der Zeitraum als Linie: Heute-Anker, Meilensteine, Fälligkeiten. Im Jahr: Fenster zum Blättern, Anlegen per Klick. */}
+      <Kachel id="strahl" titel={istJahr ? 'Seil · Lichtfäden' : 'Zeitstrahl'} breite={6}>
       {istJahr ? (jahrSicht === 'seil' ? (
         // Seil (07.10., Kevin: „Am Ende müssen sie irgendwo alle ineinander greifen, wie ein Kabel oder ein Seil“): Stränge je Ziel,
         // Abhängigkeiten, Fokus mit kritischem Pfad — LICHTFAEDEN.md › Seil. Die Lichtfäden bleiben als „Alle Stränge“ (Last über alles).
@@ -237,11 +243,13 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
           <Link href={WEG.kapazitaet()} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none', justifySelf: 'start' }}>Kapazität je Person ›</Link>
         </div>
       )}
+      </Kachel>
 
       {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
-      <FlussKarte bereich="planung" space={spaceFilter === 'alle' ? null : spaceFilter} farbe={LEUCHT.planung} i={2} />
+      <Kachel id="fluss" titel="Für dich" breite={6}><FlussKarte bereich="planung" space={spaceFilter === 'alle' ? null : spaceFilter} farbe={LEUCHT.planung} i={2} /></Kachel>
 
       {/* Forecast — Zeit vs. Fortschritt, deterministisch; im Jahr je Planungsjahr */}
+      <Kachel id="forecast" titel="Forecast" breite={6}>
       {hatForecast && (
         <Karte i={kForecast}>
           {lage.art === 'zukunft' ? (
@@ -279,22 +287,27 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
           )}
         </Karte>
       )}
+      </Kachel>
 
       {/* Jahr: der Nordstern als eigene Karte in Business/Alles. Seit 08.10. abends gemeinsames, pflegbares Ziel des Haushalts (Daten statt
           Konstante, /api/planung/nordstern); seit 09.10. steht er im Privat-Filter oben in „Unsere Ziele“ (ZieleUebersicht). */}
+      <Kachel id="nordstern" titel="Nordstern" breite={6}>
       {hatNordstern && (
         <NordsternKarte i={kNordstern}
           rechts={<Link href={spaceFilter === 'business' ? '/os/finanzen?s=business' : '/os/gesundheit?s=index'} style={{ color: C.inkLeise, textDecoration: 'none' }}>{spaceFilter === 'business' ? 'Meilensteine zählen im Business-Index ›' : 'Meilensteine zählen in den Indizes ›'}</Link>} />
       )}
 
       {/* Ziele links, Meilensteine rechts — Priorität per Pfeil, Erledigtes unten, Einheiten im Business, Kaskade aus dem Jahr */}
+      </Kachel>
+
+      <Kachel id="ziele" titel="Ziele & Meilensteine" breite={6}>
       <ZieleMeilensteine horizont={horizont} farbe={farbe} spaceFilter={spaceFilter} onSpace={setSpaceFilter} zielM={zielM} i={kZM}
         planung={p} planJahr={planJahr} einheitFilter={einheitFilter} onEinheit={setEinheitFilter} rueckgaengig={rueck}
         onMsOeffnen={istJahr ? msFenster.oeffne : undefined} />
-      {msFenster.fenster}
-      {rueck.hinweis}
+      </Kachel>
 
       {/* Aufgaben im Zeitraum */}
+      <Kachel id="faellig" titel="Fällig im Zeitraum" breite={6}>
       <Karte i={kAufgaben}>
         <Ueberschrift farbe={LEUCHT.puls} rechts={faellig.length > 15 ? `die nächsten 15 von ${faellig.length}` : undefined}>Fällig in {zr.label} ({faellig.length})</Ueberschrift>
         {!faellig.length && <Leer>Keine terminierten Aufgaben in diesem Zeitraum.</Leer>}
@@ -310,6 +323,10 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
           ))}
         </Liste>
       </Karte>
+      </Kachel>
+      </Flaeche>
+      {msFenster.fenster}
+      {rueck.hinweis}
     </Seite>
   );
 }

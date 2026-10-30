@@ -6,6 +6,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, LEUCHT, useRueckfrage } from '../ui';
 import { Feld, Raster, Zahlfeld, Hinweis, Weg, klein, de, datumLang, datumKurz, SPORT_FARBE } from './teile';
 import { alleUebungen, alleVorlagen, e1rm, bestesE1rm, volumen, verlauf, rekorde, ausVorlage } from '@/lib/sport/gym';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { neueId, type GymEinheit, type Muskelgruppe, type Op, type Satz, type SportStand, type Uebung, type Vorlage } from '@/lib/sport/modell';
 
 const F = SPORT_FARBE.gym;
@@ -27,6 +28,8 @@ export function GymTeil({ stand, heute, schicke }: { stand: SportStand; heute: s
 
   return (
     <>
+      <Flaeche seite="sport-gym">
+      <Kachel id="einheiten" titel="Einheiten" breite={6}>
       <Karte i={0} ton={F}>
         <Ueberschrift farbe={F} rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : '+ Einheit'}</button>}>Einheiten</Ueberschrift>
         {(offen || bearbeite) && <EinheitFormular heute={heute} start={bearbeite ?? undefined} uebungen={uebungen} vorlagen={vorlagen} einheiten={stand.gym.einheiten}
@@ -50,7 +53,9 @@ export function GymTeil({ stand, heute, schicke }: { stand: SportStand; heute: s
           );
         })}
       </Karte>
+      </Kachel>
 
+      <Kachel id="verlauf" titel="Verlauf je Übung · e1RM" breite={6}>
       <Karte i={1}>
         <Ueberschrift rechts={kraftZiel ? `Ziel ${name(kraftZiel.uebung!)} ${de(kraftZiel.zielKg)} kg` : undefined}>Verlauf je Übung · e1RM</Ueberschrift>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -68,7 +73,9 @@ export function GymTeil({ stand, heute, schicke }: { stand: SportStand; heute: s
           </>
         )}
       </Karte>
+      </Kachel>
 
+      <Kachel id="bibliothek" titel="Bibliothek & Vorlagen" breite={6}>
       <Karte i={2}>
         <Ueberschrift>Bibliothek & Vorlagen</Ueberschrift>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -92,6 +99,8 @@ export function GymTeil({ stand, heute, schicke }: { stand: SportStand; heute: s
         </div>
         <Hinweis>Vorlagen sind Vorschläge für Trainingstage — keine Trainingsberatung. Eine eigene Vorlage entsteht beim Speichern einer Einheit („als Vorlage merken“).</Hinweis>
       </Karte>
+      </Kachel>
+      </Flaeche>
       {dialog}
     </>
   );

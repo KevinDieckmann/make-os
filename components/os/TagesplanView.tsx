@@ -36,6 +36,7 @@ import { useNurBusiness } from './useInhaber';
 import { spaceVonZiel } from '@/lib/lichtfaeden/modell';
 import type { Ziel, Routine as PlanRoutine } from '@/lib/planung/typen';
 import { faelligkeit } from '@/lib/planung/rhythmus';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 import { erledigtTage } from '@/lib/planung/routinen';
 
 type Routine = Pick<PlanRoutine, 'id' | 'label' | 'wann' | 'kategorie' | 'dauerMin' | 'aktiv' | 'rhythmus' | 'naechstesMal' | 'regel' | 'pausen' | 'zeitraum' | 'angelegtAm'>;
@@ -290,6 +291,8 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
   return (
     <Seite titel="Tagesplanung" unter={<div>{datum}<div style={{ marginTop: 12 }}><PlanerLeiste tag={heute} /></div></div>}>
       {/* ── Die Fokusthemen stehen über dem Tag ── */}
+      <Flaeche seite="planung-tag">
+      <Kachel id="fokus" titel="Fokusthemen" breite={6}>
       <Karte i={0} akzent={LEUCHT.schlaf}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={WEG.fokus('prioritaeten')} style={verweis}>Prioritäten ›</Link>}>
           Fokus{fokusQuelle && fokusQuelle !== 'Tag' ? ` · ${fokusQuelle}` : ''}
@@ -308,8 +311,10 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
           </div>
         )}
       </Karte>
+      </Kachel>
 
       {/* ── Kompakter Durchgeplant-Check ── */}
+      <Kachel id="check" titel="Durchgeplant-Check" breite={6}>
       <Karte i={1}>
         <Ueberschrift farbe={checkFarbe} rechts={<Link href="/os/kalender?modus=planen" style={verweis}>Wochenplaner ›</Link>}>Durchgeplant</Ueberschrift>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -323,11 +328,15 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
           </div>
         </div>
       </Karte>
+      </Kachel>
 
       {/* ── Tagesziele links, Meilensteine des Tages rechts (27.09.) — Kaskade aus dem Jahr, Priorität per Pfeil ── */}
+      <Kachel id="ziele" titel="Tagesziele & Meilensteine" breite={6}>
       <ZieleMeilensteine horizont="tag" farbe={LEUCHT.schlaf} i={2} kompakt />
+      </Kachel>
 
-      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+      <Kachel id="plan" titel="Tagesplan" breite={6}>
+      <div data-kein-anpassen style={{ display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* ── Der Tag als Kalender — Lücken sichtbar, alles reinziehbar ── */}
         <Karte i={2} style={{ flex: '0 1 440px', minWidth: 'min(300px, 100%)' }}>
           <Ueberschrift farbe={LEUCHT.puls} rechts="ziehen wie im Kalender (Planen)">Der Tag</Ueberschrift>
@@ -460,6 +469,8 @@ export function TagesplanView({ tag }: { tag?: string } = {}) {
           </Karte>
         </div>
       </div>
+      </Kachel>
+      </Flaeche>
       {dialog}
     </Seite>
   );

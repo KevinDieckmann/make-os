@@ -6,6 +6,7 @@ import { FARBE as C, TYP, SCHRIFT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, LEUCHT, useRueckfrage } from '../ui';
 import { Feld, Raster, Zeitfeld, Zahlfeld, Pillen, Skala, Hinweis, Weg, klein, de, datumLang, datumKurz, SPORT_FARBE } from './teile';
 import { paceSekProKm, formatPace, formatZeit, wochenKilometer, kmTrend, bestzeiten, riegel, zielPace, trainingsPaces } from '@/lib/sport/pace';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { LAUF_ARTEN, neueId, type Lauf, type LaufArt, type Op, type SportStand } from '@/lib/sport/modell';
 
 const F = SPORT_FARBE.lauf;
@@ -26,6 +27,8 @@ export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heut
 
   return (
     <>
+      <Flaeche seite="sport-lauf">
+      <Kachel id="wochen-km" titel="Wochenkilometer · 12 Wochen" breite={6}>
       <Karte i={0} ton={F}>
         <Ueberschrift farbe={F} rechts={trend != null ? `Trend ${trend > 0 ? '+' : ''}${trend} % (4 gegen 4 Wochen)` : undefined}>Wochenkilometer · 12 Wochen</Ueberschrift>
         <Balken werte={wochen.map(w => (w.km ? w.km : null))} max={Math.max(1, ...wochen.map(w => w.km))} farbe={F} hoehe={56} titel={wochen.map(w => `ab ${datumKurz(w.montag)} · ${de(w.km)} km · ${w.laeufe} Läufe`)} />
@@ -42,7 +45,9 @@ export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heut
         )}
         {!laufZiel && <Hinweis>Ein Laufziel mit Distanz und Zielzeit (unter „Ziele & Plan“) liefert hier Zielpace und Trainingsbereiche.</Hinweis>}
       </Karte>
+      </Kachel>
 
+      <Kachel id="bestzeiten" titel="Bestzeiten" breite={6}>
       <Karte i={1}>
         <Ueberschrift>Bestzeiten</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14 }}>
@@ -60,7 +65,9 @@ export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heut
         </div>
         {stand.ausgang.lauf10kSek && !best10 && <Hinweis>Ausgangswert 10 km: {formatZeit(stand.ausgang.lauf10kSek)} — der erste erfasste 10er löst ihn ab.</Hinweis>}
       </Karte>
+      </Kachel>
 
+      <Kachel id="laeufe" titel="Läufe" breite={6}>
       <Karte i={2}>
         <Ueberschrift rechts={<button type="button" onClick={() => { setBearbeite(null); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : '+ Lauf'}</button>}>Läufe</Ueberschrift>
         {(offen || bearbeite) && <LaufFormular heute={heute} start={bearbeite ?? undefined} onSpeichern={async l => { const ok = await schicke([{ op: 'lauf', eintrag: l }], 'Lauf gespeichert.'); if (ok) { setOffen(false); setBearbeite(null); } }} onAbbruch={() => { setOffen(false); setBearbeite(null); }} />}
@@ -77,6 +84,8 @@ export function RunningTeil({ stand, heute, schicke }: { stand: SportStand; heut
           </div>
         ))}
       </Karte>
+      </Kachel>
+      </Flaeche>
       {dialog}
     </>
   );

@@ -10,6 +10,7 @@ import { tagPlus } from '@/lib/sport/pace';
 import { STATIONEN, LAEUFE, splitsAusZielzeit, gesamtAus, vollstaendig, schwaechen, bestesJeStation, bestzeitPrognose } from '@/lib/sport/hyrox';
 import { formatZeit, formatPace } from '@/lib/sport/pace';
 import { hauptziel } from '@/lib/sport/plan';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { neueId, STATION_IDS, type HyroxEinheit, type Op, type SportStand, type StationId } from '@/lib/sport/modell';
 
 const F = SPORT_FARBE.hyrox;
@@ -33,6 +34,8 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
 
   return (
     <>
+      <Flaeche seite="sport-hyrox">
+      <Kachel id="rechner" titel="Zielzeit-Rechner" breite={6}>
       <Karte i={0} ton={F}>
         <Ueberschrift farbe={F} rechts={hz ? `Ziel: ${hz.titel}` : undefined}>Zielzeit-Rechner</Ueberschrift>
         <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
@@ -57,7 +60,9 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
         )}
         <Hinweis>Splits nach üblichen Anteilen je Station (Läufe rund 52 %, Wege 6 %). Deine eigenen Zeiten lösen den Vorschlag ab, sobald du Stationen erfasst.</Hinweis>
       </Karte>
+      </Kachel>
 
+      <Kachel id="schwaechen" titel="Schwächen gegen das Ziel" breite={6}>
       <Karte i={1}>
         <Ueberschrift rechts={letzteVolle ? `${ARTEN.find(a => a.id === letzteVolle.art)?.label} · ${datumLang(letzteVolle.datum)}` : undefined}>Schwächen gegen das Ziel</Ueberschrift>
         {!schw.length ? <Leer>Sobald eine Einheit mit Stationszeiten da ist, steht hier, welche Station am meisten kostet.</Leer> : (
@@ -76,7 +81,9 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
           </div>
         )}
       </Karte>
+      </Kachel>
 
+      <Kachel id="aus-training" titel="Hyrox & Functional aus deinem Training" breite={6}>
       {ausTraining.length > 0 && (
         <Karte i={2}>
           <Ueberschrift rechts={`${ausTraining.length} in 8 Wochen`}>Hyrox & Functional aus deinem Training</Ueberschrift>
@@ -92,7 +99,9 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
           <Hinweis>Trägst du zu einer dieser Einheiten Stationszeiten ein, zählt sie nur einmal (gleicher Tag).</Hinweis>
         </Karte>
       )}
+      </Kachel>
 
+      <Kachel id="stationen" titel="Stationszeiten erfassen" breite={6}>
       <Karte i={3}>
         <Ueberschrift rechts={<button type="button" onClick={() => { setBearbeite(null); setVorTag(undefined); setOffen(o => !o); }} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{offen ? 'Schließen' : '+ Einheit'}</button>}>Stationszeiten erfassen</Ueberschrift>
         {(offen || bearbeite) && <EinheitFormular key={bearbeite?.id ?? vorTag ?? 'neu'} heute={heute} tag={vorTag} start={bearbeite ?? undefined} onSpeichern={async e => { const ok = await schicke([{ op: 'hyrox', eintrag: e }], 'Einheit gespeichert.'); if (ok) { setOffen(false); setBearbeite(null); } }} onAbbruch={() => { setOffen(false); setBearbeite(null); setVorTag(undefined); }} />}
@@ -113,6 +122,8 @@ export function HyroxTeil({ stand, heute, schicke }: { stand: SportStand; heute:
           );
         })}
       </Karte>
+      </Kachel>
+      </Flaeche>
       {dialog}
     </>
   );

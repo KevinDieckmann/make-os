@@ -150,6 +150,30 @@ export function wende(layout: Layout, op: Op, standard: StandardPlatz[], jetzt =
   }
 }
 
+/**
+ * Feste Karten, die die Seite gerade nicht zeigt, behalten ihren Platz (30.10., Kevin: „Anpassen … bei Gesundheit extrem aufgefallen“).
+ * Viele Karten erscheinen nur unter einer Bedingung (Werte geladen, eigene Ansicht, Profil vorhanden). Wurde angepasst, während eine solche
+ * Karte fehlte, fiel sie aus dem gespeicherten Layout — ihre Breite und Stelle waren weg, eine ausgeblendete kam wieder. Für das SPEICHERN legt
+ * diese Stelle sie aus dem bisherigen Layout zurück: hinter ihren bisherigen Vorgänger, ausgeblendete bleiben ausgeblendet. Die Anzeige
+ * (`anwenden`) zeigt weiter nur, was die Seite hat. Rein; `alt` = bisher gespeichert.
+ */
+export function mitAbwesendenKarten(neu: Layout, alt: Layout | null | undefined, standard: StandardPlatz[]): Layout {
+  if (!alt) return neu;
+  const stdIds = new Set(standard.map(x => x.id));
+  const imNeuen = new Set(neu.plaetze.map(p => p.id));
+  const fehlend = alt.plaetze.filter(p => p.art === 'seite' && !stdIds.has(p.id) && !imNeuen.has(p.id) && !neu.versteckt.includes(p.id));
+  const versteckt = alt.versteckt.filter(id => !stdIds.has(id) && !neu.versteckt.includes(id) && !imNeuen.has(id));
+  if (!fehlend.length && !versteckt.length) return neu;
+  const plaetze = [...neu.plaetze];
+  for (const p of fehlend) {
+    const i = alt.plaetze.findIndex(x => x.id === p.id);
+    const vorher = alt.plaetze.slice(0, i).reverse().find(x => plaetze.some(a => a.id === x.id));
+    const idx = vorher ? plaetze.findIndex(a => a.id === vorher.id) + 1 : 0;
+    plaetze.splice(idx, 0, { ...p, einstellungen: { ...p.einstellungen } });
+  }
+  return { ...neu, plaetze: plaetze.slice(0, 60), versteckt: [...neu.versteckt, ...versteckt].slice(0, 60) };
+}
+
 /** Was der Standard heute an fester Karte hat, aber im Layout ausgeblendet ist — für „+ Widget“. */
 export function ausgeblendet(layout: Layout, standard: StandardPlatz[]): StandardPlatz[] {
   return standard.filter(st => layout.versteckt.includes(st.id));

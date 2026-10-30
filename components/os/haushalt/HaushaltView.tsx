@@ -32,6 +32,7 @@ import { KategorienDialog } from './Kategorien';
 import { StammdatenDialog } from './Stammdaten';
 import { PrivatIndex } from '../privat/PrivatIndex';
 import { KontenKarte, usePrivatKasse } from '../konten/KontenKarte';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 
 type Reiter = 'uebersicht' | typeof HAUSHALT_UNTER[number]['id'];
 
@@ -98,10 +99,17 @@ export function HaushaltView({ ansicht, reiter }: { ansicht: 'uebersicht' | 'kon
       ) : (
         <>
           {/* Privat-Index (25.09.): oben auf der Übersicht — dieselbe Logik wie der Business-Index. */}
-          {aktiv === 'uebersicht' && <PrivatIndex stand={h} />}
-          {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
-          {aktiv === 'uebersicht' && <FlussKarte bereich="finanzen-privat" farbe={LEUCHT.geld} i={1} />}
-          {aktiv === 'uebersicht' && <Uebersicht h={h} katName={katName} />}
+          {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss).
+              Anpassbar (30.10.): Fläche `finanzen-ueberblick-privat`, Standard = der bisherige Aufbau (Index, Für dich, Monat voll; Wichtig + Ausgaben je halb). */}
+          {aktiv === 'uebersicht' && (
+            <Flaeche seite="finanzen-ueberblick-privat">
+              <Kachel id="index" titel="Privat-Index" breite={6}><PrivatIndex stand={h} /></Kachel>
+              <Kachel id="fluss" titel="Für dich" breite={6}><FlussKarte bereich="finanzen-privat" farbe={LEUCHT.geld} i={1} /></Kachel>
+              <Kachel id="monat" titel="Dieser Monat" breite={6}><Uebersicht h={h} katName={katName} nur="monat" /></Kachel>
+              <Kachel id="wichtig" titel="Wichtig diese Woche" breite={3}><Uebersicht h={h} katName={katName} nur="wichtig" /></Kachel>
+              <Kachel id="ausgaben" titel="Größte Ausgaben" breite={3}><Uebersicht h={h} katName={katName} nur="ausgaben" /></Kachel>
+            </Flaeche>
+          )}
           {aktiv === 'buchungen' && <Buchungen h={h} katName={katName} patch={patch} aktion={aktion} melde={melde} laden={laden} onImport={() => setImportAuf(true)} />}
           {aktiv === 'einnahmen' && <Einnahmen h={h} katName={katName} patch={patch} aktion={aktion} melde={melde} laden={laden} />}
           {aktiv === 'analyse' && <Analyse h={h} katName={katName} />}

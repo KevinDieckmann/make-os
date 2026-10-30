@@ -22,7 +22,8 @@ function vergleich(jetzt: number, vorher: number, mehrIstGut: boolean) {
   return <span style={{ color: gut ? LEUCHT.gut : LEUCHT.kritisch }}>{pct >= 0 ? '+' : ''}{pct} % zum Vormonat</span>;
 }
 
-export function Uebersicht({ h, katName }: { h: HaushaltDaten; katName: KatName }) {
+/** `nur` (30.10.): eine Karte allein — die Übersicht steht so als drei Kacheln auf der anpassbaren Fläche; ohne `nur` wie bisher alle drei. */
+export function Uebersicht({ h, katName, nur }: { h: HaushaltDaten; katName: KatName; nur?: 'monat' | 'wichtig' | 'ausgaben' }) {
   const heute = heuteBerlin();
   const m = letzterMonatMitDaten(h.buchungen, heute);
   const vm = monatPlus(m, -1);
@@ -36,8 +37,7 @@ export function Uebersicht({ h, katName }: { h: HaushaltDaten; katName: KatName 
   const top = useMemo(() => h.buchungen.filter(b => monatVon(b.datum) === m && istAusgabe(einordnen(b, katName))).sort((a, b) => a.betrag - b.betrag).slice(0, 8), [h.buchungen, m, katName]);
   const konto = (id: string) => h.stamm.konten.find(k => k.id === id)?.name.replace(/^Privatkonto /, '') ?? '–';
 
-  return (
-    <>
+  const monatKarte = (
       <Karte i={1} akzent={LEUCHT.geld}>
         <Ueberschrift farbe={LEUCHT.geld} rechts={m !== monatVon(heute) ? `jüngster Monat mit Buchungen` : 'laufender Monat'}>{monatName(m)}</Ueberschrift>
         <Kacheln>
@@ -54,8 +54,8 @@ export function Uebersicht({ h, katName }: { h: HaushaltDaten; katName: KatName 
           </Hinweis>
         )}
       </Karte>
-      <Spalten verhaeltnis="1:1">
-        <Spalte>
+  );
+  const wichtigKarte = (
           <Karte i={2} akzent={punkte.some(p => p.dringend) ? LEUCHT.kritisch : undefined}>
             <Ueberschrift farbe={LEUCHT.achtung}>Wichtig diese Woche</Ueberschrift>
             <Liste>
@@ -63,8 +63,8 @@ export function Uebersicht({ h, katName }: { h: HaushaltDaten; katName: KatName 
               {punkte.slice(0, 8).map((p, i) => <Zeile key={i} links={<Punkt farbe={p.dringend ? LEUCHT.kritisch : LEUCHT.achtung} />} titel={<span style={{ whiteSpace: 'normal' }}>{p.text}</span>} />)}
             </Liste>
           </Karte>
-        </Spalte>
-        <Spalte>
+  );
+  const ausgabenKarte = (
           <Karte i={3}>
             <Ueberschrift farbe={LEUCHT.puls}>Größte Ausgaben im {monatName(m, false)}</Ueberschrift>
             <Liste>
@@ -72,7 +72,16 @@ export function Uebersicht({ h, katName }: { h: HaushaltDaten; katName: KatName 
               {top.map(b => <Zeile key={b.id} titel={b.empfaenger || b.beschreibung} unter={`${datumDe(b.datum)} · ${konto(b.konto_id)} · ${katName(b.kategorie_id) || 'offen'}`} rechts={<Betrag cent={b.betrag} />} />)}
             </Liste>
           </Karte>
-        </Spalte>
+  );
+  if (nur === 'monat') return monatKarte;
+  if (nur === 'wichtig') return wichtigKarte;
+  if (nur === 'ausgaben') return ausgabenKarte;
+  return (
+    <>
+      {monatKarte}
+      <Spalten verhaeltnis="1:1">
+        <Spalte>{wichtigKarte}</Spalte>
+        <Spalte>{ausgabenKarte}</Spalte>
       </Spalten>
     </>
   );

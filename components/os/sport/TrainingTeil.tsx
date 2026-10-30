@@ -9,6 +9,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { FARBE as C, TYP, SCHRIFT, RAND } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, Zahl, Balken, Leer, Pillen as UiPillen, auswahl, useRueckfrage } from '../ui';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import { Feld, Raster, Zahlfeld, Skala, Hinweis, klein, de, datumKurz, KLASSE_FARBE, ZONE_FARBE, ZonenBalken, quelleText } from './teile';
 import { KLASSEN, KLASSE_LABEL, SPARTEN, WOCHENTAG_LABEL, neueId, zaehltAlsTraining, type Klasse, type Op, type Sparte, type SportStand, type Vorlage } from '@/lib/sport/modell';
 import { alleEinheiten, inWoche, summe, wochenListe, sportartenUebersicht, klasseVonSport, type Einheit } from '@/lib/sport/training';
@@ -38,6 +39,8 @@ export function TrainingTeil({ stand, heute, vorlagen, schicke, onReiter }: {
 
   return (
     <>
+      <Flaeche seite="sport-training">
+      <Kachel id="woche" titel="Diese Woche" breite={6}>
       <Karte i={0} ton={F}>
         <Ueberschrift farbe={F} rechts={`ab ${datumKurz(montagVon(heute))}`}>Diese Woche</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12 }}>
@@ -58,7 +61,9 @@ export function TrainingTeil({ stand, heute, vorlagen, schicke, onReiter }: {
           <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>Einheiten je Woche · 8 Wochen</div>
         </div>
       </Karte>
+      </Kachel>
 
+      <Kachel id="einheiten" titel="Einheiten" breite={6}>
       <Karte i={1}>
         <Ueberschrift rechts={<button type="button" onClick={() => setNeu(n => !n)} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{neu ? 'Schließen' : '+ Training'}</button>}>Einheiten</Ueberschrift>
         {neu && <TrainingFormular heute={heute} onSpeichern={async e => { const ok = await schicke([{ op: 'training', eintrag: e }], 'Training gespeichert.'); if (ok) setNeu(false); return ok; }} />}
@@ -78,7 +83,9 @@ export function TrainingTeil({ stand, heute, vorlagen, schicke, onReiter }: {
         {gruppen.length > 3 && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setAlleWochen(a => !a)}>{alleWochen ? 'Weniger Wochen' : `Alle ${gruppen.length} Wochen zeigen`}</Knopf></div>}
         <Hinweis>Erfassung und Überblick — keine Trainingsberatung. Strain-Summe = Summe der Einheiten (WHOOP-Skala 0–21 je Einheit), nicht die Tagesbelastung.</Hinweis>
       </Karte>
+      </Kachel>
 
+      <Kachel id="sportarten" titel="Sportarten zuordnen" breite={6}>
       {sportarten.length > 0 && (
         <Karte i={2}>
           <Ueberschrift>Sportarten zuordnen</Ueberschrift>
@@ -97,6 +104,8 @@ export function TrainingTeil({ stand, heute, vorlagen, schicke, onReiter }: {
           ))}
         </Karte>
       )}
+      </Kachel>
+      </Flaeche>
       {dialog}
     </>
   );

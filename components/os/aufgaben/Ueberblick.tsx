@@ -23,6 +23,7 @@ import { EinzelArchiv } from './EinzelArchiv';
 import { NeuesProjektDialog } from './NeuesProjekt';
 import { useHandlung } from './Handlung';
 import { NurIchZeichen, PrioZeichen } from './Zeichen';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 
 type Gehe = (z: Partial<AufgabenAdresse>) => void;
 const KACHELN: { id: KachelArt; label: string; farbe: string; leer: string }[] = [
@@ -102,11 +103,29 @@ export function AufgabenUeberblick({ state, dispatch, spaces, ich, heute, gehe, 
       {t.dueDate && <span style={{ fontSize: TYP.bedien, fontVariantNumeric: 'tabular-nums', color: t.dueDate < heute && !wartetNoch(t, tasks) ? LEUCHT.kritisch : t.dueDate === heute ? LEUCHT.achtung : C.inkLeise }} aria-label={t.dueDate < heute && !wartetNoch(t, tasks) ? `überfällig seit ${tagKurz(t.dueDate)}` : undefined}>{t.dueDate < heute && !wartetNoch(t, tasks) ? '! ' : ''}{tagKurz(t.dueDate)}</span>}
     </div>
   );
+  // Anpassbar (30.10., Kevin: „den Überblick selber anpassen“): Fläche je Sicht der Seitenleiste (alle · nur Privat · nur Business) — Standard = der
+  // bisherige Aufbau untereinander. Die Zahlen-Kacheln und ihre aufgeklappte Liste bleiben EINE Karte (die Liste gehört zur gewählten Zahl).
+  const gruppeInhalt = (art: 'privat' | 'firma' | 'mandant') => {
+    const l = gruppe(art);
+    if (!l.length && art !== 'mandant') return null;
+    if (art === 'mandant' && nur === 'privat') return null;
+    return (
+      <section>
+        {art !== 'privat' && <div style={{ ...mikro, margin: '0 2px 8px' }}>{art === 'firma' ? 'Firmen' : 'Mandanten'}</div>}
+        {l.length ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 12 }}>
+            {l.map((s, i) => <SpaceKarte key={s.space.id} s={s} i={i + 2} gehe={gehe} />)}
+          </div>
+        ) : <Karte i={2}><Leer>Kein aktives Mandat — jede CRM-Firma mit aktivem Mandat bekommt hier automatisch einen Space.</Leer></Karte>}
+      </section>
+    );
+  };
   return (
-    <>
+    <Flaeche seite={nur ? `aufgaben-ueberblick-${nur}` : 'aufgaben-ueberblick'}>
       {/* Überblick „Für dich“ (04.10. abends): Ist der letzten 3 Monate → heute → Prognose aus echten Daten; serverseitig gefiltert (FlussKarte, /api/fluss). */}
-      <div style={{ marginBottom: 14 }}><FlussKarte bereich="aufgaben" space={nur ?? null} farbe={LEUCHT.planung} /></div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 14 }}>
+      <Kachel id="fluss" titel="Für dich" breite={6}><FlussKarte bereich="aufgaben" space={nur ?? null} farbe={LEUCHT.planung} /></Kachel>
+      <Kachel id="zahlen" titel="Auf einen Blick" breite={6}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
         {KACHELN.map((k, i) => {
           const an = kachel === k.id;
           const n = zahl(k.id);
@@ -127,26 +146,14 @@ export function AufgabenUeberblick({ state, dispatch, spaces, ich, heute, gehe, 
           {!liste.length && <Leer>{KACHELN.find(k => k.id === kachel)!.leer}</Leer>}
         </Karte>
       )}
-      {(['privat', 'firma', 'mandant'] as const).map(art => {
-        const l = gruppe(art);
-        if (!l.length && art !== 'mandant') return null;
-        if (art === 'mandant' && nur === 'privat') return null;
-        return (
-          <section key={art} style={{ marginTop: 14 }}>
-            {art !== 'privat' && <div style={{ ...mikro, margin: '0 2px 8px' }}>{art === 'firma' ? 'Firmen' : 'Mandanten'}</div>}
-            {l.length ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: 12 }}>
-                {l.map((s, i) => <SpaceKarte key={s.space.id} s={s} i={i + 2} gehe={gehe} />)}
-              </div>
-            ) : <Karte i={2}><Leer>Kein aktives Mandat — jede CRM-Firma mit aktivem Mandat bekommt hier automatisch einen Space.</Leer></Karte>}
-          </section>
-        );
-      })}
-    </>
+      </Kachel>
+      <Kachel id="privat" titel="Privat" breite={6}>{gruppeInhalt('privat')}</Kachel>
+      <Kachel id="firmen" titel="Firmen" breite={6}>{gruppeInhalt('firma')}</Kachel>
+      <Kachel id="mandanten" titel="Mandanten" breite={6}>{gruppeInhalt('mandant')}</Kachel>
+    </Flaeche>
   );
 }
 
-/** Archiv: beendete Mandanten (Aufgaben bleiben lesbar) und archivierte/abgeschlossene Projekte. */
 export function AufgabenArchiv({ state, dispatch, spaces, heute, gehe }: { state: TasksState; dispatch: Dispatch<AufgabenAktion>; spaces: readonly AufgabenSpace[]; heute: string; gehe: Gehe }) {
   const archiv = spaces.filter(s => s.archiv);
   const staende = spaceStaende(state, archiv, heute);

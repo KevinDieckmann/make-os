@@ -11,6 +11,7 @@ import { WettkampfKarte } from './WettkampfKarte';
 import { DieseWoche } from './DieseWoche';
 import { WochenBaukasten, BlockKarte } from './PlanBaukasten';
 import { EinstellungenKarte } from './EinstellungenKarte';
+import { Flaeche, Kachel } from '../flaeche/Flaeche';
 import type { VitalTag } from '@/app/api/sport/route';
 import { DISZIPLIN_LABEL, neueId, type Disziplin, type Op, type SportStand, type Ziel } from '@/lib/sport/modell';
 import { hauptziel, wochenBis, planIst, wocheIst } from '@/lib/sport/plan';
@@ -33,6 +34,9 @@ export function ZielePlan({ stand, heute, vitals, schicke, onReiter }: { stand: 
 
   return (
     <>
+      {/* Anpassbar (30.10., Kevin: „Karten überall selbst anpassen“): Standard = die bisherige Spalte, jede Karte volle Breite. */}
+      <Flaeche seite="sport-plan">
+      <Kachel id="ziel" titel="Ziel & Wettkampf" breite={6}>
       {wettkampf && <WettkampfKarte stand={stand} heute={heute} schicke={schicke} />}
       {!wettkampf && <Karte i={0} ton={ziel ? FARBE_JE[ziel.art] : undefined}>
         <Ueberschrift farbe={ziel ? FARBE_JE[ziel.art] : undefined} rechts={ziel?.datum ? datumLang(ziel.datum) : undefined}>Dein Ziel</Ueberschrift>
@@ -57,11 +61,13 @@ export function ZielePlan({ stand, heute, vitals, schicke, onReiter }: { stand: 
           </>
         )}
       </Karte>}
+      </Kachel>
 
-      <DieseWoche stand={stand} heute={heute} vitals={vitals} schicke={schicke} />
-      <WochenBaukasten stand={stand} heute={heute} schicke={schicke} />
-      <BlockKarte stand={stand} heute={heute} schicke={schicke} />
+      <Kachel id="diese-woche" titel="Diese Woche" breite={6}><DieseWoche stand={stand} heute={heute} vitals={vitals} schicke={schicke} /></Kachel>
+      <Kachel id="baukasten" titel="Wochenplan bauen" breite={6}><WochenBaukasten stand={stand} heute={heute} schicke={schicke} /></Kachel>
+      <Kachel id="block" titel="Block · mehrere Wochen" breite={6}><BlockKarte stand={stand} heute={heute} schicke={schicke} /></Kachel>
 
+      <Kachel id="ziele" titel="Alle Ziele" breite={6}>
       <Karte i={5}>
         <Ueberschrift rechts={<button type="button" onClick={() => setNeu(n => !n)} style={{ all: 'unset', cursor: 'pointer', color: C.aktiv, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, padding: '0 8px', boxSizing: 'border-box' }}>{neu ? 'Schließen' : '+ Ziel'}</button>}>Alle Ziele</Ueberschrift>
         {neu && <ZielFormular heute={heute} stand={stand} onSpeichern={async z => { const ok = await schicke([{ op: 'ziel', eintrag: z }], 'Ziel gespeichert.'); if (ok) setNeu(false); }} />}
@@ -80,7 +86,9 @@ export function ZielePlan({ stand, heute, vitals, schicke, onReiter }: { stand: 
           </div>
         ))}
       </Karte>
+      </Kachel>
 
+      <Kachel id="plan-ist" titel="Plan gegen Ist · 8 Wochen" breite={6}>
       <Karte i={6}>
         <Ueberschrift rechts={`diese Woche ${dieseWoche.einheiten} von ${geplantDiese}`}>Plan gegen Ist · 8 Wochen</Ueberschrift>
         <Balken werte={pi.map(w => (w.ist ? w.ist : null))} max={Math.max(1, ...pi.map(w => Math.max(w.ist, w.plan)))} farbe={LEUCHT.gut} hoehe={52} titel={pi.map(w => `ab ${datumLang(w.montag)} · ${w.ist} von ${w.plan}`)} />
@@ -93,7 +101,9 @@ export function ZielePlan({ stand, heute, vitals, schicke, onReiter }: { stand: 
         </div>
         <Hinweis>Gezählt wird jede Einheit — von Hand und aus WHOOP, ohne Doppelte. Struktur und Erfassung, keine Trainingsberatung.</Hinweis>
       </Karte>
-      <EinstellungenKarte stand={stand} schicke={schicke} />
+      </Kachel>
+      <Kachel id="einstellungen" titel="Einstellungen" breite={6}><EinstellungenKarte stand={stand} schicke={schicke} /></Kachel>
+      </Flaeche>
       {dialog}
     </>
   );
