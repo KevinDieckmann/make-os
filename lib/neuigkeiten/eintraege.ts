@@ -33,6 +33,20 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-31',
+    datum: '2026-10-31',
+    titel: 'Firmen, Deals, Angebote und Mandate: klarer aufgeteilt',
+    kurz: 'Firmen, die Liste der Deals, Angebote und Mandate sind aufgebaut wie Inbox und Kontakte: oben eine Zeile mit Titel und Aktion, darunter Suche und Filter in einer Reihe, dann Liste und Detail nebeneinander — jede Seite scrollt für sich.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Firmen: Die Firmenliste ist die ganze Seite, die Firmenkarte steht rechts daneben. Rollen, Archiv und Papierkorb findest du hinter „Filter“, die Zielliste hinter „⋯“.', bereich: 'business', weg: WEG.firma() },
+        { text: 'Deals › Liste: Die Stufen sind Abschnitte einer Liste. Rechts steht der gewählte Deal, ohne Auswahl die Prognose. Neu: eine Suche über Deal, Firma und Person.', bereich: 'business', weg: '/os/markttraktion?s=deals&a=liste' },
+        { text: 'Angebote: Status und Gesellschaft stehen hinter „Filter“ statt in zwei Reihen. „+ Neuer Kunde“ findest du hinter „⋯“ neben „+ Neues Angebot“.', bereich: 'business', weg: WEG.angebot() },
+        { text: 'Mandate: Die Mandate stehen nach Status gruppiert, rechts das gewählte Mandat bzw. der Überblick. Gesellschaft und „Beendete zeigen“ hinter „Filter“, der Excel-Import und der Papierkorb hinter „⋯“.', bereich: 'business', weg: WEG.mandat() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-30-2',
     datum: '2026-10-30',
     titel: 'Angebot, Mandat, Rechnung, Lieferung: ein Kreislauf',

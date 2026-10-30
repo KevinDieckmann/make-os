@@ -666,8 +666,12 @@ Ein großer Bereich (Prozesse, als Nächstes Markttraktion) ist ein **Werkzeug**
 ## Arbeitsfläche (29.10.) — Listen-/Detail-Seiten
 Kevin 29.10.: „manchmal die Aufteilung, z. B. in der Inbox, schlecht von der Darstellung her … bei den Kontakten auch … das Thema mit Scrolling macht
 manchmal keinen Sinn.“ EIN Muster für jede Seite aus Liste + Detail: `Arbeitsflaeche` (components/os/ui/arbeitsflaeche.tsx, Klassen `.af-*` in
-app/globals.css). Umgestellt: **Inbox** (`InboxZwei`, Gespräch) und **Markttraktion › Kontakte** (Kartei der Personen). Als Nächstes nach demselben
-Muster: Firmen, Deals › Liste, Angebote, Finanzen › Rechnungen, Mandate.
+app/globals.css). Umgestellt: **Inbox** (`InboxZwei`, Gespräch), **Markttraktion › Kontakte** (Kartei der Personen), seit 31.10. **Markttraktion ›
+Firmen** (`Firmen`, Suche aus der Kartei), **Deals › Liste** (`Pipeline` mit `ansicht="liste"`; Stufen als Abschnitte, rechts Deal bzw. Prognose — das Board
+bleibt, wie es ist), **Angebote** (`AngebotListe`; nur die Liste ist die Fläche, Editor und Ansicht stehen über `huelle` im Rahmen der Seite) und
+**Mandate** (`MandateUebersicht`; Status als Abschnitte, rechts Mandat bzw. Überblick, Excel-Import und Papierkorb im „⋯“). Offen: **Finanzen ›
+Rechnungen & Zahlungen** — die Seite trägt unter der Rechnungsliste das Finanzmeeting, Konten und Planposten (FinanzplanungView) und öffnet die Rechnung
+als Fenster; erst wenn diese Teile einen eigenen Ort haben, wird die Liste eine Arbeitsfläche (eine Fläche mit Inhalt darunter rollte falsch).
 - **Kopf in EINER Zeile:** Titel ohne erklärenden Untertitel, daneben ein ruhiger Zähler („4 brauchen Antwort“, „11 Personen · …“), rechts EINE Hauptaktion
   (`haupt`), Nebenaktionen hinter „⋯“ (`mehr` → `MehrMenue`), höchstens ein leiser Knopf davor (`neben`, z. B. ZOE/Head). Runden, Abgleichen, Postfächer …
   gehören ins „⋯“ bzw. ins Werkzeug-Menü links — ihre Adressen bleiben.
