@@ -70,6 +70,23 @@ function kundeOffen(pfad: string, methode: string): boolean {
   return m[2] ? methode === 'POST' : methode === 'GET' || methode === 'HEAD';
 }
 
+// Innovations-Check (24.10., lib/check/*, Branch `innovations-check`): die öffentliche Strecke — NUR die Seite `/check` (GET) und ihre EINE
+// Schnittstelle `POST /api/check`. Die Route handelt für niemanden (Köpfe gelöscht), prüft Token, Honigtopf, Größe und drosselt selbst;
+// ausgeschaltet (Einstellung, kommt AUS) antwortet sie mit 404. Keine Ausnahme bei der Origin-Prüfung (die Seite sendet von sich selbst).
+// Wächter: tests/check-route.test.ts.
+const CHECK_SEITE = /^\/check$/;
+const CHECK_API = /^\/api\/check$/;
+/** Ist dieser Weg ein offener Weg des Checks (Pfad UND Methode)? */
+function checkOffen(pfad: string, methode: string): boolean {
+  if (CHECK_SEITE.test(pfad)) return methode === 'GET' || methode === 'HEAD';
+  return CHECK_API.test(pfad) && methode === 'POST';
+}
+// Schriften der öffentlichen Seiten (29.10.): der Check (und die helle Buchungsseite) laden Schibsted Grotesk aus public/schriften — ohne Sitzung
+// leitete die Middleware die Datei auf /anmelden um, der Browser bekam HTML statt der Schrift. Offen ist NUR eine einzelne .woff2 direkt im Ordner,
+// nur lesen; public/ trägt nichts Privates (Wächter: keine .html dort).
+const SCHRIFT_OFFEN = /^\/schriften\/[a-z0-9-]{1,60}\.woff2$/;
+const schriftOffen = (pfad: string, methode: string) => SCHRIFT_OFFEN.test(pfad) && (methode === 'GET' || methode === 'HEAD');
+
 /** Solange die 2FA-Pflicht offen ist, erlaubt: den Faktor einrichten, sich selbst sehen, abmelden (05.10.). */
 const ZF_EINRICHTEN: [string, RegExp][] = [['POST', /^\/api\/konto\/zwei-faktor$/], ['GET', /^\/api\/konto\/ich$/], ['POST', /^\/api\/konto\/abmelden$/]];
 
@@ -186,6 +203,9 @@ export async function middleware(req: NextRequest) {
   if (kundeOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
   // Formular-Link „Angebot anfordern“: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung.
   if (ANGEBOT_OFFEN.some(r => r.test(pfad)) && (req.method === 'GET' || req.method === 'HEAD' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
+  // Innovations-Check: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Route handelt für niemanden.
+  if (checkOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
+  if (schriftOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
 
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);
   // Passt der Zettel noch zum Passwort? (nach einem Wechsel: alle anderen Geräte binnen einer Minute raus)

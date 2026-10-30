@@ -32,8 +32,8 @@ export type BesucheAnsicht = 'kalender' | 'wirkung' | 'kunden';
 export const BESUCHE_ANSICHTEN: BesucheAnsicht[] = ['kalender', 'wirkung', 'kunden'];
 export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'auswertung';
 export type FollowupAnsicht = 'faellig' | 'woche' | 'powerhour' | 'kadenz';
-export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung';
-export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'segmente', 'kampagnen', 'redaktion', 'newsletter', 'positionierung'];
+export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'check' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung';
+export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'check', 'segmente', 'kampagnen', 'redaktion', 'newsletter', 'positionierung'];
 /** Der frühere Reiter „Sales“ (27.09.–08.10.) und der Sales-Reiter vom 25./26.09. — nur noch zum Übersetzen alter Adressen. */
 export const SALES_ALT_ANSICHTEN = ['head', 'powerhour', 'kampagnen', 'auswertung', 'heute', 'leads', 'pipeline', 'kunden'] as const;
 export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'planung', 'marketing', 'besuche', 'event', 'stammdaten', 'auswertung', 'automationen', 'formulare'];

@@ -8,7 +8,7 @@
 // Kalender nicht frisch ist (#73, `hinweis` vom Server) · zweite Uhrzeit in der Zone des Gasts (#74, nur im Browser).
 
 import { useEffect, useMemo, useState } from 'react';
-import { C, AKZENT, seite, rahmen, karte, titel, leise, klein, feld, label, knopf, chip, tagText, zeitText } from './stil';
+import { C, AKZENT, seite, seiteKlasse, rahmen, karte, titel, leise, klein, feld, label, knopf, chip, tagText, zeitText } from './hell';
 import { gastZeitText, zweiteZone, zonenOrt } from '@/lib/kalender/gast-zeit';
 
 interface Daten {
@@ -32,6 +32,19 @@ export function Buchen({ slug }: { slug: string }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [firma, setFirma] = useState('');
+  // Aus dem Innovations-Check (24.10.): die Angaben, die der Gast dort schon gemacht hat, stehen einmal vorbelegt da — nur im
+  // Sitzungsspeicher desselben Browsers (nie in der Adresse), danach gelöscht. Er kann alles ändern.
+  useEffect(() => {
+    try {
+      const roh = sessionStorage.getItem('make-check-vorbelegung');
+      if (!roh) return;
+      sessionStorage.removeItem('make-check-vorbelegung');
+      const v = JSON.parse(roh) as { name?: unknown; email?: unknown; firma?: unknown };
+      if (typeof v.name === 'string') setName(v.name.slice(0, 80));
+      if (typeof v.email === 'string') setEmail(v.email.slice(0, 160));
+      if (typeof v.firma === 'string') setFirma(v.firma.slice(0, 160));
+    } catch { /* ohne Speicher: leere Felder wie bisher */ }
+  }, []);
   const [anliegen, setAnliegen] = useState('');
   const [ja, setJa] = useState(false);
   const [falle, setFalle] = useState('');
@@ -78,13 +91,13 @@ export function Buchen({ slug }: { slug: string }) {
     setSendet(false);
   };
 
-  if (ladeFehler) return <main style={seite}><div style={rahmen}><div style={karte}><h1 style={titel}>Termin buchen</h1><p style={leise}>{ladeFehler}</p><button style={knopf(true, true)} onClick={() => void laden()}>Noch einmal laden</button></div></div></main>;
-  if (!d) return <main style={seite}><div style={rahmen}><div style={karte}><p style={leise}>Freie Zeiten werden geladen …</p></div></div></main>;
+  if (ladeFehler) return <main className={seiteKlasse} style={seite}><div style={rahmen}><div style={karte}><h1 style={titel}>Termin buchen</h1><p style={leise}>{ladeFehler}</p><button style={knopf(true, true)} onClick={() => void laden()}>Noch einmal laden</button></div></div></main>;
+  if (!d) return <main className={seiteKlasse} style={seite}><div style={rahmen}><div style={karte}><p style={leise}>Freie Zeiten werden geladen …</p></div></div></main>;
 
   const s = d.seite;
   const platzBei = platz ? bei(platz.start) : null;
   return (
-    <main style={seite}>
+    <main className={seiteKlasse} style={seite}>
       <div style={rahmen}>
         <header style={{ display: 'grid', gap: 6 }}>
           <span style={{ ...klein, textTransform: 'uppercase', letterSpacing: '.12em', color: AKZENT, fontWeight: 700 }}>Termin buchen</span>

@@ -127,6 +127,8 @@ makeinnovation.de, www.makeinnovation.de {
 # Freischalten: die X-Robots-Tag-Zeile unten entfernen und im Generator (prototype/fokus-innovation/bauen.mjs) noindex und robots.txt öffnen.
 # Der Ordner ist gebaut (statisch, eigene Schrift, keine fremden Quellen) — Quelle: prototype/fokus-innovation/ auf dem Zweig innovations-check.
 # Der frühere Ordner fokus/ (Event-Seite) wird nicht mehr ausgeliefert.
+# Suche (27.10.): sitemap.xml, llms.txt und llms-full.txt (für KI-Suchen) liegen im Ordner; Vorschaubilder und Icons unter /assets/bild/.
+# Die strukturierten Daten stehen als JSON-LD-Datenblock in den Seiten — die CSP lässt ihn zu, weil er nicht ausgeführt wird.
 (fokus_koepfe) {
 	header {
 		Strict-Transport-Security "max-age=31536000"
@@ -146,21 +148,42 @@ www.fokusinnovation.de {
 	redir https://fokusinnovation.de{uri} 301
 }
 fokusinnovation.de {
-	root * /srv/fokusinnovation
 	encode zstd gzip
-	import fokus_koepfe
-	# Arbeitsdateien werden nie ausgeliefert.
-	@intern path *.md *.mjs
-	respond @intern 404
-	# Caching: Seiten immer frisch nachfragen, Schrift lange, Stile und Skripte (tragen ?v=…) einen Tag.
-	@seiten path / */ *.html
-	header @seiten Cache-Control "no-cache"
-	@schriften path /assets/schriften/*
-	header @schriften Cache-Control "public, max-age=2592000, immutable"
-	@stile path /css/* /js/* /assets/zeichen.svg
-	header @stile Cache-Control "public, max-age=86400"
-	file_server {
-		hide *.md
+	# Wie im App-Block: den internen Next-Kopf nie annehmen, Marke „kam über den Vorbau“ setzen (lib/zugang/intern.ts).
+	request_header -x-middleware-subrequest
+	request_header X-Make-Vorbau "1"
+	# Welle 3 (29.10.): Innovations-Check und Terminbuchung laufen in MAKE OS (beide kommen dort ausgeschaltet bzw. ohne Seite, bis Kevin sie
+	# einschaltet). Nur diese Pfade gehen an die App; die App setzt für sie ihre eigenen strengen Köpfe (next.config.mjs, `buchung`).
+	# /_next/* sind die Skripte und Stile dieser Seiten, /schriften/* die Schrift des Checks.
+	@app path /check /api/check /buchen /buchen/* /api/buchung /api/buchung/* /_next/* /schriften/*
+	handle @app {
+		header {
+			Strict-Transport-Security "max-age=31536000"
+			X-Content-Type-Options nosniff
+			X-Robots-Tag "noindex, nofollow"
+			Referrer-Policy no-referrer
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+			-Server
+			-X-Powered-By
+		}
+		reverse_proxy app:3000
+	}
+	handle {
+		root * /srv/fokusinnovation
+		import fokus_koepfe
+		# Arbeitsdateien werden nie ausgeliefert.
+		@intern path *.md *.mjs
+		respond @intern 404
+		# Caching: Seiten immer frisch nachfragen, Schrift lange, Stile, Skripte und Bilder (tragen ?v=…) einen Tag.
+		@seiten path / */ *.html
+		header @seiten Cache-Control "no-cache"
+		@schriften path /assets/schriften/*
+		header @schriften Cache-Control "public, max-age=2592000, immutable"
+		@stile path /css/* /js/* /assets/zeichen.svg /assets/bild/* /favicon.ico
+		header @stile Cache-Control "public, max-age=86400"
+		file_server {
+			hide *.md
+		}
 	}
 	handle_errors {
 		root * /srv/fokusinnovation

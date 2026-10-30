@@ -327,6 +327,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   T('absichten--*', 'Absichtsprotokoll (lib/store/absichten.ts) — andere Absichten getilgt; die eigene Art.-17-Absicht behält Name/Adressen bis zum letzten Schritt, beim Abschluss werden die Daten geleert (fertige nach 30 Tagen weg).'),
   // ── Kalender (29.09., K4) ──
   E('buchung--*', 'Buchungsseiten + Terminbuchungen (Name, E-Mail, Firma, Anliegen, Einwilligungs-Nachweis): Buchungen der Person raus (person-weitere.ts); nicht bestätigte/abgelehnte/abgesagte/abgelaufene nach der Frist, bestätigte die Frist nach dem Termin (Löschfristen-Lauf). Im CRM bleiben Anfrage und Aktivität.', 'buchungen'),
+  // ── Innovations-Check der Website (24.10., lib/check/*) ──
+  mit(E('check-sitzungen', 'Sitzungen des öffentlichen Innovations-Checks (je Instanz): Antworten (Klicks, Beleg- und Freitexte), freiwillige Kontaktdaten nach dem Kurzcheck (Vorname, E-Mail, Firma, Telefon, Newsletter-Wunsch, Fassung des Hinweises), Ergebnis-Stand, CRM-Verweis; Token nur als SHA-256. Art. 17: Sitzungen mit einer Adresse der Person raus (person-weitere.ts).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (vom Teilnehmer angefragte Auswertung, Bericht und Gespräch); Newsletter nur mit eigener Checkbox und Double-Opt-in; keine Antwort geht an ein KI-Modell (Beta, feste Texte)',
+    art15: 'Kontakt-Auskunft (Art. 15) zählt die Sitzungen mit einer Adresse der Akte; der Haushalt sieht sie unter Markttraktion › Marketing › Innovations-Check',
+    loeschfrist: 'ohne Kontaktdaten 30 Tage, mit Kontaktdaten 24 Monate nach der letzten Änderung (lib/check/fristen.ts, Morgenlauf); Art. 17 sofort; einzeln löschbar im Haushalt',
+  }),
+  H('check-einstellungen', 'Schalter des Innovations-Checks, Adresse der Buchungsseite und Speichername des Gastgebers (ein Konto der Instanz) — kein Bezug zu Dritten.'),
   E('kennung-alias--*', 'Weiterleitung alter Kontakt-Kennungen (Kennungs-Umzug, lib/crm/kennung-alias.ts) — Zeilen der Person raus (aliasOhnePerson); ihre alten Kennungen bekommen vorher einen eigenen Grabstein.'),
   // ── Netzwerken (02.10., Erfassen) ──
   K('netzwerken-erfassungen--*', 'Journal der Netzwerken-Erfassungen (lib/crm/netzwerken-server.ts): nur Zufalls-Kennung, abgehakte Schrittnamen, Zeiten — bis zum Abschluss dazu die Kennung der Person bzw. des Termins, beim Abschluss geleert (nie fertig gewordene nach 60 Tagen weg); keine Namen, Adressen oder Texte. Fotos/Sprachnotizen liegen in `crm-dateien--*`, Teilnahme und Info in `crm`, Verlauf in `kontakte` — dort greift Art. 17.'),
@@ -887,7 +894,7 @@ const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
-  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'check-sitzungen', 'check-einstellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)

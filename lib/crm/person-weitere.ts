@@ -396,6 +396,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'prozess-laeufe--*', muster: /^prozess-laeufe--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Terminbuchungen (29.09., K4): die Buchungen der Person fallen weg (Name, Adresse, Kontakt-Kennung); Seiten bleiben.
   { name: 'buchung--*', muster: /^buchung--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('buchungen') },
+  // Innovations-Check der Website (24.10.): Sitzungen mit einer Adresse der Person fallen ganz weg (Antworten, Kontakt, Ergebnis).
+  { name: 'check-sitzungen', muster: /^check-sitzungen$/, behandlung: 'entfernen', wirkung: eintraegeRaus('sitzungen') },
   // Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1): Fall (Stakeholder-Kennung getilgt, Notiz weg), Kunde (Antworten/Puls/Unterlagen, die die
   // Person nennen, raus), Dossier (getilgt), Personenkarten (Karten der Person raus).
   { name: 'fulfillment-faelle--*', muster: /^fulfillment-faelle--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: fulfillmentFaelleOhne },

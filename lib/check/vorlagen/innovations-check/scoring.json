@@ -1,0 +1,45 @@
+{
+ "version": "1.0",
+ "stand": "2026-10-24",
+ "punkte_je_antwort": "0 bis 4",
+ "dimensionen": [
+  {"key": "strategie", "name": "Strategie und Führung", "abschnitt": "B", "gewicht": 15},
+  {"key": "ki", "name": "KI im Alltag", "abschnitt": "C", "gewicht": 30},
+  {"key": "automatisierung", "name": "Automatisierung der Prozesse", "abschnitt": "D", "gewicht": 30},
+  {"key": "daten", "name": "Daten und Systeme", "abschnitt": "E", "gewicht": 10},
+  {"key": "robotik", "name": "Robotik und physische Automatisierung", "abschnitt": "F", "gewicht": 5, "gewicht_wenn_nicht_relevant": 0},
+  {"key": "team", "name": "Team und Kompetenz", "abschnitt": "G", "gewicht": 10, "gewicht_wenn_robotik_nicht_relevant": 15}
+ ],
+ "robotik": {
+  "relevante_branchen": ["handwerk", "produktion", "gesundheit"],
+  "zusaetzlich_relevant_wenn": "branche == sonstige und Freitext nennt Logistik, Lager oder Transport (Zoe setzt das Flag)",
+  "regel": "Robotik zählt nur, wenn relevant UND mindestens eine F-Frage beantwortet ist. Sonst Robotik 0 %, Team 15 %."
+ },
+ "dimensionswert": "Summe der Punkte der beantworteten Fragen / (4 × Anzahl beantworteter Fragen) × 100, gerundet auf ganze Zahl. Unbeantwortete optionale Fragen zählen nicht.",
+ "gesamtwert": "Summe(Dimensionswert × Gewicht) / Summe(Gewichte der gewerteten Dimensionen), gerundet auf ganze Zahl",
+ "plausibilitaet": {
+  "status": "Vorschlag, vom Inhaber zu bestätigen",
+  "regel": "Wenn der Beleg C5 mit 0 oder 1 bewertet ist, wird die Dimension KI im Alltag auf höchstens 60 Punkte begrenzt. Wenn D6 beantwortet und mit 0 bewertet ist, wird Automatisierung auf höchstens 60 begrenzt.",
+  "grund": "Trennt 'spielen' von 'wirklich nutzen': ohne konkretes Beispiel keine Stufe 4 oder 5 in diesen Dimensionen."
+ },
+ "stufen": [
+  {"stufe": 1, "name": "Beobachter", "von": 0, "bis": 20, "kurz": "KI und Automatisierung kommen kaum vor. Fast alles läuft von Hand."},
+  {"stufe": 2, "name": "Ausprobierer", "von": 21, "bis": 40, "kurz": "Einzelne nutzen KI auf eigene Faust, ohne Lizenz, Regeln oder Ziel."},
+  {"stufe": 3, "name": "Anwender", "von": 41, "bis": 60, "kurz": "Feste Anwendungsfälle, Firmenlizenzen, Regeln und erste automatisierte Abläufe."},
+  {"stufe": 4, "name": "Integrierer", "von": 61, "bis": 80, "kurz": "KI und Automatisierung stecken in den Kernprozessen, Daten sind verbunden, Nutzen wird gemessen."},
+  {"stufe": 5, "name": "KI-geführtes Unternehmen (AI CEO)", "von": 81, "bis": 100, "kurz": "Fast alles wird über KI und Agenten abgebildet oder unterstützt. Menschen steuern und entscheiden."}
+ ],
+ "genauigkeit": {
+  "vorlaeufig": "nur Kurzcheck (15 Fragen) beantwortet",
+  "genau": "mindestens 80 % der Fragen aus B bis E und G beantwortet",
+  "anzeige": "Bei 'vorläufig' steht im Ergebnis: 'Vorläufige Stufe. Mit den weiteren Fragen wird Ihr Bericht genauer.'"
+ },
+ "siegel": {"ab_stufe": 4, "name": "MAKE Innovations-Check", "bedingung": "genauigkeit == genau und Bericht vom Inhaber freigegeben (bei den ersten 20)"},
+ "luecken": "Die drei Dimensionen mit dem größten Abstand zum Branchenwert (Benchmark) sind die größten Lücken. Ohne Benchmark: die drei niedrigsten Dimensionen. Robotik nur, wenn relevant.",
+ "zeitersparnis_schaetzung": {
+  "status": "Startwerte, der Inhaber kalibriert nach den ersten 20 Gesprächen",
+  "basis": "Frage D7 (Stunden pro Woche, die eine Maschine erledigen könnte)",
+  "werte_stunden": {"D7_0": 20, "D7_1": 15, "D7_2": 8, "D7_3": 3, "D7_4": 1},
+  "regel": "Potenzial = Stunden aus D7 × 0,5 (realistisch in 90 Tagen). Im Bericht immer als Spanne und als Schätzung kennzeichnen."
+ }
+}
