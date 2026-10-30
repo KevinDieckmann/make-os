@@ -1575,6 +1575,25 @@ ist, muss er angelegt werden … muss automatisiert das Angebot abgeschickt werd
   `versendet` (Angebot `Angebot.versendet`, Rechnung `RechnungZusatz.versendet`, beide optional). Rechnungen gehen nie automatisch raus. Ohne Postfach `mailto`.
 - Tests: `tests/angebot-formular.test.ts`, `tests/angebot-formular-link.test.ts`, `tests/beleg-senden.test.ts`.
 
+## Newsletter-Anmeldung über die Website (30.10., Branch `newsletter-anmeldung`, nur lokal; Tests `tests/newsletter-anmeldung.test.ts`)
+Kevin 30.10.: „einen Bereich, wo wir kostenlose Sachen anbieten … Newsletter: Anmeldung mit Double-Opt-in, der Versand bleibt Handarbeit“.
+- **Öffentlich:** Seite `/newsletter` (hell wie Check/Buchung über `components/buchen/hell.ts`, `...OEFFENTLICH_META`, aus → `NichtDa`) und `POST /api/newsletter`
+  (`anmelden` | `bestaetigen`); Middleware `NEWSLETTER_OFFEN` (nur diese zwei), Caddy `@app` im Block fokusinnovation.de, Köpfe `buchung` in next.config.mjs. Kommt AUS;
+  läuft nur mit Absender-Postfach, Verantwortlichem (Einstellung oder Einrichtung) und Adresse der Website (`bereitPruefen`), sonst 404.
+- **Immer dieselbe Antwort:** die Arbeit (Zeile, Token, Mail) läuft NACH der Antwort (`nachDerAntwort`/`after`) — bekannt, gesperrt, eingeschränkt, schon angemeldet sind
+  von außen nicht zu unterscheiden. Art. 18 → keine Zeile; Werbesperre/Sperrliste → Zeile `gesperrt` ohne Mail; Honigtopf + Mindestzeit (signierter Stempel) mit
+  DEMSELBEN Text; Token 256 Bit nur im Fragment `#t=…`, gespeichert nur als SHA-256, 7 Tage, einmalig; höchstens 3 Mails je Adresse und Tag; bestätigt wird erst per Klick.
+- **Bestätigungsmail = zweite dokumentierte Ausnahme von Regel 3** (neben „Angebot anfordern“): NUR `bestaetigungsmailSenden` (lib/newsletter/versand.ts) — fester Text ohne
+  Werbung (`bestaetigungsMail`), nur an die eingetragene Adresse, nur mit dem Token dieser Zeile, nur über das vom Inhaber gewählte Business-Postfach (`absenderPruefen`), gesendet
+  über `inboxSenden`. Die Wahl des Absenders ist die Freigabe.
+- **CRM:** nach dem Klick `insCrm` — Person über `personAnlegen` (Weg `newsletter`, feste Kennung `c-<uuid der nl-…>`) bzw. vorhandene Akte, dann Einwilligung `newsletter` mit
+  vollem Nachweis (Wortlaut, Fassung `newsletter-einwilligung-<n>`, Beleg `newsletter:<nl-…>`, Zeitpunkt/erfasst von über `datenschutzStempeln`) → Ampel grün. Art. 18 → nichts
+  geschrieben; Werbesperre/Sperrliste → keine Einwilligung. Die Fassung zählt hoch, sobald sich der angezeigte Wortlaut ändert (Text oder Name).
+- **Bestände** `newsletter-anmeldungen` (Register mit Angaben, IN_BUSINESS, Art. 15/17 über `person-weitere.ts`, Frist: unbestätigt 30 Tage, bestätigt solange die Einwilligung
+  besteht — Morgenlauf `newsletterFristLauf`) und `newsletter-einstellungen`; lesen/schreiben NUR lib/newsletter/speicher.ts. Intern `/api/newsletter/intern` (GET Haushalt, Adressen
+  maskiert; POST nur Inhaber per Sitzung), Karte „Anmeldung über die Website“ unter Markttraktion › Marketing › Newsletter (`NewsletterWebsite.tsx`). VVT `vv-newsletter-anmeldung`
+  (nachgetragen, sobald eingerichtet: `newsletterEingerichtet`).
+
 ## Markttraktion › Planung (10.10., Branch `mt-planung`, nur lokal; UPDATES.md)
 Kevin 10.10.: „Planung“ (bis 21.10. Schnellknopf, seit 22.10. Hub-Punkt unter Steuerung, `HUB_MENUE`; `planungLink`/`WEG.vertriebsplanung`) — „Umsatzziele auf Aktivitäten
 runterplanen, mit Kapa“, „planen pro Leadkanal“, „der Kunde bleibt im Kreis“. Ansichten `a` = kreislauf (Start) · ziele · kanaele · challenges, `kanal` filtert.
