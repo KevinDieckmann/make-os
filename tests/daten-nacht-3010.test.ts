@@ -118,3 +118,28 @@ describe('Fund 3 · Kontakt-Auskunft nennt die Verarbeitungen der neuen Beständ
     expect(kontaktBereiche({ weitereSpeicher: { 'agent-log': 1 } })).not.toEqual(expect.arrayContaining(['check']));
   });
 });
+
+// ── Fund 4: Zusammenführen (Dubletten) ließ Kontakt-Kennungen an Rechnungen, Formular-Eingängen und Check-Sitzungen tot zurück ──
+describe('Fund 4 · Zusammenführen biegt die neuen Kontakt-Verweise um', () => {
+  it('Rechnung, Formular-Eingang und Check-Sitzung zeigen danach auf die behaltene Person; Art. 15 findet die Rechnung', async () => {
+    const ALT = 'c-00000000-0000-4000-8000-0000000000a1', NEU = 'c-00000000-0000-4000-8000-0000000000b2', ANDERE = 'c-00000000-0000-4000-8000-0000000000c3';
+    await db.saveJson('finanzplan', { rechnungen: [
+      { id: 're-1', titel: 'Erfunden', status: 'gestellt', betrag: 119, kontaktId: ALT, firmaId: 'kdv' },
+      { id: 're-2', titel: 'Andere', status: 'entwurf', betrag: 10, kontaktId: ANDERE, firmaId: 'kdv' },
+    ] });
+    await db.saveJson('angebot-formular--h-um', { v: 1, einstellungen: {}, links: [], eingaenge: [{ id: 'af-1', am: vor(1), status: 'verschickt', quelle: 'intern', von: 'p', kontaktId: ALT }] });
+    await db.saveJson('check-sitzungen', { sitzungen: [{ id: 'ck-1', geaendert: vor(1), crm: { status: 'ok', am: vor(1), kontaktId: ALT } }] });
+    const { personenUmbiegen } = await import('@/lib/crm/person-bestaende');
+    const r = await personenUmbiegen(new Map([[ALT, NEU]]));
+    expect(r.speicher).toMatchObject({ finanzplan: 1, 'angebot-formular--h-um': 1, 'check-sitzungen': 1 });
+    const f = await db.loadJson<{ rechnungen: { id: string; kontaktId?: string }[] }>('finanzplan');
+    expect(f!.rechnungen.map(x => x.kontaktId)).toEqual([NEU, ANDERE]);
+    expect((await db.loadJson<{ eingaenge: { kontaktId?: string }[] }>('angebot-formular--h-um'))!.eingaenge[0].kontaktId).toBe(NEU);
+    expect((await db.loadJson<{ sitzungen: { crm?: { kontaktId?: string } }[] }>('check-sitzungen'))!.sitzungen[0].crm?.kontaktId).toBe(NEU);
+    const { rechnungenAuskunft } = await import('@/lib/finanzen/rechnung/server');
+    expect((await rechnungenAuskunft(NEU)).map(x => x.id)).toEqual(['re-1']);
+    // idempotent
+    const zweiter = await personenUmbiegen(new Map([[ALT, NEU]]));
+    expect(zweiter.speicher.finanzplan).toBeUndefined();
+  });
+});

@@ -785,6 +785,43 @@ export async function personenUmbiegen(paare: ReadonlyMap<string, string>, opt: 
       }
     }
   });
+  // Seit 20.10. tragen weitere Bestände die Kontakt-Kennung als Verweis (30.10., Datenprüfung der Nacht): Rechnungen (`kontaktId` — Akte, Umsatz
+  // und Art. 15 `rechnungenAuskunft` finden sie nur darüber), Eingänge „Angebot anfordern“ (`kontaktId`) und Sitzungen des Innovations-Checks
+  // (`crm.kontaktId`). Beim Zusammenführen biegen sie auf die behaltene Person um — nur genau diese Felder (die Rechnung selbst bleibt, wie sie
+  // ist: Empfänger-Momentaufnahme und PDF ändern sich nicht). Idempotent; im Kennungs-Umzug findet „weitere“ danach nichts mehr.
+  await teil('crm', async () => {
+    const um = (id: unknown): string | null => (typeof id === 'string' && p.has(id) ? p.get(id)! : null);
+    if (await da('finanzplan')) {
+      let n = 0;
+      await updateJson<{ rechnungen?: { kontaktId?: string }[] }>('finanzplan', cur => {
+        if (!cur || !Array.isArray(cur.rechnungen)) return cur as { rechnungen?: { kontaktId?: string }[] };
+        n = cur.rechnungen.filter(r => um(r?.kontaktId)).length;
+        return n ? { ...cur, rechnungen: cur.rechnungen.map(r => (um(r?.kontaktId) ? { ...r, kontaktId: um(r.kontaktId)! } : r)) } : cur;
+      });
+      zaehle(b, 'finanzplan', n);
+    }
+    for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
+      const name = /^(angebot-formular--[a-z0-9][a-z0-9-]{0,39})\.json$/.exec(d)?.[1];
+      if (!name) continue;
+      let n = 0;
+      await updateJson<{ eingaenge?: { kontaktId?: string }[] }>(name, cur => {
+        if (!cur || !Array.isArray(cur.eingaenge)) return cur as { eingaenge?: { kontaktId?: string }[] };
+        n = cur.eingaenge.filter(e => um(e?.kontaktId)).length;
+        return n ? { ...cur, eingaenge: cur.eingaenge.map(e => (um(e?.kontaktId) ? { ...e, kontaktId: um(e.kontaktId)! } : e)) } : cur;
+      });
+      zaehle(b, name, n);
+    }
+    if (await da('check-sitzungen')) {
+      let n = 0;
+      type S = { crm?: { kontaktId?: string } };
+      await updateJson<{ sitzungen?: S[] }>('check-sitzungen', cur => {
+        if (!cur || !Array.isArray(cur.sitzungen)) return cur as { sitzungen?: S[] };
+        n = cur.sitzungen.filter(x => um(x?.crm?.kontaktId)).length;
+        return n ? { ...cur, sitzungen: cur.sitzungen.map(x => (um(x?.crm?.kontaktId) ? { ...x, crm: { ...x.crm!, kontaktId: um(x.crm!.kontaktId)! } } : x)) } : cur;
+      });
+      zaehle(b, 'check-sitzungen', n);
+    }
+  });
   await teil('ablage', async () => {
     for (const h of await ablageHaushalte()) {
       await updateJson<{ eintraege: DateiEintrag[] }>(ablageName(h), cur => {
