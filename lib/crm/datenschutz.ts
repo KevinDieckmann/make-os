@@ -577,6 +577,33 @@ export function verarbeitungCheckNachtragen(vorhanden: readonly Verarbeitung[], 
   return vorhanden.some(v => v.id === VV_CHECK_ID) ? [...vorhanden] : [...vorhanden, verarbeitungCheck(jetzt)];
 }
 
+// ── Verarbeitung „Social Media (Instagram, LinkedIn)“ (26.–28.10., Markttraktion › Social; nachgetragen 30.10.) — idempotent, sobald ein
+// Anbieter auf der Instanz eingerichtet ist (`instagramKonfig()`/`linkedinKonfig()`). Bis 30.10. fehlte sie samt Empfängern (DATEN_NACHT_3010.md).
+// Hinweis, keine Rechtsberatung — anwaltlich gegenlesen (Rolle der Plattformen, Drittland).
+
+export const VV_SOCIAL_ID = 'vv-social';
+
+export function verarbeitungSocial(jetzt: string): Verarbeitung {
+  return {
+    id: VV_SOCIAL_ID, name: 'Social Media (Instagram, LinkedIn)',
+    zweck: 'Eigene Kanäle führen: Beiträge und Reels planen, von ZOE vorbereiten lassen, veröffentlichen (nur nach Freigabe bzw. im vom Kanal erlaubten Rahmen), Zahlen auswerten; Kommentare und Direktnachrichten an den eigenen Instagram-Account lesen und beantworten (nur per Klick bzw. im Modus des Kanals)',
+    personen: 'Personen, die kommentieren oder Nachrichten schreiben; Personen im Bild (nur mit Freigabe der Medien-Ablage); Personen einer Personenmarke; Konten des Haushalts',
+    daten: 'Beiträge (Text, Bild, Video, Untertitel), Personen im Bild als Kennung der Medien-Ablage, Instagram-Kennung und Benutzername von Kommentierenden/Schreibenden, deren Texte und Zeitpunkte, eigene Antworten (wer bei uns geantwortet hat), Zahlen der Beiträge, Zugriffstoken (verschlüsselt, nur Server)',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (eigene Öffentlichkeitsarbeit, Antworten auf Nachrichten an den eigenen Account) bzw. lit. b (Anfragen); Personen im Bild nur mit Einwilligung bzw. Freigabe der Medien-Ablage (Art. 6 Abs. 1 lit. a, KUG); Werbung nur nach § 7 UWG',
+    empfaenger: 'Meta Platforms Ireland (Instagram) bzw. LinkedIn Ireland — Veröffentlichung, Nachrichten und Statistiken; Konten des Haushalts (Kanal „nur die Person“: nur diese); Hetzner (Hosting); Anthropic (Entwürfe, Texte Dritter gekapselt)',
+    empfaengerIds: ['meta-instagram', 'linkedin', 'hetzner', 'anthropic'],
+    drittland: 'Meta- bzw. LinkedIn-Konzern (USA) — Garantie prüfen; Anthropic: Standardvertragsklauseln',
+    loeschfrist: 'Kommentare und Direktnachrichten 180 Tage (Spiegel; Original bei Instagram); Beiträge und Zahlen bis der Kanal entfernt wird; Zugriffstoken bis zum Trennen; Art. 17 sofort',
+    toms: 'Verbinden nur per Anmeldung beim Anbieter (OAuth, einmaliger state), Token verschlüsselt nur auf dem Server (nie im Browser, nie im Log), Medien für Instagram nur über kurzlebige Links (60 Min., nur Fingerabdruck gespeichert), Antworten nur per Klick oder im ausdrücklich gewählten Modus mit Tageslimit und Not-Aus, Texte Dritter an die KI nur gekapselt, Bestände verschlüsselt auf der Platte, Server in Deutschland (Hetzner)',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „Social Media“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungSocialNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_SOCIAL_ID) ? [...vorhanden] : [...vorhanden, verarbeitungSocial(jetzt)];
+}
+
 // ── Verarbeitung „ZOE auf WhatsApp (Meta, ZOE-Kanal)“ (08.10., Roadmap Lücke 5) — idempotent nachgetragen, sobald die ZOE-Nummer eingerichtet ist ──
 // Kevin 08.10. (R5): „Zweite Business-Nummer nur für ZOE.“ Nur die Personen des Haushalts, je Person mit Einwilligung. Hinweis, keine
 // Rechtsberatung — anwaltlich gegenlesen; Speicherort-Wahl (Local Storage „DE“ bzw. „No Storage“) vor der Registrierung der Nummer.
@@ -766,7 +793,7 @@ export function verarbeitungNeutral(v: Verarbeitung): Verarbeitung {
   return v.empfaengerIds ? { ...aus, empfaengerIds: v.empfaengerIds.filter(id => !NUR_BETREIBER_EMPFAENGER.includes(id)) } : aus;
 }
 
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean; social?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -780,6 +807,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   if (opt.zoeWhatsapp) l = verarbeitungZoeWhatsappNachtragen(l, jetzt);
   // Innovations-Check der Website (24.10.): sobald er eingeschaltet ist (`ladeCheckEinstellungen().aktiv`).
   if (opt.check) l = verarbeitungCheckNachtragen(l, jetzt);
+  // Social Media (30.10. nachgetragen): sobald Instagram oder LinkedIn auf der Instanz eingerichtet ist (`socialEingerichtet`).
+  if (opt.social) l = verarbeitungSocialNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = verarbeitungEmailKundenNachtragen(l, jetzt);

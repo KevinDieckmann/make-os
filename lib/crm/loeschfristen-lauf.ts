@@ -309,6 +309,28 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('check-sitzungen', await checkFristLauf(new Date()));
   });
 
+  // 11b3 · Social: Kommentare und DMs von Instagram (180 Tage, lib/social/community.ts `COMMUNITY_TAGE`) und Formular-Eingänge „Angebot anfordern“
+  //        (24 Monate, `EINGANG_FRIST_MONATE`) — bis 30.10. wirkten beide Fristen nur beim Abholen bzw. Schreiben; jetzt auch ohne Verbindung
+  //        bzw. ohne neue Anfrage. Je Haushalt-Bestand, idempotent, ohne Bestand nichts.
+  await schritt('social-community', async () => {
+    const { communityFristAnwenden } = await import('@/lib/social/community');
+    for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
+      const m = /^(social-community--[a-z0-9-]{1,40})\.json$/.exec(d);
+      if (!m) continue;
+      const n = await communityFristAnwenden(m[1], jetzt);
+      if (n) { zaehle('social-community', n); await protokolliere(m[1], [{ op: 'geloescht', id: 'loeschfrist', felder: ['eintraege'] }], SYSTEM); }
+    }
+  });
+  await schritt('angebot-formular', async () => {
+    const { formularFristAnwenden } = await import('./formulare-speicher');
+    for (const d of await fs.readdir(datenOrdner()).catch(() => [] as string[])) {
+      const m = /^(angebot-formular--[a-z0-9-]{1,40})\.json$/.exec(d);
+      if (!m) continue;
+      const n = await formularFristAnwenden(m[1], jetzt);
+      if (n) { zaehle('angebot-formular', n); await protokolliere(m[1], [{ op: 'geloescht', id: 'loeschfrist', felder: ['eingaenge'] }], SYSTEM); }
+    }
+  });
+
   // 11c · WhatsApp (07.10.): Nachrichten der Business-Nummer vor der Frist (Vorgabe 7 Jahre, § 257 HGB) weg, ihre Dateien mit; Medien vor der
   //       Medien-Frist (Vorgabe 90 Tage) — die Nachricht bleibt („abgelaufen“). Ohne Spiegel: nichts.
   await schritt('whatsapp', async () => {

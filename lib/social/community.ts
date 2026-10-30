@@ -167,6 +167,59 @@ export function nachrichtenAus(l: readonly IgNachricht[], kanalId: string, ich: 
   return raus;
 }
 
+// ── Frist (30.10., Datenprüfung der Nacht) ───────────────────────────────────────────────────────────────────────────────────────
+// Bis 30.10. wirkte `COMMUNITY_TAGE` nur beim Abholen eines VERBUNDENEN Kanals — ein getrennter Kanal, eine entfernte Instagram-App oder ein
+// gelöschter Kanal ließ Kommentare und DMs Dritter unbegrenzt liegen (Art. 5 Abs. 1 lit. e). Jetzt EINE reine Regel für beide Wege: Abholen und
+// der Löschfristen-Lauf im Morgenlauf (lib/crm/loeschfristen-lauf.ts, unabhängig von Verbindung und Konfiguration).
+
+/**
+ * Frist anwenden (rein): Einträge älter als `COMMUNITY_TAGE` raus; Fäden ohne verbliebenen Eintrag (der Schlüssel einer DM trägt die
+ * Instagram-Kennung des Gegenübers) und ZOE-Entwürfe über der Frist bzw. ohne ihren Faden fallen mit; erledigte Kommentar-Entwürfe für
+ * fremde Beiträge über der Frist ebenso (offene bleiben — sie sind Arbeit der Person). Gibt dieselbe Datei zurück, wenn nichts zu tun ist.
+ */
+export function communityFrist(d: CommunityDatei, jetzt: Date): { datei: CommunityDatei; n: number } {
+  const grenze = new Date(jetzt.getTime() - COMMUNITY_TAGE * 86_400_000).toISOString();
+  const eintraege = Object.fromEntries(Object.entries(d.eintraege ?? {}).filter(([, e]) => !(e.am < grenze)));
+  const mitEintrag = new Set(Object.values(eintraege).map(fadenVon));
+  const faeden = Object.fromEntries(Object.entries(d.faeden ?? {}).filter(([f]) => mitEintrag.has(f)));
+  const entwuerfe = d.entwuerfe ? Object.fromEntries(Object.entries(d.entwuerfe).filter(([f, x]) => mitEintrag.has(f) && !(x.am < grenze))) : undefined;
+  const fremd = d.fremd ? d.fremd.filter(x => !(x.erledigtAm && x.erledigtAm < grenze)) : undefined;
+  const n = (Object.keys(d.eintraege ?? {}).length - Object.keys(eintraege).length)
+    + (Object.keys(d.faeden ?? {}).length - Object.keys(faeden).length)
+    + (d.entwuerfe ? Object.keys(d.entwuerfe).length - Object.keys(entwuerfe!).length : 0)
+    + (d.fremd ? d.fremd.length - fremd!.length : 0);
+  if (!n) return { datei: d, n: 0 };
+  return { datei: { ...d, eintraege, faeden, ...(entwuerfe ? { entwuerfe } : {}), ...(fremd ? { fremd } : {}) }, n };
+}
+
+/**
+ * Konto löschen (30.10., Datenprüfung der Nacht): die Einträge bleiben (Gespräche des Accounts), der Speichername der gelöschten Person an eigenen
+ * Antworten (`durch`) und an Kommentar-Entwürfen für fremde Beiträge (`von`) wird „[gelöscht]“. Rein.
+ */
+export function communityOhnePerson(d: CommunityDatei, speicher: string): { neu: CommunityDatei; n: number } {
+  let n = 0;
+  const eintraege = Object.fromEntries(Object.entries(d.eintraege ?? {}).map(([id, e]) => {
+    if (e.durch !== speicher) return [id, e];
+    n++; return [id, { ...e, durch: COMMUNITY_GETILGT }];
+  }));
+  const fremd = d.fremd?.map(f => { if (f.von !== speicher) return f; n++; return { ...f, von: COMMUNITY_GETILGT }; });
+  return n ? { neu: { ...d, eintraege, ...(fremd ? { fremd } : {}) }, n } : { neu: d, n: 0 };
+}
+export const COMMUNITY_GETILGT = '[gelöscht]';
+
+/** Die Frist auf einen Bestand anwenden (Löschfristen-Lauf) — schreibt nur, wenn etwas fällt; ohne Bestand nichts. */
+export async function communityFristAnwenden(name: string, jetzt = new Date()): Promise<number> {
+  if (!(await loadJson<CommunityDatei>(name))) return 0;
+  let n = 0;
+  await updateJson<CommunityDatei>(name, cur => {
+    if (!cur) return cur as unknown as CommunityDatei;
+    const r = communityFrist(cur, jetzt);
+    n = r.n;
+    return r.datei;
+  });
+  return n;
+}
+
 /** Für alle Kanäle mit aktiver Instagram-Verbindung: abholen, mergen (idempotent über die Kennung), Frist anwenden, Glocke bei Neuem. */
 export async function communityAbholen(nurKanal?: string, jetzt = new Date()): Promise<{ neu: number; kanaele: number; fehler?: string }> {
   const { ladeVerbindungen } = await import('./verbindungen');
@@ -204,9 +257,8 @@ export async function communityAbholen(nurKanal?: string, jetzt = new Date()): P
         d.eintraege[e.id] = alt ? { ...e, ...(alt.durch ? { durch: alt.durch } : {}) } : e;
         if (e.art === 'kommentar' && e.mediaId && beitraege[e.mediaId]) d.faeden[fadenVon(e)] = { ...d.faeden[fadenVon(e)], beitrag: beitraege[e.mediaId] };
       }
-      for (const [id, e] of Object.entries(d.eintraege)) if (e.am < grenze) delete d.eintraege[id];
       d.abgeholt![v.kanalId] = jetzt.toISOString();
-      return d;
+      return communityFrist(d, jetzt).datei;
     });
     neu += neuHier;
     if (neuHier) await glocke(social, v.kanalId, neuHier);

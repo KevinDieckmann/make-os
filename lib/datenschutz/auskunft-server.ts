@@ -25,7 +25,7 @@ export async function auskunftAngaben(art: AuskunftArt, o: { bereiche?: readonly
   try { einrichtung = await ladeEinrichtung(); } catch { /* „fehlt“ steht dann in der Auskunft */ }
   const crm = await ladeCrm();
   const betreiber = await istBetreiberInstanz();
-  const verarbeitungen = verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, { betreiber, google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()), check: (await (await import('@/lib/check/speicher')).ladeCheckEinstellungen()).aktiv }).liste;
+  const verarbeitungen = verzeichnisVervollstaendigen(crm.verarbeitungen, jetzt, { betreiber, google: googleKonfiguriert(), icloud: await icloudInGebrauch(), whatsapp: whatsappEingerichtet(), whoop: whoopKonfiguriert(), zoeWhatsapp: zoeWhatsappEingerichtet(), zuliefererAus: !(await zuliefererAktiv()), check: (await (await import('@/lib/check/speicher')).ladeCheckEinstellungen()).aktiv, social: await (await import('@/lib/social/anbieter')).socialEingerichtet() }).liste;
   const fristen = fristenWirksam(((await loadJson<LoeschfristenBestand>(LOESCHFRISTEN_SPEICHER).catch(() => null)) ?? {}).fristen);
   const lf = (id: Parameters<typeof fristText>[0], bereich: string, satz: (t: string) => string) => ({ bereich, frist: satz(fristText(id, fristen[id])) });
   const kontaktFristen = art === 'kontakt' ? [

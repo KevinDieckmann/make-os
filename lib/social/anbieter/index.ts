@@ -16,3 +16,9 @@ export async function anbieterFuer(id: AnbieterId, plattform: SocialPlattform): 
   }
   return null;
 }
+
+/** Ist Instagram oder LinkedIn auf dieser Instanz eingerichtet? (Verzeichnis: Verarbeitung „Social Media“ nachtragen, lib/crm/datenschutz.ts) */
+export async function socialEingerichtet(): Promise<boolean> {
+  const [i, l] = await Promise.all([import('./instagram'), import('./linkedin')]);
+  return !!(i.instagramKonfig() || l.linkedinKonfig());
+}
