@@ -297,7 +297,7 @@
         ],
         [
           "Kapazität",
-          "höchstens 2 Vertriebsmandate gleichzeitig"
+          "wir planen jedes Mandat mit fester Zeit ein und starten erst, wenn sie frei ist"
         ]
       ],
       "mitwirkung": [
@@ -448,7 +448,7 @@
         ],
         [
           "Kapazität",
-          "höchstens 2 Vertriebsmandate gleichzeitig"
+          "wir planen jedes Mandat mit fester Zeit ein und starten erst, wenn sie frei ist"
         ]
       ],
       "mitwirkung": [
@@ -911,6 +911,163 @@
           "monatlich im Voraus, Rechnung zum 1., Zahlungsziel 14 Tage"
         ]
       ]
+    },
+    "pr-kommunikation": {
+      "versprechen": "Ihre Branche lernt Sie kennen: mit klaren Botschaften, starken Themen und Auftritten in Medien, Podcasts und auf Bühnen. Vom Markteintritt bis zur Krisenkommunikation.",
+      "fuer": [
+        "Unternehmer und Mittelstand mit 5 bis 50 Mitarbeitenden, die etwas Neues in den Markt bringen",
+        "Firmen vor Markteintritt, Produktstart, Finanzierungsrunde oder Expansion",
+        "Geschäftsführer, die als Stimme ihrer Branche wahrgenommen werden wollen",
+        "Firmen, die auf eine Krise vorbereitet sein wollen, bevor sie eintritt"
+      ],
+      "nicht_fuer": "wer garantierte Veröffentlichungen oder gekaufte Berichte sucht, reine Anzeigenschaltung ohne eigenes Thema, Konzerne mit eigener Presseabteilung (Einzelfallentscheidung).",
+      "problem": "Ihr Produkt ist gut, aber außerhalb Ihres Kundenkreises kennt es kaum jemand. Über Ihr Thema berichten Medien, zitiert werden andere. Pressemitteilungen entstehen nebenbei und bleiben ohne Echo. Und wenn etwas schiefgeht, weiß niemand, wer was sagt.",
+      "loesung": "Wir übernehmen Ihre Presse- und Öffentlichkeitsarbeit auf Zeit. Wir bauen das Fundament, finden die Themen, die Redaktionen interessieren, sprechen Medien, Podcasts und Veranstalter an und bereiten Sie auf jeden Auftritt vor. Sichtbarkeit und Vertrieb denken wir dabei zusammen: Was an Aufmerksamkeit entsteht, soll bei Ihren Kunden ankommen.",
+      "bausteine": [
+        {
+          "name": "Fundament",
+          "hinweis": "Pflicht, Monat 1",
+          "text": "Kernbotschaften und Sprachregelung, Themenlandkarte, Pressemappe mit Fakten, Bildern und Lebensläufen, Pressebereich auf Ihrer Website, Liste der Medien, Podcasts und Bühnen, die für Sie zählen"
+        },
+        {
+          "name": "Medienarbeit",
+          "text": "Themenplan je Quartal, Pressemitteilungen, Fach- und Gastbeiträge, Interviews; Ansprache in vier Stufen: überregionale Leitmedien, Fach- und Branchenmedien, regionale Medien und Podcasts"
+        },
+        {
+          "name": "Bühnen und Auftritte",
+          "text": "passende Panels, Fachkonferenzen und Branchentreffen finden, Bewerbung als Sprecher, Vorbereitung von Vortrag, Interview und Podcast, Medientraining für die Geschäftsführung"
+        },
+        {
+          "name": "Anlässe und Markteintritt",
+          "text": "Kommunikationsplan für Produktstart, neuen Markt, Finanzierungsrunde, neue Partner oder Auszeichnungen, abgestimmt mit Website, Videos und Vertrieb"
+        },
+        {
+          "name": "Krisenkommunikation",
+          "text": "Krisenplan mit Rollen, Abläufen und Sprachregelungen, Vorlagen für die ersten Stunden, Übung mit der Geschäftsführung; Begleitung im Ernstfall nach Absprache"
+        },
+        {
+          "name": "Zahlen",
+          "text": "Monatsbericht mit Ansprachen, Gesprächen mit Redaktionen, Veröffentlichungen, Auftritten und den Anfragen, die daraus im Vertrieb ankommen"
+        }
+      ],
+      "bausteine_satz": "Am Ende steht Ihr Kommunikationshandbuch: Botschaften, Themen, Zielmedien und Krisenplan an einem Ort, damit Ihr Team weitermachen kann.",
+      "ablauf": {
+        "zeilen": [
+          [
+            "Monat 1",
+            "Ankommen und Fundament",
+            "Kernbotschaften, Themenlandkarte, Zielmedien, Krisenplan im Entwurf"
+          ],
+          [
+            "Monat 2",
+            "Pressemappe und erste Themen",
+            "Pressemappe, Pressebereich, erste Pressemitteilung oder erster Fachbeitrag, Medientraining, Zwischenbilanz in Woche 8"
+          ],
+          [
+            "Monat 3",
+            "In den Medien",
+            "laufende Ansprache von Redaktionen und Podcasts, erster Monatsbericht mit Zahlen"
+          ],
+          [
+            "Monat 4 bis 5",
+            "Themen und Bühnen ausbauen",
+            "Interviews, Gastbeiträge, Sprecherbewerbungen, Kommunikation zu Anlässen"
+          ],
+          [
+            "Monat 6",
+            "Bilanz und Übergabe",
+            "Kommunikationshandbuch, Abschlussbericht, Plan für die nächsten Monate"
+          ]
+        ],
+        "hinweis": "Bei 12 Monaten: Monate 7 bis 9 Themen und Bühnen ausbauen, Monate 10 bis 12 Jahresplan und Übergabe an Ihr Team oder Weiterführung."
+      },
+      "ergebnis": [
+        "Bis Ende Monat 1 stehen Kernbotschaften, Themenlandkarte, Zielmedien und Krisenplan im Entwurf.",
+        "Ab Monat 3 kommt jeden Monat ein Bericht mit Ansprachen, Veröffentlichungen, Auftritten und Anfragen.",
+        "Ziel bis Monat 6: Ihre Themen sind in Ihrer Branche angekommen, Ihre Geschäftsführung ist für Interviews und Bühnen vorbereitet, und für den Ernstfall steht ein Plan."
+      ],
+      "ergebnis_hinweis": "Wir schulden die Leistung, nicht die Veröffentlichung. Was erscheint, entscheiden die Redaktionen.",
+      "konditionen": [
+        [
+          "Preis",
+          "ab 2.990 € netto im Monat; der genaue Preis richtet sich nach Zahl der Themen, Medienstufen und Auftritte und steht vor dem Start fest"
+        ],
+        [
+          "Laufzeit",
+          "6 oder 12 Monate"
+        ],
+        [
+          "Zahlung",
+          "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; oder die volle Laufzeit vorab mit 3 % Skonto"
+        ],
+        [
+          "Kündigung",
+          "einmalig zum Ende des dritten Monats mit 30 Tagen Frist, sonst zum Laufzeitende"
+        ],
+        [
+          "Freigabe",
+          "kein Text geht ohne Ihre Freigabe an Medien"
+        ],
+        [
+          "Krisenfall",
+          "Begleitung rund um die Uhr nur nach gesonderter Absprache und Vergütung"
+        ],
+        [
+          "Fremdkosten",
+          "Anzeigen, Advertorials, Gebühren für Bühnen und Messen, Fotograf, Videodreh und kostenpflichtige Verteilerdienste tragen Sie direkt"
+        ],
+        [
+          "Reisekosten",
+          "Termine vor Ort nach vorheriger Absprache, gegen Beleg"
+        ],
+        [
+          "Kombination",
+          "mit Head of Sales oder CSO; Themen und Anfragen laufen dann in einem Plan zusammen"
+        ]
+      ],
+      "mitwirkung": [
+        "einen festen Ansprechpartner mit Entscheidungsbefugnis",
+        "Zugang zu Zahlen, Fakten, Bildern und Ansprechpartnern im Haus innerhalb von 5 Werktagen nach dem Kickoff",
+        "Freigaben innerhalb von 2 Werktagen, bei Anfragen von Medien schneller",
+        "Zeit der Geschäftsführung für Interviews, Podcasts, Auftritte und Medientraining",
+        "Teilnahme am Abstimmungs-Call alle zwei Wochen (30 Minuten)"
+      ],
+      "abgrenzung": "Keine gekauften Berichte, keine Garantie auf Veröffentlichungen, keine Rechtsberatung. Wo im Krisenfall rechtliche Fragen berührt sind, arbeiten wir mit Ihrer Rechtsberatung zusammen.",
+      "fragen": [
+        {
+          "frage": "Garantieren Sie Veröffentlichungen?",
+          "antwort": "Nein. Was erscheint, entscheiden die Redaktionen. Wir sorgen dafür, dass Ihre Themen gut vorbereitet bei den richtigen Redaktionen, Podcasts und Veranstaltern ankommen, und zeigen Ihnen jeden Monat, was daraus geworden ist."
+        },
+        {
+          "frage": "In welchen Medien kann ich vorkommen?",
+          "antwort": "Wir arbeiten in vier Stufen: überregionale Leitmedien, Fach- und Branchenmedien, regionale Medien und Podcasts, dazu Bühnen und Panels. Welche Stufe passt, hängt von Thema, Neuigkeitswert und Zielgruppe ab. Oft sind Fachmedien und Podcasts der direktere Weg zu Ihren Kunden."
+        },
+        {
+          "frage": "Wie hängt das mit meinem Vertrieb zusammen?",
+          "antwort": "Eng. Jede Veröffentlichung, jeder Auftritt und jeder Podcast ist ein Anlass für Ihren Vertrieb: zum Nachfassen, für die Website, für LinkedIn. Wir planen Themen so, dass sie zu Ihren Zielkunden passen, und zeigen im Monatsbericht, welche Anfragen daraus entstanden sind. Mit Head of Sales oder CSO greift beides direkt ineinander."
+        },
+        {
+          "frage": "Was gehört zur Krisenkommunikation?",
+          "antwort": "Ein Krisenplan ist im Mandat enthalten: Rollen, Abläufe, Sprachregelungen und Vorlagen für die ersten Stunden, dazu eine Übung mit der Geschäftsführung. Tritt eine Krise ein, begleiten wir Sie nach Absprache. Eine Bereitschaft rund um die Uhr vereinbaren wir gesondert."
+        },
+        {
+          "frage": "Wer schreibt die Texte?",
+          "antwort": "Wir. Pressemitteilungen, Fach- und Gastbeiträge, Interviewvorbereitung und Sprachregelungen schreiben wir auf Basis Ihrer Fakten. Kein Text geht ohne Ihre Freigabe an Medien."
+        },
+        {
+          "frage": "Wie viel Zeit kostet mich das?",
+          "antwort": "Rund 3 bis 4 Stunden im ersten Monat für Botschaften und Themen, danach ein Abstimmungs-Call alle zwei Wochen und schnelle Freigaben. Dazu kommt Ihre Zeit für Interviews, Podcasts und Auftritte."
+        },
+        {
+          "frage": "Kann ich vorzeitig aussteigen?",
+          "antwort": "Ja, einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Plan."
+        },
+        {
+          "frage": "Darf ich Texte und Pressemappe danach weiter nutzen?",
+          "antwort": "Ja. Nach Zahlung dürfen Sie alle Texte, die Pressemappe, den Themenplan und den Krisenplan in Ihrem Unternehmen zeitlich unbegrenzt nutzen."
+        }
+      ],
+      "naechster": "Machen Sie zuerst den kostenlosen Innovations-Check. Im Erstgespräch danach klären wir, ob PR und Kommunikation Ihr nächster Schritt ist oder ob zuerst Positionierung und Website stehen sollten."
     }
   },
   "vergleiche": {

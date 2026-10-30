@@ -112,6 +112,7 @@
       "videostory",
       "video-serie",
       "positionierung",
+      "pr-kommunikation",
       "fokus-innovation"
      ]
     },
@@ -358,6 +359,36 @@
    "fuer_wen": "Für alle, die jeden Monat sichtbar sein wollen, ohne selbst Videos zu planen und zu bauen."
   },
   {
+   "id": "pr-kommunikation",
+   "bereich": "Sichtbarkeit",
+   "gruppe": "PR und Kommunikation",
+   "name": "PR und Kommunikation",
+   "preis": "ab 2.990 €",
+   "preis_zusatz": "pro Monat, 6 oder 12 Monate",
+   "fuer_wen": "Für Unternehmer und Mittelstand, deren Thema in Medien, Podcasts und auf Bühnen gehört werden soll, vom Markteintritt bis zur Krise.",
+   "enthalten": [
+    "Fundament: Kernbotschaften, Themenplan, Pressemappe und Pressebereich auf Ihrer Website",
+    "Medienarbeit in vier Stufen: überregionale Leitmedien, Fach- und Branchenmedien, regionale Medien und Podcasts",
+    "Pressemitteilungen, Fach- und Gastbeiträge, geschrieben von uns, freigegeben von Ihnen",
+    "Bühnen und Panels: passende Anlässe finden, Bewerbung als Sprecher, Vorbereitung jedes Auftritts",
+    "Kommunikation zu Anlässen wie Markteintritt, Produktstart oder neuen Partnern",
+    "Krisenplan mit Rollen, Abläufen und Sprachregelungen",
+    "Monatsbericht mit Ansprachen, Veröffentlichungen, Auftritten und Anfragen"
+   ],
+   "nicht_enthalten": [
+    "Eine Garantie auf Veröffentlichungen: Was erscheint, entscheiden die Redaktionen",
+    "Anzeigen, Advertorials und Gebühren für Bühnen oder Messen",
+    "Fotograf, Videodreh und Reisekosten",
+    "Krisenbegleitung rund um die Uhr, nur nach gesonderter Absprache"
+   ],
+   "regeln": [
+    "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist",
+    "Der genaue Monatspreis richtet sich nach dem Umfang und steht vor dem Start fest",
+    "Kein Text geht ohne Ihre Freigabe an Medien"
+   ],
+   "cta": "Gespräch vereinbaren"
+  },
+  {
    "id": "positionierung",
    "bereich": "Sichtbarkeit",
    "gruppe": "Positionierung",
@@ -410,6 +441,8 @@
    "preis_zusatz": "Projekt-Festpreis mit klarem Umfang vorab",
    "status": "Coming Soon",
    "enthalten": [
+    "Abläufe aufnehmen und ordnen, bevor etwas automatisiert wird",
+    "Datenbasis aufbauen: Wissen, Abläufe und Daten an einem Ort",
     "KI und Software einführen, bis sie im Alltag genutzt werden",
     "Prozesse bauen, die ohne den Chef laufen",
     "eigene Werkzeuge entwickeln"

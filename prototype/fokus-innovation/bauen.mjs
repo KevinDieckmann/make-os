@@ -114,7 +114,7 @@ export function seitenBauen(q = quellen()) {
   const angebot = (id) => inhalt.angebote.find((a) => a.id === id);
   const startBereiche = Object.fromEntries(inhalt.startseite.find((s) => s.id === 'bereiche').bereiche.map((b) => [b.name.toLowerCase(), b.angebote]));
   // Sichtbarkeit erzählt in der Reihenfolge der Arbeit: erst die Positionierung, dann Homepage, dann Videos.
-  const REIHENFOLGE = { sichtbarkeit: ['positionierung', 'homepage-landing', 'homepage-story', 'homepage-cinematic', 'erklaervideo', 'videostory', 'video-serie'] };
+  const REIHENFOLGE = { sichtbarkeit: ['positionierung', 'pr-kommunikation', 'homepage-landing', 'homepage-story', 'homepage-cinematic', 'erklaervideo', 'videostory', 'video-serie'] };
   const rang = (b, id) => { const i = (REIHENFOLGE[b] ?? []).indexOf(id); return i < 0 ? 99 : i; };
   const produkteIn = (b) => (startBereiche[b] ?? []).map(angebot).filter(Boolean).sort((x, y) => rang(b, x.id) - rang(b, y.id));
   const produktPfad = (a) => `/${a.bereich.toLowerCase()}/${a.id}/`;
@@ -501,7 +501,7 @@ ${F.bekannt.gruppen ? `<div class="momente-gruppen erscheint">${F.bekannt.gruppe
 </div></section>
 
 <section class="abschnitt" id="was-wir-tun" aria-labelledby="leistungen-titel"><div class="w">
-${abKopf({ marke: 'Was wir tun', h2: 'Drei Bereiche.', ruhig: 'Und in jedem arbeiten wir selbst mit.', lead: 'Sichtbarkeit, Vertrieb und Innovation tragen die Arbeit. Dazu kommen unser Netzwerk, unsere Partner und unsere Events.', id: 'leistungen-titel' })}
+${abKopf({ marke: 'Was wir tun', h2: 'Drei Bereiche.', ruhig: 'Und in jedem arbeiten wir selbst mit.', lead: 'Sichtbarkeit bringt Anfragen, der Vertrieb macht Kunden daraus, Innovation spart Arbeit. Dazu kommen unser Netzwerk, unsere Partner und unsere Events.', id: 'leistungen-titel' })}
 ${BEREICHE.map(leistung).join('\n')}
 </div></section>
 
@@ -571,7 +571,7 @@ ${rechner()}
 
 <section class="abschnitt" aria-labelledby="ablauf-titel"><div class="w">${abKopf({ marke: 'Ablauf', h2: 'So kommen wir zusammen', lead: 'Vom ersten Gespräch bis zum Mandat, jeder Schritt mit klarem Ergebnis.', id: 'ablauf-titel' })}
 ${weg(b.ablauf, { klasse: 'vier', etiketten: ['01', '02', '03', '04'], label: 'Ablauf bis zum Mandat' })}</div></section>`,
-      innovation: () => `<section class="abschnitt" aria-labelledby="felder-titel"><div class="w">${abKopf({ marke: 'Was dazugehört', h2: 'Innovation ist mehr als KI.', lead: b.mehr_als_ki, id: 'felder-titel' })}
+      innovation: () => `<section class="abschnitt" aria-labelledby="felder-titel"><div class="w">${abKopf({ marke: 'Was dazugehört', h2: b.felder_titel ?? 'Innovation ist mehr als KI.', lead: b.felder_lead ?? b.mehr_als_ki, id: 'felder-titel' })}
 ${raster(b.felder, 4)}
 <div class="zwei-teile belege-paar">${zahl(F.belege.roboter)}${zahl(F.belege.daten)}</div></div></section>
 
@@ -769,10 +769,10 @@ ${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'In rund 10 Minu
 <div>${formatListe()}</div>
 </div></section>
 
-<section class="abschnitt" aria-labelledby="formate-titel"><div class="w">${abKopf({ marke: 'Formate', h2: 'Verschiedene Formate.', ruhig: 'Ein Gedanke.', id: 'formate-titel' })}
+<section class="abschnitt" aria-labelledby="formate-titel"><div class="w">${abKopf({ marke: 'Formate', h2: 'So kommen wir zusammen.', lead: F.events.formate_hinweis, id: 'formate-titel' })}
 ${raster(F.events.formate, Math.min(4, F.events.formate.length))}</div></section>
 
-<section class="abschnitt" aria-labelledby="art-titel"><div class="w">${abKopf({ marke: 'So sind unsere Events', h2: F.events.merkmale.map((m) => m.titel).join(', ') + '.', id: 'art-titel' })}
+<section class="abschnitt" aria-labelledby="art-titel"><div class="w">${abKopf({ marke: 'So sind unsere Events', h2: `${F.events.merkmale.map((m) => m.titel).join(', ').replace(/, ([^,]+)$/, ' und $1')}.`, id: 'art-titel' })}
 ${raster(F.events.merkmale, 3)}</div></section>
 
 <section class="abschnitt" aria-labelledby="gast-titel"><div class="w">${abKopf({ marke: 'Gastgeberin', h2: 'Malin bringt Menschen zusammen.', lead: F.team.find((p) => p.kuerzel === 'MA').text, id: 'gast-titel' })}
@@ -800,11 +800,11 @@ ${raster(F.leitidee.ursprung, 4)}
 <div class="zwei-teile ueber-zitat"><figure class="zitat erscheint"><blockquote><p>„${e(F.leitidee.zitat.text)}“</p></blockquote><figcaption><b>${e(F.leitidee.zitat.wer)}</b><cite><a href="${e(F.leitidee.zitat.link)}" rel="noopener" target="_blank">${e(F.leitidee.zitat.quelle)}</a></cite></figcaption></figure>
 <div class="erscheint">${zahl(F.belege.mittelstand)}</div></div></div></section>
 
-<section class="abschnitt" aria-labelledby="wen-titel"><div class="w">${abKopf({ marke: 'Für wen', h2: 'Für Menschen, die umsetzen statt reden.', lead: 'Drei Gruppen, zwei Richtungen: Neues in den Markt bringen oder Neues ins Unternehmen bringen.', id: 'wen-titel' })}
+<section class="abschnitt" aria-labelledby="wen-titel"><div class="w">${abKopf({ marke: 'Für wen', h2: 'Für Menschen, die umsetzen statt reden.', lead: 'Drei Gruppen, zwei Richtungen: Innovation in den Markt bringen oder Innovation ins Unternehmen bringen.', id: 'wen-titel' })}
 ${raster(F.fuer_wen.map((w) => ({ etikett: w.richtung, titel: w.titel, text: w.text, unter: `Einstieg: ${w.einstieg}`, nr: false })), 3)}
 </div></section>
 
-<section class="abschnitt" aria-labelledby="team-titel"><div class="w">${abKopf({ marke: 'Team', h2: 'Zwei Menschen, ein Team.', lead: 'Kevin für Vertrieb und Umsetzung, Malin für Bühne und Netzwerk.', id: 'team-titel' })}
+<section class="abschnitt" aria-labelledby="team-titel"><div class="w">${abKopf({ marke: 'Team', h2: 'Wer hinter Fokus Innovation steht.', lead: 'Kevin für Vertrieb und Umsetzung, Malin für Bühne und Netzwerk. Für Umfang und Spezialthemen holen wir feste Partner aus unserem Netzwerk dazu.', id: 'team-titel' })}
 <div class="team erscheint">${F.team.map((p) => `<article class="person" id="${personAnker(p)}"><span class="kuerzel" aria-hidden="true">${e(p.kuerzel)}</span><div><p class="etikett">${e(p.rolle)}</p><h3>${e(p.name)}</h3><p>${t(p.text)}</p></div></article>`).join('')}</div></div></section>
 
 <section class="abschnitt" aria-labelledby="werte-titel"><div class="w">${abKopf({ marke: 'Werte', h2: 'Woran man uns erkennt.', lead: 'Drei Werte, an denen Sie uns messen können.', id: 'werte-titel' })}
@@ -815,8 +815,8 @@ ${raster(F.werte, 3)}
 <section class="abschnitt" aria-labelledby="nicht-titel"><div class="w">${abKopf({ marke: 'Abgrenzung', h2: 'Was wir nicht sind.', id: 'nicht-titel' })}
 ${raster(F.nicht.map((x) => ({ ...x, nr: false })), 4)}</div></section>
 
-<section class="abschnitt" aria-labelledby="belege-titel"><div class="w">${abKopf({ marke: 'Aus unserer Arbeit', h2: F.laufbahn?.titel ?? 'Was wir mitbringen.', lead: F.laufbahn?.text, id: 'belege-titel' })}
-<p class="satz-unter erscheint">Dazu bauen wir unsere eigene Software und nutzen sie jeden Tag in unserer Arbeit.</p></div></section>
+<section class="abschnitt" aria-labelledby="belege-titel"><div class="w">${abKopf({ marke: F.laufbahn.marke, h2: F.laufbahn.h2, id: 'belege-titel' })}
+${raster(F.laufbahn.punkte, F.laufbahn.punkte.length)}</div></section>
 
 ${schlussakt({ quelle: 'ueber_uns_ende' })}`,
   });

@@ -214,6 +214,19 @@
       "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_DI3_VLO, geo=DE, unit=PC_ENT, Stand 27.02.2026). Der Index zählt, wie viele von zwölf digitalen Technologien ein Unternehmen nutzt; die Indikatoren wechseln je Erhebungsjahr (2025: Version 3). Mindestens grundlegende digitale Intensität hatten 2025 74 % der KMU (10–249)."
     },
     {
+      "id": "bitkom-ki-datenaufbereitung",
+      "bereich": "innovation",
+      "wert": "50 %",
+      "satz": "Die Hälfte der Unternehmen in Deutschland, die KI nutzen, nennt die Aufbereitung von Daten als großen Kostenpunkt, 41 % die Einbindung in bestehende Systeme. Abos und Lizenzen für KI-Software nennen nur 21 %.",
+      "quelle": "Bitkom",
+      "titel": "Erstmals nutzt die Mehrheit der Unternehmen KI (Presseinformation)",
+      "datum": "2026-09-14",
+      "jahr_der_daten": 2026,
+      "url": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI",
+      "zitat": "Als großen Kostenpunkt nennen 51 Prozent der KI-Anwender die Infrastruktur wie Cloud und Rechenleistung, 50 Prozent die Aufbereitung von Daten und 41 Prozent die Integration in bestehende Systeme.",
+      "geprueft": "Originalseite am 2026-10-30 abgerufen (Presseinformation 14.09.2026, 603 Unternehmen ab 20 Beschäftigten, KW 28 bis 33 2026). Dieselbe Seite: 40 % der Unternehmen ohne KI fehlen die notwendigen Daten."
+    },
+    {
       "id": "bitkom-ki-agenten",
       "bereich": "innovation",
       "wert": "11 %",

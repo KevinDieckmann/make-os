@@ -240,7 +240,7 @@
         {
           "h": "Was es bei uns kostet",
           "absaetze": [
-            "Der Head of Sales kostet {preis:head-of-sales} netto im Monat bei 6 oder 12 Monaten Laufzeit. Der Tagesworkshop für {preis:tagesworkshop} wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Wir übernehmen höchstens zwei Vertriebsmandate gleichzeitig, damit jedes die Zeit bekommt, die es braucht."
+            "Der Head of Sales kostet {preis:head-of-sales} netto im Monat bei 6 oder 12 Monaten Laufzeit. Der Tagesworkshop für {preis:tagesworkshop} wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Wir planen jedes Mandat mit fester Zeit ein, damit es die Aufmerksamkeit bekommt, die es braucht."
           ]
         }
       ],
@@ -2547,7 +2547,7 @@
     {
       "id": "fokus-innovation-events",
       "name": "Fokus Innovation · Events",
-      "text": "Unsere Events auf Einladung, in verschiedenen Formaten: Gründer, Mittelständler und Macher aus KI und Technik treffen sich, lernen voneinander und kommen ins Geschäft. Für Gäste kostenlos, Gastgeberin ist Malin.",
+      "text": "Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.",
       "link": "/events/"
     },
     {
