@@ -40,12 +40,16 @@ const BEGRIFFE = [
 ];
 /** Preise in Ratgebern und Suchtexten nur als Platzhalter: {preis:id}, {ab:id} (erster Preis einer Staffel), {zusatz:id}. */
 let ANGEBOTE = [];
-const platz = (s) => String(s ?? '').replace(/\{(preis|ab|zusatz):([a-z0-9-]+)\}/g, (_, art, id) => {
+// Seit 30.10. (Kevin: „Wir machen immer ab-Preise“) wird jeder Preis-Platzhalter zum Einstiegspreis mit „ab“ — „für {preis:x}“ wird „ab …“,
+// am Satzanfang „Ab …“; steht schon „ab“ davor, kommt keins dazu.
+const platz = (s) => String(s ?? '').replace(/(\bfür )?\{(preis|ab|zusatz):([a-z0-9-]+)\}/g, (_, fuer, art, id, pos, ganz) => {
   const a = ANGEBOTE.find((x) => x.id === id);
   if (!a) throw new Error(`Platzhalter ohne Angebot: {${art}:${id}}`);
-  if (art === 'zusatz') return a.preis_zusatz ?? '';
-  if (art === 'ab') return `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')} €`;
-  return a.preis;
+  if (art === 'zusatz') return `${fuer ?? ''}${a.preis_zusatz ?? ''}`;
+  const betrag = `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')} €`;
+  const davor = ganz.slice(0, pos);
+  if (!fuer && /\bab $/i.test(davor)) return betrag;
+  return `${!fuer && (pos === 0 || /[.?!:]\s*$/.test(davor)) ? 'Ab' : 'ab'} ${betrag}`;
 });
 const alt = (s) => BEGRIFFE.reduce((x, [re, neu]) => x.replace(re, neu), platz(s));
 /** Anker aus einer Überschrift: „Schritt 4: Wenige Kennzahlen“ → „schritt-4-wenige-kennzahlen“. */
@@ -140,9 +144,10 @@ export function seitenBauen(q = quellen()) {
   const bald = (a) => a.status === 'Coming Soon';
   const monatlich = (a) => /^pro Monat/.test(a.preis_zusatz ?? '');
   const erster = (a) => `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')} €`;
-  /** Preise ruhig (Kevin 29.10.): Listen zeigen „ab“, Angebotsseiten und Preisseite den vollen Preis; was erst startet, hat noch keinen. */
+  /** Preise (Kevin 30.10.: „Wir machen immer ab-Preise, nicht mit allen Preisen rausgehen“): überall nur der Einstiegspreis mit „ab“ —
+   *  Listen, Angebotsseiten, Preisseite, llms.txt; was erst startet, hat noch keinen. Der volle Preis steht nur in den Daten. */
   const preisKurz = (a) => (bald(a) ? 'Start in Kürze' : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
-  const preisVoll = (a) => (bald(a) ? 'Preis folgt zum Start' : a.preis);
+  const preisVoll = (a) => (bald(a) ? 'Preis folgt zum Start' : `ab ${erster(a)}`);
   const anbieter = seite.anbieter[seite.anbieter_aktiv];
 
   /** Produktblatt eines Angebots: eigene Angaben über denen der Familie; null, wenn es keins gibt. */
@@ -574,7 +579,7 @@ ${rechner()}
 ${weg(b.ablauf, { klasse: 'vier', etiketten: ['01', '02', '03', '04'], label: 'Ablauf bis zum Mandat' })}</div></section>`,
       innovation: () => `<section class="abschnitt" aria-labelledby="felder-titel"><div class="w">${abKopf({ marke: 'Was dazugehört', h2: b.felder_titel ?? 'Innovation ist mehr als KI.', lead: b.felder_lead ?? b.mehr_als_ki, id: 'felder-titel' })}
 ${raster(b.felder, 4)}
-<div class="zwei-teile belege-paar">${zahl(F.belege.roboter)}${zahl(F.belege.daten)}</div></div></section>
+<div class="zwei-teile belege-paar">${zahl(F.belege.ki_daten)}${zahl(F.belege.daten)}</div></div></section>
 
 <section class="abschnitt" aria-labelledby="check-titel"><div class="w">${abKopf({ marke: 'Innovations-Check', h2: start['innovations-check'].titel, lead: F.check.text, id: 'check-titel' })}
 <ol class="stufen breit erscheint" aria-label="Die fünf Stufen">${stufen.map((s) => `<li><span class="stufe-balken" aria-hidden="true"></span><b>${e(s.name.replace(/ \(.*\)$/, ''))}</b><span>${e(s.kurz)}</span></li>`).join('')}</ol>
@@ -605,7 +610,7 @@ ${raster(b.felder, 4)}
 </div></section>
 
 <section class="blick-band" aria-label="Kurz gesagt"><div class="w">${kurzGesagt(b.kurz)}
-<dl class="blick erscheint">${[['Für wen', fuerWen], ['Angebote', preiseAb || 'Start in Kürze, jetzt auf die Warteliste'], ['Einstieg', { vertrieb: `Erstgespräch, kostenlos, oder der Tagesworkshop für ${angebot('tagesworkshop').preis}`, sichtbarkeit: 'Erstgespräch, kostenlos, oder direkt die Positionierung S', innovation: 'Innovations-Check, kostenlos, rund 10 Minuten' }[k]], ['Preise', 'fest und netto, auf jeder Angebotsseite']].filter(([, v]) => v).map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl>
+<dl class="blick erscheint">${[['Für wen', fuerWen], ['Angebote', preiseAb || 'Start in Kürze, jetzt auf die Warteliste'], ['Einstieg', { vertrieb: `Erstgespräch, kostenlos, oder der Tagesworkshop ab ${erster(angebot('tagesworkshop'))}`, sichtbarkeit: 'Erstgespräch, kostenlos, oder direkt die Positionierung S', innovation: 'Innovations-Check, kostenlos, rund 10 Minuten' }[k]], ['Preise', 'netto, ab-Preis auf jeder Angebotsseite']].filter(([, v]) => v).map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl>
 ${b.beleg ? `<div class="beleg-zeile">${zahl(F.belege[b.beleg])}</div>` : ''}</div></section>
 
 <section class="abschnitt" id="angebote" aria-labelledby="angebote-titel"><div class="w">${abKopf({ marke: 'Angebote', h2: `${b.name}: was wir für Sie tun`, lead: F.angebote_lead[k], id: 'angebote-titel' })}
@@ -688,7 +693,7 @@ ${pb.katalog ? `<section class="abschnitt" aria-labelledby="katalog-titel"><div 
 <div class="zwei-teile"><div class="erscheint">${datenTabelle(pb.konditionen)}${netto}</div>
 <div class="erscheint"><h3 class="gruppe-titel">Was wir von Ihnen brauchen</h3>${punkte(pb.mitwirkung)}${nichtEnthalten ? `<h3 class="gruppe-titel">Nicht enthalten</h3>${punkte(nichtEnthalten, 'punkte nicht')}` : ''}${pb.abgrenzung ? `<h3 class="gruppe-titel">Abgrenzung</h3><p class="leise">${t(pb.abgrenzung)}</p>` : ''}</div></div></div></section>`
       : `<section class="abschnitt" aria-labelledby="inhalt-titel"><div class="w">${abKopf({ marke: 'Leistung', h2: 'Was drin ist', lead: a.fuer_wen, id: 'inhalt-titel' })}
-${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class="spalte"><span class="etikett">Workshop: ${e(s.workshop)}</span><h3>Positionierung ${e(s.name)}</h3><p class="stufe-preis">${e(s.preis)}</p><p>${t(s.ergebnis)}</p></div>`).join('')}</div>${netto}` : ''}
+${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class="spalte"><span class="etikett">Workshop: ${e(s.workshop)}</span><h3>Positionierung ${e(s.name)}</h3><p class="stufe-preis">ab ${e(s.preis.replace(/^ab /, ''))}</p><p>${t(s.ergebnis)}</p></div>`).join('')}</div>${netto}` : ''}
 <div class="zwei-teile">${a.enthalten ? `<div class="erscheint"><h3 class="gruppe-titel">Enthalten</h3>${punkte(a.enthalten)}</div>` : ''}
 <div class="erscheint">${nichtEnthalten ? `<h3 class="gruppe-titel">Nicht enthalten</h3>${punkte(nichtEnthalten, 'punkte nicht')}` : ''}<h3 class="gruppe-titel">Gut zu wissen</h3>${punkte(regeln)}</div></div>
 </div></section>`;
@@ -713,7 +718,7 @@ ${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class
 <div class="erscheint">${brotkrumen([[`/${k}/`, b.name], [null, a.name]])}${vorzeile(`${b.name}${a.gruppe ? ` · ${a.gruppe}` : ''}${istBald ? ' · Bald' : ''}`)}<h1 id="held-titel">${e(a.name)}</h1><p class="lead">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? b.satz)}</p></div>
 <aside class="preis-kasten erscheint" aria-label="Preis"><p class="etikett">Preis</p><p class="betrag">${e(preisVoll(a))}</p><p class="zusatz">${istBald ? 'Festpreis mit klarem Umfang, vorab vereinbart' : `${e(a.preis_zusatz ?? '')}${a.preis_zusatz ? ' · ' : ''}netto zuzüglich Umsatzsteuer`}</p>${F.umfang[a.id] ? `<p class="umfang">${e(F.umfang[a.id])}</p>` : ''}${mandat ? `<p class="sicher">Ausstieg zum Ende von Monat 3 möglich</p>` : ''}<div class="knoepfe senkrecht">${terminKnopf}${zweitKnopf}</div></aside>
 </div></section>
-${blick([['Preis', istBald ? 'folgt zum Start' : `${a.preis} netto${a.preis_zusatz ? `, ${a.preis_zusatz}` : ''}`], ['Umfang', F.umfang[a.id]], ['Für wen', pb?.fuer?.[0] ?? a.fuer_wen], ['Ergebnis', ergebnisSatz], ['Bereich', istBald ? `${b.name} · startet in Kürze` : b.name]])}
+${blick([['Preis', istBald ? 'folgt zum Start' : `ab ${erster(a)} netto${a.preis_zusatz ? `, ${a.preis_zusatz}` : ''}`], ['Umfang', F.umfang[a.id]], ['Für wen', pb?.fuer?.[0] ?? a.fuer_wen], ['Ergebnis', ergebnisSatz], ['Bereich', istBald ? `${b.name} · startet in Kürze` : b.name]])}
 ${mandat ? risiko() : ''}
 ${blattHtml}
 ${a.id === 'head-of-sales' ? wochenreportMuster() : ''}
@@ -1135,7 +1140,7 @@ ${schlussakt({ quelle: 'preise_ende' })}`,
 
   // llms.txt (Vorschlag llmstxt.org): kurzer Wegweiser für KI-Assistenten, dazu llms-full.txt mit allen Inhalten als Klartext.
   const mdLink = (n, p) => `[${n}](${absolut(p)})`;
-  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'Start in Kürze, Preis folgt zum Start' : `${a.preis} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
+  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'Start in Kürze, Preis folgt zum Start' : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
   const faktenMd = [...F.fakten, ['Betreiber', `${anbieter.name}, ${anbieter.adresse.map(klar).join(', ')}`], ['Kontakt', seite.kontakt.mail]].map(([k, v]) => `- ${k}: ${klar(v)}`).join('\n');
   const leistungenMd = BEREICHE.map((k) => `### ${B[k].name}: ${B[k].paar}\n\n${klar(B[k].kurz)}\n\n${k === 'innovation' ? `- ${mdLink('Innovations-Check', '/innovations-check/')}: kostenlos, rund 10 Minuten. ${klar(F.check.text)}\n` : ''}${produkteIn(k).map(angebotMd).join('\n')}`).join('\n\n');
   seiten.push({

@@ -96,12 +96,6 @@
       "quelle": "KfW Research, Innovationen, 2026",
       "link": "https://www.kfw.de/%C3%9Cber-die-KfW/KfW-Research/Innovationen.html"
     },
-    "roboter": {
-      "wert": "Platz 3",
-      "text": "weltweit bei der Roboterdichte in der Industrie: 449 Roboter je 10.000 Beschäftigte.",
-      "quelle": "IFR, Roboterdichte, 08.04.2026, S. 2",
-      "link": "https://www.ifr.org/downloads/press_docs/DE-2026-APRIL-_8-IFR_PRESSMELDUNG_Roboterdichte-deutsch.pdf"
-    },
     "ki_nutzung": {
       "wert": "26 %",
       "text": "der Unternehmen ab 10 Beschäftigten nutzen KI. Bei 10 bis 49 Beschäftigten sind es 23 %, ab 250 Beschäftigten 57 %.",
@@ -200,7 +194,7 @@
         },
         {
           "titel": "Tagesworkshop",
-          "text": "1.900 €, wird beim Mandatsstart voll angerechnet"
+          "text": "ab 1.900 €, wird beim Mandatsstart voll angerechnet"
         },
         {
           "titel": "Mandat",
@@ -247,7 +241,7 @@
           "text": "Routineaufgaben laufen mit KI, Kommunikation und Angebote gehen schneller, und Abläufe funktionieren ohne die Geschäftsführung."
         }
       ],
-      "mehr_als_ki": "Innovation heißt auch Automatisierung, Robotik, neue Software und die Daten dahinter. Bei der Roboterdichte in der Industrie liegt Deutschland weltweit auf Platz 3. Diesen Schwung wollen wir auch in die Büros bringen.",
+      "mehr_als_ki": "Innovation heißt auch Automatisierung, neue Software und die Daten dahinter. Alles braucht dieselbe Grundlage: klare Abläufe und saubere Daten.",
       "brain": {
         "titel": "KI-Brain",
         "stand": "In Vorbereitung",

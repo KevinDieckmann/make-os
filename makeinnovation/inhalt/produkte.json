@@ -265,7 +265,7 @@
       "konditionen": [
         [
           "Preis",
-          "2.990 € netto im Monat"
+          "ab 2.990 € netto im Monat"
         ],
         [
           "Laufzeit",
@@ -281,7 +281,7 @@
         ],
         [
           "Anrechnung",
-          "Tagesworkshop (1.900 €) wird beim Start voll angerechnet"
+          "Tagesworkshop (ab 1.900 €) wird beim Start voll angerechnet"
         ],
         [
           "Wechsel",
@@ -333,7 +333,7 @@
           "antwort": "Ja. Nach Zahlung dürfen Sie alle Vorlagen, Skripte und Playbooks in Ihrem Unternehmen zeitlich unbegrenzt nutzen."
         }
       ],
-      "naechster": "Machen Sie zuerst den kostenlosen Innovations-Check. Im Erstgespräch danach klären wir, ob der Head of Sales Ihr nächster Schritt ist. Wer erst testen will, startet mit dem Tagesworkshop (1.900 €), der beim Mandat voll angerechnet wird."
+      "naechster": "Machen Sie zuerst den kostenlosen Innovations-Check. Im Erstgespräch danach klären wir, ob der Head of Sales Ihr nächster Schritt ist. Wer erst testen will, startet mit dem Tagesworkshop (ab 1.900 €), der beim Mandat voll angerechnet wird."
     },
     "cso": {
       "versprechen": "Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.",
@@ -412,7 +412,7 @@
       "konditionen": [
         [
           "Preis",
-          "4.990 € netto im Monat"
+          "ab 4.990 € netto im Monat"
         ],
         [
           "Laufzeit",
@@ -428,7 +428,7 @@
         ],
         [
           "Anrechnung",
-          "Tagesworkshop (1.900 €) wird beim Start voll angerechnet"
+          "Tagesworkshop (ab 1.900 €) wird beim Start voll angerechnet"
         ],
         [
           "Wechsel",
@@ -485,7 +485,7 @@
           "antwort": "Wir übergeben an Ihre interne Vertriebsleitung, mit Übergabeplan in 4 Schritten und dem Sales Playbook Teil 3."
         }
       ],
-      "naechster": "Machen Sie zuerst den kostenlosen Innovations-Check und klären Sie im Erstgespräch danach, ob der Chief Sales Officer passt. Oder starten Sie mit dem Tagesworkshop (1.900 €), er wird beim Mandat angerechnet."
+      "naechster": "Machen Sie zuerst den kostenlosen Innovations-Check und klären Sie im Erstgespräch danach, ob der Chief Sales Officer passt. Oder starten Sie mit dem Tagesworkshop (ab 1.900 €), er wird beim Mandat angerechnet."
     },
     "homepage-landing": {
       "familie": "homepages",
@@ -552,7 +552,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "2.990 € netto, einmalig"
+          "ab 2.990 € netto, einmalig"
         ]
       ]
     },
@@ -625,7 +625,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "4.990 € netto, einmalig"
+          "ab 4.990 € netto, einmalig"
         ]
       ]
     },
@@ -698,7 +698,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "9.990 € netto, einmalig"
+          "ab 9.990 € netto, einmalig"
         ]
       ]
     },
@@ -765,7 +765,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "1.490 € netto, einmalig"
+          "ab 1.490 € netto, einmalig"
         ],
         [
           "Zahlung",
@@ -836,7 +836,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "1.990 € netto, einmalig"
+          "ab 1.990 € netto, einmalig"
         ],
         [
           "Zahlung",
@@ -900,7 +900,7 @@
       "konditionen_vorn": [
         [
           "Preis",
-          "1.990 € netto im Monat"
+          "ab 1.990 € netto im Monat"
         ],
         [
           "Laufzeit",
@@ -1124,9 +1124,9 @@
           ],
           [
             "Express (halbe Lieferzeit)",
-            "+ 990 €",
-            "+ 990 €",
-            "+ 1.490 €"
+            "ab 990 €",
+            "ab 990 €",
+            "ab 1.490 €"
           ]
         ]
       },

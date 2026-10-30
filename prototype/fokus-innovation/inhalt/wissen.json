@@ -356,7 +356,7 @@
         {
           "h": "Wie wir dabei arbeiten",
           "absaetze": [
-            "Unsere Positionierung gibt es in drei Tiefen. S liefert Ihre Positionierung in fünf Sätzen, in einem Satz und in sieben Wörtern und prüft sie gegen zehn Grundsätze. M ergänzt Kundeninterviews, den Blick auf den Wettbewerb und einen Elevator Pitch. L reicht bis zur Markenstory mit Claim und Textbausteinen. Jede Stufe ist mit KI vorbereitet und endet in einem Workshop mit Kevin. S kostet 1.990 €, M 2.990 €, L 4.990 €, jeweils netto und einmalig."
+            "Unsere Positionierung gibt es in drei Tiefen. S liefert Ihre Positionierung in fünf Sätzen, in einem Satz und in sieben Wörtern und prüft sie gegen zehn Grundsätze. M ergänzt Kundeninterviews, den Blick auf den Wettbewerb und einen Elevator Pitch. L reicht bis zur Markenstory mit Claim und Textbausteinen. Jede Stufe ist mit KI vorbereitet und endet in einem Workshop mit Kevin. S kostet ab 1.990 €, M ab 2.990 €, L ab 4.990 €, jeweils netto und einmalig."
           ]
         }
       ],
@@ -367,7 +367,7 @@
         },
         {
           "f": "Was kostet eine Positionierung?",
-          "a": "S 1.990 €, M 2.990 €, L 4.990 €, jeweils netto und einmalig."
+          "a": "S ab 1.990 €, M ab 2.990 €, L ab 4.990 €, jeweils netto und einmalig."
         },
         {
           "f": "Brauche ich eine Positionierung, bevor ich eine Website baue?",
@@ -637,11 +637,8 @@
         {
           "h": "Innovation ist mehr als KI",
           "absaetze": [
-            "KI ist ein Werkzeug unter mehreren. Automatisierung, Robotik und neue Software gehören genauso dazu. Bei der Roboterdichte in der Industrie liegt Deutschland weltweit auf Platz 3:"
-          ],
-          "beleg": "roboter",
-          "absaetze_danach": [
-            "Diesen Schwung wollen wir auch in die Büros bringen: in Angebote, Anfragen, Abläufe und das Wissen eines Unternehmens."
+            "KI ist ein Werkzeug unter mehreren. Automatisierung und neue Software gehören genauso dazu, und alle brauchen dieselbe Grundlage: klare Abläufe und saubere Daten.",
+            "Deshalb bringen wir sie dorthin, wo sie im Alltag wirken: in Angebote, Anfragen, Abläufe und das Wissen eines Unternehmens."
           ]
         },
         {

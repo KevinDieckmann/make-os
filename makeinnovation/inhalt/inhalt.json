@@ -454,7 +454,7 @@
   {
    "name": "Express",
    "fuer": "alle Homepage-Pakete",
-   "preis": "+990 € bei Landing und Story, +1.490 € bei Cinematic",
+   "preis": "ab 990 €",
    "leistung": "halbe Lieferzeit (Landing in 5 Werktagen)"
   },
   {
@@ -627,7 +627,7 @@
   {
    "id": "was-kostet-der-tagesworkshop-und-was",
    "f": "Was kostet der Tagesworkshop, und was passiert danach?",
-   "a": "1.900 €. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
+   "a": "Ab 1.900 €. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
   },
   {
    "id": "wie-schnell-ist-meine-homepage-fertig",
@@ -887,6 +887,6 @@
    "Innovation: Von Ausprobieren zu Umsetzen",
    "Landingpage Innovations-Check: So funktioniert der Check mit Zoe"
   ],
-  "verkauf": "Dieselbe Produktionsweise ist das Angebot Erklärvideo 1.490 € und Video Serie 1.990 €/Monat. Unsere eigenen Videos dienen als Referenz."
+  "verkauf": "Dieselbe Produktionsweise ist das Angebot Erklärvideo ab 1.490 € und Video Serie ab 1.990 €/Monat. Unsere eigenen Videos dienen als Referenz."
  }
 }
