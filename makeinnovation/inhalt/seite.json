@@ -4,7 +4,7 @@
  "check": "/check",
  "termin": {
   "hinweis": "Buchungsseite aus der App (Kalender › Buchungsseiten, Form /buchen/<name>-<24 Hex>). Solange leer: vorbereitete Mail an kontakt.mail.",
-  "link": ""
+  "link": "/buchen/erstgespraech-c9a7127ad22839b329a01f06"
  },
  "kontakt": {
   "mail": "kevin@makeinnovation.de",
