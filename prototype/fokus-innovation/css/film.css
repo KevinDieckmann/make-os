@@ -22,6 +22,7 @@
 .keingl .ersatz { display: block; }
 .ersatz .gross { position: absolute; left: 50%; top: 44%; width: calc(var(--r) * 3); height: auto; translate: -50% -50%; color: var(--hell); }
 .ersatz .gross .kern { fill: var(--akzent); }
+@media (prefers-reduced-motion: no-preference) { .keingl .ersatz .gross .kern { transform-box: fill-box; transform-origin: center; animation: kernSchlag 2.8s ease-out infinite; } }
 
 .block { position: absolute; inset: 0; pointer-events: none; opacity: 0; visibility: hidden; }
 .block.da { visibility: visible; }

@@ -9,7 +9,7 @@ const FLAECHE_VS = 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.
 const FLAECHE_FS = `
 precision highp float;
 uniform vec2 uRes, uC, uPunkt;
-uniform float uZeit, uR, uRing, uKern, uPunktA, uSpur, uWinkel;
+uniform float uZeit, uR, uRing, uKern, uPunktA, uSpur, uWinkel, uPuls;
 uniform vec3 uAkzent, uHell, uNacht;
 const float PI = 3.14159265;
 const float G0 = 0.5236;
@@ -24,6 +24,17 @@ void main() {
 
   vec3 col = uNacht;
   col += uAkzent * 0.035 * exp(-lr / (uR * 3.0)) * uKern;
+
+  // Puls des Kerns (wie der Kern von ZOE): ein kurzer Schlag, langsames Ausatmen, dazu läuft eine leise Welle nach außen.
+  // Ein Schlag alle 2,8 s; uPuls = 0 im Standbild (Bewegung reduzieren) → ruhender Kern wie im Logo.
+  float takt = fract(uZeit / 2.8);
+  float schlag = smoothstep(0.0, 0.1, takt) * (1.0 - smoothstep(0.1, 0.75, takt)) * uPuls;
+  float kernR = uR * 0.4375 * uKern * (1.0 + 0.06 * schlag);
+  col += uAkzent * (0.05 + 0.09 * schlag) * exp(-max(lr - kernR, 0.0) / (uR * 0.32)) * uKern;
+  float welleT = clamp((takt - 0.04) / 0.9, 0.0, 1.0);
+  float welleR = mix(kernR, uR * 0.84, 1.0 - (1.0 - welleT) * (1.0 - welleT));
+  float welle = smoothstep(uR * 0.03, 0.0, abs(lr - welleR)) * (1.0 - welleT) * (1.0 - welleT) * step(0.001, welleT) * uKern * uPuls;
+  col = mix(col, uAkzent, welle * 0.5);
 
   // Ring: offener Bogen, im Uhrzeigersinn ab 30 Grad bis 80 Grad
   float ang = atan(r.y, r.x);
@@ -48,7 +59,6 @@ void main() {
   col = mix(col, mix(uHell, uAkzent, 0.35), spur * 0.55);
 
   // Kern: der Punkt, auf den alles zeigt
-  float kernR = uR * 0.4375 * uKern;
   col = mix(col, uAkzent, smoothstep(px, -px, lr - kernR) * step(0.001, uKern));
 
   // Der kleine Punkt
@@ -138,7 +148,7 @@ export function szeneStarten(canvas, { handy = false } = {}) {
     console.warn('Szene aus:', fehler.message);
     return null;
   }
-  const uF = orte(gl, flaeche, ['uRes', 'uC', 'uPunkt', 'uZeit', 'uR', 'uRing', 'uKern', 'uPunktA', 'uSpur', 'uWinkel', 'uAkzent', 'uHell', 'uNacht']);
+  const uF = orte(gl, flaeche, ['uRes', 'uC', 'uPunkt', 'uZeit', 'uR', 'uRing', 'uKern', 'uPunktA', 'uSpur', 'uWinkel', 'uPuls', 'uAkzent', 'uHell', 'uNacht']);
   const uP = orte(gl, punkte, ['uRes', 'uC', 'uZeit', 'uR', 'uSammeln', 'uDpr', 'uSichtbar', 'uAkzent', 'uHell']);
 
   const dreieck = gl.createBuffer();
@@ -157,7 +167,7 @@ export function szeneStarten(canvas, { handy = false } = {}) {
   const FARBEN = { akzent: farbe(stil.getPropertyValue('--akzent')), hell: farbe(stil.getPropertyValue('--hell')), nacht: farbe(stil.getPropertyValue('--nacht')) };
 
   // Zustand, den der Film setzt
-  const z = { sammeln: 0, ring: 0, kern: 0, punkt: [0, LAGE.mitteY], punktA: 0, spur: 0, winkel: 0, punkteSichtbar: 1, geom: null };
+  const z = { sammeln: 0, ring: 0, kern: 0, punkt: [0, LAGE.mitteY], punktA: 0, spur: 0, winkel: 0, punkteSichtbar: 1, puls: 1, geom: null };
   let dpr = 1;
 
   function groesse() {
@@ -187,6 +197,7 @@ export function szeneStarten(canvas, { handy = false } = {}) {
     gl.uniform1f(uF.uPunktA, z.punktA);
     gl.uniform1f(uF.uSpur, z.spur);
     gl.uniform1f(uF.uWinkel, z.winkel);
+    gl.uniform1f(uF.uPuls, z.puls);
     gl.uniform3fv(uF.uAkzent, FARBEN.akzent);
     gl.uniform3fv(uF.uHell, FARBEN.hell);
     gl.uniform3fv(uF.uNacht, FARBEN.nacht);

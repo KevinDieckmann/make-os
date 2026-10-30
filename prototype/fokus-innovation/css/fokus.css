@@ -93,6 +93,26 @@ table { border-collapse: collapse; }
 .knopf.zweit { background: transparent; color: var(--tinte); border-color: var(--haar-mittel); }
 .knopf.zweit:hover { border-color: var(--tinte); background: rgba(17, 19, 22, .03); }
 .knopf.klein { min-height: 44px; padding: 0 18px; font-size: .94rem; }
+/* Akzente am Hauptknopf (30.10., Kevin: „wie in den Kacheln ‚Für dich‘ der leichte Schein von links nach rechts, den Pfeil anders
+   beleuchten“): der Pfeil trägt den Kern-Ton, beim Zeigen leuchtet er leise auf; ein schmaler Lichtschein zieht selten von links nach
+   rechts über den Knopf (nur transform/opacity, alle 9 s, „Bewegung reduzieren“ = kein Schein). Nebenknöpfe (.zweit) bleiben ruhig. */
+.knopf:not(.zweit) { position: relative; overflow: hidden; isolation: isolate; }
+.knopf:not(.zweit) .pfeil { color: var(--akzent); transition: translate .35s var(--ease), filter .35s ease; }
+.knopf:not(.zweit):hover .pfeil { filter: drop-shadow(0 0 5px rgba(167, 139, 250, .75)); }
+.dunkel .knopf:not(.zweit) .pfeil, .kopf.ueber-film .knopf .pfeil { color: var(--akzent-papier); }
+.dunkel .knopf:not(.zweit):hover .pfeil { filter: drop-shadow(0 0 5px rgba(124, 58, 237, .45)); }
+.knopf:not(.zweit)::after { content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; left: 0; width: 38%; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, .26) 45%, rgba(242, 243, 243, .16) 55%, transparent); transform: translateX(-110%) skewX(-18deg); }
+.dunkel .knopf:not(.zweit)::after, .kopf.ueber-film .knopf::after { background: linear-gradient(90deg, transparent, rgba(124, 58, 237, .16) 45%, rgba(167, 139, 250, .2) 55%, transparent); }
+@media (prefers-reduced-motion: no-preference) {
+  .knopf:not(.zweit)::after { animation: knopfSchein 9s cubic-bezier(.45, .05, .35, 1) 2.4s infinite; }
+  .knopf:not(.zweit):hover::after { animation: knopfZeigen .8s cubic-bezier(.45, .05, .35, 1) 1 both; }
+  /* Der Kern im runden Check-Knopf schlägt wie der Fokus-Punkt im Film (ein Schlag alle 2,8 s) */
+  .check-knopf .zeichen .kern { transform-box: fill-box; transform-origin: center; animation: kernSchlag 2.8s ease-out infinite; }
+}
+@keyframes knopfZeigen { 0% { transform: translateX(-110%) skewX(-18deg); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateX(290%) skewX(-18deg); opacity: 0; } }
+@keyframes kernSchlag { 0%, 100% { transform: scale(1); } 10% { transform: scale(1.16); } 60% { transform: scale(1); } }
+@keyframes knopfSchein { 0% { transform: translateX(-110%) skewX(-18deg); opacity: 0; } 2% { opacity: 1; } 13% { opacity: 1; } 15% { transform: translateX(290%) skewX(-18deg); opacity: 0; } 100% { transform: translateX(290%) skewX(-18deg); opacity: 0; } }
 .dunkel .knopf { background: var(--hell); color: var(--nacht); border-color: var(--hell); }
 .dunkel .knopf:hover { background: #FFFFFF; border-color: #FFFFFF; }
 .dunkel .knopf.zweit { background: transparent; color: var(--hell); border-color: rgba(242, 243, 243, .34); }

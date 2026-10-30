@@ -71,6 +71,7 @@ if (!szene) {
       still.groesse();
       geschichte(still.zustand, { fokus: 1, momentum: 1, durchbruch: 1 });
       still.zustand.punkteSichtbar = 0;
+      still.zustand.puls = 0;
       still.malen(4);
     };
     malen();
@@ -125,7 +126,8 @@ function takt(jetzt) {
   pGlatt += (roh - pGlatt) * (1 - Math.exp(-dt * 6));
   if (Math.abs(roh - pGlatt) < 0.0002) pGlatt = roh;
   anwenden(pGlatt, start !== null);
-  if (pGlatt < 0.999 && !document.hidden) {
+  // Solange der Film zu sehen ist, wird gemalt — auch am Ende, damit der Kern im fertigen Logo weiter pulsiert
+  if (!document.hidden && film.getBoundingClientRect().bottom > 0) {
     const z = szene.zustand;
     geschichte(z, { fokus: span(pGlatt, ABLAUF.fokus), momentum: span(pGlatt, ABLAUF.momentum), durchbruch: span(pGlatt, ABLAUF.durchbruch) });
     // Beim Start tauchen die Punkte langsam auf
