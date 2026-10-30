@@ -410,11 +410,11 @@ export function InboxZwei() {
   // füllen die Höhe und rollen je für sich. Ohne offenes Gespräch steht rechts das Lagebild (ZOE-Satz, Vorschläge, Postfächer, Fluss); in einer Spalte
   // (schmal, Handy) steht es kurz über der Liste. Die Fächer sind Abschnitte EINER Liste (keine Karten in Karten).
   const liste = sucht ? (
-    <div style={{ display: 'grid', gap: 14, minWidth: 0, paddingTop: 12 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, minWidth: 0, paddingTop: 12 }}>
       <SuchErgebnisse frage={frage.trim()} filter={filterQuery} offenId={offenId} onOeffnen={id => setOffenId(id)} />
     </div>
   ) : (
-    <div style={{ display: 'grid', minWidth: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0 }}>
       {!s && !fehler && <div style={{ paddingTop: 12 }}><Leer>lädt …</Leer></div>}
       {s && !s.postfaecher.length && !uebergaben.length && !unzugeordnet.length && !fremderBereich && (
         <div style={{ paddingTop: 12 }}>
@@ -478,11 +478,12 @@ export function InboxZwei() {
       v={{ betreff: neueMail.betreff ?? '', von: [], postfaecher: s.postfaecher.filter(p => p.quelle !== 'whatsapp' && p.zustand.stufe !== 'anmeldung').map(p => ({ id: p.id, name: `${p.anzeigename} · ${p.bereichName}` })), start: { an: neueMail.an, text: neueMail.text, betreff: neueMail.betreff }, ...(neueMail.anhaenge?.length ? { anhaenge: neueMail.anhaenge } : {}), ...(neueMail.beleg ? { beleg: neueMail.beleg } : {}) }} />
   ) : null;
 
-  /** Das Lagebild: rechts, solange kein Gespräch offen ist (zwei Spalten); in einer Spalte kurz über der Liste (ohne Fluss und Tastenhilfe). */
+  /** Das Lagebild: rechts, solange kein Gespräch offen ist (zwei Spalten); in einer Spalte kurz über der Liste — nur die Zahlen und der ZOE-Satz
+   *  (Postfächer im „⋯“, Vorschläge, Fluss und Tastenhilfe nur in der Spalte rechts), damit die Liste oben bleibt. */
   const lagebild = (voll: boolean) => (s && s.postfaecher.length > 0 && !sucht ? (
     <div style={{ display: 'grid', gap: 16, minWidth: 0 }} data-inbox="lagebild">
       <div style={{ display: 'grid', gap: 10 }} data-inbox="lage">
-        <Ueberschrift farbe={lageZahl ? KUGEL.granat : KUGEL.smaragd}>Lage</Ueberschrift>
+        {voll && <Ueberschrift farbe={lageZahl ? KUGEL.granat : KUGEL.smaragd}>Lage</Ueberschrift>}
         {s.lage.length === 0 && <div style={{ fontSize: TYP.body, color: C.inkDim }}>Nichts offen.</div>}
         {s.lage.map(l => (
           <div key={String(l.bereich)} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -498,16 +499,16 @@ export function InboxZwei() {
           <span style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, display: 'block' }}>ZOE schlägt vor</span>
           {s.zoe.text}{s.zoe.gespraech ? ' ›' : ''}
         </button>
-        <AufgabenVorschlaege meldung={t => melden(t)} space={space} />
+        {voll && <AufgabenVorschlaege meldung={t => melden(t)} space={space} />}
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }} data-inbox="postfach-leiste">
+      {voll && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }} data-inbox="postfach-leiste">
         {s.postfaecher.map(p => (
           <button key={p.id} type="button" onClick={() => setAnsicht('postfaecher')} title={STUFE_TEXT[p.zustand.stufe]}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '6px 12px', borderRadius: 999, border: `1px solid ${C.linie}`, background: 'rgba(255,255,255,.03)', color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, cursor: 'pointer' }}>
             <Punkt farbe={STUFE_FARBE[p.zustand.stufe]} />{p.anzeigename}{p.zustand.stufe !== 'aktuell' ? <span style={{ color: C.inkLeise }}>· {STUFE_TEXT[p.zustand.stufe]}</span> : null}
           </button>
         ))}
-      </div>
+      </div>}
       {voll && <FlussKarte bereich="inbox" farbe={KUGEL.granat} />}
       {voll && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Tasten: / suchen · j/k wandern · Enter öffnen · e erledigt · s später · a Aufgabe · r antworten · Esc schließen</div>}
     </div>
@@ -577,7 +578,7 @@ export function InboxZwei() {
           <Knopf leise onClick={abgleichen}>Jetzt abgleichen</Knopf>
         </>}
         leiste={leisteZeile} hinweise={hinweise}
-        liste={liste} detail={detail} detailKennung={offenId} leer={st => lagebild(st.zwei)} leerOben verhaeltnis="2:3" />
+        liste={liste} detail={detail} detailKennung={offenId} leer={st => lagebild(st.zwei)} leerOben verhaeltnis="2:3" zweiAb={820} />
       {hinweis}
     </>
   );

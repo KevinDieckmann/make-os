@@ -676,8 +676,8 @@ Muster: Firmen, Deals › Liste, Angebote, Finanzen › Rechnungen, Mandate.
   abgeschnittene Chip-Reihe — umbrechen oder ins Popover. Menüs aus dem Popover (Wahl-Chips) liegen im Portal; das Popover bleibt dabei offen.
 - **Höhe:** die Fläche füllt den sichtbaren Bereich bis unten (gemessen wie der Kalender; `<main>` endet über der Ablage mit der ZOE-Kugel — dort liegt
   nichts darunter). Liste und Detail rollen JE FÜR SICH (`.af-spalte`), Kopf und Filter bleiben stehen, `listeKopf` (Tabellenkopf) und `ListenAbschnitt`-
-  Köpfe kleben oben in der Liste. Die Seite selbst rollt nicht. Keine Scrollkästen im Detail (Mailtext steht voll im Gespräch).
-- **Spalten nach der Breite der FLÄCHE** (`ZWEI_AB` = 720 px, nicht das Fenster): zwei Spalten Liste | Detail (`verhaeltnis`); ohne Auswahl steht rechts
+  Köpfe kleben oben in der Liste. Die Seite selbst rollt nicht (erst unter `FLAECHE_MIN` = 220 px Resthöhe, in sehr flachen Fenstern). Keine Scrollkästen im Detail (Mailtext steht voll im Gespräch).
+- **Spalten nach der Breite der FLÄCHE** (`ZWEI_AB` = 720 px bzw. je Seite `zweiAb` — Kontakte 880 px, weil Tabelle UND Karteikarte Platz brauchen —, nicht das Fenster): zwei Spalten Liste | Detail (`verhaeltnis`); ohne Auswahl steht rechts
   `leer` (Inbox: das Lagebild; Kontakte: ein Satz). Schmaler: Liste ODER Detail (das Detail trägt „‹ Zurück“, `useArbeitsflaeche().zwei`), `leerOben`
   stellt `leer` dann kurz über die Liste. Handy (≤ 720 px, `.af-frei`): kein fester Rahmen, Liste → Detail als Schritt im Seitenfluss wie bisher.
 - **Gruppen sind Abschnitte EINER Liste** (`ListenAbschnitt`: Punkt in Bereichsfarbe, Großbuchstaben-Beschriftung, Zahl rechts) — keine Karten in Karten.

@@ -94,6 +94,9 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
   const space = spaceVon(g);
   const wa = g.quelle === 'whatsapp' && g.whatsapp ? g.whatsapp : null;
   const kandidaten = a.kontext.kandidaten ?? [];
+  // „Kontakt anlegen“ steht in der Zeile oben (ohne Person in der Kartei) — dann nicht noch einmal unter „ZOE schlägt vor“.
+  const kontaktKnopfOben = !a.kontext.kontakt && g.fach !== 'info' && !g.zuordnung && kandidaten.length < 2 && kontaktAnlegenErlaubt(g.bereich);
+  const vorschlaege = a.vorschlaege.filter(v => !(kontaktKnopfOben && v.art === 'kontakt'));
   const tu = async (was: string, extra: Record<string, unknown> = {}, rueck?: string) => {
     const r = await aktion(id, was, extra);
     meldung(r.d.ok ? String(r.d.text ?? 'Erledigt.') : String(r.d.fehler ?? 'Das ging nicht.'), r.d.ok && rueck ? () => { void aktion(id, rueck).then(() => onGeaendert()); } : undefined);
@@ -217,10 +220,10 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
         </Hinweis>
       )}
 
-      {a.vorschlaege.length > 0 && (
+      {vorschlaege.length > 0 && (
         <div role="group" aria-label="ZOE schlägt vor" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8, padding: 12, borderRadius: 16, background: 'rgba(255,255,255,.03)', border: `1px solid ${C.linie}` }}>
           <div style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>ZOE schlägt vor · nur auf Klick</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{a.vorschlaege.map(v => <Knopf key={v.art + v.text} leise onClick={() => vorschlag(v)}>{v.text}</Knopf>)}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{vorschlaege.map(v => <Knopf key={v.art + v.text} leise onClick={() => vorschlag(v)}>{v.text}</Knopf>)}</div>
         </div>
       )}
 

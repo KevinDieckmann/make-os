@@ -341,7 +341,7 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
 
   return (
     <>
-      <Arbeitsflaeche titel="Kontakte" label="Kontakte" zaehler={zaehlerText} verhaeltnis="3:2"
+      <Arbeitsflaeche titel="Kontakte" label="Kontakte" zaehler={zaehlerText} verhaeltnis="3:2" zweiAb={880}
         neben={seitenKopf?.neben}
         mehr={<>
           {seitenKopf?.mehr}

@@ -20,7 +20,7 @@ import { useHandy } from './medien';
 /** Ab dieser Breite der FLÄCHE (nicht des Fensters) stehen Liste und Detail nebeneinander. */
 export const ZWEI_AB = 720;
 /** Kleinste Höhe der Fläche — darunter scrollt die Seite wie gewohnt (sehr flache Fenster). */
-export const FLAECHE_MIN = 340;
+export const FLAECHE_MIN = 220;
 
 export interface FlaecheStand { zwei: boolean; frei: boolean }
 /** Ein Inhalt der Fläche — fest oder abhängig davon, ob zwei Spalten stehen (die Seite weiß das erst, wenn die Fläche gemessen hat). */
@@ -75,7 +75,8 @@ function useRestHoehe(ref: { current: HTMLElement | null }, aus: boolean): numbe
     const main = el.closest('main');
     main?.addEventListener('scroll', spaeter, { passive: true });
     const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(spaeter);
-    const seite = el.closest('.af'); if (ro && seite) for (const k of Array.from(seite.children)) if (k !== el) ro.observe(k);
+    // Die ganze Fläche beobachten: erscheint über dem Körper etwas (Suche und Filter nach dem Laden, ein Hinweis), wächst sie — dann neu messen.
+    const seite = el.closest('.af'); if (ro && seite) ro.observe(seite);
     const kopf = document.querySelector('.wachstum-kopf'); if (ro && kopf) ro.observe(kopf);
     return () => { window.removeEventListener('resize', spaeter); main?.removeEventListener('scroll', spaeter); ro?.disconnect(); if (bild) cancelAnimationFrame(bild); };
   }, [ref, aus]);
@@ -152,24 +153,27 @@ export function ListenAbschnitt({ titel, farbe, rechts, children, id }: { titel:
  * `detail` = null → in zwei Spalten steht `leer` rechts (z. B. das Lagebild), schmal nur die Liste. `listeKopf` klebt oben in der Liste (Tabellenkopf).
  * `breite` = höchste Breite (Standard 1600 px; die Fläche nutzt breite Bildschirme).
  */
-export function Arbeitsflaeche({ titel, zaehler, haupt, neben, mehr, leiste, hinweise, liste, listeKopf, detail, detailKennung, leer, leerOben, verhaeltnis = '2:3', breite = 1600, className, label }: {
+export function Arbeitsflaeche({ titel, zaehler, haupt, neben, mehr, leiste, hinweise, liste, listeKopf, detail, detailKennung, leer, leerOben, verhaeltnis = '2:3', zweiAb = ZWEI_AB, breite = 1600, className, label }: {
   titel: ReactNode; /** Ruhiger Zähler neben dem Titel („4 brauchen Antwort“). */ zaehler?: ReactNode;
   /** Die EINE Hauptaktion. */ haupt?: ReactNode; /** Leise Knöpfe vor „⋯“ (sparsam: ZOE/Head). */ neben?: ReactNode; /** Inhalt des „⋯“-Menüs. */ mehr?: ReactNode;
   leiste?: ReactNode; hinweise?: ReactNode; liste: FlaecheInhalt; listeKopf?: FlaecheInhalt; detail?: FlaecheInhalt | null; leer?: FlaecheInhalt;
   /** In EINER Spalte (schmal, Handy) steht `leer` über der Liste statt zu fehlen (z. B. das Lagebild der Inbox). */ leerOben?: boolean;
   /** Wechselt sie (anderes Gespräch, andere Person), beginnt die Scrollfläche des Details oben. */ detailKennung?: string | null;
-  /** Liste : Detail in zwei Spalten. */ verhaeltnis?: '1:1' | '2:3' | '1:2' | '3:2'; breite?: number; className?: string; label?: string;
+  /** Liste : Detail in zwei Spalten. */ verhaeltnis?: '1:1' | '2:3' | '1:2' | '3:2';
+  /** Ab dieser Breite der Fläche zwei Spalten (Standard `ZWEI_AB`; eine breite Tabelle mit Karteikarte braucht mehr). */ zweiAb?: number;
+  breite?: number; className?: string; label?: string;
 }) {
   const handy = useHandy();
   const [huelle, b] = useBreite();
   const koerper = useRef<HTMLDivElement | null>(null);
-  const zwei = !handy && (b ?? 0) >= ZWEI_AB;
+  const zwei = !handy && (b ?? 0) >= zweiAb;
   const hoehe = useRestHoehe(koerper, handy);
   const stand = useMemo<FlaecheStand>(() => ({ zwei, frei: handy }), [zwei, handy]);
   const d0 = detail == null ? null : aufloesen(detail, stand);
   const istDetail = d0 !== null && d0 !== undefined && d0 !== false;
   const zeigeListe = zwei || !istDetail;
   const leerInhalt = leer == null ? null : aufloesen(leer, stand);
+  const kopfInhalt = listeKopf == null ? null : aufloesen(listeKopf, stand);
   const rechts = istDetail ? d0 : zwei ? leerInhalt : null;
   const [l, d] = verhaeltnis.split(':').map(Number);
   // Wechselt das Detail (anderes Gespräch, andere Person), beginnt seine Scrollfläche oben.
@@ -193,7 +197,7 @@ export function Arbeitsflaeche({ titel, zaehler, haupt, neben, mehr, leiste, hin
           {zeigeListe && (
             <div className="af-spalte af-liste" data-af="liste">
               {leerOben && !zwei && !istDetail && leerInhalt ? <div className="af-liste-oben">{leerInhalt}</div> : null}
-              {listeKopf ? <div className="af-liste-kopf">{aufloesen(listeKopf, stand)}</div> : null}
+              {kopfInhalt != null && kopfInhalt !== false ? <div className="af-liste-kopf">{kopfInhalt}</div> : null}
               {aufloesen(liste, stand)}
             </div>
           )}
