@@ -395,6 +395,14 @@ html.menue-offen { overflow: hidden; }
 .kuerzel { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--sand); color: var(--tinte); font-weight: 600; font-size: 1.15rem; letter-spacing: .04em; }
 .person h3 { margin-top: 8px; font-size: var(--t-unter); }
 .person p:not(.etikett) { margin-top: 12px; }
+/* Das Team dahinter (Kevin 30.10.: „nicht wie eine Zwei-Mann-Show“): über die ganze Breite unter den beiden, mit den Fachgebieten der Partner */
+.person-netzwerk { grid-column: 1 / -1; border-top: 1px solid var(--haar); }
+.team > .person-netzwerk { padding-left: 0; border-left: 0; }
+.person-netzwerk .kuerzel { background: var(--akzent-zart); }
+.person-netzwerk .kuerzel .zeichen { width: 40px; height: 40px; color: var(--tinte); }
+.person-netzwerk p:not(.etikett) { max-width: 46rem; }
+.felder-liste { display: flex; flex-wrap: wrap; gap: 8px 10px; margin-top: 18px; }
+.felder-liste li { padding: 6px 14px; border: 1px solid var(--haar-mittel); border-radius: 999px; font-size: .92rem; color: var(--tinte); background: var(--papier-hell); }
 .werte-unten { margin-top: clamp(48px, 6vw, 80px); }
 .grundregel { font-size: 1.2rem; line-height: 1.5; color: var(--tinte); }
 

@@ -410,6 +410,12 @@
       "text": "Wir vermitteln kein Kapital und leben nicht von Beteiligungen."
     }
   ],
+  "team_netzwerk": {
+    "titel": "Das Team dahinter",
+    "rolle": "Feste Partner aus unserem Netzwerk",
+    "text": "Für jedes Projekt stellen wir das Team zusammen, das es braucht: Spezialisten, mit denen wir eingespielt sind. Sie haben trotzdem eine Ansprechperson, die für das Ergebnis geradesteht.",
+    "felder": ["Film und Video", "Design und Websites", "Entwicklung und Automatisierung", "PR und Redaktion", "Daten und KI", "Leadgenerierung"]
+  },
   "team": [
     {
       "name": "Kevin Dieckmann",

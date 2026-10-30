@@ -810,8 +810,8 @@ ${raster(F.leitidee.ursprung, 4)}
 ${raster(F.fuer_wen.map((w) => ({ etikett: w.richtung, titel: w.titel, text: w.text, unter: `Einstieg: ${w.einstieg}`, nr: false })), 3)}
 </div></section>
 
-<section class="abschnitt" aria-labelledby="team-titel"><div class="w">${abKopf({ marke: 'Team', h2: 'Wer hinter Fokus Innovation steht.', lead: 'Kevin für Vertrieb und Umsetzung, Malin für Bühne und Netzwerk. Für Umfang und Spezialthemen holen wir feste Partner aus unserem Netzwerk dazu.', id: 'team-titel' })}
-<div class="team erscheint">${F.team.map((p) => `<article class="person" id="${personAnker(p)}"><span class="kuerzel" aria-hidden="true">${e(p.kuerzel)}</span><div><p class="etikett">${e(p.rolle)}</p><h3>${e(p.name)}</h3><p>${t(p.text)}</p></div></article>`).join('')}</div></div></section>
+<section class="abschnitt" aria-labelledby="team-titel"><div class="w">${abKopf({ marke: 'Team', h2: 'Ein Kernteam, das führt.', ruhig: 'Ein Netzwerk, das liefert.', lead: 'Kevin verantwortet Vertrieb und Umsetzung, Malin Bühne und Netzwerk. Dahinter steht ein festes Netzwerk aus Spezialisten für Film, Design, Entwicklung, PR, Daten und Leadgenerierung. Für jedes Projekt stellen wir das Team zusammen, das es braucht.', id: 'team-titel' })}
+<div class="team erscheint">${F.team.map((p) => `<article class="person" id="${personAnker(p)}"><span class="kuerzel" aria-hidden="true">${e(p.kuerzel)}</span><div><p class="etikett">${e(p.rolle)}</p><h3>${e(p.name)}</h3><p>${t(p.text)}</p></div></article>`).join('')}${F.team_netzwerk ? `<article class="person person-netzwerk"><span class="kuerzel" aria-hidden="true">${ZEICHEN()}</span><div><p class="etikett">${e(F.team_netzwerk.rolle)}</p><h3>${e(F.team_netzwerk.titel)}</h3><p>${t(F.team_netzwerk.text)}</p><ul class="felder-liste">${F.team_netzwerk.felder.map((x) => `<li>${e(x)}</li>`).join('')}</ul></div></article>` : ''}</div></div></section>
 
 <section class="abschnitt" aria-labelledby="werte-titel"><div class="w">${abKopf({ marke: 'Werte', h2: 'Woran man uns erkennt.', lead: 'Drei Werte, an denen Sie uns messen können.', id: 'werte-titel' })}
 ${raster(F.werte, 3)}
@@ -1203,7 +1203,7 @@ ${klar(F.marke.beschreibung)} ${klar(F.leitidee.lead)} ${F.leitidee.absaetze.map
 
 ${faktenMd}
 
-${F.team.map((p) => `- ${p.name} (${p.rolle}): ${klar(p.text)}`).join('\n')}
+${F.team.map((p) => `- ${p.name} (${p.rolle}): ${klar(p.text)}`).join('\n')}${F.team_netzwerk ? `\n- ${F.team_netzwerk.titel} (${F.team_netzwerk.rolle}): ${klar(F.team_netzwerk.text)} Fachgebiete: ${F.team_netzwerk.felder.join(', ')}.` : ''}
 
 Was wir nicht sind: ${F.nicht.map((x) => `${x.titel} (${klar(x.text)})`).join('; ')}.
 
