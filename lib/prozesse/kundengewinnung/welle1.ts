@@ -176,9 +176,11 @@ const V12: KgVorlage = {
         S.ereignis('t', 'Deal gewonnen', 'deal-stufe', [B.ist('ereignis.stufe', 'gewonnen')]),
         S.regel('a1', 'Mandat schon da?', [B.ist('deal.mandat-da', true)], { zweige: { nein: 'a2' } }),
         S.mandat('a2', 'Mandat anlegen', { schloss: { nein: 'a2g' } }),
-        S.glocke('a2g', 'Mandat abgelehnt', 'Das Mandat zum gewonnenen Deal wurde nicht angelegt — bitte ansehen.', EIGNER, { zweige: { ja: 'e0' } }),
-        S.fallStarten('a5', 'Fall starten'),
+        S.glocke('a2g', 'Mandat abgelehnt', 'Das Mandat zum gewonnenen Deal wurde nicht angelegt — bitte ansehen.', EIGNER, { zweige: { ja: 'e0', fehler: 'e0' } }),
+        // 30.10.: der Abbruch ist nur Seitenweg der Glocke (über „fehler“) — stand er im Strang, liefen „Mandat schon da? ja“, das angelegte Mandat bzw.
+        // (bis 29.10.) „Vertrag unterschrieben?“ von selbst hinein und der Lauf endete vor „Fall starten“.
         S.abbruch('e0', 'Ohne Mandat beendet'),
+        S.fallStarten('a5', 'Fall starten'),
       ] },
       { titel: 'Willkommen & Übergabe', schritte: [
         S.regel('a6', 'Darf die Willkommens-Mail raus?', [B.ist('deal.ampel-mail', 'gruen')], { zweige: { nein: 'a6p' } }),

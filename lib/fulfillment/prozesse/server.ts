@@ -375,7 +375,7 @@ async function prozesseMorgenlaufRest(h: string, heute: string, weg: import('@/l
     const [ue, { onboardingBild }] = await Promise.all([import('@/lib/prozesse/ueberfuehrung-server'), import('@/lib/prozesse/system-schritte-server')]);
     await ue.vergleichMeldenServer('sp-uebergabe', 'alt', heute, onboardingBild(ob.soll, heute));
   }
-  // 29.10. (Kreislauf, Kevin): Mandat beendet → Fall abgeschlossen — das Netz hinter dem CRM-Schreibweg (ab Einführung, nie rückwirkend). Wirft nie.
+  // 29.10. (Kreislauf, Inhaber): Mandat beendet → Fall abgeschlossen — das Netz hinter dem CRM-Schreibweg (ab Einführung, nie rückwirkend). Wirft nie.
   await (await import('./fall-server')).mandatsendeNetz(h, heute).catch(() => 0);
   const enden: Record<string, string | null> = Object.fromEntries(crm.mandate.map(m => [m.id, mandatsEnde(m)]));
   const nachsorge = nachsorgeFaellig({ faelle: Object.values(faelle.faelle), enden, tage: vorlagen.einstellungen.nachsorgeTage, heute });

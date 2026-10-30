@@ -36,6 +36,7 @@ const ERLAUBT: Record<string, string> = {
   'lib/demo/saat.ts': 'Demo-Saat (erfundene Mandate über die Route)',
   'lib/demo/fulfillment-ablauf.ts': 'Demo-Ablauf (erfundenes Mandat über die Route)',
   'lib/brain/app-spiegel.ts': 'kein CRM-Bestand — der Brain-Spiegel sammelt Mandate zum Schreiben der Markdown-Seiten',
+  'lib/crm/mandat-automatik-server.ts': 'Angebot angenommen → Mandat automatisch (29.10., Kreislauf): baut über `mandatAusDeal` (lib/crm/mandat-aus-deal.ts), mit Rückgängig',
   'lib/crm/verbindungen.ts': 'Reparatur der Verbindungsprüfung — schreibt die vorhandene Liste zurück, legt nichts an',
 };
 const MUSTER = [

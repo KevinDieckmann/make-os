@@ -146,11 +146,10 @@ const V10: KgVorlage = {
         S.text('a4', 'Nachfassen am Telefon', { art: 'anruf_leitfaden', kanal: 'telefon', anlass: 'Gestelltes Angebot' }, { zweige: { ja: 'a5' } }),
         S.mensch('a3', 'Frage oder Änderungswunsch?', 'Ist die Antwort eine Frage bzw. ein Änderungswunsch (ja) — oder schon Zusage bzw. Absage (nein, dann in der Angebots-Ansicht setzen)?', ZUSTAENDIG, { zweige: { ja: 'a6', nein: 'ea' }, frist: 2 }),
         S.ziel('ea', 'Entschieden — weiter über „Gewonnen“ bzw. „Verloren“'),
-        S.ziel('ev', 'Verloren'),
         S.wartenDatum('a5', 'Bis kurz vor Ablauf', 'angebot.gueltig-bis', -3, 30),
         S.mail('a5b', 'Erinnerung: Angebot läuft ab', { betreff: 'Unser Angebot zu {{deal.titel}}', text: '{{kontakt.gruss}},\n\nunser Angebot gilt noch wenige Tage — gibt es Fragen dazu?' }),
         S.mensch('a6', 'Wie weiter?', 'Neue Version (ja) — oder verloren mit Grund (nein)?', ZUSTAENDIG, { zweige: { nein: 'a6v' }, frist: 3 }),
-        S.aufgabe('a6v', 'Deal als verloren schließen', { titel: 'Deal schließen: verloren (Grund aus der Liste)', fristTage: 2 }, { zweige: { ja: 'ev' } }),
+        S.aufgabe('a6v', 'Deal als verloren schließen', { titel: 'Deal schließen: verloren (Grund aus der Liste)', fristTage: 2 }, { zweige: { ja: 'ea' } }), // 30.10.: verloren endet im gemeinsamen Ende „Entschieden“ (vorher eigenes Ende „Verloren“) — sonst 11 Schritte in der Phase
       ] },
       { titel: 'Neue Version', schritte: [
         S.angebotEntwurf('a7', 'Neue Version entwerfen'),

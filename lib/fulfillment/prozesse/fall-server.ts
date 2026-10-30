@@ -263,7 +263,7 @@ export async function mandatFallStarten(e: { mandatId: unknown; ablauf?: unknown
   return { fall: r.fall, art: r.art, ablauf: 'paket', laeufe: r.laeufe };
 }
 
-// ══ Mandat beendet → Fall abgeschlossen (29.10., Kevin: „automatisch abschließen“) ═══════════════════════════════════════════════════════════════
+// ══ Mandat beendet → Fall abgeschlossen (29.10., Inhaber: „automatisch abschließen“) ═══════════════════════════════════════════════════════════════
 
 /** Marke am Fall: wann ihn das Ende des Mandats abgeschlossen hat (Tag). */
 export const MARKE_MANDATSENDE = 'abgeschlossen:mandatsende';
@@ -290,7 +290,7 @@ export async function fallNachMandatsende(mandatId: string, jetzt = new Date()):
       return { ok: true, datei: { ...d, faelle: { ...d.faelle, [mandatId]: neu } }, geaendert: [mandatId] };
     }, { art: 'system' }, h);
     if (!r.ok || !neu) return false;
-    // Offene Aufgaben der Ausführung schließen (die Ausführung räumt abgeschlossene Fälle auf), offene Werkstatt-Läufe am Fall beenden (Kevin 29.10.: außer
+    // Offene Aufgaben der Ausführung schließen (die Ausführung räumt abgeschlossene Fälle auf), offene Werkstatt-Läufe am Fall beenden (Inhaber 29.10.: außer
     // Nachsorge/Verlängerung) — DANN melden, damit die Läufe, die an „Fall abgeschlossen“ starten, nicht mit enden. Alles wirft nie.
     await import('./ausfuehrung-server').then(a => a.ablaufNachziehen({ mandatId, person: null, wer: { art: 'system' }, jetzt })).catch(() => null);
     await import('@/lib/prozesse/lauf-server').then(l => l.mandatsendeLaeufeAbbrechen(mandatId, jetzt)).catch(() => 0);
