@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Arbeitsheft: Vom Gründer-Vertrieb zum Vertriebsteam</title>
+<link rel="stylesheet" href="basis.css">
+<style>
+  /* Arbeitsheft · eigene Bausteine (basis.css bleibt unverändert) */
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 160mm; }
+  h2.blatt { margin-top: 5mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  .vorzeile + h2.blatt { margin-top: 1.6mm; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  h3 { font-size: 10.5pt; line-height: 1.3; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  .klein { font-size: 8.8pt; line-height: 1.4; color: var(--tinte-leise); }
+
+  /* „So füllen Sie ihn aus“: Lavendel-Linie links */
+  .so { margin-top: 2.6mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.8pt; line-height: 1.45; max-width: 168mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9.2pt; line-height: 1.45; }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+
+  .abschnitt-titel { margin-top: 4.6mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; }
+  .abschnitt-titel small { font-size: 8.4pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+
+  /* Felder in einer Reihe */
+  .reihe { display: flex; gap: 6mm; margin-top: 2.4mm; }
+  .reihe .feld { flex: 1; }
+  .reihe .feld.schmal { flex: .55; }
+  .reihe .feld.breit { flex: 1.8; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6.2mm; }
+  .feld .einheit { color: var(--tinte-leise); }
+
+  /* Schreiblinien */
+  .linien .zeile-frei { height: 7.2mm; }
+  .linien.eng .zeile-frei { height: 6.4mm; }
+  .beschriftet { display: grid; grid-template-columns: 52mm 1fr; column-gap: 4mm; align-items: end; }
+  .beschriftet + .beschriftet { margin-top: .4mm; }
+  .beschriftet.eng { grid-template-columns: 78mm 1fr; }
+  .beschriftet.eng > span { white-space: nowrap; }
+  .beschriftet.eng .zeile-frei, .beschriftet.eng .feld .strich { height: 6mm; }
+  .beschriftet.eng > span small { display: inline; margin-left: 1.4mm; }
+  .beschriftet > span { font-size: 9.2pt; color: var(--tinte); padding-bottom: 1.2mm; line-height: 1.25; }
+  .beschriftet > span small { display: block; color: var(--tinte-leise); font-size: 8pt; }
+
+  /* Raster-Tabellen */
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.8mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.4pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.6pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.2mm 1.8mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster .mitte { text-align: center; }
+  .raster .rechts { text-align: right; }
+  .raster td.leise { color: var(--tinte-leise); }
+  .raster td.zahl, .raster th.zahl { text-align: right; }
+  .raster tr.gruppe td { height: auto; padding-top: 2.4mm; padding-bottom: 1mm; border-left: 0; font-size: 7.6pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); border-bottom: var(--linie) solid var(--haar); }
+  .raster tr.summe td { border-top: .9pt solid var(--haar-stark); font-weight: 600; color: var(--tinte); }
+  .raster tr.bsp td { color: var(--tinte-leise); font-style: italic; font-size: 8.4pt; border-bottom: var(--linie) solid var(--haar); }
+  .raster td .zeile-frei { height: 6.6mm; }
+  .raster.dicht td { height: 6.6mm; padding-top: .9mm; padding-bottom: .6mm; }
+  .raster td .zeile-frei:last-child { border-bottom: 0; }
+
+  /* Ankreuzen */
+  .wahl { display: inline-flex; align-items: center; gap: 1.6mm; margin-right: 4.5mm; font-size: 9pt; white-space: nowrap; }
+  .liste li { display: grid; grid-template-columns: 1fr 13mm 13mm; align-items: start; padding: 1.5mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.38; }
+  .liste li .kreuz { justify-self: center; margin-top: .4mm; }
+  .liste.einfach li { grid-template-columns: 6mm 1fr; }
+  .liste.einfach li .kreuz { justify-self: start; }
+  .liste-kopf { display: grid; grid-template-columns: 1fr 13mm 13mm; font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); text-align: center; margin-top: 3.4mm; padding-bottom: 1.2mm; border-bottom: .9pt solid var(--haar-stark); }
+  .liste-kopf span:first-child { text-align: left; color: var(--tinte); letter-spacing: .15em; }
+
+  /* Skala 1 bis 5 zum Einkreisen */
+  .skala { display: inline-flex; gap: 1.1mm; }
+  .skala span { width: 4.6mm; height: 4.6mm; border: var(--linie) solid var(--tinte-leise); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 7.4pt; color: var(--tinte-leise); font-variant-numeric: tabular-nums; }
+
+  /* Fragen mit A/B/C */
+  .frage { padding: 2mm 0 2.2mm; border-bottom: var(--linie) solid var(--haar); }
+  .frage h3 { display: grid; grid-template-columns: 6mm 1fr; }
+  .frage ol { margin-top: 1.2mm; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 5mm; padding-left: 6mm; }
+  .frage li { display: grid; grid-template-columns: 5mm 4mm 1fr; column-gap: .6mm; font-size: 9pt; line-height: 1.35; }
+  .frage li b { color: var(--akzent); font-weight: 600; }
+  .frage li .kreuz { margin-top: .5mm; }
+
+  /* Spalten */
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .drei { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+  .spalte-kopf { padding-bottom: 1.4mm; border-bottom: .9pt solid var(--haar-stark); }
+  .spalte-kopf .nr { font-size: 8pt; letter-spacing: .1em; }
+  .spalte-kopf h3 { margin-top: .4mm; }
+  .vorschlag { min-height: 31mm; margin-top: 1.4mm; font-size: 8.8pt; line-height: 1.38; color: var(--tinte-text); }
+  .vorschlag li { padding-left: 3mm; text-indent: -3mm; margin-top: .6mm; }
+  .vorschlag li::before { content: "·"; color: var(--akzent); display: inline-block; width: 3mm; text-indent: 0; font-weight: 700; }
+  .unterzeile { margin-top: 2.4mm; font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); }
+
+  /* Inhalt auf dem Deckblatt */
+  .inhalt { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+  .inhalt th { font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); text-align: center; padding: 0 0 1.2mm; border-bottom: .9pt solid var(--haar-stark); }
+  .inhalt th:nth-child(-n+2) { text-align: left; }
+  .inhalt td { padding: 1.35mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.6pt; }
+  .inhalt td:first-child, .inhalt th:first-child { width: 14mm; color: var(--akzent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .inhalt td.p { width: 17mm; text-align: center; }
+  .punkt { display: inline-block; width: 2.4mm; height: 2.4mm; border-radius: 50%; background: var(--akzent); }
+  .punkt.leer { background: none; border: var(--linie) solid var(--haar); }
+
+  .schritte-liste li { display: grid; grid-template-columns: 7mm 1fr; padding: 1.8mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.8pt; line-height: 1.42; }
+  .schritte-liste li:last-child { border-bottom: 0; }
+  .schritte-liste.dicht li { padding: 1.3mm 0; font-size: 9pt; line-height: 1.35; }
+
+  .auswertung { margin-top: 3.4mm; display: grid; grid-template-columns: 70mm 1fr; column-gap: 8mm; padding-top: 2.4mm; border-top: .9pt solid var(--haar-stark); }
+  .auswertung .zaehler { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+  .auswertung .zaehler .strich { min-width: 8mm; }
+  .phasen-text li { padding: 1.4mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.38; }
+  .phasen-text li:last-child { border-bottom: 0; }
+  .phasen-text b { color: var(--tinte); font-weight: 600; }
+
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+  .wege li { display: grid; grid-template-columns: 9mm 1fr; padding: 3mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .wege li:last-child { border-bottom: 0; }
+  .wege .nr { font-size: 13pt; line-height: 1.2; }
+  .wege h3 { font-size: 12pt; }
+  .wege .adresse { margin-top: .8mm; font-size: 10.5pt; color: var(--akzent); font-weight: 600; letter-spacing: .005em; }
+  .wege p { margin-top: .8mm; font-size: 10pt; line-height: 1.45; }
+  .unten { margin-top: auto; }
+  .unten + .fuss { margin-top: 3mm; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="37.2" cy="9.3" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+</svg>
+
+<!-- 1 · Deckblatt -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Arbeitsheft · Vertrieb</p>
+    <h1>Vom Gründer-Vertrieb zum Vertriebsteam</h1>
+    <p class="lead">Bögen zum Ausfüllen für alle drei Phasen: Phase bestimmen, Rollen beschreiben, gute Leute auswählen und einarbeiten, fair bezahlen und mit einem festen Rhythmus führen.</p>
+  </div>
+
+  <p class="abschnitt-titel">So arbeiten Sie mit dem Heft</p>
+  <ol class="schritte-liste">
+    <li><span class="nr">1</span><span>Beginnen Sie mit der <b class="stark">Standortbestimmung</b> auf Seite 2 und 3. Sie zeigt Ihre Phase und was dort zuerst fehlt.</span></li>
+    <li><span class="nr">2</span><span>Bearbeiten Sie danach die Bögen, die zu Ihrer Phase passen. Die Übersicht unten zeigt, welche das sind.</span></li>
+    <li><span class="nr">3</span><span>Füllen Sie mit Bleistift aus und besprechen Sie jeden Bogen mit den Menschen, die er betrifft. Bögen für einzelne Personen kopieren Sie.</span></li>
+    <li><span class="nr">4</span><span>Nehmen Sie das Heft nach drei Monaten wieder zur Hand. Die Phase ändert sich, die Bögen wachsen mit.</span></li>
+  </ol>
+
+  <p class="abschnitt-titel">Inhalt <small>● gehört zu dieser Phase</small></p>
+  <table class="inhalt">
+    <thead><tr><th>Seite</th><th>Bogen</th><th>Start</th><th>Aufbau</th><th>Wachstum</th></tr></thead>
+    <tbody id="inhalt"></tbody>
+  </table>
+
+  <div class="hinweis unten">Den ausführlichen Leitfaden zu diesem Heft finden Sie unter <b>fokusinnovation.de/wissen/vom-gruender-vertrieb-zum-vertriebsteam/</b>. Hinweise zu Recht und Vergütung sind keine Rechtsberatung. Stand: Oktober 2026.</div>
+</section>
+
+<!-- 2 · Standortbestimmung A -->
+<section class="seite">
+  <p class="vorzeile">Standortbestimmung · Teil 1</p>
+  <h2 class="blatt">In welcher Phase steht Ihr Vertrieb?</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Kreuzen Sie bei jeder Frage die Antwort an, die heute am ehesten stimmt, nicht die, die Sie sich wünschen. Zählen Sie danach, wie oft Sie A, B und C gewählt haben.</p>
+
+  <div id="fragen" style="margin-top:2mm"></div>
+
+  <div class="auswertung">
+    <div>
+      <h3>Auswertung</h3>
+      <div class="zaehler" style="margin-top:2mm">
+        <p class="feld"><span class="akzent">A</span><span class="strich"></span></p>
+        <p class="feld"><span class="akzent">B</span><span class="strich"></span></p>
+        <p class="feld"><span class="akzent">C</span><span class="strich"></span></p>
+      </div>
+      <p class="klein" style="margin-top:2.4mm">Meiste A: Start. Meiste B: Aufbau. Meiste C: Wachstum. Bei Gleichstand gilt die frühere Phase.</p>
+      <p style="margin-top:2.6mm; font-size:9.2pt"><span class="stark">Meine Phase</span></p>
+      <p style="margin-top:1.4mm"><span class="wahl"><span class="kreuz"></span>Start</span><span class="wahl"><span class="kreuz"></span>Aufbau</span><span class="wahl"><span class="kreuz"></span>Wachstum</span></p>
+    </div>
+    <ul class="phasen-text">
+      <li><b>Start.</b> Der Gründer verkauft selbst. Zuerst brauchen Sie feste Zeit für den Vertrieb, einen aufgeschriebenen Ablauf und eine Liste aller Chancen.</li>
+      <li><b>Aufbau.</b> Erste Vertriebler verkaufen mit. Zuerst brauchen Sie Leitfäden, Erwartungen je Rolle, einen Einarbeitungsplan und Zahlen je Person.</li>
+      <li><b>Wachstum.</b> Ein Team mit mehreren Rollen und einer Vertriebsleitung. Zuerst brauchen Sie einen festen Führungsrhythmus, eine Prognose und eine schriftliche Vergütung.</li>
+    </ul>
+  </div>
+  <p class="abschnitt-titel">Was mir beim Ausfüllen aufgefallen ist</p>
+  <div class="linien eng" data-linien="2"></div>
+</section>
+
+<!-- 3 · Standortbestimmung B -->
+<section class="seite">
+  <p class="vorzeile">Standortbestimmung · Teil 2</p>
+  <h2 class="blatt">Was steht in Ihrer Phase schon?</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Gehen Sie die Liste Ihrer Phase durch und kreuzen Sie an. Steht ein Punkt nur halb, zählt er als nein. Was in Ihrer Phase mit nein markiert ist, holen Sie nach, bevor Sie die nächste Phase angehen.</p>
+  <div id="fundament"></div>
+  <p class="abschnitt-titel">Das hole ich zuerst nach</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:34mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th></th><th>Was</th><th>Wer</th><th>Bis wann</th></tr></thead>
+    <tbody><tr><td class="leise">1</td><td></td><td></td><td></td></tr><tr><td class="leise">2</td><td></td><td></td><td></td></tr><tr><td class="leise">3</td><td></td><td></td><td></td></tr></tbody>
+  </table>
+</section>
+
+<!-- 4 · Rollenprofil -->
+<section class="seite">
+  <p class="vorzeile">Rollen · Aufbau und Wachstum</p>
+  <h2 class="blatt">Rollenprofil</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Beschreiben Sie eine Rolle, bevor Sie jemanden dafür suchen oder Aufgaben neu verteilen. Ein Bogen je Rolle, also kopieren Sie die Seite bei Bedarf. Übliche Rollen sind Erstansprache und Termine, Beratung und Abschluss, Kundenbetreuung, Vertriebsassistenz und Vertriebsleitung.</p>
+
+  <div class="reihe">
+    <p class="feld breit"><span>Name der Rolle</span><span class="strich"></span></p>
+    <p class="feld"><span>berichtet an</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>Stunden je Woche</span><span class="strich"></span></p>
+  </div>
+
+  <p class="abschnitt-titel">Wozu es die Rolle gibt <small>ein Satz</small></p>
+  <div class="linien" data-linien="2"></div>
+
+  <p class="abschnitt-titel">Wo die Rolle beginnt und endet</p>
+  <div class="beschriftet"><span>Die Aufgabe beginnt, wenn …</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Die Aufgabe endet, wenn …</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Übernimmt von<small>Rolle und was übergeben wird</small></span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Übergibt an<small>Rolle und was übergeben wird</small></span><div class="zeile-frei"></div></div>
+
+  <p class="abschnitt-titel">Die fünf wichtigsten Aufgaben</p>
+  <table class="raster"><colgroup><col style="width:7mm"><col></colgroup><tbody id="aufgaben5"></tbody></table>
+
+  <p class="abschnitt-titel">Gehört ausdrücklich nicht dazu</p>
+  <div class="linien" data-linien="2"></div>
+
+  <p class="abschnitt-titel">Lohnt sich die Rolle schon als eigene Stelle?</p>
+  <ul class="liste einfach">
+    <li><span class="kreuz"></span><span>Die Aufgabe füllt eine Person mindestens zur Hälfte aus.</span></li>
+    <li><span class="kreuz"></span><span>Wer sie heute nebenbei macht, kommt dadurch nicht zu wichtigerer Arbeit, etwa zu Abschlüssen.</span></li>
+    <li><span class="kreuz"></span><span>Der Ablauf ist aufgeschrieben, eine neue Person kann ihn lernen.</span></li>
+    <li><span class="kreuz"></span><span>Die Übergaben zu den anderen Rollen sind geregelt.</span></li>
+  </ul>
+  <p class="klein" style="margin-top:1.6mm">Drei oder vier Kreuze: Eine eigene Rolle lohnt sich. Weniger: Holen Sie zuerst nach, was fehlt.</p>
+</section>
+
+<!-- 5 · Erwartungen je Rolle -->
+<section class="seite">
+  <p class="vorzeile">Rollen · Aufbau und Wachstum</p>
+  <h2 class="blatt">Erwartungen je Rolle</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Tragen Sie je Rolle ein, was Sie erwarten, in vier Teilen. Eingabe-Kennzahlen hat die Person selbst in der Hand, Ergebnis-Kennzahlen zeigen, was herauskommt. Zielwerte tragen Sie erst nach einigen Wochen Messung ein, bis dahin nur die Kennzahl.</p>
+
+  <table class="raster">
+    <colgroup><col style="width:27mm"><col><col><col><col></colgroup>
+    <thead><tr><th>Rolle</th><th>Verhalten<small>wie die Person arbeitet</small></th><th>Aufgaben<small>wofür sie zuständig ist</small></th><th>Eingabe-Kennzahlen<small>mit Zielwert je Woche</small></th><th>Ergebnis-Kennzahlen<small>mit Zielwert je Monat</small></th></tr></thead>
+    <tbody>
+      <tr class="bsp"><td>Beispiel:<br>Beratung und Abschluss</td><td>bereitet jedes Gespräch vor, schickt Angebote in der vereinbarten Frist, fasst nach</td><td>Bedarfsgespräch, Angebot, Verhandlung, Übergabe an die Umsetzung</td><td>geführte Gespräche, Angebote mit Nachfass-Datum</td><td>Abschlussquote, Auftragswert</td></tr>
+    </tbody>
+    <tbody id="erwartungen"></tbody>
+  </table>
+
+  <div class="reihe" style="margin-top:4mm">
+    <p class="feld"><span>Besprochen mit</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>am</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>nächste Prüfung</span><span class="strich"></span></p>
+  </div>
+  <p class="hinweis">Was hier steht, ist die Grundlage für das Einzelgespräch auf Seite 13. Erwartungen, die nicht aufgeschrieben sind, kann niemand erfüllen und niemand einfordern.</p>
+</section>
+
+<!-- 6 · Anforderungsprofil -->
+<section class="seite">
+  <p class="vorzeile">Einstellen · Stufe 1</p>
+  <h2 class="blatt">Anforderungsprofil</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Füllen Sie den Bogen aus dem Rollenprofil heraus aus. Was hier steht, wird zur Stellenanzeige und zur Grundlage des Bewertungsbogens. Formulieren Sie neutral, ohne Bezug auf Alter, Geschlecht oder Herkunft (§ 11 AGG).</p>
+
+  <div class="reihe">
+    <p class="feld breit"><span>Stelle</span><span class="strich"></span></p>
+    <p class="feld"><span>Beginn</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>Std./Woche</span><span class="strich"></span></p>
+  </div>
+  <div class="reihe">
+    <p class="feld"><span>Arbeitsort und mobiles Arbeiten</span><span class="strich"></span></p>
+    <p class="feld"><span>Ansprechperson</span><span class="strich"></span></p>
+  </div>
+
+  <p class="abschnitt-titel">Die Aufgabe in drei Sätzen</p>
+  <div class="linien eng" data-linien="3"></div>
+  <p class="abschnitt-titel">Woran wir nach 90 Tagen sehen, dass es passt</p>
+  <div class="linien eng" data-linien="2"></div>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Muss-Anforderungen <small>ohne sie keine Einladung</small></p>
+      <div class="linien eng" data-linien="3"></div>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Kann-Anforderungen <small>ein Plus</small></p>
+      <div class="linien eng" data-linien="3"></div>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Fähigkeiten, die wir im Gespräch und am Probetag prüfen</p>
+  <p class="text" style="margin-top:1.6mm">Gesprächsführung · Fragen und Zuhören · Umgang mit Einwänden · Verbindlichkeit · Lernfähigkeit · eigene:</p>
+  <div class="linien eng" data-linien="1"></div>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Werte, auf die wir achten</p>
+      <div class="linien eng" data-linien="2"></div>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Rahmen der Vergütung</p>
+      <div class="reihe" style="margin-top:1.2mm"><p class="feld"><span>fest von</span><span class="strich"></span><span class="einheit">€</span></p><p class="feld"><span>bis</span><span class="strich"></span><span class="einheit">€</span></p></div>
+      <div class="reihe" style="margin-top:1mm"><p class="feld"><span>variabel</span><span class="strich"></span></p></div>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Ablauf der Auswahl</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col style="width:52mm"><col><col style="width:30mm"><col style="width:24mm"></colgroup>
+    <thead><tr><th></th><th>Stufe</th><th>Was wir dort prüfen</th><th>Wer</th><th>Termin bis</th></tr></thead>
+    <tbody id="stufen"></tbody>
+  </table>
+</section>
+
+<!-- 7 · Bewertungsbogen -->
+<section class="seite">
+  <p class="vorzeile">Einstellen · Stufe 4</p>
+  <h2 class="blatt">Bewertungsbogen Vorstellungsgespräch</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Stellen Sie allen Bewerbern dieselben Fragen und dasselbe Rollenspiel. Zwei Personen füllen je einen Bogen aus, ohne sich vorher abzustimmen, und vergleichen erst danach. Bewerten Sie, was Sie gesehen haben, nicht den Eindruck.</p>
+
+  <div class="reihe">
+    <p class="feld breit"><span>Bewerbung von</span><span class="strich"></span></p>
+    <p class="feld"><span>Rolle</span><span class="strich"></span></p>
+  </div>
+  <div class="reihe">
+    <p class="feld"><span>Datum</span><span class="strich"></span></p>
+    <p class="feld breit"><span>bewertet von</span><span class="strich"></span></p>
+  </div>
+
+  <p class="abschnitt-titel">Teil 1 · Fähigkeiten <small>1 nicht gezeigt · 3 solide · 5 stark und sicher</small></p>
+  <table class="raster">
+    <colgroup><col style="width:36mm"><col style="width:58mm"><col style="width:31mm"><col></colgroup>
+    <thead><tr><th>Fähigkeit</th><th>Woran Sie es erkennen</th><th>Punkte</th><th>Beobachtung</th></tr></thead>
+    <tbody id="faehigkeiten"></tbody>
+    <tbody><tr class="summe"><td>Summe Teil 1</td><td></td><td colspan="2"><span class="feld"><span class="strich" style="max-width:20mm"></span><span>von 30</span></span></td></tr></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Teil 2 · Passung</p>
+  <div class="beschriftet" style="margin-top:1.4mm"><span>Passt zu unseren Werten<br><span class="wahl" style="margin-top:1mm"><span class="kreuz"></span>ja</span><span class="wahl"><span class="kreuz"></span>nein</span></span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Kennt unsere Zielgruppe<br><span class="wahl" style="margin-top:1mm"><span class="kreuz"></span>ja</span><span class="wahl"><span class="kreuz"></span>teils</span><span class="wahl"><span class="kreuz"></span>nein</span></span><div class="zeile-frei"></div></div>
+
+  <p class="abschnitt-titel">Teil 3 · Rollenspiel <small>Aufgabe, was gut war, was fehlte</small></p>
+  <div class="linien eng" data-linien="3"></div>
+
+  <p class="abschnitt-titel">Entscheidung</p>
+  <p style="margin-top:2mm"><span class="wahl"><span class="kreuz"></span>weiter zum Probetag</span><span class="wahl"><span class="kreuz"></span>Absage</span><span class="wahl"><span class="kreuz"></span>offen, weil</span></p>
+  <div class="linien eng" data-linien="1"></div>
+  <p class="klein" style="margin-top:2mm">Bögen enthalten Daten über Bewerberinnen und Bewerber: sicher ablegen und nach dem Verfahren nicht länger aufbewahren als nötig.</p>
+</section>
+
+<!-- 8 · Probetag -->
+<section class="seite">
+  <p class="vorzeile">Einstellen · Stufe 5</p>
+  <h2 class="blatt">Probetag: Ablauf und Bewertung</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Planen Sie den Tag vorher und geben Sie der Person den Ablauf schriftlich. Bewerten Sie zweimal, am Vormittag und am Nachmittag: Entscheidend ist, was sich nach Ihrer Rückmeldung ändert.</p>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Vorher klären</p>
+      <ul class="liste einfach">
+        <li><span class="kreuz"></span><span>Ablauf, Dauer und Bezahlung schriftlich vereinbart, mindestens Mindestlohn je Stunde (seit 1.1.2026: 13,90 € brutto)</span></li>
+        <li><span class="kreuz"></span><span>Abrechnung mit der Lohnbuchhaltung geklärt</span></li>
+        <li><span class="kreuz"></span><span>Vertraulichkeit vereinbart, falls Kundendaten sichtbar sind</span></li>
+        <li><span class="kreuz"></span><span>Begleitperson und Arbeitsplatz für den Tag</span></li>
+        <li><span class="kreuz"></span><span>Leitfaden und zwei Rollenspiele vorbereitet</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Ablauf <small>Vorschlag, Zeiten anpassen</small></p>
+      <table class="raster" style="margin-top:.8mm">
+        <colgroup><col style="width:13mm"><col></colgroup>
+        <tbody id="probetag"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="reihe" style="margin-top:3.6mm">
+    <p class="feld breit"><span>Probetag mit</span><span class="strich"></span></p>
+    <p class="feld"><span>am</span><span class="strich"></span></p>
+    <p class="feld"><span>begleitet von</span><span class="strich"></span></p>
+  </div>
+
+  <p class="abschnitt-titel">Bewertung <small>1 nicht gezeigt · 3 solide · 5 stark und sicher</small></p>
+  <table class="raster">
+    <colgroup><col style="width:46mm"><col style="width:30mm"><col style="width:30mm"><col></colgroup>
+    <thead><tr><th>Kriterium</th><th>Vormittag</th><th>Nachmittag</th><th>Beobachtung</th></tr></thead>
+    <tbody id="probe-bewertung"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Selbsteinschätzung der Person <small>am Ende des Tages erfragen</small></p>
+  <div class="linien eng" data-linien="2"></div>
+  <p style="margin-top:2.6mm"><span class="stark" style="font-size:9.2pt; margin-right:4mm">Entscheidung</span><span class="wahl"><span class="kreuz"></span>Angebot machen</span><span class="wahl"><span class="kreuz"></span>Absage</span><span class="wahl"><span class="kreuz"></span>offen</span></p>
+  <p class="abschnitt-titel">Begründung <small>in zwei Sätzen</small></p>
+  <div class="linien eng" data-linien="2"></div>
+</section>
+
+<!-- 9 · Einarbeitung -->
+<section class="seite">
+  <p class="vorzeile">Einarbeiten · Aufbau und Wachstum</p>
+  <h2 class="blatt">Einarbeitungsplan für 30, 60 und 90 Tage</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Füllen Sie den Plan vor dem ersten Arbeitstag aus und gehen Sie ihn am ersten Tag gemeinsam durch. Die Vorschläge sind ein Anfang, ergänzen Sie Ihr Eigenes. Am Ende jedes Abschnitts prüfen Sie im Gespräch, ob das Ziel erreicht ist.</p>
+
+  <div class="reihe">
+    <p class="feld breit"><span>Name</span><span class="strich"></span></p>
+    <p class="feld"><span>Rolle</span><span class="strich"></span></p>
+  </div>
+  <div class="reihe">
+    <p class="feld"><span>erster Arbeitstag</span><span class="strich"></span></p>
+    <p class="feld breit"><span>begleitet von</span><span class="strich"></span></p>
+  </div>
+
+  <div class="drei" id="einarbeitung" style="margin-top:4.4mm"></div>
+
+  <p class="abschnitt-titel">Feste Termine während der Einarbeitung</p>
+  <div class="reihe">
+    <p class="feld"><span>tägliches Rollenspiel um</span><span class="strich"></span><span class="einheit">Uhr</span></p>
+    <p class="feld"><span>Einzelgespräch jede Woche am</span><span class="strich"></span></p>
+  </div>
+  <div class="reihe">
+    <p class="feld"><span>Nachbesprechung echter Gespräche</span><span class="strich"></span></p>
+  </div>
+  <p class="hinweis">Legen Sie das Gespräch nach Tag 90 deutlich vor das Ende einer vereinbarten Probezeit. Gespräche nehmen Sie nur mit Einwilligung aller Beteiligten auf (§ 201 StGB).</p>
+</section>
+
+<!-- 10 · Vergütung -->
+<section class="seite">
+  <p class="vorzeile">Vergütung · Aufbau und Wachstum</p>
+  <h2 class="blatt">Vergütung: Bausteine und Probe-Rechnung</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Tragen Sie Ihre Bausteine ein und rechnen Sie drei Monate durch: schwach, mittel, sehr gut. Jeder muss tragen, für Sie und für die Person. Unten steht ein ausgefülltes Beispiel mit frei erfundenen Zahlen.</p>
+
+  <p class="abschnitt-titel">Ihre Bausteine <small>Rolle: <span style="display:inline-block;width:46mm;border-bottom:var(--linie) solid var(--haar-schreib)">&nbsp;</span></small></p>
+  <div class="beschriftet eng" style="margin-top:.6mm"><span>Festgehalt brutto im Monat<small>Mindestlohn gedeckt?</small></span><div class="feld"><span class="strich"></span><span class="einheit">€</span><span class="wahl" style="margin-left:3mm"><span class="kreuz"></span>ja</span></div></div>
+  <div class="beschriftet eng"><span>Provision<small>Satz und Grundlage</small></span><div class="zeile-frei"></div></div>
+  <div class="beschriftet eng"><span>Anspruch entsteht, wenn …<small>und bei Storno</small></span><div class="zeile-frei"></div></div>
+  <div class="beschriftet eng"><span>Bonus bei Zielerreichung</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet eng"><span>Einarbeitungsbonus<small>Betrag, Monate</small></span><div class="zeile-frei"></div></div>
+  <div class="beschriftet eng"><span>Einmalige Prämien</span><div class="zeile-frei"></div></div>
+
+  <p class="abschnitt-titel">Probe-Rechnung</p>
+  <table class="raster dicht">
+    <colgroup><col style="width:30mm"><col><col><col><col style="width:20mm"><col style="width:20mm"></colgroup>
+    <thead><tr><th>Monat</th><th>Grundlage<small>z. B. bezahlter Umsatz</small></th><th>variabel</th><th>gesamt brutto</th><th class="mitte">trägt für uns</th><th class="mitte">trägt für die Person</th></tr></thead>
+    <tbody>
+      <tr><td>schwach</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td>mittel</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td>sehr gut</td><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Ausgefülltes Beispiel <span class="marke-bsp" style="margin-left:0">ERFUNDEN</span></p>
+  <p class="klein" style="margin-top:1.4mm; color:var(--tinte-text)">Regeln im Beispiel: Festgehalt 3.800 € brutto · Provision 5 % vom bezahlten Netto-Auftragswert neuer Kunden · Einarbeitungsbonus: in den Monaten 1 bis 3 mindestens 400 € variabel · Prämie 500 € einmalig für den ersten bezahlten Auftrag über 20.000 €.</p>
+  <table class="raster dicht">
+    <colgroup><col style="width:16mm"><col><col><col><col><col><col></colgroup>
+    <thead><tr><th>Monat</th><th class="zahl">bezahlt netto</th><th class="zahl">Provision 5 %</th><th class="zahl">Einarbeitungs&shy;bonus</th><th class="zahl">Prämie</th><th class="zahl">Festgehalt</th><th class="zahl">gesamt brutto</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="zahl">0 €</td><td class="zahl">0 €</td><td class="zahl">400 €</td><td class="zahl">0 €</td><td class="zahl">3.800 €</td><td class="zahl stark">4.200 €</td></tr>
+      <tr><td>2</td><td class="zahl">6.000 €</td><td class="zahl">300 €</td><td class="zahl">100 €</td><td class="zahl">0 €</td><td class="zahl">3.800 €</td><td class="zahl stark">4.200 €</td></tr>
+      <tr><td>3</td><td class="zahl">18.000 €</td><td class="zahl">900 €</td><td class="zahl">0 €</td><td class="zahl">0 €</td><td class="zahl">3.800 €</td><td class="zahl stark">4.700 €</td></tr>
+      <tr><td>4</td><td class="zahl">46.000 €</td><td class="zahl">2.300 €</td><td class="zahl">0 €</td><td class="zahl">500 €</td><td class="zahl">3.800 €</td><td class="zahl stark">6.600 €</td></tr>
+    </tbody>
+  </table>
+  <p class="klein" style="margin-top:1.2mm">Der Einarbeitungsbonus füllt nur bis zum Mindestbetrag auf: In Monat 2 bringt die Provision 300 €, der Bonus legt 100 € dazu.</p>
+  <p class="hinweis" style="margin-top:2.4mm"><b>Rechtlich:</b> Angestellte bekommen mindestens den gesetzlichen Mindestlohn. Reine Provision passt nur zu selbständigen Handelsvertretern (§ 84 HGB). Provisionsregeln gehören in den schriftlichen Nachweis (§ 2 NachwG), abgerechnet wird monatlich (§§ 65, 87c HGB). Mit Betriebsrat: Mitbestimmung nach § 87 Abs. 1 Nr. 10 und 11 BetrVG. Keine Rechtsberatung, lassen Sie Modell und Vertrag anwaltlich prüfen.</p>
+</section>
+
+<!-- 11 · Tagesbericht -->
+<section class="seite">
+  <p class="vorzeile">Führen · Aufbau und Wachstum</p>
+  <h2 class="blatt">Tagesbericht für eine Woche</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Jeden Tag fünf Minuten vor Feierabend: Zahlen eintragen und drei kurze Sätze schreiben. Welche Eingaben und Ergebnisse Sie zählen, steht in den Erwartungen Ihrer Rolle (Seite 5). Am Freitag bringen Sie den Bogen zur Wochenrunde mit.</p>
+
+  <div class="reihe">
+    <p class="feld breit"><span>Name</span><span class="strich"></span></p>
+    <p class="feld"><span>Rolle</span><span class="strich"></span></p>
+    <p class="feld"><span>Woche ab</span><span class="strich"></span></p>
+  </div>
+
+  <table class="raster" style="margin-top:4mm">
+    <colgroup><col style="width:40mm"><col><col><col><col><col><col style="width:17mm"></colgroup>
+    <thead><tr><th>&nbsp;</th><th>Mo</th><th>Di</th><th>Mi</th><th>Do</th><th>Fr</th><th>Woche</th></tr></thead>
+    <tbody id="tagesbericht"></tbody>
+  </table>
+
+  <div class="zwei" style="margin-top:2mm">
+    <div>
+      <p class="abschnitt-titel">Darauf bin ich diese Woche stolz</p>
+      <div class="linien eng" data-linien="2"></div>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Mein Ziel für nächste Woche</p>
+      <div class="linien eng" data-linien="2"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Wochenrunde -->
+<section class="seite">
+  <p class="vorzeile">Führen · alle Phasen</p>
+  <h2 class="blatt">Wochenrunde</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Eine Stunde, immer am selben Tag zur selben Zeit. Halten Sie die Reihenfolge ein und schreiben Sie am Ende genau eine Maßnahme auf. Am Start halten Sie die Runde mit sich selbst, mit denselben Fragen.</p>
+
+  <div class="zwei" style="grid-template-columns: 74mm 1fr">
+    <div>
+      <p class="abschnitt-titel">Ablauf <small>60 Minuten</small></p>
+      <ol class="schritte-liste dicht" id="runde-ablauf"></ol>
+    </div>
+    <div>
+      <div class="reihe" style="margin-top:3.6mm">
+        <p class="feld"><span>Datum</span><span class="strich"></span></p>
+        <p class="feld breit"><span>dabei</span><span class="strich"></span></p>
+      </div>
+      <p class="abschnitt-titel">Ergebnis der Maßnahme aus der Vorwoche</p>
+      <p style="margin-top:1.8mm"><span class="wahl"><span class="kreuz"></span>erledigt, wirkt</span><span class="wahl"><span class="kreuz"></span>erledigt, wirkt nicht</span><span class="wahl"><span class="kreuz"></span>nicht erledigt</span></p>
+      <div class="linien eng" data-linien="1"></div>
+      <p class="abschnitt-titel">Erfolge der Woche</p>
+      <div class="linien eng" data-linien="2"></div>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Kennzahlen</p>
+  <table class="raster">
+    <colgroup><col><col style="width:22mm"><col style="width:22mm"><col style="width:22mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th>Kennzahl<small>Eingaben, Quoten, Ergebnisse</small></th><th class="zahl">Ziel</th><th class="zahl">Ist</th><th class="zahl">Vorwoche</th><th class="mitte">Richtung</th></tr></thead>
+    <tbody id="runde-zahlen"></tbody>
+  </table>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Ohne nächsten Schritt <small>wer, bis wann</small></p>
+      <div class="linien eng" data-linien="3"></div>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Der größte Engpass <small>welche Stufe</small></p>
+      <div class="linien eng" data-linien="3"></div>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Die eine Maßnahme für nächste Woche</p>
+  <div class="reihe">
+    <p class="feld breit"><span>was</span><span class="strich"></span></p>
+    <p class="feld"><span>wer</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>bis</span><span class="strich"></span></p>
+  </div>
+</section>
+
+<!-- 13 · Einzelgespräch -->
+<section class="seite">
+  <p class="vorzeile">Führen · Aufbau und Wachstum</p>
+  <h2 class="blatt">Einzelgespräch: Selbst- und Fremdeinschätzung</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Die Person bewertet ihre Erwartungen aus Seite 5 vorher selbst, Sie bewerten getrennt. Im Gespräch legen Sie beides nebeneinander. Beginnen Sie dort, wo die Bewertungen am weitesten auseinanderliegen: Dort steckt meist ein Missverständnis, kein Leistungsproblem.</p>
+
+  <div class="reihe">
+    <p class="feld breit"><span>Name</span><span class="strich"></span></p>
+    <p class="feld"><span>Rolle</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>Datum</span><span class="strich"></span></p>
+  </div>
+
+  <table class="raster" style="margin-top:3.6mm">
+    <colgroup><col style="width:48mm"><col style="width:31mm"><col style="width:31mm"><col style="width:17mm"><col></colgroup>
+    <thead><tr><th>Erwartung<small>aus den Erwartungen der Rolle</small></th><th>selbst</th><th>Führung</th><th class="mitte">Abstand</th><th>Notiz</th></tr></thead>
+    <tbody id="einzel"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Fragen für das Gespräch</p>
+  <div id="einzel-fragen"></div>
+
+  <p class="abschnitt-titel">Vereinbart</p>
+  <div class="beschriftet" style="margin-top:.4mm"><span>Ziel bis zum nächsten Gespräch</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Was die Führung beiträgt</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Nächstes Gespräch am</span><div class="zeile-frei"></div></div>
+</section>
+
+<!-- 14 · Nächste Schritte -->
+<section class="seite">
+  <p class="vorzeile">Zum Schluss</p>
+  <h2 class="blatt">Nächste Schritte</h2>
+  <p class="text" style="margin-top:2mm; max-width:160mm">Ein Heft ändert noch nichts, ein Termin schon. Legen Sie jetzt fest, womit Sie anfangen, und tragen Sie es in Ihren Kalender ein.</p>
+
+  <p class="abschnitt-titel">Meine drei nächsten Schritte</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:34mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th></th><th>Was</th><th>Wer</th><th>Bis wann</th></tr></thead>
+    <tbody><tr><td class="leise">1</td><td></td><td></td><td></td></tr><tr><td class="leise">2</td><td></td><td></td><td></td></tr><tr><td class="leise">3</td><td></td><td></td><td></td></tr></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Weiter mit Fokus Innovation</p>
+  <ol class="wege">
+    <li><span class="nr">1</span><div><h3>Den Leitfaden lesen</h3><p class="adresse">fokusinnovation.de/wissen/vom-gruender-vertrieb-zum-vertriebsteam/</p><p>Alle Erklärungen zu diesem Heft: Phasen und Übergänge, Rollen, Auswahl, Einarbeitung, Vergütung und Führung. Kostenlos, ohne Anmeldung.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Den Vertriebscheck machen</h3><p class="adresse">fokusinnovation.de/check?thema=vertrieb</p><p>Zwölf Fragen zu Organisation, Zahlen und Neukunden, rund fünf Minuten. Sie sehen sofort, wo Ihr Vertrieb steht.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Ein Erstgespräch vereinbaren</h3><p class="adresse">fokusinnovation.de/kontakt/</p><p>Kostenlos, per Video. Wir schauen gemeinsam auf Ihre Phase und den nächsten Übergang.</p></div></li>
+  </ol>
+
+  <p class="abschnitt-titel">Passende Vorlagen</p>
+  <p class="text" style="margin-top:1.8mm"><b class="stark">Vertriebskennzahlen je Phase</b>: Wochenbögen und eine Tabelle, die Quoten selbst rechnet. <b class="stark">Vertriebs-Pipeline auf einer Seite</b>: jede Chance mit nächstem Schritt, Wert und Stufe. Beide unter <b class="akzent">fokusinnovation.de/kostenlos/</b></p>
+
+  <p class="abschnitt-titel">Rechtsgrundlagen in diesem Heft <small>nachzulesen auf gesetze-im-internet.de</small></p>
+  <ul class="phasen-text" style="margin-top:.6mm">
+    <li><b>Mindestlohn:</b> 13,90 € brutto je Zeitstunde ab 1. Januar 2026, 14,60 € ab 1. Januar 2027 (§ 1 Fünfte Mindestlohnanpassungsverordnung)</li>
+    <li><b>Provision und Handelsvertreter:</b> §§ 65, 84, 87a, 87c, 89b HGB · <b>Statusfeststellung:</b> § 7a SGB IV</li>
+    <li><b>Vertragsbedingungen schriftlich:</b> § 2 Nachweisgesetz · <b>Mitbestimmung:</b> § 87 Abs. 1 Nr. 6, 10, 11 BetrVG</li>
+    <li><b>Stellenausschreibung:</b> § 11 AGG · <b>Aufnahme von Gesprächen:</b> § 201 StGB</li>
+  </ul>
+  <p class="hinweis unten">Hinweise zu Recht und Vergütung in diesem Heft sind keine Rechtsberatung. Gesetzesstand und Mindestlohn: Oktober 2026. Alle Beispiele und Zahlen in Beispielen sind frei erfunden.</p>
+</section>
+
+<script>
+  // Kopf und Fuß auf jede Seite, Seitenzahlen automatisch
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+  const $ = (id) => document.getElementById(id);
+  const linie = '<div class="zeile-frei"></div>';
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = linie.repeat(Number(d.dataset.linien)); });
+  const skala = '<span class="skala"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span>';
+  const kreuz = '<span class="kreuz"></span>';
+
+  // Deckblatt: Inhalt mit Phasen
+  const inhalt = [
+    [2, 'Standortbestimmung: In welcher Phase stehen Sie?', 'saw'],
+    [3, 'Standortbestimmung: Was steht schon?', 'saw'],
+    [4, 'Rollenprofil', 'aw'],
+    [5, 'Erwartungen je Rolle', 'aw'],
+    [6, 'Anforderungsprofil', 'aw'],
+    [7, 'Bewertungsbogen Vorstellungsgespräch', 'aw'],
+    [8, 'Probetag: Ablauf und Bewertung', 'aw'],
+    [9, 'Einarbeitungsplan für 30, 60 und 90 Tage', 'aw'],
+    [10, 'Vergütung mit ausgefülltem Beispiel', 'aw'],
+    [11, 'Tagesbericht für eine Woche', 'aw'],
+    [12, 'Wochenrunde', 'saw'],
+    [13, 'Einzelgespräch', 'aw'],
+    [14, 'Nächste Schritte', 'saw'],
+  ];
+  const p = (an) => `<td class="p"><span class="punkt${an ? '' : ' leer'}"></span></td>`;
+  $('inhalt').innerHTML = inhalt.map(([s, t, ph]) => `<tr><td>${s}</td><td>${t}</td>${p(ph.includes('s'))}${p(ph.includes('a'))}${p(ph.includes('w'))}</tr>`).join('');
+
+  // Seite 2: Fragen A/B/C
+  const fragen = [
+    ['Wer führt die meisten Verkaufsgespräche?', ['Ich als Gründer, fast alle.', 'Ich und ein bis drei weitere Personen; die wichtigsten Abschlüsse mache ich.', 'Mehrere Personen; ich bin nur noch bei ausgewählten Kunden dabei.']],
+    ['Was passiert mit Anfragen, wenn Sie zwei Wochen ausfallen?', ['Sie bleiben weitgehend liegen.', 'Sie werden bearbeitet, aber Angebote und Abschlüsse warten auf mich.', 'Der Vertrieb läuft ohne mich weiter.']],
+    ['Wer führt die Vertriebsleute im Alltag?', ['Es gibt noch niemanden zu führen.', 'Ich, nebenbei.', 'Eine Vertriebsleitung mit fester Zeit dafür.']],
+    ['Wo ist der Weg vom Erstkontakt zum Auftrag festgehalten?', ['Vor allem in meinem Kopf.', 'In ersten Leitfäden und einer Liste oder einem CRM.', 'In einem Ablauf mit Stufen, Pflichtfeldern und geregelten Übergaben.']],
+    ['Wie sind die Aufgaben verteilt?', ['Ich mache alles.', 'Jede Person macht von der Ansprache bis zum Abschluss fast alles.', 'Es gibt getrennte Rollen, etwa für Termine, Abschluss und Kundenbetreuung.']],
+    ['Welche Zahlen kennen Sie jede Woche?', ['Kaum welche, eher ein Gefühl.', 'Gesamtzahlen wie Angebote und Aufträge.', 'Zahlen je Person und Stufe und eine Prognose für den Monat.']],
+  ];
+  $('fragen').innerHTML = fragen.map(([f, a], i) => `<div class="frage"><h3><span class="nr">${i + 1}</span>${f}</h3><ol>${a.map((t, j) => `<li><b>${'ABC'[j]}</b>${kreuz}<span>${t}</span></li>`).join('')}</ol></div>`).join('');
+
+  // Seite 3: Fundament je Phase
+  const fundament = [
+    ['Start', ['Ich habe feste Stunden für den Vertrieb im Kalender und halte sie ein.', 'Ich kann in einem Satz sagen, welche Kunden am besten passen.', 'Mein Erstgespräch folgt einem Ablauf, den ich aufgeschrieben habe.', 'Jede Chance steht in einer Liste mit Stufe, Wert und nächstem Schritt.', 'Ich habe eine Angebotsvorlage und schicke Angebote in einer festen Frist.', 'Ich schaue jede Woche zu einer festen Zeit auf meine Zahlen.']],
+    ['Aufbau', ['Der Weg vom Erstkontakt bis zum Auftrag ist mit Leitfäden aufgeschrieben.', 'Es gibt Antworten auf die häufigsten Einwände.', 'Jede Rolle hat schriftliche Erwartungen (Seite 5).', 'Für jede neue Person gibt es einen Einarbeitungsplan (Seite 9).', 'Jede Person schreibt einen kurzen Tagesbericht (Seite 11).', 'Es gibt Kennzahlen je Person, nicht nur für alle zusammen.']],
+    ['Wachstum', ['Eine Person führt den Vertrieb und hat dafür feste Zeit.', 'Die Rollen sind getrennt, die Übergaben zwischen ihnen geregelt.', 'Das CRM hat Pflichtfelder, und alle nutzen es gleich.', 'Jeden Monat gibt es eine Prognose, die wir am Monatsende prüfen.', 'Vergütung und Provisionsregeln sind schriftlich festgehalten.', 'Training und Einzelgespräche finden regelmäßig statt.']],
+  ];
+  $('fundament').innerHTML = fundament.map(([ph, l]) => `<div class="liste-kopf"><span>${ph}</span><span>ja</span><span>nein</span></div><ul class="liste">${l.map((t) => `<li><span>${t}</span>${kreuz}${kreuz}</li>`).join('')}</ul>`).join('');
+
+  // Seite 4: fünf Aufgaben
+  $('aufgaben5').innerHTML = [1, 2, 3, 4, 5].map((n) => `<tr><td class="leise">${n}</td><td></td></tr>`).join('');
+
+  // Seite 5: drei leere Rollen
+  const zelle = (n) => `<td>${linie.repeat(n)}</td>`;
+  $('erwartungen').innerHTML = [1, 2, 3].map(() => `<tr><td>${linie.repeat(1)}<span class="klein" style="display:block;margin-top:1mm">Rolle</span></td>${zelle(7)}${zelle(7)}${zelle(7)}${zelle(7)}</tr>`).join('');
+
+  // Seite 6: Stufen der Auswahl
+  $('stufen').innerHTML = [['Anforderungsprofil und Anzeige', 'neutral formuliert, Muss und Kann getrennt'], ['Bewerbungen sichten', 'nur die Muss-Anforderungen'], ['Telefonat, 15 Minuten', 'Stimme, Zuhören, Fragen'], ['Gespräch mit Bewertungsbogen', 'Fähigkeiten, Passung, Rollenspiel (Seite 7)'], ['Bezahlter Probetag', 'Lernfähigkeit im echten Umfeld (Seite 8)']].map(([s, w], i) => `<tr><td class="leise">${i + 1}</td><td style="font-size:9pt">${s}</td><td class="leise" style="font-size:8.6pt">${w}</td><td></td><td></td></tr>`).join('');
+
+  // Seite 7: Fähigkeiten
+  const faehig = [
+    ['Gesprächsführung', 'führt mit Struktur durch das Gespräch und kommt zum Punkt'],
+    ['Fragen und Zuhören', 'stellt offene Fragen, fasst zusammen, lässt ausreden'],
+    ['Umgang mit Einwänden', 'bleibt ruhig, fragt nach, antwortet mit Nutzen statt mit Rabatt'],
+    ['Verbindlichkeit', 'pünktlich, vorbereitet, hält kleine Zusagen ein'],
+    ['Lernfähigkeit', 'setzt eine Rückmeldung im zweiten Rollenspiel sichtbar um'],
+    ['eigene: ' + '<span style="display:inline-block;width:18mm;border-bottom:var(--linie) solid var(--haar-schreib)">&nbsp;</span>', ''],
+  ];
+  $('faehigkeiten').innerHTML = faehig.map(([f, w]) => `<tr><td class="stark" style="font-size:9pt">${f}</td><td class="leise" style="font-size:8.6pt">${w}</td><td>${skala}</td><td></td></tr>`).join('');
+
+  // Seite 8: Probetag
+  const ablauf = [
+    ['9:00', 'Begrüßung, Produkt, Zielgruppe, Leitfaden'],
+    ['10:00', 'echte Gespräche mithören, Notizen machen'],
+    ['11:00', 'Rollenspiel 1 mit einem typischen Einwand'],
+    ['11:45', 'Rückmeldung: zwei Stärken, eine Sache zum Verbessern'],
+    ['12:30', 'Mittagspause'],
+    ['13:30', 'eigene Aufgabe vorbereiten, etwa einen Gesprächseinstieg'],
+    ['14:30', 'Rollenspiel 2 mit derselben Aufgabe'],
+    ['15:30', 'Gespräch mit dem Team, Selbsteinschätzung'],
+    ['16:00', 'Abschluss und nächste Schritte'],
+  ];
+  $('probetag').innerHTML = ablauf.map(([z, t]) => `<tr><td class="leise" style="height:6.4mm;padding-top:.9mm">${z}</td><td style="height:6.4mm;padding-top:.9mm;font-size:8.8pt">${t}</td></tr>`).join('');
+  const probe = ['Gesprächsführung', 'Umgang mit Einwänden', 'Rückmeldung umgesetzt', 'Belastbarkeit', 'Zusammenarbeit im Team', 'Verbindlichkeit'];
+  $('probe-bewertung').innerHTML = probe.map((k, i) => `<tr><td class="stark" style="font-size:9pt">${k}</td><td>${i === 2 ? '<span class="klein">nur nachmittags</span>' : skala}</td><td>${skala}</td><td></td></tr>`).join('');
+
+  // Seite 9: Einarbeitung
+  const abschnitte = [
+    ['Tag 1 bis 30', 'Sicher im Ablauf', ['Produkt, Zielgruppe, Leitfäden und CRM lernen', 'echte Gespräche mithören', 'jeden Tag ein Rollenspiel', 'erste eigene Gespräche mit Begleitung']],
+    ['Tag 31 bis 60', 'Eigene Gespräche', ['eigene Gespräche mit Nachbesprechung', 'Einzelgespräch jede Woche', 'Eingaben Schritt für Schritt auf Zielniveau']],
+    ['Tag 61 bis 90', 'Eigene Verantwortung', ['eigene Kontakte und Chancen führen', 'erste Abschlüsse', 'Ergebnisse im Blick, Begleitung nur noch bei Bedarf']],
+  ];
+  $('einarbeitung').innerHTML = abschnitte.map(([z, ziel, v]) => `<div>
+    <div class="spalte-kopf"><span class="nr">${z}</span><h3>${ziel}</h3></div>
+    <p class="unterzeile">Vorschlag</p><ul class="vorschlag">${v.map((t) => `<li>${t}</li>`).join('')}</ul>
+    <p class="unterzeile">Eigene Punkte</p><div class="linien eng">${linie.repeat(3)}</div>
+    <p class="unterzeile">Eingabe-Ziel je Woche</p><div class="linien eng">${linie}</div>
+    <p class="unterzeile">Daran sehen wir, dass es läuft</p><div class="linien eng">${linie.repeat(2)}</div>
+    <p class="unterzeile">Gespräch am</p><div class="linien eng">${linie}</div>
+    <p style="margin-top:1.8mm; display:flex; flex-wrap:wrap; row-gap:1.2mm"><span class="wahl">${kreuz}erreicht</span><span class="wahl">${kreuz}teils</span><span class="wahl">${kreuz}nicht</span></p>
+  </div>`).join('');
+
+  // Seite 11: Tagesbericht
+  const zahlZeile = (label) => `<tr><td style="height:9mm"><span class="klein">${label}</span></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  const textZeile = (label) => `<tr><td class="stark" style="font-size:9pt;height:27mm">${label}</td><td></td><td></td><td></td><td></td><td></td><td style="background:rgba(17,19,22,.035)"></td></tr>`;
+  $('tagesbericht').innerHTML =
+    '<tr class="gruppe"><td colspan="7">Eingaben · z. B. Ansprachen, Gespräche, Angebote</td></tr>' + zahlZeile('Eingabe 1') + zahlZeile('Eingabe 2') + zahlZeile('Eingabe 3') +
+    '<tr class="gruppe"><td colspan="7">Ergebnisse · z. B. Termine, Aufträge</td></tr>' + zahlZeile('Ergebnis 1') + zahlZeile('Ergebnis 2') + zahlZeile('Ergebnis 3') +
+    '<tr class="gruppe"><td colspan="7">Drei Sätze</td></tr>' + textZeile('Was lief heute gut?') + textZeile('Was mache ich morgen besser?') + textZeile('Wo brauche ich Hilfe?');
+
+  // Seite 12: Wochenrunde
+  const runde = [
+    ['Erfolge der Woche', '5 Min.'],
+    ['Kennzahlen: Ist gegen Ziel, je Stufe und Person', '15 Min.'],
+    ['Chancen ohne nächsten Schritt, Angebote ohne Nachfass-Datum', '10 Min.'],
+    ['Der größte Engpass: Wo geht am meisten verloren?', '15 Min.'],
+    ['Eine Maßnahme mit Verantwortung und Datum', '10 Min.'],
+    ['Ankündigungen', '5 Min.'],
+  ];
+  $('runde-ablauf').innerHTML = runde.map(([t, m], i) => `<li><span class="nr">${i + 1}</span><span>${t} <span class="leise">· ${m}</span></span></li>`).join('');
+  $('runde-zahlen').innerHTML = [1, 2, 3, 4, 5, 6, 7].map(() => '<tr><td></td><td></td><td></td><td></td><td class="mitte leise" style="font-size:10pt">↑&nbsp;&nbsp;→&nbsp;&nbsp;↓</td></tr>').join('');
+
+  // Seite 13: Einzelgespräch
+  const gruppen = ['Verhalten', 'Aufgaben', 'Eingabe-Kennzahlen', 'Ergebnis-Kennzahlen'];
+  $('einzel').innerHTML = gruppen.map((g) => `<tr class="gruppe"><td colspan="5">${g}</td></tr>` + ('<tr><td></td><td>' + skala + '</td><td>' + skala + '</td><td></td><td></td></tr>').repeat(2)).join('');
+  const efragen = ['Was lief seit dem letzten Gespräch gut?', 'Wo hängt es, und was brauchen Sie dafür?', 'Was soll ich als Führung anders machen?', 'Welches eine Ziel nehmen Sie sich bis zum nächsten Mal vor?'];
+  $('einzel-fragen').innerHTML = efragen.map((f) => `<div class="beschriftet" style="grid-template-columns:76mm 1fr"><span>${f}</span><div class="zeile-frei"></div></div>`).join('');
+</script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Vertriebs-Pipeline auf einer Seite</title>
+<link rel="stylesheet" href="basis.css">
+<style>
+  .kopfleiste { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; margin-top: 4.5mm; }
+  .legende { font-size: 9.5pt; color: var(--tinte-text); }
+  .legende b { font-weight: 600; color: var(--tinte); margin-right: 1.5mm; }
+  .legende .nr { margin-right: .8mm; }
+  .legende .trenner { color: var(--tinte-leise); margin: 0 1.6mm; }
+  .stand { display: flex; gap: 6mm; width: 98mm; }
+  .stand .feld { flex: 1; }
+
+  table.pipeline { width: 100%; margin-top: 3.5mm; border-collapse: collapse; table-layout: fixed; }
+  .pipeline th { text-align: left; vertical-align: bottom; padding: 0 2mm 2mm; border-bottom: .9pt solid var(--haar-stark); font-weight: 600; font-size: 9pt; line-height: 1.2; color: var(--tinte); }
+  .pipeline th small { display: block; margin-top: .6mm; font-size: 8pt; font-weight: 400; color: var(--tinte-leise); }
+  .pipeline td { height: 8.8mm; padding: 0 2mm; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); }
+  .pipeline td:first-child, .pipeline th:first-child { border-left: 0; padding-left: 0; }
+  .pipeline td.n { font-size: 8.5pt; color: var(--tinte-leise); font-variant-numeric: tabular-nums; }
+  .pipeline td.einheit { text-align: right; font-size: 9pt; color: var(--tinte-leise); }
+  .stufen { display: flex; justify-content: space-between; align-items: center; padding: 0 1mm; font-size: 9.5pt; color: var(--tinte-leise); font-variant-numeric: tabular-nums; }
+  .stufen svg, .legende svg { width: 2.9mm; height: 2.9mm; vertical-align: -.3mm; }
+  .legende svg { margin-right: .8mm; }
+
+  .summe { display: flex; justify-content: flex-end; gap: 9mm; margin-top: 4mm; }
+  .summe .feld { width: 68mm; }
+  .summe .feld.breit { width: 98mm; }
+  .summe .feld span:last-child { color: var(--tinte-leise); }
+
+  /* Seite 2: die fünf Zahlen */
+  table.zahlen { width: 100%; margin-top: 5mm; border-collapse: collapse; table-layout: fixed; }
+  .zahlen th { text-align: left; vertical-align: bottom; padding: 0 3mm 2mm; border-bottom: .9pt solid var(--haar-stark); font-size: 9pt; font-weight: 600; color: var(--tinte); }
+  .zahlen th .feld { color: var(--tinte); font-size: 9pt; font-weight: 600; }
+  .zahlen th .feld .strich { height: 5mm; }
+  .zahlen td { height: 15mm; padding: 2mm 3mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar); border-left: var(--linie) solid var(--haar); }
+  .zahlen td:first-child, .zahlen th:first-child { border-left: 0; padding-left: 0; }
+  .zahlen .name { display: flex; gap: 3mm; }
+  .zahlen .name h2 { font-size: 11pt; line-height: 1.25; }
+  .zahlen .name p { margin-top: .8mm; font-size: 10pt; line-height: 1.35; color: var(--tinte-text); }
+  .zahlen td.wert { vertical-align: bottom; padding-bottom: 2.6mm; }
+  .zahlen td.wert .feld { justify-content: flex-end; }
+  .zahlen td.wert .feld + .feld { margin-top: 1.4mm; }
+  .zahlen td.wert .strich { height: 6mm; }
+  .zahlen td.wert .feld span:last-child { width: 9mm; flex: none; }
+  .zahlen td.wert .feld + .feld { margin-top: .6mm; }
+
+  .regeln { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 3.5mm; }
+  .regeln li { padding: 0 6mm; border-left: var(--linie) solid var(--haar); }
+  .regeln li:first-child { padding-left: 0; border-left: 0; }
+  .regeln li { display: grid; grid-template-columns: 4.5mm 1fr; column-gap: 1mm; align-content: start; }
+  .regeln .nr { font-size: 10.5pt; line-height: 1.3; }
+  .regeln h3 { font-size: 10.5pt; line-height: 1.3; }
+  .regeln p { grid-column: 2; margin-top: 1mm; font-size: 10pt; line-height: 1.42; }
+  .regeln { margin-bottom: 3mm; }
+  /* Anleitung und Beispiel (30.10.) */
+  .zwei-spalten { display: grid; grid-template-columns: 1.3fr 1fr; column-gap: 11mm; margin-top: 4mm; }
+  .abschnitt-titel { padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); }
+  .abschnitt-titel + * { margin-top: 1mm; }
+  table.stufen-def { width: 100%; border-collapse: collapse; }
+  .stufen-def td { padding: 2mm 2.4mm 2mm 0; border-bottom: var(--linie) solid var(--haar); vertical-align: top; font-size: 9.8pt; line-height: 1.38; }
+  .stufen-def td:first-child { width: 31mm; font-weight: 600; color: var(--tinte); white-space: nowrap; }
+  .stufen-def td:last-child { width: 20mm; text-align: right; padding-right: 0; color: var(--akzent); font-weight: 600; }
+  .stufen-def svg { width: 3mm; height: 3mm; vertical-align: -.3mm; margin-right: 1mm; }
+  .routine li { display: grid; grid-template-columns: 6mm 1fr 14mm; padding: 1.8mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.8pt; line-height: 1.38; }
+  .routine li:last-child { border-bottom: 0; }
+  .routine .min { text-align: right; color: var(--tinte-leise); font-size: 8.6pt; }
+  .routine b { color: var(--tinte); font-weight: 600; }
+  .kasten { margin-top: 4mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; }
+  .kasten b { color: var(--tinte); font-weight: 600; }
+  .marke-bsp { display: inline-block; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 7pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 5px; margin-left: 2mm; }
+  .pipeline.bsp td { font-size: 9pt; color: var(--tinte); vertical-align: middle; height: 9.4mm; line-height: 1.25; }
+  .pipeline.bsp td.einheit { color: var(--tinte); }
+  .pipeline.bsp td.leer { color: var(--akzent); font-style: italic; }
+  .stufen .an { color: #fff; background: var(--akzent); border-radius: 50%; width: 4.4mm; height: 4.4mm; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 8.4pt; }
+  .stufen .an svg { width: 2.7mm; height: 2.7mm; color: #fff; vertical-align: 0; }
+  .summe .wert { flex: 1; border-bottom: var(--linie) solid var(--haar-schreib); height: 7mm; display: flex; align-items: flex-end; justify-content: flex-end; padding-right: 1mm; color: var(--tinte); font-weight: 600; font-size: 10pt; }
+  .lesen { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; margin-top: 2.4mm; }
+  .lesen li { font-size: 9.4pt; line-height: 1.4; }
+  .lesen b { color: var(--tinte); font-weight: 600; display: block; margin-bottom: .6mm; }
+
+  .regeln-titel { margin-top: 6mm; font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); }
+</style>
+</head>
+<body class="quer">
+
+<!-- Gemeinsame Zeichen: Marke, Haken, Kreuz -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="37.2" cy="9.3" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+  <symbol id="haken" viewBox="0 0 12 12"><path d="M2 6.4 L4.9 9.2 L10 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="kreuz" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+</svg>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+
+  <div class="titel">
+    <p class="vorzeile">Vorlage · Vertrieb</p>
+    <h1>So nutzen Sie die Pipeline</h1>
+    <p class="lead">Eine Liste aller Chancen mit nächstem Schritt, Datum, Wert und Stufe. Legen Sie einmal fest, wann eine Chance auf welcher Stufe steht, und gehen Sie die Liste jede Woche zur selben Zeit durch.</p>
+  </div>
+
+  <div class="zwei-spalten">
+    <div>
+      <p class="abschnitt-titel">Die Stufen</p>
+      <table class="stufen-def">
+        <tbody>
+          <tr><td><span class="nr">1</span> Erstkontakt</td><td>Es gab einen ersten Kontakt, ein Bedarf ist möglich, aber noch nicht besprochen.</td><td>10&nbsp;%</td></tr>
+          <tr><td><span class="nr">2</span> Gespräch</td><td>Ein Gespräch über einen konkreten Bedarf hat stattgefunden, der nächste Schritt ist vereinbart.</td><td>25&nbsp;%</td></tr>
+          <tr><td><span class="nr">3</span> Angebot</td><td>Ein schriftliches Angebot mit Preis und Datum ist verschickt.</td><td>50&nbsp;%</td></tr>
+          <tr><td><span class="nr">4</span> Verhandlung</td><td>Der Kunde verhandelt über Umfang, Preis oder Vertrag, eine Entscheidung ist terminiert.</td><td>75&nbsp;%</td></tr>
+          <tr><td><svg class="akzent"><use href="#haken"/></svg>gewonnen</td><td>Der Auftrag ist schriftlich erteilt. Datum der Entscheidung notieren.</td><td>100&nbsp;%</td></tr>
+          <tr><td><svg class="akzent"><use href="#kreuz"/></svg>verloren</td><td>Der Kunde hat abgesagt, oder es gibt seit Wochen keinen nächsten Schritt mehr.</td><td>0&nbsp;%</td></tr>
+        </tbody>
+      </table>
+      <p class="kasten">Die Wahrscheinlichkeiten sind ein <b>Vorschlag als Startwert</b>. Sobald Sie Ihre Abschlussquoten aus einigen Monaten kennen, ersetzen Sie sie durch Ihre eigenen Werte. Gewichteter Wert einer Chance = Wert × Wahrscheinlichkeit.</p>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Wochenroutine, 15 Minuten</p>
+      <ol class="routine">
+        <li><span class="nr">1</span><span><b>Fälliges erledigen.</b> Welche Nachfass-Daten sind erreicht? Heute nachfassen oder einen neuen Termin festlegen.</span><span class="min">5 Min.</span></li>
+        <li><span class="nr">2</span><span><b>Stufen nachziehen.</b> Was hat sich bewegt? Gewonnenes und Verlorenes mit Datum abschließen.</span><span class="min">5 Min.</span></li>
+        <li><span class="nr">3</span><span><b>Lücken schließen.</b> Jede offene Zeile bekommt einen nächsten Schritt und ein Datum. Ohne Schritt: ehrlich auf verloren setzen.</span><span class="min">3 Min.</span></li>
+        <li><span class="nr">4</span><span><b>Neues eintragen.</b> Chancen der Woche ergänzen.</span><span class="min">2 Min.</span></li>
+      </ol>
+      <p class="abschnitt-titel" style="margin-top:5mm">Einmal festlegen</p>
+      <ol class="routine">
+        <li><span class="nr">·</span><span><b>Gespräch</b> heißt bei uns: ein Termin über einen konkreten Bedarf, nicht jedes Telefonat.</span><span></span></li>
+        <li><span class="nr">·</span><span><b>Angebot</b> heißt: schriftlich, mit Preis und Datum. Ein Preis im Gespräch zählt nicht.</span><span></span></li>
+        <li><span class="nr">·</span><span><b>Wert</b> heißt: erwarteter Auftragswert netto, ohne Hoffnungsaufschlag.</span><span></span></li>
+      </ol>
+    </div>
+  </div>
+
+  <p class="kasten" style="margin-top:auto; margin-bottom:3mm">Am Rechner geht es schneller: Die Tabelle <b>vertriebs-pipeline.xlsx</b> rechnet gewichteten Wert, Nachfass-Hinweise und Monatszahlen selbst. Seite 2 zeigt eine ausgefüllte Liste, Seite 3 ist Ihr Bogen, Seite 4 die Monatsauswertung.</p>
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 1 von 4</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+
+  <div class="titel">
+    <p class="vorzeile">Ausgefülltes Beispiel · alle Firmen und Zahlen frei erfunden</p>
+    <h1>So sieht eine gepflegte Liste aus <span class="marke-bsp">BEISPIEL</span></h1>
+  </div>
+
+  <table class="pipeline bsp">
+    <colgroup>
+      <col style="width:7mm"><col style="width:50mm"><col style="width:44mm"><col style="width:50mm"><col style="width:22mm"><col style="width:22mm"><col style="width:26mm"><col style="width:46mm">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Nr.<small>&nbsp;</small></th>
+        <th>Kontakt / Firma<small>Rolle, Firma</small></th>
+        <th>Bedarf<small>worum es geht</small></th>
+        <th>Nächster Schritt<small>was genau</small></th>
+        <th>Nachfassen<small>Datum</small></th>
+        <th>Wert<small>in Euro</small></th>
+        <th>Wahrschein&shy;lichkeit<small>in Prozent</small></th>
+        <th>Stufe<small>eingekreist</small></th>
+      </tr>
+    </thead>
+    <tbody id="beispiel"></tbody>
+  </table>
+
+  <div class="summe">
+    <p class="feld"><span>Summe offener Werte</span><span class="wert">46.000</span><span>€</span></p>
+    <p class="feld breit"><span>gewichtet (Wert × Wahrscheinlichkeit)</span><span class="wert">25.200</span><span>€</span></p>
+  </div>
+
+  <ul class="lesen">
+    <li><b>Zeile 8 hat kein Nachfass-Datum.</b> Das Angebot ist raus, aber niemand weiß, wann nachgefragt wird. In der Wochenroutine bekommt es heute ein Datum.</li>
+    <li><b>Ehrlicher Blick nach vorn.</b> Offen sind 46.000 €, gewichtet nach Stufe 25.200 €. Mit der gewichteten Summe planen Sie, nicht mit der offenen.</li>
+    <li><b>Entschiedenes bleibt stehen.</b> Zwei gewonnen, einer verloren: Abschlussquote zwei von drei. Verlorene Chancen nicht löschen, sie gehören in die Quote.</li>
+  </ul>
+
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 2 von 4</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+
+  <div class="titel">
+    <p class="vorzeile">Vorlage · Vertrieb</p>
+    <h1>Vertriebs-Pipeline auf einer Seite</h1>
+    <p class="lead">Jede Chance bekommt eine Zeile, jede Zeile einen nächsten Schritt mit Datum. Einmal pro Woche durchgehen, fünfzehn Minuten genügen.</p>
+  </div>
+
+  <div class="kopfleiste">
+    <p class="legende"><b>Stufe</b><span class="nr">1</span>Erstkontakt<span class="trenner">·</span><span class="nr">2</span>Gespräch<span class="trenner">·</span><span class="nr">3</span>Angebot<span class="trenner">·</span><span class="nr">4</span>Verhandlung<span class="trenner">·</span><svg class="akzent"><use href="#haken"/></svg>gewonnen<span class="trenner">·</span><svg class="akzent"><use href="#kreuz"/></svg>verloren</p>
+    <div class="stand">
+      <p class="feld"><span>Monat</span><span class="strich"></span></p>
+      <p class="feld"><span>Stand am</span><span class="strich"></span></p>
+    </div>
+  </div>
+
+  <table class="pipeline">
+    <colgroup>
+      <col style="width:7mm"><col style="width:45mm"><col style="width:42mm"><col style="width:53mm"><col style="width:24mm"><col style="width:24mm"><col style="width:29mm"><col style="width:43mm">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Nr.<small>&nbsp;</small></th>
+        <th>Kontakt / Firma<small>Name, Rolle, Firma</small></th>
+        <th>Bedarf<small>worum es geht</small></th>
+        <th>Nächster Schritt<small>was genau, wer</small></th>
+        <th>Nachfassen<small>Datum</small></th>
+        <th>Wert<small>in Euro</small></th>
+        <th>Wahrschein&shy;lichkeit<small>in Prozent</small></th>
+        <th>Stufe<small>ankreuzen oder einkreisen</small></th>
+      </tr>
+    </thead>
+    <tbody id="zeilen"></tbody>
+  </table>
+
+  <div class="summe">
+    <p class="feld"><span>Summe offener Werte</span><span class="strich"></span><span>€</span></p>
+    <p class="feld breit"><span>gewichtet (Wert × Wahrscheinlichkeit)</span><span class="strich"></span><span>€</span></p>
+  </div>
+
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 3 von 4</span></footer>
+</section>
+
+<section class="seite">
+  <header class="kopf">
+    <span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span>
+    <span class="leitsatz">Fortschritt braucht Fokus.</span>
+  </header>
+
+  <div class="titel">
+    <p class="vorzeile">Vorlage · Vertrieb</p>
+    <h1>Ihre fünf Zahlen im Monat</h1>
+    <p class="lead">Am Monatsende aus der Liste übertragen. Drei Monate nebeneinander zeigen, ob Ihr Vertrieb besser wird und wo er hängt.</p>
+  </div>
+
+  <table class="zahlen">
+    <colgroup><col style="width:99mm"><col><col><col><col style="width:44mm"></colgroup>
+    <thead>
+      <tr>
+        <th>Zahl</th>
+        <th><p class="feld"><span>Monat</span><span class="strich"></span></p></th>
+        <th><p class="feld"><span>Monat</span><span class="strich"></span></p></th>
+        <th><p class="feld"><span>Monat</span><span class="strich"></span></p></th>
+        <th>Ihr Ziel</th>
+      </tr>
+    </thead>
+    <tbody id="zahlen"></tbody>
+  </table>
+
+  <p class="regeln-titel">So lesen Sie die Zahlen</p>
+  <ol class="regeln">
+    <li>
+      <span class="nr">1</span><h3>Richtung statt Einzelwert.</h3>
+      <p>Ein Monat sagt wenig, drei nebeneinander zeigen die Richtung. Bei wenigen Angeboten kippt die Quote schnell.</p>
+    </li>
+    <li>
+      <span class="nr">2</span><h3>Den Engpass finden.</h3>
+      <p>Wenige Angebote: Gespräche fehlen. Viele Angebote, wenige Aufträge: Passung, Preis und Nachfassen prüfen.</p>
+    </li>
+    <li>
+      <span class="nr">3</span><h3>Ziele aus eigenen Werten.</h3>
+      <p>Ein Ziel erst nach drei Monaten Messung eintragen. Fremde Richtwerte passen selten.</p>
+    </li>
+  </ol>
+
+  <footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite 4 von 4</span></footer>
+</section>
+
+<script>
+  // Zeilen der Liste (statisch erzeugt, damit die Quelle kurz bleibt)
+  const stufe = '<div class="stufen"><span>1</span><span>2</span><span>3</span><span>4</span>' +
+    '<svg><use href="#haken"/></svg><svg><use href="#kreuz"/></svg></div>';
+  let z = '';
+  for (let i = 1; i <= 12; i++) {
+    z += `<tr><td class="n">${i}</td><td></td><td></td><td></td><td></td><td class="einheit">€</td><td class="einheit">%</td><td>${stufe}</td></tr>`;
+  }
+  document.getElementById('zeilen').innerHTML = z;
+
+  // Ausgefülltes Beispiel (frei erfunden), Stufe: 1–4, g = gewonnen, v = verloren
+  const bsp = [
+    ['Beispiel GmbH, Geschäftsführung', 'neue Website mit Anfrageformular', 'Angebot besprechen, Termin steht', '05.11.', '12.000', '50', 3],
+    ['Muster AG, Vertriebsleitung', 'Vertriebstraining für sechs Personen', 'Vertragsentwurf schicken', '03.11.', '18.000', '75', 4],
+    ['Musterbau KG, Inhaber', 'Erklärvideo für die Website', 'zweites Gespräch: Umfang klären', '10.11.', '6.000', '25', 2],
+    ['Probe &amp; Partner, Geschäftsführung', 'Workshop Positionierung', 'Erstgespräch vereinbaren', '04.11.', '2.000', '10', 1],
+    ['Beispielwerk e. K., Inhaberin', 'CRM einführen', 'Auftrag erteilt am 15.09.', '', '9.500', '100', 'g'],
+    ['Exempel GmbH, Einkauf', 'Website-Relaunch', 'anderer Anbieter gewählt, 28.08.', '', '15.000', '0', 'v'],
+    ['Muster &amp; Co. KG, Geschäftsführung', 'Kampagne zur Fachmesse', 'Auftrag erteilt am 06.10.', '', '7.200', '100', 'g'],
+    ['Beispiel Logistik GmbH, Vertrieb', 'Vertriebsprozess aufsetzen', 'nachfragen, ob das Angebot passt', 'fehlt', '8.000', '50', 3],
+  ];
+  const stufeBsp = (st) => '<div class="stufen">' + [1, 2, 3, 4].map((n) => n === st ? `<span class="an">${n}</span>` : `<span>${n}</span>`).join('') +
+    (st === 'g' ? '<span class="an"><svg><use href="#haken"/></svg></span>' : '<svg><use href="#haken"/></svg>') +
+    (st === 'v' ? '<span class="an"><svg><use href="#kreuz"/></svg></span>' : '<svg><use href="#kreuz"/></svg>') + '</div>';
+  document.getElementById('beispiel').innerHTML = bsp.map(([k, b, n, d, w, p, st], i) =>
+    `<tr><td class="n">${i + 1}</td><td>${k}</td><td>${b}</td><td>${n}</td><td${d === 'fehlt' ? ' class="leer"' : ''}>${d}</td><td class="einheit">${w} €</td><td class="einheit">${p} %</td><td>${stufeBsp(st)}</td></tr>`).join('');
+
+  const zahlen = [
+    ['Angebote', 'Wie viele Angebote haben Sie in diesem Monat verschickt?', ['Anzahl']],
+    ['Abschlussquote', 'Gewonnen geteilt durch alle entschiedenen Chancen (gewonnen und verloren) des Monats.', ['%']],
+    ['Zeit bis Abschluss', 'Tage vom Erstkontakt bis zum gewonnenen Auftrag, im Mittel über die Abschlüsse des Monats.', ['Tage']],
+    ['Offene Chancen mit Wert', 'Alle Zeilen, die noch nicht entschieden sind: wie viele, und was sie zusammen wert sind.', ['Anzahl', '€']],
+    ['Nachgefasste Angebote', 'Anteil der Angebote, bei denen Sie innerhalb einer Woche nachgefragt haben.', ['%']],
+  ];
+  const zelle = (einheiten) => '<td class="wert">' + einheiten.map(e => `<p class="feld"><span class="strich"></span><span>${e}</span></p>`).join('') + '</td>';
+  document.getElementById('zahlen').innerHTML = zahlen.map(([n, t, e], i) =>
+    `<tr><td><div class="name"><span class="nr">${i + 1}</span><div><h2>${n}</h2><p>${t}</p></div></div></td>` +
+    zelle(e) + zelle(e) + zelle(e) + zelle(e) + '</tr>').join('');
+</script>
+</body>
+</html>

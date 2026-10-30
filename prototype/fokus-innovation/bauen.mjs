@@ -891,11 +891,23 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
   /** Download-Links einer Vorlage: PDF (mit Seitenzahl) und, falls gebaut, die Tabelle für Excel. */
   const dateiLinks = (v) => v.dateien.map((d) => `<a class="textlink" href="${d.href}" download><span>${d.art === 'pdf' ? `PDF · ${d.seiten} ${d.seiten === 1 ? 'Seite' : 'Seiten'}` : 'Tabelle für Excel'}</span> ${PFEIL}</a>`).join('');
   const vorlageZeile = (v, mitAnker = true) => `<li${mitAnker ? ` id="vorlage-${v.id}"` : ''}><div class="v-text"><h3 class="z-name">${e(v.titel)}</h3><p class="z-text">${e(v.text)}</p>${v.inhalt?.length ? `<p class="v-inhalt">${v.inhalt.map(e).join(' · ')}</p>` : ''}</div><div class="v-dateien">${dateiLinks(v)}</div></li>`;
-  /** „Nach Phase“ (30.10.): was in Start, Aufbau und Wachstum zuerst hilft — Leitfaden, Ratgeber, Vorlagen mit dieser Phase (Feld `phase`). */
-  const phaseLinks = (ph) => [
-    ...W.artikel.filter((x) => x.phase?.includes(ph)).sort((x, y) => (y.leitfaden ? 1 : 0) - (x.leitfaden ? 1 : 0)).map((x) => [artikelPfad(x), x.leitfaden ? 'Leitfaden' : 'Ratgeber', x.titel]),
-    ...VORL.filter((x) => x.phase?.includes(ph)).map((x) => [`#vorlage-${x.id}`, 'Vorlage', x.titel]),
-  ];
+  /**
+   * „Nach Phase“ (30.10.): was in Start, Aufbau und Wachstum zuerst hilft. Ausgewählt in fokus.json (`empfohlen`: „r:<ratgeber>“, „v:<vorlage>“),
+   * ohne Auswahl alles mit dieser Phase (Feld `phase`). Eine unbekannte Kennung bricht den Bau ab.
+   */
+  const phaseLinks = (p) => {
+    if (!p.empfohlen?.length) return [
+      ...W.artikel.filter((x) => x.phase?.includes(p.id)).sort((x, y) => (y.leitfaden ? 1 : 0) - (x.leitfaden ? 1 : 0)).map((x) => [artikelPfad(x), x.leitfaden ? 'Leitfaden' : 'Ratgeber', x.titel]),
+      ...VORL.filter((x) => x.phase?.includes(p.id)).map((x) => [`#vorlage-${x.id}`, 'Vorlage', x.titel]),
+    ];
+    return p.empfohlen.map((k) => {
+      const [art, id] = k.split(':');
+      if (art === 'v') { const v = vorlageVon(id); return [`#vorlage-${v.id}`, 'Vorlage', v.titel]; }
+      const a = W.artikel.find((x) => x.id === id);
+      if (art !== 'r' || !a) throw new Error(`Nach Phase ${p.id}: ${k} gibt es nicht`);
+      return [artikelPfad(a), a.leitfaden ? 'Leitfaden' : 'Ratgeber', a.titel];
+    });
+  };
   /** Eine belegte Zahl im Stil der Belege der Website (`zahl`), mit Herausgeber und Jahr. */
   const zahlKarte = (z) => zahl({ wert: z.wert, text: z.satz, link: z.url, quelle: `${z.quelle}, ${z.jahr_der_daten ?? String(z.datum).slice(0, 4)}` });
   neu('kostenlos/index.html', {
@@ -913,7 +925,7 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
 <section class="abschnitt" id="checks" aria-labelledby="checks-titel"><div class="w">${abKopf({ marke: 'Checks', h2: 'Wo stehen Sie?', ruhig: 'In Minuten.', lead: 'Fast alles per Klick, Ergebnis sofort, mit nächsten Schritten. Zoe, unsere KI-Assistentin, führt durch die Fragen.', id: 'checks-titel' })}
 <ul class="zeilen erscheint">${checkZeilen}</ul></div></section>
 ${K.phasen?.length ? `<section class="abschnitt" id="phasen" aria-labelledby="phasen-titel"><div class="w">${abKopf({ marke: 'Nach Phase', h2: K.phasen_titel, ruhig: K.phasen_ruhig, lead: K.phasen_lead, id: 'phasen-titel' })}
-<div class="phasen-raster erscheint">${K.phasen.map((p) => `<div class="phase-spalte"><p class="etikett">${e(p.name)}</p><h3>${e(p.titel)}</h3><p>${t(p.satz)}</p><ul>${phaseLinks(p.id).map(([h, art, ti]) => `<li><a href="${h}"><span class="phase-art">${art}</span><span class="phase-titel">${e(ti)}</span></a></li>`).join('')}</ul></div>`).join('')}</div></div></section>` : ''}
+<div class="phasen-raster erscheint">${K.phasen.map((p) => `<div class="phase-spalte"><p class="etikett">${e(p.name)}</p><h3>${e(p.titel)}</h3><p>${t(p.satz)}</p><ul>${phaseLinks(p).map(([h, art, ti]) => `<li><a href="${h}"><span class="phase-art">${art}</span><span class="phase-titel">${e(ti)}</span></a></li>`).join('')}</ul></div>`).join('')}</div></div></section>` : ''}
 
 <section class="abschnitt" id="ratgeber" aria-labelledby="ratgeber-titel"><div class="w">${abKopf({ marke: 'Ratgeber', h2: 'Aus unserer Arbeit.', ruhig: 'Zum Nachlesen.', lead: 'Wie wir Vertrieb aufbauen, Angebote sichtbar machen und Neues im Alltag einführen. Praktisch, in klaren Worten und mit Quellen, wo Zahlen stehen.', id: 'ratgeber-titel' })}${artikelZu((a) => a.leitfaden).length ? wissenListe(artikelZu((a) => a.leitfaden)) : ''}</div></section>
 ${BEREICHE.map((k) => { const liste = artikelZu((a) => a.bereich === k && !a.leitfaden); return liste.length ? `<section class="abschnitt" aria-labelledby="ratgeber-${k}"><div class="w">${abKopf({ marke: B[k].name, nr: B[k].nr, h2: B[k].paar, id: `ratgeber-${k}` })}${wissenListe(liste)}</div></section>` : ''; }).join('\n')}

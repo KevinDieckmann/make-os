@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Vertriebskennzahlen je Phase</title>
+<link rel="stylesheet" href="basis.css">
+<style>
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 160mm; }
+  h2.blatt { margin-top: 1.6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  h3 { font-size: 10.5pt; line-height: 1.3; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  .klein { font-size: 8.8pt; line-height: 1.4; color: var(--tinte-leise); }
+
+  .so { margin-top: 2.6mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.8pt; line-height: 1.45; max-width: 168mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9.2pt; line-height: 1.45; }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .abschnitt-titel { margin-top: 4.6mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; }
+  .abschnitt-titel small { font-size: 8.4pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .reihe { display: flex; gap: 6mm; margin-top: 2.4mm; }
+  .reihe .feld { flex: 1; }
+  .reihe .feld.breit { flex: 1.8; }
+  .reihe .feld.schmal { flex: .55; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6.2mm; }
+  .linien .zeile-frei { height: 7.2mm; }
+  .beschriftet { display: grid; grid-template-columns: 72mm 1fr; column-gap: 4mm; align-items: end; }
+  .beschriftet > span { font-size: 9.2pt; color: var(--tinte); padding-bottom: 1.2mm; line-height: 1.25; }
+
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.6mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.4pt; margin-top: .4mm; }
+  .raster td { height: 7.6mm; padding: 1.1mm 1.6mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster .zahl { text-align: right; }
+  .raster td.leise { color: var(--tinte-leise); font-size: 8.4pt; }
+  .raster tr.summe td { border-top: .9pt solid var(--haar-stark); font-weight: 600; color: var(--tinte); background: rgba(124, 58, 237, .045); }
+  .raster tr.quote td { font-weight: 600; color: var(--akzent); }
+  .raster.def td { height: auto; padding-top: 1.7mm; padding-bottom: 1.7mm; }
+  .raster.def td:first-child { font-weight: 600; color: var(--tinte); }
+  .raster .art { font-size: 7.4pt; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+  .raster .art.eingabe { color: var(--akzent); }
+  .raster .art.ergebnis { color: var(--tinte); }
+  .raster .art.quote { color: var(--tinte-leise); }
+  .raster.bsp td { color: var(--tinte); }
+
+  .schritte-liste li { display: grid; grid-template-columns: 7mm 1fr; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.6pt; line-height: 1.42; }
+  .schritte-liste li:last-child { border-bottom: 0; }
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .karte h3 { margin-top: 1.4mm; }
+  .karte p { margin-top: .8mm; font-size: 9.4pt; line-height: 1.42; }
+  .marke-bsp { display: inline-block; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); }
+  .quoten { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; row-gap: 1.6mm; margin-top: 2.4mm; }
+  .quoten .feld .strich { min-width: 12mm; }
+  .unten { margin-top: auto; }
+  .unten + .fuss { margin-top: 3mm; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="37.2" cy="9.3" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+</svg>
+
+<!-- 1 · Anleitung -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Vorlage · Vertrieb</p>
+    <h1>Vertriebskennzahlen je Phase</h1>
+    <p class="lead">Sieben Kennzahlen für jede Phase, mit Formel, und ein Wochenbogen für ein Quartal. Wählen Sie Ihre Phase, tragen Sie jeden Freitag ein, und nach einem Monat kennen Sie Ihre Ausgangswerte.</p>
+  </div>
+
+  <p class="abschnitt-titel">So nutzen Sie die Vorlage</p>
+  <ol class="schritte-liste">
+    <li><span class="nr">1</span><span><b class="stark">Phase wählen.</b> Start: Der Gründer verkauft selbst. Aufbau: Erste Vertriebler verkaufen mit. Wachstum: Ein Team mit mehreren Rollen und einer Vertriebsleitung. Bei Zweifel gilt die frühere Phase.</span></li>
+    <li><span class="nr">2</span><span><b class="stark">Definitionen festlegen.</b> Schreiben Sie auf der Seite Ihrer Phase auf, was bei Ihnen als Gespräch, Termin und Angebot zählt. Ändern Sie das nicht mitten im Quartal.</span></li>
+    <li><span class="nr">3</span><span><b class="stark">Jeden Freitag eintragen.</b> Zehn Minuten genügen. Im Aufbau führt jede Person ihren eigenen Bogen.</span></li>
+    <li><span class="nr">4</span><span><b class="stark">Am Monatsende die Quoten rechnen</b> und in der Wochenrunde besprechen: Wo geht am meisten verloren?</span></li>
+    <li><span class="nr">5</span><span><b class="stark">Nach vier bis acht Wochen Ziele setzen,</b> aus Ihren eigenen Werten. Wir nennen bewusst keine Richtwerte, denn Quoten hängen von Branche, Preis, Kanal und Kontaktliste ab.</span></li>
+  </ol>
+
+  <div class="zwei" style="margin-top:2mm">
+    <div class="karte">
+      <p class="abschnitt-titel">Eingabe und Ergebnis</p>
+      <p><b class="akzent">Eingabe-Kennzahlen</b> zählen, was Sie tun: Ansprachen, Gespräche, Angebote. Sie lassen sich jeden Tag beeinflussen. Führen Sie im Alltag darüber.</p>
+      <p><b class="stark">Ergebnis-Kennzahlen</b> zählen, was herauskommt: Aufträge, Umsatz. Sie reagieren mit Verzögerung. Beurteilen Sie sie über Monate.</p>
+      <p><b class="leise">Quoten</b> verbinden beides und zeigen, an welcher Stufe Kontakte verloren gehen.</p>
+    </div>
+    <div class="karte">
+      <p class="abschnitt-titel">Was wo steht</p>
+      <table class="raster" style="margin-top:.6mm">
+        <colgroup><col><col style="width:18mm"></colgroup>
+        <tbody>
+          <tr><td>Start: Kennzahlen und Wochenbogen</td><td class="zahl">2 und 3</td></tr>
+          <tr><td>Aufbau: Kennzahlen und Wochenbogen je Person</td><td class="zahl">4 und 5</td></tr>
+          <tr><td>Wachstum: Kennzahlen</td><td class="zahl">6</td></tr>
+          <tr><td>Wachstum: Wochen- und Monatsbogen</td><td class="zahl">7 und 8</td></tr>
+          <tr><td>Ausgefülltes Beispiel</td><td class="zahl">9</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Wann Sie welche Zahlen besprechen</p>
+  <table class="raster" style="margin-top:.6mm">
+    <colgroup><col style="width:30mm"><col><col style="width:44mm"><col style="width:24mm"></colgroup>
+    <thead><tr><th>Wann</th><th>Welche Zahlen</th><th>Wer</th><th>Wie lange</th></tr></thead>
+    <tbody>
+      <tr><td>täglich</td><td>Ansprachen, Gespräche, Termine im Tagesbericht, ab dem Aufbau</td><td>jede Person für sich</td><td>5 Minuten</td></tr>
+      <tr><td>wöchentlich</td><td>Eingaben, Quoten je Stufe, Angebote ohne Nachfass-Datum</td><td>Gründer oder Vertriebsleitung mit Team</td><td>30 bis 60 Min.</td></tr>
+      <tr><td>monatlich</td><td>Aufträge, Abschlussquote, Zeit bis zum Abschluss, im Wachstum Prognose</td><td>Geschäftsführung und Vertriebsleitung</td><td>60 Minuten</td></tr>
+      <tr><td>vierteljährlich</td><td>Herkunft der Aufträge, Kosten je Neukunde, Abgänge, neue Zielwerte</td><td>Geschäftsführung</td><td>60 bis 90 Min.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="hinweis unten">Am Rechner geht es schneller: Die Tabelle <b>vertriebskennzahlen-je-phase.xlsx</b> rechnet Quoten und Monatssummen selbst. Erklärungen zu jeder Kennzahl im Ratgeber unter <b>fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/</b></div>
+</section>
+
+<!-- 2 · Start Kennzahlen -->
+<section class="seite">
+  <p class="vorzeile">Phase Start · der Gründer verkauft selbst</p>
+  <h2 class="blatt">Die Kennzahlen am Start</h2>
+  <p class="so"><b>So nutzen Sie die Seite</b>Die knappste Größe am Start ist die Zeit des Gründers, darum steht sie vorn. Legen Sie unten fest, was bei Ihnen zählt, und tragen Sie die Zahlen jede Woche auf Seite 3 ein.</p>
+  <table class="raster def">
+    <colgroup><col style="width:40mm"><col style="width:60mm"><col style="width:19mm"><col></colgroup>
+    <thead><tr><th>Kennzahl</th><th>Formel</th><th>Art</th><th>Warum gerade jetzt</th></tr></thead>
+    <tbody id="def-start"></tbody>
+  </table>
+  <p class="abschnitt-titel">Bei uns zählt als …</p>
+  <div class="beschriftet" style="margin-top:.4mm"><span>Erstgespräch</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Angebot</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Vertriebsstunde</span><div class="zeile-frei"></div></div>
+  <p class="abschnitt-titel">Ausgangswert und Ziel <small>nach vier bis acht Wochen Messung</small></p>
+  <table class="raster" style="margin-top:.6mm">
+    <colgroup><col style="width:52mm"><col><col><col style="width:30mm"></colgroup>
+    <thead><tr><th>Kennzahl</th><th>Ausgangswert</th><th>Ziel</th><th>gilt ab</th></tr></thead>
+    <tbody id="ziel-start"></tbody>
+  </table>
+  <p class="hinweis" style="margin-top:2.4mm">Jedes offene Angebot hat ein Datum zum Nachfassen. Zählen Sie jeden Freitag, wie viele noch keines haben. Das Ziel ist null.</p>
+</section>
+
+<!-- 3 · Start Wochenbogen -->
+<section class="seite">
+  <p class="vorzeile">Phase Start · Wochenbogen für ein Quartal</p>
+  <h2 class="blatt">Wochenbogen Start</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Jeden Freitag eine Zeile. „Gewonnen“ und „verloren“ zählen die Angebote, die in dieser Woche entschieden wurden. Am Quartalsende addieren Sie die Spalten und rechnen unten die Quoten.</p>
+  <div class="reihe"><p class="feld"><span>Quartal</span><span class="strich"></span></p><p class="feld breit"><span>Name</span><span class="strich"></span></p></div>
+  <table class="raster" id="woche-start"></table>
+  <p class="abschnitt-titel">Quoten im Quartal</p>
+  <div class="quoten">
+    <p class="feld"><span>Abschlussquote</span><span class="strich"></span><span>%</span></p>
+    <p class="feld"><span>Angebote je Erstgespräch</span><span class="strich"></span><span>%</span></p>
+    <p class="feld"><span>Ø Stunden je Woche</span><span class="strich"></span></p>
+  </div>
+  <p class="abschnitt-titel">Herkunft der Aufträge im Quartal <small>Anzahl</small></p>
+  <div class="quoten" style="grid-template-columns: repeat(5, 1fr)">
+    <p class="feld"><span>Empfehlung</span><span class="strich"></span></p>
+    <p class="feld"><span>Netzwerk</span><span class="strich"></span></p>
+    <p class="feld"><span>Website</span><span class="strich"></span></p>
+    <p class="feld"><span>Ansprache</span><span class="strich"></span></p>
+    <p class="feld"><span>sonstige</span><span class="strich"></span></p>
+  </div>
+  <p class="abschnitt-titel">Engpass im Quartal und unsere Maßnahme</p>
+  <div class="linien" data-linien="3"></div>
+</section>
+
+<!-- 4 · Aufbau Kennzahlen -->
+<section class="seite">
+  <p class="vorzeile">Phase Aufbau · erste Vertriebler</p>
+  <h2 class="blatt">Die Kennzahlen im Aufbau</h2>
+  <p class="so"><b>So nutzen Sie die Seite</b>Jetzt zählen Sie je Person und je Stufe, denn Sie müssen sehen, wo Kontakte verloren gehen und ob eine neue Person ankommt. Legen Sie die Definitionen gemeinsam mit dem Team fest.</p>
+  <table class="raster def">
+    <colgroup><col style="width:40mm"><col style="width:60mm"><col style="width:19mm"><col></colgroup>
+    <thead><tr><th>Kennzahl</th><th>Formel</th><th>Art</th><th>Warum gerade jetzt</th></tr></thead>
+    <tbody id="def-aufbau"></tbody>
+  </table>
+  <p class="abschnitt-titel">Bei uns zählt als …</p>
+  <div class="beschriftet" style="margin-top:.4mm"><span>Ansprache</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>erreichtes Gespräch</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Termin</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>Angebot</span><div class="zeile-frei"></div></div>
+  <p class="abschnitt-titel">Ausgangswert und Ziel <small>nach vier bis acht Wochen Messung</small></p>
+  <table class="raster" style="margin-top:.6mm">
+    <colgroup><col style="width:52mm"><col><col><col style="width:30mm"></colgroup>
+    <thead><tr><th>Kennzahl</th><th>Ausgangswert</th><th>Ziel</th><th>gilt ab</th></tr></thead>
+    <tbody id="ziel-aufbau"></tbody>
+  </table>
+</section>
+
+<!-- 5 · Aufbau Wochenbogen -->
+<section class="seite">
+  <p class="vorzeile">Phase Aufbau · Wochenbogen je Person</p>
+  <h2 class="blatt">Wochenbogen Aufbau</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Ein Bogen je Person, jeden Freitag eine Zeile. Die Zahlen kommen aus den Tagesberichten oder dem CRM. Rechnen Sie Quoten erst am Monats- oder Quartalsende, einzelne Wochen schwanken zu stark.</p>
+  <div class="reihe"><p class="feld"><span>Quartal</span><span class="strich"></span></p><p class="feld breit"><span>Person</span><span class="strich"></span></p><p class="feld"><span>Rolle</span><span class="strich"></span></p></div>
+  <table class="raster" id="woche-aufbau"></table>
+  <p class="abschnitt-titel">Quoten im Quartal</p>
+  <div class="quoten">
+    <p class="feld"><span>Erreichquote</span><span class="strich"></span><span>%</span></p>
+    <p class="feld"><span>Terminquote</span><span class="strich"></span><span>%</span></p>
+    <p class="feld"><span>Erscheinquote</span><span class="strich"></span><span>%</span></p>
+    <p class="feld"><span>Angebotsquote</span><span class="strich"></span><span>%</span></p>
+    <p class="feld"><span>Abschlussquote</span><span class="strich"></span><span>%</span></p>
+    <p class="feld"><span>ohne Gründer</span><span class="strich"></span><span>%</span></p>
+  </div>
+  <p class="abschnitt-titel">Engpass im Quartal und unsere Maßnahme</p>
+  <div class="linien" data-linien="3"></div>
+</section>
+
+<!-- 6 · Wachstum Kennzahlen -->
+<section class="seite">
+  <p class="vorzeile">Phase Wachstum · Team mit Führung</p>
+  <h2 class="blatt">Die Kennzahlen im Wachstum</h2>
+  <p class="so"><b>So nutzen Sie die Seite</b>Die Zahlen aus dem Aufbau laufen weiter, jetzt je Rolle. Dazu kommen Zahlen für die Prognose, die Kosten und das Team. Viele davon besprechen Sie monatlich oder vierteljährlich, nicht jede Woche.</p>
+  <table class="raster def">
+    <colgroup><col style="width:40mm"><col style="width:60mm"><col style="width:19mm"><col></colgroup>
+    <thead><tr><th>Kennzahl</th><th>Formel</th><th>Takt</th><th>Warum gerade jetzt</th></tr></thead>
+    <tbody id="def-wachstum"></tbody>
+  </table>
+  <p class="abschnitt-titel">Bei uns gilt …</p>
+  <div class="beschriftet" style="margin-top:.4mm"><span>Wahrscheinlichkeit je Stufe</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>„volle Leistung“ heißt</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet"><span>zu den Vertriebskosten gehören</span><div class="zeile-frei"></div></div>
+  <p class="abschnitt-titel">Ausgangswert und Ziel <small>nach vier bis acht Wochen Messung</small></p>
+  <table class="raster" style="margin-top:.6mm">
+    <colgroup><col style="width:52mm"><col><col><col style="width:30mm"></colgroup>
+    <thead><tr><th>Kennzahl</th><th>Ausgangswert</th><th>Ziel</th><th>gilt ab</th></tr></thead>
+    <tbody id="ziel-wachstum"></tbody>
+  </table>
+</section>
+
+<!-- 7 · Wachstum Wochenbogen -->
+<section class="seite">
+  <p class="vorzeile">Phase Wachstum · Wochenbogen für das Team</p>
+  <h2 class="blatt">Wochenbogen Wachstum</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Die Vertriebsleitung trägt jeden Freitag die Summen des Teams ein. Die Zahlen je Person führen Sie weiter auf dem Bogen Aufbau. Abdeckung = gewichtete Pipeline ÷ noch offenes Ziel bis Quartalsende.</p>
+  <div class="reihe"><p class="feld"><span>Quartal</span><span class="strich"></span></p><p class="feld breit"><span>Team</span><span class="strich"></span></p><p class="feld"><span>Quartalsziel</span><span class="strich"></span><span>€</span></p></div>
+  <table class="raster" id="woche-wachstum"></table>
+  <p class="abschnitt-titel">Quoten im Quartal</p>
+  <div class="quoten">
+    <p class="feld"><span>Angebotsquote</span><span class="strich"></span><span>%</span></p>
+    <p class="feld"><span>Abschlussquote</span><span class="strich"></span><span>%</span></p>
+    <p class="feld"><span>Ø Auftragswert</span><span class="strich"></span><span>€</span></p>
+  </div>
+  <p class="abschnitt-titel">Engpass im Quartal und unsere Maßnahme</p>
+  <div class="linien" data-linien="3"></div>
+</section>
+
+<!-- 8 · Wachstum Monatsbogen -->
+<section class="seite">
+  <p class="vorzeile">Phase Wachstum · Monat und Quartal</p>
+  <h2 class="blatt">Monatsbogen Wachstum</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Halten Sie die Prognose am ersten Werktag des Monats fest und tragen Sie am Monatsende das Ist ein. Vertriebskosten und Bestandskunden kommen aus der Buchhaltung. Die Teamzahlen unten füllen Sie einmal im Quartal.</p>
+  <table class="raster" id="monat-wachstum"></table>
+  <p class="abschnitt-titel">Team im Quartal</p>
+  <table class="raster">
+    <colgroup><col style="width:32mm"><col><col><col><col><col></colgroup>
+    <thead><tr><th>Quartal</th><th>Ø Vertriebsleute</th><th>Abgänge</th><th>Abgänge in 12 Monaten ÷ Ø Leute</th><th>neue Leute</th><th>Ø Tage bis zur vollen Leistung</th></tr></thead>
+    <tbody><tr><td>1</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>2</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>3</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>4</td><td></td><td></td><td></td><td></td><td></td></tr></tbody>
+  </table>
+</section>
+
+<!-- 9 · Beispiel -->
+<section class="seite">
+  <p class="vorzeile">Ausgefülltes Beispiel · Phase Aufbau</p>
+  <h2 class="blatt">Ein Monat einer Person im Aufbau <span class="marke-bsp" style="vertical-align:4px">ERFUNDEN</span></h2>
+  <p class="so"><b>So lesen Sie das Beispiel</b>Eine Person vereinbart Termine und berät selbst. Alle Zahlen sind frei erfunden. Unten sehen Sie, wie aus den Wochenzeilen die Quoten werden und welcher Schluss daraus folgt.</p>
+  <table class="raster bsp" id="beispiel"></table>
+  <p class="abschnitt-titel">So rechnen Sie die Quoten</p>
+  <table class="raster def">
+    <colgroup><col style="width:40mm"><col style="width:52mm"><col style="width:26mm"><col></colgroup>
+    <thead><tr><th>Quote</th><th>Rechnung im Beispiel</th><th class="zahl">Ergebnis</th><th>Bedeutung</th></tr></thead>
+    <tbody id="beispiel-quoten"></tbody>
+  </table>
+  <p class="abschnitt-titel">Was wir daraus ablesen <small>im Beispiel</small></p>
+  <p class="text" style="margin-top:1.6mm">Die schwächsten Stufen sind Erreichen und Termin, beide bei 25 %. Das Erreichen hängt an Kontaktliste und Uhrzeit, der Termin am Gespräch selbst. Die Person setzt beim Termin an: Steigt die Terminquote durch einen besseren Gesprächseinstieg auf 30 %, werden bei sonst gleichen Quoten aus 100 Gesprächen 30 Termine, 24 finden statt und 12 statt 10 Angebote entstehen. <b class="stark">Maßnahme:</b> zwei Wochen einen neuen Einstieg testen, danach vergleichen.</p>
+  <div class="hinweis unten">Mehr dazu: Ratgeber <b>fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/</b> · Vertriebscheck <b>fokusinnovation.de/check?thema=vertrieb</b> · Erstgespräch <b>fokusinnovation.de/kontakt/</b></div>
+</section>
+
+<script>
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Vorlage zum freien Gebrauch</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+  const $ = (id) => document.getElementById(id);
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = '<div class="zeile-frei"></div>'.repeat(Number(d.dataset.linien)); });
+  const zielTab = (id, namen) => { $(id).innerHTML = namen.map((n) => `<tr><td style="font-size:8.8pt">${n}</td><td></td><td></td><td></td></tr>`).join(''); };
+  const art = (a) => `<span class="art ${a}">${a}</span>`;
+  const def = (zeilen) => zeilen.map(([k, f, a, w]) => `<tr><td>${k}</td><td>${f}</td><td>${['eingabe', 'ergebnis', 'quote'].includes(a) ? art(a) : `<span class="art quote">${a}</span>`}</td><td>${w}</td></tr>`).join('');
+
+  $('def-start').innerHTML = def([
+    ['Vertriebsstunden des Gründers', 'Stunden je Woche, die nur dem Vertrieb gehören', 'eingabe', 'Fehlt diese Zeit heute, fehlt der Umsatz in einigen Monaten.'],
+    ['Erstgespräche', 'Gespräche mit neuen möglichen Kunden über einen konkreten Bedarf, je Woche', 'eingabe', 'Ohne Gespräche keine Angebote. Zeigt früh, ob genug nachkommt.'],
+    ['Angebote', 'schriftliche Angebote mit Preis und Datum, je Woche und Monat', 'eingabe', 'Zeigt, ob aus Gesprächen konkrete Chancen werden.'],
+    ['Abschlussquote', 'gewonnene ÷ entschiedene Angebote (gewonnen + verloren)', 'quote', 'Zeigt, ob die Angebote an die richtigen Kunden gehen.'],
+    ['Zeit bis zum Abschluss', 'Tage vom Erstgespräch bis zum Auftrag, im Mittel', 'ergebnis', 'Zeigt, wie weit Sie vorausplanen müssen.'],
+    ['Offene Chancen mit Wert', 'Summe der Werte offener Chancen mit vereinbartem nächstem Schritt', 'ergebnis', 'Zeigt, was in den nächsten Monaten kommen kann.'],
+    ['Herkunft der Aufträge', 'Aufträge je Quelle ÷ alle Aufträge', 'quote', 'Zeigt, welcher Weg trägt und was eine erste Vertriebsperson übernehmen kann.'],
+  ]);
+  $('def-aufbau').innerHTML = def([
+    ['Ansprachen', 'Anrufe, Nachrichten und Mails an neue Kontakte, je Person und Tag', 'eingabe', 'Die Eingabe, die eine neue Person vom ersten Tag an steuern kann.'],
+    ['Erreichquote', 'erreichte Gespräche ÷ Ansprachen', 'quote', 'Zeigt, ob Kontaktliste und Uhrzeiten passen.'],
+    ['Terminquote', 'vereinbarte Termine ÷ erreichte Gespräche', 'quote', 'Zeigt, ob Einstieg und Nutzen im Gespräch überzeugen.'],
+    ['Erscheinquote', 'stattgefundene ÷ vereinbarte Termine', 'quote', 'Zeigt, ob Termine verbindlich vereinbart und bestätigt werden.'],
+    ['Angebotsquote', 'Angebote ÷ stattgefundene Termine', 'quote', 'Zeigt, ob die Termine mit den richtigen Kunden stattfinden.'],
+    ['Abschlussquote je Person', 'gewonnene ÷ entschiedene Angebote, je Person', 'quote', 'Zeigt, wer Beratung und Abschluss schon sicher beherrscht.'],
+    ['Aufträge ohne Gründer', 'Aufträge ohne Beteiligung des Gründers ÷ alle Aufträge', 'quote', 'Zeigt, ob die Übergabe gelingt.'],
+  ]);
+  $('def-wachstum').innerHTML = def([
+    ['Abdeckung der Pipeline', 'gewichteter Wert offener Chancen ÷ noch offenes Umsatzziel im selben Zeitraum', 'Woche', 'Zeigt, ob genug in der Pipeline ist, um das Ziel zu erreichen.'],
+    ['Prognosegenauigkeit', 'tatsächlicher Umsatz ÷ Prognose vom Monatsanfang', 'Monat', 'Zeigt, wie verlässlich die Zusagen des Vertriebs sind.'],
+    ['Ergebnis je Rolle und Person', 'z. B. stattgefundene Termine je Terminperson, Auftragswert je Abschluss-Person', 'Woche', 'Zeigt, wo das Team stark ist und wer Unterstützung braucht.'],
+    ['Zeit bis zur vollen Leistung', 'Tage vom ersten Arbeitstag, bis eine neue Person vier Wochen in Folge ihre Ziele erreicht', 'Quartal', 'Zeigt, wie gut Auswahl und Einarbeitung funktionieren.'],
+    ['Kosten je Neukunde', 'Vertriebskosten im Zeitraum ÷ neue Kunden im Zeitraum', 'Quartal', 'Zeigt, ob das Wachstum bezahlbar bleibt.'],
+    ['Umsatz mit Bestandskunden', 'Umsatz aus Verlängerungen und Zusatzaufträgen ÷ gesamter Umsatz', 'Monat', 'Zeigt, ob Kunden bleiben und mehr kaufen.'],
+    ['Abgänge im Vertrieb', 'Abgänge in zwölf Monaten ÷ durchschnittliche Zahl der Vertriebsleute', 'Quartal', 'Zeigt, ob Führung, Vergütung und Auswahl stimmen.'],
+  ]);
+
+  zielTab('ziel-start', ['Vertriebsstunden je Woche', 'Erstgespräche je Woche', 'Angebote je Monat', 'Abschlussquote', 'Zeit bis zum Abschluss', 'Offene Chancen mit Wert', 'Anteil Aufträge aus der besten Quelle']);
+  zielTab('ziel-aufbau', ['Ansprachen je Tag', 'Erreichquote', 'Terminquote', 'Erscheinquote', 'Angebotsquote', 'Abschlussquote', 'Aufträge ohne Gründer']);
+  zielTab('ziel-wachstum', ['Abdeckung der Pipeline', 'Prognosegenauigkeit', 'Ergebnis je Rolle', 'Zeit bis zur vollen Leistung', 'Kosten je Neukunde', 'Umsatz mit Bestandskunden', 'Abgänge im Vertrieb']);
+
+  // Wochenbögen: 13 Wochen + Summe
+  const bogen = (spalten, breiten, zeilen = 13, summe = 'Summe') => {
+    const kopf = `<colgroup>${breiten.map((b) => `<col${b ? ` style="width:${b}mm"` : ''}>`).join('')}</colgroup><thead><tr>${spalten.map(([t, k], i) => `<th${i ? ' class="zahl"' : ''}>${t}${k ? `<small>${k}</small>` : ''}</th>`).join('')}</tr></thead>`;
+    let rumpf = '';
+    for (let i = 1; i <= zeilen; i++) rumpf += `<tr><td class="leise">${i}<span style="display:inline-block;width:12mm;margin-left:2mm;border-bottom:var(--linie) solid var(--haar)"></span></td>${spalten.slice(1).map(() => '<td></td>').join('')}</tr>`;
+    rumpf += `<tr class="summe"><td>${summe}</td>${spalten.slice(1).map(() => '<td></td>').join('')}</tr>`;
+    return kopf + `<tbody>${rumpf}</tbody>`;
+  };
+  $('woche-start').innerHTML = bogen([
+    ['Woche', 'Nr. und Montag'], ['Stunden', 'Vertrieb'], ['Erst&shy;gespräche'], ['Angebote', 'verschickt'], ['gewonnen'], ['verloren'], ['Wert', 'gewonnen, €'], ['ohne Nach&shy;fass-Datum', 'Stand Fr'],
+  ], [27, null, null, null, null, null, 25, 24]);
+  $('woche-aufbau').innerHTML = bogen([
+    ['Woche', 'Nr. und Montag'], ['Anspra&shy;chen'], ['erreicht'], ['Termine', 'vereinbart'], ['Termine', 'statt&shy;gefunden'], ['Angebote'], ['gewonnen'], ['verloren'], ['davon ohne Gründer'],
+  ], [27, null, null, null, null, null, null, null, 18]);
+  $('woche-wachstum').innerHTML = bogen([
+    ['Woche', 'Nr. und Montag'], ['Termine', 'statt&shy;gefunden'], ['Angebote'], ['gewonnen'], ['verloren'], ['Auftrags&shy;wert', 'gewonnen, €'], ['gewichtete Pipeline', '€'], ['offenes Ziel', 'bis Quartals&shy;ende, €'], ['Abdeck&shy;ung'],
+  ], [27, null, null, null, null, 20, 21, 21, 15]);
+  const monate = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+  $('monat-wachstum').innerHTML = `<colgroup><col style="width:14mm"><col><col><col style="width:17mm"><col style="width:15mm"><col><col><col><col style="width:16mm"></colgroup>
+    <thead><tr><th>Monat</th><th class="zahl">Prognose<small>1. Werktag, €</small></th><th class="zahl">Umsatz<small>Ist, €</small></th><th class="zahl">Genauig&shy;keit<small>Ist ÷ Prognose</small></th><th class="zahl">Neu&shy;kunden</th><th class="zahl">Vertriebs&shy;kosten<small>€</small></th><th class="zahl">Kosten je Neukunde<small>€</small></th><th class="zahl">Umsatz Bestand<small>€</small></th><th class="zahl">Anteil Bestand</th></tr></thead>
+    <tbody>${monate.map((m) => `<tr><td class="leise">${m}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')}<tr class="summe"><td>Jahr</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody>`;
+
+  // Beispiel (erfunden)
+  const bsp = [
+    ['Woche 1', 95, 22, 5, 4, 2, 0, 1, 0],
+    ['Woche 2', 105, 28, 7, 5, 3, 1, 1, 1],
+    ['Woche 3', 100, 24, 6, 5, 2, 1, 2, 0],
+    ['Woche 4', 100, 26, 7, 6, 3, 1, 1, 1],
+  ];
+  const summe = bsp[0].map((_, i) => i ? bsp.reduce((s, z) => s + z[i], 0) : 'Monat');
+  $('beispiel').innerHTML = `<colgroup><col style="width:27mm"><col><col><col><col><col><col><col><col style="width:18mm"></colgroup>
+    <thead><tr><th>Woche</th><th class="zahl">Anspra&shy;chen</th><th class="zahl">erreicht</th><th class="zahl">Termine<small>vereinbart</small></th><th class="zahl">Termine<small>statt&shy;gefunden</small></th><th class="zahl">Angebote</th><th class="zahl">gewonnen</th><th class="zahl">verloren</th><th class="zahl">davon ohne Gründer</th></tr></thead>
+    <tbody>${bsp.map((z) => `<tr>${z.map((w, i) => `<td${i ? ' class="zahl"' : ''}>${w}</td>`).join('')}</tr>`).join('')}<tr class="summe">${summe.map((w, i) => `<td${i ? ' class="zahl"' : ''}>${w}</td>`).join('')}</tr></tbody>`;
+  const q = (a, b) => Math.round(a / b * 100) + ' %';
+  const [, an, er, tv, ts, ag, gw, vl, og] = summe;
+  $('beispiel-quoten').innerHTML = [
+    ['Erreichquote', `${er} ÷ ${an}`, q(er, an), 'jeder vierte Kontakt wird erreicht'],
+    ['Terminquote', `${tv} ÷ ${er}`, q(tv, er), 'aus jedem vierten Gespräch wird ein Termin'],
+    ['Erscheinquote', `${ts} ÷ ${tv}`, q(ts, tv), 'vier von fünf Terminen finden statt'],
+    ['Angebotsquote', `${ag} ÷ ${ts}`, q(ag, ts), 'jeder zweite Termin führt zum Angebot'],
+    ['Abschlussquote', `${gw} ÷ (${gw} + ${vl})`, q(gw, gw + vl), 'zwei Angebote sind noch offen und zählen nicht mit'],
+    ['ohne Gründer', `${og} ÷ ${gw}`, q(og, gw), 'zwei von drei Aufträgen ohne den Gründer'],
+  ].map(([n, r, e, b]) => `<tr><td>${n}</td><td>${r}</td><td class="zahl stark">${e}</td><td class="leise">${b}</td></tr>`).join('');
+</script>
+</body>
+</html>

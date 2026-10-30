@@ -1,0 +1,2109 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 34
+    },
+    {
+     "breite": 78
+    },
+    {
+     "breite": 16
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Vertriebskennzahlen je Phase",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Fokus Innovation · fokusinnovation.de · Vorlage zum freien Gebrauch",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "So nutzen Sie die Tabelle",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "1. Phase wählen",
+      "stil": "fett"
+     },
+     {
+      "v": "Start: Der Gründer verkauft selbst. Aufbau: Erste Vertriebler verkaufen mit. Wachstum: Ein Team mit mehreren Rollen und einer Vertriebsleitung. Bei Zweifel gilt die frühere Phase.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "2. Erste Woche eintragen",
+      "stil": "fett"
+     },
+     {
+      "v": "Tragen Sie auf dem Blatt Ihrer Phase in der Zeile „Woche 1“ den Montag der ersten Woche ein. Alle weiteren Wochen rechnet die Tabelle selbst.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "3. Jeden Freitag eintragen",
+      "stil": "fett"
+     },
+     {
+      "v": "Lila Felder sind Eingaben. Alle anderen Felder rechnen selbst und bleiben leer, solange etwas fehlt.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "4. Oben ablesen",
+      "stil": "fett"
+     },
+     {
+      "v": "Über den Wochen stehen Ihr Ziel, der Durchschnitt je Woche und die Summe. Die Quoten in der Summenzeile gelten für alle eingetragenen Wochen. In den Wochenzeilen zeigt die Abschlussquote den laufenden Stand seit Woche 1.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "5. Monatsblätter",
+      "stil": "fett"
+     },
+     {
+      "v": "„Start Monate“ und „Aufbau Monate“ fassen die Wochen nach Monat zusammen. Eine Woche zählt zu dem Monat, in dem ihr Montag liegt. Dort tragen Sie nichts ein.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "6. Je Person (Aufbau)",
+      "stil": "fett"
+     },
+     {
+      "v": "Führen Sie im Aufbau ein Blatt je Person: Blatt „Aufbau“ duplizieren und umbenennen. Das Monatsblatt fasst nur das Blatt „Aufbau“ zusammen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "7. Ziele setzen",
+      "stil": "fett"
+     },
+     {
+      "v": "Tragen Sie Ziele erst nach vier bis acht Wochen Messung in die Zeile „Ihr Ziel je Woche“ ein, aus Ihren eigenen Werten.",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Die Kennzahlen",
+      "stil": "kopf"
+     },
+     {
+      "v": "Formel",
+      "stil": "kopf"
+     },
+     {
+      "v": "Phase",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Vertriebsstunden",
+      "stil": "fett"
+     },
+     {
+      "v": "Stunden je Woche, die nur dem Vertrieb gehören",
+      "stil": "text"
+     },
+     {
+      "v": "Start",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Erstgespräche",
+      "stil": "fett"
+     },
+     {
+      "v": "Gespräche mit neuen möglichen Kunden über einen konkreten Bedarf",
+      "stil": "text"
+     },
+     {
+      "v": "Start",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Angebote",
+      "stil": "fett"
+     },
+     {
+      "v": "schriftliche Angebote mit Preis und Datum",
+      "stil": "text"
+     },
+     {
+      "v": "alle",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Abschlussquote",
+      "stil": "fett"
+     },
+     {
+      "v": "gewonnene ÷ entschiedene Angebote (gewonnen + verloren)",
+      "stil": "text"
+     },
+     {
+      "v": "alle",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Offene Chancen mit Wert",
+      "stil": "fett"
+     },
+     {
+      "v": "Summe der Werte offener Chancen mit vereinbartem nächstem Schritt",
+      "stil": "text"
+     },
+     {
+      "v": "Start",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Erreichquote",
+      "stil": "fett"
+     },
+     {
+      "v": "erreichte Gespräche ÷ Ansprachen",
+      "stil": "text"
+     },
+     {
+      "v": "Aufbau",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Terminquote",
+      "stil": "fett"
+     },
+     {
+      "v": "vereinbarte Termine ÷ erreichte Gespräche",
+      "stil": "text"
+     },
+     {
+      "v": "Aufbau",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Erscheinquote",
+      "stil": "fett"
+     },
+     {
+      "v": "stattgefundene Termine ÷ vereinbarte Termine",
+      "stil": "text"
+     },
+     {
+      "v": "Aufbau",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Angebotsquote",
+      "stil": "fett"
+     },
+     {
+      "v": "Angebote ÷ stattgefundene Termine",
+      "stil": "text"
+     },
+     {
+      "v": "Aufbau, Wachstum",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Aufträge ohne Gründer",
+      "stil": "fett"
+     },
+     {
+      "v": "Aufträge ohne Beteiligung des Gründers ÷ alle Aufträge",
+      "stil": "text"
+     },
+     {
+      "v": "Aufbau",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Abdeckung der Pipeline",
+      "stil": "fett"
+     },
+     {
+      "v": "gewichteter Wert offener Chancen ÷ noch offenes Umsatzziel im selben Zeitraum",
+      "stil": "text"
+     },
+     {
+      "v": "Wachstum",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Prognosegenauigkeit",
+      "stil": "fett"
+     },
+     {
+      "v": "tatsächlicher Umsatz ÷ Prognose vom Monatsanfang",
+      "stil": "text"
+     },
+     {
+      "v": "Wachstum",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Kosten je Neukunde",
+      "stil": "fett"
+     },
+     {
+      "v": "Vertriebskosten im Zeitraum ÷ neue Kunden im Zeitraum",
+      "stil": "text"
+     },
+     {
+      "v": "Wachstum",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Umsatz mit Bestandskunden",
+      "stil": "fett"
+     },
+     {
+      "v": "Umsatz aus Verlängerungen und Zusatzaufträgen ÷ gesamter Umsatz",
+      "stil": "text"
+     },
+     {
+      "v": "Wachstum",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Zeit bis zur vollen Leistung",
+      "stil": "fett"
+     },
+     {
+      "v": "Tage vom ersten Arbeitstag, bis eine neue Person vier Wochen in Folge ihre Ziele erreicht (Blatt „Team“)",
+      "stil": "text"
+     },
+     {
+      "v": "Wachstum",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Abgänge im Vertrieb",
+      "stil": "fett"
+     },
+     {
+      "v": "Abgänge in zwölf Monaten ÷ durchschnittliche Zahl der Vertriebsleute",
+      "stil": "text"
+     },
+     {
+      "v": "Wachstum",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Richtwerte",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Bewusst keine",
+      "stil": "fett"
+     },
+     {
+      "v": "Quoten hängen von Branche, Preis, Kanal und Kontaktliste ab. Setzen Sie Ziele aus Ihren eigenen Werten. Zeit bis zum Abschluss und Herkunft der Aufträge rechnet die Vorlage „Vertriebs-Pipeline“.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Mehr dazu",
+      "stil": "fett"
+     },
+     {
+      "v": "Ratgeber: fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/ · Vertriebscheck: fokusinnovation.de/check?thema=vertrieb",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Start",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Woche",
+     "breite": 15
+    },
+    {
+     "titel": "Woche ab (Montag)",
+     "breite": 14,
+     "stil": "datum"
+    },
+    {
+     "titel": "Vertriebsstunden",
+     "breite": 12
+    },
+    {
+     "titel": "Erstgespräche",
+     "breite": 12
+    },
+    {
+     "titel": "Angebote verschickt",
+     "breite": 12
+    },
+    {
+     "titel": "Angebote gewonnen",
+     "breite": 12
+    },
+    {
+     "titel": "Angebote verloren",
+     "breite": 12
+    },
+    {
+     "titel": "Wert gewonnen (€)",
+     "breite": 14
+    },
+    {
+     "titel": "Offene Chancen, Wert (€, Stand Freitag)",
+     "breite": 16
+    },
+    {
+     "titel": "Angebote ohne Nachfass-Datum (Stand Freitag)",
+     "breite": 16
+    },
+    {
+     "titel": "Angebote je Erstgespräch",
+     "breite": 12
+    },
+    {
+     "titel": "Abschlussquote (laufend)",
+     "breite": 13
+    },
+    {
+     "titel": "Notiz",
+     "breite": 34
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Name",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Ihr Ziel je Woche",
+      "stil": "fett"
+     },
+     null,
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     null
+    ],
+    [
+     {
+      "v": "Durchschnitt je Woche",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "IFERROR(ROUND(AVERAGE(C6:C57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(D6:D57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(E6:E57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(F6:F57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(G6:G57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(AVERAGE(H6:H57),\"\")",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(AVERAGE(I6:I57),\"\")",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(J6:J57),1),\"\")",
+      "stil": "standard"
+     },
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Summe",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "SUM(C6:C57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(D6:D57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(E6:E57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(F6:F57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(G6:G57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(H6:H57)",
+      "stil": "euro"
+     },
+     null,
+     null,
+     {
+      "f": "IFERROR(E5/D5,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(F5/(F5+G5),\"\")",
+      "stil": "prozent"
+     },
+     null
+    ],
+    [
+     {
+      "v": "Woche 1",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",E{r}=\"\"),\"\",IFERROR(E{r}/D{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(AND(F{r}=\"\",G{r}=\"\"),\"\",IFERROR(SUM(F$6:F{r})/(SUM(F$6:F{r})+SUM(G$6:G{r})),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "\"Woche \"&(ROW()-5)",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OFFSET(B{r},-1,0)=\"\",\"\",OFFSET(B{r},-1,0)+7)",
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",E{r}=\"\"),\"\",IFERROR(E{r}/D{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(AND(F{r}=\"\",G{r}=\"\"),\"\",IFERROR(SUM(F$6:F{r})/(SUM(F$6:F{r})+SUM(G$6:G{r})),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    "anzahl": 51
+   }
+  },
+  {
+   "name": "Start Monate",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Monat (ab)",
+     "breite": 13
+    },
+    {
+     "titel": "Vertriebsstunden",
+     "breite": 12
+    },
+    {
+     "titel": "Erstgespräche",
+     "breite": 12
+    },
+    {
+     "titel": "Angebote verschickt",
+     "breite": 12
+    },
+    {
+     "titel": "Angebote gewonnen",
+     "breite": 12
+    },
+    {
+     "titel": "Angebote verloren",
+     "breite": 12
+    },
+    {
+     "titel": "Wert gewonnen (€)",
+     "breite": 14
+    },
+    {
+     "titel": "Angebote je Erstgespräch",
+     "breite": 12
+    },
+    {
+     "titel": "Abschlussquote",
+     "breite": 12
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Summe",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(B3:B14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(C3:C14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(D3:D14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(E3:E14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(F3:F14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(G3:G14)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(D2/C2,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(E2/(E2+F2),\"\")",
+      "stil": "prozent"
+     }
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(Start!$B$6=\"\",\"\",DATE(YEAR(Start!$B$6),MONTH(Start!$B$6)+ROW()-3,1))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Start!C$6:C$57,Start!$B$6:$B$57,\">=\"&$A{r},Start!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Start!D$6:D$57,Start!$B$6:$B$57,\">=\"&$A{r},Start!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Start!E$6:E$57,Start!$B$6:$B$57,\">=\"&$A{r},Start!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Start!F$6:F$57,Start!$B$6:$B$57,\">=\"&$A{r},Start!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Start!G$6:G$57,Start!$B$6:$B$57,\">=\"&$A{r},Start!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Start!H$6:H$57,Start!$B$6:$B$57,\">=\"&$A{r},Start!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(D{r}/C{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(E{r}/(E{r}+F{r}),\"\"))",
+      "stil": "prozent"
+     }
+    ],
+    "anzahl": 12
+   }
+  },
+  {
+   "name": "Aufbau",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Woche",
+     "breite": 15
+    },
+    {
+     "titel": "Woche ab (Montag)",
+     "breite": 14,
+     "stil": "datum"
+    },
+    {
+     "titel": "Ansprachen",
+     "breite": 11
+    },
+    {
+     "titel": "erreichte Gespräche",
+     "breite": 11
+    },
+    {
+     "titel": "Termine vereinbart",
+     "breite": 11
+    },
+    {
+     "titel": "Termine stattgefunden",
+     "breite": 11
+    },
+    {
+     "titel": "Angebote",
+     "breite": 10
+    },
+    {
+     "titel": "Angebote gewonnen",
+     "breite": 11
+    },
+    {
+     "titel": "Angebote verloren",
+     "breite": 11
+    },
+    {
+     "titel": "davon ohne Gründer",
+     "breite": 11
+    },
+    {
+     "titel": "Erreichquote",
+     "breite": 10
+    },
+    {
+     "titel": "Terminquote",
+     "breite": 10
+    },
+    {
+     "titel": "Erscheinquote",
+     "breite": 10
+    },
+    {
+     "titel": "Angebotsquote",
+     "breite": 10
+    },
+    {
+     "titel": "Abschlussquote (laufend)",
+     "breite": 12
+    },
+    {
+     "titel": "ohne Gründer (laufend)",
+     "breite": 12
+    },
+    {
+     "titel": "Notiz",
+     "breite": 30
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Name",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Ihr Ziel je Woche",
+      "stil": "fett"
+     },
+     null,
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     null
+    ],
+    [
+     {
+      "v": "Durchschnitt je Woche",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "IFERROR(ROUND(AVERAGE(C6:C57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(D6:D57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(E6:E57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(F6:F57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(G6:G57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(H6:H57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(I6:I57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(J6:J57),1),\"\")",
+      "stil": "standard"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Summe",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "SUM(C6:C57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(D6:D57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(E6:E57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(F6:F57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(G6:G57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(H6:H57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(I6:I57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(J6:J57)",
+      "stil": "fett"
+     },
+     {
+      "f": "IFERROR(D5/C5,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(E5/D5,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(F5/E5,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(G5/F5,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(H5/(H5+I5),\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(J5/H5,\"\")",
+      "stil": "prozent"
+     },
+     null
+    ],
+    [
+     {
+      "v": "Woche 1",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",IFERROR(D{r}/C{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",E{r}=\"\"),\"\",IFERROR(E{r}/D{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(E{r}=\"\",F{r}=\"\"),\"\",IFERROR(F{r}/E{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",G{r}=\"\"),\"\",IFERROR(G{r}/F{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(AND(H{r}=\"\",I{r}=\"\"),\"\",IFERROR(SUM(H$6:H{r})/(SUM(H$6:H{r})+SUM(I$6:I{r})),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(AND(H{r}=\"\",J{r}=\"\"),\"\",IFERROR(SUM(J$6:J{r})/SUM(H$6:H{r}),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "\"Woche \"&(ROW()-5)",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OFFSET(B{r},-1,0)=\"\",\"\",OFFSET(B{r},-1,0)+7)",
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",IFERROR(D{r}/C{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",E{r}=\"\"),\"\",IFERROR(E{r}/D{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(E{r}=\"\",F{r}=\"\"),\"\",IFERROR(F{r}/E{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",G{r}=\"\"),\"\",IFERROR(G{r}/F{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(AND(H{r}=\"\",I{r}=\"\"),\"\",IFERROR(SUM(H$6:H{r})/(SUM(H$6:H{r})+SUM(I$6:I{r})),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(AND(H{r}=\"\",J{r}=\"\"),\"\",IFERROR(SUM(J$6:J{r})/SUM(H$6:H{r}),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    "anzahl": 51
+   }
+  },
+  {
+   "name": "Aufbau Monate",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Monat (ab)",
+     "breite": 13
+    },
+    {
+     "titel": "Ansprachen",
+     "breite": 11
+    },
+    {
+     "titel": "erreichte Gespräche",
+     "breite": 11
+    },
+    {
+     "titel": "Termine vereinbart",
+     "breite": 11
+    },
+    {
+     "titel": "Termine stattgefunden",
+     "breite": 11
+    },
+    {
+     "titel": "Angebote",
+     "breite": 10
+    },
+    {
+     "titel": "Angebote gewonnen",
+     "breite": 11
+    },
+    {
+     "titel": "Angebote verloren",
+     "breite": 11
+    },
+    {
+     "titel": "davon ohne Gründer",
+     "breite": 11
+    },
+    {
+     "titel": "Erreichquote",
+     "breite": 10
+    },
+    {
+     "titel": "Terminquote",
+     "breite": 10
+    },
+    {
+     "titel": "Erscheinquote",
+     "breite": 10
+    },
+    {
+     "titel": "Angebotsquote",
+     "breite": 10
+    },
+    {
+     "titel": "Abschlussquote",
+     "breite": 11
+    },
+    {
+     "titel": "ohne Gründer",
+     "breite": 11
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Summe",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(B3:B14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(C3:C14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(D3:D14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(E3:E14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(F3:F14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(G3:G14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(H3:H14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(I3:I14)",
+      "stil": "fett"
+     },
+     {
+      "f": "IFERROR(C2/B2,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(D2/C2,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(E2/D2,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(F2/E2,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(G2/(G2+H2),\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(I2/G2,\"\")",
+      "stil": "prozent"
+     }
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(Aufbau!$B$6=\"\",\"\",DATE(YEAR(Aufbau!$B$6),MONTH(Aufbau!$B$6)+ROW()-3,1))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Aufbau!C$6:C$57,Aufbau!$B$6:$B$57,\">=\"&$A{r},Aufbau!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Aufbau!D$6:D$57,Aufbau!$B$6:$B$57,\">=\"&$A{r},Aufbau!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Aufbau!E$6:E$57,Aufbau!$B$6:$B$57,\">=\"&$A{r},Aufbau!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Aufbau!F$6:F$57,Aufbau!$B$6:$B$57,\">=\"&$A{r},Aufbau!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Aufbau!G$6:G$57,Aufbau!$B$6:$B$57,\">=\"&$A{r},Aufbau!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Aufbau!H$6:H$57,Aufbau!$B$6:$B$57,\">=\"&$A{r},Aufbau!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Aufbau!I$6:I$57,Aufbau!$B$6:$B$57,\">=\"&$A{r},Aufbau!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Aufbau!J$6:J$57,Aufbau!$B$6:$B$57,\">=\"&$A{r},Aufbau!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(D{r}/C{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(E{r}/D{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(F{r}/E{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(G{r}/(G{r}+H{r}),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(I{r}/G{r},\"\"))",
+      "stil": "prozent"
+     }
+    ],
+    "anzahl": 12
+   }
+  },
+  {
+   "name": "Wachstum",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Woche",
+     "breite": 15
+    },
+    {
+     "titel": "Woche ab (Montag)",
+     "breite": 14,
+     "stil": "datum"
+    },
+    {
+     "titel": "Termine stattgefunden (Team)",
+     "breite": 12
+    },
+    {
+     "titel": "Angebote",
+     "breite": 10
+    },
+    {
+     "titel": "Angebote gewonnen",
+     "breite": 11
+    },
+    {
+     "titel": "Angebote verloren",
+     "breite": 11
+    },
+    {
+     "titel": "Auftragswert gewonnen (€)",
+     "breite": 14
+    },
+    {
+     "titel": "Gewichtete Pipeline (€, Stand Freitag)",
+     "breite": 15
+    },
+    {
+     "titel": "Offenes Ziel bis Quartalsende (€)",
+     "breite": 15
+    },
+    {
+     "titel": "Abdeckung (Pipeline ÷ Ziel)",
+     "breite": 13
+    },
+    {
+     "titel": "Angebotsquote",
+     "breite": 10
+    },
+    {
+     "titel": "Abschlussquote (laufend)",
+     "breite": 12
+    },
+    {
+     "titel": "Ø Auftragswert (laufend, €)",
+     "breite": 13
+    },
+    {
+     "titel": "Notiz",
+     "breite": 30
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Name",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Ihr Ziel je Woche",
+      "stil": "fett"
+     },
+     null,
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     null
+    ],
+    [
+     {
+      "v": "Durchschnitt je Woche",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "IFERROR(ROUND(AVERAGE(C6:C57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(D6:D57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(E6:E57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(F6:F57),1),\"\")",
+      "stil": "standard"
+     },
+     {
+      "f": "IFERROR(AVERAGE(G6:G57),\"\")",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(AVERAGE(H6:H57),\"\")",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(AVERAGE(I6:I57),\"\")",
+      "stil": "euro"
+     },
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Summe",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "SUM(C6:C57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(D6:D57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(E6:E57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(F6:F57)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(G6:G57)",
+      "stil": "euro"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IFERROR(D5/C5,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(E5/(E5+F5),\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(G5/E5,\"\")",
+      "stil": "euro"
+     },
+     null
+    ],
+    [
+     {
+      "v": "Woche 1",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF(OR(H{r}=\"\",I{r}=\"\"),\"\",IFERROR(H{r}/I{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",IFERROR(D{r}/C{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(AND(E{r}=\"\",F{r}=\"\"),\"\",IFERROR(SUM(E$6:E{r})/(SUM(E$6:E{r})+SUM(F$6:F{r})),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(SUM(G$6:G{r})/SUM(E$6:E{r}),\"\"))",
+      "stil": "euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "\"Woche \"&(ROW()-5)",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OFFSET(B{r},-1,0)=\"\",\"\",OFFSET(B{r},-1,0)+7)",
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF(OR(H{r}=\"\",I{r}=\"\"),\"\",IFERROR(H{r}/I{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",IFERROR(D{r}/C{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(AND(E{r}=\"\",F{r}=\"\"),\"\",IFERROR(SUM(E$6:E{r})/(SUM(E$6:E{r})+SUM(F$6:F{r})),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(SUM(G$6:G{r})/SUM(E$6:E{r}),\"\"))",
+      "stil": "euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    "anzahl": 51
+   }
+  },
+  {
+   "name": "Wachstum Monate",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Monat (ab)",
+     "breite": 13
+    },
+    {
+     "titel": "Prognose am 1. Werktag (€)",
+     "breite": 14
+    },
+    {
+     "titel": "Umsatz Ist (€)",
+     "breite": 14
+    },
+    {
+     "titel": "Prognosegenauigkeit",
+     "breite": 12
+    },
+    {
+     "titel": "Neukunden",
+     "breite": 10
+    },
+    {
+     "titel": "Vertriebskosten (€)",
+     "breite": 14
+    },
+    {
+     "titel": "Kosten je Neukunde (€)",
+     "breite": 13
+    },
+    {
+     "titel": "Umsatz Bestandskunden (€)",
+     "breite": 14
+    },
+    {
+     "titel": "Anteil Bestand",
+     "breite": 11
+    },
+    {
+     "titel": "Vertriebsleute am Monatsende",
+     "breite": 13
+    },
+    {
+     "titel": "Abgänge im Monat",
+     "breite": 11
+    },
+    {
+     "titel": "Auftragswert gewonnen (€, aus Wochenblatt)",
+     "breite": 16
+    },
+    {
+     "titel": "Notiz",
+     "breite": 28
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Summe Jahr",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(B3:B14)",
+      "stil": "euro"
+     },
+     {
+      "f": "SUM(C3:C14)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(C2/B2,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "SUM(E3:E14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(F3:F14)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(F2/E2,\"\")",
+      "stil": "euro"
+     },
+     {
+      "f": "SUM(H3:H14)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(H2/C2,\"\")",
+      "stil": "prozent"
+     },
+     {
+      "f": "IFERROR(AVERAGE(J3:J14),\"\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUM(K3:K14)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(L3:L14)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(COUNT(J3:J14)=0,\"\",\"Abgänge ÷ Ø Vertriebsleute: \"&TEXT(IFERROR(K2/J2,0)*100,\"0\")&\" %\")",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF(OR(E{r}=\"\",F{r}=\"\"),\"\",IFERROR(F{r}/E{r},\"\"))",
+      "stil": "euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF(OR(C{r}=\"\",H{r}=\"\"),\"\",IFERROR(H{r}/C{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Wachstum!G$6:G$57,Wachstum!$B$6:$B$57,\">=\"&$A{r},Wachstum!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(OFFSET(A{r},-1,0)=\"\",\"\",EDATE(OFFSET(A{r},-1,0),1))",
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF(OR(E{r}=\"\",F{r}=\"\"),\"\",IFERROR(F{r}/E{r},\"\"))",
+      "stil": "euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF(OR(C{r}=\"\",H{r}=\"\"),\"\",IFERROR(H{r}/C{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Wachstum!G$6:G$57,Wachstum!$B$6:$B$57,\">=\"&$A{r},Wachstum!$B$6:$B$57,\"<\"&EDATE($A{r},1)))",
+      "stil": "euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    "anzahl": 11
+   }
+  },
+  {
+   "name": "Team",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Person",
+     "breite": 22
+    },
+    {
+     "titel": "Rolle",
+     "breite": 20
+    },
+    {
+     "titel": "Erster Arbeitstag",
+     "breite": 14,
+     "stil": "datum"
+    },
+    {
+     "titel": "Volle Leistung ab (4 Wochen in Folge Ziele erreicht)",
+     "breite": 18,
+     "stil": "datum"
+    },
+    {
+     "titel": "Tage bis zur vollen Leistung",
+     "breite": 13
+    },
+    {
+     "titel": "Abgang am",
+     "breite": 13,
+     "stil": "datum"
+    },
+    {
+     "titel": "Notiz",
+     "breite": 34
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Durchschnitt",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IFERROR(AVERAGE(E3:E42),\"\")",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(COUNT(F3:F42)=0,\"\",COUNT(F3:F42)&\" Abgänge\")",
+      "stil": "hinweis"
+     },
+     null
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(OR(C{r}=\"\",D{r}=\"\"),\"\",D{r}-C{r})",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    "anzahl": 40
+   }
+  }
+ ]
+}

@@ -2,10 +2,71 @@
   "hinweis": "Kostenlos › Vorlagen (30.10.): Quelle inhalt/vorlagen/<id>.html (+ <id>.tabelle.json), gebaut mit vorlagen.mjs nach assets/vorlagen. Seitenzahl und Größe liest bauen.mjs aus den Dateien. Felder: id, titel, text, bereich, ratgeber, phase, inhalt.",
   "vorlagen": [
     {
+      "id": "vertriebsteam-aufbauen",
+      "titel": "Arbeitsheft: Vom Gründer-Vertrieb zum Vertriebsteam",
+      "text": "Bestimmen Sie Ihre Phase und gehen Sie Bogen für Bogen durch Rollen, Erwartungen, Auswahl mit Probetag, Einarbeitung, Vergütung und Führungsrhythmus. Mit ausgefülltem Vergütungsbeispiel und den Rechtsgrundlagen.",
+      "bereich": "vertrieb",
+      "ratgeber": "vom-gruender-vertrieb-zum-vertriebsteam",
+      "phase": [
+        "start",
+        "aufbau",
+        "wachstum"
+      ],
+      "inhalt": [
+        "Anleitung",
+        "Standortbestimmung: Phase und Fundament",
+        "Rollenprofil",
+        "Erwartungen je Rolle",
+        "Anforderungsprofil",
+        "Bewertungsbogen Vorstellungsgespräch",
+        "Probetag: Ablauf und Bewertung",
+        "Einarbeitungsplan 30, 60, 90 Tage",
+        "Vergütung mit ausgefülltem Beispiel",
+        "Tagesbericht für eine Woche",
+        "Wochenrunde",
+        "Einzelgespräch",
+        "Nächste Schritte"
+      ]
+    },
+    {
+      "id": "vertriebskennzahlen-je-phase",
+      "titel": "Vertriebskennzahlen je Phase",
+      "text": "Wählen Sie Ihre Phase, tragen Sie jeden Freitag wenige Zahlen ein und sehen Sie Quoten und Monatssummen auf einen Blick. Als PDF mit Wochenbögen und als Tabelle, die selbst rechnet.",
+      "bereich": "vertrieb",
+      "ratgeber": "vertriebskennzahlen-je-phase",
+      "phase": [
+        "start",
+        "aufbau",
+        "wachstum"
+      ],
+      "inhalt": [
+        "Anleitung",
+        "Kennzahlen mit Formeln je Phase",
+        "Ausgangswert und Ziel",
+        "Wochenbogen Start",
+        "Wochenbogen Aufbau je Person",
+        "Wochen- und Monatsbogen Wachstum",
+        "Ausgefülltes Beispiel",
+        "Tabelle mit Wochen- und Monatsblättern"
+      ]
+    },
+    {
       "id": "vertriebs-pipeline",
       "titel": "Vertriebs-Pipeline auf einer Seite",
-      "text": "Tragen Sie jede Chance mit nächstem Schritt, Nachfass-Datum, Wert und Stufe in eine Zeile ein und übertragen Sie am Monatsende die fünf Zahlen, die zeigen, ob Ihr Vertrieb besser wird.",
-      "bereich": "vertrieb"
+      "text": "Jede Chance bekommt eine Zeile mit nächstem Schritt, Nachfass-Datum, Wert und Stufe. Mit klaren Stufen, Wochenroutine, ausgefülltem Beispiel und einer Tabelle, die gewichteten Wert und Monatszahlen selbst rechnet.",
+      "bereich": "vertrieb",
+      "ratgeber": "fuenf-vertriebszahlen",
+      "phase": [
+        "start",
+        "aufbau"
+      ],
+      "inhalt": [
+        "Anleitung mit Stufen und Wochenroutine",
+        "Ausgefülltes Beispiel",
+        "Pipeline-Bogen",
+        "Monatsauswertung",
+        "Tabelle mit Auswahlliste und Auswertung"
+      ]
     },
     {
       "id": "kernsatz-in-fuenf-schritten",

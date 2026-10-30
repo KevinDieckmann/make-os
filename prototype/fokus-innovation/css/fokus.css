@@ -724,3 +724,5 @@ html.menue-offen { overflow: hidden; }
   .vorlagen-liste li { grid-template-columns: minmax(0, 1fr); }
   .v-dateien { align-items: flex-start; }
 }
+.artikel-mitnehmen .v-inhalt { font-size: .86rem; line-height: 1.5; }
+.artikel-mitnehmen .z-text { font-size: 1rem; }

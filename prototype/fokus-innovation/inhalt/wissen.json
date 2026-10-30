@@ -143,6 +143,10 @@
       "phase": [
         "start",
         "aufbau"
+      ],
+      "vorlagen": [
+        "vertriebs-pipeline",
+        "vertriebsteam-aufbauen"
       ]
     },
     {
@@ -278,6 +282,10 @@
       "phase": [
         "aufbau",
         "wachstum"
+      ],
+      "vorlagen": [
+        "vertriebsteam-aufbauen",
+        "vertriebskennzahlen-je-phase"
       ]
     },
     {
@@ -846,6 +854,10 @@
       ],
       "phase": [
         "start"
+      ],
+      "vorlagen": [
+        "vertriebs-pipeline",
+        "vertriebskennzahlen-je-phase"
       ]
     },
     {
@@ -1604,6 +1616,898 @@
         "start",
         "aufbau",
         "wachstum"
+      ]
+    },
+    {
+      "id": "vom-gruender-vertrieb-zum-vertriebsteam",
+      "bereich": "vertrieb",
+      "titel": "Vom Gründer-Vertrieb zum Vertriebsteam",
+      "seo_titel": "Vertriebsteam aufbauen: Leitfaden in drei Phasen",
+      "beschreibung": "Vom Gründer, der selbst verkauft, zum Team mit Führung: Phase erkennen, Rollen festlegen, Leute auswählen, einarbeiten, fair bezahlen und führen. Mit Arbeitsheft.",
+      "veroeffentlicht": "2026-10-30",
+      "aktualisiert": "2026-10-30",
+      "leitfaden": true,
+      "phase": [
+        "start",
+        "aufbau",
+        "wachstum"
+      ],
+      "kurz": "Ein Vertrieb wächst in drei Phasen. Am Start verkauft der Gründer selbst, im Aufbau kommen die ersten Vertriebler dazu, im Wachstum führt jemand ein Team mit mehreren Rollen. Jede Phase braucht etwas anderes zuerst, und die Übergänge zwischen ihnen sind die schwierigsten Momente. Dieser Leitfaden zeigt, woran Sie Ihre Phase erkennen, welche Rollen es gibt, wie Sie gute Leute auswählen, einarbeiten, fair und rechtlich sauber bezahlen und mit einem festen Rhythmus führen. Alle Bögen dazu stehen im kostenlosen Arbeitsheft.",
+      "abschnitte": [
+        {
+          "h": "Woran Sie Ihre Phase erkennen",
+          "absaetze": [
+            "Ein Vertrieb wächst nicht gleichmäßig, sondern in Stufen. Was in der einen Phase hilft, bremst in der nächsten. Ein Gründer, der allein verkauft, braucht keinen Führungsrhythmus für zehn Leute. Ein Team mit acht Vertrieblern kommt ohne ihn nicht aus.",
+            "Bestimmen Sie deshalb zuerst, wo Sie stehen. Entscheidend ist nicht die Zahl der Mitarbeitenden, sondern wer verkauft und wer führt."
+          ],
+          "tabelle": {
+            "titel": "Die drei Phasen eines Vertriebs",
+            "kopf": [
+              "Phase",
+              "Woran Sie sie erkennen",
+              "Wer verkauft",
+              "Was meist fehlt"
+            ],
+            "zeilen": [
+              [
+                "Start",
+                "Fast jeder Auftrag läuft über den Gründer. Steckt er im Projekt, bleiben Anfragen liegen und Angebote gehen spät raus.",
+                "der Gründer, neben allem anderen",
+                "feste Zeit für den Vertrieb und ein Ablauf, den man aufschreiben kann"
+              ],
+              [
+                "Aufbau",
+                "Eine bis drei Personen verkaufen mit. Der Gründer schließt die meisten Aufträge noch selbst ab und beantwortet viele Fragen.",
+                "erste Vertriebler, der Gründer schließt ab",
+                "Einarbeitung, Erwartungen je Rolle und Kennzahlen je Person"
+              ],
+              [
+                "Wachstum",
+                "Mehrere Personen arbeiten in unterschiedlichen Rollen. Eine Person führt den Vertrieb, der Gründer gibt vor allem die Richtung vor.",
+                "ein Team mit Vertriebsleitung",
+                "ein fester Führungsrhythmus, verlässliche Prognosen und eine klare Vergütung"
+              ]
+            ],
+            "hinweis": "Stehen Sie zwischen zwei Phasen, gilt die frühere. Was dort fehlt, holen Sie zuerst nach. Die Standortbestimmung im Arbeitsheft hilft beim Einordnen."
+          },
+          "beleg": "startup",
+          "absaetze_danach": [
+            "Die Zahl betrifft Start-ups, das Muster kennen auch gestandene Betriebe: Solange eine Person allein verkauft, wächst der Vertrieb nur so weit, wie ihr Kalender reicht. Jede Phase in diesem Leitfaden löst diesen Engpass ein Stück weiter."
+          ]
+        },
+        {
+          "h": "Was in jeder Phase zuerst stehen muss",
+          "absaetze": [
+            "In jeder Phase gibt es ein Fundament, ohne das der nächste Schritt nicht trägt. Wer es überspringt, zahlt später doppelt: mit Leuten, die nicht ankommen, und mit Zahlen, denen niemand traut."
+          ],
+          "schritte": [
+            {
+              "titel": "Start: Zeit, Ablauf und eine Liste",
+              "text": "Legen Sie feste Stunden für den Vertrieb in den Kalender und halten Sie sie ein wie einen Kundentermin. Schreiben Sie auf, wie Ihr Erstgespräch abläuft und welche Fragen Sie stellen. Führen Sie jede Chance in einer Liste mit Stufe, Wert und nächstem Schritt. Diese Unterlagen werden später die Einarbeitung für die erste Person."
+            },
+            {
+              "titel": "Aufbau: Ablauf, Erwartungen, Einarbeitung",
+              "text": "Bevor die erste Person anfängt, steht der Weg vom Erstkontakt bis zum Auftrag auf Papier, mit Gesprächsleitfaden und Antworten auf häufige Einwände. Jede Rolle hat schriftliche Erwartungen und einen Plan für die ersten 90 Tage. Kennzahlen gibt es je Person, nicht nur für alle zusammen."
+            },
+            {
+              "titel": "Wachstum: Führung, Rollen, Prognose",
+              "text": "Eine Person führt den Vertrieb und hat dafür feste Zeit. Die Rollen sind getrennt, die Übergaben zwischen ihnen geregelt. Ein CRM mit Pflichtfeldern liefert die Zahlen, aus denen jeden Monat eine Prognose entsteht. Vergütung, Training und Einarbeitung sind aufgeschrieben, damit sie nicht an einer Person hängen."
+            }
+          ],
+          "absaetze_danach": [
+            "Wie Sie die ersten Bausteine anlegen, beschreibt unser Ratgeber zum Vertriebsaufbau. Die Bögen für Rollen, Auswahl, Einarbeitung und Führung finden Sie im Arbeitsheft zu diesem Leitfaden."
+          ]
+        },
+        {
+          "h": "Übergang 1: Der Gründer gibt die Termine ab",
+          "absaetze": [
+            "Der erste Übergang ist der schwerste, weil der Gründer abgeben muss, was er am besten kann. Meist gibt er zuerst die Erstansprache und die Terminvereinbarung ab. Er führt weiter die Beratungsgespräche und schließt ab, bekommt dafür aber mehr Termine, als er allein vereinbaren könnte.",
+            "Der Zeitpunkt ist richtig, wenn drei Dinge zusammenkommen: Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch folgt einem Ablauf, den Sie erklären können, und es gibt genug Kontakte, um eine Person sinnvoll zu beschäftigen. Fehlt eines davon, verbringt die neue Person ihre ersten Monate mit Suchen.",
+            "Typische Fehler an dieser Stelle:"
+          ],
+          "punkte": [
+            "Jemanden suchen, der alles kann, und ihn ohne Leitfaden ans Telefon setzen.",
+            "Zu wenige Kontakte bereithalten, sodass die neue Person nach zwei Wochen nichts mehr zu tun hat.",
+            "Jede Mail und jedes Gespräch selbst nachprüfen und so in Wahrheit nichts abgeben.",
+            "Die Übergabe nicht regeln: Wer schreibt was ins CRM, und ab wann ist ein Termin ein Termin?",
+            "Nach vier Wochen ohne Auftrag die Geduld verlieren, obwohl die Termine kommen."
+          ]
+        },
+        {
+          "h": "Übergang 2: Eine zweite Person für Abschluss und Vertretung",
+          "absaetze": [
+            "Solange nur eine Person abschließt, steht der Vertrieb still, wenn sie krank ist, Urlaub hat oder geht. Der zweite Übergang schafft deshalb Vertretung. Eine weitere Person lernt Beratung und Abschluss, oft jemand, der vorher Termine vereinbart hat und Kunden und Ablauf schon kennt.",
+            "Planen Sie diesen Schritt bewusst. Die neue Abschluss-Person führt Gespräche zuerst gemeinsam mit Ihnen, dann allein mit Nachbesprechung, dann selbständig. Die Termine, die sie vorher vereinbart hat, braucht nun jemand anderes. Wer diesen Schritt überspringt, merkt es meist erst im ersten langen Urlaub.",
+            "Typische Fehler an dieser Stelle:"
+          ],
+          "punkte": [
+            "Die beste Terminperson befördern, ohne ihr Beratung und Abschluss beizubringen.",
+            "Alle großen Aufträge beim Gründer lassen, sodass die zweite Person die wichtigen Gespräche nie übt.",
+            "Die frei gewordene Terminvereinbarung nicht nachbesetzen.",
+            "Keine gemeinsamen Regeln für Angebote, Preise und Nachlässe festlegen, sodass jeder anders verkauft."
+          ]
+        },
+        {
+          "h": "Übergang 3: Der Gründer gibt die Führung ab",
+          "absaetze": [
+            "Im dritten Übergang wird aus dem besten Verkäufer der Firma ein Unternehmer, der den Vertrieb führen lässt. Eine Vertriebsleitung übernimmt Tagesstart, Wochenrunde, Einzelgespräche, Auswahl und Einarbeitung. Am Anfang verkauft sie oft noch selbst mit. So bleibt sie nah an den Kunden und kann vormachen, was sie verlangt.",
+            "Der Gründer bleibt beteiligt: bei Zielen, großen Kunden, Preisen und der Richtung. Er zieht sich aber aus dem Tagesgeschäft zurück und führt über die Vertriebsleitung, nicht an ihr vorbei.",
+            "Typische Fehler an dieser Stelle:"
+          ],
+          "punkte": [
+            "Ganz aussteigen, bevor die neue Führung den Rhythmus sicher hält.",
+            "Den besten Verkäufer zur Führung machen, ohne dass er führen will oder darauf vorbereitet wird.",
+            "Der Vertriebsleitung ein volles eigenes Verkaufsziel geben und sich dann wundern, dass keine Zeit zum Führen bleibt.",
+            "Am Team vorbei Anweisungen geben und so die neue Führung schwächen.",
+            "Abläufe nur im Kopf haben, sodass jede neue Führungskraft bei null beginnt."
+          ]
+        },
+        {
+          "h": "Rollen im Vertrieb und wann Spezialisierung lohnt",
+          "absaetze": [
+            "In kleinen Teams macht jede Person alles, von der Erstansprache bis zum Abschluss. Das ist richtig, solange es wenige Kontakte gibt und jedes Gespräch anders ist. Mit wachsender Menge lohnt es sich, Aufgaben zu trennen: Wer gern und gut telefoniert, vereinbart Termine. Wer gut berät, führt die Gespräche. Wer Kunden gut hält, betreut sie nach dem Abschluss.",
+            "Spezialisierung bringt Tempo und Übung, aber auch Übergaben. Jede Übergabe braucht Regeln, sonst gehen Informationen verloren. Trennen Sie Rollen deshalb erst, wenn eine Aufgabe eine Person gut auslasten kann."
+          ],
+          "tabelle": {
+            "titel": "Die üblichen Rollen im Vertrieb",
+            "kopf": [
+              "Rolle",
+              "Aufgabe",
+              "Lohnt sich als eigene Rolle, wenn"
+            ],
+            "zeilen": [
+              [
+                "Erstansprache und Termine",
+                "neue Kontakte finden, ansprechen, den Bedarf grob prüfen, Termine vereinbaren",
+                "genug Kontakte da sind und die Beratung zu wenig Zeit für die Ansprache hat"
+              ],
+              [
+                "Beratung und Abschluss",
+                "Bedarfsgespräch, Angebot, Verhandlung, Auftrag, Übergabe an die Umsetzung",
+                "mehr gute Termine kommen, als eine Person sauber vorbereiten und nachfassen kann"
+              ],
+              [
+                "Kundenbetreuung",
+                "den Start begleiten, regelmäßig sprechen, Verlängerungen, Zusatzbedarf, Empfehlungen",
+                "Bestandskunden einen spürbaren Teil des Umsatzes bringen oder bringen könnten"
+              ],
+              [
+                "Vertriebsassistenz",
+                "Angebote vorbereiten, das CRM pflegen, Termine abstimmen",
+                "Verkäufer viel Zeit mit Schreiben und Suchen verbringen statt mit Kunden"
+              ],
+              [
+                "Vertriebsleitung",
+                "Ziele, Rhythmus, Training, Auswahl, Einarbeitung, Prognose",
+                "mehr als zwei, drei Personen verkaufen und der Gründer keine Zeit mehr zum Führen hat"
+              ]
+            ],
+            "hinweis": "Die Namen der Rollen sind frei wählbar. Wichtig ist, dass jede Person weiß, wo ihre Aufgabe beginnt und wo sie endet."
+          }
+        },
+        {
+          "h": "Erwartungen je Rolle schriftlich festlegen",
+          "absaetze": [
+            "Viele Konflikte im Vertrieb entstehen, weil Erwartungen nie ausgesprochen wurden. Schreiben Sie deshalb für jede Rolle auf, was Sie erwarten, und zwar in vier Teilen: wie sich die Person verhält, welche Aufgaben sie hat, welche Eingaben Sie zählen und welche Ergebnisse am Ende stehen.",
+            "Eingabe-Kennzahlen beschreiben, was eine Person selbst in der Hand hat, etwa Gespräche oder verschickte Angebote. Ergebnis-Kennzahlen beschreiben, was dabei herauskommt, etwa Aufträge oder Umsatz. Führen Sie im Alltag über Eingaben und beurteilen Sie Ergebnisse über einen längeren Zeitraum."
+          ],
+          "tabelle": {
+            "titel": "Beispiel: Erwartungen für drei Rollen",
+            "kopf": [
+              "Rolle",
+              "Verhalten",
+              "Aufgaben",
+              "Eingabe-Kennzahlen",
+              "Ergebnis-Kennzahlen"
+            ],
+            "zeilen": [
+              [
+                "Erstansprache und Termine",
+                "arbeitet die Kontaktliste zu festen Zeiten ab, trägt alles am selben Tag ins CRM ein",
+                "Kontakte recherchieren, ansprechen, Bedarf prüfen, Termine eintragen",
+                "Ansprachen je Tag, erreichte Gespräche",
+                "vereinbarte und stattgefundene Termine"
+              ],
+              [
+                "Beratung und Abschluss",
+                "bereitet jedes Gespräch vor, schickt Angebote in der vereinbarten Frist, fasst nach",
+                "Bedarfsgespräch, Angebot, Verhandlung, Übergabe an die Umsetzung",
+                "geführte Gespräche, Angebote, Angebote mit Nachfass-Datum",
+                "Abschlussquote, Auftragswert, Zeit bis zum Abschluss"
+              ],
+              [
+                "Kundenbetreuung",
+                "meldet sich von sich aus, kennt die Lage jedes Kunden",
+                "Start begleiten, regelmäßige Gespräche, Verlängerungen, Empfehlungen erfragen",
+                "Kundengespräche je Monat, gestellte Empfehlungsfragen",
+                "Verlängerungen, Zusatzaufträge, Empfehlungen"
+              ]
+            ],
+            "hinweis": "Ein Beispiel, keine Vorgabe. Zahlenwerte legen Sie erst fest, wenn Sie einige Wochen gemessen haben."
+          },
+          "absaetze_danach": [
+            "Besprechen Sie die Erwartungen mit der Person, bevor sie anfängt, und danach regelmäßig im Einzelgespräch. Was nicht aufgeschrieben ist, kann niemand erfüllen und niemand einfordern."
+          ]
+        },
+        {
+          "h": "Einstellen in fünf Stufen",
+          "absaetze": [
+            "Im Vertrieb täuscht der erste Eindruck oft: Wer im Vorstellungsgespräch gut redet, verkauft nicht unbedingt gut. Bauen Sie die Auswahl deshalb in Stufen auf. Jede Stufe prüft etwas anderes, und mit jeder Stufe investieren Sie mehr Zeit in weniger Menschen."
+          ],
+          "schritte": [
+            {
+              "titel": "Anforderungsprofil schreiben",
+              "text": "Beschreiben Sie Aufgabe, Ergebnisse nach 90 Tagen, Muss- und Kann-Anforderungen, Arbeitszeit, Ort und den Rahmen der Vergütung. Formulieren Sie neutral: Eine Stelle darf nicht so ausgeschrieben werden, dass sie gegen das Benachteiligungsverbot verstößt (§ 11 AGG)."
+            },
+            {
+              "titel": "Bewerbungen sichten",
+              "text": "Prüfen Sie nur die Muss-Anforderungen. Wer sie erfüllt, kommt weiter. So vergleichen Sie fair und schnell."
+            },
+            {
+              "titel": "Kurzes Telefonat",
+              "text": "Fünfzehn Minuten am Telefon zeigen viel: Wie klingt die Person, hört sie zu, stellt sie Fragen? Für Rollen am Telefon ist das die wichtigste Vorauswahl."
+            },
+            {
+              "titel": "Strukturiertes Gespräch mit Bewertungsbogen",
+              "text": "Alle Bewerber bekommen dieselben Fragen und ein kurzes Rollenspiel, etwa ein Erstgespräch mit einem typischen Einwand. Zwei Personen bewerten getrennt auf einem Bogen und vergleichen erst danach."
+            },
+            {
+              "titel": "Bezahlter Probetag",
+              "text": "Ein Tag im echten Umfeld zeigt, ob die Person Rückmeldung annimmt und umsetzt. Diese Lernfähigkeit sagt mehr voraus als jede Antwort im Gespräch."
+            }
+          ],
+          "zahl": "dihk-kmu-stellenbesetzung",
+          "absaetze_danach": [
+            "Bewerten Sie im Gespräch und am Probetag dieselben Fähigkeiten: Gesprächsführung, Fragen und Zuhören, Umgang mit Einwänden, Verbindlichkeit und Lernfähigkeit. Fragen Sie getrennt davon, ob die Person zu Ihren Werten passt und ob sie Ihre Zielgruppe kennt. Wer die Zielgruppe nicht kennt, kann trotzdem gut sein, braucht aber länger.",
+            "Für den Probetag empfehlen wir: vorher schriftlich festhalten, was an dem Tag passiert, ihn bezahlen, mindestens mit dem gesetzlichen Mindestlohn je Stunde (seit 1. Januar 2026 13,90 Euro brutto), und eine Vertraulichkeitsvereinbarung schließen, wenn die Person Kundendaten sieht. Wie der Tag abgerechnet wird, klären Sie mit Ihrer Lohnbuchhaltung. Ein bewährter Ablauf: morgens Einführung und Mithören, mittags ein Rollenspiel mit Rückmeldung, nachmittags dasselbe noch einmal. Entscheidend ist, ob die Rückmeldung am Nachmittag sichtbar wird.",
+            "Gute Bewerbungen sind knapp. Umso wichtiger ist es, schnell zu antworten, jede Stufe zügig zu terminieren und Absagen freundlich zu formulieren. Wer drei Wochen auf eine Antwort wartet, hat meist schon woanders zugesagt."
+          ]
+        },
+        {
+          "h": "Die ersten 90 Tage",
+          "absaetze": [
+            "Neue Vertriebler bringen in den ersten Wochen selten Umsatz. Das ist normal. Gefährlich wird es erst, wenn niemand weiß, was in diesen Wochen passieren soll. Ein Plan für 30, 60 und 90 Tage gibt beiden Seiten Halt und macht Fortschritt sichtbar."
+          ],
+          "tabelle": {
+            "titel": "Einarbeitung in drei Abschnitten",
+            "kopf": [
+              "Zeitraum",
+              "Ziel",
+              "Was passiert",
+              "Woran Sie sehen, dass es läuft"
+            ],
+            "zeilen": [
+              [
+                "Tag 1 bis 30",
+                "sicher im Ablauf",
+                "Produkt, Zielgruppe, Leitfäden und CRM lernen, echte Gespräche mithören, jeden Tag ein Rollenspiel, erste eigene Gespräche mit Begleitung",
+                "Die Person führt ein Rollenspiel nach Leitfaden sicher durch und pflegt das CRM vollständig."
+              ],
+              [
+                "Tag 31 bis 60",
+                "eigene Gespräche",
+                "eigene Gespräche mit Nachbesprechung, wöchentliches Einzelgespräch, Eingaben Schritt für Schritt auf Zielniveau",
+                "Die Eingaben stimmen, die ersten Quoten werden sichtbar."
+              ],
+              [
+                "Tag 61 bis 90",
+                "eigene Verantwortung",
+                "eigene Kontakte und Chancen führen, erste Abschlüsse, Ergebnisse im Blick",
+                "Die Person arbeitet ohne tägliche Begleitung, und Sie können einschätzen, ob die Zusammenarbeit trägt."
+              ]
+            ],
+            "hinweis": "Führen Sie am Ende jedes Abschnitts ein Gespräch mit Selbst- und Fremdeinschätzung. Das letzte liegt deutlich vor dem Ende einer vereinbarten Probezeit."
+          },
+          "absaetze_danach": [
+            "Sammeln Sie Gesprächsübungen und gute Gesprächsbeispiele, schriftlich oder als Aufnahme. Echte Gespräche nehmen Sie nur mit Einwilligung aller Beteiligten auf: Wer das nichtöffentlich gesprochene Wort eines anderen unbefugt aufnimmt, macht sich strafbar (§ 201 StGB). Mit jeder neuen Person wird diese Sammlung wertvoller."
+          ]
+        },
+        {
+          "h": "Vergütung: Bausteine und Anreize",
+          "absaetze": [
+            "Vergütung steuert Verhalten. Was Sie belohnen, bekommen Sie. Belohnen Sie unterschriebene Verträge, bekommen Sie Unterschriften, auch von Kunden, die nicht passen. Belohnen Sie bezahlte Aufträge oder Kunden, die bleiben, bekommen Sie eher das, was Sie wirklich wollen.",
+            "Die meisten Modelle setzen sich aus wenigen Bausteinen zusammen:"
+          ],
+          "punkte": [
+            "Festgehalt: gibt Sicherheit und deckt die Zeit, in der die Person noch keine eigenen Chancen hat.",
+            "Variable Vergütung: eine Provision je Auftrag oder ein Bonus beim Erreichen eines Ziels. Je mehr die Person das Ergebnis selbst beeinflusst, desto größer kann dieser Teil sein.",
+            "Einarbeitungsbonus: ein für die ersten Monate garantierter variabler Mindestbetrag, weil neue Leute noch keine eigenen Chancen haben.",
+            "Einmalige Prämien: für besondere Meilensteine, zum Beispiel den ersten großen Auftrag. Sie motivieren, ohne die Kosten dauerhaft zu erhöhen."
+          ],
+          "tabelle": {
+            "titel": "Rechenbeispiel mit frei erfundenen Werten: Monat 4 einer Person in Beratung und Abschluss",
+            "kopf": [
+              "Baustein",
+              "Regel im Beispiel",
+              "Betrag"
+            ],
+            "zeilen": [
+              [
+                "Festgehalt",
+                "monatlich, brutto",
+                "3.800 €"
+              ],
+              [
+                "Provision",
+                "5 % vom bezahlten Netto-Auftragswert neuer Kunden; in diesem Monat bezahlt: 46.000 €",
+                "2.300 €"
+              ],
+              [
+                "Einarbeitungsbonus",
+                "in den Monaten 1 bis 3 mindestens 400 € variabel; gilt in Monat 4 nicht mehr",
+                "0 €"
+              ],
+              [
+                "Einmalige Prämie",
+                "500 € für den ersten bezahlten Auftrag über 20.000 €; in diesem Monat erreicht",
+                "500 €"
+              ],
+              [
+                "Summe",
+                "brutto im Monat",
+                "6.600 €"
+              ]
+            ],
+            "hinweis": "Alle Werte sind frei erfunden und kein Vorschlag für Ihre Höhe. Im Arbeitsheft steht dasselbe Beispiel über vier Monate."
+          },
+          "absaetze_danach": [
+            "Je länger Ihr Verkaufszyklus, desto größer sollte der feste Anteil sein, sonst wartet die Person Monate auf ihr Geld. Je kürzer und planbarer der Zyklus, desto mehr kann variabel sein. Prüfen Sie jedes Modell mit zwei Rechnungen: Was verdient jemand in einem schwachen Monat, und was in einem sehr guten? Beides muss für Sie und für die Person tragbar sein."
+          ]
+        },
+        {
+          "h": "Vergütung rechtlich sauber gestalten",
+          "absaetze": [
+            "Für die Vergütung im Vertrieb gelten in Deutschland klare Regeln. Die wichtigsten im Überblick, als Orientierung und ohne Anspruch auf Vollständigkeit:"
+          ],
+          "punkte": [
+            "Angestellte haben Anspruch auf den gesetzlichen Mindestlohn: seit 1. Januar 2026 13,90 Euro brutto je Zeitstunde, ab 1. Januar 2027 14,60 Euro. Am sichersten ist ein Festgehalt, das den Mindestlohn für die vereinbarten Stunden abdeckt, mit der Provision obendrauf.",
+            "Reine Provision ohne Festgehalt passt nur zu selbständigen Handelsvertretern. Selbständig ist nach § 84 HGB, wer im Wesentlichen frei seine Tätigkeit gestalten und seine Arbeitszeit bestimmen kann. Wer das nicht kann, gilt als Angestellter, auch wenn der Vertrag anders heißt.",
+            "Ob eine Zusammenarbeit selbständig ist, können Sie bei der Deutschen Rentenversicherung Bund feststellen lassen (Statusfeststellung nach § 7a SGB IV).",
+            "Handelsvertreter können nach Vertragsende unter bestimmten Voraussetzungen einen angemessenen Ausgleich verlangen (§ 89b HGB). Planen Sie das von Anfang an mit ein.",
+            "Bekommen Angestellte Provision, gelten dafür Regeln aus dem Handelsvertreterrecht (§ 65 HGB). Abgerechnet wird monatlich, der Zeitraum kann auf höchstens drei Monate erstreckt werden (§ 87c HGB). Der Anspruch entsteht grundsätzlich, sobald und soweit Sie das Geschäft ausgeführt haben (§ 87a HGB).",
+            "Zusammensetzung und Höhe des Arbeitsentgelts gehören mit allen Bestandteilen in den schriftlichen Nachweis der Vertragsbedingungen (§ 2 Nachweisgesetz). Halten Sie die Provisionsregeln deshalb schriftlich fest: Grundlage, Satz, Zeitpunkt des Anspruchs, Umgang mit Stornos und Abrechnung.",
+            "Gibt es einen Betriebsrat, bestimmt er bei Entlohnungsgrundsätzen und leistungsbezogenen Entgelten mit (§ 87 Abs. 1 Nr. 10 und 11 BetrVG), ebenso bei technischen Einrichtungen, die Verhalten oder Leistung der Beschäftigten überwachen sollen (Nr. 6)."
+          ],
+          "absaetze_danach": [
+            "Dieser Überblick ist keine Rechtsberatung. Lassen Sie Ihr Vergütungsmodell und die Verträge vor dem Start von einer Fachanwältin oder einem Fachanwalt für Arbeitsrecht prüfen. Das kostet weniger als ein Streit um Provisionen."
+          ]
+        },
+        {
+          "h": "Führen mit einem festen Rhythmus",
+          "absaetze": [
+            "Ein Vertriebsteam braucht wenig Führung, wenn sie regelmäßig ist. Fünf feste Termine reichen. Sie kosten zusammen wenige Stunden in der Woche und ersetzen viele spontane Nachfragen."
+          ],
+          "tabelle": {
+            "titel": "Der Führungsrhythmus",
+            "kopf": [
+              "Termin",
+              "Wie oft und wie lange",
+              "Worum es geht"
+            ],
+            "zeilen": [
+              [
+                "Tagesstart",
+                "täglich, 10 bis 15 Minuten, ganzes Team",
+                "ein Erfolg von gestern, die Ziele für heute, wo jemand Hilfe braucht"
+              ],
+              [
+                "Tagesbericht",
+                "täglich, 5 Minuten je Person, schriftlich",
+                "Eingaben und Ergebnisse des Tages und ein Satz dazu: was gut lief, was ich morgen besser mache, wo ich Hilfe brauche"
+              ],
+              [
+                "Wochenrunde",
+                "wöchentlich, 45 bis 60 Minuten",
+                "Kennzahlen je Stufe und Person, Chancen ohne nächsten Schritt, eine Maßnahme für die nächste Woche"
+              ],
+              [
+                "Einzelgespräch",
+                "alle ein bis zwei Wochen, 20 bis 30 Minuten je Person",
+                "die Erwartungen der Rolle: Selbsteinschätzung neben Ihrer Einschätzung, Abweichungen klären, ein Ziel bis zum nächsten Mal"
+              ],
+              [
+                "Training",
+                "wöchentlich, 45 bis 60 Minuten",
+                "Gesprächsübungen, neue Einwände, Nachbesprechung echter Gespräche, gute Beispiele sammeln"
+              ]
+            ],
+            "hinweis": "Am Start genügt die Wochenrunde mit sich selbst. Im Aufbau kommen Tagesbericht, Einzelgespräch und Training dazu, im Wachstum der Tagesstart."
+          },
+          "absaetze_danach": [
+            "Das Einzelgespräch ist der wichtigste dieser Termine. Lassen Sie die Person ihre Erwartungen selbst bewerten, bevor Sie Ihre Einschätzung nennen. Wo beide Bewertungen auseinanderliegen, steckt meist ein Missverständnis, kein Leistungsproblem.",
+            "Werten Sie Kennzahlen je Person aus, sagen Sie offen, was Sie wozu auswerten, achten Sie auf den Datenschutz und, wo es einen gibt, auf die Mitbestimmung des Betriebsrats."
+          ]
+        },
+        {
+          "h": "Kennzahlen je Phase",
+          "absaetze": [
+            "Mit der Phase ändern sich auch die Zahlen, auf die Sie schauen. Am Start zählen die Zeit des Gründers, Erstgespräche, Angebote und die Abschlussquote. Im Aufbau kommen Zahlen je Person und je Stufe dazu: Ansprachen, Termine, erschienene Termine, Angebote. Im Wachstum zählen Prognose, Abdeckung der Pipeline, Kosten je Neukunde und die Zeit, bis neue Leute ihre volle Leistung bringen.",
+            "Welche Kennzahlen es genau sind, wie Sie sie rechnen und wie Sie eigene Zielwerte setzen, steht im Ratgeber zu den Vertriebskennzahlen je Phase. Dazu gibt es eine kostenlose Tabelle mit Wochenbögen für jede Phase. Spätestens im Wachstum braucht es für die Zahlen ein CRM. Wie verbreitet das ist, hängt stark von der Größe des Unternehmens ab."
+          ],
+          "zahl": "eurostat-crm-groesse",
+          "absaetze_danach": [
+            "Ein CRM ersetzt keinen Rhythmus. Es liefert die Zahlen, besprechen müssen Sie sie selbst."
+          ]
+        },
+        {
+          "h": "Selbst umsetzen oder Hilfe holen?",
+          "absaetze": [
+            "Vieles in diesem Leitfaden können Sie selbst anlegen: die Phase bestimmen, Erwartungen aufschreiben, Auswahl und Einarbeitung planen, den Rhythmus einführen. Das Arbeitsheft führt Sie Bogen für Bogen durch.",
+            "Hilfe lohnt sich an den Übergängen. Im Tagesworkshop bestimmen wir an einem Tag Ihre Phase und die größten Hebel. Als Head of Sales auf Zeit bauen wir das System auf, machen Gespräche vor und arbeiten Ihre ersten Vertriebler ein. Als Chief Sales Officer kommen Rollen, Vergütung, Auswahl und die Führung eines wachsenden Teams dazu, bis Ihre eigene Vertriebsleitung übernimmt."
+          ]
+        }
+      ],
+      "fragen": [
+        {
+          "f": "Wann sollte ich die erste Person für den Vertrieb einstellen?",
+          "a": "Wenn Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch einem aufgeschriebenen Ablauf folgt und genug Kontakte da sind, um eine Person auszulasten. Fehlt eines davon, holen Sie es zuerst nach."
+        },
+        {
+          "f": "Brauche ich gleich getrennte Rollen?",
+          "a": "Nein. In kleinen Teams macht jede Person alles. Trennen Sie Rollen erst, wenn eine Aufgabe eine Person gut auslasten kann, und regeln Sie dann die Übergaben zwischen den Rollen."
+        },
+        {
+          "f": "Darf ich Vertriebler nur über Provision bezahlen?",
+          "a": "Angestellte haben Anspruch auf den gesetzlichen Mindestlohn. Reine Provision passt nur zu selbständigen Handelsvertretern, die ihre Tätigkeit und Arbeitszeit im Wesentlichen frei bestimmen (§ 84 HGB). Lassen Sie Ihr Modell anwaltlich prüfen, dieser Hinweis ist keine Rechtsberatung."
+        },
+        {
+          "f": "Soll ich den Probetag bezahlen?",
+          "a": "Ja, wir empfehlen das immer, mindestens mit dem Mindestlohn je Stunde. Dann können Sie echte Aufgaben geben und sehen, wie die Person Rückmeldung umsetzt. Wie der Tag abgerechnet wird, klären Sie mit Ihrer Lohnbuchhaltung."
+        },
+        {
+          "f": "Wer soll den Vertrieb führen, wenn ich es nicht mehr mache?",
+          "a": "Jemand, der führen will und es gelernt hat oder lernen darf. Das ist nicht immer die Person, die am meisten verkauft. Am Anfang verkauft die Vertriebsleitung oft noch mit, braucht aber feste Zeit für die Führung."
+        }
+      ],
+      "angebote": [
+        "tagesworkshop",
+        "head-of-sales",
+        "cso"
+      ],
+      "vorlagen": [
+        "vertriebsteam-aufbauen",
+        "vertriebskennzahlen-je-phase"
+      ],
+      "weiter": [
+        "vertriebskennzahlen-je-phase",
+        "vertrieb-aufbauen",
+        "head-of-sales-auf-zeit"
+      ]
+    },
+    {
+      "id": "vertriebskennzahlen-je-phase",
+      "bereich": "vertrieb",
+      "titel": "Vertriebskennzahlen je Phase: Start, Aufbau, Wachstum",
+      "seo_titel": "Vertriebskennzahlen für Start, Aufbau und Wachstum",
+      "beschreibung": "Welche Vertriebskennzahlen in welcher Phase zählen, wie Sie sie rechnen und erfassen und wie Sie eigene Zielwerte setzen. Mit Wochenbögen und Tabelle zum Ausfüllen.",
+      "veroeffentlicht": "2026-10-30",
+      "aktualisiert": "2026-10-30",
+      "phase": [
+        "start",
+        "aufbau",
+        "wachstum"
+      ],
+      "kurz": "Welche Kennzahlen ein Vertrieb braucht, hängt von seiner Phase ab. Am Start, wenn der Gründer selbst verkauft, zählen seine Zeit, Erstgespräche, Angebote und die Abschlussquote. Im Aufbau mit den ersten Vertrieblern kommen Zahlen je Person und je Stufe dazu. Im Wachstum, mit Team und Führung, zählen Prognose, Abdeckung der Pipeline, Kosten je Neukunde und Einarbeitungszeit. Zielwerte setzen Sie aus eigenen Messungen, nicht aus fremden Durchschnitten.",
+      "abschnitte": [
+        {
+          "h": "Warum sich die Kennzahlen mit der Phase ändern",
+          "absaetze": [
+            "Eine Kennzahl ist nur so gut wie die Entscheidung, die sie möglich macht. Am Start entscheidet ein Gründer, wofür er seine Woche nutzt. Im Aufbau entscheidet er, ob eine neue Person ankommt. Im Wachstum entscheidet eine Vertriebsleitung, wo sie das Team einsetzt und welche Zahl sie der Geschäftsführung zusagt. Jede dieser Entscheidungen braucht andere Zahlen.",
+            "Wer zu früh zu viele Kennzahlen misst, pflegt Tabellen statt zu verkaufen. Wer zu spät nachzieht, steuert ein Team mit den Zahlen eines Einzelkämpfers. Dieser Ratgeber nennt je Phase sieben Kennzahlen, jeweils mit Formel, Grund und Weg zur Erfassung. In welcher Phase Sie stehen, zeigt unser Leitfaden vom Gründer-Vertrieb zum Vertriebsteam."
+          ]
+        },
+        {
+          "h": "Eingabe- und Ergebnis-Kennzahlen",
+          "absaetze": [
+            "Eingabe-Kennzahlen zählen, was Sie und Ihr Team tun: Ansprachen, Gespräche, Angebote. Sie lassen sich täglich beeinflussen. Ergebnis-Kennzahlen zählen, was dabei herauskommt: Aufträge, Umsatz, Kunden, die bleiben. Sie reagieren mit Wochen oder Monaten Verzögerung.",
+            "Quoten verbinden beides. Sie zeigen, wie viel von einer Stufe in der nächsten ankommt, und damit, wo Ihr Vertrieb Kontakte verliert. Daraus folgen vier Regeln:"
+          ],
+          "punkte": [
+            "Führen Sie im Alltag über Eingaben. Das ist fair, weil jede Person sie selbst in der Hand hat.",
+            "Beurteilen Sie den Vertrieb über Ergebnisse, aber über einen längeren Zeitraum.",
+            "Suchen Sie mit Quoten den Engpass: die Stufe, an der am meisten verloren geht.",
+            "Schreiben Sie jede Definition einmal auf, etwa was ein Termin ist und was ein Angebot, und ändern Sie sie nicht mitten im Jahr."
+          ]
+        },
+        {
+          "h": "Phase Start: die Zahlen des Gründers",
+          "absaetze": [
+            "Am Start verkauft der Gründer selbst, meist neben Produkt, Kunden und Verwaltung. Die knappste Größe ist seine Zeit, darum steht sie in dieser Phase ganz vorn. Angebote, Abschlussquote, Zeit bis zum Abschluss und offene Chancen beschreibt unser Ratgeber zu den fünf Vertriebszahlen ausführlich. Hier stehen sie nur kurz."
+          ],
+          "tabelle": {
+            "titel": "Kennzahlen am Start",
+            "kopf": [
+              "Kennzahl",
+              "Formel",
+              "Warum gerade jetzt",
+              "So erfassen Sie sie"
+            ],
+            "zeilen": [
+              [
+                "Vertriebsstunden des Gründers",
+                "Stunden je Woche, die nur dem Vertrieb gehören (Eingabe)",
+                "Fehlt diese Zeit heute, fehlt der Umsatz in einigen Monaten.",
+                "feste Blöcke im Kalender, freitags zählen, was davon stattfand"
+              ],
+              [
+                "Erstgespräche",
+                "Gespräche mit neuen möglichen Kunden über einen konkreten Bedarf, je Woche (Eingabe)",
+                "Ohne Gespräche keine Angebote. Die Zahl zeigt früh, ob genug nachkommt.",
+                "eine Zeile je Gespräch in Ihrer Liste, mit Datum"
+              ],
+              [
+                "Angebote",
+                "schriftliche Angebote mit Preis und Datum, je Monat (Eingabe)",
+                "zeigt, ob aus Gesprächen konkrete Chancen werden",
+                "Spalte „Angebot verschickt“ mit Datum"
+              ],
+              [
+                "Abschlussquote",
+                "gewonnene ÷ entschiedene Angebote (Ergebnis)",
+                "zeigt, ob die Angebote an die richtigen Kunden gehen",
+                "Spalte „Ergebnis“: gewonnen, verloren oder offen"
+              ],
+              [
+                "Zeit bis zum Abschluss",
+                "Tage vom Erstgespräch bis zum Auftrag, im Mittel (Ergebnis)",
+                "zeigt, wie weit Sie vorausplanen müssen",
+                "zwei Daten je Chance: erstes Gespräch und Entscheidung"
+              ],
+              [
+                "Offene Chancen mit Wert",
+                "Summe der Werte aller offenen Chancen mit vereinbartem nächstem Schritt",
+                "zeigt, was in den nächsten Monaten kommen kann",
+                "Wert und nächster Schritt mit Datum je Zeile"
+              ],
+              [
+                "Herkunft der Aufträge",
+                "Aufträge je Quelle ÷ alle Aufträge",
+                "zeigt, welcher Weg trägt und was eine erste Vertriebsperson übernehmen kann",
+                "Spalte „Quelle“: Empfehlung, Netzwerk, Website, eigene Ansprache"
+              ]
+            ],
+            "hinweis": "Dazu gilt die Regel aus dem Ratgeber zu den fünf Vertriebszahlen: Jedes offene Angebot hat ein Datum zum Nachfassen."
+          },
+          "zahl": "ifo-selbststaendige-auftragsmangel",
+          "absaetze_danach": [
+            "Gerade wenn Aufträge knapp sind, sind die Eingaben der Hebel, den Sie selbst bewegen: Vertriebsstunden und Erstgespräche. Zählen Sie diese beiden jede Woche, auch wenn sonst keine Zeit bleibt."
+          ]
+        },
+        {
+          "h": "Phase Aufbau: Zahlen je Person und Stufe",
+          "absaetze": [
+            "Mit den ersten Vertrieblern wird aus einer Liste ein Ablauf mit Übergaben. Jetzt reicht es nicht mehr, Gesamtzahlen zu kennen. Sie müssen sehen, wo im Ablauf Kontakte verloren gehen und ob eine neue Person ankommt. Deshalb zählen Sie je Person und je Stufe."
+          ],
+          "tabelle": {
+            "titel": "Kennzahlen im Aufbau",
+            "kopf": [
+              "Kennzahl",
+              "Formel",
+              "Warum gerade jetzt",
+              "So erfassen Sie sie"
+            ],
+            "zeilen": [
+              [
+                "Ansprachen",
+                "Anrufe, Nachrichten und Mails an neue Kontakte, je Person und Tag (Eingabe)",
+                "die Eingabe, die eine neue Person vom ersten Tag an steuern kann",
+                "Tagesbericht oder Aktivitäten im CRM"
+              ],
+              [
+                "Erreichquote",
+                "erreichte Gespräche ÷ Ansprachen",
+                "zeigt, ob Kontaktliste und Uhrzeiten passen",
+                "Ergebnis jeder Ansprache: erreicht oder nicht"
+              ],
+              [
+                "Terminquote",
+                "vereinbarte Termine ÷ erreichte Gespräche",
+                "zeigt, ob Einstieg und Nutzen im Gespräch überzeugen",
+                "Termine mit dem Tag der Vereinbarung"
+              ],
+              [
+                "Erscheinquote",
+                "stattgefundene Termine ÷ vereinbarte Termine",
+                "zeigt, ob Termine verbindlich vereinbart und bestätigt werden",
+                "jeden Termin als stattgefunden oder ausgefallen markieren"
+              ],
+              [
+                "Angebotsquote",
+                "Angebote ÷ stattgefundene Termine",
+                "zeigt, ob die Termine mit den richtigen Kunden stattfinden",
+                "Angebot mit Bezug zum Termin"
+              ],
+              [
+                "Abschlussquote je Person",
+                "gewonnene ÷ entschiedene Angebote, je Person",
+                "zeigt, wer Beratung und Abschluss schon sicher beherrscht",
+                "Ergebnis je Chance mit zuständiger Person"
+              ],
+              [
+                "Aufträge ohne Gründer",
+                "Aufträge ohne Beteiligung des Gründers ÷ alle Aufträge",
+                "zeigt, ob die Übergabe gelingt",
+                "Spalte „Gründer beteiligt: ja oder nein“"
+              ]
+            ],
+            "hinweis": "Für Zahlen je Person führen Sie den Wochenbogen je Person einzeln. In der Tabelle zu diesem Ratgeber kopieren Sie dazu das Blatt."
+          },
+          "absaetze_danach": [
+            "Rechnen Sie Quoten erst, wenn genug Fälle da sind, und vergleichen Sie Monate, nicht einzelne Tage. Bei wenigen Terminen verändert ein einziger das Bild stark."
+          ]
+        },
+        {
+          "h": "Phase Wachstum: Zahlen für Team und Prognose",
+          "absaetze": [
+            "Im Wachstum führt eine Vertriebsleitung mehrere Personen in unterschiedlichen Rollen. Die Geschäftsführung braucht jetzt vor allem zwei Dinge: eine verlässliche Zusage, was in den nächsten Monaten kommt, und die Gewissheit, dass das Team mitwächst. Dazu kommen Zahlen über Kosten, Bestandskunden und die Zeit, bis neue Leute ihre volle Leistung bringen. Die Zahlen aus dem Aufbau laufen weiter, jetzt je Rolle."
+          ],
+          "tabelle": {
+            "titel": "Kennzahlen im Wachstum",
+            "kopf": [
+              "Kennzahl",
+              "Formel",
+              "Warum gerade jetzt",
+              "So erfassen Sie sie"
+            ],
+            "zeilen": [
+              [
+                "Abdeckung der Pipeline",
+                "gewichteter Wert offener Chancen ÷ noch offenes Umsatzziel im selben Zeitraum",
+                "zeigt, ob genug in der Pipeline ist, um das Ziel zu erreichen",
+                "Wert × Wahrscheinlichkeit je Chance, jede Woche summiert"
+              ],
+              [
+                "Prognosegenauigkeit",
+                "tatsächlicher Umsatz ÷ Prognose vom Monatsanfang",
+                "zeigt, wie verlässlich die Zusagen des Vertriebs sind",
+                "Prognose am ersten Werktag festhalten, am Monatsende vergleichen"
+              ],
+              [
+                "Ergebnis je Rolle und Person",
+                "zum Beispiel stattgefundene Termine je Terminperson, Auftragswert je Abschluss-Person",
+                "zeigt, wo das Team stark ist und wer Unterstützung braucht",
+                "zuständige Person und Rolle als Pflichtfeld im CRM"
+              ],
+              [
+                "Zeit bis zur vollen Leistung",
+                "Tage vom ersten Arbeitstag, bis eine neue Person vier Wochen in Folge ihre Ziele erreicht",
+                "zeigt, wie gut Auswahl und Einarbeitung funktionieren",
+                "Starttag und Wochenziele je neuer Person"
+              ],
+              [
+                "Kosten je Neukunde",
+                "Vertriebskosten im Zeitraum ÷ neue Kunden im Zeitraum",
+                "zeigt, ob das Wachstum bezahlbar bleibt",
+                "Gehälter, Provisionen, Werbung und Reisen des Vertriebs aus der Buchhaltung, jedes Quartal"
+              ],
+              [
+                "Umsatz mit Bestandskunden",
+                "Umsatz aus Verlängerungen und Zusatzaufträgen ÷ gesamter Umsatz",
+                "zeigt, ob Kunden bleiben und mehr kaufen",
+                "Kennzeichen neu oder Bestand an jedem Auftrag"
+              ],
+              [
+                "Abgänge im Vertrieb",
+                "Abgänge in zwölf Monaten ÷ durchschnittliche Zahl der Vertriebsleute",
+                "zeigt, ob Führung, Vergütung und Auswahl stimmen",
+                "Personalliste, jedes Quartal"
+              ]
+            ]
+          },
+          "zahl": "forrester-kaufgruppe",
+          "absaetze_danach": [
+            "Je mehr Menschen auf Kundenseite mitentscheiden, desto wichtiger werden Zeit bis zum Abschluss und Prognose. Ein Auftrag hängt dann nicht an einem Gespräch, sondern an vielen."
+          ]
+        },
+        {
+          "h": "Eigene Zielwerte setzen statt fremder Richtwerte",
+          "absaetze": [
+            "Wir nennen in diesem Ratgeber bewusst keine Richtwerte wie eine gute Terminquote oder eine übliche Abschlussquote. Solche Werte hängen von Branche, Preis, Kanal, Kontaktliste und Erfahrung ab. Ein fremder Durchschnitt führt deshalb leicht zu einem Ziel, das entweder nichts verlangt oder das niemand erreichen kann. So kommen Sie zu eigenen Zielwerten:"
+          ],
+          "schritte": [
+            {
+              "titel": "Messen, ohne zu bewerten",
+              "text": "Zählen Sie vier bis acht Wochen lang sauber, bevor Sie ein Ziel festlegen. Das ist Ihr Ausgangswert."
+            },
+            {
+              "titel": "Vom Umsatzziel rückwärts rechnen",
+              "text": "Teilen Sie das Umsatzziel durch den mittleren Auftragswert und rechnen Sie mit Ihren eigenen Quoten zurück, wie viele Angebote, Termine und Ansprachen es braucht. Wie das geht, zeigt unser Ratgeber zum Vertriebsaufbau."
+            },
+            {
+              "titel": "Den Engpass wählen",
+              "text": "Suchen Sie die Quote, an der am meisten verloren geht. Dort setzen Sie zuerst an, nicht überall gleichzeitig."
+            },
+            {
+              "titel": "Ein Ziel für eine Eingabe festlegen",
+              "text": "Legen Sie zuerst ein Ziel für eine Eingabe fest, die Ihr Team selbst steuern kann. Wählen Sie einen Schritt, den alle für machbar halten."
+            },
+            {
+              "titel": "Nach einem Quartal neu bewerten",
+              "text": "Vergleichen Sie am Quartalsende Ausgangswert und Ist. Passen Sie die Ziele an Ihre gemessenen Quoten an, nicht an Ihre Hoffnung."
+            }
+          ]
+        },
+        {
+          "h": "Ein Rechenbeispiel",
+          "absaetze": [
+            "Das Beispiel zeigt einen Monat einer Person im Aufbau, die Termine vereinbart und selbst berät. Alle Zahlen sind frei erfunden."
+          ],
+          "tabelle": {
+            "titel": "Rechenbeispiel mit frei erfundenen Werten",
+            "kopf": [
+              "Stufe",
+              "Anzahl im Monat",
+              "Rechnung",
+              "Quote"
+            ],
+            "zeilen": [
+              [
+                "Ansprachen",
+                "400",
+                "",
+                ""
+              ],
+              [
+                "Erreichte Gespräche",
+                "100",
+                "100 ÷ 400",
+                "Erreichquote 25 %"
+              ],
+              [
+                "Vereinbarte Termine",
+                "25",
+                "25 ÷ 100",
+                "Terminquote 25 %"
+              ],
+              [
+                "Stattgefundene Termine",
+                "20",
+                "20 ÷ 25",
+                "Erscheinquote 80 %"
+              ],
+              [
+                "Angebote",
+                "10",
+                "10 ÷ 20",
+                "Angebotsquote 50 %"
+              ],
+              [
+                "Entschiedene Angebote",
+                "8, davon 3 gewonnen und 5 verloren",
+                "3 ÷ 8",
+                "Abschlussquote 38 %"
+              ]
+            ],
+            "hinweis": "Zwei Angebote sind noch offen und zählen deshalb nicht in die Abschlussquote."
+          },
+          "absaetze_danach": [
+            "Angenommen, die Terminquote steigt durch einen besseren Gesprächseinstieg von 25 auf 30 %. Bei sonst gleichen Quoten werden aus 100 erreichten Gesprächen 30 Termine, davon finden 24 statt, und daraus entstehen 12 statt 10 Angebote. So zeigt die Rechnung, welcher Hebel wie viel bringt, bevor Sie Geld für mehr Kontakte ausgeben."
+          ]
+        },
+        {
+          "h": "Wochen- und Monatsrhythmus",
+          "absaetze": [
+            "Kennzahlen wirken nur, wenn sie zu einem festen Zeitpunkt besprochen werden. Nicht jede Zahl braucht dieselbe Taktung: Eingaben schauen Sie oft an, Ergebnisse seltener."
+          ],
+          "tabelle": {
+            "titel": "Wann welche Zahlen besprochen werden",
+            "kopf": [
+              "Wann",
+              "Welche Zahlen",
+              "Wer",
+              "Wie lange"
+            ],
+            "zeilen": [
+              [
+                "Täglich",
+                "Ansprachen, Gespräche und vereinbarte Termine im Tagesbericht, ab dem Aufbau",
+                "jede Person für sich",
+                "5 Minuten"
+              ],
+              [
+                "Wöchentlich",
+                "Eingaben, Quoten je Stufe, offene Angebote ohne Nachfass-Datum, Chancen ohne nächsten Schritt",
+                "Gründer oder Vertriebsleitung mit dem Team",
+                "30 bis 60 Minuten"
+              ],
+              [
+                "Monatlich",
+                "Aufträge, Abschlussquote, Zeit bis zum Abschluss, offene Chancen, im Wachstum auch Prognose und Abdeckung",
+                "Geschäftsführung und Vertriebsleitung",
+                "60 Minuten"
+              ],
+              [
+                "Vierteljährlich",
+                "Herkunft der Aufträge, Kosten je Neukunde, Bestandskunden, Abgänge, neue Zielwerte",
+                "Geschäftsführung",
+                "60 bis 90 Minuten"
+              ]
+            ]
+          },
+          "absaetze_danach": [
+            "Schreiben Sie nach jeder Runde einen Satz auf: Was machen wir bis zum nächsten Mal anders? Dieser Satz ist wichtiger als jede einzelne Zahl."
+          ]
+        },
+        {
+          "h": "Von Phase zu Phase: was dazukommt, was in den Hintergrund rückt",
+          "absaetze": [
+            "Beim Übergang in die nächste Phase kommen Kennzahlen dazu, andere verlieren an Gewicht. Abschaffen sollten Sie keine. Sie laufen weiter, werden aber seltener besprochen."
+          ],
+          "tabelle": {
+            "titel": "Kennzahlen beim Übergang",
+            "kopf": [
+              "Übergang",
+              "Kommt dazu",
+              "Rückt in den Hintergrund"
+            ],
+            "zeilen": [
+              [
+                "Vom Start zum Aufbau",
+                "Ansprachen je Person, Erreich-, Termin-, Erschein- und Angebotsquote, Abschlussquote je Person, Aufträge ohne Gründer",
+                "die Vertriebsstunden des Gründers wandern in den Monatsblick, die Herkunft der Aufträge in den Quartalsblick"
+              ],
+              [
+                "Vom Aufbau zum Wachstum",
+                "Abdeckung der Pipeline, Prognosegenauigkeit, Kosten je Neukunde, Zeit bis zur vollen Leistung, Bestandskunden, Abgänge",
+                "Aufträge ohne Gründer, sobald das Ziel erreicht ist, und die tägliche Einzelkontrolle durch den Gründer, die nun die Vertriebsleitung übernimmt"
+              ]
+            ]
+          }
+        },
+        {
+          "h": "Häufige Fehler",
+          "punkte": [
+            "Kennzahlen der nächsten Phase einführen, bevor die Grundlagen sauber gezählt werden.",
+            "Fremde Richtwerte als eigenes Ziel übernehmen.",
+            "Menschen an Ergebnissen messen, die sie kurzfristig kaum beeinflussen können.",
+            "Quoten aus wenigen Fällen bewerten.",
+            "Definitionen nicht aufschreiben und jeden Monat etwas anderes zählen.",
+            "Zahlen sammeln und nie gemeinsam besprechen."
+          ]
+        },
+        {
+          "h": "Selbst umsetzen oder Hilfe holen?",
+          "absaetze": [
+            "Mit der Tabelle zu diesem Ratgeber können Sie morgen anfangen: Phase wählen, Woche für Woche eintragen, die Quoten rechnet sie selbst. Nach einem Monat kennen Sie Ihre Ausgangswerte.",
+            "Hilfe lohnt sich, wenn die Zahlen zeigen, dass etwas klemmt, aber nicht klar ist, woran. Im Tagesworkshop finden wir an einem Tag den Engpass und setzen den ersten Hebel direkt um. Als Head of Sales auf Zeit führen wir den Wochenrhythmus ein, bis Ihr Team ihn selbst hält. Sollen die Zahlen von selbst aus dem CRM kommen, bauen wir Ihnen ein eigenes KI-CRM mit Kennzahlen-Trichter."
+          ]
+        }
+      ],
+      "fragen": [
+        {
+          "f": "Wie viele Kennzahlen braucht mein Vertrieb?",
+          "a": "So wenige wie möglich. Sieben je Phase reichen, und nicht jede davon besprechen Sie jede Woche. Wichtiger als die Zahl der Kennzahlen ist, dass sie regelmäßig zur selben Zeit besprochen werden."
+        },
+        {
+          "f": "Gibt es gute Richtwerte für Termin- oder Abschlussquoten?",
+          "a": "Wir nennen bewusst keine. Quoten hängen von Branche, Preis, Kanal und Kontaktliste ab. Messen Sie vier bis acht Wochen Ihre eigenen Werte und setzen Sie Ziele daraus."
+        },
+        {
+          "f": "Reicht eine Tabelle, oder brauche ich ein CRM?",
+          "a": "Am Start reicht eine Tabelle. Sobald mehrere Personen verkaufen und Sie Zahlen je Person und je Stufe brauchen, wird ein CRM mit Pflichtfeldern deutlich einfacher."
+        },
+        {
+          "f": "Wer trägt die Zahlen ein?",
+          "a": "Jede Person ihre eigenen, am selben Tag. Eine Person achtet darauf, dass alles vollständig ist, und bringt die Zahlen zur Wochenrunde mit."
+        },
+        {
+          "f": "Darf ich Kennzahlen je Person auswerten?",
+          "a": "Kennzahlen je Person sind im Vertrieb üblich und für Einarbeitung und Einzelgespräche nötig. Sagen Sie offen, was Sie wozu auswerten, und achten Sie auf den Datenschutz. Gibt es einen Betriebsrat, bestimmt er bei technischen Einrichtungen mit, die Verhalten oder Leistung überwachen sollen (§ 87 Abs. 1 Nr. 6 BetrVG). Das ist keine Rechtsberatung."
+        }
+      ],
+      "angebote": [
+        "tagesworkshop",
+        "head-of-sales",
+        "ki-crm"
+      ],
+      "vorlagen": [
+        "vertriebskennzahlen-je-phase",
+        "vertriebs-pipeline"
+      ],
+      "weiter": [
+        "fuenf-vertriebszahlen",
+        "vom-gruender-vertrieb-zum-vertriebsteam",
+        "vertrieb-aufbauen"
       ]
     }
   ],

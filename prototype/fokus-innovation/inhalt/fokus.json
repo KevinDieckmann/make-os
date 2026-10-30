@@ -885,19 +885,43 @@
         "id": "start",
         "name": "Start",
         "titel": "Sie machen noch vieles selbst.",
-        "satz": "Sie verkaufen, schreiben die Website und entscheiden fast alles. Jetzt zählen ein klarer Satz, ein fester Ablauf und wenige Zahlen."
+        "satz": "Sie verkaufen, schreiben die Website und entscheiden fast alles. Jetzt zählen ein klarer Satz, ein fester Ablauf und wenige Zahlen.",
+        "empfohlen": [
+          "r:positionierung-in-fuenf-saetzen",
+          "v:kernsatz-in-fuenf-schritten",
+          "r:fuenf-vertriebszahlen",
+          "v:vertriebs-pipeline",
+          "v:startseiten-check",
+          "r:erste-30-tage-mit-ki"
+        ]
       },
       {
         "id": "aufbau",
         "name": "Aufbau",
         "titel": "Die ersten Leute kommen dazu.",
-        "satz": "Aufgaben gehen an andere. Jetzt zählen Abläufe, die jeder versteht, eine saubere Einarbeitung und Zahlen je Person."
+        "satz": "Aufgaben gehen an andere. Jetzt zählen Abläufe, die jeder versteht, eine saubere Einarbeitung und Zahlen je Person.",
+        "empfohlen": [
+          "r:vom-gruender-vertrieb-zum-vertriebsteam",
+          "v:vertriebsteam-aufbauen",
+          "r:vertriebskennzahlen-je-phase",
+          "r:kundenstimmen-die-ueberzeugen",
+          "r:ki-anwendungsfaelle-finden",
+          "v:ki-regeln-fuer-ihr-team"
+        ]
       },
       {
         "id": "wachstum",
         "name": "Wachstum",
         "titel": "Das Team wächst, Sie führen.",
-        "satz": "Mehrere Rollen, mehr Kunden, mehr Abstimmung. Jetzt zählen ein fester Führungsrhythmus, Zahlen je Rolle und Vertretung für jede wichtige Aufgabe."
+        "satz": "Mehrere Rollen, mehr Kunden, mehr Abstimmung. Jetzt zählen ein fester Führungsrhythmus, Zahlen je Rolle und Vertretung für jede wichtige Aufgabe.",
+        "empfohlen": [
+          "r:vom-gruender-vertrieb-zum-vertriebsteam",
+          "v:vertriebskennzahlen-je-phase",
+          "r:head-of-sales-auf-zeit",
+          "r:ki-im-mittelstand-einfuehren",
+          "v:ki-pilot-30-tage",
+          "v:kundenstimmen-einholen"
+        ]
       }
     ],
     "zahlen": {
