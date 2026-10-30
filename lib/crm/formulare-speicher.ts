@@ -52,6 +52,22 @@ export async function aendereFormular(fn: (b: FormularBestand) => FormularBestan
   return raus!;
 }
 
+/**
+ * Die Frist der Eingänge im Löschfristen-Lauf (30.10., Datenprüfung der Nacht): bis dahin wirkte sie nur beim nächsten Schreiben — ohne neue
+ * Anfrage blieben Eingänge über 24 Monate liegen. Schreibt nur, wenn ein Eingang fällt; ohne Bestand nichts (legt keinen an).
+ */
+export async function formularFristAnwenden(name: string, jetzt = new Date()): Promise<number> {
+  if (!(await loadJson<FormularBestand>(name))) return 0;
+  let n = 0;
+  await updateJson<FormularBestand>(name, cur => {
+    if (!cur || cur.v !== 1 || !Array.isArray(cur.eingaenge)) return cur as FormularBestand;
+    const rest = eingangFrist(cur.eingaenge, jetzt);
+    n = cur.eingaenge.length - rest.length;
+    return n ? { ...cur, eingaenge: rest } : cur;
+  });
+  return n;
+}
+
 /** Den Eingang ändern (in der Sperre); fehlt er → nichts. */
 export async function aendereEingang(id: string, f: (e: Eingang) => Eingang, h?: string): Promise<Eingang | null> {
   let e: Eingang | null = null;
