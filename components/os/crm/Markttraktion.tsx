@@ -179,12 +179,39 @@ export function MarkttraktionSeite() {
   </>;
   const karteiProps = { api, name, auswahl, setAuswahl, zuKontakt, zuFirma, start: ansicht === 'akte' ? undefined : ansicht, zuRunde: (a: 'kreis' | 'chancen' | 'vernetzen') => (a === 'chancen' ? gehe('qualifizierung') : gehe('kontakte', `runde-${a}`)), zuAkte, startBean: params.get('bean') };
   // Arbeitsfläche (29.10., DESIGN_STANDARD.md › Arbeitsfläche): die Kartei der Personen IST die Seite — Kopf in einer Zeile („Kontakte“ · Zahl · ⋯ · „+ Person“),
-  // Liste und Karteikarte füllen die Höhe und rollen je für sich. Runden, Akte und Firmen bleiben in der Seite wie bisher.
+  // Liste und Karteikarte füllen die Höhe und rollen je für sich. Runden und Akte bleiben in der Seite wie bisher.
   if (!runde && !akteId && bereich === 'kontakte') {
     return (
       <>
         {mitlaeufer}
         <Kartei {...karteiProps} modus="personen" kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} />
+      </>
+    );
+  }
+  // Ebenso die Firmen (31.10.): Kopf „Firmen“ · Zahl · ⋯ · „+ Firma“, Liste und Firmenkarte rollen je für sich.
+  if (bereich === 'firmen') {
+    return (
+      <>
+        {mitlaeufer}
+        <Kartei {...karteiProps} modus="firmen" kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} />
+      </>
+    );
+  }
+  // Angebote (31.10.): die Liste ist eine Arbeitsfläche; Editor und Ansicht eines Angebots stehen weiter im Rahmen der Seite.
+  if (bereich === 'angebot') {
+    return (
+      <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={zuDeal} kopf={{ neben: zoeKnopf, mehr: kopfAktionen }}
+        huelle={(inhalt, liste) => (liste ? <>{mitlaeufer}{inhalt}</> : <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>{zoeKnopf}{kopfAktionen}</>}>{mitlaeufer}{inhalt}</Seite>)} />
+    );
+  }
+  // Deals › Liste (31.10.): die Stufen als Abschnitte EINER Liste, rechts der Deal bzw. die Prognose; Board · Liste steht in der Filterzeile.
+  const dealsWahl = <Pillen farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} />;
+  if (bereich === 'deals' && hubOrt === 'deals' && dealsAnsicht === 'liste') {
+    return (
+      <>
+        {mitlaeufer}
+        <Pipeline api={api} ansicht="liste" zuKontakt={zuKontakt} zuLeads={() => gehe('qualifizierung', 'leads')} zuAkte={zuDeal} zurueck={() => zurueckWie(markttraktion('deals'))} zuOffen={params.get('zu') === '1'}
+          kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} ansichtWahl={dealsWahl} />
       </>
     );
   }
@@ -217,7 +244,6 @@ export function MarkttraktionSeite() {
         </>
       )}
       {bereich === 'planung' && <MtPlanung ansicht={(ansicht ?? 'kreislauf') as PlanungAnsicht} kanal={params.get('kanal')} onOrt={(a, k) => { router.push(planungLink(a, k), { scroll: false }); if (a !== (ansicht ?? 'kreislauf')) nachOben(); }} />}
-      {bereich === 'angebot' && <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={zuDeal} />}
       {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('qualifizierung', 'leads', id)}
         leads={<><SalesTrichter api={api} zuBereich={zuBereich} /><Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} /></>} />}
       {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
@@ -228,7 +254,6 @@ export function MarkttraktionSeite() {
       {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
         kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
       {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
-      {!runde && !akteId && bereich === 'firmen' && <Kartei {...karteiProps} modus="firmen" />}
       {bereich === 'formulare' && <Formulare api={api} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
     </Seite>

@@ -17,7 +17,7 @@ import type { KalenderStand, KTermin } from './teile';
 
 /** `id` = Termin.id (Kalender + UID, R-K1) zum Wiederfinden, `schluessel` = `objektSchluessel` für den PATCH. */
 interface Zuletzt { id: string; schluessel: string; titel: string; alt: { start: string; ende: string }; neu: { start: string; ende: string } }
-type Antwort = { ok: boolean; fehler?: string; konflikt?: unknown };
+type Antwort = { ok: boolean; fehler?: string; konflikt?: unknown; /** 30.10.: Überschneidung mit einem weiteren Kalender-Konto der eigenen Person (nur Hinweis). */ ueberschneidungen?: { kalender: string; start: string; ende: string }[] };
 
 const patch = (schluessel: string, start: string, ende: string, stand?: string): Promise<Antwort> =>
   fetch('/api/kalender/termin', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: schluessel, start, ende, ...(stand ? { stand } : {}) }) })
@@ -56,7 +56,8 @@ export function useVerschieben({ setDaten, laden, melden }: { setDaten: Dispatch
     const r = await patch(objektSchluessel(t), start, ende, t.stand);
     if (!r.ok) melden(r.fehler ?? 'Nicht verschoben.');
     else {
-      melden(null);
+      const u = r.ueberschneidungen?.[0];
+      melden(u ? `Hinweis: Überschneidung mit ${u.kalender} ${u.start.slice(11, 16)}–${u.ende.slice(11, 16)}` : null);
       const z: Zuletzt = { id: t.id, schluessel: objektSchluessel(t), titel: t.titel, alt: { start: t.start, ende: t.ende }, neu: { start, ende } };
       hinweisZeigen(`„${t.titel}“ verschoben`, () => { void rueckgaengig(z); });
     }

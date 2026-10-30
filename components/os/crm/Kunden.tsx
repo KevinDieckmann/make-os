@@ -22,7 +22,7 @@
 import { TermineAkte } from '../kalender/TermineAkte';
 import { localDay, tagePlus } from '@/lib/zeit';
 import { useLinkAuswahl } from '../Verlauf';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { mandateLink } from '@/lib/crm/adresse';
@@ -32,7 +32,8 @@ import { rechnungPasst } from '@/lib/crm/kunden';
 import { endeText } from '@/lib/crm/mandat-laufzeit';
 import { mandatPhase, portfolio } from '@/lib/crm/produkte';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, Hinweis, useBreit, LEUCHT, ZeileAktionen, feld } from '../ui';
+import { suchPasst } from '@/lib/text/such-norm';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Zahl, Raster, Segmente, Hinweis, useBreit, LEUCHT, ZeileAktionen, feld, Arbeitsflaeche, FilterKnopf, FilterGruppe, ListenAbschnitt } from '../ui';
 import { useCrmAblage, PapierkorbKarte } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
 import { HEALTH_GEWICHTE, HEALTH_LABEL, healthText, liquiPostenText, kundenJePerson, gesellschaftFilterFuer, passtGesellschaft, beendenVorgabe, beendenHinweise, type GesellschaftFilter, type LiquiLageArt } from '@/lib/crm/kunden';
@@ -84,7 +85,10 @@ const euroCent = (n: number) => new Intl.NumberFormat('de-DE', { style: 'currenc
 const MandatTitel = ({ m }: { m: Pick<Mandat, 'kunde' | 'titel'> }) => { const rest = titelOhneFirma(m.kunde, m.titel); return <>{m.kunde}{rest && <span style={{ color: C.inkLeise }}> · {rest}</span>}</>; };
 
 /** Alle Mandate mit Kennzahlen, Filter und Detail — der Hauptteil von Produkte & Mandate. */
-export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: string) => void }) {
+export function MandateUebersicht({ api, zuKontakt, hinweise: seitenHinweise, unten, importieren }: { api: CrmApi; zuKontakt: (id: string) => void;
+  /** Arbeitsfläche (31.10.): Hinweise der Seite über der Liste (Fehler, Onboarding, gewonnene Deals ohne Mandat). */ hinweise?: ReactNode;
+  /** Unter dem Überblick (rechts, solange kein Mandat offen ist): Index-Streifen, Weg zu den Deals. */ unten?: ReactNode;
+  /** „Mandate aus Excel einfügen“ — über „⋯“ ein- und ausblendbar. */ importieren?: ReactNode }) {
   // Offenes Mandat bzw. offene Leistung im Link (k): Zurück schließt es wieder.
   const [auswahl, setAuswahl] = useLinkAuswahl();
   const router = useRouter();
@@ -104,6 +108,9 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const ablage = useCrmAblage(api, 'mandate');
   const [korbOffen, setKorbOffen] = useState(false);
   const [neuWahl, setNeuWahl] = useState(false);
+  // Arbeitsfläche (31.10.): Suche und „Mandate aus Excel einfügen“ (über „⋯“).
+  const [suche, setSuche] = useState('');
+  const [importAuf, setImportAuf] = useState(false);
   // „Firma zuordnen“ (10.10.) für ein bestehendes Mandat ohne Firma — nur auf Klick, sonst bleibt der Altbestand unverändert.
   const [zuordnen, setZuordnen] = useState<string | null>(null);
   const ladeLiqui = () => fetch('/api/crm/liquiplan').then(r => r.json()).then(d => d.ok && setLiqui(d)).catch(() => {});
@@ -143,9 +150,10 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   const gefiltert = mandate.filter(m => passtWer(wahl, m.zustaendig, 'sales', ich) && passtGesellschaft(ges, m.gesellschaft));
   // Ein Mandat aus einem Link (z. B. hinter der Kündigungsrate) ist immer sichtbar — auch beendet oder bei jemand anderem.
   const gewaehlt = auswahl ? mandate.find(m => m.id === auswahl) : undefined;
-  const basis = alle ? gefiltert : gefiltert.filter(m => m.status !== 'beendet');
+  const gesucht = suche.trim() ? gefiltert.filter(m => suchPasst([m.kunde, m.titel, crm.stand.leistungen.find(x => x.id === m.leistungId)?.name], suche)) : gefiltert;
+  const basis = alle ? gesucht : gesucht.filter(m => m.status !== 'beendet');
   const sichtbar = gewaehlt && !basis.includes(gewaehlt) ? [...basis, gewaehlt] : basis;
-  const beendetVerborgen = gefiltert.length - gefiltert.filter(m => m.status !== 'beendet').length;
+  const beendetVerborgen = gesucht.length - gesucht.filter(m => m.status !== 'beendet').length;
   const zahlen = werZahlen(laufend, m => m.zustaendig, 'sales', ich);
   const offenePunkte = laufend.reduce((a, m) => a + m.offen.length, 0);
   const radar = mandate.filter(m => m.status === 'aktiv' && (crm.mandate[m.id]?.endeIn ?? 999) <= 90);
@@ -194,13 +202,65 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
   // der Dialog `MandatAnlegen` schreibt über EINEN Server-Weg (POST /api/crm/lead `mandat-neu`), die Firma steht danach unter den Kunden.
   const produktName = (m: Mandat) => { const p = crm.stand.leistungen.find(x => x.id === m.leistungId); const ph = mandatPhase(m, p); return p ? `${p.name.slice(0, 40)}${ph ? ` · Phase ${ph.nr}/${ph.von}` : ''}` : ''; };
 
-  return (
+  // ── Arbeitsfläche (31.10., DESIGN_STANDARD.md › Arbeitsfläche) ───────────────────────────────────────────────────────────────────────────────
+  // Kopf in EINER Zeile (Mandate · aktiv/MRR · ⋯ · „+ Mandat“), Wer, Suche und „Filter ▾“ (Gesellschaft, Beendete) in EINER Zeile. Die Mandate
+  // stehen nach Status als Abschnitte EINER Liste; rechts das gewählte Mandat, ohne Auswahl der Überblick (Zahlen, „Als Nächstes“, Head of Sales).
+  // Papierkorb und „Mandate aus Excel einfügen“ im „⋯“.
+  /** Eine Mandatszeile; `zwei` = Detail steht rechts (sonst unter der Zeile), Hinweis-Chips rechts nur bei breiter Liste. */
+  const zeileVon = (m: Mandat, zwei: boolean) => {
+    const chipsRechts = breit && !zwei;
+    const l = crm.mandate[m.id];
+    const lq = liqui?.mandate.find(x => x.id === m.id);
+    return (
+      <div key={m.id} id={`ziel-${m.id}`}>
+        <ZeileAktionen titel={mandatName(m.kunde, m.titel)} archiviert={m.status === 'beendet'} onArchivieren={() => (m.status === 'beendet' ? zurueckholen(m) : beenden(m))} onLoeschen={() => loeschen(m)}
+          loeschenFragt={m.status !== 'beendet'} href={WEG.mandat(m.id)} onOeffnen={() => setAuswahl(m.id)}
+          mehr={[
+            ...(m.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => router.push(WEG.firma(m.firmaId)) }] : [{ id: 'firma-zuordnen', label: 'Firma zuordnen', tun: () => setZuordnen(m.id) }]),
+            ...(m.kontaktIds[0] ? [{ id: 'kontakt', label: 'Ansprechpartner öffnen', tun: () => zuKontakt(m.kontaktIds[0]) }] : []),
+            { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'mandat', id: m.id }) },
+          ]}>
+        <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
+          links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
+          titel={<MandatTitel m={m} />}
+          unter={[produktName(m), ...(!chipsRechts ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? abweichText(lq) : lq?.lage === 'endet' ? 'Liquiplan läuft weiter' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${endeText(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${healthText(l)}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
+          rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {chipsRechts && lq?.lage === 'fehlt' && <Chip farbe={LEUCHT.achtung}>nicht im Liquiplan</Chip>}
+            {chipsRechts && lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>{abweichText(lq)}</Chip>}
+            {chipsRechts && lq?.lage === 'endet' && <Chip farbe={LEUCHT.achtung}>Liquiplan läuft weiter</Chip>}
+            {chipsRechts && !m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
+            {chipsRechts && !m.firmaId && <Chip farbe={LEUCHT.achtung}>ohne Firma</Chip>}
+            <Chip farbe={statusFarbe(m.status)}>{STATUS.find(s => s.id === m.status)?.label}</Chip>
+            <Person id={zustaendig(m.zustaendig, 'sales')} groesse={18} />
+          </span>} />
+        </ZeileAktionen>
+        {auswahl === m.id && !zwei && <MandatDetail m={m} api={api} lq={lq} frei={liqui?.freiePosten ?? []} neuLaden={ladeLiqui} zuKontakt={zuKontakt} onBeenden={() => mandatBeenden(m)} />}
+      </div>
+    );
+  };
+  const filterZahl = (ges !== 'alle' ? 1 : 0) + (alle ? 1 : 0);
+  const filterWeg = () => { setGes('alle'); setAlle(false); };
+  const gesListe = gesellschaftFilterFuer(nurBusiness || imBusiness);
+  const leiste = (
     <>
+      <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
+      <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen: Kunde, Mandat, Produkt …" aria-label="Mandate durchsuchen" type="search" className="af-suche" style={{ ...feld, padding: '9px 13px', fontSize: TYP.bedien, minHeight: 40 }} />
+      <FilterKnopf aktiv={filterZahl} onZuruecksetzen={filterWeg}>
+        <FilterGruppe titel="Gesellschaft">
+          <span role="group" aria-label="Nach Gesellschaft filtern"><Segmente liste={gesListe.map(g => ({ id: g.id, label: g.label }))} aktiv={ges} onWahl={setGes} /></span>
+        </FilterGruppe>
+        <FilterGruppe titel="Beendete">
+          <Segmente liste={[{ id: 'nein', label: 'ausblenden' }, { id: 'ja', label: `zeigen (${beendetVerborgen})` }]} aktiv={alle ? 'ja' : 'nein'} onWahl={w => setAlle(w === 'ja')} />
+        </FilterGruppe>
+      </FilterKnopf>
+      {ges !== 'alle' && <button type="button" className="af-chip-weg fassbar" onClick={() => setGes('alle')} title="Filter aufheben">{gesListe.find(g => g.id === ges)?.kurz ?? 'Gesellschaft'} <span aria-hidden>✕</span></button>}
+      {alle && <button type="button" className="af-chip-weg fassbar" onClick={() => setAlle(false)} title="Filter aufheben">mit Beendeten <span aria-hidden>✕</span></button>}
+    </>
+  );
+  const ueberblick = (voll: boolean) => (
+    <div style={{ display: 'grid', gap: 14 }}>
       <Karte i={0}>
-        <Ueberschrift rechts={<Knopf onClick={() => setNeuWahl(true)}>+ Mandat</Knopf>}>Überblick</Ueberschrift>
-        {zuordnen && <MandatAnlegen api={api} modus="zuordnen" mandatId={zuordnen} onZu={() => setZuordnen(null)} onFertig={() => setZuordnen(null)} />}
-        {neuWahl && <MandatAnlegen api={api} modus="neu" {...(ges !== 'alle' ? { gesellschaft: ges } : {})} {...(neuProdukt ? { leistungId: neuProdukt } : {})} {...(neuFuer ? { zustaendig: neuFuer } : {})} onZu={() => { setNeuWahl(false); setNeuProdukt(null); }} onFertig={id => { setNeuWahl(false); setNeuProdukt(null); setAuswahl(id); setOnboardingFuer(id); }} />}
-        {onboardingFuer && (() => { const nm = crm.stand.mandate.find(x => x.id === onboardingFuer); return nm ? <OnboardingFrage m={nm} produktName={crm.stand.leistungen.find(l => l.id === nm.leistungId)?.name} onZu={() => setOnboardingFuer(null)} /> : null; })()}
+        <Ueberschrift>Überblick</Ueberschrift>
         <Raster min={150}>
           <Zahl wert={kurzEuro(crm.mrr)} label="wiederkehrend je Monat (netto)" farbe={LEUCHT.geld} />
           <Zahl wert={String(mandate.filter(m => m.status === 'aktiv').length)} label="aktive Mandate" />
@@ -235,58 +295,53 @@ export function MandateUebersicht({ api, zuKontakt }: { api: CrmApi; zuKontakt: 
           </div>
         )}
       </Karte>
-
-      <Karte i={1}>
-        <Ueberschrift rechts={`${sichtbar.length} ${sichtbar.length === 1 ? 'Mandat' : 'Mandate'}`}>Mandate</Ueberschrift>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
-            <span role="group" aria-label="Nach Gesellschaft filtern"><Segmente liste={gesellschaftFilterFuer(nurBusiness || imBusiness).map(g => ({ id: g.id, label: breit ? g.label : g.kurz }))} aktiv={ges} onWahl={setGes} /></span>
-          </div>
-          <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
-            <button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 44 }}>{alle ? 'Beendete ausblenden' : `Beendete zeigen (${beendetVerborgen})`}</button>
-            {(ablage.korb.length > 0 || korbOffen) && <button onClick={() => setKorbOffen(!korbOffen)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 44 }}>{korbOffen ? 'Papierkorb schließen' : `Papierkorb (${ablage.korb.length})`}</button>}
-          </span>
-        </div>
-        <Liste>
-          {sichtbar.map(m => {
-            const l = crm.mandate[m.id];
-            const lq = liqui?.mandate.find(x => x.id === m.id);
-            return (
-              <div key={m.id} id={`ziel-${m.id}`}>
-                <ZeileAktionen titel={mandatName(m.kunde, m.titel)} archiviert={m.status === 'beendet'} onArchivieren={() => (m.status === 'beendet' ? zurueckholen(m) : beenden(m))} onLoeschen={() => loeschen(m)}
-                  loeschenFragt={m.status !== 'beendet'} href={WEG.mandat(m.id)} onOeffnen={() => setAuswahl(m.id)}
-                  mehr={[
-                    ...(m.firmaId ? [{ id: 'firma', label: 'Firma öffnen', tun: () => router.push(WEG.firma(m.firmaId)) }] : [{ id: 'firma-zuordnen', label: 'Firma zuordnen', tun: () => setZuordnen(m.id) }]),
-                    ...(m.kontaktIds[0] ? [{ id: 'kontakt', label: 'Ansprechpartner öffnen', tun: () => zuKontakt(m.kontaktIds[0]) }] : []),
-                    { id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'mandat', id: m.id }) },
-                  ]}>
-                <Zeile onClick={() => setAuswahl(auswahl === m.id ? null : m.id)} aktiv={auswahl === m.id}
-                  links={<Punkt farbe={l?.ampel ? AMPEL[l.ampel] : statusFarbe(m.status)} />}
-                  titel={<MandatTitel m={m} />}
-                  unter={[produktName(m), ...(!breit ? [lq?.lage === 'fehlt' ? 'nicht im Liquiplan' : lq?.lage === 'abweichend' ? abweichText(lq) : lq?.lage === 'endet' ? 'Liquiplan läuft weiter' : '', !m.vertragUnterschrieben && m.status !== 'beendet' ? 'ohne Vertrag' : ''] : []), m.honorar.betrag ? `${euro(m.honorar.betrag)}${m.honorar.basis === 'monat' ? '/Monat' : m.honorar.basis === 'tag' ? '/Tag' : ' einmalig'}` : 'Honorar offen', l?.endeAm ? `bis ${endeText(l.endeAm)}` : '', l?.health != null ? `Gesundheit ${healthText(l)}` : '', m.offen.length ? `${m.offen.length} offen` : ''].filter(Boolean).join(' · ')}
-                  rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    {breit && lq?.lage === 'fehlt' && <Chip farbe={LEUCHT.achtung}>nicht im Liquiplan</Chip>}
-                    {breit && lq?.lage === 'abweichend' && <Chip farbe={LEUCHT.achtung}>{abweichText(lq)}</Chip>}
-                    {breit && lq?.lage === 'endet' && <Chip farbe={LEUCHT.achtung}>Liquiplan läuft weiter</Chip>}
-                    {breit && !m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
-                    {breit && !m.firmaId && <Chip farbe={LEUCHT.achtung}>ohne Firma</Chip>}
-                    <Chip farbe={statusFarbe(m.status)}>{STATUS.find(s => s.id === m.status)?.label}</Chip>
-                    <Person id={zustaendig(m.zustaendig, 'sales')} groesse={18} />
-                  </span>} />
-                </ZeileAktionen>
-                {auswahl === m.id && <MandatDetail m={m} api={api} lq={lq} frei={liqui?.freiePosten ?? []} neuLaden={ladeLiqui} zuKontakt={zuKontakt} onBeenden={() => mandatBeenden(m)} />}
-              </div>
-            );
-          })}
-        </Liste>
-        {!sichtbar.length && <Leer>{mandate.length && wahl !== 'alle' ? `Hier liegt kein laufendes Mandat bei ${wahl === 'ich' ? 'dir' : nameVon(wahl)} — „Alle“ zeigen oder ein Mandat übergeben.` : 'Noch keine Mandate.'}</Leer>}
-      </Karte>
+      {voll && <HeadPanel head="sales" standardModus="kundenreview" zuKontakt={zuKontakt} i={2} />}
+      {voll && unten}
+    </div>
+  );
+  const gruppen = STATUS.map(st => ({ ...st, liste: sichtbar.filter(m => m.status === st.id) })).filter(g => g.liste.length).sort((x, y) => REIHE.indexOf(x.id) - REIHE.indexOf(y.id));
+  const sel = auswahl ? mandate.find(m => m.id === auswahl) : undefined;
+  const hinweiseAlle = (
+    <>
+      {seitenHinweise}
+      {zuordnen && <MandatAnlegen api={api} modus="zuordnen" mandatId={zuordnen} onZu={() => setZuordnen(null)} onFertig={() => setZuordnen(null)} />}
+      {neuWahl && <MandatAnlegen api={api} modus="neu" {...(ges !== 'alle' ? { gesellschaft: ges } : {})} {...(neuProdukt ? { leistungId: neuProdukt } : {})} {...(neuFuer ? { zustaendig: neuFuer } : {})} onZu={() => { setNeuWahl(false); setNeuProdukt(null); }} onFertig={id => { setNeuWahl(false); setNeuProdukt(null); setAuswahl(id); setOnboardingFuer(id); }} />}
+      {onboardingFuer && (() => { const nm = crm.stand.mandate.find(x => x.id === onboardingFuer); return nm ? <OnboardingFrage m={nm} produktName={crm.stand.leistungen.find(l => l.id === nm.leistungId)?.name} onZu={() => setOnboardingFuer(null)} /> : null; })()}
+      {importAuf && importieren}
       {korbOffen && <PapierkorbKarte ablage={ablage} liste="mandate" i={2} />}
+    </>
+  );
+
+  return (
+    <>
+      <Arbeitsflaeche titel="Mandate" label="Mandate" verhaeltnis="1:1" zweiAb={880}
+        zaehler={<span><b style={{ color: C.ink, fontWeight: 600 }}>{mandate.filter(m => m.status === 'aktiv').length}</b> aktiv · {kurzEuro(crm.mrr)} je Monat{offenePunkte ? ` · ${anzahl(offenePunkte, 'offener Punkt', 'offene Punkte')}` : ''}</span>}
+        mehr={<>
+          <Knopf leise onClick={() => setImportAuf(x => !x)}>{importAuf ? 'Excel-Import ausblenden' : 'Mandate aus Excel einfügen'}</Knopf>
+          {(ablage.korb.length > 0 || korbOffen) && <Knopf leise onClick={() => setKorbOffen(!korbOffen)}>{korbOffen ? 'Papierkorb schließen' : `Papierkorb (${ablage.korb.length})`}</Knopf>}
+        </>}
+        haupt={<Knopf haupt onClick={() => setNeuWahl(true)}>+ Mandat</Knopf>}
+        leiste={leiste} hinweise={hinweiseAlle}
+        liste={st => (
+          <div style={{ paddingBottom: 12 }}>
+            {gruppen.map(g => (
+              <ListenAbschnitt key={g.id} id={g.id} titel={g.label} farbe={statusFarbe(g.id)} rechts={String(g.liste.length)}>
+                <Liste>{g.liste.map(m => zeileVon(m, st.zwei))}</Liste>
+              </ListenAbschnitt>
+            ))}
+            {!sichtbar.length && <div style={{ paddingTop: 12 }}><Leer>{suche.trim() ? 'Kein Mandat passt zur Suche.' : mandate.length && wahl !== 'alle' ? `Hier liegt kein laufendes Mandat bei ${wahl === 'ich' ? 'dir' : nameVon(wahl)} — „Alle“ zeigen oder ein Mandat übergeben.` : 'Noch keine Mandate.'}</Leer></div>}
+          </div>
+        )}
+        detail={st => (st.zwei && sel ? (
+          <div style={{ minWidth: 0 }}>
+            <Ueberschrift rechts={<button onClick={() => setAuswahl(null)} aria-label="Mandat schließen" className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, minWidth: 44, minHeight: 44 }}>✕</button>}><MandatTitel m={sel} /></Ueberschrift>
+            <MandatDetail m={sel} api={api} lq={liqui?.mandate.find(x => x.id === sel.id)} frei={liqui?.freiePosten ?? []} neuLaden={ladeLiqui} zuKontakt={zuKontakt} onBeenden={() => mandatBeenden(sel)} />
+          </div>
+        ) : null)}
+        detailKennung={sel?.id ?? null}
+        leer={st => ueberblick(st.zwei)} leerOben />
       {ablage.dialog}
       {ablage.hinweis}
-
-      <HeadPanel head="sales" standardModus="kundenreview" zuKontakt={zuKontakt} i={2} />
     </>
   );
 }

@@ -35,6 +35,18 @@ describe('deploy/google-verbinden.sh', () => {
   });
 });
 
+describe('weitere Kalender-Konten (30.10.)', () => {
+  it('das Skript fragt GOOGLE_ZUSATZ_DOMAINS optional ab, prüft jede Domain und entfernt die Zeile wieder — genau die Variable, die lib/google/zusatz.ts liest', () => {
+    const skript = lies('deploy/google-verbinden.sh');
+    expect(skript).toContain('GOOGLE_ZUSATZ_DOMAINS=${ZUSATZ}');
+    expect(skript).toMatch(/grep -v -E '\^GOOGLE_ZUSATZ_DOMAINS='/);
+    expect(skript).toMatch(/Abbruch: „\$d“/);
+    expect(lies('lib/google/zusatz.ts')).toContain('GOOGLE_ZUSATZ_DOMAINS');
+    expect(lies('deploy/env.server.beispiel')).toContain('GOOGLE_ZUSATZ_DOMAINS=');
+    expect(lies('GOOGLE_KALENDER_EINRICHTEN.md')).toContain('GOOGLE_ZUSATZ_DOMAINS');
+  });
+});
+
 describe('GOOGLE_KALENDER_EINRICHTEN.md', () => {
   const doku = lies('GOOGLE_KALENDER_EINRICHTEN.md');
   it('nennt den Rückruf- und den Webhook-Pfad genau wie der Code', () => {

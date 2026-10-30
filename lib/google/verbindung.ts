@@ -67,16 +67,16 @@ export function scopesFehlen(gewaehrt: readonly string[], noetig: readonly strin
 
 export interface GoogleKonfig { clientId: string; clientSecret: string; rueckrufUrl: string; erlaubteDomain: string | null }
 
-const TOKEN_URL = 'https://oauth2.googleapis.com/token';
+export const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
-const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+export const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 /** Hierhin dürfen Google-Zugangsdaten gehen — sonst nirgends. `gmail.googleapis.com` = die Gmail API (03.10.). */
 export const GOOGLE_HOSTS: readonly string[] = ['accounts.google.com', 'oauth2.googleapis.com', 'www.googleapis.com', 'gmail.googleapis.com'];
 export const googleHost = (u: string): boolean => { try { const x = new URL(u); return x.protocol === 'https:' && GOOGLE_HOSTS.includes(x.hostname); } catch { return false; } };
 
 export const RUECKRUF_PFAD = '/api/google/rueckruf';
 
-const domainSauber = (v: string | undefined): string | null => {
+export const domainSauber = (v: string | undefined): string | null => {
   const d = (v ?? '').trim().toLowerCase().replace(/^@/, '');
   return /^[a-z0-9]([a-z0-9.-]{0,60}[a-z0-9])?\.[a-z]{2,24}$/.test(d) ? d : null;
 };
@@ -199,7 +199,8 @@ export function domainPasst(konto: { email?: string; hd?: string; emailBestaetig
 
 // ── Zugriff auf Google (nur diese Hosts) ────────────────────────────────────
 
-async function tokenAnfrage(url: string, koerper: URLSearchParams): Promise<{ status: number; json: Record<string, unknown> }> {
+/** Formular-POST an einen Google-Endpunkt (Token, Widerruf) — auch für weitere Kalender-Konten (lib/google/zusatz.ts). */
+export async function tokenAnfrage(url: string, koerper: URLSearchParams): Promise<{ status: number; json: Record<string, unknown> }> {
   if (!googleHost(url)) throw new GoogleVerbindungsFehler('netz', 'Unerwartete Adresse — Abbruch (Zugang geht nur an Google).', 502);
   let r: Response;
   try {

@@ -88,7 +88,7 @@ describe('Markttraktion › Kontakte als Arbeitsfläche', () => {
     expect(k).toContain('haupt={<Knopf haupt onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>}');
     expect(m).toContain("if (!runde && !akteId && bereich === 'kontakte') {");
     expect(m).toContain('kopf={{ neben: zoeKnopf, mehr: kopfAktionen }}');
-    expect(m).toContain("{!runde && !akteId && bereich === 'firmen' && <Kartei {...karteiProps} modus=\"firmen\" />}");
+    expect(m).toContain("if (bereich === 'firmen') {");
   });
   it('Filter im Popover (Ansicht, BEAN, Lifecycle, Einordnung) mit Zähler; aktive Filter als Chips — keine abgeschnittene Chip-Reihe', () => {
     expect(k).toContain('<FilterKnopf aktiv={filterZahl} onZuruecksetzen={filterWeg}>');
@@ -100,5 +100,87 @@ describe('Markttraktion › Kontakte als Arbeitsfläche', () => {
     for (const r of ["zuRunde('kreis')", "zuRunde('chancen')", "zuRunde('vernetzen')"]) expect(k, r).toContain(r);
     expect(k).toContain("listeKopf={st => (st.zwei && ansicht !== 'dubletten' ? tabellenKopf : null)}");
     for (const t of ["e.key === '/'", "e.key === 'j'", "e.key === 'k'", "e.key === 'Enter'", "e.key === 'Escape'"]) expect(k, t).toContain(t);
+  });
+});
+
+// 31.10. (Kevin: „Restliche Seiten aufräumen“): Firmen, Deals › Liste, Angebote und Mandate nach demselben Muster.
+describe('Markttraktion › Firmen als Arbeitsfläche', () => {
+  const f = lies('components/os/crm/Firmen.tsx');
+  const k = lies('components/os/crm/Kartei.tsx');
+  const m = lies('components/os/crm/Markttraktion.tsx');
+  it('Kopf „Firmen“ · Zahl · ⋯ · „+ Firma“; die Zielliste im ⋯; die Seite rendert die Firmen ohne den Rahmen „Markttraktion“', () => {
+    expect(f).toContain('<Arbeitsflaeche titel="Firmen"');
+    expect(k).toContain('haupt: <Knopf haupt onClick={firmaNeu}>+ Firma</Knopf>');
+    expect(k).toContain('WEG.prospecting()');
+    expect(m).toContain('<Kartei {...karteiProps} modus="firmen" kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} />');
+  });
+  it('Ansichten im Filter-Popover statt einer abgeschnittenen Pillenreihe; Tabellenkopf klebt; Firmenkarte rechts bzw. unter der Zeile', () => {
+    expect(f).toContain('<FilterKnopf aktiv={ansicht !== \'alle\' ? 1 : 0} onZuruecksetzen={filterWeg}>');
+    expect(f).not.toContain('<Pillen einzeilig');
+    expect(f).toContain('listeKopf={st => (st.zwei && tabelle ? tabellenKopf : null)}');
+    expect(f).toContain('liste={st => listeInhalt(st.zwei)}');
+    expect(f).toContain('className="af-chip-weg fassbar"');
+    expect(k).toContain('className="af-suche"');
+  });
+});
+
+describe('Markttraktion › Deals › Liste als Arbeitsfläche', () => {
+  const p = lies('components/os/crm/Pipeline.tsx');
+  const m = lies('components/os/crm/Markttraktion.tsx');
+  it('nur die Liste (das Board bleibt): Kopf „Deals“ · offen/gewichtet · ⋯ · „+ Deal“; Board · Liste in der Filterzeile', () => {
+    expect(p).toContain('if (!board) {');
+    expect(p).toContain('<Arbeitsflaeche titel="Deals"');
+    expect(p).toContain('haupt={neuKnopf}');
+    expect(m).toContain("if (bereich === 'deals' && hubOrt === 'deals' && dealsAnsicht === 'liste') {");
+    expect(m).toContain('kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} ansichtWahl={dealsWahl}');
+  });
+  it('Stufen als Abschnitte EINER Liste; Stufe und Geschlossene im Popover; rechts der Deal, ohne Auswahl die Prognose', () => {
+    expect(p).toContain('<ListenAbschnitt key={s.id} id={s.id}');
+    expect(p).toContain('<FilterGruppe titel="Stufe">');
+    expect(p).toContain('<FilterGruppe titel="Geschlossene">');
+    expect(p).toContain('{prognoseKarte(false)}<HeadPanel head="sales"');
+    // In einer Spalte (Handy) zugeklappt über der Liste, damit die große Karte die Deals nicht aus dem Bild schiebt.
+    expect(p).toContain('st.zwei ? voll : <Klappbar id="deals-prognose"');
+    expect(p).toContain('inline={!zwei}');
+    // Der Link aus der Auswertung (zu=1) findet die geschlossenen Deals weiter.
+    expect(p).toContain('<div id="deals-geschlossen">');
+  });
+});
+
+describe('Angebote als Arbeitsfläche', () => {
+  const l = lies('components/os/crm/angebot/Liste.tsx');
+  const a = lies('components/os/crm/angebot/AngebotStart.tsx');
+  const m = lies('components/os/crm/Markttraktion.tsx');
+  it('Kopf „Angebote“ · offen/Wert · ⋯ („+ Neuer Kunde“) · „+ Neues Angebot“; Status und Gesellschaft im Popover statt zwei Pillenreihen', () => {
+    expect(l).toContain('<Arbeitsflaeche titel="Angebote"');
+    expect(l).toContain('haupt={<Knopf haupt farbe={LEUCHT.gut} onClick={() => onNeu()}>+ Neues Angebot</Knopf>}');
+    expect(l).toContain('<FilterGruppe titel="Status">');
+    expect(l).toContain('<FilterGruppe titel="Gesellschaft">');
+    expect(l).not.toContain('<Pillen einzeilig');
+    expect(l).toContain('className="af-suche"');
+  });
+  it('nur die Liste ist die Fläche: Editor und Ansicht stehen weiter im Rahmen der Seite (`huelle`)', () => {
+    expect(a).toContain("if (!offenId) return rahmen(<AngebotListe");
+    expect(a).toContain(', true);');
+    expect(m).toContain('huelle={(inhalt, liste) => (liste ? <>{mitlaeufer}{inhalt}</> : <Seite titel="Markttraktion"');
+  });
+});
+
+describe('Mandate als Arbeitsfläche', () => {
+  const k = lies('components/os/crm/Kunden.tsx');
+  const pm = lies('components/os/mandate/ProdukteMandate.tsx');
+  it('Kopf „Mandate“ · aktiv/MRR · ⋯ (Excel-Import, Papierkorb) · „+ Mandat“; Gesellschaft und Beendete im Popover', () => {
+    expect(k).toContain('<Arbeitsflaeche titel="Mandate"');
+    expect(k).toContain('haupt={<Knopf haupt onClick={() => setNeuWahl(true)}>+ Mandat</Knopf>}');
+    expect(k).toContain('<FilterGruppe titel="Gesellschaft">');
+    expect(k).toContain('<FilterGruppe titel="Beendete">');
+    expect(k).toContain('{importAuf && importieren}');
+    expect(pm).toContain("if (reiter === 'mandate') {");
+  });
+  it('nach Status als Abschnitte EINER Liste; rechts das Mandat, ohne Auswahl der Überblick (Zahlen, Head, Index)', () => {
+    expect(k).toContain('<ListenAbschnitt key={g.id} id={g.id} titel={g.label}');
+    expect(k).toContain('{auswahl === m.id && !zwei && <MandatDetail');
+    expect(k).toContain('leer={st => ueberblick(st.zwei)} leerOben');
+    expect(k).toContain('{voll && <HeadPanel head="sales" standardModus="kundenreview"');
   });
 });

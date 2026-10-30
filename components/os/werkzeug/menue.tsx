@@ -8,12 +8,13 @@
 // Die Punkte kommen aufgelöst aus `werkzeugPunkte` (welcher leuchtet, welche Kinder da sind) — hier wird nichts entschieden, nur gezeichnet.
 
 import Link from 'next/link';
-import type { CSSProperties } from 'react';
-import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { ArrowLeft, ArrowUpRight, ChevronDown, type LucideIcon } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, ZIEL, ECKE, MIKRO } from '@/lib/make-one/design';
 import {
   werkzeugPunkte, werkzeugAktion, imWerkzeugModus, RUECKWEG_LABEL, RUECKWEG_TITEL, type Werkzeug, type WerkzeugKontext, type PunktAnsicht,
 } from '@/lib/make-one/werkzeuge';
+import { gruppenSchluessel, gruppeZu, gruppeAktiv, gruppenLesen, gruppeUmschalten } from '@/lib/make-one/werkzeug-gruppen';
 
 export type MenueVariante = 'leiste' | 'schiene' | 'blatt';
 
@@ -25,6 +26,21 @@ export function menueZeileStil(an: boolean, farbe: string, schmal: boolean, kind
     color: an ? farbe : C.inkDim, background: an ? `${farbe}1A` : 'transparent', transition: 'background .2s ease, color .2s ease',
     fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: an ? 600 : 500,
   };
+}
+
+/**
+ * Symbol in einer Kachel (31.10., Rückmeldung: „das Icon von Markttraktion sieht nice aus — bau das überall auf der linken Seite“): dieselbe Art wie der
+ * Name des Werkzeugs — abgerundete Kachel, getönte Fläche und Kontur in der Farbe des Space, das Symbol in dieser Farbe. Aktiv kräftiger, sonst leise.
+ * EIN Baustein für Werkzeug-Menü und Space-Leiste (components/os/Leiste.tsx).
+ */
+export function MenueSymbol({ icon: S, farbe, an, klein = false }: { icon: LucideIcon; farbe: string; an: boolean; klein?: boolean }) {
+  const m = klein ? 22 : 26;
+  return (
+    <span aria-hidden className="wz-symbol" style={{ width: m, height: m, flex: '0 0 auto', borderRadius: klein ? 6 : 8, display: 'grid', placeItems: 'center', boxSizing: 'border-box',
+      background: `${farbe}${an ? '24' : '12'}`, border: `1px solid ${farbe}${an ? '66' : '2E'}`, color: farbe, opacity: an ? 1 : 0.9, transition: 'background .2s ease, border-color .2s ease' }}>
+      <S size={klein ? 13 : 15} strokeWidth={1.9} />
+    </span>
+  );
 }
 
 /** Der Rückweg „← MAKE OS“ — überall dieselbe Beschriftung; eingeklappt nur der Pfeil. */
@@ -50,6 +66,18 @@ export function WerkzeugMenue({ werkzeug, kontext, variante, schmal = false, far
   const punkte = werkzeugPunkte(werkzeug, kontext);
   const fuss = werkzeugPunkte(werkzeug, kontext, 'fuss');
   const Icon = werkzeug.icon;
+  // Gruppen zuklappen (31.10.): je Werkzeug im Browser gemerkt; die Gruppe mit dem aktiven Punkt bleibt immer offen. Schmal (nur Symbole) gibt es
+  // kein Zuklappen — dort steht nur ein Strich.
+  const [zu, setZu] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    try { setZu(gruppenLesen(window.localStorage.getItem(gruppenSchluessel(werkzeug.id)))); } catch { /* ohne Speicher: alles offen */ }
+  }, [werkzeug.id]);
+  const umschalten = (g: string) => setZu(alt => {
+    const neu = gruppeUmschalten(alt, g);
+    try { window.localStorage.setItem(gruppenSchluessel(werkzeug.id), JSON.stringify([...neu])); } catch { /* nur Bequemlichkeit */ }
+    return neu;
+  });
+  const alleSicht = [...punkte, ...fuss];
 
   const eintrag = (p: PunktAnsicht, kind = false) => {
     const S = p.icon;
@@ -58,7 +86,7 @@ export function WerkzeugMenue({ werkzeug, kontext, variante, schmal = false, far
     // Zahl hinter dem Namen (Punkte aus einer Liste der Seite: ungelesen bzw. offen) — klein und leise, eingeklappt weg.
     const zahl = p.zahl ? <span aria-label={`${p.zahl}`} style={{ marginLeft: 'auto', flex: '0 0 auto', fontSize: TYP.bedien, fontWeight: 600, color: C.inkLeise, fontVariantNumeric: 'tabular-nums' }}>{p.zahl}</span> : null;
     const innen = <>
-      <S size={kind ? 15 : 17} strokeWidth={1.8} style={{ flex: '0 0 auto' }} aria-hidden />
+      <MenueSymbol icon={S} farbe={farbe} an={p.an} klein={kind} />
       {!nurSymbole && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span>}
       {!nurSymbole && zahl}
       {!nurSymbole && raus}
@@ -66,7 +94,7 @@ export function WerkzeugMenue({ werkzeug, kontext, variante, schmal = false, far
     const titel = `${p.titel === p.label ? p.label : `${p.label} — ${p.titel}`}${p.wechselt ? ` (öffnet ${p.wechselt})` : ''}`;
     if (variante === 'blatt') {
       const stil: CSSProperties = { display: 'flex', alignItems: 'center', gap: 9, padding: kind ? '10px 10px 10px 22px' : '10px 10px', minHeight: ZIEL.handy, minWidth: 0, boxSizing: 'border-box', borderRadius: ECKE.eingabe, textDecoration: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: SCHRIFT.text, color: p.an ? farbe : C.ink, background: p.an ? `${farbe}14` : 'transparent', fontSize: TYP.body, fontWeight: p.an ? 600 : 500 };
-      const blattInnen = <><S size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} aria-hidden /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span>{zahl}{raus}</>;
+      const blattInnen = <><MenueSymbol icon={S} farbe={farbe} an={p.an} klein /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.label}</span>{zahl}{raus}</>;
       return p.href
         ? <Link key={p.id} href={p.href} onClick={() => onWeg?.()} aria-current={p.an ? 'page' : undefined} title={titel} data-werkzeug-punkt={p.id} style={stil}>{blattInnen}</Link>
         : <button key={p.id} type="button" onClick={() => { werkzeugAktion(werkzeug.id, p.aktion!); onWeg?.(); }} title={titel} data-werkzeug-punkt={p.id} className="fassbar" style={stil}>{blattInnen}</button>;
@@ -77,15 +105,29 @@ export function WerkzeugMenue({ werkzeug, kontext, variante, schmal = false, far
       : <button key={p.id} type="button" onClick={() => werkzeugAktion(werkzeug.id, p.aktion!)} title={titel} aria-label={nurSymbole ? p.label : undefined} className="fassbar" data-werkzeug-punkt={p.id} style={stil}>{innen}</button>;
   };
   // Überschriften der Gruppen (Markttraktion: CRM · Vertrieb · Marketing · Steuerung): nur eine Beschriftung über den Punkten, keine Ebene — schmal ein Strich.
-  const ueberschrift = (g: string) => (nurSymbole
-    ? <div key={`g:${g}`} role="separator" aria-label={g} title={g} style={{ borderTop: `1px solid ${C.linie}`, margin: '6px 8px' }} />
-    : <div key={`g:${g}`} role="heading" aria-level={3} className="wz-gruppe" style={{ ...MIKRO, padding: variante === 'blatt' ? '8px 10px 2px' : '10px 10px 4px', ...(variante === 'blatt' ? { gridColumn: '1 / -1' } : {}) }}>{g}</div>);
+  // Seit 31.10. ist die Überschrift ein Knopf: antippen klappt die Gruppe zu bzw. auf (Pfeil zeigt den Zustand).
+  const ueberschrift = (g: string) => {
+    if (nurSymbole) return <div key={`g:${g}`} role="separator" aria-label={g} title={g} style={{ borderTop: `1px solid ${C.linie}`, margin: '6px 8px' }} />;
+    const geschlossen = gruppeZu(zu, alleSicht, g);
+    const fest = gruppeAktiv(alleSicht, g);
+    return (
+      <div key={`g:${g}`} role="heading" aria-level={3} className="wz-gruppe" style={{ margin: 0, ...(variante === 'blatt' ? { gridColumn: '1 / -1' } : {}) }}>
+        <button type="button" onClick={() => { if (!fest) umschalten(g); }} aria-expanded={!geschlossen} aria-disabled={fest || undefined}
+          title={fest ? `${g} — hier bist du gerade` : geschlossen ? `${g} aufklappen` : `${g} zuklappen`} className="fassbar wz-gruppe-knopf"
+          style={{ ...MIKRO, display: 'flex', alignItems: 'center', gap: 6, width: '100%', minHeight: 32, boxSizing: 'border-box', background: 'none', border: 'none', textAlign: 'left',
+            cursor: fest ? 'default' : 'pointer', padding: variante === 'blatt' ? '8px 10px 2px' : '10px 10px 4px' }}>
+          <span style={{ flex: '1 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g}</span>
+          <ChevronDown size={13} strokeWidth={2} aria-hidden style={{ flex: '0 0 auto', opacity: fest ? 0.25 : 0.7, transform: geschlossen ? 'rotate(-90deg)' : 'none', transition: 'transform .15s ease' }} />
+        </button>
+      </div>
+    );
+  };
   // Ein Punkt ohne Gruppe nach einer Gruppe (z. B. „Automationen & Head“ hinter „Geldfluss“) bekommt einen Strich — sonst stünde er optisch in der Gruppe davor.
   const strich = (k: string) => <div key={`s:${k}`} role="separator" aria-hidden style={{ borderTop: `1px solid ${C.linie}`, margin: '6px 8px', ...(variante === 'blatt' ? { gridColumn: '1 / -1' } : {}) }} />;
   const liste = (ps: PunktAnsicht[]) => ps.flatMap((p, i) => [
     ...(p.gruppe && p.gruppe !== ps[i - 1]?.gruppe ? [ueberschrift(p.gruppe)] : []),
     ...(!p.gruppe && ps[i - 1]?.gruppe ? [strich(p.id)] : []),
-    eintrag(p), ...p.unter.map(u => eintrag(u, true)),
+    ...(p.gruppe && !nurSymbole && gruppeZu(zu, alleSicht, p.gruppe) ? [] : [eintrag(p), ...p.unter.map(u => eintrag(u, true))]),
   ]);
 
   if (variante === 'blatt') {

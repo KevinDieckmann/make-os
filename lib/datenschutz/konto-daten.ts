@@ -46,6 +46,9 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'inbox-vorschlaege', nurMitSuffix: true },
   { basis: 'postfach-zugang', export: false, grund: 'Passwörter der Postfächer (verschlüsselt) — nie in einer Datei; beim Löschen entfernt' },
   { basis: 'google-verbindung', export: false, grund: 'Zugangsschlüssel zu Google (verschlüsselte Token) — nie in einer Datei; beim Löschen widerrufen und entfernt' },
+  // Weitere Google-Konten (30.10., nur Kalender lesen): der Spiegel gehört der Person (Export); der Zugang (Token) nie in eine Datei.
+  { basis: 'kalender-google-zusatz' },
+  { basis: 'google-zusatz', export: false, grund: 'Zugangsschlüssel der weiteren Google-Konten (verschlüsselte Token) — nie in einer Datei; beim Löschen bei Google widerrufen und entfernt' },
   // iCloud je Person (06.10.): der Spiegel der eigenen Kalender gehört der Person; der Zugang (App-Passwort) nie in eine Datei.
   { basis: 'kalender-icloud' },
   { basis: 'icloud-verbindung', export: false, grund: 'Zugang zu iCloud (Apple-ID + app-spezifisches Passwort, verschlüsselt) — nie in einer Datei; beim Löschen entfernt (das App-Passwort bitte zusätzlich bei Apple widerrufen)' },
@@ -403,6 +406,13 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     const r = await googleTrennen(speicher);
     if (r.war) bericht.google = r.widerrufen ? 'widerrufen' : 'entfernt';
   } catch (e) { console.error('[konto-loeschen] Google:', e instanceof Error ? e.message : e); }
+  // 2a. Weitere Google-Konten (30.10.): jedes Token bei Google widerrufen, Zugang + Spiegel weg — ein Fehler verhindert das Löschen nie.
+  try {
+    const { zusatzAlleTrennen } = await import('@/lib/google/zusatz');
+    const { zusatzSpiegelEntfernen } = await import('@/lib/kalender/google/zusatz');
+    await zusatzAlleTrennen(speicher);
+    await zusatzSpiegelEntfernen(speicher);
+  } catch (e) { console.error('[konto-loeschen] weitere Google-Konten:', e instanceof Error ? e.message : e); }
   // 2b. WHOOP (08.10.): Zugang widerrufen, Verbindung + Spiegel weg — ein Fehler verhindert das Löschen nie.
   try {
     const { whoopTrennen } = await import('@/lib/whoop/verbindung');

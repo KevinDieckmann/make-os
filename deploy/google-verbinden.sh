@@ -8,6 +8,8 @@
 # Kalender verbinden“ bzw. in der Inbox „Gmail verbinden“.
 # Optional (Gmail-Echtzeit per Pub/Sub, GOOGLE_GMAIL_EINRICHTEN.md Teil B): Thema, Dienstkonto und Zielgruppe der Push-Subscription —
 # Enter überspringt; ohne sie fragt MAKE OS Gmail alle 2 Minuten ab (nichts geht verloren).
+# Optional (30.10., weitere Kalender-Konten je Person, nur lesen — GOOGLE_KALENDER_EINRICHTEN.md › Weitere Konten): die Domains, aus
+# denen weitere Google-Konten verbunden werden dürfen (Komma-Liste) — Enter = keine (dann sind weitere Konten aus).
 #
 # Die Werte stammen aus der Google Cloud Console (GOOGLE_KALENDER_EINRICHTEN.md, Schritt 5) — NIE in den Chat, NIE ins
 # Repo. Das Geheimnis erscheint nirgends: nicht auf dem Bildschirm, nicht in der Prozessliste, nicht im Log.
@@ -22,7 +24,7 @@ ENV_DATEI=/srv/make-os/app/.env
 schreibe_env() { # $1 = zusätzliche Zeilen (leer beim Entfernen)
   local tmp; tmp="$(mktemp /srv/make-os/.env-neu.XXXXXX)"   # außerhalb des Git-Ordners, gleiches Laufwerk
   chmod 600 "$tmp"
-  grep -v -E '^(GOOGLE_(CLIENT_ID|CLIENT_SECRET|ERLAUBTE_DOMAIN)|GMAIL_(PUBSUB_THEMA|PUSH_DIENSTKONTO|PUSH_AUDIENCE))=' "$ENV_DATEI" > "$tmp" || true
+  grep -v -E '^(GOOGLE_(CLIENT_ID|CLIENT_SECRET|ERLAUBTE_DOMAIN)|GMAIL_(PUBSUB_THEMA|PUSH_DIENSTKONTO|PUSH_AUDIENCE))=' "$ENV_DATEI" | grep -v -E '^GOOGLE_ZUSATZ_DOMAINS=' > "$tmp" || true
   [[ -n "$1" ]] && printf '%s\n' "$1" >> "$tmp"
   chown --reference="$ENV_DATEI" "$tmp"
   mv "$tmp" "$ENV_DATEI"
@@ -88,9 +90,24 @@ GMAIL_PUSH_DIENSTKONTO=${PUSHKONTO}"
 GMAIL_PUSH_AUDIENCE=${AUDIENCE}"; fi
 fi
 
+echo
+echo "Weitere Kalender-Konten je Person (nur lesen, z. B. Arbeitskalender bei anderen Firmen) — optional:"
+read -rp "Erlaubte Domains, Komma-getrennt [Enter = keine]: " ZUSATZ
+ZUSATZ="$(printf '%s' "$ZUSATZ" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+ZUSATZ_ZEILE=""
+if [[ -n "$ZUSATZ" ]]; then
+  IFS=',' read -ra TEILE <<< "$ZUSATZ"
+  for d in "${TEILE[@]}"; do
+    if [[ ! "$d" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$ ]]; then unset SECRET; echo "Abbruch: „$d“ sieht nicht wie eine Domain aus."; exit 1; fi
+  done
+  ZUSATZ_ZEILE="
+GOOGLE_ZUSATZ_DOMAINS=${ZUSATZ}"
+  echo "Weitere Konten erlaubt aus: ${ZUSATZ} (Anmeldebildschirm in der Google Cloud Console auf „Extern“ stellen — Anleitung GOOGLE_KALENDER_EINRICHTEN.md)."
+fi
+
 schreibe_env "GOOGLE_CLIENT_ID=${CLIENT_ID}
 GOOGLE_CLIENT_SECRET=${SECRET}
-GOOGLE_ERLAUBTE_DOMAIN=${DOMAIN}${PUSH_ZEILEN}"
+GOOGLE_ERLAUBTE_DOMAIN=${DOMAIN}${PUSH_ZEILEN}${ZUSATZ_ZEILE}"
 unset SECRET
 echo "Gespeichert (nur für den Nutzer make lesbar)."
 neu_starten

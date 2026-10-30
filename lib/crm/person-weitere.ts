@@ -296,6 +296,13 @@ export const inGoogleZaehlen: Wirkung = (cur, m) => {
   return { neu: cur, n: liste.filter(e => nenntPerson(e, m)).length };
 };
 
+/** Spiegel der weiteren Google-Konten (30.10.): `{ kalender: { <kennung>: { events: { id: GEvent } } } }` — gezählt, nie geändert. */
+export const inZusatzZaehlen: Wirkung = (cur, m) => {
+  const k = ((cur ?? {}) as Obj).kalender;
+  const kalender = k && typeof k === 'object' ? Object.values(k as Obj) : [];
+  return { neu: cur, n: kalender.reduce((n: number, x) => n + inGoogleZaehlen((x ?? {}) as Obj, m).n, 0) };
+};
+
 /**
  * Gmail-Spiegel (03.10.): Einträge einer Objekt-Map (`koepfe`, `texte`: Nachrichten-Kennung → Eintrag), die die Person nennen, fallen weg.
  * Das Original bleibt in Gmail — dort löschen die Personen selbst (die Antwort des Art.-17-Laufs zählt es als „dort löschen“).
@@ -328,6 +335,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'apple-contacts-cache', muster: /^apple-contacts-cache$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
   // Google Kalender (03.10.): Spiegel der Termine je Person — Wahrheit ist Google (Löschung dort), hier nur gezählt.
   { name: 'kalender-google--*', muster: /^kalender-google--[a-z0-9-]+$/, behandlung: 'nur-in-apple', wirkung: inGoogleZaehlen },
+  // Weitere Google-Konten (30.10.): `{ kalender: { kennung: { events } } }` — gezählt, nie geändert (Löschung nur in Google).
+  { name: 'kalender-google-zusatz--*', muster: /^kalender-google-zusatz--[a-z0-9-]+$/, behandlung: 'nur-in-apple', wirkung: inZusatzZaehlen },
   // iCloud je Person (06.10.): Spiegel der eigenen iCloud-Kalender — Wahrheit ist Apple (Löschung dort), hier nur gezählt.
   { name: 'kalender-icloud--*', muster: /^kalender-icloud--[a-z0-9-]+$/, behandlung: 'nur-in-apple', wirkung: inAppleZaehlen },
   // Gmail in der Inbox (03.10.): Spiegel je Person (Köpfe, Texte) — Nachrichten, die die Person nennen, raus; das Original bleibt in Gmail.

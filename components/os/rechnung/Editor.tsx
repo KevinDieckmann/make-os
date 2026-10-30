@@ -12,7 +12,7 @@ import Link from 'next/link';
 import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import type { AnschriftAnFirma, RechnungEmpfaenger, RechnungPosition, SteuerHinweis } from '@/lib/finanzen/rechnung/typen';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { KERN_EINHEITEN, type Gesellschaftskennung } from '@/lib/einheiten';
+import { KERN_EINHEITEN, PRIVAT_GESELLSCHAFTEN, finanzOrtName, type Gesellschaftskennung } from '@/lib/einheiten';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
 import { absenderAus } from '@/lib/crm/angebot-dokument';
@@ -225,6 +225,13 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
             ? <Pillen<string> liste={gesellschaften.map(x => ({ id: x.id, label: gesName(x.id) }))} aktiv={form.firmaId || null} onWahl={id => aendern({ firmaId: id })} />
             : <div style={klein}>Keine Gesellschaft für dieses Konto freigegeben.</div>}
           {g && g.luecken.length > 0 && <div style={{ marginTop: 8 }}><Chip farbe={LEUCHT.achtung}>Absender: {g.luecken.join(', ')} fehlt</Chip></div>}
+          {/* 31.10. (Rückmeldung: „ich muss über die Selbstständigkeit abrechnen“): Einheiten, die zu Privat gehören, stehen hier nicht als Absender —
+              ein Weg dorthin, nur für volle Haushaltsmitglieder (die Business-Sicht sieht Privates nie). */}
+          {daten.stand?.sicht === 'privat' && daten.stand?.bereich !== 'privat' && PRIVAT_GESELLSCHAFTEN.length > 0 && (
+            <div style={{ ...klein, marginTop: 8 }}>
+              {PRIVAT_GESELLSCHAFTEN.map(finanzOrtName).join(' · ')} rechnet unter Privat ab: <Link href={WEG.buchungen({ privat: true })} style={{ color: C.aktiv }}>dort Rechnung schreiben ›</Link>
+            </div>
+          )}
           {ku && <div style={{ marginTop: 8 }}><Chip farbe={C.inkDim}>Kleinunternehmer · ohne Umsatzsteuer</Chip></div>}
         </Karte>
 

@@ -72,6 +72,7 @@ import { DarstellungKnopf, kalenderDarstellungAendern, useKalenderDarstellung, u
 import { arbeitsbeginnAus, pxJeMinute, zeitraumText, zoomMal } from '@/lib/kalender/darstellung';
 import { GoogleVerbindung } from './GoogleVerbindung';
 import { IcloudVerbindung } from './IcloudVerbindung';
+import { GoogleZusatzKonten } from './GoogleZusatzKonten';
 import { BereichVerbindungen } from './VerbindenKarten';
 import type { FreierTag } from '@/lib/kalender/freie-tage';
 import { usePlanen, istArchivTermin, blockFarbe } from './Planen';
@@ -205,7 +206,7 @@ export function Kalender() {
   const linksUmschalten = (offen?: boolean) => { const n = offen ?? !linksOffen; setLinksOffen(n); linksOffenMerken(n); };
   // Rückkehr von Google (?google=…) oder aus den Einstellungen (?einstellungen=1, 08.10.): die Einstellungen öffnen — sie stehen in der
   // linken Spalte, also auch diese (nur für den Moment, nicht gemerkt).
-  useEffect(() => { try { const a = new URLSearchParams(window.location.search); if (a.has('google') || a.get('einstellungen') === '1') { setZeigeEinst(true); setLinksOffen(true); } } catch { /* ohne Adresse */ } }, []);
+  useEffect(() => { try { const a = new URLSearchParams(window.location.search); if (a.has('google') || a.has('google-zusatz') || a.get('einstellungen') === '1') { setZeigeEinst(true); setLinksOffen(true); } } catch { /* ohne Adresse */ } }, []);
   const [analyse, setAnalyse] = useState<Analyse | null>(null);
   const [analysiert, setAnalysiert] = useState(false);
   const [eingetragen, setEingetragen] = useState<Record<number, 'ok' | 'busy' | 'err'>>({});
@@ -504,6 +505,7 @@ export function Kalender() {
           <div style={{ display: 'grid', gap: 10 }}>
             <IcloudVerbindung onGeaendert={() => void laden()} />
             <GoogleVerbindung onGeaendert={() => void laden()} />
+            <GoogleZusatzKonten onGeaendert={() => void laden()} />
             {WER_LABEL.belegt.map(w => (
               <label key={w} style={{ display: 'grid', gap: 4 }}><Erklaert erklaerung="kalender.zuordnung" name={`Kalender ${WER_LABEL[w]}`}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Kalender {WER_LABEL[w]}</span></Erklaert>
                 <input value={einst.kalender[w]} onChange={e => einstSetzen({ kalender: { ...einst.kalender, [w]: e.target.value } })} placeholder="Name wie in der Kalender-App" style={{ ...feld, fontSize: 13 }} /></label>

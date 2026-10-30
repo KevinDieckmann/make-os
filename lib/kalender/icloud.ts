@@ -72,13 +72,15 @@ export interface KalenderEintrag {
    * Google (03.10.): dieser Kalender ist die Überlagerung eines Google-Kalenders (lib/kalender/google/stand.ts) — kein CalDAV.
    * `icloud` (06.10.): ein Kalender aus der EIGENEN iCloud-Verbindung einer Person (lib/kalender/icloud-person.ts) — CalDAV mit
    * dem Zugang dieser Person. Ohne Angabe: der Haushalts-Kalender (`kalender-icloud`).
+   * `google-zusatz` (30.10.): ein Kalender eines WEITEREN Google-Kontos einer Person (lib/kalender/google/zusatz.ts) — nur lesen,
+   * nie schreibbar; seine Termine zählen als „belegt“ für die Person und sind für alle anderen nur „Belegt“.
    */
-  quelle?: 'google' | 'icloud';
+  quelle?: 'google' | 'icloud' | 'google-zusatz';
   /** Google bzw. iCloud je Person: wessen Konto. */
   person?: string;
   /** Google bzw. iCloud je Person: die Adresse(n) dieses Kontos (Organisator/Gast?) — sonst gelten die iCloud-Adressen des Stands. */
   ich?: string[];
-  /** Nur iCloud je Person: der neutrale Name für andere Personen („iCloud · <Vorname>“). */
+  /** iCloud je Person bzw. weitere Google-Konten: der neutrale Name für andere Personen („iCloud · <Vorname>“, „Weitere Termine · <Vorname>“). */
   neutral?: string;
 }
 export interface IcloudStand {
@@ -318,8 +320,34 @@ export async function ladeStand(): Promise<IcloudStand> {
  * ein Fehler in einer Überlagerung kostet nie den Haushalts-Stand.
  */
 export async function mitUeberlagerung(s: IcloudStand): Promise<IcloudStand> {
-  return mitPersoenlich(await mitGoogle(s));
+  return mitZusatz(await mitPersoenlich(await mitGoogle(s)));
 }
+
+/**
+ * Die Kalender der WEITEREN Google-Konten der Personen dazulegen (30.10., lib/kalender/google/zusatz.ts) — nur lesen. Ein Objekt,
+ * dessen UID schon im Stand steht (dieselbe Einladung im Haupt-Kalender), zählt nur einmal — dort. Ohne weitere Konten: der Stand
+ * unverändert (dasselbe Objekt).
+ */
+async function mitZusatz(s: IcloudStand): Promise<IcloudStand> {
+  try {
+    const { zusatzUeberlagerung } = await import('./google/zusatz');
+    const { personenMitZusatz } = await import('@/lib/google/zusatz');
+    const personen = await personenMitZusatz(await alleSpeicher());
+    if (!personen.length) return s;
+    const vorhanden = new Set<string>();
+    for (const l of Object.values(s.objekte)) for (const o of l) { const u = uidVon(o.ics); if (u) vorhanden.add(u); }
+    const z = await zusatzUeberlagerung(personen, vorhanden, new Set(s.kalender.map(k => k.name.trim().toLowerCase())));
+    if (!z.kalender.length) return s;
+    const fremd = new Set(z.kalender.map(k => k.id));
+    return { ...s, kalender: [...s.kalender.filter(k => !fremd.has(k.id)), ...z.kalender], objekte: { ...s.objekte, ...z.objekte } };
+  } catch (e) {
+    console.warn(`[kalender] weitere Google-Konten nicht lesbar: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`);
+    return s;
+  }
+}
+
+/** Gehört der Kalender EINER Person (eigene iCloud-Verbindung oder weiteres Google-Konto)? Dann sehen andere nur „Belegt“. */
+export const istPersoenlicherKalender = (k: Pick<KalenderEintrag, 'quelle' | 'person'>): boolean => (k.quelle === 'icloud' || k.quelle === 'google-zusatz') && !!k.person;
 
 /**
  * Die Kalender aus den eigenen iCloud-Verbindungen der Personen dazulegen (lib/kalender/icloud-person.ts). Ein Objekt,
@@ -366,7 +394,8 @@ function fnv(t: string): string { let h = 2166136261; for (let i = 0; i < t.leng
  * Kalendernamen — für alle anderen nur „Belegt“ (`maskieren`). EINE Stelle für jeden Leser, der Termine aus dem Stand baut.
  */
 function persoenlichMarkieren(t: Termin[], k: KalenderEintrag): Termin[] {
-  return k.quelle === 'icloud' && k.person ? t.map(x => ({ ...x, persoenlich: k.person, persoenlichName: k.neutral ?? 'Belegt' })) : t;
+  // 30.10.: ebenso die Kalender der weiteren Google-Konten einer Person (`google-zusatz`).
+  return istPersoenlicherKalender(k) ? t.map(x => ({ ...x, persoenlich: k.person, persoenlichName: k.neutral ?? 'Belegt' })) : t;
 }
 
 function objektTermine(o: KalenderObjekt, k: KalenderEintrag, von: string, bis: string, ich: readonly string[]): Termin[] {
@@ -641,6 +670,8 @@ export async function terminAufloesen(ref: string): Promise<{ schluessel: string
  */
 interface SchreibOrt { mit?: IcloudZugang; ich: string[]; nachziehen: (kalenderId: string) => Promise<void> }
 async function ortVon(kal: KalenderEintrag, s: IcloudStand): Promise<SchreibOrt> {
+  // 30.10.: weitere Google-Konten sind NUR lesbar — kein Schreibweg, auch nicht über iCloud.
+  if (kal.quelle === 'google-zusatz') throw new KalenderFehler(`„${kal.name}“ ist nur lesbar (weiteres Kalender-Konto).`, 403);
   if (kal.quelle === 'icloud' && kal.person) {
     const person = kal.person;
     const p = await import('./icloud-person');
@@ -826,6 +857,7 @@ export async function antwortSenden(uid: string, status: Exclude<Teilnahme, 'off
   const s = await frischerStand();
   const f = findeObjekt(s, uid, true);
   if (!f) throw new KalenderFehler('Termin nicht gefunden — vielleicht gerade in Apple gelöscht.', 404);
+  if (f.kal.quelle === 'google-zusatz') throw new KalenderFehler(`„${f.kal.name}“ ist nur lesbar — zusagen oder absagen bitte dort.`, 403);
   if (f.kal.quelle === 'google') return (await import('./google/schreiben')).googleAntwort(f, status, opt);
   if (opt.stand && f.obj.etag && opt.stand !== f.obj.etag) throw new KalenderKonflikt('Der Termin wurde inzwischen woanders geändert — bitte erst ansehen.', aktuellerTermin(s, uid));
   const o = await ortVon(f.kal, s);
