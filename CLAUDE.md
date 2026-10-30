@@ -2797,7 +2797,8 @@ Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus a
     Schritt“ (`absichtTest.vorAbhaken/nachAbhaken/vorSchritt`). Wiederaufnahme: Start (`betrieb.ts`), Takt (Agent `absichten`),
     Durchsicht; 3 Fehlversuche → „gescheitert“ (HOI rot, `POST /api/intern/absichten { aktion: 'erneut', id }`).
     Heute: Art. 17 (`personEntfernen`, Kartei-Löschen merkt vor: `art17Vormerken`/`art17Verwerfen`), Dubletten, Import
-    (`importNachlauf`), CRM-Folgen gelöschter Deals (`crmSchreiben`), Angebot stellen, Kennungs-Umzug/Rückweg.
+    (`importNachlauf`), CRM-Folgen gelöschter Deals (`crmSchreiben`), Angebot stellen, Kennungs-Umzug/Rückweg; seit 30.10. auch
+    `mandat-automatik` (Angebot angenommen → Mandat · Kartei · Liquiplan · Merker, und sein Rückgängig — lib/crm/mandat-automatik-server.ts).
   - Art. 17 meldet je Schritt ok/fehler (`schritte`, `vollstaendig`); ein scheiternder Bestand hält die anderen nicht auf,
     das Löschprotokoll trägt `status` (`laeuft`/`vollstaendig`/`unvollstaendig` + `fehlend`) — nie 500 ohne Aufschlüsselung.
   - Neue Kontakte NUR mit `neueKontaktKennung()` (`c-<uuid>`, `lib/kennung.ts`) — nie aus E-Mail/Name. Wiedererkennung über
