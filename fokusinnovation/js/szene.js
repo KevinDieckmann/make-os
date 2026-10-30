@@ -9,7 +9,7 @@ const FLAECHE_VS = 'attribute vec2 a; void main(){ gl_Position = vec4(a, 0.0, 1.
 const FLAECHE_FS = `
 precision highp float;
 uniform vec2 uRes, uC, uPunkt;
-uniform float uZeit, uR, uRing, uKern, uPunktA, uSpur, uWinkel, uPuls;
+uniform float uZeit, uR, uRing, uKern, uPunktA, uSpur, uWinkel, uPuls, uWeite, uBluete, uImpuls;
 uniform vec3 uAkzent, uHell, uNacht;
 const float PI = 3.14159265;
 const float G0 = 0.5236;
@@ -28,8 +28,23 @@ void main() {
   // Puls des Kerns (wie der Kern von ZOE): ein kurzer Schlag, langsames Ausatmen, dazu läuft eine leise Welle nach außen.
   // Ein Schlag alle 2,8 s; uPuls = 0 im Standbild (Bewegung reduzieren) → ruhender Kern wie im Logo.
   float takt = fract(uZeit / 2.8);
-  float schlag = smoothstep(0.0, 0.1, takt) * (1.0 - smoothstep(0.1, 0.75, takt)) * uPuls;
+  // Dazu ein kurzes Aufatmen bei jedem Bildwechsel (uImpuls): ein neuer Bewegungsbeginn holt den Blick zur Mitte zurück (Abrams & Christ 2003)
+  float schlag = max(smoothstep(0.0, 0.1, takt) * (1.0 - smoothstep(0.1, 0.75, takt)) * uPuls, uImpuls);
   float kernR = uR * 0.4375 * uKern * (1.0 + 0.06 * schlag);
+
+  // Der Raum (Vorbild Gemini, 30.10.): ein großer, sehr weicher Farbschein hinter der Mitte, dunkle Ränder, eine dunklere Masse
+  // oben links. Er erzählt mit: im Lärm kühl, breit und unruhig verschoben, mit dem Fokus zieht er sich violett auf den Kern
+  // zusammen und atmet mit dem Schlag, beim Durchbruch wird er weit (uWeite).
+  vec2 drift = vec2(sin(uZeit * 0.071), cos(uZeit * 0.053)) * uR * 0.55 * (1.0 - 0.8 * uKern);
+  vec2 ra = (r - drift) * vec2(0.74, 1.0);
+  // Beim Laden blüht der Raum einmal auf (uBluete 0 → 1), danach steht er und atmet nur mit
+  float weite = uR * 3.1 * uWeite * (1.0 + 0.04 * schlag) * mix(0.3, 1.0, uBluete);
+  float raum = exp(-dot(ra, ra) / (weite * weite));
+  vec3 kuehl = vec3(0.075, 0.09, 0.27);
+  vec3 violett = mix(kuehl, uAkzent * 0.36, 0.6);
+  col += mix(kuehl, violett, uKern) * raum * (0.62 + 0.18 * uKern) * uBluete * (1.0 + 0.22 * uImpuls);
+  vec2 masse = q - (uC + vec2(-uR * 2.3, uR * 1.3));
+  col *= 1.0 - 0.3 * exp(-dot(masse, masse) / (uR * uR * 2.0));
   col += uAkzent * (0.05 + 0.09 * schlag) * exp(-max(lr - kernR, 0.0) / (uR * 0.32)) * uKern;
   float welleT = clamp((takt - 0.04) / 0.9, 0.0, 1.0);
   float welleR = mix(kernR, uR * 0.84, 1.0 - (1.0 - welleT) * (1.0 - welleT));
@@ -65,8 +80,8 @@ void main() {
   float pd = length(q - uPunkt);
   col = mix(col, uHell, smoothstep(px, -px, pd - uR * 0.175) * uPunktA);
 
-  float vig = smoothstep(1.4, 0.25, length((uv - vec2(0.5, 0.56)) * vec2(1.1, 1.0)));
-  col *= 0.78 + 0.22 * vig;
+  float vig = smoothstep(1.35, 0.2, length((uv - vec2(0.5, 0.56)) * vec2(1.1, 1.0)));
+  col *= 0.62 + 0.38 * vig;
   col += (hash(gl_FragCoord.xy + fract(uZeit) * 100.0) - 0.5) * 0.008;
   gl_FragColor = vec4(col, 1.0);
 }`;
@@ -148,7 +163,7 @@ export function szeneStarten(canvas, { handy = false } = {}) {
     console.warn('Szene aus:', fehler.message);
     return null;
   }
-  const uF = orte(gl, flaeche, ['uRes', 'uC', 'uPunkt', 'uZeit', 'uR', 'uRing', 'uKern', 'uPunktA', 'uSpur', 'uWinkel', 'uPuls', 'uAkzent', 'uHell', 'uNacht']);
+  const uF = orte(gl, flaeche, ['uRes', 'uC', 'uPunkt', 'uZeit', 'uR', 'uRing', 'uKern', 'uPunktA', 'uSpur', 'uWinkel', 'uPuls', 'uWeite', 'uBluete', 'uImpuls', 'uAkzent', 'uHell', 'uNacht']);
   const uP = orte(gl, punkte, ['uRes', 'uC', 'uZeit', 'uR', 'uSammeln', 'uDpr', 'uSichtbar', 'uAkzent', 'uHell']);
 
   const dreieck = gl.createBuffer();
@@ -167,7 +182,7 @@ export function szeneStarten(canvas, { handy = false } = {}) {
   const FARBEN = { akzent: farbe(stil.getPropertyValue('--akzent')), hell: farbe(stil.getPropertyValue('--hell')), nacht: farbe(stil.getPropertyValue('--nacht')) };
 
   // Zustand, den der Film setzt
-  const z = { sammeln: 0, ring: 0, kern: 0, punkt: [0, LAGE.mitteY], punktA: 0, spur: 0, winkel: 0, punkteSichtbar: 1, puls: 1, geom: null };
+  const z = { sammeln: 0, ring: 0, kern: 0, punkt: [0, LAGE.mitteY], punktA: 0, spur: 0, winkel: 0, punkteSichtbar: 1, puls: 1, weite: 1.5, bluete: 1, impuls: 0, geom: null };
   let dpr = 1;
 
   function groesse() {
@@ -198,6 +213,9 @@ export function szeneStarten(canvas, { handy = false } = {}) {
     gl.uniform1f(uF.uSpur, z.spur);
     gl.uniform1f(uF.uWinkel, z.winkel);
     gl.uniform1f(uF.uPuls, z.puls);
+    gl.uniform1f(uF.uWeite, z.weite);
+    gl.uniform1f(uF.uBluete, z.bluete);
+    gl.uniform1f(uF.uImpuls, z.impuls);
     gl.uniform3fv(uF.uAkzent, FARBEN.akzent);
     gl.uniform3fv(uF.uHell, FARBEN.hell);
     gl.uniform3fv(uF.uNacht, FARBEN.nacht);
@@ -242,6 +260,8 @@ export function geschichte(z, { fokus, momentum, durchbruch }) {
   const { R, C } = z.geom;
   z.sammeln = fokus;
   z.kern = glatt(clamp01((fokus - 0.4) / 0.6));
+  // Raum: breit im Lärm (1,5), eng im Fokus (0,85), weiter beim Durchbruch (1,2)
+  z.weite = 1.5 - 0.65 * glatt(fokus) + 0.35 * glatt(clamp01(durchbruch));
   if (momentum <= 0) {
     z.ring = 0; z.punktA = 0; z.spur = 0;
     return;

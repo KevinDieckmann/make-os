@@ -554,8 +554,11 @@ html.menue-offen { overflow: hidden; }
 .momente { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--rinne); border-top: 1px solid var(--tinte); counter-reset: moment; }
 .momente li { position: relative; padding: 24px 0 24px 52px; border-bottom: 1px solid var(--haar); font-size: 1.12rem; line-height: 1.5; color: var(--tinte); counter-increment: moment; }
 .momente li::before { content: counter(moment, decimal-leading-zero); position: absolute; left: 0; top: 26px; font-size: .86rem; font-weight: 600; color: var(--akzent-papier); }
-.momente-schluss { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; margin-top: 36px; }
-.momente-schluss p { font-size: var(--t-unter); font-weight: 600; color: var(--tinte); letter-spacing: -.01em; }
+/* Abschluss der Momente (Kevin 30.10.: Knopf nicht direkt unter dem Satz): eigene Zeile unter einer Haarlinie, Frage betont, Knopf rechts */
+.momente-schluss { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 24px 56px; margin-top: clamp(40px, 5vw, 56px); padding-top: clamp(28px, 3vw, 36px); border-top: 1px solid var(--haar); }
+.momente-schluss p { max-width: 42rem; font-size: var(--t-unter); line-height: 1.5; color: var(--tinte-text); letter-spacing: -.01em; }
+.momente-schluss p b { display: block; margin-bottom: 4px; font-weight: 600; color: var(--tinte); }
+@media (max-width: 760px) { .momente-schluss { grid-template-columns: minmax(0, 1fr); justify-items: start; } }
 
 .felder-kurz { border-top: 1px solid var(--tinte); }
 .felder-kurz li { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 4px 24px; padding: 16px 0; border-bottom: 1px solid var(--haar); }
