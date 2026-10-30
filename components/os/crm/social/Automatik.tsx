@@ -120,7 +120,7 @@ function Plan({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKanal> }) 
       })()}
       <div style={{ marginTop: 12, display: 'grid', gap: 4, color: C.inkDim, fontSize: TYP.bedien }}>
         <strong style={{ color: C.ink }}>Nächste freie Termine</strong>
-        {luecken.length ? luecken.map(l => <span key={l.platz}>{termin(l.platz)} · {formatName(l.formatId) ?? 'ohne Format'}{l.saeule ? ` · ${l.saeule}` : ''}</span>)
+        {luecken.length ? luecken.map(l => { const f = formatName(l.formatId) ?? 'ohne Format'; return <span key={l.platz}>{termin(l.platz)} · {f}{l.saeule && l.saeule !== f ? ` · ${l.saeule}` : ''}</span>; })
           : <span>Alle Termine der nächsten {p.vorlauf} Tage sind belegt.</span>}
       </div>
     </Karte>

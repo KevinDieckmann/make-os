@@ -104,7 +104,7 @@ function Einstellung({ api, kanal }: { api: SocialApi; kanal: MitStand<SocialKan
         <Segmente liste={[{ id: 'aus' as const, label: 'Aus' }, { id: 'vorschlag' as const, label: 'Vorschlag (ihr sendet)' }, ...(fremdeMarke && c.modus !== 'auto' ? [] : [{ id: 'auto' as const, label: 'Auto mit Leitplanken' }])]} aktiv={c.modus} umbrechen
           onWahl={(m: CommunityEinstellung['modus']) => void speichern({ modus: m })} />
         <span style={{ color: C.inkDim, fontSize: TYP.bedien }}>{c.modus === 'auto'
-          ? 'ZOE antwortet selbst auf Fragen und freundliche Kommentare unter euren Beiträgen — nie auf Kritik, Beschwerden, Gesundheits-, Geld- oder Preisthemen, nie auf Spam, nie zweimal fast gleich. Das bekommt ihr als Entwurf. Tageslimits und Not-Aus gelten.'
+          ? 'ZOE antwortet selbst auf Fragen und freundliche Kommentare unter euren Beiträgen — nie auf Kritik, Beschwerden, Gesundheits-, Geld- oder Preisthemen, nie auf Spam, nie zweimal fast gleich. Alles andere bekommt ihr als Entwurf. Tageslimits und Not-Aus gelten.'
           : c.modus === 'vorschlag' ? 'ZOE legt zu jeder neuen Nachricht einen Entwurf bereit — ihr lest und sendet mit einem Tipp.' : 'Keine Entwürfe — ihr antwortet selbst.'}
           {fremdeMarke ? ' Automatisch antworten schaltet bei einer Personenmarke nur die Person selbst ein.' : ''}</span>
         {c.modus === 'auto' && <Schalter an={c.dmsAuto} onChange={v => void speichern({ dmsAuto: v })} erklaerungOhne="Nur innerhalb von 24 Stunden nach der Nachricht der Person; die erste automatische DM trägt den KI-Hinweis.">Auch DMs automatisch beantworten</Schalter>}
