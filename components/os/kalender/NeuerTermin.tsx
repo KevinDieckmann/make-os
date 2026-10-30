@@ -34,7 +34,7 @@ import { sonstigeProjektId, istSonstigeProjekt } from '@/lib/aufgaben/struktur';
 import { schnellLesen } from '@/lib/kalender/schnell';
 import { tagPlus, ausWandzeit } from '@/lib/kalender/zeit';
 import { ART_INFO, TERMIN_ARTEN, ARBEITSORTE, SICHTBARKEIT_LABEL, ERINNERUNG_VORLAGEN, ERINNERUNG_MAX, erinnerungText, type Sichtbarkeit } from '@/lib/kalender/arten';
-import { ZONEN, gmtText, ausWandzeitIn } from '@/lib/kalender/zeitzone';
+import { ZONEN, gmtText, ausWandzeitIn, STANDARD_ZONE } from '@/lib/kalender/zeitzone';
 import { wiederholungVorlagen, wiederholungBeschreiben, wochentagVon, wochentagNr, WOCHENTAGE, TAG_KURZ, type Wiederholung, type WiederholungFreq } from '@/lib/kalender/wiederholung';
 import { neueTerminUid } from '@/lib/kalender/eingabe';
 import { formularStart, formularErgaenzen, artWechseln, formularFehler, formularAnfrage, entwurfWertvoll, vonAendern, speicherFehlerText, ENTWURF_SCHLUESSEL, type Formular, type Vorgabe } from '@/lib/kalender/formular';
@@ -48,9 +48,19 @@ interface Entwurf { f: Formular; am: string }
 const lese = (): Entwurf | null => { try { const v = window.sessionStorage.getItem(ENTWURF_SCHLUESSEL); return v ? JSON.parse(v) as Entwurf : null; } catch { return null; } };
 const schreibe = (e: Entwurf | null) => { try { if (e) window.sessionStorage.setItem(ENTWURF_SCHLUESSEL, JSON.stringify(e)); else window.sessionStorage.removeItem(ENTWURF_SCHLUESSEL); } catch { /* voll/privat */ } };
 
+/** Überschneidung mit einem weiteren Kalender-Konto der eigenen Person (Antwort von /api/kalender/google/zusatz). */
+interface UeberschneidungKurz { kalender: string; start: string; ende: string }
+async function ueberschneidungenHolen(start: string, ende: string): Promise<UeberschneidungKurz[]> {
+  try {
+    const r = await fetch(`/api/kalender/google/zusatz?start=${encodeURIComponent(start)}&ende=${encodeURIComponent(ende)}`, { cache: 'no-store' });
+    const d = await r.json().catch(() => ({})) as { ueberschneidungen?: UeberschneidungKurz[] };
+    return r.ok && Array.isArray(d.ueberschneidungen) ? d.ueberschneidungen : [];
+  } catch { return []; }
+}
+
 export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, kalender, kalenderStandard, bereich, onZu, onAngelegt }: {
   vorgabe: Vorgabe; heute: string; standardDauer: number; fokusDauer?: number;
-  kalender: { name: string; wer: Wer; schreibbar: boolean; farbe?: string; quelle?: 'google' | 'icloud' }[];
+  kalender: { name: string; wer: Wer; schreibbar: boolean; farbe?: string; quelle?: 'google' | 'icloud' | 'google-zusatz' }[];
   /** Welcher Kalender gehört wem (Einstellungen) — für die Farbe „Standard“. */
   kalenderStandard?: Partial<Record<Wer, string>>;
   /** Aktiver Bereich der Kalenderseite: im Business-Bereich ist der Standard der Google Kalender der Person (03.10.), sofern verbunden. */
@@ -65,6 +75,8 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
   const [frage, setFrage] = useState<{ adressen: string[]; x: Formular } | null>(null);
   /** Rückfrage Business-frei (Lücke 7): das Formular und ob die Einladung schon bestätigt war. */
   const [bfFrage, setBfFrage] = useState<{ x: Formular; einladung: boolean } | null>(null);
+  /** Hinweis Überschneidung (30.10.): ein Termin in einem weiteren Kalender-Konto der eigenen Person liegt in derselben Zeit — nie blockieren, bewusst speichern. */
+  const [ueFrage, setUeFrage] = useState<{ x: Formular; einladung: boolean; liste: UeberschneidungKurz[] } | null>(null);
   const [altOffen, setAltOffen] = useState(!!alt);
   const [voll, setVoll] = useState(false);
   const [eigenOffen, setEigenOffen] = useState(false);
@@ -88,7 +100,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
 
   /** Der Google Kalender der Person (schreibbar) — Standard im Business-Bereich. */
   const googleStandard = (w: Wer): string | undefined => kalender.find(k => k.quelle === 'google' && k.schreibbar && k.wer === w)?.name;
-  const speichern = async (roh: Formular = f, bestaetigt = false, businessFrei = false) => {
+  const speichern = async (roh: Formular = f, bestaetigt = false, businessFrei = false, ueberschneidungOk = false) => {
     let x = schnellAnwenden(roh);
     if (x !== roh) setF(x);
     const fe = formularFehler(x);
@@ -103,6 +115,11 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
       schreibe(null); setLaeuft(false); onAngelegt({ aufgabeId: id }); onZu();
       return;
     }
+    // Weitere Kalender-Konten (30.10.): Überschneidung vorher zeigen — nur Hinweis, ein zweiter Klick speichert bewusst.
+    if (!ueberschneidungOk && !x.ganztags && x.zone === STANDARD_ZONE && x.bis > x.von) {
+      const liste = await ueberschneidungenHolen(String(a.koerper.start), String(a.koerper.ende));
+      if (liste.length) { setUeFrage({ x, einladung: bestaetigt, liste }); return; }
+    }
     // F1 #6: feste UID vor dem ersten Senden — im Entwurf gemerkt, damit ein zweites Senden denselben Termin meint.
     if (!x.uid) { x = { ...x, uid: neueTerminUid() }; setFRoh(x); }
     schreibe({ f: x, am: new Date().toISOString() });
@@ -110,7 +127,7 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
     const r = await fetch('/api/kalender/termin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...koerper, ...(bestaetigt ? { einladungBestaetigt: true } : {}), ...(businessFrei ? { businessFreiBestaetigt: true } : {}) }) })
       .then(async res => ({ status: res.status, d: await res.json().catch(() => ({})) })).catch(() => ({ status: 0, d: { ok: false, fehler: 'Keine Verbindung — dein Entwurf bleibt gemerkt.' } }));
     setLaeuft(false);
-    if (r.d.ok) { schreibe(null); setFrage(null); setBfFrage(null); onAngelegt({ uid: r.d.uid, ...(r.d.gaeste ? { gaeste: r.d.gaeste } : {}), ...(r.d.hinweis ? { hinweis: r.d.hinweis } : {}) }); onZu(); return; }
+    if (r.d.ok) { schreibe(null); setFrage(null); setBfFrage(null); setUeFrage(null); onAngelegt({ uid: r.d.uid, ...(r.d.gaeste ? { gaeste: r.d.gaeste } : {}), ...(r.d.hinweis ? { hinweis: r.d.hinweis } : {}) }); onZu(); return; }
     schreibe({ f: x, am: new Date().toISOString() });
     // Der Server verlangt die Bestätigung (z. B. Gäste kamen anders an) → dieselbe Rückfrage mit SEINEN Adressen.
     if (r.status === 409 && r.d.einladung && Array.isArray(r.d.adressen)) { setFrage({ adressen: r.d.adressen, x }); return; }
@@ -347,7 +364,17 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
           </div>
         </div>
       )}
-      {!frage && !bfFrage && <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
+      {ueFrage && (
+        <div role="alertdialog" aria-label="Überschneidung mit einem anderen Kalender" style={{ display: 'grid', gap: 8, background: `${LEUCHT.achtung}14`, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 12, padding: '10px 12px' }}>
+          <b style={{ fontSize: TYP.bedien }}>Zu dieser Zeit hast du schon etwas</b>
+          {ueFrage.liste.map((u, i) => <span key={i} style={{ fontSize: TYP.bedien, color: C.inkDim }}>Überschneidung mit {u.kalender} {u.start.slice(11, 16)}–{u.ende.slice(11, 16)}</span>)}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Knopf farbe={LEUCHT.achtung} aus={laeuft} onClick={async () => { const u = ueFrage; setUeFrage(null); await speichern(u.x, u.einladung, false, true); }}>{laeuft ? 'speichert …' : 'Trotzdem speichern'}</Knopf>
+            <Knopf leise onClick={() => setUeFrage(null)}>Zurück</Knopf>
+          </div>
+        </div>
+      )}
+      {!frage && !bfFrage && !ueFrage && <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
         {art !== 'aufgabe' ? <Knopf leise onClick={() => setVoll(v => !v)}>{voll ? 'Weniger Optionen' : 'Weitere Optionen'}</Knopf> : <span />}
         <div style={{ display: 'flex', gap: 8 }}>
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>

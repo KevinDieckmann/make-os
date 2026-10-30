@@ -60,7 +60,7 @@ export interface KFrist { id: string; art: 'meilenstein' | 'etappe' | 'mandat' |
 export interface KErinnerung { id: string; tag: string; zeit?: string; titel: string; liste?: string }
 export interface KalenderStand {
   ok: boolean; quelle: 'icloud' | 'mac' | 'leer'; stand: string | null; fehler?: string; icloud: boolean; konto: string | null;
-  kalender: { name: string; farbe?: string; schreibbar: boolean; wer: Wer; quelle?: 'google' | 'icloud' }[];
+  kalender: { name: string; farbe?: string; schreibbar: boolean; wer: Wer; quelle?: 'google' | 'icloud' | 'google-zusatz' }[];
   /** Google (03.10.): je verbundenem Google-Kalender „letzter Abgleich vor X Min.“ (Name + Alter, nie Tokens/Adressen). */
   google?: { person: string; kalender: string; abgleich: import('./AbgleichStand').AbgleichInfo }[];
   /** iCloud je Person (06.10.): Stand der EIGENEN iCloud-Verbindung (nur die ansehende Person, nie Zugangsdaten). */

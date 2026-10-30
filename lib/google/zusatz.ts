@@ -13,8 +13,8 @@
 //   · Domains: `GOOGLE_ZUSATZ_DOMAINS` (Komma-Liste, Instanz-Umgebung) — leer = Zusatzkonten aus („nicht eingerichtet“). Die Adresse
 //     muss auf eine dieser Domains enden; trägt das Konto einen Workspace-Anspruch (`hd`), muss er dieselbe Domain sein. Dieselbe
 //     Adresse wie die Haupt-Verbindung oder ein schon verbundenes Konto → abgelehnt, das Token wird sofort widerrufen.
-//   · Erneuern wie die Haupt-Verbindung; `invalid_grant` (widerrufen, Passwort geändert, Testmodus der Google-App: Anmeldungen
-//     verfallen nach 7 Tagen) → Zustand „abgelaufen“ + EINE Glocke je Konto (der Kalender-Abgleich meldet), „Neu verbinden“ mit
+//   · Erneuern wie die Haupt-Verbindung; `invalid_grant` (Zugriff bei Google widerrufen, Passwort geändert, Konto gesperrt) →
+//     Zustand „abgelaufen“ + EINE Glocke je Konto (beim Erneuern des Tokens), „Neu verbinden“ mit
 //     einem Klick (`zusatzStarten(person, { konto })`).
 //   · Trennen = Widerruf bei Google + Konto aus dem Bestand; das letzte Konto → Bestände ganz weg (`bestandEntfernen`).
 // Nichts Persönliches fest im Code: Domains, Adressen und Bezeichnungen kommen aus der Instanz bzw. von der Person.
@@ -301,7 +301,7 @@ async function erneuern(person: string, k: ZusatzKonto, konfig: GoogleKonfig): P
     await aendereZusatz(person, konten => konten.map(x => (x.id === k.id ? { ...x, accessToken: access, ablauf, erneuertAm: new Date().toISOString() } : x)));
     return access;
   }
-  // invalid_grant: widerrufen, Passwort geändert, Testmodus der Google-App (7 Tage) — die Anmeldung ist tot.
+  // invalid_grant: bei Google widerrufen, Passwort geändert, Konto gesperrt — die Anmeldung ist tot.
   if (r.json.error === 'invalid_grant' || r.status === 400 || r.status === 401) {
     if (await zusatzAlsAbgelaufen(person, k.id)) await zusatzGlocke(person);
     throw new ZusatzFehler('abgelaufen', 409);

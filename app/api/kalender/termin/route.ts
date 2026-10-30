@@ -67,6 +67,7 @@ import { tagPlus } from '@/lib/kalender/zeit';
 import { terminIstBusiness, ueberlappt, BUSINESS_FREI_FEHLER } from '@/lib/arbeitsrahmen/regel';
 import { businessFreiFensterFuer } from '@/lib/arbeitsrahmen/server';
 import type { AnlegeEingabe } from '@/lib/kalender/eingabe';
+import { ueberschneidungenFuer } from '@/lib/kalender/google/zusatz';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -239,7 +240,9 @@ export async function POST(req: Request) {
       crm = await terminAktivitaetenSetzen({ id: r.schluessel, uid: r.uid, titel: e.titel, start: startBerlin, ...(e.sichtbarkeit === 'privat' ? { privat: true } : {}), kontaktIds: kontakte, ...(bezug?.dealId ? { dealId: bezug.dealId } : {}), von: z.person }, werAus(req))
         .catch(() => { hinweis = 'Termin angelegt — die Aktivität im CRM entsteht beim nächsten Abgleich.'; return undefined; });
     }
-    return NextResponse.json({ ok: true, uid: r.uid, schluessel: r.schluessel, kalender: r.kalender, ...(r.gaeste ? { gaeste: r.gaeste } : {}), ...(g.werbesperre ? { werbesperre: g.werbesperre } : {}), ...(crm ? { crm } : {}), ...(r.schonDa ? { schonDa: true } : {}), ...(hinweis ? { hinweis } : {}) });
+    // Weitere Google-Konten (30.10.): Überschneidung mit einem Termin dort → Hinweis (nie blockieren), nur für die eigene Person.
+    const ueber = e.ganztags || istDienst(req) ? [] : await ueberschneidungenFuer(z.person, startBerlin, e.zone === STANDARD_ZONE && !e.endZone ? e.ende : wandzeit(ausWandzeitIn(e.ende, e.endZone ?? e.zone)), r.uid);
+    return NextResponse.json({ ok: true, uid: r.uid, schluessel: r.schluessel, kalender: r.kalender, ...(r.gaeste ? { gaeste: r.gaeste } : {}), ...(g.werbesperre ? { werbesperre: g.werbesperre } : {}), ...(crm ? { crm } : {}), ...(r.schonDa ? { schonDa: true } : {}), ...(hinweis ? { hinweis } : {}), ...(ueber.length ? { ueberschneidungen: ueber } : {}) });
   } catch (err) { return antwortFehler(err, z.person); }
 }
 
@@ -311,7 +314,10 @@ export async function PATCH(req: Request) {
         if (weg.length && !terminVorbei(t.start, new Date().toISOString())) await terminAktivitaetenLoeschen(schluessel, werAus(req), weg).catch(() => {});
       }
     }
-    return NextResponse.json({ ok: true, ...(g?.ok && g.werbesperre ? { werbesperre: g.werbesperre } : {}), ...(hinweis ? { hinweis } : {}) });
+    // Weitere Google-Konten (30.10.): nach dem Verschieben Überschneidung → Hinweis (nie blockieren), nur für die eigene Person.
+    const nStart = typeof termin.start === 'string' ? termin.start : bisher?.start, nEnde = typeof termin.ende === 'string' ? termin.ende : bisher?.ende;
+    const ueber = (termin.start || termin.ende) && nStart && nEnde && nStart.includes('T') && !istDienst(req) ? await ueberschneidungenFuer(z.person, nStart, nEnde, ziel.uid) : [];
+    return NextResponse.json({ ok: true, ...(g?.ok && g.werbesperre ? { werbesperre: g.werbesperre } : {}), ...(hinweis ? { hinweis } : {}), ...(ueber.length ? { ueberschneidungen: ueber } : {}) });
   } catch (err) { return antwortFehler(err, z.person); }
 }
 
