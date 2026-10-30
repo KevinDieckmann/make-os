@@ -145,7 +145,7 @@ describe('Freie Rechnung: Kunde aus der Kartei, Produkt-Katalog', () => {
     const k = await holen('?katalog=1');
     expect(k.status).toBe(200);
     expect(k.d.produkte.map((x: { id: string }) => x.id)).toEqual(['l-aktiv']);
-    expect(k.d.firmen).toEqual([{ id: 'f-muster', name: 'Muster GmbH' }]);
+    expect(k.d.firmen).toEqual([{ id: 'f-muster', name: 'Muster GmbH', ort: 'Beispielstadt' }]);
     expect(k.d.personen.map((x: { id: string }) => x.id)).toEqual(['c-anna1']);
   });
 });

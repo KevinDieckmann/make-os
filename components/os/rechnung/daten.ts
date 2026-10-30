@@ -28,6 +28,8 @@ export interface RechnungStand {
   ort?: 'privat' | 'business';
   /** 29.10. (Kreislauf Geld): legt der Morgenlauf fällige Rechnungen aus Mandaten als Entwurf an? (Vorgabe an) */
   vorbereiten?: boolean;
+  /** 30.10. (Zuordnung zur Markttraktion): Kennung → Name der Firmen, Personen und Mandate, an denen die Rechnungen der Liste hängen. */
+  namen: Record<string, string>;
 }
 export interface RechnungAntwort {
   ok: boolean; status: number; fehler?: string;
@@ -65,7 +67,7 @@ export function useRechnungen(o: { bereich?: 'privat' | 'business'; re?: string 
       const r = await fetch(`/api/rechnung${p.toString() ? `?${p.toString()}` : ''}`, { cache: 'no-store' });
       if (r.status === 403) { setGesperrt(true); return; }
       const d = await r.json().catch(() => null) as (RechnungStand & { ok?: boolean; fehler?: string }) | null;
-      if (d?.ok) { setStand({ sicht: d.sicht, rechnungen: d.rechnungen ?? [], gesellschaften: d.gesellschaften ?? [], vorgabe: d.vorgabe ?? null, mahnTage: d.mahnTage, mahnvorschlaege: d.mahnvorschlaege ?? [], ...(d.bereich ? { bereich: d.bereich } : {}), ...(d.ort ? { ort: d.ort } : {}), ...(typeof d.vorbereiten === 'boolean' ? { vorbereiten: d.vorbereiten } : {}) }); setFehler(null); }
+      if (d?.ok) { setStand({ sicht: d.sicht, rechnungen: d.rechnungen ?? [], gesellschaften: d.gesellschaften ?? [], vorgabe: d.vorgabe ?? null, mahnTage: d.mahnTage, mahnvorschlaege: d.mahnvorschlaege ?? [], namen: d.namen ?? {}, ...(d.bereich ? { bereich: d.bereich } : {}), ...(d.ort ? { ort: d.ort } : {}), ...(typeof d.vorbereiten === 'boolean' ? { vorbereiten: d.vorbereiten } : {}) }); setFehler(null); }
       else setFehler(d?.fehler ?? `Antwort ${r.status}.`);
     } catch { setFehler('Keine Verbindung.'); }
     finally { laeuft.current = false; }
@@ -74,7 +76,9 @@ export function useRechnungen(o: { bereich?: 'privat' | 'business'; re?: string 
   /** Eine Rechnung aus einer Server-Antwort übernehmen (ohne die ganze Liste neu zu laden). */
   const uebernehmen = useCallback((r: RechnungMitFassung) => setStand(s => (s ? { ...s, rechnungen: s.rechnungen.some(x => x.id === r.id) ? s.rechnungen.map(x => (x.id === r.id ? r : x)) : [...s.rechnungen, r] } : s)), []);
   const entfernen = useCallback((id: string) => setStand(s => (s ? { ...s, rechnungen: s.rechnungen.filter(x => x.id !== id) } : s)), []);
-  return { stand, fehler, gesperrt, laden, uebernehmen, entfernen, setFehler };
+  /** Namen neu zugeordneter Kunden (30.10.) dazulegen — damit Liste und Chip sie zeigen, ohne alles neu zu laden. */
+  const namenDazu = useCallback((n: Record<string, string>) => setStand(s => (s ? { ...s, namen: { ...s.namen, ...n } } : s)), []);
+  return { stand, fehler, gesperrt, laden, uebernehmen, entfernen, namenDazu, setFehler };
 }
 export type RechnungDaten = ReturnType<typeof useRechnungen>;
 
@@ -117,7 +121,7 @@ export async function entwurfAnlegen(body: EntwurfNeu): Promise<{ id?: string; f
 }
 
 /** Produkte und Kartei für den Editor (27.10.) — erst auf Klick, einmal je Fenster. */
-export interface RechnungKatalog { produkte: import('@/lib/crm/typen').Leistung[]; firmen: { id: string; name: string }[]; personen: { id: string; name: string; firma?: string }[] }
+export interface RechnungKatalog { produkte: import('@/lib/crm/typen').Leistung[]; firmen: { id: string; name: string; ort?: string }[]; personen: { id: string; name: string; firma?: string; firmaId?: string; ort?: string }[] }
 export async function katalogLaden(): Promise<RechnungKatalog | { fehler: string }> {
   try {
     const r = await fetch('/api/rechnung?katalog=1', { cache: 'no-store' });

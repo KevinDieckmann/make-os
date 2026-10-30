@@ -34,7 +34,7 @@ import { angebotLink } from '@/lib/crm/adresse';
 import { angeboteZu, angebotMandatWeg, ANGEBOT_STATUS_LABEL } from '@/lib/crm/angebote';
 import { useMandatAnlegen } from '../MandatAnlegenFenster';
 import { useRouter } from 'next/navigation';
-import { entwurfAnlegen, type EntwurfNeu } from '../../rechnung/daten';
+import { entwurfAnlegen, neueAnfrage, rechnungPost, type EntwurfNeu } from '../../rechnung/daten';
 import { useNurBusiness } from '../../useInhaber';
 
 export interface UmsatzReiterProps {
@@ -185,12 +185,15 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
     router.push(WEG.rechnungSchreiben(e.id));
   }, [router]);
 
+  // 30.10. (Rechnungen ↔ Markttraktion): die Rechnungen kommen nach Sicht gefiltert vom Server (`/api/rechnung?umsatz=1`) — ein volles
+  // Haushaltsmitglied sieht auch die der Selbstständigkeit (Privat), ein Konto „nur Business“ nie. Vorher `/api/state/finanzplan` (nur Privat-Zugang).
   const planLaden = useCallback(async (): Promise<Plan | null> => {
     try {
-      const r = await fetch('/api/state/finanzplan', { cache: 'no-store' });
+      const r = await fetch('/api/rechnung?umsatz=1', { cache: 'no-store' });
       if (r.status === 403) { setPlan('kein'); return null; }
-      const d = await r.json() as Plan;
-      const p = { rechnungen: Array.isArray(d.rechnungen) ? d.rechnungen : [], firmen: Array.isArray(d.firmen) ? d.firmen : [] };
+      const d = await r.json() as { ok?: boolean; rechnungen?: UmsatzRechnung[] };
+      if (!d.ok) { setPlan('fehler'); return null; }
+      const p = { rechnungen: Array.isArray(d.rechnungen) ? d.rechnungen : [], firmen: [] };
       setPlan(p); return p;
     } catch { setPlan('fehler'); return null; }
   }, []);
@@ -252,9 +255,9 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
    * und legt die Buchung `bu-re-<id>` in derselben Sperre an (idempotent). Kein zweiter Aufruf, der verloren gehen kann.
    */
   async function alsBezahlt(id: string, am: string) {
-    const r = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'bezahlt', rechnungId: id, am }) })
-      .then(x => x.json()).catch(() => ({ ok: false, error: 'Keine Verbindung — nichts geändert.' }));
-    if (!r.ok) setMeldung(r.error ?? 'Nicht gespeichert.');
+    // 30.10.: derselbe Schreibweg wie der Rechnungs-Editor (Status + Buchung in EINER Sperre, nach Sicht geprüft).
+    const r = await rechnungPost({ aktion: 'bezahlt', id, am }) as Awaited<ReturnType<typeof rechnungPost>> & { schonBezahlt?: boolean };
+    if (!r.ok) setMeldung(r.fehler ?? 'Nicht gespeichert.');
     else if (r.schonBezahlt) setMeldung('Schon als bezahlt markiert — Stand neu geladen.');
     await planLaden();
   }
@@ -264,10 +267,10 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
    */
   async function stornieren(r: UmsatzRechnung, grund: string) {
     const stand = r.fassung;
-    const d = await fetch('/api/state/finanzplan', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'storno', rechnungId: r.id, grund, ...(stand ? { stand } : {}) }) })
-      .then(x => x.json()).catch(() => ({ ok: false, error: 'Keine Verbindung — nichts geändert.' }));
-    if (!d.ok) setMeldung(d.error ?? 'Nicht storniert.');
-    else setMeldung(d.stornoRechnung ? `Storniert — Stornorechnung ${d.stornoRechnung.nummer ?? ''} mit eigenem PDF angelegt.` : d.gegenbuchung === 'neu' ? 'Storniert — zum Zahlungseingang ist die Gegenbuchung angelegt.' : 'Storniert — die Rechnung bleibt als Beleg stehen.');
+    // 30.10.: derselbe Schreibweg wie der Rechnungs-Editor (mit PDF → Stornorechnung, ohne PDF → Status + Gegenbuchung).
+    const d = await rechnungPost({ aktion: 'storno', id: r.id, grund, ...(stand ? { stand } : {}), anfrageId: neueAnfrage() });
+    if (!d.ok) setMeldung(d.fehler ?? 'Nicht storniert.');
+    else setMeldung(d.storno ? `Storniert — Stornorechnung ${d.storno.nummer ?? ''} mit eigenem PDF angelegt.` : d.gegenbuchung === 'neu' ? 'Storniert — zum Zahlungseingang ist die Gegenbuchung angelegt.' : 'Storniert — die Rechnung bleibt als Beleg stehen.');
     await planLaden();
     await ablageLaden();
   }
@@ -573,7 +576,7 @@ function RechnungZeile({ z, heute, pdf, kontaktId, firmaId, onFertig, setMeldung
   return (
     <ZeileKlein
       titel={<>{z.r.nummer ? `Nr. ${z.r.nummer} · ` : ''}{z.r.titel} <span style={{ color: C.ink, fontVariantNumeric: 'tabular-nums' }}>· {euro(z.r.betrag)}</span></>}
-      unter={[z.r.datum ? `vom ${datum(z.r.datum, heute)}` : null, z.r.faellig ? `fällig ${datum(z.r.faellig, heute)}` : null, z.r.bezahltAm ? `bezahlt ${datum(z.r.bezahltAm, heute)}` : null, z.r.storniertAm ? `storniert ${datum(z.r.storniertAm, heute)}${z.r.stornoGrund ? ` (${z.r.stornoGrund})` : ''}` : null, z.einheit, z.perName ? 'per Name zugeordnet' : null].filter(Boolean).join(' · ')}
+      unter={[z.r.datum ? `vom ${datum(z.r.datum, heute)}` : null, z.r.faellig ? `fällig ${datum(z.r.faellig, heute)}` : null, z.r.bezahltAm ? `bezahlt ${datum(z.r.bezahltAm, heute)}` : null, z.r.storniertAm ? `storniert ${datum(z.r.storniertAm, heute)}${z.r.stornoGrund ? ` (${z.r.stornoGrund})` : ''}` : null, z.einheit ? (z.privat ? `Privat · ${z.einheit}` : z.einheit) : null, z.perName ? 'per Name zugeordnet' : null].filter(Boolean).join(' · ')}
       rechts={<>
         <Chip farbe={STATUS_FARBE[status] ?? C.inkLeise}>{status === 'ueberfaellig' ? 'überfällig' : status}</Chip>
         {(z.r.status === 'gestellt' || z.r.status === 'bezahlt') && <StornoKnopf onJa={grund => stornieren(z.r, grund)} />}

@@ -276,6 +276,34 @@ export function pflichtFehlt(r: EntwurfFelder, g: Gesellschaft | null | undefine
   return f;
 }
 
+// ── Zuordnung zur Markttraktion (30.10.) ─────────────────────────────────────
+// Kevin 30.10.: „Es geht keine Rechnung raus, ohne dass das Ganze zugeordnet ist. Alles andere macht keinen Sinn.“ Zugeordnet = die Rechnung
+// hängt an einer Firma (`kundeFirmaId`), einer Person (`kontaktId`) oder einem Mandat (`mandatId`) der Kartei — frei getippte Empfängerfelder
+// reichen nicht. Gilt für jede Gesellschaft, auch die Selbstständigkeit. Geprüft beim Stellen (Server, mit Blick in die Kartei) und vor jedem
+// Versand/jeder Mahnung einer Rechnung (nicht für Stornorechnungen — ein Storno des Altbestands bleibt immer möglich).
+
+export type Zuordnung = Pick<RechnungZusatz, 'kontaktId' | 'kundeFirmaId'> & Pick<Rechnung, 'mandatId'>;
+/** Trägt die Rechnung einen Verweis in die Kartei (Firma, Person oder Mandat)? Rein — ob der Verweis noch lebt, prüft der Server. */
+export const istZugeordnet = (r: Zuordnung): boolean => !!(r.kundeFirmaId || r.kontaktId || r.mandatId);
+/** Der Satz für Editor (neben „Rechnung stellen“) und Server (409). */
+export const ZUORDNUNG_FEHLT = 'Erst den Kunden aus der Markttraktion zuordnen — eine Rechnung geht nur mit Firma, Person oder Mandat aus der Kartei raus.';
+/** Wie ZUORDNUNG_FEHLT, für schon gestellte Rechnungen (Altbestand): Versand und Mahnung erst nach dem Nachtragen. */
+export const ZUORDNUNG_NACHTRAGEN = 'Diese Rechnung ist keinem Kunden der Markttraktion zugeordnet — erst zuordnen (die Rechnung selbst bleibt unverändert), dann versenden bzw. mahnen.';
+
+/** Die Namen der Zuordnung für Liste, Suche und Chip — `namen` = Kennung → Name (vom Server, nur was die Sicht sehen darf). */
+export function zuordnungNamen(r: Zuordnung, namen: Readonly<Record<string, string>> | undefined): { firma?: string; person?: string; mandat?: string } {
+  const n = namen ?? {};
+  const firma = r.kundeFirmaId ? n[r.kundeFirmaId] : undefined;
+  const person = r.kontaktId ? n[r.kontaktId] : undefined;
+  const mandat = r.mandatId ? n[r.mandatId] : undefined;
+  return { ...(firma ? { firma } : {}), ...(person ? { person } : {}), ...(mandat ? { mandat } : {}) };
+}
+/** „Firma · Person“ (bzw. das Mandat) — leer ohne bekannten Namen. */
+export function zuordnungText(r: Zuordnung, namen: Readonly<Record<string, string>> | undefined): string {
+  const z = zuordnungNamen(r, namen);
+  return [z.firma, z.person].filter(Boolean).join(' · ') || z.mandat || '';
+}
+
 // ── Entwurf (Browser → Server) ───────────────────────────────────────────────
 
 /** Die Felder, die der Browser an einem ENTWURF setzen darf. Alles andere (Nummer, Status, PDF …) setzt der Server. */

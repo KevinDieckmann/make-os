@@ -13,7 +13,7 @@ import { FileText } from 'lucide-react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { KERN_EINHEITEN } from '@/lib/einheiten';
 import { euroCent } from '@/lib/crm/angebote';
-import { KEINE_STEUERBERATUNG, mahnTageSaeubern } from '@/lib/finanzen/rechnung/regeln';
+import { KEINE_STEUERBERATUNG, mahnTageSaeubern, istZugeordnet, zuordnungText } from '@/lib/finanzen/rechnung/regeln';
 import { RECHNUNGS_FILTER, ZUSTAND_NAME, rechnungenFiltern, rechnungsSummen, rechnungsZeile, rechnungsZustand, type RechnungsFilter, type RechnungsZustand } from '@/lib/finanzen/rechnung/uebersicht';
 import { localDay } from '@/lib/zeit';
 import { Fenster } from '../Fenster';
@@ -76,7 +76,8 @@ export function RechnungenKarte({ bereich = 'business' }: { bereich?: 'privat' |
   // Planposten (geplant, ohne Positionen) sind keine Rechnungen — sie stehen weiter darunter in „Planposten & ältere Rechnungen“ (Liquidität).
   const rechnungen = useMemo(() => (stand?.rechnungen ?? []).filter(r => rechnungsZustand(r, heute) !== 'geplant'), [stand, heute]);
   const summen = useMemo(() => rechnungsSummen(rechnungen, heute), [rechnungen, heute]);
-  const liste = useMemo(() => rechnungenFiltern(rechnungen, { filter, suche, gesellschaft: ges }, heute), [rechnungen, filter, suche, ges, heute]);
+  const namen = stand?.namen;
+  const liste = useMemo(() => rechnungenFiltern(rechnungen, { filter, suche, gesellschaft: ges, ...(namen ? { namen } : {}) }, heute), [rechnungen, filter, suche, ges, heute, namen]);
   const gezeigt = alle ? liste : liste.slice(0, ERST);
   const offen = offenId ? stand?.rechnungen.find(r => r.id === offenId) : undefined;
   const gesellschaften = stand?.gesellschaften ?? [];
@@ -133,7 +134,7 @@ export function RechnungenKarte({ bereich = 'business' }: { bereich?: 'privat' |
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', margin: '14px 0 6px' }}>
             <Pillen<RechnungsFilter> liste={RECHNUNGS_FILTER} aktiv={filter} onWahl={filterAuf} />
-            <input value={suche} onChange={e => { setSuche(e.target.value); setAlle(false); }} placeholder="Suchen: Kunde, Nummer, Titel" aria-label="Rechnungen durchsuchen" type="search" style={{ ...feld, flex: '1 1 200px', maxWidth: 320 }} />
+            <input value={suche} onChange={e => { setSuche(e.target.value); setAlle(false); }} placeholder="Suchen: Kunde, Firma, Person, Nummer, Titel" aria-label="Rechnungen durchsuchen" type="search" style={{ ...feld, flex: '1 1 200px', maxWidth: 320 }} />
           </div>
           {firmenInListe.length > 1 && (
             <div style={{ marginBottom: 6 }}>
@@ -147,9 +148,13 @@ export function RechnungenKarte({ bereich = 'business' }: { bereich?: 'privat' |
                 const z = rechnungsZustand(r, heute);
                 const zeile = rechnungsZeile(r);
                 const wann = z === 'bezahlt' ? `bezahlt ${datumDe(r.bezahltAm)}` : z === 'offen' || z === 'ueberfaellig' ? `fällig ${datumDe(r.faellig)}` : r.datum ? datumDe(r.datum) : r.leistungVon ? `Leistung ab ${datumDe(r.leistungVon)}` : '';
+                // 30.10.: der zugeordnete Kunde der Markttraktion je Zeile; ohne Zuordnung ein Kennzeichen (so geht sie nicht raus).
+                const kunde = zuordnungText(r, namen);
+                const ohne = r.art !== 'storno' && !istZugeordnet(r);
                 return <Zeile key={r.id} onClick={() => oeffnen(r.id)} links={<FileText size={18} color={ZUSTAND_FARBE[z]} />} titel={zeile.titel}
-                  unter={[zeile.unter, gesKurz(r.firmaId), wann].filter(Boolean).join(' · ')}
+                  unter={[kunde ? `Kunde: ${kunde}` : null, zeile.unter, gesKurz(r.firmaId), wann].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                    {ohne && <Chip farbe={LEUCHT.achtung}>ohne Zuordnung</Chip>}
                     <Chip farbe={ZUSTAND_FARBE[z]}>{ZUSTAND_NAME[z]}</Chip>
                     <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 700, textDecoration: z === 'storniert' ? 'line-through' : 'none', minWidth: 92, textAlign: 'right' }}>{betrag(r)}</span>
                     {r.pdfDateiId && <button onClick={e => { e.stopPropagation(); pdfLaden(r.id); }} aria-label={`PDF der Rechnung ${r.nummer ?? ''} herunterladen`} className="fassbar" style={{ minHeight: 40, padding: '0 10px', borderRadius: 10, border: '1px solid rgba(255,255,255,.12)', background: 'rgba(255,255,255,.04)', color: C.ink, fontSize: TYP.bedien, fontWeight: 700, cursor: 'pointer' }}>PDF ↓</button>}

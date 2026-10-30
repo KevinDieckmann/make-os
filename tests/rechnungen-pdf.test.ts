@@ -113,7 +113,9 @@ describe('Entwurf: anlegen, speichern mit Stand, Pflichtangaben', () => {
     expect((await rechnung(n.d.rechnung.id)).titel).toBe('Erste');
   });
   it('Pflichtangaben fehlen → 409 mit Liste und Weg, keine Nummer verbraucht', async () => {
-    const n = await post({ aktion: 'neu', quelle: 'frei', firmaId: 'kdv' });
+    // 30.10.: mit Kunden aus der Kartei — ohne Zuordnung lehnt „stellen“ schon vorher ab (tests/rechnung-zuordnung.test.ts).
+    const n0 = await post({ aktion: 'neu', quelle: 'frei', firmaId: 'kdv', kontaktId: 'c-anna1' });
+    const n = await post({ aktion: 'speichern', id: n0.d.rechnung.id, stand: n0.d.rechnung.fassung, felder: { empfaenger: {} } });
     const r = await post({ aktion: 'stellen', id: n.d.rechnung.id, stand: n.d.rechnung.fassung });
     expect(r.status).toBe(409);
     expect(r.d.grund).toBe('pflichtangaben');

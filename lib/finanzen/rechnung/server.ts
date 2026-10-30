@@ -34,7 +34,8 @@ import {
   mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
   vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, abgerechneteMonate, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen, faelligAm,
-  type MahnVorschlag, type Pflicht,
+  istZugeordnet, ZUORDNUNG_FEHLT, ZUORDNUNG_NACHTRAGEN, empfaengerSaeubern,
+  type MahnVorschlag, type Pflicht, type Zuordnung,
 } from './regeln';
 import { angenommenZuDeal, angebotEinmalRest, angebotTitelFuerFolge } from '@/lib/crm/angebote';
 import { abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, istAnrechnung, monatsPositionen, nurAbgerechnet, zahlplanMonate } from '@/lib/crm/mandat-zusatz';
@@ -78,6 +79,36 @@ export async function mahnTageLaden(): Promise<[number, number, number]> {
 /** In welchem Bereich steht eine Rechnung? Der Bereich ihrer Gesellschaft (Selbstständigkeit → Privat, 05.10.) — eine Stelle für Liste und Umleitung. */
 export const rechnungBereich = (r: Pick<Rechnung, 'firmaId'>): 'privat' | 'business' => (bereichVonFirma(r.firmaId) === 'privat' ? 'privat' : 'business');
 
+/** Kennung → Name der Zuordnungen (Firma, Person, Mandat) der übergebenen Rechnungen — nur, worauf sie zeigen (30.10.). */
+export async function zuordnungsNamen(liste: readonly Zuordnung[]): Promise<Record<string, string>> {
+  const firmen = new Set<string>(), personen = new Set<string>(), mandate = new Set<string>();
+  for (const r of liste) { if (r.kundeFirmaId) firmen.add(r.kundeFirmaId); if (r.kontaktId) personen.add(r.kontaktId); if (r.mandatId) mandate.add(r.mandatId); }
+  if (!firmen.size && !personen.size && !mandate.size) return {};
+  const [{ ladeCrm }, { kontakteFuerVerarbeitung }, { anzeigename }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/verarbeitung'), import('@/lib/make-one/crm')]);
+  const crm = await ladeCrm();
+  const n: Record<string, string> = {};
+  for (const f of crm.firmen) if (firmen.has(f.id)) n[f.id] = f.name;
+  for (const m of crm.mandate) if (mandate.has(m.id)) n[m.id] = m.titel || m.kunde;
+  if (personen.size) for (const k of await kontakteFuerVerarbeitung()) if (personen.has(k.id)) n[k.id] = anzeigename(k);
+  return n;
+}
+
+/**
+ * Lebt die Zuordnung noch (30.10.)? Firma bzw. Mandat im CRM (nicht im Papierkorb), Person in der Kartei (auch eingeschränkte — eine Rechnung zu
+ * einem bestehenden Vertrag bleibt möglich). Ein toter Verweis zählt nicht: die Rechnung ist dann nicht zugeordnet.
+ */
+export async function zuordnungLebt(r: Zuordnung): Promise<boolean> {
+  if (!istZugeordnet(r)) return false;
+  const [{ ladeCrm }, { kontakteFuerVerarbeitung }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/verarbeitung')]);
+  const crm = await ladeCrm();
+  if (r.kundeFirmaId && crm.firmen.some(f => f.id === r.kundeFirmaId && !f.geloeschtAm)) return true;
+  if (r.mandatId && crm.mandate.some(m => m.id === r.mandatId && !m.geloeschtAm)) return true;
+  if (r.kontaktId && (await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).some(k => k.id === r.kontaktId)) return true;
+  return false;
+}
+/** 409 „nicht zugeordnet“ — nichts gestellt bzw. versendet, keine Nummer verbraucht. */
+export const zuordnungFehler = (gestellt = false) => new RechnungFehler(gestellt ? ZUORDNUNG_NACHTRAGEN : ZUORDNUNG_FEHLT, 409, { grund: 'zuordnung' });
+
 /**
  * Alles für die Oberfläche — serverseitig nach Sicht gefiltert (Rechnungen, Absender, Mahnvorschläge). `bereich` (27.10., Rechnungs-Kreislauf):
  * nur die Rechnungen und Absender dieses Bereichs — Business › Rechnungen zeigt keine Rechnung der Selbstständigkeit mehr (sie gehört zu Privat),
@@ -97,6 +128,9 @@ export async function rechnungsStand(z: { haushalt: string; sicht: Sicht; bereic
   const anders = z.re && !liste.some(r => r.id === z.re) ? sichtbar.find(r => r.id === z.re) : undefined;
   return {
     rechnungen: liste.map(mitFassung),
+    // 30.10. (Zuordnung zur Markttraktion): die Namen der Firmen, Personen und Mandate, an denen die Rechnungen DIESER Liste hängen — für
+    // Zeile, Suche und Filter „Ohne Zuordnung“. Nur Verweise der gefilterten Liste, eingeschränkte Personen (Art. 18) ohne Namen.
+    namen: await zuordnungsNamen(liste).catch(() => ({})),
     gesellschaften: gs.map(absenderFuerAnzeige),
     vorgabe: v && gesellschaftInSicht(v, z.sicht) && imBereich(v) ? v : gs[0]?.id ?? null,
     mahnTage: tage,
@@ -490,7 +524,7 @@ export async function entwurfLoeschen(p: { id: string; stand: unknown; sicht: Si
  * — so hängt auch eine frei geschriebene Rechnung an ihrer Akte (Umsatz-Reiter, „Anschrift an der Firma speichern“). Eine Firma löst die Person, eine Person
  * nimmt ihre Firma mit. Eingeschränkte Personen (Art. 18) fehlen in der Kartei-Sicht → 404. Derselbe Schreibweg wie „speichern“ (Stand/409).
  */
-export async function entwurfKunde(p: { id: string; stand: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; haushalt: string; sicht: Sicht; wer?: Wer }): Promise<Rechnung & { fassung: string }> {
+export async function entwurfKunde(p: { id: string; stand: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; haushalt: string; sicht: Sicht; wer?: Wer; /** 30.10.: gerade neu in der Markttraktion angelegt — schon getippte Felder bleiben, wo die Kartei nichts weiß. */ anschriftBehalten?: boolean }): Promise<Rechnung & { fassung: string }> {
   const [{ ladeCrm }, { kontakteFuerVerarbeitung }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/verarbeitung')]);
   const crm = await ladeCrm();
   const firma = (fid: unknown) => (firmaIdOk(fid) ? crm.firmen.find(f => f.id === fid && !f.geloeschtAm) : undefined);
@@ -504,13 +538,73 @@ export async function entwurfKunde(p: { id: string; stand: unknown; kontaktId?: 
     f = firma(p.kundeFirmaId);
     if (!f) throw new RechnungFehler('Diese Firma gibt es in der Kartei nicht (mehr).', 404);
   }
-  const empf = empfaengerAusCrm(k, f);
+  const ausKartei = empfaengerAusCrm(k, f);
+  let empf = ausKartei;
+  if (p.anschriftBehalten) {
+    const alt = (await planLaden()).rechnungen.find(r => r.id === p.id)?.empfaenger ?? {};
+    empf = empfaengerSaeubern({ ...alt, ...Object.fromEntries(Object.entries(ausKartei).filter(([, v]) => typeof v === 'string' && v.trim())) }) ?? ausKartei;
+  }
   const zielTage = f?.zahlung?.zielTage ?? k?.zahlung?.zielTage;
   const { anFirma: _a, ...r } = await entwurfSpeichern({
     id: p.id, stand: p.stand, haushalt: p.haushalt, sicht: p.sicht, wer: p.wer,
     felder: { empfaenger: empf, kunde: kundeAus(empf), kontaktId: k?.id ?? null, kundeFirmaId: f?.id ?? null, ...(zielTage ? { zahlungszielTage: zielTage } : {}) },
   });
   return r;
+}
+
+/**
+ * Zuordnung NACHTRAGEN an einer schon gestellten Rechnung ohne Zuordnung (30.10., Altbestand): nur `kundeFirmaId`/`kontaktId` — Empfänger,
+ * Nummer, Beträge und das PDF bleiben unverändert (die Rechnung ist ein Beleg). Nur, solange sie weder Firma, Person noch Mandat trägt (sonst 409);
+ * eine Person nimmt ihre Firma mit. Eingeschränkte Personen (Art. 18) fehlen in der Kartei-Sicht → 404. Stand/409 wie jeder Schreibweg.
+ */
+export async function rechnungZuordnen(p: { id: string; stand: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; sicht: Sicht; wer?: Wer }): Promise<Rechnung & { fassung: string }> {
+  const [{ ladeCrm }, { kontakteFuerVerarbeitung }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/verarbeitung')]);
+  const crm = await ladeCrm();
+  const firma = (fid: unknown) => (firmaIdOk(fid) ? crm.firmen.find(f => f.id === fid && !f.geloeschtAm) : undefined);
+  let kontaktId: string | undefined;
+  let kundeFirmaId: string | undefined;
+  if (kontaktIdOk(p.kontaktId)) {
+    const k = (await kontakteFuerVerarbeitung()).find(x => x.id === p.kontaktId);
+    if (!k) throw new RechnungFehler('Diese Person gibt es in der Kartei nicht (mehr).', 404);
+    kontaktId = k.id; kundeFirmaId = firma(k.firmaId)?.id;
+  } else {
+    const f = firma(p.kundeFirmaId);
+    if (!f) throw new RechnungFehler('Diese Firma gibt es in der Kartei nicht (mehr).', 404);
+    kundeFirmaId = f.id;
+  }
+  let ergebnis: Rechnung | null = null;
+  await updateJson<FinanzplanFile>('finanzplan', cur => {
+    const f = planBasis(cur);
+    const alt = f.rechnungen.find(r => r.id === p.id);
+    if (!alt || !inSicht(alt, p.sicht)) throw new RechnungFehler('Rechnung nicht gefunden.', 404);
+    if (alt.status === 'geplant') throw new RechnungFehler('Ein Entwurf bekommt seinen Kunden im Editor („Kunde aus der Markttraktion“).', 409, { aktuell: mitFassung(alt) });
+    standPruefen(alt, p.stand);
+    if (istZugeordnet(alt)) throw new RechnungFehler('Diese Rechnung ist schon zugeordnet — eine gestellte Rechnung wechselt ihren Kunden nicht (Storno und neue Rechnung).', 409, { aktuell: mitFassung(alt), grund: 'zugeordnet' });
+    const neu = sauberFile({ rechnungen: [{ ...alt, ...(kontaktId ? { kontaktId } : {}), ...(kundeFirmaId ? { kundeFirmaId } : {}) }] }).rechnungen[0];
+    ergebnis = neu;
+    return { ...f, rechnungen: f.rechnungen.map(r => (r.id === p.id ? neu : r)) };
+  });
+  const r = ergebnis as Rechnung | null;
+  if (!r) throw new RechnungFehler('Nicht zugeordnet.', 500);
+  await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: r.id, felder: [...(kontaktId ? ['kontaktId'] : []), ...(kundeFirmaId ? ['kundeFirmaId'] : [])] }], p.wer);
+  return mitFassung(r);
+}
+
+/**
+ * Rechnungen für den Reiter „Umsatz“ einer Akte (30.10.): serverseitig nach Sicht gefiltert — die Business-Sicht (`finanzRecht: 'business'`)
+ * bekommt nie eine Rechnung einer Privat-Einheit (Selbstständigkeit), ein volles Haushaltsmitglied alle. Nur die Felder, die der Reiter braucht.
+ * Vorher las der Reiter `/api/state/finanzplan` (nur mit Privat-Finanzzugang) — Konten „nur Business“ sahen dort gar keine Rechnung.
+ */
+export async function rechnungenFuerUmsatz(z: { sicht: Sicht }) {
+  const f = await planLaden();
+  return f.rechnungen.filter(r => inSicht(r, z.sicht)).map(r => ({
+    id: r.id, firmaId: r.firmaId, kunde: r.kunde, titel: r.titel, betrag: r.betrag, status: r.status, fassung: fassung(r),
+    ...(r.mandatId ? { mandatId: r.mandatId } : {}), ...(r.kontaktId ? { kontaktId: r.kontaktId } : {}), ...(r.kundeFirmaId ? { kundeFirmaId: r.kundeFirmaId } : {}),
+    ...(r.faellig ? { faellig: r.faellig } : {}), ...(r.nummer ? { nummer: r.nummer } : {}), ...(r.datum ? { datum: r.datum } : {}),
+    ...(r.angebot ? { angebot: r.angebot } : {}), ...(r.angebotAm ? { angebotAm: r.angebotAm } : {}), ...(r.bezahltAm ? { bezahltAm: r.bezahltAm } : {}),
+    ...(r.storniertAm ? { storniertAm: r.storniertAm } : {}), ...(r.stornoGrund ? { stornoGrund: r.stornoGrund } : {}),
+    ...(r.art ? { art: r.art } : {}), ...(r.pdfDateiId ? { pdf: true } : {}),
+  }));
 }
 
 /**
@@ -560,16 +654,20 @@ export async function entwurfKopie(p: { id: string; haushalt: string; sicht: Sic
  * Für den Editor (27.10.): die aktiven Produkte (für „+ aus Produkt“) und die Kartei zum Wählen des Kunden — nur Kennung und Name (Firmen; Personen mit
  * ihrer Firma), eingeschränkte Personen (Art. 18) fehlen. Erst auf Klick geladen, nie mit der Liste.
  */
-export async function rechnungKatalog(): Promise<{ produkte: import('@/lib/crm/typen').Leistung[]; firmen: { id: string; name: string }[]; personen: { id: string; name: string; firma?: string }[] }> {
+export async function rechnungKatalog(): Promise<{ produkte: import('@/lib/crm/typen').Leistung[]; firmen: { id: string; name: string; ort?: string }[]; personen: { id: string; name: string; firma?: string; firmaId?: string; ort?: string }[] }> {
   const [{ ladeCrm }, { kontakteFuerVerarbeitung }, { anzeigename }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/verarbeitung'), import('@/lib/make-one/crm')]);
   const crm = await ladeCrm();
   const firmenName = new Map(crm.firmen.map(f => [f.id, f.name]));
+  // Ort (30.10.): zum Unterscheiden gleichnamiger Treffer in der Suche — aus der Rechnungsanschrift der Firma, sonst ihrer Stadt.
+  const ortVon = (f: { stadt?: string; zahlung?: { empfaenger?: { anschrift?: string } } } | undefined) => (f ? anschriftZerlegen(f.zahlung?.empfaenger?.anschrift).ort || f.stadt : undefined);
+  const firmaVon = new Map(crm.firmen.map(f => [f.id, f]));
   return {
     produkte: crm.leistungen.filter(l => l.status === 'aktiv'),
-    firmen: crm.firmen.filter(f => !f.geloeschtAm).map(f => ({ id: f.id, name: f.name })).sort((a, b) => a.name.localeCompare(b.name, 'de')),
+    firmen: crm.firmen.filter(f => !f.geloeschtAm).map(f => { const ort = ortVon(f); return { id: f.id, name: f.name, ...(ort ? { ort } : {}) }; }).sort((a, b) => a.name.localeCompare(b.name, 'de')),
     personen: (await kontakteFuerVerarbeitung()).map(k => {
       const firma = (k.firmaId && firmenName.get(k.firmaId)) || k.firma;
-      return { id: k.id, name: anzeigename(k), ...(firma ? { firma } : {}) };
+      const ort = ortVon(k.firmaId ? firmaVon.get(k.firmaId) : undefined) || k.firmaStadt;
+      return { id: k.id, name: anzeigename(k), ...(firma ? { firma } : {}), ...(k.firmaId && firmenName.has(k.firmaId) ? { firmaId: k.firmaId } : {}), ...(ort ? { ort } : {}) };
     }).sort((a, b) => a.name.localeCompare(b.name, 'de')),
   };
 }
@@ -613,6 +711,9 @@ export async function rechnungStellen(p: { id: string; stand: unknown; person: s
   if (!r0 || !inSicht(r0, p.sicht)) throw new RechnungFehler('Rechnung nicht gefunden.', 404);
   if (r0.status !== 'geplant') throw new RechnungFehler(`Schon gestellt (${r0.nummer ?? r0.status}).`, 409, { aktuell: mitFassung(r0), grund: 'gestellt' });
   standPruefen(r0, p.stand);
+  // 30.10. (Kevin: „Es geht keine Rechnung raus, ohne dass das Ganze zugeordnet ist“): Firma, Person oder Mandat aus der Kartei — für JEDE
+  // Gesellschaft, auch die Selbstständigkeit. Vor dem Nummernkreis: abgelehnt verbraucht keine Nummer.
+  if (!(await zuordnungLebt(r0))) throw zuordnungFehler();
   if (!istGesellschaft(r0.firmaId)) throw pflichtFehler(pflichtFehlt(r0, null));
   const g = (await gesellschaften(p.haushalt)).find(x => x.id === r0.firmaId) ?? { id: r0.firmaId };
   const fehlt = pflichtFehlt(r0, g);
@@ -771,6 +872,9 @@ export async function mahnungVermerken(p: { id: string; stufe: unknown; person: 
   const heute = localDay(p.jetzt ?? new Date());
   const stufe = Number(p.stufe);
   if (stufe !== 1 && stufe !== 2 && stufe !== 3) throw new RechnungFehler('Mahnstufe 1, 2 oder 3.', 400);
+  // 30.10.: eine Mahnung geht raus wie die Rechnung — nur mit Zuordnung zur Markttraktion (Altbestand: erst zuordnen).
+  const r0 = (await planLaden()).rechnungen.find(x => x.id === p.id);
+  if (r0 && inSicht(r0, p.sicht) && r0.art !== 'storno' && r0.status === 'gestellt' && !(await zuordnungLebt(r0))) throw zuordnungFehler(true);
   const gs = await gesellschaften(p.haushalt);
   let ergebnis: Rechnung | null = null;
   let neu = false;
@@ -796,9 +900,10 @@ export async function mahnungVermerken(p: { id: string; stufe: unknown; person: 
 }
 
 /** Das PDF einer Rechnung für den Versand aus der Inbox (25.10.): Kennung der Ablage-Datei, Status, Art — null ohne Rechnung bzw. ohne PDF. */
-export async function rechnungPdfKennung(id: string): Promise<{ pdfDateiId: string; status: Rechnung['status']; art?: 'storno'; nummer?: string; email?: string } | null> {
+export async function rechnungPdfKennung(id: string): Promise<{ pdfDateiId: string; status: Rechnung['status']; art?: 'storno'; nummer?: string; email?: string; zugeordnet: boolean } | null> {
   const r = (await planLaden()).rechnungen.find(x => x.id === id);
-  return r?.pdfDateiId ? { pdfDateiId: r.pdfDateiId, status: r.status, ...(r.art ? { art: r.art } : {}), ...(r.nummer ? { nummer: r.nummer } : {}), ...(r.empfaenger?.email ? { email: r.empfaenger.email } : {}) } : null;
+  // `zugeordnet` (30.10.): der Versand prüft es — eine Rechnung ohne Firma, Person oder Mandat aus der Kartei geht nicht raus (Stornorechnungen schon).
+  return r?.pdfDateiId ? { pdfDateiId: r.pdfDateiId, status: r.status, ...(r.art ? { art: r.art } : {}), ...(r.nummer ? { nummer: r.nummer } : {}), ...(r.empfaenger?.email ? { email: r.empfaenger.email } : {}), zugeordnet: await zuordnungLebt(r) } : null;
 }
 
 /**
