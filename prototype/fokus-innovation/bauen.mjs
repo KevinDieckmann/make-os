@@ -496,7 +496,7 @@ ${block('durchbruch', fl.durchbruch)}
 <div class="start-titel erscheint">${vorzeile(F.start.vorzeile)}<h1 id="start-titel">${titel(F.start.titel, F.start.ruhig)}</h1></div>
 <div class="erscheint"><p class="lead">${t(F.start.lead)}</p>
 <div class="knoepfe">${erstKnopf()}${checkKnopf('start_held', 'Innovations-Check, 10 Minuten', 'zweit')}</div></div>
-<nav class="index tueren erscheint" aria-label="Ihr Anliegen">${F.tueren.map((d) => `<a href="#${d.id}"><span class="nr">${e(d.etikett)}</span><b>${e(d.titel)}</b><span class="index-satz">${t(d.text)}</span>${PFEIL}</a>`).join('')}</nav>
+<nav class="index tueren erscheint" aria-label="Ihr Anliegen">${F.tueren.map((d) => `<a href="${d.pfad ?? `#${d.id}`}"><span class="nr">${e(d.etikett)}</span><b>${e(d.titel)}</b><span class="index-satz">${t(d.text)}</span>${PFEIL}</a>`).join('')}</nav>
 </div></section>
 
 <section class="abschnitt" id="bekannt" aria-labelledby="bekannt-titel"><div class="w">
@@ -997,6 +997,52 @@ ${BEREICHE.map((k) => { const liste = Z.zahlen.filter((z) => z.bereich === k); r
 <section class="abschnitt" aria-labelledby="zahlen-hinweis"><div class="w"><p class="leise klein-text erscheint" id="zahlen-hinweis">Wir geben die Zahlen so wieder, wie die Herausgeber sie veröffentlicht haben. Der Link führt jeweils zur Quelle. Die Zahlen beziehen sich auf Deutschland, wo nicht anders genannt.</p></div></section>
 ${schlussakt({ quelle: 'zahlen_ende' })}`,
     });
+  }
+
+  // ── Einstiegsseiten (Kevin 30.10.: „hinter den beiden Einstiegen eine eigene Seite, nicht direkt zu den Preisen“) ──
+  if (F.einstiege) {
+    const einZeile = (z) => {
+      const a = z.angebot ? angebot(z.angebot) : null;
+      const [h, n, p] = a ? [produktPfad(a), F.kurznamen[a.id] ?? a.name.replace(/ S, M, L$/, ''), preisKurz(a)] : [z.ziel, z.name, z.preis];
+      return `<li><a href="${h}"><span class="wl-lage">${t(z.lage)}</span><span class="wl-ziel"><b>${e(n)}</b><span>${e(p)}</span></span>${PFEIL}</a></li>`;
+    };
+    const SEITEN = [
+      { id: 'markt', pfad: 'in-den-markt', bereiche: ['sichtbarkeit', 'vertrieb'], schritte: F.einstiege.markt.schritte },
+      { id: 'unternehmen', pfad: 'ins-unternehmen', bereiche: ['innovation'], schritte: B.innovation.felder },
+    ];
+    for (const s of SEITEN) {
+      const x = F.einstiege[s.id];
+      const tuer = F.tueren.find((d) => d.id === s.id);
+      const momente = (F.bekannt.gruppen ?? []).filter((g) => s.bereiche.includes(g.bereich)).flatMap((g) => g.momente);
+      const checkKnoepfe = x.checks.map(([thema, text], i) => knopf(thema === 'innovation' ? check(`${s.pfad}_check`) : checkThema(thema, `${s.pfad}_check`), text, i ? 'zweit' : '')).join('');
+      neu(`${s.pfad}/index.html`, {
+        seo: s.pfad,
+        bildVorzeile: tuer.etikett,
+        bildTitel: `${x.titel} ${x.ruhig}`,
+        main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
+<div class="erscheint">${brotkrumen([[null, tuer.etikett]])}${vorzeile(tuer.etikett)}<h1 id="held-titel">${titel(x.titel, x.ruhig)}</h1><p class="lead">${t(x.lead)}</p>
+<div class="knoepfe">${erstKnopf()}${textlink('#einstieg', 'Womit anfangen')}</div></div>
+</div></section>
+
+<section class="abschnitt" aria-labelledby="merken-titel"><div class="w">${abKopf({ marke: 'Ihr Alltag', h2: x.merken, lead: `${['', 'Ein Moment', 'Zwei Momente', 'Drei Momente', 'Vier Momente', 'Fünf Momente', 'Sechs Momente'][momente.length] ?? `${momente.length} Momente`}, die wir von Gründern und Geschäftsführern immer wieder hören.`, id: 'merken-titel' })}
+<ul class="momente erscheint">${momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul></div></section>
+
+<section class="abschnitt" aria-labelledby="schritte-titel"><div class="w">${abKopf({ marke: 'So gehen wir vor', h2: x.schritte_titel, id: 'schritte-titel' })}
+${raster(s.schritte.map((y) => ({ titel: y.titel, text: y.text })), Math.min(4, s.schritte.length))}
+<div class="zwei-teile belege-paar">${x.zahlen.map((id) => zahlKarte(zahlVon(id))).join('')}</div></div></section>
+
+<section class="abschnitt" id="einstieg" aria-labelledby="einstieg-titel"><div class="w">${abKopf({ marke: 'Womit anfangen?', h2: F.wegweiser.titel, lead: F.wegweiser.lead, id: 'einstieg-titel' })}
+<ul class="wl erscheint">${F.wegweiser[s.id].map(einZeile).join('')}</ul>
+<p class="satz-unter erscheint">Nichts dabei? ${textlink(erstLink(), 'Erzählen Sie uns im Erstgespräch, worum es geht')}</p></div></section>
+
+<section class="abschnitt" aria-labelledby="check-titel"><div class="w">${abKopf({ marke: 'Kostenlos', h2: 'Wo stehen Sie?', lead: x.check_satz, id: 'check-titel' })}
+<div class="knoepfe erscheint">${checkKnoepfe}</div></div></section>
+
+${wissenAbschnitt(artikelZu((a) => s.bereiche.includes(a.bereich)).slice(0, 4), 'Zum Weiterlesen')}
+
+${schlussakt({ quelle: `${s.pfad}_ende` })}`,
+      });
+    }
   }
 
   for (const a of W.artikel) {

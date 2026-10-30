@@ -702,6 +702,14 @@
       "pr-kommunikation": {
         "titel": "PR und Kommunikation auf Zeit · Fokus Innovation",
         "beschreibung": "Auftritte und Beiträge in Leitmedien, Fachmedien, regionalen Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krise. Ab {ab:pr-kommunikation} netto im Monat."
+      },
+      "in-den-markt": {
+        "titel": "Innovation in den Markt bringen · Fokus Innovation",
+        "beschreibung": "Ihr Produkt ist stark, jetzt braucht es Kunden: Positionierung, Website, Videos und PR machen Sie sichtbar, ein Vertrieb mit System macht Kunden daraus."
+      },
+      "ins-unternehmen": {
+        "titel": "Innovation ins Unternehmen bringen · Fokus Innovation",
+        "beschreibung": "KI im Alltag nutzen, nicht nur ausprobieren: Erst Abläufe und Daten ordnen, dann KI und neue Software einführen, bis Ihr Team damit arbeitet."
       }
     }
   },
@@ -711,13 +719,15 @@
       "id": "markt",
       "etikett": "Innovation in den Markt bringen",
       "titel": "Wir haben ein starkes Produkt und brauchen Kunden.",
-      "text": "Positionierung, Website, Videos und PR bringen Anfragen. Ein Vertrieb mit System macht Kunden daraus."
+      "text": "Positionierung, Website, Videos und PR bringen Anfragen. Ein Vertrieb mit System macht Kunden daraus.",
+      "pfad": "/in-den-markt/"
     },
     {
       "id": "unternehmen",
       "etikett": "Innovation ins Unternehmen bringen",
       "titel": "Wir wollen KI und neue Software im Alltag nutzen, nicht nur ausprobieren.",
-      "text": "Erst Abläufe und Daten ordnen, dann KI einführen, bis Ihr Team damit arbeitet."
+      "text": "Erst Abläufe und Daten ordnen, dann KI einführen, bis Ihr Team damit arbeitet.",
+      "pfad": "/ins-unternehmen/"
     }
   ],
   "bekannt": {
@@ -1071,5 +1081,65 @@
         "text": "Wir bauen unsere eigene Software und nutzen sie jeden Tag in unserer Arbeit."
       }
     ]
+  },
+  "einstiege": {
+    "markt": {
+      "titel": "Ihr Produkt ist stark.",
+      "ruhig": "Jetzt braucht es Kunden.",
+      "lead": "Kunden entscheiden, bevor sie anfragen. Wir machen Sie sichtbar, damit man Sie kennt, wenn gesucht wird, und bauen den Vertrieb, der aus Anfragen planbar Kunden macht.",
+      "merken": "Woran Sie es merken",
+      "schritte_titel": "So bringen wir Ihr Produkt in den Markt.",
+      "schritte": [
+        {
+          "titel": "Klar sagen, was Sie lösen",
+          "text": "Ihre Positionierung in wenigen Sätzen: für wen, welches Problem, was anders ist. Die Grundlage für alles, was folgt."
+        },
+        {
+          "titel": "Gefunden und verstanden werden",
+          "text": "Website, Videos und Pressearbeit tragen Ihre Botschaft dorthin, wo Ihre Kunden suchen und sich informieren."
+        },
+        {
+          "titel": "Aus Anfragen Kunden machen",
+          "text": "Ein Vertrieb mit System: klarer Ablauf, CRM, Gesprächsleitfäden und Zahlen. Jede Anfrage hat einen nächsten Schritt."
+        },
+        {
+          "titel": "Ihr Team übernimmt",
+          "text": "Wir arbeiten mit, bis Ihr Team Sichtbarkeit und Vertrieb allein trägt. Danach sind wir da, wenn Sie uns brauchen."
+        }
+      ],
+      "zahlen": [
+        "reuters-ki-suche-2026",
+        "ifo-selbststaendige-auftragsmangel"
+      ],
+      "checks": [
+        [
+          "sichtbarkeit",
+          "Sichtbarkeitstest starten"
+        ],
+        [
+          "vertrieb",
+          "Vertriebscheck starten"
+        ]
+      ],
+      "check_satz": "Zwei kurze Checks mit je zwölf Fragen zeigen Ihnen in rund fünf Minuten, wo Sie bei Sichtbarkeit und Vertrieb stehen und welcher Schritt jetzt am meisten bringt."
+    },
+    "unternehmen": {
+      "titel": "KI im Alltag nutzen.",
+      "ruhig": "Nicht nur ausprobieren.",
+      "lead": "Erst ordnen wir Abläufe und Daten. Dann führen wir KI und neue Software dort ein, wo sie Arbeit spart, und bleiben dabei, bis Ihr Team damit arbeitet.",
+      "merken": "Woran Sie es merken",
+      "schritte_titel": "So bringen wir KI in Ihren Alltag.",
+      "zahlen": [
+        "ifo-ki-nutzung-2026",
+        "bitkom-ki-datenaufbereitung"
+      ],
+      "checks": [
+        [
+          "innovation",
+          "Innovations-Check starten"
+        ]
+      ],
+      "check_satz": "Der Innovations-Check zeigt Ihnen in rund zehn Minuten, wo Ihr Unternehmen bei Sichtbarkeit, Vertrieb und Innovation steht und wo KI den größten Unterschied macht."
+    }
   }
 }
