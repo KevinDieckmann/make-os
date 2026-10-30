@@ -223,7 +223,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
       {vorschlaege.length > 0 && (
         <div role="group" aria-label="ZOE schlägt vor" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8, padding: 12, borderRadius: 16, background: 'rgba(255,255,255,.03)', border: `1px solid ${C.linie}` }}>
           <div style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>ZOE schlägt vor · nur auf Klick</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{vorschlaege.map(v => <Knopf key={v.art + v.text} leise onClick={() => vorschlag(v)}>{v.text}</Knopf>)}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{vorschlaege.map(v => <Knopf key={v.art + v.text} leise onClick={() => vorschlag(v)} style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%', textAlign: 'left' }}>{v.text}</Knopf>)}</div>
         </div>
       )}
 
