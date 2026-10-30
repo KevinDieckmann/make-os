@@ -9,6 +9,7 @@ import type { KalenderBereich } from './bereich';
 import { tagPlus } from './zeit';
 import { ART_INFO, erinnerungenSauber, type TerminArt, type Sichtbarkeit, type Arbeitsort } from './arten';
 import { STANDARD_ZONE } from './zeitzone';
+import { FAECHER } from '@/lib/make-one/fach-namen';
 import type { Wiederholung } from './wiederholung';
 import type { Wer } from './einstellungen';
 import type { GastWahl } from './gaeste';
@@ -94,7 +95,7 @@ export function formularStart(v: Vorgabe, standardDauer: number, fokusDauer = 90
   const dauer = art === 'fokus' ? fokusDauer : standardDauer;
   return {
     art, titel: v.titel ?? '', tag: v.tag, von, bis: v.bis ?? plusMin(von, dauer), bisTag: v.tag, ganztags,
-    zone: STANDARD_ZONE, wiederholung: null, ort: '', notiz: v.notiz ?? '', wer: v.wer ?? 'kevin', kalender: '', farbe: '',
+    zone: STANDARD_ZONE, wiederholung: null, ort: '', notiz: v.notiz ?? '', wer: v.wer ?? FAECHER[0], kalender: '', farbe: '',
     beschaeftigt: null, sichtbarkeit: 'standard', erinnerungen: ganztags ? [] : [10],
     arbeitsort: { art: 'home' }, fokus: {}, aufgabe: { spaceId: v.spaceId ?? 'privat', mitZeit: !ganztags && !!v.von },
     crm: { ...(v.crm ?? {}) }, gaeste: [...(v.gaeste ?? [])],

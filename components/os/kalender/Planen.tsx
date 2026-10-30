@@ -28,6 +28,8 @@ import { wandAus } from '@/lib/kalender/zeit';
 import { ZieleMeilensteine } from '../planung/ZieleMeilensteine';
 import { WEG } from '@/lib/wege';
 import { useWerLabel, useNameVon, type KTermin, type Wer } from './teile';
+import { usePersonen } from '../aufgaben/hilfe';
+import { FAECHER, istFach, fachDerPerson } from '@/lib/make-one/fach-namen';
 import { ErholungZielePlanung } from '../gesundheit/ErholungHeute';
 import { FokusTafel } from '../planung/FokusTafel';
 
@@ -51,7 +53,7 @@ interface Vorschau { icloud: boolean; offen: number; laeuft: boolean; uebersprun
 /** Ein Archiv-Block (alter Wochenplan) als schreibgeschützter Eintrag im Raster — gestrichelt, Klick erklärt. */
 export const istArchivTermin = (t: Pick<KTermin, 'id'>) => t.id.startsWith('archiv:');
 function archivAlsTermin(b: ArchivBlock): KTermin {
-  const wer: Wer = b.wer === 'malin' ? 'malin' : b.wer === 'kevin' ? 'kevin' : 'beide';
+  const wer: Wer = istFach(b.wer) ? b.wer : 'beide';
   return {
     id: b.id, uid: b.id, titel: b.wartet ? `${b.titel} (wartet auf Übernahme)` : b.titel, start: wandAus(b.date, b.startMin), ende: wandAus(b.date, b.startMin + b.dauerMin),
     ganztags: false, kalender: 'Wochenplan (alt)', wer, serie: false, mitTeilnehmern: false, bearbeitbar: false,
@@ -79,7 +81,10 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   // Rückfrage-Karte zur Übernahme — `dialog` hängt in der Leiste, wo die Knöpfe sitzen.
   const { bestaetigen, dialog } = useRueckfrage();
   const [gewaehlt, setGewaehlt] = useState<Baustein | null>(null);
-  const [ich, setIch] = useState<Wer>('kevin');
+  // Das eigene Fach (30.10., neutral): die Person der Sitzung über die Konten (lib/make-one/fach-namen.ts), nie ein Speichername im Code.
+  const personen = usePersonen();
+  const [ichSpeicher, setIchSpeicher] = useState<string | null>(null);
+  const ich = useMemo<Wer>(() => fachDerPerson(ichSpeicher, personen.map(p => ({ id: p.speicher, name: p.name }))) ?? FAECHER[0], [ichSpeicher, personen]);
   const [routinen, setRoutinen] = useState<{ id: string; label: string; dauerMin: number }[]>([]);
   const [regler, setRegler] = useState<Record<string, number>>({});
   const [neuTitel, setNeuTitel] = useState('');
@@ -93,7 +98,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
 
   useEffect(() => {
     if (!aktiv) return;
-    fetch('/api/konto/ich').then(r => r.json()).then(d => { if (d.ich?.speicher === 'malin') setIch('malin'); }).catch(() => {});
+    fetch('/api/konto/ich').then(r => r.json()).then(d => { if (typeof d.ich?.speicher === 'string') setIchSpeicher(d.ich.speicher); }).catch(() => {});
     fetch(`/api/state/routinen?sicht=ich&space=${bereich}`).then(r => r.json()).then(d => setRoutinen(((d.routinen ?? []) as { id: string; label: string; dauerMin: number; aktiv: boolean }[]).filter(x => x.aktiv))).catch(() => {});
     fetch('/api/state/fokus-regler').then(r => r.json()).then(d => setRegler(d.regler ?? {})).catch(() => {});
   }, [aktiv, bereich]);
@@ -102,7 +107,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   const von = tage[0], bis = tage.length ? wandAus(tage[tage.length - 1], 24 * 60).slice(0, 10) : '';
   const archivLaden = useCallback(async () => {
     if (!aktiv || !von) return;
-    const fuer = sicht === 'kevin' || sicht === 'malin' ? sicht : 'alle';
+    const fuer = istFach(sicht) ? sicht : 'alle';
     const d = await fetch(`/api/planung/bloecke?von=${von}&bis=${bis}&fuer=${fuer}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null);
     setArchiv(((d?.bloecke ?? []) as ArchivBlock[]).filter(b => b.quelle === 'archiv' && !b.gespiegelt));
   }, [aktiv, von, bis, sicht]);
@@ -123,7 +128,7 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   }, [gewaehlt]);
 
   /** Wessen Kalender bekommt den Block? Sicht Kevin/Malin → diese Person, sonst die eigene. */
-  const wer: Wer = sicht === 'kevin' || sicht === 'malin' ? sicht : ich;
+  const wer: Wer = istFach(sicht) ? sicht : ich;
 
   /** Einen Block als iCloud-Termin anlegen. */
   const blockAnlegen = useCallback(async (b: Baustein, tag: string, startMin: number): Promise<boolean> => {

@@ -23,8 +23,9 @@ import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, feld, LEUCHT } from '../ui';
 import { Fenster } from '../Fenster';
 import { WEG } from '@/lib/wege';
+import { fachDerPerson } from '@/lib/make-one/fach-namen';
 import { usePersonen } from '../aufgaben/hilfe';
-import type { KTermin, Wer } from './teile';
+import type { KTermin } from './teile';
 import { bestaetigungsMail, verantwortlichFuerSeite, type Buchung, type BuchungsSeite, type DatenschutzOeffentlich } from '@/lib/kalender/buchung';
 import { mailtoLink } from '@/lib/crm/angebote';
 
@@ -43,6 +44,7 @@ const zeit = (b: Pick<Buchung, 'start' | 'ende'>) => `${b.start.slice(8, 10)}.${
 export function useBuchungen() {
   const [stand, setStand] = useState<Stand | null>(null);
   const [offen, setOffen] = useState(false);
+  const personen = usePersonen();
   const laden = useCallback(async () => {
     try { const j = await fetch('/api/kalender/buchung', { cache: 'no-store' }).then(r => r.json()); if (j.ok) setStand(j); } catch { /* nächste Runde */ }
   }, []);
@@ -55,13 +57,15 @@ export function useBuchungen() {
   /** Offene Buchungen als Einträge im Raster (vorläufig/angefragt) — nur zum Sehen, Klick öffnet die Karte. */
   const alsTermine = useMemo<KTermin[]>(() => {
     if (!stand) return [];
+    // Person der Seite → ihr Fach der Kalender-Zuordnung (30.10., neutral: über die Konten, nie ein Speichername im Code).
+    const fachListe = personen.map(p => ({ id: p.speicher, name: p.name }));
     const seiten = new Map(stand.seiten.map(s => [s.id, s]));
     return stand.buchungen.filter(b => b.status === 'vorlaeufig' || b.status === 'angefragt').map(b => {
       const s = seiten.get(b.seiteId);
       // K3 (30.09.): vorläufig über das Feld `vorlaeufig`, die Buchung über `buchungId` — kein Kennungs-Präfix mehr.
-      return { id: `buchung-${b.id}`, uid: `buchung-${b.id}`, titel: `${b.status === 'vorlaeufig' ? '◌ vorläufig' : '◌ Anfrage'} · ${b.name}`, start: b.start, ende: b.ende, ganztags: false, kalender: s?.zielKalender ?? 'Buchung', wer: ((s?.person === 'kevin' || s?.person === 'malin') ? s.person : 'beide') as Wer, serie: false, mitTeilnehmern: false, bearbeitbar: false, vorlaeufig: true as const, buchungId: b.id };
+      return { id: `buchung-${b.id}`, uid: `buchung-${b.id}`, titel: `${b.status === 'vorlaeufig' ? '◌ vorläufig' : '◌ Anfrage'} · ${b.name}`, start: b.start, ende: b.ende, ganztags: false, kalender: s?.zielKalender ?? 'Buchung', wer: fachDerPerson(s?.person, fachListe) ?? 'beide', serie: false, mitTeilnehmern: false, bearbeitbar: false, vorlaeufig: true as const, buchungId: b.id };
     });
-  }, [stand]);
+  }, [stand, personen]);
   return { stand, laden, alsTermine, offen, setOffen, zeigen: () => setOffen(true) };
 }
 export type Buchungen = ReturnType<typeof useBuchungen>;
@@ -248,10 +252,12 @@ function SeiteBearbeiten({ start, datenschutz, onZu, onSpeichern, onLoeschen, fe
   const personen = usePersonen();
   const f0 = start.fenster?.[0] ?? { tage: [1, 2, 3, 4, 5], von: '09:00', bis: '17:00' };
   const [s, setS] = useState({
-    titel: start.titel ?? '', person: start.person ?? personen[0]?.speicher ?? 'kevin', dauerMin: start.dauerMin ?? 30, tage: f0.tage, von: f0.von, bis: f0.bis,
+    titel: start.titel ?? '', person: start.person ?? personen[0]?.speicher ?? '', dauerMin: start.dauerMin ?? 30, tage: f0.tage, von: f0.von, bis: f0.bis,
     tageVoraus: start.tageVoraus ?? 14, vorlaufMin: start.vorlaufMin ?? 1440, maxJeTag: start.maxJeTag ?? 4, pufferMin: start.pufferMin ?? 15, rasterMin: start.rasterMin ?? 30,
     zielKalender: start.zielKalender ?? '', ort: start.ort ?? '', verantwortlich: start.verantwortlich ?? '', firma: start.fragen?.firma ?? true, anliegen: start.fragen?.anliegen ?? true, aktiv: start.aktiv ?? true,
   });
+  // Ohne Vorgabe die erste Person des Haushalts, sobald die Konten geladen sind (30.10., neutral — vorher ein fester Speichername).
+  useEffect(() => { if (!s.person && personen[0]) setS(x => ({ ...x, person: personen[0].speicher })); }, [personen, s.person]);
   const zahl = (k: keyof typeof s, min: number, max: number) => (e: React.ChangeEvent<HTMLInputElement>) => setS(x => ({ ...x, [k]: Math.max(min, Math.min(max, Number(e.target.value) || min)) }));
   const zeile = (label: string, kind: React.ReactNode) => <label style={{ display: 'grid', gap: 4 }}><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{label}</span>{kind}</label>;
   const klein = { ...feld, fontSize: 13, padding: '8px 10px' };

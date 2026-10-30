@@ -10,6 +10,7 @@ import { istIcsArt, istBlockArt, istSichtbarkeit, farbeSauber, arbeitsortSauber,
 import { wiederholungSauber, type Wiederholung } from './wiederholung';
 import { zoneGueltig, ausWandzeitIn, STANDARD_ZONE } from './zeitzone';
 import { kennungenVon, GAST_KONTAKTE_MAX, type BezugKennungen } from './bezug';
+import { FAECHER } from '@/lib/make-one/fach-namen';
 import { adresseAus, TEILNAHMEN, type Teilnahme } from './gaeste';
 import type { Wer } from './einstellungen';
 import { istBereich, type KalenderBereich } from './bereich';
@@ -94,7 +95,7 @@ export function anlegenPruefen(b: Record<string, unknown>): { ok: true; e: Anleg
   if (b.sichtbarkeit !== undefined && !istSichtbarkeit(b.sichtbarkeit)) return { ok: false, fehler: 'Unbekannte Sichtbarkeit.' };
   if (b.wiederholung !== undefined && b.wiederholung !== null && !wiederholungSauber(b.wiederholung)) return { ok: false, fehler: 'Wiederholung unvollständig.' };
   const wiederholung = wiederholungSauber(b.wiederholung) ?? undefined;
-  const wer = (['kevin', 'malin', 'beide'] as Wer[]).find(w => w === b.wer);
+  const wer = ([...FAECHER, 'beide'] as Wer[]).find(w => w === b.wer);
   // Abwesend und Fokus sind immer beschäftigt (zählen als „nicht verfügbar“); sonst wählbar.
   const beschaeftigt = art === 'abwesend' || art === 'fokus' ? true : typeof b.beschaeftigt === 'boolean' ? b.beschaeftigt : beschaeftigtStandard(art, ganztags);
   const erinnerungenMin = erinnerungenSauber([...(Array.isArray(b.erinnerungenMin) ? b.erinnerungenMin : []), ...(typeof b.erinnerungMin === 'number' && b.erinnerungMin >= 0 ? [b.erinnerungMin] : [])]);

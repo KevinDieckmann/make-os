@@ -47,7 +47,7 @@ import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminAufloesen, terminLesen, termineZurPruefung, ladeStand, kalenderNachName, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
 import { hauptZugangAuffrischen, personenMitIcloud, persoenlichFremd } from '@/lib/kalender/icloud-person';
 import { kalenderZiel, googleKalenderNamen } from '@/lib/kalender/google/ziel';
-import { ladeEinstellungen, wemGehoert, type Wer } from '@/lib/kalender/einstellungen';
+import { ladeEinstellungen, wemGehoert, fachVonPerson, type Wer } from '@/lib/kalender/einstellungen';
 import { anlegenPruefen, aendernPruefen, text } from '@/lib/kalender/eingabe';
 import { bezugSetzen, ladeBezuege, BezugZuGross } from '@/lib/kalender/bezug-server';
 import { mitBezug, maskieren, kontakteVon, fremdPrivat, bezugVon, objektSchluessel, type TerminBezug } from '@/lib/kalender/bezug';
@@ -182,7 +182,8 @@ export async function POST(req: Request) {
   const einst = await ladeEinstellungen();
   // Ohne Angabe: der Kalender der anlegenden Person — S1 #17: nie mehr „sonst Kevins“ (Regel 5). Hat die Person keinen
   // eigenen Kalender in den Einstellungen und nennt weder Kalender noch `wer`, lehnt der Server ab (400).
-  const wer: Wer | null = e.wer ?? (z.person === 'malin' || z.person === 'kevin' ? z.person : null);
+  // Das Fach der Person über die Konten (30.10., neutral — vorher nur zwei feste Speichernamen).
+  const wer: Wer | null = e.wer ?? (await fachVonPerson(z.person));
   if (!e.kalender && !wer) return NextResponse.json({ ok: false, fehler: 'In welchen Kalender? Bitte einen Kalender wählen.' }, { status: 400 });
   // Ohne gewählten Kalender: `bereich` (Standard „privat“ wie bisher) → EINE Zuordnung (`kalenderZiel`): Business → Google Kalender der Person, sonst iCloud.
   const kalender = e.kalender || (await kalenderZiel(wer!, e.bereich ?? 'privat', einst)).kalender;
