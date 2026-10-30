@@ -54,7 +54,8 @@ const jahrVon = (q: { jahr_der_daten?: number; datum: string }) => q.jahr_der_da
 
 /** EIN Satz zum Branchenvergleich mit Quelle und Jahr — nach Größe (Destatis) bzw. allgemein (Bitkom). */
 export function branchenSatz(b: CheckBenchmarks, p: CheckProfil): string {
-  const groesse = b.quellen.find(q => q.id === 'destatis_2024_groesse');
+  // Die jüngste Destatis-Tabelle nach Größe (30.10.: 2025 statt 2024; ab 2025 mit dem EU-Unternehmensbegriff).
+  const groesse = b.quellen.filter(q => /^destatis_\d{4}_groesse$/.test(q.id)).sort((x, y) => y.datum.localeCompare(x.datum))[0];
   if (groesse && p.groesse && GROESSE_TEXT[p.groesse] && typeof groesse.werte[p.groesse] === 'number') {
     return `${groesse.werte[p.groesse]} % der Unternehmen mit ${GROESSE_TEXT[p.groesse]} Beschäftigten nutzen KI (${groesse.quelle}, Daten ${jahrVon(groesse)}).`;
   }
