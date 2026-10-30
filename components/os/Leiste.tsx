@@ -31,7 +31,7 @@ import { useWartezahl, wartezahlText } from '@/lib/netzwerken/zaehler';
 import { EINSTELLUNGEN_PFADE } from '@/lib/make-one/einstellungen';
 import { useNurBusiness } from './useInhaber';
 import { werkzeugFuer, werkzeugFuerKonto, werkzeugKontext, werkzeugVonHref, WERKZEUG_ZURUECK } from '@/lib/make-one/werkzeuge';
-import { WerkzeugMenue } from './werkzeug/menue';
+import { WerkzeugMenue, MenueSymbol } from './werkzeug/menue';
 import { useWerkzeugListen } from './werkzeug/listen';
 import { WerkzeugSpalteZiel, useSpalteBelegt, SPALTE_BREITE } from './werkzeug/spalte';
 
@@ -127,14 +127,14 @@ export function Leiste() {
     if (werkzeug && spaceZeigen && werkzeugVonHref(e.href)?.id === werkzeug.id) {
       return (
         <button key={e.href} type="button" onClick={() => setSpaceZeigen(false)} title={`${e.label} — Menü des Werkzeugs`} aria-current={an ? 'page' : undefined} className="fassbar" style={{ ...zeileStil(an, farbe), width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-          <Icon size={17} strokeWidth={1.8} style={{ flex: '0 0 auto' }} />
+          <MenueSymbol icon={Icon} farbe={farbe ?? C.aktiv} an={an} />
           {!zu && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>}
         </button>
       );
     }
     return (
       <Link key={e.href} href={e.href} title={e.label} aria-current={an ? 'page' : undefined} className="fassbar" style={zeileStil(an, farbe)}>
-        <Icon size={17} strokeWidth={1.8} style={{ flex: '0 0 auto' }} />
+        <MenueSymbol icon={Icon} farbe={farbe ?? C.aktiv} an={an} />
         {!zu && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>}
       </Link>
     );
@@ -208,7 +208,7 @@ export function Leiste() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2 }}>
               {leisteFuer(blattWahl, !!nurBusiness).map(e => { const Icon = e.icon; const an = blattWahl === wahl && punktAn?.href === e.href; const farbe = e === ZOE_EINTRAG ? C.aktiv : spaceVon(blattWahl).farbe; return (
                 <Link key={e.href} href={e.href} onClick={() => { setzen(blattWahl); setOffen(false); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 10px', minHeight: 44, minWidth: 0, boxSizing: 'border-box', borderRadius: 12, textDecoration: 'none', color: an ? farbe : C.ink, background: an ? `${farbe}14` : 'transparent', fontSize: TYP.body, fontWeight: an ? 600 : 500 }}>
-                  <Icon size={16} strokeWidth={1.75} style={{ flex: '0 0 auto' }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>
+                  <MenueSymbol icon={Icon} farbe={farbe} an={an} klein /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>
                 </Link>
               ); })}
             </div>
