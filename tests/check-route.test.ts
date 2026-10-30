@@ -167,7 +167,7 @@ describe('die Strecke', () => {
     expect(r.d.schritt).toEqual({ art: 'wahl' });
     expect(r.d.vorname).toBe('Testa');
     const s = (await bestand()).sitzungen.find(x => x.id === S)!;
-    expect(s.kontakt).toMatchObject({ email: 'testa.probe@example.invalid', firma: 'Probe Handwerk GmbH', newsletterWunsch: false, hinweisFassung: 'check-hinweis-1' });
+    expect(s.kontakt).toMatchObject({ email: 'testa.probe@example.invalid', firma: 'Probe Handwerk GmbH', newsletterWunsch: false, hinweisFassung: 'check-hinweis-2' });
     expect(s.antworten.A5?.optionIds).toEqual(['A5_0']);
     expect(s.crm?.status).toBe('ok');
     const p = (await kontakte()).find(x => x.id === s.crm!.kontaktId)!;
@@ -249,6 +249,72 @@ describe('die Strecke', () => {
     expect(r.d.kontakt).toBe('uebersprungen');
     expect((await kontakte()).length).toBe(vorher);
     expect((await bestand()).sitzungen.find(x => x.id === s2)!.crm).toBeUndefined();
+  });
+});
+
+describe('Vertriebscheck und Sichtbarkeitstest (30.10.)', () => {
+  /** 12 Fragen: Profil A1, A2, A6 und je drei Fragen in Organisation (VO), Zahlen (VZ) und Neukunden (VN). */
+  const VERTRIEB: [string, string][] = [['A1', 'A1_1'], ['A2', 'A2_1'], ['A6', 'A6_0'], ['V1', 'V1_1'], ['V6', 'V6_1'], ['V4', 'V4_1'], ['V2', 'V2_3'], ['V3', 'V3_3'], ['V7', 'V7_3'], ['V5', 'V5_2'], ['V8', 'V8_2'], ['V9', 'V9_2']];
+  it('eigene Vorlage mit eigenen Texten; nach Kontakt sofort das Ergebnis (keine Wahl), Bereiche mit Namen, jedes Angebot nur einmal', async () => {
+    const st = await check({ aktion: 'start', vorlage: 'vertriebs-check', quelle: 'vertrieb_seite', webseite: '' });
+    expect(st.status).toBe(201);
+    expect(st.d.katalog.name).toBe('Vertriebscheck');
+    expect(st.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 12 });
+    expect(st.d.zoe.begruessung.join(' ')).toContain('durch den Vertriebscheck');
+    expect(st.d.katalog.abschnittSatz.VO).toContain('organisiert');
+    const s3 = st.d.sitzung, t3 = st.d.token;
+    for (const [frage, o] of VERTRIEB) expect((await check({ aktion: 'antwort', sitzung: s3, token: t3, frage, optionIds: [o] })).status, frage).toBe(200);
+    weiter(60);
+    const k = await check({ aktion: 'kontakt', sitzung: s3, token: t3, vorname: 'Vera', email: 'vera.probe@example.invalid', firma: 'Probe Vertrieb GmbH', rolle: 'A5_0', newsletter: false, webseite: '' });
+    expect(k.status).toBe(200);
+    expect(k.d.schritt).toEqual({ art: 'ergebnis' });
+    const r = await check({ aktion: 'ergebnis', sitzung: s3, token: t3 });
+    expect(r.status).toBe(200);
+    // Organisation (1+1+1)/12 = 25, Zahlen (3+3+3)/12 = 75, Neukunden (2+2+2)/12 = 50 → gesamt 50.
+    expect(r.d.ansicht.saeulen.map((x: { name: string; wert: number }) => [x.name, x.wert])).toEqual([['Organisation', 25], ['Zahlen', 75], ['Neukunden', 50]]);
+    expect(r.d.ansicht.gesamt).toBe(50);
+    expect(r.d.ansicht.stufeName).toBe('Auf Kurs');
+    expect(r.d.ansicht.genauigkeit).toBe('genau');
+    expect(r.d.ansicht.innovation).toBeNull();
+    const schritte = r.d.ansicht.schritte as { saeule: string; name: string; angebot?: { titel: string } }[];
+    expect(schritte.map(x => x.saeule)).toEqual(['organisation', 'neukunden']);
+    // Beide Bereiche gehören zum Vertriebs-Angebot — es steht nur beim ersten Schritt.
+    expect(schritte[0].angebot?.titel).toBe('Vertriebsaufbau');
+    expect(schritte[1].angebot).toBeUndefined();
+    const s = (await bestand()).sitzungen.find(x => x.id === s3)!;
+    expect(s.vorlage).toBe('vertriebs-check');
+    expect(s.ergebnis?.saeulen).toEqual({ organisation: 25, zahlen: 75, neukunden: 50 });
+    const p = (await kontakte()).find(x => x.id === s.crm!.kontaktId)!;
+    expect(p.aktivitaeten.some(a => /Vertriebscheck auf der Website/.test(a.text ?? '') && /Organisation 25, Zahlen 75, Neukunden 50/.test(a.text ?? ''))).toBe(true);
+    const l = await innenLesen();
+    const z = l.d.liste.find((x: { id: string }) => x.id === s3);
+    expect(z.check).toBe('Vertriebscheck');
+    expect(z.bereiche).toEqual([{ name: 'Organisation', wert: 25 }, { name: 'Zahlen', wert: 75 }, { name: 'Neukunden', wert: 50 }]);
+  });
+  it('Sichtbarkeitstest startet mit eigenem Katalog; Antworten aus einem anderen Check werden abgelehnt', async () => {
+    const st = await check({ aktion: 'start', vorlage: 'sichtbarkeits-test', webseite: '' });
+    expect(st.d.katalog.name).toBe('Sichtbarkeitstest');
+    expect(st.d.schritt.von).toBe(12);
+    expect((await check({ aktion: 'antwort', sitzung: st.d.sitzung, token: st.d.token, frage: 'V1', optionIds: ['V1_1'] })).status).toBe(400);
+  });
+  it('Adresse: /check?thema=… wählt den Check, sonst der Innovations-Check', async () => {
+    const { vorlageFuerThema, checkPfad } = await import('@/lib/check/katalog');
+    expect(vorlageFuerThema('vertrieb')).toBe('vertriebs-check');
+    expect(vorlageFuerThema('sichtbarkeit')).toBe('sichtbarkeits-test');
+    expect(vorlageFuerThema('unsinn')).toBe('innovations-check');
+    expect(vorlageFuerThema(undefined)).toBe('innovations-check');
+    expect(checkPfad('vertriebs-check')).toBe('/check?thema=vertrieb');
+    expect(checkPfad('innovations-check')).toBe('/check');
+  });
+  it('Verantwortlich als Abweichung: steht im Hinweis, Link nur https; leer = wieder die Einrichtung', async () => {
+    expect((await innen({ aktion: 'einstellungen', datenschutzLink: 'http://example.invalid/datenschutz' })).status).toBe(400);
+    const r = await innen({ aktion: 'einstellungen', verantwortlich: 'Probe Holding UG, Probeweg 1, 10000 Probestadt, kontakt@example.invalid', datenschutzLink: 'https://example.invalid/datenschutz/' });
+    expect(r.status).toBe(200);
+    const st = await check({ aktion: 'start', webseite: '' });
+    expect(st.d.hinweis.zeilen[0]).toBe('Verantwortlich: Probe Holding UG, Probeweg 1, 10000 Probestadt, kontakt@example.invalid.');
+    expect(st.d.hinweis.link).toBe('https://example.invalid/datenschutz/');
+    await innen({ aktion: 'einstellungen', verantwortlich: null, datenschutzLink: null });
+    expect((await check({ aktion: 'start', webseite: '' })).d.hinweis.zeilen[0]).toContain('Probe GmbH');
   });
 });
 

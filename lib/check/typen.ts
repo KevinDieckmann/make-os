@@ -50,8 +50,11 @@ export interface CheckAbschnitt {
   name: string;
   /** Dimension, auf die der Abschnitt einzahlt — null bei Profil, Branchen-Modulen und den Säulen Sichtbarkeit/Vertrieb. */
   dimension: DimKey | null;
-  /** Säule, auf die der Abschnitt einzahlt (30.10.: S Sichtbarkeit, V Vertrieb) — die Innovation rechnet aus den Dimensionen. */
+  /** Säule bzw. Bereich, auf den der Abschnitt einzahlt (30.10.: S Sichtbarkeit, V Vertrieb; in Vertriebscheck und Sichtbarkeitstest
+   *  ihre eigenen Bereiche) — die Innovation rechnet aus den Dimensionen. */
   saeule?: SaeuleKey;
+  /** Zoes Satz, wenn der Abschnitt beginnt (für Besucher) — fehlt er, gilt `ABSCHNITT_SATZ` (lib/check/zoe-texte.ts). */
+  satz?: string;
   intro: string;
   bedingung?: string;
   fragen: CheckFrage[];
@@ -69,12 +72,24 @@ export interface CheckKatalog {
 export type DimKey = 'strategie' | 'ki' | 'automatisierung' | 'daten' | 'robotik' | 'team';
 
 /**
- * Die drei Säulen (30.10., Kevin: „Alle drei Säulen“): Sichtbarkeit und Vertrieb haben eigene Fragen (Abschnitte S und V),
- * Innovation ist der Gesamtwert der Dimensionen B bis G — dessen Rechnung (Referenz) bleibt unverändert.
+ * Säulen bzw. Bereiche eines Checks (30.10., Kevin: „Alle drei Säulen“ + Vertriebscheck und Sichtbarkeitstest): Kennungen kommen aus der
+ * Vorlage (Innovations-Check: sichtbarkeit · vertrieb · innovation; Vertriebscheck: organisation · zahlen · neukunden …). Nur die Kennung
+ * `innovation` ist besonders: sie hat keine eigenen Fragen, sondern ist der Gesamtwert der Dimensionen B bis G (Referenz unverändert).
  */
-export type SaeuleKey = 'sichtbarkeit' | 'vertrieb' | 'innovation';
+export type SaeuleKey = string;
+/** Bereich eines Angebots der Instanz (Einstellung des Checks) — jede Säule einer Vorlage zeigt auf einen davon. */
+export type AngebotBereich = 'sichtbarkeit' | 'vertrieb' | 'innovation';
 export type SchrittBand = 'niedrig' | 'mittel' | 'hoch';
-export interface CheckSaeule { key: SaeuleKey; name: string; abschnitt: string; gewicht: number }
+export interface CheckSaeule { key: SaeuleKey; name: string; abschnitt: string; gewicht: number; angebot?: AngebotBereich }
+
+/** Texte der Seite eines Checks (Einstieg, Dauer, Zoes zweiter Satz) — Daten der Vorlage, nie fest im Code. */
+export interface CheckSeite {
+  titel: string;
+  text: string;
+  bereiche?: { name: string; text: string }[];
+  minuten: number;
+  einleitung: string;
+}
 
 export interface CheckStufe { stufe: number; name: string; von: number; bis: number; kurz: string }
 
@@ -90,6 +105,8 @@ export interface CheckRegeln {
   saeulen_stufen?: CheckStufe[];
   /** Ein nächster Schritt je Säule und Band (niedrig bis 40, mittel bis 70, hoch darüber). */
   naechste_schritte?: Partial<Record<SaeuleKey, Record<SchrittBand, string>>>;
+  /** Reihenfolge bei Gleichstand der schwächsten Säulen — fehlt sie, gilt die Reihenfolge von `saeulen`. */
+  schritt_reihe?: SaeuleKey[];
 }
 
 export interface BenchmarkQuelle {
@@ -122,10 +139,11 @@ export interface LeadScoringRegeln {
   ];
 }
 
-/** Eine Vorlage = alles, was ein Check zum Rechnen braucht. */
+/** Eine Vorlage = alles, was ein Check zum Rechnen und Zeigen braucht. */
 export interface CheckVorlage {
   id: string;
   name: string;
+  seite: CheckSeite;
   katalog: CheckKatalog;
   regeln: CheckRegeln;
   benchmarks: CheckBenchmarks;

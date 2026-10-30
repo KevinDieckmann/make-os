@@ -30,6 +30,8 @@ interface Strom {
 }
 interface Props {
   marke: string;
+  /** Texte der Seite aus der Vorlage (Einstieg, Bereiche, Dauer). */
+  seite: { titel: string; text: string; bereiche?: { name: string; text: string }[]; minuten: number };
   /** Leitsatz unter dem Namen (Einstellung der Instanz) — ohne Angabe keiner. */
   claim?: string;
   katalog: OeffentlicherKatalog;
@@ -43,15 +45,16 @@ type Ansicht = Omit<ErgebnisAnsicht, 'schritte'> & { schritte: Schritt2[] };
 type Gespraech = { satz: string; pfad?: string; slug?: string };
 interface Sitzung { id: string; token: string }
 
-const SPEICHER = 'make-check:innovations-check';
+/** Gemerkte Sitzung je Check (30.10.: mehrere Checks auf derselben Seite — jeder hat seine eigene). */
+const speicherVon = (vorlage: string) => `make-check:${vorlage}`;
 const FREITEXT_MAX = 2000;
 const QUITTUNG = ['Danke.', 'Notiert.', 'Gut zu wissen.', 'Verstanden.', 'Alles klar.'];
 
-function sitzungLesen(): Sitzung | null {
-  try { const r = localStorage.getItem(SPEICHER); const v = r ? JSON.parse(r) as Sitzung : null; return v && typeof v.id === 'string' && typeof v.token === 'string' ? v : null; } catch { return null; }
+function sitzungLesen(vorlage: string): Sitzung | null {
+  try { const r = localStorage.getItem(speicherVon(vorlage)); const v = r ? JSON.parse(r) as Sitzung : null; return v && typeof v.id === 'string' && typeof v.token === 'string' ? v : null; } catch { return null; }
 }
-function sitzungMerken(x: Sitzung | null) {
-  try { if (x) localStorage.setItem(SPEICHER, JSON.stringify(x)); else localStorage.removeItem(SPEICHER); } catch { /* ohne Speicher: Weitermachen nach dem Neuladen geht dann nicht */ }
+function sitzungMerken(vorlage: string, x: Sitzung | null) {
+  try { if (x) localStorage.setItem(speicherVon(vorlage), JSON.stringify(x)); else localStorage.removeItem(speicherVon(vorlage)); } catch { /* ohne Speicher: Weitermachen nach dem Neuladen geht dann nicht */ }
 }
 async function rufe(body: Record<string, unknown>): Promise<{ status: number; d: Record<string, unknown> }> {
   try {
@@ -74,7 +77,7 @@ function useHochzaehlen(ziel: number): number {
   return n;
 }
 
-export function InnovationsCheck({ marke, claim, katalog, zoe, hinweis, quelle }: Props) {
+export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, quelle }: Props) {
   const fragen = useMemo(() => new Map(katalog.fragen.map(f => [f.id, f])), [katalog]);
   const kurz = useMemo(() => katalog.fragen.filter(f => f.kurz), [katalog]);
   const [sitzung, setSitzung] = useState<Sitzung | null>(null);
@@ -90,13 +93,13 @@ export function InnovationsCheck({ marke, claim, katalog, zoe, hinweis, quelle }
 
   // Weitermachen nach dem Neuladen: gemerkte Sitzung fragen — weg (abgelaufen, gelöscht) → frisch beginnen.
   useEffect(() => {
-    const alt = sitzungLesen();
+    const alt = sitzungLesen(katalog.vorlage);
     if (!alt) { setBereit(true); return; }
     void rufe({ aktion: 'stand', sitzung: alt.id, token: alt.token }).then(({ status, d }) => {
-      if (status === 200 && d.ok) { setSitzung(alt); setStrom(d as unknown as Strom); } else sitzungMerken(null);
+      if (status === 200 && d.ok) { setSitzung(alt); setStrom(d as unknown as Strom); } else sitzungMerken(katalog.vorlage, null);
       setBereit(true);
     });
-  }, []);
+  }, [katalog.vorlage]);
 
   // Das Ergebnis holen, sobald der Server sagt „Ergebnis“ (und es noch nicht da ist) — einmal je neuem Stand, nie in einer Schleife.
   const ergebnisFuer = useRef<Strom | null>(null);
@@ -122,11 +125,11 @@ export function InnovationsCheck({ marke, claim, katalog, zoe, hinweis, quelle }
       const st = await rufe({ aktion: 'start', vorlage: katalog.vorlage, ...(quelle ? { quelle } : {}), webseite: '' });
       if (!st.d.ok) { setLaedt(false); setFehler(String(st.d.fehler ?? 'Der Check ließ sich gerade nicht starten.')); return false; }
       x = { id: String(st.d.sitzung), token: String(st.d.token) };
-      setSitzung(x); sitzungMerken(x);
+      setSitzung(x); sitzungMerken(katalog.vorlage, x);
     }
     const r = await rufe({ ...body, sitzung: x.id, token: x.token });
     setLaedt(false);
-    if (r.status === 404) { sitzungMerken(null); setSitzung(null); setStrom(null); setFehler(String(r.d.fehler ?? 'Die Sitzung ist abgelaufen — bitte neu starten.')); return false; }
+    if (r.status === 404) { sitzungMerken(katalog.vorlage, null); setSitzung(null); setStrom(null); setFehler(String(r.d.fehler ?? 'Die Sitzung ist abgelaufen — bitte neu starten.')); return false; }
     if (!r.d.ok) { setFehler(String(r.d.fehler ?? 'Das hat nicht geklappt.')); return false; }
     setStrom(r.d as unknown as Strom);
     return true;
@@ -163,25 +166,25 @@ export function InnovationsCheck({ marke, claim, katalog, zoe, hinweis, quelle }
         <header className={s.kopf}>
           <div className={s.kopfZeile}>
             <span className={s.markeBlock}><span className={s.marke}>{marke}</span>{claim && <span className={s.claim}>{claim}</span>}</span>
-            <span className={s.titel}>Innovations-Check</span>
+            <span className={s.titel}>{katalog.name}</span>
           </div>
           <div className={s.balken} aria-hidden><div className={s.balkenFuell} style={{ width: `${kurzGeschafft || ansicht ? 100 : imKurz ? Math.round((fort.kurz / Math.max(1, fort.kurzVon)) * 100) : fort.prozent}%` }} /></div>
           <div className={s.stand} aria-live="polite">
-            {ansicht ? 'Ihr Ergebnis' : kurzGeschafft ? 'Kurzcheck geschafft' : imKurz ? `Frage ${Math.min(fort.kurz + 1, fort.kurzVon)} von ${fort.kurzVon} · noch etwa ${Math.max(1, Math.round((fort.kurzVon - fort.kurz) * 0.6))} Min.` : `${fort.prozent} % geschafft`}
+            {ansicht ? 'Ihr Ergebnis' : kurzGeschafft ? 'Fragen geschafft' : imKurz ? `Frage ${Math.min(fort.kurz + 1, fort.kurzVon)} von ${fort.kurzVon} · noch etwa ${Math.max(1, Math.round(((fort.kurzVon - fort.kurz) / Math.max(1, fort.kurzVon)) * seite.minuten))} Min.` : `${fort.prozent} % geschafft`}
             {' · '}<span className={s.kiMarke}>Zoe · KI-Assistentin</span>
           </div>
         </header>
 
         {!strom && (
           <section className={s.einstieg}>
-            <h1 className={s.einstiegTitel}>Wo steht Ihr Unternehmen?</h1>
-            <p className={s.einstiegText}>Sichtbarkeit, Vertrieb und Innovation: Der Check zeigt Ihnen, wo Sie heute stehen und welcher nächste Schritt den größten Unterschied macht.</p>
-            <ol className={s.dreiBereiche} aria-label="Die drei Bereiche des Checks">
-              <li><span className={s.bereichNr}>1</span>Sichtbarkeit<span className={s.bereichText}>Versteht man sofort, was Sie tun?</span></li>
-              <li><span className={s.bereichNr}>2</span>Vertrieb<span className={s.bereichText}>Werden aus Kontakten Kunden?</span></li>
-              <li><span className={s.bereichNr}>3</span>Innovation<span className={s.bereichText}>Nutzen Sie KI und Automatisierung wirklich?</span></li>
-            </ol>
-            <ul className={s.versprechen}><li>kostenlos</li><li>rund 10 Minuten</li><li>Ergebnis sofort</li><li>Antworten per Klick</li></ul>
+            <h1 className={s.einstiegTitel}>{seite.titel}</h1>
+            <p className={s.einstiegText}>{seite.text}</p>
+            {!!seite.bereiche?.length && (
+              <ol className={s.dreiBereiche} aria-label="Die Bereiche des Checks">
+                {seite.bereiche.map((b, i) => <li key={b.name}><span className={s.bereichNr}>{i + 1}</span>{b.name}<span className={s.bereichText}>{b.text}</span></li>)}
+              </ol>
+            )}
+            <ul className={s.versprechen}><li>kostenlos</li><li>rund {seite.minuten} Minuten</li><li>Ergebnis sofort</li><li>Antworten per Klick</li></ul>
           </section>
         )}
 
@@ -442,7 +445,7 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
       <div className={s.skalaNamen} aria-hidden>{ansicht.stufen.map(x => <span key={x.stufe} className={x.stufe === ansicht.stufe ? s.skalaNameAn : undefined}><span className={s.skalaNr}>{x.stufe}</span><span className={s.skalaWort}>{x.name.replace(/ \(.*\)$/, '')}</span></span>)}</div>
 
       {ansicht.saeulen.length > 1 && (
-        <div className={s.saeulen} role="list" aria-label="Ihre drei Bereiche">
+        <div className={s.saeulen} role="list" aria-label="Ihre Bereiche">
           {ansicht.saeulen.map(x => (
             <div key={x.key} className={s.saeule} role="listitem">
               <div className={s.saeuleKopf}><span className={s.saeuleName}>{x.name}</span><span className={s.saeuleWert}>{x.wert ?? '—'}</span></div>
@@ -505,15 +508,17 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
         </div>
       )}
 
-      <details className={s.detail}>
-        <summary>Innovation im Detail: Stufe {iv.stufe}, {iv.stufeName.replace(/ \(.*\)$/, '')}</summary>
-        <p className={s.stufeKurz} style={{ marginTop: 8 }}>{iv.stufeKurz}</p>
-        <div className={s.skala} aria-hidden>{iv.stufen.map(x => <span key={x.stufe} className={`${s.skalaTeil} ${x.stufe <= iv.stufe ? s.skalaAn : ''}`} />)}</div>
-        <div className={s.skalaNamen} aria-hidden>{iv.stufen.map(x => <span key={x.stufe} className={x.stufe === iv.stufe ? s.skalaNameAn : undefined}><span className={s.skalaNr}>{x.stufe}</span><span className={s.skalaWort}>{x.name.replace(/ \(.*\)$/, '')}</span></span>)}</div>
-        {iv.achsen.length >= 3 && <Netzdiagramm achsen={iv.achsen} />}
-        {iv.branchenSatz && <p className={s.branchenSatz}>{iv.branchenSatz}</p>}
-        <div style={{ marginTop: 14 }}><Zoe zeilen={iv.zoe} /></div>
-      </details>
+      {iv && (
+        <details className={s.detail}>
+          <summary>Innovation im Detail: Stufe {iv.stufe}, {iv.stufeName.replace(/ \(.*\)$/, '')}</summary>
+          <p className={s.stufeKurz} style={{ marginTop: 8 }}>{iv.stufeKurz}</p>
+          <div className={s.skala} aria-hidden>{iv.stufen.map(x => <span key={x.stufe} className={`${s.skalaTeil} ${x.stufe <= iv.stufe ? s.skalaAn : ''}`} />)}</div>
+          <div className={s.skalaNamen} aria-hidden>{iv.stufen.map(x => <span key={x.stufe} className={x.stufe === iv.stufe ? s.skalaNameAn : undefined}><span className={s.skalaNr}>{x.stufe}</span><span className={s.skalaWort}>{x.name.replace(/ \(.*\)$/, '')}</span></span>)}</div>
+          {iv.achsen.length >= 3 && <Netzdiagramm achsen={iv.achsen} />}
+          {iv.branchenSatz && <p className={s.branchenSatz}>{iv.branchenSatz}</p>}
+          <div style={{ marginTop: 14 }}><Zoe zeilen={iv.zoe} /></div>
+        </details>
+      )}
     </section>
   );
 }

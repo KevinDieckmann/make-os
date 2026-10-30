@@ -18,13 +18,16 @@ interface ZeileDaten {
   id: string; gestartet: string; geaendert: string; quelle: string | null; beantwortet: number;
   kontaktStand: 'offen' | 'erfasst' | 'uebersprungen';
   kontakt: { vorname: string; firma: string; email: string; telefon: string | null; newsletterWunsch: boolean } | null;
-  ergebnis: { gesamt: number; stufe: number; stufeName: string; genauigkeit: 'genau' | 'vorlaeufig'; saeulen?: Partial<Record<Bereich, number>>; lead: { punkte: number; klasse: 'A' | 'B' | 'C' } } | null;
+  ergebnis: { gesamt: number; stufe: number; stufeName: string; genauigkeit: 'genau' | 'vorlaeufig'; lead: { punkte: number; klasse: 'A' | 'B' | 'C' } } | null;
+  /** Name des Checks und seine Bereiche mit Wert (30.10.: Innovations-Check, Vertriebscheck, Sichtbarkeitstest). */
+  check: string;
+  bereiche: { name: string; wert: number }[];
   abgeschlossen: string | null;
   crm: { status: 'ok' | 'abgelehnt' | 'fehler'; kontaktId: string | null; grund?: string } | null;
   belegeOffen: number;
 }
 interface Daten {
-  einstellungen: { aktiv: boolean; buchungSlug?: string; gastgeber?: string; marke?: string; claim?: string; angebote?: Partial<Record<Bereich, Angebot>> };
+  einstellungen: { aktiv: boolean; buchungSlug?: string; gastgeber?: string; marke?: string; claim?: string; angebote?: Partial<Record<Bereich, Angebot>>; verantwortlich?: string; datenschutzLink?: string };
   verantwortlichDa: boolean;
   buchungsseiten: { slug: string; titel: string }[];
   liste: ZeileDaten[];
@@ -98,7 +101,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
     <>
       {dialog}
       <Karte>
-        <Ueberschrift>Innovations-Check der Website</Ueberschrift>
+        <Ueberschrift>Checks der Website</Ueberschrift>
         {!d.verantwortlichDa && (
           <Hinweis art="achtung" titel="Verantwortlicher fehlt">
             Ohne Verantwortlichen der Instanz bleibt der Check zu. <Link href={WEG.datenschutz('verantwortlicher')} style={{ color: C.aktiv }}>Jetzt eintragen</Link>
@@ -106,7 +109,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
         )}
         <div style={{ display: 'grid', gap: 12, marginTop: 8 }}>
           <Schalter an={d.einstellungen.aktiv} onChange={an => void tun({ aktion: 'einstellungen', aktiv: an })} aus={!d.verantwortlichDa && !d.einstellungen.aktiv}
-            erklaerungOhne="Öffentlich erreichbar unter /check, auch unter fokusinnovation.de/check. Kommt ausgeschaltet; ausgeschaltet antwortet die Seite mit „gibt es nicht“.">
+            erklaerungOhne="Öffentlich erreichbar unter /check (Innovations-Check), /check?thema=vertrieb und /check?thema=sichtbarkeit. Kommt ausgeschaltet; ausgeschaltet antwortet die Seite mit „gibt es nicht“.">
             Check öffentlich
           </Schalter>
           <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>
@@ -129,7 +132,25 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
               onBlur={e => { const v = e.target.value.trim(); if (v !== (d.einstellungen.claim ?? '')) void tun({ aktion: 'einstellungen', claim: v || null }); }}
               style={FELD} />
           </label>
-          {d.einstellungen.aktiv && <Knopf leise href="/check">Check ansehen</Knopf>}
+          <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>
+            Verantwortlich, nur falls abweichend von Einstellungen › Datenschutz (Name, Anschrift, Kontakt)
+            <input defaultValue={d.einstellungen.verantwortlich ?? ''} placeholder="ohne Angabe: wie unter Einstellungen › Datenschutz" maxLength={300}
+              onBlur={e => { const v = e.target.value.trim(); if (v !== (d.einstellungen.verantwortlich ?? '')) void tun({ aktion: 'einstellungen', verantwortlich: v || null }); }}
+              style={FELD} />
+          </label>
+          <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>
+            Link zur Datenschutzerklärung (https://…)
+            <input defaultValue={d.einstellungen.datenschutzLink ?? ''} placeholder="ohne Angabe: wie unter Einstellungen › Datenschutz" maxLength={300}
+              onBlur={e => { const v = e.target.value.trim(); if (v !== (d.einstellungen.datenschutzLink ?? '')) void tun({ aktion: 'einstellungen', datenschutzLink: v || null }); }}
+              style={FELD} />
+          </label>
+          {d.einstellungen.aktiv && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <Knopf leise href="/check">Innovations-Check ansehen</Knopf>
+              <Knopf leise href="/check?thema=vertrieb">Vertriebscheck ansehen</Knopf>
+              <Knopf leise href="/check?thema=sichtbarkeit">Sichtbarkeitstest ansehen</Knopf>
+            </div>
+          )}
         </div>
         {fehler && <p role="alert" style={{ color: LEUCHT.kritisch, margin: '10px 0 0' }}>{fehler}</p>}
       </Karte>
@@ -159,10 +180,10 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                 <Zeile
                   aktiv={offen === z.id}
                   onClick={() => setOffen(o => (o === z.id ? null : z.id))}
-                  titel={z.kontakt ? `${z.kontakt.vorname} · ${z.kontakt.firma}` : z.kontaktStand === 'uebersprungen' ? 'ohne Kontaktdaten' : 'unterwegs'}
+                  titel={`${z.kontakt ? `${z.kontakt.vorname} · ${z.kontakt.firma}` : z.kontaktStand === 'uebersprungen' ? 'ohne Kontaktdaten' : 'unterwegs'} · ${z.check}`}
                   unter={[
                     z.ergebnis ? `Stufe ${z.ergebnis.stufe} · ${z.ergebnis.stufeName} · ${z.ergebnis.gesamt}/100${z.ergebnis.genauigkeit === 'vorlaeufig' ? ' (vorläufig)' : ''}` : `${z.beantwortet} Antworten`,
-                    z.ergebnis?.saeulen ? BEREICHE.filter(x => z.ergebnis!.saeulen![x.key] !== undefined).map(x => `${x.name} ${z.ergebnis!.saeulen![x.key]}`).join(' · ') : null,
+                    z.bereiche.length ? z.bereiche.map(x => `${x.name} ${x.wert}`).join(' · ') : null,
                     z.quelle ? `über ${z.quelle}` : null,
                     datum(z.geaendert.slice(0, 10)),
                   ].filter(Boolean).join(' · ')}

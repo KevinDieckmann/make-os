@@ -38,5 +38,7 @@ function oeffentlich(f: FrageMitAbschnitt): OeffentlicheFrage {
 }
 
 export function oeffentlicherKatalog(v: CheckVorlage): OeffentlicherKatalog {
-  return { vorlage: v.id, name: v.name, fragen: [...alleFragen(v.katalog), ...OFFENE_ZUSATZFRAGEN].map(oeffentlich), abschnittSatz: { ...ABSCHNITT_SATZ } };
+  // Zoes Satz je Abschnitt: der Satz aus dem Katalog (Vertriebscheck, Sichtbarkeitstest), sonst die festen Sätze des Innovations-Checks.
+  const ausKatalog = Object.fromEntries(v.katalog.abschnitte.filter(a => !!a.satz).map(a => [a.id, a.satz!]));
+  return { vorlage: v.id, name: v.name, fragen: [...alleFragen(v.katalog), ...OFFENE_ZUSATZFRAGEN].map(oeffentlich), abschnittSatz: { ...ABSCHNITT_SATZ, ...ausKatalog } };
 }

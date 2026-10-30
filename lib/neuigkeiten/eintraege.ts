@@ -35,14 +35,15 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
     id: 'u-2026-10-30-4',
     datum: '2026-10-30',
-    titel: 'Innovations-Check: drei Bereiche und nächste Schritte',
-    kurz: 'Der Check fragt jetzt Sichtbarkeit, Vertrieb und Innovation ab. Im Ergebnis stehen die drei Werte, zwei nächste Schritte mit euren Angeboten und die nächsten freien Termine fürs Erstgespräch.',
+    titel: 'Checks für die Website: Innovation, Vertrieb, Sichtbarkeit',
+    kurz: 'Der Innovations-Check fragt jetzt Sichtbarkeit, Vertrieb und Innovation ab, dazu kommen ein Vertriebscheck und ein Sichtbarkeitstest. Jedes Ergebnis nennt nächste Schritte mit euren Angeboten und die nächsten freien Termine fürs Erstgespräch.',
     abschnitte: [
       { art: 'neu', punkte: [
+        { text: 'Zwei kleine Checks mit je zwölf Fragen: Vertriebscheck (Organisation, Zahlen, Neukunden) und Sichtbarkeitstest (Botschaft, Website, Reichweite). Eingegangene Checks stehen gemeinsam unter Marketing › Innovations-Check.', bereich: 'business', weg: WEG.marketing('check') },
         { text: 'Neue Fragen zu Sichtbarkeit und Vertrieb. Das Ergebnis zeigt drei Werte und eine Gesamtstufe, die Innovation steht aufklappbar im Detail.', bereich: 'business', weg: WEG.marketing('check') },
         { text: 'Für die zwei schwächsten Bereiche nennt das Ergebnis je einen nächsten Schritt. Darunter steht euer passendes Angebot: Titel, Satz und Link stellt ihr unter Marketing › Innovations-Check ein.', bereich: 'business', weg: WEG.marketing('check') },
         { text: 'Die nächsten freien Termine fürs Erstgespräch stehen direkt im Ergebnis. Ein angetippter Termin ist auf der Buchungsseite schon gewählt.', bereich: 'business' },
-        { text: 'Ein Leitsatz unter dem Namen im Kopf des Checks, einstellbar unter Marketing › Innovations-Check.', bereich: 'business' },
+        { text: 'Ein Leitsatz unter dem Namen im Kopf des Checks und, falls die Website einer anderen Gesellschaft gehört, ein eigener Verantwortlicher für den Datenschutzhinweis, beides unter Marketing › Innovations-Check.', bereich: 'business' },
       ] },
       { art: 'besser', punkte: [
         { text: 'Ruhigere Ansicht: Zoes Text steht ohne Kasten, der Einstieg nennt die drei Bereiche.', bereich: 'business' },

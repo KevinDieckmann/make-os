@@ -6,7 +6,7 @@
 // „Ergebnis jetzt“ oder „mehr Fragen“, in der Vertiefung die übrigen Fragen aus A, S, V und B bis G (Robotik nur, wo sie zur Branche passt)
 // und das Branchen-Modul (H/I/J, sonst zwei offene Fragen). Rein, client- und serversicher.
 
-import { alleFragen, kurzcheckFragen, STRECKE_ABSCHNITTE, type FrageMitAbschnitt } from './katalog';
+import { alleFragen, kurzcheckFragen, MODUL_ABSCHNITTE, type FrageMitAbschnitt } from './katalog';
 import { robotikRelevant, profilAus } from './auswertung';
 import type { CheckAntwort, CheckAntworten, CheckFrage, CheckProfil, CheckVorlage } from './typen';
 
@@ -59,10 +59,10 @@ export function moduleFuer(p: CheckProfil): string[] {
 
 export const kurzSequenz = (v: CheckVorlage): FrageMitAbschnitt[] => kurzcheckFragen(v.katalog);
 
-/** Vertiefung: alle übrigen Fragen aus A, S, V und B bis G in Katalog-Reihenfolge — F nur, wenn Robotik zur Branche passt. */
+/** Vertiefung: alle übrigen Fragen außer den Branchen-Modulen, in Katalog-Reihenfolge — F nur, wenn Robotik zur Branche passt. */
 export function vertiefungSequenz(v: CheckVorlage, p: CheckProfil): FrageMitAbschnitt[] {
   const robotik = robotikRelevant(p, v.regeln);
-  return alleFragen(v.katalog).filter(f => STRECKE_ABSCHNITTE.includes(f.abschnitt) && !f.kurzcheck && (f.abschnitt !== 'F' || robotik));
+  return alleFragen(v.katalog).filter(f => !MODUL_ABSCHNITTE.includes(f.abschnitt) && !f.kurzcheck && (f.abschnitt !== 'F' || robotik));
 }
 
 export function brancheSequenz(v: CheckVorlage, p: CheckProfil): FrageMitAbschnitt[] {
@@ -84,6 +84,9 @@ export function naechsterSchritt(v: CheckVorlage, s: AblaufStand): Schritt {
   const offenKurz = kurz.findIndex(f => !erledigt(s, f.id));
   if (offenKurz >= 0) return { art: 'frage', frageId: kurz[offenKurz].id, phase: 'kurzcheck', nummer: offenKurz + 1, von: kurz.length };
   if (s.kontakt === 'offen') return { art: 'kontakt' };
+  // Kleine Checks (30.10.) fragen alles im Kurzcheck — bleibt keine offene Frage der Vorlage (die Rolle kommt mit den Kontaktdaten),
+  // gibt es keine Wahl, sofort das Ergebnis.
+  if (!s.wahl && !vertiefungSequenz(v, profilAus(v.katalog, s.antworten)).some(f => f.id !== 'A5' && !erledigt(s, f.id))) return { art: 'ergebnis' };
   if (!s.wahl) return { art: 'wahl' };
   if (s.wahl === 'mehr') {
     const p = profilAus(v.katalog, s.antworten);

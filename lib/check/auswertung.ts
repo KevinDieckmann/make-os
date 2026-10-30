@@ -4,7 +4,7 @@
 // Anleitung und mit vielen Zufallsfällen. Regeln stehen in den Vorlagen-Daten (scoring.json, benchmarks.json, lead-scoring.json).
 // Zahlen kommen NIE aus einem Sprachmodell — Stufe, Punkte, Lücken und Lead-Klasse rechnet nur diese Datei. Rein.
 
-import { DIMENSION_JE_ABSCHNITT, SAEULE_JE_ABSCHNITT, alleFragen, fragenNachId, type FrageMitAbschnitt } from './katalog';
+import { DIMENSION_JE_ABSCHNITT, saeuleJeAbschnitt, alleFragen, fragenNachId, type FrageMitAbschnitt } from './katalog';
 import type { CheckAntwort, CheckAntworten, CheckBenchmarks, CheckErgebnis, CheckKatalog, CheckLeadScore, CheckLuecke, CheckProfil, CheckRegeln, CheckVerhalten, DimKey, LeadScoringRegeln, SaeuleKey, SaeulenErgebnis, SchrittBand } from './typen';
 
 /** Punkte einer Antwort (0–4) oder null, wenn sie nicht zählt (offen, Profil, Branchen-Modul, unbewerteter Beleg). */
@@ -78,10 +78,11 @@ export function auswerten(k: CheckKatalog, r: CheckRegeln, p: CheckProfil, antwo
 export function saeulenAuswerten(k: CheckKatalog, r: CheckRegeln, antworten: CheckAntworten, innovation: Pick<CheckErgebnis, 'gesamt' | 'dimensionen' | 'stufe' | 'stufe_name'>): SaeulenErgebnis {
   if (!r.saeulen?.length || !r.saeulen_stufen?.length) return { werte: { innovation: innovation.gesamt }, gesamt: innovation.gesamt, stufe: innovation.stufe, stufe_name: innovation.stufe_name };
   const nachId = fragenNachId(k);
+  const jeAbschnitt = saeuleJeAbschnitt(k);
   const summen: Partial<Record<SaeuleKey, number>> = {}, anzahl: Partial<Record<SaeuleKey, number>> = {};
   for (const [id, a] of Object.entries(antworten)) {
     const f = nachId[id];
-    const saeule = f && SAEULE_JE_ABSCHNITT[f.abschnitt];
+    const saeule = f && jeAbschnitt[f.abschnitt];
     if (!saeule) continue;
     const pkt = punkteFuer(f, a);
     if (pkt === null) continue;
@@ -90,7 +91,7 @@ export function saeulenAuswerten(k: CheckKatalog, r: CheckRegeln, antworten: Che
   }
   const werte: Partial<Record<SaeuleKey, number>> = {};
   for (const sk of Object.keys(summen) as SaeuleKey[]) werte[sk] = Math.round((summen[sk]! / (4 * anzahl[sk]!)) * 100);
-  if (Object.keys(innovation.dimensionen).length) werte.innovation = innovation.gesamt;
+  if (r.saeulen.some(sa => sa.key === 'innovation') && Object.keys(innovation.dimensionen).length) werte.innovation = innovation.gesamt;
   let gsumme = 0, summe = 0;
   for (const sa of r.saeulen) {
     const w = werte[sa.key];
@@ -102,18 +103,29 @@ export function saeulenAuswerten(k: CheckKatalog, r: CheckRegeln, antworten: Che
   return { werte, gesamt, stufe: stufe.stufe, stufe_name: stufe.name };
 }
 
+/**
+ * Genauigkeit eines Checks ohne Innovations-Dimensionen (Vertriebscheck, Sichtbarkeitstest): „genau“, wenn mindestens 80 % der Fragen
+ * mit Punkten beantwortet sind — sonst „vorläufig“. Rein.
+ */
+export function saeulenGenauigkeit(k: CheckKatalog, antworten: CheckAntworten): 'genau' | 'vorlaeufig' {
+  const jeAbschnitt = saeuleJeAbschnitt(k);
+  const fragen = alleFragen(k).filter(f => !!jeAbschnitt[f.abschnitt]);
+  const da = fragen.filter(f => punkteFuer(f, antworten[f.id]) !== null).length;
+  return fragen.length && da / fragen.length >= 0.8 ? 'genau' : 'vorlaeufig';
+}
+
 /** Band eines Säulenwerts für den nächsten Schritt: bis 40 niedrig, bis 70 mittel, darüber hoch. */
 export const schrittBand = (wert: number): SchrittBand => (wert <= 40 ? 'niedrig' : wert <= 70 ? 'mittel' : 'hoch');
 
-/** Bei Gleichstand zuerst der Vertrieb, dann die Sichtbarkeit, dann die Innovation (Reihenfolge der Vorlage `naechste_schritte.regel`). */
-const SCHRITT_REIHE: readonly SaeuleKey[] = ['vertrieb', 'sichtbarkeit', 'innovation'];
-
-/** Die zwei schwächsten Säulen mit ihrem nächsten Schritt aus der Vorlage — nur Säulen mit Wert und Text. Rein. */
+/** Die zwei schwächsten Säulen mit ihrem nächsten Schritt aus der Vorlage — nur Säulen mit Wert und Text. Bei Gleichstand gilt
+ *  `schritt_reihe` der Vorlage (Innovations-Check: Vertrieb, Sichtbarkeit, Innovation), sonst die Reihenfolge der Säulen. Rein. */
 export function naechsteSchritte(r: CheckRegeln, werte: Partial<Record<SaeuleKey, number>>, anzahl = 2): { saeule: SaeuleKey; wert: number; band: SchrittBand; text: string }[] {
   const texte = r.naechste_schritte ?? {};
+  const reihe = r.schritt_reihe ?? (r.saeulen ?? []).map(sa => sa.key);
+  const rang = (sk: SaeuleKey) => { const i = reihe.indexOf(sk); return i < 0 ? reihe.length : i; };
   return (Object.entries(werte) as [SaeuleKey, number][])
     .filter(([sk]) => !!texte[sk])
-    .sort((a, b) => a[1] - b[1] || SCHRITT_REIHE.indexOf(a[0]) - SCHRITT_REIHE.indexOf(b[0]))
+    .sort((a, b) => a[1] - b[1] || rang(a[0]) - rang(b[0]))
     .slice(0, anzahl)
     .map(([sk, wert]) => { const band = schrittBand(wert); return { saeule: sk, wert, band, text: texte[sk]![band] }; });
 }

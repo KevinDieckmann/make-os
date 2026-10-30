@@ -1,0 +1,20 @@
+{
+ "titel": "Wo steht Ihr Unternehmen?",
+ "text": "Sichtbarkeit, Vertrieb und Innovation: Der Check zeigt Ihnen, wo Sie heute stehen und welcher nächste Schritt den größten Unterschied macht.",
+ "bereiche": [
+  {
+   "name": "Sichtbarkeit",
+   "text": "Versteht man sofort, was Sie tun?"
+  },
+  {
+   "name": "Vertrieb",
+   "text": "Werden aus Kontakten Kunden?"
+  },
+  {
+   "name": "Innovation",
+   "text": "Nutzen Sie KI und Automatisierung wirklich?"
+  }
+ ],
+ "minuten": 10,
+ "einleitung": "Ich führe Sie in rund 10 Minuten durch den Innovations-Check, in drei Bereichen: Sichtbarkeit, Vertrieb und Innovation."
+}

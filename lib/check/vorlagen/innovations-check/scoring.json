@@ -123,20 +123,23 @@
    "key": "sichtbarkeit",
    "name": "Sichtbarkeit",
    "abschnitt": "S",
-   "gewicht": 1
+   "gewicht": 1,
+   "angebot": "sichtbarkeit"
   },
   {
    "key": "vertrieb",
    "name": "Vertrieb",
    "abschnitt": "V",
-   "gewicht": 1
+   "gewicht": 1,
+   "angebot": "vertrieb"
   },
   {
    "key": "innovation",
    "name": "Innovation",
    "abschnitt": "B bis G",
    "gewicht": 1,
-   "wert": "Gesamtwert der Innovations-Dimensionen (Regeln oben, unverändert)"
+   "wert": "Gesamtwert der Innovations-Dimensionen (Regeln oben, unverändert)",
+   "angebot": "innovation"
   }
  ],
  "saeulen_regel": "Säulenwert Sichtbarkeit bzw. Vertrieb wie ein Dimensionswert (Summe der Punkte / (4 × Anzahl beantworteter Fragen) × 100, gerundet). Innovation = Gesamtwert der Dimensionen B bis G. Gesamtwert = Mittel der beantworteten Säulen (gleiches Gewicht), gerundet. Die Stufe der Innovation (Beobachter bis KI-geführt) bleibt für das Detail und das Lead-Scoring.",
@@ -194,5 +197,10 @@
    "mittel": "Machen Sie aus Einzelversuchen feste Abläufe: Firmenlizenz, klare Regeln und ein messbares Ziel, zum Beispiel gesparte Stunden pro Woche.",
    "hoch": "Verbinden Sie Ihre Systeme und lassen Sie wiederkehrende Abläufe ganz automatisch laufen. Menschen prüfen und entscheiden."
   }
- }
+ },
+ "schritt_reihe": [
+  "vertrieb",
+  "sichtbarkeit",
+  "innovation"
+ ]
 }

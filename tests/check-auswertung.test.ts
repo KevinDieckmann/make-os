@@ -150,7 +150,7 @@ describe('Säulen Sichtbarkeit · Vertrieb · Innovation (30.10.)', () => {
     expect(naechsteSchritte(regeln, { innovation: 55 }).map(y => y.saeule)).toEqual(['innovation']);
   });
   it('Zoe: Stufe, stärkste Säule, größter Hebel — Zahlen nur aus dem Ergebnis', () => {
-    const z = saeulenSaetze({ werte: { sichtbarkeit: 70, vertrieb: 20, innovation: 45 }, gesamt: 45, stufe: 3, stufe_name: 'Auf Kurs' }, 'vorlaeufig');
+    const z = saeulenSaetze({ werte: { sichtbarkeit: 70, vertrieb: 20, innovation: 45 }, gesamt: 45, stufe: 3, stufe_name: 'Auf Kurs' }, 'vorlaeufig', { sichtbarkeit: 'Sichtbarkeit', vertrieb: 'Vertrieb', innovation: 'Innovation' });
     expect(z[0]).toBe('Sie stehen auf Stufe 3: Auf Kurs (45 von 100 Punkten).');
     expect(z[1]).toBe('Am stärksten sind Sie bei Sichtbarkeit mit 70 Punkten.');
     expect(z[2]).toContain('Den größten Hebel hat Vertrieb mit 20 Punkten.');

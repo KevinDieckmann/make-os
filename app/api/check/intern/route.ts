@@ -2,7 +2,7 @@
 // Nur der Haushalt des Inhabers (mit Person, Dienstweg ohne Person 403):
 // GET            → { einstellungen, buchungsseiten, verantwortlichDa, liste } — eingegangene Checks (Stufe, Kontakt, CRM-Stand, offene Belege)
 // GET ?id=ck-…   → { sitzung } mit allen Antworten im Klartext der Fragen (für Kevin: Beleg-Texte lesen und bewerten)
-// POST { aktion: 'einstellungen', aktiv?, buchungSlug?, gastgeber?, marke?, claim?, angebote? } → nur der Inhaber; einschalten nur mit
+// POST { aktion: 'einstellungen', aktiv?, buchungSlug?, gastgeber?, marke?, claim?, angebote?, verantwortlich?, datenschutzLink? } → nur der Inhaber; einschalten nur mit
 //                                                                   Verantwortlichem der Instanz; `angebote` = { sichtbarkeit|vertrieb|innovation:
 //                                                                   { titel, text?, link? } | null } (Link: /… der eigenen Website oder https)
 // POST { aktion: 'beleg', id, frage: C5 | D6, score: 0–4 }            → Bewertung nach Rubrik, Ergebnis-Stand neu gerechnet
@@ -24,7 +24,7 @@ import { frageVon, kurzFertig } from '@/lib/check/ablauf';
 import { ergebnisAnsicht } from '@/lib/check/ergebnis';
 import { leadPunkte } from '@/lib/check/auswertung';
 import { ladeCheckBestand, ladeCheckEinstellungen, speichereCheckEinstellungen, sitzungIntern, angebotLinkOk, SITZUNGEN, ID_OK, type CheckAngebot, type CheckBestand, type CheckSitzung } from '@/lib/check/speicher';
-import type { SaeuleKey } from '@/lib/check/typen';
+import type { AngebotBereich } from '@/lib/check/typen';
 import { ablaufStand, hinweisLaden, leadAnlegen } from '@/lib/check/server';
 
 export const runtime = 'nodejs';
@@ -40,6 +40,9 @@ function zeile(s: CheckSitzung) {
     beantwortet: Object.keys(s.antworten).length, kontaktStand: s.kontaktStand,
     kontakt: s.kontakt ? { vorname: s.kontakt.vorname, firma: s.kontakt.firma, email: s.kontakt.email, telefon: s.kontakt.telefon ?? null, newsletterWunsch: s.kontakt.newsletterWunsch } : null,
     ergebnis: s.ergebnis ?? null, abgeschlossen: s.abgeschlossen ?? null,
+    // Name des Checks und die Bereiche mit Namen aus der Vorlage (30.10.: Innovations-Check, Vertriebscheck, Sichtbarkeitstest).
+    check: vorlageVon(s.vorlage)?.name ?? s.vorlage,
+    bereiche: s.ergebnis?.saeulen ? (vorlageVon(s.vorlage)?.regeln.saeulen ?? []).filter(sa => s.ergebnis!.saeulen![sa.key] !== undefined).map(sa => ({ name: sa.name, wert: s.ergebnis!.saeulen![sa.key]! })) : [],
     crm: s.crm ? { status: s.crm.status, kontaktId: s.crm.kontaktId ?? null, ...(s.crm.status !== 'ok' && s.crm.grund ? { grund: s.crm.grund } : {}) } : null,
     belegeOffen: offen,
   };
@@ -49,8 +52,8 @@ function zeile(s: CheckSitzung) {
 function neuGerechnet(s: CheckSitzung): CheckSitzung {
   const v = vorlageVon(s.vorlage);
   if (!v || !s.ergebnis) return s;
-  const { ergebnis, saeulen, profil } = ergebnisAnsicht(v, s.antworten);
-  return { ...s, ergebnis: { ...s.ergebnis, gesamt: saeulen.gesamt, stufe: saeulen.stufe, stufeName: saeulen.stufe_name, genauigkeit: ergebnis.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, saeulen: saeulen.werte, lead: leadPunkte(v.leadScoring, profil, ergebnis, {}) } };
+  const { ergebnis, saeulen, profil, ansicht } = ergebnisAnsicht(v, s.antworten);
+  return { ...s, ergebnis: { ...s.ergebnis, gesamt: saeulen.gesamt, stufe: saeulen.stufe, stufeName: saeulen.stufe_name, genauigkeit: ansicht.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, saeulen: saeulen.werte, lead: leadPunkte(v.leadScoring, profil, ergebnis, {}) } };
 }
 
 export async function GET(req: Request) {
@@ -75,7 +78,8 @@ export async function GET(req: Request) {
     });
     return NextResponse.json({ ok: true, sitzung: { ...zeile(s), antworten, uebersprungen: s.uebersprungen, kurzFertig: kurzFertig(v, ablaufStand(s)) } }, { headers: { 'Cache-Control': 'no-store' } });
   }
-  const [e, buchung, hinweis] = await Promise.all([ladeCheckEinstellungen(), ladeBuchungBestand(), hinweisLaden()]);
+  const e = await ladeCheckEinstellungen();
+  const [buchung, hinweis] = await Promise.all([ladeBuchungBestand(), hinweisLaden(e)]);
   const liste = [...b.sitzungen].sort((x, y) => y.geaendert.localeCompare(x.geaendert)).map(zeile);
   leseZugriff(req, 'kontakte', { anzahl: liste.filter(z => z.kontakt).length });
   return NextResponse.json({
@@ -97,7 +101,20 @@ export async function POST(req: Request) {
     if (!(await nurInhaber(req))) return nurDerInhaber();
     const alt = await ladeCheckEinstellungen();
     const aktiv = typeof b.aktiv === 'boolean' ? b.aktiv : alt.aktiv;
-    if (aktiv && !(await hinweisLaden())) return NextResponse.json({ ok: false, fehler: 'Erst den Verantwortlichen unter Einstellungen › Datenschutz eintragen — ohne ihn bleibt der Check zu.' }, { status: 409 });
+    let verantwortlich = alt.verantwortlich, datenschutzLink = alt.datenschutzLink;
+    if (b.verantwortlich !== undefined) {
+      const x = typeof b.verantwortlich === 'string' ? b.verantwortlich.trim() : '';
+      if (b.verantwortlich === null || x === '') verantwortlich = undefined;
+      else if (x.length > 300 || /[<>{}\n]/.test(x)) return NextResponse.json({ ok: false, fehler: 'Verantwortlich: höchstens 300 Zeichen, ohne < > { }.' }, { status: 400 });
+      else verantwortlich = x;
+    }
+    if (b.datenschutzLink !== undefined) {
+      const x = typeof b.datenschutzLink === 'string' ? b.datenschutzLink.trim() : '';
+      if (b.datenschutzLink === null || x === '') datenschutzLink = undefined;
+      else if (!/^https:/.test(x) || !angebotLinkOk(x)) return NextResponse.json({ ok: false, fehler: 'Der Link zur Datenschutzerklärung muss mit https:// beginnen.' }, { status: 400 });
+      else datenschutzLink = x;
+    }
+    if (aktiv && !(await hinweisLaden({ verantwortlich, datenschutzLink }))) return NextResponse.json({ ok: false, fehler: 'Erst den Verantwortlichen unter Einstellungen › Datenschutz eintragen — ohne ihn bleibt der Check zu.' }, { status: 409 });
     let buchungSlug = alt.buchungSlug;
     if (b.buchungSlug !== undefined) {
       if (b.buchungSlug === null || b.buchungSlug === '') buchungSlug = undefined;
@@ -124,7 +141,7 @@ export async function POST(req: Request) {
       else if (c.length > 80 || /[<>{}\n]/.test(c)) return NextResponse.json({ ok: false, fehler: 'Der Leitsatz darf höchstens 80 Zeichen haben, ohne Sonderzeichen wie < > { }.' }, { status: 400 });
       else claim = c;
     }
-    const angebote: Partial<Record<SaeuleKey, CheckAngebot>> = { ...(alt.angebote ?? {}) };
+    const angebote: Partial<Record<AngebotBereich, CheckAngebot>> = { ...(alt.angebote ?? {}) };
     if (b.angebote !== undefined) {
       if (!b.angebote || typeof b.angebote !== 'object') return NextResponse.json({ ok: false, fehler: 'Angebote: je Bereich Titel, Satz und Link.' }, { status: 400 });
       for (const [sk, roh] of Object.entries(b.angebote as Record<string, unknown>)) {
@@ -139,7 +156,7 @@ export async function POST(req: Request) {
         angebote[sk] = { titel, ...(satz ? { text: satz } : {}), ...(link ? { link } : {}) };
       }
     }
-    const e = await speichereCheckEinstellungen({ aktiv, ...(buchungSlug ? { buchungSlug } : {}), ...(gastgeber ? { gastgeber } : {}), ...(marke ? { marke } : {}), ...(claim ? { claim } : {}), ...(Object.keys(angebote).length ? { angebote } : {}), geaendert: jetzt, geaendertVon: zugang.person });
+    const e = await speichereCheckEinstellungen({ aktiv, ...(buchungSlug ? { buchungSlug } : {}), ...(gastgeber ? { gastgeber } : {}), ...(marke ? { marke } : {}), ...(claim ? { claim } : {}), ...(Object.keys(angebote).length ? { angebote } : {}), ...(verantwortlich ? { verantwortlich } : {}), ...(datenschutzLink ? { datenschutzLink } : {}), geaendert: jetzt, geaendertVon: zugang.person });
     return NextResponse.json({ ok: true, einstellungen: e });
   }
 

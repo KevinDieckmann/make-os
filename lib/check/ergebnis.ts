@@ -5,15 +5,15 @@
 // Branchenvergleich mit Quelle und Jahr). Alles aus der Auswertung und den Daten der Vorlage — keine Zahl von woanders. Die Angebote
 // zu den Schritten hängt der Server aus den Einstellungen der Instanz an (nie in der Vorlage). Rein.
 
-import { auswerten, luecken, naechsteSchritte, profilAus, saeulenAuswerten } from './auswertung';
-import { dimensionName, ergebnisSaetze, saeuleName, saeulenSaetze } from './zoe-texte';
-import type { CheckAntworten, CheckBenchmarks, CheckErgebnis, CheckLuecke, CheckProfil, CheckVorlage, DimKey, SaeuleKey, SaeulenErgebnis, SchrittBand } from './typen';
+import { auswerten, luecken, naechsteSchritte, profilAus, saeulenAuswerten, saeulenGenauigkeit } from './auswertung';
+import { dimensionName, ergebnisSaetze, saeulenSaetze } from './zoe-texte';
+import type { AngebotBereich, CheckAntworten, CheckBenchmarks, CheckErgebnis, CheckLuecke, CheckProfil, CheckVorlage, DimKey, SaeuleKey, SaeulenErgebnis, SchrittBand } from './typen';
 
 export interface ErgebnisAchse { key: DimKey; name: string; wert: number; branche: number }
 
 export interface ErgebnisSaeule { key: SaeuleKey; name: string; wert: number | null }
 
-export interface ErgebnisSchritt { saeule: SaeuleKey; name: string; wert: number; band: SchrittBand; text: string }
+export interface ErgebnisSchritt { saeule: SaeuleKey; name: string; wert: number; band: SchrittBand; text: string; /** Bereich des Angebots der Instanz. */ angebot?: AngebotBereich }
 
 export interface InnovationsDetail {
   gesamt: number;
@@ -39,7 +39,8 @@ export interface ErgebnisAnsicht {
   genauigkeit: CheckErgebnis['genauigkeit'];
   saeulen: ErgebnisSaeule[];
   schritte: ErgebnisSchritt[];
-  innovation: InnovationsDetail;
+  /** Die Innovation im Detail — nur im Innovations-Check (Vertriebscheck und Sichtbarkeitstest haben keine Dimensionen). */
+  innovation: InnovationsDetail | null;
   zoe: string[];
   /** Innovations-Stufe ab dem Siegel-Wert UND „genau“ — ob es das Siegel gibt, entscheidet die Freigabe des Berichts (kommt später). */
   siegelMoeglich: boolean;
@@ -76,7 +77,11 @@ export function ergebnisAnsicht(v: CheckVorlage, antworten: CheckAntworten): { e
   // Robotik nur, wenn sie zählt. Unter drei Achsen zeigt die Seite kein Netzdiagramm.
   const achsen = ACHSEN.filter(d => ergebnis.dimensionen[d] !== undefined && (d !== 'robotik' || ergebnis.robotik_gewertet))
     .map(d => ({ key: d, name: dimensionName(d), wert: ergebnis.dimensionen[d] ?? 0, branche: bm[d] }));
-  const saeulenListe: ErgebnisSaeule[] = (v.regeln.saeulen ?? [{ key: 'innovation' as const }]).map(sa => ({ key: sa.key, name: saeuleName(sa.key), wert: saeulen.werte[sa.key] ?? null }));
+  const defs = v.regeln.saeulen ?? [{ key: 'innovation', name: 'Innovation', abschnitt: 'B bis G', gewicht: 1, angebot: 'innovation' as const }];
+  const namen: Record<SaeuleKey, string> = Object.fromEntries(defs.map(sa => [sa.key, sa.name]));
+  const saeulenListe: ErgebnisSaeule[] = defs.map(sa => ({ key: sa.key, name: sa.name, wert: saeulen.werte[sa.key] ?? null }));
+  const mitInnovation = Object.keys(ergebnis.dimensionen).length > 0;
+  const genauigkeit = defs.some(sa => sa.key === 'innovation') ? ergebnis.genauigkeit : saeulenGenauigkeit(v.katalog, antworten);
   return {
     ergebnis,
     saeulen,
@@ -87,10 +92,13 @@ export function ergebnisAnsicht(v: CheckVorlage, antworten: CheckAntworten): { e
       stufeName: saeulen.stufe_name,
       stufeKurz: gStufe?.kurz ?? '',
       stufen: gStufen.map(s => ({ stufe: s.stufe, name: s.name })),
-      genauigkeit: ergebnis.genauigkeit,
+      genauigkeit,
       saeulen: saeulenListe,
-      schritte: naechsteSchritte(v.regeln, saeulen.werte).map(x => ({ ...x, name: saeuleName(x.saeule) })),
-      innovation: {
+      schritte: naechsteSchritte(v.regeln, saeulen.werte).map(x => {
+        const angebot = defs.find(sa => sa.key === x.saeule)?.angebot;
+        return { ...x, name: namen[x.saeule] ?? x.saeule, ...(angebot ? { angebot } : {}) };
+      }),
+      innovation: !mitInnovation ? null : {
         gesamt: ergebnis.gesamt,
         stufe: ergebnis.stufe,
         stufeName: ergebnis.stufe_name,
@@ -101,7 +109,7 @@ export function ergebnisAnsicht(v: CheckVorlage, antworten: CheckAntworten): { e
         branchenSatz: branchenSatz(v.benchmarks, profil),
         zoe: ergebnisSaetze(ergebnis, l),
       },
-      zoe: saeulenSaetze(saeulen, ergebnis.genauigkeit),
+      zoe: saeulenSaetze(saeulen, genauigkeit, namen),
       siegelMoeglich: ergebnis.stufe >= v.regeln.siegel.ab_stufe && ergebnis.genauigkeit === 'genau',
     },
   };

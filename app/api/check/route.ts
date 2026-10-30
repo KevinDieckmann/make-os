@@ -19,7 +19,7 @@ import { antwortPruefen, frageVon, kurzFertig, phaseVon, ueberspringbar } from '
 import { auswerten, leadPunkte, profilAus, saeulenAuswerten } from '@/lib/check/auswertung';
 import { ergebnisAnsicht } from '@/lib/check/ergebnis';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
-import { begruessung, gespraechSatz, kontaktSatz, saeuleName, WAHL_SATZ } from '@/lib/check/zoe-texte';
+import { begruessung, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/zoe-texte';
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
 import { ladeCheckEinstellungen, sitzungAnlegen, sitzungLesen, sitzungAendern, sitzungIntern, type CheckSitzung } from '@/lib/check/speicher';
 import { zoeKontext, hinweisLaden, stromFuerBrowser, ablaufStand, leadAnlegen } from '@/lib/check/server';
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   const netz = adresseNetz(req);
   const e = await ladeCheckEinstellungen();
   if (!e.aktiv) return antwort(NICHT_DA, 404);
-  const hinweis = await hinweisLaden();
+  const hinweis = await hinweisLaden(e);
   if (!hinweis) return antwort(NICHT_DA, 404);
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, MAX_BYTES); } catch (x) { return jsonZuGross(x) ?? antwort({ ok: false, fehler: 'Kein JSON.' }, 400); }
@@ -136,7 +136,8 @@ export async function POST(req: Request) {
     if (!r.crm || r.crm.status !== 'ok') {
       const profil = profilAus(v.katalog, r.antworten);
       const vorl = saeulenAuswerten(v.katalog, v.regeln, r.antworten, auswerten(v.katalog, v.regeln, profil, r.antworten));
-      const teile = (Object.entries(vorl.werte) as [Parameters<typeof saeuleName>[0], number][]).map(([sk, w]) => `${saeuleName(sk)} ${w}`).join(', ');
+      const namen = Object.fromEntries((v.regeln.saeulen ?? []).map(sa => [sa.key, sa.name]));
+      const teile = Object.entries(vorl.werte).map(([sk, w]) => `${namen[sk] ?? sk} ${w}`).join(', ');
       const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100${teile ? `; ${teile}` : ''}).`);
       await sitzungIntern(r.id, s => ({ ...s, crm }));
     }
@@ -166,12 +167,18 @@ export async function POST(req: Request) {
     const jetzt = new Date().toISOString();
     const r = await sitzungAendern<string>(b.sitzung, b.token, s => ({
       ...s, wahl: 'ergebnis', abgeschlossen: s.abgeschlossen ?? jetzt,
-      ergebnis: { am: jetzt, gesamt: saeulen.gesamt, stufe: saeulen.stufe, stufeName: saeulen.stufe_name, genauigkeit: ergebnis.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, saeulen: saeulen.werte, lead },
+      ergebnis: { am: jetzt, gesamt: saeulen.gesamt, stufe: saeulen.stufe, stufeName: saeulen.stufe_name, genauigkeit: ansicht.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, saeulen: saeulen.werte, lead },
     }));
     if (!r || 'fehler' in r) return antwort(SITZUNG_WEG, 404);
     const k = await zoeKontext(e);
-    // Zu jedem nächsten Schritt das Angebot der Instanz (Einstellungen) — nur Titel, Satz und Link, sonst nichts.
-    const schritte = ansicht.schritte.map(x => ({ ...x, ...(e.angebote?.[x.saeule] ? { angebot: e.angebote[x.saeule] } : {}) }));
+    // Zu jedem nächsten Schritt das Angebot der Instanz (Einstellungen, je Bereich) — nur Titel, Satz und Link, und jedes Angebot nur
+    // einmal (im Vertriebscheck zeigen alle Bereiche auf das Vertriebs-Angebot).
+    const gezeigt = new Set<string>();
+    const schritte = ansicht.schritte.map(({ angebot: bereich, ...x }) => {
+      const a = bereich && !gezeigt.has(bereich) ? e.angebote?.[bereich] : undefined;
+      if (a && bereich) gezeigt.add(bereich);
+      return { ...x, ...(a ? { angebot: a } : {}) };
+    });
     return antwort({ ok: true, ...stromFuerBrowser(v, r), ansicht: { ...ansicht, schritte }, gespraech: { satz: gespraechSatz(k), ...(e.buchungSlug ? { pfad: `/buchen/${e.buchungSlug}`, slug: e.buchungSlug } : {}) } });
   }
 
@@ -183,7 +190,7 @@ async function nutzlast(v: NonNullable<ReturnType<typeof vorlageVon>>, s: CheckS
   const k = await zoeKontext(e);
   return {
     katalog: oeffentlicherKatalog(v),
-    zoe: { begruessung: begruessung(k), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
+    zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
     hinweis: { zeilen: hinweis.zeilen, link: hinweis.link, fassung: HINWEIS_FASSUNG },
     ...stromFuerBrowser(v, s),
   };

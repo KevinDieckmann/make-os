@@ -8,10 +8,13 @@ import type { CheckErgebnis, CheckLuecke, DimKey, SaeuleKey, SaeulenErgebnis } f
 
 export interface ZoeKontext { marke: string; gastgeber: string }
 
-/** Erste Nachricht (fest): Zoe sagt, dass sie eine KI ist und wofür die Antworten genutzt werden (Art. 50 KI-VO). */
-export const begruessung = (k: ZoeKontext): string[] => [
+/**
+ * Erste Nachricht (fest): Zoe sagt, dass sie eine KI ist und wofür die Antworten genutzt werden (Art. 50 KI-VO). `einleitung` ist der
+ * Satz der Vorlage (welcher Check, wie lange, welche Bereiche — lib/check/vorlagen/<id>/seite.json).
+ */
+export const begruessung = (k: ZoeKontext, einleitung: string): string[] => [
   `Guten Tag, ich bin Zoe, die KI-Assistentin von ${k.marke}.`,
-  `Ich führe Sie in rund 10 Minuten durch den Innovations-Check, in drei Bereichen: Sichtbarkeit, Vertrieb und Innovation. Ihre Antworten nutzen wir für Ihr Ergebnis und, wenn Sie möchten, für Ihren Bericht und Ihr Gespräch mit ${k.gastgeber}. Mehr dazu im Datenschutzhinweis unten.`,
+  `${einleitung} Ihre Antworten nutzen wir für Ihr Ergebnis und, wenn Sie möchten, für Ihren Bericht und Ihr Gespräch mit ${k.gastgeber}. Mehr dazu im Datenschutzhinweis unten.`,
   'Los geht’s: eine Frage nach der anderen, fast alles per Klick.',
 ];
 
@@ -47,7 +50,7 @@ export const BELEG_BAUSTEINE: Readonly<Record<string, readonly string[]>> = {
 };
 
 export const kontaktSatz = (k: ZoeKontext): string[] => [
-  'Geschafft — das war der Kurzcheck.',
+  'Geschafft, das waren die wichtigsten Fragen.',
   `Wohin soll ich Ihren Bericht schicken? Mit Ihrer Adresse können Sie danach auch das kostenlose Erstgespräch mit ${k.gastgeber} buchen.`,
   'Ihr Ergebnis sehen Sie gleich hier, egal wie Sie sich entscheiden.',
 ];
@@ -59,14 +62,12 @@ const DIM_NAME: Readonly<Record<DimKey, string>> = {
 };
 export const dimensionName = (d: DimKey): string => DIM_NAME[d];
 
-const SAEULE_NAME: Readonly<Record<SaeuleKey, string>> = { sichtbarkeit: 'Sichtbarkeit', vertrieb: 'Vertrieb', innovation: 'Innovation' };
-export const saeuleName = (sk: SaeuleKey): string => SAEULE_NAME[sk];
-
 /**
  * Zoe erklärt das Gesamtergebnis (30.10.) in drei Sätzen: Stufe, stärkste Säule, größter Hebel. Erfindet nichts — alle Zahlen kommen
- * aus der Auswertung. Die Innovations-Details (Dimensionen, Branchenvergleich) erklärt `ergebnisSaetze` im aufklappbaren Teil.
+ * aus der Auswertung, die Namen der Bereiche aus der Vorlage. Die Innovations-Details erklärt `ergebnisSaetze` im aufklappbaren Teil.
  */
-export function saeulenSaetze(e: SaeulenErgebnis, genauigkeit: CheckErgebnis['genauigkeit']): string[] {
+export function saeulenSaetze(e: SaeulenErgebnis, genauigkeit: CheckErgebnis['genauigkeit'], namen: Readonly<Record<SaeuleKey, string>>): string[] {
+  const SAEULE_NAME = namen;
   const werte = Object.entries(e.werte) as [SaeuleKey, number][];
   const s = [`Sie stehen auf Stufe ${e.stufe}: ${e.stufe_name} (${e.gesamt} von 100 Punkten).`];
   if (werte.length > 1) {

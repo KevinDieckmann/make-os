@@ -25,8 +25,12 @@ export async function zoeKontext(e: CheckEinstellungen): Promise<ZoeKontext> {
   return { marke: e.marke || firmaOhneRechtsform(UG_NAME), gastgeber: vorname || 'uns' };
 }
 
-/** Datenschutzhinweis — null, solange die Instanz keinen Verantwortlichen hat (dann bleibt der Check zu). */
-export async function hinweisLaden(): Promise<{ zeilen: string[]; link: string | null } | null> {
+/**
+ * Datenschutzhinweis — null, solange es keinen Verantwortlichen gibt (dann bleibt der Check zu). Abweichung in den Check-Einstellungen
+ * (30.10.: die Website gehört einer anderen Gesellschaft als die Instanz) geht vor der Einrichtung der Instanz.
+ */
+export async function hinweisLaden(e?: Pick<CheckEinstellungen, 'verantwortlich' | 'datenschutzLink'>): Promise<{ zeilen: string[]; link: string | null } | null> {
+  if (e?.verantwortlich?.trim()) return { zeilen: checkHinweis(e.verantwortlich.trim(), e.datenschutzLink ?? null), link: e.datenschutzLink ?? null };
   const ds = await datenschutzOeffentlichLaden();
   const v = (ds.verantwortlich ?? '').trim();
   if (!v) return null;

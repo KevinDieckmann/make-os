@@ -7,7 +7,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { neueKennung } from '@/lib/kennung';
-import type { CheckAntworten, SaeuleKey } from './typen';
+import type { AngebotBereich, CheckAntworten, SaeuleKey } from './typen';
 import type { KontaktStand } from './ablauf';
 import { FRIST_MIT_KONTAKT_MONATE, FRIST_OHNE_KONTAKT_TAGE } from './fristen';
 
@@ -75,8 +75,12 @@ export interface CheckEinstellungen {
   marke?: string;
   /** Kurzer Leitsatz unter dem Namen im Kopf des Checks (30.10.) — ohne Angabe keiner. */
   claim?: string;
-  /** Passendes Angebot je Säule unter dem nächsten Schritt im Ergebnis (30.10.) — Daten der Instanz, nie in der Vorlage. */
-  angebote?: Partial<Record<SaeuleKey, CheckAngebot>>;
+  /** Passendes Angebot je Bereich unter dem nächsten Schritt im Ergebnis (30.10.) — Daten der Instanz, nie in der Vorlage. */
+  angebote?: Partial<Record<AngebotBereich, CheckAngebot>>;
+  /** Verantwortlicher für die Checks, nur falls abweichend von Einstellungen › Datenschutz (30.10.: die Website gehört einer anderen
+   *  Gesellschaft als die Instanz) — samt Link zur Datenschutzerklärung der Website. */
+  verantwortlich?: string;
+  datenschutzLink?: string;
   geaendert?: string;
   geaendertVon?: string;
 }
@@ -91,9 +95,9 @@ export function angebotLinkOk(x: string): boolean {
 }
 
 /** Angebote aus einem gespeicherten Bestand — nur gültige Felder (alte Stände ohne Angebote bleiben ohne). Rein. */
-export function angeboteSaeubern(roh: unknown): Partial<Record<SaeuleKey, CheckAngebot>> | undefined {
+export function angeboteSaeubern(roh: unknown): Partial<Record<AngebotBereich, CheckAngebot>> | undefined {
   if (!roh || typeof roh !== 'object') return undefined;
-  const aus: Partial<Record<SaeuleKey, CheckAngebot>> = {};
+  const aus: Partial<Record<AngebotBereich, CheckAngebot>> = {};
   for (const sk of ['sichtbarkeit', 'vertrieb', 'innovation'] as const) {
     const a = (roh as Record<string, unknown>)[sk] as Record<string, unknown> | undefined;
     const titel = typeof a?.titel === 'string' ? a.titel.trim() : '';
@@ -123,7 +127,9 @@ export async function ladeCheckEinstellungen(): Promise<CheckEinstellungen> {
   const angebote = angeboteSaeubern(e?.angebote);
   return {
     aktiv: e?.aktiv === true, ...(e?.buchungSlug ? { buchungSlug: e.buchungSlug } : {}), ...(e?.gastgeber ? { gastgeber: e.gastgeber } : {}), ...(e?.marke ? { marke: e.marke } : {}),
-    ...(e?.claim ? { claim: e.claim } : {}), ...(angebote ? { angebote } : {}), ...(e?.geaendert ? { geaendert: e.geaendert, geaendertVon: e.geaendertVon } : {}),
+    ...(e?.claim ? { claim: e.claim } : {}), ...(angebote ? { angebote } : {}),
+    ...(e?.verantwortlich ? { verantwortlich: e.verantwortlich } : {}), ...(e?.datenschutzLink && angebotLinkOk(e.datenschutzLink) && /^https:/.test(e.datenschutzLink) ? { datenschutzLink: e.datenschutzLink } : {}),
+    ...(e?.geaendert ? { geaendert: e.geaendert, geaendertVon: e.geaendertVon } : {}),
   };
 }
 
