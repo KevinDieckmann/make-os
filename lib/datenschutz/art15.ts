@@ -32,6 +32,8 @@ export const KONTAKT_JE_BEREICH: Readonly<Record<string, readonly string[]>> = {
   medien: ['vv-medien'],
   // Fulfillment (10.10.): Stakeholder-Einträge, Antworten/Puls/Unterlagen, berufliche Personenkarten (lib/fulfillment/auskunft.ts).
   fulfillment: ['vv-fulfillment', 'vv-fulfillment-analyse', 'vv-kundenlink'],
+  // 30.10. (Datenprüfung der Nacht): Bestände seit 24.10., deren Verarbeitung die Auskunft bisher nicht nannte, obwohl sie die Person zählte.
+  check: ['vv-innovations-check'], formular: ['vv-angebot-formular'], social: ['vv-social'],
 };
 
 const gefuellt = (v: unknown): boolean => Array.isArray(v) ? v.length > 0 : v && typeof v === 'object' ? Object.keys(v as object).length > 0 : !!v;
@@ -52,6 +54,9 @@ export function kontaktBereiche(a: Record<string, unknown>): string[] {
   const weitere = Object.keys((a.weitereSpeicher ?? {}) as object).join(' ');
   if (/gmail|inbox|mail|m365|postfach/.test(weitere)) b.add('postfach');
   if (/whatsapp/.test(weitere)) b.add('whatsapp');
+  if (/(^| )check-sitzungen( |$)/.test(weitere)) b.add('check');
+  if (/(^| )angebot-formular--/.test(weitere)) b.add('formular');
+  if (/(^| )social-(community|werkstatt)--/.test(weitere)) b.add('social');
   if (gefuellt(a.aufgaben)) b.add('aufgaben');
   const md = (a.medien ?? {}) as { medien?: unknown; einwilligungen?: unknown };
   if (gefuellt(md.medien) || gefuellt(md.einwilligungen)) b.add('medien');

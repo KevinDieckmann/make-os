@@ -77,3 +77,44 @@ describe('Fund 1 · Fristen auch ohne Verbindung bzw. ohne neue Anfrage', () => 
     expect(await db.loadJson('angebot-formular--h-gibts-nicht')).toBeNull();
   });
 });
+
+// ── Fund 2: Social (Instagram, LinkedIn) ohne Verarbeitung im Verzeichnis und ohne Empfänger im Register ──
+describe('Fund 2 · Social im Verzeichnis (Art. 30) und im Empfänger-Register (Art. 28/44)', () => {
+  it('verzeichnisVervollstaendigen trägt „Social Media“ nach, sobald ein Anbieter eingerichtet ist — sonst nicht', async () => {
+    const { verzeichnisVervollstaendigen, VV_SOCIAL_ID } = await import('@/lib/crm/datenschutz');
+    const J = '2026-10-30T08:00:00.000Z';
+    expect(verzeichnisVervollstaendigen([], J).liste.some(v => v.id === VV_SOCIAL_ID)).toBe(false);
+    const mit = verzeichnisVervollstaendigen([], J, { social: true }).liste;
+    const v = mit.find(x => x.id === VV_SOCIAL_ID)!;
+    expect(v).toBeTruthy();
+    const { EMPFAENGER_START } = await import('@/lib/datenschutz/einrichtung');
+    const ids = new Set(EMPFAENGER_START.map(e => e.id));
+    for (const id of v.empfaengerIds ?? []) expect(ids.has(id), id).toBe(true);
+    // idempotent: ein zweiter Lauf ändert nichts
+    expect(verzeichnisVervollstaendigen(mit, J, { social: true }).geaendert).toBe(false);
+  });
+
+  it('Instagram und LinkedIn stehen im Empfänger-Register (archiviert, gültig) und kommen in gespeicherte Listen nach', async () => {
+    const { EMPFAENGER_START, empfaengerPruefen, empfaengerWirksam } = await import('@/lib/datenschutz/einrichtung');
+    for (const id of ['meta-instagram', 'linkedin']) {
+      const e = EMPFAENGER_START.find(x => x.id === id)!;
+      expect(e, id).toBeTruthy();
+      expect(e.archiviert).toBe(true);
+      expect(empfaengerPruefen(e).ok, id).toBe(true);
+    }
+    const gespeichert = [EMPFAENGER_START.find(x => x.id === 'hetzner')!];
+    const w = empfaengerWirksam({ empfaenger: gespeichert });
+    expect(w.map(x => x.id)).toEqual(expect.arrayContaining(['hetzner', 'meta-instagram', 'linkedin']));
+  });
+});
+
+// ── Fund 3: Art. 15 zählte Check-Sitzungen, Formular-Eingänge und Social-Einträge, nannte aber ihre Verarbeitung nicht ──
+describe('Fund 3 · Kontakt-Auskunft nennt die Verarbeitungen der neuen Bestände', () => {
+  it('kontaktBereiche/verarbeitungenFuer', async () => {
+    const { kontaktBereiche, verarbeitungenFuer } = await import('@/lib/datenschutz/art15');
+    const b = kontaktBereiche({ weitereSpeicher: { 'check-sitzungen': 1, 'angebot-formular--h-x': 2, 'social-community--h-x': 1 } });
+    expect(b).toEqual(expect.arrayContaining(['check', 'formular', 'social']));
+    expect(verarbeitungenFuer('kontakt', b)).toEqual(expect.arrayContaining(['vv-innovations-check', 'vv-angebot-formular', 'vv-social']));
+    expect(kontaktBereiche({ weitereSpeicher: { 'agent-log': 1 } })).not.toEqual(expect.arrayContaining(['check']));
+  });
+});
