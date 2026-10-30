@@ -33,6 +33,21 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-30',
+    datum: '2026-10-30',
+    titel: 'Inbox und Kontakte: klarer aufgeteilt',
+    kurz: 'Inbox und Kontakte nutzen den Bildschirm jetzt ganz: oben eine Zeile mit Titel und Aktion, darunter Suche und Filter in einer Reihe, dann Liste und Detail nebeneinander — jede Seite scrollt für sich, die Seite selbst nicht mehr.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Inbox: Liste und Gespräch füllen die Höhe, die Fächer sind Abschnitte einer Liste. Ohne offenes Gespräch steht rechts das Lagebild.', bereich: 'alle', weg: '/os/inbox' },
+        { text: 'Inbox: Der Mailtext steht voll im Gespräch, ohne kleinen Scrollkasten. Die Spalte mit Kontakt und Deal erscheint nur, wenn genug Platz ist — sonst unten zum Aufklappen.', bereich: 'alle' },
+        { text: 'Inbox: Postfächer und „Jetzt abgleichen“ stehen hinter „⋯“ oben rechts; weitere Filter hinter „Filter“.', bereich: 'alle' },
+        { text: 'Kontakte: Die Kartei ist die ganze Seite. Suche, „Wer“ und ein Knopf „Filter“ stehen in einer Zeile; aktive Filter siehst du als Chips und entfernst sie mit ✕.', bereich: 'business' },
+        { text: 'Kontakte: Runden, „+ Aktivität“ und „+ Angebot“ stehen hinter „⋯“ neben „+ Person“.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-27',
     datum: '2026-10-27',
     titel: 'Rechnungen: der ganze Kreislauf an einer Stelle',
