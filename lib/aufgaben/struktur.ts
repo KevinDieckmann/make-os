@@ -16,7 +16,7 @@ import type { Task, TaskStatus, Project, TasksState, AufgabenListe, AufgabenStat
 import { bereichVon, einheitAusGesellschaft, FINANZ_ORTE, istFinanzOrt, istGesellschaft, finanzOrtAus } from '@/lib/einheiten';
 import { EINHEIT_FARBE } from './einheit';
 import { ortVon } from '@/lib/make-one/orte';
-import { spaceBereich, type SpaceId } from '@/lib/make-one/space-regeln';
+import { spaceBereich, SPACE_FARBE, type SpaceId } from '@/lib/make-one/space-regeln';
 import { abhaengigAngleichen } from './abhaengig';
 import { beideAufloesen, anlegerinVon } from './zustaendig';
 import { berlinerTag, istTag } from './wiederholung';
@@ -42,8 +42,8 @@ export interface AufgabenSpace {
 export const MANDANT_PRAEFIX = 'm-';
 /** Die Einheit, die Aufgaben in Mandanten-Spaces tragen (Standard-Werteliste lib/planung/einheiten.ts). */
 export const MANDANT_EINHEIT = 'Kunden';
-export const PRIVAT_FARBE = '#D9A45B';
-export const MANDANT_FARBE = '#6E7EF5';
+export const PRIVAT_FARBE = SPACE_FARBE.privat;
+export const MANDANT_FARBE = SPACE_FARBE.business;
 
 /**
  * Die festen Spaces = die eine Liste aus lib/einheiten.ts (Privat · Selbstständigkeit · KD Ventures · MAKE Innovation GmbH). Der Bereich

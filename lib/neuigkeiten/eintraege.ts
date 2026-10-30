@@ -33,6 +33,18 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-31-3',
+    datum: '2026-10-31',
+    titel: 'Neue Farben für Privat und Business',
+    kurz: 'Business trägt jetzt ein Lila, Privat ein warmes Terrakotta. So siehst du auf einen Blick, in welchem Bereich du gerade bist.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Business ist jetzt Lila: Schalter oben, linke Leiste, Symbole und Kennzeichen der Firmen-Bereiche.', bereich: 'business' },
+        { text: 'Privat ist jetzt warmes Terrakotta statt des leisen Golds.', bereich: 'privat' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31',
     datum: '2026-10-31',
     titel: 'Firmen, Deals, Angebote und Mandate: klarer aufgeteilt',

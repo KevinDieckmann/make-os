@@ -10,7 +10,9 @@ import { bereichVon, istGesellschaft } from '@/lib/einheiten';
 export type SpaceId = 'privat' | 'business';
 export const SPACE_LABEL: Record<SpaceId, string> = { privat: 'Privat', business: 'Business' };
 /** Tiefe Akzente (Kevin 25.09.: „nicht diese Neonfarben“): Privat warm (Bernstein), Business Indigo wie in Malins Bild. */
-export const SPACE_FARBE: Record<SpaceId, string> = { privat: '#D9A45B', business: '#6E7EF5' };
+// 31.10. (Rückmeldung): Business = das Lila der Event-/Agenturmarke (Website-Token `--akzent`), Privat = etwas Warmes (Terrakotta). Vorher Gold #D9A45B
+// bzw. Blau #6E7EF5. EINE Stelle — Aufgaben (PRIVAT_FARBE, MANDANT_FARBE), Leiste, Kopf und Inbox lesen von hier.
+export const SPACE_FARBE: Record<SpaceId, string> = { privat: '#E8835F', business: '#A78BFA' };
 export const istSpace = (v: unknown): v is SpaceId => v === 'privat' || v === 'business';
 
 /**
