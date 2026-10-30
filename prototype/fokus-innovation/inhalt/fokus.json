@@ -9,27 +9,27 @@
   },
   "domain": "fokusinnovation.de",
   "film": {
-    "hinweis": "Die Story der Startseite (Kevin 25.10. spät, geschärft 29.10.): der Gründer, der alles selbst macht, ein fertiges Produkt hat, aber Markt, Kunden und Sichtbarkeit nicht mit System bekommt. Echte Momente statt Schmeichelei; Block 4 nennt genau den Teil, den wir übernehmen.",
+    "hinweis": "Die Story der Startseite (Kevin 25.10., geschärft 29.10., neu ausgerichtet 30.10.: Sichtbarkeit und Vertrieb mit System, Struktur vor KI): der Gründer, der alles selbst macht, ein fertiges Produkt hat, aber nicht gesehen wird, nach Gefühl verkauft und KI ohne Plan ausprobiert. Block 4 nennt genau den Teil, den wir übernehmen.",
     "marke": "Fokus Innovation · Agentur für Sichtbarkeit, Vertrieb und Innovation",
     "laerm": {
       "titel": "Sie machen alles selbst.",
-      "satz": "Produkt, Team, Angebote, Website, Buchhaltung. Der Vertrieb kommt dran, wenn abends noch Zeit bleibt."
+      "satz": "Produkt, Team, Angebote, Website, Buchhaltung. Sichtbarkeit und Vertrieb kommen dran, wenn abends noch Zeit bleibt."
     },
     "fokus": {
       "titel": "Das Produkt ist fertig.",
-      "satz": "Wer es nutzt, ist zufrieden. Es nutzen nur noch zu wenige."
+      "satz": "Wer es nutzt, ist zufrieden. Es kennen nur noch zu wenige."
     },
     "luecke": {
-      "titel": "Der Markt kennt es noch nicht.",
-      "satz": "Die Website erklärt es erst nach drei Absätzen. Messekontakte warten auf ein Angebot. Neue Kunden kommen nur über Empfehlung."
+      "titel": "Gesehen werden Sie kaum. Verkauft wird nach Gefühl.",
+      "satz": "Die Website erklärt es erst nach drei Absätzen, in den Medien sprechen andere. Messekontakte warten auf ein Angebot, und KI läuft nebenher ohne Plan."
     },
     "momentum": {
       "titel": "Diesen Teil übernehmen wir.",
-      "satz": "Botschaft, Sichtbarkeit und Vertrieb bauen wir mit Ihnen auf, aus einer Hand. Wir arbeiten mit, bis Ihr Team es allein kann."
+      "satz": "Wir machen Sie sichtbar und bauen den Vertrieb mit System, der daraus Kunden macht. Auf klaren Abläufen und sauberen Daten, mit denen auch KI arbeiten kann. Wir arbeiten mit, bis Ihr Team es allein kann."
     },
     "durchbruch": {
       "titel": "Freitag, 16 Uhr: Sie wissen, wo Sie stehen.",
-      "satz": "Der Wochenreport zeigt, welche Gespräche laufen. Und Sie haben wieder Zeit für Ihr Produkt."
+      "satz": "Anfragen kommen an, der Wochenreport zeigt, welche Gespräche laufen, und Routine übernimmt die KI. Sie haben wieder Zeit für Ihr Produkt."
     }
   },
   "start": {
@@ -509,8 +509,8 @@
     "Produkt-Update",
     "Messekontakte",
     "Bewerbungsgespräch",
-    "Pitch-Deck",
-    "Support-Anfrage",
+    "Pressemitteilung",
+    "KI ausprobieren",
     "CRM pflegen"
   ],
   "fakten": [
