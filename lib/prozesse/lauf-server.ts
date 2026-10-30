@@ -805,7 +805,7 @@ async function agentFragen(l: ProzessLauf, prozessTitel: string, s: AgentSchritt
   // „Nur öffentliche Angaben“ (Entscheidung 22.10. nachts): an das Modell gehen NUR Name, Website/Domain und Branche der Firma — nie der Fall, nie Kennungen,
   // nie Akte, Brain, Notizen, Personen, Deal- oder Angebotsdaten. Hier erzwungen (nicht nur im Prompt); Kategorien des Aufrufs nur `web` + `allgemein`.
   const oeffentlich = oeffentlichModus(s);
-  const [{ askText, askWithSearch, extractJson }, { MODEL_BY_TIER }, { vertragPruefen }, { kostenCent }, { felderAuftrag, oeffentlicheAngaben }] = await Promise.all([
+  const [{ askText, askWithSearch, extractJson }, { MODEL_BY_TIER }, { vertragPruefen, agentDatenBlock }, { kostenCent }, { felderAuftrag, oeffentlicheAngaben }] = await Promise.all([
     import('@/lib/anthropic'), import('@/lib/agent-config'), import('./agent-schritt'), import('@/lib/agenten/leistung'), import('./agent-felder'),
   ]);
   const vertrag = s.ausgabe.map(f => `${f.id} (${f.art}${f.kennung ? `: ${f.kennung}` : ''}${f.optionen ? `: ${f.optionen.join('|')}` : ''}${f.liste ? ', Liste' : ''}${f.pflicht ? ', Pflicht' : ''})`).join('; ') || '— keine';
@@ -830,9 +830,10 @@ async function agentFragen(l: ProzessLauf, prozessTitel: string, s: AgentSchritt
     `Antworte NUR als JSON: {"ergebnis": "<kurz für den Menschen, höchstens 1200 Zeichen>", "werte": { … }${ziele.length ? ', "felder": { … }, "quellen": ["https://…"]' : ''}}. Felder von „werte“ (Vertrag): ${vertrag}. In „werte“ nur Kennungen, Zahlen, Tage (YYYY-MM-DD), ja/nein oder eine der Optionen — kein Freitext.`,
     ...(ziele.length ? [`Felder von „felder“ (nur, was du belegen kannst — sonst weglassen): ${felderAuftrag(ziele)}. „quellen“: die https-Adressen, aus denen die Angaben stammen.`] : []),
   ].join('\n');
+  // Rahmen-Marken im Inhalt fallen weg (agentDatenBlock) — Firmenname/Grund können aus öffentlichen Formularen stammen.
   const frage = oeffentlich
-    ? `Auftrag:\n${s.auftrag}\n\n<daten quelle="firma">${stamm}</daten>`
-    : `Auftrag:\n${s.auftrag}\n\n<daten quelle="fall">${daten}</daten>${stamm ? `\n<daten quelle="firma">${stamm}</daten>` : ''}`;
+    ? `Auftrag:\n${s.auftrag}\n\n${agentDatenBlock('firma', stamm)}`
+    : `Auftrag:\n${s.auftrag}\n\n${agentDatenBlock('fall', daten)}${stamm ? `\n${agentDatenBlock('firma', stamm)}` : ''}`;
   let kosten = 0;
   const modell = String(s.modellWahl?.modell ?? MODEL_BY_TIER[s.modell]);
   const token = { ein: 0, aus: 0 };
