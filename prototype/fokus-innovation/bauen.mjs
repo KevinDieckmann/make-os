@@ -482,7 +482,7 @@ ${weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], label: 'Der E
 <div class="ersatz" aria-hidden="true">${ZEICHEN('zeichen gross')}</div>
 <p class="sr">${[fl.laerm, fl.fokus, fl.luecke, fl.momentum, fl.durchbruch].map((b) => `${e(b.titel.replace(/\|/g, " "))} ${e(b.satz)}`).join(' ')}</p>
 <div class="aufgaben" aria-hidden="true">${F.aufgaben.map((x) => `<span class="aufgabe">${e(x)}</span>`).join('')}</div>
-${block('laerm', fl.laerm, `<span class="hinweis" aria-hidden="true">Scrollen<span class="hinweis-strich"></span></span>`, `<p class="film-marke">${e(fl.marke)}</p>`)}
+${block('laerm', fl.laerm, `<span class="hinweis" aria-hidden="true">Scrollen<span class="hinweis-strich"></span></span>`)}
 ${block('fokus', fl.fokus)}
 ${block('luecke', fl.luecke)}
 ${block('momentum', fl.momentum)}

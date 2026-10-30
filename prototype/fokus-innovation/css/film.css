@@ -29,7 +29,13 @@
 .film-text { position: absolute; left: 50%; bottom: max(8vh, 56px); translate: -50% 0; width: min(54rem, calc(100% - 2 * var(--rand))); text-align: center; }
 .film-titel .zeile { display: block; }
 .film-titel { margin: 0; color: var(--hell); font-size: clamp(2rem, min(5vw, 7.2vh), 4.3rem); font-weight: 600; letter-spacing: -.035em; line-height: 1.05; text-wrap: balance; }
-.film-satz { margin: 18px auto 0; max-width: 34rem; color: var(--leise-dunkel); font-size: clamp(1rem, 1.2vw, 1.12rem); line-height: 1.5; opacity: 0; transition: opacity 1s var(--ease) .45s; }
+/* Lesbar und auffällig (Kevin 30.10.): hinter den Worten ein weicher, dunkler Grund, damit keine Punkte durch die Buchstaben laufen,
+   und ein leiser violetter Schein um die Schlagzeile. Nur Bild, kein Rahmen; die Worte selbst bleiben reines Weiß. */
+.film-text { isolation: isolate; }
+.film-text::before { content: ""; position: absolute; z-index: -1; inset: -18% -14% -22%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(8, 9, 12, .78), rgba(8, 9, 12, .5) 55%, transparent); }
+.film-titel { text-shadow: 0 0 34px rgba(167, 139, 250, .28), 0 2px 18px rgba(0, 0, 0, .55); }
+.film-satz { margin: 18px auto 0; max-width: 34rem; color: rgba(242, 243, 243, .84); font-size: clamp(1rem, 1.2vw, 1.12rem); line-height: 1.5; opacity: 0; transition: opacity 1s var(--ease) .45s; }
 .block.an .film-satz { opacity: 1; }
 .fw { display: inline-block; opacity: 0; translate: 0 .35em; transition: opacity .8s var(--ease), translate 1s var(--ease); transition-delay: calc(var(--i, 0) * 80ms); }
 .block.an .fw { opacity: 1; translate: 0 0; }
@@ -93,15 +99,11 @@
 }
 
 /* Die Agentur ist ab dem ersten Bild erkennbar; „Film überspringen“ führt direkt zum Einstieg (29.10.). */
-/* Kevin 30.10.: die Zeile steht unter dem Text des ersten Bildes, im Kern-Ton betont. */
-.film-marke { margin: clamp(18px, 2.6vh, 28px) 0 0; text-align: center; font-size: .78rem; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; color: var(--akzent);
-  opacity: 0; transition: opacity 1s var(--ease) .85s; }
-.block.an .film-marke { opacity: 1; }
+
 .ueberspringen { position: absolute; z-index: 3; right: var(--rand); bottom: max(3vh, 18px); display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid rgba(242, 243, 243, .28); border-radius: 999px; color: var(--hell); font-size: .86rem; font-weight: 500; background: rgba(11, 12, 15, .4); transition: background-color .2s ease, border-color .2s ease; }
 .ueberspringen:hover { background: rgba(242, 243, 243, .1); border-color: rgba(242, 243, 243, .5); }
 .ruhig .ueberspringen { display: none; }
 @media (max-width: 760px) {
-  .film-marke { font-size: .66rem; letter-spacing: .12em; }
   .ueberspringen { bottom: 12px; min-height: 40px; font-size: .8rem; }
   .block[data-block="laerm"] .film-text { bottom: max(14vh, 96px); }
 }
