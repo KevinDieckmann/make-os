@@ -33,6 +33,24 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-31-4',
+    datum: '2026-10-31',
+    titel: 'Rechnungen hängen immer an einem Kunden der Markttraktion',
+    kurz: 'Eine Rechnung geht nur noch raus, wenn sie einer Firma, Person oder einem Mandat aus der Markttraktion zugeordnet ist. Im Editor suchst du den Kunden direkt oben — oder legst ihn dort neu an.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Rechnung schreiben: Oben im Empfänger steht die Suche nach dem Kunden (Firmen und Personen, mit Ort). „Rechnung stellen“ geht erst, wenn er zugeordnet ist — frei getippte Felder reichen nicht.', bereich: 'alle' },
+        { text: 'Unbekannter Kunde: „Neu in der Markttraktion anlegen“ direkt im Editor — die Rechnung ist danach gleich zugeordnet.', bereich: 'alle' },
+        { text: 'Rechnungsliste: je Zeile der zugeordnete Kunde, die Suche findet auch Firma und Person, neuer Filter „Ohne Zuordnung“.', bereich: 'business', weg: WEG.rechnungen() },
+        { text: 'Ältere Rechnungen ohne Kunden: einmal zuordnen (die Rechnung selbst bleibt unverändert), dann lassen sie sich versenden und mahnen. Stornieren geht wie bisher.', bereich: 'alle' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Kontakt › Umsatz: Rechnungen erscheinen jetzt über ihren zugeordneten Kunden — auch die Rechnungen der Einheiten unter Privat, gekennzeichnet mit „Privat“. Konten „nur Business“ sehen sie nie.', bereich: 'privat' },
+        { text: 'Kontakt › Umsatz: Konten „nur Business“ sehen dort jetzt die Rechnungen der Business-Gesellschaften.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31',
     datum: '2026-10-31',
     titel: 'Firmen, Deals, Angebote und Mandate: klarer aufgeteilt',
