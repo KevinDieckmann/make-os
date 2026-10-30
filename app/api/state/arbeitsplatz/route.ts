@@ -21,11 +21,13 @@ export type Modus = 'privat' | 'business' | 'alles';
 
 interface Datei { person: Person; modus: Modus; gewechselt: string }
 
-const LEER: Datei = { person: 'kevin', modus: 'alles', gewechselt: '' };
+// Ohne Eintrag keine Person (30.10., neutral — vorher eine feste): die Wahl gehört der Instanz, nicht dem Code.
+const LEER: Datei = { person: '', modus: 'alles', gewechselt: '' };
 
 function sauber(d: Partial<Datei> | null): Datei {
   return {
-    person: d?.person === 'malin' ? 'malin' : 'kevin',
+    // Ein Speichername (Konto) — vorher nur zwei feste. Gespeicherte Werte lesen sich bit-gleich.
+    person: typeof d?.person === 'string' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(d.person) ? d.person : '',
     modus: d?.modus === 'privat' ? 'privat' : d?.modus === 'business' ? 'business' : 'alles',
     gewechselt: typeof d?.gewechselt === 'string' ? d.gewechselt : '',
   };

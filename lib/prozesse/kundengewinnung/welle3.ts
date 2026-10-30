@@ -6,6 +6,7 @@
 import {
   S, B, V, prozess, abfrageListe, STANDARD_ABBRUCH, EIGNER, ZUSTAENDIG, C1_EREIGNIS, type KgVorlage, type KgTeil,
 } from './bau';
+import { MARKE_EVENTS } from '@/lib/crm/marke';
 
 // ── V11 · Termin-Nachbereitung 24 h ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 const V11: KgVorlage = {
@@ -176,7 +177,7 @@ const V18A: KgTeil = {
   }),
 };
 const V18: KgVorlage = {
-  id: 'kg-v18', nr: 'V18', welle: 3, titel: 'Make.One-Gästeliste', bereich: 'marketing', fallArt: 'event', eignerRolle: 'event',
+  id: 'kg-v18', nr: 'V18', welle: 3, titel: `${MARKE_EVENTS}-Gästeliste`, bereich: 'marketing', fallArt: 'event', eignerRolle: 'event',
   zweck: 'Für jeden eigenen Abend die Gästeliste in der richtigen Mischung aufbauen, einladen, erinnern und binnen 48 Stunden nachfassen — die Einladungs-Wege folgen der Ampel.',
   ausloeserText: '28 Tage vor dem Event', braucht: ['events', 'postfach', 'ki'], uebergabeAn: [],
   recht: ['Eine Einladung zum eigenen Event ist Werbung (§ 7 UWG); eine Teilnahme ist keine Einwilligung.', 'Die Personen-Schranke prüft jede neue Teilnahme; bei Werbesperre wird niemand vorgemerkt.', 'Danke-Mails danach enthalten nur Dank und Verabredetes.'],
@@ -190,7 +191,7 @@ const V18: KgVorlage = {
   demo: 'Ein erfundener „Beispiel-Stammtisch“ in 28 Tagen: 12 Gäste in der Mischung als Vorschlag (ein Klick merkt sie vor), dann 4 Mails im Stapel und 8 persönliche Einladungen — nach dem Abend 6 Nachfass-Entwürfe.',
   teile: [V18A],
   definition: prozess({
-    id: 'kg-v18', titel: 'Make.One-Gästeliste', bereich: 'marketing', fallArt: 'event',
+    id: 'kg-v18', titel: `${MARKE_EVENTS}-Gästeliste`, bereich: 'marketing', fallArt: 'event',
     beschreibung: 'Gäste in der Mischung vorschlagen, Checkliste, jeden Gast einladen (Teilprozess), eine Woche vorher die Mischung prüfen, am Vortag erinnern, am Tag danach nachfassen.',
     startKriterium: 'Ein eigener Abend (nie ein besuchtes Event) — 28 Tage vor dem Datum.', endKriterium: 'Das Event ist durchgeführt und alle Teilnehmenden sind binnen 48 Stunden nachgefasst.',
     zettel: STANDARD_ABBRUCH,

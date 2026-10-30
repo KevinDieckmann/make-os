@@ -121,7 +121,10 @@ echo "Gespeichert (nur für den Nutzer make lesbar)."
 neu_starten
 echo
 echo "Jetzt bei Meta (App-Dashboard der ZOE-App › WhatsApp › Konfiguration › Webhook › Bearbeiten) eintragen:"
-echo "  Rückruf-URL:      https://app.makeinnovation.de/api/zoe/whatsapp/webhook"
+# Adresse der Instanz aus der .env (30.10., neutral — vorher eine feste Domain im Skript).
+ADRESSE="$(grep -E '^MAKE_OS_ADRESSE=' "$ENV_DATEI" | head -1 | cut -d= -f2- | tr -d '"' || true)"
+ADRESSE="${ADRESSE%/}"; [[ -n "$ADRESSE" ]] || ADRESSE="https://<Adresse eurer Instanz>"
+echo "  Rückruf-URL:      ${ADRESSE}/api/zoe/whatsapp/webhook"
 echo "  Verify-Token:     ${VERIFY}"
 echo "Dann „Überprüfen und speichern“ und unter Webhook-Felder „messages“ abonnieren."
 echo "Danach in MAKE OS: Konto › ZOE auf WhatsApp — Nummer eingeben, Code holen, den Code von deinem Handy an die ZOE-Nummer schicken."

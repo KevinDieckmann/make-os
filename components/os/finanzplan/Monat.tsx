@@ -69,7 +69,8 @@ export function Budget() {
   };
   const abschliessen = () => {
     setFrage(false);
-    void aendere([{ pfad: '/abschluesse/-', neu: { idx, wer: person || 'kevin', wann: new Date().toISOString(), uebertrag } }], `Monat abgeschlossen ${lab[idx]} · Übertrag Flexibel ${eur(uebertrag)} €`);
+    // Wer abschließt: die Person der Sitzung (30.10., neutral — vorher ein fester Rückfall); ohne sie bleibt das Feld leer.
+    void aendere([{ pfad: '/abschluesse/-', neu: { idx, wer: person, wann: new Date().toISOString(), uebertrag } }], `Monat abgeschlossen ${lab[idx]} · Übertrag Flexibel ${eur(uebertrag)} €`);
   };
   return (
     <>

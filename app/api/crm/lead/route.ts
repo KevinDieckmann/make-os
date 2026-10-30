@@ -255,10 +255,10 @@ export async function POST(req: Request) {
     return r.ok ? NextResponse.json({ ok: true, lead: r.lead, followup: r.followup, text: r.text }) : NextResponse.json({ ok: false, fehler: r.fehler, ...(r.eingeschraenkt ? { eingeschraenkt: true } : {}) }, { status: r.status });
   }
 
-  // Abgeben: alle Personen des Leads gehen an Kevin oder Malin (Übergabe im Verlauf, Aufgabe für die andere Person).
+  // Abgeben: alle Personen des Leads gehen an eine Person des Teams (Übergabe im Verlauf, Aufgabe für die andere Person).
   if (b.aktion === 'abgeben') {
     const an = wer(b.an);
-    if (!an || an === BEIDE) return NextResponse.json({ ok: false, fehler: 'Abgeben braucht eine Person (kevin oder malin).' }, { status: 400 });
+    if (!an || an === BEIDE) return NextResponse.json({ ok: false, fehler: 'Abgeben braucht eine Person aus dem Team.' }, { status: 400 });
     if (String(b.notiz ?? '').length > 600) return NextResponse.json({ ok: false, fehler: 'Die Notiz ist länger als 600 Zeichen.' }, { status: 413 });
     const r = await uebergeben({ art: 'kontakte', ids: zeile.personen.map(p => p.id), an, notiz: typeof b.notiz === 'string' ? b.notiz : undefined }, person, werAus(req));
     return r.ok ? NextResponse.json({ ok: true, an: r.an, aufgabe: r.aufgabe, text: `„${zeile.name}“ → ${nameVon(r.an)}${r.aufgabe ? ' · Aufgabe angelegt' : ''}` }) : NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
@@ -288,7 +288,7 @@ export async function POST(req: Request) {
   // Qualifizierungsrunde (27.09.): Leads ohne Besitzer übernimmt, wer sie qualifiziert — alle Personen des Leads, die noch niemandem gehören.
   if (b.aktion === 'uebernehmen') {
     const an = wer(b.an ?? person);
-    if (!an || an === BEIDE) return NextResponse.json({ ok: false, fehler: 'Übernehmen braucht eine Person (kevin oder malin).' }, { status: 400 });
+    if (!an || an === BEIDE) return NextResponse.json({ ok: false, fehler: 'Übernehmen braucht eine Person aus dem Team.' }, { status: 400 });
     const ids = new Set(zeile.personen.map(p => p.id));
     // Art. 18: eingeschränkte Personen einer Firma bleiben unberührt (werden gezählt, nicht übernommen).
     let n = 0, ausgelassen = 0;

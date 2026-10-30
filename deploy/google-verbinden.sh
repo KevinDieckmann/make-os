@@ -67,8 +67,10 @@ done
 unset ROH ANZ
 if [[ -z "$SECRET" ]]; then echo "Abbruch nach drei Versuchen — nichts gespeichert."; exit 1; fi
 
-read -rp "Erlaubte Domain für die Google-Konten [makeinnovation.de]: " DOMAIN
-DOMAIN="$(printf '%s' "${DOMAIN:-makeinnovation.de}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
+# Vorgabe = die schon eingetragene Domain der Instanz (30.10., neutral — vorher eine feste Domain im Skript); ohne Eintrag Pflichtangabe.
+ALT_DOMAIN="$(grep -E '^GOOGLE_ERLAUBTE_DOMAIN=' "$ENV_DATEI" | head -1 | cut -d= -f2- | tr -d '"' || true)"
+read -rp "Erlaubte Domain für die Google-Konten${ALT_DOMAIN:+ [$ALT_DOMAIN]}: " DOMAIN
+DOMAIN="$(printf '%s' "${DOMAIN:-$ALT_DOMAIN}" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
 if [[ ! "$DOMAIN" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$ ]]; then unset SECRET; echo "Abbruch: „$DOMAIN“ sieht nicht wie eine Domain aus."; exit 1; fi
 
 echo

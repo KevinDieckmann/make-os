@@ -30,18 +30,18 @@ export const PHASEN: Phase[] = [
   },
   {
     id: 'delegation', nr: 4, name: 'Delegation & Autonomie',
-    ziel: 'Alles, was nicht zwingend du bist, läuft über Agenten, das Team oder Malin.',
+    ziel: 'Alles, was nicht zwingend du bist, läuft über Agenten oder das Team.',
     fertigWenn: 'Jede neue Aufgabe wird automatisch auf „wer macht das" geprüft. Die Agenten-Abteilungen arbeiten sichtbar zusammen.',
   },
   {
     id: 'kunden', nr: 5, name: 'Kunden & Projekte',
     ziel: 'Dieselbe Maschine, die dich steuert, betreut auch deine Kunden.',
-    fertigWenn: 'Kunden liegen im System, du und Malin arbeitet darüber, Upselling und Cashflow sind sichtbar.',
+    fertigWenn: 'Kunden liegen im System, das Team arbeitet darüber, Upselling und Cashflow sind sichtbar.',
   },
   {
     id: 'gesundheit', nr: 6, name: 'Gesundheit in der Tiefe',
-    ziel: 'Der größte Hebel: Ernährung, Reha und Ruhe werden planbar statt Zufall.',
-    fertigWenn: 'Ernährung ist vorbereitet (Rezepte, Einkauf), Malin ist eingebunden, die Gesundheits-Meilensteine sind überprüfbar.',
+    ziel: 'Der größte Hebel: Ernährung, Bewegung und Ruhe werden planbar statt Zufall.',
+    fertigWenn: 'Ernährung ist vorbereitet (Rezepte, Einkauf), wer Gesundheit begleitet, ist eingebunden, die Gesundheits-Meilensteine sind überprüfbar.',
   },
   {
     id: 'produkt', nr: 7, name: 'Aus dem System ein Produkt',

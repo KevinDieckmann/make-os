@@ -10,6 +10,7 @@ import type { Kontakt, Chance, Naehe, Stufe } from '@/lib/make-one/netzwerk-data
 import { karteiZugang, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
 import { protokolliereBestand, werAus } from '@/lib/store/aenderungsprotokoll';
 import { neueKennung } from '@/lib/kennung';
+import { verantwortlich } from '@/lib/crm/team';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +36,8 @@ function sauberKontakt(k: Partial<Kontakt>, _i: number): Kontakt | null {
     quelle: txt(k.quelle, 160) || undefined,
     notizen: txt(k.notizen, 4000) || undefined,
     letzterKontakt: typeof k.letzterKontakt === 'string' && DATUM.test(k.letzterKontakt) ? k.letzterKontakt : undefined,
-    besitzer: (['kevin', 'malin', 'beide'] as const).includes(k.besitzer as 'kevin') ? k.besitzer as Kontakt['besitzer'] : 'kevin',
+    // Speichername oder „beide“ (30.10., neutral — vorher zwei feste Namen); ohne Angabe die Sales-Verantwortung des Teams (aus den Konten).
+    besitzer: k.besitzer === 'beide' || (typeof k.besitzer === 'string' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(k.besitzer)) ? k.besitzer as Kontakt['besitzer'] : verantwortlich('sales'),
     stichworte: Array.isArray(k.stichworte) ? k.stichworte.filter(x => typeof x === 'string').map(x => x.slice(0, 40)).slice(0, 12) : undefined,
   };
 }

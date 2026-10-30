@@ -5,6 +5,9 @@
 //   · jede Kennung genau einmal, Form wie `seiteOk` (lib/flaeche/modell.ts), höchstens `SEITEN_MAX` je Person (sauberDatei);
 //   · der Bereich folgt aus der Kennung (`spaceAusFlaeche`) — der Katalog bietet nur passende Widgets an, der Server prüft dasselbe.
 
+// Die Veranstaltungsmarke der Instanz (30.10., neutral — vorher fest im Namen).
+import { MARKE_EVENTS } from '@/lib/crm/marke';
+
 export interface FlaecheEintrag { seite: string; name: string }
 
 /** Höchstzahl gespeicherter Seiten je Person (`sauberDatei` in lib/flaeche/modell.ts). */
@@ -49,7 +52,7 @@ export const FLAECHEN: readonly FlaecheEintrag[] = [
   // Markttraktion (FLAECHE in lib/crm/flaechen.ts)
   { seite: 'markttraktion-ueberblick', name: 'Markttraktion › Überblick' },
   { seite: 'markttraktion-marketing', name: 'Markttraktion › Marketing' },
-  { seite: 'markttraktion-event', name: 'Markttraktion › Make.One' },
+  { seite: 'markttraktion-event', name: `Markttraktion › ${MARKE_EVENTS}` },
   // ZOE & System
   { seite: 'loops', name: 'ZOE › Loops' },
   { seite: 'konto', name: 'Konto' },
