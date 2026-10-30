@@ -88,6 +88,12 @@ describe('kommt ausgeschaltet', () => {
     }
     expect((await innen({ aktion: 'einstellungen', angebote: { marketing: { titel: 'x' } } })).status).toBe(400);
     expect((await innen({ aktion: 'einstellungen', claim: 'x'.repeat(81) })).status).toBe(400);
+    // Kopf wie auf der Website (30.10.): Logo und Link zur Website nur als /… oder https.
+    expect((await innen({ aktion: 'einstellungen', logo: 'javascript:alert(1)' })).status).toBe(400);
+    expect((await innen({ aktion: 'einstellungen', website: '//fremd.example.invalid' })).status).toBe(400);
+    const k = await innen({ aktion: 'einstellungen', logo: '/assets/zeichen-papier.svg', website: 'https://example.invalid' });
+    expect(k.status).toBe(200);
+    expect(k.d.einstellungen).toMatchObject({ logo: '/assets/zeichen-papier.svg', website: 'https://example.invalid' });
     const r = await innen({ aktion: 'einstellungen', claim: 'Probe braucht Ruhe.', angebote: {
       vertrieb: { titel: 'Vertriebsaufbau', text: 'Ein Satz zum Angebot.', link: '/vertrieb/' },
       innovation: { titel: 'KI im Alltag', link: 'https://example.invalid/innovation/' },

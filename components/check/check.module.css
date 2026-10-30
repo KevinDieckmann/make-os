@@ -40,47 +40,68 @@
 /* Die App ist dunkel (html: color-scheme dark) — hier hell, auch für Häkchen und den Rand beim Überscrollen am Handy. */
 :global(html):has(.seite), :global(body):has(.seite) { background: #F6F4F0; color-scheme: light; }
 
-.rahmen { max-width: 720px; margin: 0 auto; padding: 20px 16px 96px; }
+/* Raster wie fokusinnovation.de (30.10., Kevin: „die ganze Seite ist nicht richtig ausgerichtet“): gleiche Breite (1200 px), gleiche Ränder,
+   links der Check, rechts eine ruhige Karte wie die Weg-Karte der Website. Alle Werte hier und sonst nirgends. */
+.seite { --rand: clamp(20px, 4.4vw, 64px); --breite: 1200px; --kopf-h: 72px; }
+.rahmen { max-width: calc(var(--breite) + 2 * var(--rand)); margin: 0 auto; padding: 0 var(--rand) 96px; }
 
-/* ── Kopf ── */
-.kopf { position: sticky; top: 0; z-index: 5; background: var(--c-grund); padding: 14px 0 12px; box-shadow: 0 14px 18px -10px var(--c-grund); }
-.kopfZeile { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.markeBlock { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.marke { font-weight: 650; letter-spacing: .12em; font-size: 14px; text-transform: uppercase; }
-/* Leitsatz der Marke (Einstellung, 30.10.) — leise unter dem Namen. */
-.claim { font-size: 12px; color: var(--c-leise); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.titel { color: var(--c-leise); font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; font-family: var(--s-zahl); }
-/* Am Handy (29.10.): Marke und Titel je einzeilig — sonst bricht „FOKUS / INNOVATION“ und „INNOVATIONS- / CHECK“ um. */
-.marke, .titel { white-space: nowrap; }
-@media (max-width: 420px) { .marke { font-size: 13px; letter-spacing: .08em; } .titel { font-size: 11px; letter-spacing: .06em; } }
-@media (max-width: 340px) { .titel { display: none; } }
-.balken { height: 4px; border-radius: 4px; background: var(--c-linie); margin-top: 10px; overflow: hidden; }
-.balkenFuell { height: 100%; background: var(--c-verlauf); border-radius: 4px; transition: width 400ms ease; }
+/* ── Kopf: Wortmarke wie auf der Website, Name des Checks, Erstgespräch ── */
+.kopf { position: sticky; top: 0; z-index: 5; background: var(--c-grund); border-bottom: 1px solid var(--c-linie); }
+.kopfInnen { max-width: calc(var(--breite) + 2 * var(--rand)); margin: 0 auto; padding: 0 var(--rand); height: var(--kopf-h); display: flex; align-items: center; gap: 20px; }
+.markeLink { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; margin-right: auto; color: var(--c-text); text-decoration: none; }
+.logo { width: 34px; height: 34px; flex: none; }
+.wortbild { display: flex; flex-direction: column; line-height: 1; }
+.wortbild b { font-weight: 650; font-size: 16.6px; letter-spacing: .12em; text-transform: uppercase; }
+.wortbild small { margin-top: 4px; font-weight: 500; font-size: 11.2px; letter-spacing: .08em; color: var(--c-leise); }
+.titel { color: var(--c-leise); font-size: 12.2px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; white-space: nowrap; }
+.kopfKnopf { min-height: 44px; display: inline-flex; align-items: center; padding: 0 18px; border-radius: 8px; background: var(--c-text); color: #FCFBF9; font-weight: 600; font-size: 15px; text-decoration: none; white-space: nowrap; }
+.kopfKnopf:focus-visible { outline: 2px solid var(--c-hellgruen); outline-offset: 2px; }
+.kopfStand { max-width: calc(var(--breite) + 2 * var(--rand)); margin: 0 auto; padding: 0 var(--rand) 10px; }
+.balken { height: 3px; border-radius: 3px; background: var(--c-linie); overflow: hidden; }
+.balkenFuell { height: 100%; background: var(--c-verlauf); border-radius: 3px; transition: width 400ms ease; }
 .stand { margin-top: 6px; font-family: var(--s-zahl); font-size: 12px; color: var(--c-leise); }
+@media (max-width: 640px) { .titel { display: none; } .kopfKnopf { padding: 0 14px; font-size: 14px; } }
+
+/* ── Raster: links der Check (Lesebreite wie die Texte der Website), rechts die Karte ── */
+.raster { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; }
+.haupt { min-width: 0; max-width: 760px; }
+/* Seitenkarte nur am breiten Bildschirm: am Handy nennt der Einstieg die drei Bereiche schon, die Karte stünde sonst vor der Überschrift. */
+.seitenkarte { display: none; padding: 20px 22px; background: var(--c-flaeche); border: 1px solid var(--c-linie); border-radius: 12px; }
+.etikett { margin: 0 0 12px; font-size: 12.2px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: var(--c-leise); }
+.vorzeile { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 18px; font-size: 12.2px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: var(--c-leise); }
+.vorzeile::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c-lavendel); flex: none; }
+.claim { margin: 16px 0 0; font-size: 14px; color: var(--c-leise); }
+@media (min-width: 1020px) {
+  .raster { grid-template-columns: minmax(0, 1fr) 340px; gap: clamp(48px, 6vw, 96px); align-items: start; }
+  .seitenkarte { display: block; position: sticky; top: calc(var(--kopf-h) + 40px); margin-top: 56px; }
+}
 
 /* ── Einstieg ── */
-.einstieg { padding: 28px 0 8px; }
-.einstiegTitel { font-size: clamp(30px, 6vw, 44px); line-height: 1.08; font-weight: 600; letter-spacing: -0.03em; margin: 0 0 10px; }
-.einstiegText { color: var(--c-leise); margin: 0 0 14px; max-width: 560px; }
+.einstieg { padding: 56px 0 8px; }
+.einstiegTitel { font-size: clamp(38px, 5.4vw, 72px); line-height: 1.03; font-weight: 600; letter-spacing: -0.035em; margin: 0 0 18px; }
+.einstiegText { color: var(--c-leise); margin: 0 0 8px; font-size: clamp(17px, 1.3vw, 18.7px); line-height: 1.55; max-width: 640px; }
+@media (max-width: 1019px) { .einstieg { padding-top: 32px; } }
 /* Die drei Bereiche (30.10.) — Haarlinien statt Kästen, wie auf der Website. */
 .dreiBereiche { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--c-linie); }
-.dreiBereiche li { display: grid; grid-template-columns: 28px auto 1fr; align-items: baseline; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--c-linie); font-weight: 600; }
+.dreiBereiche li { display: grid; grid-template-columns: 24px 1fr; align-items: baseline; gap: 2px 8px; padding: 10px 0; border-bottom: 1px solid var(--c-linie); }
+.bereichName { font-weight: 600; }
 .bereichNr { font-size: 13px; color: var(--c-lavendel); font-weight: 600; }
-.bereichText { color: var(--c-leise); font-weight: 400; font-size: 14px; }
-@media (max-width: 520px) { .dreiBereiche li { grid-template-columns: 28px 1fr; } .bereichText { grid-column: 2; } }
+.bereichText { grid-column: 2; color: var(--c-leise); font-weight: 400; font-size: 14px; }
 .versprechen { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .versprechen li { font-family: var(--s-zahl); font-size: 12px; color: var(--c-text); border: 1px solid var(--c-linie); border-radius: 999px; padding: 4px 10px; }
 
 /* ── Gespräch ── */
-.verlauf { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+.verlauf { display: flex; flex-direction: column; gap: 14px; margin-top: 28px; }
 .zoeZeile { display: flex; gap: 10px; align-items: flex-start; }
+/* Breiter Bildschirm: Zoes Zeichen hängt im Rand, ihr Text steht auf derselben Linie wie Überschrift und Karten. */
+@media (min-width: 1020px) { .zoeZeile { margin-left: -44px; } }
 .zoe {
   flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%;
   background: radial-gradient(circle at 50% 50%, var(--c-lavendel) 0 30%, transparent 31%), var(--c-flaeche);
   border: 1.5px solid var(--c-text);
 }
 /* Ruhiger (30.10., „Gestaltung und Texte“): Zoes Text steht ohne Kasten neben dem Zeichen — wie Text auf der Website. */
-.blase { padding: 5px 0 0; max-width: 580px; }
+.blase { padding: 5px 0 0; min-width: 0; flex: 1; }
 .blase p { margin: 0; }
 .blase p + p { margin-top: 6px; }
 .blaseLeise { color: var(--c-leise); font-size: 14px; }
@@ -90,8 +111,7 @@
 .kiMarke { font-family: var(--s-zahl); font-size: 11px; color: var(--c-leise); text-transform: uppercase; letter-spacing: 0.1em; }
 
 /* ── Antwortkarte ── */
-.karte { margin-top: 4px; margin-left: 44px; background: var(--c-flaeche); border: 1px solid var(--c-linie); border-radius: var(--ecke); padding: 14px; }
-@media (max-width: 520px) { .karte { margin-left: 0; } }
+.karte { margin-top: 4px; background: var(--c-flaeche); border: 1px solid var(--c-linie); border-radius: var(--ecke); padding: 16px; }
 .optionen { display: grid; gap: 8px; }
 .option {
   min-height: 48px; width: 100%; text-align: left; padding: 10px 14px; border-radius: 10px; cursor: pointer;
@@ -108,6 +128,17 @@
   background: var(--c-text); border: 1px solid var(--c-text);
 }
 .knopf:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+/* Akzent wie auf der Website (30.10.): ein schmaler Lichtschein zieht von links nach rechts — beim Zeigen über jeden Hauptknopf, von selbst
+   nur über die Knöpfe, die zum Gespräch führen (Kopf, Ergebnis), alle 9 s. „Bewegung reduzieren“: kein Schein. */
+.kopfKnopf, .knopf { position: relative; overflow: hidden; isolation: isolate; }
+.kopfKnopf::after, .knopf::after { content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; left: 0; width: 38%; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, .26) 45%, rgba(242, 243, 243, .16) 55%, transparent); transform: translateX(-110%) skewX(-18deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .kopfKnopf::after, .ergebnis .knopf::after { animation: knopfSchein 9s cubic-bezier(.45, .05, .35, 1) 2.4s infinite; }
+  .kopfKnopf:hover::after, .knopf:not(:disabled):hover::after { animation: knopfZeigen .8s cubic-bezier(.45, .05, .35, 1) 1 both; }
+}
+@keyframes knopfSchein { 0% { transform: translateX(-110%) skewX(-18deg); opacity: 0; } 2% { opacity: 1; } 13% { opacity: 1; } 15% { transform: translateX(290%) skewX(-18deg); opacity: 0; } 100% { transform: translateX(290%) skewX(-18deg); opacity: 0; } }
+@keyframes knopfZeigen { 0% { transform: translateX(-110%) skewX(-18deg); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateX(290%) skewX(-18deg); opacity: 0; } }
 .zweit { min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--c-linie); background: transparent; color: var(--c-text); cursor: pointer; font: inherit; }
 .leiseKnopf { min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--c-leise); cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -207,6 +238,5 @@
 }
 
 @media (min-width: 720px) {
-  .rahmen { padding-top: 28px; }
   .optionen.zweiSpalten { grid-template-columns: 1fr 1fr; }
 }

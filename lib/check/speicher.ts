@@ -81,6 +81,10 @@ export interface CheckEinstellungen {
    *  Gesellschaft als die Instanz) — samt Link zur Datenschutzerklärung der Website. */
   verantwortlich?: string;
   datenschutzLink?: string;
+  /** Kopf wie auf der Website (30.10., Kevin: „die ganze Seite ist nicht richtig ausgerichtet“): Logo (Bild, `/…` der eigenen Website oder https)
+   *  und Link zur Website (Wortmarke führt dorthin). Ohne Angabe: Name ohne Logo, ohne Link. */
+  logo?: string;
+  website?: string;
   geaendert?: string;
   geaendertVon?: string;
 }
@@ -129,6 +133,7 @@ export async function ladeCheckEinstellungen(): Promise<CheckEinstellungen> {
     aktiv: e?.aktiv === true, ...(e?.buchungSlug ? { buchungSlug: e.buchungSlug } : {}), ...(e?.gastgeber ? { gastgeber: e.gastgeber } : {}), ...(e?.marke ? { marke: e.marke } : {}),
     ...(e?.claim ? { claim: e.claim } : {}), ...(angebote ? { angebote } : {}),
     ...(e?.verantwortlich ? { verantwortlich: e.verantwortlich } : {}), ...(e?.datenschutzLink && angebotLinkOk(e.datenschutzLink) && /^https:/.test(e.datenschutzLink) ? { datenschutzLink: e.datenschutzLink } : {}),
+    ...(e?.logo && angebotLinkOk(e.logo) ? { logo: e.logo } : {}), ...(e?.website && angebotLinkOk(e.website) ? { website: e.website } : {}),
     ...(e?.geaendert ? { geaendert: e.geaendert, geaendertVon: e.geaendertVon } : {}),
   };
 }

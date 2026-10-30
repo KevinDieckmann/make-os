@@ -27,7 +27,7 @@ interface ZeileDaten {
   belegeOffen: number;
 }
 interface Daten {
-  einstellungen: { aktiv: boolean; buchungSlug?: string; gastgeber?: string; marke?: string; claim?: string; angebote?: Partial<Record<Bereich, Angebot>>; verantwortlich?: string; datenschutzLink?: string };
+  einstellungen: { aktiv: boolean; buchungSlug?: string; gastgeber?: string; marke?: string; claim?: string; angebote?: Partial<Record<Bereich, Angebot>>; verantwortlich?: string; datenschutzLink?: string; logo?: string; website?: string };
   verantwortlichDa: boolean;
   buchungsseiten: { slug: string; titel: string }[];
   liste: ZeileDaten[];
@@ -142,6 +142,18 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
             Link zur Datenschutzerklärung (https://…)
             <input defaultValue={d.einstellungen.datenschutzLink ?? ''} placeholder="ohne Angabe: wie unter Einstellungen › Datenschutz" maxLength={300}
               onBlur={e => { const v = e.target.value.trim(); if (v !== (d.einstellungen.datenschutzLink ?? '')) void tun({ aktion: 'einstellungen', datenschutzLink: v || null }); }}
+              style={FELD} />
+          </label>
+          <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>
+            Logo im Kopf (Bildadresse, z. B. /assets/zeichen.svg der Website)
+            <input defaultValue={d.einstellungen.logo ?? ''} placeholder="ohne Angabe: nur der Name" maxLength={300}
+              onBlur={e => { const v = e.target.value.trim(); if (v !== (d.einstellungen.logo ?? '')) void tun({ aktion: 'einstellungen', logo: v || null }); }}
+              style={FELD} />
+          </label>
+          <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>
+            Link zur Website (der Name im Kopf führt dorthin)
+            <input defaultValue={d.einstellungen.website ?? ''} placeholder="ohne Angabe: kein Link" maxLength={300}
+              onBlur={e => { const v = e.target.value.trim(); if (v !== (d.einstellungen.website ?? '')) void tun({ aktion: 'einstellungen', website: v || null }); }}
               style={FELD} />
           </label>
           {d.einstellungen.aktiv && (

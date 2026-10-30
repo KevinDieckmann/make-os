@@ -45,6 +45,8 @@ async function seitenDaten(vorlageId: string) {
     return {
       marke: k.marke,
       ...(e.claim ? { claim: e.claim } : {}),
+      // Kopf wie auf der Website (30.10.): Logo, Link zur Website, Erstgespräch über die gewählte Buchungsseite.
+      kopf: { ...(e.logo ? { logo: e.logo } : {}), ...(e.website ? { website: e.website } : {}), ...(e.buchungSlug ? { erstgespraech: `/buchen/${e.buchungSlug}` } : {}) },
       katalog: oeffentlicherKatalog(v),
       seite: v.seite,
       zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },

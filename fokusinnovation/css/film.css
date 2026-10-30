@@ -22,6 +22,7 @@
 .keingl .ersatz { display: block; }
 .ersatz .gross { position: absolute; left: 50%; top: 44%; width: calc(var(--r) * 3); height: auto; translate: -50% -50%; color: var(--hell); }
 .ersatz .gross .kern { fill: var(--akzent); }
+@media (prefers-reduced-motion: no-preference) { .keingl .ersatz .gross .kern { transform-box: fill-box; transform-origin: center; animation: kernSchlag 2.8s ease-out infinite; } }
 
 .block { position: absolute; inset: 0; pointer-events: none; opacity: 0; visibility: hidden; }
 .block.da { visibility: visible; }
@@ -92,7 +93,10 @@
 }
 
 /* Die Agentur ist ab dem ersten Bild erkennbar; „Film überspringen“ führt direkt zum Einstieg (29.10.). */
-.film-marke { position: absolute; left: 50%; top: calc(var(--kopf) + max(3vh, 16px)); translate: -50% 0; width: calc(100% - 2 * var(--rand)); margin: 0; text-align: center; font-size: .74rem; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--leise-dunkel); }
+/* Kevin 30.10.: die Zeile steht unter dem Text des ersten Bildes, im Kern-Ton betont. */
+.film-marke { margin: clamp(18px, 2.6vh, 28px) 0 0; text-align: center; font-size: .78rem; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; color: var(--akzent);
+  opacity: 0; transition: opacity 1s var(--ease) .85s; }
+.block.an .film-marke { opacity: 1; }
 .ueberspringen { position: absolute; z-index: 3; right: var(--rand); bottom: max(3vh, 18px); display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1px solid rgba(242, 243, 243, .28); border-radius: 999px; color: var(--hell); font-size: .86rem; font-weight: 500; background: rgba(11, 12, 15, .4); transition: background-color .2s ease, border-color .2s ease; }
 .ueberspringen:hover { background: rgba(242, 243, 243, .1); border-color: rgba(242, 243, 243, .5); }
 .ruhig .ueberspringen { display: none; }

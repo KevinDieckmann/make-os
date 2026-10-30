@@ -37,6 +37,8 @@ interface Props {
   katalog: OeffentlicherKatalog;
   zoe: { begruessung: string[]; kontakt: string[]; wahl: string; gespraech: string };
   hinweis: { zeilen: string[]; link: string | null; fassung: string };
+  /** Kopf wie auf der Website (30.10.): Logo, Link zur Website, Erstgespräch — alles aus den Einstellungen der Instanz, alles optional. */
+  kopf?: { logo?: string; website?: string; erstgespraech?: string };
   /** Newsletter-Anmeldung der Instanz (30.10.) — nur wenn sie läuft; Wortlaut und Fassung der Einwilligung. Sonst kein Häkchen. */
   newsletter?: { wortlaut: string; fassung: string };
   quelle?: string;
@@ -79,7 +81,7 @@ function useHochzaehlen(ziel: number): number {
   return n;
 }
 
-export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, newsletter, quelle }: Props) {
+export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, newsletter, kopf, quelle }: Props) {
   const fragen = useMemo(() => new Map(katalog.fragen.map(f => [f.id, f])), [katalog]);
   const kurz = useMemo(() => katalog.fragen.filter(f => f.kurz), [katalog]);
   const [sitzung, setSitzung] = useState<Sitzung | null>(null);
@@ -162,31 +164,42 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
 
   if (!bereit) return <main className={s.seite}><div className={s.rahmen} /></main>;
 
+  // Wortmarke wie auf der Website: erstes Wort groß, der Rest klein darunter („FOKUS / Innovation“) — aus dem Namen der Instanz.
+  const [wort1, ...rest] = marke.split(' ');
+  // Bewusst <img>: das Logo liegt meist auf der Website (z. B. /assets/…), nicht in der Anwendung — der Bild-Optimierer fände es dort nicht.
+  // eslint-disable-next-line @next/next/no-img-element
+  const wortbild = <>{kopf?.logo && <img className={s.logo} src={kopf.logo} alt="" width={34} height={34} />}<span className={s.wortbild}><b>{wort1}</b>{rest.length > 0 && <small>{rest.join(' ')}</small>}</span></>;
+  const bereiche = !!seite.bereiche?.length && (
+    <ol className={s.dreiBereiche} aria-label="Die Bereiche des Checks">
+      {seite.bereiche.map((b, i) => <li key={b.name}><span className={s.bereichNr}>{i + 1}</span><span className={s.bereichName}>{b.name}</span><span className={s.bereichText}>{b.text}</span></li>)}
+    </ol>
+  );
+
   return (
     <main className={s.seite}>
-      <div className={s.rahmen}>
-        <header className={s.kopf}>
-          <div className={s.kopfZeile}>
-            <span className={s.markeBlock}><span className={s.marke}>{marke}</span>{claim && <span className={s.claim}>{claim}</span>}</span>
-            <span className={s.titel}>{katalog.name}</span>
-          </div>
+      <header className={s.kopf}>
+        <div className={s.kopfInnen}>
+          {kopf?.website ? <a className={s.markeLink} href={kopf.website} aria-label={`${marke}, zur Website`}>{wortbild}</a> : <span className={s.markeLink}>{wortbild}</span>}
+          <span className={s.titel}>{katalog.name}</span>
+          {kopf?.erstgespraech && <a className={s.kopfKnopf} href={kopf.erstgespraech}>Erstgespräch</a>}
+        </div>
+        <div className={s.kopfStand}>
           <div className={s.balken} aria-hidden><div className={s.balkenFuell} style={{ width: `${kurzGeschafft || ansicht ? 100 : imKurz ? Math.round((fort.kurz / Math.max(1, fort.kurzVon)) * 100) : fort.prozent}%` }} /></div>
           <div className={s.stand} aria-live="polite">
             {ansicht ? 'Ihr Ergebnis' : kurzGeschafft ? 'Fragen geschafft' : imKurz ? `Frage ${Math.min(fort.kurz + 1, fort.kurzVon)} von ${fort.kurzVon} · noch etwa ${Math.max(1, Math.round(((fort.kurzVon - fort.kurz) / Math.max(1, fort.kurzVon)) * seite.minuten))} Min.` : `${fort.prozent} % geschafft`}
             {' · '}<span className={s.kiMarke}>Zoe · KI-Assistentin</span>
           </div>
-        </header>
+        </div>
+      </header>
 
+      <div className={s.rahmen}>
+       <div className={s.raster}>
+        <div className={s.haupt}>
         {!strom && (
           <section className={s.einstieg}>
+            <p className={s.vorzeile}>{katalog.name} · kostenlos · rund {seite.minuten} Minuten</p>
             <h1 className={s.einstiegTitel}>{seite.titel}</h1>
             <p className={s.einstiegText}>{seite.text}</p>
-            {!!seite.bereiche?.length && (
-              <ol className={s.dreiBereiche} aria-label="Die Bereiche des Checks">
-                {seite.bereiche.map((b, i) => <li key={b.name}><span className={s.bereichNr}>{i + 1}</span>{b.name}<span className={s.bereichText}>{b.text}</span></li>)}
-              </ol>
-            )}
-            <ul className={s.versprechen}><li>kostenlos</li><li>rund {seite.minuten} Minuten</li><li>Ergebnis sofort</li><li>Antworten per Klick</li></ul>
           </section>
         )}
 
@@ -263,6 +276,16 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
           {hinweis.zeilen.map((z, i) => <p key={i}>{z}</p>)}
           {hinweis.link && <p><a className={s.link} href={hinweis.link} target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a></p>}
         </details>
+        </div>
+
+        {/* Rechte Spalte wie die Weg-Karte der Website: worum es geht und was Sie erwartet (am Handy nur vor dem Start). */}
+        <aside className={s.seitenkarte} aria-label="Der Check">
+          <p className={s.etikett}>Der Check</p>
+          {bereiche}
+          <ul className={s.versprechen}><li>kostenlos</li><li>rund {seite.minuten} Minuten</li><li>Ergebnis sofort</li><li>Antworten per Klick</li></ul>
+          {claim && <p className={s.claim}>{claim}</p>}
+        </aside>
+       </div>
       </div>
     </main>
   );

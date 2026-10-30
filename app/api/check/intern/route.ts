@@ -114,6 +114,15 @@ export async function POST(req: Request) {
       else if (!/^https:/.test(x) || !angebotLinkOk(x)) return NextResponse.json({ ok: false, fehler: 'Der Link zur Datenschutzerklärung muss mit https:// beginnen.' }, { status: 400 });
       else datenschutzLink = x;
     }
+    // Kopf wie auf der Website (30.10.): Logo und Link zur Website — eine Adresse der eigenen Website (/…) oder https.
+    let logo = alt.logo, website = alt.website;
+    for (const [feld, name] of [['logo', 'Das Logo'], ['website', 'Der Link zur Website']] as const) {
+      if (b[feld] === undefined) continue;
+      const x = typeof b[feld] === 'string' ? (b[feld] as string).trim() : '';
+      if (b[feld] === null || x === '') { if (feld === 'logo') logo = undefined; else website = undefined; continue; }
+      if (!angebotLinkOk(x)) return NextResponse.json({ ok: false, fehler: `${name} muss mit / (Adresse der eigenen Website) oder https:// beginnen.` }, { status: 400 });
+      if (feld === 'logo') logo = x; else website = x;
+    }
     if (aktiv && !(await hinweisLaden({ verantwortlich, datenschutzLink }))) return NextResponse.json({ ok: false, fehler: 'Erst den Verantwortlichen unter Einstellungen › Datenschutz eintragen — ohne ihn bleibt der Check zu.' }, { status: 409 });
     let buchungSlug = alt.buchungSlug;
     if (b.buchungSlug !== undefined) {
@@ -156,7 +165,7 @@ export async function POST(req: Request) {
         angebote[sk] = { titel, ...(satz ? { text: satz } : {}), ...(link ? { link } : {}) };
       }
     }
-    const e = await speichereCheckEinstellungen({ aktiv, ...(buchungSlug ? { buchungSlug } : {}), ...(gastgeber ? { gastgeber } : {}), ...(marke ? { marke } : {}), ...(claim ? { claim } : {}), ...(Object.keys(angebote).length ? { angebote } : {}), ...(verantwortlich ? { verantwortlich } : {}), ...(datenschutzLink ? { datenschutzLink } : {}), geaendert: jetzt, geaendertVon: zugang.person });
+    const e = await speichereCheckEinstellungen({ aktiv, ...(buchungSlug ? { buchungSlug } : {}), ...(gastgeber ? { gastgeber } : {}), ...(marke ? { marke } : {}), ...(claim ? { claim } : {}), ...(Object.keys(angebote).length ? { angebote } : {}), ...(verantwortlich ? { verantwortlich } : {}), ...(datenschutzLink ? { datenschutzLink } : {}), ...(logo ? { logo } : {}), ...(website ? { website } : {}), geaendert: jetzt, geaendertVon: zugang.person });
     return NextResponse.json({ ok: true, einstellungen: e });
   }
 
