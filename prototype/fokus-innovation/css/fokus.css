@@ -799,5 +799,9 @@ html.menue-offen { overflow: hidden; }
   .raster .spalte .nr, .momente li::before { transition: color .3s ease, translate .35s var(--ease); }
   .momente li:hover::before, .raster .spalte:hover .nr { translate: 4px 0; color: var(--akzent-papier); }
   .wl a:hover, .zeilen a:hover { background: linear-gradient(90deg, var(--akzent-zart), transparent 80%); }
+  /* Einstiege und Listen mit Pfeil (Kevin 30.10.: „ein bisschen lila im Schein“): lila Verlauf von links, der Pfeil leuchtet im Kern-Ton */
+  .index a { transition: background-color .3s ease, background .3s ease; }
+  .index a:hover { background: linear-gradient(90deg, rgba(124, 58, 237, .1), rgba(124, 58, 237, .03) 60%, transparent 90%); }
+  .index a:hover .pfeil, .wl a:hover .pfeil, .zeilen a:hover .pfeil { color: var(--akzent-papier); }
 }
 @media (hover: hover) and (prefers-reduced-motion: reduce) { .momente li:hover::before, .raster .spalte:hover .nr { translate: none; } }
