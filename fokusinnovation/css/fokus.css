@@ -99,7 +99,7 @@ table { border-collapse: collapse; }
 .knopf:not(.zweit) { position: relative; overflow: hidden; isolation: isolate; }
 .knopf:not(.zweit) .pfeil { color: var(--akzent); transition: translate .35s var(--ease), filter .35s ease; }
 .knopf:not(.zweit):hover .pfeil { filter: drop-shadow(0 0 5px rgba(167, 139, 250, .75)); }
-.dunkel .knopf:not(.zweit) .pfeil, .kopf.ueber-film .knopf .pfeil { color: var(--akzent-papier); }
+.dunkel .knopf:not(.zweit) .pfeil, .kopf.ueber-film .knopf .pfeil { color: #7C3AED; }
 .dunkel .knopf:not(.zweit):hover .pfeil { filter: drop-shadow(0 0 5px rgba(124, 58, 237, .45)); }
 .knopf:not(.zweit)::after { content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; left: 0; width: 38%; pointer-events: none; opacity: 0;
   background: linear-gradient(90deg, transparent, rgba(167, 139, 250, .26) 45%, rgba(242, 243, 243, .16) 55%, transparent); transform: translateX(-110%) skewX(-18deg); }
@@ -420,7 +420,14 @@ html.menue-offen { overflow: hidden; }
 .recht > .leise { margin-top: 48px; }
 
 /* ── Der dunkle Schlussakt und der Fuß ── */
-.dunkel { background: var(--nacht); color: var(--leise-dunkel); color-scheme: dark; }
+.dunkel { background: var(--nacht); color: var(--leise-dunkel); color-scheme: dark;
+  /* Rhythmus hell/dunkel (Kevin 30.10.: „nicht 80 % nur hell“): ein dunkler Abschnitt tauscht die Farbwerte, jeder Baustein darin folgt von selbst */
+  --tinte: #F2F3F3; --tinte-text: rgba(242, 243, 243, .76); --tinte-leise: #A3ABAE; --grau-papier: #A3ABAE;
+  --haar: rgba(242, 243, 243, .13); --haar-mittel: rgba(242, 243, 243, .3);
+  --akzent-papier: #A78BFA; --akzent-zart: rgba(167, 139, 250, .1); --sand: #15171B; }
+/* Raum wie im Film (Vorbild Gemini): ein weicher violetter Schein oben, ein tiefes Indigo unten, sonst Nacht */
+.abschnitt.dunkel.raum { background: radial-gradient(55% 60% at 72% 8%, rgba(124, 58, 237, .17), transparent 72%), radial-gradient(60% 55% at 12% 96%, rgba(40, 48, 130, .3), transparent 72%), var(--nacht); }
+.abschnitt.dunkel + .abschnitt.dunkel { border-top: 1px solid var(--haar-dunkel); }
 .dunkel h2, .dunkel h3, .dunkel b { color: var(--hell); }
 .dunkel .vorzeile, .dunkel .etikett { color: var(--grau); }
 .dunkel .vorzeile::before { background: var(--akzent); }
@@ -713,7 +720,10 @@ html.menue-offen { overflow: hidden; }
 }
 
 /* Kostenlos › Zahlen (30.10.): belegte Zahlen im Raster, Stil der Belege (.zahl). */
-.zahlen-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 40px 48px; margin-top: 8px; }
+.zahlen-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 40px 48px; margin-top: 8px; }
+/* Im Raster steht die Zahl über dem Satz (30.10.: nebeneinander wurde der Satz zu einer schmalen Spalte) */
+.zahlen-raster .zahl { grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; }
+.zahlen-raster .zahl figcaption { max-width: 36ch; }
 /* Ratgeber (30.10.): der passende kostenlose Check am Ende des Artikels, ruhig wie „Kurz gesagt“. */
 .artikel-check { max-width: 52rem; margin: 48px 0 8px; padding: 24px 26px; border: 1px solid var(--haar-mittel); border-radius: 4px; }
 .artikel-check .etikett { margin-bottom: 8px; color: var(--akzent-papier); }
@@ -756,6 +766,14 @@ html.menue-offen { overflow: hidden; }
 .momente-gruppen .momente { grid-template-columns: minmax(0, 1fr); }
 /* Events (30.10.): Formate als ruhige Liste statt der Tafel-Grafik. */
 .format-liste { border-top: 1px solid var(--haar-mittel); margin-top: 28px; }
+/* Events auf der Startseite (Kevin 30.10.: anders anordnen): Überschrift über die ganze Breite, links Text und Knöpfe, rechts die Formate im Raster */
+.events-block { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 4vw, 48px) clamp(40px, 6vw, 96px); align-items: start; }
+.events-kopf { grid-column: 1 / -1; }
+.events-kopf h2 { margin-top: 20px; font-size: var(--t-titel); letter-spacing: -.03em; line-height: 1.07; max-width: 24ch; }
+.events-text .lead { color: var(--tinte); }
+.events-text .leise { margin-top: 18px; }
+.events-formate .format-liste { margin-top: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; }
+@media (max-width: 900px) { .events-block { grid-template-columns: minmax(0, 1fr); } .events-formate .format-liste { grid-template-columns: minmax(0, 1fr); } }
 .format-liste li { display: grid; gap: 4px; padding: 14px 0; border-bottom: 1px solid var(--haar); }
 .format-liste b { color: var(--tinte); font-weight: 600; }
 .format-liste span { color: var(--tinte-text); }
@@ -766,3 +784,14 @@ html.menue-offen { overflow: hidden; }
 /* Startseite (30.10.): die zweite Zeile erklärt das Zusammenspiel und ist länger — etwas kleiner, damit die Headline kompakt bleibt. */
 .start-held h1 .ruhig { font-size: .66em; line-height: 1.14; margin-top: .3em; }
 @media (max-width: 560px) { .start-held h1 .ruhig { font-size: .6em; } }
+
+/* Zeige-Effekte (Kevin 30.10.: „überall, wo man draufgeht, ein kleiner Effekt“): nur mit Maus, nur Farbe und Lage, „Bewegung reduzieren“ ohne Verschieben */
+@media (hover: hover) {
+  .momente li, .format-liste li, .baustein, .raster .spalte, .zahl, .zeilen a, .wl a { transition: background-color .3s ease, border-color .3s ease; }
+  .momente li:hover, .format-liste li:hover, .baustein:hover, .zahl:hover { background: linear-gradient(90deg, var(--akzent-zart), transparent 80%); border-color: var(--akzent-papier); }
+  .raster .spalte:hover { background: linear-gradient(180deg, var(--akzent-zart), transparent 70%); }
+  .raster .spalte .nr, .momente li::before { transition: color .3s ease, translate .35s var(--ease); }
+  .momente li:hover::before, .raster .spalte:hover .nr { translate: 4px 0; color: var(--akzent-papier); }
+  .wl a:hover, .zeilen a:hover { background: linear-gradient(90deg, var(--akzent-zart), transparent 80%); }
+}
+@media (hover: hover) and (prefers-reduced-motion: reduce) { .momente li:hover::before, .raster .spalte:hover .nr { translate: none; } }
