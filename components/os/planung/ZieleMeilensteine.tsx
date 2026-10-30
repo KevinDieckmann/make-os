@@ -328,7 +328,7 @@ export function ZieleMeilensteine({ horizont, farbe = LEUCHT.schlaf, spaceFilter
 
   const msZeile = (m: Meilenstein, pos: number, n: number) => {
     const sp = meilensteinSpace(m);
-    const bf = sp === 'privat' ? LEUCHT.gut : LEUCHT.business;
+    const bf = SPACE_FARBE[sp];
     const spaet = !!m.faellig && m.faellig < heute && !m.erledigt;
     const wann = m.faellig ? dtKurz(m.faellig) : (m.zeitfenster ?? '');
     const mv = wirksamerFortschritt(m, tasksState);

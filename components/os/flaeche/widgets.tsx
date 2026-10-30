@@ -212,7 +212,7 @@ function TermineWidget({ e, titel, i, seite }: WidgetProps) {
             {tage > 1 && <div style={{ fontSize: TYP.mikro, letterSpacing: '.1em', textTransform: 'uppercase', color: d === heute ? LEUCHT.puls : C.inkLeise, fontWeight: 600, padding: '8px 2px 2px' }}>{d === heute ? 'Heute' : tagKurz(d)}</div>}
             {liste.map((t, k) => (
               <Zeile key={t.id ?? `${d}-${k}`} onClick={() => router.push(WEG.kalender(d))}
-                links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: t.quelle === 'business' ? LEUCHT.business : LEUCHT.puls, width: 52 }}>{t.allDay ? 'Tag' : uhr(t.startDate)}</span>}
+                links={<span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums', color: t.quelle === 'business' ? SPACE_FARBE.business : LEUCHT.puls, width: 52 }}>{t.allDay ? 'Tag' : uhr(t.startDate)}</span>}
                 titel={t.title ?? '—'} unter={t.endDate && !t.allDay ? `bis ${uhr(t.endDate)}${t.quelle === 'business' ? ' · Business' : ''}` : t.quelle === 'business' ? 'Business' : undefined} />
             ))}
           </div>

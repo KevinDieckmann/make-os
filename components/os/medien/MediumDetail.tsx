@@ -25,6 +25,7 @@ import { localDay, tagePlus } from '@/lib/zeit';
 import { KANAELE, KANAL_NAME, HEAD_AUFTRAEGE, MEDIEN_HEADS, TEXTE, type MediumSicht, type MedienListeAntwort, type Kanal, type HeadAuftragArt, type Medium, type Album, type MedienEinwilligung } from '@/lib/medien/typen';
 import { inhaltUrl, medienAktion, groesseText } from './daten';
 import { EinwilligungFenster } from './Einwilligung';
+import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
 
 const STATUS_TEXT: Record<string, string> = { intern: 'intern', angefragt: 'Freigabe angefragt', freigegeben: 'freigegeben', gesperrt: 'gesperrt', abgelaufen: 'abgelaufen' };
 const STATUS_FARBE: Record<string, string> = { intern: C.inkDim, angefragt: LEUCHT.achtung, freigegeben: LEUCHT.gut, gesperrt: LEUCHT.kritisch, abgelaufen: LEUCHT.kritisch };
@@ -60,7 +61,7 @@ export function MediumDetail({ m, daten, onZu, onGeaendert }: { m: MediumSicht; 
       {dialog}
       <Ansicht m={m} abspielen={abspielen} setAbspielen={setAbspielen} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Chip farbe={m.bereich === 'business' ? LEUCHT.business : LEUCHT.beziehung}>{m.bereich === 'business' ? 'Business' : 'Privat'}</Chip>
+        <Chip farbe={SPACE_FARBE[m.bereich === 'business' ? 'business' : 'privat']}>{m.bereich === 'business' ? 'Business' : 'Privat'}</Chip>
         {album && <Chip farbe={C.inkDim}>{album.titel}</Chip>}
         <Chip farbe={STATUS_FARBE[m.marketing.wirksam]}>{STATUS_TEXT[m.marketing.wirksam]}</Chip>
         <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{groesseText(m.groesse)}{m.aufgenommen ? ` · ${new Date(m.aufgenommen).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Berlin' })}` : ''}</span>

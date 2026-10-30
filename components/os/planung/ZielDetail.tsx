@@ -186,7 +186,7 @@ function ZielInhalt({ id, horizont }: { id: string; horizont: ZielHorizont }) {
 
   const karte = (m: Meilenstein, liste = false) => {
     const sp = meilensteinSpace(m);
-    const bf = sp === 'privat' ? LEUCHT.gut : LEUCHT.business;
+    const bf = SPACE_FARBE[sp];
     const wartetNoch = wartetText(m, p.ms);
     const frueher = datumVorVorgaenger(m, p.ms);
     const danach = nachfolger(m.id, p.ms);

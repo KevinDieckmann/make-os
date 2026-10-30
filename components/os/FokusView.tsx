@@ -38,6 +38,7 @@ import { ZeitSteuerung } from './fokus/ZeitSteuerung';
 import { Wirkung } from './fokus/Wirkung';
 import { Tagesform } from './fokus/Tagesform';
 import { WieWirArbeiten } from './fokus/WieWirArbeiten';
+import { SPACE_FARBE } from '@/lib/make-one/space-regeln';
 
 /** Die Abschnitte je Bereich — Tagesform und „Wie wir arbeiten“ gibt es nur in Privat. */
 const ABSCHNITTE: Record<SteuerBereich, { id: FokusAbschnitt; label: string }[]> = {
@@ -95,7 +96,7 @@ export function FokusView() {
   };
   let i = 0;
   return (
-    <Seite titel="Fokus" ton={bereich === 'privat' ? LEUCHT.beziehung : LEUCHT.business}
+    <Seite titel="Fokus" ton={SPACE_FARBE[bereich]}
       unter={`${name}: was wir wollen, welche Zeit wir hineingeben und wo der Fokus draufgeht.`}
       rechts={<FokusStart bereich={bereich} themen={steuerung.sicht?.themen ?? []} />}>
       {/* In der wischbaren Zeile wie überall (Gesamtprüfung 12.10.: ohne sie ragten die Reiter am Handy über den Rand). */}

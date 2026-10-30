@@ -169,7 +169,7 @@ export function MeilensteinDetail({ id }: { id: string }) {
   }
 
   const sp = meilensteinSpace(m);
-  const farbe = sp === 'privat' ? LEUCHT.gut : LEUCHT.business;
+  const farbe = SPACE_FARBE[sp];
   const spaet = !!m.faellig && m.faellig < heute && !m.erledigt;
 
   return (

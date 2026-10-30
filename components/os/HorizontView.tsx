@@ -31,7 +31,7 @@ import { Zeitstrahl, type StrahlMarker, type StrahlTick } from './Zeitstrahl';
 import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Chip, Zahl, prioFarbe, LEUCHT, Segmente, Knopf, useRueckgaengig, FlussKarte } from './ui';
 import { useZiel, useZuZiel } from './ziel';
 import { useSpace } from '@/hooks/useSpace';
-import { SPACE_LABEL, spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
+import { SPACE_LABEL, SPACE_FARBE, spaceVonAufgabe, type SpaceId } from '@/lib/make-one/space-regeln';
 import { EinheitMarke } from './aufgaben/Einheit';
 import { zeitraum } from '@/lib/planung/zeitraum';
 import { meilensteinSpace } from '@/lib/planung/meilensteine';
@@ -155,7 +155,7 @@ export function HorizontView({ horizont }: { horizont: Horizont }) {
   const strahlMarker: StrahlMarker[] = istJahr ? [] : ms
     .filter(m => m.faellig && !m.erledigt && imFilter(meilensteinSpace(m), m.einheit))
     .map(m => ({
-      id: m.id, date: m.faellig!, label: m.titel, farbe: meilensteinSpace(m) === 'privat' ? LEUCHT.gut : LEUCHT.achtung,
+      id: m.id, date: m.faellig!, label: m.titel, farbe: SPACE_FARBE[meilensteinSpace(m)],
       symbol: '◇',
       titel: `${m.titel} · ${m.faellig!.slice(8)}.${m.faellig!.slice(5, 7)}.${m.faellig!.slice(0, 4)} · ${m.fortschritt} %${wartetText(m, ms) ? ` · ${wartetText(m, ms)}` : ''}${zielTitel(m) ? ` · Ziel „${zielTitel(m)}“` : ''}`,
       href: WEG.meilenstein(m.id),
