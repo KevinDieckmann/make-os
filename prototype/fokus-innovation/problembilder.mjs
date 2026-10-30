@@ -42,17 +42,6 @@ ${[0, 1, 2].map((i) => `<g class="pb-zeile pb-z${i + 1}"><circle class="pb-grau"
 <text class="pb-text pb-eigen-nachher" x="74" y="208" text-anchor="start">Ihr Unternehmen</text>
 </g>`,
   },
-  // Vertrieb: mal voll, mal leer — dann planbar.
-  planbar: {
-    titel: 'Zwölf Monate Umsatz: heute stark schwankend, mit festem Vertriebsablauf gleichmäßig steigend.',
-    satz: 'Mal ein voller Monat, mal ein leerer. Mit festem Ablauf, CRM und klaren Zahlen wird Umsatz planbar.',
-    svg: () => `
-<line class="pb-achse" x1="44" y1="200" x2="356" y2="200"/>
-${Array.from({ length: 12 }, (_, i) => `<rect class="pb-balken pb-b${i + 1}" x="${50 + i * 25.5}" y="50" width="16" height="150" rx="2"/>`).join('')}
-<polyline class="pb-trend" pathLength="1" points="58,152 83.5,140 109,131 134.5,121 160,110 185.5,99 211,88 236.5,77 262,66 287.5,56 313,46 338.5,36"/>
-<circle class="pb-punkt" cx="338.5" cy="36" r="6"/>
-${text(50, 222, '12 Monate', 'pb-text pb-klein', 'start')}${text(354, 222, 'planbar', 'pb-text pb-klein pb-akzent-text pb-nachher', 'end')}`,
-  },
   // Innovation / Ins Unternehmen: einzelne Werkzeuge ohne Verbindung — dann ein Ablauf.
   inseln: {
     titel: 'Fünf Werkzeuge ohne Verbindung. Verbunden zu einem Ablauf spart KI im Alltag Zeit.',
@@ -82,17 +71,6 @@ ${fach.map(([x, y, n]) => `<g class="pb-knoten pb-fest"><rect x="${x - 4}" y="${
 <g class="pb-kern"><circle class="pb-punkt" cx="196" cy="120" r="10"/>${text(186, 146, 'Kernteam', 'pb-text pb-klein pb-akzent-text', 'end')}</g>`;
     },
   },
-  // Kostenlos: ohne Standort kein Weg.
-  stufen: {
-    titel: 'Fünf Stufen. Wer seine Stufe kennt, sieht den nächsten Schritt.',
-    satz: 'Wer nicht weiß, wo er steht, investiert leicht ins Falsche. Die Checks zeigen Ihre Stufe und den nächsten Schritt.',
-    svg: () => `
-${[0, 1, 2, 3, 4].map((i) => `<rect class="pb-stufe pb-s${i + 1}" x="${44 + i * 64}" y="${176 - i * 32}" width="60" height="${24 + i * 32}" rx="3"/>${text(74 + i * 64, 216, String(i + 1), 'pb-text pb-klein')}`).join('')}
-<g class="pb-frage"><circle class="pb-frage-ring" cx="200" cy="44" r="16"/>${text(200, 50, '?', 'pb-text pb-gross')}</g>
-<circle class="pb-punkt pb-stand" cx="138" cy="132" r="8"/>
-<path class="pb-weiter" pathLength="1" d="M150 124 Q 166 98 196 104"/>
-${text(140, 84, 'nächster Schritt', 'pb-text pb-klein pb-akzent-text pb-weiter-text', 'start')}`,
-  },
   // Preise: Stunden ohne Ende — dann ein fester Preis.
   festpreis: {
     titel: 'Abrechnung nach Stunden mit offenem Endpreis. Bei uns stehen Preis, Umfang und Lieferzeit vorher fest.',
@@ -106,8 +84,8 @@ ${['Preis', 'Umfang', 'Lieferzeit'].map((n, i) => `<circle class="pb-haken-punkt
   },
 };
 
-/** Welches Bild auf welcher Seite. */
-export const BILD_JE_BEREICH = { sichtbarkeit: 'gefunden', vertrieb: 'planbar', innovation: 'inseln' };
+/** Paket-Seiten mit Bild — nur wo es das Problem der Seite zeigt (Kevin 30.10.: „nur ein wo es sinn macht“). */
+export const BILD_JE_GRUPPE = { 'sichtbarkeit/homepages': 'gefunden' };
 
 /** Das Problem-Bild als <figure> — oder das Video der Seite, wenn eines eingetragen ist. */
 export function buehne(art, video) {

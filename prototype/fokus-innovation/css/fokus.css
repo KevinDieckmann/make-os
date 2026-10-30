@@ -833,8 +833,8 @@ html.menue-offen { overflow: hidden; }
 .problem-bild.sichtbar .pb-punkt, html:not(.js) .pb-punkt { animation: pbPuls 2.8s ease-in-out 3.6s infinite; }
 @keyframes pbPuls { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.28); } }
 /* Linien, die sich einmal zeichnen (pathLength="1"). */
-.pb-trend, .pb-verbindung, .pb-fuehrung, .pb-weiter { fill: none; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 1.3s var(--ease) 2.2s; }
-.js .problem-bild:not(.sichtbar) :is(.pb-trend, .pb-verbindung, .pb-fuehrung, .pb-weiter) { stroke-dashoffset: 1; }
+.pb-verbindung, .pb-fuehrung { fill: none; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 1.3s var(--ease) 2.2s; }
+.js .problem-bild:not(.sichtbar) :is(.pb-verbindung, .pb-fuehrung) { stroke-dashoffset: 1; }
 
 /* In den Markt: Produkt hoch, Umsatz niedrig — die Lücke schließt sich. */
 .pb-produkt { fill: var(--tinte); }
@@ -860,35 +860,6 @@ html.menue-offen { overflow: hidden; }
 .js .pb-gefunden:not(.sichtbar) .pb-eigen-vorher { opacity: 1; }
 .js .pb-gefunden:not(.sichtbar) .pb-eigen-nachher { opacity: 0; }
 
-/* Vertrieb: zwölf Monate — erst Zickzack, dann planbar. */
-.pb-balken { fill: var(--tinte); transform-box: fill-box; transform-origin: 50% 100%; transition: transform 1.1s var(--ease), fill .8s var(--ease) 1.8s; }
-.js .pb-planbar:not(.sichtbar) .pb-balken { fill: rgba(17, 19, 22, .2); }
-.pb-planbar .pb-b1 { transform: scaleY(0.320); transition-delay: 1.80s; }
-.pb-planbar .pb-b2 { transform: scaleY(0.400); transition-delay: 1.86s; }
-.pb-planbar .pb-b3 { transform: scaleY(0.460); transition-delay: 1.92s; }
-.pb-planbar .pb-b4 { transform: scaleY(0.527); transition-delay: 1.98s; }
-.pb-planbar .pb-b5 { transform: scaleY(0.600); transition-delay: 2.04s; }
-.pb-planbar .pb-b6 { transform: scaleY(0.673); transition-delay: 2.10s; }
-.pb-planbar .pb-b7 { transform: scaleY(0.747); transition-delay: 2.16s; }
-.pb-planbar .pb-b8 { transform: scaleY(0.820); transition-delay: 2.22s; }
-.pb-planbar .pb-b9 { transform: scaleY(0.893); transition-delay: 2.28s; }
-.pb-planbar .pb-b10 { transform: scaleY(0.960); transition-delay: 2.34s; }
-.pb-planbar .pb-b11 { transform: scaleY(1.027); transition-delay: 2.40s; }
-.pb-planbar .pb-b12 { transform: scaleY(1.093); transition-delay: 2.46s; }
-.js .pb-planbar:not(.sichtbar) .pb-b1 { transform: scaleY(0.400); }
-.js .pb-planbar:not(.sichtbar) .pb-b2 { transform: scaleY(0.867); }
-.js .pb-planbar:not(.sichtbar) .pb-b3 { transform: scaleY(0.167); }
-.js .pb-planbar:not(.sichtbar) .pb-b4 { transform: scaleY(0.600); }
-.js .pb-planbar:not(.sichtbar) .pb-b5 { transform: scaleY(0.267); }
-.js .pb-planbar:not(.sichtbar) .pb-b6 { transform: scaleY(0.933); }
-.js .pb-planbar:not(.sichtbar) .pb-b7 { transform: scaleY(0.200); }
-.js .pb-planbar:not(.sichtbar) .pb-b8 { transform: scaleY(0.467); }
-.js .pb-planbar:not(.sichtbar) .pb-b9 { transform: scaleY(0.733); }
-.js .pb-planbar:not(.sichtbar) .pb-b10 { transform: scaleY(0.133); }
-.js .pb-planbar:not(.sichtbar) .pb-b11 { transform: scaleY(0.633); }
-.js .pb-planbar:not(.sichtbar) .pb-b12 { transform: scaleY(0.300); }
-.pb-trend { stroke: var(--akzent-papier); stroke-width: 2; stroke-linejoin: round; transition-delay: 2.9s; }
-
 /* Ins Unternehmen / Innovation: Inseln — dann ein Ablauf. */
 .pb-knoten rect { fill: var(--papier-hell); stroke: var(--tinte); stroke-width: 1.2; transition: stroke .6s var(--ease) 1.8s; }
 .js .pb-inseln:not(.sichtbar) .pb-knoten rect { stroke: var(--haar-mittel); stroke-dasharray: 4 4; }
@@ -907,18 +878,6 @@ html.menue-offen { overflow: hidden; }
 .pb-sie { fill: var(--tinte); }
 .pb-kern { transition: opacity .6s var(--ease) 2.2s; }
 .js .pb-netzwerk:not(.sichtbar) .pb-kern { opacity: 0; }
-
-/* Kostenlos: ohne Standort kein Weg. */
-.pb-stufe { fill: rgba(17, 19, 22, .09); transition: fill .6s var(--ease) 2.4s, stroke .6s var(--ease) 2.4s; }
-.pb-stufen .pb-s2 { fill: var(--akzent-zart); stroke: var(--akzent-papier); stroke-width: 1.2; }
-.js .pb-stufen:not(.sichtbar) .pb-s2 { fill: rgba(17, 19, 22, .09); stroke: transparent; }
-.pb-frage { opacity: 0; transition: opacity .5s var(--ease) 1.8s; }
-.pb-frage-ring { fill: none; stroke: var(--haar-mittel); stroke-dasharray: 4 4; }
-.js .pb-stufen:not(.sichtbar) .pb-frage { opacity: 1; }
-.pb-stufen .pb-punkt { transition-delay: 2.2s; }
-.pb-weiter { stroke: var(--akzent-papier); stroke-width: 1.6; transition-delay: 3s; }
-.pb-weiter-text { transition: opacity .6s var(--ease) 3.6s; }
-.js .pb-stufen:not(.sichtbar) .pb-weiter-text { opacity: 0; }
 
 /* Preise: Stunden ohne Ende — dann fest. */
 .pb-stunden { opacity: .32; transition: opacity .7s var(--ease) 1.8s; }

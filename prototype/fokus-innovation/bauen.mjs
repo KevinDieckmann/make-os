@@ -16,7 +16,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'no
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buehne, videoAbschnitt, BILD_JE_BEREICH } from './problembilder.mjs';
+import { buehne, videoAbschnitt, BILD_JE_GRUPPE } from './problembilder.mjs';
 
 export const ORDNER = dirname(fileURLToPath(import.meta.url));
 const REPO = join(ORDNER, '..', '..');
@@ -638,16 +638,17 @@ ${schlussakt({ quelle: `${k}_ende` })}`,
       const fam = familie ? blaetter.familien[familie] : null;
       const vergleiche = (blaetter.vergleiche[k] ?? []).filter((v) => v.angebote.every((id) => g.liste.some((a) => a.id === id)));
       const klein = kleinerCheck(k);
+      const gruppenBild = BILD_JE_GRUPPE[`${k}/${gs.pfad}`];
       neu(`${k}/${gs.pfad}/index.html`, {
         titel: gs.seo_titel,
         beschreibung: gs.seo_beschreibung,
         bildVorzeile: B[k].name,
         bildTitel: `${gs.titel} ${gs.ruhig}`,
         aktiv: k,
-        main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
+        main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster${gruppenBild || VIDEOS[`${k}/${gs.pfad}`] ? '' : ' einspaltig'}">
 <div class="erscheint">${brotkrumen([[`/${k}/`, B[k].name], [null, gs.name]])}${vorzeile(B[k].name)}<h1 id="held-titel">${titel(gs.titel, gs.ruhig)}</h1><p class="lead">${t(gs.lead)}</p>
 <div class="knoepfe">${erstKnopf()}${klein ? textlink(checkThema(k, `${gs.pfad}_held`), `${klein.name}, ${klein.minuten} Minuten`) : ''}</div></div>
-${buehne(BILD_JE_BEREICH[k], VIDEOS[`${k}/${gs.pfad}`])}
+${gruppenBild || VIDEOS[`${k}/${gs.pfad}`] ? buehne(gruppenBild, VIDEOS[`${k}/${gs.pfad}`]) : ''}
 </div></section>
 
 <section class="abschnitt" aria-labelledby="pakete-titel"><div class="w">${abKopf({ marke: 'Pakete', h2: `${g.liste.length} Pakete zur Wahl.`, lead: fam?.problem, id: 'pakete-titel' })}
@@ -970,10 +971,9 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
     aktiv: 'kostenlos',
     seitenTyp: 'CollectionPage',
     schema: [{ ...itemListe('Kostenlos bei Fokus Innovation', [...K.checks.map((c) => [c.thema ? `/check?thema=${c.thema}` : c.pfad, c.name]), ...W.artikel.map((a) => [artikelPfad(a), a.titel])]), '@id': `${absolut('/kostenlos/')}#kostenlos` }],
-    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
+    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
 <div class="erscheint">${brotkrumen([[null, 'Kostenlos']])}${vorzeile('Kostenlos')}<h1 id="held-titel">${titel(K.titel, K.ruhig)}</h1><p class="lead">${t(K.lead)}</p>
 <nav class="az breit" aria-label="Auf dieser Seite"><a href="#checks">Checks</a>${K.phasen?.length ? '<a href="#phasen">Nach Phase</a>' : ''}<a href="#ratgeber">Ratgeber</a>${Z ? '<a href="#zahlen">Zahlen</a>' : ''}${VORL.length ? '<a href="#vorlagen">Vorlagen</a>' : ''}<a href="#newsletter">Newsletter</a></nav></div>
-${buehne('stufen', VIDEOS.kostenlos)}
 </div></section>
 
 <section class="abschnitt" id="checks" aria-labelledby="checks-titel"><div class="w">${abKopf({ marke: 'Checks', h2: 'Wo stehen Sie?', ruhig: 'In Minuten.', lead: 'Fast alles per Klick, Ergebnis sofort, mit nächsten Schritten. Zoe, unsere KI-Assistentin, führt durch die Fragen.', id: 'checks-titel' })}
@@ -1078,10 +1078,9 @@ ${schlussakt({ quelle: `${s.pfad}_ende` })}`,
         ...(quellenListe.length ? { citation: quellenListe.map((q) => ({ '@type': 'CreativeWork', name: q.quelle, url: q.link })) } : {}),
         ...(angebote.length ? { mentions: angebote.map((x) => ({ '@type': 'Service', name: x.name, url: absolut(produktPfad(x)) })) } : {}),
       }],
-      main: `<section class="held artikel-held" aria-labelledby="held-titel"><div class="w held-raster">
+      main: `<section class="held artikel-held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
 <div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, a.titel]])}${vorzeile(`${a.leitfaden ? 'Leitfaden · ' : ''}${b.name} · ${lesezeit(a)} Minuten Lesezeit`)}<h1 id="held-titel">${e(a.titel)}</h1>
 <p class="autor-zeile">Von <a class="unterstrichen" href="/ueber-uns/#${personAnker(autor)}">${e(autor.name)}</a>, ${e(autor.rolle)} · <time datetime="${a.aktualisiert}">${e(datum(a.aktualisiert))}</time></p></div>
-${buehne(BILD_JE_BEREICH[a.bereich], VIDEOS[`wissen/${a.id}`])}
 </div></section>
 
 <section class="abschnitt" aria-label="Artikel"><div class="w artikel-raster">
