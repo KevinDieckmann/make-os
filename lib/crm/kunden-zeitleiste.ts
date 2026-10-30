@@ -157,5 +157,6 @@ export function zeitleistenSatz(m: Pick<Mandat, 'status'>, angebot: ZlAngebot | 
   if (naechste) return `${phase} · als Nächstes ${naechste.titel}${/für /.test(naechste.text) ? ` (${naechste.text.replace(/^geplant für /, '')})` : ''}.`;
   if (m.status === 'aktiv' && rechnungen.length && rechnungen.every(r => r.stand === 'erledigt')) return `${phase} · alle Rechnungen bezahlt.`;
   if (angebot?.status === 'gestellt') return `${phase} · wartet auf die Antwort des Kunden.`;
+  if (m.status === 'aktiv' && !fall) return `${phase} · als Nächstes den Fall starten.`;
   return `${phase}.`;
 }
