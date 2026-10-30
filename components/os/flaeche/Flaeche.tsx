@@ -141,7 +141,8 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
   const langerDruck = useCallback((e: RPointerEvent) => {
     if (bearbeiten) return;
     const ziel = e.target as HTMLElement;
-    if (ziel.closest('input, textarea, select, button, a, label, [contenteditable], [role="button"]')) return;
+    // Zeichenflächen (Lichtfäden, Seil, Kugeln) bedient man mit Halten und Ziehen — dort öffnet langer Druck nicht das Anpassen (30.10.).
+    if (ziel.closest('input, textarea, select, button, a, label, canvas, [contenteditable], [role="button"], [data-kein-anpassen]')) return;
     const x = e.clientX, y = e.clientY;
     const ende = () => { if (druck.current) { clearTimeout(druck.current.t); druck.current = null; } window.removeEventListener('pointerup', ende); window.removeEventListener('pointercancel', ende); window.removeEventListener('pointermove', bewegt); };
     const bewegt = (ev: PointerEvent) => { if (Math.hypot(ev.clientX - x, ev.clientY - y) > 8) ende(); };
