@@ -21,7 +21,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { suchPasst } from '@/lib/text/such-norm';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie, ZeileAktionen, useRueckgaengig, useRueckfrage, Arbeitsflaeche, FilterKnopf, FilterGruppe, ListenAbschnitt, feld, type ZeilenMehr } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie, ZeileAktionen, useRueckgaengig, useRueckfrage, Arbeitsflaeche, FilterKnopf, FilterGruppe, ListenAbschnitt, Klappbar, feld, type ZeilenMehr } from '../ui';
 import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -77,6 +77,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   // Liste als Arbeitsfläche (31.10.): Suche und Stufe nur für die Liste — das Board zeigt weiter alle offenen Deals.
   const [suche, setSuche] = useState('');
   const [stufeFilter, setStufeFilter] = useState<ChancenStufe | 'alle'>('alle');
+  // In EINER Spalte (schmal, Handy) stehen Prognose und Head zugeklappt über der Liste — sonst schiebt die große Karte die Deals aus dem Bild.
+  const [prognoseOffen, setPrognoseOffen] = useState(false);
   const crm = api.crm;
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   const ich = api.ich;
@@ -297,7 +299,10 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
             </div>
           ) : null)}
           detailKennung={sel?.id ?? null}
-          leer={<div style={{ display: 'grid', gap: 14 }}>{prognoseKarte(false)}<HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={1} nachEntscheid={() => void api.laden()} /></div>} leerOben />
+          leer={st => {
+            const voll = <div style={{ display: 'grid', gap: 14 }}>{prognoseKarte(false)}<HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={1} nachEntscheid={() => void api.laden()} /></div>;
+            return st.zwei ? voll : <Klappbar id="deals-prognose" titel="Prognose & Head of Sales" offen={prognoseOffen} umschalten={() => setPrognoseOffen(o => !o)}>{voll}</Klappbar>;
+          }} leerOben />
         {dialog}
         {hinweis}
       </>

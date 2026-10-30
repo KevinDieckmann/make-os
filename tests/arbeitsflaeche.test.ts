@@ -138,7 +138,9 @@ describe('Markttraktion › Deals › Liste als Arbeitsfläche', () => {
     expect(p).toContain('<ListenAbschnitt key={s.id} id={s.id}');
     expect(p).toContain('<FilterGruppe titel="Stufe">');
     expect(p).toContain('<FilterGruppe titel="Geschlossene">');
-    expect(p).toContain('leer={<div style={{ display: \'grid\', gap: 14 }}>{prognoseKarte(false)}');
+    expect(p).toContain('{prognoseKarte(false)}<HeadPanel head="sales"');
+    // In einer Spalte (Handy) zugeklappt über der Liste, damit die große Karte die Deals nicht aus dem Bild schiebt.
+    expect(p).toContain('st.zwei ? voll : <Klappbar id="deals-prognose"');
     expect(p).toContain('inline={!zwei}');
     // Der Link aus der Auswertung (zu=1) findet die geschlossenen Deals weiter.
     expect(p).toContain('<div id="deals-geschlossen">');
