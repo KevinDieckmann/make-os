@@ -318,7 +318,7 @@
           "h": "Aus fünf Sätzen wird einer",
           "absaetze": [
             "Wenn die fünf Sätze stehen, verdichten Sie sie: zu einem Satz für die Startseite und zu wenigen Worten für die Unterzeile. Unser eigener Satz lautet „Wir bringen Neues aus Deutschland und Europa nach vorne.“ Die Kurzform: „Sichtbar, verkauft, verbunden.“",
-            "Der Claim ist noch kürzer und trägt die Haltung. Unserer heißt „Innovation braucht Fokus.“"
+            "Der Claim ist noch kürzer und trägt die Haltung. Unserer heißt „Fortschritt braucht Fokus.“"
           ]
         },
         {
@@ -670,7 +670,7 @@
     {
       "id": "claim",
       "name": "Claim",
-      "text": "Ein kurzer Satz, der die Haltung einer Marke trägt. Unserer lautet „Innovation braucht Fokus.“"
+      "text": "Ein kurzer Satz, der die Haltung einer Marke trägt. Unserer lautet „Fortschritt braucht Fokus.“"
     },
     {
       "id": "crm",

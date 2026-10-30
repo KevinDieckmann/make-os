@@ -41,7 +41,7 @@ body { background: ${f.grund}; color: ${f.tinte}; position: relative; }
 h1 { margin-top: 20px; max-width: 930px; font-size: ${groesse}px; font-weight: 600; letter-spacing: -.03em; line-height: 1.06; text-wrap: balance; }
 .fuss { margin-top: 42px; padding-top: 22px; border-top: 1px solid ${f.haar}; display: flex; justify-content: space-between; font-size: 20px; color: ${f.text}; }
 `)}<div class="ring">${zeichen(f.tinte, f.kern)}</div><div class="innen"><div class="marke">${zeichen(f.tinte, f.kern)}<span class="wort"><b>FOKUS</b><small>Innovation</small></span></div>
-<p class="vorzeile">${e(vorzeile)}</p><h1>${e(titel)}</h1><div class="fuss"><span>fokusinnovation.de</span><span>Innovation braucht Fokus.</span></div></div></body></html>`;
+<p class="vorzeile">${e(vorzeile)}</p><h1>${e(titel)}</h1><div class="fuss"><span>fokusinnovation.de</span><span>Fortschritt braucht Fokus.</span></div></div></body></html>`;
 };
 /** Icon: das Zeichen auf Papier (randlos, Systeme runden selbst) oder frei auf durchsichtigem Grund (Logo für Google). */
 const icon = (seite, frei) => `${kopf(seite, seite, `body { background: ${frei ? 'transparent' : FARBE.papier}; display: grid; place-items: center; } svg { width: ${frei ? 92 : 66}%; height: ${frei ? 92 : 66}%; }`)}${zeichen(FARBE.tinte, FARBE.akzent)}</body></html>`;

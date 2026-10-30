@@ -2,7 +2,7 @@
   "hinweis": "Texte der Marke Fokus Innovation aus dem Positionierungs-Doc (25.10.2026). Angebote, Preise, Produktblätter und Fragen kommen aus makeinnovation/inhalt/*.json. Statistiken nur mit Quelle und nur die, die im Doc als „Website, geprüft“ stehen.",
   "marke": {
     "name": "Fokus Innovation",
-    "claim": "Innovation braucht Fokus.",
+    "claim": "Fortschritt braucht Fokus.",
     "leitidee": "Wir rücken Innovation in den Fokus.",
     "kurz": "Sichtbar, verkauft, verbunden.",
     "beschreibung": "Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um."
@@ -787,7 +787,7 @@
     ],
     "ein_satz": "Wir bringen Neues aus Deutschland und Europa nach vorne.",
     "sieben_woerter": "Neues sichtbar machen und mit System verkaufen.",
-    "claim": "Innovation braucht Fokus."
+    "claim": "Fortschritt braucht Fokus."
   },
   "wochenreport_muster": {
     "titel": "So sieht ein Wochenreport aus",
