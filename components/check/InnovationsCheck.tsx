@@ -510,9 +510,9 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
         <p className={s.stufeKurz} style={{ marginTop: 8 }}>{iv.stufeKurz}</p>
         <div className={s.skala} aria-hidden>{iv.stufen.map(x => <span key={x.stufe} className={`${s.skalaTeil} ${x.stufe <= iv.stufe ? s.skalaAn : ''}`} />)}</div>
         <div className={s.skalaNamen} aria-hidden>{iv.stufen.map(x => <span key={x.stufe} className={x.stufe === iv.stufe ? s.skalaNameAn : undefined}><span className={s.skalaNr}>{x.stufe}</span><span className={s.skalaWort}>{x.name.replace(/ \(.*\)$/, '')}</span></span>)}</div>
-        <Netzdiagramm achsen={iv.achsen} />
+        {iv.achsen.length >= 3 && <Netzdiagramm achsen={iv.achsen} />}
         {iv.branchenSatz && <p className={s.branchenSatz}>{iv.branchenSatz}</p>}
-        <div style={{ marginTop: 14 }}><Zoe zeilen={iv.zoe} leise /></div>
+        <div style={{ marginTop: 14 }}><Zoe zeilen={iv.zoe} /></div>
       </details>
     </section>
   );

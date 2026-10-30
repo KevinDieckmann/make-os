@@ -72,8 +72,9 @@ export function ergebnisAnsicht(v: CheckVorlage, antworten: CheckAntworten): { e
   const iStufe = v.regeln.stufen.find(s => s.stufe === ergebnis.stufe);
   const gStufen = v.regeln.saeulen_stufen?.length ? v.regeln.saeulen_stufen : v.regeln.stufen;
   const gStufe = gStufen.find(s => s.stufe === saeulen.stufe);
-  // Achsen: die gewerteten Dimensionen; eine nicht beantwortete Dimension zeigt 0 (ehrlich), Robotik nur, wenn sie zählt.
-  const achsen = ACHSEN.filter(d => d !== 'robotik' || ergebnis.robotik_gewertet)
+  // Achsen: nur die beantworteten Dimensionen (30.10.: der Kurzcheck fragt nicht jede ab — eine „0“ für Ungefragtes wäre falsch),
+  // Robotik nur, wenn sie zählt. Unter drei Achsen zeigt die Seite kein Netzdiagramm.
+  const achsen = ACHSEN.filter(d => ergebnis.dimensionen[d] !== undefined && (d !== 'robotik' || ergebnis.robotik_gewertet))
     .map(d => ({ key: d, name: dimensionName(d), wert: ergebnis.dimensionen[d] ?? 0, branche: bm[d] }));
   const saeulenListe: ErgebnisSaeule[] = (v.regeln.saeulen ?? [{ key: 'innovation' as const }]).map(sa => ({ key: sa.key, name: saeuleName(sa.key), wert: saeulen.werte[sa.key] ?? null }));
   return {

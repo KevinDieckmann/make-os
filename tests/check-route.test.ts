@@ -196,7 +196,8 @@ describe('die Strecke', () => {
     expect(r.d.ansicht.genauigkeit).toBe('vorlaeufig');
     expect(r.d.ansicht.innovation.gesamt).toBe(soll.gesamt);
     expect(r.d.ansicht.innovation.stufe).toBe(soll.stufe);
-    expect(r.d.ansicht.innovation.achsen.map((a: { key: string }) => a.key)).toEqual(['strategie', 'ki', 'automatisierung', 'daten', 'team']);
+    // Nur beantwortete Dimensionen (Team fragt der Kurzcheck seit 30.10. nicht mehr ab).
+    expect(r.d.ansicht.innovation.achsen.map((a: { key: string }) => a.key)).toEqual(['strategie', 'ki', 'automatisierung', 'daten']);
     expect(r.d.ansicht.innovation.branchenSatz).toContain('10 bis 49');
     expect(r.d.ansicht.zoe[0]).toContain(`Stufe ${saeulen.stufe}`);
     // Zwei nächste Schritte für die schwächsten Säulen, mit dem Angebot der Instanz (Einstellungen), nie mit Punkten.
