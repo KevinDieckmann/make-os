@@ -494,7 +494,7 @@ ${block('durchbruch', fl.durchbruch)}
 <nav class="index tueren erscheint" aria-label="Ihr Anliegen">${F.tueren.map((d) => `<a href="#${d.id}"><span class="nr">${e(d.etikett)}</span><b>${e(d.titel)}</b><span class="index-satz">${t(d.text)}</span>${PFEIL}</a>`).join('')}</nav>
 </div></section>
 
-<section class="abschnitt" id="bekannt" aria-labelledby="bekannt-titel"><div class="w">
+<section class="abschnitt dunkel raum" id="bekannt" aria-labelledby="bekannt-titel"><div class="w">
 ${abKopf({ marke: 'Ihr Alltag', h2: F.bekannt.titel, lead: F.bekannt.lead, id: 'bekannt-titel' })}
 ${F.bekannt.gruppen ? `<div class="momente-gruppen erscheint">${F.bekannt.gruppen.map((g) => `<div class="momente-gruppe"><h3 class="gruppe-titel">${e(B[g.bereich].name)}</h3><ul class="momente">${g.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul></div>`).join('')}</div>` : `<ul class="momente erscheint">${F.bekannt.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul>`}
 <div class="momente-schluss erscheint"><p>${(([frage, ...rest]) => `<b>${t(frage)}?</b> ${t(rest.join('?').trim())}`)(F.bekannt.schluss.split('?'))}</p>${erstKnopf()}</div>
@@ -514,18 +514,19 @@ ${abKopf({ marke: 'Wegweiser', h2: ww.titel, lead: ww.lead, id: 'wegweiser-titel
 <p class="satz-unter erscheint">Nichts dabei? ${textlink(erstLink(), 'Erzählen Sie uns im Erstgespräch, worum es geht')}</p>
 </div></section>
 
-<section class="abschnitt" id="warum-wir" aria-labelledby="warum-titel"><div class="w">
+<section class="abschnitt dunkel raum" id="warum-wir" aria-labelledby="warum-titel"><div class="w">
 ${abKopf({ marke: 'Warum wir', h2: 'Wir arbeiten in Ihrem Team, nicht daneben.', lead: F.warum_lead ?? 'Vier Unterschiede, an denen Sie uns messen können.', id: 'warum-titel' })}
 ${raster(F.warum_wir.map((w) => ({ titel: w.titel, text: w.text, unter: w.beleg })), 4)}
 </div></section>
 
 ${fragen(F.einwaende, F.einwaende_titel ?? 'Bevor Sie fragen', { id: 'einwaende', marke: F.einwaende_marke ?? 'Fragen' })}
 
-<section class="abschnitt" id="events" aria-labelledby="events-titel"><div class="w">
-<div class="kasten abend-kasten">
-<div class="erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${titel(F.events.start_titel.join('|'), F.events.start_ruhig)}</h2>${formatListe()}</div>
-<div class="erscheint"><p class="lead">${t(F.events.text)}</p><p class="leise">${t(F.events.termine)}</p>
+<section class="abschnitt dunkel raum" id="events" aria-labelledby="events-titel"><div class="w">
+<div class="events-block">
+<div class="events-kopf erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${titel(F.events.start_titel.join('|'), F.events.start_ruhig)}</h2></div>
+<div class="events-text erscheint"><p class="lead">${t(F.events.text)}</p><p class="leise">${t(F.events.termine)}</p>
 <div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten')}${textlink('/events/', 'Mehr zu den Events')}</div></div>
+<div class="events-formate">${formatListe()}</div>
 </div>
 </div></section>
 
