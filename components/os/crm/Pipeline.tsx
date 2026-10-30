@@ -312,6 +312,8 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
       </div>
       {prognoseKarte(true)}
 
+      {/* Board (30.10. nachts): ein Klick auf eine Karte öffnet die Deal-Akte wie die Liste; Ziehen wechselt die Stufe. Die Karte darunter
+          erscheint nur noch, wenn das Ziehen etwas braucht (nächster Schritt, Verloren/Geparkt-Nachfrage). */}
       {breit && board && (() => {
         const sel = auswahl ? crm.stand.chancen.find(c => c.id === auswahl) : null;
         return (
@@ -332,7 +334,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
                         return (
                           <ZeileAktionen key={c.id} titel={c.titel} onArchivieren={() => deal.archivieren(c)} onLoeschen={() => deal.loeschen(c)}
                             loeschenFragt href={WEG.deal(c.id)} onOeffnen={() => (zuAkte ? zuAkte(c.id) : setAuswahl(c.id))} mehr={deal.mehr(c)}>
-                          <button draggable onDragStart={e => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; }} onDoubleClick={() => zuAkte?.(c.id)} title="Klick: Details · Doppelklick: Akte · Ziehen: Stufe wechseln" onClick={() => setAuswahl(auswahl === c.id ? null : c.id)} className="fassbar" style={{ textAlign: 'left', cursor: 'grab', border: `1px solid ${auswahl === c.id ? LEUCHT.business : 'rgba(255,255,255,.06)'}`, borderLeft: `3px solid ${a ? AMPEL[a.ampel] : C.inkLeise}`, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '9px 10px', color: C.ink, display: 'grid', gap: 3 }}>
+                          <button draggable onDragStart={e => { e.dataTransfer.setData('text/plain', c.id); e.dataTransfer.effectAllowed = 'move'; }} title={zuAkte ? 'Klick: Deal-Akte · Ziehen: Stufe wechseln' : 'Klick: Details · Ziehen: Stufe wechseln'} onClick={() => (zuAkte ? zuAkte(c.id) : setAuswahl(auswahl === c.id ? null : c.id))} className="fassbar" style={{ textAlign: 'left', cursor: 'grab', border: `1px solid ${auswahl === c.id ? LEUCHT.business : 'rgba(255,255,255,.06)'}`, borderLeft: `3px solid ${a ? AMPEL[a.ampel] : C.inkLeise}`, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: '9px 10px', color: C.ink, display: 'grid', gap: 3 }}>
                             <span style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'flex-start' }}>
                               <span style={{ fontSize: TYP.bedien, fontWeight: 600, lineHeight: 1.3 }}>{c.titel}</span>
                               <Person id={zustaendig(c.besitzer, 'sales')} groesse={16} />
@@ -374,7 +376,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
             <Ueberschrift rechts={`${s.p} % · ${l.length} · ${kurzEuro(js?.wert ?? 0)}${dealsOhneWert(l) ? ` · ${dealsOhneWert(l)} ohne Wert` : ''}${js?.haengt ? ` · ${js.haengt} hängt` : ''}`}>{s.label}</Ueberschrift>
             <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>Weiter, wenn: {s.weiterWenn}</div>
             <Liste>
-              {l.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />)}
+              {l.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => (zuAkte ? zuAkte(c.id) : setAuswahl(auswahl === c.id ? null : c.id))} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />)}
             </Liste>
             {!l.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 0' }}>Kein Deal in dieser Stufe.</div>}
           </Karte>
@@ -394,7 +396,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
 
       <Karte i={7} id="deals-geschlossen">
         <Ueberschrift rechts={<button onClick={() => { if (zeigeZu && gewaehlt && !istOffen(gewaehlt)) setAuswahl(null); setGeschlossen(!zeigeZu); }} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>{zeigeZu ? 'ausblenden' : `${zu.length} zeigen`}</button>}>Gewonnen · Verloren · Geparkt</Ueberschrift>
-        {zeigeZu && <Liste>{zu.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />)}</Liste>}
+        {zeigeZu && <Liste>{zu.map(c => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} onKlick={() => (zuAkte ? zuAkte(c.id) : setAuswahl(auswahl === c.id ? null : c.id))} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />)}</Liste>}
       </Karte>
       {dialog}
       {hinweis}

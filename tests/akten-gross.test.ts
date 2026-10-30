@@ -116,6 +116,13 @@ describe('Oberfläche — die Listen öffnen die Akte, kein schmales Detail rech
     expect(p).not.toContain('aria-label="Deal schließen"');
     expect(p).toContain('{prognoseKarte(false)}<HeadPanel head="sales"');
   });
+  it('Deals › Board (30.10. nachts): Klick auf eine Karte öffnet die Deal-Akte, Ziehen zwischen den Spalten bleibt', () => {
+    expect(p).toContain("title={zuAkte ? 'Klick: Deal-Akte · Ziehen: Stufe wechseln'");
+    expect(p).toContain("onClick={() => (zuAkte ? zuAkte(c.id) : setAuswahl(auswahl === c.id ? null : c.id))}");
+    expect(p).toContain("draggable onDragStart={e => { e.dataTransfer.setData('text/plain', c.id)");
+    expect(p).toContain('onDrop={e => zieh(e, s.id)}');
+    expect(p).not.toContain('onDoubleClick');
+  });
   it('Zurück aus der Akte: die Liste einer Arbeitsfläche steht wieder dort, wo man war (Verlauf merkt ihre Scrollposition)', () => {
     expect(v).toContain('const LISTE = \'[data-af="liste"]\';');
     expect(v).toContain('positionen.set(verlaufStand().id, { main: zuletzt, liste: zuletztListe });');
