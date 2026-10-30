@@ -34,8 +34,8 @@
   },
   "start": {
     "vorzeile": "Agentur für Sichtbarkeit, Vertrieb und Innovation · Berlin",
-    "titel": "Gute Produkte verkaufen sich nicht von selbst.",
-    "ruhig": "Wir bauen Kommunikation und Vertrieb so auf, dass aus Aufmerksamkeit planbar Kunden werden.",
+    "titel": "Sichtbar sein. Planbar verkaufen.",
+    "ruhig": "Sichtbarkeit bringt Anfragen. Ein Vertrieb mit System macht Kunden daraus.",
     "lead": "Wir schärfen Ihre Botschaft, machen Sie über Website, Videos und Pressearbeit sichtbar und bauen den Vertrieb auf, der aus Anfragen planbar Kunden macht. Dazu führen wir KI und neue Software dort ein, wo sie Arbeit spart. Für Gründer, Unternehmer und Mittelstand mit 5 bis 50 Mitarbeitenden. Mit festen Preisen, festen Abläufen und einem Team, das selbst mit umsetzt.",
     "kernsatz": "Wir bringen Neues aus Deutschland und Europa nach vorne."
   },
@@ -226,7 +226,7 @@
       ],
       "beleg": "ki_daten",
       "held": {
-        "titel": "KI skaliert Ihre Abläufe. Darum ordnen wir sie zuerst.",
+        "titel": "KI braucht Struktur. Wir bauen sie mit Ihnen.",
         "text": "Am Ende geht es um Ihre Abläufe: Routineaufgaben, Kommunikation, Angebote, Auswertungen. KI macht sie schneller, aber nur, wenn Struktur und Datenbasis stimmen. Sonst skaliert sie Fehler. Deshalb ordnen wir zuerst Abläufe und Daten, führen dann KI und neue Software ein und befähigen Ihr Team, bis es im Alltag läuft."
       },
       "schritte": [
@@ -274,9 +274,7 @@
         }
       ],
       "held_varianten": [
-        "KI skaliert Ihre Abläufe. Darum ordnen wir sie zuerst.",
-        "Erst Struktur und Daten. Dann bringt KI Tempo.",
-        "KI macht gute Abläufe schneller. Und schlechte auch."
+        "KI braucht Struktur. Wir bauen sie mit Ihnen."
       ],
       "felder_titel": "Erst Struktur, dann Tempo.",
       "felder_lead": "Wir gehen in dieser Reihenfolge vor: Abläufe ordnen, Daten an einen Ort, dann KI und Automatisierung. So macht KI schneller, was funktioniert, und nicht, was heute schon hakt."
@@ -1029,7 +1027,8 @@
       "Wir bauen Kommunikation und Vertrieb so auf, dass aus Aufmerksamkeit planbar Kunden werden.",
       "Sichtbarkeit und Vertrieb aus einer Hand, damit aus Anfragen Kunden werden.",
       "Sichtbarkeit bringt Anfragen. Ein Vertrieb mit System macht Kunden daraus."
-    ]
+    ],
+    "gewaehlt": "Sichtbar sein. Planbar verkaufen. (Kevin 30.10.)"
   },
   "warum_lead": "Vier Unterschiede, an denen Sie uns messen können.",
   "einwaende_titel": "Was Entscheider uns zuerst fragen.",
