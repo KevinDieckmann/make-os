@@ -172,6 +172,9 @@ fokusinnovation.de {
 	# Kostenlos (30.10.): die frühere Übersicht /wissen/ heißt jetzt /kostenlos/ — die Ratgeber behalten ihre Adressen /wissen/<id>/.
 	@altwissen path /wissen /wissen/ /wissen/index.html
 	redir @altwissen /kostenlos/ 301
+	# Events (30.10., Kevin: „Das sind Events, keine Abende“): die frühere Seite /abend/ heißt jetzt /events/.
+	@altabend path /abend /abend/ /abend/index.html
+	redir @altabend /events/ 301
 	handle {
 		root * /srv/fokusinnovation
 		import fokus_koepfe

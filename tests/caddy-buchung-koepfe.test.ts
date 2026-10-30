@@ -144,6 +144,8 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     // Kostenlos (30.10.): die alte Übersicht /wissen/ leitet dauerhaft um, die Ratgeber /wissen/<id>/ bleiben, wo sie sind.
     expect(seite).toMatch(/^@altwissen path \/wissen \/wissen\/ \/wissen\/index\.html$/m);
     expect(seite).toMatch(/^redir @altwissen \/kostenlos\/ 301$/m);
+    expect(seite).toMatch(/^@altabend path \/abend \/abend\/ \/abend\/index\.html$/m);
+    expect(seite).toMatch(/^redir @altabend \/events\/ 301$/m);
     const kopf = aktiv.get('(fokus_koepfe)') ?? '';
     expect(kopf, 'Vorschau ohne noindex').toMatch(/^X-Robots-Tag "noindex, nofollow"$/m);
     expect(/Content-Security-Policy "([^"]+)"/.exec(kopf)?.[1]).toBe(LANDING_CSP);
