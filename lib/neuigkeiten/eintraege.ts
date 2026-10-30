@@ -42,7 +42,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { text: 'Anmeldung mit Bestätigung per E-Mail (Double-Opt-in). Unter Marketing › Newsletter wählt ihr das Absender-Postfach, tragt die Adresse der Website ein und schaltet die Anmeldung ein.', bereich: 'business', weg: WEG.marketing('newsletter') },
         { text: 'Bestätigte Anmeldungen kommen mit Wortlaut, Fassung und Zeitpunkten der Einwilligung in die Kartei. Unbestätigte löschen sich nach 30 Tagen von selbst.', bereich: 'business', weg: WEG.marketing('newsletter') },
         { text: 'Das Newsletter-Häkchen in den Checks führt in dieselbe Anmeldung und erscheint nur, wenn sie eingeschaltet ist.', bereich: 'business', weg: WEG.marketing('check') },
-        { text: 'Auf der Website gibt es den Bereich „Kostenlos“: drei Checks, Ratgeber, Zahlen mit Quelle, Vorlagen als PDF und die Newsletter-Anmeldung.', bereich: 'business' },
+        { text: 'Auf der Website gibt es den Bereich „Kostenlos“: drei Checks, ein Leitfaden zum Aufbau eines Vertriebsteams mit Arbeitsheft, Ratgeber, Zahlen mit Quelle, neun Vorlagen mit Anleitung und Beispiel (fünf auch als Tabelle für Excel), eine Übersicht nach Phase und die Newsletter-Anmeldung.', bereich: 'business' },
       ] },
       { art: 'besser', punkte: [
         { text: 'Der Innovations-Check vergleicht nach Unternehmensgröße jetzt mit den Destatis-Zahlen von 2025.', bereich: 'business', weg: WEG.marketing('check') },
