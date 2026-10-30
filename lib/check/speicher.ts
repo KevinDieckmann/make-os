@@ -8,7 +8,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { neueKennung } from '@/lib/kennung';
 import type { AngebotBereich, CheckAntworten, SaeuleKey } from './typen';
-import type { KontaktStand } from './ablauf';
+import type { KontaktStand, CheckUmfang } from './ablauf';
 import { FRIST_MIT_KONTAKT_MONATE, FRIST_OHNE_KONTAKT_TAGE } from './fristen';
 
 export { FRIST_MIT_KONTAKT_MONATE, FRIST_OHNE_KONTAKT_TAGE };
@@ -56,6 +56,8 @@ export interface CheckSitzung {
   kontaktStand: KontaktStand;
   kontakt?: CheckKontakt;
   wahl?: 'ergebnis' | 'mehr';
+  /** Kurz oder ausführlich, beim Start gewählt (30.10. abends, nur wo die Vorlage die Wahl anbietet). Fehlt = alte Strecke mit Wahl nach dem Kurzcheck. */
+  umfang?: CheckUmfang;
   /** Erstes Ergebnis gesehen (abgeschlossen) — für Kennzahlen; danach kann weiter beantwortet werden. */
   abgeschlossen?: string;
   ergebnis?: CheckErgebnisStand;
@@ -143,9 +145,9 @@ export async function speichereCheckEinstellungen(e: CheckEinstellungen): Promis
 }
 
 /** Neue Sitzung — Token nur einmal im Klartext zurück. `null`, wenn der Bestand voll ist. */
-export async function sitzungAnlegen(vorlage: string, quelle: string | undefined, jetzt = new Date().toISOString()): Promise<{ sitzung: CheckSitzung; token: string } | null> {
+export async function sitzungAnlegen(vorlage: string, quelle: string | undefined, jetzt = new Date().toISOString(), umfang?: CheckUmfang): Promise<{ sitzung: CheckSitzung; token: string } | null> {
   const token = neuesCheckToken();
-  const sitzung: CheckSitzung = { id: neueKennung('ck'), vorlage, tokenHash: checkTokenHash(token), gestartet: jetzt, geaendert: jetzt, ...(quelle ? { quelle } : {}), antworten: {}, uebersprungen: [], kontaktStand: 'offen' };
+  const sitzung: CheckSitzung = { id: neueKennung('ck'), vorlage, tokenHash: checkTokenHash(token), gestartet: jetzt, geaendert: jetzt, ...(quelle ? { quelle } : {}), ...(umfang ? { umfang } : {}), antworten: {}, uebersprungen: [], kontaktStand: 'offen' };
   let voll = false;
   await updateJson<CheckBestand>(SITZUNGEN, cur => {
     const b = cur ?? { sitzungen: [] };

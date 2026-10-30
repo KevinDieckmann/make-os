@@ -38,7 +38,7 @@ export async function hinweisLaden(e?: Pick<CheckEinstellungen, 'verantwortlich'
   return { zeilen: checkHinweis(v, link), link };
 }
 
-export const ablaufStand = (s: CheckSitzung): AblaufStand => ({ antworten: s.antworten, uebersprungen: s.uebersprungen, kontakt: s.kontaktStand, ...(s.wahl ? { wahl: s.wahl } : {}) });
+export const ablaufStand = (s: CheckSitzung): AblaufStand => ({ antworten: s.antworten, uebersprungen: s.uebersprungen, kontakt: s.kontaktStand, ...(s.wahl ? { wahl: s.wahl } : {}), ...(s.umfang ? { umfang: s.umfang } : {}) });
 
 /** Was der Browser nach jedem Schritt bekommt — nur eigene Angaben, nie Punkte, Bewertungen, Hash oder CRM-Verweis. */
 export function stromFuerBrowser(v: CheckVorlage, s: CheckSitzung) {
@@ -53,6 +53,7 @@ export function stromFuerBrowser(v: CheckVorlage, s: CheckSitzung) {
     kontakt: s.kontaktStand,
     ...(s.kontakt ? { vorname: s.kontakt.vorname } : {}),
     ...(s.wahl ? { wahl: s.wahl } : {}),
+    ...(s.umfang ? { umfang: s.umfang } : {}),
   };
 }
 

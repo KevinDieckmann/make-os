@@ -5,7 +5,7 @@
 // Branchenvergleich mit Quelle und Jahr). Alles aus der Auswertung und den Daten der Vorlage — keine Zahl von woanders. Die Angebote
 // zu den Schritten hängt der Server aus den Einstellungen der Instanz an (nie in der Vorlage). Rein.
 
-import { auswerten, luecken, naechsteSchritte, profilAus, saeulenAuswerten, saeulenGenauigkeit } from './auswertung';
+import { auswerten, luecken, naechsteSchritte, profilAus, saeulenAuswerten, saeulenGenauigkeit, schrittBand } from './auswertung';
 import { dimensionName, ergebnisSaetze, saeulenSaetze } from './zoe-texte';
 import type { AngebotBereich, CheckAntworten, CheckBenchmarks, CheckErgebnis, CheckLuecke, CheckProfil, CheckVorlage, DimKey, SaeuleKey, SaeulenErgebnis, SchrittBand } from './typen';
 
@@ -95,10 +95,17 @@ export function ergebnisAnsicht(v: CheckVorlage, antworten: CheckAntworten): { e
       stufen: gStufen.map(s => ({ stufe: s.stufe, name: s.name })),
       genauigkeit,
       saeulen: saeulenListe,
-      schritte: naechsteSchritte(v.regeln, saeulen.werte).map(x => {
-        const angebot = defs.find(sa => sa.key === x.saeule)?.angebot;
-        return { ...x, name: namen[x.saeule] ?? x.saeule, ...(angebot ? { angebot } : {}) };
-      }),
+      // Ohne Säulen (Innovations-Check seit 30.10. abends): die zwei größten Lücken zum Branchenwert, je mit einem Schritt für diese Woche;
+      // das Angebot hängt nur am ersten (sonst stünde dasselbe Angebot zweimal da).
+      schritte: !v.regeln.saeulen?.length && v.regeln.dimension_schritte
+        ? l.filter(x => !!v.regeln.dimension_schritte?.[x.dimension]).slice(0, 2).map((x, i) => {
+          const band = schrittBand(x.wert);
+          return { saeule: 'innovation' as SaeuleKey, name: dimensionName(x.dimension), wert: x.wert, band, text: v.regeln.dimension_schritte![x.dimension]![band], ...(i === 0 ? { angebot: 'innovation' as AngebotBereich } : {}) };
+        })
+        : naechsteSchritte(v.regeln, saeulen.werte).map(x => {
+          const angebot = defs.find(sa => sa.key === x.saeule)?.angebot;
+          return { ...x, name: namen[x.saeule] ?? x.saeule, ...(angebot ? { angebot } : {}) };
+        }),
       innovation: !mitInnovation ? null : {
         gesamt: ergebnis.gesamt,
         stufe: ergebnis.stufe,
@@ -110,7 +117,7 @@ export function ergebnisAnsicht(v: CheckVorlage, antworten: CheckAntworten): { e
         branchenSatz: branchenSatz(v.benchmarks, profil),
         zoe: ergebnisSaetze(ergebnis, l),
       },
-      zoe: saeulenSaetze(saeulen, genauigkeit, namen),
+      zoe: !v.regeln.saeulen?.length && mitInnovation ? ergebnisSaetze(ergebnis, l) : saeulenSaetze(saeulen, genauigkeit, namen),
       siegelMoeglich: ergebnis.stufe >= v.regeln.siegel.ab_stufe && ergebnis.genauigkeit === 'genau',
     },
   };

@@ -88,6 +88,9 @@ export interface CheckSeite {
   text: string;
   bereiche?: { name: string; text: string }[];
   minuten: number;
+  /** Ausführliche Variante (30.10. abends, nur Innovations-Check): Minuten und die Wahl am Anfang. Ohne Feld gibt es keine Wahl. */
+  minuten_lang?: number;
+  umfang?: { frage: string; kurz: { name: string; text: string }; lang: { name: string; text: string } };
   einleitung: string;
 }
 
@@ -105,6 +108,8 @@ export interface CheckRegeln {
   saeulen_stufen?: CheckStufe[];
   /** Ein nächster Schritt je Säule und Band (niedrig bis 40, mittel bis 70, hoch darüber). */
   naechste_schritte?: Partial<Record<SaeuleKey, Record<SchrittBand, string>>>;
+  /** Nächste Schritte je Dimension (Innovations-Check ohne Säulen, 30.10. abends): die größten Lücken zum Branchenwert. */
+  dimension_schritte?: Partial<Record<DimKey, Record<SchrittBand, string>>>;
   /** Reihenfolge bei Gleichstand der schwächsten Säulen — fehlt sie, gilt die Reihenfolge von `saeulen`. */
   schritt_reihe?: SaeuleKey[];
 }

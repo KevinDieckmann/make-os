@@ -27,11 +27,14 @@ interface Strom {
   kontakt: 'offen' | 'erfasst' | 'uebersprungen';
   vorname?: string;
   wahl?: 'ergebnis' | 'mehr';
+  umfang?: 'kurz' | 'lang';
 }
 interface Props {
   marke: string;
   /** Texte der Seite aus der Vorlage (Einstieg, Bereiche, Dauer). */
-  seite: { titel: string; text: string; bereiche?: { name: string; text: string }[]; minuten: number };
+  seite: { titel: string; text: string; bereiche?: { name: string; text: string }[]; minuten: number; minuten_lang?: number; umfang?: { frage: string; kurz: { name: string; text: string }; lang: { name: string; text: string } } };
+  /** Die anderen Checks der Instanz (Name, Pfad, Bereiche) — in der Karte über dem Gespräch. */
+  weitere?: { name: string; pfad: string; text: string }[];
   /** Leitsatz unter dem Namen (Einstellung der Instanz) — ohne Angabe keiner. */
   claim?: string;
   katalog: OeffentlicherKatalog;
@@ -81,7 +84,7 @@ function useHochzaehlen(ziel: number): number {
   return n;
 }
 
-export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, newsletter, kopf, quelle }: Props) {
+export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, newsletter, kopf, quelle, weitere }: Props) {
   const fragen = useMemo(() => new Map(katalog.fragen.map(f => [f.id, f])), [katalog]);
   const kurz = useMemo(() => katalog.fragen.filter(f => f.kurz), [katalog]);
   const [sitzung, setSitzung] = useState<Sitzung | null>(null);
@@ -93,6 +96,10 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
   const [laedt, setLaedt] = useState(false);
   const [fehler, setFehler] = useState('');
   const [bereit, setBereit] = useState(false);
+  // Kurz oder ausführlich (30.10. abends) — vor dem Start gewählt, danach steht es an der Sitzung.
+  const [umfangWahl, setUmfangWahl] = useState<'kurz' | 'lang' | null>(null);
+  const umfang = strom?.umfang ?? umfangWahl;
+  const mitWahl = !!seite.umfang;
   const ende = useRef<HTMLDivElement>(null);
 
   // Weitermachen nach dem Neuladen: gemerkte Sitzung fragen — weg (abgelaufen, gelöscht) → frisch beginnen.
@@ -126,7 +133,7 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
     setFehler(''); setLaedt(true);
     let x = sitzung;
     if (!x) {
-      const st = await rufe({ aktion: 'start', vorlage: katalog.vorlage, ...(quelle ? { quelle } : {}), webseite: '' });
+      const st = await rufe({ aktion: 'start', vorlage: katalog.vorlage, ...(quelle ? { quelle } : {}), ...(umfang ? { umfang } : {}), webseite: '' });
       if (!st.d.ok) { setLaedt(false); setFehler(String(st.d.fehler ?? 'Der Check ließ sich gerade nicht starten.')); return false; }
       x = { id: String(st.d.sitzung), token: String(st.d.token) };
       setSitzung(x); sitzungMerken(katalog.vorlage, x);
@@ -137,7 +144,7 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
     if (!r.d.ok) { setFehler(String(r.d.fehler ?? 'Das hat nicht geklappt.')); return false; }
     setStrom(r.d as unknown as Strom);
     return true;
-  }, [sitzung, katalog.vorlage, quelle]);
+  }, [sitzung, katalog.vorlage, quelle, umfang]);
 
   const beantworten = async (f: OeffentlicheFrage, a: Antwort) => {
     if (await sende({ aktion: 'antwort', frage: f.id, ...a })) { setBearbeite(null); setAnsicht(null); }
@@ -156,7 +163,8 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
   const imKurz = !strom || aktuell.art === 'frage' && aktuell.phase === 'kurzcheck';
   const kurzGeschafft = !!strom && (aktuell.art === 'kontakt' || aktuell.art === 'wahl');
   const fort = strom?.fortschritt ?? { kurz: 0, kurzVon: kurz.length, prozent: 0 };
-  const aenderbar = (id: string) => !!fragen.get(id)?.kurz || strom?.wahl === 'mehr';
+  const langFrage = umfang === 'lang' && aktuell.art === 'frage' && strom ? aktuell : null;
+  const aenderbar = (id: string) => !!fragen.get(id)?.kurz || strom?.wahl === 'mehr' || strom?.umfang === 'lang';
   const vorige = (id: string | null): string | null => {
     const i = id ? erledigt.indexOf(id) : erledigt.length;
     return i > 0 ? erledigt[i - 1] : null;
@@ -184,22 +192,40 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
           {kopf?.erstgespraech && <a className={s.kopfKnopf} href={kopf.erstgespraech}>Erstgespräch</a>}
         </div>
         <div className={s.kopfStand}>
-          <div className={s.balken} aria-hidden><div className={s.balkenFuell} style={{ width: `${kurzGeschafft || ansicht ? 100 : imKurz ? Math.round((fort.kurz / Math.max(1, fort.kurzVon)) * 100) : fort.prozent}%` }} /></div>
+          <div className={s.balken} aria-hidden><div className={s.balkenFuell} style={{ width: `${kurzGeschafft || ansicht ? 100 : langFrage ? Math.round(((langFrage.nummer - 1) / Math.max(1, langFrage.von)) * 100) : imKurz ? Math.round((fort.kurz / Math.max(1, fort.kurzVon)) * 100) : fort.prozent}%` }} /></div>
           <div className={s.stand} aria-live="polite">
-            {ansicht ? 'Ihr Ergebnis' : kurzGeschafft ? 'Fragen geschafft' : imKurz ? `Frage ${Math.min(fort.kurz + 1, fort.kurzVon)} von ${fort.kurzVon} · noch etwa ${Math.max(1, Math.round(((fort.kurzVon - fort.kurz) / Math.max(1, fort.kurzVon)) * seite.minuten))} Min.` : `${fort.prozent} % geschafft`}
+            {/* Ausführlich: Fortschritt in Etappen („Daten und Systeme · Frage 23 von 48 · noch etwa 12 Min.“) statt Prozent (Recherche 30.10.). */}
+            {ansicht ? 'Ihr Ergebnis' : kurzGeschafft ? 'Fragen geschafft' : mitWahl && !umfang ? 'Kurz oder ausführlich: Sie wählen' : langFrage ? `${katalog.abschnittName[fragen.get(langFrage.frageId)?.abschnitt ?? ''] ?? ''} · Frage ${langFrage.nummer} von ${langFrage.von} · noch etwa ${Math.max(1, Math.round(((langFrage.von - langFrage.nummer + 1) / Math.max(1, langFrage.von)) * (seite.minuten_lang ?? seite.minuten)))} Min.` : imKurz ? `Frage ${Math.min(fort.kurz + 1, fort.kurzVon)} von ${fort.kurzVon} · noch etwa ${Math.max(1, Math.round(((fort.kurzVon - fort.kurz) / Math.max(1, fort.kurzVon)) * seite.minuten))} Min.` : `${fort.prozent} % geschafft`}
             {' · '}<span className={s.kiMarke}>Zoe · KI-Assistentin</span>
           </div>
         </div>
       </header>
 
       <div className={s.rahmen}>
-       <div className={s.raster}>
         <div className={s.haupt}>
         {!strom && (
           <section className={s.einstieg}>
-            <p className={s.vorzeile}>{katalog.name} · kostenlos · rund {seite.minuten} Minuten</p>
+            <p className={s.vorzeile}>{katalog.name} · kostenlos · {mitWahl ? `kurz rund ${seite.minuten} oder ausführlich rund ${seite.minuten_lang ?? seite.minuten} Minuten` : `rund ${seite.minuten} Minuten`}</p>
             <h1 className={s.einstiegTitel}>{seite.titel}</h1>
             <p className={s.einstiegText}>{seite.text}</p>
+            {/* Die Karte steht über dem Gespräch (Kevin 30.10.: „oben drüber, dann die ganze Fläche für die KI“): Bereiche, was Sie erwartet, weitere Checks. */}
+            <div className={s.checkKarte} aria-label="Der Check">
+              <div className={s.checkKarteBereiche}>
+                <p className={s.etikett}>Der Check</p>
+                {bereiche}
+              </div>
+              <div className={s.checkKarteSeite}>
+                <ul className={s.versprechen}><li>kostenlos</li><li>{mitWahl ? `${seite.minuten} oder ${seite.minuten_lang ?? seite.minuten} Minuten` : `rund ${seite.minuten} Minuten`}</li><li>Ergebnis sofort</li><li>Antworten per Klick</li></ul>
+                {!!weitere?.length && (
+                  <div className={s.weitere}>
+                    <p className={s.etikett}>Weitere Checks</p>
+                    {/* Bewusst <a>: die anderen Checks sind eigene Seitenaufrufe (eigene Vorlage, eigene Sitzung). */}
+                    {weitere.map(w => <a key={w.pfad} className={s.weitererCheck} href={w.pfad}><b>{w.name}</b><span>{w.text}</span></a>)}
+                  </div>
+                )}
+                {claim && <p className={s.claim}>{claim}</p>}
+              </div>
+            </div>
           </section>
         )}
 
@@ -216,14 +242,28 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
                   <div className={s.ich}>{antwortText(f, strom?.antworten[id], strom?.uebersprungen.includes(id))}</div>
                   {aenderbar(id) && !ansicht && <button type="button" className={s.aendern} onClick={() => setBearbeite(id)}>ändern</button>}
                 </div>
-                {i === kurz.length - 1 && strom && strom.kontakt !== 'offen' && (
+                {i === (umfang === 'lang' ? erledigt.length - 1 : kurz.length - 1) && strom && strom.kontakt !== 'offen' && (
                   <div className={s.ichZeile}><div className={s.ich}>{strom.kontakt === 'erfasst' ? `Bericht an mich, ${strom.vorname ?? ''}`.trim() : 'Ohne Bericht weiter'}</div></div>
                 )}
               </div>
             );
           })}
 
-          {bearbeite && fragen.get(bearbeite) ? (
+          {mitWahl && !umfang && !strom && seite.umfang ? (
+            <>
+              <Zoe zeilen={[seite.umfang.frage]} />
+              <div className={`${s.karte} ${s.neu}`}>
+                <div className={s.umfangWahl} role="group" aria-label={seite.umfang.frage}>
+                  {(['kurz', 'lang'] as const).map(u => (
+                    <button key={u} type="button" className={s.umfangKnopf} onClick={() => setUmfangWahl(u)}>
+                      <span className={s.umfangKopf}><b>{seite.umfang![u].name}</b><span>rund {u === 'kurz' ? seite.minuten : seite.minuten_lang ?? seite.minuten} Minuten</span></span>
+                      <span className={s.umfangText}>{seite.umfang![u].text}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : bearbeite && fragen.get(bearbeite) ? (
             <FrageKarte key={`b-${bearbeite}`} f={fragen.get(bearbeite)!} satz={katalog.abschnittSatz[fragen.get(bearbeite)!.abschnitt]} a={strom?.antworten[bearbeite]} laedt={laedt}
               ueberspringbar={fragen.get(bearbeite)!.typ === 'beleg' || fragen.get(bearbeite)!.typ === 'offen' || !fragen.get(bearbeite)!.kurz}
               zurueck={vorige(bearbeite) ? () => setBearbeite(vorige(bearbeite)) : undefined} abbrechen={() => setBearbeite(null)}
@@ -277,15 +317,6 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
           {hinweis.link && <p><a className={s.link} href={hinweis.link} target="_blank" rel="noopener noreferrer">Datenschutzerklärung</a></p>}
         </details>
         </div>
-
-        {/* Rechte Spalte wie die Weg-Karte der Website: worum es geht und was Sie erwartet (am Handy nur vor dem Start). */}
-        <aside className={s.seitenkarte} aria-label="Der Check">
-          <p className={s.etikett}>Der Check</p>
-          {bereiche}
-          <ul className={s.versprechen}><li>kostenlos</li><li>rund {seite.minuten} Minuten</li><li>Ergebnis sofort</li><li>Antworten per Klick</li></ul>
-          {claim && <p className={s.claim}>{claim}</p>}
-        </aside>
-       </div>
       </div>
     </main>
   );
@@ -456,6 +487,8 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
   const zahl = useHochzaehlen(ansicht.gesamt);
   const termine = useNaechsteTermine(gespraech?.slug, kontaktDa);
   const iv = ansicht.innovation;
+  // Innovations-Check ohne Säulen: das Ergebnis IST die Innovation — kein aufklappbares Detail, die Bereiche stehen offen.
+  const nurInnovation = ansicht.saeulen.length <= 1 && !!iv;
   // Ein gewählter Termin fährt auf der Buchungsseite vorgewählt mit (nur dieser Browser-Tab, nie in der Adresse).
   const platzMerken = (p: { start: string; ende: string }) => { try { sessionStorage.setItem('make-check-platz', JSON.stringify(p)); } catch { /* ohne Speicher: die Seite zeigt alle Termine */ } };
   return (
@@ -478,6 +511,23 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Nur Innovation (30.10. abends): die Bereiche als Balken mit dem Wert Ihrer Branche, darunter das Netzdiagramm und der Vergleich. */}
+      {nurInnovation && iv && (
+        <>
+          <div className={s.saeulen} role="list" aria-label="Ihre Bereiche">
+            {iv.achsen.map(x => (
+              <div key={x.key} className={s.saeule} role="listitem">
+                <div className={s.saeuleKopf}><span className={s.saeuleName}>{x.name}</span><span className={s.saeuleWert}>{x.wert}</span></div>
+                <div className={s.saeuleBalken} aria-hidden><div className={s.saeuleFuell} style={{ width: `${x.wert}%` }} /><span className={s.brancheMarke} style={{ left: `${x.branche}%` }} /></div>
+                <span className={s.brancheWert}>Branche {x.branche}</span>
+              </div>
+            ))}
+          </div>
+          {iv.achsen.length >= 3 && <Netzdiagramm achsen={iv.achsen} />}
+          {iv.branchenSatz && <p className={s.branchenSatz}>{iv.branchenSatz}</p>}
+        </>
       )}
 
       <div style={{ marginTop: 18 }}><Zoe zeilen={ansicht.zoe} /></div>
@@ -528,12 +578,12 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
 
       {ansicht.genauigkeit === 'vorlaeufig' && (
         <div className={s.vorlaeufig}>
-          Mit ein paar Fragen mehr wird Ihr Ergebnis genauer. Ihre Antworten bleiben gespeichert.
-          <div className={s.zeile}><button type="button" className={s.zweit} disabled={laedt} onClick={mehr}>Weitere Fragen beantworten</button></div>
+          Mit den Fragen der ausführlichen Variante wird Ihr Ergebnis genauer, und Sie bekommen einen Wert für jeden Bereich. Ihre Antworten bleiben gespeichert.
+          <div className={s.zeile}><button type="button" className={s.zweit} disabled={laedt} onClick={mehr}>Ausführlich weitermachen</button></div>
         </div>
       )}
 
-      {iv && (
+      {iv && !nurInnovation && (
         <details className={s.detail}>
           <summary>Innovation im Detail: Stufe {iv.stufe}, {iv.stufeName.replace(/ \(.*\)$/, '')}</summary>
           <p className={s.stufeKurz} style={{ marginTop: 8 }}>{iv.stufeKurz}</p>

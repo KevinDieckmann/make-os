@@ -118,89 +118,37 @@
   },
   "regel": "Potenzial = Stunden aus D7 × 0,5 (realistisch in 90 Tagen). Im Bericht immer als Spanne und als Schätzung kennzeichnen."
  },
- "saeulen": [
-  {
-   "key": "sichtbarkeit",
-   "name": "Sichtbarkeit",
-   "abschnitt": "S",
-   "gewicht": 1,
-   "angebot": "sichtbarkeit"
+ "dimension_schritte_regel": "Nächste Schritte im Innovations-Check (30.10. abends): die zwei größten Lücken zum Branchenwert (luecken), je Band niedrig bis 40, mittel bis 70, hoch darüber. Ein Schritt, den man diese Woche beginnen kann.",
+ "dimension_schritte": {
+  "strategie": {
+   "niedrig": "Legen Sie ein messbares Ziel für KI und Innovation fest, etwa zehn Stunden Handarbeit weniger pro Woche bis zum Quartalsende, und benennen Sie eine Person, die dafür verantwortlich ist.",
+   "mittel": "Machen Sie aus Einzelideen einen Plan: drei Vorhaben für die nächsten 90 Tage, je mit Budget, Verantwortung und einer Zahl, an der Sie den Erfolg messen.",
+   "hoch": "Prüfen Sie Ihre Vorhaben jedes Quartal gegen die Zahlen und streichen Sie, was nicht wirkt. So bleibt Raum für das Nächste."
   },
-  {
-   "key": "vertrieb",
-   "name": "Vertrieb",
-   "abschnitt": "V",
-   "gewicht": 1,
-   "angebot": "vertrieb"
+  "ki": {
+   "niedrig": "Starten Sie mit einem Anwendungsfall, der jede Woche Zeit kostet, etwa Angebote oder Protokolle. Eine Firmenlizenz und klare Regeln sind der erste Schritt.",
+   "mittel": "Bauen Sie KI fest in zwei Abläufe ein, statt sie jedem selbst zu überlassen, und messen Sie die gesparten Stunden.",
+   "hoch": "Gehen Sie den nächsten Schritt: KI, die Aufgaben selbst erledigt, mit Ihren Daten und klaren Freigaben."
   },
-  {
-   "key": "innovation",
-   "name": "Innovation",
-   "abschnitt": "B bis G",
-   "gewicht": 1,
-   "wert": "Gesamtwert der Innovations-Dimensionen (Regeln oben, unverändert)",
-   "angebot": "innovation"
+  "automatisierung": {
+   "niedrig": "Schreiben Sie auf, welche Aufgaben jede Woche gleich ablaufen, und automatisieren Sie die erste, etwa Rechnungen oder Terminabsprachen.",
+   "mittel": "Verbinden Sie Ihre Systeme, damit niemand Daten von Hand überträgt. Beginnen Sie bei Anfrage, Angebot und Rechnung.",
+   "hoch": "Prüfen Sie, welche Abläufe ohne Sie laufen könnten, und übergeben Sie sie mit klaren Regeln an Automatisierung und Team."
+  },
+  "daten": {
+   "niedrig": "Bringen Sie Kunden- und Vertriebsdaten an einen Ort, in ein gepflegtes CRM. Ohne saubere Daten bringt KI wenig.",
+   "mittel": "Verbinden Sie Ihre wichtigsten Systeme und legen Sie fünf Kennzahlen fest, die Sie jede Woche sehen.",
+   "hoch": "Machen Sie Ihr Wissen für KI nutzbar: Abläufe, Vorlagen und Antworten dokumentiert und an einem Ort."
+  },
+  "robotik": {
+   "niedrig": "Prüfen Sie, wo körperliche Routine anfällt, etwa im Lager oder in der Fertigung, und holen Sie ein Angebot für einen ersten Pilot ein.",
+   "mittel": "Werten Sie die Daten Ihrer vernetzten Maschinen aus, bevor Sie in weitere Robotik investieren.",
+   "hoch": "Verbinden Sie Robotik und Software, damit Maschinen, Lager und Planung dieselben Daten nutzen."
+  },
+  "team": {
+   "niedrig": "Schulen Sie Ihr Team in zwei Stunden auf die Grundlagen von KI und geben Sie jede Woche feste Zeit zum Ausprobieren.",
+   "mittel": "Benennen Sie in jedem Bereich eine Person, die Neues vorantreibt, und teilen Sie Erfolge im ganzen Team.",
+   "hoch": "Halten Sie das Tempo: gute Ideen innerhalb von zwei Wochen testen, Ergebnisse teilen, das Beste übernehmen."
   }
- ],
- "saeulen_regel": "Säulenwert Sichtbarkeit bzw. Vertrieb wie ein Dimensionswert (Summe der Punkte / (4 × Anzahl beantworteter Fragen) × 100, gerundet). Innovation = Gesamtwert der Dimensionen B bis G. Gesamtwert = Mittel der beantworteten Säulen (gleiches Gewicht), gerundet. Die Stufe der Innovation (Beobachter bis KI-geführt) bleibt für das Detail und das Lead-Scoring.",
- "saeulen_stufen": [
-  {
-   "stufe": 1,
-   "name": "Am Start",
-   "von": 0,
-   "bis": 20,
-   "kurz": "Vieles läuft noch aus dem Bauch und von Hand. Der größte Hebel liegt in klaren Grundlagen."
-  },
-  {
-   "stufe": 2,
-   "name": "Im Aufbau",
-   "von": 21,
-   "bis": 40,
-   "kurz": "Erste Bausteine stehen, aber noch ohne festen Ablauf. Mit Fokus auf einen Bereich kommen Sie schnell voran."
-  },
-  {
-   "stufe": 3,
-   "name": "Auf Kurs",
-   "von": 41,
-   "bis": 60,
-   "kurz": "Die Grundlagen stehen. Jetzt geht es darum, aus Einzelnem feste Abläufe zu machen."
-  },
-  {
-   "stufe": 4,
-   "name": "Stark aufgestellt",
-   "von": 61,
-   "bis": 80,
-   "kurz": "Sichtbarkeit, Vertrieb und Neues greifen ineinander. Messen und Feinschliff bringen den nächsten Schritt."
-  },
-  {
-   "stufe": 5,
-   "name": "Vorreiter",
-   "von": 81,
-   "bis": 100,
-   "kurz": "Sie sind sichtbar, verkaufen mit System und setzen Neues schnell um. Jetzt zählt, den Vorsprung zu halten."
-  }
- ],
- "naechste_schritte": {
-  "regel": "Die zwei schwächsten Säulen (bei Gleichstand in der Reihenfolge Vertrieb, Sichtbarkeit, Innovation). Band: niedrig bis 40, mittel bis 70, hoch darüber.",
-  "sichtbarkeit": {
-   "niedrig": "Schärfen Sie zuerst Ihren Kernsatz: für wen Sie welches Problem lösen. Stellen Sie ihn oben auf Ihre Website und in Ihre Profile. Darauf baut alles Weitere auf.",
-   "mittel": "Machen Sie Ihre Website zum Weg zur Anfrage: ein klarer Satz, ein kurzes Video, ein sichtbarer nächster Schritt. Und zeigen Sie sich jede Woche mit einem Beitrag.",
-   "hoch": "Bauen Sie aus, was wirkt: Messen Sie, welche Inhalte Anfragen bringen, und machen Sie mehr davon."
-  },
-  "vertrieb": {
-   "niedrig": "Legen Sie feste Vertriebszeiten in Ihre Woche und führen Sie eine einfache Liste aller offenen Angebote, jedes mit einem Datum zum Nachfassen.",
-   "mittel": "Machen Sie Ihren Vertrieb messbar: Angebote, Abschlussquote und offene Chancen einmal im Monat ansehen, nachfassen mit festen Fristen.",
-   "hoch": "Halten Sie fest, was funktioniert: Schreiben Sie Ihre Vertriebsabläufe auf, damit weitere Personen genauso gut verkaufen wie Sie."
-  },
-  "innovation": {
-   "niedrig": "Starten Sie mit einem einzigen Ablauf, der heute viel Handarbeit kostet, und testen Sie dafür 30 Tage lang ein KI-Werkzeug im Team.",
-   "mittel": "Machen Sie aus Einzelversuchen feste Abläufe: Firmenlizenz, klare Regeln und ein messbares Ziel, zum Beispiel gesparte Stunden pro Woche.",
-   "hoch": "Verbinden Sie Ihre Systeme und lassen Sie wiederkehrende Abläufe ganz automatisch laufen. Menschen prüfen und entscheiden."
-  }
- },
- "schritt_reihe": [
-  "vertrieb",
-  "sichtbarkeit",
-  "innovation"
- ]
+ }
 }

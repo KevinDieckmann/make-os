@@ -38,16 +38,16 @@ const kontakte = async () => (await db.loadJson<{ kontakte: Kontakt[] }>('kontak
 const bestand = async () => (await db.loadJson<CheckBestand>('check-sitzungen'))!;
 
 /**
- * Die 17 Kurzcheck-Antworten (Handwerk, 10–49; seit 30.10. mit den Säulen Sichtbarkeit S und Vertrieb V) — Sichtbarkeit 50, Vertrieb 25,
- * Innovation aus Klickwerten 1 bzw. 2 (Beleg C5 als Text, noch unbewertet).
+ * Die 19 Kurzcheck-Antworten (Handwerk, 10–49; seit 30.10. nur Innovation — Sichtbarkeit und Vertrieb haben eigene Checks),
+ * Klickwerte 1 bzw. 2 (Beleg C5 als Text, noch unbewertet).
  */
 const KURZ: [string, Record<string, unknown>][] = [
   ['A1', { optionIds: ['A1_0'], zusatz: false }], ['A2', { optionIds: ['A2_2'] }], ['A6', { optionIds: ['A6_1'] }],
-  ['S1', { optionIds: ['S1_2'] }], ['S2', { optionIds: ['S2_2'] }], ['S3', { optionIds: ['S3_2'] }],
-  ['V1', { optionIds: ['V1_1'] }], ['V2', { optionIds: ['V2_1'] }], ['V3', { optionIds: ['V3_1'] }],
-  ['B1', { optionIds: ['B1_1'] }], ['C1', { optionIds: ['C1_1'] }], ['C2', { optionIds: ['C2_1'] }],
-  ['C5', { freitext: 'Wir probieren ChatGPT für Angebotstexte aus.' }], ['D1', { optionIds: ['D1_1'] }],
-  ['D7', { optionIds: ['D7_1'] }], ['E1', { optionIds: ['E1_1'] }], ['E4', { optionIds: ['E4_2'] }],
+  ['B1', { optionIds: ['B1_1'] }], ['B2', { optionIds: ['B2_1'] }], ['B4', { optionIds: ['B4_1'] }],
+  ['C1', { optionIds: ['C1_1'] }], ['C2', { optionIds: ['C2_1'] }], ['C3', { optionIds: ['C3_1'] }],
+  ['C5', { freitext: 'Wir probieren ChatGPT für Angebotstexte aus.' }], ['D1', { optionIds: ['D1_1'] }], ['D2', { optionIds: ['D2_1'] }],
+  ['D7', { optionIds: ['D7_1'] }], ['E1', { optionIds: ['E1_1'] }], ['E4', { optionIds: ['E4_2'] }], ['E6', { optionIds: ['E6_1'] }],
+  ['G1', { optionIds: ['G1_1'] }], ['G2', { optionIds: ['G2_1'] }], ['G6', { optionIds: ['G6_1'] }],
 ];
 const T0 = new Date('2026-11-09T08:00:00Z');
 let uhr = T0.getTime();
@@ -119,9 +119,9 @@ describe('die Strecke', () => {
     expect(r.status).toBe(201);
     S = r.d.sitzung; T = r.d.token;
     expect(S).toMatch(/^ck-/); expect(T).toMatch(/^[a-f0-9]{64}$/);
-    expect(r.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 17 });
-    expect(r.d.katalog.fragen).toHaveLength(77);
-    expect(r.d.zoe.begruessung.join(' ')).toContain('Sichtbarkeit, Vertrieb und Innovation');
+    expect(r.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 19 });
+    expect(r.d.katalog.fragen).toHaveLength(67);
+    expect(r.d.zoe.begruessung.join(' ')).toContain('kurz oder ausführlich');
     const text = JSON.stringify(r.d);
     for (const geheim of ['"punkte"', '"stufe":', '"rubrik"', '"code"', 'Gewicht', 'tokenHash']) expect(text).not.toContain(geheim);
     expect(r.d.zoe.begruessung.join(' ')).toContain('KI-Assistentin');
@@ -141,19 +141,19 @@ describe('die Strecke', () => {
   });
   it('nur Kennungen aus dem Katalog, nur Fragen, die dran sind, Freitexte nie gekürzt', async () => {
     expect((await check({ aktion: 'antwort', sitzung: S, token: T, frage: 'A1', optionIds: ['A1_99'] })).status).toBe(400);
-    expect((await check({ aktion: 'antwort', sitzung: S, token: T, frage: 'B2', optionIds: ['B2_1'] })).status).toBe(400); // Vertiefung: noch nicht dran
+    expect((await check({ aktion: 'antwort', sitzung: S, token: T, frage: 'B3', optionIds: ['B3_1'] })).status).toBe(400); // Vertiefung: noch nicht dran
     expect((await check({ aktion: 'antwort', sitzung: S, token: T, frage: 'C5', freitext: 'x'.repeat(2001) })).status).toBe(413);
     expect((await check({ aktion: 'ueberspringen', sitzung: S, token: T, frage: 'B1' })).status).toBe(400); // Klickfrage im Kurzcheck
     expect((await check({ aktion: 'antwort', sitzung: S, token: T, frage: 'C4', optionIds: ['C4_0', 'C4_keine'] })).status).toBe(400);
   });
-  it('17 Antworten in beliebiger Reihenfolge erlaubt — der Server sagt, was als Nächstes kommt', async () => {
+  it('19 Antworten in beliebiger Reihenfolge erlaubt — der Server sagt, was als Nächstes kommt', async () => {
     let r: Antwort | null = null;
     for (const [frage, a] of KURZ) {
       r = await check({ aktion: 'antwort', sitzung: S, token: T, frage, ...a });
       expect(r.status, frage).toBe(200);
     }
     expect(r!.d.schritt).toEqual({ art: 'kontakt' });
-    expect(r!.d.fortschritt.kurz).toBe(17);
+    expect(r!.d.fortschritt.kurz).toBe(19);
     // Vor der Kontakt-Frage gibt es weder Wahl noch Ergebnis.
     expect((await check({ aktion: 'wahl', sitzung: S, token: T, wahl: 'ergebnis' })).status).toBe(400);
     expect((await check({ aktion: 'ergebnis', sitzung: S, token: T })).status).toBe(400);
@@ -179,7 +179,7 @@ describe('die Strecke', () => {
     const p = (await kontakte()).find(x => x.id === s.crm!.kontaktId)!;
     expect(p.email).toBe('testa.probe@example.invalid');
     expect(p.aktivitaeten.some(a => /Innovations-Check auf der Website/.test(a.text ?? ''))).toBe(true);
-    expect(p.aktivitaeten.some(a => /Sichtbarkeit 50, Vertrieb 25, Innovation \d+/.test(a.text ?? ''))).toBe(true);
+    expect(p.aktivitaeten.some(a => /Strategie und Führung \d+, KI im Alltag \d+/.test(a.text ?? ''))).toBe(true);
     // Nichts vom CRM-Verweis im Browser.
     expect(JSON.stringify(r.d)).not.toContain(s.crm!.kontaktId!);
   });
@@ -194,26 +194,28 @@ describe('die Strecke', () => {
     const v = VORLAGEN['innovations-check'];
     const soll = auswerten(v.katalog, v.regeln, profilAus(v.katalog, s.antworten), s.antworten);
     const saeulen = saeulenAuswerten(v.katalog, v.regeln, s.antworten, soll);
-    // Gesamt = Mittel der drei Säulen; die Innovation ist der Wert der Referenz-Rechnung (unverändert).
-    expect(saeulen.werte).toEqual({ sichtbarkeit: 50, vertrieb: 25, innovation: soll.gesamt });
-    expect(r.d.ansicht.gesamt).toBe(Math.round((50 + 25 + soll.gesamt) / 3));
-    expect(r.d.ansicht.stufe).toBe(saeulen.stufe);
-    expect(r.d.ansicht.saeulen.map((x: { key: string; wert: number }) => [x.key, x.wert])).toEqual([['sichtbarkeit', 50], ['vertrieb', 25], ['innovation', soll.gesamt]]);
+    // Nur Innovation (30.10.): Gesamt = Wert der Referenz-Rechnung, Stufe der Innovation.
+    expect(saeulen.werte).toEqual({ innovation: soll.gesamt });
+    expect(r.d.ansicht.gesamt).toBe(soll.gesamt);
+    expect(r.d.ansicht.stufe).toBe(soll.stufe);
+    expect(r.d.ansicht.saeulen.map((x: { key: string; wert: number }) => [x.key, x.wert])).toEqual([['innovation', soll.gesamt]]);
     expect(r.d.ansicht.genauigkeit).toBe('vorlaeufig');
     expect(r.d.ansicht.innovation.gesamt).toBe(soll.gesamt);
     expect(r.d.ansicht.innovation.stufe).toBe(soll.stufe);
-    // Nur beantwortete Dimensionen (Team fragt der Kurzcheck seit 30.10. nicht mehr ab).
-    expect(r.d.ansicht.innovation.achsen.map((a: { key: string }) => a.key)).toEqual(['strategie', 'ki', 'automatisierung', 'daten']);
+    // Der Kurzcheck fragt seit 30.10. alle fünf Bereiche ab (Robotik nur in der Vertiefung).
+    expect(r.d.ansicht.innovation.achsen.map((a: { key: string }) => a.key)).toEqual(['strategie', 'ki', 'automatisierung', 'daten', 'team']);
     expect(r.d.ansicht.innovation.branchenSatz).toContain('10 bis 49');
-    expect(r.d.ansicht.zoe[0]).toContain(`Stufe ${saeulen.stufe}`);
-    // Zwei nächste Schritte für die schwächsten Säulen, mit dem Angebot der Instanz (Einstellungen), nie mit Punkten.
-    const schritte = r.d.ansicht.schritte as { saeule: string; text: string; angebot?: { titel: string; link?: string } }[];
-    expect(schritte.map(x => x.saeule)).toEqual(soll.gesamt < 50 ? (soll.gesamt < 25 ? ['innovation', 'vertrieb'] : ['vertrieb', 'innovation']) : ['vertrieb', 'sichtbarkeit']);
-    expect(schritte.every(x => x.text.length > 20)).toBe(true);
-    expect(schritte.find(x => x.saeule === 'vertrieb')!.angebot).toEqual({ titel: 'Vertriebsaufbau', text: 'Ein Satz zum Angebot.', link: '/vertrieb/' });
+    expect(r.d.ansicht.zoe[0]).toContain(`Stufe ${soll.stufe}`);
+    // Zwei nächste Schritte für die zwei größten Lücken zur Branche, das Angebot der Instanz am ersten, nie mit Punkten.
+    const schritte = r.d.ansicht.schritte as { saeule: string; name: string; text: string; angebot?: { titel: string; link?: string } }[];
+    expect(schritte).toHaveLength(2);
+    expect(schritte.map(x => x.name)).toEqual(r.d.ansicht.innovation.luecken.slice(0, 2).map((x: { name: string }) => x.name));
+    expect(schritte.every(x => x.saeule === 'innovation' && x.text.length > 20)).toBe(true);
+    expect(schritte[0].angebot).toEqual({ titel: 'KI im Alltag', link: 'https://example.invalid/innovation/' });
+    expect(schritte[1].angebot).toBeUndefined();
     expect(r.d.gespraech.pfad).toBeUndefined();
-    expect(s.ergebnis?.saeulen).toEqual({ sichtbarkeit: 50, vertrieb: 25, innovation: soll.gesamt });
-    expect(s.ergebnis?.gesamt).toBe(saeulen.gesamt);
+    expect(s.ergebnis?.saeulen).toEqual({ innovation: soll.gesamt });
+    expect(s.ergebnis?.gesamt).toBe(soll.gesamt);
     expect(s.ergebnis?.lead.klasse).toMatch(/^[ABC]$/);
     expect(s.abgeschlossen).toBeTruthy();
   });
@@ -242,6 +244,31 @@ describe('die Strecke', () => {
     expect(nachher.ergebnis!.dimensionen.ki).not.toBe(vorher.dimensionen.ki);
     expect((await innen({ aktion: 'beleg', id: S, frage: 'C5', score: 7 })).status).toBe(400);
     expect((await innen({ aktion: 'beleg', id: S, frage: 'D6', score: 2 })).status).toBe(400); // kein Text
+  });
+  it('Umfang „ausführlich“: nach dem Kurzcheck gleich weiter, „Jetzt auswerten“ beendet vorzeitig, dann Kontakt und Ergebnis', async () => {
+    const st = await check({ aktion: 'start', umfang: 'lang' });
+    const s2 = st.d.sitzung, t2 = st.d.token;
+    expect(st.d.schritt).toMatchObject({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1 });
+    expect(st.d.schritt.von).toBeGreaterThan(19);
+    let r: Antwort | null = null;
+    for (const [frage, a] of KURZ) r = await check({ aktion: 'antwort', sitzung: s2, token: t2, frage, ...a });
+    expect(r!.d.schritt).toMatchObject({ art: 'frage', phase: 'vertiefung', nummer: 20 });
+    expect((await check({ aktion: 'wahl', sitzung: s2, token: t2, wahl: 'ergebnis' })).d.schritt).toEqual({ art: 'kontakt' });
+    expect((await check({ aktion: 'ohne-kontakt', sitzung: s2, token: t2 })).d.schritt).toEqual({ art: 'ergebnis' });
+    const e = await check({ aktion: 'ergebnis', sitzung: s2, token: t2 });
+    expect(e.status).toBe(200);
+    expect(e.d.ansicht.genauigkeit).toBe('vorlaeufig');
+    expect((await bestand()).sitzungen.find(x => x.id === s2)!.umfang).toBe('lang');
+  });
+  it('Umfang „kurz“: nach den Kontaktdaten sofort das Ergebnis, ohne Wahl; unbekannter Umfang = wie bisher', async () => {
+    const st = await check({ aktion: 'start', umfang: 'kurz' });
+    const s2 = st.d.sitzung, t2 = st.d.token;
+    expect(st.d.schritt).toMatchObject({ art: 'frage', frageId: 'A1', von: 19 });
+    for (const [frage, a] of KURZ) await check({ aktion: 'antwort', sitzung: s2, token: t2, frage, ...a });
+    expect((await check({ aktion: 'ohne-kontakt', sitzung: s2, token: t2 })).d.schritt).toEqual({ art: 'ergebnis' });
+    expect((await check({ aktion: 'ergebnis', sitzung: s2, token: t2 })).status).toBe(200);
+    const x = await check({ aktion: 'start', umfang: 'riesig' });
+    expect((await bestand()).sitzungen.find(y => y.id === x.d.sitzung)!.umfang).toBeUndefined();
   });
   it('ohne Kontakt: Ergebnis frei sichtbar, kein Lead', async () => {
     const st = await check({ aktion: 'start' });

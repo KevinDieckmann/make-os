@@ -67,29 +67,47 @@
 .stand { margin-top: 6px; font-family: var(--s-zahl); font-size: 12px; color: var(--c-leise); }
 @media (max-width: 640px) { .titel { display: none; } .kopfKnopf { padding: 0 14px; font-size: 14px; } }
 
-/* ── Raster: links der Check (Lesebreite wie die Texte der Website), rechts die Karte ── */
-.raster { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; }
-.haupt { min-width: 0; max-width: 760px; }
-/* Seitenkarte nur am breiten Bildschirm: am Handy nennt der Einstieg die drei Bereiche schon, die Karte stünde sonst vor der Überschrift. */
-.seitenkarte { display: none; position: relative; padding: 22px 24px; background: var(--c-gehoben); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px; box-shadow: var(--c-gehoben-schatten); }
+/* ── Volle Breite für das Gespräch (Kevin 30.10. abends: „die Karte oben drüber, dann die ganze Fläche für die KI“) ── */
+.haupt { min-width: 0; }
+/* Die Karte über dem Gespräch: links die Bereiche, rechts was Sie erwartet und die weiteren Checks */
+.checkKarte { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px 40px; margin-top: 28px; padding: 22px 24px; background: var(--c-gehoben); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px; box-shadow: var(--c-gehoben-schatten); }
+@media (min-width: 1020px) { .checkKarte { grid-template-columns: minmax(0, 1fr) 320px; padding: 26px 30px; } }
+.checkKarteBereiche .dreiBereiche { margin: 0; }
+@media (min-width: 720px) { .checkKarteBereiche .dreiBereiche { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 18px; border-top: 0; } .checkKarteBereiche .dreiBereiche li { border-bottom: 0; border-top: 1px solid var(--c-linie); grid-template-columns: 22px 1fr; } }
+.checkKarteSeite { display: grid; gap: 14px; align-content: start; }
+.weitere { display: grid; gap: 6px; }
+.weitere .etikett { margin-bottom: 2px; }
+.weitererCheck { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--c-linie); color: var(--c-text); text-decoration: none; transition: border-color .2s ease, background .2s ease; }
+.weitererCheck b { font-weight: 600; font-size: 15px; }
+.weitererCheck span { font-size: 13px; color: var(--c-leise); }
+.weitererCheck:hover { border-color: rgba(167, 139, 250, .55); background: linear-gradient(150deg, rgba(167, 139, 250, .14), rgba(167, 139, 250, .04) 60%); }
+.weitererCheck:focus-visible { outline: 2px solid var(--c-hellgruen); outline-offset: 2px; }
+/* Kurz oder ausführlich: zwei große Felder */
+.umfangWahl { display: grid; gap: 10px; }
+@media (min-width: 720px) { .umfangWahl { grid-template-columns: 1fr 1fr; } }
+.umfangKnopf { display: grid; gap: 6px; text-align: left; padding: 16px 18px; min-height: 96px; border-radius: 14px; cursor: pointer; font: inherit; color: var(--c-text);
+  background: var(--c-flaeche-2); border: 1px solid rgba(255, 255, 255, .1); transition: border-color 150ms ease, background 150ms ease; }
+.umfangKnopf:hover { border-color: rgba(167, 139, 250, .6); background: linear-gradient(150deg, rgba(167, 139, 250, .18) 0%, rgba(167, 139, 250, .05) 50%, rgba(255, 255, 255, .02) 100%); }
+.umfangKnopf:focus-visible { outline: 2px solid var(--c-hellgruen); outline-offset: 2px; }
+.umfangKopf { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.umfangKopf b { font-size: 19px; font-weight: 600; }
+.umfangKopf span { font-size: 13px; color: var(--c-lavendel); font-weight: 600; white-space: nowrap; }
+.umfangText { color: var(--c-leise); font-size: 14.5px; }
 /* Lichtkante wie die Fokus-Karten der App: eine leise Linie an der Oberkante, über die selten ein Licht von links nach rechts zieht */
-.seitenkarte::before, .ergebnis::before { content: ""; position: absolute; top: -1px; left: 22px; right: 22px; height: 1px; pointer-events: none;
+.checkKarte::before, .ergebnis::before { content: ""; position: absolute; top: -1px; left: 22px; right: 22px; height: 1px; pointer-events: none;
   background: linear-gradient(90deg, transparent, rgba(167, 139, 250, .5), transparent); }
-.seitenkarte::after, .ergebnis::after { content: ""; position: absolute; top: -1px; left: 22px; width: 30%; height: 1px; pointer-events: none; opacity: 0;
+.checkKarte::after, .ergebnis::after { content: ""; position: absolute; top: -1px; left: 22px; width: 30%; height: 1px; pointer-events: none; opacity: 0;
   background: linear-gradient(90deg, transparent, #DDD6FE, transparent); box-shadow: 0 0 10px rgba(196, 181, 253, .8); }
 .etikett { margin: 0 0 12px; font-size: 12.2px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: var(--c-leise); }
 .vorzeile { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 18px; font-size: 12.2px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: var(--c-leise); }
 .vorzeile::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c-lavendel); flex: none; }
 .claim { margin: 16px 0 0; font-size: 14px; color: var(--c-leise); }
-@media (min-width: 1020px) {
-  .raster { grid-template-columns: minmax(0, 1fr) 340px; gap: clamp(48px, 6vw, 96px); align-items: start; }
-  .seitenkarte { display: block; position: sticky; top: calc(var(--kopf-h) + 40px); margin-top: 56px; }
-}
+
 
 /* ── Einstieg ── */
 .einstieg { padding: 56px 0 8px; }
 .einstiegTitel { font-size: clamp(38px, 5.4vw, 72px); line-height: 1.03; font-weight: 600; letter-spacing: -0.035em; margin: 0 0 18px; }
-.einstiegText { color: var(--c-leise); margin: 0 0 8px; font-size: clamp(17px, 1.3vw, 18.7px); line-height: 1.55; max-width: 640px; }
+.einstiegText { color: var(--c-leise); margin: 0 0 8px; font-size: clamp(17px, 1.3vw, 18.7px); line-height: 1.55; max-width: 760px; }
 @media (max-width: 1019px) { .einstieg { padding-top: 32px; } }
 /* Die drei Bereiche (30.10.) — Haarlinien statt Kästen, wie auf der Website. */
 .dreiBereiche { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--c-linie); }
@@ -118,7 +136,7 @@
   box-shadow: 0 0 18px -4px var(--c-schein);
 }
 /* Ruhiger (30.10., „Gestaltung und Texte“): Zoes Text steht ohne Kasten neben dem Zeichen — wie Text auf der Website. */
-.blase { padding: 5px 0 0; min-width: 0; flex: 1; }
+.blase { padding: 5px 0 0; min-width: 0; flex: 1; max-width: 860px; }
 .blase p { margin: 0; }
 .blase p + p { margin-top: 6px; }
 .blaseLeise { color: var(--c-leise); font-size: 14px; }
@@ -208,13 +226,16 @@
 .branchenSatz { font-size: 14px; color: var(--c-leise); border-left: 2px solid var(--c-start); padding-left: 10px; margin: 14px 0 0; }
 /* ── Ergebnis: Säulen, nächste Schritte, Termine, Detail (30.10.) ── */
 .ergebnisEtikett { margin: 0 0 6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-leise); }
-.saeulen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
+.saeulen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
 @media (max-width: 520px) { .saeulen { grid-template-columns: 1fr; gap: 12px; } }
 .saeuleKopf { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .saeuleName { font-weight: 600; }
 .saeuleWert { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
 .saeuleBalken { height: 6px; border-radius: 3px; background: var(--c-linie); margin-top: 6px; overflow: hidden; }
 .saeuleFuell { height: 100%; background: var(--c-verlauf); border-radius: 3px; box-shadow: 0 0 10px var(--c-schein); }
+.saeuleBalken { position: relative; }
+.brancheMarke { position: absolute; top: -3px; width: 2px; height: 12px; margin-left: -1px; border-radius: 1px; background: var(--c-text); opacity: .7; }
+.brancheWert { display: block; margin-top: 4px; font-size: 12px; color: var(--c-leise); }
 .abschnittTitel { font-size: 18px; font-weight: 600; margin: 0 0 8px; letter-spacing: -.01em; }
 .schritte { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
 .schritt { padding: 12px 0; border-bottom: 1px solid var(--c-linie); }
@@ -249,7 +270,7 @@
   .neu2 { animation: auftauchen 420ms 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .zoeAtmet { animation: atmen 3.2s ease-in-out infinite; }
   .verlauf::after { opacity: 1; animation: flussLicht 7s linear infinite; }
-  .seitenkarte::after, .ergebnis::after { animation: kanteLicht 11s cubic-bezier(.45, .05, .35, 1) 1.2s infinite; }
+  .checkKarte::after, .ergebnis::after { animation: kanteLicht 11s cubic-bezier(.45, .05, .35, 1) 1.2s infinite; }
   @keyframes flussLicht { from { background-position: 0 100%; } to { background-position: 0 0; } }
   @keyframes kanteLicht { 0% { transform: translateX(-105%); opacity: 0; } 10% { opacity: .95; } 60% { opacity: .95; } 68% { transform: translateX(250%); opacity: 0; } 100% { transform: translateX(250%); opacity: 0; } }
   .option:active { transform: scale(0.99); }

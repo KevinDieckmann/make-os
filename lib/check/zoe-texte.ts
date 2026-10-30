@@ -21,9 +21,7 @@ export const begruessung = (k: ZoeKontext, einleitung: string): string[] => [
 /** Ein Satz, wenn ein neuer Abschnitt beginnt — für Besucher geschrieben (nicht die internen Intros des Katalogs). */
 export const ABSCHNITT_SATZ: Readonly<Record<string, string>> = {
   A: 'Ein paar Eckdaten, damit ich Sie mit Ihrer Branche vergleichen kann.',
-  S: 'Erster Bereich, Sichtbarkeit: Versteht man sofort, was Sie tun, und findet man Sie?',
-  V: 'Zweiter Bereich, Vertrieb: Wie werden aus Kontakten Kunden?',
-  B: 'Dritter Bereich, Innovation. Zuerst zu Strategie und Führung.',
+  B: 'Zuerst zu Strategie und Führung: Wohin soll es mit KI und neuen Ideen gehen?',
   C: 'Jetzt wird es spannend: Wie fest steckt KI in Ihrem Alltag?',
   D: 'Weiter mit Ihren Abläufen: Was läuft schon ohne Handarbeit?',
   E: 'Kurz zu Daten und Systemen.',

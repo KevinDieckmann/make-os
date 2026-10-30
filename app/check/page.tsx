@@ -15,7 +15,7 @@ import { notFound } from 'next/navigation';
 import { InnovationsCheck } from '@/components/check/InnovationsCheck';
 import { pruefe, fehlschlag, adresseAusKoepfen, netzVon } from '@/lib/zugang/drossel';
 import { merken } from '@/lib/store/memo';
-import { vorlageVon, vorlageFuerThema } from '@/lib/check/katalog';
+import { vorlageVon, vorlageFuerThema, VORLAGEN, checkPfad } from '@/lib/check/katalog';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
 import { begruessung, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/zoe-texte';
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
@@ -49,6 +49,8 @@ async function seitenDaten(vorlageId: string) {
       kopf: { ...(e.logo ? { logo: e.logo } : {}), ...(e.website ? { website: e.website } : {}), ...(e.buchungSlug ? { erstgespraech: `/buchen/${e.buchungSlug}` } : {}) },
       katalog: oeffentlicherKatalog(v),
       seite: v.seite,
+      // Die anderen Checks der Instanz (30.10. abends: in der Karte über dem Gespräch, „Weitere Checks“).
+      weitere: Object.values(VORLAGEN).filter(x => x.id !== v.id).map(x => ({ name: x.name, pfad: checkPfad(x.id), text: (x.seite.bereiche ?? []).map(b => b.name).join(' · ') })),
       zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
       hinweis: { zeilen: hinweis.zeilen, link: hinweis.link, fassung: HINWEIS_FASSUNG },
       ...(nl ? { newsletter: { wortlaut: nl.wortlaut, fassung: nl.fassung } } : {}),

@@ -19,7 +19,8 @@ import { antwortPruefen, frageVon, kurzFertig, phaseVon, ueberspringbar } from '
 import { auswerten, leadPunkte, profilAus, saeulenAuswerten } from '@/lib/check/auswertung';
 import { ergebnisAnsicht } from '@/lib/check/ergebnis';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
-import { begruessung, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/zoe-texte';
+import { begruessung, dimensionName, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/zoe-texte';
+import type { DimKey } from '@/lib/check/typen';
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
 import { ladeCheckEinstellungen, sitzungAnlegen, sitzungLesen, sitzungAendern, sitzungIntern, type CheckSitzung } from '@/lib/check/speicher';
 import { zoeKontext, hinweisLaden, stromFuerBrowser, ablaufStand, leadAnlegen } from '@/lib/check/server';
@@ -68,7 +69,9 @@ export async function POST(req: Request) {
     const v = vorlageVon(typeof b.vorlage === 'string' ? b.vorlage : STANDARD_VORLAGE);
     if (!v) return antwort(NICHT_DA, 404);
     const quelle = typeof b.quelle === 'string' && QUELLE_OK.test(b.quelle) ? b.quelle : undefined;
-    const neu = await sitzungAnlegen(v.id, quelle);
+    // Kurz oder ausführlich nur, wo die Vorlage die Wahl anbietet (Innovations-Check) — sonst die gewohnte Strecke.
+    const umfang = v.seite.umfang && (b.umfang === 'kurz' || b.umfang === 'lang') ? b.umfang : undefined;
+    const neu = await sitzungAnlegen(v.id, quelle, undefined, umfang);
     if (!neu) return antwort({ ok: false, fehler: 'Der Check ist gerade voll — bitte versuchen Sie es später noch einmal.' }, 503);
     return antwort({ ok: true, sitzung: neu.sitzung.id, token: neu.token, ...(await nutzlast(v, neu.sitzung, e, hinweis)) }, 201);
   }
@@ -145,9 +148,12 @@ export async function POST(req: Request) {
     // Lead ins CRM — ein Fehler dort hält die Person nie auf (intern sichtbar, „noch einmal versuchen“ im Haushalt).
     if (!r.crm || r.crm.status !== 'ok') {
       const profil = profilAus(v.katalog, r.antworten);
-      const vorl = saeulenAuswerten(v.katalog, v.regeln, r.antworten, auswerten(v.katalog, v.regeln, profil, r.antworten));
+      const inno = auswerten(v.katalog, v.regeln, profil, r.antworten);
+      const vorl = saeulenAuswerten(v.katalog, v.regeln, r.antworten, inno);
       const namen = Object.fromEntries((v.regeln.saeulen ?? []).map(sa => [sa.key, sa.name]));
-      const teile = Object.entries(vorl.werte).map(([sk, w]) => `${namen[sk] ?? sk} ${w}`).join(', ');
+      // Mit Säulen deren Werte; der Innovations-Check (nur Innovation, 30.10.) nennt seine Bereiche.
+      const teile = (v.regeln.saeulen?.length ? Object.entries(vorl.werte).map(([sk, w]) => `${namen[sk] ?? sk} ${w}`)
+        : (Object.entries(inno.dimensionen) as [DimKey, number][]).map(([d, w]) => `${dimensionName(d)} ${w}`)).join(', ');
       const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100${teile ? `; ${teile}` : ''}).`);
       await sitzungIntern(r.id, s => ({ ...s, crm }));
     }
@@ -164,7 +170,7 @@ export async function POST(req: Request) {
   if (aktion === 'wahl') {
     const wahl = b.wahl === 'mehr' ? 'mehr' : b.wahl === 'ergebnis' ? 'ergebnis' : null;
     if (!wahl) return antwort({ ok: false, fehler: 'wahl: ergebnis oder mehr.' }, 400);
-    const r = await sitzungAendern<string>(b.sitzung, b.token, s => (kurzFertig(v, ablaufStand(s)) && s.kontaktStand !== 'offen' ? { ...s, wahl } : { fehler: 'Erst der Kurzcheck und die Kontakt-Frage.' }));
+    const r = await sitzungAendern<string>(b.sitzung, b.token, s => (kurzFertig(v, ablaufStand(s)) && (s.kontaktStand !== 'offen' || s.umfang === 'lang') ? { ...s, wahl } : { fehler: 'Erst der Kurzcheck und die Kontakt-Frage.' }));
     if (!r) return antwort(SITZUNG_WEG, 404);
     if ('fehler' in r) return antwort({ ok: false, fehler: r.fehler }, 400);
     return antwort({ ok: true, ...stromFuerBrowser(v, r) });
