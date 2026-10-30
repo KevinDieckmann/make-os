@@ -145,3 +145,22 @@ describe('Markttraktion › Deals › Liste als Arbeitsfläche', () => {
   });
 });
 
+describe('Angebote als Arbeitsfläche', () => {
+  const l = lies('components/os/crm/angebot/Liste.tsx');
+  const a = lies('components/os/crm/angebot/AngebotStart.tsx');
+  const m = lies('components/os/crm/Markttraktion.tsx');
+  it('Kopf „Angebote“ · offen/Wert · ⋯ („+ Neuer Kunde“) · „+ Neues Angebot“; Status und Gesellschaft im Popover statt zwei Pillenreihen', () => {
+    expect(l).toContain('<Arbeitsflaeche titel="Angebote"');
+    expect(l).toContain('haupt={<Knopf haupt farbe={LEUCHT.gut} onClick={() => onNeu()}>+ Neues Angebot</Knopf>}');
+    expect(l).toContain('<FilterGruppe titel="Status">');
+    expect(l).toContain('<FilterGruppe titel="Gesellschaft">');
+    expect(l).not.toContain('<Pillen einzeilig');
+    expect(l).toContain('className="af-suche"');
+  });
+  it('nur die Liste ist die Fläche: Editor und Ansicht stehen weiter im Rahmen der Seite (`huelle`)', () => {
+    expect(a).toContain("if (!offenId) return rahmen(<AngebotListe");
+    expect(a).toContain(', true);');
+    expect(m).toContain('huelle={(inhalt, liste) => (liste ? <>{mitlaeufer}{inhalt}</> : <Seite titel="Markttraktion"');
+  });
+});
+

@@ -7,12 +7,12 @@
 // „Archiv“, zurückholbar) und Löschen = Papierkorb (nur Entwürfe, 30 Tage, Rückgängig). Ein gestelltes Angebot ist eine
 // Geschäftsunterlage: es wird nie gelöscht — die Rückfrage bietet das Archiv an. Server: /api/crm/angebot `ablage`.
 
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import type { Angebot, AngebotsStatus } from '@/lib/crm/typen';
 import type { Gesellschaftskennung } from '@/lib/einheiten';
 import { anzeigename } from '@/lib/make-one/crm';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste as ListeRahmen, Zeile, Leer, Knopf, Chip, Punkt, feld, ZeileAktionen, useRueckgaengig, useRueckfrage } from '../../ui';
+import { Liste as ListeRahmen, Zeile, Leer, Knopf, Chip, Punkt, feld, ZeileAktionen, useRueckgaengig, useRueckfrage, Arbeitsflaeche, FilterKnopf, FilterGruppe } from '../../ui';
 import { PAPIERKORB_TAGE, papierkorbBis } from '@/lib/eintraege/sicher';
 import { WEG } from '@/lib/wege';
 import { zoeFragen } from '../ZoeFragen';
@@ -29,8 +29,9 @@ type Filter = 'alle' | 'entwurf' | 'offen' | 'angenommen' | 'abgelehnt' | 'abgel
 const FILTER: { id: Filter; label: string }[] = [{ id: 'alle', label: 'Alle' }, { id: 'entwurf', label: 'Entwürfe' }, { id: 'offen', label: 'Offen' }, { id: 'angenommen', label: 'Angenommen' }, { id: 'abgelehnt', label: 'Abgelehnt' }, { id: 'abgelaufen', label: 'Abgelaufen' }, { id: 'archiv', label: 'Archiv' }, { id: 'papierkorb', label: 'Papierkorb' }];
 const GES: { id: Gesellschaftskennung | 'alle'; label: string }[] = [{ id: 'alle', label: 'Alle Gesellschaften' }, ...KERN_EINHEITEN.map(e => ({ id: e.id, label: e.label }))];
 
-export function AngebotListe({ api, daten, onOeffnen, onNeu }: { api: CrmApi; daten: AngebotDaten; onOeffnen: (id: string) => void; onNeu: (fuer?: { kontaktId: string; firmaId?: string }) => void }) {
-  // Neuer Kunde direkt neben „+ Neues Angebot“ (26.10., Kevin): wer noch nicht im System ist, wird hier angelegt — derselbe Weg wie die Kartei
+export function AngebotListe({ api, daten, onOeffnen, onNeu, kopf }: { api: CrmApi; daten: AngebotDaten; onOeffnen: (id: string) => void; onNeu: (fuer?: { kontaktId: string; firmaId?: string }) => void;
+  /** Arbeitsfläche (31.10.): Kopf-Teile der Seite — ZOE/Head daneben, „+ Aktivität“ im „⋯“. */ kopf?: { neben?: ReactNode; mehr?: ReactNode } }) {
+  // Neuer Kunde zum „+ Neues Angebot“ (26.10., Kevin; seit 31.10. im „⋯“ des Kopfs): wer noch nicht im System ist, wird hier angelegt — derselbe Weg wie die Kartei
   // (`kundeAnlegen`); danach „Angebot für … schreiben“ öffnet den Entwurf mit dem Kunden vorbelegt.
   const [kundeNeu, setKundeNeu] = useState(false);
   const [angelegt, setAngelegt] = useState<{ kontaktId: string; firmaId?: string; name: string } | null>(null);
@@ -84,57 +85,78 @@ export function AngebotListe({ api, daten, onOeffnen, onNeu }: { api: CrmApi; da
   const offen = alle.filter(a => a.status === 'gestellt');
   const offenWert = offen.reduce((s, a) => s + angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer }).gesamt.netto, 0);
 
+  // ── Arbeitsfläche (31.10., DESIGN_STANDARD.md › Arbeitsfläche) ───────────────────────────────────────────────────────────────────────────────
+  // Kopf in EINER Zeile (Angebote · offen/Wert/Entwürfe · ⋯ · „+ Neues Angebot“; „+ Neuer Kunde“ im „⋯“), Suche + „Filter ▾“ (Status, Gesellschaft) in
+  // EINER Zeile statt zwei abgeschnittener Pillenreihen; die Liste rollt für sich. Ein Angebot öffnet weiter als eigene Seite (Editor bzw. Ansicht).
+  const gesListe = daten.nurEntwuerfe ? GES.filter(g => g.id === 'alle' || daten.gesellschaften.some(x => x.id === g.id)) : GES;
+  const filterZahl = (filter !== 'alle' ? 1 : 0) + (ges !== 'alle' ? 1 : 0);
+  const filterWeg = () => { setFilter('alle'); setGes('alle'); };
+  const chipWeg = (text: string, weg: () => void) => <button type="button" className="af-chip-weg fassbar" onClick={weg} title="Filter aufheben">{text} <span aria-hidden>✕</span></button>;
+  const entwuerfe = alle.filter(a => a.status === 'entwurf').length;
+  const leiste = (
+    <>
+      <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen — Nummer, Titel, Empfänger" aria-label="Angebote durchsuchen" type="search" className="af-suche" style={{ ...feld, padding: '9px 13px', fontSize: TYP.bedien, minHeight: 40 }} />
+      <FilterKnopf aktiv={filterZahl} onZuruecksetzen={filterWeg}>
+        <FilterGruppe titel="Status"><Pillen liste={FILTER} aktiv={filter} onWahl={setFilter} /></FilterGruppe>
+        {/* B17 (14.10.): Konto „nur Business“ — nur die Gesellschaften, die der Server liefert (nie die Privat-Einheit). */}
+        <FilterGruppe titel="Gesellschaft"><Pillen liste={gesListe} aktiv={ges} onWahl={setGes} /></FilterGruppe>
+      </FilterKnopf>
+      {filter !== 'alle' && chipWeg(FILTER.find(x => x.id === filter)?.label ?? 'Status', () => setFilter('alle'))}
+      {ges !== 'alle' && chipWeg(GES.find(x => x.id === ges)?.label ?? 'Gesellschaft', () => setGes('alle'))}
+    </>
+  );
+  const hinweise = (kundeNeu || angelegt) ? (
+    <>
+      {kundeNeu && <NeuerKontakt start={{ vorname: '', nachname: '', email: '', firma: '' }} onAnlegen={kundeSpeichern} onAbbruch={() => setKundeNeu(false)} />}
+      {angelegt && (
+        <div role="status" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', fontSize: TYP.bedien }}>
+          <span>{angelegt.name || 'Kunde'} ist angelegt.</span>
+          <Knopf farbe={LEUCHT.gut} onClick={() => onNeu({ kontaktId: angelegt.kontaktId, ...(angelegt.firmaId ? { firmaId: angelegt.firmaId } : {}) })}>Angebot für {angelegt.name || 'den Kunden'} schreiben</Knopf>
+          <Knopf leise onClick={() => setAngelegt(null)}>Fertig</Knopf>
+        </div>
+      )}
+    </>
+  ) : undefined;
+
   return (
     <>
-      <Karte i={0}>
-        <Ueberschrift rechts={<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+      <Arbeitsflaeche titel="Angebote" label="Angebote" breite={1200}
+        zaehler={<span>{offen.length ? <><b style={{ color: C.ink, fontWeight: 600 }}>{`${offen.length} offen`}</b> · {euroCent(offenWert)} netto</> : 'Kein offenes Angebot'}{entwuerfe ? ` · ${entwuerfe} Entwürfe` : ''}</span>}
+        neben={kopf?.neben}
+        mehr={<>
+          {kopf?.mehr}
           <Knopf leise onClick={() => { setAngelegt(null); setKundeNeu(x => !x); }}>+ Neuer Kunde</Knopf>
-          <Knopf farbe={LEUCHT.gut} onClick={() => onNeu()}>+ Neues Angebot</Knopf>
-        </div>}>Angebote</Ueberschrift>
-        {kundeNeu && <div style={{ marginBottom: 12 }}><NeuerKontakt start={{ vorname: '', nachname: '', email: '', firma: '' }} onAnlegen={kundeSpeichern} onAbbruch={() => setKundeNeu(false)} /></div>}
-        {angelegt && (
-          <div role="status" style={{ marginBottom: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: 12, borderRadius: 12, background: 'rgba(255,255,255,.03)', fontSize: TYP.bedien }}>
-            <span>{angelegt.name || 'Kunde'} ist angelegt.</span>
-            <Knopf farbe={LEUCHT.gut} onClick={() => onNeu({ kontaktId: angelegt.kontaktId, ...(angelegt.firmaId ? { firmaId: angelegt.firmaId } : {}) })}>Angebot für {angelegt.name || 'den Kunden'} schreiben</Knopf>
-            <Knopf leise onClick={() => setAngelegt(null)}>Fertig</Knopf>
-          </div>
-        )}
-        <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>{offen.length ? `${offen.length} offen · ${euroCent(offenWert)} netto Gesamtwert` : 'Kein offenes Angebot.'}{alle.filter(a => a.status === 'entwurf').length ? ` · ${alle.filter(a => a.status === 'entwurf').length} Entwürfe` : ''}</div>
-        <div style={{ display: 'grid', gap: 8 }}>
-          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={FILTER} aktiv={filter} onWahl={setFilter} /></div>
-          {/* B17 (14.10.): Konto „nur Business“ — nur die Gesellschaften, die der Server liefert (nie die Privat-Einheit). */}
-          <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={daten.nurEntwuerfe ? GES.filter(g => g.id === 'alle' || daten.gesellschaften.some(x => x.id === g.id)) : GES} aktiv={ges} onWahl={setGes} /></div>
-          <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen — Nummer, Titel, Empfänger" aria-label="Angebote durchsuchen" style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px' }} />
-        </div>
-      </Karte>
-      <Karte i={1}>
-        {daten.angebote === null ? <Leer>lädt …</Leer> : !liste.length ? <Leer>{filter === 'archiv' ? 'Das Archiv ist leer. Archivierte Angebote sind aus der Liste ausgeblendet und bleiben an Deals und in der Ablage lesbar.' : filter === 'papierkorb' ? `Der Papierkorb ist leer. Gelöschte Entwürfe liegen hier ${PAPIERKORB_TAGE} Tage, bevor sie endgültig gehen.` : alle.length ? 'Kein Angebot passt zum Filter.' : 'Noch kein Angebot — „+ Neues Angebot“.'}</Leer> : (
-          <ListeRahmen>
-            {liste.map(a => {
-              const s = angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer });
-              if (filter === 'papierkorb') return (
-                <Zeile key={a.id} links={<Punkt farbe={C.inkLeise} />} titel={titel(a)} umbrechen
-                  unter={`${name(a) || 'ohne Empfänger'} · gelöscht ${a.geloeschtAm ? `${a.geloeschtAm.slice(8, 10)}.${a.geloeschtAm.slice(5, 7)}.` : ''} · endgültig ab ${a.geloeschtAm ? papierkorbBis(a.geloeschtAm).split('-').reverse().join('.') : '—'}`}
-                  rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}><Knopf leise onClick={() => wiederherstellen(a)}>Wiederherstellen</Knopf><Knopf leise farbe={LEUCHT.kritisch} onClick={() => endgueltig(a as Angebot & { stand: string })}>Endgültig löschen</Knopf></span>} />
-              );
-              const zeile = (
-                <Zeile onClick={() => onOeffnen(a.id)} links={<Punkt farbe={STATUS_FARBE[a.status]} />}
-                  titel={<>{a.nummer ? `${a.nummer} · ` : ''}{a.titel || 'ohne Titel'}</>}
-                  unter={[name(a) || 'ohne Empfänger', gesellschaftLabel(a.gesellschaft), a.gestelltAm ? `gestellt ${a.gestelltAm.slice(8, 10)}.${a.gestelltAm.slice(5, 7)}.` : `geändert ${a.geaendert.slice(8, 10)}.${a.geaendert.slice(5, 7)}.`, `${euroCent(s.gesamt.netto)} netto`].join(' · ')}
-                  rechts={<Chip farbe={STATUS_FARBE[a.status]}>{ANGEBOT_STATUS_LABEL[a.status]}</Chip>} />
-              );
-              // Rolle „nur Business“ (13.10.): gestellte Angebote nur lesen — kein Archiv, kein Löschen (Server: 403).
-              if (daten.nurEntwuerfe && a.status !== 'entwurf') return <Fragment key={a.id}>{zeile}</Fragment>;
-              return (
-                <ZeileAktionen key={a.id} titel={titel(a)} archiviert={!!a.archiviertAm} onArchivieren={() => archivieren(a)} onLoeschen={() => loeschen(a)}
-                  loeschenFragt={a.status !== 'entwurf'} href={WEG.angebot({ angebotId: a.id })} onOeffnen={() => onOeffnen(a.id)} mehr={[{ id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'angebot', id: a.id }) }]}>
-                {zeile}
-                </ZeileAktionen>
-              );
-            })}
-          </ListeRahmen>
-        )}
-      </Karte>
+        </>}
+        haupt={<Knopf haupt farbe={LEUCHT.gut} onClick={() => onNeu()}>+ Neues Angebot</Knopf>}
+        leiste={leiste} hinweise={hinweise}
+        liste={<div style={{ paddingTop: 8 }}>
+          {daten.angebote === null ? <Leer>lädt …</Leer> : !liste.length ? <Leer>{filter === 'archiv' ? 'Das Archiv ist leer. Archivierte Angebote sind aus der Liste ausgeblendet und bleiben an Deals und in der Ablage lesbar.' : filter === 'papierkorb' ? `Der Papierkorb ist leer. Gelöschte Entwürfe liegen hier ${PAPIERKORB_TAGE} Tage, bevor sie endgültig gehen.` : alle.length ? 'Kein Angebot passt zum Filter.' : 'Noch kein Angebot — „+ Neues Angebot“.'}</Leer> : (
+            <ListeRahmen>
+              {liste.map(a => {
+                const s = angebotSummen(a, { kleinunternehmer: !!a.absender?.kleinunternehmer });
+                if (filter === 'papierkorb') return (
+                  <Zeile key={a.id} links={<Punkt farbe={C.inkLeise} />} titel={titel(a)} umbrechen
+                    unter={`${name(a) || 'ohne Empfänger'} · gelöscht ${a.geloeschtAm ? `${a.geloeschtAm.slice(8, 10)}.${a.geloeschtAm.slice(5, 7)}.` : ''} · endgültig ab ${a.geloeschtAm ? papierkorbBis(a.geloeschtAm).split('-').reverse().join('.') : '—'}`}
+                    rechts={<span style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}><Knopf leise onClick={() => wiederherstellen(a)}>Wiederherstellen</Knopf><Knopf leise farbe={LEUCHT.kritisch} onClick={() => endgueltig(a as Angebot & { stand: string })}>Endgültig löschen</Knopf></span>} />
+                );
+                const zeile = (
+                  <Zeile onClick={() => onOeffnen(a.id)} links={<Punkt farbe={STATUS_FARBE[a.status]} />}
+                    titel={<>{a.nummer ? `${a.nummer} · ` : ''}{a.titel || 'ohne Titel'}</>}
+                    unter={[name(a) || 'ohne Empfänger', gesellschaftLabel(a.gesellschaft), a.gestelltAm ? `gestellt ${a.gestelltAm.slice(8, 10)}.${a.gestelltAm.slice(5, 7)}.` : `geändert ${a.geaendert.slice(8, 10)}.${a.geaendert.slice(5, 7)}.`, `${euroCent(s.gesamt.netto)} netto`].join(' · ')}
+                    rechts={<Chip farbe={STATUS_FARBE[a.status]}>{ANGEBOT_STATUS_LABEL[a.status]}</Chip>} />
+                );
+                // Rolle „nur Business“ (13.10.): gestellte Angebote nur lesen — kein Archiv, kein Löschen (Server: 403).
+                if (daten.nurEntwuerfe && a.status !== 'entwurf') return <Fragment key={a.id}>{zeile}</Fragment>;
+                return (
+                  <ZeileAktionen key={a.id} titel={titel(a)} archiviert={!!a.archiviertAm} onArchivieren={() => archivieren(a)} onLoeschen={() => loeschen(a)}
+                    loeschenFragt={a.status !== 'entwurf'} href={WEG.angebot({ angebotId: a.id })} onOeffnen={() => onOeffnen(a.id)} mehr={[{ id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'angebot', id: a.id }) }]}>
+                  {zeile}
+                  </ZeileAktionen>
+                );
+              })}
+            </ListeRahmen>
+          )}
+        </div>} />
       {dialog}
       {hinweis}
     </>

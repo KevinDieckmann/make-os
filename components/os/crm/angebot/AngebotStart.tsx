@@ -4,13 +4,13 @@
 // Kevin: „Das Angebots-Tool, direkt verbunden mit Kunden, Mandaten, Produktinhalten
 // und Preisen. Im Call muss es extrem schnell gehen.“
 // Schnittstelle fest (A2 rendert aus der Adresse `?s=angebot&k=<angebot>&kontakt=&firma=&deal=`):
-//   · ohne Kennung und ohne Vorbelegung → Liste „Angebote“ (Filter Status, Gesellschaft, Suche)
+//   · ohne Kennung und ohne Vorbelegung → Liste „Angebote“ (Filter Status, Gesellschaft, Suche) — seit 31.10. eine Arbeitsfläche (`huelle`)
 //   · mit Vorbelegung (Kontakt öffnen, Deal-Akte, Umsatz-Reiter) → neuer Entwurf, vorbelegt
 //   · mit Kennung → Entwurf (Editor) bzw. gestelltes Angebot (Ansicht)
 // Ein neuer Entwurf bekommt seine Kennung sofort; nach dem ersten Speichern steht sie in
 // der Adresse (replace — derselbe Ort). Öffnen/Liste = push (Ort wechseln).
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CrmApi } from '../daten';
 import { neueId } from '../daten';
@@ -33,9 +33,15 @@ export interface AngebotStartProps {
   angebotId?: string | null;
   zuKontakt?: (id: string) => void;
   zuDeal?: (id: string) => void;
+  /**
+   * Arbeitsfläche (31.10.): die Liste ist die Seite selbst (Kopf „Angebote“); alles andere (Editor, Ansicht, Laden) steht im Rahmen der Seite.
+   * `huelle(inhalt, liste)` legt den Rahmen an — ohne gilt der Inhalt allein. `kopf` = die Kopf-Teile der Seite für die Liste (ZOE daneben, „⋯“).
+   */
+  huelle?: (inhalt: ReactNode, liste: boolean) => ReactNode;
+  kopf?: { neben?: ReactNode; mehr?: ReactNode };
 }
 
-export function AngebotStart({ api, kontaktId, firmaId, dealId, angebotId, zuKontakt, zuDeal }: AngebotStartProps) {
+export function AngebotStart({ api, kontaktId, firmaId, dealId, angebotId, zuKontakt, zuDeal, huelle, kopf }: AngebotStartProps) {
   const router = useRouter();
   const daten = useAngebote();
   const [neu, setNeu] = useState<{ id: string; vorbelegung: Vorbelegung } | null>(null);
@@ -57,31 +63,32 @@ export function AngebotStart({ api, kontaktId, firmaId, dealId, angebotId, zuKon
   const zurListe = useCallback(() => { setNeu(null); setGestellt(null); router.push(angebotLink({})); }, [router]);
   const gespeichert = useCallback((id: string) => { router.replace(angebotLink({ angebotId: id })); }, [router]);
 
-  if (daten.gesperrt) return <Karte i={0}><Leer>Angebote gehören zum Haushalt des Inhabers — für dieses Konto nicht freigegeben.</Leer></Karte>;
+  const rahmen = (inhalt: ReactNode, liste = false) => <>{huelle ? huelle(inhalt, liste) : inhalt}</>;
+  if (daten.gesperrt) return rahmen(<Karte i={0}><Leer>Angebote gehören zum Haushalt des Inhabers — für dieses Konto nicht freigegeben.</Leer></Karte>);
   if (!api.crm || !api.kontakte || daten.angebote === null) {
-    return <Karte i={0}><Leer>{daten.fehler ?? api.fehler ?? 'Angebote laden …'}</Leer>{(daten.fehler || api.fehler) && <div style={{ marginTop: 8 }}><Knopf leise onClick={async () => { await Promise.all([daten.laden(), api.laden(true)]); }}>Noch einmal</Knopf></div>}</Karte>;
+    return rahmen(<Karte i={0}><Leer>{daten.fehler ?? api.fehler ?? 'Angebote laden …'}</Leer>{(daten.fehler || api.fehler) && <div style={{ marginTop: 8 }}><Knopf leise onClick={async () => { await Promise.all([daten.laden(), api.laden(true)]); }}>Noch einmal</Knopf></div>}</Karte>);
   }
 
   const offenId = angebotId ?? neu?.id ?? null;
-  if (!offenId) return <AngebotListe api={api} daten={daten} onOeffnen={oeffnen} onNeu={fuer => setNeu({ id: neueId('ang'), vorbelegung: fuer ?? {} })} />;
+  if (!offenId) return rahmen(<AngebotListe api={api} daten={daten} onOeffnen={oeffnen} onNeu={fuer => setNeu({ id: neueId('ang'), vorbelegung: fuer ?? {} })} kopf={kopf} />, true);
 
   const a = daten.angebote.find(x => x.id === offenId) ?? null;
   if (a && a.status !== 'entwurf') {
     const start = gestellt && gestellt.angebot.id === a.id
       ? { text: `Angebot ${a.nummer} gestellt.${gestellt.hinweise.length ? ` Hinweis: ${gestellt.hinweise.join(' ')}` : ''}`, mailto: gestellt.mailto, pdf: gestellt.pdf, ...(gestellt.gmail ? { gmail: gestellt.gmail } : {}) } : null;
-    return <Ansicht key={a.id} a={a} api={api} daten={daten} meldungStart={start} onOeffnen={oeffnen} onListe={zurListe} zuKontakt={zuKontakt} zuDeal={zuDeal} />;
+    return rahmen(<Ansicht key={a.id} a={a} api={api} daten={daten} meldungStart={start} onOeffnen={oeffnen} onListe={zurListe} zuKontakt={zuKontakt} zuDeal={zuDeal} />);
   }
   if (!a && neu?.id !== offenId) {
-    return (
+    return rahmen(
       <Karte i={0}>
         <Leer>Dieses Angebot gibt es nicht (mehr).</Leer>
         <div style={{ marginTop: 8, fontSize: TYP.bedien, color: C.inkDim }}><Knopf leise onClick={zurListe}>Zu allen Angeboten</Knopf></div>
-      </Karte>
+      </Karte>,
     );
   }
-  return (
+  return rahmen(
     <Editor key={offenId} api={api} daten={daten} id={offenId} start={a} vorbelegung={neu?.id === offenId ? neu.vorbelegung : {}}
       onGespeichert={gespeichert} onListe={zurListe}
-      onGestellt={g => { setGestellt(g); router.replace(angebotLink({ angebotId: g.angebot.id })); }} />
+      onGestellt={g => { setGestellt(g); router.replace(angebotLink({ angebotId: g.angebot.id })); }} />,
   );
 }

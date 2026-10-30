@@ -197,6 +197,13 @@ export function MarkttraktionSeite() {
       </>
     );
   }
+  // Angebote (31.10.): die Liste ist eine Arbeitsfläche; Editor und Ansicht eines Angebots stehen weiter im Rahmen der Seite.
+  if (bereich === 'angebot') {
+    return (
+      <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={zuDeal} kopf={{ neben: zoeKnopf, mehr: kopfAktionen }}
+        huelle={(inhalt, liste) => (liste ? <>{mitlaeufer}{inhalt}</> : <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>{zoeKnopf}{kopfAktionen}</>}>{mitlaeufer}{inhalt}</Seite>)} />
+    );
+  }
   // Deals › Liste (31.10.): die Stufen als Abschnitte EINER Liste, rechts der Deal bzw. die Prognose; Board · Liste steht in der Filterzeile.
   const dealsWahl = <Pillen farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} />;
   if (bereich === 'deals' && hubOrt === 'deals' && dealsAnsicht === 'liste') {
@@ -237,7 +244,6 @@ export function MarkttraktionSeite() {
         </>
       )}
       {bereich === 'planung' && <MtPlanung ansicht={(ansicht ?? 'kreislauf') as PlanungAnsicht} kanal={params.get('kanal')} onOrt={(a, k) => { router.push(planungLink(a, k), { scroll: false }); if (a !== (ansicht ?? 'kreislauf')) nachOben(); }} />}
-      {bereich === 'angebot' && <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={zuDeal} />}
       {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('qualifizierung', 'leads', id)}
         leads={<><SalesTrichter api={api} zuBereich={zuBereich} /><Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} /></>} />}
       {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
