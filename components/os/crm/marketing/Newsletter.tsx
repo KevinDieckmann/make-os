@@ -16,6 +16,7 @@
 // Marke (Absender im Versandwerkzeug). Plakette in der Liste: Autor › Stimme.
 // 04.10. (Kevin: „alles anpassbar“): jede Ausgabe am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter Archiv)
 // und Löschen (Papierkorb 30 Tage, Rückgängig); endgültig nur aus dem Papierkorb (components/os/crm/ablage.tsx).
+// 30.10.: darunter die Karte „Anmeldung über die Website“ (NewsletterWebsite.tsx) — öffentliche Anmeldung mit Double-Opt-in, füllt die Empfänger.
 
 import { WEG } from '@/lib/wege';
 import { useEffect, useMemo, useState } from 'react';
@@ -33,6 +34,7 @@ import { Pillen, Feld, Feldzeile } from '../teile';
 import { Wahl } from '../Wahl';
 import { ZustaendigWahl, Uebergeben, WerFilter, useWerFilter, passtWer, type WerWahl } from '../team';
 import { KPI_FARBE, Textfeld, kopieren, FreigabeChip, FreigabeBlock, AlsNaechstes, AutorStimme } from './gemeinsam';
+import { NewsletterWebsite } from './NewsletterWebsite';
 
 const STATUS_FARBE: Record<NewsletterAusgabe['status'], string> = { entwurf: C.inkDim, bereit: LEUCHT.achtung, versendet: LEUCHT.gut };
 const alsEintrag = (a: NewsletterAusgabe) => a as unknown as { id: string } & Record<string, unknown>;
@@ -94,6 +96,9 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
         {!empfaenger && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 10 }}>0 Empfänger mit Double-Opt-in — ohne DOI kein Newsletter. Die Einwilligung „Newsletter“ mit Nachweis (Bestätigungsklick) hältst du am Kontakt unter „Stammdaten › Datenschutz“ fest.</div>}
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>MAKE OS versendet nichts. Ausgabe hier schreiben, Empfänger exportieren (nur Name und Adresse, nur Double-Opt-in), im Versandwerkzeug verschicken — mit Abmeldelink. Danach Empfänger, Antworten und Abmeldungen eintragen. Öffnungsraten sind keine Steuergröße.</div>
       </Karte>
+
+      {/* 30.10.: Anmeldung über die Website (Double-Opt-in) — füllt die Empfänger oben; der Versand bleibt Handarbeit. */}
+      <NewsletterWebsite />
 
       <AblageReiter sicht={sicht} onSicht={setSicht} name="Ausgaben" liste={(alleAusgaben ?? []).length - archivZahl} archiv={archivZahl} korb={ablage.korb.length} />
       {sicht === 'papierkorb' && <PapierkorbKarte ablage={ablage} liste="newsletter" />}
