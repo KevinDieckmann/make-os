@@ -150,7 +150,8 @@ describe('Saat', () => {
     expect(offenLena.some(v => v.nachher?.includes('Angebot Grünfeld Bau nachfassen'))).toBe(true);
     const crm = await db.loadJson<{ chancen: { id: string; stufe: string }[]; mandate: unknown[]; leistungen: { status: string }[]; firmen: unknown[]; angebote?: { status: string; dealId?: string; nummer?: string }[]; wertelisten?: { reihen?: { id: string; name: string }[] } }>('crm');
     // 25.10.: dazu der Deal der Formular-Anfrage („Angebot anfordern“, zur Freigabe — die Demo verschickt nichts).
-    expect(crm?.chancen).toHaveLength(5);
+    // 30.10. (Kreislauf, lib/demo/saat-kreislauf.ts): dazu der gewonnene Deal des angenommenen Angebots und der offene Folge-Deal bei Nordwerk.
+    expect(crm?.chancen).toHaveLength(7);
     const formular = await db.loadJson<{ links: unknown[]; eingaenge: { status: string }[] }>('angebot-formular--demo');
     expect(formular?.links).toHaveLength(1);
     expect(formular?.eingaenge.map(e => e.status)).toEqual(['freigabe']);
@@ -162,8 +163,9 @@ describe('Saat', () => {
     expect(n['Angebot (gestellt)']).toBe(1);
     // Reihen sind Instanz-Daten (14.10.): die Demo hat eine erfundene Reihe in den Wertelisten.
     expect(crm?.wertelisten?.reihen?.map(r => r.name)).toEqual(['Abendreihe Nord (Beispiel)']);
-    // Drei Mandate: Nordwerk, Lumen und (17.10. abends) der Kunde des Beispiel-Falls in Ausführung (lib/demo/fulfillment-ablauf.ts).
-    expect(crm?.mandate).toHaveLength(3);
+    // Drei Mandate: Nordwerk, Lumen und (17.10. abends) der Kunde des Beispiel-Falls in Ausführung (lib/demo/fulfillment-ablauf.ts) —
+    // dazu (30.10.) das Mandat, das die Mandat-Automatik aus dem angenommenen Angebot angelegt hat (lib/demo/saat-kreislauf.ts).
+    expect(crm?.mandate).toHaveLength(4);
     expect(crm?.leistungen.every(l => l.status === 'aktiv')).toBe(true);
     // Produkte als Karten (19.10., P4): über den Produkt-Import — vier bestehende ergänzt, vier neu, jede Preis-Form; der zweite Lauf ist „gleich“.
     const { DEMO_PRODUKT_KARTEN } = await import('@/lib/demo/saat');
@@ -194,10 +196,15 @@ describe('Saat', () => {
   // 15.10. (Abnahme 2 B10/B12): stimmige Finanzen und ein Unternehmen ohne Schieflage — dieselbe Saat, über die Routen.
   it('B10: Retainer im Liquiditätsplan, Jahresziel und Ist-Zahlen, Gehälter in der Finanzplanung, Steuern der Hauptgesellschaft', async () => {
     const heute = localDay();
-    const lp = await db.loadJson<{ posten: { id: string; kategorie?: string; betrag: number; sicher: boolean; rhythmus: string }[] }>('liquiplan');
+    const lp = await db.loadJson<{ posten: { id: string; kategorie?: string; betrag: number; sicher: boolean; rhythmus: string; mandatId?: string }[] }>('liquiplan');
     // Die drei laufenden Retainer (17.10. abends: dazu der Kunde des Beispiel-Falls in Ausführung) — über den Vorschlagsweg „Mandat → Liquiplan“.
     // Seit 18.10. (N4) kommt für ein Mandat, das in diesem Monat mitten im Monat begann, der angebrochene Monat als eigener einmaliger Posten dazu.
-    const mandatPosten = lp!.posten.filter(p => p.kategorie === 'mandat' && p.betrag > 0 && p.sicher);
+    // Ohne das einmalige Mandat aus dem angenommenen Angebot (30.10., Kreislauf — eigener Test unten): sein Posten ist die Diagnose, keine Monatsrate.
+    const [{ KREISLAUF_ANGEBOT }, { mandatVonPosten }] = await Promise.all([import('@/lib/demo/saat-kreislauf'), import('@/lib/make-one/liquiditaet')]);
+    const crmVorher = (await db.loadJson<{ mandate: { id: string; chanceId?: string }[]; angebote?: { id: string; dealId?: string }[] }>('crm'))!;
+    const dealAusAngebot = crmVorher.angebote?.find(a => a.id === KREISLAUF_ANGEBOT)?.dealId;
+    const ausAngebot = new Set(crmVorher.mandate.filter(m => !!dealAusAngebot && m.chanceId === dealAusAngebot).map(m => m.id));
+    const mandatPosten = lp!.posten.filter(p => p.kategorie === 'mandat' && p.betrag > 0 && p.sicher && !ausAngebot.has(mandatVonPosten(p) ?? ''));
     expect(mandatPosten.filter(p => p.rhythmus === 'monatlich')).toHaveLength(3);
     expect(mandatPosten.filter(p => p.rhythmus !== 'monatlich').every(p => p.rhythmus === 'einmalig' && p.id.includes('~'))).toBe(true);
     expect(lp!.posten.some(p => p.betrag < 0)).toBe(true);
@@ -230,6 +237,51 @@ describe('Saat', () => {
     expect(lageBlick(lage, (await ladeSchild('demo'))?.gesellschaften ?? []).zaehler.rot).toBe(0);
     const tasks = (await db.loadJson<{ tasks: { title: string; status: string; dueDate?: string; geloeschtAm?: string }[] }>('tasks'))!.tasks;
     expect(tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled' && !t.geloeschtAm && t.dueDate && t.dueDate < heute).map(t => t.title)).toEqual([]);
+  });
+
+  // 30.10. (Kevin: „Demo-Instanz auf neuen Stand“): Kreislauf Geld & Lieferung und die große Firmenakte — lib/demo/saat-kreislauf.ts, über die Routen.
+  // Steht VOR A7: der Test dort stellt den Entwurf der Monatsrechnung, den die Saat vorbereitet hat.
+  it('Kreislauf: Angebot angenommen → Mandat + Liquiplan, Rechnungen (Entwurf, gestellt, bezahlt, Selbstständigkeit, ohne Zuordnung), große Akte', async () => {
+    const { KREISLAUF_ANGEBOT, KREISLAUF_ALT_RECHNUNG, KREISLAUF_FIRMA } = await import('@/lib/demo/saat-kreislauf');
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const crm = await ladeCrm();
+    const ang = (crm.angebote ?? []).find(a => a.id === KREISLAUF_ANGEBOT)!;
+    expect(ang.status).toBe('angenommen');
+    expect(crm.chancen.find(c => c.id === ang.dealId)?.stufe).toBe('gewonnen');
+    const m = crm.mandate.find(x => x.chanceId === ang.dealId)!;
+    expect(m).toBeTruthy();
+    expect(m.firmaId).toBe(KREISLAUF_FIRMA);
+    const auto = await db.loadJson<{ kreislauf?: { mandatAuto?: Record<string, { angebotId: string }> } }>('rechnungswesen');
+    expect(auto?.kreislauf?.mandatAuto?.[m.id]?.angebotId).toBe(KREISLAUF_ANGEBOT);
+    const lp = await db.loadJson<{ posten: { id: string }[] }>('liquiplan');
+    expect(m.planpostenId && lp!.posten.some(p => p.id === m.planpostenId)).toBe(true);
+    const plan = await db.loadJson<{ rechnungen: { id: string; status: string; nummer?: string; mandatId?: string; firmaId?: string; kundeFirmaId?: string; kontaktId?: string }[]; buchungen?: { id: string }[] }>('finanzplan');
+    const re = plan!.rechnungen;
+    const ausSued = re.filter(r => r.mandatId === m.id);
+    expect(ausSued.map(r => r.status)).toEqual(['bezahlt']);
+    expect(ausSued[0].nummer).toBeTruthy();
+    expect(re.some(r => r.mandatId === 'm-demo-nordwerk' && !r.nummer && r.status !== 'gestellt' && r.status !== 'bezahlt')).toBe(true); // Entwurf aus dem Mandat
+    expect(re.some(r => r.mandatId === 'm-demo-lumen' && r.status === 'gestellt' && !!r.nummer)).toBe(true);
+    expect(re.some(r => r.firmaId === 'kdc' && r.status === 'gestellt' && r.kundeFirmaId === 'f-demo-kanzlei' && !!r.nummer)).toBe(true); // Selbstständigkeit
+    const alt = re.find(r => r.id === KREISLAUF_ALT_RECHNUNG)!;
+    expect(alt.status).toBe('bezahlt');
+    expect(alt.mandatId ?? alt.kundeFirmaId ?? alt.kontaktId).toBeUndefined();
+    const [{ rechnungsStand }, { rechnungenFiltern }] = await Promise.all([import('@/lib/finanzen/rechnung/server'), import('@/lib/finanzen/rechnung/uebersicht')]);
+    const stand = await rechnungsStand({ haushalt: 'demo', sicht: 'privat' });
+    expect(rechnungenFiltern(stand.rechnungen, { filter: 'ohne-zuordnung' }, localDay()).map(r => r.id)).toEqual([KREISLAUF_ALT_RECHNUNG]);
+    // Die große Akte von Nordwerk: zwei Personen, Deals (gewonnen + offen), zwei Mandate, Rechnungen, Aufgaben, ein Vertrag, Termine mit Bezug.
+    const { personenDerFirma } = await import('@/lib/crm/stationen');
+    const kartei = (await db.loadJson<{ kontakte: import('@/lib/make-one/crm').Kontakt[] }>('kontakte'))!.kontakte;
+    expect(personenDerFirma(kartei, KREISLAUF_FIRMA, { nurAktiv: true }).length).toBeGreaterThanOrEqual(2);
+    const deals = crm.chancen.filter(c => c.firmaId === KREISLAUF_FIRMA);
+    expect(deals.some(c => c.stufe === 'gewonnen') && deals.some(c => !['gewonnen', 'verloren', 'geparkt'].includes(c.stufe))).toBe(true);
+    expect(crm.mandate.filter(x => x.firmaId === KREISLAUF_FIRMA).length).toBe(2);
+    const tasks = (await db.loadJson<{ tasks: { bezug?: { firmaId?: string } }[] }>('tasks'))!.tasks;
+    expect(tasks.filter(t => t.bezug?.firmaId === KREISLAUF_FIRMA).length).toBeGreaterThanOrEqual(2);
+    const ablage = await db.loadJson<{ eintraege: { firmaId?: string; art?: string; datei?: unknown }[] }>('crm-dateien--demo');
+    expect(ablage?.eintraege.some(e => e.firmaId === KREISLAUF_FIRMA && e.art === 'vertrag' && !!e.datei)).toBe(true);
+    const bezug = await db.loadJson<{ bezuege: Record<string, { firmaId?: string }> }>('kalender-bezug');
+    expect(Object.values(bezug?.bezuege ?? {}).some(b => b.firmaId === KREISLAUF_FIRMA)).toBe(true);
   });
 
   // Rundgang 19.10. (A7): der Weg Mandat → Rechnung → gestellt ist in der Demo vorführbar — der Absender trägt die öffentliche Beispiel-IBAN (keine echte
