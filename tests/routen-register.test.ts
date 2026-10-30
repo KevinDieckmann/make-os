@@ -47,6 +47,7 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   'angebot/[slug]': ['GET', 'POST'],
   'kalender/google/meldung': ['POST'], 'google/gmail/meldung': ['POST'], 'hoi/csp': ['POST'],
   'prozesse/webhook/[kennung]': ['POST'], // Prozesse (21.10., B1): eigener Schlüssel je Adresse (Fingerabdruck, zeitkonstant), erst scharf nach Klick — prüft die Route selbst (tests/prozesse-webhook.test.ts)
+  'social/medien/[token]': ['GET'], // Social (28.10.): Instagram holt ein freigegebenes Medium über einen 60-Min.-Link (tests/social-instagram.test.ts)
   'whoop/webhook': ['POST'], // WHOOP: X-WHOOP-Signature über Zeitstempel + Rohkörper — prüft die Route selbst (tests/whoop-webhook.test.ts)
   'whatsapp/webhook': ['GET', 'POST'], // Meta: Verify-Token bzw. X-Hub-Signature-256 — prüft die Route selbst (tests/whatsapp-webhook.test.ts)
   'zoe/whatsapp/webhook': ['GET', 'POST'], // ZOE-Nummer (08.10.): Verify-Token bzw. X-Hub-Signature-256 der ZOE-Nummer — prüft die Route selbst (tests/zoe-whatsapp-route.test.ts)

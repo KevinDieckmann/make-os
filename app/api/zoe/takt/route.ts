@@ -82,6 +82,9 @@ export async function POST(req: Request) {
   void whatsappJobsImTakt().catch(() => {});
   // WHOOP je Person (08.10.): Abgleich stündlich (mit Webhooks alle 6 h) — nie blockierend, Fehler als eine Zeile `[whoop] …`.
   void whoopJobsImTakt().catch(() => {});
+  // Social (27.10., „voll automatisiert“): veröffentlichen, was die Leitplanken erlauben (nur mit Verbindung), Redaktions-Agent alle 6 h
+  // (6–22 Uhr, nur Kanäle mit eingeschaltetem Agenten), Zahlen einmal am Tag — nie blockierend (lib/social/takt.ts).
+  void import('@/lib/social/takt').then(m => m.socialJobsImTakt()).catch(() => {});
   // ZOE auf WhatsApp (08.10.): liegen gebliebene Nachrichten an ZOE verarbeiten, Sprachnachrichten nach 30 Tagen löschen — ohne Einrichtung nichts.
   void zoeWhatsappJobsImTakt().catch(() => {});
   // Schlaf-Hilfe (09.10.): Abend-Erinnerung zur Schlafenszeit je Person mit eingeschalteter Erinnerung und Einwilligung (a) — einmal je Tag

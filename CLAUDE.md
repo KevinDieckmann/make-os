@@ -2068,6 +2068,88 @@ sowie Kalender, Inbox, Aufgaben, Gesundheit, Familie und ZOE (Gruppe B) — zwö
 - **ZOE** (`ZOE_WERKZEUG`, Privat + Business): Freigaben · Agenten · Agenten-Werkzeuge (Research · Content · Meeting · Board · Prospecting) · Loops · Brain · Fuß Empfang
   (`/zoe`); ersetzt die Reiterzeile `ZoeReiter` (gelöscht), `ZOE_BEREICH` bleibt als Liste für die Wächter. Kein „Automationen & Head“.
 
+## Social — Kanäle, Folgen, Lernschleife (26.10., Branch `social-modul`, nur lokal; Plan `SOCIAL_PLAN.md`, Material `social/phase0/`)
+Kevin 26.10.: „Ein Agent, der unser Social Media aufbaut und verwaltet … dass wir Reichweite aufbauen.“ Entscheidungen: drei Kanäle (Persönlichkeit DE,
+Start-up DE, KI EN offen KI-geführt), Absender Fokus Innovation, Autonomie **Stufe 2 „selbstständig mit Leitplanken“**. Ort: Markttraktion › Marketing ›
+Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub-Punkt (Menü hat Kevins Höchstzahl zwölf).
+- **EIN Bestand** `social--<haushalt>` (Haushalt des Inhabers, Business, Speicher-Register): Kanäle (Markenprofil, Persona, Leitplanken), Serienformate,
+  Folgen (Skript, Hooks, Quellen, KI-Inhalt, Status), Veröffentlichungen, Messungen. Schreiben NUR über Einzel-Schritte `SocialOp` (lib/social/daten.ts) mit
+  Stand (409), Grenzen 413, Server-Felder (geändert/freigegeben von, Kennungen, Messungen im Eintrag) nie aus dem Browser; Format-Inhalt geändert → Freigabe weg;
+  Not-Aus nur über den eigenen Schritt; veröffentlichte Folgen mit Zahlen nur verwerfen, nie löschen. Route `/api/social` (GET/PATCH/POST Import), Klasse
+  `modul:markttraktion`, `?space=privat` → 400, Schreiben nur per Sitzung (Dienstweg 403).
+- **Prüfer** (lib/social/pruefer.ts, Regelwerk ohne Modell): `stopp` (Platzhalter `{{…}}`, kein Hook, „sagen wir nie“, KI-Persona behauptet Gefühl/Bewusstsein,
+  Wiederholung ≥ 50 % Ähnlichkeit zu den letzten 20) · `mensch` (Beratung Gesundheit/Geld/Recht, Angebot/Preis, Zahlen ohne Quelle, Länge) · `hinweis` (KI-Label, CTA).
+- **Leitplanken-Entscheidung NUR `autonomieFuer`** (lib/social/autonomie.ts): selbst nur bei Stufe 2 + Kanal aktiv + kein Not-Aus + freigegebenes Format + Prüfung
+  ohne Stopp/Person + unter dem Tageslimit; sonst Stapel mit Grund oder gesperrt. **Jeder künftige Veröffentlichungs-Weg (Plattform-API, Scheduler, ZOE) fragt nur dort.**
+  Veröffentlicht wird nur über die Automatik (unten, seit 27.10.) und nur mit einer Plattform-Verbindung — die Ausnahme von Regel 3 greift erst damit.
+- **Analyse** (lib/social/analyse.ts): nur echte Messungen (jüngste je Plattform), Wirkung = geometrisches Mittel der Verhältnisse zum Kanal-Median (Aufrufe doppelt),
+  Urteile mehr-davon/hook/kuerzen/streichen erst ab 5 Folgen mit Zahlen (absolute Signale sofort), Schwellen `START_SCHWELLEN` sind Startannahmen; Hook-Vergleich nur
+  als Tendenz. Nie Viralität versprechen. **Import** (lib/social/csv.ts): Plattform-Export → Vorschau → übernehmen, Zuordnung über Link, sonst eindeutigen Titel, nie raten;
+  „Engaged views“ vor „Views“.
+- **Nicht hier:** Kommentare/DMs Dritter (kommen mit der Plattform-Anbindung in einen eigenen Bestand mit Register, Art. 15/17, Löschfrist, Art. 50 KI-VO-Hinweis);
+  KI-Aufrufe (dann über `askText` mit `ki: {…}`, Kategorie neu). Konto löschen: Speichername → „[gelöscht]“ (`socialOhnePerson`, Export `socialEintraegeVon`).
+- Tests `tests/social-kern.test.ts`, `tests/social-route.test.ts`; Demo-Saat Abschnitt 3b2 (erfundener KI-Kanal „NOVA (Beispiel)“).
+- **Kontotypen, Ziele, Vorlagen (27.10., Kevin: „überall anders nutzen … Faceless, unsere Personenmarken, die Firmenaccounts“; Belege `social/07_beispiele-kontotypen.md`):**
+  `SocialKanal.art` = faceless (fehlt = faceless) · person (`person` = Speichername eines Kontos im Haushalt) · firma; `gesellschaft` = Absender/Impressum (nur Business —
+  Privat-Einheit 400, unbekannte 400, Liste `schreibUmfeld` in server.ts). **Personenmarke: nur die Person selbst** gibt Formate frei, schaltet Stufe 2 ein, stellt auf
+  „nur ich“ (`sichtbarkeit: 'person'`) → sonst 403; ein eigenes Erlebnis („ich habe …“) hält der Prüfer an, bis SIE die Folge freigibt (`erlebnis`). **Sicht serverseitig:**
+  `kanalSichtbar`/`socialFuerPerson` (daten.ts) — EINE Regel für GET, Lage, PATCH (fremd → 404) und Import (404); Wächter in `tests/social-kontotypen.test.ts` und
+  `tests/social-route.test.ts`. **Folgen-Freigabe** stempelt der Server (Status „Freigegeben“ → `freigegebenAm/Von`), jede Inhaltsänderung nimmt sie zurück; Weg
+  `bereit` = von einer Person freigegeben (außer `BLEIBT_NACH_FREIGABE`: erlebnis, personen). Folge: `personenImBild` (offen → Person nötig, KUG § 22), `werbung`.
+  Formate: `art` video/karussell/text/bild (Länge nur bei Video). **Einrichtung** `kanalPruefen` (Firma ohne Absender, Marke ohne Person, KI-Bio ohne KI-Hinweis bremsen Stufe 2).
+  **Ziele** (lib/social/ziele.ts, rein): follower/aufrufe mit Linie (Startwert NUR vom Server), posts-woche/halte3s/shares-je-tsd laufend; nur aus eingetragenen Zahlen
+  (`KontoStand` je Plattform und Tag, op `kontostand`), sonst „ohne Daten“. **Vorlagen** (lib/social/vorlagen.ts, op `vorlage`: Kanal + Formate + Ziel-Vorschläge mit
+  Wert in EINEM Schritt) — nur neutrale Muster, nie Namen/Firmen (Wächter im Test). LinkedIn ist Plattform (CSV „Impressions“ = Aufrufe).
+- **Automatik (27.10., Kevin: „bau tiefer und besser — es soll voll automatisiert laufen“; Fakten `research/social/FAKTEN_VEROEFFENTLICHEN.md`, UPDATES.md 27.10.):**
+  Die Ausnahme von Regel 3 (Stufe 2) greift jetzt — **hinaus geht nur so:** Takt (`lib/social/takt.ts`) → `socialVeroeffentlichenLauf` → je Folge und Plattform `postPlan`
+  (lib/social/veroeffentlichen.ts, DIESELBE Regel für Anzeige „Automatik“ und Lauf) mit `autonomieFuer` + Prüfer, Not-Aus/„Head aus“ des Head of Marketing (`headAngehalten`),
+  aktive Verbindung, Anbieter `kann`, Termin erreicht und ≤ 12 h zu spät (nie still nachholen). Vor dem Senden belegt `post-start` die Plattform (409 = nicht doppelt);
+  keine Antwort → `unklar`, nie automatisch wiederholen (nur `versuch-loesen` per Klick). **Server-Schritte** `entwurf`/`post-start|ok|fehler` nur mit `system` (Browser 403,
+  `NUR_SYSTEM_OPS`), Stempel `AGENT_STEMPEL` (`socialSystemSchreiben`). **Redaktions-Agent** (`lib/social/agent-server.ts`): freie Plätze NUR aus `planLuecken` (lib/social/plan.ts:
+  Tage × Uhrzeit, ≤ `proWoche` je Woche inkl. Geplantem, nie < 90 Min. vor dem Termin, Format freigegeben zuerst, Säulen rotieren), ein Modellaufruf je Platz ohne Werkzeuge
+  (`REDAKTION_SYSTEM`, nur eigene Daten im `<daten>`-Rahmen, keine Zahlen/Beratung/erfundenen Erlebnisse — Personenmarke: `{{Erlebnis: …}}` → Stopp), `ki: { lauf, person, ['crm'] }`,
+  `laufSperre(person, 'marketing')`; eingeplant nur, wenn `autonomieFuer` „selbst“ sagt — geprüft gegen den Stand NACH jedem geschriebenen Entwurf (Wiederholung!), sonst Entwurf +
+  EINE neutrale Glocke. Ohne KI: nichts geschrieben, Grund im Lauf-Stand (`social-lauf--<haushalt>`). **Anbieter** (`lib/social/anbieter/`): EINE Schnittstelle `SocialAnbieter`
+  (kann · posten · messen); `linkedin` = Person über Share on LinkedIn (`/rest/posts`, `LinkedIn-Version` aus `LINKEDIN_VERSION`/Vorgabe, Karussell → PDF `karussell-pdf.ts` über die
+  Documents-API, Token 60 Tage ohne Refresh → Glocke 7 Tage vorher, keine Zahlen ohne Antrag); `probe` NUR mit `MAKE_OS_DEMO=1`/Tests (`probeErlaubt`). Neue Plattform = neuer Anbieter
+  + Eintrag in `anbieterFuer`, Fakten nur aus offizieller Doku. **Verbindungen** `social-verbindungen--<haushalt>` (lib/social/verbindungen.ts): eine je Kanal + Plattform, Token nur
+  serverseitig (`verbindungSicht` ohne `geheim` — Wächter „kein Token in der Antwort“), Personenmarke verbindet nur die Person (403), fremde „nur ich“-Kanäle samt Verbindung 404/unsichtbar,
+  Konto löschen entfernt die Verbindungen, die die Person angelegt hat. LinkedIn-Anmeldung: `linkedinStart`/`linkedinAbschliessen` (state einmalig, 15 Min., je Person, nennt den Kanal),
+  Rückruf `/api/social/linkedin/rueckruf` (Cross-Site-Ausnahme `LINKEDIN_RUECKRUF`), Umgebung nur über `deploy/linkedin-verbinden.sh`. Tests `tests/social-automatik.test.ts`.
+- **Malin-Paket (28.10., Kevin: „Malin muss alles machen können — Reels schneiden, erstellen lassen, planen“; UPDATES.md 28.10.):**
+  **Medien am Beitrag:** `SocialFolge.medien` = NUR Kennungen `md-…` der EINEN Medien-Ablage (Business, ≤ 20, 413), Lese-Form `SocialMedium` nur über `socialMedienLesen`
+  (lib/social/medien.ts — nie Kataloge roh); ob es raus darf, entscheidet die Ablage (`wirksamerStatus` + Kanal „social“) → Prüfer-Befunde `medienBefunde` (stopp), Prüfer-Kontext
+  `medien`. Medienwechsel nimmt die Freigabe des Beitrags zurück (`folgeInhalt`). **Instagram** (`lib/social/anbieter/instagram.ts`, Instagram Login, Graph `igGraph`): was geht NUR
+  über `instagramMedien` (Bild = 1 JPEG, Reel = 1 Werkstatt-Video, Karussell 2–20, kein Text); Container → `status_code` → `media_publish`; Video wartet über Läufe: `PostErgebnis`
+  `{ ok: 'warten' }` → Server-Schritt `post-warten` (`PostVersuch.warten`, nie ein Token) → `weiter`; ein „läuft“ ohne Zwischenstand > 15 Min. → „unklar“ (`LAEUFT_MAX_MIN`);
+  KI-Inhalt → `is_ai_generated`; Token verlängert `erneuern` (≥ 24 h alt, ≤ 7 Tage Rest); Rückruf `/api/social/instagram/rueckruf` (Cross-Site-Ausnahme `INSTAGRAM_RUECKRUF`),
+  Umgebung nur über `deploy/instagram-verbinden.sh`. **Öffentlicher Medien-Link** (lib/social/medien-link.ts): `/api/social/medien/sm-<32 hex>(.jpg|.mp4)` (Middleware
+  `SOCIAL_MEDIEN_LINK`, nur GET/HEAD, Register `offen`), Token je Versuch, nur Fingerabdruck in `social-medien-links`, 60 Min., liefert nur, solange das Medium für Social frei
+  ist — gleiche 404 für alles andere. Neue Plattform, die selbst abholt: denselben Link nehmen, nie einen zweiten öffentlichen Weg. **Reel-Werkstatt** (`lib/social/werkstatt/`):
+  Regeln rein in `regeln.ts` (Zeitachse `untertitelZeilen`, ASS `assDatei` — `assText` lässt keine Override-Blöcke durch, ffmpeg-Argumente `reelArgumente`/`bildArgumente` nur mit
+  sicheren Pfaden, `werkstattPruefen`, `whisperSegmente`); Transkripte je QUELLE sind die EINE Wahrheit der Untertitel (korrigiert wird dort); Werkzeuge nur über `werkzeuge.ts`
+  (`ausfuehren`: keine Shell, Priorität 15, Zeitlimit; `imArbeitsordner`: 0700, IMMER gelöscht); Arbeit (Transkript/Render) EIN Lauf zur Zeit im App-Prozess (`werkstattAnstossen`
+  von Route und Takt); Ergebnis NUR über `schnittMediumAblegen` (lib/medien/schnitt-ablage.ts: neues Medium, `abgeleitetVon.art = 'schnitt'` + `quellen`, Personen/Einwilligungen
+  aller Quellen mit, strengste „erkennbare Personen“, Freigabe „intern“) und am Beitrag über den Server-Schritt `medien-setzen` (Freigabe fällt zurück). KI-Schnittvorschlag
+  (`vorschlag.ts`): Quellen als Q1…Qn, Transkript in `fremd()`, Ergebnis nur aus vorhandenen Quellen, übernommen nur per Klick. ffmpeg/whisper.cpp im Bild (Dockerfile, festgenagelter
+  Commit, GGML_NATIVE/OPENMP aus), Modell in `/modelle/whisper` (`deploy/whisper-modell.sh`), `MAKE_OS_APP_MEM` (compose). **Kommentare & DMs** (`lib/social/community.ts`,
+  `/api/social/community`): Abholen alle 15 Min. (nur mit Instagram-Verbindung), Spiegel `social-community--<haushalt>` (180 Tage, Art. 17 über person-weitere), Antworten NUR per
+  Klick (`antwortenErlaubt`: Not-Aus „Antworten“, Tageslimits, Personenmarke nur die Person; `antwortTextPruefen`; DM nur im 24-h-Fenster), ZOE-Vorschlag mit `fremd()`.
+  Noch NICHT im Inbox-Strom (bewusst, eigener Schritt). Tests `tests/social-instagram.test.ts` (Meta/ffmpeg/whisper/Ablage nachgebaut).
+  **Teil 2:** Kalender rein in `lib/social/kalender.ts` (`kalenderTage`, `kalenderEintraege`, Farbe `tonVon` aus den Post-Schritten) — Umplanen = normale Folgen-Änderung
+  (`geplantAm`/`geplantUm`, Freigabe bleibt). `SocialFolge.beschriftung` ist der Post-Text (`postText`: Beschriftung vor Skript + Aufruf), Prüfer stoppt > 30 Hashtags.
+  **Auto-Reel** (`lib/social/werkstatt/auto.ts`): Scan alle 30 Min. (`plan.autoReel` + `plan.rohAlbum`, ≤ 2 je Lauf, Videos ≤ 14 Tage, noch in keinem Auftrag) →
+  `WerkstattAuftrag.auto.schritt` transkript → schnitt (KI-Vorschlag im HINTERGRUND, `laufSperre` Marketing; ohne KI der Anfang ≤ 60 s) → render → beitrag (Server-Schritt
+  `entwurf` im nächsten freien Platz, Reel + Hook + Beschriftung, Entwurf) → fertig; Schritte nur in `autoWeiter` am Ende jedes Werkstatt-Laufs. Nie selbst freigeben.
+  Beste Zeiten rein in `lib/social/zeiten.ts` (Median der eigenen Aufrufe je Wochentag/Stunde, ab 8 Beiträgen, je Feld ≥ 2). Community-Antworten über die Probe (Demo)
+  speichern nur lokal.
+  **Teil 3 — Antwort-Agent** (`lib/social/community-agent.ts`, Fakten `research/social/FAKTEN_AUTO_KOMMENTARE.md`): `SocialKanal.community` (`CommunityEinstellung`,
+  `communityAus`/`communityVon`, Vorgabe `COMMUNITY_VORGABE` = vorschlag); Auto NUR über `autoGrund` (Modus, Not-Aus, DMs nur `dmsAuto` + 24 h, Klasse `frage`/`freundlich` aus
+  `antwortKlasse`, Tageslimit, `ABSTAND_SEK`) + `zuAehnlich` (letzte 30 eigene Antworten, ≥ 0,6) + `antwortTextPruefen`; Offenlegung `mitHinweis` (erste Auto-DM: Satz, Kommentar:
+  Zeichen); gesendet über `communityAntworten(…, durch = AGENT)`; alles andere → `CommunityDatei.entwuerfe[faden]` mit Grund. Lauf nach dem Abholen im Takt (Hintergrund-KI,
+  `laufSperre` Marketing, ≤ `LAUF_MAX`). Personenmarke: Auto nur die Person (Kanal-Regel 403). Bei ANDEREN nie automatisch: `fremdEntwurf` (Link nur `FREMD_LINK`, fremder Text
+  nur gekapselt an die KI, nie gespeichert) + `fremdMarkieren`. Schreiber auf `social-community--*` IMMER mit `...cur` (sonst fallen Entwürfe/fremd weg).
+
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
 - **Eine Stelle je Aufgabe:** rein `lib/crm/netzwerken.ts` (Schritte, `erfassungPruefen`, `kenntWirSchon`, `firmaVorschlaege`, Danke-Entwurf, `berichtAus`), Server `lib/crm/netzwerken-server.ts` (`erfassungAusfuehren`, `dankeRausVermerken`, `freieVorschlaege`), Route `app/api/netzwerken` (GET Personen/`?frei=`, POST `erfassen`/`danke-raus`), Warteschlange `lib/netzwerken/warteschlange.ts`, Karte-Auslesen (aus) `lib/crm/netzwerken-karte.ts`. Nie neben diesen Stellen eine zweite Dublettenprüfung, Erfassungslogik oder Offline-Warteschlange bauen.

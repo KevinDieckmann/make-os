@@ -18,7 +18,7 @@ import { localDay, tagePlus } from '@/lib/zeit';
 import {
   GRENZEN, MEDIEN_UPLOADS, BILD_TYPEN, VIDEO_TYPEN, VORSCHAU_VARIANTEN, teileVon, teilLaenge, medienBestand, medienPrivatBestand,
   type UploadSitzung, type MedienTyp, type MedienArt, type Bereich, type Medium, type ObjektVerweis, type Ton,
-  type Variante, type GewickelterSchluessel,
+  type Variante, type GewickelterSchluessel, type UploadMeta,
 } from './typen';
 import { neuerSchluessel, schluesselOeffnen, teilVerschluesseln, ganzVerschluesseln, ganzEntschluesseln, neuesSalz, sha256, pruefsummeAusTeilen, chiffratBereich, segmenteEntschluesseln, bereichSchneiden, objektGroesse, SEGMENT } from './krypto';
 import { medienSpeicher, medienKonfig, SpeicherFehler, type MedienSpeicher } from './speicher';
@@ -118,7 +118,7 @@ export async function uploadAnlegen(person: string, a: Record<string, unknown>):
     const r = await katalogAendern(katName, k => albumAnlegen({ b, quelle: { art: 'business', katalog: k }, lage: { heute: localDay(), einwilligungen: [], kontaktSperre: () => null }, jetzt: new Date().toISOString(), neueId: p => `${p}-${uuid}` }, { art: 'event', bezugId: neu.bezugId, titel: typeof neu.titel === 'string' && neu.titel.trim() ? neu.titel : 'Event' }));
     if (!r.ok) return F(r.status, r.fehler);
   }
-  let abgeleitetVon: Medium['abgeleitetVon'];
+  let abgeleitetVon: UploadMeta['abgeleitetVon'];
   if (a.abgeleitetVon && typeof a.abgeleitetVon === 'object') {
     const q = a.abgeleitetVon as { id?: unknown; vorschlagId?: unknown };
     const quelle = await mediumFinden(b, String(q.id ?? ''));

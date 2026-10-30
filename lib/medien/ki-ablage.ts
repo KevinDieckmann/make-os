@@ -30,7 +30,7 @@ import { bildMasse } from './bildmasse';
 const F = (status: Fehler['status'] | 415 | 503 | 507, fehler: string) => ({ ok: false as const, status, fehler });
 type Antwort<T> = ({ ok: true } & T) | { ok: false; status: number; fehler: string };
 const PERSON = /^[a-z0-9-]{1,40}$/;
-const objektVon = (id: string, variante: string) => `${medienKonfig().praefix}/${id}/${variante}`;
+export const objektVon = (id: string, variante: string) => `${medienKonfig().praefix}/${id}/${variante}`;
 /** Größte Vorlage, die als Referenz an den Bild-Anbieter geht (Base64 im Körper; der Adapter nimmt Antworten bis 15 MB). */
 export const REFERENZ_MAX_BYTES = 7 * 1024 * 1024;
 
@@ -49,7 +49,7 @@ export interface KiAblageEingabe {
 }
 
 /** Ein Objekt verschlüsselt in den Medienspeicher — klein am Stück, groß in Stücken (8 MiB, je Stück ein Salz). */
-async function originalAblegen(s: MedienSpeicher, dek: Buffer, id: string, klar: Buffer, typ: string): Promise<ObjektVerweis> {
+export async function originalAblegen(s: MedienSpeicher, dek: Buffer, id: string, klar: Buffer, typ: string): Promise<ObjektVerweis> {
   const objekt = objektVon(id, 'original');
   const z = { mediumId: id, variante: 'original' };
   const teile = Math.max(1, Math.ceil(klar.length / GRENZEN.teil));
@@ -75,7 +75,7 @@ async function originalAblegen(s: MedienSpeicher, dek: Buffer, id: string, klar:
   return { objekt, bytes: klar.length, typ, salze, sha256: pruefsummeAusTeilen(hashes) };
 }
 
-async function kleinAblegen(s: MedienSpeicher, dek: Buffer, id: string, variante: string, klar: Buffer, typ: string): Promise<ObjektVerweis> {
+export async function kleinAblegen(s: MedienSpeicher, dek: Buffer, id: string, variante: string, klar: Buffer, typ: string): Promise<ObjektVerweis> {
   const objekt = objektVon(id, variante);
   const salz = neuesSalz();
   await s.schreiben(objekt, teilVerschluesseln(dek, { mediumId: id, variante }, 0, klar, klar.length, salz));

@@ -56,6 +56,9 @@ const ANGEBOT_OFFEN = [/^\/angebot\/[a-z0-9-]{1,40}-[a-f0-9]{24}$/, /^\/api\/ang
 // Servern der Mail-Anbieter, ohne Origin) und antwortet immer gleich. GET auf die Schnittstelle (Mail-Programm öffnet den List-Unsubscribe-Link)
 // leitet nur auf die Seite um — deshalb auch von einer fremden Seite aus erreichbar (vor `crossSiteVerboten`).
 const ABMELDE_OFFEN = [/^\/abmelden\/a1-[0-9a-f]{32}$/, /^\/api\/abmelden\/a1-[0-9a-f]{32}$/];
+// Social (28.10., Malin-Paket): Instagram holt Bilder/Videos selbst ab — NUR GET/HEAD auf `/api/social/medien/sm-<32 hex>(.jpg|.mp4)`, ohne Sitzung
+// (Metas Server). Die Route handelt für niemanden, liefert nur EIN freigegebenes Medium, solange der Link gilt (lib/social/medien-link.ts `LINK_PFAD`).
+const SOCIAL_MEDIEN_LINK = /^\/api\/social\/medien\/sm-[a-f0-9]{32}(\.(jpg|mp4))?$/;
 // Kunden-Link (10.10., Fulfillment C2 — kommt AUSGESCHALTET, FULFILLMENT_KONZEPT.md 5.4): NUR diese vier Formen sind ohne Sitzung offen — die Seite
 // `/kunde/kl-<24 hex>` und ihre Schnittstellen. Seite und API-Wurzel nur GET, `formular`/`upload`/`puls` nur POST (`kundeOffen`). Keine Ausnahme bei der
 // Origin-Prüfung (die Formulare senden von der eigenen Seite). Die Routen handeln für niemanden (Köpfe gelöscht), drosseln selbst und antworten für jede
@@ -190,6 +193,8 @@ export async function middleware(req: NextRequest) {
   if (PROZESS_WEBHOOK.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
   // Abmeldelink: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Route handelt für niemanden.
   if (ABMELDE_OFFEN.some(r => r.test(pfad)) && (req.method === 'GET' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
+  // Social-Medienlink: nie als jemand (Köpfe oben gelöscht), nur GET/HEAD — die Route liefert nur ein freigegebenes Medium.
+  if (SOCIAL_MEDIEN_LINK.test(pfad) && (req.method === 'GET' || req.method === 'HEAD')) return NextResponse.next({ request: { headers: kopf } });
 
   // Eine Schnittstelle ist nie das Ziel einer Navigation von einer fremden Seite (26.09.): so kann kein
   // fremder Link mit dem Cookie im Gepäck eine GET-Route mit Wirkung auslösen.

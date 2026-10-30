@@ -272,8 +272,11 @@ export interface Medium {
   heads: HeadZugang[];
   texte?: MedienTexte;
   vorschlaege?: HeadVorschlagAmMedium[];
-  /** `zuschnitt` = im Browser zugeschnitten; `ki` = von der KI bearbeitet (Paket 4c — Personen und Einwilligungen gehen mit). */
-  abgeleitetVon?: { id: string; art: 'zuschnitt' | 'ki'; vorschlagId?: string };
+  /**
+   * `zuschnitt` = im Browser zugeschnitten; `ki` = von der KI bearbeitet (Paket 4c — Personen und Einwilligungen gehen mit); `schnitt` = in der
+   * Reel-Werkstatt (28.10., lib/social/werkstatt) aus einem oder mehreren Medien gerendert — `quellen` = alle Ausgangs-Medien (`id` = das erste).
+   */
+  abgeleitetVon?: { id: string; art: 'zuschnitt' | 'ki' | 'schnitt'; vorschlagId?: string; quellen?: string[] };
   geloeschtAm?: string; geloeschtVon?: string;
   geaendert: string; geaendertVon?: string;
 }
