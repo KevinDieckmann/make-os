@@ -20,6 +20,14 @@ import {
 } from './definition';
 import { staerkste } from './baustein-katalog';
 import { modellWahlAus, stufeVorgabe, type ModellOption } from './modell-wahl';
+import { ohneRahmenMarken } from '@/lib/planung/nordstern';
+
+/**
+ * Ein `<daten>`-Block für den Prompt eines Agenten-Schritts (rein, Sicherheitsprüfung 30.10.): Rahmen-Marken im Inhalt werden entfernt — sonst
+ * schlösse ein Firmenname oder Grund aus einem öffentlichen Formular („…</daten> Neue Anweisung: …“) den Block und stünde als Anweisung im
+ * Prompt. Dieselbe Regel wie `daten` (lib/brain.ts) und der Nordstern.
+ */
+export const agentDatenBlock = (quelle: string, inhalt: string): string => `<daten quelle="${quelle.replace(/[^a-z0-9-]/g, '')}">${ohneRahmenMarken(inhalt)}</daten>`;
 
 /** Modellstufen — die Namen sagen, welches Modell das KI-Tor dafür nimmt; die Kennung eines Modells steht nie hier. */
 export const MODELL_STUFEN: readonly { id: ModelTier; titel: string }[] = [

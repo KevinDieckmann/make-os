@@ -25,7 +25,7 @@ export const NICHT_IM_EXPORT = [
   { was: 'Datenschlüssel, Pepper, Sitzungsgeheimnis', grund: 'nie in einer Datei — liegen beim Betreiber (Passwort-Manager)' },
   { was: 'Schlüssel je Medium (in medien--*, medien-privat--*, medien-uploads)', grund: 'nie in einer Datei — dort steht nur die Kennung des Datenschlüssels (`kid`)' },
   { was: 'Medien-Dateien (Fotos, Videos, Lizenz-Nachweise, Unterschriften)', grund: 'zu groß für eine Datei; verschlüsselt im Medienspeicher — Liste der Objekte unter „medien“, einzeln herunterladen in der App (Fotos & Videos) vor dem Löschen der Instanz' },
-  { was: 'Zugangsdaten verbundener Dienste (Postfach-Passwörter, Google-/WHOOP-Token, iCloud-App-Passwort, OAuth-Zustände)', grund: 'nie in einer Datei — die neue Instanz verbindet die Dienste neu; im Export steht nur ein Vermerk „entfernt“' },
+  { was: 'Zugangsdaten verbundener Dienste (Postfach-Passwörter, Google-/WHOOP-Token, Token der Social-Kanäle, iCloud-App-Passwort, OAuth-Zustände)', grund: 'nie in einer Datei — die neue Instanz verbindet die Dienste neu; im Export steht nur ein Vermerk „entfernt“' },
   { was: 'Passwort-Hashes, Salz, zweiter Faktor (Geheimnis, Wiederherstellungs-Hashes, gemerkte Geräte) und offene Einladungscodes der Konten', grund: 'Zugangsgeheimnisse — die Konten stehen ohne sie im Export (`zweiterFaktorAn` zeigt nur, ob einer eingerichtet war)' },
   { was: 'Offene Kopplungs- und Bestätigungscodes (Telegram, ZOE auf WhatsApp)', grund: 'Zugangsgeheimnisse für 15 Minuten — eine Kopplung entsteht in der neuen Instanz neu' },
 ];
@@ -37,8 +37,15 @@ const MEDIEN_KATALOG = /^medien(-privat)?--[a-z0-9-]+$/;
  * Passwörter verbundener Dienste und die Zugangsgeheimnisse der Konten. EINE Regel: die Bestände je Person mit `export: false`
  * (lib/datenschutz/konto-daten.ts `PERSON_BESTAENDE` — dieselbe Liste, die den Konto-Export schützt) und die globalen OAuth-Bestände.
  */
-const OHNE_EXPORT_GLOBAL = new Set(['oauth-tokens', 'oauth-states', 'google-oauth-zustand', 'whoop-oauth-zustand']);
-const OHNE_EXPORT_BASIS = PERSON_BESTAENDE.filter(b => b.export === false).map(b => b.basis);
+const OHNE_EXPORT_GLOBAL = new Set(['oauth-tokens', 'oauth-states', 'google-oauth-zustand', 'whoop-oauth-zustand',
+  // Sicherheitsprüfung 30.10.: Anmelde-Zustände, die seit 20.10. dazukamen (PKCE-Verifier der weiteren Google-Konten, state der Social-Anmeldungen).
+  'google-zusatz-zustand', 'social-linkedin-zustand', 'social-instagram-zustand']);
+/**
+ * Zugangs-Bestände, die NICHT je Person liegen (Sicherheitsprüfung 30.10.): `social-verbindungen--<haushalt>` trägt die Zugangstoken der
+ * LinkedIn-/Instagram-Kanäle (`geheim`) — bis dahin stand er entschlüsselt im Export (PERSON_BESTAENDE kennt nur Bestände je Person).
+ */
+const OHNE_EXPORT_HAUSHALT = ['social-verbindungen'];
+const OHNE_EXPORT_BASIS = [...PERSON_BESTAENDE.filter(b => b.export === false).map(b => b.basis), ...OHNE_EXPORT_HAUSHALT];
 export function zugangsBestand(name: string): boolean {
   if (OHNE_EXPORT_GLOBAL.has(name)) return true;
   return OHNE_EXPORT_BASIS.some(b => name === b || name.startsWith(`${b}--`));

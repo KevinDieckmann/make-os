@@ -43,7 +43,7 @@ import { mandatArtVon } from './produkt-karte';
 import { datenschutzAngabenAus } from './netzwerken-recht';
 import { EINGESCHRAENKT_FEHLER } from './einschraenkung';
 import {
-  anfrageEingabePruefen, leitplanken, nurListenpreise, positionenAusWahl, linkVorsatz, linkLage, katalogProdukt, produktWaehlbar, mailOk, formularGesellschaftOk, ANGEBOT_SEITE, FORMULAR_GRENZEN,
+  anfrageEingabePruefen, leitplanken, namenAuffaellig, nurListenpreise, positionenAusWahl, linkVorsatz, linkLage, katalogProdukt, produktWaehlbar, mailOk, formularGesellschaftOk, ANGEBOT_SEITE, FORMULAR_GRENZEN,
   type AnfrageEingabe, type AnfrageQuelle, type Eingang, type ExternerLink, type FormularEinstellungen, type KatalogProdukt,
 } from './formulare';
 import { FormularFehler, aendereEingang, aendereFormular, empfaengerVon, formularHaushalt, ladeFormular, linkTokenHash, linkZuSlug } from './formulare-speicher';
@@ -248,6 +248,7 @@ async function anfrageAusfuehren(h: string, absicht: import('@/lib/store/absicht
       const r = leitplanken({
         listenpreise: !!a && nurListenpreise(a.positionen, crm.leistungen), abweichungen: D.abweichungen, offen: D.offen,
         adresseOk: mailOk(e.person.email) && adresseGueltig(e.person.email), werbesperre: !!k?.werbesperre, absenderOk: absender.ok, datenschutzOk: !ds.fehlt,
+        namenAuffaellig: namenAuffaellig(e.person.vorname, e.person.nachname, e.firma.name, d('firmaName') as string | undefined),
       });
       await aendereEingang(D.eingangId, x => ({ ...x, gruende: r.gruende }), h);
       return { versenden: r.versenden, gruende: r.gruende };

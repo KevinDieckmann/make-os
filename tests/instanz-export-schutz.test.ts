@@ -12,7 +12,7 @@ process.env.MAKE_OS_DATEN_DIR = ordner;
 delete process.env.MAKE_OS_DATEN_SCHLUESSEL;
 
 const GEHEIM = ['GEHEIM-HASH-1', 'GEHEIM-SALZ-1', 'GEHEIM-TOTP-1', 'GEHEIM-WIEDER-1', 'GEHEIM-EINLADUNG-1', 'GEHEIM-GOOGLE-TOKEN', 'GEHEIM-POSTFACH-PW',
-  'GEHEIM-ICLOUD-PW', 'GEHEIM-WHOOP-TOKEN', 'GEHEIM-OAUTH-TOKEN', 'GEHEIM-OAUTH-STATE'];
+  'GEHEIM-ICLOUD-PW', 'GEHEIM-WHOOP-TOKEN', 'GEHEIM-OAUTH-TOKEN', 'GEHEIM-OAUTH-STATE', 'GEHEIM-SOCIAL-TOKEN', 'GEHEIM-ZUSATZ-VERIFIER', 'GEHEIM-LINKEDIN-STATE'];
 let text = '';
 
 beforeAll(async () => {
@@ -28,6 +28,10 @@ beforeAll(async () => {
   await db.saveJson('whoop-verbindung--eins', { refresh: 'GEHEIM-WHOOP-TOKEN' });
   await db.saveJson('oauth-tokens', { whoop: { access_token: 'GEHEIM-OAUTH-TOKEN' } });
   await db.saveJson('google-oauth-zustand', { s: 'GEHEIM-OAUTH-STATE' });
+  // Sicherheitsprüfung 30.10.: Social-Token je Haushalt und die neuen Anmelde-Zustände.
+  await db.saveJson('social-verbindungen--h', { eintraege: [{ id: 'sv1', kanalId: 'k1', plattform: 'linkedin', geheim: { accessToken: 'GEHEIM-SOCIAL-TOKEN' } }] });
+  await db.saveJson('google-zusatz-zustand', { eintraege: { x: { person: 'eins', verifier: 'GEHEIM-ZUSATZ-VERIFIER', at: 1 } } });
+  await db.saveJson('social-linkedin-zustand', { offen: [{ state: 'GEHEIM-LINKEDIN-STATE', person: 'eins', kanalId: 'k1', bis: 1 }] });
   await db.saveJson('ziele', { ziele: [{ id: 'z1', titel: 'SICHTBAR-ZIEL' }] });
   const { instanzExportTeile } = await import('@/lib/datenschutz/instanz-export');
   for await (const t of instanzExportTeile({ von: 'eins' })) text += t;
@@ -42,7 +46,7 @@ describe('Instanz-Export: keine Zugangsdaten', () => {
   });
   it('Zugangs-Bestände stehen nur als Vermerk drin, normale Bestände vollständig', () => {
     const j = JSON.parse(text) as { bestaende: Record<string, unknown> };
-    for (const n of ['google-verbindung--eins', 'postfach-zugang--eins', 'icloud-verbindung--eins', 'whoop-verbindung--eins', 'oauth-tokens', 'google-oauth-zustand']) {
+    for (const n of ['google-verbindung--eins', 'postfach-zugang--eins', 'icloud-verbindung--eins', 'whoop-verbindung--eins', 'oauth-tokens', 'google-oauth-zustand', 'social-verbindungen--h', 'google-zusatz-zustand', 'social-linkedin-zustand']) {
       expect(j.bestaende[n], n).toMatchObject({ entfernt: expect.stringContaining('Zugangsdaten') });
     }
     expect(JSON.stringify(j.bestaende.ziele)).toContain('SICHTBAR-ZIEL');
