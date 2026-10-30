@@ -288,18 +288,26 @@ export function verarbeitungenNachtragen(vorhanden: readonly Verarbeitung[], jet
 // Kevin 03.10.: Business-Termine liegen im Google Kalender der Person. Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
 
 export const VV_KALENDER_GOOGLE_ID = 'vv-kalender-google';
+// 30.10. (weitere Kalender-Konten je Person, nur lesen): Zweck, Daten und TOMs ergänzt statt einer neuen Verarbeitung — die alte Fassung
+// wird über `ALTE_FASSUNGEN` gehoben, solange niemand sie von Hand geändert hat.
+const VV_KAL_GOOGLE_ZWECK_ALT = 'Business-Termine (Gespräche, Events, Fristen mit Zeit) im Google-Kalender der Beteiligten führen und mit MAKE OS in beide Richtungen abgleichen; Verknüpfung mit CRM-Meetings und Follow-ups';
+const VV_KAL_GOOGLE_ZWECK = `${VV_KAL_GOOGLE_ZWECK_ALT}; zusätzlich je Person weitere Google-Konten (Arbeitskalender bei anderen Firmen) NUR lesen, damit ihre Termine als belegt zählen und keine Doppelbuchungen entstehen`;
+const VV_KAL_GOOGLE_DATEN_ALT = 'Terminzeit, Titel, Ort, Notiz, Teilnehmer-Adressen mit Antwortstatus, Meet-Link, Erinnerungen — keine Mails, keine Dateien; Verbindung je Person über OAuth (Zugriffstoken nur verschlüsselt auf dem Server)';
+const VV_KAL_GOOGLE_DATEN = `${VV_KAL_GOOGLE_DATEN_ALT}; weitere Konten: dieselben Termindaten nur lesend (Scope calendar.readonly), andere Konten des Haushalts sehen davon nur „Belegt“`;
+const VV_KAL_GOOGLE_TOMS_ALT = 'Zugang nur mit Anmeldung (zwei Konten, zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, Token nie im Browser und nie in Protokollen, OAuth mit PKCE und state, nur die Domain der Firma, Push-Meldungen nur mit Kanal-Token';
+const VV_KAL_GOOGLE_TOMS = `${VV_KAL_GOOGLE_TOMS_ALT}; weitere Konten nur aus den freigegebenen Domains der Instanz, nur lesend, Widerruf beim Trennen`;
 
 export function verarbeitungKalenderGoogle(jetzt: string): Verarbeitung {
   return {
     id: VV_KALENDER_GOOGLE_ID, name: 'Kalender (Google Workspace)',
-    zweck: 'Business-Termine (Gespräche, Events, Fristen mit Zeit) im Google-Kalender der Beteiligten führen und mit MAKE OS in beide Richtungen abgleichen; Verknüpfung mit CRM-Meetings und Follow-ups',
+    zweck: VV_KAL_GOOGLE_ZWECK,
     personen: 'Gesprächspartner und Teilnehmende, die in Terminen genannt oder eingeladen sind; Konten des Haushalts',
-    daten: 'Terminzeit, Titel, Ort, Notiz, Teilnehmer-Adressen mit Antwortstatus, Meet-Link, Erinnerungen — keine Mails, keine Dateien; Verbindung je Person über OAuth (Zugriffstoken nur verschlüsselt auf dem Server)',
+    daten: VV_KAL_GOOGLE_DATEN,
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Termine mit Vertragspartnern) bzw. lit. f (Geschäftsbetrieb); Einladungen nur nach ausdrücklichem Klick',
     empfaenger: 'Google Ireland Ltd. / Google LLC (Google Workspace — Auftragsverarbeiter; Datenverarbeitungszusatz in der Workspace-Admin-Konsole bestätigen); Konten des Haushalts; Hetzner (Hosting, Spiegel der Termine)',
     drittland: 'Google: Standardvertragsklauseln bzw. Data Privacy Framework, Datenstandort laut Workspace-Einstellung — prüfen',
     loeschfrist: 'Wahrheit ist Google (Löschung dort, Art. 17); der Spiegel in MAKE OS baut sich bei jedem Abgleich neu auf und fällt beim Trennen weg; Sicherung des iCloud→Google-Umzugs 30 Tage; Termine mit Personenbezug wie bei iCloud (Löschlauf meldet sie)',
-    toms: 'Zugang nur mit Anmeldung (zwei Konten, zweiter Faktor), HTTPS, Server in Deutschland (Hetzner), Bestände verschlüsselt auf der Platte, Token nie im Browser und nie in Protokollen, OAuth mit PKCE und state, nur die Domain der Firma, Push-Meldungen nur mit Kanal-Token',
+    toms: VV_KAL_GOOGLE_TOMS,
     verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
   };
 }
@@ -654,6 +662,7 @@ const ALTE_FASSUNGEN: Record<string, Partial<Record<keyof Verarbeitung, { alt: s
   'vv-medien': { empfaenger: { alt: VV_MEDIEN_EMPFAENGER_ALT, neu: VV_MEDIEN_EMPFAENGER }, drittland: { alt: VV_MEDIEN_DRITTLAND_ALT, neu: VV_MEDIEN_DRITTLAND } },
   'vv-gesundheit': { zweck: { alt: VV_GESUNDHEIT_ZWECK_ALT, neu: VV_GESUNDHEIT_ZWECK }, daten: { alt: VV_GESUNDHEIT_DATEN_ALT, neu: VV_GESUNDHEIT_DATEN } },
   'vv-konten': { daten: { alt: VV_KONTEN_DATEN_ALT, neu: VV_KONTEN_DATEN } },
+  [VV_KALENDER_GOOGLE_ID]: { zweck: { alt: VV_KAL_GOOGLE_ZWECK_ALT, neu: VV_KAL_GOOGLE_ZWECK }, daten: { alt: VV_KAL_GOOGLE_DATEN_ALT, neu: VV_KAL_GOOGLE_DATEN }, toms: { alt: VV_KAL_GOOGLE_TOMS_ALT, neu: VV_KAL_GOOGLE_TOMS } },
   [VV_FULFILLMENT_ANALYSE_ID]: { rechtsgrundlage: { alt: VV_FULFILLMENT_ANALYSE_RECHT_ALT, neu: VV_FULFILLMENT_ANALYSE_RECHT } },
 };
 

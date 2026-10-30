@@ -55,10 +55,18 @@ export function googleUrl(basis: string, query?: GoogleOptionen['query']): strin
 }
 
 export async function googleAnfrage<T = Record<string, unknown>>(person: string, funktion: GoogleFunktion, url: string, opt: GoogleOptionen = {}): Promise<GoogleAntwort<T>> {
+  return anfrageMitToken<T>(erneuern => googleZugriffstoken(person, funktion, { erneuern }), url, opt);
+}
+
+/**
+ * Derselbe Ablauf mit einem beliebigen Token-Lieferanten (30.10.: weitere Kalender-Konten je Person, lib/google/zusatz.ts) —
+ * `token(erneuern)` liefert das Zugriffstoken, beim zweiten Versuch (nach 401) erneuert.
+ */
+export async function anfrageMitToken<T = Record<string, unknown>>(tokenHolen: (erneuern: boolean) => Promise<string>, url: string, opt: GoogleOptionen = {}): Promise<GoogleAntwort<T>> {
   const ziel = googleUrl(url, opt.query);
   if (!googleHost(ziel)) throw new GoogleApiFehler('Unerwartete Adresse — Abbruch (Zugang geht nur an Google).', 502);
   for (let versuch = 0; versuch < 2; versuch++) {
-    const token = await googleZugriffstoken(person, funktion, { erneuern: versuch > 0 });
+    const token = await tokenHolen(versuch > 0);
     let r: Response;
     try {
       r = await fetch(ziel, {

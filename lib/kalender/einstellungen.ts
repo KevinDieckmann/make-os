@@ -50,6 +50,12 @@ export interface KalenderEinstellungen {
    * Person nur ihre eigenen Namen heraus (die anderen verrieten Kalendernamen).
    */
   persoenlich?: Record<string, string>;
+  /**
+   * Weitere Google-Konten (30.10., lib/kalender/google/zusatz.ts): Kalendername → Person (samt neutralem Namen „Weitere Termine · <Vorname>“).
+   * NIE gespeichert — wie `google` beim Lesen dazugelegt; die Namen stehen zusätzlich in `persoenlich` (Zuordnung „wem gehört“). Wirkt auf den
+   * Space (Business — es sind Arbeitskalender anderer Firmen). Jede Person bekommt nur ihre eigenen Namen und die neutralen.
+   */
+  zusatz?: Record<string, string>;
   /** Vornamen hinter den Fächern (14.10., aus den Konten) — NIE gespeichert, wie `google` beim Lesen dazugelegt (lib/kalender/belegt.ts). */
   vornamen?: Partial<Record<Exclude<Wer, 'beide'>, string>>;
 }
@@ -174,23 +180,32 @@ export async function fachVornamen(): Promise<Partial<Record<Exclude<Wer, 'beide
 export async function mitGoogleNamen(e: KalenderEinstellungen): Promise<KalenderEinstellungen> {
   const { googleNamenZuPerson } = await import('./google/namen');
   const g = await googleNamenZuPerson();
-  const p = await import('./icloud-person').then(m => m.persoenlicheNamen()).catch(() => ({} as Record<string, string>));
+  const p0 = await import('./icloud-person').then(m => m.persoenlicheNamen()).catch(() => ({} as Record<string, string>));
+  // 30.10.: die Kalender der weiteren Google-Konten gehören ihrer Person (wie iCloud je Person) und liegen im Business.
+  const z = await import('./google/zusatz').then(m => m.zusatzNamen()).catch(() => ({} as Record<string, string>));
+  const p = { ...z, ...p0 };
   const v = await fachVornamen();
-  return { ...e, ...(Object.keys(g).length ? { google: g } : {}), ...(Object.keys(p).length ? { persoenlich: p } : {}), ...(Object.keys(v).length ? { vornamen: v } : {}) };
+  return { ...e, ...(Object.keys(g).length ? { google: g } : {}), ...(Object.keys(p).length ? { persoenlich: p } : {}), ...(Object.keys(z).length ? { zusatz: z } : {}), ...(Object.keys(v).length ? { vornamen: v } : {}) };
 }
 
 /** Vorsatz des neutralen Namens, unter dem andere Personen die Kalender je Person sehen („iCloud · <Vorname>“). */
 export const NEUTRAL_VORSATZ = 'iCloud · ';
+/** Dasselbe für die Kalender der weiteren Google-Konten (30.10., = `NEUTRAL_ZUSATZ` in lib/kalender/google/zusatz.ts). */
+export const NEUTRAL_ZUSATZ_VORSATZ = 'Weitere Termine · ';
 
 /**
  * Die Einstellungen, wie EINE Person sie bekommt (06.10., Plattform-Regel „Trennung serverseitig“): aus `persoenlich` nur
  * ihre eigenen Kalendernamen und die neutralen Namen der anderen — echte Kalendernamen anderer Personen nie. Rein.
  */
 export function einstellungenFuerPerson(e: KalenderEinstellungen, person: string | null | undefined): KalenderEinstellungen {
-  if (!e.persoenlich) return e;
-  const p = Object.fromEntries(Object.entries(e.persoenlich).filter(([name, wer]) => wer === person || name.startsWith(NEUTRAL_VORSATZ)));
-  const { persoenlich: _p, ...rest } = e;
-  return Object.keys(p).length ? { ...rest, persoenlich: p } : rest;
+  if (!e.persoenlich && !e.zusatz) return e;
+  // 30.10.: ebenso die Namen der weiteren Google-Konten (`zusatz`, neutral „Weitere Termine · <Vorname>“).
+  const neutral = (name: string) => name.startsWith(NEUTRAL_VORSATZ) || name.startsWith(NEUTRAL_ZUSATZ_VORSATZ);
+  const nur = (m: Record<string, string>) => Object.fromEntries(Object.entries(m).filter(([name, wer]) => wer === person || neutral(name)));
+  const p = e.persoenlich ? nur(e.persoenlich) : {};
+  const z = e.zusatz ? nur(e.zusatz) : {};
+  const { persoenlich: _p, zusatz: _z, ...rest } = e;
+  return { ...rest, ...(Object.keys(p).length ? { persoenlich: p } : {}), ...(Object.keys(z).length ? { zusatz: z } : {}) };
 }
 
 /**
@@ -203,7 +218,7 @@ export function einstellungenFuerBereich(e: KalenderEinstellungen, imBereich: (n
   const kalender = Object.fromEntries(Object.entries(e.kalender).map(([w, name]) => [w, name && imBereich(name) ? name : ''])) as Record<Wer, string>;
   return {
     ...e, kalender, space: nur(e.space) ?? {}, belegt: nur(e.belegt) ?? {},
-    ...(e.google ? { google: nur(e.google) } : {}), ...(e.persoenlich ? { persoenlich: nur(e.persoenlich) } : {}),
+    ...(e.google ? { google: nur(e.google) } : {}), ...(e.persoenlich ? { persoenlich: nur(e.persoenlich) } : {}), ...(e.zusatz ? { zusatz: nur(e.zusatz) } : {}),
   };
 }
 

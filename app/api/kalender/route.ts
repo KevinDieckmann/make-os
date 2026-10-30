@@ -21,7 +21,9 @@ import { NextResponse } from 'next/server';
 import { loadJson } from '@/lib/store/local-db';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { kalenderBereich } from '@/lib/kalender/konto-bereich';
-import { verbunden, abgleichen, termineImZeitraum, kontoAnzeige, CACHE, ladeStand, naechsterVersuchFaellig, abgleichAlter } from '@/lib/kalender/icloud';
+import { verbunden, abgleichen, termineImZeitraum, kontoAnzeige, CACHE, ladeStand, naechsterVersuchFaellig, abgleichAlter, istPersoenlicherKalender } from '@/lib/kalender/icloud';
+import { personenMitZusatz } from '@/lib/google/zusatz';
+import { alleSpeicher } from '@/lib/zugang/konten';
 import { googleKalenderNamen } from '@/lib/kalender/google/namen';
 import { ladeGoogleStand } from '@/lib/kalender/google/stand';
 import { googleAbgleichen, googleAbgleichFaellig, googleAlter } from '@/lib/kalender/google/abgleich';
@@ -64,7 +66,7 @@ export async function GET(req: Request) {
   let stand: string | null = null;
   let fehler: string | undefined;
   let quelle: 'icloud' | 'mac' | 'leer' = 'leer';
-  let kalender: { name: string; farbe?: string; schreibbar: boolean; wer: string; quelle?: 'google' | 'icloud' }[] = [];
+  let kalender: { name: string; farbe?: string; schreibbar: boolean; wer: string; quelle?: 'google' | 'icloud' | 'google-zusatz' }[] = [];
   let abgleich: ReturnType<typeof abgleichAlter> | undefined;
 
   // Google (03.10.): die verbundenen Google-Kalender (Business/MAKE je Person) liegen im selben Stand wie iCloud (`ladeStand`
@@ -86,7 +88,9 @@ export async function GET(req: Request) {
     void personAbgleichen(zugang.person).catch(() => { /* Fehler steht im Stand */ });
   }
 
-  const persoenlichDa = !!eigenIcloud || (await personenMitIcloud().catch(() => [] as string[])).length > 0;
+  const persoenlichDa = !!eigenIcloud || (await personenMitIcloud().catch(() => [] as string[])).length > 0
+    // 30.10.: weitere Google-Konten (nur lesen) zählen ebenfalls als Quelle des Stands.
+    || (await personenMitZusatz(await alleSpeicher().catch(() => [] as string[])).catch(() => [] as string[])).length > 0;
   if (verbunden() || googlePersonen.length || persoenlichDa) {
     // Tempo (27.09.): nicht auf iCloud warten — Stand ausliefern, fälligen Abgleich im Hintergrund anstoßen (der Takt hält ihn alle 5 Min. frisch).
     const s0 = await ladeStand();
@@ -98,11 +102,12 @@ export async function GET(req: Request) {
     quelle = stand ? 'icloud' : 'leer';
     abgleich = verbunden() ? abgleichAlter(s) : undefined;
     // Kalender je Person (06.10.): eigene mit Namen, die der anderen nur als EIN neutraler Eintrag je Person (nur lesen).
-    const neutral = new Map<string, { name: string; schreibbar: false; wer: string; quelle: 'icloud' }>();
+    // 30.10.: ebenso die Kalender der weiteren Google-Konten einer Person (`google-zusatz`, „Weitere Termine · <Vorname>“).
+    const neutral = new Map<string, { name: string; schreibbar: false; wer: string; quelle: 'icloud' | 'google-zusatz' }>();
     kalender = s.kalender.flatMap(k => {
-      if (k.quelle === 'icloud' && k.person && k.person !== zugang.person) {
+      if (istPersoenlicherKalender(k) && k.person !== zugang.person) {
         const n = k.neutral ?? 'Belegt';
-        if (!neutral.has(n)) neutral.set(n, { name: n, schreibbar: false, wer: wemGehoert(einst, n), quelle: 'icloud' });
+        if (!neutral.has(n)) neutral.set(n, { name: n, schreibbar: false, wer: wemGehoert(einst, n), quelle: k.quelle === 'google-zusatz' ? 'google-zusatz' : 'icloud' });
         return [];
       }
       return [{ name: k.name, ...(k.farbe ? { farbe: k.farbe } : {}), schreibbar: k.schreibbar, wer: wemGehoert(einst, k.name), ...(k.quelle ? { quelle: k.quelle } : {}) }];

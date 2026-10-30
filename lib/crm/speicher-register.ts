@@ -173,6 +173,18 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   A('kalender-umzug-sicherung--*', 'Sicherung der iCloud-Texte beim Umzug Business → Google (Notizen können Dritte nennen) — verschlüsselt, 30 Tage, dann räumt der Takt sie weg (lib/kalender/google/umzug.ts); Wahrheit ist der Termin in Google.', 'kalender-caches'),
   // Verbindung zu Google (03.10.): Token-Bestand und Anmelde-Zustand — gehören der Person des Haushalts, keine Dritten.
   H('google-verbindung--*', 'Google-Verbindung je Person (Adresse des Google-Kontos, verschlüsselte Token) — nur serverseitig, Trennen widerruft bei Google und löscht den Inhalt; Art. 17 über das Konto.'),
+  // Weitere Google-Konten je Person (30.10.2026, lib/google/zusatz.ts + lib/kalender/google/zusatz.ts): nur Kalender, nur lesen.
+  mit(H('google-zusatz--*', 'Weitere Google-Konten je Person (nur Kalender lesen): Kennung, Adresse des Kontos, eigene Bezeichnung, gewählte Kalender, verschlüsselte Token, Zustand — nur serverseitig, nie an den Browser/ins Log; „Trennen“ widerruft bei Google und löscht ihn (das letzte Konto: Bestand samt Tageskopien).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (die Person verbindet ihre eigenen Arbeitskalender selbst) bzw. lit. f (Doppelbuchungen vermeiden)',
+    art15: 'Kalender › Einstellungen › Weitere Kalender zeigt die Konten (Adresse maskiert), Bezeichnung, Kalender und Zustand; Token gehen nie heraus (auch nicht im Export)',
+    loeschfrist: 'bis die Person trennt bzw. ihr Konto entfernt wird (dann Widerruf bei Google)',
+  }),
+  mit(A('kalender-google-zusatz--*', 'Spiegel der gewählten Kalender der weiteren Google-Konten einer Person (Termine, Teilnehmer-Adressen Dritter) — nur lesen, Wahrheit ist Google, Löschung nur dort; der Abgleich holt ihn alle 5 Minuten neu, der Löschlauf meldet die Termine, die die Person nennen (person-weitere.ts). Andere Konten sehen nur „Belegt“.', 'kalender-caches'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (die Person selbst: eigene Arbeitskalender) bzw. lit. f für Gäste und Organisatoren in ihren Terminen (Doppelbuchungen vermeiden)',
+    art15: 'die Person sieht ihre Termine im Kalender; Dritte erfahren über die Auskunft, dass Termine sie in Google nennen (Zählung im Löschlauf)',
+    loeschfrist: 'Spiegel ab heute − 90 Tage; „Trennen“ oder Konto löschen entfernt ihn sofort (samt Tageskopien)',
+  }),
+  K('google-zusatz-zustand', 'Kurzlebiger Anmelde-Zustand der weiteren Google-Konten (state-Hash, PKCE-Verifier, 15 Minuten) — keine Personendaten.'),
   // iCloud je Person (06.10.2026, lib/kalender/icloud-person.ts): Zugang und Spiegel je Person — wie Google, Wahrheit ist Apple.
   mit(A('kalender-icloud--*', 'Spiegel der EIGENEN iCloud-Kalender einer Person (Termine, Teilnehmer-Adressen Dritter) — Wahrheit ist iCloud, Löschung nur in Apple; der Abgleich holt ihn alle 5 Minuten neu, der Löschlauf meldet die Termine, die die Person nennen (person-weitere.ts). Andere Konten sehen nur „Belegt“.', 'kalender-caches'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (die Person selbst: eigener Kalender) bzw. lit. f für Gäste und Organisatoren in ihren Terminen (Termine abstimmen)',
@@ -960,6 +972,8 @@ const JE_PERSON: readonly string[] = [
   'meilensteine-eigen--*',
   // Zugänge und Kanäle der Person
   'google-verbindung--*', 'icloud-verbindung--*', 'kalender-icloud--*', 'postfaecher--*', 'postfach-zugang--*', 'oauth-tokens',
+  // Weitere Google-Konten je Person (30.10.): Zugang und Spiegel gehören der Person
+  'google-zusatz--*', 'kalender-google-zusatz--*',
   'zoe-kanal--*', 'zoe-whatsapp-medien',
   // eigene Einstellungen und eigene Ablagen
   'arbeitsmodus', 'arbeitsmodus--*', 'arbeitsrahmen--*', 'flaeche', 'flaeche--*', 'onboarding--*', 'fokus-laufend--*',
@@ -972,7 +986,7 @@ const JE_PERSON: readonly string[] = [
   'agenten-skills-privat--*', 'medien-privat--*', 'ki-tiefenbericht--*',
 ];
 const INSTANZ: readonly string[] = [
-  'konten', 'anmeldungen', 'telegram', 'oauth-states', 'google-oauth-zustand', 'whoop-oauth-zustand', 'zoe-whatsapp-zustand',
+  'konten', 'anmeldungen', 'telegram', 'oauth-states', 'google-oauth-zustand', 'google-zusatz-zustand', 'whoop-oauth-zustand', 'zoe-whatsapp-zustand',
   'ki-verbrauch', 'ki-einstellungen', 'ki-protokoll--*', 'ki-auftraege-offen', 'ki-stand', 'demo-instanz', 'backlog', 'bauplan-bilder',
   'protokoll-siegel', 'protokoll-pruefung', 'bauzeit', 'agents-config', 'brain-konsolidierung', 'brain-bruecke--*', 'brain-app-spiegel',
   'crm-loeschfristen', 'dashboard', 'filter', 'fokus-regler', 'labels', 'spaces', 'arbeitsplatz', 'kalender-einstellungen', 'kalender-sicherung',

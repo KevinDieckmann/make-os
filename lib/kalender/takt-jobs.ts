@@ -23,6 +23,8 @@ const kurz = (e: unknown) => (e instanceof Error ? `${e.name}: ${e.message.slice
 export async function kalenderJobsImTakt(jetzt = new Date()): Promise<TaktJob> {
   // Google (03.10.): eigene, von iCloud unabhängige Jobs — Abgleich und Push-Kanal je verbundener Person, nie blockierend.
   void googleJobsImTakt(jetzt.getTime()).catch(e => console.warn(`[kalender-google] Takt: ${kurz(e)}`));
+  // Weitere Google-Konten je Person (30.10., nur lesen, ohne Push): alle 5 Min. je Person, nie blockierend.
+  void import('./google/zusatz').then(m => m.zusatzJobsImTakt(jetzt.getTime())).catch(e => console.warn(`[kalender-google-zusatz] Takt: ${kurz(e)}`));
   // iCloud je Person (06.10.): eigene Konten der Personen, unabhängig vom Haushalts-Kalender. Dessen Zugang kann aus der Oberfläche
   // kommen — vor `verbunden()` frisch laden.
   void icloudPersonenImTakt(jetzt.getTime()).catch(e => console.warn(`[kalender-icloud] Takt: ${kurz(e)}`));
