@@ -16,8 +16,8 @@
 // 1180 px eine Spalte. Layout je Person (/api/state/flaeche); der Standard
 // der Seite wird nie gespeichert, so entwickelt er sich weiter.
 
-import { Children, createContext, isValidElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactElement, type ReactNode } from 'react';
-import { anwenden, wende, ausgeblendet, istStandard, BREITEN, type Layout, type Op, type Platz, type StandardPlatz, type Breite, type Wert } from '@/lib/flaeche/modell';
+import { Children, createContext, isValidElement, memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type ReactElement, type ReactNode } from 'react';
+import { anwenden, wende, ausgeblendet, istStandard, mitAbwesendenKarten, BREITEN, type Layout, type Op, type Platz, type StandardPlatz, type Breite, type Wert } from '@/lib/flaeche/modell';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Leer, Knopf, useBreit, feld, useRueckfrage } from '../ui';
 import { WIDGETS, KATALOG, type EinstellungDef } from './widgets';
@@ -32,6 +32,9 @@ const FlaecheCtx = createContext<Ctx | null>(null);
 
 const nackt: CSSProperties = { background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', color: C.inkDim, fontSize: TYP.bedien, fontFamily: 'inherit', borderRadius: 8 };
 const GAP = 14, ZEILE = 8;
+const LEER: Layout = { plaetze: [], versteckt: [], stand: '' };
+/** Gespeicherte Layouts je Seite im Browser-Tab (nur Anordnung, keine Inhalte) — Rückkehr auf eine Seite ohne Sprung. */
+const LAYOUTS = new Map<string, Layout | null>();
 
 export function Flaeche({ seite, widgets = [], standard: standardProp, children, katalog = true }: { seite: string; widgets?: StandardPlatz[]; standard?: StandardPlatz[]; children?: ReactNode; katalog?: boolean }) {
   const schmal = !useBreit();
@@ -45,44 +48,79 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
   const standard = useMemo<StandardPlatz[]>(() => standardProp ?? [...[...kinder.values()].map(k => ({ id: k.id, art: 'seite', breite: k.breite ?? 3, titel: k.titel })), ...widgets], [standardProp, kinder, widgets]);
   const standardKey = standard.map(s => `${s.id}:${s.breite}`).join('|');
 
-  const [gespeichert, setGespeichert] = useState<Layout | null | undefined>(undefined);
+  // Zwischenspeicher je Seite (30.10.): wer zwischen Reitern wechselt, sieht sein Layout sofort — vorher stand bei jedem Öffnen erst der Standard da
+  // und sprang nach der Abfrage um. Die Abfrage läuft trotzdem (frisch vom Server); gespeichert wird weiter nur dort.
+  const [gespeichert, setGespeichert] = useState<Layout | null | undefined>(() => LAYOUTS.get(seite));
   const [bearbeiten, setBearbeiten] = useState(false);
   const [katalogOffen, setKatalogOffen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [meld, setMeld] = useState('');
+  // Refs für `tu` (30.10.): Standard und Stand ohne neue Funktion je Darstellung — sonst bekam jede Kachel bei jeder Änderung der Seite einen neuen
+  // Kontext und rechnete neu; und der Speicher-Aufruf steht nicht mehr im setState-Updater (StrictMode führt den doppelt aus).
+  const gespeichertRef = useRef<Layout | null | undefined>(gespeichert);
+  const standardRef = useRef(standard);
+  standardRef.current = standard;
+  // Speichern entprellt (400 ms); beim Verlassen der Seite bzw. des Reiters sofort (keepalive) — nichts bleibt im Zeitgeber liegen.
+  const speicherTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const ausstehend = useRef<{ seite: string; layout: Layout | null } | null>(null);
+  const senden = useCallback((keepalive = false) => {
+    clearTimeout(speicherTimer.current);
+    const a = ausstehend.current; if (!a) return;
+    ausstehend.current = null;
+    fetch('/api/state/flaeche', { method: 'PUT', keepalive, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) })
+      .then(r => r.json()).then(d => { if (!d?.ok) setMeld(d?.error ?? 'Nicht gespeichert.'); }).catch(() => setMeld('Nicht gespeichert — offline?'));
+  }, []);
   useEffect(() => {
     let aktiv = true;
-    fetch(`/api/state/flaeche?seite=${encodeURIComponent(seite)}`, { cache: 'no-store' }).then(r => r.json()).then(d => { if (aktiv) setGespeichert(d?.layout ?? null); }).catch(() => { if (aktiv) setGespeichert(null); });
-    return () => { aktiv = false; };
-  }, [seite]);
+    const bekannt = LAYOUTS.has(seite) ? LAYOUTS.get(seite) : undefined;
+    gespeichertRef.current = bekannt; setGespeichert(bekannt);
+    fetch(`/api/state/flaeche?seite=${encodeURIComponent(seite)}`, { cache: 'no-store' }).then(r => r.json()).then(d => {
+      if (!aktiv || ausstehend.current?.seite === seite) return; // eine eigene, noch nicht gesendete Änderung gewinnt
+      const l: Layout | null = d?.layout ?? null;
+      LAYOUTS.set(seite, l); gespeichertRef.current = l; setGespeichert(l);
+    }).catch(() => { if (aktiv && gespeichertRef.current === undefined) setGespeichert(null); });
+    // Seite wechselt (z. B. Heute › Privat → Business): eine noch offene Änderung der alten Seite sofort senden.
+    return () => { aktiv = false; senden(true); };
+  }, [seite, senden]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const layout = useMemo(() => anwenden(standard, gespeichert ?? null), [standardKey, gespeichert]);
 
-  const speicherTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => {
+    const weg = () => senden(true);
+    window.addEventListener('pagehide', weg);
+    return () => { window.removeEventListener('pagehide', weg); senden(true); };
+  }, [senden]);
   const tu = useCallback((op: Op) => {
-    setGespeichert(alt => {
-      const basis = anwenden(standard, alt ?? null);
-      const neu = wende(basis, op, standard);
-      const zuSpeichern = istStandard(neu, standard) ? null : neu;
-      clearTimeout(speicherTimer.current);
-      speicherTimer.current = setTimeout(() => {
-        fetch('/api/state/flaeche', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ seite, layout: zuSpeichern }) })
-          .then(r => r.json()).then(d => { if (!d?.ok) setMeld(d?.error ?? 'Nicht gespeichert.'); }).catch(() => setMeld('Nicht gespeichert — offline?'));
-      }, 400);
-      return zuSpeichern ?? { plaetze: [], versteckt: [], stand: '' };
-    });
-  }, [seite, standard]);
+    const std = standardRef.current;
+    const alt = gespeichertRef.current ?? null;
+    const basis = anwenden(std, alt);
+    const neu = wende(basis, op, std);
+    if (neu === basis) return;
+    // Karten, die die Seite gerade nicht zeigt (Bedingung nicht erfüllt), behalten Platz und „ausgeblendet“ — außer beim Zurücksetzen.
+    const voll = op.op === 'zuruecksetzen' ? neu : mitAbwesendenKarten(neu, alt, std);
+    const zuSpeichern = op.op === 'zuruecksetzen' || (voll === neu && istStandard(neu, std)) ? null : voll;
+    const sicht = zuSpeichern ?? LEER;
+    gespeichertRef.current = sicht;
+    LAYOUTS.set(seite, sicht);
+    setGespeichert(sicht);
+    ausstehend.current = { seite, layout: zuSpeichern };
+    clearTimeout(speicherTimer.current);
+    speicherTimer.current = setTimeout(() => senden(), 400);
+  }, [seite, senden]);
 
   // ── Ziehen am Griff (Maus und Finger): wohin der Zeiger zeigt, dorthin rutscht die Kachel ──
-  const zug = useRef<{ id: string; letzteVorId: string | null | undefined }>({ id: '', letzteVorId: undefined });
+  // Nach jedem Sprung erst wieder ab 16 px Bewegung (30.10.): eine große Kachel, die umspringt, liegt danach oft unter dem Zeiger einer anderen —
+  // ohne diese Ruhe pendelte die Reihenfolge hin und her, und das Ziehen fühlte sich zäh an.
+  const zug = useRef<{ id: string; letzteVorId: string | null | undefined; x: number; y: number }>({ id: '', letzteVorId: undefined, x: 0, y: 0 });
   const starteZug = useCallback((id: string, e: RPointerEvent) => {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-    zug.current = { id, letzteVorId: undefined };
+    zug.current = { id, letzteVorId: undefined, x: -1e6, y: -1e6 };
     setDragId(id);
   }, []);
   const zugBewegt = (e: RPointerEvent) => {
     if (!dragId) return;
+    if (Math.hypot(e.clientX - zug.current.x, e.clientY - zug.current.y) < 16) return;
     const ziel = document.elementsFromPoint(e.clientX, e.clientY).map(el => (el as HTMLElement).closest?.('[data-kachel-id]') as HTMLElement | null).find(el => el && el.dataset.kachelId !== dragId);
     if (!ziel) return;
     const zielId = ziel.dataset.kachelId!;
@@ -93,6 +131,7 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
     const vorId = unten ? (ids[idx + 1] === dragId ? ids[idx + 2] ?? null : ids[idx + 1] ?? null) : zielId;
     if (vorId === zug.current.letzteVorId) return;
     zug.current.letzteVorId = vorId;
+    zug.current.x = e.clientX; zug.current.y = e.clientY;
     tu({ op: 'verschieben', id: dragId, vorId: vorId === dragId ? null : vorId });
   };
   const zugEnde = () => { if (dragId) setDragId(null); };
@@ -172,8 +211,8 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
           if (!kind && !def) return null;
           const titel = p.titel ?? kind?.titel ?? def?.label ?? p.id;
           return (
-            <Platzhalter key={p.id} platz={p} titel={titel} einstellungen={def?.einstellungen} festeKarte={!!kind}>
-              {kind ? kind.children : def ? <def.Komponente e={p.einstellungen} titel={p.titel} i={Math.min(i, 6)} seite={seite} /> : null}
+            <Platzhalter key={p.id} platz={p} titel={titel} einstellungen={def?.einstellungen} festeKarte={!!kind} widgetArt={kind ? undefined : p.art} i={Math.min(i, 6)} seite={seite}>
+              {kind ? kind.children : null}
             </Platzhalter>
           );
         })}
@@ -183,8 +222,22 @@ export function Flaeche({ seite, widgets = [], standard: standardProp, children,
   );
 }
 
+interface PlatzProps { platz: Platz; titel: string; einstellungen?: EinstellungDef[]; festeKarte: boolean; widgetArt?: string; i: number; seite: string; children: ReactNode }
+/**
+ * Gleich, wenn sich für diese Kachel nichts geändert hat (30.10.): beim Ziehen, bei der Breite einer ANDEREN Kachel oder beim Umschalten des
+ * Katalogs zeichnet React nur die betroffenen Kacheln neu — vorher lief jedes Widget der Seite bei jedem Schritt erneut. Feste Karten bringen
+ * ihren Inhalt als Kinder mit (neu, sobald die Seite neu zeichnet); Widgets zeichnen sich selbst aus Art und Einstellungen. Die Reihenfolge (`i`)
+ * zählt bei Widgets nur für die Einblend-Verzögerung beim ersten Zeichnen und löst darum keinen Neuaufbau aus.
+ */
+function platzGleich(a: PlatzProps, b: PlatzProps): boolean {
+  return a.platz.id === b.platz.id && a.platz.art === b.platz.art && a.platz.breite === b.platz.breite && a.platz.titel === b.platz.titel
+    && JSON.stringify(a.platz.einstellungen) === JSON.stringify(b.platz.einstellungen)
+    && a.titel === b.titel && a.festeKarte === b.festeKarte && a.widgetArt === b.widgetArt && a.seite === b.seite && a.einstellungen === b.einstellungen && a.children === b.children;
+}
+
 /** Ein Platz im Raster: misst seine Höhe, spannt Zeilen, trägt im Bearbeiten-Modus Griff, Breite, ⚙ und ✕. */
-function Platzhalter({ platz, titel, einstellungen, festeKarte, children }: { platz: Platz; titel: string; einstellungen?: EinstellungDef[]; festeKarte: boolean; children: ReactNode }) {
+const Platzhalter = memo(function Platzhalter({ platz, titel, einstellungen, festeKarte, widgetArt, i, seite, children }: PlatzProps) {
+  const def = widgetArt ? WIDGETS[widgetArt] : undefined;
   const ctx = useContext(FlaecheCtx)!;
   const { bearbeiten, dragId, schmal, tu } = ctx;
   const aussen = useRef<HTMLDivElement>(null);
@@ -220,12 +273,12 @@ function Platzhalter({ platz, titel, einstellungen, festeKarte, children }: { pl
       )}
       <div ref={inner} className="kachel-inhalt">
         {bearbeiten && offen && <Einstellungen platz={platz} defs={einstellungen ?? []} festeKarte={festeKarte} tu={tu} zu={() => setOffen(false)} />}
-        {children}
+        {def ? <def.Komponente e={platz.einstellungen} titel={platz.titel} i={i} seite={seite} /> : children}
       </div>
       {leer && bearbeiten && <Karte i={0}><Leer>{titel}: gerade nichts anzuzeigen — bleibt hier stehen, bis es etwas gibt.</Leer></Karte>}
     </div>
   );
-}
+}, platzGleich);
 
 function Einstellungen({ platz, defs, festeKarte, tu, zu }: { platz: Platz; defs: EinstellungDef[]; festeKarte: boolean; tu: (op: Op) => void; zu: () => void }) {
   const [titel, setTitel] = useState(platz.titel ?? '');

@@ -1,6 +1,6 @@
 // Flächen (26.09.): Standard + gespeicherter Stand zusammenführen, Schritte, Säubern.
 import { describe, it, expect } from 'vitest';
-import { anwenden, wende, sauberLayout, ausgeblendet, istStandard, type StandardPlatz, type Layout } from '../lib/flaeche/modell';
+import { anwenden, wende, sauberLayout, ausgeblendet, istStandard, mitAbwesendenKarten, type StandardPlatz, type Layout } from '../lib/flaeche/modell';
 
 const STD: StandardPlatz[] = [
   { id: 'aufgaben', art: 'aufgaben', breite: 4 }, { id: 'fokus', art: 'fokus', breite: 2 },
@@ -69,5 +69,33 @@ describe('Flächen-Modell', () => {
     expect((l.plaetze[0].einstellungen.t as string).length).toBe(400);
     expect(l.versteckt).toEqual(['ok']);
     expect(l.stand).toBe('5');
+  });
+
+  // 30.10. (Kevin: „bei Gesundheit extrem aufgefallen“): Karten, die die Seite nur unter einer Bedingung zeigt (Werte geladen, eigene Ansicht),
+  // verloren beim Anpassen ohne sie ihren Platz — und ausgeblendete kamen wieder.
+  it('Karten, die gerade fehlen, behalten beim Speichern Platz, Breite und „ausgeblendet“', () => {
+    const voll: StandardPlatz[] = [{ id: 'a', breite: 3 }, { id: 'schlaf', breite: 3 }, { id: 'b', breite: 3 }, { id: 'werte', breite: 3 }];
+    let alt = wende(anwenden(voll, null), { op: 'breite', id: 'schlaf', breite: 6 }, voll, J);
+    alt = wende(alt, { op: 'verschieben', id: 'schlaf', vorId: 'a' }, voll, J);
+    alt = wende(alt, { op: 'ausblenden', id: 'werte' }, voll, J);
+    expect(alt.plaetze.map(p => p.id)).toEqual(['schlaf', 'a', 'b']);
+    // Ansicht ohne „schlaf“ und „werte“ (Bedingung nicht erfüllt): jemand verschiebt b nach vorn
+    const ohne: StandardPlatz[] = [{ id: 'a', breite: 3 }, { id: 'b', breite: 3 }];
+    const gezeigt = anwenden(ohne, alt);
+    expect(gezeigt.plaetze.map(p => p.id)).toEqual(['a', 'b']);
+    const neu = wende(gezeigt, { op: 'verschieben', id: 'b', vorId: 'a' }, ohne, J);
+    const gespeichert = mitAbwesendenKarten(neu, alt, ohne);
+    expect(gespeichert.plaetze.map(p => p.id)).toEqual(['schlaf', 'b', 'a']);
+    expect(gespeichert.versteckt).toEqual(['werte']);
+    // kommt die Bedingung zurück, steht „schlaf“ breit an seiner Stelle und „werte“ bleibt ausgeblendet
+    const wieder = anwenden(voll, gespeichert);
+    expect(wieder.plaetze.map(p => [p.id, p.breite])).toEqual([['schlaf', 6], ['b', 3], ['a', 3]]);
+    expect(wieder.versteckt).toEqual(['werte']);
+    // ohne bisherigen Stand und ohne fehlende Karten: unverändert dasselbe Objekt
+    expect(mitAbwesendenKarten(neu, null, ohne)).toBe(neu);
+    expect(mitAbwesendenKarten(neu, neu, ohne)).toBe(neu);
+    // Widgets aus dem Katalog bleiben ohnehin im Layout — hier geht es nur um feste Karten
+    const mitWidget: Layout = { ...alt, plaetze: [...alt.plaetze, { id: 'w-x', art: 'aufgaben', breite: 2, einstellungen: {} }] };
+    expect(mitAbwesendenKarten(wende(anwenden(ohne, mitWidget), { op: 'breite', id: 'a', breite: 6 }, ohne, J), mitWidget, ohne).plaetze.filter(p => p.id === 'w-x')).toHaveLength(1);
   });
 });
