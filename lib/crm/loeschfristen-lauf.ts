@@ -309,6 +309,13 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('check-sitzungen', await checkFristLauf(new Date()));
   });
 
+  // 11b3 · Newsletter-Anmeldung über die Website (30.10.): unbestätigte (auch gesperrte, nicht übernommene) nach 30 Tagen; bestätigte, solange am
+  //        Kontakt die Einwilligung mit genau diesem Beleg besteht (feste Frist in lib/newsletter/regeln.ts — sie steht so im Hinweis). Ohne Bestand: nichts.
+  await schritt('newsletter-anmeldungen', async () => {
+    const { newsletterFristLauf } = await import('@/lib/newsletter/server');
+    zaehle('newsletter-anmeldungen', await newsletterFristLauf(new Date()));
+  });
+
   // 11c · WhatsApp (07.10.): Nachrichten der Business-Nummer vor der Frist (Vorgabe 7 Jahre, § 257 HGB) weg, ihre Dateien mit; Medien vor der
   //       Medien-Frist (Vorgabe 90 Tage) — die Nachricht bleibt („abgelaufen“). Ohne Spiegel: nichts.
   await schritt('whatsapp', async () => {

@@ -401,6 +401,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'buchung--*', muster: /^buchung--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('buchungen') },
   // Innovations-Check der Website (24.10.): Sitzungen mit einer Adresse der Person fallen ganz weg (Antworten, Kontakt, Ergebnis).
   { name: 'check-sitzungen', muster: /^check-sitzungen$/, behandlung: 'entfernen', wirkung: eintraegeRaus('sitzungen') },
+  // Newsletter-Anmeldung über die Website (30.10.): Anmeldungen mit einer Adresse der Person fallen ganz weg (der Nachweis lag ohnehin an der Akte).
+  { name: 'newsletter-anmeldungen', muster: /^newsletter-anmeldungen$/, behandlung: 'entfernen', wirkung: eintraegeRaus('anmeldungen') },
   // Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1): Fall (Stakeholder-Kennung getilgt, Notiz weg), Kunde (Antworten/Puls/Unterlagen, die die
   // Person nennen, raus), Dossier (getilgt), Personenkarten (Karten der Person raus).
   { name: 'fulfillment-faelle--*', muster: /^fulfillment-faelle--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: fulfillmentFaelleOhne },
