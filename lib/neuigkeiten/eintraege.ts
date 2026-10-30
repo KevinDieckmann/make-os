@@ -45,6 +45,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { text: 'Mandate: Die Mandate stehen nach Status gruppiert, rechts das gewählte Mandat bzw. der Überblick. Gesellschaft und „Beendete zeigen“ hinter „Filter“, der Excel-Import und der Papierkorb hinter „⋯“.', bereich: 'business', weg: WEG.mandat() },
         { text: 'Linke Leiste: Die Oberthemen eines Bereichs (z. B. in der Markttraktion CRM, Vertrieb, Marketing, Steuerung) lassen sich per Klick zuklappen. Die Gruppe, in der du gerade bist, bleibt offen; dein Browser merkt sich, was zu ist.', bereich: 'business' },
         { text: 'Linke Leiste: Jedes Symbol steht jetzt in einer kleinen Kachel in der Farbe des Bereichs, wie das Symbol des Bereichs oben. Der Punkt, auf dem du bist, leuchtet kräftiger.', bereich: 'business' },
+        { text: 'Rechnung schreiben unter Business: Einheiten, die zu Privat gehören, stehen dort nicht als Absender. Ein Hinweis mit Link führt jetzt direkt zu Privat › Konten & Buchungen, wo du ihre Rechnungen schreibst.', bereich: 'business', weg: WEG.buchungen({ privat: true }) },
       ] },
     ],
   },
