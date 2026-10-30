@@ -18,6 +18,7 @@ import { NetzwerkenSender } from '@/components/os/netzwerken/Sender';
 import { MedienSender } from '@/components/os/medien/Sender';
 import { IdeeErfassen } from '@/components/os/bauplan/IdeeErfassen';
 import { BedienungAnwenden } from '@/components/os/ui/bedienung';
+import { BereichFarbeQuelle } from '@/components/os/ui/bereich-farbe';
 import { wache } from '@/lib/zugang/wache';
 import { TeamQuelle } from '@/components/os/TeamQuelle';
 import { teamAusKonten } from '@/lib/crm/team-liste';
@@ -41,6 +42,8 @@ export default async function OsLayout({ children }: { children: React.ReactNode
   const vorab = { nurBusiness: kontoSichtAus(konten, konto.speicher).nurBusiness };
   return (
     <KontoVorab wert={vorab}>
+    {/* Bereichsfarbe (31.10.): aktive Wahl und Fokusring in der Farbe von Privat bzw. Business — components/os/ui/bereich-farbe.tsx. */}
+    <BereichFarbeQuelle>
     <div className="os-shell" style={{ display: 'flex', minHeight: '100vh', alignItems: 'stretch' }}>
       <TeamQuelle team={team} />
       {/* Tempo (27.09.): gleiche GET-Abfragen an /api werden geteilt statt dreifach gestellt. */}
@@ -81,6 +84,7 @@ export default async function OsLayout({ children }: { children: React.ReactNode
       {/* Nach jedem Update einmal „Was ist neu“ je Person (18.10.) — der Server entscheidet, ob es etwas Neues gibt. */}
       <UpdateHinweis />
     </div>
+    </BereichFarbeQuelle>
     </KontoVorab>
   );
 }

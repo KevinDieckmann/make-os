@@ -11,6 +11,7 @@ import { klickSperren, type KlickSperre } from '@/lib/make-one/klick-sperre';
 import { useHandy } from './medien';
 import { Erklaert, useAnZeileMelden, type ErklaerungsQuelle } from './erklaerung';
 import { FARBE as C, SCHRIFT, TIEF, TYP, LEUCHT, RAND, ECKE } from '@/lib/make-one/design';
+import { useBereichFarbe, anRing } from './bereich-farbe';
 
 export type KnopfTon = 'haupt' | 'leise' | 'gut' | 'warn';
 
@@ -71,10 +72,14 @@ export function Gross({ children, onClick, ton = 'leise', aus, href, kleinerAbst
 }
 
 /** Wahl-Chip (ein Wert aus mehreren) — Tippziel wie ein Knopf. */
-export function Wahl({ an, onClick, children, farbe = C.aktiv, klein }: { an: boolean; onClick: () => void; children: ReactNode; farbe?: string; klein?: boolean }) {
+export function Wahl({ an, onClick, children, farbe: eigene, klein }: { an: boolean; onClick: () => void; children: ReactNode; farbe?: string; klein?: boolean }) {
+  // Ohne eigene Farbe: die Farbe des Bereichs (31.10.); aktiv mit dem „hier bist du“-Ring (ui-an, ./bereich-farbe.tsx).
+  const bereich = useBereichFarbe();
+  const farbe = eigene ?? bereich;
   return (
-    <button type="button" onClick={onClick} aria-pressed={an} className={`ui-wahl fassbar${klein ? ' ui-wahl-klein' : ''}`} style={{
+    <button type="button" onClick={onClick} aria-pressed={an} className={`ui-wahl fassbar${klein ? ' ui-wahl-klein' : ''}${an ? ' ui-an' : ''}`} style={{
       border: `1px solid ${an ? TIEF.rand(farbe) : RAND.flaeche}`, background: an ? TIEF.flaeche(farbe) : 'rgba(255,255,255,.04)', color: an ? farbe : C.ink,
+      ...(an ? anRing(farbe) : {}),
     }}>{children}</button>
   );
 }
@@ -82,7 +87,7 @@ export function Wahl({ an, onClick, children, farbe = C.aktiv, klein }: { an: bo
 type Eintrag<T extends string> = { id: T; label: string };
 
 /** Eine Reihe Wahl-Chips, genau einer an (Filter, Ansichten). `einzeilig` wischt am Handy seitwärts, statt umzubrechen. */
-export function Pillen<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv, einzeilig }: { liste: Eintrag<T>[]; aktiv: T | null | undefined; onWahl: (id: T) => void; farbe?: string; einzeilig?: boolean }) {
+export function Pillen<T extends string>({ liste, aktiv, onWahl, farbe, einzeilig }: { liste: Eintrag<T>[]; aktiv: T | null | undefined; onWahl: (id: T) => void; farbe?: string; einzeilig?: boolean }) {
   return (
     <div className={`ui-pillen${einzeilig ? ' ui-pillen-einzeilig' : ''}`}>
       {liste.map(l => <Wahl key={l.id} klein an={l.id === aktiv} farbe={farbe} onClick={() => onWahl(l.id)}>{l.label}</Wahl>)}
@@ -91,7 +96,7 @@ export function Pillen<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv
 }
 
 /** Mehrere Chips zugleich an (Kevin 26.09.: „immer alles mehrfach klickbar“). */
-export function MehrfachPillen<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv }: { liste: Eintrag<T>[]; aktiv: T[]; onWahl: (ids: T[]) => void; farbe?: string }) {
+export function MehrfachPillen<T extends string>({ liste, aktiv, onWahl, farbe }: { liste: Eintrag<T>[]; aktiv: T[]; onWahl: (ids: T[]) => void; farbe?: string }) {
   return (
     <div className="ui-pillen">
       {liste.map(l => {
@@ -108,13 +113,15 @@ export function Chip({ farbe, children, umbrechen }: { farbe: string; children: 
 }
 
 /** Segment-Umschalter (zwei bis fünf Ansichten): eine Fläche, die aktive Wahl getönt — wie die Reiter in Netzwerken. */
-export function Segmente<T extends string>({ liste, aktiv, onWahl, umbrechen, farbe = C.aktiv }: { liste: { id: T; label: ReactNode }[]; aktiv: T; onWahl: (id: T) => void; umbrechen?: boolean; farbe?: string }) {
+export function Segmente<T extends string>({ liste, aktiv, onWahl, umbrechen, farbe: eigene }: { liste: { id: T; label: ReactNode }[]; aktiv: T; onWahl: (id: T) => void; umbrechen?: boolean; farbe?: string }) {
+  const bereich = useBereichFarbe();
+  const farbe = eigene ?? bereich;
   return (
     <div className={`ui-segmente${umbrechen ? ' ui-segmente-umbrechen' : ''}`}>
       {liste.map(s => {
         const an = s.id === aktiv;
-        return <button key={s.id} type="button" onClick={() => onWahl(s.id)} aria-pressed={an} className="ui-segment fassbar"
-          style={{ border: `1px solid ${an ? TIEF.rand(farbe) : 'transparent'}`, background: an ? TIEF.flaeche(farbe) : 'transparent', color: an ? farbe : C.inkDim }}>{s.label}</button>;
+        return <button key={s.id} type="button" onClick={() => onWahl(s.id)} aria-pressed={an} className={`ui-segment fassbar${an ? ' ui-an' : ''}`}
+          style={{ border: `1px solid ${an ? TIEF.rand(farbe) : 'transparent'}`, background: an ? TIEF.flaeche(farbe) : 'transparent', color: an ? farbe : C.inkDim, ...(an ? anRing(farbe) : {}) }}>{s.label}</button>;
       })}
     </div>
   );
@@ -126,7 +133,9 @@ export interface ReiterEintrag<T extends string = string> { id: T; label: ReactN
  * Reiterleiste (Rolle tablist): alle Reiter in EINER wischbaren Zeile, der aktive wird sichtbar gehalten. `gruppe` = leise Rahmung für die zweite
  * Gruppe (z. B. die Welten rechts). Aktiv = Bereichsfarbe getönt (Rezept TIEF) — nie Vollfläche.
  */
-export function Reiter<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv, gruppe, ariaLabel }: { liste: ReiterEintrag<T>[]; aktiv: T | null | undefined; onWahl: (id: T) => void; farbe?: string; gruppe?: boolean; ariaLabel?: string }) {
+export function Reiter<T extends string>({ liste, aktiv, onWahl, farbe: eigene, gruppe, ariaLabel }: { liste: ReiterEintrag<T>[]; aktiv: T | null | undefined; onWahl: (id: T) => void; farbe?: string; gruppe?: boolean; ariaLabel?: string }) {
+  const bereich = useBereichFarbe();
+  const farbe = eigene ?? bereich;
   const wurzel = useRef<HTMLDivElement>(null);
   // Der aktive Reiter bleibt im sichtbaren Ausschnitt der wischbaren Zeile (nur waagerecht — die Seite scrollt nicht mit).
   useEffect(() => {
@@ -143,8 +152,8 @@ export function Reiter<T extends string>({ liste, aktiv, onWahl, farbe = C.aktiv
         const an = aktiv === b.id;
         const f = b.farbe ?? farbe;
         return (
-          <button key={b.id} type="button" role="tab" aria-selected={an} onClick={() => onWahl(b.id)} className="ui-reiter-knopf fassbar"
-            style={{ border: `1px solid ${an ? TIEF.rand(f) : 'transparent'}`, background: an ? TIEF.flaeche(f) : 'transparent', color: an ? C.ink : C.inkDim, fontFamily: SCHRIFT.text }}>
+          <button key={b.id} type="button" role="tab" aria-selected={an} onClick={() => onWahl(b.id)} className={`ui-reiter-knopf fassbar${an ? ' ui-an' : ''}`}
+            style={{ border: `1px solid ${an ? TIEF.rand(f) : 'transparent'}`, background: an ? TIEF.flaeche(f) : 'transparent', color: an ? C.ink : C.inkDim, fontFamily: SCHRIFT.text, ...(an ? anRing(f) : {}) }}>
             {b.farbe && <span aria-hidden className="ui-reiter-punkt" style={{ background: b.farbe }} />}
             {b.label}
           </button>

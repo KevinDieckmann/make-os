@@ -327,9 +327,14 @@ nav a:hover { transform: translateX(2px); }
 :where(button, a, input, textarea, select, [tabindex]):focus-visible {
   outline: 2px solid var(--fokus, #58D9CD);
   outline-offset: 3px;
-  box-shadow: 0 0 0 6px rgba(88, 217, 205, .15);
+  box-shadow: 0 0 0 6px var(--fokus-schein, rgba(88, 217, 205, .15));
   border-radius: inherit;
 }
+
+/* „Hier bist du“ (31.10., components/os/ui/bereich-farbe.tsx): jede aktive Wahl trägt denselben Ring wie der Tastaturfokus — Kontur + weicher
+   Schein in der Farbe der Seite bzw. des Bereichs (--an, --an-schein inline gesetzt). Innen statt außen, wo der Rand abgeschnitten würde. */
+.ui-an { outline: 2px solid var(--an); outline-offset: 2px; box-shadow: 0 0 0 5px var(--an-schein); }
+.ui-pillen-einzeilig .ui-an, .ui-segmente .ui-an, .ui-reiter .ui-an { outline-offset: -2px; box-shadow: 0 0 14px var(--an-schein); }
 
 /* Tastenhinweis. Ein Kürzel, das nirgends steht, existiert nicht. */
 .taste {

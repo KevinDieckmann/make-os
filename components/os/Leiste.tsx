@@ -118,7 +118,8 @@ export function Leiste() {
   /** Ein Punkt der Leiste: Symbol + Text, eingeklappt nur das Symbol; aktiv in der Farbe des Space. */
   const zeileStil = (an: boolean, farbe: string = C.aktiv): CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: zu ? 'center' : 'flex-start', gap: 10, padding: zu ? '10px 0' : '9px 10px', minHeight: 44, boxSizing: 'border-box', borderRadius: 10, textDecoration: 'none',
-    color: an ? farbe : C.inkDim, background: an ? `${farbe}1A` : 'transparent', transition: 'background .2s ease, color .2s ease',
+    color: an ? farbe : C.inkDim, background: an ? `${farbe}1A` : 'transparent', transition: 'background .2s ease, color .2s ease, box-shadow .2s ease',
+    ...(an ? { boxShadow: `inset 0 0 0 2px ${farbe}, 0 0 14px ${farbe}2E` } : {}),
     fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: an ? 600 : 500,
   });
   const zeile = (e: SpaceEintrag, an: boolean, farbe?: string) => {

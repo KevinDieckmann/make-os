@@ -688,3 +688,11 @@ als Fenster; erst wenn diese Teile einen eigenen Ort haben, wird die Liste eine 
 - **Kontext nur mit Inhalt:** eine Kontext-Spalte im Detail steht nur, wenn sie etwas zeigt UND das Detail selbst breit genug ist (`useBreite`, Inbox ab
   880 px), sonst klappbar darunter. Leerer Kontext („Noch keine Person in der Kartei“) = eine kurze Zeile oben im Detail mit der Aktion („Kontakt anlegen“).
 - Nur Darstellung: Daten, Adressen (`?offen=`, `?k=`) und Tasten (j/k, Enter, /, e, s, a, r, Esc) bleiben bei der Seite. Wächter `tests/arbeitsflaeche.test.ts`.
+
+## „Hier bist du“-Ring und Bereichsfarbe (31.10.)
+Rückmeldung: „Überall, wenn wir irgendwo draufgehen, so sichtbar wie bei der Selbstständigkeit — dann sehen wir immer direkt, wo wir sind, in den
+Farben wie angemessen.“ Jede aktive Wahl — `Pillen`, `Segmente`, `Reiter` (components/os/ui/knoepfe.tsx) und der aktive Punkt der linken Leiste —
+trägt den Ring des Tastaturfokus: Kontur 2 px + weicher Schein (Klasse `ui-an` in app/globals.css, Farbe inline über `anRing(farbe)`). Ohne eigene
+Farbe einer Seite gilt die Farbe des Bereichs (`useBereichFarbe`, components/os/ui/bereich-farbe.tsx; Business Lila `#A78BFA`, Privat Terrakotta
+`#E8835F`, EINE Stelle `SPACE_FARBE` in lib/make-one/space-regeln.ts). Auch der Fokusring der Tastatur folgt dem Bereich (`--fokus`). Eine Seite,
+die eine Bedeutungsfarbe braucht (z. B. Ampel), gibt sie weiter ausdrücklich mit.

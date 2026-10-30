@@ -41,6 +41,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
       { art: 'besser', punkte: [
         { text: 'Business ist jetzt Lila: Schalter oben, linke Leiste, Symbole und Kennzeichen der Firmen-Bereiche.', bereich: 'business' },
         { text: 'Privat ist jetzt warmes Terrakotta statt des leisen Golds.', bereich: 'privat' },
+        { text: 'Du siehst immer, wo du bist: Der gewählte Reiter, Filter oder Menüpunkt trägt einen deutlichen Ring in der Farbe des Bereichs.', bereich: 'business' },
       ] },
     ],
   },

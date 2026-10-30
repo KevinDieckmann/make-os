@@ -23,7 +23,9 @@ export function menueZeileStil(an: boolean, farbe: string, schmal: boolean, kind
   return {
     display: 'flex', alignItems: 'center', justifyContent: schmal ? 'center' : 'flex-start', gap: 10, minHeight: ZIEL.handy, boxSizing: 'border-box', width: '100%',
     padding: schmal ? '10px 0' : kind ? '8px 10px 8px 30px' : '9px 10px', borderRadius: 10, textDecoration: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
-    color: an ? farbe : C.inkDim, background: an ? `${farbe}1A` : 'transparent', transition: 'background .2s ease, color .2s ease',
+    color: an ? farbe : C.inkDim, background: an ? `${farbe}1A` : 'transparent', transition: 'background .2s ease, color .2s ease, box-shadow .2s ease',
+    // „Hier bist du“ (31.10., components/os/ui/bereich-farbe.tsx): derselbe Ring wie bei jeder aktiven Wahl — innen, sonst schneidet die Leiste ihn ab.
+    ...(an ? { boxShadow: `inset 0 0 0 2px ${farbe}, 0 0 14px ${farbe}2E` } : {}),
     fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: an ? 600 : 500,
   };
 }
