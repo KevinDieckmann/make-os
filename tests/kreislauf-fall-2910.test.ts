@@ -65,7 +65,7 @@ describe('F-B1: Schatten blendet nicht aus und sperrt keinen scharfen Lauf (rein
   });
   it('starten: ein offener Schatten-Lauf sperrt den scharfen Start nicht — ein scharfer sperrt den Schatten-Start', () => {
     const leer: LaeufeDatei = { v: 1, laeufe: [], zurueckgehalten: [], prozesse: {} };
-    const a = (id: string, modus: 'scharf' | 'schatten') => ({ id, prozessId: PZ_A, version: 1, def: { bereich: 'fulfillment' as const, fallArt: 'mandat' as const }, fall: { art: 'mandat' as const, id: 'm1' }, modus, person: 'pia', ausloeser: { art: 'produkt' as const }, jetzt: J });
+    const a = (id: string, modus: 'scharf' | 'schatten') => ({ id, prozessId: PZ_A, version: 1, def: { bereich: 'fulfillment' as const, fallArt: 'mandat' as const }, fall: { art: 'mandat' as const, id: 'm1' }, modus, person: 'pia', ausloeser: { art: 'produkt' as const }, automatisch: false, jetzt: J });
     const s = starten(leer, a('pl-1', 'schatten'));
     expect(s.ok).toBe(true);
     const sch = starten(s.datei, a('pl-2', 'scharf'));

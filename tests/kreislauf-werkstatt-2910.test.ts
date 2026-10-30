@@ -224,7 +224,7 @@ describe('Geld-Bausteine über die vorhandenen Schreibwege (Server)', { timeout:
     const { crmVorschlagPlanen } = await import('@/lib/zoe/crm-vorschlag');
     const r = await crmVorschlagPlanen({ art: 'angebot_entwurf', gesellschaft: 'ug', positionen_aus: 'fall', kontakt: 'c-erika', deal: 'ch-1' }, 'pia');
     expect('plan' in r, JSON.stringify(r)).toBe(true);
-    const plan = (r as { plan: { nachher: string; eingabe: { felder: { positionen: { leistungId?: string }[] } } } }).plan;
+    const plan = (r as unknown as { plan: { nachher: string; eingabe: { felder: { positionen: { leistungId?: string }[] } } } }).plan;
     expect(plan.eingabe.felder.positionen[0].leistungId).toBe('p-1');
     expect(plan.nachher).toMatch(/Positionen aus dem Produkt/);
     // Ohne `positionen_aus` (ZOE) wie bisher: Positionen sind Pflicht.
