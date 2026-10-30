@@ -427,7 +427,7 @@ function FirmenAkteInhalt({ f, api, zurueck, zurueckKnopf, zuPerson, zuFirma }: 
   const crm = api.crm!;
   const drei = useBreit();
   const [huelle, breite] = useBreite();
-  const zwei = !drei && (breite ?? 0) >= 760;
+  const zwei = !drei && (breite ?? 0) >= 640;
   const { teile: t, personen, chancen, mandate, bean } = useFirmenTeile({ f, api, zuPerson, zuFirma });
   const umsatz = useFirmaUmsatz(f, crm.stand, crm.heute);
   // Esc = zurück, außer beim Tippen oder wenn ein Fenster offen ist (wie in „Kontakt öffnen“).
