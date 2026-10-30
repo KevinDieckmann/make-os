@@ -59,6 +59,7 @@ import { zahlplanMonate } from '@/lib/crm/mandat-zusatz';
 import { MandatFortschritt, FallPhase } from '../mandate/treppe/Fortschritt';
 import { MandatAnlegen, FirmaZuordnen } from './MandatAnlegen';
 import { OnboardingFrage } from '../fulfillment/prozesse/OnboardingFrage';
+import { MandatZeitleiste } from './MandatZeitleiste';
 import { MandatVertrag, MandatLeistungen, MandatZusatzModule } from './MandatZusatz';
 import { useNurBusiness } from '../useInhaber';
 import { istPrivatArbeitsMandat } from '@/lib/fulfillment/regeln';
@@ -306,6 +307,8 @@ function MandatDetail({ m, api, lq, frei, neuLaden, zuKontakt, onBeenden }: { m:
   };
   return (
     <div style={{ padding: '10px 2px 18px', display: 'grid', gap: 12, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+      {/* 30.10. (Kreislauf sehen): Angebot → Mandat → Raten/Monatsrechnungen → Fall auf einen Blick, oben der nächste Schritt (lib/crm/kunden-zeitleiste.ts). */}
+      <MandatZeitleiste m={m} angebote={crm.stand.angebote} />
       {m.offen.length > 0 && (
         <div style={{ padding: 12, borderRadius: 12, background: `${LEUCHT.achtung}10`, display: 'grid', gap: 6 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: LEUCHT.achtung, letterSpacing: '.06em', textTransform: 'uppercase' }}>Offen & widersprüchlich</div>

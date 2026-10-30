@@ -8,6 +8,7 @@
 //                Event-Nachfassen (Punkt 74)       `besuchUebersicht` (lib/crm/besuche.ts) — offen · rechtzeitig nachgefasst
 //                Fulfillment                       `cockpitDaten` (laufende Fälle von Mandaten einer Business-Gesellschaft) und je Vorlage
 //                                                  `kundenJeKnoten` (lib/fulfillment/regeln.ts) — die Zahl der Fälle an jedem Knoten
+//                Werkstatt-Prozesse (30.10.)       die Läufe des Motors (`werkstattFallZahl`, lib/prozesse/kreislauf-heute.ts) — offen · wartet · fertig 30 Tage
 // Die Kartei kommt über `kontakteFuerVerarbeitung` (Art. 18: eingeschränkte Personen fehlen ganz). Die Antwort trägt nur Titel aus Register und Vorlagen
 // und Zahlen — keine Personen, keine Namen, keine Beträge. Jeder Teil ist für sich abgesichert: scheitert er, fehlt seine Zahl (nie eine erfundene Null).
 // Stellschrauben (22.10.): je System-Prozess die Einstellungen, die er liest (lib/prozesse/stellschrauben-server.ts) — nur Werte, keine Personen.
@@ -131,6 +132,17 @@ export async function landkarteLesen(heute = localDay(), o: { privat?: boolean }
     const arten = { ...(mt ?? {}), ...(ff?.arten ?? {}) };
     const zahlen: Record<string, Zahl> = { ...(ff?.knoten ?? {}) };
     for (const p of prozesse) if (p.zaehler && arten[p.zaehler]) zahlen[p.id] = arten[p.zaehler]!;
+    // Kreislauf sehen (30.10.): Werkstatt-Prozesse zeigen ihre Fallzahlen (offen · wartet · fertig der letzten 30 Tage) in derselben Form — nur scharfe Läufe,
+    // Läufe zu Mandaten der Privat-Arbeits-Einheit nur mit Privat-Recht (`verborgeneMandate`, dieselbe Grenze wie GET /api/prozesse/laeufe).
+    await sicher(async () => {
+      const [{ laeufeLesen }, { werkstattFallZahl }, { verborgeneMandate }] = await Promise.all([import('./lauf-server'), import('./kreislauf-heute'), import('@/lib/fulfillment/zugang')]);
+      const [l, verborgen] = await Promise.all([laeufeLesen(h), verborgeneMandate(privat)]);
+      for (const p of prozesse) {
+        if (p.quelle !== 'werkstatt' || zahlen[p.id]) continue;
+        const z = werkstattFallZahl(l.laeufe, p.id, heute, verborgen);
+        if (z) zahlen[p.id] = z;
+      }
+    });
     // Eine Null zeigt die Landkarte nie (DESIGN_STANDARD.md) — dann gibt es dort keine Zahl.
     for (const [k, z] of Object.entries(zahlen)) if (!(z.wert > 0) && !((z.zweite?.wert ?? 0) > 0)) delete zahlen[k];
     // Landkarte anpassen (22.10.): die gespeicherten Abweichungen gehen mit — angewendet wird im Bild (lib/prozesse/landkarte-anpassung.ts `landkarteAnsicht`),

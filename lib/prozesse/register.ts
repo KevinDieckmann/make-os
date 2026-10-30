@@ -121,6 +121,15 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
         schritt('ei-4', 'Zuordnen per Klick', 'Erst „Zuordnen“ schreibt den Verlauf der Akte — nie automatisch.'),
       ]),
       phase('antwort', 'Antwort', [nachricht('aw-1', 'Antwort als Entwurf', 'ZOE schlägt vor, gesendet wird nur per Klick.')]),
+      // 30.10. (Kreislauf sehen): die übrigen Vorschläge, die die Inbox im Gespräch macht (lib/inbox/gespraech-server.ts `vorschlaegeFuer`) — nichts davon
+      // passiert von selbst; je Gespräch höchstens drei, jeder erst per Klick.
+      phase('vorschlaege', 'Vorschläge im Gespräch', [
+        erinnerung('vs-1', 'Nachfassen vorschlagen', 'Fach „Warten“: die jüngste echte Nachricht ist von uns und seit drei Tagen ohne Antwort (nach 30 Tagen verjährt).'),
+        schritt('vs-2', 'Aufgabe aus einer Frist', 'Eine Frist im Text der letzten fremden Nachricht wird eine Aufgabe mit Datum — angelegt per Klick.'),
+        termin('vs-3', 'Termin vorschlagen', 'Fach „Termine“ — die freie Zeit der Person, angelegt per Klick.'),
+        schritt('vs-4', 'Beleg ablegen', 'Fach „Geld & Papier“ mit PDF bzw. Bild — übernommen in die Gesellschaft des Bereichs per Klick.'),
+        schritt('vs-5', 'Deal nachfassen planen', 'Zugeordneter Kontakt mit offenem Deal — das Nachfassen am Deal per Klick.'),
+      ]),
     ],
     link: { href: WEG.marketing('anfragen'), text: 'Markttraktion › Marketing › Anfragen' },
     uebergaben: [{ nach: 'sp-lead-sql', text: 'neuer Lead' }],

@@ -272,11 +272,13 @@ export function testStand(ergebnisse: readonly { ok: boolean }[] | null | undefi
 // ══ Heute (Punkt 69): „Prozesse heute: n gelaufen, m warten auf dich“ ═══════════════════════════════════════════════════════════════════════════
 
 /** Die Tageszeile (rein) — ohne Lauf und ohne Wartendes keine Zeile (nie eine Null). */
-export function heuteSatz(h: { gelaufen: number; aufDich: number } | null | undefined): string | null {
-  if (!h || (!h.gelaufen && !h.aufDich)) return null;
+export function heuteSatz(h: { gelaufen: number; aufDich: number; probe?: number } | null | undefined): string | null {
+  if (!h || (!h.gelaufen && !h.aufDich && !h.probe)) return null;
   const teile = [
     ...(h.gelaufen ? [`${h.gelaufen} gelaufen`] : []),
     ...(h.aufDich ? [`${h.aufDich} ${h.aufDich === 1 ? 'wartet' : 'warten'} auf dich`] : []),
+    // Probeläufe (Schatten, 30.10.) getrennt — sie wirken nicht, zählen aber, damit man sieht, dass die Werkstatt übt.
+    ...(h.probe ? [`${h.probe} ${h.probe === 1 ? 'Probelauf' : 'Probeläufe'} (Schatten)`] : []),
   ];
   return `Prozesse heute: ${teile.join(', ')}`;
 }

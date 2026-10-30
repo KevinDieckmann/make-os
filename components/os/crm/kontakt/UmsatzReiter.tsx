@@ -286,6 +286,13 @@ export function UmsatzReiter({ k, api, zuDeal }: UmsatzReiterProps) {
         </label>
       )}
       <UmsatzKachel i={0} zu={zu.has('umsatz')} umschalten={umschalten} kz={kennzahlen} hinweis={planHinweis} />
+      {/* 30.10. (Kreislauf sehen): die Zeitleiste Angebot → Mandat → Raten → Fall steht in der Mandatsakte — von hier ein Sprung je Mandat. */}
+      {!!bezug?.mandate.length && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
+          <span>Kreislauf je Mandat (Angebot → Rechnungen → Fulfillment):</span>
+          {bezug.mandate.filter(m => !m.geloeschtAm).slice(0, 4).map(m => <Link key={m.id} href={WEG.mandat(m.id)} style={{ ...leiseLink, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{m.titel || 'Mandat'} ›</Link>)}
+        </div>
+      )}
 
       <ZahlungKachel i={1} zu={zu.has('zahlung')} umschalten={umschalten} k={k} api={api} firma={bezug.firma} zahlung={zahlung} heute={heute} />
 

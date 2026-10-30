@@ -38,6 +38,8 @@ import { NeuerProzessFenster } from '../prozesse/WerkstattUebersicht';
 import { VorlagenGalerie } from '../prozesse/VorlagenGalerie';
 import { HeadFragenFenster } from '../prozesse/HeadFragen';
 import { StellschraubenKarte } from '../prozesse/Stellschrauben';
+import { KreislaufHeute } from './KreislaufHeute';
+import { KREISLAUF_WERKZEUGE } from '@/lib/prozesse/kreislauf-heute';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim, margin: 0, lineHeight: 1.45 } as const;
 /** Der erste feste Bereich des Werkzeugs (Vorbelegung für „+ Prozess“ und „Head fragen“). */
@@ -192,6 +194,8 @@ function MitProzessen({ werkzeug, a, space, weitereProzesse }: { werkzeug: Werkz
   const inDieWerkstatt = async (id: string) => { await neu(); router.push(WEG.prozesse({ p: id, ansicht: 'werkstatt' })); };
   return (
     <>
+      {/* 30.10. (Kreislauf sehen): was der Kreislauf heute von selbst getan hat — nur in den Bereichen, durch die er läuft. */}
+      {KREISLAUF_WERKZEUGE.includes(werkzeug.id) && <div style={{ marginBottom: 16 }}><KreislaufHeute /></div>}
       <BereichAutomationenAnsicht werkzeug={werkzeug} space={space} gruppen={gruppen} head={h.headId ? h.headVon(h.headId) : undefined} headId={h.headId}
         weitere={h.weitereIds.map(id => ({ id, head: h.headVon(id) }))} darfBauen={!!liste.daten?.rechte.entwurf}
         schrauben={{ rechte: daten?.stellschraubenRechte, stand: daten?.stellschraubenStand }} fehler={!daten ? fehler : null} laedt={!daten && !fehler}

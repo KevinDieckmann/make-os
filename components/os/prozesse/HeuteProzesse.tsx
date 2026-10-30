@@ -13,7 +13,7 @@ import { Karte } from '../ui';
 import { heuteSatz } from '@/lib/prozesse/laeufe-ansicht';
 
 export const HEUTE_PROZESSE_QUELLE = '/api/prozesse/laeufe?heute=1&space=business';
-type Heute = { gelaufen: number; warten: number; aufDich: number };
+type Heute = { gelaufen: number; warten: number; aufDich: number; /** Probeläufe (Schatten), getrennt gezählt (30.10.). */ probe?: number };
 
 export function ProzesseHeuteZeile({ i, titel, vorgabe }: { i?: number; titel?: string; /** Nur für Tests: die Zahlen, als kämen sie vom Server. */ vorgabe?: Heute }) {
   const [h, setH] = useState<Heute | null>(vorgabe ?? null);

@@ -5,7 +5,8 @@
 //      ?lauf=pl-…&inhalte=1 die Inhalte LIVE mit den Rechten der Person (22.10.): Fall (Art. 18 ausgeblendet), Aufgaben (Sicht der Person), Vorschläge (nur die
 //                           eigenen — Agenten-Texte bleiben im Stapel, hier nur Titel und Link), Teil-Läufe (Status) — Lese-Protokoll „firmen“
 //      ?fall=<art>:<id>     die Läufe zu EINEM Fall (22.10., B3 — Karte „Begleitung läuft“ in der Akte des Fulfillment-Falls): offene + letzte 30 Tage, Titel des Prozesses
-//      ?heute=1             „Prozesse heute: n gelaufen, m warten“ (Punkt 69)
+//      ?heute=1             „Prozesse heute: n gelaufen, m warten“ (Punkt 69) — dazu Probeläufe (Schatten) getrennt gezählt (30.10.)
+//      ?kreislauf=1         Kreislauf sehen (30.10.): was der Kreislauf heute automatisch getan hat — nur Zähler mit Link, nur Business
 //      (ohne)               je Prozess die Zahlen (offen, wartend, Fehler, zurückgehalten)
 // POST { aktion }           starten (Auslöser „von Hand“, `anfrageId`, optional `fall`, `erneut` + `grund`) · abbrechen (`lauf`, `grund`) · erneut (`lauf`, „erneut ab
 //                           hier“) · zurueckgehalten (`prozess`, `wie`: starten | verwerfen, optional `ids`) · scharf-vorschau (`prozess`) · scharf (`prozess`, `stand`,
@@ -69,6 +70,11 @@ export async function GET(req: Request) {
     const r = await S.laeufeDesProzesses(prozess);
     const eingaenge = await S.webhookEingaengeKurz(prozess, z.haushalt);
     return NextResponse.json({ ok: true, ...r, laeufe: r.laeufe.filter(l => sichtbar(l.fall)), tests: r.stand?.tests ?? [], webhookEingaenge: eingaenge, zurueck: d.zurueckgehalten.filter(x => x.prozessId === prozess && sichtbar(x.fall)).map(x => ({ id: x.id, fall: x.fall, am: x.am, ausloeser: x.ausloeser.art })) });
+  }
+  // Kreislauf sehen (30.10., Paket 5): was der Kreislauf heute von selbst getan hat — nur Zähler mit Link, nur Business (lib/prozesse/kreislauf-heute-server.ts).
+  if (q.get('kreislauf') === '1') {
+    const { kreislaufHeuteLesen } = await import('@/lib/prozesse/kreislauf-heute-server');
+    return NextResponse.json({ ok: true, kreislauf: await kreislaufHeuteLesen({ haushalt: z.haushalt, privat: z.privat }) });
   }
   const d = await S.laeufeLesen(z.haushalt);
   if (q.get('heute') === '1') {

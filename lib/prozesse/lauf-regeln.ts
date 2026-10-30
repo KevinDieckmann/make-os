@@ -1562,11 +1562,16 @@ export function laufLage(d: LaeufeDatei, jetzt: string): ProzessLage {
   };
 }
 
-/** Heute-Zeile (Punkt 69: „Prozesse heute: n gelaufen, m warten“) — nur Läufe, die die Person betreffen bzw. ohne Person; nur scharf. */
-export function heuteZeile(d: LaeufeDatei, person: string, jetzt: string): { gelaufen: number; warten: number; aufDich: number } {
+/**
+ * Heute-Zeile (Punkt 69: „Prozesse heute: n gelaufen, m warten“) — nur Läufe, die die Person betreffen bzw. ohne Person; gelaufen/warten nur scharf.
+ * `probe` (30.10., Kreislauf sehen): Probeläufe (Schatten), die heute einen Schritt gegangen sind — getrennt gezählt, nie in „gelaufen“.
+ */
+export function heuteZeile(d: LaeufeDatei, person: string, jetzt: string): { gelaufen: number; warten: number; aufDich: number; probe: number } {
   const heute = tagVonIso(jetzt);
   const l = d.laeufe.filter(x => x.modus === 'scharf');
+  const gingHeute = (x: LaeufeDatei['laeufe'][number]) => tagVonIso(x.geaendert) === heute && x.schritte.some(s => s.bis && tagVonIso(s.bis) === heute);
   return {
+    probe: d.laeufe.filter(x => x.modus === 'schatten' && gingHeute(x)).length,
     gelaufen: l.filter(x => tagVonIso(x.geaendert) === heute && x.schritte.some(s => s.bis && tagVonIso(s.bis) === heute)).length,
     warten: l.filter(x => x.status === 'wartet').length,
     aufDich: l.filter(x => x.status === 'wartet' && (x.wartet?.art === 'freigabe' || x.wartet?.art === 'aufgabe') && x.person === person).length,
