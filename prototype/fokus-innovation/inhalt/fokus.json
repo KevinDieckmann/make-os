@@ -468,7 +468,7 @@
   "kurztexte": {
     "hinweis": "Ein Satz je Angebot in den Listen, wo das Produktblatt keinen hat.",
     "positionierung": "In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.",
-    "umsetzungsprojekte": "Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang, Start in Kürze.",
+    "umsetzungsprojekte": "Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an.",
     "tagesworkshop": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.",
     "pr-kommunikation": "Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation."
   },
@@ -485,7 +485,7 @@
   "angebote_lead": {
     "sichtbarkeit": "Feste Preise, feste Lieferzeiten bei Homepages und Videos, feste Monatspreise bei PR und Kommunikation. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
     "vertrieb": "Feste Monatspreise und klare Laufzeiten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
-    "innovation": "Der Check ist kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Sie starten in Kürze."
+    "innovation": "Der Check ist kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Haben Sie ein Vorhaben, sprechen Sie uns an."
   },
   "fragen_zuschnitt": {
     "hinweis": "Antworten aus den gemeinsamen Fragen, auf den Bereich zugeschnitten (nur gekürzt, nichts Neues).",
@@ -649,7 +649,7 @@
       },
       "umsetzungsprojekte": {
         "titel": "Umsetzungsprojekte: KI und Software einführen · Fokus Innovation",
-        "beschreibung": "KI und Software einführen, bis sie im Alltag genutzt werden: Projekte mit Festpreis und klarem Umfang, vorab vereinbart. Start in Kürze, jetzt auf die Warteliste."
+        "beschreibung": "KI und Software einführen, bis sie im Alltag genutzt werden: Projekte mit Festpreis und klarem Umfang, vorab vereinbart. Haben Sie ein Vorhaben, sprechen Sie uns an."
       },
       "innovations-check": {
         "titel": "Innovations-Check: kostenlos in 10 Minuten · Fokus Innovation",

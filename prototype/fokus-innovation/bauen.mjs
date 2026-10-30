@@ -146,8 +146,8 @@ export function seitenBauen(q = quellen()) {
   const erster = (a) => `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')} €`;
   /** Preise (Kevin 30.10.: „Wir machen immer ab-Preise, nicht mit allen Preisen rausgehen“): überall nur der Einstiegspreis mit „ab“ —
    *  Listen, Angebotsseiten, Preisseite, llms.txt; was erst startet, hat noch keinen. Der volle Preis steht nur in den Daten. */
-  const preisKurz = (a) => (bald(a) ? 'Start in Kürze' : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
-  const preisVoll = (a) => (bald(a) ? 'Preis folgt zum Start' : `ab ${erster(a)}`);
+  const preisKurz = (a) => (bald(a) ? 'Anfrage starten' : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
+  const preisVoll = (a) => (bald(a) ? 'Preis auf Anfrage' : `ab ${erster(a)}`);
   const anbieter = seite.anbieter[seite.anbieter_aktiv];
 
   /** Produktblatt eines Angebots: eigene Angaben über denen der Familie; null, wenn es keins gibt. */
@@ -610,7 +610,7 @@ ${raster(b.felder, 4)}
 </div></section>
 
 <section class="blick-band" aria-label="Kurz gesagt"><div class="w">${kurzGesagt(b.kurz)}
-<dl class="blick erscheint">${[['Für wen', fuerWen], ['Angebote', preiseAb || 'Start in Kürze, jetzt auf die Warteliste'], ['Einstieg', { vertrieb: `Erstgespräch, kostenlos, oder der Tagesworkshop ab ${erster(angebot('tagesworkshop'))}`, sichtbarkeit: 'Erstgespräch, kostenlos, oder direkt die Positionierung S', innovation: 'Innovations-Check, kostenlos, rund 10 Minuten' }[k]], ['Preise', 'netto, ab-Preis auf jeder Angebotsseite']].filter(([, v]) => v).map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl>
+<dl class="blick erscheint">${[['Für wen', fuerWen], ['Angebote', preiseAb || 'Bald, Anfrage schon jetzt möglich'], ['Einstieg', { vertrieb: `Erstgespräch, kostenlos, oder der Tagesworkshop ab ${erster(angebot('tagesworkshop'))}`, sichtbarkeit: 'Erstgespräch, kostenlos, oder direkt die Positionierung S', innovation: 'Innovations-Check, kostenlos, rund 10 Minuten' }[k]], ['Preise', 'netto, ab-Preis auf jeder Angebotsseite']].filter(([, v]) => v).map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl>
 ${b.beleg ? `<div class="beleg-zeile">${zahl(F.belege[b.beleg])}</div>` : ''}</div></section>
 
 <section class="abschnitt" id="angebote" aria-labelledby="angebote-titel"><div class="w">${abKopf({ marke: 'Angebote', h2: `${b.name}: was wir für Sie tun`, lead: F.angebote_lead[k], id: 'angebote-titel' })}
@@ -662,7 +662,7 @@ ${schlussakt({ quelle: `${gs.pfad}_ende` })}`,
     const b = B[k];
     const pb = produktBlatt(a);
     const istBald = bald(a);
-    const terminKnopf = istBald ? knopf(mail(`Warteliste: ${a.name}`), 'Auf die Warteliste') : erstKnopf();
+    const terminKnopf = istBald ? knopf(mail(`Anfrage: ${a.name}`), 'Anfrage starten') : erstKnopf();
     const mandat = monatlich(a) && k === 'vertrieb';
     const zweitKnopf = k === 'innovation' ? checkKnopf(`produkt_${a.id}`, 'Innovations-Check starten', 'zweit') : knopf('#fragen', 'Häufige Fragen', 'zweit');
     const homepage = a.gruppe === 'Homepage-Pakete';
@@ -716,9 +716,9 @@ ${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class
       }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[`/${k}/`, b.name], [null, a.name]])}${vorzeile(`${b.name}${a.gruppe ? ` · ${a.gruppe}` : ''}${istBald ? ' · Bald' : ''}`)}<h1 id="held-titel">${e(a.name)}</h1><p class="lead">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? b.satz)}</p></div>
-<aside class="preis-kasten erscheint" aria-label="Preis"><p class="etikett">Preis</p><p class="betrag">${e(preisVoll(a))}</p><p class="zusatz">${istBald ? 'Festpreis mit klarem Umfang, vorab vereinbart' : `${e(a.preis_zusatz ?? '')}${a.preis_zusatz ? ' · ' : ''}netto zuzüglich Umsatzsteuer`}</p>${F.umfang[a.id] ? `<p class="umfang">${e(F.umfang[a.id])}</p>` : ''}${mandat ? `<p class="sicher">Ausstieg zum Ende von Monat 3 möglich</p>` : ''}<div class="knoepfe senkrecht">${terminKnopf}${zweitKnopf}</div></aside>
+<aside class="preis-kasten erscheint" aria-label="Preis"><p class="etikett">Preis</p><p class="betrag">${e(preisVoll(a))}</p><p class="zusatz">${istBald ? 'Haben Sie ein Vorhaben? Melden Sie sich, wir sprechen darüber' : `${e(a.preis_zusatz ?? '')}${a.preis_zusatz ? ' · ' : ''}netto zuzüglich Umsatzsteuer`}</p>${F.umfang[a.id] ? `<p class="umfang">${e(F.umfang[a.id])}</p>` : ''}${mandat ? `<p class="sicher">Ausstieg zum Ende von Monat 3 möglich</p>` : ''}<div class="knoepfe senkrecht">${terminKnopf}${zweitKnopf}</div></aside>
 </div></section>
-${blick([['Preis', istBald ? 'folgt zum Start' : `ab ${erster(a)} netto${a.preis_zusatz ? `, ${a.preis_zusatz}` : ''}`], ['Umfang', F.umfang[a.id]], ['Für wen', pb?.fuer?.[0] ?? a.fuer_wen], ['Ergebnis', ergebnisSatz], ['Bereich', istBald ? `${b.name} · startet in Kürze` : b.name]])}
+${blick([['Preis', istBald ? 'auf Anfrage, Festpreis mit klarem Umfang' : `ab ${erster(a)} netto${a.preis_zusatz ? `, ${a.preis_zusatz}` : ''}`], ['Umfang', F.umfang[a.id]], ['Für wen', pb?.fuer?.[0] ?? a.fuer_wen], ['Ergebnis', ergebnisSatz], ['Bereich', istBald ? `${b.name} · startet in Kürze` : b.name]])}
 ${mandat ? risiko() : ''}
 ${blattHtml}
 ${a.id === 'head-of-sales' ? wochenreportMuster() : ''}
@@ -729,7 +729,7 @@ ${fragen(fragenListe)}
 ${weitere.length ? `<section class="abschnitt" aria-labelledby="weitere-titel"><div class="w">${abKopf({ marke: geschwister.length ? a.gruppe : b.name, h2: geschwister.length ? `Die anderen ${a.gruppe}` : `Weitere Angebote im Bereich ${b.name}`, id: 'weitere-titel' })}
 ${angebotZeilen(weitere)}</div></section>` : ''}
 ${wissenAbschnitt(zuArtikeln)}
-${schlussakt({ quelle: `produkt_${a.id}_ende`, lead: istBald ? 'Tragen Sie sich auf die Warteliste ein. Oder starten Sie mit dem Innovations-Check, er zeigt in rund 10 Minuten, wo Ihr Unternehmen steht.' : 'Sprechen Sie mit uns über Ihren Start: Im kostenlosen Erstgespräch klären wir, ob dieses Angebot passt. Oder Sie starten mit dem Innovations-Check, rund 10 Minuten.', knoepfe: `${terminKnopf}${checkKnopf(`produkt_${a.id}_ende`, 'Innovations-Check starten', 'zweit')}` })}`,
+${schlussakt({ quelle: `produkt_${a.id}_ende`, lead: istBald ? 'Haben Sie ein Vorhaben? Melden Sie sich trotzdem, wir sprechen darüber. Oder starten Sie mit dem Innovations-Check, er zeigt in rund 10 Minuten, wo Ihr Unternehmen steht.' : 'Sprechen Sie mit uns über Ihren Start: Im kostenlosen Erstgespräch klären wir, ob dieses Angebot passt. Oder Sie starten mit dem Innovations-Check, rund 10 Minuten.', knoepfe: `${terminKnopf}${checkKnopf(`produkt_${a.id}_ende`, 'Innovations-Check starten', 'zweit')}` })}`,
     });
   }
 
@@ -1144,7 +1144,7 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
 
   // ── Preise: alles auf einer Seite ──
   {
-    const zeile = (a) => `<tr><th scope="row"><a class="unterstrichen" href="${produktPfad(a)}">${e(a.name)}</a>${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</th><td data-name="Preis netto">${e(preisVoll(a))}</td><td data-name="Konditionen">${bald(a) ? 'Festpreis mit klarem Umfang, vorab vereinbart; Start in Kürze' : t([a.preis_zusatz, F.umfang[a.id]].filter(Boolean).join(' · '))}</td></tr>`;
+    const zeile = (a) => `<tr><th scope="row"><a class="unterstrichen" href="${produktPfad(a)}">${e(a.name)}</a>${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</th><td data-name="Preis netto">${e(preisVoll(a))}</td><td data-name="Konditionen">${bald(a) ? 'Festpreis mit klarem Umfang, vorab vereinbart; Anfrage schon jetzt möglich' : t([a.preis_zusatz, F.umfang[a.id]].filter(Boolean).join(' · '))}</td></tr>`;
     const frei = [[erstLink(), F.erstgespraech.name, 'per Video, klärt, ob und womit wir helfen können'], ['/innovations-check/', 'Innovations-Check', 'rund 10 Minuten, Ergebnis sofort'], ['/events/', F.events.titel, 'auf Einladung, für Gäste']];
     const kopfZeile = '<thead><tr><th scope="col">Angebot</th><th scope="col">Preis netto</th><th scope="col">Konditionen</th></tr></thead>';
     const tabelle = (titelText, zeilenHtml, { zeigen = true } = {}) => `${zeigen ? `<h3 class="gruppe-titel">${e(titelText)}</h3>` : ''}<div class="tabelle-huelle erscheint"><table class="vergleich text preis-tabelle"><caption class="sr">${e(titelText)}</caption>${kopfZeile}<tbody>${zeilenHtml}</tbody></table></div>`;
@@ -1187,7 +1187,7 @@ ${schlussakt({ quelle: 'preise_ende' })}`,
 
   // llms.txt (Vorschlag llmstxt.org): kurzer Wegweiser für KI-Assistenten, dazu llms-full.txt mit allen Inhalten als Klartext.
   const mdLink = (n, p) => `[${n}](${absolut(p)})`;
-  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'Start in Kürze, Preis folgt zum Start' : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
+  const angebotMd = (a) => `- ${mdLink(a.name, produktPfad(a))}: ${bald(a) ? 'bald, Anfrage schon jetzt möglich, Preis auf Anfrage' : `ab ${erster(a)} netto${a.preis_zusatz ? ` (${klar(a.preis_zusatz)})` : ''}`}. ${klar(F.kurztexte[a.id] ?? produktBlatt(a)?.versprechen ?? a.fuer_wen ?? '')}${bald(a) ? ' Startet in Kürze.' : ''}`;
   const faktenMd = [...F.fakten, ['Betreiber', `${anbieter.name}, ${anbieter.adresse.map(klar).join(', ')}`], ['Kontakt', seite.kontakt.mail]].map(([k, v]) => `- ${k}: ${klar(v)}`).join('\n');
   const leistungenMd = BEREICHE.map((k) => `### ${B[k].name}: ${B[k].paar}\n\n${klar(B[k].kurz)}\n\n${k === 'innovation' ? `- ${mdLink('Innovations-Check', '/innovations-check/')}: kostenlos, rund 10 Minuten. ${klar(F.check.text)}\n` : ''}${produkteIn(k).map(angebotMd).join('\n')}`).join('\n\n');
   seiten.push({
