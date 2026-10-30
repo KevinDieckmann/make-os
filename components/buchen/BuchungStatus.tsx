@@ -98,7 +98,7 @@ export function BuchungStatus({ slug }: { slug: string }) {
           <section style={{ ...karte, display: 'grid', gap: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: t.farbe }} /><span style={{ fontSize: 13, color: t.farbe, fontWeight: 700 }}>{t.kopf}</span></div>
             <h1 style={titel}>{sicht.titel}</h1>
-            <div style={{ fontSize: 16, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{zeitText(sicht.start, sicht.ende)}{zone && bei(sicht.start) ? <span style={{ ...klein, display: 'block', fontWeight: 500 }}>bei Ihnen ({zonenOrt(zone)}): {bei(sicht.start)}–{bei(sicht.ende) ?? sicht.ende.slice(11, 16)}</span> : null}</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>{zeitText(sicht.start, sicht.ende)}{zone && bei(sicht.start) ? <span style={{ ...klein, display: 'block', fontWeight: 500 }}>bei Ihnen ({zonenOrt(zone)}): {bei(sicht.start)}–{bei(sicht.ende) ?? sicht.ende.slice(11, 16)}</span> : null}</div>
             <p style={{ ...leise, margin: 0 }}>{t.satz}</p>
             {sicht.emailBestaetigt && <p style={{ ...klein, margin: 0, color: C.gut }}>E-Mail-Adresse bestätigt.</p>}
             {sicht.status === 'vorlaeufig' && sicht.reserviertBis && <p style={{ ...klein, margin: 0 }}>Reserviert bis {new Date(sicht.reserviertBis).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr.</p>}
@@ -144,7 +144,7 @@ export function MailBestaetigen({ sicht, fehler, laeuft, bereit, onBestaetigen }
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: C.gut }} /><span style={{ fontSize: 13, color: C.gut, fontWeight: 700 }}>Danke — Ihre E-Mail-Adresse ist bestätigt.</span></div>
               <h1 style={titel}>{sicht.titel}</h1>
-              <div style={{ fontSize: 16, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{zeitText(sicht.start, sicht.ende)}</div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{zeitText(sicht.start, sicht.ende)}</div>
               <p style={{ ...leise, margin: 0 }}>Den Stand Ihrer Anfrage sehen Sie weiter über Ihren persönlichen Link von der Buchung.</p>
             </>
           )}

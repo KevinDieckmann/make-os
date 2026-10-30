@@ -47,7 +47,7 @@ export function knopf(aktiv = true, leise = false): CSSProperties {
 export function chip(gewaehlt: boolean): CSSProperties {
   return {
     border: `1px solid ${gewaehlt ? AKZENT : C.linie}`, background: gewaehlt ? GEWAEHLT : 'transparent', color: gewaehlt ? C.ink : C.inkDim,
-    borderRadius: 8, padding: '10px 12px', minHeight: 44, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text, fontVariantNumeric: 'tabular-nums',
+    borderRadius: 8, padding: '10px 12px', minHeight: 44, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: SCHRIFT.text,
   };
 }
 

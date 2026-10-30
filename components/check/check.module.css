@@ -47,6 +47,10 @@
 .kopfZeile { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .marke { font-weight: 650; letter-spacing: .12em; font-size: 14px; text-transform: uppercase; }
 .titel { color: var(--c-leise); font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; font-family: var(--s-zahl); }
+/* Am Handy (29.10.): Marke und Titel je einzeilig — sonst bricht „FOKUS / INNOVATION“ und „INNOVATIONS- / CHECK“ um. */
+.marke, .titel { white-space: nowrap; }
+@media (max-width: 420px) { .marke { font-size: 13px; letter-spacing: .08em; } .titel { font-size: 11px; letter-spacing: .06em; } }
+@media (max-width: 340px) { .titel { display: none; } }
 .balken { height: 4px; border-radius: 4px; background: var(--c-linie); margin-top: 10px; overflow: hidden; }
 .balkenFuell { height: 100%; background: var(--c-verlauf); border-radius: 4px; transition: width 400ms ease; }
 .stand { margin-top: 6px; font-family: var(--s-zahl); font-size: 12px; color: var(--c-leise); }
@@ -97,6 +101,9 @@
 .leiseKnopf { min-height: 44px; padding: 0 8px; border: 0; background: none; color: var(--c-leise); cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--c-linie); background: transparent; color: var(--c-text); cursor: pointer; font: inherit; font-size: 14px; }
+/* Gewählte Rolle sichtbar machen — .chip steht nach .optionGewaehlt und würde Rand und Fläche sonst wieder zurücksetzen (29.10.). */
+.chip.optionGewaehlt { border-color: var(--c-ende); background: var(--c-gewaehlt); }
+@media (pointer: coarse) { .chip { min-height: 44px; } }
 .eingabe, .textfeld {
   width: 100%; box-sizing: border-box; min-height: 48px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--c-linie);
   background: var(--c-grund); color: var(--c-text); font: inherit; font-size: 16px;

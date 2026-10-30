@@ -31,9 +31,9 @@ const MAX_BYTES = 16 * 1024;
 const KOPF = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex, nofollow' };
 const antwort = (body: Record<string, unknown>, status = 200, extra: Record<string, string> = {}) => NextResponse.json(body, { status, headers: { ...KOPF, ...extra } });
 const NICHT_DA = { ok: false, fehler: 'Den Check gibt es hier gerade nicht.' };
-const SITZUNG_WEG = { ok: false, fehler: 'Diese Sitzung gibt es nicht (mehr). Starte den Check einfach neu.' };
+const SITZUNG_WEG = { ok: false, fehler: 'Diese Sitzung gibt es nicht (mehr). Starten Sie den Check einfach neu.' };
 /** Honigtopf und zu schnelle Kontakt-Frage: DERSELBE Text (wie bei der Buchung) — verrät nicht, was auffiel. */
-const NICHT_ANGENOMMEN = { ok: false, fehler: 'Das hat leider nicht geklappt. Bitte lade die Seite neu und versuch es noch einmal.' };
+const NICHT_ANGENOMMEN = { ok: false, fehler: 'Das hat leider nicht geklappt. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.' };
 /** Neue Sitzungen je Netz und Viertelstunde frei, danach wächst die Wartezeit. */
 const START_FREI = 12;
 /** Schritte je Netz und Viertelstunde frei (ein ganzer Check mit Vertiefung braucht ~70). */
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     if (!v) return antwort(NICHT_DA, 404);
     const quelle = typeof b.quelle === 'string' && QUELLE_OK.test(b.quelle) ? b.quelle : undefined;
     const neu = await sitzungAnlegen(v.id, quelle);
-    if (!neu) return antwort({ ok: false, fehler: 'Der Check ist gerade voll — bitte versuch es später noch einmal.' }, 503);
+    if (!neu) return antwort({ ok: false, fehler: 'Der Check ist gerade voll — bitte versuchen Sie es später noch einmal.' }, 503);
     return antwort({ ok: true, sitzung: neu.sitzung.id, token: neu.token, ...(await nutzlast(v, neu.sitzung, e, hinweis)) }, 201);
   }
 
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     if (telefon && !/^\+?[\d ()/-]{6,30}$/.test(telefon)) return antwort({ ok: false, fehler: 'Die Telefonnummer sieht nicht richtig aus.' }, 400);
     const a5 = frageVon(v, 'A5');
     const rolle = typeof b.rolle === 'string' && a5?.optionen?.some(o => o.id === b.rolle) ? b.rolle : null;
-    if (!rolle) return antwort({ ok: false, fehler: 'Bitte deine Rolle wählen.' }, 400);
+    if (!rolle) return antwort({ ok: false, fehler: 'Bitte Ihre Rolle wählen.' }, 400);
     const jetzt = new Date().toISOString();
     const r = await sitzungAendern<string>(b.sitzung, b.token, s => {
       if (!kurzFertig(v, ablaufStand(s))) return { fehler: 'Erst die Fragen des Kurzchecks, dann die Kontaktdaten.' };

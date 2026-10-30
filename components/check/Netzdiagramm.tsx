@@ -33,7 +33,7 @@ export function Netzdiagramm({ achsen }: { achsen: readonly ErgebnisAchse[] }) {
   return (
     <figure style={{ margin: 0 }}>
       <svg className={s.netz} viewBox="-70 -14 480 372" role="img" aria-labelledby="netz-titel netz-text">
-        <title id="netz-titel">Deine Werte im Vergleich zur Branche</title>
+        <title id="netz-titel">Ihre Werte im Vergleich zur Branche</title>
         <desc id="netz-text">{beschreibung}</desc>
         {[25, 50, 75, 100].map(r => (
           <path key={r} d={pfad(achsen.map((_, i) => punkt(i, n, r)))} fill="none" stroke="var(--c-linie)" strokeWidth={r === 100 ? 1.2 : 0.8} />
@@ -62,7 +62,7 @@ export function Netzdiagramm({ achsen }: { achsen: readonly ErgebnisAchse[] }) {
           );
         })}
       </svg>
-      <figcaption className={s.netzLegende}><span className={s.legendeIch}>Du</span><span className={s.legendeBranche}>Branche</span></figcaption>
+      <figcaption className={s.netzLegende}><span className={s.legendeIch}>Sie</span><span className={s.legendeBranche}>Branche</span></figcaption>
     </figure>
   );
 }

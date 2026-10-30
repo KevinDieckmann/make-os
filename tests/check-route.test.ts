@@ -256,3 +256,19 @@ describe('Middleware: nur /check und POST /api/check sind offen', () => {
     }
   });
 });
+
+describe('Middleware: Schriften der öffentlichen Seiten', () => {
+  let middleware: typeof import('@/middleware').middleware;
+  beforeAll(async () => { ({ middleware } = await import('@/middleware')); });
+  const offen = (r: Response) => r.headers.get('x-middleware-next') === '1';
+  const lauf = (pfad: string, method = 'GET') => middleware(new NextRequest(`http://localhost:3001${pfad}`, { method } as never));
+  it('eine .woff2 aus public/schriften ist ohne Sitzung lesbar — sonst bekäme der Check HTML statt der Schrift', async () => {
+    expect(offen(await lauf('/schriften/schibsted-grotesk-latin.woff2'))).toBe(true);
+    expect(offen(await lauf('/schriften/schibsted-grotesk-latin.woff2', 'HEAD'))).toBe(true);
+  });
+  it('sonst bleibt alles unter /schriften zu', async () => {
+    for (const [p, m] of [['/schriften/schibsted-grotesk-latin.woff2', 'POST'], ['/schriften/SCHIBSTED-GROTESK-OFL.txt', 'GET'], ['/schriften/', 'GET'], ['/schriften/x/y.woff2', 'GET'], ['/schriften/..%2Fdaten.woff2', 'GET']] as const) {
+      expect(offen(await lauf(p, m)), `${m} ${p}`).toBe(false);
+    }
+  });
+});
