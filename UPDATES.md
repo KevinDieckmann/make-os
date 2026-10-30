@@ -4,6 +4,28 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 30.10.2026 — Kalender: weitere Google-Konten je Person, nur lesen (nur lokal — Branch `weitere-kalender`, Basis main 91d0e277)
+Kevin 30.10.: „Ich möchte, dass wir einfach ein zweites Konto bei MAKE OS anlegen können — es geht erstmal um uns, also Malin und mich.“ Wer auch für andere Firmen
+arbeitet, hat dort einen Google-Kalender; ohne Abgleich entstehen Doppelbuchungen. Regeln: CLAUDE.md › Kalender — Google Workspace › „Weitere Konten“.
+- **Neu:** je Person bis zu fünf weitere Google-Konten (nur `calendar.readonly`), Kalender › Einstellungen › „Weitere Kalender“ (verbinden, Bezeichnung, Kalenderwahl, abgleichen,
+  neu verbinden, trennen). Ihre Termine zählen als belegt für die Person (freie Zeit, Buchungsseiten, Kapazität, Planen); andere sehen nur „Belegt“ und „Weitere Termine ·
+  <Vorname>“. Beim Anlegen kommt ein Hinweis bei Überschneidung („Trotzdem speichern“), beim Verschieben eine Meldung. Neue Bestände `google-zusatz--<person>`,
+  `kalender-google-zusatz--<person>`, `google-zusatz-zustand` (additiv); Route `/api/kalender/google/zusatz`; Rückruf über den vorhandenen Pfad `/api/google/rueckruf`.
+- **Schritte für Kevin (erst, wenn das Update online ist):**
+  1. **Google Cloud Console** (Projekt MAKE OS) → Google Auth Platform → **Zielgruppe** → Nutzertyp **Extern** → **App veröffentlichen** → Status **„In Produktion“** —
+     **ohne** Prüfung bei Google einzureichen. Folgen: Anmeldungen verfallen nicht nach 7 Tagen (das gilt nur im Status „Testen“); bei der Anmeldung zeigt Google einmal
+     „Google hat diese App nicht überprüft“ → „Erweitert“ → „Weiter zu MAKE OS“; für eine ungeprüfte App gilt eine Obergrenze von 100 Nutzern insgesamt. Quellen:
+     https://developers.google.com/identity/protocols/oauth2 · https://developers.google.com/identity/protocols/oauth2/production-readiness/overview
+  2. `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/google-verbinden.sh` — am Ende „Erlaubte Domains, Komma-getrennt“: die Domains der anderen Firmen
+     (schreibt `GOOGLE_ZUSATZ_DOMAINS`, leer = aus). Client-ID und Geheimnis fragt das Skript dabei wie immer mit ab.
+  3. Je Person: Kalender › Einstellungen › Weitere Kalender › „Weiteres Google-Konto verbinden“ → das andere Konto wählen → Häkchen Kalender → Zulassen.
+     Blockiert die andere Firma Drittanbieter-Apps, muss deren Admin MAKE OS dort erlauben (GOOGLE_KALENDER_EINRICHTEN.md › 10.2).
+- **So testet ihr:** weiteres Konto verbinden → in dessen Google-Kalender einen Termin anlegen → in MAKE OS „Jetzt abgleichen“ → der Termin steht im Kalender
+  („<Kalender> · <Bezeichnung>“, 🔒); als die andere Person angemeldet nur „Belegt“. In MAKE OS zur selben Zeit einen Termin anlegen → Hinweis „Überschneidung mit …“.
+  Freie Zeit („Mit … planen“) und eine Buchungsseite bieten die Zeit nicht an.
+- **Rückweg:** additiv — der alte Stand liest die neuen Bestände nie; die Haupt-Verbindung (`google-verbindung--*`, `kalender-google--*`) ist unverändert. Vor dem Rückweg
+  die weiteren Konten in MAKE OS trennen (sonst bleibt der Lesezugriff bei Google, dort unter myaccount.google.com › Sicherheit widerrufbar).
+
 ## 28.10.2026 — Social für Malin: Fotos/Videos am Beitrag, Instagram, Reel-Werkstatt, Kommentare & DMs (nur lokal — Branch `social-modul`)
 Kevin 28.10.: „Malin muss grundsätzlich alles machen können und ihr Profil maximal gut steuern — Reels schneiden, erstellen lassen, planen.“ Klickrunde: Untertitel
 LOKAL auf dem Server, Rendern auf dem Server (Server wird größer), „das Maximale rausholen“, Kommentare/DMs mit ins Paket. Regeln: CLAUDE.md › Social › „Malin-Paket
