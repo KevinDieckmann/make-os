@@ -441,7 +441,7 @@ ${weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], label: 'Der E
   // ── Startseite: der Film (kurz, mit „Überspringen“), dann der Einstieg mit zwei Türen und ruhige Abschnitte auf Papier ──
   {
     const fl = F.film;
-    const block = (name, b, extra = '') => `<div class="block" data-block="${name}" aria-hidden="true"><div class="film-text"><p class="film-titel">${b.titel.split("|").map((z) => `<span class="zeile" data-woerter>${e(z)}</span>`).join("")}</p><p class="film-satz">${e(b.satz)}</p></div>${extra}</div>`;
+    const block = (name, b, extra = '', unter = '') => `<div class="block" data-block="${name}" aria-hidden="true"><div class="film-text"><p class="film-titel">${b.titel.split("|").map((z) => `<span class="zeile" data-woerter>${e(z)}</span>`).join("")}</p><p class="film-satz">${e(b.satz)}</p>${unter}</div>${extra}</div>`;
     const kurz = {
       sichtbarkeit: gruppenIn('sichtbarkeit').map((g) => [`/sichtbarkeit/#${anker(g.name || g.liste[0].name)}`, g.name === 'Homepage-Pakete' ? 'Website' : g.name || g.liste[0].name]),
       vertrieb: produkteIn('vertrieb').map((a) => [produktPfad(a), a.id === 'tagesworkshop' ? 'Tagesworkshop' : a.name.replace(/ \(CSO\)$/, '')]),
@@ -477,7 +477,7 @@ ${weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], label: 'Der E
 <div class="ersatz" aria-hidden="true">${ZEICHEN('zeichen gross')}</div>
 <p class="sr">${[fl.laerm, fl.fokus, fl.luecke, fl.momentum, fl.durchbruch].map((b) => `${e(b.titel.replace(/\|/g, " "))} ${e(b.satz)}`).join(' ')}</p>
 <div class="aufgaben" aria-hidden="true">${F.aufgaben.map((x) => `<span class="aufgabe">${e(x)}</span>`).join('')}</div>
-${block('laerm', fl.laerm, `<p class="film-marke">${e(fl.marke)}</p><span class="hinweis" aria-hidden="true">Scrollen<span class="hinweis-strich"></span></span>`)}
+${block('laerm', fl.laerm, `<span class="hinweis" aria-hidden="true">Scrollen<span class="hinweis-strich"></span></span>`, `<p class="film-marke">${e(fl.marke)}</p>`)}
 ${block('fokus', fl.fokus)}
 ${block('luecke', fl.luecke)}
 ${block('momentum', fl.momentum)}
