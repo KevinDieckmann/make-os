@@ -88,7 +88,7 @@ describe('Markttraktion › Kontakte als Arbeitsfläche', () => {
     expect(k).toContain('haupt={<Knopf haupt onClick={() => setAnlegen(!anlegen)}>+ Person</Knopf>}');
     expect(m).toContain("if (!runde && !akteId && bereich === 'kontakte') {");
     expect(m).toContain('kopf={{ neben: zoeKnopf, mehr: kopfAktionen }}');
-    expect(m).toContain("{!runde && !akteId && bereich === 'firmen' && <Kartei {...karteiProps} modus=\"firmen\" />}");
+    expect(m).toContain("if (bereich === 'firmen') {");
   });
   it('Filter im Popover (Ansicht, BEAN, Lifecycle, Einordnung) mit Zähler; aktive Filter als Chips — keine abgeschnittene Chip-Reihe', () => {
     expect(k).toContain('<FilterKnopf aktiv={filterZahl} onZuruecksetzen={filterWeg}>');
@@ -102,3 +102,25 @@ describe('Markttraktion › Kontakte als Arbeitsfläche', () => {
     for (const t of ["e.key === '/'", "e.key === 'j'", "e.key === 'k'", "e.key === 'Enter'", "e.key === 'Escape'"]) expect(k, t).toContain(t);
   });
 });
+
+// 31.10. (Kevin: „Restliche Seiten aufräumen“): Firmen, Deals › Liste, Angebote und Mandate nach demselben Muster.
+describe('Markttraktion › Firmen als Arbeitsfläche', () => {
+  const f = lies('components/os/crm/Firmen.tsx');
+  const k = lies('components/os/crm/Kartei.tsx');
+  const m = lies('components/os/crm/Markttraktion.tsx');
+  it('Kopf „Firmen“ · Zahl · ⋯ · „+ Firma“; die Zielliste im ⋯; die Seite rendert die Firmen ohne den Rahmen „Markttraktion“', () => {
+    expect(f).toContain('<Arbeitsflaeche titel="Firmen"');
+    expect(k).toContain('haupt: <Knopf haupt onClick={firmaNeu}>+ Firma</Knopf>');
+    expect(k).toContain('WEG.prospecting()');
+    expect(m).toContain('<Kartei {...karteiProps} modus="firmen" kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} />');
+  });
+  it('Ansichten im Filter-Popover statt einer abgeschnittenen Pillenreihe; Tabellenkopf klebt; Firmenkarte rechts bzw. unter der Zeile', () => {
+    expect(f).toContain('<FilterKnopf aktiv={ansicht !== \'alle\' ? 1 : 0} onZuruecksetzen={filterWeg}>');
+    expect(f).not.toContain('<Pillen einzeilig');
+    expect(f).toContain('listeKopf={st => (st.zwei && tabelle ? tabellenKopf : null)}');
+    expect(f).toContain('liste={st => listeInhalt(st.zwei)}');
+    expect(f).toContain('className="af-chip-weg fassbar"');
+    expect(k).toContain('className="af-suche"');
+  });
+});
+

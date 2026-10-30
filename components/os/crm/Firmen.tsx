@@ -16,7 +16,7 @@ import { WEG, eventLink } from '@/lib/wege';
 
 import { useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, Spalten, Spalte, useBreit, feld, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE } from '../ui';
+import { Ueberschrift, Zeile, Leer, Knopf, Chip, Punkt, feld, LEUCHT, ZeileAktionen, ZEILE_MEHR_BREITE, Arbeitsflaeche, FilterKnopf, FilterGruppe } from '../ui';
 import { useCrmAblage, PapierkorbKarte, type CrmAblage } from './ablage';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
@@ -72,8 +72,9 @@ export function firmaLoeschen(ablage: CrmAblage, f: Firma, b: CrmBestand, kontak
 }
 const FIRMEN_SPALTEN = '10px minmax(0,1.5fr) minmax(0,1fr) minmax(0,1.3fr) minmax(0,.8fr) 44px 84px';
 
-export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: CrmApi; auswahl: string | null; setAuswahl: (id: string | null) => void; zuPerson: (id: string) => void; suche: string }) {
-  const breit = useBreit();
+export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche, suchfeld, kopf }: { api: CrmApi; auswahl: string | null; setAuswahl: (id: string | null) => void; zuPerson: (id: string) => void; suche: string;
+  /** Arbeitsfläche (31.10.): das Suchfeld der Kartei (Zustand bleibt dort) — steht vorn in der Zeile „Suche + Filter“. */ suchfeld?: ReactNode;
+  /** Kopf-Teile der Seite: EINE Hauptaktion („+ Firma“), ZOE/Head daneben, Nebenaktionen im „⋯“. */ kopf?: { haupt?: ReactNode; neben?: ReactNode; mehr?: ReactNode } }) {
   const [ansicht, setAnsicht] = useState<Ansicht>('alle');
   const [mehr, setMehr] = useState(80);
   const alleFirmen = api.crm?.stand.firmen;
@@ -111,7 +112,8 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
     <ZeileAktionen key={x.id} titel={x.name} archiviert={!!x.archiviertAm} onArchivieren={() => archivieren(x)} onLoeschen={() => loeschen(x)}
       href={WEG.firma(x.id)} onOeffnen={() => setAuswahl(x.id)} mehr={[{ id: 'zoe', label: 'Mit ZOE besprechen', hinweis: 'ZOE öffnet mit diesem Bezug', tun: () => zoeFragen({ art: 'firma', id: x.id }) }]}>{inhalt}</ZeileAktionen>
   );
-  const zeile = (x: Firma) => breit ? aktionen(x,
+  // `breit` = Liste und Firmenkarte stehen nebeneinander (Arbeitsfläche, gemessen an der Fläche); sonst öffnet die Karte unter der Zeile.
+  const zeile = (x: Firma, breit: boolean) => breit ? aktionen(x,
     <div onClick={() => setAuswahl(auswahl === x.id ? null : x.id)} className="fassbar" title={[x.name, x.branche, x.stadt].filter(Boolean).join(' · ')}
       style={{ display: 'grid', gridTemplateColumns: FIRMEN_SPALTEN, gap: 12, alignItems: 'center', padding: '8px 8px', minHeight: 40, borderBottom: '1px solid rgba(255,255,255,.05)', cursor: 'pointer', fontSize: TYP.bedien, background: auswahl === x.id ? 'rgba(255,255,255,.07)' : 'transparent', borderRadius: auswahl === x.id ? 8 : 0 }}>
       <Punkt farbe={rolle(x.rolle).farbe} groesse={8} />
@@ -132,45 +134,59 @@ export function Firmen({ api, auswahl, setAuswahl, zuPerson, suche }: { api: Crm
     </div>
   );
 
+  // ── Arbeitsfläche (31.10., DESIGN_STANDARD.md › Arbeitsfläche — wie die Kontakte) ────────────────────────────────────────────────────────────
+  // Kopf in EINER Zeile (Firmen · Zahl · ⋯ · „+ Firma“), Suche + „Filter ▾“ in EINER Zeile (Rolle, Ohne Branche, Dubletten, Archiv, Papierkorb im
+  // Popover — nie eine abgeschnittene Pillenreihe), darunter Liste und Firmenkarte nebeneinander, jede rollt für sich; der Tabellenkopf klebt.
+  const ansichtName = ANSICHTEN.find(a => a.id === ansicht)?.label.replace(/\s\d+$/, '') ?? '';
+  const filterWeg = () => { setAnsicht('alle'); setMehr(80); };
+  const tabelle = ansicht !== 'papierkorb' && ansicht !== 'dubletten';
+  const leisteZeile = (
+    <>
+      {suchfeld}
+      <FilterKnopf aktiv={ansicht !== 'alle' ? 1 : 0} onZuruecksetzen={filterWeg}>
+        <FilterGruppe titel="Ansicht">
+          <Pillen liste={ANSICHTEN} aktiv={ansicht} onWahl={a => { setAnsicht(a); setMehr(80); }} />
+        </FilterGruppe>
+      </FilterKnopf>
+      {ansicht !== 'alle' && <button type="button" className="af-chip-weg fassbar" onClick={filterWeg} title="Filter aufheben">{ansichtName} <span aria-hidden>✕</span></button>}
+    </>
+  );
+  const zaehlerText = (
+    <span>
+      <b style={{ color: C.ink, fontWeight: 600 }}>{suche ? treffer.length : firmen.length}</b> {suche ? `von ${firmen.length}` : 'Firmen'} · <span style={{ color: ohneBranche ? LEUCHT.achtung : undefined }}>{ohneBranche} ohne Branche</span> · {firmen.filter(x => x.rolle === 'kunde').length} Kunden
+    </span>
+  );
+  const tabellenKopf = (
+    <div style={{ display: 'grid', gridTemplateColumns: FIRMEN_SPALTEN, gap: 12, padding: `0 ${8 + ZEILE_MEHR_BREITE}px 0 8px`, fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600 }}>
+      <span /><span>Firma</span><span>Domain</span><span>Branche</span><span>Ort</span><span style={{ textAlign: 'right' }}>Pers.</span><span>Rolle</span>
+    </div>
+  );
+  const listeInhalt = (zwei: boolean) => (ansicht === 'papierkorb' ? <div style={{ paddingTop: 12 }}><PapierkorbKarte ablage={ablage} liste="firmen" /></div> : ansicht === 'dubletten' ? (
+    <div style={{ display: 'grid', gap: 8, paddingTop: 12 }}>
+      {dubl.map(([a, b]) => <div key={`${a.id}|${b.id}`} style={{ fontSize: TYP.bedien, padding: 10, borderRadius: 10, background: 'rgba(255,255,255,.03)' }}>{a.name} ⇄ {b.name}{a.domain ? ` · ${a.domain}` : ''} <span style={{ color: C.inkLeise }}>— Personen der einen Firma in der Karteikarte der anderen zuordnen, dann die leere löschen.</span></div>)}
+      {!dubl.length && <Leer>Keine Firmen-Dubletten.</Leer>}
+    </div>
+  ) : (
+    <div style={{ paddingTop: zwei ? 2 : 8 }}>
+      <div>{treffer.slice(0, mehr).map(x => zeile(x, zwei))}</div>
+      {treffer.length > mehr && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehr(mehr + 150)}>Weitere {Math.min(150, treffer.length - mehr)} zeigen</Knopf></div>}
+      {!treffer.length && <Leer>{ansicht === 'archiv' ? 'Das Archiv ist leer. Archivierte Firmen sind aus der Liste ausgeblendet, an Personen, Deals und Mandaten aber weiter lesbar — zurückholen jederzeit.' : 'Keine Firma gefunden.'}</Leer>}
+    </div>
+  ));
+
   return (
-    <Spalten verhaeltnis="3:2">
-      <Spalte>
-        <Karte i={0}>
-          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim, marginBottom: 10 }}>
-            <span><b style={{ color: C.ink }}>{suche ? treffer.length : firmen.length}</b> {suche ? 'Treffer' : 'Firmen'}</span>
-            <span><b style={{ color: ohneBranche ? LEUCHT.achtung : C.ink }}>{ohneBranche}</b> ohne Branche</span>
-            <span><b style={{ color: C.ink }}>{firmen.filter(x => x.rolle === 'kunde').length}</b> Kunden</span>
-          </div>
-          <div style={{ marginBottom: 10, overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={ANSICHTEN} aktiv={ansicht} onWahl={a => { setAnsicht(a); setMehr(80); }} /></div>
-          {ansicht === 'papierkorb' ? <PapierkorbKarte ablage={ablage} liste="firmen" /> : ansicht === 'dubletten' ? (
-            <div style={{ display: 'grid', gap: 8 }}>
-              {dubl.map(([a, b]) => <div key={`${a.id}|${b.id}`} style={{ fontSize: TYP.bedien, padding: 10, borderRadius: 10, background: 'rgba(255,255,255,.03)' }}>{a.name} ⇄ {b.name}{a.domain ? ` · ${a.domain}` : ''} <span style={{ color: C.inkLeise }}>— Personen der einen Firma in der Karteikarte der anderen zuordnen, dann die leere löschen.</span></div>)}
-              {!dubl.length && <Leer>Keine Firmen-Dubletten.</Leer>}
-            </div>
-          ) : (
-            <>
-              {breit && (
-                <div style={{ display: 'grid', gridTemplateColumns: FIRMEN_SPALTEN, gap: 12, padding: `0 ${8 + ZEILE_MEHR_BREITE}px 6px 8px`, fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, fontWeight: 600, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-                  <span /><span>Firma</span><span>Domain</span><span>Branche</span><span>Ort</span><span style={{ textAlign: 'right' }}>Pers.</span><span>Rolle</span>
-                </div>
-              )}
-              <div>{treffer.slice(0, mehr).map(zeile)}</div>
-              {treffer.length > mehr && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehr(mehr + 150)}>Weitere {Math.min(150, treffer.length - mehr)} zeigen</Knopf></div>}
-              {!treffer.length && <Leer>{ansicht === 'archiv' ? 'Das Archiv ist leer. Archivierte Firmen sind aus der Liste ausgeblendet, an Personen, Deals und Mandaten aber weiter lesbar — zurückholen jederzeit.' : 'Keine Firma gefunden.'}</Leer>}
-            </>
-          )}
-        </Karte>
-      </Spalte>
-      {breit && (
-        <Spalte klebt>
-          <Karte i={1} akzent={f ? rolle(f.rolle).farbe : undefined}>
-            {f ? <FirmenKarte f={f} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} onLoeschen={() => loeschen(f)} /> : <Leer>Eine Firma anklicken — Stammdaten, Personen, Chancen und Verlauf erscheinen hier.</Leer>}
-          </Karte>
-        </Spalte>
-      )}
+    <>
+      <Arbeitsflaeche titel="Firmen" label="Firmen" zaehler={zaehlerText} verhaeltnis="3:2" zweiAb={880}
+        neben={kopf?.neben} mehr={kopf?.mehr} haupt={kopf?.haupt}
+        leiste={leisteZeile}
+        listeKopf={st => (st.zwei && tabelle ? tabellenKopf : null)}
+        liste={st => listeInhalt(st.zwei)}
+        detail={st => (st.zwei && f ? <div data-firmenkarte="" style={{ minWidth: 0 }}><FirmenKarte f={f} api={api} zuPerson={zuPerson} zuFirma={setAuswahl} onLoeschen={() => loeschen(f)} /></div> : null)}
+        detailKennung={f?.id ?? null}
+        leer={<Leer>Eine Firma anklicken — Stammdaten, Personen, Chancen und Verlauf erscheinen hier.</Leer>} />
       {ablage.dialog}
       {ablage.hinweis}
-    </Spalten>
+    </>
   );
 }
 

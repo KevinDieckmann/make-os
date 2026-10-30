@@ -217,22 +217,22 @@ export function Kartei({ api, name, modus, auswahl, setAuswahl, zuKontakt, zuFir
     melden(`${anzeigename(x)} archiviert — unter „Archiv“ zurückholbar; Deals, Segmente und Verlauf bleiben`, () => void api.kontaktTeil(x.id, { archiviertAm: undefined }));
   };
   const { frage, dialog: nachfrage } = useNachfrage();
-  const kopf = (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-      {/* Die Firmen-Kartei (die Kartei der Personen ist seit 29.10. eine Arbeitsfläche, siehe unten). */}
-      <input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder="Firma, Domain, Branche, Ort …" aria-label="Suchen" style={{ ...feld, flex: 1, minWidth: 200, padding: '9px 13px', fontSize: TYP.bedien }} />
-      {/* 1.14 (09.10.): die Zielliste (Prospecting) auch aus der Markttraktion — kein neuer Reiter, ein Link bei den Firmen. */}
-      <Link href={WEG.prospecting()} className="fassbar" style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>Zielliste (Prospecting) ›</Link>
-      <Knopf haupt onClick={async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const da = bestehendeFirma(api.crm?.stand.firmen ?? [], n); if (da) { zuFirma(da.id); return; } const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } }}>+ Firma</Knopf>
-      {nachfrage}
-    </div>
-  );
 
+  // Die Firmen-Kartei (31.10.) ist wie die der Personen eine Arbeitsfläche (Firmen.tsx): die Suche bleibt hier (Zustand), „+ Firma“ ist die
+  // Hauptaktion, die Zielliste (Prospecting) steht im „⋯“ neben „+ Aktivität“/„+ Angebot“.
   if (modus === 'firmen') {
+    const firmaNeu = async () => { const n = await frage('Name der Firma', { hinweis: 'Rechtsform gern dazu — Dubletten prüft die Kartei danach.' }); if (n?.trim()) { const da = bestehendeFirma(api.crm?.stand.firmen ?? [], n); if (da) { zuFirma(da.id); return; } const f = neueFirma(n); void api.setze('firmen', f as unknown as { id: string } & Record<string, unknown>).then(() => zuFirma(f.id)); } };
     return (
       <>
-        <Karte i={0}>{kopf}</Karte>
-        <Firmen api={api} auswahl={auswahl?.startsWith('f-') ? auswahl : null} setAuswahl={setAuswahl} zuPerson={zuKontakt} suche={suche} />
+        <Firmen api={api} auswahl={auswahl?.startsWith('f-') ? auswahl : null} setAuswahl={setAuswahl} zuPerson={zuKontakt} suche={suche}
+          suchfeld={<input ref={sucheRef} value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen: Firma, Domain, Branche, Ort …" aria-label="Suchen" className="af-suche" style={{ ...feld, padding: '9px 13px', fontSize: TYP.bedien, minHeight: 40 }} />}
+          kopf={{
+            neben: seitenKopf?.neben,
+            haupt: <Knopf haupt onClick={firmaNeu}>+ Firma</Knopf>,
+            // 1.14 (09.10.): die Zielliste (Prospecting) auch aus der Markttraktion — kein neuer Reiter, ein Link bei den Firmen.
+            mehr: <>{seitenKopf?.mehr}<Link href={WEG.prospecting()} className="fassbar" style={{ fontSize: TYP.bedien, color: C.aktiv, minHeight: 44, display: 'inline-flex', alignItems: 'center', padding: '0 10px', textDecoration: 'none' }}>Zielliste (Prospecting) ›</Link></>,
+          }} />
+        {nachfrage}
       </>
     );
   }
