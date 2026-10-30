@@ -393,7 +393,8 @@ export function FirmenKarte(props: FirmenTeileProps) {
 
 /** Eine Spalte der Akte: Karten untereinander. */
 function AktenSpalte({ children }: { children: ReactNode }) {
-  return <div style={{ display: 'grid', gap: 14, minWidth: 0, alignContent: 'start' }}>{children}</div>;
+  // minmax(0, 1fr) (Rundgang 30.10.): ohne feste Spur wuchs die Spalte auf die Breite der längsten Zeile (Aufgaben, Dateien) — die Akte lief quer.
+  return <div style={{ display: 'grid', gap: 14, minWidth: 0, gridTemplateColumns: 'minmax(0, 1fr)', alignContent: 'start' }}>{children}</div>;
 }
 
 /** Eine Kennzahl im Kopf der Akte: kleines Wort, Wert — alles in einer Zeile (wie in „Kontakt öffnen“). */

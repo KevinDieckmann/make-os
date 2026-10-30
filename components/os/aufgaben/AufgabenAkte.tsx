@@ -40,7 +40,8 @@ export function AufgabenAkte(b: AkteBezug) {
     setText('');
   };
   return (
-    <div style={{ display: 'grid', gap: 2 }}>
+    // minmax(0, 1fr) (Rundgang 30.10.): sonst wuchs die Spur auf die Breite der längsten Zeile und schob die Firmenakte über den Rand.
+    <div style={{ display: 'grid', gap: 2, gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0 }}>
       {offen.slice(0, 8).map(t => (
         <div key={t.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,.045)' }}>
           <HakenZiel an={false} onChange={() => dispatch({ type: 'TOGGLE_TASK', payload: { id: t.id } })} farbe={prioFarbe(t.priority)} />
@@ -51,7 +52,7 @@ export function AufgabenAkte(b: AkteBezug) {
       {offen.length > 8 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 4 }}>… und {offen.length - 8} weitere.</div>}
       {!offen.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Keine offene Aufgabe.</div>}
       <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') anlegen(); }} aria-label="Neue Aufgabe zu dieser Akte"
-        placeholder="+ Aufgabe (Enter)" style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px', marginTop: 6, fontFamily: SCHRIFT.text }} />
+        placeholder="+ Aufgabe (Enter)" style={{ ...feld, minWidth: 0, fontSize: TYP.bedien, padding: '7px 10px', marginTop: 6, fontFamily: SCHRIFT.text }} />
       {b.mandantFirmaId
         ? <Link href={WEG.aufgaben({ s: mandantSpaceId(b.mandantFirmaId) })} style={{ fontSize: TYP.bedien, fontWeight: 600, color: C.aktiv, textDecoration: 'none', marginTop: 6 }}>Mandanten-Space öffnen — Projekte, Listen, Aufgaben ›</Link>
         : <Link href={WEG.aufgaben({ b: 'ueberblick' })} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', marginTop: 4 }}>Alle Aufgaben ›</Link>}
