@@ -1,7 +1,7 @@
 // ─── Schnellsuche (⌘K) — Kontakte, Firmen, Chancen, Mandate, Kampagnen ─────
 // Kevin, 24.09.: „mit den Kontakten oder Firmen suchen ist sehr wertvoll …
 // dann kann man auch immer wieder reingehen.“ Eine Suche von überall, die
-// direkt in die Karteikarte springt. Gesperrte Personen bleiben auffindbar
+// direkt in die Akte springt (30.10.: alle Links über WEG — Kontakt/Firma/Deal/Mandat öffnen die große Akte). Gesperrte Personen bleiben auffindbar
 // (sonst könnte man die Sperre nicht sehen), sind aber markiert.
 
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
   const mandanten = new Set(crm.mandate.filter(m => m.status === 'aktiv').map(m => firmaVonMandat(m, crm.firmen)?.id).filter((x): x is string => !!x));
   // Alle E-Mail-Adressen und Labels zählen (28.09.).
   const personen = kontakte.filter(k => passt([anzeigename(k), k.firma, ...alleAdressen(k), k.position, k.firmaStadt, k.telefon, ...labelsVon(k)]))
-    .map(k => ({ art: 'kontakt', id: k.id, titel: anzeigename(k), unter: [k.position ?? k.jobtitel, (k.firmaId && firmen.get(k.firmaId)?.name) ?? k.firma, k.werbesperre ? 'Werbesperre' : '', k.eingeschraenkt ? 'Eingeschränkt (Art. 18)' : ''].filter(Boolean).join(' · '), href: `/os/markttraktion?s=kontakte&k=${k.id}`, p: punkte(anzeigename(k)) + (k.lebensphase === 'kunde' ? 1 : 0) }))
+    .map(k => ({ art: 'kontakt', id: k.id, titel: anzeigename(k), unter: [k.position ?? k.jobtitel, (k.firmaId && firmen.get(k.firmaId)?.name) ?? k.firma, k.werbesperre ? 'Werbesperre' : '', k.eingeschraenkt ? 'Eingeschränkt (Art. 18)' : ''].filter(Boolean).join(' · '), href: WEG.kontakt(k.id), p: punkte(anzeigename(k)) + (k.lebensphase === 'kunde' ? 1 : 0) }))
     .sort((a, b) => b.p - a.p).slice(0, 8);
   const fs = crm.firmen.filter(f => passt([f.name, f.domain, f.branche, f.stadt]))
     .map(f => ({ art: 'firma', id: f.id, titel: f.name, unter: [f.branche, f.stadt, f.rolle === 'kunde' ? 'Kunde' : '', mandanten.has(f.id) ? 'Mandant' : ''].filter(Boolean).join(' · '), href: WEG.firma(f.id), p: punkte(f.name) + (f.rolle === 'kunde' || mandanten.has(f.id) ? 1 : 0) }))
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
   // Mandanten klickbar (28.09.): Mandat mit dem Namen der CRM-Firma (Kennung gewinnt), Links über WEG.
   const md = crm.mandate.map(m => ({ m, kunde: firmaVonMandat(m, crm.firmen)?.name ?? m.kunde })).filter(({ m, kunde }) => passt([kunde, m.kunde, m.titel])).slice(0, 4)
     .map(({ m, kunde }) => ({ art: 'mandat', id: m.id, titel: mandatName(kunde, m.titel).slice(0, 90), unter: `Mandat · ${m.status}`, href: WEG.mandat(m.id), p: 1 }));
-  const kp = crm.kampagnen.filter(k => passt([k.name])).slice(0, 3).map(k => ({ art: 'kampagne', id: k.id, titel: k.name, unter: `Kampagne · ${k.status}`, href: `/os/markttraktion?s=marketing&a=kampagnen&k=${k.id}`, p: 1 }));
+  const kp = crm.kampagnen.filter(k => passt([k.name])).slice(0, 3).map(k => ({ art: 'kampagne', id: k.id, titel: k.name, unter: `Kampagne · ${k.status}`, href: WEG.kampagne(k.id), p: 1 }));
   // Events (M4): besuchte Veranstaltungen (Reiter „Events“) und unsere Make.One-Abende — getrennt gekennzeichnet, der Link führt in den richtigen Reiter.
   const ev = crm.events.filter(e => passt([e.titel, e.ort])).sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 4).map(e => {
     const besuch = istNetzwerkenEvent(e);
