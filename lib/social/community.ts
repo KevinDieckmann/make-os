@@ -192,6 +192,21 @@ export function communityFrist(d: CommunityDatei, jetzt: Date): { datei: Communi
   return { datei: { ...d, eintraege, faeden, ...(entwuerfe ? { entwuerfe } : {}), ...(fremd ? { fremd } : {}) }, n };
 }
 
+/**
+ * Konto löschen (30.10., Datenprüfung der Nacht): die Einträge bleiben (Gespräche des Accounts), der Speichername der gelöschten Person an eigenen
+ * Antworten (`durch`) und an Kommentar-Entwürfen für fremde Beiträge (`von`) wird „[gelöscht]“. Rein.
+ */
+export function communityOhnePerson(d: CommunityDatei, speicher: string): { neu: CommunityDatei; n: number } {
+  let n = 0;
+  const eintraege = Object.fromEntries(Object.entries(d.eintraege ?? {}).map(([id, e]) => {
+    if (e.durch !== speicher) return [id, e];
+    n++; return [id, { ...e, durch: COMMUNITY_GETILGT }];
+  }));
+  const fremd = d.fremd?.map(f => { if (f.von !== speicher) return f; n++; return { ...f, von: COMMUNITY_GETILGT }; });
+  return n ? { neu: { ...d, eintraege, ...(fremd ? { fremd } : {}) }, n } : { neu: d, n: 0 };
+}
+export const COMMUNITY_GETILGT = '[gelöscht]';
+
 /** Die Frist auf einen Bestand anwenden (Löschfristen-Lauf) — schreibt nur, wenn etwas fällt; ohne Bestand nichts. */
 export async function communityFristAnwenden(name: string, jetzt = new Date()): Promise<number> {
   if (!(await loadJson<CommunityDatei>(name))) return 0;

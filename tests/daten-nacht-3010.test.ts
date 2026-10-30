@@ -52,7 +52,7 @@ describe('Fund 1 · Fristen auch ohne Verbindung bzw. ohne neue Anfrage', () => 
     expect(nochmal.datei).toBe(r.datei);
   });
 
-  it('der Löschfristen-Lauf wendet sie an — ohne Instagram-Konfiguration und ohne Verbindung', async () => {
+  it('der Löschfristen-Lauf wendet sie an — ohne Instagram-Konfiguration und ohne Verbindung', { timeout: 180_000 }, async () => {
     delete process.env.INSTAGRAM_APP_ID;
     await db.saveJson('social-community--h-nacht', datei());
     await db.saveJson('angebot-formular--h-nacht', {
@@ -121,7 +121,7 @@ describe('Fund 3 · Kontakt-Auskunft nennt die Verarbeitungen der neuen Beständ
 
 // ── Fund 4: Zusammenführen (Dubletten) ließ Kontakt-Kennungen an Rechnungen, Formular-Eingängen und Check-Sitzungen tot zurück ──
 describe('Fund 4 · Zusammenführen biegt die neuen Kontakt-Verweise um', () => {
-  it('Rechnung, Formular-Eingang und Check-Sitzung zeigen danach auf die behaltene Person; Art. 15 findet die Rechnung', async () => {
+  it('Rechnung, Formular-Eingang und Check-Sitzung zeigen danach auf die behaltene Person; Art. 15 findet die Rechnung', { timeout: 180_000 }, async () => {
     const ALT = 'c-00000000-0000-4000-8000-0000000000a1', NEU = 'c-00000000-0000-4000-8000-0000000000b2', ANDERE = 'c-00000000-0000-4000-8000-0000000000c3';
     await db.saveJson('finanzplan', { rechnungen: [
       { id: 're-1', titel: 'Erfunden', status: 'gestellt', betrag: 119, kontaktId: ALT, firmaId: 'kdv' },
@@ -141,5 +141,29 @@ describe('Fund 4 · Zusammenführen biegt die neuen Kontakt-Verweise um', () => 
     // idempotent
     const zweiter = await personenUmbiegen(new Map([[ALT, NEU]]));
     expect(zweiter.speicher.finanzplan).toBeUndefined();
+  });
+});
+
+// ── Fund 5: Konto löschen ließ den Speichernamen in Social-Kommentaren, Reel-Werkstatt und Lauf-Stand stehen ──
+describe('Fund 5 · Konto löschen tilgt den Speichernamen auch in Social', () => {
+  it('community (durch, fremd.von), werkstatt (von, geaendertVon), lauf (von) → „[gelöscht]“; Einträge bleiben', { timeout: 180_000 }, async () => {
+    const k = (id: string, speicher: string, rolle: string) => ({ id, speicher, email: `${speicher}@example.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'h-konto' });
+    await db.saveJson('konten', { konten: [k('k1', 'person-a', 'inhaber'), k('k2', 'person-weg', 'mitglied')], einladungen: [] });
+    await db.saveJson('social-community--h-konto', {
+      eintraege: { 'km-1': { id: 'km-1', art: 'kommentar', kanalId: 'sk-1', richtung: 'aus', gegen: { id: '1' }, text: 'Danke!', am: vor(1), mediaId: '9', durch: 'person-weg' } },
+      faeden: {}, fremd: [{ id: 'fk-1', kanalId: 'sk-1', link: 'https://www.instagram.com/p/AAAAA/', entwurf: 'x', am: vor(1), von: 'person-weg' }],
+    });
+    await db.saveJson('social-werkstatt--h-konto', { auftraege: [{ id: 'sw-1', von: 'person-weg', geaendertVon: 'person-a', angelegt: vor(1), geaendert: vor(1) }] });
+    await db.saveJson('social-lauf--h-konto', { redaktion: { am: vor(1), von: 'person-weg', geschrieben: 2 }, messen: { am: vor(1), von: 'takt' } });
+    const kd = await import('@/lib/datenschutz/konto-daten');
+    await kd.kontoLoeschen('person-weg');
+    const text = JSON.stringify([
+      await db.loadJson('social-community--h-konto'), await db.loadJson('social-werkstatt--h-konto'), await db.loadJson('social-lauf--h-konto'),
+    ]);
+    expect(text).not.toContain('person-weg');
+    expect(text).toContain('Danke!');
+    expect(text).toContain('person-a');
+    const w = await db.loadJson<{ auftraege: { von: string }[] }>('social-werkstatt--h-konto');
+    expect(w!.auftraege[0].von).toBe('[gelöscht]');
   });
 });

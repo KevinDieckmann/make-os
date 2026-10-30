@@ -347,3 +347,15 @@ export function whisperSegmente(roh: unknown): Segment[] {
   }
   return raus;
 }
+
+/** Konto löschen (30.10., Datenprüfung der Nacht): Aufträge bleiben (Arbeit des Haushalts), „angelegt/geändert von“ der Person wird „[gelöscht]“. Rein. */
+export function werkstattOhnePerson<T extends Pick<WerkstattAuftrag, 'von' | 'geaendertVon'>>(l: readonly T[], speicher: string): { neu: T[]; n: number } {
+  let n = 0;
+  const neu = l.map(a => {
+    let x = a;
+    if (x.von === speicher) { n++; x = { ...x, von: '[gelöscht]' }; }
+    if (x.geaendertVon === speicher) { n++; x = { ...x, geaendertVon: '[gelöscht]' }; }
+    return x;
+  });
+  return { neu: n ? neu : [...l], n };
+}

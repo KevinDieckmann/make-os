@@ -620,6 +620,39 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       if (n) await protokolliere(formN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['von', 'angelegtVon', 'absender'] }], { art: 'system' });
       return n;
     });
+    // Social: Kommentare/DMs, Reel-Werkstatt, Stand der Läufe (30.10., Datenprüfung der Nacht — bis dahin blieb der Speichername dort stehen):
+    // Einträge bleiben, „durch“/„von“/„geändert von“ der Person wird „[gelöscht]“.
+    const comN = `social-community--${konto.haushalt}`;
+    await nurWenn(comN, async () => {
+      const { communityOhnePerson } = await import('@/lib/social/community');
+      let n = 0;
+      await updateJson<Obj>(comN, cur => { if (!cur) return cur as unknown as Obj; const r = communityOhnePerson(cur as unknown as import('@/lib/social/community').CommunityDatei, speicher); n = r.n; return n ? (r.neu as unknown as Obj) : cur; });
+      if (n) await protokolliere(comN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['durch', 'von'] }], { art: 'system' });
+      return n;
+    });
+    const swkN = `social-werkstatt--${konto.haushalt}`;
+    await nurWenn(swkN, async () => {
+      const { werkstattOhnePerson } = await import('@/lib/social/werkstatt/regeln');
+      let n = 0;
+      await updateJson<Obj>(swkN, cur => {
+        if (!cur || !Array.isArray((cur as { auftraege?: unknown }).auftraege)) return cur as unknown as Obj;
+        const r = werkstattOhnePerson((cur as { auftraege: { von: string; geaendertVon?: string }[] }).auftraege, speicher);
+        n = r.n;
+        return n ? ({ ...cur, auftraege: r.neu } as unknown as Obj) : cur;
+      });
+      if (n) await protokolliere(swkN, [{ liste: 'stempel', op: 'geaendert', id: 'konto', felder: ['von', 'geaendertVon'] }], { art: 'system' });
+      return n;
+    });
+    const slN = `social-lauf--${konto.haushalt}`;
+    await nurWenn(slN, async () => {
+      let n = 0;
+      await updateJson<Obj>(slN, cur => {
+        if (!cur) return cur as unknown as Obj;
+        const neu = Object.fromEntries(Object.entries(cur).map(([art, e]) => ((e as { von?: string })?.von === speicher ? (n++, [art, { ...(e as Obj), von: '[gelöscht]' }]) : [art, e])));
+        return n ? (neu as Obj) : cur;
+      });
+      return n;
+    });
     const regN = `gesellschaften--${konto.haushalt}`;
     await nurWenn(regN, async () => {
       const { registerOhnePerson } = await import('@/lib/gesellschaften/modell');
