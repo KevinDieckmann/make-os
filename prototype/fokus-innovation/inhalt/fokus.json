@@ -480,7 +480,7 @@
   },
   "check": {
     "hinweis": "Text der Fokus-Seite zum Check (ruhiger als die Vorlage).",
-    "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Sichtbarkeit, Vertrieb und Innovation, mit zwei nächsten Schritten für Ihre größten Hebel."
+    "text": "Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten oder ausführlich in rund 25."
   },
   "angebote_lead": {
     "sichtbarkeit": "Feste Preise, feste Lieferzeiten bei Homepages und Videos, feste Monatspreise bei PR und Kommunikation. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
@@ -920,11 +920,11 @@
   "check_einstieg": [
     {
       "titel": "Innovations-Check",
-      "text": "Rund 10 Minuten, kostenlos. Fast alles per Klick."
+      "text": "Kurz in rund 10 oder ausführlich in rund 25 Minuten. Kostenlos, fast alles per Klick."
     },
     {
       "titel": "Ergebnis sofort",
-      "text": "Ihre Stufe, Ihre drei Bereiche und zwei nächste Schritte."
+      "text": "Ihre Stufe, der Vergleich mit Ihrer Branche und zwei nächste Schritte."
     },
     {
       "titel": "Erstgespräch",
@@ -946,7 +946,7 @@
         "id": "innovation",
         "name": "Innovations-Check",
         "minuten": 10,
-        "text": "Sichtbarkeit, Vertrieb und Innovation in einem Check, mit Stufe, Branchenvergleich und nächsten Schritten.",
+        "text": "Strategie, KI im Alltag, Abläufe, Daten und Team. Kurz in rund 10 oder ausführlich in rund 25 Minuten, mit Stufe, Branchenvergleich und nächsten Schritten.",
         "pfad": "/innovations-check/",
         "haupt": true
       },
@@ -1139,7 +1139,16 @@
           "Innovations-Check starten"
         ]
       ],
-      "check_satz": "Der Innovations-Check zeigt Ihnen in rund zehn Minuten, wo Ihr Unternehmen bei Sichtbarkeit, Vertrieb und Innovation steht und wo KI den größten Unterschied macht."
+      "check_satz": "Der Innovations-Check zeigt Ihnen in rund zehn Minuten, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht und wo KI den größten Unterschied macht. Wer es genauer wissen will, wählt die ausführliche Fassung."
     }
+  },
+  "videos": {
+    "hinweis": "Erklärvideos (Kevin 30.10.): Datei nach assets/videos/ legen und hier eintragen: { \"datei\": \"/assets/videos/x.mp4\", \"bild\": \"/assets/videos/x.jpg\", \"titel\": \"…\" }. Auf in-den-markt, ins-unternehmen, ueber-uns, kostenlos, preise, <bereich>/<gruppe> und wissen/<artikel> ersetzt das Video das Problem-Bild rechts; auf sichtbarkeit, vertrieb, innovation und innovations-check bekommt es einen eigenen Abschnitt unter dem Kopf.",
+    "sichtbarkeit": null,
+    "vertrieb": null,
+    "innovation": null,
+    "innovations-check": null,
+    "in-den-markt": null,
+    "ins-unternehmen": null
   }
 }

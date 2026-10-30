@@ -1,20 +1,40 @@
 {
- "titel": "Wo steht Ihr Unternehmen?",
- "text": "Sichtbarkeit, Vertrieb und Innovation: Der Check zeigt Ihnen, wo Sie heute stehen und welcher nächste Schritt den größten Unterschied macht.",
+ "titel": "Wie innovativ ist Ihr Unternehmen?",
+ "text": "Strategie, KI im Alltag, Abläufe, Daten und Team: Der Check zeigt Ihnen, wo Ihr Unternehmen bei Innovation und KI steht, im Vergleich mit Ihrer Branche, und welcher Schritt jetzt am meisten bringt.",
  "bereiche": [
   {
-   "name": "Sichtbarkeit",
-   "text": "Versteht man sofort, was Sie tun?"
+   "name": "Strategie und Führung",
+   "text": "Gibt es Ziel, Budget und Verantwortung?"
   },
   {
-   "name": "Vertrieb",
-   "text": "Werden aus Kontakten Kunden?"
+   "name": "KI im Alltag",
+   "text": "Nutzt Ihr Team KI wirklich?"
   },
   {
-   "name": "Innovation",
-   "text": "Nutzen Sie KI und Automatisierung wirklich?"
+   "name": "Abläufe und Automatisierung",
+   "text": "Was läuft schon ohne Handarbeit?"
+  },
+  {
+   "name": "Daten und Systeme",
+   "text": "Sind Ihre Daten sauber und verbunden?"
+  },
+  {
+   "name": "Team und Kompetenz",
+   "text": "Treibt Ihr Team Neues voran?"
   }
  ],
  "minuten": 10,
- "einleitung": "Ich führe Sie in rund 10 Minuten durch den Innovations-Check, in drei Bereichen: Sichtbarkeit, Vertrieb und Innovation."
+ "minuten_lang": 25,
+ "umfang": {
+  "frage": "Wie ausführlich möchten Sie es?",
+  "kurz": {
+   "name": "Kurz",
+   "text": "19 Fragen, Ergebnis sofort mit Stufe, Vergleich und nächsten Schritten."
+  },
+  "lang": {
+   "name": "Ausführlich",
+   "text": "Rund 50 Fragen in sechs Etappen. Dazu Fragen zu Ihrer Branche und ein Ergebnis für jeden Bereich."
+  }
+ },
+ "einleitung": "Ich führe Sie durch den Innovations-Check: Strategie, KI im Alltag, Abläufe, Daten und Team. Sie wählen gleich, ob Sie es kurz oder ausführlich möchten."
 }

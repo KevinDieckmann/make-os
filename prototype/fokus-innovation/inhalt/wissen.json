@@ -654,7 +654,7 @@
         {
           "h": "So arbeiten wir",
           "absaetze": [
-            "Der Innovations-Check zeigt Ihre Stufe in Sichtbarkeit, Vertrieb und Innovation und für die Innovation den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
+            "Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
           ]
         }
       ],
@@ -2561,7 +2561,7 @@
     {
       "id": "innovations-check",
       "name": "Innovations-Check",
-      "text": "Unser kostenloser Check in rund 10 Minuten. Er zeigt, wo Ihr Unternehmen bei Sichtbarkeit, Vertrieb und Innovation steht, und nennt die nächsten Schritte.",
+      "text": "Unser kostenloser Check, kurz in rund 10 oder ausführlich in rund 25 Minuten. Er zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, und nennt die nächsten Schritte.",
       "link": "/innovations-check/"
     },
     {

@@ -51,7 +51,7 @@ Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen w
 
 Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Abläufe fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
 
-- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Sichtbarkeit, Vertrieb und Innovation, mit zwei nächsten Schritten für Ihre größten Hebel.
+- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten oder ausführlich in rund 25.
 - [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): bald, Anfrage schon jetzt möglich, Preis auf Anfrage. Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an. Startet in Kürze.
 
 Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse); Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
@@ -62,7 +62,7 @@ Frage: Was kostet der Innovations-Check?
 Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
 
 Frage: Wie lange dauert der Check?
-Antwort: Rund 10 Minuten für die 15 Kernfragen. Wenn Sie mehr beantworten, wird Ihr Bericht genauer. Sie können jederzeit pausieren und später weitermachen.
+Antwort: Sie wählen am Anfang: kurz mit 19 Fragen in rund 10 Minuten oder ausführlich mit rund 50 Fragen in rund 25 Minuten. Die ausführliche Fassung fragt zusätzlich nach Ihrer Branche und wird genauer. Auswerten können Sie jederzeit, und auf demselben Gerät später weitermachen.
 
 Frage: Ist Zoe ein Mensch?
 Antwort: Nein. Zoe ist unsere KI-Assistentin. Sie sagt das auch am Anfang jedes Gesprächs. Wenn Sie lieber mit einem Menschen sprechen, gibt Zoe Sie an Kevin weiter.
@@ -106,7 +106,7 @@ Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich a
 - Fokus Innovation · Events: Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.
 - Go-to-Market: Der Weg eines Produkts in den Markt: Zielgruppe, Botschaft, Kanäle, Vertrieb und Preise. Im Deutschen oft Markteintritt.
 - Head of Sales auf Zeit: Eine Vertriebsleitung für einige Monate, die das System aufbaut, mit Ihrem Team umsetzt und so übergibt, dass der Vertrieb ohne sie läuft. Auch Interim Head of Sales genannt.
-- Innovations-Check: Unser kostenloser Check in rund 10 Minuten. Er zeigt, wo Ihr Unternehmen bei Sichtbarkeit, Vertrieb und Innovation steht, und nennt die nächsten Schritte.
+- Innovations-Check: Unser kostenloser Check, kurz in rund 10 oder ausführlich in rund 25 Minuten. Er zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, und nennt die nächsten Schritte.
 - KI-Brain: Wissen, Abläufe und Daten eines Unternehmens sauber an einem Ort, damit KI im Alltag darauf zugreifen kann. Bei uns in Vorbereitung.
 - Landingpage: Eine einzelne Seite, die ein Angebot und einen nächsten Schritt in den Mittelpunkt stellt, oft als Ziel einer Anzeige. Eine ganze Website auf einer Seite heißt One-Pager; unser Paket Homepage Landing ist so eine.
 - Lead: Ein Kontakt, der Interesse an Ihrem Angebot gezeigt hat oder gut zu Ihrer Zielgruppe passt.
@@ -484,7 +484,7 @@ Deshalb bringen wir sie dorthin, wo sie im Alltag wirken: in Angebote, Anfragen,
 
 ### So arbeiten wir
 
-Der Innovations-Check zeigt Ihre Stufe in Sichtbarkeit, Vertrieb und Innovation und für die Innovation den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
+Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
 
 Frage: Womit sollte ein Mittelständler bei KI anfangen?
 Antwort: Mit einem ehrlichen Blick auf den eigenen Stand. Danach wählen Sie die drei Anwendungsfälle mit dem größten Nutzen und führen sie nacheinander ein: Erst wenn der erste im Alltag läuft, kommt der nächste.

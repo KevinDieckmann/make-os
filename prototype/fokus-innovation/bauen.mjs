@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'no
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buehne, videoAbschnitt, BILD_JE_BEREICH } from './problembilder.mjs';
 
 export const ORDNER = dirname(fileURLToPath(import.meta.url));
 const REPO = join(ORDNER, '..', '..');
@@ -74,7 +75,7 @@ export function quellen() {
   const blaetter = lies(join(alteSeite, 'produkte.json'));
   const fokus = lies(join(ORDNER, 'inhalt', 'fokus.json'));
   const wissen = lies(join(ORDNER, 'inhalt', 'wissen.json'));
-  // Seit 30.10. zeigt der Check als Stufe das Gesamtergebnis über Sichtbarkeit, Vertrieb und Innovation (saeulen_stufen).
+  // Seit 30.10. (abends) misst der Innovations-Check nur die Innovation — die Stufen sind die der Innovation.
   const scoring = lies(join(REPO, 'lib/check/vorlagen/innovations-check/scoring.json'));
   const stufen = scoring.saeulen_stufen ?? scoring.stufen;
   const katalog = lies(join(REPO, 'lib/check/vorlagen/innovations-check/fragenkatalog.json'));
@@ -389,6 +390,8 @@ ${weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], label: 'Der E
     });
   };
   const B = F.bereiche;
+  // Videos (30.10.): Datei nach assets/videos/, in fokus.json › videos eintragen — ersetzt das Problem-Bild bzw. bekommt einen Abschnitt.
+  const VIDEOS = Object.fromEntries(Object.entries(F.videos ?? {}).filter(([, v]) => v && typeof v === 'object'));
 
   // ── Wissen: Ratgeber und Begriffe ──
   const artikelPfad = (a) => `/wissen/${a.id}/`;
@@ -608,6 +611,7 @@ ${raster(b.felder, 4)}
 <div class="erscheint">${brotkrumen([[null, b.name]])}${vorzeile(b.name, b.nr)}<h1 id="held-titel">${e(b.held.titel)}</h1><p class="lead">${t(b.held.text)}</p><div class="knoepfe">${knoepfe}</div></div>
 <aside class="weg-karte erscheint" aria-label="Der Weg"><p class="etikett">Der Weg mit uns</p>${weg(b.weg, { klasse: 'senkrecht' })}</aside>
 </div></section>
+${videoAbschnitt(VIDEOS[k])}
 
 <section class="blick-band" aria-label="Kurz gesagt"><div class="w">${kurzGesagt(b.kurz)}
 <dl class="blick erscheint">${[['Für wen', fuerWen], ['Angebote', preiseAb || 'Bald, Anfrage schon jetzt möglich'], ['Einstieg', { vertrieb: `Erstgespräch, kostenlos, oder der Tagesworkshop ab ${erster(angebot('tagesworkshop'))}`, sichtbarkeit: 'Erstgespräch, kostenlos, oder direkt die Positionierung S', innovation: 'Innovations-Check, kostenlos, rund 10 Minuten' }[k]], ['Preise', 'netto, ab-Preis auf jeder Angebotsseite']].filter(([, v]) => v).map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl>
@@ -640,9 +644,10 @@ ${schlussakt({ quelle: `${k}_ende` })}`,
         bildVorzeile: B[k].name,
         bildTitel: `${gs.titel} ${gs.ruhig}`,
         aktiv: k,
-        main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
+        main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[`/${k}/`, B[k].name], [null, gs.name]])}${vorzeile(B[k].name)}<h1 id="held-titel">${titel(gs.titel, gs.ruhig)}</h1><p class="lead">${t(gs.lead)}</p>
 <div class="knoepfe">${erstKnopf()}${klein ? textlink(checkThema(k, `${gs.pfad}_held`), `${klein.name}, ${klein.minuten} Minuten`) : ''}</div></div>
+${buehne(BILD_JE_BEREICH[k], VIDEOS[`${k}/${gs.pfad}`])}
 </div></section>
 
 <section class="abschnitt" aria-labelledby="pakete-titel"><div class="w">${abKopf({ marke: 'Pakete', h2: `${g.liste.length} Pakete zur Wahl.`, lead: fam?.problem, id: 'pakete-titel' })}
@@ -739,19 +744,20 @@ ${schlussakt({ quelle: `produkt_${a.id}_ende`, lead: istBald ? 'Haben Sie ein Vo
     const a1 = katalog.abschnitte.flatMap((x) => x.fragen).find((f) => f.id === 'A1');
     neu('innovations-check/index.html', {
       seo: 'innovations-check',
-      bildVorzeile: 'Kostenlos · rund 10 Minuten',
+      bildVorzeile: 'Kostenlos · 10 oder 25 Minuten',
       bildTitel: 'Innovations-Check: Wo steht Ihr Unternehmen?',
       aktiv: 'innovation',
       schema: [{ '@type': 'Service', '@id': `${absolut('/innovations-check/')}#leistung`, name: 'Innovations-Check', serviceType: 'Innovation', description: klar(F.check.text), provider: { '@id': ORG }, areaServed: organisation.areaServed, url: absolut('/innovations-check/'), offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: absolut('/innovations-check/') } }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([['/innovation/', 'Innovation'], [null, 'Innovations-Check']])}${vorzeile('Kostenlos · rund 10 Minuten · Ergebnis sofort')}<h1 id="held-titel">${e(c.titel)}</h1><p class="lead">${t(F.check.text)}</p><div class="knoepfe">${checkKnopf('check_seite_held')}</div></div>
+<div class="erscheint">${brotkrumen([['/innovation/', 'Innovation'], [null, 'Innovations-Check']])}${vorzeile('Kostenlos · 10 oder 25 Minuten · Ergebnis sofort')}<h1 id="held-titel">${e(c.titel)}</h1><p class="lead">${t(F.check.text)}</p><div class="knoepfe">${checkKnopf('check_seite_held')}</div></div>
 <figure class="frage-karte erscheint" aria-label="Beispiel: die erste Frage des Checks"><figcaption><span class="etikett">So sieht eine Frage aus</span><span class="leise">Frage 1 von ${katalog.anzahl_kurzcheck}</span></figcaption><p class="frage">${e(a1.text)}</p><ul class="optionen" aria-hidden="true">${a1.optionen.slice(0, 4).map((o) => `<li>${e(o.text)}</li>`).join('')}</ul><p class="leise klein-text">Zoe, unsere KI-Assistentin, führt durch die Fragen. Sie stellt sie mit festen Texten.</p></figure>
 </div></section>
+${videoAbschnitt(VIDEOS['innovations-check'])}
 
 <section class="abschnitt" aria-labelledby="ablauf-titel"><div class="w">${abKopf({ marke: 'So läuft es', h2: 'In drei Schritten zu Ihren Top 3', id: 'ablauf-titel' })}
 ${weg(F.check_einstieg, { etiketten: ['01', '02', '03'], label: 'Der Check in drei Schritten' })}</div></section>
 
-<section class="abschnitt" aria-labelledby="stufen-titel"><div class="w">${abKopf({ marke: 'Fünf Stufen', h2: 'Wo steht Ihr Unternehmen?', lead: 'Der Check misst Sichtbarkeit, Vertrieb und Innovation und nennt für die zwei schwächsten Bereiche den nächsten Schritt. Die Innovation vergleicht er mit Ihrer Branche.', id: 'stufen-titel' })}
+<section class="abschnitt" aria-labelledby="stufen-titel"><div class="w">${abKopf({ marke: 'Fünf Stufen', h2: 'Wo steht Ihr Unternehmen?', lead: 'Der Check misst Strategie, KI im Alltag, Abläufe, Daten und Team, vergleicht Sie mit Ihrer Branche und nennt für die zwei größten Lücken den nächsten Schritt.', id: 'stufen-titel' })}
 <ol class="stufen breit erscheint" aria-label="Die fünf Stufen">${stufen.map((s) => `<li><span class="stufe-balken" aria-hidden="true"></span><b>${e(s.name.replace(/ \(.*\)$/, ''))}</b><span>${e(s.kurz)}</span></li>`).join('')}</ol></div></section>
 
 <section class="abschnitt" aria-labelledby="gespraech-titel"><div class="w">${abKopf({ marke: 'Nach dem Check', h2: start.gespraech.titel, lead: start.gespraech.text, id: 'gespraech-titel' })}
@@ -759,7 +765,7 @@ ${weg(F.check_einstieg, { etiketten: ['01', '02', '03'], label: 'Der Check in dr
 <div class="erscheint"><h3 class="gruppe-titel">Ihre Daten</h3>${punkte(['Ihre Antworten liegen auf unserem eigenen Server in Deutschland.', 'Zoe stellt die Fragen mit festen Texten. Ihre Antworten gehen an kein KI-Modell.', 'Kontaktdaten geben Sie nur an, wenn Sie Ihren Bericht oder ein Gespräch wollen.', 'Ohne Kontaktdaten löschen wir die Antworten nach 30 Tagen.'])}<p class="leise klein-text">${t(start.gespraech.regel)}</p></div></div></div></section>
 
 ${fragen(faqVon(seite.check_faq))}
-${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'In rund 10 Minuten wissen Sie, wo Ihr Unternehmen steht.', knoepfe: `${checkKnopf('check_seite_ende')}${erstKnopf('zweit', 'Lieber direkt sprechen')}`, stufen: F.check_einstieg })}`,
+${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'Kurz in rund 10 Minuten oder ausführlich in rund 25: Danach wissen Sie, wo Ihr Unternehmen steht.', knoepfe: `${checkKnopf('check_seite_ende')}${erstKnopf('zweit', 'Lieber direkt sprechen')}`, stufen: F.check_einstieg })}`,
     });
   }
 
@@ -795,8 +801,9 @@ ${schlussakt({ quelle: 'events_ende' })}`,
     bildTitel: F.leitidee.titel,
     aktiv: 'ueber-uns',
     seitenTyp: 'AboutPage',
-    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
+    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Über uns']])}${vorzeile('Über uns')}<h1 id="held-titel">${e(F.leitidee.titel)}</h1><p class="lead">${t(F.leitidee.lead)}</p></div>
+${buehne('netzwerk', VIDEOS['ueber-uns'])}
 </div></section>
 
 ${blick([...F.fakten, ['Betreiber', anbieter.name], ['Kontakt', seite.kontakt.mail]], 'Fokus Innovation auf einen Blick')}
@@ -963,9 +970,10 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
     aktiv: 'kostenlos',
     seitenTyp: 'CollectionPage',
     schema: [{ ...itemListe('Kostenlos bei Fokus Innovation', [...K.checks.map((c) => [c.thema ? `/check?thema=${c.thema}` : c.pfad, c.name]), ...W.artikel.map((a) => [artikelPfad(a), a.titel])]), '@id': `${absolut('/kostenlos/')}#kostenlos` }],
-    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
+    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Kostenlos']])}${vorzeile('Kostenlos')}<h1 id="held-titel">${titel(K.titel, K.ruhig)}</h1><p class="lead">${t(K.lead)}</p>
 <nav class="az breit" aria-label="Auf dieser Seite"><a href="#checks">Checks</a>${K.phasen?.length ? '<a href="#phasen">Nach Phase</a>' : ''}<a href="#ratgeber">Ratgeber</a>${Z ? '<a href="#zahlen">Zahlen</a>' : ''}${VORL.length ? '<a href="#vorlagen">Vorlagen</a>' : ''}<a href="#newsletter">Newsletter</a></nav></div>
+${buehne('stufen', VIDEOS.kostenlos)}
 </div></section>
 
 <section class="abschnitt" id="checks" aria-labelledby="checks-titel"><div class="w">${abKopf({ marke: 'Checks', h2: 'Wo stehen Sie?', ruhig: 'In Minuten.', lead: 'Fast alles per Klick, Ergebnis sofort, mit nächsten Schritten. Zoe, unsere KI-Assistentin, führt durch die Fragen.', id: 'checks-titel' })}
@@ -1007,8 +1015,8 @@ ${schlussakt({ quelle: 'zahlen_ende' })}`,
       return `<li><a href="${h}"><span class="wl-lage">${t(z.lage)}</span><span class="wl-ziel"><b>${e(n)}</b><span>${e(p)}</span></span>${PFEIL}</a></li>`;
     };
     const SEITEN = [
-      { id: 'markt', pfad: 'in-den-markt', bereiche: ['sichtbarkeit', 'vertrieb'], schritte: F.einstiege.markt.schritte },
-      { id: 'unternehmen', pfad: 'ins-unternehmen', bereiche: ['innovation'], schritte: B.innovation.felder },
+      { id: 'markt', pfad: 'in-den-markt', bild: 'produkt-umsatz', bereiche: ['sichtbarkeit', 'vertrieb'], schritte: F.einstiege.markt.schritte },
+      { id: 'unternehmen', pfad: 'ins-unternehmen', bild: 'inseln', bereiche: ['innovation'], schritte: B.innovation.felder },
     ];
     for (const s of SEITEN) {
       const x = F.einstiege[s.id];
@@ -1019,9 +1027,10 @@ ${schlussakt({ quelle: 'zahlen_ende' })}`,
         seo: s.pfad,
         bildVorzeile: tuer.etikett,
         bildTitel: `${x.titel} ${x.ruhig}`,
-        main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
+        main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, tuer.etikett]])}${vorzeile(tuer.etikett)}<h1 id="held-titel">${titel(x.titel, x.ruhig)}</h1><p class="lead">${t(x.lead)}</p>
 <div class="knoepfe">${erstKnopf()}${textlink('#einstieg', 'Womit anfangen')}</div></div>
+${buehne(s.bild, VIDEOS[s.pfad])}
 </div></section>
 
 <section class="abschnitt" aria-labelledby="merken-titel"><div class="w">${abKopf({ marke: 'Ihr Alltag', h2: x.merken, lead: `${['', 'Ein Moment', 'Zwei Momente', 'Drei Momente', 'Vier Momente', 'Fünf Momente', 'Sechs Momente'][momente.length] ?? `${momente.length} Momente`}, die wir von Gründern und Geschäftsführern immer wieder hören.`, id: 'merken-titel' })}
@@ -1069,9 +1078,10 @@ ${schlussakt({ quelle: `${s.pfad}_ende` })}`,
         ...(quellenListe.length ? { citation: quellenListe.map((q) => ({ '@type': 'CreativeWork', name: q.quelle, url: q.link })) } : {}),
         ...(angebote.length ? { mentions: angebote.map((x) => ({ '@type': 'Service', name: x.name, url: absolut(produktPfad(x)) })) } : {}),
       }],
-      main: `<section class="held artikel-held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
+      main: `<section class="held artikel-held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, a.titel]])}${vorzeile(`${a.leitfaden ? 'Leitfaden · ' : ''}${b.name} · ${lesezeit(a)} Minuten Lesezeit`)}<h1 id="held-titel">${e(a.titel)}</h1>
 <p class="autor-zeile">Von <a class="unterstrichen" href="/ueber-uns/#${personAnker(autor)}">${e(autor.name)}</a>, ${e(autor.rolle)} · <time datetime="${a.aktualisiert}">${e(datum(a.aktualisiert))}</time></p></div>
+${buehne(BILD_JE_BEREICH[a.bereich], VIDEOS[`wissen/${a.id}`])}
 </div></section>
 
 <section class="abschnitt" aria-label="Artikel"><div class="w artikel-raster">
@@ -1154,8 +1164,9 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
       bildVorzeile: 'Preise',
       bildTitel: 'Alle Preise auf einen Blick. Fest und netto.',
       schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von Fokus Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !bald(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
-      main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
+      main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Preise']])}${vorzeile('Preise')}<h1 id="held-titel">${titel('Alle Preise.', 'Fest, offen und netto.')}</h1><p class="lead">Jedes Angebot hat einen festen Preis, einen festen Ablauf und klare Konditionen. Hier stehen alle auf einer Seite. Die Details finden Sie auf der Seite des Angebots.</p></div>
+${buehne('festpreis', VIDEOS.preise)}
 </div></section>
 <section class="abschnitt" aria-labelledby="kostenlos-titel"><div class="w">${abKopf({ marke: 'Der Einstieg', h2: 'Kostenlos', lead: 'Erstgespräch, Innovations-Check und das Gespräch danach kosten nichts und verpflichten zu nichts.', id: 'kostenlos-titel' })}
 ${tabelle('Kostenlos', frei.map(([h, n, z]) => `<tr><th scope="row"><a class="unterstrichen" href="${h}">${e(n)}</a></th><td data-name="Preis netto">kostenlos</td><td data-name="Konditionen">${e(z)}</td></tr>`).join(''), { zeigen: false })}</div></section>
