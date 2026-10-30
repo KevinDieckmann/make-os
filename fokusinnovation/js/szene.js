@@ -250,7 +250,7 @@ export function szeneStarten(canvas, { handy = false } = {}) {
 const G0 = Math.PI / 6;              // 30 Grad: Anfang des Bogens
 const G1 = (80 / 180) * Math.PI;     // 80 Grad: Ende des Bogens
 const GESAMT = 2 * Math.PI - (G1 - G0);
-const ZIEL_WINKEL = (48.1 / 180) * Math.PI;
+const ZIEL_WINKEL = (55 / 180) * Math.PI;   // Mitte der Lücke zwischen 30 und 80 Grad (Kevin 30.10.: Punkt mittig in der Lücke)
 const ZIEL_ABSTAND = 1.235;
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 const glatt = (t) => t * t * (3 - 2 * t);
