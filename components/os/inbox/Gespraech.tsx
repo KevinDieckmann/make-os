@@ -13,6 +13,9 @@
 // Flows (09.10., Kevin: „antworten, Dokumente wegsortieren oder Aufgabe erstellen — saubere Flows“): EIN Aktions-Block mit drei Hauptwegen
 // Antworten · Ablegen · Aufgabe (Flows.tsx, Ziel-Vorschlag lib/inbox/flows.ts), darunter die Rückmeldung „Aus diesem Gespräch“ mit Links;
 // „danach erledigen“ (je Browser gemerkt) legt das Gespräch nach jeder dieser Aktionen ab.
+// Arbeitsfläche (29.10., Kevin: „Aufteilung … schlecht von der Darstellung her“): der Mailtext steht voll im Gespräch (kein eigener Scrollkasten — die
+// Detail-Spalte rollt); der Kontext steht nur daneben, wenn er etwas zeigt UND das Gespräch breit genug ist (`KONTEXT_DANEBEN_AB`), sonst klappbar
+// darunter. Ohne Person in der Kartei: eine kurze Zeile oben mit „Kontakt anlegen“ statt einer leeren Spalte.
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -22,7 +25,7 @@ import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import { followUpAusGespraech, kontaktAusGespraech, kontaktAnlegenErlaubt, firmaVorschlag, spaceVon, terminVorgabe } from '@/lib/inbox/aus-gespraech';
 import { FACH_LABEL } from '@/lib/inbox/faecher';
-import { Knopf, Chip, Hinweis, Ueberschrift, Karte, Leer, LEUCHT, useBreit } from '../ui';
+import { Knopf, Chip, Hinweis, Ueberschrift, Karte, LEUCHT, useBreit, useBreite, useArbeitsflaeche } from '../ui';
 import { NeuerTermin } from '../kalender/NeuerTermin';
 import { GmailText } from './GmailText';
 import { Antwort } from './Antwort';
@@ -36,6 +39,9 @@ import { aktion, anhangLink, datumLang, groesse, holen, naechsterMontag, senden,
 
 interface AkteTermin { titel: string; start: string; ganztags?: boolean; abgesagt?: boolean }
 
+/** Ab dieser Breite des Gesprächs steht der Kontext als Spalte daneben (darunter klappbar unter dem Gespräch). */
+const KONTEXT_DANEBEN_AB = 880;
+
 const KONTEXT_TERMIN = (iso: string, ganztags?: boolean) => new Date(iso.length === 19 ? `${iso}` : iso).toLocaleString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit', ...(ganztags ? {} : { hour: '2-digit', minute: '2-digit' }) });
 
 export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, startAntwort }: {
@@ -43,6 +49,10 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
 }) {
   const { state } = useTasks();
   const breit = useBreit();
+  // In der Arbeitsfläche zählt, ob Liste und Gespräch nebeneinander stehen (sonst trägt das Gespräch „‹ Zurück zur Liste“).
+  const flaeche = useArbeitsflaeche();
+  const nebeneinander = flaeche ? flaeche.zwei : breit;
+  const [wurzel, eigeneBreite] = useBreite();
   const [a, setA] = useState<Ansicht | null>(null);
   const [fehler, setFehler] = useState('');
   const [offen, setOffen] = useState<string | null>(null);
@@ -84,6 +94,9 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
   const space = spaceVon(g);
   const wa = g.quelle === 'whatsapp' && g.whatsapp ? g.whatsapp : null;
   const kandidaten = a.kontext.kandidaten ?? [];
+  // „Kontakt anlegen“ steht in der Zeile oben (ohne Person in der Kartei) — dann nicht noch einmal unter „ZOE schlägt vor“.
+  const kontaktKnopfOben = !a.kontext.kontakt && g.fach !== 'info' && !g.zuordnung && kandidaten.length < 2 && kontaktAnlegenErlaubt(g.bereich);
+  const vorschlaege = a.vorschlaege.filter(v => !(kontaktKnopfOben && v.art === 'kontakt'));
   const tu = async (was: string, extra: Record<string, unknown> = {}, rueck?: string) => {
     const r = await aktion(id, was, extra);
     meldung(r.d.ok ? String(r.d.text ?? 'Erledigt.') : String(r.d.fehler ?? 'Das ging nicht.'), r.d.ok && rueck ? () => { void aktion(id, rueck).then(() => onGeaendert()); } : undefined);
@@ -152,7 +165,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
           {a.kontext.kontakt.sperre && <Chip farbe={LEUCHT.achtung}>{a.kontext.kontakt.sperre === 'eingeschraenkt' ? 'Verarbeitung eingeschränkt (Art. 18)' : 'Werbesperre'}</Chip>}
           {g.zugeordnet ? <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Steht im Verlauf der Akte · <button type="button" onClick={() => void tu('loesen').then(() => laden())} style={{ background: 'none', border: 'none', color: C.inkLeise, textDecoration: 'underline', cursor: 'pointer', fontSize: TYP.bedien, padding: 0, minHeight: 32 }}>lösen</button></span> : null}
         </div>
-      ) : <Leer>Noch keine Person in der Kartei.</Leer>}
+      ) : null}
       {a.kontext.deals.length > 0 && (
         <div style={{ display: 'grid', gap: 4 }}>
           <div style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>Offene Deals</div>
@@ -177,7 +190,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
 
   const inhalt = (
     <div data-inbox="gespraech" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12, minWidth: 0 }}>
-      {onZurueck && !breit && <div><Knopf leise onClick={onZurueck}>‹ Zurück zur Liste</Knopf></div>}
+      {onZurueck && !nebeneinander && <div><Knopf leise onClick={onZurueck}>‹ Zurück zur Liste</Knopf></div>}
       <div style={{ display: 'grid', gap: 6 }}>
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 20, fontWeight: 700, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{g.betreff}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -191,6 +204,13 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
         {g.team && <KuemmertWahl gespraech={id} team={g.team} person={person} meldung={t => meldung(t)} onGeaendert={() => { void laden(); onGeaendert(); }} />}
       </div>
 
+      {/* Ohne Person in der Kartei (29.10.): eine kurze Zeile statt einer leeren Kontext-Spalte — mit dem Weg „Kontakt anlegen“. */}
+      {!a.kontext.kontakt && g.fach !== 'info' && (
+        <div data-inbox="kontext-leer" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '6px 10px 6px 12px', borderRadius: 12, background: 'rgba(255,255,255,.03)', border: `1px solid ${C.linie}` }}>
+          <span style={{ fontSize: TYP.bedien, color: C.inkLeise, flex: '1 1 200px' }}>{kandidaten.length > 1 ? 'Mehrere Personen tragen diese Nummer — unten zuordnen.' : 'Noch keine Person in der Kartei.'}</span>
+          {!z && kandidaten.length < 2 && kontaktAnlegenErlaubt(g.bereich) && <Knopf leise onClick={() => void kontaktAnlegen()} titel={firmaAusMail ? `Firma aus der Mail-Domain: ${firmaAusMail}` : undefined}>{firmaAusMail ? `Kontakt anlegen · ${firmaAusMail}` : 'Kontakt anlegen'}</Knopf>}
+        </div>
+      )}
       {kandidaten.length > 1 && !z && (
         <Hinweis art="info" titel="Wem gehört diese Nummer?">
           Die Nummer steht bei {kandidaten.length} Personen in der Kartei — MAKE OS ordnet sie nicht von selbst zu. Wähle die richtige:
@@ -200,10 +220,10 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
         </Hinweis>
       )}
 
-      {a.vorschlaege.length > 0 && (
+      {vorschlaege.length > 0 && (
         <div role="group" aria-label="ZOE schlägt vor" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8, padding: 12, borderRadius: 16, background: 'rgba(255,255,255,.03)', border: `1px solid ${C.linie}` }}>
           <div style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise }}>ZOE schlägt vor · nur auf Klick</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{a.vorschlaege.map(v => <Knopf key={v.art + v.text} leise onClick={() => vorschlag(v)}>{v.text}</Knopf>)}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{vorschlaege.map(v => <Knopf key={v.art + v.text} leise onClick={() => vorschlag(v)} style={{ whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: '100%', textAlign: 'left' }}>{v.text}</Knopf>)}</div>
         </div>
       )}
 
@@ -218,7 +238,8 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
                 {kopf(n)}
                 {!auf && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.text.replace(/\s+/g, ' ').slice(0, 200)}</div>}
               </div>
-              {auf && !nurPlatzhalter(n) && <div style={{ maxHeight: letzte ? 480 : 300, overflow: 'auto' }}><GmailText text={n.text} bilder={n.bilder} gekuerzt={n.gekuerzt} /></div>}
+              {/* Voll im Gespräch (29.10.): kein eigener Scrollkasten — es rollt die Spalte, nicht ein Kasten darin. */}
+              {auf && !nurPlatzhalter(n) && <div style={{ minWidth: 0 }}><GmailText text={n.text} bilder={n.bilder} gekuerzt={n.gekuerzt} /></div>}
               {auf && anhaenge(n).length > 0 && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, minWidth: 0 }}>
                   {anhaenge(n).map(x => (x.teil === 'wa' && wa ? <WaMedium key={x.teil} nachricht={n.id} name={x.name} typ={x.typ} groesse={x.groesse} zustand={n.wa?.medium} art={n.wa?.art} /> : (
@@ -251,7 +272,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
             <Knopf leise onClick={() => void tu('erledigt', {}, 'zurueck').then(ok => { if (ok && onZurueck) onZurueck(); })}>Erledigt</Knopf>
             <Knopf leise onClick={() => setSpaeterAuf(x => !x)}>Später ▾</Knopf>
             <Knopf leise onClick={() => void tu(g.ungelesen ? 'gelesen' : 'ungelesen')}>{g.ungelesen ? 'Gelesen' : 'Ungelesen'}</Knopf>
-            {!z && g.fach !== 'info' && kandidaten.length < 2 && kontaktAnlegenErlaubt(g.bereich) && <Knopf leise onClick={() => void kontaktAnlegen()} titel={firmaAusMail ? `Firma aus der Mail-Domain: ${firmaAusMail}` : undefined}>{firmaAusMail ? `Kontakt anlegen · ${firmaAusMail}` : 'Kontakt anlegen'}</Knopf>}
+            {!z && a.kontext.kontakt && g.fach !== 'info' && kandidaten.length < 2 && kontaktAnlegenErlaubt(g.bereich) && <Knopf leise onClick={() => void kontaktAnlegen()} titel={firmaAusMail ? `Firma aus der Mail-Domain: ${firmaAusMail}` : undefined}>{firmaAusMail ? `Kontakt anlegen · ${firmaAusMail}` : 'Kontakt anlegen'}</Knopf>}
             {/* Kevin 07.10.: unbekannte WhatsApp-Nummern kommen direkt in „Antworten“ — Blocken bleibt hier möglich (mit Rückgängig). */}
             {wa && !z && <Knopf leise onClick={() => void tu('blocken', {}, 'offen').then(ok => { if (ok && onZurueck) onZurueck(); })}>Nummer blocken</Knopf>}
             {!(a.vorschlaege.some(v => v.art === 'termin')) && <Knopf leise onClick={() => setTermin(t => !t)}>Termin</Knopf>}
@@ -297,10 +318,14 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
     </div>
   );
 
-  // Eigenes Raster mit minmax(0, …): lange Zeilen (Adressen, Ausschnitte) dürfen die Kontext-Spalte nie überlappen.
-  if (breit) return <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: 16, alignItems: 'start' }}>{inhalt}<Karte flach i={0}>{kontext}</Karte></div>;
+  // Kontext nur, wenn er etwas zeigt (Person, Deals, Aufgaben, Termine) — ohne Person steht oben die kurze Zeile.
+  const hatKontext = !!a.kontext.kontakt || a.kontext.deals.length > 0 || aufgabenZurPerson.length > 0 || !!(termine && (termine.kommend || termine.vergangen));
+  if (!hatKontext) return <div ref={wurzel}>{inhalt}</div>;
+  // Eigenes Raster mit minmax(0, …): lange Zeilen (Adressen, Ausschnitte) dürfen die Kontext-Spalte nie überlappen. Daneben nur, wenn das Gespräch
+  // selbst breit genug ist (gemessen, nicht das Fenster) — die Spalte klebt oben in der rollenden Detail-Spalte.
+  if ((eigeneBreite ?? 0) >= KONTEXT_DANEBEN_AB) return <div ref={wurzel} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(220px, 1fr)', gap: 18, alignItems: 'start' }}>{inhalt}<div style={{ position: 'sticky', top: 0 }}><Karte flach i={0}>{kontext}</Karte></div></div>;
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div ref={wurzel} style={{ display: 'grid', gap: 12 }}>
       {inhalt}
       <Karte flach i={0}>
         <button type="button" onClick={() => setKontextAuf(x => !x)} aria-expanded={kontextAuf} style={{ background: 'none', border: 'none', color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, fontWeight: 600, cursor: 'pointer', minHeight: 44, padding: 0, width: '100%', textAlign: 'left' }}>

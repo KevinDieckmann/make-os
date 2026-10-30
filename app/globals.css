@@ -684,6 +684,67 @@ body:has(.agenten-flaeche) .zoe-fab { display: none !important; }
   .ui-karten { gap: 14px; }
 }
 
+/* ─── Arbeitsfläche (29.10., components/os/ui/arbeitsflaeche.tsx, DESIGN_STANDARD.md › Arbeitsfläche) ──────────────────────────────────────
+   Kopf in EINER Zeile · Suche + Filter in EINER Zeile · Liste | Detail füllen die Höhe bis unten, jede Spalte rollt für sich (die Seite nicht).
+   Am Handy (`.af-frei`) kein fester Rahmen: Liste → Detail als Schritt im gewohnten Seitenfluss. */
+.af { padding-top: 14px; padding-bottom: 0; container-type: inline-size; }
+.af-kopf { display: flex; align-items: center; gap: 6px 14px; flex-wrap: nowrap; margin-bottom: 10px; min-height: 44px; min-width: 0; }
+.af-titel { font-weight: 700; font-size: clamp(22px, 2.4vw, 26px); letter-spacing: -.02em; margin: 0; line-height: 1.1; flex: 0 0 auto; white-space: nowrap; }
+/* Der Zähler gibt nach (Auslassung), nie die Aktionen. */
+.af-zaehler { font-size: 14px; color: #A2ADB0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+.af-kopf-rechts { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; flex: 0 0 auto; }
+/* ZOE/Head im Kopf einer schmalen Fläche nur als Symbol (wie am Handy im Seitenkopf). */
+@container (max-width: 760px) { .af-kopf-rechts .zoe-fragen { padding: 0 !important; width: 44px; height: 44px; min-height: 44px !important; justify-content: center; } .af-kopf-rechts .zoe-fragen-text, .af-kopf-rechts .zoe-fragen-punkt { display: none; } .af-kopf-rechts .zoe-fragen-symbol { display: block; } }
+.af-leiste { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; margin-bottom: 10px; min-width: 0; }
+.af-leiste > .af-suche { flex: 1 1 220px; min-width: 0; }
+.af-hinweise { display: grid; gap: 10px; margin-bottom: 10px; min-width: 0; }
+.af-koerper { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-height: 0; min-width: 0; }
+.af-spalte { position: relative; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.14) transparent;
+  border-radius: 18px; background: linear-gradient(165deg, #161C1F 0%, #111518 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 10px 28px rgba(0,0,0,.28); }
+.af-liste { padding: 0 12px 12px; }
+.af-detail { padding: 16px 18px 20px; }
+.af-liste-oben { padding: 12px 0 4px; display: grid; gap: 12px; }
+.af-liste-kopf { position: sticky; top: 0; z-index: 3; margin: 0 -12px; padding: 10px 12px 6px; background: #151A1D; border-bottom: 1px solid rgba(255,255,255,.06); }
+.af-abschnitt + .af-abschnitt { margin-top: 6px; }
+.af-abschnitt-kopf { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 -12px; padding: 12px 12px 6px; background: #151A1D; }
+.af-abschnitt-titel { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #A2ADB0; }
+.af-abschnitt-punkt { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.af-abschnitt-rechts { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #7C878B; }
+.af-liste .zeile { min-height: 46px; padding-top: 8px !important; padding-bottom: 8px !important; }
+.af-pop-anker { position: relative; display: inline-flex; }
+.af-mehr { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; border-radius: 12px; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.03); color: #C9D1D3; cursor: pointer; }
+.af-mehr:hover, .af-mehr[aria-expanded=true] { background: rgba(255,255,255,.08); }
+.af-filter { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03); color: #C9D1D3; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.af-filter:hover, .af-filter[aria-expanded=true] { background: rgba(255,255,255,.07); }
+.af-filter-an { border-color: rgba(88,217,205,.45); color: #EAF2F2; }
+.af-filter-zahl { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #58D9CD; color: #0B0E10; font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; box-sizing: border-box; }
+.af-pop { position: absolute; top: calc(100% + 6px); z-index: 60; padding: 12px; border-radius: 14px; background: #161B1E; border: 1px solid rgba(255,255,255,.1); box-shadow: 0 18px 50px -12px rgba(0,0,0,.8); }
+.af-pop-menue { right: 0; display: grid; gap: 4px; min-width: 220px; }
+.af-pop-menue > * { justify-content: flex-start; }
+.af-pop-menue .ui-knopf { width: 100%; justify-content: flex-start; }
+.af-pop-filter { left: 0; width: min(440px, calc(100vw - 32px)); display: grid; gap: 14px; max-height: min(70vh, 560px); overflow-y: auto; }
+.af-kopf-rechts .af-pop-filter, .af-leiste > :last-child .af-pop-filter { left: auto; right: 0; }
+.af-filter-gruppe { display: grid; gap: 8px; }
+.af-filter-titel { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #7C878B; }
+.af-filter-inhalt { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.af-filter-inhalt .ui-pillen { flex-wrap: wrap; }
+.af-pop-zurueck { justify-self: start; min-height: 40px; padding: 0 4px; background: none; border: none; color: #58D9CD; font: inherit; font-size: 14px; cursor: pointer; }
+.af-chip-weg { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: #EAF2F2; font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.af-chip-weg:hover { background: rgba(255,255,255,.09); }
+/* Handy: der gewohnte Seitenfluss — keine feste Höhe, Spalten ohne eigene Scrollfläche und ohne Kasten. */
+.af-frei .af-spalte { overflow: visible; background: none; box-shadow: none; border-radius: 0; }
+.af-frei .af-liste { padding: 0; }
+.af-frei .af-detail { padding: 0; }
+.af-frei .af-liste-kopf, .af-frei .af-abschnitt-kopf { margin: 0; padding-left: 0; padding-right: 0; background: #0B0E10; }
+@media (max-width: 720px) {
+  .af { padding: 10px 16px 28px; }
+  .af-titel { font-size: 24px; }
+  .af-kopf { flex-wrap: wrap; }
+  .af-zaehler { order: 3; flex: 1 0 100%; }
+  .af-leiste > .af-suche { flex-basis: 100%; }
+  .af-pop-filter { position: fixed; left: 16px !important; right: 16px !important; top: auto; bottom: calc(var(--os-leiste-handy) + var(--os-ablage) + 8px); width: auto; }
+}
+
 .ui-stufen { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 4px; margin-top: 16px; }
 .ui-stufe { padding: 10px 8px; border-radius: 10px; font-size: 12px; line-height: 1.3; white-space: nowrap; }
 @media (max-width: 720px) { .ui-stufen { grid-template-columns: repeat(var(--n, 5), minmax(112px, 1fr)); overflow-x: auto; scrollbar-width: none; } .ui-stufen::-webkit-scrollbar { display: none; } }

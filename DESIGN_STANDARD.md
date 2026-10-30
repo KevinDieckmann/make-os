@@ -662,3 +662,25 @@ Ein großer Bereich (Prozesse, als Nächstes Markttraktion) ist ein **Werkzeug**
   unten links, Seitenfeld rechts zum Ein- und Ausklappen. Leere Orte bleiben unsichtbar. Keine Transformation/kein Weichzeichner an schwebenden Leisten.
   Bewegung nur als Übergang der Farbe — bei `prefers-reduced-motion` aus.
 - „Alles zeigen“ hat das Symbol „Fullscreen“ (Rahmen-Ecken); ⤢/⤡ gehören allein dem ganzen Bildschirm.
+
+## Arbeitsfläche (29.10.) — Listen-/Detail-Seiten
+Kevin 29.10.: „manchmal die Aufteilung, z. B. in der Inbox, schlecht von der Darstellung her … bei den Kontakten auch … das Thema mit Scrolling macht
+manchmal keinen Sinn.“ EIN Muster für jede Seite aus Liste + Detail: `Arbeitsflaeche` (components/os/ui/arbeitsflaeche.tsx, Klassen `.af-*` in
+app/globals.css). Umgestellt: **Inbox** (`InboxZwei`, Gespräch) und **Markttraktion › Kontakte** (Kartei der Personen). Als Nächstes nach demselben
+Muster: Firmen, Deals › Liste, Angebote, Finanzen › Rechnungen, Mandate.
+- **Kopf in EINER Zeile:** Titel ohne erklärenden Untertitel, daneben ein ruhiger Zähler („4 brauchen Antwort“, „11 Personen · …“), rechts EINE Hauptaktion
+  (`haupt`), Nebenaktionen hinter „⋯“ (`mehr` → `MehrMenue`), höchstens ein leiser Knopf davor (`neben`, z. B. ZOE/Head). Runden, Abgleichen, Postfächer …
+  gehören ins „⋯“ bzw. ins Werkzeug-Menü links — ihre Adressen bleiben.
+- **Suche + Filter in EINER Zeile** (`leiste`, Suchfeld mit Klasse `af-suche`): dahinter Segmente (Ordnung, Wer) und `FilterKnopf` („Filter ▾“ mit Zähler
+  aktiver Filter, Popover mit `FilterGruppe`n, „Alle Filter zurücksetzen“). Aktive Filter stehen als Chips `af-chip-weg` (antippen = weg). Nie eine
+  abgeschnittene Chip-Reihe — umbrechen oder ins Popover. Menüs aus dem Popover (Wahl-Chips) liegen im Portal; das Popover bleibt dabei offen.
+- **Höhe:** die Fläche füllt den sichtbaren Bereich bis unten (gemessen wie der Kalender; `<main>` endet über der Ablage mit der ZOE-Kugel — dort liegt
+  nichts darunter). Liste und Detail rollen JE FÜR SICH (`.af-spalte`), Kopf und Filter bleiben stehen, `listeKopf` (Tabellenkopf) und `ListenAbschnitt`-
+  Köpfe kleben oben in der Liste. Die Seite selbst rollt nicht (erst unter `FLAECHE_MIN` = 220 px Resthöhe, in sehr flachen Fenstern). Keine Scrollkästen im Detail (Mailtext steht voll im Gespräch).
+- **Spalten nach der Breite der FLÄCHE** (`ZWEI_AB` = 720 px bzw. je Seite `zweiAb` — Kontakte 880 px, weil Tabelle UND Karteikarte Platz brauchen —, nicht das Fenster): zwei Spalten Liste | Detail (`verhaeltnis`); ohne Auswahl steht rechts
+  `leer` (Inbox: das Lagebild; Kontakte: ein Satz). Schmaler: Liste ODER Detail (das Detail trägt „‹ Zurück“, `useArbeitsflaeche().zwei`), `leerOben`
+  stellt `leer` dann kurz über die Liste. Handy (≤ 720 px, `.af-frei`): kein fester Rahmen, Liste → Detail als Schritt im Seitenfluss wie bisher.
+- **Gruppen sind Abschnitte EINER Liste** (`ListenAbschnitt`: Punkt in Bereichsfarbe, Großbuchstaben-Beschriftung, Zahl rechts) — keine Karten in Karten.
+- **Kontext nur mit Inhalt:** eine Kontext-Spalte im Detail steht nur, wenn sie etwas zeigt UND das Detail selbst breit genug ist (`useBreite`, Inbox ab
+  880 px), sonst klappbar darunter. Leerer Kontext („Noch keine Person in der Kartei“) = eine kurze Zeile oben im Detail mit der Aktion („Kontakt anlegen“).
+- Nur Darstellung: Daten, Adressen (`?offen=`, `?k=`) und Tasten (j/k, Enter, /, e, s, a, r, Esc) bleiben bei der Seite. Wächter `tests/arbeitsflaeche.test.ts`.

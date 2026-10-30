@@ -17,7 +17,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, KUGEL, TYP } from '@/lib/make-one/design';
 import { antwortBezugAus } from '@/lib/inbox/teilen';
 import type { GespraechTeam } from '@/lib/inbox/teilen';
-import { Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Pillen, Hinweis, Feldzeile, eingabe, Leer, Punkt, LEUCHT, useRueckfrage } from '../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Knopf, Chip, Pillen, Hinweis, Feldzeile, eingabe, Leer, Punkt, LEUCHT, useRueckfrage, ListenAbschnitt } from '../ui';
 import { GmailText } from './GmailText';
 import { Antwort } from './Antwort';
 import { anhangLink, datumLang, groesse, holen, kuemmern, uebergabeAktion, zeitKurz, type UebergabeDetail, type UebergabeZeile } from './daten';
@@ -285,15 +285,14 @@ export function UebergabeAnsicht({ id, person, meldung, onGeaendert, onZurueck }
 }
 
 /** Das Fach „Übergeben“ in der Inbox: erhaltene (offen), zurückgegebene und weitergegebene — erledigte nur als Zahl. */
-export function UebergabenKarte({ liste, offenId, onOeffnen, i, person }: { liste: UebergabeZeile[]; offenId: string | null; onOeffnen: (id: string | null) => void; i: number; person: string }) {
+export function UebergabenKarte({ liste, offenId, onOeffnen, i, person, abschnitt }: { liste: UebergabeZeile[]; offenId: string | null; onOeffnen: (id: string | null) => void; i: number; person: string;
+  /** In der Arbeitsfläche (29.10.): ein Abschnitt der EINEN Liste statt einer eigenen Karte. */ abschnitt?: boolean }) {
   const aktiv = liste.filter(u => u.status !== 'erledigt');
   const erledigt = liste.length - aktiv.length;
   if (!aktiv.length) return null;
   // Zuerst, was bei mir liegt (kümmere ich mich), dann der Rest.
   const sortiert = [...aktiv].sort((a, b) => Number(b.kuemmert === person) - Number(a.kuemmert === person) || b.geaendertAm.localeCompare(a.geaendertAm));
-  return (
-    <Karte i={i} dicht>
-      <Ueberschrift farbe={KUGEL.granat} rechts={`${aktiv.length}`}>Übergeben</Ueberschrift>
+  const zeilen = (
       <Liste>
         {sortiert.map(u => (
           <Zeile key={u.id} onClick={() => onOeffnen(offenId === u.id ? null : u.id)} aktiv={offenId === u.id}
@@ -305,7 +304,14 @@ export function UebergabenKarte({ liste, offenId, onOeffnen, i, person }: { list
             rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise, whiteSpace: 'nowrap' }}>{zeitKurz(u.geaendertAm)}</span>} />
         ))}
       </Liste>
-      {erledigt > 0 && <Leer>{erledigt} erledigte Übergabe{erledigt === 1 ? '' : 'n'} — sie bleiben 90 Tage über die Suche auffindbar.</Leer>}
+  );
+  const rest = erledigt > 0 && <Leer>{erledigt} erledigte Übergabe{erledigt === 1 ? '' : 'n'} — sie bleiben 90 Tage über die Suche auffindbar.</Leer>;
+  if (abschnitt) return <ListenAbschnitt id="uebergeben" titel="Übergeben" farbe={KUGEL.granat} rechts={`${aktiv.length}`}>{zeilen}{rest}</ListenAbschnitt>;
+  return (
+    <Karte i={i} dicht>
+      <Ueberschrift farbe={KUGEL.granat} rechts={`${aktiv.length}`}>Übergeben</Ueberschrift>
+      {zeilen}
+      {rest}
     </Karte>
   );
 }

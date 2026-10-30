@@ -29,6 +29,8 @@
 // Werkzeug (22.10. abends, lib/make-one/werkzeuge.ts `INBOX_WERKZEUG`): die Bereichs-Leiste ist in das Menü links gezogen (Inbox · Bereiche · Automationen &
 // Head · Postfächer) — die Seite legt die Bereiche ihrer Antwort als Liste `inbox-bereiche` ab (Kennung, Name, ungelesen; components/os/werkzeug/listen.ts) und
 // folgt der Adresse (`?bereich=`, `?postfaecher=1`, `?s=automationen`). Die Fächer und die Postfach-Pillen eines Bereichs bleiben in der Seite.
+// Arbeitsfläche (29.10., DESIGN_STANDARD.md › Arbeitsfläche): Kopf in EINER Zeile, Suche + Ordnung + „Filter ▾“ in EINER Zeile (Zeigen, Postfach eines
+// Bereichs, Bereiche in „Alle“ im Popover), Liste und Gespräch füllen die Höhe und rollen je für sich; ohne offenes Gespräch steht rechts das Lagebild.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -42,7 +44,7 @@ import { POSTFACH_ID } from '@/lib/postfach/typen';
 import { aufgabeAusGespraech } from '@/lib/inbox/aus-gespraech';
 import { neueMailHolen, type NeueMail } from '@/lib/inbox/neue-mail';
 import type { Owner } from '@/types/common';
-import { Seite, Karte, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Segmente, Punkt, Hinweis, Spalten, Spalte, SymbolKnopf, Pillen, MehrfachPillen, Chip, Wahl, useBreit, useHandy, useRueckgaengig, LEUCHT, FlussKarte } from '../ui';
+import { Seite, Ueberschrift, Liste, Zeile, Leer, Leerzustand, Knopf, Segmente, Punkt, Hinweis, SymbolKnopf, Pillen, MehrfachPillen, Chip, Wahl, useHandy, useRueckgaengig, LEUCHT, FlussKarte, Arbeitsflaeche, FilterKnopf, FilterGruppe, ListenAbschnitt } from '../ui';
 import { useWerkzeugListe } from '../werkzeug/listen';
 import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
 import { INBOX_BEREICHE, INBOX_WERKZEUG } from '@/lib/make-one/werkzeuge';
@@ -121,7 +123,6 @@ export function InboxZwei() {
   const pfWahl = bereich && pfRoh && POSTFACH_ID.test(pfRoh) ? pfRoh : null;
   const [filter, setFilter] = useState<Filter>(null);
   const [merker, setMerker] = useState<Merker | null>(null);
-  const [ohneAuf, setOhneAuf] = useState(false);
   const sichtSchluessel = space ?? 'alles';
   useEffect(() => {
     const o = merkerLesen(MERKER.ordnung); const z = merkerLesen(MERKER.zeigen);
@@ -160,7 +161,6 @@ export function InboxZwei() {
   const [sucheAuf, setSucheAuf] = useState(false);
   const suchFeld = useRef<HTMLInputElement>(null);
   const sucht = frage.trim().length >= 2;
-  const breit = useBreit();
   const handy = useHandy();
   const { melden, hinweis } = useRueckgaengig();
   const { state, dispatch } = useTasks();
@@ -386,13 +386,7 @@ export function InboxZwei() {
   );
   const naechsteWv = (s?.gespraeche ?? []).map(g => g.wiedervorlage).filter((x): x is string => !!x && x !== 'faellig').sort()[0];
 
-  const kopfRechts = (
-    <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-      {ansicht === 'liste' && handy && <SymbolKnopf ariaLabel={sucheAuf ? 'Suche schließen' : 'In der Inbox suchen'} onClick={() => { if (sucheAuf) { setSucheAuf(false); setFrage(''); } else { setSucheAuf(true); setTimeout(() => suchFeld.current?.focus(), 0); } }}>{sucheAuf ? '✕' : '⌕'}</SymbolKnopf>}
-      {ansicht === 'liste' ? <Knopf leise onClick={() => setAnsicht('postfaecher')}>Postfächer</Knopf> : <Knopf leise onClick={() => setAnsicht('liste')}>‹ Zur Inbox</Knopf>}
-      {ansicht === 'liste' && <span className="ui-nur-breit"><Knopf leise onClick={async () => { melden('Gleicht ab …'); const r = await senden<{ fehler?: number }>('/api/inbox', { aktion: 'abgleichen' }); melden(r.d.ok ? 'Abgeglichen.' : String(r.d.fehler ?? 'Abgleich ging nicht.')); void laden(); }}>Abgleichen</Knopf></span>}
-    </span>
-  );
+  const abgleichen = async () => { melden('Gleicht ab …'); const r = await senden<{ fehler?: number }>('/api/inbox', { aktion: 'abgleichen' }); melden(r.d.ok ? 'Abgeglichen.' : String(r.d.fehler ?? 'Abgleich ging nicht.')); void laden(); };
 
   if (automationen) {
     return (
@@ -404,77 +398,63 @@ export function InboxZwei() {
 
   if (ansicht === 'postfaecher') {
     return (
-      <Seite titel="Postfächer" unter="Verbinden, Bereich festlegen, Verbindung erneuern — Passwörter liegen verschlüsselt auf dem Server." rechts={kopfRechts}>
+      <Seite titel="Postfächer" unter="Verbinden, Bereich festlegen, Verbindung erneuern — Passwörter liegen verschlüsselt auf dem Server." rechts={<Knopf leise onClick={() => setAnsicht('liste')}>‹ Zur Inbox</Knopf>}>
         <Postfaecher space={space} onGeaendert={() => void laden()} meldung={t => melden(t)} />
         {hinweis}
       </Seite>
     );
   }
 
+  // ── Arbeitsfläche (29.10., Kevin: „die Aufteilung in der Inbox schlecht von der Darstellung her … das Scrolling macht keinen Sinn“) ──────────
+  // Kopf in EINER Zeile (Titel · „n brauchen Antwort“ · ⋯), darunter Suche + Ordnung + „Filter ▾“ in EINER Zeile; die Liste links und das Gespräch rechts
+  // füllen die Höhe und rollen je für sich. Ohne offenes Gespräch steht rechts das Lagebild (ZOE-Satz, Vorschläge, Postfächer, Fluss); in einer Spalte
+  // (schmal, Handy) steht es kurz über der Liste. Die Fächer sind Abschnitte EINER Liste (keine Karten in Karten).
   const liste = sucht ? (
-    <div style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14, minWidth: 0, paddingTop: 12 }}>
       <SuchErgebnisse frage={frage.trim()} filter={filterQuery} offenId={offenId} onOeffnen={id => setOffenId(id)} />
     </div>
   ) : (
-    <div style={{ display: 'grid', gap: 14, minWidth: 0 }}>
-      {!!s && s.postfaecher.length > 0 && (
-        <div style={{ display: 'grid', gap: 10 }} data-inbox="ordnung">
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Segmente liste={ORDNUNGEN} aktiv={ordnung} onWahl={o => merkerSetzen({ ordnung: o })} />
-            {ordnung === 'neueste' && <Pillen einzeilig liste={ZEIGEN.map(z => ({ id: z.id, label: z.label }))} aktiv={zeigen} onWahl={z => merkerSetzen({ zeigen: z })} />}
-            {!bereich && leiste.length > 1 && (
-              <Knopf leise onClick={() => setOhneAuf(x => !x)}>{ohne.length ? `${leiste.length - ohne.length} von ${leiste.length} Bereichen` : 'Bereiche in „Alle“'}{ohneAuf ? ' ▴' : ' ▾'}</Knopf>
-            )}
-          </div>
-          {!bereich && leiste.length > 1 && ohneAuf && (
-            <div data-inbox="bereiche-auswahl">
-              <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 6 }}>In „Alle“ zeigen (gemerkt in diesem Browser):</div>
-              <MehrfachPillen liste={leiste.map(e => ({ id: e.id as string, label: e.name }))} aktiv={leisteIds.filter(id => !ohne.includes(id))}
-                onWahl={ids => { if (!ids.length) { melden('Mindestens ein Bereich bleibt sichtbar.'); return; } merkerSetzen({ ohne: leisteIds.filter(id => !ids.includes(id)) }); }} />
-            </div>
-          )}
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minWidth: 0 }}>
+      {!s && !fehler && <div style={{ paddingTop: 12 }}><Leer>lädt …</Leer></div>}
+      {s && !s.postfaecher.length && !uebergaben.length && !unzugeordnet.length && !fremderBereich && (
+        <div style={{ paddingTop: 12 }}>
+          <Leerzustand symbol="✉" titel="Verbinde dein erstes Postfach" ton={KUGEL.granat} aktion={<Knopf haupt onClick={() => setAnsicht('postfaecher')}>Postfach verbinden</Knopf>}>
+            iCloud, IONOS, Google Workspace oder ein anderer Anbieter — MAKE OS holt die Post selbst, sortiert sie in Fächer und zeigt, was gerade passiert.
+          </Leerzustand>
         </div>
       )}
-      <UebergabenKarte liste={uebergaben} offenId={offenId} onOeffnen={setOffenId} i={0} person={ich} />
-      {filter && (
-        <Hinweis art="info" aktion={<Knopf leise onClick={() => setFilter(null)}>Alle zeigen</Knopf>}>
-          Gefiltert: {filter.fach === 'nachfassen' ? 'Nachfassen fällig' : filter.fach === 'wiedervorlage' ? 'Wiedervorlage' : FACH_LABEL[filter.fach]}{filter.bereich !== null ? ` · ${bereichWort(filter.bereich)}` : ''}
-        </Hinweis>
-      )}
-      {holt.length > 0 && !sichtbar.length && (
-        <Karte i={0} dicht><div data-inbox="holt"><Leer symbol="⟳">Post wird geholt … — {holt.map(p => p.anzeigename).join(', ')}: die letzten 30 Tage kommen gleich. Die Inbox lädt von selbst nach.</Leer></div></Karte>
-      )}
-      {holt.length > 0 && sichtbar.length > 0 && <Hinweis art="info" rolle="status">Post wird noch geholt ({holt.map(p => p.anzeigename).join(', ')}) — es kommt gleich mehr dazu.</Hinweis>}
+      <UebergabenKarte liste={uebergaben} offenId={offenId} onOeffnen={setOffenId} i={0} person={ich} abschnitt />
+      {holt.length > 0 && !sichtbar.length && <div data-inbox="holt" style={{ paddingTop: 12 }}><Leer symbol="⟳">Post wird geholt … — {holt.map(p => p.anzeigename).join(', ')}: die letzten 30 Tage kommen gleich. Die Inbox lädt von selbst nach.</Leer></div>}
       {ordnung === 'faecher' && nichtsOffen && (
-        <Leerzustand symbol="✓" titel="Inbox leer" ton={KUGEL.smaragd}>
-          Nichts wartet auf dich.{naechsteWv ? ` Nächste Wiedervorlage am ${naechsteWv.slice(8, 10)}.${naechsteWv.slice(5, 7)}.` : ''}{(s?.lage ?? []).some(l => l.warten) ? ' Einige Gespräche warten auf eine Antwort von anderen.' : ''}
-        </Leerzustand>
+        <div style={{ paddingTop: 12 }}>
+          <Leerzustand symbol="✓" titel="Inbox leer" ton={KUGEL.smaragd}>
+            Nichts wartet auf dich.{naechsteWv ? ` Nächste Wiedervorlage am ${naechsteWv.slice(8, 10)}.${naechsteWv.slice(5, 7)}.` : ''}{(s?.lage ?? []).some(l => l.warten) ? ' Einige Gespräche warten auf eine Antwort von anderen.' : ''}
+          </Leerzustand>
+        </div>
       )}
-      {ordnung === 'faecher' && filter && !arbeit.length && <Karte i={0}><Leer>In diesem Fach ist gerade nichts.</Leer></Karte>}
+      {ordnung === 'faecher' && filter && !arbeit.length && <div style={{ paddingTop: 12 }}><Leer>In diesem Fach ist gerade nichts.</Leer></div>}
       {ordnung === 'neueste' && !!s && s.postfaecher.length > 0 && !chrono.length && !(holt.length && !sichtbar.length) && (
-        <Karte i={0}><Leer symbol="✓">{zeigen === 'ungelesen' ? 'Nichts Ungelesenes.' : zeigen === 'offen' ? 'Nichts offen.' : 'Hier ist noch keine Post.'}{zeigen !== 'alle' ? ' „Auch Erledigtes“ zeigt alles, was gekommen ist.' : ''}</Leer></Karte>
+        <div style={{ paddingTop: 12 }}><Leer symbol="✓">{zeigen === 'ungelesen' ? 'Nichts Ungelesenes.' : zeigen === 'offen' ? 'Nichts offen.' : 'Hier ist noch keine Post.'}{zeigen !== 'alle' ? ' „Auch Erledigtes“ zeigt alles, was gekommen ist.' : ''}</Leer></div>
       )}
-      {ordnung === 'neueste' && chronoGezeigt.map((gr, i) => {
+      {ordnung === 'neueste' && chronoGezeigt.map(gr => {
         const neu = gr.liste.filter(g => g.ungelesen).length;
         const rest = gr.liste.length - gr.gezeigt.length;
         return (
-          <Karte key={gr.id} i={i} dicht>
-            <Ueberschrift farbe={neu ? KUGEL.granat : C.inkLeise} rechts={`${gr.liste.length}${neu ? ` · ${neu} ungelesen` : ''}`}>{gr.titel}</Ueberschrift>
+          <ListenAbschnitt key={gr.id} id={gr.id} titel={gr.titel} farbe={neu ? KUGEL.granat : C.inkLeise} rechts={`${gr.liste.length}${neu ? ` · ${neu} ungelesen` : ''}`}>
             <Liste>{gr.gezeigt.map(g => zeile(g, gr.id, true))}</Liste>
-            {rest > 0 && <div style={{ marginTop: 10 }}><Knopf leise onClick={() => setMehrJe(m => ({ ...m, [gr.id]: (m[gr.id] ?? 60) + 100 }))}>weitere {Math.min(rest, 100)} von {rest} zeigen</Knopf></div>}
-          </Karte>
+            {rest > 0 && <div style={{ margin: '8px 0 4px' }}><Knopf leise onClick={() => setMehrJe(m => ({ ...m, [gr.id]: (m[gr.id] ?? 60) + 100 }))}>weitere {Math.min(rest, 100)} von {rest} zeigen</Knopf></div>}
+          </ListenAbschnitt>
         );
       })}
-      {ordnung === 'faecher' && gruppen.map((gr, i) => (
-        <Karte key={gr.id} i={i} dicht>
-          <Ueberschrift farbe={gr.farbe} rechts={gr.id === 'info' ? (
-            <span style={{ display: 'flex', gap: 6 }}>
-              <Knopf leise onClick={() => setInfoAuf(x => !x)}>{gr.eingeklappt ? `${gr.liste.length} anzeigen` : 'einklappen'}</Knopf>
-              <Knopf leise onClick={async () => { const ids = gr.liste.map(g => g.id); setWeg(w => new Set([...w, ...ids])); const r = await senden<{ erledigt?: number; fehler?: number }>('/api/inbox', { aktion: 'alle-erledigen', ids }); melden(r.d.ok ? `${r.d.erledigt ?? 0} erledigt${r.d.fehler ? ` · ${r.d.fehler} ging nicht` : ''}.` : String(r.d.fehler ?? 'Das ging nicht.')); void laden(); }}>alle erledigen</Knopf>
-            </span>
-          ) : `${gr.liste.length}`}>{gr.titel}</Ueberschrift>
-          {gr.eingeklappt ? <Leer>Newsletter und Automatisches — {gr.liste.length} {gr.liste.length === 1 ? 'Gespräch' : 'Gespräche'}, die keine Entscheidung brauchen.</Leer> : <Liste>{gr.liste.map(g => zeile(g, gr.id))}</Liste>}
-        </Karte>
+      {ordnung === 'faecher' && gruppen.map(gr => (
+        <ListenAbschnitt key={gr.id} id={gr.id} titel={gr.titel} farbe={gr.farbe} rechts={gr.id === 'info' ? (
+          <span style={{ display: 'flex', gap: 6 }}>
+            <Knopf leise onClick={() => setInfoAuf(x => !x)}>{gr.eingeklappt ? `${gr.liste.length} anzeigen` : 'einklappen'}</Knopf>
+            <Knopf leise onClick={async () => { const ids = gr.liste.map(g => g.id); setWeg(w => new Set([...w, ...ids])); const r = await senden<{ erledigt?: number; fehler?: number }>('/api/inbox', { aktion: 'alle-erledigen', ids }); melden(r.d.ok ? `${r.d.erledigt ?? 0} erledigt${r.d.fehler ? ` · ${r.d.fehler} ging nicht` : ''}.` : String(r.d.fehler ?? 'Das ging nicht.')); void laden(); }}>alle erledigen</Knopf>
+          </span>
+        ) : `${gr.liste.length}`}>
+          {gr.eingeklappt ? <div style={{ padding: '2px 0 8px', fontSize: TYP.bedien, color: C.inkLeise }}>Newsletter und Automatisches — {gr.liste.length} {gr.liste.length === 1 ? 'Gespräch' : 'Gespräche'}, die keine Entscheidung brauchen.</div> : <Liste>{gr.liste.map(g => zeile(g, gr.id))}</Liste>}
+        </ListenAbschnitt>
       ))}
     </div>
   );
@@ -487,93 +467,119 @@ export function InboxZwei() {
     </div>
   );
   const detail = offen ? (
-    <Karte i={1} akzent={KUGEL.granat}>
+    <div data-inbox="detail">
       {kopfEtikett(offen)}
       <GespraechAnsicht key={`${offen.id}-${antwortStart === offen.id ? 'r' : ''}`} id={offen.id} person={ich} meldung={melden} onGeaendert={() => void laden()} onZurueck={() => setOffenId(null)} startAntwort={antwortStart === offen.id} />
-    </Karte>
+    </div>
   ) : offeneUebergabe ? (
-    <Karte i={1} akzent={KUGEL.granat}>
-      <UebergabeAnsicht key={offeneUebergabe} id={offeneUebergabe} person={ich} meldung={melden} onGeaendert={() => void laden()} onZurueck={() => setOffenId(null)} />
-    </Karte>
+    <UebergabeAnsicht key={offeneUebergabe} id={offeneUebergabe} person={ich} meldung={melden} onGeaendert={() => void laden()} onZurueck={() => setOffenId(null)} />
+  ) : neueMail && s ? (
+    <Antwort allen={false} meldung={t => melden(t)} onZu={() => setNeueMail(null)} onGesendet={() => { setNeueMail(null); void laden(); }}
+      v={{ betreff: neueMail.betreff ?? '', von: [], postfaecher: s.postfaecher.filter(p => p.quelle !== 'whatsapp' && p.zustand.stufe !== 'anmeldung').map(p => ({ id: p.id, name: `${p.anzeigename} · ${p.bereichName}` })), start: { an: neueMail.an, text: neueMail.text, betreff: neueMail.betreff }, ...(neueMail.anhaenge?.length ? { anhaenge: neueMail.anhaenge } : {}), ...(neueMail.beleg ? { beleg: neueMail.beleg } : {}) }} />
   ) : null;
-  const istOffen = !!offen || !!offeneUebergabe;
-  const suchZeile = (!handy || sucheAuf) ? <div style={{ marginBottom: 14 }}><SuchFeld ref={suchFeld} wert={frage} onAendern={t => { setFrage(t); if (!t && handy) setSucheAuf(false); }} /></div> : null;
+
+  /** Das Lagebild: rechts, solange kein Gespräch offen ist (zwei Spalten); in einer Spalte kurz über der Liste — nur die Zahlen und der ZOE-Satz
+   *  (Postfächer im „⋯“, Vorschläge, Fluss und Tastenhilfe nur in der Spalte rechts), damit die Liste oben bleibt. */
+  const lagebild = (voll: boolean) => (s && s.postfaecher.length > 0 && !sucht ? (
+    <div style={{ display: 'grid', gap: 16, minWidth: 0 }} data-inbox="lagebild">
+      <div style={{ display: 'grid', gap: 10 }} data-inbox="lage">
+        {voll && <Ueberschrift farbe={lageZahl ? KUGEL.granat : KUGEL.smaragd}>Lage</Ueberschrift>}
+        {s.lage.length === 0 && <div style={{ fontSize: TYP.body, color: C.inkDim }}>Nichts offen.</div>}
+        {s.lage.map(l => (
+          <div key={String(l.bereich)} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, marginRight: 4 }}>{bereichWort(l.bereich)}</span>
+            {l.wiedervorlage > 0 && <Knopf leise farbe={LEUCHT.achtung} onClick={() => setFilter({ fach: 'wiedervorlage', bereich: l.bereich })}>{l.wiedervorlage} wieder dran</Knopf>}
+            {LAGE_TEILE.filter(t => l[t.feld] > 0).map(t => <Knopf key={t.feld} leise farbe={t.feld === 'antworten' ? KUGEL.granat : undefined} onClick={() => setFilter({ fach: t.fach, bereich: l.bereich })}>{t.text(l[t.feld])}</Knopf>)}
+            {l.nachfassen > 0 && <Knopf leise farbe={LEUCHT.achtung} onClick={() => setFilter({ fach: 'nachfassen', bereich: l.bereich })}>{l.nachfassen} nachfassen</Knopf>}
+            {!LAGE_TEILE.some(t => l[t.feld] > 0) && !l.wiedervorlage && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>nichts offen</span>}
+          </div>
+        ))}
+        <button type="button" disabled={!s.zoe.gespraech} onClick={() => s.zoe.gespraech && setOffenId(s.zoe.gespraech)} data-inbox="zoe-satz"
+          style={{ textAlign: 'left', background: 'none', border: 'none', padding: '6px 0 0', minHeight: 44, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, lineHeight: 1.45, cursor: s.zoe.gespraech ? 'pointer' : 'default' }}>
+          <span style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, display: 'block' }}>ZOE schlägt vor</span>
+          {s.zoe.text}{s.zoe.gespraech ? ' ›' : ''}
+        </button>
+        {voll && <AufgabenVorschlaege meldung={t => melden(t)} space={space} />}
+      </div>
+      {voll && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }} data-inbox="postfach-leiste">
+        {s.postfaecher.map(p => (
+          <button key={p.id} type="button" onClick={() => setAnsicht('postfaecher')} title={STUFE_TEXT[p.zustand.stufe]}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '6px 12px', borderRadius: 999, border: `1px solid ${C.linie}`, background: 'rgba(255,255,255,.03)', color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, cursor: 'pointer' }}>
+            <Punkt farbe={STUFE_FARBE[p.zustand.stufe]} />{p.anzeigename}{p.zustand.stufe !== 'aktuell' ? <span style={{ color: C.inkLeise }}>· {STUFE_TEXT[p.zustand.stufe]}</span> : null}
+          </button>
+        ))}
+      </div>}
+      {voll && <FlussKarte bereich="inbox" farbe={KUGEL.granat} />}
+      {voll && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Tasten: / suchen · j/k wandern · Enter öffnen · e erledigt · s später · a Aufgabe · r antworten · Esc schließen</div>}
+    </div>
+  ) : null);
+
+  // Suche + Ordnung + Filter in EINER Zeile; am Handy steht die Suche hinter der Lupe im Kopf.
+  const zeigenFilter = ordnung === 'neueste' && zeigen !== 'offen';
+  const filterAktiv = (zeigenFilter ? 1 : 0) + (ohne.length ? 1 : 0) + (pfWahl ? 1 : 0);
+  const filterGruppen = [
+    ordnung === 'neueste' && <FilterGruppe key="zeigen" titel="Zeigen"><Pillen liste={ZEIGEN.map(z => ({ id: z.id, label: z.label }))} aktiv={zeigen} onWahl={z => merkerSetzen({ zeigen: z })} /></FilterGruppe>,
+    eintrag && eintrag.postfaecher.length > 1 && (
+      <FilterGruppe key="postfach" titel="Postfach">
+        <div data-inbox="postfach-wahl" style={{ display: 'contents' }}>
+          <Pillen liste={[{ id: ALLE, label: 'Alle Postfächer' }, ...eintrag.postfaecher.map(p => ({ id: p.id, label: p.name }))]} aktiv={pfWahl ?? ALLE} onWahl={id => geheZu(bereich, id === ALLE ? null : id)} />
+        </div>
+      </FilterGruppe>
+    ),
+    !bereich && leiste.length > 1 && (
+      <FilterGruppe key="bereiche" titel="Bereiche in „Alle“ (gemerkt in diesem Browser)">
+        <div data-inbox="bereiche-auswahl" style={{ display: 'contents' }}>
+          <MehrfachPillen liste={leiste.map(e => ({ id: e.id as string, label: e.name }))} aktiv={leisteIds.filter(id => !ohne.includes(id))}
+            onWahl={ids => { if (!ids.length) { melden('Mindestens ein Bereich bleibt sichtbar.'); return; } merkerSetzen({ ohne: leisteIds.filter(id => !ids.includes(id)) }); }} />
+        </div>
+      </FilterGruppe>
+    ),
+  ].filter(Boolean);
+  const leisteZeile = mitInhalt ? (
+    <>
+      {(!handy || sucheAuf) && <div className="af-suche"><SuchFeld ref={suchFeld} wert={frage} onAendern={t => { setFrage(t); if (!t && handy) setSucheAuf(false); }} /></div>}
+      {!sucht && s && s.postfaecher.length > 0 && (
+        <span data-inbox="ordnung" style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Segmente liste={ORDNUNGEN} aktiv={ordnung} onWahl={o => merkerSetzen({ ordnung: o })} />
+          {filterGruppen.length > 0 && (
+            <FilterKnopf aktiv={filterAktiv} onZuruecksetzen={() => { merkerSetzen({ zeigen: 'offen', ohne: [] }); if (pfWahl) geheZu(bereich); }}>{filterGruppen}</FilterKnopf>
+          )}
+          {filter && (
+            <button type="button" className="af-chip-weg fassbar" onClick={() => setFilter(null)} title="Filter aufheben — alle zeigen" data-inbox="lage-filter">
+              {filter.fach === 'nachfassen' ? 'Nachfassen fällig' : filter.fach === 'wiedervorlage' ? 'Wiedervorlage' : FACH_LABEL[filter.fach]}{filter.bereich !== null ? ` · ${bereichWort(filter.bereich)}` : ''} <span aria-hidden>✕</span>
+            </button>
+          )}
+        </span>
+      )}
+    </>
+  ) : undefined;
+
+  const hinweise = (fehler || zuordnenKarten || fremderBereich || anmeldung.length > 0 || (holt.length > 0 && sichtbar.length > 0)) ? (
+    <>
+      {fehler && <Hinweis art="kritisch" rolle="alert" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal</Knopf>}>{fehler}</Hinweis>}
+      {zuordnenKarten}
+      {fremderBereich && <Hinweis art="info" aktion={<Knopf leise onClick={() => geheZu(null)}>Alle zeigen</Knopf>}>Dieser Bereich hat in dieser Sicht keine Postfächer.</Hinweis>}
+      {anmeldung.length > 0 && (
+        <Hinweis art="kritisch" rolle="alert" titel="Verbindung erneuern" aktion={<Knopf onClick={() => setAnsicht('postfaecher')}>Verbindung erneuern</Knopf>}>
+          {anmeldung.map(p => p.anzeigename).join(', ')}: der Anbieter hat die Anmeldung abgelehnt. Bei iCloud heißt das meist: nach einem Wechsel des Apple-Passworts ein neues App-spezifisches Passwort eintragen.
+        </Hinweis>
+      )}
+      {holt.length > 0 && sichtbar.length > 0 && <Hinweis art="info" rolle="status">Post wird noch geholt ({holt.map(p => p.anzeigename).join(', ')}) — es kommt gleich mehr dazu.</Hinweis>}
+    </>
+  ) : undefined;
 
   return (
-    <Seite titel="Inbox" unter={lageZahl > 0 ? `${lageZahl} ${lageZahl === 1 ? 'Gespräch braucht' : 'Gespräche brauchen'} eine Antwort.` : undefined} rechts={kopfRechts}>
-      {fehler && <div style={{ marginBottom: 12 }}><Hinweis art="kritisch" rolle="alert" aktion={<Knopf leise onClick={() => void laden()}>Noch einmal</Knopf>}>{fehler}</Hinweis></div>}
-      {!s && !fehler && <Karte i={0}><Leer>lädt …</Leer></Karte>}
-      {zuordnenKarten && <div style={{ marginBottom: 14 }}>{zuordnenKarten}</div>}
-      {fremderBereich && (
-        <div style={{ marginBottom: 14 }}>
-          <Hinweis art="info" aktion={<Knopf leise onClick={() => geheZu(null)}>Alle zeigen</Knopf>}>Dieser Bereich hat in dieser Sicht keine Postfächer.</Hinweis>
-        </div>
-      )}
-      {/* Bereiche (seit 22.10. abends im Werkzeug-Menü links bzw. im Blatt „Menü“ am Handy): hier bleibt nur die Wahl des Postfachs eines Bereichs mit mehreren. */}
-      {eintrag && eintrag.postfaecher.length > 1 && (breit || !istOffen) && (
-        <div style={{ display: 'grid', gap: 8, marginBottom: 14 }} data-inbox="postfach-wahl">
-          <Pillen einzeilig liste={[{ id: ALLE, label: 'Alle Postfächer' }, ...eintrag.postfaecher.map(p => ({ id: p.id, label: p.name }))]} aktiv={pfWahl ?? ALLE} onWahl={id => geheZu(bereich, id === ALLE ? null : id)} />
-        </div>
-      )}
-      {s && !s.postfaecher.length && !uebergaben.length && !unzugeordnet.length && !fremderBereich && (
-        <Leerzustand symbol="✉" titel="Verbinde dein erstes Postfach" ton={KUGEL.granat} aktion={<Knopf haupt onClick={() => setAnsicht('postfaecher')}>Postfach verbinden</Knopf>}>
-          iCloud, IONOS, Google Workspace oder ein anderer Anbieter — MAKE OS holt die Post selbst, sortiert sie in Fächer und zeigt, was gerade passiert.
-        </Leerzustand>
-      )}
-      {/* Mit offenem Gespräch tritt das Lagebild zurück (Esc bzw. „Zurück“ holt es wieder) — das Gespräch steht oben. */}
-      {mitInhalt && suchZeile}
-      {s && s.postfaecher.length > 0 && !istOffen && !sucht && (
-        <div style={{ display: 'grid', gap: 14, marginBottom: 14 }}>
-          <Karte i={0} ton={lageZahl ? KUGEL.granat : KUGEL.smaragd} dicht>
-            <Ueberschrift farbe={lageZahl ? KUGEL.granat : KUGEL.smaragd}>Lage</Ueberschrift>
-            <div style={{ display: 'grid', gap: 10 }} data-inbox="lage">
-              {s.lage.length === 0 && <div style={{ fontSize: TYP.body, color: C.inkDim }}>Nichts offen.</div>}
-              {s.lage.map(l => (
-                <div key={String(l.bereich)} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span style={{ fontFamily: SCHRIFT.display, fontWeight: 700, fontSize: TYP.body, marginRight: 4 }}>{bereichWort(l.bereich)}</span>
-                  {l.wiedervorlage > 0 && <Knopf leise farbe={LEUCHT.achtung} onClick={() => setFilter({ fach: 'wiedervorlage', bereich: l.bereich })}>{l.wiedervorlage} wieder dran</Knopf>}
-                  {LAGE_TEILE.filter(t => l[t.feld] > 0).map(t => <Knopf key={t.feld} leise farbe={t.feld === 'antworten' ? KUGEL.granat : undefined} onClick={() => setFilter({ fach: t.fach, bereich: l.bereich })}>{t.text(l[t.feld])}</Knopf>)}
-                  {l.nachfassen > 0 && <Knopf leise farbe={LEUCHT.achtung} onClick={() => setFilter({ fach: 'nachfassen', bereich: l.bereich })}>{l.nachfassen} nachfassen</Knopf>}
-                  {!LAGE_TEILE.some(t => l[t.feld] > 0) && !l.wiedervorlage && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>nichts offen</span>}
-                </div>
-              ))}
-              <button type="button" disabled={!s.zoe.gespraech} onClick={() => s.zoe.gespraech && setOffenId(s.zoe.gespraech)} data-inbox="zoe-satz"
-                style={{ textAlign: 'left', background: 'none', border: 'none', padding: '6px 0 0', minHeight: 44, color: C.ink, fontFamily: SCHRIFT.text, fontSize: TYP.body, lineHeight: 1.45, cursor: s.zoe.gespraech ? 'pointer' : 'default' }}>
-                <span style={{ fontSize: TYP.mikro, letterSpacing: '.08em', textTransform: 'uppercase', color: C.inkLeise, display: 'block' }}>ZOE schlägt vor</span>
-                {s.zoe.text}{s.zoe.gespraech ? ' ›' : ''}
-              </button>
-              <AufgabenVorschlaege meldung={t => melden(t)} space={space} />
-            </div>
-          </Karte>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }} data-inbox="postfach-leiste">
-            {s.postfaecher.map(p => (
-              <button key={p.id} type="button" onClick={() => setAnsicht('postfaecher')} title={STUFE_TEXT[p.zustand.stufe]}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '6px 12px', borderRadius: 999, border: `1px solid ${C.linie}`, background: 'rgba(255,255,255,.03)', color: C.inkDim, fontFamily: SCHRIFT.text, fontSize: TYP.bedien, cursor: 'pointer' }}>
-                <Punkt farbe={STUFE_FARBE[p.zustand.stufe]} />{p.anzeigename}{p.zustand.stufe !== 'aktuell' ? <span style={{ color: C.inkLeise }}>· {STUFE_TEXT[p.zustand.stufe]}</span> : null}
-              </button>
-            ))}
-          </div>
-          {anmeldung.length > 0 && (
-            <Hinweis art="kritisch" rolle="alert" titel="Verbindung erneuern" aktion={<Knopf onClick={() => setAnsicht('postfaecher')}>Verbindung erneuern</Knopf>}>
-              {anmeldung.map(p => p.anzeigename).join(', ')}: der Anbieter hat die Anmeldung abgelehnt. Bei iCloud heißt das meist: nach einem Wechsel des Apple-Passworts ein neues App-spezifisches Passwort eintragen.
-            </Hinweis>
-          )}
-          {neueMail && (
-            <Karte i={0}>
-              <Antwort allen={false} meldung={t => melden(t)} onZu={() => setNeueMail(null)} onGesendet={() => { setNeueMail(null); void laden(); }}
-                v={{ betreff: neueMail.betreff ?? '', von: [], postfaecher: s.postfaecher.filter(p => p.quelle !== 'whatsapp' && p.zustand.stufe !== 'anmeldung').map(p => ({ id: p.id, name: `${p.anzeigename} · ${p.bereichName}` })), start: { an: neueMail.an, text: neueMail.text, betreff: neueMail.betreff }, ...(neueMail.anhaenge?.length ? { anhaenge: neueMail.anhaenge } : {}), ...(neueMail.beleg ? { beleg: neueMail.beleg } : {}) }} />
-            </Karte>
-          )}
-        </div>
-      )}
-      {/* Rechner: ohne offenes Gespräch die Liste in voller Breite; mit Gespräch Liste ⅓ · Gespräch + Kontext ⅔ (Front-Muster). */}
-      {mitInhalt && (breit && istOffen ? (
-        <Spalten verhaeltnis="1:2"><Spalte>{liste}</Spalte><Spalte klebt>{detail}</Spalte></Spalten>
-      ) : istOffen ? detail : liste)}
-      {s && s.postfaecher.length > 0 && !istOffen && !sucht && <div style={{ marginTop: 18 }}><FlussKarte bereich="inbox" farbe={KUGEL.granat} /></div>}
-      {mitInhalt && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 18 }}>Tasten: / suchen · j/k wandern · e erledigt · s später · a Aufgabe · r antworten{handy ? ' · Wischen: rechts erledigt, links morgen' : ''}</div>}
+    <>
+      <Arbeitsflaeche titel="Inbox" label="Inbox"
+        zaehler={lageZahl > 0 ? <span data-inbox="zaehler" style={{ color: KUGEL.granat }}>{lageZahl} {lageZahl === 1 ? 'braucht' : 'brauchen'} Antwort</span> : undefined}
+        neben={handy ? <SymbolKnopf ariaLabel={sucheAuf ? 'Suche schließen' : 'In der Inbox suchen'} onClick={() => { if (sucheAuf) { setSucheAuf(false); setFrage(''); } else { setSucheAuf(true); setTimeout(() => suchFeld.current?.focus(), 0); } }}>{sucheAuf ? '✕' : '⌕'}</SymbolKnopf> : undefined}
+        mehr={<>
+          <Knopf leise onClick={() => setAnsicht('postfaecher')}>Postfächer</Knopf>
+          <Knopf leise onClick={abgleichen}>Jetzt abgleichen</Knopf>
+        </>}
+        leiste={leisteZeile} hinweise={hinweise}
+        liste={liste} detail={detail} detailKennung={offenId} leer={st => lagebild(st.zwei)} leerOben verhaeltnis="2:3" zweiAb={820} />
       {hinweis}
-    </Seite>
+    </>
   );
 }
-

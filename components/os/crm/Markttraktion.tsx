@@ -162,20 +162,37 @@ export function MarkttraktionSeite() {
     if (anker) setTimeout(() => window.dispatchEvent(new HashChangeEvent('hashchange')), 60);
   };
 
+  // „ZOE fragen“ (28.09., C7): mit dem, was gerade offen ist (Kontakt, Firma, Deal, Angebot) oder dem Bereich — ZOE liest selbst nach, schlägt nur vor.
+  // Seit 10.10. (Chat je Bereich): „Mit <Head> sprechen“ — der Head des Bereichs (Sales, Marketing, Event) im Chat unten; „↔ ZOE“ wechselt dort.
+  const zoeKnopf = <ZoeFragenKnopf bezug={zoeBezugFuer(bereich, ansicht, kParam)} headId={markttraktionHead(`?s=${bereich}`)} />;
+  // „+ Angebot“ (solange eine Akte offen ist) und „+ Aktivität hinzufügen“ — im Kopf der Seite; in der Kartei (Arbeitsfläche) im „⋯“ neben „+ Person“.
+  const kopfAktionen = <>
+    {angebotBezug && <Knopf onClick={neuesAngebot} ariaLabel="Angebot für diese Akte anlegen" style={{ whiteSpace: 'nowrap' }}>+ Angebot</Knopf>}
+    {/* „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (am Handy kürzer: „+ Aktivität“). */}
+    <Knopf onClick={() => setErfassen(true)} ariaLabel="Aktivität hinzufügen" style={{ whiteSpace: 'nowrap' }}><span>+ Aktivität<span className="ui-nur-breit"> hinzufügen</span></span></Knopf>
+  </>;
+  const mitlaeufer = <>
+    <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
+    {/* Meldungen (K1): fixiert unten, bleiben stehen bis weggeklickt / ~8 s / nächstes Schreiben — nicht mehr oben als Zeile, die das Laden löschte. */}
+    <FehlerHinweis text={api.fehler} onZu={fehlerZu} />
+    <FehlerHinweis text={api.hinweis} onZu={hinweisZu} ton="info" bleibt />
+  </>;
+  const karteiProps = { api, name, auswahl, setAuswahl, zuKontakt, zuFirma, start: ansicht === 'akte' ? undefined : ansicht, zuRunde: (a: 'kreis' | 'chancen' | 'vernetzen') => (a === 'chancen' ? gehe('qualifizierung') : gehe('kontakte', `runde-${a}`)), zuAkte, startBean: params.get('bean') };
+  // Arbeitsfläche (29.10., DESIGN_STANDARD.md › Arbeitsfläche): die Kartei der Personen IST die Seite — Kopf in einer Zeile („Kontakte“ · Zahl · ⋯ · „+ Person“),
+  // Liste und Karteikarte füllen die Höhe und rollen je für sich. Runden, Akte und Firmen bleiben in der Seite wie bisher.
+  if (!runde && !akteId && bereich === 'kontakte') {
+    return (
+      <>
+        {mitlaeufer}
+        <Kartei {...karteiProps} modus="personen" kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} />
+      </>
+    );
+  }
+
   return (
     // „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar.
-    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>
-      {/* „ZOE fragen“ (28.09., C7): mit dem, was gerade offen ist (Kontakt, Firma, Deal, Angebot) oder dem Bereich — ZOE liest selbst nach, schlägt nur vor. */}
-      {/* Seit 10.10. (Chat je Bereich): „Mit <Head> sprechen“ — der Head des Bereichs (Sales, Marketing, Event) im Chat unten; „↔ ZOE“ wechselt dort. */}
-      <ZoeFragenKnopf bezug={zoeBezugFuer(bereich, ansicht, kParam)} headId={markttraktionHead(`?s=${bereich}`)} />
-      {angebotBezug && <Knopf onClick={neuesAngebot} ariaLabel="Angebot für diese Akte anlegen" style={{ whiteSpace: 'nowrap' }}>+ Angebot</Knopf>}
-      {/* „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar (am Handy kürzer: „+ Aktivität“). */}
-      <Knopf onClick={() => setErfassen(true)} ariaLabel="Aktivität hinzufügen" style={{ whiteSpace: 'nowrap' }}><span>+ Aktivität<span className="ui-nur-breit"> hinzufügen</span></span></Knopf>
-    </>}>
-      <SchnellErfassen api={api} offen={erfassen} onZu={() => setErfassen(false)} kontaktId={bereich === 'kontakte' && auswahl && !auswahl.startsWith('f-') ? auswahl : undefined} />
-      {/* Meldungen (K1): fixiert unten, bleiben stehen bis weggeklickt / ~8 s / nächstes Schreiben — nicht mehr oben als Zeile, die das Laden löschte. */}
-      <FehlerHinweis text={api.fehler} onZu={fehlerZu} />
-      <FehlerHinweis text={api.hinweis} onZu={hinweisZu} ton="info" bleibt />
+    <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>{zoeKnopf}{kopfAktionen}</>}>
+      {mitlaeufer}
 
       {/* Antwort zuerst (11.10.): „Für dich“ und was zu tun ist oben — die Index-Kennzahlen (oft noch „fehlt“) als Hintergrund darunter. */}
       {bereich === 'ueberblick' && <Ueberblick api={api} zuBereich={zuBereich} />}
@@ -211,7 +228,7 @@ export function MarkttraktionSeite() {
       {runde && <Runden api={api} art={runde} name={name} zuKontakt={zuKontakt} zurueck={() => zurueckWie(markttraktion('kontakte'))}
         kampagneId={kParam?.startsWith('kp-') ? kParam : undefined} zuKampagne={id => gehe('kontakte', 'runde-vernetzen', id ?? undefined, 'replace')} />}
       {akteId && <KontaktAkte api={api} id={akteId} name={name} zurueck={() => zurueckWie(markttraktion('kontakte', undefined, akteId))} zuFirma={zuFirma} zuAkte={zuAkte} t={params.get('t')} u={params.get('u')} setReiter={akteReiterSetzen} />}
-      {!runde && !akteId && (bereich === 'kontakte' || bereich === 'firmen') && <Kartei api={api} name={name} modus={bereich === 'firmen' ? 'firmen' : 'personen'} auswahl={auswahl} setAuswahl={setAuswahl} zuKontakt={zuKontakt} zuFirma={zuFirma} start={ansicht === 'akte' ? undefined : ansicht} zuRunde={a => (a === 'chancen' ? gehe('qualifizierung') : gehe('kontakte', `runde-${a}`))} zuAkte={zuAkte} startBean={params.get('bean')} />}
+      {!runde && !akteId && bereich === 'firmen' && <Kartei {...karteiProps} modus="firmen" />}
       {bereich === 'formulare' && <Formulare api={api} />}
       {bereich === 'stammdaten' && <Stammdaten api={api} zuBereich={zuBereich} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('stammdaten', a || undefined)} />}
     </Seite>
