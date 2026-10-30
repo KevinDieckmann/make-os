@@ -9,6 +9,19 @@ import { systemAufgabenAendern } from '@/lib/aufgaben/system-schreiben';
 import { finanzOrtAus, gehoertZuPrivat, istGesellschaft } from '@/lib/einheiten';
 import { ladeHaushalt } from './speicher';
 import { heuteBerlin } from './monat';
+import { haushaltsPersonen } from '@/lib/aufgaben/sicht';
+
+/**
+ * Wer einen Beleg nachreicht (30.10., neutral — vorher „malin“ oder sonst eine feste Person): der „Verursacher“ aus dem Altsystem ist freier
+ * Text (Vor- oder Speichername). Passt er zu einer Person des Haushalts, ist sie zuständig, sonst „both“ — das löst der Schreibweg auf die
+ * erste Person (Haupt-Inhaber) auf. Rein.
+ */
+export function belegZustaendig(verursacher: string | null | undefined, personen: readonly { speicher: string; name: string }[]): string {
+  const w = String(verursacher ?? '').trim().toLowerCase();
+  if (!w) return 'both';
+  const p = personen.find(x => x.speicher.toLowerCase() === w || (x.name ?? '').trim().split(/\s+/)[0]?.toLowerCase() === w);
+  return p?.speicher ?? 'both';
+}
 
 /** Bereich eines Belegs: Privat und Privat-Einheiten (05.10.: Selbstständigkeit, `gehoertZuPrivat`) → privat, sonst Business. */
 const spaceVon = (einheit: string | undefined) => (einheit === 'privat' || gehoertZuPrivat(finanzOrtAus(einheit)) ? 'privat' : 'business') as 'privat' | 'business';
@@ -26,6 +39,7 @@ export async function belegAufgabenAbgleichen(haushalt: string): Promise<{ neu: 
   const h = await ladeHaushalt(haushalt);
   const heute = heuteBerlin();
   const jetzt = new Date().toISOString();
+  const personen = await haushaltsPersonen().catch(() => []);
   const offen = new Map(h.belege.filter(b => b.art === 'beleg' && !b.erledigt).map(b => [`beleg-${b.id}`, b]));
   let neu = 0, erledigt = 0;
   // Über den Schreibweg (29.09., Paket T1 #12): `completedAt`, Verlauf „durch System“, Protokoll — in EINER Sperre.
@@ -51,10 +65,9 @@ export async function belegAufgabenAbgleichen(haushalt: string): Promise<{ neu: 
     }
     const neue = Array.from(rest.entries()).map(([id, b]) => {
       neu++;
-      const wer = (b.verursacher ?? '').toLowerCase();
       return {
         id, title: `Beleg nachreichen: ${b.bezeichnung}`.slice(0, 200), description: 'Aus den Haushaltsfinanzen: dieser Beleg fehlt der Buchhaltung (sevdesk/Bank).',
-        status: 'todo', priority: b.faellig_am && b.faellig_am < heute ? 'high' : 'medium', assignee: wer === 'malin' ? 'malin' : 'kevin',
+        status: 'todo', priority: b.faellig_am && b.faellig_am < heute ? 'high' : 'medium', assignee: belegZustaendig(b.verursacher, personen) as import('@/types/tasks').Task['assignee'],
         tags: ['haushalt', 'beleg'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt, space: spaceVon(b.einheit), spaceId: spaceIdVon(b.einheit), ...(b.faellig_am ? { dueDate: b.faellig_am } : {}),
       };
     });

@@ -477,12 +477,6 @@ export function erwaehnungen(text: string, personen: readonly { speicher: string
   return raus;
 }
 
-/** Wer eine Aufgabe „hat“: Speichernamen aus `assignee` (both = beide Personen). */
-export function zustaendigeVon(assignee: string | undefined, beide: readonly string[] = ['kevin', 'malin']): string[] {
-  if (!assignee) return [];
-  return assignee === 'both' ? [...beide] : [assignee];
-}
-
 /** Anzeige-Hilfe: Fortschritt der Unteraufgaben (erledigt/gesamt) — abgebrochene zählen weder als fertig noch mit (29.09.). */
 export function fortschritt(unter: readonly Pick<Task, 'status'>[]): { fertig: number; gesamt: number } {
   const zaehlt = unter.filter(u => u.status !== 'cancelled');
