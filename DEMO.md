@@ -25,11 +25,13 @@ Ein Haushalt `demo` mit zwei Personen, einem Vertriebspartner („nur Business�
 | Wissen | 4 Notizen im Demo-Vault (`scope: oeffentlich`) |
 | Agenten (Paket 4c, lib/demo/saat-agenten.ts) | je Business-Head ein Thread mit gespeicherter Antwort (Sales und Marketing je zwei), zwei Mitarbeiter-Threads mit Bericht („Recherche & Prospecting“, „Bild & Video“), drei Skills (einer aktiv mit Zeitplan), zwei geplante Hintergrundaufgaben → „Als Nächstes“ gefüllt — **ohne KI-Schlüssel, kein Modellaufruf** |
 | Fotos & Videos | Album „Sommerfest (Beispiel)“ mit drei erzeugten Farbflächen (keine Fotos, keine Personen): eins freigegeben, eins angefragt, eins beim Head of Marketing mit Vorschlag im Freigabe-Stapel |
+| Kreislauf Geld & Lieferung (30.10., lib/demo/saat-kreislauf.ts) | Angebot „Klarheits-Diagnose Werk Süd“ an Nordwerk: gestellt → angenommen → **Mandat + Liquiplan-Posten automatisch** (Mandat-Automatik); Rechnung aus diesem Mandat gestellt **und bezahlt**; **Entwurf** der Monatsrechnung des Nordwerk-Retainers (wie vom Morgenlauf vorbereitet); gestellte Monatsrechnung Lumen; gestellte Rechnung der **Selbstständigkeit** (Privat-Einheit) an die Beispiel-Kanzlei; eine alte, bezahlte Rechnung **ohne Zuordnung** (Filter „Ohne Zuordnung“, „Zuordnung nachtragen“) |
+| Große Akte | **Nordwerk** trägt alles: zwei Personen, Deals (gewonnen + offen „Cockpit für Nordwerk“), zwei Mandate, Rechnungen, Termine (Wochen-Check + Kick-off mit Bezug), Aufgaben mit Bezug, Rahmenvertrag (PDF) in der Firmenakte |
 
 Geschrieben wird über **dieselben Schreibwege wie die Oberfläche** (die Routen in-process mit der Person im Kopf — Säuberung,
 Regeln, Kaskade, Meilenstein-Listen, Änderungsprotokoll). Direkt über die Datenschicht nur: Konten (sonst bräuchte es den
 Einrichtungs-Schlüssel), die Demo-Marke, `calendar-cache` und die drei vergangenen Wochenpläne (Morgenlauf-Schritt mit dem
-Montag von damals); im Agenten-Bereich die Antworten/Berichte der Threads, der Testlauf des aktiven Skills und der Vorschlag des Heads zum
+Montag von damals) samt einem Termin-Bezug für den Kick-off der großen Akte (`bezugSetzen` — ohne Kalender gibt es keinen Anlegeweg); im Agenten-Bereich die Antworten/Berichte der Threads, der Testlauf des aktiven Skills und der Vorschlag des Heads zum
 Medium (dafür gibt es ohne Modellaufruf keinen Weg — Begründung im Kopf von lib/demo/saat-agenten.ts). Kennungen sind deterministisch — Links bleiben nach dem Zurücksetzen gleich (außer der neuen Gesellschaft).
 
 **Alles ist bearbeitbar und löschbar** — es gibt keinen Sonderweg. Einziger Zusatz: „Demo zurücksetzen“.

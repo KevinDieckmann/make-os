@@ -16,6 +16,7 @@
 // der Vorjahre erledigt, höchstens EINE offene Frist, Risiken unter der Tragfähigkeit, vergangene Steuerfristen abgehakt) — alles über die Routen.
 // KI-Beispiele (nur mit MAKE_OS_DEMO=1): lib/demo/saat-ki.ts — Heads, Head of Finance, ZOE-Stapel und -Gespräch als „Beispiel“ markiert; dort steht
 // begründet, warum Berichte und Vorschläge direkt in die Bestände der Läufe gehen (im Browser entstehen sie nur über einen Modellaufruf).
+// Kreislauf Geld & Lieferung + große Firmenakte (30.10.): lib/demo/saat-kreislauf.ts — dort begründet: ein Termin-Bezug über `bezugSetzen` (kein Kalender-Weg).
 
 import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
@@ -967,6 +968,15 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   // 14f) Prozesse (22.10., Kundengewinnung): einige der 18 Vorlagen über „Aus Vorlage“ der Werkstatt — veröffentlicht im Probelauf, Eignerin Lena (lib/demo/saat-prozesse.ts).
   const { prozesseAusVorlagenSaen } = await import('./saat-prozesse');
   for (const s of await prozesseAusVorlagenSaen({ lena: LENA, eigner: KONTO_LENA, rufe })) schritt(s.name, s.anzahl);
+
+  // 14g) Kreislauf Geld & Lieferung + große Firmenakte (30.10.): Angebot angenommen → Mandat + Liquiplan automatisch, Rechnungen (Entwurf aus dem Mandat,
+  //      gestellt, bezahlt, Selbstständigkeit, Altbestand ohne Zuordnung), Nordwerk mit zweiter Person, Folge-Deal, Aufgaben, Vertrag, Termin (lib/demo/saat-kreislauf.ts).
+  //      Zuletzt — die übrigen Teile der Saat (Fulfillment, KI-Beispiele) rechnen mit dem Stand davor.
+  const { kreislaufSaen } = await import('./saat-kreislauf');
+  for (const s of await kreislaufSaen({
+    lena: LENA, jonas: JONAS, heute, domain: DEMO_DOMAIN, iban: DEMO_IBAN, rufe, kontaktId, einheit: opsLabel,
+    diagnose: { id: diagnose.id, name: diagnose.name, text: diagnose.text, cent: diagnose.preis.betrag * 100 },
+  })) schritt(s.name, s.anzahl);
 
   // 15) Wissen: Notizen im Vault der Demo (nur, wenn er im Datenordner liegt — Riegel in lib/demo/schutz.ts).
   let notizen = 0;
