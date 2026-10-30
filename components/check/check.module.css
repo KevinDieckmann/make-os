@@ -73,7 +73,7 @@
 .checkKarte { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px 40px; margin-top: 28px; padding: 22px 24px; background: var(--c-gehoben); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px; box-shadow: var(--c-gehoben-schatten); }
 @media (min-width: 1020px) { .checkKarte { grid-template-columns: minmax(0, 1fr) 320px; padding: 26px 30px; } }
 .checkKarteBereiche .dreiBereiche { margin: 0; }
-@media (min-width: 720px) { .checkKarteBereiche .dreiBereiche { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 18px; border-top: 0; } .checkKarteBereiche .dreiBereiche li { border-bottom: 0; border-top: 1px solid var(--c-linie); grid-template-columns: 22px 1fr; } }
+@media (min-width: 720px) { .checkKarteBereiche .dreiBereiche { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 24px; border-top: 0; } .checkKarteBereiche .dreiBereiche li { border-bottom: 0; border-top: 1px solid var(--c-linie); grid-template-columns: 22px 1fr; } }
 .checkKarteSeite { display: grid; gap: 14px; align-content: start; }
 .weitere { display: grid; gap: 6px; }
 .weitere .etikett { margin-bottom: 2px; }

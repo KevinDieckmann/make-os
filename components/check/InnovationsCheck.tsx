@@ -195,7 +195,7 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
           <div className={s.balken} aria-hidden><div className={s.balkenFuell} style={{ width: `${kurzGeschafft || ansicht ? 100 : langFrage ? Math.round(((langFrage.nummer - 1) / Math.max(1, langFrage.von)) * 100) : imKurz ? Math.round((fort.kurz / Math.max(1, fort.kurzVon)) * 100) : fort.prozent}%` }} /></div>
           <div className={s.stand} aria-live="polite">
             {/* Ausführlich: Fortschritt in Etappen („Daten und Systeme · Frage 23 von 48 · noch etwa 12 Min.“) statt Prozent (Recherche 30.10.). */}
-            {ansicht ? 'Ihr Ergebnis' : kurzGeschafft ? 'Fragen geschafft' : mitWahl && !umfang ? 'Kurz oder ausführlich: Sie wählen' : langFrage ? `${katalog.abschnittName[fragen.get(langFrage.frageId)?.abschnitt ?? ''] ?? ''} · Frage ${langFrage.nummer} von ${langFrage.von} · noch etwa ${Math.max(1, Math.round(((langFrage.von - langFrage.nummer + 1) / Math.max(1, langFrage.von)) * (seite.minuten_lang ?? seite.minuten)))} Min.` : imKurz ? `Frage ${Math.min(fort.kurz + 1, fort.kurzVon)} von ${fort.kurzVon} · noch etwa ${Math.max(1, Math.round(((fort.kurzVon - fort.kurz) / Math.max(1, fort.kurzVon)) * seite.minuten))} Min.` : `${fort.prozent} % geschafft`}
+            {ansicht ? 'Ihr Ergebnis' : kurzGeschafft ? 'Fragen geschafft' : mitWahl && !umfang ? 'Kurz oder ausführlich: Sie wählen' : langFrage ? `${katalog.abschnittName[fragen.get(langFrage.frageId)?.abschnitt ?? ''] ?? ''} · Frage ${langFrage.nummer} von ${langFrage.von} · noch etwa ${Math.max(1, Math.round(((langFrage.von - langFrage.nummer + 1) / Math.max(1, langFrage.von)) * (seite.minuten_lang ?? seite.minuten)))} Min.` : umfang === 'lang' && !strom ? `${katalog.abschnittName.A ?? ''} · Frage 1 · noch etwa ${seite.minuten_lang ?? seite.minuten} Min.` : imKurz ? `Frage ${Math.min(fort.kurz + 1, fort.kurzVon)} von ${fort.kurzVon} · noch etwa ${Math.max(1, Math.round(((fort.kurzVon - fort.kurz) / Math.max(1, fort.kurzVon)) * seite.minuten))} Min.` : `${fort.prozent} % geschafft`}
             {' · '}<span className={s.kiMarke}>Zoe · KI-Assistentin</span>
           </div>
         </div>
@@ -578,7 +578,7 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
 
       {ansicht.genauigkeit === 'vorlaeufig' && (
         <div className={s.vorlaeufig}>
-          Mit den Fragen der ausführlichen Variante wird Ihr Ergebnis genauer, und Sie bekommen einen Wert für jeden Bereich. Ihre Antworten bleiben gespeichert.
+          Mit den Fragen der ausführlichen Fassung wird Ihr Ergebnis genauer, dazu kommen Fragen zu Ihrer Branche. Ihre bisherigen Antworten bleiben gespeichert.
           <div className={s.zeile}><button type="button" className={s.zweit} disabled={laedt} onClick={mehr}>Ausführlich weitermachen</button></div>
         </div>
       )}
