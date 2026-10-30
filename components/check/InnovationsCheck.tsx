@@ -37,6 +37,8 @@ interface Props {
   katalog: OeffentlicherKatalog;
   zoe: { begruessung: string[]; kontakt: string[]; wahl: string; gespraech: string };
   hinweis: { zeilen: string[]; link: string | null; fassung: string };
+  /** Newsletter-Anmeldung der Instanz (30.10.) — nur wenn sie läuft; Wortlaut und Fassung der Einwilligung. Sonst kein Häkchen. */
+  newsletter?: { wortlaut: string; fassung: string };
   quelle?: string;
 }
 type Angebot = { titel: string; text?: string; link?: string };
@@ -77,7 +79,7 @@ function useHochzaehlen(ziel: number): number {
   return n;
 }
 
-export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, quelle }: Props) {
+export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, newsletter, quelle }: Props) {
   const fragen = useMemo(() => new Map(katalog.fragen.map(f => [f.id, f])), [katalog]);
   const kurz = useMemo(() => katalog.fragen.filter(f => f.kurz), [katalog]);
   const [sitzung, setSitzung] = useState<Sitzung | null>(null);
@@ -223,7 +225,7 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, q
           ) : aktuell.art === 'kontakt' ? (
             <>
               <Zoe zeilen={zoe.kontakt} />
-              <KontaktKarte rollen={fragen.get('A5')?.optionen ?? []} laedt={laedt}
+              <KontaktKarte rollen={fragen.get('A5')?.optionen ?? []} laedt={laedt} newsletter={newsletter}
                 senden={k => sende({ aktion: 'kontakt', ...k })} ohne={() => void sende({ aktion: 'ohne-kontakt' })} />
             </>
           ) : aktuell.art === 'wahl' ? (
@@ -247,7 +249,7 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, q
         {ansicht && kontaktFuerTermin && strom?.kontakt !== 'erfasst' && (
           <div style={{ marginTop: 12 }}>
             <Zoe zeilen={['Damit Sie den Termin buchen können und Ihren Bericht bekommen, brauche ich noch kurz Ihre Angaben.']} />
-            <KontaktKarte rollen={fragen.get('A5')?.optionen ?? []} laedt={laedt} ohneText="Doch nicht"
+            <KontaktKarte rollen={fragen.get('A5')?.optionen ?? []} laedt={laedt} newsletter={newsletter} ohneText="Doch nicht"
               senden={async k => { const ok = await sende({ aktion: 'kontakt', ...k }); if (ok) { setKontaktFuerTermin(false); setAnsicht(null); } return ok; }} ohne={() => setKontaktFuerTermin(false)} />
           </div>
         )}
@@ -361,8 +363,8 @@ function FrageKarte({ f, satz, a, laedt, ueberspringbar, zurueck, abbrechen, erg
   );
 }
 
-function KontaktKarte({ rollen, laedt, senden, ohne, ohneText }: {
-  rollen: NonNullable<OeffentlicheFrage['optionen']>; laedt: boolean; ohneText?: string;
+function KontaktKarte({ rollen, laedt, senden, ohne, ohneText, newsletter: nl }: {
+  rollen: NonNullable<OeffentlicheFrage['optionen']>; laedt: boolean; ohneText?: string; newsletter?: { wortlaut: string; fassung: string };
   senden: (k: Record<string, unknown>) => Promise<boolean>; ohne: () => void;
 }) {
   const [vorname, setVorname] = useState('');
@@ -377,7 +379,7 @@ function KontaktKarte({ rollen, laedt, senden, ohne, ohneText }: {
     <form className={`${s.karte} ${s.neu2}`} onSubmit={async e => {
       e.preventDefault();
       if (!fertig) return;
-      const ok = await senden({ vorname: vorname.trim(), email: email.trim(), firma: firma.trim(), rolle, ...(telefon.trim() ? { telefon: telefon.trim() } : {}), newsletter, webseite: falle });
+      const ok = await senden({ vorname: vorname.trim(), email: email.trim(), firma: firma.trim(), rolle, ...(telefon.trim() ? { telefon: telefon.trim() } : {}), ...(nl && newsletter ? { newsletter: true, newsletterFassung: nl.fassung } : {}), webseite: falle });
       // Für die Buchungsseite einmal vorbelegen (nur dieser Browser-Tab, nie in der Adresse; die Seite löscht es beim Lesen).
       if (ok) try { sessionStorage.setItem('make-check-vorbelegung', JSON.stringify({ name: vorname.trim(), email: email.trim(), firma: firma.trim() })); } catch { /* ohne Speicher: leere Felder */ }
     }}>
@@ -394,7 +396,7 @@ function KontaktKarte({ rollen, laedt, senden, ohne, ohneText }: {
         <label><span className={s.feldName}>Telefon (freiwillig)</span><input className={s.eingabe} type="tel" value={telefon} onChange={e => setTelefon(e.target.value)} maxLength={40} autoComplete="tel" /></label>
       </div>
       <div className={s.falle} aria-hidden><label>Webseite<input tabIndex={-1} autoComplete="off" value={falle} onChange={e => setFalle(e.target.value)} name="webseite" /></label></div>
-      <label className={s.haken}><input type="checkbox" checked={newsletter} onChange={e => setNewsletter(e.target.checked)} /><span>Ich möchte den Newsletter (alle paar Wochen, jederzeit abbestellbar). Er kommt erst nach Ihrer Bestätigung per E-Mail.</span></label>
+      {nl && <label className={s.haken}><input type="checkbox" checked={newsletter} onChange={e => setNewsletter(e.target.checked)} /><span>{nl.wortlaut} Er kommt erst, wenn Sie die Anmeldung über den Link in unserer E-Mail bestätigen.</span></label>}
       <p className={s.hilfe} style={{ marginTop: 10 }}>Ihre Angaben nutzen wir für Ihren Bericht und Ihr Gespräch. Mehr im Datenschutzhinweis unten.</p>
       <div className={s.zeile}>
         <button type="submit" className={s.knopf} disabled={laedt || !fertig}>Bericht anfordern</button>

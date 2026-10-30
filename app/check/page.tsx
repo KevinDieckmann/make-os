@@ -39,6 +39,9 @@ async function seitenDaten(vorlageId: string) {
     const hinweis = await hinweisLaden(e);
     if (!e.aktiv || !v || !hinweis) return null;
     const k = await zoeKontext(e);
+    // Newsletter-Häkchen nur, wenn die Anmeldung der Instanz läuft — mit genau dem Wortlaut, der als Einwilligung gespeichert wird.
+    const { newsletterBereit } = await import('@/lib/newsletter/server');
+    const nl = await newsletterBereit().catch(() => null);
     return {
       marke: k.marke,
       ...(e.claim ? { claim: e.claim } : {}),
@@ -46,6 +49,7 @@ async function seitenDaten(vorlageId: string) {
       seite: v.seite,
       zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
       hinweis: { zeilen: hinweis.zeilen, link: hinweis.link, fassung: HINWEIS_FASSUNG },
+      ...(nl ? { newsletter: { wortlaut: nl.wortlaut, fassung: nl.fassung } } : {}),
     };
   });
 }

@@ -121,6 +121,10 @@ export async function POST(req: Request) {
     const a5 = frageVon(v, 'A5');
     const rolle = typeof b.rolle === 'string' && a5?.optionen?.some(o => o.id === b.rolle) ? b.rolle : null;
     if (!rolle) return antwort({ ok: false, fehler: 'Bitte Ihre Rolle wählen.' }, 400);
+    // Newsletter (30.10.): das Häkchen gilt nur mit der Fassung des Wortlauts, die die Seite gezeigt hat — sonst neu laden (wie /newsletter).
+    const { newsletterBereit, anmeldungVerarbeiten, nachDerAntwort } = await import('@/lib/newsletter/server');
+    const nl = b.newsletter === true ? await newsletterBereit() : null;
+    if (b.newsletter === true && (!nl || b.newsletterFassung !== nl.fassung)) return antwort({ ok: false, fehler: 'Der Text zum Newsletter hat sich geändert. Bitte laden Sie die Seite neu.' }, 409);
     const jetzt = new Date().toISOString();
     const r = await sitzungAendern<string>(b.sitzung, b.token, s => {
       if (!kurzFertig(v, ablaufStand(s))) return { fehler: 'Erst die Fragen des Kurzchecks, dann die Kontaktdaten.' };
@@ -132,6 +136,12 @@ export async function POST(req: Request) {
     });
     if (!r) return antwort(SITZUNG_WEG, 404);
     if ('fehler' in r) return antwort({ ok: false, fehler: r.fehler }, 400);
+    // Newsletter-Wunsch → dieselbe Anmeldung wie auf /newsletter (Double-Opt-in, Bestätigungsmail nach der Antwort, Sperren dort).
+    if (nl) {
+      const { emailSauber, vornameSauber } = await import('@/lib/newsletter/regeln');
+      const adresse = emailSauber(email);
+      if (adresse) nachDerAntwort(() => anmeldungVerarbeiten({ email: adresse, vorname: vornameSauber(vorname) ?? '' }, nl));
+    }
     // Lead ins CRM — ein Fehler dort hält die Person nie auf (intern sichtbar, „noch einmal versuchen“ im Haushalt).
     if (!r.crm || r.crm.status !== 'ok') {
       const profil = profilAus(v.katalog, r.antworten);

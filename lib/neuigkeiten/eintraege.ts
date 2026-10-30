@@ -33,6 +33,23 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-30-5',
+    datum: '2026-10-30',
+    titel: 'Newsletter-Anmeldung über die Website',
+    kurz: 'Besucher können sich auf der Website für den Newsletter anmelden. Sie sind erst dabei, wenn sie den Link in der Bestätigungsmail anklicken. Bestätigte Anmeldungen stehen mit Nachweis der Einwilligung in der Kartei.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Anmeldung mit Bestätigung per E-Mail (Double-Opt-in). Unter Marketing › Newsletter wählt ihr das Absender-Postfach, tragt die Adresse der Website ein und schaltet die Anmeldung ein.', bereich: 'business', weg: WEG.marketing('newsletter') },
+        { text: 'Bestätigte Anmeldungen kommen mit Wortlaut, Fassung und Zeitpunkten der Einwilligung in die Kartei. Unbestätigte löschen sich nach 30 Tagen von selbst.', bereich: 'business', weg: WEG.marketing('newsletter') },
+        { text: 'Das Newsletter-Häkchen in den Checks führt in dieselbe Anmeldung und erscheint nur, wenn sie eingeschaltet ist.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Auf der Website gibt es den Bereich „Kostenlos“: drei Checks, Ratgeber, Zahlen mit Quelle, Vorlagen als PDF und die Newsletter-Anmeldung.', bereich: 'business' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Der Innovations-Check vergleicht nach Unternehmensgröße jetzt mit den Destatis-Zahlen von 2025.', bereich: 'business', weg: WEG.marketing('check') },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-30-4',
     datum: '2026-10-30',
     titel: 'Checks für die Website: Innovation, Vertrieb, Sichtbarkeit',

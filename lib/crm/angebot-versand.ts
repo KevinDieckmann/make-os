@@ -41,7 +41,7 @@ export async function absenderPruefen(a: FormularEinstellungen['absender']): Pro
   const p = await ladePostfach(a.person, a.postfach);
   if (!p || p.quelle === 'whatsapp') return { ok: false, grund: 'Das gewählte Absender-Postfach gibt es nicht (mehr) — bitte neu wählen.' };
   // 25.10.: auch der Bereich einer Arbeits-Einheit (Selbstständigkeit) — nie ein reines Privat-Postfach (`formularPostfachBereichOk`).
-  if (!formularPostfachBereichOk(p.bereich)) return { ok: false, grund: 'Das Absender-Postfach liegt weder im Business-Bereich noch bei einer Einheit, die Angebote stellt — Angebote gehen nicht aus einem Privat-Postfach.' };
+  if (!formularPostfachBereichOk(p.bereich)) return { ok: false, grund: 'Das Absender-Postfach liegt weder im Business-Bereich noch bei einer Einheit, die Angebote stellt — automatische Mails gehen nie aus einem Privat-Postfach.' };
   if (p.quelle === 'gmail') {
     const { gmailBereit } = await import('@/lib/gmail/abgleich');
     if (!(await gmailBereit(a.person).catch(() => false))) return { ok: false, grund: 'Gmail ist für das Absender-Postfach nicht (mehr) verbunden.' };
