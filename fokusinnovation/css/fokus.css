@@ -726,3 +726,20 @@ html.menue-offen { overflow: hidden; }
 }
 .artikel-mitnehmen .v-inhalt { font-size: .86rem; line-height: 1.5; }
 .artikel-mitnehmen .z-text { font-size: 1rem; }
+
+/* Startseite „Kommt Ihnen das bekannt vor?“ (30.10.): neun Momente in drei Gruppen. */
+.momente-gruppen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
+.momente-gruppe .gruppe-titel { margin-bottom: 8px; }
+.momente-gruppen .momente { grid-template-columns: minmax(0, 1fr); }
+/* Events (30.10.): Formate als ruhige Liste statt der Tafel-Grafik. */
+.format-liste { border-top: 1px solid var(--haar-mittel); margin-top: 28px; }
+.format-liste li { display: grid; gap: 4px; padding: 14px 0; border-bottom: 1px solid var(--haar); }
+.format-liste b { color: var(--tinte); font-weight: 600; }
+.format-liste span { color: var(--tinte-text); }
+@media (max-width: 1020px) { .momente-gruppen { grid-template-columns: minmax(0, 1fr); gap: 28px; } }
+.momente-gruppen { counter-reset: moment; }
+.momente-gruppen .momente { counter-reset: none; }
+.momente-gruppen .momente li { font-size: 1.02rem; }
+/* Startseite (30.10.): die zweite Zeile erklärt das Zusammenspiel und ist länger — etwas kleiner, damit die Headline kompakt bleibt. */
+.start-held h1 .ruhig { font-size: .66em; line-height: 1.14; margin-top: .3em; }
+@media (max-width: 560px) { .start-held h1 .ruhig { font-size: .6em; } }
