@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { agentDatenBlock } from '@/lib/prozesse/agent-schritt';
+import { leitplanken, namenAuffaellig, NAMEN_AUFFAELLIG } from '@/lib/crm/formulare';
 
 describe('Prozesse · Agenten-Schritt: <daten>-Block ist dicht', () => {
   it('ein schließendes </daten> im Inhalt bricht den Block nicht auf', () => {
@@ -24,5 +25,28 @@ describe('Prozesse · Agenten-Schritt: <daten>-Block ist dicht', () => {
     const quelle = readFileSync(path.join(process.cwd(), 'lib/prozesse/lauf-server.ts'), 'utf8');
     expect(quelle).not.toMatch(/<daten quelle=/);
     expect(quelle).toContain("agentDatenBlock('fall', daten)");
+  });
+});
+
+// 2 · Formular „Angebot anfordern“: Name/Firma mit Link oder Adresse → nie automatisch versenden (Mail und PDF aus dem eigenen Postfach).
+
+describe('Angebots-Formular: auffällige Namen gehen zur Freigabe', () => {
+  const gut = { listenpreise: true, abweichungen: [], offen: [], adresseOk: true, werbesperre: false, absenderOk: true, datenschutzOk: true };
+  it('erkennt Link, Adresse und spitze Klammern — normale Namen nicht', () => {
+    expect(namenAuffaellig('Erika', 'Muster', 'Beispiel GmbH & Co. KG')).toBe(false);
+    expect(namenAuffaellig('Erika', 'Müller-Lüdenscheidt', "O'Brien Bau")).toBe(false);
+    for (const x of ['https://beispiel.invalid/x', 'www.beispiel.invalid', 'jemand@beispiel.invalid', '<b>Erika</b>', 'hxxp://x']) {
+      expect(namenAuffaellig('Erika', x), x).toBe(true);
+    }
+    expect(namenAuffaellig(undefined, '')).toBe(false);
+  });
+  it('mit auffälligem Namen kein Versand, sondern Freigabe mit Grund; ohne Angabe wie vorher', () => {
+    expect(leitplanken(gut)).toEqual({ versenden: true, gruende: [] });
+    expect(leitplanken({ ...gut, namenAuffaellig: false })).toEqual({ versenden: true, gruende: [] });
+    expect(leitplanken({ ...gut, namenAuffaellig: true })).toEqual({ versenden: false, gruende: [NAMEN_AUFFAELLIG] });
+  });
+  it('der Server gibt die Felder aus dem Formular in die Leitplanken', () => {
+    const quelle = readFileSync(path.join(process.cwd(), 'lib/crm/formulare-server.ts'), 'utf8');
+    expect(quelle).toMatch(/namenAuffaellig: namenAuffaellig\(e\.person\.vorname, e\.person\.nachname, e\.firma\.name/);
   });
 });

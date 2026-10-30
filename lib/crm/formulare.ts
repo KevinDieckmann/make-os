@@ -296,7 +296,16 @@ export interface LeitplankenLage {
   absenderOk: boolean;
   /** Datenschutzhinweis vollständig (Verantwortlicher + Kontaktweg eingerichtet). */
   datenschutzOk: boolean;
+  /**
+   * Name oder Firma aus dem Formular tragen einen Link, eine Adresse oder spitze Klammern (`namenAuffaellig`) — Sicherheitsprüfung 30.10.: diese
+   * Felder stehen wörtlich in Mail und PDF, die aus dem eigenen Postfach rausgehen; ein geleakter Link wäre sonst ein Weg für Phishing-Mails.
+   * Fehlt = unauffällig (wie vorher).
+   */
+  namenAuffaellig?: boolean;
 }
+/** Sieht ein Name/Firmenname aus dem Formular nach Link oder Adresse aus? (rein) — dann entscheidet ein Mensch, nie der Automat. */
+export const namenAuffaellig = (...werte: readonly (string | undefined)[]): boolean => werte.some(w => !!w && /:\/\/|www\.|@|[<>]/i.test(w));
+export const NAMEN_AUFFAELLIG = 'Name oder Firma enthält einen Link, eine Adresse oder Zeichen wie < > — ein Mensch prüft, bevor etwas rausgeht.';
 export const ABSENDER_FEHLT = 'Absender-Postfach fehlt — unter Markttraktion › Formulare › Einstellungen wählen.';
 /**
  * Versenden oder zur Freigabe? Automatisch NUR, wenn alles stimmt (Kevin 25.10.): Listenpreise ohne Rabatt/eigenen Preis, gültige Adresse,
@@ -311,6 +320,7 @@ export function leitplanken(l: LeitplankenLage): { versenden: boolean; gruende: 
   if (l.werbesperre) g.push('Die Person hat eine Werbesperre — ein Mensch entscheidet.');
   if (!l.absenderOk) g.push(ABSENDER_FEHLT);
   if (!l.datenschutzOk) g.push('Datenschutzhinweis unvollständig — Verantwortlichen und Kontaktweg unter Einstellungen › Datenschutz eintragen.');
+  if (l.namenAuffaellig) g.push(NAMEN_AUFFAELLIG);
   return { versenden: g.length === 0, gruende: [...new Set(g)] };
 }
 
