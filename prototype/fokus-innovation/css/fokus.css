@@ -740,3 +740,6 @@ html.menue-offen { overflow: hidden; }
 .momente-gruppen { counter-reset: moment; }
 .momente-gruppen .momente { counter-reset: none; }
 .momente-gruppen .momente li { font-size: 1.02rem; }
+/* Startseite (30.10.): die zweite Zeile erklärt das Zusammenspiel und ist länger — etwas kleiner, damit die Headline kompakt bleibt. */
+.start-held h1 .ruhig { font-size: .66em; line-height: 1.14; margin-top: .3em; }
+@media (max-width: 560px) { .start-held h1 .ruhig { font-size: .6em; } }
