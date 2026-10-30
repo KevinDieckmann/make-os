@@ -49,6 +49,19 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-10-31-2',
+    datum: '2026-10-31',
+    titel: 'Weitere Kalender gegen Doppelbuchungen',
+    kurz: 'Wer auch für andere Firmen arbeitet, verbindet dort seinen Google-Kalender zusätzlich. MAKE OS liest ihn nur mit — belegte Zeiten zählen dann hier als belegt.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Kalender › Einstellungen › Weitere Kalender: bis zu fünf weitere Google-Konten verbinden, Kalender wählen, eine eigene Bezeichnung geben. MAKE OS schreibt dort nie etwas hinein.', bereich: 'business', weg: '/os/kalender?einstellungen=1' },
+        { text: 'Termine dieser Kalender zählen als belegt: freie Zeiten, Buchungsseiten und die Planung rechnen damit. Andere sehen davon nur „Belegt“.', bereich: 'business' },
+        { text: 'Beim Anlegen eines Termins kommt ein Hinweis, wenn er sich mit einem Termin dort überschneidet — speichern könnt ihr trotzdem.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-30-3',
     datum: '2026-10-30',
     titel: 'Social: Beiträge planen, schneiden und veröffentlichen',

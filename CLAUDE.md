@@ -2545,6 +2545,19 @@ hat genau EIN externes Zuhause (kein Termin in zwei Quellen).
   VVT „Kalender (Google Workspace)“ (`verarbeitungKalenderGoogle`, wird beim Öffnen von Stammdaten nachgetragen, sobald Google eingerichtet ist), AVV in der Workspace-Admin-Konsole.
 - Tests: `tests/google-*.test.ts` (abbilden, verbindung, abgleich, route, webhook, ziel, umzug, lesen), Fakes in `tests/fixtures/google-fake.ts` / `icloud-fake.ts`.
   **Rückweg:** nur neue, eigene Bestände und optionale Felder — Details `GO_LIVE_CHECKLISTE.md` › „Google Kalender“.
+- **Weitere Konten je Person, nur lesen (30.10., Branch `weitere-kalender`; GOOGLE_KALENDER_EINRICHTEN.md › 10, UPDATES.md 30.10.):** Kevin: „ein zweites Konto bei MAKE OS
+  anlegen“ — Arbeitskalender bei anderen Firmen gegen Doppelbuchungen. Die Haupt-Verbindung bleibt bit-gleich; alles Neue in eigenen Beständen: `google-zusatz--<person>`
+  (lib/google/zusatz.ts: ≤ 5 Konten `gz-<uuid>`, Token verschlüsselt, Status nur maskiert), `kalender-google-zusatz--<person>` (lib/kalender/google/zusatz.ts: Spiegel je
+  gewähltem Kalender, Kennung `gz-<16 hex>`), `google-zusatz-zustand`. Scopes NUR `openid email calendar.readonly`, `prompt=consent select_account`; Domains nur aus
+  `GOOGLE_ZUSATZ_DOMAINS` (leer = aus, `zusatzDomainPasst`), Haupt-Adresse/doppelt/fremde Domain → Token sofort widerrufen. Rückruf über DENSELBEN Pfad
+  `/api/google/rueckruf` (`istZusatzState` → `zusatzAbschliessen`, Rückkehr `?google-zusatz=…`) — keine zweite Cross-Site-Ausnahme. `invalid_grant` → „abgelaufen“ + EINE
+  Glocke (`ZUSATZ_MELDUNG`), „Neu verbinden“ = `zusatzStarten(person, { konto })`. Abgleich nur GET (`anfrageMitToken` in lib/google/http.ts), Takt alle 5 Min. ohne Push
+  (`zusatzJobsImTakt` in takt-jobs.ts). Überlagerung `mitZusatz` (lib/kalender/icloud.ts) → `KalenderEintrag.quelle: 'google-zusatz'`, nie schreibbar (`ortVon`/`antwortSenden`
+  → 403), Termine tragen `persoenlich` (`istPersoenlicherKalender`) — damit „Belegt“ für alle anderen, `werFuerTermin` = Person, neutral „Weitere Termine · <Vorname>“
+  (`NEUTRAL_ZUSATZ_VORSATZ`, Einstellungen-Feld `zusatz` → Space Business). Dieselbe UID im Stand zählt nur dort. Überschneidungs-Hinweis rein `ueberschneidungen`, Route
+  `GET /api/kalender/google/zusatz?start&ende` (NeuerTermin fragt vor dem Speichern, „Trotzdem speichern“), Termin-Route liefert `ueberschneidungen` mit — nie blockieren.
+  Recht: Register (mit Angaben), `PERSON_BESTAENDE`, Art. 17 zählt (`inZusatzZaehlen`), Konto löschen widerruft (`zusatzAlleTrennen`), VVT `vv-kalender-google` ergänzt
+  (alte Fassung über `ALTE_FASSUNGEN`). Oberfläche `components/os/kalender/GoogleZusatzKonten.tsx`. Tests `tests/google-zusatz-{verbindung,kalender}.test.ts`.
 
 ## Gmail in der Inbox (03.10., nur lokal, Branch `gmail`; Einrichtung: `GOOGLE_GMAIL_EINRICHTEN.md`)
 Kevin 03.10.: Mails ziehen von IONOS zu Gmail (Workspace, `makeinnovation.de`) — „Google ist nur die Verlängerung. Am Ende soll alles bei uns online laufen.“ Gewählt: **Lesen & zuordnen · Antworten per Klick · Aufgaben aus Mails.**

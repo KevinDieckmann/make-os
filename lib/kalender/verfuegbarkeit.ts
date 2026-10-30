@@ -41,7 +41,8 @@ export async function verfuegbarkeitFuer(person: string, von: string, bis: strin
   if (verbunden() || Object.keys(await googleKalenderNamen()).length) termine = termineImZeitraum(await frischerStand(), von, bis);
   else {
     const mac = ((await loadJson<{ events?: MacEv[] }>(CACHE).catch(() => null))?.events ?? []).filter(e => !e.persoenlich);
-    termine = [...macTermine(mac, von, bis), ...await eigeneVerbindungen(mac, von, bis)];
+    const eigene = await eigeneVerbindungen(mac, von, bis);
+    termine = [...macTermine(mac, von, bis), ...eigene, ...await weitereKonten(mac, eigene, von, bis)];
   }
   return verfuegbarkeitAus({
     person, von, bis,
@@ -67,6 +68,27 @@ async function eigeneVerbindungen(mac: readonly MacEv[], von: string, bis: strin
     return termineImZeitraum({ kalender: p.kalender, objekte: p.objekte }, von, bis).filter(t => !imMacStand.has(t.uid));
   } catch (e) {
     console.warn(`[kalender] eigene iCloud-Verbindungen für die Verfügbarkeit nicht lesbar: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`);
+    return [];
+  }
+}
+
+/**
+ * Ohne Haushalts-iCloud und ohne Google (30.10.): die Termine der WEITEREN Google-Konten der Personen (lib/kalender/google/zusatz.ts) — sonst
+ * stehen sie schon im Stand (`ladeStand` → `mitZusatz`). Nur „belegt“ ihrer Person (`persoenlich`); nichts doppelt, was der Mac-Stand oder die
+ * eigenen iCloud-Verbindungen schon tragen. Ohne weitere Konten: nichts (bit-gleich wie vorher).
+ */
+async function weitereKonten(mac: readonly MacEv[], eigene: readonly Termin[], von: string, bis: string): Promise<Termin[]> {
+  try {
+    const { personenMitZusatz } = await import('@/lib/google/zusatz');
+    const { alleSpeicher } = await import('@/lib/zugang/konten');
+    const personen = await personenMitZusatz(await alleSpeicher());
+    if (!personen.length) return [];
+    const { zusatzUeberlagerung } = await import('./google/zusatz');
+    const vorhanden = new Set<string>([...mac.map(e => e.uid ?? e.id).filter((u): u is string => !!u), ...eigene.map(t => t.uid)]);
+    const z = await zusatzUeberlagerung(personen, vorhanden, new Set());
+    return z.kalender.length ? termineImZeitraum({ kalender: z.kalender, objekte: z.objekte }, von, bis) : [];
+  } catch (e) {
+    console.warn(`[kalender] weitere Google-Konten für die Verfügbarkeit nicht lesbar: ${e instanceof Error ? e.message.slice(0, 120) : 'Fehler'}`);
     return [];
   }
 }

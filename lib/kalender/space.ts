@@ -7,5 +7,7 @@ export function spaceVonKalender(e: object | null | undefined, kalenderName: str
   if (fest) return fest;
   // Google (03.10.): der Google-Kalender der Person ist der MAKE-/Business-Kalender.
   if ((e as { google?: Record<string, string> } | null | undefined)?.google?.[n]) return 'business';
+  // Weitere Google-Konten (30.10.): Arbeitskalender anderer Firmen — Business (auch der neutrale Name „Weitere Termine · <Vorname>“).
+  if ((e as { zusatz?: Record<string, string> } | null | undefined)?.zusatz?.[n]) return 'business';
   return /kemaris|m365|dieckmann|work|arbeit|business|consulting|ventures/i.test(n) ? 'business' : 'privat';
 }

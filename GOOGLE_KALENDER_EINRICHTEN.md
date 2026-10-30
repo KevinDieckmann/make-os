@@ -34,7 +34,8 @@ Server ein (das Skript fragt sie verdeckt ab).
 1. Menü → **APIs & Dienste** → **OAuth-Zustimmungsbildschirm** (in der neuen Oberfläche: **Google Auth Platform**).
    Beim ersten Mal **Erste Schritte** klicken.
 2. **App-Name:** `MAKE OS` · **Nutzersupport-E-Mail:** deine Admin-Adresse → **Weiter**.
-3. **Zielgruppe: Intern** (nur Nutzer in makeinnovation.de) → **Weiter**. („Extern“ wäre falsch — dann müsste Google die App prüfen.)
+3. **Zielgruppe: Intern** (nur Nutzer in makeinnovation.de) → **Weiter**. Sollen später **weitere Kalender-Konten** anderer Firmen dazukommen
+   (Abschnitt 10), stellt ihr hier auf **Extern** um — die Domain-Prüfung der Haupt-Verbindung bleibt dabei unverändert.
 4. **Kontaktdaten:** deine Admin-Adresse → **Weiter** → Häkchen bei den Richtlinien → **Fortfahren** → **Erstellen**.
 5. **Datenzugriff** (bzw. „Bereiche“) → **Bereiche hinzufügen oder entfernen** und diese vier eintragen/anhaken, dann **Aktualisieren** → **Speichern**:
    - `openid`
@@ -103,6 +104,50 @@ kennen**:
 2. In MAKE OS zeigt die Kachel danach „Änderungen kommen sofort per Push von Google“. Solange das nicht steht, gleicht MAKE OS alle
    5 Minuten ab (nichts geht verloren, es dauert nur bis zu 5 Minuten).
 
+## 10. Weitere Kalender-Konten (Arbeitskalender bei anderen Firmen, nur lesen)
+Wer auch für andere Firmen arbeitet, hat dort einen weiteren Google-Kalender. MAKE OS liest ihn nur mit (Scope `calendar.readonly` —
+kein Schreiben, kein Gmail), damit dort belegte Zeiten hier als belegt zählen: freie Zeit, Buchungsseiten, Planen und die Kapazität
+rechnen damit, und beim Anlegen eines Termins kommt ein Hinweis, wenn er sich überschneidet. Die andere Person sieht davon nur „Belegt“.
+Je Person bis zu fünf weitere Konten. Die Haupt-Verbindung (Abschnitte 1–9) bleibt, wie sie ist.
+
+### 10.1 Zustimmungsbildschirm auf „Extern“ und „In Produktion“
+Konten anderer Domains kann eine **interne** App nicht anmelden. Einmal umstellen:
+1. Cloud Console → **Google Auth Platform** (bzw. APIs & Dienste → OAuth-Zustimmungsbildschirm) → **Zielgruppe**.
+2. **Nutzertyp: Extern** → **Bestätigen**.
+3. **Veröffentlichungsstatus:** **App veröffentlichen** klicken → Status **„In Produktion“**. **Keine Prüfung bei Google einreichen** — für
+   euch selbst ist sie nicht nötig.
+4. Unter **Datenzugriff** bleiben die vier Bereiche aus Schritt 4.5 (`calendar.readonly` ist schon dabei — mehr brauchen die weiteren Konten nicht).
+
+Was das heißt (Quellen: <https://developers.google.com/identity/protocols/oauth2> und
+<https://developers.google.com/identity/protocols/oauth2/production-readiness/overview>):
+- **Im Status „In Produktion“ verfallen die Anmeldungen nicht nach 7 Tagen** — das gilt nur im Status „Testen“. Bleibt die App auf „Testen“,
+  müsste jedes Konto jede Woche neu verbunden werden.
+- Bei der Anmeldung zeigt Google **einmal „Google hat diese App nicht überprüft“** → **Erweitert** → **Weiter zu MAKE OS (unsicher)**. Das ist
+  der normale Weg für eine eigene, nicht eingereichte App.
+- Für eine **ungeprüfte App gilt eine Obergrenze von 100 Nutzern insgesamt** (über alle Konten, die sich je angemeldet haben). Für euch
+  reicht das; für eine Instanz mit vielen Personen müsste die App später geprüft werden.
+- Die Haupt-Verbindung prüft weiter die eigene Domain (`GOOGLE_ERLAUBTE_DOMAIN`) — mit „Extern“ kann sich dort trotzdem kein fremdes Konto verbinden.
+
+### 10.2 Domains freigeben (am Server)
+Nur Konten aus freigegebenen Domains dürfen als weiteres Konto verbunden werden. Das Einrichtungs-Skript fragt sie am Ende ab:
+```
+ssh -t make@2.28.108.162 sudo bash /srv/make-os/app/deploy/google-verbinden.sh
+```
+→ bei „Erlaubte Domains, Komma-getrennt“ die Domains der anderen Firmen eintragen (z. B. `firma-a.de,firma-b.de`). Das Skript schreibt
+`GOOGLE_ZUSATZ_DOMAINS` in die `.env` und startet MAKE OS neu (Client-ID und Geheimnis fragt es dabei wie immer mit ab). Leer = weitere
+Konten sind aus. Workspace-Konten müssen zur angegebenen Domain gehören; ein Konto mit derselben Adresse wie die Haupt-Verbindung wird abgelehnt.
+
+Je nach Einstellung der **anderen** Firma muss deren Workspace-Admin den Zugriff von Drittanbieter-Apps auf ihren Kalender erlauben (wie
+Schritt 7.2, dort in deren Admin-Konsole) — meldet Google „Zugriff blockiert“, ist es dort gesperrt.
+
+### 10.3 Je Person verbinden
+1. MAKE OS → **Kalender** → **Einstellungen → öffnen** → **Weitere Kalender** → **Weiteres Google-Konto verbinden**.
+2. Bei Google das **andere** Konto wählen → einmal „nicht überprüft“ → **Erweitert** → **Weiter** → das Häkchen für den Kalender setzen → **Zulassen**.
+3. Zurück in MAKE OS steht das Konto (Adresse maskiert) mit der Domain als Bezeichnung. **Einstellen**: Bezeichnung ändern, weitere Kalender
+   des Kontos anhaken (Vorgabe: der Hauptkalender), **Jetzt abgleichen**. Abgeglichen wird danach alle 5 Minuten.
+4. Widerruft Google den Zugriff einmal (Passwort geändert, Zugriff entfernt), meldet die Glocke es einmal, und in der Zeile steht **Neu verbinden**.
+5. **Trennen** widerruft den Zugriff bei Google, die Termine verschwinden aus MAKE OS (bei Google bleiben sie).
+
 ## Prüfen
 - Kachel „Google Kalender (MAKE)“ zeigt **verbunden** und **letzter Abgleich vor … Min.** (ab 30 Minuten färbt sie sich).
 - In Google einen Test-Termin anlegen → erscheint in MAKE OS (mit Push sofort, sonst ≤ 5 Min.). In MAKE OS einen Termin im Kalender
@@ -119,7 +164,9 @@ kennen**:
 |---|---|---|
 | Kachel: „Noch nicht eingerichtet“ | `GOOGLE_CLIENT_ID`/`SECRET` fehlen im Server-Umfeld | Schritt 6, danach MAKE OS neu starten |
 | Google: `redirect_uri_mismatch` | die Weiterleitungs-URI aus Schritt 5 passt nicht zu `MAKE_OS_ADRESSE` | URI exakt `<Adresse>/api/google/rueckruf`, ohne Schrägstrich am Ende |
-| Google: „Zugriff blockiert“ / `access_denied` für die App | Drittanbieter-Zugriff gesperrt oder Zielgruppe „Extern“ | Schritt 7.2 bzw. Schritt 4.3 (Zielgruppe **Intern**) |
+| Google: „Zugriff blockiert“ / `access_denied` für die App | Drittanbieter-Zugriff gesperrt (bei Zielgruppe „Extern“: Veröffentlichungsstatus noch „Testen“ und die Adresse ist kein Testnutzer) | Schritt 7.2 bzw. Abschnitt 10.1 (**In Produktion**) |
+| Weiteres Konto: „gehört zu keiner freigegebenen Domain“ | die Domain steht nicht in `GOOGLE_ZUSATZ_DOMAINS` | Abschnitt 10.2 |
+| Weiteres Konto: „Anmeldung abgelaufen“ | Zugriff bei Google widerrufen, Passwort geändert, Konto gesperrt | **Neu verbinden** in der Zeile des Kontos |
 | MAKE OS: „gehört nicht zur erlaubten Domain“ | mit einem privaten Google-Konto angemeldet | mit dem @makeinnovation.de-Konto erneut verbinden |
 | MAKE OS: „bei Google fehlt eine Freigabe“ | ein Häkchen auf dem Zustimmungsfenster abgewählt | neu verbinden, alle Häkchen lassen |
 | Kachel: „getrennt“ | Zugriff bei Google widerrufen, Passwort-Reset mit Abmelden, Konto gesperrt | **Neu verbinden** |
