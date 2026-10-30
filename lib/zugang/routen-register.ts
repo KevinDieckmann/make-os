@@ -373,6 +373,12 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Abläufe über den Fulfillment-Weg. Dienstweg nur MIT Person des Haushalts (Import im Namen einer Person), Konto „nur Business“ darf (Business).
   'crm/produkte/import': r('POST', 'haushalt', 'Produkt-Import (Karten als JSON oder Tabelle): Vorschau neu/ändert/gleich/Fehler, dann anlegen bzw. Teil-Merge — nur Haushalt des Inhabers, Grenzen 413.'),
   'crm/scoring': r('GET,PATCH', MT, 'Lead-Scoring.'),
+  'social': r('GET,PATCH,POST', MT, 'Markttraktion › Social (26.10.): Kanäle, Serienformate, Folgen, Messungen, Prüfung + Leitplanken-Entscheidung, Analyse, Automatik; POST = Kennzahlen-Import (erst Vorschau), Entwürfe auf Knopfdruck, Verbinden/Trennen. Business; Schreiben nur per Sitzung (Dienstweg 403). Veröffentlicht selbst nichts — das macht der Takt nach den Leitplanken.'),
+  'social/community': r('GET,POST', MT, 'Kommentare und DMs von Instagram (28.10.): Fäden der sichtbaren Kanäle; Antworten nur per Klick (Not-Aus, Tageslimits, Personenmarke nur die Person, DM nur im 24-h-Fenster), ZOE-Vorschlag mit gekapseltem Text Dritter. Schreiben nur per Sitzung (Dienstweg 403).'),
+  'social/werkstatt': r('GET,POST', MT, 'Reel-Werkstatt (28.10.): Aufträge aus Medien der Business-Ablage schneiden, Untertitel (lokal, whisper.cpp), KI-Schnittvorschlag, Rendern (ffmpeg) — Ergebnis = neues Medium, raus erst nach Freigabe eines Menschen. Sicht wie Social; Schreiben nur per Sitzung (Dienstweg 403), Stand/409.'),
+  'social/medien/[token]': r('GET', 'offen', 'Instagram holt ein Bild/Video eines Beitrags selbst ab (Content Publishing verlangt eine öffentliche Adresse) — offen, aber eng: 128-Bit-Token je Versuch (nur Fingerabdruck gespeichert), gilt 60 Min., liefert nur EIN Medium, solange es für „Social Media“ freigegeben ist; gleiche 404 für jede Fehlerart, gedrosselt; handelt für niemanden, nie Metadaten.'),
+  'social/instagram/rueckruf': r('GET', 'person', 'Rückruf der eigenen Instagram-Anmeldung (Professional-Konto) für einen Social-Kanal — state gehört der Person der Sitzung (eigenePerson), Personenmarke nur die Person selbst.'),
+  'social/linkedin/rueckruf': r('GET', 'person', 'Rückruf der eigenen LinkedIn-Anmeldung für einen Social-Kanal — state gehört der Person der Sitzung (eigenePerson), Personenmarke nur die Person selbst.'),
   'crm/planung': r('GET,PATCH', MT, 'Markttraktion-Planung (10.10., seit 22.10. Hub-Punkt „Planung“ unter Steuerung): Leadkanäle, Kreislauf, Umsatzziele, Challenges — Business; Schreiben nur per Sitzung (Dienstweg 403).'),
   // Produkte & Mandate · Leistungstreppe (10.10.): Treppe, Kundenreise, Zielbild, Roadmap, Positionierung, Fortschritt je Mandat — Business; Schreiben nur per Sitzung.
   'crm/treppe': r('GET,PATCH', MT, 'Leistungstreppe (Produkte & Mandate, 10.10.): Stufen, Kundenreise, Zielbild, Roadmap, Positionierung, Fortschritt je Mandat — Business; Schreiben nur per Sitzung (Dienstweg 403), Stand/409.'),
@@ -428,6 +434,10 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // ── Buchung (öffentlich) ───────────────────────────────────────────────────────────────────────────────────
   'buchung/[slug]': r('GET,POST', 'offen', 'Öffentliche Buchungsseite (K4): enge Regex in der Middleware, Drossel, Honigtopf, Stempel, Größe — handelt nie als Person.'),
   'buchung/[slug]/status': r('POST', 'offen', 'Status einer Buchung (K4) — wie oben, mit Token.'),
+
+  // ── Innovations-Check (öffentlich, 24.10.) ─────────────────────────────────────────────────────────────────
+  'check': r('POST', 'offen', 'Öffentliche Strecke des Innovations-Checks: enge Regex in der Middleware, kommt AUS (404), Token je Sitzung (nur SHA-256), Drossel, Honigtopf, Mindestzeit, Größe — handelt nie als Person.'),
+  'check/intern': r('GET,POST', 'haushalt', 'Eingegangene Checks, Beleg-Bewertung, Lead nachholen, Löschen — Haushalt des Inhabers mit Person; Einstellungen (an/aus, Buchungsseite, Gastgeber) nur der Inhaber.'),
 
   // ── Konto, Anmeldung, System ───────────────────────────────────────────────────────────────────────────────
   // ── Datenschutz (05.10., DSGVO-Pakete) ────────────────────────────────────────────────────────────────────

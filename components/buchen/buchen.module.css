@@ -1,0 +1,6 @@
+/* Öffentliche Buchungsseite (29.10.): Schrift und heller Rahmen — dieselben Werte wie im Innovations-Check (public/schriften, SIL OFL).
+   Farben und Maße der Inhalte stehen in stil.ts. Die App ist dunkel (html: color-scheme dark) — hier hell, auch für Häkchen,
+   Auswahllisten und den Rand beim Überscrollen am Handy. */
+@font-face { font-family: "Schibsted Grotesk"; src: url("/schriften/schibsted-grotesk-latin.woff2") format("woff2"); font-weight: 400 800; font-display: swap; }
+.flaeche { color-scheme: light; }
+:global(html):has(.flaeche), :global(body):has(.flaeche) { background: #F6F4F0; color-scheme: light; }

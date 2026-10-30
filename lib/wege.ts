@@ -236,7 +236,7 @@ export const WEG = {
   /** Markttraktion › Auswertung (Hub, 22.10.): der Flow vom Kontakt zum gewonnenen Deal und alle Kennzahlen — `kunden()` zeigt dieselbe Ansicht. */
   auswertung: () => auswertungLink(),
   kampagne: (id?: string) => markttraktion('marketing', 'kampagnen', id),
-  marketing: (a?: 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung', k?: string) => markttraktion('marketing', a, k),
+  marketing: (a?: 'anfragen' | 'check' | 'segmente' | 'kampagnen' | 'redaktion' | 'social' | 'newsletter' | 'positionierung', k?: string) => markttraktion('marketing', a, k),
   // 5.19 (08.10.): `r` hängt am vorhandenen Abfrageteil — vorher entstand ohne Kennung „?s=event?r=…“.
   event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => { const b = markttraktion('event', undefined, id); return r ? `${b}${b.includes('?') ? '&' : '?'}r=${r}` : b; },
   /** Vorlagen bearbeiten (Restpunkte 24.10.): Playbooks unter Marketing › Kampagnen bzw. Event-Vorlagen unter Make.One — öffnet die Bearbeitung (`vorlagen=1`). */

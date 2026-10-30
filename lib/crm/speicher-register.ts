@@ -327,6 +327,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   T('absichten--*', 'Absichtsprotokoll (lib/store/absichten.ts) — andere Absichten getilgt; die eigene Art.-17-Absicht behält Name/Adressen bis zum letzten Schritt, beim Abschluss werden die Daten geleert (fertige nach 30 Tagen weg).'),
   // ── Kalender (29.09., K4) ──
   E('buchung--*', 'Buchungsseiten + Terminbuchungen (Name, E-Mail, Firma, Anliegen, Einwilligungs-Nachweis): Buchungen der Person raus (person-weitere.ts); nicht bestätigte/abgelehnte/abgesagte/abgelaufene nach der Frist, bestätigte die Frist nach dem Termin (Löschfristen-Lauf). Im CRM bleiben Anfrage und Aktivität.', 'buchungen'),
+  // ── Innovations-Check der Website (24.10., lib/check/*) ──
+  mit(E('check-sitzungen', 'Sitzungen des öffentlichen Innovations-Checks (je Instanz): Antworten (Klicks, Beleg- und Freitexte), freiwillige Kontaktdaten nach dem Kurzcheck (Vorname, E-Mail, Firma, Telefon, Newsletter-Wunsch, Fassung des Hinweises), Ergebnis-Stand, CRM-Verweis; Token nur als SHA-256. Art. 17: Sitzungen mit einer Adresse der Person raus (person-weitere.ts).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (vom Teilnehmer angefragte Auswertung, Bericht und Gespräch); Newsletter nur mit eigener Checkbox und Double-Opt-in; keine Antwort geht an ein KI-Modell (Beta, feste Texte)',
+    art15: 'Kontakt-Auskunft (Art. 15) zählt die Sitzungen mit einer Adresse der Akte; der Haushalt sieht sie unter Markttraktion › Marketing › Innovations-Check',
+    loeschfrist: 'ohne Kontaktdaten 30 Tage, mit Kontaktdaten 24 Monate nach der letzten Änderung (lib/check/fristen.ts, Morgenlauf); Art. 17 sofort; einzeln löschbar im Haushalt',
+  }),
+  H('check-einstellungen', 'Schalter des Innovations-Checks, Adresse der Buchungsseite und Speichername des Gastgebers (ein Konto der Instanz) — kein Bezug zu Dritten.'),
   E('kennung-alias--*', 'Weiterleitung alter Kontakt-Kennungen (Kennungs-Umzug, lib/crm/kennung-alias.ts) — Zeilen der Person raus (aliasOhnePerson); ihre alten Kennungen bekommen vorher einen eigenen Grabstein.'),
   // ── Netzwerken (02.10., Erfassen) ──
   K('netzwerken-erfassungen--*', 'Journal der Netzwerken-Erfassungen (lib/crm/netzwerken-server.ts): nur Zufalls-Kennung, abgehakte Schrittnamen, Zeiten — bis zum Abschluss dazu die Kennung der Person bzw. des Termins, beim Abschluss geleert (nie fertig gewordene nach 60 Tagen weg); keine Namen, Adressen oder Texte. Fotos/Sprachnotizen liegen in `crm-dateien--*`, Teilnahme und Info in `crm`, Verlauf in `kontakte` — dort greift Art. 17.'),
@@ -742,6 +749,36 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   K('willkommen', 'Willkommens-Hinweise.'),
   // Markttraktion-Planung (10.10., Schnellknopf „Planung“, lib/crm/planung-daten.ts): Leadkanäle, Umsatzziele, Wochen-Challenges, Zeiten je Aktivität,
   // abgehakte Schritte „nach der Leistung“ je Mandat (nur Kennung + Tag + Team-Kürzel) — keine Daten Dritter, Personen nur als Team-Kürzel.
+  // Social (26.10., Markttraktion › Social, lib/social/): Kanäle mit Markenprofil und Leitplanken, Serienformate, Folgen (Skript, Hooks, Quellen),
+  // Veröffentlichungen und Messungen aus den Plattform-Insights — Zahlen je Video, keine Personendaten Dritter (Kommentare/DMs kommen erst mit den
+  // Plattform-Anbindungen in einen eigenen Bestand). Personen nur als Speichername (geändert/freigegeben von, seit 27.10. auch die Person einer
+  // Personenmarke). Ein Kanal „nur die Person der Marke“ geht nur an sie (Server-Filter `socialFuerPerson`).
+  mit(H('social--*', 'Social des Haushalts: Kanäle (Art Faceless/Personenmarke/Firmenaccount, Name, Handle, Markenprofil, Persona, Absender-Gesellschaft, Person der Marke als Speichername, Sichtbarkeit, Leitplanken, Ziele, Follower-Stände), Serienformate, Folgen (Skript, Hooks, Quellen, Personen im Bild ja/nein, Werbung ja/nein), Veröffentlichungen und Messungen (Aufrufe, Haltequote, Shares …); wer zuletzt geändert bzw. freigegeben hat (Speichername).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — eigene Marketingarbeit des Haushalts; Personenmarke: Art. 6 Abs. 1 lit. a/b (die Person führt ihre Marke selbst)',
+    art15: 'die Konten des Haushalts sehen sie unter Markttraktion › Social (GET /api/social) — einen Kanal „nur die Person der Marke“ nur diese Person; Dritte stehen hier nicht (gezeigte Personen nur als „Einwilligung liegt vor/fehlt“, ohne Namen)',
+    loeschfrist: 'bis der Haushalt Kanäle und Folgen entfernt bzw. die Instanz gelöscht wird; Konto löschen setzt den Speichernamen auf „[gelöscht]“ und löst die Personenmarke von der Person',
+  }),
+  // Social-Automatik (27.10.): Verbindungen je Kanal und Plattform (Token verschlüsselt, nie an den Browser), Stand der Läufe, offene LinkedIn-Anmeldungen.
+  mit(H('social-verbindungen--*', 'Verbindungen der Social-Kanäle: Kanal, Plattform, Anbieter, Zustand, Anzeige-Name des Plattform-Kontos, Zugangstoken (verschlüsselt, nur Server), wer verbunden hat (Speichername), wann.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — die Person verbindet ihr eigenes Plattform-Konto für die eigene Marketingarbeit',
+    art15: 'Status ohne Zugangsdaten unter Markttraktion › Social › Automatik (GET /api/social); das Token selbst wird nie herausgegeben',
+    loeschfrist: 'bis zum Trennen (dann ohne Token als „getrennt“) bzw. Konto löschen (Verbindungen der Person fallen weg)',
+  }),
+  K('social-lauf--*', 'Stand der automatischen Social-Läufe (Zeit, Zahlen, Grund) — keine Inhalte.'),
+  K('social-linkedin-zustand', 'Offene LinkedIn-Anmeldungen (state, Speichername, Kanal, 15 Minuten) — wird beim Rückruf eingelöst.'),
+  // Malin-Paket (28.10.): Instagram-Anmeldung, kurzlebige Medien-Links, Kommentare/DMs, Reel-Werkstatt.
+  K('social-instagram-zustand', 'Offene Instagram-Anmeldungen (state, Speichername, Kanal, 15 Minuten) — wird beim Rückruf eingelöst.'),
+  K('social-medien-links', 'Kurzlebige öffentliche Links für EIN Medium (nur Fingerabdruck des Tokens, Medium-Kennung, Ablauf 60 Min.) — Instagram holt Bild/Video darüber ab; abgelaufene räumt der Takt weg.'),
+  mit(E('social-community--*', 'Kommentare und Direktnachrichten von Instagram je Haushalt (Kennung und Benutzername des Gegenübers, Text, Zeit, Beitrag; eigene Antworten mit Speichername) und je Gespräch „gelesen/erledigt bis“. Art. 17: Einträge, die die Person nennen, raus (person-weitere.ts); das Original bleibt bei Instagram.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Antworten auf Nachrichten an den eigenen Account) bzw. lit. b (Anfragen); Antworten nur per Klick, DMs nur im 24-h-Fenster',
+    art15: 'Kontakt-Auskunft über den Namen; die Einträge sehen die Konten, die den Kanal sehen (Markttraktion › Social › Kommentare & DMs)',
+    loeschfrist: 'Einträge älter als 180 Tage fallen beim nächsten Abholen weg (lib/social/community.ts `COMMUNITY_TAGE`); Art. 17 sofort; Kanal ohne Verbindung: kein neues Abholen',
+  }),
+  mit({ muster: 'social-werkstatt--*', bezug: 'haushalt', behandlung: 'tilgen', grund: 'Aufträge der Reel-Werkstatt je Haushalt: Clips (nur Medien-Kennungen), Transkripte der Tonspur (Spracherkennung lokal), Einblendungen, Ergebnis-Kennung, wer angelegt/geändert hat (Speichername). Transkripte können Namen Dritter enthalten — Art. 17 tilgt sie (person-weitere.ts).' }, {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — eigene Marketingarbeit; Ton nur von Videos, deren Ton beim Hochladen bewusst behalten wurde (§ 201 StGB-Hinweis der Ablage)',
+    art15: 'die Konten des Haushalts sehen die Aufträge unter Markttraktion › Social › Werkstatt (Kanal „nur die Person“: nur diese Person)',
+    loeschfrist: 'bis der Auftrag entfernt wird; das Ergebnis ist ein Medium der Ablage und folgt deren Fristen; Konto löschen → Speichername „[gelöscht]“',
+  }),
   mit(H('markttraktion-planung--*', 'Vertriebsplanung des Haushalts: Leadkanäle (Name, Herkunft, Bezug Kampagne/Eventreihe als Kennung, Plan-Leads, Sales Cycle, Plan-Quoten, Kosten/Zeit je Lead, verantwortlich = Team-Kürzel), Umsatzziele je Business-Gesellschaft, Wochen-Challenges (Team-Kürzel, Ziel, Rückblick), Minuten je Aktivität, Schritte nach der Leistung je Mandat-Kennung; wer zuletzt geändert hat (Speichername).'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b/f DSGVO — Planung der eigenen Vertriebsarbeit durch die Mitglieder des Haushalts (§ 26 BDSG, soweit Wochenziele je Person)',
     art15: 'alle Konten des Haushalts sehen sie unter Markttraktion › Planung (GET /api/crm/planung); Kontakte Dritter stehen hier nicht — Mandate nur als Kennung',
@@ -886,8 +923,8 @@ const IN_PRIVAT: readonly string[] = [
 const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
-  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
-  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'check-sitzungen', 'check-einstellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)

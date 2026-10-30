@@ -11,7 +11,7 @@
 //              Deals              deals: board (Start) · liste · akte (Deal-Akte zu k)
 //              Angebote           angebot (k = Angebot, kontakt/firma/deal)
 //              Follow-up & Power Hour  followup: faellig (Start) · woche · powerhour · kadenz
-//   Marketing  Marketing          marketing: uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · newsletter · positionierung
+//   Marketing  Marketing          marketing: uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · social · newsletter · positionierung
 //              Events             besuche (besuchte Veranstaltungen: kalender (Start) · wirkung · kunden; k = Event-Akte) · event (Make.One, k = Abend)
 //              Netzwerken         eigene Seite /os/netzwerken (leuchtet dort)
 //   Steuerung  Planung            planung (kreislauf (Start) · ziele · kanaele · challenges; kanal = Filter auf einen Leadkanal)
@@ -32,8 +32,9 @@ export type BesucheAnsicht = 'kalender' | 'wirkung' | 'kunden';
 export const BESUCHE_ANSICHTEN: BesucheAnsicht[] = ['kalender', 'wirkung', 'kunden'];
 export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'auswertung';
 export type FollowupAnsicht = 'faellig' | 'woche' | 'powerhour' | 'kadenz';
-export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung';
-export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'segmente', 'kampagnen', 'redaktion', 'newsletter', 'positionierung'];
+/** `social` (26.10.): Social-Kanäle, Folgen, Analyse — Unterreiter von Marketing (das Hub-Menü hat Kevins Höchstzahl von zwölf Punkten). */
+export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'check' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung' | 'social';
+export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'check', 'segmente', 'kampagnen', 'redaktion', 'social', 'newsletter', 'positionierung'];
 /** Der frühere Reiter „Sales“ (27.09.–08.10.) und der Sales-Reiter vom 25./26.09. — nur noch zum Übersetzen alter Adressen. */
 export const SALES_ALT_ANSICHTEN = ['head', 'powerhour', 'kampagnen', 'auswertung', 'heute', 'leads', 'pipeline', 'kunden'] as const;
 export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'planung', 'marketing', 'besuche', 'event', 'stammdaten', 'auswertung', 'automationen', 'formulare'];
@@ -317,7 +318,7 @@ export const HUB_MENUE: { gruppen: readonly HubGruppe[]; automation: HubAutomati
       { id: 'followup', name: 'Follow-up & Power Hour', symbol: 'PhoneCall', ziel: markttraktion('followup'), bereiche: ['followup'], titel: 'Fällig, Woche, Power Hour, Kadenz' },
     ] },
     { id: 'marketing', titel: 'Marketing', punkte: [
-      { id: 'marketing', name: 'Marketing', symbol: 'Megaphone', ziel: markttraktion('marketing'), bereiche: ['marketing'], titel: 'Anfragen, Segmente, Kampagnen, Redaktion, Newsletter, Positionierung' },
+      { id: 'marketing', name: 'Marketing', symbol: 'Megaphone', ziel: markttraktion('marketing'), bereiche: ['marketing'], titel: 'Anfragen, Segmente, Kampagnen, Redaktion, Social, Newsletter, Positionierung' },
       { id: 'events', name: 'Events', symbol: 'CalendarDays', ziel: markttraktion('besuche'), bereiche: ['besuche', 'event'], titel: 'Besuchte Events und unsere eigenen Abende' },
       { id: 'netzwerken', name: 'Netzwerken', symbol: 'Handshake', ziel: NETZWERKEN_PFAD, bereiche: [], pfad: NETZWERKEN_PFAD, titel: 'Vor Ort erfassen — Karte, Gespräch, nächster Schritt' },
     ] },

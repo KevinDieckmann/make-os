@@ -335,4 +335,23 @@ export const EINSTELLUNGEN_BUSINESS = {
     an: 'Gilt als sauber dokumentiert.',
     aus: 'Die Ampel meldet „Inhaber prüfen“.',
   },
+  // ── Social (Markttraktion › Marketing › Social, 30.10.) ──────────────────────────────────────────────────────────
+  'social.agent': {
+    was: 'Der Redaktions-Agent füllt im Takt (alle 6 Stunden, zwischen 6 und 22 Uhr) die freien Termine des Redaktionsplans mit Entwürfen. Was die Leitplanken erlauben, plant er ein — alles andere wartet auf eure Freigabe.',
+    beispiel: 'Der Plan sieht dienstags und donnerstags um 9 Uhr einen Beitrag vor: Am Montagabend liegen beide Entwürfe bereit, ein freigegebenes Format geht zum Termin raus.',
+    an: 'Der Agent schreibt Entwürfe für die freien Termine.',
+    aus: 'Es entstehen keine Entwürfe von selbst; ihr schreibt und plant selbst.',
+  },
+  'social.autoReel': {
+    was: 'Neue Videos im gewählten Album werden ohne Klick zu Reel-Entwürfen mit Untertiteln, Schnittvorschlag, Hook und Beschriftung und landen im nächsten freien Termin. Nur Videos der letzten 14 Tage, höchstens zwei je halbe Stunde. Raus geht nichts ohne eure Freigabe.',
+    beispiel: 'Nach einem Event lädt jemand fünf Clips ins Album: Wenig später liegen Reel-Entwürfe im Kalender und warten auf die Freigabe.',
+    an: 'Neue Videos des Albums werden zu Reel-Entwürfen.',
+    aus: 'Reels entstehen nur in der Werkstatt per Hand.',
+  },
+  'social.dmsAuto': {
+    was: 'Im Modus „Auto“ beantwortet ZOE auch Direktnachrichten selbst — nur einfache Fragen und nur innerhalb von 24 Stunden nach der Nachricht der Person. Alles Heikle wird ein Entwurf für euch.',
+    beispiel: 'Jemand fragt per Nachricht, wann der nächste Beitrag zur Reihe kommt: ZOE antwortet kurz. Eine Beschwerde bleibt als Entwurf liegen.',
+    an: 'Einfache Direktnachrichten beantwortet ZOE selbst; die erste automatische Nachricht trägt den KI-Hinweis.',
+    aus: 'Direktnachrichten bekommen nur Vorschläge, ihr antwortet per Klick.',
+  },
 } as const satisfies Record<string, EinstellungsText>;

@@ -333,6 +333,9 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   // Gmail in der Inbox (03.10.): Spiegel je Person (Köpfe, Texte) — Nachrichten, die die Person nennen, raus; das Original bleibt in Gmail.
   { name: 'gmail-stand--*', muster: /^gmail-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
   { name: 'gmail-text--*', muster: /^gmail-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },
+  // Social (28.10.): Kommentare/DMs von Instagram — Einträge, die die Person nennen, raus (Original bleibt bei Instagram); Werkstatt-Transkripte tilgen.
+  { name: 'social-community--*', muster: /^social-community--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('eintraege') },
+  { name: 'social-werkstatt--*', muster: /^social-werkstatt--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Inbox 2 (06.10.): IMAP-Spiegel je Person (Köpfe, Texte) wie Gmail; Inbox-Zustand: Absender-Adresse fällt weg, Kontakt-Kennung getilgt.
   { name: 'imap-stand--*', muster: /^imap-stand--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('koepfe'), original: true },
   { name: 'imap-text--*', muster: /^imap-text--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: mapEintraegeRaus('texte') },
@@ -396,6 +399,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   { name: 'prozess-laeufe--*', muster: /^prozess-laeufe--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Terminbuchungen (29.09., K4): die Buchungen der Person fallen weg (Name, Adresse, Kontakt-Kennung); Seiten bleiben.
   { name: 'buchung--*', muster: /^buchung--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('buchungen') },
+  // Innovations-Check der Website (24.10.): Sitzungen mit einer Adresse der Person fallen ganz weg (Antworten, Kontakt, Ergebnis).
+  { name: 'check-sitzungen', muster: /^check-sitzungen$/, behandlung: 'entfernen', wirkung: eintraegeRaus('sitzungen') },
   // Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1): Fall (Stakeholder-Kennung getilgt, Notiz weg), Kunde (Antworten/Puls/Unterlagen, die die
   // Person nennen, raus), Dossier (getilgt), Personenkarten (Karten der Person raus).
   { name: 'fulfillment-faelle--*', muster: /^fulfillment-faelle--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: fulfillmentFaelleOhne },

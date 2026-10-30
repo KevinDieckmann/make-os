@@ -1,0 +1,2369 @@
+{
+ "version": "1.0",
+ "stand": "2026-10-24",
+ "freigabe": "Inhaber, Prüfseite 24.10.2026",
+ "sprache": "de, Sie-Form",
+ "hinweis": "IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden.",
+ "abschnitte": [
+  {
+   "id": "A",
+   "key": "profil",
+   "name": "Profil, ohne Punkte",
+   "dimension": null,
+   "intro": "Für den Branchenvergleich, ohne Punkte. 6 Fragen.",
+   "fragen": [
+    {
+     "id": "A1",
+     "text": "In welcher Branche ist Ihr Unternehmen tätig?",
+     "kurzcheck": true,
+     "feld": "branche",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A1_0",
+       "text": "Handwerk",
+       "code": "handwerk"
+      },
+      {
+       "id": "A1_1",
+       "text": "Dienstleistung, Agentur, Beratung",
+       "code": "dienstleistung"
+      },
+      {
+       "id": "A1_2",
+       "text": "Tech, KI, FinTech, Software",
+       "code": "tech"
+      },
+      {
+       "id": "A1_3",
+       "text": "Produktion und Industrie",
+       "code": "produktion"
+      },
+      {
+       "id": "A1_4",
+       "text": "Handel und E-Commerce",
+       "code": "handel"
+      },
+      {
+       "id": "A1_5",
+       "text": "Gesundheit und Praxen",
+       "code": "gesundheit"
+      },
+      {
+       "id": "A1_6",
+       "text": "Immobilien und Bau",
+       "code": "immobilien"
+      },
+      {
+       "id": "A1_7",
+       "text": "Sonstige",
+       "code": "sonstige",
+       "freitext": true,
+       "freitext_feld": "branche_sonstige"
+      }
+     ],
+     "zusatz": {
+      "feld": "startup",
+      "text": "Sind Sie ein Start-up?",
+      "typ": "ja_nein"
+     }
+    },
+    {
+     "id": "A2",
+     "text": "Wie viele Mitarbeitende haben Sie?",
+     "kurzcheck": true,
+     "feld": "groesse",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A2_0",
+       "text": "Nur ich (Solo)",
+       "code": "solo"
+      },
+      {
+       "id": "A2_1",
+       "text": "2 bis 9",
+       "code": "2-9"
+      },
+      {
+       "id": "A2_2",
+       "text": "10 bis 49",
+       "code": "10-49"
+      },
+      {
+       "id": "A2_3",
+       "text": "50 bis 249",
+       "code": "50-249"
+      },
+      {
+       "id": "A2_4",
+       "text": "250 und mehr",
+       "code": "250+"
+      }
+     ]
+    },
+    {
+     "id": "A3",
+     "text": "Wie hoch ist Ihr Jahresumsatz ungefähr?",
+     "kurzcheck": false,
+     "feld": "umsatz",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A3_0",
+       "text": "Unter 250.000 €",
+       "code": "<250k"
+      },
+      {
+       "id": "A3_1",
+       "text": "250.000 bis 1 Mio. €",
+       "code": "250k-1m"
+      },
+      {
+       "id": "A3_2",
+       "text": "1 bis 5 Mio. €",
+       "code": "1-5m"
+      },
+      {
+       "id": "A3_3",
+       "text": "5 bis 50 Mio. €",
+       "code": "5-50m"
+      },
+      {
+       "id": "A3_4",
+       "text": "Über 50 Mio. €",
+       "code": ">50m"
+      },
+      {
+       "id": "A3_5",
+       "text": "Möchte ich nicht sagen",
+       "code": "keine_angabe"
+      }
+     ]
+    },
+    {
+     "id": "A4",
+     "text": "Seit wann gibt es Ihr Unternehmen?",
+     "kurzcheck": false,
+     "feld": "alter",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A4_0",
+       "text": "Unter 2 Jahren",
+       "code": "<2"
+      },
+      {
+       "id": "A4_1",
+       "text": "2 bis 5 Jahre",
+       "code": "2-5"
+      },
+      {
+       "id": "A4_2",
+       "text": "6 bis 15 Jahre",
+       "code": "6-15"
+      },
+      {
+       "id": "A4_3",
+       "text": "16 bis 30 Jahre",
+       "code": "16-30"
+      },
+      {
+       "id": "A4_4",
+       "text": "Über 30 Jahre",
+       "code": ">30"
+      }
+     ]
+    },
+    {
+     "id": "A5",
+     "text": "Welche Rolle haben Sie?",
+     "kurzcheck": false,
+     "feld": "rolle",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A5_0",
+       "text": "Inhaber oder Geschäftsführung",
+       "code": "inhaber_gf"
+      },
+      {
+       "id": "A5_1",
+       "text": "Head of Innovation, Innovations-, KI- oder Digitalisierungsverantwortliche",
+       "code": "innovation_ki"
+      },
+      {
+       "id": "A5_2",
+       "text": "Bereichs- oder Abteilungsleitung",
+       "code": "bereichsleitung"
+      },
+      {
+       "id": "A5_3",
+       "text": "Vertrieb oder Marketing",
+       "code": "vertrieb_marketing"
+      },
+      {
+       "id": "A5_4",
+       "text": "IT",
+       "code": "it"
+      },
+      {
+       "id": "A5_5",
+       "text": "Mitarbeitende ohne Führung",
+       "code": "mitarbeitende"
+      }
+     ]
+    },
+    {
+     "id": "A6",
+     "text": "Was ist Ihr wichtigstes Ziel in den nächsten 12 Monaten?",
+     "kurzcheck": true,
+     "feld": "ziel",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A6_0",
+       "text": "Mehr Umsatz und neue Kunden",
+       "code": "umsatz"
+      },
+      {
+       "id": "A6_1",
+       "text": "Mehr Zeit, weniger Handarbeit",
+       "code": "zeit"
+      },
+      {
+       "id": "A6_2",
+       "text": "Fachkräftemangel ausgleichen",
+       "code": "fachkraefte"
+      },
+      {
+       "id": "A6_3",
+       "text": "Neues Produkt oder neuer Markt",
+       "code": "neues_produkt_markt"
+      },
+      {
+       "id": "A6_4",
+       "text": "Unternehmen unabhängiger vom Chef machen",
+       "code": "unabhaengig_vom_chef"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "B",
+   "key": "strategie",
+   "name": "Strategie und Führung",
+   "dimension": "strategie",
+   "intro": "Dimension 1, Gewicht 15 %. 6 Fragen. Antworten von 0 (schwach) bis 4 Punkte (stark).",
+   "fragen": [
+    {
+     "id": "B1",
+     "text": "Gibt es schriftliche Ziele für Innovation und KI?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "B1_0",
+       "text": "Nein, kein Thema",
+       "punkte": 0
+      },
+      {
+       "id": "B1_1",
+       "text": "Im Kopf, nicht aufgeschrieben",
+       "punkte": 1
+      },
+      {
+       "id": "B1_2",
+       "text": "Grob notiert, ohne Termine",
+       "punkte": 2
+      },
+      {
+       "id": "B1_3",
+       "text": "Schriftlich mit Zielen und Terminen",
+       "punkte": 3
+      },
+      {
+       "id": "B1_4",
+       "text": "Schriftlich, wird regelmäßig gemessen",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "B2",
+     "text": "Gibt es ein festes Budget für Innovation und KI?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "B2_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "B2_1",
+       "text": "Nur wenn etwas kaputt ist",
+       "punkte": 1
+      },
+      {
+       "id": "B2_2",
+       "text": "Fallweise, ohne festen Betrag",
+       "punkte": 2
+      },
+      {
+       "id": "B2_3",
+       "text": "Fester Betrag, unter 2 % vom Umsatz",
+       "punkte": 3
+      },
+      {
+       "id": "B2_4",
+       "text": "Fester Betrag, 2 % vom Umsatz oder mehr",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "B3",
+     "text": "Wer ist für Innovation verantwortlich?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "B3_0",
+       "text": "Niemand",
+       "punkte": 0
+      },
+      {
+       "id": "B3_1",
+       "text": "Die Geschäftsführung nebenbei",
+       "punkte": 1
+      },
+      {
+       "id": "B3_2",
+       "text": "Eine Person mit etwas Zeit dafür",
+       "punkte": 2
+      },
+      {
+       "id": "B3_3",
+       "text": "Eine feste Person mit klarer Aufgabe",
+       "punkte": 3
+      },
+      {
+       "id": "B3_4",
+       "text": "Ein Team oder eine eigene Rolle",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "B4",
+     "text": "Wie viele neue Produkte oder Leistungen haben Sie in den letzten 24 Monaten eingeführt?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "B4_0",
+       "text": "Keine",
+       "punkte": 0
+      },
+      {
+       "id": "B4_1",
+       "text": "Eine",
+       "punkte": 1
+      },
+      {
+       "id": "B4_2",
+       "text": "Zwei",
+       "punkte": 2
+      },
+      {
+       "id": "B4_3",
+       "text": "Drei bis fünf",
+       "punkte": 3
+      },
+      {
+       "id": "B4_4",
+       "text": "Mehr als fünf",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "B5",
+     "text": "Wie oft prüfen Sie neue Technologien für Ihr Geschäft?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "B5_0",
+       "text": "Nie",
+       "punkte": 0
+      },
+      {
+       "id": "B5_1",
+       "text": "Wenn ein Kunde fragt",
+       "punkte": 1
+      },
+      {
+       "id": "B5_2",
+       "text": "Ein- bis zweimal im Jahr",
+       "punkte": 2
+      },
+      {
+       "id": "B5_3",
+       "text": "Jedes Quartal",
+       "punkte": 3
+      },
+      {
+       "id": "B5_4",
+       "text": "Laufend, mit festem Termin",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "B6",
+     "text": "Wie gut wissen Sie, was Ihre Wettbewerber mit KI machen?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "B6_0",
+       "text": "Gar nicht",
+       "punkte": 0
+      },
+      {
+       "id": "B6_1",
+       "text": "Vom Hörensagen",
+       "punkte": 1
+      },
+      {
+       "id": "B6_2",
+       "text": "Bei ein bis zwei Wettbewerbern",
+       "punkte": 2
+      },
+      {
+       "id": "B6_3",
+       "text": "Bei den wichtigsten Wettbewerbern",
+       "punkte": 3
+      },
+      {
+       "id": "B6_4",
+       "text": "Wir beobachten das systematisch",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "C",
+   "key": "ki",
+   "name": "KI im Alltag",
+   "dimension": "ki",
+   "intro": "Dimension 2, Gewicht 30 %. 8 Fragen. Hier trennen wir „spielen“ von „wirklich nutzen“.",
+   "fragen": [
+    {
+     "id": "C1",
+     "text": "Welcher Anteil des Teams nutzt KI mindestens einmal pro Woche für die Arbeit?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "C1_0",
+       "text": "Niemand",
+       "punkte": 0
+      },
+      {
+       "id": "C1_1",
+       "text": "Unter 10 %",
+       "punkte": 1
+      },
+      {
+       "id": "C1_2",
+       "text": "10 bis 39 %",
+       "punkte": 2
+      },
+      {
+       "id": "C1_3",
+       "text": "40 bis 74 %",
+       "punkte": 3
+      },
+      {
+       "id": "C1_4",
+       "text": "75 % und mehr",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "C2",
+     "text": "Haben Sie Firmenlizenzen für KI-Tools?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "C2_0",
+       "text": "Keine Nutzung",
+       "punkte": 0
+      },
+      {
+       "id": "C2_1",
+       "text": "Nur private, kostenlose Zugänge",
+       "punkte": 1
+      },
+      {
+       "id": "C2_2",
+       "text": "Einzelne bezahlen selbst",
+       "punkte": 2
+      },
+      {
+       "id": "C2_3",
+       "text": "Firmenlizenzen für einen Teil",
+       "punkte": 3
+      },
+      {
+       "id": "C2_4",
+       "text": "Firmenlizenzen für alle, zentral verwaltet",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "C3",
+     "text": "Gibt es Regeln zur KI-Nutzung, auch zum Datenschutz?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "C3_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "C3_1",
+       "text": "Mündlich",
+       "punkte": 1
+      },
+      {
+       "id": "C3_2",
+       "text": "Kurze schriftliche Regeln",
+       "punkte": 2
+      },
+      {
+       "id": "C3_3",
+       "text": "Schriftliche Richtlinie, allen bekannt",
+       "punkte": 3
+      },
+      {
+       "id": "C3_4",
+       "text": "Richtlinie mit Schulung und Kontrolle",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "C4",
+     "text": "Für welche Aufgaben setzen Sie KI ein?",
+     "kurzcheck": false,
+     "typ": "mehrfach",
+     "punkte_regel": {
+      "0": 0,
+      "1": 1,
+      "2-3": 2,
+      "4-5": 3,
+      "6+": 4,
+      "erklaerung": "Anzahl gewählter Bereiche → Punkte"
+     },
+     "optionen": [
+      {
+       "id": "C4_0",
+       "text": "Texte und E-Mails"
+      },
+      {
+       "id": "C4_1",
+       "text": "Recherche"
+      },
+      {
+       "id": "C4_2",
+       "text": "Vertrieb und Angebote"
+      },
+      {
+       "id": "C4_3",
+       "text": "Kundenservice"
+      },
+      {
+       "id": "C4_4",
+       "text": "Buchhaltung und Verwaltung"
+      },
+      {
+       "id": "C4_5",
+       "text": "Programmierung"
+      },
+      {
+       "id": "C4_6",
+       "text": "Analyse und Berichte"
+      },
+      {
+       "id": "C4_7",
+       "text": "Produktion oder Technik"
+      },
+      {
+       "id": "C4_keine",
+       "text": "Noch für keine Aufgabe",
+       "exklusiv": true,
+       "hinweis": "technisch ergänzt, damit 0 Punkte auswählbar sind"
+      }
+     ]
+    },
+    {
+     "id": "C5",
+     "text": "Beleg: Beschreiben Sie einen Ablauf, bei dem KI heute fest eingebaut ist.",
+     "kurzcheck": true,
+     "typ": "beleg",
+     "eingabe": [
+      "text",
+      "sprache"
+     ],
+     "nachfragen": [
+      "Wie oft läuft das?",
+      "Wer nutzt es?",
+      "Was spart es?"
+     ],
+     "rubrik": [
+      [
+       0,
+       "kein Beispiel"
+      ],
+      [
+       1,
+       "Ausprobieren, gelegentlich, einzelne Versuche"
+      ],
+      [
+       2,
+       "einzelne Person nutzt es regelmäßig"
+      ],
+      [
+       3,
+       "fester Team-Prozess"
+      ],
+      [
+       4,
+       "fester Prozess mit gemessenem Nutzen"
+      ]
+     ],
+     "bewertung": "KI, siehe prompts/beleg_bewertung.md"
+    },
+    {
+     "id": "C6",
+     "text": "Messen Sie den Nutzen von KI, zum Beispiel in gesparten Stunden?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "C6_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "C6_1",
+       "text": "Gefühlt spart es Zeit",
+       "punkte": 1
+      },
+      {
+       "id": "C6_2",
+       "text": "Grob geschätzt",
+       "punkte": 2
+      },
+      {
+       "id": "C6_3",
+       "text": "Für einzelne Abläufe gemessen",
+       "punkte": 3
+      },
+      {
+       "id": "C6_4",
+       "text": "Regelmäßig gemessen und berichtet",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "C7",
+     "text": "Nutzen Sie KI-Agenten, die Aufgaben selbst ausführen, nicht nur Chat?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "C7_0",
+       "text": "Was ist das?",
+       "punkte": 0
+      },
+      {
+       "id": "C7_1",
+       "text": "Kenne ich, nutzen wir nicht",
+       "punkte": 1
+      },
+      {
+       "id": "C7_2",
+       "text": "Getestet",
+       "punkte": 2
+      },
+      {
+       "id": "C7_3",
+       "text": "Ein Agent im festen Einsatz",
+       "punkte": 3
+      },
+      {
+       "id": "C7_4",
+       "text": "Mehrere Agenten in Kernprozessen",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "C8",
+     "text": "Ist KI Teil Ihres Produkts oder Ihrer Leistung für Kunden?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "C8_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "C8_1",
+       "text": "Geplant",
+       "punkte": 1
+      },
+      {
+       "id": "C8_2",
+       "text": "Im Test mit Kunden",
+       "punkte": 2
+      },
+      {
+       "id": "C8_3",
+       "text": "In einem Produkt oder einer Leistung",
+       "punkte": 3
+      },
+      {
+       "id": "C8_4",
+       "text": "Kern unseres Angebots",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "D",
+   "key": "automatisierung",
+   "name": "Automatisierung der Prozesse",
+   "dimension": "automatisierung",
+   "intro": "Dimension 3, Gewicht 30 %. 8 Fragen.",
+   "fragen": [
+    {
+     "id": "D1",
+     "text": "Wie viel der Lead- und Angebotsbearbeitung läuft automatisch?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "D1_0",
+       "text": "Alles von Hand",
+       "punkte": 0
+      },
+      {
+       "id": "D1_1",
+       "text": "Vorlagen, sonst Hand",
+       "punkte": 1
+      },
+      {
+       "id": "D1_2",
+       "text": "Einzelne Schritte automatisch",
+       "punkte": 2
+      },
+      {
+       "id": "D1_3",
+       "text": "Großteil automatisch",
+       "punkte": 3
+      },
+      {
+       "id": "D1_4",
+       "text": "Fast komplett automatisch",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "D2",
+     "text": "Wie viel von Rechnungen, Buchhaltung und Mahnwesen läuft automatisch?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "D2_0",
+       "text": "Alles von Hand",
+       "punkte": 0
+      },
+      {
+       "id": "D2_1",
+       "text": "Software, aber viel Abtippen",
+       "punkte": 1
+      },
+      {
+       "id": "D2_2",
+       "text": "Einzelne Schritte automatisch",
+       "punkte": 2
+      },
+      {
+       "id": "D2_3",
+       "text": "Großteil automatisch",
+       "punkte": 3
+      },
+      {
+       "id": "D2_4",
+       "text": "Fast komplett automatisch",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "D3",
+     "text": "Wie viel vom Kundenservice läuft automatisch oder per Selbstbedienung?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "D3_0",
+       "text": "Alles per Telefon und Mail von Hand",
+       "punkte": 0
+      },
+      {
+       "id": "D3_1",
+       "text": "FAQ auf der Website",
+       "punkte": 1
+      },
+      {
+       "id": "D3_2",
+       "text": "Kundenportal oder Online-Buchung",
+       "punkte": 2
+      },
+      {
+       "id": "D3_3",
+       "text": "Chatbot oder KI beantwortet Standardfragen",
+       "punkte": 3
+      },
+      {
+       "id": "D3_4",
+       "text": "Großteil automatisch, Menschen für Sonderfälle",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "D4",
+     "text": "Wie viel von Terminplanung, Einsatzplanung und internen Abläufen läuft automatisch?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "D4_0",
+       "text": "Alles von Hand",
+       "punkte": 0
+      },
+      {
+       "id": "D4_1",
+       "text": "Kalender, sonst Hand",
+       "punkte": 1
+      },
+      {
+       "id": "D4_2",
+       "text": "Einzelne Abläufe automatisch",
+       "punkte": 2
+      },
+      {
+       "id": "D4_3",
+       "text": "Großteil automatisch",
+       "punkte": 3
+      },
+      {
+       "id": "D4_4",
+       "text": "Fast komplett automatisch",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "D5",
+     "text": "Nutzen Sie Tools, die Ihre Systeme automatisch verbinden (z. B. Make, Zapier, n8n)?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "D5_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "D5_1",
+       "text": "Kenne ich, nutzen wir nicht",
+       "punkte": 1
+      },
+      {
+       "id": "D5_2",
+       "text": "Ein bis zwei einfache Verbindungen",
+       "punkte": 2
+      },
+      {
+       "id": "D5_3",
+       "text": "Mehrere feste Abläufe",
+       "punkte": 3
+      },
+      {
+       "id": "D5_4",
+       "text": "Zentrale Automatisierung über alle Systeme",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "D6",
+     "text": "Beleg: Welcher Ablauf läuft heute komplett ohne Ihr Zutun?",
+     "kurzcheck": false,
+     "typ": "beleg",
+     "eingabe": [
+      "text",
+      "sprache"
+     ],
+     "nachfragen": [
+      "Wie oft läuft das?",
+      "Was passiert dabei genau?",
+      "Wer muss noch eingreifen?"
+     ],
+     "rubrik": [
+      [
+       0,
+       "kein Ablauf"
+      ],
+      [
+       1,
+       "ein Teilschritt läuft automatisch, Rest von Hand"
+      ],
+      [
+       2,
+       "ein Ablauf läuft automatisch, mit regelmäßigem Eingreifen"
+      ],
+      [
+       3,
+       "ein Kernablauf läuft komplett automatisch"
+      ],
+      [
+       4,
+       "mehrere Kernabläufe laufen komplett automatisch"
+      ]
+     ],
+     "bewertung": "KI, siehe prompts/beleg_bewertung.md"
+    },
+    {
+     "id": "D7",
+     "text": "Wie viele Stunden pro Woche verbringen Sie selbst mit Aufgaben, die eine Maschine erledigen könnte?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "D7_0",
+       "text": "Über 20",
+       "punkte": 0
+      },
+      {
+       "id": "D7_1",
+       "text": "11 bis 20",
+       "punkte": 1
+      },
+      {
+       "id": "D7_2",
+       "text": "6 bis 10",
+       "punkte": 2
+      },
+      {
+       "id": "D7_3",
+       "text": "2 bis 5",
+       "punkte": 3
+      },
+      {
+       "id": "D7_4",
+       "text": "Unter 2",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "D8",
+     "text": "Läuft Ihr Geschäft zwei Wochen ohne Sie weiter?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "D8_0",
+       "text": "Nein, dann steht alles",
+       "punkte": 0
+      },
+      {
+       "id": "D8_1",
+       "text": "Nur mit täglichen Anrufen",
+       "punkte": 1
+      },
+      {
+       "id": "D8_2",
+       "text": "Mit Einschränkungen",
+       "punkte": 2
+      },
+      {
+       "id": "D8_3",
+       "text": "Ja, mit kurzen Rückfragen",
+       "punkte": 3
+      },
+      {
+       "id": "D8_4",
+       "text": "Ja, problemlos",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "E",
+   "key": "daten",
+   "name": "Daten und Systeme",
+   "dimension": "daten",
+   "intro": "Dimension 4, Gewicht 10 %. 6 Fragen.",
+   "fragen": [
+    {
+     "id": "E1",
+     "text": "Haben Sie ein CRM, und wird es wirklich gepflegt?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "E1_0",
+       "text": "Kein CRM",
+       "punkte": 0
+      },
+      {
+       "id": "E1_1",
+       "text": "Excel oder Notizen",
+       "punkte": 1
+      },
+      {
+       "id": "E1_2",
+       "text": "CRM vorhanden, kaum gepflegt",
+       "punkte": 2
+      },
+      {
+       "id": "E1_3",
+       "text": "CRM gepflegt im Vertrieb",
+       "punkte": 3
+      },
+      {
+       "id": "E1_4",
+       "text": "CRM ist zentrale Quelle für alle",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "E2",
+     "text": "Wo liegen Kunden-, Vertriebs- und Finanzdaten?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "E2_0",
+       "text": "Überall verstreut",
+       "punkte": 0
+      },
+      {
+       "id": "E2_1",
+       "text": "In drei oder mehr getrennten Systemen",
+       "punkte": 1
+      },
+      {
+       "id": "E2_2",
+       "text": "In zwei Systemen",
+       "punkte": 2
+      },
+      {
+       "id": "E2_3",
+       "text": "Meist zentral",
+       "punkte": 3
+      },
+      {
+       "id": "E2_4",
+       "text": "An einem Ort, verbunden",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "E3",
+     "text": "Sind Ihre Systeme über Schnittstellen verbunden?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "E3_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "E3_1",
+       "text": "Export und Import von Hand",
+       "punkte": 1
+      },
+      {
+       "id": "E3_2",
+       "text": "Einzelne Verbindungen",
+       "punkte": 2
+      },
+      {
+       "id": "E3_3",
+       "text": "Wichtigste Systeme verbunden",
+       "punkte": 3
+      },
+      {
+       "id": "E3_4",
+       "text": "Alles verbunden",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "E4",
+     "text": "Wie oft sehen Sie Ihre wichtigsten Kennzahlen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "E4_0",
+       "text": "Gar nicht",
+       "punkte": 0
+      },
+      {
+       "id": "E4_1",
+       "text": "Einmal im Jahr mit dem Steuerberater",
+       "punkte": 1
+      },
+      {
+       "id": "E4_2",
+       "text": "Monatlich",
+       "punkte": 2
+      },
+      {
+       "id": "E4_3",
+       "text": "Wöchentlich",
+       "punkte": 3
+      },
+      {
+       "id": "E4_4",
+       "text": "Täglich im Dashboard",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "E5",
+     "text": "Arbeiten Sie überwiegend in der Cloud?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "E5_0",
+       "text": "Nein, alles lokal oder Papier",
+       "punkte": 0
+      },
+      {
+       "id": "E5_1",
+       "text": "Kaum",
+       "punkte": 1
+      },
+      {
+       "id": "E5_2",
+       "text": "Teilweise",
+       "punkte": 2
+      },
+      {
+       "id": "E5_3",
+       "text": "Überwiegend",
+       "punkte": 3
+      },
+      {
+       "id": "E5_4",
+       "text": "Komplett",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "E6",
+     "text": "Wie gut ist Ihr Wissen dokumentiert?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "E6_0",
+       "text": "Nur in Köpfen",
+       "punkte": 0
+      },
+      {
+       "id": "E6_1",
+       "text": "Verstreute Dateien",
+       "punkte": 1
+      },
+      {
+       "id": "E6_2",
+       "text": "Ordnerstruktur mit Anleitungen",
+       "punkte": 2
+      },
+      {
+       "id": "E6_3",
+       "text": "Wiki oder Handbuch, gepflegt",
+       "punkte": 3
+      },
+      {
+       "id": "E6_4",
+       "text": "KI-Brain, das alle befragen können",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "F",
+   "key": "robotik",
+   "name": "Robotik und physische Automatisierung",
+   "dimension": "robotik",
+   "intro": "Dimension 5, Gewicht 0 bis 5 %, nur bei passender Branche (Handwerk, Produktion, Logistik, Gesundheit). Nur in der Vertiefung. 4 Fragen.",
+   "fragen": [
+    {
+     "id": "F1",
+     "text": "Setzen Sie Roboter oder Cobots ein?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "F1_0",
+       "text": "Nein, kein Bedarf",
+       "punkte": 0
+      },
+      {
+       "id": "F1_1",
+       "text": "Nein, aber interessant",
+       "punkte": 1
+      },
+      {
+       "id": "F1_2",
+       "text": "Geplant",
+       "punkte": 2
+      },
+      {
+       "id": "F1_3",
+       "text": "Ein Einsatz",
+       "punkte": 3
+      },
+      {
+       "id": "F1_4",
+       "text": "Mehrere Einsätze",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "F2",
+     "text": "Nutzen Sie automatische Lager, Fahrzeuge oder Drohnen?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "F2_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "F2_1",
+       "text": "Geprüft",
+       "punkte": 1
+      },
+      {
+       "id": "F2_2",
+       "text": "Getestet",
+       "punkte": 2
+      },
+      {
+       "id": "F2_3",
+       "text": "Ein Einsatz",
+       "punkte": 3
+      },
+      {
+       "id": "F2_4",
+       "text": "Mehrere Einsätze",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "F3",
+     "text": "Haben Sie Sensoren oder vernetzte Maschinen, deren Daten Sie auswerten?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "F3_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "F3_1",
+       "text": "Daten vorhanden, nicht genutzt",
+       "punkte": 1
+      },
+      {
+       "id": "F3_2",
+       "text": "Gelegentlich ausgewertet",
+       "punkte": 2
+      },
+      {
+       "id": "F3_3",
+       "text": "Regelmäßig ausgewertet",
+       "punkte": 3
+      },
+      {
+       "id": "F3_4",
+       "text": "Automatisch mit Warnungen",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "F4",
+     "text": "Planen Sie Investitionen in Robotik in den nächsten 24 Monaten?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "F4_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "F4_1",
+       "text": "Vielleicht",
+       "punkte": 1
+      },
+      {
+       "id": "F4_2",
+       "text": "Ja, ohne Budget",
+       "punkte": 2
+      },
+      {
+       "id": "F4_3",
+       "text": "Ja, mit Budget",
+       "punkte": 3
+      },
+      {
+       "id": "F4_4",
+       "text": "Ja, Projekt läuft",
+       "punkte": 4
+      }
+     ]
+    }
+   ],
+   "bedingung": "nur wenn robotik_relevant (Branche handwerk, produktion, gesundheit oder Logistik laut Freitext); nur in der Vertiefung"
+  },
+  {
+   "id": "G",
+   "key": "team",
+   "name": "Team und Kompetenz",
+   "dimension": "team",
+   "intro": "Dimension 6, Gewicht 10 bis 15 %. 6 Fragen.",
+   "fragen": [
+    {
+     "id": "G1",
+     "text": "Wie viele Mitarbeitende wurden in den letzten 12 Monaten zu KI geschult?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "G1_0",
+       "text": "Niemand",
+       "punkte": 0
+      },
+      {
+       "id": "G1_1",
+       "text": "Einzelne auf eigene Faust",
+       "punkte": 1
+      },
+      {
+       "id": "G1_2",
+       "text": "Unter der Hälfte",
+       "punkte": 2
+      },
+      {
+       "id": "G1_3",
+       "text": "Mehr als die Hälfte",
+       "punkte": 3
+      },
+      {
+       "id": "G1_4",
+       "text": "Alle, mit Nachweis",
+       "punkte": 4
+      }
+     ],
+     "hinweis": "Seit 02.02.2025 verlangt Art. 4 AI Act KI-Kompetenz bei Mitarbeitenden, die KI nutzen. Hinweis, keine Rechtsberatung."
+    },
+    {
+     "id": "G2",
+     "text": "Gibt es Zeit und Raum, neue Tools auszuprobieren?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "G2_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "G2_1",
+       "text": "Nur nach Feierabend",
+       "punkte": 1
+      },
+      {
+       "id": "G2_2",
+       "text": "Wenn gerade Luft ist",
+       "punkte": 2
+      },
+      {
+       "id": "G2_3",
+       "text": "Feste Zeit pro Monat",
+       "punkte": 3
+      },
+      {
+       "id": "G2_4",
+       "text": "Feste Zeit pro Woche",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "G3",
+     "text": "Wer treibt Neues voran?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "G3_0",
+       "text": "Niemand",
+       "punkte": 0
+      },
+      {
+       "id": "G3_1",
+       "text": "Nur die Geschäftsführung",
+       "punkte": 1
+      },
+      {
+       "id": "G3_2",
+       "text": "Einzelne Mitarbeitende",
+       "punkte": 2
+      },
+      {
+       "id": "G3_3",
+       "text": "Mehrere aus verschiedenen Bereichen",
+       "punkte": 3
+      },
+      {
+       "id": "G3_4",
+       "text": "Alle, es ist Teil der Kultur",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "G4",
+     "text": "Wie reagiert Ihr Team auf neue Technik?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "G4_0",
+       "text": "Ablehnend",
+       "punkte": 0
+      },
+      {
+       "id": "G4_1",
+       "text": "Skeptisch",
+       "punkte": 1
+      },
+      {
+       "id": "G4_2",
+       "text": "Abwartend",
+       "punkte": 2
+      },
+      {
+       "id": "G4_3",
+       "text": "Offen",
+       "punkte": 3
+      },
+      {
+       "id": "G4_4",
+       "text": "Fordert sie selbst ein",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "G5",
+     "text": "Holen Sie sich externe Unterstützung für Innovation?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "G5_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "G5_1",
+       "text": "Selten, für Einzelfragen",
+       "punkte": 1
+      },
+      {
+       "id": "G5_2",
+       "text": "Für einzelne Projekte",
+       "punkte": 2
+      },
+      {
+       "id": "G5_3",
+       "text": "Regelmäßig",
+       "punkte": 3
+      },
+      {
+       "id": "G5_4",
+       "text": "Feste Partner mit Plan",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "G6",
+     "text": "Wie schnell wird bei Ihnen eine gute Idee umgesetzt?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "G6_0",
+       "text": "Gar nicht",
+       "punkte": 0
+      },
+      {
+       "id": "G6_1",
+       "text": "In über 12 Monaten",
+       "punkte": 1
+      },
+      {
+       "id": "G6_2",
+       "text": "In 6 bis 12 Monaten",
+       "punkte": 2
+      },
+      {
+       "id": "G6_3",
+       "text": "In 1 bis 6 Monaten",
+       "punkte": 3
+      },
+      {
+       "id": "G6_4",
+       "text": "In wenigen Wochen",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "H",
+   "key": "modul_handwerk",
+   "name": "Branchen-Modul Handwerk",
+   "dimension": null,
+   "intro": "Vertiefung mit Zoe nach der Klickstrecke. 7 Fragen, Antwort per Klick, Text oder Sprachnachricht.",
+   "fragen": [
+    {
+     "id": "H1",
+     "text": "Wie erstellen Sie Angebote und Aufmaße?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "H1_0",
+       "text": "Handschriftlich oder Word",
+       "stufe": 0
+      },
+      {
+       "id": "H1_1",
+       "text": "Branchensoftware, viel Abtippen",
+       "stufe": 1
+      },
+      {
+       "id": "H1_2",
+       "text": "Branchensoftware mit Vorlagen",
+       "stufe": 2
+      },
+      {
+       "id": "H1_3",
+       "text": "Aufmaß per App, Angebot automatisch",
+       "stufe": 3
+      },
+      {
+       "id": "H1_4",
+       "text": "Mit KI aus Fotos oder Sprache",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "H2",
+     "text": "Wie kommen Termine mit Kunden zustande?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "H2_0",
+       "text": "Nur per Telefon",
+       "stufe": 0
+      },
+      {
+       "id": "H2_1",
+       "text": "Telefon und E-Mail",
+       "stufe": 1
+      },
+      {
+       "id": "H2_2",
+       "text": "Online-Anfrageformular",
+       "stufe": 2
+      },
+      {
+       "id": "H2_3",
+       "text": "Online-Buchung mit Kalender",
+       "stufe": 3
+      },
+      {
+       "id": "H2_4",
+       "text": "Automatisch inklusive Erinnerung und Bestätigung",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "H3",
+     "text": "Wie dokumentieren Sie auf der Baustelle oder beim Kunden?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "H3_0",
+       "text": "Papier, abends abtippen",
+       "stufe": 0
+      },
+      {
+       "id": "H3_1",
+       "text": "Fotos auf dem Handy",
+       "stufe": 1
+      },
+      {
+       "id": "H3_2",
+       "text": "App mit Formularen",
+       "stufe": 2
+      },
+      {
+       "id": "H3_3",
+       "text": "Sprache und Fotos direkt in die Software",
+       "stufe": 3
+      },
+      {
+       "id": "H3_4",
+       "text": "Automatischer Bericht aus Sprache und Fotos",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "H4",
+     "text": "Wie viele Stunden pro Woche gehen bei Ihnen in Büroarbeit?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "H4_0",
+       "text": "Über 20",
+       "stufe": 0
+      },
+      {
+       "id": "H4_1",
+       "text": "11 bis 20",
+       "stufe": 1
+      },
+      {
+       "id": "H4_2",
+       "text": "6 bis 10",
+       "stufe": 2
+      },
+      {
+       "id": "H4_3",
+       "text": "2 bis 5",
+       "stufe": 3
+      },
+      {
+       "id": "H4_4",
+       "text": "Unter 2",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "H5",
+     "text": "Wie finden Sie neue Fachkräfte und Azubis?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "H5_0",
+       "text": "Kaum, offene Stellen bleiben leer",
+       "stufe": 0
+      },
+      {
+       "id": "H5_1",
+       "text": "Anzeigen in Zeitung oder Portalen",
+       "stufe": 1
+      },
+      {
+       "id": "H5_2",
+       "text": "Social Media",
+       "stufe": 2
+      },
+      {
+       "id": "H5_3",
+       "text": "Eigene Karriereseite mit schneller Bewerbung",
+       "stufe": 3
+      },
+      {
+       "id": "H5_4",
+       "text": "Systematisch mit Kampagnen und Automatisierung",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "H6",
+     "text": "Wie hoch ist Ihr Anteil an Anfragen, die nie zu einem Angebot werden, weil die Zeit fehlt?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "H6_0",
+       "text": "Über 30 %",
+       "stufe": 0
+      },
+      {
+       "id": "H6_1",
+       "text": "15 bis 30 %",
+       "stufe": 1
+      },
+      {
+       "id": "H6_2",
+       "text": "5 bis 15 %",
+       "stufe": 2
+      },
+      {
+       "id": "H6_3",
+       "text": "Unter 5 %",
+       "stufe": 3
+      },
+      {
+       "id": "H6_4",
+       "text": "Keine",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "H7",
+     "text": "Welche Aufgabe würden Sie sofort abgeben, wenn eine Maschine sie könnte?",
+     "kurzcheck": false,
+     "typ": "offen",
+     "eingabe": [
+      "text",
+      "sprache"
+     ],
+     "punkte": false,
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    }
+   ],
+   "bedingung": "branche == handwerk"
+  },
+  {
+   "id": "I",
+   "key": "modul_dienstleistung",
+   "name": "Branchen-Modul Dienstleister, Agenturen, Berater",
+   "dimension": null,
+   "intro": "Vertiefung mit Zoe. 7 Fragen.",
+   "fragen": [
+    {
+     "id": "I1",
+     "text": "Wie viel Ihrer Zeit geht in Akquise und Verwaltung statt in Kundenarbeit?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "I1_0",
+       "text": "Über 50 %",
+       "stufe": 0
+      },
+      {
+       "id": "I1_1",
+       "text": "30 bis 50 %",
+       "stufe": 1
+      },
+      {
+       "id": "I1_2",
+       "text": "15 bis 30 %",
+       "stufe": 2
+      },
+      {
+       "id": "I1_3",
+       "text": "Unter 15 %",
+       "stufe": 3
+      },
+      {
+       "id": "I1_4",
+       "text": "Kaum, das läuft automatisch",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "I2",
+     "text": "Woher kommen neue Kunden?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "I2_0",
+       "text": "Fast nur Empfehlungen",
+       "stufe": 0
+      },
+      {
+       "id": "I2_1",
+       "text": "Empfehlungen und Netzwerk",
+       "stufe": 1
+      },
+      {
+       "id": "I2_2",
+       "text": "Dazu LinkedIn oder Website",
+       "stufe": 2
+      },
+      {
+       "id": "I2_3",
+       "text": "Planbarer Vertriebsprozess",
+       "stufe": 3
+      },
+      {
+       "id": "I2_4",
+       "text": "Automatisierte Leadgewinnung mit Scoring",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "I3",
+     "text": "Wie erstellen Sie Angebote und Konzepte?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "I3_0",
+       "text": "Jedes Mal neu",
+       "stufe": 0
+      },
+      {
+       "id": "I3_1",
+       "text": "Aus alten Dokumenten kopiert",
+       "stufe": 1
+      },
+      {
+       "id": "I3_2",
+       "text": "Vorlagen",
+       "stufe": 2
+      },
+      {
+       "id": "I3_3",
+       "text": "Vorlagen mit KI-Unterstützung",
+       "stufe": 3
+      },
+      {
+       "id": "I3_4",
+       "text": "Automatisch aus CRM und KI",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "I4",
+     "text": "Wo steckt Ihr Fachwissen?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "I4_0",
+       "text": "In meinem Kopf",
+       "stufe": 0
+      },
+      {
+       "id": "I4_1",
+       "text": "In Köpfen einzelner Mitarbeitender",
+       "stufe": 1
+      },
+      {
+       "id": "I4_2",
+       "text": "In Dateien und Ordnern",
+       "stufe": 2
+      },
+      {
+       "id": "I4_3",
+       "text": "In einem Wiki",
+       "stufe": 3
+      },
+      {
+       "id": "I4_4",
+       "text": "In einem KI-Brain, das alle befragen",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "I5",
+     "text": "Wie berichten Sie an Kunden?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "I5_0",
+       "text": "Gar nicht oder nur auf Nachfrage",
+       "stufe": 0
+      },
+      {
+       "id": "I5_1",
+       "text": "Von Hand in Excel oder Folien",
+       "stufe": 1
+      },
+      {
+       "id": "I5_2",
+       "text": "Vorlagen, von Hand gefüllt",
+       "stufe": 2
+      },
+      {
+       "id": "I5_3",
+       "text": "Dashboard mit Daten",
+       "stufe": 3
+      },
+      {
+       "id": "I5_4",
+       "text": "Automatische Berichte mit KI-Kommentar",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "I6",
+     "text": "Wie rechnen Sie ab?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "I6_0",
+       "text": "Nach Stunden, von Hand erfasst",
+       "stufe": 0
+      },
+      {
+       "id": "I6_1",
+       "text": "Nach Stunden mit Zeiterfassung",
+       "stufe": 1
+      },
+      {
+       "id": "I6_2",
+       "text": "Tagessätze",
+       "stufe": 2
+      },
+      {
+       "id": "I6_3",
+       "text": "Pauschalen und Pakete",
+       "stufe": 3
+      },
+      {
+       "id": "I6_4",
+       "text": "Wiederkehrende Pakete oder Abos",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "I7",
+     "text": "Welche Aufgabe würden Sie sofort abgeben, wenn eine Maschine sie könnte?",
+     "kurzcheck": false,
+     "typ": "offen",
+     "eingabe": [
+      "text",
+      "sprache"
+     ],
+     "punkte": false,
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    }
+   ],
+   "bedingung": "branche == dienstleistung"
+  },
+  {
+   "id": "J",
+   "key": "modul_tech",
+   "name": "Branchen-Modul Tech, KI, FinTech und Start-ups",
+   "dimension": null,
+   "intro": "Vertiefung mit Zoe. 7 Fragen.",
+   "fragen": [
+    {
+     "id": "J1",
+     "text": "In welcher Phase ist Ihr Unternehmen?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "J1_0",
+       "text": "Idee oder Prototyp",
+       "stufe": 0
+      },
+      {
+       "id": "J1_1",
+       "text": "Erste zahlende Kunden",
+       "stufe": 1
+      },
+      {
+       "id": "J1_2",
+       "text": "Wiederholbarer Vertrieb",
+       "stufe": 2
+      },
+      {
+       "id": "J1_3",
+       "text": "Wachstum und Skalierung",
+       "stufe": 3
+      },
+      {
+       "id": "J1_4",
+       "text": "Etabliert",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "J2",
+     "text": "Wer macht bei Ihnen den Vertrieb?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "J2_0",
+       "text": "Niemand richtig",
+       "stufe": 0
+      },
+      {
+       "id": "J2_1",
+       "text": "Die Gründer nebenbei",
+       "stufe": 1
+      },
+      {
+       "id": "J2_2",
+       "text": "Ein erster Vertriebler",
+       "stufe": 2
+      },
+      {
+       "id": "J2_3",
+       "text": "Vertriebsteam ohne festen Prozess",
+       "stufe": 3
+      },
+      {
+       "id": "J2_4",
+       "text": "Vertriebsteam mit Prozess und KPIs",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "J3",
+     "text": "Kennen Sie Ihre wichtigsten Vertriebszahlen (CAC, Abschlussquote, Zykluslänge)?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "J3_0",
+       "text": "Nein",
+       "stufe": 0
+      },
+      {
+       "id": "J3_1",
+       "text": "Gefühlt",
+       "stufe": 1
+      },
+      {
+       "id": "J3_2",
+       "text": "Teilweise",
+       "stufe": 2
+      },
+      {
+       "id": "J3_3",
+       "text": "Ja, monatlich",
+       "stufe": 3
+      },
+      {
+       "id": "J3_4",
+       "text": "Ja, live im Dashboard",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "J4",
+     "text": "Wie viel KI steckt in Ihren eigenen Abläufen, nicht nur im Produkt?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "J4_0",
+       "text": "Kaum",
+       "stufe": 0
+      },
+      {
+       "id": "J4_1",
+       "text": "Einzelne Tools",
+       "stufe": 1
+      },
+      {
+       "id": "J4_2",
+       "text": "In einem Bereich fest",
+       "stufe": 2
+      },
+      {
+       "id": "J4_3",
+       "text": "In mehreren Bereichen",
+       "stufe": 3
+      },
+      {
+       "id": "J4_4",
+       "text": "Agenten in Kernprozessen",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "J5",
+     "text": "Wo hakt es am meisten?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "J5_0",
+       "text": "Produkt-Markt-Passung"
+      },
+      {
+       "id": "J5_1",
+       "text": "Leads und Sichtbarkeit"
+      },
+      {
+       "id": "J5_2",
+       "text": "Abschlüsse"
+      },
+      {
+       "id": "J5_3",
+       "text": "Team und Struktur"
+      },
+      {
+       "id": "J5_4",
+       "text": "Finanzierung"
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "J6",
+     "text": "Wie schnell treffen Sie Entscheidungen auf Basis von Daten?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "J6_0",
+       "text": "Bauchgefühl",
+       "stufe": 0
+      },
+      {
+       "id": "J6_1",
+       "text": "Nach langer Diskussion",
+       "stufe": 1
+      },
+      {
+       "id": "J6_2",
+       "text": "Wöchentliche Runde mit Zahlen",
+       "stufe": 2
+      },
+      {
+       "id": "J6_3",
+       "text": "Klare KPIs, schnelle Entscheidungen",
+       "stufe": 3
+      },
+      {
+       "id": "J6_4",
+       "text": "Datengetrieben mit Experimenten",
+       "stufe": 4
+      }
+     ],
+     "punkte": false,
+     "auswertung": "fließt nicht in die Dimensionen ein; Option-Stufe 0 bis 4 dient Bericht und Gesprächsvorlage (niedrig = großer Hebel)",
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    },
+    {
+     "id": "J7",
+     "text": "Was müsste in 90 Tagen passiert sein, damit Sie sagen: Es hat sich gelohnt?",
+     "kurzcheck": false,
+     "typ": "offen",
+     "eingabe": [
+      "text",
+      "sprache"
+     ],
+     "punkte": false,
+     "eingabe_auch": [
+      "text",
+      "sprache"
+     ]
+    }
+   ],
+   "bedingung": "branche == tech ODER startup == true"
+  }
+ ],
+ "anzahl_fragen": 65,
+ "anzahl_kurzcheck": 15
+}

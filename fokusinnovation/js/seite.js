@@ -1,5 +1,5 @@
 // Fokus Innovation · Seite: Abschnitte erscheinen einmal beim Scrollen, das Menü schließt nach einem Klick und mit Esc,
-// der Knopf zum Check zeigt sich erst nach dem Einstieg und tritt über dem Schlussakt zurück. Liest nichts, speichert nichts, sendet nichts.
+// Liest nichts, speichert nichts, sendet nichts.
 (() => {
   const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const beobachten = 'IntersectionObserver' in window;
@@ -22,19 +22,4 @@
     });
   }
 
-  const knopf = document.querySelector('.check-knopf');
-  if (knopf && beobachten) {
-    const einstieg = document.querySelector('.film') ?? document.querySelector('.held');
-    const ende = document.querySelectorAll('.schlussakt, .fuss');
-    const sichtbar = new Set();
-    const setzen = () => knopf.classList.toggle('versteckt', sichtbar.size > 0 || document.documentElement.classList.contains('menue-offen'));
-    const io = new IntersectionObserver((eintraege) => {
-      for (const e of eintraege) e.isIntersecting ? sichtbar.add(e.target) : sichtbar.delete(e.target);
-      setzen();
-    }, { threshold: 0 });
-    if (einstieg) io.observe(einstieg);
-    ende.forEach((el) => io.observe(el));
-    menue?.addEventListener('toggle', setzen);
-    knopf.classList.add('versteckt');
-  }
 })();

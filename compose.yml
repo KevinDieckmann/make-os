@@ -26,7 +26,9 @@ services:
     image: make-os:aktuell
     restart: unless-stopped
     # 27.09.: Summe der Grenzen (1280 + 384 + 128 = 1792 MB) bleibt unter den 2 GB des Servers — vorher 2304 MB.
-    mem_limit: 1280m
+    # Reel-Werkstatt (28.10.): ffmpeg/whisper laufen als Unterprozesse der App und zählen zur Grenze — nach dem Vergrößern des Servers
+    # (≥ 4 GB) in der .env MAKE_OS_APP_MEM=2560m setzen; ohne Angabe wie bisher.
+    mem_limit: ${MAKE_OS_APP_MEM:-1280m}
     # Prozess-/Thread-Grenze (05.10.): eine Fork-Bombe oder ein Thread-Leck legt nie den ganzen Server lahm. Node + Next
     # brauchen um 30–60 (libuv-Pool, Worker, Brain-Embeddings); 512 lässt viel Luft. read_only bleibt AUS: Next schreibt
     # in .next/cache (Bilder, Fetch-Cache) im Bild — erst prüfen, dann mit tmpfs (UPDATES.md, offen).

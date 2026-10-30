@@ -11,7 +11,7 @@
 // „E-Mail-Adresse bestätigen“ schickt das Token an den Server.
 
 import { useEffect, useRef, useState } from 'react';
-import { C, AKZENT, seite, rahmen, karte, titel, leise, klein, knopf, zeitText } from './stil';
+import { C, AKZENT, seite, seiteKlasse, rahmen, karte, titel, leise, klein, knopf, zeitText } from './hell';
 import { useGastZone } from './Buchen';
 import { gastZeitText, zonenOrt } from '@/lib/kalender/gast-zeit';
 
@@ -89,16 +89,16 @@ export function BuchungStatus({ slug }: { slug: string }) {
   if (mailModus) return <MailBestaetigen sicht={sicht} fehler={fehler} laeuft={laeuft} bereit={!!mailToken && !sicht} onBestaetigen={() => { if (mailToken) void senden('mail-bestaetigen', mailToken); }} />;
 
   return (
-    <main style={seite}>
+    <main className={seiteKlasse} style={seite}>
       <div style={{ ...rahmen, maxWidth: 560 }}>
         <span style={{ ...klein, textTransform: 'uppercase', letterSpacing: '.12em', color: AKZENT, fontWeight: 700 }}>Ihre Terminanfrage</span>
         {!sicht && !fehler && <div style={karte}><p style={leise}>Wird geladen …</p></div>}
         {fehler && !sicht && <div style={karte}><h1 style={titel}>Nicht gefunden</h1><p style={leise}>{fehler}</p></div>}
         {sicht && t && (
           <section style={{ ...karte, display: 'grid', gap: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: t.farbe, boxShadow: `0 0 10px ${t.farbe}66` }} /><span style={{ fontSize: 13, color: t.farbe, fontWeight: 700 }}>{t.kopf}</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: t.farbe }} /><span style={{ fontSize: 13, color: t.farbe, fontWeight: 700 }}>{t.kopf}</span></div>
             <h1 style={titel}>{sicht.titel}</h1>
-            <div style={{ fontSize: 16, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{zeitText(sicht.start, sicht.ende)}{zone && bei(sicht.start) ? <span style={{ ...klein, display: 'block', fontWeight: 500 }}>bei Ihnen ({zonenOrt(zone)}): {bei(sicht.start)}–{bei(sicht.ende) ?? sicht.ende.slice(11, 16)}</span> : null}</div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>{zeitText(sicht.start, sicht.ende)}{zone && bei(sicht.start) ? <span style={{ ...klein, display: 'block', fontWeight: 500 }}>bei Ihnen ({zonenOrt(zone)}): {bei(sicht.start)}–{bei(sicht.ende) ?? sicht.ende.slice(11, 16)}</span> : null}</div>
             <p style={{ ...leise, margin: 0 }}>{t.satz}</p>
             {sicht.emailBestaetigt && <p style={{ ...klein, margin: 0, color: C.gut }}>E-Mail-Adresse bestätigt.</p>}
             {sicht.status === 'vorlaeufig' && sicht.reserviertBis && <p style={{ ...klein, margin: 0 }}>Reserviert bis {new Date(sicht.reserviertBis).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr.</p>}
@@ -129,7 +129,7 @@ export function BuchungStatus({ slug }: { slug: string }) {
  */
 export function MailBestaetigen({ sicht, fehler, laeuft, bereit, onBestaetigen }: { sicht: Sicht | null; fehler: string; laeuft: boolean; bereit: boolean; onBestaetigen: () => void }) {
   return (
-    <main style={seite}>
+    <main className={seiteKlasse} style={seite}>
       <div style={{ ...rahmen, maxWidth: 560 }}>
         <span style={{ ...klein, textTransform: 'uppercase', letterSpacing: '.12em', color: AKZENT, fontWeight: 700 }}>E-Mail-Adresse bestätigen</span>
         <section style={{ ...karte, display: 'grid', gap: 12 }}>
@@ -144,7 +144,7 @@ export function MailBestaetigen({ sicht, fehler, laeuft, bereit, onBestaetigen }
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><span aria-hidden style={{ width: 10, height: 10, borderRadius: '50%', background: C.gut }} /><span style={{ fontSize: 13, color: C.gut, fontWeight: 700 }}>Danke — Ihre E-Mail-Adresse ist bestätigt.</span></div>
               <h1 style={titel}>{sicht.titel}</h1>
-              <div style={{ fontSize: 16, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{zeitText(sicht.start, sicht.ende)}</div>
+              <div style={{ fontSize: 16, fontWeight: 600 }}>{zeitText(sicht.start, sicht.ende)}</div>
               <p style={{ ...leise, margin: 0 }}>Den Stand Ihrer Anfrage sehen Sie weiter über Ihren persönlichen Link von der Buchung.</p>
             </>
           )}

@@ -113,7 +113,7 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     }
   });
 
-  it('fokusinnovation.de (26.10.): www → 301, gebaute Website read-only aus /srv/fokusinnovation mit denselben strengen Köpfen, Vorschau mit noindex + robots.txt', () => {
+  it('fokusinnovation.de (26.10., Welle 3 29.10.): www → 301, gebaute Website read-only aus /srv/fokusinnovation mit strengen Köpfen, Vorschau mit noindex + robots.txt, nur Check und Buchung an die App', () => {
     // OFFLINE (Kevin 08.10.): beide Adressen im Offline-Block mit 503, nichts ausgeliefert.
     const offline = Array.from(aktiv.entries()).find(([k]) => k.split(',').map(a => a.trim()).includes('fokusinnovation.de'));
     if (offline && /^respond 503$/m.test(offline[1])) {
@@ -131,7 +131,13 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     expect(seite).toMatch(/^@intern path \*\.md \*\.mjs$/m);
     expect(seite).toMatch(/^respond @intern 404$/m);
     expect(seite).toMatch(/^hide \*\.md$/m);
-    expect(seite).not.toMatch(/reverse_proxy|browse/);
+    expect(seite).not.toMatch(/browse/);
+    // Welle 3 (29.10.): NUR Check und Buchung (samt ihren Skripten und der Schrift) gehen an die App — nie /os, nie /api allgemein.
+    expect(seite).toMatch(/^@app path \/check \/api\/check \/buchen \/buchen\/\* \/api\/buchung \/api\/buchung\/\* \/_next\/\* \/schriften\/\*$/m);
+    expect(seite.match(/reverse_proxy/g)?.length).toBe(1);
+    expect(seite).toMatch(/handle @app \{[\s\S]*?reverse_proxy app:3000/);
+    expect(seite).toMatch(/^request_header -x-middleware-subrequest$/m);
+    expect(seite).toMatch(/^request_header X-Make-Vorbau "1"$/m);
     // Die Köpfe gelten auch für die 404-Seite (eigene Route-Kette).
     expect(seite).toMatch(/handle_errors \{[\s\S]*import fokus_koepfe[\s\S]*rewrite \* \/404\.html/);
     const kopf = aktiv.get('(fokus_koepfe)') ?? '';
@@ -142,13 +148,16 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     const ordner = join(process.cwd(), 'fokusinnovation');
     expect(readFileSync(join(ordner, 'robots.txt'), 'utf8')).toMatch(/^Disallow: \/$/m);
     // Jede Seite trägt noindex, keine lädt Fremdes oder führt Inline-Skripte aus (die CSP oben würde sie ohnehin sperren).
-    for (const datei of ['index.html', 'impressum/index.html', 'datenschutz/index.html', '404.html']) {
+    // Erlaubt (27.10., Suche): <link rel="canonical|alternate"> mit voller Adresse und der JSON-LD-Datenblock (wird nie ausgeführt).
+    for (const datei of ['index.html', 'impressum/index.html', 'datenschutz/index.html', 'wissen/index.html', 'preise/index.html', '404.html']) {
       const html = readFileSync(join(ordner, datei), 'utf8');
       expect(html, datei).toMatch(/<meta name="robots" content="noindex">/);
-      expect(html, datei).not.toMatch(/<(script|link|img)\b[^>]*\s(src|href)="https?:/);
-      expect(html, datei).not.toMatch(/<script(?![^>]*\ssrc=)[^>]*>/);
+      expect(html.replace(/<link rel="(canonical|alternate)"[^>]*>/g, ''), datei).not.toMatch(/<(script|link|img)\b[^>]*\s(src|href)="https?:/);
+      expect(html, datei).not.toMatch(/<script(?![^>]*\ssrc=)(?![^>]*type="application\/ld\+json")[^>]*>/);
       expect(html, datei).not.toMatch(/\sstyle="/);
+      for (const [, ld] of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) expect(() => JSON.parse(ld), datei).not.toThrow();
     }
+    expect(readFileSync(join(ordner, 'sitemap.xml'), 'utf8')).toMatch(/<loc>https:\/\/fokusinnovation\.de\/<\/loc>/);
     expect(readFileSync(join(process.cwd(), 'compose.yml'), 'utf8')).toMatch(/^\s+- \.\/fokusinnovation:\/srv\/fokusinnovation:ro$/m);
   });
 

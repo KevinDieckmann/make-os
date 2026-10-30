@@ -4,6 +4,80 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 28.10.2026 — Social für Malin: Fotos/Videos am Beitrag, Instagram, Reel-Werkstatt, Kommentare & DMs (nur lokal — Branch `social-modul`)
+Kevin 28.10.: „Malin muss grundsätzlich alles machen können und ihr Profil maximal gut steuern — Reels schneiden, erstellen lassen, planen.“ Klickrunde: Untertitel
+LOKAL auf dem Server, Rendern auf dem Server (Server wird größer), „das Maximale rausholen“, Kommentare/DMs mit ins Paket. Regeln: CLAUDE.md › Social › „Malin-Paket
+(28.10.)“. Fakten: `research/social/FAKTEN_MALIN_PAKET.md` (nur offizielle Doku; Offenes ist dort markiert).
+- **Neu:** Beiträge tragen Fotos/Videos aus der Medien-Ablage (Freigabe „Social Media“ prüft der Prüfer); Instagram als zweiter echter Weg (Bild, Karussell bis 20, Reel; Container
+  in Schritten, KI-Kennzeichnung `is_ai_generated`, Zahlen über Insights, Token verlängert sich selbst); kurzlebiger öffentlicher Medien-Link (60 Min., nur Fingerabdruck); Reel-Werkstatt
+  (Clips + Fotos schneiden, 9:16/4:5/1:1, Untertitel per whisper.cpp auf dem Server und korrigierbar, Hook/Einblendungen, Lautheit, KI-Schnittvorschlag nur per Klick, Rendern mit
+  ffmpeg, Ergebnis = neues Medium, raus erst nach Freigabe); Kommentare & DMs von Instagram (alle 15 Min. abholen, ZOE-Vorschlag, Antwort per Klick, Not-Aus/Limits,
+  DM nur im 24-h-Fenster). Neue Bestände `social-werkstatt--<haushalt>`, `social-community--<haushalt>`, `social-medien-links`, `social-instagram-zustand` (additiv);
+  optionale Felder `SocialFolge.medien`, `PostVersuch.warten`, `Medium.abgeleitetVon.art = 'schnitt'` + `quellen`.
+- **Teil 2 (Kevin: „Bau ihr das Beste, das sie maximal automatisieren und planen kann“):** Social öffnet jetzt im **Kalender** (Woche/Monat: Beiträge mit
+  Zustand, freie Plätze des Plans, Umplanen per Ziehen bzw. Antippen; „Ohne Termin“ zum Einplanen); **Beschriftung** je Beitrag (Text unter Bild/Karussell/Reel mit
+  Hashtags, Zähler 2.200/30 — der Agent schreibt sie mit); **Auto-Reels** (Automatik › „Auto-Reels aus euren Clips“: Album wählen, einschalten — neue Videos werden ohne
+  Klick zu Reels mit Untertiteln, KI-Schnitt, Hook und Beschriftung und liegen als Entwurf im nächsten freien Termin; Glocke; raus erst nach Freigabe); **Wann wirkt es?**
+  (beste Wochentage/Uhrzeiten aus den eigenen Zahlen ab 8 Beiträgen, Uhrzeit übernehmen per Klick); Medien im Beitrag direkt **freigeben**. Neue optionale Felder
+  `SocialFolge.beschriftung`, `Redaktionsplan.autoReel`/`rohAlbum`, `WerkstattAuftrag.auto`.
+- **Teil 3 — Antworten durch ZOE (Kevin: „automatisiert bei unseren eigenen kommentieren … nicht, dass wir gesperrt werden“; Fakten
+  `research/social/FAKTEN_AUTO_KOMMENTARE.md`):** je Kanal Aus · Vorschlag (Vorgabe) · Auto. Auto antwortet SELBST nur auf Fragen und freundliche Kommentare unter
+  eigenen Beiträgen (DMs nur mit eigenem Schalter, im 24-h-Fenster) — Kritik, Beschwerden, Gesundheit/Geld/Preise, Spam und Unklares werden Entwürfe für euch; keine fast
+  gleichen Antworten, Tageslimits, 90 s Abstand, Not-Aus; KI-Hinweis in der ersten automatischen DM und Zeichen am Ende jeder automatischen Kommentar-Antwort (KI-VO Art. 50).
+  „Bei anderen kommentieren“: Beitrags-Link (+ optional Text) → Entwurf → kopieren, Beitrag öffnen, selbst posten, abhaken (Ziel je Tag) — automatisch bei anderen geht
+  per Instagram-Schnittstelle nicht und ist bei LinkedIn/YouTube verboten (Sperrgefahr). Bei einer Personenmarke schaltet „Auto“ nur die Person selbst ein.
+  Offen (am echten Konto prüfen): genauer Wortlaut der Meta-Spam-Regeln/Frequenzgrenzen; ob Instagram „Zugriff auf Nachrichten erlauben“ verlangt.
+- **Server (Einmal-Schritte, erst mit dem Update):**
+  1. **Server vergrößern** (Hetzner Cloud Console › Server › Rescale): mindestens 2 vCPU / 4 GB (z. B. CX22 → CX32). Danach in `/srv/make-os/app/.env`
+     `MAKE_OS_APP_MEM=2560m` setzen und `docker compose up -d app`. Ohne Vergrößerung rendert die Werkstatt trotzdem, die App wird dabei aber spürbar langsamer.
+  2. **Sprachmodell laden:** `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/whisper-modell.sh` (small, ≈ 466 MB, Prüfsumme wird verglichen). ffmpeg und
+     whisper.cpp kommen mit dem Bild (Dockerfile; das Bild wird dadurch ≈ 150–250 MB größer — nicht gemessen, bitte beim ersten Bau ansehen).
+  3. **Instagram (für jede Person, die ihr Konto verbindet):** Instagram-Konto auf **Professional** (Creator oder Business) stellen. developers.facebook.com › App anlegen
+     (Typ Business) › Produkt „Instagram“ › „API setup with Instagram login“ › Redirect `<MAKE_OS_ADRESSE>/api/social/instagram/rueckruf`; unter „App roles“ die Person als
+     Instagram-Tester eintragen und die Einladung in Instagram (Einstellungen › Apps und Websites › Tester-Einladungen) annehmen. Standard Access reicht für eigene Konten
+     (kein App Review). Für DMs in Instagram „Zugriff auf Nachrichten erlauben“ prüfen (in der offiziellen Doku nicht belegt — am echten Konto testen).
+     Dann `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/instagram-verbinden.sh` (fragt App-ID und Secret verdeckt) und in MAKE OS: Social › Kanal › Automatik ›
+     „Mit Instagram verbinden“.
+  4. **Erster echter Test:** einen Testbeitrag mit einem freigegebenen JPEG auf „freigegeben“ + Termin in 5 Minuten stellen und zusehen (Automatik › Warteschlange).
+- **So testet ihr (lokal/Demo):** Social › Kanal › Folge öffnen › „Fotos und Videos“ → aus der Ablage wählen (Status-Chip „darf raus“/„nicht freigegeben“), „In der Werkstatt
+  schneiden“ → Auftrag mit den Clips. Werkstatt: Ausschnitte, Einblendungen, „Speichern“; ohne ffmpeg zeigt sie ehrlich „Rendern ist auf dieser Instanz noch aus“.
+  Kommentare & DMs: ohne Instagram-Verbindung der Leerzustand mit dem Weg dorthin.
+- **Nicht gebaut (bewusst):** Kommentare/DMs im allgemeinen Inbox-Strom (heute unter Social; Anbindung = eigener Schritt, ~20 Dateien der Inbox), Antworten durch den Agenten
+  selbst (nur Vorschlag + Klick), Webhook für Echtzeit (heute 15-Min.-Abholen), Musik/Trend-Sounds (nur in der Instagram-App), YouTube-Upload.
+- **Rückweg:** additiv — der alte Stand kennt `medien` an Folgen nicht und lässt sie beim nächsten Speichern fallen; neue Bestände bleiben liegen. Vor dem Rückweg Not-Aus „Posten“
+  und „Antworten“ im Kanal. Das Bild ohne ffmpeg/whisper ist das alte Dockerfile.
+
+## 27.10.2026 abends — Social läuft automatisch: Redaktions-Agent, Veröffentlicher, LinkedIn (nur lokal — Branch `social-modul`)
+Kevin 27.10.: „Bau tiefer und besser — es soll voll automatisiert laufen.“ Regeln: CLAUDE.md › Social › „Automatik (27.10.)“. Fakten zu den Plattformen nur aus
+offizieller Doku: `research/social/FAKTEN_VEROEFFENTLICHEN.md`.
+- **Neu:** Redaktionsplan je Kanal (Agent an/aus, Tage, Uhrzeit, Beiträge je Woche, Vorlauf), Redaktions-Agent im Takt (alle 6 h, 6–22 Uhr; Hintergrund-KI, Not-Aus und
+  Budget des Head of Marketing gelten), Veröffentlicher im Takt (nur nach `autonomieFuer`, nie doppelt, „unklar“ nur von Hand lösen, > 12 h zu spät nie nachholen),
+  LinkedIn als Person (Text + Karussell als PDF), Probe-Verbindung nur in der Demo, Reiter „Automatik“. Neue Bestände `social-verbindungen--<haushalt>`, `social-lauf--<haushalt>`,
+  `social-linkedin-zustand` (additiv); neue optionale Felder an Kanal (`plan`) und Folge (`geplantUm`, `quelle`, `platz`, `versuche`, Veröffentlichung `externeId`/`durch`).
+- **Schritte für Kevin (erst, wenn das Update online ist):**
+  1. developer.linkedin.com › Create app (mit der LinkedIn-Seite der Firma als „Company“) → Products: „Share on LinkedIn“ und „Sign in with LinkedIn using OpenID Connect“ hinzufügen
+     (ohne Antrag) → Auth: Redirect URL `<MAKE_OS_ADRESSE>/api/social/linkedin/rueckruf`.
+  2. `ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/linkedin-verbinden.sh` — fragt Client-ID und Secret verdeckt.
+  3. In MAKE OS: Social › Kanal (z. B. deine Personenmarke) › Automatik › „Mit LinkedIn verbinden“. Alle 60 Tage neu bestätigen (Glocke 7 Tage vorher).
+  4. Optional beantragen: LinkedIn „Community Management API“ (Firmenseiten + Zahlen eigener Beiträge). Instagram/YouTube: eigene Pakete; TikTok erlaubt kein Posten ohne Klick.
+- **So testet ihr (Demo):** Social › „Nordlicht (Beispiel)“ › Automatik: Plan, Probe-Verbindung, Warteschlange („geht automatisch raus“ für den freigegebenen Textbeitrag und
+  das Karussell). Nach dem Termin postet der Takt sie über die Probe (nichts verlässt die Demo) → Zustand „online“. Not-Aus im Kanal-Kopf → nichts geht raus.
+- **Rückweg:** additiv — der alte Stand kennt die neuen Felder nicht und lässt sie beim nächsten Speichern einer Folge/eines Kanals fallen (Plan, Termin-Uhrzeit, Versuche);
+  Verbindungen bleiben im eigenen Bestand liegen. Vor dem Rückweg Posten per Not-Aus anhalten.
+
+## 26.10.2026 nachts — Markttraktion › Marketing › Social: Grundlage des Social-Agenten (nur lokal — Branch `social-modul`, Basis update-0910b a0e401c2)
+Kevin 26.10.: „Bau alles Grundlegende für die Software … mach Analysen, dass wir viral gehen und Aufrufe generieren.“ Plan `SOCIAL_PLAN.md`, Material + Viral-Analyse
+in `social/phase0/` (außerhalb des Repos der App, nicht committet). Regeln: CLAUDE.md › „Social — Kanäle, Folgen, Lernschleife“. **Veröffentlicht nichts** — die
+Plattform-Anbindung folgt nach den API-Prüfungen (TikTok Audit, Google Audit, Meta App Review), die Kevin beantragt.
+- **Neu:** Bestand `social--<haushalt>` (additiv, kein Umbau bestehender Daten), Route `/api/social`, Unterreiter „Social“ unter Marketing, Demo-Saat 3b2, Startpaket-Lader
+  (JSON), Kennzahlen-Import (CSV mit Vorschau). Keine neuen Umgebungsvariablen, keine Einmal-Schritte am Server.
+- **So testet ihr:** (1) Markttraktion › Marketing › Social → „Startpaket laden“ → `social/phase0/startpaket.json` wählen → „Anlegen“: drei Kanäle mit 30 Folgen.
+  (2) Kanal ZERO wählen → Folgen: „Day 1“ öffnen — oben steht, ob der Agent sie selbst posten dürfte; die Prüfung listet Befunde (z. B. KI-Label). (3) Formate → „Day X“/
+  „Build log“ freigeben → die Folge springt auf „würde selbst posten“, wenn die Prüfung sauber ist; Not-Aus „Posten anhalten“ → „gesperrt“. (4) Eine Folge öffnen →
+  „Veröffentlichung eintragen“ + „Messung eintragen“ (Aufrufe, % nach 3 s …) → Analyse zeigt Wirkung und Urteil; ab 5 Folgen mit Zahlen die Vergleiche.
+  (5) Import → Plattform + CSV-Export → Vorschau → Übernehmen.
+- **Rückweg:** nur ein neuer Bestand und neue Dateien — der alte Stand kennt `social--*` nicht und lässt ihn liegen.
+
 ## 25.10.2026 abends — großes Update geht online (main a05d8866 → update-0910b, „Was ist neu“ u-2026-10-25)
 Kevin 25.10.: „Dann machen wir heute Abend das große Update.“ Inhalt: Prozesse/Werkstatt (Runden 1–4), Kern-Modul Produkte → Angebot → Mandat → Rechnung →
 Liquidität (Preis-Kette, Runde 4), Fulfillment inkl. Selbstständigkeit (Arbeit), Formular „Angebot anfordern“, Belege über Postfach mit PDF, kleine Bauten (Artikel-/

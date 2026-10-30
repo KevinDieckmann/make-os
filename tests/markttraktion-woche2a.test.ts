@@ -115,7 +115,9 @@ describe('1.8 · Anlege-Regeln je Weg (rein)', () => {
 
   it('die bisherigen Wege entscheiden über diese Stelle (Anfrage, Netzwerken, Kartei, Firmenkarte, „+ Aktivität“, Make.One, Prospecting)', () => {
     expect(quelle('lib/crm/anfragen.ts')).toMatch(/personEntwurf\(/);
-    expect(quelle('app/api/crm/anfrage/route.ts')).toMatch(/firmaSichern\(/);
+    // Seit 24.10. liegt der Weg „Anfrage“ in EINER Funktion (Route und Innovations-Check rufen sie): lib/crm/anfrage-anlegen.ts.
+    expect(quelle('lib/crm/anfrage-anlegen.ts')).toMatch(/firmaSichern\(/);
+    expect(quelle('app/api/crm/anfrage/route.ts')).toMatch(/anfrageAnlegen\(/);
     const nw = quelle('lib/crm/netzwerken-server.ts');
     expect(nw).toMatch(/firmaPlanen\(/);
     expect(nw).toMatch(/leadZiel\(/);
