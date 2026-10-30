@@ -43,6 +43,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { text: 'Deals › Liste: Die Stufen sind Abschnitte einer Liste. Rechts steht der gewählte Deal, ohne Auswahl die Prognose. Neu: eine Suche über Deal, Firma und Person.', bereich: 'business', weg: '/os/markttraktion?s=deals&a=liste' },
         { text: 'Angebote: Status und Gesellschaft stehen hinter „Filter“ statt in zwei Reihen. „+ Neuer Kunde“ findest du hinter „⋯“ neben „+ Neues Angebot“.', bereich: 'business', weg: WEG.angebot() },
         { text: 'Mandate: Die Mandate stehen nach Status gruppiert, rechts das gewählte Mandat bzw. der Überblick. Gesellschaft und „Beendete zeigen“ hinter „Filter“, der Excel-Import und der Papierkorb hinter „⋯“.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Linke Leiste: Die Oberthemen eines Bereichs (z. B. in der Markttraktion CRM, Vertrieb, Marketing, Steuerung) lassen sich per Klick zuklappen. Die Gruppe, in der du gerade bist, bleibt offen; dein Browser merkt sich, was zu ist.', bereich: 'business' },
       ] },
     ],
   },

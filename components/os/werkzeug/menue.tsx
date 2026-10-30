@@ -8,12 +8,13 @@
 // Die Punkte kommen aufgelöst aus `werkzeugPunkte` (welcher leuchtet, welche Kinder da sind) — hier wird nichts entschieden, nur gezeichnet.
 
 import Link from 'next/link';
-import type { CSSProperties } from 'react';
-import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { ArrowLeft, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { FARBE as C, SCHRIFT, TYP, ZIEL, ECKE, MIKRO } from '@/lib/make-one/design';
 import {
   werkzeugPunkte, werkzeugAktion, imWerkzeugModus, RUECKWEG_LABEL, RUECKWEG_TITEL, type Werkzeug, type WerkzeugKontext, type PunktAnsicht,
 } from '@/lib/make-one/werkzeuge';
+import { gruppenSchluessel, gruppeZu, gruppeAktiv, gruppenLesen, gruppeUmschalten } from '@/lib/make-one/werkzeug-gruppen';
 
 export type MenueVariante = 'leiste' | 'schiene' | 'blatt';
 
@@ -50,6 +51,18 @@ export function WerkzeugMenue({ werkzeug, kontext, variante, schmal = false, far
   const punkte = werkzeugPunkte(werkzeug, kontext);
   const fuss = werkzeugPunkte(werkzeug, kontext, 'fuss');
   const Icon = werkzeug.icon;
+  // Gruppen zuklappen (31.10.): je Werkzeug im Browser gemerkt; die Gruppe mit dem aktiven Punkt bleibt immer offen. Schmal (nur Symbole) gibt es
+  // kein Zuklappen — dort steht nur ein Strich.
+  const [zu, setZu] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    try { setZu(gruppenLesen(window.localStorage.getItem(gruppenSchluessel(werkzeug.id)))); } catch { /* ohne Speicher: alles offen */ }
+  }, [werkzeug.id]);
+  const umschalten = (g: string) => setZu(alt => {
+    const neu = gruppeUmschalten(alt, g);
+    try { window.localStorage.setItem(gruppenSchluessel(werkzeug.id), JSON.stringify([...neu])); } catch { /* nur Bequemlichkeit */ }
+    return neu;
+  });
+  const alleSicht = [...punkte, ...fuss];
 
   const eintrag = (p: PunktAnsicht, kind = false) => {
     const S = p.icon;
@@ -77,15 +90,29 @@ export function WerkzeugMenue({ werkzeug, kontext, variante, schmal = false, far
       : <button key={p.id} type="button" onClick={() => werkzeugAktion(werkzeug.id, p.aktion!)} title={titel} aria-label={nurSymbole ? p.label : undefined} className="fassbar" data-werkzeug-punkt={p.id} style={stil}>{innen}</button>;
   };
   // Überschriften der Gruppen (Markttraktion: CRM · Vertrieb · Marketing · Steuerung): nur eine Beschriftung über den Punkten, keine Ebene — schmal ein Strich.
-  const ueberschrift = (g: string) => (nurSymbole
-    ? <div key={`g:${g}`} role="separator" aria-label={g} title={g} style={{ borderTop: `1px solid ${C.linie}`, margin: '6px 8px' }} />
-    : <div key={`g:${g}`} role="heading" aria-level={3} className="wz-gruppe" style={{ ...MIKRO, padding: variante === 'blatt' ? '8px 10px 2px' : '10px 10px 4px', ...(variante === 'blatt' ? { gridColumn: '1 / -1' } : {}) }}>{g}</div>);
+  // Seit 31.10. ist die Überschrift ein Knopf: antippen klappt die Gruppe zu bzw. auf (Pfeil zeigt den Zustand).
+  const ueberschrift = (g: string) => {
+    if (nurSymbole) return <div key={`g:${g}`} role="separator" aria-label={g} title={g} style={{ borderTop: `1px solid ${C.linie}`, margin: '6px 8px' }} />;
+    const geschlossen = gruppeZu(zu, alleSicht, g);
+    const fest = gruppeAktiv(alleSicht, g);
+    return (
+      <div key={`g:${g}`} role="heading" aria-level={3} className="wz-gruppe" style={{ margin: 0, ...(variante === 'blatt' ? { gridColumn: '1 / -1' } : {}) }}>
+        <button type="button" onClick={() => { if (!fest) umschalten(g); }} aria-expanded={!geschlossen} aria-disabled={fest || undefined}
+          title={fest ? `${g} — hier bist du gerade` : geschlossen ? `${g} aufklappen` : `${g} zuklappen`} className="fassbar wz-gruppe-knopf"
+          style={{ ...MIKRO, display: 'flex', alignItems: 'center', gap: 6, width: '100%', minHeight: 32, boxSizing: 'border-box', background: 'none', border: 'none', textAlign: 'left',
+            cursor: fest ? 'default' : 'pointer', padding: variante === 'blatt' ? '8px 10px 2px' : '10px 10px 4px' }}>
+          <span style={{ flex: '1 1 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g}</span>
+          <ChevronDown size={13} strokeWidth={2} aria-hidden style={{ flex: '0 0 auto', opacity: fest ? 0.25 : 0.7, transform: geschlossen ? 'rotate(-90deg)' : 'none', transition: 'transform .15s ease' }} />
+        </button>
+      </div>
+    );
+  };
   // Ein Punkt ohne Gruppe nach einer Gruppe (z. B. „Automationen & Head“ hinter „Geldfluss“) bekommt einen Strich — sonst stünde er optisch in der Gruppe davor.
   const strich = (k: string) => <div key={`s:${k}`} role="separator" aria-hidden style={{ borderTop: `1px solid ${C.linie}`, margin: '6px 8px', ...(variante === 'blatt' ? { gridColumn: '1 / -1' } : {}) }} />;
   const liste = (ps: PunktAnsicht[]) => ps.flatMap((p, i) => [
     ...(p.gruppe && p.gruppe !== ps[i - 1]?.gruppe ? [ueberschrift(p.gruppe)] : []),
     ...(!p.gruppe && ps[i - 1]?.gruppe ? [strich(p.id)] : []),
-    eintrag(p), ...p.unter.map(u => eintrag(u, true)),
+    ...(p.gruppe && !nurSymbole && gruppeZu(zu, alleSicht, p.gruppe) ? [] : [eintrag(p), ...p.unter.map(u => eintrag(u, true))]),
   ]);
 
   if (variante === 'blatt') {
