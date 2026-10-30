@@ -8,37 +8,42 @@
 @font-face { font-family: "Schibsted Grotesk"; src: url("/schriften/schibsted-grotesk-latin.woff2") format("woff2"); font-weight: 400 800; font-display: swap; }
 
 .seite {
-  --c-grund: #F6F4F0;
-  --c-flaeche: #FCFBF9;
-  --c-flaeche-2: #F1EDE6;
-  --c-linie: rgba(17, 19, 22, .14);
-  --c-text: #111316;
-  --c-leise: #5F6468;
-  --c-start: #7C3AED;
-  --c-ende: #7C3AED;
-  --c-lavendel: #7C3AED;
-  --c-hellgruen: #7C3AED;
-  --c-verlauf: linear-gradient(#7C3AED, #7C3AED);
-  --c-schein: transparent;
-  --c-gruen: #3F7D5C;
-  --c-gewaehlt: #EFEAFB;
-  --c-warnung: #9A4B12;
-  --c-ich-flaeche: rgba(124, 58, 237, .14);
+  /* Dunkel wie die App (Kevin 30.10.: „die Checks im dunklen Design mit dem Flow, wie das Dashboard“): Nacht-Grund, gehobene Karten,
+     Lichtkante, Flow-Faden, Akzent im Kern-Ton der Marke. */
+  --c-grund: #0B0E10;
+  --c-flaeche: #161B1F;
+  --c-flaeche-2: rgba(255, 255, 255, .04);
+  --c-linie: rgba(255, 255, 255, .09);
+  --c-text: #E8ECEA;
+  --c-leise: #A2ADB0;
+  --c-start: #A78BFA;
+  --c-ende: #A78BFA;
+  --c-lavendel: #A78BFA;
+  --c-hellgruen: #A78BFA;
+  --c-verlauf: linear-gradient(90deg, #7C3AED, #A78BFA);
+  --c-schein: rgba(167, 139, 250, .55);
+  --c-gruen: #3DE28B;
+  --c-gewaehlt: rgba(167, 139, 250, .16);
+  --c-warnung: #FFC93C;
+  --c-ich-flaeche: rgba(167, 139, 250, .18);
+  --c-gehoben: linear-gradient(165deg, #1A2024 0%, #12171A 100%);
+  --c-gehoben-schatten: inset 0 1px 0 rgba(255, 255, 255, .06), 0 12px 32px rgba(0, 0, 0, .35);
   --s-text: "Schibsted Grotesk", var(--schrift-text), system-ui, -apple-system, "Segoe UI", sans-serif;
   --s-zahl: "Schibsted Grotesk", var(--schrift-text), system-ui, sans-serif;
   --ecke: 10px;
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--c-grund);
+  /* Raum wie im Film der Website: oben rechts ein weicher violetter Schein, unten links tiefes Indigo, sonst Nacht */
+  background: radial-gradient(60% 45% at 78% -6%, rgba(124, 58, 237, .2), transparent 70%), radial-gradient(55% 45% at -4% 104%, rgba(40, 48, 130, .26), transparent 70%), var(--c-grund);
+  background-attachment: fixed;
   color: var(--c-text);
   font-family: var(--s-text);
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  color-scheme: light;
+  color-scheme: dark;
 }
-/* Die App ist dunkel (html: color-scheme dark) — hier hell, auch für Häkchen und den Rand beim Überscrollen am Handy. */
-:global(html):has(.seite), :global(body):has(.seite) { background: #F6F4F0; color-scheme: light; }
+:global(html):has(.seite), :global(body):has(.seite) { background: #0B0E10; color-scheme: dark; }
 
 /* Raster wie fokusinnovation.de (30.10., Kevin: „die ganze Seite ist nicht richtig ausgerichtet“): gleiche Breite (1200 px), gleiche Ränder,
    links der Check, rechts eine ruhige Karte wie die Weg-Karte der Website. Alle Werte hier und sonst nirgends. */
@@ -46,7 +51,7 @@
 .rahmen { max-width: calc(var(--breite) + 2 * var(--rand)); margin: 0 auto; padding: 0 var(--rand) 96px; }
 
 /* ── Kopf: Wortmarke wie auf der Website, Name des Checks, Erstgespräch ── */
-.kopf { position: sticky; top: 0; z-index: 5; background: var(--c-grund); border-bottom: 1px solid var(--c-linie); }
+.kopf { position: sticky; top: 0; z-index: 5; background: rgba(11, 14, 16, .74); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid var(--c-linie); }
 .kopfInnen { max-width: calc(var(--breite) + 2 * var(--rand)); margin: 0 auto; padding: 0 var(--rand); height: var(--kopf-h); display: flex; align-items: center; gap: 20px; }
 .markeLink { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; margin-right: auto; color: var(--c-text); text-decoration: none; }
 .logo { width: 34px; height: 34px; flex: none; }
@@ -54,11 +59,11 @@
 .wortbild b { font-weight: 650; font-size: 16.6px; letter-spacing: .12em; text-transform: uppercase; }
 .wortbild small { margin-top: 4px; font-weight: 500; font-size: 11.2px; letter-spacing: .08em; color: var(--c-leise); }
 .titel { color: var(--c-leise); font-size: 12.2px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; white-space: nowrap; }
-.kopfKnopf { min-height: 44px; display: inline-flex; align-items: center; padding: 0 18px; border-radius: 8px; background: var(--c-text); color: #FCFBF9; font-weight: 600; font-size: 15px; text-decoration: none; white-space: nowrap; }
+.kopfKnopf { min-height: 44px; display: inline-flex; align-items: center; padding: 0 18px; border-radius: 8px; background: var(--c-text); color: #0B0E10; font-weight: 600; font-size: 15px; text-decoration: none; white-space: nowrap; }
 .kopfKnopf:focus-visible { outline: 2px solid var(--c-hellgruen); outline-offset: 2px; }
 .kopfStand { max-width: calc(var(--breite) + 2 * var(--rand)); margin: 0 auto; padding: 0 var(--rand) 10px; }
 .balken { height: 3px; border-radius: 3px; background: var(--c-linie); overflow: hidden; }
-.balkenFuell { height: 100%; background: var(--c-verlauf); border-radius: 3px; transition: width 400ms ease; }
+.balkenFuell { height: 100%; background: var(--c-verlauf); border-radius: 3px; transition: width 400ms ease; box-shadow: 0 0 12px var(--c-schein); }
 .stand { margin-top: 6px; font-family: var(--s-zahl); font-size: 12px; color: var(--c-leise); }
 @media (max-width: 640px) { .titel { display: none; } .kopfKnopf { padding: 0 14px; font-size: 14px; } }
 
@@ -66,7 +71,12 @@
 .raster { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; }
 .haupt { min-width: 0; max-width: 760px; }
 /* Seitenkarte nur am breiten Bildschirm: am Handy nennt der Einstieg die drei Bereiche schon, die Karte stünde sonst vor der Überschrift. */
-.seitenkarte { display: none; padding: 20px 22px; background: var(--c-flaeche); border: 1px solid var(--c-linie); border-radius: 12px; }
+.seitenkarte { display: none; position: relative; padding: 22px 24px; background: var(--c-gehoben); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px; box-shadow: var(--c-gehoben-schatten); }
+/* Lichtkante wie die Fokus-Karten der App: eine leise Linie an der Oberkante, über die selten ein Licht von links nach rechts zieht */
+.seitenkarte::before, .ergebnis::before { content: ""; position: absolute; top: -1px; left: 22px; right: 22px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, .5), transparent); }
+.seitenkarte::after, .ergebnis::after { content: ""; position: absolute; top: -1px; left: 22px; width: 30%; height: 1px; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent, #DDD6FE, transparent); box-shadow: 0 0 10px rgba(196, 181, 253, .8); }
 .etikett { margin: 0 0 12px; font-size: 12.2px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: var(--c-leise); }
 .vorzeile { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 18px; font-size: 12.2px; font-weight: 600; text-transform: uppercase; letter-spacing: .14em; color: var(--c-leise); }
 .vorzeile::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c-lavendel); flex: none; }
@@ -91,42 +101,52 @@
 .versprechen li { font-family: var(--s-zahl); font-size: 12px; color: var(--c-text); border: 1px solid var(--c-linie); border-radius: 999px; padding: 4px 10px; }
 
 /* ── Gespräch ── */
-.verlauf { display: flex; flex-direction: column; gap: 14px; margin-top: 28px; }
+.verlauf { position: relative; display: flex; flex-direction: column; gap: 14px; margin-top: 28px; }
+/* Der Flow: ein Leuchtfaden verbindet Zoes Zeichen durch das ganze Gespräch, ein Licht wandert ihn langsam hinab */
+.verlauf::before, .verlauf::after { content: ""; position: absolute; top: 17px; bottom: 17px; left: 16.5px; width: 1px; pointer-events: none; }
+.verlauf::before { background: linear-gradient(180deg, rgba(167, 139, 250, .55), rgba(167, 139, 250, .22) 70%, rgba(167, 139, 250, 0)); }
+.verlauf::after { width: 2px; margin-left: -.5px; opacity: 0; background: linear-gradient(180deg, transparent 0%, transparent 42%, #DDD6FE 50%, transparent 58%, transparent 100%) 0 0 / 100% 240%; filter: drop-shadow(0 0 4px rgba(196, 181, 253, .9)); }
+@media (min-width: 1020px) { .verlauf::before, .verlauf::after { left: -27.5px; } }
 .zoeZeile { display: flex; gap: 10px; align-items: flex-start; }
 /* Breiter Bildschirm: Zoes Zeichen hängt im Rand, ihr Text steht auf derselben Linie wie Überschrift und Karten. */
-@media (min-width: 1020px) { .zoeZeile { margin-left: -44px; } }
+@media (min-width: 1020px) { .zoeZeile { margin-left: -44px; } .ergebnis .zoeZeile { margin-left: 0; } }
 .zoe {
+  position: relative; z-index: 1;
   flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 50%, var(--c-lavendel) 0 30%, transparent 31%), var(--c-flaeche);
+  background: radial-gradient(circle at 50% 50%, var(--c-lavendel) 0 30%, transparent 31%), var(--c-grund);
   border: 1.5px solid var(--c-text);
+  box-shadow: 0 0 18px -4px var(--c-schein);
 }
 /* Ruhiger (30.10., „Gestaltung und Texte“): Zoes Text steht ohne Kasten neben dem Zeichen — wie Text auf der Website. */
 .blase { padding: 5px 0 0; min-width: 0; flex: 1; }
 .blase p { margin: 0; }
 .blase p + p { margin-top: 6px; }
 .blaseLeise { color: var(--c-leise); font-size: 14px; }
-.ich { align-self: flex-end; max-width: 80%; background: var(--c-gewaehlt); border-radius: var(--ecke) 4px var(--ecke) var(--ecke); padding: 7px 14px; font-size: 15px; }
+.ich { align-self: flex-end; max-width: 80%; background: var(--c-gewaehlt); border: 1px solid rgba(167, 139, 250, .3); border-radius: var(--ecke) 4px var(--ecke) var(--ecke); padding: 7px 14px; font-size: 15px; }
 .ichZeile { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .aendern { background: none; border: 0; color: var(--c-leise); font-size: 12px; cursor: pointer; padding: 2px 4px; text-decoration: underline; text-underline-offset: 2px; }
 .kiMarke { font-family: var(--s-zahl); font-size: 11px; color: var(--c-leise); text-transform: uppercase; letter-spacing: 0.1em; }
 
 /* ── Antwortkarte ── */
-.karte { margin-top: 4px; background: var(--c-flaeche); border: 1px solid var(--c-linie); border-radius: var(--ecke); padding: 16px; }
+.karte { position: relative; z-index: 1; margin-top: 4px; background: var(--c-gehoben); border: 1px solid rgba(255, 255, 255, .08); border-radius: 16px; padding: 16px; box-shadow: var(--c-gehoben-schatten); }
 .optionen { display: grid; gap: 8px; }
 .option {
   min-height: 48px; width: 100%; text-align: left; padding: 10px 14px; border-radius: 10px; cursor: pointer;
   background: var(--c-flaeche-2); border: 1px solid var(--c-linie); color: var(--c-text); font: inherit;
   transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
-.option:hover { border-color: rgba(124, 58, 237, .55); }
+.option:hover { border-color: rgba(167, 139, 250, .55); background: linear-gradient(150deg, rgba(167, 139, 250, .16) 0%, rgba(167, 139, 250, .05) 46%, rgba(255, 255, 255, .02) 100%); }
 .option:focus-visible, .knopf:focus-visible, .zweit:focus-visible, .chip:focus-visible, .eingabe:focus-visible { outline: 2px solid var(--c-hellgruen); outline-offset: 2px; }
-.optionGewaehlt { border-color: var(--c-ende); background: var(--c-gewaehlt); }
+.optionGewaehlt { border-color: var(--c-ende); background: linear-gradient(150deg, rgba(167, 139, 250, .26) 0%, rgba(167, 139, 250, .1) 60%); box-shadow: 0 10px 26px -18px #A78BFA; }
 .option:disabled { opacity: 0.6; cursor: default; }
 .zeile { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
 .knopf {
-  min-height: 48px; padding: 0 22px; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 600; color: var(--c-grund);
-  background: var(--c-text); border: 1px solid var(--c-text);
+  min-height: 48px; padding: 0 22px; border-radius: 10px; cursor: pointer; font: inherit; font-weight: 600; color: #FFFFFF;
+  /* Hauptknopf wie in der App: kräftige Farbe mit Tiefe (Verlauf in den tieferen Ton), Lichtkante innen, weicher Schein */
+  background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); border: 1px solid rgba(196, 181, 253, .45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 12px 28px -14px #7C3AED;
 }
+.knopf:not(:disabled):hover { background: linear-gradient(135deg, #9D74F8 0%, #7C3AED 100%); }
 .knopf:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
 /* Akzent wie auf der Website (30.10.): ein schmaler Lichtschein zieht von links nach rechts — beim Zeigen über jeden Hauptknopf, von selbst
    nur über die Knöpfe, die zum Gespräch führen (Kopf, Ergebnis), alle 9 s. „Bewegung reduzieren“: kein Schein. */
@@ -148,8 +168,9 @@
 @media (pointer: coarse) { .chip { min-height: 44px; } }
 .eingabe, .textfeld {
   width: 100%; box-sizing: border-box; min-height: 48px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--c-linie);
-  background: var(--c-grund); color: var(--c-text); font: inherit; font-size: 16px;
+  background: rgba(255, 255, 255, .05); color: var(--c-text); font: inherit; font-size: 16px;
 }
+.eingabe:focus, .textfeld:focus { border-color: rgba(167, 139, 250, .6); outline: none; box-shadow: 0 0 0 3px rgba(167, 139, 250, .18); }
 .textfeld { min-height: 120px; resize: vertical; }
 .hilfe { color: var(--c-leise); font-size: 14px; margin: 0 0 10px; }
 .zaehler { font-family: var(--s-zahl); font-size: 12px; color: var(--c-leise); }
@@ -161,7 +182,7 @@
 .falle { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 
 /* ── Ergebnis ── */
-.ergebnis { margin-top: 18px; background: var(--c-flaeche); border: 1px solid var(--c-linie); border-radius: 12px; padding: 22px 18px; }
+.ergebnis { position: relative; z-index: 1; margin-top: 18px; background: var(--c-gehoben); border: 1px solid rgba(255, 255, 255, .08); border-radius: 20px; padding: 24px 22px; box-shadow: var(--c-gehoben-schatten); }
 .zahlZeile { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .grosseZahl { font-family: var(--s-zahl); font-size: clamp(56px, 14vw, 84px); line-height: 1; font-weight: 600; letter-spacing: -.03em; color: var(--c-text); font-variant-numeric: tabular-nums; }
 .vonHundert { font-family: var(--s-zahl); color: var(--c-leise); }
@@ -193,7 +214,7 @@
 .saeuleName { font-weight: 600; }
 .saeuleWert { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
 .saeuleBalken { height: 6px; border-radius: 3px; background: var(--c-linie); margin-top: 6px; overflow: hidden; }
-.saeuleFuell { height: 100%; background: var(--c-verlauf); border-radius: 3px; }
+.saeuleFuell { height: 100%; background: var(--c-verlauf); border-radius: 3px; box-shadow: 0 0 10px var(--c-schein); }
 .abschnittTitel { font-size: 18px; font-weight: 600; margin: 0 0 8px; letter-spacing: -.01em; }
 .schritte { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
 .schritt { padding: 12px 0; border-bottom: 1px solid var(--c-linie); }
@@ -227,6 +248,10 @@
   .neu { animation: auftauchen 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .neu2 { animation: auftauchen 420ms 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .zoeAtmet { animation: atmen 3.2s ease-in-out infinite; }
+  .verlauf::after { opacity: 1; animation: flussLicht 7s linear infinite; }
+  .seitenkarte::after, .ergebnis::after { animation: kanteLicht 11s cubic-bezier(.45, .05, .35, 1) 1.2s infinite; }
+  @keyframes flussLicht { from { background-position: 0 100%; } to { background-position: 0 0; } }
+  @keyframes kanteLicht { 0% { transform: translateX(-105%); opacity: 0; } 10% { opacity: .95; } 60% { opacity: .95; } 68% { transform: translateX(250%); opacity: 0; } 100% { transform: translateX(250%); opacity: 0; } }
   .option:active { transform: scale(0.99); }
   .netzIch { transform-origin: 50% 50%; animation: wachsen 900ms 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .skalaAn { animation: fuellen 700ms 300ms ease both; transform-origin: left center; }
