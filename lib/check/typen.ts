@@ -48,8 +48,10 @@ export interface CheckAbschnitt {
   id: string;
   key: string;
   name: string;
-  /** Dimension, auf die der Abschnitt einzahlt — null bei Profil und Branchen-Modulen. */
+  /** Dimension, auf die der Abschnitt einzahlt — null bei Profil, Branchen-Modulen und den Säulen Sichtbarkeit/Vertrieb. */
   dimension: DimKey | null;
+  /** Säule, auf die der Abschnitt einzahlt (30.10.: S Sichtbarkeit, V Vertrieb) — die Innovation rechnet aus den Dimensionen. */
+  saeule?: SaeuleKey;
   intro: string;
   bedingung?: string;
   fragen: CheckFrage[];
@@ -66,6 +68,14 @@ export interface CheckKatalog {
 
 export type DimKey = 'strategie' | 'ki' | 'automatisierung' | 'daten' | 'robotik' | 'team';
 
+/**
+ * Die drei Säulen (30.10., Kevin: „Alle drei Säulen“): Sichtbarkeit und Vertrieb haben eigene Fragen (Abschnitte S und V),
+ * Innovation ist der Gesamtwert der Dimensionen B bis G — dessen Rechnung (Referenz) bleibt unverändert.
+ */
+export type SaeuleKey = 'sichtbarkeit' | 'vertrieb' | 'innovation';
+export type SchrittBand = 'niedrig' | 'mittel' | 'hoch';
+export interface CheckSaeule { key: SaeuleKey; name: string; abschnitt: string; gewicht: number }
+
 export interface CheckStufe { stufe: number; name: string; von: number; bis: number; kurz: string }
 
 export interface CheckRegeln {
@@ -75,6 +85,11 @@ export interface CheckRegeln {
   stufen: CheckStufe[];
   siegel: { ab_stufe: number; name: string };
   zeitersparnis_schaetzung: { werte_stunden: Record<string, number> };
+  /** Säulen und Stufen des Gesamtergebnisses (30.10.) — fehlen sie, gilt nur die Innovation wie bisher. */
+  saeulen?: CheckSaeule[];
+  saeulen_stufen?: CheckStufe[];
+  /** Ein nächster Schritt je Säule und Band (niedrig bis 40, mittel bis 70, hoch darüber). */
+  naechste_schritte?: Partial<Record<SaeuleKey, Record<SchrittBand, string>>>;
 }
 
 export interface BenchmarkQuelle {
@@ -162,6 +177,9 @@ export interface CheckErgebnis {
 }
 
 export interface CheckLuecke { dimension: DimKey; wert: number; branche: number; abstand: number }
+
+/** Gesamtergebnis über die Säulen (30.10.) — Säulen ohne beantwortete Frage fehlen in `werte` und zählen nicht. */
+export interface SaeulenErgebnis { werte: Partial<Record<SaeuleKey, number>>; gesamt: number; stufe: number; stufe_name: string }
 
 export interface CheckVerhalten { gespraechGebucht?: boolean; berichtGeoeffnet?: boolean; gratisProdukte?: number }
 

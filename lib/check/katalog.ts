@@ -7,7 +7,7 @@ import innovationsKatalog from './vorlagen/innovations-check/fragenkatalog.json'
 import innovationsRegeln from './vorlagen/innovations-check/scoring.json';
 import innovationsBenchmarks from './vorlagen/innovations-check/benchmarks.json';
 import innovationsLead from './vorlagen/innovations-check/lead-scoring.json';
-import type { CheckAbschnitt, CheckFrage, CheckKatalog, CheckVorlage, CheckRegeln, CheckBenchmarks, LeadScoringRegeln, DimKey } from './typen';
+import type { CheckAbschnitt, CheckFrage, CheckKatalog, CheckVorlage, CheckRegeln, CheckBenchmarks, LeadScoringRegeln, DimKey, SaeuleKey } from './typen';
 
 export const VORLAGEN: Readonly<Record<string, CheckVorlage>> = {
   'innovations-check': {
@@ -26,6 +26,12 @@ export const vorlageVon = (id: string | undefined | null): CheckVorlage | null =
 
 /** Abschnitt → Dimension (B Strategie … G Team), wie in der Referenz-Auswertung. */
 export const DIMENSION_JE_ABSCHNITT: Readonly<Record<string, DimKey>> = { B: 'strategie', C: 'ki', D: 'automatisierung', E: 'daten', F: 'robotik', G: 'team' };
+
+/** Abschnitt → Säule mit eigenen Fragen (30.10.). Die Innovation hat keine eigenen Fragen — sie ist der Gesamtwert aus B bis G. */
+export const SAEULE_JE_ABSCHNITT: Readonly<Record<string, Exclude<SaeuleKey, 'innovation'>>> = { S: 'sichtbarkeit', V: 'vertrieb' };
+
+/** Abschnitte der Klickstrecke mit Punkten (Profil zuerst, dann die Säulen, dann die Innovation) — ohne Branchen-Module. */
+export const STRECKE_ABSCHNITTE = 'ASVBCDEFG';
 
 export interface FrageMitAbschnitt extends CheckFrage { abschnitt: string }
 

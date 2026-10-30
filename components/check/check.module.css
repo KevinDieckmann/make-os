@@ -45,7 +45,10 @@
 /* ── Kopf ── */
 .kopf { position: sticky; top: 0; z-index: 5; background: var(--c-grund); padding: 14px 0 12px; box-shadow: 0 14px 18px -10px var(--c-grund); }
 .kopfZeile { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.markeBlock { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .marke { font-weight: 650; letter-spacing: .12em; font-size: 14px; text-transform: uppercase; }
+/* Leitsatz der Marke (Einstellung, 30.10.) — leise unter dem Namen. */
+.claim { font-size: 12px; color: var(--c-leise); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .titel { color: var(--c-leise); font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em; font-family: var(--s-zahl); }
 /* Am Handy (29.10.): Marke und Titel je einzeilig — sonst bricht „FOKUS / INNOVATION“ und „INNOVATIONS- / CHECK“ um. */
 .marke, .titel { white-space: nowrap; }
@@ -59,6 +62,12 @@
 .einstieg { padding: 28px 0 8px; }
 .einstiegTitel { font-size: clamp(30px, 6vw, 44px); line-height: 1.08; font-weight: 600; letter-spacing: -0.03em; margin: 0 0 10px; }
 .einstiegText { color: var(--c-leise); margin: 0 0 14px; max-width: 560px; }
+/* Die drei Bereiche (30.10.) — Haarlinien statt Kästen, wie auf der Website. */
+.dreiBereiche { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 0; border-top: 1px solid var(--c-linie); }
+.dreiBereiche li { display: grid; grid-template-columns: 28px auto 1fr; align-items: baseline; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--c-linie); font-weight: 600; }
+.bereichNr { font-size: 13px; color: var(--c-lavendel); font-weight: 600; }
+.bereichText { color: var(--c-leise); font-weight: 400; font-size: 14px; }
+@media (max-width: 520px) { .dreiBereiche li { grid-template-columns: 28px 1fr; } .bereichText { grid-column: 2; } }
 .versprechen { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .versprechen li { font-family: var(--s-zahl); font-size: 12px; color: var(--c-text); border: 1px solid var(--c-linie); border-radius: 999px; padding: 4px 10px; }
 
@@ -70,17 +79,19 @@
   background: radial-gradient(circle at 50% 50%, var(--c-lavendel) 0 30%, transparent 31%), var(--c-flaeche);
   border: 1.5px solid var(--c-text);
 }
-.blase { background: var(--c-flaeche); border: 1px solid var(--c-linie); border-radius: 4px var(--ecke) var(--ecke) var(--ecke); padding: 10px 14px; max-width: 560px; }
+/* Ruhiger (30.10., „Gestaltung und Texte“): Zoes Text steht ohne Kasten neben dem Zeichen — wie Text auf der Website. */
+.blase { padding: 5px 0 0; max-width: 580px; }
 .blase p { margin: 0; }
 .blase p + p { margin-top: 6px; }
 .blaseLeise { color: var(--c-leise); font-size: 14px; }
-.ich { align-self: flex-end; max-width: 80%; background: var(--c-gewaehlt); border: 1px solid rgba(124, 58, 237, .3); border-radius: var(--ecke) 4px var(--ecke) var(--ecke); padding: 8px 14px; }
+.ich { align-self: flex-end; max-width: 80%; background: var(--c-gewaehlt); border-radius: var(--ecke) 4px var(--ecke) var(--ecke); padding: 7px 14px; font-size: 15px; }
 .ichZeile { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .aendern { background: none; border: 0; color: var(--c-leise); font-size: 12px; cursor: pointer; padding: 2px 4px; text-decoration: underline; text-underline-offset: 2px; }
 .kiMarke { font-family: var(--s-zahl); font-size: 11px; color: var(--c-leise); text-transform: uppercase; letter-spacing: 0.1em; }
 
 /* ── Antwortkarte ── */
-.karte { margin-top: 6px; margin-left: 44px; background: var(--c-flaeche); border: 1px solid var(--c-linie); border-radius: var(--ecke); padding: 14px; }
+.karte { margin-top: 4px; margin-left: 44px; background: var(--c-flaeche); border: 1px solid var(--c-linie); border-radius: var(--ecke); padding: 14px; }
+@media (max-width: 520px) { .karte { margin-left: 0; } }
 .optionen { display: grid; gap: 8px; }
 .option {
   min-height: 48px; width: 100%; text-align: left; padding: 10px 14px; border-radius: 10px; cursor: pointer;
@@ -143,7 +154,34 @@
 .legendeIch::before { border-top: 3px solid var(--c-ende); }
 .legendeBranche::before { border-top: 2px dashed var(--c-leise); }
 .branchenSatz { font-size: 14px; color: var(--c-leise); border-left: 2px solid var(--c-start); padding-left: 10px; margin: 14px 0 0; }
-.gespraech { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
+/* ── Ergebnis: Säulen, nächste Schritte, Termine, Detail (30.10.) ── */
+.ergebnisEtikett { margin: 0 0 6px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--c-leise); }
+.saeulen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
+@media (max-width: 520px) { .saeulen { grid-template-columns: 1fr; gap: 12px; } }
+.saeuleKopf { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.saeuleName { font-weight: 600; }
+.saeuleWert { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+.saeuleBalken { height: 6px; border-radius: 3px; background: var(--c-linie); margin-top: 6px; overflow: hidden; }
+.saeuleFuell { height: 100%; background: var(--c-verlauf); border-radius: 3px; }
+.abschnittTitel { font-size: 18px; font-weight: 600; margin: 0 0 8px; letter-spacing: -.01em; }
+.schritte { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
+.schritt { padding: 12px 0; border-bottom: 1px solid var(--c-linie); }
+.schritt:last-child { border-bottom: 0; }
+.schrittKopf { display: flex; align-items: baseline; gap: 10px; margin: 0 0 4px; font-weight: 600; }
+.schrittNr { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--c-text); font-size: 12px; flex: 0 0 22px; }
+.schrittWert { margin-left: auto; font-weight: 400; font-size: 13px; color: var(--c-leise); white-space: nowrap; }
+.schrittText { margin: 0 0 8px 32px; }
+.angebot { margin-left: 32px; padding: 10px 12px; border-left: 2px solid var(--c-lavendel); background: var(--c-flaeche-2); border-radius: 0 8px 8px 0; display: grid; gap: 4px; }
+.angebotTitel { margin: 0; font-weight: 600; }
+.textlink { color: var(--c-text); font-weight: 600; text-underline-offset: 3px; justify-self: start; min-height: 44px; display: inline-flex; align-items: center; }
+@media (max-width: 520px) { .schrittText, .angebot { margin-left: 0; } }
+.termine { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.termin { min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 8px; border: 1px solid var(--c-text); color: var(--c-text); text-decoration: none; font-weight: 600; font-size: 15px; }
+.termin:hover { background: var(--c-gewaehlt); }
+.termin:focus-visible { outline: 2px solid var(--c-hellgruen); outline-offset: 2px; }
+.detail { margin-top: 20px; border-top: 1px solid var(--c-linie); padding-top: 4px; }
+.detail summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.gespraech { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
 .gespraechTitel { font-weight: 600; font-size: 18px; margin: 0 0 4px; }
 .vorlaeufig { margin-top: 14px; background: var(--c-flaeche-2); border: 1px dashed var(--c-linie); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
 
@@ -161,6 +199,7 @@
   .option:active { transform: scale(0.99); }
   .netzIch { transform-origin: 50% 50%; animation: wachsen 900ms 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .skalaAn { animation: fuellen 700ms 300ms ease both; transform-origin: left center; }
+  .saeuleFuell { animation: fuellen 800ms 400ms cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-origin: left center; }
   @keyframes auftauchen { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   @keyframes atmen { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
   @keyframes wachsen { from { transform: scale(0.05); opacity: 0; } to { transform: none; opacity: 1; } }

@@ -2,9 +2,11 @@
 
 // ─── Innovations-Check — die Strecke im Browser (24.10., Branch `innovations-check`) ─────────────────────────────
 // Ein Gespräch mit Zoe (feste Texte, Kennzeichnung „KI-Assistentin“ dauerhaft im Kopf): Frage 1 ist ein Klick, eine Frage je
-// Bildschirm, Klick springt weiter, „Zurück“ und „ändern“ jederzeit, Fortschritt „n von 15“. Nach dem Kurzcheck die Kontaktdaten
-// (überspringbar — das Kurzergebnis bleibt frei sichtbar), dann die Wahl, auf Wunsch die Vertiefung, am Ende das Ergebnis mit
-// hochzählender Zahl, Stufen-Skala und Netzdiagramm und direkt darunter der Weg ins 90-Tage-Umsetzungsgespräch.
+// Bildschirm, Klick springt weiter, „Zurück“ und „ändern“ jederzeit, Fortschritt „n von 17“. Nach dem Kurzcheck die Kontaktdaten
+// (überspringbar — das Kurzergebnis bleibt frei sichtbar), dann die Wahl, auf Wunsch die Vertiefung, am Ende das Ergebnis (30.10.,
+// Kevin: „Ergebnis mit nächsten Schritten“, „Alle drei Säulen“, „Gestaltung und Texte“): Gesamtwert mit Stufe, die drei Säulen,
+// zwei nächste Schritte mit dem passenden Angebot der Instanz, das Erstgespräch mit den nächsten freien Terminen, aufklappbar die
+// Innovation im Detail (Stufe, Netzdiagramm, Branchenvergleich).
 // Welche Frage als nächste kommt, sagt NUR der Server (`schritt`); Zahlen kommen NUR vom Server. Die Sitzung entsteht mit dem
 // ersten Klick; Kennung + Token liegen im Speicher des Browsers (Weitermachen nach dem Neuladen), nie in der Adresse.
 
@@ -28,12 +30,17 @@ interface Strom {
 }
 interface Props {
   marke: string;
+  /** Leitsatz unter dem Namen (Einstellung der Instanz) — ohne Angabe keiner. */
+  claim?: string;
   katalog: OeffentlicherKatalog;
   zoe: { begruessung: string[]; kontakt: string[]; wahl: string; gespraech: string };
   hinweis: { zeilen: string[]; link: string | null; fassung: string };
-  stufen: { stufe: number; name: string }[];
   quelle?: string;
 }
+type Angebot = { titel: string; text?: string; link?: string };
+type Schritt2 = ErgebnisAnsicht['schritte'][number] & { angebot?: Angebot };
+type Ansicht = Omit<ErgebnisAnsicht, 'schritte'> & { schritte: Schritt2[] };
+type Gespraech = { satz: string; pfad?: string; slug?: string };
 interface Sitzung { id: string; token: string }
 
 const SPEICHER = 'make-check:innovations-check';
@@ -67,13 +74,13 @@ function useHochzaehlen(ziel: number): number {
   return n;
 }
 
-export function InnovationsCheck({ marke, katalog, zoe, hinweis, stufen, quelle }: Props) {
+export function InnovationsCheck({ marke, claim, katalog, zoe, hinweis, quelle }: Props) {
   const fragen = useMemo(() => new Map(katalog.fragen.map(f => [f.id, f])), [katalog]);
   const kurz = useMemo(() => katalog.fragen.filter(f => f.kurz), [katalog]);
   const [sitzung, setSitzung] = useState<Sitzung | null>(null);
   const [strom, setStrom] = useState<Strom | null>(null);
-  const [ansicht, setAnsicht] = useState<ErgebnisAnsicht | null>(null);
-  const [gespraech, setGespraech] = useState<{ satz: string; pfad?: string } | null>(null);
+  const [ansicht, setAnsicht] = useState<Ansicht | null>(null);
+  const [gespraech, setGespraech] = useState<Gespraech | null>(null);
   const [bearbeite, setBearbeite] = useState<string | null>(null);
   const [kontaktFuerTermin, setKontaktFuerTermin] = useState(false);
   const [laedt, setLaedt] = useState(false);
@@ -99,7 +106,7 @@ export function InnovationsCheck({ marke, katalog, zoe, hinweis, stufen, quelle 
     setLaedt(true);
     void rufe({ aktion: 'ergebnis', sitzung: sitzung.id, token: sitzung.token }).then(({ d }) => {
       setLaedt(false);
-      if (d.ok) { const neu = d as unknown as Strom; ergebnisFuer.current = neu; setAnsicht(d.ansicht as ErgebnisAnsicht); setGespraech(d.gespraech as { satz: string; pfad?: string }); setStrom(neu); }
+      if (d.ok) { const neu = d as unknown as Strom; ergebnisFuer.current = neu; setAnsicht(d.ansicht as Ansicht); setGespraech(d.gespraech as Gespraech); setStrom(neu); }
       else setFehler(String(d.fehler ?? 'Das Ergebnis ließ sich gerade nicht laden.'));
     });
   }, [sitzung, strom, ansicht]);
@@ -155,7 +162,7 @@ export function InnovationsCheck({ marke, katalog, zoe, hinweis, stufen, quelle 
       <div className={s.rahmen}>
         <header className={s.kopf}>
           <div className={s.kopfZeile}>
-            <span className={s.marke}>{marke}</span>
+            <span className={s.markeBlock}><span className={s.marke}>{marke}</span>{claim && <span className={s.claim}>{claim}</span>}</span>
             <span className={s.titel}>Innovations-Check</span>
           </div>
           <div className={s.balken} aria-hidden><div className={s.balkenFuell} style={{ width: `${kurzGeschafft || ansicht ? 100 : imKurz ? Math.round((fort.kurz / Math.max(1, fort.kurzVon)) * 100) : fort.prozent}%` }} /></div>
@@ -167,8 +174,13 @@ export function InnovationsCheck({ marke, katalog, zoe, hinweis, stufen, quelle 
 
         {!strom && (
           <section className={s.einstieg}>
-            <h1 className={s.einstiegTitel}>Wie innovativ ist Ihr Unternehmen wirklich?</h1>
-            <p className={s.einstiegText}>Spielt Ihr Team nur mit KI, oder nutzen Sie KI und Automatisierung wirklich im Alltag? Der Check zeigt Ihnen, wo Sie im Vergleich zu Ihrer Branche stehen.</p>
+            <h1 className={s.einstiegTitel}>Wo steht Ihr Unternehmen?</h1>
+            <p className={s.einstiegText}>Sichtbarkeit, Vertrieb und Innovation: Der Check zeigt Ihnen, wo Sie heute stehen und welcher nächste Schritt den größten Unterschied macht.</p>
+            <ol className={s.dreiBereiche} aria-label="Die drei Bereiche des Checks">
+              <li><span className={s.bereichNr}>1</span>Sichtbarkeit<span className={s.bereichText}>Versteht man sofort, was Sie tun?</span></li>
+              <li><span className={s.bereichNr}>2</span>Vertrieb<span className={s.bereichText}>Werden aus Kontakten Kunden?</span></li>
+              <li><span className={s.bereichNr}>3</span>Innovation<span className={s.bereichText}>Nutzen Sie KI und Automatisierung wirklich?</span></li>
+            </ol>
             <ul className={s.versprechen}><li>kostenlos</li><li>rund 10 Minuten</li><li>Ergebnis sofort</li><li>Antworten per Klick</li></ul>
           </section>
         )}
@@ -225,7 +237,7 @@ export function InnovationsCheck({ marke, katalog, zoe, hinweis, stufen, quelle 
         </div>
 
         {ansicht && !bearbeite && (
-          <ErgebnisKarte ansicht={ansicht} stufen={stufen} gespraech={gespraech} kontaktDa={strom?.kontakt === 'erfasst'} laedt={laedt}
+          <ErgebnisKarte ansicht={ansicht} gespraech={gespraech} kontaktDa={strom?.kontakt === 'erfasst'} laedt={laedt}
             mehr={() => { setAnsicht(null); void sende({ aktion: 'wahl', wahl: 'mehr' }); }}
             termin={() => setKontaktFuerTermin(true)} />
         )}
@@ -389,43 +401,119 @@ function KontaktKarte({ rollen, laedt, senden, ohne, ohneText }: {
   );
 }
 
-function ErgebnisKarte({ ansicht, stufen, gespraech, kontaktDa, laedt, mehr, termin }: {
-  ansicht: ErgebnisAnsicht; stufen: Props['stufen']; gespraech: { satz: string; pfad?: string } | null; kontaktDa: boolean; laedt: boolean;
+const WOCHENTAG = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+/** „Di, 03.11. · 10:00“ aus Berliner Wandzeit `YYYY-MM-DDTHH:mm` (ohne Zeitzonen-Rechnung — der Server liefert Berliner Zeit). */
+const platzText = (start: string) => `${WOCHENTAG[new Date(`${start.slice(0, 10)}T12:00:00Z`).getUTCDay()]}, ${start.slice(8, 10)}.${start.slice(5, 7)}. · ${start.slice(11, 16)}`;
+
+/** Die nächsten freien Termine der Buchungsseite (öffentlich, wie auf der Buchungsseite selbst) — höchstens drei, je Tag einer. */
+function useNaechsteTermine(slug: string | undefined, an: boolean): { start: string; ende: string }[] | null {
+  const [plaetze, setPlaetze] = useState<{ start: string; ende: string }[] | null>(null);
+  useEffect(() => {
+    if (!slug || !an) return;
+    let aus = false;
+    void fetch(`/api/buchung/${slug}`, { cache: 'no-store' }).then(r => r.json()).then((j: { ok?: boolean; plaetze?: { start: string; ende: string }[] }) => {
+      if (aus || !j.ok || !Array.isArray(j.plaetze)) return;
+      const tage = new Set<string>();
+      setPlaetze(j.plaetze.filter(p => { const t = p.start.slice(0, 10); if (tage.has(t)) return false; tage.add(t); return true; }).slice(0, 3));
+    }).catch(() => { /* ohne Termine bleibt der Knopf zur Buchungsseite */ });
+    return () => { aus = true; };
+  }, [slug, an]);
+  return plaetze;
+}
+
+function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
+  ansicht: Ansicht; gespraech: Gespraech | null; kontaktDa: boolean; laedt: boolean;
   mehr: () => void; termin: () => void;
 }) {
   const zahl = useHochzaehlen(ansicht.gesamt);
+  const termine = useNaechsteTermine(gespraech?.slug, kontaktDa);
+  const iv = ansicht.innovation;
+  // Ein gewählter Termin fährt auf der Buchungsseite vorgewählt mit (nur dieser Browser-Tab, nie in der Adresse).
+  const platzMerken = (p: { start: string; ende: string }) => { try { sessionStorage.setItem('make-check-platz', JSON.stringify(p)); } catch { /* ohne Speicher: die Seite zeigt alle Termine */ } };
   return (
     <section className={`${s.ergebnis} ${s.neu}`} aria-labelledby="ergebnis-titel">
+      <p className={s.ergebnisEtikett}>Ihr Ergebnis</p>
       <div className={s.zahlZeile}>
         <span className={s.grosseZahl} aria-hidden>{zahl}</span><span className={s.vonHundert}>von 100</span>
       </div>
       <h2 id="ergebnis-titel" className={s.stufeName}>Stufe {ansicht.stufe}: {ansicht.stufeName}</h2>
       <p className={s.stufeKurz}>{ansicht.stufeKurz}</p>
-      <div className={s.skala} aria-hidden>{stufen.map(x => <span key={x.stufe} className={`${s.skalaTeil} ${x.stufe <= ansicht.stufe ? s.skalaAn : ''}`} />)}</div>
-      <div className={s.skalaNamen} aria-hidden>{stufen.map(x => <span key={x.stufe} className={x.stufe === ansicht.stufe ? s.skalaNameAn : undefined}><span className={s.skalaNr}>{x.stufe}</span><span className={s.skalaWort}>{x.name.replace(/ \(.*\)$/, '')}</span></span>)}</div>
-      <Netzdiagramm achsen={ansicht.achsen} />
-      {ansicht.branchenSatz && <p className={s.branchenSatz}>{ansicht.branchenSatz}</p>}
-      <div style={{ marginTop: 14 }}><Zoe zeilen={ansicht.zoe} /></div>
+      <div className={s.skala} aria-hidden>{ansicht.stufen.map(x => <span key={x.stufe} className={`${s.skalaTeil} ${x.stufe <= ansicht.stufe ? s.skalaAn : ''}`} />)}</div>
+      <div className={s.skalaNamen} aria-hidden>{ansicht.stufen.map(x => <span key={x.stufe} className={x.stufe === ansicht.stufe ? s.skalaNameAn : undefined}><span className={s.skalaNr}>{x.stufe}</span><span className={s.skalaWort}>{x.name.replace(/ \(.*\)$/, '')}</span></span>)}</div>
+
+      {ansicht.saeulen.length > 1 && (
+        <div className={s.saeulen} role="list" aria-label="Ihre drei Bereiche">
+          {ansicht.saeulen.map(x => (
+            <div key={x.key} className={s.saeule} role="listitem">
+              <div className={s.saeuleKopf}><span className={s.saeuleName}>{x.name}</span><span className={s.saeuleWert}>{x.wert ?? '—'}</span></div>
+              <div className={s.saeuleBalken} aria-hidden><div className={s.saeuleFuell} style={{ width: `${x.wert ?? 0}%` }} /></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop: 18 }}><Zoe zeilen={ansicht.zoe} /></div>
+
+      {ansicht.schritte.length > 0 && (
+        <div className={s.schritte}>
+          <h3 className={s.abschnittTitel}>Ihre nächsten Schritte</h3>
+          {ansicht.schritte.map((x, i) => (
+            <article key={x.saeule} className={s.schritt}>
+              <p className={s.schrittKopf}><span className={s.schrittNr}>{i + 1}</span>{x.name}<span className={s.schrittWert}>{x.wert} von 100</span></p>
+              <p className={s.schrittText}>{x.text}</p>
+              {x.angebot && (
+                <div className={s.angebot}>
+                  <p className={s.angebotTitel}>{x.angebot.titel}</p>
+                  {x.angebot.text && <p className={s.hilfe} style={{ margin: 0 }}>{x.angebot.text}</p>}
+                  {/* Bewusst <a>: der Link führt auf eine Seite der Website (statisch, außerhalb dieser Anwendung) oder nach außen. */}
+                  {x.angebot.link && (/^https:/.test(x.angebot.link)
+                    ? <a className={s.textlink} href={x.angebot.link} target="_blank" rel="noopener noreferrer">Mehr erfahren</a>
+                    : <a className={s.textlink} href={x.angebot.link}>Mehr erfahren</a>)}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+
+      {gespraech && (
+        <div className={s.gespraech}>
+          <h3 className={s.abschnittTitel}>Kostenloses Erstgespräch</h3>
+          <p className={s.hilfe}>{gespraech.satz}</p>
+          {kontaktDa ? (
+            gespraech.pfad ? (
+              <>
+                {!!termine?.length && (
+                  <div className={s.termine} role="list" aria-label="Nächste freie Termine">
+                    {termine.map(p => <Link key={p.start} role="listitem" className={s.termin} href={gespraech.pfad!} onClick={() => platzMerken(p)}>{platzText(p.start)}</Link>)}
+                  </div>
+                )}
+                <Link className={s.knopf} style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }} href={gespraech.pfad}>{termine?.length ? 'Alle freien Termine' : 'Termin wählen'}</Link>
+              </>
+            ) : <p className={s.hilfe}>Wir melden uns bei Ihnen für einen Termin.</p>
+          ) : (
+            <button type="button" className={s.knopf} onClick={termin}>Erstgespräch buchen</button>
+          )}
+          {kontaktDa && <p className={s.hilfe} style={{ marginTop: 10 }}>Ihren Bericht schicken wir Ihnen per E-Mail.</p>}
+        </div>
+      )}
+
       {ansicht.genauigkeit === 'vorlaeufig' && (
         <div className={s.vorlaeufig}>
-          Weiter, wo Sie aufgehört haben — Ihre Antworten bleiben gespeichert.
+          Mit ein paar Fragen mehr wird Ihr Ergebnis genauer. Ihre Antworten bleiben gespeichert.
           <div className={s.zeile}><button type="button" className={s.zweit} disabled={laedt} onClick={mehr}>Weitere Fragen beantworten</button></div>
         </div>
       )}
-      {gespraech && (
-        <div className={s.gespraech}>
-          <p className={s.gespraechTitel}>Kostenloses 90-Tage-Umsetzungsgespräch</p>
-          <p className={s.hilfe}>{gespraech.satz}</p>
-          {kontaktDa ? (
-            gespraech.pfad
-              ? <Link className={s.knopf} style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }} href={gespraech.pfad}>Gespräch buchen</Link>
-              : <p className={s.hilfe}>Wir melden uns bei Ihnen für einen Termin.</p>
-          ) : (
-            <button type="button" className={s.knopf} onClick={termin}>Gespräch buchen</button>
-          )}
-          {kontaktDa && <p className={s.hilfe} style={{ marginTop: 10 }}>Ihr Bericht kommt per E-Mail.</p>}
-        </div>
-      )}
+
+      <details className={s.detail}>
+        <summary>Innovation im Detail: Stufe {iv.stufe}, {iv.stufeName.replace(/ \(.*\)$/, '')}</summary>
+        <p className={s.stufeKurz} style={{ marginTop: 8 }}>{iv.stufeKurz}</p>
+        <div className={s.skala} aria-hidden>{iv.stufen.map(x => <span key={x.stufe} className={`${s.skalaTeil} ${x.stufe <= iv.stufe ? s.skalaAn : ''}`} />)}</div>
+        <div className={s.skalaNamen} aria-hidden>{iv.stufen.map(x => <span key={x.stufe} className={x.stufe === iv.stufe ? s.skalaNameAn : undefined}><span className={s.skalaNr}>{x.stufe}</span><span className={s.skalaWort}>{x.name.replace(/ \(.*\)$/, '')}</span></span>)}</div>
+        <Netzdiagramm achsen={iv.achsen} />
+        {iv.branchenSatz && <p className={s.branchenSatz}>{iv.branchenSatz}</p>}
+        <div style={{ marginTop: 14 }}><Zoe zeilen={iv.zoe} leise /></div>
+      </details>
     </section>
   );
 }

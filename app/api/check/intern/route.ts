@@ -2,7 +2,9 @@
 // Nur der Haushalt des Inhabers (mit Person, Dienstweg ohne Person 403):
 // GET            → { einstellungen, buchungsseiten, verantwortlichDa, liste } — eingegangene Checks (Stufe, Kontakt, CRM-Stand, offene Belege)
 // GET ?id=ck-…   → { sitzung } mit allen Antworten im Klartext der Fragen (für Kevin: Beleg-Texte lesen und bewerten)
-// POST { aktion: 'einstellungen', aktiv?, buchungSlug?, gastgeber?, marke? }  → nur der Inhaber; einschalten nur mit Verantwortlichem der Instanz
+// POST { aktion: 'einstellungen', aktiv?, buchungSlug?, gastgeber?, marke?, claim?, angebote? } → nur der Inhaber; einschalten nur mit
+//                                                                   Verantwortlichem der Instanz; `angebote` = { sichtbarkeit|vertrieb|innovation:
+//                                                                   { titel, text?, link? } | null } (Link: /… der eigenen Website oder https)
 // POST { aktion: 'beleg', id, frage: C5 | D6, score: 0–4 }            → Bewertung nach Rubrik, Ergebnis-Stand neu gerechnet
 // POST { aktion: 'crm', id }                                          → Lead noch einmal anlegen (nach Fehler)
 // POST { aktion: 'loeschen', id }                                     → Sitzung entfernen (z. B. auf Wunsch der Person)
@@ -21,7 +23,8 @@ import { vorlageVon } from '@/lib/check/katalog';
 import { frageVon, kurzFertig } from '@/lib/check/ablauf';
 import { ergebnisAnsicht } from '@/lib/check/ergebnis';
 import { leadPunkte } from '@/lib/check/auswertung';
-import { ladeCheckBestand, ladeCheckEinstellungen, speichereCheckEinstellungen, sitzungIntern, SITZUNGEN, ID_OK, type CheckBestand, type CheckSitzung } from '@/lib/check/speicher';
+import { ladeCheckBestand, ladeCheckEinstellungen, speichereCheckEinstellungen, sitzungIntern, angebotLinkOk, SITZUNGEN, ID_OK, type CheckAngebot, type CheckBestand, type CheckSitzung } from '@/lib/check/speicher';
+import type { SaeuleKey } from '@/lib/check/typen';
 import { ablaufStand, hinweisLaden, leadAnlegen } from '@/lib/check/server';
 
 export const runtime = 'nodejs';
@@ -46,8 +49,8 @@ function zeile(s: CheckSitzung) {
 function neuGerechnet(s: CheckSitzung): CheckSitzung {
   const v = vorlageVon(s.vorlage);
   if (!v || !s.ergebnis) return s;
-  const { ergebnis, profil } = ergebnisAnsicht(v, s.antworten);
-  return { ...s, ergebnis: { ...s.ergebnis, gesamt: ergebnis.gesamt, stufe: ergebnis.stufe, stufeName: ergebnis.stufe_name, genauigkeit: ergebnis.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, lead: leadPunkte(v.leadScoring, profil, ergebnis, {}) } };
+  const { ergebnis, saeulen, profil } = ergebnisAnsicht(v, s.antworten);
+  return { ...s, ergebnis: { ...s.ergebnis, gesamt: saeulen.gesamt, stufe: saeulen.stufe, stufeName: saeulen.stufe_name, genauigkeit: ergebnis.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, saeulen: saeulen.werte, lead: leadPunkte(v.leadScoring, profil, ergebnis, {}) } };
 }
 
 export async function GET(req: Request) {
@@ -114,7 +117,29 @@ export async function POST(req: Request) {
       else if (m.length > 60 || /[<>{}\n]/.test(m)) return NextResponse.json({ ok: false, fehler: 'Der Name darf höchstens 60 Zeichen haben, ohne Sonderzeichen wie < > { }.' }, { status: 400 });
       else marke = m;
     }
-    const e = await speichereCheckEinstellungen({ aktiv, ...(buchungSlug ? { buchungSlug } : {}), ...(gastgeber ? { gastgeber } : {}), ...(marke ? { marke } : {}), geaendert: jetzt, geaendertVon: zugang.person });
+    let claim = alt.claim;
+    if (b.claim !== undefined) {
+      const c = typeof b.claim === 'string' ? b.claim.trim() : '';
+      if (b.claim === null || c === '') claim = undefined;
+      else if (c.length > 80 || /[<>{}\n]/.test(c)) return NextResponse.json({ ok: false, fehler: 'Der Leitsatz darf höchstens 80 Zeichen haben, ohne Sonderzeichen wie < > { }.' }, { status: 400 });
+      else claim = c;
+    }
+    const angebote: Partial<Record<SaeuleKey, CheckAngebot>> = { ...(alt.angebote ?? {}) };
+    if (b.angebote !== undefined) {
+      if (!b.angebote || typeof b.angebote !== 'object') return NextResponse.json({ ok: false, fehler: 'Angebote: je Bereich Titel, Satz und Link.' }, { status: 400 });
+      for (const [sk, roh] of Object.entries(b.angebote as Record<string, unknown>)) {
+        if (sk !== 'sichtbarkeit' && sk !== 'vertrieb' && sk !== 'innovation') return NextResponse.json({ ok: false, fehler: 'Unbekannter Bereich.' }, { status: 400 });
+        const a = roh as Record<string, unknown> | null;
+        const titel = typeof a?.titel === 'string' ? a.titel.trim() : '';
+        if (!a || !titel) { delete angebote[sk]; continue; }
+        const satz = typeof a.text === 'string' ? a.text.trim() : '';
+        const link = typeof a.link === 'string' ? a.link.trim() : '';
+        if (titel.length > 80 || satz.length > 240 || /[<>{}]/.test(titel + satz)) return NextResponse.json({ ok: false, fehler: 'Titel höchstens 80, Satz höchstens 240 Zeichen, ohne < > { }.' }, { status: 400 });
+        if (link && !angebotLinkOk(link)) return NextResponse.json({ ok: false, fehler: 'Der Link muss mit / (Seite der eigenen Website) oder https:// beginnen.' }, { status: 400 });
+        angebote[sk] = { titel, ...(satz ? { text: satz } : {}), ...(link ? { link } : {}) };
+      }
+    }
+    const e = await speichereCheckEinstellungen({ aktiv, ...(buchungSlug ? { buchungSlug } : {}), ...(gastgeber ? { gastgeber } : {}), ...(marke ? { marke } : {}), ...(claim ? { claim } : {}), ...(Object.keys(angebote).length ? { angebote } : {}), geaendert: jetzt, geaendertVon: zugang.person });
     return NextResponse.json({ ok: true, einstellungen: e });
   }
 

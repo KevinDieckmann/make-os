@@ -1,11 +1,12 @@
 // ─── Checks — Ablauf (24.10., Innovations-Check) ────────────────────────────────────────────────────────────────
 // Die Klickstrecke steuert die Anwendung, nicht ein Sprachmodell: welche Frage als nächste kommt, entscheidet NUR diese Datei
-// (so bleiben die Ergebnisse vergleichbar). Reihenfolge nach Kevins Klickrunde 24.10.: erst die 15 Kurzcheck-Fragen (Frage 1 ist
+// (so bleiben die Ergebnisse vergleichbar). Reihenfolge nach Kevins Klickrunde 24.10.: erst die Kurzcheck-Fragen (seit 30.10. 17 — mit
+// den Säulen Sichtbarkeit und Vertrieb; Frage 1 ist
 // ein Klick: die Branche), DANACH die Kontaktdaten (überspringbar — das Kurzergebnis bleibt frei sichtbar), dann die Wahl
-// „Ergebnis jetzt“ oder „mehr Fragen“, in der Vertiefung die übrigen Fragen aus A bis G (Robotik nur, wo sie zur Branche passt)
+// „Ergebnis jetzt“ oder „mehr Fragen“, in der Vertiefung die übrigen Fragen aus A, S, V und B bis G (Robotik nur, wo sie zur Branche passt)
 // und das Branchen-Modul (H/I/J, sonst zwei offene Fragen). Rein, client- und serversicher.
 
-import { alleFragen, kurzcheckFragen, type FrageMitAbschnitt } from './katalog';
+import { alleFragen, kurzcheckFragen, STRECKE_ABSCHNITTE, type FrageMitAbschnitt } from './katalog';
 import { robotikRelevant, profilAus } from './auswertung';
 import type { CheckAntwort, CheckAntworten, CheckFrage, CheckProfil, CheckVorlage } from './typen';
 
@@ -58,10 +59,10 @@ export function moduleFuer(p: CheckProfil): string[] {
 
 export const kurzSequenz = (v: CheckVorlage): FrageMitAbschnitt[] => kurzcheckFragen(v.katalog);
 
-/** Vertiefung: alle übrigen Fragen aus A bis G in Katalog-Reihenfolge — F nur, wenn Robotik zur Branche passt. */
+/** Vertiefung: alle übrigen Fragen aus A, S, V und B bis G in Katalog-Reihenfolge — F nur, wenn Robotik zur Branche passt. */
 export function vertiefungSequenz(v: CheckVorlage, p: CheckProfil): FrageMitAbschnitt[] {
   const robotik = robotikRelevant(p, v.regeln);
-  return alleFragen(v.katalog).filter(f => 'ABCDEFG'.includes(f.abschnitt) && !f.kurzcheck && (f.abschnitt !== 'F' || robotik));
+  return alleFragen(v.katalog).filter(f => STRECKE_ABSCHNITTE.includes(f.abschnitt) && !f.kurzcheck && (f.abschnitt !== 'F' || robotik));
 }
 
 export function brancheSequenz(v: CheckVorlage, p: CheckProfil): FrageMitAbschnitt[] {
@@ -139,7 +140,7 @@ export function antwortPruefen(f: FrageMitAbschnitt, e: Eingabe): Geprueft {
   return { ok: true, antwort: { freitext: t } };
 }
 
-/** Fortschritt für die Anzeige: Kurzcheck „n von 15“ und gesamt in Prozent (alle Fragen dieser Sitzung). */
+/** Fortschritt für die Anzeige: Kurzcheck „n von 17“ und gesamt in Prozent (alle Fragen dieser Sitzung). */
 export function fortschritt(v: CheckVorlage, s: AblaufStand): { kurz: number; kurzVon: number; prozent: number } {
   const kurz = kurzSequenz(v);
   const p = profilAus(v.katalog, s.antworten);

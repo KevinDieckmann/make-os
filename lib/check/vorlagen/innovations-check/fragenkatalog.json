@@ -1,7 +1,7 @@
 {
- "version": "1.0",
- "stand": "2026-10-24",
- "freigabe": "Inhaber, Prüfseite 24.10.2026",
+ "version": "1.1",
+ "stand": "2026-10-30",
+ "freigabe": "Inhaber, Prüfseite 24.10.2026; Säulen Sichtbarkeit und Vertrieb auf Wunsch des Inhabers 30.10.2026 (zur Abnahme)",
  "sprache": "de, Sie-Form",
  "hinweis": "IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden.",
  "abschnitte": [
@@ -251,6 +251,356 @@
    ]
   },
   {
+   "id": "S",
+   "key": "sichtbarkeit",
+   "name": "Sichtbarkeit",
+   "dimension": null,
+   "saeule": "sichtbarkeit",
+   "intro": "Säule Sichtbarkeit (30.10.). 5 Fragen, 3 im Kurzcheck. Antworten von 0 (schwach) bis 4 Punkte (stark). Zählt nicht in die Innovations-Dimensionen.",
+   "fragen": [
+    {
+     "id": "S1",
+     "text": "Können Sie in einem Satz sagen, für wen Sie welches Problem lösen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S1_0",
+       "text": "Nein, das ist noch nicht klar",
+       "punkte": 0
+      },
+      {
+       "id": "S1_1",
+       "text": "Ich kann es erklären, aber nicht in einem Satz",
+       "punkte": 1
+      },
+      {
+       "id": "S1_2",
+       "text": "Ja, aber der Satz steht nirgends geschrieben",
+       "punkte": 2
+      },
+      {
+       "id": "S1_3",
+       "text": "Ja, er steht auf der Website und in unseren Profilen",
+       "punkte": 3
+      },
+      {
+       "id": "S1_4",
+       "text": "Ja, und Kunden sagen ihn uns von selbst nach",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S2",
+     "text": "Was bringt Ihnen Ihre Website heute?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S2_0",
+       "text": "Wir haben keine oder eine veraltete Website",
+       "punkte": 0
+      },
+      {
+       "id": "S2_1",
+       "text": "Sie ist eine Visitenkarte, Anfragen kommen kaum",
+       "punkte": 1
+      },
+      {
+       "id": "S2_2",
+       "text": "Ab und zu kommt eine Anfrage darüber",
+       "punkte": 2
+      },
+      {
+       "id": "S2_3",
+       "text": "Sie bringt regelmäßig Anfragen",
+       "punkte": 3
+      },
+      {
+       "id": "S2_4",
+       "text": "Sie bringt planbar Anfragen, und wir messen das",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S3",
+     "text": "Wie oft zeigen Sie sich mit eigenen Inhalten, etwa Beiträgen, Videos oder Vorträgen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S3_0",
+       "text": "Gar nicht",
+       "punkte": 0
+      },
+      {
+       "id": "S3_1",
+       "text": "Seltener als einmal im Monat",
+       "punkte": 1
+      },
+      {
+       "id": "S3_2",
+       "text": "Ein- bis dreimal im Monat",
+       "punkte": 2
+      },
+      {
+       "id": "S3_3",
+       "text": "Jede Woche",
+       "punkte": 3
+      },
+      {
+       "id": "S3_4",
+       "text": "Jede Woche, mit Plan und gemessener Wirkung",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S4",
+     "text": "Gibt es ein Video, das in unter zwei Minuten erklärt, was Sie anbieten?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S4_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "S4_1",
+       "text": "Ist geplant",
+       "punkte": 1
+      },
+      {
+       "id": "S4_2",
+       "text": "Ja, aber es ist veraltet",
+       "punkte": 2
+      },
+      {
+       "id": "S4_3",
+       "text": "Ja, aktuell und auf der Website",
+       "punkte": 3
+      },
+      {
+       "id": "S4_4",
+       "text": "Ja, und wir sehen, dass es Anfragen bringt",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S5",
+     "text": "Wie gut kennt Ihre Zielgruppe Sie?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S5_0",
+       "text": "Kaum jemand kennt uns",
+       "punkte": 0
+      },
+      {
+       "id": "S5_1",
+       "text": "Nur unser direktes Umfeld",
+       "punkte": 1
+      },
+      {
+       "id": "S5_2",
+       "text": "In unserer Region oder Nische ein wenig",
+       "punkte": 2
+      },
+      {
+       "id": "S5_3",
+       "text": "Viele in der Zielgruppe haben schon von uns gehört",
+       "punkte": 3
+      },
+      {
+       "id": "S5_4",
+       "text": "Wir werden aktiv empfohlen und eingeladen",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "V",
+   "key": "vertrieb",
+   "name": "Vertrieb",
+   "dimension": null,
+   "saeule": "vertrieb",
+   "intro": "Säule Vertrieb (30.10.). 5 Fragen, 3 im Kurzcheck. Antworten von 0 (schwach) bis 4 Punkte (stark). Zählt nicht in die Innovations-Dimensionen.",
+   "fragen": [
+    {
+     "id": "V1",
+     "text": "Wer kümmert sich bei Ihnen um den Vertrieb?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V1_0",
+       "text": "Niemand fest, es passiert nebenbei",
+       "punkte": 0
+      },
+      {
+       "id": "V1_1",
+       "text": "Ich selbst, wenn Zeit bleibt",
+       "punkte": 1
+      },
+      {
+       "id": "V1_2",
+       "text": "Ich selbst, mit festen Zeiten in der Woche",
+       "punkte": 2
+      },
+      {
+       "id": "V1_3",
+       "text": "Eine Person oder ein Team ist dafür zuständig",
+       "punkte": 3
+      },
+      {
+       "id": "V1_4",
+       "text": "Ein Team mit klaren Zielen, Abläufen und Führung",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V2",
+     "text": "Wissen Sie, wie viele Angebote Sie im Monat schreiben und wie viele davon Sie gewinnen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V2_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "V2_1",
+       "text": "Grob, aus dem Bauch",
+       "punkte": 1
+      },
+      {
+       "id": "V2_2",
+       "text": "Die Zahl der Angebote ja, die Abschlussquote nicht",
+       "punkte": 2
+      },
+      {
+       "id": "V2_3",
+       "text": "Beides, aber nicht laufend",
+       "punkte": 3
+      },
+      {
+       "id": "V2_4",
+       "text": "Beides, jeden Monat im Blick",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V3",
+     "text": "Wie sicher wissen Sie heute, welcher Umsatz in den nächsten drei Monaten kommt?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V3_0",
+       "text": "Gar nicht",
+       "punkte": 0
+      },
+      {
+       "id": "V3_1",
+       "text": "Eher ein Gefühl",
+       "punkte": 1
+      },
+      {
+       "id": "V3_2",
+       "text": "Bei Bestandskunden ja, bei neuen nicht",
+       "punkte": 2
+      },
+      {
+       "id": "V3_3",
+       "text": "Wir haben eine Liste offener Chancen mit Schätzung",
+       "punkte": 3
+      },
+      {
+       "id": "V3_4",
+       "text": "Wir haben eine Pipeline mit Wahrscheinlichkeiten, die meistens stimmt",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V4",
+     "text": "Was passiert, wenn ein Angebot unbeantwortet bleibt?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V4_0",
+       "text": "Meist nichts",
+       "punkte": 0
+      },
+      {
+       "id": "V4_1",
+       "text": "Wir fassen nach, wenn es uns einfällt",
+       "punkte": 1
+      },
+      {
+       "id": "V4_2",
+       "text": "Wir fassen nach, aber ohne festen Rhythmus",
+       "punkte": 2
+      },
+      {
+       "id": "V4_3",
+       "text": "Es gibt feste Erinnerungen zum Nachfassen",
+       "punkte": 3
+      },
+      {
+       "id": "V4_4",
+       "text": "Ein fester Ablauf mit Fristen sorgt dafür, dass nichts liegen bleibt",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V5",
+     "text": "Woher kommen Ihre neuen Kunden?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V5_0",
+       "text": "Es kommen kaum neue Kunden",
+       "punkte": 0
+      },
+      {
+       "id": "V5_1",
+       "text": "Fast nur über Empfehlungen, wir sprechen niemanden an",
+       "punkte": 1
+      },
+      {
+       "id": "V5_2",
+       "text": "Über Empfehlungen und gelegentlich eigene Ansprache",
+       "punkte": 2
+      },
+      {
+       "id": "V5_3",
+       "text": "Über zwei oder mehr feste Wege, die wir selbst anstoßen",
+       "punkte": 3
+      },
+      {
+       "id": "V5_4",
+       "text": "Über mehrere Wege, deren Ergebnisse wir messen und steuern",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
    "id": "B",
    "key": "strategie",
    "name": "Strategie und Führung",
@@ -326,7 +676,7 @@
     {
      "id": "B3",
      "text": "Wer ist für Innovation verantwortlich?",
-     "kurzcheck": true,
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -691,7 +1041,7 @@
     {
      "id": "C7",
      "text": "Nutzen Sie KI-Agenten, die Aufgaben selbst ausführen, nicht nur Chat?",
-     "kurzcheck": true,
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -1002,7 +1352,7 @@
     {
      "id": "D8",
      "text": "Läuft Ihr Geschäft zwei Wochen ohne Sie weiter?",
-     "kurzcheck": true,
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -1393,7 +1743,7 @@
     {
      "id": "G1",
      "text": "Wie viele Mitarbeitende wurden in den letzten 12 Monaten zu KI geschult?",
-     "kurzcheck": true,
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -2364,6 +2714,6 @@
    "bedingung": "branche == tech ODER startup == true"
   }
  ],
- "anzahl_fragen": 65,
- "anzahl_kurzcheck": 15
+ "anzahl_fragen": 75,
+ "anzahl_kurzcheck": 17
 }

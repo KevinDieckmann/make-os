@@ -4,8 +4,9 @@
 import { describe, it, expect } from 'vitest';
 import { createRequire } from 'node:module';
 import { VORLAGEN, alleFragen } from '@/lib/check/katalog';
-import { auswerten, luecken, leadPunkte, punkteFuer, profilAus, zeitPotenzial } from '@/lib/check/auswertung';
-import { ergebnisSaetze } from '@/lib/check/zoe-texte';
+import { auswerten, luecken, leadPunkte, punkteFuer, profilAus, zeitPotenzial, saeulenAuswerten, naechsteSchritte, schrittBand } from '@/lib/check/auswertung';
+import { ergebnisSaetze, saeulenSaetze } from '@/lib/check/zoe-texte';
+import { kurzSequenz } from '@/lib/check/ablauf';
 import type { CheckAntworten, CheckProfil } from '@/lib/check/typen';
 
 const require = createRequire(import.meta.url);
@@ -84,9 +85,13 @@ describe('gleich wie die Referenz (600 Zufallsfälle)', () => {
 });
 
 describe('Hilfen', () => {
-  it('Katalog: 65 Fragen, 15 im Kurzcheck', () => {
+  it('Katalog: 75 Fragen, 17 im Kurzcheck (seit 30.10. mit Sichtbarkeit und Vertrieb)', () => {
     expect(alleFragen(katalog)).toHaveLength(katalog.anzahl_fragen);
+    expect(katalog.anzahl_fragen).toBe(75);
     expect(alleFragen(katalog).filter(f => f.kurzcheck)).toHaveLength(katalog.anzahl_kurzcheck);
+    expect(kurzSequenz(V).map(f => f.id)).toEqual(['A1', 'A2', 'A6', 'S1', 'S2', 'S3', 'V1', 'V2', 'V3', 'B1', 'C1', 'C2', 'C5', 'D1', 'D7', 'E1', 'E4']);
+    // Jede Säulen-Frage hat fünf Antworten mit 0 bis 4 Punkten, in dieser Reihenfolge.
+    for (const f of alleFragen(katalog).filter(x => x.abschnitt === 'S' || x.abschnitt === 'V')) expect(f.optionen?.map(o => o.punkte), f.id).toEqual([0, 1, 2, 3, 4]);
   });
   it('unbewerteter Beleg zählt nicht', () => {
     const c5 = alleFragen(katalog).find(f => f.id === 'C5')!;
@@ -110,5 +115,49 @@ describe('Hilfen', () => {
       [{ dimension: 'ki', wert: 30, branche: 45, abstand: 15 }]);
     expect(ungleich[1]).toBe('Am stärksten sind Sie bei Strategie und Führung mit 70 Punkten.');
     expect(ungleich[2]).toContain('KI im Alltag: 30 gegenüber 45 Punkten');
+  });
+});
+
+describe('Säulen Sichtbarkeit · Vertrieb · Innovation (30.10.)', () => {
+  const inno = (gesamt: number, dims: Record<string, number> = { ki: gesamt }) => ({ gesamt, dimensionen: dims, stufe: 3, stufe_name: 'Anwender' });
+  it('Sichtbarkeit und Vertrieb wie ein Dimensionswert, Innovation = Gesamtwert der Dimensionen, Gesamt = Mittel', () => {
+    const a: CheckAntworten = { S1: pick('S1', 4), S2: pick('S2', 2), V1: pick('V1', 1), V3: pick('V3', 0) };
+    const r = saeulenAuswerten(katalog, regeln, a, inno(60));
+    expect(r.werte).toEqual({ sichtbarkeit: 75, vertrieb: 13, innovation: 60 });
+    expect(r.gesamt).toBe(Math.round((75 + 13 + 60) / 3));
+    expect(r.stufe_name).toBe('Auf Kurs');
+  });
+  it('unbeantwortete Säulen zählen nicht; ohne Innovations-Antworten fehlt die Innovation', () => {
+    const r = saeulenAuswerten(katalog, regeln, { V1: pick('V1', 4) }, inno(0, {}));
+    expect(r.werte).toEqual({ vertrieb: 100 });
+    expect(r.gesamt).toBe(100);
+    expect(r.stufe_name).toBe('Vorreiter');
+  });
+  it('die Referenz-Rechnung der Innovation bleibt unberührt — Säulen-Antworten ändern sie nicht', () => {
+    const basis: CheckAntworten = { B1: pick('B1', 2), C1: pick('C1', 3), D1: pick('D1', 1) };
+    const mit = { ...basis, S1: pick('S1', 4), V2: pick('V2', 0) };
+    expect(auswerten(katalog, regeln, {}, mit)).toEqual(auswerten(katalog, regeln, {}, basis));
+  });
+  it('ohne Säulen in der Vorlage gilt die Innovation allein (wie bisher)', () => {
+    const r = saeulenAuswerten(katalog, { ...regeln, saeulen: undefined }, { S1: pick('S1', 4) }, inno(42));
+    expect(r).toEqual({ werte: { innovation: 42 }, gesamt: 42, stufe: 3, stufe_name: 'Anwender' });
+  });
+  it('nächste Schritte: die zwei schwächsten Säulen, Band nach Wert, Gleichstand Vertrieb vor Sichtbarkeit vor Innovation', () => {
+    expect(schrittBand(40)).toBe('niedrig'); expect(schrittBand(41)).toBe('mittel'); expect(schrittBand(70)).toBe('mittel'); expect(schrittBand(71)).toBe('hoch');
+    const x = naechsteSchritte(regeln, { sichtbarkeit: 30, vertrieb: 30, innovation: 80 });
+    expect(x.map(y => [y.saeule, y.band])).toEqual([['vertrieb', 'niedrig'], ['sichtbarkeit', 'niedrig']]);
+    expect(x[0].text).toBe(regeln.naechste_schritte!.vertrieb!.niedrig);
+    expect(naechsteSchritte(regeln, { innovation: 55 }).map(y => y.saeule)).toEqual(['innovation']);
+  });
+  it('Zoe: Stufe, stärkste Säule, größter Hebel — Zahlen nur aus dem Ergebnis', () => {
+    const z = saeulenSaetze({ werte: { sichtbarkeit: 70, vertrieb: 20, innovation: 45 }, gesamt: 45, stufe: 3, stufe_name: 'Auf Kurs' }, 'vorlaeufig');
+    expect(z[0]).toBe('Sie stehen auf Stufe 3: Auf Kurs (45 von 100 Punkten).');
+    expect(z[1]).toBe('Am stärksten sind Sie bei Sichtbarkeit mit 70 Punkten.');
+    expect(z[2]).toContain('Den größten Hebel hat Vertrieb mit 20 Punkten.');
+    expect(z[3]).toContain('vorläufiges Ergebnis');
+  });
+  it('Vorlage bleibt neutral: keine Firmen, Marken oder Personen in Texten der Säulen und Schritte', () => {
+    const texte = JSON.stringify([katalog.abschnitte.filter(x => x.id === 'S' || x.id === 'V'), regeln.naechste_schritte, regeln.saeulen_stufen, regeln.siegel]);
+    expect(texte).not.toMatch(/MAKE|Fokus Innovation|KD Ventures|KEMARIS|Kevin|Malin/i);
   });
 });

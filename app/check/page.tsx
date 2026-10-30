@@ -38,10 +38,10 @@ async function seitenDaten() {
     const k = await zoeKontext(e);
     return {
       marke: k.marke,
+      ...(e.claim ? { claim: e.claim } : {}),
       katalog: oeffentlicherKatalog(v),
       zoe: { begruessung: begruessung(k), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
       hinweis: { zeilen: hinweis.zeilen, link: hinweis.link, fassung: HINWEIS_FASSUNG },
-      stufen: v.regeln.stufen.map(s => ({ stufe: s.stufe, name: s.name })),
     };
   });
 }

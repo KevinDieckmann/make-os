@@ -16,10 +16,10 @@ import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { vorlageVon, STANDARD_VORLAGE } from '@/lib/check/katalog';
 import { antwortPruefen, frageVon, kurzFertig, phaseVon, ueberspringbar } from '@/lib/check/ablauf';
-import { auswerten, leadPunkte, profilAus } from '@/lib/check/auswertung';
+import { auswerten, leadPunkte, profilAus, saeulenAuswerten } from '@/lib/check/auswertung';
 import { ergebnisAnsicht } from '@/lib/check/ergebnis';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
-import { begruessung, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/zoe-texte';
+import { begruessung, gespraechSatz, kontaktSatz, saeuleName, WAHL_SATZ } from '@/lib/check/zoe-texte';
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
 import { ladeCheckEinstellungen, sitzungAnlegen, sitzungLesen, sitzungAendern, sitzungIntern, type CheckSitzung } from '@/lib/check/speicher';
 import { zoeKontext, hinweisLaden, stromFuerBrowser, ablaufStand, leadAnlegen } from '@/lib/check/server';
@@ -135,8 +135,9 @@ export async function POST(req: Request) {
     // Lead ins CRM — ein Fehler dort hält die Person nie auf (intern sichtbar, „noch einmal versuchen“ im Haushalt).
     if (!r.crm || r.crm.status !== 'ok') {
       const profil = profilAus(v.katalog, r.antworten);
-      const vorl = auswerten(v.katalog, v.regeln, profil, r.antworten);
-      const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100).`);
+      const vorl = saeulenAuswerten(v.katalog, v.regeln, r.antworten, auswerten(v.katalog, v.regeln, profil, r.antworten));
+      const teile = (Object.entries(vorl.werte) as [Parameters<typeof saeuleName>[0], number][]).map(([sk, w]) => `${saeuleName(sk)} ${w}`).join(', ');
+      const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100${teile ? `; ${teile}` : ''}).`);
       await sitzungIntern(r.id, s => ({ ...s, crm }));
     }
     return antwort({ ok: true, ...stromFuerBrowser(v, r) });
@@ -160,16 +161,18 @@ export async function POST(req: Request) {
 
   if (aktion === 'ergebnis') {
     if (!kurzFertig(v, ablaufStand(s0)) || s0.kontaktStand === 'offen') return antwort({ ok: false, fehler: 'Erst der Kurzcheck und die Kontakt-Frage.' }, 400);
-    const { ergebnis, profil, ansicht } = ergebnisAnsicht(v, s0.antworten);
+    const { ergebnis, saeulen, profil, ansicht } = ergebnisAnsicht(v, s0.antworten);
     const lead = leadPunkte(v.leadScoring, profil, ergebnis, {});
     const jetzt = new Date().toISOString();
     const r = await sitzungAendern<string>(b.sitzung, b.token, s => ({
       ...s, wahl: 'ergebnis', abgeschlossen: s.abgeschlossen ?? jetzt,
-      ergebnis: { am: jetzt, gesamt: ergebnis.gesamt, stufe: ergebnis.stufe, stufeName: ergebnis.stufe_name, genauigkeit: ergebnis.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, lead },
+      ergebnis: { am: jetzt, gesamt: saeulen.gesamt, stufe: saeulen.stufe, stufeName: saeulen.stufe_name, genauigkeit: ergebnis.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, saeulen: saeulen.werte, lead },
     }));
     if (!r || 'fehler' in r) return antwort(SITZUNG_WEG, 404);
     const k = await zoeKontext(e);
-    return antwort({ ok: true, ...stromFuerBrowser(v, r), ansicht, gespraech: { satz: gespraechSatz(k), ...(e.buchungSlug ? { pfad: `/buchen/${e.buchungSlug}` } : {}) } });
+    // Zu jedem nächsten Schritt das Angebot der Instanz (Einstellungen) — nur Titel, Satz und Link, sonst nichts.
+    const schritte = ansicht.schritte.map(x => ({ ...x, ...(e.angebote?.[x.saeule] ? { angebot: e.angebote[x.saeule] } : {}) }));
+    return antwort({ ok: true, ...stromFuerBrowser(v, r), ansicht: { ...ansicht, schritte }, gespraech: { satz: gespraechSatz(k), ...(e.buchungSlug ? { pfad: `/buchen/${e.buchungSlug}`, slug: e.buchungSlug } : {}) } });
   }
 
   return antwort({ ok: false, fehler: 'Unbekannte Aktion.' }, 400);

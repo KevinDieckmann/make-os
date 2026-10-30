@@ -2,7 +2,8 @@
 
 // ─── Markttraktion · Marketing › Innovations-Check (24.10., Branch `innovations-check`) ─────────────────────────
 // Die eine interne Stelle des Website-Checks: ein-/ausschalten (nur der Inhaber; kommt AUS, einschalten nur mit Verantwortlichem
-// der Instanz), Buchungsseite für das 90-Tage-Umsetzungsgespräch wählen, eingegangene Checks sehen (Stufe, Lead-Klasse, Kontakt,
+// der Instanz), Buchungsseite für das Erstgespräch wählen, Name und Leitsatz, je Bereich (Sichtbarkeit · Vertrieb · Innovation) das
+// passende Angebot unter dem nächsten Schritt im Ergebnis (30.10.), eingegangene Checks sehen (Stufe, Säulen, Lead-Klasse, Kontakt,
 // CRM-Stand) und die Beleg-Antworten (C5, D6) nach Rubrik bewerten — die Stufe rechnet danach neu. Zahlen nur vom Server
 // (lib/check/auswertung.ts). Nichts geht von hier an den Teilnehmer.
 
@@ -17,13 +18,13 @@ interface ZeileDaten {
   id: string; gestartet: string; geaendert: string; quelle: string | null; beantwortet: number;
   kontaktStand: 'offen' | 'erfasst' | 'uebersprungen';
   kontakt: { vorname: string; firma: string; email: string; telefon: string | null; newsletterWunsch: boolean } | null;
-  ergebnis: { gesamt: number; stufe: number; stufeName: string; genauigkeit: 'genau' | 'vorlaeufig'; lead: { punkte: number; klasse: 'A' | 'B' | 'C' } } | null;
+  ergebnis: { gesamt: number; stufe: number; stufeName: string; genauigkeit: 'genau' | 'vorlaeufig'; saeulen?: Partial<Record<Bereich, number>>; lead: { punkte: number; klasse: 'A' | 'B' | 'C' } } | null;
   abgeschlossen: string | null;
   crm: { status: 'ok' | 'abgelehnt' | 'fehler'; kontaktId: string | null; grund?: string } | null;
   belegeOffen: number;
 }
 interface Daten {
-  einstellungen: { aktiv: boolean; buchungSlug?: string; gastgeber?: string; marke?: string };
+  einstellungen: { aktiv: boolean; buchungSlug?: string; gastgeber?: string; marke?: string; claim?: string; angebote?: Partial<Record<Bereich, Angebot>> };
   verantwortlichDa: boolean;
   buchungsseiten: { slug: string; titel: string }[];
   liste: ZeileDaten[];
@@ -31,6 +32,29 @@ interface Daten {
 interface Detail { antworten: { frage: string; text: string; typ: string; abschnitt: string; auswahl: string[]; freitext?: string; optionText?: string; rubrik?: [number, string][]; belegScore?: number }[] }
 
 const KLASSE_FARBE: Record<string, string> = { A: LEUCHT.gut, B: LEUCHT.achtung, C: C.inkLeise };
+
+type Bereich = 'sichtbarkeit' | 'vertrieb' | 'innovation';
+type Angebot = { titel: string; text?: string; link?: string };
+const BEREICHE: { key: Bereich; name: string }[] = [{ key: 'sichtbarkeit', name: 'Sichtbarkeit' }, { key: 'vertrieb', name: 'Vertrieb' }, { key: 'innovation', name: 'Innovation' }];
+const FELD = { minHeight: 44, borderRadius: 8, background: C.flaeche, color: C.ink, border: `1px solid ${C.linie}`, padding: '0 10px', fontSize: 16 } as const;
+
+/** Das Angebot eines Bereichs: Titel, ein Satz, Link (Seite der eigenen Website `/…` oder https). Leerer Titel = kein Angebot. */
+function AngebotFeld({ bereich, name, wert, speichern }: { bereich: Bereich; name: string; wert?: Angebot; speichern: (b: Bereich, a: Angebot | null) => Promise<void> }) {
+  const [titel, setTitel] = useState(wert?.titel ?? '');
+  const [text, setText] = useState(wert?.text ?? '');
+  const [link, setLink] = useState(wert?.link ?? '');
+  const geaendert = titel !== (wert?.titel ?? '') || text !== (wert?.text ?? '') || link !== (wert?.link ?? '');
+  return (
+    <form style={{ display: 'grid', gap: 6, paddingTop: 10, borderTop: `1px solid ${C.linie}` }}
+      onSubmit={e => { e.preventDefault(); void speichern(bereich, titel.trim() ? { titel: titel.trim(), text: text.trim(), link: link.trim() } : null); }}>
+      <span style={{ fontWeight: 600, color: C.ink }}>{name}</span>
+      <input aria-label={`${name}: Titel des Angebots`} value={titel} onChange={e => setTitel(e.target.value)} maxLength={80} placeholder="Titel, z. B. Vertriebsaufbau" style={FELD} />
+      <input aria-label={`${name}: ein Satz`} value={text} onChange={e => setText(e.target.value)} maxLength={240} placeholder="Ein Satz, was es bringt (freiwillig)" style={FELD} />
+      <input aria-label={`${name}: Link`} value={link} onChange={e => setLink(e.target.value)} maxLength={300} placeholder="Link, z. B. /vertrieb/ oder https://…" style={FELD} />
+      <div><Knopf leise typ="submit" aus={!geaendert}>Speichern</Knopf></div>
+    </form>
+  );
+}
 
 async function senden(body: Record<string, unknown>): Promise<{ ok: boolean; fehler?: string }> {
   const r = await fetch('/api/check/intern', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -86,7 +110,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
             Check öffentlich
           </Schalter>
           <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>
-            Buchungsseite für das 90-Tage-Umsetzungsgespräch
+            Buchungsseite für das Erstgespräch
             <select value={d.einstellungen.buchungSlug ?? ''} onChange={e => void tun({ aktion: 'einstellungen', buchungSlug: e.target.value || null })}
               style={{ minHeight: 44, borderRadius: 8, background: C.flaeche, color: C.ink, border: `1px solid ${C.linie}`, padding: '0 10px', fontSize: 16 }}>
               <option value="">— keine (Termin per Rückmeldung) —</option>
@@ -99,9 +123,24 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
               onBlur={e => { const v = e.target.value.trim(); if (v !== (d.einstellungen.marke ?? '')) void tun({ aktion: 'einstellungen', marke: v || null }); }}
               style={{ minHeight: 44, borderRadius: 8, background: C.flaeche, color: C.ink, border: `1px solid ${C.linie}`, padding: '0 10px', fontSize: 16 }} />
           </label>
+          <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>
+            Leitsatz unter dem Namen
+            <input defaultValue={d.einstellungen.claim ?? ''} placeholder="ohne Angabe: keiner" maxLength={80}
+              onBlur={e => { const v = e.target.value.trim(); if (v !== (d.einstellungen.claim ?? '')) void tun({ aktion: 'einstellungen', claim: v || null }); }}
+              style={FELD} />
+          </label>
           {d.einstellungen.aktiv && <Knopf leise href="/check">Check ansehen</Knopf>}
         </div>
         {fehler && <p role="alert" style={{ color: LEUCHT.kritisch, margin: '10px 0 0' }}>{fehler}</p>}
+      </Karte>
+
+      <Karte>
+        <Ueberschrift>Angebote im Ergebnis</Ueberschrift>
+        <p style={{ color: C.inkDim, fontSize: TYP.bedien, margin: '0 0 4px' }}>Das Ergebnis nennt für die zwei schwächsten Bereiche einen nächsten Schritt. Darunter steht, was ihr dazu anbietet.</p>
+        <div style={{ display: 'grid', gap: 12 }}>
+          {BEREICHE.map(x => <AngebotFeld key={`${x.key}-${d.einstellungen.angebote?.[x.key]?.titel ?? ''}`} bereich={x.key} name={x.name} wert={d.einstellungen.angebote?.[x.key]}
+            speichern={async (b, a) => { await tun({ aktion: 'einstellungen', angebote: { [b]: a } }); }} />)}
+        </div>
       </Karte>
 
       <Raster min={160}>
@@ -123,6 +162,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                   titel={z.kontakt ? `${z.kontakt.vorname} · ${z.kontakt.firma}` : z.kontaktStand === 'uebersprungen' ? 'ohne Kontaktdaten' : 'unterwegs'}
                   unter={[
                     z.ergebnis ? `Stufe ${z.ergebnis.stufe} · ${z.ergebnis.stufeName} · ${z.ergebnis.gesamt}/100${z.ergebnis.genauigkeit === 'vorlaeufig' ? ' (vorläufig)' : ''}` : `${z.beantwortet} Antworten`,
+                    z.ergebnis?.saeulen ? BEREICHE.filter(x => z.ergebnis!.saeulen![x.key] !== undefined).map(x => `${x.name} ${z.ergebnis!.saeulen![x.key]}`).join(' · ') : null,
                     z.quelle ? `über ${z.quelle}` : null,
                     datum(z.geaendert.slice(0, 10)),
                   ].filter(Boolean).join(' · ')}

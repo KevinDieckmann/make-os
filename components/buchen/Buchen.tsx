@@ -70,6 +70,19 @@ export function Buchen({ slug }: { slug: string }) {
   }, [d]);
   const tage = useMemo(() => Array.from(jeTag.keys()), [jeTag]);
   useEffect(() => { if (!tag && tage.length) setTag(tage[0]); }, [tage, tag]);
+  // Aus dem Ergebnis des Innovations-Checks (30.10.): ein dort angetippter Termin ist hier vorgewählt — nur, wenn er noch frei ist,
+  // nur im Sitzungsspeicher desselben Browsers, danach gelöscht.
+  useEffect(() => {
+    if (!d) return;
+    try {
+      const roh = sessionStorage.getItem('make-check-platz');
+      if (!roh) return;
+      sessionStorage.removeItem('make-check-platz');
+      const w = JSON.parse(roh) as { start?: unknown };
+      const p = d.plaetze.find(x => x.start === w.start);
+      if (p) { setTag(p.start.slice(0, 10)); setPlatz(p); }
+    } catch { /* ohne Speicher: keine Vorwahl */ }
+  }, [d]);
 
   const bereit = !!platz && name.trim().length > 0 && /.+@.+\..+/.test(email.trim()) && ja && !sendet;
   /** Zweite Uhrzeit beim Gast (#74) — nur, wenn sie abweicht. */
