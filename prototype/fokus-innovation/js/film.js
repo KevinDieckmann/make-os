@@ -85,6 +85,8 @@ if (!szene) {
 let pGlatt = 0;
 let letzte = performance.now();
 let start = null;
+let impulsAb = -1e9;      // Zeitpunkt des letzten Bildwechsels
+let aktiv = null;          // Name des Bildes, das gerade steht
 
 function rohFortschritt() {
   const r = film.getBoundingClientRect();
@@ -116,6 +118,7 @@ function anwenden(p, bereit) {
     b.el.style.opacity = wert.toFixed(3);
     const an = wert > 0.5 || (b.an && wert > 0.05);
     if (an !== b.an) { b.el.classList.toggle('an', an); b.an = an; }
+    if (an && bereit && aktiv !== b.name) { if (aktiv !== null) impulsAb = performance.now(); aktiv = b.name; }
   }
 }
 
@@ -132,6 +135,10 @@ function takt(jetzt) {
     geschichte(z, { fokus: span(pGlatt, ABLAUF.fokus), momentum: span(pGlatt, ABLAUF.momentum), durchbruch: span(pGlatt, ABLAUF.durchbruch) });
     // Beim Start tauchen die Punkte langsam auf
     z.punkteSichtbar = start === null ? 0 : clamp01((jetzt - start) / 1800);
+    // Der Raum blüht beim Start einmal auf (1,4 s), jeder Bildwechsel gibt der Mitte ein kurzes Aufatmen
+    const b = start === null ? 0 : clamp01((jetzt - start) / 1400);
+    z.bluete = 1 - Math.pow(1 - b, 3);
+    z.impuls = Math.exp(-(jetzt - impulsAb) / 520) * 0.9;
     szene.malen(jetzt / 1000);
   }
   requestAnimationFrame(takt);

@@ -9,27 +9,27 @@
   },
   "domain": "fokusinnovation.de",
   "film": {
-    "hinweis": "Die Story der Startseite (Kevin 25.10., geschärft 29.10., neu ausgerichtet 30.10.: Sichtbarkeit und Vertrieb mit System, Struktur vor KI): der Gründer, der alles selbst macht, ein fertiges Produkt hat, aber nicht gesehen wird, nach Gefühl verkauft und KI ohne Plan ausprobiert. Block 4 nennt genau den Teil, den wir übernehmen.",
+    "hinweis": "Die Story der Startseite (Kevin 25.10., geschärft 29.10., neu 30.10. abends nach drei Analysen: Aufmerksamkeit, Kernproblem der Gründer, Story-Psychologie). Kernproblem: Der Vertrieb ist eine Person, die nebenbei das Unternehmen führt, und entschieden wird, bevor man im Raum ist (Deutscher Startup Monitor 2025: Vertrieb ist die größte Herausforderung; Käufer kommen mit einem Favoriten). Bild 1 öffnet die Frage, Bild 5 schließt sie („eine Person“ → „ein System“). Keine Zahlen im Film.",
     "marke": "Fokus Innovation · Agentur für Sichtbarkeit, Vertrieb und Innovation",
     "laerm": {
-      "titel": "Sie machen alles selbst.",
-      "satz": "Produkt, Team, Angebote, Website, Buchhaltung. Sichtbarkeit und Vertrieb kommen dran, wenn abends noch Zeit bleibt."
+      "titel": "Ihr Vertrieb ist eine Person.",
+      "satz": "Und die führt nebenbei das ganze Unternehmen: Produkt, Team, Angebote, Website, Buchhaltung."
     },
     "fokus": {
-      "titel": "Das Produkt ist fertig.",
-      "satz": "Wer es nutzt, ist zufrieden. Es kennen nur noch zu wenige."
+      "titel": "Das Produkt ist fertig.|Der Verkauf ist es nicht.",
+      "satz": "Er findet statt, wenn abends noch Zeit bleibt. Das Angebot liegt seit drei Wochen im Entwurf."
     },
     "luecke": {
-      "titel": "Gesehen werden Sie kaum. Verkauft wird nach Gefühl.",
-      "satz": "Die Website erklärt es erst nach drei Absätzen, in den Medien sprechen andere. Messekontakte warten auf ein Angebot, und KI läuft nebenher ohne Plan."
+      "titel": "Entschieden wird,|bevor Sie im Raum sind.",
+      "satz": "Kunden recherchieren allein und kommen mit einem Favoriten. Den Auftrag bekommt, wen sie schon kannten."
     },
     "momentum": {
-      "titel": "Diesen Teil übernehmen wir.",
-      "satz": "Wir machen Sie sichtbar und bauen den Vertrieb mit System, der daraus Kunden macht. Auf klaren Abläufen und sauberen Daten, mit denen auch KI arbeiten kann. Wir arbeiten mit, bis Ihr Team es allein kann."
+      "titel": "Es liegt nicht am Produkt.|Es fehlt ein System.",
+      "satz": "Wir machen Sie bekannt, bevor gesucht wird, und bauen den Vertrieb, der ohne Sie läuft. Erst Struktur und Daten, dann KI."
     },
     "durchbruch": {
-      "titel": "Freitag, 16 Uhr: Sie wissen, wo Sie stehen.",
-      "satz": "Anfragen kommen an, der Wochenreport zeigt, welche Gespräche laufen, und Routine übernimmt die KI. Sie haben wieder Zeit für Ihr Produkt."
+      "titel": "Jetzt ist Ihr Vertrieb ein System.",
+      "satz": "Anfragen kommen an, jedes Gespräch hat einen nächsten Schritt, Routine übernimmt die KI. Sie führen wieder Ihr Unternehmen."
     }
   },
   "start": {
