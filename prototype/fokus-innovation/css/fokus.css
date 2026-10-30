@@ -713,7 +713,10 @@ html.menue-offen { overflow: hidden; }
 }
 
 /* Kostenlos › Zahlen (30.10.): belegte Zahlen im Raster, Stil der Belege (.zahl). */
-.zahlen-raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 40px 48px; margin-top: 8px; }
+.zahlen-raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 40px 48px; margin-top: 8px; }
+/* Im Raster steht die Zahl über dem Satz (30.10.: nebeneinander wurde der Satz zu einer schmalen Spalte) */
+.zahlen-raster .zahl { grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; }
+.zahlen-raster .zahl figcaption { max-width: 36ch; }
 /* Ratgeber (30.10.): der passende kostenlose Check am Ende des Artikels, ruhig wie „Kurz gesagt“. */
 .artikel-check { max-width: 52rem; margin: 48px 0 8px; padding: 24px 26px; border: 1px solid var(--haar-mittel); border-radius: 4px; }
 .artikel-check .etikett { margin-bottom: 8px; color: var(--akzent-papier); }
