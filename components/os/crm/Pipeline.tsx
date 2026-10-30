@@ -18,9 +18,10 @@ import { qualifizierungLink } from '@/lib/crm/adresse';
 import { WEG, eventLink } from '@/lib/wege';
 import { zoeFragen } from './ZoeFragen';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie, ZeileAktionen, useRueckgaengig, useRueckfrage, type ZeilenMehr } from '../ui';
+import { suchPasst } from '@/lib/text/such-norm';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, useBreit, LEUCHT, FadenLinie, ZeileAktionen, useRueckgaengig, useRueckfrage, Arbeitsflaeche, FilterKnopf, FilterGruppe, ListenAbschnitt, feld, type ZeilenMehr } from '../ui';
 import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
@@ -55,7 +56,9 @@ const BASEN = [{ id: 'monat', label: 'je Monat' }, { id: 'jahr', label: 'je Jahr
 // 24.10.: EINE Stelle (`dealWertText`) — mit Einmal-Anteil „900 €/M + 1.500 €“.
 const wertText = (c: Chance) => dealWertText(c, { kurz: true });
 
-export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, zurueck, zuOffen }: { api: CrmApi; ansicht?: DealsAnsicht; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void; /** Deal-Akte öffnen (27.09.). */ zuAkte?: (id: string) => void; zurueck?: () => void; /** „Gewonnen · Verloren · Geparkt“ aufgeklappt öffnen (Adresse `zu=1`, z. B. aus dem Flow der Auswertung, 22.10.). */ zuOffen?: boolean }) {
+export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, zurueck, zuOffen, kopf, ansichtWahl }: { api: CrmApi; ansicht?: DealsAnsicht; zuKontakt: (id: string) => void; /** Ebene 1 — wer im Gespräch ist, wird erst dort qualifiziert. */ zuLeads?: () => void; /** Deal-Akte öffnen (27.09.). */ zuAkte?: (id: string) => void; zurueck?: () => void; /** „Gewonnen · Verloren · Geparkt“ aufgeklappt öffnen (Adresse `zu=1`, z. B. aus dem Flow der Auswertung, 22.10.). */ zuOffen?: boolean;
+  /** Arbeitsfläche der Liste (31.10.): Kopf-Teile der Seite (ZOE/Head daneben, „+ Aktivität“ im „⋯“) und der Umschalter Board · Liste in der Filterzeile. */
+  kopf?: { neben?: ReactNode; mehr?: ReactNode }; ansichtWahl?: ReactNode }) {
   // Offener Deal im Link (k): Zurück schließt ihn wieder.
   const [auswahl, setAuswahl] = useLinkAuswahl();
   const [geschlossen, setGeschlossen] = useState(!!zuOffen);
@@ -71,6 +74,9 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
   const [wahl, setWahl] = useWerFilter('pipeline');
   const { melden, hinweis } = useRueckgaengig();
   const { fragen, dialog } = useRueckfrage();
+  // Liste als Arbeitsfläche (31.10.): Suche und Stufe nur für die Liste — das Board zeigt weiter alle offenen Deals.
+  const [suche, setSuche] = useState('');
+  const [stufeFilter, setStufeFilter] = useState<ChancenStufe | 'alle'>('alle');
   const crm = api.crm;
   if (!crm) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
   const ich = api.ich;
@@ -172,51 +178,140 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
     ],
   };
   const zieh = (e: React.DragEvent, ziel: ChancenStufe) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain'); if (id) zieheNach(id, ziel); };
+  const neuKnopf = <Knopf haupt onClick={neu}>+ Deal{neuFuer !== ich ? ` für ${nameVon(neuFuer)}` : ''}</Knopf>;
+  /** Die Prognose (Zahlen, Faden je Monat, je Person) — im Board oben; in der Liste (Arbeitsfläche) rechts, solange kein Deal offen ist. */
+  const prognoseKarte = (mitKnopf: boolean) => (
+    <Karte i={0} ton="fokus" licht={LEUCHT.business}>
+      <Ueberschrift rechts={mitKnopf ? neuKnopf : undefined}>{wahl === 'alle' ? 'Prognose' : `Prognose · ${wahl === 'ich' ? 'meine' : nameVon(wahl)}`}</Ueberschrift>
+      <Raster min={150}>
+        <Zahl wert={kurzEuro(p.offen)} label="offen" />
+        <Zahl wert={kurzEuro(p.gewichtet)} label="gewichtet" farbe={LEUCHT.business} />
+        {/* 28.09., K4: dieselbe Zahl ohne die Deals mit roter Ampel — die ehrlichere für Finanzen (Head of Finance bekommt sie). */}
+        {p.gewichtetOhneHaengende !== p.gewichtet && <Zahl wert={kurzEuro(p.gewichtetOhneHaengende)} label="gewichtet ohne hängende" />}
+        <Zahl wert={kurzEuro(p.commit)} label="Commit · Abschluss" farbe={LEUCHT.gut} />
+        <Zahl wert={kurzEuro(p.bestCase)} label="Best Case · ab Angebot" />
+        <Zahl wert={String(p.ohneSchritt)} label="ohne nächsten Schritt" farbe={p.ohneSchritt ? LEUCHT.achtung : undefined} />
+        {/* 2.13 (09.10.): Deals ohne Wert zählen 0 € — hier steht, wie viele es sind (nie eine Null: nur, wenn es welche gibt). */}
+        {ohneWert > 0 && <Zahl wert={String(ohneWert)} label={ohneWert === 1 ? 'Deal ohne Wert (zählt 0 €)' : 'Deals ohne Wert (zählen 0 €)'} farbe={LEUCHT.achtung} />}
+        <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? WIN_RATE_TEXT.label : WIN_RATE_TEXT.ohneQuote} />
+      </Raster>
+      {jeMonat && jeMonat.some(v => v > 0) && (
+        <FadenLinie reihe={jeMonat} heute={0} label="Erwartete Abschlüsse gewichtet je Monat, nächste 6 Monate" beschriftung={monatBeschriftung(crm.heute)} format={kurzEuro}
+          farbe={LEUCHT.business} hoehe={44} achse={[monatBeschriftung(crm.heute)(0), 'Erwartet · gewichtet', monatBeschriftung(crm.heute)(jeMonat.length - 1)]} style={{ marginTop: 14 }} />
+      )}
+      {jePerson.length > 1 && (
+        <div style={{ display: 'grid', gap: 5, marginTop: 12 }}>
+          {jePerson.map(x => (
+            <div key={x.person} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+              <span style={{ minWidth: 76 }}><Person id={x.person} name groesse={18} /></span>
+              <span>{x.anzahl} {x.anzahl === 1 ? 'Deal' : 'Deals'}</span>
+              <span>gewichtet <b style={{ color: C.ink }}>{kurzEuro(x.gewichtet)}</b></span>
+              {x.commit > 0 && <span>Commit {kurzEuro(x.commit)}</span>}
+              {x.haengt > 0 && <span style={{ color: LEUCHT.kritisch }}>{x.haengt} hängt</span>}
+              {x.ohneSchritt > 0 && <span style={{ color: LEUCHT.achtung }}>{x.ohneSchritt} ohne nächsten Schritt</span>}
+            </div>
+          ))}
+        </div>
+      )}
+      {meine && (meine.haengt > 0 || meine.ohneSchritt > 0) && (
+        <div style={{ fontSize: TYP.bedien, color: C.ink, marginTop: 10 }}>Als Nächstes: {meine.haengt > 0 ? `${meine.haengt} deiner Deals ${meine.haengt === 1 ? 'hängt' : 'hängen'} — nächsten Schritt mit Datum setzen, übergeben oder parken.` : `${meine.ohneSchritt} deiner Deals ohne nächsten Schritt — einen mit Datum eintragen.`}</div>
+      )}
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Wert = Monatshonorar × Laufzeit (ohne Angabe 12 Monate), gewichtet mit der Stufen-Wahrscheinlichkeit. Die Wahrscheinlichkeiten sind vorsichtige Startwerte und werden durch gemessene Quoten ersetzt.</div>
+    </Karte>
+  );
+
+  const anlegenFeld = anlegen && <DealAnlegen api={api} kontaktId={anlegen.kontaktId} besitzer={anlegen.besitzer} onFertig={id => { setAnlegen(null); if (zuAkte) zuAkte(id); else setAuswahl(id); }} onAbbruch={() => setAnlegen(null)} zuDeal={zuAkte} />;
+
+  // ── Liste als Arbeitsfläche (31.10., DESIGN_STANDARD.md › Arbeitsfläche) ────────────────────────────────────────────────────────────────────
+  // Kopf in EINER Zeile (Deals · offen/gewichtet · ⋯ · „+ Deal“), Board · Liste, Wer, Suche und „Filter ▾“ (Stufe, Geschlossene) in EINER Zeile.
+  // Die Stufen sind Abschnitte EINER Liste (keine Karte je Stufe); rechts steht der gewählte Deal, ohne Auswahl die Prognose mit dem Head of Sales.
+  // Das Board bleibt, wie es ist (Ziehen zwischen Spalten braucht die Breite).
+  if (!board) {
+    const passtSuche = (c: Chance) => !suche.trim() || suchPasst([c.titel, firmenName(c, crm.stand.firmen), c.firma, ...c.kontaktIds.map(id => { const k = (api.kontakte ?? []).find(x => x.id === id); return k ? anzeigename(k) : ''; })], suche);
+    const stufen = offen.filter(s => stufeFilter === 'alle' || s.id === stufeFilter);
+    const zuGefiltert = zu.filter(passtSuche);
+    const offenGesamt = chancen.filter(istOffen).length;
+    const filterZahl = (stufeFilter !== 'alle' ? 1 : 0) + (geschlossen ? 1 : 0);
+    const filterWeg = () => { setStufeFilter('alle'); setGeschlossen(false); };
+    const sel = gewaehlt ?? null;
+    const zeileVon = (c: Chance, zwei: boolean) => <ChancenZeile key={c.id} c={c} api={api} offen={auswahl === c.id} inline={!zwei} onKlick={() => setAuswahl(auswahl === c.id ? null : c.id)} zuKontakt={zuKontakt} deal={deal} wunsch={wunsch?.id === c.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />;
+    const leiste = (
+      <>
+        {ansichtWahl}
+        <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
+        <input value={suche} onChange={e => setSuche(e.target.value)} placeholder="Suchen: Deal, Firma, Person …" aria-label="Deals durchsuchen" type="search" className="af-suche" style={{ ...feld, padding: '9px 13px', fontSize: TYP.bedien, minHeight: 40 }} />
+        <FilterKnopf aktiv={filterZahl} onZuruecksetzen={filterWeg}>
+          <FilterGruppe titel="Stufe">
+            <Pillen liste={[{ id: 'alle' as const, label: 'Alle Stufen' }, ...offen.map(s => ({ id: s.id, label: `${s.label} ${chancen.filter(c => c.stufe === s.id).length}` }))]} aktiv={stufeFilter} onWahl={setStufeFilter} />
+          </FilterGruppe>
+          <FilterGruppe titel="Geschlossene">
+            <Pillen liste={[{ id: 'nein', label: 'ausblenden' }, { id: 'ja', label: `Gewonnen · Verloren · Geparkt ${zu.length}` }]} aktiv={zeigeZu ? 'ja' : 'nein'} onWahl={w => { if (w === 'nein' && gewaehlt && !istOffen(gewaehlt)) setAuswahl(null); setGeschlossen(w === 'ja'); }} />
+          </FilterGruppe>
+        </FilterKnopf>
+        {stufeFilter !== 'alle' && <button type="button" className="af-chip-weg fassbar" onClick={() => setStufeFilter('alle')} title="Filter aufheben">{offen.find(s => s.id === stufeFilter)?.label ?? 'Stufe'} <span aria-hidden>✕</span></button>}
+      </>
+    );
+    const liste = (zwei: boolean) => (
+      <div style={{ paddingBottom: 12 }}>
+        {stufen.map(s => {
+          const l = chancen.filter(c => c.stufe === s.id && passtSuche(c));
+          const js = p.jeStufe.find(x => x.stufe === s.id);
+          return (
+            <ListenAbschnitt key={s.id} id={s.id} titel={<span title={`Weiter, wenn: ${s.weiterWenn}`}>{s.label}</span>} farbe={LEUCHT.business}
+              rechts={`${s.p} % · ${l.length} · ${kurzEuro(js?.wert ?? 0)}${dealsOhneWert(l) ? ` · ${dealsOhneWert(l)} ohne Wert` : ''}${js?.haengt ? ` · ${js.haengt} hängt` : ''}`}>
+              <Liste>{l.map(c => zeileVon(c, zwei))}</Liste>
+              {!l.length && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, padding: '6px 0' }}>{suche.trim() ? 'Kein Treffer in dieser Stufe.' : 'Kein Deal in dieser Stufe.'}</div>}
+            </ListenAbschnitt>
+          );
+        })}
+        {vorschlaege.length > 0 && stufeFilter === 'alle' && !suche.trim() && (
+          <ListenAbschnitt id="vorschlaege" titel="Im Gespräch, noch kein Deal" farbe={C.inkLeise}
+            rechts={zuLeads ? <Knopf leise onClick={zuLeads}>Zu den Leads</Knopf> : `${vorschlaege.length} aus der Kartei`}>
+            <div style={{ fontSize: TYP.bedien, color: C.inkLeise, margin: '2px 0 6px' }}>Erst qualifizieren (Qualifizierung › Leads: {sqlRegelText(crm.stand.scoring ?? standardZumRechnen())}), dann wird daraus ein SQL-Deal.</div>
+            <Liste>
+              {vorschlaege.slice(0, alleVorschlaege ? 40 : 6).map(k => <Zeile key={k.id} titel={<>{anzeigename(k)}{k.firma && <span style={{ color: C.inkLeise }}> · {k.firma}</span>}</>} unter={k.stufe === 'angebot' ? 'Angebot' : k.stufe === 'termin' ? 'Termin' : 'im Gespräch'} rechts={<Knopf leise onClick={() => ausKontakt(k)}>+ Deal</Knopf>} />)}
+            </Liste>
+            {vorschlaege.length > 6 && <button onClick={() => setAlleVorschlaege(!alleVorschlaege)} className="fassbar" style={{ marginTop: 8, background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, minHeight: 44 }}>{alleVorschlaege ? 'weniger' : `alle ${vorschlaege.length} zeigen`}</button>}
+          </ListenAbschnitt>
+        )}
+        <div id="deals-geschlossen">
+          <ListenAbschnitt id="geschlossen" titel="Gewonnen · Verloren · Geparkt" farbe={C.inkLeise}
+            rechts={<button onClick={() => { if (zeigeZu && gewaehlt && !istOffen(gewaehlt)) setAuswahl(null); setGeschlossen(!zeigeZu); }} className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, minHeight: 36 }}>{zeigeZu ? 'ausblenden' : `${zu.length} zeigen`}</button>}>
+            {zeigeZu && <Liste>{zuGefiltert.map(c => zeileVon(c, zwei))}</Liste>}
+          </ListenAbschnitt>
+        </div>
+      </div>
+    );
+    return (
+      <>
+        <Arbeitsflaeche titel="Deals" label="Deals" verhaeltnis="1:1" zweiAb={880}
+          zaehler={<span title={`${kurzEuro(p.offen)} offen · ${kurzEuro(p.gewichtet)} gewichtet`}><b style={{ color: C.ink, fontWeight: 600 }}>{offenGesamt}</b> offen · {kurzEuro(p.gewichtet)} gewichtet{p.ohneSchritt ? ` · ${p.ohneSchritt} ohne nächsten Schritt` : ''}</span>}
+          neben={kopf?.neben} mehr={kopf?.mehr} haupt={neuKnopf}
+          leiste={leiste} hinweise={anlegenFeld || undefined}
+          liste={st => liste(st.zwei)}
+          detail={st => (st.zwei && sel ? (
+            <div style={{ minWidth: 0 }}>
+              <Ueberschrift rechts={<button onClick={() => setAuswahl(null)} aria-label="Deal schließen" className="fassbar" style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: 14, minWidth: 44, minHeight: 44 }}>✕</button>}>{sel.titel}</Ueberschrift>
+              {zuAkte && <div style={{ marginBottom: 8 }}><Knopf leise onClick={() => zuAkte(sel.id)}>Akte öffnen ›</Knopf></div>}
+              <ChancenDetail c={sel} api={api} personen={sel.kontaktIds.map(id => (api.kontakte ?? []).find(k => k.id === id)).filter((k): k is NonNullable<typeof k> => !!k)} zuKontakt={zuKontakt} wunsch={wunsch?.id === sel.id ? wunsch.ziel : undefined} wunschWeg={() => setWunsch(null)} />
+            </div>
+          ) : null)}
+          detailKennung={sel?.id ?? null}
+          leer={<div style={{ display: 'grid', gap: 14 }}>{prognoseKarte(false)}<HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={1} nachEntscheid={() => void api.laden()} /></div>} leerOben />
+        {dialog}
+        {hinweis}
+      </>
+    );
+  }
 
   return (
     <>
       <HeadPanel head="sales" standardModus="deal_review" zuKontakt={zuKontakt} i={0} nachEntscheid={() => void api.laden()} />
-      {anlegen && <DealAnlegen api={api} kontaktId={anlegen.kontaktId} besitzer={anlegen.besitzer} onFertig={id => { setAnlegen(null); if (zuAkte) zuAkte(id); else setAuswahl(id); }} onAbbruch={() => setAnlegen(null)} zuDeal={zuAkte} />}
+      {anlegenFeld}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <WerFilter wahl={wahl} onWahl={setWahl} ich={ich} zahlen={zahlen} />
       </div>
-      <Karte i={0} ton="fokus" licht={LEUCHT.business}>
-        <Ueberschrift rechts={<Knopf haupt onClick={neu}>+ Deal{neuFuer !== ich ? ` für ${nameVon(neuFuer)}` : ''}</Knopf>}>{wahl === 'alle' ? 'Prognose' : `Prognose · ${wahl === 'ich' ? 'meine' : nameVon(wahl)}`}</Ueberschrift>
-        <Raster min={150}>
-          <Zahl wert={kurzEuro(p.offen)} label="offen" />
-          <Zahl wert={kurzEuro(p.gewichtet)} label="gewichtet" farbe={LEUCHT.business} />
-          {/* 28.09., K4: dieselbe Zahl ohne die Deals mit roter Ampel — die ehrlichere für Finanzen (Head of Finance bekommt sie). */}
-          {p.gewichtetOhneHaengende !== p.gewichtet && <Zahl wert={kurzEuro(p.gewichtetOhneHaengende)} label="gewichtet ohne hängende" />}
-          <Zahl wert={kurzEuro(p.commit)} label="Commit · Abschluss" farbe={LEUCHT.gut} />
-          <Zahl wert={kurzEuro(p.bestCase)} label="Best Case · ab Angebot" />
-          <Zahl wert={String(p.ohneSchritt)} label="ohne nächsten Schritt" farbe={p.ohneSchritt ? LEUCHT.achtung : undefined} />
-          {/* 2.13 (09.10.): Deals ohne Wert zählen 0 € — hier steht, wie viele es sind (nie eine Null: nur, wenn es welche gibt). */}
-          {ohneWert > 0 && <Zahl wert={String(ohneWert)} label={ohneWert === 1 ? 'Deal ohne Wert (zählt 0 €)' : 'Deals ohne Wert (zählen 0 €)'} farbe={LEUCHT.achtung} />}
-          <Zahl wert={wl.quote !== null ? `${wl.quote} %` : `${wl.gewonnen} · ${wl.verloren}`} label={wl.quote !== null ? WIN_RATE_TEXT.label : WIN_RATE_TEXT.ohneQuote} />
-        </Raster>
-        {jeMonat && jeMonat.some(v => v > 0) && (
-          <FadenLinie reihe={jeMonat} heute={0} label="Erwartete Abschlüsse gewichtet je Monat, nächste 6 Monate" beschriftung={monatBeschriftung(crm.heute)} format={kurzEuro}
-            farbe={LEUCHT.business} hoehe={44} achse={[monatBeschriftung(crm.heute)(0), 'Erwartet · gewichtet', monatBeschriftung(crm.heute)(jeMonat.length - 1)]} style={{ marginTop: 14 }} />
-        )}
-        {jePerson.length > 1 && (
-          <div style={{ display: 'grid', gap: 5, marginTop: 12 }}>
-            {jePerson.map(x => (
-              <div key={x.person} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
-                <span style={{ minWidth: 76 }}><Person id={x.person} name groesse={18} /></span>
-                <span>{x.anzahl} {x.anzahl === 1 ? 'Deal' : 'Deals'}</span>
-                <span>gewichtet <b style={{ color: C.ink }}>{kurzEuro(x.gewichtet)}</b></span>
-                {x.commit > 0 && <span>Commit {kurzEuro(x.commit)}</span>}
-                {x.haengt > 0 && <span style={{ color: LEUCHT.kritisch }}>{x.haengt} hängt</span>}
-                {x.ohneSchritt > 0 && <span style={{ color: LEUCHT.achtung }}>{x.ohneSchritt} ohne nächsten Schritt</span>}
-              </div>
-            ))}
-          </div>
-        )}
-        {meine && (meine.haengt > 0 || meine.ohneSchritt > 0) && (
-          <div style={{ fontSize: TYP.bedien, color: C.ink, marginTop: 10 }}>Als Nächstes: {meine.haengt > 0 ? `${meine.haengt} deiner Deals ${meine.haengt === 1 ? 'hängt' : 'hängen'} — nächsten Schritt mit Datum setzen, übergeben oder parken.` : `${meine.ohneSchritt} deiner Deals ohne nächsten Schritt — einen mit Datum eintragen.`}</div>
-        )}
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10 }}>Wert = Monatshonorar × Laufzeit (ohne Angabe 12 Monate), gewichtet mit der Stufen-Wahrscheinlichkeit. Die Wahrscheinlichkeiten sind vorsichtige Startwerte und werden durch gemessene Quoten ersetzt.</div>
-      </Karte>
+      {prognoseKarte(true)}
 
       {breit && board && (() => {
         const sel = auswahl ? crm.stand.chancen.find(c => c.id === auswahl) : null;
@@ -272,7 +367,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
         );
       })()}
 
-      {(!breit || !board) && offen.map((s, i) => {
+      {!breit && offen.map((s, i) => {
         const l = chancen.filter(c => c.stufe === s.id);
         const js = p.jeStufe.find(x => x.stufe === s.id);
         return (
@@ -311,7 +406,7 @@ export function Pipeline({ api, ansicht = 'board', zuKontakt, zuLeads, zuAkte, z
 /** Zeilen-Aktionen eines Deals (Pipeline) — Archiv = parken/verloren, Zurückholen = wieder offen, Löschen = nur Fehlanlage. */
 interface DealAktionen { archivieren: (c: Chance) => void; zurueckholen: (c: Chance) => void; loeschen: (c: Chance) => void; istOffen: (c: Chance) => boolean; mehr: (c: Chance) => ZeilenMehr[] }
 
-function ChancenZeile({ c, api, offen, onKlick, zuKontakt, deal, wunsch, wunschWeg }: { c: Chance; api: CrmApi; offen: boolean; onKlick: () => void; zuKontakt: (id: string) => void; deal: DealAktionen; wunsch?: ChancenStufe; wunschWeg?: () => void }) {
+function ChancenZeile({ c, api, offen, inline = true, onKlick, zuKontakt, deal, wunsch, wunschWeg }: { c: Chance; api: CrmApi; offen: boolean; /** Detail unter der Zeile (schmal); in der Arbeitsfläche mit zwei Spalten steht es rechts. */ inline?: boolean; onKlick: () => void; zuKontakt: (id: string) => void; deal: DealAktionen; wunsch?: ChancenStufe; wunschWeg?: () => void }) {
   const crm = api.crm!;
   const a = crm.ampel[c.id];
   const kontakte = api.kontakte ?? [];
@@ -325,7 +420,7 @@ function ChancenZeile({ c, api, offen, onKlick, zuKontakt, deal, wunsch, wunschW
         unter={[c.naechsterSchritt ? `→ ${c.naechsterSchritt.text} · ${datum(c.naechsterSchritt.datum, crm.heute)}` : 'kein nächster Schritt', a?.gruende[0]].filter(Boolean).join(' · ')}
         rechts={<span style={{ display: 'flex', gap: 10, alignItems: 'center' }}><span style={{ fontVariantNumeric: 'tabular-nums', fontSize: TYP.bedien, color: C.inkDim }}>{gesamtwert(c) > 0 ? wertText(c) : '—'}</span><Person id={zustaendig(c.besitzer, 'sales')} groesse={18} /></span>} />
       </ZeileAktionen>
-      {offen && <ChancenDetail c={c} api={api} personen={personen as NonNullable<typeof personen[number]>[]} zuKontakt={zuKontakt} wunsch={wunsch} wunschWeg={wunschWeg} />}
+      {offen && inline && <ChancenDetail c={c} api={api} personen={personen as NonNullable<typeof personen[number]>[]} zuKontakt={zuKontakt} wunsch={wunsch} wunschWeg={wunschWeg} />}
     </div>
   );
 }

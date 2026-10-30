@@ -197,6 +197,18 @@ export function MarkttraktionSeite() {
       </>
     );
   }
+  // Deals › Liste (31.10.): die Stufen als Abschnitte EINER Liste, rechts der Deal bzw. die Prognose; Board · Liste steht in der Filterzeile.
+  const dealsWahl = <Pillen farbe={WELT_FARBE.sales} liste={DEALS} aktiv={dealsAnsicht} onWahl={a => gehe('deals', a === 'board' ? undefined : a)} />;
+  if (bereich === 'deals' && hubOrt === 'deals' && dealsAnsicht === 'liste') {
+    return (
+      <>
+        {mitlaeufer}
+        <Pipeline api={api} ansicht="liste" zuKontakt={zuKontakt} zuLeads={() => gehe('qualifizierung', 'leads')} zuAkte={zuDeal} zurueck={() => zurueckWie(markttraktion('deals'))} zuOffen={params.get('zu') === '1'}
+          kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} ansichtWahl={dealsWahl} />
+      </>
+    );
+  }
+
   return (
     // „+ Aktivität hinzufügen“ steht neben dem Titel — so ist er auch am Handy immer sichtbar.
     <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>{zoeKnopf}{kopfAktionen}</>}>

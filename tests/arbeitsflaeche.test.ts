@@ -124,3 +124,24 @@ describe('Markttraktion › Firmen als Arbeitsfläche', () => {
   });
 });
 
+describe('Markttraktion › Deals › Liste als Arbeitsfläche', () => {
+  const p = lies('components/os/crm/Pipeline.tsx');
+  const m = lies('components/os/crm/Markttraktion.tsx');
+  it('nur die Liste (das Board bleibt): Kopf „Deals“ · offen/gewichtet · ⋯ · „+ Deal“; Board · Liste in der Filterzeile', () => {
+    expect(p).toContain('if (!board) {');
+    expect(p).toContain('<Arbeitsflaeche titel="Deals"');
+    expect(p).toContain('haupt={neuKnopf}');
+    expect(m).toContain("if (bereich === 'deals' && hubOrt === 'deals' && dealsAnsicht === 'liste') {");
+    expect(m).toContain('kopf={{ neben: zoeKnopf, mehr: kopfAktionen }} ansichtWahl={dealsWahl}');
+  });
+  it('Stufen als Abschnitte EINER Liste; Stufe und Geschlossene im Popover; rechts der Deal, ohne Auswahl die Prognose', () => {
+    expect(p).toContain('<ListenAbschnitt key={s.id} id={s.id}');
+    expect(p).toContain('<FilterGruppe titel="Stufe">');
+    expect(p).toContain('<FilterGruppe titel="Geschlossene">');
+    expect(p).toContain('leer={<div style={{ display: \'grid\', gap: 14 }}>{prognoseKarte(false)}');
+    expect(p).toContain('inline={!zwei}');
+    // Der Link aus der Auswertung (zu=1) findet die geschlossenen Deals weiter.
+    expect(p).toContain('<div id="deals-geschlossen">');
+  });
+});
+
