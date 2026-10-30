@@ -1,0 +1,96 @@
+/* Fokus Innovation · gemeinsame Gestaltung der kostenlosen Vorlagen (Druck A4).
+   Papier und Tinte, eine Schrift, Haarlinien statt Kästen, Lavendel nur als Akzent. */
+
+@font-face {
+  font-family: "Schibsted Grotesk";
+  src: url("../../assets/schriften/schibsted-grotesk-latin.woff2") format("woff2");
+  font-weight: 400 800;
+  font-display: block;
+}
+
+:root {
+  --papier: #F6F4F0;
+  --tinte: #111316;
+  --tinte-text: #3C3F44;
+  --tinte-leise: #62666B;
+  --akzent: #7C3AED;
+  --haar: rgba(17, 19, 22, .2);        /* Struktur */
+  --haar-schreib: rgba(17, 19, 22, .38); /* Schreiblinien: kräftig genug für den Druck */
+  --haar-stark: #111316;
+  --schrift: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --linie: .6pt;
+}
+
+@page { size: A4; margin: 0; }
+@page quer { size: A4 landscape; margin: 0; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--papier); }
+body {
+  font-family: var(--schrift);
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: var(--tinte-text);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  font-kerning: normal;
+}
+h1, h2, h3, p, ol, ul { margin: 0; padding: 0; }
+ol, ul { list-style: none; }
+h1, h2, h3 { color: var(--tinte); font-weight: 600; letter-spacing: -.015em; }
+
+/* ── Eine Druckseite ── */
+.seite {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  padding: 13mm 17mm 11mm;
+  display: flex;
+  flex-direction: column;
+  background: var(--papier);
+  overflow: hidden;
+  break-after: page;
+}
+.seite:last-child { break-after: auto; }
+.quer .seite { page: quer; width: 297mm; height: 210mm; padding: 11mm 15mm 9mm; }
+
+/* Kopf: Marke links, Leitsatz rechts, darunter eine Haarlinie */
+.kopf {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 3.2mm;
+  border-bottom: var(--linie) solid var(--haar);
+}
+.marke { display: inline-flex; align-items: center; gap: 2.4mm; color: var(--tinte); font-size: 8pt; font-weight: 600; letter-spacing: .17em; }
+.marke svg { width: 4.6mm; height: 4.6mm; flex: none; }
+.leitsatz { font-size: 9pt; color: var(--tinte-leise); letter-spacing: .01em; }
+
+/* Fuß: Haarlinie, Herkunft links, Seite rechts */
+.fuss {
+  margin-top: auto;
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-top: 2.6mm;
+  border-top: var(--linie) solid var(--haar);
+  font-size: 8pt; color: var(--tinte-leise); letter-spacing: .01em;
+}
+
+/* Titelblock */
+.titel { padding-top: 8mm; }
+.vorzeile { font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); }
+.titel h1 { margin-top: 2.2mm; font-size: 25pt; line-height: 1.08; letter-spacing: -.025em; }
+.lead { margin-top: 3mm; max-width: 150mm; font-size: 11pt; line-height: 1.45; color: var(--tinte-text); }
+.quer .titel { padding-top: 5mm; }
+.quer .titel h1 { font-size: 21pt; }
+.quer .lead { max-width: none; margin-top: 2.2mm; }
+
+/* Schreibflächen: nur Linien */
+.zeile-frei { height: 8.5mm; border-bottom: var(--linie) solid var(--haar-schreib); }
+.feld { display: flex; align-items: flex-end; gap: 2.5mm; font-size: 9pt; color: var(--tinte-leise); }
+.feld .strich { flex: 1; min-width: 20mm; height: 7mm; border-bottom: var(--linie) solid var(--haar-schreib); }
+
+.nr { color: var(--akzent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.akzent { color: var(--akzent); }
+.leise { color: var(--tinte-leise); }
+.stark { color: var(--tinte); font-weight: 600; }
+
+/* Ankreuzfeld: ein Quadrat aus Haarlinien */
+.kreuz { display: inline-block; width: 3.4mm; height: 3.4mm; border: var(--linie) solid var(--tinte-leise); border-radius: .5mm; vertical-align: -.5mm; flex: none; }

@@ -139,6 +139,10 @@
       "weiter": [
         "head-of-sales-auf-zeit",
         "positionierung-in-fuenf-saetzen"
+      ],
+      "phase": [
+        "start",
+        "aufbau"
       ]
     },
     {
@@ -270,6 +274,10 @@
       "weiter": [
         "vertrieb-aufbauen",
         "ki-im-mittelstand-einfuehren"
+      ],
+      "phase": [
+        "aufbau",
+        "wachstum"
       ]
     },
     {
@@ -369,6 +377,9 @@
       "weiter": [
         "homepage-fuenf-sekunden",
         "erklaervideo-fuer-unternehmen"
+      ],
+      "phase": [
+        "start"
       ]
     },
     {
@@ -457,6 +468,10 @@
       "weiter": [
         "positionierung-in-fuenf-saetzen",
         "erklaervideo-fuer-unternehmen"
+      ],
+      "phase": [
+        "start",
+        "aufbau"
       ]
     },
     {
@@ -547,6 +562,9 @@
       "weiter": [
         "homepage-fuenf-sekunden",
         "positionierung-in-fuenf-saetzen"
+      ],
+      "phase": [
+        "aufbau"
       ]
     },
     {
@@ -652,6 +670,10 @@
       "weiter": [
         "vertrieb-aufbauen",
         "head-of-sales-auf-zeit"
+      ],
+      "phase": [
+        "aufbau",
+        "wachstum"
       ]
     },
     {
@@ -811,6 +833,9 @@
       "weiter": [
         "vertrieb-aufbauen",
         "head-of-sales-auf-zeit"
+      ],
+      "phase": [
+        "start"
       ]
     },
     {
@@ -947,6 +972,10 @@
       "weiter": [
         "homepage-fuenf-sekunden",
         "positionierung-in-fuenf-saetzen"
+      ],
+      "phase": [
+        "start",
+        "aufbau"
       ]
     },
     {
@@ -1131,6 +1160,10 @@
       "weiter": [
         "ki-im-mittelstand-einfuehren",
         "vertrieb-aufbauen"
+      ],
+      "phase": [
+        "start",
+        "aufbau"
       ]
     }
   ],

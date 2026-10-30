@@ -852,7 +852,7 @@
     "hinweis": "Bereich „Kostenlos“ (Kevin 30.10.): Checks, Ratgeber, Zahlen, Vorlagen, Newsletter. Der Innovations-Check bleibt der große, die zwei kleinen Checks laufen leise daneben.",
     "titel": "Kostenlos.",
     "ruhig": "Zum Mitnehmen.",
-    "lead": "Checks, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Ohne Anmeldung, ohne Haken.",
+    "lead": "Checks, Leitfäden, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Zum Umsetzen gemacht: mit Anleitung, Beispiel und Bogen. Ohne Anmeldung, ohne Haken.",
     "checks": [
       {
         "id": "innovation",
@@ -877,13 +877,36 @@
         "thema": "sichtbarkeit"
       }
     ],
+    "phasen_titel": "Wo steht Ihr Unternehmen?",
+    "phasen_ruhig": "Das hilft jetzt.",
+    "phasen_lead": "Am Anfang zählen andere Dinge als im Wachstum. Wählen Sie Ihre Phase und fangen Sie dort an.",
+    "phasen": [
+      {
+        "id": "start",
+        "name": "Start",
+        "titel": "Sie machen noch vieles selbst.",
+        "satz": "Sie verkaufen, schreiben die Website und entscheiden fast alles. Jetzt zählen ein klarer Satz, ein fester Ablauf und wenige Zahlen."
+      },
+      {
+        "id": "aufbau",
+        "name": "Aufbau",
+        "titel": "Die ersten Leute kommen dazu.",
+        "satz": "Aufgaben gehen an andere. Jetzt zählen Abläufe, die jeder versteht, eine saubere Einarbeitung und Zahlen je Person."
+      },
+      {
+        "id": "wachstum",
+        "name": "Wachstum",
+        "titel": "Das Team wächst, Sie führen.",
+        "satz": "Mehrere Rollen, mehr Kunden, mehr Abstimmung. Jetzt zählen ein fester Führungsrhythmus, Zahlen je Rolle und Vertretung für jede wichtige Aufgabe."
+      }
+    ],
     "zahlen": {
       "titel": "Zahlen, mit Quelle.",
       "lead": "Was Studien über Sichtbarkeit, Vertrieb und KI in deutschen Unternehmen sagen. Jede Zahl mit Herausgeber, Jahr und Link."
     },
     "vorlagen": {
       "titel": "Vorlagen zum Mitnehmen.",
-      "lead": "Zum Ausdrucken oder Ausfüllen am Rechner. Als PDF, ohne Anmeldung."
+      "lead": "Jede Vorlage mit Anleitung und ausgefülltem Beispiel. Als PDF zum Ausdrucken, viele auch als Tabelle für Excel, Numbers oder Google Tabellen. Ohne Anmeldung."
     },
     "newsletter": {
       "titel": "Neues aus unserer Arbeit.",
