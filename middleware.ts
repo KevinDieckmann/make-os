@@ -84,6 +84,18 @@ function checkOffen(pfad: string, methode: string): boolean {
   if (CHECK_SEITE.test(pfad)) return methode === 'GET' || methode === 'HEAD';
   return CHECK_API.test(pfad) && methode === 'POST';
 }
+// Newsletter-Anmeldung über die Website (30.10., lib/newsletter/*, Branch `newsletter-anmeldung`): NUR die Seite `/newsletter` (GET/HEAD) und ihre EINE
+// Schnittstelle `POST /api/newsletter`. Das Token des Bestätigungslinks steht nur im Fragment (#t=…), nie im Pfad. Die Route handelt für niemanden
+// (Köpfe gelöscht), drosselt selbst, prüft Honigtopf, Stempel und Größe; ausgeschaltet (kommt AUS) antwortet sie mit 404. Keine Ausnahme bei der
+// Origin-Prüfung (die Seite sendet von sich selbst). Die interne Verwaltung (/api/newsletter/intern) bleibt hinter der Sitzung.
+// Wächter: tests/newsletter-anmeldung.test.ts.
+const NEWSLETTER_SEITE = /^\/newsletter$/;
+const NEWSLETTER_API = /^\/api\/newsletter$/;
+/** Ist dieser Weg ein offener Weg der Newsletter-Anmeldung (Pfad UND Methode)? */
+function newsletterOffen(pfad: string, methode: string): boolean {
+  if (NEWSLETTER_SEITE.test(pfad)) return methode === 'GET' || methode === 'HEAD';
+  return NEWSLETTER_API.test(pfad) && methode === 'POST';
+}
 // Schriften der öffentlichen Seiten (29.10.): der Check (und die helle Buchungsseite) laden Schibsted Grotesk aus public/schriften — ohne Sitzung
 // leitete die Middleware die Datei auf /anmelden um, der Browser bekam HTML statt der Schrift. Offen ist NUR eine einzelne .woff2 direkt im Ordner,
 // nur lesen; public/ trägt nichts Privates (Wächter: keine .html dort).
@@ -210,6 +222,8 @@ export async function middleware(req: NextRequest) {
   if (ANGEBOT_OFFEN.some(r => r.test(pfad)) && (req.method === 'GET' || req.method === 'HEAD' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
   // Innovations-Check: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Route handelt für niemanden.
   if (checkOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
+  // Newsletter-Anmeldung: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Route handelt für niemanden.
+  if (newsletterOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
   if (schriftOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
 
   const sitzung = await sitzungPruefen(sitzungsGeheimnis(), req.cookies.get(SITZUNG_COOKIE)?.value);

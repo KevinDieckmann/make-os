@@ -15,6 +15,15 @@ export const EINSTELLUNGEN_BUSINESS = {
     beispiel: '„60 % auf echten Daten · 4 Messlücken“ heißt: Die Zahl ist ein guter Hinweis, aber vier Kennzahlen warten noch auf eine Messung — jede Kachel mit „—“ sagt, was fehlt.',
   },
 
+  // ── Markttraktion › Marketing › Newsletter: Anmeldung über die Website (30.10.) ──────────────────────────────────────────
+  'newsletter.anmeldung': {
+    was: 'Schaltet die öffentliche Seite /newsletter ein: Besucher tragen ihre Adresse ein, bekommen aus dem gewählten Postfach eine Bestätigungsmail und sind erst nach dem Klick auf den Link angemeldet (Double-Opt-in). Danach steht die Person mit der Einwilligung „Newsletter“ samt Nachweis im CRM. Den Newsletter selbst verschickt ihr weiter von Hand.',
+    beispiel: 'Eine Besucherin trägt sich um 9:12 Uhr ein, die Mail geht um 9:12 Uhr raus, sie klickt um 9:20 Uhr. In ihrer Akte steht dann die Einwilligung mit Wortlaut, Fassung und den drei Zeitpunkten — und sie zählt zu den Empfängern mit Double-Opt-in.',
+    an: 'Die Seite nimmt Anmeldungen an; jede Anmeldung löst genau eine Bestätigungsmail aus (höchstens drei je Adresse und Tag). Die Wahl des Absender-Postfachs ist eure Freigabe dafür.',
+    aus: 'Die Seite zeigt „gibt es gerade nicht“, es geht keine Mail raus. Vorhandene Anmeldungen bleiben, bis ihre Frist abläuft.',
+    daten: 'Die Bestätigungsmail geht über euer Postfach (Google Workspace bzw. euren Mail-Anbieter) an die eingetragene Adresse.',
+  },
+
   // ── Einstellungen eines Heads ──────────────────────────────────────────────────────────────────────────────────────────
   'head.modell': {
     was: 'Welches KI-Modell der Head benutzt: „Schnell“ (klein, flink, günstig), „Ausgewogen“ (der Normalfall) oder „Stark“ (gründlicher, braucht länger, kostet mehr). Die Vorgabe steht je Head im Katalog; hier überschreibst du sie.',

@@ -68,6 +68,10 @@ const nextConfig = {
       // nicht zwischenspeichern, CSP ohne fremde Quellen; das Token liegt nur im Browser).
       { source: '/check', headers: buchung },
       { source: '/api/check', headers: buchung },
+      // Newsletter-Anmeldung über die Website (30.10., lib/newsletter/*): dieselbe strenge Richtlinie — das Token des Bestätigungslinks steht nur
+      // im Fragment, kein Referrer, keine Rahmen, nicht indexieren, nicht zwischenspeichern.
+      { source: '/newsletter', headers: buchung },
+      { source: '/api/newsletter', headers: buchung },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten

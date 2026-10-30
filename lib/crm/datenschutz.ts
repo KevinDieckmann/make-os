@@ -569,6 +569,34 @@ export function verarbeitungCheckNachtragen(vorhanden: readonly Verarbeitung[], 
   return vorhanden.some(v => v.id === VV_CHECK_ID) ? [...vorhanden] : [...vorhanden, verarbeitungCheck(jetzt)];
 }
 
+// ── Verarbeitung „Newsletter-Anmeldung über die Website“ (30.10., lib/newsletter/*) — idempotent nachgetragen, sobald die Anmeldung eingerichtet ist ──
+// Double-Opt-in: Anmeldung auf der Seite, Bestätigungsmail aus dem gewählten Business-Postfach, Klick → Kontakt mit Einwilligung „Newsletter“ und
+// vollem Nachweis. Der Versand der Ausgaben bleibt Handarbeit (Versandwerkzeug, eigener Eintrag „Newsletter-Werkzeug“ im Empfänger-Register).
+// Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
+
+export const VV_NEWSLETTER_ID = 'vv-newsletter-anmeldung';
+
+export function verarbeitungNewsletter(jetzt: string): Verarbeitung {
+  return {
+    id: VV_NEWSLETTER_ID, name: 'Newsletter-Anmeldung über die Website',
+    zweck: 'Anmeldung zum Newsletter über die öffentliche Seite mit Double-Opt-in: Bestätigungsmail mit Link, nach dem Klick Kontakt im Kundensystem mit der Einwilligung „Newsletter“ samt Nachweis; Empfängerliste für den Versand (Handarbeit im Versandwerkzeug)',
+    personen: 'Personen, die sich für den Newsletter anmelden; Konten des Haushalts (Verwaltung)',
+    daten: 'E-Mail-Adresse, Vorname (freiwillig), Wortlaut und Fassung der Einwilligung, Zeitpunkte von Anmeldung, Bestätigungsmail und Bestätigung, Übernahme ins Kundensystem; Zugang zur Bestätigung nur über ein Zufalls-Token (gespeichert als Fingerabdruck, nur bis zur Bestätigung)',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. a DSGVO (Einwilligung, § 7 Abs. 2 Nr. 2 UWG); Nachweis nach Art. 7 Abs. 1 DSGVO',
+    empfaenger: 'Konten des Haushalts (Business-Bereich); das gewählte Absender-Postfach (Google Workspace bzw. E-Mail-Anbieter) für die Bestätigungsmail; Hetzner (Hosting); das Versandwerkzeug erst beim Versand der Ausgaben (eigener Eintrag)',
+    empfaengerIds: ['hetzner', 'google-workspace', 'ionos'],
+    drittland: 'je nach Absender-Postfach (Google Workspace: USA, Konzern)',
+    loeschfrist: 'unbestätigte Anmeldungen 30 Tage nach der letzten Änderung; bestätigte, solange die Einwilligung besteht (danach bleibt der Nachweis an der Akte); Art. 17 sofort',
+    toms: 'Öffentliche Seite nur über eine eng gefasste Adresse, kommt ausgeschaltet; dieselbe Antwort für jede Adresse (Arbeit nach der Antwort); Token nur im Fragment des Links und nur als Fingerabdruck gespeichert, gilt 7 Tage, einmalig; höchstens 3 Bestätigungsmails je Adresse und Tag; Drossel je Netz, Honigtopf, signierter Formular-Stempel (Mindestzeit), Größengrenzen; Bestätigung erst nach Klick (nicht beim Öffnen des Links); strenge Sicherheits-Köpfe; Art. 18, Werbesperre und Sperrliste werden vor jeder Mail und jeder Einwilligung geprüft; Bestände verschlüsselt auf der Platte',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „Newsletter-Anmeldung über die Website“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungNewsletterNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_NEWSLETTER_ID) ? [...vorhanden] : [...vorhanden, verarbeitungNewsletter(jetzt)];
+}
+
 // ── Verarbeitung „ZOE auf WhatsApp (Meta, ZOE-Kanal)“ (08.10., Roadmap Lücke 5) — idempotent nachgetragen, sobald die ZOE-Nummer eingerichtet ist ──
 // Kevin 08.10. (R5): „Zweite Business-Nummer nur für ZOE.“ Nur die Personen des Haushalts, je Person mit Einwilligung. Hinweis, keine
 // Rechtsberatung — anwaltlich gegenlesen; Speicherort-Wahl (Local Storage „DE“ bzw. „No Storage“) vor der Registrierung der Nummer.
@@ -757,7 +785,7 @@ export function verarbeitungNeutral(v: Verarbeitung): Verarbeitung {
   return v.empfaengerIds ? { ...aus, empfaengerIds: v.empfaengerIds.filter(id => !NUR_BETREIBER_EMPFAENGER.includes(id)) } : aus;
 }
 
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean; newsletter?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -771,6 +799,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   if (opt.zoeWhatsapp) l = verarbeitungZoeWhatsappNachtragen(l, jetzt);
   // Innovations-Check der Website (24.10.): sobald er eingeschaltet ist (`ladeCheckEinstellungen().aktiv`).
   if (opt.check) l = verarbeitungCheckNachtragen(l, jetzt);
+  // Newsletter-Anmeldung über die Website (30.10.): sobald sie eingerichtet ist (eingeschaltet mit Absender-Postfach, `newsletterEingerichtet`).
+  if (opt.newsletter) l = verarbeitungNewsletterNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = verarbeitungEmailKundenNachtragen(l, jetzt);

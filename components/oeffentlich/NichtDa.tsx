@@ -1,6 +1,6 @@
 // ─── Öffentliche Seiten — „gibt es gerade nicht“ (30.10.) ─────────────────────────────────────────────────────────
-// Für /check und /buchen/<slug>, die auch unter der Adresse einer Website laufen (fokusinnovation.de leitet nur diese Pfade an die
-// App): ist der Check aus oder die Buchungsseite unbekannt, sieht der Besucher diese ruhige Seite — ohne Namen und Zeichen der
+// Für /check, /buchen/<slug> und /newsletter, die auch unter der Adresse einer Website laufen (fokusinnovation.de leitet nur diese Pfade an
+// die App): ist der Check bzw. die Anmeldung aus oder die Buchungsseite unbekannt, sieht der Besucher diese ruhige Seite — ohne Namen und Zeichen der
 // Anwendung (sonst stünde im Tab der Titel der App). Hell wie Check und Buchung, keine Links ins Innere.
 
 export function NichtDa({ text }: { text: string }) {
