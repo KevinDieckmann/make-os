@@ -10,7 +10,7 @@ Wir schärfen Ihre Botschaft, bauen Website und Vertrieb auf und führen Neues d
 - Sitz: Berlin
 - Für wen: Innovative Start-ups, Unternehmer mit 5 bis 50 Mitarbeitenden und Mittelstand, der Neues einführt
 - Leistungen: Positionierung, Websites und Videos; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, Umsetzungsprojekte starten in Kürze; Abende und Netzwerk
-- Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose 90-Tage-Umsetzungsgespräch
+- Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch
 - Gründer: Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)
 - Preise: Fest und offen auf jeder Angebotsseite, alle netto zuzüglich Umsatzsteuer
 - Arbeitsgebiet: Deutschland und Europa, auf Deutsch
@@ -41,9 +41,9 @@ Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen w
 
 ### Innovation: Im Alltag ankommen.
 
-Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im 90-Tage-Umsetzungsgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
+Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
 
-- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Strategie, KI im Alltag, Automatisierung, Daten und Team.
+- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Sichtbarkeit, Vertrieb und Innovation, mit zwei nächsten Schritten für Ihre größten Hebel.
 - [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): Start in Kürze, Preis folgt zum Start. KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang, Start in Kürze. Startet in Kürze.
 
 ## Wissen
@@ -54,6 +54,9 @@ Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt
 - [Homepage: was Besucher in fünf Sekunden verstehen müssen](https://fokusinnovation.de/wissen/homepage-fuenf-sekunden/): Was auf die erste Ansicht einer Unternehmens-Homepage gehört, wie Belege Vertrauen schaffen und warum Handy, Ladezeit und Suche von Anfang an mitgedacht werden.
 - [Erklärvideo für Unternehmen: Aufbau, Länge und Ablauf](https://fokusinnovation.de/wissen/erklaervideo-fuer-unternehmen/): Wann sich ein Erklärvideo lohnt, wie ein gutes in 60 bis 90 Sekunden aufgebaut ist und wie es ohne Dreh vor Ort in zehn Werktagen entsteht.
 - [KI im Mittelstand einführen: erst die Daten, dann die Werkzeuge](https://fokusinnovation.de/wissen/ki-im-mittelstand-einfuehren/): Wo der Mittelstand bei KI steht, warum es so oft an den Daten hakt und wie KI in fünf Schritten im Alltag ankommt. Mit Zahlen von Destatis, KfW und IFR.
+- [Fünf Vertriebszahlen, die jedes kleine Unternehmen kennen sollte](https://fokusinnovation.de/wissen/fuenf-vertriebszahlen/): Angebote im Monat, Abschlussquote, Zeit bis zum Abschluss, offene Chancen und Nachfassen: was die fünf Zahlen zeigen und wie Sie sie mit einer Tabelle erfassen.
+- [Warum Ihre Website keine Anfragen bringt, und was Sie in einer Woche ändern können](https://fokusinnovation.de/wissen/website-ohne-anfragen/): Warum eine Website keine Anfragen bringt und was Sie in einer Woche ändern: Kernsatz oben, ein nächster Schritt, Belege, ein kurzes Video und eine Seite je Angebot.
+- [Die ersten 30 Tage mit KI im Team](https://fokusinnovation.de/wissen/erste-30-tage-mit-ki/): Die ersten 30 Tage mit KI im Team: einen Ablauf wählen, Firmenlizenz und Regeln klären, messen, was es spart, und danach entscheiden, wie es weitergeht.
 
 ## Weitere Seiten
 

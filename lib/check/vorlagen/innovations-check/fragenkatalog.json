@@ -1,8 +1,8 @@
 {
- "version": "1.0",
- "stand": "2026-10-24",
- "freigabe": "Inhaber, Prüfseite 24.10.2026",
- "sprache": "de, Du-Form",
+ "version": "1.1",
+ "stand": "2026-10-30",
+ "freigabe": "Inhaber, Prüfseite 24.10.2026; Säulen Sichtbarkeit und Vertrieb auf Wunsch des Inhabers 30.10.2026 (zur Abnahme)",
+ "sprache": "de, Sie-Form",
  "hinweis": "IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden.",
  "abschnitte": [
   {
@@ -14,7 +14,7 @@
    "fragen": [
     {
      "id": "A1",
-     "text": "In welcher Branche ist dein Unternehmen tätig?",
+     "text": "In welcher Branche ist Ihr Unternehmen tätig?",
      "kurzcheck": true,
      "feld": "branche",
      "typ": "einfach",
@@ -64,13 +64,13 @@
      ],
      "zusatz": {
       "feld": "startup",
-      "text": "Seid ihr ein Start-up?",
+      "text": "Sind Sie ein Start-up?",
       "typ": "ja_nein"
      }
     },
     {
      "id": "A2",
-     "text": "Wie viele Mitarbeitende habt ihr?",
+     "text": "Wie viele Mitarbeitende haben Sie?",
      "kurzcheck": true,
      "feld": "groesse",
      "typ": "einfach",
@@ -104,7 +104,7 @@
     },
     {
      "id": "A3",
-     "text": "Wie hoch ist euer Jahresumsatz ungefähr?",
+     "text": "Wie hoch ist Ihr Jahresumsatz ungefähr?",
      "kurzcheck": false,
      "feld": "umsatz",
      "typ": "einfach",
@@ -143,7 +143,7 @@
     },
     {
      "id": "A4",
-     "text": "Seit wann gibt es dein Unternehmen?",
+     "text": "Seit wann gibt es Ihr Unternehmen?",
      "kurzcheck": false,
      "feld": "alter",
      "typ": "einfach",
@@ -177,7 +177,7 @@
     },
     {
      "id": "A5",
-     "text": "Welche Rolle hast du?",
+     "text": "Welche Rolle haben Sie?",
      "kurzcheck": false,
      "feld": "rolle",
      "typ": "einfach",
@@ -216,7 +216,7 @@
     },
     {
      "id": "A6",
-     "text": "Was ist dein wichtigstes Ziel in den nächsten 12 Monaten?",
+     "text": "Was ist Ihr wichtigstes Ziel in den nächsten 12 Monaten?",
      "kurzcheck": true,
      "feld": "ziel",
      "typ": "einfach",
@@ -245,6 +245,356 @@
        "id": "A6_4",
        "text": "Unternehmen unabhängiger vom Chef machen",
        "code": "unabhaengig_vom_chef"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "S",
+   "key": "sichtbarkeit",
+   "name": "Sichtbarkeit",
+   "dimension": null,
+   "saeule": "sichtbarkeit",
+   "intro": "Säule Sichtbarkeit (30.10.). 5 Fragen, 3 im Kurzcheck. Antworten von 0 (schwach) bis 4 Punkte (stark). Zählt nicht in die Innovations-Dimensionen.",
+   "fragen": [
+    {
+     "id": "S1",
+     "text": "Können Sie in einem Satz sagen, für wen Sie welches Problem lösen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S1_0",
+       "text": "Nein, das ist noch nicht klar",
+       "punkte": 0
+      },
+      {
+       "id": "S1_1",
+       "text": "Ich kann es erklären, aber nicht in einem Satz",
+       "punkte": 1
+      },
+      {
+       "id": "S1_2",
+       "text": "Ja, aber der Satz steht nirgends geschrieben",
+       "punkte": 2
+      },
+      {
+       "id": "S1_3",
+       "text": "Ja, er steht auf der Website und in unseren Profilen",
+       "punkte": 3
+      },
+      {
+       "id": "S1_4",
+       "text": "Ja, und Kunden sagen ihn uns von selbst nach",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S2",
+     "text": "Was bringt Ihnen Ihre Website heute?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S2_0",
+       "text": "Wir haben keine oder eine veraltete Website",
+       "punkte": 0
+      },
+      {
+       "id": "S2_1",
+       "text": "Sie ist eine Visitenkarte, Anfragen kommen kaum",
+       "punkte": 1
+      },
+      {
+       "id": "S2_2",
+       "text": "Ab und zu kommt eine Anfrage darüber",
+       "punkte": 2
+      },
+      {
+       "id": "S2_3",
+       "text": "Sie bringt regelmäßig Anfragen",
+       "punkte": 3
+      },
+      {
+       "id": "S2_4",
+       "text": "Sie bringt planbar Anfragen, und wir messen das",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S3",
+     "text": "Wie oft zeigen Sie sich mit eigenen Inhalten, etwa Beiträgen, Videos oder Vorträgen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S3_0",
+       "text": "Gar nicht",
+       "punkte": 0
+      },
+      {
+       "id": "S3_1",
+       "text": "Seltener als einmal im Monat",
+       "punkte": 1
+      },
+      {
+       "id": "S3_2",
+       "text": "Ein- bis dreimal im Monat",
+       "punkte": 2
+      },
+      {
+       "id": "S3_3",
+       "text": "Jede Woche",
+       "punkte": 3
+      },
+      {
+       "id": "S3_4",
+       "text": "Jede Woche, mit Plan und gemessener Wirkung",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S4",
+     "text": "Gibt es ein Video, das in unter zwei Minuten erklärt, was Sie anbieten?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S4_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "S4_1",
+       "text": "Ist geplant",
+       "punkte": 1
+      },
+      {
+       "id": "S4_2",
+       "text": "Ja, aber es ist veraltet",
+       "punkte": 2
+      },
+      {
+       "id": "S4_3",
+       "text": "Ja, aktuell und auf der Website",
+       "punkte": 3
+      },
+      {
+       "id": "S4_4",
+       "text": "Ja, und wir sehen, dass es Anfragen bringt",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S5",
+     "text": "Wie gut kennt Ihre Zielgruppe Sie?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S5_0",
+       "text": "Kaum jemand kennt uns",
+       "punkte": 0
+      },
+      {
+       "id": "S5_1",
+       "text": "Nur unser direktes Umfeld",
+       "punkte": 1
+      },
+      {
+       "id": "S5_2",
+       "text": "In unserer Region oder Nische ein wenig",
+       "punkte": 2
+      },
+      {
+       "id": "S5_3",
+       "text": "Viele in der Zielgruppe haben schon von uns gehört",
+       "punkte": 3
+      },
+      {
+       "id": "S5_4",
+       "text": "Wir werden aktiv empfohlen und eingeladen",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "V",
+   "key": "vertrieb",
+   "name": "Vertrieb",
+   "dimension": null,
+   "saeule": "vertrieb",
+   "intro": "Säule Vertrieb (30.10.). 5 Fragen, 3 im Kurzcheck. Antworten von 0 (schwach) bis 4 Punkte (stark). Zählt nicht in die Innovations-Dimensionen.",
+   "fragen": [
+    {
+     "id": "V1",
+     "text": "Wer kümmert sich bei Ihnen um den Vertrieb?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V1_0",
+       "text": "Niemand fest, es passiert nebenbei",
+       "punkte": 0
+      },
+      {
+       "id": "V1_1",
+       "text": "Ich selbst, wenn Zeit bleibt",
+       "punkte": 1
+      },
+      {
+       "id": "V1_2",
+       "text": "Ich selbst, mit festen Zeiten in der Woche",
+       "punkte": 2
+      },
+      {
+       "id": "V1_3",
+       "text": "Eine Person oder ein Team ist dafür zuständig",
+       "punkte": 3
+      },
+      {
+       "id": "V1_4",
+       "text": "Ein Team mit klaren Zielen, Abläufen und Führung",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V2",
+     "text": "Wissen Sie, wie viele Angebote Sie im Monat schreiben und wie viele davon Sie gewinnen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V2_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "V2_1",
+       "text": "Grob, aus dem Bauch",
+       "punkte": 1
+      },
+      {
+       "id": "V2_2",
+       "text": "Die Zahl der Angebote ja, die Abschlussquote nicht",
+       "punkte": 2
+      },
+      {
+       "id": "V2_3",
+       "text": "Beides, aber nicht laufend",
+       "punkte": 3
+      },
+      {
+       "id": "V2_4",
+       "text": "Beides, jeden Monat im Blick",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V3",
+     "text": "Wie sicher wissen Sie heute, welcher Umsatz in den nächsten drei Monaten kommt?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V3_0",
+       "text": "Gar nicht",
+       "punkte": 0
+      },
+      {
+       "id": "V3_1",
+       "text": "Eher ein Gefühl",
+       "punkte": 1
+      },
+      {
+       "id": "V3_2",
+       "text": "Bei Bestandskunden ja, bei neuen nicht",
+       "punkte": 2
+      },
+      {
+       "id": "V3_3",
+       "text": "Wir haben eine Liste offener Chancen mit Schätzung",
+       "punkte": 3
+      },
+      {
+       "id": "V3_4",
+       "text": "Wir haben eine Pipeline mit Wahrscheinlichkeiten, die meistens stimmt",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V4",
+     "text": "Was passiert, wenn ein Angebot unbeantwortet bleibt?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V4_0",
+       "text": "Meist nichts",
+       "punkte": 0
+      },
+      {
+       "id": "V4_1",
+       "text": "Wir fassen nach, wenn es uns einfällt",
+       "punkte": 1
+      },
+      {
+       "id": "V4_2",
+       "text": "Wir fassen nach, aber ohne festen Rhythmus",
+       "punkte": 2
+      },
+      {
+       "id": "V4_3",
+       "text": "Es gibt feste Erinnerungen zum Nachfassen",
+       "punkte": 3
+      },
+      {
+       "id": "V4_4",
+       "text": "Ein fester Ablauf mit Fristen sorgt dafür, dass nichts liegen bleibt",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "V5",
+     "text": "Woher kommen Ihre neuen Kunden?",
+     "kurzcheck": false,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "V5_0",
+       "text": "Es kommen kaum neue Kunden",
+       "punkte": 0
+      },
+      {
+       "id": "V5_1",
+       "text": "Fast nur über Empfehlungen, wir sprechen niemanden an",
+       "punkte": 1
+      },
+      {
+       "id": "V5_2",
+       "text": "Über Empfehlungen und gelegentlich eigene Ansprache",
+       "punkte": 2
+      },
+      {
+       "id": "V5_3",
+       "text": "Über zwei oder mehr feste Wege, die wir selbst anstoßen",
+       "punkte": 3
+      },
+      {
+       "id": "V5_4",
+       "text": "Über mehrere Wege, deren Ergebnisse wir messen und steuern",
+       "punkte": 4
       }
      ]
     }
@@ -326,7 +676,7 @@
     {
      "id": "B3",
      "text": "Wer ist für Innovation verantwortlich?",
-     "kurzcheck": true,
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -358,7 +708,7 @@
     },
     {
      "id": "B4",
-     "text": "Wie viele neue Produkte oder Leistungen habt ihr in den letzten 24 Monaten eingeführt?",
+     "text": "Wie viele neue Produkte oder Leistungen haben Sie in den letzten 24 Monaten eingeführt?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -391,7 +741,7 @@
     },
     {
      "id": "B5",
-     "text": "Wie oft prüft ihr neue Technologien für euer Geschäft?",
+     "text": "Wie oft prüfen Sie neue Technologien für Ihr Geschäft?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -424,7 +774,7 @@
     },
     {
      "id": "B6",
-     "text": "Wie gut weißt du, was deine Wettbewerber mit KI machen?",
+     "text": "Wie gut wissen Sie, was Ihre Wettbewerber mit KI machen?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -499,7 +849,7 @@
     },
     {
      "id": "C2",
-     "text": "Habt ihr Firmenlizenzen für KI-Tools?",
+     "text": "Haben Sie Firmenlizenzen für KI-Tools?",
      "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
@@ -565,7 +915,7 @@
     },
     {
      "id": "C4",
-     "text": "Für welche Aufgaben setzt ihr KI ein?",
+     "text": "Für welche Aufgaben setzen Sie KI ein?",
      "kurzcheck": false,
      "typ": "mehrfach",
      "punkte_regel": {
@@ -619,7 +969,7 @@
     },
     {
      "id": "C5",
-     "text": "Beleg: Beschreib einen Ablauf, bei dem KI heute fest eingebaut ist.",
+     "text": "Beleg: Beschreiben Sie einen Ablauf, bei dem KI heute fest eingebaut ist.",
      "kurzcheck": true,
      "typ": "beleg",
      "eingabe": [
@@ -657,7 +1007,7 @@
     },
     {
      "id": "C6",
-     "text": "Messt ihr den Nutzen von KI, zum Beispiel in gesparten Stunden?",
+     "text": "Messen Sie den Nutzen von KI, zum Beispiel in gesparten Stunden?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -690,8 +1040,8 @@
     },
     {
      "id": "C7",
-     "text": "Nutzt ihr KI-Agenten, die Aufgaben selbst ausführen, nicht nur Chat?",
-     "kurzcheck": true,
+     "text": "Nutzen Sie KI-Agenten, die Aufgaben selbst ausführen, nicht nur Chat?",
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -723,7 +1073,7 @@
     },
     {
      "id": "C8",
-     "text": "Ist KI Teil eures Produkts oder eurer Leistung für Kunden?",
+     "text": "Ist KI Teil Ihres Produkts oder Ihrer Leistung für Kunden?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -897,7 +1247,7 @@
     },
     {
      "id": "D5",
-     "text": "Nutzt ihr Tools, die eure Systeme automatisch verbinden (z. B. Make, Zapier, n8n)?",
+     "text": "Nutzen Sie Tools, die Ihre Systeme automatisch verbinden (z. B. Make, Zapier, n8n)?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -930,7 +1280,7 @@
     },
     {
      "id": "D6",
-     "text": "Beleg: Welcher Ablauf läuft heute komplett ohne dein Zutun?",
+     "text": "Beleg: Welcher Ablauf läuft heute komplett ohne Ihr Zutun?",
      "kurzcheck": false,
      "typ": "beleg",
      "eingabe": [
@@ -968,7 +1318,7 @@
     },
     {
      "id": "D7",
-     "text": "Wie viele Stunden pro Woche verbringst du selbst mit Aufgaben, die eine Maschine erledigen könnte?",
+     "text": "Wie viele Stunden pro Woche verbringen Sie selbst mit Aufgaben, die eine Maschine erledigen könnte?",
      "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
@@ -1001,8 +1351,8 @@
     },
     {
      "id": "D8",
-     "text": "Läuft dein Geschäft zwei Wochen ohne dich weiter?",
-     "kurzcheck": true,
+     "text": "Läuft Ihr Geschäft zwei Wochen ohne Sie weiter?",
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -1043,7 +1393,7 @@
    "fragen": [
     {
      "id": "E1",
-     "text": "Habt ihr ein CRM, und wird es wirklich gepflegt?",
+     "text": "Haben Sie ein CRM, und wird es wirklich gepflegt?",
      "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
@@ -1109,7 +1459,7 @@
     },
     {
      "id": "E3",
-     "text": "Sind eure Systeme über Schnittstellen verbunden?",
+     "text": "Sind Ihre Systeme über Schnittstellen verbunden?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1142,7 +1492,7 @@
     },
     {
      "id": "E4",
-     "text": "Wie oft siehst du deine wichtigsten Kennzahlen?",
+     "text": "Wie oft sehen Sie Ihre wichtigsten Kennzahlen?",
      "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
@@ -1175,7 +1525,7 @@
     },
     {
      "id": "E5",
-     "text": "Arbeitet ihr überwiegend in der Cloud?",
+     "text": "Arbeiten Sie überwiegend in der Cloud?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1208,7 +1558,7 @@
     },
     {
      "id": "E6",
-     "text": "Wie gut ist euer Wissen dokumentiert?",
+     "text": "Wie gut ist Ihr Wissen dokumentiert?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1250,7 +1600,7 @@
    "fragen": [
     {
      "id": "F1",
-     "text": "Setzt ihr Roboter oder Cobots ein?",
+     "text": "Setzen Sie Roboter oder Cobots ein?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1283,7 +1633,7 @@
     },
     {
      "id": "F2",
-     "text": "Nutzt ihr automatische Lager, Fahrzeuge oder Drohnen?",
+     "text": "Nutzen Sie automatische Lager, Fahrzeuge oder Drohnen?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1316,7 +1666,7 @@
     },
     {
      "id": "F3",
-     "text": "Habt ihr Sensoren oder vernetzte Maschinen, deren Daten ihr auswertet?",
+     "text": "Haben Sie Sensoren oder vernetzte Maschinen, deren Daten Sie auswerten?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1349,7 +1699,7 @@
     },
     {
      "id": "F4",
-     "text": "Plant ihr Investitionen in Robotik in den nächsten 24 Monaten?",
+     "text": "Planen Sie Investitionen in Robotik in den nächsten 24 Monaten?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1393,7 +1743,7 @@
     {
      "id": "G1",
      "text": "Wie viele Mitarbeitende wurden in den letzten 12 Monaten zu KI geschult?",
-     "kurzcheck": true,
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -1492,7 +1842,7 @@
     },
     {
      "id": "G4",
-     "text": "Wie reagiert dein Team auf neue Technik?",
+     "text": "Wie reagiert Ihr Team auf neue Technik?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1525,7 +1875,7 @@
     },
     {
      "id": "G5",
-     "text": "Holt ihr euch externe Unterstützung für Innovation?",
+     "text": "Holen Sie sich externe Unterstützung für Innovation?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1558,7 +1908,7 @@
     },
     {
      "id": "G6",
-     "text": "Wie schnell wird bei euch eine gute Idee umgesetzt?",
+     "text": "Wie schnell wird bei Ihnen eine gute Idee umgesetzt?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1600,7 +1950,7 @@
    "fragen": [
     {
      "id": "H1",
-     "text": "Wie erstellt ihr Angebote und Aufmaße?",
+     "text": "Wie erstellen Sie Angebote und Aufmaße?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1678,7 +2028,7 @@
     },
     {
      "id": "H3",
-     "text": "Wie dokumentiert ihr auf der Baustelle oder beim Kunden?",
+     "text": "Wie dokumentieren Sie auf der Baustelle oder beim Kunden?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1717,7 +2067,7 @@
     },
     {
      "id": "H4",
-     "text": "Wie viele Stunden pro Woche gehen bei dir in Büroarbeit?",
+     "text": "Wie viele Stunden pro Woche gehen bei Ihnen in Büroarbeit?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1756,7 +2106,7 @@
     },
     {
      "id": "H5",
-     "text": "Wie findet ihr neue Fachkräfte und Azubis?",
+     "text": "Wie finden Sie neue Fachkräfte und Azubis?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1795,7 +2145,7 @@
     },
     {
      "id": "H6",
-     "text": "Wie hoch ist dein Anteil Anfragen, die nie zu einem Angebot werden, weil die Zeit fehlt?",
+     "text": "Wie hoch ist Ihr Anteil an Anfragen, die nie zu einem Angebot werden, weil die Zeit fehlt?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1834,7 +2184,7 @@
     },
     {
      "id": "H7",
-     "text": "Welche Aufgabe würdest du sofort abgeben, wenn eine Maschine sie könnte?",
+     "text": "Welche Aufgabe würden Sie sofort abgeben, wenn eine Maschine sie könnte?",
      "kurzcheck": false,
      "typ": "offen",
      "eingabe": [
@@ -1859,7 +2209,7 @@
    "fragen": [
     {
      "id": "I1",
-     "text": "Wie viel deiner Zeit geht in Akquise und Verwaltung statt in Kundenarbeit?",
+     "text": "Wie viel Ihrer Zeit geht in Akquise und Verwaltung statt in Kundenarbeit?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1937,7 +2287,7 @@
     },
     {
      "id": "I3",
-     "text": "Wie erstellt ihr Angebote und Konzepte?",
+     "text": "Wie erstellen Sie Angebote und Konzepte?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -1976,7 +2326,7 @@
     },
     {
      "id": "I4",
-     "text": "Wo steckt euer Fachwissen?",
+     "text": "Wo steckt Ihr Fachwissen?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -2015,7 +2365,7 @@
     },
     {
      "id": "I5",
-     "text": "Wie berichtet ihr an Kunden?",
+     "text": "Wie berichten Sie an Kunden?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -2054,7 +2404,7 @@
     },
     {
      "id": "I6",
-     "text": "Wie rechnet ihr ab?",
+     "text": "Wie rechnen Sie ab?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -2093,7 +2443,7 @@
     },
     {
      "id": "I7",
-     "text": "Welche Aufgabe würdest du sofort abgeben, wenn eine Maschine sie könnte?",
+     "text": "Welche Aufgabe würden Sie sofort abgeben, wenn eine Maschine sie könnte?",
      "kurzcheck": false,
      "typ": "offen",
      "eingabe": [
@@ -2118,7 +2468,7 @@
    "fragen": [
     {
      "id": "J1",
-     "text": "In welcher Phase ist dein Unternehmen?",
+     "text": "In welcher Phase ist Ihr Unternehmen?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -2157,7 +2507,7 @@
     },
     {
      "id": "J2",
-     "text": "Wer macht bei euch den Vertrieb?",
+     "text": "Wer macht bei Ihnen den Vertrieb?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -2196,7 +2546,7 @@
     },
     {
      "id": "J3",
-     "text": "Kennt ihr eure wichtigsten Vertriebszahlen (CAC, Abschlussquote, Zykluslänge)?",
+     "text": "Kennen Sie Ihre wichtigsten Vertriebszahlen (CAC, Abschlussquote, Zykluslänge)?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -2235,7 +2585,7 @@
     },
     {
      "id": "J4",
-     "text": "Wie viel KI steckt in euren eigenen Abläufen, nicht nur im Produkt?",
+     "text": "Wie viel KI steckt in Ihren eigenen Abläufen, nicht nur im Produkt?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -2308,7 +2658,7 @@
     },
     {
      "id": "J6",
-     "text": "Wie schnell trefft ihr Entscheidungen auf Basis von Daten?",
+     "text": "Wie schnell treffen Sie Entscheidungen auf Basis von Daten?",
      "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
@@ -2347,7 +2697,7 @@
     },
     {
      "id": "J7",
-     "text": "Was müsste in 90 Tagen passiert sein, damit du sagst: Es hat sich gelohnt?",
+     "text": "Was müsste in 90 Tagen passiert sein, damit Sie sagen: Es hat sich gelohnt?",
      "kurzcheck": false,
      "typ": "offen",
      "eingabe": [
@@ -2364,6 +2714,6 @@
    "bedingung": "branche == tech ODER startup == true"
   }
  ],
- "anzahl_fragen": 65,
- "anzahl_kurzcheck": 15
+ "anzahl_fragen": 75,
+ "anzahl_kurzcheck": 17
 }

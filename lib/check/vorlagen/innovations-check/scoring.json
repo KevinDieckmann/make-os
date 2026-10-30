@@ -1,17 +1,53 @@
 {
- "version": "1.0",
- "stand": "2026-10-24",
+ "version": "1.1",
+ "stand": "2026-10-30",
  "punkte_je_antwort": "0 bis 4",
  "dimensionen": [
-  {"key": "strategie", "name": "Strategie und Führung", "abschnitt": "B", "gewicht": 15},
-  {"key": "ki", "name": "KI im Alltag", "abschnitt": "C", "gewicht": 30},
-  {"key": "automatisierung", "name": "Automatisierung der Prozesse", "abschnitt": "D", "gewicht": 30},
-  {"key": "daten", "name": "Daten und Systeme", "abschnitt": "E", "gewicht": 10},
-  {"key": "robotik", "name": "Robotik und physische Automatisierung", "abschnitt": "F", "gewicht": 5, "gewicht_wenn_nicht_relevant": 0},
-  {"key": "team", "name": "Team und Kompetenz", "abschnitt": "G", "gewicht": 10, "gewicht_wenn_robotik_nicht_relevant": 15}
+  {
+   "key": "strategie",
+   "name": "Strategie und Führung",
+   "abschnitt": "B",
+   "gewicht": 15
+  },
+  {
+   "key": "ki",
+   "name": "KI im Alltag",
+   "abschnitt": "C",
+   "gewicht": 30
+  },
+  {
+   "key": "automatisierung",
+   "name": "Automatisierung der Prozesse",
+   "abschnitt": "D",
+   "gewicht": 30
+  },
+  {
+   "key": "daten",
+   "name": "Daten und Systeme",
+   "abschnitt": "E",
+   "gewicht": 10
+  },
+  {
+   "key": "robotik",
+   "name": "Robotik und physische Automatisierung",
+   "abschnitt": "F",
+   "gewicht": 5,
+   "gewicht_wenn_nicht_relevant": 0
+  },
+  {
+   "key": "team",
+   "name": "Team und Kompetenz",
+   "abschnitt": "G",
+   "gewicht": 10,
+   "gewicht_wenn_robotik_nicht_relevant": 15
+  }
  ],
  "robotik": {
-  "relevante_branchen": ["handwerk", "produktion", "gesundheit"],
+  "relevante_branchen": [
+   "handwerk",
+   "produktion",
+   "gesundheit"
+  ],
   "zusaetzlich_relevant_wenn": "branche == sonstige und Freitext nennt Logistik, Lager oder Transport (Zoe setzt das Flag)",
   "regel": "Robotik zählt nur, wenn relevant UND mindestens eine F-Frage beantwortet ist. Sonst Robotik 0 %, Team 15 %."
  },
@@ -23,23 +59,148 @@
   "grund": "Trennt 'spielen' von 'wirklich nutzen': ohne konkretes Beispiel keine Stufe 4 oder 5 in diesen Dimensionen."
  },
  "stufen": [
-  {"stufe": 1, "name": "Beobachter", "von": 0, "bis": 20, "kurz": "KI und Automatisierung kommen kaum vor. Fast alles läuft von Hand."},
-  {"stufe": 2, "name": "Ausprobierer", "von": 21, "bis": 40, "kurz": "Einzelne nutzen KI auf eigene Faust, ohne Lizenz, Regeln oder Ziel."},
-  {"stufe": 3, "name": "Anwender", "von": 41, "bis": 60, "kurz": "Feste Anwendungsfälle, Firmenlizenzen, Regeln und erste automatisierte Abläufe."},
-  {"stufe": 4, "name": "Integrierer", "von": 61, "bis": 80, "kurz": "KI und Automatisierung stecken in den Kernprozessen, Daten sind verbunden, Nutzen wird gemessen."},
-  {"stufe": 5, "name": "KI-geführtes Unternehmen (AI CEO)", "von": 81, "bis": 100, "kurz": "Fast alles wird über KI und Agenten abgebildet oder unterstützt. Menschen steuern und entscheiden."}
+  {
+   "stufe": 1,
+   "name": "Beobachter",
+   "von": 0,
+   "bis": 20,
+   "kurz": "KI und Automatisierung kommen kaum vor. Fast alles läuft von Hand."
+  },
+  {
+   "stufe": 2,
+   "name": "Ausprobierer",
+   "von": 21,
+   "bis": 40,
+   "kurz": "Einzelne nutzen KI auf eigene Faust, ohne Lizenz, Regeln oder Ziel."
+  },
+  {
+   "stufe": 3,
+   "name": "Anwender",
+   "von": 41,
+   "bis": 60,
+   "kurz": "Feste Anwendungsfälle, Firmenlizenzen, Regeln und erste automatisierte Abläufe."
+  },
+  {
+   "stufe": 4,
+   "name": "Integrierer",
+   "von": 61,
+   "bis": 80,
+   "kurz": "KI und Automatisierung stecken in den Kernprozessen, Daten sind verbunden, Nutzen wird gemessen."
+  },
+  {
+   "stufe": 5,
+   "name": "KI-geführtes Unternehmen (AI CEO)",
+   "von": 81,
+   "bis": 100,
+   "kurz": "Fast alles wird über KI und Agenten abgebildet oder unterstützt. Menschen steuern und entscheiden."
+  }
  ],
  "genauigkeit": {
-  "vorlaeufig": "nur Kurzcheck (15 Fragen) beantwortet",
+  "vorlaeufig": "nur Kurzcheck (17 Fragen) beantwortet",
   "genau": "mindestens 80 % der Fragen aus B bis E und G beantwortet",
-  "anzeige": "Bei 'vorläufig' steht im Ergebnis: 'Vorläufige Stufe. Mit den weiteren Fragen wird dein Bericht genauer.'"
+  "anzeige": "Bei 'vorläufig' steht im Ergebnis: 'Vorläufige Stufe. Mit den weiteren Fragen wird Ihr Bericht genauer.'"
  },
- "siegel": {"ab_stufe": 4, "name": "MAKE Innovations-Check", "bedingung": "genauigkeit == genau und Bericht vom Inhaber freigegeben (bei den ersten 20)"},
+ "siegel": {
+  "ab_stufe": 4,
+  "name": "Innovations-Check",
+  "bedingung": "genauigkeit == genau und Bericht vom Inhaber freigegeben (bei den ersten 20)"
+ },
  "luecken": "Die drei Dimensionen mit dem größten Abstand zum Branchenwert (Benchmark) sind die größten Lücken. Ohne Benchmark: die drei niedrigsten Dimensionen. Robotik nur, wenn relevant.",
  "zeitersparnis_schaetzung": {
   "status": "Startwerte, der Inhaber kalibriert nach den ersten 20 Gesprächen",
   "basis": "Frage D7 (Stunden pro Woche, die eine Maschine erledigen könnte)",
-  "werte_stunden": {"D7_0": 20, "D7_1": 15, "D7_2": 8, "D7_3": 3, "D7_4": 1},
+  "werte_stunden": {
+   "D7_0": 20,
+   "D7_1": 15,
+   "D7_2": 8,
+   "D7_3": 3,
+   "D7_4": 1
+  },
   "regel": "Potenzial = Stunden aus D7 × 0,5 (realistisch in 90 Tagen). Im Bericht immer als Spanne und als Schätzung kennzeichnen."
- }
+ },
+ "saeulen": [
+  {
+   "key": "sichtbarkeit",
+   "name": "Sichtbarkeit",
+   "abschnitt": "S",
+   "gewicht": 1,
+   "angebot": "sichtbarkeit"
+  },
+  {
+   "key": "vertrieb",
+   "name": "Vertrieb",
+   "abschnitt": "V",
+   "gewicht": 1,
+   "angebot": "vertrieb"
+  },
+  {
+   "key": "innovation",
+   "name": "Innovation",
+   "abschnitt": "B bis G",
+   "gewicht": 1,
+   "wert": "Gesamtwert der Innovations-Dimensionen (Regeln oben, unverändert)",
+   "angebot": "innovation"
+  }
+ ],
+ "saeulen_regel": "Säulenwert Sichtbarkeit bzw. Vertrieb wie ein Dimensionswert (Summe der Punkte / (4 × Anzahl beantworteter Fragen) × 100, gerundet). Innovation = Gesamtwert der Dimensionen B bis G. Gesamtwert = Mittel der beantworteten Säulen (gleiches Gewicht), gerundet. Die Stufe der Innovation (Beobachter bis KI-geführt) bleibt für das Detail und das Lead-Scoring.",
+ "saeulen_stufen": [
+  {
+   "stufe": 1,
+   "name": "Am Start",
+   "von": 0,
+   "bis": 20,
+   "kurz": "Vieles läuft noch aus dem Bauch und von Hand. Der größte Hebel liegt in klaren Grundlagen."
+  },
+  {
+   "stufe": 2,
+   "name": "Im Aufbau",
+   "von": 21,
+   "bis": 40,
+   "kurz": "Erste Bausteine stehen, aber noch ohne festen Ablauf. Mit Fokus auf einen Bereich kommen Sie schnell voran."
+  },
+  {
+   "stufe": 3,
+   "name": "Auf Kurs",
+   "von": 41,
+   "bis": 60,
+   "kurz": "Die Grundlagen stehen. Jetzt geht es darum, aus Einzelnem feste Abläufe zu machen."
+  },
+  {
+   "stufe": 4,
+   "name": "Stark aufgestellt",
+   "von": 61,
+   "bis": 80,
+   "kurz": "Sichtbarkeit, Vertrieb und Neues greifen ineinander. Messen und Feinschliff bringen den nächsten Schritt."
+  },
+  {
+   "stufe": 5,
+   "name": "Vorreiter",
+   "von": 81,
+   "bis": 100,
+   "kurz": "Sie sind sichtbar, verkaufen mit System und setzen Neues schnell um. Jetzt zählt, den Vorsprung zu halten."
+  }
+ ],
+ "naechste_schritte": {
+  "regel": "Die zwei schwächsten Säulen (bei Gleichstand in der Reihenfolge Vertrieb, Sichtbarkeit, Innovation). Band: niedrig bis 40, mittel bis 70, hoch darüber.",
+  "sichtbarkeit": {
+   "niedrig": "Schärfen Sie zuerst Ihren Kernsatz: für wen Sie welches Problem lösen. Stellen Sie ihn oben auf Ihre Website und in Ihre Profile. Darauf baut alles Weitere auf.",
+   "mittel": "Machen Sie Ihre Website zum Weg zur Anfrage: ein klarer Satz, ein kurzes Video, ein sichtbarer nächster Schritt. Und zeigen Sie sich jede Woche mit einem Beitrag.",
+   "hoch": "Bauen Sie aus, was wirkt: Messen Sie, welche Inhalte Anfragen bringen, und machen Sie mehr davon."
+  },
+  "vertrieb": {
+   "niedrig": "Legen Sie feste Vertriebszeiten in Ihre Woche und führen Sie eine einfache Liste aller offenen Angebote, jedes mit einem Datum zum Nachfassen.",
+   "mittel": "Machen Sie Ihren Vertrieb messbar: Angebote, Abschlussquote und offene Chancen einmal im Monat ansehen, nachfassen mit festen Fristen.",
+   "hoch": "Halten Sie fest, was funktioniert: Schreiben Sie Ihre Vertriebsabläufe auf, damit weitere Personen genauso gut verkaufen wie Sie."
+  },
+  "innovation": {
+   "niedrig": "Starten Sie mit einem einzigen Ablauf, der heute viel Handarbeit kostet, und testen Sie dafür 30 Tage lang ein KI-Werkzeug im Team.",
+   "mittel": "Machen Sie aus Einzelversuchen feste Abläufe: Firmenlizenz, klare Regeln und ein messbares Ziel, zum Beispiel gesparte Stunden pro Woche.",
+   "hoch": "Verbinden Sie Ihre Systeme und lassen Sie wiederkehrende Abläufe ganz automatisch laufen. Menschen prüfen und entscheiden."
+  }
+ },
+ "schritt_reihe": [
+  "vertrieb",
+  "sichtbarkeit",
+  "innovation"
+ ]
 }

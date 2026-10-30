@@ -234,7 +234,7 @@
         },
         {
           "titel": "Unser Weg",
-          "text": "Der Innovations-Check zeigt Ihre Stufe. Im 90-Tage-Umsetzungsgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen."
+          "text": "Der Innovations-Check zeigt Ihre Stufe. Im Erstgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen."
         },
         {
           "titel": "Ergebnis",
@@ -248,7 +248,7 @@
         "text": "KI ist nur so gut wie die Datenbasis. Wir bauen mit Ihnen auf, was sie braucht: Wissen, Abläufe und Daten sauber an einem Ort, damit KI im Alltag wirklich funktioniert.",
         "betreff": "Interesse: KI-Brain"
       },
-      "kurz": "Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im 90-Tage-Umsetzungsgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.",
+      "kurz": "Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.",
       "felder": [
         {
           "titel": "KI im Alltag",
@@ -433,7 +433,7 @@
   },
   "check": {
     "hinweis": "Text der Fokus-Seite zum Check (ruhiger als die Vorlage).",
-    "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Strategie, KI im Alltag, Automatisierung, Daten und Team."
+    "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Sichtbarkeit, Vertrieb und Innovation, mit zwei nächsten Schritten für Ihre größten Hebel."
   },
   "angebote_lead": {
     "sichtbarkeit": "Feste Preise und feste Lieferzeiten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
@@ -506,7 +506,7 @@
     ],
     [
       "Einstieg",
-      "Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose 90-Tage-Umsetzungsgespräch"
+      "Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch"
     ],
     [
       "Gründer",
@@ -638,6 +638,14 @@
       "begriffe": {
         "titel": "Begriffe von A bis Z: Vertrieb, Marketing, KI · Fokus Innovation",
         "beschreibung": "Was ist ein Sales Playbook, eine Pipeline oder Lead-Scoring? Kurze, klare Erklärungen der Begriffe aus Vertrieb, Sichtbarkeit und der Einführung von KI."
+      },
+      "kostenlos": {
+        "titel": "Kostenlos: Checks, Ratgeber, Vorlagen · Fokus Innovation",
+        "beschreibung": "Kostenlose Checks, Ratgeber, Zahlen mit Quelle und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Ohne Anmeldung, für Unternehmer und Mittelstand."
+      },
+      "zahlen": {
+        "titel": "Zahlen zu Vertrieb, Sichtbarkeit und KI · Fokus Innovation",
+        "beschreibung": "Studien zu Sichtbarkeit, Vertrieb und KI in deutschen Unternehmen, kurz erklärt. Jede Zahl mit Herausgeber, Jahr und Link zur Quelle."
       }
     }
   },
@@ -828,10 +836,10 @@
     },
     {
       "titel": "Ergebnis sofort",
-      "text": "Ihre Stufe, ein Netzdiagramm und der Vergleich mit Ihrer Branche."
+      "text": "Ihre Stufe, Ihre drei Bereiche und zwei nächste Schritte."
     },
     {
-      "titel": "90-Tage-Umsetzungsgespräch",
+      "titel": "Erstgespräch",
       "text": "60 Minuten mit Kevin. Ihre Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden."
     }
   ],
@@ -839,5 +847,49 @@
     "hinweis": "Umfang der Mandate je Monat (Kevin liefert die Stunden beim Head of Sales). Leer = steht nicht auf der Seite.",
     "head-of-sales": "",
     "cso": "30 bis 35 Stunden im Monat, fest eingeplant"
+  },
+  "kostenlos": {
+    "hinweis": "Bereich „Kostenlos“ (Kevin 30.10.): Checks, Ratgeber, Zahlen, Vorlagen, Newsletter. Der Innovations-Check bleibt der große, die zwei kleinen Checks laufen leise daneben.",
+    "titel": "Kostenlos.",
+    "ruhig": "Zum Mitnehmen.",
+    "lead": "Checks, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Ohne Anmeldung, ohne Haken.",
+    "checks": [
+      {
+        "id": "innovation",
+        "name": "Innovations-Check",
+        "minuten": 10,
+        "text": "Sichtbarkeit, Vertrieb und Innovation in einem Check, mit Stufe, Branchenvergleich und nächsten Schritten.",
+        "pfad": "/innovations-check/",
+        "haupt": true
+      },
+      {
+        "id": "vertrieb",
+        "name": "Vertriebscheck",
+        "minuten": 5,
+        "text": "Zwölf Fragen zu Organisation, Zahlen und Neukunden. Sie sehen sofort, wo Ihr Vertrieb steht.",
+        "thema": "vertrieb"
+      },
+      {
+        "id": "sichtbarkeit",
+        "name": "Sichtbarkeitstest",
+        "minuten": 5,
+        "text": "Zwölf Fragen zu Botschaft, Website und Reichweite. Sie sehen sofort, ob man Sie versteht und findet.",
+        "thema": "sichtbarkeit"
+      }
+    ],
+    "zahlen": {
+      "titel": "Zahlen, mit Quelle.",
+      "lead": "Was Studien über Sichtbarkeit, Vertrieb und KI in deutschen Unternehmen sagen. Jede Zahl mit Herausgeber, Jahr und Link."
+    },
+    "vorlagen": {
+      "titel": "Vorlagen zum Mitnehmen.",
+      "lead": "Zum Ausdrucken oder Ausfüllen am Rechner. Als PDF, ohne Anmeldung."
+    },
+    "newsletter": {
+      "titel": "Neues aus unserer Arbeit.",
+      "text": "Alle paar Wochen ein kurzer Brief mit neuen Ratgebern, Zahlen und Vorlagen. Kostenlos, jederzeit abbestellbar. Sie bekommen ihn erst, wenn Sie Ihre Anmeldung per E-Mail bestätigen.",
+      "pfad": "/newsletter",
+      "knopf": "Zum Newsletter anmelden"
+    }
   }
 }

@@ -1,0 +1,31 @@
+{
+  "vorlagen": [
+    {
+      "id": "vertriebs-pipeline",
+      "titel": "Vertriebs-Pipeline auf einer Seite",
+      "text": "Tragen Sie jede Chance mit nächstem Schritt, Nachfass-Datum, Wert und Stufe in eine Zeile ein und übertragen Sie am Monatsende die fünf Zahlen, die zeigen, ob Ihr Vertrieb besser wird.",
+      "datei": "/assets/vorlagen/vertriebs-pipeline.pdf",
+      "bereich": "vertrieb",
+      "seiten": 2,
+      "groesse_kb": 237
+    },
+    {
+      "id": "kernsatz-in-fuenf-schritten",
+      "titel": "Ihr Kernsatz in fünf Schritten",
+      "text": "Mit vier kurzen Fragen und einem frei erfundenen Beispiel formulieren Sie den einen Satz, der sagt, für wen Sie da sind, was Sie lösen und warum man Ihnen glauben kann.",
+      "datei": "/assets/vorlagen/kernsatz-in-fuenf-schritten.pdf",
+      "bereich": "sichtbarkeit",
+      "seiten": 2,
+      "groesse_kb": 214
+    },
+    {
+      "id": "ki-regeln-fuer-ihr-team",
+      "titel": "KI-Regeln für Ihr Team",
+      "text": "Legen Sie auf einer Seite fest, welche Werkzeuge Ihr Team mit Firmenlizenz nutzt, was nie hineinkommt, wer prüft, wie Sie kennzeichnen und wann Sie die Regeln wieder ansehen. Eine Vorlage, keine Rechtsberatung.",
+      "datei": "/assets/vorlagen/ki-regeln-fuer-ihr-team.pdf",
+      "bereich": "innovation",
+      "seiten": 1,
+      "groesse_kb": 167
+    }
+  ]
+}

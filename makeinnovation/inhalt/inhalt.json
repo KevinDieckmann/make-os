@@ -58,11 +58,11 @@
    "titel": "Wie innovativ ist Ihr Unternehmen wirklich?",
    "text": "Der Innovations-Check zeigt in rund 10 Minuten, wo Sie im Vergleich zu Ihrer Branche stehen: bei Strategie, KI im Alltag, Automatisierung, Daten und Team. Spielen Sie nur mit KI, oder nutzen Sie sie wirklich?",
    "punkte": [
-    "15 Fragen im Chat mit Zoe, auf Wunsch mehr für einen genaueren Bericht",
+    "17 Fragen im Chat mit Zoe, unserer KI-Assistentin, auf Wunsch mehr für einen genaueren Bericht",
     "Antworten per Klick, Text oder Sprachnachricht, Dateien hochladen möglich",
-    "Sofort: Ihre Stufe, ein Netzdiagramm und der Vergleich mit Ihrer Branche",
+    "Sofort: Ihre Stufe, Ihre drei Bereiche und zwei nächste Schritte",
     "Per E-Mail: Ihr persönlicher IST-Bericht als PDF",
-    "Danach: kostenloses 90-Tage-Umsetzungsgespräch mit Kevin"
+    "Danach: kostenloses Erstgespräch mit Kevin"
    ],
    "stufen": [
     "Beobachter",
@@ -79,7 +79,7 @@
   },
   {
    "id": "gespraech",
-   "titel": "Das 90-Tage-Umsetzungsgespräch",
+   "titel": "Das Erstgespräch",
    "text": "Der Check zeigt, wo Sie stehen. Im Gespräch legen wir fest, wie es weitergeht: 60 Minuten per Video-Call mit Kevin, kostenlos. Sie gehen mit Ihren Top 3 Handlungsempfehlungen für die nächsten 90 Tage raus, klar und messbar. Innerhalb von 24 Stunden bekommen Sie sie schriftlich. Kein Verkaufsgespräch.",
    "regel": "5 Gespräche pro Woche. Ist die Woche voll, bekommen Sie den nächsten freien Termin oder einen Platz auf der Warteliste.",
    "cta": {
@@ -505,7 +505,7 @@
    "angebote": [
     {
      "name": "Innovations-Check",
-     "format": "Chat mit Zoe, Bericht als PDF, 90-Tage-Umsetzungsgespräch",
+     "format": "Chat mit Zoe, Bericht als PDF, Erstgespräch",
      "start": true,
      "herzstueck": true
     },
@@ -564,7 +564,7 @@
   {
    "id": "was-kostet-der-innovations-check",
    "f": "Was kostet der Innovations-Check?",
-   "a": "Nichts. Der Check, der Bericht und das 90-Tage-Umsetzungsgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen."
+   "a": "Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen."
   },
   {
    "id": "wie-lange-dauert-der-check",
@@ -578,7 +578,7 @@
   },
   {
    "id": "was-passiert-im-90-tage-umsetzungsgespraech",
-   "f": "Was passiert im 90-Tage-Umsetzungsgespräch?",
+   "f": "Was passiert im Erstgespräch?",
    "a": "60 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch."
   },
   {
@@ -804,7 +804,7 @@
     },
     {
      "schritt": "Unser Weg",
-     "text": "Der Innovations-Check zeigt Ihre Stufe. Im 90-Tage-Umsetzungsgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen."
+     "text": "Der Innovations-Check zeigt Ihre Stufe. Im Erstgespräch legen wir die Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen."
     },
     {
      "schritt": "Ergebnis",
@@ -815,7 +815,7 @@
     "Hero mit Erklärvideo",
     "Story in 4 Schritten",
     "Innovations-Check mit den 5 Stufen",
-    "90-Tage-Umsetzungsgespräch",
+    "Erstgespräch",
     "Umsetzungsprojekte ab 9.990 € (Coming Soon, Anfrage und Warteliste)",
     "Eigene KI-Plattform mit rund 30 Agenten als Beleg",
     "Gratis Innovation und AI: Markteintritt-Check, KI-Brain, Sales Agents, Leitfäden",
