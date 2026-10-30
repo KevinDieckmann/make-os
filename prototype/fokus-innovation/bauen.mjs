@@ -204,7 +204,9 @@ export function seitenBauen(q = quellen()) {
   const blick = (zeilen, titelText = 'Auf einen Blick') => `<section class="blick-band" aria-label="${e(titelText)}"><div class="w"><dl class="blick erscheint">${zeilen.filter(([, v]) => v).map(([k, v]) => `<div><dt>${e(k)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl></div></section>`;
   const kurzGesagt = (text) => `<div class="kurz-gesagt erscheint"><p class="etikett">Kurz gesagt</p><p>${t(text)}</p></div>`;
   const zeitplan = (ab) => `<ol class="zeitplan">${ab.zeilen.map((z) => `<li><span class="wann">${e(z[0])}</span><div><b>${e(z[1])}</b>${z[2] ? `<span>${t(z[2])}</span>` : ''}</div></li>`).join('')}</ol>${ab.hinweis ? `<p class="leise klein-text">${t(ab.hinweis)}</p>` : ''}`;
-  /** Die lange Tafel des Abends: Plätze als Punkte, ein paar Verbindungen über den Tisch (zeichnen sich einmal). */
+  /** Events (Kevin 30.10.: „verschiedene Formate“ statt eines langen Tisches): die Formate als ruhige Liste. */
+  const formatListe = () => `<ul class="format-liste erscheint">${F.events.formate.map((x) => `<li><b>${e(x.titel)}</b><span>${t(x.text)}</span></li>`).join('')}</ul>`;
+  /** Die lange Tafel des Abends (bis 30.10.): Plätze als Punkte, ein paar Verbindungen über den Tisch (zeichnen sich einmal). */
   const tafel = () => {
     const plaetze = [];
     for (let i = 0; i < 6; i++) { const x = 70 + i * 52; plaetze.push([x, 38], [x, 142]); }
@@ -217,14 +219,19 @@ export function seitenBauen(q = quellen()) {
   };
 
   // ── Rahmen: Kopf, Fuß, Check-Knopf ──
+  /**
+   * Gruppen mit mehreren Paketen bekommen eine eigene Seite (Kevin 30.10.: „nur Positionierung, Homepages, Videos … wenn sie draufklicken,
+   * stellen wir die Pakete vor“) — Pfad und Name aus fokus.json `gruppen_seiten`. Einzelne Angebote führen direkt auf ihre Seite.
+   */
+  const gruppenSeite = (b, g) => (g.liste.length > 1 && F.gruppen_seiten?.[g.name] ? { ...F.gruppen_seiten[g.name], href: `/${b}/${F.gruppen_seiten[g.name].pfad}/` } : null);
   const navUnter = (b) => [
     ...(b === 'innovation' ? [['/innovations-check/', 'Innovations-Check', 'kostenlos']] : []),
     ...(kleinerCheck(b) ? [[checkThema(b, `${b}_menue`), kleinerCheck(b).name, 'kostenlos']] : []),
-    ...produkteIn(b).map((a) => [produktPfad(a), F.kurznamen[a.id] ?? a.name, bald(a) ? 'bald' : '']),
+    ...gruppenIn(b).flatMap((g) => { const gs = gruppenSeite(b, g); return gs ? [[gs.href, gs.name, '']] : g.liste.map((a) => [produktPfad(a), F.kurznamen[a.id] ?? a.name, bald(a) ? 'bald' : '']); }),
   ];
   const NAV = [
     ...BEREICHE.map((b) => ({ key: b, name: F.bereiche[b].name, href: `/${b}/`, unter: navUnter(b) })),
-    { key: 'abend', name: 'Abend', href: '/abend/' },
+    { key: 'events', name: 'Events', href: '/events/' },
     { key: 'kostenlos', name: 'Kostenlos', href: '/kostenlos/' },
     { key: 'ueber-uns', name: 'Über uns', href: '/ueber-uns/' },
   ];
@@ -240,7 +247,7 @@ export function seitenBauen(q = quellen()) {
 <a class="knopf klein kopf-check" href="${erstLink()}">${e(F.erstgespraech.name)}</a>
 <details class="menue"><summary><span class="striche" aria-hidden="true"></span>Menü</summary><nav class="menue-blatt" aria-label="Menü">
 ${BEREICHE.map((b) => `<p class="menue-gruppe">${e(F.bereiche[b].name)}</p><a href="/${b}/">Überblick ${e(F.bereiche[b].name)}</a>${navUnter(b).map(([h, name]) => `<a href="${h}">${e(name)}</a>`).join('')}`).join('\n')}
-<p class="menue-gruppe">Fokus Innovation</p><a href="/abend/">Abend</a><a href="/kostenlos/">Kostenlos</a><a href="/preise/">Preise</a><a href="/ueber-uns/">Über uns</a><a href="/kontakt/">Kontakt</a>
+<p class="menue-gruppe">Fokus Innovation</p><a href="/events/">Events</a><a href="/kostenlos/">Kostenlos</a><a href="/preise/">Preise</a><a href="/ueber-uns/">Über uns</a><a href="/kontakt/">Kontakt</a>
 ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Oder: Innovations-Check, 10 Minuten</span> ${PFEIL}</a>
 </nav></details>
 </div></header>`;
@@ -252,7 +259,7 @@ ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Ode
 <p><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p></div>
 ${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name]), ['/innovations-check/', 'Innovations-Check'], ['/preise/', 'Preise']])}
 ${fussSpalte('Kostenlos', [['/kostenlos/#checks', 'Checks'], ['/kostenlos/#ratgeber', 'Ratgeber'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : []), ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/fragen/', 'Häufige Fragen'], ['/begriffe/', 'Begriffe']])}
-${fussSpalte('Fokus Innovation', [['/abend/', 'Abend'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
+${fussSpalte('Fokus Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
 </div>
 <div class="fuss-unten"><span>© 2026 ${e(anbieter.name)} · ${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}</span><span>Keine Cookies, kein Tracking. Alle Preise netto zuzüglich Umsatzsteuer, für Unternehmen.</span></div>
 </div></footer>`;
@@ -489,12 +496,12 @@ ${block('durchbruch', fl.durchbruch)}
 
 <section class="abschnitt" id="bekannt" aria-labelledby="bekannt-titel"><div class="w">
 ${abKopf({ marke: 'Ihr Alltag', h2: F.bekannt.titel, lead: F.bekannt.lead, id: 'bekannt-titel' })}
-<ul class="momente erscheint">${F.bekannt.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul>
+${F.bekannt.gruppen ? `<div class="momente-gruppen erscheint">${F.bekannt.gruppen.map((g) => `<div class="momente-gruppe"><h3 class="gruppe-titel">${e(B[g.bereich].name)}</h3><ul class="momente">${g.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul></div>`).join('')}</div>` : `<ul class="momente erscheint">${F.bekannt.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul>`}
 <div class="momente-schluss erscheint"><p>${t(F.bekannt.schluss)}</p>${erstKnopf()}</div>
 </div></section>
 
 <section class="abschnitt" id="was-wir-tun" aria-labelledby="leistungen-titel"><div class="w">
-${abKopf({ marke: 'Was wir tun', h2: 'Drei Bereiche.', ruhig: 'Und in jedem arbeiten wir selbst mit.', lead: 'Sichtbarkeit, Vertrieb und Innovation tragen die Arbeit. Dazu kommen unser Netzwerk und unsere Abende.', id: 'leistungen-titel' })}
+${abKopf({ marke: 'Was wir tun', h2: 'Drei Bereiche.', ruhig: 'Und in jedem arbeiten wir selbst mit.', lead: 'Sichtbarkeit, Vertrieb und Innovation tragen die Arbeit. Dazu kommen unser Netzwerk, unsere Partner und unsere Events.', id: 'leistungen-titel' })}
 ${BEREICHE.map(leistung).join('\n')}
 </div></section>
 
@@ -508,18 +515,17 @@ ${abKopf({ marke: 'Wegweiser', h2: ww.titel, lead: ww.lead, id: 'wegweiser-titel
 </div></section>
 
 <section class="abschnitt" id="warum-wir" aria-labelledby="warum-titel"><div class="w">
-${abKopf({ marke: 'Warum wir', h2: 'Wir arbeiten in Ihrem Team, nicht daneben.', lead: 'Vier Unterschiede, an denen Sie uns messen können. Jeder mit einem Beleg.', id: 'warum-titel' })}
-<dl class="zahlen erscheint">${F.zahlen.map((z) => `<div><dt>${e(z.text)}</dt><dd>${e(z.wert)}</dd></div>`).join('')}</dl>
+${abKopf({ marke: 'Warum wir', h2: 'Wir arbeiten in Ihrem Team, nicht daneben.', lead: F.warum_lead ?? 'Vier Unterschiede, an denen Sie uns messen können.', id: 'warum-titel' })}
 ${raster(F.warum_wir.map((w) => ({ titel: w.titel, text: w.text, unter: w.beleg })), 4)}
 </div></section>
 
-${fragen(F.einwaende, 'Ehrliche Antworten', { id: 'einwaende', marke: 'Bevor Sie fragen' })}
+${fragen(F.einwaende, F.einwaende_titel ?? 'Bevor Sie fragen', { id: 'einwaende', marke: F.einwaende_marke ?? 'Fragen' })}
 
-<section class="abschnitt" id="abend" aria-labelledby="abend-titel"><div class="w">
+<section class="abschnitt" id="events" aria-labelledby="events-titel"><div class="w">
 <div class="kasten abend-kasten">
-<div class="erscheint">${vorzeile(F.abend.titel)}<h2 id="abend-titel">${titel('Ein Abend.|Ein langer Tisch.', 'Menschen, die Neues umsetzen.')}</h2>${tafel()}</div>
-<div class="erscheint"><p class="lead">${t(F.abend.text)}</p><p class="leise">${t(F.abend.termine)}</p>
-<div class="knoepfe">${knopf(mail(F.abend.betreff), 'Auf die Gästeliste')}${textlink('/abend/', 'Mehr zum Abend')}</div></div>
+<div class="erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${titel(F.events.start_titel.join('|'), F.events.start_ruhig)}</h2>${formatListe()}</div>
+<div class="erscheint"><p class="lead">${t(F.events.text)}</p><p class="leise">${t(F.events.termine)}</p>
+<div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten')}${textlink('/events/', 'Mehr zu den Events')}</div></div>
 </div>
 </div></section>
 
@@ -558,7 +564,7 @@ ${blaetter.vergleiche[k].map(vergleichTabelle).join('\n')}${netto}</div></sectio
       sichtbarkeit: () => `${arbeitsprobe()}
 <section class="abschnitt" aria-labelledby="zusatz-titel"><div class="w">${abKopf({ marke: 'Dazu', h2: 'Zusatzoptionen und Netzwerk', id: 'zusatz-titel' })}
 <div class="zwei-teile"><div class="erscheint"><h3 class="gruppe-titel">Dazu buchbar</h3><dl class="daten">${inhalt.zusatzoptionen.map((z) => `<div><dt>${e(z.name)}<span class="leise">${e(z.name === 'Express' ? 'halbe Lieferzeit' : z.leistung)}</span></dt><dd>${e(z.preis)}</dd></div>`).join('')}</dl></div>
-<div class="erscheint"><h3 class="gruppe-titel">${e(b.auch.titel)}</h3><p>${t(b.auch.text)}</p><div class="knoepfe">${textlink('/abend/', 'Zum Abend')}</div></div></div></div></section>`,
+<div class="erscheint"><h3 class="gruppe-titel">${e(b.auch.titel)}</h3><p>${t(b.auch.text)}</p><div class="knoepfe">${textlink('/events/', 'Zu den Events')}</div></div></div></div></section>`,
       vertrieb: () => `<section class="abschnitt" aria-labelledby="leiter-titel"><div class="w"><div class="kasten leiter-kasten erscheint"><div>${vorzeile('Für den Mittelstand')}<h2 id="leiter-titel">${e(b.leiter.titel)}</h2></div><div><p class="lead">${t(b.leiter.text)}</p><div class="knoepfe">${textlink(produktPfad(angebot('head-of-sales')), 'Head of Sales auf Zeit')}${textlink(erstLink(), 'Erstgespräch vereinbaren')}</div></div></div></div></section>
 
 ${rechner()}
@@ -611,6 +617,37 @@ ${wissenAbschnitt(artikelZu((a) => a.bereich === k), `Wissen zu ${b.name}`)}
 ${fragen(zuschneiden(faqVon(seite.bereiche[k].faq), k))}
 ${schlussakt({ quelle: `${k}_ende` })}`,
     });
+  }
+
+  // ── Paket-Gruppen (30.10.): Homepages und Videos je eine Seite, die die Pakete vorstellt — das Menü zeigt nur die Gruppe. ──
+  for (const k of BEREICHE) {
+    for (const g of gruppenIn(k)) {
+      const gs = gruppenSeite(k, g);
+      if (!gs) continue;
+      const familie = blaetter.produkte[g.liste[0].id]?.familie;
+      const fam = familie ? blaetter.familien[familie] : null;
+      const vergleiche = (blaetter.vergleiche[k] ?? []).filter((v) => v.angebote.every((id) => g.liste.some((a) => a.id === id)));
+      const klein = kleinerCheck(k);
+      neu(`${k}/${gs.pfad}/index.html`, {
+        titel: gs.seo_titel,
+        beschreibung: gs.seo_beschreibung,
+        bildVorzeile: B[k].name,
+        bildTitel: `${gs.titel} ${gs.ruhig}`,
+        aktiv: k,
+        main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
+<div class="erscheint">${brotkrumen([[`/${k}/`, B[k].name], [null, gs.name]])}${vorzeile(B[k].name)}<h1 id="held-titel">${titel(gs.titel, gs.ruhig)}</h1><p class="lead">${t(gs.lead)}</p>
+<div class="knoepfe">${erstKnopf()}${klein ? textlink(checkThema(k, `${gs.pfad}_held`), `${klein.name}, ${klein.minuten} Minuten`) : ''}</div></div>
+</div></section>
+
+<section class="abschnitt" aria-labelledby="pakete-titel"><div class="w">${abKopf({ marke: 'Pakete', h2: `${g.liste.length} Pakete zur Wahl.`, lead: fam?.problem, id: 'pakete-titel' })}
+${angebotZeilen(g.liste)}${netto}</div></section>
+${vergleiche.length ? `<section class="abschnitt" aria-labelledby="vergleich-titel"><div class="w">${abKopf({ marke: 'Vergleich', h2: 'Was in welchem Paket steckt', id: 'vergleich-titel' })}
+${vergleiche.map(vergleichTabelle).join('\n')}${netto}</div></section>` : ''}
+${fam?.immer?.length ? `<section class="abschnitt" aria-labelledby="immer-titel"><div class="w">${abKopf({ marke: 'Immer dabei', h2: 'In jedem Paket enthalten', id: 'immer-titel' })}<div class="erscheint">${punkte(fam.immer)}</div></div></section>` : ''}
+${fam?.fragen?.length ? fragen(fam.fragen.filter((x) => !x.nur).map((x) => ({ f: x.frage, a: x.antwort })), `Fragen zu ${gs.name}`) : ''}
+${schlussakt({ quelle: `${gs.pfad}_ende` })}`,
+      });
+    }
   }
 
   // ── Produktseiten ──
@@ -720,26 +757,29 @@ ${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'In rund 10 Minu
     });
   }
 
-  // ── Abend ──
-  neu('abend/index.html', {
-    seo: 'abend',
-    bildVorzeile: F.abend.titel,
-    bildTitel: F.abend.satz,
-    aktiv: 'abend',
+  // ── Events (bis 30.10. „Abend“; Caddy leitet /abend/ hierher um) ──
+  neu('events/index.html', {
+    seo: 'events',
+    bildVorzeile: F.events.titel,
+    bildTitel: F.events.satz,
+    aktiv: 'events',
     main: `<section class="held sand" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[null, 'Abend']])}${vorzeile(F.abend.titel)}<h1 id="held-titel">${titel('Ein Abend.|Ein langer Tisch.', 'Menschen, die Neues umsetzen.')}</h1><p class="lead">${t(F.abend.text)}</p>
-<div class="knoepfe">${knopf(mail(F.abend.betreff), 'Auf die Gästeliste')}</div><p class="leise klein-text">${e(F.abend.kosten)} · Termine folgen</p></div>
-<div class="tafel-raum">${tafel()}</div>
+<div class="erscheint">${brotkrumen([[null, 'Events']])}${vorzeile(F.events.titel)}<h1 id="held-titel">${titel(F.events.start_titel.join('|'), F.events.start_ruhig)}</h1><p class="lead">${t(F.events.text)}</p>
+<div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten')}</div><p class="leise klein-text">${e(F.events.kosten)} · Termine folgen</p></div>
+<div>${formatListe()}</div>
 </div></section>
 
-<section class="abschnitt" aria-labelledby="art-titel"><div class="w">${abKopf({ marke: 'So ist der Abend', h2: 'Kuratiert, klein, verbindend.', id: 'art-titel' })}
-${raster(F.abend.merkmale, 3)}</div></section>
+<section class="abschnitt" aria-labelledby="formate-titel"><div class="w">${abKopf({ marke: 'Formate', h2: 'Verschiedene Formate.', ruhig: 'Ein Gedanke.', id: 'formate-titel' })}
+${raster(F.events.formate, Math.min(4, F.events.formate.length))}</div></section>
+
+<section class="abschnitt" aria-labelledby="art-titel"><div class="w">${abKopf({ marke: 'So sind unsere Events', h2: F.events.merkmale.map((m) => m.titel).join(', ') + '.', id: 'art-titel' })}
+${raster(F.events.merkmale, 3)}</div></section>
 
 <section class="abschnitt" aria-labelledby="gast-titel"><div class="w">${abKopf({ marke: 'Gastgeberin', h2: 'Malin bringt Menschen zusammen.', lead: F.team.find((p) => p.kuerzel === 'MA').text, id: 'gast-titel' })}
-<div class="zwei-teile"><div class="erscheint"><h3 class="gruppe-titel">Warum wir Abende machen</h3><p>${t(F.abend.warum)}</p></div>
-<div class="erscheint"><h3 class="gruppe-titel">Termine</h3><p>${t(F.abend.termine)}</p><div class="knoepfe">${knopf(mail(F.abend.betreff), 'Auf die Gästeliste', 'zweit')}</div></div></div></div></section>
+<div class="zwei-teile"><div class="erscheint"><h3 class="gruppe-titel">Warum wir Events machen</h3><p>${t(F.events.warum)}</p></div>
+<div class="erscheint"><h3 class="gruppe-titel">Termine</h3><p>${t(F.events.termine)}</p><div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten', 'zweit')}</div></div></div></div></section>
 
-${schlussakt({ quelle: 'abend_ende' })}`,
+${schlussakt({ quelle: 'events_ende' })}`,
   });
 
   // ── Über uns ──
@@ -775,8 +815,7 @@ ${raster(F.werte, 3)}
 <section class="abschnitt" aria-labelledby="nicht-titel"><div class="w">${abKopf({ marke: 'Abgrenzung', h2: 'Was wir nicht sind.', id: 'nicht-titel' })}
 ${raster(F.nicht.map((x) => ({ ...x, nr: false })), 4)}</div></section>
 
-<section class="abschnitt" aria-labelledby="belege-titel"><div class="w">${abKopf({ marke: 'Aus unserer Laufbahn', h2: 'Was wir vorher aufgebaut haben.', id: 'belege-titel' })}
-<dl class="zahlen erscheint">${F.zahlen.map((z) => `<div><dt>${e(z.text)}</dt><dd>${e(z.wert)}</dd></div>`).join('')}</dl>
+<section class="abschnitt" aria-labelledby="belege-titel"><div class="w">${abKopf({ marke: 'Aus unserer Arbeit', h2: F.laufbahn?.titel ?? 'Was wir mitbringen.', lead: F.laufbahn?.text, id: 'belege-titel' })}
 <p class="satz-unter erscheint">Dazu bauen wir unsere eigene Software und nutzen sie jeden Tag in unserer Arbeit.</p></div></section>
 
 ${schlussakt({ quelle: 'ueber_uns_ende' })}`,
@@ -800,7 +839,7 @@ ${weg(F.einstieg, { etiketten: ['01', '02', '03'], label: 'Drei Schritte bis zum
 <section class="abschnitt" aria-label="Kontaktdaten"><div class="w"><div class="kontakt-liste erscheint">
 <div><p class="etikett">E-Mail</p><a class="gross-link" href="mailto:${e(k.mail)}">${e(k.mail)}</a></div>
 <div><p class="etikett">Adresse</p><address>${e(F.marke.name)}<br>${e(anbieter.name)}<br>${k.adresse.map(t).join('<br>')}</address><p class="leise klein-text">${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}.</p></div>
-<div><p class="etikett">Abend</p><p>Für die Gästeliste genügt eine kurze Mail.</p>${textlink(mail(F.abend.betreff), 'Auf die Gästeliste')}</div>
+<div><p class="etikett">Events</p><p>Für die nächste Einladung genügt eine kurze Mail.</p>${textlink(mail(F.events.betreff), 'Einladung erhalten')}</div>
 </div></div></section>`,
     });
   }
@@ -1053,7 +1092,7 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
   // ── Preise: alles auf einer Seite ──
   {
     const zeile = (a) => `<tr><th scope="row"><a class="unterstrichen" href="${produktPfad(a)}">${e(a.name)}</a>${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</th><td data-name="Preis netto">${e(preisVoll(a))}</td><td data-name="Konditionen">${bald(a) ? 'Festpreis mit klarem Umfang, vorab vereinbart; Start in Kürze' : t([a.preis_zusatz, F.umfang[a.id]].filter(Boolean).join(' · '))}</td></tr>`;
-    const frei = [[erstLink(), F.erstgespraech.name, 'per Video, klärt, ob und womit wir helfen können'], ['/innovations-check/', 'Innovations-Check', 'rund 10 Minuten, Ergebnis sofort'], ['/innovations-check/', '90-Tage-Umsetzungsgespräch', '60 Minuten mit Kevin nach dem Check, Top 3 schriftlich'], ['/abend/', F.abend.titel, 'auf Einladung, für Gäste']];
+    const frei = [[erstLink(), F.erstgespraech.name, 'per Video, klärt, ob und womit wir helfen können'], ['/innovations-check/', 'Innovations-Check', 'rund 10 Minuten, Ergebnis sofort'], ['/events/', F.events.titel, 'auf Einladung, für Gäste']];
     const kopfZeile = '<thead><tr><th scope="col">Angebot</th><th scope="col">Preis netto</th><th scope="col">Konditionen</th></tr></thead>';
     const tabelle = (titelText, zeilenHtml, { zeigen = true } = {}) => `${zeigen ? `<h3 class="gruppe-titel">${e(titelText)}</h3>` : ''}<div class="tabelle-huelle erscheint"><table class="vergleich text preis-tabelle"><caption class="sr">${e(titelText)}</caption>${kopfZeile}<tbody>${zeilenHtml}</tbody></table></div>`;
     const angeboteAlle = BEREICHE.flatMap(produkteIn);
@@ -1123,7 +1162,7 @@ ${W.artikel.map((a) => `- ${mdLink(a.titel, artikelPfad(a))}: ${klar(a.beschreib
 - ${mdLink('Alle Preise', '/preise/')}: jedes Angebot mit Preis und Konditionen
 - ${mdLink('Häufige Fragen', '/fragen/')}: Check, Vertrieb, Homepages, Videos, Verträge
 - ${mdLink('Begriffe von A bis Z', '/begriffe/')}: ${W.begriffe.length} Begriffe aus Vertrieb, Sichtbarkeit und KI
-- ${mdLink(F.abend.titel, '/abend/')}: ${klar(F.abend.text)}
+- ${mdLink(F.events.titel, '/events/')}: ${klar(F.events.text)}
 - ${mdLink('Über uns', '/ueber-uns/')}: Leitidee, Team, Werte
 - ${mdLink('Kontakt', '/kontakt/')}: ${seite.kontakt.mail}
 

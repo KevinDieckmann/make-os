@@ -269,13 +269,13 @@
       ]
     }
   },
-  "abend": {
-    "titel": "Fokus Innovation · Abend",
+  "events": {
+    "titel": "Fokus Innovation · Events",
     "satz": "Ein Abend. Ein langer Tisch. Menschen, die Neues umsetzen.",
     "text": "Kuratiert und auf Einladung: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.",
     "kosten": "Für Gäste kostenlos",
     "termine": "Termine und Orte folgen. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste Einladung.",
-    "betreff": "Fokus Innovation · Abend – Gästeliste",
+    "betreff": "Fokus Innovation · Events – Einladung",
     "merkmale": [
       {
         "titel": "Kuratiert",
@@ -290,7 +290,18 @@
         "text": "Malin setzt die richtigen Menschen nebeneinander. Wer zusammenpasst, den verbinden wir nach dem Abend gezielt."
       }
     ],
-    "warum": "Wir bringen die richtigen Menschen an einen Tisch, beim Abend und im Netzwerk, für den Standort und nicht nur für uns."
+    "warum": "Wir bringen die richtigen Menschen an einen Tisch, beim Abend und im Netzwerk, für den Standort und nicht nur für uns.",
+    "start_titel": [
+      "Events.",
+      "Verschiedene Formate."
+    ],
+    "start_ruhig": "Menschen, die Neues umsetzen.",
+    "formate": [
+      {
+        "titel": "Format folgt",
+        "text": "Platzhalter bis zu den neuen Texten."
+      }
+    ]
   },
   "warum_wir": [
     {
@@ -312,20 +323,6 @@
       "titel": "Feste Preise, feste Abläufe",
       "text": "Jedes Angebot steht mit Preis, Ablauf und Konditionen auf seiner Seite.",
       "beleg": "Homepages und Videos mit Lieferzeit in Werktagen, Mandate mit festem Monatspreis und klarer Laufzeit."
-    }
-  ],
-  "zahlen": [
-    {
-      "wert": "35",
-      "text": "Vertriebler geführt, in Kevins Zeit im Telesales"
-    },
-    {
-      "wert": "1.200",
-      "text": "Verkäufe in 18 Monaten mit 60 Partnern, in Kevins Zeit im Empfehlungsvertrieb"
-    },
-    {
-      "wert": "250+",
-      "text": "Entscheider in unserem Netzwerk"
     }
   ],
   "fuer_wen": [
@@ -603,10 +600,6 @@
         "titel": "Innovations-Check: kostenlos in 10 Minuten · Fokus Innovation",
         "beschreibung": "Wo steht Ihr Unternehmen bei Strategie, KI, Automatisierung, Daten und Team? Der kostenlose Innovations-Check zeigt es in rund 10 Minuten, mit Branchenvergleich."
       },
-      "abend": {
-        "titel": "Fokus Innovation · Abend: Menschen an einem langen Tisch",
-        "beschreibung": "Kuratiert und auf Einladung: Gründer, Mittelständler und Macher aus KI und Technik an einem langen Tisch. Für Gäste kostenlos, Gastgeberin ist Malin."
-      },
       "ueber-uns": {
         "titel": "Über uns: Kevin Dieckmann und Malin · Fokus Innovation",
         "beschreibung": "Warum es Fokus Innovation gibt, wer dahintersteht und woran Sie uns messen können: Werte, Arbeitsweise und was wir vorher im Vertrieb aufgebaut haben."
@@ -646,6 +639,10 @@
       "zahlen": {
         "titel": "Zahlen zu Vertrieb, Sichtbarkeit und KI · Fokus Innovation",
         "beschreibung": "Studien zu Sichtbarkeit, Vertrieb und KI in deutschen Unternehmen, kurz erklärt. Jede Zahl mit Herausgeber, Jahr und Link zur Quelle."
+      },
+      "events": {
+        "titel": "Fokus Innovation · Events: Formate, die verbinden",
+        "beschreibung": "Gesprächsrunden, Impulse und Workshops auf Einladung: Gründer, Mittelständler und Macher aus KI und Technik. Für Gäste kostenlos, Gastgeberin ist Malin."
       }
     }
   },
@@ -937,6 +934,26 @@
       "text": "Alle paar Wochen ein kurzer Brief mit neuen Ratgebern, Zahlen und Vorlagen. Kostenlos, jederzeit abbestellbar. Sie bekommen ihn erst, wenn Sie Ihre Anmeldung per E-Mail bestätigen.",
       "pfad": "/newsletter",
       "knopf": "Zum Newsletter anmelden"
+    }
+  },
+  "gruppen_seiten": {
+    "Homepage-Pakete": {
+      "pfad": "homepages",
+      "name": "Homepages",
+      "titel": "Homepages.",
+      "ruhig": "Drei Pakete, ein Ziel.",
+      "lead": "Eine Website, auf der Besucher in fünf Sekunden verstehen, was Sie machen, und die Anfragen bringt. Drei Pakete mit festem Preis und fester Lieferzeit, je nachdem, wie viel Geschichte und Wirkung Sie brauchen.",
+      "seo_titel": "Homepages: drei Pakete mit Festpreis · Fokus Innovation",
+      "seo_beschreibung": "Homepage Landing, Story und Cinematic: drei Pakete mit festem Preis und fester Lieferzeit, Texte von uns, mobil zuerst und mit Anfrage ins CRM."
+    },
+    "Videos": {
+      "pfad": "videos",
+      "name": "Videos",
+      "titel": "Videos.",
+      "ruhig": "Erklären, erzählen, dranbleiben.",
+      "lead": "Vom Erklärvideo bis zur Serie: Videos, die in Sekunden zeigen, was Sie machen. Sie geben zuerst das Skript frei, dann entstehen die Bilder. Drei Angebote mit festem Preis und fester Lieferzeit.",
+      "seo_titel": "Videos für Unternehmen: drei Angebote · Fokus Innovation",
+      "seo_beschreibung": "Erklärvideo, Videostory und Video Serie: Videos, die Ihr Angebot in Sekunden zeigen, mit Skript zur Freigabe, festem Preis und fester Lieferzeit."
     }
   }
 }

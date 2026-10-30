@@ -2545,10 +2545,10 @@
       "link": "/sichtbarkeit/erklaervideo/"
     },
     {
-      "id": "fokus-innovation-abend",
-      "name": "Fokus Innovation · Abend",
-      "text": "Unser kuratierter Abend an einem langen Tisch: Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.",
-      "link": "/abend/"
+      "id": "fokus-innovation-events",
+      "name": "Fokus Innovation · Events",
+      "text": "Unsere Events auf Einladung, in verschiedenen Formaten: Gründer, Mittelständler und Macher aus KI und Technik treffen sich, lernen voneinander und kommen ins Geschäft. Für Gäste kostenlos, Gastgeberin ist Malin.",
+      "link": "/events/"
     },
     {
       "id": "go-to-market",
