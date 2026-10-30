@@ -352,13 +352,13 @@
   "fuer_wen": [
     {
       "titel": "Innovative Start-ups",
-      "richtung": "Innovation in den Markt",
+      "richtung": "Innovation in den Markt bringen",
       "text": "Sie bauen etwas Neues und brauchen die ersten Kunden.",
       "einstieg": "Positionierung, Sichtbarkeit und unsere Events. Vertrieb, sobald das Produkt fertig ist."
     },
     {
       "titel": "Innovative Unternehmer",
-      "richtung": "Innovation in den Markt",
+      "richtung": "Innovation in den Markt bringen",
       "text": "Fertiges Produkt, 5 bis 50 Mitarbeitende: Tech, KI, FinTech, innovative Dienstleister und Handwerk, Gesundheit, Sport, Ernährung.",
       "einstieg": "Sichtbarkeit und Vertrieb aus einer Hand, auf Wunsch mit PR und Kommunikation."
     },
@@ -688,7 +688,7 @@
   "tueren": [
     {
       "id": "markt",
-      "etikett": "Innovation in den Markt",
+      "etikett": "Innovation in den Markt bringen",
       "titel": "Wir haben ein starkes Produkt und brauchen Kunden.",
       "text": "Positionierung, Website, Videos und PR bringen Anfragen. Ein Vertrieb mit System macht Kunden daraus."
     },
