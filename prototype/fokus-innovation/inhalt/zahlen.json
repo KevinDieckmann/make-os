@@ -3,33 +3,6 @@
   "hinweis": "Jede Zahl am 30.10.2026 am Original geprüft (Feld „geprueft“); nur Zahlen mit Primärquelle. Verworfenes mit Grund unter „verworfen“. Jährlich aktualisieren.",
   "zahlen": [
     {
-      "id": "reuters-ki-suche-2026",
-      "bereich": "sichtbarkeit",
-      "wert": "57 %",
-      "satz": "2026 sahen oder nutzten 57 % der Befragten in neun Ländern binnen einer Woche KI-Antworten oder KI-Zusammenfassungen in Suchmaschinen. Deutschland war nicht Teil der Stichprobe.",
-      "quelle": "Reuters Institute (Universität Oxford)",
-      "titel": "Generative AI and News Report 2026",
-      "datum": "2026-10-29",
-      "jahr_der_daten": 2026,
-      "url": "https://reutersinstitute.politics.ox.ac.uk/generative-ai-and-news-report-2026-standalone-tools-information-infrastructure",
-      "zitat": "57% across nine countries say they saw or engaged with AI-generated answers",
-      "geprueft": "Originalseite am 30.10.2026 geprüft. Befragung durch YouGov vom 14.08. bis 28.09.2026, online, rund 2.000 je Land; Länder AR, AU, DK, FI, FR, JP, NO, UK, US.",
-      "vorn": true
-    },
-    {
-      "id": "eurostat-info-online-2026",
-      "bereich": "sichtbarkeit",
-      "wert": "77 %",
-      "satz": "2025 suchten 77 % der Internetnutzenden in der EU (16 bis 74 Jahre) online nach Informationen über Waren und Dienstleistungen.",
-      "quelle": "Eurostat",
-      "titel": "Digitalisation in Europe – 2026 edition",
-      "datum": "2026-04-23",
-      "jahr_der_daten": 2025,
-      "url": "https://ec.europa.eu/eurostat/web/interactive-publications/digitalisation-2026",
-      "zitat": "Finding information about goods and services (77%)",
-      "geprueft": "Originalseite am 30.10.2026 geprüft; EU-Wert für Personen mit Internetnutzung in den letzten 3 Monaten."
-    },
-    {
       "id": "eurostat-social-media-groesse",
       "bereich": "sichtbarkeit",
       "wert": "59 %",
@@ -53,7 +26,8 @@
       "jahr_der_daten": 2025,
       "url": "https://www.forrester.com/blogs/state-of-business-buying-2026/",
       "zitat": "Nearly all business buyers (94%) report using AI during their buying process.",
-      "geprueft": "Forrester-Blog am 30.10.2026 geprüft. Datengrundlage Buyers' Journey Survey 2025, weltweit; Vorjahr 89 %."
+      "geprueft": "Forrester-Blog am 30.10.2026 geprüft. Datengrundlage Buyers' Journey Survey 2025, weltweit; Vorjahr 89 %.",
+      "vorn": true
     },
     {
       "id": "forrester-kaufgruppe",
@@ -67,20 +41,6 @@
       "url": "https://www.forrester.com/press-newsroom/forrester-2026-the-state-of-business-buying/",
       "zitat": "„The typical buying decision now includes 13 internal stakeholders and nine external influencers“",
       "geprueft": "Pressemitteilung auf forrester.com am 2026-10-30 abgerufen (Cambridge, Mass., 21.01.2026). International, kein Deutschland-Wert. Stichprobe und Erhebungszeitraum nennt die Seite nicht, deshalb jahr_der_daten leer."
-    },
-    {
-      "id": "ifo-selbststaendige-auftragsmangel",
-      "bereich": "vertrieb",
-      "wert": "47,3 %",
-      "satz": "Im Juli 2026 berichteten 47,3 % der Selbstständigen in Deutschland von fehlenden Aufträgen.",
-      "quelle": "ifo Institut",
-      "titel": "Knapp die Hälfte der Selbständigen klagt über Auftragsmangel",
-      "datum": "2026-08-07",
-      "jahr_der_daten": 2026,
-      "url": "https://www.ifo.de/fakten/2026-08-07/knapp-die-haelfte-der-selbstaendigen-klagt-ueber-auftragsmangel",
-      "zitat": "„Etwa jeder zweite Selbständige (47,3%) in Deutschland berichtet von fehlenden Aufträgen.“",
-      "geprueft": "Originalseite (deutsch und englisch) am 2026-10-30 abgerufen. Grundlage: Jimdo-ifo-Geschäftsklimaindex, ifo-Umfrage Juli 2026, Solo-Selbstständige und Kleinstunternehmen mit weniger als neun Beschäftigten. Dieselbe Seite: 21,2 % sehen ihre wirtschaftliche Existenz akut gefährdet.",
-      "vorn": true
     },
     {
       "id": "dsm-referenzkunden-2026",
@@ -148,17 +108,44 @@
       "geprueft": "Pressemitteilung auf forrester.com am 2026-10-30 abgerufen. International, kein Deutschland-Wert; Stichprobe und Erhebungszeitraum nennt die Seite nicht. Dieselbe Seite: Bei Käufen ab 10 Mio. US-Dollar testen 78 % vorher."
     },
     {
-      "id": "dihk-kmu-stellenbesetzung",
+      "id": "ifo-auftragsmangel-2026",
       "bereich": "vertrieb",
-      "wert": "über 40 %",
-      "satz": "Mehr als 40 % der kleinen und mittleren Unternehmen in Deutschland haben Schwierigkeiten, offene Stellen zu besetzen.",
+      "wert": "36,3 %",
+      "satz": "Im Januar 2026 meldeten 36,3 % der Unternehmen in Deutschland zu wenig Aufträge. Am stärksten betroffen waren Unternehmensberater (53,8 %), die Werbebranche (51,2 %) und IT-Dienstleister (48,1 %).",
+      "quelle": "ifo Institut",
+      "titel": "Auftragslage der Unternehmen entspannt sich nur geringfügig",
+      "datum": "2026-01-29",
+      "jahr_der_daten": 2026,
+      "url": "https://www.ifo.de/fakten/2026-01-29/auftragslage-der-unternehmen-entspannt-sich-nur-geringfuegig",
+      "zitat": "„Der Anteil sank etwas von 36,9% im Oktober auf 36,3% im Januar.“",
+      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). ifo-Konjunkturumfrage Januar 2026 (Industrie, Dienstleister, Handel, Bau); die Fallzahl nennt die Seite nicht. Eine neuere Auswertung zum Auftragsmangel gab es bis zum 30.10.2026 nicht.",
+      "vorn": true
+    },
+    {
+      "id": "kfw-umsatzerwartung-2026",
+      "bereich": "vertrieb",
+      "wert": "29 %",
+      "satz": "Je 29 % der kleinen und mittleren Unternehmen in Deutschland erwarten für die nächsten drei Jahre höhere bzw. niedrigere Umsätze, unterm Strich Stillstand. 2025 sanken ihre Umsätze preisbereinigt um 1,5 %, zum dritten Mal in Folge.",
+      "quelle": "KfW Research",
+      "titel": "KfW-Mittelstandspanel 2026",
+      "datum": "2026-10-22",
+      "jahr_der_daten": 2026,
+      "url": "https://www.kfw.de/PDF/Download-Center/Konzernthemen/Research/PDF-Dokumente-KfW-Mittelstandspanel/KfW-Mittelstandspanel-2026.pdf",
+      "zitat": "„Jeweils 29 % der KMU gehen davon aus, dass ihr Umsatz in den kommenden drei Jahren über bzw. unter dem Vorjahresniveau liegen wird.“",
+      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). PDF (Oktober 2026), 10.773 mittelständische Unternehmen, Befragung Februar bis Juli 2026; Datum laut Veröffentlichungsliste der KfW."
+    },
+    {
+      "id": "dihk-dienstleister-nachfrage-2026",
+      "bereich": "vertrieb",
+      "wert": "78 %",
+      "satz": "78 % der IT-Dienstleister und 64 % der Unternehmensberatungen in Deutschland nennen die Inlandsnachfrage als Geschäftsrisiko. In beiden Branchen ist es das am häufigsten genannte Risiko.",
       "quelle": "DIHK",
-      "titel": "DIHK legt Fachkräftereport 2025/2026 vor",
-      "datum": "2025-12-19",
-      "jahr_der_daten": 2025,
-      "url": "https://www.dihk.de/de/newsroom/dihk-legt-fachkraeftereport-2025-2026-vor-159712",
-      "zitat": "„Mehr als 40 Prozent der kleinen und mittleren Unternehmen kämpfen mit Stellenbesetzungsschwierigkeiten.“",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen (veröffentlicht 19.12.2025, aktualisiert 07.01.2026). Grundlage: DIHK-Konjunkturumfrage Herbst 2025 mit fast 22.000 Unternehmen. Über alle Unternehmen: 36 % können offene Stellen zumindest teilweise nicht besetzen. Die Zahl gilt für alle Berufe, nicht nur den Vertrieb."
+      "titel": "Insight Dienstleistungswirtschaft Frühsommer 2026",
+      "datum": "2026-06-05",
+      "jahr_der_daten": 2026,
+      "url": "https://www.dihk.de/resource/blob/181536/35b4934a6d2a4e34b5fb05539ab768a8/konjunktur-dihk-insight-diensleistungswirtschaft-fruehsommer-2026-data.pdf",
+      "zitat": "„In vielen Branchen ist die Inlandsnachfrage das am häufigsten genannte Risiko, unter anderem bei IT-Dienstleistungen (78 Prozent)“",
+      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). PDF mit Stand Mai 2026, über 11.000 Dienstleistungsunternehmen."
     },
     {
       "id": "ifo-ki-nutzung-2026",
@@ -253,17 +240,31 @@
       "geprueft": "Pressemitteilung und PDF am 30.10.2026 geprüft. 4.686 Unternehmen, Feldzeit 10. bis 28.11.2025; Grundgesamtheit: Unternehmen mit praktischem KI-Einsatz."
     },
     {
-      "id": "destatis-ki-hemmnis-wissen",
+      "id": "bitkom-ki-potenzial-2026",
       "bereich": "innovation",
-      "wert": "72 %",
-      "satz": "Von den Unternehmen in Deutschland, die den Einsatz von KI erwogen, aber noch nicht umgesetzt haben, nannten 2025 72 % fehlendes Wissen als Grund.",
-      "quelle": "Statistisches Bundesamt (Destatis)",
-      "titel": "Gründe gegen die Nutzung von Technologien der künstlichen Intelligenz nach Beschäftigtengrößenklassen",
-      "datum": "2025-11-24",
+      "wert": "3 %",
+      "satz": "Nur 3 % der Unternehmen ab 20 Beschäftigten in Deutschland schöpfen das Potenzial von KI nach eigener Einschätzung eher stark aus, keines vollständig.",
+      "quelle": "Bitkom",
+      "titel": "Erstmals nutzt die Mehrheit der Unternehmen KI (Presseinformation)",
+      "datum": "2026-09-14",
+      "jahr_der_daten": 2026,
+      "url": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI",
+      "zitat": "„Kein Unternehmen schöpft nach eigener Einschätzung das Potenzial von KI vollständig aus, nur 3 Prozent tun es eher stark.“",
+      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). 603 Unternehmen ab 20 Beschäftigten, Befragung in den Kalenderwochen 28 bis 33/2026.",
+      "vorn": true
+    },
+    {
+      "id": "zew-genai-eigenregie-2026",
+      "bereich": "innovation",
+      "wert": "56 %",
+      "satz": "In 56 % der Unternehmen, die generative KI einsetzen, nutzen Beschäftigte sie meist auf eigene Faust, etwa über private Accounts. Das ist die häufigste Art der Nutzung.",
+      "quelle": "ZEW Mannheim",
+      "titel": "Innovationen in der deutschen Wirtschaft, Indikatorenbericht zur Innovationserhebung 2025",
+      "datum": "2026-01-27",
       "jahr_der_daten": 2025,
-      "url": "https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-gegen-nutzung-kuenstliche-intelligenz.html",
-      "zitat": "Fehlendes Wissen: 72 (Insgesamt) · 73 (10 bis 49 Beschäftigte)",
-      "geprueft": "Tabelle auf destatis.de am 2026-10-30 abgerufen (Stand 24.11.2025, Berichtsjahr 2025). Basis: Unternehmen, die KI in Betracht gezogen haben, sie aber bisher nicht nutzen (20 % aller Unternehmen). Weitere Gründe: Unklarheit über rechtliche Folgen 62 %, Datenschutz 60 %, zu hohe Kosten 32 %."
+      "url": "https://www.zew.de/fileadmin/FTP/mip/25/mip_2025.pdf",
+      "zitat": "„die eigenverantwortliche Nutzung von generativer KI durch Beschäftigte (z.B. über deren private Accounts) die häufigste Nutzungsart ist (56 %)“",
+      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). 7.479 Unternehmen ab 5 Beschäftigten (Industrie und unternehmensnahe Dienste), Befragung Februar bis August 2025; die Zahl steht im PDF, nicht in der Pressemitteilung."
     }
   ],
   "verworfen": [
@@ -342,6 +343,26 @@
     {
       "was": "Bitkom: 11 % der Unternehmen ab 20 Beschäftigten in Deutschland setzen bereits KI-Agenten ein, weitere 29 % planen den Einsatz.",
       "warum": "Am 30.10.2026 ersetzt (Kevin: Zahlen aus 2026, nicht nur Bitkom): zu viele Bitkom-Zahlen."
+    },
+    {
+      "was": "Reuters Institute (Universität Oxford): 2026 sahen oder nutzten 57 % der Befragten in neun Ländern binnen einer Woche KI-Antworten oder KI-Zusammenfassungen in Suchmaschinen. Deutschland war nicht Teil der Stichprobe.",
+      "warum": "Deutschland ist nicht Teil der Stichprobe, und es geht um Nachrichtennutzung von Privatpersonen, nicht um Unternehmen (Kevin 30.10.: „wir reden von Unternehmen“)."
+    },
+    {
+      "was": "Eurostat: 2025 suchten 77 % der Internetnutzenden in der EU (16 bis 74 Jahre) online nach Informationen über Waren und Dienstleistungen.",
+      "warum": "Zählt Privatpersonen (Internetnutzende), nicht Unternehmen."
+    },
+    {
+      "was": "ifo Institut: Im Juli 2026 berichteten 47,3 % der Selbstständigen in Deutschland von fehlenden Aufträgen.",
+      "warum": "Stichprobe sind Selbstständige und Kleinstunternehmen, nicht Unternehmen allgemein (Kevin 30.10.). Ersetzt durch die ifo-Konjunkturumfrage Januar 2026 (36,3 % der Unternehmen)."
+    },
+    {
+      "was": "DIHK: Mehr als 40 % der kleinen und mittleren Unternehmen in Deutschland haben Schwierigkeiten, offene Stellen zu besetzen.",
+      "warum": "Veröffentlicht im Dezember 2025, nicht 2026."
+    },
+    {
+      "was": "Statistisches Bundesamt (Destatis): Von den Unternehmen in Deutschland, die den Einsatz von KI erwogen, aber noch nicht umgesetzt haben, nannten 2025 72 % fehlendes Wissen als Grund.",
+      "warum": "Veröffentlicht im November 2025, nicht 2026."
     }
   ]
 }

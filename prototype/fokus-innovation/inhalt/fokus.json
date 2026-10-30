@@ -75,22 +75,16 @@
   },
   "belege": {
     "startup": {
-      "wert": "63,5 %",
-      "text": "der Start-ups in Deutschland nennen Vertrieb und Kundengewinnung ihre größte Herausforderung, vor Produktentwicklung und Kapital.",
-      "quelle": "Deutscher Startup Monitor 2025, S. 56",
-      "link": "https://startupverband.de/fileadmin/startupverband/mediaarchiv/research/dsm/Deutscher_Startup_Monitor_2025.pdf"
+      "wert": "72,3 %",
+      "text": "der Start-ups in Deutschland suchen bei Kooperationen mit etablierten Unternehmen vor allem Referenzkunden, 59,6 % neue Vertriebskanäle.",
+      "quelle": "Deutscher Startup Monitor 2026, S. 43",
+      "link": "https://startupverband.de/media/file/rs-deutscherstartupmonitor2026"
     },
     "ki_potenzial": {
       "wert": "3 %",
       "text": "der Unternehmen schöpfen das Potenzial von KI eher stark aus, keines vollständig. 59 % gar nicht.",
       "quelle": "Bitkom, 14.09.2026, 603 Unternehmen ab 20 Beschäftigten",
       "link": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI"
-    },
-    "daten": {
-      "wert": "44 %",
-      "text": "der Unternehmen, die KI erwogen und nicht eingeführt haben, nennen Probleme mit Verfügbarkeit oder Qualität ihrer Daten.",
-      "quelle": "Destatis, Gründe gegen KI, 2025",
-      "link": "https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-gegen-nutzung-kuenstliche-intelligenz.html"
     },
     "mittelstand": {
       "wert": "37 %",
@@ -111,16 +105,22 @@
       "link": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI"
     },
     "auftraege": {
-      "wert": "47,3 %",
-      "text": "der Selbständigen und Kleinstunternehmen in Deutschland klagten im Juli 2026 über fehlende Aufträge.",
-      "quelle": "ifo Institut, 07.08.2026",
-      "link": "https://www.ifo.de/fakten/2026-08-07/knapp-die-haelfte-der-selbstaendigen-klagt-ueber-auftragsmangel"
+      "wert": "36,3 %",
+      "text": "der Unternehmen in Deutschland meldeten im Januar 2026 zu wenig Aufträge. Bei Unternehmensberatern waren es 53,8 %, bei IT-Dienstleistern 48,1 %.",
+      "quelle": "ifo Institut, 29.01.2026",
+      "link": "https://www.ifo.de/fakten/2026-01-29/auftragslage-der-unternehmen-entspannt-sich-nur-geringfuegig"
     },
     "systeme": {
       "wert": "51 %",
       "text": "der Vertriebsleitungen mit KI sagen, dass unverbundene Systeme ihre KI-Vorhaben bremsen.",
       "quelle": "Salesforce, State of Sales, 2026",
       "link": "https://www.salesforce.com/news/stories/state-of-sales-report-announcement-2026/"
+    },
+    "umsatz": {
+      "wert": "29 %",
+      "text": "der kleinen und mittleren Unternehmen erwarten in drei Jahren höhere Umsätze, genauso viele niedrigere. Unterm Strich Stillstand.",
+      "quelle": "KfW-Mittelstandspanel 2026",
+      "link": "https://www.kfw.de/PDF/Download-Center/Konzernthemen/Research/PDF-Dokumente-KfW-Mittelstandspanel/KfW-Mittelstandspanel-2026.pdf"
     }
   },
   "bereiche": {
@@ -1108,8 +1108,8 @@
         }
       ],
       "zahlen": [
-        "reuters-ki-suche-2026",
-        "ifo-selbststaendige-auftragsmangel"
+        "ifo-auftragsmangel-2026",
+        "forrester-ki-einkauf-2026"
       ],
       "checks": [
         [
@@ -1130,7 +1130,7 @@
       "merken": "Woran Sie es merken",
       "schritte_titel": "So bringen wir KI in Ihren Alltag.",
       "zahlen": [
-        "ifo-ki-nutzung-2026",
+        "bitkom-ki-potenzial-2026",
         "bitkom-ki-datenaufbereitung"
       ],
       "checks": [
