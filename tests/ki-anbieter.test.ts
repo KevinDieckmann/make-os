@@ -268,7 +268,8 @@ describe('Register: SCC statt DPF, Hebung nur unveränderter Altfassungen', () =
   });
   it('gespeicherte Listen bekommen die neuen Anbieter (archiviert) nachgetragen; Vorgabe-Liste unverändert', () => {
     const l = empfaengerNachtragen([ALT_ANTHROPIC]);
-    expect(l.map(e => e.id)).toEqual(['anthropic', 'google-vertex', 'mistral']);
+    // Seit 30.10. (Datenprüfung der Nacht) kommen die Social-Empfänger dazu, ebenfalls archiviert, bis ein Kanal verbunden ist.
+    expect(l.map(e => e.id)).toEqual(['anthropic', 'google-vertex', 'mistral', 'meta-instagram', 'linkedin']);
     expect(l.slice(1).every(e => e.archiviert)).toBe(true);
     expect(empfaengerWirksam({ empfaenger: [ALT_ANTHROPIC] })[0].garantie).toBe('scc');
     expect(empfaengerWirksam(null).length).toBe(EMPFAENGER_START.length);
