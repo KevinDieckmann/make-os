@@ -33,6 +33,24 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-31-6',
+    datum: '2026-10-31',
+    titel: 'Feinschliff an Akten und Listen',
+    kurz: 'Kleine Dinge, die beim Arbeiten auffallen: das Deal-Board öffnet die Akte, an der Firma kannst du Unterlagen ablegen, und Privat und Business tragen überall ihre Farbe.',
+    kurzBusiness: 'Kleine Dinge, die beim Arbeiten auffallen: das Deal-Board öffnet die Akte, an der Firma kannst du Unterlagen ablegen, und der Bereich trägt überall seine Farbe.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Firmenakte › Dateien: Verträge, Angebote und andere Unterlagen direkt an der Firma ablegen — mit „+ Datei ablegen“.', bereich: 'business', weg: WEG.firma() },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Deals › Board: ein Klick auf eine Karte öffnet die Deal-Akte; Ziehen zwischen den Spalten wechselt weiter die Stufe.', bereich: 'business', weg: WEG.deals() },
+        { text: 'Schnellsuche: Treffer für Personen und Kampagnen führen direkt in die große Akte bzw. die Kampagne.', bereich: 'business' },
+        { text: 'Rechnungen: das Suchfeld zeigt seinen Hinweis vollständig, und die Filter liegen am Handy in einer wischbaren Zeile.', bereich: 'business', weg: WEG.rechnungen() },
+        { text: 'Meilensteine, Ziele, der Fokus und Medien zeigen den Bereich in seiner Farbe — Privat warm, Business lila.', bereich: 'alle' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31-5',
     datum: '2026-10-31',
     titel: 'Akten öffnen groß',
