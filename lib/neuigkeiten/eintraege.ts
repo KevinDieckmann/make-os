@@ -33,6 +33,24 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-30-4',
+    datum: '2026-10-30',
+    titel: 'Innovations-Check: drei Bereiche und nächste Schritte',
+    kurz: 'Der Check fragt jetzt Sichtbarkeit, Vertrieb und Innovation ab. Im Ergebnis stehen die drei Werte, zwei nächste Schritte mit euren Angeboten und die nächsten freien Termine fürs Erstgespräch.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Neue Fragen zu Sichtbarkeit und Vertrieb. Das Ergebnis zeigt drei Werte und eine Gesamtstufe, die Innovation steht aufklappbar im Detail.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Für die zwei schwächsten Bereiche nennt das Ergebnis je einen nächsten Schritt. Darunter steht euer passendes Angebot: Titel, Satz und Link stellt ihr unter Marketing › Innovations-Check ein.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Die nächsten freien Termine fürs Erstgespräch stehen direkt im Ergebnis. Ein angetippter Termin ist auf der Buchungsseite schon gewählt.', bereich: 'business' },
+        { text: 'Ein Leitsatz unter dem Namen im Kopf des Checks, einstellbar unter Marketing › Innovations-Check.', bereich: 'business' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Ruhigere Ansicht: Zoes Text steht ohne Kasten, der Einstieg nennt die drei Bereiche.', bereich: 'business' },
+        { text: 'Ist der Check aus oder ein Buchungslink veraltet, sehen Besucher eine neutrale Seite.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-30-3',
     datum: '2026-10-30',
     titel: 'Social: Beiträge planen, schneiden und veröffentlichen',
