@@ -312,3 +312,14 @@ describe('Middleware: Schriften der öffentlichen Seiten', () => {
     }
   });
 });
+
+describe('Öffentliche Seiten erben nichts vom Grundgerüst der Anwendung (30.10.)', () => {
+  it('Check und Buchung heben Beschreibung, Manifest, App-Titel und Icon auf', async () => {
+    const { OEFFENTLICH_META } = await import('@/lib/oeffentlich/metadaten');
+    expect(OEFFENTLICH_META).toMatchObject({ description: null, manifest: null, appleWebApp: null, icons: null, robots: { index: false, follow: false } });
+    const { readFileSync } = await import('node:fs');
+    for (const datei of ['app/check/page.tsx', 'app/check/not-found.tsx', 'app/buchen/[slug]/page.tsx', 'app/buchen/[slug]/status/page.tsx', 'app/buchen/[slug]/not-found.tsx']) {
+      expect(readFileSync(datei, 'utf8'), datei).toContain('...OEFFENTLICH_META');
+    }
+  });
+});

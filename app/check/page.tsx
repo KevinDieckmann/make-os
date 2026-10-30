@@ -7,6 +7,7 @@
 // ersten Klick (keine leeren Sitzungen für jeden Aufruf). Gedrosselt je Netz wie die Buchungsseite.
 
 import type { Metadata } from 'next';
+import { OEFFENTLICH_META } from '@/lib/oeffentlich/metadaten';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { InnovationsCheck } from '@/components/check/InnovationsCheck';
@@ -48,7 +49,7 @@ async function seitenDaten() {
 
 export async function generateMetadata(): Promise<Metadata> {
   const d = await seitenDaten();
-  return { title: d ? `Innovations-Check · ${d.marke}` : 'Innovations-Check', robots: { index: false, follow: false }, referrer: 'no-referrer' };
+  return { ...OEFFENTLICH_META, title: d ? `Innovations-Check · ${d.marke}` : 'Innovations-Check', ...(d ? { description: 'Wo steht Ihr Unternehmen? Sichtbarkeit, Vertrieb und Innovation im Check, mit Ergebnis und nächsten Schritten.' } : {}) };
 }
 
 export default async function Seite({ searchParams }: Props) {
