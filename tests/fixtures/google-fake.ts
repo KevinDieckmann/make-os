@@ -17,6 +17,9 @@ export class GoogleFake {
   konto = { email: 'kevin@makeinnovation.test', hd: 'makeinnovation.test', email_verified: true };
   scopeGewaehrt = 'openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly';
   refreshOk = true;
+  /** Vorsatz der Zugriffstokens und das Refresh-Token — ein zweiter Fake (weiteres Konto) unterscheidet sich darüber. */
+  vorsatz = 'zugriff';
+  refreshWert = 'erneuerung-geheim-1';
   tokenNr = 0;
   gueltig = new Set<string>();
   widerrufen: string[] = [];
@@ -42,7 +45,7 @@ export class GoogleFake {
     const alt = this.events.get(id);
     this.events.set(id, { ...(alt ?? { id }), id, status: 'cancelled', etag: `"g${this.etagNr++}"`, _v: ++this.version } as Ev);
   }
-  token(): string { const t = `zugriff-${++this.tokenNr}`; this.gueltig.add(t); return t; }
+  token(): string { const t = `${this.vorsatz}-${++this.tokenNr}`; this.gueltig.add(t); return t; }
 
   private rein(e: Ev) { const { _v, ...rest } = e; void _v; return rest; }
 
@@ -64,7 +67,7 @@ export class GoogleFake {
       if (p.get('grant_type') === 'authorization_code') {
         if (!p.get('code_verifier') || p.get('code') === 'falsch') return json({ error: 'invalid_grant' }, 400);
         const t = this.token();
-        return json({ access_token: t, refresh_token: 'erneuerung-geheim-1', expires_in: 3600, scope: this.scopeGewaehrt, token_type: 'Bearer', id_token: jwt({ ...this.konto, sub: '1234' }) });
+        return json({ access_token: t, refresh_token: this.refreshWert, expires_in: 3600, scope: this.scopeGewaehrt, token_type: 'Bearer', id_token: jwt({ ...this.konto, sub: '1234' }) });
       }
       if (p.get('grant_type') === 'refresh_token') {
         if (!this.refreshOk) return json({ error: 'invalid_grant', error_description: 'Token has been expired or revoked.' }, 400);
