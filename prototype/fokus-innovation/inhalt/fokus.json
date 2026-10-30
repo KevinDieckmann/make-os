@@ -47,10 +47,12 @@
       "Und wir bringen die Menschen zusammen, die Neues umsetzen: in unserem Netzwerk, mit unseren Partnern und bei unseren Events."
     ],
     "zitat": {
-      "text": "Das Problem ist nicht, dass es Europa an Ideen oder Ehrgeiz fehlt. … Es gelingt uns nicht, Innovation in den Markt zu bringen.",
-      "wer": "Mario Draghi",
-      "quelle": "Die Zukunft der europäischen Wettbewerbsfähigkeit, Teil A, September 2024, S. 8, eigene Übersetzung",
-      "link": "https://commission.europa.eu/document/download/97e481fd-2dc3-412d-be4c-f152a8232961_en?filename=The%20future%20of%20European%20competitiveness%20_%20A%20competitiveness%20strategy%20for%20Europe.pdf"
+      "text": "Was … Agenten letztlich zu Super-Agenten macht, ist, dass man ihnen Zugang zum Wissen des eigenen Unternehmens gibt.",
+      "wer": "Jensen Huang, CEO Nvidia",
+      "quelle": "Keynote auf der GTC Berlin, 21.10.2026, eigene Übersetzung",
+      "link": "https://blogs.nvidia.com/blog/gtc-berlin-2026-keynote/",
+      "original": "Ultimately, what turns … agents into super agents, is that you give them access to your company's knowledge.",
+      "geprueft": "Nvidia-Newsroom, Live-Blog der Keynote mit wörtlichen Zitaten, Abschnitt „NVIDIA Gives Agents a Knowledge Layer“, geprüft am 30.10.2026 (Kevin wählte das Zitat statt Draghi 2024)."
     },
     "ursprung": [
       {
