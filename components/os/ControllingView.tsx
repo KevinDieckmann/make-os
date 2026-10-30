@@ -31,6 +31,7 @@ import { usePrivatFinanzen } from './useInhaber';
 import { RUNWAY_ERKLAERUNG } from '@/lib/finanzen/runway';
 import type { RunwayDesIndex } from '@/lib/business/fuer-chef';
 import { anzahl } from '@/lib/text/zahlwort';
+import { Flaeche, Kachel } from './flaeche/Flaeche';
 
 /** Der Teil des Finanzplans, den die Liquiditäts-Vorschau braucht. */
 interface FinanzplanStand { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
@@ -199,6 +200,8 @@ export function ControllingView() {
         <Knopf onClick={analyse} aus={busy}>{busy ? 'analysiere Lage …' : 'Lage analysieren'}</Knopf>
       </div>
       {/* ── Der Held: liegen wir auf Kurs zum Jahresziel? ── */}
+      <Flaeche seite="controlling-business">
+      <Kachel id="kurs" titel="Kurs zum Jahresziel" breite={6}>
       <Karte i={0} ton={m.aktiveMonate > 0 ? (aufKurs ? LEUCHT.gut : LEUCHT.achtung) : undefined}>
         <Ueberschrift farbe={kursFarbe}>Kurs aufs Jahresziel</Ueberschrift>
         <div style={{ display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap', padding: '6px 0 4px' }}>
@@ -225,8 +228,10 @@ export function ControllingView() {
           </div>
         </div>
       </Karte>
+      </Kachel>
 
       {/* ── Liquidität: was ist wann da, und wann wird es eng ── */}
+      <Kachel id="liquiditaet" titel="Liquidität" breite={6}>
       {fplan && (() => {
         // 0-Punkt (05.10.): ab der Eröffnung je Gesellschaft (lib/business/eroeffnung.ts) — ohne Eröffnung unverändert.
         // Konten-Register (08.10.): Kasse je Gesellschaft aus dem Register (ohne Register wie bisher).
@@ -280,8 +285,10 @@ export function ControllingView() {
           </Karte>
         );
       })()}
+      </Kachel>
 
       {/* KPIs */}
+      <Kachel id="kennzahlen" titel="Kennzahlen" breite={6}>
       <Karte i={2}>
         <Ueberschrift farbe={runRateColor}>Kennzahlen</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16 }}>
@@ -293,8 +300,10 @@ export function ControllingView() {
           </Link>
         </div>
       </Karte>
+      </Kachel>
 
       {/* Analyse */}
+      <Kachel id="lagebericht" titel="Lagebericht" breite={6}>
       {a && (
         <Karte i={3}>
           <Ueberschrift farbe={LEUCHT.agenten}>Lagebericht</Ueberschrift>
@@ -313,8 +322,10 @@ export function ControllingView() {
           )}
         </Karte>
       )}
+      </Kachel>
 
       {/* Monats-Balken */}
+      <Kachel id="umsatz" titel="Umsatz je Monat" breite={6}>
       <Karte i={4}>
         <Ueberschrift farbe={LEUCHT.business} rechts={<span style={{ color: LEUCHT.achtung }}>Linie = nötige Run-Rate {eur(m.runRateNoetig)}</span>}>Umsatz je Monat</Ueberschrift>
         <div style={{ display: 'flex', gap: 5, alignItems: 'flex-end', height: 120, position: 'relative' }}>
@@ -333,8 +344,10 @@ export function ControllingView() {
           {s.months.map((r, i) => <div key={i} style={{ flex: 1, textAlign: 'center', color: i === m.aktMonatIdx ? LEUCHT.gut : C.inkLeise }}>{r.m}</div>)}
         </div>
       </Karte>
+      </Kachel>
 
       {/* ── Ziele anpassen: die Grundlage der ganzen Rechnung ── */}
+      <Kachel id="ziele" titel="Ziele anpassen" breite={6}>
       <Karte i={5}>
         <div onClick={() => setZieleAuf(!zieleAuf)} style={{ cursor: 'pointer' }}>
           <Ueberschrift farbe={LEUCHT.achtung} rechts={<>
@@ -381,8 +394,10 @@ export function ControllingView() {
           </div>
         )}
       </Karte>
+      </Kachel>
 
       {/* Eingabe */}
+      <Kachel id="eingabe" titel="Ist-Monate" breite={6}>
       <Karte i={6}>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.6 }}>
           Die Ist-Monate kommen aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss je Firma</Link> (Finanzen › Business). Liegt für einen Monat noch kein Abschluss vor, gilt der hier gepflegte Wert.
@@ -407,6 +422,8 @@ export function ControllingView() {
           <Leer>Nur Zahlen eintragen. Wird automatisch gespeichert, alles rechnet live.</Leer>
         </details>
       </Karte>
+      </Kachel>
+      </Flaeche>
     </>
   );
 }
