@@ -471,9 +471,9 @@ function FirmenAkteInhalt({ f, api, zurueck, zurueckKnopf, zuPerson, zuFirma }: 
       </div>
     </Karte>
   );
-  const karte = (inhalt: ReactNode, i: number) => (inhalt ? <Karte i={i}>{inhalt}</Karte> : null);
+  const karte = (inhalt: ReactNode, i: number) => (inhalt ? <Karte i={i} style={{ minWidth: 0 }}>{inhalt}</Karte> : null);
   const links = <>
-    {karte(<div style={{ display: 'grid', gap: 12 }}>{t.rolle}{t.bean}{t.mutter}{t.toechter}{t.gruppe}</div>, 1)}
+    {karte(<div style={{ display: 'grid', gap: 12, minWidth: 0 }}>{t.rolle}{t.bean}{t.mutter}{t.toechter}{t.gruppe}</div>, 1)}
     {karte(t.lead, 2)}
     {karte(t.stammdaten, 3)}
   </>;
@@ -536,21 +536,22 @@ function useFirmaUmsatz(f: Firma, stand: CrmBestand, heute: string): UmsatzStand
 
 function FirmaUmsatzKarte({ u }: { u: UmsatzStand }) {
   const k = u.kennzahlen;
+  // minWidth 0 (Rundgang 30.10.): sonst schoben lange Rechnungstitel und die drei Zahlen die rechte Spalte über den Rand.
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <Ueberschrift rechts={<Link href={WEG.rechnungen()} style={{ fontSize: TYP.bedien, color: C.inkLeise, textDecoration: 'none' }}>Finanzen ›</Link>}>Umsatz & Rechnungen</Ueberschrift>
       {u.zustand === 'laedt' && <Leer>lädt …</Leer>}
       {u.zustand === 'kein' && <Leer>Rechnungen sieht nur, wer Zugang zu den Finanzen hat.</Leer>}
       {u.zustand === 'fehler' && <Leer>Die Rechnungen ließen sich gerade nicht laden.</Leer>}
       {k && (
-        <div style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 10, minWidth: 0, gridTemplateColumns: 'minmax(0, 1fr)' }}>
           <Raster min={120}>
             <Zahl wert={euro(k.bezahlt)} label="bezahlt" farbe={k.bezahlt ? LEUCHT.geld : undefined} />
             <Zahl wert={euro(k.offen)} label={k.anzahlUeberfaellig ? `offen · ${k.anzahlUeberfaellig} überfällig` : 'offen'} farbe={k.anzahlUeberfaellig ? LEUCHT.achtung : undefined} />
             <Zahl wert={euro(k.monatswert)} label="je Monat aus Mandaten" />
           </Raster>
           {u.rechnungen.slice(0, 8).map(z => (
-            <Link key={z.r.id} href={WEG.rechnung(z.r.id)} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>
+            <Link key={z.r.id} href={WEG.rechnung(z.r.id)} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, minWidth: 0, fontSize: TYP.bedien, padding: '4px 0', color: C.ink, textDecoration: 'none' }}>
               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.r.nummer ?? z.r.titel}<span style={{ color: z.ueberfaellig ? LEUCHT.achtung : C.inkLeise }}> · {z.ueberfaellig ? 'überfällig' : z.r.status}{z.perName ? ' · per Name zugeordnet' : ''}</span></span>
               <span style={{ fontVariantNumeric: 'tabular-nums', color: C.inkDim, flex: '0 0 auto' }}>{euro(z.r.betrag)} ›</span>
             </Link>
