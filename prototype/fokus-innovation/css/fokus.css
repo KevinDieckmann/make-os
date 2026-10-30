@@ -421,13 +421,11 @@ html.menue-offen { overflow: hidden; }
 
 /* ── Der dunkle Schlussakt und der Fuß ── */
 .dunkel { background: var(--nacht); color: var(--leise-dunkel); color-scheme: dark;
-  /* Rhythmus hell/dunkel (Kevin 30.10.: „nicht 80 % nur hell“): ein dunkler Abschnitt tauscht die Farbwerte, jeder Baustein darin folgt von selbst */
+  /* Ein dunkler Abschnitt tauscht die Farbwerte, jeder Baustein darin folgt von selbst (heute: Schlussakt) */
   --tinte: #F2F3F3; --tinte-text: rgba(242, 243, 243, .76); --tinte-leise: #A3ABAE; --grau-papier: #A3ABAE;
   --haar: rgba(242, 243, 243, .13); --haar-mittel: rgba(242, 243, 243, .3);
   --akzent-papier: #A78BFA; --akzent-zart: rgba(167, 139, 250, .1); --sand: #15171B; }
-/* Raum wie im Film (Vorbild Gemini): ein weicher violetter Schein oben, ein tiefes Indigo unten, sonst Nacht */
-.abschnitt.dunkel.raum { background: radial-gradient(55% 60% at 72% 8%, rgba(124, 58, 237, .17), transparent 72%), radial-gradient(60% 55% at 12% 96%, rgba(40, 48, 130, .3), transparent 72%), var(--nacht); }
-.abschnitt.dunkel + .abschnitt.dunkel { border-top: 1px solid var(--haar-dunkel); }
+
 .dunkel h2, .dunkel h3, .dunkel b { color: var(--hell); }
 .dunkel .vorzeile, .dunkel .etikett { color: var(--grau); }
 .dunkel .vorzeile::before { background: var(--akzent); }
@@ -767,14 +765,14 @@ html.menue-offen { overflow: hidden; }
 /* Events (30.10.): Formate als ruhige Liste statt der Tafel-Grafik. */
 .format-liste { border-top: 1px solid var(--haar-mittel); margin-top: 28px; }
 /* Events auf der Startseite (Kevin 30.10.: anders anordnen): Überschrift über die ganze Breite, links Text und Knöpfe, rechts die Formate im Raster */
-.events-block { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 4vw, 48px) clamp(40px, 6vw, 96px); align-items: start; }
+.events-block { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 4vw, 48px) clamp(40px, 6vw, 96px); align-items: start; padding: clamp(32px, 5vw, 72px); background: var(--sand); border-radius: 4px; }
 .events-kopf { grid-column: 1 / -1; }
 .events-kopf h2 { margin-top: 20px; font-size: var(--t-titel); letter-spacing: -.03em; line-height: 1.07; max-width: 24ch; }
 .events-text .lead { color: var(--tinte); }
 .events-text .leise { margin-top: 18px; }
 .events-formate .format-liste { margin-top: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; }
 @media (max-width: 900px) { .events-block { grid-template-columns: minmax(0, 1fr); } .events-formate .format-liste { grid-template-columns: minmax(0, 1fr); } }
-.format-liste li { display: grid; gap: 4px; padding: 14px 0; border-bottom: 1px solid var(--haar); }
+.format-liste li { display: grid; gap: 4px; align-content: start; padding: 14px 0; border-bottom: 1px solid var(--haar); }
 .format-liste b { color: var(--tinte); font-weight: 600; }
 .format-liste span { color: var(--tinte-text); }
 @media (max-width: 1020px) { .momente-gruppen { grid-template-columns: minmax(0, 1fr); gap: 28px; } }

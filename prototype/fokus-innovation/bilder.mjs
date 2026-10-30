@@ -16,7 +16,7 @@ const schrift = readFileSync(join(ORDNER, 'assets/schriften/schibsted-grotesk-la
 const e = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 // Farben wie in css/fokus.css (:root) — dort ist die eine Stelle; hier nur abgeschrieben, weil das Bild ohne die Seite entsteht.
 const FARBE = { papier: '#F6F4F0', tinte: '#111316', text: '#3C3F44', leise: '#62666B', grau: '#5F6468', akzent: '#7C3AED', nacht: '#0B0C0F', hell: '#F2F3F3', akzentNacht: '#A78BFA', grauNacht: '#A3ABAE' };
-const zeichen = (linie, kern) => `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="${linie}" stroke-width="2.6" stroke-linecap="round"/><circle cx="37.2" cy="9.3" r="2.8" fill="${linie}"/><circle cx="24" cy="24" r="7" fill="${kern}"/></svg>`;
+const zeichen = (linie, kern) => `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="${linie}" stroke-width="2.6" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="${linie}"/><circle cx="24" cy="24" r="7" fill="${kern}"/></svg>`;
 const kopf = (breite, hoehe, extra = '') => `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face { font-family: S; src: url(data:font/woff2;base64,${schrift}) format("woff2"); font-weight: 400 800; }
 * { margin: 0; padding: 0; box-sizing: border-box; }

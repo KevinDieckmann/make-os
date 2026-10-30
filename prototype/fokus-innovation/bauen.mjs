@@ -57,7 +57,7 @@ const t = (s) => e(alt(s)).replace(/\[\[KEVIN: ([^\]]*)\]\]/g, (_, x) => `<span 
 const istPlatzhalter = (s) => /\[\[KEVIN:/.test(String(s ?? ''));
 const stempel = (datei) => createHash('sha256').update(readFileSync(join(ORDNER, datei))).digest('hex').slice(0, 10);
 const PFEIL = '<svg class="pfeil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
-const ZEICHEN = (klasse = 'zeichen') => `<svg class="${klasse}" viewBox="0 0 48 48" aria-hidden="true"><path class="bahn" d="M37.86,16 A16,16 0 1 1 26.78,8.24"/><circle class="punkt" cx="37.2" cy="9.3" r="2.8"/><circle class="kern" cx="24" cy="24" r="7"/></svg>`;
+const ZEICHEN = (klasse = 'zeichen') => `<svg class="${klasse}" viewBox="0 0 48 48" aria-hidden="true"><path class="bahn" d="M37.86,16 A16,16 0 1 1 26.78,8.24"/><circle class="punkt" cx="35.33" cy="7.81" r="2.8"/><circle class="kern" cx="24" cy="24" r="7"/></svg>`;
 const WORTBILD = '<span class="wortbild" aria-hidden="true"><b>FOKUS</b><small>Innovation</small></span>';
 
 /** Reihenfolge der Bereiche (Positionierung 25.10.: gesehen → verkauft → im Alltag angekommen). */
@@ -494,7 +494,7 @@ ${block('durchbruch', fl.durchbruch)}
 <nav class="index tueren erscheint" aria-label="Ihr Anliegen">${F.tueren.map((d) => `<a href="#${d.id}"><span class="nr">${e(d.etikett)}</span><b>${e(d.titel)}</b><span class="index-satz">${t(d.text)}</span>${PFEIL}</a>`).join('')}</nav>
 </div></section>
 
-<section class="abschnitt dunkel raum" id="bekannt" aria-labelledby="bekannt-titel"><div class="w">
+<section class="abschnitt" id="bekannt" aria-labelledby="bekannt-titel"><div class="w">
 ${abKopf({ marke: 'Ihr Alltag', h2: F.bekannt.titel, lead: F.bekannt.lead, id: 'bekannt-titel' })}
 ${F.bekannt.gruppen ? `<div class="momente-gruppen erscheint">${F.bekannt.gruppen.map((g) => `<div class="momente-gruppe"><h3 class="gruppe-titel">${e(B[g.bereich].name)}</h3><ul class="momente">${g.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul></div>`).join('')}</div>` : `<ul class="momente erscheint">${F.bekannt.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul>`}
 <div class="momente-schluss erscheint"><p>${(([frage, ...rest]) => `<b>${t(frage)}?</b> ${t(rest.join('?').trim())}`)(F.bekannt.schluss.split('?'))}</p>${erstKnopf()}</div>
@@ -514,14 +514,14 @@ ${abKopf({ marke: 'Wegweiser', h2: ww.titel, lead: ww.lead, id: 'wegweiser-titel
 <p class="satz-unter erscheint">Nichts dabei? ${textlink(erstLink(), 'Erzählen Sie uns im Erstgespräch, worum es geht')}</p>
 </div></section>
 
-<section class="abschnitt dunkel raum" id="warum-wir" aria-labelledby="warum-titel"><div class="w">
+<section class="abschnitt" id="warum-wir" aria-labelledby="warum-titel"><div class="w">
 ${abKopf({ marke: 'Warum wir', h2: 'Wir arbeiten in Ihrem Team, nicht daneben.', lead: F.warum_lead ?? 'Vier Unterschiede, an denen Sie uns messen können.', id: 'warum-titel' })}
 ${raster(F.warum_wir.map((w) => ({ titel: w.titel, text: w.text, unter: w.beleg })), 4)}
 </div></section>
 
 ${fragen(F.einwaende, F.einwaende_titel ?? 'Bevor Sie fragen', { id: 'einwaende', marke: F.einwaende_marke ?? 'Fragen' })}
 
-<section class="abschnitt dunkel raum" id="events" aria-labelledby="events-titel"><div class="w">
+<section class="abschnitt" id="events" aria-labelledby="events-titel"><div class="w">
 <div class="events-block">
 <div class="events-kopf erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${titel(F.events.start_titel.join('|'), F.events.start_ruhig)}</h2></div>
 <div class="events-text erscheint"><p class="lead">${t(F.events.text)}</p><p class="leise">${t(F.events.termine)}</p>
