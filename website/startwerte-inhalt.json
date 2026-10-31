@@ -26,7 +26,7 @@
       "id": "head-of-sales",
       "bereich": "vertrieb",
       "titel": "Head of Sales auf Zeit",
-      "kurz": "Aus Interesse werden planbar Kunden: Ihr Vertrieb läuft nach einem System, das Ihr Team ohne Sie bedient.",
+      "kurz": "Wir bauen Ihnen einen Vertrieb mit System, den Ihr Team ohne Sie bedienen kann.",
       "preisText": "ab 2.990 € / Monat",
       "preisNetto": 299000,
       "ab": true,
@@ -52,7 +52,7 @@
       "id": "homepage-landing",
       "bereich": "sichtbarkeit",
       "titel": "Homepage Landing",
-      "kurz": "Ihre Seite, die verkauft: ein One-Pager in Ihrer CI, fertig in 10 Werktagen.",
+      "kurz": "Ein One-Pager in Ihrer CI, der Besucher zur Anfrage führt. Fertig in 10 Werktagen.",
       "preisText": "ab 2.990 €",
       "preisNetto": 299000,
       "ab": true,
@@ -78,7 +78,7 @@
       "id": "homepage-cinematic",
       "bereich": "sichtbarkeit",
       "titel": "Homepage Cinematic",
-      "kurz": "Eine Website, über die man spricht: Story-Workshop, 3D-Szenen und Erklärvideo in 25 Werktagen.",
+      "kurz": "Wir entwickeln Ihre Geschichte im Story-Workshop und bauen daraus eine Website mit 3D-Szenen und Erklärvideo. Fertig in 25 Werktagen.",
       "preisText": "ab 9.990 €",
       "preisNetto": 999000,
       "ab": true,
@@ -104,7 +104,7 @@
       "id": "videostory",
       "bereich": "sichtbarkeit",
       "titel": "Videostory",
-      "kurz": "Die Geschichte Ihrer Firma in 90 Sekunden: ehrlich, emotional und in Ihrer CI.",
+      "kurz": "Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich erzählt und in Ihrer CI.",
       "preisText": "ab 1.990 €",
       "preisNetto": 199000,
       "ab": true,
@@ -156,7 +156,7 @@
       "id": "umsetzungsprojekte",
       "bereich": "innovation",
       "titel": "Umsetzungsprojekte: KI und Software einführen",
-      "kurz": "Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an.",
+      "kurz": "Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis Ihr Team sie im Alltag nutzt. Jedes Projekt bekommt einen Festpreis und einen klaren Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an.",
       "preisText": null,
       "preisNetto": null,
       "ab": false,
@@ -201,7 +201,7 @@
       "id": "salesprozess-crm",
       "bereich": "vertrieb",
       "titel": "Salesprozess im CRM",
-      "kurz": "Stufen mit klaren Ein- und Austrittskriterien, Pflichtfelder, Wiedervorlagen und ein Wochen-Review: ein Verkaufsablauf, den Ihr Team gleich lebt.",
+      "kurz": "Stufen mit klaren Ein- und Austrittskriterien, Pflichtfelder, Wiedervorlagen und ein Wochen-Review, damit alle im Team nach demselben Ablauf verkaufen.",
       "preisNetto": 24900,
       "paket": false,
       "seite": "/bausteine/salesprozess-crm/",
@@ -221,7 +221,7 @@
       "id": "paket-vertrieb",
       "bereich": "vertrieb",
       "titel": "Vertriebs-Paket: alle vier Playbook-Bausteine",
-      "kurz": "Einwandbibliothek, Skriptset mit BANT, Zielgruppe und Personas, Salesprozess im CRM: das Fundament Ihres Vertriebs, zusammen günstiger.",
+      "kurz": "Einwandbibliothek, Skriptset mit BANT, Zielgruppe und Personas, Salesprozess im CRM: alle vier zusammen, günstiger als einzeln.",
       "preisNetto": 59000,
       "paket": true,
       "seite": "/bausteine/paket-vertrieb/",
@@ -272,7 +272,7 @@
   "faq": [
     {
       "frage": "Wer arbeitet an meinem Projekt?",
-      "antwort": "Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Sie behalten einen Ansprechpartner, wir halten alles zusammen.",
+      "antwort": "Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Sie sprechen immer mit uns, und wir stimmen alles Weitere im Team ab.",
       "bereich": "vorab",
       "gruppe": "Bevor Sie fragen"
     },
@@ -332,7 +332,7 @@
     },
     {
       "frage": "Was ist der Unterschied zwischen Head of Sales und CSO?",
-      "antwort": "Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer enthält das komplett und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln.",
+      "antwort": "Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln.",
       "bereich": "vertrieb",
       "gruppe": "Vertrieb"
     },
@@ -520,7 +520,7 @@
     }
   ],
   "texte": {
-    "events.einleitung": "Wir bringen Menschen zusammen, die Neues umsetzen: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Kuratiert und auf Einladung, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.",
+    "events.einleitung": "Wir bringen Menschen zusammen, die Neues umsetzen: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden gezielt ein, zur Gesprächsrunde im kleinen Kreis ebenso wie zum Workshop. Gastgeberin ist Malin.",
     "events.termine": "Termine, Orte und Formate stehen in jeder Einladung. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste."
   },
   "bilder": []
