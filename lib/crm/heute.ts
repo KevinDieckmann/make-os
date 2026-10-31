@@ -28,6 +28,7 @@ import { haeltBeziehung, zustaendig, wer, BEIDE } from './team';
 import { hatTyp } from './mehrfach';
 import { tagKurz } from '@/lib/zeit/kalender-kern';
 import { weltDerKampagne } from './kampagnen-welt';
+import { neuJeTagVon } from './sequenz';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { personenDerFirma } from './stationen';
@@ -60,6 +61,8 @@ export interface Karte {
    * /api/crm/aktivitaet mit `aufgabeId`), und die Karte gehört der Person, die für die Aufgabe verantwortlich ist.
    */
   aufgabe?: { id: string; zustaendig: string };
+  /** Leitfaden eines Sequenz-Schritts (31.10., Kampagnen-Motor): die Notiz des Follow-ups „fu-ks-…“ — Anruf mit Leitfaden + Ergebnis-Knöpfen. */
+  leitfaden?: string;
 }
 
 /** Eine fällige Aufgabe mit Kontakt-Bezug für die Power Hour (lib/crm/followup-aufgabe.ts `aufgabenFuerPowerHour`, aus der Sicht der Person). */
@@ -177,7 +180,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   // 1b Echte Follow-ups (27.09.): die Follow-up-Ebene führt — was dort fällig ist, liegt auch hier oben (Prüfbericht, Punkt 1).
   for (const f of (crm.followups ?? []).filter(f => f.status === 'offen' && f.faellig <= heute && f.kontaktId)) {
     const d = tage(f.faellig, heute);
-    nimm(nachId.get(f.kontaktId!), 'versprechen', 45 + Math.min(20, d), d > 0 ? `Follow-up „${f.text}“ seit ${d} Tagen überfällig` : `Follow-up heute: ${f.text}`, { ...(f.bezug.art === 'chance' ? { chance: crm.chancen.find(c => c.id === f.bezug.id) } : { bezug: f.bezug.id }), followupId: f.id });
+    nimm(nachId.get(f.kontaktId!), 'versprechen', 45 + Math.min(20, d), d > 0 ? `Follow-up „${f.text}“ seit ${d} Tagen überfällig` : `Follow-up heute: ${f.text}`, { ...(f.bezug.art === 'chance' ? { chance: crm.chancen.find(c => c.id === f.bezug.id) } : { bezug: f.bezug.id }), followupId: f.id, ...(f.quelle === 'kampagne' && f.notiz ? { leitfaden: f.notiz } : {}) });
   }
   // 1c Fällige Aufgaben mit Kontakt-Bezug (08.10., Woche 1 · 4.7): der neue Standardweg „+ Hinzufügen“ legt Aufgaben an — die Power Hour
   // kannte sie nicht. Eine Aufgabe, an der schon ein offenes Follow-up hängt, steht über das Follow-up da (nicht doppelt).
@@ -232,10 +235,11 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     const seit = basis ? tage(basis, heute) : null;
     if (seit === null || seit >= takt) nimm(k, 'pflege', Math.round((seit === null ? 2 : seit / takt) * 10 * (KREIS_GEWICHT[k.kreis ?? 'B'])), seit === null ? `Kreis ${k.kreis ?? '–'}: noch kein Kontakt vermerkt` : `Kreis ${k.kreis ?? '–'}: ${seit} Tage still (Takt ${takt})`);
   }
-  // 5b Aktive Kampagnen: wer noch nicht angesprochen ist, kommt als „Neu“ mit Kampagnen-Bezug.
-  for (const kp of (crm.kampagnen ?? []).filter(x => x.status === 'aktiv')) {
+  // 5b Aktive Kampagnen: wer noch nicht angesprochen ist, kommt als „Neu“ mit Kampagnen-Bezug. Kampagnen MIT Sequenz (31.10., Kampagnen-Motor) takten
+  // selbst — ihre Anrufe stehen als echte Follow-ups oben unter „Versprechen“. Wie viele je Tag: je Kampagne einstellbar (`neuJeTag`, sonst NEU_MAX).
+  for (const kp of (crm.kampagnen ?? []).filter(x => x.status === 'aktiv' && !x.sequenz?.length)) {
     const erledigt = new Set(kp.ergebnisse.map(e => e.kontaktId));
-    for (const id of kp.kontaktIds.filter(i => !erledigt.has(i)).slice(0, 10)) nimm(nachId.get(id), 'neu', 24, `Kampagne „${kp.name}“: noch nicht angesprochen`, { bezug: kp.id });
+    for (const id of kp.kontaktIds.filter(i => !erledigt.has(i)).slice(0, Math.max(10, neuJeTagVon(kp)))) nimm(nachId.get(id), 'neu', 24, `Kampagne „${kp.name}“: noch nicht angesprochen`, { bezug: kp.id });
   }
   // 6 Neu (die bisherige Tagesliste, jetzt mit Kanal-Ampel)
   const PRIO: Record<string, number> = { A: 20, B: 10 };
@@ -255,6 +259,9 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
     const wem = karteGehoert(c, crm);
     if (person !== null && wem !== person && wem !== BEIDE) { aus.beiAnderen++; continue; }
     if (opt.geradeGeschrieben?.has(k.id) && c.kategorie !== 'signale') { aus.geschrieben = (aus.geschrieben ?? 0) + 1; continue; }
+    // Sequenz-Anruf einer Kampagne (31.10.): der Motor legt ihn nur an, wenn er zulässig ist bzw. auf „eigenes Risiko“ freigeschaltet — dann zählt er
+    // hier auch ohne „besten Kanal“ (die Telefon-Ampel steht an der Karte, rot sichtbar).
+    if (!c.kanal && c.followupId?.startsWith('fu-ks-')) c.kanal = kanalStatus(k, 'telefon');
     if (!c.kanal) { aus.ohneKanal++; continue; }
     const kuerzlich = k.letzterKontakt && werktageSeit(k.letzterKontakt, heute) < 3;
     if (kuerzlich && c.kategorie !== 'signale' && c.kategorie !== 'versprechen') { aus.kuerzlich++; continue; }
@@ -268,8 +275,16 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   const eindeutig = karten.filter(c => { const key = `${c2n(c.name)}|${c2n(c.kontakt.firma)}`; if (gesehen.has(key)) return false; gesehen.add(key); return true; });
   karten.splice(0, karten.length, ...eindeutig);
 
-  // Umfang: höchstens n, davon mind. 3 aus Pflege+Neu (Law of Replacement), höchstens NEU_MAX Neu.
-  const neu = karten.filter(k => k.kategorie === 'neu').slice(0, NEU_MAX);
+  // Umfang: höchstens n, davon mind. 3 aus Pflege+Neu (Law of Replacement); „Neu“ ohne Kampagne höchstens NEU_MAX, je Kampagne ihre Zahl (`neuJeTag`, 31.10.).
+  const jeKampagne = new Map<string, number>();
+  let ohneKampagne = 0;
+  const neu = karten.filter(k => k.kategorie === 'neu').filter(c => {
+    const kp = c.bezug ? (crm.kampagnen ?? []).find(x => x.id === c.bezug) : undefined;
+    if (!kp) return ohneKampagne++ < NEU_MAX;
+    const n = jeKampagne.get(kp.id) ?? 0;
+    jeKampagne.set(kp.id, n + 1);
+    return n < neuJeTagVon(kp);
+  });
   const pflege = karten.filter(k => k.kategorie === 'pflege');
   const rest = karten.filter(k => k.kategorie !== 'neu' && k.kategorie !== 'pflege');
   const reserve = [...pflege, ...neu].slice(0, 3);

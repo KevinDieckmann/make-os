@@ -27,7 +27,15 @@ const adressen = (v: unknown): Adr[] | undefined => Array.isArray(v) ? v.slice(0
  * Eine Mail senden (Antwort im Gespräch, Antwort auf eine Übergabe oder neue Mail aus einem eigenen Postfach) — Körper wie POST /api/inbox/senden. Die Form
  * (`gespraech` | `uebergabe` + `postfach` | `neu.postfach`) prüft der Aufrufer vorher.
  */
-export async function inboxSenden(person: string, b: Record<string, unknown>, wer: Wer): Promise<{ status: number; body: Record<string, unknown> }> {
+export interface InboxSendenOptionen {
+  /**
+   * Abmeldelink-Köpfe `List-Unsubscribe` + `List-Unsubscribe-Post` (RFC 8058) — 31.10., Kampagnen-Motor (lib/crm/kampagnen-motor.ts) und
+   * Willkommensstrecke. Bewusst NICHT aus dem Körper `b` (der kommt bei der Route aus dem Browser): nur Server-Aufrufer setzen ihn.
+   */
+  listeAbmelden?: { link: string };
+}
+
+export async function inboxSenden(person: string, b: Record<string, unknown>, wer: Wer, opt: InboxSendenOptionen = {}): Promise<{ status: number; body: Record<string, unknown> }> {
   const neu = b.neu && typeof b.neu === 'object' ? b.neu as { postfach?: unknown; betreff?: unknown } : null;
   const uebergabe = typeof b.uebergabe === 'string' && /^ub-[0-9a-f-]{36}$/.test(b.uebergabe) ? b.uebergabe : null;
   try {
@@ -38,7 +46,7 @@ export async function inboxSenden(person: string, b: Record<string, unknown>, we
     if (beleg) await belegPruefen(beleg, anhangKennungen(b.anhaenge));
     // Anhänge (10.10., Fortschritts-Report): nur Kennungen eigener Ablage-Dateien — geladen und geprüft, BEVOR etwas gesendet wird.
     const anhaenge = await anhaengeLaden(person, b.anhaenge);
-    const gemeinsam = { person: person, text: String(b.text ?? ''), ...(adressen(b.an) ? { an: adressen(b.an) } : {}), ...(adressen(b.cc) ? { cc: adressen(b.cc) } : {}), uwgBestaetigt: b.uwgBestaetigt === true, ...(anhaenge.length ? { anhaenge } : {}) };
+    const gemeinsam = { person: person, text: String(b.text ?? ''), ...(adressen(b.an) ? { an: adressen(b.an) } : {}), ...(adressen(b.cc) ? { cc: adressen(b.cc) } : {}), uwgBestaetigt: b.uwgBestaetigt === true, ...(anhaenge.length ? { anhaenge } : {}), ...(opt.listeAbmelden ? { listeAbmelden: opt.listeAbmelden } : {}) };
     let postfach: string, ausNachricht: string | undefined, bezug: AntwortBezug | undefined;
     if (neu) postfach = neu.postfach as string;
     else if (uebergabe) {
@@ -57,12 +65,13 @@ export async function inboxSenden(person: string, b: Record<string, unknown>, we
       ausNachricht = ([...n.koepfe].reverse().find(k => !vonUns(k) && !k.automatisch) ?? n.koepfe[n.koepfe.length - 1]).id;
       postfach = t.postfach;
     }
-    let x: { an: string[]; von: string; id?: string };
+    // `threadId`/`messageId` (31.10.): der Kampagnen-Motor erkennt daran Antworten und Rückläufer (Rückfluss) — die Route gibt sie nur zurück.
+    let x: { an: string[]; von: string; id?: string; threadId?: string; messageId?: string };
     let team = false;
     if (postfach === GMAIL_POSTFACH) {
       if (!(await gmailBereit(person).catch(() => false))) return { status: 409, body: { ok: false, fehler: 'Gmail ist nicht verbunden.' } };
       const s = await gmailSenden({ ...gemeinsam, ...(ausNachricht ? { ausNachricht } : {}), ...(bezug ? { bezug } : {}), ...(neu ? { betreff: String(neu.betreff ?? '') } : {}), ...(typeof b.von === 'string' ? { von: b.von } : {}) });
-      x = { an: s.an, von: s.von, id: s.id };
+      x = { an: s.an, von: s.von, id: s.id, ...(s.threadId ? { threadId: s.threadId } : {}) };
     } else {
       // Eigenes Postfach oder ein Team-Postfach, das die Person sieht — dann über den Zugang des Besitzers, gesendet ALS das Postfach.
       const r = await postfachAufloesen(person, postfach);
@@ -72,7 +81,7 @@ export async function inboxSenden(person: string, b: Record<string, unknown>, we
       // Absender = das Postfach. Wer eine andere Adresse verlangt, bekommt nichts gesendet (nie aus Versehen aus dem falschen Bereich).
       if (typeof b.von === 'string' && b.von.trim().toLowerCase() !== p.adresse) return { status: 400, body: { ok: false, code: 'absender', fehler: 'Aus diesem Gespräch wird über das eigene Postfach geantwortet — eine andere Absenderadresse geht hier nicht.' } };
       const s = await imapSenden({ ...gemeinsam, person: r.besitzer, postfach, ...(ausNachricht ? { ausNachricht } : {}), ...(bezug ? { bezug } : {}), ...(neu ? { betreff: String(neu.betreff ?? '') } : {}) });
-      x = { an: s.an, von: s.von };
+      x = { an: s.an, von: s.von, ...(s.messageId ? { messageId: s.messageId } : {}) };
     }
     // Wer gesendet hat, steht im Protokoll (`wer` = Sitzung) — beim Team-Postfach auch, dass es ALS das geteilte Postfach ging.
     await protokolliere('inbox', [{ op: 'neu', id: x.id ?? uebergabe ?? (b.gespraech as string | undefined) ?? postfach, felder: ['gesendet', ...(team ? ['team-postfach'] : []), ...(uebergabe ? ['uebergabe'] : []), ...(anhaenge.length ? ['anhang'] : [])] }], wer).catch(() => { /* nur Protokoll */ });

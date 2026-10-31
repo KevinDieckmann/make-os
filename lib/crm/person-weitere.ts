@@ -396,6 +396,15 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   // Kampagne „Homepage“ (30.10.): Funde, die die Person nennen (Kennung, Mail, Name), fallen weg (lib/funde).
   { name: 'kampagne-funde--*', muster: /^kampagne-funde--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: eintraegeRaus('funde'),
     zaehlen: (cur, m) => liste((cur ?? {}) as Obj, 'funde').filter(x => (x as Obj)?.kontaktId === m.id || (!!(x as Obj)?.email && m.emails.includes(String((x as Obj).email)))).length },
+  // Kampagnen-Motor (31.10.): Mail-Entwürfe/Druckliste, die die Person nennen (Ziel-Kennung, Adresse, Name), fallen weg; ihr Stand der Willkommensstrecke auch.
+  { name: 'kampagnen-post--*', muster: /^kampagnen-post--[a-z0-9-]+$/, behandlung: 'entfernen', wirkung: (cur, m) => {
+      const r = eintraegeRaus('eintraege')(cur, m);
+      const w = ((r.neu ?? {}) as Obj).willkommen as Obj | undefined;
+      if (!w || !(m.id in w)) return r;
+      const { [m.id]: _weg, ...rest } = w;
+      return { neu: { ...(r.neu as Obj), willkommen: rest }, n: r.n + 1 };
+    },
+    zaehlen: (cur, m) => liste((cur ?? {}) as Obj, 'eintraege').filter(x => ((x as Obj)?.ziel as Obj | undefined)?.id === m.id || (!!((x as Obj)?.an as Obj | undefined)?.email && m.emails.includes(String(((x as Obj).an as Obj).email)))).length },
   // Gesellschafts-Register (04.10.): Kontakt-Kennungen in Gesellschaftern/Vertragsparteien → „[gelöscht]“, der Eintrag bleibt.
   { name: 'gesellschaften--*', muster: /^gesellschaften--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Austausch am Meilenstein (30.09.): Nachrichten, Notiz, Link-Titel können Dritte nennen — getilgt, der Raum bleibt.

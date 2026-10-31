@@ -33,6 +33,8 @@ export interface ImapSendenEingabe {
   bezug?: AntwortBezug;
   /** Anhänge (10.10., Fortschritts-Report) — geladen und geprüft von der Route. */
   anhaenge?: MailAnhang[];
+  /** Abmeldelink-Köpfe (RFC 8058) — nur aus dem Kampagnen-Motor (31.10.). */
+  listeAbmelden?: { link: string };
 }
 
 export interface ImapSendenErgebnis { messageId: string; von: string; an: string[]; abgelegt: 'selbst' | 'anbieter' | 'nicht' }
@@ -76,6 +78,7 @@ export async function imapSenden(e: ImapSendenEingabe): Promise<ImapSendenErgebn
 
   const roh = mimeBauen({
     von: { ...(p.absenderName ? { name: p.absenderName } : {}), email: p.adresse }, an, ...(cc.length ? { cc } : {}), betreff, text, ...(e.anhaenge?.length ? { anhaenge: e.anhaenge } : {}),
+    ...(e.listeAbmelden ? { listeAbmelden: e.listeAbmelden } : {}),
     ...(auf?.messageId ? { inReplyTo: auf.messageId, references: referenzenFuer(auf.references, auf.messageId) } : {}),
     ...(!auf && e.bezug?.messageId ? { inReplyTo: e.bezug.messageId, references: referenzenFuer(e.bezug.references, e.bezug.messageId) } : {}),
   });

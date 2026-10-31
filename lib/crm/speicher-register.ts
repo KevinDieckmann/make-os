@@ -398,6 +398,14 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Funde der Person zählen in der Auskunft (weitere Speicher, person-weitere.ts); nach der Übernahme stehen die Angaben in der Kartei (Herkunft „Recherche“, Art.-14-Uhr)',
     loeschfrist: 'Nicht übernommen: Vorgabe 21 Tage (höchstens 30, Art. 14 Abs. 3 lit. a), übernommen: 60 Tage (Gültigkeit der Vorschau) — Morgenlauf-Schritt „kampagne-funde“',
   }),
+  // Kampagnen-Motor (31.10., lib/crm/kampagnen-motor.ts): Mail-Stapel + Druckliste je Ziel (Empfänger-Adresse, Name, Ort, Betreff, Text des Entwurfs),
+  // Freigabe (wer, wann, Postfach-Kennung, ggf. „eigenes Risiko“), Versand-Kennungen (Message-/Thread-ID), Rückfluss-Art; Zähler der Tagesgrenze,
+  // Fingerabdrücke unzustellbarer Adressen, Stand der Willkommensstrecke je Kontakt (nur Kennung + Stufen); Einstellungen der Instanz.
+  mit(E('kampagnen-post--*', 'Kampagnen-Motor: Mail-Entwürfe und Druckliste je Ziel einer Kampagne (Adresse, Name, Ort, Betreff, Text), Freigabe und Versand-Kennungen; unzustellbare Adressen nur als Fingerabdruck. Art. 17 entfernt die Einträge der Person (Kennung, Adresse, Name) und ihren Stand der Willkommensstrecke.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Direktwerbung, ErwG 47) bzw. lit. a (Einwilligung — Willkommensstrecke); versendet wird nur nach Freigabe je Stapel, mit Abmeldelink (Art. 21) und Art.-14-Hinweis bei Fremddaten; Kanal-Ampel rot nur im Playbook „eigenes Risiko“ des Inhabers (§ 7 UWG)',
+    art15: 'Einträge der Person zählen in der Auskunft (weitere Speicher, person-weitere.ts); gesendete Mails stehen zusätzlich als Aktivität (Betreff) in der Akte',
+    loeschfrist: 'Gesendet, verworfen, gesperrt, unzustellbar oder gedruckt: 12 Monate nach der letzten Änderung (Motor-Lauf `postAufraeumen`); Entwürfe, solange die Kampagne läuft',
+  }),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):

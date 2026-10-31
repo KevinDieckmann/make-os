@@ -22,7 +22,10 @@ import type { Kontakt, EinwilligungKanal, Einwilligung } from '@/lib/make-one/cr
 import { hatTyp } from './mehrfach';
 import { nachweisLuecken } from './einwilligung';
 
-export type Kanal = 'mail' | 'linkedin' | 'telefon' | 'newsletter' | 'einladung' | 'vernetzen' | 'whatsapp';
+// `brief`/`besuch` (31.10., Kampagnen-Motor — KAMPAGNE_HOMEPAGE_PLAN.md › 2.1): R10 adressierter Brief B2B grundsätzlich zulässig (§ 7 Abs. 1 S. 2 UWG),
+// nur nicht bei erkennbarem Widerspruch (Werbesperre = Widerspruch → rot); R11 Besuch vor Ort ist kein Fernkommunikationsmittel (§ 7 Abs. 2 greift nicht),
+// nur die allgemeine Belästigungsgrenze — gelb mit Hinweis. Beide brauchen keine Mail/Nummer.
+export type Kanal = 'mail' | 'linkedin' | 'telefon' | 'newsletter' | 'einladung' | 'vernetzen' | 'whatsapp' | 'brief' | 'besuch';
 export type Farbe = 'gruen' | 'gelb' | 'rot';
 export interface KanalStatus { kanal: Kanal; farbe: Farbe; grund: string; grundlage?: string }
 
@@ -48,6 +51,8 @@ export function bekannt(k: Kontakt): boolean {
 export function kanalStatus(k: Kontakt, kanal: Kanal, ctx: Kontext = {}): KanalStatus {
   if (k.eingeschraenkt) return { kanal, farbe: 'rot', grund: `Verarbeitung eingeschränkt (Art. 18) seit ${k.eingeschraenkt.seit}` };
   if (k.werbesperre) return { kanal, farbe: 'rot', grund: `Werbesperre seit ${k.werbesperre.seit}` };
+  if (kanal === 'brief') return { kanal, farbe: 'gruen', grund: 'Adressierter Brief: an Firmen grundsätzlich zulässig (§ 7 Abs. 1 UWG) — nicht bei erkennbarem Widerspruch; Absender muss erkennbar sein' };
+  if (kanal === 'besuch') return { kanal, farbe: 'gelb', grund: 'Besuch vor Ort: kein Fernkommunikationsmittel — kurz, nicht zur Stoßzeit, bei „Nein“ gehen und sofort Werbesperre setzen' };
   const hat = (x: string | undefined) => !!(x ?? '').trim();
   const erreichbar = kanal === 'mail' || kanal === 'newsletter' || kanal === 'einladung' ? hat(k.email) : kanal === 'telefon' || kanal === 'whatsapp' ? hat(k.telefon) || hat(k.sms) : hat(k.linkedin);
   if (!erreichbar) return { kanal, farbe: 'rot', grund: 'keine Adresse' };

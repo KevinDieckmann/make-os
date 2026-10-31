@@ -51,5 +51,8 @@ export async function abmeldenAnwenden(token: string, jetzt = new Date()): Promi
       await sperren(geaendert, 'werbesperre', heute);
     } catch (e) { console.error('[abmelden] Nachlauf:', e instanceof Error ? e.message.slice(0, 160) : e); }
   }
+  // Kampagnen-Motor (31.10.): Adressen aus dem Mail-Stapel (auch Firmen-/Sammeladressen, die keine Person sind) → Sperrliste + Sequenz gestoppt.
+  // Wie oben: ein Fehler wird laut, verrät aber nichts nach außen.
+  await import('@/lib/crm/kampagnen-motor').then(m => m.kampagnenAbmeldung(token, jetzt)).catch(e => console.error('[abmelden] Kampagnen:', e instanceof Error ? e.message.slice(0, 160) : e));
   return geaendert.length;
 }

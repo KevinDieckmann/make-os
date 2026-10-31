@@ -48,6 +48,8 @@ interface HeuteKarte {
   gehoert: string; beziehung: string; bezugArt?: 'mandat' | 'kampagne' | 'event';
   /** Das echte Follow-up hinter der Karte (08.10.) — geht mit dem Ergebnis an /api/crm/aktivitaet und wird dort mit erledigt. */
   followupId?: string;
+  /** Leitfaden eines Sequenz-Anrufs (31.10., Kampagnen-Motor). */
+  leitfaden?: string;
   /** Die fällige Aufgabe hinter der Karte (08.10., Woche 1 · 4.7) — geht mit dem Ergebnis mit und wird dort mit erledigt. */
   aufgabeId?: string;
 }
@@ -271,6 +273,7 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
               {k.gruende.map((g, j) => <li key={j} style={{ fontSize: TYP.bedien, color: j === 0 ? C.ink : C.inkDim }}>{g}</li>)}
             </ul>
             {k.aufhaenger && <div style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}><span style={{ color: C.inkLeise }}>Aufhänger:</span> {k.aufhaenger}</div>}
+            {k.leitfaden && <details style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}><summary style={{ cursor: 'pointer', color: C.ink }}>Leitfaden zum Anruf</summary><div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 6 }}>{k.leitfaden}</div></details>}
             {k.naechsterSchritt && <div style={{ marginTop: 6, fontSize: TYP.bedien, color: C.inkDim }}><span style={{ color: C.inkLeise }}>Zugesagt:</span> {k.naechsterSchritt.text} · {datum(k.naechsterSchritt.datum, d.heute)}</div>}
             <Grund ampel={k.ampel} />
             {k.letzte.length > 0 && <div style={{ marginTop: 10 }}><Verlauf liste={[...k.letzte].reverse()} name={name} max={3} heute={d.heute} /></div>}

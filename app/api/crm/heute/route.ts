@@ -63,6 +63,8 @@ export async function GET(req: Request) {
         gehoert: karteGehoert(c, crm), beziehung: haeltBeziehung(k), bezugArt: bezugArt(c.bezug),
         // Das echte Follow-up hinter der Karte (08.10., 4.1) — der Ergebnis-Knopf erledigt es mit.
         ...(c.followupId ? { followupId: c.followupId } : {}),
+        // Leitfaden eines Sequenz-Anrufs (31.10., Kampagnen-Motor) — aus der Notiz des Follow-ups.
+        ...(c.leitfaden ? { leitfaden: c.leitfaden } : {}),
         // Die Aufgabe hinter der Karte (4.7) — der Ergebnis-Knopf erledigt sie mit.
         ...(c.aufgabe ? { aufgabeId: c.aufgabe.id } : {}),
       };

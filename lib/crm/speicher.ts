@@ -32,6 +32,7 @@ import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEB
 import { kartenFelderSaeubern, mandatRatenSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktProzessKennung, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
 import { mailTexteSaeubern } from './vorlage-platzhalter';
 import { kundennummerOk, kundennummernNachziehen } from './kundennummer';
+import { sequenzSaeubern, SEQUENZ_GRENZEN } from './sequenz';
 import { personenSchranke, kampagnenHinweise, kanalWechselBereinigen, funktionsOps, PersonenSchrankeFehler, type PersonSchranke } from './personen-schranke';
 import { ladeScoring } from './scoring-server';
 import { SEGMENT_VERNETZEN_ID, segmentVernetzen } from './import-konflikte';
@@ -124,7 +125,7 @@ export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> =
   sitzungen: { karten: 2000 },
   beitraege: { wirkung: 20000, quellen: 1000 },
   newsletter: { beitragIds: GRENZE_IDS },
-  kampagnen: { schritte: 1000, kontaktIds: 20000, ergebnisse: 100000 },
+  kampagnen: { schritte: 1000, kontaktIds: 20000, ergebnisse: 100000, firmaIds: 20000, sequenz: SEQUENZ_GRENZEN.schritte },
   angebote: { positionen: ANGEBOT_GRENZEN.positionen },
 };
 const grenzeVon = (liste: CrmListe, feld: string) => LISTEN_GRENZEN[liste]?.[feld] ?? GRENZE_IDS;
@@ -462,7 +463,16 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       return { ...(opt(o.kalenderUid, 120) ? { kalenderUid: opt(o.kalenderUid, 120) } : {}), ...(opt(o.marke, MARKE_MAX) ? { marke: opt(o.marke, MARKE_MAX) } : {}), ...(reihe ? { reihe } : {}),
         ...(fuer ? { fuer } : {}), ...(anmeldung ? { anmeldung } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(tag(o.bisDatum) && String(o.bisDatum) > String(o.datum ?? '') && String(o.bisDatum) <= tagePlusSpeicher(String(o.datum), 30) ? { bisDatum: tag(o.bisDatum) } : {}), ...(zielpersonen ? { zielpersonen } : {}), ...(uebergaben ? { uebergaben } : {}) };
     }
-    case 'kampagnen': case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};
+    case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};
+    // Kampagnen-Motor (31.10., Welle A): Sequenz, Startmenge je Tag, Firmen als Ziele — ohne diese Zeilen fielen sie bei jedem Speichern weg.
+    // `zielStaende` schreibt nur der Server (`zielStaendeVomAltstand` in `wendeCrmAn`) — hier nie.
+    case 'kampagnen': {
+      const sequenz = sequenzSaeubern(o.sequenz);
+      const n = Number(o.neuJeTag);
+      const firmaIds = Array.isArray(o.firmaIds) ? Array.from(new Set((o.firmaIds as unknown[]).map(String).filter(x => /^f-[a-z0-9-]{2,63}$/.test(x)))).slice(0, grenzeVon('kampagnen', 'firmaIds')) : [];
+      return { ...(zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {}), ...(sequenz ? { sequenz } : {}),
+        ...(Number.isInteger(n) && n >= 1 && n <= SEQUENZ_GRENZEN.neuJeTag ? { neuJeTag: n } : {}), ...(firmaIds.length ? { firmaIds } : {}) };
+    }
     case 'newsletter': return wer(o.stimme) || o.stimme === 'marke' ? { stimme: String(o.stimme) } : {};
     case 'teilnahmen': {
       const f = o.feedback as Record<string, unknown> | undefined;
@@ -759,6 +769,8 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
     // Übergabe-Protokoll (03.10., netz-recht): schreibt NUR der Server (Route events › kunden-uebergabe, `aendereCrm` direkt) — der Browser
     // kann es über diesen generischen Weg weder setzen noch löschen oder fälschen; es gilt immer der gespeicherte Stand.
     const liste = l === 'events' ? uebergabenVomAltstand(b.events, r.liste as unknown as CrmBestand['events'])
+      // Stand je Ziel der Kampagnen-Sequenz (31.10.): schreibt NUR der Motor — der Browser kann ihn weder setzen noch löschen.
+      : l === 'kampagnen' ? zielStaendeVomAltstand(b.kampagnen, r.liste as unknown as CrmBestand['kampagnen'])
       // Papierkorb-Marke der Produkte (04.10.): neu = Server-Zeit, bestehend bleibt — der Browser verschiebt die Frist nie.
       : l === 'leistungen' ? (r.liste as unknown as Leistung[]).map(x => markeVomServer(b.leistungen.find(a => a.id === x.id), x, jetzt))
       : r.liste;
@@ -777,6 +789,16 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
   // Qualifizierung; umbenannte Firma → Anzeigename an Mandaten/Deals. Personen-Leads führt `aendereCrm` nach.
   const hinweise = [...kanalWechsel.hinweise, ...kampagnenHinweise(b, roh, personen ?? personenImLauf.getStore() ?? []), ...zurueck.map(n => `Die Firma „${n}“ lag im Papierkorb — sie ist zurückgeholt (Vermerk in der Notiz).`)];
   return { bestand: crmFolgen(b, neu, jetzt, person), angewandt, fehler, konflikte: [], sperren: [], grenze: [], ...(hinweise.length ? { hinweise } : {}) };
+}
+
+/** Der Stand je Ziel der Kampagnen-Sequenz kommt immer aus dem gespeicherten Stand (lib/crm/kampagnen-motor.ts schreibt ihn über `aendereCrm`). */
+function zielStaendeVomAltstand(alt: CrmBestand['kampagnen'], neu: CrmBestand['kampagnen']): CrmBestand['kampagnen'] {
+  const vorher = new Map((alt ?? []).map(k => [k.id, k.zielStaende]));
+  return neu.map(k => {
+    const { zielStaende: _vomBrowser, ...ohne } = k;
+    const gespeichert = vorher.get(k.id);
+    return gespeichert?.length ? { ...ohne, zielStaende: gespeichert } : ohne;
+  });
 }
 
 /** Das Übergabe-Protokoll der Events kommt immer aus dem gespeicherten Stand (Altstand), nie aus dem, was der Browser schickt. */

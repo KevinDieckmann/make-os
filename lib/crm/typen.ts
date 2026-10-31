@@ -807,6 +807,20 @@ export interface Kampagne {
   notiz?: string;
   /** Nur Playbook „vernetzen“: Texte, Thema, Folgetage und Tagesportion — modular je Kampagne (lib/crm/netzwerk.ts). */
   vernetzen?: import('./netzwerk-form').VernetzenEinstellung;
+  /**
+   * Sequenz je Ziel (31.10., Welle A · Kampagnen-Motor, lib/crm/sequenz.ts): Schritte mit Tag-Abstand und Kanal (Mail · Anruf · LinkedIn · Brief ·
+   * Besuch) und einer Vorlage mit Platzhaltern. Fehlt sie, bleibt die Kampagne wie bisher (Schritte für die ganze Kampagne, Ergebnis von Hand).
+   */
+  sequenz?: SequenzSchritt[];
+  /** Wie viele Ziele je Tag neu in die Sequenz starten bzw. als „Neu“ in die Power Hour kommen (Vorgabe NEU_MAX, 1–200). */
+  neuJeTag?: number;
+  /** Firmen als Ziele (Betriebe ohne Ansprechpartner, 31.10.) — Kennungen `f-…`; Mail/Telefon aus den Firmen-Feldern. */
+  firmaIds?: string[];
+  /**
+   * Stand je Ziel — schreibt NUR der Server (lib/crm/kampagnen-motor.ts über `aendereCrm`); der Browser-Weg übernimmt ihn immer aus dem
+   * gespeicherten Stand (lib/crm/speicher.ts `zielStaendeVomAltstand`).
+   */
+  zielStaende?: ZielStand[];
   /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
   zustaendig?: string;
   /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
@@ -817,6 +831,18 @@ export interface Kampagne {
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
 }
+
+// ── Kampagnen-Motor (31.10., Welle A — KUNDENGEWINNUNG_PLAN.md › S3) ─────────────────────────────────────────────────────────────
+export type SequenzKanal = 'mail' | 'anruf' | 'linkedin' | 'brief' | 'besuch';
+/** Ein Schritt der Sequenz: `tagAbstand` Tage nach dem vorigen Schritt (der erste: nach dem Start des Ziels). */
+export interface SequenzSchritt { id: string; tagAbstand: number; kanal: SequenzKanal; betreff?: string; text?: string; leitfaden?: string }
+export type ZielArt = 'kontakt' | 'firma';
+export interface KampagnenZiel { art: ZielArt; id: string }
+/** offen = der Schritt `schritt` steht an `faelligAm` an · wartet = er liegt als Entwurf/Follow-up vor · reagiert/gestoppt/fertig = Ende. */
+export type ZielStatus = 'offen' | 'wartet' | 'reagiert' | 'gestoppt' | 'fertig';
+export type ZielVerlaufWas = 'start' | 'entwurf' | 'freigegeben' | 'gesendet' | 'erledigt' | 'uebersprungen' | 'reagiert' | 'bounce' | 'abgemeldet' | 'gestoppt' | 'fertig';
+export interface ZielVerlauf { am: string; was: ZielVerlaufWas; schritt?: string; von?: string }
+export interface ZielStand extends KampagnenZiel { schritt: number; faelligAm: string; status: ZielStatus; grund?: string; verlauf: ZielVerlauf[] }
 
 export interface MarketingEinstellung { positionierung: string; icp: string; ton: string; saeulen: { id: string; name: string; beschreibung: string }[] }
 
