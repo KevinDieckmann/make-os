@@ -336,3 +336,10 @@ ins Handy-Feld des Kontakts. Neuer Persona-Filter „Nur mit Telefonnummer“. *
 sind selten veröffentlicht. **Neue Auswahl (ersetzt die 48):** 50 Betriebe, 45 mit Handy + 5 Festnetz, je Bezirk 12–13; 37 laut Verzeichnis ohne Website
 (der Anruf-Leitfaden sagt: vorher kurz selbst suchen), 13 mit toter/unsicherer Seite; Mail 9, Instagram 5, Inhaber 2 (aus OSM — im Gespräch erfragen).
 Datei wie bisher `~/Desktop/Homepage-Funde Berlin 2026-10-31.json` (überschrieben, Format v2).
+
+**Erweitert auf 200 (31.10. spät, Kevin: „erweitere die Liste auf 200 in Berlin“):** alle 12 Bezirke, gleiche Regeln (Restaurants & Cafés, Nummer
+Pflicht, Handy zuerst, keine/kaputte Website, höchstens 24 je Bezirk); die bisherigen 50 bleiben. **Berlin gesamt (OSM):** 7.115 Restaurants & Cafés,
+3.160 (44 %) mit Nummer, 411 (6 %) mit Handynummer. **Die 200:** Handy 139 · nur Festnetz 61 · Mail 39 · Inhaber 20 · Instagram 18 · 141 laut Verzeichnis
+ohne Website, 59 mit toter/unsicherer Seite. Bezirke: Mitte 24, Friedrichshain-Kreuzberg 24, Pankow 24, Charlottenburg-Wilmersdorf 24, Neukölln 23,
+Tempelhof-Schöneberg 21, Steglitz-Zehlendorf 14, Treptow-Köpenick 12, Lichtenberg 12, Reinickendorf 9, Spandau 8, Marzahn-Hellersdorf 5.
+Datei (Format v3, 124 KB) besteht die Import-Prüfung vollständig; 200 ist genau die Höchstzahl je Import-Datei.
