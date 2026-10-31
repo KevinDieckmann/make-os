@@ -147,7 +147,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'fokus-privat--*': 'Unser Fokus · Privat je Haushalt (Freitext der Mitglieder, ohne Personen-Feld) — wer ihn geändert hat, steht nur im Änderungsprotokoll',
   'social-verbindungen--*': 'Verbindungen der Social-Kanäle je Haushalt (27.10.: Anbieter, Zustand, Token verschlüsselt, „verbunden von“ als Speichername) — nie im Export (Zugangsdaten); beim Löschen fallen die Verbindungen weg, die die Person angelegt hat (ihr Token)',
   'social-lauf--*': 'Stand der automatischen Social-Läufe je Haushalt (Zeit, Zahlen, Grund; die auslösende Person nur als Speichername) — technisch, ohne Inhalte',
-  'social-community--*': 'Kommentare und DMs von Instagram je Haushalt (28.10.) — Nachrichten Dritter an den Account, keine Daten der Person; eigene Antworten tragen den Speichernamen (Art. 17 tilgt Namen über person-weitere)',
+  'social-community--*': 'Kommentare und DMs von Instagram je Haushalt (28.10.) — Nachrichten Dritter an den Account; eigene Antworten tragen den Speichernamen: im Export die eigenen Antworten und Kommentar-Entwürfe (31.10., ohne Texte Dritter/Gegenüber), beim Löschen wird der Name „[gelöscht]“',
   'social-werkstatt--*': 'Aufträge der Reel-Werkstatt je Haushalt (28.10.) — Arbeitsstand des Haushalts (Medien-Kennungen, Transkripte, Einblendungen); die Ergebnisse sind Medien der Ablage (dort im Export)',
   'social--*': 'Social je Haushalt (26.10.: Kanäle, Serienformate, Folgen, Messungen — Dritte stehen hier nicht; „geändert von“/„freigegeben von“ und die Person einer Personenmarke als Speichername) — im Export die eigenen Stempel und Personenmarken, beim Löschen wird der Speichername „[gelöscht]“ bzw. die Marke von der Person gelöst',
   'markttraktion-planung--*': 'Vertriebsplanung je Haushalt (Leadkanäle, Umsatzziele, Challenges — Personen als Team-Kürzel, Dritte nur als Mandat-Kennung; „geändert von“/„abgehakt von“ als Speichername) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“',
@@ -334,6 +334,9 @@ export async function kontoExport(speicher: string, jetzt = new Date()): Promise
     // Social (26.10.): die eigenen Stempel (geändert, freigegeben) — nur Kennung, Art, Zeit.
     const socialRoh = await loadJson<unknown>(`social--${k.haushalt}`).catch(() => null);
     if (socialRoh) { const sd = await import('@/lib/social/daten'); merke(`social--${k.haushalt}`, sd.socialEintraegeVon(sd.socialAus(socialRoh), speicher)); }
+    // Social-Community (31.10., Nachtprüfung): die eigenen Antworten (Kommentare/DMs) und Kommentar-Entwürfe — nie Texte Dritter, nie das Gegenüber.
+    const comRoh = await loadJson<import('@/lib/social/community').CommunityDatei>(`social-community--${k.haushalt}`).catch(() => null);
+    if (comRoh) merke(`social-community--${k.haushalt}`, (await import('@/lib/social/community')).communityEintraegeVon({ eintraege: comRoh.eintraege ?? {}, faeden: comRoh.faeden ?? {}, fremd: comRoh.fremd ?? [] }, speicher));
     // Formular „Angebot anfordern“ (25.10.): die eigenen Stempel (Anfrage, Link, Einstellungen) — nur Kennung, Art, Zeit.
     const formRoh = await loadJson<import('@/lib/crm/formulare').FormularBestand>(`angebot-formular--${k.haushalt}`).catch(() => null);
     if (formRoh) merke(`angebot-formular--${k.haushalt}`, (await import('@/lib/crm/formulare')).formularEintraegeVon({ ...(await import('@/lib/crm/formulare')).leererFormularBestand(), ...formRoh }, speicher));
