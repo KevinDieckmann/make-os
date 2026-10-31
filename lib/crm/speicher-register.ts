@@ -401,7 +401,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // Kampagne „Homepage“ (30.10., lib/funde): Betriebe aus OpenStreetMap bzw. von Hand (Name, Adresse, Branche, Website, geschäftliche Mail/Telefon,
   // Bewertung, Vorschau-Texte, Mail-Entwurf), Einstellungen (Absender-Kennung, Gebiete), bekannte OSM-Kennungen. Bei Einzelunternehmen personenbezogen.
   mit(E('kampagne-funde--*', 'Homepage-Funde: Betriebe aus öffentlichen Quellen (OpenStreetMap, von Hand) mit Bewertung der Website, Vorschau-Texten und Mail-Entwurf; Token der öffentlichen Vorschau nur als Fingerabdruck. Art. 17 entfernt die Funde der Person (Mail, Name, Kennung), die OSM-Kennung bleibt als „bekannt“.', 'kampagne-funde'), {
-    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Direktwerbung gegenüber Betrieben, ErwG 47; Interessenabwägung im Plan KAMPAGNE_HOMEPAGE_PLAN.md) — die Ansprache selbst nur nach Freigabe; Mail/Anruf ohne Einwilligung nur auf eigenes Risiko des Inhabers (§ 7 UWG)',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (Direktwerbung gegenüber Betrieben, ErwG 47; Interessenabwägung dokumentiert) — die Ansprache selbst nur nach Freigabe; Mail/Anruf ohne Einwilligung nur auf eigenes Risiko des Inhabers (§ 7 UWG)',
     art15: 'Funde der Person zählen in der Auskunft (weitere Speicher, person-weitere.ts); nach der Übernahme stehen die Angaben in der Kartei (Herkunft „Recherche“, Art.-14-Uhr)',
     loeschfrist: 'Nicht übernommen: Vorgabe 21 Tage (höchstens 30, Art. 14 Abs. 3 lit. a), übernommen: 60 Tage (Gültigkeit der Vorschau) — Morgenlauf-Schritt „kampagne-funde“',
   }),
@@ -971,6 +971,8 @@ const IN_PRIVAT: readonly string[] = [
   'fokus-privat--*', 'fokus-steuerung-privat--*',
 ];
 const IN_BUSINESS: readonly string[] = [
+  // Kampagne „Homepage“ und Kampagnen-Motor (31.10./01.11.): Funde und Mail-Stapel gehören zur Kundengewinnung.
+  'kampagne-funde--*', 'kampagnen-post--*',
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',

@@ -97,7 +97,7 @@ export function KampagneSequenz({ kampagneId }: { kampagneId: string }) {
         {seq && (
           <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Knopf leise onClick={() => setSeq([...sequenz, { id: `q${Date.now().toString(36)}`, tagAbstand: 3, kanal: 'anruf' }])}>+ Schritt</Knopf>
+              <Knopf leise onClick={() => setSeq([...sequenz, { id: `q-${crypto.randomUUID()}`, tagAbstand: 3, kanal: 'anruf' }])}>+ Schritt</Knopf>
               <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Neue Ziele je Tag</span>
               <input aria-label="Neue Ziele je Tag" type="number" min={1} max={200} value={neuJeTag} placeholder="4" onChange={e => setNeuJeTag(e.target.value)} style={{ ...eingabe, width: 80 }} />
             </div>
