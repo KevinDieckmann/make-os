@@ -969,14 +969,14 @@
         "id": "vertrieb",
         "name": "Vertriebs-Check",
         "minuten": 5,
-        "text": "Zwölf Fragen zu Organisation, Zahlen und Neukunden. Sie sehen sofort, wo Ihr Vertrieb steht.",
+        "text": "Zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Ihr Vertrieb steht.",
         "thema": "vertrieb"
       },
       {
         "id": "sichtbarkeit",
         "name": "Sichtbarkeits-Check",
         "minuten": 5,
-        "text": "Zwölf Fragen zu Botschaft, Website und Reichweite. Sie sehen sofort, ob man Sie versteht und findet.",
+        "text": "Zwölf Fragen zu Botschaft, Website und Reichweite, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, ob man Sie versteht und findet.",
         "thema": "sichtbarkeit"
       }
     ],
@@ -1138,7 +1138,7 @@
           "Vertriebs-Check starten"
         ]
       ],
-      "check_satz": "Zwei kurze Checks mit je zwölf Fragen zeigen Ihnen in rund fünf Minuten, wo Sie bei Sichtbarkeit und Vertrieb stehen und welcher Schritt jetzt am meisten bringt."
+      "check_satz": "Zwei kurze Checks zeigen Ihnen in rund sechs Minuten, wo Sie bei Sichtbarkeit und Vertrieb stehen und welcher Schritt jetzt am meisten bringt."
     },
     "unternehmen": {
       "titel": "KI im Alltag nutzen.",
