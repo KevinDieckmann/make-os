@@ -295,3 +295,15 @@
 .weitereUnten { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--c-linie); }
 .weitereListe { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; margin-top: 12px; }
 .weitereUnten .claim { margin-top: 20px; }
+
+/* ── Glanz wie auf der Website (31.10., Kevin: „dieser Schein … dezent überall“): einmal von links nach rechts, dann ruhig ── */
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .einstiegTitel, .grosseZahl, .claim { --glanz-grund: var(--c-text); color: transparent; -webkit-background-clip: text; background-clip: text;
+      background-image: linear-gradient(100deg, var(--glanz-grund) 0%, var(--glanz-grund) 41%, #C4B5FD 46.5%, #FFFFFF 50%, #C4B5FD 53.5%, var(--glanz-grund) 59%, var(--glanz-grund) 100%);
+      background-size: 260% 100%; background-position: 100% 0; animation: glanz 2.8s cubic-bezier(.45, .05, .35, 1) .6s 1 both; }
+    .claim { --glanz-grund: var(--c-leise); }
+  }
+}
+@media (forced-colors: active) { .einstiegTitel, .grosseZahl, .claim { color: CanvasText !important; background: none !important; } }
+@keyframes glanz { from { background-position: 100% 0; } to { background-position: 0% 0; } }
