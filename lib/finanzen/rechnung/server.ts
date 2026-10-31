@@ -41,6 +41,9 @@ import { angenommenZuDeal, angebotEinmalRest, angebotTitelFuerFolge } from '@/li
 import { abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, istAnrechnung, monatsPositionen, nurAbgerechnet, zahlplanMonate } from '@/lib/crm/mandat-zusatz';
 import type { RechnungPosition } from './typen';
 import { rechnungDokument, bankZeile } from './dokument';
+import { ciiXml } from '@/lib/finanzen/erechnung/cii';
+import { facturXEinbetten } from '@/lib/finanzen/erechnung/pdf';
+import { en16931Luecken } from '@/lib/finanzen/erechnung/pruefen';
 import type { AnschriftAnFirma, Mahnstufe } from './typen';
 
 export class RechnungFehler extends Error {
@@ -151,6 +154,60 @@ export async function rechnungPdf(id: string, z: { haushalt: string; sicht: Sich
   const d = await lesen(z.haushalt, r.pdfDateiId);
   if (!d) throw new RechnungFehler('Das PDF liegt nicht (mehr) in der Ablage — bitte im Head of IT prüfen.', 404);
   return { bytes: d.bytes, name: `${r.art === 'storno' ? 'Stornorechnung' : 'Rechnung'} ${r.nummer ?? r.id}.pdf`.replace(/[\\/]/g, '-') };
+}
+
+/**
+ * Die XRechnung (CII-Syntax, XRechnung 3.0) einer gestellten Rechnung bzw. Stornorechnung (31.10.) — für Behörden-Kunden zum Hochladen ins
+ * Rechnungsportal. Nichts wird geschrieben; Grundlage ist der festgeschriebene Beleg:
+ *   1. trägt die PDF die ZUGFeRD-XML, wird DIESE umgeschrieben (Spezifikation BT-24, Prozess BT-23; fehlt die Käuferreferenz, kommt die Leitweg-ID
+ *      aus der Kartei dazu) — dieselben Angaben wie in der PDF;
+ *   2. sonst (Rechnungen vor dem 31.10. oder „E-Rechnung aus“) entsteht sie aus dem Datensatz + Absender des Registers — nur, wenn der Absender
+ *      sich seit dem Stellen nicht geändert hat (sonst trüge sie andere Angaben als die PDF → 409).
+ * Danach die Pflichtfelder der XRechnung (`xrechnungLuecken`) → 409 mit Liste.
+ */
+export async function rechnungXRechnung(id: string, z: { haushalt: string; sicht: Sicht }): Promise<{ xml: string; name: string }> {
+  const plan = await planLaden();
+  const r = plan.rechnungen.find(x => x.id === id);
+  if (!r || !inSicht(r, z.sicht)) throw new RechnungFehler('Rechnung nicht gefunden.', 404);
+  if (r.status === 'geplant' || !r.nummer || !r.pdfDateiId) throw new RechnungFehler('Eine XRechnung gibt es nur für gestellte Rechnungen aus MAKE OS (mit Nummer und PDF).', 409, { grund: 'nicht-gestellt' });
+  if (!istGesellschaft(r.firmaId)) throw new RechnungFehler(NUR_GRUNDDATEN, 409, { grund: 'nur-grunddaten' });
+  const { profilWechseln, leitwegEinsetzen, ciiXml: erzeugen } = await import('@/lib/finanzen/erechnung/cii');
+  const { xrechnungLuecken, leitwegIdOk } = await import('@/lib/finanzen/erechnung/pruefen');
+  const leitwegAusKartei = async (): Promise<string | undefined> => {
+    if (!r.kundeFirmaId && !r.kontaktId) return undefined;
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const crm = await ladeCrm();
+    const f = r.kundeFirmaId ? crm.firmen.find(x => x.id === r.kundeFirmaId) : undefined;
+    return f?.zahlung?.leitwegId;
+  };
+  const leitweg = r.empfaenger?.leitwegId || await leitwegAusKartei().catch(() => undefined);
+  if (leitweg && !leitwegIdOk(leitweg)) throw new RechnungFehler(`Die Leitweg-ID „${leitweg}“ hat nicht die übliche Form (z. B. 991-12345-67) — bitte an der Kundenfirma prüfen.`, 409, { grund: 'leitweg' });
+  const original = r.art === 'storno' && r.stornoZu ? plan.rechnungen.find(x => x.id === r.stornoZu) : undefined;
+  let xml: string | null = null;
+  if (r.eRechnung === 'zugferd') {
+    const { lesen } = await import('@/lib/dateien/ablage');
+    const d = await lesen(z.haushalt, r.pdfDateiId).catch(() => null);
+    const { eingebetteteXml } = await import('@/lib/finanzen/erechnung/pdf');
+    const ein = d ? await eingebetteteXml(new Uint8Array(d.bytes)) : null;
+    if (ein) xml = profilWechseln(leitweg ? leitwegEinsetzen(ein.xml, leitweg) : ein.xml, 'xrechnung');
+  }
+  // Fehlt der eingebetteten Datei etwas, das der Absender inzwischen nachgetragen hat (z. B. Telefon), oder gibt es keine: aus dem Datensatz —
+  // nur, wenn sich die Angaben des Absenders auf der PDF (Firmierung, Anschrift, Fuß) seit dem Stellen nicht geändert haben.
+  if (!xml || xrechnungLuecken(xml).length) {
+    const g = (await gesellschaften(z.haushalt)).find(x => x.id === r.firmaId) ?? { id: r.firmaId };
+    const jetzt = absenderAus(g);
+    const damals = r.absender;
+    const gleich = !damals || JSON.stringify({ f: damals.firmierung, z: damals.zeilen, u: damals.fuss }) === JSON.stringify({ f: jetzt.firmierung, z: jetzt.zeilen, u: jetzt.fuss });
+    if (gleich) {
+      const neu = erzeugen({ r, g, kleinunternehmer: !!g.kleinunternehmer, ...(original ? { original } : {}), ...(leitweg ? { leitwegId: leitweg } : {}) }, 'xrechnung');
+      if (!xml || !xrechnungLuecken(neu).length) xml = neu;
+    } else if (!xml) {
+      throw new RechnungFehler('Der Absender hat sich seit dem Stellen geändert — eine XRechnung aus den heutigen Angaben trüge andere Daten als die PDF. Bitte die PDF senden oder Storno und neue Rechnung.', 409, { grund: 'absender-geaendert' });
+    }
+  }
+  const fehlt = xrechnungLuecken(xml);
+  if (fehlt.length) throw new RechnungFehler(`Keine XRechnung — es fehlen Angaben: ${fehlt.join(' ')}`, 409, { fehlt: fehlt.map(text => ({ text })), grund: 'xrechnung' });
+  return { xml, name: `XRechnung ${r.nummer}.xml`.replace(/[\\/]/g, '-') };
 }
 
 // ── Entwurf anlegen (frei, aus Angebot, aus Mandat) ─────────────────────────
@@ -695,6 +752,21 @@ async function verwaistePdfsEntfernen(haushalt: string, rechnungId: string): Pro
   return weg.length;
 }
 
+/**
+ * E-Rechnung (31.10.): die ZUGFeRD-/Factur-X-XML (EN 16931) aus derselben Rechnung, eingebettet in die PDF vor dem Speichern — nur, wenn die
+ * Rechnung `eRechnung: 'zugferd'` trägt (Gesellschaft ohne „E-Rechnung aus“). Ohne: die PDF wie bisher, bit-gleich.
+ */
+function eRechnungEinbetten(r: Rechnung, g: Gesellschaft, ku: boolean, erstellt: Date, original?: Pick<Rechnung, 'nummer' | 'datum'>, streng = true) {
+  if (r.eRechnung !== 'zugferd') return undefined;
+  const xml = ciiXml({ r, g, kleinunternehmer: ku, ...(original ? { original } : {}) }, 'en16931');
+  // Sicherheitsnetz: was die Pflichtprüfung durchließ, aber in der XML fehlt, stellt NICHT (Abbruch vor dem Festschreiben — keine Nummer verbraucht).
+  const fehlt = en16931Luecken(xml);
+  if (fehlt.length && !streng) return undefined;
+  if (fehlt.length) throw new RechnungFehler(`Nicht gestellt — die E-Rechnung wäre unvollständig: ${fehlt.join(' ')}`, 409, { fehlt: fehlt.map(text => ({ text })), grund: 'pflichtangaben' });
+  const art = r.art === 'storno' ? 'Stornorechnung' : 'Rechnung';
+  return (doc: Parameters<typeof facturXEinbetten>[0]) => facturXEinbetten(doc, xml, { erstellt, titel: `${art} ${r.nummer ?? ''}`.trim(), autor: mitVorgaben(g).name });
+}
+
 export interface StellenErgebnis { rechnung: Rechnung & { fassung: string }; pdf: { id: string; name: string }; mail: { an?: string; betreff: string; text: string } }
 
 /** 409 mit der Liste der fehlenden Pflichtangaben (und dem Weg, sie zu beheben). */
@@ -741,11 +813,13 @@ export async function rechnungStellen(p: { id: string; stand: unknown; person: s
       faellig: faelligAm(heute, ziel, a.leistungVon), zahlungszielTage: ziel,
       lauf, absender: absenderAus(g), gestelltAm: jetztIso, gestelltVon: p.person,
       ...(ku ? { steuerHinweis: undefined, steuerfreiGrund: undefined } : {}),
+      // E-Rechnung (31.10.): Vorgabe an — die PDF trägt die ZUGFeRD-XML (EN 16931); „E-Rechnung aus“ an der Gesellschaft = nur die PDF wie bisher.
+      ...(g.eRechnungAus ? {} : { eRechnung: 'zugferd' as const }),
     };
     // Mehrere Steuersätze: kein einzelner Satz am Eintrag — Steuern rechnen dann mit `netto` (lib/steuern/rechnen.ts).
     if (bf.ustSatz === undefined) delete gestellt.ustSatz;
     // b) Außerhalb der Finanzplan-Sperre: das PDF und seine Prüfsumme.
-    const bytes = Buffer.from(await belegPdf(rechnungDokument(gestellt, absenderAus(g, { ibanVoll: true }), { datum: heute, bank: bankZeile(g.bank), kleinunternehmer: ku }), { logo, erstellt: jetzt }));
+    const bytes = Buffer.from(await belegPdf(rechnungDokument(gestellt, absenderAus(g, { ibanVoll: true }), { datum: heute, bank: bankZeile(g.bank), kleinunternehmer: ku }), { logo, erstellt: jetzt, vorSpeichern: eRechnungEinbetten(gestellt, g, ku, jetzt) }));
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     await rechnungTest.nachPdf?.();
     const name = `Rechnung ${nummer}.pdf`.replace(/[\\/]/g, '-');
@@ -771,7 +845,7 @@ export async function rechnungStellen(p: { id: string; stand: unknown; person: s
   });
   const e = ergebnis as { r: Rechnung; pdf: { id: string; name: string } } | null;
   if (!e) throw new RechnungFehler('Nicht gestellt.', 500);
-  await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: e.r.id, felder: ['status', 'nummer', 'datum', 'faellig', 'pdfDateiId', 'sha256', 'absender', 'lauf'] }], p.wer);
+  await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'geaendert', id: e.r.id, felder: ['status', 'nummer', 'datum', 'faellig', 'pdfDateiId', 'sha256', 'absender', 'lauf', ...(e.r.eRechnung ? ['eRechnung'] : [])] }], p.wer);
   // Rechnungsanschrift an der Firma (19.10., B12): beim Stellen füllt die Anschrift eine Firma, die noch keine hat — nie überschrieben.
   await anschriftAnFirma(null, e.r, p.wer);
   // Ereignis (21.10., Prozesse C1): Rechnung gestellt → Prozesse (nur Kennungen, nie Beträge) — nach dem Speichern, wirft nie.
@@ -826,7 +900,11 @@ export async function rechnungStornieren(p: { id: string; grund: unknown; stand?
     // 25.10.: eigenes Storno-Format der Gesellschaft (Vorgabe: das Rechnungsformat — wie bisher derselbe Kreis).
     const { lauf, nummer } = naechsteNummer(plan.rechnungen, cur?.zaehler?.[schluessel], o.firmaId as Gesellschaftskennung, jahr, kurzVon(g), mitVorgaben(g).stornoformat);
     const s: Rechnung = { ...stornoEntwurf(o, { id: neueKennung('r'), heute, grund, kleinunternehmer: ku }), nummer, lauf, absender: absenderAus(g), gestelltAm: jetztIso, gestelltVon: p.person };
-    const bytes = Buffer.from(await belegPdf(rechnungDokument(s, absenderAus(g, { ibanVoll: true }), { datum: heute, kleinunternehmer: ku, original: o }), { logo, erstellt: jetzt }));
+    // E-Rechnung (31.10.): auch die Stornorechnung trägt die XML (Art 381, Bezug auf das Original) — ist sie unvollständig (Altbestand), bleibt es bei
+    // der PDF: ein Storno muss immer gehen.
+    const ez = g.eRechnungAus ? undefined : eRechnungEinbetten({ ...s, eRechnung: 'zugferd' }, g, ku, jetzt, o, false);
+    if (ez) s.eRechnung = 'zugferd';
+    const bytes = Buffer.from(await belegPdf(rechnungDokument(s, absenderAus(g, { ibanVoll: true }), { datum: heute, kleinunternehmer: ku, original: o }), { logo, erstellt: jetzt, vorSpeichern: ez }));
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     await rechnungTest.nachPdf?.();
     const name = `Stornorechnung ${nummer}.pdf`.replace(/[\\/]/g, '-');

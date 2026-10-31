@@ -33,6 +33,20 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-01-2',
+    datum: '2026-11-01',
+    titel: 'E-Rechnung',
+    kurz: 'Gestellte Rechnungen sind jetzt E-Rechnungen: die PDF trägt die strukturierten Rechnungsdaten (ZUGFeRD, EN 16931). Für Behörden gibt es die XRechnung zum Herunterladen, und eingehende E-Rechnungen liest MAKE OS beim Beleg-Hochladen direkt aus der Datei.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Jede gestellte Rechnung und Stornorechnung trägt die E-Rechnung (ZUGFeRD, EN 16931) in der PDF — dieselben Zahlen wie auf dem Papier. Vor dem Stellen sagt MAKE OS, was dafür noch fehlt.', bereich: 'alle' },
+        { text: 'An gestellten Rechnungen: „Als XRechnung (XML)“ für Kunden aus der Verwaltung. Die Leitweg-ID tragt ihr an der Kundenfirma unter Zahlungsdaten oder im Rechnungsentwurf ein.', bereich: 'alle' },
+        { text: 'Beleg hochladen (auch aus der Inbox): eine E-Rechnung als PDF oder XML wird direkt aus der Datei gelesen — Lieferant, Nummer, Datum, Beträge und Fälligkeit, ohne Texterkennung.', bereich: 'alle' },
+        { text: 'Je Gesellschaft lässt sich die E-Rechnung ausschalten, wenn ein Empfänger sie nicht möchte. Hinweis, keine Steuerberatung.', bereich: 'alle' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31-9',
     datum: '2026-10-31',
     titel: 'Rechnungen & Zahlungen aufgeräumt',

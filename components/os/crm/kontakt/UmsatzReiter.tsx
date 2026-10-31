@@ -443,6 +443,8 @@ function ZahlungKachel({ i, zu, umschalten, k, api, firma, zahlung, heute }: { i
       <Feldzeile label="Anschrift"><Feld wert={z.empfaenger?.anschrift ?? ''} platzhalter="Straße, PLZ Ort" onFertig={empf('anschrift')} /></Feldzeile>
       <Feldzeile label="USt-IdNr."><Feld wert={z.ustId ?? ''} platzhalter="DE…" breite="min(200px, 100%)" onFertig={t => speichern({ ustId: t.trim() || undefined })} /></Feldzeile>
       <Feldzeile label="Bestellnr. / Referenz"><Feld wert={z.referenz ?? ''} platzhalter="Referenz des Kunden" onFertig={t => speichern({ referenz: t.trim() || undefined })} /></Feldzeile>
+      {/* E-Rechnung (31.10.): Leitweg-ID nur für Behörden (XRechnung) — geht in den nächsten Rechnungsentwurf. */}
+      <Feldzeile label="Leitweg-ID (Behörde)"><Feld wert={z.leitwegId ?? ''} platzhalter="nur für Behörden, z. B. 991-12345-67" onFertig={t => speichern({ leitwegId: t.trim() || undefined })} /></Feldzeile>
       {z.weg === 'karte' && <Feldzeile label="Zahlungslink"><Feld wert={z.link ?? ''} platzhalter="https://…" onFertig={t => speichern({ link: t.trim() || undefined })} /></Feldzeile>}
       {(z.weg === 'sepa' || z.weg === 'ueberweisung' || z.iban) && <Feldzeile label="IBAN">
         {ibanNeu === null ? (

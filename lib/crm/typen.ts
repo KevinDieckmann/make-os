@@ -517,6 +517,8 @@ export interface Zahlungsdaten {
   ustId?: string;
   /** Bestellnummer / Referenz des Kunden — gehört auf jede Rechnung. */
   referenz?: string;
+  /** Leitweg-ID (31.10., optional): Pflicht-Referenz für E-Rechnungen an Behörden (XRechnung, BT-10) — geht beim Anlegen in den Rechnungsentwurf. */
+  leitwegId?: string;
   /** Grundform ohne Leerzeichen; nur mit gültiger Prüfziffer gespeichert. Im Browser nur maskiert (lib/crm/zahlung.ts `zahlungMaskiert`). */
   iban?: string;
   /** Nur in Antworten an den Browser (28.09.): eine IBAN ist gespeichert — `iban` ist dann maskiert. Nie gespeichert. */

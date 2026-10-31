@@ -2,6 +2,7 @@
 // GET                          → { rechnungen (mit fassung), gesellschaften (nur Absender-Felder, IBAN maskiert, luecken), vorgabe,
 //                                  mahnTage, mahnvorschlaege, sicht } — serverseitig nach Sicht gefiltert
 // GET ?pdf=<Rechnung>          → das PDF (attachment, nosniff, Sandbox)
+// GET ?xrechnung=<Rechnung>    → die XRechnung (CII, XRechnung 3.0) als XML-Download (31.10.) — 409 mit Liste, wenn Pflichtfelder fehlen
 // POST { aktion, … }:
 //   neu       { quelle: frei|angebot|mandat, firmaId?, kontaktId?, kundeFirmaId?, mandatId?, angebotId?, monat?, nur?: 'einmalig', vorlage?, anfrageId? }
 //             (`vorlage` bei quelle frei: { titel?, bruttoCent?, angebot?, angebotAm? } — abgelegtes Angebot → EINE Position, Woche 2 · 3.13)
@@ -40,7 +41,7 @@ import { einmalig } from '@/lib/store/anfragen';
 import { dateinameAscii } from '@/lib/dateien/regeln';
 import {
   RechnungFehler, entwurfKopie, entwurfKunde, entwurfLoeschen, entwurfNeu, entwurfSpeichern, mahnTageSetzen, mahnungVermerken, mitFassung, rechnungKatalog,
-  rechnungPdf, rechnungStellen, rechnungStornieren, rechnungsStand, rechnungZuordnen, rechnungenFuerUmsatz, type Sicht,
+  rechnungPdf, rechnungXRechnung, rechnungStellen, rechnungStornieren, rechnungsStand, rechnungZuordnen, rechnungenFuerUmsatz, type Sicht,
 } from '@/lib/finanzen/rechnung/server';
 import { rechnungBezahltVermerken, stornoOhnePdf } from '@/lib/finanzen/rechnung/bezahlt-server';
 
@@ -76,6 +77,22 @@ export async function GET(req: Request) {
       return new Response(new Uint8Array(d.bytes), {
         headers: {
           'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${dateinameAscii(d.name)}"; filename*=UTF-8''${encodeURIComponent(d.name)}`,
+          'X-Content-Type-Options': 'nosniff',
+          'Content-Security-Policy': "default-src 'none'; sandbox",
+          'Cache-Control': 'no-store, private',
+        },
+      });
+    }
+    // E-Rechnung (31.10.): XRechnung für Behörden-Kunden — aus der festgeschriebenen Rechnung, nichts wird geschrieben.
+    const xr = url.searchParams.get('xrechnung');
+    if (xr) {
+      if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(xr)) return fehler('Unzulässige Kennung.', 400);
+      const d = await rechnungXRechnung(xr, z);
+      leseZugriff(req, 'rechnungen', { ids: [xr] });
+      return new Response(d.xml, {
+        headers: {
+          'Content-Type': 'application/xml; charset=utf-8',
           'Content-Disposition': `attachment; filename="${dateinameAscii(d.name)}"; filename*=UTF-8''${encodeURIComponent(d.name)}`,
           'X-Content-Type-Options': 'nosniff',
           'Content-Security-Policy': "default-src 'none'; sandbox",

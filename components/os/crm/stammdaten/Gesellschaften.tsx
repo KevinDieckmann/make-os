@@ -158,6 +158,12 @@ function GesellschaftKarte({ g, i, onNeu }: { g: G; i: number; onNeu: (g: G) => 
           <input type="checkbox" checked={!!g.kleinunternehmer} onChange={e => void setze({ kleinunternehmer: e.target.checked }, 'Kleinunternehmer')} /> § 19 UStG — Angebote ohne Umsatzsteuer
         </label>
       </Feldzeile>
+      {/* E-Rechnung (31.10.): Vorgabe an — Rechnungen tragen die ZUGFeRD-XML (EN 16931) in der PDF; abschalten nur, wenn Empfänger sie nicht wollen. */}
+      <Feldzeile label="E-Rechnung">
+        <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim, cursor: 'pointer' }}>
+          <input type="checkbox" checked={!g.eRechnungAus} onChange={e => void setze({ eRechnungAus: !e.target.checked }, 'E-Rechnung')} /> ZUGFeRD (EN 16931) in jeder Rechnungs-PDF — ausschalten nur, wenn ein Empfänger es nicht will
+        </label>
+      </Feldzeile>
       <Feldzeile label="Zahlungsziel · Gültigkeit">
         <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <Feld typ="number" wert={g.zahlungszielTage != null ? String(g.zahlungszielTage) : ''} platzhalter={`${v.zahlungszielTage}`} breite={80} onFertig={t => void setze({ zahlungszielTage: t }, 'Zahlungsziel')} /><span style={klein}>Tage Zahlungsziel</span>

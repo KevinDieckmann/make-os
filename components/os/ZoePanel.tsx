@@ -847,7 +847,7 @@ export function ZoePanel() {
           <button onClick={() => dateiWahl.current?.click()} disabled={thinking || !!belegLaeuft}
             aria-label="Beleg anhängen" title="Rechnung oder Quittung anhängen — ZOE liest die Zahlen heraus"
             style={{ ...rund, fontSize: 15, cursor: thinking || belegLaeuft ? 'default' : 'pointer' }}>📎</button>
-          <input ref={dateiWahl} type="file" accept="image/*,application/pdf" hidden
+          <input ref={dateiWahl} type="file" accept="image/*,application/pdf,.xml,application/xml,text/xml" hidden
             onChange={e => { const f = e.target.files?.[0]; if (f) void belegLesen(f); e.target.value = ''; }} />
           {/* Leer oder während ZOE denkt: aus (Praxis 04.10. — vorher immer aktiv, auch ohne Text). */}
           <button onClick={() => ask.trim() && !thinking && send(ask.trim())} aria-label="Senden" disabled={thinking || !ask.trim()}

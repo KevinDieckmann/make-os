@@ -53,7 +53,9 @@ describe('Pflichtangaben (§ 14 Abs. 4 UStG, § 35a GmbHG)', () => {
     const null0 = entwurf({ positionen: [pos({ ustSatz: 0 })] });
     expect(pflichtFehlt(null0, G).map(x => x.text).join()).toMatch(/Reverse Charge/);
     expect(pflichtFehlt({ ...null0, steuerHinweis: 'reverse-charge' }, G).map(x => x.text).join()).toMatch(/USt-IdNr\. des Empfängers/);
-    expect(pflichtFehlt({ ...null0, steuerHinweis: 'reverse-charge', empfaenger: { ...null0.empfaenger, ustId: 'ATU12345678' } }, G)).toEqual([]);
+    // 31.10. (E-Rechnung): Reverse Charge braucht auch die USt-IdNr. des Absenders (§ 14a Abs. 1 UStG, EN 16931 BR-AE-02).
+    expect(pflichtFehlt({ ...null0, steuerHinweis: 'reverse-charge', empfaenger: { ...null0.empfaenger, ustId: 'ATU12345678' } }, G).map(x => x.text).join()).toMatch(/USt-IdNr\. des Absenders/);
+    expect(pflichtFehlt({ ...null0, steuerHinweis: 'reverse-charge', empfaenger: { ...null0.empfaenger, ustId: 'ATU12345678' } }, { ...G, ustId: 'DE123456789' })).toEqual([]);
     expect(pflichtFehlt({ ...null0, steuerHinweis: 'steuerfrei' }, G).map(x => x.text).join()).toMatch(/Grund der Steuerbefreiung/);
     expect(pflichtFehlt(null0, { ...G, kleinunternehmer: true })).toEqual([]);
   });
