@@ -89,10 +89,10 @@ describe('Erinnerungs-Titel: aussagekräftig, eindeutig, Glocke neutral', () => 
 
 const D = 'example.invalid';
 const H = 'h-titel';
-const heute = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' });
 // Fester Stichtag (31.10.: der Test kippte mit dem Kalender — Pflichten älter als 60 Tage werden keine neue Aufgabe mehr).
 const STICHTAG = '2026-10-30';
-const plus = (n: number) => { const d = new Date(`${heute()}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+// Das Ereignis liegt relativ zum STICHTAG (nicht zur echten Uhr) — sonst läge es nach dem Stichtag, sobald die Uhr weiterläuft (Zeitreise-Prüfung).
+const plus = (n: number) => { const d = new Date(`${STICHTAG}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 let db: typeof import('@/lib/store/local-db');
 
 beforeAll(async () => {

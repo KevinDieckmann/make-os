@@ -303,7 +303,8 @@ describe('Veröffentlicher mit Instagram (Server)', () => {
     if (!r.ok) throw new Error(r.fehler);
     const folgeId = r.geaendert[0];
     const { verbindungSetzen } = await import('@/lib/social/verbindungen');
-    await verbindungSetzen({ kanalId, plattform: 'instagram', anbieter: 'instagram', konto: '@probe', verbundenVon: 'pa', geheim: { accessToken: 'tok', autor: '17841', ablauf: Date.parse('2026-12-30T00:00:00Z') } });
+    await verbindungSetzen({ kanalId, plattform: 'instagram', anbieter: 'instagram', konto: '@probe', verbundenVon: 'pa', geheim: { accessToken: 'tok', autor: '17841', ablauf: Date.now() + 60 * 86_400_000 } });
+    // ↑ Ablauf relativ zur echten Uhr: `posten` prüft das Token gegen Date.now() — ein festes Datum wäre nach dem 30.12. abgelaufen (Zeitreise-Prüfung).
     const { socialVeroeffentlichenLauf } = await import('@/lib/social/veroeffentlichen-server');
     meta.aufrufe = [];
     meta.status.set(String(meta.naechste + 1), ['IN_PROGRESS']);

@@ -71,6 +71,8 @@ beforeAll(async () => {
   db = await import('@/lib/store/local-db');
   HEUTE = (await import('@/lib/zeit')).localDay();
   GESTERN = (await import('@/lib/kalender/zeit')).tagPlus(HEUTE, -1);
+  // Steuerfristen abgehakt: sonst verdrängen überfällige (z. B. in der ersten Januarwoche) die Aufgaben aus den Engstellen der Lichtfäden.
+  await (await import('./fixtures/steuer-fristen')).steuerFristenAbhaken(HEUTE);
   await db.saveJson('konten', { konten: KONTEN, einladungen: [] });
   await db.saveJson('tasks', {
     projects: [{ id: 'pm-ug', title: 'Meilensteine', spaceId: 'ug', space: 'business', createdAt: T0, updatedAt: T0 }],

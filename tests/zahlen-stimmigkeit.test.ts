@@ -33,6 +33,7 @@ import { istKunde, beanVon } from '@/lib/crm/bean';
 import { neueOhneSchritt } from '@/lib/crm/person-anlegen';
 import { abgeleiteterTitel, zahlenzielArt, istRatenziel, zielwertText } from '@/lib/planung/kaskade';
 import { UG_STEUER_WEG } from '@/lib/steuern/rechnen';
+import { WEG } from '@/lib/wege';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
 import type { Ziel } from '@/lib/planung/typen';
@@ -207,8 +208,13 @@ describe('B12/B14 · keine grüne Ampel bei „0 von 0“', () => {
   it('B14 → 15.10. (Kevin: „wie bei KD Ventures“): die Hauptgesellschaft rechnet Steuern — Schätzung aus den Ist-Monaten, Sätze aus der Finanzplanung, nie erfunden', () => {
     const ug = steuern.prognose.zeilen.find(z => z.einheit === 'ug' && z.id === 'kst-ug');
     expect(ug).toBeTruthy();
-    // Die Demo trägt Monatsabschlüsse der Hauptgesellschaft → Schätzung mit offengelegter Formel; ohne Ist-Monate stünde „fehlt“ mit Weg dorthin.
-    expect(ug!.betrag).not.toBeNull();
+    // Die Demo trägt Monatsabschlüsse der Hauptgesellschaft bis zum Vormonat → Schätzung mit offengelegter Formel. Im Januar gibt es im laufenden
+    // Jahr noch keinen abgeschlossenen Monat (die Saat legt keinen an) — dann steht „fehlt“ mit Weg zum Monatsabschluss (Zeitreise-Prüfung).
+    if (HEUTE.slice(5, 7) === '01') {
+      expect(ug!.betrag).toBeNull();
+      expect(ug!.luecke).toMatch(/Ist-Monate .+ fehlen/);
+      expect(ug!.href).toBe(WEG.abschluss('ug'));
+    } else expect(ug!.betrag).not.toBeNull();
     expect(ug!.formel).toMatch(/Gewinn × \(.+KSt\+Soli/);
     expect(ug!.formel).toContain('Sätze aus der Finanzplanung');
     expect(UG_STEUER_WEG.href).toContain('steuern=ug');

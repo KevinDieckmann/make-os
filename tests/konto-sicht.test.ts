@@ -73,6 +73,8 @@ const projekt = (id: string, title: string, spaceId: string) =>
 beforeAll(async () => {
   db = await import('@/lib/store/local-db');
   H0 = (await import('@/lib/zeit')).localDay();
+  // Steuerfristen abgehakt: sonst verdrängen überfällige (z. B. in der ersten Januarwoche) die Aufgaben aus den Engstellen der Lichtfäden.
+  await (await import('./fixtures/steuer-fristen')).steuerFristenAbhaken(H0);
   await db.saveJson('konten', { konten: KONTEN, einladungen: [] });
   await db.saveJson('tasks', {
     projects: [projekt('p-privat', PRIVAT.projekt, 'privat'), projekt('p-biz', 'Kontosicht Geschäft', 'kdv'), projekt('p-selbst', 'Kontosicht Selbst', 'kdc')],
