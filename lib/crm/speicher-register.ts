@@ -352,6 +352,8 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Kontakt-Auskunft (Art. 15) zählt die Anmeldungen mit einer Adresse der Akte; der Haushalt sieht sie maskiert unter Markttraktion › Marketing › Newsletter',
     loeschfrist: 'unbestätigt (auch gesperrt oder nicht übernommen) 30 Tage nach der letzten Änderung; bestätigte Nachweise, solange die Einwilligung am Kontakt besteht (danach trägt die Kartei den Nachweis) — Morgenlauf (lib/newsletter/server.ts); Art. 17 sofort; einzeln löschbar durch den Inhaber',
   }),
+  // ── Kontaktformular der Website (31.10., lib/kontaktformular/*) — der Eingang selbst liegt in der Kartei (Anfrage-Weg), kein eigener Bestand mit Personen ──
+  H('kontaktformular-einstellungen', 'Schalter des Kontaktformulars der Website (an/aus, wer zuletzt umschaltete — Speichername eines Inhabers) — kein Bezug zu Dritten.'),
   H('newsletter-einstellungen', 'Schalter der Newsletter-Anmeldung, Absender-Postfach (Speichername eines Inhabers + Postfach-Kennung), Name, Einwilligungstext und Fassung, Adresse der Website, Abweichungen zum Verantwortlichen — kein Bezug zu Dritten.'),
   E('kennung-alias--*', 'Weiterleitung alter Kontakt-Kennungen (Kennungs-Umzug, lib/crm/kennung-alias.ts) — Zeilen der Person raus (aliasOhnePerson); ihre alten Kennungen bekommen vorher einen eigenen Grabstein.'),
   // ── Netzwerken (02.10., Erfassen) ──
@@ -943,7 +945,7 @@ const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
-  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'newsletter-einstellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)

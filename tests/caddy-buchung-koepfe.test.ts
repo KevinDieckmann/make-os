@@ -135,7 +135,10 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     // Welle 3 (29.10.): NUR Check, Newsletter-Anmeldung (30.10.) und Buchung (samt ihren Skripten und der Schrift) gehen an die App — nie /os,
     // nie /api allgemein (auch nicht /api/newsletter/intern — die Pfadliste trägt kein /api/newsletter/*).
     expect(seite).toMatch(/^@app path \/check \/api\/check \/newsletter \/api\/newsletter \/buchen \/buchen\/\* \/api\/buchung \/api\/buchung\/\* \/_next\/\* \/schriften\/\*$/m);
-    expect(seite.match(/reverse_proxy/g)?.length).toBe(1);
+    // Kontaktformular (31.10., Website-Anbau): eigener Block mit genau /anfrage und /api/anfrage — der zweite und letzte Weg an die App.
+    expect(seite.match(/reverse_proxy/g)?.length).toBe(2);
+    expect(seite).toMatch(/^@kontaktformular path \/anfrage \/api\/anfrage$/m);
+    expect(seite).toMatch(/handle @kontaktformular \{[\s\S]*?reverse_proxy app:3000/);
     expect(seite).toMatch(/handle @app \{[\s\S]*?reverse_proxy app:3000/);
     expect(seite).toMatch(/^request_header -x-middleware-subrequest$/m);
     expect(seite).toMatch(/^request_header X-Make-Vorbau "1"$/m);

@@ -72,6 +72,9 @@ const nextConfig = {
       // im Fragment, kein Referrer, keine Rahmen, nicht indexieren, nicht zwischenspeichern.
       { source: '/newsletter', headers: buchung },
       { source: '/api/newsletter', headers: buchung },
+      // Kontaktformular der Website (31.10., Website-Anbau, lib/kontaktformular/*): dieselbe strenge Richtlinie.
+      { source: '/anfrage', headers: buchung },
+      { source: '/api/anfrage', headers: buchung },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten

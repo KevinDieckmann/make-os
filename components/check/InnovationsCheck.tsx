@@ -11,6 +11,7 @@
 // ersten Klick; Kennung + Token liegen im Speicher des Browsers (Weitermachen nach dem Neuladen), nie in der Adresse.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ZoeBegleiterin } from '@/components/oeffentlich/ZoeBegleiterin';
 import Link from 'next/link';
 import s from './check.module.css';
 import { Netzdiagramm } from './Netzdiagramm';
@@ -45,6 +46,8 @@ interface Props {
   /** Newsletter-Anmeldung der Instanz (30.10.) — nur wenn sie läuft; Wortlaut und Fassung der Einwilligung. Sonst kein Häkchen. */
   newsletter?: { wortlaut: string; fassung: string };
   quelle?: string;
+  /** Zoe-Begleiterin unten rechts (31.10., Website-Anbau; feste Texte, components/oeffentlich/ZoeBegleiterin.tsx) — Gastgeber und Weg zum Kontaktformular. */
+  begleiter?: { gastgeber: string; kontakt?: string | null };
 }
 type Angebot = { titel: string; text?: string; link?: string };
 type Schritt2 = ErgebnisAnsicht['schritte'][number] & { angebot?: Angebot };
@@ -84,7 +87,7 @@ function useHochzaehlen(ziel: number): number {
   return n;
 }
 
-export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, newsletter, kopf, quelle, weitere }: Props) {
+export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, newsletter, kopf, quelle, weitere, begleiter }: Props) {
   const fragen = useMemo(() => new Map(katalog.fragen.map(f => [f.id, f])), [katalog]);
   const kurz = useMemo(() => katalog.fragen.filter(f => f.kurz), [katalog]);
   const [sitzung, setSitzung] = useState<Sitzung | null>(null);
@@ -308,6 +311,8 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
         </details>
         </div>
       </div>
+      {begleiter && <ZoeBegleiterin ort="check" marke={marke} gastgeber={begleiter.gastgeber} erstgespraech={kopf?.erstgespraech} kontakt={begleiter.kontakt}
+        schritt={ansicht || aktuell.art === 'ergebnis' ? 'ergebnis' : !strom ? 'start' : aktuell.art === 'kontakt' ? 'kontakt' : aktuell.art === 'wahl' ? 'wahl' : imKurz ? 'kurz' : 'vertiefung'} />}
     </main>
   );
 }

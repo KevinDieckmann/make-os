@@ -36,6 +36,8 @@ export const KONTAKT_JE_BEREICH: Readonly<Record<string, readonly string[]>> = {
   check: ['vv-innovations-check'], formular: ['vv-angebot-formular'], social: ['vv-social'],
   // Newsletter-Anmeldung über die Website (30.10.): eine Anmeldung mit der Adresse bzw. eine Einwilligung mit Beleg `newsletter:…`.
   newsletter: ['vv-newsletter-anmeldung'],
+  // Kontaktformular der Website (31.10.): eine Aktivität „Anfrage über Website: Kontaktformular …“ (auch „Adresse unbestätigt“).
+  kontaktformular: ['vv-kontaktformular'],
 };
 
 const gefuellt = (v: unknown): boolean => Array.isArray(v) ? v.length > 0 : v && typeof v === 'object' ? Object.keys(v as object).length > 0 : !!v;
@@ -65,6 +67,7 @@ export function kontaktBereiche(a: Record<string, unknown>): string[] {
   const ff = (a.fulfillment ?? {}) as { stakeholder?: unknown; kunde?: unknown; personen?: unknown };
   if (gefuellt(ff.stakeholder) || gefuellt(ff.kunde) || gefuellt(ff.personen) || /fulfillment/.test(weitere)) b.add('fulfillment');
   if (/newsletter-anmeldungen/.test(weitere) || (Array.isArray(p.einwilligungen) && p.einwilligungen.some(e => String((e as { belegRef?: string })?.belegRef ?? '').startsWith('newsletter:')))) b.add('newsletter');
+  if (Array.isArray(p.aktivitaeten) && p.aktivitaeten.some(x => /^Anfrage (\(Adresse unbestätigt\) )?über Website: Kontaktformular/.test(String((x as { text?: string })?.text ?? '')))) b.add('kontaktformular');
   return Array.from(b).sort();
 }
 

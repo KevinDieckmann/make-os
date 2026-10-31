@@ -3005,6 +3005,23 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   `ziel-/meilenstein-/zeit-mandat-tot` (`lib/crm/verbindungen-planung.ts`, reparierbar = Bezug entfernen) — bewusst keine Löschsperre.
   Tests `tests/mandat-bezug.test.ts`.
 
+## Website-Anbau (31.10., Branch `paket-homepage`; Kevin: „Homepage-Anbau — das muss heute fertig sein“)
+- **Kontaktformular** `/anfrage` + `POST /api/anfrage` (Middleware `kontaktformularOffen`, eigener Caddy-Block `@kontaktformular`, Köpfe `buchung` in next.config,
+  Register-Klasse `offen` + `OFFEN_ERLAUBT`): kommt AUS (Schalter `kontaktformular-einstellungen`, nur Inhaber über `/api/kontaktformular/intern`, Karte in
+  Marketing › Anfragen); Name, Verantwortlicher/Abweichung, Gastgeber, Buchungsseite teilt es mit den Check-Einstellungen. Honigtopf + signierter Stempel
+  (`kontaktformularStempel`, ≥ 3 s), Drossel, ≤ 8 KB, Felder nie gekürzt (413), IMMER dieselbe Antwort. Eingang NUR über `anfrageAnlegen` (Kanal Website,
+  `oeffentlich: true` → vorhandene Person nur „Adresse unbestätigt“, `webseite: 'formular'`) — keine Mail, keine Werbe-Einwilligung, kein eigener Bestand mit
+  Personen (VVT `vv-kontaktformular`, Art. 15 Bereich `kontaktformular`, Frist = Kartei). Regeln `lib/kontaktformular/regeln.ts`, Server `…/server.ts`.
+- **Prozess-Auslöser „Formular/Check von der Webseite“:** das Ereignis `neuer-lead` einer Website-Anfrage trägt `stufe` (`webseiteStufe`, lib/ereignisse/quellen.ts):
+  `webseite-check` · `webseite-formular` · `webseite` (Kanal Website von Hand) — Bedingung „`ereignis.stufe` beginnt mit `webseite`“. Unbestätigte Adressen lösen nichts aus.
+- **Website-Zahlen im Traktions-Index** (`WEBSEITE_KENNZAHLEN`, lib/crm/webseite-zahlen.ts, Marketing › Gruppe Website): Anfragen über die Website, abgeschlossene Checks,
+  Termine aus der Website (je 30 Tage), ohne Tracker. Nur im Modell, wenn Check oder Formular läuft (sonst exakt der bisherige Index). Jeder Aufrufer von
+  `traktionsIndex` gibt `webseite: await webseiteStandLaden()` mit — eine Zahl überall.
+- **Zoe-Begleiterin** `components/oeffentlich/ZoeBegleiterin.tsx` (Ring unten rechts, Check + Kontaktformular): NUR feste Texte aus
+  `lib/oeffentlich/zoe-begleiterin-texte.ts` (erster Satz: KI-Assistentin, Art. 50 KI-VO), Wege Erstgespräch/Kontaktformular — kein Modell, kein Abruf, nichts
+  gespeichert. `lib/check/zoe-texte.ts` gehört der Homepage-Sitzung (nur lesen).
+- Tests: `tests/kontaktformular.test.ts`, `tests/zoe-begleiterin.test.ts`, `tests/website-anfrage-e2e.test.ts` (Formular → Lead → Prozess → Termin → Deal → Index).
+
 ## Tempo (26.09.)
 - Teure Berechnungen (Indizes, Familie, Bauplan) laufen durch `merken(schluessel, ttl, rechne)` aus `lib/store/memo.ts`;
   jede Schreibung über local-db setzt den Speicher zurück. Schlüssel MÜSSEN Person/Haushalt tragen. Neue teure Routen

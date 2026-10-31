@@ -33,6 +33,22 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-01',
+    datum: '2026-11-01',
+    titel: 'Website: Kontaktformular, Zoe-Begleiterin, Website-Zahlen',
+    kurz: 'Die Website bekommt ein Kontaktformular — Nachrichten landen als Anfrage mit Follow-up in der Markttraktion. Auf Check und Formular begleitet Zoe mit festen Hinweisen, und der Traktions-Index zeigt die Website-Zahlen.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Kontaktformular der Website: kommt ausgeschaltet; einschalten unter Marketing › Anfragen. Eine Nachricht wird zur Anfrage „über Website“ mit Follow-up „Anfrage beantworten“ — ohne Werbe-Einwilligung, ohne automatische Mail. Steht die Adresse schon in der Kartei, hängt sie dort nur als „Adresse unbestätigt“.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Zoe-Begleiterin auf Check und Kontaktformular: ein ruhiger Ring unten rechts mit festen Hinweisen je Schritt und dem Weg zum Erstgespräch — keine KI-Antworten, nichts geht nach außen.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Traktions-Index › Marketing: Anfragen über die Website, abgeschlossene Checks und Termine aus der Website (je 30 Tage) — aus den eigenen Daten, ohne Tracker.', bereich: 'business', weg: WEG.markttraktion() },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Prozesse: eine Anfrage von der Website trägt jetzt eine eigene Stufe — ein Auslöser „neuer Lead, Stufe beginnt mit webseite“ startet nur für Check und Kontaktformular.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31-9',
     datum: '2026-10-31',
     titel: 'Rechnungen & Zahlungen aufgeräumt',

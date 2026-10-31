@@ -632,6 +632,33 @@ export function verarbeitungNewsletterNachtragen(vorhanden: readonly Verarbeitun
   return vorhanden.some(v => v.id === VV_NEWSLETTER_ID) ? [...vorhanden] : [...vorhanden, verarbeitungNewsletter(jetzt)];
 }
 
+// ── Verarbeitung „Kontaktformular der Website“ (31.10., Website-Anbau, lib/kontaktformular/*) — idempotent nachgetragen, sobald es eingeschaltet ist ──
+// Der Eingang läuft über den Anfrage-Weg in die Kartei (Aktivität, Einwilligung „Antwort auf Anfrage“, Follow-up) — kein eigener Bestand, keine Mail.
+// Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
+
+export const VV_KONTAKTFORMULAR_ID = 'vv-kontaktformular';
+
+export function verarbeitungKontaktformular(jetzt: string): Verarbeitung {
+  return {
+    id: VV_KONTAKTFORMULAR_ID, name: 'Kontaktformular der Website',
+    zweck: 'Nachrichten über das Kontaktformular der Website annehmen, als Anfrage im Kundensystem festhalten (Person, Aktivität, Follow-up „Anfrage beantworten“) und persönlich beantworten',
+    personen: 'Personen, die über die Website schreiben; Konten des Haushalts (Bearbeitung)',
+    daten: 'Vorname, Nachname (freiwillig), E-Mail-Adresse, Firma und Telefon (freiwillig), Text der Nachricht, Zeitpunkt; trifft die Adresse eine vorhandene Person, nur als „Adresse unbestätigt“ an deren Akte (Prüfung von Hand)',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Anfrage vor einem möglichen Vertrag) bzw. lit. f (Beantwortung der Nachricht); keine Einwilligung in Werbung',
+    empfaenger: 'Konten des Haushalts (Business-Bereich); Hetzner (Hosting)',
+    empfaengerIds: ['hetzner'],
+    drittland: 'keines',
+    loeschfrist: 'wie die Kartei: ohne weiteren Kontakt Prüfung nach 24 Monaten (Löschfrist „kontakte“); Art. 17 sofort',
+    toms: 'Öffentliche Seite nur über eine eng gefasste Adresse, kommt ausgeschaltet; dieselbe Antwort für jede Adresse (verrät nie, was die Kartei kennt); Drossel je Netz, Honigtopf, signierter Formular-Stempel (Mindestzeit), Größengrenzen; strenge Sicherheits-Köpfe; Art. 18, Werbesperre und Sperrliste prüft der Anfrage-Weg; vorhandene Personen nur „Adresse unbestätigt“ (keine Agenten, keine Prozesse); kein Modellaufruf; Bestände verschlüsselt auf der Platte',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „Kontaktformular der Website“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungKontaktformularNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_KONTAKTFORMULAR_ID) ? [...vorhanden] : [...vorhanden, verarbeitungKontaktformular(jetzt)];
+}
+
 // ── Verarbeitung „ZOE auf WhatsApp (Meta, ZOE-Kanal)“ (08.10., Roadmap Lücke 5) — idempotent nachgetragen, sobald die ZOE-Nummer eingerichtet ist ──
 // Kevin 08.10. (R5): „Zweite Business-Nummer nur für ZOE.“ Nur die Personen des Haushalts, je Person mit Einwilligung. Hinweis, keine
 // Rechtsberatung — anwaltlich gegenlesen; Speicherort-Wahl (Local Storage „DE“ bzw. „No Storage“) vor der Registrierung der Nummer.
@@ -821,7 +848,7 @@ export function verarbeitungNeutral(v: Verarbeitung): Verarbeitung {
   return v.empfaengerIds ? { ...aus, empfaengerIds: v.empfaengerIds.filter(id => !NUR_BETREIBER_EMPFAENGER.includes(id)) } : aus;
 }
 
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean; social?: boolean; newsletter?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean; social?: boolean; newsletter?: boolean; kontaktformular?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -839,6 +866,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   if (opt.social) l = verarbeitungSocialNachtragen(l, jetzt);
   // Newsletter-Anmeldung über die Website (30.10.): sobald sie eingerichtet ist (eingeschaltet mit Absender-Postfach, `newsletterEingerichtet`).
   if (opt.newsletter) l = verarbeitungNewsletterNachtragen(l, jetzt);
+  // Kontaktformular der Website (31.10.): sobald es eingeschaltet ist (`kontaktformularEingerichtet`).
+  if (opt.kontaktformular) l = verarbeitungKontaktformularNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = verarbeitungEmailKundenNachtragen(l, jetzt);

@@ -55,6 +55,8 @@ async function seitenDaten(vorlageId: string) {
       zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
       hinweis: { zeilen: hinweis.zeilen, link: hinweis.link, fassung: HINWEIS_FASSUNG },
       ...(nl ? { newsletter: { wortlaut: nl.wortlaut, fassung: nl.fassung } } : {}),
+      // Zoe-Begleiterin (31.10., Website-Anbau): feste Texte, Weg zum Kontaktformular nur, wenn es läuft.
+      begleiter: { gastgeber: k.gastgeber, kontakt: (await (await import('@/lib/kontaktformular/server')).kontaktformularBereit().catch(() => null)) ? '/anfrage' : null },
     };
   });
 }

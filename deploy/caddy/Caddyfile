@@ -169,6 +169,22 @@ fokusinnovation.de {
 		}
 		reverse_proxy app:3000
 	}
+	# ── Kontaktformular (31.10., Website-Anbau) — eigener Block: genau /anfrage und POST /api/anfrage an die App (kommt AUS; dieselben Köpfe wie @app).
+	#    Die statische Seite /kontakt/ der Website bleibt; sie kann auf /anfrage verlinken. Nie /api/anfrage/* (die Verwaltung bleibt intern).
+	@kontaktformular path /anfrage /api/anfrage
+	handle @kontaktformular {
+		header {
+			Strict-Transport-Security "max-age=31536000"
+			X-Content-Type-Options nosniff
+			X-Robots-Tag "noindex, nofollow"
+			Referrer-Policy no-referrer
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+			-Server
+			-X-Powered-By
+		}
+		reverse_proxy app:3000
+	}
+	# ── Ende Kontaktformular ──
 	# Kostenlos (30.10.): die frühere Übersicht /wissen/ heißt jetzt /kostenlos/ — die Ratgeber behalten ihre Adressen /wissen/<id>/.
 	@altwissen path /wissen /wissen/ /wissen/index.html
 	redir @altwissen /kostenlos/ 301
