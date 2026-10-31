@@ -1,9 +1,9 @@
 {
- "version": "1.0",
- "stand": "2026-10-24",
- "freigabe": "Inhaber, Prüfseite 24.10.2026",
+ "version": "1.1",
+ "stand": "2026-10-30",
+ "freigabe": "Inhaber, Prüfseite 24.10.2026; Säulen Sichtbarkeit und Vertrieb auf Wunsch des Inhabers 30.10.2026 (zur Abnahme)",
  "sprache": "de, Sie-Form",
- "hinweis": "IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden.",
+ "hinweis": "IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden. 30.10. abends (Kevin: „nur den Innovations-Check … kurz oder ausführlich … herausragend“): Sichtbarkeit und Vertrieb haben eigene Checks und stehen hier nicht mehr. Kurz = die 19 Fragen mit kurzcheck (rund 9 Minuten), ausführlich = alle Fragen dieser Vorlage in sechs Etappen plus Branchen-Modul (rund 25 Minuten).",
  "abschnitte": [
   {
    "id": "A",
@@ -293,7 +293,7 @@
     {
      "id": "B2",
      "text": "Gibt es ein festes Budget für Innovation und KI?",
-     "kurzcheck": false,
+     "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
       {
@@ -326,7 +326,7 @@
     {
      "id": "B3",
      "text": "Wer ist für Innovation verantwortlich?",
-     "kurzcheck": true,
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -359,7 +359,7 @@
     {
      "id": "B4",
      "text": "Wie viele neue Produkte oder Leistungen haben Sie in den letzten 24 Monaten eingeführt?",
-     "kurzcheck": false,
+     "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
       {
@@ -533,7 +533,7 @@
     {
      "id": "C3",
      "text": "Gibt es Regeln zur KI-Nutzung, auch zum Datenschutz?",
-     "kurzcheck": false,
+     "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
       {
@@ -691,7 +691,7 @@
     {
      "id": "C7",
      "text": "Nutzen Sie KI-Agenten, die Aufgaben selbst ausführen, nicht nur Chat?",
-     "kurzcheck": true,
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -799,7 +799,7 @@
     {
      "id": "D2",
      "text": "Wie viel von Rechnungen, Buchhaltung und Mahnwesen läuft automatisch?",
-     "kurzcheck": false,
+     "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
       {
@@ -1002,7 +1002,7 @@
     {
      "id": "D8",
      "text": "Läuft Ihr Geschäft zwei Wochen ohne Sie weiter?",
-     "kurzcheck": true,
+     "kurzcheck": false,
      "typ": "einfach",
      "optionen": [
       {
@@ -1209,7 +1209,7 @@
     {
      "id": "E6",
      "text": "Wie gut ist Ihr Wissen dokumentiert?",
-     "kurzcheck": false,
+     "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
       {
@@ -1427,7 +1427,7 @@
     {
      "id": "G2",
      "text": "Gibt es Zeit und Raum, neue Tools auszuprobieren?",
-     "kurzcheck": false,
+     "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
       {
@@ -1559,7 +1559,7 @@
     {
      "id": "G6",
      "text": "Wie schnell wird bei Ihnen eine gute Idee umgesetzt?",
-     "kurzcheck": false,
+     "kurzcheck": true,
      "typ": "einfach",
      "optionen": [
       {
@@ -2365,5 +2365,5 @@
   }
  ],
  "anzahl_fragen": 65,
- "anzahl_kurzcheck": 15
+ "anzahl_kurzcheck": 19
 }

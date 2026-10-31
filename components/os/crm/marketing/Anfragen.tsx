@@ -27,6 +27,7 @@ import { Wahl } from '../Wahl';
 import { Person } from '../team';
 import { PersonWahl, AlsNaechstes } from './gemeinsam';
 import { DealAusQuelle } from './DealAusQuelle';
+import { KontaktformularKarte } from './KontaktformularKarte';
 
 interface Daten { heute: string; liste: AnfrageZeile[]; offen: number }
 type PersonWahlArt = 'vorhanden' | 'neu';
@@ -103,6 +104,7 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
 
   return (
     <>
+      <KontaktformularKarte />
       <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
         <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Alles hier bleibt im System — geantwortet wird in deinem Postfach.</span>}>Anfrage erfassen</Ueberschrift>
         <div style={{ display: 'grid', gap: 6 }}>

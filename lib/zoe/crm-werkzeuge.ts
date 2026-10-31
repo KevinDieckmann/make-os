@@ -564,7 +564,8 @@ async function kennzahlenLesen(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckga
   const { kontakte, crm, heute } = s;
   const sales = kennzahlen(kontakte, crm, heute), marketing = marketingKennzahlen(kontakte, crm, heute), event = eventKennzahlen(kontakte, crm, heute);
   const datei = await ladeIndexDatei('traktion-index');
-  const idx = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute) });
+  const webseite = await (await import('@/lib/crm/webseite-zahlen-server')).webseiteStandLaden();
+  const idx = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute), ...(webseite ? { webseite } : {}) });
   const t = traktion({ sales, marketing, event });
   const kz = (l: typeof sales) => l.map(k => `- ${k.label}: ${k.anzeige} (${k.ampel}) · Ziel ${k.ziel}`);
   const koerper = [

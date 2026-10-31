@@ -2,7 +2,7 @@
 // Eigener Datenordner, erfundene Konten (@example.invalid), Firmen und Verträge — nie der echte Bestand. Geprüft wird:
 //   · H4/Fund 11: Pflicht-/Vertragsfristen und Glocke NUR für Konten mit Zugang zur Firmen-Akte (nie „nur Business“)
 //   · M8/N10: Konto löschen tilgt den Speichernamen in Treppe, Vertriebsplanung, Register-Fassungen; Übergaben samt Dateien weg; Export nennt sie
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -22,6 +22,9 @@ const plus = (n: number) => { const d = new Date(`${heute()}T12:00:00Z`); d.setU
 let db: typeof import('@/lib/store/local-db');
 
 beforeAll(async () => {
+  // Feste Uhr (31.10.): Welche Pflichten „fällig“ sind, hängt vom Tag ab — am 31.10. fiel keine mehr ins Fenster, der Test war tagesabhängig.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-30T09:00:00Z'));
   db = await import('@/lib/store/local-db');
   await db.saveJson('konten', { konten: [
     { id: '1', speicher: 'pa', email: `pa@${D}`, name: 'Anna Prüf', rolle: 'inhaber', hash: 'x', salz: 'x', angelegt: '2026-09-01', haushalt: H, teilt: { gesundheit: [] } },
@@ -37,6 +40,7 @@ beforeAll(async () => {
   }] });
 });
 afterAll(async () => {
+  vi.useRealTimers();
   await (await import('@/lib/store/leseprotokoll')).leseprotokollWarten().catch(() => {});
   rmSync(ordner, { recursive: true, force: true });
 });

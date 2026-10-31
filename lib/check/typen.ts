@@ -48,8 +48,13 @@ export interface CheckAbschnitt {
   id: string;
   key: string;
   name: string;
-  /** Dimension, auf die der Abschnitt einzahlt — null bei Profil und Branchen-Modulen. */
+  /** Dimension, auf die der Abschnitt einzahlt — null bei Profil, Branchen-Modulen und den Säulen Sichtbarkeit/Vertrieb. */
   dimension: DimKey | null;
+  /** Säule bzw. Bereich, auf den der Abschnitt einzahlt (30.10.: S Sichtbarkeit, V Vertrieb; in Vertriebscheck und Sichtbarkeitstest
+   *  ihre eigenen Bereiche) — die Innovation rechnet aus den Dimensionen. */
+  saeule?: SaeuleKey;
+  /** Zoes Satz, wenn der Abschnitt beginnt (für Besucher) — fehlt er, gilt `ABSCHNITT_SATZ` (lib/check/zoe-texte.ts). */
+  satz?: string;
   intro: string;
   bedingung?: string;
   fragen: CheckFrage[];
@@ -66,6 +71,29 @@ export interface CheckKatalog {
 
 export type DimKey = 'strategie' | 'ki' | 'automatisierung' | 'daten' | 'robotik' | 'team';
 
+/**
+ * Säulen bzw. Bereiche eines Checks (30.10., Kevin: „Alle drei Säulen“ + Vertriebscheck und Sichtbarkeitstest): Kennungen kommen aus der
+ * Vorlage (Innovations-Check: sichtbarkeit · vertrieb · innovation; Vertriebscheck: organisation · zahlen · neukunden …). Nur die Kennung
+ * `innovation` ist besonders: sie hat keine eigenen Fragen, sondern ist der Gesamtwert der Dimensionen B bis G (Referenz unverändert).
+ */
+export type SaeuleKey = string;
+/** Bereich eines Angebots der Instanz (Einstellung des Checks) — jede Säule einer Vorlage zeigt auf einen davon. */
+export type AngebotBereich = 'sichtbarkeit' | 'vertrieb' | 'innovation';
+export type SchrittBand = 'niedrig' | 'mittel' | 'hoch';
+export interface CheckSaeule { key: SaeuleKey; name: string; abschnitt: string; gewicht: number; angebot?: AngebotBereich }
+
+/** Texte der Seite eines Checks (Einstieg, Dauer, Zoes zweiter Satz) — Daten der Vorlage, nie fest im Code. */
+export interface CheckSeite {
+  titel: string;
+  text: string;
+  bereiche?: { name: string; text: string }[];
+  minuten: number;
+  /** Ausführliche Variante (30.10. abends, nur Innovations-Check): Minuten und die Wahl am Anfang. Ohne Feld gibt es keine Wahl. */
+  minuten_lang?: number;
+  umfang?: { frage: string; kurz: { name: string; text: string }; lang: { name: string; text: string } };
+  einleitung: string;
+}
+
 export interface CheckStufe { stufe: number; name: string; von: number; bis: number; kurz: string }
 
 export interface CheckRegeln {
@@ -75,6 +103,15 @@ export interface CheckRegeln {
   stufen: CheckStufe[];
   siegel: { ab_stufe: number; name: string };
   zeitersparnis_schaetzung: { werte_stunden: Record<string, number> };
+  /** Säulen und Stufen des Gesamtergebnisses (30.10.) — fehlen sie, gilt nur die Innovation wie bisher. */
+  saeulen?: CheckSaeule[];
+  saeulen_stufen?: CheckStufe[];
+  /** Ein nächster Schritt je Säule und Band (niedrig bis 40, mittel bis 70, hoch darüber). */
+  naechste_schritte?: Partial<Record<SaeuleKey, Record<SchrittBand, string>>>;
+  /** Nächste Schritte je Dimension (Innovations-Check ohne Säulen, 30.10. abends): die größten Lücken zum Branchenwert. */
+  dimension_schritte?: Partial<Record<DimKey, Record<SchrittBand, string>>>;
+  /** Reihenfolge bei Gleichstand der schwächsten Säulen — fehlt sie, gilt die Reihenfolge von `saeulen`. */
+  schritt_reihe?: SaeuleKey[];
 }
 
 export interface BenchmarkQuelle {
@@ -107,10 +144,11 @@ export interface LeadScoringRegeln {
   ];
 }
 
-/** Eine Vorlage = alles, was ein Check zum Rechnen braucht. */
+/** Eine Vorlage = alles, was ein Check zum Rechnen und Zeigen braucht. */
 export interface CheckVorlage {
   id: string;
   name: string;
+  seite: CheckSeite;
   katalog: CheckKatalog;
   regeln: CheckRegeln;
   benchmarks: CheckBenchmarks;
@@ -162,6 +200,9 @@ export interface CheckErgebnis {
 }
 
 export interface CheckLuecke { dimension: DimKey; wert: number; branche: number; abstand: number }
+
+/** Gesamtergebnis über die Säulen (30.10.) — Säulen ohne beantwortete Frage fehlen in `werte` und zählen nicht. */
+export interface SaeulenErgebnis { werte: Partial<Record<SaeuleKey, number>>; gesamt: number; stufe: number; stufe_name: string }
 
 export interface CheckVerhalten { gespraechGebucht?: boolean; berichtGeoeffnet?: boolean; gratisProdukte?: number }
 

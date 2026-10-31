@@ -4,8 +4,9 @@
 import { describe, it, expect } from 'vitest';
 import { createRequire } from 'node:module';
 import { VORLAGEN, alleFragen } from '@/lib/check/katalog';
-import { auswerten, luecken, leadPunkte, punkteFuer, profilAus, zeitPotenzial } from '@/lib/check/auswertung';
-import { ergebnisSaetze } from '@/lib/check/zoe-texte';
+import { auswerten, luecken, leadPunkte, punkteFuer, profilAus, zeitPotenzial, saeulenAuswerten, naechsteSchritte, schrittBand } from '@/lib/check/auswertung';
+import { ergebnisSaetze, saeulenSaetze } from '@/lib/check/zoe-texte';
+import { kurzSequenz } from '@/lib/check/ablauf';
 import type { CheckAntworten, CheckProfil } from '@/lib/check/typen';
 
 const require = createRequire(import.meta.url);
@@ -15,6 +16,7 @@ const referenz = require('./fixtures/check-referenz/scoring.cjs') as {
   leadScore: (ls: unknown, p: unknown, r: unknown, v: unknown) => { punkte: number; klasse: string };
 };
 const V = VORLAGEN['innovations-check'];
+const VV = VORLAGEN['vertriebs-check'];
 const { katalog, regeln, benchmarks, leadScoring } = V;
 const pick = (id: string, i: number | string) => ({ optionIds: [`${id}_${i}`] });
 
@@ -84,9 +86,20 @@ describe('gleich wie die Referenz (600 Zufallsfälle)', () => {
 });
 
 describe('Hilfen', () => {
-  it('Katalog: 65 Fragen, 15 im Kurzcheck', () => {
+  it('Katalog: 65 Fragen, 19 im Kurzcheck (seit 30.10. nur Innovation — Sichtbarkeit und Vertrieb haben eigene Checks)', () => {
     expect(alleFragen(katalog)).toHaveLength(katalog.anzahl_fragen);
+    expect(katalog.anzahl_fragen).toBe(65);
     expect(alleFragen(katalog).filter(f => f.kurzcheck)).toHaveLength(katalog.anzahl_kurzcheck);
+    expect(kurzSequenz(V).map(f => f.id)).toEqual(['A1', 'A2', 'A6', 'B1', 'B2', 'B4', 'C1', 'C2', 'C3', 'C5', 'D1', 'D2', 'D7', 'E1', 'E4', 'E6', 'G1', 'G2', 'G6']);
+    expect(katalog.abschnitte.some(x => x.id === 'S' || x.id === 'V')).toBe(false);
+    // Jede Frage eines Säulen-Checks hat fünf Antworten mit 0 bis 4 Punkten, in dieser Reihenfolge.
+    for (const f of alleFragen(VV.katalog).filter(x => x.abschnitt.startsWith('V'))) expect(f.optionen?.map(o => o.punkte), f.id).toEqual([0, 1, 2, 3, 4]);
+  });
+  it('Innovations-Check: nächste Schritte je Dimension in allen drei Bändern, neutral formuliert', () => {
+    for (const d of ['strategie', 'ki', 'automatisierung', 'daten', 'robotik', 'team'] as const)
+      for (const b of ['niedrig', 'mittel', 'hoch'] as const) expect(regeln.dimension_schritte?.[d]?.[b], `${d}/${b}`).toBeTruthy();
+    expect(regeln.saeulen).toBeUndefined();
+    expect(JSON.stringify(regeln.dimension_schritte)).not.toMatch(/MAKE|Fokus Innovation|KD Ventures|KEMARIS|Kevin|Malin/i);
   });
   it('unbewerteter Beleg zählt nicht', () => {
     const c5 = alleFragen(katalog).find(f => f.id === 'C5')!;
@@ -110,5 +123,47 @@ describe('Hilfen', () => {
       [{ dimension: 'ki', wert: 30, branche: 45, abstand: 15 }]);
     expect(ungleich[1]).toBe('Am stärksten sind Sie bei Strategie und Führung mit 70 Punkten.');
     expect(ungleich[2]).toContain('KI im Alltag: 30 gegenüber 45 Punkten');
+  });
+});
+
+describe('Säulen-Checks (Vertriebscheck) — eigene Bereiche, Innovation läuft getrennt', () => {
+  const R = VV.regeln, K = VV.katalog;
+  const ohneInno = { gesamt: 0, dimensionen: {}, stufe: 1, stufe_name: '' };
+  it('jeder Bereich wie ein Dimensionswert, Gesamt = Mittel der beantworteten Bereiche', () => {
+    const a: CheckAntworten = { V1: pick('V1', 4), V6: pick('V6', 2), V2: pick('V2', 1), V3: pick('V3', 0) };
+    const r = saeulenAuswerten(K, R, a, ohneInno);
+    expect(r.werte).toEqual({ organisation: 75, zahlen: 13 });
+    expect(r.gesamt).toBe(Math.round((75 + 13) / 2));
+    expect(r.stufe_name).toBe('Auf Kurs');
+  });
+  it('unbeantwortete Bereiche zählen nicht', () => {
+    const r = saeulenAuswerten(K, R, { V5: pick('V5', 4) }, ohneInno);
+    expect(r.werte).toEqual({ neukunden: 100 });
+    expect(r.gesamt).toBe(100);
+    expect(r.stufe_name).toBe('Vorreiter');
+  });
+  it('ohne Säulen in der Vorlage gilt die Innovation allein (Innovations-Check)', () => {
+    const r = saeulenAuswerten(katalog, regeln, { B1: pick('B1', 4) }, { gesamt: 42, dimensionen: { ki: 42 }, stufe: 3, stufe_name: 'Anwender' });
+    expect(r).toEqual({ werte: { innovation: 42 }, gesamt: 42, stufe: 3, stufe_name: 'Anwender' });
+  });
+  it('nächste Schritte: die zwei schwächsten Bereiche, Band nach Wert, Gleichstand in der Reihenfolge der Bereiche', () => {
+    expect(schrittBand(40)).toBe('niedrig'); expect(schrittBand(41)).toBe('mittel'); expect(schrittBand(70)).toBe('mittel'); expect(schrittBand(71)).toBe('hoch');
+    const x = naechsteSchritte(R, { organisation: 30, zahlen: 30, neukunden: 80 });
+    expect(x.map(y => [y.saeule, y.band])).toEqual([['organisation', 'niedrig'], ['zahlen', 'niedrig']]);
+    expect(x[0].text).toBe(R.naechste_schritte!.organisation!.niedrig);
+    expect(naechsteSchritte(R, { neukunden: 55 }).map(y => y.band)).toEqual(['mittel']);
+  });
+  it('Zoe: Stufe, stärkster Bereich, größter Hebel — Zahlen nur aus dem Ergebnis', () => {
+    const z = saeulenSaetze({ werte: { organisation: 70, zahlen: 20, neukunden: 45 }, gesamt: 45, stufe: 3, stufe_name: 'Auf Kurs' }, 'vorlaeufig', { organisation: 'Organisation', zahlen: 'Zahlen', neukunden: 'Neukunden' });
+    expect(z[0]).toBe('Sie stehen auf Stufe 3: Auf Kurs (45 von 100 Punkten).');
+    expect(z[1]).toBe('Am stärksten sind Sie bei Organisation mit 70 Punkten.');
+    expect(z[2]).toContain('Den größten Hebel hat Zahlen mit 20 Punkten.');
+    expect(z[3]).toContain('vorläufiges Ergebnis');
+  });
+  it('Vorlagen bleiben neutral: keine Firmen, Marken oder Personen in Bereichen, Stufen und Schritten', () => {
+    for (const W of [VV, VORLAGEN['sichtbarkeits-test']]) {
+      const texte = JSON.stringify([W.katalog.abschnitte, W.regeln.naechste_schritte, W.regeln.saeulen_stufen, W.regeln.siegel]);
+      expect(texte).not.toMatch(/MAKE|Fokus Innovation|KD Ventures|KEMARIS|Kevin|Malin/i);
+    }
   });
 });

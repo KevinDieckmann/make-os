@@ -304,10 +304,19 @@ export async function karteiEreignisse(vorher: unknown, nachher: unknown): Promi
 }
 
 /** Neue Anfrage (/api/crm/anfrage): ein neuer Lead (Kennung = das Follow-up der Anfrage). Wirft nie. */
-export async function anfrageEreignis(a: { followUpId: string; kontaktId: string; firmaId?: string; eingeschraenkt?: boolean }): Promise<number> {
+/**
+ * Website-Anbau (31.10.): die Stufe sagt, ob die Anfrage von der Webseite kam — `webseite-check` (Check-Abschluss), `webseite-formular` (Kontaktformular),
+ * `webseite` (sonst über den Kanal „Website“). Ein Prozess-Auslöser „Formular/Check von der Webseite“ ist damit `neuer-lead` + `ereignis.stufe` beginnt mit
+ * `webseite` (`WEBSEITE_STUFE`). Andere Kanäle tragen keine Stufe (wie bisher).
+ */
+export const WEBSEITE_STUFE = 'webseite';
+export const webseiteStufe = (kanal: string, webseite?: 'check' | 'formular'): string | undefined =>
+  webseite ? `${WEBSEITE_STUFE}-${webseite}` : kanal === 'website' ? WEBSEITE_STUFE : undefined;
+
+export async function anfrageEreignis(a: { followUpId: string; kontaktId: string; firmaId?: string; eingeschraenkt?: boolean; stufe?: string }): Promise<number> {
   try {
     if (a.eingeschraenkt) return 0;
-    return (await ereignis({ id: ereignisKennung('crm', 'anfrage', a.followUpId), art: 'neuer-lead', quelle: 'anfrage', bereich: 'business', bezug: { kontaktId: a.kontaktId, followupId: a.followUpId, ...(a.firmaId ? { firmaId: a.firmaId } : {}) } })).neu;
+    return (await ereignis({ id: ereignisKennung('crm', 'anfrage', a.followUpId), art: 'neuer-lead', quelle: 'anfrage', bereich: 'business', ...(a.stufe ? { stufe: a.stufe } : {}), bezug: { kontaktId: a.kontaktId, followupId: a.followUpId, ...(a.firmaId ? { firmaId: a.firmaId } : {}) } })).neu;
   } catch { return 0; }
 }
 

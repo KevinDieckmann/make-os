@@ -346,6 +346,15 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'ohne Kontaktdaten 30 Tage, mit Kontaktdaten 24 Monate nach der letzten Änderung (lib/check/fristen.ts, Morgenlauf); Art. 17 sofort; einzeln löschbar im Haushalt',
   }),
   H('check-einstellungen', 'Schalter des Innovations-Checks, Adresse der Buchungsseite und Speichername des Gastgebers (ein Konto der Instanz) — kein Bezug zu Dritten.'),
+  // ── Newsletter-Anmeldung über die Website (30.10., lib/newsletter/*) ──
+  mit(E('newsletter-anmeldungen', 'Anmeldungen zum Newsletter über die öffentliche Seite (je Instanz): E-Mail, Vorname (freiwillig), Wortlaut und Fassung der Einwilligung, Zeitpunkte (angemeldet, Bestätigungsmail, bestätigt), Übernahme ins CRM; Token nur als SHA-256 und nur bis zur Bestätigung. Art. 17: Zeilen mit einer Adresse der Person raus (person-weitere.ts).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. a DSGVO (Einwilligung per Double-Opt-in); die Zeile ist der Nachweis nach Art. 7 Abs. 1 (Wortlaut, Fassung, Zeitpunkte); gesperrte Adressen (Werbesperre, Sperrliste) nur zum Klären',
+    art15: 'Kontakt-Auskunft (Art. 15) zählt die Anmeldungen mit einer Adresse der Akte; der Haushalt sieht sie maskiert unter Markttraktion › Marketing › Newsletter',
+    loeschfrist: 'unbestätigt (auch gesperrt oder nicht übernommen) 30 Tage nach der letzten Änderung; bestätigte Nachweise, solange die Einwilligung am Kontakt besteht (danach trägt die Kartei den Nachweis) — Morgenlauf (lib/newsletter/server.ts); Art. 17 sofort; einzeln löschbar durch den Inhaber',
+  }),
+  // ── Kontaktformular der Website (31.10., lib/kontaktformular/*) — der Eingang selbst liegt in der Kartei (Anfrage-Weg), kein eigener Bestand mit Personen ──
+  H('kontaktformular-einstellungen', 'Schalter des Kontaktformulars der Website (an/aus, wer zuletzt umschaltete — Speichername eines Inhabers) — kein Bezug zu Dritten.'),
+  H('newsletter-einstellungen', 'Schalter der Newsletter-Anmeldung, Absender-Postfach (Speichername eines Inhabers + Postfach-Kennung), Name, Einwilligungstext und Fassung, Adresse der Website, Abweichungen zum Verantwortlichen — kein Bezug zu Dritten.'),
   E('kennung-alias--*', 'Weiterleitung alter Kontakt-Kennungen (Kennungs-Umzug, lib/crm/kennung-alias.ts) — Zeilen der Person raus (aliasOhnePerson); ihre alten Kennungen bekommen vorher einen eigenen Grabstein.'),
   // ── Netzwerken (02.10., Erfassen) ──
   K('netzwerken-erfassungen--*', 'Journal der Netzwerken-Erfassungen (lib/crm/netzwerken-server.ts): nur Zufalls-Kennung, abgehakte Schrittnamen, Zeiten — bis zum Abschluss dazu die Kennung der Person bzw. des Termins, beim Abschluss geleert (nie fertig gewordene nach 60 Tagen weg); keine Namen, Adressen oder Texte. Fotos/Sprachnotizen liegen in `crm-dateien--*`, Teilnahme und Info in `crm`, Verlauf in `kontakte` — dort greift Art. 17.'),
@@ -943,7 +952,7 @@ const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
-  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'check-sitzungen', 'check-einstellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)

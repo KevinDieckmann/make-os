@@ -1,0 +1,513 @@
+{
+ "version": "1.0",
+ "stand": "2026-10-30",
+ "freigabe": "Zur Abnahme durch den Inhaber (30.10.2026)",
+ "sprache": "de, Sie-Form",
+ "hinweis": "IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden.",
+ "anzahl_fragen": 13,
+ "anzahl_kurzcheck": 12,
+ "abschnitte": [
+  {
+   "id": "A",
+   "key": "profil",
+   "name": "Profil, ohne Punkte",
+   "dimension": null,
+   "intro": "Profil, ohne Punkte. 4 Fragen (A5 kommt mit den Kontaktdaten).",
+   "fragen": [
+    {
+     "id": "A1",
+     "text": "In welcher Branche ist Ihr Unternehmen tätig?",
+     "kurzcheck": true,
+     "feld": "branche",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A1_0",
+       "text": "Handwerk",
+       "code": "handwerk"
+      },
+      {
+       "id": "A1_1",
+       "text": "Dienstleistung, Agentur, Beratung",
+       "code": "dienstleistung"
+      },
+      {
+       "id": "A1_2",
+       "text": "Tech, KI, FinTech, Software",
+       "code": "tech"
+      },
+      {
+       "id": "A1_3",
+       "text": "Produktion und Industrie",
+       "code": "produktion"
+      },
+      {
+       "id": "A1_4",
+       "text": "Handel und E-Commerce",
+       "code": "handel"
+      },
+      {
+       "id": "A1_5",
+       "text": "Gesundheit und Praxen",
+       "code": "gesundheit"
+      },
+      {
+       "id": "A1_6",
+       "text": "Immobilien und Bau",
+       "code": "immobilien"
+      },
+      {
+       "id": "A1_7",
+       "text": "Sonstige",
+       "code": "sonstige",
+       "freitext": true,
+       "freitext_feld": "branche_sonstige"
+      }
+     ],
+     "zusatz": {
+      "feld": "startup",
+      "text": "Sind Sie ein Start-up?",
+      "typ": "ja_nein"
+     }
+    },
+    {
+     "id": "A2",
+     "text": "Wie viele Mitarbeitende haben Sie?",
+     "kurzcheck": true,
+     "feld": "groesse",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A2_0",
+       "text": "Nur ich (Solo)",
+       "code": "solo"
+      },
+      {
+       "id": "A2_1",
+       "text": "2 bis 9",
+       "code": "2-9"
+      },
+      {
+       "id": "A2_2",
+       "text": "10 bis 49",
+       "code": "10-49"
+      },
+      {
+       "id": "A2_3",
+       "text": "50 bis 249",
+       "code": "50-249"
+      },
+      {
+       "id": "A2_4",
+       "text": "250 und mehr",
+       "code": "250+"
+      }
+     ]
+    },
+    {
+     "id": "A5",
+     "text": "Welche Rolle haben Sie?",
+     "kurzcheck": false,
+     "feld": "rolle",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A5_0",
+       "text": "Inhaber oder Geschäftsführung",
+       "code": "inhaber_gf"
+      },
+      {
+       "id": "A5_1",
+       "text": "Head of Innovation, Innovations-, KI- oder Digitalisierungsverantwortliche",
+       "code": "innovation_ki"
+      },
+      {
+       "id": "A5_2",
+       "text": "Bereichs- oder Abteilungsleitung",
+       "code": "bereichsleitung"
+      },
+      {
+       "id": "A5_3",
+       "text": "Vertrieb oder Marketing",
+       "code": "vertrieb_marketing"
+      },
+      {
+       "id": "A5_4",
+       "text": "IT",
+       "code": "it"
+      },
+      {
+       "id": "A5_5",
+       "text": "Mitarbeitende ohne Führung",
+       "code": "mitarbeitende"
+      }
+     ]
+    },
+    {
+     "id": "A6",
+     "text": "Was ist Ihr wichtigstes Ziel in den nächsten 12 Monaten?",
+     "kurzcheck": true,
+     "feld": "ziel",
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "A6_0",
+       "text": "Mehr Umsatz und neue Kunden",
+       "code": "umsatz"
+      },
+      {
+       "id": "A6_1",
+       "text": "Mehr Zeit, weniger Handarbeit",
+       "code": "zeit"
+      },
+      {
+       "id": "A6_2",
+       "text": "Fachkräftemangel ausgleichen",
+       "code": "fachkraefte"
+      },
+      {
+       "id": "A6_3",
+       "text": "Neues Produkt oder neuer Markt",
+       "code": "neues_produkt_markt"
+      },
+      {
+       "id": "A6_4",
+       "text": "Unternehmen unabhängiger vom Chef machen",
+       "code": "unabhaengig_vom_chef"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SK",
+   "key": "botschaft",
+   "name": "Botschaft",
+   "dimension": null,
+   "saeule": "botschaft",
+   "satz": "Zuerst zu Ihrer Botschaft.",
+   "intro": "Bereich Botschaft. 3 Fragen.",
+   "fragen": [
+    {
+     "id": "S1",
+     "text": "Können Sie in einem Satz sagen, für wen Sie welches Problem lösen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S1_0",
+       "text": "Nein, das ist noch nicht klar",
+       "punkte": 0
+      },
+      {
+       "id": "S1_1",
+       "text": "Ich kann es erklären, aber nicht in einem Satz",
+       "punkte": 1
+      },
+      {
+       "id": "S1_2",
+       "text": "Ja, aber der Satz steht nirgends geschrieben",
+       "punkte": 2
+      },
+      {
+       "id": "S1_3",
+       "text": "Ja, er steht auf der Website und in unseren Profilen",
+       "punkte": 3
+      },
+      {
+       "id": "S1_4",
+       "text": "Ja, und Kunden sagen ihn uns von selbst nach",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S6",
+     "text": "Erkennen neue Besucher auf Ihrer Website in fünf Sekunden, was Sie anbieten und für wen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S6_0",
+       "text": "Wahrscheinlich nicht",
+       "punkte": 0
+      },
+      {
+       "id": "S6_1",
+       "text": "Nur, wer uns schon kennt",
+       "punkte": 1
+      },
+      {
+       "id": "S6_2",
+       "text": "Teilweise, die Seite erklärt sehr viel",
+       "punkte": 2
+      },
+      {
+       "id": "S6_3",
+       "text": "Ja, oben steht klar, was wir für wen tun",
+       "punkte": 3
+      },
+      {
+       "id": "S6_4",
+       "text": "Ja, und wir haben es mit Fremden getestet",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S9",
+     "text": "Was unterscheidet Sie von anderen Anbietern, und sagen Sie das auch?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S9_0",
+       "text": "Das wissen wir selbst nicht genau",
+       "punkte": 0
+      },
+      {
+       "id": "S9_1",
+       "text": "Wir wissen es, sagen es aber nirgends",
+       "punkte": 1
+      },
+      {
+       "id": "S9_2",
+       "text": "Es steht irgendwo auf der Website",
+       "punkte": 2
+      },
+      {
+       "id": "S9_3",
+       "text": "Es steht oben auf der Website und in Angeboten",
+       "punkte": 3
+      },
+      {
+       "id": "S9_4",
+       "text": "Es steht überall, und Kunden nennen es von selbst",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SW",
+   "key": "website",
+   "name": "Website",
+   "dimension": null,
+   "saeule": "website",
+   "satz": "Jetzt zu Ihrer Website.",
+   "intro": "Bereich Website. 3 Fragen.",
+   "fragen": [
+    {
+     "id": "S2",
+     "text": "Was bringt Ihnen Ihre Website heute?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S2_0",
+       "text": "Wir haben keine oder eine veraltete Website",
+       "punkte": 0
+      },
+      {
+       "id": "S2_1",
+       "text": "Sie ist eine Visitenkarte, Anfragen kommen kaum",
+       "punkte": 1
+      },
+      {
+       "id": "S2_2",
+       "text": "Ab und zu kommt eine Anfrage darüber",
+       "punkte": 2
+      },
+      {
+       "id": "S2_3",
+       "text": "Sie bringt regelmäßig Anfragen",
+       "punkte": 3
+      },
+      {
+       "id": "S2_4",
+       "text": "Sie bringt planbar Anfragen, und wir messen das",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S4",
+     "text": "Gibt es ein Video, das in unter zwei Minuten erklärt, was Sie anbieten?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S4_0",
+       "text": "Nein",
+       "punkte": 0
+      },
+      {
+       "id": "S4_1",
+       "text": "Ist geplant",
+       "punkte": 1
+      },
+      {
+       "id": "S4_2",
+       "text": "Ja, aber es ist veraltet",
+       "punkte": 2
+      },
+      {
+       "id": "S4_3",
+       "text": "Ja, aktuell und auf der Website",
+       "punkte": 3
+      },
+      {
+       "id": "S4_4",
+       "text": "Ja, und wir sehen, dass es Anfragen bringt",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S7",
+     "text": "Hat jedes Ihrer Angebote eine eigene Seite mit einem klaren nächsten Schritt?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S7_0",
+       "text": "Nein, eine Seite für alles",
+       "punkte": 0
+      },
+      {
+       "id": "S7_1",
+       "text": "Die Angebote stehen nur als Liste",
+       "punkte": 1
+      },
+      {
+       "id": "S7_2",
+       "text": "Eigene Seiten, aber ohne klaren nächsten Schritt",
+       "punkte": 2
+      },
+      {
+       "id": "S7_3",
+       "text": "Eigene Seiten mit klarem nächsten Schritt",
+       "punkte": 3
+      },
+      {
+       "id": "S7_4",
+       "text": "Eigene Seiten mit nächstem Schritt, Belegen und gemessenen Anfragen",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SR",
+   "key": "reichweite",
+   "name": "Reichweite",
+   "dimension": null,
+   "saeule": "reichweite",
+   "satz": "Zum Schluss: Wie weit reicht Ihre Sichtbarkeit?",
+   "intro": "Bereich Reichweite. 3 Fragen.",
+   "fragen": [
+    {
+     "id": "S3",
+     "text": "Wie oft zeigen Sie sich mit eigenen Inhalten, etwa Beiträgen, Videos oder Vorträgen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S3_0",
+       "text": "Gar nicht",
+       "punkte": 0
+      },
+      {
+       "id": "S3_1",
+       "text": "Seltener als einmal im Monat",
+       "punkte": 1
+      },
+      {
+       "id": "S3_2",
+       "text": "Ein- bis dreimal im Monat",
+       "punkte": 2
+      },
+      {
+       "id": "S3_3",
+       "text": "Jede Woche",
+       "punkte": 3
+      },
+      {
+       "id": "S3_4",
+       "text": "Jede Woche, mit Plan und gemessener Wirkung",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S5",
+     "text": "Wie gut kennt Ihre Zielgruppe Sie?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S5_0",
+       "text": "Kaum jemand kennt uns",
+       "punkte": 0
+      },
+      {
+       "id": "S5_1",
+       "text": "Nur unser direktes Umfeld",
+       "punkte": 1
+      },
+      {
+       "id": "S5_2",
+       "text": "In unserer Region oder Nische ein wenig",
+       "punkte": 2
+      },
+      {
+       "id": "S5_3",
+       "text": "Viele in der Zielgruppe haben schon von uns gehört",
+       "punkte": 3
+      },
+      {
+       "id": "S5_4",
+       "text": "Wir werden aktiv empfohlen und eingeladen",
+       "punkte": 4
+      }
+     ]
+    },
+    {
+     "id": "S8",
+     "text": "Was sagen Kunden öffentlich über Sie, etwa in Bewertungen, Empfehlungen oder Referenzen?",
+     "kurzcheck": true,
+     "typ": "einfach",
+     "optionen": [
+      {
+       "id": "S8_0",
+       "text": "Nichts Sichtbares",
+       "punkte": 0
+      },
+      {
+       "id": "S8_1",
+       "text": "Ein paar ältere Bewertungen",
+       "punkte": 1
+      },
+      {
+       "id": "S8_2",
+       "text": "Einige Bewertungen oder Referenzen",
+       "punkte": 2
+      },
+      {
+       "id": "S8_3",
+       "text": "Regelmäßig neue Bewertungen und Referenzen auf der Website",
+       "punkte": 3
+      },
+      {
+       "id": "S8_4",
+       "text": "Viele Belege, aktiv gesammelt und überall gezeigt",
+       "punkte": 4
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

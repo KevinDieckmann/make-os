@@ -7,8 +7,8 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { neueKennung } from '@/lib/kennung';
-import type { CheckAntworten } from './typen';
-import type { KontaktStand } from './ablauf';
+import type { AngebotBereich, CheckAntworten, SaeuleKey } from './typen';
+import type { KontaktStand, CheckUmfang } from './ablauf';
 import { FRIST_MIT_KONTAKT_MONATE, FRIST_OHNE_KONTAKT_TAGE } from './fristen';
 
 export { FRIST_MIT_KONTAKT_MONATE, FRIST_OHNE_KONTAKT_TAGE };
@@ -38,6 +38,8 @@ export interface CheckErgebnisStand {
   stufeName: string;
   genauigkeit: 'genau' | 'vorlaeufig';
   dimensionen: Record<string, number>;
+  /** Säulen Sichtbarkeit · Vertrieb · Innovation (30.10.) — `gesamt`/`stufe` sind seitdem das Gesamtergebnis über die Säulen. */
+  saeulen?: Partial<Record<SaeuleKey, number>>;
   lead: { punkte: number; klasse: 'A' | 'B' | 'C' };
 }
 
@@ -54,6 +56,8 @@ export interface CheckSitzung {
   kontaktStand: KontaktStand;
   kontakt?: CheckKontakt;
   wahl?: 'ergebnis' | 'mehr';
+  /** Kurz oder ausführlich, beim Start gewählt (30.10. abends, nur wo die Vorlage die Wahl anbietet). Fehlt = alte Strecke mit Wahl nach dem Kurzcheck. */
+  umfang?: CheckUmfang;
   /** Erstes Ergebnis gesehen (abgeschlossen) — für Kennzahlen; danach kann weiter beantwortet werden. */
   abgeschlossen?: string;
   ergebnis?: CheckErgebnisStand;
@@ -72,8 +76,44 @@ export interface CheckEinstellungen {
   gastgeber?: string;
   /** Name, unter dem der Check auftritt (z. B. die Marke der Website) — ohne Angabe die Firma der Instanz ohne Rechtsform. */
   marke?: string;
+  /** Kurzer Leitsatz unter dem Namen im Kopf des Checks (30.10.) — ohne Angabe keiner. */
+  claim?: string;
+  /** Passendes Angebot je Bereich unter dem nächsten Schritt im Ergebnis (30.10.) — Daten der Instanz, nie in der Vorlage. */
+  angebote?: Partial<Record<AngebotBereich, CheckAngebot>>;
+  /** Verantwortlicher für die Checks, nur falls abweichend von Einstellungen › Datenschutz (30.10.: die Website gehört einer anderen
+   *  Gesellschaft als die Instanz) — samt Link zur Datenschutzerklärung der Website. */
+  verantwortlich?: string;
+  datenschutzLink?: string;
+  /** Kopf wie auf der Website (30.10., Kevin: „die ganze Seite ist nicht richtig ausgerichtet“): Logo (Bild, `/…` der eigenen Website oder https)
+   *  und Link zur Website (Wortmarke führt dorthin). Ohne Angabe: Name ohne Logo, ohne Link. */
+  logo?: string;
+  website?: string;
   geaendert?: string;
   geaendertVon?: string;
+}
+
+export interface CheckAngebot { titel: string; text?: string; link?: string }
+
+/** Ein Link eines Angebots: eine Adresse der eigenen Website (`/…`, kein `//`) oder https — sonst null. Rein. */
+export function angebotLinkOk(x: string): boolean {
+  if (x.length > 300 || /\s|[<>"']/.test(x)) return false;
+  if (x.startsWith('/')) return !x.startsWith('//');
+  try { const u = new URL(x); return u.protocol === 'https:' && !!u.hostname; } catch { return false; }
+}
+
+/** Angebote aus einem gespeicherten Bestand — nur gültige Felder (alte Stände ohne Angebote bleiben ohne). Rein. */
+export function angeboteSaeubern(roh: unknown): Partial<Record<AngebotBereich, CheckAngebot>> | undefined {
+  if (!roh || typeof roh !== 'object') return undefined;
+  const aus: Partial<Record<AngebotBereich, CheckAngebot>> = {};
+  for (const sk of ['sichtbarkeit', 'vertrieb', 'innovation'] as const) {
+    const a = (roh as Record<string, unknown>)[sk] as Record<string, unknown> | undefined;
+    const titel = typeof a?.titel === 'string' ? a.titel.trim() : '';
+    if (!titel) continue;
+    const text = typeof a?.text === 'string' ? a.text.trim() : '';
+    const link = typeof a?.link === 'string' ? a.link.trim() : '';
+    aus[sk] = { titel, ...(text ? { text } : {}), ...(link && angebotLinkOk(link) ? { link } : {}) };
+  }
+  return Object.keys(aus).length ? aus : undefined;
 }
 
 const TOKEN_OK = /^[a-f0-9]{64}$/;
@@ -91,7 +131,14 @@ export async function ladeCheckBestand(): Promise<CheckBestand> {
 
 export async function ladeCheckEinstellungen(): Promise<CheckEinstellungen> {
   const e = await loadJson<CheckEinstellungen>(EINSTELLUNGEN);
-  return { aktiv: e?.aktiv === true, ...(e?.buchungSlug ? { buchungSlug: e.buchungSlug } : {}), ...(e?.gastgeber ? { gastgeber: e.gastgeber } : {}), ...(e?.marke ? { marke: e.marke } : {}), ...(e?.geaendert ? { geaendert: e.geaendert, geaendertVon: e.geaendertVon } : {}) };
+  const angebote = angeboteSaeubern(e?.angebote);
+  return {
+    aktiv: e?.aktiv === true, ...(e?.buchungSlug ? { buchungSlug: e.buchungSlug } : {}), ...(e?.gastgeber ? { gastgeber: e.gastgeber } : {}), ...(e?.marke ? { marke: e.marke } : {}),
+    ...(e?.claim ? { claim: e.claim } : {}), ...(angebote ? { angebote } : {}),
+    ...(e?.verantwortlich ? { verantwortlich: e.verantwortlich } : {}), ...(e?.datenschutzLink && angebotLinkOk(e.datenschutzLink) && /^https:/.test(e.datenschutzLink) ? { datenschutzLink: e.datenschutzLink } : {}),
+    ...(e?.logo && angebotLinkOk(e.logo) ? { logo: e.logo } : {}), ...(e?.website && angebotLinkOk(e.website) ? { website: e.website } : {}),
+    ...(e?.geaendert ? { geaendert: e.geaendert, geaendertVon: e.geaendertVon } : {}),
+  };
 }
 
 export async function speichereCheckEinstellungen(e: CheckEinstellungen): Promise<CheckEinstellungen> {
@@ -99,9 +146,9 @@ export async function speichereCheckEinstellungen(e: CheckEinstellungen): Promis
 }
 
 /** Neue Sitzung — Token nur einmal im Klartext zurück. `null`, wenn der Bestand voll ist. */
-export async function sitzungAnlegen(vorlage: string, quelle: string | undefined, jetzt = new Date().toISOString()): Promise<{ sitzung: CheckSitzung; token: string } | null> {
+export async function sitzungAnlegen(vorlage: string, quelle: string | undefined, jetzt = new Date().toISOString(), umfang?: CheckUmfang): Promise<{ sitzung: CheckSitzung; token: string } | null> {
   const token = neuesCheckToken();
-  const sitzung: CheckSitzung = { id: neueKennung('ck'), vorlage, tokenHash: checkTokenHash(token), gestartet: jetzt, geaendert: jetzt, ...(quelle ? { quelle } : {}), antworten: {}, uebersprungen: [], kontaktStand: 'offen' };
+  const sitzung: CheckSitzung = { id: neueKennung('ck'), vorlage, tokenHash: checkTokenHash(token), gestartet: jetzt, geaendert: jetzt, ...(quelle ? { quelle } : {}), ...(umfang ? { umfang } : {}), antworten: {}, uebersprungen: [], kontaktStand: 'offen' };
   let voll = false;
   await updateJson<CheckBestand>(SITZUNGEN, cur => {
     const b = cur ?? { sitzungen: [] };

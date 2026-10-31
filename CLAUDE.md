@@ -1596,6 +1596,25 @@ ist, muss er angelegt werden … muss automatisiert das Angebot abgeschickt werd
   `versendet` (Angebot `Angebot.versendet`, Rechnung `RechnungZusatz.versendet`, beide optional). Rechnungen gehen nie automatisch raus. Ohne Postfach `mailto`.
 - Tests: `tests/angebot-formular.test.ts`, `tests/angebot-formular-link.test.ts`, `tests/beleg-senden.test.ts`.
 
+## Newsletter-Anmeldung über die Website (30.10., Branch `newsletter-anmeldung`, nur lokal; Tests `tests/newsletter-anmeldung.test.ts`)
+Kevin 30.10.: „einen Bereich, wo wir kostenlose Sachen anbieten … Newsletter: Anmeldung mit Double-Opt-in, der Versand bleibt Handarbeit“.
+- **Öffentlich:** Seite `/newsletter` (hell wie Check/Buchung über `components/buchen/hell.ts`, `...OEFFENTLICH_META`, aus → `NichtDa`) und `POST /api/newsletter`
+  (`anmelden` | `bestaetigen`); Middleware `NEWSLETTER_OFFEN` (nur diese zwei), Caddy `@app` im Block fokusinnovation.de, Köpfe `buchung` in next.config.mjs. Kommt AUS;
+  läuft nur mit Absender-Postfach, Verantwortlichem (Einstellung oder Einrichtung) und Adresse der Website (`bereitPruefen`), sonst 404.
+- **Immer dieselbe Antwort:** die Arbeit (Zeile, Token, Mail) läuft NACH der Antwort (`nachDerAntwort`/`after`) — bekannt, gesperrt, eingeschränkt, schon angemeldet sind
+  von außen nicht zu unterscheiden. Art. 18 → keine Zeile; Werbesperre/Sperrliste → Zeile `gesperrt` ohne Mail; Honigtopf + Mindestzeit (signierter Stempel) mit
+  DEMSELBEN Text; Token 256 Bit nur im Fragment `#t=…`, gespeichert nur als SHA-256, 7 Tage, einmalig; höchstens 3 Mails je Adresse und Tag; bestätigt wird erst per Klick.
+- **Bestätigungsmail = zweite dokumentierte Ausnahme von Regel 3** (neben „Angebot anfordern“): NUR `bestaetigungsmailSenden` (lib/newsletter/versand.ts) — fester Text ohne
+  Werbung (`bestaetigungsMail`), nur an die eingetragene Adresse, nur mit dem Token dieser Zeile, nur über das vom Inhaber gewählte Business-Postfach (`absenderPruefen`), gesendet
+  über `inboxSenden`. Die Wahl des Absenders ist die Freigabe.
+- **CRM:** nach dem Klick `insCrm` — Person über `personAnlegen` (Weg `newsletter`, feste Kennung `c-<uuid der nl-…>`) bzw. vorhandene Akte, dann Einwilligung `newsletter` mit
+  vollem Nachweis (Wortlaut, Fassung `newsletter-einwilligung-<n>`, Beleg `newsletter:<nl-…>`, Zeitpunkt/erfasst von über `datenschutzStempeln`) → Ampel grün. Art. 18 → nichts
+  geschrieben; Werbesperre/Sperrliste → keine Einwilligung. Die Fassung zählt hoch, sobald sich der angezeigte Wortlaut ändert (Text oder Name).
+- **Bestände** `newsletter-anmeldungen` (Register mit Angaben, IN_BUSINESS, Art. 15/17 über `person-weitere.ts`, Frist: unbestätigt 30 Tage, bestätigt solange die Einwilligung
+  besteht — Morgenlauf `newsletterFristLauf`) und `newsletter-einstellungen`; lesen/schreiben NUR lib/newsletter/speicher.ts. Intern `/api/newsletter/intern` (GET Haushalt, Adressen
+  maskiert; POST nur Inhaber per Sitzung), Karte „Anmeldung über die Website“ unter Markttraktion › Marketing › Newsletter (`NewsletterWebsite.tsx`). VVT `vv-newsletter-anmeldung`
+  (nachgetragen, sobald eingerichtet: `newsletterEingerichtet`).
+
 ## Markttraktion › Planung (10.10., Branch `mt-planung`, nur lokal; UPDATES.md)
 Kevin 10.10.: „Planung“ (bis 21.10. Schnellknopf, seit 22.10. Hub-Punkt unter Steuerung, `HUB_MENUE`; `planungLink`/`WEG.vertriebsplanung`) — „Umsatzziele auf Aktivitäten
 runterplanen, mit Kapa“, „planen pro Leadkanal“, „der Kunde bleibt im Kreis“. Ansichten `a` = kreislauf (Start) · ziele · kanaele · challenges, `kanal` filtert.
@@ -3021,6 +3040,23 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   + GET `/api/state/zeit/mandate` (Karte auf Fokus, „Zeit“ in der Mandatsakte, „≈ €/h“ nur grober Hinweis). Tote Bezüge: Verbindungsprüfung
   `ziel-/meilenstein-/zeit-mandat-tot` (`lib/crm/verbindungen-planung.ts`, reparierbar = Bezug entfernen) — bewusst keine Löschsperre.
   Tests `tests/mandat-bezug.test.ts`.
+
+## Website-Anbau (31.10., Branch `paket-homepage`; Kevin: „Homepage-Anbau — das muss heute fertig sein“)
+- **Kontaktformular** `/anfrage` + `POST /api/anfrage` (Middleware `kontaktformularOffen`, eigener Caddy-Block `@kontaktformular`, Köpfe `buchung` in next.config,
+  Register-Klasse `offen` + `OFFEN_ERLAUBT`): kommt AUS (Schalter `kontaktformular-einstellungen`, nur Inhaber über `/api/kontaktformular/intern`, Karte in
+  Marketing › Anfragen); Name, Verantwortlicher/Abweichung, Gastgeber, Buchungsseite teilt es mit den Check-Einstellungen. Honigtopf + signierter Stempel
+  (`kontaktformularStempel`, ≥ 3 s), Drossel, ≤ 8 KB, Felder nie gekürzt (413), IMMER dieselbe Antwort. Eingang NUR über `anfrageAnlegen` (Kanal Website,
+  `oeffentlich: true` → vorhandene Person nur „Adresse unbestätigt“, `webseite: 'formular'`) — keine Mail, keine Werbe-Einwilligung, kein eigener Bestand mit
+  Personen (VVT `vv-kontaktformular`, Art. 15 Bereich `kontaktformular`, Frist = Kartei). Regeln `lib/kontaktformular/regeln.ts`, Server `…/server.ts`.
+- **Prozess-Auslöser „Formular/Check von der Webseite“:** das Ereignis `neuer-lead` einer Website-Anfrage trägt `stufe` (`webseiteStufe`, lib/ereignisse/quellen.ts):
+  `webseite-check` · `webseite-formular` · `webseite` (Kanal Website von Hand) — Bedingung „`ereignis.stufe` beginnt mit `webseite`“. Unbestätigte Adressen lösen nichts aus.
+- **Website-Zahlen im Traktions-Index** (`WEBSEITE_KENNZAHLEN`, lib/crm/webseite-zahlen.ts, Marketing › Gruppe Website): Anfragen über die Website, abgeschlossene Checks,
+  Termine aus der Website (je 30 Tage), ohne Tracker. Nur im Modell, wenn Check oder Formular läuft (sonst exakt der bisherige Index). Jeder Aufrufer von
+  `traktionsIndex` gibt `webseite: await webseiteStandLaden()` mit — eine Zahl überall.
+- **Zoe-Begleiterin** `components/oeffentlich/ZoeBegleiterin.tsx` (Ring unten rechts, Check + Kontaktformular): NUR feste Texte aus
+  `lib/oeffentlich/zoe-begleiterin-texte.ts` (erster Satz: KI-Assistentin, Art. 50 KI-VO), Wege Erstgespräch/Kontaktformular — kein Modell, kein Abruf, nichts
+  gespeichert. `lib/check/zoe-texte.ts` gehört der Homepage-Sitzung (nur lesen).
+- Tests: `tests/kontaktformular.test.ts`, `tests/zoe-begleiterin.test.ts`, `tests/website-anfrage-e2e.test.ts` (Formular → Lead → Prozess → Termin → Deal → Index).
 
 ## Tempo (26.09.)
 - Teure Berechnungen (Indizes, Familie, Bauplan) laufen durch `merken(schluessel, ttl, rechne)` aus `lib/store/memo.ts`;

@@ -3,12 +3,13 @@
 // die Seite schickt es im Körper an /api/buchung/<slug>/status. Bestätigen (Double-Opt-in-Ersatz), Status sehen, absagen.
 
 import type { Metadata } from 'next';
+import { OEFFENTLICH_META } from '@/lib/oeffentlich/metadaten';
 import { notFound } from 'next/navigation';
 import { BuchungStatus } from '@/components/buchen/BuchungStatus';
 import { slugOk } from '@/lib/kalender/buchung';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Ihre Terminanfrage', robots: { index: false, follow: false }, referrer: 'no-referrer' };
+export const metadata: Metadata = { ...OEFFENTLICH_META, title: 'Ihre Terminanfrage' };
 
 export default async function StatusSeite({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

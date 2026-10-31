@@ -16,10 +16,11 @@ import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { vorlageVon, STANDARD_VORLAGE } from '@/lib/check/katalog';
 import { antwortPruefen, frageVon, kurzFertig, phaseVon, ueberspringbar } from '@/lib/check/ablauf';
-import { auswerten, leadPunkte, profilAus } from '@/lib/check/auswertung';
+import { auswerten, leadPunkte, profilAus, saeulenAuswerten } from '@/lib/check/auswertung';
 import { ergebnisAnsicht } from '@/lib/check/ergebnis';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
-import { begruessung, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/zoe-texte';
+import { begruessung, dimensionName, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/zoe-texte';
+import type { DimKey } from '@/lib/check/typen';
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
 import { ladeCheckEinstellungen, sitzungAnlegen, sitzungLesen, sitzungAendern, sitzungIntern, type CheckSitzung } from '@/lib/check/speicher';
 import { zoeKontext, hinweisLaden, stromFuerBrowser, ablaufStand, leadAnlegen } from '@/lib/check/server';
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
   const netz = adresseNetz(req);
   const e = await ladeCheckEinstellungen();
   if (!e.aktiv) return antwort(NICHT_DA, 404);
-  const hinweis = await hinweisLaden();
+  const hinweis = await hinweisLaden(e);
   if (!hinweis) return antwort(NICHT_DA, 404);
   let b: Record<string, unknown>;
   try { b = await jsonBegrenzt(req, MAX_BYTES); } catch (x) { return jsonZuGross(x) ?? antwort({ ok: false, fehler: 'Kein JSON.' }, 400); }
@@ -68,7 +69,9 @@ export async function POST(req: Request) {
     const v = vorlageVon(typeof b.vorlage === 'string' ? b.vorlage : STANDARD_VORLAGE);
     if (!v) return antwort(NICHT_DA, 404);
     const quelle = typeof b.quelle === 'string' && QUELLE_OK.test(b.quelle) ? b.quelle : undefined;
-    const neu = await sitzungAnlegen(v.id, quelle);
+    // Kurz oder ausführlich nur, wo die Vorlage die Wahl anbietet (Innovations-Check) — sonst die gewohnte Strecke.
+    const umfang = v.seite.umfang && (b.umfang === 'kurz' || b.umfang === 'lang') ? b.umfang : undefined;
+    const neu = await sitzungAnlegen(v.id, quelle, undefined, umfang);
     if (!neu) return antwort({ ok: false, fehler: 'Der Check ist gerade voll — bitte versuchen Sie es später noch einmal.' }, 503);
     return antwort({ ok: true, sitzung: neu.sitzung.id, token: neu.token, ...(await nutzlast(v, neu.sitzung, e, hinweis)) }, 201);
   }
@@ -121,6 +124,10 @@ export async function POST(req: Request) {
     const a5 = frageVon(v, 'A5');
     const rolle = typeof b.rolle === 'string' && a5?.optionen?.some(o => o.id === b.rolle) ? b.rolle : null;
     if (!rolle) return antwort({ ok: false, fehler: 'Bitte Ihre Rolle wählen.' }, 400);
+    // Newsletter (30.10.): das Häkchen gilt nur mit der Fassung des Wortlauts, die die Seite gezeigt hat — sonst neu laden (wie /newsletter).
+    const { newsletterBereit, anmeldungVerarbeiten, nachDerAntwort } = await import('@/lib/newsletter/server');
+    const nl = b.newsletter === true ? await newsletterBereit() : null;
+    if (b.newsletter === true && (!nl || b.newsletterFassung !== nl.fassung)) return antwort({ ok: false, fehler: 'Der Text zum Newsletter hat sich geändert. Bitte laden Sie die Seite neu.' }, 409);
     const jetzt = new Date().toISOString();
     const r = await sitzungAendern<string>(b.sitzung, b.token, s => {
       if (!kurzFertig(v, ablaufStand(s))) return { fehler: 'Erst die Fragen des Kurzchecks, dann die Kontaktdaten.' };
@@ -132,11 +139,22 @@ export async function POST(req: Request) {
     });
     if (!r) return antwort(SITZUNG_WEG, 404);
     if ('fehler' in r) return antwort({ ok: false, fehler: r.fehler }, 400);
+    // Newsletter-Wunsch → dieselbe Anmeldung wie auf /newsletter (Double-Opt-in, Bestätigungsmail nach der Antwort, Sperren dort).
+    if (nl) {
+      const { emailSauber, vornameSauber } = await import('@/lib/newsletter/regeln');
+      const adresse = emailSauber(email);
+      if (adresse) nachDerAntwort(() => anmeldungVerarbeiten({ email: adresse, vorname: vornameSauber(vorname) ?? '' }, nl));
+    }
     // Lead ins CRM — ein Fehler dort hält die Person nie auf (intern sichtbar, „noch einmal versuchen“ im Haushalt).
     if (!r.crm || r.crm.status !== 'ok') {
       const profil = profilAus(v.katalog, r.antworten);
-      const vorl = auswerten(v.katalog, v.regeln, profil, r.antworten);
-      const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100).`);
+      const inno = auswerten(v.katalog, v.regeln, profil, r.antworten);
+      const vorl = saeulenAuswerten(v.katalog, v.regeln, r.antworten, inno);
+      const namen = Object.fromEntries((v.regeln.saeulen ?? []).map(sa => [sa.key, sa.name]));
+      // Mit Säulen deren Werte; der Innovations-Check (nur Innovation, 30.10.) nennt seine Bereiche.
+      const teile = (v.regeln.saeulen?.length ? Object.entries(vorl.werte).map(([sk, w]) => `${namen[sk] ?? sk} ${w}`)
+        : (Object.entries(inno.dimensionen) as [DimKey, number][]).map(([d, w]) => `${dimensionName(d)} ${w}`)).join(', ');
+      const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100${teile ? `; ${teile}` : ''}).`);
       await sitzungIntern(r.id, s => ({ ...s, crm }));
     }
     return antwort({ ok: true, ...stromFuerBrowser(v, r) });
@@ -152,7 +170,7 @@ export async function POST(req: Request) {
   if (aktion === 'wahl') {
     const wahl = b.wahl === 'mehr' ? 'mehr' : b.wahl === 'ergebnis' ? 'ergebnis' : null;
     if (!wahl) return antwort({ ok: false, fehler: 'wahl: ergebnis oder mehr.' }, 400);
-    const r = await sitzungAendern<string>(b.sitzung, b.token, s => (kurzFertig(v, ablaufStand(s)) && s.kontaktStand !== 'offen' ? { ...s, wahl } : { fehler: 'Erst der Kurzcheck und die Kontakt-Frage.' }));
+    const r = await sitzungAendern<string>(b.sitzung, b.token, s => (kurzFertig(v, ablaufStand(s)) && (s.kontaktStand !== 'offen' || s.umfang === 'lang') ? { ...s, wahl } : { fehler: 'Erst der Kurzcheck und die Kontakt-Frage.' }));
     if (!r) return antwort(SITZUNG_WEG, 404);
     if ('fehler' in r) return antwort({ ok: false, fehler: r.fehler }, 400);
     return antwort({ ok: true, ...stromFuerBrowser(v, r) });
@@ -160,16 +178,24 @@ export async function POST(req: Request) {
 
   if (aktion === 'ergebnis') {
     if (!kurzFertig(v, ablaufStand(s0)) || s0.kontaktStand === 'offen') return antwort({ ok: false, fehler: 'Erst der Kurzcheck und die Kontakt-Frage.' }, 400);
-    const { ergebnis, profil, ansicht } = ergebnisAnsicht(v, s0.antworten);
+    const { ergebnis, saeulen, profil, ansicht } = ergebnisAnsicht(v, s0.antworten);
     const lead = leadPunkte(v.leadScoring, profil, ergebnis, {});
     const jetzt = new Date().toISOString();
     const r = await sitzungAendern<string>(b.sitzung, b.token, s => ({
       ...s, wahl: 'ergebnis', abgeschlossen: s.abgeschlossen ?? jetzt,
-      ergebnis: { am: jetzt, gesamt: ergebnis.gesamt, stufe: ergebnis.stufe, stufeName: ergebnis.stufe_name, genauigkeit: ergebnis.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, lead },
+      ergebnis: { am: jetzt, gesamt: saeulen.gesamt, stufe: saeulen.stufe, stufeName: saeulen.stufe_name, genauigkeit: ansicht.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, saeulen: saeulen.werte, lead },
     }));
     if (!r || 'fehler' in r) return antwort(SITZUNG_WEG, 404);
     const k = await zoeKontext(e);
-    return antwort({ ok: true, ...stromFuerBrowser(v, r), ansicht, gespraech: { satz: gespraechSatz(k), ...(e.buchungSlug ? { pfad: `/buchen/${e.buchungSlug}` } : {}) } });
+    // Zu jedem nächsten Schritt das Angebot der Instanz (Einstellungen, je Bereich) — nur Titel, Satz und Link, und jedes Angebot nur
+    // einmal (im Vertriebscheck zeigen alle Bereiche auf das Vertriebs-Angebot).
+    const gezeigt = new Set<string>();
+    const schritte = ansicht.schritte.map(({ angebot: bereich, ...x }) => {
+      const a = bereich && !gezeigt.has(bereich) ? e.angebote?.[bereich] : undefined;
+      if (a && bereich) gezeigt.add(bereich);
+      return { ...x, ...(a ? { angebot: a } : {}) };
+    });
+    return antwort({ ok: true, ...stromFuerBrowser(v, r), ansicht: { ...ansicht, schritte }, gespraech: { satz: gespraechSatz(k), ...(e.buchungSlug ? { pfad: `/buchen/${e.buchungSlug}`, slug: e.buchungSlug } : {}) } });
   }
 
   return antwort({ ok: false, fehler: 'Unbekannte Aktion.' }, 400);
@@ -180,7 +206,7 @@ async function nutzlast(v: NonNullable<ReturnType<typeof vorlageVon>>, s: CheckS
   const k = await zoeKontext(e);
   return {
     katalog: oeffentlicherKatalog(v),
-    zoe: { begruessung: begruessung(k), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
+    zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
     hinweis: { zeilen: hinweis.zeilen, link: hinweis.link, fassung: HINWEIS_FASSUNG },
     ...stromFuerBrowser(v, s),
   };

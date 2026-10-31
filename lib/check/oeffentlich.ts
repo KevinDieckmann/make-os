@@ -22,7 +22,7 @@ export interface OeffentlicheFrage {
   bausteine?: readonly string[];
 }
 
-export interface OeffentlicherKatalog { vorlage: string; name: string; fragen: OeffentlicheFrage[]; abschnittSatz: Record<string, string> }
+export interface OeffentlicherKatalog { vorlage: string; name: string; fragen: OeffentlicheFrage[]; abschnittSatz: Record<string, string>; /** Name je Abschnitt für den Fortschritt („Strategie und Führung“). */ abschnittName: Record<string, string> }
 
 function oeffentlich(f: FrageMitAbschnitt): OeffentlicheFrage {
   return {
@@ -38,5 +38,8 @@ function oeffentlich(f: FrageMitAbschnitt): OeffentlicheFrage {
 }
 
 export function oeffentlicherKatalog(v: CheckVorlage): OeffentlicherKatalog {
-  return { vorlage: v.id, name: v.name, fragen: [...alleFragen(v.katalog), ...OFFENE_ZUSATZFRAGEN].map(oeffentlich), abschnittSatz: { ...ABSCHNITT_SATZ } };
+  // Zoes Satz je Abschnitt: der Satz aus dem Katalog (Vertriebscheck, Sichtbarkeitstest), sonst die festen Sätze des Innovations-Checks.
+  const ausKatalog = Object.fromEntries(v.katalog.abschnitte.filter(a => !!a.satz).map(a => [a.id, a.satz!]));
+  const abschnittName: Record<string, string> = { X: 'Zum Schluss', ...Object.fromEntries(v.katalog.abschnitte.map(a => [a.id, a.dimension ? a.name : a.id === 'A' ? 'Ihr Unternehmen' : /^[HIJ]$/.test(a.id) ? 'Ihre Branche' : a.name])) };
+  return { vorlage: v.id, name: v.name, fragen: [...alleFragen(v.katalog), ...OFFENE_ZUSATZFRAGEN].map(oeffentlich), abschnittSatz: { ...ABSCHNITT_SATZ, ...ausKatalog }, abschnittName };
 }

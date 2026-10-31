@@ -78,7 +78,8 @@ export async function GET(req: Request) {
   const datei = await ladeIndexDatei('traktion-index');
   // Die Kennzahlen der drei Welten gehen mit — der Index rechnet sie nicht noch einmal (Prüfbericht 27.09., Punkt 18).
   // 7.1 (08.10.): die ersten Wochen nach dem ersten Lauf „vorläufig“ (Kern-Mechanik).
-  const index = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute) });
+  const webseite = await (await import('@/lib/crm/webseite-zahlen-server')).webseiteStandLaden();
+  const index = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute), ...(webseite ? { webseite } : {}) });
   const heads = HEADS.map((h, i) => {
     const s = { ...leererStand(), ...(staende[i] ?? {}) };
     const b = s.berichte[s.berichte.length - 1];

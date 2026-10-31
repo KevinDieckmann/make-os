@@ -30,7 +30,7 @@ import { firmaZurueckholen } from './ablage';
 import { MARKE_EVENTS } from './marke';
 import { istKunde } from './bean';
 
-export type AnlegeWeg = 'kartei' | 'firmenkarte' | 'schnell' | 'prospecting' | 'makeone' | 'anfrage' | 'netzwerken' | 'import' | 'vertrieb';
+export type AnlegeWeg = 'kartei' | 'firmenkarte' | 'schnell' | 'prospecting' | 'makeone' | 'anfrage' | 'netzwerken' | 'import' | 'vertrieb' | 'newsletter';
 /** Die Wege, die über POST /api/crm/person anlegen (von Hand, eine Person). */
 export const PERSON_WEGE = ['kartei', 'firmenkarte', 'schnell', 'prospecting', 'makeone'] as const;
 export type PersonWeg = typeof PERSON_WEGE[number];
@@ -79,6 +79,9 @@ export const ANLEGE_REGELN: Record<AnlegeWeg, AnlegeRegel> = {
   // 25.10. (Markttraktion › Formulare, „Angebot anfordern“): ein Vertriebler trägt einen Kunden ein, der ein Angebot braucht — Vertragsanbahnung.
   vertrieb: { label: 'Angebot anfordern (Vertrieb)', welt: 'sales', zustaendig: 'wer-anlegt', herkunft: 'vertrag', rechtsgrundlage: 'vertrag', lebensphase: 'interessent', lead: 'bleibt', firmaAnlegen: true, followUp: 'nie', quelle: 'Vertrieb (Formular)', vermerk: 'Angebot angefordert — Vertrieb (Formular)',
     anders: 'Der Kunde hat über den Vertrieb ein Angebot angefragt (Art. 6 Abs. 1 lit. b) — Deal, Angebot und Nachfassen legt der Formular-Weg selbst an (lib/crm/formulare-server.ts); die Quelle nennt den Link, über den es kam.' },
+  // 30.10. (Newsletter-Anmeldung über die Website, lib/newsletter/server.ts): die Person meldet sich selbst an und bestätigt per Klick (Double-Opt-in).
+  newsletter: { label: 'Newsletter (Website)', welt: 'marketing', zustaendig: 'welt', herkunft: 'selbst', rechtsgrundlage: 'einwilligung', lebensphase: 'kontakt', lead: 'bleibt', firmaAnlegen: false, followUp: 'nie', quelle: 'Newsletter (Website)', vermerk: 'Newsletter über die Website angemeldet (Double-Opt-in bestätigt)',
+    anders: 'Die Person hat sich selbst angemeldet und per Bestätigungslink bestätigt (Art. 6 Abs. 1 lit. a) — nur Adresse und Vorname, keine Firma, kein Follow-up; die Einwilligung „Newsletter“ mit vollem Nachweis setzt der Newsletter-Weg selbst (lib/newsletter/server.ts).' },
   import: { label: 'Import (Liste)', welt: 'sales', zustaendig: 'welt', herkunft: null, lebensphase: 'kontakt', lead: 'bleibt', firmaAnlegen: true, followUp: 'nie', quelle: 'Liste', vermerk: '',
     anders: 'Massenweg: Herkunft und Besitzer kommen aus der Datei, Dubletten über den Schlüssel, Konflikte statt Überschreiben; kalte Leads gehen ins Segment „Vernetzen“, kein Follow-up.' },
 };

@@ -2,7 +2,7 @@
 // Fünf Bilder, ein Motiv: vom Lärm zum Durchbruch, am Ende steht das Logo mit der Wortmarke. Der Fortschritt p (0 → 1) folgt dem
 // Scrollen mit etwas Trägheit (das Scrollen bleibt das des Browsers); die Wörter erscheinen nach der Uhr, nicht am Scrollrad.
 // „Bewegung reduzieren“ oder kein WebGL → ein Standbild mit dem fertigen Logo, die Seite liest sich normal.
-import { szeneStarten, geschichte } from './szene.js';
+import { szeneStarten, geschichte } from './szene.js?v=f1f2853060';
 
 const wurzel = document.documentElement;
 const ruhig = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -71,6 +71,7 @@ if (!szene) {
       still.groesse();
       geschichte(still.zustand, { fokus: 1, momentum: 1, durchbruch: 1 });
       still.zustand.punkteSichtbar = 0;
+      still.zustand.puls = 0;
       still.malen(4);
     };
     malen();
@@ -84,6 +85,8 @@ if (!szene) {
 let pGlatt = 0;
 let letzte = performance.now();
 let start = null;
+let impulsAb = -1e9;      // Zeitpunkt des letzten Bildwechsels
+let aktiv = null;          // Name des Bildes, das gerade steht
 
 function rohFortschritt() {
   const r = film.getBoundingClientRect();
@@ -115,6 +118,7 @@ function anwenden(p, bereit) {
     b.el.style.opacity = wert.toFixed(3);
     const an = wert > 0.5 || (b.an && wert > 0.05);
     if (an !== b.an) { b.el.classList.toggle('an', an); b.an = an; }
+    if (an && bereit && aktiv !== b.name) { if (aktiv !== null) impulsAb = performance.now(); aktiv = b.name; }
   }
 }
 
@@ -125,15 +129,28 @@ function takt(jetzt) {
   pGlatt += (roh - pGlatt) * (1 - Math.exp(-dt * 6));
   if (Math.abs(roh - pGlatt) < 0.0002) pGlatt = roh;
   anwenden(pGlatt, start !== null);
-  if (pGlatt < 0.999 && !document.hidden) {
+  // Solange der Film zu sehen ist, wird gemalt — auch am Ende, damit der Kern im fertigen Logo weiter pulsiert. Im Leerlauf (kein
+  // Scrollen, Start und Impuls vorbei) nur jedes zweite Bild: der Puls bleibt ruhig, Akku und Grafikkarte werden geschont.
+  const leerlauf = Math.abs(roh - pGlatt) < 0.0002 && start !== null && jetzt - start > 1800 && jetzt - impulsAb > 1500;
+  bild++;
+  if (!document.hidden && sichtbar && (!leerlauf || bild % 2 === 0)) {
     const z = szene.zustand;
     geschichte(z, { fokus: span(pGlatt, ABLAUF.fokus), momentum: span(pGlatt, ABLAUF.momentum), durchbruch: span(pGlatt, ABLAUF.durchbruch) });
     // Beim Start tauchen die Punkte langsam auf
     z.punkteSichtbar = start === null ? 0 : clamp01((jetzt - start) / 1800);
+    // Der Raum blüht beim Start einmal auf (1,4 s), jeder Bildwechsel gibt der Mitte ein kurzes Aufatmen
+    const b = start === null ? 0 : clamp01((jetzt - start) / 1400);
+    z.bluete = 1 - Math.pow(1 - b, 3);
+    z.impuls = Math.exp(-(jetzt - impulsAb) / 520) * 0.9;
     szene.malen(jetzt / 1000);
   }
-  requestAnimationFrame(takt);
+  // Außer Sicht hält die Schleife ganz an; der Beobachter unten startet sie wieder.
+  if (sichtbar && !document.hidden) requestAnimationFrame(takt); else laeuft = false;
 }
+let bild = 0;
+let sichtbar = true;
+let laeuft = false;
+function weiter() { if (!laeuft && sichtbar && !document.hidden) { laeuft = true; letzte = performance.now(); requestAnimationFrame(takt); } }
 
 if (szene) {
   // Erst wenn die Schrift da ist (höchstens 1,2 s), erscheinen die ersten Worte — kein Springen der Zeilen
@@ -141,5 +158,7 @@ if (szene) {
   document.fonts?.ready.then(los);
   setTimeout(los, 1200);
   addEventListener('resize', () => szene.groesse());
-  requestAnimationFrame(takt);
+  if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => { sichtbar = e.isIntersecting; weiter(); }).observe(film);
+  document.addEventListener('visibilitychange', weiter);
+  weiter();
 }
