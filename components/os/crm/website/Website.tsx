@@ -4,7 +4,7 @@
 // Reiter (Adresse `a`, lib/crm/adresse.ts WEBSITE_ANSICHTEN): Überblick (Zustand je öffentlichem Weg + Website-Zahlen 30 Tage) · Eingänge (aus den
 // vorhandenen Beständen) · Checks (bis 31.10. Marketing › Innovations-Check) · Angebote & Preise · Bausteine & Vorlagen · Bilder (Medien-Ablage, Kanal
 // „Website“) · Formulare & Termine (Kontaktformular, Newsletter-Anmeldung, Erstgespräch, Willkommens-Mails) · Inhalte & SEO · Recht.
-// Die Website liest über GET /api/website/inhalt (Vertrag: website/VERTRAG_INHALT.md) — hier wird nur gepflegt.
+// Die Website liest über GET /api/website/inhalt (Vertrag: WEBSITE_VERTRAG_INHALT.md) — hier wird nur gepflegt.
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';

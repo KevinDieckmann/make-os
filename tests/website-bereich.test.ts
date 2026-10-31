@@ -219,7 +219,7 @@ describe('Middleware, Register, Caddy', () => {
     const cfg = readFileSync('next.config.mjs', 'utf8');
     expect(cfg).toContain("{ source: '/erstgespraech', headers: buchung }");
     expect(cfg).toContain("{ source: '/api/website/inhalt', headers: website }");
-    const vertrag = readFileSync('website/VERTRAG_INHALT.md', 'utf8');
+    const vertrag = readFileSync('WEBSITE_VERTRAG_INHALT.md', 'utf8');
     for (const f of ['preisText', 'preisNetto', 'events.einleitung', 'anmeldung', '/erstgespraech']) expect(vertrag, f).toContain(f);
   });
 });

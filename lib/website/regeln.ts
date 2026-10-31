@@ -8,7 +8,7 @@
 //
 // Schreiben nur als Einzel-Änderungen mit Stand je Eintrag (`opsAnwenden`): ein bestehender Eintrag ohne passenden Stand → Konflikt (409, nie still
 // überschreiben), Grenzen → 413 (nie kürzen), Unsinn → 400. Die Website liest über die öffentliche Schnittstelle `GET /api/website/inhalt`
-// (Vertrag: website/VERTRAG_INHALT.md) — nur sichtbare Einträge, nur öffentliche Felder (`oeffentlicherInhalt`).
+// (Vertrag: WEBSITE_VERTRAG_INHALT.md) — nur sichtbare Einträge, nur öffentliche Felder (`oeffentlicherInhalt`).
 
 import type { Baustein } from '@/lib/bausteine/regeln';
 

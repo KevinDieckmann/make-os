@@ -1,4 +1,4 @@
-// ─── Website — öffentliche Inhalte (31.10., der Vertrag mit der Website: website/VERTRAG_INHALT.md) ─────────────────────────────────────
+// ─── Website — öffentliche Inhalte (31.10., der Vertrag mit der Website: WEBSITE_VERTRAG_INHALT.md) ─────────────────────────────────────
 // GET → { ok, stand, angebote[], bausteine[], events[], faq[], fakten[], texte{}, bilder[{ id, url, alt }] } — nur sichtbare Einträge, nur öffentliche
 // Felder (lib/website/regeln.ts `oeffentlicherInhalt`): keine Personen, keine Gäste, keine Kennungen interner Bestände außer der eigenen id. Ohne Sitzung
 // offen (middleware.ts `WEBSITE_OEFFENTLICH`, nur GET/HEAD), handelt für niemanden (Köpfe gelöscht), schreibt nichts; gedrosselt je Netz, ETag + 304,
