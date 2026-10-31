@@ -628,10 +628,11 @@ function VorschauKarte({ vorschau, children }: { vorschau: ErgebnisVorschau; chi
         </ul>
         {vorschau.bereiche.length > 0 && (
           <div className={s.saeulen} aria-label="Bereiche im Bericht">
-            {vorschau.bereiche.map((name, i) => (
+            {vorschau.bereiche.map(name => (
               <div key={name} className={s.saeule}>
                 <div className={s.saeuleKopf}><span className={s.saeuleName}>{name}</span><span className={s.platzhalterWert} aria-label="im Bericht">··</span></div>
-                <div className={s.saeuleBalken} aria-hidden><div className={s.platzhalterFuell} style={{ width: `${38 + ((i * 17) % 40)}%` }} /></div>
+                {/* Gleichmäßig gestreift statt verschieden lang (31.10.): ein Platzhalter darf nicht wie ein Wert aussehen. */}
+                <div className={s.saeuleBalken} aria-hidden><div className={s.platzhalterFuell} /></div>
               </div>
             ))}
           </div>

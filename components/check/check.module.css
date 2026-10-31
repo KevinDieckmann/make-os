@@ -312,5 +312,5 @@
 .berichtBlock { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--c-linie); }
 .berichtListe { margin: 0; padding-left: 18px; color: var(--c-leise); font-size: 14px; display: grid; gap: 4px; }
 .platzhalterWert { font-size: 22px; font-weight: 600; letter-spacing: .1em; color: var(--c-leise); opacity: .6; }
-.platzhalterFuell { height: 100%; border-radius: 3px; background: var(--c-linie); filter: blur(1px); opacity: .9; }
+.platzhalterFuell { width: 100%; height: 100%; border-radius: 3px; background: repeating-linear-gradient(90deg, var(--c-linie) 0 6px, transparent 6px 12px); opacity: .8; }
 .berichtUnterwegs { margin: 14px 0 0; font-size: 14px; color: var(--c-text); background: var(--c-flaeche-2); border: 1px solid var(--c-linie); border-radius: 10px; padding: 10px 12px; }
