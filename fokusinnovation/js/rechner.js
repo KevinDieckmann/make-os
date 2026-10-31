@@ -4,6 +4,7 @@
 (() => {
   const VERKAUFSZEIT = 0.4; // Salesforce, State of Sales 2026: 40 % der Arbeitszeit wird verkauft
   const VOLLZEIT_STUNDEN = 40;
+  const KI_AB_STUNDEN = 1.5; // ab hier der Weg zum Innovations-Check (wie in bauen.mjs)
   const zahlDe = (n, stellen = 0) => Number(n).toLocaleString('de-DE', { maximumFractionDigits: stellen, minimumFractionDigits: 0 });
   // „2.200.000“, „2200000“, „33,5“ → Zahl; leer oder Unsinn → null
   const lesen = (text) => {
@@ -28,6 +29,7 @@
       offen, pipeline: offen * w.auftrag, stunden, vertriebler: stunden / (VOLLZEIT_STUNDEN * VERKAUFSZEIT),
       hebelQuote: Math.max(0, jeWoche(termine) - termineMit(Math.min(100, w.angebotsquote + 7), w.auftrag)), quoteNeu: Math.min(100, w.angebotsquote + 7),
       hebelAuftrag: Math.max(0, jeWoche(termine) - termineMit(w.angebotsquote, w.auftrag * 1.25)),
+      kiStunden: jeWoche(termine) * 0.5, // eine halbe Stunde weniger Vor- und Nachbereitung je Termin
     };
   };
   const PROZENT = ['kontaktquote', 'terminquote', 'angebotsquote'];
@@ -60,6 +62,10 @@
       setze('quoteAlt', `${zahlDe(w.angebotsquote)}\u00a0%`);
       setze('hebelQuote', zahlDe(e.hebelQuote, 1));
       setze('hebelAuftrag', zahlDe(e.hebelAuftrag, 1));
+      setze('kiStunden', zahlDe(e.kiStunden, 1));
+      // Viel Zeit je Termin → der Weg zum Innovations-Check (KI bereitet Protokolle, Angebote und Nachfassen vor)
+      const ki = r.querySelector('[data-ki-hinweis]');
+      if (ki) ki.hidden = !(w.stunden > KI_AB_STUNDEN);
       // Trichter: Balken im Verhältnis zu den Erstkontakten (SVG-Attribute — keine Inline-Stile, CSP 'self')
       for (const [id, n] of [['kontakte', e.kontakte], ['termine', e.termine], ['angebote', e.angebote], ['abschluesse', e.abschluesse]]) {
         const balken = r.querySelector(`[data-balken="${id}"]`);
