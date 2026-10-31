@@ -162,7 +162,7 @@ export type WebsiteMailErgebnis = { ok: true; ueber: string } | { ok: false; gru
  * Lage (ohne Absender: `aus`) → Adresse → Grenze je Adresse → Sperren (Art. 18, Werbesperre, Sperrliste; Kartei nicht lesbar: `unklar`) → Senden.
  * Zählt gegen die Grenze, sobald gesendet wird — auch ein gescheiterter Versuch. Wirft nie.
  */
-export async function websiteMailSenden(m: { an: string; vorname?: string; betreff: string; text: string; art: WebsiteMailArt; lage?: WebsiteLage | null }, jetzt = new Date()): Promise<WebsiteMailErgebnis> {
+export async function websiteMailSenden(m: { an: string; vorname?: string; betreff: string; text: string; art: WebsiteMailArt; lage?: WebsiteLage | null; /** Abmeldelink-Köpfe (RFC 8058) — Willkommensstrecke (31.10., lib/crm/willkommen.ts). */ listeAbmelden?: { link: string } }, jetzt = new Date()): Promise<WebsiteMailErgebnis> {
   const nein = (grund: WebsiteMailGrund, text: string): WebsiteMailErgebnis => ({ ok: false, grund, text });
   const lage = m.lage === undefined ? await websiteLage().catch(() => null) : m.lage;
   if (!lage) return nein('aus', 'Kein Website-Absender eingerichtet — nichts verschickt.');
@@ -182,7 +182,7 @@ export async function websiteMailSenden(m: { an: string; vorname?: string; betre
     // geschriebene Mails) gilt hier nicht; gesperrte Personen bekommen sie nie (oben). Art. 18 prüft der Sendeweg trotzdem noch einmal.
     r = await inboxSenden(lage.absender.person, {
       neu: { postfach: lage.absender.postfach, betreff: m.betreff }, an: [{ email: an, ...(name ? { name } : {}) }], text: m.text, uwgBestaetigt: true,
-    }, { art: 'system' });
+    }, { art: 'system' }, m.listeAbmelden ? { listeAbmelden: m.listeAbmelden } : {});
   } catch (err) { r = { status: 502, body: { fehler: err instanceof Error ? err.message.slice(0, 200) : 'Versand gescheitert.' } }; }
   if (r.status !== 200 || r.body.ok !== true) {
     const text = `Nicht verschickt: ${String(r.body.fehler ?? 'unbekannter Fehler').slice(0, 200)}`;

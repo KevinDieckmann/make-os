@@ -45,6 +45,7 @@ import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { NEU_MAX, kampagneInPowerHour } from '@/lib/crm/heute';
 import { weltDerKampagne, sichtbareKampagnen } from '@/lib/crm/kampagnen-welt';
 import { PlaybooksBearbeiten } from './vorlagen/PlaybooksBearbeiten';
+import { KampagneSequenz } from './kampagne/Sequenz';
 
 interface Daten {
   heute: string; playbooks: (Playbook & { anzahl: number; hinweise?: string[] })[];
@@ -311,6 +312,8 @@ function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt, meldun
           );
         })}
       </div>
+      {/* Kampagnen-Motor (31.10., Welle A): Sequenz je Ziel, Mail-Stapel mit Sammelfreigabe, Versand-Stand, Druckliste. */}
+      <KampagneSequenz kampagneId={k.id} />
       <div>
         <Ueberschrift rechts={`${personen.length}`}>Personen</Ueberschrift>
         {personen.slice(0, alle ? 500 : 12).map(x => {

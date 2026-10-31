@@ -28,6 +28,15 @@ export const PLATZHALTER = {
     anrede: 'Grußzeile des Onboardings', vorname: 'Vorname', nachname: 'Nachname', kickoff_vorschlaege: 'Terminvorschläge für den Kick-off', playbook_link: 'Link zum Kunden-Playbook (ohne Link fällt der Absatz weg)',
     gruss: 'Gruß und Vorname der sendenden Person', absender: 'Vorname der sendenden Person',
   },
+  // Kampagnen-Sequenz (31.10., Welle A · Kampagnen-Motor, lib/crm/sequenz.ts): Mail-, Brief- und Anruf-Vorlagen je Schritt. Kurze Namen, weil sie
+  // Menschen in der Kampagne selbst schreiben. Ein Wert, den es für ein Ziel nicht gibt (z. B. {{befund}} ohne Fund), macht den Entwurf zum Fehler —
+  // nie ein Text mit Lücke. {{vorschauLink}} und {{abmeldeLink}} füllt erst der Versand (das Token entsteht nur dort).
+  kampagne: {
+    anrede: 'Grußzeile — „Guten Tag Vorname Nachname“, ohne Person „Guten Tag“ (Komma dahinter selbst schreiben)',
+    vorname: 'Vorname der Person', nachname: 'Nachname der Person', betrieb: 'Name der Firma bzw. des Betriebs', bezirk: 'Bezirk/Gebiet des Betriebs (aus dem Fund)',
+    befund: 'was an der Website fehlt (aus dem Fund, z. B. „nicht fürs Handy“)', vorschauLink: 'Link zur Vorschau der neuen Seite (entsteht beim Versand)',
+    abmeldeLink: 'Abmeldelink (steht sonst automatisch unter der Mail)', absender: 'Name der sendenden Person', heute: 'heutiges Datum (TT.MM.JJJJ)',
+  },
 } as const;
 /** Die Platzhalter, die erst `willkommenMail` (Onboarding) füllt — beim Vorbereiten bleiben sie stehen. */
 export const WILLKOMMEN_ONBOARDING = ['anrede', 'vorname', 'nachname', 'kickoff_vorschlaege', 'playbook_link', 'gruss', 'absender'] as const;
@@ -45,6 +54,8 @@ const NICHT_HIER: Partial<Record<PlatzhalterArt, Readonly<Record<string, string>
 };
 /** Die Platzhalter mit Datum (als JJJJ-MM-TT gefüllt): ohne Formatierer TT.MM.JJJJ wie bisher, mit Formatierer z. B. „Montag, 2. November 2026“. */
 const DATUM_FELDER: ReadonlySet<string> = new Set(['angebot.gueltigBis', 'mandat.start', 'heute']);
+/** Platzhalter, die erst der Versand füllt (Kampagne) — beim Vorbereiten bleiben sie stehen. */
+export const KAMPAGNE_BEIM_VERSAND = ['vorschauLink', 'abmeldeLink'] as const;
 
 /** `{{ feld }}` bzw. `{{ feld | formatierer }}` — Kennung mit Punkt, Formatierer nur aus der festen Liste; linear (keine Rückverfolgung über lange Texte). */
 const MUSTER = /\{\{\s*([a-zA-Z][a-zA-Z0-9_.-]{0,59})\s*(?:\|\s*([a-z-]{1,20})\s*)?\}\}/g;

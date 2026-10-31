@@ -29,7 +29,7 @@ export const NEUTRAL: Readonly<Record<string, string>> = {
   tagesstart: 'Morgenlauf vorbereiten', morgen: 'Vorschläge für heute', abend: 'Tagesabschluss', tageslauf: 'Tageslauf',
   selbstbild: 'Selbstbild', verbesserung: 'Verbesserungs-Loop', gesundheit: 'Gesundheits-Takt', markttraktion: 'Markttraktion-Nachricht',
   hoi: 'Head of IT', konsolidierung: 'Brain verdichten', loeschfristen: 'Löschfristen', 'zoe-aufgaben': 'ZOE-Aufgaben', durchsicht: 'Durchsicht der Bestände',
-  absichten: 'Abgebrochene Vorgänge fertigstellen', 'ki-medien': 'KI-Medien abholen',
+  absichten: 'Abgebrochene Vorgänge fertigstellen', 'ki-medien': 'KI-Medien abholen', funde: 'Homepage-Funde',
   'head-sales': 'Head of Sales', 'head-marketing': 'Head of Marketing', 'head-event': 'Head of Event', finanzchef: 'Head of Finance',
   research: 'Research', board: 'Board-Bericht', okr: 'Ziele (OKR)', controlling: 'Controlling', fokus: 'Fokus', kalender: 'Kalender',
   inbox: 'Inbox', task: 'Aufgaben', prospect: 'Prospecting', planung: 'Planung', ernaehrung: 'Ernährung', performance: 'Leistung',

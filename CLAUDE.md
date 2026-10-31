@@ -2190,6 +2190,22 @@ Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub
   `laufSperre` Marketing, ≤ `LAUF_MAX`). Personenmarke: Auto nur die Person (Kanal-Regel 403). Bei ANDEREN nie automatisch: `fremdEntwurf` (Link nur `FREMD_LINK`, fremder Text
   nur gekapselt an die KI, nie gespeichert) + `fremdMarkieren`. Schreiber auf `social-community--*` IMMER mit `...cur` (sonst fallen Entwürfe/fremd weg).
 
+## Firmen als Ziel — Betriebe ohne Ansprechpartner (01.11., Welle A, Branch `welle-a-firmen`; KUNDENGEWINNUNG_PLAN.md S1/S2)
+- **EINE Stelle** `lib/crm/betrieb.ts` (rein): Firma-Felder (optional) `adresse`, `bezirk`, `osmId`, `quellen`, `bewertung`, `analyse`, `anreicherung`, `oeffnungszeiten`,
+  `mobil`, `instagram`, `inhaber`/`inhaberArt`, `labels` + Recht `herkunft`, `fremddaten`/`erfasstAm` (Art.-14-Uhr `art14Firma`), `art14InformiertAm`, `werbesperre`,
+  `geprueftAm/Von` — Recht stempelt NUR der Server (`betriebRechtStempeln` in `wendeCrmAn`; Werbesperre über den Browser nie entfernt). Säuberer `betriebFelder`.
+- **Gleicher Name an anderer Adresse verschmilzt nie:** `gleicherBetrieb` (ja/nein/vielleicht), `betriebFinden` (nur ja), `betriebBekannt` (ja + vielleicht —
+  Abendlauf, Import, Übernahme legen dann nichts an), Kennung `betriebFirmenId` (OSM-ID → Adresse → Domain; ohne = `firmenId(name)`), `firmenDubletten` paart keine
+  verschiedenen Orte. Manuelles Anlegen bleibt `bestehendeFirma`/`firmenId`.
+- **Sperrliste für Betriebe** `lib/crm/betrieb-sperre.ts` (Merkmale OSM-ID, Domain, Name + Adresse → dieselbe HMAC-Sperrliste): Werbesperre an einer Firma auf JEDEM
+  Weg (`crmSchreiben`), Abmeldelink an die Firmen-Adresse, Art. 17 einer Inhaber-Person (`betriebeDerPerson`). Abendlauf/Import/Übernahme prüfen `betriebGesperrt`.
+- **Ampel:** `firmaKanalStatus`/`firmaAmpel` (lib/crm/recht.ts) — Mail/Kaltanruf an Betriebe rot, nur Mandat/Chance lockern; `Kontext.firma` (optional) lässt
+  Firmen-Werbesperre und -Kontaktwege auf die Person wirken. „Eigenes Risiko“ übersteuert die Ampel nie, nur den Versand in lib/funde/uebernehmen.ts.
+- **Funde → Firma** (`fundUebernehmen`): Firma mit Lead, Label, Kampagne `firmaIds`; Kontakt NUR bei `inhaberAusImpressum`. Mail an Kontakt, sonst Firmen-Adresse.
+- **Segmente:** `segmentFirmen`/`segmentZiele` (Ziel `{ art: 'kontakt'|'firma', id }`), Kriterien `bezirk`, `plz`, `websiteScore`, `hatWebsite`, `erreichbarkeit`, `kampagne`,
+  `quelle` (wirken auf Personen über ihre Firma); Firmen MIT Personen zählen über die Personen, eine Firma mit Werbesperre sperrt ihre Personen. CSV `segmentCsv(…, firmen)`
+  (Spalten `art`, `anschrift`, `bezirk`, `website_bedarf`, `website` hinten), Route nur aus der Sitzung (Dienstweg 403). Tests `tests/welle-a-firmen.test.ts`.
+
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
 - **Eine Stelle je Aufgabe:** rein `lib/crm/netzwerken.ts` (Schritte, `erfassungPruefen`, `kenntWirSchon`, `firmaVorschlaege`, Danke-Entwurf, `berichtAus`), Server `lib/crm/netzwerken-server.ts` (`erfassungAusfuehren`, `dankeRausVermerken`, `freieVorschlaege`), Route `app/api/netzwerken` (GET Personen/`?frei=`, POST `erfassen`/`danke-raus`), Warteschlange `lib/netzwerken/warteschlange.ts`, Karte-Auslesen (aus) `lib/crm/netzwerken-karte.ts`. Nie neben diesen Stellen eine zweite Dublettenprüfung, Erfassungslogik oder Offline-Warteschlange bauen.
@@ -2675,6 +2691,23 @@ Code-Kopf), sonst „Annahme“ im Kommentar.
   konto-daten,auskunft-server}.ts`, `app/api/{datenschutz/verzeichnis,crm/stammdaten}/route.ts`, `components/os/{VerbindungenView,SystemView}.tsx`,
   `deploy/env.server.beispiel`, UPDATES.md.
 - Tests: `tests/whatsapp-{kern,route,oberflaeche,skript}.test.ts`, `tests/inbox-whatsapp-ui.test.ts` (Inbox × WhatsApp; nachgebautes Meta, kein Netz).
+
+## Kampagne „Homepage“ — Homepage-Funde (30.10., Branch `homepage-funnel`, nur lokal; Plan `KAMPAGNE_HOMEPAGE_PLAN.md`, UPDATES.md)
+Kevin 30.10.: Massen-Funnel auf Betriebe ohne/mit schlechter Website; Klickrunde: Mail Tag 0 + Anruf nach 72 h **auf eigenes Risiko**, OSM je Bezirk +
+Google Maps nur von Hand, 20 je Abend, Absender aus dem Register, Gastro/Handwerk/Einzelhandel.
+- **Funde sind keine Kontakte:** Bestand `kampagne-funde--<haushalt>` (EINE Schreibstelle `aendereFunde`, lib/funde/speicher.ts); in die Kartei erst mit
+  der Freigabe im ZOE-Stapel (Art `fund`, `FUND_STAPEL_ART` in lib/funde/uebernehmen.ts) über den EINEN Anlege-Weg (`personAnlegen`, Weg „prospecting“:
+  Herkunft Recherche, Art.-14-Uhr, Dublette 409, Sperrliste) + Label `homepage-funnel` (Segment `seg-homepage-funnel`) + Kampagne + Lead + Follow-up.
+- **Abendlauf** `fundeLauf` (lib/funde/lauf.ts, Takt ab 20 Uhr, `KI_LAEUFE`, Agent „funde“): OSM (`osmHolen`, ODbL, ein Gebiet reihum, Ketten raus) →
+  Kartei-Firmen/Sperrliste/Bekannte raus → Website-Check OHNE KI (`seitePruefen`: nur http(s) 80/443, `zielPruefen` je Station, 512 KB, robots.txt;
+  `pagespeed` nur mit `PAGESPEED_API_KEY`) → Vorschau-Texte über das KI-Tor (sonst Regelwerk) → Mail-Entwurf aus der VORLAGE (keine KI) → Stapel. Nie
+  Google Places/Scraping (Bedingungen) — Google Maps nur „Fund von Hand“.
+- **Recht:** die Kanal-Ampel bleibt rot und wird NICHT umgeschrieben; gesendet wird nur mit `einstellungen.eigenesRisiko` (nur Inhaber, Rückfrage, Vorgabe
+  AUS, `RISIKO_HINWEIS` immer sichtbar), nur aus der Sitzung, über `inboxSenden` (`uwgBestaetigt: true` NUR dieser Weg), je Betrieb genau eine Mail mit
+  Art.-14-Hinweis und Abmeldelink. Kampagne mit Kanal „mix“ (die Personen-Schranke werblicher Mail-Kampagnen bleibt unberührt).
+- **Vorschau:** nur Fakten + eigene Texte, nie Bilder/Logos/Texte des Betriebs, alles maskiert (`vorschauHtml`); intern `/api/crm/funde/vorschau`,
+  öffentlich `/vorschau/v1-<32 hex>` erst nach Freigabe (Token nur als Fingerabdruck, 60 Tage, Middleware `VORSCHAU_OFFEN` nur GET/HEAD, gedrosselt).
+- **Frist** `kampagne-funde` (21 Tage, höchstens 30 — Art. 14 Abs. 3 lit. a), Morgenlauf-Schritt 15a; Art. 15/17 über `person-weitere.ts`. Tests `tests/funde.test.ts`.
 
 ## Inbox 2 — EINE Inbox für alle Postfächer (06./07.10., nur lokal, Branch `inbox-2`; Konzept `INBOX_KONZEPT.md` mit Abschnitt 12, UPDATES.md)
 Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus alles ableiten können, schnell was passiert“ — „ZOE macht alles nur als Vorschlag“.

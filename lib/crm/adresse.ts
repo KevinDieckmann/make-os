@@ -33,8 +33,8 @@ export const BESUCHE_ANSICHTEN: BesucheAnsicht[] = ['kalender', 'wirkung', 'kund
 export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'auswertung';
 export type FollowupAnsicht = 'faellig' | 'woche' | 'powerhour' | 'kadenz';
 /** `social` (26.10.): Social-Kanäle, Folgen, Analyse — Unterreiter von Marketing (das Hub-Menü hat Kevins Höchstzahl von zwölf Punkten). */
-export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'check' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung' | 'social';
-export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'check', 'segmente', 'kampagnen', 'redaktion', 'social', 'newsletter', 'positionierung'];
+export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'check' | 'funde' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung' | 'social';
+export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'check', 'funde', 'segmente', 'kampagnen', 'redaktion', 'social', 'newsletter', 'positionierung'];
 /** Der frühere Reiter „Sales“ (27.09.–08.10.) und der Sales-Reiter vom 25./26.09. — nur noch zum Übersetzen alter Adressen. */
 export const SALES_ALT_ANSICHTEN = ['head', 'powerhour', 'kampagnen', 'auswertung', 'heute', 'leads', 'pipeline', 'kunden'] as const;
 export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'planung', 'marketing', 'besuche', 'event', 'stammdaten', 'auswertung', 'automationen', 'formulare'];

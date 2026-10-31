@@ -53,6 +53,8 @@ export interface SendenEingabe {
   bezug?: AntwortBezug;
   /** Anhänge (10.10., Fortschritts-Report) — geladen und geprüft von der Route (nur Dateien der eigenen Ablage). */
   anhaenge?: MailAnhang[];
+  /** Abmeldelink-Köpfe (RFC 8058) — nur Kampagnen-/Willkommens-Mails aus dem Motor (31.10.), nie aus dem Browser-Körper. */
+  listeAbmelden?: { link: string };
 }
 
 /** Bezug einer Antwort außerhalb des eigenen Spiegels (übergebene Mail). */
@@ -153,6 +155,7 @@ export async function gmailSenden(e: SendenEingabe): Promise<SendenErgebnis> {
 
   const roh = mimeBauen({
     von: { ...(absender.name ? { name: absender.name } : {}), email: absender.email }, an, ...(cc.length ? { cc } : {}), betreff, text, ...(e.anhaenge?.length ? { anhaenge: e.anhaenge } : {}),
+    ...(e.listeAbmelden ? { listeAbmelden: e.listeAbmelden } : {}),
     ...(antwortAuf?.messageId ? { inReplyTo: antwortAuf.messageId, references: referenzenFuer(antwortAuf.references, antwortAuf.messageId) } : {}),
     ...(!antwortAuf && e.bezug?.messageId ? { inReplyTo: e.bezug.messageId, references: referenzenFuer(e.bezug.references, e.bezug.messageId) } : {}),
   });

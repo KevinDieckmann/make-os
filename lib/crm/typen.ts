@@ -574,6 +574,41 @@ export interface Firma {
    * Der alte Stand verwirft das Feld beim nächsten Speichern der Firma — die PDFs behalten die gedruckte Nummer.
    */
   kundennummer?: string;
+  // ── Betrieb als Ziel (01.11., Welle A „Firmen als Ziel“, lib/crm/betrieb.ts) — alles optional, additiv ──
+  /** Anschrift des Betriebs — Teil des Dubletten-Schlüssels: gleicher Name an anderer Adresse = anderer Betrieb. */
+  adresse?: import('./betrieb').FirmaAdresse;
+  /** Bezirk/Gebiet (z. B. aus dem Abendlauf der Homepage-Funde). */
+  bezirk?: string;
+  /** OpenStreetMap-Kennung `n123`/`w123`/`r123` — stärkster Schlüssel gegen Doppelte. */
+  osmId?: string;
+  /** Woher jede Angabe stammt (Feld → http(s)-Adresse, Art. 14 Abs. 2 lit. f). */
+  quellen?: Record<string, string>;
+  /** Website-Bedarf 0–100 mit Gründen (Homepage-Funde). */
+  bewertung?: import('./betrieb').FirmaBewertung;
+  /** Niveau-Analyse der Website gegen unser Paket (lib/funde/analyse.ts), schlank. */
+  analyse?: import('./betrieb').FirmaAnalyse;
+  /** Wann und woher der Betrieb angereichert wurde. */
+  anreicherung?: import('./betrieb').FirmaAnreicherung;
+  oeffnungszeiten?: string;
+  /** Handynummer, die der Betrieb selbst veröffentlicht. */
+  mobil?: string;
+  /** Instagram-Profil des Betriebs (Handle ohne @) — Nachrichten dort sind elektronische Post (Ampel rot), nur zum Ansehen. */
+  instagram?: string;
+  /** Inhaber/Betreiber aus einer veröffentlichten Anbieterkennzeichnung — bei Einzelunternehmen ein Personenname (Art. 15/17). */
+  inhaber?: string;
+  inhaberArt?: 'person' | 'firma';
+  /** Labels wie an Personen (z. B. `homepage-funnel`) — Segmente lesen sie. */
+  labels?: string[];
+  /** Recht am Betrieb wie am Kontakt — NUR der Server stempelt (`betriebRechtStempeln`). */
+  herkunft?: import('@/lib/make-one/crm').Herkunft;
+  fremddaten?: boolean;
+  /** Start der Art.-14-Uhr (Tag der Erfassung fremder Daten). */
+  erfasstAm?: string;
+  art14InformiertAm?: string;
+  /** Werbewiderspruch des Betriebs (Art. 21) — kommt auf die Sperrliste (lib/crm/betrieb-sperre.ts), Abendlauf/Import legen ihn nie wieder an. */
+  werbesperre?: { seit: string; grund: string };
+  geprueftAm?: string;
+  geprueftVon?: string;
   /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
   archiviertAm?: string;
   /** Papierkorb (04.10., optional — lib/crm/ablage.ts): gelöscht am (ISO, Server-Zeit) — für alle Leser unsichtbar, 30 Tage wiederherstellbar. */
@@ -741,6 +776,21 @@ export interface SegmentKriterien {
   bean?: import('./bean').BeanId[];
   /** Typ, Kategorie, Label (mehrfach, 28.09.): trifft, wenn die Person EINEN der Werte trägt (Groß-/Kleinschreibung egal). */
   typ?: string[]; kategorie?: string[]; label?: string[];
+  // ── Betriebe (01.11., Welle A): wirken auf Firmen ohne Person direkt, auf Personen über ihre Firma ──
+  /** Bezirk der Firma (genau einer der Werte, Groß-/Kleinschreibung egal). */
+  bezirk?: string[];
+  /** PLZ der Firma — Präfix genügt („10“ = alle 10xxx). */
+  plz?: string[];
+  /** Website-Bedarf (Bewertung 0–100) von–bis. */
+  websiteScore?: { von?: number; bis?: number };
+  /** Hat eine Website (true) bzw. keine (false). */
+  hatWebsite?: boolean;
+  /** Erreichbar über einen dieser Wege (Handy, Festnetz, Mail). */
+  erreichbarkeit?: import('./betrieb').Erreichbarkeit[];
+  /** Ziel einer dieser Kampagnen (Person in `kontaktIds` bzw. Firma in `firmaIds`). */
+  kampagne?: string[];
+  /** Quelle der Anreicherung (OpenStreetMap, von Hand, Datei). */
+  quelle?: import('./betrieb').BetriebQuelle[];
 }
 export interface Segment { id: string; name: string; beschreibung?: string; kriterien: SegmentKriterien; geaendert: string; geaendertVon?: string; /** Archiv/Papierkorb (04.10., optional, lib/crm/ablage.ts). */ archiviertAm?: string; geloeschtAm?: string }
 export type BeitragKanal = 'linkedin' | 'newsletter' | 'blog' | 'podcast' | 'vortrag' | 'sonstig';
@@ -799,6 +849,8 @@ export interface Kampagne {
   schritte: { id: string; text: string; tag: number; erledigt: boolean; aufgabeId?: string }[];
   /** Ausgewählte Personen (aus der Zielgruppe übernommen oder einzeln). */
   kontaktIds: string[];
+  /** Betriebe ohne Ansprechpartner als Ziele (01.11., Welle A) — Ziel = { art: 'firma', id } (lib/crm/segmente.ts `segmentZiele`). */
+  firmaIds?: string[];
   ergebnisse: { kontaktId: string; ergebnis: KampagnenErgebnis; am: string; /** Wer angesprochen hat. */ von?: string }[];
   /** Wer sie angelegt hat — von Hand oder aus einem Vorschlag eines Heads. */
   von: 'hand' | 'head-sales' | 'head-marketing';
@@ -807,6 +859,18 @@ export interface Kampagne {
   notiz?: string;
   /** Nur Playbook „vernetzen“: Texte, Thema, Folgetage und Tagesportion — modular je Kampagne (lib/crm/netzwerk.ts). */
   vernetzen?: import('./netzwerk-form').VernetzenEinstellung;
+  /**
+   * Sequenz je Ziel (31.10., Welle A · Kampagnen-Motor, lib/crm/sequenz.ts): Schritte mit Tag-Abstand und Kanal (Mail · Anruf · LinkedIn · Brief ·
+   * Besuch) und einer Vorlage mit Platzhaltern. Fehlt sie, bleibt die Kampagne wie bisher (Schritte für die ganze Kampagne, Ergebnis von Hand).
+   */
+  sequenz?: SequenzSchritt[];
+  /** Wie viele Ziele je Tag neu in die Sequenz starten bzw. als „Neu“ in die Power Hour kommen (Vorgabe NEU_MAX, 1–200). */
+  neuJeTag?: number;
+  /**
+   * Stand je Ziel — schreibt NUR der Server (lib/crm/kampagnen-motor.ts über `aendereCrm`); der Browser-Weg übernimmt ihn immer aus dem
+   * gespeicherten Stand (lib/crm/speicher.ts `zielStaendeVomAltstand`).
+   */
+  zielStaende?: ZielStand[];
   /** Wer es bearbeitet: Team-Kürzel (kevin, malin) oder „beide“ — fehlt es, gilt die/der Verantwortliche der Welt (lib/crm/team.ts). */
   zustaendig?: string;
   /** Archiv (04.10., optional — lib/crm/ablage.ts): archiviert am (ISO, Server-Zeit) — aus der Liste ausgeblendet, zurückholbar. */
@@ -817,6 +881,18 @@ export interface Kampagne {
   /** Wer zuletzt geändert hat (vom Server gesetzt) — für „Zuletzt im Team“. */
   geaendertVon?: string;
 }
+
+// ── Kampagnen-Motor (31.10., Welle A — KUNDENGEWINNUNG_PLAN.md › S3) ─────────────────────────────────────────────────────────────
+export type SequenzKanal = 'mail' | 'anruf' | 'linkedin' | 'brief' | 'besuch';
+/** Ein Schritt der Sequenz: `tagAbstand` Tage nach dem vorigen Schritt (der erste: nach dem Start des Ziels). */
+export interface SequenzSchritt { id: string; tagAbstand: number; kanal: SequenzKanal; betreff?: string; text?: string; leitfaden?: string }
+export type ZielArt = 'kontakt' | 'firma';
+export interface KampagnenZiel { art: ZielArt; id: string }
+/** offen = der Schritt `schritt` steht an `faelligAm` an · wartet = er liegt als Entwurf/Follow-up vor · reagiert/gestoppt/fertig = Ende. */
+export type ZielStatus = 'offen' | 'wartet' | 'reagiert' | 'gestoppt' | 'fertig';
+export type ZielVerlaufWas = 'start' | 'entwurf' | 'freigegeben' | 'gesendet' | 'erledigt' | 'uebersprungen' | 'reagiert' | 'bounce' | 'abgemeldet' | 'gestoppt' | 'fertig';
+export interface ZielVerlauf { am: string; was: ZielVerlaufWas; schritt?: string; von?: string }
+export interface ZielStand extends KampagnenZiel { schritt: number; faelligAm: string; status: ZielStatus; grund?: string; verlauf: ZielVerlauf[] }
 
 export interface MarketingEinstellung { positionierung: string; icp: string; ton: string; saeulen: { id: string; name: string; beschreibung: string }[] }
 

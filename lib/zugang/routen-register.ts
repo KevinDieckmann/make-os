@@ -344,6 +344,8 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/anfrage': r('GET,POST', MT, 'Anfragen.'),
   'crm/angebot': r('GET,POST', MT, 'Angebote.'),
   'crm/formulare': r('GET,POST', MT, 'Formulare › „Angebot anfordern“ (25.10.): Anfordern jede Person im Haushalt (auch „nur Business“), nur per Sitzung; Links und Einstellungen nur Inhaber; Eingänge: Inhaber alle, sonst nur die eigenen (serverseitig).'),
+  'crm/funde': r('GET,POST', MT, 'Kampagne „Homepage“ (30.10., lib/funde): Funde, Einstellungen, Fund von Hand, verwerfen, nachsenden — nur per Sitzung (Dienstweg 403); Einrichten, Einstellungen, „eigenes Risiko“ und Lauf nur Inhaber. Übernommen wird über den ZOE-Stapel (Art `fund`).'),
+  'crm/funde/vorschau': r('GET', MT, 'Interne Vorschau eines Funds als HTML (ohne Skripte, maskiert, noindex) — der öffentliche Link /vorschau/<token> entsteht erst bei der Freigabe.'),
   'crm/ansprechen': r('GET', MT, 'Wen heute ansprechen.'),
   'crm/bestand': r('GET,PATCH', MT, 'CRM-Bestand.'),
   'crm/dateien': r('GET,POST,PATCH,DELETE', MT, 'Dateien an Kontakten/Firmen.'),
@@ -358,6 +360,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/heute': r('GET', MT, 'CRM heute.'),
   'crm/import': r('GET,POST', MT, 'Import.'),
   'crm/kampagnen': r('GET,POST', MT, 'Kampagnen.'),
+  'crm/kampagnen/motor': r('GET,POST', MT, 'Kampagnen-Motor (31.10., lib/crm/kampagnen-motor.ts): Sequenz je Ziel, Mail-Stapel, Druckliste — lesen im Haushalt; Freigabe (EIN Klick je Stapel), Bearbeiten, Verwerfen nur per Sitzung (Dienstweg/ZOE 403, Bau-Kennung); Versand-Einstellungen nur Inhaber. Gesendet wird im Takt im Namen der freigebenden Person.'),
   // Restpunkte (24.10.): Playbooks und Event-Vorlagen je Haushalt bearbeiten — nur Abweichungen und eigene Kopien; Rechtshinweise bleiben fest im Code.
   'crm/vorlagen': r('GET,POST', MT, 'Playbooks und Event-Vorlagen (24.10.): GET die wirksamen Vorlagen des Haushalts mit Vorgabe, Stand und UWG-Hinweisen (Lesen schreibt nie); POST speichern/kopieren/zurück auf Standard/löschen eigener — nur eine angemeldete Person des Haushalts mit Bau-Kennung (Dienstweg 403), Stand/409, ungültig 400, zu groß 413.'),
   'crm/kennungen-umzug': r('POST', MT, 'Kennungen umziehen (Inhaber).'),

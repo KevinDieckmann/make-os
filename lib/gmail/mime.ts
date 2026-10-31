@@ -297,7 +297,14 @@ export interface MailEntwurf {
   datum?: Date;
   /** Anhänge (10.10., Fortschritts-Report): dann multipart/mixed — Text zuerst, je Anhang base64 mit Dateiname (RFC 2231). */
   anhaenge?: MailAnhang[];
+  /**
+   * Abmeldelink (31.10., Kampagnen-Motor): Köpfe `List-Unsubscribe` und `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058) — nur eine
+   * http(s)-Adresse ohne Leerzeichen/spitze Klammern (lib/datenschutz/abmelden.ts `abmeldeLink`), sonst wirft `mimeBauen`.
+   */
+  listeAbmelden?: { link: string };
 }
+/** Prüft einen Abmeldelink für den Kopf `List-Unsubscribe` (rein). */
+export const abmeldeLinkOk = (l: unknown): l is string => typeof l === 'string' && l.length <= 500 && /^https?:\/\/[^\s<>"]+$/.test(l);
 /** Ein Anhang einer ausgehenden Mail — Inhalt als Bytes, Typ aus der Ablage (geprüft am Inhalt), Name ohne Pfad. */
 export interface MailAnhang { name: string; typ: string; bytes: Uint8Array }
 /** Grenzen für Anhänge: höchstens drei, zusammen 4 MB (Annahme: Gmail nimmt über `messages/send` mit `raw` im JSON-Körper nur kleinere Nachrichten). */
@@ -352,6 +359,11 @@ export function messageIdDomain(von: string, env: Record<string, string | undefi
 }
 
 /** Die fertige Nachricht (RFC 5322, CRLF). Wirft bei ungültigen Adressen — der Aufrufer prüft vorher mit `adresseGueltig`. */
+function listeAbmeldenKoepfe(link: string): string[] {
+  if (!abmeldeLinkOk(link)) throw new Error('Ungültiger Abmeldelink.');
+  return [`List-Unsubscribe: <${link}>`, 'List-Unsubscribe-Post: List-Unsubscribe=One-Click'];
+}
+
 export function mimeBauen(e: MailEntwurf): string {
   for (const a of [e.von, ...e.an, ...(e.cc ?? [])]) if (!adresseGueltig(a.email)) throw new Error('Ungültige E-Mail-Adresse.');
   if (!e.an.length) throw new Error('Kein Empfänger.');
@@ -366,6 +378,7 @@ export function mimeBauen(e: MailEntwurf): string {
     `Message-ID: ${id}`,
     ...(e.inReplyTo && messageIdOk(e.inReplyTo) ? [`In-Reply-To: ${e.inReplyTo}`] : []),
     ...(e.references?.filter(messageIdOk).length ? [falten('References', e.references.filter(messageIdOk).join(' '))] : []),
+    ...(e.listeAbmelden ? listeAbmeldenKoepfe(e.listeAbmelden.link) : []),
     'MIME-Version: 1.0',
   ];
   const textTeil = ['Content-Type: text/plain; charset="UTF-8"', 'Content-Transfer-Encoding: quoted-printable'];

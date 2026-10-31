@@ -80,6 +80,9 @@ export async function POST(req: Request) {
   void postfachJobsImTakt().catch(() => {});
   // WhatsApp (07.10.): Medien nachladen, die der Webhook nicht laden konnte, und Dateien ohne Nachricht entfernen — ohne Einrichtung nichts.
   void whatsappJobsImTakt().catch(() => {});
+  // Kampagnen-Motor (31.10., lib/crm/kampagnen-motor.ts): Sequenzen fortschreiben, Rückfluss (nach dem Postfach-Abgleich), gedrosselter Versand
+  // freigegebener Stapel, Willkommensstrecke — alle 2 Min., ein Lauf je Prozess, nie blockierend.
+  void import('@/lib/crm/kampagnen-motor').then(m => m.motorImTakt()).catch(() => {});
   // WHOOP je Person (08.10.): Abgleich stündlich (mit Webhooks alle 6 h) — nie blockierend, Fehler als eine Zeile `[whoop] …`.
   void whoopJobsImTakt().catch(() => {});
   // Social (27.10., „voll automatisiert“): veröffentlichen, was die Leitplanken erlauben (nur mit Verbindung), Redaktions-Agent alle 6 h

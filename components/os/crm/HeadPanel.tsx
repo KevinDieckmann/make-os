@@ -14,6 +14,8 @@
 // Versendet wird nichts.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { neueMailVorbereiten } from '@/lib/inbox/neue-mail';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, LEUCHT } from '../ui';
 import type { HeadVorschlag, HeadBericht } from '@/lib/heads/stand';
@@ -47,6 +49,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
   const [auf, setAufRoh] = useState(false);
   useEffect(() => { try { setAufRoh(localStorage.getItem(`mt-head-auf-${head}`) === '1'); } catch { /* egal */ } }, [head]);
   const setAuf = (x: boolean) => { setAufRoh(x); try { localStorage.setItem(`mt-head-auf-${head}`, x ? '1' : '0'); } catch { /* egal */ } };
+  const router = useRouter();
   const laden = useCallback(() => fetch(`/api/heads/${head}`, { cache: 'no-store' }).then(r => r.json()).then(d => d.ok && setS(d)).catch(() => {}), [head]);
   useEffect(() => { void laden(); }, [laden]);
   const post = (body: Record<string, unknown>) => fetch(`/api/heads/${head}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'nicht erreichbar' }));
@@ -165,6 +168,8 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
                   <Knopf leise onClick={() => setAblehnen(v.id)}>Ablehnen</Knopf>
                   {v.entwurf && bearbeiten?.id !== v.id && <Knopf leise onClick={() => setBearbeiten({ id: v.id, text: v.entwurf!.text })}>Bearbeiten</Knopf>}
                   {v.entwurf && <Knopf leise onClick={() => { try { void navigator.clipboard.writeText(bearbeiten?.id === v.id ? bearbeiten.text : v.entwurf!.text); setMeldung('Entwurf kopiert — Versand bleibt bei dir.'); } catch { /* egal */ } }}>Kopieren</Knopf>}
+                  {/* 31.10. (Kampagnen-Motor, Klein-Punkt 8): ein Mail-Entwurf geht direkt in die Inbox — dort Postfach wählen, prüfen, per Einzelklick senden. */}
+                  {v.entwurf?.kanal === 'mail' && <Knopf leise onClick={() => router.push(neueMailVorbereiten({ text: bearbeiten?.id === v.id ? bearbeiten.text : v.entwurf!.text }))}>In der Inbox öffnen</Knopf>}
                   {v.kontakt_id && zuKontakt && <Knopf leise onClick={() => zuKontakt(v.kontakt_id!)}>Zur Person</Knopf>}
                 </div>
               )}

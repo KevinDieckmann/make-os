@@ -136,7 +136,7 @@ interface NutzungStand { letzteAnalyse?: string; /** letzter echter Versuch des 
  * Tagesstart) bzw. mit Regelwerk statt Modell, weil das KI-Tor den Aufruf sperrt (Morgen-/Abendlauf, Tageslauf-Schritte
  * „übersprungen“, Heads, Brain-Konsolidierung). Kein Byte geht in beiden Fällen an das Modell.
  */
-export const KI_LAEUFE: ReadonlySet<string> = new Set(['verbesserung', 'zoe-aufgaben', 'finanzchef', 'faden']);
+export const KI_LAEUFE: ReadonlySet<string> = new Set(['verbesserung', 'zoe-aufgaben', 'finanzchef', 'faden', 'funde']);
 
 export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
   return sperrenFiltern(await faelligOhnePause(jetzt), jetzt);
@@ -326,6 +326,16 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
       grund: 'Tagesabschluss steht noch aus',
       auftrag: { art: 'agent', name: 'abend', anlass: 'Takt: Abendlauf' },
     });
+  }
+
+  // 3b) Homepage-Funde (30.10., Kampagne „Homepage“) — ab 20 Uhr, einmal am Tag, nur mit aktiver Kampagne, Gebieten und eingeschaltetem
+  //     Agenten (`fundeFaellig`); Hintergrund-KI aus → gar nicht eingereiht (KI_LAEUFE). Der Lauf legt nur Vorschläge in den Stapel.
+  const fundeHeute = (auftraege?.auftraege ?? []).some(a => a.name === 'funde' && a.tag === heute && a.status !== 'fehler');
+  if (h >= 20 && !fundeHeute) {
+    try {
+      const { fundeFaellig } = await import('@/lib/funde/lauf');
+      if (await fundeFaellig(jetzt)) raus.push({ id: 'funde', grund: 'Homepage-Funde des Abends', auftrag: { art: 'agent', name: 'funde', anlass: 'Takt: Homepage-Funde' } });
+    } catch (err) { console.error('[MAKE OS] Homepage-Funde-Takt übersprungen:', err); }
   }
 
   // 4) Das Selbstbild — einmal am Tag. Was die Software über sich selbst im

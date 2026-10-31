@@ -80,7 +80,8 @@ import { promises as fs } from 'fs';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { datenOrdner, loadJson, updateJson } from '@/lib/store/local-db';
 import type { Kontakt } from '@/lib/make-one/crm';
-import type { CrmBestand } from './typen';
+import type { CrmBestand, Firma } from './typen';
+import { localDay } from '@/lib/zeit';
 // Art. 15/17, Zusammenführen, Verknüpfungs-Prüfung lesen den Bestand MIT Papierkorb (DSGVO-Prüfung 04.10.): sonst blieb eine
 // Person in einem gelöschten Event/Mandat/… stehen (die Vorprüfung sah sie nicht) und fehlte in der Auskunft. `ladeCrm` ist hier tabu.
 import { aendereCrm, ladeCrmMitPapierkorb as ladeCrm } from './speicher';
@@ -147,6 +148,21 @@ export function crmNenntNamen(crm: Pick<CrmBestand, 'chancen' | 'mandate'>, name
   const m = nameMuster(name);
   return (crm.chancen ?? []).some(c => (!nur || nur.chancen.has(c.id)) && m.test(c.titel ?? ''))
     || (crm.mandate ?? []).some(x => (!nur || nur.mandate.has(x.id)) && m.test(x.kunde ?? ''));
+}
+
+/**
+ * Betriebe der Person (01.11., Welle A „Firmen als Ziel“): Firmen, deren Inhaber sie laut Anbieterkennzeichnung ist (`inhaber` = ihr voller Name)
+ * oder an deren Lead sie Hauptkontakt ist. Für Art. 15 (Auskunft) und Art. 17 (Inhaber-Name tilgen, Betrieb auf die Sperrliste — sonst brächte
+ * der nächste Abendlauf das Einzelunternehmen mit ihrem Namen zurück).
+ */
+export function betriebeDerPerson(firmen: readonly Firma[], id: string, name: string | null): Firma[] {
+  const m = name ? nameMuster(name) : null;
+  return firmen.filter(f => f.lead?.hauptKontaktId === id || (!!m && !!f.inhaber && m.test(f.inhaber)));
+}
+/** Art. 17: den Inhaber-Namen an diesen Betrieben entfernen (die Firma selbst bleibt — Geschäftsdaten). Idempotent. */
+export function betriebeInhaberTilgen<T extends Pick<CrmBestand, 'firmen'>>(crm: T, ids: ReadonlySet<string>): T {
+  if (!crm.firmen.some(f => ids.has(f.id) && f.inhaber)) return crm;
+  return { ...crm, firmen: crm.firmen.map(f => { if (!ids.has(f.id) || !f.inhaber) return f; const { inhaber: _i, inhaberArt: _a, ...rest } = f; return rest as Firma; }) };
 }
 
 /** Voller Name → „[gelöscht]“ in `chancen[].titel` und `mandate[].kunde`. Idempotent; unverändert → derselbe Bestand. */
@@ -603,8 +619,15 @@ async function art17Lauf(haushalt: string, absicht: import('@/lib/store/absichte
       const { uebergabenVon, uebergabeHinweisText } = await import('./netzwerken-recht');
       const { journalUebergabenVon } = await import('./uebergabe-journal');
       const hinweise = [...uebergabenVon(vorher, id), ...(await journalUebergabenVon(id))].map(uebergabeHinweisText);
-      if (enthaeltKennung(vorher, id) || crmNenntNamen(vorher, name, namensgleich ? crmVerknuepft(vorher, id) : undefined)) {
-        await aendereCrm(c => { const nur = namensgleich ? crmVerknuepft(c, id) : undefined; return crmNamenTilgen(crmOhne(c, id), name, nur); });
+      // Betriebe, deren Inhaber die Person ist (01.11., Welle A): Name tilgen, Betrieb auf die Sperrliste (Grund „Löschung“) — VOR dem Entfernen der Kennung.
+      const betriebe = betriebeDerPerson(vorher.firmen, id, namensgleich ? null : name);
+      if (betriebe.length) {
+        const { betriebeSperren } = await import('./betrieb-sperre');
+        await betriebeSperren(betriebe, 'loeschung', localDay());
+      }
+      if (enthaeltKennung(vorher, id) || crmNenntNamen(vorher, name, namensgleich ? crmVerknuepft(vorher, id) : undefined) || betriebe.some(f => f.inhaber)) {
+        const ids = new Set(betriebe.map(f => f.id));
+        await aendereCrm(c => { const nur = namensgleich ? crmVerknuepft(c, id) : undefined; return crmNamenTilgen(betriebeInhaberTilgen(crmOhne(c, id), ids), name, nur); });
         zaehle(b, 'crm', 1);
       }
       return hinweise;
@@ -1045,10 +1068,13 @@ export async function personAufzaehlen(id: string) {
   // Fulfillment (10.10.): Stakeholder-Einträge (C1), Antworten/Puls/Unterlagen-Metadaten (C2) und berufliche Personenkarten (C3) — Kopie (Art. 15 Abs. 3).
   const { fulfillmentAuskunft } = await import('@/lib/fulfillment/auskunft');
   const fulfillment = await fulfillmentAuskunft(m).catch(() => null);
+  // Betriebe (01.11., Welle A): Firmen, deren Inhaber die Person laut Anbieterkennzeichnung ist bzw. an deren Lead sie Hauptkontakt ist.
+  const nameK = kontakt ? [kontakt.vorname, kontakt.nachname].filter(Boolean).join(' ').trim() : '';
+  const betriebe = betriebeDerPerson(crm.firmen, id, nameK.includes(' ') ? nameK : null).map(f => ({ firma: f.name, firmaId: f.id, ...(f.inhaber ? { inhaber: true } : {}), ...(f.herkunft ? { herkunft: f.herkunft } : {}), ...(f.quellen ? { quellen: f.quellen } : {}) }));
   // Bausteine bestellen (31.10.): die Bestellungen der Person über die Website (Kennung oder Adresse) — Kopie mit Rechnungsnummer und Fassung der Bedingungen.
   const { bestellungenAuskunft } = await import('@/lib/bausteine/server');
   const bausteinBestellungen = await bestellungenAuskunft(m).catch(() => []);
-  return { ...verweise, fulfillment, rechnungen, bausteinBestellungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher, medien };
+  return { ...verweise, betriebe, fulfillment, rechnungen, bausteinBestellungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher, medien };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */

@@ -37,7 +37,8 @@ describe('CRM-Säuberer kennen jedes Typ-Feld (#23)', () => {
   ];
   for (const [fn, typ] of LISTEN) {
     it(`${typ} ↔ ${fn}()`, () => {
-      const text = funktion(speicher, fn);
+      // Firma (01.11., Welle A): die Betriebs-Felder säubert `betriebFelder` (lib/crm/speicher.ts), die Recht-Felder `betriebRechtSaeubern` (lib/crm/betrieb.ts).
+      const text = fn === 'firma' ? [funktion(speicher, fn), funktion(speicher, 'betriebFelder'), funktion(quelle('lib/crm/betrieb.ts'), 'betriebRechtSaeubern')].join('\n') : funktion(speicher, fn);
       expect(text.length, `Säuberer ${fn} nicht gefunden`).toBeGreaterThan(0);
       const felder = felderVon(typen, typ);
       expect(felder.length, `Typ ${typ} nicht gefunden`).toBeGreaterThan(0);
