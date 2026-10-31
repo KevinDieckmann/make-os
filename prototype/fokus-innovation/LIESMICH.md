@@ -91,3 +91,13 @@ rsync -a --delete --exclude '*.mjs' --exclude inhalt/ --exclude '*.md' prototype
      Der Bau bricht ab, wenn der Pfad eine andere Form hat. Solange `termin.link` leer ist, öffnet „Erstgespräch“ eine vorbereitete Mail.
   Solange der Check aus ist, antwortet `/check` mit „gibt es nicht“ — vor der Freigabe für Google muss er an sein.
 - Rubrik „Im Fokus“ und Gratis-Seite fehlen bewusst: Es gibt dafür noch nichts Fertiges.
+
+## Vorlagen: kurz direkt, lang per E-Mail (31.10.)
+Kevin: „Die kleinen Sachen sind okay, aber die größeren brauchen eine E-Mail, damit wir denen das Ganze zuschicken können.“
+- `node vorlagen.mjs [id …]` baut PDF/XLSX nach `dateien/vorlagen/` (NICHT öffentlich) und für lange Vorlagen die Vorschaubilder
+  `assets/bild/vorlagen/<id>-titel.jpg` + `<id>-seite.jpg` (Seite aus `inhalt/vorlagen.json › vorschau_seite`, PDFKit über `werkzeug/pdfseiten.swift`, nur am Mac).
+  `--nur-vorschau` erneuert nur die Bilder.
+- `node bauen.mjs` verteilt: unter `fokus.json › kostenlos.vorlagen.per_mail_ab_seiten` Seiten → `assets/vorlagen/` (Download),
+  ab dieser Seitenzahl → Repo-Ordner `unterlagen/` mit `katalog.json` (die App liefert sie nur über den Link aus der Mail, `/api/unterlage`).
+  Lange Vorlagen bekommen die Seite `/kostenlos/vorlagen/<id>/` mit Formular (`js/unterlage.js`); ohne Antwort der App steht der Weg per E-Mail da.
+- Übernehmen in den Upload-Stand: rsync wie bisher, zusätzlich `--exclude dateien/ --exclude werkzeug/`, und `unterlagen/` in den Repo-Ordner `unterlagen/`.
