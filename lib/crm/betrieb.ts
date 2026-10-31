@@ -129,11 +129,11 @@ export function betriebDomain(f: Pick<Firma, 'domain' | 'webseite' | 'email'>): 
   return undefined;
 }
 
-const normStrasse = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/strasse\b|str\.?(?=\s|$|\d)/g, 'str').replace(/[^a-z0-9]/g, '');
+const normStrasse = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/ß/g, 'ss').replace(/strasse(?![a-z])|str\.?(?![a-z])/g, 'str').replace(/[^a-z0-9]/g, '');
 /** Adresse als Schlüssel: PLZ + Straße + Hausnummer (normiert) — leer, wenn weder PLZ noch Straße bekannt sind. */
 export function adresseSchluessel(a: FirmaAdresse | undefined): string {
   if (!a) return '';
-  const strasse = normStrasse(`${a.strasse ?? ''}${a.hausnummer ?? ''}`);
+  const strasse = normStrasse(`${a.strasse ?? ''} ${a.hausnummer ?? ''}`);
   const plz = (a.plz ?? '').replace(/\s/g, '');
   return plz || strasse ? `${plz}|${strasse}` : '';
 }

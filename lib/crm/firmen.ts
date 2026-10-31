@@ -148,7 +148,7 @@ export function firmenDubletten(firmen: Firma[]): [Firma, Firma][] {
 /** Zwei Firmen an nachweislich verschiedenen Orten (verschiedene OSM-IDs oder verschiedene Anschriften). Rein, ohne Import von betrieb.ts (Kreis). */
 function verschiedeneOrte(a: Firma, b: Firma): boolean {
   if (a.osmId && b.osmId) return a.osmId !== b.osmId;
-  const ort = (f: Firma) => { const x = f.adresse; if (!x || (!x.plz && !x.strasse)) return ''; return `${(x.plz ?? '').replace(/\s/g, '')}|${`${x.strasse ?? ''}${x.hausnummer ?? ''}`.toLowerCase().replace(/ß/g, 'ss').replace(/strasse|str\./g, 'str').replace(/[^a-z0-9]/g, '')}`; };
+  const ort = (f: Firma) => { const x = f.adresse; if (!x || (!x.plz && !x.strasse)) return ''; return `${(x.plz ?? '').replace(/\s/g, '')}|${`${x.strasse ?? ''} ${x.hausnummer ?? ''}`.toLowerCase().replace(/ß/g, 'ss').replace(/strasse(?![a-z])|str\.?(?![a-z])/g, 'str').replace(/[^a-z0-9]/g, '')}`; };
   const oa = ort(a), ob = ort(b);
   return !!oa && !!ob && oa !== ob;
 }
