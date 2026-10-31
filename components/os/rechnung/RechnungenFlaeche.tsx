@@ -48,7 +48,8 @@ export function RechnungenFlaeche({ zahlungen, neben }: { /** Zahlungs-Prioritä
   useEffect(() => { if (offenAdresse) setAnsicht('rechnungen'); }, [offenAdresse]);
 
   const { daten, stand, summen, offenId, offen, meldung, setMeldung, liste, gezeigt, firmenInListe, filter, filterAuf, suche, sucheAuf, ges, setGes, ohneZuordnung, setOhneZuordnung, setAlle, neu } = u;
-  if (daten.gesperrt) return null;
+  // Ohne Zugang (403) keine leere Seite: der Kopf bleibt, die Liste sagt es in einem Satz.
+  if (daten.gesperrt) return <Arbeitsflaeche titel="Rechnungen" label="Rechnungen & Zahlungen" neben={neben} liste={<div style={{ paddingTop: 12 }}><Leer>Rechnungen sind für dieses Konto nicht freigegeben.</Leer></div>} />;
   const zahl = ansicht === 'rechnungen';
 
   const filterZahl = (filter !== 'alle' ? 1 : 0) + (ges ? 1 : 0) + (ohneZuordnung || filter === 'ohne-zuordnung' ? 1 : 0);
