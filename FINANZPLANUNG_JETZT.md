@@ -435,6 +435,24 @@ Siehe UPDATES.md (Eintrag finanzplan-5). Kurz: neue Felder optional (`darlehen`,
 (`pruefeDokument`, `pruefeSteuern` verwerfen Unbekanntes), rechnet dann wieder getrennt (Abschluss für sich, ESt ohne Gehalt) und zeigt die
 Selbstständigkeit wieder unter Business. Handwerte bleiben erhalten (gleiche Kennungen).
 
+## Haushalt → Finanzplanung (31.10., Branch `paket-haushalt`, Kevin: „Haushalt → Finanzplan — heute fertig“; ROADMAP_Q4 Lücke 2, R4)
+
+„Der Haushalt führt das Ist (Buchungen, Fixkosten, Budget, Schulden); die Finanzplanung liest daraus.“ Die Brücke (`lib/finanzen/plan/haushalt-bruecke.ts`,
+rein) baut nur EINGABEN des Kerns — der Rechenkern ist unverändert (nur zwei optionale Typfelder). Beim Lesen der Privat-Sicht legt der Server dazu (nie gespeichert):
+- **Ist-Monate:** Haushaltsbuchungen (Einheit privat, bis heute) als `buchungen` `hhb-…` — eingeordnet über die EINE Einordnung (`einordnen`): Umbuchung/Durchlauf →
+  `x.umbuchung`, Kredit erhalten → `x.kredit`, Einnahme planbar/offen → `x.einnahme`, einmalig → `x.einmalig`; Ausgaben über die gemerkte Regel (Empfänger → Planzeile),
+  sonst die Fixkosten-Zeile, sonst die Planzeile mit dem Kategorienamen, sonst „nicht zugeordnet“. Zuordnen in Monat geht immer über „merken“ (Regel).
+- **Fixkosten:** `sockel()` (12 volle Monate, Turnus → Monatswert) → Budget-Zeile „fix“ `p.b.hhf-…` (Tag = Tag der jüngsten Zahlung).
+- **Kredite:** Schulden mit Rest > 0 → Schuld `hhs-…` (Tilgungsplan; erste Rate = nächste Fälligkeit) + Rate `p.d.hhk-…` bis schuldenfrei.
+- **Kontostände:** schon seit 08.10. aus dem Konten-Register (`kontenIst`) — nur gekennzeichnet, unabhängig vom Schalter (bit-gleich).
+
+**Handwert gewinnt:** eine eigene Zeile/Schuld gleichen Namens (oder eine Regel auf eine eigene Zeile) bleibt, der Haushaltswert kommt nicht dazu (`vonHand`); Monatswerte
+von Hand auf übernommenen Zeilen (`plan["p.b.hhf-…:<m>"]`) gewinnen im Kern; ein Monat mit eigenen Buchungen der Planung bleibt. **Schalter** `haushaltBruecke: { an }` im
+Dokument: fehlt (Altbestand) = alles wie vorher + Vorschau vorher/nachher (Bedarf, Schulden, Luft im ersten Planmonat, Angespart am Planende, Monate mit Ist) mit
+„Übernehmen“/„Nicht verwenden“; neue Dokumente beginnen mit `an: true` (`importieren`). Schreibschritte auf Haushaltswerte → 400; Business: Schalter 403, Zeilen/Quelle nie
+ausgeliefert. Steuern, Lichtfäden, Vorschläge lesen ohne Brücke (`mitHaushalt: false`). Tests: `tests/finanzplan-haushalt-bruecke.test.ts`.
+Offen: Haushalt-Budget (Kategorie-Monatsbudget) und planbare Einnahmen fließen noch nicht ein; die Selbstständigkeit (kdc) liest weiter nur ihre eigenen Werte.
+
 ## selbst-privat (05.10.): die Selbstständigkeit überall unter Privat · Steuern gewerblich aus EINER Rechenquelle · Runway Privat mit Selbstständigkeit
 Kevin 05.10.: „Selbstständigkeit raus aus Business“ (auch Business-Cockpit, Business-Index, Finanzielle Gesundheit, Sichten) — „Ich habe in der
 Selbstständigkeit einfach ein Gewerbe angemeldet“ — „Ja, überall unter Privat“ (Spaces, Aufgaben, Liquiplan, Lichtfäden …) — „Runway Privat zählt das

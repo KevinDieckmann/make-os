@@ -95,7 +95,9 @@ export function businessSicht(d: FinanzDaten): FinanzDaten {
   // Ampel-Schwellen sind gemeinsam mit Privat (Luft, Notgroschen) — nicht in der Business-Sicht; Steuern und Darlehen nur gefiltert.
   // Alte Handwerte (`handAlt`, nur Abschluss/Selbstständigkeit) sind privat; das Ist aus dem Konten-Register (`kontenIst`: Privat-Konten,
   // Selbstständigkeit, 08.10.) ebenso — die Business-Sicht trägt es nie.
-  const { schwellen: _schwellen, steuern: _steuern, darlehen: _darlehen, handAlt: _handAlt, kontenIst: _kontenIst, ...rest } = d;
+  // Haushalt → Finanzplanung (31.10.): der Schalter und die Quelle (was aus dem Haushalt kommt) sind privat — die übernommenen Zeilen, Schulden und
+  // Buchungen tragen Einheit privat und fallen unten mit den übrigen privaten weg.
+  const { schwellen: _schwellen, steuern: _steuern, darlehen: _darlehen, handAlt: _handAlt, kontenIst: _kontenIst, haushaltBruecke: _hb, haushaltQuelle: _hq, ...rest } = d;
   const steuern = nurBusinessSteuern(d.steuern);
   const darlehen = (d.darlehen ?? []).map(darlehenFuerBusiness).filter((l): l is NonNullable<typeof l> => !!l);
   return {
@@ -153,7 +155,7 @@ const teileVon = (pfad: string): string[] => (typeof pfad === 'string' && pfad.s
 const finde = <T extends { id: string }>(liste: T[] | undefined, teil: string | undefined): T | undefined => (teil?.startsWith('id=') ? (liste ?? []).find(x => x.id === teil.slice(3)) : undefined);
 
 /** Bereiche, die nur Privat sind — in der Business-Sicht weder lesbar noch schreibbar. */
-const NUR_PRIVAT = new Set(['privatEinnahmen', 'privatBudget', 'privatSchulden', 'check', 'fokus', 'abschluesse', 'regeln', 'schwellen', 'selbst', 'handAlt']);
+const NUR_PRIVAT = new Set(['privatEinnahmen', 'privatBudget', 'privatSchulden', 'check', 'fokus', 'abschluesse', 'regeln', 'schwellen', 'selbst', 'handAlt', 'haushaltBruecke']);
 /** Annahmen eines Planszenarios, die privat sind (wirken nur auf Privat bzw. die Selbstständigkeit). */
 const PRIVATE_PS_ANNAHMEN = ['ausschuettungSteuer', 'entnahme'];
 /** Enthalten Szenario-Annahmen etwas Privates (Steuer auf die Ausschüttung, Entnahme, Steuerprofil Privat/Selbstständigkeit)? */

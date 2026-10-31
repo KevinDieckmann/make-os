@@ -199,6 +199,13 @@ export interface FinanzDaten {
    * Business-Sicht trägt es nie. Fehlt es, rechnet alles bit-genau wie vorher (die Formeln des Kerns lesen es nicht — nur `kontostand()` in szenarien.ts).
    */
   kontenIst?: { privat?: KontoIstWert; selbststaendigkeit?: KontoIstWert };
+  /**
+   * Haushalt → Finanzplanung (31.10., nur Typ — die Formeln lesen es nicht): ob der Haushalt die Finanzplanung speist. Gespeichert, optional;
+   * fehlt es (Altbestand), bleibt alles wie vorher (lib/finanzen/plan/haushalt-bruecke.ts).
+   */
+  haushaltBruecke?: import('./plan/haushalt-bruecke').BrueckeEinstellung;
+  /** Was aus dem Haushalt kommt — NIE gespeichert, nur beim Lesen gesetzt (`ladeFinanzplan`), nie in der Business-Sicht. */
+  haushaltQuelle?: import('./plan/haushalt-bruecke').HaushaltQuelle;
   schulden: Schuld[];
   /** Wer hat eine Planzelle zuletzt geändert: key → {wer, wann}. */
   meta: Record<string, { wer: string; wann: string }>;

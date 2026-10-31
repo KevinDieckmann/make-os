@@ -16,6 +16,7 @@ import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { ladeFinanzplan, dateiStand, patchen, kennzahlenVon } from '@/lib/finanzen/plan/speicher';
 import { fuerSicht, kennzahlenFuerSicht, wirksameSicht } from '@/lib/finanzen/plan/sicht';
 import { planZugangVon } from '@/lib/finanzen/haushalt/zugriff';
+import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
 import { MAX_OPS, type Operation } from '@/lib/finanzen/plan/operationen';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
 
@@ -34,15 +35,17 @@ export async function GET(req: Request) {
   // Business-Bereich (?sicht=business) sieht nie Privat — für jeden; ohne Privat-Recht gibt es Privat auch ohne Parameter nicht (05.10.).
   const sicht = wirksameSicht(z.sicht, url.searchParams.get('sicht'));
   if (nur === 'kennzahlen') {
-    const d = await ladeFinanzplan(z.haushalt);
+    const d = await ladeFinanzplan(z.haushalt, { mitHaushalt: sicht === 'privat' });
     if (!d) return NextResponse.json({ ok: true, leer: true });
     // Business-Sicht: Kennzahlen aus dem gefilterten Dokument, ohne Privat-Werte (lib/finanzen/plan/sicht.ts).
     return NextResponse.json({ ok: true, leer: false, ...kennzahlenFuerSicht(kennzahlenVon(fuerSicht(d, sicht), sicht), sicht) });
   }
-  const etag = etagAus('fp', await dateiStand(z.haushalt), z.haushalt, z.person, sicht);
+  // Der Tag gehört ins ETag: die Brücke Haushalt → Finanzplanung nimmt Buchungen bis heute und Fixkosten der letzten 12 vollen Monate (31.10.).
+  const etag = etagAus('fp', await dateiStand(z.haushalt), z.haushalt, z.person, sicht, heuteBerlin());
   const gleich = unveraendert(req, etag);
   if (gleich) return gleich;
-  const d = await ladeFinanzplan(z.haushalt);
+  // Haushalt → Finanzplanung (31.10.): nur die Privat-Sicht liest den Haushalt — die Business-Sicht bekommt davon nie etwas (auch serverseitig gefiltert).
+  const d = await ladeFinanzplan(z.haushalt, { mitHaushalt: sicht === 'privat' });
   return jsonAntwort(req, { ok: true, haushalt: z.haushalt, person: z.person, sicht, dokument: d ? fuerSicht(d, sicht) : null }, etag);
 }
 

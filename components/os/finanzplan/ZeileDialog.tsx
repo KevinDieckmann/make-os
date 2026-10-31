@@ -68,6 +68,18 @@ export function ZeileDialog({ id, onZu }: { id: string; onZu: () => void }) {
     if (await aendere(ops, `Zeile entfernt: ${alt.name}`)) onZu();
   };
 
+  // Haushalt → Finanzplanung (31.10.): eine Zeile aus dem Haushalt ändert man dort — hier nur Monatswerte von Hand (die gewinnen).
+  const hh = d.haushaltQuelle?.zeilen[id];
+  if (hh) return (
+    <Dialog titel={alt.name} onZu={onZu} aktionen={<>
+      <KnopfKlein onClick={onZu} farbe={C.inkDim}>Schließen</KnopfKlein>
+      <KnopfKlein onClick={monatswerteZurueck} aus={!ueberschrieben.length} titel="Alle von Hand gesetzten Monatswerte dieser Zeile löschen">Monatswerte zurücksetzen ({ueberschrieben.length})</KnopfKlein>
+      <Knopf href={hh.weg}>Im Haushalt öffnen</Knopf>
+    </>}>
+      <div><Etikett einheit={z.einheit} /></div>
+      <Hinweis>{hh.art === 'kredit' ? 'Diese Rate kommt aus dem Kredit im Haushalt (Rate bis schuldenfrei).' : 'Dieser Betrag kommt aus den Fixkosten im Haushalt (Monatswert aus dem Rhythmus).'} Ändern geht dort — einzelne Monate kannst du hier im Blatt von Hand setzen, die gewinnen.</Hinweis>
+    </Dialog>
+  );
   return (
     <Dialog titel={alt.name} onZu={onZu} breit aktionen={<>
       <KnopfKlein onClick={onZu} farbe={C.inkDim}>Abbrechen</KnopfKlein>

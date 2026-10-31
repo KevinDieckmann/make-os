@@ -33,6 +33,19 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-01-4',
+    datum: '2026-11-01',
+    titel: 'Haushalt speist die Finanzplanung',
+    kurz: 'Die Finanzplanung liest jetzt aus dem Haushalt: Buchungen als Ist, Fixkosten als Monatsplan, Kredite mit Rate und die Kontostände. Was du in der Planung von Hand eingetragen hast, bleibt.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Finanzen › Privat › Planung: Buchungen, Fixkosten und Kredite aus dem Haushalt fließen in die Planung — nicht mehr doppelt pflegen. Ein Haus-Zeichen an der Zeile führt in den Haushalt.', bereich: 'privat', weg: WEG.finanzplanung('privat') },
+        { text: 'Beim ersten Öffnen siehst du, was sich ändern würde (vorher und nachher) — erst „Übernehmen“ legt die Werte dazu. Ausschalten geht jederzeit.', bereich: 'privat', weg: WEG.finanzplanung('privat') },
+        { text: 'Von Hand gewinnt: Eine eigene Zeile gleichen Namens bleibt, ein einzelner Monatswert von Hand ebenso, und Monate mit eigenen Buchungen der Planung bleiben, wie sie sind.', bereich: 'privat', weg: WEG.privat('fixkosten') },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31-9',
     datum: '2026-10-31',
     titel: 'Rechnungen & Zahlungen aufgeräumt',

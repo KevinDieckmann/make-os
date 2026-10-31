@@ -7,6 +7,9 @@
 // Empfänger (rückwirkend), „+ Buchung“ für Bargeld und Fehlendes.
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
+import { istHaushaltKennung } from '@/lib/finanzen/plan/haushalt-bruecke';
 import { FARBE as C, TYP, MIKRO } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Spalten, Spalte, Knopf, LEUCHT, Chip } from '../ui';
 import { sollBudget, tempo, histIndex } from '@/lib/finanzen/rechenkern';
@@ -138,7 +141,8 @@ export function Buchungen() {
   const konten = Array.from(new Set(d.buchungen.map(b => b.k)));
 
   const zuordnen = (b: Buchung, z: string) => {
-    const merk = merken[b.id] ?? true;
+    // Buchungen aus dem Haushalt (31.10.) liegen nur beim Lesen hier — ihre Zuordnung geht immer über die gemerkte Regel des Empfängers.
+    const merk = istHaushaltKennung(b.id) || (merken[b.id] ?? true);
     if (merk) void aendere([{ pfad: `/regeln/${b.n.toLowerCase()}`, alt: zeileName(d, b.z), neu: z, feld: `Regel ${b.n}` }], `Buchung ${b.n} → ${zeileName(d, z)} (Regel gemerkt)`);
     else void aendere([{ pfad: `/buchungen/id=${b.id}/z`, alt: b.z, neu: z }], `Buchung ${b.n} ${tagKurz(b.d)} → ${zeileName(d, z)}`);
   };
@@ -198,11 +202,11 @@ export function Buchungen() {
                   {liste.slice(0, grenze).map(b => (
                     <tr key={b.id}>
                       <td style={{ ...TDleise, fontVariantNumeric: 'tabular-nums' }}>{tagKurz(b.d)}</td>
-                      <td style={TD}><span title={b.notiz}>{b.n}</span>{b.hand && <span style={{ ...MIKRO, marginLeft: 6, fontSize: 11 }}>Hand</span>}</td>
+                      <td style={TD}><span title={b.notiz}>{b.n}</span>{b.hand && <span style={{ ...MIKRO, marginLeft: 6, fontSize: 11 }}>Hand</span>}{istHaushaltKennung(b.id) && <Link href={WEG.privat('buchungen', { monat: b.d.slice(0, 7) })} title="aus dem Haushalt — dort ändern" style={{ ...MIKRO, marginLeft: 6, fontSize: 11, color: C.aktiv, textDecoration: 'none' }}>Haushalt</Link>}</td>
                       <td style={TD}><Etikett text={kontoName(b.k)} /></td>
                       <td style={TDr}><Geld v={b.b} dezimal={2} farbe={b.b > 0 ? LEUCHT.gut : undefined} /></td>
                       <td style={TD}><ZeilenAuswahl wert={b.z} onWahl={z => zuordnen(b, z)} offen={b.z === 'x.offen'} /></td>
-                      <td style={TD}><Schalter erklaerungOhne="Tabellenzelle — die Überschrift der Buchungsliste erklärt „merken“" an={merken[b.id] ?? true} onChange={v => setMerken({ ...merken, [b.id]: v })} ariaLabel={`Zuordnung für ${b.n} merken`} /></td>
+                      <td style={TD}><Schalter erklaerungOhne="Tabellenzelle — die Überschrift der Buchungsliste erklärt „merken“" an={istHaushaltKennung(b.id) || (merken[b.id] ?? true)} onChange={v => setMerken({ ...merken, [b.id]: v })} ariaLabel={`Zuordnung für ${b.n} merken`} /></td>
                     </tr>
                   ))}
                   {!liste.length && <tr><td colSpan={6} style={TDleise}>Keine Buchungen für diese Auswahl.</td></tr>}
