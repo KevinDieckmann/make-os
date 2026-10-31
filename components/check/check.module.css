@@ -106,7 +106,7 @@
 
 /* ── Einstieg ── */
 .einstieg { padding: 56px 0 8px; }
-.einstiegTitel { font-size: clamp(38px, 5.4vw, 72px); line-height: 1.03; font-weight: 600; letter-spacing: -0.035em; margin: 0 0 18px; }
+.einstiegTitel { font-size: clamp(34px, 4.5vw, 60px); line-height: 1.03; font-weight: 600; letter-spacing: -0.035em; margin: 0 0 18px; }
 .einstiegText { color: var(--c-leise); margin: 0 0 8px; font-size: clamp(17px, 1.3vw, 18.7px); line-height: 1.55; max-width: 760px; }
 @media (max-width: 1019px) { .einstieg { padding-top: 32px; } }
 /* Die drei Bereiche (30.10.) — Haarlinien statt Kästen, wie auf der Website. */
