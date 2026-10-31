@@ -452,7 +452,7 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
 <dl class="daten">${M.saetze.map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl>
 <div class="muster-kurz"><div><span class="etikett">In einem Satz</span><p>${e(M.ein_satz)}</p></div><div><span class="etikett">In sieben Wörtern</span><p>${e(M.sieben_woerter)}</p></div><div><span class="etikett">Claim</span><p>${e(M.claim)}</p></div></div></figure></div></section>`;
   };
-  const risiko = (pkt = F.risiko.punkte) => `<section class="abschnitt eng" aria-labelledby="risiko-titel"><div class="w"><div class="risiko erscheint"><h2 class="gruppe-titel" id="risiko-titel">${e(F.risiko.titel)}</h2>${punkte(pkt)}</div></div></section>`;
+  const risiko = (pkt = F.risiko.punkte, titel = F.risiko.titel) => `<section class="abschnitt eng" aria-labelledby="risiko-titel"><div class="w"><div class="risiko erscheint"><h2 class="gruppe-titel" id="risiko-titel">${e(titel)}</h2>${punkte(pkt)}</div></div></section>`;
   /** Absicherung für Einmalprodukte (Kevin 31.10.: Freigabe vor dem Bau + Ausstieg) — je Gruppe oder Angebot aus fokus.json. */
   const absicherungVon = (a) => F.absicherung?.[a.gruppe] ?? F.absicherung?.[a.id] ?? null;
   /** Rückwärtsrechnung vom Umsatzziel. Dieselbe Rechnung steht in js/rechner.js; ohne JavaScript zeigt die Seite das Beispiel. */
@@ -778,10 +778,10 @@ ${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class
       }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[`/${k}/`, b.name], [null, a.name]])}${vorzeile(`${b.name}${a.gruppe ? ` · ${a.gruppe}` : ''}${istBald ? ' · Bald' : ''}`)}<h1 id="held-titel" class="glanz">${e(F.titel_h1?.[a.id] ?? a.name)}</h1><p class="lead">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? b.satz)}</p></div>
-<aside class="preis-kasten erscheint" aria-label="Preis"><p class="etikett">Preis</p><p class="betrag glanz">${e(preisVoll(a))}</p><p class="zusatz">${istBald ? 'Haben Sie ein Vorhaben? Melden Sie sich, wir sprechen darüber' : `${e(a.preis_zusatz ?? '')}${a.preis_zusatz ? ' · ' : ''}netto zuzüglich Umsatzsteuer`}</p>${F.umfang[a.id] ? `<p class="umfang">${e(F.umfang[a.id])}</p>` : ''}${mandat ? `<p class="sicher">Ausstieg zum Ende von Monat 3 möglich</p>` : ''}<div class="knoepfe senkrecht">${terminKnopf}${zweitKnopf}</div></aside>
+<aside class="preis-kasten erscheint" aria-label="Preis"><p class="etikett">Preis</p><p class="betrag glanz">${e(preisVoll(a))}</p><p class="zusatz">${istBald ? 'Haben Sie ein Vorhaben? Melden Sie sich, wir sprechen darüber' : `${e(a.preis_zusatz ?? '')}${a.preis_zusatz ? ' · ' : ''}netto zuzüglich Umsatzsteuer`}</p>${F.umfang[a.id] ? `<p class="umfang">${e(F.umfang[a.id])}</p>` : ''}<div class="knoepfe senkrecht">${terminKnopf}${zweitKnopf}</div></aside>
 </div></section>
 ${blick([['Für wen', pb?.fuer ? null : a.fuer_wen], ['Ergebnis', ergebnisSatz], ['Umfang', F.umfang[a.id]], ...(istBald ? [['Start', 'in Kürze, Anfrage schon jetzt möglich']] : [])])}
-${mandat ? risiko() : abs ? risiko(abs.punkte) : ''}
+${mandat ? risiko() : abs ? risiko(abs.punkte, F.risiko.titel_absicherung) : ''}
 ${blattHtml}
 ${a.id === 'positionierung' ? musterPositionierung() : ''}
 ${a.gruppe === 'Homepage-Pakete' ? arbeitsprobe() : ''}
@@ -1191,9 +1191,9 @@ ${schlussakt({ quelle: 'begriffe_ende' })}`,
     const gruppen = [
       ['vorab', 'Bevor Sie fragen', F.einwaende],
       ['einstieg', 'Einstieg und Innovations-Check', faqVon(seite.check_faq)],
-      ['vertrieb', 'Vertrieb', [...zuschneiden(faqVon(['was-ist-der-unterschied-zwischen-head', 'was-kostet-der-tagesworkshop-und-was']), 'vertrieb'), ...ausBlatt('head-of-sales', /Unterschied|nach 3 Monaten/), ...ausBlatt('cso', /Unterschied|Investoren/)]],
+      ['vertrieb', 'Vertrieb', [...zuschneiden(faqVon(['was-ist-der-unterschied-zwischen-head', 'was-kostet-der-tagesworkshop-und-was']), 'vertrieb'), ...ausBlatt('head-of-sales', /Unterschied/), ...ausBlatt('cso', /Unterschied|Investoren/)]],
       ['sichtbarkeit', 'Homepages und Videos', [...faqVon(['wie-schnell-ist-meine-homepage-fertig', 'kann-ich-spaeter-auf-ein-groesseres', 'sind-eure-videos-ki-generiert']), ...ausBlatt('homepage-story', /Wie schnell|größeres Paket/), ...ausBlatt('video-serie', /Kundenstimmen-Videos/)]],
-      ['vertraege', 'Preise und Verträge', faqVon(['sind-die-preise-netto', 'gibt-es-rabatt', 'kann-ich-vorzeitig-kuendigen'])],
+      ['vertraege', 'Preise und Verträge', faqVon(['sind-die-preise-netto', 'gibt-es-rabatt', 'wie-lange-laufen-die-vertraege'])],
     ];
     neu('fragen/index.html', {
       seo: 'fragen',

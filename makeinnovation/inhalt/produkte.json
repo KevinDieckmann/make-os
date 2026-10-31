@@ -276,10 +276,6 @@
           "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; oder die volle Laufzeit vorab mit 3 % Skonto"
         ],
         [
-          "Kündigung",
-          "einmalig zum Ende des dritten Monats mit 30 Tagen Frist, sonst zum Laufzeitende"
-        ],
-        [
           "Anrechnung",
           "Tagesworkshop (ab 1.900 €) wird beim Start voll angerechnet"
         ],
@@ -319,10 +315,6 @@
         {
           "frage": "Wie viel Zeit kostet mich das?",
           "antwort": "Rund 3 bis 4 Stunden für das Sales Playbook Teil 1 im ersten Monat, danach 30 Minuten Wochen-Call und kurze Freigaben. Ihr Team braucht Zeit für Training und Gespräche."
-        },
-        {
-          "frage": "Was, wenn es nach 3 Monaten nicht passt?",
-          "antwort": "Sie können einmalig zum Ende des dritten Monats kündigen, mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Fahrplan."
         },
         {
           "frage": "Was ist der Unterschied zum Chief Sales Officer?",
@@ -421,10 +413,6 @@
         [
           "Zahlung",
           "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; oder die volle Laufzeit vorab mit 3 % Skonto"
-        ],
-        [
-          "Kündigung",
-          "einmalig zum Ende des dritten Monats mit 30 Tagen Frist, sonst zum Laufzeitende"
         ],
         [
           "Anrechnung",
@@ -1001,10 +989,6 @@
           "monatlich, Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; oder die volle Laufzeit vorab mit 3 % Skonto"
         ],
         [
-          "Kündigung",
-          "einmalig zum Ende des dritten Monats mit 30 Tagen Frist, sonst zum Laufzeitende"
-        ],
-        [
           "Freigabe",
           "kein Text geht ohne Ihre Freigabe an Medien"
         ],
@@ -1057,10 +1041,6 @@
         {
           "frage": "Wie viel Zeit kostet mich das?",
           "antwort": "Rund 3 bis 4 Stunden im ersten Monat für Botschaften und Themen, danach ein Abstimmungs-Call alle zwei Wochen und schnelle Freigaben. Dazu kommt Ihre Zeit für Interviews, Podcasts und Auftritte."
-        },
-        {
-          "frage": "Kann ich vorzeitig aussteigen?",
-          "antwort": "Ja, einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Plan."
         },
         {
           "frage": "Darf ich Texte und Pressemappe danach weiter nutzen?",

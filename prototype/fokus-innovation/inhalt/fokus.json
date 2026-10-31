@@ -492,11 +492,11 @@
     "hinweis": "Antworten aus den gemeinsamen Fragen, auf den Bereich zugeschnitten (nur gekürzt, nichts Neues).",
     "sichtbarkeit": {
       "gibt-es-rabatt": "Auf Positionierung, Homepages und Videos gibt es kein Skonto. Bei PR und Kommunikation gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
-      "kann-ich-vorzeitig-kuendigen": "Die Videoserie läuft mindestens 3 Monate, danach ist sie monatlich kündbar. PR und Kommunikation können Sie einmalig zum Ende des dritten Monats mit 30 Tagen Frist kündigen."
+      "wie-lange-laufen-die-vertraege": "Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis. Die Videoserie läuft mindestens 3 Monate, danach ist sie monatlich kündbar. PR und Kommunikation läuft 6 oder 12 Monate."
     },
     "vertrieb": {
       "gibt-es-rabatt": "Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen.",
-      "kann-ich-vorzeitig-kuendigen": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Fahrplan.",
+      "wie-lange-laufen-die-vertraege": "Head of Sales und CSO laufen 6 oder 12 Monate. Der Tagesworkshop ist ein Einmalprojekt mit Festpreis.",
       "was-kostet-der-tagesworkshop-und-was": "{preis:tagesworkshop} netto. Sie bekommen ein Protokoll mit den Top 5 nach Aufwand und Wirkung und einen 90-Tage-Plan, eine Sache setzen wir am Tag direkt um. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an."
     }
   },
@@ -853,11 +853,11 @@
     "mail_text": "Guten Tag,\n\nich möchte ein Erstgespräch vereinbaren.\n\nUnternehmen:\nWorum es geht:\nWas soll in 90 Tagen anders sein:\nWann passt ein Gespräch:\n\nViele Grüße"
   },
   "risiko": {
-    "titel": "Ihr Risiko bleibt klein",
+    "titel": "Sie sehen früh, wo Sie stehen",
+    "titel_absicherung": "Ihr Risiko bleibt klein",
     "punkte": [
-      "Ausstieg einmalig zum Ende von Monat 3, mit 30 Tagen Frist.",
       "In Woche 8 bekommen Sie eine Zwischenbilanz mit Zahlen und Fahrplan.",
-      "Was bis dahin entstanden ist, dürfen Sie nach Zahlung weiter nutzen."
+      "Was entsteht, dürfen Sie nach Zahlung weiter nutzen."
     ]
   },
   "arbeitsprobe": {

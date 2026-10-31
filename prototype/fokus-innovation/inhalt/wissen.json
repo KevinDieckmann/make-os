@@ -199,7 +199,7 @@
               ],
               [
                 "Bindung",
-                "6 oder 12 Monate, einmalig zum Ende des dritten Monats mit 30 Tagen Frist kündbar",
+                "6 oder 12 Monate",
                 "unbefristeter Arbeitsvertrag"
               ],
               [
@@ -256,10 +256,6 @@
         {
           "aus": "head-of-sales",
           "frage": "Wie viel Zeit kostet mich das?"
-        },
-        {
-          "aus": "head-of-sales",
-          "frage": "Was, wenn es nach 3 Monaten nicht passt?"
         },
         {
           "aus": "head-of-sales",

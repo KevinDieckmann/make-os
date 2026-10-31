@@ -205,7 +205,6 @@
     "Telefonie für Sie: Ihr Team führt die Gespräche, wir machen vor"
    ],
    "regeln": [
-    "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist",
     "Wechsel zum CSO jederzeit"
    ],
    "cta": "Gespräch vereinbaren"
@@ -227,7 +226,6 @@
     "Sales Playbook Teil 3 und Übergabeplan an Ihre Vertriebsleitung"
    ],
    "regeln": [
-    "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist"
    ],
    "cta": "Gespräch vereinbaren",
    "hervorheben": true
@@ -382,7 +380,6 @@
     "Krisenbegleitung rund um die Uhr, nur nach gesonderter Absprache"
    ],
    "regeln": [
-    "Kündigung einmalig zum Ende des dritten Monats mit 30 Tagen Frist",
     "Der genaue Monatspreis richtet sich nach dem Umfang und steht vor dem Start fest",
     "Kein Text geht ohne Ihre Freigabe an Medien"
    ],
@@ -620,9 +617,9 @@
    "a": "Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer enthält das komplett und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln."
   },
   {
-   "id": "kann-ich-vorzeitig-kuendigen",
-   "f": "Kann ich vorzeitig kündigen?",
-   "a": "Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Fahrplan. Die Video Serie läuft mindestens 3 Monate, danach ist sie monatlich kündbar."
+   "id": "wie-lange-laufen-die-vertraege",
+   "f": "Wie lange laufen die Verträge?",
+   "a": "Head of Sales, CSO sowie PR und Kommunikation laufen 6 oder 12 Monate. Die Video Serie läuft mindestens 3 Monate, danach ist sie monatlich kündbar. Tagesworkshop, Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis."
   },
   {
    "id": "was-kostet-der-tagesworkshop-und-was",
