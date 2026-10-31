@@ -3,7 +3,7 @@
  "stand": "2026-10-30",
  "freigabe": "Inhaber, Prüfseite 24.10.2026; Säulen Sichtbarkeit und Vertrieb auf Wunsch des Inhabers 30.10.2026 (zur Abnahme)",
  "sprache": "de, Sie-Form",
- "hinweis": "IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden. 30.10. abends: Sichtbarkeit und Vertrieb haben eigene Checks und stehen hier nicht mehr. Kurz = die 19 Fragen mit kurzcheck (rund 9 Minuten), ausführlich = alle Fragen dieser Vorlage in sechs Etappen plus Branchen-Modul (rund 25 Minuten).",
+ "hinweis": "IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden. 30.10. abends: Sichtbarkeit und Vertrieb haben eigene Checks und stehen hier nicht mehr. Kurz = die 20 Fragen mit kurzcheck (rund 10 Minuten; seit 31.10. mit einer Pflichtfrage in eigenen Worten), ausführlich = alle Fragen dieser Vorlage in sechs Etappen plus Branchen-Modul (rund 25 Minuten).",
  "abschnitte": [
   {
    "id": "A",
@@ -2362,8 +2362,29 @@
     }
    ],
    "bedingung": "branche == tech ODER startup == true"
+  },
+  {
+   "id": "W",
+   "key": "eigene_worte",
+   "name": "In Ihren Worten",
+   "dimension": null,
+   "satz": "Eine Frage in Ihren eigenen Worten.",
+   "intro": "Eigene Worte, ohne Punkte. 1 Pflichtfrage am Ende des Kurzchecks (31.10.: Auswahl geben, aber zwischendrin auch selbst schreiben).",
+   "fragen": [
+    {
+     "id": "W1",
+     "text": "Was bremst Sie gerade am meisten, wenn es um KI und neue Werkzeuge geht?",
+     "kurzcheck": true,
+     "typ": "offen",
+     "pflicht": true,
+     "punkte": false,
+     "eingabe": [
+      "text"
+     ]
+    }
+   ]
   }
  ],
- "anzahl_fragen": 65,
- "anzahl_kurzcheck": 19
+ "anzahl_fragen": 66,
+ "anzahl_kurzcheck": 20
 }

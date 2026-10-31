@@ -14,6 +14,8 @@ import type { CheckAntwort, CheckAntworten, CheckFrage, CheckProfil, CheckVorlag
 export const FREITEXT_MAX = 2000;
 /** Freitext einer Option („Sonstige“) höchstens so lang. */
 export const OPTIONTEXT_MAX = 120;
+/** Eigene Antwort zu einer Auswahlfrage (31.10.) höchstens so lang — darüber 413. */
+export const ANMERKUNG_MAX = 1000;
 
 /**
  * Zwei offene Fragen für Branchen ohne eigenes Modul (Bauanleitung, Ablauf Regel 5). Abschnitt „X“, Kennungen stabil wie im
@@ -132,10 +134,10 @@ export function phaseVon(v: CheckVorlage, s: AblaufStand, id: string): CheckPhas
   return null;
 }
 
-/** Darf diese Frage übersprungen werden? Im Kurzcheck nur Freitexte (Beleg), danach alles (alles dort ist freiwillig). */
-export const ueberspringbar = (f: Pick<CheckFrage, 'typ'>, phase: CheckPhase): boolean => phase !== 'kurzcheck' || f.typ === 'beleg' || f.typ === 'offen';
+/** Darf diese Frage übersprungen werden? Pflichtfragen in eigenen Worten nie; im Kurzcheck sonst nur Freitexte (Beleg), danach alles. */
+export const ueberspringbar = (f: Pick<CheckFrage, 'typ' | 'pflicht'>, phase: CheckPhase): boolean => !f.pflicht && (phase !== 'kurzcheck' || f.typ === 'beleg' || f.typ === 'offen');
 
-export interface Eingabe { optionIds?: unknown; freitext?: unknown; zusatz?: unknown; optionText?: unknown }
+export interface Eingabe { optionIds?: unknown; freitext?: unknown; zusatz?: unknown; optionText?: unknown; anmerkung?: unknown }
 export type Geprueft = { ok: true; antwort: CheckAntwort } | { ok: false; fehler: string; status: 400 | 413 };
 
 /** Prüft eine Antwort gegen die Frage — nur Kennungen aus dem Katalog, Freitexte nie gekürzt. */
@@ -159,12 +161,32 @@ export function antwortPruefen(f: FrageMitAbschnitt, e: Eingabe): Geprueft {
       if (e.zusatz !== undefined && typeof e.zusatz !== 'boolean') return nein('Bitte Ja oder Nein wählen.');
       if (typeof e.zusatz === 'boolean') a.zusatz = e.zusatz;
     }
+    // Eigene Antwort zur Auswahl (freiwillig): leer = keine; über der Grenze 413, nie gekürzt.
+    if (e.anmerkung !== undefined && e.anmerkung !== null && typeof e.anmerkung !== 'string') return nein('Ungültige Eingabe.');
+    const anm = typeof e.anmerkung === 'string' ? e.anmerkung.trim() : '';
+    if (anm.length > ANMERKUNG_MAX) return nein(`Bitte höchstens ${ANMERKUNG_MAX} Zeichen.`, 413);
+    if (anm) a.anmerkung = anm;
     return { ok: true, antwort: a };
   }
   const t = typeof e.freitext === 'string' ? e.freitext.trim() : '';
-  if (!t) return nein('Bitte ein paar Worte schreiben — oder die Frage überspringen.');
+  if (!t) return nein(f.pflicht ? 'Bitte ein paar Worte schreiben — ein Satz reicht.' : 'Bitte ein paar Worte schreiben — oder die Frage überspringen.');
   if (t.length > FREITEXT_MAX) return nein(`Das ist zu lang — bitte höchstens ${FREITEXT_MAX} Zeichen.`, 413);
   return { ok: true, antwort: { freitext: t } };
+}
+
+/** Je Antwort in eigenen Worten höchstens so viel in der Anfrage im CRM (dort gelten 3.000 Zeichen) — vollständig in der Check-Verwaltung. */
+export const EIGENE_WORTE_AUSZUG = 600;
+
+/**
+ * Die Antworten auf die Pflichtfragen in eigenen Worten als Satz für die Anfrage im CRM (31.10.): „Frage“ „Antwort“ — sichtbar gekürzt
+ * mit „…“, nie still. Leer, wenn es keine gibt.
+ */
+export function eigeneWorte(v: CheckVorlage, antworten: CheckAntworten): string {
+  const teile = alleFragen(v.katalog).filter(f => f.pflicht && antworten[f.id]?.freitext?.trim()).map(f => {
+    const t = antworten[f.id]!.freitext!.trim().replace(/\s+/g, ' ');
+    return `${f.text} „${t.length > EIGENE_WORTE_AUSZUG ? `${t.slice(0, EIGENE_WORTE_AUSZUG).trimEnd()} …` : t}“`;
+  });
+  return teile.length ? `In eigenen Worten: ${teile.join(' ')}${teile.some(x => x.includes(' …“')) ? ' (gekürzt, vollständig in der Check-Verwaltung)' : ''}` : '';
 }
 
 /** Fortschritt für die Anzeige: Kurzcheck „n von 17“ und gesamt in Prozent (alle Fragen dieser Sitzung). */

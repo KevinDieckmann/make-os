@@ -48,7 +48,7 @@ const post = async (r: { POST: (r: Request) => Promise<Response> }, url: string,
 };
 const anmeldungen = async () => ((await db.loadJson<AnmeldungenBestand>('newsletter-anmeldungen')) ?? { anmeldungen: [] }).anmeldungen;
 
-/** Die 19 Kurzcheck-Antworten wie in tests/check-route.test.ts. */
+/** Die 20 Kurzcheck-Antworten wie in tests/check-route.test.ts. */
 const KURZ: [string, Record<string, unknown>][] = [
   ['A1', { optionIds: ['A1_0'], zusatz: false }], ['A2', { optionIds: ['A2_2'] }], ['A6', { optionIds: ['A6_1'] }],
   ['B1', { optionIds: ['B1_1'] }], ['B2', { optionIds: ['B2_1'] }], ['B4', { optionIds: ['B4_1'] }],
@@ -56,6 +56,7 @@ const KURZ: [string, Record<string, unknown>][] = [
   ['C5', { freitext: 'Wir probieren ChatGPT für Angebotstexte aus.' }], ['D1', { optionIds: ['D1_1'] }], ['D2', { optionIds: ['D2_1'] }],
   ['D7', { optionIds: ['D7_1'] }], ['E1', { optionIds: ['E1_1'] }], ['E4', { optionIds: ['E4_2'] }], ['E6', { optionIds: ['E6_1'] }],
   ['G1', { optionIds: ['G1_1'] }], ['G2', { optionIds: ['G2_1'] }], ['G6', { optionIds: ['G6_1'] }],
+  ['W1', { freitext: 'Uns fehlt die Zeit, Neues in Ruhe auszuprobieren.' }],
 ];
 let uhr = new Date('2026-11-09T08:00:00Z').getTime();
 const weiter = (sek: number) => { uhr += sek * 1000; vi.setSystemTime(new Date(uhr)); };

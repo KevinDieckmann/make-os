@@ -42,6 +42,8 @@ export interface CheckFrage {
   punkte?: boolean;
   hinweis?: string;
   auswertung?: string;
+  /** Pflichtfrage in eigenen Worten (31.10., Kevin: „Auswahl geben, aber zwischendrin auch selbst schreiben“) — nie überspringbar, zählt nicht in die Punkte. */
+  pflicht?: boolean;
 }
 
 export interface CheckAbschnitt {
@@ -164,6 +166,8 @@ export interface CheckAntwort {
   /** Freitext einer Option mit `freitext` (A1 „Sonstige“). */
   optionText?: string;
   belegScore?: number;
+  /** Eigene Antwort zu einer Auswahlfrage (31.10., freiwillig) — zählt nicht in die Punkte, geht an kein KI-Modell, nur an den Inhaber. */
+  anmerkung?: string;
   /** Wer bewertet hat (Speichername) und wann — nur Beleg-Fragen. */
   belegVon?: string;
   am?: string;

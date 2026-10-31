@@ -38,7 +38,7 @@ const kontakte = async () => (await db.loadJson<{ kontakte: Kontakt[] }>('kontak
 const bestand = async () => (await db.loadJson<CheckBestand>('check-sitzungen'))!;
 
 /**
- * Die 19 Kurzcheck-Antworten (Handwerk, 10–49; seit 30.10. nur Innovation — Sichtbarkeit und Vertrieb haben eigene Checks),
+ * Die 20 Kurzcheck-Antworten (Handwerk, 10–49; seit 30.10. nur Innovation — Sichtbarkeit und Vertrieb haben eigene Checks),
  * Klickwerte 1 bzw. 2 (Beleg C5 als Text, noch unbewertet).
  */
 const KURZ: [string, Record<string, unknown>][] = [
@@ -48,6 +48,7 @@ const KURZ: [string, Record<string, unknown>][] = [
   ['C5', { freitext: 'Wir probieren ChatGPT für Angebotstexte aus.' }], ['D1', { optionIds: ['D1_1'] }], ['D2', { optionIds: ['D2_1'] }],
   ['D7', { optionIds: ['D7_1'] }], ['E1', { optionIds: ['E1_1'] }], ['E4', { optionIds: ['E4_2'] }], ['E6', { optionIds: ['E6_1'] }],
   ['G1', { optionIds: ['G1_1'] }], ['G2', { optionIds: ['G2_1'] }], ['G6', { optionIds: ['G6_1'] }],
+  ['W1', { freitext: 'Uns fehlt die Zeit, Neues in Ruhe auszuprobieren.' }],
 ];
 const T0 = new Date('2026-11-09T08:00:00Z');
 let uhr = T0.getTime();
@@ -119,8 +120,8 @@ describe('die Strecke', () => {
     expect(r.status).toBe(201);
     S = r.d.sitzung; T = r.d.token;
     expect(S).toMatch(/^ck-/); expect(T).toMatch(/^[a-f0-9]{64}$/);
-    expect(r.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 19 });
-    expect(r.d.katalog.fragen).toHaveLength(67);
+    expect(r.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 20 });
+    expect(r.d.katalog.fragen).toHaveLength(68);
     expect(r.d.zoe.begruessung.join(' ')).toContain('ausführlich mit vollständigem Bericht per E-Mail');
     const text = JSON.stringify(r.d);
     for (const geheim of ['"punkte"', '"stufe":', '"rubrik"', '"code"', 'Gewicht', 'tokenHash']) expect(text).not.toContain(geheim);
@@ -153,7 +154,7 @@ describe('die Strecke', () => {
       expect(r.status, frage).toBe(200);
     }
     expect(r!.d.schritt).toEqual({ art: 'kontakt' });
-    expect(r!.d.fortschritt.kurz).toBe(19);
+    expect(r!.d.fortschritt.kurz).toBe(20);
     // Vor der Kontakt-Frage gibt es weder Wahl noch Ergebnis.
     expect((await check({ aktion: 'wahl', sitzung: S, token: T, wahl: 'ergebnis' })).status).toBe(400);
     expect((await check({ aktion: 'ergebnis', sitzung: S, token: T })).status).toBe(400);
@@ -252,7 +253,7 @@ describe('die Strecke', () => {
     expect(st.d.schritt.von).toBeGreaterThan(19);
     let r: Antwort | null = null;
     for (const [frage, a] of KURZ) r = await check({ aktion: 'antwort', sitzung: s2, token: t2, frage, ...a });
-    expect(r!.d.schritt).toMatchObject({ art: 'frage', phase: 'vertiefung', nummer: 20 });
+    expect(r!.d.schritt).toMatchObject({ art: 'frage', phase: 'vertiefung', nummer: 21 });
     expect((await check({ aktion: 'wahl', sitzung: s2, token: t2, wahl: 'ergebnis' })).d.schritt).toEqual({ art: 'kontakt' });
     expect((await check({ aktion: 'ohne-kontakt', sitzung: s2, token: t2 })).d.schritt).toEqual({ art: 'ergebnis' });
     const e = await check({ aktion: 'ergebnis', sitzung: s2, token: t2 });
@@ -263,7 +264,7 @@ describe('die Strecke', () => {
   it('Umfang „kurz“: nach den Kontaktdaten sofort das Ergebnis, ohne Wahl; unbekannter Umfang = wie bisher', async () => {
     const st = await check({ aktion: 'start', umfang: 'kurz' });
     const s2 = st.d.sitzung, t2 = st.d.token;
-    expect(st.d.schritt).toMatchObject({ art: 'frage', frageId: 'A1', von: 19 });
+    expect(st.d.schritt).toMatchObject({ art: 'frage', frageId: 'A1', von: 20 });
     for (const [frage, a] of KURZ) await check({ aktion: 'antwort', sitzung: s2, token: t2, frage, ...a });
     expect((await check({ aktion: 'ohne-kontakt', sitzung: s2, token: t2 })).d.schritt).toEqual({ art: 'ergebnis' });
     expect((await check({ aktion: 'ergebnis', sitzung: s2, token: t2 })).status).toBe(200);
@@ -286,17 +287,25 @@ describe('die Strecke', () => {
 });
 
 describe('Vertriebscheck und Sichtbarkeitstest (30.10.)', () => {
-  /** 12 Fragen: Profil A1, A2, A6 und je drei Fragen in Organisation (VO), Zahlen (VZ) und Neukunden (VN). */
+  /** 12 Klickfragen: Profil A1, A2, A6 und je drei Fragen in Organisation (VO), Zahlen (VZ) und Neukunden (VN); dazu seit 31.10. zwei Pflichtfragen in eigenen Worten (W1, W2). */
   const VERTRIEB: [string, string][] = [['A1', 'A1_1'], ['A2', 'A2_1'], ['A6', 'A6_0'], ['V1', 'V1_1'], ['V6', 'V6_1'], ['V4', 'V4_1'], ['V2', 'V2_3'], ['V3', 'V3_3'], ['V7', 'V7_3'], ['V5', 'V5_2'], ['V8', 'V8_2'], ['V9', 'V9_2']];
   it('eigene Vorlage mit eigenen Texten; nach Kontakt sofort das Ergebnis (keine Wahl), Bereiche mit Namen, jedes Angebot nur einmal', async () => {
     const st = await check({ aktion: 'start', vorlage: 'vertriebs-check', quelle: 'vertrieb_seite', webseite: '' });
     expect(st.status).toBe(201);
     expect(st.d.katalog.name).toBe('Vertriebs-Check');
-    expect(st.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 12 });
+    expect(st.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 14 });
     expect(st.d.zoe.begruessung.join(' ')).toContain('durch den Vertriebs-Check');
     expect(st.d.katalog.abschnittSatz.VO).toContain('organisiert');
     const s3 = st.d.sitzung, t3 = st.d.token;
     for (const [frage, o] of VERTRIEB) expect((await check({ aktion: 'antwort', sitzung: s3, token: t3, frage, optionIds: [o] })).status, frage).toBe(200);
+    // Pflichtfragen in eigenen Worten: überspringen geht nicht, leer auch nicht.
+    expect((await check({ aktion: 'ueberspringen', sitzung: s3, token: t3, frage: 'W1' })).status).toBe(400);
+    expect((await check({ aktion: 'antwort', sitzung: s3, token: t3, frage: 'W1', freitext: '  ' })).status).toBe(400);
+    expect((await check({ aktion: 'antwort', sitzung: s3, token: t3, frage: 'W1', freitext: 'Angebote bleiben nach dem Erstgespräch liegen.' })).status).toBe(200);
+    expect((await check({ aktion: 'antwort', sitzung: s3, token: t3, frage: 'W2', freitext: 'Jede Anfrage hat einen nächsten Schritt.' })).status).toBe(200);
+    // Eigene Antwort zu einer Auswahlfrage (freiwillig): kommt zurück in den Verlauf, zählt nicht in die Punkte (Werte unten unverändert).
+    const notiz = await check({ aktion: 'antwort', sitzung: s3, token: t3, frage: 'V1', optionIds: ['V1_1'], anmerkung: 'Wir sind zu dritt im Vertrieb.' });
+    expect(notiz.d.antworten.V1).toEqual({ optionIds: ['V1_1'], anmerkung: 'Wir sind zu dritt im Vertrieb.' });
     weiter(60);
     const k = await check({ aktion: 'kontakt', sitzung: s3, token: t3, vorname: 'Vera', email: 'vera.probe@example.invalid', firma: 'Probe Vertrieb GmbH', rolle: 'A5_0', newsletter: false, webseite: '' });
     expect(k.status).toBe(200);
@@ -319,15 +328,20 @@ describe('Vertriebscheck und Sichtbarkeitstest (30.10.)', () => {
     expect(s.ergebnis?.saeulen).toEqual({ organisation: 25, zahlen: 75, neukunden: 50 });
     const p = (await kontakte()).find(x => x.id === s.crm!.kontaktId)!;
     expect(p.aktivitaeten.some(a => /Vertriebs-Check auf der Website/.test(a.text ?? '') && /Organisation 25, Zahlen 75, Neukunden 50/.test(a.text ?? ''))).toBe(true);
+    // Die eigenen Worte stehen in der Anfrage (für das Erstgespräch).
+    expect(p.aktivitaeten.some(a => /In eigenen Worten: Wo hakt es in Ihrem Vertrieb gerade am meisten\? „Angebote bleiben nach dem Erstgespräch liegen\.“/.test(a.text ?? ''))).toBe(true);
     const l = await innenLesen();
     const z = l.d.liste.find((x: { id: string }) => x.id === s3);
     expect(z.check).toBe('Vertriebs-Check');
     expect(z.bereiche).toEqual([{ name: 'Organisation', wert: 25 }, { name: 'Zahlen', wert: 75 }, { name: 'Neukunden', wert: 50 }]);
+    const einzel = (await innenLesen(`?id=${s3}`)).d.sitzung.antworten as { frage: string; anmerkung?: string; pflicht?: boolean; freitext?: string }[];
+    expect(einzel.find(a => a.frage === 'V1')?.anmerkung).toBe('Wir sind zu dritt im Vertrieb.');
+    expect(einzel.find(a => a.frage === 'W1')).toMatchObject({ pflicht: true, freitext: 'Angebote bleiben nach dem Erstgespräch liegen.' });
   });
   it('Sichtbarkeitstest startet mit eigenem Katalog; Antworten aus einem anderen Check werden abgelehnt', async () => {
     const st = await check({ aktion: 'start', vorlage: 'sichtbarkeits-test', webseite: '' });
     expect(st.d.katalog.name).toBe('Sichtbarkeits-Check');
-    expect(st.d.schritt.von).toBe(12);
+    expect(st.d.schritt.von).toBe(14);
     expect((await check({ aktion: 'antwort', sitzung: st.d.sitzung, token: st.d.token, frage: 'V1', optionIds: ['V1_1'] })).status).toBe(400);
   });
   it('Adresse: /check?thema=… wählt den Check, sonst der Innovations-Check', async () => {

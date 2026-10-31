@@ -1,6 +1,6 @@
 {
  "titel": "Wie planbar ist Ihr Vertrieb?",
- "text": "Zwölf Fragen zu Organisation, Zahlen und Neukunden. Sie sehen sofort, wo Ihr Vertrieb steht und welcher Schritt jetzt am meisten bringt.",
+ "text": "Zwölf Fragen zu Organisation, Zahlen und Neukunden, dazu zwei in Ihren eigenen Worten. Sie sehen sofort, wo Ihr Vertrieb steht und welcher Schritt jetzt am meisten bringt.",
  "bereiche": [
   {
    "name": "Organisation",
@@ -15,6 +15,6 @@
    "text": "Kommen neue Kunden planbar?"
   }
  ],
- "minuten": 5,
+ "minuten": 6,
  "einleitung": "Ich führe Sie in rund 5 Minuten durch den Vertriebs-Check: Organisation, Zahlen und Neukunden."
 }
