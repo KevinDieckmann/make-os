@@ -128,7 +128,7 @@ table { border-collapse: collapse; }
 /* ── Kopf ── */
 .kopf { position: sticky; top: 0; z-index: 50; color: var(--tinte); border-bottom: 1px solid var(--haar); transition: color .35s ease, border-color .35s ease; }
 .kopf::before { content: ""; position: absolute; inset: 0; z-index: -1; background: rgba(246, 244, 240, .92); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); transition: opacity .35s ease; }
-.kopf-innen { display: flex; align-items: center; gap: 20px; height: var(--kopf); }
+.kopf-innen { position: relative; display: flex; align-items: center; gap: 20px; height: var(--kopf); }
 .marke { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; margin-right: auto; color: inherit; }
 .marke .zeichen { width: 34px; height: 34px; flex: none; }
 .wortbild { display: flex; flex-direction: column; line-height: 1; }
@@ -137,7 +137,7 @@ table { border-collapse: collapse; }
 .haupt-nav { display: flex; align-items: center; gap: 2px; }
 .haupt-nav > a, .nav-punkt > a, .kopf-kontakt { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 6px; font-size: .95rem; font-weight: 500; color: var(--tinte-text); transition: color .2s ease, background-color .2s ease; }
 .haupt-nav > a:hover, .nav-punkt > a:hover, .kopf-kontakt:hover { color: var(--tinte); background: rgba(17, 19, 22, .05); }
-.haupt-nav a[aria-current="page"], .kopf-kontakt[aria-current="page"] { color: var(--tinte); text-decoration: underline; text-decoration-color: var(--akzent-papier); text-decoration-thickness: 2px; text-underline-offset: 10px; }
+.haupt-nav > a[aria-current], .nav-punkt > a[aria-current], .kopf-kontakt[aria-current="page"] { color: var(--tinte); text-decoration: underline; text-decoration-color: var(--akzent-papier); text-decoration-thickness: 2px; text-underline-offset: 10px; }
 .kopf-kontakt { margin-left: 4px; }
 .nav-punkt { position: relative; }
 .unter { position: absolute; top: calc(100% + 6px); left: -10px; min-width: 330px; padding: 8px; background: var(--papier-hell); border: 1px solid var(--haar); border-radius: 10px; box-shadow: 0 22px 44px -24px rgba(17, 19, 22, .28);
@@ -148,6 +148,18 @@ table { border-collapse: collapse; }
 .unter a span { color: var(--tinte-leise); font-size: .84rem; white-space: nowrap; }
 .unter a:hover { background: rgba(17, 19, 22, .05); }
 .unter .unter-alles { font-weight: 600; border-bottom: 1px solid var(--haar); border-radius: 6px 6px 0 0; margin-bottom: 4px; }
+/* Leistungen (31.10.): drei Bereiche nebeneinander, unten je Bereich die Bausteine, darunter die Preisseite. */
+/* Das Feld hängt am Kopf (rechtsbündig), nicht am Menüpunkt — sonst ragt es rechts aus dem Bild. */
+.nav-punkt:has(> .unter-leistungen) { position: static; }
+.unter-leistungen { top: calc(100% - 6px); left: auto; right: var(--rand); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 10px; width: min(900px, calc(100% - 2 * var(--rand))); min-width: 0; padding: 10px; }
+.unter-leistungen::before { top: -26px; height: 26px; }
+.unter-spalte { display: flex; flex-direction: column; min-width: 0; }
+.unter-leistungen a { gap: 12px; }
+.unter-leistungen .unter-baustein { margin-top: auto; border-top: 1px solid var(--haar); border-radius: 0 0 6px 6px; padding-top: 10px; font-weight: 600; }
+.unter-leistungen .unter-fuss { grid-column: 1 / -1; justify-content: flex-start; gap: 8px; margin-top: 8px; border-top: 1px solid var(--haar); border-radius: 0 0 6px 6px; padding-top: 12px; font-weight: 600; }
+.unter-leistungen .unter-fuss span { color: var(--tinte); font-size: .94rem; }
+.unter-leistungen .unter-fuss .pfeil { width: 16px; height: 16px; flex: none; color: var(--akzent-papier); transition: translate .35s var(--ease); }
+.unter-leistungen .unter-fuss:hover .pfeil { translate: 4px 0; }
 .menue { display: none; }
 html.menue-offen { overflow: hidden; }
 .menue summary { list-style: none; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border: 1px solid var(--haar-mittel); border-radius: 6px; font-weight: 600; font-size: .95rem; cursor: pointer; }
@@ -171,6 +183,7 @@ html.menue-offen { overflow: hidden; }
 .held.klein { padding-bottom: clamp(32px, 4vw, 56px); }
 .held-raster { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px clamp(40px, 6vw, 96px); align-items: end; }
 .held-raster.einspaltig { grid-template-columns: minmax(0, 1fr); }
+.held-raster.mitte { align-items: center; }
 .held-raster.einspaltig > div { max-width: 52rem; }
 .brotkrumen { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 32px; font-size: .9rem; color: var(--tinte-leise); }
 .brotkrumen a { display: inline-flex; align-items: center; min-height: 44px; }
@@ -370,6 +383,12 @@ html.menue-offen { overflow: hidden; }
 .tafel .faden { fill: none; stroke: var(--akzent-papier); stroke-width: 1.1; stroke-linecap: round; opacity: .55; }
 .tafel-raum { display: flex; justify-content: flex-end; }
 .tafel-raum .tafel { margin-top: 0; }
+/* Events (31.10.): Tisch groß und mittig neben der Überschrift, darunter die Formate. */
+.events-tafel .tafel { max-width: 540px; margin-top: 0; }
+.events-tafel .etikett { margin-top: 28px; }
+.events-tafel .felder-liste { margin-top: 12px; }
+/* Einspaltig folgt der Abschnitt „Formate“ direkt darunter — die Liste am Tisch wäre doppelt. */
+@media (max-width: 820px) { .events-tafel .etikett, .events-tafel .felder-liste { display: none; } }
 
 /* Stufen des Checks: eine ruhige Treppe */
 .stufen { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 12px; align-items: end; }
@@ -917,7 +936,7 @@ html.menue-offen { overflow: hidden; }
 .js .problem-bild:not(.sichtbar) .pb-nachher { opacity: 0; }
 .js .problem-bild:not(.sichtbar) .pb-mitte-text { opacity: 0; }
 
-/* Über uns: fünf Abstimmungen — dann ein Kernteam. */
+/* Über uns: fünf Abstimmungen — dann ein Team. */
 .pb-wirr { stroke: rgba(17, 19, 22, .28); stroke-width: 1.1; stroke-dasharray: 3 4; opacity: 0; transition: opacity .7s var(--ease) 1.8s; }
 .js .pb-netzwerk:not(.sichtbar) .pb-wirr { opacity: 1; }
 .pb-fuehrung { stroke: var(--akzent-papier); stroke-width: 2.2; transition-delay: 2.4s; }
@@ -1036,6 +1055,7 @@ html.menue-offen { overflow: hidden; }
 .bestell-felder .breit { grid-column: 1 / -1; }
 .bestell-summe { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; padding: 14px 0; border-top: 1px solid var(--haar); border-bottom: 1px solid var(--haar); color: var(--tinte-text); }
 .bestell-summe b { color: var(--tinte); }
+.bestell-verkaeufer { margin: 0 0 14px; color: var(--tinte-text); }
 .bestell-bedingungen { padding: 16px 18px; border: 1px solid var(--haar); border-radius: 6px; background: var(--papier-hell); font-size: .9rem; line-height: 1.5; color: var(--tinte-text); }
 .bestell-bedingungen[hidden] { display: none; }
 .bestell-bedingungen ul { margin-top: 8px; padding-left: 1.1em; list-style: disc; }
