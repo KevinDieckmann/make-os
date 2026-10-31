@@ -122,3 +122,17 @@ Kevin: „Bank-Anbindung vorziehen · Markttraktion weiter ausbauen, damit wir K
 - Bauen auf `entwicklung`, volle Suite + Sichtprüfung (Demo-Instanz) vor jedem Update; Mac-Last ≤ 75 % (höchstens 2 Agenten).
 - **Seit 08.10. abends (Kevin):** Kleinigkeiten entscheidet Claude selbst nach Kevins Mustern, Bericht hinterher · jede Richtungsfrage als Klickrunde
   (≥ 10 Möglichkeiten, nach Modulen, „Heute gibt es“ aus `MODUL_LANDKARTE.md`) · täglicher Kurzbericht · vor jedem Upload ein Rundgang in der Demo mit Bildern.
+
+## Stand 31.10. — Plan nach Kevins Klickrunden (eingetragen auf Kevins Wort)
+Kevin 31.10.: „Lass uns einen Plan machen … sauber“, dann „alles hintereinander, das kann keine 3 Wochen dauern … das muss alles heute fertig sein“ und
+„Testkunden brauchen wir jetzt noch nicht — wir schauen auf die Funktionalität“. Online: Nacht-Update c37c334a; geprüft und bereit: `tag-gesamt`
+(Rechnungen & Zahlungen als Arbeitsfläche, Adressen unbestätigt, Prozess-Läufe beim Zusammenführen, Onboarding schlanker).
+**Heute (31.10.) in einem Update, parallel gebaut:**
+1. **Homepage-Anbau:** Check-Überarbeitung der Homepage-Sitzung zusammenführen; Website-Anfrage von Ende zu Ende (Check/Formular → Kontakt → Lead
+   „Website“ → Prozess → Follow-up/Termin → Deal); Kontaktformular; Website-Zahlen im Traktions-Index; Zoe-Begleiterin mit festen Texten (keine KI).
+2. **E-Rechnung:** ZUGFeRD (EN 16931) beim Stellen, XRechnung-Download, eingehende E-Rechnungen beim Beleg lesen.
+3. **Kreislauf-Rest:** einmalige Posten/Raten gemischter Angebote, Morgenlauf auch für Quartal/einmalig/Tagessatz, Mandate der Selbstständigkeit in die Liquidität.
+4. **Planung mit ZOE:** Wochenvorschlag aus Zielen, Aufgaben, Terminen, Kapazität — Freigabe per Klick.
+5. **Haushalt → Finanzplanung:** Finanzplanung liest das Ist aus dem Haushalt (Handwert gewinnt, Vorschau vor dem Umschalten).
+**Zurückgestellt (Kevin):** Testkunden-Vorbereitung (Instanz-Fabrik, Modul-Schalter, Feedback-Brücke, Demo online, Datenschutz-Paket) · Bank finAPI
+(wartet auf Vertrag) · ZOE per Sprache · Brevo · ZOE-Lichtring.
