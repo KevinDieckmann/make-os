@@ -27,7 +27,7 @@ const kontakteLaden = async () => (await loadJson<{ kontakte: Kontakt[] }>('kont
  * Legt eine Anfrage an (Person neu oder vorhanden). `person` = wer erfasst (Speichername — hält bei neuen Personen die
  * Beziehung und bekommt das Follow-up); `wer` = für das Änderungsprotokoll. Wirft nicht für Fachfehler — `{ ok: false }`.
  */
-export async function anfrageAnlegen(eingabe: AnfrageEingabe, o: { person: string; wer: Wer; /** Öffentliche Strecke (Check): vorhandene Person → „Adresse unbestätigt“ (lib/crm/anfragen.ts `oeffentlich`). */ oeffentlich?: boolean }): Promise<AnfrageAngelegt> {
+export async function anfrageAnlegen(eingabe: AnfrageEingabe, o: { person: string; wer: Wer; /** Öffentliche Strecke (Check): vorhandene Person → „Adresse unbestätigt“ (lib/crm/anfragen.ts `oeffentlich`). */ oeffentlich?: boolean; /** Website-Anbau (31.10.): von welcher öffentlichen Seite — Stufe des Ereignisses „neuer Lead“ (`webseite-check` | `webseite-formular`). */ webseite?: 'check' | 'formular' }): Promise<AnfrageAngelegt> {
   const { person } = o;
   const heute = localDay();
   const jetzt = new Date().toISOString();
@@ -87,7 +87,7 @@ export async function anfrageAnlegen(eingabe: AnfrageEingabe, o: { person: strin
   // Adresse unbestätigt (31.10.): kein „neuer Lead“ — sonst liefen Agenten und Prozesse für eine Anfrage an, die vielleicht gar nicht von der Person kam.
   if (fertig.unbestaetigt) return { ok: true, bau: fertig };
   // Ereignis (09.10., E1): neuer Lead → Agenten (nur Kennungen) — nach dem Speichern, wirft nie.
-  await import('@/lib/ereignisse/quellen').then(q => q.anfrageEreignis({ followUpId: fertig.followUp.id, kontaktId: fertig.kontakt.id, ...(fertig.kontakt.firmaId ? { firmaId: fertig.kontakt.firmaId } : {}), ...(fertig.kontakt.eingeschraenkt ? { eingeschraenkt: true } : {}) })).catch(() => 0);
+  await import('@/lib/ereignisse/quellen').then(q => { const stufe = q.webseiteStufe(eingabe.kanal, o.webseite); return q.anfrageEreignis({ followUpId: fertig.followUp.id, kontaktId: fertig.kontakt.id, ...(fertig.kontakt.firmaId ? { firmaId: fertig.kontakt.firmaId } : {}), ...(fertig.kontakt.eingeschraenkt ? { eingeschraenkt: true } : {}), ...(stufe ? { stufe } : {}) }); }).catch(() => 0);
   return { ok: true, bau: fertig };
 }
 

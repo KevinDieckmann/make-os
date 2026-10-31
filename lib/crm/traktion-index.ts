@@ -26,6 +26,7 @@ import { WEG } from '@/lib/wege';
 import { markttraktion } from './adresse';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { nameVon } from './team';
+import { webseiteKennzahlen, webseiteDetails, type WebseiteStand } from './webseite-zahlen';
 
 export type TraktionsIndex = IndexErgebnis;
 
@@ -72,9 +73,22 @@ export const TRAKTION_KENNZAHLEN: KennzahlDefBasis[] = [
   D({ id: 'art14', label: 'Art. 14 überfällig', saeule: 'grundlage', gruppe: 'Grundlage', einheit: 'anzahl', richtung: 'niedrig', gruen: 0, rot: 1, formel: 'Personen, deren Informationsfrist nach Art. 14 DSGVO abgelaufen ist', quelle: 'Kartei', luecke: 'Noch keine Person in der Kartei', pflegen: { text: 'Art. 14 erledigen', href: markttraktion('kontakte', 'art14') } }),
 ];
 
+/**
+ * Website (31.10., Website-Anbau, lib/crm/webseite-zahlen.ts): ohne Tracker, aus eigenen Beständen. Sie gehören NUR ins Modell, wenn die Website läuft
+ * (`TraktionBestand.webseite.aktiv`) — sonst wären es drei Lücken, die die Abdeckung von Marketing drücken: ohne Website bleibt der Index genau der bisherige.
+ */
+const GEWICHT_WEB = 0.5;
+export const WEBSEITE_KENNZAHLEN: KennzahlDefBasis[] = [
+  D({ id: 'web_anfragen', label: 'Anfragen über die Website · 30 Tage', saeule: 'marketing', gruppe: 'Website', einheit: 'anzahl', richtung: 'hoch', gruen: 4, rot: 1, formel: 'Anfragen „über Website“ (Check, Kontaktformular, von Hand) — je Person und Tag einmal, ohne Terminbuchungen und ohne „Adresse unbestätigt“', quelle: 'Kartei', luecke: 'Website nicht eingeschaltet (Check oder Kontaktformular)', pflegen: { text: 'Check oder Kontaktformular einschalten', href: WEG.marketing('anfragen') } }),
+  D({ id: 'web_checks', label: 'Abgeschlossene Checks · 30 Tage', saeule: 'marketing', gruppe: 'Website', gewicht: GEWICHT_WEB, einheit: 'anzahl', richtung: 'hoch', gruen: 4, rot: 1, formel: 'Check-Sitzungen, die ihr Ergebnis gesehen haben', quelle: 'Checks der Website', luecke: 'Website nicht eingeschaltet (Check oder Kontaktformular)', pflegen: { text: 'Check einschalten', href: WEG.marketing('check') } }),
+  D({ id: 'web_termine', label: 'Termine aus der Website · 30 Tage', saeule: 'marketing', gruppe: 'Website', gewicht: GEWICHT_WEB, einheit: 'anzahl', richtung: 'hoch', gruen: 2, rot: 1, formel: 'Freigegebene Buchungen der Buchungsseite (Erstgespräch) — je Person und Tag einmal', quelle: 'Buchungsseite', luecke: 'Website nicht eingeschaltet (Check oder Kontaktformular)', pflegen: { text: 'Buchungsseite in den Check-Einstellungen wählen', href: WEG.marketing('check') } }),
+];
+
 export interface TraktionBestand { kontakte: Kontakt[]; crm: CrmBestand; heute: string; schwellen?: Record<string, Schwelle>; /** Schon gerechnete Kennzahlen der Welten — spart die zweite Runde (Prüfbericht 27.09., Punkt 18). */ kpis?: Kpi[];
   /** Erster Tag mit einem Schnappschuss des Index (`ersterLauf(datei)`) — die ersten `ANLAUF_TAGE` danach ist er „vorläufig“ (7.1). */
-  ersterLauf?: string }
+  ersterLauf?: string;
+  /** Website-Anbau (31.10.): Schalter und abgeschlossene Checks (`webseiteStandLaden`) — fehlt es, sind die Website-Kennzahlen Lücken. */
+  webseite?: WebseiteStand }
 
 /** So lange ist der Traktions-Index nach seinem ersten Lauf „vorläufig“ (08.10., Woche 1 · 7.1: er startete rot, die Kartei lief erst an). */
 export const ANLAUF_TAGE = 28;
@@ -110,6 +124,9 @@ const eventDetail = (e: { id: string; titel: string; datum: string }, wert: stri
 
 // ── Die Punkte hinter den Kennzahlen ───────────────────────────────────────
 const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
+  web_anfragen: b => webseiteDetails('web_anfragen', b.kontakte, b.webseite, b.heute),
+  web_checks: b => webseiteDetails('web_checks', b.kontakte, b.webseite, b.heute),
+  web_termine: b => webseiteDetails('web_termine', b.kontakte, b.webseite, b.heute),
   power_hours(b) {
     return (b.crm.sitzungen ?? []).slice().sort((x, y) => y.datum.localeCompare(x.datum)).slice(0, 3)
       .map(s => ({ titel: `Power Hour ${tagKurz(s.datum)}`, wert: `${s.karten.length} Karten`, unter: `${nameVon(s.person)}${s.gelernt ? ` · ${s.gelernt.slice(0, 60)}` : ''}`, href: WEG.powerHour() }));
@@ -278,6 +295,8 @@ export function traktionsIndex(b0: TraktionBestand): TraktionsIndex {
   const b: TraktionBestand = crm === b0.crm ? b0 : { ...b0, crm };
   const kpis: Record<string, Kpi> = {};
   for (const k of b.kpis ?? [...kennzahlen(b.kontakte, b.crm, b.heute), ...marketingKennzahlen(b.kontakte, b.crm, b.heute), ...eventKennzahlen(b.kontakte, b.crm, b.heute)]) kpis[k.id] = k;
+  // Website (31.10.): immer hier gerechnet (auch wenn `kpis` mitkommen) — dieselbe Zahl überall.
+  for (const k of webseiteKennzahlen(b.kontakte, b.webseite, b.heute)) kpis[k.id] = k;
   // „Größter Kunde“: die Kpi mrr trägt die Konzentration nur in der Quelle — hier als Prozentwert.
   if (kpis.mrr) {
     const je = new Map<string, number>();
@@ -292,10 +311,10 @@ export function traktionsIndex(b0: TraktionBestand): TraktionsIndex {
     kpis.ansprechbar = aktiv ? { ...kpis.ansprechbar, wert: (kpis.ansprechbar.wert ?? 0) / aktiv } : { ...kpis.ansprechbar, wert: null, ampel: 'grau' };
   }
   const messen: Record<string, (x: TraktionBestand) => Messung> = {};
-  for (const def of TRAKTION_KENNZAHLEN) messen[def.id] = x => messung(x, def, kpis[def.id]);
+  for (const def of [...TRAKTION_KENNZAHLEN, ...WEBSEITE_KENNZAHLEN]) messen[def.id] = x => messung(x, def, kpis[def.id]);
   const schwellen = { ...(b.schwellen ?? {}), ...zielSchwellen(b.crm) };
   const anlaufBis = b.ersterLauf && /^\d{4}-\d{2}-\d{2}$/.test(b.ersterLauf) ? (() => { const d = new Date(`${b.ersterLauf}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + ANLAUF_TAGE); return d.toISOString().slice(0, 10); })() : undefined;
-  return berechneModell({ saeulen: TRAKTION_SAEULEN, kennzahlen: TRAKTION_KENNZAHLEN, messen, bestand: b, schwellen, stand: b.heute, scope: 'markttraktion', geometrisch: true, ...(anlaufBis ? { anlaufBis } : {}) });
+  return berechneModell({ saeulen: TRAKTION_SAEULEN, kennzahlen: b.webseite?.aktiv ? [...TRAKTION_KENNZAHLEN, ...WEBSEITE_KENNZAHLEN] : TRAKTION_KENNZAHLEN, messen, bestand: b, schwellen, stand: b.heute, scope: 'markttraktion', geometrisch: true, ...(anlaufBis ? { anlaufBis } : {}) });
 }
 
 /** Die alte Form (Score, Welten) — für Scoreboard-Verlauf und Business-Index. */

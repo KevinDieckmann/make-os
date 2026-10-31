@@ -70,7 +70,7 @@ export async function leadAnlegen(s: CheckSitzung, e: CheckEinstellungen, text: 
     const r = await anfrageAnlegen(
       { neu: { vorname: s.kontakt.vorname, email: s.kontakt.email, firma: s.kontakt.firma, ...(s.kontakt.telefon ? { telefon: s.kontakt.telefon } : {}) }, kanal: 'website', text },
       // Öffentliche Strecke (Kevin 31.10.): trifft die Mail eine vorhandene Person, nur „Adresse unbestätigt“ anhängen — nichts auslösen.
-      { person, wer: { art: 'system' }, oeffentlich: true },
+      { person, wer: { art: 'system' }, oeffentlich: true, webseite: 'check' },
     );
     return r.ok ? { status: 'ok', am, kontaktId: r.bau.kontakt.id, followUpId: r.bau.followUp.id, ...(r.bau.unbestaetigt ? { unbestaetigt: true as const } : {}) } : { status: 'abgelehnt', am, grund: r.fehler.slice(0, 200) };
   } catch (x) {

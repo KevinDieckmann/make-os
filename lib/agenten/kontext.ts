@@ -322,7 +322,8 @@ async function traktionWerte(): Promise<Werte> {
       import('@/lib/crm/verarbeitung'), import('@/lib/crm/speicher'), import('@/lib/crm/traktion-index'), import('@/lib/kennzahlen/speicher'),
     ]);
     const [kontakte, crm, datei] = await Promise.all([kontakteFuerVerarbeitung({ mitEingeschraenkten: true }), ladeCrm(), ladeIndexDatei('traktion-index')]);
-    return werteAus(traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, ersterLauf: ersterLauf(datei, heute) }));
+    const webseite = await (await import('@/lib/crm/webseite-zahlen-server')).webseiteStandLaden();
+    return werteAus(traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, ersterLauf: ersterLauf(datei, heute), ...(webseite ? { webseite } : {}) }));
   });
 }
 
