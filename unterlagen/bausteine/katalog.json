@@ -1,0 +1,190 @@
+{
+  "hinweis": "Gebaut von prototype/fokus-innovation/bauen.mjs — nicht von Hand ändern. Bezahlte Bausteine, Lieferung nur über die App nach Freigabe.",
+  "bausteine": [
+    {
+      "id": "einwandbibliothek",
+      "titel": "Einwandbibliothek",
+      "bereich": "vertrieb",
+      "preis": 14900,
+      "seite": "/bausteine/einwandbibliothek/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "einwandbibliothek.pdf",
+          "name": "Einwandbibliothek.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "einwandbibliothek.xlsx",
+          "name": "Einwandbibliothek.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "skriptset-bant",
+      "titel": "Skriptset mit BANT",
+      "bereich": "vertrieb",
+      "preis": 19900,
+      "seite": "/bausteine/skriptset-bant/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "skriptset-bant.pdf",
+          "name": "Skriptset mit BANT.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "skriptset-bant.xlsx",
+          "name": "Skriptset mit BANT.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "zielgruppe-personas",
+      "titel": "Zielgruppe und Personas mit Lead-Scoring",
+      "bereich": "vertrieb",
+      "preis": 14900,
+      "seite": "/bausteine/zielgruppe-personas/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "zielgruppe-personas.pdf",
+          "name": "Zielgruppe und Personas mit Lead-Scoring.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "zielgruppe-personas.xlsx",
+          "name": "Zielgruppe und Personas mit Lead-Scoring.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "salesprozess-crm",
+      "titel": "Salesprozess im CRM",
+      "bereich": "vertrieb",
+      "preis": 24900,
+      "seite": "/bausteine/salesprozess-crm/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "salesprozess-crm.pdf",
+          "name": "Salesprozess im CRM.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "salesprozess-crm.xlsx",
+          "name": "Salesprozess im CRM.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "nachfassen-vorlagen",
+      "titel": "Nachfassen: 25 Mail- und Nachrichtenvorlagen",
+      "bereich": "vertrieb",
+      "preis": 4900,
+      "seite": "/bausteine/nachfassen-vorlagen/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "nachfassen-vorlagen.pdf",
+          "name": "Nachfassen – 25 Mail- und Nachrichtenvorlagen.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "nachfassen-vorlagen.xlsx",
+          "name": "Nachfassen – 25 Mail- und Nachrichtenvorlagen.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "paket-vertrieb",
+      "titel": "Vertriebs-Paket: alle vier Playbook-Bausteine",
+      "bereich": "vertrieb",
+      "preis": 59000,
+      "seite": "/bausteine/paket-vertrieb/",
+      "dateien": [],
+      "paket": [
+        "einwandbibliothek",
+        "skriptset-bant",
+        "zielgruppe-personas",
+        "salesprozess-crm"
+      ]
+    },
+    {
+      "id": "elevator-pitch",
+      "titel": "Elevator-Pitch-Baukasten",
+      "bereich": "sichtbarkeit",
+      "preis": 6900,
+      "seite": "/bausteine/elevator-pitch/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "elevator-pitch.pdf",
+          "name": "Elevator-Pitch-Baukasten.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "elevator-pitch.xlsx",
+          "name": "Elevator-Pitch-Baukasten.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "botschaftshaus",
+      "titel": "Botschaftshaus",
+      "bereich": "sichtbarkeit",
+      "preis": 14900,
+      "seite": "/bausteine/botschaftshaus/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "botschaftshaus.pdf",
+          "name": "Botschaftshaus.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "botschaftshaus.xlsx",
+          "name": "Botschaftshaus.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "wettbewerb-unterschied",
+      "titel": "Wettbewerb und Unterschied",
+      "bereich": "sichtbarkeit",
+      "preis": 14900,
+      "seite": "/bausteine/wettbewerb-unterschied/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "wettbewerb-unterschied.pdf",
+          "name": "Wettbewerb und Unterschied.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "wettbewerb-unterschied.xlsx",
+          "name": "Wettbewerb und Unterschied.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "ki-schulungspaket",
+      "titel": "KI-Schulungspaket fürs Team",
+      "bereich": "innovation",
+      "preis": 17900,
+      "seite": "/bausteine/ki-schulungspaket/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "ki-schulungspaket.pdf",
+          "name": "KI-Schulungspaket fürs Team.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "ki-schulungspaket.xlsx",
+          "name": "KI-Schulungspaket fürs Team.xlsx"
+        }
+      ]
+    }
+  ]
+}
