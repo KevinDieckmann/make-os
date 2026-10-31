@@ -14,6 +14,7 @@ import { checkHinweis } from './datenschutz';
 import type { CheckSitzung, CheckEinstellungen } from './speicher';
 import type { ZoeKontext } from './zoe-texte';
 import type { CheckVorlage } from './typen';
+import type { ErgebnisAnsicht } from './ergebnis';
 
 export async function gastgeberVon(e: CheckEinstellungen): Promise<string | null> {
   return e.gastgeber || (await inhaberSpeicher());
@@ -76,4 +77,17 @@ export async function leadAnlegen(s: CheckSitzung, e: CheckEinstellungen, text: 
   } catch (x) {
     return { status: 'fehler', am, grund: String((x as Error)?.message ?? x).slice(0, 200) };
   }
+}
+
+/**
+ * Zu jedem nächsten Schritt das Angebot der Instanz (Einstellungen, je Bereich) — nur Titel, Satz und Link, und jedes Angebot nur einmal (im
+ * Vertriebscheck zeigen alle Bereiche auf das Vertriebs-Angebot). EINE Stelle für Ergebnis-Ansicht und Bericht per Mail.
+ */
+export function schritteMitAngeboten(schritte: ErgebnisAnsicht['schritte'], e: Pick<CheckEinstellungen, 'angebote'>) {
+  const gezeigt = new Set<string>();
+  return schritte.map(({ angebot: bereich, ...x }) => {
+    const a = bereich && !gezeigt.has(bereich) ? e.angebote?.[bereich] : undefined;
+    if (a && bereich) gezeigt.add(bereich);
+    return { ...x, ...(a ? { angebot: a } : {}) };
+  });
 }

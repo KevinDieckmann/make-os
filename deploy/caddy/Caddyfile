@@ -156,7 +156,8 @@ fokusinnovation.de {
 	# einschaltet). Nur diese Pfade gehen an die App; die App setzt für sie ihre eigenen strengen Köpfe (next.config.mjs, `buchung`).
 	# /_next/* sind die Skripte und Stile dieser Seiten, /schriften/* die Schrift des Checks.
 	# 30.10.: die Newsletter-Anmeldung (/newsletter, POST /api/newsletter — kommt ausgeschaltet; das Token steht nur im Fragment).
-	@app path /check /api/check /newsletter /api/newsletter /buchen /buchen/* /api/buchung /api/buchung/* /_next/* /schriften/*
+	# 31.10.: Unterlagen per E-Mail anfordern (GET/POST /api/unterlage, Download-Link /api/unterlage/laden — ohne Website-Absender aus).
+	@app path /check /api/check /newsletter /api/newsletter /api/unterlage /api/unterlage/* /buchen /buchen/* /api/buchung /api/buchung/* /_next/* /schriften/*
 	handle @app {
 		header {
 			Strict-Transport-Security "max-age=31536000"

@@ -40,6 +40,9 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   'check': ['POST'],
   // Kontaktformular der Website (31.10.): POST senden (ausgeschaltet 404), GET nur „an/aus“ für den Knopf; die Seite /anfrage ist kein API-Weg.
   'anfrage': ['GET', 'POST'],
+  // Unterlagen per E-Mail (31.10.): Titel/Hinweis lesen, anfordern (ohne Website-Absender 404) und der Download-Link aus der Mail.
+  'unterlage': ['GET', 'POST'],
+  'unterlage/laden': ['GET'],
   // Newsletter-Anmeldung über die Website (30.10.): nur POST, die Seite /newsletter ist kein API-Weg; ausgeschaltet 404.
   'newsletter': ['POST'],
   'abmelden/[token]': ['GET', 'POST'],

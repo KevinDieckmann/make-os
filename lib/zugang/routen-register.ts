@@ -445,6 +445,9 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Kontaktformular der Website (31.10., Website-Anbau, lib/kontaktformular/*).
   'anfrage': r('GET,POST', 'offen', 'Öffentliches Kontaktformular der Website: enge Regex in der Middleware; GET nur „aktiv: ja/nein“ (keine Daten, gedrosselt, schreibt nichts); POST kommt AUS (404), immer dieselbe Antwort, Drossel, Honigtopf, signierter Stempel, ≤ 8 KB — Eingang nur über den Anfrage-Weg, keine Mail, handelt nie als Person.'),
   'kontaktformular/intern': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Schalter des Kontaktformulars: lesen im Haushalt, umschalten nur ein Inhaber per Sitzung (Dienstweg 403).'),
+  // Unterlagen per E-Mail anfordern (31.10., lib/unterlagen/*): große Vorlagen der Website gibt es nur per Mail.
+  'unterlage': r('GET,POST', 'offen', 'Öffentliches Anfordern einer großen Vorlage der Website: enge Regex in der Middleware; GET nur Titel, Newsletter-Wortlaut und Datenschutzhinweis; POST immer dieselbe Antwort (Mail, Anfrage im CRM, Newsletter nach der Antwort), ohne Website-Absender 404, Drossel je Netz, Grenze je Adresse, Honigtopf, ≤ 8 KB — handelt nie als Person.'),
+  'unterlage/laden': r('GET', 'offen', 'Download-Link aus der Mail: signiertes Token (Kennung + Ablauf 7 Tage, nie die Adresse), nur Dateien aus dem Katalog im Ordner unterlagen/, attachment + nosniff + CSP sandbox, Drossel je Netz, schreibt nichts — handelt nie als Person.'),
   'newsletter/intern': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Anmeldungen über die Website (Adressen maskiert) im Haushalt; Einstellungen (an/aus, Absender-Postfach = Freigabe der Bestätigungsmails, Text, Website), Löschen und CRM-Nachholen nur ein Inhaber per Sitzung (Dienstweg 403).'),
 
   // ── Konto, Anmeldung, System ───────────────────────────────────────────────────────────────────────────────

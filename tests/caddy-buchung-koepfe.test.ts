@@ -133,8 +133,9 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     expect(seite).toMatch(/^hide \*\.md$/m);
     expect(seite).not.toMatch(/browse/);
     // Welle 3 (29.10.): NUR Check, Newsletter-Anmeldung (30.10.) und Buchung (samt ihren Skripten und der Schrift) gehen an die App — nie /os,
-    // nie /api allgemein (auch nicht /api/newsletter/intern — die Pfadliste trägt kein /api/newsletter/*).
-    expect(seite).toMatch(/^@app path \/check \/api\/check \/newsletter \/api\/newsletter \/buchen \/buchen\/\* \/api\/buchung \/api\/buchung\/\* \/_next\/\* \/schriften\/\*$/m);
+    // nie /api allgemein (auch nicht /api/newsletter/intern — die Pfadliste trägt kein /api/newsletter/*). 31.10.: dazu die Unterlagen per E-Mail
+    // (/api/unterlage und /api/unterlage/* — dort gibt es nur die offene Schnittstelle und den Download-Link, nichts Internes).
+    expect(seite).toMatch(/^@app path \/check \/api\/check \/newsletter \/api\/newsletter \/api\/unterlage \/api\/unterlage\/\* \/buchen \/buchen\/\* \/api\/buchung \/api\/buchung\/\* \/_next\/\* \/schriften\/\*$/m);
     // Kontaktformular (31.10., Website-Anbau): eigener Block mit genau /anfrage und /api/anfrage — der zweite und letzte Weg an die App.
     expect(seite.match(/reverse_proxy/g)?.length).toBe(2);
     expect(seite).toMatch(/^@kontaktformular path \/anfrage \/api\/anfrage$/m);

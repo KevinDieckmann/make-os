@@ -108,6 +108,20 @@ function kontaktformularOffen(pfad: string, methode: string): boolean {
   return KONTAKTFORMULAR_API.test(pfad) && (methode === 'POST' || methode === 'GET' || methode === 'HEAD');
 }
 // ── Ende Kontaktformular ──
+// Unterlagen per E-Mail anfordern (31.10., lib/unterlagen/*): das Formular steht auf der statischen Website (Caddy leitet nur /api/unterlage* an die
+// App). Offen sind NUR GET/HEAD und POST auf `/api/unterlage` und GET/HEAD auf `/api/unterlage/laden` (der Download-Link aus der Mail — deshalb auch als
+// Navigation aus einem Mail-Programm erreichbar, also vor `crossSiteVerboten`). Die Routen handeln für niemanden (Köpfe gelöscht), drosseln selbst,
+// prüfen Honigtopf und Größe; ohne Website-Absender ist das Anfordern aus (404). Der Link trägt nur ein signiertes Token (Kennung + Ablauf, nie die
+// Adresse). Keine Ausnahme bei der Origin-Prüfung für POST (das Formular sendet von der Website, die über denselben Host kommt).
+// Wächter: tests/unterlage-anfordern.test.ts.
+const UNTERLAGE_API = /^\/api\/unterlage$/;
+const UNTERLAGE_LADEN = /^\/api\/unterlage\/laden$/;
+/** Ist dieser Weg ein offener Weg der Unterlagen (Pfad UND Methode)? */
+function unterlageOffen(pfad: string, methode: string): boolean {
+  const lesen = methode === 'GET' || methode === 'HEAD';
+  if (UNTERLAGE_API.test(pfad)) return lesen || methode === 'POST';
+  return UNTERLAGE_LADEN.test(pfad) && lesen;
+}
 // Schriften der öffentlichen Seiten (29.10.): der Check (und die helle Buchungsseite) laden Schibsted Grotesk aus public/schriften — ohne Sitzung
 // leitete die Middleware die Datei auf /anmelden um, der Browser bekam HTML statt der Schrift. Offen ist NUR eine einzelne .woff2 direkt im Ordner,
 // nur lesen; public/ trägt nichts Privates (Wächter: keine .html dort).
@@ -219,6 +233,8 @@ export async function middleware(req: NextRequest) {
   if (ABMELDE_OFFEN.some(r => r.test(pfad)) && (req.method === 'GET' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
   // Social-Medienlink: nie als jemand (Köpfe oben gelöscht), nur GET/HEAD — die Route liefert nur ein freigegebenes Medium.
   if (SOCIAL_MEDIEN_LINK.test(pfad) && (req.method === 'GET' || req.method === 'HEAD')) return NextResponse.next({ request: { headers: kopf } });
+  // Unterlagen per E-Mail: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung; der Download-Link auch aus einem Mail-Programm heraus.
+  if (unterlageOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
 
   // Eine Schnittstelle ist nie das Ziel einer Navigation von einer fremden Seite (26.09.): so kann kein
   // fremder Link mit dem Cookie im Gepäck eine GET-Route mit Wirkung auslösen.

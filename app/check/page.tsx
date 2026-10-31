@@ -17,7 +17,7 @@ import { pruefe, fehlschlag, adresseAusKoepfen, netzVon } from '@/lib/zugang/dro
 import { merken } from '@/lib/store/memo';
 import { vorlageVon, vorlageFuerThema, VORLAGEN, checkPfad } from '@/lib/check/katalog';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
-import { begruessung, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/zoe-texte';
+import { begruessung, gespraechSatz, kontaktSatz, kontaktSatzLang, WAHL_SATZ } from '@/lib/check/zoe-texte';
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
 import { ladeCheckEinstellungen } from '@/lib/check/speicher';
 import { zoeKontext, hinweisLaden } from '@/lib/check/server';
@@ -43,6 +43,9 @@ async function seitenDaten(vorlageId: string) {
     // Newsletter-Häkchen nur, wenn die Anmeldung der Instanz läuft — mit genau dem Wortlaut, der als Einwilligung gespeichert wird.
     const { newsletterBereit } = await import('@/lib/newsletter/server');
     const nl = await newsletterBereit().catch(() => null);
+    // Geht der Bericht wirklich per Mail (Website-Absender eingerichtet)? Sonst verspricht der ausführliche Check keine Mail.
+    const { websiteLage } = await import('@/lib/oeffentlich/website-post');
+    const perMail = !!(await websiteLage().catch(() => null));
     return {
       marke: k.marke,
       ...(e.claim ? { claim: e.claim } : {}),
@@ -52,7 +55,7 @@ async function seitenDaten(vorlageId: string) {
       seite: v.seite,
       // Die anderen Checks der Instanz (30.10. abends: in der Karte über dem Gespräch, „Weitere Checks“).
       weitere: Object.values(VORLAGEN).filter(x => x.id !== v.id).map(x => ({ name: x.name, pfad: checkPfad(x.id), text: (x.seite.bereiche ?? []).map(b => b.name).join(' · ') })),
-      zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
+      zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), kontaktLang: kontaktSatzLang(k, perMail), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
       hinweis: { zeilen: hinweis.zeilen, link: hinweis.link, fassung: HINWEIS_FASSUNG },
       ...(nl ? { newsletter: { wortlaut: nl.wortlaut, fassung: nl.fassung } } : {}),
       // Zoe-Begleiterin (31.10., Website-Anbau): feste Texte, Weg zum Kontaktformular nur, wenn es läuft.

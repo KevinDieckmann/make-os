@@ -44,6 +44,8 @@ function zeile(s: CheckSitzung) {
     check: vorlageVon(s.vorlage)?.name ?? s.vorlage,
     bereiche: s.ergebnis?.saeulen ? (vorlageVon(s.vorlage)?.regeln.saeulen ?? []).filter(sa => s.ergebnis!.saeulen![sa.key] !== undefined).map(sa => ({ name: sa.name, wert: s.ergebnis!.saeulen![sa.key]! })) : [],
     crm: s.crm ? { status: s.crm.status, kontaktId: s.crm.kontaktId ?? null, ...(s.crm.unbestaetigt ? { unbestaetigt: true } : {}), ...(s.crm.status !== 'ok' && s.crm.grund ? { grund: s.crm.grund } : {}) } : null,
+    // Bericht per E-Mail (31.10.): nur der Stand für den Haushalt (Absender maskiert, Grund ohne Adresse).
+    bericht: s.bericht ? { status: s.bericht.status, am: s.bericht.am, ...(s.bericht.ueber ? { ueber: s.bericht.ueber } : {}), ...(s.bericht.grund ? { grund: s.bericht.grund } : {}) } : null,
     belegeOffen: offen,
   };
 }

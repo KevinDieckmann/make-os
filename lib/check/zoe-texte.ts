@@ -53,7 +53,27 @@ export const kontaktSatz = (k: ZoeKontext): string[] => [
   'Ihr Ergebnis sehen Sie gleich hier, egal wie Sie sich entscheiden.',
 ];
 
-export const WAHL_SATZ = 'Möchten Sie Ihr Ergebnis jetzt sehen oder noch ein paar Fragen mehr beantworten? Dann wird Ihr Bericht genauer.';
+/**
+ * Kontakt-Frage im AUSFÜHRLICHEN Check (31.10., Kevin: „bei den großen sachen müssen sie nachher ihre email abgeben“): ehrlich — ohne Adresse gibt
+ * es nur die Stufe, der ganze Bericht kommt per E-Mail (`perMail`: der Website-Absender ist eingerichtet; sonst sieht man ihn hier mit Adresse).
+ */
+export const kontaktSatzLang = (k: ZoeKontext, perMail = true): string[] => [
+  'Geschafft, das waren alle Fragen.',
+  perMail
+    ? 'Ihren vollständigen Bericht schicke ich Ihnen per E-Mail: je Bereich Ihr Wert und der Vergleich mit Ihrer Branche, dazu Ihre nächsten Schritte mit passenden Angeboten.'
+    : 'Mit Ihren Kontaktdaten sehen Sie hier gleich Ihren vollständigen Bericht: je Bereich Ihr Wert und der Vergleich mit Ihrer Branche, dazu Ihre nächsten Schritte mit passenden Angeboten.',
+  `Mit Ihrer Adresse können Sie danach auch das kostenlose Erstgespräch mit ${k.gastgeber} buchen. Ohne Adresse zeige ich Ihnen gleich nur Ihre Stufe.`,
+];
+
+/** Ohne Kontakt im ausführlichen Check: nur die Stufe, dazu, was im Bericht steht — keine Zahl je Bereich. */
+export const vorschauSaetze = (e: { stufe: number; stufeName: string; gesamt: number }, perMail = true): string[] => [
+  `Sie stehen auf Stufe ${e.stufe}: ${e.stufeName} (${e.gesamt} von 100 Punkten).`,
+  perMail
+    ? 'Wie Sie in jedem Bereich abschneiden, wo Sie im Vergleich zu Ihrer Branche stehen und welche Schritte jetzt am meisten bringen, steht in Ihrem vollständigen Bericht. Den schicke ich Ihnen per E-Mail.'
+    : 'Wie Sie in jedem Bereich abschneiden, wo Sie im Vergleich zu Ihrer Branche stehen und welche Schritte jetzt am meisten bringen, sehen Sie mit Ihren Kontaktdaten.',
+];
+
+export const WAHL_SATZ ='Möchten Sie Ihr Ergebnis jetzt sehen oder noch ein paar Fragen mehr beantworten? Dann wird Ihr Bericht genauer.';
 
 const DIM_NAME: Readonly<Record<DimKey, string>> = {
   strategie: 'Strategie und Führung', ki: 'KI im Alltag', automatisierung: 'Automatisierung', daten: 'Daten und Systeme', robotik: 'Robotik', team: 'Team und Kompetenz',

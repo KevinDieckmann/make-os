@@ -555,17 +555,22 @@ export function verarbeitungWhatsappNachtragen(vorhanden: readonly Verarbeitung[
 // Rechtsberatung — anwaltlich gegenlesen (offener Punkt der Bauanleitung); bei Live-KI, Sprache, Upload oder Mail-Strecke neu fassen.
 
 export const VV_CHECK_ID = 'vv-innovations-check';
+/** Bis 31.10.: ohne den Bericht per E-Mail — unveränderte Bestände hebt `ALTE_FASSUNGEN`. */
+const VV_CHECK_ZWECK_ALT = 'Kostenlose Standortbestimmung für Unternehmen: Antworten per Klick auswerten (Stufe, Dimensionen, Branchenvergleich), auf Wunsch Bericht und kostenloses Gespräch, Anfrage im Kundensystem (Follow-up), Kennzahlen des Checks';
+const VV_CHECK_ZWECK = 'Kostenlose Standortbestimmung für Unternehmen: Antworten per Klick auswerten (Stufe, Dimensionen, Branchenvergleich), mit Kontaktdaten der Bericht per E-Mail (einmal je Teilnahme, über den Website-Absender; der ausführliche Check zeigt ohne Kontaktdaten nur die Stufe) und das kostenlose Gespräch, Anfrage im Kundensystem (Follow-up), Kennzahlen des Checks';
+const VV_CHECK_EMPFAENGER_ALT = 'Konten des Haushalts (Business-Bereich); Hetzner (Hosting) — keine Weitergabe an ein KI-Modell in dieser Fassung';
+const VV_CHECK_EMPFAENGER = 'Konten des Haushalts (Business-Bereich); das Absender-Postfach der Website (Google Workspace bzw. E-Mail-Anbieter) für den Bericht per E-Mail; Hetzner (Hosting) — keine Weitergabe an ein KI-Modell in dieser Fassung';
 
 export function verarbeitungCheck(jetzt: string): Verarbeitung {
   return {
     id: VV_CHECK_ID, name: 'Innovations-Check der Website',
-    zweck: 'Kostenlose Standortbestimmung für Unternehmen: Antworten per Klick auswerten (Stufe, Dimensionen, Branchenvergleich), auf Wunsch Bericht und kostenloses Gespräch, Anfrage im Kundensystem (Follow-up), Kennzahlen des Checks',
+    zweck: VV_CHECK_ZWECK,
     personen: 'Unternehmerinnen, Unternehmer und Mitarbeitende, die den Check ausfüllen; Konten des Haushalts (Bearbeitung)',
     daten: 'Antworten zur Firma (Klicks, Beispiel-Texte), Profil (Branche, Größe, Rolle, Ziel), freiwillig Vorname, E-Mail, Firma, Telefon, Newsletter-Wunsch, Fassung des Hinweises, Herkunft (Quelle), Ergebnis und Lead-Klasse, Zeitpunkte; Zugang je Sitzung nur über ein Zufalls-Token (gespeichert als Fingerabdruck)',
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (vom Teilnehmer angefragte Auswertung, Bericht und Gespräch); Newsletter nur mit eigener Checkbox und Double-Opt-in (Art. 6 Abs. 1 lit. a, § 7 UWG)',
-    empfaenger: 'Konten des Haushalts (Business-Bereich); Hetzner (Hosting) — keine Weitergabe an ein KI-Modell in dieser Fassung',
-    empfaengerIds: ['hetzner'],
-    drittland: 'keine',
+    empfaenger: VV_CHECK_EMPFAENGER,
+    empfaengerIds: ['hetzner', 'google-workspace', 'ionos'],
+    drittland: 'je nach Absender-Postfach der Website (Google Workspace: USA, Konzern); sonst keine',
     loeschfrist: 'ohne Kontaktdaten 30 Tage, mit Kontaktdaten 24 Monate nach der letzten Änderung (für den kostenlosen Re-Check); Anfrage im Kundensystem nach den Fristen der Kartei; Art. 17 sofort',
     toms: 'Öffentliche Strecke nur über eine eng gefasste Adresse, kommt ausgeschaltet; Token je Sitzung (nur als Fingerabdruck gespeichert), Drossel je Netz, Honigtopf, Mindestzeit vor den Kontaktdaten, Größengrenzen; strenge Sicherheits-Köpfe (keine Rahmen, kein Referrer, nicht indexieren); Punkte und Bewertungen nie im Browser; Bestände verschlüsselt auf der Platte, Server in Deutschland (Hetzner); Zugang zur Auswertung nur im Haushalt',
     verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
@@ -595,8 +600,30 @@ export function verarbeitungSocial(jetzt: string): Verarbeitung {
     drittland: 'Meta- bzw. LinkedIn-Konzern (USA) — Garantie prüfen; Anthropic: Standardvertragsklauseln',
     loeschfrist: 'Kommentare und Direktnachrichten 180 Tage (Spiegel; Original bei Instagram); Beiträge und Zahlen bis der Kanal entfernt wird; Zugriffstoken bis zum Trennen; Art. 17 sofort',
     toms: 'Verbinden nur per Anmeldung beim Anbieter (OAuth, einmaliger state), Token verschlüsselt nur auf dem Server (nie im Browser, nie im Log), Medien für Instagram nur über kurzlebige Links (60 Min., nur Fingerabdruck gespeichert), Antworten nur per Klick oder im ausdrücklich gewählten Modus mit Tageslimit und Not-Aus, Texte Dritter an die KI nur gekapselt, Bestände verschlüsselt auf der Platte, Server in Deutschland (Hetzner)',
+// ── Verarbeitung „Unterlagen per E-Mail über die Website“ (31.10., lib/unterlagen/*) — nachgetragen, sobald Website-Absender und Katalog da sind ──
+// Kevin 31.10.: große Vorlagen der Website gibt es nur per Mail. Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
+
+export const VV_UNTERLAGEN_ID = 'vv-website-unterlagen';
+
+export function verarbeitungUnterlagen(jetzt: string): Verarbeitung {
+  return {
+    id: VV_UNTERLAGEN_ID, name: 'Unterlagen per E-Mail über die Website',
+    zweck: 'Große Vorlagen der Website (Arbeitshefte, Tabellen) auf Anforderung per E-Mail schicken: Mail mit Download-Links (7 Tage gültig), Anfrage im Kundensystem (Follow-up), auf Wunsch die Newsletter-Anmeldung (eigener Eintrag, Double-Opt-in)',
+    personen: 'Personen, die auf der Website eine Unterlage anfordern; Konten des Haushalts (Bearbeitung der Anfrage)',
+    daten: 'Vorname, E-Mail-Adresse, Firma (freiwillig), welche Unterlage, Zeitpunkt; kein eigener Bestand — die Anforderung steht als Anfrage in der Kartei; der Download-Link trägt nur Kennung der Unterlage und Ablauf (signiert), nie die Adresse; Zähler je Adresse und Tag nur als Fingerabdruck im Arbeitsspeicher',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (von der Person angeforderte Zusendung und Antwort auf ihre Anfrage); Newsletter nur mit eigener Checkbox und Double-Opt-in (Art. 6 Abs. 1 lit. a, § 7 UWG)',
+    empfaenger: 'Konten des Haushalts (Business-Bereich); das Absender-Postfach der Website (Google Workspace bzw. E-Mail-Anbieter) für die Mail; Hetzner (Hosting)',
+    empfaengerIds: ['hetzner', 'google-workspace', 'ionos'],
+    drittland: 'je nach Absender-Postfach der Website (Google Workspace: USA, Konzern)',
+    loeschfrist: 'Anfrage im Kundensystem nach den Fristen der Kartei (ohne weitere Interaktion Prüfung nach 24 Monaten); die Mail im Postfach des Absenders nach dessen Fristen; Art. 17 sofort',
+    toms: 'Öffentliche Schnittstelle nur über eine eng gefasste Adresse, aus ohne Website-Absender; dieselbe Antwort für jede Adresse (Arbeit nach der Antwort); höchstens 3 Mails je Adresse und Tag über alle Website-Mails; Drossel je Netz, Honigtopf, Größengrenze; Download nur aus dem Katalog im nicht öffentlichen Ordner, als Anhang mit nosniff und sandbox; Art. 18, Werbesperre und Sperrliste werden vor jeder Mail geprüft; fester Text, keine KI',
     verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
   };
+}
+
+/** Die Verarbeitung „Unterlagen per E-Mail über die Website“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungUnterlagenNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_UNTERLAGEN_ID) ? [...vorhanden] : [...vorhanden, verarbeitungUnterlagen(jetzt)];
 }
 
 // ── Verarbeitung „Newsletter-Anmeldung über die Website“ (30.10., lib/newsletter/*) — idempotent nachgetragen, sobald die Anmeldung eingerichtet ist ──
@@ -735,6 +762,8 @@ const VV_KONTEN_DATEN = 'Name, Hauptadresse und bis zu drei weitere Anmelde-Adre
 /** Empfänger-Kennungen, die eine neuere Fassung ergänzt — nur, solange die gespeicherte Liste GENAU eine alte ist (von Hand Geändertes bleibt). */
 const ALTE_EMPFAENGER_IDS: Record<string, { alt: readonly (readonly string[])[]; neu: readonly string[] }> = {
   'vv-medien': { alt: [['hetzner', 'anthropic']], neu: VV_MEDIEN_EMPFAENGER_IDS },
+  // 31.10.: der Bericht der Checks geht per E-Mail über den Website-Absender.
+  [VV_CHECK_ID]: { alt: [['hetzner']], neu: ['hetzner', 'google-workspace', 'ionos'] },
 };
 /** Fassungen, die der Nachtrag ersetzt, solange niemand sie von Hand geändert hat (vorhandene Verzeichnisse). */
 const ALTE_FASSUNGEN: Record<string, Partial<Record<keyof Verarbeitung, { alt: string | string[]; neu: string }>>> = {
@@ -746,6 +775,8 @@ const ALTE_FASSUNGEN: Record<string, Partial<Record<keyof Verarbeitung, { alt: s
   'vv-konten': { daten: { alt: VV_KONTEN_DATEN_ALT, neu: VV_KONTEN_DATEN } },
   [VV_KALENDER_GOOGLE_ID]: { zweck: { alt: VV_KAL_GOOGLE_ZWECK_ALT, neu: VV_KAL_GOOGLE_ZWECK }, daten: { alt: VV_KAL_GOOGLE_DATEN_ALT, neu: VV_KAL_GOOGLE_DATEN }, toms: { alt: VV_KAL_GOOGLE_TOMS_ALT, neu: VV_KAL_GOOGLE_TOMS } },
   [VV_FULFILLMENT_ANALYSE_ID]: { rechtsgrundlage: { alt: VV_FULFILLMENT_ANALYSE_RECHT_ALT, neu: VV_FULFILLMENT_ANALYSE_RECHT } },
+  // 31.10.: Bericht per E-Mail über den Website-Absender.
+  [VV_CHECK_ID]: { zweck: { alt: VV_CHECK_ZWECK_ALT, neu: VV_CHECK_ZWECK }, empfaenger: { alt: VV_CHECK_EMPFAENGER_ALT, neu: VV_CHECK_EMPFAENGER }, drittland: { alt: 'keine', neu: 'je nach Absender-Postfach der Website (Google Workspace: USA, Konzern); sonst keine' } },
 };
 
 export function verarbeitungenOrganisation(jetzt: string): Verarbeitung[] {
@@ -848,7 +879,7 @@ export function verarbeitungNeutral(v: Verarbeitung): Verarbeitung {
   return v.empfaengerIds ? { ...aus, empfaengerIds: v.empfaengerIds.filter(id => !NUR_BETREIBER_EMPFAENGER.includes(id)) } : aus;
 }
 
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean; social?: boolean; newsletter?: boolean; kontaktformular?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean; social?: boolean; newsletter?: boolean; kontaktformular?: boolean; unterlagen?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -868,6 +899,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   if (opt.newsletter) l = verarbeitungNewsletterNachtragen(l, jetzt);
   // Kontaktformular der Website (31.10.): sobald es eingeschaltet ist (`kontaktformularEingerichtet`).
   if (opt.kontaktformular) l = verarbeitungKontaktformularNachtragen(l, jetzt);
+  // Unterlagen per E-Mail über die Website (31.10.): sobald Website-Absender und Katalog da sind (`unterlagenEingerichtet`).
+  if (opt.unterlagen) l = verarbeitungUnterlagenNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = verarbeitungEmailKundenNachtragen(l, jetzt);
