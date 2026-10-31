@@ -7,12 +7,20 @@
 // (z. B. Partnerdarlehen). Oben die Verknüpfung zum Umsatzziel aus dem Controlling.
 // 24.09.: auf das lebendige Muster umgezogen (Karten, Leuchtfarben, Listen).
 // 08.10. (Aufräumen Etappe 2): keine eigene Seite mehr — Reiter „Rechnungen & Zahlungen“ unter Finanzen › Business (/os/finanzen/planung leitet weiter).
+// 31.10. (Kevin: Rechnungen & Zahlungen wird eine Arbeitsfläche wie Inbox/Kontakte): die Teile stehen jetzt dort, wo sie hingehören — EIN Bestand,
+// EINE Logik, nur der Ort je `teil`:
+//   ueberblick   Finanzmeeting · Jahresziel · Produkte (Entwürfe, im Meeting festzurren) → Finanzen › Business › Cockpit
+//   liquiditaet  Planposten & ältere Rechnungen · Merkposten (mit den erhaltenen Krediten) → Finanzen › Business › Liquidität
+//   zahlungen    Zahlungs-Prioritäten (`?z=`) → Rechnungen & Zahlungen, Umschalter „Zahlungen“
+// „Cash · beide Konten“ und die Karten je Firma (Kontostand „gepflegt unter Liquidität“) sind weg — Liquidität zeigt dieselben Konten (KontenKarte)
+// und „heute auf den Konten“; offene Forderungen stehen in der Rechnungsliste, „zu zahlen“ unter Zahlungen.
 
 import { BUSINESS_GESELLSCHAFTEN, bereichVonFirma } from '@/lib/einheiten';
 import { useGeltendeEroeffnung } from './business/Eroeffnung';
 import { abEroeffnung, rechnungVor, zahlungVor } from '@/lib/business/eroeffnung';
 import { mitRegister } from '@/lib/finanzen/konten/register';
 import { useKontenKasse } from './konten/KontenKarte';
+import { ListenAbschnitt } from './ui/arbeitsflaeche';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
@@ -83,7 +91,12 @@ function Zeichen({ onClick, aus, label, children }: { onClick: () => void; aus?:
   );
 }
 
-export function FinanzplanungView() {
+/** Wo die Teile stehen (31.10.) — siehe Kopf. */
+export type FinanzplanungTeil = 'ueberblick' | 'liquiditaet' | 'zahlungen';
+/** Liquidität hört darauf und lädt den Finanzplan neu (Planposten ändern die Vorschau sofort, nicht erst beim nächsten Abgleich). */
+export const FINANZPLAN_GEAENDERT = 'make-finanzplan-geaendert';
+
+export function FinanzplanungView({ teil }: { teil: FinanzplanungTeil }) {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [finance, setFinance] = useState<FinanceState | null>(null);
   // 0-Punkt (05.10.): Summen ab der Eröffnung je Gesellschaft; ältere Posten bleiben in den Listen (Kennzeichen „vor dem 0-Punkt“).
@@ -106,7 +119,7 @@ export function FinanzplanungView() {
   // kommt als 409 zurück, der Hook übernimmt dann den Serverstand, hier steht der Hinweis.
   const planSpeichern = useSpeichern('/api/state/finanzplan', {
     listen: FINANZPLAN_LISTEN, standFeld: 'fassung', uebernehmen: st => setPlan(st as unknown as Plan),
-    danach: (ok, f) => { if (!ok && f && f.status >= 400) setHinweis(`${f.fehler ?? 'Nicht gespeichert.'}${f.status === 409 ? ' Der aktuelle Stand ist geladen.' : ''}`); },
+    danach: (ok, f) => { if (ok) window.dispatchEvent(new Event(FINANZPLAN_GEAENDERT)); if (!ok && f && f.status >= 400) setHinweis(`${f.fehler ?? 'Nicht gespeichert.'}${f.status === 409 ? ' Der aktuelle Stand ist geladen.' : ''}`); },
   });
   // Nur ein echter Bestand wird zum Plan (Gesamtprüfung 12.10.): eine Fehlerantwort (403/5xx) ließe sonst die Ansicht abbrechen.
   const ladePlan = useCallback(() => fetch('/api/state/finanzplan').then(r => (r.ok ? r.json() : null)).then((d: Plan | null) => {
@@ -120,13 +133,14 @@ export function FinanzplanungView() {
   useAbgleich(ladePlan, { pausiert: planSpeichern.hatOffenes });
   // Aus einem Link (?r=<Rechnung> bzw. ?z=<Zahlung>, z. B. hinter „Überfällige Forderungen“): hinspringen und hervorheben.
   const zielR = useZiel('r'), zielZ = useZiel('z');
-  useZuZiel(zielR ?? zielZ, !!plan);
+  // Je Ort nur sein Ziel: Planposten (`?r=`) unter Liquidität, Zahlungen (`?z=`) in Rechnungen & Zahlungen — `?r=` öffnet dort die Rechnung im Detail.
+  useZuZiel(teil === 'liquiditaet' ? zielR : teil === 'zahlungen' ? zielZ : null, !!plan);
   function speichern(next: Plan) {
     setPlan(next);
     planSpeichern.speichern(next);
   }
 
-  if (!plan) return <Karte i={0}><Leer>lade …</Leer></Karte>;
+  if (!plan) return teil === 'zahlungen' ? <Leer>lade …</Leer> : <Karte i={0}><Leer>lade …</Leer></Karte>;
 
   const m = finance ? computeMetrics(finance) : null;
   // Privat zählt hier nicht mit — die privaten Konten stehen unter Zahlen → Privat.
@@ -140,7 +154,6 @@ export function FinanzplanungView() {
   // Storno, Kopie). Hier bleiben die Planposten und älteren Rechnungen ohne Positionen — mit ihren Feldern von Hand (Nummer extern, Angebot, Betrag).
   const rechnungenB = plan.rechnungen.filter(r => imBusiness(r.firmaId) && !r.positionen);
   const zahlungenB = plan.zahlungen.filter(z => imBusiness(z.firmaId));
-  const cash = firmenB.reduce((s, f) => s + (f.kontostand ?? 0), 0);
   const gestellt = ab.rechnungen.filter(r => r.status === 'gestellt');
   const geplant = ab.rechnungen.filter(r => r.status === 'geplant');
   const sum = (list: Rechnung[]) => list.reduce((s, r) => s + r.betrag, 0);
@@ -166,7 +179,7 @@ export function FinanzplanungView() {
       .then(x => x.json()).catch(() => null) as { ok?: boolean; stand?: Plan; error?: string } | null;
     // 3.11 (08.10.): der Fehler steht sichtbar da — vorher landete er nur in der Konsole.
     if (!d?.ok || !d.stand) { setHinweis(`Nicht als bezahlt gespeichert: ${d?.error ?? 'keine Verbindung'}. Der aktuelle Stand ist geladen.`); void ladePlan(); return; }
-    planSpeichern.kenne(d.stand);
+    planSpeichern.kenne(d.stand); window.dispatchEvent(new Event(FINANZPLAN_GEAENDERT));
     if (!planSpeichern.hatOffenes()) setPlan(d.stand);
   }
   /** Stornieren (28.09., K3): ein Server-Schritt mit Grund; Gegenbuchung, falls schon ein Zahlungseingang gebucht ist. */
@@ -178,6 +191,7 @@ export function FinanzplanungView() {
     if (!d) { setHinweis('Keine Verbindung — nichts storniert.'); return; }
     if (d.stand) { planSpeichern.kenne(d.stand); if (!planSpeichern.hatOffenes()) setPlan(d.stand); }
     if (!d.ok) { setHinweis(d.error ?? 'Nicht storniert.'); if (!d.stand) void ladePlan(); return; }
+    window.dispatchEvent(new Event(FINANZPLAN_GEAENDERT));
     // Rechnung mit PDF (08.10.): Storno = Stornorechnung mit eigener Nummer und eigenem PDF.
     setHinweis(d.stornoRechnung ? `Storniert — Stornorechnung ${d.stornoRechnung.nummer ?? ''} mit eigenem PDF angelegt${d.gegenbuchung === 'neu' ? ', Gegenbuchung zum Zahlungseingang gebucht' : ''}.` : d.gegenbuchung === 'neu' ? 'Storniert — zum Zahlungseingang ist die Gegenbuchung angelegt.' : null);
   }
@@ -203,7 +217,7 @@ export function FinanzplanungView() {
     <>
       {hinweis && <Hinweis art={hinweis.startsWith('Storniert') ? 'gut' : 'achtung'} rolle="status" aktion={<Knopf leise onClick={() => setHinweis(null)}>Schließen</Knopf>}>{hinweis}</Hinweis>}
       {/* ── Finanzmeeting — das Uhrwerk: 2× im Monat, läuft immer wieder durch ── */}
-      <Karte i={0} akzent={meetingUeberfaellig ? LEUCHT.kritisch : undefined}>
+      {teil === 'ueberblick' && <Karte i={0} akzent={meetingUeberfaellig ? LEUCHT.kritisch : undefined}>
         <Ueberschrift farbe={meetingUeberfaellig ? LEUCHT.kritisch : agendaOffen ? LEUCHT.achtung : LEUCHT.gut}
           rechts={<><Chip farbe={agendaOffen ? LEUCHT.achtung : LEUCHT.gut}>{uhrwerk.agenda.length - agendaOffen}/{uhrwerk.agenda.length}</Chip>
             <span style={{ color: meetingUeberfaellig ? LEUCHT.kritisch : C.inkLeise }}>
@@ -229,10 +243,10 @@ export function FinanzplanungView() {
           <Knopf onClick={() => speichern({ ...plan, uhrwerk: { letztesMeeting: heute, agenda: uhrwerk.agenda.map(a => ({ ...a, done: false })) } })}>✓ Meeting abgeschlossen</Knopf>
           <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>stempelt das Datum und setzt die Liste fürs nächste Mal zurück</span>
         </div>
-      </Karte>
+      </Karte>}
 
       {/* Ziel-Verknüpfung: dieselben Zahlen wie im Controlling */}
-      {m && finance && (
+      {teil === 'ueberblick' && m && finance && (
         <Karte i={1}>
           <Ueberschrift farbe={LEUCHT.business} rechts={<Link href={WEG.controlling()} style={{ color: C.inkLeise, textDecoration: 'none' }}>Controlling ›</Link>}>Jahresziel</Ueberschrift>
           {/* B12 (14.10.): ohne Jahresziel kein „0 €“ als Ziel — Leerzustand mit Weg ins Controlling (dort wird es eingetragen). */}
@@ -246,42 +260,8 @@ export function FinanzplanungView() {
         </Karte>
       )}
 
-      {/* KPIs */}
-      <Karte i={2} akzent={LEUCHT.geld}>
-        <Ueberschrift farbe={LEUCHT.geld}>Cash · beide Konten</Ueberschrift>
-        <Zahl gross wert={firmenB.some(f => f.kontostand != null) ? eur(cash) : undefined} farbe={cash < 0 ? LEUCHT.kritisch : LEUCHT.geld} label={firmenB.some(f => f.kontostand != null) ? anzahl(firmenB.length, 'Konto', 'Konten') : 'noch kein Kontostand eingetragen'} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginTop: 14 }}>
-          <Zahl wert={eur(sum(gestellt))} label={`offene Forderungen · ${gestellt.length}`} farbe={gestellt.length ? LEUCHT.achtung : C.inkLeise} />
-          <Zahl wert={eur(sum(geplant))} label={`in Vorbereitung · ${geplant.length}`} />
-          <Zahl wert={eur(zuZahlen.reduce((s, z) => s + z.betrag, 0))} label={`zu zahlen · ${zuZahlen.length} offen`} farbe={zuZahlen.length ? LEUCHT.kritisch : C.inkLeise} />
-          <Zahl wert={eur(kredite)} label="Kredite erhalten" farbe={kredite ? KREDIT : C.inkLeise} />
-        </div>
-      </Karte>
-
-      {/* Firmen & Konten */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-        {firmenB.map((f, fi) => {
-          const offen = ab.rechnungen.filter(r => r.firmaId === f.id && r.status === 'gestellt');
-          return (
-            <Karte key={f.id} i={3 + fi}>
-              <Ueberschrift farbe={offen.length ? LEUCHT.achtung : LEUCHT.gut} rechts={f.bank}>{f.name}</Ueberschrift>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>Kontostand</span>
-                <Link href={WEG.kontostaende()} style={{ fontFamily: SCHRIFT.display, fontSize: 17, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: f.kontostand == null ? C.inkLeise : C.ink, textDecoration: 'none' }}>{f.kontostand == null ? 'eintragen' : eur(f.kontostand)} ›</Link>
-                <span style={leise}>{f.stand ? `Stand ${datum(f.stand)} · ` : ''}gepflegt unter Liquidität</span>
-              </div>
-              <div style={{ marginTop: 10 }}>
-                <Chip farbe={offen.length ? LEUCHT.achtung : C.inkLeise}>
-                  {offen.length ? `${offen.length} Rechnung${offen.length > 1 ? 'en' : ''} offen · ${eur(sum(offen))}` : 'keine offenen Forderungen'}
-                </Chip>
-              </div>
-            </Karte>
-          );
-        })}
-      </div>
-
-      {/* Rechnungs-Pipeline */}
-      <Karte i={3 + firmenB.length}>
+      {/* Rechnungs-Pipeline — Planposten (geplante Rechnungen ohne Positionen) und Altbestand: erwartetes Geld, darum unter Liquidität (31.10.). */}
+      {teil === 'liquiditaet' && <Karte i={3}>
         <Ueberschrift farbe={LEUCHT.gut} rechts="Klick auf den Status: geplant → gestellt → bezahlt · ab gestellt stornieren statt löschen">Planposten & ältere Rechnungen</Ueberschrift>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {rechnungenB.map(r => {
@@ -370,11 +350,11 @@ export function FinanzplanungView() {
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 12, lineHeight: 1.6 }}>
           Bezahlt? Der Zahlungseingang wird automatisch als Buchung angelegt; der Monatsumsatz kommt aus dem <Link href={WEG.abschluss()} style={{ color: C.aktiv, textDecoration: 'none' }}>Monatsabschluss</Link> (Finanzen › Business) — dort zählt er aufs Jahresziel.
         </div>
-      </Karte>
+      </Karte>}
 
-      {/* ── Zahlungs-Prioritäten: was zuerst bezahlt wird, steht oben ── */}
-      <Karte i={4 + firmenB.length}>
-        <Ueberschrift farbe={LEUCHT.achtung} rechts="oben = zuerst · ▲▼ ordnen">Zahlungs-Prioritäten</Ueberschrift>
+      {/* ── Zahlungs-Prioritäten: was zuerst bezahlt wird, steht oben — seit 31.10. ein Abschnitt der Arbeitsfläche „Rechnungen & Zahlungen“ ── */}
+      {teil === 'zahlungen' && <ListenAbschnitt id="zahlungen" titel="Zahlungs-Prioritäten" farbe={LEUCHT.achtung}
+        rechts={`${zuZahlen.length ? `${anzahl(zuZahlen.length, 'offen', 'offen')} · ${eur(zuZahlen.reduce((s, z) => s + z.betrag, 0))} · ` : ''}oben = zuerst`}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {zahlungenB.map((z, i) => {
             const spaet = z.status === 'offen' && z.faellig && z.faellig < heute;
@@ -415,10 +395,10 @@ export function FinanzplanungView() {
             setNeuZ({ an: '', titel: '', betrag: '', faellig: '', firmaId: neuZ.firmaId });
           }}>+ Zahlung</Knopf>
         </div>
-      </Karte>
+      </ListenAbschnitt>}
 
-      {/* ── Produkte: 2–3 Pakete, im Meeting festzurren ── */}
-      <Karte i={5 + firmenB.length}>
+      {/* ── Produkte: 2–3 Pakete, im Meeting festzurren (steht beim Finanzmeeting) ── */}
+      {teil === 'ueberblick' && <Karte i={2}>
         <Ueberschrift farbe={LEUCHT.business} rechts="Entwürfe — im Finanzmeeting festzurren, Klick auf Status aktiviert">Produkte</Ueberschrift>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 10 }}>
           {plan.produkte.map(p => (
@@ -441,11 +421,11 @@ export function FinanzplanungView() {
             </div>
           ))}
         </div>
-      </Karte>
+      </Karte>}
 
-      {/* Merkposten */}
-      <Karte i={6 + firmenB.length}>
-        <Ueberschrift farbe={KREDIT}>Merkposten</Ueberschrift>
+      {/* Merkposten (Kredite) — gehören zum Geld, das da ist und kommt: unter Liquidität (31.10.); „Kredite erhalten“ stand vorher in „Cash · beide Konten“. */}
+      {teil === 'liquiditaet' && <Karte i={4}>
+        <Ueberschrift farbe={KREDIT} rechts={kredite ? `Kredite erhalten · ${eur(kredite)}` : undefined}>Merkposten</Ueberschrift>
         <Liste>
           {plan.merkposten.map(x => (
             <Zeile key={x.id} links={<Chip farbe={KREDIT}>{x.art === 'kredit' ? 'KREDIT' : 'MERK'}</Chip>} titel={x.titel}
@@ -454,7 +434,7 @@ export function FinanzplanungView() {
           ))}
           {!plan.merkposten.length && <Leer>Nichts vorgemerkt.</Leer>}
         </Liste>
-      </Karte>
+      </Karte>}
     </>
   );
 }

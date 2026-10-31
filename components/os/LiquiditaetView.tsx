@@ -32,6 +32,7 @@ import { useGeltendeEroeffnung } from './business/Eroeffnung';
 import { abEroeffnung, planpostenVor } from '@/lib/business/eroeffnung';
 import { mitRegister } from '@/lib/finanzen/konten/register';
 import { KontenKarte, useKontenKasse } from './konten/KontenKarte';
+import { FINANZPLAN_GEAENDERT } from './FinanzplanungView';
 
 interface Plan { firmen: Firma[]; rechnungen: Rechnung[]; zahlungen: Zahlung[]; merkposten: Merkposten[] }
 
@@ -119,7 +120,11 @@ function PostenMandat({ postenId }: { postenId: string }) {
   );
 }
 
-export function LiquiditaetView() {
+/**
+ * `darunter` (31.10.): die Planposten-Rechnungen und Merkposten aus „Rechnungen & Zahlungen“ (FinanzplanungView teil="liquiditaet") — sie stehen unter
+ * den Planposten dieser Seite; ändern sie den Finanzplan, lädt die Vorschau ihn neu (Ereignis `FINANZPLAN_GEAENDERT`).
+ */
+export function LiquiditaetView({ darunter }: { darunter?: ReactNode } = {}) {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [posten, setPosten] = useState<Planposten[]>([]);
   // Eigene Kategorien aus dem Kompass — Kevin und Malin pflegen sie selbst.
@@ -159,6 +164,11 @@ export function LiquiditaetView() {
     void ladePosten();
   }, [ladePlan, ladePosten]);
   useAbgleich(() => { void ladePlan(); void ladePosten(); }, { pausiert: () => speichernHook.hatOffenes() || planSpeichern.hatOffenes() });
+  useEffect(() => {
+    const neu = () => { void ladePlan(); };
+    window.addEventListener(FINANZPLAN_GEAENDERT, neu);
+    return () => window.removeEventListener(FINANZPLAN_GEAENDERT, neu);
+  }, [ladePlan]);
   // 29.10. (Kreislauf Geld P2c): „n Mandate nicht im Liquiplan“ — dieselbe Lage wie die Mandatsliste (GET /api/crm/liquiplan); ohne Zugang einfach nichts.
   const [mandateFehlen, setMandateFehlen] = useState(0);
   useEffect(() => {
@@ -419,6 +429,8 @@ export function LiquiditaetView() {
               </Leer>
             </Karte>
           )}
+
+          {darunter}
 
         </>
       )}

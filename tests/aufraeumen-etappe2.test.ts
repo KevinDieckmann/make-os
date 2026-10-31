@@ -262,3 +262,23 @@ describe('Aufräumen Etappe 2 — Blätter der Planung (08.10. abends)', () => {
     for (const u of [null, '', 'monat', 'gesellschaften', 'quatsch']) expect(alteAdresseUmschreiben(u, 'privat')).toBeNull();
   });
 });
+
+// 31.10.: Rechnungen & Zahlungen ist eine Arbeitsfläche — die Adressen dorthin bleiben dieselben und zeigen nicht ins Leere.
+describe('Rechnungen & Zahlungen (Arbeitsfläche) — alte Adressen', () => {
+  it('WEG.rechnung / rechnungSchreiben / zahlung / rechnungen führen weiter auf s=rechnungen (Business); die Fläche liest r, re und z', () => {
+    const p = (a: string) => new URLSearchParams(a.split('?')[1] ?? '');
+    expect(p(WEG.rechnung('r1')).get('s')).toBe('rechnungen');
+    expect(p(WEG.rechnung('r1')).get('r')).toBe('r1');
+    expect(p(WEG.rechnungSchreiben('r1')).get('re')).toBe('r1');
+    expect(p(WEG.zahlung('z1')).get('z')).toBe('z1');
+    expect(p(WEG.rechnungen()).get('s')).toBe('rechnungen');
+    expect(ort(WEG.rechnung('r1')).reiter).toBe('rechnungen');
+    expect(ort(WEG.zahlung('z1')).reiter).toBe('rechnungen');
+    const karte = lies('components/os/rechnung/RechnungenKarte.tsx');
+    const flaeche = lies('components/os/rechnung/RechnungenFlaeche.tsx');
+    expect(karte).toContain("q.get('re') ?? q.get('r')");
+    expect(flaeche).toContain("q.get('z')");
+    // Planposten (`?p=`) und Kontostände (#kontostaende) bleiben unter Liquidität.
+    expect(ort(WEG.planposten('p1')).reiter).toBe('liquiditaet');
+  });
+});

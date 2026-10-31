@@ -59,11 +59,11 @@ function vergleich(heute: string) {
  * Filtern + Suche (Kunde, Nummer, Titel, Empfänger, seit 30.10. auch Firma/Person/Mandat der Zuordnung über `namen`) + Gesellschaft, sortiert.
  * „Ohne Zuordnung“ (30.10.): Rechnungen ohne Firma, Person und Mandat aus der Kartei (Stornorechnungen zählen nicht — sie folgen dem Original).
  */
-export function rechnungenFiltern<R extends Rechnung>(liste: readonly R[], o: { filter: RechnungsFilter; suche?: string; gesellschaft?: string | null; namen?: Readonly<Record<string, string>> }, heute: string): R[] {
+export function rechnungenFiltern<R extends Rechnung>(liste: readonly R[], o: { filter: RechnungsFilter; suche?: string; gesellschaft?: string | null; namen?: Readonly<Record<string, string>>; /** 31.10. (Arbeitsfläche): „Ohne Zuordnung“ zusätzlich zum Status. */ ohneZuordnung?: boolean }, heute: string): R[] {
   const q = (o.suche ?? '').trim();
   const gefiltert = liste.filter(r => {
     if (!passtFilter(rechnungsZustand(r, heute), o.filter)) return false;
-    if (o.filter === 'ohne-zuordnung' && (r.art === 'storno' || istZugeordnet(r))) return false;
+    if ((o.filter === 'ohne-zuordnung' || o.ohneZuordnung) && (r.art === 'storno' || istZugeordnet(r))) return false;
     if (o.gesellschaft && r.firmaId !== o.gesellschaft) return false;
     if (!q) return true;
     const z = zuordnungNamen(r, o.namen);

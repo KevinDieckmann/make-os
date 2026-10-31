@@ -10,6 +10,9 @@
 // sehen, nie umgekehrt). Aufbau und Regeln: lib/finanzen/navigation.ts.
 //   Privat    Überblick · Konten & Buchungen (Ebene 2: Buchungen … Schulden, Selbstständigkeit) · Planung (Ebene 2: Blätter) · Steuern
 //   Business  Überblick (Ebene 2: Cockpit · Controlling & Ziele) · Rechnungen & Zahlungen (oben: Rechnungen schreiben mit PDF, 08.10.) · Liquidität · Buchungen · Planung · Steuern
+// 31.10. (Kevin): Rechnungen & Zahlungen ist eine Arbeitsfläche (RechnungenFlaeche: Liste links, Rechnung rechts, Kopf in einer Zeile) — sie IST die Seite,
+// ohne den Rahmen „Finanzen“. Was vorher darunter hing, steht jetzt an seinem Ort: Finanzmeeting, Jahresziel, Produkte im Cockpit; Planposten und
+// Merkposten unter Liquidität (FinanzplanungView `teil`); Cash/Konten waren doppelt (Liquidität zeigt die Konten).
 //   Head of Finance = Knopf auf der Seite. Gesamt (die Brücke) steht einmal: unten auf Privat › Überblick (#gesamt).
 // 22.10. abends (Werkzeug Finanzen, Gruppe A): Ebene 1 ist das Menü der linken Leiste (lib/make-one/werkzeuge.ts `FINANZEN_WERKZEUG`, Punkte NUR aus
 // `FINANZ_MENUE`) — die Reiterleiste hier ist weg; Cockpit und Controlling & Ziele sind Menüpunkte (ihre Pillenreihe ist weg). Ebene 2 bleibt: die Pillen unter
@@ -31,6 +34,7 @@ import { SteuernView } from './steuern/SteuernView';
 import { Finanzplan } from './finanzplan/Finanzplan';
 import { FinanzplanungView } from './FinanzplanungView';
 import { RechnungenKarte } from './rechnung/RechnungenKarte';
+import { RechnungenFlaeche } from './rechnung/RechnungenFlaeche';
 import { LiquiditaetView } from './LiquiditaetView';
 import { BuchungenView } from './BuchungenView';
 import { ControllingView } from './ControllingView';
@@ -84,6 +88,9 @@ export function FinanzenView() {
   // Ebene 2 — nur unter Konten & Buchungen (die Blätter der Planung stehen in der Planung selbst).
   const ebene2 = punkt === 'konten' ? <Pillen einzeilig liste={kontenUnter()} aktiv={ort.unter as KontenUnter} onWahl={geh} /> : null;
 
+  // Rechnungen & Zahlungen (31.10.): die Arbeitsfläche ist die Seite — Kopf, Suche und Filter in je einer Zeile, Liste und Rechnung rollen für sich.
+  if (bereich === 'business' && punkt === 'rechnungen' && zugang !== null) return <RechnungenFlaeche zahlungen={zugang} neben={chefKnopf || undefined} />;
+
   const unterSatz = chefAn ? CHEF_SATZ : FINANZ_MENUE[bereich].find(m => m.id === punkt)?.titel ?? '';
   const breit = chefAn ? undefined : 1440;
 
@@ -124,15 +131,17 @@ function Inhalt({ ort, punkt, zugang, inhaber, planZugang, altbestand, u, t }: {
       </>
     );
   }
-  // Rechnungen (seit 27.10. die EINE Übersicht) oben, darunter Planposten & ältere Rechnungen ohne Positionen (nur mit Haushaltszugang — trägt Privates).
-  if (reiter === 'rechnungen') return <><RechnungenKarte />{zugang && <FinanzplanungView />}</>;
-  if (reiter === 'liquiditaet') return <LiquiditaetView />;
+  // Rechnungen & Zahlungen steht als Arbeitsfläche oben (FinanzenView, ohne Seite). Planposten & ältere Rechnungen und Merkposten (31.10.) unter
+  // Liquidität — nur mit Haushaltszugang (der gemeinsame Finanz-Bestand trägt Privates).
+  if (reiter === 'liquiditaet') return <LiquiditaetView darunter={zugang ? <FinanzplanungView teil="liquiditaet" /> : undefined} />;
   if (reiter === 'buchungen') return <BuchungenView bereich="business" />;
   if (punkt === 'controlling' && inhaber) return <ControllingView />;
   // Konten, Fälliges und Monat (ZahlenBusiness) lesen die GEMEINSAMEN Finanz-Bestände (Finanzplan-Listen, Liquiplan, Buchungen) — die tragen
   // Privates und gehen nur an volle Mitglieder (`privatFinanzZugang`). Ein Konto „nur Business“ sieht hier das Cockpit ohne sie, statt
   // leerer Nullen (Gesamtprüfung 12.10.: vorher brach die Seite für dieses Konto ab).
-  return inhaber ? <BusinessCockpit eingebettet teil="finanzen" darunter={zugang ? <ZahlenBusiness ohneStreifen /> : undefined} /> : inhaber === false && zugang ? <ZahlenBusiness /> : null;
+  // Finanzmeeting, Jahresziel und Produkte (31.10., vorher unter Rechnungen & Zahlungen) stehen im Cockpit — ebenfalls nur mit Haushaltszugang.
+  return inhaber ? <BusinessCockpit eingebettet teil="finanzen" darunter={zugang ? <><FinanzplanungView teil="ueberblick" /><ZahlenBusiness ohneStreifen /></> : undefined} />
+    : inhaber === false && zugang ? <><FinanzplanungView teil="ueberblick" /><ZahlenBusiness /></> : null;
 }
 
 /** Altbestand der Selbstständigkeit — geladen erst auf Klick. */

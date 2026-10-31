@@ -189,3 +189,64 @@ describe('Mandate als Arbeitsfläche', () => {
     expect(k).toContain('{voll && <HeadPanel head="sales" standardModus="kundenreview"');
   });
 });
+
+// 31.10. (Kevin): Finanzen › Business › Rechnungen & Zahlungen nach demselben Muster — was darunter hing, steht an seinem Ort.
+describe('Finanzen › Rechnungen & Zahlungen als Arbeitsfläche', () => {
+  const f = lies('components/os/rechnung/RechnungenFlaeche.tsx');
+  const k = lies('components/os/rechnung/RechnungenKarte.tsx');
+  const v = lies('components/os/FinanzenView.tsx');
+  const p = lies('components/os/FinanzplanungView.tsx');
+  const l = lies('components/os/LiquiditaetView.tsx');
+  it('die Fläche IST die Seite: Kopf „Rechnungen“ · offen/überfällig · ⋯ · „+ Rechnung schreiben“; der Head of Finance daneben', () => {
+    expect(v).toContain("if (bereich === 'business' && punkt === 'rechnungen' && zugang !== null) return <RechnungenFlaeche zahlungen={zugang} neben={chefKnopf || undefined} />;");
+    expect(f).toContain('<Arbeitsflaeche titel="Rechnungen" label="Rechnungen & Zahlungen"');
+    expect(f).toContain('haupt={<Knopf haupt onClick={neu}>+ Rechnung schreiben</Knopf>}');
+    expect(f).toContain('Mahnstufen ändern');
+    expect(f).toMatch(/überfällig`\}/);
+  });
+  it('Suche + „Filter ▾“ (Status, Gesellschaft, Zuordnung) in EINER Zeile, aktive Filter als Chips; Umschalter Rechnungen · Zahlungen', () => {
+    expect(f).toContain('className="af-suche"');
+    expect(f).toContain('<FilterKnopf aktiv={filterZahl} onZuruecksetzen={filterWeg}>');
+    for (const g of ['<FilterGruppe titel="Status">', '<FilterGruppe titel="Gesellschaft">', '<FilterGruppe titel="Zuordnung">']) expect(f, g).toContain(g);
+    expect(f).toContain('className="af-chip-weg fassbar"');
+    expect(f).not.toContain('<Pillen<RechnungsFilter> liste={RECHNUNGS_FILTER} aktiv={filter} onWahl={filterAuf} einzeilig');
+    expect(f).toContain("{ id: 'zahlungen', label: 'Zahlungen' }");
+    expect(f).toContain('<FinanzplanungView teil="zahlungen" />');
+  });
+  it('Liste nach Zustand als Abschnitte; rechts die Rechnung (Editor statt Fenster), ohne Auswahl die Summen; schmal „‹ Zurück“', () => {
+    expect(f).toContain('<ListenAbschnitt key={a.id} id={a.id}');
+    expect(f).toContain('<RechnungEditor key={r.id} start={r} daten={u.daten} onZu={u.schliessen} onOeffnen={u.oeffnen} />');
+    expect(f).not.toContain('<Fenster');
+    expect(f).toContain('leer={zahl ? (st => summenSeite(st.zwei)) : undefined} leerOben={zahl}');
+    expect(f).toContain("{!nebeneinander && <Knopf leise onClick={onZu}>‹ Zurück</Knopf>}");
+  });
+  it('Adressen bleiben: `?re=`/`?r=` öffnen die Rechnung, `?z=` die Zahlungen; Privat › Selbstständigkeit behält die Karte mit Fenster', () => {
+    expect(k).toContain("const offenId = q.get('re') ?? q.get('r');");
+    expect(f).toContain("const zielZ = q.get('z');");
+    expect(f).toContain("useState<Ansicht>(zielZ && zahlungen ? 'zahlungen' : 'rechnungen')");
+    expect(v).toContain('<RechnungenKarte bereich="privat" />');
+    expect(k).toContain('<Fenster titel={rechnungTitel(offen)} onZu={schliessen} breit={980}>');
+  });
+  it('„Ohne Zuordnung“ wirkt zusätzlich zum Status (offen UND ohne Kunde aus der Kartei)', async () => {
+    const { rechnungenFiltern } = await import('@/lib/finanzen/rechnung/uebersicht');
+    const r = (id: string, x: Record<string, unknown>) => ({ id, firmaId: 'kdv', kunde: 'K', titel: 'T', betrag: 100, status: 'gestellt', faellig: '2026-12-01', ...x });
+    const liste = [r('a', {}), r('b', { kundeFirmaId: 'f-1' }), r('c', { status: 'bezahlt' })] as never[];
+    const ids = (o: Parameters<typeof rechnungenFiltern>[1]) => rechnungenFiltern(liste, o, '2026-10-31').map((x: { id: string }) => x.id);
+    expect(ids({ filter: 'offen' }).sort()).toEqual(['a', 'b']);
+    expect(ids({ filter: 'offen', ohneZuordnung: true })).toEqual(['a']);
+    expect(ids({ filter: 'alle', ohneZuordnung: true }).sort()).toEqual(['a', 'c']);
+    expect(ids({ filter: 'ohne-zuordnung' }).sort()).toEqual(['a', 'c']);
+  });
+  it('was darunter hing, steht an seinem Ort: Finanzmeeting/Jahresziel/Produkte im Cockpit, Planposten/Merkposten unter Liquidität, Konten nicht doppelt', () => {
+    expect(v).toContain('<FinanzplanungView teil="ueberblick" />');
+    expect(v).toContain('<LiquiditaetView darunter={zugang ? <FinanzplanungView teil="liquiditaet" /> : undefined} />');
+    expect(v).not.toMatch(/<RechnungenKarte \/>/);
+    expect(p).toContain("{teil === 'ueberblick' && <Karte i={0}");
+    expect(p).toContain("{teil === 'liquiditaet' && <Karte i={3}>");
+    expect(p).toContain("{teil === 'zahlungen' && <ListenAbschnitt id=\"zahlungen\"");
+    expect(p).not.toContain('>Cash · beide Konten</Ueberschrift>');
+    expect(p).not.toContain('gepflegt unter Liquidität</span>');
+    expect(l).toContain('<KontenKarte bereich="business" i={2} id="kontostaende" />');
+    expect(l).toContain('window.addEventListener(FINANZPLAN_GEAENDERT, neu);');
+  });
+});
