@@ -66,7 +66,8 @@ Mit `--pruefen` wird nur geprüft. Danach `bilder.mjs`, wenn der Prüfer ein feh
 2. In den Deploy-Ordner kopieren:
 
 ```bash
-rsync -a --delete --exclude '*.mjs' --exclude inhalt/ --exclude '*.md' prototype/fokus-innovation/ <main-checkout>/fokusinnovation/
+rsync -a --delete --exclude '*.mjs' --exclude inhalt/ --exclude '*.md' --exclude 'assets/logo-vorschlaege/' --exclude dateien/ --exclude werkzeug/ prototype/fokus-innovation/ <main-checkout>/fokusinnovation/
+rsync -a --delete unterlagen/ <main-checkout>/unterlagen/   # lange Vorlagen (nur per E-Mail), aus dem Repo-Ordner unterlagen/
 ```
 
 3. Dort committen und auf `main` pushen, nur auf Kevins Wort. Die GitHub Action rollt es aus.

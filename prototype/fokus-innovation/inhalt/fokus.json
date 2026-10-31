@@ -82,15 +82,15 @@
     },
     "ki_potenzial": {
       "wert": "3 %",
-      "text": "der Unternehmen schöpfen das Potenzial von KI eher stark aus, keines vollständig. 59 % gar nicht.",
+      "text": "der Unternehmen schöpfen das Potenzial von KI eher stark aus, keines vollständig, 59 % überhaupt nicht.",
       "quelle": "Bitkom, 14.09.2026, 603 Unternehmen ab 20 Beschäftigten",
       "link": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI"
     },
     "mittelstand": {
       "wert": "37 %",
-      "text": "der kleinen Mittelständler schlossen 2022 bis 2024 Innovationsprojekte ab, bei den großen waren es 73 %.",
-      "quelle": "KfW Research, Innovationen, 2026",
-      "link": "https://www.kfw.de/%C3%9Cber-die-KfW/KfW-Research/Innovationen.html"
+      "text": "der kleinen Mittelständler mit weniger als fünf Beschäftigten brachten 2022 bis 2024 eine Innovation hervor, bei den großen mit mehr als 50 Beschäftigten waren es 73 %.",
+      "quelle": "KfW Research, 04.03.2026",
+      "link": "https://www.kfw.de/%C3%9Cber-die-KfW/Newsroom/Aktuelles/Pressemitteilungen-Details_883520.html"
     },
     "ki_nutzung": {
       "wert": "54,5 %",
@@ -204,7 +204,7 @@
         },
         {
           "titel": "Vorschlag",
-          "text": "Welches Angebot passt, mit festem Preis und Ablauf"
+          "text": "Welches Angebot passt, mit Festpreis vor dem Start und festem Ablauf"
         },
         {
           "titel": "Tagesworkshop",
@@ -353,7 +353,7 @@
       "beleg": "Feste Partner aus unserem Netzwerk für Umfang und Spezialthemen, dazu unsere Events für die richtigen Kontakte."
     },
     {
-      "titel": "Feste Preise, feste Abläufe",
+      "titel": "Klare Preise, feste Abläufe",
       "text": "Jedes Angebot steht mit Preis, Ablauf und Konditionen auf seiner Seite.",
       "beleg": "Homepages und Videos mit Lieferzeit in Werktagen, Mandate mit festem Monatspreis und klarer Laufzeit."
     }
@@ -459,7 +459,7 @@
     },
     {
       "titel": "Ihr Vorschlag",
-      "text": "Welches Angebot passt, mit festem Preis, festem Ablauf und klaren Konditionen."
+      "text": "Welches Angebot passt, mit Festpreis vor dem Start, festem Ablauf und klaren Konditionen."
     },
     {
       "titel": "Start",
@@ -484,7 +484,7 @@
     "text": "Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten mit Ergebnis sofort, ausführlich in rund 25 mit vollständigem Bericht per E-Mail."
   },
   "angebote_lead": {
-    "sichtbarkeit": "Feste Preise, feste Lieferzeiten bei Homepages und Videos, feste Monatspreise bei PR und Kommunikation. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
+    "sichtbarkeit": "Klare Preise ab einem Startpreis, feste Lieferzeiten bei Homepages und Videos, bei PR und Kommunikation ein Monatspreis, der vor dem Start feststeht. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
     "vertrieb": "Feste Monatspreise und klare Laufzeiten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
     "innovation": "Der Check ist kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Haben Sie ein Vorhaben, sprechen Sie uns an."
   },
@@ -566,7 +566,7 @@
     ],
     [
       "Preise",
-      "Fest und offen auf jeder Angebotsseite, alle netto zuzüglich Umsatzsteuer"
+      "Offen auf jeder Angebotsseite, ab einem Startpreis und netto zuzüglich Umsatzsteuer; den genauen Festpreis vor dem Start"
     ],
     [
       "Arbeitsgebiet",
@@ -830,7 +830,7 @@
     },
     {
       "f": "Was kostet das, und was bekomme ich dafür?",
-      "a": "Jedes Angebot steht mit festem Preis, festem Ablauf und klaren Konditionen auf seiner Seite. Homepages und Videos haben eine feste Lieferzeit in Werktagen, Mandate einen festen Monatspreis und eine klare Laufzeit. Im Mandat sehen Sie den Fortschritt schwarz auf weiß: Zwischenbilanz in Woche 8, im Vertrieb ab Monat 3 jeden Freitag der Wochenreport."
+      "a": "Jedes Angebot steht mit Startpreis, festem Ablauf und klaren Konditionen auf seiner Seite; den genauen Festpreis bekommen Sie vor dem Start. Homepages und Videos haben eine feste Lieferzeit in Werktagen, Mandate einen festen Monatspreis und eine klare Laufzeit. Im Mandat sehen Sie den Fortschritt schwarz auf weiß: Zwischenbilanz in Woche 8, im Vertrieb ab Monat 3 jeden Freitag der Wochenreport."
     },
     {
       "f": "Ist das Erstgespräch ein Verkaufsgespräch?",
@@ -937,8 +937,8 @@
       "text": "Kurz in rund 10 Minuten oder ausführlich in rund 25, dann mit Bericht per E-Mail. Kostenlos, fast alles per Klick."
     },
     {
-      "titel": "Ergebnis sofort",
-      "text": "Ihre Stufe, der Vergleich mit Ihrer Branche und zwei nächste Schritte."
+      "titel": "Ergebnis",
+      "text": "Ihre Stufe, der Vergleich mit Ihrer Branche und zwei nächste Schritte: kurz sofort, ausführlich als Bericht per E-Mail."
     },
     {
       "titel": "Erstgespräch",
@@ -1028,7 +1028,7 @@
     ],
     "zahlen": {
       "titel": "Zahlen, mit Quelle.",
-      "lead": "Was Studien über Sichtbarkeit, Vertrieb und KI in deutschen Unternehmen sagen. Jede Zahl mit Herausgeber, Jahr und Link."
+      "lead": "Was Studien aus 2026 über Sichtbarkeit, Vertrieb und KI in Unternehmen sagen, meist für Deutschland. Jede Zahl mit Herausgeber, Jahr und Link."
     },
     "vorlagen": {
       "titel": "Vorlagen zum Mitnehmen.",
@@ -1194,6 +1194,13 @@
         "Haben Sie am Abend keine drei Hebel, die Sie umsetzen wollen, zahlen Sie nichts.",
         "Starten Sie danach mit dem Head of Sales oder dem Chief Sales Officer, rechnen wir den Workshop voll an."
       ]
+    },
+    "video-serie": {
+      "punkte": [
+        "Sie geben das Skript frei, bevor wir produzieren.",
+        "Passt Ihnen der erste Entwurf nicht, steigen Sie aus und zahlen nur die Hälfte des ersten Monats. Den Rest erstatten wir."
+      ],
+      "kondition": "Passt der erste Entwurf nicht, können Sie aussteigen und zahlen nur die Hälfte des ersten Monats."
     }
   },
   "produkt_blaetter": {
