@@ -291,9 +291,9 @@ describe('Vertriebscheck und Sichtbarkeitstest (30.10.)', () => {
   it('eigene Vorlage mit eigenen Texten; nach Kontakt sofort das Ergebnis (keine Wahl), Bereiche mit Namen, jedes Angebot nur einmal', async () => {
     const st = await check({ aktion: 'start', vorlage: 'vertriebs-check', quelle: 'vertrieb_seite', webseite: '' });
     expect(st.status).toBe(201);
-    expect(st.d.katalog.name).toBe('Vertriebscheck');
+    expect(st.d.katalog.name).toBe('Vertriebs-Check');
     expect(st.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 12 });
-    expect(st.d.zoe.begruessung.join(' ')).toContain('durch den Vertriebscheck');
+    expect(st.d.zoe.begruessung.join(' ')).toContain('durch den Vertriebs-Check');
     expect(st.d.katalog.abschnittSatz.VO).toContain('organisiert');
     const s3 = st.d.sitzung, t3 = st.d.token;
     for (const [frage, o] of VERTRIEB) expect((await check({ aktion: 'antwort', sitzung: s3, token: t3, frage, optionIds: [o] })).status, frage).toBe(200);
@@ -318,15 +318,15 @@ describe('Vertriebscheck und Sichtbarkeitstest (30.10.)', () => {
     expect(s.vorlage).toBe('vertriebs-check');
     expect(s.ergebnis?.saeulen).toEqual({ organisation: 25, zahlen: 75, neukunden: 50 });
     const p = (await kontakte()).find(x => x.id === s.crm!.kontaktId)!;
-    expect(p.aktivitaeten.some(a => /Vertriebscheck auf der Website/.test(a.text ?? '') && /Organisation 25, Zahlen 75, Neukunden 50/.test(a.text ?? ''))).toBe(true);
+    expect(p.aktivitaeten.some(a => /Vertriebs-Check auf der Website/.test(a.text ?? '') && /Organisation 25, Zahlen 75, Neukunden 50/.test(a.text ?? ''))).toBe(true);
     const l = await innenLesen();
     const z = l.d.liste.find((x: { id: string }) => x.id === s3);
-    expect(z.check).toBe('Vertriebscheck');
+    expect(z.check).toBe('Vertriebs-Check');
     expect(z.bereiche).toEqual([{ name: 'Organisation', wert: 25 }, { name: 'Zahlen', wert: 75 }, { name: 'Neukunden', wert: 50 }]);
   });
   it('Sichtbarkeitstest startet mit eigenem Katalog; Antworten aus einem anderen Check werden abgelehnt', async () => {
     const st = await check({ aktion: 'start', vorlage: 'sichtbarkeits-test', webseite: '' });
-    expect(st.d.katalog.name).toBe('Sichtbarkeitstest');
+    expect(st.d.katalog.name).toBe('Sichtbarkeits-Check');
     expect(st.d.schritt.von).toBe(12);
     expect((await check({ aktion: 'antwort', sitzung: st.d.sitzung, token: st.d.token, frage: 'V1', optionIds: ['V1_1'] })).status).toBe(400);
   });

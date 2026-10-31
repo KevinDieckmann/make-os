@@ -159,8 +159,8 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
           {d.einstellungen.aktiv && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Knopf leise href="/check">Innovations-Check ansehen</Knopf>
-              <Knopf leise href="/check?thema=vertrieb">Vertriebscheck ansehen</Knopf>
-              <Knopf leise href="/check?thema=sichtbarkeit">Sichtbarkeitstest ansehen</Knopf>
+              <Knopf leise href="/check?thema=vertrieb">Vertriebs-Check ansehen</Knopf>
+              <Knopf leise href="/check?thema=sichtbarkeit">Sichtbarkeits-Check ansehen</Knopf>
             </div>
           )}
         </div>

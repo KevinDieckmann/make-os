@@ -1,14 +1,14 @@
 # Fokus Innovation: alle Inhalte als Klartext
 
-Stand: 2026-10-27. Website: https://fokusinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
+Stand: 2026-10-31. Website: https://fokusinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
 
 ## Wer wir sind
 
-Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um. Wir erleben es immer wieder: Gute Ideen und starke Produkte bleiben unter ihren Möglichkeiten, weil sie zu wenige sehen und niemand sie systematisch verkauft. Das wollen wir ändern, für Deutschland und Europa. Wir wissen, wovon wir reden: Wir kommen aus der Vertriebsführung, arbeiten in laufenden Projekten mit KI, auch im internationalen Umfeld, und bauen unsere eigene Software. Wenn es sein muss, schrauben wir am Produkt mit. Und wir bringen die Menschen zusammen, die Neues umsetzen: in unserem Netzwerk, mit unseren Partnern und bei unseren Events.
+Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um. Wir erleben es immer wieder: Gute Ideen und starke Produkte bleiben unter ihren Möglichkeiten, weil sie zu wenige sehen und niemand sie systematisch verkauft. Das ändern wir, Produkt für Produkt. Wir wissen, wovon wir reden: Wir kommen aus der Vertriebsführung, arbeiten in laufenden Projekten mit KI, auch im internationalen Umfeld, und bauen unsere eigene Software. Wenn es sein muss, schrauben wir am Produkt mit. Und wir bringen die Menschen zusammen, die Neues umsetzen: in unserem Netzwerk, mit unseren Partnern und bei unseren Events.
 
 - Was wir sind: Eine Agentur für Sichtbarkeit, Vertrieb und Innovation, die selbst mit umsetzt.
 - Sitz: Berlin
-- Für wen: Innovative Start-ups, Unternehmer mit 10 bis 50 Mitarbeitenden und Mittelstand, der Neues einführt
+- Für wen: Gründer, Start-ups und Unternehmer, die wachsen möchten, und Mittelstand, der Neues einführt
 - Leistungen: Positionierung, Websites, Videos sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, Umsetzungsprojekte starten in Kürze; Events und Netzwerk
 - Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch
 - Gründer: Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)
@@ -30,22 +30,22 @@ Was wir nicht sind: Keine reine Werbe- oder PR-Agentur (Keine Kampagne und keine
 
 Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab 1.990 €, Websites ab 2.990 € mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab 1.490 € sowie PR und Kommunikation ab 2.990 € im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.
 
-- [Positionierung S, M, L](https://fokusinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
-- [PR und Kommunikation](https://fokusinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
-- [Homepage Landing](https://fokusinnovation.de/sichtbarkeit/homepage-landing/): ab 2.990 € netto (einmalig, fertig in 10 Werktagen). Ihre Seite, die verkauft: ein One-Pager in Ihrer CI, fertig in 10 Werktagen.
-- [Homepage Story](https://fokusinnovation.de/sichtbarkeit/homepage-story/): ab 4.990 € netto (einmalig, fertig in 15 Werktagen). Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.
-- [Homepage Cinematic](https://fokusinnovation.de/sichtbarkeit/homepage-cinematic/): ab 9.990 € netto (einmalig, fertig in 25 Werktagen). Eine Website, über die man spricht: Story-Workshop, 3D-Szenen und Erklärvideo in 25 Werktagen.
-- [Erklärvideo](https://fokusinnovation.de/sichtbarkeit/erklaervideo/): ab 1.490 € netto (einmalig, fertig in 10 Werktagen). Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.
-- [Videostory](https://fokusinnovation.de/sichtbarkeit/videostory/): ab 1.990 € netto (einmalig, fertig in 15 Werktagen). Die Geschichte Ihrer Firma in 90 Sekunden: ehrlich, emotional und in Ihrer CI.
-- [Video Serie](https://fokusinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
+- [Positionierung S, M, L](https://fokusinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
+- [PR und Kommunikation](https://fokusinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
+- [Homepage Landing](https://fokusinnovation.de/sichtbarkeit/homepage-landing/): ab 2.990 € netto (einmalig, fertig in 10 Werktagen). Ihre Seite, die verkauft: ein One-Pager in Ihrer CI, fertig in 10 Werktagen.
+- [Homepage Story](https://fokusinnovation.de/sichtbarkeit/homepage-story/): ab 4.990 € netto (einmalig, fertig in 15 Werktagen). Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.
+- [Homepage Cinematic](https://fokusinnovation.de/sichtbarkeit/homepage-cinematic/): ab 9.990 € netto (einmalig, fertig in 25 Werktagen). Eine Website, über die man spricht: Story-Workshop, 3D-Szenen und Erklärvideo in 25 Werktagen.
+- [Erklärvideo](https://fokusinnovation.de/sichtbarkeit/erklaervideo/): ab 1.490 € netto (einmalig, fertig in 10 Werktagen). Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.
+- [Videostory](https://fokusinnovation.de/sichtbarkeit/videostory/): ab 1.990 € netto (einmalig, fertig in 15 Werktagen). Die Geschichte Ihrer Firma in 90 Sekunden: ehrlich, emotional und in Ihrer CI.
+- [Video Serie](https://fokusinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
 
 ### Vertrieb: Verkauft werden.
 
-Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop ab 1.900 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.
+Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop ab 1.900 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.
 
-- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://fokusinnovation.de/vertrieb/tagesworkshop/): ab 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
-- [Head of Sales](https://fokusinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Aus Interesse werden planbar Kunden: Ihr Vertrieb läuft nach einem System, das Ihr Team ohne Sie bedient.
-- [Chief Sales Officer (CSO)](https://fokusinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
+- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://fokusinnovation.de/vertrieb/tagesworkshop/): ab 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
+- [Head of Sales](https://fokusinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Aus Interesse werden planbar Kunden: Ihr Vertrieb läuft nach einem System, das Ihr Team ohne Sie bedient.
+- [Chief Sales Officer (CSO)](https://fokusinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
 
 ### Innovation: Im Alltag ankommen.
 
@@ -54,7 +54,7 @@ Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und ne
 - [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten oder ausführlich in rund 25.
 - [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): bald, Anfrage schon jetzt möglich, Preis auf Anfrage. Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an. Startet in Kürze.
 
-Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse); Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
+Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang; Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
 
 ## Häufige Fragen
 
@@ -68,7 +68,7 @@ Frage: Ist Zoe ein Mensch?
 Antwort: Nein. Zoe ist unsere KI-Assistentin. Sie sagt das auch am Anfang jedes Gesprächs. Wenn Sie lieber mit einem Menschen sprechen, gibt Zoe Sie an Kevin weiter.
 
 Frage: Was passiert im Erstgespräch?
-Antwort: 60 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch.
+Antwort: 30 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch.
 
 Frage: Was ist der Unterschied zwischen Head of Sales und CSO?
 Antwort: Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer enthält das komplett und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln.
@@ -102,7 +102,7 @@ Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich a
 - CRM: Kurz für Customer Relationship Management: das System, in dem alle Kontakte, Gespräche, Angebote und nächsten Schritte stehen.
 - Elevator Pitch: Eine Erklärung Ihres Angebots, die in eine Aufzugfahrt passt, meist 30 Sekunden bis 2 Minuten.
 - Erklärvideo: Ein kurzes Video, bei uns 60 bis 90 Sekunden, das erklärt, was Sie machen, für wen und wie man startet.
-- Erstgespräch: 60 Minuten mit Kevin nach dem Innovations-Check: Ihre Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden. Kostenlos und kein Verkaufsgespräch.
+- Erstgespräch: 30 Minuten mit Kevin nach dem Innovations-Check: Ihre Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden. Kostenlos und kein Verkaufsgespräch.
 - Fokus Innovation · Events: Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.
 - Go-to-Market: Der Weg eines Produkts in den Markt: Zielgruppe, Botschaft, Kanäle, Vertrieb und Preise. Im Deutschen oft Markteintritt.
 - Head of Sales auf Zeit: Eine Vertriebsleitung für einige Monate, die das System aufbaut, mit Ihrem Team umsetzt und so übergibt, dass der Vertrieb ohne sie läuft. Auch Interim Head of Sales genannt.

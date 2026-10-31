@@ -97,4 +97,4 @@ export function ergebnisSaetze(e: Pick<CheckErgebnis, 'stufe' | 'stufe_name' | '
 }
 
 export const gespraechSatz = (k: ZoeKontext): string =>
-  `Im kostenlosen Erstgespräch legen Sie mit ${k.gastgeber} Ihre drei wichtigsten Schritte für die nächsten 90 Tage fest: 60 Minuten per Video-Call, kein Verkaufsgespräch.`;
+  `Im kostenlosen Erstgespräch legen Sie mit ${k.gastgeber} Ihre drei wichtigsten Schritte für die nächsten 90 Tage fest: 30 Minuten per Video-Call, kein Verkaufsgespräch.`;

@@ -177,12 +177,6 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
   // Bewusst <img>: das Logo liegt meist auf der Website (z. B. /assets/…), nicht in der Anwendung — der Bild-Optimierer fände es dort nicht.
   // eslint-disable-next-line @next/next/no-img-element
   const wortbild = <>{kopf?.logo && <img className={s.logo} src={kopf.logo} alt="" width={34} height={34} />}<span className={s.wortbild}><b>{wort1}</b>{rest.length > 0 && <small>{rest.join(' ')}</small>}</span></>;
-  const bereiche = !!seite.bereiche?.length && (
-    <ol className={s.dreiBereiche} aria-label="Die Bereiche des Checks">
-      {seite.bereiche.map((b, i) => <li key={b.name}><span className={s.bereichNr}>{i + 1}</span><span className={s.bereichName}>{b.name}</span><span className={s.bereichText}>{b.text}</span></li>)}
-    </ol>
-  );
-
   return (
     <main className={s.seite}>
       <header className={s.kopf}>
@@ -208,23 +202,10 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
             <p className={s.vorzeile}>{katalog.name} · kostenlos · {mitWahl ? `kurz rund ${seite.minuten} oder ausführlich rund ${seite.minuten_lang ?? seite.minuten} Minuten` : `rund ${seite.minuten} Minuten`}</p>
             <h1 className={s.einstiegTitel}>{seite.titel}</h1>
             <p className={s.einstiegText}>{seite.text}</p>
-            {/* Die Karte steht über dem Gespräch (Kevin 30.10.: „oben drüber, dann die ganze Fläche für die KI“): Bereiche, was Sie erwartet, weitere Checks. */}
-            <div className={s.checkKarte} aria-label="Der Check">
-              <div className={s.checkKarteBereiche}>
-                <p className={s.etikett}>Der Check</p>
-                {bereiche}
-              </div>
-              <div className={s.checkKarteSeite}>
-                <ul className={s.versprechen}><li>kostenlos</li><li>{mitWahl ? `${seite.minuten} oder ${seite.minuten_lang ?? seite.minuten} Minuten` : `rund ${seite.minuten} Minuten`}</li><li>Ergebnis sofort</li><li>Antworten per Klick</li></ul>
-                {!!weitere?.length && (
-                  <div className={s.weitere}>
-                    <p className={s.etikett}>Weitere Checks</p>
-                    {/* Bewusst <a>: die anderen Checks sind eigene Seitenaufrufe (eigene Vorlage, eigene Sitzung). */}
-                    {weitere.map(w => <a key={w.pfad} className={s.weitererCheck} href={w.pfad}><b>{w.name}</b><span>{w.text}</span></a>)}
-                  </div>
-                )}
-                {claim && <p className={s.claim}>{claim}</p>}
-              </div>
+            {/* Kompakt über dem Gespräch (31.10., Prüfung: die Wahl stand erst bei y ≈ 1.050): Bereiche als Leiste, die weiteren Checks am Ende. */}
+            <div className={s.checkLeiste} aria-label="Der Check">
+              {!!seite.bereiche?.length && <ul className={s.bereichChips} aria-label="Die Bereiche des Checks">{seite.bereiche.map(b => <li key={b.name}>{b.name}</li>)}</ul>}
+              <ul className={s.versprechen}><li>kostenlos</li><li>{mitWahl ? `${seite.minuten} oder ${seite.minuten_lang ?? seite.minuten} Minuten` : `rund ${seite.minuten} Minuten`}</li><li>Ergebnis sofort</li><li>Antworten per Klick</li></ul>
             </div>
           </section>
         )}
@@ -310,6 +291,15 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
         {laedt && aktuell.art === 'ergebnis' && !ansicht && <Zoe zeilen={['Ich rechne Ihr Ergebnis aus …']} />}
         {fehler && <p className={s.fehler} role="alert">{fehler}</p>}
         <div ref={ende} />
+
+        {!!weitere?.length && (
+          <nav className={s.weitereUnten} aria-label="Weitere Checks">
+            <p className={s.etikett}>Weitere Checks</p>
+            {/* Bewusst <a>: die anderen Checks sind eigene Seitenaufrufe (eigene Vorlage, eigene Sitzung). */}
+            <div className={s.weitereListe}>{weitere.map(w => <a key={w.pfad} className={s.weitererCheck} href={w.pfad}><b>{w.name}</b><span>{w.text}</span></a>)}</div>
+            {claim && <p className={s.claim}>{claim}</p>}
+          </nav>
+        )}
 
         <details className={s.datenschutz} open={!strom}>
           <summary>Datenschutz in Kürze</summary>

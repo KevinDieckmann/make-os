@@ -21,6 +21,7 @@ import { begruessung, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
 import { ladeCheckEinstellungen } from '@/lib/check/speicher';
 import { zoeKontext, hinweisLaden } from '@/lib/check/server';
+import { preload } from 'react-dom';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -64,6 +65,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function Seite({ searchParams }: Props) {
+  // Die Schrift der Check-Seite früh laden (31.10., Prüfung Technik: sie kam am Handy erst nach 2 s).
+  preload('/schriften/schibsted-grotesk-latin.woff2', { as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' });
   const netz = netzVon(adresseAusKoepfen(await headers()));
   const schluessel = `check-seite:${netz}`;
   if (!pruefe(schluessel).erlaubt) notFound();

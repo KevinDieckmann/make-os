@@ -286,3 +286,12 @@
 @media (min-width: 720px) {
   .optionen.zweiSpalten { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Check-Einstieg kompakt (31.10.) ── */
+.checkLeiste { margin-top: 28px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 18px 0; border-top: 1px solid var(--c-linie); border-bottom: 1px solid var(--c-linie); }
+.bereichChips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.bereichChips li { padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(167, 139, 250, .35); background: rgba(124, 58, 237, .1); color: var(--c-text); font-size: .9rem; }
+.checkLeiste .versprechen { margin: 0; }
+.weitereUnten { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--c-linie); }
+.weitereListe { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; margin-top: 12px; }
+.weitereUnten .claim { margin-top: 20px; }

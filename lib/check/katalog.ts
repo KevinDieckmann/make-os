@@ -26,8 +26,8 @@ const vorlage = (id: string, name: string, katalog: unknown, regeln: unknown, se
 /** Alle Checks der Website (30.10., Kevin: „kostenlosen Vertriebscheck … Sichtbarkeitstest“ — der Innovations-Check bleibt der große). */
 export const VORLAGEN: Readonly<Record<string, CheckVorlage>> = {
   'innovations-check': vorlage('innovations-check', 'Innovations-Check', innovationsKatalog, innovationsRegeln, innovationsSeite),
-  'vertriebs-check': vorlage('vertriebs-check', 'Vertriebscheck', vertriebKatalog, vertriebRegeln, vertriebSeite),
-  'sichtbarkeits-test': vorlage('sichtbarkeits-test', 'Sichtbarkeitstest', sichtbarkeitKatalog, sichtbarkeitRegeln, sichtbarkeitSeite),
+  'vertriebs-check': vorlage('vertriebs-check', 'Vertriebs-Check', vertriebKatalog, vertriebRegeln, vertriebSeite),
+  'sichtbarkeits-test': vorlage('sichtbarkeits-test', 'Sichtbarkeits-Check', sichtbarkeitKatalog, sichtbarkeitRegeln, sichtbarkeitSeite),
 };
 
 export const STANDARD_VORLAGE = 'innovations-check';

@@ -79,6 +79,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
         { text: 'Der Innovations-Check vergleicht nach Unternehmensgröße jetzt mit den Destatis-Zahlen von 2025.', bereich: 'business', weg: WEG.marketing('check') },
         { text: 'Die drei Checks im dunklen Design der App: Karten mit Tiefe und Lichtkante, ein Leuchtfaden führt durch das Gespräch, Kopf mit Logo, das zur Website führt. Logo (für dunklen Grund) und Website-Adresse stellt ihr unter Marketing › Innovations-Check ein.', bereich: 'business', weg: WEG.marketing('check') },
         { text: 'Website: neuer Film auf der Startseite mit Raum-Schein und pulsierendem Fokus-Punkt, überall ab-Preise, geprüfte Zahlen zu Unternehmen aus 2026, Über uns mit dem Team dahinter, eigene Seiten hinter „In den Markt“ und „Ins Unternehmen“, Grafiken zum Problem auf fünf Seiten und Plätze für Erklärvideos.', bereich: 'business' },
+        { text: 'Website überarbeitet: Startseite kürzer, Film mit Knöpfen im letzten Bild, passender Check als zweiter Knopf auf jeder Seite, Preise als Karten mit markiertem Einstieg, Arbeitsprobe mit Bildern, Absicherung für Homepages, Videos und Tagesworkshop (Freigabe vor dem Bau, Ausstieg), Erstgespräch 30 Minuten, Menü per Tastatur bedienbar.', bereich: 'business' },
       ] },
     ],
   },
@@ -86,10 +87,10 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     id: 'u-2026-10-30-4',
     datum: '2026-10-30',
     titel: 'Checks für die Website: Innovation, Vertrieb, Sichtbarkeit',
-    kurz: 'Drei Checks für die Website: der Innovations-Check (kurz oder ausführlich), ein Vertriebscheck und ein Sichtbarkeitstest. Jedes Ergebnis nennt nächste Schritte mit euren Angeboten und die nächsten freien Termine fürs Erstgespräch.',
+    kurz: 'Drei Checks für die Website: der Innovations-Check (kurz oder ausführlich), ein Vertriebs-Check und ein Sichtbarkeits-Check. Jedes Ergebnis nennt nächste Schritte mit euren Angeboten und die nächsten freien Termine fürs Erstgespräch.',
     abschnitte: [
       { art: 'neu', punkte: [
-        { text: 'Zwei kleine Checks mit je zwölf Fragen: Vertriebscheck (Organisation, Zahlen, Neukunden) und Sichtbarkeitstest (Botschaft, Website, Reichweite). Eingegangene Checks stehen gemeinsam unter Marketing › Innovations-Check.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Zwei kleine Checks mit je zwölf Fragen: Vertriebs-Check (Organisation, Zahlen, Neukunden) und Sichtbarkeits-Check (Botschaft, Website, Reichweite). Eingegangene Checks stehen gemeinsam unter Marketing › Innovations-Check.', bereich: 'business', weg: WEG.marketing('check') },
         { text: 'Der Innovations-Check misst nur Innovation. Besucher wählen am Anfang: kurz mit 19 Fragen (rund 10 Minuten) oder ausführlich mit rund 50 Fragen in Etappen (rund 25 Minuten). Auswerten geht jederzeit.', bereich: 'business', weg: WEG.marketing('check') },
         { text: 'Für die zwei größten Lücken (Innovations-Check) bzw. die zwei schwächsten Bereiche (kleine Checks) nennt das Ergebnis je einen nächsten Schritt. Darunter steht euer passendes Angebot: Titel, Satz und Link stellt ihr unter Marketing › Innovations-Check ein.', bereich: 'business', weg: WEG.marketing('check') },
         { text: 'Die nächsten freien Termine fürs Erstgespräch stehen direkt im Ergebnis. Ein angetippter Termin ist auf der Buchungsseite schon gewählt.', bereich: 'business' },
