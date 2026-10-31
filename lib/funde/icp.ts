@@ -237,3 +237,42 @@ export function icpBewerten(m: IcpMerkmale, k: IcpKontext, gemessenAm: string): 
     gruende, aufhaenger: aufhaenger.slice(0, 3), gemessenAm,
   };
 }
+
+/** Branchen-Schlagwort aus Thema und Website-Text (Reihenfolge = Vorrang). Rein. Liste: `BRANCHEN_TAGS` (lib/crm/icp-firma.ts). */
+const TAGS: [string, RegExp][] = [
+  ['HealthTech & Medizintechnik', /\b(health|gesundheit|medizin|medical|medtech|klinik|pflege|patient|diagnos|patholog|radiolog|therap|praxis|arzt|ärzt|care\b)/i],
+  ['FinTech & InsurTech', /\b(fintech|finanz|finance|payment|zahlung|bank|lending|kredit|insur|versicher|accounting|buchhaltung|steuer|tax|invoice|rechnung|wealth|invest)/i],
+  ['Energie & Klima', /\b(energ|solar|photovolt|wärme|heat|batter|wasserstoff|hydrogen|klima|climate|carbon|co2|emission|recycl|kreislauf|circular|nachhaltig|sustainab|grid|strom)/i],
+  ['Security', /\b(security|sicherheit|cyber|ransomware|verschlüssel|encrypt|pentest|siem|zero trust|datenschutz-software)/i],
+  ['Mobilität & Logistik', /\b(mobilit|logisti|transport|fleet|flotte|fahrzeug|vehicle|auto|lkw|truck|cargo|supply chain|lieferkette|shipping|parcel|lager|warehouse|drohne|drone|bahn|rail)/i],
+  ['Industrie & IoT', /\b(industri|iot|manufactur|fertigung|produktion|maschin|anlage|robot|automatis|sensor|laser|3d-druck|additive|werkstoff|material|oem|plc|ot\b|shopfloor)/i],
+  ['PropTech & Bau', /\b(proptech|immobil|real estate|bau|construction|gebäude|building|architekt|handwerk|facility)/i],
+  ['HR & Arbeit', /\b(hr\b|human resources|recruit|personal|talent|mitarbeit|employee|arbeitszeit|payroll|lohn|bewerb|weiterbildung|learning|e-learning)/i],
+  ['Food & Ernährung', /\b(food|lebensmittel|ernährung|nutrition|getränk|beverage|restaurant|gastro|catering|agrar|agri|farm|landwirt)/i],
+  ['Bildung', /\b(bildung|education|edtech|schule|school|universit|lernen)/i],
+  ['Handel & E-Commerce', /\b(e-commerce|ecommerce|retail|handel|shop|marketplace|marktplatz|d2c|händler)/i],
+  ['Sport & Freizeit', /\b(sport|fitness|training|athlet|freizeit|outdoor|reise|travel|event)/i],
+  ['KI & Daten', /\b(ki\b|ai\b|künstliche intelligenz|machine learning|llm|genai|data|daten|analytics|computer vision|nlp)/i],
+  ['SaaS & Software', /\b(saas|software|plattform|platform|app\b|cloud|api\b|tool|digital)/i],
+];
+export function branchenTag(thema?: string, text?: string): string {
+  for (const [tag, re] of TAGS) if (re.test(thema ?? '')) return tag;
+  for (const [tag, re] of TAGS) if (re.test((text ?? '').slice(0, 4000))) return tag;
+  return 'Sonstiges';
+}
+
+/** Werkzeuge aus dem HTML der Startseite (Skript-/Einbindungs-Spuren). Rein. */
+const TECH_SPUREN: [string, RegExp][] = [
+  ['HubSpot', /js\.hs-scripts\.com|js\.hsforms\.net|hs-analytics|hubspot/i], ['Salesforce', /force\.com|salesforce\.com\/|sfdc/i], ['Pardot', /pardot|pi\.pardot\.com/i],
+  ['Pipedrive', /pipedrive|leadbooster/i], ['Zoho', /zohopublic|salesiq\.zoho|zoho\.(eu|com)\//i], ['Microsoft Dynamics', /dynamics\.com|mktdplp102cdn|d365mktg/i],
+  ['Close', /close\.com\/(?:js|api)/i], ['Freshworks', /freshworks|freshchat|freshsales/i], ['ActiveCampaign', /activecampaign|trackcmp\.net/i], ['Brevo', /brevo\.com|sibforms|sendinblue/i],
+  ['Mailchimp', /mailchimp|list-manage\.com|mc\.us\d/i], ['Klaviyo', /klaviyo/i], ['Intercom', /intercom(cdn)?\.(io|com)|widget\.intercom/i], ['Drift', /js\.driftt\.com|drift\.com/i],
+  ['Zendesk', /zdassets|zendesk/i], ['Calendly', /calendly\.com/i], ['Chili Piper', /chilipiper/i], ['Leadinfo', /leadinfo\.net/i], ['Dealfront', /dealfront|leadfeeder|lftracker/i],
+  ['LinkedIn Insight', /snap\.licdn\.com|_linkedin_partner_id/i], ['Google Ads', /googleadservices|gtag\/js\?id=AW-/i], ['Meta Pixel', /connect\.facebook\.net\/[^"']*fbevents/i],
+  ['Webflow', /webflow/i], ['WordPress', /wp-content|wp-includes/i], ['Shopify', /cdn\.shopify\.com/i],
+  ['Personio', /jobs\.personio\.(de|com)/i], ['Join', /join\.com\/companies/i], ['Greenhouse', /boards\.greenhouse\.io|greenhouse\.io\/embed/i], ['Lever', /jobs\.lever\.co/i],
+  ['Recruitee', /recruitee\.com/i], ['Softgarden', /softgarden\.io/i], ['Workable', /apply\.workable\.com/i],
+];
+export function technikAus(html: string): string[] {
+  return TECH_SPUREN.filter(([, re]) => re.test(html)).map(([n]) => n);
+}

@@ -84,6 +84,16 @@ Strukturiert, damit wir je Segment auswerten und mit Marktdaten und Studien abgl
 | `profile` | Links zu LinkedIn, Instagram, X, YouTube, Xing, TikTok, Facebook — nur Links |
 | `beitraege` | letzte 5 Beiträge von Blog/News der eigenen Website (Titel, Datum, Link) |
 | `partner` / `referenzen` | Partner-/Integrations-/Kundenseite (Logo-Namen) bzw. Zahl der Referenz-Logos |
+| `branche` | Branchen-Schlagwort aus Thema bzw. Website-Text (`branchenTag`, 15 feste Werte in `BRANCHEN_TAGS`) — für Auswertung je Segment und den Abgleich mit Studien |
+| `technik` | Vertriebs- und Marketing-Werkzeuge, erkannt an Skripten der eigenen Website (`technikAus`: HubSpot, Salesforce, Pipedrive, Calendly …) — zeigt die Reife im Vertrieb |
+| `stellenTitel` | ausgeschriebene Vertriebsstellen aus den öffentlichen Schnittstellen der Jobportale (Personio, Greenhouse, Lever, Recruitee) |
+| `ansprechpartner` | Gründer/CEO, wie ihn die Firma selbst auf ihrer Team-Seite bzw. in den Strukturdaten nennt — mit Rolle und Quelle; ersetzt nie die Geschäftsführung aus dem Impressum |
+| `mailZustellbar` | Mail-Domain nimmt Post an (MX-Eintrag), geprüft am Messtag |
+| `presse` | Pressemeldungen der letzten 12 Monate aus dem öffentlichen Nachrichten-Feed (nur Titel mit Firmennamen), höchstens 5 |
+
+Zusätzlich gelesen: Kontaktseite (Telefon, Mail) und die Strukturdaten der Website (schema.org: Gründungsjahr, Mitarbeitende, Profile, Gründer).
+In der CSV stehen außerdem ein Link „LinkedIn-Suche Geschäftsführung“ (zum Selbst-Öffnen, nichts wird ausgelesen) und ein aktueller Anlass als Aufhänger 1
+(Pressemeldung ≤ 90 Tage, sonst die offene Vertriebsstelle). Eine Mail-Adresse ohne Mailserver zählt im Lead-Score nicht als Erreichbarkeit.
 
 Dazu kommen `Firma.linkedin`, `mitarbeiter`, `gegruendet`, `marktinfo` (Thema) und `quellen` je Feld.
 

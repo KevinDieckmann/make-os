@@ -2719,7 +2719,8 @@ Kevin 31.10.: Firmen fürs Sales-Profil finden (Deutschland, nur öffentliche ko
   `prioritaetVon` (Lead-Score der Ansprache). Konzern nur als Selbstaussage im Impressum (`konzernAus`), Größe nur Selbstangabe (`teamGroesse`),
   Vertriebsleitung nur besetzt, nie als Stellenanzeige (`vertriebsleitungAus`). Neue Regel = Daten + Test in `tests/funde-icp.test.ts`.
 - **An der Firma** (lib/crm/icp-firma.ts, gesäubert in `betriebFelder`): `icp` und `steckbrief` (Vertriebsleitung ja/nein + Rolle, Mitarbeitende, Stellen,
-  Register, Gründungsjahr, Signal, Profil-LINKS, letzte Beiträge der eigenen Website, Partner, Referenzen) — Rollen statt Personen; LinkedIn/Instagram
+  Register, Gründungsjahr, Signal, Profil-LINKS, letzte Beiträge der eigenen Website, Partner, Referenzen, Branche `branchenTag`, Technik `technikAus`,
+  Vertriebsstellen, Ansprechpartner nur wie selbst veröffentlicht mit Quelle, Mail zustellbar, Presse) — Rollen statt Personen; LinkedIn/Instagram
   nie auslesen (nur Links; Daten nur über Exporte aus dem eigenen Konto).
 
 ## Inbox 2 — EINE Inbox für alle Postfächer (06./07.10., nur lokal, Branch `inbox-2`; Konzept `INBOX_KONZEPT.md` mit Abschnitt 12, UPDATES.md)
