@@ -8,7 +8,8 @@
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
 import { ladeCrm } from '@/lib/crm/speicher';
-import { bestehendeFirma } from '@/lib/crm/firmen';
+import { betriebFinden, type BetriebKandidat } from '@/lib/crm/betrieb';
+import { betriebGesperrt } from '@/lib/crm/betrieb-sperre';
 import { sperrlisteLaden, sperrTreffer } from '@/lib/crm/sperrliste';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { alleAdressen } from '@/lib/crm/emails';
@@ -43,7 +44,9 @@ export async function fundeFaellig(jetzt = new Date()): Promise<boolean> {
   return (await resolveAgent(FUNDE_LAUF)).enabled;
 }
 
-const normName = (s: string) => s.toLowerCase().normalize('NFC').replace(/[^a-z0-9äöüß]+/g, ' ').trim();
+/** Ein Fund bzw. Rohfund als Betrieb (Schlüssel OSM-ID → Domain → Name + Adresse, lib/crm/betrieb.ts) — gleicher Name an anderer Adresse = anderer Betrieb. */
+export const alsBetrieb = (x: { id?: string; name: string; osmId?: string; adresse?: BetriebKandidat['adresse']; website?: string | null; email?: string }): BetriebKandidat & { id: string } =>
+  ({ id: x.id ?? x.osmId ?? x.name, name: x.name, ...(x.osmId ? { osmId: x.osmId } : {}), ...(x.adresse ? { adresse: x.adresse } : {}), ...(x.website ? { webseite: x.website } : {}), ...(x.email ? { email: x.email } : {}) });
 
 /** Vorschau-Texte: Modell über das KI-Tor (Hintergrund, Kategorie crm), sonst Regelwerk. */
 async function vorschauFuer(f: Fund, person: string | null): Promise<{ v: Fund['vorschau']; ohneKi?: string }> {
@@ -83,17 +86,21 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
     catch (err) { fehler = err instanceof Error ? err.message.slice(0, 200) : 'OpenStreetMap nicht erreichbar.'; }
   }
 
-  // 2 · Aussortieren: schon bekannt (Fund, verworfen, gesperrt), Firma steht schon in der Kartei, Adresse/Firma auf der Sperrliste.
+  // 2 · Aussortieren: schon bekannt (Fund, verworfen, gesperrt), Betrieb steht schon in der Kartei (OSM-ID/Domain/Name + Adresse — nie nur der
+  //     Name, 01.11.), Betrieb oder Adresse auf der Sperrliste.
   const [crm, kontakte, sperre] = await Promise.all([ladeCrm(), kontakteFuerVerarbeitung({ mitEingeschraenkten: true }), sperrlisteLaden()]);
   const bekannt = new Set([...b.bekannt, ...b.funde.map(f => f.osmId).filter((x): x is string => !!x)]);
   const adressen = new Set(kontakte.flatMap(k => alleAdressen(k)));
-  const namen = new Set(b.funde.map(f => normName(f.name)));
+  const fundBetriebe = b.funde.map(alsBetrieb);
+  const kartei = crm.firmen.filter(f => !f.geloeschtAm);
   const kandidaten = roh.filter(r => {
     if (e.arten?.length && !e.arten.includes(r.kategorie ?? '')) return false; // Persona: nur diese Arten
-    if (bekannt.has(r.osmId) || namen.has(normName(r.name))) return false;
-    if (bestehendeFirma(crm.firmen, r.name)) return false;
+    const k = alsBetrieb(r);
+    if (bekannt.has(r.osmId) || betriebFinden(fundBetriebe, k)) return false;
+    if (betriebFinden(kartei, k)) return false;
     if (r.email && adressen.has(r.email)) return false;
-    if (sperrTreffer(sperre, { firma: r.name, ...(r.email ? { email: r.email } : {}) } as never)) return false;
+    // Sperrliste: Betriebs-Merkmale (OSM-ID, Domain, Name + Adresse) und die Adresse als Personen-Merkmal.
+    if (betriebGesperrt(sperre, k) || sperrTreffer(sperre, { firma: r.name, ...(r.email ? { email: r.email } : {}) } as never)) return false;
     return true;
   });
 

@@ -1,5 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
+
 // ─── Markttraktion · Marketing › Homepage-Funde (30.10.2026, KAMPAGNE_HOMEPAGE_PLAN.md) ──────────────────────────────────────
 // Die eine Stelle der Kampagne „Homepage“: einrichten (Kampagne + Segment), Gebiete/Branchen/Menge, Absender, Angebot, „eigenes Risiko“
 // (nur Inhaber, Hinweis bleibt sichtbar), Lauf jetzt, Fund von Hand (z. B. auf Google Maps gesehen), die Funde mit Bewertung, Vorschau,
@@ -17,7 +20,7 @@ interface Fund {
   adresse?: { strasse?: string; hausnummer?: string; plz?: string; ort?: string };
   bewertung?: { punkte: number; gruende: string[] }; entwurf?: { betreff: string; text: string; anruf: string };
   status: 'neu' | 'vorbereitet' | 'uebernommen' | 'gesendet' | 'verworfen' | 'gesperrt'; grund?: string; angelegt: string;
-  vorschlagId?: string; kontaktId?: string; gesendet?: { am: string; ueber: string }; angesehenAm?: string;
+  vorschlagId?: string; kontaktId?: string; firmaId?: string; gesendet?: { am: string; ueber: string }; angesehenAm?: string;
 }
 interface Daten {
   istInhaber: boolean; eingerichtet: boolean; kampagne?: { id: string; name: string; status: string };
@@ -222,7 +225,8 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                       {f.vorschlagId && f.status === 'vorbereitet' && <Knopf haupt onClick={async () => { await tun({ id: f.vorschlagId, entscheidung: 'freigeben' }, '/api/zoe/stapel'); }}>{e.eigenesRisiko && f.email ? 'Freigeben und Mail senden' : 'Freigeben (übernehmen)'}</Knopf>}
                       {(f.status === 'vorbereitet' || f.status === 'neu') && <Knopf leise onClick={async () => { if (await bestaetigen({ titel: 'Diesen Fund verwerfen?', text: 'Er kommt nicht wieder.', ja: 'Verwerfen' })) await tun({ aktion: 'verwerfen', id: f.id }); }}>Verwerfen</Knopf>}
                       {f.status === 'uebernommen' && e.eigenesRisiko && f.email && <Knopf leise onClick={async () => { await tun({ aktion: 'senden', id: f.id }); }}>Mail senden</Knopf>}
-                      {f.kontaktId && f.status !== 'vorbereitet' && <Knopf leise onClick={() => zuKontakt(f.kontaktId!)}>Zur Akte</Knopf>}
+                      {f.kontaktId && f.status !== 'vorbereitet' && <Knopf leise onClick={() => zuKontakt(f.kontaktId!)}>Zur Person</Knopf>}
+                      {f.firmaId && f.status !== 'vorbereitet' && <Link href={WEG.firma(f.firmaId)} style={{ fontSize: TYP.bedien, color: C.aktiv, alignSelf: 'center' }}>Zur Firma ›</Link>}
                     </div>
                     {f.gesendet && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Gesendet am {datum(f.gesendet.am.slice(0, 10))} über {f.gesendet.ueber}{f.angesehenAm ? ` · Vorschau geöffnet am ${datum(f.angesehenAm.slice(0, 10))}` : ''}</div>}
                     {f.entwurf && (

@@ -18,7 +18,10 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, feld, LEUCHT, Zei
 import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte } from '../ablage';
 import { anzeigename, HERKUNFT, type Kontakt } from '@/lib/make-one/crm';
 import type { Segment, SegmentKriterien } from '@/lib/crm/typen';
-import { kontextAus, segmentAuswerten, type SegmentAuswertung } from '@/lib/crm/segmente';
+import { kontextAus, segmentAuswerten, segmentFirmen, type SegmentAuswertung } from '@/lib/crm/segmente';
+import { ERREICHBARKEITEN, BETRIEB_QUELLEN, adresseText } from '@/lib/crm/betrieb';
+import type { Firma } from '@/lib/crm/typen';
+import Link from 'next/link';
 import { SEGMENT_VORLAGEN, vorlageAlsSegment, kriterienText, kriterienSauber, kriterienGleich } from '@/lib/crm/marketing';
 import { type CrmApi, neueId } from '../daten';
 import { Pillen, Feldzeile } from '../teile';
@@ -79,6 +82,14 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
   const segmente = useMemo(() => (alleSegmente ?? []).filter(x => (sicht === 'archiv' ? !!x.archiviertAm : !x.archiviertAm)).sort((a, b) => a.name.localeCompare(b.name)), [alleSegmente, sicht]);
   const zahlen = useMemo(() => new Map(ctx ? segmente.map(s => [s.id, segmentAuswerten(kontakte, s.kriterien, ctx)]) : []), [segmente, kontakte, ctx]);
   const vorschau = useMemo(() => (entwurf && ctx ? segmentAuswerten(kontakte, entwurf.kriterien, ctx) : null), [entwurf, kontakte, ctx]);
+  // Betriebe ohne Person (01.11., Welle A): zählen als eigene Ziele neben den Personen.
+  const firmen = useMemo(() => (crm?.stand.firmen ?? []).filter(f => !f.geloeschtAm), [crm]);
+  const betriebeJe = useMemo(() => new Map(ctx ? segmente.map(s => [s.id, segmentFirmen(firmen, kontakte, s.kriterien, ctx).length]) : []), [segmente, firmen, kontakte, ctx]);
+  const betriebe = useMemo(() => (entwurf && ctx ? segmentFirmen(firmen, kontakte, entwurf.kriterien, ctx) : []), [entwurf, firmen, kontakte, ctx]);
+  const wahl = useMemo(() => ({
+    bezirke: Array.from(new Set(firmen.map(f => f.bezirk).filter((x): x is string => !!x))).sort().map(b => ({ id: b, label: b })),
+    kampagnen: (crm?.stand.kampagnen ?? []).filter(k => !k.geloeschtAm).map(k => ({ id: k.id, label: k.name })),
+  }), [firmen, crm]);
   const vorlagen = useMemo(() => (ctx ? SEGMENT_VORLAGEN.filter(v => !segmente.some(s => s.name.trim().toLowerCase() === v.name.toLowerCase())).map(v => ({ v, anzahl: segmentAuswerten(kontakte, v.kriterien, ctx).anzahl })) : []), [segmente, kontakte, ctx]);
   if (!crm || !ctx) return <Karte i={0}><Leer>Lädt …</Leer></Karte>;
 
@@ -110,7 +121,7 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
       {sicht !== 'papierkorb' && <Karte i={0}>
         <Ueberschrift rechts={sicht === 'liste' ? <Knopf onClick={() => setEntwurf({ id: neueId('sg'), name: '', beschreibung: '', kriterien: {}, neu: true })}>+ Segment</Knopf> : undefined}>{sicht === 'archiv' ? 'Archiv · Segmente' : 'Segmente'} · {segmente.length}</Ueberschrift>
         {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>{meldung}</div>}
-        {entwurf?.neu && vorschau && <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} speichern={speichern} gespeichert={false} csv={csv} zuKontakt={zuKontakt} werte={werte} />}
+        {entwurf?.neu && vorschau && <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} betriebe={betriebe} wahl={wahl} speichern={speichern} gespeichert={false} csv={csv} zuKontakt={zuKontakt} werte={werte} />}
         <Liste>
           {segmente.map(s => {
             const a = zahlen.get(s.id);
@@ -118,10 +129,10 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
               <div key={s.id}>
                 <ZeileAktionen href={WEG.marketing('segmente', s.id)} onOeffnen={() => oeffne(s)} titel={s.name} archiviert={sicht === 'archiv'} onArchivieren={() => { if (entwurf?.id === s.id) setEntwurf(null); if (sicht === 'archiv') ablage.zurueckholen(s.id, s.name); else ablage.archivieren(s.id, s.name); }} onLoeschen={() => loeschen(s)}>
                   <Zeile onClick={() => oeffne(s)} aktiv={entwurf?.id === s.id} titel={s.name} unter={s.beschreibung || kriterienText(s.kriterien)}
-                    rechts={<Chip farbe={a?.anzahl ? LEUCHT.business : C.inkDim}>{a?.anzahl ?? 0} Personen</Chip>} />
+                    rechts={<Chip farbe={a?.anzahl || betriebeJe.get(s.id) ? LEUCHT.business : C.inkDim}>{a?.anzahl ?? 0} Personen{betriebeJe.get(s.id) ? ` · ${betriebeJe.get(s.id)} Betriebe` : ''}</Chip>} />
                 </ZeileAktionen>
                 {entwurf?.id === s.id && !entwurf.neu && vorschau && (
-                  <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} speichern={speichern} gespeichert={gespeichert(entwurf)} csv={csv} zuKontakt={zuKontakt} werte={werte}
+                  <SegmentFormular e={entwurf} setE={setEntwurf} a={vorschau} betriebe={betriebe} wahl={wahl} speichern={speichern} gespeichert={gespeichert(entwurf)} csv={csv} zuKontakt={zuKontakt} werte={werte}
                     loeschen={() => loeschen(s)}
                     kampagne={() => zuKampagne(s.id)} />
                 )}
@@ -153,8 +164,11 @@ export function Segmente({ api, zuKontakt, zuKampagne }: { api: CrmApi; zuKontak
   );
 }
 
-function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, loeschen, kampagne, werte }: {
-  e: Entwurf; setE: (e: Entwurf | null) => void; a: SegmentAuswertung; speichern: (e: Entwurf) => Promise<void>; gespeichert: boolean; werte: EinordnungWerte;
+type BetriebWahl = { bezirke: { id: string; label: string }[]; kampagnen: { id: string; label: string }[] };
+const WEBSITE: { id: 'egal' | 'ja' | 'nein'; label: string }[] = [{ id: 'egal', label: 'egal' }, { id: 'ja', label: 'mit Website' }, { id: 'nein', label: 'ohne Website' }];
+
+function SegmentFormular({ e, setE, a, betriebe, wahl, speichern, gespeichert, csv, zuKontakt, loeschen, kampagne, werte }: {
+  e: Entwurf; setE: (e: Entwurf | null) => void; a: SegmentAuswertung; betriebe: Firma[]; wahl: BetriebWahl; speichern: (e: Entwurf) => Promise<void>; gespeichert: boolean; werte: EinordnungWerte;
   csv: (id: string) => void; zuKontakt: (id: string) => void; loeschen?: () => void; kampagne?: () => void;
 }) {
   const kr = e.kriterien;
@@ -192,6 +206,23 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
         <Feldzeile label="Stichwort">{text('stichwort', 'in Name, Firma, Position, Aufhänger, Notiz')}</Feldzeile>
         <Feldzeile label="Kanal zulässig"><Pillen liste={KANAELE} aktiv={kr.kanal ?? ''} onWahl={x => setK({ kanal: x || undefined })} /></Feldzeile>
         <Feldzeile label="Chance"><Pillen liste={CHANCE} aktiv={kr.mitChance === undefined ? 'egal' : kr.mitChance ? 'ja' : 'nein'} onWahl={x => setK({ mitChance: x === 'egal' ? undefined : x === 'ja' })} /></Feldzeile>
+        {/* Betriebe (01.11., Welle A): wirken auf Firmen ohne Person direkt, auf Personen über ihre Firma. */}
+        {wahl.bezirke.length > 0 && <Feldzeile label="Bezirk"><WahlMehrfach label="Bezirk" liste={wahl.bezirke} wert={kr.bezirk ?? []} onWahl={l => setK({ bezirk: l.length ? l : undefined })} /></Feldzeile>}
+        <Feldzeile label="PLZ">
+          <input value={(kr.plz ?? []).join(', ')} maxLength={200} placeholder="z. B. 10, 12049 (Anfang genügt)" aria-label="PLZ" onChange={x => setK({ plz: x.target.value.split(/[,\s]+/).map(v => v.trim()).filter(v => /^[0-9A-Za-z]{1,10}$/.test(v)) })} style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px' }} />
+        </Feldzeile>
+        <Feldzeile label="Website-Bedarf">
+          <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {(['von', 'bis'] as const).map(f => (
+              <input key={f} type="number" min={0} max={100} value={kr.websiteScore?.[f] ?? ''} placeholder={f} aria-label={`Website-Bedarf ${f}`} onChange={x => { const v = x.target.value === '' ? undefined : Math.round(Math.min(100, Math.max(0, Number(x.target.value)))); const ws = { ...(kr.websiteScore ?? {}), [f]: v }; if (ws.von === undefined) delete ws.von; if (ws.bis === undefined) delete ws.bis; setK({ websiteScore: Object.keys(ws).length ? ws : undefined }); }} style={{ ...feld, width: 90, fontSize: TYP.bedien, padding: '8px 11px' }} />
+            ))}
+            <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>0–100, hoch = keine oder schwache Website</span>
+          </span>
+        </Feldzeile>
+        <Feldzeile label="Website"><Pillen liste={WEBSITE} aktiv={kr.hatWebsite === undefined ? 'egal' : kr.hatWebsite ? 'ja' : 'nein'} onWahl={x => setK({ hatWebsite: x === 'egal' ? undefined : x === 'ja' })} /></Feldzeile>
+        <Feldzeile label="Erreichbar per"><Mehrfach liste={ERREICHBARKEITEN} aktiv={kr.erreichbarkeit ?? []} onWahl={l => setK({ erreichbarkeit: l.length ? l : undefined })} /></Feldzeile>
+        {wahl.kampagnen.length > 0 && <Feldzeile label="Kampagne"><WahlMehrfach label="Kampagne" liste={wahl.kampagnen} wert={kr.kampagne ?? []} onWahl={l => setK({ kampagne: l.length ? l : undefined })} /></Feldzeile>}
+        <Feldzeile label="Quelle"><Mehrfach liste={BETRIEB_QUELLEN} aktiv={kr.quelle ?? []} onWahl={l => setK({ quelle: l.length ? l : undefined })} /></Feldzeile>
         <Feldzeile label="Ohne Kontakt seit">
           <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <input type="number" min={0} max={3650} value={kr.ohneKontaktSeitTagen ?? ''} placeholder="—" aria-label="Tage ohne Kontakt" onChange={x => { const n = Math.round(Number(x.target.value)); setK({ ohneKontaktSeitTagen: n > 0 ? Math.min(n, 3650) : undefined }); }} style={{ ...feld, width: 110, fontSize: TYP.bedien, padding: '8px 11px' }} />
@@ -199,10 +230,10 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
           </span>
         </Feldzeile>
       </div>
-      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gesperrte Personen sind nie Mitglied. Mit „Kanal zulässig“ zählt nur, wer darüber erreichbar sein darf (Ampel grün). Lifecycle: gesetzt, sonst der Vorschlag aus den Daten.</div>
+      <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Gesperrte Personen und Betriebe sind nie Mitglied. Betriebe ohne Person zählen eigens. Mit „Kanal zulässig“ zählt nur, wer darüber erreichbar sein darf (Ampel grün). Lifecycle: gesetzt, sonst der Vorschlag aus den Daten.</div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <b style={{ fontSize: TYP.body, fontWeight: 600 }}>{a.anzahl} Personen</b>
+        <b style={{ fontSize: TYP.body, fontWeight: 600 }}>{a.anzahl} Personen · {betriebe.length} Betriebe ohne Person</b>
         <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{kriterienText(kr)}</span>
       </div>
       <KanalZahlen a={a} />
@@ -217,9 +248,19 @@ function SegmentFormular({ e, setE, a, speichern, gespeichert, csv, zuKontakt, l
         </div>
       )}
 
+      {betriebe.length > 0 && (
+        <div style={{ display: 'grid', gap: 0 }}>
+          {betriebe.slice(0, 20).map(f => (
+            <Link key={f.id} href={WEG.firma(f.id)} className="fassbar" style={{ color: C.ink, textDecoration: 'none', borderBottom: '1px solid rgba(255,255,255,.05)', fontSize: TYP.bedien, padding: '6px 0' }}>
+              {f.name}{f.bezirk ? <span style={{ color: C.inkLeise }}> · {f.bezirk}</span> : adresseText(f.adresse) ? <span style={{ color: C.inkLeise }}> · {adresseText(f.adresse)}</span> : null}{f.bewertung ? <span style={{ color: C.inkLeise }}> · Bedarf {f.bewertung.punkte}</span> : null}
+            </Link>
+          ))}
+          {betriebe.length > 20 && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, paddingTop: 6 }}>… und {betriebe.length - 20} weitere Betriebe — alle im Export.</div>}
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <Knopf aus={!e.name.trim() || gespeichert} onClick={() => { if (e.name.trim()) void speichern(e); }}>{gespeichert ? 'Gespeichert' : 'Speichern'}</Knopf>
-        <Knopf leise aus={!gespeichert || !a.anzahl} onClick={() => csv(e.id)}>Als CSV</Knopf>
+        <Knopf leise aus={!gespeichert || (!a.anzahl && !betriebe.length)} onClick={() => csv(e.id)}>Als CSV</Knopf>
         {kampagne && <Knopf leise aus={!gespeichert} onClick={kampagne}>Kampagne daraus planen</Knopf>}
         <Knopf leise onClick={() => setE(null)}>Schließen</Knopf>
         {loeschen && <Knopf leise onClick={loeschen}>Löschen</Knopf>}

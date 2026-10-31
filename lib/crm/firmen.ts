@@ -131,12 +131,24 @@ export function firmenAbgleich(kontakte: Kontakt[], firmen: Firma[], jetzt: stri
   return { firmen: liste, kontakte: raus, neu, verknuepft, ergaenzt };
 }
 
-/** Firmen-Dubletten: gleicher Schlüssel oder gleiche Domain. */
+/**
+ * Firmen-Dubletten: gleicher Schlüssel oder gleiche Domain — seit 01.11. (Welle A) NIE, wenn beide eine Anschrift bzw. OSM-ID tragen und
+ * sie sich unterscheiden (zwei Betriebe gleichen Namens an zwei Adressen sind zwei Betriebe, `gleicherBetrieb` in lib/crm/betrieb.ts).
+ */
 export function firmenDubletten(firmen: Firma[]): [Firma, Firma][] {
   const paare: [Firma, Firma][] = [];
   for (let i = 0; i < firmen.length; i++) for (let j = i + 1; j < firmen.length; j++) {
     const a = firmen[i], b = firmen[j];
-    if (firmenSchluessel(a.name) === firmenSchluessel(b.name) || (a.domain && a.domain === b.domain)) paare.push([a, b]);
+    if (!(firmenSchluessel(a.name) === firmenSchluessel(b.name) || (a.domain && a.domain === b.domain))) continue;
+    if (verschiedeneOrte(a, b)) continue;
+    paare.push([a, b]);
   }
   return paare;
+}
+/** Zwei Firmen an nachweislich verschiedenen Orten (verschiedene OSM-IDs oder verschiedene Anschriften). Rein, ohne Import von betrieb.ts (Kreis). */
+function verschiedeneOrte(a: Firma, b: Firma): boolean {
+  if (a.osmId && b.osmId) return a.osmId !== b.osmId;
+  const ort = (f: Firma) => { const x = f.adresse; if (!x || (!x.plz && !x.strasse)) return ''; return `${(x.plz ?? '').replace(/\s/g, '')}|${`${x.strasse ?? ''}${x.hausnummer ?? ''}`.toLowerCase().replace(/ß/g, 'ss').replace(/strasse|str\./g, 'str').replace(/[^a-z0-9]/g, '')}`; };
+  const oa = ort(a), ob = ort(b);
+  return !!oa && !!ob && oa !== ob;
 }

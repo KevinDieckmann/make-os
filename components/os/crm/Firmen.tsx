@@ -36,6 +36,7 @@ import { BeanWahl, useOffeneAngebote } from './bean-teile';
 import { beanFirma } from '@/lib/crm/bean';
 import { Person } from './team';
 import { LeadBlock } from './Leads';
+import { BetriebKarte } from './BetriebKarte';
 import { haeltBeziehung, nameVon } from '@/lib/crm/team';
 import { personenJeFirma, personenAufteilen, stationIn, stationenVon, aktivitaetZurFirma, STATION_ART_LABEL } from '@/lib/crm/stationen';
 import { useFirmaWechselFrage } from './kontakt/FirmaWechselFrage';
@@ -271,6 +272,8 @@ function useFirmenTeile({ f, api, zuPerson, zuFirma, onLoeschen }: FirmenTeilePr
       </Feldzeile>
     ); })() : null,
     lead: <LeadBlock api={api} leadId={f.id} />,
+    // Betrieb & Recht am Betrieb (01.11., Welle A „Firmen als Ziel“).
+    betrieb: <BetriebKarte f={f} heute={crm.heute} setze={setze} hatMandat={mandate.some(m => m.status === 'aktiv')} hatChance={chancen.some(c => OFFENE_STUFEN.includes(c.stufe))} />,
     personen: (
       <div>
         {wechselFrage}
@@ -384,7 +387,7 @@ export function FirmenKarte(props: FirmenTeileProps) {
         <div style={{ fontFamily: SCHRIFT.display, fontSize: 21, fontWeight: 700, letterSpacing: '-.015em' }}>{f.name}</div>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 2 }}>{[f.branche, f.stadt, f.webseite ?? f.domain].filter(Boolean).join(' · ') || '—'}</div>
       </div>
-      {t.rolle}{t.bean}{t.mutter}{t.toechter}{t.gruppe}{t.lead}
+      {t.rolle}{t.bean}{t.mutter}{t.toechter}{t.gruppe}{t.lead}{t.betrieb}
       {t.personen}{t.ehemalig}{t.dealsMandate}{t.eventsKunde}{t.begegnungen}{t.termine}{t.aufgaben}{t.zoe}{t.stammdaten}{t.verlauf(15)}{t.papierkorb}
       {t.mitlaeufer}
     </div>
@@ -477,7 +480,8 @@ function FirmenAkteInhalt({ f, api, zurueck, zurueckKnopf, zuPerson, zuFirma }: 
   const links = <>
     {karte(<div style={{ display: 'grid', gap: 12, minWidth: 0 }}>{t.rolle}{t.bean}{t.mutter}{t.toechter}{t.gruppe}</div>, 1)}
     {karte(t.lead, 2)}
-    {karte(t.stammdaten, 3)}
+    {karte(t.betrieb, 3)}
+    {karte(t.stammdaten, 4)}
   </>;
   const mitte = <>
     {karte(<div style={{ display: 'grid', gap: 14 }}>{t.personen}{t.ehemalig}</div>, 1)}
