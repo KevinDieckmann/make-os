@@ -3,8 +3,8 @@
  "domain": "makeinnovation.de",
  "check": "/check",
  "termin": {
-  "hinweis": "Buchungsseite aus der App (Kalender › Buchungsseiten, Form /buchen/<name>-<24 Hex>). Solange leer: vorbereitete Mail an kontakt.mail.",
-  "link": "/buchen/erstgespraech-c9a7127ad22839b329a01f06"
+  "hinweis": "Seit 31.10. die feste Adresse /erstgespraech: die App leitet auf die in MAKE OS (Markttraktion › Marketing › Website) gewählte Buchungsseite weiter. Bis dahin war es direkt /buchen/erstgespraech-c9a7127ad22839b329a01f06. Erlaubt sind /erstgespraech oder /buchen/<name>-<24 Hex>; leer = vorbereitete Mail an kontakt.mail.",
+  "link": "/erstgespraech"
  },
  "kontakt": {
   "mail": "kevin@makeinnovation.de",
