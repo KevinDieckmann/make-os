@@ -196,7 +196,7 @@ export async function POST(req: Request) {
     const { websiteLage } = await import('@/lib/oeffentlich/website-post');
     const perMail = !!(await websiteLage());
     // Ausführlich ohne Kontakt: NUR die Vorschau — Werte je Bereich, Branchenvergleich, Netzdiagramm, Schritte und Angebote verlassen den Server nicht.
-    if (berichtGesperrt(r)) return antwort({ ok: true, ...stromFuerBrowser(v, r), ansicht: ergebnisVorschau(ansicht, vorschauSaetze(ansicht, perMail)) });
+    if (berichtGesperrt(r, { umfangWahl: !!v.seite.umfang, genauigkeit: ansicht.genauigkeit })) return antwort({ ok: true, ...stromFuerBrowser(v, r), ansicht: ergebnisVorschau(ansicht, vorschauSaetze(ansicht, perMail)) });
     const k = await zoeKontext(e);
     // Ergebnis UND Kontakt da: der Bericht geht per Mail (genau einmal je Sitzung, nach der Antwort).
     const kontaktDa = r.kontaktStand === 'erfasst' && !!r.kontakt;
