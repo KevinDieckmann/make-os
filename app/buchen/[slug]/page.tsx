@@ -8,6 +8,7 @@
 // einer aktiven Seite 30 s — jede Schreibung in einen Bestand macht ihn ungültig (lib/store/memo.ts).
 
 import type { Metadata } from 'next';
+import { OEFFENTLICH_META } from '@/lib/oeffentlich/metadaten';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { Buchen } from '@/components/buchen/Buchen';
@@ -35,7 +36,7 @@ async function seiteFuer(slug: string): Promise<{ titel: string } | null> {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const s = await seiteFuer((await params).slug);
-  return { title: s ? `${s.titel} · Termin buchen` : 'Termin buchen', robots: { index: false, follow: false }, referrer: 'no-referrer' };
+  return { ...OEFFENTLICH_META, title: s ? `${s.titel} · Termin buchen` : 'Termin buchen' };
 }
 
 export default async function BuchenSeite({ params }: Props) {

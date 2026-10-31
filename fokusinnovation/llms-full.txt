@@ -1,80 +1,83 @@
 # Fokus Innovation: alle Inhalte als Klartext
 
-Stand: 2026-10-27. Website: https://fokusinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
+Stand: 2026-10-31. Website: https://fokusinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
 
 ## Wer wir sind
 
-Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um. Wir erleben es immer wieder: Gute Ideen und starke Produkte bleiben unter ihren Möglichkeiten, weil sie zu wenige sehen und niemand sie systematisch verkauft. Das wollen wir ändern, für Deutschland und Europa. Wir wissen, wovon wir reden: Wir kommen aus dem Vertrieb, arbeiten selbst jeden Tag mit KI, bauen unsere eigene Software und schrauben, wenn es sein muss, am Produkt mit. Und wir bringen die Menschen zusammen, die Neues umsetzen: in unserem Netzwerk und an unseren Abenden.
+Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Innovation. Wir bringen Neues aus Deutschland und Europa nach vorne und setzen selbst mit um. Wir erleben es immer wieder: Gute Ideen und starke Produkte bleiben unter ihren Möglichkeiten, weil sie zu wenige sehen und niemand sie systematisch verkauft. Das ändern wir, Produkt für Produkt. Wir wissen, wovon wir reden: Wir kommen aus der Vertriebsführung, arbeiten in laufenden Projekten mit KI, auch im internationalen Umfeld, und bauen unsere eigene Software. Wenn es sein muss, schrauben wir am Produkt mit. Und wir bringen die Menschen zusammen, die Neues umsetzen: in unserem Netzwerk, mit unseren Partnern und bei unseren Events.
 
 - Was wir sind: Eine Agentur für Sichtbarkeit, Vertrieb und Innovation, die selbst mit umsetzt.
 - Sitz: Berlin
-- Für wen: Innovative Start-ups, Unternehmer mit 5 bis 50 Mitarbeitenden und Mittelstand, der Neues einführt
-- Leistungen: Positionierung, Websites und Videos; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, Umsetzungsprojekte starten in Kürze; Abende und Netzwerk
-- Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose 90-Tage-Umsetzungsgespräch
+- Für wen: Gründer, Start-ups und Unternehmer, die wachsen möchten, und Mittelstand, der Neues einführt
+- Leistungen: Positionierung, Websites, Videos sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, Umsetzungsprojekte starten in Kürze; Events und Netzwerk
+- Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch
 - Gründer: Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)
+- Partner: Feste Partner aus unserem Netzwerk für Umfang und Spezialthemen
 - Preise: Fest und offen auf jeder Angebotsseite, alle netto zuzüglich Umsatzsteuer
 - Arbeitsgebiet: Deutschland und Europa, auf Deutsch
 - Betreiber: KD Ventures UG (haftungsbeschränkt), Kurfürstendamm 96, 10709 Berlin
 - Kontakt: kevin@makeinnovation.de
 
-- Kevin Dieckmann (Vertrieb und Umsetzung): Kevin kommt aus dem Vertrieb: Er hat Vertriebsteams geführt, Partnernetze aufgebaut und war Head of Sales bei einem FinTech. Bei Fokus Innovation baut er Vertrieb so auf, dass er ohne Zufall läuft, und setzt selbst mit um.
-- Malin (Bühne und Netzwerk): Malin ist Mitgründerin und Gastgeberin der Abende. Sie bringt Menschen an einen Tisch, die Neues umsetzen, und sorgt dafür, dass aus Begegnungen Verbindungen werden.
+- Kevin Dieckmann (Vertrieb und Umsetzung): Kevin kommt aus der Vertriebsführung: Er hat Vertriebsteams geführt, Partnernetze aufgebaut und war Head of Sales bei einem FinTech. Bei Fokus Innovation verantwortet er Vertrieb und Umsetzung, verbindet Vertrieb mit KI und arbeitet selbst in den Projekten mit, auch im internationalen Umfeld.
+- Malin (Bühne und Netzwerk): Malin ist Mitgründerin und Gastgeberin unserer Events. Sie verantwortet Bühne und Netzwerk, bringt Menschen zusammen, die Neues umsetzen, und sorgt dafür, dass aus Begegnungen Verbindungen werden.
+- Das Team dahinter (Feste Partner aus unserem Netzwerk): Für jedes Projekt stellen wir das Team zusammen, das es braucht: Spezialisten, mit denen wir eingespielt sind. Sie haben trotzdem eine Ansprechperson, die für das Ergebnis geradesteht. Fachgebiete: Film und Video, Design und Websites, Entwicklung und Automatisierung, PR und Redaktion, Daten und KI, Leadgenerierung.
 
-Was wir nicht sind: Keine reine Werbeagentur (Keine Kampagne ohne Vertrieb dahinter.); Keine Folien-Beratung (Kein Konzept, das in der Schublade landet.); Kein Callcenter (Ihr Team verkauft selbst, wir machen vor.); Kein Inkubator (Wir vermitteln kein Kapital und leben nicht von Beteiligungen.).
+Was wir nicht sind: Keine reine Werbe- oder PR-Agentur (Keine Kampagne und keine Pressemitteilung ohne Vertrieb dahinter.); Keine Folien-Beratung (Kein Konzept, das in der Schublade landet.); Kein Callcenter (Ihr Team verkauft selbst, wir machen vor.); Kein Inkubator (Wir vermitteln kein Kapital und leben nicht von Beteiligungen.).
 
 ## Leistungen und Preise
 
 ### Sichtbarkeit: Gesehen werden.
 
-Wir machen Ihr Angebot in Sekunden verständlich: Positionierung ab 1.990 €, Websites ab 2.990 € mit Lieferung in 10 bis 25 Werktagen und Erklärvideos ab 1.490 €, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.
+Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab 1.990 €, Websites ab 2.990 € mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab 1.490 € sowie PR und Kommunikation ab 2.990 € im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns.
 
-- [Positionierung S, M, L](https://fokusinnovation.de/sichtbarkeit/positionierung/): 1.990 / 2.990 / 4.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
-- [Homepage Landing](https://fokusinnovation.de/sichtbarkeit/homepage-landing/): 2.990 € netto (einmalig, fertig in 10 Werktagen). Ihre Seite, die verkauft: ein One-Pager in Ihrer CI, fertig in 10 Werktagen.
-- [Homepage Story](https://fokusinnovation.de/sichtbarkeit/homepage-story/): 4.990 € netto (einmalig, fertig in 15 Werktagen). Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.
-- [Homepage Cinematic](https://fokusinnovation.de/sichtbarkeit/homepage-cinematic/): 9.990 € netto (einmalig, fertig in 25 Werktagen). Eine Website, über die man spricht: Story-Workshop, 3D-Szenen und Erklärvideo in 25 Werktagen.
-- [Erklärvideo](https://fokusinnovation.de/sichtbarkeit/erklaervideo/): 1.490 € netto (einmalig, fertig in 10 Werktagen). Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.
-- [Videostory](https://fokusinnovation.de/sichtbarkeit/videostory/): 1.990 € netto (einmalig, fertig in 15 Werktagen). Die Geschichte Ihrer Firma in 90 Sekunden: ehrlich, emotional und in Ihrer CI.
-- [Video Serie](https://fokusinnovation.de/sichtbarkeit/video-serie/): 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
+- [Positionierung S, M, L](https://fokusinnovation.de/sichtbarkeit/positionierung/): ab 1.990 € netto (einmalig, KI-gestützt vorbereitet, Workshop mit Kevin). In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.
+- [PR und Kommunikation](https://fokusinnovation.de/sichtbarkeit/pr-kommunikation/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.
+- [Homepage Landing](https://fokusinnovation.de/sichtbarkeit/homepage-landing/): ab 2.990 € netto (einmalig, fertig in 10 Werktagen). Ihre Seite, die verkauft: ein One-Pager in Ihrer CI, fertig in 10 Werktagen.
+- [Homepage Story](https://fokusinnovation.de/sichtbarkeit/homepage-story/): ab 4.990 € netto (einmalig, fertig in 15 Werktagen). Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.
+- [Homepage Cinematic](https://fokusinnovation.de/sichtbarkeit/homepage-cinematic/): ab 9.990 € netto (einmalig, fertig in 25 Werktagen). Eine Website, über die man spricht: Story-Workshop, 3D-Szenen und Erklärvideo in 25 Werktagen.
+- [Erklärvideo](https://fokusinnovation.de/sichtbarkeit/erklaervideo/): ab 1.490 € netto (einmalig, fertig in 10 Werktagen). Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.
+- [Videostory](https://fokusinnovation.de/sichtbarkeit/videostory/): ab 1.990 € netto (einmalig, fertig in 15 Werktagen). Die Geschichte Ihrer Firma in 90 Sekunden: ehrlich, emotional und in Ihrer CI.
+- [Video Serie](https://fokusinnovation.de/sichtbarkeit/video-serie/): ab 1.990 € netto (pro Monat, mindestens 3 Monate). Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.
 
 ### Vertrieb: Verkauft werden.
 
-Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für 1.900 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.
+Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop ab 1.900 € netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.
 
-- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://fokusinnovation.de/vertrieb/tagesworkshop/): 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
-- [Head of Sales](https://fokusinnovation.de/vertrieb/head-of-sales/): 2.990 € netto (pro Monat, 6 oder 12 Monate). Aus Interesse werden planbar Kunden: Ihr Vertrieb läuft nach einem System, das Ihr Team ohne Sie bedient.
-- [Chief Sales Officer (CSO)](https://fokusinnovation.de/vertrieb/cso/): 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
+- [Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit](https://fokusinnovation.de/vertrieb/tagesworkshop/): ab 1.900 € netto (einmalig, wird beim Mandatsstart voll angerechnet). Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.
+- [Head of Sales](https://fokusinnovation.de/vertrieb/head-of-sales/): ab 2.990 € netto (pro Monat, 6 oder 12 Monate). Aus Interesse werden planbar Kunden: Ihr Vertrieb läuft nach einem System, das Ihr Team ohne Sie bedient.
+- [Chief Sales Officer (CSO)](https://fokusinnovation.de/vertrieb/cso/): ab 4.990 € netto (pro Monat, 6 oder 12 Monate). Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.
 
 ### Innovation: Im Alltag ankommen.
 
-Wir führen KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im 90-Tage-Umsetzungsgespräch die drei wichtigsten Hebel fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
+Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Abläufe fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.
 
-- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt in rund 10 Minuten, wo Ihr Unternehmen steht: bei Strategie, KI im Alltag, Automatisierung, Daten und Team.
-- [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): Start in Kürze, Preis folgt zum Start. KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang, Start in Kürze. Startet in Kürze.
+- [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten oder ausführlich in rund 25.
+- [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): bald, Anfrage schon jetzt möglich, Preis auf Anfrage. Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an. Startet in Kürze.
 
-Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse); Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
+Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang; Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
 
 ## Häufige Fragen
 
 Frage: Was kostet der Innovations-Check?
-Antwort: Nichts. Der Check, der Bericht und das 90-Tage-Umsetzungsgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
+Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
 
 Frage: Wie lange dauert der Check?
-Antwort: Rund 10 Minuten für die 15 Kernfragen. Wenn Sie mehr beantworten, wird Ihr Bericht genauer. Sie können jederzeit pausieren und später weitermachen.
+Antwort: Sie wählen am Anfang: kurz mit 19 Fragen in rund 10 Minuten oder ausführlich mit rund 50 Fragen in rund 25 Minuten. Die ausführliche Fassung fragt zusätzlich nach Ihrer Branche und wird genauer. Auswerten können Sie jederzeit, und auf demselben Gerät später weitermachen.
 
 Frage: Ist Zoe ein Mensch?
 Antwort: Nein. Zoe ist unsere KI-Assistentin. Sie sagt das auch am Anfang jedes Gesprächs. Wenn Sie lieber mit einem Menschen sprechen, gibt Zoe Sie an Kevin weiter.
 
-Frage: Was passiert im 90-Tage-Umsetzungsgespräch?
-Antwort: 60 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch.
+Frage: Was passiert im Erstgespräch?
+Antwort: 30 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch.
 
 Frage: Was ist der Unterschied zwischen Head of Sales und CSO?
 Antwort: Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer enthält das komplett und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln.
 
-Frage: Kann ich vorzeitig kündigen?
-Antwort: Bei Head of Sales und CSO einmalig zum Ende des dritten Monats mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Fahrplan. Die Videoserie läuft mindestens 3 Monate, danach ist sie monatlich kündbar.
+Frage: Wie lange laufen die Verträge?
+Antwort: Head of Sales, CSO sowie PR und Kommunikation laufen 6 oder 12 Monate. Die Videoserie läuft mindestens 3 Monate, danach ist sie monatlich kündbar. Tagesworkshop, Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis.
 
 Frage: Was kostet der Tagesworkshop, und was passiert danach?
-Antwort: 1.900 €. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an.
+Antwort: Ab 1.900 €. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an.
 
 Frage: Wie schnell ist meine Homepage fertig?
 Antwort: Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft ab vollständigem Formular und Zahlungseingang. Mit Express halbiert sich die Lieferzeit.
@@ -93,17 +96,17 @@ Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich a
 
 ## Begriffe
 
-- 90-Tage-Umsetzungsgespräch: 60 Minuten mit Kevin nach dem Innovations-Check: Ihre Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden. Kostenlos und kein Verkaufsgespräch.
 - Automatisierung: Abläufe, die ohne Handarbeit laufen. Zum Beispiel landet eine Anfrage von der Website automatisch im CRM, mit Wiedervorlage.
 - Chief Sales Officer (CSO): Die oberste Verantwortung für den Vertrieb. Bei uns als Mandat auf Zeit: alles aus dem Head of Sales, dazu Strategie, Preise, Teamaufbau, Recruiting und die Führung von bis zu 10 Vertrieblern.
 - Claim: Ein kurzer Satz, der die Haltung einer Marke trägt. Unserer lautet „Fortschritt braucht Fokus.“
 - CRM: Kurz für Customer Relationship Management: das System, in dem alle Kontakte, Gespräche, Angebote und nächsten Schritte stehen.
 - Elevator Pitch: Eine Erklärung Ihres Angebots, die in eine Aufzugfahrt passt, meist 30 Sekunden bis 2 Minuten.
 - Erklärvideo: Ein kurzes Video, bei uns 60 bis 90 Sekunden, das erklärt, was Sie machen, für wen und wie man startet.
-- Fokus Innovation · Abend: Unser kuratierter Abend an einem langen Tisch: Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.
+- Erstgespräch: 30 Minuten mit Kevin nach dem Innovations-Check: Ihre Top 3 für die nächsten 90 Tage, schriftlich innerhalb von 24 Stunden. Kostenlos und kein Verkaufsgespräch.
+- Fokus Innovation · Events: Unsere kuratierten Events in verschiedenen Formaten: Gesprächsrunden, Impulsabende, Workshops und Treffen im Netzwerk. Für Gründer, Mittelständler und Macher aus KI und Technik, auf Einladung und für Gäste kostenlos.
 - Go-to-Market: Der Weg eines Produkts in den Markt: Zielgruppe, Botschaft, Kanäle, Vertrieb und Preise. Im Deutschen oft Markteintritt.
 - Head of Sales auf Zeit: Eine Vertriebsleitung für einige Monate, die das System aufbaut, mit Ihrem Team umsetzt und so übergibt, dass der Vertrieb ohne sie läuft. Auch Interim Head of Sales genannt.
-- Innovations-Check: Unser kostenloser Check in rund 10 Minuten. Er zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Automatisierung, Daten und Team steht.
+- Innovations-Check: Unser kostenloser Check, kurz in rund 10 oder ausführlich in rund 25 Minuten. Er zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, und nennt die nächsten Schritte.
 - KI-Brain: Wissen, Abläufe und Daten eines Unternehmens sauber an einem Ort, damit KI im Alltag darauf zugreifen kann. Bei uns in Vorbereitung.
 - Landingpage: Eine einzelne Seite, die ein Angebot und einen nächsten Schritt in den Mittelpunkt stellt, oft als Ziel einer Anzeige. Eine ganze Website auf einer Seite heißt One-Pager; unser Paket Homepage Landing ist so eine.
 - Lead: Ein Kontakt, der Interesse an Ihrem Angebot gezeigt hat oder gut zu Ihrer Zielgruppe passt.
@@ -131,9 +134,9 @@ Kurz gesagt: Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgrup
 
 Am Anfang verkauft der Gründer selbst. Das ist richtig, denn niemand kennt das Produkt besser. Schwierig wird es, wenn es so bleibt: Dann hängt jeder Abschluss an einer Person, Anfragen bleiben liegen, Angebote gehen zu spät raus, und niemand weiß, wie viele Gespräche es für das Jahresziel braucht.
 
-Damit sind Gründer nicht allein. Das zeigt der Deutsche Startup Monitor:
+Kunden zu gewinnen, ist für junge Unternehmen das wichtigste Ziel. Das zeigt der Deutsche Startup Monitor 2026:
 
-63,5 % der Start-ups in Deutschland nennen Vertrieb und Kundengewinnung ihre größte Herausforderung, vor Produktentwicklung und Kapital. (Quelle: Deutscher Startup Monitor 2025, S. 56, https://startupverband.de/fileadmin/startupverband/mediaarchiv/research/dsm/Deutscher_Startup_Monitor_2025.pdf)
+72,3 % der Start-ups in Deutschland suchen bei Kooperationen mit etablierten Unternehmen vor allem Referenzkunden, 59,6 % neue Vertriebskanäle. (Quelle: Deutscher Startup Monitor 2026, S. 43, https://startupverband.de/media/file/rs-deutscherstartupmonitor2026)
 
 ### Schritt 1: Die Zielgruppe schärfen
 
@@ -206,7 +209,7 @@ Antwort: Das hängt vom Ausgangspunkt ab. In unserem Mandat als Head of Sales l�
 
 Quelle: https://fokusinnovation.de/wissen/head-of-sales-auf-zeit/ · Kevin Dieckmann · 2026-10-27
 
-Kurz gesagt: Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit Ihrem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei Fokus Innovation kostet das Mandat 2.990 € netto im Monat, bei 6 oder 12 Monaten Laufzeit.
+Kurz gesagt: Ein Head of Sales auf Zeit übernimmt die Vertriebsleitung für einige Monate. Er baut das System, setzt es mit Ihrem Team um und übergibt es so, dass es ohne ihn weiterläuft. Das lohnt sich, wenn der Vertrieb am Gründer hängt und eine feste Vertriebsleitung zu früh kommt. Bei Fokus Innovation kostet das Mandat ab 2.990 € netto im Monat, bei 6 oder 12 Monaten Laufzeit.
 
 ### Was ein Head of Sales auf Zeit macht
 
@@ -234,7 +237,7 @@ Beides hat seinen Platz. Eine feste Vertriebsleitung lohnt sich, wenn das System
 
 Head of Sales auf Zeit und feste Vertriebsleitung im Vergleich:
 - Start | nach dem Kick-off | nach Suche, Auswahl und Kündigungsfrist
-- Bindung | 6 oder 12 Monate, einmalig zum Ende des dritten Monats mit 30 Tagen Frist kündbar | unbefristeter Arbeitsvertrag
+- Bindung | 6 oder 12 Monate | unbefristeter Arbeitsvertrag
 - Kosten | fester Monatspreis, Reisekosten nach Absprache gegen Beleg | Gehalt, Nebenkosten, Suche und Einarbeitung
 - Ziel | System aufbauen und übergeben | Vertrieb dauerhaft führen
 - Danach | Playbook, Leitfäden und Prozesse bleiben bei Ihnen | die Leitung bleibt im Unternehmen
@@ -255,7 +258,7 @@ Den Chief Sales Officer wählen Firmen, die ein Vertriebsteam aufbauen oder verg
 
 ### Was es bei uns kostet
 
-Der Head of Sales kostet 2.990 € netto im Monat bei 6 oder 12 Monaten Laufzeit. Der Tagesworkshop für 1.900 € wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Wir übernehmen höchstens zwei Vertriebsmandate gleichzeitig, damit jedes die Zeit bekommt, die es braucht.
+Der Head of Sales kostet ab 2.990 € netto im Monat bei 6 oder 12 Monaten Laufzeit. Der Tagesworkshop ab 1.900 € wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Wir planen jedes Mandat mit fester Zeit ein, damit es die Aufmerksamkeit bekommt, die es braucht.
 
 Frage: Brauche ich schon ein CRM?
 Antwort: Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stufen, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie.
@@ -265,9 +268,6 @@ Antwort: Ihr Team. Wir machen vor, trainieren mit Rollenspielen und besprechen e
 
 Frage: Wie viel Zeit kostet mich das?
 Antwort: Rund 3 bis 4 Stunden für das Sales Playbook Teil 1 im ersten Monat, danach 30 Minuten Wochen-Call und kurze Freigaben. Ihr Team braucht Zeit für Training und Gespräche.
-
-Frage: Was, wenn es nach 3 Monaten nicht passt?
-Antwort: Sie können einmalig zum Ende des dritten Monats kündigen, mit 30 Tagen Frist. In Woche 8 bekommen Sie dafür eine Zwischenbilanz mit Zahlen und Fahrplan.
 
 Frage: Darf ich Skripte und Playbooks danach weiter nutzen?
 Antwort: Ja. Nach Zahlung dürfen Sie alle Vorlagen, Skripte und Playbooks in Ihrem Unternehmen zeitlich unbegrenzt nutzen.
@@ -315,13 +315,13 @@ Zeigen Sie Ihre Startseite jemandem aus Ihrer Zielgruppe für fünf Sekunden. Da
 
 ### Wie wir dabei arbeiten
 
-Unsere Positionierung gibt es in drei Tiefen. S liefert Ihre Positionierung in fünf Sätzen, in einem Satz und in sieben Wörtern und prüft sie gegen zehn Grundsätze. M ergänzt Kundeninterviews, den Blick auf den Wettbewerb und einen Elevator Pitch. L reicht bis zur Markenstory mit Claim und Textbausteinen. Jede Stufe ist mit KI vorbereitet und endet in einem Workshop mit Kevin. S kostet 1.990 €, M 2.990 €, L 4.990 €, jeweils netto und einmalig.
+Unsere Positionierung gibt es in drei Tiefen. S liefert Ihre Positionierung in fünf Sätzen, in einem Satz und in sieben Wörtern und prüft sie gegen zehn Grundsätze. M ergänzt Kundeninterviews, den Blick auf den Wettbewerb und einen Elevator Pitch. L reicht bis zur Markenstory mit Claim und Textbausteinen. Jede Stufe ist mit KI vorbereitet und endet in einem Workshop mit Kevin. S kostet ab 1.990 €, M ab 2.990 €, L ab 4.990 €, jeweils netto und einmalig.
 
 Frage: Wie lange dauert der Workshop?
 Antwort: Zwei Stunden per Video bei S, ein halber Tag bei M, ein ganzer Tag bei L.
 
 Frage: Was kostet eine Positionierung?
-Antwort: S 1.990 €, M 2.990 €, L 4.990 €, jeweils netto und einmalig.
+Antwort: S ab 1.990 €, M ab 2.990 €, L ab 4.990 €, jeweils netto und einmalig.
 
 Frage: Brauche ich eine Positionierung, bevor ich eine Website baue?
 Antwort: Ja, zumindest die fünf Sätze. Sonst schreiben Sie die Texte der Website ohne Richtung und müssen sie später neu schreiben.
@@ -368,7 +368,7 @@ Auch KI-Assistenten werden nach Anbietern gefragt. Für sie gilt dasselbe wie f�
 Unsere drei Homepage-Pakete unterscheiden sich vor allem im Umfang, in den Effekten und darin, wer die Geschichte liefert.
 
 Frage: Was kostet eine Homepage bei Ihnen?
-Antwort: Landing 2.990 €, Story 4.990 €, Cinematic 9.990 €, jeweils netto und einmalig. Hosting und Domain laufen über Sie, die laufenden Kosten zahlen Sie direkt an Ihren Anbieter.
+Antwort: Landing ab 2.990 €, Story ab 4.990 €, Cinematic ab 9.990 €, jeweils netto und einmalig. Hosting und Domain laufen über Sie, die laufenden Kosten zahlen Sie direkt an Ihren Anbieter.
 
 Frage: Wie schnell ist meine Seite online?
 Antwort: Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft ab vollständigem Formular und Zahlungseingang. Mit Express halbiert sich die Lieferzeit.
@@ -424,7 +424,7 @@ Ein klassischer Dreh braucht Team, Termin und Schnitt. Wir arbeiten mit KI-Szene
 - in Anzeigen, denn die Nutzungsrechte schließen sie ein
 
 Frage: Was kostet ein Erklärvideo?
-Antwort: 1.490 € netto, einmalig, fertig in 10 Werktagen ab vollständigem Formular und Zahlungseingang.
+Antwort: Ab 1.490 € netto, einmalig, fertig in 10 Werktagen ab vollständigem Formular und Zahlungseingang.
 
 Frage: Muss ich vor die Kamera?
 Antwort: Nein. Wir arbeiten mit KI-Szenen, Ihrem Material und einer KI-Stimme. Bei Videostory und Videoserie können Sie auch selbst sprechen, mit unserer Anleitung für die Handy-Aufnahme.
@@ -443,9 +443,9 @@ Kurz gesagt: KI kommt im Alltag an, wenn drei Dinge zusammenkommen: ein klarer A
 
 ### Wo der Mittelstand steht
 
-Das Statistische Bundesamt misst, wie viele Unternehmen KI nutzen:
+Das ifo Institut fragt regelmäßig, wie viele Unternehmen KI nutzen:
 
-26 % der Unternehmen ab 10 Beschäftigten nutzen KI. Bei 10 bis 49 Beschäftigten sind es 23 %, ab 250 Beschäftigten 57 %. (Quelle: Destatis, KI in Unternehmen, 2025, https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-unternehmen-kuenstliche-intelligenz.html)
+54,5 % der Unternehmen in Deutschland nutzten im Mai 2026 KI in ihren Geschäftsprozessen, ein Jahr zuvor waren es 40,9 %. (Quelle: ifo Institut, 05.06.2026, https://www.ifo.de/fakten/2026-06-05/mehr-als-die-haelfte-der-unternehmen-nutzt-kuenstliche-intelligenz)
 
 37 % der kleinen Mittelständler schlossen 2022 bis 2024 Innovationsprojekte ab, bei den großen waren es 73 %. (Quelle: KfW Research, Innovationen, 2026, https://www.kfw.de/%C3%9Cber-die-KfW/KfW-Research/Innovationen.html)
 
@@ -453,9 +453,9 @@ Dieselbe Lücke zeigt sich bei Neuem insgesamt. Die KfW misst, wie viele Mittels
 
 ### Woran es hakt
 
-Fast die Hälfte der Unternehmen, die KI erwogen und nicht eingeführt haben, nennt Probleme mit der Verfügbarkeit oder Qualität ihrer Daten. Das lässt sich klären, bevor ein Werkzeug gekauft wird.
+Das Teure an KI sind selten die Lizenzen. Es sind die Daten und die Anbindung an Ihre Systeme. Das lässt sich klären, bevor ein Werkzeug gekauft wird.
 
-44 % der Unternehmen, die KI erwogen und nicht eingeführt haben, nennen Probleme mit Verfügbarkeit oder Qualität ihrer Daten. (Quelle: Destatis, Gründe gegen KI, 2025, https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Unternehmen/IKT-in-Unternehmen-IKT-Branche/Tabellen/ikti-gegen-nutzung-kuenstliche-intelligenz.html)
+50 % der Unternehmen, die KI nutzen, nennen die Aufbereitung von Daten als großen Kostenpunkt, 41 % die Einbindung in bestehende Systeme. Lizenzen für KI-Software nennen nur 21 %. (Quelle: Bitkom, KI-Studie 2026, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
 
 ### In fünf Schritten in den Alltag
 
@@ -467,11 +467,9 @@ Fast die Hälfte der Unternehmen, die KI erwogen und nicht eingeführt haben, ne
 
 ### Innovation ist mehr als KI
 
-KI ist ein Werkzeug unter mehreren. Automatisierung, Robotik und neue Software gehören genauso dazu. Bei der Roboterdichte in der Industrie liegt Deutschland weltweit auf Platz 3:
+KI ist ein Werkzeug unter mehreren. Automatisierung und neue Software gehören genauso dazu, und alle brauchen dieselbe Grundlage: klare Abläufe und saubere Daten.
 
-Platz 3 weltweit bei der Roboterdichte in der Industrie: 449 Roboter je 10.000 Beschäftigte. (Quelle: IFR, Roboterdichte, 08.04.2026, S. 2, https://www.ifr.org/downloads/press_docs/DE-2026-APRIL-_8-IFR_PRESSMELDUNG_Roboterdichte-deutsch.pdf)
-
-Diesen Schwung wollen wir auch in die Büros bringen: in Angebote, Anfragen, Abläufe und das Wissen eines Unternehmens.
+Deshalb bringen wir sie dorthin, wo sie im Alltag wirken: in Angebote, Anfragen, Abläufe und das Wissen eines Unternehmens.
 
 ### Was nicht funktioniert
 
@@ -483,7 +481,7 @@ Diesen Schwung wollen wir auch in die Büros bringen: in Angebote, Anfragen, Abl
 
 ### So arbeiten wir
 
-Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen 90-Tage-Umsetzungsgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
+Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir Ihre Top 3 fest. In Umsetzungsprojekten bauen wir sie mit Ihnen, bis sie laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
 
 Frage: Womit sollte ein Mittelständler bei KI anfangen?
 Antwort: Mit einem ehrlichen Blick auf den eigenen Stand. Danach wählen Sie die drei Anwendungsfälle mit dem größten Nutzen und führen sie nacheinander ein: Erst wenn der erste im Alltag läuft, kommt der nächste.
@@ -492,7 +490,860 @@ Frage: Welche Daten braucht KI im Unternehmen?
 Antwort: Die Daten des Ablaufs, den sie unterstützen soll, zum Beispiel Kundenanfragen, Angebote, Produktwissen oder Arbeitsanweisungen. Wichtig ist, dass sie aktuell, vollständig und an einem Ort zugänglich sind.
 
 Frage: Was kostet es, KI einzuführen?
-Antwort: Der Innovations-Check und das 90-Tage-Umsetzungsgespräch sind kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Sie starten in Kürze; den Preis nennen wir zum Start.
+Antwort: Der Innovations-Check und das Erstgespräch sind kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Haben Sie ein Vorhaben, sprechen Sie uns an; den Preis nennen wir im Gespräch.
 
 Frage: Was kostet der Innovations-Check?
-Antwort: Nichts. Der Check, der Bericht und das 90-Tage-Umsetzungsgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
+Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
+
+## Fünf Vertriebszahlen, die jedes kleine Unternehmen kennen sollte
+
+Quelle: https://fokusinnovation.de/wissen/fuenf-vertriebszahlen/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Fünf Zahlen reichen, um einen kleinen Vertrieb zu steuern: wie viele Angebote im Monat rausgehen, wie viele davon zum Auftrag werden, wie lange es vom ersten Gespräch bis zum Abschluss dauert, welche Chancen offen sind und mit welchem Wert, und ob jedes offene Angebot ein Datum zum Nachfassen hat. Ein teures Werkzeug braucht es dafür nicht. Eine Tabelle genügt, wenn sie gepflegt und jede Woche besprochen wird.
+
+### Warum gerade diese fünf
+
+Viele kleine Unternehmen steuern ihren Vertrieb nach Gefühl. Mal läuft es, mal nicht, und niemand kann sagen, warum. Andere messen zwanzig Kennzahlen und besprechen keine davon. Beides hilft nicht weiter.
+
+Die fünf Zahlen hier hängen zusammen: Sie zeigen, wie viel in Ihren Vertrieb hineinkommt, wie viel davon zum Auftrag wird, wie schnell das geht und was als Nächstes kommen kann. Sie lassen sich mit wenig Aufwand erfassen und zeigen früh, wenn etwas klemmt. Wie oft gerade der Vertrieb klemmt, zeigt der Deutsche Startup Monitor:
+
+29 % der kleinen und mittleren Unternehmen erwarten in drei Jahren höhere Umsätze, genauso viele niedrigere. Unterm Strich Stillstand. (Quelle: KfW-Mittelstandspanel 2026, https://www.kfw.de/PDF/Download-Center/Konzernthemen/Research/PDF-Dokumente-KfW-Mittelstandspanel/KfW-Mittelstandspanel-2026.pdf)
+
+### Zahl 1: Angebote im Monat
+
+Zählen Sie, wie viele Angebote Sie in einem Monat verschicken. Nicht Gespräche und nicht Anfragen, sondern schriftliche Angebote mit Preis und Datum. Die Zahl zeigt, ob genug in Ihren Vertrieb hineinkommt.
+
+Legen Sie einmal fest, was als Angebot zählt, und bleiben Sie dabei, sonst vergleichen Sie jeden Monat etwas anderes. Sinkt die Zahl über mehrere Monate, spüren Sie das oft erst später, wenn die Aufträge fehlen.
+
+### Zahl 2: Die Abschlussquote
+
+Die Abschlussquote ist der Anteil Ihrer Angebote, aus denen ein Auftrag wird. Zählen Sie dafür nur Angebote, die entschieden sind, also angenommen oder abgelehnt. Offene Angebote gehören noch nicht in die Rechnung.
+
+Rechnen Sie die Quote über mehrere Monate, denn bei wenigen Angeboten verändert ein einzelner Auftrag das Bild. Sinkt sie, lohnt die Frage, ob die Angebote an die richtigen Kontakte gehen, ob sie rechtzeitig kommen und ob jemand nachfragt.
+
+### Zahl 3: Zeit bis zum Abschluss
+
+Messen Sie, wie viele Tage zwischen dem ersten Gespräch und dem unterschriebenen Auftrag liegen. Notieren Sie dafür bei jeder Chance zwei Daten: den Tag des ersten Gesprächs und den Tag der Entscheidung. Der Durchschnitt Ihrer letzten Aufträge genügt.
+
+Die Zahl hilft beim Planen. Wenn ein Abschluss bei Ihnen meist mehrere Monate braucht, entscheidet sich der Umsatz im nächsten Quartal an den Gesprächen, die Sie heute führen. Wird die Zeit länger, schauen Sie, wo Chancen hängen bleiben: vor dem Angebot, bei der Freigabe auf Kundenseite oder beim Nachfassen.
+
+### Zahl 4: Offene Chancen mit Wert
+
+Eine Chance ist jedes Gespräch, in dem ein Kunde ernsthaft über einen Auftrag nachdenkt. Führen Sie zu jeder Chance drei Angaben: den erwarteten Auftragswert, die Stufe, auf der sie steht, und das Datum des nächsten Schritts. Die Summe der Werte ist Ihre Pipeline.
+
+Die Summe allein täuscht leicht, denn nicht jede Chance ist gleich weit. Ehrlicher wird sie, wenn Sie nur Chancen zählen, bei denen der nächste Schritt fest vereinbart ist. Eine Chance ohne nächsten Schritt ist oft keine mehr: Nehmen Sie sie heraus.
+
+### Zahl 5: Nachfassen
+
+Die fünfte Zahl ist eine einfache Frage: Hat jedes offene Angebot ein Datum, an dem Sie nachfragen? Zählen Sie jede Woche die offenen Angebote ohne dieses Datum. Das Ziel ist null.
+
+Ein Angebot ohne Nachfrage bleibt liegen, auch wenn der Kunde eigentlich will: Entscheidungen werden verschoben, Postfächer laufen voll. Legen Sie deshalb eine feste Regel fest, zum Beispiel: nachfassen drei Werktage nach dem Angebot und noch einmal eine Woche später.
+
+### Ohne teures Werkzeug erfassen
+
+Für den Anfang reicht eine Tabelle mit einer Zeile je Chance. Wichtiger als das Werkzeug ist, dass jede Zeile dieselben Spalten hat und dass jemand die Tabelle aktuell hält. Nutzen Sie schon ein CRM, legen Sie dieselben Angaben dort als Pflichtfelder an.
+
+Die Spalten einer einfachen Vertriebstabelle (Mehr Spalten brauchen Sie für die fünf Zahlen nicht. Was Sie auswerten wollen, gehört in eine eigene Spalte, nicht in eine Notiz.):
+- Kunde | Firma und Ansprechpartner | alle
+- Erstes Gespräch | Datum | Zeit bis zum Abschluss
+- Stufe | zum Beispiel Gespräch, Angebot, Entscheidung | offene Chancen
+- Wert | erwarteter Auftragswert, netto | offene Chancen
+- Angebot verschickt | Datum | Angebote im Monat
+- Nächster Schritt | was als Nächstes passiert und bis wann | Nachfassen, offene Chancen
+- Ergebnis | gewonnen, verloren oder offen, mit Datum | Abschlussquote, Zeit bis zum Abschluss
+
+Aus diesen Spalten zählen Sie alle fünf Zahlen in wenigen Minuten aus. Ein Filter nach Monat und Ergebnis genügt.
+
+### Einmal in der Woche draufschauen
+
+Zahlen helfen nur, wenn sie besprochen werden. Gehen Sie die Tabelle jede Woche zu einem festen Termin durch, zum Beispiel freitags: Welche Angebote sind rausgegangen? Welche Chancen haben keinen nächsten Schritt? Wo muss nachgefasst werden? Danach schreiben Sie einen Satz auf, was nächste Woche anders laufen soll.
+
+Nach einigen Wochen kennen Sie Ihre eigenen Quoten. Dann können Sie vom Umsatzziel rückwärts rechnen: Wie viele Aufträge brauchen Sie, wie viele Angebote führen dahin, und wie viele Gespräche braucht es dafür? Wie das geht, steht in unserem Ratgeber zum Vertriebsaufbau.
+
+### Häufige Fehler
+
+- Gespräche als Angebote zählen und die Zahl so schönrechnen.
+- Die Abschlussquote nach wenigen Angeboten bewerten.
+- Chancen ohne nächsten Schritt in der Pipeline lassen.
+- Die Tabelle anlegen und nach zwei Wochen nicht mehr pflegen.
+- Zahlen sammeln, aber nie gemeinsam besprechen.
+
+### Selbst anfangen oder Hilfe holen?
+
+Die fünf Zahlen können Sie ab morgen selbst erfassen. Hilfe lohnt sich, wenn die Zahlen zeigen, dass etwas klemmt, aber unklar ist, woran. Im Tagesworkshop ordnen wir an einem Tag, wo die Hebel liegen, und setzen den ersten direkt um. Soll jemand den Vertrieb aufbauen und führen, bis Ihr Team selbst abschließt, ist ein Head of Sales auf Zeit der nächste Schritt.
+
+Frage: Was zählt als Angebot?
+Antwort: Ein schriftliches Angebot mit Preis und Datum. Ein Preis, der im Gespräch fällt, zählt nicht. Wichtig ist, dass Sie die Regel einmal festlegen und dann jeden Monat gleich zählen.
+
+Frage: Ab wann ist die Abschlussquote aussagekräftig?
+Antwort: Je mehr entschiedene Angebote eingehen, desto verlässlicher wird sie. Rechnen Sie sie deshalb über mehrere Monate und achten Sie auf die Richtung, nicht auf einzelne Prozentpunkte.
+
+Frage: Reicht eine Tabelle, oder brauche ich ein CRM?
+Antwort: Für den Anfang reicht eine Tabelle, solange sie gepflegt wird. Ein CRM lohnt sich, sobald mehrere Personen verkaufen, Wiedervorlagen von selbst kommen sollen oder Anfragen von der Website direkt hineinlaufen sollen.
+
+Frage: Wer pflegt die Zahlen?
+Antwort: Wer eine Chance führt, trägt sie ein und hält sie aktuell. Eine Person achtet darauf, dass die Tabelle vollständig ist, und bringt sie zum Wochentermin mit.
+
+## Warum Ihre Website keine Anfragen bringt, und was Sie in einer Woche ändern können
+
+Quelle: https://fokusinnovation.de/wissen/website-ohne-anfragen/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Eine Website bringt kaum Anfragen, wenn Besucher nicht schnell verstehen, was Sie machen, und nicht wissen, was sie als Nächstes tun sollen. Fünf Änderungen schaffen Sie in einer Woche: ein Kernsatz ganz oben, ein klarer nächster Schritt, Belege statt Behauptungen, ein kurzes Video und eine eigene Seite je Angebot. Neu bauen müssen Sie die Seite dafür meist nicht.
+
+### Woran es liegt
+
+Wer Ihre Website besucht, kommt mit einer Frage: Kann diese Firma mein Problem lösen? Beantwortet die Seite das nicht schnell, gehen Besucher wieder, ohne Bescheid zu sagen. Sie merken davon nur, dass die Anfragen ausbleiben.
+
+Selten liegt es an Farben oder Schrift. Häufiger fehlen drei Dinge: ein Satz, der sagt, was Sie für wen tun, ein klarer nächster Schritt und ein Grund, Ihnen zu glauben. Das lässt sich in einer Woche ändern, Tag für Tag.
+
+### Vorher: der Fünf-Sekunden-Test
+
+Zeigen Sie Ihre Startseite drei Menschen aus Ihrer Zielgruppe für fünf Sekunden. Fragen Sie dann: Was macht diese Firma? Für wen? Und was würden Sie als Nächstes tun? Schreiben Sie die Antworten wörtlich auf. Am Ende der Woche wiederholen Sie den Test mit anderen Personen.
+
+### Tag 1: Der Kernsatz ganz oben
+
+Ganz oben, ohne Scrollen, steht ein Satz, der sagt, was Sie für wen tun. Nicht der Firmenname, nicht „Willkommen“ und nicht „Ihr Partner für alle Fragen rund um …“. Darunter steht eine Unterzeile, die den Nutzen konkret macht. Prüfen Sie den Satz mit drei Fragen:
+
+- Versteht ihn jemand außerhalb Ihrer Branche?
+- Steht darin, für wen Sie da sind?
+- Kommt er ohne Fachwörter und große Worte aus?
+
+Fällt Ihnen der Satz schwer, liegt die Arbeit in der Positionierung: für wen, welches Problem, wie Sie es lösen, was Sie unterscheidet und woran man sieht, dass es stimmt. Unser Ratgeber zur Positionierung führt durch diese fünf Sätze.
+
+### Tag 2: Ein klarer nächster Schritt
+
+Entscheiden Sie, was ein interessierter Besucher tun soll: anrufen, einen Termin buchen oder eine Anfrage schicken. Wählen Sie einen Weg. Er kommt als Hauptknopf in die erste Ansicht und noch einmal ans Ende der Seite. Ein zweiter, leiserer Weg ist in Ordnung, fünf sind zu viele.
+
+Machen Sie den Schritt so klein wie möglich. Ein langes Formular schreckt ab, für den Anfang genügen Name, Kontakt und eine Zeile zum Anliegen. Prüfen Sie auch, was nach dem Klick passiert: Kommt die Anfrage bei jemandem an, der innerhalb eines Werktags antwortet?
+
+### Tag 3: Belege statt Behauptungen
+
+„Kompetent, zuverlässig, innovativ“ steht auf vielen Websites und überzeugt kaum jemanden. Vertrauen entsteht durch Dinge, die man prüfen kann. Sammeln Sie an diesem Tag, was Sie zeigen können:
+
+- einen Ablauf in drei bis fünf Schritten, wie die Zusammenarbeit läuft
+- Preise oder zumindest einen Preisrahmen
+- Stimmen echter Kunden, die der Veröffentlichung zugestimmt haben
+- Zahlen nur mit Quelle
+- ein Foto und ein paar Sätze zu den Menschen, mit denen man arbeitet
+
+Haben Sie noch keine Kundenstimmen, erfinden Sie keine. Ein klarer Ablauf und offene Preise sind auch Belege: Sie zeigen, dass Sie wissen, was Sie tun.
+
+### Tag 4: Ein kurzes Video
+
+Manches versteht man schneller, wenn man es sieht. Ein Video von 60 bis 90 Sekunden unter der ersten Ansicht kann zeigen, welches Problem Sie lösen, was Sie anders machen, wie die Zusammenarbeit abläuft und was der nächste Schritt ist.
+
+Für den Anfang muss es nicht aufwendig sein: Es reicht ein ruhiges Video, in dem Sie selbst erklären, was Sie tun, mit gutem Ton und mit Untertiteln, damit man es auch ohne Ton versteht. Schreiben Sie vorher ein Skript und kürzen Sie es, bis jeder Satz zählt.
+
+Schaffen Sie in dieser Woche nur vier der fünf Punkte, lassen Sie das Video weg. Die anderen wirken auch ohne.
+
+### Tag 5: Eine Seite je Angebot
+
+Wer drei Leistungen auf einer Seite erklärt, erklärt keine richtig. Geben Sie jedem Angebot eine eigene Seite. Darauf gehören:
+
+- eine Überschrift, die das Angebot und die Zielgruppe nennt
+- was enthalten ist und was nicht
+- wie es abläuft, Schritt für Schritt
+- was es kostet, oder ein Preisrahmen
+- ein Hauptknopf mit demselben nächsten Schritt wie auf der Startseite
+
+Das hilft Besuchern, die mit einer bestimmten Frage kommen, und es hilft bei der Suche: Eine Seite, die genau eine Frage beantwortet, können Suchmaschinen und KI-Assistenten leichter einordnen. Geben Sie jeder Seite einen eigenen Titel und eine kurze Beschreibung.
+
+### Nach der Woche: prüfen und zählen
+
+Wiederholen Sie den Fünf-Sekunden-Test und vergleichen Sie die Antworten mit denen vom Anfang. Zählen Sie ab jetzt jeden Monat die Anfragen über die Website und notieren Sie, über welche Seite sie kamen. So sehen Sie nach einigen Wochen, was wirkt.
+
+Erwarten Sie nicht, dass sich in einer Woche alles ändert. Die Woche räumt auf, was Besucher heute abhält. Wie viele Anfragen kommen, hängt auch davon ab, wie viele Menschen Ihre Seite überhaupt finden.
+
+### Häufige Fehler
+
+- Mit Farben und Bildern anfangen, bevor der Kernsatz steht.
+- Fünf Knöpfe mit fünf Zielen in die erste Ansicht stellen.
+- Alle Leistungen auf einer einzigen Seite erklären.
+- Ein Kontaktformular anbieten, dessen Anfragen niemand zeitnah beantwortet.
+- Änderungen machen und nie prüfen, ob Besucher die Seite jetzt verstehen.
+
+### Selbst machen oder Hilfe holen?
+
+Die fünf Punkte können Sie selbst angehen, in vielen Systemen ohne Programmierer. Hilfe lohnt sich, wenn der Kernsatz nicht gelingt, weil die Positionierung noch offen ist, oder wenn die Seite so alt ist, dass jede Änderung Tage dauert.
+
+Unsere Positionierung beginnt bei den fünf Sätzen. Die Homepage Landing ist ein One-Pager mit Texten von uns, fertig in 10 Werktagen ab vollständigem Formular und Zahlungseingang. Ein Erklärvideo entsteht bei uns ohne Dreh vor Ort.
+
+Frage: Muss ich meine Website neu bauen lassen?
+Antwort: Nicht unbedingt. Die fünf Änderungen lassen sich in vielen Systemen selbst machen. Neu bauen lohnt sich, wenn die Seite auf dem Handy nicht funktioniert, langsam lädt oder sich nur mit viel Aufwand ändern lässt.
+
+Frage: Wie lang darf der Kernsatz sein?
+Antwort: So lang, dass man ihn in einem Atemzug vorlesen kann. Er nennt, was Sie tun und für wen. Alles Weitere gehört in die Unterzeile.
+
+Frage: Was, wenn ich mehrere Zielgruppen habe?
+Antwort: Dann gilt der Kernsatz der Startseite für die Gruppe, auf die Sie sich zuerst konzentrieren wollen. Jede weitere Gruppe bekommt eine eigene Seite mit eigenem Kernsatz.
+
+Frage: Wie schnell ist meine Homepage fertig?
+Antwort: Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft ab vollständigem Formular und Zahlungseingang. Mit Express halbiert sich die Lieferzeit.
+
+## Die ersten 30 Tage mit KI im Team
+
+Quelle: https://fokusinnovation.de/wissen/erste-30-tage-mit-ki/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Die ersten 30 Tage mit KI gelingen, wenn Sie klein anfangen: ein Ablauf statt zehn, eine Firmenlizenz statt privater Konten, wenige schriftliche Regeln und eine Messung vorher und nachher. Am Ende steht eine bewusste Entscheidung: ausweiten, anpassen oder aufhören. So wird aus Ausprobieren ein Ergebnis.
+
+### Vom Ausprobieren zum Ergebnis
+
+In vielen Teams läuft KI schon nebenbei. Einzelne lassen sich Texte entwerfen oder Notizen zusammenfassen, mit eigenen Konten und eigenen Regeln. Wofür, mit welchen Daten und mit welchem Nutzen, weiß oft niemand genau. Wie weit der Weg vom Ausprobieren zum Nutzen ist, zeigt eine Umfrage des Bitkom:
+
+3 % der Unternehmen schöpfen das Potenzial von KI eher stark aus, keines vollständig. 59 % gar nicht. (Quelle: Bitkom, 14.09.2026, 603 Unternehmen ab 20 Beschäftigten, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
+
+30 Tage sind lang genug, um einen echten Ablauf zu verändern, und kurz genug, um dranzubleiben. Danach wissen Sie, ob sich der Einsatz lohnt, und haben Zahlen statt Eindrücke.
+
+### Woche 1: Einen Ablauf wählen
+
+Wählen Sie einen einzigen Ablauf, der oft vorkommt, sich gut beschreiben lässt und heute spürbar Zeit kostet. Geeignet sind Aufgaben mit viel Text und wiederkehrender Form, zum Beispiel:
+
+- Antworten auf häufige Kundenanfragen vorbereiten
+- Angebotstexte aus Gesprächsnotizen entwerfen
+- Protokolle aus Besprechungsnotizen zusammenfassen
+- Anleitungen und Arbeitsanweisungen schreiben oder aktualisieren
+
+Weniger geeignet sind Abläufe, bei denen ein Fehler teuer wird, bevor ihn jemand sieht. In den ersten 30 Tagen prüft immer ein Mensch, was die KI vorschlägt. Eine Person verantwortet den Versuch, einige wenige machen mit.
+
+Messen Sie noch in dieser Woche den Ausgangswert: Die Beteiligten notieren einige Tage lang, wie viele Minuten jede Aufgabe heute braucht. Ohne diesen Wert können Sie nach 30 Tagen nur schätzen.
+
+### Firmenlizenz statt privater Konten
+
+Wer mit einem privaten Konto arbeitet, entscheidet allein, welche Daten er eingibt, und das Unternehmen weiß nicht, wo sie landen. Nutzen Sie für den Versuch eine Firmenlizenz, die das Unternehmen verwaltet. Klären Sie vor dem Kauf:
+
+- Schließt der Vertrag aus, dass Ihre Eingaben zum Trainieren des Modells genutzt werden?
+- Gibt es einen Vertrag zur Auftragsverarbeitung nach DSGVO?
+- Wo werden die Daten verarbeitet und gespeichert?
+- Lassen sich Konten zentral anlegen und wieder sperren, wenn jemand geht?
+
+Lassen Sie die Antworten von der Person prüfen, die bei Ihnen für Datenschutz zuständig ist. Diese Liste ersetzt keine Rechtsberatung, sie sammelt nur die Fragen vor dem Start.
+
+### Wenige Regeln, schriftlich
+
+Regeln müssen nicht lang sein. Eine Seite reicht, wenn sie klar sagt, was gilt. Schreiben Sie auf:
+
+- welche Daten hinein dürfen und welche nicht, zum Beispiel keine Passwörter, keine Gesundheitsdaten und keine vertraulichen Kundendaten ohne Freigabe
+- dass ein Mensch jedes Ergebnis prüft, bevor es an Kunden geht
+- wann Sie kennzeichnen, dass ein Text oder Bild mit KI entstanden ist
+- wen man fragt, wenn etwas unklar ist
+
+Besprechen Sie die Regeln im Team, bevor es losgeht. Wer weiß, was erlaubt ist, muss nicht raten.
+
+### Woche 2 und 3: Im Alltag nutzen
+
+Jetzt läuft der gewählte Ablauf mit KI, jedes Mal und nicht nur, wenn Zeit ist. Die Beteiligten notieren weiter die Minuten je Aufgabe, dazu, was gut lief und was nachgearbeitet werden musste.
+
+Sammeln Sie Anweisungen, die gut funktioniert haben, an einem Ort, damit nicht jeder von vorn anfängt. Ein kurzer Termin am Ende jeder Woche hilft: Jeder zeigt ein Beispiel, das gut lief, und eins, das nicht lief.
+
+Hakt es, liegt es oft an fehlendem Wissen: Die KI kennt Ihre Preise, Produkte oder Abläufe nicht, weil sie nirgends sauber beschrieben sind. Notieren Sie solche Lücken. Sie sind ein Ergebnis des Versuchs und zeigen, welche Daten Sie als Nächstes ordnen sollten.
+
+### Woche 4: Messen, was es spart
+
+Vergleichen Sie die Minuten je Aufgabe vor dem Start mit denen aus Woche 3. Rechnen Sie das Prüfen und die Nacharbeit mit ein, sonst sieht der Gewinn größer aus, als er ist.
+
+So rechnen Sie die Ersparnis (Nehmen Sie die notierten Minuten, keine Schätzung aus dem Gedächtnis.):
+- Zeit vorher | Minuten je Aufgabe im Schnitt, gemessen in Woche 1 | Minuten
+- Zeit mit KI | Minuten je Aufgabe in Woche 3, mit Prüfen und Nacharbeit | Minuten
+- Ersparnis je Aufgabe | Zeit vorher minus Zeit mit KI | Minuten
+- Ersparnis im Monat | Ersparnis je Aufgabe mal Aufgaben im Monat, geteilt durch 60 | Stunden
+- Kosten im Monat | Lizenzen der Beteiligten | Euro
+
+Zählen Sie nicht nur Zeit: Ist das Ergebnis mindestens so gut wie vorher? Gehen Antworten an Kunden schneller raus? Wie geht es den Beteiligten damit? Eine Ersparnis, die das Team nicht mitträgt, hält nicht lange.
+
+### Tag 30: Entscheiden
+
+Am Ende steht eine bewusste Entscheidung, keine stille Gewöhnung. Es gibt drei Möglichkeiten:
+
+1. Ausweiten: Der Ablauf spart spürbar Zeit, und die Qualität stimmt. Dann wird er Standard für alle, die ihn machen, und Sie wählen den nächsten Ablauf.
+2. Anpassen: Der Nutzen ist da, aber es hakt, zum Beispiel an fehlenden Daten oder unklaren Vorlagen. Dann beheben Sie das und messen weitere 30 Tage.
+3. Aufhören: Der Ablauf spart kaum Zeit oder kostet mehr Prüfung, als er bringt. Dann lassen Sie ihn und nehmen das Gelernte in den nächsten Versuch mit. Auch das ist ein Ergebnis.
+
+Halten Sie die Entscheidung mit den Zahlen schriftlich fest. Nach einigen solchen Runden haben Sie keine Sammlung von Versuchen mehr, sondern Abläufe, die mit KI laufen und deren Nutzen Sie kennen.
+
+### Häufige Fehler
+
+- Zehn Abläufe gleichzeitig angehen.
+- Mit privaten Konten arbeiten, weil es schneller geht.
+- Ohne Ausgangswert starten und am Ende nur schätzen.
+- Ergebnisse ungeprüft an Kunden schicken.
+- Nach 30 Tagen nicht entscheiden und einfach so weitermachen.
+
+### So arbeiten wir
+
+Welcher Ablauf sich bei Ihnen zuerst lohnt, klärt oft ein Blick von außen. Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
+
+Frage: Brauche ich für den Anfang eine eigene KI-Lösung?
+Antwort: Nein. Für die ersten 30 Tage reicht ein allgemeines KI-Werkzeug mit Firmenlizenz. Eine eigene Lösung lohnt sich erst, wenn Sie wissen, welcher Ablauf welchen Nutzen bringt und welche Daten er braucht.
+
+Frage: Wie viele Personen sollten mitmachen?
+Antwort: Wenige, die den gewählten Ablauf regelmäßig machen, und eine Person, die den Versuch verantwortet. So bleibt er überschaubar, und die Erfahrungen lassen sich vergleichen.
+
+Frage: Dürfen Kundendaten in ein KI-Werkzeug?
+Antwort: Das hängt vom Werkzeug, vom Vertrag und von den Daten ab. Klären Sie das vor dem Start mit der Person, die bei Ihnen für Datenschutz zuständig ist, und schreiben Sie die Antwort in Ihre Regeln. Bis dahin gilt: keine vertraulichen Kundendaten.
+
+Frage: Was kostet der Innovations-Check?
+Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
+
+## Kundenstimmen, die überzeugen: einholen, freigeben, einsetzen
+
+Quelle: https://fokusinnovation.de/wissen/kundenstimmen-die-ueberzeugen/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Eine Kundenstimme überzeugt, wenn sie ein Ergebnis nennt, von einer echten Person mit Namen und Firma stammt und schriftlich freigegeben ist. Fragen Sie kurz nach einem sichtbaren Erfolg, führen Sie ein Gespräch statt einen Fragebogen zu schicken, schreiben Sie den Text selbst und lassen Sie ihn freigeben. Dann setzen Sie die Stimme dort ein, wo Interessenten entscheiden.
+
+### Warum viele Kundenstimmen nicht wirken
+
+„Super Zusammenarbeit, sehr zu empfehlen!“ steht auf vielen Websites. Solche Sätze schaden nicht, aber sie überzeugen kaum: Sie könnten über jede Firma geschrieben sein, und man weiß nicht, wer sie gesagt hat.
+
+Eine Kundenstimme wirkt, wenn sie drei Dinge leistet: Sie nennt ein Ergebnis, sie stammt erkennbar von einer echten Person, und Ihr nächster Kunde erkennt sich darin wieder. Das gelingt selten zufällig. Es braucht die richtigen Fragen und etwas Arbeit von Ihnen.
+
+Dazu kommt: Bei Geschäftskunden entscheidet selten eine Person allein.
+
+13 + 9: An einer typischen Kaufentscheidung im Geschäftskundenbereich sind laut Forrester 13 interne Beteiligte und neun externe Einflussgeber beteiligt; die Zahl stammt aus einer internationalen Erhebung. (Quelle: Forrester, https://www.forrester.com/press-newsroom/forrester-2026-the-state-of-business-buying/)
+
+Eine Kundenstimme mit klarem Ergebnis hilft Ihrem Ansprechpartner, auch die zu überzeugen, die Sie nie kennenlernen.
+
+### Wen und wann Sie fragen
+
+Fragen Sie Kunden, bei denen ein Ergebnis sichtbar ist und die zu den Kunden passen, die Sie künftig gewinnen wollen. Mischen Sie Branchen und Größen, damit sich mehr Leser wiederfinden. Gute Momente sind:
+
+- kurz nach einem sichtbaren Erfolg, etwa wenn ein Projekt fertig oder ein Ziel erreicht ist
+- wenn ein Kunde von sich aus lobt: Fragen Sie im selben Gespräch
+- beim Abschlussgespräch eines Projekts
+- einige Wochen nach dem Start, wenn die erste Wirkung da ist
+
+Fragen Sie zuerst persönlich und schicken Sie danach eine kurze E-Mail, die das Ergebnis im ersten Satz nennt und den Aufwand klein macht. Bieten Sie keine Gegenleistung an: Eine Stimme, für die es etwas gab, ist keine ehrliche Empfehlung mehr.
+
+### Gespräch statt Fragebogen
+
+Ein Fragebogen per E-Mail macht Ihrem Kunden Arbeit und bringt meist allgemeines Lob. Ein Gespräch von etwa 15 Minuten bringt Geschichten und Zahlen. Danach schreiben Sie den Text, Ihr Kunde liest nur noch und gibt frei. Diese Fragen bringen Ergebnisse hervor:
+
+1. Vorher: Wie sah es aus, bevor wir zusammengearbeitet haben? Was hat gestört, was hat es gekostet?
+2. Der Ausschlag: Was gab den Ausschlag, es mit uns zu versuchen? Welche Bedenken hatten Sie?
+3. Das Ergebnis: Was hat sich verändert, und woran merken Sie das im Alltag?
+4. Die Zahl: Gibt es eine Zahl dazu: Zeit, Anfragen, Kosten oder Fehler, vorher und nachher?
+5. Die Empfehlung: Wem würden Sie uns empfehlen, und warum?
+
+Fragen Sie nach, bis ein Beispiel oder eine Zahl kommt: „Woran merken Sie das?“ oder „Was heißt das in Stunden?“ Schreiben Sie wörtlich mit. Ein Gespräch zeichnen Sie nur auf, wenn Ihr Kunde vorher zustimmt.
+
+### Aus der Antwort wird eine Kundenstimme
+
+Aus einem Gespräch entstehen drei Fassungen für verschiedene Orte. Kürzen ist erlaubt, den Sinn verändern nicht. Die Worte Ihres Kunden bleiben seine Worte.
+
+Drei Fassungen einer Kundenstimme (Unter jede Fassung gehören Name, Funktion und Firma, am besten mit Foto.):
+- Kurzfassung | ein Satz, höchstens 20 Wörter, Ergebnis zuerst | Startseite, Angebote, Profile
+- Langfassung | drei bis vier Sätze: vorher, was passiert ist, nachher | Seite des Angebots, Präsentationen
+- Die Zahl | ein Ergebnis mit Zahl und Zeitraum, vom Kunden bestätigt | Überschriften, Vorträge, Gespräche
+
+Ein frei erfundenes Beispiel: Der Inhaber eines Dachdeckerbetriebs erzählt seinem Lohnbüro, er habe die Abrechnung früher abends am Küchentisch gemacht und seit 14 Monaten keine Nachzahlung mehr gehabt. Daraus wird die Kurzfassung „Fotos der Stundenzettel bis zum 25., am 28. ist die Abrechnung fertig, und ich habe meine Abende wieder.“ Die Zahl lässt sich das Lohnbüro vom Kunden bestätigen.
+
+### Die Freigabe schriftlich einholen
+
+Veröffentlichen Sie eine Kundenstimme erst, wenn die Person die Endfassung schriftlich freigegeben hat. Halten Sie in der Freigabe fest, welcher Text mit welchen Angaben an welchen Stellen und wie lange erscheint.
+
+Dazu gehört der Hinweis auf den Widerruf. Nach Artikel 7 Absatz 3 der Datenschutz-Grundverordnung kann eine Einwilligung jederzeit widerrufen werden. Was bis dahin auf ihrer Grundlage geschehen ist, bleibt rechtmäßig, und der Widerruf muss so einfach sein wie die Erteilung. Darauf muss die Person hingewiesen werden, bevor sie einwilligt.
+
+Für Fotos gilt zusätzlich das Recht am eigenen Bild: Nach § 22 Kunsturhebergesetz dürfen Bildnisse nur mit Einwilligung der abgebildeten Person verbreitet werden. Das Logo einer Firma zeigen Sie nur mit Zustimmung von jemandem, der dafür entscheiden darf.
+
+Das ist ein Hinweis, keine Rechtsberatung. Lassen Sie Ihre Freigabe einmal prüfen, bevor Sie sie einsetzen. Ein Muster zum Anpassen steckt in unserer kostenlosen Vorlage „Kundenstimmen einholen“.
+
+### Wo Kundenstimmen wirken
+
+- auf der Startseite in der Nähe des Hauptknopfs, als Kurzfassung mit Foto
+- auf der Seite des Angebots, das die Stimme betrifft
+- in Angeboten und Präsentationen, passend zur Branche des Empfängers
+- in Profilen in sozialen Netzwerken, wenn die Freigabe diesen Ort nennt
+- im Gespräch als Geschichte: vorher, was passiert ist, nachher
+
+Führen Sie eine Liste Ihrer Freigaben mit Datum und Orten. Sehen Sie sie einmal im Jahr durch: Arbeitet die Person noch dort, stimmt die Aussage noch? Nach einem Widerruf entfernen Sie die Stimme überall dort, wo Sie es selbst können.
+
+### Häufige Fehler
+
+- Kundenstimmen erfinden oder umschreiben, bis sie nach Werbung klingen.
+- Nur Vornamen oder Initialen zeigen, ohne Firma und Funktion.
+- Lob ohne Ergebnis veröffentlichen: „Sehr kompetent“ sagt wenig.
+- Den Text ändern, nachdem der Kunde ihn freigegeben hat.
+- Stimmen jahrelang stehen lassen, ohne zu prüfen, ob sie noch stimmen.
+
+### Selbst machen oder Hilfe holen?
+
+Kundenstimmen einholen können Sie selbst. Die kostenlose Vorlage „Kundenstimmen einholen“ führt Sie Schritt für Schritt durch, mit E-Mail, Gesprächsfragen und Freigabe. Hilfe lohnt sich, wenn der Satz für ganz oben noch fehlt oder Ihre Website den Belegen keinen guten Platz gibt.
+
+Unsere Positionierung beginnt bei den fünf Sätzen. Die Homepage Landing ist ein One-Pager mit Texten von uns, fertig in 10 Werktagen ab vollständigem Formular und Zahlungseingang.
+
+Frage: Darf ich eine Kundenstimme umformulieren?
+Antwort: Kürzen und glätten ja, solange der Sinn bleibt und Ihr Kunde die Endfassung freigibt. Was er nicht gesagt hat, gehört nicht hinein.
+
+Frage: Was, wenn ein Kunde nicht mit Namen genannt werden möchte?
+Antwort: Fragen Sie, ob Funktion, Branche und Größe der Firma genügen, etwa „Inhaber eines Dachdeckerbetriebs mit 14 Beschäftigten“. Das wirkt schwächer als ein Name, ist aber ehrlich. Erfinden Sie keinen Namen.
+
+Frage: Wie viele Kundenstimmen brauche ich?
+Antwort: Für den Anfang reichen drei mit klarem Ergebnis, am besten aus verschiedenen Branchen oder Größen. Mehr lohnt sich, wenn Sie jedem Angebot eine passende Stimme zuordnen können.
+
+Frage: Brauche ich eine schriftliche Freigabe?
+Antwort: Holen Sie sie immer ein. Sie legt fest, welcher Text wo erscheinen darf, und Sie können zeigen, dass Ihr Kunde zugestimmt hat. Das ist ein Hinweis, keine Rechtsberatung.
+
+Frage: Wie schnell ist meine Homepage fertig?
+Antwort: Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft ab vollständigem Formular und Zahlungseingang. Mit Express halbiert sich die Lieferzeit.
+
+## KI-Anwendungsfälle finden und bewerten
+
+Quelle: https://fokusinnovation.de/wissen/ki-anwendungsfaelle-finden/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Den ersten Anwendungsfall für KI finden Sie, indem Sie Ideen sammeln, jeden Kandidaten in einem kurzen Steckbrief beschreiben und nach sechs Kriterien bewerten: Zeit heute, weiterer Nutzen, gleiche Form, Datenlage, Fehlerfolgen und Aufwand. Zwei Regeln gelten vor der Punktzahl: kein Ablauf mit hohen Fehlerfolgen zuerst und keiner ohne greifbare Daten. Dann wählen Sie einen einzigen Ablauf für 30 Tage.
+
+### Warum die Auswahl entscheidet
+
+Viele Unternehmen ahnen, dass KI ihnen helfen könnte, wissen aber nicht, wo sie anfangen sollen. Ausprobiert wird viel, ausgeschöpft wenig:
+
+3 %: Nur 3 % der Unternehmen ab 20 Beschäftigten in Deutschland schöpfen das Potenzial von KI nach eigener Einschätzung eher stark aus, keines vollständig. (Quelle: Bitkom, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
+
+Der erste Anwendungsfall prägt, wie Ihr Team über KI denkt. Ein Ablauf, der sichtbar Zeit spart und bei dem nichts schiefgeht, öffnet die Tür für den nächsten. Ein Fehlgriff kostet Vertrauen. Deshalb lohnt sich eine Stunde Bewertung, bevor Sie loslegen.
+
+### Kandidaten finden
+
+Gute Kandidaten haben viel Text, eine wiederkehrende Form und kosten spürbar Zeit. Fragen Sie im Team:
+
+- Wo schreiben wir immer wieder ähnliche Texte, etwa Angebote, Antworten oder Berichte?
+- Wo suchen wir Informationen aus mehreren Quellen zusammen?
+- Welche Fragen von Kunden oder Kollegen beantworten wir jede Woche wieder?
+- Wo übertragen wir Angaben von einem Ort an einen anderen?
+- Wo warten Kunden auf eine Antwort, weil sie Zeit kostet?
+- Was schieben alle vor sich her, weil es lästig ist?
+
+Sammeln Sie erst und bewerten Sie danach. Schätzen Sie beim Sammeln nur grob, wie oft ein Ablauf vorkommt. Genauer wird es im Steckbrief.
+
+### Ein Steckbrief je Ablauf
+
+Beschreiben Sie jeden Kandidaten auf einer Seite, gemeinsam mit den Menschen, die den Ablauf heute machen. Sie kennen die Stolpersteine. Halten Sie fest:
+
+- was heute passiert, Schritt für Schritt
+- wie oft der Ablauf im Monat vorkommt und wie lange er je Durchgang dauert
+- wer ihn macht
+- welche Daten er braucht, wo sie liegen und ob personenbezogene oder vertrauliche Daten dabei sind
+- was bei einem Fehler passiert
+- was besser werden soll und was die Einführung braucht
+
+Häufigkeit und Dauer notieren Sie am besten eine Woche lang, statt sie zu schätzen. Häufigkeit im Monat mal Minuten je Durchgang, geteilt durch 60, ergibt die Stunden, die der Ablauf heute im Monat kostet.
+
+### Sechs Kriterien mit Punkten
+
+Jedes Kriterium bekommt 1 bis 5 Punkte, zusammen höchstens 30. Bei Fehlerfolgen und Aufwand gilt: Viele Punkte heißen geringe Folgen und wenig Aufwand.
+
+Die Skala (Dazwischen vergeben Sie 2, 3 oder 4 Punkte. Für die Zeit gilt: 2 Punkte ab 2 Stunden, 3 ab 5, 4 ab 10 Stunden im Monat. Die Grenzen sind eine Orientierung von uns, keine Norm.):
+- Zeit heute | unter 2 Stunden im Monat | 20 Stunden im Monat und mehr
+- Weiterer Nutzen | kaum spürbar | Kunden merken es, oder mehrere Personen werden deutlich entlastet
+- Gleiche Form | jedes Mal anders, viel Erfahrung und Bauchgefühl | immer gleicher Aufbau, viel Text oder feste Regeln
+- Datenlage | steckt in Köpfen, nichts aufgeschrieben | aktuell, vollständig, an einem Ort
+- Fehlerfolgen | ein Fehler geht unbemerkt an Kunden oder betrifft Geld, Recht, Gesundheit oder Menschen | das Ergebnis wird immer geprüft, Fehler sind leicht zu sehen
+- Aufwand | neue Software, Schnittstellen, mehrere Monate | geht mit vorhandenem Werkzeug in wenigen Tagen
+
+### Zwei Regeln vor der Punktzahl
+
+Bevor Sie die Punkte zusammenzählen, prüfen Sie zwei Regeln. Sie gehen jeder Summe vor:
+
+1. Hohe Fehlerfolgen: nicht zuerst: Bekommt ein Ablauf bei den Fehlerfolgen nur 1 Punkt, wählen Sie ihn nicht für den ersten Versuch, egal wie viele Punkte er sonst hat.
+2. Keine greifbaren Daten: erst ordnen: Bekommt die Datenlage 1 oder 2 Punkte, ordnen Sie zuerst die Daten und bewerten dann neu. Ohne greifbares Wissen kann KI nur raten.
+
+50 % der Unternehmen, die KI nutzen, nennen die Aufbereitung von Daten als großen Kostenpunkt, 41 % die Einbindung in bestehende Systeme. Lizenzen für KI-Software nennen nur 21 %. (Quelle: Bitkom, KI-Studie 2026, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
+
+Enthält ein Ablauf personenbezogene oder vertrauliche Daten, klären Sie vor dem Start Datenschutz und Vertrag des Werkzeugs mit der Person, die bei Ihnen dafür zuständig ist.
+
+### Vergleichen und entscheiden
+
+Tragen Sie alle Fälle in eine Übersicht und lesen Sie die Summe so:
+
+- 22 bis 30 Punkte, und keine der beiden Regeln greift: Kandidat für den ersten Versuch
+- 15 bis 21 Punkte: später, mit der Hürde, die zuerst weg muss
+- 6 bis 14 Punkte: nicht jetzt
+
+Bei Gleichstand kommt der Fall mit weniger Aufwand zuerst. Wählen Sie einen einzigen Ablauf für die nächsten 30 Tage, nicht drei. Alle anderen bekommen ein Datum, an dem Sie sie wieder ansehen.
+
+### Ein Beispiel
+
+Ein frei erfundenes Planungsbüro für Haustechnik mit 22 Beschäftigten hat vier Abläufe bewertet:
+
+Vier Abläufe im Vergleich, frei erfunden (Büro, Abläufe und Zahlen sind frei erfunden und dienen nur der Anschauung.):
+- Angebotstexte aus Stichpunkten entwerfen | 18 | 23 | keine | erster Versuch
+- Protokolle der Baubesprechungen zusammenfassen | 8 | 21 | keine | nach dem ersten Versuch
+- Antworten auf Anfragen zu Wartungsterminen | 6 | 19 | Datenlage | erst Verträge digital erfassen
+- Berechnungen von Anlagen gegenprüfen | 15 | 18 | Fehlerfolgen | bleibt bei Menschen
+
+Die Angebotstexte haben die höchste Summe, und keine Regel greift. Wichtig ist auch, was nicht in die KI geht: Die Projektleitung fasst ihre Notizen vorher zu Stichpunkten ohne Namen und Adressen zusammen, und Preise kommen weiter aus der Kalkulation.
+
+### Häufige Fehler
+
+- Den spannendsten Fall wählen statt den, der heute am meisten Zeit kostet.
+- Häufigkeit und Dauer schätzen statt notieren.
+- Ohne die Menschen bewerten, die den Ablauf heute machen.
+- Einen Ablauf wählen, bei dem ein Fehler teuer wird, bevor ihn jemand sieht.
+- Drei Fälle gleichzeitig starten.
+
+### So arbeiten wir
+
+Welcher Ablauf sich bei Ihnen zuerst lohnt, klärt oft ein Blick von außen. Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze.
+
+Frage: Wie viele Anwendungsfälle sollte ich bewerten?
+Antwort: Alle Ideen, die nach dem Sammeln ernsthaft in Frage kommen. Wichtig ist nicht die Zahl, sondern dass Sie am Ende einen einzigen Ablauf für den ersten Versuch wählen.
+
+Frage: Wer sollte die Punkte vergeben?
+Antwort: Die Person, die den Versuch verantwortet, gemeinsam mit den Menschen, die den Ablauf heute machen. Sie wissen, wie oft er vorkommt, wie lange er dauert und wo Fehler passieren.
+
+Frage: Was, wenn kein Fall auf 22 Punkte kommt?
+Antwort: Dann schauen Sie, woran es liegt. Oft ist es die Datenlage: Ordnen Sie die Daten des vielversprechendsten Falls und bewerten Sie ihn neu. Manchmal sollte auch der Ablauf selbst erst einfacher werden.
+
+Frage: Brauche ich für die Bewertung schon ein KI-Werkzeug?
+Antwort: Nein. Die Bewertung beschreibt Ihren Ablauf, nicht ein Werkzeug. Welches Werkzeug passt, klären Sie danach für den gewählten Fall, mit Firmenlizenz und geprüftem Vertrag.
+
+Frage: Was kostet der Innovations-Check?
+Antwort: Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.
+
+## Vom Gründer-Vertrieb zum Vertriebsteam
+
+Quelle: https://fokusinnovation.de/wissen/vom-gruender-vertrieb-zum-vertriebsteam/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Ein Vertrieb wächst in drei Phasen. Am Start verkauft der Gründer selbst, im Aufbau kommen die ersten Vertriebler dazu, im Wachstum führt jemand ein Team mit mehreren Rollen. Jede Phase braucht etwas anderes zuerst, und die Übergänge zwischen ihnen sind die schwierigsten Momente. Dieser Leitfaden zeigt, woran Sie Ihre Phase erkennen, welche Rollen es gibt, wie Sie gute Leute auswählen, einarbeiten, fair und rechtlich sauber bezahlen und mit einem festen Rhythmus führen. Alle Bögen dazu stehen im kostenlosen Arbeitsheft.
+
+### Woran Sie Ihre Phase erkennen
+
+Ein Vertrieb wächst nicht gleichmäßig, sondern in Stufen. Was in der einen Phase hilft, bremst in der nächsten. Ein Gründer, der allein verkauft, braucht keinen Führungsrhythmus für zehn Leute. Ein Team mit acht Vertrieblern kommt ohne ihn nicht aus.
+
+Bestimmen Sie deshalb zuerst, wo Sie stehen. Entscheidend ist nicht die Zahl der Mitarbeitenden, sondern wer verkauft und wer führt.
+
+Die drei Phasen eines Vertriebs (Stehen Sie zwischen zwei Phasen, gilt die frühere. Was dort fehlt, holen Sie zuerst nach. Die Standortbestimmung im Arbeitsheft hilft beim Einordnen.):
+- Start | Fast jeder Auftrag läuft über den Gründer. Steckt er im Projekt, bleiben Anfragen liegen und Angebote gehen spät raus. | der Gründer, neben allem anderen | feste Zeit für den Vertrieb und ein Ablauf, den man aufschreiben kann
+- Aufbau | Eine bis drei Personen verkaufen mit. Der Gründer schließt die meisten Aufträge noch selbst ab und beantwortet viele Fragen. | erste Vertriebler, der Gründer schließt ab | Einarbeitung, Erwartungen je Rolle und Kennzahlen je Person
+- Wachstum | Mehrere Personen arbeiten in unterschiedlichen Rollen. Eine Person führt den Vertrieb, der Gründer gibt vor allem die Richtung vor. | ein Team mit Vertriebsleitung | ein fester Führungsrhythmus, verlässliche Prognosen und eine klare Vergütung
+
+72,3 % der Start-ups in Deutschland suchen bei Kooperationen mit etablierten Unternehmen vor allem Referenzkunden, 59,6 % neue Vertriebskanäle. (Quelle: Deutscher Startup Monitor 2026, S. 43, https://startupverband.de/media/file/rs-deutscherstartupmonitor2026)
+
+Die Zahl betrifft Start-ups, das Muster kennen auch gestandene Betriebe: Solange eine Person allein verkauft, wächst der Vertrieb nur so weit, wie ihr Kalender reicht. Jede Phase in diesem Leitfaden löst diesen Engpass ein Stück weiter.
+
+### Was in jeder Phase zuerst stehen muss
+
+In jeder Phase gibt es ein Fundament, ohne das der nächste Schritt nicht trägt. Wer es überspringt, zahlt später doppelt: mit Leuten, die nicht ankommen, und mit Zahlen, denen niemand traut.
+
+1. Start: Zeit, Ablauf und eine Liste: Legen Sie feste Stunden für den Vertrieb in den Kalender und halten Sie sie ein wie einen Kundentermin. Schreiben Sie auf, wie Ihr Erstgespräch abläuft und welche Fragen Sie stellen. Führen Sie jede Chance in einer Liste mit Stufe, Wert und nächstem Schritt. Diese Unterlagen werden später die Einarbeitung für die erste Person.
+2. Aufbau: Ablauf, Erwartungen, Einarbeitung: Bevor die erste Person anfängt, steht der Weg vom Erstkontakt bis zum Auftrag auf Papier, mit Gesprächsleitfaden und Antworten auf häufige Einwände. Jede Rolle hat schriftliche Erwartungen und einen Plan für die ersten 90 Tage. Kennzahlen gibt es je Person, nicht nur für alle zusammen.
+3. Wachstum: Führung, Rollen, Prognose: Eine Person führt den Vertrieb und hat dafür feste Zeit. Die Rollen sind getrennt, die Übergaben zwischen ihnen geregelt. Ein CRM mit Pflichtfeldern liefert die Zahlen, aus denen jeden Monat eine Prognose entsteht. Vergütung, Training und Einarbeitung sind aufgeschrieben, damit sie nicht an einer Person hängen.
+
+Wie Sie die ersten Bausteine anlegen, beschreibt unser Ratgeber zum Vertriebsaufbau. Die Bögen für Rollen, Auswahl, Einarbeitung und Führung finden Sie im Arbeitsheft zu diesem Leitfaden.
+
+### Übergang 1: Der Gründer gibt die Termine ab
+
+Der erste Übergang ist der schwerste, weil der Gründer abgeben muss, was er am besten kann. Meist gibt er zuerst die Erstansprache und die Terminvereinbarung ab. Er führt weiter die Beratungsgespräche und schließt ab, bekommt dafür aber mehr Termine, als er allein vereinbaren könnte.
+
+Der Zeitpunkt ist richtig, wenn drei Dinge zusammenkommen: Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch folgt einem Ablauf, den Sie erklären können, und es gibt genug Kontakte, um eine Person sinnvoll zu beschäftigen. Fehlt eines davon, verbringt die neue Person ihre ersten Monate mit Suchen.
+
+Typische Fehler an dieser Stelle:
+
+- Jemanden suchen, der alles kann, und ihn ohne Leitfaden ans Telefon setzen.
+- Zu wenige Kontakte bereithalten, sodass die neue Person nach zwei Wochen nichts mehr zu tun hat.
+- Jede Mail und jedes Gespräch selbst nachprüfen und so in Wahrheit nichts abgeben.
+- Die Übergabe nicht regeln: Wer schreibt was ins CRM, und ab wann ist ein Termin ein Termin?
+- Nach vier Wochen ohne Auftrag die Geduld verlieren, obwohl die Termine kommen.
+
+### Übergang 2: Eine zweite Person für Abschluss und Vertretung
+
+Solange nur eine Person abschließt, steht der Vertrieb still, wenn sie krank ist, Urlaub hat oder geht. Der zweite Übergang schafft deshalb Vertretung. Eine weitere Person lernt Beratung und Abschluss, oft jemand, der vorher Termine vereinbart hat und Kunden und Ablauf schon kennt.
+
+Planen Sie diesen Schritt bewusst. Die neue Abschluss-Person führt Gespräche zuerst gemeinsam mit Ihnen, dann allein mit Nachbesprechung, dann selbständig. Die Termine, die sie vorher vereinbart hat, braucht nun jemand anderes. Wer diesen Schritt überspringt, merkt es meist erst im ersten langen Urlaub.
+
+Typische Fehler an dieser Stelle:
+
+- Die beste Terminperson befördern, ohne ihr Beratung und Abschluss beizubringen.
+- Alle großen Aufträge beim Gründer lassen, sodass die zweite Person die wichtigen Gespräche nie übt.
+- Die frei gewordene Terminvereinbarung nicht nachbesetzen.
+- Keine gemeinsamen Regeln für Angebote, Preise und Nachlässe festlegen, sodass jeder anders verkauft.
+
+### Übergang 3: Der Gründer gibt die Führung ab
+
+Im dritten Übergang wird aus dem besten Verkäufer der Firma ein Unternehmer, der den Vertrieb führen lässt. Eine Vertriebsleitung übernimmt Tagesstart, Wochenrunde, Einzelgespräche, Auswahl und Einarbeitung. Am Anfang verkauft sie oft noch selbst mit. So bleibt sie nah an den Kunden und kann vormachen, was sie verlangt.
+
+Der Gründer bleibt beteiligt: bei Zielen, großen Kunden, Preisen und der Richtung. Er zieht sich aber aus dem Tagesgeschäft zurück und führt über die Vertriebsleitung, nicht an ihr vorbei.
+
+Typische Fehler an dieser Stelle:
+
+- Ganz aussteigen, bevor die neue Führung den Rhythmus sicher hält.
+- Den besten Verkäufer zur Führung machen, ohne dass er führen will oder darauf vorbereitet wird.
+- Der Vertriebsleitung ein volles eigenes Verkaufsziel geben und sich dann wundern, dass keine Zeit zum Führen bleibt.
+- Am Team vorbei Anweisungen geben und so die neue Führung schwächen.
+- Abläufe nur im Kopf haben, sodass jede neue Führungskraft bei null beginnt.
+
+### Rollen im Vertrieb und wann Spezialisierung lohnt
+
+In kleinen Teams macht jede Person alles, von der Erstansprache bis zum Abschluss. Das ist richtig, solange es wenige Kontakte gibt und jedes Gespräch anders ist. Mit wachsender Menge lohnt es sich, Aufgaben zu trennen: Wer gern und gut telefoniert, vereinbart Termine. Wer gut berät, führt die Gespräche. Wer Kunden gut hält, betreut sie nach dem Abschluss.
+
+Spezialisierung bringt Tempo und Übung, aber auch Übergaben. Jede Übergabe braucht Regeln, sonst gehen Informationen verloren. Trennen Sie Rollen deshalb erst, wenn eine Aufgabe eine Person gut auslasten kann.
+
+Die üblichen Rollen im Vertrieb (Die Namen der Rollen sind frei wählbar. Wichtig ist, dass jede Person weiß, wo ihre Aufgabe beginnt und wo sie endet.):
+- Erstansprache und Termine | neue Kontakte finden, ansprechen, den Bedarf grob prüfen, Termine vereinbaren | genug Kontakte da sind und die Beratung zu wenig Zeit für die Ansprache hat
+- Beratung und Abschluss | Bedarfsgespräch, Angebot, Verhandlung, Auftrag, Übergabe an die Umsetzung | mehr gute Termine kommen, als eine Person sauber vorbereiten und nachfassen kann
+- Kundenbetreuung | den Start begleiten, regelmäßig sprechen, Verlängerungen, Zusatzbedarf, Empfehlungen | Bestandskunden einen spürbaren Teil des Umsatzes bringen oder bringen könnten
+- Vertriebsassistenz | Angebote vorbereiten, das CRM pflegen, Termine abstimmen | Verkäufer viel Zeit mit Schreiben und Suchen verbringen statt mit Kunden
+- Vertriebsleitung | Ziele, Rhythmus, Training, Auswahl, Einarbeitung, Prognose | mehr als zwei, drei Personen verkaufen und der Gründer keine Zeit mehr zum Führen hat
+
+### Erwartungen je Rolle schriftlich festlegen
+
+Viele Konflikte im Vertrieb entstehen, weil Erwartungen nie ausgesprochen wurden. Schreiben Sie deshalb für jede Rolle auf, was Sie erwarten, und zwar in vier Teilen: wie sich die Person verhält, welche Aufgaben sie hat, welche Eingaben Sie zählen und welche Ergebnisse am Ende stehen.
+
+Eingabe-Kennzahlen beschreiben, was eine Person selbst in der Hand hat, etwa Gespräche oder verschickte Angebote. Ergebnis-Kennzahlen beschreiben, was dabei herauskommt, etwa Aufträge oder Umsatz. Führen Sie im Alltag über Eingaben und beurteilen Sie Ergebnisse über einen längeren Zeitraum.
+
+Beispiel: Erwartungen für drei Rollen (Ein Beispiel, keine Vorgabe. Zahlenwerte legen Sie erst fest, wenn Sie einige Wochen gemessen haben.):
+- Erstansprache und Termine | arbeitet die Kontaktliste zu festen Zeiten ab, trägt alles am selben Tag ins CRM ein | Kontakte recherchieren, ansprechen, Bedarf prüfen, Termine eintragen | Ansprachen je Tag, erreichte Gespräche | vereinbarte und stattgefundene Termine
+- Beratung und Abschluss | bereitet jedes Gespräch vor, schickt Angebote in der vereinbarten Frist, fasst nach | Bedarfsgespräch, Angebot, Verhandlung, Übergabe an die Umsetzung | geführte Gespräche, Angebote, Angebote mit Nachfass-Datum | Abschlussquote, Auftragswert, Zeit bis zum Abschluss
+- Kundenbetreuung | meldet sich von sich aus, kennt die Lage jedes Kunden | Start begleiten, regelmäßige Gespräche, Verlängerungen, Empfehlungen erfragen | Kundengespräche je Monat, gestellte Empfehlungsfragen | Verlängerungen, Zusatzaufträge, Empfehlungen
+
+Besprechen Sie die Erwartungen mit der Person, bevor sie anfängt, und danach regelmäßig im Einzelgespräch. Was nicht aufgeschrieben ist, kann niemand erfüllen und niemand einfordern.
+
+### Einstellen in fünf Stufen
+
+Im Vertrieb täuscht der erste Eindruck oft: Wer im Vorstellungsgespräch gut redet, verkauft nicht unbedingt gut. Bauen Sie die Auswahl deshalb in Stufen auf. Jede Stufe prüft etwas anderes, und mit jeder Stufe investieren Sie mehr Zeit in weniger Menschen.
+
+1. Anforderungsprofil schreiben: Beschreiben Sie Aufgabe, Ergebnisse nach 90 Tagen, Muss- und Kann-Anforderungen, Arbeitszeit, Ort und den Rahmen der Vergütung. Formulieren Sie neutral: Eine Stelle darf nicht so ausgeschrieben werden, dass sie gegen das Benachteiligungsverbot verstößt (§ 11 AGG).
+2. Bewerbungen sichten: Prüfen Sie nur die Muss-Anforderungen. Wer sie erfüllt, kommt weiter. So vergleichen Sie fair und schnell.
+3. Kurzes Telefonat: Fünfzehn Minuten am Telefon zeigen viel: Wie klingt die Person, hört sie zu, stellt sie Fragen? Für Rollen am Telefon ist das die wichtigste Vorauswahl.
+4. Strukturiertes Gespräch mit Bewertungsbogen: Alle Bewerber bekommen dieselben Fragen und ein kurzes Rollenspiel, etwa ein Erstgespräch mit einem typischen Einwand. Zwei Personen bewerten getrennt auf einem Bogen und vergleichen erst danach.
+5. Bezahlter Probetag: Ein Tag im echten Umfeld zeigt, ob die Person Rückmeldung annimmt und umsetzt. Diese Lernfähigkeit sagt mehr voraus als jede Antwort im Gespräch.
+
+Bewerten Sie im Gespräch und am Probetag dieselben Fähigkeiten: Gesprächsführung, Fragen und Zuhören, Umgang mit Einwänden, Verbindlichkeit und Lernfähigkeit. Fragen Sie getrennt davon, ob die Person zu Ihren Werten passt und ob sie Ihre Zielgruppe kennt. Wer die Zielgruppe nicht kennt, kann trotzdem gut sein, braucht aber länger.
+
+Für den Probetag empfehlen wir: vorher schriftlich festhalten, was an dem Tag passiert, ihn bezahlen, mindestens mit dem gesetzlichen Mindestlohn je Stunde (seit 1. Januar 2026 13,90 Euro brutto), und eine Vertraulichkeitsvereinbarung schließen, wenn die Person Kundendaten sieht. Wie der Tag abgerechnet wird, klären Sie mit Ihrer Lohnbuchhaltung. Ein bewährter Ablauf: morgens Einführung und Mithören, mittags ein Rollenspiel mit Rückmeldung, nachmittags dasselbe noch einmal. Entscheidend ist, ob die Rückmeldung am Nachmittag sichtbar wird.
+
+Gute Bewerbungen sind knapp. Umso wichtiger ist es, schnell zu antworten, jede Stufe zügig zu terminieren und Absagen freundlich zu formulieren. Wer drei Wochen auf eine Antwort wartet, hat meist schon woanders zugesagt.
+
+### Die ersten 90 Tage
+
+Neue Vertriebler bringen in den ersten Wochen selten Umsatz. Das ist normal. Gefährlich wird es erst, wenn niemand weiß, was in diesen Wochen passieren soll. Ein Plan für 30, 60 und 90 Tage gibt beiden Seiten Halt und macht Fortschritt sichtbar.
+
+Einarbeitung in drei Abschnitten (Führen Sie am Ende jedes Abschnitts ein Gespräch mit Selbst- und Fremdeinschätzung. Das letzte liegt deutlich vor dem Ende einer vereinbarten Probezeit.):
+- Tag 1 bis 30 | sicher im Ablauf | Produkt, Zielgruppe, Leitfäden und CRM lernen, echte Gespräche mithören, jeden Tag ein Rollenspiel, erste eigene Gespräche mit Begleitung | Die Person führt ein Rollenspiel nach Leitfaden sicher durch und pflegt das CRM vollständig.
+- Tag 31 bis 60 | eigene Gespräche | eigene Gespräche mit Nachbesprechung, wöchentliches Einzelgespräch, Eingaben Schritt für Schritt auf Zielniveau | Die Eingaben stimmen, die ersten Quoten werden sichtbar.
+- Tag 61 bis 90 | eigene Verantwortung | eigene Kontakte und Chancen führen, erste Abschlüsse, Ergebnisse im Blick | Die Person arbeitet ohne tägliche Begleitung, und Sie können einschätzen, ob die Zusammenarbeit trägt.
+
+Sammeln Sie Gesprächsübungen und gute Gesprächsbeispiele, schriftlich oder als Aufnahme. Echte Gespräche nehmen Sie nur mit Einwilligung aller Beteiligten auf: Wer das nichtöffentlich gesprochene Wort eines anderen unbefugt aufnimmt, macht sich strafbar (§ 201 StGB). Mit jeder neuen Person wird diese Sammlung wertvoller.
+
+### Vergütung: Bausteine und Anreize
+
+Vergütung steuert Verhalten. Was Sie belohnen, bekommen Sie. Belohnen Sie unterschriebene Verträge, bekommen Sie Unterschriften, auch von Kunden, die nicht passen. Belohnen Sie bezahlte Aufträge oder Kunden, die bleiben, bekommen Sie eher das, was Sie wirklich wollen.
+
+Die meisten Modelle setzen sich aus wenigen Bausteinen zusammen:
+
+- Festgehalt: gibt Sicherheit und deckt die Zeit, in der die Person noch keine eigenen Chancen hat.
+- Variable Vergütung: eine Provision je Auftrag oder ein Bonus beim Erreichen eines Ziels. Je mehr die Person das Ergebnis selbst beeinflusst, desto größer kann dieser Teil sein.
+- Einarbeitungsbonus: ein für die ersten Monate garantierter variabler Mindestbetrag, weil neue Leute noch keine eigenen Chancen haben.
+- Einmalige Prämien: für besondere Meilensteine, zum Beispiel den ersten großen Auftrag. Sie motivieren, ohne die Kosten dauerhaft zu erhöhen.
+
+Rechenbeispiel mit frei erfundenen Werten: Monat 4 einer Person in Beratung und Abschluss (Alle Werte sind frei erfunden und kein Vorschlag für Ihre Höhe. Im Arbeitsheft steht dasselbe Beispiel über vier Monate.):
+- Festgehalt | monatlich, brutto | 3.800 €
+- Provision | 5 % vom bezahlten Netto-Auftragswert neuer Kunden; in diesem Monat bezahlt: 46.000 € | 2.300 €
+- Einarbeitungsbonus | in den Monaten 1 bis 3 mindestens 400 € variabel; gilt in Monat 4 nicht mehr | 0 €
+- Einmalige Prämie | 500 € für den ersten bezahlten Auftrag über 20.000 €; in diesem Monat erreicht | 500 €
+- Summe | brutto im Monat | 6.600 €
+
+Je länger Ihr Verkaufszyklus, desto größer sollte der feste Anteil sein, sonst wartet die Person Monate auf ihr Geld. Je kürzer und planbarer der Zyklus, desto mehr kann variabel sein. Prüfen Sie jedes Modell mit zwei Rechnungen: Was verdient jemand in einem schwachen Monat, und was in einem sehr guten? Beides muss für Sie und für die Person tragbar sein.
+
+### Vergütung rechtlich sauber gestalten
+
+Für die Vergütung im Vertrieb gelten in Deutschland klare Regeln. Die wichtigsten im Überblick, als Orientierung und ohne Anspruch auf Vollständigkeit:
+
+- Angestellte haben Anspruch auf den gesetzlichen Mindestlohn: seit 1. Januar 2026 13,90 Euro brutto je Zeitstunde, ab 1. Januar 2027 14,60 Euro. Am sichersten ist ein Festgehalt, das den Mindestlohn für die vereinbarten Stunden abdeckt, mit der Provision obendrauf.
+- Reine Provision ohne Festgehalt passt nur zu selbständigen Handelsvertretern. Selbständig ist nach § 84 HGB, wer im Wesentlichen frei seine Tätigkeit gestalten und seine Arbeitszeit bestimmen kann. Wer das nicht kann, gilt als Angestellter, auch wenn der Vertrag anders heißt.
+- Ob eine Zusammenarbeit selbständig ist, können Sie bei der Deutschen Rentenversicherung Bund feststellen lassen (Statusfeststellung nach § 7a SGB IV).
+- Handelsvertreter können nach Vertragsende unter bestimmten Voraussetzungen einen angemessenen Ausgleich verlangen (§ 89b HGB). Planen Sie das von Anfang an mit ein.
+- Bekommen Angestellte Provision, gelten dafür Regeln aus dem Handelsvertreterrecht (§ 65 HGB). Abgerechnet wird monatlich, der Zeitraum kann auf höchstens drei Monate erstreckt werden (§ 87c HGB). Der Anspruch entsteht grundsätzlich, sobald und soweit Sie das Geschäft ausgeführt haben (§ 87a HGB).
+- Zusammensetzung und Höhe des Arbeitsentgelts gehören mit allen Bestandteilen in den schriftlichen Nachweis der Vertragsbedingungen (§ 2 Nachweisgesetz). Halten Sie die Provisionsregeln deshalb schriftlich fest: Grundlage, Satz, Zeitpunkt des Anspruchs, Umgang mit Stornos und Abrechnung.
+- Gibt es einen Betriebsrat, bestimmt er bei Entlohnungsgrundsätzen und leistungsbezogenen Entgelten mit (§ 87 Abs. 1 Nr. 10 und 11 BetrVG), ebenso bei technischen Einrichtungen, die Verhalten oder Leistung der Beschäftigten überwachen sollen (Nr. 6).
+
+Dieser Überblick ist keine Rechtsberatung. Lassen Sie Ihr Vergütungsmodell und die Verträge vor dem Start von einer Fachanwältin oder einem Fachanwalt für Arbeitsrecht prüfen. Das kostet weniger als ein Streit um Provisionen.
+
+### Führen mit einem festen Rhythmus
+
+Ein Vertriebsteam braucht wenig Führung, wenn sie regelmäßig ist. Fünf feste Termine reichen. Sie kosten zusammen wenige Stunden in der Woche und ersetzen viele spontane Nachfragen.
+
+Der Führungsrhythmus (Am Start genügt die Wochenrunde mit sich selbst. Im Aufbau kommen Tagesbericht, Einzelgespräch und Training dazu, im Wachstum der Tagesstart.):
+- Tagesstart | täglich, 10 bis 15 Minuten, ganzes Team | ein Erfolg von gestern, die Ziele für heute, wo jemand Hilfe braucht
+- Tagesbericht | täglich, 5 Minuten je Person, schriftlich | Eingaben und Ergebnisse des Tages und ein Satz dazu: was gut lief, was ich morgen besser mache, wo ich Hilfe brauche
+- Wochenrunde | wöchentlich, 45 bis 60 Minuten | Kennzahlen je Stufe und Person, Chancen ohne nächsten Schritt, eine Maßnahme für die nächste Woche
+- Einzelgespräch | alle ein bis zwei Wochen, 20 bis 30 Minuten je Person | die Erwartungen der Rolle: Selbsteinschätzung neben Ihrer Einschätzung, Abweichungen klären, ein Ziel bis zum nächsten Mal
+- Training | wöchentlich, 45 bis 60 Minuten | Gesprächsübungen, neue Einwände, Nachbesprechung echter Gespräche, gute Beispiele sammeln
+
+Das Einzelgespräch ist der wichtigste dieser Termine. Lassen Sie die Person ihre Erwartungen selbst bewerten, bevor Sie Ihre Einschätzung nennen. Wo beide Bewertungen auseinanderliegen, steckt meist ein Missverständnis, kein Leistungsproblem.
+
+Werten Sie Kennzahlen je Person aus, sagen Sie offen, was Sie wozu auswerten, achten Sie auf den Datenschutz und, wo es einen gibt, auf die Mitbestimmung des Betriebsrats.
+
+### Kennzahlen je Phase
+
+Mit der Phase ändern sich auch die Zahlen, auf die Sie schauen. Am Start zählen die Zeit des Gründers, Erstgespräche, Angebote und die Abschlussquote. Im Aufbau kommen Zahlen je Person und je Stufe dazu: Ansprachen, Termine, erschienene Termine, Angebote. Im Wachstum zählen Prognose, Abdeckung der Pipeline, Kosten je Neukunde und die Zeit, bis neue Leute ihre volle Leistung bringen.
+
+Welche Kennzahlen es genau sind, wie Sie sie rechnen und wie Sie eigene Zielwerte setzen, steht im Ratgeber zu den Vertriebskennzahlen je Phase. Dazu gibt es eine kostenlose Tabelle mit Wochenbögen für jede Phase. Spätestens im Wachstum braucht es für die Zahlen ein CRM. Wie verbreitet das ist, hängt stark von der Größe des Unternehmens ab.
+
+26 %: 2025 nutzten 26 % der kleinen Unternehmen in Deutschland (10 bis 49 Beschäftigte) eine CRM-Software, bei mittleren Unternehmen (50 bis 249) waren es 44 % und bei großen (ab 250) 61 %. (Quelle: Eurostat, https://ec.europa.eu/eurostat/databrowser/view/isoc_eb_iip/default/table?lang=de)
+
+Ein CRM ersetzt keinen Rhythmus. Es liefert die Zahlen, besprechen müssen Sie sie selbst.
+
+### Selbst umsetzen oder Hilfe holen?
+
+Vieles in diesem Leitfaden können Sie selbst anlegen: die Phase bestimmen, Erwartungen aufschreiben, Auswahl und Einarbeitung planen, den Rhythmus einführen. Das Arbeitsheft führt Sie Bogen für Bogen durch.
+
+Hilfe lohnt sich an den Übergängen. Im Tagesworkshop bestimmen wir an einem Tag Ihre Phase und die größten Hebel. Als Head of Sales auf Zeit bauen wir das System auf, machen Gespräche vor und arbeiten Ihre ersten Vertriebler ein. Als Chief Sales Officer kommen Rollen, Vergütung, Auswahl und die Führung eines wachsenden Teams dazu, bis Ihre eigene Vertriebsleitung übernimmt.
+
+Frage: Wann sollte ich die erste Person für den Vertrieb einstellen?
+Antwort: Wenn Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch einem aufgeschriebenen Ablauf folgt und genug Kontakte da sind, um eine Person auszulasten. Fehlt eines davon, holen Sie es zuerst nach.
+
+Frage: Brauche ich gleich getrennte Rollen?
+Antwort: Nein. In kleinen Teams macht jede Person alles. Trennen Sie Rollen erst, wenn eine Aufgabe eine Person gut auslasten kann, und regeln Sie dann die Übergaben zwischen den Rollen.
+
+Frage: Darf ich Vertriebler nur über Provision bezahlen?
+Antwort: Angestellte haben Anspruch auf den gesetzlichen Mindestlohn. Reine Provision passt nur zu selbständigen Handelsvertretern, die ihre Tätigkeit und Arbeitszeit im Wesentlichen frei bestimmen (§ 84 HGB). Lassen Sie Ihr Modell anwaltlich prüfen, dieser Hinweis ist keine Rechtsberatung.
+
+Frage: Soll ich den Probetag bezahlen?
+Antwort: Ja, wir empfehlen das immer, mindestens mit dem Mindestlohn je Stunde. Dann können Sie echte Aufgaben geben und sehen, wie die Person Rückmeldung umsetzt. Wie der Tag abgerechnet wird, klären Sie mit Ihrer Lohnbuchhaltung.
+
+Frage: Wer soll den Vertrieb führen, wenn ich es nicht mehr mache?
+Antwort: Jemand, der führen will und es gelernt hat oder lernen darf. Das ist nicht immer die Person, die am meisten verkauft. Am Anfang verkauft die Vertriebsleitung oft noch mit, braucht aber feste Zeit für die Führung.
+
+## Vertriebskennzahlen je Phase: Start, Aufbau, Wachstum
+
+Quelle: https://fokusinnovation.de/wissen/vertriebskennzahlen-je-phase/ · Kevin Dieckmann · 2026-10-30
+
+Kurz gesagt: Welche Kennzahlen ein Vertrieb braucht, hängt von seiner Phase ab. Am Start, wenn der Gründer selbst verkauft, zählen seine Zeit, Erstgespräche, Angebote und die Abschlussquote. Im Aufbau mit den ersten Vertrieblern kommen Zahlen je Person und je Stufe dazu. Im Wachstum, mit Team und Führung, zählen Prognose, Abdeckung der Pipeline, Kosten je Neukunde und Einarbeitungszeit. Zielwerte setzen Sie aus eigenen Messungen, nicht aus fremden Durchschnitten.
+
+### Warum sich die Kennzahlen mit der Phase ändern
+
+Eine Kennzahl ist nur so gut wie die Entscheidung, die sie möglich macht. Am Start entscheidet ein Gründer, wofür er seine Woche nutzt. Im Aufbau entscheidet er, ob eine neue Person ankommt. Im Wachstum entscheidet eine Vertriebsleitung, wo sie das Team einsetzt und welche Zahl sie der Geschäftsführung zusagt. Jede dieser Entscheidungen braucht andere Zahlen.
+
+Wer zu früh zu viele Kennzahlen misst, pflegt Tabellen statt zu verkaufen. Wer zu spät nachzieht, steuert ein Team mit den Zahlen eines Einzelkämpfers. Dieser Ratgeber nennt je Phase sieben Kennzahlen, jeweils mit Formel, Grund und Weg zur Erfassung. In welcher Phase Sie stehen, zeigt unser Leitfaden vom Gründer-Vertrieb zum Vertriebsteam.
+
+### Eingabe- und Ergebnis-Kennzahlen
+
+Eingabe-Kennzahlen zählen, was Sie und Ihr Team tun: Ansprachen, Gespräche, Angebote. Sie lassen sich täglich beeinflussen. Ergebnis-Kennzahlen zählen, was dabei herauskommt: Aufträge, Umsatz, Kunden, die bleiben. Sie reagieren mit Wochen oder Monaten Verzögerung.
+
+Quoten verbinden beides. Sie zeigen, wie viel von einer Stufe in der nächsten ankommt, und damit, wo Ihr Vertrieb Kontakte verliert. Daraus folgen vier Regeln:
+
+- Führen Sie im Alltag über Eingaben. Das ist fair, weil jede Person sie selbst in der Hand hat.
+- Beurteilen Sie den Vertrieb über Ergebnisse, aber über einen längeren Zeitraum.
+- Suchen Sie mit Quoten den Engpass: die Stufe, an der am meisten verloren geht.
+- Schreiben Sie jede Definition einmal auf, etwa was ein Termin ist und was ein Angebot, und ändern Sie sie nicht mitten im Jahr.
+
+### Phase Start: die Zahlen des Gründers
+
+Am Start verkauft der Gründer selbst, meist neben Produkt, Kunden und Verwaltung. Die knappste Größe ist seine Zeit, darum steht sie in dieser Phase ganz vorn. Angebote, Abschlussquote, Zeit bis zum Abschluss und offene Chancen beschreibt unser Ratgeber zu den fünf Vertriebszahlen ausführlich. Hier stehen sie nur kurz.
+
+Kennzahlen am Start (Dazu gilt die Regel aus dem Ratgeber zu den fünf Vertriebszahlen: Jedes offene Angebot hat ein Datum zum Nachfassen.):
+- Vertriebsstunden des Gründers | Stunden je Woche, die nur dem Vertrieb gehören (Eingabe) | Fehlt diese Zeit heute, fehlt der Umsatz in einigen Monaten. | feste Blöcke im Kalender, freitags zählen, was davon stattfand
+- Erstgespräche | Gespräche mit neuen möglichen Kunden über einen konkreten Bedarf, je Woche (Eingabe) | Ohne Gespräche keine Angebote. Die Zahl zeigt früh, ob genug nachkommt. | eine Zeile je Gespräch in Ihrer Liste, mit Datum
+- Angebote | schriftliche Angebote mit Preis und Datum, je Monat (Eingabe) | zeigt, ob aus Gesprächen konkrete Chancen werden | Spalte „Angebot verschickt“ mit Datum
+- Abschlussquote | gewonnene ÷ entschiedene Angebote (Ergebnis) | zeigt, ob die Angebote an die richtigen Kunden gehen | Spalte „Ergebnis“: gewonnen, verloren oder offen
+- Zeit bis zum Abschluss | Tage vom Erstgespräch bis zum Auftrag, im Mittel (Ergebnis) | zeigt, wie weit Sie vorausplanen müssen | zwei Daten je Chance: erstes Gespräch und Entscheidung
+- Offene Chancen mit Wert | Summe der Werte aller offenen Chancen mit vereinbartem nächstem Schritt | zeigt, was in den nächsten Monaten kommen kann | Wert und nächster Schritt mit Datum je Zeile
+- Herkunft der Aufträge | Aufträge je Quelle ÷ alle Aufträge | zeigt, welcher Weg trägt und was eine erste Vertriebsperson übernehmen kann | Spalte „Quelle“: Empfehlung, Netzwerk, Website, eigene Ansprache
+
+36,3 %: Im Januar 2026 meldeten 36,3 % der Unternehmen in Deutschland zu wenig Aufträge. Am stärksten betroffen waren Unternehmensberater (53,8 %), die Werbebranche (51,2 %) und IT-Dienstleister (48,1 %). (Quelle: ifo Institut, https://www.ifo.de/fakten/2026-01-29/auftragslage-der-unternehmen-entspannt-sich-nur-geringfuegig)
+
+Gerade wenn Aufträge knapp sind, sind die Eingaben der Hebel, den Sie selbst bewegen: Vertriebsstunden und Erstgespräche. Zählen Sie diese beiden jede Woche, auch wenn sonst keine Zeit bleibt.
+
+### Phase Aufbau: Zahlen je Person und Stufe
+
+Mit den ersten Vertrieblern wird aus einer Liste ein Ablauf mit Übergaben. Jetzt reicht es nicht mehr, Gesamtzahlen zu kennen. Sie müssen sehen, wo im Ablauf Kontakte verloren gehen und ob eine neue Person ankommt. Deshalb zählen Sie je Person und je Stufe.
+
+Kennzahlen im Aufbau (Für Zahlen je Person führen Sie den Wochenbogen je Person einzeln. In der Tabelle zu diesem Ratgeber kopieren Sie dazu das Blatt.):
+- Ansprachen | Anrufe, Nachrichten und Mails an neue Kontakte, je Person und Tag (Eingabe) | die Eingabe, die eine neue Person vom ersten Tag an steuern kann | Tagesbericht oder Aktivitäten im CRM
+- Erreichquote | erreichte Gespräche ÷ Ansprachen | zeigt, ob Kontaktliste und Uhrzeiten passen | Ergebnis jeder Ansprache: erreicht oder nicht
+- Terminquote | vereinbarte Termine ÷ erreichte Gespräche | zeigt, ob Einstieg und Nutzen im Gespräch überzeugen | Termine mit dem Tag der Vereinbarung
+- Erscheinquote | stattgefundene Termine ÷ vereinbarte Termine | zeigt, ob Termine verbindlich vereinbart und bestätigt werden | jeden Termin als stattgefunden oder ausgefallen markieren
+- Angebotsquote | Angebote ÷ stattgefundene Termine | zeigt, ob die Termine mit den richtigen Kunden stattfinden | Angebot mit Bezug zum Termin
+- Abschlussquote je Person | gewonnene ÷ entschiedene Angebote, je Person | zeigt, wer Beratung und Abschluss schon sicher beherrscht | Ergebnis je Chance mit zuständiger Person
+- Aufträge ohne Gründer | Aufträge ohne Beteiligung des Gründers ÷ alle Aufträge | zeigt, ob die Übergabe gelingt | Spalte „Gründer beteiligt: ja oder nein“
+
+Rechnen Sie Quoten erst, wenn genug Fälle da sind, und vergleichen Sie Monate, nicht einzelne Tage. Bei wenigen Terminen verändert ein einziger das Bild stark.
+
+### Phase Wachstum: Zahlen für Team und Prognose
+
+Im Wachstum führt eine Vertriebsleitung mehrere Personen in unterschiedlichen Rollen. Die Geschäftsführung braucht jetzt vor allem zwei Dinge: eine verlässliche Zusage, was in den nächsten Monaten kommt, und die Gewissheit, dass das Team mitwächst. Dazu kommen Zahlen über Kosten, Bestandskunden und die Zeit, bis neue Leute ihre volle Leistung bringen. Die Zahlen aus dem Aufbau laufen weiter, jetzt je Rolle.
+
+Kennzahlen im Wachstum:
+- Abdeckung der Pipeline | gewichteter Wert offener Chancen ÷ noch offenes Umsatzziel im selben Zeitraum | zeigt, ob genug in der Pipeline ist, um das Ziel zu erreichen | Wert × Wahrscheinlichkeit je Chance, jede Woche summiert
+- Prognosegenauigkeit | tatsächlicher Umsatz ÷ Prognose vom Monatsanfang | zeigt, wie verlässlich die Zusagen des Vertriebs sind | Prognose am ersten Werktag festhalten, am Monatsende vergleichen
+- Ergebnis je Rolle und Person | zum Beispiel stattgefundene Termine je Terminperson, Auftragswert je Abschluss-Person | zeigt, wo das Team stark ist und wer Unterstützung braucht | zuständige Person und Rolle als Pflichtfeld im CRM
+- Zeit bis zur vollen Leistung | Tage vom ersten Arbeitstag, bis eine neue Person vier Wochen in Folge ihre Ziele erreicht | zeigt, wie gut Auswahl und Einarbeitung funktionieren | Starttag und Wochenziele je neuer Person
+- Kosten je Neukunde | Vertriebskosten im Zeitraum ÷ neue Kunden im Zeitraum | zeigt, ob das Wachstum bezahlbar bleibt | Gehälter, Provisionen, Werbung und Reisen des Vertriebs aus der Buchhaltung, jedes Quartal
+- Umsatz mit Bestandskunden | Umsatz aus Verlängerungen und Zusatzaufträgen ÷ gesamter Umsatz | zeigt, ob Kunden bleiben und mehr kaufen | Kennzeichen neu oder Bestand an jedem Auftrag
+- Abgänge im Vertrieb | Abgänge in zwölf Monaten ÷ durchschnittliche Zahl der Vertriebsleute | zeigt, ob Führung, Vergütung und Auswahl stimmen | Personalliste, jedes Quartal
+
+13 + 9: An einer typischen Kaufentscheidung im Geschäftskundenbereich sind laut Forrester 13 interne Beteiligte und neun externe Einflussgeber beteiligt; die Zahl stammt aus einer internationalen Erhebung. (Quelle: Forrester, https://www.forrester.com/press-newsroom/forrester-2026-the-state-of-business-buying/)
+
+Je mehr Menschen auf Kundenseite mitentscheiden, desto wichtiger werden Zeit bis zum Abschluss und Prognose. Ein Auftrag hängt dann nicht an einem Gespräch, sondern an vielen.
+
+### Eigene Zielwerte setzen statt fremder Richtwerte
+
+Wir nennen in diesem Ratgeber bewusst keine Richtwerte wie eine gute Terminquote oder eine übliche Abschlussquote. Solche Werte hängen von Branche, Preis, Kanal, Kontaktliste und Erfahrung ab. Ein fremder Durchschnitt führt deshalb leicht zu einem Ziel, das entweder nichts verlangt oder das niemand erreichen kann. So kommen Sie zu eigenen Zielwerten:
+
+1. Messen, ohne zu bewerten: Zählen Sie vier bis acht Wochen lang sauber, bevor Sie ein Ziel festlegen. Das ist Ihr Ausgangswert.
+2. Vom Umsatzziel rückwärts rechnen: Teilen Sie das Umsatzziel durch den mittleren Auftragswert und rechnen Sie mit Ihren eigenen Quoten zurück, wie viele Angebote, Termine und Ansprachen es braucht. Wie das geht, zeigt unser Ratgeber zum Vertriebsaufbau.
+3. Den Engpass wählen: Suchen Sie die Quote, an der am meisten verloren geht. Dort setzen Sie zuerst an, nicht überall gleichzeitig.
+4. Ein Ziel für eine Eingabe festlegen: Legen Sie zuerst ein Ziel für eine Eingabe fest, die Ihr Team selbst steuern kann. Wählen Sie einen Schritt, den alle für machbar halten.
+5. Nach einem Quartal neu bewerten: Vergleichen Sie am Quartalsende Ausgangswert und Ist. Passen Sie die Ziele an Ihre gemessenen Quoten an, nicht an Ihre Hoffnung.
+
+### Ein Rechenbeispiel
+
+Das Beispiel zeigt einen Monat einer Person im Aufbau, die Termine vereinbart und selbst berät. Alle Zahlen sind frei erfunden.
+
+Rechenbeispiel mit frei erfundenen Werten (Zwei Angebote sind noch offen und zählen deshalb nicht in die Abschlussquote.):
+- Ansprachen | 400
+- Erreichte Gespräche | 100 | 100 ÷ 400 | Erreichquote 25 %
+- Vereinbarte Termine | 25 | 25 ÷ 100 | Terminquote 25 %
+- Stattgefundene Termine | 20 | 20 ÷ 25 | Erscheinquote 80 %
+- Angebote | 10 | 10 ÷ 20 | Angebotsquote 50 %
+- Entschiedene Angebote | 8, davon 3 gewonnen und 5 verloren | 3 ÷ 8 | Abschlussquote 38 %
+
+Angenommen, die Terminquote steigt durch einen besseren Gesprächseinstieg von 25 auf 30 %. Bei sonst gleichen Quoten werden aus 100 erreichten Gesprächen 30 Termine, davon finden 24 statt, und daraus entstehen 12 statt 10 Angebote. So zeigt die Rechnung, welcher Hebel wie viel bringt, bevor Sie Geld für mehr Kontakte ausgeben.
+
+### Wochen- und Monatsrhythmus
+
+Kennzahlen wirken nur, wenn sie zu einem festen Zeitpunkt besprochen werden. Nicht jede Zahl braucht dieselbe Taktung: Eingaben schauen Sie oft an, Ergebnisse seltener.
+
+Wann welche Zahlen besprochen werden:
+- Täglich | Ansprachen, Gespräche und vereinbarte Termine im Tagesbericht, ab dem Aufbau | jede Person für sich | 5 Minuten
+- Wöchentlich | Eingaben, Quoten je Stufe, offene Angebote ohne Nachfass-Datum, Chancen ohne nächsten Schritt | Gründer oder Vertriebsleitung mit dem Team | 30 bis 60 Minuten
+- Monatlich | Aufträge, Abschlussquote, Zeit bis zum Abschluss, offene Chancen, im Wachstum auch Prognose und Abdeckung | Geschäftsführung und Vertriebsleitung | 60 Minuten
+- Vierteljährlich | Herkunft der Aufträge, Kosten je Neukunde, Bestandskunden, Abgänge, neue Zielwerte | Geschäftsführung | 60 bis 90 Minuten
+
+Schreiben Sie nach jeder Runde einen Satz auf: Was machen wir bis zum nächsten Mal anders? Dieser Satz ist wichtiger als jede einzelne Zahl.
+
+### Von Phase zu Phase: was dazukommt, was in den Hintergrund rückt
+
+Beim Übergang in die nächste Phase kommen Kennzahlen dazu, andere verlieren an Gewicht. Abschaffen sollten Sie keine. Sie laufen weiter, werden aber seltener besprochen.
+
+Kennzahlen beim Übergang:
+- Vom Start zum Aufbau | Ansprachen je Person, Erreich-, Termin-, Erschein- und Angebotsquote, Abschlussquote je Person, Aufträge ohne Gründer | die Vertriebsstunden des Gründers wandern in den Monatsblick, die Herkunft der Aufträge in den Quartalsblick
+- Vom Aufbau zum Wachstum | Abdeckung der Pipeline, Prognosegenauigkeit, Kosten je Neukunde, Zeit bis zur vollen Leistung, Bestandskunden, Abgänge | Aufträge ohne Gründer, sobald das Ziel erreicht ist, und die tägliche Einzelkontrolle durch den Gründer, die nun die Vertriebsleitung übernimmt
+
+### Häufige Fehler
+
+- Kennzahlen der nächsten Phase einführen, bevor die Grundlagen sauber gezählt werden.
+- Fremde Richtwerte als eigenes Ziel übernehmen.
+- Menschen an Ergebnissen messen, die sie kurzfristig kaum beeinflussen können.
+- Quoten aus wenigen Fällen bewerten.
+- Definitionen nicht aufschreiben und jeden Monat etwas anderes zählen.
+- Zahlen sammeln und nie gemeinsam besprechen.
+
+### Selbst umsetzen oder Hilfe holen?
+
+Mit der Tabelle zu diesem Ratgeber können Sie morgen anfangen: Phase wählen, Woche für Woche eintragen, die Quoten rechnet sie selbst. Nach einem Monat kennen Sie Ihre Ausgangswerte.
+
+Hilfe lohnt sich, wenn die Zahlen zeigen, dass etwas klemmt, aber nicht klar ist, woran. Im Tagesworkshop finden wir an einem Tag den Engpass und setzen den ersten Hebel direkt um. Als Head of Sales auf Zeit führen wir den Wochenrhythmus ein, bis Ihr Team ihn selbst hält. Sollen die Zahlen von selbst aus dem CRM kommen, bauen wir Ihnen ein eigenes KI-CRM mit Kennzahlen-Trichter.
+
+Frage: Wie viele Kennzahlen braucht mein Vertrieb?
+Antwort: So wenige wie möglich. Sieben je Phase reichen, und nicht jede davon besprechen Sie jede Woche. Wichtiger als die Zahl der Kennzahlen ist, dass sie regelmäßig zur selben Zeit besprochen werden.
+
+Frage: Gibt es gute Richtwerte für Termin- oder Abschlussquoten?
+Antwort: Wir nennen bewusst keine. Quoten hängen von Branche, Preis, Kanal und Kontaktliste ab. Messen Sie vier bis acht Wochen Ihre eigenen Werte und setzen Sie Ziele daraus.
+
+Frage: Reicht eine Tabelle, oder brauche ich ein CRM?
+Antwort: Am Start reicht eine Tabelle. Sobald mehrere Personen verkaufen und Sie Zahlen je Person und je Stufe brauchen, wird ein CRM mit Pflichtfeldern deutlich einfacher.
+
+Frage: Wer trägt die Zahlen ein?
+Antwort: Jede Person ihre eigenen, am selben Tag. Eine Person achtet darauf, dass alles vollständig ist, und bringt die Zahlen zur Wochenrunde mit.
+
+Frage: Darf ich Kennzahlen je Person auswerten?
+Antwort: Kennzahlen je Person sind im Vertrieb üblich und für Einarbeitung und Einzelgespräche nötig. Sagen Sie offen, was Sie wozu auswerten, und achten Sie auf den Datenschutz. Gibt es einen Betriebsrat, bestimmt er bei technischen Einrichtungen mit, die Verhalten oder Leistung überwachen sollen (§ 87 Abs. 1 Nr. 6 BetrVG). Das ist keine Rechtsberatung.

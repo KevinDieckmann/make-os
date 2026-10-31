@@ -439,6 +439,9 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // ── Innovations-Check (öffentlich, 24.10.) ─────────────────────────────────────────────────────────────────
   'check': r('POST', 'offen', 'Öffentliche Strecke des Innovations-Checks: enge Regex in der Middleware, kommt AUS (404), Token je Sitzung (nur SHA-256), Drossel, Honigtopf, Mindestzeit, Größe — handelt nie als Person.'),
   'check/intern': r('GET,POST', 'haushalt', 'Eingegangene Checks, Beleg-Bewertung, Lead nachholen, Löschen — Haushalt des Inhabers mit Person; Einstellungen (an/aus, Buchungsseite, Gastgeber) nur der Inhaber.'),
+  // Newsletter-Anmeldung über die Website (30.10., lib/newsletter/*).
+  'newsletter': r('POST', 'offen', 'Öffentliche Newsletter-Anmeldung mit Double-Opt-in: enge Regex in der Middleware, kommt AUS (404), immer dieselbe Antwort (Arbeit nach der Antwort), Token nur im Fragment und nur als SHA-256, Drossel, Honigtopf, Stempel, ≤ 4 KB — handelt nie als Person.'),
+  'newsletter/intern': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Anmeldungen über die Website (Adressen maskiert) im Haushalt; Einstellungen (an/aus, Absender-Postfach = Freigabe der Bestätigungsmails, Text, Website), Löschen und CRM-Nachholen nur ein Inhaber per Sitzung (Dienstweg 403).'),
 
   // ── Konto, Anmeldung, System ───────────────────────────────────────────────────────────────────────────────
   // ── Datenschutz (05.10., DSGVO-Pakete) ────────────────────────────────────────────────────────────────────

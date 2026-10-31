@@ -96,6 +96,9 @@ const plus = (n: number) => { const d = new Date(`${STICHTAG}T12:00:00Z`); d.set
 let db: typeof import('@/lib/store/local-db');
 
 beforeAll(async () => {
+  // Feste Uhr (31.10.): Welche Pflichten „fällig“ sind, hängt vom Tag ab — am 31.10. fiel keine mehr ins Fenster, der Test war tagesabhängig.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-30T09:00:00Z'));
   db = await import('@/lib/store/local-db');
   await db.saveJson('konten', { konten: [
     { id: '1', speicher: 'ta', email: `ta@${D}`, name: 'Tara Titel', rolle: 'inhaber', hash: 'x', salz: 'x', angelegt: '2026-09-01', haushalt: H, teilt: { gesundheit: [] } },
@@ -106,6 +109,7 @@ beforeAll(async () => {
   await db.saveJson(`unternehmen-schild--${H}`, { gesellschaften: [{ id: 'ug', ereignisse: [ev('ev-bbbb-0001', 'anteilsuebertragung', plus(-10))] }] });
 });
 afterAll(async () => {
+  vi.useRealTimers();
   await (await import('@/lib/store/leseprotokoll')).leseprotokollWarten().catch(() => {});
   rmSync(ordner, { recursive: true, force: true });
 });

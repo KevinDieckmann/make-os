@@ -34,6 +34,8 @@ export const KONTAKT_JE_BEREICH: Readonly<Record<string, readonly string[]>> = {
   fulfillment: ['vv-fulfillment', 'vv-fulfillment-analyse', 'vv-kundenlink'],
   // 30.10. (Datenprüfung der Nacht): Bestände seit 24.10., deren Verarbeitung die Auskunft bisher nicht nannte, obwohl sie die Person zählte.
   check: ['vv-innovations-check'], formular: ['vv-angebot-formular'], social: ['vv-social'],
+  // Newsletter-Anmeldung über die Website (30.10.): eine Anmeldung mit der Adresse bzw. eine Einwilligung mit Beleg `newsletter:…`.
+  newsletter: ['vv-newsletter-anmeldung'],
 };
 
 const gefuellt = (v: unknown): boolean => Array.isArray(v) ? v.length > 0 : v && typeof v === 'object' ? Object.keys(v as object).length > 0 : !!v;
@@ -62,6 +64,7 @@ export function kontaktBereiche(a: Record<string, unknown>): string[] {
   if (gefuellt(md.medien) || gefuellt(md.einwilligungen)) b.add('medien');
   const ff = (a.fulfillment ?? {}) as { stakeholder?: unknown; kunde?: unknown; personen?: unknown };
   if (gefuellt(ff.stakeholder) || gefuellt(ff.kunde) || gefuellt(ff.personen) || /fulfillment/.test(weitere)) b.add('fulfillment');
+  if (/newsletter-anmeldungen/.test(weitere) || (Array.isArray(p.einwilligungen) && p.einwilligungen.some(e => String((e as { belegRef?: string })?.belegRef ?? '').startsWith('newsletter:')))) b.add('newsletter');
   return Array.from(b).sort();
 }
 

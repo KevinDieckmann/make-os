@@ -1,11 +1,12 @@
 // ─── Checks — Ablauf (24.10., Innovations-Check) ────────────────────────────────────────────────────────────────
 // Die Klickstrecke steuert die Anwendung, nicht ein Sprachmodell: welche Frage als nächste kommt, entscheidet NUR diese Datei
-// (so bleiben die Ergebnisse vergleichbar). Reihenfolge nach Kevins Klickrunde 24.10.: erst die 15 Kurzcheck-Fragen (Frage 1 ist
+// (so bleiben die Ergebnisse vergleichbar). Reihenfolge nach Kevins Klickrunde 24.10.: erst die Kurzcheck-Fragen (seit 30.10. 17 — mit
+// den Säulen Sichtbarkeit und Vertrieb; Frage 1 ist
 // ein Klick: die Branche), DANACH die Kontaktdaten (überspringbar — das Kurzergebnis bleibt frei sichtbar), dann die Wahl
-// „Ergebnis jetzt“ oder „mehr Fragen“, in der Vertiefung die übrigen Fragen aus A bis G (Robotik nur, wo sie zur Branche passt)
+// „Ergebnis jetzt“ oder „mehr Fragen“, in der Vertiefung die übrigen Fragen aus A, S, V und B bis G (Robotik nur, wo sie zur Branche passt)
 // und das Branchen-Modul (H/I/J, sonst zwei offene Fragen). Rein, client- und serversicher.
 
-import { alleFragen, kurzcheckFragen, type FrageMitAbschnitt } from './katalog';
+import { alleFragen, kurzcheckFragen, MODUL_ABSCHNITTE, type FrageMitAbschnitt } from './katalog';
 import { robotikRelevant, profilAus } from './auswertung';
 import type { CheckAntwort, CheckAntworten, CheckFrage, CheckProfil, CheckVorlage } from './typen';
 
@@ -24,6 +25,8 @@ export const OFFENE_ZUSATZFRAGEN: readonly FrageMitAbschnitt[] = [
 ];
 
 export type KontaktStand = 'offen' | 'erfasst' | 'uebersprungen';
+/** Kurz oder ausführlich (30.10. abends, Kevin: „ob er den kleinen Innovations-Check haben möchte oder den größeren“). */
+export type CheckUmfang = 'kurz' | 'lang';
 export type CheckPhase = 'kurzcheck' | 'vertiefung' | 'branche';
 
 /** Was der Ablauf über eine Sitzung wissen muss. */
@@ -33,6 +36,7 @@ export interface AblaufStand {
   uebersprungen: readonly string[];
   kontakt: KontaktStand;
   wahl?: 'ergebnis' | 'mehr';
+  umfang?: CheckUmfang;
 }
 
 export type Schritt =
@@ -58,10 +62,10 @@ export function moduleFuer(p: CheckProfil): string[] {
 
 export const kurzSequenz = (v: CheckVorlage): FrageMitAbschnitt[] => kurzcheckFragen(v.katalog);
 
-/** Vertiefung: alle übrigen Fragen aus A bis G in Katalog-Reihenfolge — F nur, wenn Robotik zur Branche passt. */
+/** Vertiefung: alle übrigen Fragen außer den Branchen-Modulen, in Katalog-Reihenfolge — F nur, wenn Robotik zur Branche passt. */
 export function vertiefungSequenz(v: CheckVorlage, p: CheckProfil): FrageMitAbschnitt[] {
   const robotik = robotikRelevant(p, v.regeln);
-  return alleFragen(v.katalog).filter(f => 'ABCDEFG'.includes(f.abschnitt) && !f.kurzcheck && (f.abschnitt !== 'F' || robotik));
+  return alleFragen(v.katalog).filter(f => !MODUL_ABSCHNITTE.includes(f.abschnitt) && !f.kurzcheck && (f.abschnitt !== 'F' || robotik));
 }
 
 export function brancheSequenz(v: CheckVorlage, p: CheckProfil): FrageMitAbschnitt[] {
@@ -77,12 +81,35 @@ export function frageVon(v: CheckVorlage, id: string): FrageMitAbschnitt | undef
 
 export const kurzFertig = (v: CheckVorlage, s: AblaufStand): boolean => kurzSequenz(v).every(f => erledigt(s, f.id));
 
+/**
+ * Die ganze Strecke der ausführlichen Variante: Kurzcheck, Vertiefung, Branchen-Modul — ohne die Rolle (A5), die mit den Kontaktdaten kommt.
+ * Kontaktdaten erst am Ende (Recherche 30.10.: in der Mitte gefragt kostet das Abschlüsse).
+ */
+export function langeStrecke(v: CheckVorlage, s: Pick<AblaufStand, 'antworten'>): { f: FrageMitAbschnitt; phase: CheckPhase }[] {
+  const p = profilAus(v.katalog, s.antworten);
+  return [...kurzSequenz(v).map(f => ({ f, phase: 'kurzcheck' as const })), ...vertiefungSequenz(v, p).map(f => ({ f, phase: 'vertiefung' as const })), ...brancheSequenz(v, p).map(f => ({ f, phase: 'branche' as const }))]
+    .filter(x => x.f.id !== 'A5');
+}
+
 /** Der nächste Schritt — DIE Regel des Ablaufs. */
 export function naechsterSchritt(v: CheckVorlage, s: AblaufStand): Schritt {
+  if (s.umfang === 'lang') {
+    const strecke = langeStrecke(v, s);
+    // „Jetzt auswerten“ (Wahl „ergebnis“) beendet die Fragen vorzeitig — mit Teilergebnis; „mehr“ führt danach wieder hinein.
+    const i = s.wahl === 'ergebnis' ? -1 : strecke.findIndex(x => !erledigt(s, x.f.id));
+    if (i >= 0) return { art: 'frage', frageId: strecke[i].f.id, phase: strecke[i].phase, nummer: i + 1, von: strecke.length };
+    if (s.kontakt === 'offen') return { art: 'kontakt' };
+    return { art: 'ergebnis' };
+  }
   const kurz = kurzSequenz(v);
   const offenKurz = kurz.findIndex(f => !erledigt(s, f.id));
   if (offenKurz >= 0) return { art: 'frage', frageId: kurz[offenKurz].id, phase: 'kurzcheck', nummer: offenKurz + 1, von: kurz.length };
   if (s.kontakt === 'offen') return { art: 'kontakt' };
+  // Kurz gewählt: nach den Kontaktdaten sofort das Ergebnis — „mehr“ nur, wenn die Person danach ausdrücklich weitermacht.
+  if (s.umfang === 'kurz' && s.wahl !== 'mehr') return { art: 'ergebnis' };
+  // Kleine Checks (30.10.) fragen alles im Kurzcheck — bleibt keine offene Frage der Vorlage (die Rolle kommt mit den Kontaktdaten),
+  // gibt es keine Wahl, sofort das Ergebnis.
+  if (!s.wahl && !vertiefungSequenz(v, profilAus(v.katalog, s.antworten)).some(f => f.id !== 'A5' && !erledigt(s, f.id))) return { art: 'ergebnis' };
   if (!s.wahl) return { art: 'wahl' };
   if (s.wahl === 'mehr') {
     const p = profilAus(v.katalog, s.antworten);
@@ -96,8 +123,9 @@ export function naechsterSchritt(v: CheckVorlage, s: AblaufStand): Schritt {
 /** Phase einer Frage in dieser Sitzung — oder null, wenn sie hier (noch) nicht dran sein darf. */
 export function phaseVon(v: CheckVorlage, s: AblaufStand, id: string): CheckPhase | null {
   if (kurzSequenz(v).some(f => f.id === id)) return 'kurzcheck';
-  // Vertiefung und Branchen-Modul erst nach dem Kurzcheck, nach der Kontakt-Frage und mit der Wahl „mehr“.
-  if (!kurzFertig(v, s) || s.kontakt === 'offen' || s.wahl !== 'mehr') return null;
+  // Vertiefung und Branchen-Modul erst nach dem Kurzcheck — ausführlich gewählt sofort danach, sonst nach der Kontakt-Frage und mit „mehr“.
+  if (!kurzFertig(v, s)) return null;
+  if (s.umfang !== 'lang' && (s.kontakt === 'offen' || s.wahl !== 'mehr')) return null;
   const p = profilAus(v.katalog, s.antworten);
   if (vertiefungSequenz(v, p).some(f => f.id === id)) return 'vertiefung';
   if (brancheSequenz(v, p).some(f => f.id === id)) return 'branche';
@@ -139,7 +167,7 @@ export function antwortPruefen(f: FrageMitAbschnitt, e: Eingabe): Geprueft {
   return { ok: true, antwort: { freitext: t } };
 }
 
-/** Fortschritt für die Anzeige: Kurzcheck „n von 15“ und gesamt in Prozent (alle Fragen dieser Sitzung). */
+/** Fortschritt für die Anzeige: Kurzcheck „n von 17“ und gesamt in Prozent (alle Fragen dieser Sitzung). */
 export function fortschritt(v: CheckVorlage, s: AblaufStand): { kurz: number; kurzVon: number; prozent: number } {
   const kurz = kurzSequenz(v);
   const p = profilAus(v.katalog, s.antworten);

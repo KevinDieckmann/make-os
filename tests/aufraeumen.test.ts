@@ -21,7 +21,8 @@ const NUR_WEITERLEITUNG = ['app/page.tsx', 'app/jarvis/page.tsx'];
 // `kunde` (10.10., Fulfillment C2): öffentliche Seite des Kunden-Links — wie `buchen` ohne Sitzung (middleware.ts KUNDE_SEITE), kommt ausgeschaltet.
 // Innovations-Check (24.10.): die öffentliche Strecke /check (lib/check/*, Middleware CHECK_OFFEN).
 // `angebot` (25.10., Markttraktion › Formulare): öffentliche Seite „Angebot anfordern“ für externe Vertriebler — wie `buchen` ohne Sitzung (middleware.ts ANGEBOT_OFFEN).
-const ERLAUBT = ['os', 'zoe', 'anmelden', 'buchen', 'abmelden', 'kunde', 'angebot', 'check', 'api', 'jarvis', 'schriften'];
+// `newsletter` (30.10.): öffentliche Newsletter-Anmeldung mit Double-Opt-in — wie `check` ohne Sitzung (middleware.ts NEWSLETTER_OFFEN), kommt ausgeschaltet.
+const ERLAUBT = ['os', 'zoe', 'anmelden', 'buchen', 'abmelden', 'kunde', 'angebot', 'check', 'newsletter', 'api', 'jarvis', 'schriften'];
 
 describe('Routen: ein Weg statt zwei', () => {
   it('app/ hat nur die erlaubten Bereiche — keine Routengruppe, kein Alt-Dashboard', () => {
@@ -30,8 +31,8 @@ describe('Routen: ein Weg statt zwei', () => {
     expect(ordner.some(n => n.startsWith('('))).toBe(false);
   });
 
-  it('Seiten außerhalb von /os, /zoe, /anmelden, /buchen, /abmelden, /kunde, /angebot, /check leiten nur weiter', () => {
-    const seiten = dateien('app', /^page\.tsx$/).filter(p => !/^app\/(os|zoe|anmelden|buchen|abmelden|kunde|angebot|check|api)\//.test(p));
+  it('Seiten außerhalb von /os, /zoe, /anmelden, /buchen, /abmelden, /kunde, /angebot, /check, /newsletter leiten nur weiter', () => {
+    const seiten = dateien('app', /^page\.tsx$/).filter(p => !/^app\/(os|zoe|anmelden|buchen|abmelden|kunde|angebot|check|newsletter|api)\//.test(p));
     expect(seiten.sort()).toEqual([...NUR_WEITERLEITUNG].sort());
     for (const p of NUR_WEITERLEITUNG) expect(lies(p)).toMatch(/redirect\(/);
   });

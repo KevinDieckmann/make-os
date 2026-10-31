@@ -176,6 +176,46 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-10-30-5',
+    datum: '2026-10-30',
+    titel: 'Newsletter-Anmeldung über die Website',
+    kurz: 'Besucher können sich auf der Website für den Newsletter anmelden. Sie sind erst dabei, wenn sie den Link in der Bestätigungsmail anklicken. Bestätigte Anmeldungen stehen mit Nachweis der Einwilligung in der Kartei.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Anmeldung mit Bestätigung per E-Mail (Double-Opt-in). Unter Marketing › Newsletter wählt ihr das Absender-Postfach, tragt die Adresse der Website ein und schaltet die Anmeldung ein.', bereich: 'business', weg: WEG.marketing('newsletter') },
+        { text: 'Bestätigte Anmeldungen kommen mit Wortlaut, Fassung und Zeitpunkten der Einwilligung in die Kartei. Unbestätigte löschen sich nach 30 Tagen von selbst.', bereich: 'business', weg: WEG.marketing('newsletter') },
+        { text: 'Das Newsletter-Häkchen in den Checks führt in dieselbe Anmeldung und erscheint nur, wenn sie eingeschaltet ist.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Auf der Website gibt es den Bereich „Kostenlos“: drei Checks, ein Leitfaden zum Aufbau eines Vertriebsteams mit Arbeitsheft, Ratgeber, Zahlen mit Quelle, neun Vorlagen mit Anleitung und Beispiel (fünf auch als Tabelle für Excel), eine Übersicht nach Phase und die Newsletter-Anmeldung.', bereich: 'business' },
+        { text: 'Website neu ausgerichtet: neue Headline zu Sichtbarkeit und Vertrieb, neues Angebot PR und Kommunikation, Events mit verschiedenen Formaten, Innovation mit „erst Struktur und Daten, dann KI“, Sichtbarkeit im Menü nach Positionierung, Homepages, Videos und PR.', bereich: 'business' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Der Innovations-Check vergleicht nach Unternehmensgröße jetzt mit den Destatis-Zahlen von 2025.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Die drei Checks im dunklen Design der App: Karten mit Tiefe und Lichtkante, ein Leuchtfaden führt durch das Gespräch, Kopf mit Logo, das zur Website führt. Logo (für dunklen Grund) und Website-Adresse stellt ihr unter Marketing › Innovations-Check ein.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Website: neuer Film auf der Startseite mit Raum-Schein und pulsierendem Fokus-Punkt, überall ab-Preise, geprüfte Zahlen zu Unternehmen aus 2026, Über uns mit dem Team dahinter, eigene Seiten hinter „In den Markt“ und „Ins Unternehmen“, Grafiken zum Problem auf fünf Seiten und Plätze für Erklärvideos.', bereich: 'business' },
+        { text: 'Website überarbeitet: Startseite kürzer, Film mit Knöpfen im letzten Bild, passender Check als zweiter Knopf auf jeder Seite, Preise als Karten mit markiertem Einstieg, Arbeitsprobe mit Bildern, Absicherung für Homepages, Videos und Tagesworkshop (Freigabe vor dem Bau, Ausstieg), Erstgespräch 30 Minuten, Menü per Tastatur bedienbar.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-10-30-4',
+    datum: '2026-10-30',
+    titel: 'Checks für die Website: Innovation, Vertrieb, Sichtbarkeit',
+    kurz: 'Drei Checks für die Website: der Innovations-Check (kurz oder ausführlich), ein Vertriebs-Check und ein Sichtbarkeits-Check. Jedes Ergebnis nennt nächste Schritte mit euren Angeboten und die nächsten freien Termine fürs Erstgespräch.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Zwei kleine Checks mit je zwölf Fragen: Vertriebs-Check (Organisation, Zahlen, Neukunden) und Sichtbarkeits-Check (Botschaft, Website, Reichweite). Eingegangene Checks stehen gemeinsam unter Marketing › Innovations-Check.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Der Innovations-Check misst nur Innovation. Besucher wählen am Anfang: kurz mit 19 Fragen (rund 10 Minuten) oder ausführlich mit rund 50 Fragen in Etappen (rund 25 Minuten). Auswerten geht jederzeit.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Für die zwei größten Lücken (Innovations-Check) bzw. die zwei schwächsten Bereiche (kleine Checks) nennt das Ergebnis je einen nächsten Schritt. Darunter steht euer passendes Angebot: Titel, Satz und Link stellt ihr unter Marketing › Innovations-Check ein.', bereich: 'business', weg: WEG.marketing('check') },
+        { text: 'Die nächsten freien Termine fürs Erstgespräch stehen direkt im Ergebnis. Ein angetippter Termin ist auf der Buchungsseite schon gewählt.', bereich: 'business' },
+        { text: 'Ein Leitsatz unter dem Namen im Kopf des Checks und, falls die Website einer anderen Gesellschaft gehört, ein eigener Verantwortlicher für den Datenschutzhinweis, beides unter Marketing › Innovations-Check.', bereich: 'business' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Ruhigere Ansicht: Zoes Text steht ohne Kasten, oben eine Karte mit den Bereichen des Checks und den weiteren Checks.', bereich: 'business' },
+        { text: 'Ist der Check aus oder ein Buchungslink veraltet, sehen Besucher eine neutrale Seite.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-30-3',
     datum: '2026-10-30',
     titel: 'Social: Beiträge planen, schneiden und veröffentlichen',
