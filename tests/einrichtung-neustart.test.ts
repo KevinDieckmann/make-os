@@ -88,8 +88,11 @@ describe('Neustart-Ablauf (Daten, rein)', () => {
       for (const s of l.filter(x => verbindungen.includes(x.id))) { expect(s.samstag, s.id).toBeFalsy(); expect(s.etappe, s.id).toBe(8); }
     }
     const l = schritteFuer(INHABER_N);
-    for (const id of ['ich-privatkonten', 'privat-fixkosten', 'finanzplan', 'eroeffnung', 'kontostaende', 'offene-posten', 'finanzplan-business', 'konten-business', 'steckbrief', 'absender', 'produkte', 'kartei', 'angebot-entwurf', 'kampagne-start', 'powerhour', 'business-online'])
+    for (const id of ['ich-privatkonten', 'privat-fixkosten', 'finanzplan', 'eroeffnung', 'kontostaende', 'offene-posten', 'finanzplan-business', 'konten-business', 'steckbrief', 'absender', 'produkte', 'kartei', 'business-online'])
       expect(finde(l, id).samstag, id).toBe(true);
+    // 31.10. (Kevin, Onboarding schlanker): Datenschutz der Instanz, Notfallmappe und die Vertriebs-Übungen wandern nach „später“.
+    for (const id of ['datenschutz', 'notfallmappe', 'angebot-entwurf', 'kampagne-start', 'powerhour'])
+      expect(gruppeVon(finde(l, id)), id).toBe('spaeter');
     for (const id of ['agenten', 'ich-zoe', 'brain']) expect(finde(l, id).etappe, id).toBe(9);
     expect(gruppeVon(finde(l, 'update'))).toBe('freitag');
   });

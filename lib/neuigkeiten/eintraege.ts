@@ -55,6 +55,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
       { art: 'besser', punkte: [
         { text: 'Innovations-Check und Angebots-Link: trifft die Mail eine vorhandene Person, hängt die Anfrage dort nur als „Adresse unbestätigt“ — ohne Einwilligung, ohne neue Stufe, ohne automatische Mail. Das Follow-up heißt „Anfrage prüfen — Adresse unbestätigt“; ist sie echt, übernimmst du sie mit „Anfrage übernehmen“ bzw. mit „Senden“ in der Freigabe.', bereich: 'business', weg: WEG.followup() },
         { text: 'Dubletten zusammenführen: laufende Prozesse der entfernten Person gehen auf die behaltene über. Lief derselbe Prozess doppelt, läuft der weiter fortgeschrittene weiter, der andere endet mit dem Vermerk „zusammengeführt“.', bereich: 'business' },
+        { text: 'Einrichtung schlanker: „Datenschutz der Instanz“, die Notfallmappe und die Vertriebs-Übungen (Angebotsvorlage, Kadenz, Power Hour) stehen jetzt unter „Danach“ — der Kern ist schneller fertig.', bereich: 'business', weg: '/os/onboarding' },
       ] },
     ],
   },

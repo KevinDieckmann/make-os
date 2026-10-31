@@ -417,7 +417,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     befehl: 'ssh -t make@<SERVER> sudo bash /srv/make-os/app/deploy/google-verbinden.sh',
   },
   {
-    id: 'notfallmappe', betreiber: true, samstag: true, etappe: 0, nr: '0.12', ebene: 'gemeinsam', minuten: 20,
+    id: 'notfallmappe', betreiber: true, spaeter: true, etappe: 0, nr: '0.12', ebene: 'gemeinsam', minuten: 20,
     modul: 'grundlage', nach: ['pepper', 'sicherung'],
     titel: 'Notfallmappe',
     warum: 'Fällt der Inhaber aus, muss jemand an Pepper, age-Schlüssel, Datenschlüssel, Server-Zugang und Wiederherstellungs-Codes kommen — sonst ist alles verschlüsselt und unerreichbar.',
@@ -504,7 +504,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: KONTO,
   },
   {
-    id: 'datenschutz', samstag: true, etappe: 1, nr: '1.5', ebene: 'instanz', nurInhaber: true, minuten: 35, pruefung: 'datenschutz', bestaetigen: true,
+    id: 'datenschutz', spaeter: true, etappe: 1, nr: '1.5', ebene: 'instanz', nurInhaber: true, minuten: 35, pruefung: 'datenschutz', bestaetigen: true,
     modul: 'grundlage',
     titel: 'Datenschutz der Instanz',
     warum: 'Sobald Kontakte und Mandanten drin sind, braucht die Instanz einen Verantwortlichen, ein vollständiges Empfänger-Register und klare Löschfristen. Hinweis, keine Rechtsberatung.',
@@ -525,7 +525,8 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
   },
   {
     id: 'ki-instanz', samstag: true, etappe: 1, nr: '1.6', ebene: 'instanz', nurInhaber: true, minuten: 10, pruefung: 'ki',
-    modul: 'zoe', nach: ['datenschutz'],
+    // 31.10. (Kevin, Onboarding schlanker): „Datenschutz der Instanz“ ist nach „später“ gewandert — die KI wartet nicht mehr darauf.
+    modul: 'zoe',
     titel: 'KI der Instanz',
     warum: 'Ohne Schlüssel und Guthaben fallen ZOE und die Heads still auf das Regelwerk zurück. Die Schalter der Instanz legen fest, ob KI im Hintergrund läuft, ob sie im Web suchen darf und für welche Bereiche.',
     wie: [
@@ -912,7 +913,8 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
   },
   {
     id: 'kartei', bestaetigen: true, samstag: true, etappe: 4, nr: '4.2', ebene: 'gemeinsam', nurInhaber: true, minuten: 50, pruefung: 'kontakte',
-    modul: 'markttraktion', nach: ['datenschutz'],
+    // 31.10. (Kevin, Onboarding schlanker): wartet nicht mehr auf „Datenschutz der Instanz“ (jetzt „später“).
+    modul: 'markttraktion',
     titel: 'Kartei importieren und bereinigen',
     warum: 'Power Hour, Pipeline und Index rechnen mit der Kartei. Herkunft, Rechtsgrundlage und Zuständigkeit müssen stimmen, sonst schlägt das System die Falschen vor.',
     wie: [
@@ -1456,7 +1458,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: { href: WEG.kontenRegister('business'), label: 'Finanzen › Business › Liquidität' },
   },
   {
-    id: 'angebot-entwurf', nurNeustart: true, samstag: true, etappe: 7, nr: '', ebene: 'gemeinsam', minuten: 15, pruefung: 'angebote', bestaetigen: true,
+    id: 'angebot-entwurf', nurNeustart: true, spaeter: true, etappe: 7, nr: '', ebene: 'gemeinsam', minuten: 15, pruefung: 'angebote', bestaetigen: true,
     modul: 'markttraktion', nach: ['absender', 'produkte'],
     titel: 'Angebotsvorlage: ein Angebot als Entwurf',
     warum: 'Erst wenn ein Angebot einmal sauber aussieht — Absender, Positionen aus dem Produkt, Anrede, Einleitung und Schluss —, sitzt jedes weitere in Minuten.',
@@ -1468,7 +1470,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: { href: WEG.angebot(), label: 'Markttraktion › Angebot' },
   },
   {
-    id: 'kampagne-start', nurNeustart: true, samstag: true, etappe: 7, nr: '', ebene: 'gemeinsam', minuten: 20,
+    id: 'kampagne-start', nurNeustart: true, spaeter: true, etappe: 7, nr: '', ebene: 'gemeinsam', minuten: 20,
     modul: 'markttraktion', nach: ['kartei'],
     titel: 'Follow-up-Kadenz und erste Kampagne',
     warum: 'Die Pipeline lebt vom Nachfassen. Die Kadenz je Kreis sagt, wann wer wieder dran ist; eine erste Kampagne bringt neue Gespräche.',
@@ -1481,7 +1483,7 @@ const SCHRITTE_OHNE_BEISPIEL: Schritt[] = [
     wo: { href: WEG.followup('kadenz'), label: 'Markttraktion › Follow-up' },
   },
   {
-    id: 'powerhour', nurNeustart: true, samstag: true, etappe: 7, nr: '', ebene: 'gemeinsam', minuten: 15,
+    id: 'powerhour', nurNeustart: true, spaeter: true, etappe: 7, nr: '', ebene: 'gemeinsam', minuten: 15,
     modul: 'markttraktion', nach: ['team', 'kampagne-start'],
     titel: 'Power Hour einrichten',
     warum: 'Eine feste Stunde für Anrufe und Nachrichten, in der MAKE OS die Reihenfolge vorgibt — je Person, damit nie zwei dieselbe Person anrufen.',
@@ -1559,7 +1561,7 @@ export const NEUSTART: readonly NeustartEintrag[] = [
   // 1 · Zugang, Sicherheit, Datenschutz
   { id: 'neustart', etappe: 1, gruppe: KERN }, { id: 'ich-zwei-faktor', etappe: 1, gruppe: KERN },
   { id: 'einladen', etappe: 1, gruppe: KERN }, { id: 'haushalt', etappe: 1, gruppe: KERN }, { id: 'zwei-faktor-pflicht', etappe: 1, gruppe: KERN },
-  { id: 'notfallmappe', etappe: 1, gruppe: KERN }, { id: 'datenschutz', etappe: 1, gruppe: KERN }, { id: 'ki-instanz', etappe: 1, gruppe: KERN },
+  { id: 'notfallmappe', etappe: 1, gruppe: DANACH }, { id: 'datenschutz', etappe: 1, gruppe: DANACH }, { id: 'ki-instanz', etappe: 1, gruppe: KERN },
   { id: 'ich-sicht', etappe: 1, gruppe: KERN }, { id: 'ich-gesundheit', etappe: 1, gruppe: KERN }, { id: 'ich-ki', etappe: 1, gruppe: KERN },
   { id: 'ich-handy', etappe: 1, gruppe: KERN }, { id: 'ich-rundgang', etappe: 1, gruppe: KERN },
   { id: 'weitere-inhaber', etappe: 1, gruppe: DANACH, texte: {
@@ -1661,7 +1663,7 @@ export const NEUSTART: readonly NeustartEintrag[] = [
   // 7 · Business online: Angebot & Vertrieb
   { id: 'team', etappe: 7, gruppe: KERN },
   { id: 'produkte', etappe: 7, gruppe: KERN, bestaetigen: true, texte: { titel: 'Produkte prüfen und ergänzen' } },
-  { id: 'angebot-entwurf', etappe: 7, gruppe: KERN },
+  { id: 'angebot-entwurf', etappe: 7, gruppe: DANACH },
   { id: 'kartei', etappe: 7, gruppe: KERN, texte: {
     titel: 'Übernommene Kartei sichten und bereinigen',
     warum: 'Die Kartei ist mit dem Neustart mitgekommen. Power Hour, Pipeline und Index rechnen mit ihr — Herkunft, Rechtsgrundlage, Kreis und Zuständigkeit müssen stimmen.',
@@ -1683,7 +1685,7 @@ export const NEUSTART: readonly NeustartEintrag[] = [
     titel: 'Positionierung, Wertelisten und Scoring',
     wie: ['Marketing › Positionierung: Zielgruppe, Nutzen, Ton.', 'Markttraktion › Stammdaten › Wertelisten: Verlustgründe und eigene Werte.', 'Leads & Qualifizierung › Scoring: den Standard lassen oder anpassen.'],
   } },
-  { id: 'kampagne-start', etappe: 7, gruppe: KERN }, { id: 'powerhour', etappe: 7, gruppe: KERN },
+  { id: 'kampagne-start', etappe: 7, gruppe: DANACH }, { id: 'powerhour', etappe: 7, gruppe: DANACH },
   { id: 'mandate-kapazitaet', etappe: 7, gruppe: DANACH }, { id: 'ich-visitenkarte', etappe: 7, gruppe: KERN, optional: true },
   // 8 · Schnittstellen
   { id: 'whoop-app', etappe: 8, gruppe: DANACH }, { id: 'google-app', etappe: 8, gruppe: DANACH },
