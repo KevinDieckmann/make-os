@@ -883,7 +883,33 @@ export function verarbeitungUnterlagenNachtragen(vorhanden: readonly Verarbeitun
   return vorhanden.some(v => v.id === VV_UNTERLAGEN_ID) ? [...vorhanden] : [...vorhanden, verarbeitungUnterlagen(jetzt)];
 }
 
-export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean; social?: boolean; newsletter?: boolean; kontaktformular?: boolean; unterlagen?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
+// ── Verarbeitung „Bausteine bestellen über die Website“ (31.10., lib/bausteine/*) — nachgetragen, sobald der Bestellweg eingeschaltet ist ──
+// Kevin 31.10.: Bausteine B2B auf Rechnung, Lieferung per Klick. Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
+
+export const VV_BAUSTEINE_ID = 'vv-bausteine';
+
+export function verarbeitungBausteine(jetzt: string): Verarbeitung {
+  return {
+    id: VV_BAUSTEINE_ID, name: 'Bausteine bestellen über die Website',
+    zweck: 'Bestellungen digitaler Arbeitspakete (Bausteine) von Unternehmen annehmen, als Anfrage im Kundensystem festhalten, Rechnung vorbereiten und nach Prüfung per Klick stellen, Rechnung und Download-Links an die bestellende Person schicken, Eingangsbestätigung',
+    personen: 'Personen, die für ihr Unternehmen auf der Website bestellen; Konten des Haushalts (Prüfung, Freigabe)',
+    daten: 'Vor- und Nachname, Firma, Rechnungsanschrift, USt-IdNr. (freiwillig), E-Mail-Adresse, Telefon (freiwillig), bestellter Baustein und Preis, Bestätigung „Unternehmer“, Fassung und Zeitpunkt der Bestellbedingungen, Status, Rechnung (im Finanzplan); der Download-Link trägt nur Bestell-Kennung und Ablauf (signiert), nie die Adresse',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Vertrag auf Bestellung); Aufbewahrung von Rechnung und Bestellung Art. 6 Abs. 1 lit. c (§ 147 AO, § 257 HGB); keine Einwilligung in Werbung',
+    empfaenger: 'Konten des Haushalts (Business-Bereich); das Absender-Postfach der Website (Google Workspace bzw. E-Mail-Anbieter) für Eingangsbestätigung und Lieferung; Hetzner (Hosting)',
+    empfaengerIds: ['hetzner', 'google-workspace', 'ionos'],
+    drittland: 'je nach Absender-Postfach der Website (Google Workspace: USA, Konzern)',
+    loeschfrist: 'abgelehnte Bestellungen 90 Tage nach der Entscheidung; gelieferte 6 Jahre ab Ende des Lieferjahres (§ 257 HGB), die Rechnung nach den Fristen des Finanzplans (10 Jahre, § 147 AO); Anfrage in der Kartei nach deren Fristen; Art. 17 sofort, soweit keine Aufbewahrungspflicht besteht',
+    toms: 'Öffentliche Schnittstelle nur über eng gefasste Adressen, kommt ausgeschaltet (Gesellschaft, Website-Absender und Verantwortlicher Pflicht); dieselbe Antwort für jede Adresse; Drossel je Netz, Honigtopf, signierter Formular-Stempel, Größengrenzen; Rechnung und Lieferung nur nach dem Klick einer Person mit Sitzung (nie Dienstweg, nie ZOE); Rechnung über den einen Stell-Weg (Nummernkreis, PDF, E-Rechnung), Versand über den einen Sendeweg mit Beleg-Prüfung; Download nur mit signiertem Token, nur solange geliefert und nicht storniert, als Anhang mit nosniff und sandbox; Eingangsbestätigung höchstens 3 Website-Mails je Adresse und Tag, nie an Art. 18/Werbesperre/Sperrliste; fester Text, keine KI; Bestände verschlüsselt',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „Bausteine bestellen über die Website“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungBausteineNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_BAUSTEINE_ID) ? [...vorhanden] : [...vorhanden, verarbeitungBausteine(jetzt)];
+}
+
+export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean; social?: boolean; newsletter?: boolean; kontaktformular?: boolean; unterlagen?: boolean; bausteine?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
   let l: Verarbeitung[] = vorhanden.length ? [...vorhanden] : verarbeitungenStart(jetzt);
   l = verarbeitungenNachtragen(l, jetzt);
   l = verarbeitungenOrganisationNachtragen(l, jetzt);
@@ -905,6 +931,8 @@ export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[],
   if (opt.kontaktformular) l = verarbeitungKontaktformularNachtragen(l, jetzt);
   // Unterlagen per E-Mail über die Website (31.10.): sobald Website-Absender und Katalog da sind (`unterlagenEingerichtet`).
   if (opt.unterlagen) l = verarbeitungUnterlagenNachtragen(l, jetzt);
+  // Bausteine bestellen über die Website (31.10.): sobald der Bestellweg eingeschaltet ist (`bausteineEingerichtet`).
+  if (opt.bausteine) l = verarbeitungBausteineNachtragen(l, jetzt);
   l = verarbeitungenPlattformNachtragen(l, jetzt);
   l = verarbeitungEmailImapNachtragen(l, jetzt);
   l = verarbeitungEmailKundenNachtragen(l, jetzt);

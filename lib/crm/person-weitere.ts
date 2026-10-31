@@ -156,6 +156,30 @@ export const formularEingaengeOhne: Wirkung = (cur, m) => {
 };
 
 /**
+ * Baustein-Bestellungen der Website (31.10., lib/bausteine/*): eine Bestellung der Person (Kartei-Kennung oder eine ihrer Adressen), die NICHT geliefert
+ * ist (neu, abgelehnt), fällt ganz weg. Eine gelieferte trägt eine gestellte Rechnung — Rechnungsdaten (Name, Firma, Anschrift, USt-IdNr., Adresse) und
+ * der Nachweis der Bestellung bleiben (Aufbewahrung § 257 HGB, § 147 AO); Telefon fällt weg, die Kartei-Kennung wird „[gelöscht]“. Ein Freitext-Tilgen
+ * (`tilgeTief`) gibt es hier bewusst nicht — es löschte die Rechnungsanschrift.
+ */
+export const bestellungenOhne: Wirkung = (cur, m) => {
+  const o = (cur ?? {}) as Obj;
+  let n = 0;
+  const raus: unknown[] = [];
+  for (const x of liste(o, 'bestellungen')) {
+    const b = x as Obj;
+    const email = String(((b?.besteller ?? {}) as Obj).email ?? '').toLowerCase();
+    if (b?.kontaktId !== m.id && !m.emails.includes(email)) { raus.push(b); continue; }
+    n++;
+    if (b.status !== 'geliefert') continue;
+    const { telefon: _t, ...besteller } = (b.besteller ?? {}) as Obj;
+    raus.push({ ...b, besteller, ...(b.kontaktId ? { kontaktId: GELOESCHT } : {}), getilgtAm: new Date().toISOString() });
+  }
+  return { neu: n ? { ...o, bestellungen: raus } : o, n };
+};
+const bestellungenZaehlen = (cur: Obj, m: PersonMerkmale): number => liste((cur ?? {}) as Obj, 'bestellungen')
+  .filter(x => { const b = x as Obj; return b?.kontaktId === m.id || m.emails.includes(String(((b?.besteller ?? {}) as Obj).email ?? '').toLowerCase()); }).length;
+
+/**
  * Inbox-Zustand je Person (Inbox 2; WhatsApp-Screener 07.10. abends): wie `tilgen` (Adresse der Person als Schlüssel fällt weg, Kennung
  * getilgt) — dazu fallen die Screener-Entscheidung zu einer NUMMER der Person („+<Ziffern>“) und der Zustand ihrer WhatsApp-Gespräche
  * (Schlüssel `wa~<postfach>~<Nummer>`) weg: dort steht die Nummer nur im Schlüssel, die Freitext-Suche fände sie nicht.
@@ -393,6 +417,8 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
   // Formular „Angebot anfordern“ (25.10.): Kennung am Eingang → „[gelöscht]“, Empfänger-Fingerabdruck weg; der Nachweis der Sendung bleibt.
   { name: 'angebot-formular--*', muster: /^angebot-formular--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: formularEingaengeOhne,
     zaehlen: (cur, m) => liste((cur ?? {}) as Obj, 'eingaenge').filter(x => (x as Obj)?.kontaktId === m.id).length },
+  // Bausteine bestellen (31.10.): nicht gelieferte Bestellungen der Person raus; gelieferte behalten die Rechnungsdaten (Telefon und Kartei-Bezug getilgt).
+  { name: 'baustein-bestellungen', muster: /^baustein-bestellungen$/, behandlung: 'tilgen', wirkung: bestellungenOhne, zaehlen: bestellungenZaehlen },
   // Gesellschafts-Register (04.10.): Kontakt-Kennungen in Gesellschaftern/Vertragsparteien → „[gelöscht]“, der Eintrag bleibt.
   { name: 'gesellschaften--*', muster: /^gesellschaften--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Austausch am Meilenstein (30.09.): Nachrichten, Notiz, Link-Titel können Dritte nennen — getilgt, der Raum bleibt.

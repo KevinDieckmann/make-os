@@ -33,6 +33,19 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-01-6',
+    datum: '2026-11-01',
+    titel: 'Bausteine über die Website bestellen',
+    kurz: 'Unternehmen können Bausteine der Website auf Rechnung bestellen. Die Rechnung ist sofort vorbereitet — mit einem Klick auf „Freigeben und senden“ gehen Rechnung und Download-Links raus. Ohne Klick geht nichts raus.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Markttraktion › Marketing › Anfragen: Karte „Bausteine“ — einschalten, Gesellschaft für die Rechnung und Zahlungsziel wählen. Kommt ausgeschaltet.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Jede Bestellung steht dort mit Firma, Betrag und Eingang. Die Person bekommt sofort eine Eingangsbestätigung; die Anfrage steht in der Kartei, der Rechnungsentwurf unter Rechnungen.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: '„Freigeben und senden“ stellt die Rechnung (mit E-Rechnung) und schickt sie mit den Download-Links (30 Tage gültig) an die Person. „Ablehnen“ löscht den Entwurf — eine Absage geht nur, wenn du sie ankreuzt.', bereich: 'business', weg: WEG.marketing('anfragen') },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-01-3',
     datum: '2026-11-01',
     titel: 'Rechnungen vorbereiten für alle Honorare',

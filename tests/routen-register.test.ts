@@ -43,6 +43,9 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   // Unterlagen per E-Mail (31.10.): Titel/Hinweis lesen, anfordern (ohne Website-Absender 404) und der Download-Link aus der Mail.
   'unterlage': ['GET', 'POST'],
   'unterlage/laden': ['GET'],
+  // Bausteine bestellen (31.10.): Titel/Preis/Bedingungen lesen, bestellen (ausgeschaltet 404) und der Download-Link aus der Liefer-Mail (nur nach Freigabe gültig).
+  'bestellung': ['GET', 'POST'],
+  'baustein/laden': ['GET'],
   // Newsletter-Anmeldung über die Website (30.10.): nur POST, die Seite /newsletter ist kein API-Weg; ausgeschaltet 404.
   'newsletter': ['POST'],
   'abmelden/[token]': ['GET', 'POST'],

@@ -1045,7 +1045,10 @@ export async function personAufzaehlen(id: string) {
   // Fulfillment (10.10.): Stakeholder-Einträge (C1), Antworten/Puls/Unterlagen-Metadaten (C2) und berufliche Personenkarten (C3) — Kopie (Art. 15 Abs. 3).
   const { fulfillmentAuskunft } = await import('@/lib/fulfillment/auskunft');
   const fulfillment = await fulfillmentAuskunft(m).catch(() => null);
-  return { ...verweise, fulfillment, rechnungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher, medien };
+  // Bausteine bestellen (31.10.): die Bestellungen der Person über die Website (Kennung oder Adresse) — Kopie mit Rechnungsnummer und Fassung der Bedingungen.
+  const { bestellungenAuskunft } = await import('@/lib/bausteine/server');
+  const bausteinBestellungen = await bestellungenAuskunft(m).catch(() => []);
+  return { ...verweise, fulfillment, rechnungen, bausteinBestellungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher, medien };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */

@@ -89,6 +89,8 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   // Prozesse (21.10., C1): nie Prozess-, Kunden- oder Personennamen auf einen Messenger.
   if (m.art === 'prozess') return 'Ein Prozess braucht dich — Details in MAKE OS';
   // Formulare (25.10.): nie Firma, Nummer oder Vertriebler auf einen Messenger.
+  // Bausteine (31.10.): eine Bestellung der Website wartet — nie Firma, Baustein oder Betrag auf einen Messenger (Glocke mit der vorhandenen Art „angebot“).
+  if (m.art === 'angebot' && /^Neue Baustein-Bestellung/.test(m.titel)) return 'Eine Bestellung wartet auf Freigabe — Details in MAKE OS';
   if (m.art === 'angebot') return 'Ein angefordertes Angebot ist raus bzw. wartet auf Freigabe — Details in MAKE OS';
   if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
   // Schlaf-Hilfe (09.10.): Gesundheit nie im Wortlaut auf einen Messenger.

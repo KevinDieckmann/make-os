@@ -22,6 +22,13 @@ export const EINSTELLUNGEN_BUSINESS = {
     an: 'Das Formular ist öffentlich; der Knopf auf der Website erscheint. Nachrichten kommen als Anfrage über die Website an — ohne Werbe-Einwilligung, ohne Mail, geantwortet wird von Hand.',
     aus: 'Die Seite antwortet mit „gibt es nicht“, der Knopf auf der Website bleibt verborgen. Das ist die Vorgabe.',
   },
+  'bausteine.bestellen': {
+    was: 'Schaltet den Bestellweg der Bausteine ein: Unternehmen bestellen auf der Website ein Arbeitspaket auf Rechnung. Jede Bestellung landet hier, mit Anfrage in der Kartei und einem Rechnungsentwurf der gewählten Gesellschaft.',
+    beispiel: 'Die Beispiel GmbH bestellt am Vormittag einen Baustein. Sie bekommt sofort eine Eingangsbestätigung. Mira prüft die Bestellung kurz und klickt „Freigeben und senden“ — die Rechnung ist gestellt, die Mail mit Rechnung und Download-Links ist raus.',
+    an: 'Die Bestell-Knöpfe auf der Website erscheinen. Eingangsbestätigungen gehen automatisch über das Absender-Postfach der Website; Rechnung und Dateien erst nach eurem Klick.',
+    aus: 'Die Website zeigt „gerade nicht bestellbar“, es kommen keine Bestellungen an. Das ist die Vorgabe. Offene Bestellungen bleiben und lassen sich weiter freigeben oder ablehnen.',
+    daten: 'Bestätigung und Lieferung gehen über das Absender-Postfach der Website (Google Workspace bzw. euren Mail-Anbieter) an die Adresse, die die Person eingetragen hat.',
+  },
   'newsletter.anmeldung': {
     was: 'Schaltet die öffentliche Seite /newsletter ein: Besucher tragen ihre Adresse ein, bekommen aus dem gewählten Postfach eine Bestätigungsmail und sind erst nach dem Klick auf den Link angemeldet (Double-Opt-in). Danach steht die Person mit der Einwilligung „Newsletter“ samt Nachweis im CRM. Den Newsletter selbst verschickt ihr weiter von Hand.',
     beispiel: 'Eine Besucherin trägt sich um 9:12 Uhr ein, die Mail geht um 9:12 Uhr raus, sie klickt um 9:20 Uhr. In ihrer Akte steht dann die Einwilligung mit Wortlaut, Fassung und den drei Zeitpunkten — und sie zählt zu den Empfängern mit Double-Opt-in.',

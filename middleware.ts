@@ -122,6 +122,19 @@ function unterlageOffen(pfad: string, methode: string): boolean {
   if (UNTERLAGE_API.test(pfad)) return lesen || methode === 'POST';
   return UNTERLAGE_LADEN.test(pfad) && lesen;
 }
+// Bausteine bestellen (31.10., lib/bausteine/*): das Bestellformular steht auf der statischen Website (Caddy leitet /api/bestellung und /api/baustein/*
+// an die App). Offen sind NUR GET/HEAD und POST auf `/api/bestellung` und GET/HEAD auf `/api/baustein/laden` (der Download-Link aus der Liefer-Mail —
+// deshalb auch als Navigation aus einem Mail-Programm erreichbar, also vor `crossSiteVerboten`). Die Routen handeln für niemanden (Köpfe gelöscht),
+// drosseln selbst, prüfen Honigtopf, Stempel und Größe; ausgeschaltet antwortet POST mit 404. Der Link trägt nur ein signiertes Token (Bestell-Kennung
+// + Ablauf, nie die Adresse). Die Verwaltung (/api/bausteine/intern) bleibt hinter der Sitzung. Wächter: tests/bausteine.test.ts.
+const BESTELLUNG_API = /^\/api\/bestellung$/;
+const BAUSTEIN_LADEN = /^\/api\/baustein\/laden$/;
+/** Ist dieser Weg ein offener Weg der Bausteine (Pfad UND Methode)? */
+function bausteinOffen(pfad: string, methode: string): boolean {
+  const lesen = methode === 'GET' || methode === 'HEAD';
+  if (BESTELLUNG_API.test(pfad)) return lesen || methode === 'POST';
+  return BAUSTEIN_LADEN.test(pfad) && lesen;
+}
 // Schriften der öffentlichen Seiten (29.10.): der Check (und die helle Buchungsseite) laden Schibsted Grotesk aus public/schriften — ohne Sitzung
 // leitete die Middleware die Datei auf /anmelden um, der Browser bekam HTML statt der Schrift. Offen ist NUR eine einzelne .woff2 direkt im Ordner,
 // nur lesen; public/ trägt nichts Privates (Wächter: keine .html dort).
@@ -235,6 +248,8 @@ export async function middleware(req: NextRequest) {
   if (SOCIAL_MEDIEN_LINK.test(pfad) && (req.method === 'GET' || req.method === 'HEAD')) return NextResponse.next({ request: { headers: kopf } });
   // Unterlagen per E-Mail: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung; der Download-Link auch aus einem Mail-Programm heraus.
   if (unterlageOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
+  // Bausteine bestellen: ebenso nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung; der Download-Link auch aus einem Mail-Programm heraus.
+  if (bausteinOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
 
   // Eine Schnittstelle ist nie das Ziel einer Navigation von einer fremden Seite (26.09.): so kann kein
   // fremder Link mit dem Cookie im Gepäck eine GET-Route mit Wirkung auslösen.

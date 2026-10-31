@@ -676,6 +676,27 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
     await sicher(`prozesse-landkarte--${konto.haushalt}`, async () => (await import('@/lib/prozesse/landkarte-anpassung-server')).landkarteKontoLoeschen(konto.haushalt!, speicher));
     await sicher(`prozesse-stellschrauben--${konto.haushalt}`, async () => (await import('@/lib/prozesse/stellschrauben-werte-server')).stellschraubenKontoLoeschen(konto.haushalt!, speicher));
     await sicher(`prozess-vorlagen--${konto.haushalt}`, async () => (await import('@/lib/prozesse/eigene-vorlagen-server')).vorlagenKontoLoeschen(konto.haushalt!, speicher));
+    // Bausteine bestellen (31.10.): Bestellungen bleiben (Vertrag, Rechnung — § 257 HGB), wer freigab/ablehnte wird „[gelöscht]“; ebenso der letzte Änderer der Einstellungen.
+    await nurWenn('baustein-bestellungen', async () => {
+      let n = 0;
+      const ohne = (x: unknown) => { const o = x as Obj | undefined; if (o && o.von === speicher) { n++; return { ...o, von: GELOESCHT }; } return o; };
+      await updateJson<Obj>('baustein-bestellungen', cur => {
+        if (!cur || !Array.isArray(cur.bestellungen)) return cur as unknown as Obj;
+        const neu = (cur.bestellungen as Obj[]).map(b => {
+          const z = n;
+          const r: Obj = { ...b };
+          for (const f of ['inArbeit', 'versandt', 'geliefert', 'abgelehnt']) if (r[f]) r[f] = ohne(r[f]);
+          return n > z ? r : b;
+        });
+        return n ? { ...cur, bestellungen: neu } : cur;
+      });
+      return n;
+    });
+    await nurWenn('bausteine-einstellungen', async () => {
+      let n = 0;
+      await updateJson<Obj>('bausteine-einstellungen', cur => (cur?.geaendertVon === speicher ? (n++, { ...cur, geaendertVon: GELOESCHT }) : cur as Obj));
+      return n;
+    });
     // Ereignisse (09.10., E1): Ereignisse NUR dieser Person (ihre Mail, „An ZOE gegeben“) fallen weg, aus `personen` wird sie gestrichen.
     const ev = `ereignisse--${konto.haushalt}`;
     await nurWenn(ev, async () => {

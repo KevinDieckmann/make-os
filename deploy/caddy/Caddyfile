@@ -194,6 +194,22 @@ fokusinnovation.de {
 		reverse_proxy app:3000
 	}
 	# ── Ende Kontaktformular ──
+	# ── Bausteine bestellen (31.10., lib/bausteine/*) — eigener Block: genau GET/POST /api/bestellung (Formular der Seite /bausteine/<id>/, kommt AUS)
+	#    und der Download-Link der Liefer-Mail /api/baustein/laden an die App (dieselben Köpfe wie @app). Nie /api/bausteine/* (die Verwaltung bleibt intern).
+	@bausteine path /api/bestellung /api/baustein/laden
+	handle @bausteine {
+		header {
+			Strict-Transport-Security "max-age=31536000"
+			X-Content-Type-Options nosniff
+			X-Robots-Tag "noindex, nofollow"
+			Referrer-Policy no-referrer
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+			-Server
+			-X-Powered-By
+		}
+		reverse_proxy app:3000
+	}
+	# ── Ende Bausteine ──
 	# Kostenlos (30.10.): die frühere Übersicht /wissen/ heißt jetzt /kostenlos/ — die Ratgeber behalten ihre Adressen /wissen/<id>/.
 	@altwissen path /wissen /wissen/ /wissen/index.html
 	redir @altwissen /kostenlos/ 301

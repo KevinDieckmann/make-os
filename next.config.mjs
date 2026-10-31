@@ -79,6 +79,9 @@ const nextConfig = {
       // nicht indexieren, nicht zwischenspeichern); die Download-Route setzt für die Datei zusätzlich `sandbox`.
       { source: '/api/unterlage', headers: buchung },
       { source: '/api/unterlage/:pfad*', headers: buchung },
+      // Bausteine bestellen (31.10., lib/bausteine/*): dieselbe strenge Richtlinie — der Download-Link trägt ein Token in der Abfrage.
+      { source: '/api/bestellung', headers: buchung },
+      { source: '/api/baustein/:pfad*', headers: buchung },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten

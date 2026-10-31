@@ -23,7 +23,7 @@ import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 
-export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export' | 'inbox' | 'medien' | 'fulfillment' | 'personenrecherche' | 'social';
+export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export' | 'inbox' | 'medien' | 'fulfillment' | 'personenrecherche' | 'social' | 'bausteine';
 export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> = {
   gesundheit: { label: 'Gesundheit', art9: true },
   erholung: { label: 'Erholung', art9: true },
@@ -46,6 +46,8 @@ export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> 
   personenrecherche: { label: 'Personenteil der Dossiers' },
   // 31.10. (Nachtprüfung): Kommentare und Direktnachrichten Dritter im Social-Postfach gelesen (`anzahl` = Nachrichten, `ids` = Kanäle).
   social: { label: 'Social (Kommentare & Nachrichten Dritter)' },
+  // 31.10. (Bausteine bestellen): Bestellungen der Website angesehen (`anzahl`) bzw. ein Baustein über den Link der Liefer-Mail geladen (`ids` = Bestellung, Baustein).
+  bausteine: { label: 'Bausteine (Bestellungen und Downloads)' },
 };
 export const istLeseBereich = (b: unknown): b is LeseBereich => typeof b === 'string' && b in LESE_BEREICHE;
 

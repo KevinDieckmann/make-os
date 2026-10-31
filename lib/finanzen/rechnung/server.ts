@@ -489,6 +489,59 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
   return { rechnung: mitFassung(r), vorhanden: false };
 }
 
+// ── Entwurf aus einer Baustein-Bestellung der Website (31.10., lib/bausteine/*) ──
+
+/** Feste Kennung der Rechnung einer Baustein-Bestellung — aus der Bestell-Kennung abgeleitet: ein zweiter Lauf legt nie eine zweite an. */
+export const bestellRechnungId = (bestellId: string) => `r-b${createHash('sha256').update(`baustein|${bestellId}`).digest('hex').slice(0, 24)}`;
+
+/**
+ * Den Rechnungs-ENTWURF einer Baustein-Bestellung anlegen (Kevin 31.10.: „auf Rechnung über MAKE OS“) — Status „geplant“, ohne Nummer; gestellt wird
+ * nur über `rechnungStellen` (der Klick „Freigeben und senden“). Feste Kennung (`bestellRechnungId`): gibt es sie schon (in jedem Status), kommt DIE
+ * zurück (idempotent, auch in der Sperre geprüft). Empfänger = die Rechnungsanschrift aus dem Formular (Momentaufnahme), Zuordnung = die Person (und ihre
+ * Firma) aus dem Anfrage-Weg — ohne Zuordnung stellt `rechnungStellen` nicht (30.10.). Gesellschaft nur eine feste (Einstellungen der Bausteine).
+ */
+export async function entwurfAusBestellung(p: {
+  bestellId: string; firmaId: Gesellschaftskennung; titel: string; empfaenger: import('./typen').RechnungEmpfaenger; positionen: RechnungPosition[];
+  zahlungszielTage: number; leistungVon: string; kontaktId?: string; kundeFirmaId?: string; haushalt: string; wer?: Wer; jetzt?: Date;
+}): Promise<{ rechnung: Rechnung & { fassung: string }; vorhanden: boolean }> {
+  if (!istGesellschaft(p.firmaId)) throw new RechnungFehler('Für Bausteine ist keine Gesellschaft eingestellt.', 409, { grund: 'gesellschaft' });
+  const id = bestellRechnungId(p.bestellId);
+  const heute = localDay(p.jetzt ?? new Date());
+  const ku = !!(await gesellschaften(p.haushalt)).find(x => x.id === p.firmaId)?.kleinunternehmer;
+  const positionen = p.positionen.map(x => (ku ? { ...x, ustSatz: 0 } : x));
+  const empf = empfaengerSaeubern(p.empfaenger);
+  let gespeichert: Rechnung | null = null;
+  let schonDa: Rechnung | null = null;
+  await updateJson<FinanzplanFile>('finanzplan', cur => {
+    const f = planBasis(cur);
+    const da = f.rechnungen.find(r => r.id === id);
+    if (da && cur) { schonDa = da; return cur; }
+    const entwurf = neuerEntwurf({
+      id, firmaId: p.firmaId, kunde: kundeAus(empf), titel: p.titel, ...(empf ? { empfaenger: empf } : {}), positionen, zahlungszielTage: p.zahlungszielTage, heute,
+      leistungVon: p.leistungVon, ...(p.kontaktId ? { kontaktId: p.kontaktId } : {}), ...(p.kundeFirmaId ? { kundeFirmaId: p.kundeFirmaId } : {}),
+      einleitung: EINLEITUNG_VORLAGE, schluss: SCHLUSS_VORLAGE,
+    }, { kleinunternehmer: ku });
+    const sauber = sauberFile({ rechnungen: [entwurf] }).rechnungen[0];
+    const neu = ugFirmaNachziehen({ ...f, rechnungen: [...f.rechnungen, sauber] });
+    const grenze = ueberGrenze(neu, f);
+    if (grenze) throw new RechnungFehler(grenze, 413);
+    gespeichert = sauber;
+    return neu;
+  });
+  const da = schonDa as Rechnung | null;
+  if (da) return { rechnung: mitFassung(da), vorhanden: true };
+  const r = gespeichert as Rechnung | null;
+  if (!r) throw new RechnungFehler('Nicht angelegt.', 500);
+  await protokolliere('finanzplan', [{ liste: 'rechnungen', op: 'neu', id: r.id, felder: Object.keys(r).filter(k => k !== 'id') }], p.wer);
+  return { rechnung: mitFassung(r), vorhanden: false };
+}
+
+/** Eine Rechnung lesen (Kennung) — für die Bausteine (Stand, Status, Nummer, Fälligkeit). null, wenn es sie nicht gibt. */
+export async function rechnungLesen(id: string): Promise<(Rechnung & { fassung: string }) | null> {
+  const r = (await planLaden()).rechnungen.find(x => x.id === id);
+  return r ? mitFassung(r) : null;
+}
+
 /**
  * Abgerechnete Zusatzmodule (P3) an einen offenen Entwurf hängen — in der Sperre: nur, solange er „geplant“ ist; ein Modul, das schon darauf steht,
  * wird ersetzt (gleiche Kennung), sonst angehängt; die Beträge kommen wieder aus den Positionen.

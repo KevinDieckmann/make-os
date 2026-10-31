@@ -136,9 +136,12 @@ describe('Caddyfile: Domain makeinnovation.de', () => {
     // nie /api allgemein (auch nicht /api/newsletter/intern — die Pfadliste trägt kein /api/newsletter/*). 31.10.: dazu die Unterlagen per E-Mail
     // (/api/unterlage und /api/unterlage/* — dort gibt es nur die offene Schnittstelle und den Download-Link, nichts Internes).
     expect(seite).toMatch(/^@app path \/check \/api\/check \/newsletter \/api\/newsletter \/api\/unterlage \/api\/unterlage\/\* \/buchen \/buchen\/\* \/api\/buchung \/api\/buchung\/\* \/_next\/\* \/schriften\/\*$/m);
-    // Kontaktformular (31.10., Website-Anbau): eigener Block mit genau /anfrage und /api/anfrage — der zweite und letzte Weg an die App.
-    expect(seite.match(/reverse_proxy/g)?.length).toBe(2);
+    // Kontaktformular (31.10., Website-Anbau): eigener Block mit genau /anfrage und /api/anfrage — der zweite Weg an die App.
+    // Bausteine bestellen (31.10.): eigener Block mit genau /api/bestellung und /api/baustein/laden — der dritte und letzte.
+    expect(seite.match(/reverse_proxy/g)?.length).toBe(3);
     expect(seite).toMatch(/^@kontaktformular path \/anfrage \/api\/anfrage$/m);
+    expect(seite).toMatch(/^@bausteine path \/api\/bestellung \/api\/baustein\/laden$/m);
+    expect(seite).toMatch(/handle @bausteine \{[\s\S]*?reverse_proxy app:3000/);
     expect(seite).toMatch(/handle @kontaktformular \{[\s\S]*?reverse_proxy app:3000/);
     expect(seite).toMatch(/handle @app \{[\s\S]*?reverse_proxy app:3000/);
     expect(seite).toMatch(/^request_header -x-middleware-subrequest$/m);
