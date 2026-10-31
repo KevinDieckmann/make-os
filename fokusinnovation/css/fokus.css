@@ -1020,6 +1020,10 @@ html.menue-offen { overflow: hidden; }
 .preis-karte .punkte { margin-top: 14px; font-size: .92rem; }
 .preis-karte .textlink { margin-top: auto; padding-top: 18px; }
 .preis-karten.frei .karte-preis { font-size: 1.35rem; color: var(--akzent-papier); }
+/* Preisseite: Innovation als Fokus-Block oben (31.10., Kevin: „Innovation muss immer im Fokus sein“) — dunkel, Karten auf Nacht-2 */
+.preis-fokus .preis-karte a { background: var(--nacht-2); border-color: var(--haar); }
+.preis-fokus .preis-karte a:hover { border-color: var(--akzent); box-shadow: 0 18px 40px -24px rgba(167, 139, 250, .45); }
+.preis-fokus .preis-karte:first-child .karte-preis { font-size: 1.35rem; color: var(--akzent); }
 
 /* ── Zahlen-Seite: Kacheln (31.10.) ── */
 .zahlen-raster.kacheln { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 0 var(--rinne); }
