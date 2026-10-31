@@ -343,3 +343,36 @@ Pflicht, Handy zuerst, keine/kaputte Website, höchstens 24 je Bezirk); die bish
 ohne Website, 59 mit toter/unsicherer Seite. Bezirke: Mitte 24, Friedrichshain-Kreuzberg 24, Pankow 24, Charlottenburg-Wilmersdorf 24, Neukölln 23,
 Tempelhof-Schöneberg 21, Steglitz-Zehlendorf 14, Treptow-Köpenick 12, Lichtenberg 12, Reinickendorf 9, Spandau 8, Marzahn-Hellersdorf 5.
 Datei (Format v3, 124 KB) besteht die Import-Prüfung vollständig; 200 ist genau die Höchstzahl je Import-Datei.
+
+---
+
+## Analyse: Restaurants & Cafés MIT Website unter unserem Niveau (31.10.2026 spät)
+
+Kevin: „saubere Analysen über die, die auch eine Homepage haben, die aber maximal unter dem Niveau ist, was wir anbieten“.
+
+**Maßstab** = unser Paket „Homepage Landing“ (in 5 Sekunden verständlich, mit einem Klick anfragen, Handy, Ladezeit, Suche inkl. strukturierte Daten,
+Impressum/Datenschutz, ohne Tracking) + was Gäste suchen (Speisekarte als Seite, Öffnungszeiten, Reservierung, Telefon zum Antippen, Adresse/Karte).
+Baustein `lib/funde/analyse.ts` (rein, getestet): **Niveau 0–100** (100 = unser Standard) aus Technik 35 · Gäste 35 · Auffindbarkeit 15 · Recht 15, Gestaltung
+(1–5) mit 30 %; Lücken in Sätzen + drei Gesprächsaufhänger. „Unter Niveau“ = Niveau < 55 oder Gestaltung ≤ 2.
+
+**Vorgehen (drei Stufen):**
+1. Alle Restaurants & Cafés in Berlin mit Telefon und eigener Website (ohne Ketten-Domains): **1.935 Startseiten** gelesen und bewertet — Niveau im Median 74
+   (Viertel unter 61). Querschnitt: HTTPS 90 %, Handy-tauglich 92 %, Speisekarte 62 % (nur PDF 8 %), Reservierung 66 %, Öffnungszeiten 57 %, Telefon antippbar
+   41 %, strukturierte Daten 33 %, Meta-Beschreibung 57 %, Google Fonts extern 24 %, Tracker 25 %, Impressum 83 %, Datenschutz 78 %.
+2. Die 120 schwächsten in Chrome gemessen (Handy, Slow-4G, CPU ×4 wie Lighthouse): Ladezeit, Gewicht, Screenshot. Ohne PageSpeed-Schlüssel lokal gemessen.
+3. Gestaltung am Handy-Screenshot beurteilt (Raster 1–5); 33 leere Aufnahmen ohne Drosselung neu aufgenommen — 17 blieben leer und zählen als „nicht
+   beurteilbar“ (nie als schlecht).
+
+**Bereinigt:** 5 standen schon in der 200er-Liste, 7 Websites gehörten gar nicht zum Betrieb (falscher Eintrag im Verzeichnis — jetzt auch im Code geprüft:
+`seitePasstZumNamen`, Abendlauf), Bot-Sperren und weiße Seiten nie als Mangel.
+
+**Ergebnis: 87 Betriebe deutlich unter unserem Niveau** (Median 24 von 100): 25 zeigen gar keinen eigenen Inhalt (Platzhalter, Parkseite, Fehler, Wartung),
+62 sind echte, aber schwache Seiten. Häufigste Lücken der 62: Telefon nicht antippbar 100 % · keine strukturierten Daten 100 % · nicht für Handys 90 % · keine
+Reservierung 90 % · Impressum/Datenschutz fehlt 90 % · keine Speisekarte 81 % · keine Öffnungszeiten 81 % · Gestaltung veraltet 77 % · Titel/Beschreibung
+fehlen 77 % · kein HTTPS 77 %. Kontakt: Telefon alle 87 (Handy 10), Mail 43, Inhaber 15 (11 aus dem Impressum), Instagram 5.
+Bezirke: Friedrichshain-Kreuzberg 17, Charlottenburg-Wilmersdorf 16, Pankow 12, Mitte 11, Tempelhof-Schöneberg 11, übrige 2–4.
+
+**Dateien (nur auf Kevins Mac, nie im Repo):** `~/Desktop/Homepage-Funde Berlin – Websites unter Niveau 2026-10-31.json` (Import, mit `analyse` je Fund) und
+`… .csv` (zum Telefonieren: Name, Bezirk, Handy, Telefon, Mail, Inhaber, Website, Niveau, Gestaltung, Ladezeit, drei Aufhänger; Handy zuerst).
+**Im Code:** `Fund.analyse` (Import, Ansicht „Niveau x/100“ + Lücken, Mail nennt die zwei stärksten Aufhänger, Anruf-Leitfaden alle drei), Abendlauf analysiert
+erreichbare Seiten genauso (mit PageSpeed-LCP, wenn `PAGESPEED_API_KEY` gesetzt ist) und nimmt „unter Niveau“ als Fund.

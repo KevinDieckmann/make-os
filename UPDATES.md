@@ -32,6 +32,9 @@ Innovation als Absender, Gastro/Handwerk/Einzelhandel, Preis offen).
   `arten`/`nurMitMail`, Bot-Sperre ≠ Mangel, NAT64, Overpass-Wiederholung. **Einmal-Schritt nach dem Upload:** Kampagne einrichten → „Nur Restaurants &
   Cafés“ + „Nur mit Mail-Adresse“ → Gebiete Berlin → Datei `~/Desktop/Homepage-Funde Berlin 2026-10-31.json` über „Funde importieren (Datei)“ (die
   Datei liegt NUR auf Kevins Mac, nie im Repo) → 50 Vorschläge im ZOE-Stapel.
+- **31.10. spät:** Liste auf 200 (Telefon zuerst, Handy vor Festnetz, `lib/funde/telefon.ts`, Filter „Nur mit Telefonnummer“) + **Niveau-Analyse** für Betriebe MIT
+  Website (`lib/funde/analyse.ts`, `Fund.analyse`, Abendlauf, Prüfung „Seite gehört zum Betrieb“) → zweite Datei „Websites unter Niveau“ (87). Beide Dateien nach
+  dem Upload einzeln importieren (je ≤ 200). Optional `PAGESPEED_API_KEY` (Server-.env) für die Ladezeit im Abendlauf.
 
 ## 30.10.2026 — Kalender: weitere Google-Konten je Person, nur lesen (nur lokal — Branch `weitere-kalender`, Basis main 91d0e277)
 Kevin 30.10.: „Ich möchte, dass wir einfach ein zweites Konto bei MAKE OS anlegen können — es geht erstmal um uns, also Malin und mich.“ Wer auch für andere Firmen
