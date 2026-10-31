@@ -414,6 +414,8 @@ html.menue-offen { overflow: hidden; }
 .kontakt-liste .etikett { margin-bottom: 12px; }
 .gross-link { font-size: 1.2rem; font-weight: 600; color: var(--tinte); text-decoration: underline; text-decoration-color: var(--akzent-papier); text-underline-offset: .25em; overflow-wrap: anywhere; }
 .kontakt-liste .textlink { margin-top: 8px; }
+.kontakt-formular { margin-top: 14px; }
+.kontakt-formular[hidden] { display: none; }
 
 /* Preis auf der Produktseite */
 .preis-kasten { padding: 28px; background: var(--papier-hell); border: 1px solid var(--haar); border-radius: 10px; }
