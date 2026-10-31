@@ -8,7 +8,7 @@
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
 import { ladeCrm } from '@/lib/crm/speicher';
-import { betriebFinden, type BetriebKandidat } from '@/lib/crm/betrieb';
+import { betriebBekannt, type BetriebKandidat } from '@/lib/crm/betrieb';
 import { betriebGesperrt } from '@/lib/crm/betrieb-sperre';
 import { sperrlisteLaden, sperrTreffer } from '@/lib/crm/sperrliste';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
@@ -96,8 +96,8 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
   const kandidaten = roh.filter(r => {
     if (e.arten?.length && !e.arten.includes(r.kategorie ?? '')) return false; // Persona: nur diese Arten
     const k = alsBetrieb(r);
-    if (bekannt.has(r.osmId) || betriebFinden(fundBetriebe, k)) return false;
-    if (betriebFinden(kartei, k)) return false;
+    if (bekannt.has(r.osmId) || betriebBekannt(fundBetriebe, k)) return false;
+    if (betriebBekannt(kartei, k)) return false;
     if (r.email && adressen.has(r.email)) return false;
     // Sperrliste: Betriebs-Merkmale (OSM-ID, Domain, Name + Adresse) und die Adresse als Personen-Merkmal.
     if (betriebGesperrt(sperre, k) || sperrTreffer(sperre, { firma: r.name, ...(r.email ? { email: r.email } : {}) } as never)) return false;

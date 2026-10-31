@@ -21,7 +21,7 @@ import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { neuesFollowUp } from '@/lib/crm/followup';
 import { leereKriterien } from '@/lib/crm/leads';
 import type { Firma } from '@/lib/crm/typen';
-import { betriebDomain, betriebFinden, betriebFirmenId, inhaberAusImpressum } from '@/lib/crm/betrieb';
+import { betriebDomain, betriebBekannt, betriebFirmenId, inhaberAusImpressum } from '@/lib/crm/betrieb';
 import { unterNiveau } from './analyse';
 import { abmeldeLink, instanzAdresse } from '@/lib/datenschutz/abmelden';
 import { adresseMaskiert } from '@/lib/zugang/konten';
@@ -104,7 +104,7 @@ async function betriebUebernehmen(f: Fund, person: string, wer: Wer, jetzt: stri
   let dublette: string | null = null;
   await aendereCrm(c => {
     if (c.firmen.some(x => x.id === fid)) return c;
-    const da = betriebFinden(c.firmen.filter(x => !x.geloeschtAm), kandidat);
+    const da = betriebBekannt(c.firmen.filter(x => !x.geloeschtAm), kandidat);
     if (da) { dublette = da.name; return c; }
     return { ...c, firmen: [...c.firmen, firmaAusFund(f, fid, jetzt, heute, kontaktId)] };
   }, wer);

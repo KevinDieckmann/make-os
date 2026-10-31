@@ -243,20 +243,23 @@ describe('Abendlauf, Freigabe, Versand', () => {
     expect(b.einstellungen).toMatchObject({ arten: ['cafe'], nurMitMail: true });
   });
 
-  it('Freigabe ohne „eigenes Risiko“: übernommen (Kontakt, Firma, Label, Kampagne, Follow-up), KEINE Mail', async () => {
+  it('Freigabe ohne „eigenes Risiko“: übernommen als FIRMA (ohne Pseudo-Kontakt), Label, Kampagne, Follow-up — KEINE Mail', async () => {
     await einrichten();
     await laufen();
     const v = (await offeneFundVorschlaege())[0];
     const f = await POST(stapel, '/api/zoe/stapel', { id: v.id, entscheidung: 'freigeben' });
     expect(f.status, f.text).toBe(200);
     expect(server.gesendet).toHaveLength(0);
-    const kk = (await db.loadJson<{ kontakte: { id: string; labels?: string[]; herkunft?: string; fremddaten?: boolean }[] }>('kontakte'))!.kontakte;
-    expect(kk).toHaveLength(1);
-    expect(kk[0]).toMatchObject({ labels: ['homepage-funnel'], herkunft: 'recherche', fremddaten: true });
+    // Welle A (01.11.): ohne Inhaber aus dem Impressum entsteht KEIN Kontakt — der Betrieb ist eine Firma.
+    expect((await db.loadJson<{ kontakte: unknown[] }>('kontakte'))!.kontakte).toHaveLength(0);
     const crm = await (await import('@/lib/crm/speicher')).ladeCrm();
-    expect(crm.kampagnen[0].kontaktIds).toEqual([kk[0].id]);
+    const fund = (await (await import('@/lib/funde/speicher')).ladeFunde()).funde.find(x => x.id === v.bezug?.id)!;
+    const firma = crm.firmen.find(x => x.id === fund.firmaId)!;
+    expect(firma).toMatchObject({ labels: ['homepage-funnel'], herkunft: 'recherche', fremddaten: true, osmId: fund.osmId, lead: { status: 'neu' } });
+    expect(crm.kampagnen[0].kontaktIds).toEqual([]);
+    expect(crm.kampagnen[0].firmaIds).toEqual([firma.id]);
     expect(crm.segmente.some(s => s.id === 'seg-homepage-funnel')).toBe(true);
-    expect((crm.followups ?? []).filter(x => x.kontaktId === kk[0].id)).toHaveLength(1);
+    expect((crm.followups ?? []).filter(x => x.bezug.art === 'firma' && x.bezug.id === firma.id)).toHaveLength(1);
   });
 
   it('Freigabe MIT Risiko + Absender: genau eine Mail mit Vorschau-Link, Abmeldelink und Datenschutz; Vorschau öffentlich nur mit Token', async () => {
@@ -322,12 +325,13 @@ describe('Abendlauf, Freigabe, Versand', () => {
     expect(f.analyse?.luecken[0]).not.toMatch(/</);
     expect(f.entwurf?.text).toMatch(/Gäste finden keine Speisekarte/);
     expect(f.entwurf?.anruf).toMatch(/Website-Niveau 100\/100/);
-    // Übernahme: Inhaber wird der Name des Kontakts, Instagram + Quellen stehen in der Notiz.
+    // Übernahme (Welle A, 01.11.): Inhaber aus dem Impressum wird ein Kontakt an der Firma; Instagram, Quellen, Analyse stehen als Felder an der Firma.
     const v = (await offeneFundVorschlaege())[0];
     expect((await POST(stapel, '/api/zoe/stapel', { id: v.id, entscheidung: 'freigeben' })).status).toBe(200);
-    const kk = (await db.loadJson<{ kontakte: { vorname: string; nachname: string; notiz?: string; firma?: string }[] }>('kontakte'))!.kontakte;
+    const kk = (await db.loadJson<{ kontakte: { vorname: string; nachname: string; notiz?: string; firma?: string; firmaId?: string }[] }>('kontakte'))!.kontakte;
     expect(kk[0]).toMatchObject({ vorname: 'Erika', nachname: 'Beispiel', firma: 'Bistro Datei' });
-    expect(kk[0].notiz).toMatch(/Instagram: @bistro\.datei/);
+    const fi = (await (await import('@/lib/crm/speicher')).ladeCrm()).firmen.find(x => x.id === kk[0].firmaId)!;
+    expect(fi).toMatchObject({ instagram: 'bistro.datei', inhaber: 'Erika Beispiel', quellen: { inhaber: `https://bistro.${D}/impressum` }, analyse: { niveau: 100, unterNiveau: true }, bezirk: 'Mitte', osmId: 'n77', adresse: { plz: '10999' } });
     expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei: { format: 'make-os-funde', funde: Array.from({ length: 201 }, (_, i) => ({ name: `X${i}`, branche: 'gastro' })) } })).status).toBe(413);
     expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei: { funde: [] } })).status).toBe(400);
   });

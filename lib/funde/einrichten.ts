@@ -98,7 +98,7 @@ export async function fundVonHand(e: HandEingabe, person: string, wer: Wer): Pro
   await aendereFunde(x => {
     // Derselbe Betrieb (Name + Adresse, Domain) — gleicher Name an anderer Adresse ist erlaubt (01.11., Welle A).
     const kand = { name: e.name, ...(e.strasse || e.plz ? { adresse: { ...(e.strasse ? { strasse: e.strasse } : {}), ...(e.plz ? { plz: e.plz } : {}) } } : {}), ...(e.website ? { webseite: e.website } : {}), ...(e.email ? { email: e.email } : {}) };
-    if (x.funde.some(f => f.status !== 'verworfen' && gleicherBetrieb({ name: f.name, ...(f.osmId ? { osmId: f.osmId } : {}), ...(f.adresse ? { adresse: f.adresse } : {}), ...(f.website ? { webseite: f.website } : {}), ...(f.email ? { email: f.email } : {}) }, kand) === 'ja')) throw new FundeFehler(409, 'Diesen Betrieb gibt es schon als Fund.');
+    if (x.funde.some(f => f.status !== 'verworfen' && gleicherBetrieb({ name: f.name, ...(f.osmId ? { osmId: f.osmId } : {}), ...(f.adresse ? { adresse: f.adresse } : {}), ...(f.website ? { webseite: f.website } : {}), ...(f.email ? { email: f.email } : {}) }, kand) !== 'nein')) throw new FundeFehler(409, 'Diesen Betrieb gibt es schon als Fund.');
     const site = websiteNormal(e.website);
     const bew = bewerten({ website: eigeneWebsite(site), signale: null, jahrHeute: Number(localDay().slice(0, 4)), gemessenAm: am });
     const bewertung = eigeneWebsite(site) ? { ...bew, punkte: 60, erreichbar: undefined, gruende: ['Von Hand eingetragen — die Website wurde nicht automatisch geprüft.'] } : bew;
@@ -182,7 +182,7 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
   if (!b0.einstellungen.kampagneId) throw new FundeFehler(409, 'Erst die Kampagne einrichten.');
   const ctx = await fundKontext(b0.einstellungen, h);
   const am = new Date().toISOString();
-  const [{ ladeCrm }, { betriebFinden }, { betriebGesperrt }, { sperrlisteLaden, sperrTreffer }, { kontakteFuerVerarbeitung }, { alleAdressen }, { alsBetrieb }] = await Promise.all([
+  const [{ ladeCrm }, { betriebBekannt }, { betriebGesperrt }, { sperrlisteLaden, sperrTreffer }, { kontakteFuerVerarbeitung }, { alleAdressen }, { alsBetrieb }] = await Promise.all([
     import('@/lib/crm/speicher'), import('@/lib/crm/betrieb'), import('@/lib/crm/betrieb-sperre'), import('@/lib/crm/sperrliste'), import('@/lib/crm/verarbeitung'), import('@/lib/crm/emails'), import('./lauf'),
   ]);
   const [crm, kontakte, sperre] = await Promise.all([ladeCrm(), kontakteFuerVerarbeitung({ mitEingeschraenkten: true }), sperrlisteLaden()]);
@@ -198,7 +198,7 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
     const weg = (grund: string) => uebersprungen.push({ name: ein.name, grund });
     const adr = x.adresse && typeof x.adresse === 'object' ? x.adresse as Record<string, unknown> : null;
     const kand = alsBetrieb({ name: ein.name, ...(osmId ? { osmId } : {}), adresse: { ...(adr && typeof adr.strasse === 'string' ? { strasse: adr.strasse } : ein.strasse ? { strasse: ein.strasse } : {}), ...(adr && typeof adr.hausnummer === 'string' ? { hausnummer: adr.hausnummer } : {}), ...(ein.plz ? { plz: ein.plz } : {}) }, website: ein.website, email: ein.email });
-    if (betriebFinden(crm.firmen.filter(f => !f.geloeschtAm), kand)) { weg('Betrieb steht schon in der Kartei'); continue; }
+    if (betriebBekannt(crm.firmen.filter(f => !f.geloeschtAm), kand)) { weg('Firma steht schon in der Kartei'); continue; }
     if (betriebGesperrt(sperre, kand)) { weg('Sperrliste'); continue; }
     if (ein.email && adressen.has(ein.email)) { weg('Adresse gehört schon einer Person der Kartei'); continue; }
     if (sperrTreffer(sperre, { firma: ein.name, ...(ein.email ? { email: ein.email } : {}) } as never)) { weg('Sperrliste'); continue; }
@@ -225,7 +225,7 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
     // Schon als Fund da: dieselbe OSM-ID bzw. derselbe Betrieb (Domain, Name + Adresse) — gleicher Name an anderer Adresse ist ein anderer Betrieb (01.11.).
     const da = b.funde.filter(f => f.status !== 'verworfen').map(alsBetrieb);
     for (const f of kandidaten) {
-      if ((f.osmId && bekannt.has(f.osmId)) || betriebFinden(da, alsBetrieb(f))) { uebersprungen.push({ name: f.name, grund: 'schon als Fund bekannt' }); continue; }
+      if ((f.osmId && bekannt.has(f.osmId)) || betriebBekannt(da, alsBetrieb(f))) { uebersprungen.push({ name: f.name, grund: 'schon als Fund bekannt' }); continue; }
       da.push(alsBetrieb(f)); if (f.osmId) bekannt.add(f.osmId);
       neu.push(f);
     }

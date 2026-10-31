@@ -152,11 +152,12 @@ export function betriebMerkmale(f: BetriebKandidat): string[] {
 }
 
 /**
- * Derselbe Betrieb? `ja` (OSM-ID gleich; Domain gleich ohne widersprechende Orte; Name + Adresse gleich; Name gleich und beide ohne Ort),
- * `nein` (verschiedene OSM-IDs bzw. verschiedene Adressen — NIE verschmelzen), `vielleicht` (Name gleich, nur einer kennt die Adresse).
+ * Derselbe Betrieb? `ja` (OSM-ID gleich; Domain gleich ohne widersprechende Anschrift; Name + Anschrift gleich; Name gleich, beide ohne Anschrift
+ * und nicht zwei verschiedene OSM-Objekte), `nein` (verschiedene Anschriften bzw. verschiedener Name — NIE verschmelzen), `vielleicht` (Name gleich,
+ * nur einer kennt die Anschrift, oder zwei OSM-Objekte ohne Anschrift).
  */
 export function gleicherBetrieb(a: BetriebKandidat, b: BetriebKandidat): 'ja' | 'nein' | 'vielleicht' {
-  if (a.osmId && b.osmId) return a.osmId === b.osmId ? 'ja' : 'nein';
+  if (a.osmId && b.osmId && a.osmId === b.osmId) return 'ja';
   const aa = adresseSchluessel(a.adresse), ab = adresseSchluessel(b.adresse);
   if (aa && ab && aa !== ab) return 'nein';
   const da = betriebDomain(a), db = betriebDomain(b);
@@ -164,12 +165,20 @@ export function gleicherBetrieb(a: BetriebKandidat, b: BetriebKandidat): 'ja' | 
   const sa = firmenSchluessel(a.name), sb = firmenSchluessel(b.name);
   if (!sa || sa !== sb) return 'nein';
   if (aa && ab) return 'ja';
-  return !aa && !ab && !a.osmId && !b.osmId ? 'ja' : 'vielleicht';
+  if (!aa && !ab) return a.osmId && b.osmId ? 'vielleicht' : 'ja';
+  return 'vielleicht';
 }
 
 /** Den Betrieb in der Kartei finden (nur `ja`) — Papierkorb zählt mit (der Upsert holt ihn sonst zurück). */
 export function betriebFinden<F extends BetriebKandidat & { id: string }>(firmen: readonly F[], k: BetriebKandidat): F | undefined {
   return firmen.find(f => !!k.osmId && f.osmId === k.osmId) ?? firmen.find(f => gleicherBetrieb(f, k) === 'ja');
+}
+/**
+ * Vorsichtig für die Kaltakquise: „schon bekannt“ auch bei `vielleicht` (gleicher Name, die Anschrift kennt nur einer) — der Abendlauf, der Import
+ * und die Übernahme legen dann NICHTS an (lieber einen Fund verpassen als einen bekannten Betrieb ein zweites Mal kalt anschreiben). Verschmolzen wird nie.
+ */
+export function betriebBekannt<F extends BetriebKandidat & { id: string }>(firmen: readonly F[], k: BetriebKandidat): F | undefined {
+  return betriebFinden(firmen, k) ?? firmen.find(f => gleicherBetrieb(f, k) === 'vielleicht');
 }
 
 /**
