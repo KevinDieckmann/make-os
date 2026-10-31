@@ -1075,6 +1075,9 @@ html.menue-offen { overflow: hidden; }
 @media (min-width: 901px) { .rechner { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); } }
 .rechner-eingaben > .etikett { margin: 10px 0 -4px; }
 .rechner-eingaben > .etikett:first-child { margin-top: 0; }
+.rechner-ki { margin-top: 14px; padding: 14px 16px; border-left: 3px solid var(--akzent-papier); border-radius: 0 6px 6px 0; background: var(--akzent-zart); font-size: .92rem; line-height: 1.5; color: var(--tinte-text); }
+.rechner-ki[hidden] { display: none; }
+.rechner-ki .textlink { display: inline-flex; margin-top: 8px; }
 .rechner-feld small { display: block; margin-top: 2px; color: var(--tinte-leise); font-size: .82rem; }
 .rechner-eingabe input { font-variant-numeric: normal; text-align: right; }
 .rechner-ergebnis dd { font-variant-numeric: normal; white-space: nowrap; }
