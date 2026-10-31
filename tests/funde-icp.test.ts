@@ -139,3 +139,22 @@ describe('Steckbrief und ICP an der Firma (lib/crm/icp-firma.ts)', () => {
     expect(firmaIcpSaeubern({ score: 75, zielgruppe: 'scaleup', einstieg: 'struktur', prioritaet: 90, gruende: ['a'], aufhaenger: ['b'], gemessenAm: AM })).toMatchObject({ stufe: 'A', zielgruppe: 'scaleup', prioritaet: 90 });
   });
 });
+
+describe('Branche, Technik, neue Steckbrief-Felder', () => {
+  it('Branchen-Schlagwort aus Thema, sonst Text; Technik aus Skript-Spuren', async () => {
+    const { branchenTag, technikAus } = await import('@/lib/funde/icp');
+    expect(branchenTag('KI-Software für Pathologie')).toBe('HealthTech & Medizintechnik');
+    expect(branchenTag('Software für Handwerksbetriebe')).toBe('PropTech & Bau');
+    expect(branchenTag(undefined, 'Wir bauen eine Plattform für Rechnungen')).toBe('FinTech & InsurTech');
+    expect(branchenTag('xyz')).toBe('Sonstiges');
+    expect(technikAus('<script src="//js.hs-scripts.com/1.js"></script><a href="https://calendly.com/x">')).toEqual(['HubSpot', 'Calendly']);
+  });
+  it('Steckbrief: Technik nur aus der Liste, Ansprechpartner nur mit Rolle und Quelle, Presse höchstens 5', async () => {
+    const { steckbriefSaeubern } = await import('@/lib/crm/icp-firma');
+    const s = steckbriefSaeubern({ technik: ['HubSpot', 'Erfunden'], ansprechpartner: [{ name: 'Erika Muster', rolle: 'CEO', quelle: 'https://beispiel.example.invalid/team' }, { name: 'Ohne Quelle', rolle: 'CEO' }],
+      presse: Array.from({ length: 7 }, (_, i) => ({ titel: `Meldung ${i}`, url: `https://news.example.invalid/${i}` })), branche: 'KI & Daten', mailZustellbar: true, stellenTitel: ['Account Executive (m/w/d)'], gemessenAm: AM });
+    expect(s).toMatchObject({ technik: ['HubSpot'], branche: 'KI & Daten', mailZustellbar: true, stellenTitel: ['Account Executive (m/w/d)'] });
+    expect(s?.ansprechpartner).toHaveLength(1);
+    expect(s?.presse).toHaveLength(5);
+  });
+});

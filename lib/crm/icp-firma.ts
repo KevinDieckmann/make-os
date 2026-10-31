@@ -18,6 +18,12 @@ export interface FirmaIcp {
   gemessenAm: string;
 }
 export interface FirmaBeitrag { titel: string; datum?: string; url: string }
+/** Ansprechpartner laut eigener Team-/Über-uns-Seite bzw. Strukturdaten (Gründer, CEO) — nur, wenn die Firma ihn selbst veröffentlicht; Quelle Pflicht. */
+export interface FirmaAnsprechpartner { name: string; rolle: string; quelle: string }
+/** Erkannte Werkzeuge auf der eigenen Website (Skripte/Einbindungen) — Hinweis auf Reife im Vertrieb/Marketing, nie mehr. */
+export const TECHNIK = ['HubSpot', 'Salesforce', 'Pardot', 'Pipedrive', 'Zoho', 'Microsoft Dynamics', 'Close', 'Freshworks', 'ActiveCampaign', 'Brevo', 'Mailchimp', 'Klaviyo', 'Intercom', 'Drift', 'Zendesk', 'Calendly', 'Chili Piper', 'Leadinfo', 'Dealfront', 'LinkedIn Insight', 'Google Ads', 'Meta Pixel', 'Webflow', 'WordPress', 'Shopify', 'Personio', 'Join', 'Greenhouse', 'Lever', 'Recruitee', 'Softgarden', 'Workable'] as const;
+/** Branchen-Schlagwort (eine Stelle: `branchenTag` in lib/funde/icp.ts) — für Auswertung je Segment und Abgleich mit Studien. */
+export const BRANCHEN_TAGS = ['KI & Daten', 'SaaS & Software', 'FinTech & InsurTech', 'HealthTech & Medizintechnik', 'Energie & Klima', 'Industrie & IoT', 'Mobilität & Logistik', 'Food & Ernährung', 'PropTech & Bau', 'HR & Arbeit', 'Security', 'Bildung', 'Handel & E-Commerce', 'Sport & Freizeit', 'Sonstiges'] as const;
 export interface FirmaProfile { linkedin?: string; instagram?: string; x?: string; youtube?: string; xing?: string; tiktok?: string; facebook?: string }
 export interface FirmaSteckbrief {
   /** Vertriebsleitung auf der Website: ja · nein (Team-Seite gelesen, keine) · unbekannt. */
@@ -39,6 +45,15 @@ export interface FirmaSteckbrief {
   partner?: string[];
   /** Anzahl gezeigter Referenzkunden/Logos (grob). */
   referenzen?: number;
+  branche?: (typeof BRANCHEN_TAGS)[number];
+  technik?: string[];
+  /** Offene Vertriebsstellen (Titel, wie ausgeschrieben, höchstens 5). */
+  stellenTitel?: string[];
+  ansprechpartner?: FirmaAnsprechpartner[];
+  /** Mail-Domain nimmt Post an (MX-Eintrag vorhanden) — geprüft am `gemessenAm`. */
+  mailZustellbar?: boolean;
+  /** Pressemeldungen über die Firma (Titel, Datum, Link; höchstens 5, letzte 12 Monate). */
+  presse?: FirmaBeitrag[];
   gemessenAm: string;
 }
 
@@ -89,6 +104,19 @@ export function steckbriefSaeubern(roh: unknown): FirmaSteckbrief | undefined {
   }).filter((b): b is FirmaBeitrag => !!b).slice(0, BEITRAEGE_MAX) : [];
   const partner = Array.isArray(o.partner) ? Array.from(new Set(o.partner.map(x => t(x, 80)).filter(Boolean))).slice(0, PARTNER_MAX) : [];
   const profile = profileSaeubern(o.profile);
+  const technik = Array.isArray(o.technik) ? Array.from(new Set(o.technik.filter((x): x is string => typeof x === 'string' && (TECHNIK as readonly string[]).includes(x)))) : [];
+  const stellenTitel = Array.isArray(o.stellenTitel) ? o.stellenTitel.map(x => t(x, 120)).filter(Boolean).slice(0, 5) : [];
+  const ansprechpartner = Array.isArray(o.ansprechpartner) ? o.ansprechpartner.map(a => {
+    const x = a && typeof a === 'object' ? a as Record<string, unknown> : {};
+    const name = t(x.name, 80), rolle = t(x.rolle, 80), q = url(x.quelle);
+    return name && rolle && q && !/[0-9@()]/.test(name) ? { name, rolle, quelle: q } : null;
+  }).filter((a): a is FirmaAnsprechpartner => !!a).slice(0, 3) : [];
+  const presse = Array.isArray(o.presse) ? o.presse.map(b => {
+    const x = b && typeof b === 'object' ? b as Record<string, unknown> : {};
+    const titel = t(x.titel, 200), u = url(x.url), d = tag(x.datum);
+    return titel && u ? { titel, url: u, ...(d ? { datum: d } : {}) } : null;
+  }).filter((b): b is FirmaBeitrag => !!b).slice(0, BEITRAEGE_MAX) : [];
+  const branche = (BRANCHEN_TAGS as readonly string[]).includes(String(o.branche)) ? o.branche as FirmaSteckbrief['branche'] : undefined;
   const jahr = ganz(o.gruendungsjahr, 2100);
   const s: FirmaSteckbrief = {
     ...(vl ? { vertriebsleitung: vl } : {}), ...(t(o.vertriebsleitungRolle, 80) ? { vertriebsleitungRolle: t(o.vertriebsleitungRolle, 80) } : {}),
@@ -96,7 +124,9 @@ export function steckbriefSaeubern(roh: unknown): FirmaSteckbrief | undefined {
     ...(ganz(o.stellenVertrieb, 10000) !== undefined ? { stellenVertrieb: ganz(o.stellenVertrieb, 10000) } : {}), ...(jahr && jahr >= 1800 ? { gruendungsjahr: jahr } : {}),
     ...(t(o.register, 120) ? { register: t(o.register, 120) } : {}), ...(t(o.signal, 240) ? { signal: t(o.signal, 240) } : {}),
     ...(profile ? { profile } : {}), ...(beitraege.length ? { beitraege } : {}), ...(partner.length ? { partner } : {}),
-    ...(ganz(o.referenzen, 10000) !== undefined ? { referenzen: ganz(o.referenzen, 10000) } : {}), gemessenAm: am,
+    ...(ganz(o.referenzen, 10000) !== undefined ? { referenzen: ganz(o.referenzen, 10000) } : {}),
+    ...(branche ? { branche } : {}), ...(technik.length ? { technik } : {}), ...(stellenTitel.length ? { stellenTitel } : {}), ...(ansprechpartner.length ? { ansprechpartner } : {}),
+    ...(typeof o.mailZustellbar === 'boolean' ? { mailZustellbar: o.mailZustellbar } : {}), ...(presse.length ? { presse } : {}), gemessenAm: am,
   };
   return Object.keys(s).length > 1 ? s : undefined;
 }
