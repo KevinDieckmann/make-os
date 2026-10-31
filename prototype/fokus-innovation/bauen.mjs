@@ -910,10 +910,10 @@ ${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'Kurz in rund 10
     bildVorzeile: F.events.titel,
     bildTitel: F.events.satz,
     aktiv: 'events',
-    main: `<section class="held sand" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[null, 'Events']])}${vorzeile(F.events.titel)}<h1 id="held-titel" class="glanz">${titel(F.events.start_titel.join('|'), F.events.start_ruhig)}</h1><p class="lead">${t(F.events.text)}</p>
+    main: `<section class="held sand" aria-labelledby="held-titel"><div class="w held-raster mitte">
+<div class="erscheint">${brotkrumen([[null, 'Events']])}${vorzeile(F.events.titel)}<h1 id="held-titel" class="glanz">${titel(F.events.start_titel[0], F.events.start_titel.slice(1).join('|'))}</h1><p class="lead">${t(F.events.held_text ?? F.events.text)}</p>
 <div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten')}</div><p class="leise klein-text">${e(F.events.kosten)} · Termine folgen</p></div>
-<div class="events-tafel">${tafel()}</div>
+<div class="events-tafel">${tafel()}<p class="etikett">Formate</p><ul class="felder-liste erscheint">${F.events.formate.map((f) => `<li>${e(f.titel)}</li>`).join('')}</ul></div>
 </div></section>
 
 <section class="abschnitt" aria-labelledby="formate-titel"><div class="w">${abKopf({ marke: 'Formate', h2: 'So kommen wir zusammen.', lead: F.events.formate_hinweis, id: 'formate-titel' })}

@@ -183,6 +183,7 @@ html.menue-offen { overflow: hidden; }
 .held.klein { padding-bottom: clamp(32px, 4vw, 56px); }
 .held-raster { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px clamp(40px, 6vw, 96px); align-items: end; }
 .held-raster.einspaltig { grid-template-columns: minmax(0, 1fr); }
+.held-raster.mitte { align-items: center; }
 .held-raster.einspaltig > div { max-width: 52rem; }
 .brotkrumen { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 32px; font-size: .9rem; color: var(--tinte-leise); }
 .brotkrumen a { display: inline-flex; align-items: center; min-height: 44px; }
@@ -382,6 +383,12 @@ html.menue-offen { overflow: hidden; }
 .tafel .faden { fill: none; stroke: var(--akzent-papier); stroke-width: 1.1; stroke-linecap: round; opacity: .55; }
 .tafel-raum { display: flex; justify-content: flex-end; }
 .tafel-raum .tafel { margin-top: 0; }
+/* Events (31.10.): Tisch groß und mittig neben der Überschrift, darunter die Formate. */
+.events-tafel .tafel { max-width: 540px; margin-top: 0; }
+.events-tafel .etikett { margin-top: 28px; }
+.events-tafel .felder-liste { margin-top: 12px; }
+/* Einspaltig folgt der Abschnitt „Formate“ direkt darunter — die Liste am Tisch wäre doppelt. */
+@media (max-width: 820px) { .events-tafel .etikett, .events-tafel .felder-liste { display: none; } }
 
 /* Stufen des Checks: eine ruhige Treppe */
 .stufen { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 12px; align-items: end; }
