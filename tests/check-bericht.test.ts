@@ -112,6 +112,35 @@ describe('ausführlich: ohne E-Mail nur die Vorschau (serverseitig)', () => {
     expect(fake.gesendet).toHaveLength(0);
     expect(s.bericht).toBeUndefined();
   });
+  it('kurz ohne E-Mail, dann „Ausführlich weitermachen“ bis zum genauen Ergebnis: ebenfalls nur die Vorschau (kein Umweg)', async () => {
+    const { S, T } = await durch('kurz');
+    await check({ aktion: 'ohne-kontakt', sitzung: S, token: T });
+    // Der kurze Check bleibt frei (vorläufig) …
+    const kurz = await check({ aktion: 'ergebnis', sitzung: S, token: T });
+    expect(kurz.d.ansicht.gesperrt).toBeUndefined();
+    expect(kurz.d.ansicht.genauigkeit).toBe('vorlaeufig');
+    // … aber wer weitermacht, bekommt den ganzen ausführlichen Bericht nur mit E-Mail.
+    let schritt = (await check({ aktion: 'wahl', sitzung: S, token: T, wahl: 'mehr' })).d.schritt;
+    const katalog = (await check({ aktion: 'stand', sitzung: S, token: T })).d.katalog as { fragen: { id: string; optionen?: { id: string }[] }[] };
+    for (let i = 0; i < 120 && schritt?.art === 'frage'; i++) {
+      const f = katalog.fragen.find(x => x.id === schritt.frageId);
+      const versuch = f?.optionen?.length ? await check({ aktion: 'antwort', sitzung: S, token: T, frage: schritt.frageId, optionIds: [f.optionen[0].id], zusatz: false }) : null;
+      schritt = versuch?.status === 200 ? versuch.d.schritt
+        : (await check({ aktion: 'antwort', sitzung: S, token: T, frage: schritt.frageId, freitext: 'Wir prüfen gerade einen ersten Anwendungsfall.' })).status === 200
+          ? (await check({ aktion: 'stand', sitzung: S, token: T })).d.schritt
+          : (await check({ aktion: 'ueberspringen', sitzung: S, token: T, frage: schritt.frageId })).d.schritt;
+    }
+    const lang = await check({ aktion: 'ergebnis', sitzung: S, token: T });
+    expect(lang.status).toBe(200);
+    expect(lang.d.ansicht.gesperrt).toBe(true);
+    expect(lang.d.ansicht.genauigkeit).toBe('genau');
+    expect(JSON.stringify(lang.d)).not.toContain('achsen');
+    // Mit E-Mail danach: alles.
+    await kontakt(S, T, `umweg@${D}`);
+    const voll = await check({ aktion: 'ergebnis', sitzung: S, token: T });
+    expect(voll.d.ansicht.gesperrt).toBeUndefined();
+    expect(voll.d.ansicht.innovation.achsen.length).toBeGreaterThanOrEqual(5);
+  });
   it('mit Kontakt (danach): volle Ansicht, „unterwegs an“ maskiert, der Bericht genau einmal — auch bei erneutem Abruf', async () => {
     const { S, T } = await durch('lang');
     await check({ aktion: 'ohne-kontakt', sitzung: S, token: T });

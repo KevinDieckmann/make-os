@@ -141,8 +141,13 @@ export interface ErgebnisVorschau {
   zoe: string[];
 }
 
-/** Braucht diese Sitzung für den ganzen Bericht erst die Kontaktdaten? Ausführlich + ohne erfassten Kontakt. Rein. */
-export const berichtGesperrt = (s: { umfang?: string; kontaktStand: string }): boolean => s.umfang === 'lang' && s.kontaktStand !== 'erfasst';
+/**
+ * Braucht diese Sitzung für den ganzen Bericht erst die Kontaktdaten? Ohne erfassten Kontakt: ausführlich gewählt — ODER (31.10., Gesamtcheck)
+ * bei einem Check mit Wahl kurz/ausführlich über „Ausführlich weitermachen“ zum genauen Ergebnis gekommen (sonst wäre der ausführliche Bericht
+ * über den kurzen Weg ohne E-Mail zu haben). Der kurze Check (vorläufig) und Checks ohne diese Wahl bleiben frei. Rein.
+ */
+export const berichtGesperrt = (s: { umfang?: string; kontaktStand: string }, o: { umfangWahl?: boolean; genauigkeit?: 'genau' | 'vorlaeufig' } = {}): boolean =>
+  s.kontaktStand !== 'erfasst' && (s.umfang === 'lang' || (!!o.umfangWahl && o.genauigkeit === 'genau'));
 
 export function ergebnisVorschau(a: ErgebnisAnsicht, zoe: string[]): ErgebnisVorschau {
   const bereiche = a.innovation?.achsen.length ? a.innovation.achsen.map(x => x.name) : a.saeulen.map(x => x.name);
