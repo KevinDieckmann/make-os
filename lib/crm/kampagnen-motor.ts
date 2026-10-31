@@ -556,8 +556,8 @@ function sequenzFollowupsAbsagen(c: CrmBestand, kampagneId: string, ziel: Kampag
 /**
  * Antworten und Rückläufer gesendeter Mails erkennen (Spiegel der sendenden Person) — idempotent über `rueckfluss` am Eintrag. Nur die letzten 60 Tage.
  */
-export async function rueckfluss(jetzt = new Date()): Promise<{ antworten: number; rueckläufer: number }> {
-  const z = { antworten: 0, rueckläufer: 0 };
+export async function rueckfluss(jetzt = new Date()): Promise<{ antworten: number; ruecklaeufer: number }> {
+  const z = { antworten: 0, ruecklaeufer: 0 };
   const post = await ladePost();
   const ab = new Date(jetzt.getTime() - 60 * 864e5).toISOString();
   const offen = post.eintraege.filter(x => x.status === 'gesendet' && !x.rueckfluss && x.gesendet && x.gesendet.am >= ab && x.freigabe);
@@ -603,7 +603,7 @@ export async function rueckfluss(jetzt = new Date()): Promise<{ antworten: numbe
       const ergebnisse = t.art === 'antwort' && kontaktId && !kampagne.ergebnisse.some(e => e.kontaktId === kontaktId && e.ergebnis === 'reagiert')
         ? [...kampagne.ergebnisse, { kontaktId, ergebnis: 'reagiert' as const, am: heute }] : kampagne.ergebnisse;
       neu = { ...neu, followups, kampagnen: neu.kampagnen.map(y => (y.id === k.id ? { ...kampagne, ergebnisse } : y)) };
-      if (t.art === 'antwort') z.antworten++; else z.rueckläufer++;
+      if (t.art === 'antwort') z.antworten++; else z.ruecklaeufer++;
     }
     return neu;
   }, { art: 'system' });
