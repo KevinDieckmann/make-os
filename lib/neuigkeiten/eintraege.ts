@@ -33,6 +33,20 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-10-31-9',
+    datum: '2026-10-31',
+    titel: 'Rechnungen & Zahlungen aufgeräumt',
+    kurz: 'Rechnungen & Zahlungen ist jetzt eine Arbeitsfläche wie Inbox und Kontakte: links die Liste, rechts die gewählte Rechnung. Finanzmeeting und Jahresziel stehen im Cockpit, Planposten und Merkposten unter Liquidität.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Finanzen › Business › Rechnungen & Zahlungen: Suche und „Filter ▾“ (Status, Gesellschaft, ohne Zuordnung) in einer Zeile, die Rechnungen nach Zustand gruppiert — ein Klick öffnet die Rechnung rechts daneben statt in einem Fenster. Ohne Auswahl stehen dort die Summen.', bereich: 'business', weg: WEG.rechnungen() },
+        { text: 'Zahlungen (was zuerst bezahlt wird) erreichst du über den Umschalter „Rechnungen · Zahlungen“ oben in der Liste.', bereich: 'business', weg: WEG.rechnungen() },
+        { text: 'Finanzmeeting, Jahresziel und Produkt-Entwürfe stehen jetzt im Cockpit.', bereich: 'business', weg: WEG.business() },
+        { text: 'Planposten, ältere Rechnungen ohne Positionen und Merkposten stehen unter Liquidität — bei den Konten und Planposten, die dort schon waren. Doppelte Konto-Karten sind weg.', bereich: 'business', weg: WEG.liquiditaet() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31-6',
     datum: '2026-10-31',
     titel: 'Feinschliff an Akten und Listen',

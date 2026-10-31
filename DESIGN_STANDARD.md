@@ -669,9 +669,11 @@ manchmal keinen Sinn.“ EIN Muster für jede Seite aus Liste + Detail: `Arbeits
 app/globals.css). Umgestellt: **Inbox** (`InboxZwei`, Gespräch), **Markttraktion › Kontakte** (Kartei der Personen), seit 31.10. **Markttraktion ›
 Firmen** (`Firmen`, Suche aus der Kartei), **Deals › Liste** (`Pipeline` mit `ansicht="liste"`; Stufen als Abschnitte, rechts Deal bzw. Prognose — das Board
 bleibt, wie es ist), **Angebote** (`AngebotListe`; nur die Liste ist die Fläche, Editor und Ansicht stehen über `huelle` im Rahmen der Seite) und
-**Mandate** (`MandateUebersicht`; Status als Abschnitte, rechts Mandat bzw. Überblick, Excel-Import und Papierkorb im „⋯“). Offen: **Finanzen ›
-Rechnungen & Zahlungen** — die Seite trägt unter der Rechnungsliste das Finanzmeeting, Konten und Planposten (FinanzplanungView) und öffnet die Rechnung
-als Fenster; erst wenn diese Teile einen eigenen Ort haben, wird die Liste eine Arbeitsfläche (eine Fläche mit Inhalt darunter rollte falsch).
+**Mandate** (`MandateUebersicht`; Status als Abschnitte, rechts Mandat bzw. Überblick, Excel-Import und Papierkorb im „⋯“) und **Finanzen › Business ›
+Rechnungen & Zahlungen** (`RechnungenFlaeche`, seit 31.10.; Zustände als Abschnitte, rechts die Rechnung im selben Editor statt Fenster, ohne Auswahl
+die Summen, Umschalter Rechnungen · Zahlungen, Status/Gesellschaft/Zuordnung im Popover). Was vorher darunter hing, hat seinen Ort: Finanzmeeting,
+Jahresziel und Produkte im Cockpit, Planposten & ältere Rechnungen und Merkposten unter Liquidität (`FinanzplanungView teil=…`, EIN Bestand); die
+Konto-Karten waren doppelt. Privat › Selbstständigkeit behält die Karte mit Fenster (`RechnungenKarte`, dieselben Bausteine aus `useRechnungenUebersicht`).
 - **Kopf in EINER Zeile:** Titel ohne erklärenden Untertitel, daneben ein ruhiger Zähler („4 brauchen Antwort“, „11 Personen · …“), rechts EINE Hauptaktion
   (`haupt`), Nebenaktionen hinter „⋯“ (`mehr` → `MehrMenue`), höchstens ein leiser Knopf davor (`neben`, z. B. ZOE/Head). Runden, Abgleichen, Postfächer …
   gehören ins „⋯“ bzw. ins Werkzeug-Menü links — ihre Adressen bleiben.
