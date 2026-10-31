@@ -1056,6 +1056,15 @@ Entscheidung 10.10.: „Fokus und Kompass zusammenlegen und bei Planung rausnehm
   Wochenvorlage; Wächter `tests/nordstern.test.ts`, auch „anderer Haushalt bekommt nichts“ und „keine Inline-Reste“). Einmalige Übernahme
   des Altbestands: `lib/altbestand/nordstern-uebernahme.ts` (nur mit `MAKE_OS_ALTBESTAND_PERSON`; Marke auch bei „belegt“/„leer“ — kommt
   nach bewusstem Leeren nie zurück; wird mit dem übernächsten Upload gelöscht — UPDATES.md 08.10. abends).
+- **Planung mit ZOE — Wochenvorschlag (31.10., Branch `paket-planung`):** Regelwerk OHNE KI rein in `lib/planung/wochenvorschlag.ts`
+  (`kandidatenBauen`: Aufgaben über die Top-3-Regeln + Meilensteine aus der Kapazität, Eisenhower vor Punkten, nichts „zur Auffüllung“; `wochenvorschlagRechnen`:
+  Fokus-Blöcke in freie Zeit — Business in der Arbeitszeit, Privat im `PRIVAT_FENSTER` —, nie über Termine/Abwesenheit/Business-frei/Feiertag, Puffer 15 Min.,
+  ≤ 2 je Tag, Frist beachtet, Top 3, „nicht machbar“ bei Bedarf > frei; feste UIDs `wvUid`, `stand`). Server `wochenvorschlag-server.ts` liest nur die eigene
+  Sicht (`verfuegbarkeitFuer`, `ladeAufgabenSicht`, `kapaStandFuer(…, bereich)`), Bestand `wochenvorschlag--<person>` (6 Wochen); Route
+  `/api/planung/wochenvorschlag` (Klasse `person`, Dienstweg 403): GET liest/rechnet, POST `planen` (optional `formulieren` = KI formuliert NUR die Sätze) und
+  `uebernehmen` (Stand → 409, Auswahl/Verschieben `bloeckeWaehlen`, `blockFrei`, angelegt NUR über `blockAnlegen`, idempotent über die UID). Morgenlauf
+  `wochenvorschlaegeBereitlegen` legt je Person bereit + EINE Meldung (nichts im Kalender). Oberfläche `components/os/planung/WochenvorschlagKarte.tsx`
+  (Kalender › Planen, Fokus). Neue Regeln dort, nie in der Ansicht. Test `tests/wochenvorschlag.test.ts`.
 - **Zeitstrahl & Planungsjahr (30.09.):** Rechnung rein in `lib/planung/zeitstrahl.ts` (Fenster aus ganzen Monaten `ab`+`monate`,
   `standardAb`/`heuteAb`, `abAus` ±50 Jahre, `monatsTicks` mit Jahreswechsel, `quartale`, `stapeln` mit „+n“-Bündeln,
   `zielJahr`/`meilensteinJahr`/`meilensteinImJahr`, `jahrLage` für den Forecast, `planTag` für ZOE, `zaehltImKurs` für die Indizes)
