@@ -350,7 +350,7 @@
     {
       "titel": "Sichtbarkeit und Vertrieb greifen ineinander",
       "text": "Was Website, Videos und PR an Aufmerksamkeit bringen, macht der Vertrieb zu Kunden. Aus einer Hand.",
-      "beleg": "Feste Partner aus unserem Netzwerk für Umfang und Spezialthemen, dazu unsere Events für die richtigen Kontakte."
+      "beleg": "Die Fachleute für Film, Design, Technik und PR sind im Team, dazu unsere Events für die richtigen Kontakte."
     },
     {
       "titel": "Klare Preise, feste Abläufe",
@@ -402,8 +402,8 @@
       "text": "Termine in Werktagen, feste Lieferzeiten, erste Ergebnisse im ersten Monat."
     },
     {
-      "titel": "Mit festen Partnern",
-      "text": "Für Umfang und Spezialthemen holen wir feste Partner aus unserem Netzwerk dazu. Sie behalten einen Ansprechpartner, wir halten alles zusammen."
+      "titel": "Alle Fachleute im Team",
+      "text": "Film, Design, Technik, PR und Vertrieb kommen aus einem Team. Sie behalten einen Ansprechpartner, wir halten alles zusammen."
     }
   ],
   "grundregel": "Was hier steht, können wir belegen. Quellen verlinken wir.",
@@ -427,8 +427,8 @@
   ],
   "team_netzwerk": {
     "titel": "Das Team dahinter",
-    "rolle": "Feste Partner aus unserem Netzwerk",
-    "text": "Für jedes Projekt stellen wir das Team zusammen, das es braucht: Spezialisten, mit denen wir eingespielt sind. Sie haben trotzdem eine Ansprechperson, die für das Ergebnis geradesteht.",
+    "rolle": "Fachleute im Team",
+    "text": "In jedem Projekt arbeiten die Fachleute mit, die es braucht: eingespielt und mit festen Abläufen. Sie haben trotzdem eine Ansprechperson, die für das Ergebnis geradesteht.",
     "felder": [
       "Film und Video",
       "Design und Websites",
@@ -561,8 +561,8 @@
       "Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)"
     ],
     [
-      "Partner",
-      "Feste Partner aus unserem Netzwerk für Umfang und Spezialthemen"
+      "Fachleute",
+      "Film, Design, Entwicklung, PR, Daten und Leadgenerierung im Team"
     ],
     [
       "Preise",
@@ -822,7 +822,7 @@
   "einwaende": [
     {
       "f": "Wer arbeitet an meinem Projekt?",
-      "a": "Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Für Umfang und Spezialthemen, etwa Produktion, Technik oder Medienarbeit, holen wir feste Partner aus unserem Netzwerk dazu. Sie behalten einen Ansprechpartner, wir halten alles zusammen."
+      "a": "Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Sie behalten einen Ansprechpartner, wir halten alles zusammen."
     },
     {
       "f": "Welche Erfahrung bringen Sie mit?",

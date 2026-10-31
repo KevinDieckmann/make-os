@@ -57,10 +57,10 @@ ${knoten.map(([x, y, n], i) => `<g class="pb-knoten pb-k${i + 1}"><rect x="${x}"
 <g class="pb-mitte-text"><rect class="pb-schild" x="${mitte[0] - 42}" y="${mitte[1] - 40}" width="84" height="22" rx="11"/><text class="pb-text pb-klein pb-akzent-text" x="${mitte[0]}" y="${mitte[1] - 25}" text-anchor="middle">Ein Ablauf</text></g>`;
     },
   },
-  // Über uns: viele Dienstleister, viele Abstimmungen — dann ein Kernteam, das führt.
+  // Über uns: viele Dienstleister, viele Abstimmungen — dann ein Team mit allen Fachleuten (Kevin 31.10.: Netzwerk nicht nennen).
   netzwerk: {
-    titel: 'Heute stimmen Sie fünf Dienstleister einzeln ab. Bei uns führt ein Kernteam, das Netzwerk aus Fachleuten liefert.',
-    satz: 'Fünf Dienstleister heißt fünf Abstimmungen. Bei uns führt ein Kernteam, das Netzwerk aus Fachleuten liefert.',
+    titel: 'Heute stimmen Sie fünf Dienstleister einzeln ab. Bei uns sind die Fachleute in einem Team, mit einem Ansprechpartner.',
+    satz: 'Fünf Dienstleister heißt fünf Abstimmungen. Bei uns sind die Fachleute im Team, und Sie haben einen Ansprechpartner.',
     svg: () => {
       const fach = ['Design', 'Video', 'Technik', 'Presse', 'Vertrieb'].map((n, i) => [300, 26 + i * 44, n]);
       return `
@@ -69,7 +69,7 @@ ${fach.map(([x, y]) => `<line class="pb-verbindung" pathLength="1" x1="196" y1="
 <line class="pb-fuehrung" pathLength="1" x1="66" y1="120" x2="186" y2="120"/>
 ${fach.map(([x, y, n]) => `<g class="pb-knoten pb-fest"><rect x="${x - 4}" y="${y}" width="88" height="26" rx="13"/>${text(x + 40, y + 17, n, 'pb-text pb-klein')}</g>`).join('')}
 <circle class="pb-sie" cx="56" cy="120" r="10"/>${text(56, 150, 'Sie', 'pb-text pb-klein')}
-<g class="pb-kern"><circle class="pb-punkt" cx="196" cy="120" r="10"/>${text(186, 146, 'Kernteam', 'pb-text pb-klein pb-akzent-text', 'end')}</g>`;
+<g class="pb-kern"><circle class="pb-punkt" cx="196" cy="120" r="10"/>${text(186, 146, 'Ein Team', 'pb-text pb-klein pb-akzent-text', 'end')}</g>`;
     },
   },
   // Preise: Stunden ohne Ende — dann ein fester Preis.

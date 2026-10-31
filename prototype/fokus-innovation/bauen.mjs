@@ -642,7 +642,7 @@ ${(() => { const zs = F.bekannt.gruppen.map((g) => g.zahl && Z?.zahlen.find((y) 
 </div></section>
 
 <section class="abschnitt" id="was-wir-tun" aria-labelledby="leistungen-titel"><div class="w">
-${abKopf({ marke: 'Was wir tun', h2: 'Drei Bereiche.', ruhig: 'Und in jedem arbeiten wir selbst mit.', lead: 'Sichtbarkeit bringt Anfragen, der Vertrieb macht Kunden daraus, Innovation spart Arbeit. Dazu kommen unser Netzwerk, unsere Partner und unsere Events.', id: 'leistungen-titel' })}
+${abKopf({ marke: 'Was wir tun', h2: 'Drei Bereiche.', ruhig: 'Und in jedem arbeiten wir selbst mit.', lead: 'Sichtbarkeit bringt Anfragen, der Vertrieb macht Kunden daraus, Innovation spart Arbeit. Dazu bringen wir Sie bei unseren Events mit den richtigen Menschen zusammen.', id: 'leistungen-titel' })}
 ${BEREICHE.map(leistung).join('\n')}
 <p class="satz-unter erscheint">Nichts dabei? ${textlink(erstLink(), 'Erzählen Sie uns im Erstgespräch, worum es geht')}</p>
 </div></section>
@@ -944,7 +944,7 @@ ${raster(F.leitidee.ursprung, 4)}
 ${raster(F.fuer_wen.map((w) => ({ etikett: w.richtung, titel: w.titel, text: w.text, unter: `Einstieg: ${w.einstieg}`, nr: false })), 3)}
 </div></section>
 
-<section class="abschnitt" aria-labelledby="team-titel"><div class="w">${abKopf({ marke: 'Team', h2: 'Ein Kernteam, das führt.', ruhig: 'Ein Netzwerk, das liefert.', lead: 'Kevin verantwortet Vertrieb und Umsetzung, Malin Bühne und Netzwerk. Dahinter steht ein festes Netzwerk aus Spezialisten für Film, Design, Entwicklung, PR, Daten und Leadgenerierung. Für jedes Projekt stellen wir das Team zusammen, das es braucht.', id: 'team-titel' })}
+<section class="abschnitt" aria-labelledby="team-titel"><div class="w">${abKopf({ marke: 'Team', h2: 'Ein Team.', ruhig: 'Alle Fachleute an Bord.', lead: 'Kevin verantwortet Vertrieb und Umsetzung, Malin Bühne und Netzwerk. Im Team sind die Fachleute für Film, Design, Entwicklung, PR, Daten und Leadgenerierung. Sie haben eine Ansprechperson.', id: 'team-titel' })}
 <div class="team erscheint">${F.team.map((p) => `<article class="person" id="${personAnker(p)}"><span class="kuerzel mono">${MONOGRAMM(p.kuerzel)}</span><div><p class="etikett">${e(p.rolle)}</p><h3>${e(p.name)}</h3><p>${t(p.text)}</p></div></article>`).join('')}${F.team_netzwerk ? `<article class="person person-netzwerk"><span class="kuerzel" aria-hidden="true">${ZEICHEN()}</span><div><p class="etikett">${e(F.team_netzwerk.rolle)}</p><h3>${e(F.team_netzwerk.titel)}</h3><p>${t(F.team_netzwerk.text)}</p><ul class="felder-liste">${F.team_netzwerk.felder.map((x) => `<li>${e(x)}</li>`).join('')}</ul></div></article>` : ''}</div></div></section>
 
 <section class="abschnitt" aria-labelledby="werte-titel"><div class="w">${abKopf({ marke: 'Werte', h2: 'Woran man uns erkennt.', lead: 'Drei Werte, an denen Sie uns messen können.', id: 'werte-titel' })}
