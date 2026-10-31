@@ -13,7 +13,7 @@ Positionierung, Website, Videos und PR bringen Anfragen. Ein Vertrieb mit System
 - Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch
 - Gründer: Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)
 - Partner: Feste Partner aus unserem Netzwerk für Umfang und Spezialthemen
-- Preise: Fest und offen auf jeder Angebotsseite, alle netto zuzüglich Umsatzsteuer
+- Preise: Offen auf jeder Angebotsseite, ab einem Startpreis und netto zuzüglich Umsatzsteuer; den genauen Festpreis vor dem Start
 - Arbeitsgebiet: Deutschland und Europa, auf Deutsch
 - Betreiber: KD Ventures UG (haftungsbeschränkt), Kurfürstendamm 96, 10709 Berlin
 - Kontakt: kevin@makeinnovation.de
@@ -55,7 +55,7 @@ Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und ne
 - [Positionierung: in fünf Sätzen sagen, was Sie machen](https://fokusinnovation.de/wissen/positionierung-in-fuenf-saetzen/): Fünf Fragen, die eine klare Positionierung beantwortet, ein einfacher Test für Ihre Startseite und die häufigsten Fehler. Für Gründer und Unternehmer.
 - [Homepage: was Besucher in fünf Sekunden verstehen müssen](https://fokusinnovation.de/wissen/homepage-fuenf-sekunden/): Was auf die erste Ansicht einer Unternehmens-Homepage gehört, wie Belege Vertrauen schaffen und warum Handy, Ladezeit und Suche von Anfang an mitgedacht werden.
 - [Erklärvideo für Unternehmen: Aufbau, Länge und Ablauf](https://fokusinnovation.de/wissen/erklaervideo-fuer-unternehmen/): Wann sich ein Erklärvideo lohnt, wie ein gutes in 60 bis 90 Sekunden aufgebaut ist und wie es ohne Dreh vor Ort in zehn Werktagen entsteht.
-- [KI im Mittelstand einführen: erst die Daten, dann die Werkzeuge](https://fokusinnovation.de/wissen/ki-im-mittelstand-einfuehren/): Wo der Mittelstand bei KI steht, warum es so oft an den Daten hakt und wie KI in fünf Schritten im Alltag ankommt. Mit Zahlen von Destatis, KfW und IFR.
+- [KI im Mittelstand einführen: erst die Daten, dann die Werkzeuge](https://fokusinnovation.de/wissen/ki-im-mittelstand-einfuehren/): Wo der Mittelstand bei KI steht, warum es so oft an den Daten hakt und wie KI in fünf Schritten im Alltag ankommt. Mit Zahlen von ifo, KfW und Bitkom.
 - [Fünf Vertriebszahlen, die jedes kleine Unternehmen kennen sollte](https://fokusinnovation.de/wissen/fuenf-vertriebszahlen/): Angebote im Monat, Abschlussquote, Zeit bis zum Abschluss, offene Chancen und Nachfassen: was die fünf Zahlen zeigen und wie Sie sie mit einer Tabelle erfassen.
 - [Warum Ihre Website keine Anfragen bringt, und was Sie in einer Woche ändern können](https://fokusinnovation.de/wissen/website-ohne-anfragen/): Warum eine Website keine Anfragen bringt und was Sie in einer Woche ändern: Kernsatz oben, ein nächster Schritt, Belege, ein kurzes Video und eine Seite je Angebot.
 - [Die ersten 30 Tage mit KI im Team](https://fokusinnovation.de/wissen/erste-30-tage-mit-ki/): Die ersten 30 Tage mit KI im Team: einen Ablauf wählen, Firmenlizenz und Regeln klären, messen, was es spart, und danach entscheiden, wie es weitergeht.

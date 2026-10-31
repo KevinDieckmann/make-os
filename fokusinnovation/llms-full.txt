@@ -13,7 +13,7 @@ Fokus Innovation ist eine Agentur aus Berlin für Sichtbarkeit, Vertrieb und Inn
 - Einstieg: Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch
 - Gründer: Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)
 - Partner: Feste Partner aus unserem Netzwerk für Umfang und Spezialthemen
-- Preise: Fest und offen auf jeder Angebotsseite, alle netto zuzüglich Umsatzsteuer
+- Preise: Offen auf jeder Angebotsseite, ab einem Startpreis und netto zuzüglich Umsatzsteuer; den genauen Festpreis vor dem Start
 - Arbeitsgebiet: Deutschland und Europa, auf Deutsch
 - Betreiber: KD Ventures UG (haftungsbeschränkt), Kurfürstendamm 96, 10709 Berlin
 - Kontakt: kevin@makeinnovation.de
@@ -54,7 +54,7 @@ Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und ne
 - [Innovations-Check](https://fokusinnovation.de/innovations-check/): kostenlos, rund 10 Minuten. Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten mit Ergebnis sofort, ausführlich in rund 25 mit vollständigem Bericht per E-Mail.
 - [Umsetzungsprojekte: KI und Software einführen](https://fokusinnovation.de/innovation/umsetzungsprojekte/): bald, Anfrage schon jetzt möglich, Preis auf Anfrage. Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an. Startet in Kürze.
 
-Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang; Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
+Zahlung und Konditionen: Alle Preise netto zuzüglich Umsatzsteuer; Head of Sales, CSO sowie PR und Kommunikation: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen; Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang; Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung.
 
 ## Häufige Fragen
 
@@ -89,7 +89,7 @@ Frage: Sind Ihre Videos KI-generiert?
 Antwort: Die Videos entstehen aus KI-Szenen und Ihrem eigenen Material. Wo es nötig ist, kennzeichnen wir KI-Inhalte.
 
 Frage: Gibt es Rabatt?
-Antwort: Beim Head of Sales und beim Chief Sales Officer gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen. Auf Monatsrechnungen, Homepages und Videos gibt es kein Skonto.
+Antwort: Bei Head of Sales, Chief Sales Officer sowie PR und Kommunikation gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen. Auf Monatsrechnungen, Homepages und Videos gibt es kein Skonto.
 
 Frage: Sind die Preise netto?
 Antwort: Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich an Unternehmen.
@@ -254,7 +254,7 @@ Den Chief Sales Officer wählen Firmen, die ein Vertriebsteam aufbauen oder verg
 - Ihr Team führt die Gespräche, die Vertriebsleitung auf Zeit macht vor.
 - Die Zahlen kommen jede Woche, nicht erst am Ende.
 - Vorlagen, Leitfäden und Playbook dürfen Sie danach dauerhaft nutzen.
-- Es gibt einen frühen Punkt, an dem Sie aussteigen können.
+- Nach acht Wochen gibt es eine Zwischenbilanz mit Zahlen und Fahrplan.
 
 ### Was es bei uns kostet
 
@@ -447,7 +447,7 @@ Das ifo Institut fragt regelmäßig, wie viele Unternehmen KI nutzen:
 
 54,5 % der Unternehmen in Deutschland nutzten im Mai 2026 KI in ihren Geschäftsprozessen, ein Jahr zuvor waren es 40,9 %. (Quelle: ifo Institut, 05.06.2026, https://www.ifo.de/fakten/2026-06-05/mehr-als-die-haelfte-der-unternehmen-nutzt-kuenstliche-intelligenz)
 
-37 % der kleinen Mittelständler schlossen 2022 bis 2024 Innovationsprojekte ab, bei den großen waren es 73 %. (Quelle: KfW Research, Innovationen, 2026, https://www.kfw.de/%C3%9Cber-die-KfW/KfW-Research/Innovationen.html)
+37 % der kleinen Mittelständler mit weniger als fünf Beschäftigten brachten 2022 bis 2024 eine Innovation hervor, bei den großen mit mehr als 50 Beschäftigten waren es 73 %. (Quelle: KfW Research, 04.03.2026, https://www.kfw.de/%C3%9Cber-die-KfW/Newsroom/Aktuelles/Pressemitteilungen-Details_883520.html)
 
 Dieselbe Lücke zeigt sich bei Neuem insgesamt. Die KfW misst, wie viele Mittelständler Innovationsprojekte abschließen:
 
@@ -690,7 +690,7 @@ Kurz gesagt: Die ersten 30 Tage mit KI gelingen, wenn Sie klein anfangen: ein Ab
 
 In vielen Teams läuft KI schon nebenbei. Einzelne lassen sich Texte entwerfen oder Notizen zusammenfassen, mit eigenen Konten und eigenen Regeln. Wofür, mit welchen Daten und mit welchem Nutzen, weiß oft niemand genau. Wie weit der Weg vom Ausprobieren zum Nutzen ist, zeigt eine Umfrage des Bitkom:
 
-3 % der Unternehmen schöpfen das Potenzial von KI eher stark aus, keines vollständig. 59 % gar nicht. (Quelle: Bitkom, 14.09.2026, 603 Unternehmen ab 20 Beschäftigten, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
+3 % der Unternehmen schöpfen das Potenzial von KI eher stark aus, keines vollständig, 59 % überhaupt nicht. (Quelle: Bitkom, 14.09.2026, 603 Unternehmen ab 20 Beschäftigten, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
 
 30 Tage sind lang genug, um einen echten Ablauf zu verändern, und kurz genug, um dranzubleiben. Danach wissen Sie, ob sich der Einsatz lohnt, und haben Zahlen statt Eindrücke.
 
@@ -895,7 +895,7 @@ Kurz gesagt: Den ersten Anwendungsfall für KI finden Sie, indem Sie Ideen samme
 
 Viele Unternehmen ahnen, dass KI ihnen helfen könnte, wissen aber nicht, wo sie anfangen sollen. Ausprobiert wird viel, ausgeschöpft wenig:
 
-3 %: Nur 3 % der Unternehmen ab 20 Beschäftigten in Deutschland schöpfen das Potenzial von KI nach eigener Einschätzung eher stark aus, keines vollständig. (Quelle: Bitkom, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
+3 %: Nur 3 % der Unternehmen ab 20 Beschäftigten in Deutschland schöpfen das Potenzial von KI nach eigener Einschätzung eher stark aus, keines vollständig; 59 % schöpfen es überhaupt nicht aus. (Quelle: Bitkom, https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI)
 
 Der erste Anwendungsfall prägt, wie Ihr Team über KI denkt. Ein Ablauf, der sichtbar Zeit spart und bei dem nichts schiefgeht, öffnet die Tür für den nächsten. Ein Fehlgriff kostet Vertrauen. Deshalb lohnt sich eine Stunde Bewertung, bevor Sie loslegen.
 

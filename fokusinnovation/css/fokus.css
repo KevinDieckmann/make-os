@@ -173,7 +173,7 @@ html.menue-offen { overflow: hidden; }
 .held-raster.einspaltig { grid-template-columns: minmax(0, 1fr); }
 .held-raster.einspaltig > div { max-width: 52rem; }
 .brotkrumen { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 32px; font-size: .9rem; color: var(--tinte-leise); }
-.brotkrumen a { display: inline-flex; align-items: center; min-height: 32px; }
+.brotkrumen a { display: inline-flex; align-items: center; min-height: 44px; }
 .brotkrumen a:hover { color: var(--tinte); text-decoration: underline; text-underline-offset: .25em; }
 .brotkrumen [aria-current] { color: var(--tinte-text); }
 .held h1 { margin-top: 22px; font-size: var(--t-held); letter-spacing: -.035em; line-height: 1.03; }
@@ -385,6 +385,7 @@ html.menue-offen { overflow: hidden; }
 /* Eine Frage des Checks als Vorschau */
 .frage-karte { padding: 28px; background: var(--papier-hell); border: 1px solid var(--haar); border-radius: 10px; }
 .frage-karte figcaption { display: flex; justify-content: space-between; gap: 12px; font-size: .9rem; }
+.frage-karte figcaption .leise { white-space: nowrap; }
 .frage { margin-top: 18px; font-size: 1.22rem; line-height: 1.4; font-weight: 600; color: var(--tinte); }
 .optionen { display: grid; gap: 8px; margin: 20px 0; }
 .optionen li { padding: 12px 16px; border: 1px solid var(--haar-mittel); border-radius: 6px; color: var(--tinte); font-size: .97rem; }
@@ -412,7 +413,7 @@ html.menue-offen { overflow: hidden; }
 .kontakt-liste > div { padding: 26px 28px 0 0; }
 .kontakt-liste > div + div { padding-left: 28px; border-left: 1px solid var(--haar); }
 .kontakt-liste .etikett { margin-bottom: 12px; }
-.gross-link { font-size: 1.2rem; font-weight: 600; color: var(--tinte); text-decoration: underline; text-decoration-color: var(--akzent-papier); text-underline-offset: .25em; overflow-wrap: anywhere; }
+.gross-link { display: inline-block; padding: 10px 0; font-size: 1.2rem; font-weight: 600; color: var(--tinte); text-decoration: underline; text-decoration-color: var(--akzent-papier); text-underline-offset: .25em; overflow-wrap: anywhere; }
 .kontakt-liste .textlink { margin-top: 8px; }
 .kontakt-formular { margin-top: 14px; }
 .kontakt-formular[hidden] { display: none; }
@@ -464,7 +465,7 @@ html.menue-offen { overflow: hidden; }
 .fuss-marke a:not(.marke) { text-decoration: underline; text-decoration-color: var(--haar-dunkel); text-underline-offset: .25em; }
 .fuss-marke a:not(.marke):hover { color: var(--hell); }
 .fuss-titel { margin-bottom: 10px; color: var(--hell); font-weight: 600; }
-.fuss li a { display: inline-flex; align-items: center; min-height: 40px; transition: color .2s ease; }
+.fuss li a { display: inline-flex; align-items: center; min-height: 44px; transition: color .2s ease; }
 .fuss li a:hover { color: var(--hell); }
 .fuss-unten { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--haar-dunkel); font-size: .84rem; color: rgba(242, 243, 243, .52); }
 
@@ -516,7 +517,7 @@ html.menue-offen { overflow: hidden; }
 .inhaltsangabe { position: sticky; top: calc(var(--kopf) + 28px); padding-top: 22px; border-top: 1px solid var(--tinte); }
 .inhaltsangabe ol { margin-top: 12px; counter-reset: ia; }
 .inhaltsangabe li { counter-increment: ia; }
-.inhaltsangabe a { display: grid; grid-template-columns: 30px minmax(0, 1fr); padding: 7px 0; font-size: .93rem; line-height: 1.4; color: var(--tinte-text); transition: color .2s ease; }
+.inhaltsangabe a { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; min-height: 44px; padding: 7px 0; font-size: .93rem; line-height: 1.4; color: var(--tinte-text); transition: color .2s ease; }
 .inhaltsangabe a::before { content: counter(ia, decimal-leading-zero); padding-top: .08em; font-size: .8rem; font-weight: 600; color: var(--akzent-papier); }
 .inhaltsangabe a:hover { color: var(--tinte); }
 .artikel { min-width: 0; max-width: 46rem; }
@@ -538,6 +539,7 @@ html.menue-offen { overflow: hidden; }
 .quellen h2 { margin-bottom: 8px; font-size: 1rem; letter-spacing: 0; }
 .quellen ol { padding-left: 1.3em; list-style: decimal; }
 .quellen li { padding: 4px 0; font-size: .95rem; }
+.quellen a { display: inline-block; padding: 10px 0; }
 .quellen a { text-decoration: underline; text-decoration-color: var(--haar-mittel); text-underline-offset: .2em; }
 .quellen a:hover { text-decoration-color: var(--akzent-papier); }
 
@@ -575,6 +577,7 @@ html.menue-offen { overflow: hidden; }
 .momente-schluss p { max-width: 42rem; font-size: var(--t-unter); line-height: 1.5; color: var(--tinte-text); letter-spacing: -.01em; }
 .momente-schluss p b { display: block; margin-bottom: 4px; font-weight: 600; color: var(--tinte); }
 @media (max-width: 760px) { .momente-schluss { grid-template-columns: minmax(0, 1fr); justify-items: start; } }
+@media (max-width: 420px) { .momente-schluss { justify-items: stretch; } .momente-schluss .knopf { justify-content: center; } }
 
 .felder-kurz { border-top: 1px solid var(--tinte); }
 .felder-kurz li { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 4px 24px; padding: 16px 0; border-bottom: 1px solid var(--haar); }
@@ -794,6 +797,8 @@ html.menue-offen { overflow: hidden; }
 .anfordern-falle { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
 .anfordern-haken { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; font-size: .92rem; color: var(--tinte-text); cursor: pointer; }
 .anfordern-haken input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--akzent-papier); }
+.anfordern-vorab { color: var(--tinte-text); }
+[data-wenn-seite][hidden], [data-anfrage][hidden] { display: none !important; }
 .anfordern-hinweis { font-size: .86rem; line-height: 1.55; color: var(--tinte-leise); }
 .anfordern-form .knopf { justify-self: start; }
 .anfordern-meldung { min-height: 1.5em; font-size: .92rem; color: var(--tinte-text); }
@@ -958,7 +963,7 @@ html.menue-offen { overflow: hidden; }
 @media (max-width: 900px) { .events-block.kompakt { grid-template-columns: minmax(0, 1fr); } }
 
 /* ── Überarbeitung 31.10.: Problem-Bilder größer und ohne Kasten, die Lücke bleibt im Standbild sichtbar ── */
-.held-raster:has(> .problem-bild) { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); }
+@media (min-width: 821px) { .held-raster:has(> .problem-bild) { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); } } /* nur breit — am Handy einspaltig (Gesamtcheck 31.10.) */
 .problem-bild { padding: 18px 0 0; background: none; border: 0; border-top: 1px solid var(--haar-mittel); border-radius: 0; }
 .pb-svg { margin-top: 22px; }
 .pb-satz { max-width: 34rem; }
@@ -1024,7 +1029,7 @@ html.menue-offen { overflow: hidden; }
 .zk-balken { display: block; width: 100%; height: 4px; margin-top: 16px; }
 .zk-balken .grund { fill: var(--akzent-zart); } .zk-balken .wert { fill: var(--akzent-papier); }
 .zahl-kachel details { margin-top: 14px; font-size: .9rem; color: var(--tinte-leise); }
-.zahl-kachel summary { cursor: pointer; min-height: 24px; color: var(--tinte-text); }
+.zahl-kachel summary { cursor: pointer; display: flex; align-items: center; min-height: 44px; color: var(--tinte-text); }
 .zahl-kachel details p { margin-top: 8px; }
 .zahl-kachel cite { display: block; margin-top: 10px; font-size: .85rem; font-style: normal; }
 .zahl-kachel cite a { color: var(--tinte-leise); text-decoration: underline; text-decoration-color: var(--haar-mittel); text-underline-offset: 3px; display: inline-block; padding-block: 4px; }
