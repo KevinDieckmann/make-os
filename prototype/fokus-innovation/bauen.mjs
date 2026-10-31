@@ -443,7 +443,7 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
   /** Arbeitsprobe (31.10., Prüfung „Gestaltung“: zeigen statt beschreiben): diese Website auf Rechner und Handy, daneben was sie ausmacht. */
   const arbeitsprobe = () => `<section class="abschnitt" aria-labelledby="probe-titel"><div class="w"><div class="probe">
 <div class="probe-text erscheint">${vorzeile('Arbeitsprobe')}<h2 id="probe-titel">${e(F.arbeitsprobe.titel)}</h2><p class="lead">${t(F.arbeitsprobe.text)}</p>${punkte(F.arbeitsprobe.punkte)}<div class="knoepfe">${textlink('/', 'Zur Startseite mit dem Film')}</div></div>
-<figure class="probe-buehne erscheint"><div class="geraet rechner"><img src="/assets/bild/arbeitsprobe/rechner.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="Die Startseite von Fokus Innovation am Rechner: das Logo, der Satz „Fortschritt braucht Fokus.“ und zwei Knöpfe"></div><div class="geraet handy"><img src="/assets/bild/arbeitsprobe/handy.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Seite „In den Markt“ auf dem Handy mit Überschrift und Grafik zum Problem"></div><figcaption class="leise klein-text">Diese Website, gebaut wie Ihre: am Rechner und auf dem Handy.</figcaption></figure>
+<figure class="probe-buehne erscheint"><div class="geraet laptop"><img src="/assets/bild/arbeitsprobe/rechner.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="Die Startseite von Fokus Innovation am Rechner: das Logo, der Satz „Fortschritt braucht Fokus.“ und zwei Knöpfe"></div><div class="geraet handy"><img src="/assets/bild/arbeitsprobe/handy.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Seite „In den Markt“ auf dem Handy mit Überschrift und Grafik zum Problem"></div><figcaption class="leise klein-text">Diese Website, gebaut wie Ihre: am Rechner und auf dem Handy.</figcaption></figure>
 </div></div></section>`;
   const musterPositionierung = () => {
     const M = F.muster_positionierung;
@@ -463,22 +463,60 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
   /** Absicherung für Einmalprodukte (Kevin 31.10.: Freigabe vor dem Bau + Ausstieg) — je Gruppe oder Angebot aus fokus.json. */
   const absicherungVon = (a) => F.absicherung?.[a.gruppe] ?? F.absicherung?.[a.id] ?? null;
   /** Rückwärtsrechnung vom Umsatzziel. Dieselbe Rechnung steht in js/rechner.js; ohne JavaScript zeigt die Seite das Beispiel. */
-  const rueckwaerts = ({ ziel, auftrag, angebotsquote, terminquote, wochen }) => {
-    const abschluesse = Math.ceil(ziel / auftrag);
-    const angebote = Math.ceil(abschluesse / (angebotsquote / 100));
-    const termine = Math.ceil(angebote / (terminquote / 100));
-    return { abschluesse, angebote, termine, woche: (termine / wochen).toLocaleString('de-DE', { maximumFractionDigits: 1 }) };
+  // Vertriebsrechner (31.10., Kevin: „2,2 Mio als Umsatzziel … noch besser, mehr Mehrwert“): vom Ziel zurück bis zu den Erstkontakten,
+  // dazu offene Angebote, Vertriebszeit und der größte Hebel. DIESELBE Rechnung steht in js/rechner.js (Browser); beide hier gepflegt.
+  const VERKAUFSZEIT = 0.4;      // Anteil der Arbeitszeit, den Vertriebler wirklich verkaufen (Salesforce, State of Sales 2026: 40 %)
+  const VOLLZEIT_STUNDEN = 40;
+  const rueckwaerts = (w) => {
+    const abschluesse = Math.ceil(w.ziel / w.auftrag);
+    const angebote = Math.ceil(abschluesse / (w.angebotsquote / 100));
+    const termine = Math.ceil(angebote / (w.terminquote / 100));
+    const kontakte = Math.ceil(termine / (w.kontaktquote / 100));
+    const jeWoche = (n) => n / w.wochen;
+    const termineMit = (aq, auftrag) => Math.ceil(Math.ceil(Math.ceil(w.ziel / auftrag) / (aq / 100)) / (w.terminquote / 100)) / w.wochen;
+    const offen = Math.round(jeWoche(angebote) * w.offen);
+    const stunden = jeWoche(termine) * w.stunden;
+    return {
+      abschluesse, angebote, termine, kontakte,
+      kontakteWoche: jeWoche(kontakte), termineWoche: jeWoche(termine), angeboteWoche: jeWoche(angebote), umsatzMonat: w.ziel / 12,
+      offen, pipeline: offen * w.auftrag, stunden, vertriebler: stunden / (VOLLZEIT_STUNDEN * VERKAUFSZEIT),
+      hebelQuote: Math.max(0, jeWoche(termine) - termineMit(Math.min(100, w.angebotsquote + 7), w.auftrag)), quoteNeu: Math.min(100, w.angebotsquote + 7),
+      hebelAuftrag: Math.max(0, jeWoche(termine) - termineMit(w.angebotsquote, w.auftrag * 1.25)),
+    };
   };
-  const RECHNER_START = { ziel: 240000, auftrag: 8000, angebotsquote: 33, terminquote: 50, wochen: 45 };
+  const RECHNER_START = { ziel: 2200000, auftrag: 8000, kontaktquote: 20, terminquote: 50, angebotsquote: 33, wochen: 45, offen: 4, stunden: 2 };
+  const zahlDe = (n, stellen = 0) => Number(n).toLocaleString('de-DE', { maximumFractionDigits: stellen, minimumFractionDigits: 0 });
   const rechner = () => {
     const r = rueckwaerts(RECHNER_START);
-    const feld = (id, text, schritt, einheit) => `<label class="rechner-feld"><span>${e(text)}</span><span class="rechner-eingabe"><input type="number" inputmode="numeric" min="1" step="${schritt}" value="${RECHNER_START[id]}" data-feld="${id}"><span class="einheit">${e(einheit)}</span></span></label>`;
+    const feld = (id, text, einheit, hilfe = '') => `<label class="rechner-feld"><span>${e(text)}${hilfe ? `<small>${e(hilfe)}</small>` : ''}</span><span class="rechner-eingabe"><input type="text" inputmode="decimal" autocomplete="off" spellcheck="false" value="${zahlDe(RECHNER_START[id])}" data-feld="${id}"><span class="einheit">${e(einheit)}</span></span></label>`;
+    const stufe = (id, name, n) => `<g class="trichter-stufe" data-stufe="${id}"><rect class="grund" x="0" y="0" width="100" height="10" rx="2"/><rect class="wert" x="0" y="0" width="${(100 * n / r.kontakte).toFixed(2)}" height="10" rx="2" data-balken="${id}"/></g>`;
+    const trichter = [['kontakte', 'Erstkontakte', r.kontakte], ['termine', 'Termine', r.termine], ['angebote', 'Angebote', r.angebote], ['abschluesse', 'Abschlüsse', r.abschluesse]];
     return `<section class="abschnitt" id="rechner" aria-labelledby="rechner-titel"><div class="w">${abKopf({ marke: 'Vertriebsrechner', h2: F.rechner.titel, lead: F.rechner.lead, id: 'rechner-titel' })}
 <div class="rechner erscheint" data-rechner>
-<div class="rechner-eingaben">${feld('ziel', 'Umsatzziel im Jahr', 1000, '€')}${feld('auftrag', 'Durchschnittlicher Auftrag', 500, '€')}${feld('angebotsquote', 'Angebote, die zum Auftrag werden', 1, '%')}${feld('terminquote', 'Termine, aus denen ein Angebot wird', 1, '%')}${feld('wochen', 'Arbeitswochen im Jahr', 1, 'Wochen')}</div>
-<dl class="rechner-ergebnis" aria-live="polite"><div><dt>Abschlüsse im Jahr</dt><dd data-aus="abschluesse">${r.abschluesse.toLocaleString('de-DE')}</dd></div><div><dt>Angebote im Jahr</dt><dd data-aus="angebote">${r.angebote.toLocaleString('de-DE')}</dd></div><div><dt>Termine im Jahr</dt><dd data-aus="termine">${r.termine.toLocaleString('de-DE')}</dd></div><div class="haupt"><dt>Termine je Woche</dt><dd data-aus="woche">${r.woche}</dd></div></dl>
+<div class="rechner-eingaben">
+<p class="etikett">Ihr Ziel</p>${feld('ziel', 'Umsatzziel im Jahr', '€')}${feld('auftrag', 'Durchschnittlicher Auftrag', '€')}
+<p class="etikett">Ihre Quoten</p>${feld('kontaktquote', 'Erstkontakte, aus denen ein Termin wird', '%')}${feld('terminquote', 'Termine, aus denen ein Angebot wird', '%')}${feld('angebotsquote', 'Angebote, die zum Auftrag werden', '%')}
+<p class="etikett">Ihr Alltag</p>${feld('wochen', 'Arbeitswochen im Jahr', 'Wochen')}${feld('offen', 'Bis ein Angebot entschieden ist', 'Wochen')}${feld('stunden', 'Zeit je Termin mit Vor- und Nachbereitung', 'Stunden')}
 </div>
-<p class="satz-unter erscheint">Die Startwerte sind ein Beispiel. Ihre eigenen Quoten kennen Sie nach einigen Wochen mit sauberen Zahlen im CRM. ${textlink('/wissen/vertrieb-aufbauen/', 'Mehr im Ratgeber Vertrieb aufbauen')}</p>
+<div class="rechner-rechts">
+<dl class="rechner-ergebnis" aria-live="polite">
+<div class="haupt"><dt>Termine je Woche</dt><dd data-aus="termineWoche">${zahlDe(r.termineWoche, 1)}</dd></div>
+<div><dt>Erstkontakte je Woche</dt><dd data-aus="kontakteWoche">${zahlDe(r.kontakteWoche, 1)}</dd></div>
+<div><dt>Angebote je Woche</dt><dd data-aus="angeboteWoche">${zahlDe(r.angeboteWoche, 1)}</dd></div>
+<div><dt>Abschlüsse im Jahr</dt><dd data-aus="abschluesse">${zahlDe(r.abschluesse)}</dd></div>
+<div><dt>Umsatz je Monat</dt><dd data-aus="umsatzMonat">${zahlDe(r.umsatzMonat)} €</dd></div>
+</dl>
+<figure class="trichter" aria-label="Der Weg vom Erstkontakt zum Abschluss, im Jahr"><figcaption class="etikett">Ihr Trichter im Jahr</figcaption>
+<ul>${trichter.map(([id, name, n]) => `<li><span class="trichter-name">${e(name)}</span><svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">${stufe(id, name, n).replace(/<g[^>]*>|<\/g>/g, '')}</svg><b data-aus="${id}">${zahlDe(n)}</b></li>`).join('')}</ul></figure>
+</div>
+<div class="rechner-mehr">
+<div class="rechner-karte"><p class="etikett">Offene Angebote</p><p class="karte-zahl"><b data-aus="offen">${zahlDe(r.offen)}</b> <span>Angebote im Wert von <b data-aus="pipeline">${zahlDe(r.pipeline)} €</b> sollten im Schnitt gleichzeitig offen sein.</span></p></div>
+<div class="rechner-karte"><p class="etikett">Vertriebszeit</p><p class="karte-zahl"><b data-aus="stunden">${zahlDe(r.stunden, 1)}</b> <span>Stunden je Woche nur für Termine. Bei 40 % Verkaufszeit sind das rund <b data-aus="vertriebler">${zahlDe(r.vertriebler, 1)}</b> Vertriebler in Vollzeit.</span></p><p class="karte-quelle"><a href="${e(Z?.zahlen.find((x) => x.id === 'salesforce-verkaufszeit-2026')?.url ?? '/kostenlos/zahlen/')}" rel="noopener" target="_blank">40 % Verkaufszeit: Salesforce, 2026</a></p></div>
+<div class="rechner-karte hebel"><p class="etikett">Ihr größter Hebel</p><p>Schließen Sie <b data-aus="quoteNeu">${zahlDe(r.quoteNeu)} %</b> statt <b data-aus="quoteAlt">${zahlDe(RECHNER_START.angebotsquote)} %</b> der Angebote ab, brauchen Sie <b data-aus="hebelQuote">${zahlDe(r.hebelQuote, 1)}</b> Termine weniger pro Woche.</p><p>Ist Ihr Auftrag im Schnitt ein Viertel größer, sind es <b data-aus="hebelAuftrag">${zahlDe(r.hebelAuftrag, 1)}</b> Termine weniger.</p></div>
+</div>
+</div>
+<p class="satz-unter erscheint">Die Startwerte sind ein Beispiel. Ihre eigenen Quoten kennen Sie nach einigen Wochen mit sauberen Zahlen im CRM. Genau diesen Takt bauen wir als Head of Sales auf Zeit mit Ihnen auf.</p>
+<div class="knoepfe erscheint">${textlink('/vertrieb/head-of-sales/', 'Head of Sales auf Zeit')}${textlink('/wissen/vertrieb-aufbauen/', 'Ratgeber Vertrieb aufbauen')}</div>
 </div></section>`;
   };
   const itemListe = (name, eintraege) => ({ '@type': 'ItemList', name, numberOfItems: eintraege.length, itemListElement: eintraege.map(([url, n], i) => ({ '@type': 'ListItem', position: i + 1, url: absolut(url), name: n })) });
