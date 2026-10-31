@@ -6,7 +6,7 @@
 // (lib/crm/betrieb.ts `betriebRechtStempeln`): die Karte schickt nur die Absicht.
 
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Ueberschrift, Chip, Knopf, LEUCHT } from '../ui';
+import { Ueberschrift, Chip, Knopf, LEUCHT, useRueckfrage } from '../ui';
 import { Feldzeile, Feld } from './teile';
 import type { Firma } from '@/lib/crm/typen';
 import { HERKUNFT } from '@/lib/make-one/crm';
@@ -18,6 +18,7 @@ const FARBE = { gruen: LEUCHT.gut, gelb: LEUCHT.achtung, rot: LEUCHT.kritisch } 
 const KANAL = { telefon: 'Telefon', mail: 'Mail' } as Record<string, string>;
 
 export function BetriebKarte({ f, heute, setze, hatMandat, hatChance }: { f: Firma; heute: string; setze: (teil: Partial<Firma>) => void; hatMandat: boolean; hatChance: boolean }) {
+  const { bestaetigen, dialog } = useRueckfrage();
   const a = f.adresse ?? {};
   const adr = (feld: keyof NonNullable<Firma['adresse']>) => (v: string) => {
     const neu = { ...a, [feld]: v.trim() || undefined };
@@ -29,6 +30,7 @@ export function BetriebKarte({ f, heute, setze, hatMandat, hatChance }: { f: Fir
   const herkunft = HERKUNFT.find(h => h.id === f.herkunft)?.label;
   return (
     <div>
+      {dialog}
       <Ueberschrift rechts={f.osmId ? 'OpenStreetMap' : undefined}>Betrieb</Ueberschrift>
       <Feldzeile label="Straße"><Feld wert={a.strasse} onFertig={adr('strasse')} /></Feldzeile>
       <Feldzeile label="Hausnummer"><Feld wert={a.hausnummer} onFertig={adr('hausnummer')} /></Feldzeile>
@@ -82,7 +84,7 @@ export function BetriebKarte({ f, heute, setze, hatMandat, hatChance }: { f: Fir
       <Feldzeile label="Werbesperre">
         {f.werbesperre
           ? <span style={{ fontSize: TYP.bedien }}><Chip farbe={LEUCHT.kritisch}>seit {datum(f.werbesperre.seit, heute)}</Chip> <span style={{ color: C.inkLeise }}>{f.werbesperre.grund}</span></span>
-          : <Knopf leise onClick={() => { if (window.confirm(`Werbesperre für „${f.name}“ setzen? Der Betrieb kommt auf die Sperrliste und wird nie wieder als Fund angelegt.`)) setze({ werbesperre: { seit: heute, grund: 'Werbewiderspruch (Art. 21)' } }); }}>Werbesperre setzen</Knopf>}
+          : <Knopf leise onClick={async () => { if (await bestaetigen({ titel: `Werbesperre für „${f.name}“ setzen?`, text: 'Der Betrieb kommt auf die Sperrliste und wird nie wieder als Fund angelegt.', ja: 'Werbesperre setzen' })) setze({ werbesperre: { seit: heute, grund: 'Werbewiderspruch (Art. 21)' } }); }}>Werbesperre setzen</Knopf>}
       </Feldzeile>
       <Feldzeile label="Geprüft">
         <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', fontSize: TYP.bedien, color: C.inkDim }}>
