@@ -15,7 +15,7 @@ const BILDER = {
   // In den Markt: das Kernproblem der Startseite — gutes Produkt, kleiner Umsatz.
   'produkt-umsatz': {
     titel: 'Ihr Produkt ist besser, als Ihr Umsatz zeigt. Mit Sichtbarkeit und planbarem Vertrieb schließt sich die Lücke.',
-    satz: 'Gutes Produkt, kleiner Umsatz. Die Lücke dazwischen schließen Sichtbarkeit und ein Vertrieb, der planbar läuft.',
+    satz: 'Das Produkt ist gut, der Umsatz klein. Dazwischen fehlen meist Sichtbarkeit und ein Vertrieb, der planbar läuft.',
     svg: () => `
 <line class="pb-achse" x1="60" y1="200" x2="340" y2="200"/>
 <line class="pb-moeglich" x1="80" y1="50" x2="330" y2="50"/>

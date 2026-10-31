@@ -80,7 +80,7 @@
   {
    "id": "gespraech",
    "titel": "Das Erstgespräch",
-   "text": "Der Check zeigt, wo Sie stehen. Im Gespräch legen wir fest, wie es weitergeht: 30 Minuten per Video-Call mit Kevin, kostenlos. Sie gehen mit Ihren Top 3 Handlungsempfehlungen für die nächsten 90 Tage raus, klar und messbar. Innerhalb von 24 Stunden bekommen Sie sie schriftlich. Kein Verkaufsgespräch.",
+   "text": "Der Check zeigt, wo Sie stehen. Im Gespräch legen wir fest, wie es weitergeht: 30 Minuten per Video-Call mit Kevin, kostenlos. Sie gehen mit Ihren Top 3 Handlungsempfehlungen für die nächsten 90 Tage raus, so konkret, dass Sie sie messen können. Schriftlich bekommen Sie sie innerhalb von 24 Stunden. Verkauft wird in diesem Gespräch nichts.",
    "regel": "5 Gespräche pro Woche. Ist die Woche voll, bekommen Sie den nächsten freien Termin oder einen Platz auf der Warteliste.",
    "cta": {
     "text": "Gespräch buchen",
@@ -614,7 +614,7 @@
   {
    "id": "was-ist-der-unterschied-zwischen-head",
    "f": "Was ist der Unterschied zwischen Head of Sales und CSO?",
-   "a": "Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer enthält das komplett und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln."
+   "a": "Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer macht all das auch und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln."
   },
   {
    "id": "wie-lange-laufen-die-vertraege",

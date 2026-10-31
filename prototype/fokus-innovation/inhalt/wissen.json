@@ -9,7 +9,7 @@
       "beschreibung": "So bauen Sie Vertrieb auf, der ohne den Gründer läuft: Zielgruppe, Ansprache, Prozess im CRM, Kennzahlen und ein trainiertes Team, in dieser Reihenfolge.",
       "veroeffentlicht": "2026-10-27",
       "aktualisiert": "2026-10-27",
-      "kurz": "Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein Team, das trainiert ist. Die Reihenfolge zählt. Wer mit einem neuen Werkzeug oder dem ersten Vertriebler beginnt, baut ohne Fundament.",
+      "kurz": "Vertrieb wird planbar, wenn fünf Dinge stehen: eine klare Zielgruppe, eine Ansprache mit Leitfäden, ein Prozess im CRM, wenige Kennzahlen mit Wochenreport und ein Team, das trainiert ist. Halten Sie diese Reihenfolge ein. Wer mit einem neuen Werkzeug oder dem ersten Vertriebler anfängt, hat noch nichts, worauf beides aufsetzen kann.",
       "abschnitte": [
         {
           "h": "Warum Vertrieb so oft am Gründer hängt",
@@ -162,7 +162,7 @@
         {
           "h": "Was ein Head of Sales auf Zeit macht",
           "absaetze": [
-            "Er übernimmt die Rolle der Vertriebsleitung, ohne dauerhaft angestellt zu sein. Er bleibt nicht bei Empfehlungen: Er baut das System, setzt es mit Ihrem Team um und macht Gespräche vor, bis Ihr Team sie selbst führt. Teamführung, Recruiting und Strategie gehören zum Chief Sales Officer."
+            "Er übernimmt die Rolle der Vertriebsleitung, ohne dauerhaft angestellt zu sein. Er gibt nicht nur Empfehlungen, er baut das System, setzt es mit Ihrem Team um und macht Gespräche vor, bis Ihr Team sie selbst führt. Teamführung, Recruiting und Strategie gehören zum Chief Sales Officer."
           ],
           "punkte": [
             "Fundament: Zielgruppe, Botschaft, Salesprozess im CRM, Gesprächsleitfäden und Antworten auf Einwände",
@@ -182,7 +182,7 @@
         {
           "h": "Auf Zeit oder fest einstellen?",
           "absaetze": [
-            "Beides hat seinen Platz. Eine feste Vertriebsleitung lohnt sich, wenn das System steht und es vor allem um Führung und Wachstum geht. Auf Zeit lohnt sich, wenn das System erst entstehen muss."
+            "Eine feste Vertriebsleitung lohnt sich, wenn das System steht und es vor allem um Führung und Wachstum geht. Jemanden auf Zeit holen Sie, wenn das System erst entstehen muss."
           ],
           "tabelle": {
             "titel": "Head of Sales auf Zeit und feste Vertriebsleitung im Vergleich",
@@ -240,7 +240,7 @@
         {
           "h": "Was es bei uns kostet",
           "absaetze": [
-            "Der Head of Sales kostet {preis:head-of-sales} netto im Monat bei 6 oder 12 Monaten Laufzeit. Der Tagesworkshop für {preis:tagesworkshop} wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Wir planen jedes Mandat mit fester Zeit ein, damit es die Aufmerksamkeit bekommt, die es braucht."
+            "Der Head of Sales kostet {preis:head-of-sales} netto im Monat bei 6 oder 12 Monaten Laufzeit. Der Tagesworkshop für {preis:tagesworkshop} wird beim Start voll angerechnet. Wer die volle Laufzeit vorab zahlt, bekommt 3 % Skonto. Jedes Mandat bekommt bei uns feste Zeit im Kalender."
           ]
         }
       ],
@@ -292,7 +292,7 @@
       "beschreibung": "Fünf Fragen, die eine klare Positionierung beantwortet, ein einfacher Test für Ihre Startseite und die häufigsten Fehler. Für Gründer und Unternehmer.",
       "veroeffentlicht": "2026-10-27",
       "aktualisiert": "2026-10-27",
-      "kurz": "Eine klare Positionierung beantwortet fünf Fragen in je einem Satz: Für wen sind Sie da? Welches Problem lösen Sie? Wie lösen Sie es? Was unterscheidet Sie? Woran sieht man, dass es stimmt? Wenn diese Sätze stehen, werden Website, Präsentation und Verkaufsgespräch leichter, weil alle dieselbe Geschichte erzählen.",
+      "kurz": "Eine klare Positionierung sagt in fünf Sätzen, für wen Sie da sind, welches Problem Sie lösen, wie Sie es lösen, was Sie unterscheidet und woran man sieht, dass es stimmt. Wenn diese Sätze stehen, werden Website, Präsentation und Verkaufsgespräch leichter, weil alle dieselbe Geschichte erzählen.",
       "abschnitte": [
         {
           "h": "Warum die Positionierung vor der Website kommt",
@@ -306,11 +306,11 @@
           "schritte": [
             {
               "titel": "Für wen",
-              "text": "Beschreiben Sie die Menschen, für die Sie am meisten bewirken. Je genauer, desto besser. Wer alle anspricht, erreicht niemanden richtig."
+              "text": "Beschreiben Sie die Menschen, für die Sie am meisten bewirken, so genau, dass Ihnen dabei ein bestimmter Kunde einfällt."
             },
             {
               "titel": "Das Problem",
-              "text": "Nennen Sie das Problem in den Worten Ihrer Kunden, nicht in Ihren. Was kostet es sie heute: Zeit, Geld, Nerven?"
+              "text": "Nennen Sie das Problem in den Worten Ihrer Kunden, nicht in Ihren. Was kostet es sie heute, zum Beispiel an Stunden oder an verlorenen Aufträgen?"
             },
             {
               "titel": "Die Lösung",
@@ -397,7 +397,7 @@
       "beschreibung": "Was auf die erste Ansicht einer Unternehmens-Homepage gehört, wie Belege Vertrauen schaffen und warum Handy, Ladezeit und Suche von Anfang an mitgedacht werden.",
       "veroeffentlicht": "2026-10-27",
       "aktualisiert": "2026-10-27",
-      "kurz": "Eine Homepage muss in fünf Sekunden drei Fragen beantworten: Was machen Sie? Für wen? Was soll ich als Nächstes tun? Danach zählen Belege statt Behauptungen, eine ruhige Gestaltung, die auch auf dem Handy funktioniert, und eine kurze Ladezeit. Erst die Botschaft, dann das Design.",
+      "kurz": "Eine Homepage muss in fünf Sekunden drei Fragen beantworten: Was machen Sie? Für wen? Was soll ich als Nächstes tun? Danach kommt es auf Belege an, die man prüfen kann, auf eine ruhige Gestaltung, die auch auf dem Handy funktioniert, und auf eine kurze Ladezeit. Ans Design gehen Sie erst, wenn die Botschaft steht.",
       "abschnitte": [
         {
           "h": "Die erste Ansicht",
@@ -428,13 +428,13 @@
         {
           "h": "Schnell laden",
           "absaetze": [
-            "Jede Sekunde Warten kostet Aufmerksamkeit. Kleine Bilder in modernen Formaten, Schriften vom eigenen Server statt von fremden Diensten und kein unnötiges Skript machen den Unterschied. Bei unseren Homepage-Paketen ist eine Ladezeit unter drei Sekunden auf dem Handy Teil der Leistung."
+            "Wer auf dem Handy warten muss, ist schnell wieder weg. Meist bremsen zu große Bilder, Schriften, die von fremden Diensten geladen werden, und Skripte, die keiner braucht. Bei unseren Homepage-Paketen ist eine Ladezeit unter drei Sekunden auf dem Handy Teil der Leistung."
           ]
         },
         {
           "h": "Gefunden werden, auch von KI-Suchen",
           "absaetze": [
-            "Eine Seite, die niemand findet, kann nicht überzeugen. Dazu gehören ein klarer Titel und eine Beschreibung für jede Unterseite, saubere Überschriften, strukturierte Daten für Suchmaschinen und die Anmeldung in der Google Search Console.",
+            "Damit Suchmaschinen Ihre Seite finden, braucht jede Unterseite einen klaren Titel und eine Beschreibung, dazu saubere Überschriften, strukturierte Daten und die Anmeldung in der Google Search Console.",
             "Auch KI-Assistenten werden nach Anbietern gefragt. Für sie gilt dasselbe wie für Menschen: Eine Seite hilft, wenn sie eine Frage direkt beantwortet, mit kurzen, klaren Sätzen, Fragen mit Antworten, Fakten mit Quelle und Preisen, die man nicht erst erfragen muss."
           ]
         },
@@ -492,7 +492,7 @@
       "beschreibung": "Wann sich ein Erklärvideo lohnt, wie ein gutes in 60 bis 90 Sekunden aufgebaut ist und wie es ohne Dreh vor Ort in zehn Werktagen entsteht.",
       "veroeffentlicht": "2026-10-27",
       "aktualisiert": "2026-10-27",
-      "kurz": "Ein Erklärvideo lohnt sich, wenn man Ihr Angebot in 90 Sekunden besser versteht als in drei Absätzen Text. Ein gutes folgt einem einfachen Bogen: Problem, Lösung, Ablauf, nächster Schritt. Einen Dreh vor Ort braucht es nicht: Bei uns entsteht es aus KI-Szenen, Ihrem Material und einer KI-Stimme oder Untertiteln, in zehn Werktagen ab vollständigem Formular und Zahlungseingang.",
+      "kurz": "Ein Erklärvideo lohnt sich, wenn man Ihr Angebot in 90 Sekunden besser versteht als in drei Absätzen Text. Ein gutes folgt einem einfachen Bogen: Problem, Lösung, Ablauf, nächster Schritt. Einen Dreh vor Ort braucht es nicht, bei uns entsteht es aus KI-Szenen, Ihrem Material und einer KI-Stimme oder Untertiteln, in zehn Werktagen ab vollständigem Formular und Zahlungseingang.",
       "abschnitte": [
         {
           "h": "Wann sich ein Erklärvideo lohnt",
@@ -512,7 +512,7 @@
             },
             {
               "titel": "Die Lösung",
-              "text": "Ein Satz dazu, was Sie anders machen. Kein Katalog aller Funktionen."
+              "text": "Ein Satz dazu, was Sie anders machen. Die Liste aller Funktionen lassen Sie weg."
             },
             {
               "titel": "Der Ablauf",
@@ -520,7 +520,7 @@
             },
             {
               "titel": "Der nächste Schritt",
-              "text": "Ein klarer Abschluss: Termin, Check oder Anfrage. Nur einer."
+              "text": "Am Ende steht genau ein nächster Schritt, etwa ein Termin, ein Check oder eine Anfrage."
             }
           ]
         },
@@ -585,7 +585,7 @@
       "beschreibung": "Wo der Mittelstand bei KI steht, warum es so oft an den Daten hakt und wie KI in fünf Schritten im Alltag ankommt. Mit Zahlen von ifo, KfW und Bitkom.",
       "veroeffentlicht": "2026-10-27",
       "aktualisiert": "2026-10-27",
-      "kurz": "KI kommt im Alltag an, wenn drei Dinge zusammenkommen: ein klarer Anwendungsfall mit messbarem Nutzen, eine Datenbasis, auf die das Werkzeug zugreifen kann, und ein Team, das damit arbeitet. Wir gehen dafür in fünf Schritten vor: Stand messen, drei Hebel wählen, Daten ordnen, im Ablauf einführen, Team befähigen und messen.",
+      "kurz": "Damit KI im Alltag ankommt, brauchen Sie einen Anwendungsfall, dessen Nutzen Sie messen können, Daten, auf die das Werkzeug zugreifen kann, und ein Team, das damit arbeitet. Wir gehen dafür in fünf Schritten vor: Stand messen, drei Hebel wählen, Daten ordnen, im Ablauf einführen, Team befähigen und messen.",
       "abschnitte": [
         {
           "h": "Wo der Mittelstand steht",
@@ -601,7 +601,7 @@
         {
           "h": "Woran es hakt",
           "absaetze": [
-            "Das Teure an KI sind selten die Lizenzen. Es sind die Daten und die Anbindung an Ihre Systeme. Das lässt sich klären, bevor ein Werkzeug gekauft wird."
+            "Die Lizenzen sind bei KI selten der große Posten. Das Geld geht meist in die Daten und in die Anbindung an Ihre Systeme. Das lässt sich klären, bevor ein Werkzeug gekauft wird."
           ],
           "beleg": "ki_daten"
         },
@@ -610,11 +610,11 @@
           "schritte": [
             {
               "titel": "Stand messen",
-              "text": "Bevor Sie Werkzeuge kaufen, schauen Sie, wo Sie stehen: Strategie, KI im Alltag, Automatisierung, Daten und Team. Genau das misst unser kostenloser Innovations-Check in rund 10 Minuten."
+              "text": "Bevor Sie Werkzeuge kaufen, schauen Sie, wo Sie stehen: Strategie, KI im Alltag, Automatisierung, Daten und Team. Das misst unser kostenloser Innovations-Check in rund 10 Minuten."
             },
             {
               "titel": "Drei Hebel wählen",
-              "text": "Wählen Sie die drei Anwendungsfälle mit der größten Wirkung und einem klaren Nutzen: weniger Handarbeit, schnellere Antworten, weniger Fehler. Mehr als drei auf einmal versanden."
+              "text": "Wählen Sie die drei Anwendungsfälle mit dem größten Nutzen, etwa weniger Handarbeit oder schnellere Antworten an Kunden. Wer mehr als drei auf einmal anfängt, bringt selten einen davon zu Ende."
             },
             {
               "titel": "Datenbasis ordnen",
@@ -622,7 +622,7 @@
             },
             {
               "titel": "Im Ablauf einführen",
-              "text": "Führen Sie das Werkzeug in einem echten Ablauf ein, mit einer Person, die es verantwortet, und einem Termin, an dem Sie messen. Nicht daneben, sondern mittendrin."
+              "text": "Führen Sie das Werkzeug in einem echten Ablauf ein, mit einer Person, die es verantwortet, und einem Termin, an dem Sie messen. Ein Versuch neben der eigentlichen Arbeit sagt Ihnen wenig."
             },
             {
               "titel": "Team befähigen und messen",
@@ -634,7 +634,7 @@
           "h": "Innovation ist mehr als KI",
           "absaetze": [
             "KI ist ein Werkzeug unter mehreren. Automatisierung und neue Software gehören genauso dazu, und alle brauchen dieselbe Grundlage: klare Abläufe und saubere Daten.",
-            "Deshalb bringen wir sie dorthin, wo sie im Alltag wirken: in Angebote, Anfragen, Abläufe und das Wissen eines Unternehmens."
+            "Wir setzen sie deshalb dort ein, wo jeden Tag Arbeit anfällt, etwa bei Angeboten, Anfragen, Abläufen und dem Wissen, das im Unternehmen steckt."
           ]
         },
         {
@@ -708,7 +708,7 @@
         {
           "h": "Zahl 1: Angebote im Monat",
           "absaetze": [
-            "Zählen Sie, wie viele Angebote Sie in einem Monat verschicken. Nicht Gespräche und nicht Anfragen, sondern schriftliche Angebote mit Preis und Datum. Die Zahl zeigt, ob genug in Ihren Vertrieb hineinkommt.",
+            "Zählen Sie, wie viele Angebote Sie in einem Monat verschicken. Gemeint sind schriftliche Angebote mit Preis und Datum, keine Gespräche und keine Anfragen. Die Zahl zeigt, ob genug in Ihren Vertrieb hineinkommt.",
             "Legen Sie einmal fest, was als Angebot zählt, und bleiben Sie dabei, sonst vergleichen Sie jeden Monat etwas anderes. Sinkt die Zahl über mehrere Monate, spüren Sie das oft erst später, wenn die Aufträge fehlen."
           ]
         },
@@ -1005,7 +1005,7 @@
       "beschreibung": "Die ersten 30 Tage mit KI im Team: einen Ablauf wählen, Firmenlizenz und Regeln klären, messen, was es spart, und danach entscheiden, wie es weitergeht.",
       "veroeffentlicht": "2026-10-30",
       "aktualisiert": "2026-10-30",
-      "kurz": "Die ersten 30 Tage mit KI gelingen, wenn Sie klein anfangen: ein Ablauf statt zehn, eine Firmenlizenz statt privater Konten, wenige schriftliche Regeln und eine Messung vorher und nachher. Am Ende steht eine bewusste Entscheidung: ausweiten, anpassen oder aufhören. So wird aus Ausprobieren ein Ergebnis.",
+      "kurz": "Fangen Sie in den ersten 30 Tagen klein an: mit einem einzigen Ablauf, einer Firmenlizenz, die das Unternehmen verwaltet, wenigen schriftlichen Regeln und einer Messung vorher und nachher. Am Tag 30 entscheiden Sie anhand der Zahlen, ob Sie ausweiten, anpassen oder aufhören.",
       "abschnitte": [
         {
           "h": "Vom Ausprobieren zum Ergebnis",
@@ -1014,7 +1014,7 @@
           ],
           "beleg": "ki_potenzial",
           "absaetze_danach": [
-            "30 Tage sind lang genug, um einen echten Ablauf zu verändern, und kurz genug, um dranzubleiben. Danach wissen Sie, ob sich der Einsatz lohnt, und haben Zahlen statt Eindrücke."
+            "In 30 Tagen lässt sich ein echter Ablauf umstellen, und so lange hält ein Team auch durch. Danach wissen Sie anhand gemessener Minuten, ob sich der Einsatz lohnt."
           ]
         },
         {
@@ -1119,7 +1119,7 @@
         {
           "h": "Tag 30: Entscheiden",
           "absaetze": [
-            "Am Ende steht eine bewusste Entscheidung, keine stille Gewöhnung. Es gibt drei Möglichkeiten:"
+            "Nach 30 Tagen entscheiden Sie bewusst, damit der Versuch nicht einfach still weiterläuft. Es gibt drei Möglichkeiten:"
           ],
           "schritte": [
             {
@@ -1132,11 +1132,11 @@
             },
             {
               "titel": "Aufhören",
-              "text": "Der Ablauf spart kaum Zeit oder kostet mehr Prüfung, als er bringt. Dann lassen Sie ihn und nehmen das Gelernte in den nächsten Versuch mit. Auch das ist ein Ergebnis."
+              "text": "Der Ablauf spart kaum Zeit oder kostet mehr Prüfung, als er bringt. Dann lassen Sie ihn und nehmen das Gelernte in den nächsten Versuch mit. Dann wissen Sie wenigstens sicher, was bei Ihnen nicht trägt."
             }
           ],
           "absaetze_danach": [
-            "Halten Sie die Entscheidung mit den Zahlen schriftlich fest. Nach einigen solchen Runden haben Sie keine Sammlung von Versuchen mehr, sondern Abläufe, die mit KI laufen und deren Nutzen Sie kennen."
+            "Halten Sie die Entscheidung mit den Zahlen schriftlich fest. Nach einigen solchen Runden laufen mehrere Abläufe mit KI, und Sie wissen bei jedem, was er bringt."
           ]
         },
         {
@@ -1152,7 +1152,7 @@
         {
           "h": "So arbeiten wir",
           "absaetze": [
-            "Welcher Ablauf sich bei Ihnen zuerst lohnt, klärt oft ein Blick von außen. Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
+            "Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
           ]
         }
       ],
@@ -1203,8 +1203,8 @@
           "h": "Warum viele Kundenstimmen nicht wirken",
           "absaetze": [
             "„Super Zusammenarbeit, sehr zu empfehlen!“ steht auf vielen Websites. Solche Sätze schaden nicht, aber sie überzeugen kaum: Sie könnten über jede Firma geschrieben sein, und man weiß nicht, wer sie gesagt hat.",
-            "Eine Kundenstimme wirkt, wenn sie drei Dinge leistet: Sie nennt ein Ergebnis, sie stammt erkennbar von einer echten Person, und Ihr nächster Kunde erkennt sich darin wieder. Das gelingt selten zufällig. Es braucht die richtigen Fragen und etwas Arbeit von Ihnen.",
-            "Dazu kommt: Bei Geschäftskunden entscheidet selten eine Person allein."
+            "Eine Kundenstimme wirkt, wenn sie ein Ergebnis nennt, erkennbar von einer echten Person stammt und Ihr nächster Kunde sich darin wiedererkennt. Von allein entsteht so eine Stimme selten. Es braucht die richtigen Fragen und etwas Arbeit von Ihnen.",
+            "Dazu kommt, dass bei Geschäftskunden selten eine Person allein entscheidet."
           ],
           "zahl": "forrester-kaufgruppe",
           "absaetze_danach": [
@@ -1384,11 +1384,11 @@
         {
           "h": "Warum die Auswahl entscheidet",
           "absaetze": [
-            "Viele Unternehmen ahnen, dass KI ihnen helfen könnte, wissen aber nicht, wo sie anfangen sollen. Ausprobiert wird viel, ausgeschöpft wenig:"
+            "Dass KI Arbeit abnehmen kann, ahnen viele Unternehmen, offen ist meist nur, wo sie anfangen sollen. Viele probieren schon etwas aus, doch nur wenige holen bisher viel heraus:"
           ],
           "zahl": "bitkom-ki-potenzial-2026",
           "absaetze_danach": [
-            "Der erste Anwendungsfall prägt, wie Ihr Team über KI denkt. Ein Ablauf, der sichtbar Zeit spart und bei dem nichts schiefgeht, öffnet die Tür für den nächsten. Ein Fehlgriff kostet Vertrauen. Deshalb lohnt sich eine Stunde Bewertung, bevor Sie loslegen."
+            "Der erste Anwendungsfall prägt, wie Ihr Team über KI denkt. Spart der erste Ablauf sichtbar Zeit und geht dabei nichts schief, ist das Team beim nächsten gern dabei. Geht er daneben, ist das Vertrauen erst einmal weg. Deshalb lohnt sich eine Stunde Bewertung, bevor Sie loslegen."
           ]
         },
         {
@@ -1569,7 +1569,7 @@
         {
           "h": "So arbeiten wir",
           "absaetze": [
-            "Welcher Ablauf sich bei Ihnen zuerst lohnt, klärt oft ein Blick von außen. Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
+            "Der Innovations-Check zeigt Ihre Stufe und den Vergleich mit Ihrer Branche. Im kostenlosen Erstgespräch legen wir danach Ihre Top 3 für die nächsten 90 Tage fest, schriftlich innerhalb von 24 Stunden. In Umsetzungsprojekten führen wir sie mit Ihnen ein, bis sie im Alltag laufen, zum Festpreis mit klarem Umfang. Die Umsetzungsprojekte starten in Kürze."
           ]
         }
       ],
@@ -1630,8 +1630,8 @@
         {
           "h": "Woran Sie Ihre Phase erkennen",
           "absaetze": [
-            "Ein Vertrieb wächst nicht gleichmäßig, sondern in Stufen. Was in der einen Phase hilft, bremst in der nächsten. Ein Gründer, der allein verkauft, braucht keinen Führungsrhythmus für zehn Leute. Ein Team mit acht Vertrieblern kommt ohne ihn nicht aus.",
-            "Bestimmen Sie deshalb zuerst, wo Sie stehen. Entscheidend ist nicht die Zahl der Mitarbeitenden, sondern wer verkauft und wer führt."
+            "Ein Vertrieb wächst in Stufen, und was in der einen hilft, bremst oft in der nächsten. Ein Gründer, der allein verkauft, braucht keinen Führungsrhythmus für zehn Leute, ein Team mit acht Vertrieblern dagegen kommt ohne ihn nicht aus.",
+            "Bestimmen Sie deshalb zuerst, wo Sie stehen. Dabei kommt es weniger auf die Zahl der Mitarbeitenden an als darauf, wer verkauft und wer führt."
           ],
           "tabelle": {
             "titel": "Die drei Phasen eines Vertriebs",
@@ -1671,7 +1671,7 @@
         {
           "h": "Was in jeder Phase zuerst stehen muss",
           "absaetze": [
-            "In jeder Phase gibt es ein Fundament, ohne das der nächste Schritt nicht trägt. Wer es überspringt, zahlt später doppelt: mit Leuten, die nicht ankommen, und mit Zahlen, denen niemand traut."
+            "In jeder Phase gibt es ein Fundament, ohne das der nächste Schritt nicht trägt. Wer es überspringt, zahlt später dafür, meist mit Leuten, die nicht ankommen, und mit Zahlen, denen niemand traut."
           ],
           "schritte": [
             {
@@ -1695,7 +1695,7 @@
           "h": "Übergang 1: Der Gründer gibt die Termine ab",
           "absaetze": [
             "Der erste Übergang ist der schwerste, weil der Gründer abgeben muss, was er am besten kann. Meist gibt er zuerst die Erstansprache und die Terminvereinbarung ab. Er führt weiter die Beratungsgespräche und schließt ab, bekommt dafür aber mehr Termine, als er allein vereinbaren könnte.",
-            "Der Zeitpunkt ist richtig, wenn drei Dinge zusammenkommen: Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch folgt einem Ablauf, den Sie erklären können, und es gibt genug Kontakte, um eine Person sinnvoll zu beschäftigen. Fehlt eines davon, verbringt die neue Person ihre ersten Monate mit Suchen.",
+            "Der Zeitpunkt ist richtig, wenn Sie wissen, welche Kunden am besten passen, Ihr Erstgespräch einem Ablauf folgt, den Sie erklären können, und es genug Kontakte gibt, um eine Person sinnvoll zu beschäftigen. Fehlt eines davon, verbringt die neue Person ihre ersten Monate mit Suchen.",
             "Typische Fehler an dieser Stelle:"
           ],
           "punkte": [
@@ -1897,7 +1897,7 @@
         {
           "h": "Vergütung: Bausteine und Anreize",
           "absaetze": [
-            "Vergütung steuert Verhalten. Was Sie belohnen, bekommen Sie. Belohnen Sie unterschriebene Verträge, bekommen Sie Unterschriften, auch von Kunden, die nicht passen. Belohnen Sie bezahlte Aufträge oder Kunden, die bleiben, bekommen Sie eher das, was Sie wirklich wollen.",
+            "Über die Vergütung lenken Sie, worauf Ihre Leute achten. Belohnen Sie unterschriebene Verträge, bekommen Sie Unterschriften, auch von Kunden, die nicht passen. Belohnen Sie bezahlte Aufträge oder Kunden, die bleiben, bekommen Sie eher das, was Sie wirklich wollen.",
             "Die meisten Modelle setzen sich aus wenigen Bausteinen zusammen:"
           ],
           "punkte": [
@@ -2084,7 +2084,7 @@
         {
           "h": "Warum sich die Kennzahlen mit der Phase ändern",
           "absaetze": [
-            "Eine Kennzahl ist nur so gut wie die Entscheidung, die sie möglich macht. Am Start entscheidet ein Gründer, wofür er seine Woche nutzt. Im Aufbau entscheidet er, ob eine neue Person ankommt. Im Wachstum entscheidet eine Vertriebsleitung, wo sie das Team einsetzt und welche Zahl sie der Geschäftsführung zusagt. Jede dieser Entscheidungen braucht andere Zahlen.",
+            "Eine Kennzahl lohnt sich nur, wenn Sie danach etwas entscheiden. Am Start entscheidet ein Gründer, wofür er seine Woche nutzt. Im Aufbau entscheidet er, ob eine neue Person ankommt. Im Wachstum entscheidet eine Vertriebsleitung, wo sie das Team einsetzt und welche Zahl sie der Geschäftsführung zusagt. Jede dieser Entscheidungen braucht andere Zahlen.",
             "Wer zu früh zu viele Kennzahlen misst, pflegt Tabellen statt zu verkaufen. Wer zu spät nachzieht, steuert ein Team mit den Zahlen eines Einzelkämpfers. Dieser Ratgeber nennt je Phase sieben Kennzahlen, jeweils mit Formel, Grund und Weg zur Erfassung. In welcher Phase Sie stehen, zeigt unser Leitfaden vom Gründer-Vertrieb zum Vertriebsteam."
           ]
         },

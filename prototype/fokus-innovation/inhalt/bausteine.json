@@ -11,7 +11,7 @@
     { "id": "zielgruppe-personas", "bereich": "vertrieb", "preis": 14900 },
     { "id": "salesprozess-crm", "bereich": "vertrieb", "preis": 24900 },
     { "id": "nachfassen-vorlagen", "bereich": "vertrieb", "preis": 4900 },
-    { "id": "paket-vertrieb", "bereich": "vertrieb", "preis": 59000, "paket": ["einwandbibliothek", "skriptset-bant", "zielgruppe-personas", "salesprozess-crm"], "titel": "Vertriebs-Paket: alle vier Playbook-Bausteine", "kurz": "Einwandbibliothek, Skriptset mit BANT, Zielgruppe und Personas, Salesprozess im CRM: das Fundament Ihres Vertriebs, zusammen günstiger." },
+    { "id": "paket-vertrieb", "bereich": "vertrieb", "preis": 59000, "paket": ["einwandbibliothek", "skriptset-bant", "zielgruppe-personas", "salesprozess-crm"], "titel": "Vertriebs-Paket: alle vier Playbook-Bausteine", "kurz": "Einwandbibliothek, Skriptset mit BANT, Zielgruppe und Personas, Salesprozess im CRM: alle vier zusammen, günstiger als einzeln." },
     { "id": "elevator-pitch", "bereich": "sichtbarkeit", "preis": 6900 },
     { "id": "botschaftshaus", "bereich": "sichtbarkeit", "preis": 14900 },
     { "id": "wettbewerb-unterschied", "bereich": "sichtbarkeit", "preis": 14900 },

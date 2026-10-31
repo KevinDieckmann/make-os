@@ -25,7 +25,7 @@
     },
     "momentum": {
       "titel": "Sichtbar sein.|Planbar verkaufen.",
-      "satz": "Sichtbarkeit bringt Anfragen. Ein Vertrieb mit System macht Kunden daraus. Erst Struktur und Daten, dann KI."
+      "satz": "Sichtbarkeit bringt Anfragen, ein Vertrieb mit System macht Kunden daraus. KI kommt dazu, sobald Abläufe und Daten stimmen."
     },
     "durchbruch": {
       "titel": "Jetzt zeigt Ihr Umsatz,|wie gut Ihr Produkt ist.",
@@ -36,15 +36,15 @@
     "vorzeile": "Agentur für Sichtbarkeit, Vertrieb und Innovation · Berlin",
     "titel": "Sichtbar sein. Planbar verkaufen.",
     "ruhig": "Für Gründer und Unternehmer, die wachsen möchten.",
-    "lead": "Positionierung, Website, Videos und PR bringen Anfragen. Ein Vertrieb mit System macht Kunden daraus. Und wo KI Arbeit spart, führen wir sie ein. Jedes Angebot mit offenem Preis und festem Ablauf, und wir setzen selbst mit um.",
+    "lead": "Wir machen Ihr Angebot mit Positionierung, Website, Videos und PR bekannt und bauen den Vertrieb, der aus Anfragen Kunden macht. Wo KI Arbeit spart, führen wir sie ein. Jedes Angebot hat einen offenen Preis und einen festen Ablauf, und wir setzen selbst mit um.",
     "kernsatz": "Wir machen gute Produkte bekannt und bauen den Vertrieb, der daraus Kunden macht."
   },
   "leitidee": {
     "titel": "Wir rücken Innovation in den Fokus.",
-    "lead": "Wir erleben es immer wieder: Gute Ideen und starke Produkte bleiben unter ihren Möglichkeiten, weil sie zu wenige sehen und niemand sie systematisch verkauft. Das ändern wir, Produkt für Produkt.",
+    "lead": "Gute Ideen und starke Produkte bleiben oft unter ihren Möglichkeiten, weil zu wenige sie kennen und niemand sie mit System verkauft. Das wollen wir ändern, ein Produkt nach dem anderen.",
     "absaetze": [
-      "Wir wissen, wovon wir reden: Wir kommen aus der Vertriebsführung, arbeiten in laufenden Projekten mit KI, auch im internationalen Umfeld, und bauen unsere eigene Software. Wenn es sein muss, schrauben wir am Produkt mit.",
-      "Und wir bringen die Menschen zusammen, die Neues umsetzen: in unserem Netzwerk, mit unseren Partnern und bei unseren Events."
+      "Wir kommen aus der Vertriebsführung, arbeiten in laufenden Projekten mit KI, auch im internationalen Umfeld, und bauen unsere eigene Software. Wenn es sein muss, schrauben wir am Produkt mit.",
+      "Und wir bringen Menschen zusammen, die Neues umsetzen, vor allem bei unseren Events."
     ],
     "zitat": {
       "text": "Was … Agenten letztlich zu Super-Agenten macht, ist, dass man ihnen Zugang zum Wissen des eigenen Unternehmens gibt.",
@@ -61,7 +61,7 @@
       },
       {
         "titel": "Der Vertrieb",
-        "text": "Wir haben oft gesehen, wie gute Produkte scheitern: nicht an der Idee, sondern daran, dass sie niemand sieht und niemand verkauft."
+        "text": "Wir haben oft gesehen, wie gute Produkte scheitern, weil sie keiner kennt und keiner richtig verkauft. An der Idee lag es fast nie."
       },
       {
         "titel": "Das Bauen",
@@ -128,7 +128,7 @@
       "nr": "01",
       "name": "Sichtbarkeit",
       "paar": "Gesehen werden.",
-      "satz": "Positionierung, Homepages, Videos, PR und Kommunikation: damit man Sie versteht, findet und anfragt.",
+      "satz": "Positionierung, Homepages, Videos sowie PR und Kommunikation, damit Kunden Sie finden und schnell verstehen, was Sie machen.",
       "problem": "Besucher verstehen in fünf Sekunden nicht, was Sie machen und warum sie Sie anrufen sollten. In Medien und auf Bühnen Ihrer Branche kommen andere zu Wort, und Anfragen bleiben aus.",
       "weg": [
         "Unklare Botschaft, kaum bekannt, kaum Anfragen",
@@ -137,7 +137,7 @@
       ],
       "held": {
         "titel": "Wer Sie nicht kennt, kann nicht kaufen.",
-        "text": "Wir machen Sie verständlich und bekannt: Positionierung, Website, Videos und Pressearbeit. Immer mit Blick auf den Vertrieb, damit aus Aufmerksamkeit Anfragen werden."
+        "text": "Mit Positionierung, Website, Videos und Pressearbeit machen wir Sie verständlich und bekannt. Den Vertrieb denken wir dabei immer mit, denn Aufmerksamkeit allein bringt noch keine Anfrage."
       },
       "schritte": [
         {
@@ -159,7 +159,7 @@
       ],
       "auch": {
         "titel": "Netzwerk und Events",
-        "text": "Sichtbar wird, wer auch dort auftaucht, wo die Richtigen sind. Wir laden Sie zu unseren Events ein und stellen Kontakte her, wo es passt. Was Sie dafür brauchen, besprechen wir im Gespräch."
+        "text": "Manche Kunden lernt man am besten persönlich kennen. Wir laden Sie zu unseren Events ein und stellen Kontakte her, wo es passt. Was Sie dafür brauchen, besprechen wir im Gespräch."
       },
       "kurz": "Wir machen Ihr Angebot verständlich und bekannt: Positionierung ab {ab:positionierung}, Websites ab {preis:homepage-landing} mit Lieferung in 10 bis 25 Werktagen, Erklärvideos ab {preis:erklaervideo} sowie PR und Kommunikation ab {ab:pr-kommunikation} im Monat, alles netto. Jeweils mit festem Preis, festem Ablauf und Texten von uns."
     },
@@ -177,7 +177,7 @@
       "beleg": "auftraege",
       "held": {
         "titel": "Ein Vertrieb, der nicht an Ihnen hängt.",
-        "text": "Wir bauen Ablauf, Zahlen und Team so auf, dass Ihr Team selbst abschließt. Wir beraten nicht nur, wir machen vor."
+        "text": "Wir bauen Ablauf, Kennzahlen und Rollen so auf, dass Ihre Leute selbst abschließen. Wir machen es vor und üben mit ihnen, bis es sitzt."
       },
       "schritte": [
         {
@@ -218,14 +218,14 @@
       "kurz": "Wir bauen Ihren Vertrieb auf, bis Ihr Team selbst abschließt. Wer erst testen will, startet mit dem Tagesworkshop für {preis:tagesworkshop} netto, der beim Mandat voll angerechnet wird. Die Vertriebsleitung auf Zeit (auch Interim oder Fractional Head of Sales genannt) übernehmen wir als Head of Sales oder als Chief Sales Officer, jeweils für 6 oder 12 Monate.",
       "leiter": {
         "titel": "Ihr Vertriebsleiter kommt nicht in Fahrt?",
-        "text": "Das liegt selten an der Person, oft am fehlenden System. Wir bauen den Prozess, mit dem er führt, arbeiten ihn ein und übergeben ihm den Vertrieb. Ein Vertrieb, der nicht mehr an der Geschäftsführung hängt."
+        "text": "Meist fehlt ihm ein System, nach dem er führen kann. Das bauen wir mit ihm auf, arbeiten ihn ein und übergeben ihm dann den Vertrieb. Danach hängt der Vertrieb nicht mehr an der Geschäftsführung."
       }
     },
     "innovation": {
       "nr": "03",
       "name": "Innovation",
       "paar": "Im Alltag ankommen.",
-      "satz": "Abläufe, Daten, KI und neue Software: erst Struktur, dann Einführung, bis es im Alltag genutzt wird.",
+      "satz": "Abläufe, Daten, KI und neue Software. Wir führen sie so ein, dass Ihr Team im Alltag damit arbeitet.",
       "problem": "KI wird ausprobiert, aber die Abläufe dahinter sind nicht geklärt und die Daten liegen verstreut. Dann macht KI Fehler nur schneller, neue Werkzeuge versanden, und die Geschäftsführung bleibt der Engpass.",
       "weg": [
         "Werkzeuge ausprobiert, Abläufe unklar, Daten verstreut",
@@ -235,7 +235,7 @@
       "beleg": "ki_daten",
       "held": {
         "titel": "KI braucht Struktur. Wir bauen sie mit Ihnen.",
-        "text": "Am Ende geht es um Ihre Abläufe: Routineaufgaben, Kommunikation, Angebote, Auswertungen. KI macht sie schneller, aber nur, wenn Struktur und Datenbasis stimmen. Sonst skaliert sie Fehler. Deshalb ordnen wir zuerst Abläufe und Daten, führen dann KI und neue Software ein und befähigen Ihr Team, bis es im Alltag läuft."
+        "text": "Es geht um das, was jeden Tag anfällt: Routineaufgaben, Kommunikation, Angebote, Auswertungen. KI macht das schneller, aber nur, wenn die Abläufe klar sind und die Daten stimmen. Sonst macht sie die Fehler nur schneller. Deshalb ordnen wir zuerst Abläufe und Daten, führen dann KI und neue Software ein und schulen Ihr Team, bis es damit arbeitet."
       },
       "schritte": [
         {
@@ -259,7 +259,7 @@
       "brain": {
         "titel": "KI-Brain",
         "stand": "In Vorbereitung",
-        "text": "KI ist nur so gut wie die Datenbasis. Wir bauen mit Ihnen auf, was sie braucht: Wissen, Abläufe und Daten sauber an einem Ort, damit KI im Alltag wirklich funktioniert.",
+        "text": "KI ist nur so gut wie die Daten, auf die sie zugreift. Wir bringen mit Ihnen Wissen, Abläufe und Daten an einen Ort, auf den sie sich verlassen kann.",
         "betreff": "Interesse: KI-Brain"
       },
       "kurz": "Wir ordnen zuerst Abläufe und Daten und führen dann KI, Automatisierung und neue Software ein, bis sie im Alltag genutzt werden. Start ist der kostenlose Innovations-Check, danach legen wir im Erstgespräch die drei wichtigsten Abläufe fest. Umsetzungsprojekte mit Festpreis und klarem Umfang starten in Kürze.",
@@ -299,7 +299,7 @@
     "formate": [
       {
         "titel": "Gesprächsrunde",
-        "text": "Ein kleiner Kreis, ein Thema, das gerade viele beschäftigt. Offen, vertraulich und mit Zeit für jede Stimme."
+        "text": "Ein kleiner Kreis spricht offen über ein Thema, das gerade viele beschäftigt. Was gesagt wird, bleibt im Raum, und jeder kommt zu Wort."
       },
       {
         "titel": "Impulsabend",
@@ -307,17 +307,17 @@
       },
       {
         "titel": "Workshop",
-        "text": "Ein Thema, wenige Stunden, ein Ergebnis zum Mitnehmen. Etwa zu KI im Alltag, zur eigenen Positionierung oder zum Vertrieb."
+        "text": "In wenigen Stunden arbeiten Sie an einem Thema und nehmen ein Ergebnis mit, etwa zu KI im Alltag, zur eigenen Positionierung oder zum Vertrieb."
       },
       {
         "titel": "Treffen im Netzwerk",
-        "text": "Wir bringen Unternehmen mit Partnern aus unserem Netzwerk zusammen, die zu ihrer Aufgabe passen. Gezielt und auf Augenhöhe."
+        "text": "Wir stellen Unternehmen gezielt Menschen aus unserem Netzwerk vor, die zu ihrer Aufgabe passen."
       }
     ],
     "merkmale": [
       {
-        "titel": "Kuratiert",
-        "text": "Wir laden ein und mischen bewusst: Start-ups neben Mittelstand, Gründer neben Entscheidern, Technik neben Vertrieb."
+        "titel": "Auf Einladung",
+        "text": "Wir laden selbst ein und mischen bewusst, zum Beispiel Start-ups mit Mittelständlern oder Leute aus der Technik mit Leuten aus dem Vertrieb."
       },
       {
         "titel": "Persönlich",
@@ -328,14 +328,14 @@
         "text": "Malin bringt die richtigen Menschen zusammen. Wer zusammenpasst, den verbinden wir nach dem Event gezielt."
       }
     ],
-    "warum": "Wir bringen die richtigen Menschen zusammen, bei unseren Events und im Netzwerk. Für den Standort und nicht nur für uns.",
+    "warum": "Viele gute Verbindungen entstehen erst, wenn man sich einmal gegenübersitzt. Davon soll der Standort etwas haben, nicht nur wir.",
     "start_titel": [
       "Verschiedene Formate.",
       "Ein Fokus."
     ],
     "start_ruhig": "Menschen zusammenbringen, die Neues umsetzen.",
-    "held_text": "Wir bringen Menschen zusammen, die Neues umsetzen: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Kuratiert und auf Einladung, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.",
-    "start_text": "Kuratierte Runden für Gründer und Unternehmer, die Neues umsetzen. Für Gäste kostenlos, auf Einladung."
+    "held_text": "Wir bringen Menschen zusammen, die Neues umsetzen: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Wir laden gezielt ein, zur Gesprächsrunde im kleinen Kreis ebenso wie zum Workshop. Gastgeberin ist Malin.",
+    "start_text": "Kleine Runden für Gründer und Unternehmer, die gerade etwas Neues aufbauen. Für Gäste kostenlos, auf Einladung."
   },
   "warum_wir": [
     {
@@ -345,17 +345,17 @@
     },
     {
       "titel": "Wir kommen aus dem Vertrieb",
-      "text": "Zahlen und Abschlüsse statt Folien.",
+      "text": "Wir haben selbst Vertriebsziele verantwortet und messen unsere Arbeit an Abschlüssen.",
       "beleg": "Vertriebsteams geführt, Partnernetze aufgebaut, Head of Sales bei einem FinTech."
     },
     {
       "titel": "Sichtbarkeit und Vertrieb greifen ineinander",
-      "text": "Was Website, Videos und PR an Aufmerksamkeit bringen, macht der Vertrieb zu Kunden. Aus einer Hand.",
+      "text": "Wer Website, Videos, PR und Vertrieb von uns bekommt, verliert keine Anfrage zwischen zwei Dienstleistern.",
       "beleg": "Die Fachleute für Film, Design, Technik und PR sind im Team, dazu unsere Events für die richtigen Kontakte."
     },
     {
       "titel": "Klare Preise, feste Abläufe",
-      "text": "Jedes Angebot steht mit Preis, Ablauf und Konditionen auf seiner Seite.",
+      "text": "Was ein Angebot kostet und wie es abläuft, lesen Sie vor dem ersten Gespräch auf seiner Seite.",
       "beleg": "Homepages und Videos mit Lieferzeit in Werktagen, Mandate mit festem Monatspreis und klarer Laufzeit."
     }
   ],
@@ -376,7 +376,7 @@
       "titel": "Mittelstand, der Neues einführt",
       "richtung": "Innovation ins Unternehmen bringen",
       "text": "Sie wollen KI und neue Werkzeuge nicht nur ausprobieren, sondern im Alltag nutzen.",
-      "einstieg": "Innovation: KI einführen, Datenbasis, Umsetzungsprojekte. Dazu Vertrieb."
+      "einstieg": "Der Innovations-Check, danach KI und Datenbasis in Umsetzungsprojekten. Bei Bedarf auch Vertrieb."
     }
   ],
   "werte": [
@@ -386,7 +386,7 @@
     },
     {
       "titel": "Umsetzung mit System",
-      "text": "Wir machen mit, bis es läuft: Prozess im CRM, Kennzahlen, Wochenreport. Kein Konzept für die Schublade."
+      "text": "Wir machen mit, bis Prozess im CRM, Kennzahlen und Wochenreport laufen. Was wir aufbauen, wird danach auch benutzt."
     },
     {
       "titel": "Verbindend",
@@ -396,7 +396,7 @@
   "arbeitsweise": [
     {
       "titel": "Fortschrittlich",
-      "text": "Wir arbeiten mit dem, was morgen Standard ist, auch selbst mit KI, und werden jede Woche besser."
+      "text": "Wir arbeiten selbst jeden Tag mit KI und neuen Werkzeugen. Was sich bei uns bewährt, bringen wir zu Ihnen mit."
     },
     {
       "titel": "Tempo",
@@ -404,7 +404,7 @@
     },
     {
       "titel": "Alle Fachleute im Team",
-      "text": "Film, Design, Technik, PR und Vertrieb kommen aus einem Team. Sie behalten einen Ansprechpartner, wir halten alles zusammen."
+      "text": "Film, Design, Technik, PR und Vertrieb kommen aus einem Team. Sie haben einen Ansprechpartner und müssen nichts selbst koordinieren."
     }
   ],
   "grundregel": "Was hier steht, können wir belegen. Quellen verlinken wir.",
@@ -450,7 +450,7 @@
       "name": "Malin",
       "kuerzel": "MA",
       "rolle": "Bühne und Netzwerk",
-      "text": "Malin ist Mitgründerin und Gastgeberin unserer Events. Sie verantwortet Bühne und Netzwerk, bringt Menschen zusammen, die Neues umsetzen, und sorgt dafür, dass aus Begegnungen Verbindungen werden."
+      "text": "Malin ist Mitgründerin und Gastgeberin unserer Events. Sie verantwortet Bühne und Netzwerk und überlegt bei jeder Einladung, wer wen kennenlernen sollte."
     }
   ],
   "einstieg": [
@@ -460,7 +460,7 @@
     },
     {
       "titel": "Ihr Vorschlag",
-      "text": "Welches Angebot passt, mit Festpreis vor dem Start, festem Ablauf und klaren Konditionen."
+      "text": "Wir schlagen Ihnen das passende Angebot vor und nennen Festpreis und Ablauf schriftlich, bevor es losgeht."
     },
     {
       "titel": "Start",
@@ -470,7 +470,7 @@
   "kurztexte": {
     "hinweis": "Ein Satz je Angebot in den Listen, wo das Produktblatt keinen hat.",
     "positionierung": "In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.",
-    "umsetzungsprojekte": "Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an.",
+    "umsetzungsprojekte": "Wir ordnen zuerst Abläufe und Daten und führen dann KI und Software ein, bis Ihr Team sie im Alltag nutzt. Jedes Projekt bekommt einen Festpreis und einen klaren Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an.",
     "tagesworkshop": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.",
     "pr-kommunikation": "Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation."
   },
@@ -482,10 +482,10 @@
   },
   "check": {
     "hinweis": "Text der Fokus-Seite zum Check (ruhiger als die Vorlage).",
-    "text": "Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten mit Ergebnis sofort, ausführlich in rund 25 mit vollständigem Bericht per E-Mail."
+    "text": "Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Die kurze Fassung dauert rund 10 Minuten und zeigt das Ergebnis sofort, die ausführliche rund 25 Minuten, danach kommt der vollständige Bericht per E-Mail."
   },
   "angebote_lead": {
-    "sichtbarkeit": "Klare Preise ab einem Startpreis, feste Lieferzeiten bei Homepages und Videos, bei PR und Kommunikation ein Monatspreis, der vor dem Start feststeht. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
+    "sichtbarkeit": "Jedes Angebot hat einen Startpreis. Homepages und Videos haben feste Lieferzeiten, bei PR und Kommunikation steht der Monatspreis vor dem Start fest. Ablauf, Ergebnis und Konditionen finden Sie auf der Seite des Angebots.",
     "vertrieb": "Monatspreise, die vor dem Start feststehen, und klare Laufzeiten von 6 oder 12 Monaten. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
     "innovation": "Der Check ist kostenlos. Umsetzungsprojekte bekommen einen Festpreis mit klarem Umfang, bevor es losgeht. Haben Sie ein Vorhaben, sprechen Sie uns an."
   },
@@ -721,20 +721,20 @@
       "id": "markt",
       "etikett": "Innovation in den Markt bringen",
       "titel": "Wir haben ein starkes Produkt und brauchen Kunden.",
-      "text": "Positionierung, Website, Videos und PR bringen Anfragen. Ein Vertrieb mit System macht Kunden daraus.",
+      "text": "Wir sorgen dafür, dass man Sie kennt, wenn Kunden suchen, und dass keine Anfrage liegen bleibt.",
       "pfad": "/in-den-markt/"
     },
     {
       "id": "unternehmen",
       "etikett": "Innovation ins Unternehmen bringen",
       "titel": "Wir wollen KI und neue Software im Alltag nutzen, nicht nur ausprobieren.",
-      "text": "Erst Abläufe und Daten ordnen, dann KI einführen, bis Ihr Team damit arbeitet.",
+      "text": "Wir räumen zuerst Abläufe und Daten auf und führen KI dann so ein, dass Ihr Team jeden Tag damit arbeitet.",
       "pfad": "/ins-unternehmen/"
     }
   ],
   "bekannt": {
     "titel": "Kommt Ihnen das bekannt vor?",
-    "lead": "Neun Momente aus Sichtbarkeit, Vertrieb und Innovation, die wir von Gründern und Geschäftsführern immer wieder hören.",
+    "lead": "Neun Situationen aus Sichtbarkeit, Vertrieb und Innovation, die uns Gründer und Geschäftsführer immer wieder schildern.",
     "gruppen": [
       {
         "bereich": "sichtbarkeit",
@@ -764,7 +764,7 @@
         "zahl": "zew-genai-eigenregie-2026"
       }
     ],
-    "schluss": "Erkennen Sie zwei davon wieder? Dann lohnt sich ein Gespräch. Oft hängen die Probleme zusammen, und genau dort setzen wir an.",
+    "schluss": "Wenn Sie sich in zwei davon wiedererkennen, lohnt sich ein Gespräch. Meist hängen die Probleme zusammen, und dann sollte man sie auch zusammen angehen.",
     "belege_titel": "Was Studien 2026 zeigen"
   },
   "wegweiser": {
@@ -823,7 +823,7 @@
   "einwaende": [
     {
       "f": "Wer arbeitet an meinem Projekt?",
-      "a": "Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Sie behalten einen Ansprechpartner, wir halten alles zusammen."
+      "a": "Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Sie sprechen immer mit uns, und wir stimmen alles Weitere im Team ab."
     },
     {
       "f": "Welche Erfahrung bringen Sie mit?",
@@ -863,7 +863,7 @@
   },
   "arbeitsprobe": {
     "titel": "Diese Website ist unsere Arbeitsprobe.",
-    "text": "Scroll-Film mit eigener Szene, Texte, Ratgeber, Vorschaubilder und strukturierte Daten für Google und KI-Suchen. Ohne Cookies, ohne Tracking, ohne fremde Dienste. So bauen wir auch Ihre.",
+    "text": "Scroll-Film mit eigener Szene, Texte, Ratgeber, Vorschaubilder und strukturierte Daten für Google und KI-Suchen. Die Seite kommt ohne Cookies, Tracking und fremde Dienste aus. So bauen wir auch Ihre.",
     "punkte": [
       "Ein Kernsatz oben, ein klarer nächster Schritt",
       "Ohne Cookies und Tracking, kein Banner nötig",
@@ -955,7 +955,7 @@
     "hinweis": "Bereich „Kostenlos“ (Kevin 30.10.): Checks, Ratgeber, Zahlen, Vorlagen, Newsletter. Der Innovations-Check bleibt der große, die zwei kleinen Checks laufen leise daneben.",
     "titel": "Kostenlos.",
     "ruhig": "Zum Mitnehmen.",
-    "lead": "Checks, Leitfäden, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Zum Umsetzen gemacht: mit Anleitung, Beispiel und Bogen. Das meiste sofort und ohne Anmeldung, ausführliche Arbeitshefte und den vollständigen Check-Bericht schicken wir Ihnen per E-Mail.",
+    "lead": "Checks, Leitfäden, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Alles mit Anleitung, Beispiel und Bogen zum Ausfüllen. Das meiste bekommen Sie sofort und ohne Anmeldung, ausführliche Arbeitshefte und den vollständigen Check-Bericht schicken wir Ihnen per E-Mail.",
     "checks": [
       {
         "id": "innovation",
@@ -1050,7 +1050,7 @@
       "name": "Homepages",
       "titel": "Homepages.",
       "ruhig": "Drei Pakete, ein Ziel.",
-      "lead": "Eine Website, auf der Besucher in fünf Sekunden verstehen, was Sie machen, und die Anfragen bringt. Drei Pakete mit festem Preis und fester Lieferzeit, je nachdem, wie viel Geschichte und Wirkung Sie brauchen.",
+      "lead": "Eine Website, auf der Besucher in fünf Sekunden verstehen, was Sie machen, und die Anfragen bringt. Es gibt drei Pakete mit festem Preis und fester Lieferzeit. Sie unterscheiden sich darin, wie viel Geschichte die Seite erzählt und wie aufwendig sie gestaltet ist.",
       "seo_titel": "Homepages: drei Pakete mit Festpreis · Fokus Innovation",
       "seo_beschreibung": "Homepage Landing, Story und Cinematic: drei Pakete mit festem Preis und fester Lieferzeit, Texte von uns, mobil zuerst und mit Anfrage ins CRM."
     },
@@ -1059,7 +1059,7 @@
       "name": "Videos",
       "titel": "Videos.",
       "ruhig": "Erklären, erzählen, dranbleiben.",
-      "lead": "Vom Erklärvideo bis zur Serie: Videos, die in Sekunden zeigen, was Sie machen. Sie geben zuerst das Skript frei, dann entstehen die Bilder. Drei Angebote mit festem Preis und fester Lieferzeit.",
+      "lead": "Unsere Videos zeigen in Sekunden, was Sie machen, vom einzelnen Erklärvideo bis zur Serie. Sie geben zuerst das Skript frei, dann entstehen die Bilder. Alle drei Angebote haben einen festen Preis, Erklärvideo und Videostory auch eine feste Lieferzeit.",
       "seo_titel": "Videos für Unternehmen: drei Angebote · Fokus Innovation",
       "seo_beschreibung": "Erklärvideo, Videostory und Video Serie: Videos, die Ihr Angebot in Sekunden zeigen, mit Skript zur Freigabe, festem Preis und fester Lieferzeit."
     }
@@ -1103,13 +1103,13 @@
     "markt": {
       "titel": "Ihr Produkt ist stark.",
       "ruhig": "Jetzt braucht es Kunden.",
-      "lead": "Kunden entscheiden, bevor sie anfragen. Wir machen Sie sichtbar, damit man Sie kennt, wenn gesucht wird, und bauen den Vertrieb, der aus Anfragen planbar Kunden macht.",
+      "lead": "Viele Kunden haben sich schon entschieden, bevor sie anfragen. Wir sorgen dafür, dass man Sie bis dahin kennt, und bauen den Vertrieb, der jede Anfrage weiterverfolgt.",
       "merken": "Woran Sie es merken",
       "schritte_titel": "So bringen wir Ihr Produkt in den Markt.",
       "schritte": [
         {
           "titel": "Klar sagen, was Sie lösen",
-          "text": "Ihre Positionierung in wenigen Sätzen: für wen, welches Problem, was anders ist. Die Grundlage für alles, was folgt."
+          "text": "Wir fassen in wenigen Sätzen zusammen, für wen Sie da sind, welches Problem Sie lösen und was Sie anders machen. Darauf bauen Website, Videos und Vertrieb auf."
         },
         {
           "titel": "Gefunden und verstanden werden",

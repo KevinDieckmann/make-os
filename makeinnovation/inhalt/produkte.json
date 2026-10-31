@@ -193,15 +193,15 @@
   },
   "produkte": {
     "head-of-sales": {
-      "versprechen": "Aus Interesse werden planbar Kunden: Ihr Vertrieb läuft nach einem System, das Ihr Team ohne Sie bedient.",
+      "versprechen": "Wir bauen Ihnen einen Vertrieb mit System, den Ihr Team ohne Sie bedienen kann.",
       "fuer": [
-        "Innovationsbegeisterte Unternehmer mit fertigem Produkt, 10 bis 50 Mitarbeitende",
+        "Unternehmer mit fertigem Produkt und 10 bis 50 Mitarbeitenden",
         "Tech, KI, FinTech, innovative Dienstleister und Handwerk, Gesundheit, Sport, Ernährung",
         "Firmen, deren Vertrieb heute am Gründer hängt oder ohne System läuft"
       ],
       "nicht_fuer": "Firmen ohne fertiges Produkt, Konzerne mit Einkaufsabteilung, reine Kaltakquise-Telefonteams, Network-Marketing.",
       "problem": "Der Gründer verkauft selbst, und das meiste läuft über Bauchgefühl. Anfragen gehen verloren, Angebote bleiben liegen, niemand weiß, wie viele Gespräche es für das Jahresziel braucht. Neue Vertriebler kosten Monate und bringen wenig, weil es kein System gibt, in das sie einsteigen können.",
-      "loesung": "Wir übernehmen die Rolle des Vertriebsleiters auf Zeit. Wir bauen das System, setzen es mit Ihrem Team um und übergeben es so, dass es ohne uns weiterläuft. Wir beraten nicht nur, wir setzen mit um.",
+      "loesung": "Wir übernehmen die Rolle des Vertriebsleiters auf Zeit. Wir bauen das System, setzen es mit Ihrem Team um und übergeben es so, dass es ohne uns weiterläuft.",
       "bausteine": [
         {
           "name": "Fundament",
@@ -477,7 +477,7 @@
     },
     "homepage-landing": {
       "familie": "homepages",
-      "versprechen": "Ihre Seite, die verkauft: ein One-Pager in Ihrer CI, fertig in 10 Werktagen.",
+      "versprechen": "Ein One-Pager in Ihrer CI, der Besucher zur Anfrage führt. Fertig in 10 Werktagen.",
       "fuer": [
         "Coaches, kleine Agenturen, Solo-Unternehmer",
         "ein klares Angebot, ein Ziel"
@@ -619,7 +619,7 @@
     },
     "homepage-cinematic": {
       "familie": "homepages",
-      "versprechen": "Eine Website, über die man spricht: Story-Workshop, 3D-Szenen und Erklärvideo in 25 Werktagen.",
+      "versprechen": "Wir entwickeln Ihre Geschichte im Story-Workshop und bauen daraus eine Website mit 3D-Szenen und Erklärvideo. Fertig in 25 Werktagen.",
       "fuer": [
         "Tech und Mittelstand, die mit Wirkung auffallen wollen",
         "Die Story entwickeln wir mit Ihnen."
@@ -763,7 +763,7 @@
     },
     "videostory": {
       "familie": "videos",
-      "versprechen": "Die Geschichte Ihrer Firma in 90 Sekunden: ehrlich, emotional und in Ihrer CI.",
+      "versprechen": "Die Geschichte Ihrer Firma in 90 Sekunden, ehrlich erzählt und in Ihrer CI.",
       "fuer": [
         "Firmen mit einer Geschichte, die Vertrauen schafft, ob Familienbetrieb oder Start-up"
       ],
