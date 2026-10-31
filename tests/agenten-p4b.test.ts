@@ -306,10 +306,10 @@ describe('Budget 80/95/100 % und die 50-€-Grenze', () => {
     await verbrauch({ summeUsdCent: usd(4_010) });
     expect(budgetLageGesamt((await budgetStand()).gesamt!).stufe).toBe(80);
     expect(await budgetSperre()).toBeNull();
-    await new Promise(r => setTimeout(r, 50));
-    expect((await kiStand())?.budgetGesamtMeldungen?.stufen).toEqual([80]);
+    // Die Glocke schreibt die Sperre im Hintergrund — auf langsamen Rechnern (CI) dauert das länger als 50 ms: warten bis da, statt fest zu schlafen.
+    await vi.waitFor(async () => expect((await kiStand())?.budgetGesamtMeldungen?.stufen).toEqual([80]), { timeout: 5_000, interval: 25 });
     expect(await budgetSperre()).toBeNull();
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 200));
     expect((await kiStand())?.budgetGesamtMeldungen?.stufen).toEqual([80]);
     await verbrauch({ summeUsdCent: usd(4_810) });
     expect(budgetLageGesamt((await budgetStand()).gesamt!).stufe).toBe(95);
