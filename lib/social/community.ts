@@ -207,6 +207,24 @@ export function communityOhnePerson(d: CommunityDatei, speicher: string): { neu:
 }
 export const COMMUNITY_GETILGT = '[gelöscht]';
 
+/**
+ * Konto-Export (31.10., Nachtprüfung): die EIGENEN Antworten der Person (Kommentar-Antworten und DMs, die sie über MAKE OS geschrieben hat)
+ * und ihre Kommentar-Entwürfe für fremde Beiträge. Nie Texte Dritter, nie das Gegenüber (Kennung/Benutzername), nie der Link oder Handle
+ * des fremden Beitrags — nur Art, Kanal, Zeit und der eigene Text. Rein.
+ */
+export function communityEintraegeVon(d: CommunityDatei, speicher: string): { art: string; kanalId: string; am: string; text: string; erledigtAm?: string }[] {
+  const raus: { art: string; kanalId: string; am: string; text: string; erledigtAm?: string }[] = [];
+  for (const e of Object.values(d.eintraege ?? {})) {
+    if (e.richtung !== 'aus' || e.durch !== speicher) continue;
+    raus.push({ art: e.art === 'dm' ? 'Direktnachricht (eigene Antwort)' : 'Kommentar (eigene Antwort)', kanalId: e.kanalId, am: e.am, text: e.text });
+  }
+  for (const f of d.fremd ?? []) {
+    if (f.von !== speicher) continue;
+    raus.push({ art: 'Kommentar-Entwurf für einen fremden Beitrag', kanalId: f.kanalId, am: f.am, text: f.entwurf, ...(f.erledigtAm ? { erledigtAm: f.erledigtAm } : {}) });
+  }
+  return raus.sort((a, b) => a.am.localeCompare(b.am));
+}
+
 /** Die Frist auf einen Bestand anwenden (Löschfristen-Lauf) — schreibt nur, wenn etwas fällt; ohne Bestand nichts. */
 export async function communityFristAnwenden(name: string, jetzt = new Date()): Promise<number> {
   if (!(await loadJson<CommunityDatei>(name))) return 0;

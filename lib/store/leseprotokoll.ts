@@ -3,6 +3,7 @@
 // GEÄNDERT hat — für besonders schutzwürdige Daten muss sich auch belegen lassen, wer sie GELESEN hat:
 //   gesundheit · erholung (Art. 9) · finanzplan · haushalt · rechnungen · kontakte · firmen · gesellschaften · export (05.10.) · konten (08.10.)
 //   · inbox (08.10., Lücke 6: Suche, Übergaben, Team-Postfächer — nur Bereich, Anzahl und wessen Post; nie der Suchbegriff)
+//   · social (31.10., Nachtprüfung: Kommentare und DMs Dritter aus dem Social-Postfach — nur Anzahl und Kanal-Fingerabdrücke)
 // Eintrag: Zeit, wer (Person · ZOE im Auftrag · System), Bereich, wessen Daten (`betroffen`, Konto-Speicher — nur bei
 // personenbezogenen Bereichen wie Gesundheit), Umfang (`anzahl`) und Kennungen nur als Fingerabdruck (Kontakte `c2#…`,
 // sonst `k2#…`, Gesellschafts-/Vertrags-Kennungen bleiben lesbar), dazu der Weg (Pfad OHNE Abfrage — Suchbegriffe können
@@ -22,7 +23,7 @@ import { hmacHex, shaHex } from '@/lib/datenschutz/pepper';
 import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { ladeKonten } from '@/lib/zugang/konten';
 
-export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export' | 'inbox' | 'medien' | 'fulfillment' | 'personenrecherche';
+export type LeseBereich = 'gesundheit' | 'erholung' | 'finanzplan' | 'haushalt' | 'rechnungen' | 'kontakte' | 'firmen' | 'gesellschaften' | 'konten' | 'export' | 'inbox' | 'medien' | 'fulfillment' | 'personenrecherche' | 'social';
 export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> = {
   gesundheit: { label: 'Gesundheit', art9: true },
   erholung: { label: 'Erholung', art9: true },
@@ -43,6 +44,8 @@ export const LESE_BEREICHE: Record<LeseBereich, { label: string; art9?: true }> 
   // 10.10. (Fulfillment): Fälle mit Stakeholder-Karte, Kunden-Antworten und Dossiers — und getrennt der Personenteil der Dossiers.
   fulfillment: { label: 'Mandate & Dossiers' },
   personenrecherche: { label: 'Personenteil der Dossiers' },
+  // 31.10. (Nachtprüfung): Kommentare und Direktnachrichten Dritter im Social-Postfach gelesen (`anzahl` = Nachrichten, `ids` = Kanäle).
+  social: { label: 'Social (Kommentare & Nachrichten Dritter)' },
 };
 export const istLeseBereich = (b: unknown): b is LeseBereich => typeof b === 'string' && b in LESE_BEREICHE;
 

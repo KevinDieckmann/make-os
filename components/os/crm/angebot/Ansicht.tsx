@@ -112,7 +112,7 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   async function autoZurueck() {
     const r = await angebotPost({ aktion: 'mandat-zurueck', id: a.id });
     setMeldung(r.ok ? String(r.text ?? 'Zurückgenommen.') : r.fehler ?? 'Nicht zurückgenommen.');
-    if (r.ok) { setAuto(null); setMandatId(null); void api.laden(true); }
+    if (r.ok) { setAuto(null); setMandatId(null); void api.laden(true); void daten.laden(); }
   }
   /** „Mail ist raus“ (Woche 2 · 3.15): erst jetzt entsteht die Mail-Aktivität am Kontakt — beim Stellen steht nur „gestellt“. */
   const gesendet = angebotGesendetVermerkt(k, a.nummer);
@@ -189,6 +189,8 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           {mandat && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, alignSelf: 'center' }}>{mandat}</span>}
           {auto && <span style={{ fontSize: TYP.bedien, color: LEUCHT.gut, alignSelf: 'center' }}>{auto.text}{auto.hinweis ? ` ${auto.hinweis}` : ''}</span>}
           {auto && !nur && <Knopf leise onClick={autoZurueck}>Rückgängig</Knopf>}
+          {/* 31.10.: auch nach dem Neuladen — solange der Server sagt, dass die Automatik noch zurückgenommen werden kann (keine Rechnung, kein Fall). */}
+          {!auto && !nur && a.status === 'angenommen' && daten.automatikZurueck[a.id] && <Knopf leise onClick={autoZurueck}>Mandat + Liquiplan zurücknehmen</Knopf>}
           {a.status === 'angenommen' && hatMandat && !mandat && <Chip farbe={LEUCHT.gut}>Mandat angelegt</Chip>}
           {a.status === 'angenommen' && mandatZiel && <Link href={WEG.mandat(mandatZiel)} style={{ ...link, alignSelf: 'center' }}>Zum Mandat ›</Link>}
           {!nur && a.status === 'angenommen' && mandatZiel && <Knopf leise onClick={ersteRechnung}>Erste Rechnung</Knopf>}

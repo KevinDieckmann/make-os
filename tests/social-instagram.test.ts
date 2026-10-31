@@ -268,6 +268,22 @@ describe('Community (rein)', () => {
     expect(antwortTextPruefen('ä'.repeat(600), 'dm', kanal())).toMatch(/Bytes/);
     expect(antwortTextPruefen('Das ist billig', 'kommentar', kanal())).toMatch(/sagen wir nie/);
   });
+  it('Konto-Export: nur eigene Antworten und eigene Entwürfe — nie Text Dritter, Gegenüber, Link oder Handle', async () => {
+    const { communityEintraegeVon } = await import('@/lib/social/community');
+    const d: CommunityDatei = {
+      eintraege: {
+        a: { id: 'a', art: 'kommentar', kanalId: 'sk-1', richtung: 'ein', gegen: { id: '501', name: 'lea' }, text: 'FREMDTEXT', am: '2026-10-28T08:00:00Z' },
+        b: { id: 'b', art: 'kommentar', kanalId: 'sk-1', richtung: 'aus', gegen: { id: '501', name: 'lea' }, text: 'Meine Antwort', am: '2026-10-28T09:00:00Z', durch: 'pa' },
+        c: { id: 'c', art: 'dm', kanalId: 'sk-1', richtung: 'aus', gegen: { id: '502', name: 'tom' }, text: 'Fremde Antwort', am: '2026-10-28T10:00:00Z', durch: 'pb' },
+      },
+      faeden: {},
+      fremd: [{ id: 'f1', kanalId: 'sk-1', link: 'https://www.instagram.com/p/ABCDEF/', handle: 'jemand', entwurf: 'Mein Entwurf', am: '2026-10-28T11:00:00Z', von: 'pa' }],
+    };
+    const r = communityEintraegeVon(d, 'pa');
+    expect(r.map(x => x.text)).toEqual(['Meine Antwort', 'Mein Entwurf']);
+    expect(JSON.stringify(r)).not.toMatch(/FREMDTEXT|Fremde Antwort|lea|501|instagram\.com|jemand/);
+    expect(communityEintraegeVon(d, 'pc')).toEqual([]);
+  });
 });
 
 // ── Server: Veröffentlicher mit Instagram, Werkstatt, Community-Sicht ──
@@ -435,6 +451,23 @@ describe('Kommentare & DMs (Server)', () => {
     expect(b.faeden).toEqual([]);
     expect((await route.POST(anfrage(URL_C, 'pb', { aktion: 'antworten', kanalId, faden: dm.id, text: 'x' }))).status).toBe(404);
     expect(JSON.stringify(b)).not.toMatch(/tok2|Wie lange/);
+    // Lese-Protokoll (31.10.): Anna liest Kommentare/DMs Dritter → Eintrag „social“ mit Anzahl und Kanal-Fingerabdruck, nie Text oder Gegenüber;
+    // Bert (sieht keine Fäden) erzeugt keinen Eintrag.
+    expect((await route.GET(anfrage(URL_C, 'pa'))).status).toBe(200);
+    const { leseprotokollWarten, leseprotokollMonat } = await import('@/lib/store/leseprotokoll');
+    await leseprotokollWarten();
+    const { monatBerlin } = await import('@/lib/store/aenderungsprotokoll');
+    const lp = (await leseprotokollMonat('h-pruef', monatBerlin(new Date()))).filter(e => e.bereich === 'social');
+    expect(lp.some(e => e.person === 'pa' && (e.anzahl ?? 0) >= 2 && (e.ids ?? []).length === 1 && !(e.ids ?? []).includes(kanalId))).toBe(true);
+    expect(lp.some(e => e.person === 'pb')).toBe(false);
+    expect(JSON.stringify(lp)).not.toMatch(/Wie lange|Hallo zurück|lea|tom|501|502/);
+    // Konto-Export (31.10.): Anna bekommt ihre beiden eigenen Antworten — nie die Texte Dritter, nie das Gegenüber; Bert nichts daraus.
+    const { kontoExport } = await import('@/lib/datenschutz/konto-daten');
+    const ea = (await kontoExport('pa'))!.eintraege['social-community--h-pruef'] as { art: string; text: string; kanalId: string }[];
+    expect(ea.map(x => x.text).sort()).toEqual(['Hallo zurück', 'Seit zwei Jahren!']);
+    expect(ea.every(x => x.kanalId === kanalId)).toBe(true);
+    expect(JSON.stringify(ea)).not.toMatch(/Wie lange|Hi!|lea|tom|501|502/);
+    expect((await kontoExport('pb'))!.eintraege['social-community--h-pruef']).toBeUndefined();
   });
 });
 
