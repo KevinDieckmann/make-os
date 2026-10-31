@@ -177,7 +177,7 @@ export function seitenBauen(q = quellen()) {
   const BS_LISTE = bausteineListe(q);
   // Startwerte für den Bereich „Website“ in MAKE OS (31.10.): was die Seite heute statisch zeigt — node bauen.mjs --startwerte <datei>.
   const START = { faq: [] };
-  const regal = (ids, unterschrift, ordner = 'bausteine') => `<figure class="regal erscheint" aria-label="${e(unterschrift)}">${ids.slice(0, 3).map((id, i) => `<img class="regal-blatt r${i + 1}" src="/assets/bild/${ordner}/${id}-titel.jpg" width="640" height="905" alt="" loading="lazy">`).join('')}<figcaption>${e(unterschrift)}</figcaption></figure>`;
+  const regal = (ids, unterschrift, ordner = 'bausteine') => `<figure class="regal erscheint" aria-label="${e(unterschrift)}">${ids.slice(0, 3).map((id, i) => `<span class="regal-blatt r${i + 1}"><img src="/assets/bild/${ordner}/${id}-titel.jpg" width="640" height="905" alt="" loading="lazy"></span>`).join('')}<figcaption>${e(unterschrift)}</figcaption></figure>`;
   const vorlageVon = (id) => { const v = VORL.find((x) => x.id === id); if (!v) throw new Error(`Vorlage ${id} fehlt (inhalt/vorlagen.json bzw. assets/vorlagen)`); return v; };
   ANGEBOTE = [...inhalt.angebote];
   const angebot = (id) => inhalt.angebote.find((a) => a.id === id);
