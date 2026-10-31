@@ -40,6 +40,12 @@ export function einstellungenSaeubern(roh: unknown): FundeEinstellungen {
   e.jeAbend = Number.isInteger(j) && j >= 1 && j <= JE_ABEND_MAX ? j : JE_ABEND_VORGABE;
   const k = txt(o.kampagneId, 80), s = txt(o.segmentId, 80);
   if (k) e.kampagneId = k;
+  const ks = txt(o.kampagneStartupId, 80);
+  if (ks) e.kampagneStartupId = ks;
+  const kc = txt(o.kampagneScaleupId, 80);
+  if (kc) e.kampagneScaleupId = kc;
+  const ku = txt(o.kampagneUnternehmerId, 80);
+  if (ku) e.kampagneUnternehmerId = ku;
   if (s) e.segmentId = s;
   const g = txt(o.gesellschaft, 60), p = txt(o.produktId, 80);
   const arten = Array.isArray(o.arten) ? [...new Set(o.arten.filter((x): x is string => typeof x === 'string' && /^[a-z_]{2,40}$/.test(x)))].slice(0, 20) : [];

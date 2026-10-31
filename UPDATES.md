@@ -4,6 +4,14 @@ Kevin 25.09.2026: „Das Ganze hier vorbereiten und später ein Update sauber
 planen — dann müssen wir nicht immer wieder hochladen. Dann haben wir einen
 Stand hier und einen Stand, der online ist.“
 
+## 31.10.2026 — ICP-Kampagnen: Start-ups, innovative Unternehmer, Scale-ups (nur lokal — Branch `icp-startups`, Basis `welle-a-firmen`)
+Drei neue Profile im Funde-Modul mit je eigener Kampagne, Segment, Label und Ansprache; ICP-Raster und Lead-Score als Daten (lib/funde/icp.ts); ICP und
+Steckbrief strukturiert an der Firma (lib/crm/icp-firma.ts). Kein neuer Bestand, keine neue Route; neue optionale Felder `Firma.icp`, `Firma.steckbrief`,
+`Fund.icp/thema/steckbrief`, `FundeEinstellungen.kampagneStartupId/kampagneUnternehmerId/kampagneScaleupId`. Rückweg: der alte Stand verwirft die neuen
+Firmenfelder beim nächsten Speichern der Firma; Funde der neuen Branchen bleiben im Bestand, der alte Stand zeigt sie ohne Branchennamen und ohne eigene Kampagne — vor einem Rückweg nicht importieren bzw. erst verwerfen.
+Plan, Raster, Sequenz und Texte: `KAMPAGNE_ICP.md`. Einmal-Schritt nach dem Upload: die drei Import-Dateien (Schreibtisch, „ICP-Listen <Tag>“) unter
+Markttraktion › Marketing › Funde importieren — legt die drei Kampagnen an.
+
 ## 30.10.2026 abends — Kampagne „Homepage“: Betriebe ohne gute Website finden (nur lokal — Branch `homepage-funnel`, Basis origin/main bbf5f652)
 
 Kevin 30.10.: „okay bau es sauber in make os ein und baue alles zusammen was zusammen muss mit agenten etc das das alles laufen kann“ — Plan und

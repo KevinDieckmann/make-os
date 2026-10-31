@@ -2709,6 +2709,19 @@ Google Maps nur von Hand, 20 je Abend, Absender aus dem Register, Gastro/Handwer
   öffentlich `/vorschau/v1-<32 hex>` erst nach Freigabe (Token nur als Fingerabdruck, 60 Tage, Middleware `VORSCHAU_OFFEN` nur GET/HEAD, gedrosselt).
 - **Frist** `kampagne-funde` (21 Tage, höchstens 30 — Art. 14 Abs. 3 lit. a), Morgenlauf-Schritt 15a; Art. 15/17 über `person-weitere.ts`. Tests `tests/funde.test.ts`.
 
+## ICP-Kampagnen — Start-ups · Innovative Unternehmer · Scale-ups (31.10., Branch `icp-startups` auf `welle-a-firmen`, nur lokal; `KAMPAGNE_ICP.md`)
+Kevin 31.10.: Firmen fürs Sales-Profil finden (Deutschland, nur öffentliche kostenlose Quellen, jede Angabe mit Quelle), drei Listen je ≥ 200, Lead-Scoring,
+„schauen, ob schon ein Head of Sales da ist“, Datenbasis zum Abgleich mit Marktdaten/Studien. Echte Listen nur auf dem Schreibtisch, nie im Repo.
+- **Profile im Funde-Modul:** Branchen `startup` · `unternehmer` · `scaleup` (`istIcpBranche`) — kein OSM (`osmBranche` false), keine Website-Vorschau, nur
+  Recherche-Import (`fundeImportieren`). Je Profil EIGENE Kampagne/Segment/Label (`PROFIL_*`, `profilFuer`, `kampagneVon`; angelegt beim ersten Import),
+  nie mit dem Homepage-Funnel gemischt. Texte je Profil in `entwurfStartup` (keine KI, keine eigenen Produkt-/Partnernamen, belegte Zahl nur mit Quelle).
+- **Raster als Daten** `ICP_RASTER` (lib/funde/icp.ts): `icpMerkmaleAus` → `icpBewerten` (Passung, Stufe, Zielgruppe `zielgruppeVon`, Einstieg) →
+  `prioritaetVon` (Lead-Score der Ansprache). Konzern nur als Selbstaussage im Impressum (`konzernAus`), Größe nur Selbstangabe (`teamGroesse`),
+  Vertriebsleitung nur besetzt, nie als Stellenanzeige (`vertriebsleitungAus`). Neue Regel = Daten + Test in `tests/funde-icp.test.ts`.
+- **An der Firma** (lib/crm/icp-firma.ts, gesäubert in `betriebFelder`): `icp` und `steckbrief` (Vertriebsleitung ja/nein + Rolle, Mitarbeitende, Stellen,
+  Register, Gründungsjahr, Signal, Profil-LINKS, letzte Beiträge der eigenen Website, Partner, Referenzen) — Rollen statt Personen; LinkedIn/Instagram
+  nie auslesen (nur Links; Daten nur über Exporte aus dem eigenen Konto).
+
 ## Inbox 2 — EINE Inbox für alle Postfächer (06./07.10., nur lokal, Branch `inbox-2`; Konzept `INBOX_KONZEPT.md` mit Abschnitt 12, UPDATES.md)
 Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus alles ableiten können, schnell was passiert“ — „ZOE macht alles nur als Vorschlag“.
 - **Postfach-Register je Person** (`lib/postfach/register.ts`, Bestand `postfaecher--<person>`; Typen `lib/postfach/typen.ts`): Quelle `gmail` (Eintrag `gmail`,

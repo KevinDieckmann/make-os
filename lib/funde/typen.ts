@@ -3,9 +3,13 @@
 // Website fehlt oder schlecht ist. Funde sind KEINE Kontakte: sie liegen kurz im eigenen Bestand `kampagne-funde--<haushalt>` und kommen erst
 // mit der Freigabe im ZOE-Stapel in die Kartei (Firma + Kontakt + Lead, lib/funde/uebernehmen.ts). Nicht übernommene Funde löscht die Frist.
 
-export type FundBranche = 'gastro' | 'handwerk' | 'einzelhandel';
+export type FundBranche = 'gastro' | 'handwerk' | 'einzelhandel' | 'startup' | 'unternehmer' | 'scaleup';
 export const FUND_BRANCHEN: { id: FundBranche; name: string }[] = [
   { id: 'gastro', name: 'Gastronomie' }, { id: 'handwerk', name: 'Handwerk & Dienstleistung' }, { id: 'einzelhandel', name: 'Einzelhandel' },
+  // Zweites Suchprofil (31.10., lib/funde/icp.ts): Start-ups und innovative Unternehmer — keine OSM-Quelle, nur Recherche-Import; kein Website-Entwurf.
+  { id: 'startup', name: 'Start-ups' },
+  { id: 'unternehmer', name: 'Innovative Unternehmer' },
+  { id: 'scaleup', name: 'Scale-ups' },
 ];
 export const istFundBranche = (v: unknown): v is FundBranche => FUND_BRANCHEN.some(b => b.id === v);
 
@@ -75,6 +79,12 @@ export interface Fund {
   /** Woher jede Angabe stammt (Feld → http(s)-Adresse) — Art. 14 Abs. 2 lit. f (Quelle), höchstens 10. */
   quellen?: Record<string, string>;
   bewertung?: FundBewertung;
+  /** Thema der Firma in Stichworten (Profil Start-ups, aus Quelle bzw. Website). */
+  thema?: string;
+  /** ICP-Bewertung (Profil Start-ups, lib/funde/icp.ts): Score, Stufe A/B/C, Einstieg, Gründe, Aufhänger. */
+  icp?: import('./icp').IcpErgebnis;
+  /** Steckbrief aus öffentlichen Quellen (ICP-Profile) — geht bei der Übernahme an die Firma (lib/crm/icp-firma.ts). */
+  steckbrief?: import('@/lib/crm/icp-firma').FirmaSteckbrief;
   /** Niveau-Analyse der vorhandenen Website gegen unser Paket (lib/funde/analyse.ts) — nur bei erreichbarer eigener Seite. */
   analyse?: import('./analyse').AnalyseErgebnis & { leistung?: { lcpMs?: number; gewichtKb?: number; anfragen?: number; quelle: string } };
   vorschau?: FundVorschau;
@@ -109,6 +119,12 @@ export interface FundeEinstellungen {
   /** Die Kampagne in der Markttraktion, an der die Funde hängen. */
   kampagneId?: string;
   segmentId?: string;
+  /** Kampagne des Profils Start-ups (31.10., lib/funde/icp.ts) — eigene Kampagne/Segment, nie mit dem Homepage-Funnel gemischt. */
+  kampagneStartupId?: string;
+  /** Kampagne des Profils Scale-ups (31.10.) — eigene Ansprache (Struktur im Vertrieb). */
+  kampagneScaleupId?: string;
+  /** Kampagne des Profils innovative Unternehmer (31.10.) — planbares Neugeschäft. */
+  kampagneUnternehmerId?: string;
   /** Absender-Gesellschaft (Kennung aus dem Register — Name über `gesellschaftenLaden`), Vorgabe die erste Business-Gesellschaft. */
   gesellschaft?: string;
   /** Das Angebot: ein Produkt aus dem Katalog (`crm.leistungen`) — Name und Preis kommen nur von dort. */
@@ -151,3 +167,15 @@ export const VORSCHAU_TOKEN = /^v1-[0-9a-f]{32}$/;
 
 export const leereEinstellungen = (): FundeEinstellungen => ({ gebiete: [], gebietIndex: 0, branchen: ['gastro', 'handwerk', 'einzelhandel'], jeAbend: JE_ABEND_VORGABE });
 export const leererBestand = (): FundeBestand => ({ funde: [], einstellungen: leereEinstellungen(), bekannt: [] });
+
+/** Je Profil eine Kampagne mit Segment und Label (31.10.): Homepage-Funnel (Gastro/Handwerk/Einzelhandel) und ICP Start-ups. */
+export interface FundProfil { id: 'homepage' | 'startup' | 'unternehmer' | 'scaleup'; playbook: string; segmentId: string; segmentName: string; beschreibung: string; label: string }
+export const PROFIL_HOMEPAGE: FundProfil = { id: 'homepage', playbook: PLAYBOOK_ID, segmentId: 'seg-homepage-funnel', segmentName: 'Homepage-Funnel', beschreibung: 'Betriebe aus der Kampagne „Homepage“ (übernommene Funde).', label: SEGMENT_LABEL };
+export const PROFIL_STARTUP: FundProfil = { id: 'startup', playbook: 'icp-startups', segmentId: 'seg-icp-startups', segmentName: 'ICP · Start-ups', beschreibung: 'Innovative Start-ups aus öffentlichen Förder-, Hochschul- und Startup-Listen (übernommene Funde, ICP-Raster).', label: 'icp-startups' };
+export const PROFIL_SCALEUP: FundProfil = { id: 'scaleup', playbook: 'icp-scaleups', segmentId: 'seg-icp-scaleups', segmentName: 'ICP · Scale-ups', beschreibung: 'Scale-ups im Vertriebsausbau aus öffentlichen Quellen (Finanzierungsrunden, Portfolio-Listen) — übernommene Funde, ICP-Raster.', label: 'icp-scaleups' };
+export const PROFIL_UNTERNEHMER: FundProfil = { id: 'unternehmer', playbook: 'icp-unternehmer', segmentId: 'seg-icp-unternehmer', segmentName: 'ICP · Innovative Unternehmer', beschreibung: 'Inhabergeführte, innovative Firmen mit fertigem Produkt aus öffentlichen Quellen (Innovationspreise, Förderprogramme) — übernommene Funde, ICP-Raster.', label: 'icp-unternehmer' };
+/** Profile aus der ICP-Recherche (Import, kein OpenStreetMap, keine Website-Vorschau). */
+export const istIcpBranche = (b: FundBranche): b is 'startup' | 'unternehmer' | 'scaleup' => b === 'startup' || b === 'unternehmer' || b === 'scaleup';
+export const profilFuer = (b: FundBranche): FundProfil => (b === 'startup' ? PROFIL_STARTUP : b === 'unternehmer' ? PROFIL_UNTERNEHMER : b === 'scaleup' ? PROFIL_SCALEUP : PROFIL_HOMEPAGE);
+/** Gespeicherte Kampagne eines Profils. */
+export const kampagneVon = (e: FundeEinstellungen, p: FundProfil): string | undefined => (p.id === 'startup' ? e.kampagneStartupId : p.id === 'unternehmer' ? e.kampagneUnternehmerId : p.id === 'scaleup' ? e.kampagneScaleupId : e.kampagneId);

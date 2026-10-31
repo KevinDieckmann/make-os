@@ -28,8 +28,9 @@ import { adresseMaskiert } from '@/lib/zugang/konten';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { StapelArtFreigabe, ArtErgebnis } from '@/lib/zoe/stapel-arten';
 import { aendereFunde, fundeHaushalt, ladeFunde, vorschauTokenHash, FundeFehler } from './speicher';
-import { linksEinsetzen } from './entwurf';
-import { FUND_BRANCHEN, ANRUF_NACH_TAGEN, SEGMENT_LABEL, VORSCHAU_TAGE, type Fund } from './typen';
+import { linksEinsetzen, EINSTIEG, ZIELGRUPPE_NAME } from './entwurf';
+import { firmaIcpSaeubern } from '@/lib/crm/icp-firma';
+import { FUND_BRANCHEN, ANRUF_NACH_TAGEN, VORSCHAU_TAGE, profilFuer, type Fund } from './typen';
 
 export const FUND_WERKZEUG = 'fund_uebernehmen';
 const tagPlus = (tag: string, n: number) => new Date(Date.parse(`${tag}T12:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
@@ -55,6 +56,11 @@ async function absenderOk(a: { person: string; postfach: string } | undefined) {
 
 type BetriebErgebnis = { ok: true; firmaId: string; kontaktId?: string } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string; verwerfen?: true; gesperrt?: true };
 
+/** ICP-Bewertung als Notiz an der Firma (Profil Start-ups) — Stufe, Punkte, Einstieg, Gründe; nie Personendaten. */
+export function icpNotiz(i: NonNullable<Fund['icp']>): string {
+  return [`ICP ${ZIELGRUPPE_NAME[i.zielgruppe]} ${i.stufe} · ${i.score}/100 · Einstieg ${EINSTIEG[i.einstieg]}${i.mitarbeitende ? ` · rund ${i.mitarbeitende} Mitarbeitende` : ''} (gemessen ${i.gemessenAm.slice(0, 10)})`, ...i.gruende.slice(0, 8).map(g => `– ${g}`)].join('\n');
+}
+
 /** Die Firma aus dem Fund (rein): alle Angaben als Felder statt in der Notiz — Recht wie am Kontakt (Herkunft Recherche, Art.-14-Uhr ab heute). */
 export function firmaAusFund(f: Fund, id: string, jetzt: string, heute: string, hauptKontaktId?: string): Firma {
   const branche = FUND_BRANCHEN.find(x => x.id === f.branche)?.name;
@@ -67,7 +73,10 @@ export function firmaAusFund(f: Fund, id: string, jetzt: string, heute: string, 
     ...(f.bewertung ? { bewertung: { punkte: f.bewertung.punkte, gruende: f.bewertung.gruende.slice(0, 8), gemessenAm: f.bewertung.gemessenAm } } : {}),
     ...(f.analyse ? { analyse: { niveau: f.analyse.niveau, teile: f.analyse.teile, ...(f.analyse.design != null ? { design: f.analyse.design } : {}), luecken: f.analyse.luecken.slice(0, 10), aufhaenger: f.analyse.aufhaenger.slice(0, 10), ...(unterNiveau(f.analyse) ? { unterNiveau: true } : {}), gemessenAm: f.analyse.gemessenAm } } : {}),
     anreicherung: { am: f.angelegt, quelle: f.quelle === 'osm' ? 'osm' : f.von ? 'hand' : 'datei' },
-    labels: [SEGMENT_LABEL], herkunft: 'recherche', fremddaten: true, erfasstAm: heute,
+    ...(f.thema ? { marktinfo: f.thema } : {}), ...(f.icp ? { icp: firmaIcpSaeubern(f.icp), notiz: icpNotiz(f.icp) } : {}), ...(f.steckbrief ? { steckbrief: f.steckbrief } : {}),
+    ...(f.steckbrief?.profile?.linkedin ? { linkedin: f.steckbrief.profile.linkedin } : {}), ...(f.steckbrief?.mitarbeitende ? { mitarbeiter: String(f.steckbrief.mitarbeitende) } : {}),
+    ...(f.steckbrief?.gruendungsjahr ? { gegruendet: String(f.steckbrief.gruendungsjahr) } : {}),
+    labels: [profilFuer(f.branche).label], herkunft: 'recherche', fremddaten: true, erfasstAm: heute,
     lead: { status: 'neu', kriterien: leereKriterien(), ...(hauptKontaktId ? { hauptKontaktId } : {}) },
     geaendert: jetzt,
   } as Firma;
@@ -116,7 +125,8 @@ async function betriebUebernehmen(f: Fund, person: string, wer: Wer, jetzt: stri
     if (!r.ok) return { ok: false, status: r.status === 500 ? 409 : r.status as 400 | 403 | 404 | 409 | 413, fehler: r.fehler };
     await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
       const l = cur ?? { kontakte: [] };
-      return { ...l, kontakte: l.kontakte.map(k => (k.id === kontaktId && !(k.labels ?? []).includes(SEGMENT_LABEL) ? { ...k, labels: [...(k.labels ?? []), SEGMENT_LABEL] } : k)) };
+      const label = profilFuer(f.branche).label;
+      return { ...l, kontakte: l.kontakte.map(k => (k.id === kontaktId && !(k.labels ?? []).includes(label) ? { ...k, labels: [...(k.labels ?? []), label] } : k)) };
     }, wer);
   }
   // Kampagne: der Betrieb als Ziel (`firmaIds`), die Person (falls da) zusätzlich in `kontaktIds`.
@@ -177,7 +187,7 @@ export async function fundUebernehmen(fundId: string, person: string, o: { sitzu
   else if (!f.email || !an) grund = 'Keine Mail-Adresse bekannt — bitte anrufen oder vorbeigehen.';
   else if (kontakt?.werbesperre || kontakt?.eingeschraenkt || firma?.werbesperre) grund = 'Werbesperre bzw. Einschränkung — keine Mail.';
   else if (!basis) grund = 'Die Adresse der Instanz fehlt (MAKE_OS_ADRESSE) — ohne sie gibt es keinen Vorschau-Link.';
-  else if (!token) grund = 'Der Vorschau-Link wurde schon einmal erzeugt, aber nicht gesendet — „Mail senden“ erzeugt einen neuen.';
+  else if (f.vorschau && !token) grund = 'Der Vorschau-Link wurde schon einmal erzeugt, aber nicht gesendet — „Mail senden“ erzeugt einen neuen.';
   else {
     const abs = await absenderOk(e.absender);
     if (!abs.ok) grund = abs.grund;
@@ -196,10 +206,11 @@ export async function fundUebernehmen(fundId: string, person: string, o: { sitzu
 }
 
 /** Die Mail über die Inbox senden und alles vermerken (Fund, Lead, Kampagne, Aktivität). */
-async function mailSenden(f: Fund, z: { email: string; kontakt?: Kontakt; firmaId: string }, token: string, basis: string, absender: { person: string; postfach: string }, person: string, wer: Wer): Promise<{ ok: true } | { ok: false; fehler: string }> {
+async function mailSenden(f: Fund, z: { email: string; kontakt?: Kontakt; firmaId: string }, token: string | null, basis: string, absender: { person: string; postfach: string }, person: string, wer: Wer): Promise<{ ok: true } | { ok: false; fehler: string }> {
   if (!f.entwurf || !z.email) return { ok: false, fehler: 'Kein Entwurf.' };
   const k = z.kontakt;
-  const link = `${basis}/vorschau/${token}`;
+  // Profil Start-ups hat keinen Website-Entwurf (kein Token, kein Link im Text).
+  const link = token ? `${basis}/vorschau/${token}` : '';
   const ab = abmeldeLink(z.email, basis)?.link ?? null;
   const text = linksEinsetzen(f.entwurf.text, link, ab);
   const { inboxSenden } = await import('@/lib/inbox/senden-server');

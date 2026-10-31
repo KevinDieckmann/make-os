@@ -13,6 +13,9 @@ const FARBEN: Record<FundBranche, string[]> = {
   gastro: ['#8A4B2A', '#5E6B3A', '#7A2E3B'],
   handwerk: ['#2F5D62', '#3D4F7A', '#5A4E7A'],
   einzelhandel: ['#7A5C2E', '#2E5E7A', '#6B3F5E'],
+  startup: ['#2F5D62', '#3D4F7A', '#5A4E7A'],
+  scaleup: ['#2F5D62', '#3D4F7A', '#5A4E7A'],
+  unternehmer: ['#2F5D62', '#3D4F7A', '#5A4E7A'],
 };
 /** Farbe deterministisch aus der Kennung (gleicher Fund → gleiche Farbe). */
 export function farbeFuer(f: Pick<Fund, 'id' | 'branche'>): string {
@@ -26,6 +29,9 @@ const REGELWERK: Record<FundBranche, { willkommen: (n: string) => string; leistu
   gastro: { willkommen: n => `Willkommen bei ${n} — schauen Sie vorbei, wir freuen uns auf Sie.`, leistungen: ['Unsere Karte', 'Tisch reservieren', 'Öffnungszeiten & Anfahrt'] },
   handwerk: { willkommen: n => `${n} — sorgfältige Arbeit, persönlich beraten.`, leistungen: ['Unsere Leistungen', 'Termin vereinbaren', 'So finden Sie uns'] },
   einzelhandel: { willkommen: n => `Willkommen bei ${n} — entdecken Sie unser Sortiment vor Ort.`, leistungen: ['Unser Sortiment', 'Neu eingetroffen', 'Öffnungszeiten & Anfahrt'] },
+  startup: { willkommen: n => `${n} — was wir lösen, in einem Satz.`, leistungen: ['Das Problem', 'Unsere Lösung', 'Demo anfragen'] },
+  unternehmer: { willkommen: n => `${n} — was wir lösen, in einem Satz.`, leistungen: ['Das Problem', 'Unsere Lösung', 'Demo anfragen'] },
+  scaleup: { willkommen: n => `${n} — was wir lösen, in einem Satz.`, leistungen: ['Das Problem', 'Unsere Lösung', 'Demo anfragen'] },
 };
 
 /** Texte ohne Modell (Rückfall, wenn das KI-Tor sperrt oder kein Schlüssel da ist). */

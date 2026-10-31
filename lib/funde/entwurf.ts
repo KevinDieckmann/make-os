@@ -45,7 +45,8 @@ function anlass(f: Pick<Fund, 'bewertung'> & Partial<Pick<Fund, 'analyse'>>): st
 }
 
 /** Die Mail (Betreff + Text) und der Anruf-Leitfaden. Ohne Link/Abmeldelink stehen Platzhalter — die Freigabe setzt sie ein. */
-export function entwurfBauen(f: Pick<Fund, 'name' | 'bewertung' | 'adresse' | 'quelle'> & Partial<Pick<Fund, 'inhaber' | 'inhaberArt' | 'quellen' | 'instagram' | 'mobil' | 'telefon' | 'analyse'>>, k: EntwurfKontext): FundEntwurf {
+export function entwurfBauen(f: Pick<Fund, 'name' | 'bewertung' | 'adresse' | 'quelle'> & Partial<Pick<Fund, 'inhaber' | 'inhaberArt' | 'quellen' | 'instagram' | 'mobil' | 'telefon' | 'analyse' | 'branche' | 'icp' | 'thema'>>, k: EntwurfKontext): FundEntwurf {
+  if (f.branche === 'startup' || f.branche === 'unternehmer' || f.branche === 'scaleup') return entwurfStartup(f, k);
   const link = k.link ?? LINK_PLATZHALTER;
   const ab = k.abmelden ?? ABMELDE_PLATZHALTER;
   const angebot = k.angebot ? `\n\nUnser Angebot: ${k.angebot.name}${k.angebot.preis ? ` — ${k.angebot.preis}` : ''}. Sie sagen, was rein soll, wir kümmern uns um den Rest.` : '';
@@ -90,6 +91,59 @@ export function anrufLeitfaden(f: Pick<Fund, 'name' | 'bewertung' | 'adresse'> &
     '3. Bei Interesse: Termin für 15 Minuten oder Angebot schicken (über die Markttraktion).',
     '4. Bei „Nein“: freundlich verabschieden, sofort Werbesperre setzen (Akte › Daten).',
     `Anlass: ${anlass(f)}`,
+  ].join('\n');
+}
+
+type StartupFund = Pick<Fund, 'name' | 'adresse'> & Partial<Pick<Fund, 'inhaber' | 'inhaberArt' | 'quellen' | 'mobil' | 'telefon' | 'icp' | 'thema' | 'branche'>>;
+const istScaleup = (f: StartupFund) => f.branche === 'scaleup' || f.icp?.zielgruppe === 'scaleup';
+const istUnternehmer = (f: StartupFund) => f.branche === 'unternehmer' || f.icp?.zielgruppe === 'unternehmer';
+const grussVon = (f: StartupFund) => (f.inhaber && f.inhaberArt === 'person' && !(f.quellen?.inhaber ?? '').includes('openstreetmap.org') ? `Guten Tag ${f.inhaber},` : 'Guten Tag,');
+
+/**
+ * Profil Start-ups (lib/funde/icp.ts): Vorlage für Brief bzw. Mail (keine KI, keine Website-Vorschau, keine erfundenen Zahlen — nur die belegte Zahl im
+ * Aufhänger mit Quelle). Absender = Gesellschaft aus dem Register; Software- und Produktnamen von uns werden nie genannt. Mail ohne Einwilligung bleibt rot
+ * (§ 7 UWG) — der Text taugt genauso als Brief; gesendet wird nur über die Freigabe.
+ */
+function entwurfStartup(f: StartupFund, k: EntwurfKontext): FundEntwurf {
+  const ab = k.abmelden ?? ABMELDE_PLATZHALTER;
+  const anlassSatz = f.icp?.aufhaenger[0] ?? 'Wir haben Ihr Unternehmen in einer öffentlichen Liste innovativer Firmen gefunden.';
+  const scale = istScaleup(f), unt = !scale && istUnternehmer(f);
+  const einstieg = f.icp?.einstieg === 'sichtbarkeit' ? 'Positionierung und Sichtbarkeit' : 'Vertrieb und Kundengewinnung';
+  const angebot = k.angebot ? `\nAls Einstieg passt oft: ${k.angebot.name}${k.angebot.preis ? ` (${k.angebot.preis})` : ''}.` : '';
+  const text = [
+    grussVon(f), '',
+    anlassSatz, '',
+    scale
+      // Scale-ups (Kevin 31.10.): anderes Problem — Struktur im wachsenden Vertrieb, nicht „Vertrieb überhaupt“.
+      ? `Wir sind ${k.absender} aus Berlin. Wir bringen Struktur in wachsende Vertriebsteams: klare Abläufe von der Anfrage bis zum Abschluss, eine Pipeline, auf die man sich verlassen kann, und eine Einarbeitung, die neue Vertriebler schnell produktiv macht — und wir setzen selbst mit um.`
+      : unt
+      // Innovative Unternehmer: fertiges Produkt, Neugeschäft planbar machen.
+      ? `Wir sind ${k.absender} aus Berlin. Wir helfen innovativen Unternehmen, aus einem guten Produkt planbares Neugeschäft zu machen: sichtbar werden, mit System verkaufen, die richtigen Menschen kennenlernen — und wir setzen selbst mit um.`
+      : `Wir sind ${k.absender} aus Berlin. Wir bringen Neues in den Markt: sichtbar machen, mit System verkaufen und die richtigen Menschen verbinden — und wir setzen selbst mit um, bis Ihr Team allein abschließt.`,
+    scale
+      ? `Hätten Sie Lust auf ein Gespräch von 15 Minuten? Ich zeige Ihnen gern, wo wir bei ${f.name} ansetzen würden.${angebot}`
+      : `Hätten Sie Lust auf ein Gespräch von 15 Minuten? Ich zeige Ihnen gern, wie wir bei ${f.name} im Bereich ${einstieg} anfangen würden.${angebot}`, '',
+    'Viele Grüße', k.unterschrift ? `${k.unterschrift}\n${k.absender}` : k.absender, '',
+    '—',
+    `Datenschutz: Verantwortlich ist ${k.datenschutz.verantwortlich || k.absender}. Ihre geschäftlichen Angaben haben wir aus öffentlich zugänglichen Quellen (Förder- bzw. Portfolio-Liste, Ihre Website und Ihr Impressum). Wir nutzen sie, um Ihnen dieses Gespräch anzubieten (Art. 6 Abs. 1 lit. f DSGVO). Speicherdauer und Ihre Rechte (Auskunft, Löschung, Widerspruch): ${k.datenschutz.seite || k.datenschutz.mail}.`,
+    `Sie können jederzeit widersprechen: antworten Sie mit „Nein danke“ oder klicken Sie hier: ${ab}`,
+  ].join('\n');
+  return { betreff: (scale ? `${f.name}: Struktur für den wachsenden Vertrieb` : unt ? `${f.name}: planbares Neugeschäft` : `${f.name}: vom Produkt in den Markt`).slice(0, 140), text, anruf: anrufLeitfadenStartup(f), ki: false };
+}
+
+export const ZIELGRUPPE_NAME: Record<NonNullable<Fund['icp']>['zielgruppe'], string> = { startup: 'Start-up', unternehmer: 'Unternehmer', scaleup: 'Scale-up' };
+export const EINSTIEG: Record<NonNullable<Fund['icp']>['einstieg'], string> = { vertrieb: 'Vertrieb', sichtbarkeit: 'Sichtbarkeit', struktur: 'Struktur im Vertrieb' };
+
+function anrufLeitfadenStartup(f: StartupFund): string {
+  return [
+    `Anruf bei ${f.name}${f.thema ? ` (${f.thema})` : ''}. Kaltanruf ohne Vorkontakt ist rot (§ 7 UWG) — nur nach Reaktion auf Brief/Vernetzung oder auf eigenes Risiko.`,
+    ...(f.mobil || f.telefon ? [`Nummer: ${[f.mobil && `${f.mobil} (Handy)`, f.telefon && `${f.telefon} (Festnetz)`].filter(Boolean).join(' · ')}`] : []),
+    f.inhaber ? `Geschäftsführung laut Impressum: ${f.inhaber} — nach ihm/ihr fragen.` : 'Geschäftsführung unbekannt — im Gespräch erfragen.',
+    ...(f.icp ? [`ICP ${f.icp.score}/100 (Stufe ${f.icp.stufe}), Einstieg ${EINSTIEG[f.icp.einstieg]} — Aufhänger:`, ...f.icp.aufhaenger.map(a => `  • ${a}`)] : []),
+    '1. Kurz vorstellen (Absender, Berlin), Bezug auf den Anlass.',
+    istScaleup(f) ? '2. Fragen: „Wie viele Leute verkaufen bei Ihnen heute — und wie werden neue Vertriebler eingearbeitet?“' : istUnternehmer(f) ? '2. Fragen: „Woher kommen heute Ihre neuen Kunden — und wie planbar ist das?“' : '2. Fragen: „Wie gewinnen Sie heute neue Kunden — und wer macht das bei Ihnen?“',
+    '3. Bei Interesse: 15-Minuten-Termin oder Einladung zum Abend; nichts versprechen, was nicht im Katalog steht.',
+    '4. Bei „Nein“: freundlich verabschieden, sofort Werbesperre setzen (Akte › Daten).',
   ].join('\n');
 }
 

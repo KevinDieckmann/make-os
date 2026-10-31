@@ -28,6 +28,7 @@ import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
 import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
+import { firmaIcpSaeubern, steckbriefSaeubern } from './icp-firma';
 import { adresseSaeubern, quellenSaeubern, bewertungSaeubern, analyseSaeubern, anreicherungSaeubern, osmIdSaeubern, instagramSaeubern, inhaberSaeubern, betriebRechtSaeubern, betriebRechtStempeln, BETRIEB_QUELLEN, ERREICHBARKEITEN } from './betrieb';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
 import { kartenFelderSaeubern, mandatRatenSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktProzessKennung, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
@@ -262,7 +263,9 @@ function betriebFelder(o: Record<string, unknown>): Partial<Firma> {
   const adresse = adresseSaeubern(o.adresse), quellen = quellenSaeubern(o.quellen), bewertung = bewertungSaeubern(o.bewertung), analyse = analyseSaeubern(o.analyse);
   const anreicherung = anreicherungSaeubern(o.anreicherung), osmId = osmIdSaeubern(o.osmId), instagram = instagramSaeubern(o.instagram), inhaber = inhaberSaeubern(o.inhaber);
   const labels = strListe(o.labels, KRITERIEN_WERTE_MAX, 80);
+  const icp = firmaIcpSaeubern(o.icp), steckbrief = steckbriefSaeubern(o.steckbrief);
   return {
+    ...(icp ? { icp } : {}), ...(steckbrief ? { steckbrief } : {}),
     ...(adresse ? { adresse } : {}), ...(opt(o.bezirk, 80) ? { bezirk: opt(o.bezirk, 80) } : {}), ...(osmId ? { osmId } : {}), ...(quellen ? { quellen } : {}),
     ...(bewertung ? { bewertung } : {}), ...(analyse ? { analyse } : {}), ...(anreicherung ? { anreicherung } : {}), ...(opt(o.oeffnungszeiten, 300) ? { oeffnungszeiten: opt(o.oeffnungszeiten, 300) } : {}),
     ...(opt(o.mobil, 60) ? { mobil: opt(o.mobil, 60) } : {}), ...(instagram ? { instagram } : {}),
