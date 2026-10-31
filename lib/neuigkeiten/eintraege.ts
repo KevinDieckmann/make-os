@@ -33,6 +33,26 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-3',
+    datum: '2026-11-02',
+    titel: 'Website: alles an einem Ort',
+    kurz: 'In der Markttraktion gibt es unter Marketing den neuen Punkt „Website“. Dort steht alles, was die Website braucht — und Preise, Texte und Termine pflegt ihr jetzt selbst.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Überblick: für jeden Weg der Website (Checks, Kontaktformular, Newsletter, Bausteine, Vorlagen, Erstgespräch) seht ihr, ob er an ist und was noch fehlt — mit einem Klick zum Beheben.', bereich: 'business', weg: WEG.website() },
+        { text: 'Eingänge: alle Anfragen, Checks, Bestellungen, Termine und Newsletter-Anmeldungen der Website in einer Liste, mit Sprung in die Akte.', bereich: 'business', weg: WEG.website('eingaenge') },
+        { text: 'Angebote und Preise selbst pflegen: weicht ein Preis vom Produktkatalog ab, steht er rot da und lässt sich in beide Richtungen übernehmen.', bereich: 'business', weg: WEG.website('angebote') },
+        { text: 'Bausteine: Titel, Preis und Kurztext lassen sich hier anpassen; ohne Anpassung gilt der Katalog der Website.', bereich: 'business', weg: WEG.website('bausteine') },
+        { text: 'Eigene Events, häufige Fragen, Fakten und Texte für die Website pflegen — die Website liest sie von selbst.', bereich: 'business', weg: WEG.website('inhalte') },
+        { text: 'Bilder aus den Medien, die für die Website freigegeben sind, mit Alt-Text auf die Website bringen.', bereich: 'business', weg: WEG.website('bilder') },
+        { text: 'Ein fester Link fürs Erstgespräch: er führt immer auf die gewählte Buchungsseite, nie ins Leere.', bereich: 'business', weg: WEG.website('formulare') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Der Innovations-Check ist von Marketing unter „Website“ umgezogen; alte Links führen dorthin.', bereich: 'business', weg: WEG.website('checks') },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-2',
     datum: '2026-11-02',
     titel: 'Kampagnen laufen jetzt von selbst ab',

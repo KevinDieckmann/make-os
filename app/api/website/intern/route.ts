@@ -100,7 +100,7 @@ export async function POST(req: Request) {
   if (b.aktion !== 'startwerte') return fehler('aktion: startwerte.', 400);
   let roh: unknown;
   try { roh = await startwerteLesen(); } catch (x) { if (x instanceof WebFehler) return fehler(x.message, x.status); throw x; }
-  if (roh === null) return fehler('Keine Startwerte vorhanden (website/startwerte-inhalt.json).', 404);
+  if (roh === null) return fehler('Keine Startwerte vorhanden.', 404);
   const { katalogDatei } = await import('@/lib/bausteine/server');
   const { ops, zaehler, fehler: f } = startwerteOps(await ladeWebsiteInhalt(), roh, await katalogDatei().catch(() => []));
   if (b.vorschau !== false) return NextResponse.json({ ok: true, vorschau: true, zaehler, fehler: f, anzahl: ops.length }, OHNE);

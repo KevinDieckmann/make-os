@@ -58,7 +58,7 @@ export const EINSTELLUNGEN_BUSINESS = {
   'website.bild': {
     was: 'Gibt ein Bild für die Website frei. Ausgeliefert wird es nur mit Alt-Text und nur, solange es in den Medien für den Kanal „Website“ freigegeben ist.',
     beispiel: 'Ein Foto vom letzten Abend ist in den Medien für die Website freigegeben: Alt-Text eintragen, Haken an — die Website kann es unter seiner eigenen Adresse laden.',
-    an: 'Das Bild ist unter /api/website/bild/<Kennung> abrufbar.',
+    an: 'Die Website kann das Bild unter seiner eigenen Adresse laden.',
     aus: 'Das Bild ist nicht abrufbar; die Freigabe in den Medien bleibt.',
   },
   'bausteine.bestellen': {

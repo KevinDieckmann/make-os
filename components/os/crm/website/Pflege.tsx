@@ -138,7 +138,7 @@ export function AngeboteReiter({ w, api }: { w: WebsiteApi; api: CrmApi }) {
           {liste.map(a => {
             const g = preisAbgleich(a, d.hilfen.produkte);
             return (
-              <Bearbeiten key={`${a.id}-${a.stand}`} titel={a.titel} unter={`${a.bereich} · ${a.preisText}${a.bald ? ' · bald' : ''}`}
+              <Bearbeiten key={`${a.id}-${a.stand}`} titel={a.titel} unter={`${a.bereich}${a.preisText ? ` · ${a.preisText}` : ''}${a.bald ? ' · bald' : ''}`}
                 rechts={<>
                   {!a.sichtbar && <Chip farbe={C.inkLeise}>verborgen</Chip>}
                   {g.art === 'abweichung' && <Chip farbe={LEUCHT.kritisch}>Preis weicht ab</Chip>}

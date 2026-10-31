@@ -54,7 +54,7 @@ export async function wegeLage(): Promise<WegLage[]> {
   const bs = await sicher(async () => {
     const { bausteineLage, katalogLaden } = await import('@/lib/bausteine/server');
     const [l, k] = await Promise.all([bausteineLage(), katalogLaden()]);
-    return { aktiv: l.e.aktiv, gruende: [...l.gruende, ...(k.length ? [] : ['Katalog leer (unterlagen/bausteine/katalog.json)'])] };
+    return { aktiv: l.e.aktiv, gruende: [...l.gruende, ...(k.length ? [] : ['Katalog der Bausteine ist leer'])] };
   });
   raus.push(bs ? {
     id: 'bausteine', name: 'Bausteine bestellen', pfad: '/api/bestellung', weg: WEG.website('bausteine'),

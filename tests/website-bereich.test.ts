@@ -52,8 +52,8 @@ afterEach(() => drossel._zuruecksetzen());
 afterAll(() => rmSync(ordner, { recursive: true, force: true }));
 
 describe('Regeln (rein)', () => {
-  it('Formate der Website beim Speichern: Preistext Pflicht ≤ 60, Bausteinpreis > 0, Links nur https oder /…, Texte ≤ 2000', () => {
-    expect(() => R.eintragSaeubern('angebote', 'probe', { ...ANGEBOT, preisText: '' })).toThrow(/Preistext fehlt/);
+  it('Formate der Website beim Speichern: Preistext ≤ 60 ohne < >, Bausteinpreis > 0, Links nur https oder /…, Texte ≤ 2000', () => {
+    expect(R.eintragSaeubern('angebote', 'probe', { ...ANGEBOT, preisText: '' })).not.toHaveProperty('preisText');
     expect(() => R.eintragSaeubern('angebote', 'probe', { ...ANGEBOT, preisText: 'x'.repeat(61) })).toThrow(R.WebFehler);
     expect(() => R.eintragSaeubern('angebote', 'probe', { ...ANGEBOT, preisText: '<b>1</b>' })).toThrow(/ohne </);
     expect(() => R.eintragSaeubern('angebote', 'probe', { ...ANGEBOT, seite: 'http://x.example' })).toThrow(/Pfad der Website/);
@@ -141,7 +141,7 @@ describe('Routen', () => {
   it('schreiben: Dienstweg 403, fremder Haushalt 403, ohne Stand 409, mit Stand gespeichert', async () => {
     expect((await patch([{ liste: 'angebote', art: 'setze', id: 'probe', eintrag: ANGEBOT }], { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' })).status).toBe(403);
     expect((await patch([{ liste: 'angebote', art: 'setze', id: 'probe', eintrag: ANGEBOT }], kopf('fremd'))).status).toBe(403);
-    expect((await patch([{ liste: 'angebote', art: 'setze', id: 'probe', eintrag: { ...ANGEBOT, preisText: '' } }])).status).toBe(400);
+    expect((await patch([{ liste: 'angebote', art: 'setze', id: 'probe', eintrag: { ...ANGEBOT, preisText: 'x'.repeat(61) } }])).status).toBe(413);
     const r = await patch([
       { liste: 'angebote', art: 'setze', id: 'probe', eintrag: ANGEBOT },
       { liste: 'angebote', art: 'setze', id: 'versteckt', eintrag: { ...ANGEBOT, sichtbar: false } },

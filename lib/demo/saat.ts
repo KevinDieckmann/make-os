@@ -106,6 +106,7 @@ const R = {
   planung: () => import('@/app/api/crm/planung/route') as Promise<Modul>,
   social: () => import('@/app/api/social/route') as Promise<Modul>,
   treppe: () => import('@/app/api/crm/treppe/route') as Promise<Modul>,
+  website: () => import('@/app/api/website/intern/route') as Promise<Modul>,
   produktImport: () => import('@/app/api/crm/produkte/import/route') as Promise<Modul>,
   absender: () => import('@/app/api/crm/gesellschaften/route') as Promise<Modul>,
   stammdaten: () => import('@/app/api/crm/stammdaten/route') as Promise<Modul>,
@@ -445,6 +446,20 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
     }));
   }
   schritt('Social (Kanäle aus Vorlagen, Format, Folgen, Zahlen, Ziele, Automatik mit Probe)', 3 + 1 + DEMO_FOLGEN.length + 1);
+
+  // 3b') Markttraktion › Website (31.10.): erfundene Inhalte der Website — Angebote (eines mit Katalog-Bezug, eines mit abweichendem Preis zum Zeigen des
+  //      Abgleichs), häufige Fragen, Fakten und Texte — über die Route (Einzel-Änderungen), wie im Browser. Nur die Struktur der Startwerte, alle Werte erfunden.
+  await rufe(R.website(), 'PATCH', '/api/website/intern', LENA, { ops: [
+    { liste: 'angebote', art: 'setze', id: 'diagnose', eintrag: { bereich: 'innovation', titel: 'Klarheits-Diagnose (Beispiel)', kurz: 'Zwei Wochen, ein klares Bild der Steuerung.', preisText: 'ab 4.800 €', preisNetto: 480000, ab: true, produktId: 'l-demo-diagnose', seite: '/innovation/diagnose/', sichtbar: true, rang: 1 } },
+    { liste: 'angebote', art: 'setze', id: 'vertriebsaufbau', eintrag: { bereich: 'vertrieb', titel: 'Vertriebsaufbau (Beispiel)', kurz: 'Vertrieb planbar machen, bis das Team allein verkauft.', preisText: 'ab 3.200 € / Monat', preisNetto: 320000, ab: true, monatlich: true, produktId: 'l-demo-retainer', seite: '/vertrieb/aufbau/', sichtbar: true, rang: 2 } },
+    { liste: 'angebote', art: 'setze', id: 'sichtbarkeit-paket', eintrag: { bereich: 'sichtbarkeit', titel: 'Sichtbarkeits-Paket (Beispiel)', preisText: 'auf Anfrage', bald: true, seite: '/sichtbarkeit/paket/', sichtbar: false, rang: 3 } },
+    { liste: 'faq', art: 'setze', id: 'wq-demo-0001', eintrag: { frage: 'Wie schnell geht es los? (Beispiel)', antwort: 'In der Regel innerhalb von zwei Wochen nach dem Erstgespräch.', bereich: 'vorab', gruppe: 'Bevor Sie fragen', sichtbar: true, rang: 1 } },
+    { liste: 'faq', art: 'setze', id: 'wq-demo-0002', eintrag: { frage: 'Arbeiten Sie auch remote? (Beispiel)', antwort: 'Ja, Workshops gehen vor Ort und per Video.', bereich: 'einstieg', gruppe: 'Zusammenarbeit', sichtbar: true, rang: 2 } },
+    { liste: 'fakten', art: 'setze', id: 'wf-demo-0001', eintrag: { titel: 'Was wir sind', text: 'Ein erfundenes Beispiel-Team für Vertrieb und Innovation.', sichtbar: true, rang: 1 } },
+    { liste: 'fakten', art: 'setze', id: 'wf-demo-0002', eintrag: { titel: 'Sitz', text: 'Beispielstadt', sichtbar: true, rang: 2 } },
+    { liste: 'texte', art: 'setze', id: 'events.einleitung', eintrag: { text: 'Wir bringen Menschen zusammen, die Neues umsetzen (Beispiel).' } },
+  ] });
+  schritt('Website (Angebote, Fragen, Fakten, Texte)', 8);
 
   // 3c) Produkte · Leistungstreppe (10.10.): eine erfundene Beispiel-Treppe (Check → Diagnose → zwei Pakete nebeneinander), die Kundenreise als
   //     Kreislauf, ein Paket in der Roadmap, Positionierung & Story und der Fortschritt eines Mandats — über die Route (Einzel-Schritte), wie im Browser.

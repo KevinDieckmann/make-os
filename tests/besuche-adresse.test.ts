@@ -37,7 +37,7 @@ describe('Reiter „Events“ (besuche) neben Make.One (event)', () => {
 
   it('Hub (22.10.): EIN Punkt „Events“ unter Marketing trägt Besuchte Events und Make.One — die Reiter stehen in EINER Zeile', () => {
     const marketing = HUB_MENUE.gruppen.find(g => g.id === 'marketing')!;
-    expect(marketing.punkte.map(p => p.id)).toEqual(['marketing', 'events', 'netzwerken']);
+    expect(marketing.punkte.map(p => p.id)).toEqual(['marketing', 'website', 'events', 'netzwerken']);
     expect(marketing.punkte.find(p => p.id === 'events')?.bereiche).toEqual(['besuche', 'event']);
     expect(punktVon({ s: 'besuche' })).toBe('events');
     expect(punktVon({ s: 'event' })).toBe('events');

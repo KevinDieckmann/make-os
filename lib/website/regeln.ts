@@ -30,8 +30,8 @@ export interface WebAngebot {
   bereich: string;
   titel: string;
   kurz?: string;
-  /** Preistext der Website („ab … €“, „auf Anfrage“) — Pflicht, ≤ 60 Zeichen (die Website setzt ihn so ein, fokusinnovation/js/inhalt.js). */
-  preisText: string;
+  /** Preistext der Website („ab … €“, „auf Anfrage“) — ≤ 60 Zeichen, ohne < > (die Website setzt ihn so ein, fokusinnovation/js/inhalt.js); fehlt er, bleibt dort der gebaute Text. */
+  preisText?: string;
   /** Netto in Cent (optional). */
   preisNetto?: number;
   /** „ab“ vor dem Preis. */
@@ -73,7 +73,6 @@ export interface WebsiteInhalt {
   bilder: WebBild[];
   einstellungen: WebEinstellungen;
   geaendert?: string;
-  geaendertVon?: string;
 }
 
 export type WebListe = 'angebote' | 'bausteine' | 'events' | 'faq' | 'fakten' | 'texte' | 'bilder';
@@ -93,8 +92,7 @@ export const KENNUNG_OK: Record<WebListe, RegExp> = {
 /** Neue eigene Kennung (Präfix je Liste) — im Browser wie auf dem Server. */
 export const PRAEFIX: Record<'faq' | 'fakten' | 'events' | 'bilder', string> = { faq: 'wq', fakten: 'wf', events: 'we', bilder: 'wb' };
 export function neueWebKennung(liste: keyof typeof PRAEFIX): string {
-  const zufall = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-  return `${PRAEFIX[liste]}-${zufall}`;
+  return `${PRAEFIX[liste]}-${crypto.randomUUID()}`;
 }
 const PRODUKT_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
 const EVENT_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,79}$/;
@@ -162,13 +160,12 @@ export function eintragSaeubern(liste: WebListe, id: string, roh: unknown): WebA
       if (!titel) throw new WebFehler('Titel fehlt.', 400);
       const kurz = laenge(absatz(e.kurz), GRENZEN.kurz, 'Kurztext');
       const preisText = laenge(zeile(e.preisText), GRENZEN.preisText, 'Preistext');
-      if (!preisText) throw new WebFehler('Preistext fehlt (z. B. „ab … €“ oder „auf Anfrage“).', 400);
       const preisNetto = preisVon(e.preisNetto);
       const produktId = zeile(e.produktId);
       if (produktId && !PRODUKT_ID.test(produktId)) throw new WebFehler('Produkt-Bezug ungültig.', 400);
       const seite = linkVon(e.seite, 'Seite');
       return {
-        id, bereich: bereichVon(e.bereich), titel, ...(kurz ? { kurz } : {}), preisText, ...(preisNetto !== undefined ? { preisNetto } : {}),
+        id, bereich: bereichVon(e.bereich), titel, ...(kurz ? { kurz } : {}), ...(preisText ? { preisText } : {}), ...(preisNetto !== undefined ? { preisNetto } : {}),
         ...(e.ab === true ? { ab: true } : {}), ...(e.monatlich === true ? { monatlich: true } : {}), ...(e.bald === true ? { bald: true } : {}),
         ...(produktId ? { produktId } : {}), ...(seite ? { seite } : {}), sichtbar: bool(e.sichtbar, false), rang: rangVon(e.rang),
       };
@@ -238,7 +235,7 @@ export function inhaltAus(roh: unknown): WebsiteInhalt {
   return {
     angebote: l(r.angebote), bausteine: l(r.bausteine), events: l(r.events), faq: l(r.faq), fakten: l(r.fakten), texte: l(r.texte), bilder: l(r.bilder),
     einstellungen: r.einstellungen && typeof r.einstellungen === 'object' ? r.einstellungen : {},
-    ...(r.geaendert ? { geaendert: r.geaendert } : {}), ...(r.geaendertVon ? { geaendertVon: r.geaendertVon } : {}),
+    ...(r.geaendert ? { geaendert: r.geaendert } : {}),
   };
 }
 
@@ -298,7 +295,8 @@ export function opsAnwenden(alt: WebsiteInhalt, ops: readonly WebOp[], wer: { pe
     if (liste.length > GRENZEN[op.liste]) throw new WebFehler(`Höchstens ${GRENZEN[op.liste]} Einträge (${op.liste}) — nichts gespeichert.`, 413);
   }
   if (konflikte.length) return { inhalt: alt, konflikte };
-  return { inhalt: { ...neu, geaendert: wer.jetzt, geaendertVon: wer.person }, konflikte };
+  // Wer geändert hat, steht nur im Änderungsprotokoll (ohne Werte) — der Bestand selbst trägt keine Person.
+  return { inhalt: { ...neu, geaendert: wer.jetzt }, konflikte };
 }
 
 /** Jeder Eintrag mit seinem Stand (für den Browser; der Stand wird nie gespeichert). */
@@ -355,7 +353,7 @@ export interface OeffentlichesEvent { id: string; titel: string; /** JJJJ-MM-TT 
 export interface WebsiteOeffentlich {
   ok: true;
   stand: string;
-  angebote: { id: string; bereich: string; titel: string; kurz?: string; preisText: string; preisNetto?: number; ab?: boolean; monatlich?: boolean; bald?: boolean; seite?: string }[];
+  angebote: { id: string; bereich: string; titel: string; kurz?: string; preisText?: string; preisNetto?: number; ab?: boolean; monatlich?: boolean; bald?: boolean; seite?: string }[];
   bausteine: { id: string; titel: string; bereich: string; preisNetto: number; kurz?: string; seite: string; paket?: string[] }[];
   events: OeffentlichesEvent[];
   faq: { id: string; frage: string; antwort: string; bereich?: string; gruppe?: string }[];
@@ -388,8 +386,8 @@ const textOk = (x: unknown, max: number): x is string => typeof x === 'string' &
  * (`bildOk`). Was nicht ins Format der Website passt, fehlt (zweite Sicherung nach der Prüfung beim Speichern — nie etwas Ungültiges ausliefern).
  */
 export function oeffentlicherInhalt(i: WebsiteInhalt, q: { katalog: readonly (Baustein & { ausgeblendet?: boolean; kurz?: string; rang?: number })[]; events: readonly EventQuelle[]; bildOk: (medium: string) => boolean; heute: string }): WebsiteOeffentlich {
-  const angebote = nachRang(i.angebote.filter(a => a.sichtbar && textOk(a.preisText, GRENZEN.preisText))).map(a => ({
-    id: a.id, bereich: a.bereich, titel: a.titel, ...(a.kurz ? { kurz: a.kurz } : {}), preisText: a.preisText,
+  const angebote = nachRang(i.angebote.filter(a => a.sichtbar)).map(a => ({
+    id: a.id, bereich: a.bereich, titel: a.titel, ...(a.kurz ? { kurz: a.kurz } : {}), ...(textOk(a.preisText, GRENZEN.preisText) ? { preisText: a.preisText } : {}),
     ...(typeof a.preisNetto === 'number' ? { preisNetto: a.preisNetto } : {}), ...(a.ab ? { ab: true } : {}), ...(a.monatlich ? { monatlich: true } : {}),
     ...(a.bald ? { bald: true } : {}), ...(a.seite && linkOk(a.seite) ? { seite: a.seite } : {}),
   }));

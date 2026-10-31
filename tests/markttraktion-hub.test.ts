@@ -27,7 +27,7 @@ describe('Hub-Menü — die Liste als Daten', () => {
       [null, ['Überblick']],
       ['CRM', ['Kontakte', 'Firmen']],
       ['Vertrieb', ['Leads & Qualifizierung', 'Deals', 'Angebote', 'Follow-up & Power Hour']],
-      ['Marketing', ['Marketing', 'Events', 'Netzwerken']],
+      ['Marketing', ['Marketing', 'Website', 'Events', 'Netzwerken']],
       ['Steuerung', ['Planung', 'Auswertung']],
     ]);
     // 25.10.: Formulare im Fuß (die Gruppen tragen schon zwölf Punkte) — vor Stammdaten.
@@ -47,6 +47,7 @@ describe('Hub-Menü — die Liste als Daten', () => {
     expect(ziel('angebot')).toBe(angebotLink());
     expect(ziel('followup')).toBe(WEG.followup());
     expect(ziel('marketing')).toBe(WEG.marketing());
+    expect(ziel('website')).toBe(WEG.website());
     expect(ziel('events')).toBe(WEG.besuch());
     expect(ziel('netzwerken')).toBe(WEG.netzwerken());
     expect(NETZWERKEN_PFAD).toBe(WEG.netzwerken());
