@@ -1,5 +1,5 @@
 {
-  "hinweis": "Kostenlos › Vorlagen (30.10.): Quelle inhalt/vorlagen/<id>.html (+ <id>.tabelle.json), gebaut mit vorlagen.mjs nach assets/vorlagen. Seitenzahl und Größe liest bauen.mjs aus den Dateien. Felder: id, titel, text, bereich, ratgeber, phase, inhalt.",
+  "hinweis": "Kostenlos › Vorlagen (30.10.): Quelle inhalt/vorlagen/<id>.html (+ <id>.tabelle.json), gebaut mit vorlagen.mjs nach dateien/vorlagen (nicht öffentlich). bauen.mjs verteilt: kurze Vorlagen nach assets/vorlagen (Download), lange (ab fokus.json › kostenlos.vorlagen.per_mail_ab_seiten) nach unterlagen/ im Repo — die gibt es nur per E-Mail über die App. Seitenzahl und Größe liest bauen.mjs aus den Dateien. Felder: id, titel, text, bereich, ratgeber, phase, inhalt. `vorschau_seite`: welche Seite des PDFs die Vorschau zeigt (vorlagen.mjs rendert sie nach assets/bild/vorlagen/).",
   "vorlagen": [
     {
       "id": "vertriebsteam-aufbauen",
@@ -26,7 +26,8 @@
         "Wochenrunde",
         "Einzelgespräch",
         "Nächste Schritte"
-      ]
+      ],
+      "vorschau_seite": 10
     },
     {
       "id": "vertriebskennzahlen-je-phase",
@@ -48,7 +49,8 @@
         "Wochen- und Monatsbogen Wachstum",
         "Ausgefülltes Beispiel",
         "Tabelle mit Wochen- und Monatsblättern"
-      ]
+      ],
+      "vorschau_seite": 9
     },
     {
       "id": "vertriebs-pipeline",
@@ -66,7 +68,8 @@
         "Pipeline-Bogen",
         "Monatsauswertung",
         "Tabelle mit Auswahlliste und Auswertung"
-      ]
+      ],
+      "vorschau_seite": 2
     },
     {
       "id": "kernsatz-in-fuenf-schritten",
@@ -86,7 +89,8 @@
         "Fünf-Sekunden-Test",
         "Liste: wo der Satz hingehört",
         "Nächste Schritte"
-      ]
+      ],
+      "vorschau_seite": 2
     },
     {
       "id": "startseiten-check",
@@ -106,7 +110,8 @@
         "Auswertung mit Punkten",
         "Die drei wichtigsten Änderungen",
         "Tabelle mit Formeln"
-      ]
+      ],
+      "vorschau_seite": 2
     },
     {
       "id": "kundenstimmen-einholen",
@@ -128,7 +133,8 @@
         "Ausgefülltes Beispiel",
         "Einwilligung zum Unterschreiben",
         "Überblick über Freigaben"
-      ]
+      ],
+      "vorschau_seite": 6
     },
     {
       "id": "ki-regeln-fuer-ihr-team",
@@ -147,7 +153,8 @@
         "KI-Kompetenz: Artikel 4 im Wortlaut",
         "Teilnehmerliste für Schulungen",
         "Nächste Schritte"
-      ]
+      ],
+      "vorschau_seite": 2
     },
     {
       "id": "ki-anwendungsfall-bewerten",
@@ -169,7 +176,8 @@
         "Steckbrief",
         "Übersicht zum Vergleichen",
         "Tabelle mit Formeln"
-      ]
+      ],
+      "vorschau_seite": 4
     },
     {
       "id": "ki-pilot-30-tage",
@@ -190,7 +198,8 @@
         "Notizen für Wochentermine",
         "Auswertung und Entscheidung",
         "Tabelle mit Formeln"
-      ]
+      ],
+      "vorschau_seite": 2
     }
   ]
 }

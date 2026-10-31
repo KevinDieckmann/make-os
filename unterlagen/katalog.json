@@ -1,0 +1,104 @@
+{
+  "hinweis": "Gebaut von prototype/fokus-innovation/bauen.mjs — nicht von Hand ändern. Lange Vorlagen, nur per E-Mail (/api/unterlage).",
+  "unterlagen": [
+    {
+      "id": "vertriebsteam-aufbauen",
+      "titel": "Arbeitsheft: Vom Gründer-Vertrieb zum Vertriebsteam",
+      "seite": "/kostenlos/vorlagen/vertriebsteam-aufbauen/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "vertriebsteam-aufbauen.pdf",
+          "name": "Arbeitsheft – Vom Gründer-Vertrieb zum Vertriebsteam.pdf"
+        }
+      ]
+    },
+    {
+      "id": "vertriebskennzahlen-je-phase",
+      "titel": "Vertriebskennzahlen je Phase",
+      "seite": "/kostenlos/vorlagen/vertriebskennzahlen-je-phase/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "vertriebskennzahlen-je-phase.pdf",
+          "name": "Vertriebskennzahlen je Phase.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "vertriebskennzahlen-je-phase.xlsx",
+          "name": "Vertriebskennzahlen je Phase.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "kernsatz-in-fuenf-schritten",
+      "titel": "Ihr Kernsatz in fünf Schritten",
+      "seite": "/kostenlos/vorlagen/kernsatz-in-fuenf-schritten/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "kernsatz-in-fuenf-schritten.pdf",
+          "name": "Ihr Kernsatz in fünf Schritten.pdf"
+        }
+      ]
+    },
+    {
+      "id": "kundenstimmen-einholen",
+      "titel": "Kundenstimmen einholen",
+      "seite": "/kostenlos/vorlagen/kundenstimmen-einholen/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "kundenstimmen-einholen.pdf",
+          "name": "Kundenstimmen einholen.pdf"
+        }
+      ]
+    },
+    {
+      "id": "ki-regeln-fuer-ihr-team",
+      "titel": "KI-Regeln für Ihr Team",
+      "seite": "/kostenlos/vorlagen/ki-regeln-fuer-ihr-team/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "ki-regeln-fuer-ihr-team.pdf",
+          "name": "KI-Regeln für Ihr Team.pdf"
+        }
+      ]
+    },
+    {
+      "id": "ki-anwendungsfall-bewerten",
+      "titel": "KI-Anwendungsfälle bewerten",
+      "seite": "/kostenlos/vorlagen/ki-anwendungsfall-bewerten/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "ki-anwendungsfall-bewerten.pdf",
+          "name": "KI-Anwendungsfälle bewerten.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "ki-anwendungsfall-bewerten.xlsx",
+          "name": "KI-Anwendungsfälle bewerten.xlsx"
+        }
+      ]
+    },
+    {
+      "id": "ki-pilot-30-tage",
+      "titel": "KI-Pilot in 30 Tagen",
+      "seite": "/kostenlos/vorlagen/ki-pilot-30-tage/",
+      "dateien": [
+        {
+          "art": "pdf",
+          "datei": "ki-pilot-30-tage.pdf",
+          "name": "KI-Pilot in 30 Tagen.pdf"
+        },
+        {
+          "art": "xlsx",
+          "datei": "ki-pilot-30-tage.xlsx",
+          "name": "KI-Pilot in 30 Tagen.xlsx"
+        }
+      ]
+    }
+  ]
+}

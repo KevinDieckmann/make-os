@@ -1,7 +1,10 @@
 // ─── Kostenlos › Vorlagen bauen (30.10.) ─────────────────────────────────────────────────────────────────────────────────────
 // Kevin 30.10.: „Die Leute müssen die Sachen sauber umsetzen können — da fehlt bei den PDFs manchmal noch was.“ Darum je Vorlage:
-//   inhalt/vorlagen/<id>.html          → assets/vorlagen/<id>.pdf   (Druck A4 über Chrome ohne Kopf/Fuß, Gestaltung in basis.css)
-//   inhalt/vorlagen/<id>.tabelle.json  → assets/vorlagen/<id>.xlsx  (Tabelle zum Ausfüllen am Rechner, mit Formeln; Excel, Numbers, Google Tabellen)
+//   inhalt/vorlagen/<id>.html          → dateien/vorlagen/<id>.pdf   (Druck A4 über Chrome ohne Kopf/Fuß, Gestaltung in basis.css)
+//   inhalt/vorlagen/<id>.tabelle.json  → dateien/vorlagen/<id>.xlsx  (Tabelle zum Ausfüllen am Rechner, mit Formeln; Excel, Numbers, Google Tabellen)
+//   Vorschau (31.10.)                  → assets/bild/vorlagen/<id>-titel.jpg + <id>-seite.jpg (Titelseite und `vorschau_seite` aus inhalt/vorlagen.json,
+//                                         gerendert mit PDFKit über werkzeug/pdfseiten.swift — nur am Mac).
+// dateien/ ist NICHT öffentlich: bauen.mjs verteilt kurze Vorlagen nach assets/vorlagen, lange nach unterlagen/ (nur per E-Mail, Kevin 31.10.).
 // Aufruf:  node prototype/fokus-innovation/vorlagen.mjs [id …]   (ohne id: alle). Danach `node bauen.mjs` — die Seite liest Größe und
 // Seitenzahl aus den gebauten Dateien (inhalt/vorlagen.json nennt nur, was es gibt). Nie echte Namen, Firmen oder Zahlen in Beispielen.
 //
@@ -15,14 +18,18 @@
 //   Stile: titel · kopf · text · hinweis · zahl · prozent · euro · datum · eingabe (helle Fläche = hier eintragen) · fett
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { crc32 } from 'node:zlib';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
 const QUELLE = join(HIER, 'inhalt', 'vorlagen');
-const ZIEL = join(HIER, 'assets', 'vorlagen');
+const ZIEL = join(HIER, 'dateien', 'vorlagen');
+const BILDER = join(HIER, 'assets', 'bild', 'vorlagen');
+const VORLAGEN = JSON.parse(readFileSync(join(HIER, 'inhalt', 'vorlagen.json'), 'utf8')).vorlagen;
+const AB_SEITEN = JSON.parse(readFileSync(join(HIER, 'inhalt', 'fokus.json'), 'utf8')).kostenlos?.vorlagen?.per_mail_ab_seiten ?? Infinity;
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 // ── PDF ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -143,11 +150,36 @@ function xlsxBauen(id) {
   return { datei: `${id}.xlsx`, blaetter: namen.length, kb: Math.max(1, Math.round(daten.length / 1024)) };
 }
 
-const ids = process.argv.slice(2).length ? process.argv.slice(2)
+const argumente = process.argv.slice(2);
+// `--nur-vorschau`: nur die Vorschaubilder neu (PDFs und Tabellen bleiben byte-gleich).
+const nurVorschau = argumente.includes('--nur-vorschau');
+const namen = argumente.filter((a) => !a.startsWith('--'));
+const ids = namen.length ? namen
   : [...new Set(readdirSync(QUELLE).filter((f) => /\.(html|tabelle\.json)$/.test(f)).map((f) => f.replace(/\.(tabelle\.json|html)$/, '')))];
+// ── Vorschau: Titelseite und eine Beispielseite als Bild (PDFKit über Swift, einmal übersetzt) ───────────────────────────────────
+let pdfWerkzeug = null;
+function vorschauBauen(id) {
+  const pdf = join(ZIEL, `${id}.pdf`);
+  const v = VORLAGEN.find((x) => x.id === id);
+  if (!existsSync(pdf) || !v) return null;
+  // Nur lange Vorlagen haben eine Vorschau-Seite (die kurzen lädt man direkt).
+  if ((readFileSync(pdf).toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length < AB_SEITEN) return null;
+  if (!pdfWerkzeug) {
+    pdfWerkzeug = join(tmpdir(), 'fokus-pdfseiten');
+    execFileSync('nice', ['-n', '10', 'swiftc', '-O', '-o', pdfWerkzeug, join(HIER, 'werkzeug', 'pdfseiten.swift')], { stdio: 'ignore' });
+  }
+  mkdirSync(BILDER, { recursive: true });
+  const seite = v.vorschau_seite ?? 2;
+  execFileSync(pdfWerkzeug, ['bild', pdf, '1', '640', join(BILDER, `${id}-titel.jpg`)]);
+  execFileSync(pdfWerkzeug, ['bild', pdf, String(seite), '900', join(BILDER, `${id}-seite.jpg`)]);
+  return seite;
+}
+
 for (const id of ids) {
   if (!/^[a-z0-9-]+$/.test(id)) throw new Error(`Kennung „${id}“: nur a–z, 0–9, -`);
+  if (nurVorschau) { const s = vorschauBauen(id); console.log(`${id}: Vorschau ${s ? `Seite ${s}` : '—'}`); continue; }
   const p = pdfBauen(id), x = xlsxBauen(id);
+  if (p) vorschauBauen(id);
   if (!p && !x) throw new Error(`Zu „${id}“ gibt es weder ${id}.html noch ${id}.tabelle.json`);
   console.log(`${id}: ${p ? `PDF ${p.seiten} S., ${p.kb} KB` : '—'} · ${x ? `XLSX ${x.blaetter} Blätter, ${x.kb} KB` : '—'}`);
 }

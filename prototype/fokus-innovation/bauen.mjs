@@ -5,14 +5,15 @@
 // Hand ändern — Text in den JSON-Dateien, Aussehen in css/, dann:
 //   node prototype/fokus-innovation/bauen.mjs            → schreibt alle Seiten und prüft sie
 //   node prototype/fokus-innovation/bauen.mjs --pruefen  → nur prüfen (Ausgang 1 bei Abweichung oder Regelverstoß)
-// Regeln: keine Cookies, kein Tracking, keine Formulare, keine fremden Quellen, keine Inline-Skripte oder -Stile (CSP 'self'),
+// Regeln: keine Cookies, kein Tracking, keine Formulare (einzige Ausnahme 31.10.: „Vorlage per E-Mail anfordern“, `form[data-unterlage]` ohne
+// action — js/unterlage.js schickt an die eigene App, die CSP `form-action 'none'` bleibt), keine fremden Quellen, keine Inline-Skripte oder -Stile (CSP 'self'),
 // der Name der eigenen Software und Connect stehen nirgends, Statistiken nur mit Quelle.
 // Suche (27.10.): jede Seite trägt Titel, Beschreibung, Canonical, Vorschaubild und strukturierte Daten (JSON-LD, als Datenblock
 // erlaubt — kein ausführbares Skript). Dazu sitemap.xml, robots.txt, llms.txt für KI-Suchen und site.webmanifest. Ob Suchmaschinen
 // die Seite aufnehmen dürfen, entscheidet EIN Schalter: inhalt/fokus.json › seo.oeffentlich (bis Kevins Freigabe false).
 // Vorschaubilder und Icons erzeugt bilder.mjs (braucht Chrome) — nach neuen Seiten oder geänderten Titeln einmal laufen lassen.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, copyFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -101,11 +102,29 @@ export function quellen() {
  */
 export function vorlageDateien(id) {
   const d = [];
-  const pdf = join(ORDNER, 'assets', 'vorlagen', `${id}.pdf`);
-  if (existsSync(pdf)) d.push({ art: 'pdf', href: `/assets/vorlagen/${id}.pdf`, seiten: (readFileSync(pdf).toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length, kb: Math.round(statSync(pdf).size / 1024) });
-  const xlsx = join(ORDNER, 'assets', 'vorlagen', `${id}.xlsx`);
-  if (existsSync(xlsx)) d.push({ art: 'xlsx', href: `/assets/vorlagen/${id}.xlsx`, kb: Math.max(1, Math.round(statSync(xlsx).size / 1024)) });
+  const pdf = join(VORLAGEN_QUELLE, `${id}.pdf`);
+  if (existsSync(pdf)) d.push({ art: 'pdf', datei: `${id}.pdf`, seiten: (readFileSync(pdf).toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length, kb: Math.round(statSync(pdf).size / 1024) });
+  const xlsx = join(VORLAGEN_QUELLE, `${id}.xlsx`);
+  if (existsSync(xlsx)) d.push({ art: 'xlsx', datei: `${id}.xlsx`, kb: Math.max(1, Math.round(statSync(xlsx).size / 1024)) });
   return d;
+}
+
+/** Gebaute Vorlagen (vorlagen.mjs) — NICHT öffentlich; bauen.mjs verteilt sie (lauf): kurze nach assets/vorlagen, lange nach unterlagen/. */
+export const VORLAGEN_QUELLE = join(ORDNER, 'dateien', 'vorlagen');
+/** Lange Vorlagen für die App (Kevin 31.10.: „die größeren brauchen eine E-Mail“) — Repo-Ordner unterlagen/, liefert nur /api/unterlage aus. */
+export const UNTERLAGEN = join(REPO, 'unterlagen');
+/**
+ * Die Vorlagen mit Dateien und der Entscheidung „per E-Mail“: ab `kostenlos.vorlagen.per_mail_ab_seiten` PDF-Seiten gibt es eine Vorlage
+ * nur per E-Mail (Vorschau-Seite /kostenlos/vorlagen/<id>/), kürzere direkt als Download. Ohne gebaute Datei gibt es die Vorlage nicht.
+ */
+export function vorlagenListe(q) {
+  const ab = q.fokus.kostenlos?.vorlagen?.per_mail_ab_seiten ?? Infinity;
+  return (q.vorlagen?.vorlagen ?? []).map((v) => {
+    const dateien = vorlageDateien(v.id);
+    const seiten = dateien.find((d) => d.art === 'pdf')?.seiten ?? 0;
+    const perMail = seiten >= ab;
+    return { ...v, perMail, seiten, seite: `/kostenlos/vorlagen/${v.id}/`, dateien: dateien.map((d) => ({ ...d, href: perMail ? null : `/assets/vorlagen/${d.datei}` })) };
+  }).filter((v) => v.dateien.length);
 }
 
 /** Adresse einer Seite im Netz: index.html → /, vertrieb/index.html → /vertrieb/. */
@@ -118,7 +137,7 @@ export function seitenBauen(q = quellen()) {
   const { inhalt, seite, blaetter, fokus: F, wissen: W, stufen, katalog, zahlen: Z, vorlagen: VL } = q;
   const K = F.kostenlos;
   // Vorlagen mit Dateien (30.10.: PDF mit Anleitung und Beispiel, dazu teils eine Tabelle für Excel) — ohne gebaute Datei nicht auf der Seite.
-  const VORL = (VL?.vorlagen ?? []).map((v) => ({ ...v, dateien: vorlageDateien(v.id) })).filter((v) => v.dateien.length);
+  const VORL = vorlagenListe(q);
   const vorlageVon = (id) => { const v = VORL.find((x) => x.id === id); if (!v) throw new Error(`Vorlage ${id} fehlt (inhalt/vorlagen.json bzw. assets/vorlagen)`); return v; };
   ANGEBOTE = [...inhalt.angebote];
   const angebot = (id) => inhalt.angebote.find((a) => a.id === id);
@@ -373,7 +392,7 @@ ${suche}<meta name="theme-color" content="${film ? '#0B0C0F' : '#F6F4F0'}">
 <link rel="stylesheet" href="/css/fokus.css?v=${stempel('css/fokus.css')}">
 ${film ? `<link rel="stylesheet" href="/css/film.css?v=${stempel('css/film.css')}">\n` : ''}<script src="/js/frueh.js?v=${stempel('js/frueh.js')}"></script>
 <script src="/js/seite.js?v=${stempel('js/seite.js')}" defer></script>
-${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}<script type="application/ld+json">${ldJson}</script>
+${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}<script type="application/ld+json">${ldJson}</script>
 </head>
 <body${klasse ? ` class="${klasse}"` : ''}>
 ${kopf(aktiv)}
@@ -936,8 +955,8 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
 <h2>Aufruf der Seite</h2><p>Wenn Sie die Seite öffnen, schickt Ihr Browser technisch bedingt Ihre IP-Adresse, den Zeitpunkt, die aufgerufene Adresse und eine Browser-Kennung an unseren Server. Wir brauchen diese Angaben, um die Seite verschlüsselt (HTTPS) auszuliefern und den Server sicher zu betreiben. Rechtsgrundlage ist unser berechtigtes Interesse an einem sicheren, funktionierenden Angebot (Art. 6 Abs. 1 lit. f DSGVO). Unser Webserver führt kein Zugriffsprotokoll. Technische Fehlermeldungen können eine IP-Adresse enthalten; sie bleiben auf dem Server, werden nicht ausgewertet und rollierend überschrieben.</p>
 <h2>Cookies und Speicher im Browser</h2><p>Die Website selbst setzt keine Cookies und legt nichts im Speicher Ihres Browsers ab. Kleine Skripte zeigen Abschnitte beim Scrollen an, spielen auf der Startseite eine Animation ab und schließen auf dem Handy das Menü; sie lesen nichts aus, speichern nichts und senden nichts. Was die Checks im Speicher Ihres Browsers ablegen, steht im Abschnitt zu den Checks.</p>
 <h2>Links zu Quellen</h2><p>Bei Zahlen nennen wir die Quelle und verlinken sie. Erst wenn Sie einen solchen Link anklicken, öffnet Ihr Browser die Seite des jeweiligen Anbieters; dafür gilt dessen Datenschutzhinweis.</p>
-<h2>Vorlagen zum Herunterladen</h2><p>Die Vorlagen laden Sie ohne Anmeldung direkt von unserem Server. Dabei fallen nur die technischen Angaben an, die beim Aufruf jeder Seite entstehen (siehe oben).</p>
-<h2>Checks: Innovations-Check, Vertriebs-Check, Sichtbarkeits-Check</h2><p>Die Checks laufen unter ${e(F.domain)}/check in unserer eigenen Anwendung auf demselben Server. Zoe ist eine KI-Assistentin; in den Checks stellt sie die Fragen mit festen Texten, Ihre Antworten gehen an kein KI-Modell. Wir speichern Ihre Antworten, um Ihr Ergebnis zu berechnen. Geben Sie Kontaktdaten an, schicken wir Ihnen Ihren Bericht, legen Sie als Anfrage in unserem Kundensystem an und bieten Ihnen das Erstgespräch an (Art. 6 Abs. 1 lit. b DSGVO, Anfrage vor einem möglichen Vertrag). Ohne Kontaktdaten löschen wir Ihre Antworten nach 30 Tagen, mit Kontaktdaten spätestens 24 Monate nach dem letzten Kontakt.</p><p>Damit Sie später weitermachen können, legt jeder Check im Speicher Ihres Browsers eine zufällige Kennung ab; sie enthält keine Antworten. Wählen Sie im Ergebnis einen freien Termin, merkt sich Ihr Browser bis zum Schließen des Fensters die gewählte Zeit und, falls Sie sie angegeben haben, Vorname, E-Mail und Firma, damit die Buchungsseite sie vorausfüllt. Die Buchungsseite löscht diese Angaben, sobald sie sie gelesen hat. Vor dem Start jedes Checks sehen Sie einen eigenen Datenschutzhinweis.</p>
+<h2 id="vorlagen">Vorlagen</h2><p>Kurze Vorlagen laden Sie ohne Anmeldung direkt von unserem Server. Dabei fallen nur die technischen Angaben an, die beim Aufruf jeder Seite entstehen (siehe oben).</p><p>Ausführliche Arbeitshefte schicken wir Ihnen per E-Mail. Dafür geben Sie Ihren Vornamen, Ihre E-Mail-Adresse und, wenn Sie möchten, Ihre Firma an. Wir verwenden die Angaben, um Ihnen den Link zum Herunterladen zu schicken (er gilt 7 Tage), und legen Ihre Anfrage in unserem Kundensystem an, damit wir Ihnen bei Fragen weiterhelfen können (Art. 6 Abs. 1 lit. b DSGVO, Anfrage vor einem möglichen Vertrag). Der Link enthält keine persönlichen Angaben. Werbung schicken wir Ihnen nur, wenn Sie den Newsletter ankreuzen und bestätigen (siehe Newsletter). Anfragen ohne weiteren Kontakt löschen wir spätestens 24 Monate nach dem letzten Kontakt. Die Mail verschicken wir über unser Postfach bei Google Workspace (siehe unten).</p>
+<h2>Checks: Innovations-Check, Vertriebs-Check, Sichtbarkeits-Check</h2><p>Die Checks laufen unter ${e(F.domain)}/check in unserer eigenen Anwendung auf demselben Server. Zoe ist eine KI-Assistentin; in den Checks stellt sie die Fragen mit festen Texten, Ihre Antworten gehen an kein KI-Modell. Wir speichern Ihre Antworten, um Ihr Ergebnis zu berechnen. Beim ausführlichen Innovations-Check sehen Sie ohne Kontaktdaten Ihre Stufe; den vollständigen Bericht schicken wir Ihnen per E-Mail. Geben Sie Kontaktdaten an, schicken wir Ihnen Ihren Bericht per E-Mail, legen Sie als Anfrage in unserem Kundensystem an und bieten Ihnen das Erstgespräch an (Art. 6 Abs. 1 lit. b DSGVO, Anfrage vor einem möglichen Vertrag). Ohne Kontaktdaten löschen wir Ihre Antworten nach 30 Tagen, mit Kontaktdaten spätestens 24 Monate nach dem letzten Kontakt.</p><p>Damit Sie später weitermachen können, legt jeder Check im Speicher Ihres Browsers eine zufällige Kennung ab; sie enthält keine Antworten. Wählen Sie im Ergebnis einen freien Termin, merkt sich Ihr Browser bis zum Schließen des Fensters die gewählte Zeit und, falls Sie sie angegeben haben, Vorname, E-Mail und Firma, damit die Buchungsseite sie vorausfüllt. Die Buchungsseite löscht diese Angaben, sobald sie sie gelesen hat. Vor dem Start jedes Checks sehen Sie einen eigenen Datenschutzhinweis.</p>
 <h2>Erstgespräch buchen</h2><p>Das Erstgespräch buchen Sie unter ${e(F.domain)}/buchen in unserer eigenen Anwendung. Ihre Angaben (Name, E-Mail, Firma, Anliegen) verwenden wir, um Ihre Terminanfrage zu bearbeiten und das Gespräch vorzubereiten (Art. 6 Abs. 1 lit. b DSGVO). Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung. Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir 30 Tage nach der letzten Änderung, bestätigte Buchungen 30 Tage nach dem Termin. Mit der Bestätigung legen wir Sie als Geschäftskontakt an und tragen den Termin mit Ihrem Namen und Ihrer E-Mail-Adresse in unseren Kalender bei Google Workspace ein (siehe unten). Nach dem Absenden zeigt Ihnen die Seite Ihren persönlichen Status; die Adresse mit Ihrem Schlüssel kennen nur Sie. Vor dem Absenden sehen Sie dort einen eigenen Datenschutzhinweis.</p>
 <h2>Newsletter</h2><p>Den Newsletter bestellen Sie unter ${e(F.domain)}/newsletter. Sie bekommen ihn nur, wenn Sie die Anmeldung über den Link in unserer Bestätigungsmail bestätigen (Double-Opt-in). Rechtsgrundlage ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO). Wir speichern Ihre E-Mail-Adresse, Ihren Vornamen, falls Sie ihn angeben, den Wortlaut Ihrer Einwilligung und die Zeitpunkte von Anmeldung, Bestätigungsmail und Bestätigung, um die Einwilligung nachweisen zu können. Nach der Bestätigung führen wir Sie mit diesem Nachweis in unserem Kundensystem. Unbestätigte Anmeldungen löschen wir nach 30 Tagen. Sie können die Einwilligung jederzeit widerrufen, über den Abmeldelink in jeder Ausgabe oder per E-Mail; danach bekommen Sie nichts mehr, und wir behalten nur den Nachweis, dass und wann Sie eingewilligt und widerrufen haben. Die Mails verschicken wir über unser Postfach bei Google Workspace (siehe unten).</p>
 <h2>Kontakt per E-Mail, Kalender</h2><p>Schreiben Sie uns an ${e(seite.kontakt.mail)}, verarbeiten wir Ihre Adresse und den Inhalt Ihrer Nachricht, um zu antworten: bei Anfragen zu einem möglichen Vertrag nach Art. 6 Abs. 1 lit. b DSGVO, sonst nach Art. 6 Abs. 1 lit. f DSGVO. Wir löschen die Nachricht, wenn sie erledigt ist, es sei denn, gesetzliche Aufbewahrungspflichten verlangen mehr. Die Postfächer und den Kalender betreibt Google Workspace (Gmail, Google Kalender), ein Dienst der Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland, auf Grundlage eines Auftragsverarbeitungsvertrags. Werden dabei Daten in Länder außerhalb der EU übermittelt, etwa in die USA, ist das über das EU-US Data Privacy Framework beziehungsweise über Standardvertragsklauseln abgesichert.</p>
@@ -996,8 +1015,12 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
     return `<li><a href="${href}"><span class="z-name">${e(c.name)}${c.haupt ? ' <span class="marke-bald">Empfohlen</span>' : ''}</span><span class="z-text">${e(c.text)}</span><span class="z-preis">${c.minuten} Minuten</span>${PFEIL}</a></li>`;
   }).join('');
   /** Download-Links einer Vorlage: PDF (mit Seitenzahl) und, falls gebaut, die Tabelle für Excel. */
-  const dateiLinks = (v) => v.dateien.map((d) => `<a class="textlink" href="${d.href}" download><span>${d.art === 'pdf' ? `PDF · ${d.seiten} ${d.seiten === 1 ? 'Seite' : 'Seiten'}` : 'Tabelle für Excel'}</span> ${PFEIL}</a>`).join('');
-  const vorlageZeile = (v, mitAnker = true) => `<li${mitAnker ? ` id="vorlage-${v.id}"` : ''}><div class="v-text"><h3 class="z-name">${e(v.titel)}</h3><p class="z-text">${e(v.text)}</p>${v.inhalt?.length ? `<p class="v-inhalt">${v.inhalt.map(e).join(' · ')}</p>` : ''}</div><div class="v-dateien">${dateiLinks(v)}</div></li>`;
+  const umfangText = (v) => v.dateien.map((d) => (d.art === 'pdf' ? `PDF · ${d.seiten} ${d.seiten === 1 ? 'Seite' : 'Seiten'}` : 'Tabelle für Excel')).join(' · ');
+  // Lange Vorlagen (Kevin 31.10.) führen auf ihre Vorschau-Seite mit dem Formular — die Datei selbst kommt nur per E-Mail.
+  const dateiLinks = (v) => (v.perMail
+    ? `<a class="textlink" href="${v.seite}"><span>Vorschau · per E-Mail</span> ${PFEIL}</a><span class="v-umfang">${e(umfangText(v))}</span>`
+    : v.dateien.map((d) => `<a class="textlink" href="${d.href}" download><span>${d.art === 'pdf' ? `PDF · ${d.seiten} ${d.seiten === 1 ? 'Seite' : 'Seiten'}` : 'Tabelle für Excel'}</span> ${PFEIL}</a>`).join(''));
+  const vorlageZeile = (v, mitAnker = true) => `<li${mitAnker ? ` id="vorlage-${v.id}"` : ''}><div class="v-text"><h3 class="z-name">${v.perMail ? `<a href="${v.seite}">${e(v.titel)}</a>` : e(v.titel)}</h3><p class="z-text">${e(v.text)}</p>${v.inhalt?.length ? `<p class="v-inhalt">${v.inhalt.map(e).join(' · ')}</p>` : ''}</div><div class="v-dateien">${dateiLinks(v)}</div></li>`;
   /**
    * „Nach Phase“ (30.10.): was in Start, Aufbau und Wachstum zuerst hilft. Ausgewählt in fokus.json (`empfohlen`: „r:<ratgeber>“, „v:<vorlage>“),
    * ohne Auswahl alles mit dieser Phase (Feld `phase`). Eine unbekannte Kennung bricht den Bau ab.
@@ -1047,6 +1070,59 @@ ${VORL.length ? `<section class="abschnitt" id="vorlagen" aria-labelledby="vorla
 <ul class="zeilen erscheint">${[['/begriffe/', 'Begriffe von A bis Z', 'Pipeline, Sales Playbook, Wiedervorlage: kurz und klar erklärt.', `${W.begriffe.length} Begriffe`], ['/fragen/', 'Häufige Fragen', 'Antworten zu Check, Vertrieb, Homepages, Videos und Verträgen.', 'alle Bereiche'], ['/preise/', 'Alle Preise', 'Jedes Angebot mit Preis und Konditionen auf einer Seite.', 'netto']].map(([h, n, s, p]) => `<li><a href="${h}"><span class="z-name">${e(n)}</span><span class="z-text">${e(s)}</span><span class="z-preis">${e(p)}</span>${PFEIL}</a></li>`).join('')}</ul></div></section>
 ${schlussakt({ quelle: 'kostenlos_ende' })}`,
   });
+
+  // ── Vorschau-Seiten der langen Vorlagen (Kevin 31.10.: „die größeren brauchen eine E-Mail, damit wir denen das Ganze zuschicken können“) ──
+  // Titelseite + eine Beispielseite als Bild (vorlagen.mjs), der Inhalt als Liste, dann das Formular. Das Formular spricht mit der App
+  // (js/unterlage.js → /api/unterlage, über die Website-Adresse); ohne Skript oder wenn die App die Anforderung gerade nicht annimmt, steht der
+  // Weg per E-Mail da. Die Datei selbst liegt nicht im öffentlichen Ordner (lauf → unterlagen/).
+  /** Beschreibung für die Suche (110–165 Zeichen): erster Satz + Umfang, sonst Titel + Umfang. */
+  const vorlageBeschreibung = (v) => {
+    const satz1 = klar(v.text).match(/^.*?[.!?](?=\s|$)/)?.[0] ?? klar(v.text);
+    const wahl = [`${satz1} ${umfangText(v)}, kostenlos per E-Mail.`, `${v.titel}: ${umfangText(v)} mit Anleitung, ausgefülltem Beispiel und Bögen zum Ausfüllen. Kostenlos per E-Mail.`, `Kostenlose Vorlage: ${v.titel}. ${umfangText(v)} mit Anleitung und Beispiel, per E-Mail.`].find((x) => x.length >= 110 && x.length <= 165);
+    if (!wahl) throw new Error(`Vorlage ${v.id}: keine Beschreibung mit 110–165 Zeichen — Text kürzen`);
+    return wahl;
+  };
+  for (const v of VORL.filter((x) => x.perMail)) {
+    const pfad = `kostenlos/vorlagen/${v.id}/index.html`;
+    const ratgeber = v.ratgeber ? W.artikel.find((a) => a.id === v.ratgeber) : null;
+    if (v.ratgeber && !ratgeber) throw new Error(`Vorlage ${v.id}: Ratgeber ${v.ratgeber} fehlt`);
+    const pdf = v.dateien.find((d) => d.art === 'pdf');
+    const nr = v.vorschau_seite ?? 2;
+    const weitere = VORL.filter((x) => x.id !== v.id && x.bereich === v.bereich).slice(0, 3);
+    const betreff = encodeURIComponent(`Vorlage: ${v.titel}`);
+    const ersatz = `Schreiben Sie uns kurz an <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}?subject=${betreff}">${e(seite.kontakt.mail)}</a>, wir schicken Ihnen die Vorlage zu.`;
+    neu(pfad, {
+      titel: [`${v.titel}: Vorlage kostenlos · Fokus Innovation`, `${v.titel} · Fokus Innovation`, `${v.titel}: Vorlage kostenlos`, v.titel].find((x) => x.length <= 65),
+      beschreibung: vorlageBeschreibung(v),
+      bildVorzeile: `Vorlage · ${B[v.bereich].name}`,
+      bildTitel: v.titel,
+      aktiv: 'kostenlos',
+      schema: [{ '@type': 'DigitalDocument', '@id': `${absolut(v.seite)}#vorlage`, name: v.titel, description: klar(v.text), inLanguage: 'de-DE', encodingFormat: 'application/pdf', numberOfPages: pdf?.seiten, isAccessibleForFree: true, publisher: { '@id': ORG }, ...(ratgeber ? { isBasedOn: absolut(artikelPfad(ratgeber)) } : {}) }],
+      main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
+<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], ['/kostenlos/#vorlagen', 'Vorlagen'], [null, v.titel]])}${vorzeile(`Vorlage · ${B[v.bereich].name}`)}<h1 id="held-titel" class="glanz">${e(v.titel)}</h1><p class="lead">${t(v.text)}</p>
+<p class="vorlage-umfang">${e(umfangText(v))} · kostenlos per E-Mail</p>
+<div class="knoepfe">${knopf('#anfordern', 'Per E-Mail anfordern')}${ratgeber ? textlink(artikelPfad(ratgeber), ratgeber.leitfaden ? 'Den Leitfaden dazu lesen' : 'Den Ratgeber dazu lesen') : ''}</div></div>
+<figure class="vorlage-blatt erscheint"><img class="blatt-titel" src="/assets/bild/vorlagen/${v.id}-titel.jpg" width="640" height="905" alt="Titelseite der Vorlage „${e(v.titel)}“"><img class="blatt-seite" src="/assets/bild/vorlagen/${v.id}-seite.jpg" width="900" height="1273" alt="Seite ${nr} der Vorlage als Beispiel"><figcaption>Seite ${nr} von ${pdf?.seiten ?? ''} · Vorschau</figcaption></figure>
+</div></section>
+${v.inhalt?.length ? `<section class="abschnitt" aria-labelledby="inhalt-titel"><div class="w">${abKopf({ marke: 'Inhalt', h2: 'Was drin ist.', lead: `${pdf?.seiten ?? ''} Seiten mit Anleitung, ausgefülltem Beispiel und Bögen zum Ausfüllen${v.dateien.some((d) => d.art === 'xlsx') ? ', dazu eine Tabelle, die selbst rechnet' : ''}.`, id: 'inhalt-titel' })}<ol class="vorlage-inhalt erscheint">${v.inhalt.map((x) => `<li>${t(x)}</li>`).join('')}</ol></div></section>` : ''}
+<section class="abschnitt" id="anfordern" aria-labelledby="anfordern-titel"><div class="w">${abKopf({ marke: 'Kostenlos', h2: 'Per E-Mail anfordern.', lead: 'Wir schicken Ihnen den Link zum Herunterladen sofort. Er gilt 7 Tage.', id: 'anfordern-titel' })}
+<div class="anfordern erscheint">
+<form class="anfordern-form" data-unterlage="${v.id}" novalidate hidden>
+<div class="anfordern-felder"><label><span>Vorname</span><input name="vorname" autocomplete="given-name" maxlength="60" required></label><label><span>E-Mail</span><input name="email" type="email" autocomplete="email" maxlength="160" required></label><label><span>Firma <small>freiwillig</small></span><input name="firma" autocomplete="organization" maxlength="120"></label></div>
+<div class="anfordern-falle" aria-hidden="true"><label>Webseite <input name="webseite" tabindex="-1" autocomplete="off"></label></div>
+<label class="anfordern-haken" data-newsletter hidden><input type="checkbox" name="newsletter"><span></span></label>
+<p class="anfordern-hinweis">Wir nutzen Ihre Angaben, um Ihnen den Link zu schicken, und legen Ihre Anfrage in unserem Kundensystem an. Werbung bekommen Sie nur, wenn Sie den Newsletter ankreuzen und bestätigen. Mehr im <a class="unterstrichen" href="/datenschutz/#vorlagen">Datenschutzhinweis</a>.</p>
+<button class="knopf" type="submit">Vorlage per E-Mail anfordern ${PFEIL}</button>
+<p class="anfordern-meldung" data-meldung role="status" aria-live="polite"></p>
+</form>
+<div class="anfordern-fertig" data-fertig hidden tabindex="-1"><p class="etikett">Ist unterwegs</p><p class="anfordern-fertig-text" data-fertig-text></p></div>
+<p class="anfordern-ersatz" data-ersatz hidden>${ersatz}</p>
+<noscript><p class="anfordern-ersatz">${ersatz}</p></noscript>
+</div></div></section>
+${weitere.length ? `<section class="abschnitt" aria-labelledby="weitere-titel"><div class="w">${abKopf({ marke: 'Vorlagen', h2: `Weitere Vorlagen: ${B[v.bereich].name}`, id: 'weitere-titel' })}<ul class="vorlagen-liste erscheint">${weitere.map((x) => vorlageZeile(x, false)).join('')}</ul><div class="knoepfe erscheint">${textlink('/kostenlos/#vorlagen', 'Alle Vorlagen')}</div></div></section>` : ''}
+${schlussakt({ quelle: `vorlage_${v.id}`, bereich: v.bereich })}`,
+    });
+  }
 
   if (Z) {
     neu('kostenlos/zahlen/index.html', {
@@ -1377,7 +1453,8 @@ export function pruefen(seiten) {
     if (/<script(?![^>]*\ssrc=)(?![^>]*type="application\/ld\+json")[^>]*>/.test(s.html)) fehler.push(`${s.pfad}: Inline-Skript`);
     if (/\son[a-z]+="/.test(s.html)) fehler.push(`${s.pfad}: Ereignis-Attribut`);
     if (/<(script|img|link|iframe|source|video)\b[^>]*\s(src|href)="https?:/.test(s.html.replace(/<link rel="(canonical|alternate)"[^>]*>/g, ''))) fehler.push(`${s.pfad}: fremde Quelle`);
-    if (/<form\b/.test(s.html)) fehler.push(`${s.pfad}: Formular`);
+    // Formulare nur „Vorlage per E-Mail anfordern“ (31.10.): ohne action/method, nur auf den Vorschau-Seiten der Vorlagen.
+    for (const f of s.html.match(/<form\b[^>]*>/g) ?? []) if (!/^<form class="anfordern-form" data-unterlage="[a-z0-9-]+" novalidate hidden>$/.test(f) || !s.pfad.startsWith('kostenlos/vorlagen/')) fehler.push(`${s.pfad}: Formular`);
     platzhalter += (s.html.match(/class="ph"/g) ?? []).length;
     for (const [, href] of s.html.matchAll(/\shref="([^"]+)"/g)) {
       if (href.startsWith('/assets/vorlagen/') && !existsSync(join(ORDNER, href))) { fehler.push(`${s.pfad}: Vorlage fehlt ${href}`); continue; }
@@ -1404,8 +1481,38 @@ export function pruefen(seiten) {
     } catch (err) { fehler.push(`${s.pfad}: strukturierte Daten ungültig (${err.message})`); }
     if (s.bild && !existsSync(join(ORDNER, s.bild.datei))) fehler.push(`${s.pfad}: Vorschaubild fehlt (node bilder.mjs)`);
   }
-  for (const datei of ['css/fokus.css', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
+  for (const datei of ['css/fokus.css', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'js/unterlage.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
   return { fehler, platzhalter };
+}
+
+/**
+ * Soll-Stand der Vorlagen-Dateien herstellen (bzw. beim Prüfen nur melden): kurze Vorlagen in assets/vorlagen (öffentlich), lange in
+ * unterlagen/ mit katalog.json (Vertrag mit der App: lib/unterlage — id, titel, seite, dateien[{ art, datei, name }]). Liefert die Änderungen.
+ */
+function vorlagenVerteilen(liste, nurPruefen) {
+  const aenderungen = [];
+  const oeffentlich = join(ORDNER, 'assets', 'vorlagen');
+  const gleich = (a, b) => existsSync(b) && readFileSync(a).equals(readFileSync(b));
+  const soll = new Map(); // Zielpfad → Quelle
+  for (const v of liste) for (const d of v.dateien) soll.set(join(v.perMail ? UNTERLAGEN : oeffentlich, d.datei), join(VORLAGEN_QUELLE, d.datei));
+  const katalog = `${JSON.stringify({ hinweis: 'Gebaut von prototype/fokus-innovation/bauen.mjs — nicht von Hand ändern. Lange Vorlagen, nur per E-Mail (/api/unterlage).', unterlagen: liste.filter((v) => v.perMail).map((v) => ({ id: v.id, titel: v.titel, seite: v.seite, dateien: v.dateien.map((d) => ({ art: d.art, datei: d.datei, name: `${v.titel.replace(/[:/\\?*"<>|]+/g, ' –').replace(/\s+/g, ' ').trim()}.${d.art}` })) })) }, null, 2)}\n`;
+  const katalogDatei = join(UNTERLAGEN, 'katalog.json');
+  if (!existsSync(katalogDatei) || readFileSync(katalogDatei, 'utf8') !== katalog) { aenderungen.push('unterlagen/katalog.json'); if (!nurPruefen) { mkdirSync(UNTERLAGEN, { recursive: true }); writeFileSync(katalogDatei, katalog); } }
+  for (const [ziel, quelle] of soll) {
+    if (gleich(quelle, ziel)) continue;
+    aenderungen.push(ziel.slice(join(ORDNER, '..', '..').length + 1));
+    if (!nurPruefen) { mkdirSync(dirname(ziel), { recursive: true }); copyFileSync(quelle, ziel); }
+  }
+  // Was nicht (mehr) dorthin gehört, fliegt raus — vor allem eine lange Vorlage im öffentlichen Ordner.
+  for (const ordner of [oeffentlich, UNTERLAGEN]) {
+    if (!existsSync(ordner)) continue;
+    for (const f of readdirSync(ordner)) {
+      if (f === 'katalog.json' || soll.has(join(ordner, f))) continue;
+      aenderungen.push(`entfernt: ${join(ordner, f).slice(join(ORDNER, '..', '..').length + 1)}`);
+      if (!nurPruefen) unlinkSync(join(ordner, f));
+    }
+  }
+  return aenderungen;
 }
 
 // ── Schreiben oder prüfen ────────────────────────────────────────────────────────────────────────────────────────────
@@ -1418,8 +1525,12 @@ function lauf() {
     const neuText = alt.replace(/from '\.\/szene\.js(\?v=[a-f0-9]+)?'/, `from './szene.js?v=${stempel('js/szene.js')}'`);
     if (neuText !== alt) writeFileSync(filmDatei, neuText);
   }
-  const seiten = seitenBauen();
+  const q = quellen();
+  const seiten = seitenBauen(q);
   let abweichend = 0;
+  // Vorlagen verteilen (31.10.): kurze öffentlich nach assets/vorlagen, lange nur nach unterlagen/ (+ katalog.json für die App) — und eine lange
+  // Vorlage nie zusätzlich öffentlich. Beim Prüfen wird nur verglichen.
+  for (const d of vorlagenVerteilen(vorlagenListe(q), nurPruefen)) { abweichend++; console.log(`${nurPruefen ? 'weicht ab' : 'verteilt'}: ${d}`); }
   for (const s of seiten) {
     const zielDatei = join(ORDNER, s.pfad);
     const vorher = existsSync(zielDatei) ? readFileSync(zielDatei, 'utf8') : null;

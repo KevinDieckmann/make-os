@@ -481,7 +481,7 @@
   },
   "check": {
     "hinweis": "Text der Fokus-Seite zum Check (ruhiger als die Vorlage).",
-    "text": "Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten oder ausführlich in rund 25."
+    "text": "Der Innovations-Check zeigt, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche und mit zwei nächsten Schritten. Kurz in rund 10 Minuten mit Ergebnis sofort, ausführlich in rund 25 mit vollständigem Bericht per E-Mail."
   },
   "angebote_lead": {
     "sichtbarkeit": "Feste Preise, feste Lieferzeiten bei Homepages und Videos, feste Monatspreise bei PR und Kommunikation. Jede Seite zeigt Ablauf, Ergebnis und Konditionen.",
@@ -690,7 +690,7 @@
       },
       "kostenlos": {
         "titel": "Kostenlos: Checks, Ratgeber, Vorlagen · Fokus Innovation",
-        "beschreibung": "Kostenlose Checks, Ratgeber, Zahlen mit Quelle und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Ohne Anmeldung, für Unternehmer und Mittelstand."
+        "beschreibung": "Kostenlose Checks, Ratgeber, Zahlen mit Quelle und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Für Unternehmer und Mittelstand."
       },
       "zahlen": {
         "titel": "Zahlen zu Vertrieb, Sichtbarkeit und KI · Fokus Innovation",
@@ -934,7 +934,7 @@
   "check_einstieg": [
     {
       "titel": "Innovations-Check",
-      "text": "Kurz in rund 10 oder ausführlich in rund 25 Minuten. Kostenlos, fast alles per Klick."
+      "text": "Kurz in rund 10 Minuten oder ausführlich in rund 25, dann mit Bericht per E-Mail. Kostenlos, fast alles per Klick."
     },
     {
       "titel": "Ergebnis sofort",
@@ -954,13 +954,13 @@
     "hinweis": "Bereich „Kostenlos“ (Kevin 30.10.): Checks, Ratgeber, Zahlen, Vorlagen, Newsletter. Der Innovations-Check bleibt der große, die zwei kleinen Checks laufen leise daneben.",
     "titel": "Kostenlos.",
     "ruhig": "Zum Mitnehmen.",
-    "lead": "Checks, Leitfäden, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Zum Umsetzen gemacht: mit Anleitung, Beispiel und Bogen. Ohne Anmeldung, ohne Haken.",
+    "lead": "Checks, Leitfäden, Ratgeber, Zahlen und Vorlagen zu Sichtbarkeit, Vertrieb und Innovation. Zum Umsetzen gemacht: mit Anleitung, Beispiel und Bogen. Das meiste sofort und ohne Anmeldung, ausführliche Arbeitshefte und den vollständigen Check-Bericht schicken wir Ihnen per E-Mail.",
     "checks": [
       {
         "id": "innovation",
         "name": "Innovations-Check",
         "minuten": 10,
-        "text": "Strategie, KI im Alltag, Abläufe, Daten und Team. Kurz in rund 10 oder ausführlich in rund 25 Minuten, mit Stufe, Branchenvergleich und nächsten Schritten.",
+        "text": "Strategie, KI im Alltag, Abläufe, Daten und Team. Kurz in rund 10 Minuten mit Ergebnis sofort, ausführlich in rund 25 Minuten mit vollständigem Bericht per E-Mail: Stufe, Branchenvergleich und nächste Schritte.",
         "pfad": "/innovations-check/",
         "haupt": true
       },
@@ -1032,7 +1032,9 @@
     },
     "vorlagen": {
       "titel": "Vorlagen zum Mitnehmen.",
-      "lead": "Jede Vorlage mit Anleitung und ausgefülltem Beispiel. Als PDF zum Ausdrucken, viele auch als Tabelle für Excel, Numbers oder Google Tabellen. Ohne Anmeldung."
+      "lead": "Jede Vorlage mit Anleitung und ausgefülltem Beispiel. Als PDF zum Ausdrucken, viele auch als Tabelle für Excel, Numbers oder Google Tabellen. Kurze Vorlagen laden Sie direkt, ausführliche Arbeitshefte schicken wir Ihnen per E-Mail.",
+      "per_mail_ab_seiten": 7,
+      "per_mail_hinweis": "Kevin 31.10.: Die kleinen Sachen sind okay, die größeren brauchen eine E-Mail. Ab so vielen PDF-Seiten führt die Vorlage auf ihre Vorschau-Seite; die Datei kommt nur per E-Mail (App: /api/unterlage)."
     },
     "newsletter": {
       "titel": "Neues aus unserer Arbeit.",
@@ -1153,7 +1155,7 @@
           "Innovations-Check starten"
         ]
       ],
-      "check_satz": "Der Innovations-Check zeigt Ihnen in rund zehn Minuten, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht und wo KI den größten Unterschied macht. Wer es genauer wissen will, wählt die ausführliche Fassung."
+      "check_satz": "Der Innovations-Check zeigt Ihnen in rund zehn Minuten, wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht und wo KI den größten Unterschied macht. Wer es genauer wissen will, wählt die ausführliche Fassung und bekommt den vollständigen Bericht per E-Mail."
     }
   },
   "videos": {

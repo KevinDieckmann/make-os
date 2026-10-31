@@ -8,7 +8,7 @@
     "datum": "2026-10-31"
   },
   "datenschutz/index.html": {
-    "hash": "39a6b86104439d39",
+    "hash": "3fd6420e979e67bc",
     "datum": "2026-10-31"
   },
   "events/index.html": {
@@ -32,7 +32,7 @@
     "datum": "2026-10-31"
   },
   "innovation/index.html": {
-    "hash": "4029ca5e9b98b102",
+    "hash": "0d99fd1065727e97",
     "datum": "2026-10-31"
   },
   "innovation/umsetzungsprojekte/index.html": {
@@ -40,11 +40,11 @@
     "datum": "2026-10-31"
   },
   "innovations-check/index.html": {
-    "hash": "20fc536629e1f5ea",
+    "hash": "57ef8109feb97a3b",
     "datum": "2026-10-31"
   },
   "ins-unternehmen/index.html": {
-    "hash": "7603e776a03b9e45",
+    "hash": "58265f92548099de",
     "datum": "2026-10-31"
   },
   "kontakt/index.html": {
@@ -52,7 +52,35 @@
     "datum": "2026-10-31"
   },
   "kostenlos/index.html": {
-    "hash": "52ccaf90c60cac29",
+    "hash": "4bf0c08bdc59a934",
+    "datum": "2026-10-31"
+  },
+  "kostenlos/vorlagen/kernsatz-in-fuenf-schritten/index.html": {
+    "hash": "f54acfdfad45b65f",
+    "datum": "2026-10-31"
+  },
+  "kostenlos/vorlagen/ki-anwendungsfall-bewerten/index.html": {
+    "hash": "22deba50e49aced3",
+    "datum": "2026-10-31"
+  },
+  "kostenlos/vorlagen/ki-pilot-30-tage/index.html": {
+    "hash": "d6c88bd26a12351e",
+    "datum": "2026-10-31"
+  },
+  "kostenlos/vorlagen/ki-regeln-fuer-ihr-team/index.html": {
+    "hash": "f86ffd2a565c86c0",
+    "datum": "2026-10-31"
+  },
+  "kostenlos/vorlagen/kundenstimmen-einholen/index.html": {
+    "hash": "443127f038d57d6e",
+    "datum": "2026-10-31"
+  },
+  "kostenlos/vorlagen/vertriebskennzahlen-je-phase/index.html": {
+    "hash": "12668807e35d2254",
+    "datum": "2026-10-31"
+  },
+  "kostenlos/vorlagen/vertriebsteam-aufbauen/index.html": {
+    "hash": "202ad9515569facb",
     "datum": "2026-10-31"
   },
   "kostenlos/zahlen/index.html": {
@@ -132,15 +160,15 @@
     "datum": "2026-10-31"
   },
   "wissen/erste-30-tage-mit-ki/index.html": {
-    "hash": "dfe6981a265a5e81",
+    "hash": "ba3fa367dea61656",
     "datum": "2026-10-31"
   },
   "wissen/fuenf-vertriebszahlen/index.html": {
-    "hash": "649fbda1e57baf4c",
+    "hash": "a5152b05ddceb1ac",
     "datum": "2026-10-31"
   },
   "wissen/head-of-sales-auf-zeit/index.html": {
-    "hash": "4cd2722efd3b1fed",
+    "hash": "fb9ee2d9d3790326",
     "datum": "2026-10-31"
   },
   "wissen/homepage-fuenf-sekunden/index.html": {
@@ -148,35 +176,35 @@
     "datum": "2026-10-31"
   },
   "wissen/ki-anwendungsfaelle-finden/index.html": {
-    "hash": "f55d59f223120837",
+    "hash": "a53e04faf7405749",
     "datum": "2026-10-31"
   },
   "wissen/ki-im-mittelstand-einfuehren/index.html": {
-    "hash": "6b38c0f5301b0490",
+    "hash": "c17ce48e734977e6",
     "datum": "2026-10-31"
   },
   "wissen/kundenstimmen-die-ueberzeugen/index.html": {
-    "hash": "14c48848ee6d4f4c",
+    "hash": "6d8add17ee886d36",
     "datum": "2026-10-31"
   },
   "wissen/positionierung-in-fuenf-saetzen/index.html": {
-    "hash": "cc9787ff7c91d50f",
+    "hash": "b16806e3103d9d4d",
     "datum": "2026-10-31"
   },
   "wissen/vertrieb-aufbauen/index.html": {
-    "hash": "8de2045bec28263c",
+    "hash": "78aa00deb798d875",
     "datum": "2026-10-31"
   },
   "wissen/vertriebskennzahlen-je-phase/index.html": {
-    "hash": "e2b0b06a486b83cb",
+    "hash": "e2dbce450cf18d6b",
     "datum": "2026-10-31"
   },
   "wissen/vom-gruender-vertrieb-zum-vertriebsteam/index.html": {
-    "hash": "b7e23f1c2e81cecb",
+    "hash": "7748ca1e978a89d2",
     "datum": "2026-10-31"
   },
   "wissen/website-ohne-anfragen/index.html": {
-    "hash": "a53eef063e7a822d",
+    "hash": "f1c861daadcc57cc",
     "datum": "2026-10-31"
   }
 }
