@@ -494,8 +494,11 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
       offen, pipeline: offen * w.auftrag, stunden, vertriebler: stunden / (VOLLZEIT_STUNDEN * VERKAUFSZEIT),
       hebelQuote: Math.max(0, jeWoche(termine) - termineMit(Math.min(100, w.angebotsquote + 7), w.auftrag)), quoteNeu: Math.min(100, w.angebotsquote + 7),
       hebelAuftrag: Math.max(0, jeWoche(termine) - termineMit(w.angebotsquote, w.auftrag * 1.25)),
+      kiStunden: jeWoche(termine) * 0.5, // eine halbe Stunde weniger Vor- und Nachbereitung je Termin
     };
   };
+  // Ab so vielen Stunden je Termin (mit Vor- und Nachbereitung) zeigt der Rechner den Weg zum Innovations-Check (Kevin 31.10.).
+  const KI_AB_STUNDEN = 1.5;
   const RECHNER_START = { ziel: 2200000, auftrag: 8000, kontaktquote: 20, terminquote: 50, angebotsquote: 33, wochen: 45, offen: 4, stunden: 2 };
   const zahlDe = (n, stellen = 0) => Number(n).toLocaleString('de-DE', { maximumFractionDigits: stellen, minimumFractionDigits: 0 });
   const rechner = () => {
@@ -509,6 +512,7 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
 <p class="etikett">Ihr Ziel</p>${feld('ziel', 'Umsatzziel im Jahr', '€')}${feld('auftrag', 'Durchschnittlicher Auftrag', '€')}
 <p class="etikett">Ihre Quoten</p>${feld('kontaktquote', 'Erstkontakte, aus denen ein Termin wird', '%')}${feld('terminquote', 'Termine, aus denen ein Angebot wird', '%')}${feld('angebotsquote', 'Angebote, die zum Auftrag werden', '%')}
 <p class="etikett">Ihr Alltag</p>${feld('wochen', 'Arbeitswochen im Jahr', 'Wochen')}${feld('offen', 'Bis ein Angebot entschieden ist', 'Wochen')}${feld('stunden', 'Zeit je Termin mit Vor- und Nachbereitung', 'Stunden')}
+<div class="rechner-ki" data-ki-hinweis${RECHNER_START.stunden > KI_AB_STUNDEN ? '' : ' hidden'}><p>Viel Zeit für Vor- und Nachbereitung? Protokolle, Angebote und Nachfassen kann KI vorbereiten. Eine halbe Stunde weniger je Termin sind <b data-aus="kiStunden">${zahlDe(r.kiStunden, 1)}</b>&nbsp;Stunden mehr pro Woche fürs Verkaufen.</p>${textlink(check('rechner_ki'), 'Innovations-Check: wo KI bei Ihnen Zeit spart')}</div>
 </div>
 <div class="rechner-rechts">
 <dl class="rechner-ergebnis" aria-live="polite">
