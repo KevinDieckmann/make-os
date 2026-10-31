@@ -19,7 +19,7 @@ interface ZeileDaten {
   kontakt: { vorname: string; firma: string; email: string; telefon: string | null; newsletterWunsch: boolean } | null;
   ergebnis: { gesamt: number; stufe: number; stufeName: string; genauigkeit: 'genau' | 'vorlaeufig'; lead: { punkte: number; klasse: 'A' | 'B' | 'C' } } | null;
   abgeschlossen: string | null;
-  crm: { status: 'ok' | 'abgelehnt' | 'fehler'; kontaktId: string | null; grund?: string } | null;
+  crm: { status: 'ok' | 'abgelehnt' | 'fehler'; kontaktId: string | null; grund?: string; unbestaetigt?: boolean } | null;
   belegeOffen: number;
 }
 interface Daten {
@@ -136,6 +136,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                   <div style={{ padding: '8px 4px 16px', display: 'grid', gap: 10 }}>
                     {z.kontakt && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{z.kontakt.email}{z.kontakt.telefon ? ` · ${z.kontakt.telefon}` : ''}{z.kontakt.newsletterWunsch ? ' · möchte den Newsletter (noch ohne Bestätigung)' : ''}</div>}
                     {z.crm?.status !== 'ok' && z.crm?.grund && <Hinweis art="kritisch" titel="Nicht im CRM">{z.crm.grund}</Hinweis>}
+                    {z.crm?.status === 'ok' && z.crm.unbestaetigt && <Hinweis art="achtung" titel="Adresse unbestätigt">Die Mail gehört zu einer Person, die schon in der Kartei steht. Der Check hängt dort nur als Vermerk — keine Einwilligung, keine Stufe. Erst prüfen, dann im Follow-up „Anfrage übernehmen“.</Hinweis>}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {z.crm?.status === 'ok' && z.crm.kontaktId && <Knopf leise onClick={() => zuKontakt(z.crm!.kontaktId!)}>Zur Person</Knopf>}
                       {z.kontakt && z.crm?.status !== 'ok' && <Knopf leise onClick={async () => { await tun({ aktion: 'crm', id: z.id }); }}>Ins CRM übernehmen</Knopf>}

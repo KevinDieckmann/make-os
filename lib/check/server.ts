@@ -64,9 +64,10 @@ export async function leadAnlegen(s: CheckSitzung, e: CheckEinstellungen, text: 
     const { anfrageAnlegen } = await import('@/lib/crm/anfrage-anlegen');
     const r = await anfrageAnlegen(
       { neu: { vorname: s.kontakt.vorname, email: s.kontakt.email, firma: s.kontakt.firma, ...(s.kontakt.telefon ? { telefon: s.kontakt.telefon } : {}) }, kanal: 'website', text },
-      { person, wer: { art: 'system' } },
+      // Öffentliche Strecke (Kevin 31.10.): trifft die Mail eine vorhandene Person, nur „Adresse unbestätigt“ anhängen — nichts auslösen.
+      { person, wer: { art: 'system' }, oeffentlich: true },
     );
-    return r.ok ? { status: 'ok', am, kontaktId: r.bau.kontakt.id, followUpId: r.bau.followUp.id } : { status: 'abgelehnt', am, grund: r.fehler.slice(0, 200) };
+    return r.ok ? { status: 'ok', am, kontaktId: r.bau.kontakt.id, followUpId: r.bau.followUp.id, ...(r.bau.unbestaetigt ? { unbestaetigt: true as const } : {}) } : { status: 'abgelehnt', am, grund: r.fehler.slice(0, 200) };
   } catch (x) {
     return { status: 'fehler', am, grund: String((x as Error)?.message ?? x).slice(0, 200) };
   }

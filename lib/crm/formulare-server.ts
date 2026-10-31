@@ -26,7 +26,7 @@ import { localDay } from '@/lib/zeit';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import { neueKennung } from '@/lib/kennung';
 import { aendereKontakte } from './kartei-schreiben';
-import type { Kontakt } from '@/lib/make-one/crm';
+import { wendeAktivitaetAn, type Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from './speicher';
 import { kontakteFuerVerarbeitung } from './verarbeitung';
 import { trifftEingeschraenkte } from './netzwerken';
@@ -51,6 +51,9 @@ import { absenderPruefen, angebotVerschickenImAuftrag } from './angebot-versand'
 import { istBusinessGesellschaft, type Gesellschaftskennung } from '@/lib/einheiten';
 import type { AngebotPosition, Leistung } from './typen';
 import { WEG } from '@/lib/wege';
+import { neuesFollowUp, tagPlus } from './followup';
+import { ANFRAGE_UNBESTAETIGT_PRAEFIX } from './marketing';
+import { anfragePruefenText } from './anfragen';
 
 export { FormularFehler } from './formulare-speicher';
 
@@ -71,6 +74,8 @@ interface AnfrageDaten {
   eingabe: AnfrageEingabe; gesellschaft: Gesellschaftskennung; positionen: AngebotPosition[]; abweichungen: string[]; offen: string[]; hp?: string;
   heute: string; jetzt: string;
   kontaktId?: string; firmaId?: string; firmaName?: string; werbesperre?: boolean; dealId?: string; angebotId?: string; versenden?: boolean; gruende?: string[];
+  /** 31.10.: ein externer Link traf eine vorhandene Person — kein Deal, keine Einwilligung, nie automatisch (siehe `kundeSichern`). */
+  unbestaetigt?: boolean;
 }
 
 export interface AnfordernErgebnis { status: number; body: Record<string, unknown> }
@@ -215,7 +220,9 @@ async function anfrageAusfuehren(h: string, absicht: import('@/lib/store/absicht
 
     await v.schritt('kunde', async () => kundeSichern(D, quelleText, wer, h), r => r);
 
-    await v.schritt('deal', async () => dealSichern({ ...D, kontaktId: d('kontaktId') as string, firmaId: d('firmaId') as string | undefined }, wer), r => r);
+    // Adresse unbestätigt (31.10.): KEIN Deal jetzt (der Lead der Person bliebe sonst nicht unberührt) — nur ein offener Deal mit demselben Produkt
+    // wird vorgemerkt; sonst legt erst „Senden“ in der Freigabe den Deal an (`angebotStellen` mit „neuer Deal“).
+    await v.schritt('deal', async () => (d('unbestaetigt') ? offenerDealGleich({ ...D, kontaktId: d('kontaktId') as string, firmaId: d('firmaId') as string | undefined }) : dealSichern({ ...D, kontaktId: d('kontaktId') as string, firmaId: d('firmaId') as string | undefined }, wer)), r => r);
 
     await v.schritt('angebot', async () => {
       const angebotId = `ang-af-${D.uuid}`;
@@ -229,7 +236,7 @@ async function anfrageAusfuehren(h: string, absicht: import('@/lib/store/absicht
         const vorlage = angebotVorlage({ anrede: e.person.anrede, vorname: e.person.vorname, nachname: e.person.nachname, titel, gueltigBis, ...(firmaName ? { firma: firmaName } : {}), heute: D.heute }, produktTexteFuer({ positionen: D.positionen }, crm.leistungen));
         await angebotSpeichern({
           id: angebotId, person: D.person, haushalt: h, wer, jetzt: new Date(D.jetzt),
-          felder: { gesellschaft: D.gesellschaft, kontaktId: d('kontaktId'), ...(d('firmaId') ? { firmaId: d('firmaId') } : {}), dealId: d('dealId'), dealWahl: 'deal', titel, positionen: D.positionen, einleitung: vorlage.einleitung, schluss: vorlage.schluss, gueltigBis },
+          felder: { gesellschaft: D.gesellschaft, kontaktId: d('kontaktId'), ...(d('firmaId') ? { firmaId: d('firmaId') } : {}), ...(d('dealId') ? { dealId: d('dealId'), dealWahl: 'deal' } : { dealWahl: 'neu' }), titel, positionen: D.positionen, einleitung: vorlage.einleitung, schluss: vorlage.schluss, gueltigBis },
         });
       }
       await aendereEingang(D.eingangId, x => ({ ...x, angebotId }), h);
@@ -249,6 +256,7 @@ async function anfrageAusfuehren(h: string, absicht: import('@/lib/store/absicht
         listenpreise: !!a && nurListenpreise(a.positionen, crm.leistungen), abweichungen: D.abweichungen, offen: D.offen,
         adresseOk: mailOk(e.person.email) && adresseGueltig(e.person.email), werbesperre: !!k?.werbesperre, absenderOk: absender.ok, datenschutzOk: !ds.fehlt,
         namenAuffaellig: namenAuffaellig(e.person.vorname, e.person.nachname, e.firma.name, d('firmaName') as string | undefined),
+        adresseUnbestaetigt: !!d('unbestaetigt'),
       });
       await aendereEingang(D.eingangId, x => ({ ...x, gruende: r.gruende }), h);
       return { versenden: r.versenden, gruende: r.gruende };
@@ -320,7 +328,7 @@ async function anfrageAusfuehren(h: string, absicht: import('@/lib/store/absicht
 /** Kunde finden oder anlegen — über die vorhandenen Wege (siehe Kopf). Liefert die Daten für die nächsten Schritte. */
 async function kundeSichern(D: AnfrageDaten, quelleText: string, wer: Wer, h: string): Promise<Record<string, unknown>> {
   const e = D.eingabe;
-  let kontaktId: string, firmaId: string | undefined, neuePerson = false;
+  let kontaktId: string, firmaId: string | undefined, neuePerson = false, dublette = false;
   if (e.kontaktId) {
     kontaktId = e.kontaktId;
   } else {
@@ -330,13 +338,17 @@ async function kundeSichern(D: AnfrageDaten, quelleText: string, wer: Wer, h: st
       zustaendig: D.zustaendig, quelleText, anlass: `Angebot angefordert — ${quelleText}`,
     }, { weg: 'vertrieb', person: D.person, wer, id: `c-${D.uuid}` });
     if (r.ok) { kontaktId = r.kontaktId; firmaId = r.firmaId; neuePerson = !!r.firmaNeu; }
-    else if (r.dublette) kontaktId = r.dublette.id;
+    else if (r.dublette) { kontaktId = r.dublette.id; dublette = true; }
     else if (r.eingeschraenkt) throw new FormularFehler(EINGESCHRAENKT_FEHLER, 409);
     else throw new FormularFehler(r.fehler, r.status);
   }
   const k0 = (await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).find(k => k.id === kontaktId);
   if (!k0) throw new FormularFehler('Der Kontakt ist nicht angelegt.', 500);
   if (k0.eingeschraenkt) throw new FormularFehler(EINGESCHRAENKT_FEHLER, 409);
+  // Adresse unbestätigt (Kevin 31.10.): ein externer Link nennt die Mail einer Person, die schon in der Kartei steht — wer die Adresse kennt,
+  // könnte sonst bei ihr eine Einwilligung, einen Deal und eine Mail auslösen. Nur anhängen (Vermerk + Follow-up „Anfrage prüfen“), keine Firma
+  // anlegen, keine Einwilligung; die Freigabe „Senden“ übernimmt die Anfrage von Hand.
+  if (D.quelle === 'link' && dublette) return unbestaetigtAnhaengen(D, k0, quelleText, wer, h);
   // Firma des Angebots: gewählt, beim Anlegen entstanden, sonst über den EINEN Weg (vorhanden verknüpfen bzw. neu). Eine vorhandene Person bleibt, wie sie ist.
   let firmaNeu = false;
   if (!firmaId) {
@@ -354,18 +366,69 @@ async function kundeSichern(D: AnfrageDaten, quelleText: string, wer: Wer, h: st
     await aendereCrm(b => ({ ...b, firmen: b.firmen.map(x => (x.id === f.id && !x.zahlung?.empfaenger?.anschrift ? { ...x, zahlung: { ...(x.zahlung ?? {}), empfaenger: { ...(x.zahlung?.empfaenger ?? {}), anschrift } }, geaendert: D.jetzt, geaendertVon: D.person } : x)) }), wer);
   }
   // Einwilligung „Antwort auf Anfrage“ (Mail) — wie /api/crm/anfrage: nur ohne Werbesperre und ohne gültige Mail-Grundlage. Werbesperre → nur verknüpfen.
-  if (!k0.werbesperre) {
-    await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
-      const fk = cur ?? { kontakte: [] };
-      return { ...fk, kontakte: fk.kontakte.map(k => {
-        if (k.id !== kontaktId || k.eingeschraenkt || k.werbesperre || (k.einwilligungen ?? []).some(x => x.kanal === 'mail' && !x.widerrufenAm)) return k;
-        const neu: Kontakt = { ...k, einwilligungen: [...(k.einwilligungen ?? []), { kanal: 'mail', grundlage: 'anfrage', erteiltAm: D.heute, nachweis: `Angebot angefordert über ${quelleText} am ${D.heute}` }] };
-        return datenschutzStempeln(neu, k, D.person, D.jetzt, D.heute);
-      }) };
-    }, wer);
-  }
+  if (!k0.werbesperre) await einwilligungAnfrage(kontaktId, `Angebot angefordert über ${quelleText} am ${D.heute}`, { person: D.person, jetzt: D.jetzt, heute: D.heute, wer });
   await aendereEingang(D.eingangId, x => ({ ...x, kontaktId, ...(firmaId ? { firmaId } : {}) }), h);
   return { kontaktId, ...(firmaId ? { firmaId } : {}), firmaName: f?.name ?? e.firma.name, werbesperre: !!k0.werbesperre };
+}
+
+/** Einwilligung „Antwort auf Anfrage“ (Mail) an einer Person — nur ohne Werbesperre, ohne Art. 18 und ohne gültige Mail-Grundlage (idempotent). */
+async function einwilligungAnfrage(kontaktId: string, nachweis: string, o: { person: string; jetzt: string; heute: string; wer: Wer }): Promise<void> {
+  await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
+    const fk = cur ?? { kontakte: [] };
+    return { ...fk, kontakte: fk.kontakte.map(k => {
+      if (k.id !== kontaktId || k.eingeschraenkt || k.werbesperre || (k.einwilligungen ?? []).some(x => x.kanal === 'mail' && !x.widerrufenAm)) return k;
+      const neu: Kontakt = { ...k, einwilligungen: [...(k.einwilligungen ?? []), { kanal: 'mail', grundlage: 'anfrage', erteiltAm: o.heute, nachweis: nachweis.slice(0, 300) }] };
+      return datenschutzStempeln(neu, k, o.person, o.jetzt, o.heute);
+    }) };
+  }, o.wer);
+}
+
+/** Kennung des Prüf-Follow-ups einer Anfrage mit unbestätigter Adresse — fest aus dem Eingang (Wiederholung legt nichts doppelt an). */
+export const pruefFollowUpId = (eingangId: string) => `fu-${eingangId}`;
+
+/**
+ * Adresse unbestätigt (31.10.): an der vorhandenen Person nur ein System-Vermerk (kein echter Kontakt — weder Stufe noch letzter Kontakt) und das
+ * Follow-up „Anfrage prüfen — Adresse unbestätigt — Angebot anfordern“; am Eingang die Marke. Keine Firma, keine Einwilligung. Idempotent.
+ */
+async function unbestaetigtAnhaengen(D: AnfrageDaten, k0: Kontakt, quelleText: string, wer: Wer, h: string): Promise<Record<string, unknown>> {
+  const kontaktId = k0.id;
+  const crm0 = await ladeCrm();
+  const produkte = D.eingabe.produkte.map(w => crm0.leistungen.find(l => l.id === w.id)?.name).filter(Boolean).join(', ');
+  const text = `${ANFRAGE_UNBESTAETIGT_PRAEFIX}${quelleText}: Angebot angefordert${produkte ? ` (${produkte})` : ''}`.slice(0, 600);
+  await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
+    const fk = cur ?? { kontakte: [] };
+    return { ...fk, kontakte: fk.kontakte.map(k => {
+      if (k.id !== kontaktId || k.eingeschraenkt || (k.aktivitaeten ?? []).some(a => a.art === 'system' && a.bezug === D.eingangId)) return k;
+      return { ...wendeAktivitaetAn(k, { art: 'system', text, von: 'system', bezug: D.eingangId }, D.heute, D.jetzt, tagPlus), geaendertAm: D.heute };
+    }) };
+  }, wer);
+  const fuId = pruefFollowUpId(D.eingangId);
+  const fu = neuesFollowUp({
+    id: fuId, bezug: { art: 'kontakt', id: kontaktId }, kontaktId, art: 'sonstig', text: anfragePruefenText('Angebot anfordern'), faellig: D.heute, zustaendig: D.zustaendig, quelle: 'hand',
+    notiz: `${D.vertrieblerName}: Angebot angefordert${produkte ? ` (${produkte})` : ''}. Das Angebot liegt als Entwurf zur Freigabe — „Senden“ übernimmt die Anfrage, „Ablehnen“ verwirft sie.`,
+  }, k0, D.person, D.jetzt);
+  await aendereCrm(c => ((c.followups ?? []).some(x => x.id === fuId) ? c : { ...c, followups: [...(c.followups ?? []), { ...fu, geaendertVon: D.person }] }), wer);
+  const firmaId = k0.firmaId;
+  const firmaName = (firmaId ? crm0.firmen.find(x => x.id === firmaId)?.name : undefined) ?? k0.firma ?? D.eingabe.firma.name;
+  await aendereEingang(D.eingangId, x => ({ ...x, kontaktId, ...(firmaId ? { firmaId } : {}), adresseUnbestaetigt: true }), h);
+  return { kontaktId, ...(firmaId ? { firmaId } : {}), firmaName, werbesperre: !!k0.werbesperre, unbestaetigt: true };
+}
+
+/** Prüf-Follow-up schließen (Senden = übernommen, Ablehnen = abgesagt) — nur, solange es offen ist. */
+async function pruefFollowUpSchliessen(eingangId: string, art: 'erledigt' | 'abgesagt', person: string): Promise<void> {
+  const id = pruefFollowUpId(eingangId);
+  const jetzt = new Date().toISOString();
+  await aendereCrm(c => ((c.followups ?? []).some(x => x.id === id && x.status === 'offen')
+    ? { ...c, followups: (c.followups ?? []).map(x => (x.id === id ? { ...x, status: art, ...(art === 'erledigt' ? { erledigtAm: jetzt, ergebnis: 'Anfrage übernommen (Angebot gesendet)' } : {}), geaendert: jetzt, geaendertVon: person } : x)) }
+    : c), { art: 'person', person });
+}
+
+/** Ein offener Deal mit demselben Hauptprodukt an Person oder Firma — nur lesen, nichts anlegen (Adresse unbestätigt). */
+async function offenerDealGleich(D: AnfrageDaten & { kontaktId: string; firmaId?: string }): Promise<Record<string, unknown>> {
+  if (!D.hp) return {};
+  const crm = await ladeCrm();
+  const offen = crm.chancen.find(c => OFFENE_STUFEN.includes(c.stufe) && c.leistungId === D.hp && (c.kontaktIds.includes(D.kontaktId) || (!!D.firmaId && c.firmaId === D.firmaId)));
+  return offen ? { dealId: offen.id } : {};
 }
 
 /** Deal: der feste der Anfrage, ein offener mit demselben Hauptprodukt, sonst neu über `dealAnlegen`. */
@@ -433,6 +496,8 @@ export const ANGEBOT_ANFRAGE_STAPEL_ART: import('@/lib/zoe/stapel-arten').Stapel
     if (v.bezug?.art !== 'angebot-anfrage') return;
     const jetzt = new Date().toISOString();
     await aendereEingang(v.bezug.id, x => (x.status === 'freigabe' ? { ...x, status: 'abgelehnt', entschieden: { am: jetzt, von: person, art: 'abgelehnt', ...(v.grund ? { grund: v.grund.slice(0, 400) } : {}) } } : x));
+    // Adresse unbestätigt (31.10.): abgelehnt = die Anfrage gehört nicht zur Person — das Prüf-Follow-up ist abgesagt.
+    await pruefFollowUpSchliessen(v.bezug.id, 'abgesagt', person);
   },
 };
 
@@ -467,6 +532,13 @@ async function freigabeSenden(h: string, eingangId: string, person: string): Pro
   if (!r.ok) return r;
   await nachVersand({ angebotId: a.id, kontaktId: x.kontaktId, person, heute: localDay(), wer });
   const jetzt = new Date().toISOString();
+  // Adresse unbestätigt (31.10.): „Senden“ ist die Übernahme von Hand — jetzt erst die Einwilligung „Antwort auf Anfrage“ (Nachweis: geprüft und
+  // übernommen), das Prüf-Follow-up ist erledigt. Den Deal hat `angebotStellen` beim Stellen angelegt bzw. übernommen.
+  if (x.adresseUnbestaetigt) {
+    const heute = localDay();
+    await einwilligungAnfrage(x.kontaktId, `Angebot angefordert über einen Vertriebs-Link — Adresse geprüft und von Hand übernommen am ${heute}`, { person, jetzt, heute, wer });
+    await pruefFollowUpSchliessen(eingangId, 'erledigt', person);
+  }
   await aendereEingang(eingangId, y => ({ ...y, status: 'verschickt', entschieden: { am: jetzt, von: person, art: 'gesendet' } }), h);
   return { ok: true, text: `Angebot ${a.nummer} verschickt — an ${r.an} über ${r.ueber}.` };
 }

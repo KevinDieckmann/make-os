@@ -7,6 +7,7 @@
 //      { aktion: 'verschieben', id, tage | faellig }     (nie in die Vergangenheit; Zusage/Wiedervorlage/Kadenz/Nachfassen → echtes
 //                                                          Follow-up mit Zähler „verschoben“, das alte Feld fällt weg — 08.10., 4.17)
 //      { aktion: 'absagen', id }                          (überfällig abgesagt = verpasst)
+//      { aktion: 'anfrage-uebernehmen', id }              (31.10.: „Anfrage prüfen — Adresse unbestätigt“ nach der Prüfung übernehmen)
 // Regeln (Prüfbericht 27.09.):
 //   · Jede Änderung an echten Follow-ups liest den Eintrag IN der Schreibsperre — nie aus einem
 //     vorab geladenen Stand (zu zweit gingen sonst Änderungen verloren).
@@ -147,6 +148,15 @@ export async function POST(req: Request) {
     });
     if (schonDa) return NextResponse.json({ ok: true, schonDa: true, text: 'Dieses Follow-up steht schon — nicht doppelt angelegt.' });
     return NextResponse.json({ ok: true, followup: f, text: `Follow-up „${f.text}“ am ${f.faellig} steht.` });
+  }
+
+  // „Anfrage übernehmen“ (31.10.): eine Anfrage mit unbestätigter Adresse nach der Prüfung von Hand übernehmen — über den EINEN Anfrage-Weg
+  // (lib/crm/anfrage-anlegen.ts `anfrageUebernehmen`); nur aus einer Sitzung bzw. mit Person im Haushalt (Tor oben).
+  if (b.aktion === 'anfrage-uebernehmen') {
+    const { anfrageUebernehmen } = await import('@/lib/crm/anfrage-anlegen');
+    const r = await anfrageUebernehmen(String(b.id ?? ''), { person, wer: werAus(req) });
+    if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: 'status' in r ? r.status : 400 });
+    return NextResponse.json({ ok: true, followup: r.bau.followUp, text: `Anfrage übernommen — Follow-up „${r.bau.followUp.text}“ steht heute.` });
   }
 
   const id = String(b.id ?? '');
@@ -303,5 +313,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ...(n ? { followup: n } : {}), text: v?.quelle === 'kadenz' && n ? `Kadenz: nächster Anlauf am ${n.faellig}.` : v?.quelle === 'nachfassen' ? 'Nachfassen ausgelassen — zählt nicht als nachgefasst.' : n?.status === 'verpasst' ? 'Als verpasst gezählt.' : 'Abgesagt.' });
   }
 
-  return NextResponse.json({ ok: false, fehler: 'aktion: anlegen, erledigen, verschieben oder absagen.' }, { status: 400 });
+  return NextResponse.json({ ok: false, fehler: 'aktion: anlegen, erledigen, verschieben, absagen oder anfrage-uebernehmen.' }, { status: 400 });
 }

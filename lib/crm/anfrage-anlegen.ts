@@ -8,11 +8,12 @@
 import { loadJson } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
-import { localDay } from '@/lib/zeit';
+import { localDay, tagVon } from '@/lib/zeit';
 import { saeubereKontakt, serverStempel, bezuegeSynchron, type Kontakt } from '@/lib/make-one/crm';
 import { datenschutzStempeln } from '@/lib/crm/datenschutz-stempel';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { anfrageBauen, type AnfrageEingabe } from '@/lib/crm/anfragen';
+import { anfrageBauen, kanalAusPruefen, type AnfrageEingabe } from '@/lib/crm/anfragen';
+import { istAnfragePruefen } from '@/lib/crm/marketing';
 import { sperrlisteLaden, neuanlageSperre, sperren } from '@/lib/crm/sperrliste';
 import { neueKennung } from '@/lib/kennung';
 import { firmaSichern } from '@/lib/crm/person-anlegen-server';
@@ -26,14 +27,15 @@ const kontakteLaden = async () => (await loadJson<{ kontakte: Kontakt[] }>('kont
  * Legt eine Anfrage an (Person neu oder vorhanden). `person` = wer erfasst (Speichername — hält bei neuen Personen die
  * Beziehung und bekommt das Follow-up); `wer` = für das Änderungsprotokoll. Wirft nicht für Fachfehler — `{ ok: false }`.
  */
-export async function anfrageAnlegen(eingabe: AnfrageEingabe, o: { person: string; wer: Wer }): Promise<AnfrageAngelegt> {
+export async function anfrageAnlegen(eingabe: AnfrageEingabe, o: { person: string; wer: Wer; /** Öffentliche Strecke (Check): vorhandene Person → „Adresse unbestätigt“ (lib/crm/anfragen.ts `oeffentlich`). */ oeffentlich?: boolean }): Promise<AnfrageAngelegt> {
   const { person } = o;
   const heute = localDay();
   const jetzt = new Date().toISOString();
   const ids = { kontakt: neueKennung('c'), followUp: neueKennung('fu') };
   // Erst prüfen, dann wirken (Nahtstellen 09.10.): derselbe Bau als Probe auf dem jetzigen Stand — lehnt er ab (Art. 18, eingeschränkte Person,
   // mehrdeutige Nummer, fehlender Text …), entsteht auch keine Firma. Vorher legte die Route die Firma VOR der Prüfung an.
-  const probe = anfrageBauen(eingabe, { kontakte: await kontakteLaden(), crm: await ladeCrm(), person, heute, jetzt, ids });
+  const oeffentlich = o.oeffentlich === true ? { oeffentlich: true } : {};
+  const probe = anfrageBauen(eingabe, { kontakte: await kontakteLaden(), crm: await ladeCrm(), person, heute, jetzt, ids, ...oeffentlich });
   if (!probe.ok) return { ok: false, fehler: probe.fehler };
   // 1.8: die Firma einer NEUEN Person über den EINEN Weg sichern (nicht, wenn die Mail/Nummer schon eine Person der Kartei trifft — die behält ihre Firma).
   const neuFirma = !eingabe.kontaktId && typeof eingabe.neu?.firma === 'string' ? eingabe.neu.firma.trim() : '';
@@ -52,7 +54,7 @@ export async function anfrageAnlegen(eingabe: AnfrageEingabe, o: { person: strin
   let bau: Bau | null = null; let fehler = '';
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const f = cur ?? { kontakte: [] };
-    const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids, sperre, ...(gesichert && crm.firmen.some(x => x.id === gesichert!.id) ? { firma: gesichert } : {}) });
+    const r = anfrageBauen(eingabe, { kontakte: f.kontakte, crm, person, heute, jetzt, ids, sperre, ...oeffentlich, ...(gesichert && crm.firmen.some(x => x.id === gesichert!.id) ? { firma: gesichert } : {}) });
     if (!r.ok) { fehler = r.fehler; return f; }
     bau = r.bau;
     const i = f.kontakte.findIndex(x => x.id === r.bau.kontakt.id);
@@ -82,7 +84,38 @@ export async function anfrageAnlegen(eingabe: AnfrageEingabe, o: { person: strin
     ...(fertig.kampagne ? { kampagnen: c.kampagnen.map(x => (x.id === fertig.kampagne!.id ? { ...x, kontaktIds: fertig.kampagne!.kontaktIds, ergebnisse: [...x.ergebnisse, fertig.kampagne!.ergebnis], status: x.status === 'entwurf' ? 'aktiv' as const : x.status, geaendert: jetzt, geaendertVon: person } : x)) } : {}),
     ...(fertig.firmaLead ? { firmen: c.firmen.map(x => (x.id === fertig.firmaLead!.firmaId ? { ...x, lead: fertig.firmaLead!.lead, geaendert: jetzt, geaendertVon: person } : x)) } : {}),
   }));
+  // Adresse unbestätigt (31.10.): kein „neuer Lead“ — sonst liefen Agenten und Prozesse für eine Anfrage an, die vielleicht gar nicht von der Person kam.
+  if (fertig.unbestaetigt) return { ok: true, bau: fertig };
   // Ereignis (09.10., E1): neuer Lead → Agenten (nur Kennungen) — nach dem Speichern, wirft nie.
   await import('@/lib/ereignisse/quellen').then(q => q.anfrageEreignis({ followUpId: fertig.followUp.id, kontaktId: fertig.kontakt.id, ...(fertig.kontakt.firmaId ? { firmaId: fertig.kontakt.firmaId } : {}), ...(fertig.kontakt.eingeschraenkt ? { eingeschraenkt: true } : {}) })).catch(() => 0);
   return { ok: true, bau: fertig };
+}
+
+/**
+ * „Anfrage übernehmen“ (Kevin 31.10.) — von Hand, nachdem jemand eine Anfrage mit unbestätigter Adresse geprüft hat (Follow-up „Anfrage prüfen —
+ * Adresse unbestätigt“). Schreibt über den EINEN Anfrage-Weg mit der GEWÄHLTEN Person (`kontaktId` — damit gilt sie als bestätigt): Aktivität
+ * „Anfrage über …“, Einwilligung „Antwort auf Anfrage“, Stufe, Lead, Follow-up „Anfrage beantworten“, Ereignis. Das Prüf-Follow-up wird VORHER
+ * beansprucht (erledigt) — ein zweiter Klick legt nichts doppelt an; scheitert die Anfrage, steht es wieder offen.
+ * Anfragen aus dem Angebots-Formular übernimmt die Freigabe des Angebots (ein Klick „Senden“), nicht dieser Weg.
+ */
+export async function anfrageUebernehmen(followUpId: string, o: { person: string; wer: Wer }): Promise<AnfrageAngelegt | { ok: false; status: number; fehler: string }> {
+  const fu0 = ((await ladeCrm()).followups ?? []).find(f => f.id === followUpId);
+  if (!fu0 || !istAnfragePruefen(fu0) || !fu0.kontaktId) return { ok: false, status: 404, fehler: 'Diese Anfrage gibt es nicht (mehr).' };
+  const kanal = kanalAusPruefen(fu0.text);
+  if (!kanal) return { ok: false, status: 409, fehler: 'Diese Anfrage kam über das Angebots-Formular — sie wird mit der Freigabe des Angebots übernommen (Formulare › Eingänge bzw. Freigaben).' };
+  const jetzt = new Date().toISOString();
+  let beansprucht = false;
+  await aendereCrm(c => {
+    const f = (c.followups ?? []).find(x => x.id === followUpId);
+    if (!f || f.status !== 'offen') return c;
+    beansprucht = true;
+    return { ...c, followups: (c.followups ?? []).map(x => (x.id === followUpId ? { ...x, status: 'erledigt' as const, erledigtAm: jetzt, ergebnis: 'Anfrage übernommen', geaendert: jetzt, geaendertVon: o.person } : x)) };
+  }, o.wer);
+  if (!beansprucht) return { ok: false, status: 409, fehler: 'Diese Anfrage ist schon übernommen oder abgesagt.' };
+  const r = await anfrageAnlegen({ kontaktId: fu0.kontaktId, kanal, text: fu0.notiz || 'Anfrage (Adresse geprüft und übernommen)', datum: tagVon(fu0.angelegt) }, o);
+  if (!r.ok) {
+    await aendereCrm(c => ({ ...c, followups: (c.followups ?? []).map(x => { if (x.id !== followUpId || x.status !== 'erledigt') return x; const { erledigtAm: _e, ergebnis: _g, ...rest } = x; return { ...rest, status: 'offen' as const, geaendert: new Date().toISOString(), geaendertVon: o.person }; }) }), o.wer);
+    return { ok: false, status: 400, fehler: r.fehler };
+  }
+  return r;
 }

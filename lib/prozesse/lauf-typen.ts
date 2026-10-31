@@ -96,7 +96,9 @@ export type LaufGrund =
   // 29.10. (Kreislauf, Kevin): das Mandat ist beendet — offene Läufe am Fall enden (außer Nachsorge/Verlängerung, `mandatsendeLaeufeAbbrechen`).
   | 'mandat-beendet'
   // 22.10. (Paket Ü): ein fester Schritt läuft nur im Prozess, der den System-Ablauf ersetzt (sonst arbeitet der alte Weg).
-  | 'ueberfuehrung-fehlt';
+  | 'ueberfuehrung-fehlt'
+  // 31.10. (Kevin): zwei Personen wurden zusammengeführt — derselbe Prozess lief für beide; der weniger fortgeschrittene Lauf endet (`zusammengefuehrtMit`).
+  | 'zusammengefuehrt';
 
 /** Ein besuchter Knoten. Ein Knoten kann mehrfach besucht werden (Erinnerung, „erneut ab“) — `runde` zählt mit. */
 export interface LaufSchritt {
@@ -205,6 +207,11 @@ export interface ProzessLauf {
   inArbeit?: { seit: string; token: string };
   /** Listen der CRM-Abfragen dieses Laufs je Abfrage-Knoten (22.10. spät) — nur Kennungen, nur solange der Lauf offen ist. */
   listen?: Record<string, LaufListe>;
+  /**
+   * 31.10. (optional, additiv): beendet, weil beim Zusammenführen zweier Personen derselbe Prozess doppelt lief — die Kennung des Laufs, der weiterläuft
+   * (Grund `zusammengefuehrt`). Nie gelöscht: der Lauf bleibt als Nachweis stehen (lib/prozesse/laeufe-zusammenfuehren.ts).
+   */
+  zusammengefuehrtMit?: string;
 }
 
 /** Ein zurückgehaltener Start (Flutschutz, Punkt 37) — „starten“ oder „verwerfen“ per Klick; nie still gekürzt. */
@@ -429,6 +436,7 @@ export const GRUND_TEXT: Readonly<Record<LaufGrund, string>> = {
   'agent-fehlt': 'Agenten-Schritt ohne Einstellungen',
   deaktiviert: 'Schritt ausgeschaltet (Werkstatt) — übersprungen',
   'ueberfuehrung-fehlt': 'ein fester Schritt läuft nur im Prozess, der den System-Ablauf ersetzt — hier arbeitet der alte Weg im Code',
+  zusammengefuehrt: 'zusammengeführt mit einem anderen Lauf desselben Prozesses (Personen zusammengeführt) — der dort läuft weiter',
   notbremse: 'Notbremse: zu viele Wirkungen in einer Stunde — Prozess pausiert',
   erneut: 'erneut ab diesem Schritt',
   'ki-nicht-eingerichtet': 'KI nicht eingerichtet (kein Schlüssel bzw. kein Guthaben) — angehalten, „erneut ab hier“, sobald sie eingerichtet ist',
