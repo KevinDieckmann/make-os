@@ -1036,6 +1036,7 @@ html.menue-offen { overflow: hidden; }
 .bestell-felder .breit { grid-column: 1 / -1; }
 .bestell-summe { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; padding: 14px 0; border-top: 1px solid var(--haar); border-bottom: 1px solid var(--haar); color: var(--tinte-text); }
 .bestell-summe b { color: var(--tinte); }
+.bestell-verkaeufer { margin: 0 0 14px; color: var(--tinte-text); }
 .bestell-bedingungen { padding: 16px 18px; border: 1px solid var(--haar); border-radius: 6px; background: var(--papier-hell); font-size: .9rem; line-height: 1.5; color: var(--tinte-text); }
 .bestell-bedingungen[hidden] { display: none; }
 .bestell-bedingungen ul { margin-top: 8px; padding-left: 1.1em; list-style: disc; }

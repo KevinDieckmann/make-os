@@ -29,6 +29,10 @@
           bed.replaceChildren(titel, liste);
           bed.hidden = false;
         }
+        // Vertragspartner: die App nennt die Firmierung der Gesellschaft, die wirklich berechnet — sie ersetzt die Vorgabe der Seite.
+        const vp = huelle.querySelector('[data-verkaeufer]');
+        const vpZeile = j.hinweis && Array.isArray(j.hinweis.zeilen) ? j.hinweis.zeilen.find((z) => typeof z === 'string' && z.startsWith('Vertragspartner und Rechnungssteller:')) : null;
+        if (vp && vpZeile) vp.replaceChildren(document.createTextNode(`${vpZeile} `), ...[...vp.querySelectorAll('a')]);
         // Steuersatz und Brutto kommen aus der App (Kleinunternehmer: 0 %), die Seite zeigt sonst die Vorgabe mit 19 %.
         const zeile = form.querySelector('[data-summe]');
         if (zeile && Number.isInteger(j.preis) && Number.isInteger(j.brutto) && Number.isInteger(j.ust)) {

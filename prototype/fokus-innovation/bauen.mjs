@@ -61,6 +61,8 @@ const klar = (s) => alt(s).replace(/\[\[KEVIN: [^\]]*\]\]/g, '').replace(/\s+/g,
 /** Text mit Platzhaltern: [[KEVIN: …]] wird markiert und vom Prüfer gezählt. */
 const t = (s) => e(alt(s)).replace(/\[\[KEVIN: ([^\]]*)\]\]/g, (_, x) => `<span class="ph">[[KEVIN: ${x}]]</span>`);
 const istPlatzhalter = (s) => /\[\[KEVIN:/.test(String(s ?? ''));
+/** Wie t(), aber ohne BEGRIFFE — für Namen, die wörtlich stehen müssen (Titel der Bausteine, Firmierung des Verkäufers). */
+const wort = (s) => e(platz(s)).replace(/\[\[KEVIN: ([^\]]*)\]\]/g, (_, x) => `<span class="ph">[[KEVIN: ${x}]]</span>`);
 const stempel = (datei) => createHash('sha256').update(readFileSync(join(ORDNER, datei))).digest('hex').slice(0, 10);
 const PFEIL = '<svg class="pfeil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
 const ZEICHEN = (klasse = 'zeichen') => `<svg class="${klasse}" viewBox="0 0 48 48" aria-hidden="true"><path class="bahn" d="M37.86,16 A16,16 0 1 1 26.78,8.24"/><circle class="punkt" cx="35.33" cy="7.81" r="2.8"/><circle class="kern" cx="24" cy="24" r="7"/></svg>`;
@@ -208,6 +210,11 @@ export function seitenBauen(q = quellen()) {
   const preisKurz = (a) => (bald(a) ? 'Anfrage starten' : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
   const preisVoll = (a) => (bald(a) ? 'Preis auf Anfrage' : `ab ${erster(a)}`);
   const anbieter = seite.anbieter[seite.anbieter_aktiv];
+  // Verkäufer und Rechnungssteller der Bausteine (Kevin 31.10.: „MAKE Innovation GmbH“) — Schlüssel in fokus.json bausteine.verkaeufer,
+  // Daten aus seite.anbieter. Die App nennt beim Laden des Formulars die Firmierung der gewählten Gesellschaft (js/bestellung.js).
+  const verkaeufer = F.bausteine?.verkaeufer ? seite.anbieter[F.bausteine.verkaeufer] : null;
+  if (F.bausteine?.verkaeufer && !verkaeufer) throw new Error(`bausteine.verkaeufer „${F.bausteine.verkaeufer}“ fehlt in seite.anbieter`);
+  const verkaeuferEigen = verkaeufer && F.bausteine.verkaeufer !== seite.anbieter_aktiv;
 
   /** Produktblatt eines Angebots: eigene Angaben über denen der Familie; null, wenn es keins gibt. */
   const produktBlatt = (a) => {
@@ -454,8 +461,10 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
   const neu = (pfad, s) => {
     const vorgabe = s.seo ? SEO.seiten[s.seo] : null;
     if (s.seo && !vorgabe) throw new Error(`seo.seiten.${s.seo} fehlt in fokus.json`);
-    const titelText = klar(vorgabe?.titel ?? s.titel);
-    const beschreibung = klar(vorgabe?.beschreibung ?? s.beschreibung);
+    // woertlich: Namen ohne BEGRIFFE (Bausteine tragen ihren Produktnamen auch in Titel und Beschreibung).
+    const kl = s.woertlich ? (x) => String(x ?? '').replace(/\[\[KEVIN: [^\]]*\]\]/g, '').replace(/\s+/g, ' ').trim() : klar;
+    const titelText = kl(vorgabe?.titel ?? s.titel);
+    const beschreibung = kl(vorgabe?.beschreibung ?? s.beschreibung);
     const fingerabdruck = createHash('sha1').update(`${titelText}|${beschreibung}|${s.main ?? ''}`).digest('hex').slice(0, 16);
     if (STAND[pfad]?.hash !== fingerabdruck) STAND[pfad] = { hash: fingerabdruck, datum: HEUTE };
     const geaendertAm = s.artikel?.aktualisiert ?? STAND[pfad].datum;
@@ -985,6 +994,7 @@ ${weg(F.einstieg, { etiketten: ['01', '02', '03'], label: 'Drei Schritte bis zum
 <h2>Registereintrag</h2><p>${t(anbieter.register)}</p>
 ${anbieter.ustid ? `<h2>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG</h2><p>${t(anbieter.ustid)}</p>` : ''}
 ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über die angebotenen Leistungen schließt derzeit:</p><address>${e(vp.name)}<br>${vp.adresse.map(t).join('<br>')}</address>${vp.ustid ? `<p>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: ${t(vp.ustid)}</p>` : ''}` : ''}
+${BS_LISTE.length && verkaeuferEigen ? `<h2 id="bausteine">Verkäufer der Bausteine</h2><p>Die <a class="unterstrichen" href="/bausteine/">Bausteine</a> verkauft und berechnet:</p><address>${wort(verkaeufer.name)}<br>${verkaeufer.adresse.map(wort).join('<br>')}</address><p>Vertreten durch ${wort(verkaeufer.vertreten)}</p><p>Registereintrag: ${wort(verkaeufer.register)}</p>${verkaeufer.ustid ? `<p>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: ${wort(verkaeufer.ustid)}</p>` : ''}` : ''}
 <h2>Verantwortlich nach § 18 Abs. 2 MStV</h2><p>${t(anbieter.vertreten)}, Anschrift wie oben</p>
 <h2>Verbraucherstreitbeilegung</h2><p>Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen. Unsere Angebote richten sich an Unternehmen.</p>`),
   });
@@ -997,7 +1007,7 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
 <h2>Cookies und Speicher im Browser</h2><p>Die Website selbst setzt keine Cookies und legt nichts im Speicher Ihres Browsers ab. Kleine Skripte zeigen Abschnitte beim Scrollen an, spielen auf der Startseite eine Animation ab, rechnen den Vertriebsrechner und schließen auf dem Handy das Menü; sie lesen nichts aus und speichern nichts. Gesendet wird nur in zwei Fällen: Fordern Sie eine Vorlage an, schickt das Formular Ihre Angaben an unsere Anwendung (siehe Vorlagen). Und einige Seiten fragen unsere Anwendung, ob das Kontaktformular oder die Newsletter-Anmeldung gerade eingeschaltet ist, um den Link nur dann zu zeigen; dabei gehen keine persönlichen Angaben mit, nur die technischen Angaben jedes Seitenaufrufs. Was die Checks im Speicher Ihres Browsers ablegen, steht im Abschnitt zu den Checks.</p>
 <h2>Links zu Quellen</h2><p>Bei Zahlen nennen wir die Quelle und verlinken sie. Erst wenn Sie einen solchen Link anklicken, öffnet Ihr Browser die Seite des jeweiligen Anbieters; dafür gilt dessen Datenschutzhinweis.</p>
 <h2 id="vorlagen">Vorlagen</h2><p>Kurze Vorlagen laden Sie ohne Anmeldung direkt von unserem Server. Dabei fallen nur die technischen Angaben an, die beim Aufruf jeder Seite entstehen (siehe oben).</p><p>Ausführliche Arbeitshefte schicken wir Ihnen per E-Mail. Dafür geben Sie Ihren Vornamen, Ihre E-Mail-Adresse und, wenn Sie möchten, Ihre Firma an. Wir verwenden die Angaben, um Ihnen den Link zum Herunterladen zu schicken (er gilt 7 Tage), und legen Ihre Anfrage in unserem Kundensystem an, damit wir Ihnen bei Fragen weiterhelfen können (Art. 6 Abs. 1 lit. b DSGVO, Anfrage vor einem möglichen Vertrag). Der Link enthält keine persönlichen Angaben. Werbung schicken wir Ihnen nur, wenn Sie den Newsletter ankreuzen und bestätigen (siehe Newsletter). Anfragen ohne weiteren Kontakt löschen wir spätestens 24 Monate nach dem letzten Kontakt. Die Mail verschicken wir über unser Postfach bei Google Workspace (siehe unten).</p>
-${BS_LISTE.length ? `<h2 id="bausteine">Bausteine bestellen</h2><p>Bestellen Sie einen Baustein, läuft die Bestellung über unsere eigene Anwendung. Wir verarbeiten Vor- und Nachname, Firma, Rechnungsanschrift und E-Mail-Adresse, wenn Sie möchten auch USt-IdNr. und Telefonnummer, um die Bestellung zu bearbeiten, die Rechnung zu stellen und Ihnen den Download-Link zu schicken (Art. 6 Abs. 1 lit. b DSGVO, Vertrag). Dafür legen wir die Bestellung in unserem Kundensystem an. Die Eingangsbestätigung, die Rechnung und den Link schicken wir über unser Postfach bei Google Workspace (siehe unten). Der Link enthält keine persönlichen Angaben und gilt 30 Tage. Rechnungen und die Angaben darauf bewahren wir so lange auf, wie das Steuer- und Handelsrecht es verlangt (bis zu zehn Jahre); alles Übrige löschen wir, wenn es nicht mehr gebraucht wird.</p>` : ''}
+${BS_LISTE.length ? `<h2 id="bausteine">Bausteine bestellen</h2><p>Bestellen Sie einen Baustein, läuft die Bestellung über unsere eigene Anwendung.${verkaeufer ? ` Verkäufer und für Ihre Bestellung verantwortlich ist die ${wort(verkaeufer.name)}${verkaeuferEigen ? ' (Anschrift im <a class="unterstrichen" href="/impressum/#bausteine">Impressum</a>)' : ''}.` : ''} Wir verarbeiten Vor- und Nachname, Firma, Rechnungsanschrift und E-Mail-Adresse, wenn Sie möchten auch USt-IdNr. und Telefonnummer, um die Bestellung zu bearbeiten, die Rechnung zu stellen und Ihnen den Download-Link zu schicken (Art. 6 Abs. 1 lit. b DSGVO, Vertrag). Dafür legen wir die Bestellung in unserem Kundensystem an. Die Eingangsbestätigung, die Rechnung und den Link schicken wir über unser Postfach bei Google Workspace (siehe unten). Der Link enthält keine persönlichen Angaben und gilt 30 Tage. Rechnungen und die Angaben darauf bewahren wir so lange auf, wie das Steuer- und Handelsrecht es verlangt (bis zu zehn Jahre); alles Übrige löschen wir, wenn es nicht mehr gebraucht wird.</p>` : ''}
 <h2>Checks: Innovations-Check, Vertriebs-Check, Sichtbarkeits-Check</h2><p>Die Checks laufen unter ${e(F.domain)}/check in unserer eigenen Anwendung auf demselben Server. Zoe ist eine KI-Assistentin; in den Checks stellt sie die Fragen mit festen Texten, Ihre Antworten gehen an kein KI-Modell. Wir speichern Ihre Antworten, um Ihr Ergebnis zu berechnen. Beim ausführlichen Innovations-Check sehen Sie ohne Kontaktdaten Ihre Stufe; den vollständigen Bericht schicken wir Ihnen per E-Mail. Geben Sie Kontaktdaten an, schicken wir Ihnen Ihren Bericht per E-Mail, legen Sie als Anfrage in unserem Kundensystem an und bieten Ihnen das Erstgespräch an (Art. 6 Abs. 1 lit. b DSGVO, Anfrage vor einem möglichen Vertrag). Ohne Kontaktdaten löschen wir Ihre Antworten nach 30 Tagen, mit Kontaktdaten spätestens 24 Monate nach dem letzten Kontakt.</p><p>Damit Sie später weitermachen können, legt jeder Check im Speicher Ihres Browsers eine zufällige Kennung ab; sie enthält keine Antworten. Wählen Sie im Ergebnis einen freien Termin, merkt sich Ihr Browser bis zum Schließen des Fensters die gewählte Zeit und, falls Sie sie angegeben haben, Vorname, E-Mail und Firma, damit die Buchungsseite sie vorausfüllt. Die Buchungsseite löscht diese Angaben, sobald sie sie gelesen hat. Vor dem Start jedes Checks sehen Sie einen eigenen Datenschutzhinweis.</p>
 <h2>Erstgespräch buchen</h2><p>Das Erstgespräch buchen Sie unter ${e(F.domain)}/buchen in unserer eigenen Anwendung. Ihre Angaben (Name, E-Mail, Firma, Anliegen) verwenden wir, um Ihre Terminanfrage zu bearbeiten und das Gespräch vorzubereiten (Art. 6 Abs. 1 lit. b DSGVO). Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung. Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir 30 Tage nach der letzten Änderung, bestätigte Buchungen 30 Tage nach dem Termin. Mit der Bestätigung legen wir Sie als Geschäftskontakt an und tragen den Termin mit Ihrem Namen und Ihrer E-Mail-Adresse in unseren Kalender bei Google Workspace ein (siehe unten). Nach dem Absenden zeigt Ihnen die Seite Ihren persönlichen Status; die Adresse mit Ihrem Schlüssel kennen nur Sie. Vor dem Absenden sehen Sie dort einen eigenen Datenschutzhinweis.</p>
 <h2>Kontaktformular</h2><p>Das Kontaktformular unter ${e(F.domain)}/anfrage läuft in unserer eigenen Anwendung. Sie schicken uns Ihren Vornamen, Ihre E-Mail-Adresse und Ihre Nachricht, wenn Sie möchten auch Nachnamen, Firma und Telefonnummer. Wir verwenden die Angaben, um Ihre Anfrage zu beantworten, und legen sie dafür als Anfrage in unserem Kundensystem auf unserem Server an (Art. 6 Abs. 1 lit. b DSGVO, Anfrage vor einem möglichen Vertrag, bzw. lit. f, unser berechtigtes Interesse, Ihre Nachricht zu beantworten). Kennen wir Ihre E-Mail-Adresse schon, hängen wir die Nachricht dort nur als unbestätigt an und prüfen sie von Hand. Das Formular verschickt keine E-Mail, und Werbung schicken wir Ihnen darüber nicht. Anfragen ohne weiteren Kontakt prüfen wir spätestens 24 Monate nach dem letzten Kontakt und löschen sie; verlangen Sie die Löschung, löschen wir sofort.</p>
@@ -1188,11 +1198,12 @@ ${schlussakt({ quelle: `vorlage_${v.id}`, bereich: v.bereich })}`,
       beschreibung: `Fertige Arbeitspakete aus unserer Arbeit, ab ${abAb.replace(' ', ' ')} netto: Vertrieb, Positionierung und KI im Team. Mit Anleitung, ausgefülltem Beispiel und Bögen, auf Rechnung.`,
       bildVorzeile: 'Bausteine',
       bildTitel: 'Bausteine zum Selbermachen.',
+      woertlich: true,
       aktiv: 'kostenlos',
       seitenTyp: 'CollectionPage',
       schema: [{ ...itemListe('Bausteine von Fokus Innovation', BS.map((b) => [b.seite, b.titel])), '@id': `${absolut('/bausteine/')}#bausteine` }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[null, 'Bausteine']])}${vorzeile('Bausteine')}<h1 id="held-titel" class="glanz">${titel('Bausteine.', 'Zum Selbermachen.')}</h1><p class="lead">${t(BZ.lead ?? '')}</p>
+<div class="erscheint">${brotkrumen([[null, 'Bausteine']])}${vorzeile('Bausteine')}<h1 id="held-titel" class="glanz">${titel('Bausteine.', 'Zum Selbermachen.')}</h1><p class="lead">${wort(BZ.lead ?? '')}</p>
 <nav class="az breit" aria-label="Auf dieser Seite">${bereiche.map((bb) => `<a href="#bausteine-${bb.id}">${e(bb.name)}</a>`).join('')}<a href="#ablauf">So läuft es</a><a href="#bedingungen">Bedingungen</a></nav></div>
 ${regal(BS.filter((b) => !b.paket).map((b) => b.id).filter((id, i, l) => i === 0 || BS.find((b) => b.id === id).bereich !== BS.find((b) => b.id === l[i - 1]).bereich), 'Drei der Bausteine: Titelseiten')}
 </div></section>
@@ -1200,7 +1211,7 @@ ${bereiche.map((bb) => `<section class="abschnitt" id="bausteine-${bb.id}" aria-
 <section class="abschnitt" id="ablauf" aria-labelledby="ablauf-titel"><div class="w">${abKopf({ marke: 'Bestellen', h2: 'So läuft es.', id: 'ablauf-titel' })}
 ${weg(BZ.ablauf ?? [], { etiketten: ['01', '02', '03'], label: 'So läuft die Bestellung' })}</div></section>
 <section class="abschnitt" id="bedingungen" aria-labelledby="bedingungen-titel"><div class="w">${abKopf({ marke: 'Gut zu wissen', h2: 'Bedingungen auf einen Blick.', id: 'bedingungen-titel' })}
-<div class="zwei-teile"><div class="erscheint"><dl class="daten">${(BZ.bedingungen ?? []).map(([k, v]) => `<div><dt>${e(k)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl></div><div class="erscheint"><p>${t(BZ.bedingungen_hinweis ?? '')}</p><p class="leise klein-text">Die vollständigen Bestellbedingungen sehen Sie vor dem Absenden.</p></div></div></div></section>
+<div class="zwei-teile"><div class="erscheint"><dl class="daten">${[...(verkaeufer ? [['Verkäufer', `${verkaeufer.name}, stellt auch die Rechnung`]] : []), ...(BZ.bedingungen ?? [])].map(([k, v]) => `<div><dt>${e(k)}</dt><dd>${wort(v)}</dd></div>`).join('')}</dl></div><div class="erscheint"><p>${wort(BZ.bedingungen_hinweis ?? '')}</p><p class="leise klein-text">Die vollständigen Bestellbedingungen sehen Sie vor dem Absenden.</p></div></div></div></section>
 ${schlussakt({ quelle: 'bausteine_ende' })}`,
     });
 
@@ -1225,20 +1236,22 @@ ${schlussakt({ quelle: 'bausteine_ende' })}`,
         })(),
         bildVorzeile: `Baustein · ${(q.bausteine.bereiche ?? []).find((x) => x.id === b.bereich)?.name ?? ''}`,
         bildTitel: b.titel,
+        woertlich: true,
         aktiv: 'kostenlos',
-        schema: [{ '@type': 'Product', '@id': `${absolut(b.seite)}#baustein`, name: b.titel, description: klar(b.text ?? b.kurz), brand: { '@id': ORG }, offers: { '@type': 'Offer', price: (b.preis / 100).toFixed(2), priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: absolut(b.seite), priceSpecification: { '@type': 'UnitPriceSpecification', price: (b.preis / 100).toFixed(2), priceCurrency: 'EUR', valueAddedTaxIncluded: false } } }],
+        schema: [{ '@type': 'Product', '@id': `${absolut(b.seite)}#baustein`, name: b.titel, description: String(b.text ?? b.kurz).replace(/\s+/g, ' ').trim(), brand: { '@id': ORG }, offers: { '@type': 'Offer', ...(verkaeufer ? { seller: { '@type': 'Organization', name: verkaeufer.name } } : {}), price: (b.preis / 100).toFixed(2), priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: absolut(b.seite), priceSpecification: { '@type': 'UnitPriceSpecification', price: (b.preis / 100).toFixed(2), priceCurrency: 'EUR', valueAddedTaxIncluded: false } } }],
         main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([['/bausteine/', 'Bausteine'], [null, b.titel]])}${vorzeile(`Baustein · ${(q.bausteine.bereiche ?? []).find((x) => x.id === b.bereich)?.name ?? ''}`)}<h1 id="held-titel" class="glanz">${e(b.titel)}</h1><p class="lead">${t(b.text ?? b.kurz)}</p>
+<div class="erscheint">${brotkrumen([['/bausteine/', 'Bausteine'], [null, b.titel]])}${vorzeile(`Baustein · ${(q.bausteine.bereiche ?? []).find((x) => x.id === b.bereich)?.name ?? ''}`)}<h1 id="held-titel" class="glanz">${e(b.titel)}</h1><p class="lead">${wort(b.text ?? b.kurz)}</p>
 <div class="baustein-preis"><b class="glanz">${euro(b.preis)}</b><span>netto zzgl. 19 % USt${b.paket ? `, statt ${euro(b.einzelpreis)} einzeln` : ''} · ${e(bausteinUmfang(b))}</span></div>
 <div class="knoepfe">${knopf('#bestellen', 'Auf Rechnung bestellen')}${textlink('/bausteine/', 'Alle Bausteine')}</div></div>
 ${vorschau}
 </div></section>
 ${blick([['Für wen', b.fuer ?? null], ['Ihre Zeit', b.dauer ?? null], ['Lieferung', 'Download-Link per E-Mail nach kurzer Prüfung, meist am selben Werktag']])}
 ${b.paket ? `<section class="abschnitt" aria-labelledby="teile-titel"><div class="w">${abKopf({ marke: 'Im Paket', h2: 'Vier Bausteine, ein Fundament.', lead: `Einzeln kosten sie zusammen ${euro(b.einzelpreis)} netto.`, id: 'teile-titel' })}<ul class="preis-karten erscheint">${b.teile.map(bausteinKarte).join('').replace(/Ansehen und bestellen/g, 'Was drin ist')}</ul></div></section>` : ''}
-${!b.paket && b.inhalt?.length ? `<section class="abschnitt" aria-labelledby="inhalt-titel"><div class="w">${abKopf({ marke: 'Inhalt', h2: 'Was drin ist.', lead: `${b.seiten} Seiten mit Anleitung, ausgefülltem Beispiel und Bögen zum Ausfüllen${b.dateien.some((d) => d.art === 'xlsx') ? ', dazu eine Tabelle, die selbst rechnet' : ''}.`, id: 'inhalt-titel' })}<ol class="vorlage-inhalt erscheint">${b.inhalt.map((x) => `<li>${t(x)}</li>`).join('')}</ol></div></section>` : ''}
-${b.ergebnis?.length ? `<section class="abschnitt" aria-labelledby="ergebnis-titel"><div class="w">${abKopf({ marke: 'Ergebnis', h2: 'Was Sie danach haben.', id: 'ergebnis-titel' })}${punkte(b.ergebnis, 'punkte erscheint')}</div></section>` : ''}
+${!b.paket && b.inhalt?.length ? `<section class="abschnitt" aria-labelledby="inhalt-titel"><div class="w">${abKopf({ marke: 'Inhalt', h2: 'Was drin ist.', lead: `${b.seiten} Seiten mit Anleitung, ausgefülltem Beispiel und Bögen zum Ausfüllen${b.dateien.some((d) => d.art === 'xlsx') ? ', dazu eine Tabelle, die selbst rechnet' : ''}.`, id: 'inhalt-titel' })}<ol class="vorlage-inhalt erscheint">${b.inhalt.map((x) => `<li>${wort(x)}</li>`).join('')}</ol></div></section>` : ''}
+${b.ergebnis?.length ? `<section class="abschnitt" aria-labelledby="ergebnis-titel"><div class="w">${abKopf({ marke: 'Ergebnis', h2: 'Was Sie danach haben.', id: 'ergebnis-titel' })}<ul class="punkte erscheint">${b.ergebnis.map((x) => `<li>${wort(x)}</li>`).join('')}</ul></div></section>` : ''}
 <section class="abschnitt" id="bestellen" aria-labelledby="bestellen-titel"><div class="w">${abKopf({ marke: 'Bestellen', h2: 'Auf Rechnung bestellen.', lead: 'Nur für Unternehmen. Rechnung und Download-Link schicken wir Ihnen per E-Mail.', id: 'bestellen-titel' })}
 <div class="anfordern bestellen erscheint">
+${verkaeufer ? `<p class="bestell-verkaeufer" data-verkaeufer>Vertragspartner und Rechnungssteller: ${wort(verkaeufer.name)}.${verkaeuferEigen ? ' <a class="unterstrichen" href="/impressum/#bausteine">Anschrift</a>' : ''}</p>` : ''}
 <form class="anfordern-form bestell-form" data-baustein="${b.id}" novalidate hidden>
 <p class="anfordern-vorab">Nach kurzer Prüfung bekommen Sie Rechnung und Download-Link, meist am selben Werktag. Der Link gilt 30 Tage.</p>
 <div class="anfordern-felder bestell-felder">${feld('vorname', 'Vorname', 'text', true, 'given-name')}${feld('nachname', 'Nachname', 'text', true, 'family-name')}${feld('firma', 'Firma', 'text', true, 'organization', true)}${feld('email', 'E-Mail für Rechnung und Download', 'email', true, 'email', true)}${feld('strasse', 'Straße und Hausnummer', 'text', true, 'address-line1', true)}${feld('plz', 'PLZ', 'text', true, 'postal-code')}${feld('ort', 'Ort', 'text', true, 'address-level2')}${feld('land', 'Land', 'text', true, 'country-name')}${feld('ustid', 'USt-IdNr.', 'text', false)}${feld('telefon', 'Telefon', 'tel', false, 'tel')}</div>
@@ -1570,6 +1583,8 @@ ${W.artikel.map(artikelMd).join('\n\n')}
 `,
   });
   seiten.stand = STAND;
+  // Firmierungen sind Rechtsangaben (Impressum, Verkäufer der Bausteine), keine Marke — der Prüfer lässt genau diese Namen zu.
+  seiten.firmierungen = Object.values(seite.anbieter ?? {}).map((a) => a.name).filter((n) => n && !istPlatzhalter(n));
   return seiten;
 }
 
@@ -1589,7 +1604,8 @@ export function pruefen(seiten) {
   let platzhalter = 0;
   for (const s of seiten) {
     const sichtbar = s.html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ');
-    for (const [re, was] of SPERRWOERTER) if (re.test(sichtbar)) fehler.push(`${s.pfad}: ${was}`);
+    const ohneFirmierung = (seiten.firmierungen ?? []).reduce((x, n) => x.split(e(n)).join(' '), sichtbar);
+    for (const [re, was] of SPERRWOERTER) if (re.test(ohneFirmierung)) fehler.push(`${s.pfad}: ${was}`);
     if (/makeinnovation/i.test(sichtbar.replace(/kevin@makeinnovation\.de/g, ''))) fehler.push(`${s.pfad}: alte Domain im Text`);
     if (/\bZoe\b/.test(sichtbar) && !/KI-Assistentin/.test(sichtbar)) fehler.push(`${s.pfad}: Zoe ohne Kennzeichnung als KI-Assistentin`);
     if (/\{(preis|ab|zusatz):/.test(s.html)) fehler.push(`${s.pfad}: Platzhalter nicht ersetzt`);
