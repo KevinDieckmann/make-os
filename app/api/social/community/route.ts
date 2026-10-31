@@ -12,6 +12,7 @@ import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 import { modellSchranke } from '@/lib/zugang/umfang';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { ladeSocial } from '@/lib/social/server';
 import { socialFuerPerson } from '@/lib/social/daten';
 import { antwortVorschlag, communityAbholen, communityAntworten, fadenMarkieren, faedenAus, ladeCommunity, fremdEntwurf, fremdMarkieren } from '@/lib/social/community';
@@ -38,7 +39,11 @@ async function lage(person: string) {
 export async function GET(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return nurHaushalt();
-  return NextResponse.json({ ok: true, ...(await lage(z.person)) }, { headers: { 'Cache-Control': 'private, no-store' } });
+  const l = await lage(z.person);
+  // Lese-Protokoll (31.10.): Kommentare/DMs Dritter — nur Anzahl der Nachrichten und die Kanäle als Fingerabdruck, nie Inhalte oder Gegenüber.
+  const kanaele = Array.from(new Set(l.faeden.map(f => f.kanalId)));
+  if (kanaele.length) leseZugriff(req, 'social', { ids: kanaele, anzahl: l.faeden.reduce((n, f) => n + f.eintraege.length, 0) });
+  return NextResponse.json({ ok: true, ...l }, { headers: { 'Cache-Control': 'private, no-store' } });
 }
 
 export async function POST(req: Request) {

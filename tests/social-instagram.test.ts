@@ -434,6 +434,16 @@ describe('Kommentare & DMs (Server)', () => {
     expect(b.faeden).toEqual([]);
     expect((await route.POST(anfrage(URL_C, 'pb', { aktion: 'antworten', kanalId, faden: dm.id, text: 'x' }))).status).toBe(404);
     expect(JSON.stringify(b)).not.toMatch(/tok2|Wie lange/);
+    // Lese-Protokoll (31.10.): Anna liest Kommentare/DMs Dritter → Eintrag „social“ mit Anzahl und Kanal-Fingerabdruck, nie Text oder Gegenüber;
+    // Bert (sieht keine Fäden) erzeugt keinen Eintrag.
+    expect((await route.GET(anfrage(URL_C, 'pa'))).status).toBe(200);
+    const { leseprotokollWarten, leseprotokollMonat } = await import('@/lib/store/leseprotokoll');
+    await leseprotokollWarten();
+    const { monatBerlin } = await import('@/lib/store/aenderungsprotokoll');
+    const lp = (await leseprotokollMonat('h-pruef', monatBerlin(new Date()))).filter(e => e.bereich === 'social');
+    expect(lp.some(e => e.person === 'pa' && (e.anzahl ?? 0) >= 2 && (e.ids ?? []).length === 1 && !(e.ids ?? []).includes(kanalId))).toBe(true);
+    expect(lp.some(e => e.person === 'pb')).toBe(false);
+    expect(JSON.stringify(lp)).not.toMatch(/Wie lange|Hallo zurück|lea|tom|501|502/);
   });
 });
 
