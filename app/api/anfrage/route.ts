@@ -1,5 +1,6 @@
 // ─── Kontaktformular der Website — die öffentliche Schnittstelle (31.10., Website-Anbau) ──────────────────────────────────────────────
 // OHNE Sitzung erreichbar (middleware.ts `KONTAKTFORMULAR_OFFEN`: nur /anfrage und POST /api/anfrage). Handelt nie als Person.
+// GET  → { ok: true, aktiv } — NUR an/aus (für den Knopf auf der Website), keine Daten, kein Name, gedrosselt; schreibt nichts.
 // POST { vorname, nachname?, firma?, email, telefon?, nachricht, stempel, webseite (Honigtopf, leer) }
 //        → { ok: true, text } — dieselbe Antwort, ob die Adresse neu ist, eine vorhandene Person trifft (dann „Adresse unbestätigt“) oder der
 //          Anfrage-Weg ablehnt (Art. 18): der Gast erfährt nie, was die Kartei kennt. Der Eingang landet in Markttraktion › Marketing › Anfragen.
@@ -21,6 +22,17 @@ const antwort = (body: Record<string, unknown>, status = 200, extra: Record<stri
 const NICHT_DA = { ok: false, fehler: 'Das Kontaktformular gibt es hier gerade nicht.' };
 /** Nachrichten je Netz und Viertelstunde frei, danach wächst die Wartezeit. */
 const SENDEN_FREI = 6;
+
+/** So viele Abfragen „an/aus“ je Netz und Viertelstunde frei (die Website fragt einmal je Seitenaufruf). */
+const LESEN_FREI = 60;
+
+export async function GET(req: Request) {
+  const schluessel = `kontaktformular-lesen:${adresseNetz(req)}`;
+  const p = pruefe(schluessel);
+  if (!p.erlaubt) return antwort({ ok: false, fehler: 'Zu viele Abfragen.' }, 429, { 'Retry-After': String(p.warteSek) });
+  fehlschlag(schluessel, Date.now(), LESEN_FREI);
+  return antwort({ ok: true, aktiv: !!(await kontaktformularBereit()) });
+}
 
 export async function POST(req: Request) {
   const netz = adresseNetz(req);

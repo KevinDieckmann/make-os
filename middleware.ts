@@ -97,7 +97,7 @@ function newsletterOffen(pfad: string, methode: string): boolean {
   return NEWSLETTER_API.test(pfad) && methode === 'POST';
 }
 // ── Kontaktformular der Website (31.10., Website-Anbau, lib/kontaktformular/*) ── eigener Block (die Homepage-Sitzung ergänzt daneben /api/unterlage).
-// NUR die Seite `/anfrage` (GET/HEAD) und ihre EINE Schnittstelle `POST /api/anfrage`. Die Route handelt für niemanden (Köpfe gelöscht), drosselt selbst,
+// NUR die Seite `/anfrage` (GET/HEAD) und ihre EINE Schnittstelle `/api/anfrage` (POST = senden, GET/HEAD = nur „an/aus“). Die Route handelt für niemanden (Köpfe gelöscht), drosselt selbst,
 // prüft Honigtopf, Stempel und Größe; ausgeschaltet (kommt AUS) antwortet sie mit 404. Die Verwaltung (/api/kontaktformular/intern) bleibt hinter der
 // Sitzung. Wächter: tests/kontaktformular.test.ts.
 const KONTAKTFORMULAR_SEITE = /^\/anfrage$/;
@@ -105,7 +105,7 @@ const KONTAKTFORMULAR_API = /^\/api\/anfrage$/;
 /** Ist dieser Weg ein offener Weg des Kontaktformulars (Pfad UND Methode)? */
 function kontaktformularOffen(pfad: string, methode: string): boolean {
   if (KONTAKTFORMULAR_SEITE.test(pfad)) return methode === 'GET' || methode === 'HEAD';
-  return KONTAKTFORMULAR_API.test(pfad) && methode === 'POST';
+  return KONTAKTFORMULAR_API.test(pfad) && (methode === 'POST' || methode === 'GET' || methode === 'HEAD');
 }
 // ── Ende Kontaktformular ──
 // Schriften der öffentlichen Seiten (29.10.): der Check (und die helle Buchungsseite) laden Schibsted Grotesk aus public/schriften — ohne Sitzung

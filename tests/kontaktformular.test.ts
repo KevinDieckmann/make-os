@@ -54,6 +54,10 @@ afterAll(() => { vi.useRealTimers(); rmSync(ordner, { recursive: true, force: tr
 
 describe('Schalter und Verantwortlicher', () => {
   it('kommt AUS (404); ohne Verantwortlichen lässt es sich nicht einschalten (409); nur der Inhaber schaltet', async () => {
+    const status = async () => json(await anfrage.GET!(new Request('http://test/api/anfrage')));
+    // Lese-Weg „an/aus“ (31.10., Knopf auf der Website): nur ok + aktiv, sonst nichts.
+    const aus = await status();
+    expect(aus).toEqual({ status: 200, d: { ok: true, aktiv: false } });
     expect((await senden(gut())).status).toBe(404);
     expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung(), body: JSON.stringify({ aktiv: true }) })))).status).toBe(409);
     await db.saveJson('check-einstellungen', { aktiv: false, gastgeber: 'kevin', verantwortlich: `Probe GmbH, datenschutz@${D}` });
@@ -61,6 +65,7 @@ describe('Schalter und Verantwortlicher', () => {
     expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: { ...sitzung(), 'x-make-key': 'pruef-schluessel-kontaktformular', 'x-make-person': 'kevin' }, body: JSON.stringify({ aktiv: true }) })))).status).toBe(403);
     const an = await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung(), body: JSON.stringify({ aktiv: true }) })));
     expect(an).toMatchObject({ status: 200, d: { aktiv: true } });
+    expect(await status()).toEqual({ status: 200, d: { ok: true, aktiv: true } });
     const lesen = await json(await intern.GET!(new Request('http://test/api/kontaktformular/intern', { headers: sitzung('malin') })));
     expect(lesen.d).toMatchObject({ aktiv: true, bereit: true, pfad: '/anfrage', istInhaber: false });
     const fremd = await json(await intern.GET!(new Request('http://test/api/kontaktformular/intern', { headers: sitzung('gast') })));
@@ -128,13 +133,14 @@ describe('Middleware, Caddy, Köpfe, Register', () => {
   beforeAll(async () => { ({ middleware } = await import('@/middleware')); });
   const offen = (r: Response) => r.headers.get('x-middleware-next') === '1';
   const lauf = (pfad: string, init: { method?: string; headers?: Record<string, string> } = {}) => middleware(new NextRequest(`http://localhost:3001${pfad}`, init as never));
-  it('nur /anfrage (GET/HEAD) und POST /api/anfrage sind offen, ohne Köpfe einer Person', async () => {
+  it('nur /anfrage (GET/HEAD) und /api/anfrage (POST, GET an/aus) sind offen, ohne Köpfe einer Person', async () => {
     expect(offen(await lauf('/anfrage'))).toBe(true);
     expect(offen(await lauf('/anfrage', { method: 'HEAD' }))).toBe(true);
     const r = await lauf('/api/anfrage', { method: 'POST', headers: { origin: 'http://localhost:3001', host: 'localhost:3001', 'x-make-user': 'kevin' } });
     expect(offen(r)).toBe(true);
     expect(r.headers.get('x-middleware-request-x-make-user')).toBeNull();
-    for (const [p, m] of [['/api/anfrage', 'GET'], ['/api/kontaktformular/intern', 'GET'], ['/api/kontaktformular/intern', 'POST'], ['/anfrage', 'POST'], ['/anfrage/x', 'GET'], ['/anfragen', 'GET'], ['/api/anfrage/x', 'POST']] as const) {
+    expect(offen(await lauf('/api/anfrage'))).toBe(true);
+    for (const [p, m] of [['/api/kontaktformular/intern', 'GET'], ['/api/kontaktformular/intern', 'POST'], ['/anfrage', 'POST'], ['/anfrage/x', 'GET'], ['/anfragen', 'GET'], ['/api/anfrage/x', 'POST']] as const) {
       const x = await lauf(p, m === 'POST' ? { method: 'POST', headers: { origin: 'http://localhost:3001', host: 'localhost:3001' } } : {});
       expect(offen(x), `${m} ${p}`).toBe(false);
     }

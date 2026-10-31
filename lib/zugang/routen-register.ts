@@ -442,7 +442,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Newsletter-Anmeldung über die Website (30.10., lib/newsletter/*).
   'newsletter': r('POST', 'offen', 'Öffentliche Newsletter-Anmeldung mit Double-Opt-in: enge Regex in der Middleware, kommt AUS (404), immer dieselbe Antwort (Arbeit nach der Antwort), Token nur im Fragment und nur als SHA-256, Drossel, Honigtopf, Stempel, ≤ 4 KB — handelt nie als Person.'),
   // Kontaktformular der Website (31.10., Website-Anbau, lib/kontaktformular/*).
-  'anfrage': r('POST', 'offen', 'Öffentliches Kontaktformular der Website: enge Regex in der Middleware, kommt AUS (404), immer dieselbe Antwort, Drossel, Honigtopf, signierter Stempel, ≤ 8 KB — Eingang nur über den Anfrage-Weg, keine Mail, handelt nie als Person.'),
+  'anfrage': r('GET,POST', 'offen', 'Öffentliches Kontaktformular der Website: enge Regex in der Middleware; GET nur „aktiv: ja/nein“ (keine Daten, gedrosselt, schreibt nichts); POST kommt AUS (404), immer dieselbe Antwort, Drossel, Honigtopf, signierter Stempel, ≤ 8 KB — Eingang nur über den Anfrage-Weg, keine Mail, handelt nie als Person.'),
   'kontaktformular/intern': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Schalter des Kontaktformulars: lesen im Haushalt, umschalten nur ein Inhaber per Sitzung (Dienstweg 403).'),
   'newsletter/intern': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Anmeldungen über die Website (Adressen maskiert) im Haushalt; Einstellungen (an/aus, Absender-Postfach = Freigabe der Bestätigungsmails, Text, Website), Löschen und CRM-Nachholen nur ein Inhaber per Sitzung (Dienstweg 403).'),
 
