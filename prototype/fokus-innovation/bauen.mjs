@@ -317,8 +317,11 @@ export function seitenBauen(q = quellen()) {
     ...(kleinerCheck(b) ? [[checkThema(b, `${b}_menue`), kleinerCheck(b).name, 'kostenlos']] : []),
     ...gruppenIn(b).flatMap((g) => { const gs = gruppenSeite(b, g); return gs ? [[gs.href, gs.name, '']] : g.liste.map((a) => [produktPfad(a), F.kurznamen[a.id] ?? a.name, bald(a) ? 'bald' : '']); }),
   ];
+  // Kevin 31.10.: Sichtbarkeit, Vertrieb und Innovation stehen zusammen unter „Leistungen“, je Bereich mit seinen Bausteinen
+  // (ohne Preis — Kevin 29.10.: kein Preis im Menü). Der Punkt selbst führt auf die Preisseite, die alle Leistungen zeigt.
+  const bausteineVon = (b) => (BS_LISTE.some((x) => x.bereich === b) ? `/bausteine/#bausteine-${b}` : null);
   const NAV = [
-    ...BEREICHE.map((b) => ({ key: b, name: F.bereiche[b].name, href: `/${b}/`, unter: navUnter(b) })),
+    { key: 'leistungen', name: 'Leistungen', href: '/preise/', bereiche: BEREICHE },
     { key: 'events', name: 'Events', href: '/events/' },
     { key: 'kostenlos', name: 'Kostenlos', href: '/kostenlos/' },
     { key: 'ueber-uns', name: 'Über uns', href: '/ueber-uns/' },
@@ -328,13 +331,17 @@ export function seitenBauen(q = quellen()) {
 <a class="marke" href="/" aria-label="Fokus Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a>
 <nav class="haupt-nav" aria-label="Hauptmenü">${NAV.map((n) => {
     const cur = n.key === aktiv ? ' aria-current="page"' : '';
+    if (n.bereiche) {
+      const dabei = n.key === aktiv ? ' aria-current="page"' : n.bereiche.includes(aktiv) ? ' aria-current="true"' : '';
+      return `<div class="nav-punkt"><a href="${n.href}"${dabei}>${e(n.name)}</a><div class="unter unter-leistungen">${n.bereiche.map((b) => `<div class="unter-spalte"><a class="unter-alles" href="/${b}/">${e(F.bereiche[b].name)}</a>${navUnter(b).map(([h, name, p]) => `<a href="${h}">${e(name)}${p ? `<span>${e(p)}</span>` : ''}</a>`).join('')}${bausteineVon(b) ? `<a class="unter-baustein" href="${bausteineVon(b)}">Bausteine<span>zum Selbermachen</span></a>` : ''}</div>`).join('')}<a class="unter-fuss" href="/preise/"><span>Alle Leistungen und Preise</span> ${PFEIL}</a></div></div>`;
+    }
     if (!n.unter) return `<a href="${n.href}"${cur}>${e(n.name)}</a>`;
     return `<div class="nav-punkt"><a href="${n.href}"${cur}>${e(n.name)}</a><div class="unter"><a class="unter-alles" href="${n.href}">Überblick ${e(n.name)}</a>${n.unter.map(([h, name, p]) => `<a href="${h}">${e(name)}${p ? `<span>${e(p)}</span>` : ''}</a>`).join('')}</div></div>`;
   }).join('')}</nav>
 <a class="kopf-kontakt" href="/kontakt/"${aktiv === 'kontakt' ? ' aria-current="page"' : ''}>Kontakt</a>
 <a class="knopf klein kopf-check" href="${erstLink()}">${e(F.erstgespraech.name)}</a>
 <details class="menue"><summary><span class="striche" aria-hidden="true"></span>Menü</summary><nav class="menue-blatt" aria-label="Menü">
-${BEREICHE.map((b) => `<p class="menue-gruppe">${e(F.bereiche[b].name)}</p><a href="/${b}/">Überblick ${e(F.bereiche[b].name)}</a>${navUnter(b).map(([h, name]) => `<a href="${h}">${e(name)}</a>`).join('')}`).join('\n')}
+${BEREICHE.map((b) => `<p class="menue-gruppe">${e(F.bereiche[b].name)}</p><a href="/${b}/">Überblick ${e(F.bereiche[b].name)}</a>${navUnter(b).map(([h, name]) => `<a href="${h}">${e(name)}</a>`).join('')}${bausteineVon(b) ? `<a href="${bausteineVon(b)}">Bausteine zum Selbermachen</a>` : ''}`).join('\n')}
 <p class="menue-gruppe">Fokus Innovation</p><a href="/events/">Events</a><a href="/kostenlos/">Kostenlos</a><a href="/preise/">Preise</a><a href="/ueber-uns/">Über uns</a><a href="/kontakt/">Kontakt</a>
 ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Oder: Innovations-Check, 10 Minuten</span> ${PFEIL}</a>
 </nav></details>
@@ -1202,7 +1209,7 @@ ${schlussakt({ quelle: `vorlage_${v.id}`, bereich: v.bereich })}`,
       bildVorzeile: 'Bausteine',
       bildTitel: 'Bausteine zum Selbermachen.',
       woertlich: true,
-      aktiv: 'kostenlos',
+      aktiv: 'leistungen',
       seitenTyp: 'CollectionPage',
       schema: [{ ...itemListe('Bausteine von Fokus Innovation', BS.map((b) => [b.seite, b.titel])), '@id': `${absolut('/bausteine/')}#bausteine` }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
@@ -1240,7 +1247,7 @@ ${schlussakt({ quelle: 'bausteine_ende' })}`,
         bildVorzeile: `Baustein · ${(q.bausteine.bereiche ?? []).find((x) => x.id === b.bereich)?.name ?? ''}`,
         bildTitel: b.titel,
         woertlich: true,
-        aktiv: 'kostenlos',
+        aktiv: 'leistungen',
         schema: [{ '@type': 'Product', '@id': `${absolut(b.seite)}#baustein`, name: b.titel, description: String(b.text ?? b.kurz).replace(/\s+/g, ' ').trim(), brand: { '@id': ORG }, offers: { '@type': 'Offer', ...(verkaeufer ? { seller: { '@type': 'Organization', name: verkaeufer.name } } : {}), price: (b.preis / 100).toFixed(2), priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: absolut(b.seite), priceSpecification: { '@type': 'UnitPriceSpecification', price: (b.preis / 100).toFixed(2), priceCurrency: 'EUR', valueAddedTaxIncluded: false } } }],
         main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([['/bausteine/', 'Bausteine'], [null, b.titel]])}${vorzeile(`Baustein · ${(q.bausteine.bereiche ?? []).find((x) => x.id === b.bereich)?.name ?? ''}`)}<h1 id="held-titel" class="glanz">${e(b.titel)}</h1><p class="lead">${wort(b.text ?? b.kurz)}</p>
@@ -1458,6 +1465,7 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
     const kondition = (x) => { const [k, ...v] = String(x).split(': '); return v.length ? `<div><dt>${e(k)}</dt><dd>${t(v.join(': '))}</dd></div>` : `<div><dt>${/Nutzungsrecht/.test(x) ? 'Nutzungsrecht' : /netto/.test(x) ? 'Preise' : 'Allgemein'}</dt><dd>${t(x)}</dd></div>`; };
     neu('preise/index.html', {
       seo: 'preise',
+      aktiv: 'leistungen',
       bildVorzeile: 'Preise',
       bildTitel: 'Alle Preise auf einen Blick. Fest und netto.',
       schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von Fokus Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !bald(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
