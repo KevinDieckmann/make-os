@@ -36,7 +36,7 @@
   --rinne: clamp(20px, 3vw, 40px);
   --kopf: 72px;
   --abschnitt: clamp(88px, 10vw, 152px);
-  --t-held: clamp(2.45rem, 5.4vw, 4.9rem);
+  --t-held: clamp(2.2rem, 4.5vw, 4rem);  /* 31.10. Kevin: „ein bisschen kleiner, so schlägt das direkt ins Gesicht“ (vorher bis 4,9rem) */
   --t-titel: clamp(1.85rem, 3.5vw, 3.1rem);
   --t-unter: clamp(1.15rem, 1.5vw, 1.35rem);
   --t-lead: clamp(1.1rem, 1.3vw, 1.25rem);
