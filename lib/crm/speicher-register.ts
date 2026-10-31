@@ -744,6 +744,13 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   }),
   // Heute › Top 3 (10.10., Branch `heute-top3`): die eigene Auswahl der drei wichtigsten Aufgaben je Tag und Bereich — nur Aufgaben-Kennungen und der
   // Zeitpunkt, keine Titel, keine Dritten. Immer mit Suffix, nur die Person selbst (GET/PUT /api/heute/top3 liefern nur die eigenen).
+  // Planung mit ZOE (31.10.): der bereitgelegte Wochenvorschlag je Woche und Bereich — Blöcke mit Zeiten, Kennungen und Titeln der EIGENEN Aufgaben/
+  // Meilensteine, Sätze des Regelwerks. Immer mit Suffix, nur die Person selbst (GET/POST /api/planung/wochenvorschlag).
+  mit(H('wochenvorschlag--*', 'Wochenvorschlag je Person (vorgeschlagene Fokus-Blöcke mit Zeiten, Aufgaben-Kennungen und -Titeln, Begründungen, was übernommen ist) — nur die Person selbst liest und schreibt ihn.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO — die eigene Wochenplanung in der Software',
+    art15: 'Konto › Meine Daten exportiert den Bestand; Kalender › Planen zeigt den Vorschlag',
+    loeschfrist: 'rollend 6 Wochen (ältere Wochen fallen beim Schreiben heraus); Konto löschen entfernt den Bestand samt Tageskopien',
+  }),
   mit(H('heute-top3--*', 'Top 3 des Tages je Person (Aufgaben-Kennungen je Tag und Bereich, Zeitpunkt, ob von ZOE vorgeschlagen oder von Hand) — nur die Person selbst liest und schreibt sie.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO — die eigene Tagesplanung in der Software',
     art15: 'Konto › Meine Daten exportiert den Bestand; Heute › Top 3 zeigt die Festlegung des Tages',
@@ -979,6 +986,8 @@ const JE_PERSON: readonly string[] = [
   'arbeitsmodus', 'arbeitsmodus--*', 'arbeitsrahmen--*', 'flaeche', 'flaeche--*', 'onboarding--*', 'fokus-laufend--*',
   // Heute › Top 3 (10.10.): die eigene Festlegung des Tages — nur Aufgaben-Kennungen
   'heute-top3--*',
+  // Planung mit ZOE (31.10.): der eigene Wochenvorschlag
+  'wochenvorschlag--*',
   // Was ist neu (18.10.): das zuletzt gesehene Update je Person
   'neuigkeiten--*',
   // Inbox › Aufgaben-Vorschläge (10.10.): Merker je Person (nur Fingerabdrücke), Schalter „automatisch“

@@ -291,6 +291,19 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Wochenplan festhalten', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0h1) Wochenvorschlag bereitlegen (Planung mit ZOE, 31.10.): montags bzw. beim ersten Lauf der Woche je Person den Vorschlag der Woche rechnen und
+  //      ABLEGEN — nichts in den Kalender (das geschieht erst auf den Klick der Person) — plus EINE neutrale Meldung. Regelwerk, keine KI; idempotent.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Wochenvorschlag bereitlegen', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { wochenvorschlaegeBereitlegen } = await import('@/lib/planung/wochenvorschlag-server');
+      const w = await wochenvorschlaegeBereitlegen();
+      schritte.push({ name: 'Wochenvorschlag bereitlegen', ok: true, info: w.neu ? `für ${w.neu} Person${w.neu === 1 ? '' : 'en'} bereitgelegt` : 'diese Woche schon bereit' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Wochenvorschlag bereitlegen', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 0h2) Routinen-Blöcke (Routinen 2, 10.10.): je Person die eigenen Routinen mit „Kalender-Block“ für die nächsten zwei Wochen nachziehen
   //      (lib/planung/routinen-takt.ts — feste UIDs, idempotent; entfernt nur eigene, künftige Blöcke). Ohne Kalender bleibt alles, wie es ist.
   try {

@@ -33,6 +33,19 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-01-5',
+    datum: '2026-11-01',
+    titel: 'Woche mit ZOE planen',
+    kurz: 'ZOE schlägt dir für die Woche Fokus-Blöcke für das Wichtigste vor — nur in freie Zeit, um alle Termine herum, mit Top 3 und dem Hinweis, wenn es zeitlich nicht machbar ist. Du übernimmst per Klick.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Kalender › Planen und Fokus: „Woche mit ZOE planen“ — Fokus-Blöcke für die wichtigsten Aufgaben und Meilensteine in deiner freien Zeit (nie über Termine, Abwesenheit oder Business-frei, mit Puffer), dazu die Top 3 der Woche und je Block ein Satz, warum er dort steht.', bereich: 'alle', weg: WEG.woche() },
+        { text: '„Alles übernehmen“, einzeln abwählen oder verschieben — erst dein Klick legt die Blöcke im Kalender an. Ein zweiter Klick legt nichts doppelt an.', bereich: 'alle', weg: WEG.woche() },
+        { text: 'Montags liegt der Vorschlag für die Woche schon bereit, die Glocke sagt Bescheid. Reicht die freie Zeit nicht, steht dort „nicht machbar“ mit den Stunden.', bereich: 'alle', weg: WEG.woche() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31-9',
     datum: '2026-10-31',
     titel: 'Rechnungen & Zahlungen aufgeräumt',

@@ -7,7 +7,7 @@
 //   · Bausteine (Fokus, Training, Pause, Blockzeit), Routinen, „Aufgaben einplanen“ und „Eigener Block“: antippen →
 //     in den Kalender klicken oder aufziehen → der Block entsteht als iCloud-Termin (Art Fokus/Block, lib/planung/
 //     bloecke.ts) — ein Block IST ein Termin: verschieben, Dauer, löschen wie jeder Termin (mit ETag);
-//   · ZOE belegt die Woche (Vorschlag; „Übernehmen“ legt die Blöcke an — nichts ohne Klick);
+//   · Woche mit ZOE planen (31.10.: Regelwerk-Vorschlag mit Top 3 und Kapazität — WochenvorschlagKarte; angelegt erst per Klick);
 //   · Fokus der Woche (seit 09.10. Unser + Mein Fokus, direkt setzbar — FokusTafel) + Ziele/Meilensteine (Planung gegen Ziele, nicht ins Blaue);
 //   · die Übernahme der alten Wochenplan-Blöcke (einmal, mit Vorschau) und ihr Archiv (vergangene Blöcke, nur lesen).
 // Tippen statt Ziehen: funktioniert am Handy genauso (HTML-Ziehen gibt es auf Touch nicht).
@@ -32,6 +32,7 @@ import { usePersonen } from '../aufgaben/hilfe';
 import { FAECHER, istFach, fachDerPerson } from '@/lib/make-one/fach-namen';
 import { ErholungZielePlanung } from '../gesundheit/ErholungHeute';
 import { FokusTafel } from '../planung/FokusTafel';
+import { WochenvorschlagKarte } from '../planung/WochenvorschlagKarte';
 
 /** Was man gerade platziert (antippen → in den Kalender klicken). */
 export interface Baustein { art: PlanArt; titel: string; dauerMin: number; taskId?: string }
@@ -47,7 +48,6 @@ const ART_LABEL: Record<PlanArt, string> = { fokus: 'Fokus', reha: 'Erholung', e
 const DAUERN = [15, 30, 60, 90, 120].map(d => ({ id: String(d), label: d < 60 ? `${d} min` : `${(d / 60).toLocaleString('de-DE')} h` }));
 const fmtH = (min: number) => (min / 60).toFixed(1).replace('.', ',');
 
-interface VorschlagBlock { date: string; startMin: number; dauerMin: number; titel: string; art: PlanArt; taskId?: string }
 interface Vorschau { icloud: boolean; offen: number; laeuft: boolean; uebersprungen: number; unterbrochen: boolean; zuruecknehmbar: number; archiv?: string; personen: { person: string; zukuenftig: number; mitApple: number; vergangen: number; schon: number; uebersprungen: number; beispiele: { tag: string; zeit: string; titel: string; art: string }[] }[] }
 
 /** Ein Archiv-Block (alter Wochenplan) als schreibgeschützter Eintrag im Raster — gestrichelt, Klick erklärt. */
@@ -90,8 +90,6 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   const [neuTitel, setNeuTitel] = useState('');
   const [neuDauer, setNeuDauer] = useState(60);
   const [neuArt, setNeuArt] = useState<PlanArt>('block');
-  const [vorschlag, setVorschlag] = useState<{ begruendung: string; bloecke: VorschlagBlock[]; verworfen: number } | null>(null);
-  const [zoeDenkt, setZoeDenkt] = useState(false);
   const [archiv, setArchiv] = useState<ArchivBlock[]>([]);
   const [uebernahme, setUebernahme] = useState<Vorschau | null>(null);
   const [uebernahmeLaeuft, setUebernahmeLaeuft] = useState(false);
@@ -168,24 +166,6 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
       .slice(0, 8)
       .map(t => ({ ...t, imFokus: boost(t) >= FOKUS_SCHWELLE }));
   }, [aufgabenBereich, termine, archiv, regler]);
-
-  async function zoeBelegen() {
-    setZoeDenkt(true); setVorschlag(null);
-    const d = await fetch('/api/planung/vorschlag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ woche: tage[0] }) }).then(r => r.json()).catch(() => null);
-    if (Array.isArray(d?.bloecke)) setVorschlag({ begruendung: d.begruendung ?? '', bloecke: d.bloecke, verworfen: d.verworfen ?? 0 });
-    else melden(d?.error ?? d?.fehler ?? 'ZOE konnte gerade nicht planen.');
-    setZoeDenkt(false);
-  }
-  async function vorschlagUebernehmen() {
-    if (!vorschlag) return;
-    let n = 0;
-    for (const b of vorschlag.bloecke) {
-      if (await blockAnlegen({ art: b.art, titel: b.titel, dauerMin: b.dauerMin, ...(b.taskId ? { taskId: b.taskId } : {}) }, b.date, b.startMin)) n++;
-    }
-    setVorschlag(null);
-    melden(n ? null : 'Kein Block angelegt.');
-    void laden();
-  }
 
   /** Übernahme bzw. „Erneut versuchen“ (U1 M1: übersprungene freigeben, eine unterbrochene fortsetzen). */
   async function uebernehmen(aktion: 'ausfuehren' | 'erneut' = 'ausfuehren') {
@@ -347,6 +327,8 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
   /** Unter dem Raster: Fokus, Ziele, ZOE. */
   const unten = !aktiv ? null : (
     <div style={{ display: 'grid', gap: 12 }}>
+      {/* Planung mit ZOE (31.10.): Wochenvorschlag als Regelwerk — Fokus-Blöcke in freie Zeit, Top 3, „nicht machbar“; angelegt erst per Klick. */}
+      <WochenvorschlagKarte bereich={bereich} woche={tage[0]} onUebernommen={() => void laden()} i={1} />
       {/* Wochenfokus (09.10.): Unser + Mein Fokus aus den getrennten Beständen, direkt setzbar (FokusTafel) — dagegen wird geplant. */}
       <Karte i={1}>
         <Ueberschrift farbe={LEUCHT.schlaf} rechts={<Link href={WEG.fokus('fokus')} style={{ fontSize: TYP.bedien, color: C.aktiv, textDecoration: 'none', fontWeight: 600 }}>Alle Horizonte ›</Link>}>Fokus der Woche</Ueberschrift>
@@ -355,23 +337,6 @@ export function usePlanen({ aktiv, tage, termine, sicht, laden, melden }: {
       <ZieleMeilensteine horizont="woche" farbe={LEUCHT.schlaf} i={1} kompakt />
       {/* Erholungs-Ziele der Woche (10.10.) — nur die eigenen, nicht im Business-Bereich; zeichnet nichts ohne Ziel. */}
       {bereich === 'privat' && <ErholungZielePlanung zeitraum="woche" i={1} />}
-      <Karte i={2} akzent={LEUCHT.agenten}>
-        <Ueberschrift farbe={LEUCHT.agenten}>ZOE belegt die Woche</Ueberschrift>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Knopf onClick={zoeBelegen} aus={zoeDenkt} farbe={LEUCHT.agenten}>{zoeDenkt ? 'ZOE plant …' : '✨ ZOE belegt die Woche'}</Knopf>
-          <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Reha täglich · Fokus vormittags · Routinen · Aufgaben nach Priorität — um die festen Termine herum. Ein Vorschlag: angelegt wird erst auf deinen Klick.</span>
-        </div>
-        {vorschlag && (
-          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(255,255,255,.06)' }}>
-            <Ueberschrift farbe={LEUCHT.agenten} rechts={`${vorschlag.bloecke.length} Blöcke${vorschlag.verworfen ? ` · ${vorschlag.verworfen} verworfen (kollidierten mit Terminen)` : ''}`}>ZOE&apos; Vorschlag</Ueberschrift>
-            <div style={{ fontSize: TYP.body, color: C.inkDim, lineHeight: 1.5 }}>{vorschlag.begruendung}</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-              <Knopf farbe={LEUCHT.agenten} onClick={() => vorschlagUebernehmen()}>{`${vorschlag.bloecke.length} Blöcke anlegen`}</Knopf>
-              <Knopf leise onClick={() => setVorschlag(null)}>Verwerfen</Knopf>
-            </div>
-          </div>
-        )}
-      </Karte>
     </div>
   );
 

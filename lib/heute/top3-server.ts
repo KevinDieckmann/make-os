@@ -21,7 +21,7 @@ import {
 export const top3Name = (person: string) => `heute-top3--${person.replace(/[^a-z0-9-]/g, '')}`;
 
 /** Frist (YYYY-MM-DD) offener Meilensteine je Aufgaben-Liste — nur das Datum, nie ein Titel (die Sicht der Aufgabe ist schon gefiltert). */
-async function meilensteinFristen(person: string, state: TasksState): Promise<Map<string, string>> {
+export async function meilensteinFristen(person: string, state: TasksState): Promise<Map<string, string>> {
   const m = new Map<string, string>();
   if (!state.tasks.some(t => t.listeId?.startsWith('lm-') && istOffen(t))) return m;
   const f = await loadJson<{ meilensteine?: Meilenstein[] }>('meilensteine').catch(() => null);
