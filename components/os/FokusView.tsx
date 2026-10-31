@@ -31,6 +31,7 @@ import { ZeitJeMandatKarte } from './zeit/ZeitJeMandat';
 import { fokusBeenden, uhr } from './zeit/fokus-beenden';
 import { Lichtfaeden } from './lichtfaeden/Lichtfaeden';
 import { FokusTafel } from './planung/FokusTafel';
+import { WochenvorschlagKarte } from './planung/WochenvorschlagKarte';
 import { useNurBusiness } from './useInhaber';
 import { useSteuerung } from './fokus/useSteuerung';
 import { Prioritaeten } from './fokus/Prioritaeten';
@@ -110,6 +111,8 @@ export function FokusView() {
           {/* Fester Bereich: die Tafel bietet keinen Wechsel an — der Bereich kommt vom Kopf-Schalter. */}
           <FokusTafel bereich={bereich} />
         </Karte>
+        {/* Planung mit ZOE (31.10.): der Wochenvorschlag des Bereichs — Blöcke erst per Klick in den Kalender. */}
+        <WochenvorschlagKarte bereich={bereich} i={i++} />
         {/* Lichtfäden (03.10.): nur die Stränge dieses Bereichs (Wurzel `space:<bereich>`), zuerst die eigenen. */}
         <Lichtfaeden wurzel={`space:${bereich}`} person="ich" titel="Wo alles zusammenläuft" i={i++} />
       </Klappbar>

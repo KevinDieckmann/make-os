@@ -81,6 +81,7 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'neuigkeiten', nurMitSuffix: true },
   // Heute › Top 3 (10.10.): die eigene Festlegung der drei wichtigsten Aufgaben je Tag und Bereich — IMMER mit Suffix (lib/heute/top3-server.ts `top3Name`).
   { basis: 'heute-top3', nurMitSuffix: true },
+  { basis: 'wochenvorschlag', nurMitSuffix: true },
   // Mein Fokus (09.10.): Privat und Business getrennt, IMMER mit Suffix (lib/planung/fokus.ts `fokusBestand`).
   { basis: 'fokus-eigen', nurMitSuffix: true }, { basis: 'fokus-eigen-business', nurMitSuffix: true },
   // Soll-Zeit der Fokus-Steuerung (10.10.): Privat und Business getrennt, IMMER mit Suffix (lib/fokus/steuerung-server.ts).
