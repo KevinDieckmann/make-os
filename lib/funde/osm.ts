@@ -57,7 +57,8 @@ export function elementLesen(el: unknown, branche: FundBranche): OsmRoh | null {
   };
   const website = t(g.website ?? g['contact:website'] ?? g.url, 300);
   const email = t(g.email ?? g['contact:email'], 160)?.toLowerCase();
-  const telefon = t(g.phone ?? g['contact:phone'], 60);
+  // Alle veröffentlichten Nummern (auch `mobile`/`contact:mobile`) — Handy und Festnetz trennt lib/funde/telefon.ts.
+  const telefon = t([g.phone, g['contact:phone'], g.mobile, g['contact:mobile']].filter(Boolean).join('; '), 120);
   const kategorie = t(g.amenity ?? g.shop ?? g.craft, 60);
   return {
     osmId: `${String(e.type)[0]}${e.id}`, name, branche, ...(kategorie ? { kategorie } : {}), ...(Object.keys(adresse).length ? { adresse } : {}),

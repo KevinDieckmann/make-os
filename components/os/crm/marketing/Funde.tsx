@@ -11,7 +11,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Raster, Zahl, Hin
 import { datum } from '../daten';
 
 interface Fund {
-  id: string; name: string; branche: string; kategorie?: string; quelle: 'osm' | 'hand'; gebiet?: string; website?: string; email?: string; telefon?: string;
+  id: string; name: string; branche: string; kategorie?: string; quelle: 'osm' | 'hand'; gebiet?: string; website?: string; email?: string; telefon?: string; mobil?: string;
   inhaber?: string; inhaberArt?: 'person' | 'firma'; instagram?: string; quellen?: Record<string, string>;
   adresse?: { strasse?: string; hausnummer?: string; plz?: string; ort?: string };
   bewertung?: { punkte: number; gruende: string[] }; entwurf?: { betreff: string; text: string; anruf: string };
@@ -20,9 +20,9 @@ interface Fund {
 }
 interface Daten {
   istInhaber: boolean; eingerichtet: boolean; kampagne?: { id: string; name: string; status: string };
-  einstellungen: { stadt?: string; gebiete: string[]; gebietIndex: number; branchen: string[]; jeAbend: number; produktId?: string; arten?: string[]; nurMitMail: boolean; absender: { postfach: string; person: string; eigenes: boolean } | null; eigenesRisiko: { seit: string; von: string } | null };
+  einstellungen: { stadt?: string; gebiete: string[]; gebietIndex: number; branchen: string[]; jeAbend: number; produktId?: string; arten?: string[]; nurMitMail: boolean; nurMitTelefon: boolean; absender: { postfach: string; person: string; eigenes: boolean } | null; eigenesRisiko: { seit: string; von: string } | null };
   risikoHinweis: string; namensnennung: string; funde: Fund[];
-  zahlen: { vorbereitet: number; uebernommen: number; gesendet: number; verworfen: number; angesehen: number };
+  zahlen: { vorbereitet: number; uebernommen: number; gesendet: number; verworfen: number; angesehen: number; mitHandy: number; mitTelefon: number };
   lauf?: { tag: string; gebiet?: string; geholt: number; vorbereitet: number; fehler?: string };
   produkte: { id: string; name: string }[]; branchen: { id: string; name: string }[];
   gebietsVorlagen: { id: string; name: string; stadt: string; gebiete: string[] }[];
@@ -111,6 +111,7 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                 const an = !!e.arten && v.arten.every(a => e.arten!.includes(a)) && e.arten.length === v.arten.length;
                 return <Knopf key={v.id} leise={!an} onClick={async () => { await tun({ aktion: 'einstellungen', arten: an ? [] : v.arten }); }}>{`${an ? '✓ ' : ''}${v.name}`}</Knopf>;
               })}
+              <Knopf leise={!e.nurMitTelefon} onClick={async () => { await tun({ aktion: 'einstellungen', nurMitTelefon: !e.nurMitTelefon }); }}>{`${e.nurMitTelefon ? '✓ ' : ''}Nur mit Telefonnummer`}</Knopf>
               <Knopf leise={!e.nurMitMail} onClick={async () => { await tun({ aktion: 'einstellungen', nurMitMail: !e.nurMitMail }); }}>{`${e.nurMitMail ? '✓ ' : ''}Nur mit Mail-Adresse`}</Knopf>
             </div>
             <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>
@@ -173,6 +174,7 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
         <Karte><Zahl wert={String(d.zahlen.vorbereitet)} label="warten auf Freigabe" farbe={d.zahlen.vorbereitet ? LEUCHT.achtung : undefined} /></Karte>
         <Karte><Zahl wert={String(d.zahlen.uebernommen)} label="übernommen, ohne Mail" /></Karte>
         <Karte><Zahl wert={String(d.zahlen.gesendet)} label="Mails gesendet" /></Karte>
+        <Karte><Zahl wert={String(d.zahlen.mitHandy)} label="mit Handynummer" farbe={d.zahlen.mitHandy ? LEUCHT.gut : undefined} /></Karte>
         <Karte><Zahl wert={String(d.zahlen.angesehen)} label="Vorschau geöffnet" /></Karte>
       </Raster>
 
@@ -188,8 +190,9 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
             {sichtbar.map(f => (
               <div key={f.id}>
                 <Zeile aktiv={offen === f.id} onClick={() => setOffen(o => (o === f.id ? null : f.id))} titel={f.name}
-                  unter={[d.branchen.find(b => b.id === f.branche)?.name, f.gebiet ?? f.adresse?.ort, f.website ? 'mit Website' : 'ohne Website', f.email ? 'Mail bekannt' : 'keine Mail', datum(f.angelegt.slice(0, 10))].filter(Boolean).join(' · ')}
+                  unter={[d.branchen.find(b => b.id === f.branche)?.name, f.gebiet ?? f.adresse?.ort, f.website ? 'mit Website' : 'ohne Website', f.mobil || f.telefon ? null : 'keine Nummer', f.email ? 'Mail bekannt' : 'keine Mail', datum(f.angelegt.slice(0, 10))].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'inline-flex', gap: 6 }}>
+                    {f.mobil ? <Chip farbe={LEUCHT.gut}>Handy</Chip> : f.telefon ? <Chip farbe={C.aktiv}>Festnetz</Chip> : null}
                     {f.bewertung && <Chip farbe={f.bewertung.punkte >= 80 ? LEUCHT.kritisch : LEUCHT.achtung}>{`Bedarf ${f.bewertung.punkte}`}</Chip>}
                     <Chip farbe={STATUS[f.status].farbe}>{STATUS[f.status].text}</Chip>
                   </span>} />
@@ -200,7 +203,8 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                       {f.inhaber && <div>{f.inhaberArt === 'firma' ? 'Betreiber' : 'Inhaber'}: {f.inhaber}</div>}
                       {[f.adresse?.strasse && [f.adresse.strasse, f.adresse.hausnummer].filter(Boolean).join(' '), [f.adresse?.plz, f.adresse?.ort].filter(Boolean).join(' ')].filter(Boolean).length > 0 && <div>{[[f.adresse?.strasse, f.adresse?.hausnummer].filter(Boolean).join(' '), [f.adresse?.plz, f.adresse?.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div>}
                       {f.email && <div>Mail: {f.email}</div>}
-                      {f.telefon && <div>Telefon: {f.telefon}</div>}
+                      {f.mobil && <div>Handy: <Knopf leise href={`tel:${f.mobil}`}>{f.mobil}</Knopf></div>}
+                      {f.telefon && <div>Telefon: <Knopf leise href={`tel:${f.telefon}`}>{f.telefon}</Knopf></div>}
                       {f.website && <div>Website: {f.website}</div>}
                       {f.instagram && <div>Instagram: <Knopf leise href={`https://www.instagram.com/${encodeURIComponent(f.instagram)}/`}>{`@${f.instagram}`}</Knopf></div>}
                       {f.quellen && <div style={{ color: C.inkLeise }}>Quellen: {Object.keys(f.quellen).join(', ')}</div>}

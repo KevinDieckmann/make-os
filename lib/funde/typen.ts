@@ -63,7 +63,10 @@ export interface Fund {
   oeffnungszeiten?: string;
   website?: string;
   email?: string;
+  /** Festnetz (oder eine ausländische Nummer) — normiert „+49…“ (lib/funde/telefon.ts). */
   telefon?: string;
+  /** Handynummer, die der Betrieb selbst veröffentlicht (+49 15x/16x/17x) — zählt in der Erreichbarkeit am meisten (Kevin 31.10.). */
+  mobil?: string;
   /** Inhaber/Betreiber aus einer veröffentlichten Anbieterkennzeichnung (Impressum, Lieferdienst-Impressum) — nie geraten (31.10.). */
   inhaber?: string;
   inhaberArt?: 'person' | 'firma';
@@ -110,8 +113,10 @@ export interface FundeEinstellungen {
   produktId?: string;
   /** Persona (31.10.): nur diese OSM-Arten (z. B. restaurant, cafe) — fehlt es, zählt jede Art der gewählten Branchen. */
   arten?: string[];
-  /** Persona (31.10.): nur Betriebe mit veröffentlichter Mail-Adresse (OSM oder Startseite) — der Kanal ist die Mail. */
+  /** Persona (31.10.): nur Betriebe mit veröffentlichter Mail-Adresse (OSM oder Startseite). */
   nurMitMail?: boolean;
+  /** Persona (31.10. abends, Kevin: „wir werden sie anrufen“): nur Betriebe mit veröffentlichter Telefonnummer (Handy oder Festnetz). */
+  nurMitTelefon?: boolean;
 }
 
 /** Vorlagen für die Persona-Filter (Kevin 31.10.: „Restaurants & Cafés“). */

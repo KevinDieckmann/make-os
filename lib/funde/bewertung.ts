@@ -14,6 +14,8 @@ export interface SeitenSignale {
   impressum: boolean;
   /** Die geschäftliche Adresse, die der Betrieb selbst auf der Startseite angibt (erster `mailto:`), sonst fehlt sie. */
   email?: string;
+  /** Telefonnummern, die der Betrieb auf der Startseite angibt (`tel:`-Links), „; “-getrennt — Handy/Festnetz trennt lib/funde/telefon.ts. */
+  telefon?: string;
   /** Warum nicht erreichbar: Domain weg · Zertifikat ungültig · keine Verbindung · Fehlerseite (4xx/5xx). */
   fehler?: 'dns' | 'zertifikat' | 'verbindung' | 'status';
   /** Die Seite weist automatische Abrufe ab (401/403/429) — nicht prüfbar, also KEIN Mangel. */
@@ -50,7 +52,8 @@ export function seiteAuswerten(html: string, url: string): SeitenSignale {
   const alteTechnik = /<font[\s>]|<center[\s>]|<marquee|<frameset|\.swf["'?]|<table[^>]+(?:bgcolor|background)=|jquery[-.]1\.[0-7]\b|<blink/i.test(h);
   const impressum = /impressum|imprint|anbieterkennzeichnung/i.test(h);
   const email = mailAusHtml(h);
-  return { erreichbar: true, https: url.toLowerCase().startsWith('https://'), mobil, ...(jahre.length ? { jahr: Math.max(...jahre) } : {}), alteTechnik, impressum, ...(email ? { email } : {}) };
+  const tels = [...new Set([...h.matchAll(/href=["']tel:([+\d\s()/.-]{6,25})["']/gi)].map(m => m[1].trim()))].slice(0, 4);
+  return { erreichbar: true, https: url.toLowerCase().startsWith('https://'), mobil, ...(jahre.length ? { jahr: Math.max(...jahre) } : {}), alteTechnik, impressum, ...(email ? { email } : {}), ...(tels.length ? { telefon: tels.join('; ') } : {}) };
 }
 
 /**

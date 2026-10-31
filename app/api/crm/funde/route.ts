@@ -24,6 +24,7 @@ import { formularPostfachBereichOk } from '@/lib/crm/formulare';
 import { ladeFunde, fundSicht, FundeFehler } from '@/lib/funde/speicher';
 import { GEBIETS_VORLAGEN, OSM_NAMENSNENNUNG } from '@/lib/funde/osm';
 import { RISIKO_HINWEIS } from '@/lib/funde/entwurf';
+import { fundReihenfolge } from '@/lib/funde/telefon';
 import { ARTEN_VORLAGEN, FUND_BRANCHEN, istFundBranche, type FundeEinstellungen } from '@/lib/funde/typen';
 import { einstellungenAendern, fundeImportieren, fundVerwerfen, fundVonHand, handEingabeSaeubern, kampagneEinrichten, risikoSetzen } from '@/lib/funde/einrichten';
 
@@ -38,14 +39,16 @@ export async function GET(req: Request) {
   const [inhaber, b, crm, namen] = await Promise.all([istInhaber(z.person), ladeFunde(), ladeCrm(), namenVon().catch(() => ({} as Record<string, string>))]);
   const e = b.einstellungen;
   const kampagne = e.kampagneId ? crm.kampagnen.find(k => k.id === e.kampagneId && !k.geloeschtAm) : undefined;
-  const funde = [...b.funde].sort((x, y) => y.angelegt.localeCompare(x.angelegt)).slice(0, 300).map(fundSicht);
-  const zahlen = { vorbereitet: 0, uebernommen: 0, gesendet: 0, verworfen: 0, angesehen: 0 };
+  // Reihenfolge: wer zuerst angerufen wird — Handy vor Festnetz vor nur Mail, dann Website-Bedarf (lib/funde/telefon.ts).
+  const funde = [...b.funde].sort(fundReihenfolge).slice(0, 300).map(fundSicht);
+  const zahlen = { vorbereitet: 0, uebernommen: 0, gesendet: 0, verworfen: 0, angesehen: 0, mitHandy: 0, mitTelefon: 0 };
   for (const f of b.funde) {
     if (f.status === 'vorbereitet' || f.status === 'neu') zahlen.vorbereitet++;
     else if (f.status === 'uebernommen') zahlen.uebernommen++;
     else if (f.status === 'gesendet') zahlen.gesendet++;
     else zahlen.verworfen++;
     if (f.angesehenAm) zahlen.angesehen++;
+    if (f.status !== 'verworfen' && f.status !== 'gesperrt') { if (f.mobil) zahlen.mitHandy++; if (f.mobil || f.telefon) zahlen.mitTelefon++; }
   }
   leseZugriff(req, 'firmen', { anzahl: funde.length });
   let absenderWahl: { id: string; name: string }[] | undefined;
@@ -59,7 +62,7 @@ export async function GET(req: Request) {
     ...(kampagne ? { kampagne: { id: kampagne.id, name: kampagne.name, status: kampagne.status } } : {}),
     einstellungen: {
       ...(e.stadt ? { stadt: e.stadt } : {}), gebiete: e.gebiete, gebietIndex: e.gebietIndex, branchen: e.branchen, jeAbend: e.jeAbend,
-      ...(e.gesellschaft ? { gesellschaft: e.gesellschaft } : {}), ...(e.arten ? { arten: e.arten } : {}), nurMitMail: !!e.nurMitMail, ...(e.produktId ? { produktId: e.produktId } : {}), ...(e.segmentId ? { segmentId: e.segmentId } : {}),
+      ...(e.gesellschaft ? { gesellschaft: e.gesellschaft } : {}), ...(e.arten ? { arten: e.arten } : {}), nurMitMail: !!e.nurMitMail, nurMitTelefon: !!e.nurMitTelefon, ...(e.produktId ? { produktId: e.produktId } : {}), ...(e.segmentId ? { segmentId: e.segmentId } : {}),
       absender: abs ? { postfach: abs.postfach, person: namen[abs.person] ?? abs.person, eigenes: abs.person === z.person } : null,
       eigenesRisiko: e.eigenesRisiko ? { seit: e.eigenesRisiko.seit, von: namen[e.eigenesRisiko.von] ?? e.eigenesRisiko.von } : null,
     },
@@ -124,6 +127,7 @@ export async function POST(req: Request) {
         if (typeof b.produktId === 'string') teil.produktId = b.produktId;
         if (Array.isArray(b.arten)) teil.arten = b.arten.filter((x): x is string => typeof x === 'string' && /^[a-z_]{2,40}$/.test(x)).slice(0, 20);
         if (typeof b.nurMitMail === 'boolean') teil.nurMitMail = b.nurMitMail;
+        if (typeof b.nurMitTelefon === 'boolean') teil.nurMitTelefon = b.nurMitTelefon;
         if (b.absender === null) teil.absender = undefined;
         else if (typeof b.absender === 'string') {
           const { ladePostfach } = await import('@/lib/postfach/register');

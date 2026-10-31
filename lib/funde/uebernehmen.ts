@@ -73,7 +73,7 @@ export async function fundUebernehmen(fundId: string, person: string, o: { sitzu
   const teile = f.inhaber && f.inhaberArt === 'person' ? f.inhaber.split(' ') : [];
   const r = await personAnlegen({
     ...(teile.length >= 2 ? { vorname: teile.slice(0, -1).join(' '), nachname: teile[teile.length - 1] } : teile.length === 1 ? { nachname: teile[0] } : {}),
-    firma: f.name, ...(f.email ? { email: f.email } : {}), ...(f.telefon ? { telefon: f.telefon } : {}), ...(f.website ? { webseite: f.website } : {}),
+    firma: f.name, ...(f.email ? { email: f.email } : {}), ...(f.telefon ? { telefon: f.telefon } : {}), ...(f.mobil ? { mobil: f.mobil } : {}), ...(f.website ? { webseite: f.website } : {}),
     herkunft: 'recherche', anlass: 'Homepage-Fund übernommen (Kampagne)', quelleText: f.quelle === 'osm' ? 'Recherche (OpenStreetMap)' : 'Recherche (von Hand)',
     firmaZusatz: { ...(branche ? { branche } : {}), ...(f.adresse?.ort ? { stadt: f.adresse.ort } : {}) },
   }, { weg: 'prospecting', person, wer, id: kontaktId });

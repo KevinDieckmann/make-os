@@ -19,6 +19,7 @@ import { seitePruefen, pagespeed } from './web';
 import { vorschauAusKi, vorschauPrompt, vorschauRegelwerk } from './vorschau';
 import { entwurfBauen } from './entwurf';
 import { fundKontext } from './kontext';
+import { telefonFelder } from './telefon';
 import { BEDARF_AB, PLAYBOOK_ID, type Fund, type FundBewertung } from './typen';
 
 export const FUNDE_LAUF = 'funde';
@@ -113,11 +114,13 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
     if (bew.punkte < BEDARF_AB) { gut.push(r.osmId); continue; }
     const email = r.email ?? signale?.email;
     if (e.nurMitMail && !email) continue; // Persona: ohne veröffentlichte Mail-Adresse kein Fund (nicht „bekannt“ — die Mail kann später dazukommen)
+    const nummern = telefonFelder(r.telefon, signale?.telefon);
+    if (e.nurMitTelefon && !nummern.mobil && !nummern.telefon) continue; // Persona: ohne veröffentlichte Nummer kein Fund
     const f: Fund = {
       id: neueKennung('fd'), kampagneId: e.kampagneId, quelle: 'osm', osmId: r.osmId, name: r.name, branche: r.branche,
       ...(r.kategorie ? { kategorie: r.kategorie } : {}), ...(r.adresse ? { adresse: r.adresse } : {}), gebiet,
       ...(r.oeffnungszeiten ? { oeffnungszeiten: r.oeffnungszeiten } : {}), ...(site ? { website: site } : {}),
-      ...(email && !adressen.has(email) ? { email } : {}), ...(r.telefon ? { telefon: r.telefon } : {}),
+      ...(email && !adressen.has(email) ? { email } : {}), ...nummern,
       bewertung: bew, status: 'neu', angelegt: am, geaendert: am,
     };
     const vs = await vorschauFuer(f, o.person);

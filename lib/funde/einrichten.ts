@@ -12,6 +12,7 @@ import { vorschauRegelwerk } from './vorschau';
 import { entwurfBauen } from './entwurf';
 import { bewerten, eigeneWebsite, websiteNormal } from './bewertung';
 import { fundKontext } from './kontext';
+import { telefonFelder } from './telefon';
 import { PLAYBOOK_ID, SEGMENT_LABEL, istFundBranche, type Fund, type FundBranche, type FundeEinstellungen } from './typen';
 
 export const SEGMENT_ID = 'seg-homepage-funnel';
@@ -50,6 +51,7 @@ export async function einstellungenAendern(teil: Partial<FundeEinstellungen>, we
     if (teil.produktId !== undefined) e.produktId = teil.produktId;
     if (teil.arten !== undefined) { if (teil.arten.length) e.arten = teil.arten; else delete e.arten; }
     if (teil.nurMitMail !== undefined) { if (teil.nurMitMail) e.nurMitMail = true; else delete e.nurMitMail; }
+    if (teil.nurMitTelefon !== undefined) { if (teil.nurMitTelefon) e.nurMitTelefon = true; else delete e.nurMitTelefon; }
     const s = einstellungenSaeubern(e);
     if (teil.branchen !== undefined && !s.branchen.length) throw new FundeFehler(400, 'Mindestens eine Branche wählen.');
     return { ...x, einstellungen: s };
@@ -100,7 +102,7 @@ export async function fundVonHand(e: HandEingabe, person: string, wer: Wer): Pro
     const f: Fund = {
       id: neueKennung('fd'), kampagneId: x.einstellungen.kampagneId as string, quelle: 'hand', name: e.name, branche: e.branche,
       ...(e.strasse || e.plz || e.ort ? { adresse: { ...(e.strasse ? { strasse: e.strasse } : {}), ...(e.plz ? { plz: e.plz } : {}), ...(e.ort ? { ort: e.ort } : {}) } } : {}),
-      ...(site ? { website: site } : {}), ...(e.email ? { email: e.email } : {}), ...(e.telefon ? { telefon: e.telefon } : {}),
+      ...(site ? { website: site } : {}), ...(e.email ? { email: e.email } : {}), ...telefonFelder(e.telefon),
       bewertung, status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
     };
     f.vorschau = vorschauRegelwerk(f);
@@ -186,7 +188,7 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
       id: neueKennung('fd'), kampagneId: b0.einstellungen.kampagneId, quelle: osmId ? 'osm' : 'hand', ...(osmId ? { osmId } : {}), name: ein.name, branche: ein.branche,
       ...(t('kategorie', 60) ? { kategorie: t('kategorie', 60) } : {}), ...(t('gebiet', 80) ? { gebiet: t('gebiet', 80) } : {}), ...(t('oeffnungszeiten', 200) ? { oeffnungszeiten: t('oeffnungszeiten', 200) } : {}),
       ...(ein.strasse || ein.plz || ein.ort ? { adresse: { ...(ein.strasse ? { strasse: ein.strasse } : {}), ...(ein.plz ? { plz: ein.plz } : {}), ...(ein.ort ? { ort: ein.ort } : {}) } } : {}),
-      ...(site ? { website: site } : {}), ...(ein.email ? { email: ein.email } : {}), ...(ein.telefon ? { telefon: ein.telefon } : {}),
+      ...(site ? { website: site } : {}), ...(ein.email ? { email: ein.email } : {}), ...telefonFelder(typeof x.mobil === 'string' ? x.mobil.slice(0, 60) : undefined, ein.telefon),
       ...zusatz, bewertung, status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
     };
     f.vorschau = vorschauRegelwerk(f);

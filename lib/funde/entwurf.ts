@@ -43,7 +43,7 @@ function anlass(f: Pick<Fund, 'bewertung'>): string {
 }
 
 /** Die Mail (Betreff + Text) und der Anruf-Leitfaden. Ohne Link/Abmeldelink stehen Platzhalter — die Freigabe setzt sie ein. */
-export function entwurfBauen(f: Pick<Fund, 'name' | 'bewertung' | 'adresse' | 'quelle'> & Partial<Pick<Fund, 'inhaber' | 'inhaberArt' | 'quellen'>>, k: EntwurfKontext): FundEntwurf {
+export function entwurfBauen(f: Pick<Fund, 'name' | 'bewertung' | 'adresse' | 'quelle'> & Partial<Pick<Fund, 'inhaber' | 'inhaberArt' | 'quellen' | 'instagram' | 'mobil' | 'telefon'>>, k: EntwurfKontext): FundEntwurf {
   const link = k.link ?? LINK_PLATZHALTER;
   const ab = k.abmelden ?? ABMELDE_PLATZHALTER;
   const angebot = k.angebot ? `\n\nUnser Angebot: ${k.angebot.name}${k.angebot.preis ? ` — ${k.angebot.preis}` : ''}. Sie sagen, was rein soll, wir kümmern uns um den Rest.` : '';
@@ -74,11 +74,13 @@ export function entwurfBauen(f: Pick<Fund, 'name' | 'bewertung' | 'adresse' | 'q
   return { betreff: `Ein Entwurf für die Website von ${f.name}`.slice(0, 140), text, anruf: anrufLeitfaden(f), ki: false };
 }
 
-export function anrufLeitfaden(f: Pick<Fund, 'name' | 'bewertung' | 'adresse'> & Partial<Pick<Fund, 'inhaber' | 'instagram'>>): string {
+export function anrufLeitfaden(f: Pick<Fund, 'name' | 'bewertung' | 'adresse'> & Partial<Pick<Fund, 'inhaber' | 'instagram' | 'mobil' | 'telefon' | 'quellen'>>): string {
   const adr = adresseZeile(f.adresse);
   return [
     `Anruf bei ${f.name}${adr ? ` (${adr})` : ''} — nur, wenn keine Antwort und keine Abmeldung kam.`,
-    ...(f.inhaber ? [`Inhaber/Betreiber laut Impressum: ${f.inhaber} — nach ihm/ihr fragen.`] : []),
+    ...(f.mobil || f.telefon ? [`Nummer: ${f.mobil ? `${f.mobil} (Handy)` : ''}${f.mobil && f.telefon ? ' · ' : ''}${f.telefon ? `${f.telefon} (Festnetz)` : ''} — außerhalb der Stoßzeiten anrufen (nicht 12–14 und ab 18 Uhr).`] : []),
+    ...(f.bewertung && !f.bewertung.website ? ['Website laut Verzeichnis: keine — vor dem Anruf kurz selbst suchen (oft fehlt nur der Eintrag).'] : []),
+    ...(f.inhaber ? [`Inhaber/Betreiber laut ${f.quellen?.inhaber?.includes('openstreetmap.org') ? 'OpenStreetMap (bitte bestätigen)' : 'Impressum'}: ${f.inhaber} — nach ihm/ihr fragen.`] : ['Inhaber unbekannt — im Gespräch nach dem Inhaber bzw. der Inhaberin fragen.']),
     ...(f.instagram ? [`Vorher ansehen: Instagram @${f.instagram} (Stil, Fotos, aktuelle Themen).`] : []),
     '1. Kurz vorstellen, Bezug auf die Mail mit dem Website-Entwurf.',
     '2. Fragen: „Haben Sie sich den Entwurf ansehen können?“',

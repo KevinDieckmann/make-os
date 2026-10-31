@@ -328,3 +328,11 @@ Lieferdienst-Impressen (Lieferando, Wolt) laden nur per JavaScript. Der Inhaber 
 Leitfaden fragt danach. Instagram-Nachrichten sind elektronische Post (Ampel rot) — das Profil dient nur zur Vorbereitung.
 Software: `Fund.inhaber`/`inhaberArt`/`instagram`/`quellen` (Import, Ansicht, Übernahme → Name des Kontakts bzw. Notiz „Instagram: @…“, Mail mit
 Namens-Anrede nur bei Inhaber aus einer Anbieterkennzeichnung), „geschlossen“ wird beim Import übersprungen.
+
+**Telefon zuerst (31.10. spät, Kevin: „wir werden sie anrufen … am besten Handynummern, vom Scoring besser“):** Erreichbarkeit als eigenes Scoring
+(`lib/funde/telefon.ts`: Handy 100 · Festnetz 60 · nur Mail 25 · nichts 0), die Liste sortiert danach, dann nach Website-Bedarf. Handy = deutsches
+Mobilnetz (+49 15x/16x/17x), nur vom Betrieb selbst veröffentlicht (OSM `phone`/`mobile`, `tel:`-Links der Website, Impressum); Übernahme legt sie
+ins Handy-Feld des Kontakts. Neuer Persona-Filter „Nur mit Telefonnummer“. **Segment:** 3.847 Restaurants & Cafés, 1.569 (41 %) mit Nummer, Handynummern
+sind selten veröffentlicht. **Neue Auswahl (ersetzt die 48):** 50 Betriebe, 45 mit Handy + 5 Festnetz, je Bezirk 12–13; 37 laut Verzeichnis ohne Website
+(der Anruf-Leitfaden sagt: vorher kurz selbst suchen), 13 mit toter/unsicherer Seite; Mail 9, Instagram 5, Inhaber 2 (aus OSM — im Gespräch erfragen).
+Datei wie bisher `~/Desktop/Homepage-Funde Berlin 2026-10-31.json` (überschrieben, Format v2).

@@ -39,7 +39,7 @@ const KONTEN = { konten: [
 
 const OSM: OsmRoh[] = [
   { osmId: 'n1', name: 'Café Erfunden <b>', branche: 'gastro', kategorie: 'cafe', adresse: { strasse: 'Testweg', hausnummer: '1', plz: '10115', ort: 'Berlin' }, email: `hallo@cafe.${D}`, oeffnungszeiten: 'Mo-Fr 08:00-18:00' },
-  { osmId: 'n2', name: 'Imbiss Ohne Mail', branche: 'gastro', telefon: '+49 30 0000000' },
+  { osmId: 'n2', name: 'Imbiss Ohne Mail', branche: 'gastro', telefon: '+49 30 0000000; 0171 0000000' },
   { osmId: 'n3', name: 'Laden Mit Seite', branche: 'gastro', website: `https://laden.${D}`, email: `info@laden.${D}` },
 ];
 const holen = async () => OSM;
@@ -147,6 +147,17 @@ describe('Regeln (rein)', () => {
     expect(RISIKO_HINWEIS).toMatch(/§ 7 Abs\. 2 UWG/);
   });
 
+  it('Telefon: Handy erkannt und vorn, Erreichbarkeit Handy > Festnetz > Mail > nichts', async () => {
+    const { nummernAus, telefonFelder, erreichbarkeit, fundReihenfolge } = await import('@/lib/funde/telefon');
+    expect(nummernAus('030 1234567; 0171 2345678')).toEqual([{ nummer: '+491712345678', art: 'mobil' }, { nummer: '+49301234567', art: 'festnetz' }]);
+    expect(telefonFelder('+49 (0)30 123456', '0049 160 9876543')).toEqual({ mobil: '+491609876543', telefon: '+4930123456' });
+    expect(erreichbarkeit({ mobil: '+4917' })).toBe(100);
+    expect(erreichbarkeit({ telefon: '+4930' })).toBe(60);
+    expect(erreichbarkeit({ email: 'a@b.de' })).toBe(25);
+    const l = [{ angelegt: '1', email: 'a@b.de' }, { angelegt: '2', telefon: '+4930' }, { angelegt: '3', mobil: '+49171' }].sort(fundReihenfolge as never);
+    expect(l.map((x: { angelegt: string }) => x.angelegt)).toEqual(['3', '2', '1']);
+  });
+
   it('Löschfrist: nicht übernommene nach der Frist, übernommene nach Ablauf der Vorschau', async () => {
     const { fundeUeberFrist } = await import('@/lib/funde/aufraeumen');
     const f = (id: string, status: string, angelegt: string) => ({ id, kampagneId: 'k', quelle: 'osm', name: id, branche: 'gastro', status, angelegt, geaendert: angelegt }) as never;
@@ -185,6 +196,9 @@ describe('Abendlauf, Freigabe, Versand', () => {
     const b = await (await import('@/lib/funde/speicher')).ladeFunde();
     expect(b.funde.map(f => f.name).sort()).toEqual(['Café Erfunden <b>', 'Imbiss Ohne Mail']);
     expect(b.funde.every(f => f.status === 'vorbereitet' && f.vorschau && f.entwurf && !f.kontaktId)).toBe(true);
+    expect(b.funde.find(f => f.name === 'Imbiss Ohne Mail')).toMatchObject({ mobil: '+491710000000', telefon: '+49300000000' });
+    // Die Liste zeigt den Fund mit Handy zuerst.
+    expect((await GET(funde, '/api/crm/funde')).d.funde[0].name).toBe('Imbiss Ohne Mail');
     expect(await offeneFundVorschlaege()).toHaveLength(2);
     expect((await db.loadJson<{ kontakte: unknown[] }>('kontakte'))!.kontakte).toHaveLength(0);
     expect(server.gesendet).toHaveLength(0);
