@@ -748,7 +748,7 @@ ${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class
 <div class="erscheint">${brotkrumen([[`/${k}/`, b.name], [null, a.name]])}${vorzeile(`${b.name}${a.gruppe ? ` · ${a.gruppe}` : ''}${istBald ? ' · Bald' : ''}`)}<h1 id="held-titel">${e(F.titel_h1?.[a.id] ?? a.name)}</h1><p class="lead">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? b.satz)}</p></div>
 <aside class="preis-kasten erscheint" aria-label="Preis"><p class="etikett">Preis</p><p class="betrag">${e(preisVoll(a))}</p><p class="zusatz">${istBald ? 'Haben Sie ein Vorhaben? Melden Sie sich, wir sprechen darüber' : `${e(a.preis_zusatz ?? '')}${a.preis_zusatz ? ' · ' : ''}netto zuzüglich Umsatzsteuer`}</p>${F.umfang[a.id] ? `<p class="umfang">${e(F.umfang[a.id])}</p>` : ''}${mandat ? `<p class="sicher">Ausstieg zum Ende von Monat 3 möglich</p>` : ''}<div class="knoepfe senkrecht">${terminKnopf}${zweitKnopf}</div></aside>
 </div></section>
-${blick([['Für wen', pb?.fuer?.[0] ?? a.fuer_wen], ['Ergebnis', ergebnisSatz], ['Umfang', F.umfang[a.id]], ...(istBald ? [['Start', 'in Kürze, Anfrage schon jetzt möglich']] : [])])}
+${blick([['Für wen', pb?.fuer ? null : a.fuer_wen], ['Ergebnis', ergebnisSatz], ['Umfang', F.umfang[a.id]], ...(istBald ? [['Start', 'in Kürze, Anfrage schon jetzt möglich']] : [])])}
 ${mandat ? risiko() : abs ? risiko(abs.punkte) : ''}
 ${blattHtml}
 ${a.id === 'head-of-sales' ? wochenreportMuster() : ''}
