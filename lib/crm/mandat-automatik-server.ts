@@ -180,6 +180,24 @@ async function zurueckAusfuehren(h: string, absicht: Absicht): Promise<ZurueckDa
   });
 }
 
+/**
+ * Welche angenommenen Angebote „Rückgängig“ noch können (31.10.): Angebot → automatisch angelegtes Mandat, solange es noch steht, nicht zurückgenommen
+ * ist und keine Rechnung (auch kein Entwurf) und kein Fall daran hängt — dieselbe Sperre wie `mandatAutomatikZurueck`. Damit zeigt die Angebots-Ansicht
+ * den Knopf auch nach dem Neuladen (bisher nur direkt nach „Angenommen“). Nur Kennungen.
+ */
+export async function zuruecknehmbareAngebote(): Promise<Record<string, string>> {
+  const { kreislaufLaden } = await import('@/lib/finanzen/rechnung/kreislauf');
+  const offen = Object.entries((await kreislaufLaden()).mandatAuto ?? {}).filter(([, v]) => !v.zurueckAm);
+  if (!offen.length) return {};
+  const mandate = new Set((await ladeCrm()).mandate.map(m => m.id));
+  const plan = sauberFile(await loadJson<FinanzplanFile>('finanzplan'));
+  const mitRechnung = new Set(plan.rechnungen.map(r => r.mandatId).filter((x): x is string => !!x));
+  const { fulfillmentLesen } = await import('@/lib/fulfillment/speicher');
+  const faelle = await fulfillmentLesen('faelle').catch(() => null);
+  const mitFall = new Set(Object.values(faelle?.faelle ?? {}).map(f => f.mandatId).filter((x): x is string => !!x));
+  return Object.fromEntries(offen.filter(([m]) => mandate.has(m) && !mitRechnung.has(m) && !mitFall.has(m)).map(([m, v]) => [v.angebotId, m]));
+}
+
 /** „Rückgängig“ — siehe Kopf. `angebotId` = das angenommene Angebot, an dem die Automatik das Mandat anlegte. */
 export async function mandatAutomatikZurueck(p: { angebotId: string; wer?: Wer; jetzt?: Date }): Promise<ZurueckErgebnis> {
   const { kreislaufLaden } = await import('@/lib/finanzen/rechnung/kreislauf');

@@ -12,6 +12,7 @@
 //   ablage     { id, art: archiv|papierkorb, zurueck? } → Archiv (jeder Status) bzw. Papierkorb (nur Entwürfe), hinein/zurück (04.10.)
 //   gesendet   { id }                       → „Mail ist raus“: Aktivität „Angebot <Nummer> gesendet“ am Kontakt (zählt als Kontakt) — nur per
 //                                            Klick einer Person, nie der Dienstweg (08.10., Woche 2 · 3.15; beim Stellen steht nur „gestellt“)
+// GET liefert seit 31.10. `automatikZurueck` (Angebot → Mandat, „Rückgängig“ noch möglich).
 // GET liefert seit 04.10. `papierkorb` getrennt (Entwürfe im Papierkorb) — `angebote` enthält sie nicht mehr.
 // Zugang: Haushalt des Inhabers (Default-Deny); Stellen braucht dazu eine benannte Person mit Haushalt
 // (Dateiablage und Gesellschaften liegen je Haushalt). Nichts wird versendet — das Mail-Programm öffnet der Browser.
@@ -58,10 +59,12 @@ export async function GET(req: Request) {
     // Absender mit `luecken` (08.10., Sofort-Paket 3.1): sonst erschien „Absender … fehlt“ nie und erst „Senden“ scheiterte. Nur Absender-Felder — nie Cap-Table/Verträge.
     const absender = (await gesellschaftenLaden(h?.haushalt)).map(absenderFuerAnzeige);
     const vorgabe = await absenderVorgabe(h?.haushalt);
+    // 31.10.: angenommene Angebote, deren automatisch angelegtes Mandat „Rückgängig“ noch kann (Angebot → Mandat) — nicht für „nur Business“ (darf es nicht).
+    const automatikZurueck = nurBusiness ? {} : await (await import('@/lib/crm/mandat-automatik-server')).zuruecknehmbareAngebote().catch(() => ({}));
     return NextResponse.json({
       ok: true, angebote: alle.filter(a => !a.geloeschtAm).map(mitStand), papierkorb: alle.filter(a => a.geloeschtAm).map(mitStand),
       gesellschaften: nurBusiness ? gesellschaftenFuerNurBusiness(absender) : absender,
-      vorgabe: nurBusiness && vorgabe && !imBusiness({ gesellschaft: vorgabe }) ? null : vorgabe, haushalt: !!h, ...(nurBusiness ? { nurEntwuerfe: true } : {}),
+      vorgabe: nurBusiness && vorgabe && !imBusiness({ gesellschaft: vorgabe }) ? null : vorgabe, haushalt: !!h, automatikZurueck, ...(nurBusiness ? { nurEntwuerfe: true } : {}),
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) { return ausFehler(e); }
 }

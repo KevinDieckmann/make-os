@@ -150,8 +150,9 @@ describe('Saat', () => {
     expect(offenLena.some(v => v.nachher?.includes('Angebot Grünfeld Bau nachfassen'))).toBe(true);
     const crm = await db.loadJson<{ chancen: { id: string; stufe: string }[]; mandate: unknown[]; leistungen: { status: string }[]; firmen: unknown[]; angebote?: { status: string; dealId?: string; nummer?: string }[]; wertelisten?: { reihen?: { id: string; name: string }[] } }>('crm');
     // 25.10.: dazu der Deal der Formular-Anfrage („Angebot anfordern“, zur Freigabe — die Demo verschickt nichts).
-    // 30.10. (Kreislauf, lib/demo/saat-kreislauf.ts): dazu der gewonnene Deal des angenommenen Angebots und der offene Folge-Deal bei Nordwerk.
-    expect(crm?.chancen).toHaveLength(7);
+    // 30.10. (Kreislauf, lib/demo/saat-kreislauf.ts): dazu der gewonnene Deal des angenommenen Angebots und der offene Folge-Deal bei Nordwerk;
+    // 31.10.: dazu der gewonnene Deal des zweiten angenommenen Angebots (Lumen, „Rückgängig“ vorführbar).
+    expect(crm?.chancen).toHaveLength(8);
     const formular = await db.loadJson<{ links: unknown[]; eingaenge: { status: string }[] }>('angebot-formular--demo');
     expect(formular?.links).toHaveLength(1);
     expect(formular?.eingaenge.map(e => e.status)).toEqual(['freigabe']);
@@ -164,8 +165,9 @@ describe('Saat', () => {
     // Reihen sind Instanz-Daten (14.10.): die Demo hat eine erfundene Reihe in den Wertelisten.
     expect(crm?.wertelisten?.reihen?.map(r => r.name)).toEqual(['Abendreihe Nord (Beispiel)']);
     // Drei Mandate: Nordwerk, Lumen und (17.10. abends) der Kunde des Beispiel-Falls in Ausführung (lib/demo/fulfillment-ablauf.ts) —
-    // dazu (30.10.) das Mandat, das die Mandat-Automatik aus dem angenommenen Angebot angelegt hat (lib/demo/saat-kreislauf.ts).
-    expect(crm?.mandate).toHaveLength(4);
+    // dazu (30.10.) das Mandat, das die Mandat-Automatik aus dem angenommenen Angebot angelegt hat (lib/demo/saat-kreislauf.ts),
+    // und (31.10.) das Mandat aus dem zweiten angenommenen Angebot (Lumen, ohne Rechnung — „Rückgängig“ vorführbar).
+    expect(crm?.mandate).toHaveLength(5);
     expect(crm?.leistungen.every(l => l.status === 'aktiv')).toBe(true);
     // Produkte als Karten (19.10., P4): über den Produkt-Import — vier bestehende ergänzt, vier neu, jede Preis-Form; der zweite Lauf ist „gleich“.
     const { DEMO_PRODUKT_KARTEN } = await import('@/lib/demo/saat');
@@ -200,10 +202,10 @@ describe('Saat', () => {
     // Die drei laufenden Retainer (17.10. abends: dazu der Kunde des Beispiel-Falls in Ausführung) — über den Vorschlagsweg „Mandat → Liquiplan“.
     // Seit 18.10. (N4) kommt für ein Mandat, das in diesem Monat mitten im Monat begann, der angebrochene Monat als eigener einmaliger Posten dazu.
     // Ohne das einmalige Mandat aus dem angenommenen Angebot (30.10., Kreislauf — eigener Test unten): sein Posten ist die Diagnose, keine Monatsrate.
-    const [{ KREISLAUF_ANGEBOT }, { mandatVonPosten }] = await Promise.all([import('@/lib/demo/saat-kreislauf'), import('@/lib/make-one/liquiditaet')]);
+    const [{ KREISLAUF_ANGEBOT, KREISLAUF_ANGEBOT_RUECKGAENGIG }, { mandatVonPosten }] = await Promise.all([import('@/lib/demo/saat-kreislauf'), import('@/lib/make-one/liquiditaet')]);
     const crmVorher = (await db.loadJson<{ mandate: { id: string; chanceId?: string }[]; angebote?: { id: string; dealId?: string }[] }>('crm'))!;
-    const dealAusAngebot = crmVorher.angebote?.find(a => a.id === KREISLAUF_ANGEBOT)?.dealId;
-    const ausAngebot = new Set(crmVorher.mandate.filter(m => !!dealAusAngebot && m.chanceId === dealAusAngebot).map(m => m.id));
+    const dealsAusAngebot = new Set((crmVorher.angebote ?? []).filter(a => a.id === KREISLAUF_ANGEBOT || a.id === KREISLAUF_ANGEBOT_RUECKGAENGIG).map(a => a.dealId).filter(Boolean));
+    const ausAngebot = new Set(crmVorher.mandate.filter(m => !!m.chanceId && dealsAusAngebot.has(m.chanceId)).map(m => m.id));
     const mandatPosten = lp!.posten.filter(p => p.kategorie === 'mandat' && p.betrag > 0 && p.sicher && !ausAngebot.has(mandatVonPosten(p) ?? ''));
     expect(mandatPosten.filter(p => p.rhythmus === 'monatlich')).toHaveLength(3);
     expect(mandatPosten.filter(p => p.rhythmus !== 'monatlich').every(p => p.rhythmus === 'einmalig' && p.id.includes('~'))).toBe(true);
@@ -282,6 +284,26 @@ describe('Saat', () => {
     expect(ablage?.eintraege.some(e => e.firmaId === KREISLAUF_FIRMA && e.art === 'vertrag' && !!e.datei)).toBe(true);
     const bezug = await db.loadJson<{ bezuege: Record<string, { firmaId?: string }> }>('kalender-bezug');
     expect(Object.values(bezug?.bezuege ?? {}).some(b => b.firmaId === KREISLAUF_FIRMA)).toBe(true);
+  });
+
+  // 31.10. (Nachtprüfung): „Mandat + Liquiplan zurücknehmen“ ist vorführbar — das zweite angenommene Angebot (Lumen) hat ein Automatik-Mandat ohne Rechnung
+  // und ohne Fall; der Server meldet es als zurücknehmbar, das erste (mit bezahlter Rechnung) nicht. Zurückgenommen wird hier nicht (der Stand bleibt fürs Vorführen).
+  it('Rückgängig vorführbar: zweites angenommenes Angebot ohne Rechnung, Automatik-Mandat zurücknehmbar', async () => {
+    const { KREISLAUF_ANGEBOT, KREISLAUF_ANGEBOT_RUECKGAENGIG } = await import('@/lib/demo/saat-kreislauf');
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const crm = await ladeCrm();
+    const ang = (crm.angebote ?? []).find(a => a.id === KREISLAUF_ANGEBOT_RUECKGAENGIG)!;
+    expect(ang.status).toBe('angenommen');
+    const m = crm.mandate.find(x => x.chanceId === ang.dealId)!;
+    expect(m.firmaId).toBe('f-demo-lumen');
+    const lp = await db.loadJson<{ posten: { id: string }[] }>('liquiplan');
+    expect(m.planpostenId && lp!.posten.some(p => p.id === m.planpostenId)).toBe(true);
+    const plan = await db.loadJson<{ rechnungen: { mandatId?: string }[] }>('finanzplan');
+    expect(plan!.rechnungen.some(r => r.mandatId === m.id)).toBe(false);
+    const { zuruecknehmbareAngebote } = await import('@/lib/crm/mandat-automatik-server');
+    const z = await zuruecknehmbareAngebote();
+    expect(z[KREISLAUF_ANGEBOT_RUECKGAENGIG]).toBe(m.id);
+    expect(z[KREISLAUF_ANGEBOT]).toBeUndefined();
   });
 
   // Rundgang 19.10. (A7): der Weg Mandat → Rechnung → gestellt ist in der Demo vorführbar — der Absender trägt die öffentliche Beispiel-IBAN (keine echte

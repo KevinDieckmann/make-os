@@ -4,6 +4,7 @@
 // ROUTEN in-process (`rufe`, Person im Kopf `x-make-user`) — dieselben Schreibwege wie die Oberfläche:
 //   1. eine zweite Person bei Nordwerk (Kartei)
 //   2. ein Angebot an Nordwerk: Entwurf → stellen (Deal entsteht über den EINEN Weg) → angenommen → Mandat + Liquiplan AUTOMATISCH (Mandat-Automatik)
+//      2b. (31.10.) ein zweites angenommenes Angebot an Lumen OHNE Rechnung und ohne Fall — „Mandat + Liquiplan zurücknehmen“ bleibt vorführbar
 //   3. Rechnungen: aus dem neuen Mandat gestellt UND bezahlt · ein Entwurf aus dem Retainer-Mandat (wie ihn der Morgenlauf vorbereitet) · eine gestellte
 //      Monatsrechnung eines zweiten Kunden · eine gestellte Rechnung der Selbstständigkeit (Privat-Einheit) an einen Kunden der Markttraktion ·
 //      eine alte, bezahlte Rechnung OHNE Zuordnung (Altbestand — zeigt den Filter „Ohne Zuordnung“ und „Zuordnung nachtragen“)
@@ -33,6 +34,8 @@ export const KREISLAUF_ROUTEN = {
 export const KREISLAUF_FIRMA = 'f-demo-nordwerk';
 export const KREISLAUF_ANGEBOT = 'ang-demo-nordwerk-sued';
 export const KREISLAUF_ALT_RECHNUNG = 're-demo-altbestand';
+/** Zweites angenommenes Angebot (31.10.) — bewusst ohne Rechnung und ohne Fall, damit „Rückgängig“ der Mandat-Automatik vorführbar bleibt. */
+export const KREISLAUF_ANGEBOT_RUECKGAENGIG = 'ang-demo-lumen-workshop';
 const NORDWERK = 'Nordwerk Maschinenbau GmbH';
 
 export interface KreislaufKontext {
@@ -100,6 +103,17 @@ export async function kreislaufSaen(k: KreislaufKontext): Promise<SaatSchritt[]>
   const an = await rufe(R.angebot(), 'POST', '/api/crm/angebot', L, { aktion: 'annehmen', id: gestellt.id, stand: gestellt.stand }) as { automatik?: { angelegt: boolean; mandatId?: string; grund?: string } };
   if (!an.automatik?.angelegt || !an.automatik.mandatId) throw new Error(`Mandat-Automatik hat kein Mandat angelegt: ${an.automatik?.grund ?? 'ohne Antwort'}`);
   const mandatSued = an.automatik.mandatId;
+  //   2b) ein zweites angenommenes Angebot an Lumen — OHNE Rechnung und ohne Fall: an ihm lässt sich „Mandat + Liquiplan zurücknehmen“ zeigen.
+  const paul = k.kontaktId('paul');
+  const lumenEntwurf = (await rufe(R.angebot(), 'POST', '/api/crm/angebot', L, { aktion: 'speichern', id: KREISLAUF_ANGEBOT_RUECKGAENGIG, felder: {
+    gesellschaft: 'ug', kontaktId: paul, firmaId: 'f-demo-lumen', titel: 'Klarheits-Diagnose Standort Ost (Beispiel)',
+    positionen: [{ id: 'p1', leistungId: d.id, titel: d.name, text: d.text, menge: 1, einheit: 'pauschal', einzelpreisCent: d.cent, ustSatz: 19, basis: 'einmalig' }],
+    einleitung: 'wie besprochen die Diagnose für Ihren Standort Ost (Beispiel).',
+    schluss: 'Wir freuen uns auf die Zusammenarbeit.', gueltigBis: tagPlus(heute, 21), zahlungszielTage: 14,
+  } })).angebot as { id: string; stand: string };
+  const lumenGestellt = (await rufe(R.angebot(), 'POST', '/api/crm/angebot', L, { aktion: 'stellen', id: lumenEntwurf.id, stand: lumenEntwurf.stand, nachfassenAm: tagPlus(heute, 2) })).angebot as { id: string; stand: string };
+  const lumenAn = await rufe(R.angebot(), 'POST', '/api/crm/angebot', L, { aktion: 'annehmen', id: lumenGestellt.id, stand: lumenGestellt.stand }) as { automatik?: { angelegt: boolean; grund?: string } };
+  if (!lumenAn.automatik?.angelegt) throw new Error(`Mandat-Automatik (Lumen) hat kein Mandat angelegt: ${lumenAn.automatik?.grund ?? 'ohne Antwort'}`);
 
   // 3) Rechnungen — über die Rechnungs-Route (Nummer + PDF beim Stellen, Zahlungseingang mit Buchung in einer Sperre).
   const rechnung = (r: Record<string, unknown>) => r.rechnung as Rechnung;
@@ -153,7 +167,7 @@ export async function kreislaufSaen(k: KreislaufKontext): Promise<SaatSchritt[]>
   await bezugSetzen(terminId, { firmaId: KREISLAUF_FIRMA, kontaktId: jan, mandatId: mandatSued, tag: kickoff, art: 'termin', von: L });
 
   return [
-    { name: 'Kreislauf: Angebot angenommen → Mandat + Liquiplan', anzahl: 1 },
+    { name: 'Kreislauf: Angebot angenommen → Mandat + Liquiplan', anzahl: 2 },
     { name: 'Kreislauf: Rechnungen (Entwurf, gestellt, bezahlt, Selbstständigkeit, ohne Zuordnung)', anzahl: 5 },
     { name: 'Große Akte (Person, Deal, Aufgaben, Vertrag, Termin)', anzahl: 1 + 1 + aufgaben.length + 1 + 1 },
   ];
