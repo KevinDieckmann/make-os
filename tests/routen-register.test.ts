@@ -46,6 +46,9 @@ const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   // Bausteine bestellen (31.10.): Titel/Preis/Bedingungen lesen, bestellen (ausgeschaltet 404) und der Download-Link aus der Liefer-Mail (nur nach Freigabe gültig).
   'bestellung': ['GET', 'POST'],
   'baustein/laden': ['GET'],
+  // Website-Inhalte (31.10.): der Vertrag mit der statischen Website — nur lesen; Bilder nur, wenn sichtbar UND für die Website freigegeben.
+  'website/inhalt': ['GET'],
+  'website/bild/[id]': ['GET'],
   // Newsletter-Anmeldung über die Website (30.10.): nur POST, die Seite /newsletter ist kein API-Weg; ausgeschaltet 404.
   'newsletter': ['POST'],
   'abmelden/[token]': ['GET', 'POST'],
