@@ -72,6 +72,10 @@ const nextConfig = {
       // im Fragment, kein Referrer, keine Rahmen, nicht indexieren, nicht zwischenspeichern.
       { source: '/newsletter', headers: buchung },
       { source: '/api/newsletter', headers: buchung },
+      // Unterlagen per E-Mail (31.10., lib/unterlagen/*): dieselbe strenge Richtlinie — der Download-Link trägt ein Token in der Abfrage (kein Referrer,
+      // nicht indexieren, nicht zwischenspeichern); die Download-Route setzt für die Datei zusätzlich `sandbox`.
+      { source: '/api/unterlage', headers: buchung },
+      { source: '/api/unterlage/:pfad*', headers: buchung },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten

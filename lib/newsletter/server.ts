@@ -9,7 +9,6 @@
 //                       Art. 18 → nichts geschrieben, Werbesperre/Sperrliste → keine Einwilligung. Was davon gilt, sieht nur der Haushalt.
 // `newsletterFristLauf` Löschfrist im Morgenlauf (lib/crm/loeschfristen-lauf.ts).
 
-import { after } from 'next/server';
 import { localDay, tagVon } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
 import { UG_NAME } from '@/lib/einheiten';
@@ -76,20 +75,8 @@ export async function newsletterEingerichtet(): Promise<boolean> {
 }
 
 // ── Arbeit nach der Antwort ─────────────────────────────────────────────────────────────────────────────────────────────────────
-
-const offen = new Set<Promise<unknown>>();
-/** Nur für Tests: wartet, bis die Arbeit nach der Antwort fertig ist. */
-export const _nachlauf = async (): Promise<void> => { await Promise.all(Array.from(offen)); };
-/** Arbeit NACH der Antwort (`after`) — außerhalb einer Anfrage (Tests) sofort im Hintergrund. Fehler nur ins Log, ohne Adresse. */
-export function nachDerAntwort(arbeit: () => Promise<unknown>): void {
-  const los = () => {
-    const p = arbeit().catch(e => { console.error('[newsletter] Anmeldung:', e instanceof Error ? e.message.slice(0, 200) : 'Fehler'); });
-    offen.add(p);
-    void p.finally(() => offen.delete(p));
-    return p;
-  };
-  try { after(los); } catch { void los(); }
-}
+// Seit 31.10. EINE Stelle für alle öffentlichen Website-Wege (Newsletter, Unterlagen, Bericht der Checks): lib/oeffentlich/website-post.ts.
+export { nachDerAntwort, _nachlauf } from '@/lib/oeffentlich/website-post';
 
 // ── Anmelden ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 

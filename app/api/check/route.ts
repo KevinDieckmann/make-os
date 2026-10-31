@@ -6,6 +6,9 @@
 //   antwort { frage, optionIds | freitext, zusatz?, optionText? } · ueberspringen { frage }
 //   kontakt { vorname, email, firma, rolle (A5-Option), telefon?, newsletter?, webseite } · ohne-kontakt
 //   wahl { wahl: ergebnis | mehr } · ergebnis
+// Ausführlich (`umfang: 'lang'`, 31.10., Kevin: „die größeren brauchen eine e-mail“): ohne erfasste Kontaktdaten liefert `ergebnis` NUR die Vorschau
+// (Gesamt, Stufe, Skala, Namen der Bereiche — lib/check/ergebnis.ts `ergebnisVorschau`); den ganzen Bericht erst mit Kontakt. Der Bericht geht
+// genau einmal je Sitzung per Mail, sobald Ergebnis UND Kontakt da sind (lib/check/bericht-server.ts `berichtAnstossen`, für jeden Check).
 // Reihenfolge und Regeln nur aus lib/check/ablauf.ts, Zahlen nur aus lib/check/auswertung.ts. Der Check kommt AUSGESCHALTET
 // (Einstellungen, nur der Inhaber schaltet ein; ohne Verantwortlichen der Instanz bleibt er zu) — sonst 404 für jede Aktion.
 // Schutz: Drossel je Netz (Start knapp, Antworten großzügig, falsche Tokens wie Fehlversuche), Honigtopf an Start und Kontakt,
@@ -17,13 +20,15 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { vorlageVon, STANDARD_VORLAGE } from '@/lib/check/katalog';
 import { antwortPruefen, frageVon, kurzFertig, phaseVon, ueberspringbar } from '@/lib/check/ablauf';
 import { auswerten, leadPunkte, profilAus, saeulenAuswerten } from '@/lib/check/auswertung';
-import { ergebnisAnsicht } from '@/lib/check/ergebnis';
+import { ergebnisAnsicht, ergebnisVorschau, berichtGesperrt } from '@/lib/check/ergebnis';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
-import { begruessung, dimensionName, gespraechSatz, kontaktSatz, WAHL_SATZ } from '@/lib/check/zoe-texte';
+import { begruessung, dimensionName, gespraechSatz, kontaktSatz, kontaktSatzLang, vorschauSaetze, WAHL_SATZ } from '@/lib/check/zoe-texte';
 import type { DimKey } from '@/lib/check/typen';
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
 import { ladeCheckEinstellungen, sitzungAnlegen, sitzungLesen, sitzungAendern, sitzungIntern, type CheckSitzung } from '@/lib/check/speicher';
-import { zoeKontext, hinweisLaden, stromFuerBrowser, ablaufStand, leadAnlegen } from '@/lib/check/server';
+import { zoeKontext, hinweisLaden, stromFuerBrowser, ablaufStand, leadAnlegen, schritteMitAngeboten } from '@/lib/check/server';
+import { berichtAnstossen } from '@/lib/check/bericht-server';
+import { adresseMaskiert } from '@/lib/zugang/konten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -157,6 +162,8 @@ export async function POST(req: Request) {
       const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100${teile ? `; ${teile}` : ''}).`);
       await sitzungIntern(r.id, s => ({ ...s, crm }));
     }
+    // Kam der Kontakt NACH dem Ergebnis (ausführlicher Check, „Termin buchen“), geht der Bericht jetzt (genau einmal je Sitzung).
+    if (r.ergebnis) await berichtAnstossen(r.id);
     return antwort({ ok: true, ...stromFuerBrowser(v, r) });
   }
 
@@ -186,16 +193,20 @@ export async function POST(req: Request) {
       ergebnis: { am: jetzt, gesamt: saeulen.gesamt, stufe: saeulen.stufe, stufeName: saeulen.stufe_name, genauigkeit: ansicht.genauigkeit, dimensionen: ergebnis.dimensionen as Record<string, number>, saeulen: saeulen.werte, lead },
     }));
     if (!r || 'fehler' in r) return antwort(SITZUNG_WEG, 404);
+    const { websiteLage } = await import('@/lib/oeffentlich/website-post');
+    const perMail = !!(await websiteLage());
+    // Ausführlich ohne Kontakt: NUR die Vorschau — Werte je Bereich, Branchenvergleich, Netzdiagramm, Schritte und Angebote verlassen den Server nicht.
+    if (berichtGesperrt(r)) return antwort({ ok: true, ...stromFuerBrowser(v, r), ansicht: ergebnisVorschau(ansicht, vorschauSaetze(ansicht, perMail)) });
     const k = await zoeKontext(e);
-    // Zu jedem nächsten Schritt das Angebot der Instanz (Einstellungen, je Bereich) — nur Titel, Satz und Link, und jedes Angebot nur
-    // einmal (im Vertriebscheck zeigen alle Bereiche auf das Vertriebs-Angebot).
-    const gezeigt = new Set<string>();
-    const schritte = ansicht.schritte.map(({ angebot: bereich, ...x }) => {
-      const a = bereich && !gezeigt.has(bereich) ? e.angebote?.[bereich] : undefined;
-      if (a && bereich) gezeigt.add(bereich);
-      return { ...x, ...(a ? { angebot: a } : {}) };
+    // Ergebnis UND Kontakt da: der Bericht geht per Mail (genau einmal je Sitzung, nach der Antwort).
+    const kontaktDa = r.kontaktStand === 'erfasst' && !!r.kontakt;
+    if (kontaktDa) await berichtAnstossen(r.id);
+    return antwort({
+      ok: true, ...stromFuerBrowser(v, r), ansicht: { ...ansicht, schritte: schritteMitAngeboten(ansicht.schritte, e) },
+      gespraech: { satz: gespraechSatz(k), ...(e.buchungSlug ? { pfad: `/buchen/${e.buchungSlug}`, slug: e.buchungSlug } : {}) },
+      // Nur die eigene Adresse, maskiert — und nur, wenn wirklich verschickt werden kann (sonst verspricht die Seite keine Mail).
+      ...(kontaktDa ? { bericht: perMail ? { perMail: true, an: adresseMaskiert(r.kontakt!.email) } : { perMail: false } } : {}),
     });
-    return antwort({ ok: true, ...stromFuerBrowser(v, r), ansicht: { ...ansicht, schritte }, gespraech: { satz: gespraechSatz(k), ...(e.buchungSlug ? { pfad: `/buchen/${e.buchungSlug}`, slug: e.buchungSlug } : {}) } });
   }
 
   return antwort({ ok: false, fehler: 'Unbekannte Aktion.' }, 400);
@@ -204,9 +215,11 @@ export async function POST(req: Request) {
 /** Start und Weitermachen: Katalog (ohne Punkte), Zoes feste Sätze, Datenschutzhinweis, Stand. */
 async function nutzlast(v: NonNullable<ReturnType<typeof vorlageVon>>, s: CheckSitzung, e: Awaited<ReturnType<typeof ladeCheckEinstellungen>>, hinweis: { zeilen: string[]; link: string | null }) {
   const k = await zoeKontext(e);
+  const { websiteLage } = await import('@/lib/oeffentlich/website-post');
+  const perMail = !!(await websiteLage());
   return {
     katalog: oeffentlicherKatalog(v),
-    zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
+    zoe: { begruessung: begruessung(k, v.seite.einleitung), kontakt: kontaktSatz(k), kontaktLang: kontaktSatzLang(k, perMail), wahl: WAHL_SATZ, gespraech: gespraechSatz(k) },
     hinweis: { zeilen: hinweis.zeilen, link: hinweis.link, fassung: HINWEIS_FASSUNG },
     ...stromFuerBrowser(v, s),
   };

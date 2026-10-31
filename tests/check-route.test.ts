@@ -121,7 +121,7 @@ describe('die Strecke', () => {
     expect(S).toMatch(/^ck-/); expect(T).toMatch(/^[a-f0-9]{64}$/);
     expect(r.d.schritt).toEqual({ art: 'frage', frageId: 'A1', phase: 'kurzcheck', nummer: 1, von: 19 });
     expect(r.d.katalog.fragen).toHaveLength(67);
-    expect(r.d.zoe.begruessung.join(' ')).toContain('kurz oder ausführlich');
+    expect(r.d.zoe.begruessung.join(' ')).toContain('ausführlich mit vollständigem Bericht per E-Mail');
     const text = JSON.stringify(r.d);
     for (const geheim of ['"punkte"', '"stufe":', '"rubrik"', '"code"', 'Gewicht', 'tokenHash']) expect(text).not.toContain(geheim);
     expect(r.d.zoe.begruessung.join(' ')).toContain('KI-Assistentin');

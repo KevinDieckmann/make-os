@@ -122,3 +122,29 @@ export function ergebnisAnsicht(v: CheckVorlage, antworten: CheckAntworten): { e
     },
   };
 }
+
+// ── Vorschau ohne Kontakt (31.10., Kevin: „die größeren brauchen eine e-mail damit wir denen das ganze zuschicken können“) ──────────────
+// Der AUSFÜHRLICHE Check (`umfang: 'lang'`) zeigt ohne Kontaktdaten nur die Vorschau: Gesamtzahl, Stufe und Skala, die Namen der Bereiche — keine
+// Werte je Bereich, kein Branchenwert und -satz, kein Netzdiagramm, keine Schritte und Angebote, keine Einordnung über die Stufe hinaus. Die Trennung
+// macht der SERVER (app/api/check/route.ts, Aktion `ergebnis`) mit dieser Funktion — der Browser bekommt den Rest gar nicht erst. Rein.
+
+export interface ErgebnisVorschau {
+  gesperrt: true;
+  gesamt: number;
+  stufe: number;
+  stufeName: string;
+  stufeKurz: string;
+  stufen: { stufe: number; name: string }[];
+  genauigkeit: CheckErgebnis['genauigkeit'];
+  /** Nur die Namen der Bereiche, die der Bericht enthält — ohne Werte. */
+  bereiche: string[];
+  zoe: string[];
+}
+
+/** Braucht diese Sitzung für den ganzen Bericht erst die Kontaktdaten? Ausführlich + ohne erfassten Kontakt. Rein. */
+export const berichtGesperrt = (s: { umfang?: string; kontaktStand: string }): boolean => s.umfang === 'lang' && s.kontaktStand !== 'erfasst';
+
+export function ergebnisVorschau(a: ErgebnisAnsicht, zoe: string[]): ErgebnisVorschau {
+  const bereiche = a.innovation?.achsen.length ? a.innovation.achsen.map(x => x.name) : a.saeulen.map(x => x.name);
+  return { gesperrt: true, gesamt: a.gesamt, stufe: a.stufe, stufeName: a.stufeName, stufeKurz: a.stufeKurz, stufen: a.stufen, genauigkeit: a.genauigkeit, bereiche, zoe };
+}

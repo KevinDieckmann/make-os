@@ -7,16 +7,18 @@
 // Kevin: „Ergebnis mit nächsten Schritten“, „Alle drei Säulen“, „Gestaltung und Texte“): Gesamtwert mit Stufe, die drei Säulen,
 // zwei nächste Schritte mit dem passenden Angebot der Instanz, das Erstgespräch mit den nächsten freien Terminen, aufklappbar die
 // Innovation im Detail (Stufe, Netzdiagramm, Branchenvergleich).
+// Ausführlich (31.10., Kevin: „die größeren brauchen eine e-mail“): ohne Kontaktdaten schickt der Server nur die Vorschau (Zahl, Stufe, Skala,
+// Namen der Bereiche) — die Seite zeigt darunter, was im vollständigen Bericht steht, und gleich das Formular; nach dem Absenden die volle Ansicht.
 // Welche Frage als nächste kommt, sagt NUR der Server (`schritt`); Zahlen kommen NUR vom Server. Die Sitzung entsteht mit dem
 // ersten Klick; Kennung + Token liegen im Speicher des Browsers (Weitermachen nach dem Neuladen), nie in der Adresse.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import s from './check.module.css';
 import { Netzdiagramm } from './Netzdiagramm';
 import type { OeffentlicherKatalog, OeffentlicheFrage } from '@/lib/check/oeffentlich';
 import type { Schritt } from '@/lib/check/ablauf';
-import type { ErgebnisAnsicht } from '@/lib/check/ergebnis';
+import type { ErgebnisAnsicht, ErgebnisVorschau } from '@/lib/check/ergebnis';
 
 interface Antwort { optionIds?: string[]; freitext?: string; zusatz?: boolean; optionText?: string }
 interface Strom {
@@ -38,7 +40,7 @@ interface Props {
   /** Leitsatz unter dem Namen (Einstellung der Instanz) — ohne Angabe keiner. */
   claim?: string;
   katalog: OeffentlicherKatalog;
-  zoe: { begruessung: string[]; kontakt: string[]; wahl: string; gespraech: string };
+  zoe: { begruessung: string[]; kontakt: string[]; kontaktLang?: string[]; wahl: string; gespraech: string };
   hinweis: { zeilen: string[]; link: string | null; fassung: string };
   /** Kopf wie auf der Website (30.10.): Logo, Link zur Website, Erstgespräch — alles aus den Einstellungen der Instanz, alles optional. */
   kopf?: { logo?: string; website?: string; erstgespraech?: string };
@@ -50,6 +52,8 @@ type Angebot = { titel: string; text?: string; link?: string };
 type Schritt2 = ErgebnisAnsicht['schritte'][number] & { angebot?: Angebot };
 type Ansicht = Omit<ErgebnisAnsicht, 'schritte'> & { schritte: Schritt2[] };
 type Gespraech = { satz: string; pfad?: string; slug?: string };
+/** Ob der Bericht per Mail kommt — nur die eigene Adresse, maskiert (vom Server, nur mit erfasstem Kontakt). */
+type Bericht = { perMail: boolean; an?: string };
 interface Sitzung { id: string; token: string }
 
 /** Gemerkte Sitzung je Check (30.10.: mehrere Checks auf derselben Seite — jeder hat seine eigene). */
@@ -89,8 +93,9 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
   const kurz = useMemo(() => katalog.fragen.filter(f => f.kurz), [katalog]);
   const [sitzung, setSitzung] = useState<Sitzung | null>(null);
   const [strom, setStrom] = useState<Strom | null>(null);
-  const [ansicht, setAnsicht] = useState<Ansicht | null>(null);
+  const [ansicht, setAnsicht] = useState<Ansicht | ErgebnisVorschau | null>(null);
   const [gespraech, setGespraech] = useState<Gespraech | null>(null);
+  const [bericht, setBericht] = useState<Bericht | null>(null);
   const [bearbeite, setBearbeite] = useState<string | null>(null);
   const [kontaktFuerTermin, setKontaktFuerTermin] = useState(false);
   const [laedt, setLaedt] = useState(false);
@@ -120,7 +125,7 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
     setLaedt(true);
     void rufe({ aktion: 'ergebnis', sitzung: sitzung.id, token: sitzung.token }).then(({ d }) => {
       setLaedt(false);
-      if (d.ok) { const neu = d as unknown as Strom; ergebnisFuer.current = neu; setAnsicht(d.ansicht as Ansicht); setGespraech(d.gespraech as Gespraech); setStrom(neu); }
+      if (d.ok) { const neu = d as unknown as Strom; ergebnisFuer.current = neu; setAnsicht(d.ansicht as Ansicht | ErgebnisVorschau); setGespraech((d.gespraech as Gespraech | undefined) ?? null); setBericht((d.bericht as Bericht | undefined) ?? null); setStrom(neu); }
       else setFehler(String(d.fehler ?? 'Das Ergebnis ließ sich gerade nicht laden.'));
     });
   }, [sitzung, strom, ansicht]);
@@ -224,7 +229,7 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
                   {aenderbar(id) && !ansicht && <button type="button" className={s.aendern} onClick={() => setBearbeite(id)}>ändern</button>}
                 </div>
                 {i === (umfang === 'lang' ? erledigt.length - 1 : kurz.length - 1) && strom && strom.kontakt !== 'offen' && (
-                  <div className={s.ichZeile}><div className={s.ich}>{strom.kontakt === 'erfasst' ? `Bericht an mich, ${strom.vorname ?? ''}`.trim() : 'Ohne Bericht weiter'}</div></div>
+                  <div className={s.ichZeile}><div className={s.ich}>{strom.kontakt === 'erfasst' ? `Bericht an mich, ${strom.vorname ?? ''}`.trim() : umfang === 'lang' ? 'Erst nur die Stufe' : 'Ohne Bericht weiter'}</div></div>
                 )}
               </div>
             );
@@ -258,8 +263,10 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
               antworten={a => beantworten(fragen.get(aktuell.frageId)!, a)} ueberspringen={() => ueberspringen(fragen.get(aktuell.frageId)!)} />
           ) : aktuell.art === 'kontakt' ? (
             <>
-              <Zoe zeilen={zoe.kontakt} />
+              {/* Ausführlich (31.10.): ehrlich — ohne Adresse gibt es nur die Stufe, der ganze Bericht kommt per E-Mail. */}
+              <Zoe zeilen={umfang === 'lang' ? zoe.kontaktLang ?? zoe.kontakt : zoe.kontakt} />
               <KontaktKarte rollen={fragen.get('A5')?.optionen ?? []} laedt={laedt} newsletter={newsletter}
+                {...(umfang === 'lang' ? { knopfText: 'Bericht per E-Mail anfordern', ohneText: 'Nur die Stufe ansehen' } : {})}
                 senden={k => sende({ aktion: 'kontakt', ...k })} ohne={() => void sende({ aktion: 'ohne-kontakt' })} />
             </>
           ) : aktuell.art === 'wahl' ? (
@@ -275,8 +282,14 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
           ) : null}
         </div>
 
-        {ansicht && !bearbeite && (
-          <ErgebnisKarte ansicht={ansicht} gespraech={gespraech} kontaktDa={strom?.kontakt === 'erfasst'} laedt={laedt}
+        {ansicht && 'gesperrt' in ansicht && !bearbeite && (
+          <VorschauKarte vorschau={ansicht}>
+            <KontaktKarte rollen={fragen.get('A5')?.optionen ?? []} laedt={laedt} newsletter={newsletter} knopfText="Bericht per E-Mail anfordern"
+              senden={async k => { const ok = await sende({ aktion: 'kontakt', ...k }); if (ok) setAnsicht(null); return ok; }} />
+          </VorschauKarte>
+        )}
+        {ansicht && !('gesperrt' in ansicht) && !bearbeite && (
+          <ErgebnisKarte ansicht={ansicht} gespraech={gespraech} bericht={bericht} kontaktDa={strom?.kontakt === 'erfasst'} laedt={laedt}
             mehr={() => { setAnsicht(null); void sende({ aktion: 'wahl', wahl: 'mehr' }); }}
             termin={() => setKontaktFuerTermin(true)} />
         )}
@@ -407,9 +420,10 @@ function FrageKarte({ f, satz, a, laedt, ueberspringbar, zurueck, abbrechen, erg
   );
 }
 
-function KontaktKarte({ rollen, laedt, senden, ohne, ohneText, newsletter: nl }: {
-  rollen: NonNullable<OeffentlicheFrage['optionen']>; laedt: boolean; ohneText?: string; newsletter?: { wortlaut: string; fassung: string };
-  senden: (k: Record<string, unknown>) => Promise<boolean>; ohne: () => void;
+function KontaktKarte({ rollen, laedt, senden, ohne, ohneText, knopfText, newsletter: nl }: {
+  rollen: NonNullable<OeffentlicheFrage['optionen']>; laedt: boolean; ohneText?: string; knopfText?: string; newsletter?: { wortlaut: string; fassung: string };
+  /** Ohne `ohne` gibt es keinen zweiten Knopf (Vorschau des ausführlichen Checks: die Stufe steht schon da). */
+  senden: (k: Record<string, unknown>) => Promise<boolean>; ohne?: () => void;
 }) {
   const [vorname, setVorname] = useState('');
   const [email, setEmail] = useState('');
@@ -443,8 +457,8 @@ function KontaktKarte({ rollen, laedt, senden, ohne, ohneText, newsletter: nl }:
       {nl && <label className={s.haken}><input type="checkbox" checked={newsletter} onChange={e => setNewsletter(e.target.checked)} /><span>{nl.wortlaut} Der Newsletter kommt erst, wenn Sie die Anmeldung über den Link in unserer E-Mail bestätigen.</span></label>}
       <p className={s.hilfe} style={{ marginTop: 10 }}>Ihre Angaben nutzen wir für Ihren Bericht und Ihr Gespräch. Mehr im Datenschutzhinweis unten.</p>
       <div className={s.zeile}>
-        <button type="submit" className={s.knopf} disabled={laedt || !fertig}>Bericht anfordern</button>
-        <button type="button" className={s.leiseKnopf} disabled={laedt} onClick={ohne}>{ohneText ?? 'Ohne Bericht zum Ergebnis'}</button>
+        <button type="submit" className={s.knopf} disabled={laedt || !fertig}>{knopfText ?? 'Bericht anfordern'}</button>
+        {ohne && <button type="button" className={s.leiseKnopf} disabled={laedt} onClick={ohne}>{ohneText ?? 'Ohne Bericht zum Ergebnis'}</button>}
       </div>
     </form>
   );
@@ -470,8 +484,8 @@ function useNaechsteTermine(slug: string | undefined, an: boolean): { start: str
   return plaetze;
 }
 
-function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
-  ansicht: Ansicht; gespraech: Gespraech | null; kontaktDa: boolean; laedt: boolean;
+function ErgebnisKarte({ ansicht, gespraech, bericht, kontaktDa, laedt, mehr, termin }: {
+  ansicht: Ansicht; gespraech: Gespraech | null; bericht: Bericht | null; kontaktDa: boolean; laedt: boolean;
   mehr: () => void; termin: () => void;
 }) {
   const zahl = useHochzaehlen(ansicht.gesamt);
@@ -491,6 +505,8 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
       <p className={s.stufeKurz}>{ansicht.stufeKurz}</p>
       <div className={s.skala} aria-hidden>{ansicht.stufen.map(x => <span key={x.stufe} className={`${s.skalaTeil} ${x.stufe <= ansicht.stufe ? s.skalaAn : ''}`} />)}</div>
       <div className={s.skalaNamen} aria-hidden>{ansicht.stufen.map(x => <span key={x.stufe} className={x.stufe === ansicht.stufe ? s.skalaNameAn : undefined}><span className={s.skalaNr}>{x.stufe}</span><span className={s.skalaWort}>{x.name.replace(/ \(.*\)$/, '')}</span></span>)}</div>
+      {/* Nur, wenn wirklich verschickt werden kann (Website-Absender eingerichtet) — sonst verspricht die Seite keine Mail. */}
+      {kontaktDa && bericht?.perMail && <p className={s.berichtUnterwegs} role="status">Ihr Bericht ist unterwegs an {bericht.an}.</p>}
 
       {ansicht.saeulen.length > 1 && (
         <div className={s.saeulen} role="list" aria-label="Ihre Bereiche">
@@ -562,7 +578,6 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
           ) : (
             <button type="button" className={s.knopf} onClick={termin}>Erstgespräch buchen</button>
           )}
-          {kontaktDa && <p className={s.hilfe} style={{ marginTop: 10 }}>Ihren Bericht schicken wir Ihnen per E-Mail.</p>}
         </div>
       )}
 
@@ -584,6 +599,45 @@ function ErgebnisKarte({ ansicht, gespraech, kontaktDa, laedt, mehr, termin }: {
           <div style={{ marginTop: 14 }}><Zoe zeilen={iv.zoe} /></div>
         </details>
       )}
+    </section>
+  );
+}
+
+/**
+ * Ausführlicher Check ohne Kontaktdaten (31.10.): Zahl, Stufe und Skala wie im Ergebnis, darunter, was der vollständige Bericht enthält — die Bereiche
+ * nur mit Namen und unlesbaren Platzhaltern (die Werte hat der Browser gar nicht) — und direkt das Formular.
+ */
+function VorschauKarte({ vorschau, children }: { vorschau: ErgebnisVorschau; children: ReactNode }) {
+  const zahl = useHochzaehlen(vorschau.gesamt);
+  return (
+    <section className={`${s.ergebnis} ${s.neu}`} aria-labelledby="ergebnis-titel">
+      <p className={s.ergebnisEtikett}>Ihr Ergebnis</p>
+      <div className={s.zahlZeile}><span className={s.grosseZahl} aria-hidden>{zahl}</span><span className={s.vonHundert}>von 100</span></div>
+      <h2 id="ergebnis-titel" className={s.stufeName}>Stufe {vorschau.stufe}: {vorschau.stufeName}</h2>
+      <p className={s.stufeKurz}>{vorschau.stufeKurz}</p>
+      <div className={s.skala} aria-hidden>{vorschau.stufen.map(x => <span key={x.stufe} className={`${s.skalaTeil} ${x.stufe <= vorschau.stufe ? s.skalaAn : ''}`} />)}</div>
+      <div className={s.skalaNamen} aria-hidden>{vorschau.stufen.map(x => <span key={x.stufe} className={x.stufe === vorschau.stufe ? s.skalaNameAn : undefined}><span className={s.skalaNr}>{x.stufe}</span><span className={s.skalaWort}>{x.name.replace(/ \(.*\)$/, '')}</span></span>)}</div>
+      <div style={{ marginTop: 18 }}><Zoe zeilen={vorschau.zoe} /></div>
+
+      <div className={s.berichtBlock}>
+        <h3 className={s.abschnittTitel}>Ihr vollständiger Bericht</h3>
+        <ul className={s.berichtListe}>
+          <li>Je Bereich Ihr Wert und der Vergleich mit Ihrer Branche</li>
+          <li>Ihr Profil als Netzdiagramm</li>
+          <li>Ihre nächsten Schritte mit passenden Angeboten</li>
+        </ul>
+        {vorschau.bereiche.length > 0 && (
+          <div className={s.saeulen} aria-label="Bereiche im Bericht">
+            {vorschau.bereiche.map((name, i) => (
+              <div key={name} className={s.saeule}>
+                <div className={s.saeuleKopf}><span className={s.saeuleName}>{name}</span><span className={s.platzhalterWert} aria-label="im Bericht">··</span></div>
+                <div className={s.saeuleBalken} aria-hidden><div className={s.platzhalterFuell} style={{ width: `${38 + ((i * 17) % 40)}%` }} /></div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ marginTop: 18 }}>{children}</div>
     </section>
   );
 }

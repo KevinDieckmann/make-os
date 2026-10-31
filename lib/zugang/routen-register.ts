@@ -441,6 +441,9 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'check/intern': r('GET,POST', 'haushalt', 'Eingegangene Checks, Beleg-Bewertung, Lead nachholen, Löschen — Haushalt des Inhabers mit Person; Einstellungen (an/aus, Buchungsseite, Gastgeber) nur der Inhaber.'),
   // Newsletter-Anmeldung über die Website (30.10., lib/newsletter/*).
   'newsletter': r('POST', 'offen', 'Öffentliche Newsletter-Anmeldung mit Double-Opt-in: enge Regex in der Middleware, kommt AUS (404), immer dieselbe Antwort (Arbeit nach der Antwort), Token nur im Fragment und nur als SHA-256, Drossel, Honigtopf, Stempel, ≤ 4 KB — handelt nie als Person.'),
+  // Unterlagen per E-Mail anfordern (31.10., lib/unterlagen/*): große Vorlagen der Website gibt es nur per Mail.
+  'unterlage': r('GET,POST', 'offen', 'Öffentliches Anfordern einer großen Vorlage der Website: enge Regex in der Middleware; GET nur Titel, Newsletter-Wortlaut und Datenschutzhinweis; POST immer dieselbe Antwort (Mail, Anfrage im CRM, Newsletter nach der Antwort), ohne Website-Absender 404, Drossel je Netz, Grenze je Adresse, Honigtopf, ≤ 8 KB — handelt nie als Person.'),
+  'unterlage/laden': r('GET', 'offen', 'Download-Link aus der Mail: signiertes Token (Kennung + Ablauf 7 Tage, nie die Adresse), nur Dateien aus dem Katalog im Ordner unterlagen/, attachment + nosniff + CSP sandbox, Drossel je Netz, schreibt nichts — handelt nie als Person.'),
   'newsletter/intern': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Anmeldungen über die Website (Adressen maskiert) im Haushalt; Einstellungen (an/aus, Absender-Postfach = Freigabe der Bestätigungsmails, Text, Website), Löschen und CRM-Nachholen nur ein Inhaber per Sitzung (Dienstweg 403).'),
 
   // ── Konto, Anmeldung, System ───────────────────────────────────────────────────────────────────────────────

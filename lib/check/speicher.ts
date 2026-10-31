@@ -63,7 +63,21 @@ export interface CheckSitzung {
   ergebnis?: CheckErgebnisStand;
   /** Verweis ins CRM (Anfrage über die Website) — `abgelehnt` z. B. bei Art. 18, nie an den Teilnehmer. */
   crm?: { status: 'ok' | 'abgelehnt' | 'fehler'; am: string; kontaktId?: string; followUpId?: string; grund?: string };
+  /** Bericht per E-Mail (31.10., lib/check/bericht-server.ts): genau einmal je Sitzung, sobald Ergebnis UND Kontakt da sind. Nur intern sichtbar
+   *  (`ueber` = Absender maskiert, `grund` ohne Adresse) — nie an den Teilnehmer. `laeuft` = beansprucht, Versand nach der Antwort. */
+  bericht?: CheckBericht;
 }
+
+export interface CheckBericht {
+  status: 'laeuft' | 'gesendet' | 'fehler' | 'gesperrt' | 'ohneAbsender' | 'grenze';
+  am: string;
+  /** Versuche bisher (ein gescheiterter Versand wird höchstens `BERICHT_VERSUCHE`-mal wiederholt, beim nächsten Ergebnis-Abruf). */
+  versuche: number;
+  ueber?: string;
+  grund?: string;
+}
+/** So oft wird ein gescheiterter Versand (Fehler, ohne Absender, Grenze) noch einmal versucht — „gesendet“ und „gesperrt“ nie. */
+export const BERICHT_VERSUCHE = 3;
 
 export interface CheckBestand { sitzungen: CheckSitzung[] }
 

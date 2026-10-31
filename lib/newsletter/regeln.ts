@@ -114,7 +114,9 @@ export function vornameSauber(roh: unknown): string | null {
   if (typeof roh !== 'string') return null;
   const v = roh.normalize('NFC').replace(/\s+/g, ' ').trim();
   if (!v) return '';
-  return v.length <= GRENZEN.vorname && /^\p{L}[\p{L}\p{M} .'’-]*$/u.test(v) ? v : null;
+  // 31.10.: ein Punkt nur am Ende eines Wortes („Dr. Anna“) — „www.beispiel.de“ besteht auch nur aus Buchstaben und Punkten, wäre in einer Mail
+  // aber ein Link (die Website-Mails — Unterlagen, Bericht der Checks — nehmen den Vornamen ebenfalls nur über diese Prüfung).
+  return v.length <= GRENZEN.vorname && /^\p{L}[\p{L}\p{M} .'’-]*$/u.test(v) && !/\.[^\s]/u.test(v) ? v : null;
 }
 
 /** Kurztext für Name, Verantwortlichen: eine Zeile, ohne < > { }. `''` = leeren, `null` = ungültig. */

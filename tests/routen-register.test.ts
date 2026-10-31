@@ -38,6 +38,9 @@ const SCHREIBEN = ['updateJson', 'saveJson', 'updateGeschuetzt', 'updateGeschuet
 const OFFEN_ERLAUBT: Record<string, Methode[]> = {
   // Innovations-Check (24.10.): die öffentliche Strecke — nur POST, die Seite /check ist kein API-Weg.
   'check': ['POST'],
+  // Unterlagen per E-Mail (31.10.): Titel/Hinweis lesen, anfordern (ohne Website-Absender 404) und der Download-Link aus der Mail.
+  'unterlage': ['GET', 'POST'],
+  'unterlage/laden': ['GET'],
   // Newsletter-Anmeldung über die Website (30.10.): nur POST, die Seite /newsletter ist kein API-Weg; ausgeschaltet 404.
   'newsletter': ['POST'],
   'abmelden/[token]': ['GET', 'POST'],
