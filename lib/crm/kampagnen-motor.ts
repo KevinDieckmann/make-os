@@ -10,7 +10,7 @@
 //   · Brief    → Zeile der Druckliste (derselbe Bestand, Kanal „brief“); „gedruckt“ per Klick schaltet weiter. Serienbrief-PDF: noch nicht.
 // Rückfluss (im Takt, idempotent): Antwort vom Ziel (gleiche Adresse/Thread im Gmail-/IMAP-Spiegel der sendenden Person) → „reagiert“, Sequenz stoppt,
 // Follow-up „Antwort bearbeiten“; Rückläufer → Adresse ungültig, Sequenz stoppt, Follow-up „Adresse prüfen“; Abmeldelink (lib/datenschutz/abmelden-
-// server.ts ruft `kampagnenAbmeldung`) → Sperrliste + Stopp. Kein Öffnungs-Tracking.
+// server.ts: Werbesperre an Person bzw. Firma + Sperrliste dort, dann `kampagnenAbmeldung`) → Stopp. Kein Öffnungs-Tracking.
 // Leitplanken hart: Art. 18, Werbesperre, Sperrliste → nie im Stapel; Kanal-Ampel rot → nicht im Stapel, AUSSER das Playbook steht in
 // `RISIKO_PLAYBOOKS` — dann nur, solange ein Inhaber „eigenes Risiko“ eingeschaltet hat (DERSELBE Schalter wie die Homepage-Funde: Bestand
 // `kampagne-funde--<haushalt>` › einstellungen.eigenesRisiko, lib/funde/einrichten.ts `risikoSetzen`). Jeder solche Stapel trägt sichtbar
@@ -20,11 +20,12 @@ import { createHash, randomBytes } from 'node:crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { protokolliere, type Wer } from '@/lib/store/aenderungsprotokoll';
 import { localDay, tagePlus } from '@/lib/zeit';
-import { karteiHaushalt, sperrlisteLaden, sperrPruefer, sperrHash, sperrHashV1, sperrHashesAufnehmen, type SperrEintrag } from './sperrliste';
+import { karteiHaushalt, sperrlisteLaden, sperrPruefer, type SperrEintrag } from './sperrliste';
+import { betriebGesperrt } from './betrieb-sperre';
 import { ladeCrm, aendereCrm } from './speicher';
 import { kontakteFuerVerarbeitung } from './verarbeitung';
 import { aendereKontakte } from './kartei-schreiben';
-import { kanalStatus, type Kanal, type KanalStatus } from './recht';
+import { kanalStatus, firmaKanalStatus, type Kanal, type KanalStatus } from './recht';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import { personenDerFirma } from './stationen';
 import { ausgenommen } from './einschraenkung';
@@ -37,7 +38,7 @@ import {
   rueckflussArt, SENDET_HAENGT_MS, sequenzFollowupId, zaehlerSchluessel, ART14_VORGABE,
   type MotorEinstellungen, type PostEintrag, type RueckKopf,
 } from './kampagnen-post';
-import type { CrmBestand, Firma, FollowUp, FollowUpArt, Kampagne, KampagnenZiel, SequenzSchritt, ZielStand } from './typen';
+import type { CrmBestand, FollowUp, FollowUpArt, Kampagne, KampagnenZiel, SequenzSchritt, ZielStand } from './typen';
 
 // ── Bestand ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -120,14 +121,6 @@ export async function eigenesRisiko(): Promise<{ seit: string; von: string } | n
 // ── Ziel lesen ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 const ungueltigHash = (email: string) => createHash('sha256').update(`make-os-kampagne-ungueltig|${email.trim().toLowerCase()}`).digest('base64url');
-/** Steht die Adresse (auch eine Sammeladresse wie info@) auf der Sperrliste? Merkmal `m:<adresse>` wie bei Personen. */
-function adresseGesperrt(liste: readonly SperrEintrag[], email: string): boolean {
-  const m = `m:${email.trim().toLowerCase()}`;
-  const h = [sperrHash(m), sperrHashV1(m)];
-  return liste.some(e => e.h.some(x => h.includes(x)));
-}
-
-type FirmaMitRecht = Firma & { werbesperre?: { seit?: string }; eingeschraenkt?: { seit?: string }; fremddaten?: boolean; bezirk?: string; plz?: string };
 type FundKurz = { id: string; name: string; gebiet?: string; bewertung?: { gruende: string[] }; vorschau?: unknown; firmaId?: string; kontaktId?: string; leitfaden?: string };
 
 export interface ZielLage {
@@ -186,17 +179,20 @@ export function zielLage(z: KampagnenZiel, kx: MotorKontext, absender?: string):
       ...(fund ? { fund } : {}),
     };
   }
-  const f = kx.crm.firmen.find(x => x.id === z.id) as FirmaMitRecht | undefined;
+  const f = kx.crm.firmen.find(x => x.id === z.id);
   const fund = kx.funde.find(x => x.firmaId === z.id);
   const email = f?.email?.trim().toLowerCase() || undefined;
+  const telefon = f?.mobil || f?.telefon;
   const person = f ? personenDerFirma(kx.kontakte, f.id, { nurAktiv: true }).find(k => !ausgenommen(k)) : undefined;
-  const sperre = !f ? 'nicht mehr bei den Firmen' : f.eingeschraenkt ? 'Verarbeitung eingeschränkt (Art. 18)' : f.werbesperre ? 'Werbesperre' : email && adresseGesperrt(kx.sperrliste, email) ? 'Sperrliste' : undefined;
-  // Die Ampel einer Firma: dieselben Regeln wie bei Personen (Einwilligungen gibt es an Firmen heute nicht — Mail/Telefon sind dann rot).
-  const alsKontakt = { id: z.id, vorname: '', nachname: f?.name ?? '', email, telefon: f?.telefon, linkedin: f?.linkedin, stufe: 'neu', aktivitaeten: [], ...(f?.werbesperre ? { werbesperre: f.werbesperre } : {}), ...(f?.eingeschraenkt ? { eingeschraenkt: f.eingeschraenkt } : {}) } as unknown as Kontakt;
+  // Betriebs-Sperre: Werbesperre an der Firma bzw. ein Merkmal auf der Sperrliste (lib/crm/betrieb-sperre.ts — dieselbe Stelle wie Funde/Import).
+  const sperre = !f ? 'nicht mehr bei den Firmen' : f.werbesperre ? 'Werbesperre' : betriebGesperrt(kx.sperrliste, f) ? 'Sperrliste' : undefined;
+  const ctx = { hatMandat: kx.crm.mandate.some(m => m.status === 'aktiv' && m.firmaId === z.id), hatChance: kx.crm.chancen.some(c => c.firmaId === z.id && !['gewonnen', 'verloren'].includes(c.stufe)) };
+  // Mail/Telefon: die Firmen-Ampel (lib/crm/recht.ts `firmaKanalStatus` — eine Stelle); Brief/Besuch/LinkedIn: die Regeln der Kanal-Ampel mit der Werbesperre der Firma.
+  const alsKontakt = { id: z.id, vorname: '', nachname: f?.name ?? '', linkedin: f?.linkedin, stufe: 'neu', aktivitaeten: [], ...(f?.werbesperre ? { werbesperre: f.werbesperre } : {}) } as unknown as Kontakt;
   return {
-    ziel: z, name: f?.name ?? 'Firma', ...(email ? { email } : {}), ...(f?.telefon ? { telefon: f.telefon } : {}), ...(f?.linkedin ? { linkedin: f.linkedin } : {}), ...(f?.stadt ? { ort: f.stadt } : {}),
+    ziel: z, name: f?.name ?? 'Firma', ...(email ? { email } : {}), ...(telefon ? { telefon } : {}), ...(f?.linkedin ? { linkedin: f.linkedin } : {}), ...(f?.stadt ? { ort: f.stadt } : {}),
     ...(person ? { kontaktId: person.id } : {}), ...(sperre ? { sperre } : {}), fremddaten: !!f?.fremddaten || !!fund,
-    ampel: kanal => kanalStatus(alsKontakt, kanal, { hatMandat: kx.crm.mandate.some(m => m.status === 'aktiv' && m.firmaId === z.id) }),
+    ampel: kanal => (f && (kanal === 'mail' || kanal === 'telefon') ? firmaKanalStatus(f, kanal, ctx) : kanalStatus(alsKontakt, kanal, ctx)),
     werte: platzhalterWerte({ anrede: person?.anrede, vorname: person?.vorname, nachname: person?.nachname, betrieb: f?.name, bezirk: fund?.gebiet ?? f?.bezirk, befund: fund?.bewertung?.gruende.slice(0, 2).join(', '), absender, heute: kx.heute }),
     ...(fund ? { fund } : {}),
   };
@@ -611,16 +607,14 @@ export async function rueckfluss(jetzt = new Date()): Promise<{ antworten: numbe
 }
 
 /**
- * Abmeldelink (lib/datenschutz/abmelden-server.ts ruft das nach jeder Abmeldung): jede Adresse aus dem Stapel, die zum Token passt → Sperrliste
- * (Merkmal `m:<adresse>`, auch Sammeladressen von Firmen), Sequenz gestoppt, offene Entwürfe gesperrt, Follow-ups der Sequenz abgesagt. Idempotent.
+ * Abmeldelink (lib/datenschutz/abmelden-server.ts ruft das nach jeder Abmeldung): jede Adresse aus dem Stapel, die zum Token passt → Sequenz gestoppt, offene Entwürfe gesperrt, Follow-ups der Sequenz abgesagt. Idempotent.
  */
 export async function kampagnenAbmeldung(token: string, jetzt = new Date()): Promise<number> {
   const { tokenPasst } = await import('@/lib/datenschutz/abmelden');
   const post = await ladePost();
   const adressen = Array.from(new Set(post.eintraege.map(x => x.an.email).filter((x): x is string => !!x && tokenPasst(token, [x]))));
   if (!adressen.length) return 0;
-  const am = jetzt.toISOString(), heute = localDay(jetzt);
-  for (const a of adressen) await sperrHashesAufnehmen([sperrHash(`m:${a}`), sperrHashV1(`m:${a}`)], 'werbesperre', heute);
+  const am = jetzt.toISOString();
   const betroffen = post.eintraege.filter(x => x.an.email && adressen.includes(x.an.email));
   await aenderePost(b => ({
     ...b, eintraege: b.eintraege.map(x => {

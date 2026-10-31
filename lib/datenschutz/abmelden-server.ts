@@ -44,6 +44,16 @@ export async function abmeldenAnwenden(token: string, jetzt = new Date()): Promi
     });
     return anders ? { ...cur, kontakte } : cur;
   });
+  // Betriebe ohne Ansprechpartner (01.11., Welle A): passt die Firmen-Adresse, bekommt die Firma die Werbesperre — die Sperrliste (Betriebs-
+  // Merkmale) zieht `crmSchreiben` nach. Ein Fehler hier wird nur geloggt (die Antwort bleibt gleich).
+  let firmen = 0;
+  try {
+    const { aendereCrm } = await import('@/lib/crm/speicher');
+    await aendereCrm(b => {
+      const neu = b.firmen.map(f => (!f.werbesperre && f.email && tokenPasst(token, [f.email.toLowerCase()]) ? (firmen++, { ...f, werbesperre: { seit: heute, grund: 'Abmeldelink (Widerspruch, Art. 21)' }, geaendert: iso }) : f));
+      return firmen ? { ...b, firmen: neu } : b;
+    }, { art: 'system' });
+  } catch (e) { console.error('[abmelden] Firmen:', e instanceof Error ? e.message.slice(0, 160) : e); }
   // Nachlauf nur bei Treffern — ein Fehler hier wird geloggt, aber nie zur Antwort (sonst verriete er, dass es die Adresse gibt).
   if (geaendert.length) {
     try {
@@ -51,8 +61,8 @@ export async function abmeldenAnwenden(token: string, jetzt = new Date()): Promi
       await sperren(geaendert, 'werbesperre', heute);
     } catch (e) { console.error('[abmelden] Nachlauf:', e instanceof Error ? e.message.slice(0, 160) : e); }
   }
-  // Kampagnen-Motor (31.10.): Adressen aus dem Mail-Stapel (auch Firmen-/Sammeladressen, die keine Person sind) → Sperrliste + Sequenz gestoppt.
+  // Kampagnen-Motor (31.10.): Adressen aus dem Mail-Stapel → Sequenz gestoppt, offene Entwürfe gesperrt (die Werbesperre der Firma setzt der Block oben).
   // Wie oben: ein Fehler wird laut, verrät aber nichts nach außen.
   await import('@/lib/crm/kampagnen-motor').then(m => m.kampagnenAbmeldung(token, jetzt)).catch(e => console.error('[abmelden] Kampagnen:', e instanceof Error ? e.message.slice(0, 160) : e));
-  return geaendert.length;
+  return geaendert.length + firmen;
 }

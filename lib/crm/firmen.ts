@@ -22,6 +22,11 @@ export function domainVon(k: Pick<Kontakt, 'email' | 'firmaDomain' | 'firmaWebse
 }
 function hash(t: string): string { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).slice(0, 6); }
 export const firmenId = (name: string) => `f-${firmenSchluessel(name).slice(0, 30) || 'firma'}-${hash(firmenSchluessel(name) || name)}`;
+/**
+ * Kennung mit Unterscheider (01.11., Welle A — lib/crm/betrieb.ts `betriebFirmenId`): zwei Betriebe gleichen Namens an zwei Adressen bekommen zwei
+ * Kennungen. Ohne Unterscheider genau `firmenId(name)`.
+ */
+export const firmenIdMit = (name: string, unterscheider: string) => (unterscheider ? `f-${firmenSchluessel(name).slice(0, 30) || 'firma'}-${hash(`${firmenSchluessel(name) || name}|${unterscheider}`)}` : firmenId(name));
 
 /**
  * Gibt es diese Firma schon (28.09., Prüfbericht F1)? Dieselbe Kennung (`firmenId` — Name ohne Rechtsform)
@@ -126,12 +131,24 @@ export function firmenAbgleich(kontakte: Kontakt[], firmen: Firma[], jetzt: stri
   return { firmen: liste, kontakte: raus, neu, verknuepft, ergaenzt };
 }
 
-/** Firmen-Dubletten: gleicher Schlüssel oder gleiche Domain. */
+/**
+ * Firmen-Dubletten: gleicher Schlüssel oder gleiche Domain — seit 01.11. (Welle A) NIE, wenn beide eine Anschrift bzw. OSM-ID tragen und
+ * sie sich unterscheiden (zwei Betriebe gleichen Namens an zwei Adressen sind zwei Betriebe, `gleicherBetrieb` in lib/crm/betrieb.ts).
+ */
 export function firmenDubletten(firmen: Firma[]): [Firma, Firma][] {
   const paare: [Firma, Firma][] = [];
   for (let i = 0; i < firmen.length; i++) for (let j = i + 1; j < firmen.length; j++) {
     const a = firmen[i], b = firmen[j];
-    if (firmenSchluessel(a.name) === firmenSchluessel(b.name) || (a.domain && a.domain === b.domain)) paare.push([a, b]);
+    if (!(firmenSchluessel(a.name) === firmenSchluessel(b.name) || (a.domain && a.domain === b.domain))) continue;
+    if (verschiedeneOrte(a, b)) continue;
+    paare.push([a, b]);
   }
   return paare;
+}
+/** Zwei Firmen an nachweislich verschiedenen Orten (verschiedene OSM-IDs oder verschiedene Anschriften). Rein, ohne Import von betrieb.ts (Kreis). */
+function verschiedeneOrte(a: Firma, b: Firma): boolean {
+  if (a.osmId && b.osmId) return a.osmId !== b.osmId;
+  const ort = (f: Firma) => { const x = f.adresse; if (!x || (!x.plz && !x.strasse)) return ''; return `${(x.plz ?? '').replace(/\s/g, '')}|${`${x.strasse ?? ''} ${x.hausnummer ?? ''}`.toLowerCase().replace(/ß/g, 'ss').replace(/strasse(?![a-z])|str\.?(?![a-z])/g, 'str').replace(/[^a-z0-9]/g, '')}`; };
+  const oa = ort(a), ob = ort(b);
+  return !!oa && !!ob && oa !== ob;
 }

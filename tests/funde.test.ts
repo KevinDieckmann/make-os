@@ -95,7 +95,11 @@ describe('Regeln (rein)', () => {
     expect(b.punkte).toBe(100);
     expect(b.gruende.join(' ')).toMatch(/HTTPS/);
     expect(eigeneWebsite(websiteNormal('facebook.com/cafe'))).toBe(false);
-    const { fremdeUnterseite } = await import('@/lib/funde/bewertung');
+    const { fremdeUnterseite, seitePasstZumNamen } = await import('@/lib/funde/bewertung');
+    expect(seitePasstZumNamen('<h1>Trattoria Sole</h1>', 'https://x.example.invalid/', 'Trattoria Sole')).toBe(true);
+    expect(seitePasstZumNamen('<h1>Tischlerei Holz</h1>', 'https://holz.example.invalid/', 'Café Mondschein')).toBe(false);
+    expect(seitePasstZumNamen('<h1>Willkommen</h1>', 'https://mondschein.example.invalid/', 'Café Mondschein')).toBe(true);
+    expect(bewerten({ website: true, signale: { erreichbar: true, https: true, mobil: true, alteTechnik: false, impressum: true, fremd: true }, jahrHeute: 2026, gemessenAm: 'x' }).punkte).toBe(0);
     expect(fremdeUnterseite('https://hotel.example.invalid/standorte/berlin')).toBe(true);
     expect(fremdeUnterseite('https://cafe.example.invalid/')).toBe(false);
     expect(websiteNormal('javascript:alert(1)')).toBeNull();
@@ -156,6 +160,25 @@ describe('Regeln (rein)', () => {
     expect(erreichbarkeit({ email: 'a@b.de' })).toBe(25);
     const l = [{ angelegt: '1', email: 'a@b.de' }, { angelegt: '2', telefon: '+4930' }, { angelegt: '3', mobil: '+49171' }].sort(fundReihenfolge as never);
     expect(l.map((x: { angelegt: string }) => x.angelegt)).toEqual(['3', '2', '1']);
+  });
+
+  it('Website-Analyse: gute Restaurant-Seite nah an unserem Niveau, schwache weit darunter — mit Lücken und Aufhängern', async () => {
+    const { merkmaleAus, niveauBerechnen, unterNiveau } = await import('@/lib/funde/analyse');
+    const gut = merkmaleAus(`<html><head><title>Trattoria Beispiel — Berlin Mitte</title><meta name="viewport" content="width=device-width"><meta name="description" content="Italienische Küche in Berlin-Mitte, täglich frische Pasta, Mittagstisch und Abendkarte."><meta property="og:image" content="x.jpg">
+      <script type="application/ld+json">{"@type":"Restaurant","name":"x"}</script></head><body><h1>Trattoria</h1><a href="/speisekarte">Speisekarte</a> <a href="https://www.quandoo.de/x">Reservieren</a>
+      <p>Mo–Fr 12:00 – 22:00 Uhr</p><a href="tel:+4930123">Anrufen</a> <a href="https://maps.google.com/?q=x">Karte</a> <a href="https://instagram.com/x">Insta</a> <a href="/impressum">Impressum</a> <a href="/datenschutz">Datenschutz</a></body></html>`, 'https://trattoria.example.invalid/');
+    const a = niveauBerechnen(gut, { leistung: { lcpMs: 1800, quelle: 'chrome' }, jahrHeute: 2026, gemessenAm: 'x' });
+    expect(a.niveau).toBeGreaterThanOrEqual(95);
+    expect(unterNiveau(a)).toBe(false);
+    const schwach = merkmaleAus(`<html><body><center><font>Willkommen</font></center><a href="karte.pdf">Speisekarte</a> 030 123 © 2014
+      <link href="https://fonts.googleapis.com/css?family=X" rel="stylesheet"></body></html>`, 'http://alt.example.invalid/');
+    const b = niveauBerechnen(schwach, { leistung: { lcpMs: 7000, quelle: 'chrome' }, design: 1, jahrHeute: 2026, gemessenAm: 'x' });
+    expect(b.niveau).toBeLessThan(20);
+    expect(unterNiveau(b)).toBe(true);
+    expect(schwach).toMatchObject({ speisekarteNurPdf: true, googleFontsExtern: true, mobil: false, https: false, jahr: 2014 });
+    expect(b.aufhaenger).toHaveLength(3);
+    expect(b.luecken.join(' ')).toMatch(/PDF/);
+    expect(b.luecken.join(' ')).toMatch(/Google Fonts/);
   });
 
   it('Löschfrist: nicht übernommene nach der Frist, übernommene nach Ablauf der Vorschau', async () => {
@@ -220,20 +243,23 @@ describe('Abendlauf, Freigabe, Versand', () => {
     expect(b.einstellungen).toMatchObject({ arten: ['cafe'], nurMitMail: true });
   });
 
-  it('Freigabe ohne „eigenes Risiko“: übernommen (Kontakt, Firma, Label, Kampagne, Follow-up), KEINE Mail', async () => {
+  it('Freigabe ohne „eigenes Risiko“: übernommen als FIRMA (ohne Pseudo-Kontakt), Label, Kampagne, Follow-up — KEINE Mail', async () => {
     await einrichten();
     await laufen();
     const v = (await offeneFundVorschlaege())[0];
     const f = await POST(stapel, '/api/zoe/stapel', { id: v.id, entscheidung: 'freigeben' });
     expect(f.status, f.text).toBe(200);
     expect(server.gesendet).toHaveLength(0);
-    const kk = (await db.loadJson<{ kontakte: { id: string; labels?: string[]; herkunft?: string; fremddaten?: boolean }[] }>('kontakte'))!.kontakte;
-    expect(kk).toHaveLength(1);
-    expect(kk[0]).toMatchObject({ labels: ['homepage-funnel'], herkunft: 'recherche', fremddaten: true });
+    // Welle A (01.11.): ohne Inhaber aus dem Impressum entsteht KEIN Kontakt — der Betrieb ist eine Firma.
+    expect((await db.loadJson<{ kontakte: unknown[] }>('kontakte'))!.kontakte).toHaveLength(0);
     const crm = await (await import('@/lib/crm/speicher')).ladeCrm();
-    expect(crm.kampagnen[0].kontaktIds).toEqual([kk[0].id]);
+    const fund = (await (await import('@/lib/funde/speicher')).ladeFunde()).funde.find(x => x.id === v.bezug?.id)!;
+    const firma = crm.firmen.find(x => x.id === fund.firmaId)!;
+    expect(firma).toMatchObject({ labels: ['homepage-funnel'], herkunft: 'recherche', fremddaten: true, osmId: fund.osmId, lead: { status: 'neu' } });
+    expect(crm.kampagnen[0].kontaktIds).toEqual([]);
+    expect(crm.kampagnen[0].firmaIds).toEqual([firma.id]);
     expect(crm.segmente.some(s => s.id === 'seg-homepage-funnel')).toBe(true);
-    expect((crm.followups ?? []).filter(x => x.kontaktId === kk[0].id)).toHaveLength(1);
+    expect((crm.followups ?? []).filter(x => x.bezug.art === 'firma' && x.bezug.id === firma.id)).toHaveLength(1);
   });
 
   it('Freigabe MIT Risiko + Absender: genau eine Mail mit Vorschau-Link, Abmeldelink und Datenschutz; Vorschau öffentlich nur mit Token', async () => {
@@ -275,7 +301,8 @@ describe('Abendlauf, Freigabe, Versand', () => {
     await einrichten();
     const datei = { format: 'make-os-funde', funde: [
       { osmId: 'n77', name: 'Bistro Datei', branche: 'gastro', adresse: { strasse: 'Dateiweg', hausnummer: '2', plz: '10999', ort: 'Berlin' }, email: `kontakt@bistro.${D}`, gebiet: 'Mitte', bewertung: { punkte: 90, website: true, erreichbar: false, gruende: ['Die Adresse der Website führt ins Leere — die Domain gibt es nicht (mehr).'] },
-        inhaber: 'Erika Beispiel', inhaberArt: 'person', instagram: '@bistro.datei', quellen: { inhaber: `https://bistro.${D}/impressum`, kaputt: 'javascript:alert(1)' } },
+        inhaber: 'Erika Beispiel', inhaberArt: 'person', instagram: '@bistro.datei', quellen: { inhaber: `https://bistro.${D}/impressum`, kaputt: 'javascript:alert(1)' },
+        analyse: { niveau: 140, teile: { technik: 10, gaeste: 5, auffindbar: 0, recht: 5 }, design: 2, luecken: ['Keine Speisekarte auf der Seite.<script>'], aufhaenger: ['Gäste finden keine Speisekarte.', 'a', 'b', 'c'], leistung: { lcpMs: 6200, quelle: 'chrome' } } },
       { osmId: 'n80', name: 'Geschlossen Datei', branche: 'gastro', geschlossen: true },
       { osmId: 'n78', name: 'Laden Mit Seite', branche: 'gastro' },
       { osmId: 'n79', name: 'Bistro Datei', branche: 'gastro' },
@@ -289,17 +316,22 @@ describe('Abendlauf, Freigabe, Versand', () => {
     expect(await offeneFundVorschlaege()).toHaveLength(1);
     const f = (await (await import('@/lib/funde/speicher')).ladeFunde()).funde[0];
     expect(f).toMatchObject({ quelle: 'osm', osmId: 'n77', status: 'vorbereitet', bewertung: { punkte: 90 } });
-    expect(f.entwurf?.text).toMatch(/Domain/);
+    // Mit Niveau-Analyse nennt die Mail deren Aufhänger statt der Gründe der Bewertung (unten geprüft).
     expect(f).toMatchObject({ inhaber: 'Erika Beispiel', inhaberArt: 'person', instagram: 'bistro.datei', quellen: { inhaber: `https://bistro.${D}/impressum` } });
     expect(f.quellen).not.toHaveProperty('kaputt');
     expect(f.entwurf?.text).toMatch(/^Guten Tag Erika Beispiel,/);
     expect(f.entwurf?.anruf).toMatch(/Instagram @bistro\.datei/);
-    // Übernahme: Inhaber wird der Name des Kontakts, Instagram + Quellen stehen in der Notiz.
+    expect(f.analyse).toMatchObject({ niveau: 100, design: 2, aufhaenger: ['Gäste finden keine Speisekarte.', 'a', 'b'], leistung: { lcpMs: 6200, quelle: 'chrome' } });
+    expect(f.analyse?.luecken[0]).not.toMatch(/</);
+    expect(f.entwurf?.text).toMatch(/Gäste finden keine Speisekarte/);
+    expect(f.entwurf?.anruf).toMatch(/Website-Niveau 100\/100/);
+    // Übernahme (Welle A, 01.11.): Inhaber aus dem Impressum wird ein Kontakt an der Firma; Instagram, Quellen, Analyse stehen als Felder an der Firma.
     const v = (await offeneFundVorschlaege())[0];
     expect((await POST(stapel, '/api/zoe/stapel', { id: v.id, entscheidung: 'freigeben' })).status).toBe(200);
-    const kk = (await db.loadJson<{ kontakte: { vorname: string; nachname: string; notiz?: string; firma?: string }[] }>('kontakte'))!.kontakte;
+    const kk = (await db.loadJson<{ kontakte: { vorname: string; nachname: string; notiz?: string; firma?: string; firmaId?: string }[] }>('kontakte'))!.kontakte;
     expect(kk[0]).toMatchObject({ vorname: 'Erika', nachname: 'Beispiel', firma: 'Bistro Datei' });
-    expect(kk[0].notiz).toMatch(/Instagram: @bistro\.datei/);
+    const fi = (await (await import('@/lib/crm/speicher')).ladeCrm()).firmen.find(x => x.id === kk[0].firmaId)!;
+    expect(fi).toMatchObject({ instagram: 'bistro.datei', inhaber: 'Erika Beispiel', quellen: { inhaber: `https://bistro.${D}/impressum` }, analyse: { niveau: 100, unterNiveau: true }, bezirk: 'Mitte', osmId: 'n77', adresse: { plz: '10999' } });
     expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei: { format: 'make-os-funde', funde: Array.from({ length: 201 }, (_, i) => ({ name: `X${i}`, branche: 'gastro' })) } })).status).toBe(413);
     expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei: { funde: [] } })).status).toBe(400);
   });

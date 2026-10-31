@@ -2190,6 +2190,22 @@ Social (`?s=marketing&a=social`, `WEG.marketing('social')`) — kein eigener Hub
   `laufSperre` Marketing, ≤ `LAUF_MAX`). Personenmarke: Auto nur die Person (Kanal-Regel 403). Bei ANDEREN nie automatisch: `fremdEntwurf` (Link nur `FREMD_LINK`, fremder Text
   nur gekapselt an die KI, nie gespeichert) + `fremdMarkieren`. Schreiber auf `social-community--*` IMMER mit `...cur` (sonst fallen Entwürfe/fremd weg).
 
+## Firmen als Ziel — Betriebe ohne Ansprechpartner (01.11., Welle A, Branch `welle-a-firmen`; KUNDENGEWINNUNG_PLAN.md S1/S2)
+- **EINE Stelle** `lib/crm/betrieb.ts` (rein): Firma-Felder (optional) `adresse`, `bezirk`, `osmId`, `quellen`, `bewertung`, `analyse`, `anreicherung`, `oeffnungszeiten`,
+  `mobil`, `instagram`, `inhaber`/`inhaberArt`, `labels` + Recht `herkunft`, `fremddaten`/`erfasstAm` (Art.-14-Uhr `art14Firma`), `art14InformiertAm`, `werbesperre`,
+  `geprueftAm/Von` — Recht stempelt NUR der Server (`betriebRechtStempeln` in `wendeCrmAn`; Werbesperre über den Browser nie entfernt). Säuberer `betriebFelder`.
+- **Gleicher Name an anderer Adresse verschmilzt nie:** `gleicherBetrieb` (ja/nein/vielleicht), `betriebFinden` (nur ja), `betriebBekannt` (ja + vielleicht —
+  Abendlauf, Import, Übernahme legen dann nichts an), Kennung `betriebFirmenId` (OSM-ID → Adresse → Domain; ohne = `firmenId(name)`), `firmenDubletten` paart keine
+  verschiedenen Orte. Manuelles Anlegen bleibt `bestehendeFirma`/`firmenId`.
+- **Sperrliste für Betriebe** `lib/crm/betrieb-sperre.ts` (Merkmale OSM-ID, Domain, Name + Adresse → dieselbe HMAC-Sperrliste): Werbesperre an einer Firma auf JEDEM
+  Weg (`crmSchreiben`), Abmeldelink an die Firmen-Adresse, Art. 17 einer Inhaber-Person (`betriebeDerPerson`). Abendlauf/Import/Übernahme prüfen `betriebGesperrt`.
+- **Ampel:** `firmaKanalStatus`/`firmaAmpel` (lib/crm/recht.ts) — Mail/Kaltanruf an Betriebe rot, nur Mandat/Chance lockern; `Kontext.firma` (optional) lässt
+  Firmen-Werbesperre und -Kontaktwege auf die Person wirken. „Eigenes Risiko“ übersteuert die Ampel nie, nur den Versand in lib/funde/uebernehmen.ts.
+- **Funde → Firma** (`fundUebernehmen`): Firma mit Lead, Label, Kampagne `firmaIds`; Kontakt NUR bei `inhaberAusImpressum`. Mail an Kontakt, sonst Firmen-Adresse.
+- **Segmente:** `segmentFirmen`/`segmentZiele` (Ziel `{ art: 'kontakt'|'firma', id }`), Kriterien `bezirk`, `plz`, `websiteScore`, `hatWebsite`, `erreichbarkeit`, `kampagne`,
+  `quelle` (wirken auf Personen über ihre Firma); Firmen MIT Personen zählen über die Personen, eine Firma mit Werbesperre sperrt ihre Personen. CSV `segmentCsv(…, firmen)`
+  (Spalten `art`, `anschrift`, `bezirk`, `website_bedarf`, `website` hinten), Route nur aus der Sitzung (Dienstweg 403). Tests `tests/welle-a-firmen.test.ts`.
+
 ## Netzwerken — Erfassen auf Veranstaltungen (02.10., nur lokal, Paket A)
 - **Seite** `/os/netzwerken` (`WEG.netzwerken({ bericht? })`, `components/os/netzwerken/`): handyzuerst (Ziele ≥ 48 px, Eingaben 16 px gegen iOS-Zoom), „Heute bei“ (Event-Modus, `EventModus`), Reiter Erfassen (`Erfassen`: Karte → Schritt → Bestätigen) und Heute (`Heute`: Abendbericht + Danke-Mails), Knopf „Meine Karte (QR)“ → `/os/netzwerken/karte` (baut Paket B). Warteschlangen-Streifen über allem.
 - **Eine Stelle je Aufgabe:** rein `lib/crm/netzwerken.ts` (Schritte, `erfassungPruefen`, `kenntWirSchon`, `firmaVorschlaege`, Danke-Entwurf, `berichtAus`), Server `lib/crm/netzwerken-server.ts` (`erfassungAusfuehren`, `dankeRausVermerken`, `freieVorschlaege`), Route `app/api/netzwerken` (GET Personen/`?frei=`, POST `erfassen`/`danke-raus`), Warteschlange `lib/netzwerken/warteschlange.ts`, Karte-Auslesen (aus) `lib/crm/netzwerken-karte.ts`. Nie neben diesen Stellen eine zweite Dublettenprüfung, Erfassungslogik oder Offline-Warteschlange bauen.

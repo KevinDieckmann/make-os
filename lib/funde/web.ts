@@ -6,7 +6,8 @@
 
 import { lookup } from 'node:dns/promises';
 import { ipIntern } from '@/lib/netz/oeffentlich';
-import { seiteAuswerten, type SeitenSignale } from './bewertung';
+import { merkmaleAus, type AnalyseMerkmale } from './analyse';
+import { seiteAuswerten, seitePasstZumNamen, type SeitenSignale } from './bewertung';
 
 const UA = 'MAKE-OS-Funde/1.0 (Website-Check)';
 const MAX_BYTES = 512 * 1024;
@@ -94,7 +95,7 @@ export function robotsVerbietet(txt: string): boolean {
 }
 
 /** Die Startseite lesen und auswerten. Nicht erreichbar → `{ erreichbar: false, fehler }`; Bot-Sperre (401/403/429) → `blockiert` (kein Mangel). */
-export async function seitePruefen(website: string, o: { fetchFn?: F } = {}): Promise<SeitenSignale> {
+export async function seitePruefen(website: string, o: { fetchFn?: F; merkmale?: (m: AnalyseMerkmale) => void; name?: string } = {}): Promise<SeitenSignale> {
   const f = o.fetchFn ?? fetch;
   const nichts: SeitenSignale = { erreichbar: false, https: website.startsWith('https://'), mobil: false, alteTechnik: false, impressum: false };
   try {
@@ -109,12 +110,16 @@ export async function seitePruefen(website: string, o: { fetchFn?: F } = {}): Pr
     // 401/403/429: die Seite weist automatische Abrufe ab — das ist KEIN Mangel (nicht prüfbar, kein Fund).
     if (r.status === 401 || r.status === 403 || r.status === 429) return { ...nichts, erreichbar: true, blockiert: true };
     if (r.status >= 400) return { ...nichts, fehler: 'status' };
+    // Gehört die Seite überhaupt zum Betrieb? Sonst kein Fund (31.10.) — und keine Analyse einer fremden Seite.
+    if (o.name && !seitePasstZumNamen(r.text, r.url, o.name)) return { ...nichts, erreichbar: true, fremd: true };
+    // Dieselbe Seite zusätzlich für die Niveau-Analyse (lib/funde/analyse.ts) — kein zweiter Abruf.
+    o.merkmale?.(merkmaleAus(r.text, r.url));
     return seiteAuswerten(r.text, r.url);
   } catch { return nichts; }
 }
 
-/** PageSpeed-Mobilwert 0–100 oder null (ohne Schlüssel, Fehler, Zeitüberschreitung). */
-export async function pagespeed(website: string, o: { fetchFn?: F } = {}): Promise<number | null> {
+/** PageSpeed-Mobilwert 0–100 oder null (ohne Schlüssel, Fehler, Zeitüberschreitung). `lcp` erhält die gemessene LCP-Zeit (ms), wenn vorhanden. */
+export async function pagespeed(website: string, o: { fetchFn?: F; lcp?: (ms: number) => void } = {}): Promise<number | null> {
   const key = (process.env.PAGESPEED_API_KEY ?? '').trim();
   if (!key) return null;
   const f = o.fetchFn ?? fetch;
@@ -122,7 +127,9 @@ export async function pagespeed(website: string, o: { fetchFn?: F } = {}): Promi
   try {
     const r = await f(`https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${q}`, { signal: AbortSignal.timeout(60_000) });
     if (!r.ok) return null;
-    const j = await r.json() as { lighthouseResult?: { categories?: { performance?: { score?: number } } } };
+    const j = await r.json() as { lighthouseResult?: { categories?: { performance?: { score?: number } }; audits?: Record<string, { numericValue?: number }> } };
+    const lcp = j.lighthouseResult?.audits?.['largest-contentful-paint']?.numericValue;
+    if (typeof lcp === 'number') o.lcp?.(Math.round(lcp));
     const s = j.lighthouseResult?.categories?.performance?.score;
     return typeof s === 'number' ? Math.round(s * 100) : null;
   } catch { return null; }

@@ -8,7 +8,8 @@
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
 import { ladeCrm } from '@/lib/crm/speicher';
-import { bestehendeFirma } from '@/lib/crm/firmen';
+import { betriebBekannt, type BetriebKandidat } from '@/lib/crm/betrieb';
+import { betriebGesperrt } from '@/lib/crm/betrieb-sperre';
 import { sperrlisteLaden, sperrTreffer } from '@/lib/crm/sperrliste';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { alleAdressen } from '@/lib/crm/emails';
@@ -20,6 +21,7 @@ import { vorschauAusKi, vorschauPrompt, vorschauRegelwerk } from './vorschau';
 import { entwurfBauen } from './entwurf';
 import { fundKontext } from './kontext';
 import { telefonFelder } from './telefon';
+import { niveauBerechnen, unterNiveau, type AnalyseMerkmale } from './analyse';
 import { BEDARF_AB, PLAYBOOK_ID, type Fund, type FundBewertung } from './typen';
 
 export const FUNDE_LAUF = 'funde';
@@ -42,7 +44,9 @@ export async function fundeFaellig(jetzt = new Date()): Promise<boolean> {
   return (await resolveAgent(FUNDE_LAUF)).enabled;
 }
 
-const normName = (s: string) => s.toLowerCase().normalize('NFC').replace(/[^a-z0-9äöüß]+/g, ' ').trim();
+/** Ein Fund bzw. Rohfund als Betrieb (Schlüssel OSM-ID → Domain → Name + Adresse, lib/crm/betrieb.ts) — gleicher Name an anderer Adresse = anderer Betrieb. */
+export const alsBetrieb = (x: { id?: string; name: string; osmId?: string; adresse?: BetriebKandidat['adresse']; website?: string | null; email?: string }): BetriebKandidat & { id: string } =>
+  ({ id: x.id ?? x.osmId ?? x.name, name: x.name, ...(x.osmId ? { osmId: x.osmId } : {}), ...(x.adresse ? { adresse: x.adresse } : {}), ...(x.website ? { webseite: x.website } : {}), ...(x.email ? { email: x.email } : {}) });
 
 /** Vorschau-Texte: Modell über das KI-Tor (Hintergrund, Kategorie crm), sonst Regelwerk. */
 async function vorschauFuer(f: Fund, person: string | null): Promise<{ v: Fund['vorschau']; ohneKi?: string }> {
@@ -82,17 +86,21 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
     catch (err) { fehler = err instanceof Error ? err.message.slice(0, 200) : 'OpenStreetMap nicht erreichbar.'; }
   }
 
-  // 2 · Aussortieren: schon bekannt (Fund, verworfen, gesperrt), Firma steht schon in der Kartei, Adresse/Firma auf der Sperrliste.
+  // 2 · Aussortieren: schon bekannt (Fund, verworfen, gesperrt), Betrieb steht schon in der Kartei (OSM-ID/Domain/Name + Adresse — nie nur der
+  //     Name, 01.11.), Betrieb oder Adresse auf der Sperrliste.
   const [crm, kontakte, sperre] = await Promise.all([ladeCrm(), kontakteFuerVerarbeitung({ mitEingeschraenkten: true }), sperrlisteLaden()]);
   const bekannt = new Set([...b.bekannt, ...b.funde.map(f => f.osmId).filter((x): x is string => !!x)]);
   const adressen = new Set(kontakte.flatMap(k => alleAdressen(k)));
-  const namen = new Set(b.funde.map(f => normName(f.name)));
+  const fundBetriebe = b.funde.map(alsBetrieb);
+  const kartei = crm.firmen.filter(f => !f.geloeschtAm);
   const kandidaten = roh.filter(r => {
     if (e.arten?.length && !e.arten.includes(r.kategorie ?? '')) return false; // Persona: nur diese Arten
-    if (bekannt.has(r.osmId) || namen.has(normName(r.name))) return false;
-    if (bestehendeFirma(crm.firmen, r.name)) return false;
+    const k = alsBetrieb(r);
+    if (bekannt.has(r.osmId) || betriebBekannt(fundBetriebe, k)) return false;
+    if (betriebBekannt(kartei, k)) return false;
     if (r.email && adressen.has(r.email)) return false;
-    if (sperrTreffer(sperre, { firma: r.name, ...(r.email ? { email: r.email } : {}) } as never)) return false;
+    // Sperrliste: Betriebs-Merkmale (OSM-ID, Domain, Name + Adresse) und die Adresse als Personen-Merkmal.
+    if (betriebGesperrt(sperre, k) || sperrTreffer(sperre, { firma: r.name, ...(r.email ? { email: r.email } : {}) } as never)) return false;
     return true;
   });
 
@@ -108,10 +116,13 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
     const site = websiteNormal(r.website);
     if (fremdeUnterseite(site)) { gut.push(r.osmId); continue; } // Teil eines Hauses mit eigener Website (Hotel, Museum …)
     const eigen = eigeneWebsite(site);
-    const signale = eigen && site ? await seitePruefen(site) : null;
-    const ps = eigen && site && signale?.erreichbar ? await pagespeed(site) : null;
+    let merkmale: AnalyseMerkmale | null = null, lcpMs: number | undefined;
+    const signale = eigen && site ? await seitePruefen(site, { name: r.name, merkmale: m => { merkmale = m; } }) : null;
+    const ps = eigen && site && signale?.erreichbar ? await pagespeed(site, { lcp: ms => { lcpMs = ms; } }) : null;
     const bew: FundBewertung = bewerten({ website: eigen, signale, pagespeed: ps, jahrHeute: Number(heute.slice(0, 4)), gemessenAm: am });
-    if (bew.punkte < BEDARF_AB) { gut.push(r.osmId); continue; }
+    // Erreichbare Seite: zusätzlich gegen UNSER Niveau (Gäste-Funktionen, Auffindbarkeit, Recht) — „unter Niveau“ ist auch ein Fund (31.10.).
+    const analyse = merkmale ? { ...niveauBerechnen(merkmale, { ...(lcpMs != null ? { leistung: { lcpMs, quelle: 'pagespeed' as const } } : {}), jahrHeute: Number(heute.slice(0, 4)), gemessenAm: am }), ...(lcpMs != null ? { leistung: { lcpMs, quelle: 'pagespeed' } } : {}) } : undefined;
+    if (bew.punkte < BEDARF_AB && !(analyse && unterNiveau(analyse))) { gut.push(r.osmId); continue; }
     const email = r.email ?? signale?.email;
     if (e.nurMitMail && !email) continue; // Persona: ohne veröffentlichte Mail-Adresse kein Fund (nicht „bekannt“ — die Mail kann später dazukommen)
     const nummern = telefonFelder(r.telefon, signale?.telefon);
@@ -121,7 +132,7 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
       ...(r.kategorie ? { kategorie: r.kategorie } : {}), ...(r.adresse ? { adresse: r.adresse } : {}), gebiet,
       ...(r.oeffnungszeiten ? { oeffnungszeiten: r.oeffnungszeiten } : {}), ...(site ? { website: site } : {}),
       ...(email && !adressen.has(email) ? { email } : {}), ...nummern,
-      bewertung: bew, status: 'neu', angelegt: am, geaendert: am,
+      bewertung: bew, ...(analyse ? { analyse } : {}), status: 'neu', angelegt: am, geaendert: am,
     };
     const vs = await vorschauFuer(f, o.person);
     if (vs.ohneKi) ohneKi = vs.ohneKi;

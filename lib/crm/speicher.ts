@@ -28,6 +28,7 @@ import { zahlungSaeubern, zahlungZusammenfuehren } from './zahlung';
 import { LIFECYCLE_PHASEN } from './lifecycle';
 import { BEAN_IDS, istBean } from './bean';
 import { mutterPruefen } from './konzern';
+import { adresseSaeubern, quellenSaeubern, bewertungSaeubern, analyseSaeubern, anreicherungSaeubern, osmIdSaeubern, instagramSaeubern, inhaberSaeubern, betriebRechtSaeubern, betriebRechtStempeln, BETRIEB_QUELLEN, ERREICHBARKEITEN } from './betrieb';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
 import { kartenFelderSaeubern, mandatRatenSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktProzessKennung, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
 import { mailTexteSaeubern } from './vorlage-platzhalter';
@@ -125,7 +126,7 @@ export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> =
   sitzungen: { karten: 2000 },
   beitraege: { wirkung: 20000, quellen: 1000 },
   newsletter: { beitragIds: GRENZE_IDS },
-  kampagnen: { schritte: 1000, kontaktIds: 20000, ergebnisse: 100000, firmaIds: 20000, sequenz: SEQUENZ_GRENZEN.schritte },
+  kampagnen: { schritte: 1000, kontaktIds: 20000, ergebnisse: 100000, sequenz: SEQUENZ_GRENZEN.schritte },
   angebote: { positionen: ANGEBOT_GRENZEN.positionen },
 };
 const grenzeVon = (liste: CrmListe, feld: string) => LISTEN_GRENZEN[liste]?.[feld] ?? GRENZE_IDS;
@@ -253,6 +254,25 @@ export function unterlageLink(v: unknown): string | undefined {
   return /^https:\/\/[^\s]+$/i.test(t) || /^\/os\/wissen\?n=[^\s]+$/.test(t) ? t : undefined;
 }
 
+/**
+ * Betrieb als Ziel (01.11., Welle A, lib/crm/betrieb.ts): Adresse, Bezirk, OSM-ID, Quellen, Bewertung, Analyse, Anreicherung, Öffnungszeiten, Handy,
+ * Instagram, Inhaber, Labels und die Recht-Felder (herkunft, fremddaten, erfasstAm, art14InformiertAm, werbesperre, geprueftAm, geprueftVon — deren
+ * Inhalt stempelt `betriebRechtStempeln` in `wendeCrmAn`). Ohne diese Zeilen fielen sie beim nächsten Speichern der Firma weg.
+ */
+function betriebFelder(o: Record<string, unknown>): Partial<Firma> {
+  const adresse = adresseSaeubern(o.adresse), quellen = quellenSaeubern(o.quellen), bewertung = bewertungSaeubern(o.bewertung), analyse = analyseSaeubern(o.analyse);
+  const anreicherung = anreicherungSaeubern(o.anreicherung), osmId = osmIdSaeubern(o.osmId), instagram = instagramSaeubern(o.instagram), inhaber = inhaberSaeubern(o.inhaber);
+  const labels = strListe(o.labels, KRITERIEN_WERTE_MAX, 80);
+  return {
+    ...(adresse ? { adresse } : {}), ...(opt(o.bezirk, 80) ? { bezirk: opt(o.bezirk, 80) } : {}), ...(osmId ? { osmId } : {}), ...(quellen ? { quellen } : {}),
+    ...(bewertung ? { bewertung } : {}), ...(analyse ? { analyse } : {}), ...(anreicherung ? { anreicherung } : {}), ...(opt(o.oeffnungszeiten, 300) ? { oeffnungszeiten: opt(o.oeffnungszeiten, 300) } : {}),
+    ...(opt(o.mobil, 60) ? { mobil: opt(o.mobil, 60) } : {}), ...(instagram ? { instagram } : {}),
+    ...(inhaber ? { inhaber, inhaberArt: o.inhaberArt === 'firma' ? 'firma' as const : 'person' as const } : {}),
+    ...(labels?.length ? { labels: Array.from(new Set(labels)) } : {}),
+    ...betriebRechtSaeubern(o),
+  };
+}
+
 const ROLLEN: FirmaRolle[] = ['zielkunde', 'kunde', 'ex_kunde', 'partner', 'dienstleister', 'investor', 'netzwerk', 'wettbewerb', 'offen'];
 function firma(o: Record<string, unknown>, jetzt: string): Firma | null {
   if (!/^f-[a-z0-9-]{2,60}$/.test(String(o.id ?? '')) || !txt(o.name)) return null;
@@ -267,6 +287,7 @@ function firma(o: Record<string, unknown>, jetzt: string): Firma | null {
     ...(/^f-[a-z0-9-]{2,63}$/.test(String(o.mutterId ?? '')) && o.mutterId !== o.id ? { mutterId: String(o.mutterId) } : {}),
     // Kundennummer (25.10.): nur in ihrer Form durchgereicht — vergeben und festgehalten wird sie in crmSchreiben (`kundennummernNachziehen`).
     ...(kundennummerOk(o.kundennummer) ? { kundennummer: o.kundennummer } : {}),
+    ...betriebFelder(o),
     geaendert: jetzt,
   } as Firma;
 }
@@ -352,6 +373,21 @@ function archivSauber(a: unknown): Verarbeitung['archiviert'] | null {
 }
 
 const strListe = (v: unknown, n = KRITERIEN_WERTE_MAX, l = 40) => (Array.isArray(v) ? v.map(x => txt(x, l)).filter(Boolean).slice(0, n) : undefined);
+/** Betriebs-Kriterien eines Segments (01.11., Welle A): Bezirk, PLZ, Website-Score, Website ja/nein, Erreichbarkeit, Kampagne, Quelle. */
+export function betriebKriterien(k: Record<string, unknown>): Partial<SegmentKriterien> {
+  const kr: Partial<SegmentKriterien> = {};
+  const bezirk = strListe(k.bezirk, KRITERIEN_WERTE_MAX, 80); if (bezirk?.length) kr.bezirk = bezirk;
+  const plz = strListe(k.plz, KRITERIEN_WERTE_MAX, 10)?.filter(x => /^[0-9A-Za-z]{1,10}$/.test(x)); if (plz?.length) kr.plz = plz;
+  const ws = k.websiteScore && typeof k.websiteScore === 'object' ? k.websiteScore as Record<string, unknown> : null;
+  const von = typeof ws?.von === 'number' && Number.isFinite(ws.von) ? Math.round(Math.min(100, Math.max(0, ws.von))) : undefined;
+  const bis = typeof ws?.bis === 'number' && Number.isFinite(ws.bis) ? Math.round(Math.min(100, Math.max(0, ws.bis))) : undefined;
+  if (von !== undefined || bis !== undefined) kr.websiteScore = { ...(von !== undefined ? { von } : {}), ...(bis !== undefined ? { bis } : {}) };
+  if (typeof k.hatWebsite === 'boolean') kr.hatWebsite = k.hatWebsite;
+  const er = ERREICHBARKEITEN.map(e => e.id).filter(e => Array.isArray(k.erreichbarkeit) && (k.erreichbarkeit as unknown[]).includes(e)); if (er.length) kr.erreichbarkeit = er;
+  const kamp = strListe(k.kampagne, KRITERIEN_WERTE_MAX, 80)?.filter(x => idOk(x)); if (kamp?.length) kr.kampagne = kamp;
+  const q = BETRIEB_QUELLEN.map(x => x.id).filter(x => Array.isArray(k.quelle) && (k.quelle as unknown[]).includes(x)); if (q.length) kr.quelle = q;
+  return kr;
+}
 function segment(o: Record<string, unknown>, jetzt: string): Segment | null {
   if (!idOk(o.id) || !txt(o.name)) return null;
   const k = (o.kriterien ?? {}) as Record<string, unknown>;
@@ -370,6 +406,7 @@ function segment(o: Record<string, unknown>, jetzt: string): Segment | null {
   if (lifecycle.length) kr.lifecycle = lifecycle;
   const bean = BEAN_IDS.filter(b => Array.isArray(k.bean) && (k.bean as unknown[]).includes(b));
   if (bean.length) kr.bean = bean;
+  Object.assign(kr, betriebKriterien(k));
   return { id: String(o.id), name: txt(o.name, 120), ...(opt(o.beschreibung, 400) ? { beschreibung: opt(o.beschreibung, 400) } : {}), kriterien: kr, geaendert: jetzt };
 }
 function beitrag(o: Record<string, unknown>, jetzt: string): Beitrag | null {
@@ -410,6 +447,8 @@ function kampagne(o: Record<string, unknown>, jetzt: string): Kampagne | null {
     ...(tag(o.start) ? { start: tag(o.start) } : {}), ...(tag(o.ende) ? { ende: tag(o.ende) } : {}),
     schritte: Array.isArray(o.schritte) ? (o.schritte as Record<string, unknown>[]).slice(0, grenzeVon('kampagnen', 'schritte')).map((x, i) => ({ id: txt(x.id, 40) || `s${i}`, text: txt(x.text, 240), tag: zahl(x.tag, -60, 365), erledigt: x.erledigt === true, ...(opt(x.aufgabeId, 80) ? { aufgabeId: opt(x.aufgabeId, 80) } : {}) })).filter(x => x.text) : [],
     kontaktIds: Array.isArray(o.kontaktIds) ? (o.kontaktIds as unknown[]).map(String).filter(x => /^c-[a-z0-9-]{4,60}$/.test(x)).slice(0, grenzeVon('kampagnen', 'kontaktIds')) : [],
+    // Betriebe ohne Person als Ziele (01.11., Welle A) — nur Firmen-Kennungen, ohne Doppelte.
+    ...(Array.isArray(o.firmaIds) && o.firmaIds.length ? { firmaIds: Array.from(new Set((o.firmaIds as unknown[]).map(String).filter(x => /^f-[a-z0-9-]{2,63}$/.test(x)))).slice(0, grenzeVon('kampagnen', 'kontaktIds')) } : {}),
     ergebnisse: Array.isArray(o.ergebnisse) ? (o.ergebnisse as Record<string, unknown>[]).slice(0, grenzeVon('kampagnen', 'ergebnisse')).map(e => ({ kontaktId: txt(e.kontaktId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10), ...(wer(e.von) && wer(e.von) !== BEIDE ? { von: wer(e.von) } : {}) })).filter(e => /^c-/.test(e.kontaktId)) : [],
     von: aus(o.von, ['hand', 'head-sales', 'head-marketing'] as const, 'hand'), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,
     ...(vernetzenSaeubern(o.vernetzen) ? { vernetzen: vernetzenSaeubern(o.vernetzen) } : {}),
@@ -464,14 +503,13 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
         ...(fuer ? { fuer } : {}), ...(anmeldung ? { anmeldung } : {}), ...(wer ? { wer } : {}), ...(link ? { link } : {}), ...(tag(o.bisDatum) && String(o.bisDatum) > String(o.datum ?? '') && String(o.bisDatum) <= tagePlusSpeicher(String(o.datum), 30) ? { bisDatum: tag(o.bisDatum) } : {}), ...(zielpersonen ? { zielpersonen } : {}), ...(uebergaben ? { uebergaben } : {}) };
     }
     case 'beitraege': return zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {};
-    // Kampagnen-Motor (31.10., Welle A): Sequenz, Startmenge je Tag, Firmen als Ziele — ohne diese Zeilen fielen sie bei jedem Speichern weg.
+    // Kampagnen-Motor (31.10., Welle A): Sequenz und Startmenge je Tag (Firmen als Ziele: `firmaIds` säubert kampagne()) — ohne diese Zeilen fielen sie bei jedem Speichern weg.
     // `zielStaende` schreibt nur der Server (`zielStaendeVomAltstand` in `wendeCrmAn`) — hier nie.
     case 'kampagnen': {
       const sequenz = sequenzSaeubern(o.sequenz);
       const n = Number(o.neuJeTag);
-      const firmaIds = Array.isArray(o.firmaIds) ? Array.from(new Set((o.firmaIds as unknown[]).map(String).filter(x => /^f-[a-z0-9-]{2,63}$/.test(x)))).slice(0, grenzeVon('kampagnen', 'firmaIds')) : [];
       return { ...(zahl(o.kostenEuro, 0, 1e7) ? { kostenEuro: zahl(o.kostenEuro, 0, 1e7) } : {}), ...(sequenz ? { sequenz } : {}),
-        ...(Number.isInteger(n) && n >= 1 && n <= SEQUENZ_GRENZEN.neuJeTag ? { neuJeTag: n } : {}), ...(firmaIds.length ? { firmaIds } : {}) };
+        ...(Number.isInteger(n) && n >= 1 && n <= SEQUENZ_GRENZEN.neuJeTag ? { neuJeTag: n } : {}) };
     }
     case 'newsletter': return wer(o.stimme) || o.stimme === 'marke' ? { stimme: String(o.stimme) } : {};
     case 'teilnahmen': {
@@ -780,6 +818,12 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
       : liste;
     angewandt += r.angewandt;
   }
+  // Recht am Betrieb (01.11., Welle A): Herkunft/Art.-14-Uhr/Werbesperre/„geprüft“ stempelt nur der Server — was der Browser schickt, zählt nur als Absicht.
+  if (neu.firmen !== b.firmen) {
+    const alt = new Map(b.firmen.map(f => [f.id, f]));
+    const heute = tagVon(jetzt);
+    neu.firmen = neu.firmen.map(f => (alt.get(f.id) === f ? f : betriebRechtStempeln(f, alt.get(f.id), person, heute)));
+  }
   // Mutterfirmen (28.09., #7): tote Mutter oder Kreis → nur diese Änderung zurück, mit Fehlertext.
   if (neu.firmen !== b.firmen) {
     const m = mutterPruefen(b.firmen, neu.firmen);
@@ -981,6 +1025,14 @@ async function crmSchreiben(mut: (b: CrmBestand) => CrmBestand | Promise<CrmBest
   if (geloeschteEvents.length) await eventsAlsGeloeschtMerken(geloeschteEvents);
   await protokolliere(CRM_SPEICHER, aenderungen, protokollWer);
   if (karteiAenderungen.length) await protokolliere('kontakte', karteiAenderungen, protokollWer);
+  // Werbesperre an einem Betrieb (01.11., Welle A) → Sperrliste (Fingerabdrücke aus OSM-ID, Domain, Name + Adresse) — auf jedem Schreibweg.
+  // Nach dem Speichern, eigener Bestand; ein Fehler bricht nichts ab (die Sperre steht an der Firma, `sperrlisteNachtragen` holt sie nach).
+  const fs = fuerEreignisse as { vorher: CrmBestand; nachher: CrmBestand } | null;
+  if (fs) {
+    const vorher = new Map(fs.vorher.firmen.map(f => [f.id, f]));
+    const neuGesperrt = fs.nachher.firmen.filter(f => f.werbesperre && !vorher.get(f.id)?.werbesperre);
+    if (neuGesperrt.length) await import('./betrieb-sperre').then(m => m.betriebeSperren(neuGesperrt, 'werbesperre', localDay())).catch(e => console.error('[crm] Sperrliste Betrieb:', e instanceof Error ? e.message.slice(0, 160) : e));
+  }
   // Ereignisse (09.10., E1): Deal neu/andere Stufe, Firmen-Lead wird SQL → Agenten (nur Kennungen) — nach dem Speichern, wirft nie.
   const fe = fuerEreignisse as { vorher: CrmBestand; nachher: CrmBestand } | null;
   if (fe) await import('@/lib/ereignisse/quellen').then(q => q.crmEreignisse(fe.vorher, fe.nachher)).catch(() => 0);

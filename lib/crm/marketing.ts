@@ -12,13 +12,14 @@
 // MAKE OS versendet und veröffentlicht nichts — Export und Zahlen von Hand.
 
 import { anzeigename, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
-import type { Beitrag, Chance, CrmBestand, Freigabe, MarketingEinstellung, NewsletterAusgabe, Quelle, Segment, SegmentKriterien } from './typen';
+import type { Beitrag, Chance, CrmBestand, Firma, Freigabe, MarketingEinstellung, NewsletterAusgabe, Quelle, Segment, SegmentKriterien } from './typen';
 import { nurBusinessGezaehlt } from './zaehlung-business';
 import { leadZeileFuer, inArbeit } from './leads';
 import { anfrageIstMarketing } from './scoring';
 import type { Kpi, KpiAmpel } from './kennzahlen';
-import { art14, kanalStatus, type Kanal, type Kontext } from './recht';
-import { segmentAuswerten, type SegmentKontext } from './segmente';
+import { art14, kanalStatus, firmaKanalStatus, firmaAmpel, type Kanal, type Kontext } from './recht';
+import { segmentAuswerten, segmentFirmen, type SegmentKontext } from './segmente';
+import { adresseText, ERREICHBARKEITEN, BETRIEB_QUELLEN } from './betrieb';
 import { TEAM, BEIDE, zustaendig, istMeins, mitglied, nameVon } from './team';
 import { TEMPERATUR, temperaturLabel } from './score';
 import { LIFECYCLE_PHASEN, LIFECYCLE_KURZ } from './lifecycle';
@@ -280,6 +281,21 @@ export function kriterienSauber(kr: SegmentKriterien): SegmentKriterien {
   if (typeof kr.mitChance === 'boolean') r.mitChance = kr.mitChance;
   const n = Math.round(Number(kr.ohneKontaktSeitTagen ?? 0));
   if (n > 0) r.ohneKontaktSeitTagen = Math.min(n, 3650);
+  // Betriebe (01.11., Welle A): Bezirk/PLZ/Kampagne frei (ohne Doppelte, sortiert), Erreichbarkeit/Quelle in fester Reihenfolge, Score 0–100.
+  for (const f of ['bezirk', 'plz', 'kampagne'] as const) {
+    const l = Array.from(new Set((kr[f] ?? []).map(x => String(x).trim()).filter(Boolean))).sort();
+    if (l.length) r[f] = l;
+  }
+  if (kr.websiteScore) {
+    const z = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(100, Math.max(0, v))) : undefined);
+    const von = z(kr.websiteScore.von), bis = z(kr.websiteScore.bis);
+    if (von !== undefined || bis !== undefined) r.websiteScore = { ...(von !== undefined ? { von } : {}), ...(bis !== undefined ? { bis } : {}) };
+  }
+  if (typeof kr.hatWebsite === 'boolean') r.hatWebsite = kr.hatWebsite;
+  const er = ERREICHBARKEITEN.map(e => e.id).filter(e => (kr.erreichbarkeit ?? []).includes(e));
+  if (er.length) r.erreichbarkeit = er;
+  const q = BETRIEB_QUELLEN.map(e => e.id).filter(e => (kr.quelle ?? []).includes(e));
+  if (q.length) r.quelle = q;
   return r;
 }
 export const kriterienGleich = (a: SegmentKriterien, b: SegmentKriterien) => JSON.stringify(kriterienSauber(a)) === JSON.stringify(kriterienSauber(b));
@@ -308,6 +324,13 @@ export function kriterienText(kr: SegmentKriterien): string {
   if (kr.kanal) t.push(`${KANAL_TEXT[kr.kanal] ?? kr.kanal} zulässig`);
   if (kr.mitChance !== undefined) t.push(kr.mitChance ? 'mit offener Chance' : 'ohne offene Chance');
   if (kr.ohneKontaktSeitTagen) t.push(`ohne Kontakt seit ${kr.ohneKontaktSeitTagen} Tagen`);
+  if (kr.bezirk?.length) t.push(`Bezirk ${kr.bezirk.join(', ')}`);
+  if (kr.plz?.length) t.push(`PLZ ${kr.plz.join(', ')}`);
+  if (kr.websiteScore) t.push(`Website-Bedarf ${kr.websiteScore.von ?? 0}–${kr.websiteScore.bis ?? 100}`);
+  if (kr.hatWebsite !== undefined) t.push(kr.hatWebsite ? 'mit Website' : 'ohne Website');
+  if (kr.erreichbarkeit?.length) t.push(`erreichbar per ${kr.erreichbarkeit.map(e => ERREICHBARKEITEN.find(x => x.id === e)?.label ?? e).join(' / ')}`);
+  if (kr.kampagne?.length) t.push(`in ${kr.kampagne.length === 1 ? 'einer Kampagne' : `${kr.kampagne.length} Kampagnen`}`);
+  if (kr.quelle?.length) t.push(`Quelle ${kr.quelle.map(q => BETRIEB_QUELLEN.find(x => x.id === q)?.label ?? q).join(', ')}`);
   return t.join(' · ') || 'alle Personen ohne Werbesperre';
 }
 
@@ -339,16 +362,28 @@ export type AbmeldeLinkFn = (email: string | undefined) => { link: string; listU
 const ABMELDE_SPALTEN = ['abmeldelink', 'list_unsubscribe', 'list_unsubscribe_post'];
 const abmeldeZellen = (f: AbmeldeLinkFn | undefined, email: string | undefined) => { const a = email && f ? f(email) : null; return a ? [a.link, a.listUnsubscribe, a.listUnsubscribePost] : ['', '', '']; };
 
-/** Segment-Export: nur Mitglieder (nie Gesperrte), Mail-Adresse nur bei grüner Mail-Ampel, keine Privatnotiz. */
-export function segmentCsv(kontakte: Kontakt[], kriterien: SegmentKriterien, ctx: SegmentKontext, abmelde?: AbmeldeLinkFn): string {
+/**
+ * Segment-Export: nur Mitglieder (nie Gesperrte), Mail-Adresse nur bei grüner Mail-Ampel, keine Privatnotiz. Seit 01.11. (Welle A) mit `firmen`
+ * auch die Betriebe ohne Person — je Zeile `art` (person | betrieb), Anschrift, Bezirk, Website-Bedarf; nur Felder, nie Notizen, Analysen, Quellen.
+ * Ohne `firmen` (Alt-Aufrufer) wie bisher, nur Personen; die neuen Spalten stehen hinten.
+ */
+export function segmentCsv(kontakte: Kontakt[], kriterien: SegmentKriterien, ctx: SegmentKontext, abmelde?: AbmeldeLinkFn, firmen?: readonly Firma[]): string {
   const a = segmentAuswerten(kontakte, kriterien, ctx);
+  const mitBetrieb = !!firmen;
+  const betriebZellen = (f: Firma | undefined, art: string) => (mitBetrieb ? [art, adresseText(f?.adresse), f?.bezirk, f?.bewertung?.punkte ?? '', f?.webseite] : []);
   const zeilen = a.mitglieder.filter(k => !ausgenommen(k)).map(k => {
-    const c: Kontext = { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) };
     const f = k.firmaId ? ctx.firmen.get(k.firmaId) : undefined;
+    const c: Kontext = { hatMandat: ctx.mitMandat.has(k.id), hatChance: ctx.mitChance.has(k.id) };
     const mail = kanalStatus(k, 'mail', c).farbe === 'gruen' ? k.email : '';
-    return [anzeigename(k), f?.name ?? k.firma, mail, k.telefon ?? k.sms, k.kreis, PHASE_TEXT[k.lebensphase ?? 'kontakt'], kanalText(k, c), ...(abmelde ? abmeldeZellen(abmelde, mail || undefined) : [])];
+    return [anzeigename(k), f?.name ?? k.firma, mail, k.telefon ?? k.sms, k.kreis, PHASE_TEXT[k.lebensphase ?? 'kontakt'], kanalText(k, c), ...(abmelde ? abmeldeZellen(abmelde, mail || undefined) : []), ...betriebZellen(f, 'person')];
   });
-  return csvText(['name', 'firma', 'email', 'telefon', 'kreis', 'phase', 'kanal_status', ...(abmelde ? ABMELDE_SPALTEN : [])], zeilen);
+  if (firmen) for (const f of segmentFirmen(firmen, kontakte, kriterien, ctx)) {
+    const c = { hatMandat: !!ctx.firmaMitMandat?.has(f.id), hatChance: !!ctx.firmaMitChance?.has(f.id) };
+    const mail = firmaKanalStatus(f, 'mail', c).farbe === 'gruen' ? f.email : '';
+    const ampel = firmaAmpel(f, c).map(s => `${KANAL_TEXT[s.kanal] ?? s.kanal} ${FARB_TEXT[s.farbe]}`).join(', ') || 'keine Adresse';
+    zeilen.push([f.name, f.name, mail, f.mobil ?? f.telefon, '', '', ampel, ...(abmelde ? abmeldeZellen(abmelde, mail || undefined) : []), ...betriebZellen(f, 'betrieb')]);
+  }
+  return csvText(['name', 'firma', 'email', 'telefon', 'kreis', 'phase', 'kanal_status', ...(abmelde ? ABMELDE_SPALTEN : []), ...(mitBetrieb ? ['art', 'anschrift', 'bezirk', 'website_bedarf', 'website'] : [])], zeilen);
 }
 
 /** Newsletter-Empfänger: ausschließlich Double-Opt-in, nur Name und Adresse (+ Abmeldelink und List-Unsubscribe-Köpfe je Empfänger). */

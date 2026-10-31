@@ -15,6 +15,8 @@
 
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { istDienst } from '@/lib/zugang/dienst';
+import { leseZugriff } from '@/lib/store/leseprotokoll';
 import { NextResponse } from 'next/server';
 import { jsonAntwort, unveraendert, etagAus } from '@/lib/http/json-antwort';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
@@ -58,7 +60,10 @@ export async function GET(req: Request) {
     if (format !== 'csv') return NextResponse.json({ ok: false, fehler: 'Nur format=csv.' }, { status: 400 });
     const s = crm.segmente.find(x => x.id === segmentId);
     if (!s) return NextResponse.json({ ok: false, fehler: 'Segment nicht gefunden.' }, { status: 404 });
-    return csvAntwort(segmentCsv(kontakte, s.kriterien, kontextAus(crm, heute), abmeldeFn()), `MAKE-OS-Segment-${dateiTeil(s.name)}-${heute}.csv`);
+    // Export nur aus der eigenen Sitzung (01.11., Welle A — wie der Kunden-Export besuchter Events): Dienstweg → 403. Mit Betrieben ohne Person.
+    if (istDienst(req)) return NextResponse.json({ ok: false, fehler: 'Export nur aus der eigenen Sitzung.' }, { status: 403 });
+    leseZugriff(req, 'kontakte', { anzahl: kontakte.length });
+    return csvAntwort(segmentCsv(kontakte, s.kriterien, kontextAus(crm, heute), abmeldeFn(), crm.firmen.filter(f => !f.geloeschtAm)), `MAKE-OS-Segment-${dateiTeil(s.name)}-${heute}.csv`);
   }
   if (url.searchParams.get('newsletter') !== null) {
     if (url.searchParams.get('newsletter') !== 'empfaenger' || format !== 'csv') return NextResponse.json({ ok: false, fehler: 'Nur newsletter=empfaenger&format=csv.' }, { status: 400 });
