@@ -822,6 +822,19 @@ export async function personenUmbiegen(paare: ReadonlyMap<string, string>, opt: 
       zaehle(b, 'check-sitzungen', n);
     }
   });
+  // Prozess-Läufe (Kevin 31.10.): die Läufe der entfernten Person (Fall „Lead“ = Person ohne Firma, Kennungen in den Lauf-Daten, Listen, Starts, Testfälle)
+  // gehen auf die behaltene über; laufen danach zwei gleiche offen, endet der weniger fortgeschrittene mit Vermerk „zusammengeführt mit …“ — nie gelöscht.
+  // Rein in lib/prozesse/laeufe-zusammenfuehren.ts, je Bestand EINE Sperre über die Schreibstelle der Läufe; idempotent (im Schritt „crm“ — wie oben).
+  await teil('crm', async () => {
+    const namen = (await fs.readdir(datenOrdner()).catch(() => [] as string[])).map(d => /^prozess-laeufe--([a-z0-9][a-z0-9-]{0,39})\.json$/.exec(d)?.[1]).filter((x): x is string => !!x);
+    if (!namen.length) return;
+    const [{ laeufeAendern }, { laeufeZusammenfuehren }] = await Promise.all([import('@/lib/prozesse/lauf-server'), import('@/lib/prozesse/laeufe-zusammenfuehren')]);
+    const jetzt = new Date().toISOString();
+    for (const h of namen) {
+      const n = await laeufeAendern(d => { const r = laeufeZusammenfuehren(d, p, jetzt); return { datei: r.datei, r: r.umgebogen + r.beendet }; }, h);
+      zaehle(b, `prozess-laeufe--${h}`, n);
+    }
+  });
   await teil('ablage', async () => {
     for (const h of await ablageHaushalte()) {
       await updateJson<{ eintraege: DateiEintrag[] }>(ablageName(h), cur => {
