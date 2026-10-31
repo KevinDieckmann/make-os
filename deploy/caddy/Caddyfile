@@ -148,6 +148,14 @@ www.fokusinnovation.de {
 	redir https://fokusinnovation.de{uri} 301
 }
 fokusinnovation.de {
+	# Vorschau-Kennwort (Kevin 31.10.: „ein Kennwort, damit nicht alle direkt draufgucken können“): die GANZE Seite samt Check, Buchung,
+	# Newsletter und Unterlagen-Links fragt Benutzer „Besucher“ + Kennwort ab (HTTP Basic, nur über HTTPS). Hier steht nur der bcrypt-Hash
+	# (base64, wie `caddy hash-password` früher ausgab — liest Caddy alt und neu), nie das Kennwort. Ändern: neuen Hash erzeugen
+	# (`caddy hash-password` bzw. `htpasswd -nbBC 12 Besucher '<kennwort>'`, $2y$ → $2a$, base64) und hier ersetzen.
+	# Öffnen für alle: den Block `basic_auth` löschen. Weiterleitungen (redir) laufen vorher und brauchen kein Kennwort.
+	basic_auth bcrypt "Fokus Innovation" {
+		Besucher JDJhJDEyJC92TXljV0h2ckpBaGtrWFpDVnFDQWVxZVZpZ1JuQUFXQVYvLkxpc2lMYU9ZN1cyWGhEeXlX
+	}
 	encode zstd gzip
 	# Wie im App-Block: den internen Next-Kopf nie annehmen, Marke „kam über den Vorbau“ setzen (lib/zugang/intern.ts).
 	request_header -x-middleware-subrequest
@@ -194,9 +202,17 @@ fokusinnovation.de {
 		}
 	}
 	handle_errors {
-		root * /srv/fokusinnovation
-		import fokus_koepfe
-		rewrite * /404.html
-		file_server
+		# Ohne Kennwort (401): kurzer Text statt der 404-Seite — der Kopf WWW-Authenticate von basic_auth bleibt, der Browser fragt erneut.
+		@ohne_kennwort expression `{err.status_code} == 401`
+		handle @ohne_kennwort {
+			import fokus_koepfe
+			respond "Diese Seite ist noch nicht öffentlich. Bitte mit Benutzername und Kennwort anmelden." 401
+		}
+		handle {
+			root * /srv/fokusinnovation
+			import fokus_koepfe
+			rewrite * /404.html
+			file_server
+		}
 	}
 }
