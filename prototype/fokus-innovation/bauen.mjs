@@ -452,13 +452,6 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
 <dl class="daten">${M.saetze.map(([x, v]) => `<div><dt>${e(x)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl>
 <div class="muster-kurz"><div><span class="etikett">In einem Satz</span><p>${e(M.ein_satz)}</p></div><div><span class="etikett">In sieben Wörtern</span><p>${e(M.sieben_woerter)}</p></div><div><span class="etikett">Claim</span><p>${e(M.claim)}</p></div></div></figure></div></section>`;
   };
-  const wochenreportMuster = () => {
-    const R = F.wochenreport_muster;
-    return `<section class="abschnitt" aria-labelledby="bericht-titel"><div class="w">${abKopf({ marke: 'Muster', h2: R.titel, lead: R.hinweis, id: 'bericht-titel' })}
-<figure class="muster-blatt bericht erscheint"><figcaption><span class="etikett">Wochenreport · ${e(R.woche)}</span><span class="leise">Beispielwerte, kein Kunde</span></figcaption>
-<table class="bericht-tabelle"><thead><tr><th scope="col">Kennzahl</th><th scope="col">Ist</th><th scope="col">Ziel</th><th scope="col"><span class="sr">Stand</span></th></tr></thead><tbody>${R.zeilen.map(([n, ist, ziel]) => `<tr><th scope="row">${e(n)}</th><td>${e(ist)}</td><td>${e(ziel)}</td><td><span class="bericht-balken"><meter min="0" max="${Math.max(Number(ist), Number(ziel) * 1.25)}" low="${Number(ziel) * 0.8}" optimum="${Number(ziel) * 1.25}" value="${e(ist)}">${e(ist)} von ${e(ziel)}</meter><span class="ziel-marke" aria-hidden="true"></span></span></td></tr>`).join('')}</tbody></table>
-<p class="bericht-satz">${t(R.satz)}</p></figure></div></section>`;
-  };
   const risiko = (pkt = F.risiko.punkte) => `<section class="abschnitt eng" aria-labelledby="risiko-titel"><div class="w"><div class="risiko erscheint"><h2 class="gruppe-titel" id="risiko-titel">${e(F.risiko.titel)}</h2>${punkte(pkt)}</div></div></section>`;
   /** Absicherung für Einmalprodukte (Kevin 31.10.: Freigabe vor dem Bau + Ausstieg) — je Gruppe oder Angebot aus fokus.json. */
   const absicherungVon = (a) => F.absicherung?.[a.gruppe] ?? F.absicherung?.[a.id] ?? null;
@@ -790,7 +783,6 @@ ${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class
 ${blick([['Für wen', pb?.fuer ? null : a.fuer_wen], ['Ergebnis', ergebnisSatz], ['Umfang', F.umfang[a.id]], ...(istBald ? [['Start', 'in Kürze, Anfrage schon jetzt möglich']] : [])])}
 ${mandat ? risiko() : abs ? risiko(abs.punkte) : ''}
 ${blattHtml}
-${a.id === 'head-of-sales' ? wochenreportMuster() : ''}
 ${a.id === 'positionierung' ? musterPositionierung() : ''}
 ${a.gruppe === 'Homepage-Pakete' ? arbeitsprobe() : ''}
 ${zusatz.length ? `<section class="abschnitt" aria-labelledby="zusatz-titel"><div class="w">${abKopf({ marke: 'Zusatzoptionen', h2: 'Dazu buchbar', id: 'zusatz-titel' })}<dl class="daten erscheint">${zusatz.map((z) => `<div><dt>${e(z.name)}<span class="leise">${e(z.name === 'Express' && a.id !== 'homepage-landing' ? 'halbe Lieferzeit' : z.leistung)}</span></dt><dd>${e(zusatzPreis(z))}</dd></div>`).join('')}</dl></div></section>` : ''}
