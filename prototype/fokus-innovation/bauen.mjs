@@ -212,8 +212,11 @@ export function seitenBauen(q = quellen()) {
   const anbieter = seite.anbieter[seite.anbieter_aktiv];
   // Verkäufer und Rechnungssteller der Bausteine (Kevin 31.10.: „MAKE Innovation GmbH“) — Schlüssel in fokus.json bausteine.verkaeufer,
   // Daten aus seite.anbieter. Die App nennt beim Laden des Formulars die Firmierung der gewählten Gesellschaft (js/bestellung.js).
-  const verkaeufer = F.bausteine?.verkaeufer ? seite.anbieter[F.bausteine.verkaeufer] : null;
-  if (F.bausteine?.verkaeufer && !verkaeufer) throw new Error(`bausteine.verkaeufer „${F.bausteine.verkaeufer}“ fehlt in seite.anbieter`);
+  // Kevin 31.10.: Bestellen erst nach Eintragung der GmbH ins Handelsregister. Bis Anschrift, Vertretung und Register ohne Platzhalter
+  // dastehen, nennt die Seite keinen Verkäufer (die App bleibt bis dahin aus; ist sie an, setzt js/bestellung.js ihre Zeile ein).
+  const verkaeuferDaten = F.bausteine?.verkaeufer ? seite.anbieter[F.bausteine.verkaeufer] : null;
+  if (F.bausteine?.verkaeufer && !verkaeuferDaten) throw new Error(`bausteine.verkaeufer „${F.bausteine.verkaeufer}“ fehlt in seite.anbieter`);
+  const verkaeufer = verkaeuferDaten && ![verkaeuferDaten.name, ...verkaeuferDaten.adresse, verkaeuferDaten.vertreten, verkaeuferDaten.register].some(istPlatzhalter) ? verkaeuferDaten : null;
   const verkaeuferEigen = verkaeufer && F.bausteine.verkaeufer !== seite.anbieter_aktiv;
 
   /** Produktblatt eines Angebots: eigene Angaben über denen der Familie; null, wenn es keins gibt. */
@@ -1251,7 +1254,7 @@ ${!b.paket && b.inhalt?.length ? `<section class="abschnitt" aria-labelledby="in
 ${b.ergebnis?.length ? `<section class="abschnitt" aria-labelledby="ergebnis-titel"><div class="w">${abKopf({ marke: 'Ergebnis', h2: 'Was Sie danach haben.', id: 'ergebnis-titel' })}<ul class="punkte erscheint">${b.ergebnis.map((x) => `<li>${wort(x)}</li>`).join('')}</ul></div></section>` : ''}
 <section class="abschnitt" id="bestellen" aria-labelledby="bestellen-titel"><div class="w">${abKopf({ marke: 'Bestellen', h2: 'Auf Rechnung bestellen.', lead: 'Nur für Unternehmen. Rechnung und Download-Link schicken wir Ihnen per E-Mail.', id: 'bestellen-titel' })}
 <div class="anfordern bestellen erscheint">
-${verkaeufer ? `<p class="bestell-verkaeufer" data-verkaeufer>Vertragspartner und Rechnungssteller: ${wort(verkaeufer.name)}.${verkaeuferEigen ? ' <a class="unterstrichen" href="/impressum/#bausteine">Anschrift</a>' : ''}</p>` : ''}
+<p class="bestell-verkaeufer" data-verkaeufer${verkaeufer ? '' : ' hidden'}>${verkaeufer ? `Vertragspartner und Rechnungssteller: ${wort(verkaeufer.name)}.${verkaeuferEigen ? ' <a class="unterstrichen" href="/impressum/#bausteine">Anschrift</a>' : ''}` : ''}</p>
 <form class="anfordern-form bestell-form" data-baustein="${b.id}" novalidate hidden>
 <p class="anfordern-vorab">Nach kurzer Prüfung bekommen Sie Rechnung und Download-Link, meist am selben Werktag. Der Link gilt 30 Tage.</p>
 <div class="anfordern-felder bestell-felder">${feld('vorname', 'Vorname', 'text', true, 'given-name')}${feld('nachname', 'Nachname', 'text', true, 'family-name')}${feld('firma', 'Firma', 'text', true, 'organization', true)}${feld('email', 'E-Mail für Rechnung und Download', 'email', true, 'email', true)}${feld('strasse', 'Straße und Hausnummer', 'text', true, 'address-line1', true)}${feld('plz', 'PLZ', 'text', true, 'postal-code')}${feld('ort', 'Ort', 'text', true, 'address-level2')}${feld('land', 'Land', 'text', true, 'country-name')}${feld('ustid', 'USt-IdNr.', 'text', false)}${feld('telefon', 'Telefon', 'tel', false, 'tel')}</div>

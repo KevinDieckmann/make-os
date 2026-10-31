@@ -1355,7 +1355,7 @@
   },
   "bausteine": {
     "hinweis": "Kevin 31.10.: Bausteine als Einstieg, 49–590 € netto, auf Rechnung, Lieferung nach Freigabe in MAKE OS. Texte der Übersicht; Preise und Inhalte in inhalt/bausteine.json und inhalt/bausteine/<id>.meta.json.",
-    "verkaeufer_hinweis": "Verkäufer und Rechnungssteller der Bausteine (Kevin 31.10.: MAKE Innovation GmbH) = Schlüssel in makeinnovation/inhalt/seite.json › anbieter. Anschrift, Vertretung und Register stehen dort.",
+    "verkaeufer_hinweis": "Verkäufer und Rechnungssteller der Bausteine (Kevin 31.10.: MAKE Innovation GmbH, Bestellen erst nach Eintragung ins Handelsregister) = Schlüssel in makeinnovation/inhalt/seite.json › anbieter. Solange dort Platzhalter stehen, nennt die Seite keinen Verkäufer; nach der Eintragung Anschrift, Geschäftsführer und HRB dort eintragen.",
     "verkaeufer": "make",
     "lead": "Fertige Arbeitspakete aus unserer Arbeit: Anleitung Schritt für Schritt, ausgefülltes Beispiel und Bögen zum Ausfüllen. Sie setzen selbst um, in Ihrem Tempo. Für Unternehmen, auf Rechnung.",
     "ablauf": [

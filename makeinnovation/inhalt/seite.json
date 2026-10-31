@@ -15,7 +15,7 @@
   ]
  },
  "anbieter_aktiv": "kdv",
- "anbieter_hinweis": "Bis 08.11.2026 KD Ventures UG, ab 09.11.2026 MAKE Innovation GmbH: anbieter_aktiv auf \"make\" stellen und node makeinnovation/bauen.mjs ausführen.",
+ "anbieter_hinweis": "Bis 08.11.2026 KD Ventures UG, ab 09.11.2026 MAKE Innovation GmbH: anbieter_aktiv auf \"make\" stellen und node makeinnovation/bauen.mjs ausführen. Kevin 31.10.: Die GmbH ist noch nicht im Handelsregister eingetragen — umstellen erst nach der Eintragung, wenn Anschrift, Geschäftsführer und HRB unten ohne Platzhalter stehen (sonst stünden Platzhalter im Impressum).",
  "anbieter": {
   "kdv": {
    "name": "KD Ventures UG (haftungsbeschränkt)",
