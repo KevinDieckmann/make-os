@@ -64,6 +64,13 @@ export interface Fund {
   website?: string;
   email?: string;
   telefon?: string;
+  /** Inhaber/Betreiber aus einer veröffentlichten Anbieterkennzeichnung (Impressum, Lieferdienst-Impressum) — nie geraten (31.10.). */
+  inhaber?: string;
+  inhaberArt?: 'person' | 'firma';
+  /** Instagram-Profil des Betriebs (Handle ohne @) — Instagram-Nachrichten sind elektronische Post: Ampel rot, nur zum Ansehen. */
+  instagram?: string;
+  /** Woher jede Angabe stammt (Feld → http(s)-Adresse) — Art. 14 Abs. 2 lit. f (Quelle), höchstens 10. */
+  quellen?: Record<string, string>;
   bewertung?: FundBewertung;
   vorschau?: FundVorschau;
   entwurf?: FundEntwurf;

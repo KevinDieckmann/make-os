@@ -114,6 +114,19 @@ export async function fundVonHand(e: HandEingabe, person: string, wer: Wer): Pro
   return f;
 }
 
+/** Anreicherung aus der Datei säubern: Inhaber (≤ 120, ohne Ziffern/Klammern), Instagram-Handle, Quellen (nur http(s), ≤ 10). Rein. */
+export function anreicherungAus(x: Record<string, unknown>): Pick<Fund, 'inhaber' | 'inhaberArt' | 'instagram' | 'quellen'> {
+  const aus: Pick<Fund, 'inhaber' | 'inhaberArt' | 'instagram' | 'quellen'> = {};
+  const inh = typeof x.inhaber === 'string' ? x.inhaber.replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim() : '';
+  if (inh && inh.length <= 120 && !/[0-9(){}[\]@]/.test(inh)) { aus.inhaber = inh; aus.inhaberArt = x.inhaberArt === 'firma' ? 'firma' : x.inhaberArt === 'person' ? 'person' : /\b(GmbH|UG|AG|KG|OHG|GbR|e\.\s?V\.|mbH|Ltd|SE)\b/i.test(inh) ? 'firma' : 'person'; }
+  const ig = typeof x.instagram === 'string' ? x.instagram.trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/.*$/, '') : '';
+  if (/^[A-Za-z0-9_.]{2,30}$/.test(ig)) aus.instagram = ig;
+  const q = x.quellen && typeof x.quellen === 'object' ? x.quellen as Record<string, unknown> : {};
+  const quellen = Object.fromEntries(Object.entries(q).filter(([k, v]) => /^[a-z]{2,20}$/i.test(k) && typeof v === 'string' && /^https?:\/\/[^\s<>"]{4,300}$/.test(v)).slice(0, 10)) as Record<string, string>;
+  if (Object.keys(quellen).length) aus.quellen = quellen;
+  return aus;
+}
+
 /** Höchstens so viele Funde je Import-Datei — darüber 413 (nie kürzen). */
 export const IMPORT_MAX = 200;
 export const IMPORT_FORMAT = 'make-os-funde';
@@ -164,7 +177,9 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
     if (bestehendeFirma(crm.firmen, ein.name)) { weg('Firma steht schon in der Kartei'); continue; }
     if (ein.email && adressen.has(ein.email)) { weg('Adresse gehört schon einer Person der Kartei'); continue; }
     if (sperrTreffer(sperre, { firma: ein.name, ...(ein.email ? { email: ein.email } : {}) } as never)) { weg('Sperrliste'); continue; }
+    if (x.geschlossen === true) { weg('laut Recherche dauerhaft geschlossen'); continue; }
     const site = websiteNormal(ein.website);
+    const zusatz = anreicherungAus(x);
     const bewertung = bewertungAus(x.bewertung, am) ?? bewerten({ website: eigeneWebsite(site), signale: null, jahrHeute: Number(localDay().slice(0, 4)), gemessenAm: am });
     const t = (k: string, n: number) => (typeof x[k] === 'string' && (x[k] as string).trim() ? (x[k] as string).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n) : undefined);
     const f: Fund = {
@@ -172,7 +187,7 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
       ...(t('kategorie', 60) ? { kategorie: t('kategorie', 60) } : {}), ...(t('gebiet', 80) ? { gebiet: t('gebiet', 80) } : {}), ...(t('oeffnungszeiten', 200) ? { oeffnungszeiten: t('oeffnungszeiten', 200) } : {}),
       ...(ein.strasse || ein.plz || ein.ort ? { adresse: { ...(ein.strasse ? { strasse: ein.strasse } : {}), ...(ein.plz ? { plz: ein.plz } : {}), ...(ein.ort ? { ort: ein.ort } : {}) } } : {}),
       ...(site ? { website: site } : {}), ...(ein.email ? { email: ein.email } : {}), ...(ein.telefon ? { telefon: ein.telefon } : {}),
-      bewertung, status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
+      ...zusatz, bewertung, status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
     };
     f.vorschau = vorschauRegelwerk(f);
     f.entwurf = entwurfBauen(f, ctx);

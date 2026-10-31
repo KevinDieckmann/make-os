@@ -318,3 +318,13 @@ Datei: `~/Desktop/Homepage-Funde Berlin 2026-10-31.json` (Instanz-Daten — nie 
 Bot-Sperre (401/403/429) ist KEIN Mangel (vorher fälschlich „nicht erreichbar“); eigener Satz für tote Domain und kaputtes Zertifikat; NAT64-Adressen
 (DNS64-Netze) nach eingebetteter IPv4 geprüft; Unterseiten fremder Häuser (Hotel, Museum) sind kein Fund; Persona-Filter „nur Restaurants & Cafés“ und
 „nur mit Mail-Adresse“ in den Einstellungen; Import einer Funde-Datei (nur Inhaber, ≤ 200).
+
+**Anreicherung (31.10. abends, Kevin: „alle Informationen, sonst keine Akquise“):** je Betrieb nur selbst veröffentlichte bzw. gesetzlich
+veröffentlichte Angaben — OSM-Tags, Startseite/Impressum, Websuche (Lieferdienst-Impressum, Handelsregister), jeweils mit Quelle am Fund.
+Ergebnis: 48 Funde (2 raus: einer dauerhaft geschlossen, einer hat doch eine erreichbare Website) · Mail 48 · Telefon 39 · Adresse 46 · Website 24 ·
+**Inhaber/Betreiber 11** (davon 6 aus OSM „operator“ — Gemeinschaftswissen, deshalb ohne Namens-Anrede in der Mail) · **Instagram 7**.
+**Befund:** Bei genau dieser Persona (keine bzw. tote Website) fehlt meist das Impressum — Inhaber stehen dann nirgends öffentlich und maschinenlesbar.
+Lieferdienst-Impressen (Lieferando, Wolt) laden nur per JavaScript. Der Inhaber kommt deshalb im Anruf/Besuch („Wer ist der Inhaber?“) — der Anruf-
+Leitfaden fragt danach. Instagram-Nachrichten sind elektronische Post (Ampel rot) — das Profil dient nur zur Vorbereitung.
+Software: `Fund.inhaber`/`inhaberArt`/`instagram`/`quellen` (Import, Ansicht, Übernahme → Name des Kontakts bzw. Notiz „Instagram: @…“, Mail mit
+Namens-Anrede nur bei Inhaber aus einer Anbieterkennzeichnung), „geschlossen“ wird beim Import übersprungen.

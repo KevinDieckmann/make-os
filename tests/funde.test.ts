@@ -260,7 +260,9 @@ describe('Abendlauf, Freigabe, Versand', () => {
   it('Import einer Recherche-Datei: nur Inhaber, Doppelte und Kartei-Firmen übersprungen, über 200 → 413, alles wartet im Stapel', async () => {
     await einrichten();
     const datei = { format: 'make-os-funde', funde: [
-      { osmId: 'n77', name: 'Bistro Datei', branche: 'gastro', adresse: { strasse: 'Dateiweg', hausnummer: '2', plz: '10999', ort: 'Berlin' }, email: `kontakt@bistro.${D}`, gebiet: 'Mitte', bewertung: { punkte: 90, website: true, erreichbar: false, gruende: ['Die Adresse der Website führt ins Leere — die Domain gibt es nicht (mehr).'] } },
+      { osmId: 'n77', name: 'Bistro Datei', branche: 'gastro', adresse: { strasse: 'Dateiweg', hausnummer: '2', plz: '10999', ort: 'Berlin' }, email: `kontakt@bistro.${D}`, gebiet: 'Mitte', bewertung: { punkte: 90, website: true, erreichbar: false, gruende: ['Die Adresse der Website führt ins Leere — die Domain gibt es nicht (mehr).'] },
+        inhaber: 'Erika Beispiel', inhaberArt: 'person', instagram: '@bistro.datei', quellen: { inhaber: `https://bistro.${D}/impressum`, kaputt: 'javascript:alert(1)' } },
+      { osmId: 'n80', name: 'Geschlossen Datei', branche: 'gastro', geschlossen: true },
       { osmId: 'n78', name: 'Laden Mit Seite', branche: 'gastro' },
       { osmId: 'n79', name: 'Bistro Datei', branche: 'gastro' },
       { name: '', branche: 'gastro' },
@@ -269,11 +271,21 @@ describe('Abendlauf, Freigabe, Versand', () => {
     const r = await POST(funde, '/api/crm/funde', { aktion: 'import', datei });
     expect(r.status, r.text).toBe(200);
     expect(r.d.neu).toBe(1);
-    expect(r.d.uebersprungen.map((u: { grund: string }) => u.grund).sort()).toEqual(['Firma steht schon in der Kartei', 'Name des Betriebs fehlt.', 'schon als Fund bekannt']);
+    expect(r.d.uebersprungen.map((u: { grund: string }) => u.grund).sort()).toEqual(['Firma steht schon in der Kartei', 'Name des Betriebs fehlt.', 'laut Recherche dauerhaft geschlossen', 'schon als Fund bekannt']);
     expect(await offeneFundVorschlaege()).toHaveLength(1);
     const f = (await (await import('@/lib/funde/speicher')).ladeFunde()).funde[0];
     expect(f).toMatchObject({ quelle: 'osm', osmId: 'n77', status: 'vorbereitet', bewertung: { punkte: 90 } });
     expect(f.entwurf?.text).toMatch(/Domain/);
+    expect(f).toMatchObject({ inhaber: 'Erika Beispiel', inhaberArt: 'person', instagram: 'bistro.datei', quellen: { inhaber: `https://bistro.${D}/impressum` } });
+    expect(f.quellen).not.toHaveProperty('kaputt');
+    expect(f.entwurf?.text).toMatch(/^Guten Tag Erika Beispiel,/);
+    expect(f.entwurf?.anruf).toMatch(/Instagram @bistro\.datei/);
+    // Übernahme: Inhaber wird der Name des Kontakts, Instagram + Quellen stehen in der Notiz.
+    const v = (await offeneFundVorschlaege())[0];
+    expect((await POST(stapel, '/api/zoe/stapel', { id: v.id, entscheidung: 'freigeben' })).status).toBe(200);
+    const kk = (await db.loadJson<{ kontakte: { vorname: string; nachname: string; notiz?: string; firma?: string }[] }>('kontakte'))!.kontakte;
+    expect(kk[0]).toMatchObject({ vorname: 'Erika', nachname: 'Beispiel', firma: 'Bistro Datei' });
+    expect(kk[0].notiz).toMatch(/Instagram: @bistro\.datei/);
     expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei: { format: 'make-os-funde', funde: Array.from({ length: 201 }, (_, i) => ({ name: `X${i}`, branche: 'gastro' })) } })).status).toBe(413);
     expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei: { funde: [] } })).status).toBe(400);
   });

@@ -12,6 +12,7 @@ import { datum } from '../daten';
 
 interface Fund {
   id: string; name: string; branche: string; kategorie?: string; quelle: 'osm' | 'hand'; gebiet?: string; website?: string; email?: string; telefon?: string;
+  inhaber?: string; inhaberArt?: 'person' | 'firma'; instagram?: string; quellen?: Record<string, string>;
   adresse?: { strasse?: string; hausnummer?: string; plz?: string; ort?: string };
   bewertung?: { punkte: number; gruende: string[] }; entwurf?: { betreff: string; text: string; anruf: string };
   status: 'neu' | 'vorbereitet' | 'uebernommen' | 'gesendet' | 'verworfen' | 'gesperrt'; grund?: string; angelegt: string;
@@ -195,6 +196,15 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                 {offen === f.id && (
                   <div style={{ padding: '8px 4px 16px', display: 'grid', gap: 10 }}>
                     {f.bewertung && <ul style={{ margin: 0, paddingLeft: 18, fontSize: TYP.bedien, color: C.inkDim }}>{f.bewertung.gruende.map(g => <li key={g}>{g}</li>)}</ul>}
+                    <div style={{ display: 'grid', gap: 2, fontSize: TYP.bedien, color: C.ink }}>
+                      {f.inhaber && <div>{f.inhaberArt === 'firma' ? 'Betreiber' : 'Inhaber'}: {f.inhaber}</div>}
+                      {[f.adresse?.strasse && [f.adresse.strasse, f.adresse.hausnummer].filter(Boolean).join(' '), [f.adresse?.plz, f.adresse?.ort].filter(Boolean).join(' ')].filter(Boolean).length > 0 && <div>{[[f.adresse?.strasse, f.adresse?.hausnummer].filter(Boolean).join(' '), [f.adresse?.plz, f.adresse?.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div>}
+                      {f.email && <div>Mail: {f.email}</div>}
+                      {f.telefon && <div>Telefon: {f.telefon}</div>}
+                      {f.website && <div>Website: {f.website}</div>}
+                      {f.instagram && <div>Instagram: <Knopf leise href={`https://www.instagram.com/${encodeURIComponent(f.instagram)}/`}>{`@${f.instagram}`}</Knopf></div>}
+                      {f.quellen && <div style={{ color: C.inkLeise }}>Quellen: {Object.keys(f.quellen).join(', ')}</div>}
+                    </div>
                     {f.grund && <Hinweis art="info" titel="Grund">{f.grund}</Hinweis>}
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <Knopf leise onClick={() => { window.open(`/api/crm/funde/vorschau?id=${encodeURIComponent(f.id)}`, '_blank', 'noopener'); }}>Vorschau ansehen</Knopf>

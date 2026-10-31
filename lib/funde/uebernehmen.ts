@@ -69,7 +69,10 @@ export async function fundUebernehmen(fundId: string, person: string, o: { sitzu
   const kontaktId = f.kontaktId as string;
   const { personAnlegen } = await import('@/lib/crm/person-anlegen-server');
   const branche = FUND_BRANCHEN.find(x => x.id === f!.branche)?.name;
+  // Inhaber als Person (aus dem Impressum) → Name des Kontakts; ohne Person bleibt der Kontakt der Betrieb (Anzeige = Firmenname).
+  const teile = f.inhaber && f.inhaberArt === 'person' ? f.inhaber.split(' ') : [];
   const r = await personAnlegen({
+    ...(teile.length >= 2 ? { vorname: teile.slice(0, -1).join(' '), nachname: teile[teile.length - 1] } : teile.length === 1 ? { nachname: teile[0] } : {}),
     firma: f.name, ...(f.email ? { email: f.email } : {}), ...(f.telefon ? { telefon: f.telefon } : {}), ...(f.website ? { webseite: f.website } : {}),
     herkunft: 'recherche', anlass: 'Homepage-Fund übernommen (Kampagne)', quelleText: f.quelle === 'osm' ? 'Recherche (OpenStreetMap)' : 'Recherche (von Hand)',
     firmaZusatz: { ...(branche ? { branche } : {}), ...(f.adresse?.ort ? { stadt: f.adresse.ort } : {}) },
@@ -82,10 +85,12 @@ export async function fundUebernehmen(fundId: string, person: string, o: { sitzu
     return { ok: false, status: r.status === 500 ? 409 : r.status as 400 | 403 | 404 | 409 | 413, fehler: r.fehler };
   }
   const firmaId = r.firmaId ?? (await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).find(k => k.id === kontaktId)?.firmaId;
-  // Label fürs Segment (nur einmal).
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const l = cur ?? { kontakte: [] };
-    return { ...l, kontakte: l.kontakte.map(k => (k.id === kontaktId && !(k.labels ?? []).includes(SEGMENT_LABEL) ? { ...k, labels: [...(k.labels ?? []), SEGMENT_LABEL] } : k)) };
+    // Label fürs Segment + Instagram/Betreiber/Quellen als Notiz (nur, wenn die Notiz noch leer ist — nie überschreiben).
+    const notiz = [f!.instagram ? `Instagram: @${f!.instagram}` : '', f!.inhaber && f!.inhaberArt === 'firma' ? `Betreiber laut Impressum: ${f!.inhaber}` : '',
+      f!.quellen ? `Quellen: ${Object.entries(f!.quellen).map(([k, v]) => `${k} ${v}`).join(' · ')}` : ''].filter(Boolean).join('\n').slice(0, 1500);
+    return { ...l, kontakte: l.kontakte.map(k => (k.id === kontaktId ? { ...k, ...(!(k.labels ?? []).includes(SEGMENT_LABEL) ? { labels: [...(k.labels ?? []), SEGMENT_LABEL] } : {}), ...(notiz && !k.notiz ? { notiz } : {}) } : k)) };
   }, wer);
   // Kampagne + Lead der Firma (Status „neu“ → „kontaktiert“ erst nach der Mail).
   await aendereCrm(c => ({

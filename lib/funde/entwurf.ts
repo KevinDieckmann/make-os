@@ -43,11 +43,13 @@ function anlass(f: Pick<Fund, 'bewertung'>): string {
 }
 
 /** Die Mail (Betreff + Text) und der Anruf-Leitfaden. Ohne Link/Abmeldelink stehen Platzhalter — die Freigabe setzt sie ein. */
-export function entwurfBauen(f: Pick<Fund, 'name' | 'bewertung' | 'adresse' | 'quelle'>, k: EntwurfKontext): FundEntwurf {
+export function entwurfBauen(f: Pick<Fund, 'name' | 'bewertung' | 'adresse' | 'quelle'> & Partial<Pick<Fund, 'inhaber' | 'inhaberArt' | 'quellen'>>, k: EntwurfKontext): FundEntwurf {
   const link = k.link ?? LINK_PLATZHALTER;
   const ab = k.abmelden ?? ABMELDE_PLATZHALTER;
   const angebot = k.angebot ? `\n\nUnser Angebot: ${k.angebot.name}${k.angebot.preis ? ` — ${k.angebot.preis}` : ''}. Sie sagen, was rein soll, wir kümmern uns um den Rest.` : '';
-  const quelle = f.quelle === 'osm' ? 'aus OpenStreetMap (öffentlich zugängliches Verzeichnis)' : 'aus öffentlich zugänglichen Angaben zu Ihrem Betrieb';
+  const quelle = f.quelle === 'osm'
+    ? `aus OpenStreetMap (öffentlich zugängliches Verzeichnis)${f.quellen && Object.keys(f.quellen).length ? ' und weiteren öffentlich zugänglichen Angaben zu Ihrem Betrieb (z. B. Impressum)' : ''}`
+    : 'aus öffentlich zugänglichen Angaben zu Ihrem Betrieb';
   const ds = [
     '—',
     `Datenschutz: Verantwortlich ist ${k.datenschutz.verantwortlich || k.absender}. Ihre geschäftliche Adresse haben wir ${quelle}. Wir nutzen sie, um Ihnen diesen Entwurf anzubieten (Art. 6 Abs. 1 lit. f DSGVO). Speicherdauer und Ihre Rechte (Auskunft, Löschung, Widerspruch): ${k.datenschutz.seite || k.datenschutz.mail}.`,
@@ -55,7 +57,8 @@ export function entwurfBauen(f: Pick<Fund, 'name' | 'bewertung' | 'adresse' | 'q
     `Fragen an ${k.datenschutz.mail}${k.datenschutz.seite ? ` · ${k.datenschutz.seite}` : ''}`,
   ].join('\n');
   const text = [
-    'Guten Tag,',
+    // Mit Namen nur, wenn der Inhaber aus einer Anbieterkennzeichnung stammt — ein OSM-„operator“ ist Gemeinschaftswissen und kann veraltet sein.
+    f.inhaber && f.inhaberArt === 'person' && !(f.quellen?.inhaber ?? '').includes('openstreetmap.org') ? `Guten Tag ${f.inhaber},` : 'Guten Tag,',
     '',
     `${anlass(f)} Deshalb habe ich einen kleinen Entwurf gebaut, wie eine neue Seite für ${f.name} aussehen könnte:`,
     link,
@@ -71,10 +74,12 @@ export function entwurfBauen(f: Pick<Fund, 'name' | 'bewertung' | 'adresse' | 'q
   return { betreff: `Ein Entwurf für die Website von ${f.name}`.slice(0, 140), text, anruf: anrufLeitfaden(f), ki: false };
 }
 
-export function anrufLeitfaden(f: Pick<Fund, 'name' | 'bewertung' | 'adresse'>): string {
+export function anrufLeitfaden(f: Pick<Fund, 'name' | 'bewertung' | 'adresse'> & Partial<Pick<Fund, 'inhaber' | 'instagram'>>): string {
   const adr = adresseZeile(f.adresse);
   return [
     `Anruf bei ${f.name}${adr ? ` (${adr})` : ''} — nur, wenn keine Antwort und keine Abmeldung kam.`,
+    ...(f.inhaber ? [`Inhaber/Betreiber laut Impressum: ${f.inhaber} — nach ihm/ihr fragen.`] : []),
+    ...(f.instagram ? [`Vorher ansehen: Instagram @${f.instagram} (Stil, Fotos, aktuelle Themen).`] : []),
     '1. Kurz vorstellen, Bezug auf die Mail mit dem Website-Entwurf.',
     '2. Fragen: „Haben Sie sich den Entwurf ansehen können?“',
     '3. Bei Interesse: Termin für 15 Minuten oder Angebot schicken (über die Markttraktion).',
