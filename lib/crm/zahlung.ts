@@ -77,12 +77,15 @@ export function zahlungSaeubern(v: unknown): Zahlungsdaten | undefined {
   const s = o.sepa && typeof o.sepa === 'object' ? o.sepa as Record<string, unknown> : {};
   const sepa = { ...(txt(s.mandatsreferenz, 35) ? { mandatsreferenz: txt(s.mandatsreferenz, 35) } : {}), ...(tag(s.datum) ? { datum: tag(s.datum) } : {}) };
   const ust = txt(o.ustId, 20)?.replace(/\s+/g, '').toUpperCase();
+  const leitweg = txt(o.leitwegId, 46)?.replace(/\s+/g, '').toUpperCase();
   const d: Zahlungsdaten = {
     ...(weg ? { weg } : {}),
     ...(Number.isFinite(ziel) && ziel >= 0 && String(o.zielTage ?? '') !== '' ? { zielTage: Math.min(ZIEL_MAX_TAGE, Math.round(ziel)) } : {}),
     ...(Object.keys(empfaenger).length ? { empfaenger } : {}),
     ...(ust && /^[A-Z]{2}[A-Z0-9+*.]{2,13}$/.test(ust) ? { ustId: ust } : {}),
     ...(txt(o.referenz, 80) ? { referenz: txt(o.referenz, 80) } : {}),
+    // Leitweg-ID (31.10., XRechnung an Behörden): ohne Leerzeichen, Großbuchstaben, Ziffern und Bindestriche — sonst nicht übernommen.
+    ...(leitweg && /^[0-9A-Z][0-9A-Z-]{1,44}[0-9A-Z]$/.test(leitweg) ? { leitwegId: leitweg } : {}),
     ...(iban ? { iban } : {}),
     ...(weg === 'sepa' && Object.keys(sepa).length ? { sepa } : {}),
     ...(link(o.link) ? { link: link(o.link) } : {}),

@@ -2954,6 +2954,21 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   entschiedene Vorschläge, Autonomie), Ziel gewinnt beim Zusammenführen, Sicherung der bisherigen Datei, dieselbe Krypto wie der Umzug (`textOeffnen` exportiert).
   Nie Bestände, die Business und Privat mischen (`agents-config`, `agenten-skills--*`, `agenten-einstellung--*`), nie Gesundheit/Finanzen/Konten/Verläufe.
 
+## E-Rechnung (31.10., Branch `paket-erechnung`, nur lokal; Kevin: „E-Rechnung — heute fertig“)
+- **Ausgang:** `lib/finanzen/erechnung/cii.ts` `ciiXml(…, 'en16931' | 'xrechnung')` = EINE Stelle für die CII-XML (EN 16931/„COMFORT“) aus DENSELBEN Daten wie das PDF
+  (Summen über `rechnungSummen`, Kategorien S · AE (§ 13b, VATEX-EU-AE) · E (steuerfrei, § 19), Storno = 381 mit positiven Beträgen + BT-25/26, Anrechnung = negative Menge,
+  Rabatt = Positionsabschlag). Beim Stellen/Storno legt `eRechnungEinbetten` (lib/finanzen/rechnung/server.ts) sie über `belegPdf(…, { vorSpeichern })` als `factur-x.xml`
+  (AF /Alternative, XMP mit fx-Schema) in die PDF — Hash/Festschreibung über die neue PDF; Kennzeichen `Rechnung.eRechnung: 'zugferd'` (nur Server). Altrechnungen bleiben unverändert.
+  **Keine PDF/A-3-Behauptung** (Standardschriften nicht eingebettet, kein OutputIntent — bräuchte @pdf-lib/fontkit + ICC). `Gesellschaft.eRechnungAus` (Vorgabe an) = nur die PDF.
+- **Pflicht:** `pflichtFehlt` kennt Ländercodes (`landCode`, lib/finanzen/erechnung/land.ts) und Reverse Charge ohne Absender-USt-IdNr.; dazu Sicherheitsnetz `en16931Luecken`
+  (lib/finanzen/erechnung/pruefen.ts) vor dem Festschreiben (nur Stellen; ein Storno geht immer, notfalls ohne XML). Neue Pflichtangaben dort — nie eine zweite Prüfung bauen.
+- **XRechnung:** `GET /api/rechnung?xrechnung=<id>` (`rechnungXRechnung`): aus der eingebetteten XML (Profil + Leitweg umgeschrieben), sonst aus dem Datensatz nur bei unverändertem
+  Absender; Pflichtfelder `xrechnungLuecken` → 409 mit Liste. Leitweg-ID: `RechnungEmpfaenger.leitwegId` (Entwurf) bzw. `Zahlungsdaten.leitwegId` der Kundenfirma.
+- **Eingang:** `/api/beleg` liest ZUGFeRD-PDF (`eingebetteteXml`, zlib mit Größengrenze) und reine XML (CII/UBL) OHNE Modell (`eRechnungLesen` → `belegAusERechnung`, Richtung über die
+  eigenen Gesellschaften). Fremde XML NUR über den sicheren Leser `lib/finanzen/erechnung/xml.ts` (keine DTD/Entitäten, 2 MB, Tiefe 64, linear) — nie einen anderen Parser.
+- Kein offizieller Validator offline: einmal mit KoSIT-Validator (XRechnung) bzw. Mustang/FNFE-Validator (ZUGFeRD) prüfen lassen. Hinweis, keine Steuerberatung.
+  Tests `tests/erechnung.test.ts`, `tests/erechnung-route.test.ts`.
+
 ## Head of IT (HOI)
 - Der HOI ist kein KI-Agent, sondern ein Lagebild aus Zahlen: `lib/hoi/lage.ts` (rein: Befunde + Ampeln), `lib/hoi/innen.ts` (einsammeln), `lib/hoi/rechnen.ts` (Zähler), Seite `/os/hoi`, Routen `/api/hoi/{lage,aussen,csp}`.
 - Drei Quellen: innen (App), Host (`deploy/lage-sammeln.sh` → `<daten>/system/lage.json`, Klartext, nur Zähler), außen (`.github/workflows/hoi-aussenblick.yml`).

@@ -24,7 +24,7 @@ import {
 import { rechnungDokument, bankZeile } from '@/lib/finanzen/rechnung/dokument';
 import { Blatt } from '../crm/angebot/Blatt';
 import { Karte, Knopf, Chip, Hinweis, Pillen, Segmente, Feldzeile, Ueberschrift, Schalter, feld, useRueckfrage } from '../ui';
-import { katalogLaden, neueAnfrage, pdfLaden, rechnungPost, type RechnungDaten, type RechnungMitFassung, type AbsenderAnzeige, type RechnungKatalog } from './daten';
+import { katalogLaden, neueAnfrage, pdfLaden, xrechnungLaden, rechnungPost, type RechnungDaten, type RechnungMitFassung, type AbsenderAnzeige, type RechnungKatalog } from './daten';
 import { angebotPositionenAusProdukt } from '@/lib/crm/produkt-karte';
 import { Wahl } from '../crm/Wahl';
 import { WEG } from '@/lib/wege';
@@ -279,6 +279,8 @@ function Entwurf({ start, daten, onZu }: { start: RechnungMitFassung; daten: Rec
             <Feldzeile label="USt-IdNr. des Kunden"><input value={form.empfaenger.ustId ?? ''} onChange={e => empf({ ustId: e.target.value })} style={feld} /></Feldzeile>
             <Feldzeile label="Ihre Referenz / Bestellnummer"><input value={form.empfaenger.referenz ?? ''} onChange={e => empf({ referenz: e.target.value })} style={feld} /></Feldzeile>
             <Feldzeile label="E-Mail für den Versand"><input value={form.empfaenger.email ?? ''} type="email" onChange={e => empf({ email: e.target.value })} style={feld} /></Feldzeile>
+            {/* E-Rechnung (31.10.): Leitweg-ID nur für Behörden-Kunden (XRechnung, BT-10) — sonst leer lassen. */}
+            <Feldzeile label="Leitweg-ID (nur Behörden)"><input value={form.empfaenger.leitwegId ?? ''} placeholder="z. B. 991-12345-67" onChange={e => empf({ leitwegId: e.target.value })} style={feld} /></Feldzeile>
           </div>
           {anFirma?.stand === 'gespeichert' && <div style={{ ...klein, marginTop: 8 }}>Anschrift an der Firma gespeichert — die nächste Rechnung ist damit vorbelegt.</div>}
           {anFirma?.stand === 'abweichend' && (
@@ -484,10 +486,13 @@ function RechnungAnsicht({ r, daten, onZu, onOeffnen }: { r: RechnungMitFassung;
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <Chip farbe={r.status === 'bezahlt' ? LEUCHT.gut : r.status === 'storniert' ? C.inkLeise : LEUCHT.achtung}>{r.art === 'storno' ? 'Stornorechnung' : r.status}</Chip>
         {r.pdfDateiId && <Chip farbe={C.inkDim}>PDF · Prüfsumme gespeichert</Chip>}
+        {r.eRechnung === 'zugferd' && <Chip farbe={C.inkDim}>E-Rechnung · ZUGFeRD (EN 16931)</Chip>}
         {stufe > 0 && <Chip farbe={LEUCHT.achtung}>{mahnLabel(stufe as 1 | 2 | 3)} am {r.mahnungen?.find(m => m.stufe === stufe)?.am}</Chip>}
         {(r.versendet ?? []).slice(-1).map(v => <Chip key={v.am} farbe={LEUCHT.gut}>versendet {tagVon(v.am).split('-').reverse().join('.')} über {v.ueber}</Chip>)}
         <span style={{ flex: 1 }} />
         {r.pdfDateiId && <Knopf leise onClick={() => pdfLaden(r.id)}>PDF herunterladen</Knopf>}
+        {/* E-Rechnung (31.10.): XRechnung für Behörden-Kunden — fehlen Pflichtangaben, sagt die Meldung welche. */}
+        {r.pdfDateiId && r.nummer && <Knopf leise onClick={async () => { const f = await xrechnungLaden(r.id); if (f) setMeldung(f); }}>Als XRechnung (XML)</Knopf>}
         {/* 25.10.: „Über <Postfach> senden (mit PDF)“ — neue Mail in der Inbox mit dem PDF als Anhang, gesendet nur per Klick; ohne Postfach `mailto`. Auch Storno. */}
         {r.pdfDateiId && (r.art === 'storno' || (r.status === 'gestellt' && zugeordnet)) && (
           <BelegSendenKnopf an={r.empfaenger?.email} betreff={mail.betreff} text={mail.text} pdf={{ id: r.pdfDateiId, name: `${r.art === 'storno' ? 'Stornorechnung' : 'Rechnung'} ${r.nummer ?? r.id}.pdf` }} beleg={{ art: 'rechnung', id: r.id }} mailto={mailtoLink(r.empfaenger?.email, mail.betreff, mail.text)} />

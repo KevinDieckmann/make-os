@@ -56,7 +56,7 @@ export function umbrechen(text: string, font: PDFFont, groesse: number, breite: 
 }
 
 /** Das PDF eines Angebots (seit 08.10. auch einer Rechnung, `d.art`). `erstellt` fest übergeben — gleiche Eingabe, gleiche Bytes (Prüfsumme). */
-export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | null; erstellt: Date; autor?: string }): Promise<Uint8Array> {
+export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | null; erstellt: Date; autor?: string; /** E-Rechnung (31.10.): vor dem Speichern z. B. die ZUGFeRD-XML einbetten (lib/finanzen/erechnung/pdf.ts) — ohne: bit-gleich wie bisher. */ vorSpeichern?: (doc: PDFDocument) => Promise<void> | void }): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const art = d.art ?? 'Angebot';
   doc.setTitle(`${art} ${d.nummer} – ${d.titel}`);
@@ -210,6 +210,7 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
     text(`Seite ${i + 1} von ${n}`, A4[0] - RAND, RAND - 14, 7, { farbe: LEISE, rechts: true });
     text(`${art} ${d.nummer}`, RAND, RAND - 14, 7, { farbe: LEISE });
   });
+  await opt.vorSpeichern?.(doc);
   return doc.save({ useObjectStreams: false });
 }
 

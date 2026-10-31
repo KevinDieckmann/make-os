@@ -14,7 +14,7 @@ import { datumDe } from '@/lib/finanzen/haushalt/monat';
 import { Knopf, Hinweis } from '../ui';
 import { anhangLink, senden } from './daten';
 
-interface Gelesen { partner?: string; datum?: string; betragBrutto?: number; betragNetto?: number; ustSatz?: number; kategorie?: string; zweck?: string; faellig?: string; rechnungsnummer?: string; richtung?: string; waehrung?: string }
+interface Gelesen { partner?: string; datum?: string; betragBrutto?: number; betragNetto?: number; ustSatz?: number; kategorie?: string; zweck?: string; faellig?: string; rechnungsnummer?: string; richtung?: string; waehrung?: string; quelle?: string; format?: string; unsicher?: string[] }
 
 const neueId = () => `anf-${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`;
 
@@ -27,7 +27,7 @@ export function BelegAusMail({ quelle, bereich, vorschlag, onZu, meldung }: {
   const [anfrageId] = useState(neueId);
   const firma = bereich && istGesellschaft(bereich) ? bereich : null;
 
-  if (!vorschlag) return <Hinweis art="info" aktion={<Knopf leise onClick={onZu}>Schließen</Knopf>}>In diesem Gespräch gibt es keinen lesbaren Beleg (PDF oder Foto).</Hinweis>;
+  if (!vorschlag) return <Hinweis art="info" aktion={<Knopf leise onClick={onZu}>Schließen</Knopf>}>In diesem Gespräch gibt es keinen lesbaren Beleg (PDF, Foto oder E-Rechnung).</Hinweis>;
   if (!firma) return <Hinweis art="info" aktion={<Knopf leise onClick={onZu}>Schließen</Knopf>}>{bereich === 'privat' ? 'Private Belege bitte unter Finanzen › Privat erfassen — hier landen nur Belege einer Gesellschaft.' : 'Dieses Postfach gehört zu keiner Gesellschaft mit Finanzplan — den Beleg bitte direkt unter Zahlen erfassen.'}</Hinweis>;
 
   const lesen = async () => {
@@ -38,7 +38,8 @@ export function BelegAusMail({ quelle, bereich, vorschlag, onZu, meldung }: {
       const b = new Uint8Array(await r.arrayBuffer());
       let bin = '';
       for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000));
-      const typ = /pdf/i.test(vorschlag.typ) || /\.pdf$/i.test(vorschlag.name) ? 'application/pdf' : vorschlag.typ;
+      // E-Rechnung (31.10.): XML-Anhänge (XRechnung/CII/UBL) liest /api/beleg ohne Modell direkt aus der Datei.
+      const typ = /pdf/i.test(vorschlag.typ) || /\.pdf$/i.test(vorschlag.name) ? 'application/pdf' : /xml/i.test(vorschlag.typ) || /\.xml$/i.test(vorschlag.name) ? 'application/xml' : vorschlag.typ;
       const x = await senden<{ beleg?: Gelesen; error?: string }>('/api/beleg', { datei: btoa(bin), medientyp: typ, name: vorschlag.name });
       if (x.d.ok && x.d.beleg) setBeleg(x.d.beleg); else setFehler(String(x.d.error ?? x.d.fehler ?? (x.status === 403 ? 'Für Belege fehlt der Finanz-Zugang.' : 'Der Beleg ließ sich nicht lesen.')));
     } catch (e) { setFehler(e instanceof Error ? e.message : 'Der Beleg ließ sich nicht lesen.'); }
@@ -70,6 +71,9 @@ export function BelegAusMail({ quelle, bereich, vorschlag, onZu, meldung }: {
             <span style={{ color: C.inkLeise }}>Betrag</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{zahl(beleg.betragBrutto)}</span>
             <span style={{ color: C.inkLeise }}>Datum</span><span>{beleg.datum ? datumDe(beleg.datum) : '—'}</span>
             {beleg.rechnungsnummer && <><span style={{ color: C.inkLeise }}>Nummer</span><span>{beleg.rechnungsnummer}</span></>}
+            {/* E-Rechnung (31.10.): aus der Datei gelesen, nicht aus Texterkennung. */}
+            {beleg.quelle === 'e-rechnung' && <><span style={{ color: C.inkLeise }}>Gelesen aus</span><span>{beleg.format ?? 'E-Rechnung'}</span></>}
+            {!!beleg.unsicher?.length && <><span style={{ color: C.inkLeise }}>Bitte prüfen</span><span>{beleg.unsicher.join(' · ')}</span></>}
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Knopf onClick={() => uebernehmen(beleg.richtung === 'ausgang' ? 'rechnung' : 'buchung')} aus={!!laeuft}>{beleg.richtung === 'ausgang' ? 'Als Rechnung übernehmen' : 'Als Buchung übernehmen'}</Knopf>

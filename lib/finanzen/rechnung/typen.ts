@@ -7,8 +7,7 @@
 // Hier stehen nur die NEUEN, durchweg optionalen Felder (Kompatibilitätsmodus: der alte Online-Stand kennt sie nicht und
 // verliert beim nächsten Speichern nur sie — Rückweg in UPDATES.md). Beträge der Positionen in CENT.
 //
-// E-Rechnung (XRechnung/ZUGFeRD, EN 16931) ist noch nicht gebaut — die Felder sind so geschnitten, dass sie später daraus
-// entsteht: Positionen mit Menge, Einheit, Einzelpreis und Steuersatz; Absender/Empfänger mit Straße, PLZ, Ort, Land und
+// E-Rechnung (seit 31.10. gebaut — lib/finanzen/erechnung: ZUGFeRD/Factur-X in der PDF, XRechnung als Download) entsteht aus diesen Feldern: Positionen mit Menge, Einheit, Einzelpreis und Steuersatz; Absender/Empfänger mit Straße, PLZ, Ort, Land und
 // USt-IdNr.; Leistungszeitraum; Fälligkeit; Bank (beim Stellen aus dem Gesellschafts-Register); Steuerhinweis (Kleinunternehmer,
 // Reverse Charge, steuerfrei mit Grund).
 
@@ -54,6 +53,11 @@ export interface RechnungEmpfaenger {
   referenz?: string;
   /** Kundennummer der Firma (25.10., optional) — aus der Kartei beim Anlegen des Entwurfs, ab „gestellt“ fest (steht so im PDF). */
   kundennummer?: string;
+  /**
+   * Leitweg-ID des Empfängers (31.10., E-Rechnung — optional, additiv): Pflicht-Referenz (BT-10) für Rechnungen an Behörden (XRechnung). Aus den
+   * Zahlungsdaten der Kundenfirma beim Anlegen des Entwurfs, im Entwurf änderbar, ab „gestellt“ fest. Der alte Stand verwirft das Feld.
+   */
+  leitwegId?: string;
 }
 
 /** Absender beim Stellen — dieselbe Form wie beim Angebot (IBAN in der Momentaufnahme maskiert, im PDF voll). */
@@ -105,6 +109,11 @@ export interface RechnungZusatz {
    * (Rechnungen gehen nie automatisch raus). Je Versand Tag/Zeit, Postfach (Adresse maskiert), wer. Der alte Stand verwirft das Feld.
    */
   versendet?: RechnungVersand[];
+  /**
+   * E-Rechnung (31.10., optional, additiv — nur der Server): `zugferd` = die PDF trägt die CII-XML nach EN 16931 als eingebettete Datei
+   * „factur-x.xml“ (lib/finanzen/erechnung). Fehlt bei Rechnungen davor und bei Gesellschaften mit „E-Rechnung aus“. Der alte Stand verwirft das Feld.
+   */
+  eRechnung?: 'zugferd';
 }
 /** Ein Versand einer Rechnung aus MAKE OS (25.10.). */
 export interface RechnungVersand { am: string; ueber: string; von: string }

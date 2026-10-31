@@ -97,6 +97,24 @@ export function pdfLaden(rechnungId: string, name?: string) {
 }
 
 /**
+ * XRechnung herunterladen (31.10.): erst holen, dann speichern — fehlen Pflichtangaben, antwortet der Server 409 mit Liste; dann kommt der Satz
+ * zurück (null = heruntergeladen). Kein Link direkt, sonst landete die Fehlermeldung als Datei auf der Platte.
+ */
+export async function xrechnungLaden(rechnungId: string): Promise<string | null> {
+  try {
+    const r = await fetch(`/api/rechnung?xrechnung=${encodeURIComponent(rechnungId)}`, { cache: 'no-store' });
+    if (!r.ok) { const d = await r.json().catch(() => ({})) as { fehler?: string }; return d.fehler ?? 'Die XRechnung ließ sich nicht erzeugen.'; }
+    const name = /filename\*=UTF-8''([^;]+)/.exec(r.headers.get('Content-Disposition') ?? '')?.[1];
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a');
+    a.href = url; a.download = name ? decodeURIComponent(name) : 'XRechnung.xml'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    return null;
+  } catch { return 'Die XRechnung ließ sich nicht laden — Netz prüfen.'; }
+}
+
+/**
  * Was ein Rechnungs-Anleger mitgibt — EIN Weg für alle Einstiege (08.10., Markttraktion Woche 2 · 3.13: Mandat „Rechnung schreiben“,
  * Kontakt › Umsatz, Finanzen › Rechnungen & Zahlungen, Angebot). Die Vorbelegung rechnet der Server (`entwurfNeu`): brutto/netto über
  * lib/finanzen/ust.ts, Gesellschaft aus Mandat/Angebot bzw. die Vorgabe, Status „geplant“ — gestellt wird nur im Editor.

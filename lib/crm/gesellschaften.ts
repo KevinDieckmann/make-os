@@ -57,6 +57,11 @@ export interface Gesellschaft {
   annahmeblock?: boolean;
   /** Link zu den AGB (25.10., optional, nur https) — steht im Fuß des Angebots-PDFs. */
   agbUrl?: string;
+  /**
+   * E-Rechnung aus (31.10., optional, additiv): Vorgabe AN — gestellte Rechnungen tragen die ZUGFeRD-XML (EN 16931) in der PDF. `true` = nur die
+   * bisherige PDF (z. B. wenn ein Empfänger kein ZUGFeRD will). Der alte Stand verwirft das Feld (dann gilt wieder „an“ — dort gibt es keine E-Rechnung).
+   */
+  eRechnungAus?: boolean;
   geaendert?: string;
   geaendertVon?: string;
 }
@@ -126,6 +131,8 @@ export function gesellschaftAnwenden(alt: Gesellschaft, roh: Record<string, unkn
   if (hat('fusstext')) setze('fusstext', block(roh.fusstext, 600));
   // Annahmeblock und AGB-Link (25.10.): Ein/Aus je Gesellschaft (Vorgabe aus), Link nur https — sonst Fehler (400), nie still.
   if (hat('annahmeblock')) setze('annahmeblock', roh.annahmeblock === true ? true : undefined);
+  // E-Rechnung aus (31.10.): nur der ausdrückliche Haken schaltet sie ab — Vorgabe an.
+  if (hat('eRechnungAus')) setze('eRechnungAus', roh.eRechnungAus === true ? true : undefined);
   if (hat('agbUrl')) {
     const u = zeile(roh.agbUrl, 300);
     if (u && !/^https:\/\/[^\s]+\.[^\s]+$/i.test(u)) fehler.push({ feld: 'agbUrl', text: 'AGB-Link: nur eine https-Adresse (z. B. https://www.beispiel.de/agb).' });
@@ -157,7 +164,7 @@ export function gesellschaftFuerAnzeige<G extends { bank?: GesellschaftBank }>(g
 
 /** Die Felder des Absenders — NUR diese gehen in eine Absender-Antwort (Angebots-Tool, Stammdaten), nie Cap-Table, Organe, Verträge, Notizen des Registers. */
 export const ABSENDER_FELDER = ['id', 'firmierung', 'strasse', 'plz', 'ort', 'land', 'email', 'telefon', 'web', 'steuernummer', 'ustId', 'geschaeftsfuehrung', 'register', 'bank',
-  'kleinunternehmer', 'zahlungszielTage', 'gueltigkeitTage', 'nummernformat', 'rechnungsformat', 'stornoformat', 'kurz', 'logoDateiId', 'fusstext', 'annahmeblock', 'agbUrl', 'geaendert', 'geaendertVon'] as const satisfies readonly (keyof Gesellschaft)[];
+  'kleinunternehmer', 'zahlungszielTage', 'gueltigkeitTage', 'nummernformat', 'rechnungsformat', 'stornoformat', 'kurz', 'logoDateiId', 'fusstext', 'annahmeblock', 'agbUrl', 'eRechnungAus', 'geaendert', 'geaendertVon'] as const satisfies readonly (keyof Gesellschaft)[];
 
 /**
  * Ein Absender für den Browser (08.10., Sofort-Paket 3.1) — EINE Stelle für GET /api/crm/angebot und GET /api/crm/gesellschaften:

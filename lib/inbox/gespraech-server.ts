@@ -69,7 +69,9 @@ export function vorschlaegeFuer(g: Gespraech, nachrichten: readonly NachrichtAns
   if (g.fach === 'warten' && g.nachfassen) raus.push({ art: 'nachfassen', text: `Nachfassen — seit ${g.wartetTage} Tagen keine Antwort` });
   if (frist) raus.push({ art: 'aufgabe', text: `Aufgabe bis ${frist.datum.slice(8, 10)}.${frist.datum.slice(5, 7)}. („${frist.text}“)`, datum: frist.datum });
   if (g.fach === 'termine') raus.push({ art: 'termin', text: 'Termin vorschlagen' });
-  const pdf = g.fach === 'geld' ? nachrichten.flatMap(n => n.anhaenge.filter(a => !a.eingebettet && /pdf|image\//i.test(a.typ)).map(a => ({ nachricht: n.id, teil: a.teil, name: a.name, typ: a.typ }))).pop() : undefined;
+  // E-Rechnung (31.10.): eine XML-Datei (XRechnung/CII/UBL) geht vor — sie wird ohne Modell aus der Datei gelesen (/api/beleg).
+  const belegAnhaenge = g.fach === 'geld' ? nachrichten.flatMap(n => n.anhaenge.filter(a => !a.eingebettet && (/pdf|image\/|xml/i.test(a.typ) || /\.xml$/i.test(a.name))).map(a => ({ nachricht: n.id, teil: a.teil, name: a.name, typ: a.typ }))) : [];
+  const pdf = belegAnhaenge.filter(a => /xml/i.test(a.typ) || /\.xml$/i.test(a.name)).pop() ?? belegAnhaenge.pop();
   if (pdf) raus.push({ art: 'beleg', text: `Beleg ablegen (${pdf.name})`, anhang: pdf });
   if (g.zuordnung && !g.zugeordnet && !g.zuordnung.sperre) raus.push({ art: 'zuordnen', text: `${g.zuordnung.name} zuordnen (Verlauf der Akte)` });
   if (g.zuordnung?.dealId && !g.zuordnung.sperre) raus.push({ art: 'deal', text: `Deal „${g.zuordnung.dealTitel}“: Nachfassen planen` });

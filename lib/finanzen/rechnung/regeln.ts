@@ -18,6 +18,7 @@ import { monatsGrenzen, monatsName, monatsHonorar, mandatLaeuftIm as mandatLaeuf
 import { ANSCHRIFT_MAX } from '@/lib/crm/zahlung';
 import { ABGERECHNET_PRAEFIX } from '@/lib/make-one/liquiditaet';
 import { artikelnummerSaeubern } from '@/lib/crm/produkt-karte';
+import { landCode } from '@/lib/finanzen/erechnung/land';
 
 // ── Grundwerte ───────────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ export const mahnLabel = (s: Mahnstufe): string => MAHNSTUFEN.find(x => x.stufe 
 /** Satz unter jedem Werkzeug, das plant oder rechnet. */
 export const KEINE_STEUERBERATUNG = 'Hinweis, keine Steuerberatung — Pflichtangaben und Nummernkreis einmal mit dem Steuerberater abstimmen.';
 /** Die Felder, die NUR der Server setzt — der allgemeine Finanzplan-Weg übernimmt sie nie aus dem Browser. */
-export const RECHNUNG_SERVER_FELDER = ['absender', 'lauf', 'pdfDateiId', 'sha256', 'gestelltAm', 'gestelltVon', 'art', 'stornoZu', 'stornoRechnungId', 'mahnungen', 'versendet'] as const satisfies readonly (keyof RechnungZusatz)[];
+export const RECHNUNG_SERVER_FELDER = ['absender', 'lauf', 'pdfDateiId', 'sha256', 'gestelltAm', 'gestelltVon', 'art', 'stornoZu', 'stornoRechnungId', 'mahnungen', 'versendet', 'eRechnung'] as const satisfies readonly (keyof RechnungZusatz)[];
 /** Was ab „gestellt mit PDF“ feststeht (steht so im PDF) — ändern nur über Storno + neue Rechnung. */
 export const FEST_MIT_PDF = ['positionen', 'empfaenger', 'leistungVon', 'leistungBis', 'faellig', 'zahlungszielTage', 'steuerHinweis', 'steuerfreiGrund', 'einleitung', 'schluss', 'kunde', 'titel', 'firmaId', 'mandatId', 'kontaktId', 'kundeFirmaId', 'angebotId', 'angebot', 'angebotAm'] as const satisfies readonly (keyof Rechnung)[];
 
@@ -91,15 +92,16 @@ export function positionenSaeubern(roh: unknown): RechnungPosition[] {
   return l;
 }
 
-const EMPF_FELDER = ['name', 'firma', 'strasse', 'plz', 'ort', 'land', 'ustId', 'email', 'referenz', 'kundennummer'] as const;
+const EMPF_FELDER = ['name', 'firma', 'strasse', 'plz', 'ort', 'land', 'ustId', 'email', 'referenz', 'kundennummer', 'leitwegId'] as const;
 /** Empfänger säubern — nur bekannte Felder, Zeilen ohne Steuerzeichen; leer = undefined. */
 export function empfaengerSaeubern(roh: unknown): RechnungEmpfaenger | undefined {
   if (!roh || typeof roh !== 'object') return undefined;
   const o = roh as Record<string, unknown>;
   const e: RechnungEmpfaenger = {};
   for (const f of EMPF_FELDER) {
-    const max = f === 'plz' ? 12 : f === 'ustId' ? 20 : f === 'kundennummer' ? 40 : RECHNUNG_GRENZEN.empfaengerFeld;
-    const w = f === 'ustId' ? zeile(o[f], max).replace(/\s/g, '').toUpperCase() : zeile(o[f], max);
+    const max = f === 'plz' ? 12 : f === 'ustId' ? 20 : f === 'kundennummer' ? 40 : f === 'leitwegId' ? 46 : RECHNUNG_GRENZEN.empfaengerFeld;
+    // Leitweg-ID (31.10.): ohne Leerzeichen, Großbuchstaben — die Form prüft `leitwegIdOk` beim Erzeugen der XRechnung.
+    const w = f === 'ustId' || f === 'leitwegId' ? zeile(o[f], max).replace(/\s/g, '').toUpperCase() : zeile(o[f], max);
     if (w) e[f] = w;
   }
   return Object.keys(e).length ? e : undefined;
@@ -159,6 +161,7 @@ export function zusatzSaeubern(x: Record<string, unknown>): RechnungZusatz {
   if (rechnungIdOk(x.stornoRechnungId)) z.stornoRechnungId = x.stornoRechnungId;
   const m = mahnungenSaeubern(x.mahnungen); if (m) z.mahnungen = m;
   const v = versandSaeubern(x.versendet); if (v) z.versendet = v;
+  if (x.eRechnung === 'zugferd') z.eRechnung = 'zugferd';
   return z;
 }
 
@@ -271,7 +274,14 @@ export function pflichtFehlt(r: EntwurfFelder, g: Gesellschaft | null | undefine
   if (!ku && pos.some(p => p.ustSatz === 0)) {
     if (!r.steuerHinweis) f.push({ text: 'Position ohne Umsatzsteuer: Grund wählen — Reverse Charge (§ 13b UStG) oder steuerfrei mit Grund (§ 14 Abs. 4 Nr. 8 UStG).' });
     else if (r.steuerHinweis === 'reverse-charge' && !e.ustId) f.push({ text: 'Reverse Charge: USt-IdNr. des Empfängers fehlt (§ 14a UStG).' });
+    else if (r.steuerHinweis === 'reverse-charge' && g && !g.ustId) f.push({ text: 'Reverse Charge: USt-IdNr. des Absenders fehlt (§ 14a Abs. 1 UStG) — unter Unternehmen › Gesellschaft › Absender eintragen.' });
     else if (r.steuerHinweis === 'steuerfrei' && !r.steuerfreiGrund?.trim()) f.push({ text: 'Steuerfrei: Grund der Steuerbefreiung fehlt (z. B. „§ 4 Nr. … UStG“).' });
+  }
+  // E-Rechnung (31.10.): die strukturierte Rechnung (EN 16931) braucht das Land als Ländercode — was nicht erkannt wird, vor dem Stellen melden
+  // statt zu raten (ohne `weg`: ein Storno des Altbestands bleibt immer möglich). Gilt nur, solange die Gesellschaft die E-Rechnung nicht ausgeschaltet hat (`eRechnungAus`).
+  if (g && !g.eRechnungAus) {
+    if (landCode(g.land) === null) f.push({ text: `Absender: Land „${g.land}“ nicht erkannt — für die E-Rechnung unter Unternehmen › Gesellschaft › Absender als Ländercode eintragen (z. B. DE).` });
+    if (landCode(e.land) === null) f.push({ text: `Empfänger: Land „${e.land}“ nicht erkannt — für die E-Rechnung als Ländercode eintragen (z. B. AT).` });
   }
   return f;
 }
@@ -392,6 +402,8 @@ export function empfaengerAusCrm(k: KontaktTeil | undefined, f: FirmaTeil | unde
     ...(z?.referenz ? { referenz: z.referenz } : {}),
     // Kundennummer (25.10.) — nur, wenn die Firma eine trägt.
     ...(f?.kundennummer ? { kundennummer: f.kundennummer } : {}),
+    // Leitweg-ID (31.10., E-Rechnung an Behörden) — aus den Zahlungsdaten, nur wenn gepflegt.
+    ...(z?.leitwegId ? { leitwegId: z.leitwegId } : {}),
   };
   return empfaengerSaeubern(e) ?? {};
 }
