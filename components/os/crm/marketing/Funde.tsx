@@ -90,7 +90,7 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
             <Schalter an={!!e.eigenesRisiko} onChange={async an => {
               if (an && !(await bestaetigen({ titel: 'Mail und Anruf ohne Einwilligung freischalten?', text: `${d.risikoHinweis} Gesendet wird trotzdem nur nach Freigabe im Stapel — je Betrieb genau eine Mail mit Abmeldelink.`, ja: 'Auf eigenes Risiko freischalten', gefahr: true }))) return;
               await tun({ aktion: 'risiko', an });
-            }} erklaerungOhne="Aus: Freigaben übernehmen nur in die Markttraktion, es geht keine Mail raus (Brief, Besuch oder Anruf von Hand).">
+            }} erklaerung="funde.eigenesRisiko">
               Mail senden (eigenes Risiko)
             </Schalter>
             <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>

@@ -33,6 +33,27 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-2',
+    datum: '2026-11-02',
+    titel: 'Kampagnen laufen jetzt von selbst ab',
+    kurz: 'Jede Kampagne kann eine Abfolge bekommen — zum Beispiel Mail am ersten Tag, Anruf drei Tage später. Mails liegen als Stapel bereit und gehen mit einem Klick raus, gedrosselt und immer mit Abmeldelink.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Abfolge je Kampagne: Schritte mit Abstand in Tagen und Kanal (Mail, Anruf, LinkedIn, Brief, Besuch). Jede Person und jede Firma läuft ihre Schritte selbst ab.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Mail-Stapel: für jeden fälligen Mail-Schritt liegt ein Entwurf bereit — mit Namen und Firma aus der Vorlage. Häkchen setzen, prüfen, ein Klick gibt den ganzen Stapel frei.', bereich: 'business' },
+        { text: 'Gesendet wird werktags zwischen 8 und 18 Uhr aus dem eigenen Postfach, höchstens 30 Mails je Tag und Postfach (einstellbar bis 50).', bereich: 'business' },
+        { text: 'Jede Kampagnen-Mail trägt Absender, Impressum und einen Abmeldelink; Mail-Programme zeigen dafür einen eigenen Abmelde-Knopf.', bereich: 'business' },
+        { text: 'Antwortet jemand, stoppt die Abfolge und „Antwort bearbeiten“ steht an. Kommt eine Mail zurück oder meldet sich jemand ab, endet die Abfolge ebenfalls von selbst.', bereich: 'business' },
+        { text: 'Anrufe aus der Abfolge stehen mit Leitfaden in der Power Hour; wie viele neue Ziele je Tag starten, stellt man je Kampagne ein.', bereich: 'business' },
+        { text: 'Briefe kommen auf eine Druckliste, Besuche als Erinnerung. Auf Wunsch schreibt ZOE einen Entwurf noch einmal klarer — gesendet wird trotzdem erst nach der Freigabe.', bereich: 'business' },
+        { text: 'Willkommens-Mails nach einer Einwilligung (Newsletter, Mail): auf Wunsch automatisch, nur mit festen Texten aus den Einstellungen und mit Abmeldelink. Vorgabe: aus.', bereich: 'business' },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Personen mit Werbesperre, Einschränkung oder auf der Sperrliste kommen nie in einen Stapel. Ohne Grundlage für Werbung bleibt die Mail draußen.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02',
     datum: '2026-11-02',
     titel: 'Kampagne „Homepage“: Betriebe ohne gute Website finden',

@@ -142,7 +142,7 @@ export function mailFertig(text: string, o: { abmeldeLink: string; vorschauLink?
 
 const STUNDE = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', hourCycle: 'h23' });
 /** Berliner Stunde (0–23). */
-export const berlinStunde = (jetzt: Date): number => Number(STUNDE.format(jetzt));
+export const berlinStunde = (jetzt: Date): number => Number(STUNDE.formatToParts(jetzt).find(t => t.type === 'hour')?.value ?? NaN);
 /** Liegt der Zeitpunkt im Versandfenster? Werktags (Mo–Fr ohne Feiertage NRW) 8–18 Uhr Berlin. */
 export function imZeitfenster(jetzt: Date): boolean {
   const h = berlinStunde(jetzt);

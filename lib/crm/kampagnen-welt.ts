@@ -11,7 +11,7 @@ import type { Welt } from './traktion';
 /** Führende Welt je Playbook — muss zu `PLAYBOOKS[].fuer[0]` passen (Wächtertest). */
 export const PLAYBOOK_WELT: Readonly<Record<string, Welt>> = {
   empfehlung: 'sales', reaktivierung: 'sales', lookalike: 'marketing', fallstudie: 'marketing', event: 'marketing',
-  upsell: 'sales', verlaengerung: 'sales', vernetzen: 'marketing', newsletter: 'marketing',
+  upsell: 'sales', verlaengerung: 'sales', vernetzen: 'marketing', newsletter: 'marketing', 'homepage-funde': 'marketing',
 };
 
 /** Die Welt einer Kampagne (für die Standard-Zuständigkeit, Filter und Aufgaben). */

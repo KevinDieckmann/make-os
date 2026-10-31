@@ -15,6 +15,20 @@ export const EINSTELLUNGEN_BUSINESS = {
     beispiel: '„60 % auf echten Daten · 4 Messlücken“ heißt: Die Zahl ist ein guter Hinweis, aber vier Kennzahlen warten noch auf eine Messung — jede Kachel mit „—“ sagt, was fehlt.',
   },
 
+  // ── Markttraktion › Kampagne › Sequenz & Mail-Stapel (31.10., Kampagnen-Motor) ─────────────────────────────────────────────
+  'funde.eigenesRisiko': {
+    was: 'Erlaubt Mail und Anruf an Betriebe ohne Einwilligung — auf eigenes Risiko des Inhabers, denn Werbe-Mail und Werbeanruf ohne Einwilligung sind auch an Firmen abmahnfähig (§ 7 UWG). Die Kanal-Ampel bleibt rot; gesendet wird nur nach Freigabe im Stapel, mit Abmeldelink. Hinweis, keine Rechtsberatung.',
+    beispiel: 'Ein Café ohne Website steht im Stapel. Mit dem Schalter geht nach der Freigabe genau eine Mail mit dem Vorschau-Link raus, drei Tage später steht ein Anruf an. Jede Freigabe trägt den Vermerk, wer den Schalter wann eingeschaltet hat.',
+    an: 'Freigaben mit roter Ampel sind möglich; jede trägt sichtbar „auf eigenes Risiko freigegeben“. Ausschalten stoppt sofort jeden noch nicht gesendeten Versand.',
+    aus: 'Freigaben übernehmen nur in die Markttraktion, es geht keine Mail raus — Brief, Besuch oder Anruf von Hand. Das ist die Vorgabe.',
+  },
+  'kampagnen.willkommen': {
+    was: 'Schickt Menschen, die neu eingewilligt haben (Newsletter mit Double-Opt-in oder eine Mail-Einwilligung mit vollem Nachweis), automatisch ein paar feste Willkommens-Mails — die Texte stehen in diesen Einstellungen. Jede Mail trägt einen Abmeldelink; wer sich abmeldet, bekommt nichts mehr.',
+    beispiel: 'Eine Besucherin bestätigt am Montag ihre Newsletter-Anmeldung. Am Donnerstag geht die erste Willkommens-Mail raus, eine Woche später die zweite — beide werktags zwischen 8 und 18 Uhr.',
+    an: 'Gilt nur für Einwilligungen ab dem Tag des Einschaltens; wer vorher eingewilligt hat, bekommt nichts nachträglich. Gesendet wird über den Website-Absender, gedrosselt.',
+    aus: 'Es gehen keine Willkommens-Mails raus. Das ist die Vorgabe.',
+    daten: 'Die Mails gehen über euer Postfach (Google Workspace bzw. euren Mail-Anbieter) an die Adresse der Person.',
+  },
   // ── Markttraktion › Marketing › Newsletter: Anmeldung über die Website (30.10.) ──────────────────────────────────────────
   'kontaktformular.oeffentlich': {
     was: 'Schaltet das Kontaktformular der Website ein: Unter /anfrage dieser Instanz (auch über die Adresse der Website, wenn sie dorthin weiterleitet) kann jemand eine Nachricht schicken.',
