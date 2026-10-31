@@ -322,7 +322,7 @@ Bot-Sperre (401/403/429) ist KEIN Mangel (vorher fälschlich „nicht erreichbar
 **Anreicherung (31.10. abends, Kevin: „alle Informationen, sonst keine Akquise“):** je Betrieb nur selbst veröffentlichte bzw. gesetzlich
 veröffentlichte Angaben — OSM-Tags, Startseite/Impressum, Websuche (Lieferdienst-Impressum, Handelsregister), jeweils mit Quelle am Fund.
 Ergebnis: 48 Funde (2 raus: einer dauerhaft geschlossen, einer hat doch eine erreichbare Website) · Mail 48 · Telefon 39 · Adresse 46 · Website 24 ·
-**Inhaber/Betreiber 11** (davon 6 aus OSM „operator“ — Gemeinschaftswissen, deshalb ohne Namens-Anrede in der Mail) · **Instagram 7**.
+**Inhaber/Betreiber 10** (davon 5 aus OSM „operator“ — Gemeinschaftswissen, deshalb ohne Namens-Anrede in der Mail) · **Instagram 7**.
 **Befund:** Bei genau dieser Persona (keine bzw. tote Website) fehlt meist das Impressum — Inhaber stehen dann nirgends öffentlich und maschinenlesbar.
 Lieferdienst-Impressen (Lieferando, Wolt) laden nur per JavaScript. Der Inhaber kommt deshalb im Anruf/Besuch („Wer ist der Inhaber?“) — der Anruf-
 Leitfaden fragt danach. Instagram-Nachrichten sind elektronische Post (Ampel rot) — das Profil dient nur zur Vorbereitung.
