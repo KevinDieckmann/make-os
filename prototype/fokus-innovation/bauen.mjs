@@ -47,7 +47,7 @@ const platz = (s) => String(s ?? '').replace(/(\bfür )?\{(preis|ab|zusatz):([a-
   const a = ANGEBOTE.find((x) => x.id === id);
   if (!a) throw new Error(`Platzhalter ohne Angebot: {${art}:${id}}`);
   if (art === 'zusatz') return `${fuer ?? ''}${a.preis_zusatz ?? ''}`;
-  const betrag = `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')} €`;
+  const betrag = `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')}\u00a0€`;
   const davor = ganz.slice(0, pos);
   if (!fuer && /\bab $/i.test(davor)) return betrag;
   return `${!fuer && (pos === 0 || /[.?!:]\s*$/.test(davor)) ? 'Ab' : 'ab'} ${betrag}`;
@@ -146,7 +146,7 @@ export function seitenBauen(q = quellen()) {
   const erstLink = () => seite.termin.link || `mailto:${seite.kontakt.mail}?subject=${encodeURIComponent(F.erstgespraech.betreff)}&body=${encodeURIComponent(F.erstgespraech.mail_text)}`;
   const bald = (a) => a.status === 'Coming Soon';
   const monatlich = (a) => /^pro Monat/.test(a.preis_zusatz ?? '');
-  const erster = (a) => `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')} €`;
+  const erster = (a) => `${a.preis.replace(/^ab /, '').split(' / ')[0].replace(/ €$/, '')}\u00a0€`;
   /** Preise (Kevin 30.10.: „Wir machen immer ab-Preise, nicht mit allen Preisen rausgehen“): überall nur der Einstiegspreis mit „ab“ —
    *  Listen, Angebotsseiten, Preisseite, llms.txt; was erst startet, hat noch keinen. Der volle Preis steht nur in den Daten. */
   const preisKurz = (a) => (bald(a) ? 'Anfrage starten' : `ab ${erster(a)}${monatlich(a) ? ' / Monat' : ''}`);
@@ -426,7 +426,11 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
   };
   const angebotZeilen = (liste) => `<ul class="zeilen erscheint">${liste.map((x) => `<li><a href="${produktPfad(x)}"><span class="z-name">${e(x.name)}${bald(x) ? ' <span class="marke-bald">Bald</span>' : ''}</span><span class="z-text">${t(F.kurztexte[x.id] ?? produktBlatt(x)?.versprechen ?? x.fuer_wen ?? (x.enthalten ?? [])[0] ?? '')}</span><span class="z-preis">${e(preisKurz(x))}</span>${PFEIL}</a></li>`).join('')}</ul>`;
   // ── Bausteine für Vertrauen (29.10.): Arbeitsprobe, Muster, Risiko, Rechner ──
-  const arbeitsprobe = () => `<section class="abschnitt" aria-labelledby="probe-titel"><div class="w"><div class="kasten probe-kasten erscheint"><div>${vorzeile('Arbeitsprobe')}<h2 id="probe-titel">${e(F.arbeitsprobe.titel)}</h2><p class="lead">${t(F.arbeitsprobe.text)}</p></div><div>${punkte(F.arbeitsprobe.punkte)}<div class="knoepfe">${textlink('/', 'Zur Startseite mit dem Film')}</div></div></div></div></section>`;
+  /** Arbeitsprobe (31.10., Prüfung „Gestaltung“: zeigen statt beschreiben): diese Website auf Rechner und Handy, daneben was sie ausmacht. */
+  const arbeitsprobe = () => `<section class="abschnitt" aria-labelledby="probe-titel"><div class="w"><div class="probe">
+<div class="probe-text erscheint">${vorzeile('Arbeitsprobe')}<h2 id="probe-titel">${e(F.arbeitsprobe.titel)}</h2><p class="lead">${t(F.arbeitsprobe.text)}</p>${punkte(F.arbeitsprobe.punkte)}<div class="knoepfe">${textlink('/', 'Zur Startseite mit dem Film')}</div></div>
+<figure class="probe-buehne erscheint"><div class="geraet rechner"><img src="/assets/bild/arbeitsprobe/rechner.jpg" width="1440" height="900" loading="lazy" decoding="async" alt="Die Startseite von Fokus Innovation am Rechner: das Logo, der Satz „Fortschritt braucht Fokus.“ und zwei Knöpfe"></div><div class="geraet handy"><img src="/assets/bild/arbeitsprobe/handy.jpg" width="780" height="1688" loading="lazy" decoding="async" alt="Die Seite „In den Markt“ auf dem Handy mit Überschrift und Grafik zum Problem"></div><figcaption class="leise klein-text">Diese Website, gebaut wie Ihre: am Rechner und auf dem Handy.</figcaption></figure>
+</div></div></section>`;
   const musterPositionierung = () => {
     const M = F.muster_positionierung;
     return `<section class="abschnitt" aria-labelledby="muster-titel"><div class="w">${abKopf({ marke: 'Muster', h2: M.titel, lead: M.lead, id: 'muster-titel' })}
@@ -438,7 +442,7 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
     const R = F.wochenreport_muster;
     return `<section class="abschnitt" aria-labelledby="bericht-titel"><div class="w">${abKopf({ marke: 'Muster', h2: R.titel, lead: R.hinweis, id: 'bericht-titel' })}
 <figure class="muster-blatt bericht erscheint"><figcaption><span class="etikett">Wochenreport · ${e(R.woche)}</span><span class="leise">Beispielwerte, kein Kunde</span></figcaption>
-<table class="bericht-tabelle"><thead><tr><th scope="col">Kennzahl</th><th scope="col">Ist</th><th scope="col">Ziel</th><th scope="col"><span class="sr">Stand</span></th></tr></thead><tbody>${R.zeilen.map(([n, ist, ziel]) => `<tr><th scope="row">${e(n)}</th><td>${e(ist)}</td><td>${e(ziel)}</td><td><meter min="0" max="${Math.max(Number(ist), Number(ziel))}" low="${Number(ziel) * 0.8}" optimum="${Math.max(Number(ist), Number(ziel))}" value="${e(ist)}">${e(ist)} von ${e(ziel)}</meter></td></tr>`).join('')}</tbody></table>
+<table class="bericht-tabelle"><thead><tr><th scope="col">Kennzahl</th><th scope="col">Ist</th><th scope="col">Ziel</th><th scope="col"><span class="sr">Stand</span></th></tr></thead><tbody>${R.zeilen.map(([n, ist, ziel]) => `<tr><th scope="row">${e(n)}</th><td>${e(ist)}</td><td>${e(ziel)}</td><td><span class="bericht-balken"><meter min="0" max="${Math.max(Number(ist), Number(ziel) * 1.25)}" low="${Number(ziel) * 0.8}" optimum="${Number(ziel) * 1.25}" value="${e(ist)}">${e(ist)} von ${e(ziel)}</meter><span class="ziel-marke" aria-hidden="true"></span></span></td></tr>`).join('')}</tbody></table>
 <p class="bericht-satz">${t(R.satz)}</p></figure></div></section>`;
   };
   const risiko = (pkt = F.risiko.punkte) => `<section class="abschnitt eng" aria-labelledby="risiko-titel"><div class="w"><div class="risiko erscheint"><h2 class="gruppe-titel" id="risiko-titel">${e(F.risiko.titel)}</h2>${punkte(pkt)}</div></div></section>`;
@@ -1159,26 +1163,33 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
 
   // ── Preise: alles auf einer Seite ──
   {
-    const zeile = (a) => `<tr><th scope="row"><a class="unterstrichen" href="${produktPfad(a)}">${e(a.name)}</a>${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</th><td data-name="Preis netto">${e(preisVoll(a))}</td><td data-name="Konditionen">${bald(a) ? 'Festpreis mit klarem Umfang, vorab vereinbart; Anfrage schon jetzt möglich' : t([a.preis_zusatz, F.umfang[a.id]].filter(Boolean).join(' · '))}</td></tr>`;
-    const frei = [[erstLink(), F.erstgespraech.name, 'per Video, klärt, ob und womit wir helfen können'], ['/innovations-check/', 'Innovations-Check', 'rund 10 Minuten, Ergebnis sofort'], ['/events/', F.events.titel, 'auf Einladung, für Gäste']];
-    const kopfZeile = '<thead><tr><th scope="col">Angebot</th><th scope="col">Preis netto</th><th scope="col">Konditionen</th></tr></thead>';
-    const tabelle = (titelText, zeilenHtml, { zeigen = true } = {}) => `${zeigen ? `<h3 class="gruppe-titel">${e(titelText)}</h3>` : ''}<div class="tabelle-huelle erscheint"><table class="vergleich text preis-tabelle"><caption class="sr">${e(titelText)}</caption>${kopfZeile}<tbody>${zeilenHtml}</tbody></table></div>`;
+    const frei = [[erstLink(), F.erstgespraech.name, '30 Minuten per Video. Wir klären, ob und womit wir helfen können.'], ['/kostenlos/#checks', 'Drei Checks', 'Sichtbarkeit, Vertrieb und Innovation. Ergebnis sofort.'], ['/events/', F.events.titel, 'Auf Einladung, für Gäste kostenlos.']];
     const angeboteAlle = BEREICHE.flatMap(produkteIn);
+    // Karten statt Tabellen (31.10., Prüfung Gestaltung): je Angebot Name, Preis, ein Satz, drei Punkte. Der Einstieg je Bereich ist markiert.
+    const EINSTIEG = { sichtbarkeit: 'positionierung', vertrieb: 'tagesworkshop' };
+    const karte = (a, k) => {
+      const pb = produktBlatt(a);
+      const pkt = (a.enthalten ?? pb?.immer ?? pb?.bausteine?.map((x) => x.name) ?? []).slice(0, 3);
+      return `<li class="preis-karte${EINSTIEG[k] === a.id ? ' einstieg' : ''}"><a href="${produktPfad(a)}">${EINSTIEG[k] === a.id ? '<span class="marke-einstieg">Guter Einstieg</span>' : ''}<h3>${e(F.titel_h1?.[a.id] ?? a.name)}${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</h3><p class="karte-preis">${e(preisKurz(a))}</p><p class="karte-zusatz">${e(bald(a) ? 'Festpreis mit klarem Umfang, vorab vereinbart' : [a.preis_zusatz, F.umfang[a.id]].filter(Boolean).join(' · '))}</p><p class="karte-satz">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? '')}</p>${pkt.length ? punkte(pkt) : ''}<span class="textlink"><span>Mehr erfahren</span> ${PFEIL}</span></a></li>`;
+    };
+    const karten = (liste, k) => `<ul class="preis-karten erscheint">${liste.map((a) => karte(a, k)).join('')}</ul>`;
+    const kondition = (x) => { const [k, ...v] = String(x).split(': '); return v.length ? `<div><dt>${e(k)}</dt><dd>${t(v.join(': '))}</dd></div>` : `<div><dt>Allgemein</dt><dd>${t(x)}</dd></div>`; };
     neu('preise/index.html', {
       seo: 'preise',
       bildVorzeile: 'Preise',
       bildTitel: 'Alle Preise auf einen Blick. Fest und netto.',
       schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von Fokus Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !bald(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[null, 'Preise']])}${vorzeile('Preise')}<h1 id="held-titel">${titel('Alle Preise.', 'Offen und netto.')}</h1><p class="lead">Jeder Preis gilt für den beschriebenen Umfang. Den genauen Festpreis bekommen Sie vor dem Start schriftlich, ohne Abrechnung nach Stunden. Die Details stehen auf der Seite des Angebots.</p></div>
+<div class="erscheint">${brotkrumen([[null, 'Preise']])}${vorzeile('Preise')}<h1 id="held-titel">${titel('Alle Preise.', 'Offen und netto.')}</h1><p class="lead">Jeder Preis gilt für den beschriebenen Umfang. Den genauen Festpreis bekommen Sie vor dem Start schriftlich, ohne Abrechnung nach Stunden. Die Details stehen auf der Seite des Angebots.</p>
+<nav class="az breit" aria-label="Auf dieser Seite"><a href="#kostenlos-titel">Kostenlos</a>${BEREICHE.map((k) => `<a href="#preise-${k}">${e(B[k].name)}</a>`).join('')}<a href="#konditionen-titel">Konditionen</a></nav></div>
 ${buehne('festpreis', VIDEOS.preise)}
 </div></section>
 <section class="abschnitt" aria-labelledby="kostenlos-titel"><div class="w">${abKopf({ marke: 'Der Einstieg', h2: 'Kostenlos', lead: 'Erstgespräch, Innovations-Check und das Gespräch danach kosten nichts und verpflichten zu nichts.', id: 'kostenlos-titel' })}
-${tabelle('Kostenlos', frei.map(([h, n, z]) => `<tr><th scope="row"><a class="unterstrichen" href="${h}">${e(n)}</a></th><td data-name="Preis netto">kostenlos</td><td data-name="Konditionen">${e(z)}</td></tr>`).join(''), { zeigen: false })}</div></section>
+<ul class="preis-karten frei erscheint">${frei.map(([h, n, z]) => `<li class="preis-karte"><a href="${h}"><h3>${e(n)}</h3><p class="karte-preis">kostenlos</p><p class="karte-satz">${e(z)}</p><span class="textlink"><span>Mehr erfahren</span> ${PFEIL}</span></a></li>`).join('')}</ul></div></section>
 ${BEREICHE.map((k) => `<section class="abschnitt" aria-labelledby="preise-${k}"><div class="w">${abKopf({ marke: B[k].name, nr: B[k].nr, h2: B[k].paar, lead: F.angebote_lead[k], id: `preise-${k}` })}
-${gruppenIn(k).map((g, _, alle) => tabelle(g.name || B[k].name, g.liste.map(zeile).join(''), { zeigen: alle.length > 1 && Boolean(g.name) })).join('\n')}${k === 'sichtbarkeit' ? `<h3 class="gruppe-titel">Dazu buchbar</h3><dl class="daten erscheint">${inhalt.zusatzoptionen.map((z) => `<div><dt>${e(z.name)}<span class="leise">${e(z.fuer)}: ${e(z.leistung)}</span></dt><dd>${e(z.preis)}</dd></div>`).join('')}</dl>` : ''}</div></section>`).join('\n')}
+${gruppenIn(k).map((g, _, alle) => `${alle.length > 1 && g.name ? `<h3 class="gruppe-titel">${e(g.name)}</h3>` : ''}${karten(g.liste, k)}`).join('\n')}${k === 'sichtbarkeit' ? `<h3 class="gruppe-titel">Dazu buchbar</h3><dl class="daten erscheint">${inhalt.zusatzoptionen.map((z) => `<div><dt>${e(z.name)}<span class="leise">${e(z.fuer)}: ${e(z.leistung)}</span></dt><dd>${e(z.preis)}</dd></div>`).join('')}</dl>` : ''}</div></section>`).join('\n')}
 <section class="abschnitt" aria-labelledby="konditionen-titel"><div class="w">${abKopf({ marke: 'Gut zu wissen', h2: 'Zahlung und Konditionen', id: 'konditionen-titel' })}
-<div class="zwei-teile"><div class="erscheint">${punkte(inhalt.konditionen)}</div><div class="erscheint"><p>${t(F.fragen_zuschnitt.vertrieb['gibt-es-rabatt'])} ${t(F.fragen_zuschnitt.sichtbarkeit['gibt-es-rabatt'])}</p><p>${t(F.preise_nebenkosten)}</p><p class="leise klein-text">Unsere Angebote richten sich an Unternehmen.</p></div></div></div></section>
+<div class="zwei-teile"><div class="erscheint"><dl class="daten">${inhalt.konditionen.map(kondition).join('')}</dl></div><div class="erscheint"><p>${t(F.fragen_zuschnitt.vertrieb['gibt-es-rabatt'])} ${t(F.fragen_zuschnitt.sichtbarkeit['gibt-es-rabatt'])}</p><p>${t(F.preise_nebenkosten)}</p><p class="leise klein-text">Unsere Angebote richten sich an Unternehmen.</p></div></div></div></section>
 ${schlussakt({ quelle: 'preise_ende' })}`,
     });
   }

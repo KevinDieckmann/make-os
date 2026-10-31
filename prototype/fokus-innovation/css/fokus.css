@@ -70,8 +70,8 @@ table { border-collapse: collapse; }
 
 /* ── Kleine Schrift: Vorzeile, Etikett, Nummer ── */
 .vorzeile, .etikett, .ab-marke { font-size: .76rem; font-weight: 600; letter-spacing: .14em; line-height: 1.4; text-transform: uppercase; color: var(--tinte-leise); }
-.vorzeile { display: inline-flex; align-items: center; gap: 10px; }
-.vorzeile::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--akzent-papier); flex: none; }
+.vorzeile { display: inline-flex; align-items: flex-start; gap: 10px; }
+.vorzeile::before { content: ""; width: 7px; height: 7px; margin-top: .42em; border-radius: 50%; background: var(--akzent-papier); flex: none; }
 .vorzeile.mit-nr::before { display: none; }
 .nr { color: var(--akzent-papier); font-variant-numeric: tabular-nums; }
 .vorzeile .nr, .ab-marke .nr { margin-right: 12px; }
@@ -105,10 +105,11 @@ table { border-collapse: collapse; }
   background: linear-gradient(90deg, transparent, rgba(167, 139, 250, .26) 45%, rgba(242, 243, 243, .16) 55%, transparent); transform: translateX(-110%) skewX(-18deg); }
 .dunkel .knopf:not(.zweit)::after, .kopf.ueber-film .knopf::after { background: linear-gradient(90deg, transparent, rgba(124, 58, 237, .16) 45%, rgba(167, 139, 250, .2) 55%, transparent); }
 @media (prefers-reduced-motion: no-preference) {
-  .knopf:not(.zweit)::after { animation: knopfSchein 9s cubic-bezier(.45, .05, .35, 1) 2.4s infinite; }
+  /* Ein Schein zum Ankommen, danach nur beim Überfahren (WCAG 2.2.2: keine Dauerbewegung) */
+  .knopf:not(.zweit)::after { animation: knopfSchein 9s cubic-bezier(.45, .05, .35, 1) 2.4s 1; }
   .knopf:not(.zweit):hover::after { animation: knopfZeigen .8s cubic-bezier(.45, .05, .35, 1) 1 both; }
   /* Der Kern im runden Check-Knopf schlägt wie der Fokus-Punkt im Film (ein Schlag alle 2,8 s) */
-  .check-knopf .zeichen .kern { transform-box: fill-box; transform-origin: center; animation: kernSchlag 2.8s ease-out infinite; }
+  .check-knopf .zeichen .kern { transform-box: fill-box; transform-origin: center; animation: kernSchlag 2.8s ease-out 2; }
 }
 @keyframes knopfZeigen { 0% { transform: translateX(-110%) skewX(-18deg); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateX(290%) skewX(-18deg); opacity: 0; } }
 @keyframes kernSchlag { 0%, 100% { transform: scale(1); } 10% { transform: scale(1.16); } 60% { transform: scale(1); } }
@@ -231,7 +232,7 @@ html.menue-offen { overflow: hidden; }
 /* ── Leistungen auf der Startseite ── */
 .leistung { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 36px clamp(40px, 6vw, 96px); padding: clamp(48px, 6vw, 80px) 0; border-top: 1px solid var(--haar); }
 .ab-kopf + .leistung { border-top: 0; padding-top: 0; }
-.leistung .paar { margin-top: 18px; font-size: clamp(2.2rem, 4.4vw, 3.9rem); letter-spacing: -.04em; line-height: 1; }
+.leistung .paar { margin-top: 18px; font-size: clamp(2rem, 3vw, 2.6rem); letter-spacing: -.04em; line-height: 1; }
 .leistung .satz { margin-top: 20px; max-width: 26rem; }
 .leistung-kopf .textlink { margin-top: 20px; }
 .leistung-weg > .etikett { margin-bottom: 10px; }
@@ -438,7 +439,7 @@ html.menue-offen { overflow: hidden; }
 .dunkel .vorzeile, .dunkel .etikett { color: var(--grau); }
 .dunkel .vorzeile::before { background: var(--akzent); }
 .dunkel .lead { color: var(--leise-dunkel); }
-.schlussakt { padding: clamp(96px, 12vw, 168px) 0 clamp(72px, 8vw, 112px); }
+.schlussakt { padding: clamp(80px, 9vw, 112px) 0 clamp(64px, 7vw, 96px); }
 .schluss-kopf { max-width: 52rem; }
 .schluss-zeichen { width: 56px; height: 56px; margin-bottom: 36px; color: var(--hell); }
 .schlussakt h2 { margin-top: 20px; font-size: clamp(2.4rem, 5.2vw, 4.4rem); letter-spacing: -.035em; line-height: 1.03; }
@@ -830,7 +831,7 @@ html.menue-offen { overflow: hidden; }
 .pb-grau-zart { fill: rgba(17, 19, 22, .07); }
 .pb-punkt { fill: var(--akzent-papier); transform-box: fill-box; transform-origin: center; transition: opacity .6s var(--ease) 3s; }
 .js .problem-bild:not(.sichtbar) .pb-punkt { opacity: 0; }
-.problem-bild.sichtbar .pb-punkt, html:not(.js) .pb-punkt { animation: pbPuls 2.8s ease-in-out 3.6s infinite; }
+.problem-bild.sichtbar .pb-punkt, html:not(.js) .pb-punkt { animation: pbPuls 2.8s ease-in-out 3.6s 2; }
 @keyframes pbPuls { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.28); } }
 /* Linien, die sich einmal zeichnen (pathLength="1"). */
 .pb-verbindung, .pb-fuehrung { fill: none; stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 1.3s var(--ease) 2.2s; }
@@ -914,3 +915,62 @@ html.menue-offen { overflow: hidden; }
 .events-block.kompakt { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: end; }
 .events-block.kompakt .events-kopf { grid-column: auto; }
 @media (max-width: 900px) { .events-block.kompakt { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Überarbeitung 31.10.: Problem-Bilder größer und ohne Kasten, die Lücke bleibt im Standbild sichtbar ── */
+.held-raster:has(> .problem-bild) { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); }
+.problem-bild { padding: 18px 0 0; background: none; border: 0; border-top: 1px solid var(--haar-mittel); border-radius: 0; }
+.pb-svg { margin-top: 22px; }
+.pb-satz { max-width: 34rem; }
+.pb-geist { opacity: 1; transition: opacity .6s var(--ease) 3.2s; }
+.pb-geist line { stroke: var(--hell); stroke-width: 1.4; stroke-dasharray: 4 4; mix-blend-mode: normal; }
+.pb-geist text { fill: var(--tinte-leise); }
+.js .problem-bild:not(.sichtbar) .pb-geist { opacity: 0; }
+/* ── Arbeitsprobe als Bühne: Rechner und Handy ── */
+.probe { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(40px, 6vw, 96px); align-items: center; }
+.probe-text h2 { margin-top: 20px; font-size: var(--t-titel); letter-spacing: -.03em; line-height: 1.07; }
+.probe-text .lead { margin-top: 20px; }
+.probe-text .punkte { margin-top: 24px; }
+.probe-text .knoepfe { margin-top: 28px; }
+.probe-buehne { position: relative; padding: 0 0 48px; }
+.geraet img { display: block; width: 100%; height: auto; }
+.geraet.rechner { border-radius: 10px; overflow: hidden; border: 1px solid var(--haar-mittel); box-shadow: 0 30px 60px -30px rgba(17, 19, 22, .45), 0 2px 6px rgba(17, 19, 22, .08); background: var(--nacht); padding-top: 22px; position: relative; }
+.geraet.rechner::before { content: ""; position: absolute; left: 12px; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: rgba(242, 243, 243, .35); box-shadow: 11px 0 0 rgba(242, 243, 243, .25), 22px 0 0 rgba(242, 243, 243, .18); }
+.geraet.handy { position: absolute; right: -2%; bottom: 0; width: 26%; border-radius: 22px; overflow: hidden; border: 5px solid var(--tinte); box-shadow: 0 24px 48px -20px rgba(17, 19, 22, .5); background: var(--papier); }
+.probe-buehne figcaption { margin-top: 16px; max-width: 70%; }
+@media (max-width: 900px) { .probe { grid-template-columns: minmax(0, 1fr); } .geraet.handy { width: 30%; right: 0; } }
+
+/* ── Feinschliff 31.10. (Prüfung Gestaltung/Technik) ── */
+.held h1 .ruhig, .ab-kopf h2 .ruhig, .kasten h2 .ruhig, .schlussakt h2 .ruhig { font-weight: 500; }
+.kasten h2 + .lead { margin-top: 20px; }
+/* Stufen-Treppe: feste Balkenzeile, damit lange Texte die Treppe nicht verschieben */
+@media (min-width: 821px) { .stufen { align-items: start; } .stufen li { display: grid; grid-template-rows: 110px auto auto; } .stufen .stufe-balken { align-self: end; } }
+/* Wochenreport: Zielmarke bei 80 % der Skala (Skala = 125 % des Ziels) */
+.bericht-balken { position: relative; display: block; }
+.ziel-marke { position: absolute; left: 80%; top: -4px; bottom: -4px; width: 2px; background: var(--tinte); border-radius: 1px; }
+/* Sehr schmale Bildschirme (320 px): Knöpfe dürfen umbrechen statt die Seite zu verbreitern */
+@media (max-width: 400px) { .knopf { white-space: normal; max-width: 100%; text-align: center; } }
+/* Fuß am Handy zweispaltig, die Marke über die ganze Breite */
+@media (max-width: 560px) { .fuss-raster { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fuss-raster > :first-child { grid-column: 1 / -1; } }
+/* Quellen-Links: größere Trefferfläche (WCAG 2.5.8) */
+.zahl cite a, .momente-zahl cite a { display: inline-block; padding-block: 4px; }
+/* Druck: alles sichtbar, ohne Film und Kopf */
+@media print {
+  .js .erscheint { opacity: 1 !important; translate: none !important; }
+  .film, .kopf, .ueberspringen, .schlussakt .weg, .fuss-raster nav { display: none !important; }
+  body, .dunkel { background: #fff !important; color: #000 !important; }
+  a { text-decoration: underline; }
+}
+
+/* ── Preise als Karten (31.10.) ── */
+.preis-karten { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 16px; margin-top: 28px; }
+.preis-karte a { position: relative; display: flex; flex-direction: column; height: 100%; padding: 26px 24px 22px; background: var(--papier-hell); border: 1px solid var(--haar); border-radius: 10px; transition: border-color .3s ease, transform .3s var(--ease), box-shadow .3s ease; }
+.preis-karte a:hover { border-color: var(--akzent-papier); transform: translateY(-2px); box-shadow: 0 18px 40px -24px rgba(124, 58, 237, .35); }
+.preis-karte.einstieg a { border-color: var(--akzent-papier); box-shadow: inset 0 3px 0 var(--akzent-papier); }
+.marke-einstieg { align-self: flex-start; margin-bottom: 12px; padding: 3px 10px; border-radius: 999px; background: var(--akzent-zart); color: var(--akzent-papier); font-size: .78rem; font-weight: 600; letter-spacing: .02em; }
+.preis-karte h3 { font-size: 1.15rem; line-height: 1.25; }
+.karte-preis { margin-top: 12px; color: var(--tinte); font-size: 1.75rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+.karte-zusatz { margin-top: 6px; color: var(--tinte-leise); font-size: .9rem; }
+.karte-satz { margin-top: 14px; font-size: .97rem; }
+.preis-karte .punkte { margin-top: 14px; font-size: .92rem; }
+.preis-karte .textlink { margin-top: auto; padding-top: 18px; }
+.preis-karten.frei .karte-preis { font-size: 1.35rem; color: var(--akzent-papier); }

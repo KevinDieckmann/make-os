@@ -23,6 +23,7 @@ ${text(80, 40, 'Was möglich ist', 'pb-text pb-klein', 'start')}
 <rect class="pb-produkt" x="105" y="50" width="76" height="150" rx="3"/>
 <rect class="pb-umsatz" x="219" y="50" width="76" height="150" rx="3"/>
 <g class="pb-luecke"><line x1="257" y1="58" x2="257" y2="146"/><path d="M251 64 L257 56 L263 64 M251 140 L257 148 L263 140"/>${text(271, 106, 'Lücke', 'pb-text pb-klein', 'start')}</g>
+<g class="pb-geist"><line x1="219" y1="152" x2="303" y2="152"/>${text(309, 156, 'heute', 'pb-text pb-klein', 'start')}</g>
 <circle class="pb-punkt" cx="257" cy="50" r="6"/>
 ${text(143, 224, 'Ihr Produkt')}${text(257, 224, 'Ihr Umsatz')}`,
   },
