@@ -425,7 +425,12 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
   const lesezeit = (a) => Math.max(2, Math.ceil(klar(artikelText(a)).split(/\s+/).length / 200));
   const wissenListe = (liste) => `<ul class="wissen-liste erscheint">${liste.map((a) => `<li><a href="${artikelPfad(a)}"><span class="etikett">${a.leitfaden ? 'Leitfaden · ' : ''}${e(B[a.bereich].name)} · ${lesezeit(a)} Minuten</span><h3>${e(a.titel)}</h3><p>${t(a.beschreibung)}</p><span class="textlink"><span>Lesen</span> ${PFEIL}</span></a></li>`).join('')}</ul>`;
   const artikelZu = (bedingung) => W.artikel.filter(bedingung);
-  const wissenAbschnitt = (liste, h2 = 'Wissen zum Thema') => (liste.length ? `<section class="abschnitt" aria-labelledby="wissen-titel"><div class="w">${abKopf({ marke: 'Wissen', h2, id: 'wissen-titel' })}${wissenListe(liste)}</div></section>` : '');
+  // Ohne Lücken im Raster (31.10.): drei oder sechs Ratgeber, der Rest über „Alle Ratgeber“; ein oder zwei stehen breiter.
+  const wissenAbschnitt = (liste, h2 = 'Wissen zum Thema') => {
+    if (!liste.length) return '';
+    const n = liste.length >= 6 ? 6 : liste.length >= 3 ? 3 : liste.length;
+    return `<section class="abschnitt" aria-labelledby="wissen-titel"><div class="w">${abKopf({ marke: 'Wissen', h2, id: 'wissen-titel' })}${wissenListe(liste.slice(0, n)).replace('class="wissen-liste', `class="wissen-liste n${n}`)}${liste.length > n ? `<div class="knoepfe erscheint">${textlink('/kostenlos/#ratgeber', 'Alle Ratgeber')}</div>` : ''}</div></section>`;
+  };
   /** Vergleichstabelle der Produktblätter (Homepages, Videos): Kopf mit Links und Preisen, auf dem Handy als Karten. */
   const vergleichTabelle = (v) => {
     const liste = v.angebote.map(angebot).filter(Boolean);
