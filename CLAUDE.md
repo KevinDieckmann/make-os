@@ -2676,6 +2676,23 @@ Code-Kopf), sonst „Annahme“ im Kommentar.
   `deploy/env.server.beispiel`, UPDATES.md.
 - Tests: `tests/whatsapp-{kern,route,oberflaeche,skript}.test.ts`, `tests/inbox-whatsapp-ui.test.ts` (Inbox × WhatsApp; nachgebautes Meta, kein Netz).
 
+## Kampagne „Homepage“ — Homepage-Funde (30.10., Branch `homepage-funnel`, nur lokal; Plan `KAMPAGNE_HOMEPAGE_PLAN.md`, UPDATES.md)
+Kevin 30.10.: Massen-Funnel auf Betriebe ohne/mit schlechter Website; Klickrunde: Mail Tag 0 + Anruf nach 72 h **auf eigenes Risiko**, OSM je Bezirk +
+Google Maps nur von Hand, 20 je Abend, Absender aus dem Register, Gastro/Handwerk/Einzelhandel.
+- **Funde sind keine Kontakte:** Bestand `kampagne-funde--<haushalt>` (EINE Schreibstelle `aendereFunde`, lib/funde/speicher.ts); in die Kartei erst mit
+  der Freigabe im ZOE-Stapel (Art `fund`, `FUND_STAPEL_ART` in lib/funde/uebernehmen.ts) über den EINEN Anlege-Weg (`personAnlegen`, Weg „prospecting“:
+  Herkunft Recherche, Art.-14-Uhr, Dublette 409, Sperrliste) + Label `homepage-funnel` (Segment `seg-homepage-funnel`) + Kampagne + Lead + Follow-up.
+- **Abendlauf** `fundeLauf` (lib/funde/lauf.ts, Takt ab 20 Uhr, `KI_LAEUFE`, Agent „funde“): OSM (`osmHolen`, ODbL, ein Gebiet reihum, Ketten raus) →
+  Kartei-Firmen/Sperrliste/Bekannte raus → Website-Check OHNE KI (`seitePruefen`: nur http(s) 80/443, `zielPruefen` je Station, 512 KB, robots.txt;
+  `pagespeed` nur mit `PAGESPEED_API_KEY`) → Vorschau-Texte über das KI-Tor (sonst Regelwerk) → Mail-Entwurf aus der VORLAGE (keine KI) → Stapel. Nie
+  Google Places/Scraping (Bedingungen) — Google Maps nur „Fund von Hand“.
+- **Recht:** die Kanal-Ampel bleibt rot und wird NICHT umgeschrieben; gesendet wird nur mit `einstellungen.eigenesRisiko` (nur Inhaber, Rückfrage, Vorgabe
+  AUS, `RISIKO_HINWEIS` immer sichtbar), nur aus der Sitzung, über `inboxSenden` (`uwgBestaetigt: true` NUR dieser Weg), je Betrieb genau eine Mail mit
+  Art.-14-Hinweis und Abmeldelink. Kampagne mit Kanal „mix“ (die Personen-Schranke werblicher Mail-Kampagnen bleibt unberührt).
+- **Vorschau:** nur Fakten + eigene Texte, nie Bilder/Logos/Texte des Betriebs, alles maskiert (`vorschauHtml`); intern `/api/crm/funde/vorschau`,
+  öffentlich `/vorschau/v1-<32 hex>` erst nach Freigabe (Token nur als Fingerabdruck, 60 Tage, Middleware `VORSCHAU_OFFEN` nur GET/HEAD, gedrosselt).
+- **Frist** `kampagne-funde` (21 Tage, höchstens 30 — Art. 14 Abs. 3 lit. a), Morgenlauf-Schritt 15a; Art. 15/17 über `person-weitere.ts`. Tests `tests/funde.test.ts`.
+
 ## Inbox 2 — EINE Inbox für alle Postfächer (06./07.10., nur lokal, Branch `inbox-2`; Konzept `INBOX_KONZEPT.md` mit Abschnitt 12, UPDATES.md)
 Kevin 06.10.: „Die Inbox braucht ein Upgrade … dann müssen wir nur daraus alles ableiten können, schnell was passiert“ — „ZOE macht alles nur als Vorschlag“.
 - **Postfach-Register je Person** (`lib/postfach/register.ts`, Bestand `postfaecher--<person>`; Typen `lib/postfach/typen.ts`): Quelle `gmail` (Eintrag `gmail`,

@@ -109,6 +109,24 @@ export const PLAYBOOKS: Playbook[] = [
     schritte: [{ text: 'Nutzen des Newsletters in einem Satz festlegen', tag: 0 }, { text: 'Im nächsten Gespräch fragen und Wortlaut festhalten', tag: 3 }, { text: 'Double-Opt-in-Mail auslösen (Versandwerkzeug)', tag: 4 }],
     kennzahl: 'Neue Double-Opt-ins', recht: 'Nachweis mit Zeitpunkt und Wortlaut; eine Visitenkarte ist keine Einwilligung.', fuer: ['head-marketing'],
   },
+  {
+    // Kampagne „Homepage“ (30.10., KAMPAGNE_HOMEPAGE_PLAN.md): Betriebe ohne bzw. mit schlechter Website — der Abendlauf findet sie (lib/funde/lauf.ts),
+    // die Freigabe im ZOE-Stapel übernimmt sie in die Kartei (Label `homepage-funnel`). Mail/Anruf nur auf eigenes Risiko des Inhabers (Ampel bleibt rot).
+    id: 'homepage-funde', name: 'Homepage-Funde', kurz: 'Betriebe ohne oder mit schlechter Website — Vorschau ihrer neuen Seite',
+    warum: 'Ein konkreter, sichtbarer Mangel (keine Seite, nicht mobil, unsicher) und ein fertiger Entwurf machen den Nutzen sofort greifbar — der Betrieb muss sich nichts vorstellen.',
+    // Kanal „mix“ (Mail nur auf eigenes Risiko, Anruf, Brief, Besuch): die Personen-Schranke werblicher Kampagnen (rote Mail-Ampel → nicht hinein)
+    // gilt für Mail-Kampagnen; hier bleibt die Ampel rot und der Versand hängt allein am Schalter „eigenes Risiko“ (lib/funde/uebernehmen.ts).
+    zielgruppe: { herkunft: ['recherche'], label: ['homepage-funnel'] }, kanal: 'mix',
+    schritte: [
+      { text: 'Funde des Abends im ZOE-Stapel prüfen und freigeben', tag: 0 },
+      { text: 'Ohne Antwort nach 72 h: einmal anrufen (Leitfaden am Fund)', tag: 3 },
+      { text: 'Bei Interesse: Angebot „Website“ aus dem Katalog stellen', tag: 5 },
+    ],
+    kennzahl: 'Anfragen und Abschlüsse je gesendeter Mail',
+    recht: 'Werbe-Mail und Werbeanruf ohne Einwilligung sind auch an Firmen unzulässig (§ 7 Abs. 2 UWG) — die Ampel bleibt rot; Versand nur, wenn ein Inhaber „eigenes Risiko“ eingeschaltet hat. Brief und Besuch vor Ort sind die zulässigen Wege. Art. 14 DSGVO: Hinweis in der ersten Nachricht.',
+    // Der Head of Marketing darf sie vorschlagen; „Einrichten“ (lib/funde/einrichten.ts) nimmt eine offene Kampagne dieses Playbooks, statt eine zweite anzulegen.
+    fuer: ['head-marketing'],
+  },
 ];
 
 // ── Kundenprofil und ähnliche Firmen ────────────────────────────────────────

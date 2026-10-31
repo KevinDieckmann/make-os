@@ -438,6 +438,12 @@ export async function loeschfristenLauf(jetzt = new Date(), erzwingen = false): 
     zaehle('uebergabe-journal', await journalAufraeumen(heute, f['uebergabe-protokolle']));
   });
 
+  // 15a · Homepage-Funde (30.10., lib/funde/aufraeumen.ts): nicht übernommene nach der Frist weg, übernommene nach Ablauf der Vorschau.
+  await schritt('kampagne-funde', async () => {
+    const { fundeAufraeumen } = await import('@/lib/funde/aufraeumen');
+    zaehle('kampagne-funde', await fundeAufraeumen(heute, f['kampagne-funde']));
+  });
+
   // 15b · Fulfillment (10.10., FULFILLMENT_KONZEPT.md 8.1): Personenkarten, Unterlagen, Mandatsdaten — je ab Mandatsende; die Pakete zählen
   //       nur (keine Namen), lib/fulfillment/fristen-server.ts verteilt.
   await schritt('fulfillment', async () => {

@@ -122,6 +122,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'ki-medien--*': 'Von der KI erzeugte Medien je Haushalt (Marketing-Material des Haushalts; „nur ich“-Medien sieht nur die auslösende Person) — seit Paket 4c nur Auftragsbuch laufender Videos und Altbestand; fertige KI-Medien liegen in medien--*/medien-privat--*',
   'brain-bruecke--*': 'Einstellung je Haushalt',
   'buchung--*': 'Buchungsseiten und Buchungen Dritter',
+  'kampagne-funde--*': 'Homepage-Funde je Haushalt (Betriebe aus öffentlichen Quellen — Dritte, keine Konto-Daten); am Fund steht höchstens der Speichername der Person, die ihn eingetragen bzw. entschieden hat, und die Kennung des Absender-Postfachs (wie in Protokollen); Funde laufen nach höchstens 60 Tagen ab',
   'angebot-formular--*': 'Formular „Angebot anfordern“ je Haushalt (Eingänge nur mit Kennungen, Links externer Vertriebler, Einstellungen) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“, das eigene Absender-Postfach fällt weg',
   'crm-dateien--*': 'Dateiablage der Kartei je Haushalt',
   'crm-import-laeufe--*': 'Import-Läufe der Kartei',

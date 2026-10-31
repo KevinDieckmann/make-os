@@ -20,7 +20,7 @@ export const AUSFUEHRBAR = [
   // Systemläufe: kein Fach-Agent, sondern der Takt selbst. Sie stehen hier,
   // damit der Arbeiter sie wie alles andere aus der Warteschlange holt.
   'tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben', 'durchsicht', 'absichten',
-  'ki-medien',
+  'ki-medien', 'funde',
   // Agenten-Bereich (09.10., Paket 1): EIN Lauf-Name für Mitarbeiter-, Skill- und Plan-Läufe (lib/agenten/typen.ts `LAUF_AGENT`).
   'faden',
 ] as const;
@@ -59,6 +59,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
   markttraktion: 'Der Markttraktion-Takt — schickt den Personen des Teams werktags morgens, was in der Markttraktion bei ihnen liegt, und freitags das Wochen-Scoreboard aufs Handy (auftrag = morgen | woche, optional person:<Kennung aus dem Team> — schickt sofort; leer = was fällig ist)',
   hoi: 'Der Head of IT — Lagebild aus Server, App, Sicherheit und Außenblick; ohne KI (auftrag = bericht | pruefen)',
   konsolidierung: 'Die nächtliche Brain-Konsolidierung — verdichtet Fakten, Log und Protokolle des Tages zu Vorschlägen in der Brain-Inbox (auftrag = jetzt erzwingt)',
+  funde: 'Homepage-Funde (Kampagne „Homepage“): Betriebe ohne bzw. mit schlechter Website aus OpenStreetMap finden, bewerten, Vorschau + Mail-Entwurf — nur Vorschläge in den Stapel, nichts versendet',
   'zoe-aufgaben': 'ZOE bereitet die Aufgaben vor, die an sie gegeben wurden — nur Vorschläge in den Stapel, übernommen wird erst nach Freigabe (mit Person: nur deren Aufträge)',
   absichten: 'Abgebrochene Vorgänge über mehrere Bestände fertigstellen (Absichtsprotokoll: Art. 17, Import, Dubletten, Kennungs-Umzug, Angebot) — ohne KI, nur Zahlen (auftrag = jetzt nimmt auch junge)',
   durchsicht: 'Die nächtliche Durchsicht der Bestände (Datenschicht) — jeden Bestand entschlüsseln, parsen, zählen, Zeilen-Sprünge und Verbindungsprüfung für den Head of IT; ohne KI, nur Zahlen (auftrag = jetzt erzwingt)',
@@ -75,7 +76,7 @@ export const AGENT_ZWECK: Record<Ausfuehrbar, string> = {
  * eigenen Kopie. Eine zweite Liste hätte genau einen Zweck: irgendwann von
  * dieser abzuweichen.
  */
-export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben', 'durchsicht', 'absichten', 'ki-medien', 'faden'] as const;
+export const SYSTEM_LAEUFE = ['tagesstart', 'tageslauf', 'verbesserung', 'morgen', 'abend', 'selbstbild', 'gesundheit', 'markttraktion', 'hoi', 'konsolidierung', 'loeschfristen', 'zoe-aufgaben', 'durchsicht', 'absichten', 'ki-medien', 'faden', 'funde'] as const;
 const SYSTEM = new Set<string>(SYSTEM_LAEUFE);
 
 const kuerze = (t: unknown, n = 1600) => String(t ?? '').slice(0, n);
@@ -460,6 +461,13 @@ async function agentLaufen(id: Ausfuehrbar, auftrag: string, origin: string, per
         const { durchsichtLauf } = await import('@/lib/store/durchsicht');
         const r = await durchsichtLauf(new Date(), auftrag === 'jetzt');
         return r.ok ? gut(`DURCHSICHT${r.uebersprungen ? ' (heute schon gelaufen)' : ''}: ${r.text}`) : fehl(`Durchsicht: ${r.text}`);
+      }
+      case 'funde': {
+        // Kampagne „Homepage“ (30.10.): fester Ablauf, nur Vorschläge in den Stapel (lib/funde/lauf.ts).
+        const { fundeLauf } = await import('@/lib/funde/lauf');
+        const r = await fundeLauf({ person: person ?? null });
+        if (!r.ok) return fehl(`Homepage-Funde: ${kuerze(r.grund ?? 'nicht gelaufen', 200)}`);
+        return gut(`HOMEPAGE-FUNDE: ${r.vorbereitet} vorbereitet (warten auf Freigabe) aus ${r.geholt} Betrieben${r.gebiet ? ` in ${kuerze(r.gebiet, 40)}` : ''}${r.ohneKi ? ` — Texte ohne KI (${kuerze(r.ohneKi, 60)})` : ''}.`);
       }
       case 'zoe-aufgaben': {
         // Paket C4: ZOE bereitet ihre Aufgaben vor — nur Vorschläge (Stapel), nie Übernahme. Mit Person nur deren Aufträge.

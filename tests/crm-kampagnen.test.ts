@@ -22,8 +22,8 @@ const crm = {
 };
 
 describe('Kampagnen', () => {
-  it('neun Playbooks (seit 25.09. mit LinkedIn: vernetzen & anschreiben), jedes mit Begründung, Schritten und Rechtshinweis', () => {
-    expect(PLAYBOOKS.length).toBe(9);
+  it('zehn Playbooks (seit 25.09. mit LinkedIn: vernetzen & anschreiben, seit 30.10. Homepage-Funde), jedes mit Begründung, Schritten und Rechtshinweis', () => {
+    expect(PLAYBOOKS.length).toBe(10);
     for (const p of PLAYBOOKS) { expect(p.warum.length).toBeGreaterThan(40); expect(p.schritte.length).toBeGreaterThan(1); expect(p.recht).toBeTruthy(); expect(p.fuer.length).toBeGreaterThan(0); }
   });
   it('Kundenprofil aus aktiven Mandaten; ähnliche Firmen nach Branche, Ort, Größe', () => {

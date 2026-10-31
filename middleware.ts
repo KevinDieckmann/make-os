@@ -56,6 +56,9 @@ const ANGEBOT_OFFEN = [/^\/angebot\/[a-z0-9-]{1,40}-[a-f0-9]{24}$/, /^\/api\/ang
 // Servern der Mail-Anbieter, ohne Origin) und antwortet immer gleich. GET auf die Schnittstelle (Mail-Programm öffnet den List-Unsubscribe-Link)
 // leitet nur auf die Seite um — deshalb auch von einer fremden Seite aus erreichbar (vor `crossSiteVerboten`).
 const ABMELDE_OFFEN = [/^\/abmelden\/a1-[0-9a-f]{32}$/, /^\/api\/abmelden\/a1-[0-9a-f]{32}$/];
+// Kampagne „Homepage“ (30.10.): öffentliche Website-Vorschau eines Betriebs — NUR GET/HEAD auf `/vorschau/v1-<32 hex>`, ohne Sitzung. Die Route
+// handelt für niemanden, zeigt nur diese eine Seite (Token nur als Fingerabdruck im Bestand, Ablauf, gedrosselt) — lib/funde/typen.ts `VORSCHAU_TOKEN`.
+const VORSCHAU_OFFEN = /^\/vorschau\/v1-[0-9a-f]{32}$/;
 // Social (28.10., Malin-Paket): Instagram holt Bilder/Videos selbst ab — NUR GET/HEAD auf `/api/social/medien/sm-<32 hex>(.jpg|.mp4)`, ohne Sitzung
 // (Metas Server). Die Route handelt für niemanden, liefert nur EIN freigegebenes Medium, solange der Link gilt (lib/social/medien-link.ts `LINK_PFAD`).
 const SOCIAL_MEDIEN_LINK = /^\/api\/social\/medien\/sm-[a-f0-9]{32}(\.(jpg|mp4))?$/;
@@ -231,6 +234,8 @@ export async function middleware(req: NextRequest) {
   if (PROZESS_WEBHOOK.test(pfad) && req.method === 'POST') return NextResponse.next({ request: { headers: kopf } });
   // Abmeldelink: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung — die Route handelt für niemanden.
   if (ABMELDE_OFFEN.some(r => r.test(pfad)) && (req.method === 'GET' || req.method === 'POST')) return NextResponse.next({ request: { headers: kopf } });
+  // Website-Vorschau (Kampagne „Homepage“): nie als jemand (Köpfe oben gelöscht), nur GET/HEAD.
+  if (VORSCHAU_OFFEN.test(pfad) && (req.method === 'GET' || req.method === 'HEAD')) return NextResponse.next({ request: { headers: kopf } });
   // Social-Medienlink: nie als jemand (Köpfe oben gelöscht), nur GET/HEAD — die Route liefert nur ein freigegebenes Medium.
   if (SOCIAL_MEDIEN_LINK.test(pfad) && (req.method === 'GET' || req.method === 'HEAD')) return NextResponse.next({ request: { headers: kopf } });
   // Unterlagen per E-Mail: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung; der Download-Link auch aus einem Mail-Programm heraus.
