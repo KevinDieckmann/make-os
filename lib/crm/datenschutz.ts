@@ -600,30 +600,8 @@ export function verarbeitungSocial(jetzt: string): Verarbeitung {
     drittland: 'Meta- bzw. LinkedIn-Konzern (USA) — Garantie prüfen; Anthropic: Standardvertragsklauseln',
     loeschfrist: 'Kommentare und Direktnachrichten 180 Tage (Spiegel; Original bei Instagram); Beiträge und Zahlen bis der Kanal entfernt wird; Zugriffstoken bis zum Trennen; Art. 17 sofort',
     toms: 'Verbinden nur per Anmeldung beim Anbieter (OAuth, einmaliger state), Token verschlüsselt nur auf dem Server (nie im Browser, nie im Log), Medien für Instagram nur über kurzlebige Links (60 Min., nur Fingerabdruck gespeichert), Antworten nur per Klick oder im ausdrücklich gewählten Modus mit Tageslimit und Not-Aus, Texte Dritter an die KI nur gekapselt, Bestände verschlüsselt auf der Platte, Server in Deutschland (Hetzner)',
-// ── Verarbeitung „Unterlagen per E-Mail über die Website“ (31.10., lib/unterlagen/*) — nachgetragen, sobald Website-Absender und Katalog da sind ──
-// Kevin 31.10.: große Vorlagen der Website gibt es nur per Mail. Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
-
-export const VV_UNTERLAGEN_ID = 'vv-website-unterlagen';
-
-export function verarbeitungUnterlagen(jetzt: string): Verarbeitung {
-  return {
-    id: VV_UNTERLAGEN_ID, name: 'Unterlagen per E-Mail über die Website',
-    zweck: 'Große Vorlagen der Website (Arbeitshefte, Tabellen) auf Anforderung per E-Mail schicken: Mail mit Download-Links (7 Tage gültig), Anfrage im Kundensystem (Follow-up), auf Wunsch die Newsletter-Anmeldung (eigener Eintrag, Double-Opt-in)',
-    personen: 'Personen, die auf der Website eine Unterlage anfordern; Konten des Haushalts (Bearbeitung der Anfrage)',
-    daten: 'Vorname, E-Mail-Adresse, Firma (freiwillig), welche Unterlage, Zeitpunkt; kein eigener Bestand — die Anforderung steht als Anfrage in der Kartei; der Download-Link trägt nur Kennung der Unterlage und Ablauf (signiert), nie die Adresse; Zähler je Adresse und Tag nur als Fingerabdruck im Arbeitsspeicher',
-    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (von der Person angeforderte Zusendung und Antwort auf ihre Anfrage); Newsletter nur mit eigener Checkbox und Double-Opt-in (Art. 6 Abs. 1 lit. a, § 7 UWG)',
-    empfaenger: 'Konten des Haushalts (Business-Bereich); das Absender-Postfach der Website (Google Workspace bzw. E-Mail-Anbieter) für die Mail; Hetzner (Hosting)',
-    empfaengerIds: ['hetzner', 'google-workspace', 'ionos'],
-    drittland: 'je nach Absender-Postfach der Website (Google Workspace: USA, Konzern)',
-    loeschfrist: 'Anfrage im Kundensystem nach den Fristen der Kartei (ohne weitere Interaktion Prüfung nach 24 Monaten); die Mail im Postfach des Absenders nach dessen Fristen; Art. 17 sofort',
-    toms: 'Öffentliche Schnittstelle nur über eine eng gefasste Adresse, aus ohne Website-Absender; dieselbe Antwort für jede Adresse (Arbeit nach der Antwort); höchstens 3 Mails je Adresse und Tag über alle Website-Mails; Drossel je Netz, Honigtopf, Größengrenze; Download nur aus dem Katalog im nicht öffentlichen Ordner, als Anhang mit nosniff und sandbox; Art. 18, Werbesperre und Sperrliste werden vor jeder Mail geprüft; fester Text, keine KI',
     verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
   };
-}
-
-/** Die Verarbeitung „Unterlagen per E-Mail über die Website“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
-export function verarbeitungUnterlagenNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
-  return vorhanden.some(v => v.id === VV_UNTERLAGEN_ID) ? [...vorhanden] : [...vorhanden, verarbeitungUnterlagen(jetzt)];
 }
 
 // ── Verarbeitung „Newsletter-Anmeldung über die Website“ (30.10., lib/newsletter/*) — idempotent nachgetragen, sobald die Anmeldung eingerichtet ist ──
@@ -877,6 +855,32 @@ export function verarbeitungNeutral(v: Verarbeitung): Verarbeitung {
   const text = (t: string) => VV_NEUTRAL.reduce((s, [a, b]) => (typeof a === 'string' ? s.split(a).join(b) : s.replace(a, b)), t);
   const aus = Object.fromEntries(Object.entries(v).map(([k, w]) => [k, typeof w === 'string' && k !== 'id' ? text(w) : w])) as unknown as Verarbeitung;
   return v.empfaengerIds ? { ...aus, empfaengerIds: v.empfaengerIds.filter(id => !NUR_BETREIBER_EMPFAENGER.includes(id)) } : aus;
+}
+
+// ── Verarbeitung „Unterlagen per E-Mail über die Website“ (31.10., lib/unterlagen/*) — nachgetragen, sobald Website-Absender und Katalog da sind ──
+// Kevin 31.10.: große Vorlagen der Website gibt es nur per Mail. Hinweis, keine Rechtsberatung — anwaltlich gegenlesen.
+
+export const VV_UNTERLAGEN_ID = 'vv-website-unterlagen';
+
+export function verarbeitungUnterlagen(jetzt: string): Verarbeitung {
+  return {
+    id: VV_UNTERLAGEN_ID, name: 'Unterlagen per E-Mail über die Website',
+    zweck: 'Große Vorlagen der Website (Arbeitshefte, Tabellen) auf Anforderung per E-Mail schicken: Mail mit Download-Links (7 Tage gültig), Anfrage im Kundensystem (Follow-up), auf Wunsch die Newsletter-Anmeldung (eigener Eintrag, Double-Opt-in)',
+    personen: 'Personen, die auf der Website eine Unterlage anfordern; Konten des Haushalts (Bearbeitung der Anfrage)',
+    daten: 'Vorname, E-Mail-Adresse, Firma (freiwillig), welche Unterlage, Zeitpunkt; kein eigener Bestand — die Anforderung steht als Anfrage in der Kartei; der Download-Link trägt nur Kennung der Unterlage und Ablauf (signiert), nie die Adresse; Zähler je Adresse und Tag nur als Fingerabdruck im Arbeitsspeicher',
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (von der Person angeforderte Zusendung und Antwort auf ihre Anfrage); Newsletter nur mit eigener Checkbox und Double-Opt-in (Art. 6 Abs. 1 lit. a, § 7 UWG)',
+    empfaenger: 'Konten des Haushalts (Business-Bereich); das Absender-Postfach der Website (Google Workspace bzw. E-Mail-Anbieter) für die Mail; Hetzner (Hosting)',
+    empfaengerIds: ['hetzner', 'google-workspace', 'ionos'],
+    drittland: 'je nach Absender-Postfach der Website (Google Workspace: USA, Konzern)',
+    loeschfrist: 'Anfrage im Kundensystem nach den Fristen der Kartei (ohne weitere Interaktion Prüfung nach 24 Monaten); die Mail im Postfach des Absenders nach dessen Fristen; Art. 17 sofort',
+    toms: 'Öffentliche Schnittstelle nur über eine eng gefasste Adresse, aus ohne Website-Absender; dieselbe Antwort für jede Adresse (Arbeit nach der Antwort); höchstens 3 Mails je Adresse und Tag über alle Website-Mails; Drossel je Netz, Honigtopf, Größengrenze; Download nur aus dem Katalog im nicht öffentlichen Ordner, als Anhang mit nosniff und sandbox; Art. 18, Werbesperre und Sperrliste werden vor jeder Mail geprüft; fester Text, keine KI',
+    verantwortlich: VERANTWORTLICH_EINRICHTUNG, stand: tagVon(jetzt),
+  };
+}
+
+/** Die Verarbeitung „Unterlagen per E-Mail über die Website“ ergänzen, falls sie fehlt (vorhandene — auch von Hand geänderte — bleiben unverändert). */
+export function verarbeitungUnterlagenNachtragen(vorhanden: readonly Verarbeitung[], jetzt: string): Verarbeitung[] {
+  return vorhanden.some(v => v.id === VV_UNTERLAGEN_ID) ? [...vorhanden] : [...vorhanden, verarbeitungUnterlagen(jetzt)];
 }
 
 export function verzeichnisVervollstaendigen(vorhanden: readonly Verarbeitung[], jetzt: string, opt: { google?: boolean; icloud?: boolean; whatsapp?: boolean; whoop?: boolean; zoeWhatsapp?: boolean; zuliefererAus?: boolean; betreiber?: boolean; check?: boolean; social?: boolean; newsletter?: boolean; kontaktformular?: boolean; unterlagen?: boolean } = {}): { liste: Verarbeitung[]; geaendert: boolean } {
