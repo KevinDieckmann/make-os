@@ -20,7 +20,7 @@
 //   Gesundheit  /os/gesundheit?fuer=<person>#morgen|routinen|haut|streak|index
 //   Markttraktion über lib/crm/adresse.ts (s · a · k)
 
-import { mandateLink, markttraktion, dealAkte, angebotLink, planungLink, auswertungLink, formulareLink, type AngebotAdresse, type PlanungAnsicht } from '@/lib/crm/adresse';
+import { mandateLink, markttraktion, dealAkte, angebotLink, planungLink, auswertungLink, formulareLink, websiteLink, type AngebotAdresse, type PlanungAnsicht, type WebsiteAnsicht } from '@/lib/crm/adresse';
 import { aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
 import { fulfillmentLink, fallLink, type FulfillmentBereich, type AlterBereich, type FallReiter, type AlterFallReiter } from '@/lib/fulfillment/adresse';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
@@ -236,6 +236,8 @@ export const WEG = {
   /** Markttraktion › Auswertung (Hub, 22.10.): der Flow vom Kontakt zum gewonnenen Deal und alle Kennzahlen — `kunden()` zeigt dieselbe Ansicht. */
   auswertung: () => auswertungLink(),
   kampagne: (id?: string) => markttraktion('marketing', 'kampagnen', id),
+  /** Markttraktion › Website (31.10.): Wege, Eingänge, Checks, Angebote & Preise, Bausteine, Bilder, Formulare & Termine, Inhalte, Recht. */
+  website: (a?: WebsiteAnsicht) => websiteLink(a),
   marketing: (a?: 'anfragen' | 'check' | 'segmente' | 'kampagnen' | 'redaktion' | 'social' | 'newsletter' | 'positionierung', k?: string) => markttraktion('marketing', a, k),
   // 5.19 (08.10.): `r` hängt am vorhandenen Abfrageteil — vorher entstand ohne Kennung „?s=event?r=…“.
   event: (id?: string, r?: 'gaeste' | 'ablauf' | 'checkliste' | 'budget' | 'abend' | 'nachfassen') => { const b = markttraktion('event', undefined, id); return r ? `${b}${b.includes('?') ? '&' : '?'}r=${r}` : b; },

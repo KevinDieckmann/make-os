@@ -45,8 +45,18 @@ export const bausteineOrdner = (): string => path.join(unterlagenOrdner(), 'baus
 export class KatalogKaputt extends Error {}
 
 let gemeldet = '';
-/** Den Katalog lesen — fehlt die Datei, ist er leer. Verworfene Einträge gehen (einmal je Fassung) ins Log, ohne Inhalte. */
+/** Den Katalog lesen — fehlt die Datei, ist er leer. Verworfene Einträge gehen (einmal je Fassung) ins Log, ohne Inhalte. Mit der Überlagerung aus MAKE OS. */
 export async function katalogLaden(): Promise<Baustein[]> {
+  const bausteine = await katalogDatei();
+  // Überlagerung aus MAKE OS (31.10., Markttraktion › Website): Titel, Preis, Kurztext, Rang, sichtbar — ohne Eintrag dieselben Objekte (bit-gleich).
+  const { WEBSITE_BESTAND, bausteineUeberlagern, inhaltAus } = await import('@/lib/website/regeln');
+  // Bestand nicht lesbar → wie ein kaputter Katalog (503), nie still zum Preis der Datei verkaufen.
+  const roh = await loadJson<unknown>(WEBSITE_BESTAND).catch(() => { throw new KatalogKaputt('website-inhalt nicht lesbar'); });
+  const ueber = inhaltAus(roh).bausteine.filter(u => katalogEintragOk(u));
+  return bausteineUeberlagern(bausteine, ueber);
+}
+/** Nur die Datei (ohne Überlagerung) — für den Abgleich in Markttraktion › Website. */
+export async function katalogDatei(): Promise<Baustein[]> {
   let roh: string;
   try { roh = await fs.readFile(path.join(bausteineOrdner(), 'katalog.json'), 'utf8'); }
   catch (e) { if ((e as NodeJS.ErrnoException)?.code === 'ENOENT') return []; throw new KatalogKaputt('katalog.json nicht lesbar'); }
@@ -56,10 +66,14 @@ export async function katalogLaden(): Promise<Baustein[]> {
   if (fehler.length && gemeldet !== roh) { gemeldet = roh; console.warn(`[bausteine] katalog.json: ${fehler.length} Eintrag/Einträge verworfen — ${fehler.slice(0, 5).join(' | ')}`); }
   return bausteine;
 }
+/** Ein Eintrag der Überlagerung, wie er gespeichert ist — nur Form prüfen (gesäubert wurde beim Schreiben). */
+const katalogEintragOk = (u: { id?: unknown }): boolean => typeof u?.id === 'string' && BAUSTEIN_ID_OK.test(u.id);
 
+/** Ein bestellbarer Baustein — in MAKE OS ausgeblendete nicht (die Lieferung bestehender Bestellungen liest `katalogLaden`). */
 export async function bausteinVon(id: unknown): Promise<Baustein | null> {
   if (typeof id !== 'string' || !BAUSTEIN_ID_OK.test(id)) return null;
-  return (await katalogLaden()).find(b => b.id === id) ?? null;
+  const b = (await katalogLaden()).find(x => x.id === id);
+  return b && !b.ausgeblendet ? b : null;
 }
 
 /**
@@ -255,7 +269,8 @@ export async function downloadZiel(bestellId: string, bausteinId: unknown): Prom
     const { rechnungLesen } = await import('@/lib/finanzen/rechnung/server');
     if ((await rechnungLesen(b.rechnungId))?.status === 'storniert') return null;
   }
-  const k = await bausteinVon(bausteinId);
+  // Auch ausgeblendete Bausteine werden geliefert, wenn die Bestellung schon da ist.
+  const k = (await katalogLaden()).find(x => x.id === bausteinId);
   return k && !k.paket ? k : null;
 }
 

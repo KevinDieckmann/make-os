@@ -67,7 +67,7 @@ export function webseiteKennzahlen(kontakte: readonly Kontakt[], w: WebseiteStan
 /** Die Punkte hinter den Kennzahlen (je höchstens 4, mit Weg). */
 export function webseiteDetails(id: 'web_anfragen' | 'web_checks' | 'web_termine', kontakte: readonly Kontakt[], w: WebseiteStand | undefined, heute: string): Detail[] {
   if (!w?.aktiv) return [];
-  if (id === 'web_checks') return checksImFenster(w, heute).slice(0, 4).map(c => ({ titel: c.name, wert: tagKurz(c.tag), href: WEG.marketing('check') }));
+  if (id === 'web_checks') return checksImFenster(w, heute).slice(0, 4).map(c => ({ titel: c.name, wert: tagKurz(c.tag), href: WEG.website('checks') }));
   return webseiteTreffer(kontakte, heute, id === 'web_termine' ? 'termin' : 'anfrage').slice(0, 4)
     .map(x => ({ titel: anzeigename(x.kontakt), wert: tagKurz(x.tag), unter: x.text.slice(0, 70), href: WEG.akte(x.kontakt.id) }));
 }

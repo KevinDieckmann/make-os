@@ -49,6 +49,13 @@ const nextConfig = {
         'report-uri /api/hoi/csp', 'report-to csp',
       ].join('; ') }] : []),
     ];
+    // Öffentliche Inhalte der Website (31.10.): wie `buchung`, aber ohne `no-store` (die Routen setzen Cache-Control) und mit einer CSP ohne jede Quelle.
+    const website = [
+      { key: 'Referrer-Policy', value: 'no-referrer' },
+      { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+      { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=()' },
+      { key: 'Content-Security-Policy', value: "default-src 'none'; frame-ancestors 'none'; sandbox" },
+    ];
     return [
       { source: '/:pfad*', headers: [...basis, ...csp] },
       { source: '/buchen/:pfad*', headers: buchung },
@@ -84,6 +91,11 @@ const nextConfig = {
       // Bausteine bestellen (31.10., lib/bausteine/*): dieselbe strenge Richtlinie — der Download-Link trägt ein Token in der Abfrage.
       { source: '/api/bestellung', headers: buchung },
       { source: '/api/baustein/:pfad*', headers: buchung },
+      // Website-Inhalte (31.10., lib/website/*): /erstgespraech wie die Buchung; Inhalte und Bilder ohne Referrer, nicht indexieren, ohne Kamera/Mikrofon —
+      // den Zwischenspeicher setzen die Routen selbst (Inhalte fünf Minuten öffentlich, damit die Website nicht bei jedem Aufruf fragt).
+      { source: '/erstgespraech', headers: buchung },
+      { source: '/api/website/inhalt', headers: website },
+      { source: '/api/website/bild/:pfad*', headers: website },
     ];
   },
   // Gesundheit ist seit 23.09. EINE Seite mit vier Segmenten. Die alten

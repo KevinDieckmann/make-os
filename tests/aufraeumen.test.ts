@@ -23,7 +23,7 @@ const NUR_WEITERLEITUNG = ['app/page.tsx', 'app/jarvis/page.tsx'];
 // `angebot` (25.10., Markttraktion › Formulare): öffentliche Seite „Angebot anfordern“ für externe Vertriebler — wie `buchen` ohne Sitzung (middleware.ts ANGEBOT_OFFEN).
 // `newsletter` (30.10.): öffentliche Newsletter-Anmeldung mit Double-Opt-in — wie `check` ohne Sitzung (middleware.ts NEWSLETTER_OFFEN), kommt ausgeschaltet.
 // `anfrage` (31.10., Website-Anbau): öffentliches Kontaktformular der Website — wie `newsletter` ohne Sitzung (middleware.ts KONTAKTFORMULAR_OFFEN), kommt ausgeschaltet.
-const ERLAUBT = ['os', 'zoe', 'anmelden', 'buchen', 'abmelden', 'kunde', 'angebot', 'check', 'newsletter', 'anfrage', 'vorschau', 'api', 'jarvis', 'schriften'];
+const ERLAUBT = ['os', 'zoe', 'anmelden', 'buchen', 'abmelden', 'kunde', 'angebot', 'check', 'newsletter', 'anfrage', 'vorschau', 'erstgespraech', 'api', 'jarvis', 'schriften'];
 
 describe('Routen: ein Weg statt zwei', () => {
   it('app/ hat nur die erlaubten Bereiche — keine Routengruppe, kein Alt-Dashboard', () => {

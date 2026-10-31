@@ -51,6 +51,11 @@ export interface Baustein {
   dateien: BausteinDatei[];
   /** Ein Paket: die Kennungen seiner Teile (selbst Bausteine mit Dateien). */
   paket?: string[];
+  /** Aus der Überlagerung in MAKE OS (Markttraktion › Website, lib/website/regeln.ts `bausteineUeberlagern`) — nie aus katalog.json. */
+  kurz?: string;
+  rang?: number;
+  /** In MAKE OS ausgeblendet: nicht bestellbar, nicht auf der Website — bestehende Bestellungen werden weiter geliefert. */
+  ausgeblendet?: boolean;
 }
 
 const seiteOk = (x: unknown): x is string => typeof x === 'string' && x.length <= 200 && x.startsWith('/') && !x.startsWith('//') && !/[\s<>"'\\]/.test(x);

@@ -355,6 +355,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   // ── Kontaktformular der Website (31.10., lib/kontaktformular/*) — der Eingang selbst liegt in der Kartei (Anfrage-Weg), kein eigener Bestand mit Personen ──
   H('kontaktformular-einstellungen', 'Schalter des Kontaktformulars der Website (an/aus, wer zuletzt umschaltete — Speichername eines Inhabers) — kein Bezug zu Dritten.'),
   // ── Bausteine bestellen (31.10., lib/bausteine/*) — Bestellungen der Website auf Rechnung ──
+  // ── Website-Inhalte (31.10., lib/website/*) — nur Inhalte der Instanz (Angebote, Preise, FAQ, Texte, Verweise auf eigene Events und freigegebene Medien), keine Personen ──
+  mit(H('website-inhalt', 'Inhalte der Website der Instanz (Markttraktion › Website): Angebote mit Preis und Produkt-Bezug, Überlagerung des Bausteine-Katalogs, Verweise auf eigene Events (Kennung, Anmeldelink — nie Gäste), FAQ, Fakten, Text-Bausteine, Verweise auf freigegebene Medien mit Alt-Text, Einstellungen (Bereiche, Buchungsseite), Zeitpunkt der letzten Änderung — keine Person (wer änderte, steht nur im Änderungsprotokoll), kein Bezug zu Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO — eigene Inhalte der Website pflegen und veröffentlichen',
+    art15: 'entfällt — der Bestand trägt keine Personendaten (Änderungen nur im Änderungsprotokoll)',
+    loeschfrist: 'solange die Instanz läuft; Einträge löscht ihr selbst',
+  }),
   H('bausteine-einstellungen', 'Schalter des Bestellwegs der Bausteine, welche Business-Gesellschaft die Rechnung stellt (Kennung), Zahlungsziel, eigener Text der Bestellbedingungen, wer zuletzt änderte (Speichername eines Inhabers) — kein Bezug zu Dritten.'),
   mit(T('baustein-bestellungen', 'Bestellungen von Bausteinen über die Website (lib/bausteine/server.ts): Name, Firma, Rechnungsanschrift, USt-IdNr. (freiwillig), E-Mail, Telefon (freiwillig), bestellter Baustein mit Preis, Bestätigung „Unternehmer“ und Fassung + Zeitpunkt der Bestellbedingungen, Status (neu · geliefert · abgelehnt), Kennungen von Kontakt, Firma und Rechnung, wer freigab bzw. ablehnte, Versand-Vermerk (Postfach maskiert). Art. 17 (person-weitere.ts): nicht gelieferte Bestellungen fallen ganz weg; gelieferte (Rechnung gestellt) behalten die Rechnungsdaten, Telefon und Kartei-Bezug werden getilgt.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Vertrag auf Bestellung der Person); nach der Lieferung Art. 6 Abs. 1 lit. c (Aufbewahrung von Handelsbriefen und Buchungsbelegen, § 257 HGB, § 147 AO — die Rechnung selbst steht im Finanzplan)',
@@ -976,7 +982,7 @@ const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
-  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'bausteine-einstellungen', 'baustein-bestellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'bausteine-einstellungen', 'website-inhalt', 'baustein-bestellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)

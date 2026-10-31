@@ -138,6 +138,17 @@ function bausteinOffen(pfad: string, methode: string): boolean {
   if (BESTELLUNG_API.test(pfad)) return lesen || methode === 'POST';
   return BAUSTEIN_LADEN.test(pfad) && lesen;
 }
+// Website-Inhalte (31.10., lib/website/*): der Vertrag mit der statischen Website — NUR GET/HEAD auf `/api/website/inhalt` (sichtbare Inhalte, keine
+// Personen), `/api/website/bild/wb-…` (ein freigegebenes Bild) und die feste Adresse `/erstgespraech` (Weiterleitung auf die gewählte Buchungsseite).
+// Die Routen handeln für niemanden (Köpfe gelöscht), drosseln selbst, schreiben nichts. Die Pflege (/api/website/intern) bleibt hinter der Sitzung.
+// Wächter: tests/website-bereich.test.ts.
+const WEBSITE_INHALT = /^\/api\/website\/inhalt$/;
+const WEBSITE_BILD = /^\/api\/website\/bild\/wb-[a-z0-9-]{4,64}$/;
+const ERSTGESPRAECH = /^\/erstgespraech$/;
+/** Ist dieser Weg ein offener Weg der Website-Inhalte (Pfad UND Methode)? */
+function websiteOffen(pfad: string, methode: string): boolean {
+  return (methode === 'GET' || methode === 'HEAD') && (WEBSITE_INHALT.test(pfad) || WEBSITE_BILD.test(pfad) || ERSTGESPRAECH.test(pfad));
+}
 // Schriften der öffentlichen Seiten (29.10.): der Check (und die helle Buchungsseite) laden Schibsted Grotesk aus public/schriften — ohne Sitzung
 // leitete die Middleware die Datei auf /anmelden um, der Browser bekam HTML statt der Schrift. Offen ist NUR eine einzelne .woff2 direkt im Ordner,
 // nur lesen; public/ trägt nichts Privates (Wächter: keine .html dort).
@@ -255,6 +266,8 @@ export async function middleware(req: NextRequest) {
   if (unterlageOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
   // Bausteine bestellen: ebenso nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung; der Download-Link auch aus einem Mail-Programm heraus.
   if (bausteinOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
+  // Website-Inhalte, Website-Bilder, /erstgespraech: nie als jemand (Köpfe oben gelöscht), auch nicht mit Sitzung; nur lesen.
+  if (websiteOffen(pfad, req.method)) return NextResponse.next({ request: { headers: kopf } });
 
   // Eine Schnittstelle ist nie das Ziel einer Navigation von einer fremden Seite (26.09.): so kann kein
   // fremder Link mit dem Cookie im Gepäck eine GET-Route mit Wirkung auslösen.

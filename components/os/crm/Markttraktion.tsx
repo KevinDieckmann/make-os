@@ -23,7 +23,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Seite, Knopf } from '../ui';
-import { aufloesen, mitAkte, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, planungLink, punktVon, eventsReiterVon, EVENTS_REITER, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht, type PlanungAnsicht, type EventsReiterId } from '@/lib/crm/adresse';
+import { aufloesen, mitAkte, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, planungLink, punktVon, eventsReiterVon, EVENTS_REITER, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht, type PlanungAnsicht, type EventsReiterId, type WebsiteAnsicht } from '@/lib/crm/adresse';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
@@ -53,6 +53,7 @@ import { markttraktionHead } from '@/lib/agenten/kontext-head';
 import { MARKE_EVENTS } from '@/lib/crm/marke';
 import { Auswertung } from './Auswertung';
 import { Formulare } from './formulare/Formulare';
+import { Website } from './website/Website';
 import { BereichAutomationen } from '../werkzeug/BereichAutomationen';
 import { MARKTTRAKTION_WERKZEUG } from '@/lib/make-one/werkzeuge';
 
@@ -76,6 +77,7 @@ const UNTER: Record<Bereich, string> = {
   angebot: 'Angebot in einer Minute: Produkte anklicken, anpassen, senden.',
   planung: 'Vom Umsatzziel zu den Aktivitäten je Leadkanal und Woche — mit Kapazität und Challenges.',
   marketing: 'Ansprechbar sein, nicht laut.',
+  website: 'Alles für die Website an einem Ort — Wege, Eingänge, Checks, Angebote, Bausteine, Bilder, Recht.',
   besuche: 'Veranstaltungen, die wir besuchen: planen, vor Ort erfassen, auswerten.',
   event: 'Unsere eigenen Abende — gemessen an den Gesprächen danach.',
   stammdaten: 'Qualität, Wertelisten, Datenschutz, Import und Export.',
@@ -253,6 +255,7 @@ export function MarkttraktionSeite() {
       {bereich === 'planung' && <MtPlanung ansicht={(ansicht ?? 'kreislauf') as PlanungAnsicht} kanal={params.get('kanal')} onOrt={(a, k) => { router.push(planungLink(a, k), { scroll: false }); if (a !== (ansicht ?? 'kreislauf')) nachOben(); }} />}
       {bereich === 'qualifizierung' && <QualifizierungScoring api={api} ansicht={(ansicht ?? 'runde') as QualiAnsicht} start={kParam} onAnsicht={a => gehe('qualifizierung', a === 'runde' ? undefined : a, kParam ?? undefined, 'replace')} zuLeads={id => gehe('qualifizierung', 'leads', id)}
         leads={<><SalesTrichter api={api} zuBereich={zuBereich} /><Leads api={api} zuKontakt={zuKontakt} zuDeal={id => gehe('deals', 'akte', id)} /></>} />}
+      {bereich === 'website' && <Website api={api} zuKontakt={zuKontakt} ansicht={(ansicht ?? 'ueberblick') as WebsiteAnsicht} onAnsicht={a => gehe('website', a === 'ueberblick' ? undefined : a)} />}
       {bereich === 'marketing' && <Marketing api={api} zuKontakt={zuKontakt} start={ansicht} onAnsicht={a => gehe('marketing', a === 'uebersicht' ? undefined : a)} />}
       {bereich === 'besuche' && <Besuche api={api} zuKontakt={zuKontakt} zuFirma={zuFirma} ansicht={besuche} k={kParam} reiter={eventsPillen} onAkte={(id, wie) => gehe('besuche', undefined, id ?? undefined, wie ?? (id ? 'push' : 'replace'))} />}
       {bereich === 'event' && !besuchsId && !kParam && <div>{eventsPillen}</div>}

@@ -42,10 +42,11 @@ describe('Markttraktion — ein Hub mit höchstens zwölf Punkten, jede Ansicht 
   it('Hub-Menü: höchstens zwölf eigene Punkte in fünf Gruppen, Stammdaten im Fuß, „Automationen & Head“ unter Steuerung', () => {
     // Vorher zwölf Klickziele in der Reiterzeile, seit 08.10. acht, 10.10. neun — seit 22.10. ein Menü (Kevins Entscheidung, HubSpot-Art).
     // Gezählt werden die Punkte der Gruppen — der Fuß (Stammdaten) und der Standard-Punkt „Automationen & Head“ kommen dazu.
-    expect(HUB_MENUE.gruppen.flatMap(g => g.punkte).length).toBeLessThanOrEqual(12);
+    // 31.10. (Kevin: „bei Marketing noch einen Button mit Homepage“): Website als dreizehnter Punkt — Kevins ausdrücklicher Wunsch über der Zwölf.
+    expect(HUB_MENUE.gruppen.flatMap(g => g.punkte).length).toBeLessThanOrEqual(13);
     expect(HUB_PUNKTE.length).toBe(HUB_MENUE.gruppen.flatMap(g => g.punkte).length + HUB_MENUE.fuss.length);
     expect(HUB_MENUE.gruppen.map(g => g.titel)).toEqual([null, 'CRM', 'Vertrieb', 'Marketing', 'Steuerung']);
-    expect(HUB_MENUE.gruppen.flatMap(g => g.punkte.map(p => p.id))).toEqual(['ueberblick', 'kontakte', 'firmen', 'qualifizierung', 'deals', 'angebot', 'followup', 'marketing', 'events', 'netzwerken', 'planung', 'auswertung']);
+    expect(HUB_MENUE.gruppen.flatMap(g => g.punkte.map(p => p.id))).toEqual(['ueberblick', 'kontakte', 'firmen', 'qualifizierung', 'deals', 'angebot', 'followup', 'marketing', 'website', 'events', 'netzwerken', 'planung', 'auswertung']);
     expect(HUB_MENUE.fuss.map(p => p.id)).toEqual(['formulare', 'stammdaten']);
     expect(HUB_MENUE.automation.gruppe).toBe('steuerung');
   });

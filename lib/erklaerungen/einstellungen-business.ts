@@ -36,6 +36,31 @@ export const EINSTELLUNGEN_BUSINESS = {
     an: 'Das Formular ist öffentlich; der Knopf auf der Website erscheint. Nachrichten kommen als Anfrage über die Website an — ohne Werbe-Einwilligung, ohne Mail, geantwortet wird von Hand.',
     aus: 'Die Seite antwortet mit „gibt es nicht“, der Knopf auf der Website bleibt verborgen. Das ist die Vorgabe.',
   },
+  // ── Markttraktion › Website (31.10.) ──────────────────────────────────────────────────────────────────────────────────────────
+  'website.sichtbar': {
+    was: 'Legt fest, ob dieser Eintrag über die Schnittstelle der Website ausgeliefert wird. Nur sichtbare Einträge kommen dort an.',
+    beispiel: 'Ein neues Angebot ist schon angelegt, aber noch nicht fertig formuliert: Haken aus — die Website zeigt weiter den gebauten Text, bis ihr den Haken setzt.',
+    an: 'Die Website liest den Eintrag beim nächsten Seitenaufruf (spätestens nach fünf Minuten).',
+    aus: 'Der Eintrag bleibt hier gespeichert, die Website bekommt ihn nicht.',
+  },
+  'website.preisart': {
+    was: 'Ergänzt den Preis eines Angebots: „ab“ (Einstiegspreis), „monatlich“ (die Website schreibt „/ Monat“ dazu) oder „bald“ (noch nicht buchbar).',
+    beispiel: 'Ein Workshop kostet ab einem festen Betrag: „ab“ an. Eine laufende Begleitung wird je Monat berechnet: „monatlich“ an.',
+    an: 'Die Website zeigt den Zusatz am Preis.',
+    aus: 'Der Preis steht ohne Zusatz da.',
+  },
+  'website.ereignis': {
+    was: 'Zeigt einen eigenen Abend auf der Website — nur Titel, Datum, Ort, Format und Anmeldelink, nie Gäste.',
+    beispiel: 'Der nächste Abend ist geplant und die Einladungen sind raus: Haken an, und die Events-Seite nennt ihn als nächsten Termin.',
+    an: 'Die Website zeigt den Termin, solange er geplant oder eingeladen ist und in der Zukunft liegt.',
+    aus: 'Der Termin bleibt intern.',
+  },
+  'website.bild': {
+    was: 'Gibt ein Bild für die Website frei. Ausgeliefert wird es nur mit Alt-Text und nur, solange es in den Medien für den Kanal „Website“ freigegeben ist.',
+    beispiel: 'Ein Foto vom letzten Abend ist in den Medien für die Website freigegeben: Alt-Text eintragen, Haken an — die Website kann es unter seiner eigenen Adresse laden.',
+    an: 'Die Website kann das Bild unter seiner eigenen Adresse laden.',
+    aus: 'Das Bild ist nicht abrufbar; die Freigabe in den Medien bleibt.',
+  },
   'bausteine.bestellen': {
     was: 'Schaltet den Bestellweg der Bausteine ein: Unternehmen bestellen auf der Website ein Arbeitspaket auf Rechnung. Jede Bestellung landet hier, mit Anfrage in der Kartei und einem Rechnungsentwurf der gewählten Gesellschaft.',
     beispiel: 'Die Beispiel GmbH bestellt am Vormittag einen Baustein. Sie bekommt sofort eine Eingangsbestätigung. Mira prüft die Bestellung kurz und klickt „Freigeben und senden“ — die Rechnung ist gestellt, die Mail mit Rechnung und Download-Links ist raus.',

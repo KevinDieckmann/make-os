@@ -12,6 +12,8 @@
 //              Angebote           angebot (k = Angebot, kontakt/firma/deal)
 //              Follow-up & Power Hour  followup: faellig (Start) · woche · powerhour · kadenz
 //   Marketing  Marketing          marketing: uebersicht (Start) · anfragen · segmente · kampagnen · redaktion · social · newsletter · positionierung
+//              Website            website (31.10.): ueberblick (Start) · eingaenge · checks · angebote · bausteine · bilder · formulare · inhalte · recht —
+//                                 alles, was die Website braucht; der Innovations-Check zog von Marketing hierher (marketing&a=check leitet um)
 //              Events             besuche (besuchte Veranstaltungen: kalender (Start) · wirkung · kunden; k = Event-Akte) · event (Make.One, k = Abend)
 //              Netzwerken         eigene Seite /os/netzwerken (leuchtet dort)
 //   Steuerung  Planung            planung (kreislauf (Start) · ziele · kanaele · challenges; kanal = Filter auf einen Leadkanal)
@@ -26,18 +28,25 @@
 // (heute/pipeline/kunden/events/kartei), den früheren Reiter „Sales“ (head/powerhour/kampagnen/auswertung und vom 25./26.09.
 // heute/leads/pipeline/kunden), Firmen › Leads und Deals › Kunden — so funktionieren Suche, Befunde, ZOE und Telegram weiter.
 
-export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'planung' | 'marketing' | 'besuche' | 'event' | 'stammdaten' | 'auswertung' | 'automationen' | 'formulare';
+export type Bereich = 'ueberblick' | 'kontakte' | 'firmen' | 'deals' | 'followup' | 'qualifizierung' | 'angebot' | 'planung' | 'marketing' | 'website' | 'besuche' | 'event' | 'stammdaten' | 'auswertung' | 'automationen' | 'formulare';
 /** Events › Besuchte Events (03.10.): Kalender · Wirkung · Im Kundenauftrag — die Event-Akte steht in `k`. Die Kennung heißt `besuche`, weil `events` als alter Name von Make.One gültig bleibt. */
 export type BesucheAnsicht = 'kalender' | 'wirkung' | 'kunden';
 export const BESUCHE_ANSICHTEN: BesucheAnsicht[] = ['kalender', 'wirkung', 'kunden'];
 export type DealsAnsicht = 'board' | 'liste' | 'akte' | 'auswertung';
 export type FollowupAnsicht = 'faellig' | 'woche' | 'powerhour' | 'kadenz';
 /** `social` (26.10.): Social-Kanäle, Folgen, Analyse — Unterreiter von Marketing (das Hub-Menü hat Kevins Höchstzahl von zwölf Punkten). */
-export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'check' | 'funde' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung' | 'social';
-export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'check', 'funde', 'segmente', 'kampagnen', 'redaktion', 'social', 'newsletter', 'positionierung'];
+export type MarketingAnsicht = 'uebersicht' | 'anfragen' | 'funde' | 'segmente' | 'kampagnen' | 'redaktion' | 'newsletter' | 'positionierung' | 'social';
+export const MARKETING_ANSICHTEN: MarketingAnsicht[] = ['uebersicht', 'anfragen', 'funde', 'segmente', 'kampagnen', 'redaktion', 'social', 'newsletter', 'positionierung'];
+/**
+ * Website (31.10., Kevin: „bei Marketing noch einen Button mit Homepage … alles sauber sammeln wie Produkte, Bilder, die Checks“): `a` fehlt = Überblick ·
+ * eingaenge · checks (bis 31.10. Marketing › Innovations-Check) · angebote (Angebote & Preise) · bausteine (Bausteine & Vorlagen) · bilder · formulare
+ * (Formulare & Termine) · inhalte (Inhalte & SEO) · recht.
+ */
+export type WebsiteAnsicht = 'ueberblick' | 'eingaenge' | 'checks' | 'angebote' | 'bausteine' | 'bilder' | 'formulare' | 'inhalte' | 'recht';
+export const WEBSITE_ANSICHTEN: WebsiteAnsicht[] = ['ueberblick', 'eingaenge', 'checks', 'angebote', 'bausteine', 'bilder', 'formulare', 'inhalte', 'recht'];
 /** Der frühere Reiter „Sales“ (27.09.–08.10.) und der Sales-Reiter vom 25./26.09. — nur noch zum Übersetzen alter Adressen. */
 export const SALES_ALT_ANSICHTEN = ['head', 'powerhour', 'kampagnen', 'auswertung', 'heute', 'leads', 'pipeline', 'kunden'] as const;
-export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'planung', 'marketing', 'besuche', 'event', 'stammdaten', 'auswertung', 'automationen', 'formulare'];
+export const BEREICHE: Bereich[] = ['ueberblick', 'kontakte', 'firmen', 'deals', 'followup', 'qualifizierung', 'angebot', 'planung', 'marketing', 'website', 'besuche', 'event', 'stammdaten', 'auswertung', 'automationen', 'formulare'];
 /** Alte Bereiche, die es als eigenen Ort nicht mehr gibt — `aufloesen` übersetzt sie (der Wächter prüft jede Kombination). */
 export const BEREICHE_ALT = ['sales', 'heute', 'pipeline', 'kunden', 'events', 'kartei'] as const;
 
@@ -112,7 +121,10 @@ export function aufloesen(s?: string | null, a?: string | null): { s: Bereich; a
     if (b === 'followup') return mit(b, ansicht && ansicht !== 'faellig' && (FOLLOWUP_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
     if (b === 'qualifizierung') return mit(b, ansicht && ansicht !== 'runde' && (QUALI_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
     if (b === 'planung') return mit(b, ansicht && ansicht !== 'kreislauf' && (PLANUNG_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
+    // Der Innovations-Check zog am 31.10. unter Website (alte Links, Neuigkeiten, Kennzahlen landen dort).
+    if (b === 'marketing' && ansicht === 'check') return { s: 'website', a: 'checks' };
     if (b === 'marketing') return mit(b, ansicht && ansicht !== 'uebersicht' && (MARKETING_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
+    if (b === 'website') return mit(b, ansicht && ansicht !== 'ueberblick' && (WEBSITE_ANSICHTEN as string[]).includes(ansicht) ? ansicht : undefined);
     return mit(b, ansicht);
   }
   return { s: 'ueberblick' };
@@ -278,12 +290,14 @@ export const auswertungLink = (): string => markttraktion('auswertung');
 /** „Automationen & Head“ der Markttraktion (Ort auf der Seite, an dem das Werkzeug-Muster seinen Baustein einhängt). */
 export const automationenLink = (): string => markttraktion('automationen');
 /** Formulare (25.10.): „Angebot anfordern“, externe Links, Eingänge, Einstellungen — eine Seite. `#anker` springt zu einer Karte. */
+/** Link in Markttraktion › Website (31.10.): ohne Angabe der Überblick. */
+export const websiteLink = (a?: WebsiteAnsicht): string => markttraktion('website', a && a !== 'ueberblick' ? a : undefined);
 export const formulareLink = (anker?: 'anfordern' | 'links' | 'eingaenge' | 'einstellungen'): string => `${markttraktion('formulare')}${anker ? `#${anker}` : ''}`;
 
 /** Die Symbole der Punkte — Namen aus lucide-react (die Oberfläche löst sie auf; lib bleibt ohne React). */
 export type HubSymbol = 'LayoutDashboard' | 'Users' | 'Building2' | 'Funnel' | 'SquareKanban' | 'FileSignature' | 'PhoneCall' | 'Megaphone' | 'CalendarDays'
-  | 'Handshake' | 'Goal' | 'ChartNoAxesCombined' | 'Bot' | 'Settings' | 'ClipboardList';
-export type HubPunktId = 'ueberblick' | 'kontakte' | 'firmen' | 'qualifizierung' | 'deals' | 'angebot' | 'followup' | 'marketing' | 'events' | 'netzwerken'
+  | 'Handshake' | 'Goal' | 'ChartNoAxesCombined' | 'Bot' | 'Settings' | 'ClipboardList' | 'Globe';
+export type HubPunktId = 'ueberblick' | 'kontakte' | 'firmen' | 'qualifizierung' | 'deals' | 'angebot' | 'followup' | 'marketing' | 'website' | 'events' | 'netzwerken'
   | 'planung' | 'auswertung' | 'formulare' | 'stammdaten';
 /** Wo man im Hub steht: ein Punkt oder „Automationen & Head“. */
 export type HubOrtId = HubPunktId | 'automationen';
@@ -335,6 +349,8 @@ export const HUB_MENUE: { gruppen: readonly HubGruppe[]; automation: HubAutomati
     ] },
     { id: 'marketing', titel: 'Marketing', punkte: [
       { id: 'marketing', name: 'Marketing', symbol: 'Megaphone', ziel: markttraktion('marketing'), bereiche: ['marketing'], titel: 'Anfragen, Segmente, Kampagnen, Redaktion, Social, Newsletter, Positionierung' },
+      // 31.10. (Kevin: „bei Marketing noch einen Button mit Homepage“): der dreizehnte Punkt der Gruppen — Kevins ausdrücklicher Wunsch über der Zwölf.
+      { id: 'website', name: 'Website', symbol: 'Globe', ziel: websiteLink(), bereiche: ['website'], titel: 'Alles für die Website: Wege, Eingänge, Checks, Angebote, Bausteine, Bilder, Recht' },
       { id: 'events', name: 'Events', symbol: 'CalendarDays', ziel: markttraktion('besuche'), bereiche: ['besuche', 'event'], titel: 'Besuchte Events und unsere eigenen Abende' },
       { id: 'netzwerken', name: 'Netzwerken', symbol: 'Handshake', ziel: NETZWERKEN_PFAD, bereiche: [], pfad: NETZWERKEN_PFAD, titel: 'Vor Ort erfassen — Karte, Gespräch, nächster Schritt' },
     ] },

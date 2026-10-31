@@ -15,7 +15,7 @@ import { localDay } from '@/lib/zeit';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
-import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, feld, LEUCHT } from '../../ui';
+import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, feld, LEUCHT, Hinweis } from '../../ui';
 import { anzeigename, type Kontakt } from '@/lib/make-one/crm';
 import type { Quelle } from '@/lib/crm/typen';
 import { ANFRAGE_KANAELE, GRENZEN, type AnfrageKanal, type AnfrageBezugArt, type AnfrageZeile } from '@/lib/crm/anfragen';
@@ -27,8 +27,8 @@ import { Wahl } from '../Wahl';
 import { Person } from '../team';
 import { PersonWahl, AlsNaechstes } from './gemeinsam';
 import { DealAusQuelle } from './DealAusQuelle';
-import { KontaktformularKarte } from './KontaktformularKarte';
-import { BausteineKarte } from './BausteineKarte';
+import Link from 'next/link';
+import { WEG } from '@/lib/wege';
 
 interface Daten { heute: string; liste: AnfrageZeile[]; offen: number }
 type PersonWahlArt = 'vorhanden' | 'neu';
@@ -105,8 +105,7 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
 
   return (
     <>
-      <KontaktformularKarte />
-      <BausteineKarte />
+      <Hinweis art="info">Kontaktformular, Bausteine und Unterlagen der Website pflegt ihr unter <Link href={WEG.website('formulare')} style={{ color: C.aktiv }}>Website</Link> — Anfragen von dort landen hier.</Hinweis>
       <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
         <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Alles hier bleibt im System — geantwortet wird in deinem Postfach.</span>}>Anfrage erfassen</Ueberschrift>
         <div style={{ display: 'grid', gap: 6 }}>
