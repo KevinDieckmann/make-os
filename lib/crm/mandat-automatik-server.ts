@@ -4,7 +4,8 @@
 //
 //   mandatAusAngebotAutomatisch   nach „angenommen“ (lib/crm/angebot-server.ts `angebotAnnehmen`): das Mandat über DENSELBEN Bau wie /api/crm/lead aktion
 //                                 „mandat“ (`mandatAusDeal` — Vorbelegung aus dem angenommenen Angebot), dieselben Folgen (Firma wird Kunde, Personen werden
-//                                 Kunde), danach die Liquiplan-Posten über DENSELBEN Rechenweg wie „Eintragen“ (`mandatLiquiplanEintragen`) — nur für Business.
+//                                 Kunde), danach die Liquiplan-Posten über DENSELBEN Rechenweg wie „Eintragen“ (`mandatLiquiplanEintragen`) — für Business
+//                                 und (31.10.) die Selbstständigkeit (Privat-Arbeits-Einheit, Posten mit ihrer Firma).
 //                                 Idempotent (gibt es zum Deal bzw. Angebot schon ein Mandat → nichts). Nichts, wenn: kein gewonnener Deal, keine Gesellschaft,
 //                                 Art. 18 bzw. Werbesperre einer beteiligten Person. Wirft nie — „angenommen“ ist schon gespeichert.
 //   mandatAutomatikZurueck        „Rückgängig“: Mandat + seine Posten wieder weg — nur ein automatisch angelegtes, nur solange keine Rechnung (auch kein Entwurf)
@@ -15,7 +16,7 @@
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
-import { gesellschaftAusEinheit, istBusinessGesellschaft, istRegisterKennung } from '@/lib/einheiten';
+import { gesellschaftAusEinheit, istBusinessGesellschaft, istRegisterKennung, privatArbeitsEinheit } from '@/lib/einheiten';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { sauberFile, type FinanzplanFile } from '@/lib/finanzen/finanzplan-bestand';
@@ -57,7 +58,7 @@ export type AutomatikErgebnis =
 // der Art `mandat-automatik` (lib/store/absichten.ts) — jeder Schritt idempotent, abgehakt nach der Wirkung; Start, Takt und Durchsicht setzen fort
 // (`mandatAutomatikFortsetzen`, lib/store/absichten-fortsetzen.ts). Die Daten (das gebaute Mandat samt Kennung) stehen VOR dem ersten Schritt fest —
 // die Wiederaufnahme legt also dasselbe Mandat an, nie ein zweites.
-//   anlegen   mandat (CRM: Mandat + Firma wird Kunde) → kartei (Personen werden Kunde) → liquiplan (nur Business) → merker (`mandatAuto`)
+//   anlegen   mandat (CRM: Mandat + Firma wird Kunde) → kartei (Personen werden Kunde) → liquiplan (Business + Selbstständigkeit) → merker (`mandatAuto`)
 //   zurueck   crm (Mandat weg) → liquiplan (seine Posten weg) → merker (`zurueckAm`)
 export const ABSICHT_MANDAT_AUTO = 'mandat-automatik' as const;
 export const ANLEGEN_SCHRITTE = ['mandat', 'kartei', 'liquiplan', 'merker'] as const;
@@ -91,9 +92,11 @@ async function anlegenAusfuehren(h: string, absicht: Absicht): Promise<AnlegenDa
     if (v.daten<boolean>('schonDa')) return v.absicht.daten as unknown as AnlegenDaten;
     const { personenWerdenKunde } = await import('./mandat-anlegen-server');
     await v.schritt('kartei', () => personenWerdenKunde(D.kontaktIds, D.jetzt, D.wer));
-    // Liquiplan (nur Business wie die Liquidität): derselbe Rechenweg wie „Eintragen“.
+    // Liquiplan: derselbe Rechenweg wie „Eintragen“ — Business UND (31.10., Kreislauf-Rest) die Arbeit der Selbstständigkeit unter Privat: ihre Posten
+    // tragen die Firma der Selbstständigkeit (`mandatPosten` → `firmaId`), die Liquidität rechnet sie mit „nur diese Firma“; Business-Sichten lassen sie
+    // serverseitig weg (Business-Index `ladeRoh`, /api/crm/liquiplan für Konten „nur Business“, der Liquiplan selbst nur mit privatem Finanzzugang).
     await v.schritt('liquiplan', async () => {
-      if (!istBusinessGesellschaft(m.gesellschaft)) return { posten: [] as string[], hinweis: 'Die Gesellschaft gehört nicht zum Business — in den Liquiplan trägt die Mandatsakte auf Klick ein.' };
+      if (!istBusinessGesellschaft(m.gesellschaft) && !privatArbeitsEinheit(m.gesellschaft)) return { posten: [] as string[], hinweis: 'Die Gesellschaft gehört nicht zum Business — in den Liquiplan trägt die Mandatsakte auf Klick ein.' };
       const crm2 = await ladeCrm();
       const l = await mandatLiquiplanEintragen(crm2.mandate.find(x => x.id === m.id) ?? m, crm2, D.heute).catch(() => ({ ok: false as const, status: 500, fehler: 'Liquiplan nicht erreichbar.' }));
       return l.ok ? { posten: l.soll.map(x => x.id) } : { posten: [] as string[], hinweis: `Nicht im Liquiplan: ${l.fehler}` };

@@ -3,12 +3,15 @@
 // (Stellen bleibt Klick).“ Hier steht, WELCHER Monat bzw. welche Rate fällig ist (dieselbe Regel wie der Knopf in der Mandatsakte: die nächste noch nicht
 // gestellte Zahlung bzw. der erste offene Leistungsmonat) und welche Mahnstufe gerade frisch fällig wurde (Ereignis „Rechnung überfällig“). Nichts schreibt.
 
-import type { Mandat } from '@/lib/crm/typen';
+import type { Angebot, Mandat } from '@/lib/crm/typen';
 import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
-import type { Mahnstufe } from './typen';
+import type { Mahnstufe, RechnungPosition } from './typen';
 import { mandatLaeuftIm } from '@/lib/crm/mandat-laufzeit';
-import { zahlplanMonate } from '@/lib/crm/mandat-zusatz';
-import { mahnVorschlaege } from './regeln';
+import { restMonat, zahlplanMonate } from '@/lib/crm/mandat-zusatz';
+import { ratenCent } from '@/lib/crm/angebote';
+import { kaufmaennisch } from '@/lib/finanzen/ust';
+import { mahnVorschlaege, positionNetto, rechnungsMonate } from './regeln';
+export { rechnungsMonate } from './regeln';
 
 const MONAT = /^\d{4}-\d{2}$/;
 const naechsterMonat = (mo: string) => { const [j, m] = mo.split('-').map(Number); return m === 12 ? `${j + 1}-01` : `${j}-${String(m + 1).padStart(2, '0')}`; };
@@ -24,26 +27,134 @@ export const vorbereitenAufgabeId = (mandatId: string, monat: string) => `rv-${m
 /** Schlüssel des Merkers je Mandat und Monat (Bestand `rechnungswesen` › `kreislauf.vorbereiten.erledigt`). */
 export const vorbereitenSchluessel = (mandatId: string, monat: string) => `${mandatId}|${monat}`;
 
+/** Was der Morgenlauf je Mandat vorbereitet (31.10., Kreislauf-Rest): Monatshonorar, Rate bzw. Zahlplan, Quartal, einmaliges Honorar, Tagessatz. */
+export type VorbereitenArt = 'monat' | 'rate' | 'quartal' | 'einmalig' | 'tag';
+export interface VorbereitenFaellig {
+  /** Leistungsmonat (monat, tag), Zahlungsmonat (rate), erster Monat des Quartals (quartal) bzw. Monat des Beginns (einmalig) — JJJJ-MM. */
+  monat: string;
+  art: VorbereitenArt;
+}
+type MandatTeil = Pick<Mandat, 'status' | 'honorar' | 'start' | 'ende' | 'rechnungsrhythmus'> & Partial<Pick<Mandat, 'zahlplan' | 'raten' | 'mindestlaufzeitMonate' | 'geloeschtAm'>>;
+/** Die drei Monate eines Quartals ab seinem ersten Monat (JJJJ-MM). */
+export const quartalMonate = (q: string): string[] => [q, naechsterMonat(q), naechsterMonat(naechsterMonat(q))];
+
 /**
- * Die Monate, für die der Morgenlauf einen Entwurf vorbereiten DARF — in Reihenfolge, die früheste zuerst (rein). Der Lauf nimmt davon höchstens einen
+ * Was der Morgenlauf für ein Mandat vorbereiten DARF — in Reihenfolge, das Früheste zuerst (rein). Der Lauf nimmt davon höchstens eines
  * (je Mandat und Lauf ein Entwurf); was schon gestellt ist (`abgerechnet`), fällt weg.
  *   · nur aktive Mandate mit Honorar, nie im Papierkorb;
  *   · Raten bzw. Zahlplan: die Zahlungsmonate (`zahlplanMonate`, dieselbe Regel wie „Rate 2 von 6 schreiben“ in der Mandatsakte) bis zum laufenden Monat;
- *   · Monatshonorar mit monatlicher Rechnung: die Leistungsmonate, in denen das Mandat läuft (`mandatLaeuftIm`), bis zum laufenden Monat;
- *   · Tagessatz (abgerechnet nach echten Tagen), Quartalsrechnung und einmaliges Honorar ohne Zahlplan: nichts — die bleiben beim Knopf in der Mandatsakte.
+ *   · Tagessatz (31.10.): je Leistungsmonat EIN Entwurf, sobald der Monat vorbei ist (am Monatsersten des Folgemonats) — die Tage kommen aus der
+ *     erfassten Zeit (der Lauf; ohne Zeit nur eine Aufgabe mit Hinweis);
+ *   · einmaliges Honorar ohne Zahlplan (31.10.): EIN Entwurf im Monat des Beginns;
+ *   · Monatshonorar mit Rechnung je Quartal (31.10.): je Quartal EIN Entwurf in seinem ersten Monat — die Quartale laufen im Rhythmus des Mandats
+ *     (ab dem Monat des Beginns, wie der Liquiplan), ein Quartal mit schon gestelltem Monat fällt ganz weg (nie doppelt);
+ *   · Monatshonorar mit monatlicher Rechnung: die Leistungsmonate, in denen das Mandat läuft (`mandatLaeuftIm`), bis zum laufenden Monat.
  * NIE ein Monat vor `abMonat` (`vorbereitenAbMonat`: der Monat NACH dem ersten Lauf) — der Altbestand bekommt keine Entwürfe für Vergangenes.
  */
-export function vorbereitenMonate(m: Pick<Mandat, 'status' | 'honorar' | 'start' | 'ende' | 'rechnungsrhythmus'> & Partial<Pick<Mandat, 'zahlplan' | 'raten' | 'mindestlaufzeitMonate' | 'geloeschtAm'>>, heute: string, abgerechnet: ReadonlySet<string>, abMonat: string): string[] {
+export function vorbereitenFaellig(m: MandatTeil, heute: string, abgerechnet: ReadonlySet<string>, abMonat: string): VorbereitenFaellig[] {
   if (m.status !== 'aktiv' || m.geloeschtAm || !(m.honorar?.betrag > 0) || !MONAT.test(abMonat)) return [];
   const jetzt = heute.slice(0, 7);
   const zp = zahlplanMonate(m);
-  if (zp) return zp.filter(mo => mo >= abMonat && mo <= jetzt && !abgerechnet.has(mo));
-  if (m.honorar.basis !== 'monat' || m.rechnungsrhythmus !== 'monatlich' || !m.start) return [];
-  const raus: string[] = [];
-  let mo = m.start.slice(0, 7) > abMonat ? m.start.slice(0, 7) : abMonat;
-  for (let n = 0; mo <= jetzt && n < 240; n++, mo = naechsterMonat(mo)) if (mandatLaeuftIm(m, mo) && !abgerechnet.has(mo)) raus.push(mo);
+  if (zp) return zp.filter(mo => mo >= abMonat && mo <= jetzt && !abgerechnet.has(mo)).map(monat => ({ monat, art: 'rate' as const }));
+  if (!m.start) return [];
+  const s = m.start.slice(0, 7);
+  const ab = s > abMonat ? s : abMonat;
+  const raus: VorbereitenFaellig[] = [];
+  if (m.honorar.basis === 'tag') {
+    // Erst wenn der Leistungsmonat vorbei ist — die Tage des Monats stehen dann fest.
+    for (let mo = ab, n = 0; mo < jetzt && n < 240; n++, mo = naechsterMonat(mo)) if (mandatLaeuftIm(m, mo) && !abgerechnet.has(mo)) raus.push({ monat: mo, art: 'tag' });
+    return raus;
+  }
+  if (m.honorar.basis === 'einmalig' || m.rechnungsrhythmus === 'einmalig') {
+    return s >= abMonat && s <= jetzt && !abgerechnet.has(s) ? [{ monat: s, art: 'einmalig' }] : [];
+  }
+  if (m.honorar.basis !== 'monat') return [];
+  if (m.rechnungsrhythmus === 'quartal') {
+    for (let q = s, n = 0; q <= jetzt && n < 80; n++, q = quartalMonate(q).map(naechsterMonat)[2]) {
+      if (q < abMonat) continue;
+      const mo = quartalMonate(q);
+      if (mo.some(x => abgerechnet.has(x)) || !mo.some(x => mandatLaeuftIm(m, x))) continue;
+      raus.push({ monat: q, art: 'quartal' });
+    }
+    return raus;
+  }
+  if (m.rechnungsrhythmus !== 'monatlich') return [];
+  for (let mo = ab, n = 0; mo <= jetzt && n < 240; n++, mo = naechsterMonat(mo)) if (mandatLaeuftIm(m, mo) && !abgerechnet.has(mo)) raus.push({ monat: mo, art: 'monat' });
   return raus;
 }
+
+/** Nur die Monate von `vorbereitenFaellig` (die Form bis 31.10.). Rein. */
+export function vorbereitenMonate(m: MandatTeil, heute: string, abgerechnet: ReadonlySet<string>, abMonat: string): string[] {
+  return vorbereitenFaellig(m, heute, abgerechnet, abMonat).map(f => f.monat);
+}
+
+/** Tage aus der erfassten Zeit (31.10.): Stunden ÷ Stunden je Tag, auf Vierteltage gerundet; 0 = nichts erfasst. Rein. */
+export const STUNDEN_JE_TAG_VORGABE = 8;
+export function tageAusZeit(sek: number, stundenJeTag = STUNDEN_JE_TAG_VORGABE): number {
+  if (!(sek > 0) || !(stundenJeTag > 0)) return 0;
+  return Math.round((sek / 3600 / stundenJeTag) * 4) / 4;
+}
+
+// ── Einmalposten eines gemischten Angebots (31.10.) ─────────────────────────────────────────────────────────────────────────────────
+
+/** Eine Zahlung der Einmalposten: ganz (ohne Zahlplan), Rate i von n, Anzahlung bzw. Rest. */
+export interface EinmalZahlung { nr: number; von: number; monat: string; art: 'ganz' | 'rate' | 'anzahlung' | 'rest'; prozent?: number }
+
+/**
+ * Wann die Einmalposten eines gemischten Angebots (einmalige + laufende Posten; das Mandat rechnet die laufenden monatlich ab) fällig sind — nach der
+ * Zahlungsweise des Angebots, gerechnet ab dem Beginn des Mandats (rein):
+ *   · Raten: die erste im Monat des Beginns, dann alle `abstandMonate` Monate (dieselbe Regel wie die Raten eines Mandats);
+ *   · Anzahlung: im Monat des Beginns, der Rest im Monat des Endes (ohne Ende im Folgemonat — `restMonat`, wie der Zahlplan eines Mandats);
+ *   · ohne Zahlungsweise bzw. eigener Satz: EINE Zahlung im Monat des Beginns.
+ */
+export function einmalZahlungen(a: Pick<Angebot, 'zahlweise'>, m: Partial<Pick<Mandat, 'start' | 'ende' | 'mindestlaufzeitMonate'>>): EinmalZahlung[] {
+  const start = m.start;
+  if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return [];
+  const s = start.slice(0, 7);
+  const z = a.zahlweise;
+  if (z?.art === 'raten' && z.anzahl >= 2) {
+    const raus: EinmalZahlung[] = [];
+    let mo = s;
+    for (let i = 0; i < z.anzahl; i++) {
+      raus.push({ nr: i + 1, von: z.anzahl, monat: mo, art: 'rate' });
+      for (let k = 0; k < Math.max(1, z.abstandMonate); k++) mo = naechsterMonat(mo);
+    }
+    return raus;
+  }
+  if (z?.art === 'anzahlung' && z.prozent > 0 && z.prozent < 100) {
+    const r = restMonat(m, {});
+    if (r && r !== s) return [{ nr: 1, von: 2, monat: s, art: 'anzahlung', prozent: z.prozent }, { nr: 2, von: 2, monat: r, art: 'rest', prozent: 100 - z.prozent }];
+  }
+  return [{ nr: 1, von: 1, monat: s, art: 'ganz' }];
+}
+
+/** Wie die Zahlung im Titel heißt („Rate 2 von 3“, „Anzahlung 30 %“, „Restzahlung 70 %“) — leer bei einer einzigen Zahlung. Rein. */
+export function einmalZahlungText(z: EinmalZahlung): string {
+  return z.art === 'rate' ? `Rate ${z.nr} von ${z.von}` : z.art === 'anzahlung' ? `Anzahlung ${z.prozent} %` : z.art === 'rest' ? `Restzahlung ${z.prozent} %` : '';
+}
+
+/**
+ * Die Positionen einer Zahlung der Einmalposten (rein): ganz = unverändert; sonst je Position ihr Anteil (netto, mit Rabatt gerechnet) als eine
+ * pauschale Position „<Titel> — Rate i von n“ — gleich große Raten auf den Cent, der Rundungsrest auf der letzten (`ratenCent`, wie das Angebot);
+ * Anzahlung kaufmännisch gerundet, der Rest ist die Differenz. Die Summe aller Zahlungen ist genau die Summe der Einmalposten.
+ */
+export function einmalTeilPositionen(pos: readonly RechnungPosition[], z: EinmalZahlung): RechnungPosition[] {
+  if (z.art === 'ganz') return pos.map(p => ({ ...p }));
+  const was = einmalZahlungText(z);
+  return pos.map(p => {
+    const netto = positionNetto(p);
+    const cent = z.art === 'rate' ? ratenCent(netto, z.von)[z.nr - 1] : z.art === 'anzahlung' ? kaufmaennisch((netto * (z.prozent ?? 0)) / 100) : netto - kaufmaennisch((netto * (100 - (z.prozent ?? 0))) / 100);
+    const { rabattProzent: _r, ...ohne } = p;
+    return { ...ohne, titel: `${p.titel} — ${was}`.slice(0, 200), menge: 1, einheit: 'pauschal', einzelpreisCent: Math.max(0, cent) };
+  });
+}
+
+/** Schlüssel des Merkers einer Zahlung der Einmalposten (je Mandat, Angebot und Zahlung — fest, idempotent). */
+export const einmalSchluessel = (mandatId: string, angebotId: string, nr: number) => vorbereitenSchluessel(mandatId, `e:${angebotId}:${nr}`);
+/** Kennung der Aufgabe „Rechnung prüfen & stellen“ einer Zahlung der Einmalposten (kurz genug: Angebots-Kennung nur als Fingerabdruck). */
+export const einmalAufgabeId = (mandatId: string, angebotId: string, nr: number) => `rve-${mandatId}-${fnv(angebotId)}-${nr}`.slice(0, 80);
+const fnv = (t: string) => { let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); };
+
 
 /** Welche Rate (1-basiert) ist ein Ratenmonat — für den Titel der Aufgabe; null ohne Raten. Rein. */
 export function rateNummer(m: Pick<Mandat, 'honorar' | 'start' | 'ende'> & Partial<Pick<Mandat, 'zahlplan' | 'raten' | 'mindestlaufzeitMonate'>>, monat: string): { nr: number; von: number } | null {
@@ -54,8 +165,13 @@ export function rateNummer(m: Pick<Mandat, 'honorar' | 'start' | 'ende'> & Parti
 }
 
 /** Gibt es zu Mandat und Monat schon einen Entwurf oder eine Rechnung (nicht storniert, nicht aus einem Angebot)? Dann bereitet der Lauf nichts vor. Rein. */
-export function rechnungFuerMonat(rechnungen: readonly Partial<Pick<Rechnung, 'mandatId' | 'leistungVon' | 'status' | 'art' | 'angebotId'>>[], mandatId: string, monat: string): boolean {
-  return rechnungen.some(r => r.mandatId === mandatId && !r.angebotId && r.art !== 'storno' && r.status !== 'storniert' && typeof r.leistungVon === 'string' && r.leistungVon.slice(0, 7) === monat);
+export function rechnungFuerMonat(rechnungen: readonly Partial<Pick<Rechnung, 'mandatId' | 'leistungVon' | 'leistungBis' | 'status' | 'art' | 'angebotId'>>[], mandatId: string, monat: string): boolean {
+  // 31.10.: eine Rechnung über mehrere Monate (Quartal) deckt jeden ihrer Monate.
+  return rechnungen.some(r => r.mandatId === mandatId && !r.angebotId && r.art !== 'storno' && r.status !== 'storniert' && rechnungsMonate(r).includes(monat));
+}
+/** Gibt es zum Mandat überhaupt eine Rechnung bzw. einen Entwurf (nicht storniert, nicht aus einem Angebot)? Für das einmalige Honorar. Rein. */
+export function rechnungFuerMandat(rechnungen: readonly Partial<Pick<Rechnung, 'mandatId' | 'status' | 'art' | 'angebotId'>>[], mandatId: string): boolean {
+  return rechnungen.some(r => r.mandatId === mandatId && !r.angebotId && r.art !== 'storno' && r.status !== 'storniert');
 }
 
 // ── Rechnung überfällig (Ereignis, einmal je Mahnstufe) ─────────────────────────────────────────────────────────────────────────────

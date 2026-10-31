@@ -61,13 +61,16 @@ describe('B2 · offene Raten nach dem Mandatsende bleiben im Liquiplan, abgerech
 });
 
 describe('Regeln (rein): fälliger Monat, Rate, überfällig frisch, Mahnaufgaben, Liquidität', () => {
-  it('Monatshonorar: nur Monate ab der Einführung bis zum laufenden, ohne gestellte; Tagessatz und Quartal nie', () => {
+  it('Monatshonorar: nur Monate ab der Einführung bis zum laufenden, ohne gestellte; Tagessatz nach dem Monat, Quartal je Quartal', () => {
     const m = mandat('m-1', { start: '2026-08-15' });
     expect(vorbereitenMonate(m, '2026-11-03', new Set(), '2026-10')).toEqual(['2026-10', '2026-11']);
     expect(vorbereitenMonate(m, '2026-11-03', new Set(['2026-10']), '2026-10')).toEqual(['2026-11']);
     expect(vorbereitenMonate(mandat('m-2', { start: '2026-12-01' }), '2026-11-03', new Set(), '2026-10')).toEqual([]);
-    expect(vorbereitenMonate(mandat('m-3', { honorar: { betrag: 900, basis: 'tag', netto: true } }), '2026-11-03', new Set(), '2026-10')).toEqual([]);
-    expect(vorbereitenMonate(mandat('m-4', { rechnungsrhythmus: 'quartal' }), '2026-11-03', new Set(), '2026-10')).toEqual([]);
+    // 31.10. (Kreislauf-Rest, Kevin): Tagessatz und Quartal bereitet der Lauf jetzt auch vor — Tagessatz erst nach dem Leistungsmonat, Quartal erst
+    // für ein Quartal, das nach der Einführung beginnt (das August-Quartal des Mandats nie, das November-Quartal ja). Details: tests/kreislauf-rest-3110.test.ts.
+    expect(vorbereitenMonate(mandat('m-3', { honorar: { betrag: 900, basis: 'tag', netto: true } }), '2026-11-03', new Set(), '2026-10')).toEqual(['2026-10']);
+    expect(vorbereitenMonate(mandat('m-4', { rechnungsrhythmus: 'quartal' }), '2026-11-03', new Set(), '2026-10')).toEqual(['2026-11']);
+    expect(vorbereitenMonate(mandat('m-4', { rechnungsrhythmus: 'quartal' }), '2026-11-03', new Set(), '2026-08')).toEqual(['2026-08', '2026-11']);
     expect(vorbereitenMonate(mandat('m-5', { status: 'pausiert' }), '2026-11-03', new Set(), '2026-10')).toEqual([]);
   });
   it('Einführung: erst der Folgemonat (Oktober → November, Dezember → Januar)', () => {

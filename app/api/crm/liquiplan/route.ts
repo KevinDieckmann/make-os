@@ -19,6 +19,14 @@ import type { Planposten } from '@/lib/make-one/liquiditaet';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { planpostenAus, mandatPosten, mandatLiquiLage, postenAngleichen, postenVomMandat } from '@/lib/crm/kunden';
 import { anrechnungBestand, mandatLiquiplanEintragen } from '@/lib/crm/mandat-automatik-server';
+import { kontoSicht } from '@/lib/zugang/konto-sicht-server';
+import { privatAusblenden } from '@/lib/zugang/konto-sicht';
+import { bereichVonFirma, bereichVonGesellschaft } from '@/lib/einheiten';
+
+// 31.10. (Kreislauf-Rest): Mandate der Selbstständigkeit (Privat) stehen mit ihren Posten im Liquiplan — ein Konto „nur Business“ bekommt sie hier
+// NIE (serverseitig, nicht nur ausgeblendet): weder das Mandat noch seine Posten noch freie Posten einer Privat-Firma; Schreiben darauf → 403.
+const NUR_BUSINESS = 'Dieses Konto sieht nur den Business-Bereich — Mandate der Selbstständigkeit gehören zu Privat.';
+const privatAus = async (person: string) => privatAusblenden(await kontoSicht(person));
 
 // Was die Anrechnung im Plan braucht (P3b): alle Mandate und die Rechnungen des Finanzplans — nur zum Rechnen, nichts davon geht an den Browser
 // (`anrechnungBestand`, seit 29.10. in lib/crm/mandat-automatik-server.ts).
@@ -27,10 +35,14 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  const z = await imHaushaltDesInhabers(req);
+  if (!z) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const heute = localDay();
-  const crm = await ladeCrm();
-  const posten = (await loadJson<{ posten: Planposten[] }>('liquiplan'))?.posten ?? [];
+  const nurBusiness = await privatAus(z.person);
+  const crm0 = await ladeCrm();
+  const crm = nurBusiness ? { ...crm0, mandate: crm0.mandate.filter(m => bereichVonGesellschaft(m.gesellschaft) === 'business') } : crm0;
+  const alle = (await loadJson<{ posten: Planposten[] }>('liquiplan'))?.posten ?? [];
+  const posten = nurBusiness ? alle.filter(p => bereichVonFirma(p.firmaId) === 'business') : alle;
   const anrechnung = await anrechnungBestand(crm);
   return NextResponse.json({
     ok: true,
@@ -47,14 +59,18 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
+  const z = await imHaushaltDesInhabers(req);
+  if (!z) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   let b: { mandatId?: string; aktion?: string; postenId?: string };
   try { b = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const crm = await ladeCrm();
   const m = crm.mandate.find(x => x.id === b.mandatId);
   if (!m) return NextResponse.json({ ok: false, fehler: 'Mandat nicht gefunden.' }, { status: 404 });
+  const nurBusiness = await privatAus(z.person);
+  if (nurBusiness && bereichVonGesellschaft(m.gesellschaft) !== 'business') return NextResponse.json({ ok: false, fehler: NUR_BUSINESS }, { status: 403 });
   if (b.aktion === 'verknuepfen') {
     const posten = (await loadJson<{ posten: Planposten[] }>('liquiplan'))?.posten ?? [];
+    if (nurBusiness && posten.some(p => p.id === b.postenId && bereichVonFirma(p.firmaId) !== 'business')) return NextResponse.json({ ok: false, fehler: NUR_BUSINESS }, { status: 403 });
     if (!posten.some(p => p.id === b.postenId)) return NextResponse.json({ ok: false, fehler: 'Posten nicht im Liquiditätsplan.' }, { status: 404 });
     await aendereCrm(cur => ({ ...cur, mandate: cur.mandate.map(x => (x.id === m.id ? { ...x, planpostenId: b.postenId, geaendert: new Date().toISOString() } : x)) }));
     return NextResponse.json({ ok: true, verknuepft: b.postenId });
