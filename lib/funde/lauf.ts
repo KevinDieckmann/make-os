@@ -20,6 +20,7 @@ import { vorschauAusKi, vorschauPrompt, vorschauRegelwerk } from './vorschau';
 import { entwurfBauen } from './entwurf';
 import { fundKontext } from './kontext';
 import { telefonFelder } from './telefon';
+import { niveauBerechnen, unterNiveau, type AnalyseMerkmale } from './analyse';
 import { BEDARF_AB, PLAYBOOK_ID, type Fund, type FundBewertung } from './typen';
 
 export const FUNDE_LAUF = 'funde';
@@ -108,10 +109,13 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
     const site = websiteNormal(r.website);
     if (fremdeUnterseite(site)) { gut.push(r.osmId); continue; } // Teil eines Hauses mit eigener Website (Hotel, Museum …)
     const eigen = eigeneWebsite(site);
-    const signale = eigen && site ? await seitePruefen(site) : null;
-    const ps = eigen && site && signale?.erreichbar ? await pagespeed(site) : null;
+    let merkmale: AnalyseMerkmale | null = null, lcpMs: number | undefined;
+    const signale = eigen && site ? await seitePruefen(site, { name: r.name, merkmale: m => { merkmale = m; } }) : null;
+    const ps = eigen && site && signale?.erreichbar ? await pagespeed(site, { lcp: ms => { lcpMs = ms; } }) : null;
     const bew: FundBewertung = bewerten({ website: eigen, signale, pagespeed: ps, jahrHeute: Number(heute.slice(0, 4)), gemessenAm: am });
-    if (bew.punkte < BEDARF_AB) { gut.push(r.osmId); continue; }
+    // Erreichbare Seite: zusätzlich gegen UNSER Niveau (Gäste-Funktionen, Auffindbarkeit, Recht) — „unter Niveau“ ist auch ein Fund (31.10.).
+    const analyse = merkmale ? { ...niveauBerechnen(merkmale, { ...(lcpMs != null ? { leistung: { lcpMs, quelle: 'pagespeed' as const } } : {}), jahrHeute: Number(heute.slice(0, 4)), gemessenAm: am }), ...(lcpMs != null ? { leistung: { lcpMs, quelle: 'pagespeed' } } : {}) } : undefined;
+    if (bew.punkte < BEDARF_AB && !(analyse && unterNiveau(analyse))) { gut.push(r.osmId); continue; }
     const email = r.email ?? signale?.email;
     if (e.nurMitMail && !email) continue; // Persona: ohne veröffentlichte Mail-Adresse kein Fund (nicht „bekannt“ — die Mail kann später dazukommen)
     const nummern = telefonFelder(r.telefon, signale?.telefon);
@@ -121,7 +125,7 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
       ...(r.kategorie ? { kategorie: r.kategorie } : {}), ...(r.adresse ? { adresse: r.adresse } : {}), gebiet,
       ...(r.oeffnungszeiten ? { oeffnungszeiten: r.oeffnungszeiten } : {}), ...(site ? { website: site } : {}),
       ...(email && !adressen.has(email) ? { email } : {}), ...nummern,
-      bewertung: bew, status: 'neu', angelegt: am, geaendert: am,
+      bewertung: bew, ...(analyse ? { analyse } : {}), status: 'neu', angelegt: am, geaendert: am,
     };
     const vs = await vorschauFuer(f, o.person);
     if (vs.ohneKi) ohneKi = vs.ohneKi;

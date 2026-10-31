@@ -75,6 +75,8 @@ export interface Fund {
   /** Woher jede Angabe stammt (Feld → http(s)-Adresse) — Art. 14 Abs. 2 lit. f (Quelle), höchstens 10. */
   quellen?: Record<string, string>;
   bewertung?: FundBewertung;
+  /** Niveau-Analyse der vorhandenen Website gegen unser Paket (lib/funde/analyse.ts) — nur bei erreichbarer eigener Seite. */
+  analyse?: import('./analyse').AnalyseErgebnis & { leistung?: { lcpMs?: number; gewichtKb?: number; anfragen?: number; quelle: string } };
   vorschau?: FundVorschau;
   entwurf?: FundEntwurf;
   status: FundStatus;

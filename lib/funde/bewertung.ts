@@ -20,6 +20,8 @@ export interface SeitenSignale {
   fehler?: 'dns' | 'zertifikat' | 'verbindung' | 'status';
   /** Die Seite weist automatische Abrufe ab (401/403/429) — nicht prüfbar, also KEIN Mangel. */
   blockiert?: boolean;
+  /** Die Seite gehört offenbar nicht zum Betrieb (Name kommt nicht vor) — kein Fund, die Angabe im Verzeichnis ist falsch. */
+  fremd?: boolean;
 }
 
 const FEHLER_GRUND: Record<NonNullable<SeitenSignale['fehler']>, string> = {
@@ -64,6 +66,7 @@ export function bewerten(o: { website: boolean; signale?: SeitenSignale | null; 
   const basis = { gemessenAm: o.gemessenAm };
   if (!o.website) return { ...basis, punkte: 100, website: false, gruende: ['Keine eigene Website gefunden.'] };
   const s = o.signale;
+  if (s?.fremd) return { ...basis, punkte: 0, website: true, erreichbar: true, gruende: ['Die angegebene Website gehört offenbar zu einem anderen Betrieb — Angabe im Verzeichnis prüfen.'] };
   if (s?.blockiert) return { ...basis, punkte: 0, website: true, erreichbar: true, gruende: ['Die Seite lässt keine automatische Prüfung zu — bei Bedarf von Hand ansehen.'] };
   if (!s || !s.erreichbar) return { ...basis, punkte: 90, website: true, erreichbar: false, gruende: [FEHLER_GRUND[s?.fehler ?? 'verbindung']] };
   let p = 0;
@@ -96,6 +99,21 @@ export function websiteNormal(roh: string | undefined | null): string | null {
     if (!/^https?:$/.test(u.protocol) || !u.hostname.includes('.') || (u.port && u.port !== '80' && u.port !== '443')) return null;
     return u.toString();
   } catch { return null; }
+}
+
+const NAMEN_FUELLWORT = new Set(['restaurant', 'cafe', 'caffe', 'bar', 'berlin', 'bistro', 'pizzeria', 'trattoria', 'ristorante', 'imbiss', 'und', 'the', 'zum', 'zur', 'der', 'die', 'das', 'mit', 'haus', 'kitchen', 'kuche', 'grill', 'coffee']);
+const namensNorm = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss').replace(/[^a-z0-9]+/g, ' ').trim();
+/**
+ * Gehört die Seite zum Betrieb? (31.10.: in OSM zeigt das Website-Feld manchmal auf eine fremde Firma.) Ja, wenn ein kennzeichnendes Wort des Namens
+ * (≥ 4 Zeichen, kein Füllwort wie „Restaurant“) in Text oder Domain vorkommt; ohne solches Wort gilt „ja“ (nicht entscheidbar). Rein.
+ */
+export function seitePasstZumNamen(html: string, url: string, name: string): boolean {
+  const woerter = namensNorm(name).split(' ').filter(w => w.length >= 4 && !NAMEN_FUELLWORT.has(w));
+  if (!woerter.length) return true;
+  let host = '';
+  try { host = new URL(url).hostname; } catch { /* ohne Domain */ }
+  const t = namensNorm(`${html.slice(0, 600_000).replace(/<[^>]+>/g, ' ')} ${host}`);
+  return woerter.some(w => t.includes(w));
 }
 
 /**

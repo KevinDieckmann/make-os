@@ -129,6 +129,23 @@ export function anreicherungAus(x: Record<string, unknown>): Pick<Fund, 'inhaber
   return aus;
 }
 
+/** Niveau-Analyse aus der Datei säubern (nur Form, Längen gedeckelt). Rein. */
+export function analyseAus(roh: unknown, am: string): Fund['analyse'] | undefined {
+  const o = roh && typeof roh === 'object' ? roh as Record<string, unknown> : null;
+  if (!o || typeof o.niveau !== 'number' || !Number.isFinite(o.niveau)) return undefined;
+  const saetze = (v: unknown, n: number) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').map(x => x.replace(/[\u0000-\u001f<>]/g, ' ').slice(0, 200)).slice(0, n) : []);
+  const zahl = (v: unknown, max: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(max, Math.max(0, v))) : 0);
+  const t = o.teile && typeof o.teile === 'object' ? o.teile as Record<string, unknown> : {};
+  const l = o.leistung && typeof o.leistung === 'object' ? o.leistung as Record<string, unknown> : null;
+  return {
+    niveau: zahl(o.niveau, 100), teile: { technik: zahl(t.technik, 35), gaeste: zahl(t.gaeste, 35), auffindbar: zahl(t.auffindbar, 15), recht: zahl(t.recht, 15) },
+    ...(typeof o.design === 'number' && o.design >= 1 && o.design <= 5 ? { design: Math.round(o.design) } : {}),
+    luecken: saetze(o.luecken, 15), aufhaenger: saetze(o.aufhaenger, 3),
+    gemessenAm: typeof o.gemessenAm === 'string' && !Number.isNaN(Date.parse(o.gemessenAm)) ? o.gemessenAm.slice(0, 30) : am,
+    ...(l ? { leistung: { ...(typeof l.lcpMs === 'number' ? { lcpMs: zahl(l.lcpMs, 120_000) } : {}), ...(typeof l.gewichtKb === 'number' ? { gewichtKb: zahl(l.gewichtKb, 1_000_000) } : {}), ...(typeof l.anfragen === 'number' ? { anfragen: zahl(l.anfragen, 10_000) } : {}), quelle: l.quelle === 'pagespeed' ? 'pagespeed' : 'chrome' } } : {}),
+  };
+}
+
 /** Höchstens so viele Funde je Import-Datei — darüber 413 (nie kürzen). */
 export const IMPORT_MAX = 200;
 export const IMPORT_FORMAT = 'make-os-funde';
@@ -182,6 +199,7 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
     if (x.geschlossen === true) { weg('laut Recherche dauerhaft geschlossen'); continue; }
     const site = websiteNormal(ein.website);
     const zusatz = anreicherungAus(x);
+    const analyse = analyseAus(x.analyse, am);
     const bewertung = bewertungAus(x.bewertung, am) ?? bewerten({ website: eigeneWebsite(site), signale: null, jahrHeute: Number(localDay().slice(0, 4)), gemessenAm: am });
     const t = (k: string, n: number) => (typeof x[k] === 'string' && (x[k] as string).trim() ? (x[k] as string).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n) : undefined);
     const f: Fund = {
@@ -189,7 +207,7 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
       ...(t('kategorie', 60) ? { kategorie: t('kategorie', 60) } : {}), ...(t('gebiet', 80) ? { gebiet: t('gebiet', 80) } : {}), ...(t('oeffnungszeiten', 200) ? { oeffnungszeiten: t('oeffnungszeiten', 200) } : {}),
       ...(ein.strasse || ein.plz || ein.ort ? { adresse: { ...(ein.strasse ? { strasse: ein.strasse } : {}), ...(ein.plz ? { plz: ein.plz } : {}), ...(ein.ort ? { ort: ein.ort } : {}) } } : {}),
       ...(site ? { website: site } : {}), ...(ein.email ? { email: ein.email } : {}), ...telefonFelder(typeof x.mobil === 'string' ? x.mobil.slice(0, 60) : undefined, ein.telefon),
-      ...zusatz, bewertung, status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
+      ...zusatz, bewertung, ...(analyse ? { analyse } : {}), status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
     };
     f.vorschau = vorschauRegelwerk(f);
     f.entwurf = entwurfBauen(f, ctx);

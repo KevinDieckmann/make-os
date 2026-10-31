@@ -13,6 +13,7 @@ import { datum } from '../daten';
 interface Fund {
   id: string; name: string; branche: string; kategorie?: string; quelle: 'osm' | 'hand'; gebiet?: string; website?: string; email?: string; telefon?: string; mobil?: string;
   inhaber?: string; inhaberArt?: 'person' | 'firma'; instagram?: string; quellen?: Record<string, string>;
+  analyse?: { niveau: number; design?: number; luecken: string[]; aufhaenger: string[]; leistung?: { lcpMs?: number } };
   adresse?: { strasse?: string; hausnummer?: string; plz?: string; ort?: string };
   bewertung?: { punkte: number; gruende: string[] }; entwurf?: { betreff: string; text: string; anruf: string };
   status: 'neu' | 'vorbereitet' | 'uebernommen' | 'gesendet' | 'verworfen' | 'gesperrt'; grund?: string; angelegt: string;
@@ -193,12 +194,18 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                   unter={[d.branchen.find(b => b.id === f.branche)?.name, f.gebiet ?? f.adresse?.ort, f.website ? 'mit Website' : 'ohne Website', f.mobil || f.telefon ? null : 'keine Nummer', f.email ? 'Mail bekannt' : 'keine Mail', datum(f.angelegt.slice(0, 10))].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'inline-flex', gap: 6 }}>
                     {f.mobil ? <Chip farbe={LEUCHT.gut}>Handy</Chip> : f.telefon ? <Chip farbe={C.aktiv}>Festnetz</Chip> : null}
-                    {f.bewertung && <Chip farbe={f.bewertung.punkte >= 80 ? LEUCHT.kritisch : LEUCHT.achtung}>{`Bedarf ${f.bewertung.punkte}`}</Chip>}
+                    {f.analyse ? <Chip farbe={f.analyse.niveau < 35 ? LEUCHT.kritisch : LEUCHT.achtung}>{`Niveau ${f.analyse.niveau}`}</Chip>
+                      : f.bewertung && <Chip farbe={f.bewertung.punkte >= 80 ? LEUCHT.kritisch : LEUCHT.achtung}>{`Bedarf ${f.bewertung.punkte}`}</Chip>}
                     <Chip farbe={STATUS[f.status].farbe}>{STATUS[f.status].text}</Chip>
                   </span>} />
                 {offen === f.id && (
                   <div style={{ padding: '8px 4px 16px', display: 'grid', gap: 10 }}>
-                    {f.bewertung && <ul style={{ margin: 0, paddingLeft: 18, fontSize: TYP.bedien, color: C.inkDim }}>{f.bewertung.gruende.map(g => <li key={g}>{g}</li>)}</ul>}
+                    {f.analyse ? (
+                      <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>
+                        <div style={{ color: C.ink }}>Website-Niveau {f.analyse.niveau} von 100 (unser Standard = 100){f.analyse.design ? ` · Gestaltung ${f.analyse.design}/5` : ''}{f.analyse.leistung?.lcpMs ? ` · lädt am Handy ${Math.round(f.analyse.leistung.lcpMs / 100) / 10} s` : ''}</div>
+                        <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{f.analyse.luecken.map(g => <li key={g}>{g}</li>)}</ul>
+                      </div>
+                    ) : f.bewertung && <ul style={{ margin: 0, paddingLeft: 18, fontSize: TYP.bedien, color: C.inkDim }}>{f.bewertung.gruende.map(g => <li key={g}>{g}</li>)}</ul>}
                     <div style={{ display: 'grid', gap: 2, fontSize: TYP.bedien, color: C.ink }}>
                       {f.inhaber && <div>{f.inhaberArt === 'firma' ? 'Betreiber' : 'Inhaber'}: {f.inhaber}</div>}
                       {[f.adresse?.strasse && [f.adresse.strasse, f.adresse.hausnummer].filter(Boolean).join(' '), [f.adresse?.plz, f.adresse?.ort].filter(Boolean).join(' ')].filter(Boolean).length > 0 && <div>{[[f.adresse?.strasse, f.adresse?.hausnummer].filter(Boolean).join(' '), [f.adresse?.plz, f.adresse?.ort].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div>}
