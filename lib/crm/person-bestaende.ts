@@ -165,6 +165,28 @@ export function betriebeInhaberTilgen<T extends Pick<CrmBestand, 'firmen'>>(crm:
   return { ...crm, firmen: crm.firmen.map(f => { if (!ids.has(f.id) || !f.inhaber) return f; const { inhaber: _i, inhaberArt: _a, ...rest } = f; return rest as Firma; }) };
 }
 
+/**
+ * Ansprechpartner im Steckbrief einer Firma (31.10., ICP-Profile, lib/crm/icp-firma.ts): wie von der Firma veröffentlicht (Name, Rolle, Quelle).
+ * Art. 15 listet die Firmen, Art. 17 entfernt die Einträge mit diesem vollen Namen (nur bei eindeutigem Namen — sonst träfe es Namensgleiche).
+ */
+export function ansprechpartnerBei(firmen: readonly Firma[], name: string | null): Firma[] {
+  if (!name || !name.includes(' ')) return [];
+  const m = nameMuster(name);
+  return firmen.filter(f => (f.steckbrief?.ansprechpartner ?? []).some(a => m.test(a.name ?? '')));
+}
+/** Art. 17: Steckbrief-Ansprechpartner mit diesem vollen Namen entfernen. Idempotent; ohne Treffer derselbe Bestand. */
+export function ansprechpartnerTilgen<T extends Pick<CrmBestand, 'firmen'>>(crm: T, name: string | null): T {
+  const treffer = new Set(ansprechpartnerBei(crm.firmen, name).map(f => f.id));
+  if (!treffer.size || !name) return crm;
+  const m = nameMuster(name);
+  return { ...crm, firmen: crm.firmen.map(f => {
+    if (!treffer.has(f.id) || !f.steckbrief) return f;
+    const rest = (f.steckbrief.ansprechpartner ?? []).filter(a => !m.test(a.name ?? ''));
+    const { ansprechpartner: _a, ...sb } = f.steckbrief;
+    return { ...f, steckbrief: rest.length ? { ...sb, ansprechpartner: rest } : sb } as Firma;
+  }) };
+}
+
 /** Voller Name → „[gelöscht]“ in `chancen[].titel` und `mandate[].kunde`. Idempotent; unverändert → derselbe Bestand. */
 export function crmNamenTilgen<T extends Pick<CrmBestand, 'chancen' | 'mandate'>>(crm: T, name: string | null, nur?: CrmNamenBezug): T {
   if (!crmNenntNamen(crm, name, nur)) return crm;
@@ -625,9 +647,10 @@ async function art17Lauf(haushalt: string, absicht: import('@/lib/store/absichte
         const { betriebeSperren } = await import('./betrieb-sperre');
         await betriebeSperren(betriebe, 'loeschung', localDay());
       }
-      if (enthaeltKennung(vorher, id) || crmNenntNamen(vorher, name, namensgleich ? crmVerknuepft(vorher, id) : undefined) || betriebe.some(f => f.inhaber)) {
+      const apName = namensgleich ? null : name;
+      if (enthaeltKennung(vorher, id) || crmNenntNamen(vorher, name, namensgleich ? crmVerknuepft(vorher, id) : undefined) || betriebe.some(f => f.inhaber) || ansprechpartnerBei(vorher.firmen, apName).length) {
         const ids = new Set(betriebe.map(f => f.id));
-        await aendereCrm(c => { const nur = namensgleich ? crmVerknuepft(c, id) : undefined; return crmNamenTilgen(betriebeInhaberTilgen(crmOhne(c, id), ids), name, nur); });
+        await aendereCrm(c => { const nur = namensgleich ? crmVerknuepft(c, id) : undefined; return crmNamenTilgen(ansprechpartnerTilgen(betriebeInhaberTilgen(crmOhne(c, id), ids), apName), name, nur); });
         zaehle(b, 'crm', 1);
       }
       return hinweise;
@@ -1071,10 +1094,12 @@ export async function personAufzaehlen(id: string) {
   // Betriebe (01.11., Welle A): Firmen, deren Inhaber die Person laut Anbieterkennzeichnung ist bzw. an deren Lead sie Hauptkontakt ist.
   const nameK = kontakt ? [kontakt.vorname, kontakt.nachname].filter(Boolean).join(' ').trim() : '';
   const betriebe = betriebeDerPerson(crm.firmen, id, nameK.includes(' ') ? nameK : null).map(f => ({ firma: f.name, firmaId: f.id, ...(f.inhaber ? { inhaber: true } : {}), ...(f.herkunft ? { herkunft: f.herkunft } : {}), ...(f.quellen ? { quellen: f.quellen } : {}) }));
+  // Steckbrief-Ansprechpartner (31.10., ICP): Firmen, die die Person als Ansprechpartner veröffentlichen (Name, Rolle, Quelle).
+  const ansprechpartner = ansprechpartnerBei(crm.firmen, nameK.includes(' ') ? nameK : null).map(f => ({ firma: f.name, firmaId: f.id, eintraege: (f.steckbrief?.ansprechpartner ?? []).filter(a => nameMuster(nameK).test(a.name ?? '')).map(a => ({ rolle: a.rolle, quelle: a.quelle })) }));
   // Bausteine bestellen (31.10.): die Bestellungen der Person über die Website (Kennung oder Adresse) — Kopie mit Rechnungsnummer und Fassung der Bedingungen.
   const { bestellungenAuskunft } = await import('@/lib/bausteine/server');
   const bausteinBestellungen = await bestellungenAuskunft(m).catch(() => []);
-  return { ...verweise, betriebe, fulfillment, rechnungen, bausteinBestellungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher, medien };
+  return { ...verweise, betriebe, ansprechpartner, fulfillment, rechnungen, bausteinBestellungen, uebergaben, terminFollowups, gesellschaften, kapazitaet, kiEmpfaenger, buchungen, terminBezuege, meetings, dateien, importKonflikte, headVorschlaege, headReplayFaelle, kommenderTermin, aufgaben, importLaeufe, zoeProtokoll, zoeStapel, aenderungsprotokoll, weitereSpeicher, medien };
 }
 
 /** Änderungsprotokoll-Einträge zu diesen Fingerabdrücken (alle Monatsdateien) — ohne Werte, wie gespeichert. */
