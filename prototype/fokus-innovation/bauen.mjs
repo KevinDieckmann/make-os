@@ -202,10 +202,10 @@ export function seitenBauen(q = quellen()) {
   const zeilen = (s) => (String(s).includes('|') ? String(s).split('|').map((z) => `<span class="zeile">${e(z)}</span>`).join('') : e(s));
   // Leerzeichen vor der Unterzeile: sie steht als Block darunter, aber im Text (Crawler, Vorlesen) kleben die Sätze sonst aneinander.
   const titel = (haupt, ruhig) => `${zeilen(haupt)}${ruhig ? ` <span class="ruhig">${zeilen(ruhig)}</span>` : ''}`;
-  const abKopf = ({ marke, nr, h2, ruhig, lead, id }) => `<header class="ab-kopf erscheint"><p class="ab-marke">${nr ? `<span class="nr">${e(nr)}</span>` : ''}${e(marke)}</p><div><h2${id ? ` id="${id}"` : ''}>${titel(h2, ruhig)}</h2>${lead ? `<p class="lead">${t(lead)}</p>` : ''}</div></header>`;
+  const abKopf = ({ marke, nr, h2, ruhig, lead, id }) => `<header class="ab-kopf erscheint"><p class="ab-marke">${nr ? `<span class="nr">${e(nr)}</span>` : ''}${e(marke)}</p><div><h2 class="glanz"${id ? ` id="${id}"` : ''}>${titel(h2, ruhig)}</h2>${lead ? `<p class="lead">${t(lead)}</p>` : ''}</div></header>`;
   const punkte = (liste, klasse = 'punkte') => `<ul class="${klasse}">${liste.map((x) => `<li>${t(x)}</li>`).join('')}</ul>`;
   const weg = (stationen, { klasse = '', etiketten = ['Heute', 'Mit uns', 'Danach'], label = 'Der Weg' } = {}) => `<ol class="weg erscheint${klasse ? ` ${klasse}` : ''}" aria-label="${e(label)}">${stationen.map((s, i) => `<li class="station"><span class="etikett">${e(etiketten[i] ?? '')}</span><b>${t(typeof s === 'string' ? s : s.titel)}</b>${typeof s === 'string' || !s.text ? '' : `<span class="station-text">${t(s.text)}</span>`}</li>`).join('')}</ol>`;
-  const zahl = (b) => `<figure class="zahl erscheint"><b>${e(b.wert)}</b><figcaption>${e(b.text)}<cite><a href="${e(b.link)}" rel="noopener" target="_blank">${e(b.quelle)}</a></cite></figcaption></figure>`;
+  const zahl = (b) => `<figure class="zahl erscheint"><b class="glanz">${e(b.wert)}</b><figcaption>${e(b.text)}<cite><a href="${e(b.link)}" rel="noopener" target="_blank">${e(b.quelle)}</a></cite></figcaption></figure>`;
   const raster = (liste, n = liste.length) => `<div class="raster n${n} erscheint">${liste.map((x, i) => `<div class="spalte">${x.nr !== false ? `<span class="nr">${String(i + 1).padStart(2, '0')}</span>` : ''}${x.etikett ? `<span class="etikett">${e(x.etikett)}</span>` : ''}<h3>${e(x.titel)}</h3><p>${t(x.text)}</p>${x.unter ? `<p class="spalte-beleg">${t(x.unter)}</p>` : ''}</div>`).join('')}</div>`;
   // Was eine Seite an Fragen und Brotkrumen zeigt, landet auch in ihren strukturierten Daten (neu() liest und leert es).
   let seitenFragen = [];
@@ -280,7 +280,7 @@ ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Ode
   const fussSpalte = (titelText, links) => `<div><p class="fuss-titel">${e(titelText)}</p><ul>${links.map(([h, n]) => `<li><a href="${h}">${e(n)}</a></li>`).join('')}</ul></div>`;
   const fuss = () => `<footer class="fuss"><div class="w">
 <div class="fuss-raster">
-<div class="fuss-marke"><a class="marke" href="/" aria-label="Fokus Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a><p class="claim">${e(F.marke.claim)}</p>
+<div class="fuss-marke"><a class="marke" href="/" aria-label="Fokus Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a><p class="claim glanz erscheint">${e(F.marke.claim)}</p>
 <p><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p></div>
 ${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name]), ['/innovations-check/', 'Innovations-Check'], ['/preise/', 'Preise']])}
 ${fussSpalte('Kostenlos', [['/kostenlos/#checks', 'Checks'], ['/kostenlos/#ratgeber', 'Ratgeber'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : []), ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/fragen/', 'Häufige Fragen'], ['/begriffe/', 'Begriffe']])}
@@ -389,7 +389,7 @@ ${fuss()}
   /** Der dunkle Schlussakt: eine Frage, ein Satz, der Einstieg in drei Schritten, zwei Knöpfe. */
   const ansprechpartner = () => { const p = F.team[0]; return `<p class="ansprechpartner">${MONOGRAMM(p.kuerzel)}<span>Ihr Ansprechpartner im Erstgespräch<b>${e(p.name)}</b></span></p>`; };
   const schlussakt = ({ quelle, bereich, h2 = 'Bereit für den nächsten Schritt?', lead, knoepfe, stufen = F.einstieg, ablauf = true }) => `<section class="schlussakt dunkel" aria-labelledby="schluss-titel"><div class="w">
-<div class="schluss-kopf erscheint">${ZEICHEN('zeichen schluss-zeichen')}<p class="vorzeile">Der Einstieg</p><h2 id="schluss-titel">${e(h2)}</h2><p class="lead">${t(lead ?? `Im kostenlosen Erstgespräch, 30 Minuten per Video, klären wir, ob und womit wir helfen können. ${passenderCheck(bereich, quelle).satz}`)}</p>
+<div class="schluss-kopf erscheint">${ZEICHEN('zeichen schluss-zeichen')}<p class="vorzeile">Der Einstieg</p><h2 id="schluss-titel" class="glanz">${e(h2)}</h2><p class="lead">${t(lead ?? `Im kostenlosen Erstgespräch, 30 Minuten per Video, klären wir, ob und womit wir helfen können. ${passenderCheck(bereich, quelle).satz}`)}</p>
 <div class="knoepfe">${knoepfe ?? `${erstKnopf()}${passenderKnopf(bereich, quelle)}`}</div>${ansprechpartner()}</div>
 ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], label: 'Der Einstieg in drei Schritten' }) : ''}
 </div></section>`;
@@ -528,7 +528,7 @@ ${block('durchbruch', fl.durchbruch)}
 </section>
 
 <section class="held start-held" id="einstieg" aria-labelledby="start-titel"><div class="w held-raster">
-<div class="start-titel erscheint">${vorzeile(F.start.vorzeile)}<h1 id="start-titel">${titel(F.start.titel, F.start.ruhig)}</h1></div>
+<div class="start-titel erscheint">${vorzeile(F.start.vorzeile)}<h1 id="start-titel" class="glanz">${titel(F.start.titel, F.start.ruhig)}</h1></div>
 <div class="erscheint"><p class="lead">${t(F.start.lead)}</p>
 <div class="knoepfe">${erstKnopf()}${passenderKnopf(undefined, 'start_held')}</div></div>
 <nav class="index tueren erscheint" aria-label="Ihr Anliegen">${F.tueren.map((d) => `<a href="${d.pfad ?? `#${d.id}`}"><span class="nr">${e(d.etikett)}</span><b>${e(d.titel)}</b><span class="index-satz">${t(d.text)}</span>${PFEIL}</a>`).join('')}</nav>
@@ -536,7 +536,8 @@ ${block('durchbruch', fl.durchbruch)}
 
 <section class="abschnitt" id="bekannt" aria-labelledby="bekannt-titel"><div class="w">
 ${abKopf({ marke: 'Ihr Alltag', h2: F.bekannt.titel, lead: F.bekannt.lead, id: 'bekannt-titel' })}
-${F.bekannt.gruppen ? `<div class="momente-gruppen erscheint">${F.bekannt.gruppen.map((g) => { const z = g.zahl && Z?.zahlen.find((y) => y.id === g.zahl); if (g.zahl && !z) throw new Error(`Zahl ${g.zahl} fehlt`); return `<div class="momente-gruppe"><h3 class="gruppe-titel">${e(B[g.bereich].name)}</h3><ul class="momente">${g.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul>${z ? `<p class="momente-zahl"><b>${e(z.wert)}</b> <span>${e(z.kurz ?? z.satz)}</span> <cite><a href="${e(z.url)}" rel="noopener" target="_blank">${e(z.quelle)}, ${String(z.datum).slice(0, 4)}</a></cite></p>` : ''}</div>`; }).join('')}</div>` : `<ul class="momente erscheint">${F.bekannt.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul>`}
+${F.bekannt.gruppen ? `<div class="momente-gruppen erscheint">${F.bekannt.gruppen.map((g) => `<div class="momente-gruppe"><h3 class="gruppe-titel">${e(B[g.bereich].name)}</h3><ul class="momente">${g.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul></div>`).join('')}</div>
+${(() => { const zs = F.bekannt.gruppen.map((g) => g.zahl && Z?.zahlen.find((y) => y.id === g.zahl)).filter(Boolean); if (zs.length !== F.bekannt.gruppen.filter((g) => g.zahl).length) throw new Error('Zahl zu den Momenten fehlt in inhalt/zahlen.json'); return zs.length ? `<div class="momente-belege"><p class="etikett erscheint">${e(F.bekannt.belege_titel ?? 'Was Studien zeigen')}</p><div class="momente-belege-raster">${zs.map((z) => zahl({ wert: z.wert, text: z.kurz ?? z.satz, link: z.url, quelle: `${z.quelle}, ${String(z.datum).slice(0, 4)}` })).join('')}</div></div>` : ''; })()}` : `<ul class="momente erscheint">${F.bekannt.momente.map((m) => `<li>${t(m)}</li>`).join('')}</ul>`}
 <div class="momente-schluss erscheint"><p>${(([frage, ...rest]) => `<b>${t(frage)}?</b> ${t(rest.join('?').trim())}`)(F.bekannt.schluss.split('?'))}</p>${erstKnopf()}</div>
 </div></section>
 
@@ -631,7 +632,7 @@ ${raster(b.felder, 4)}
       seitenTyp: 'CollectionPage',
       schema: [{ ...itemListe(`Angebote im Bereich ${b.name}`, [...(k === 'innovation' ? [['/innovations-check/', 'Innovations-Check']] : []), ...liste.map((a) => [produktPfad(a), a.name])]), '@id': `${absolut(`/${k}/`)}#angebote` }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[null, b.name]])}${vorzeile(b.name, b.nr)}<h1 id="held-titel">${e(b.held.titel)}</h1><p class="lead">${t(b.held.text)}</p><div class="knoepfe">${knoepfe}</div></div>
+<div class="erscheint">${brotkrumen([[null, b.name]])}${vorzeile(b.name, b.nr)}<h1 id="held-titel" class="glanz">${e(b.held.titel)}</h1><p class="lead">${t(b.held.text)}</p><div class="knoepfe">${knoepfe}</div></div>
 <aside class="weg-karte erscheint" aria-label="Der Weg"><p class="etikett">Der Weg mit uns</p>${weg(b.weg, { klasse: 'senkrecht' })}</aside>
 </div></section>
 ${videoAbschnitt(VIDEOS[k])}
@@ -669,7 +670,7 @@ ${schlussakt({ quelle: `${k}_ende`, bereich: k })}`,
         bildTitel: `${gs.titel} ${gs.ruhig}`,
         aktiv: k,
         main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster${gruppenBild || VIDEOS[`${k}/${gs.pfad}`] ? '' : ' einspaltig'}">
-<div class="erscheint">${brotkrumen([[`/${k}/`, B[k].name], [null, gs.name]])}${vorzeile(B[k].name)}<h1 id="held-titel">${titel(gs.titel, gs.ruhig)}</h1><p class="lead">${t(gs.lead)}</p>
+<div class="erscheint">${brotkrumen([[`/${k}/`, B[k].name], [null, gs.name]])}${vorzeile(B[k].name)}<h1 id="held-titel" class="glanz">${titel(gs.titel, gs.ruhig)}</h1><p class="lead">${t(gs.lead)}</p>
 <div class="knoepfe">${erstKnopf()}${klein ? textlink(checkThema(k, `${gs.pfad}_held`), `${klein.name}, ${klein.minuten} Minuten`) : ''}</div></div>
 ${gruppenBild || VIDEOS[`${k}/${gs.pfad}`] ? buehne(gruppenBild, VIDEOS[`${k}/${gs.pfad}`]) : ''}
 </div></section>
@@ -745,8 +746,8 @@ ${a.stufen ? `<div class="raster n3 erscheint">${a.stufen.map((s) => `<div class
         ...(zuArtikeln.length ? { subjectOf: zuArtikeln.map((x) => ({ '@type': 'Article', name: x.titel, url: absolut(artikelPfad(x)) })) } : {}),
       }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[`/${k}/`, b.name], [null, a.name]])}${vorzeile(`${b.name}${a.gruppe ? ` · ${a.gruppe}` : ''}${istBald ? ' · Bald' : ''}`)}<h1 id="held-titel">${e(F.titel_h1?.[a.id] ?? a.name)}</h1><p class="lead">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? b.satz)}</p></div>
-<aside class="preis-kasten erscheint" aria-label="Preis"><p class="etikett">Preis</p><p class="betrag">${e(preisVoll(a))}</p><p class="zusatz">${istBald ? 'Haben Sie ein Vorhaben? Melden Sie sich, wir sprechen darüber' : `${e(a.preis_zusatz ?? '')}${a.preis_zusatz ? ' · ' : ''}netto zuzüglich Umsatzsteuer`}</p>${F.umfang[a.id] ? `<p class="umfang">${e(F.umfang[a.id])}</p>` : ''}${mandat ? `<p class="sicher">Ausstieg zum Ende von Monat 3 möglich</p>` : ''}<div class="knoepfe senkrecht">${terminKnopf}${zweitKnopf}</div></aside>
+<div class="erscheint">${brotkrumen([[`/${k}/`, b.name], [null, a.name]])}${vorzeile(`${b.name}${a.gruppe ? ` · ${a.gruppe}` : ''}${istBald ? ' · Bald' : ''}`)}<h1 id="held-titel" class="glanz">${e(F.titel_h1?.[a.id] ?? a.name)}</h1><p class="lead">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? b.satz)}</p></div>
+<aside class="preis-kasten erscheint" aria-label="Preis"><p class="etikett">Preis</p><p class="betrag glanz">${e(preisVoll(a))}</p><p class="zusatz">${istBald ? 'Haben Sie ein Vorhaben? Melden Sie sich, wir sprechen darüber' : `${e(a.preis_zusatz ?? '')}${a.preis_zusatz ? ' · ' : ''}netto zuzüglich Umsatzsteuer`}</p>${F.umfang[a.id] ? `<p class="umfang">${e(F.umfang[a.id])}</p>` : ''}${mandat ? `<p class="sicher">Ausstieg zum Ende von Monat 3 möglich</p>` : ''}<div class="knoepfe senkrecht">${terminKnopf}${zweitKnopf}</div></aside>
 </div></section>
 ${blick([['Für wen', pb?.fuer ? null : a.fuer_wen], ['Ergebnis', ergebnisSatz], ['Umfang', F.umfang[a.id]], ...(istBald ? [['Start', 'in Kürze, Anfrage schon jetzt möglich']] : [])])}
 ${mandat ? risiko() : abs ? risiko(abs.punkte) : ''}
@@ -774,7 +775,7 @@ ${schlussakt({ quelle: `produkt_${a.id}_ende`, bereich: k, ablauf: false, lead: 
       aktiv: 'innovation',
       schema: [{ '@type': 'Service', '@id': `${absolut('/innovations-check/')}#leistung`, name: 'Innovations-Check', serviceType: 'Innovation', description: klar(F.check.text), provider: { '@id': ORG }, areaServed: organisation.areaServed, url: absolut('/innovations-check/'), offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: absolut('/innovations-check/') } }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([['/innovation/', 'Innovation'], [null, 'Innovations-Check']])}${vorzeile('Kostenlos · 10 oder 25 Minuten · Ergebnis sofort')}<h1 id="held-titel">${e(c.titel)}</h1><p class="lead">${t(F.check.text)}</p><div class="knoepfe">${checkKnopf('check_seite_held')}</div></div>
+<div class="erscheint">${brotkrumen([['/innovation/', 'Innovation'], [null, 'Innovations-Check']])}${vorzeile('Kostenlos · 10 oder 25 Minuten · Ergebnis sofort')}<h1 id="held-titel" class="glanz">${e(c.titel)}</h1><p class="lead">${t(F.check.text)}</p><div class="knoepfe">${checkKnopf('check_seite_held')}</div></div>
 <figure class="frage-karte erscheint" aria-label="Beispiel: die erste Frage des Checks"><figcaption><span class="etikett">So sieht eine Frage aus</span><span class="leise">Frage 1 von ${katalog.anzahl_kurzcheck}</span></figcaption><p class="frage">${e(a1.text)}</p><ul class="optionen" aria-hidden="true">${a1.optionen.slice(0, 4).map((o) => `<li>${e(o.text)}</li>`).join('')}</ul><p class="leise klein-text">Zoe, unsere KI-Assistentin, führt durch die Fragen. Sie stellt sie mit festen Texten.</p></figure>
 </div></section>
 ${videoAbschnitt(VIDEOS['innovations-check'])}
@@ -801,7 +802,7 @@ ${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'Kurz in rund 10
     bildTitel: F.events.satz,
     aktiv: 'events',
     main: `<section class="held sand" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[null, 'Events']])}${vorzeile(F.events.titel)}<h1 id="held-titel">${titel(F.events.start_titel.join('|'), F.events.start_ruhig)}</h1><p class="lead">${t(F.events.text)}</p>
+<div class="erscheint">${brotkrumen([[null, 'Events']])}${vorzeile(F.events.titel)}<h1 id="held-titel" class="glanz">${titel(F.events.start_titel.join('|'), F.events.start_ruhig)}</h1><p class="lead">${t(F.events.text)}</p>
 <div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten')}</div><p class="leise klein-text">${e(F.events.kosten)} · Termine folgen</p></div>
 <div class="events-tafel">${tafel()}</div>
 </div></section>
@@ -827,7 +828,7 @@ ${schlussakt({ quelle: 'events_ende' })}`,
     aktiv: 'ueber-uns',
     seitenTyp: 'AboutPage',
     main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[null, 'Über uns']])}${vorzeile('Über uns')}<h1 id="held-titel">${e(F.leitidee.titel)}</h1><p class="lead">${t(F.leitidee.lead)}</p></div>
+<div class="erscheint">${brotkrumen([[null, 'Über uns']])}${vorzeile('Über uns')}<h1 id="held-titel" class="glanz">${e(F.leitidee.titel)}</h1><p class="lead">${t(F.leitidee.lead)}</p></div>
 ${buehne('netzwerk', VIDEOS['ueber-uns'])}
 </div></section>
 
@@ -868,7 +869,7 @@ ${schlussakt({ quelle: 'ueber_uns_ende' })}`,
       aktiv: 'kontakt',
       seitenTyp: 'ContactPage',
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
-<div class="erscheint">${brotkrumen([[null, 'Kontakt']])}${vorzeile('Kontakt')}<h1 id="held-titel">Sprechen Sie mit uns.</h1><p class="lead">Ein Erstgespräch von 30 Minuten per Video klärt, ob und womit wir helfen können. Kostenlos. Oder Sie starten mit einem unserer Checks, Ergebnis sofort.</p>
+<div class="erscheint">${brotkrumen([[null, 'Kontakt']])}${vorzeile('Kontakt')}<h1 id="held-titel" class="glanz">Sprechen Sie mit uns.</h1><p class="lead">Ein Erstgespräch von 30 Minuten per Video klärt, ob und womit wir helfen können. Kostenlos. Oder Sie starten mit einem unserer Checks, Ergebnis sofort.</p>
 <div class="knoepfe">${erstKnopf()}${passenderKnopf(undefined, 'kontakt')}</div></div>
 </div></section>
 <section class="abschnitt" aria-labelledby="weiter-titel"><div class="w">${abKopf({ marke: 'So geht es weiter', h2: 'Drei Schritte bis zum Start.', id: 'weiter-titel' })}
@@ -884,7 +885,7 @@ ${weg(F.einstieg, { etiketten: ['01', '02', '03'], label: 'Drei Schritte bis zum
   // ── Rechtliches (Sie-Form; Hinweis, keine Rechtsberatung — vor dem Start anwaltlich prüfen) ──
   const vp = seite.vertragspartner;
   const anschrift = `<address>${e(anbieter.name)}<br>${anbieter.adresse.map(t).join('<br>')}</address>`;
-  const recht = (titelText, inhaltHtml) => `<section class="held klein" aria-labelledby="held-titel"><div class="w">${brotkrumen([[null, titelText]])}${vorzeile('Rechtliches')}<h1 id="held-titel">${e(titelText)}</h1></div></section>
+  const recht = (titelText, inhaltHtml) => `<section class="held klein" aria-labelledby="held-titel"><div class="w">${brotkrumen([[null, titelText]])}${vorzeile('Rechtliches')}<h1 id="held-titel" class="glanz">${e(titelText)}</h1></div></section>
 <section class="abschnitt"><div class="w"><div class="recht">${inhaltHtml}<p class="leise">Stand: Oktober 2026</p></div></div></section>`;
   neu('impressum/index.html', {
     seo: 'impressum',
@@ -917,7 +918,7 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
   neu('404.html', {
     titel: 'Seite nicht gefunden · Fokus Innovation',
     beschreibung: 'Diese Seite gibt es nicht.',
-    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig"><div>${vorzeile('404')}<h1 id="held-titel">Diese Seite gibt es nicht.</h1><p class="lead">Vielleicht hilft der Weg zurück zur Startseite. Oder Sie schauen, was wir kostenlos anbieten.</p><div class="knoepfe">${knopf('/', 'Zur Startseite')}${textlink('/kostenlos/', 'Zu Kostenlos')}</div></div></div></section>`,
+    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig"><div>${vorzeile('404')}<h1 id="held-titel" class="glanz">Diese Seite gibt es nicht.</h1><p class="lead">Vielleicht hilft der Weg zurück zur Startseite. Oder Sie schauen, was wir kostenlos anbieten.</p><div class="knoepfe">${knopf('/', 'Zur Startseite')}${textlink('/kostenlos/', 'Zu Kostenlos')}</div></div></div></section>`,
   });
 
   // ── Wissen: Übersicht und Ratgeber ──
@@ -989,7 +990,7 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
   const zahlKarte = (z) => zahl({ wert: z.wert, text: z.satz, link: z.url, quelle: `${z.quelle}, ${String(z.datum).slice(0, 4)}` });
   /** Kachel der Zahlen-Seite (31.10.): Zahl, kurze Aussage, Anteilsbalken (SVG, keine Inline-Stile), Wortlaut auf Klick, Quelle. */
   const anteil = (w) => { const m = String(w).match(/(\d+(?:,\d+)?)\s*%/); return m ? Math.min(100, parseFloat(m[1].replace(',', '.'))) : null; };
-  const zahlKachel = (z) => { const a = anteil(z.wert); return `<figure class="zahl-kachel erscheint"><b>${e(z.wert)}</b><figcaption><p class="zk-kurz">${e(z.kurz ?? z.satz)}</p>${a != null ? `<svg class="zk-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="grund" width="100" height="4" rx="2"/><rect class="wert" width="${a}" height="4" rx="2"/></svg>` : ''}<details><summary>Wortlaut und Grundlage</summary><p>${e(z.satz)}</p></details><cite><a href="${e(z.url)}" rel="noopener" target="_blank">${e(z.quelle)}, ${String(z.datum).slice(0, 4)}</a></cite></figcaption></figure>`; };
+  const zahlKachel = (z) => { const a = anteil(z.wert); return `<figure class="zahl-kachel erscheint"><b class="glanz">${e(z.wert)}</b><figcaption><p class="zk-kurz">${e(z.kurz ?? z.satz)}</p>${a != null ? `<svg class="zk-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="grund" width="100" height="4" rx="2"/><rect class="wert" width="${a}" height="4" rx="2"/></svg>` : ''}<details><summary>Wortlaut und Grundlage</summary><p>${e(z.satz)}</p></details><cite><a href="${e(z.url)}" rel="noopener" target="_blank">${e(z.quelle)}, ${String(z.datum).slice(0, 4)}</a></cite></figcaption></figure>`; };
   neu('kostenlos/index.html', {
     seo: 'kostenlos',
     bildVorzeile: 'Kostenlos',
@@ -998,7 +999,7 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
     seitenTyp: 'CollectionPage',
     schema: [{ ...itemListe('Kostenlos bei Fokus Innovation', [...K.checks.map((c) => [c.thema ? `/check?thema=${c.thema}` : c.pfad, c.name]), ...W.artikel.map((a) => [artikelPfad(a), a.titel])]), '@id': `${absolut('/kostenlos/')}#kostenlos` }],
     main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
-<div class="erscheint">${brotkrumen([[null, 'Kostenlos']])}${vorzeile('Kostenlos')}<h1 id="held-titel">${titel(K.titel, K.ruhig)}</h1><p class="lead">${t(K.lead)}</p>
+<div class="erscheint">${brotkrumen([[null, 'Kostenlos']])}${vorzeile('Kostenlos')}<h1 id="held-titel" class="glanz">${titel(K.titel, K.ruhig)}</h1><p class="lead">${t(K.lead)}</p>
 <nav class="az breit" aria-label="Auf dieser Seite"><a href="#checks">Checks</a>${K.phasen?.length ? '<a href="#phasen">Nach Phase</a>' : ''}<a href="#ratgeber">Ratgeber</a>${Z ? '<a href="#zahlen">Zahlen</a>' : ''}${VORL.length ? '<a href="#vorlagen">Vorlagen</a>' : ''}<a href="#newsletter">Newsletter</a></nav></div>
 </div></section>
 
@@ -1025,7 +1026,7 @@ ${schlussakt({ quelle: 'kostenlos_ende' })}`,
       aktiv: 'kostenlos',
       seitenTyp: 'CollectionPage',
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
-<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, 'Zahlen']])}${vorzeile(`Stand ${datum(Z.stand)}`)}<h1 id="held-titel">${titel(K.zahlen.titel)}</h1><p class="lead">${t(K.zahlen.lead)}</p></div>
+<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, 'Zahlen']])}${vorzeile(`Stand ${datum(Z.stand)}`)}<h1 id="held-titel" class="glanz">${titel(K.zahlen.titel)}</h1><p class="lead">${t(K.zahlen.lead)}</p></div>
 </div></section>
 ${BEREICHE.map((k) => { const liste = Z.zahlen.filter((z) => z.bereich === k); return liste.length ? `<section class="abschnitt" aria-labelledby="zahlen-${k}"><div class="w">${abKopf({ marke: B[k].name, nr: B[k].nr, h2: B[k].paar, id: `zahlen-${k}` })}<div class="zahlen-raster kacheln">${liste.map(zahlKachel).join('')}</div></div></section>` : ''; }).join('\n')}
 <section class="abschnitt" aria-labelledby="zahlen-hinweis"><div class="w"><p class="leise klein-text erscheint" id="zahlen-hinweis">Wir geben die Zahlen so wieder, wie die Herausgeber sie veröffentlicht haben. Der Link führt jeweils zur Quelle. Die Zahlen beziehen sich auf Deutschland, wo nicht anders genannt. Zahlen verschiedener Quellen können voneinander abweichen, weil sie unterschiedliche Unternehmensgrößen und Begriffe zählen.</p></div></section>
@@ -1055,7 +1056,7 @@ ${schlussakt({ quelle: 'zahlen_ende' })}`,
         bildVorzeile: tuer.etikett,
         bildTitel: `${x.titel} ${x.ruhig}`,
         main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[null, tuer.etikett]])}${vorzeile(tuer.etikett)}<h1 id="held-titel">${titel(x.titel, x.ruhig)}</h1><p class="lead">${t(x.lead)}</p>
+<div class="erscheint">${brotkrumen([[null, tuer.etikett]])}${vorzeile(tuer.etikett)}<h1 id="held-titel" class="glanz">${titel(x.titel, x.ruhig)}</h1><p class="lead">${t(x.lead)}</p>
 <div class="knoepfe">${erstKnopf()}${textlink('#einstieg', 'Womit anfangen')}</div></div>
 ${buehne(s.bild, VIDEOS[s.pfad])}
 </div></section>
@@ -1106,7 +1107,7 @@ ${schlussakt({ quelle: `${s.pfad}_ende`, bereich: s.id === 'unternehmen' ? 'inno
         ...(angebote.length ? { mentions: angebote.map((x) => ({ '@type': 'Service', name: x.name, url: absolut(produktPfad(x)) })) } : {}),
       }],
       main: `<section class="held artikel-held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
-<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, a.titel]])}${vorzeile(`${a.leitfaden ? 'Leitfaden · ' : ''}${b.name} · ${lesezeit(a)} Minuten Lesezeit`)}<h1 id="held-titel">${e(a.titel)}</h1>
+<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, a.titel]])}${vorzeile(`${a.leitfaden ? 'Leitfaden · ' : ''}${b.name} · ${lesezeit(a)} Minuten Lesezeit`)}<h1 id="held-titel" class="glanz">${e(a.titel)}</h1>
 <p class="autor-zeile">Von <a class="unterstrichen" href="/ueber-uns/#${personAnker(autor)}">${e(autor.name)}</a>, ${e(autor.rolle)} · <time datetime="${a.aktualisiert}">${e(datum(a.aktualisiert))}</time></p></div>
 </div></section>
 
@@ -1142,7 +1143,7 @@ ${schlussakt({ quelle: `wissen_${a.id}_ende`, bereich: a.bereich })}`,
       aktiv: 'kostenlos',
       schema: [{ '@type': 'DefinedTermSet', '@id': `${BASIS_B}#begriffe`, name: 'Begriffe aus Vertrieb, Sichtbarkeit und KI', inLanguage: 'de-DE', hasDefinedTerm: sortiert.map((x) => ({ '@type': 'DefinedTerm', '@id': `${BASIS_B}#${x.id}`, name: x.name, description: klar(x.text), url: `${BASIS_B}#${x.id}`, inDefinedTermSet: { '@id': `${BASIS_B}#begriffe` } })) }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
-<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, 'Begriffe']])}${vorzeile('Begriffe von A bis Z')}<h1 id="held-titel">${titel('Begriffe,', 'kurz erklärt.')}</h1><p class="lead">Die Wörter, die in Vertrieb, Sichtbarkeit und bei der Einführung von KI immer wieder fallen. So, wie wir sie verwenden.</p>
+<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, 'Begriffe']])}${vorzeile('Begriffe von A bis Z')}<h1 id="held-titel" class="glanz">${titel('Begriffe,', 'kurz erklärt.')}</h1><p class="lead">Die Wörter, die in Vertrieb, Sichtbarkeit und bei der Einführung von KI immer wieder fallen. So, wie wir sie verwenden.</p>
 <nav class="az" aria-label="Buchstaben">${gruppen.map((g) => `<a href="#b-${slug(g.g)}">${e(g.g)}</a>`).join('')}</nav></div>
 </div></section>
 <section class="abschnitt" aria-label="Begriffe"><div class="w"><div class="begriffe erscheint">
@@ -1170,7 +1171,7 @@ ${schlussakt({ quelle: 'begriffe_ende' })}`,
       bildTitel: 'Was Sie vor dem ersten Gespräch wissen wollen.',
       aktiv: 'kostenlos',
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
-<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, 'Häufige Fragen']])}${vorzeile('Häufige Fragen')}<h1 id="held-titel">${titel('Häufige Fragen.', 'Kurz beantwortet.')}</h1><p class="lead">Was Gründer, Unternehmer und Mittelständler uns vor dem ersten Gespräch fragen. Fehlt Ihre Frage, schreiben Sie uns an <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a>.</p>
+<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, 'Häufige Fragen']])}${vorzeile('Häufige Fragen')}<h1 id="held-titel" class="glanz">${titel('Häufige Fragen.', 'Kurz beantwortet.')}</h1><p class="lead">Was Gründer, Unternehmer und Mittelständler uns vor dem ersten Gespräch fragen. Fehlt Ihre Frage, schreiben Sie uns an <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a>.</p>
 <nav class="az breit" aria-label="Themen">${gruppen.map(([k, n]) => `<a href="#fragen-${k}">${e(n)}</a>`).join('')}</nav></div>
 </div></section>
 ${gruppen.map(([k, n, liste]) => fragen(liste, n, { id: `fragen-${k}`, marke: 'Fragen', hinweis: false })).join('\n')}
@@ -1187,7 +1188,7 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
     const karte = (a, k) => {
       const pb = produktBlatt(a);
       const pkt = (a.enthalten ?? pb?.immer ?? pb?.bausteine?.map((x) => x.name) ?? []).slice(0, 3);
-      return `<li class="preis-karte${EINSTIEG[k] === a.id ? ' einstieg' : ''}"><a href="${produktPfad(a)}">${EINSTIEG[k] === a.id ? '<span class="marke-einstieg">Guter Einstieg</span>' : ''}<h3>${e(F.titel_h1?.[a.id] ?? a.name)}${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</h3><p class="karte-preis">${e(preisKurz(a))}</p><p class="karte-zusatz">${e(bald(a) ? 'Festpreis mit klarem Umfang, vorab vereinbart' : [a.preis_zusatz, F.umfang[a.id]].filter(Boolean).join(' · '))}</p><p class="karte-satz">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? '')}</p>${pkt.length ? punkte(pkt) : ''}<span class="textlink"><span>Mehr erfahren</span> ${PFEIL}</span></a></li>`;
+      return `<li class="preis-karte${EINSTIEG[k] === a.id ? ' einstieg' : ''}"><a href="${produktPfad(a)}">${EINSTIEG[k] === a.id ? '<span class="marke-einstieg">Guter Einstieg</span>' : ''}<h3>${e(F.titel_h1?.[a.id] ?? a.name)}${bald(a) ? ' <span class="marke-bald">Bald</span>' : ''}</h3><p class="karte-preis glanz">${e(preisKurz(a))}</p><p class="karte-zusatz">${e(bald(a) ? 'Festpreis mit klarem Umfang, vorab vereinbart' : [a.preis_zusatz, F.umfang[a.id]].filter(Boolean).join(' · '))}</p><p class="karte-satz">${t(F.kurztexte[a.id] ?? pb?.versprechen ?? a.fuer_wen ?? '')}</p>${pkt.length ? punkte(pkt) : ''}<span class="textlink"><span>Mehr erfahren</span> ${PFEIL}</span></a></li>`;
     };
     const karten = (liste, k) => `<ul class="preis-karten erscheint">${liste.map((a) => karte(a, k)).join('')}</ul>`;
     const kondition = (x) => { const [k, ...v] = String(x).split(': '); return v.length ? `<div><dt>${e(k)}</dt><dd>${t(v.join(': '))}</dd></div>` : `<div><dt>Allgemein</dt><dd>${t(x)}</dd></div>`; };
@@ -1197,7 +1198,7 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
       bildTitel: 'Alle Preise auf einen Blick. Fest und netto.',
       schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von Fokus Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !bald(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
-<div class="erscheint">${brotkrumen([[null, 'Preise']])}${vorzeile('Preise')}<h1 id="held-titel">${titel('Alle Preise.', 'Offen und netto.')}</h1><p class="lead">Jeder Preis gilt für den beschriebenen Umfang. Den genauen Festpreis bekommen Sie vor dem Start schriftlich, ohne Abrechnung nach Stunden. Die Details stehen auf der Seite des Angebots.</p>
+<div class="erscheint">${brotkrumen([[null, 'Preise']])}${vorzeile('Preise')}<h1 id="held-titel" class="glanz">${titel('Alle Preise.', 'Offen und netto.')}</h1><p class="lead">Jeder Preis gilt für den beschriebenen Umfang. Den genauen Festpreis bekommen Sie vor dem Start schriftlich, ohne Abrechnung nach Stunden. Die Details stehen auf der Seite des Angebots.</p>
 <nav class="az breit" aria-label="Auf dieser Seite"><a href="#kostenlos-titel">Kostenlos</a>${BEREICHE.map((k) => `<a href="#preise-${k}">${e(B[k].name)}</a>`).join('')}<a href="#konditionen-titel">Konditionen</a></nav></div>
 ${buehne('festpreis', VIDEOS.preise)}
 </div></section>

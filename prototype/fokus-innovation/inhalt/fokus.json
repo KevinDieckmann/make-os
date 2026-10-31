@@ -733,12 +733,13 @@
   ],
   "bekannt": {
     "titel": "Kommt Ihnen das bekannt vor?",
-    "lead": "Sechs Momente aus Sichtbarkeit, Vertrieb und Innovation, die wir von Gründern und Geschäftsführern immer wieder hören.",
+    "lead": "Neun Momente aus Sichtbarkeit, Vertrieb und Innovation, die wir von Gründern und Geschäftsführern immer wieder hören.",
     "gruppen": [
       {
         "bereich": "sichtbarkeit",
         "momente": [
           "Im Gespräch erklären Sie Ihr Produkt in zwei Minuten. Auf Ihrer Website gelingt das niemandem.",
+          "Ein Fachmagazin schreibt über genau Ihr Thema und zitiert andere. Auf dem Podium danach sitzen Sie im Publikum.",
           "Ein Kunde fragt eine KI nach Anbietern für Ihr Thema. Ihr Name kommt in der Antwort nicht vor."
         ],
         "zahl": "forrester-ki-einkauf-2026"
@@ -746,6 +747,7 @@
       {
         "bereich": "vertrieb",
         "momente": [
+          "Ein Interessent von der Messe hat vor drei Wochen um ein Angebot gebeten. Der Entwurf liegt noch in Ihrem Postfach.",
           "Ein Wettbewerber mit dem schwächeren Produkt bekommt den Auftrag, weil er schneller nachgefasst hat.",
           "Wie viele neue Kunden nächsten Monat kommen, kann niemand sagen. Es hängt an Empfehlungen und an Ihnen."
         ],
@@ -755,12 +757,14 @@
         "bereich": "innovation",
         "momente": [
           "Alle reden über KI. Wo Sie anfangen sollen und was dabei erlaubt ist, kann Ihnen im Haus niemand sagen.",
-          "Im Team nutzen einige ChatGPT. Wofür, mit welchen Daten und mit welchem Nutzen, weiß niemand."
+          "Im Team nutzen einige ChatGPT. Wofür, mit welchen Daten und mit welchem Nutzen, weiß niemand.",
+          "Für ein einfaches Angebot suchen Sie Zahlen aus drei Listen, zwei Postfächern und dem Kopf eines Kollegen zusammen."
         ],
         "zahl": "zew-genai-eigenregie-2026"
       }
     ],
-    "schluss": "Erkennen Sie zwei davon wieder? Dann lohnt sich ein Gespräch. Oft hängen die Probleme zusammen, und genau dort setzen wir an."
+    "schluss": "Erkennen Sie zwei davon wieder? Dann lohnt sich ein Gespräch. Oft hängen die Probleme zusammen, und genau dort setzen wir an.",
+    "belege_titel": "Was Studien 2026 zeigen"
   },
   "wegweiser": {
     "titel": "Womit anfangen?",

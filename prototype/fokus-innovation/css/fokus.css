@@ -998,3 +998,25 @@ html.menue-offen { overflow: hidden; }
   .z-preis { text-align: left; }
   .zeilen .pfeil { align-self: center; }
 }
+
+/* ── Glanz (31.10., Kevin: „dieser Schein … immer wieder dezent überall“): der Lichtschein aus dem Claim zieht EINMAL von links nach rechts
+      durch die Schrift, sobald sie erscheint (WCAG 2.2.2: keine Dauerbewegung). Zweitzeilen (.ruhig) behalten ihre Farbe. Ohne Bewegung,
+      ohne Unterstützung für background-clip oder im Kontrastmodus bleibt die Schrift ganz normal. ── */
+.glanz { --glanz-grund: var(--tinte); --glanz-tief: #6D28D9; --glanz-licht: #A78BFA; }
+.dunkel .glanz, .fuss .glanz { --glanz-grund: var(--hell); --glanz-tief: #C4B5FD; --glanz-licht: #FFFFFF; }
+.momente-zahl b.glanz { color: var(--tinte); }
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .glanz { color: transparent; -webkit-background-clip: text; background-clip: text; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+      background-image: linear-gradient(100deg, var(--glanz-grund) 0%, var(--glanz-grund) 41%, var(--glanz-tief) 46.5%, var(--glanz-licht) 50%, var(--glanz-tief) 53.5%, var(--glanz-grund) 59%, var(--glanz-grund) 100%);
+      background-size: 260% 100%; background-position: 100% 0; }
+    .sichtbar .glanz, .glanz.sichtbar, html:not(.js) .glanz { animation: glanz 2.8s cubic-bezier(.45, .05, .35, 1) .55s 1 both; }
+  }
+}
+@media (forced-colors: active) { .glanz { color: CanvasText !important; background: none !important; } }
+@keyframes glanz { from { background-position: 100% 0; } to { background-position: 0% 0; } }
+
+/* Studien zu den Momenten: eigene Zeile unter den neun Momenten (Kevin 31.10.: „die Studie bitte extra“) */
+.momente-belege { margin-top: clamp(40px, 5vw, 64px); }
+.momente-belege-raster { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 var(--rinne); margin-top: 14px; }
+@media (max-width: 900px) { .momente-belege-raster { grid-template-columns: minmax(0, 1fr); } }
