@@ -30,7 +30,7 @@ describe('fokusinnovation.de mit Vorschau-Kennwort', () => {
   });
 
   it('der www-Block leitet nur weiter (das Kennwort fragt die Hauptadresse)', () => {
-    const www = caddy.slice(caddy.indexOf('www.fokusinnovation.de {'), caddy.indexOf('}', caddy.indexOf('www.fokusinnovation.de {')) + 1);
+    const www = caddy.slice(caddy.indexOf('www.fokusinnovation.de {'), caddy.indexOf('\n}', caddy.indexOf('www.fokusinnovation.de {')) + 2);
     expect(www).toContain('redir https://fokusinnovation.de{uri} 301');
     expect(www).not.toContain('basic_auth');
   });
