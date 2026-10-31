@@ -597,6 +597,10 @@ export interface Firma {
   /** Inhaber/Betreiber aus einer veröffentlichten Anbieterkennzeichnung — bei Einzelunternehmen ein Personenname (Art. 15/17). */
   inhaber?: string;
   inhaberArt?: 'person' | 'firma';
+  /** ICP-Bewertung (31.10., Profile Start-ups · Unternehmer · Scale-ups, lib/crm/icp-firma.ts) — Passung, Zielgruppe, Einstieg, Lead-Score. */
+  icp?: import('./icp-firma').FirmaIcp;
+  /** Steckbrief aus öffentlichen Quellen (Vertriebsleitung ja/nein, Stellen, Profile, Beiträge, Partner …) — Rollen statt Personen. */
+  steckbrief?: import('./icp-firma').FirmaSteckbrief;
   /** Labels wie an Personen (z. B. `homepage-funnel`) — Segmente lesen sie. */
   labels?: string[];
   /** Recht am Betrieb wie am Kontakt — NUR der Server stempelt (`betriebRechtStempeln`). */

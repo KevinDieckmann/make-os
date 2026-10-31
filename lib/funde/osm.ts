@@ -15,11 +15,17 @@ export const GEBIETS_VORLAGEN: { id: string; name: string; stadt: string; gebiet
 const FILTER: Record<FundBranche, string[]> = {
   gastro: ['["amenity"~"^(restaurant|cafe|bar|pub|fast_food|ice_cream|biergarten)$"]'],
   handwerk: ['["craft"]', '["shop"~"^(hairdresser|beauty|tailor|shoe_repair|massage|tattoo|optician|dry_cleaning|bicycle)$"]'],
+  startup: [],
+  unternehmer: [],
+  scaleup: [], // ebenso nur über den Recherche-Import // kein OSM-Profil — Start-ups kommen nur über den Recherche-Import (lib/funde/icp.ts)
   einzelhandel: ['["shop"~"^(clothes|books|gift|florist|bakery|butcher|deli|wine|jewelry|shoes|toys|furniture|interior_decoration|stationery|art|music|sports|outdoor|cosmetics|tea|coffee|chocolate|confectionery|second_hand|boutique|fabric|hardware)$"]'],
 };
 
 /** Ein Wert in einer Overpass-Zeichenkette: Anführungszeichen und Backslash maskiert, Steuerzeichen weg, höchstens 80 Zeichen. */
 export const qlText = (s: string): string => s.replace(/[\u0000-\u001f]/g, '').slice(0, 80).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+/** Gibt es für die Branche eine OSM-Abfrage? (Start-ups: nein — nur Recherche-Import.) */
+export const osmBranche = (b: FundBranche): boolean => FILTER[b].length > 0;
 
 /** Die Abfrage für ein Gebiet (Bezirk) einer Stadt und eine Branche. Nur Betriebe mit Namen, ohne Kette; Mittelpunkt + Tags. */
 export function abfrage(stadt: string, gebiet: string, branche: FundBranche, max = 300): string {

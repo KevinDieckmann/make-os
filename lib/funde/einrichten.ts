@@ -14,29 +14,31 @@ import { entwurfBauen } from './entwurf';
 import { bewerten, eigeneWebsite, websiteNormal } from './bewertung';
 import { fundKontext } from './kontext';
 import { telefonFelder } from './telefon';
-import { PLAYBOOK_ID, SEGMENT_LABEL, istFundBranche, type Fund, type FundBranche, type FundeEinstellungen } from './typen';
+import { steckbriefSaeubern } from '@/lib/crm/icp-firma';
+import { PROFIL_HOMEPAGE, istFundBranche, istIcpBranche, kampagneVon, profilFuer, type Fund, type FundBranche, type FundProfil, type FundeEinstellungen } from './typen';
 
-export const SEGMENT_ID = 'seg-homepage-funnel';
+export const SEGMENT_ID = PROFIL_HOMEPAGE.segmentId;
 
-export async function kampagneEinrichten(person: string, wer: Wer): Promise<{ kampagneId: string; segmentId: string; neu: boolean }> {
+/** Kampagne + Segment eines Profils (Vorgabe Homepage) — einmal; eine offene Kampagne des Playbooks wird weiterbenutzt. */
+export async function kampagneEinrichten(person: string, wer: Wer, profil: FundProfil = PROFIL_HOMEPAGE): Promise<{ kampagneId: string; segmentId: string; neu: boolean }> {
   const h = await fundeHaushalt();
-  const pb = PLAYBOOKS.find(p => p.id === PLAYBOOK_ID);
+  const pb = PLAYBOOKS.find(p => p.id === profil.playbook);
   if (!pb) throw new FundeFehler(409, 'Playbook fehlt.');
   const crm = await ladeCrm();
   const heute = localDay(), jetzt = new Date().toISOString();
   let kampagneId = '';
   let neu = false;
   await aendereCrm(c => {
-    const segmente = c.segmente.some(s => s.id === SEGMENT_ID) ? c.segmente
-      : [...c.segmente, { id: SEGMENT_ID, name: 'Homepage-Funnel', beschreibung: 'Betriebe aus der Kampagne „Homepage“ (übernommene Funde).', kriterien: { herkunft: ['recherche'], label: [SEGMENT_LABEL] }, geaendert: jetzt, geaendertVon: person }];
-    const offen = c.kampagnen.find(k => k.playbook === PLAYBOOK_ID && !k.geloeschtAm && !k.archiviertAm && (k.status === 'aktiv' || k.status === 'entwurf'));
+    const segmente = c.segmente.some(s => s.id === profil.segmentId) ? c.segmente
+      : [...c.segmente, { id: profil.segmentId, name: profil.segmentName, beschreibung: profil.beschreibung, kriterien: { herkunft: ['recherche'], label: [profil.label] }, geaendert: jetzt, geaendertVon: person }];
+    const offen = c.kampagnen.find(k => k.playbook === profil.playbook && !k.geloeschtAm && !k.archiviertAm && (k.status === 'aktiv' || k.status === 'entwurf'));
     if (offen) { kampagneId = offen.id; return { ...c, segmente }; }
     kampagneId = neueKennung('kp'); neu = true;
-    const k = { ...planen(pb, [], { ...crm, segmente }, heute, kampagneId), status: 'aktiv' as const, segmentId: SEGMENT_ID, zustaendig: person, geaendertVon: person };
+    const k = { ...planen(pb, [], { ...crm, segmente }, heute, kampagneId), status: 'aktiv' as const, segmentId: profil.segmentId, zustaendig: person, geaendertVon: person };
     return { ...c, segmente, kampagnen: [...c.kampagnen, k] };
   }, wer);
-  await aendereFunde(b => ({ ...b, einstellungen: { ...b.einstellungen, kampagneId, segmentId: SEGMENT_ID } }), { h, wer });
-  return { kampagneId, segmentId: SEGMENT_ID, neu };
+  await aendereFunde(b => ({ ...b, einstellungen: profil.id === 'startup' ? { ...b.einstellungen, kampagneStartupId: kampagneId } : profil.id === 'scaleup' ? { ...b.einstellungen, kampagneScaleupId: kampagneId } : profil.id === 'unternehmer' ? { ...b.einstellungen, kampagneUnternehmerId: kampagneId } : { ...b.einstellungen, kampagneId, segmentId: profil.segmentId } }), { h, wer });
+  return { kampagneId, segmentId: profil.segmentId, neu };
 }
 
 /** Einstellungen ändern (nur Gebiete, Branchen, Menge, Absender, Gesellschaft, Produkt — das Risiko hat einen eigenen Weg). */
@@ -108,7 +110,7 @@ export async function fundVonHand(e: HandEingabe, person: string, wer: Wer): Pro
       ...(site ? { website: site } : {}), ...(e.email ? { email: e.email } : {}), ...telefonFelder(e.telefon),
       bewertung, status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
     };
-    f.vorschau = vorschauRegelwerk(f);
+    if (!istIcpBranche(f.branche)) f.vorschau = vorschauRegelwerk(f);
     f.entwurf = entwurfBauen(f, ctx);
     neu = f;
     return { ...x, funde: [...x.funde, f] };
@@ -149,6 +151,24 @@ export function analyseAus(roh: unknown, am: string): Fund['analyse'] | undefine
   };
 }
 
+/** ICP-Bewertung aus der Datei säubern (Profil Start-ups; nur Form). Rein. */
+export function icpAus(roh: unknown, am: string): Fund['icp'] | undefined {
+  const o = roh && typeof roh === 'object' ? roh as Record<string, unknown> : null;
+  if (!o || typeof o.score !== 'number' || !Number.isFinite(o.score)) return undefined;
+  const saetze = (v: unknown, n: number) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').map(x => x.replace(/[\u0000-\u001f<>]/g, ' ').slice(0, 240)).slice(0, n) : []);
+  const score = Math.round(Math.min(100, Math.max(0, o.score)));
+  return {
+    score, stufe: score >= 70 ? 'A' : score >= 50 ? 'B' : 'C', einstieg: o.einstieg === 'sichtbarkeit' ? 'sichtbarkeit' : o.einstieg === 'struktur' ? 'struktur' : 'vertrieb',
+    zielgruppe: o.zielgruppe === 'scaleup' ? 'scaleup' : o.zielgruppe === 'unternehmer' ? 'unternehmer' : 'startup',
+    ...(o.vertriebsleitung === 'ja' || o.vertriebsleitung === 'nein' || o.vertriebsleitung === 'unbekannt' ? { vertriebsleitung: o.vertriebsleitung } : {}),
+    ...(typeof o.prioritaet === 'number' && Number.isFinite(o.prioritaet) ? { prioritaet: Math.round(Math.min(100, Math.max(0, o.prioritaet))) } : {}),
+    ...(typeof o.mitarbeitende === 'number' && Number.isFinite(o.mitarbeitende) && o.mitarbeitende > 0 ? { mitarbeitende: Math.round(Math.min(1e6, o.mitarbeitende)) } : {}),
+    ...(typeof o.ausschluss === 'string' && o.ausschluss ? { ausschluss: o.ausschluss.slice(0, 200) } : {}),
+    gruende: saetze(o.gruende, 10), aufhaenger: saetze(o.aufhaenger, 3),
+    gemessenAm: typeof o.gemessenAm === 'string' && !Number.isNaN(Date.parse(o.gemessenAm)) ? o.gemessenAm.slice(0, 30) : am,
+  };
+}
+
 /** Höchstens so viele Funde je Import-Datei — darüber 413 (nie kürzen). */
 export const IMPORT_MAX = 200;
 export const IMPORT_FORMAT = 'make-os-funde';
@@ -178,8 +198,13 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
   if (o.format !== IMPORT_FORMAT || !Array.isArray(o.funde)) throw new FundeFehler(400, `Keine Funde-Datei (erwartet „format: ${IMPORT_FORMAT}“).`);
   if (o.funde.length > IMPORT_MAX) throw new FundeFehler(413, `Höchstens ${IMPORT_MAX} Funde je Datei — nichts übernommen.`);
   const h = await fundeHaushalt();
+  // Profile der ICP-Recherche (Start-ups, Scale-ups): je eine eigene Kampagne — beim ersten Import angelegt (der Import ist Inhaber-Sache).
+  // Homepage-Funde brauchen die eingerichtete Kampagne.
+  const branchen = new Set(o.funde.map(x => (x && typeof x === 'object' ? (x as Record<string, unknown>).branche : null)).filter(istFundBranche));
+  for (const b of branchen) if (istIcpBranche(b) && !kampagneVon((await ladeFunde(h)).einstellungen, profilFuer(b))) await kampagneEinrichten(person, wer, profilFuer(b));
   const b0 = await ladeFunde(h);
-  if (!b0.einstellungen.kampagneId) throw new FundeFehler(409, 'Erst die Kampagne einrichten.');
+  if ([...branchen].some(b => !istIcpBranche(b)) && !b0.einstellungen.kampagneId) throw new FundeFehler(409, 'Erst die Kampagne einrichten.');
+  const kampagneFuer = (b: FundBranche) => kampagneVon(b0.einstellungen, profilFuer(b)) as string;
   const ctx = await fundKontext(b0.einstellungen, h);
   const am = new Date().toISOString();
   const [{ ladeCrm }, { betriebBekannt }, { betriebGesperrt }, { sperrlisteLaden, sperrTreffer }, { kontakteFuerVerarbeitung }, { alleAdressen }, { alsBetrieb }] = await Promise.all([
@@ -192,7 +217,7 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
   for (const e of o.funde) {
     const x = e && typeof e === 'object' ? e as Record<string, unknown> : {};
     let ein: HandEingabe;
-    try { ein = handEingabeSaeubern({ ...x, ...(x.adresse && typeof x.adresse === 'object' ? { strasse: [(x.adresse as Record<string, unknown>).strasse, (x.adresse as Record<string, unknown>).hausnummer].filter(v => typeof v === 'string').join(' ') || undefined, plz: (x.adresse as Record<string, unknown>).plz, ort: (x.adresse as Record<string, unknown>).ort ?? 'Berlin' } : {}) }); }
+    try { ein = handEingabeSaeubern({ ...x, ...(x.adresse && typeof x.adresse === 'object' ? { strasse: [(x.adresse as Record<string, unknown>).strasse, (x.adresse as Record<string, unknown>).hausnummer].filter(v => typeof v === 'string').join(' ') || undefined, plz: (x.adresse as Record<string, unknown>).plz, ort: (x.adresse as Record<string, unknown>).ort ?? (istFundBranche(x.branche) && istIcpBranche(x.branche) ? undefined : 'Berlin') } : {}) }); }
     catch (err) { uebersprungen.push({ name: String(x.name ?? '?').slice(0, 80), grund: err instanceof Error ? err.message : 'ungültig' }); continue; }
     const osmId = typeof x.osmId === 'string' && /^[nwr]\d{1,15}$/.test(x.osmId) ? x.osmId : undefined;
     const weg = (grund: string) => uebersprungen.push({ name: ein.name, grund });
@@ -206,16 +231,20 @@ export async function fundeImportieren(roh: unknown, person: string, wer: Wer): 
     const site = websiteNormal(ein.website);
     const zusatz = anreicherungAus(x);
     const analyse = analyseAus(x.analyse, am);
+    const icp = icpAus(x.icp, am);
+    const steckbrief = steckbriefSaeubern(x.steckbrief);
+    const thema = typeof x.thema === 'string' && x.thema.trim() ? x.thema.replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 120) : undefined;
     const bewertung = bewertungAus(x.bewertung, am) ?? bewerten({ website: eigeneWebsite(site), signale: null, jahrHeute: Number(localDay().slice(0, 4)), gemessenAm: am });
     const t = (k: string, n: number) => (typeof x[k] === 'string' && (x[k] as string).trim() ? (x[k] as string).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n) : undefined);
     const f: Fund = {
-      id: neueKennung('fd'), kampagneId: b0.einstellungen.kampagneId, quelle: osmId ? 'osm' : 'hand', ...(osmId ? { osmId } : {}), name: ein.name, branche: ein.branche,
+      id: neueKennung('fd'), kampagneId: kampagneFuer(ein.branche), quelle: osmId ? 'osm' : 'hand', ...(osmId ? { osmId } : {}), name: ein.name, branche: ein.branche,
       ...(t('kategorie', 60) ? { kategorie: t('kategorie', 60) } : {}), ...(t('gebiet', 80) ? { gebiet: t('gebiet', 80) } : {}), ...(t('oeffnungszeiten', 200) ? { oeffnungszeiten: t('oeffnungszeiten', 200) } : {}),
       ...(ein.strasse || ein.plz || ein.ort ? { adresse: { ...(ein.strasse ? { strasse: ein.strasse } : {}), ...(ein.plz ? { plz: ein.plz } : {}), ...(ein.ort ? { ort: ein.ort } : {}) } } : {}),
       ...(site ? { website: site } : {}), ...(ein.email ? { email: ein.email } : {}), ...telefonFelder(typeof x.mobil === 'string' ? x.mobil.slice(0, 60) : undefined, ein.telefon),
-      ...zusatz, bewertung, ...(analyse ? { analyse } : {}), status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
+      ...zusatz, bewertung, ...(analyse ? { analyse } : {}), ...(icp ? { icp } : {}), ...(steckbrief ? { steckbrief } : {}), ...(thema ? { thema } : {}), status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
     };
-    f.vorschau = vorschauRegelwerk(f);
+    // Profile der ICP-Recherche: kein Website-Entwurf (es geht um Vertrieb/Sichtbarkeit, nicht um eine neue Seite).
+    if (!istIcpBranche(f.branche)) f.vorschau = vorschauRegelwerk(f);
     f.entwurf = entwurfBauen(f, ctx);
     kandidaten.push(f);
   }

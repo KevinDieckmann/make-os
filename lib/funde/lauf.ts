@@ -14,7 +14,7 @@ import { sperrlisteLaden, sperrTreffer } from '@/lib/crm/sperrliste';
 import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { alleAdressen } from '@/lib/crm/emails';
 import { aendereFunde, fundeHaushalt, ladeFunde } from './speicher';
-import { osmHolen, type OsmRoh } from './osm';
+import { osmBranche, osmHolen, type OsmRoh } from './osm';
 import { bewerten, eigeneWebsite, fremdeUnterseite, websiteNormal } from './bewertung';
 import { seitePruefen, pagespeed } from './web';
 import { vorschauAusKi, vorschauPrompt, vorschauRegelwerk } from './vorschau';
@@ -82,6 +82,7 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
   const roh: OsmRoh[] = [];
   let fehler: string | undefined;
   for (const br of e.branchen) {
+    if (!osmBranche(br)) continue; // Start-ups: kein OSM-Profil
     try { for (const x of await holen(e.stadt, gebiet, br)) if (!roh.some(y => y.osmId === x.osmId)) roh.push(x); }
     catch (err) { fehler = err instanceof Error ? err.message.slice(0, 200) : 'OpenStreetMap nicht erreichbar.'; }
   }

@@ -127,6 +127,53 @@ export const PLAYBOOKS: Playbook[] = [
     // Der Head of Marketing darf sie vorschlagen; „Einrichten“ (lib/funde/einrichten.ts) nimmt eine offene Kampagne dieses Playbooks, statt eine zweite anzulegen.
     fuer: ['head-marketing'],
   },
+  {
+    // ICP Start-ups (31.10., lib/funde/icp.ts): innovative Start-ups und Unternehmer aus öffentlichen Förder-/Portfolio-Listen — Import als Funde (Profil
+    // `startup`), Freigabe im ZOE-Stapel übernimmt die Firma (Label `icp-startups`). Eigene Kampagne/Segment, nie mit dem Homepage-Funnel gemischt.
+    id: 'icp-startups', name: 'ICP Start-ups', kurz: 'Innovative Start-ups und Unternehmer — Vertrieb und Sichtbarkeit',
+    warum: 'Wer ein Produkt am Markt hat, scheitert oft am Vertrieb; ein konkreter Anlass (Stelle im Vertrieb, Förderung, schwache Seite) und eine Einladung zum Abend öffnen das Gespräch.',
+    // Kanal „mix“: Vernetzen ohne Werbebotschaft und Brief/Einladung sind zulässig; Mail und Anruf nur nach Reaktion bzw. Einwilligung (Ampel bleibt rot).
+    zielgruppe: { herkunft: ['recherche'], label: ['icp-startups'] }, kanal: 'mix',
+    schritte: [
+      { text: 'Funde im ZOE-Stapel prüfen und freigeben (Stufe A zuerst)', tag: 0 },
+      { text: 'Geschäftsführung bei LinkedIn vernetzen — ohne Nachricht', tag: 1 },
+      { text: 'Brief mit Einladung zu unserem nächsten Abend', tag: 3 },
+      { text: 'Nach Reaktion: Gespräch (Leitfaden am Fund)', tag: 10 },
+    ],
+    kennzahl: 'Gespräche und Abend-Zusagen je übernommener Firma',
+    recht: 'Werbe-Mail, LinkedIn-Nachricht und Werbeanruf ohne Einwilligung sind auch an Firmen unzulässig (§ 7 UWG) — die Ampel bleibt rot. Zulässig: Vernetzen ohne Werbebotschaft, Brief, persönliche Einladung. Art. 14 DSGVO: Quelle und Widerspruch in der ersten Nachricht.',
+    fuer: ['head-marketing', 'head-sales'],
+  },
+  {
+    // ICP Scale-ups (31.10., Kevin: „die brauchen auch immer Struktur im Sales … müssen anders angesprochen werden“): eigene Liste, eigenes Label.
+    id: 'icp-scaleups', name: 'ICP Scale-ups', kurz: 'Scale-ups im Vertriebsausbau — Struktur im Sales',
+    warum: 'Wachsende Teams verlieren im Vertrieb an Tempo, wenn Abläufe, Pipeline und Einarbeitung nicht mitwachsen — ein konkreter Anlass (Stellen im Vertrieb, Finanzierungsrunde) öffnet das Gespräch.',
+    zielgruppe: { herkunft: ['recherche'], label: ['icp-scaleups'] }, kanal: 'mix',
+    schritte: [
+      { text: 'Funde im ZOE-Stapel prüfen und freigeben (Stufe A zuerst)', tag: 0 },
+      { text: 'Geschäftsführung bzw. Vertriebsleitung bei LinkedIn vernetzen — ohne Nachricht', tag: 1 },
+      { text: 'Brief: Struktur im wachsenden Vertrieb + Einladung zu unserem nächsten Abend', tag: 3 },
+      { text: 'Nach Reaktion: Gespräch (Leitfaden am Fund)', tag: 10 },
+    ],
+    kennzahl: 'Gespräche und Abend-Zusagen je übernommener Firma',
+    recht: 'Werbe-Mail, LinkedIn-Nachricht und Werbeanruf ohne Einwilligung sind auch an Firmen unzulässig (§ 7 UWG) — die Ampel bleibt rot. Zulässig: Vernetzen ohne Werbebotschaft, Brief, persönliche Einladung. Art. 14 DSGVO: Quelle und Widerspruch in der ersten Nachricht.',
+    fuer: ['head-sales', 'head-marketing'],
+  },
+  {
+    // ICP innovative Unternehmer (31.10.): inhabergeführt, fertiges Produkt, Neugeschäft oft nur über Empfehlung — planbar machen.
+    id: 'icp-unternehmer', name: 'ICP Innovative Unternehmer', kurz: 'Inhabergeführte Innovatoren — planbares Neugeschäft',
+    warum: 'Ein gutes Produkt verkauft sich oft über Empfehlung, aber nicht planbar; eine Auszeichnung oder Förderung ist ein belegter Anlass, und der Inhaber entscheidet selbst.',
+    zielgruppe: { herkunft: ['recherche'], label: ['icp-unternehmer'] }, kanal: 'mix',
+    schritte: [
+      { text: 'Funde im ZOE-Stapel prüfen und freigeben (Stufe A zuerst)', tag: 0 },
+      { text: 'Inhaber bzw. Geschäftsführung bei LinkedIn vernetzen — ohne Nachricht', tag: 1 },
+      { text: 'Brief: planbares Neugeschäft + Einladung zu unserem nächsten Abend', tag: 3 },
+      { text: 'Nach Reaktion: Gespräch (Leitfaden am Fund)', tag: 10 },
+    ],
+    kennzahl: 'Gespräche und Abend-Zusagen je übernommener Firma',
+    recht: 'Werbe-Mail, LinkedIn-Nachricht und Werbeanruf ohne Einwilligung sind auch an Firmen unzulässig (§ 7 UWG) — die Ampel bleibt rot. Zulässig: Vernetzen ohne Werbebotschaft, Brief, persönliche Einladung. Art. 14 DSGVO: Quelle und Widerspruch in der ersten Nachricht.',
+    fuer: ['head-sales', 'head-marketing'],
+  },
 ];
 
 // ── Kundenprofil und ähnliche Firmen ────────────────────────────────────────
