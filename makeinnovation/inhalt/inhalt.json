@@ -80,7 +80,7 @@
   {
    "id": "gespraech",
    "titel": "Das Erstgespräch",
-   "text": "Der Check zeigt, wo Sie stehen. Im Gespräch legen wir fest, wie es weitergeht: 60 Minuten per Video-Call mit Kevin, kostenlos. Sie gehen mit Ihren Top 3 Handlungsempfehlungen für die nächsten 90 Tage raus, klar und messbar. Innerhalb von 24 Stunden bekommen Sie sie schriftlich. Kein Verkaufsgespräch.",
+   "text": "Der Check zeigt, wo Sie stehen. Im Gespräch legen wir fest, wie es weitergeht: 30 Minuten per Video-Call mit Kevin, kostenlos. Sie gehen mit Ihren Top 3 Handlungsempfehlungen für die nächsten 90 Tage raus, klar und messbar. Innerhalb von 24 Stunden bekommen Sie sie schriftlich. Kein Verkaufsgespräch.",
    "regel": "5 Gespräche pro Woche. Ist die Woche voll, bekommen Sie den nächsten freien Termin oder einen Platz auf der Warteliste.",
    "cta": {
     "text": "Gespräch buchen",
@@ -181,7 +181,7 @@
    ],
    "cta": "Workshop anfragen",
    "regeln": [
-    "Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse)"
+    "Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang"
    ]
   },
   {
@@ -417,7 +417,7 @@
    ],
    "cta": "Positionierung anfragen",
    "regeln": [
-    "Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse)"
+    "Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang"
    ]
   },
   {
@@ -444,7 +444,7 @@
     "Abläufe aufnehmen und ordnen, bevor etwas automatisiert wird",
     "Datenbasis aufbauen: Wissen, Abläufe und Daten an einem Ort",
     "KI und Software einführen, bis sie im Alltag genutzt werden",
-    "Prozesse bauen, die ohne den Chef laufen",
+    "Prozesse bauen, die ohne die Geschäftsführung laufen",
     "eigene Werkzeuge entwickeln"
    ],
    "cta": "Anfrage stellen / Warteliste"
@@ -602,7 +602,7 @@
   {
    "id": "wie-lange-dauert-der-check",
    "f": "Wie lange dauert der Check?",
-   "a": "Rund 10 Minuten für die 15 Kernfragen. Wenn Sie mehr beantworten, wird Ihr Bericht genauer. Sie können jederzeit pausieren und später weitermachen."
+   "a": "Sie wählen am Anfang: kurz mit 19 Fragen in rund 10 Minuten oder ausführlich mit rund 50 Fragen in rund 25 Minuten. Die ausführliche Fassung fragt zusätzlich nach Ihrer Branche und wird genauer. Auswerten können Sie jederzeit, und auf demselben Gerät später weitermachen."
   },
   {
    "id": "ist-zoe-ein-mensch",
@@ -612,7 +612,7 @@
   {
    "id": "was-passiert-im-90-tage-umsetzungsgespraech",
    "f": "Was passiert im Erstgespräch?",
-   "a": "60 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch."
+   "a": "30 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch."
   },
   {
    "id": "was-ist-der-unterschied-zwischen-head",
@@ -658,7 +658,7 @@
  "konditionen": [
   "Alle Preise netto zuzüglich Umsatzsteuer",
   "Head of Sales und CSO: Rechnung zum 1. des Monats, Zahlungsziel 14 Tage; 3 % Skonto nur, wenn Sie die volle Laufzeit vorab zahlen",
-  "Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, Zahlungsziel 14 Tage (Vorkasse)",
+  "Homepages, Videos, Positionierung und Tagesworkshop: Rechnung nach Vertragsunterzeichnung, zahlbar in 14 Tagen; wir starten nach Zahlungseingang",
   "Einfaches, unbefristetes Nutzungsrecht nach voller Zahlung"
  ],
  "seitenstruktur": [

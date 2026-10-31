@@ -27,7 +27,8 @@
       "url": "https://www.forrester.com/blogs/state-of-business-buying-2026/",
       "zitat": "Nearly all business buyers (94%) report using AI during their buying process.",
       "geprueft": "Forrester-Blog am 30.10.2026 geprüft. Datengrundlage Buyers' Journey Survey 2025, weltweit; Vorjahr 89 %.",
-      "vorn": true
+      "vorn": true,
+      "kurz": "der Geschäftskunden nutzen KI im Kaufprozess."
     },
     {
       "id": "forrester-kaufgruppe",
@@ -119,7 +120,8 @@
       "url": "https://www.ifo.de/fakten/2026-01-29/auftragslage-der-unternehmen-entspannt-sich-nur-geringfuegig",
       "zitat": "„Der Anteil sank etwas von 36,9% im Oktober auf 36,3% im Januar.“",
       "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). ifo-Konjunkturumfrage Januar 2026 (Industrie, Dienstleister, Handel, Bau); die Fallzahl nennt die Seite nicht. Eine neuere Auswertung zum Auftragsmangel gab es bis zum 30.10.2026 nicht.",
-      "vorn": true
+      "vorn": true,
+      "kurz": "der Unternehmen in Deutschland meldeten im Januar 2026 zu wenig Aufträge."
     },
     {
       "id": "kfw-umsatzerwartung-2026",
@@ -264,7 +266,8 @@
       "jahr_der_daten": 2025,
       "url": "https://www.zew.de/fileadmin/FTP/mip/25/mip_2025.pdf",
       "zitat": "„die eigenverantwortliche Nutzung von generativer KI durch Beschäftigte (z.B. über deren private Accounts) die häufigste Nutzungsart ist (56 %)“",
-      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). 7.479 Unternehmen ab 5 Beschäftigten (Industrie und unternehmensnahe Dienste), Befragung Februar bis August 2025; die Zahl steht im PDF, nicht in der Pressemitteilung."
+      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). 7.479 Unternehmen ab 5 Beschäftigten (Industrie und unternehmensnahe Dienste), Befragung Februar bis August 2025; die Zahl steht im PDF, nicht in der Pressemitteilung.",
+      "kurz": "der Unternehmen mit generativer KI: Beschäftigte nutzen sie meist auf eigene Faust."
     }
   ],
   "verworfen": [
