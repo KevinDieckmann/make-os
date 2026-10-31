@@ -1,0 +1,527 @@
+{
+  "hinweis": "Startwerte aus dem statischen Stand von fokusinnovation.de (node prototype/fokus-innovation/bauen.mjs --startwerte <datei>). Alles hier steht öffentlich auf der Website. Für die Demo-Saat nur die Struktur übernehmen (ids, Bereiche, welche Felder es gibt), die Werte erfinden.",
+  "stand": "2026-10-31",
+  "markierungen": {
+    "preis:<angebot>": "angebote[].preisText — Listen, Karten, Preiskasten der Angebotsseite",
+    "baustein:<id>": "bausteine[].preisNetto (Cent) — Karten, Bausteine-Seite, Hinweis an der Vorlage",
+    "text:<schlüssel>": "texte[schlüssel] — heute events.einleitung und events.termine",
+    "events": "events[] ab heute (datum JJJJ-MM-TT oder JJJJ-MM-TTThh:mm), höchstens 6 — Events-Seite",
+    "termin-naechster": "erstes kommendes Event — Startseite und Events-Seite"
+  },
+  "angebote": [
+    {
+      "id": "tagesworkshop",
+      "bereich": "vertrieb",
+      "titel": "Tagesworkshop Vertrieb, Markteintritt und Sichtbarkeit",
+      "kurz": "Ein Tag, an dem wir die größten Hebel in Vertrieb, Markteintritt und Sichtbarkeit finden und den ersten direkt umsetzen.",
+      "preisText": "ab 1.900 €",
+      "preisNetto": 190000,
+      "ab": true,
+      "monatlich": false,
+      "bald": false,
+      "seite": "/vertrieb/tagesworkshop/",
+      "rang": 1
+    },
+    {
+      "id": "head-of-sales",
+      "bereich": "vertrieb",
+      "titel": "Head of Sales auf Zeit",
+      "kurz": "Aus Interesse werden planbar Kunden: Ihr Vertrieb läuft nach einem System, das Ihr Team ohne Sie bedient.",
+      "preisText": "ab 2.990 € / Monat",
+      "preisNetto": 299000,
+      "ab": true,
+      "monatlich": true,
+      "bald": false,
+      "seite": "/vertrieb/head-of-sales/",
+      "rang": 2
+    },
+    {
+      "id": "cso",
+      "bereich": "vertrieb",
+      "titel": "Chief Sales Officer auf Zeit",
+      "kurz": "Wir führen Ihren Vertrieb wie ein Vertriebsvorstand auf Zeit: Strategie, Preis, Team und Wachstum, bis Ihre eigene Vertriebsleitung übernimmt.",
+      "preisText": "ab 4.990 € / Monat",
+      "preisNetto": 499000,
+      "ab": true,
+      "monatlich": true,
+      "bald": false,
+      "seite": "/vertrieb/cso/",
+      "rang": 3
+    },
+    {
+      "id": "homepage-landing",
+      "bereich": "sichtbarkeit",
+      "titel": "Homepage Landing",
+      "kurz": "Ihre Seite, die verkauft: ein One-Pager in Ihrer CI, fertig in 10 Werktagen.",
+      "preisText": "ab 2.990 €",
+      "preisNetto": 299000,
+      "ab": true,
+      "monatlich": false,
+      "bald": false,
+      "seite": "/sichtbarkeit/homepage-landing/",
+      "rang": 4
+    },
+    {
+      "id": "homepage-story",
+      "bereich": "sichtbarkeit",
+      "titel": "Homepage Story",
+      "kurz": "Ihre Geschichte als Website: Startseite mit 3D-Effekt und 3 Unterseiten in 15 Werktagen.",
+      "preisText": "ab 4.990 €",
+      "preisNetto": 499000,
+      "ab": true,
+      "monatlich": false,
+      "bald": false,
+      "seite": "/sichtbarkeit/homepage-story/",
+      "rang": 5
+    },
+    {
+      "id": "homepage-cinematic",
+      "bereich": "sichtbarkeit",
+      "titel": "Homepage Cinematic",
+      "kurz": "Eine Website, über die man spricht: Story-Workshop, 3D-Szenen und Erklärvideo in 25 Werktagen.",
+      "preisText": "ab 9.990 €",
+      "preisNetto": 999000,
+      "ab": true,
+      "monatlich": false,
+      "bald": false,
+      "seite": "/sichtbarkeit/homepage-cinematic/",
+      "rang": 6
+    },
+    {
+      "id": "erklaervideo",
+      "bereich": "sichtbarkeit",
+      "titel": "Erklärvideo",
+      "kurz": "Ihr Angebot in 90 Sekunden verstanden: ein Erklärvideo in Ihrer CI, fertig in 10 Werktagen.",
+      "preisText": "ab 1.490 €",
+      "preisNetto": 149000,
+      "ab": true,
+      "monatlich": false,
+      "bald": false,
+      "seite": "/sichtbarkeit/erklaervideo/",
+      "rang": 7
+    },
+    {
+      "id": "videostory",
+      "bereich": "sichtbarkeit",
+      "titel": "Videostory",
+      "kurz": "Die Geschichte Ihrer Firma in 90 Sekunden: ehrlich, emotional und in Ihrer CI.",
+      "preisText": "ab 1.990 €",
+      "preisNetto": 199000,
+      "ab": true,
+      "monatlich": false,
+      "bald": false,
+      "seite": "/sichtbarkeit/videostory/",
+      "rang": 8
+    },
+    {
+      "id": "video-serie",
+      "bereich": "sichtbarkeit",
+      "titel": "Videoserie",
+      "kurz": "Jeden Monat 2 neue Videos, ohne dass Sie planen oder schneiden müssen.",
+      "preisText": "ab 1.990 € / Monat",
+      "preisNetto": 199000,
+      "ab": true,
+      "monatlich": true,
+      "bald": false,
+      "seite": "/sichtbarkeit/video-serie/",
+      "rang": 9
+    },
+    {
+      "id": "pr-kommunikation",
+      "bereich": "sichtbarkeit",
+      "titel": "PR und Kommunikation",
+      "kurz": "Auftritte und Beiträge in Medien, Podcasts und auf Bühnen, vom Markteintritt bis zur Krisenkommunikation.",
+      "preisText": "ab 2.990 € / Monat",
+      "preisNetto": 299000,
+      "ab": true,
+      "monatlich": true,
+      "bald": false,
+      "seite": "/sichtbarkeit/pr-kommunikation/",
+      "rang": 10
+    },
+    {
+      "id": "positionierung",
+      "bereich": "sichtbarkeit",
+      "titel": "Positionierung S, M, L",
+      "kurz": "In drei Tiefen: von fünf klaren Sätzen bis zur ganzen Markenstory, mit Workshop.",
+      "preisText": "ab 1.990 €",
+      "preisNetto": 199000,
+      "ab": true,
+      "monatlich": false,
+      "bald": false,
+      "seite": "/sichtbarkeit/positionierung/",
+      "rang": 11
+    },
+    {
+      "id": "umsetzungsprojekte",
+      "bereich": "innovation",
+      "titel": "Umsetzungsprojekte: KI und Software einführen",
+      "kurz": "Erst Abläufe und Daten ordnen, dann KI und Software einführen, bis sie im Alltag genutzt werden. Mit Festpreis und klarem Umfang. Haben Sie ein Vorhaben? Sprechen Sie uns an.",
+      "preisText": null,
+      "preisNetto": null,
+      "ab": false,
+      "monatlich": false,
+      "bald": true,
+      "seite": "/innovation/umsetzungsprojekte/",
+      "rang": 12
+    }
+  ],
+  "bausteine": [
+    {
+      "id": "einwandbibliothek",
+      "bereich": "vertrieb",
+      "titel": "Einwandbibliothek",
+      "kurz": "Zwölf häufige B2B-Einwände mit Rückfragen und Antworten für Telefon und Mail, dazu alles für Ihre eigene Bibliothek im Team.",
+      "preisNetto": 14900,
+      "paket": false,
+      "seite": "/bausteine/einwandbibliothek/",
+      "rang": 1
+    },
+    {
+      "id": "skriptset-bant",
+      "bereich": "vertrieb",
+      "titel": "Skriptset mit BANT",
+      "kurz": "Leitfäden für Telefon, LinkedIn und Mail, ein Bedarfsgespräch nach BANT und ein Bogen mit Punkten, der zeigt, wann ein Kontakt bereit ist.",
+      "preisNetto": 19900,
+      "paket": false,
+      "seite": "/bausteine/skriptset-bant/",
+      "rang": 2
+    },
+    {
+      "id": "zielgruppe-personas",
+      "bereich": "vertrieb",
+      "titel": "Zielgruppe und Personas mit Lead-Scoring",
+      "kurz": "Finden Sie Ihre besten Kunden, beschreiben Sie, wer dort entscheidet, und bewerten Sie jeden Lead mit festen Punkten: A, B oder C.",
+      "preisNetto": 14900,
+      "paket": false,
+      "seite": "/bausteine/zielgruppe-personas/",
+      "rang": 3
+    },
+    {
+      "id": "salesprozess-crm",
+      "bereich": "vertrieb",
+      "titel": "Salesprozess im CRM",
+      "kurz": "Stufen mit klaren Ein- und Austrittskriterien, Pflichtfelder, Wiedervorlagen und ein Wochen-Review: ein Verkaufsablauf, den Ihr Team gleich lebt.",
+      "preisNetto": 24900,
+      "paket": false,
+      "seite": "/bausteine/salesprozess-crm/",
+      "rang": 4
+    },
+    {
+      "id": "nachfassen-vorlagen",
+      "bereich": "vertrieb",
+      "titel": "Nachfassen: 25 Mail- und Nachrichtenvorlagen",
+      "kurz": "25 kurze Vorlagen mit Betreffzeilen für jeden Anlass: nach Gespräch, Angebot und Messe, bei Funkstille, für Bestandskunden und LinkedIn.",
+      "preisNetto": 4900,
+      "paket": false,
+      "seite": "/bausteine/nachfassen-vorlagen/",
+      "rang": 5
+    },
+    {
+      "id": "paket-vertrieb",
+      "bereich": "vertrieb",
+      "titel": "Vertriebs-Paket: alle vier Playbook-Bausteine",
+      "kurz": "Einwandbibliothek, Skriptset mit BANT, Zielgruppe und Personas, Salesprozess im CRM: das Fundament Ihres Vertriebs, zusammen günstiger.",
+      "preisNetto": 59000,
+      "paket": true,
+      "seite": "/bausteine/paket-vertrieb/",
+      "rang": 6
+    },
+    {
+      "id": "elevator-pitch",
+      "bereich": "sichtbarkeit",
+      "titel": "Elevator-Pitch-Baukasten",
+      "kurz": "Ihr Pitch in 10 Sekunden, 30 Sekunden und 2 Minuten, mit acht Beispielen und Fassungen für Netzwerk-Abend, Telefon, LinkedIn und Signatur.",
+      "preisNetto": 6900,
+      "paket": false,
+      "seite": "/bausteine/elevator-pitch/",
+      "rang": 7
+    },
+    {
+      "id": "botschaftshaus",
+      "bereich": "sichtbarkeit",
+      "titel": "Botschaftshaus",
+      "kurz": "Kernbotschaft, drei belegte Säulen, Werte und Ton auf einer Seite, damit Website, Angebote und Team dasselbe sagen.",
+      "preisNetto": 14900,
+      "paket": false,
+      "seite": "/bausteine/botschaftshaus/",
+      "rang": 8
+    },
+    {
+      "id": "wettbewerb-unterschied",
+      "bereich": "sichtbarkeit",
+      "titel": "Wettbewerb und Unterschied",
+      "kurz": "Finden Sie Ihre echten Alternativen, vergleichen Sie fair mit Punkten und belegen Sie Ihren Unterschied, ohne andere schlechtzumachen.",
+      "preisNetto": 14900,
+      "paket": false,
+      "seite": "/bausteine/wettbewerb-unterschied/",
+      "rang": 9
+    },
+    {
+      "id": "ki-schulungspaket",
+      "bereich": "innovation",
+      "titel": "KI-Schulungspaket fürs Team",
+      "kurz": "Schulen Sie Ihr Team selbst in 90 Minuten: Sprechertext, Übungen mit Lösungen, Wissenstest und ein Nachweis je Person zur KI-Kompetenz.",
+      "preisNetto": 17900,
+      "paket": false,
+      "seite": "/bausteine/ki-schulungspaket/",
+      "rang": 10
+    }
+  ],
+  "events": [],
+  "faq": [
+    {
+      "frage": "Wer arbeitet an meinem Projekt?",
+      "antwort": "Sie arbeiten direkt mit uns, Kevin und Malin, und nicht mit wechselnden Projektleitern. Die Fachleute für Produktion, Technik und Medienarbeit sind im Team. Sie behalten einen Ansprechpartner, wir halten alles zusammen.",
+      "bereich": "vorab",
+      "gruppe": "Bevor Sie fragen"
+    },
+    {
+      "frage": "Welche Erfahrung bringen Sie mit?",
+      "antwort": "Wir kommen aus der Vertriebsführung: Teams geführt, Partnernetze aufgebaut, Head of Sales bei einem FinTech. Heute arbeiten wir in laufenden Projekten mit KI, auch im internationalen Umfeld. Namen nennen wir nur, wenn Kunden es freigeben. Vertraulichkeit gehört für uns dazu.",
+      "bereich": "vorab",
+      "gruppe": "Bevor Sie fragen"
+    },
+    {
+      "frage": "Was kostet das, und was bekomme ich dafür?",
+      "antwort": "Jedes Angebot steht mit Startpreis, festem Ablauf und klaren Konditionen auf seiner Seite; den genauen Festpreis bekommen Sie vor dem Start. Homepages und Videos haben eine feste Lieferzeit in Werktagen, Mandate einen festen Monatspreis und eine klare Laufzeit. Im Mandat sehen Sie den Fortschritt schwarz auf weiß: Zwischenbilanz in Woche 8, im Vertrieb ab Monat 3 jeden Freitag der Wochenreport.",
+      "bereich": "vorab",
+      "gruppe": "Bevor Sie fragen"
+    },
+    {
+      "frage": "Ist das Erstgespräch ein Verkaufsgespräch?",
+      "antwort": "Nein, es ist ein Gespräch über Ihre Lage, kostenlos und per Video. Am Ende sagen wir Ihnen klar, ob wir helfen können und womit. Und wenn nicht, sagen wir auch das.",
+      "bereich": "vorab",
+      "gruppe": "Bevor Sie fragen"
+    },
+    {
+      "frage": "Arbeiten Sie auch bei uns vor Ort?",
+      "antwort": "Ja. Vieles läuft per Video, wichtige Termine machen wir gern bei Ihnen: Workshops, Trainings mit Ihrem Team, Gespräche mit der Geschäftsführung. Termine vor Ort vereinbaren wir vorher, Reisekosten rechnen wir gegen Beleg ab.",
+      "bereich": "vorab",
+      "gruppe": "Bevor Sie fragen"
+    },
+    {
+      "frage": "Wie gut sind Videos, die mit KI entstehen?",
+      "antwort": "So gut wie das Skript und die Sorgfalt dahinter. Sie geben zuerst das Skript frei, bevor ein Bild entsteht. Wir arbeiten mit ruhigen Bildern, wo es geht mit Ihrem eigenen Material, und bei Videostory und Videoserie auf Wunsch mit Ihrer eigenen Stimme. KI-Inhalte kennzeichnen wir, wo es nötig ist.",
+      "bereich": "vorab",
+      "gruppe": "Bevor Sie fragen"
+    },
+    {
+      "frage": "Was kostet der Innovations-Check?",
+      "antwort": "Nichts. Der Check, der Bericht und das Erstgespräch sind kostenlos. Auch der Re-Check nach 90 Tagen.",
+      "bereich": "einstieg",
+      "gruppe": "Einstieg und Innovations-Check"
+    },
+    {
+      "frage": "Wie lange dauert der Check?",
+      "antwort": "Sie wählen am Anfang: kurz mit 19 Fragen in rund 10 Minuten oder ausführlich mit rund 50 Fragen in rund 25 Minuten. Die ausführliche Fassung fragt zusätzlich nach Ihrer Branche und wird genauer. Auswerten können Sie jederzeit, und auf demselben Gerät später weitermachen.",
+      "bereich": "einstieg",
+      "gruppe": "Einstieg und Innovations-Check"
+    },
+    {
+      "frage": "Ist Zoe ein Mensch?",
+      "antwort": "Nein. Zoe ist unsere KI-Assistentin. Sie sagt das auch am Anfang jedes Gesprächs. Wenn Sie lieber mit einem Menschen sprechen, gibt Zoe Sie an Kevin weiter.",
+      "bereich": "einstieg",
+      "gruppe": "Einstieg und Innovations-Check"
+    },
+    {
+      "frage": "Was passiert im Erstgespräch?",
+      "antwort": "30 Minuten per Video-Call mit Kevin. Wir gehen Ihr Ergebnis durch und legen Ihre Top 3 Handlungsempfehlungen für die nächsten 90 Tage fest. Es ist kein Verkaufsgespräch.",
+      "bereich": "einstieg",
+      "gruppe": "Einstieg und Innovations-Check"
+    },
+    {
+      "frage": "Was ist der Unterschied zwischen Head of Sales und CSO?",
+      "antwort": "Der Head of Sales baut und führt Ihren Vertrieb: Zielgruppe, Prozess im CRM, Skripte, Kennzahlen und Training. Der Chief Sales Officer enthält das komplett und verantwortet dazu Strategie, Preise, Teamaufbau, Recruiting und Partnerschaften. Sie können jederzeit zum CSO wechseln.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Was kostet der Tagesworkshop, und was passiert danach?",
+      "antwort": "Ab 1.900 € netto. Sie bekommen ein Protokoll mit den Top 5 nach Aufwand und Wirkung und einen 90-Tage-Plan, eine Sache setzen wir am Tag direkt um. Starten Sie danach ein Mandat, rechnen wir den Workshop voll an.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Brauche ich schon ein CRM?",
+      "antwort": "Nein. Wenn Sie keins haben, wählen wir im ersten Monat gemeinsam ein passendes aus und richten Stufen, Pflichtfelder und Wiedervorlagen ein. Die Lizenzkosten tragen Sie.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Wer führt die Verkaufsgespräche?",
+      "antwort": "Ihr Team. Wir machen vor, trainieren mit Rollenspielen und besprechen echte Calls nach. So bleibt das Wissen bei Ihnen, wenn wir gehen.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Wie viel Zeit kostet mich der Head of Sales?",
+      "antwort": "Rund 3 bis 4 Stunden für das Sales Playbook Teil 1 im ersten Monat, danach 30 Minuten Wochen-Call und kurze Freigaben. Ihr Team braucht Zeit für Training und Gespräche.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Darf ich Skripte und Playbooks danach weiter nutzen?",
+      "antwort": "Ja. Nach Zahlung dürfen Sie alle Vorlagen, Skripte und Playbooks in Ihrem Unternehmen zeitlich unbegrenzt nutzen.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Wie viel Zeit bringen Sie beim Chief Sales Officer ein?",
+      "antwort": "30 bis 35 Stunden im Monat, fest eingeplant. Dazu kommen der Wochen-Call und ein monatlicher Strategie-Call mit der Geschäftsführung.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Stellen Sie als CSO unsere Vertriebler ein?",
+      "antwort": "Wir bauen Rollenmodell, Stellenanzeige, Interviewleitfaden und Probetag und führen die Interviews mit Ihnen. Die Entscheidung und den Arbeitsvertrag machen Sie. Stellenanzeigen und Recruiting-Tools zahlen Sie direkt.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Kann ich vom CSO zum Head of Sales wechseln?",
+      "antwort": "Ja, jederzeit zum Ende des nächsten vollen Monats. Der laufende Monat wird voll berechnet.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Was passiert am Ende des CSO-Mandats?",
+      "antwort": "Wir übergeben an Ihre interne Vertriebsleitung, mit Übergabeplan in 4 Schritten und dem Sales Playbook Teil 3.",
+      "bereich": "vertrieb",
+      "gruppe": "Vertrieb"
+    },
+    {
+      "frage": "Wie schnell ist meine Homepage fertig?",
+      "antwort": "Landing in 10, Story in 15, Cinematic in 25 Werktagen. Die Zeit läuft ab vollständigem Formular und Zahlungseingang. Mit Express halbiert sich die Lieferzeit.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Kann ich später auf ein größeres Homepage-Paket wechseln?",
+      "antwort": "Ja, innerhalb von 3 Monaten nach Abnahme. Sie zahlen nur die Differenz.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Sind Ihre Videos KI-generiert?",
+      "antwort": "Die Videos entstehen aus KI-Szenen und Ihrem eigenen Material. Wo es nötig ist, kennzeichnen wir KI-Inhalte.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Muss ich die Texte selbst schreiben?",
+      "antwort": "Nein. Wir schreiben alle Texte auf Basis Ihres Formulars und des Kick-offs. Sie geben nur frei oder korrigieren.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Wo liegt die Seite und was kostet das laufend?",
+      "antwort": "Domain und Hosting laufen über Sie, damit Ihnen alles gehört. Wir richten es ein. Die laufenden Kosten zahlen Sie direkt an Ihren Anbieter.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Was zählt als Korrektur, was als Nachtrag?",
+      "antwort": "Eine Korrekturschleife ist eine gesammelte Liste von Änderungen. Neue Seiten, neue Funktionen oder ein anderes Design sind Nachträge und werden vorher angeboten.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Kümmern Sie sich um Impressum und Datenschutz?",
+      "antwort": "Wir binden Impressum und Datenschutzerklärung ein. Die Inhalte liefern Sie oder Ihr Datenschutz-Generator. Rechtsberatung ist nicht enthalten.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Muss ich vor die Kamera?",
+      "antwort": "Nein. Wir arbeiten mit KI-Szenen, Ihrem Material und einer KI-Stimme. Bei Videostory und Videoserie können Sie auch selbst sprechen, mit unserer Anleitung für die Handy-Aufnahme.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Wie schnell ist das Video fertig?",
+      "antwort": "Erklärvideo in 10, Videostory in 15 Werktagen ab vollständigem Formular und Zahlungseingang. Bei der Videoserie nach Redaktionsplan, spätestens zum Monatsende.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Darf ich das Video überall nutzen?",
+      "antwort": "Ja. Nach voller Zahlung dürfen Sie es unbefristet nutzen, auch für bezahlte Anzeigen. Sie bekommen 16:9, 9:16 und 1:1, Untertitel und Thumbnails.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Was passiert mit Videos der Serie, die ich nicht abrufe?",
+      "antwort": "Sie verfallen am Monatsende. Deshalb planen wir am Monatsanfang 30 Minuten gemeinsam.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Wie lange läuft die Videoserie?",
+      "antwort": "Mindestens 3 Monate. Danach monatlich kündbar zum Monatsende.",
+      "bereich": "sichtbarkeit",
+      "gruppe": "Homepages und Videos"
+    },
+    {
+      "frage": "Sind die Preise netto?",
+      "antwort": "Ja, alle Preise zuzüglich Umsatzsteuer. Unsere Angebote richten sich an Unternehmen.",
+      "bereich": "vertraege",
+      "gruppe": "Preise und Verträge"
+    },
+    {
+      "frage": "Gibt es Rabatt?",
+      "antwort": "Bei Head of Sales, Chief Sales Officer sowie PR und Kommunikation gibt es 3 % Skonto, wenn Sie die volle Laufzeit vorab zahlen. Auf Monatsrechnungen, Homepages und Videos gibt es kein Skonto.",
+      "bereich": "vertraege",
+      "gruppe": "Preise und Verträge"
+    },
+    {
+      "frage": "Wie lange laufen die Verträge?",
+      "antwort": "Head of Sales, CSO sowie PR und Kommunikation laufen 6 oder 12 Monate. Die Videoserie läuft mindestens 3 Monate, danach ist sie monatlich kündbar. Tagesworkshop, Positionierung, Homepages und einzelne Videos sind Einmalprojekte mit Festpreis.",
+      "bereich": "vertraege",
+      "gruppe": "Preise und Verträge"
+    }
+  ],
+  "fakten": [
+    {
+      "titel": "Was wir sind",
+      "text": "Eine Agentur für Sichtbarkeit, Vertrieb und Innovation, die selbst mit umsetzt."
+    },
+    {
+      "titel": "Sitz",
+      "text": "Berlin"
+    },
+    {
+      "titel": "Für wen",
+      "text": "Gründer, Start-ups und Unternehmer, die wachsen möchten, und Mittelstand, der Neues einführt"
+    },
+    {
+      "titel": "Leistungen",
+      "text": "Positionierung, Websites, Videos sowie PR und Kommunikation; Vertriebsaufbau mit Head of Sales oder Chief Sales Officer auf Zeit; Innovation: KI, Automatisierung, Software und Daten, Umsetzungsprojekte starten in Kürze; Events und Netzwerk"
+    },
+    {
+      "titel": "Einstieg",
+      "text": "Der kostenlose Innovations-Check in rund 10 Minuten, danach das kostenlose Erstgespräch"
+    },
+    {
+      "titel": "Gründer",
+      "text": "Kevin Dieckmann (Vertrieb und Umsetzung) und Malin (Bühne und Netzwerk)"
+    },
+    {
+      "titel": "Fachleute",
+      "text": "Film, Design, Entwicklung, PR, Daten und Leadgenerierung im Team"
+    },
+    {
+      "titel": "Preise",
+      "text": "Offen auf jeder Angebotsseite, ab einem Startpreis und netto zuzüglich Umsatzsteuer; den genauen Festpreis vor dem Start"
+    },
+    {
+      "titel": "Arbeitsgebiet",
+      "text": "Deutschland und Europa, auf Deutsch"
+    }
+  ],
+  "texte": {
+    "events.einleitung": "Wir bringen Menschen zusammen, die Neues umsetzen: Gründerinnen und Gründer, Mittelständler und Macher aus KI und Technik. Kuratiert und auf Einladung, von der Gesprächsrunde im kleinen Kreis bis zum Workshop. Malin ist Gastgeberin. Aus Begegnungen werden Verbindungen.",
+    "events.termine": "Termine, Orte und Formate stehen in jeder Einladung. Tragen Sie sich auf die Gästeliste ein, dann bekommen Sie die nächste."
+  },
+  "bilder": []
+}
