@@ -22,6 +22,11 @@ export function domainVon(k: Pick<Kontakt, 'email' | 'firmaDomain' | 'firmaWebse
 }
 function hash(t: string): string { let h = 2166136261; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36).slice(0, 6); }
 export const firmenId = (name: string) => `f-${firmenSchluessel(name).slice(0, 30) || 'firma'}-${hash(firmenSchluessel(name) || name)}`;
+/**
+ * Kennung mit Unterscheider (01.11., Welle A — lib/crm/betrieb.ts `betriebFirmenId`): zwei Betriebe gleichen Namens an zwei Adressen bekommen zwei
+ * Kennungen. Ohne Unterscheider genau `firmenId(name)`.
+ */
+export const firmenIdMit = (name: string, unterscheider: string) => (unterscheider ? `f-${firmenSchluessel(name).slice(0, 30) || 'firma'}-${hash(`${firmenSchluessel(name) || name}|${unterscheider}`)}` : firmenId(name));
 
 /**
  * Gibt es diese Firma schon (28.09., Prüfbericht F1)? Dieselbe Kennung (`firmenId` — Name ohne Rechtsform)

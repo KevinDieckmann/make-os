@@ -21,6 +21,7 @@
 import type { Kontakt, EinwilligungKanal, Einwilligung } from '@/lib/make-one/crm';
 import { hatTyp } from './mehrfach';
 import { nachweisLuecken } from './einwilligung';
+import type { Firma } from './typen';
 
 export type Kanal = 'mail' | 'linkedin' | 'telefon' | 'newsletter' | 'einladung' | 'vernetzen' | 'whatsapp';
 export type Farbe = 'gruen' | 'gelb' | 'rot';
@@ -31,6 +32,11 @@ export interface Kontext {
   hatMandat?: boolean;
   /** Es gibt eine offene Chance (bestehende geschäftliche Beziehung). */
   hatChance?: boolean;
+  /**
+   * Die Firma der Person (01.11., Welle A, optional): ihre Werbesperre sperrt auch die Person (rot), und Firmen-Mail/-Telefon/-Handy zählen als
+   * Adresse, wenn die Person selbst keine trägt. Ohne Angabe rechnet die Ampel wie bisher.
+   */
+  firma?: Pick<Firma, 'werbesperre' | 'email' | 'telefon' | 'mobil'>;
 }
 
 /** Die tragfähigste gültige Einwilligung des Kanals: voller Nachweis vor unvollständigem, echte Einwilligung vor Anfrage (U2). */
@@ -48,8 +54,11 @@ export function bekannt(k: Kontakt): boolean {
 export function kanalStatus(k: Kontakt, kanal: Kanal, ctx: Kontext = {}): KanalStatus {
   if (k.eingeschraenkt) return { kanal, farbe: 'rot', grund: `Verarbeitung eingeschränkt (Art. 18) seit ${k.eingeschraenkt.seit}` };
   if (k.werbesperre) return { kanal, farbe: 'rot', grund: `Werbesperre seit ${k.werbesperre.seit}` };
+  if (ctx.firma?.werbesperre) return { kanal, farbe: 'rot', grund: `Werbesperre der Firma seit ${ctx.firma.werbesperre.seit}` };
   const hat = (x: string | undefined) => !!(x ?? '').trim();
-  const erreichbar = kanal === 'mail' || kanal === 'newsletter' || kanal === 'einladung' ? hat(k.email) : kanal === 'telefon' || kanal === 'whatsapp' ? hat(k.telefon) || hat(k.sms) : hat(k.linkedin);
+  const fi = ctx.firma;
+  const erreichbar = kanal === 'mail' || kanal === 'newsletter' || kanal === 'einladung' ? hat(k.email) || (kanal === 'mail' && hat(fi?.email))
+    : kanal === 'telefon' || kanal === 'whatsapp' ? hat(k.telefon) || hat(k.sms) || (kanal === 'telefon' && (hat(fi?.telefon) || hat(fi?.mobil))) : hat(k.linkedin);
   if (!erreichbar) return { kanal, farbe: 'rot', grund: 'keine Adresse' };
   const mandat = ctx.hatMandat || k.lebensphase === 'kunde';
 
@@ -114,4 +123,33 @@ export function art14(k: Kontakt, heute: string): { tage: number; faellig: boole
  */
 export function anlassPflicht(k: Kontakt, ctx: Kontext = {}): boolean {
   return kanalStatus(k, 'telefon', ctx).farbe === 'gelb';
+}
+
+/**
+ * Ampel für einen Betrieb ohne Ansprechpartner (01.11., Welle A „Firmen als Ziel“): dieselben Regeln wie an der Person, gelesen an der Firma —
+ * Firmen-Mail, Firmen-Telefon/-Handy. Es gibt keine Einwilligung einer Firma ohne Person: Werbe-Mail und Kaltanruf bleiben ROT
+ * (§ 7 Abs. 2 UWG, auch B2B); grün bzw. gelb nur aus einem laufenden Mandat (Rolle „Kunde“) bzw. einer offenen Chance (Telefon, mit Anlass).
+ * Rot bleibt rot — der Modus „eigenes Risiko“ der Homepage-Funde übersteuert NICHT die Ampel, sondern nur den Versand an dieser einen Stelle
+ * (lib/funde/uebernehmen.ts, Hinweis RISIKO_HINWEIS).
+ */
+export type FirmaKanal = 'mail' | 'telefon' | 'newsletter' | 'einladung';
+export function firmaKanalStatus(f: Pick<Firma, 'werbesperre' | 'email' | 'telefon' | 'mobil' | 'rolle'>, kanal: FirmaKanal, ctx: Omit<Kontext, 'firma'> = {}): KanalStatus {
+  const k = kanal as Kanal;
+  if (f.werbesperre) return { kanal: k, farbe: 'rot', grund: `Werbesperre seit ${f.werbesperre.seit}` };
+  const hat = (x: string | undefined) => !!(x ?? '').trim();
+  const erreichbar = kanal === 'telefon' ? hat(f.telefon) || hat(f.mobil) : hat(f.email);
+  if (!erreichbar) return { kanal: k, farbe: 'rot', grund: 'keine Adresse' };
+  const mandat = ctx.hatMandat || f.rolle === 'kunde';
+  if (kanal === 'newsletter') return { kanal: k, farbe: 'rot', grund: 'Newsletter nur mit Double-Opt-in einer Person' };
+  if (kanal === 'mail' || kanal === 'einladung') {
+    if (mandat) return { kanal: k, farbe: 'gelb', grund: 'Bestandskunde: Werbung nur mit Hinweis bei Erhebung (§ 7 Abs. 3 UWG) — besser eine Person der Firma ansprechen', grundlage: 'bestandskunde_7_3' };
+    return { kanal: k, farbe: 'rot', grund: 'Werbe-Mail an einen Betrieb ohne Einwilligung ist abmahnfähig (§ 7 Abs. 2 Nr. 2 UWG) — Brief oder Besuch' };
+  }
+  if (mandat) return { kanal: k, farbe: 'gruen', grund: 'laufendes Mandat', grundlage: 'vertrag' };
+  if (ctx.hatChance) return { kanal: k, farbe: 'gelb', grund: 'mutmaßliche Einwilligung: nur mit konkretem Anlass aus der Beziehung', grundlage: 'mutmasslich_b2b_tel' };
+  return { kanal: k, farbe: 'rot', grund: 'Kaltanruf ohne Vorkontakt — „passt zum Betrieb“ reicht nicht (§ 7 Abs. 2 UWG)' };
+}
+/** Alle Kanäle eines Betriebs (ohne die ohne Adresse). */
+export function firmaAmpel(f: Pick<Firma, 'werbesperre' | 'email' | 'telefon' | 'mobil' | 'rolle'>, ctx: Omit<Kontext, 'firma'> = {}): KanalStatus[] {
+  return (['telefon', 'mail'] as FirmaKanal[]).map(x => firmaKanalStatus(f, x, ctx)).filter(s => s.grund !== 'keine Adresse');
 }
