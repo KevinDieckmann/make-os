@@ -76,6 +76,18 @@ async function dateiAblegen(person: string, name: string, bytes: Uint8Array, met
   return j.eintrag.id;
 }
 
+/**
+ * Tage der Altbestands-Rechnung: vor 120 Tagen, aber nicht vor dem Jahresbeginn (sie soll im laufenden Jahr stehen), bezahlt zehn Tage später —
+ * nie nach heute. Zeitreise-Prüfung 31.10.: in den ersten Januartagen liegt `altTag` am 1.1., „+10 Tage“ wäre Zukunft und die Route lehnt
+ * „Bezahlt am liegt in der Zukunft“ ab (400) — die ganze Saat brach ab.
+ */
+export function altbestandTage(heute: string): { altTag: string; altBezahlt: string } {
+  const jahrStart = `${heute.slice(0, 4)}-01-01`;
+  const altTag = tagPlus(heute, -120) < jahrStart ? jahrStart : tagPlus(heute, -120);
+  const zehn = tagPlus(altTag, 10);
+  return { altTag, altBezahlt: zehn > heute ? heute : zehn };
+}
+
 export async function kreislaufSaen(k: KreislaufKontext): Promise<SaatSchritt[]> {
   const { lena: L, jonas: J, heute, rufe } = k;
   const R = KREISLAUF_ROUTEN;
@@ -124,13 +136,12 @@ export async function kreislaufSaen(k: KreislaufKontext): Promise<SaatSchritt[]>
   await stellen(freiFertig);
   //   e) Altbestand ohne Zuordnung (eine frühere Rechnung, nur mit getipptem Kundennamen) — bezahlt, damit sie nichts mahnt; über den Bestand der
   //      Finanzplanung wie früher, „bezahlt“ über dessen Aktion (Status + Buchung in einer Sperre).
-  const jahrStart = `${heute.slice(0, 4)}-01-01`;
-  const altTag = tagPlus(heute, -120) < jahrStart ? jahrStart : tagPlus(heute, -120);
+  const { altTag, altBezahlt } = altbestandTage(heute);
   await rufe(R.finanzplanBestand(), 'PATCH', '/api/state/finanzplan', L, { ops: [{ liste: 'rechnungen', op: 'upsert', eintrag: {
     id: KREISLAUF_ALT_RECHNUNG, kunde: 'Altkunde Beispiel KG', titel: 'Workshop (Altbestand, Beispiel)', betrag: 1190, netto: 1000, ustSatz: 19, status: 'gestellt',
     nummer: `ALT-${heute.slice(0, 4)}-017`, datum: altTag, faellig: tagPlus(altTag, 14), leistungVon: altTag, leistungBis: altTag, firmaId: 'ug',
   } }] });
-  await rufe(R.finanzplanBestand(), 'PATCH', '/api/state/finanzplan', L, { aktion: 'bezahlt', rechnungId: KREISLAUF_ALT_RECHNUNG, am: tagPlus(altTag, 10) });
+  await rufe(R.finanzplanBestand(), 'PATCH', '/api/state/finanzplan', L, { aktion: 'bezahlt', rechnungId: KREISLAUF_ALT_RECHNUNG, am: altBezahlt });
 
   // 4) Die große Akte: ein offener Folge-Deal (der vorige ist gewonnen), Aufgaben mit Bezug, ein Vertrag an der Firma, ein Termin mit Bezug.
   await rufe(R.deal(), 'POST', '/api/crm/deal', L, { aktion: 'anlegen', titel: 'Cockpit für Nordwerk (Beispiel)', firmaId: KREISLAUF_FIRMA, kontaktIds: [jan],
