@@ -392,7 +392,7 @@ ${suche}<meta name="theme-color" content="${film ? '#0B0C0F' : '#F6F4F0'}">
 <link rel="stylesheet" href="/css/fokus.css?v=${stempel('css/fokus.css')}">
 ${film ? `<link rel="stylesheet" href="/css/film.css?v=${stempel('css/film.css')}">\n` : ''}<script src="/js/frueh.js?v=${stempel('js/frueh.js')}"></script>
 <script src="/js/seite.js?v=${stempel('js/seite.js')}" defer></script>
-${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}<script type="application/ld+json">${ldJson}</script>
+${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}${main.includes('data-anfrage') ? `<script src="/js/anfrage.js?v=${stempel('js/anfrage.js')}" defer></script>\n` : ''}<script type="application/ld+json">${ldJson}</script>
 </head>
 <body${klasse ? ` class="${klasse}"` : ''}>
 ${kopf(aktiv)}
@@ -924,7 +924,7 @@ ${schlussakt({ quelle: 'ueber_uns_ende' })}`,
 <section class="abschnitt" aria-labelledby="weiter-titel"><div class="w">${abKopf({ marke: 'So geht es weiter', h2: 'Drei Schritte bis zum Start.', id: 'weiter-titel' })}
 ${weg(F.einstieg, { etiketten: ['01', '02', '03'], label: 'Drei Schritte bis zum Start' })}</div></section>
 <section class="abschnitt" aria-label="Kontaktdaten"><div class="w"><div class="kontakt-liste erscheint">
-<div><p class="etikett">E-Mail</p><a class="gross-link" href="mailto:${e(k.mail)}">${e(k.mail)}</a></div>
+<div><p class="etikett">E-Mail</p><a class="gross-link" href="mailto:${e(k.mail)}">${e(k.mail)}</a><p class="kontakt-formular" data-anfrage hidden>${textlink('/anfrage', 'Oder über unser Kontaktformular')}</p></div>
 <div><p class="etikett">Adresse</p><address>${e(F.marke.name)}<br>${e(anbieter.name)}<br>${k.adresse.map(t).join('<br>')}</address><p class="leise klein-text">${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}.</p></div>
 <div><p class="etikett">Events</p><p>Für die nächste Einladung genügt eine kurze Mail.</p>${textlink(mail(F.events.betreff), 'Einladung erhalten')}</div>
 </div></div></section>`,
@@ -1458,7 +1458,7 @@ export function pruefen(seiten) {
     platzhalter += (s.html.match(/class="ph"/g) ?? []).length;
     for (const [, href] of s.html.matchAll(/\shref="([^"]+)"/g)) {
       if (href.startsWith('/assets/vorlagen/') && !existsSync(join(ORDNER, href))) { fehler.push(`${s.pfad}: Vorlage fehlt ${href}`); continue; }
-      if (/^(https?:|mailto:|tel:)/.test(href) || href.startsWith('/check') || href === '/newsletter' || BUCHUNG.test(href) || href.startsWith('/css/') || href.startsWith('/js/') || href.startsWith('/assets/') || ['/favicon.ico', '/site.webmanifest'].includes(href)) continue;
+      if (/^(https?:|mailto:|tel:)/.test(href) || href.startsWith('/check') || href === '/newsletter' || href === '/anfrage' || BUCHUNG.test(href) || href.startsWith('/css/') || href.startsWith('/js/') || href.startsWith('/assets/') || ['/favicon.ico', '/site.webmanifest'].includes(href)) continue;
       const [teil, hash] = href.split('#');
       const seite = teil ? ziel(teil.split('?')[0]) : s.pfad;
       if (!pfade.has(seite)) { fehler.push(`${s.pfad}: Link ins Leere ${href}`); continue; }
@@ -1481,7 +1481,7 @@ export function pruefen(seiten) {
     } catch (err) { fehler.push(`${s.pfad}: strukturierte Daten ungültig (${err.message})`); }
     if (s.bild && !existsSync(join(ORDNER, s.bild.datei))) fehler.push(`${s.pfad}: Vorschaubild fehlt (node bilder.mjs)`);
   }
-  for (const datei of ['css/fokus.css', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'js/unterlage.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
+  for (const datei of ['css/fokus.css', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'js/unterlage.js', 'js/anfrage.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
   return { fehler, platzhalter };
 }
 
