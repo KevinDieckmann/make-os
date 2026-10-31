@@ -33,6 +33,18 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-4',
+    datum: '2026-11-02',
+    titel: 'Checks in eigenen Worten, neue Zielgruppen',
+    kurz: 'In den Checks können Teilnehmende zu jeder Frage etwas in eigenen Worten ergänzen, am Ende stehen ein bis zwei Fragen nur in eigenen Worten. Für die Kampagnen gibt es drei neue Zielgruppen: Start-ups, innovative Unternehmer und Scale-ups.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Checks: unter jeder Auswahlfrage „Eigene Antwort ergänzen“ (freiwillig, zählt nicht in die Punkte) und am Ende Fragen in eigenen Worten. Die Antworten stehen unter Markttraktion › Website › Checks und an der Anfrage in der Kontaktakte.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Kampagnen: drei neue Zielgruppen mit eigenem Segment und eigener Kampagne beim ersten Import — Start-ups, innovative Unternehmer und Scale-ups. Der Steckbrief eines Betriebs zeigt Branche, eingesetzte Werkzeuge und offene Stellen.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-3',
     datum: '2026-11-02',
     titel: 'Website: alles an einem Ort',
