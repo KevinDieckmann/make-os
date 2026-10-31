@@ -987,3 +987,6 @@ html.menue-offen { overflow: hidden; }
 .zahl-kachel details p { margin-top: 8px; }
 .zahl-kachel cite { display: block; margin-top: 10px; font-size: .85rem; font-style: normal; }
 .zahl-kachel cite a { color: var(--tinte-leise); text-decoration: underline; text-decoration-color: var(--haar-mittel); text-underline-offset: 3px; display: inline-block; padding-block: 4px; }
+
+/* Ausklappmenü: mit Esc geschlossen (seite.js setzt .zu) */
+.nav-punkt.zu .unter, .nav-punkt.zu:hover .unter, .nav-punkt.zu:focus-within .unter { opacity: 0; visibility: hidden; translate: 0 6px; }

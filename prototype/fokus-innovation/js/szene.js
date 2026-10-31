@@ -153,7 +153,7 @@ export const LAGE = { mitteY: 0.56, rHoehe: 0.15, rBreite: 0.24 };
 
 /** Startet die Szene. null, wenn es kein WebGL gibt (dann zeigt die Seite das Zeichen als Bild). */
 export function szeneStarten(canvas, { handy = false } = {}) {
-  const gl = canvas.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false, premultipliedAlpha: false, powerPreference: 'high-performance' });
+  const gl = canvas.getContext('webgl', { antialias: false, alpha: false, depth: false, stencil: false, premultipliedAlpha: false, powerPreference: 'default' });
   if (!gl) return null;
   let flaeche, punkte;
   try {
@@ -186,7 +186,8 @@ export function szeneStarten(canvas, { handy = false } = {}) {
   let dpr = 1;
 
   function groesse() {
-    dpr = Math.min(window.devicePixelRatio || 1, handy ? 1.5 : 2);
+    // Der Schein ist weich: mehr als 1,25 (Rechner) bzw. 1,5 (Handy) Pixeldichte kostet nur Grafikleistung.
+    dpr = Math.min(window.devicePixelRatio || 1, handy ? 1.5 : 1.25);
     const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
     const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }

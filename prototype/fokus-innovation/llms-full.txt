@@ -1,6 +1,6 @@
 # Fokus Innovation: alle Inhalte als Klartext
 
-Stand: 2026-10-27. Website: https://fokusinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
+Stand: 2026-10-31. Website: https://fokusinnovation.de/. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
 
 ## Wer wir sind
 

@@ -16,10 +16,25 @@
   const menue = document.querySelector('.menue');
   if (menue) {
     menue.addEventListener('click', (ev) => { if (ev.target.closest('a')) menue.open = false; });
-    menue.addEventListener('toggle', () => document.documentElement.classList.toggle('menue-offen', menue.open));
+    const rest = () => [...document.body.children, ...(menue.closest('.kopf-innen')?.children ?? [])].filter((el) => !el.contains(menue));
+    menue.addEventListener('toggle', () => {
+      document.documentElement.classList.toggle('menue-offen', menue.open);
+      for (const el of rest()) el.inert = menue.open;
+    });
     document.addEventListener('keydown', (ev) => {
       if (ev.key === 'Escape' && menue.open) { menue.open = false; menue.querySelector('summary').focus(); }
     });
+  }
+
+  // Ausklappmenü am Rechner: Esc blendet es aus, bis Maus oder Fokus den Punkt verlassen.
+  const punkte = document.querySelectorAll('.nav-punkt');
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    for (const p of punkte) if (p.matches(':hover, :focus-within')) { p.classList.add('zu'); if (p.contains(document.activeElement)) p.querySelector('a')?.focus(); }
+  });
+  for (const p of punkte) {
+    p.addEventListener('mouseleave', () => p.classList.remove('zu'));
+    p.addEventListener('focusout', (ev) => { if (!p.contains(ev.relatedTarget)) p.classList.remove('zu'); });
   }
 
 })();

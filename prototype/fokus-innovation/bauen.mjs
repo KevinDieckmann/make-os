@@ -89,7 +89,10 @@ export function quellen() {
   const aus = seite.ausgeblendet ?? {};
   inhalt.angebote = inhalt.angebote.filter((a) => !(aus.angebote ?? []).includes(a.id) && a.id !== 'fokus-innovation');
   inhalt.zusatzoptionen = inhalt.zusatzoptionen.filter((z) => !(aus.zusatzoptionen ?? []).includes(z.name));
-  return { inhalt, seite, blaetter, fokus, wissen, stufen, katalog, zahlen, vorlagen };
+  // Änderungsdatum je Seite (31.10., Prüfung Technik): Inhalts-Fingerabdruck → Datum der letzten echten Änderung (Sitemap, JSON-LD).
+  const standDatei = join(ORDNER, 'inhalt', 'seitenstand.json');
+  const seitenstand = existsSync(standDatei) ? lies(standDatei) : {};
+  return { inhalt, seite, blaetter, fokus, wissen, stufen, katalog, zahlen, vorlagen, seitenstand };
 }
 
 /**
@@ -322,11 +325,11 @@ ${fussSpalte('Fokus Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über
     return { ...basis, name: a.name, price: zahl(a.preis), priceSpecification: spez({ price: zahl(a.preis) }) };
   };
 
-  const rahmen = ({ pfad, titel: titelText, beschreibung, aktiv = '', main, film = false, klasse = '', schema = [], seitenTyp = 'WebPage', artikel = null, fragenListe = [], krumen = null }) => {
+  const rahmen = ({ pfad, titel: titelText, beschreibung, aktiv = '', main, film = false, klasse = '', schema = [], seitenTyp = 'WebPage', artikel = null, fragenListe = [], krumen = null, geaendertAm = SEO.stand }) => {
     const ohneSuche = pfad === '404.html';
     const url = absolut(webPfad(pfad));
     const bild = absolut(`/assets/bild/og/${bildName(pfad)}.png`);
-    const geaendert = artikel?.aktualisiert ?? SEO.stand;
+    const geaendert = artikel?.aktualisiert ?? geaendertAm;
     const graph = [organisation, ...personen, webseite];
     if (!ohneSuche) {
       graph.push({ '@type': seitenTyp, '@id': `${url}#webseite`, url, name: titelText, description: beschreibung, isPartOf: { '@id': SITE }, about: { '@id': ORG }, inLanguage: 'de-DE', dateModified: geaendert, primaryImageOfPage: { '@type': 'ImageObject', url: bild, width: 1200, height: 630 }, ...(krumen ? { breadcrumb: { '@id': `${url}#brotkrumen` } } : {}) });
@@ -366,10 +369,11 @@ ${suche}<meta name="theme-color" content="${film ? '#0B0C0F' : '#F6F4F0'}">
 <link rel="apple-touch-icon" href="/assets/bild/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="/assets/schriften/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/assets/schriften/schibsted-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/css/fokus.css?v=${stempel('css/fokus.css')}">
 ${film ? `<link rel="stylesheet" href="/css/film.css?v=${stempel('css/film.css')}">\n` : ''}<script src="/js/frueh.js?v=${stempel('js/frueh.js')}"></script>
 <script src="/js/seite.js?v=${stempel('js/seite.js')}" defer></script>
-${film ? `<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}<script type="application/ld+json">${ldJson}</script>
+${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}<script type="application/ld+json">${ldJson}</script>
 </head>
 <body${klasse ? ` class="${klasse}"` : ''}>
 ${kopf(aktiv)}
@@ -391,18 +395,23 @@ ${ablauf ? weg(stufen, { klasse: 'einstieg', etiketten: ['01', '02', '03'], labe
 </div></section>`;
 
   const seiten = [];
+  const STAND = { ...(q.seitenstand ?? {}) };
+  const HEUTE = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Berlin' }).format(new Date());
   /** Eine Seite anlegen. Titel und Beschreibung kommen aus fokus.json › seo.seiten[seo] (oder direkt, bei Ratgebern). */
   const neu = (pfad, s) => {
     const vorgabe = s.seo ? SEO.seiten[s.seo] : null;
     if (s.seo && !vorgabe) throw new Error(`seo.seiten.${s.seo} fehlt in fokus.json`);
     const titelText = klar(vorgabe?.titel ?? s.titel);
     const beschreibung = klar(vorgabe?.beschreibung ?? s.beschreibung);
-    const html = rahmen({ ...s, pfad, titel: titelText, beschreibung, fragenListe: seitenFragen, krumen: seitenKrumen });
+    const fingerabdruck = createHash('sha1').update(`${titelText}|${beschreibung}|${s.main ?? ''}`).digest('hex').slice(0, 16);
+    if (STAND[pfad]?.hash !== fingerabdruck) STAND[pfad] = { hash: fingerabdruck, datum: HEUTE };
+    const geaendertAm = s.artikel?.aktualisiert ?? STAND[pfad].datum;
+    const html = rahmen({ ...s, pfad, titel: titelText, beschreibung, fragenListe: seitenFragen, krumen: seitenKrumen, geaendertAm });
     seitenFragen = [];
     seitenKrumen = null;
     seiten.push({
       pfad, html, titel: titelText, beschreibung,
-      geaendert: s.artikel?.aktualisiert ?? SEO.stand,
+      geaendert: geaendertAm,
       bild: pfad === '404.html' ? null : { datei: `assets/bild/og/${bildName(pfad)}.png`, titel: s.bildTitel ?? titelText.replace(/ · Fokus Innovation$/, ''), vorzeile: s.bildVorzeile ?? F.marke.name },
     });
   };
@@ -1272,7 +1281,7 @@ ${W.artikel.map((a) => `- ${mdLink(a.titel, artikelPfad(a))}: ${klar(a.beschreib
     pfad: 'llms-full.txt', datei: true,
     html: `# ${F.marke.name}: alle Inhalte als Klartext
 
-Stand: ${SEO.stand}. Website: ${absolut('/')}. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
+Stand: ${Object.values(STAND).map((x) => x.datum).sort().at(-1) ?? SEO.stand}. Website: ${absolut('/')}. Diese Datei fasst die Website für KI-Assistenten zusammen. Maßgeblich sind die Seiten selbst.
 
 ## Wer wir sind
 
@@ -1303,6 +1312,7 @@ ${[...W.begriffe].sort((x, y) => x.name.localeCompare(y.name, 'de')).map((x) => 
 ${W.artikel.map(artikelMd).join('\n\n')}
 `,
   });
+  seiten.stand = STAND;
   return seiten;
 }
 
@@ -1335,7 +1345,7 @@ export function pruefen(seiten) {
     platzhalter += (s.html.match(/class="ph"/g) ?? []).length;
     for (const [, href] of s.html.matchAll(/\shref="([^"]+)"/g)) {
       if (href.startsWith('/assets/vorlagen/') && !existsSync(join(ORDNER, href))) { fehler.push(`${s.pfad}: Vorlage fehlt ${href}`); continue; }
-      if (/^(https?:|mailto:|tel:)/.test(href) || href.startsWith('/check') || href === '/newsletter' || BUCHUNG.test(href) || href.startsWith('/css/') || href.startsWith('/assets/') || ['/favicon.ico', '/site.webmanifest'].includes(href)) continue;
+      if (/^(https?:|mailto:|tel:)/.test(href) || href.startsWith('/check') || href === '/newsletter' || BUCHUNG.test(href) || href.startsWith('/css/') || href.startsWith('/js/') || href.startsWith('/assets/') || ['/favicon.ico', '/site.webmanifest'].includes(href)) continue;
       const [teil, hash] = href.split('#');
       const seite = teil ? ziel(teil.split('?')[0]) : s.pfad;
       if (!pfade.has(seite)) { fehler.push(`${s.pfad}: Link ins Leere ${href}`); continue; }
@@ -1365,6 +1375,13 @@ export function pruefen(seiten) {
 // ── Schreiben oder prüfen ────────────────────────────────────────────────────────────────────────────────────────────
 function lauf() {
   const nurPruefen = process.argv.includes('--pruefen');
+  // Film-Modul mit Versionsstempel importieren (31.10., Prüfung Technik): sonst trifft nach einem Upload neues film.js auf altes szene.js.
+  if (!nurPruefen) {
+    const filmDatei = join(ORDNER, 'js/film.js');
+    const alt = readFileSync(filmDatei, 'utf8');
+    const neuText = alt.replace(/from '\.\/szene\.js(\?v=[a-f0-9]+)?'/, `from './szene.js?v=${stempel('js/szene.js')}'`);
+    if (neuText !== alt) writeFileSync(filmDatei, neuText);
+  }
   const seiten = seitenBauen();
   let abweichend = 0;
   for (const s of seiten) {
@@ -1376,6 +1393,7 @@ function lauf() {
     mkdirSync(dirname(zielDatei), { recursive: true });
     writeFileSync(zielDatei, s.html);
   }
+  if (!nurPruefen) writeFileSync(join(ORDNER, 'inhalt', 'seitenstand.json'), `${JSON.stringify(Object.fromEntries(Object.entries(seiten.stand).sort()), null, 2)}\n`);
   const { fehler, platzhalter } = pruefen(seiten);
   console.log(nurPruefen ? `${seiten.length} Seiten, ${abweichend} weichen ab` : `${seiten.length} Seiten, ${abweichend} neu geschrieben`);
   console.log(`Platzhalter für Kevin: ${platzhalter}`);
