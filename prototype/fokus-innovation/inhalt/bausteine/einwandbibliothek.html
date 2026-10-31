@@ -1,0 +1,805 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Einwandbibliothek</title>
+<link rel="stylesheet" href="../vorlagen/basis.css">
+<style>
+  /* Baustein · Einwandbibliothek · eigene Bausteine (basis.css bleibt unverändert) */
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 166mm; }
+  h2.blatt { margin-top: 1.6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  .vorzeile.bsp { color: var(--akzent); }
+  .unter { margin-top: 1.6mm; max-width: 168mm; font-size: 10.2pt; line-height: 1.45; }
+  h3 { font-size: 10.5pt; line-height: 1.3; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  p.text + p.text { margin-top: 1.6mm; }
+  .klein { font-size: 8.8pt; line-height: 1.4; color: var(--tinte-leise); }
+  .lz { color: var(--akzent); font-weight: 500; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+
+  .so { margin-top: 2.6mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; max-width: 170mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9.2pt; line-height: 1.45; }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .abschnitt-titel { margin-top: 4.6mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; }
+  .abschnitt-titel small { font-size: 8.4pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+
+  /* Deckblatt */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3mm; margin-top: 3.2mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 9.8pt; line-height: 1.42; }
+  .ablauf { margin-top: 1.6mm; }
+  .ablauf li { display: grid; grid-template-columns: 9mm 1fr 24mm; padding: 2mm 0 1.9mm; border-bottom: var(--linie) solid var(--haar); }
+  .ablauf li:last-child { border-bottom: 0; }
+  .ablauf .nr { font-size: 11.5pt; line-height: 1.2; }
+  .ablauf h3 { font-size: 10.2pt; }
+  .ablauf p { margin-top: .4mm; font-size: 9.4pt; line-height: 1.4; }
+  .ablauf .s { text-align: right; font-size: 8.5pt; color: var(--tinte-leise); padding-top: .6mm; }
+
+  /* Methode */
+  .schritte4 { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 5mm; margin-top: 3mm; }
+  .schritte4 > div { border-top: .9pt solid var(--haar-stark); padding-top: 2mm; }
+  .schritte4 .nr { font-size: 15pt; line-height: 1; }
+  .schritte4 h3 { margin-top: 1.4mm; font-size: 11pt; }
+  .schritte4 p { margin-top: 1.2mm; font-size: 9pt; line-height: 1.4; }
+  .schritte4 .satz { margin-top: 2mm; padding-top: 1.6mm; border-top: var(--linie) solid var(--haar); font-size: 8.9pt; line-height: 1.38; color: var(--tinte); }
+  .schritte4 .satz span { display: block; margin-top: 1mm; }
+  .schritte4 .satz b { display: block; font-size: 7.2pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise); }
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .drei { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+  .wortliste li { display: grid; grid-template-columns: 1fr 1fr; column-gap: 4mm; padding: 1.4mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.35; }
+  .wortliste li:last-child { border-bottom: 0; }
+  .wortliste li span:first-child { color: var(--tinte-leise); text-decoration: line-through; text-decoration-color: rgba(17,19,22,.45); }
+  .wortliste li span:last-child { color: var(--tinte); }
+  .wortliste .kopfzeile span { text-decoration: none !important; font-size: 7.6pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise) !important; }
+  .arten { margin-top: 2.6mm; }
+  .arten li { display: grid; grid-template-columns: 30mm 1fr 1fr; column-gap: 5mm; padding: 2.2mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.4; }
+  .arten li:last-child { border-bottom: 0; }
+  .arten h3 { font-size: 10.2pt; }
+  .arten .leise { font-size: 8.8pt; }
+
+  /* Dialog */
+  .dialog { margin-top: 2.8mm; border-top: .9pt solid var(--haar-stark); }
+  .dialog li { display: grid; grid-template-columns: 19mm 1fr 33mm; column-gap: 4mm; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.42; }
+  .dialog .wer { font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); padding-top: .5mm; }
+  .dialog li.v .wer { color: var(--tinte); }
+  .dialog .schritt { font-size: 8.2pt; line-height: 1.3; color: var(--akzent); font-weight: 600; padding-top: .4mm; }
+  .dialog li.v .rede { color: var(--tinte); }
+
+  /* Einwand-Karten */
+  .ek { margin-top: 2.6mm; border-top: .9pt solid var(--haar-stark); padding-top: 2mm; }
+  .ek + .ek { margin-top: 4.2mm; }
+  .ek-kopf { display: grid; grid-template-columns: 10mm 1fr auto; align-items: baseline; }
+  .ek-kopf .nr { font-size: 12pt; }
+  .ek-kopf h3 { font-size: 12.4pt; line-height: 1.2; letter-spacing: -.01em; }
+  .ek-kopf .kat { font-size: 7.4pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--akzent); }
+  .ek-raster { display: grid; grid-template-columns: 70mm 1fr; column-gap: 7mm; margin-top: 1.8mm; }
+  .ek-t { margin-top: 1.8mm; font-size: 7.2pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); }
+  .ek-t:first-child { margin-top: .2mm; }
+  .pk li { position: relative; padding-left: 3mm; margin-top: .7mm; font-size: 8.8pt; line-height: 1.36; }
+  .pk li::before { content: "·"; position: absolute; left: 0; color: var(--akzent); font-weight: 700; }
+  .pk.frage li { color: var(--tinte); }
+  .ant li { margin-top: 1.1mm; font-size: 8.8pt; line-height: 1.38; color: var(--tinte); }
+  .ant li b { display: block; font-size: 8pt; font-weight: 600; color: var(--tinte-leise); }
+  .ek-fuss { display: grid; grid-template-columns: 1fr 1.25fr .9fr; column-gap: 5mm; margin-top: 2.2mm; padding-top: 1.6mm; border-top: var(--linie) solid var(--haar); }
+  .ek-fuss p { font-size: 8.6pt; line-height: 1.36; }
+  .ek-fuss .ek-t { margin: 0 0 .6mm; }
+  .ek-fuss .rede { color: var(--tinte); }
+  .ek-mein { display: grid; grid-template-columns: 70mm 1fr; column-gap: 7mm; margin-top: 2mm; padding-top: 1.6mm; border-top: var(--linie) solid var(--haar); }
+  .ek-mein p { font-size: 8.6pt; line-height: 1.36; }
+  .ek-mein .ek-t { margin: 0 0 .6mm; }
+  .ek-mein .ek-t span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .ek-mein .zeile-frei { height: 5.6mm; }
+
+  /* Vorlage (Mail) */
+  .vorlage { margin-top: 2.6mm; padding: 3mm 5mm 3.2mm; border: var(--linie) solid var(--haar); border-radius: 1.2mm; background: rgba(255,255,255,.35); }
+  .vorlage .art { font-size: 7.6pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); }
+  .vorlage p { margin-top: 1.3mm; font-size: 9.4pt; line-height: 1.42; color: var(--tinte); }
+  .vorlage p.betreff { margin-top: 1.6mm; font-weight: 600; }
+
+  /* Listen */
+  .regeln li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.4mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.4; }
+  .regeln li:last-child { border-bottom: 0; }
+  .regeln b { color: var(--tinte); font-weight: 600; }
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.4mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.4; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste .kreuz { margin-top: .5mm; }
+  .schritte5 li { display: grid; grid-template-columns: 9mm 34mm 1fr 22mm; column-gap: 3mm; padding: 2.2mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.4; }
+  .schritte5 li:last-child { border-bottom: 0; }
+  .schritte5 .nr { font-size: 12pt; line-height: 1.2; }
+  .schritte5 h3 { font-size: 10.2pt; }
+  .schritte5 .wann { font-size: 8.4pt; color: var(--tinte-leise); text-align: right; }
+  .rhythmus { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 5mm; margin-top: 2.4mm; }
+  .rhythmus > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .rhythmus b { display: block; font-size: 7.6pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--akzent); }
+  .rhythmus h3 { margin-top: .6mm; font-size: 10.2pt; }
+  .rhythmus p { margin-top: .8mm; font-size: 8.9pt; line-height: 1.4; }
+
+  /* Formular */
+  .linien .zeile-frei { height: 7.2mm; }
+  .linien.eng .zeile-frei { height: 6.4mm; }
+  .reihe { display: flex; gap: 6mm; margin-top: 2.2mm; }
+  .reihe .feld { flex: 1; }
+  .reihe .feld.schmal { flex: .55; }
+  .reihe .feld.breit { flex: 1.8; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6.2mm; }
+  .wahl { display: inline-flex; align-items: center; gap: 1.6mm; margin-right: 4mm; font-size: 8.8pt; white-space: nowrap; }
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.6mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.4pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.1mm 1.6mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 8.8pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster td.leise { color: var(--tinte-leise); }
+  .raster .mitte { text-align: center; }
+  .raster.bsp td { color: var(--tinte); font-size: 8.4pt; line-height: 1.32; border-bottom-color: var(--haar); }
+  .raster.bsp td.leise { color: var(--tinte-leise); }
+  .raster td .zeile-frei { height: 6.4mm; }
+  .raster td .zeile-frei:last-child { border-bottom: 0; }
+
+  /* Eigene Karte (Bogen) */
+  .bogen { margin-top: 3mm; border-top: .9pt solid var(--haar-stark); padding-top: 1.6mm; }
+  .bogen + .bogen { margin-top: 5mm; }
+  .bogen-kopf { display: grid; grid-template-columns: 1fr 50mm; column-gap: 6mm; }
+  .bogen .zeile-l { display: grid; grid-template-columns: 36mm 1fr; column-gap: 3mm; align-items: start; }
+  .bogen .zeile-l + .zeile-l { margin-top: .6mm; }
+  .bogen .zeile-l > span { font-size: 8.6pt; color: var(--tinte); padding-top: 2.3mm; line-height: 1.2; }
+  .bogen .zeile-l > span small { display: block; font-size: 7.6pt; color: var(--tinte-leise); }
+  .bogen .zeile-frei { height: 6.3mm; }
+  .bogen .status { margin-top: 2mm; display: flex; flex-wrap: wrap; align-items: center; gap: 1mm 0; font-size: 8.6pt; }
+  .bogen .status .stark { margin-right: 3mm; font-size: 8.6pt; }
+
+  /* Ausgefüllte Karte */
+  .gefuellt .eintrag { display: grid; grid-template-columns: 36mm 1fr; column-gap: 3mm; padding: 1.2mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .gefuellt .eintrag > span { font-size: 8.6pt; color: var(--tinte-leise); line-height: 1.3; }
+  .gefuellt .eintrag p { font-size: 9pt; line-height: 1.38; color: var(--akzent); }
+  .gefuellt .eintrag p + p { margin-top: .8mm; }
+
+  /* Rollenspiel */
+  .rollen { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 5mm; margin-top: 2.6mm; }
+  .rollen > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .rollen h3 { font-size: 10.4pt; }
+  .rollen p { margin-top: .8mm; font-size: 8.9pt; line-height: 1.4; }
+  .karten { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(54mm, auto); gap: 0; margin-top: 2.6mm; border-top: .7pt dashed var(--tinte-leise); border-left: .7pt dashed var(--tinte-leise); }
+  .rk { padding: 2.6mm 3mm 2.8mm; border-right: .7pt dashed var(--tinte-leise); border-bottom: .7pt dashed var(--tinte-leise); display: flex; flex-direction: column; }
+  .rk .kopfz { display: flex; justify-content: space-between; font-size: 7pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise); }
+  .rk .kopfz span:last-child { color: var(--akzent); }
+  .rk .lage { margin-top: 1.2mm; font-size: 8.2pt; line-height: 1.32; }
+  .rk .sagt { margin-top: 1.4mm; font-size: 9.6pt; line-height: 1.28; color: var(--tinte); font-weight: 600; }
+  .rk .verdeckt { margin-top: auto; padding-top: 1.6mm; border-top: .6pt dotted var(--tinte-leise); font-size: 7.9pt; line-height: 1.32; color: var(--tinte-leise); }
+  .rk .verdeckt b { color: var(--tinte-text); font-weight: 600; }
+  .schere { margin-top: 2mm; font-size: 8pt; color: var(--tinte-leise); }
+
+  /* Fehler */
+  .fehler li { display: grid; grid-template-columns: 7mm 1fr 1fr; column-gap: 5mm; padding: 1.25mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.38; }
+  .fehler li:last-child { border-bottom: 0; }
+  .fehler b { color: var(--tinte); font-weight: 600; }
+  .fehler .besser { color: var(--tinte); }
+  .fehler .kopfzeile { font-size: 7.6pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise); padding-bottom: 1.2mm; border-bottom: .9pt solid var(--haar-stark); }
+
+  /* Nächste Schritte */
+  .wege li { display: grid; grid-template-columns: 9mm 1fr; padding: 3mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .wege li:last-child { border-bottom: 0; }
+  .wege .nr { font-size: 13pt; line-height: 1.2; }
+  .wege h3 { font-size: 12pt; }
+  .wege .adresse { margin-top: .8mm; font-size: 10.5pt; color: var(--akzent); font-weight: 600; }
+  .wege .adresse a { color: inherit; text-decoration: none; }
+  .wege p { margin-top: .8mm; font-size: 10pt; line-height: 1.45; }
+  .unten { margin-top: auto; }
+  .unten + .fuss { margin-top: 3mm; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+</svg>
+
+<!-- 1 · Deckblatt -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Baustein · Vertrieb</p>
+    <h1>Einwandbibliothek</h1>
+    <p class="lead">Zwölf Einwände, die Sie im B2B-Vertrieb immer wieder hören, mit einer Methode, die bei jedem Einwand funktioniert, mit Rückfragen und Antworten für Telefon und Mail. Dazu alles, um daraus Ihre eigene Bibliothek zu machen und im Team zu üben.</p>
+  </div>
+
+  <p class="abschnitt-titel">So nutzen Sie dieses Paket</p>
+  <div class="fakten">
+    <div><b>Ziel</b><p>Auf jeden häufigen Einwand haben Sie und Ihr Team eine Antwort in eigenen Worten, die das Gespräch weiterführt, statt es zu beenden.</p></div>
+    <div><b>Ihre Zeit</b><p>Lesen etwa eine Stunde. Eigene Bibliothek: zwei Wochen sammeln, dann zwei bis drei Stunden im Team. Danach 15 Minuten je Woche.</p></div>
+    <div><b>Sie brauchen</b><p>Dieses Heft, die Tabelle zum Paket für Ihre Bibliothek und einen festen Termin im Team. Bögen für mehrere Personen kopieren Sie.</p></div>
+    <div><b>Gut zu wissen</b><p>Die Antworten sind Vorschläge. Sie wirken erst, wenn sie nach Ihnen klingen. Passen Sie Wörter an, nicht die Methode.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Reihenfolge</p>
+  <ol class="ablauf">
+    <li><span class="nr">1</span><div><h3>Die Methode verstehen</h3><p>Vier Schritte für jeden Einwand und ein Gespräch, in dem man sie sieht.</p></div><span class="s">Seite 2 und 3</span></li>
+    <li><span class="nr">2</span><div><h3>Die zwölf Einwände</h3><p>Was dahintersteckt, Rückfragen, Antworten, Sätze für Telefon und Mail.</p></div><span class="s">Seite 4 bis 9</span></li>
+    <li><span class="nr">3</span><div><h3>Telefon und Mail</h3><p>Was am Telefon anders ist, eine ausgeschriebene Antwort-Mail, Einwände vorwegnehmen.</p></div><span class="s">Seite 10</span></li>
+    <li><span class="nr">4</span><div><h3>Die eigene Bibliothek</h3><p>Ablauf im Team, Sammelbogen, ausgefülltes Beispiel und leere Karten.</p></div><span class="s">Seite 11 bis 14</span></li>
+    <li><span class="nr">5</span><div><h3>Üben</h3><p>Ablauf für das Rollenspiel, Beobachtungsbogen und zwölf Karten zum Ausschneiden.</p></div><span class="s">Seite 15 und 16</span></li>
+    <li><span class="nr">6</span><div><h3>Fehler vermeiden und dranbleiben</h3><p>Typische Fehler, Prüfliste und Ihre nächsten Schritte.</p></div><span class="s">Seite 17 und 18</span></li>
+  </ol>
+
+  <p class="hinweis unten">Alle Beispiele, Branchen und Gespräche in diesem Paket sind frei erfunden. Stellen in <span class="lz">Lila</span> ersetzen Sie durch Ihre eigenen Angaben. Stand: Oktober 2026.</p>
+</section>
+
+<!-- 2 · Methode -->
+<section class="seite">
+  <p class="vorzeile">Grundlage</p>
+  <h2 class="blatt">Vier Schritte für jeden Einwand</h2>
+  <p class="unter">Ein Einwand ist kein Nein. Er zeigt, dass Ihr Gegenüber sich mit dem Angebot beschäftigt und an einer Stelle noch nicht überzeugt ist. Wer sofort argumentiert, antwortet oft auf die falsche Frage. Darum kommt die Antwort erst im dritten Schritt.</p>
+
+  <div class="schritte4">
+    <div><span class="nr">1</span><h3>Nachfragen</h3><p>Kurz anerkennen, ohne zuzustimmen. Dann eine offene Frage stellen, die den Einwand genauer macht.</p>
+      <p class="satz"><b>Zum Beispiel</b><span>„Verstehe. Zu teuer im Vergleich wozu?“</span><span>„Was genau meinen Sie mit …?“</span></p></div>
+    <div><span class="nr">2</span><h3>Verstehen</h3><p>In eigenen Worten wiederholen und prüfen, ob es der einzige Punkt ist. Erst dann wissen Sie, worauf Sie antworten.</p>
+      <p class="satz"><b>Zum Beispiel</b><span>„Habe ich Sie richtig verstanden, dass …?“</span><span>„Ist das der einzige Punkt, oder gibt es noch etwas?“</span></p></div>
+    <div><span class="nr">3</span><h3>Antworten</h3><p>Auf den eigentlichen Grund antworten, kurz und konkret: mit einer Rechnung, einem Beispiel oder einer Möglichkeit.</p>
+      <p class="satz"><b>Zum Beispiel</b><span>„Lassen Sie uns kurz rechnen …“</span><span>„Ein Betrieb Ihrer Größe hatte dieselbe Sorge. Er hat …“</span></p></div>
+    <div><span class="nr">4</span><h3>Weiterführen</h3><p>Fragen, ob der Punkt geklärt ist, und einen nächsten Schritt mit Datum vorschlagen. Sonst bleibt alles offen.</p>
+      <p class="satz"><b>Zum Beispiel</b><span>„Ist das damit für Sie geklärt?“</span><span>„Dann schlage ich vor, dass wir am … gemeinsam …“</span></p></div>
+  </div>
+
+  <p class="abschnitt-titel">Haltung</p>
+  <ul class="regeln">
+    <li><span class="nr">·</span><span><b>Pause statt Reflex.</b> Atmen Sie einmal durch, bevor Sie antworten. Zwei Sekunden Stille wirken souverän, eine schnelle Gegenrede wirkt wie Verteidigung.</span></li>
+    <li><span class="nr">·</span><span><b>Anerkennen heißt nicht zustimmen.</b> „Verstehe“ oder „Gut, dass Sie das ansprechen“ würdigt die Frage, ohne zu sagen, dass Ihr Gegenüber recht hat.</span></li>
+    <li><span class="nr">·</span><span><b>Neugierig bleiben.</b> Sie wollen herausfinden, was hinter dem Satz steckt, nicht gewinnen. Wer gewinnt, verliert oft den Kunden.</span></li>
+    <li><span class="nr">·</span><span><b>Ein Nein ist ein gutes Ergebnis.</b> Wenn es wirklich nicht passt, beenden Sie freundlich und sauber. Das spart beiden Zeit und hält die Tür offen.</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Wörter, die gegen Sie arbeiten <small>und was Sie stattdessen sagen</small></p>
+  <ul class="wortliste">
+    <li class="kopfzeile"><span>statt</span><span>besser</span></li>
+    <li><span>„Ja, aber …“</span><span>„Ja, und …“ oder eine Frage: „Was wäre, wenn …?“</span></li>
+    <li><span>„Da muss ich Ihnen widersprechen.“</span><span>„Darf ich Ihnen zeigen, wie andere das gelöst haben?“</span></li>
+    <li><span>„Ehrlich gesagt …“</span><span>einfach weglassen, sonst klingt alles andere weniger ehrlich</span></li>
+    <li><span>„Das ist doch nur …“ (beim Preis)</span><span>den Betrag nennen und ihn mit dem Nutzen vergleichen</span></li>
+    <li><span>„Kein Problem.“</span><span>„Gern.“ oder „Das lösen wir so: …“</span></li>
+    <li><span>„Sie müssen verstehen, dass …“</span><span>„Mir ist wichtig, dass Sie wissen …“</span></li>
+    <li><span>„Vertrauen Sie mir.“</span><span>einen Beleg nennen: ein Beispiel, eine Zahl, einen Kunden</span></li>
+    <li><span>„Eigentlich …“</span><span>weglassen, es schwächt jeden Satz</span></li>
+  </ul>
+</section>
+
+<!-- 3 · Methode im Gespräch -->
+<section class="seite">
+  <p class="vorzeile bsp">Beispiel · frei erfunden</p>
+  <h2 class="blatt">Die vier Schritte im Gespräch</h2>
+  <p class="unter">Ein Dienstleister für digitale Archivierung hat einem Maschinenbaubetrieb mit 60 Beschäftigten ein Angebot geschickt. Im Telefonat dazu sagt der kaufmännische Leiter: „Das ist uns zu teuer.“</p>
+
+  <ol class="dialog">
+    <li><span class="wer">Kunde</span><span class="rede">„Ehrlich gesagt ist uns das zu teuer.“</span><span class="schritt"></span></li>
+    <li class="v"><span class="wer">Vertrieb</span><span class="rede">„Verstehe, gut, dass Sie es direkt sagen. Zu teuer im Vergleich wozu?“</span><span class="schritt">1 · Nachfragen</span></li>
+    <li><span class="wer">Kunde</span><span class="rede">„Wir haben ein Angebot, das fast ein Drittel günstiger ist.“</span><span class="schritt"></span></li>
+    <li class="v"><span class="wer">Vertrieb</span><span class="rede">„Danke für die Offenheit. Damit ich es richtig verstehe: Die Leistung passt Ihnen, aber der Preis liegt über dem Vergleichsangebot. Ist das der einzige Punkt, oder gibt es noch etwas?“</span><span class="schritt">2 · Verstehen</span></li>
+    <li><span class="wer">Kunde</span><span class="rede">„Nein, sonst passt es. Der Geschäftsführer will einfach wissen, warum wir mehr zahlen sollen.“</span><span class="schritt"></span></li>
+    <li class="v"><span class="wer">Vertrieb</span><span class="rede">„Das ist eine gute Frage. Ist im anderen Angebot das Einscannen der Altakten enthalten? Bei uns sind das die 40 Ordner aus dem Keller, die Sie im Termin erwähnt haben. Und wer kümmert sich, wenn nach dem Start etwas nicht funktioniert?“</span><span class="schritt">3 · Antworten</span></li>
+    <li><span class="wer">Kunde</span><span class="rede">„Die Altakten sind nicht drin, glaube ich. Das müsste ich prüfen.“</span><span class="schritt"></span></li>
+    <li class="v"><span class="wer">Vertrieb</span><span class="rede">„Dann schlage ich vor: Ich schicke Ihnen heute eine Seite, auf der beide Angebote Punkt für Punkt nebeneinanderstehen. Am Donnerstag gehen wir sie in 15 Minuten durch, gern mit Ihrem Geschäftsführer. Passt Ihnen 10 Uhr?“</span><span class="schritt">4 · Weiterführen</span></li>
+    <li><span class="wer">Kunde</span><span class="rede">„Ja, das passt. Ich frage ihn.“</span><span class="schritt"></span></li>
+  </ol>
+  <p class="klein" style="margin-top:2mm">Was hier gut lief: kein Rabatt, keine Verteidigung. Der eigentliche Grund (der Geschäftsführer braucht eine Begründung) kam erst durch die Rückfragen ans Licht. Die Antwort zielte genau darauf, und das Gespräch endete mit Termin und Teilnehmer.</p>
+
+  <p class="abschnitt-titel">Einwand, Vorwand oder Bedingung?</p>
+  <ul class="arten">
+    <li><h3>Einwand</h3><span>Ein echter Vorbehalt. Wird er gelöst, geht es weiter.</span><span class="leise">Schritte 1 bis 4 wie oben. Die Antwort zielt auf den Grund, nicht auf den Satz.</span></li>
+    <li><h3>Vorwand</h3><span>Ein vorgeschobener Grund. Der eigentliche liegt dahinter und ist oft unangenehm auszusprechen.</span><span class="leise">Nachfragen, bis der echte Grund kommt. Den Vorwand nicht widerlegen, sonst kommt der nächste.</span></li>
+    <li><h3>Bedingung</h3><span>Eine feste Grenze, etwa ein gesperrtes Budget oder eine Vorgabe der Muttergesellschaft.</span><span class="leise">Nicht wegreden. Eine Lösung innerhalb der Grenze suchen oder fair beenden und eine Wiedervorlage vereinbaren.</span></li>
+  </ul>
+  <p class="hinweis"><b>Der Prüfsatz:</b> „Angenommen, wir finden für <span class="lz">den Punkt</span> eine gute Lösung: Wären Sie dann bereit, <span class="lz">den nächsten Schritt</span> zu gehen?“ Ein Ja zeigt einen echten Einwand. Kommt stattdessen ein neuer Grund, war der erste ein Vorwand.</p>
+</section>
+
+<!-- 4–9 · Die zwölf Einwände (werden aus den Daten unten erzeugt) -->
+<div id="einwand-seiten"></div>
+
+<!-- 10 · Telefon und Mail -->
+<section class="seite">
+  <p class="vorzeile">Telefon und Mail</p>
+  <h2 class="blatt">Derselbe Einwand, zwei Wege</h2>
+  <p class="unter">Am Telefon haben Sie Stimme und Rückfragen, per Mail fehlt beides. Darum gilt: am Telefon klären, per Mail das Gespräch vereinbaren, nie im langen Mailverlauf diskutieren.</p>
+
+  <div class="zwei" style="margin-top:1mm">
+    <div>
+      <p class="abschnitt-titel">Am Telefon</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Zwei Sekunden Pause, dann ruhiger und etwas langsamer sprechen.</span></li>
+        <li><span class="nr">·</span><span>Den Namen Ihres Gegenübers nennen.</span></li>
+        <li><span class="nr">·</span><span>Fragen statt behaupten. Eine Frage zur Zeit, dann zuhören.</span></li>
+        <li><span class="nr">·</span><span>Den Einwand wörtlich mitschreiben, für Ihre Bibliothek.</span></li>
+        <li><span class="nr">·</span><span>Nie ohne nächsten Schritt auflegen.</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Per Mail</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Innerhalb eines Werktags antworten, kurz und freundlich.</span></li>
+        <li><span class="nr">·</span><span>Aufbau: danken, Verständnis in einem Satz, eine Rückfrage oder ein Gedanke, ein Terminvorschlag.</span></li>
+        <li><span class="nr">·</span><span>Höchstens 120 Wörter. Wer mehr schreibt, verteidigt sich.</span></li>
+        <li><span class="nr">·</span><span>Zwei konkrete Zeiten anbieten, nicht „Wann passt es Ihnen?“.</span></li>
+        <li><span class="nr">·</span><span>Kein Druck, keine künstliche Frist.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel akzent">Ausgeschrieben · frei erfunden <small>Antwort auf „Wir haben uns für einen günstigeren Anbieter entschieden.“</small></p>
+  <div class="vorlage">
+    <p class="art">E-Mail</p>
+    <p class="betreff">Betreff: Ihre Entscheidung zur Archivierung</p>
+    <p>Guten Tag <span class="lz">Frau Name</span>,</p>
+    <p>danke, dass Sie mir Ihre Entscheidung so schnell mitteilen. Das ist nicht selbstverständlich.</p>
+    <p>Eine Frage hätte ich noch, auch für uns zum Lernen: War es am Ende vor allem der Preis, oder hat beim anderen Angebot auch etwas anderes besser gepasst?</p>
+    <p>Falls beim Start noch etwas offen ist, etwa bei den <span class="lz">Altakten aus dem Keller</span>, melden Sie sich gern. Ich frage in drei Monaten einmal kurz nach, wie es läuft, wenn Ihnen das recht ist.</p>
+    <p>Viele Grüße<br><span class="lz">Name</span></p>
+  </div>
+  <p class="klein" style="margin-top:1.6mm">Warum so: Die Entscheidung wird nicht angegriffen, der Grund wird erfragt (wertvoll für Ihre Bibliothek), und die Tür bleibt mit einem konkreten Anlass offen.</p>
+
+  <p class="abschnitt-titel">Einwände vorwegnehmen</p>
+  <p class="text" style="margin-top:1.6mm">Die drei Einwände, die Sie bei einem Angebot am häufigsten hören, beantworten Sie, bevor sie kommen: im Gespräch („Viele fragen an dieser Stelle nach dem Aufwand für Ihr Team. Der liegt bei …“) und im Angebot als kurzer Abschnitt „Häufige Fragen“. Ein vorweggenommener Einwand wirkt wie Erfahrung, ein später beantworteter wie Verteidigung.</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col style="width:62mm"><col></colgroup>
+    <thead><tr><th></th><th>Unsere drei häufigsten Einwände</th><th>So nehmen wir sie vorweg <small>Satz im Gespräch und Zeile im Angebot</small></th></tr></thead>
+    <tbody><tr><td class="leise">1</td><td></td><td></td></tr><tr><td class="leise">2</td><td></td><td></td></tr><tr><td class="leise">3</td><td></td><td></td></tr></tbody>
+  </table>
+</section>
+
+<!-- 11 · Eigene Bibliothek aufbauen -->
+<section class="seite">
+  <p class="vorzeile">Eigene Bibliothek · Ablauf im Team</p>
+  <h2 class="blatt">In fünf Wochen zur eigenen Bibliothek</h2>
+  <p class="unter">Die zwölf Einwände in diesem Heft sind ein Start. Die wertvollste Bibliothek ist die mit den Sätzen, die Ihre Kunden wirklich sagen, und den Antworten, die bei Ihnen wirklich funktionieren.</p>
+
+  <ol class="schritte5" style="margin-top:2.4mm">
+    <li><span class="nr">1</span><h3>Sammeln</h3><span>Alle im Vertrieb schreiben jeden Einwand wörtlich in den Sammelbogen (Seite 12) oder ins Blatt „Gesprächslog“ der Tabelle: Datum, Phase, Satz, was dahintersteckte, wie es ausging.</span><span class="wann">Woche 1 und 2</span></li>
+    <li><span class="nr">2</span><h3>Sortieren</h3><span>Ein Termin, 60 Minuten. Einwände nach Kategorie gruppieren, zählen, die zehn häufigsten auswählen. Doppelte zusammenfassen, Wortlaut der Kunden behalten.</span><span class="wann">Woche 3</span></li>
+    <li><span class="nr">3</span><h3>Formulieren</h3><span>Je Einwand eine Karte (Seite 14): was dahinterstecken kann, zwei Rückfragen, zwei bis drei Antworten. Nehmen Sie die besten Sätze, die im Team schon funktioniert haben.</span><span class="wann">Woche 3 und 4</span></li>
+    <li><span class="nr">4</span><h3>Üben und testen</h3><span>Jede Karte einmal im Rollenspiel (Seite 15), dann im echten Gespräch einsetzen. Ergebnis im Gesprächslog festhalten, auch wenn es nicht geklappt hat.</span><span class="wann">ab Woche 4</span></li>
+    <li><span class="nr">5</span><h3>Pflegen</h3><span>Eine Person ist fest für die Bibliothek zuständig. Sie trägt Neues ein, setzt den Status und räumt auf. Alle anderen liefern zu.</span><span class="wann">laufend</span></li>
+  </ol>
+
+  <p class="abschnitt-titel">Rhythmus danach</p>
+  <div class="rhythmus">
+    <div><b>Jede Woche · 10 Minuten</b><h3>Einwand der Woche</h3><p>In der Wochenrunde: Welcher neue Einwand kam? Wer hatte eine gute Antwort? Eintragen, Status „im Test“.</p></div>
+    <div><b>Jeden Monat · 30 Minuten</b><h3>Beste Antwort</h3><p>Zwei Karten im Rollenspiel üben. Die Antwort mit dem besten Ergebnis im Gesprächslog wird zur ersten Variante.</p></div>
+    <div><b>Jedes Quartal · 60 Minuten</b><h3>Aufräumen</h3><p>Karten ohne Einsatz prüfen, Überholtes auf „überholt“ setzen, neue Kategorien aufnehmen, Ausdrucke erneuern.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Regeln für die Bibliothek</p>
+  <ul class="regeln">
+    <li><span class="nr">·</span><span><b>Wörtlich, nicht geschönt.</b> „Das ist mir zu teuer“ und „Das passt nicht in unser Budget“ sind zwei verschiedene Einwände.</span></li>
+    <li><span class="nr">·</span><span><b>Keine Kundennamen.</b> In die Bibliothek gehören Branche und Größe, keine Personen und Firmen. Sie wird oft geteilt und ausgedruckt.</span></li>
+    <li><span class="nr">·</span><span><b>„Bewährt“ erst nach Einsatz.</b> Legen Sie im Team fest, ab wann eine Antwort als bewährt gilt, zum Beispiel nach drei Gesprächen, die damit weitergingen.</span></li>
+    <li><span class="nr">·</span><span><b>Ein Ort.</b> Die Bibliothek liegt an einer Stelle, die alle kennen: die Tabelle, Ihr CRM oder ein gemeinsamer Ordner. Ausdrucke sind Kopien.</span></li>
+  </ul>
+  <p class="hinweis"><b>Wer pflegt?</b> <span class="feld" style="display:inline-flex;width:70mm;vertical-align:-1.4mm"><span class="strich"></span></span> &nbsp; <b>Wochenrunde am</b> <span class="feld" style="display:inline-flex;width:40mm;vertical-align:-1.4mm"><span class="strich"></span></span></p>
+</section>
+
+<!-- 12 · Sammelbogen -->
+<section class="seite">
+  <p class="vorzeile">Eigene Bibliothek · Schritt 1</p>
+  <h2 class="blatt">Sammelbogen für Einwände</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Direkt nach jedem Gespräch eine Zeile. Den Einwand so wörtlich wie möglich, ohne Kundennamen. Kanal: T Telefon, M Mail, V vor Ort oder Video. Phase: E Erstkontakt, B Bedarfsgespräch, A Angebot, V Verhandlung. Ergebnis: weiter, Termin, offen oder verloren.</p>
+  <div class="reihe"><p class="feld breit"><span>Name</span><span class="strich"></span></p><p class="feld"><span>Zeitraum</span><span class="strich"></span></p></div>
+  <table class="raster">
+    <colgroup><col style="width:13mm"><col style="width:10mm"><col style="width:10mm"><col style="width:46mm"><col><col style="width:30mm"><col style="width:16mm"></colgroup>
+    <thead><tr><th>Datum</th><th class="mitte">Kanal</th><th class="mitte">Phase</th><th>Einwand wörtlich</th><th>Was steckte dahinter?<small>Ihre Vermutung nach den Rückfragen</small></th><th>Meine Antwort<small>Stichwort</small></th><th>Ergebnis</th></tr></thead>
+    <tbody id="sammel"></tbody>
+  </table>
+  <p class="abschnitt-titel">Was mir aufgefallen ist <small>Welcher Einwand kam am häufigsten? Welche Antwort hat am besten funktioniert?</small></p>
+  <div class="linien eng" data-linien="2"></div>
+</section>
+
+<!-- 13 · Ausgefülltes Beispiel -->
+<section class="seite">
+  <p class="vorzeile bsp">Beispiel · frei erfunden</p>
+  <h2 class="blatt">Ein IT-Dienstleister für Arztpraxen baut seine Bibliothek</h2>
+  <p class="unter">Drei Personen im Vertrieb haben zwei Wochen lang gesammelt. Ein Einwand kam immer wieder, den es in keinem Lehrbuch gibt: „Bei uns kümmert sich der Neffe um die IT.“ So sieht ein Ausschnitt des Sammelbogens aus, und so die fertige Karte.</p>
+
+  <p class="abschnitt-titel akzent">Ausschnitt aus dem Sammelbogen</p>
+  <table class="raster bsp">
+    <colgroup><col style="width:13mm"><col style="width:10mm"><col style="width:10mm"><col style="width:46mm"><col><col style="width:30mm"><col style="width:16mm"></colgroup>
+    <thead><tr><th>Datum</th><th class="mitte">Kanal</th><th class="mitte">Phase</th><th>Einwand wörtlich</th><th>Was steckte dahinter?</th><th>Meine Antwort</th><th>Ergebnis</th></tr></thead>
+    <tbody>
+      <tr><td class="leise">06.10.</td><td class="mitte">T</td><td class="mitte">E</td><td>„Das macht bei uns der Neffe der Chefin.“</td><td>Vertrauen in die Familie, keine Lust auf Streit</td><td>Nur Datensicherung anbieten</td><td>Termin</td></tr>
+      <tr><td class="leise">08.10.</td><td class="mitte">V</td><td class="mitte">B</td><td>„Unser Sohn macht das nebenbei, der studiert Informatik.“</td><td>Kosten, aber auch Sorge, ob er es schafft</td><td>Gefragt, was bei Ausfall passiert</td><td>weiter</td></tr>
+      <tr><td class="leise">13.10.</td><td class="mitte">T</td><td class="mitte">E</td><td>„Wir haben einen Bekannten, der das macht.“</td><td>Sparen, Problem nicht bewusst</td><td>Sofort Preis genannt</td><td>verloren</td></tr>
+      <tr><td class="leise">15.10.</td><td class="mitte">M</td><td class="mitte">A</td><td>„Der Neffe meint, das kann er auch.“</td><td>Er fühlt sich übergangen</td><td>Ihn zum Termin eingeladen</td><td>Termin</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel akzent">Die fertige Karte <small>Kategorie: Eigenleistung · 7-mal gehört in zwei Wochen</small></p>
+  <div class="gefuellt">
+    <div class="eintrag"><span>Einwand wörtlich</span><p>„Bei uns kümmert sich der Neffe um die IT.“</p></div>
+    <div class="eintrag"><span>Was dahinterstecken kann</span><p>Familie geht vor, niemand will ihn kränken. · Die Kosten scheinen gering, weil er wenig berechnet. · Unsicherheit, ob bei einem Ausfall jemand erreichbar ist.</p></div>
+    <div class="eintrag"><span>Rückfragen</span><p>„Was macht er bei Ihnen alles?“ · „Was passiert, wenn an einem Montagmorgen die Praxissoftware nicht startet und er in der Vorlesung sitzt?“</p></div>
+    <div class="eintrag"><span>Antwort am Telefon</span><p>„Gut, dass Sie jemanden haben, dem Sie vertrauen. Wir müssen ihn nicht ersetzen. Viele Praxen lassen bei uns nur die Datensicherung und die Notfall-Hotline laufen, alles andere bleibt bei der Familie.“</p></div>
+    <div class="eintrag"><span>Antwort per Mail</span><p>„Danke für das offene Gespräch. Wenn Sie mögen, laden Sie Ihren Neffen gern zu unserem Termin ein. Wir zeigen ihm, was wir übernehmen könnten und was bei ihm bleibt.“</p></div>
+    <div class="eintrag"><span>Weiterführen</span><p>Termin zu dritt mit dem Neffen anbieten, Einstieg nur mit Datensicherung.</p></div>
+    <div class="eintrag"><span>Vermeiden</span><p>Den Neffen schlechtmachen oder sofort einen Preis nennen (am 13.10. so verloren).</p></div>
+    <div class="eintrag"><span>Status</span><p>bewährt: in vier Wochen sechsmal eingesetzt, viermal Termin. Geprüft am 30.10., nächste Prüfung in drei Monaten.</p></div>
+  </div>
+  <p class="abschnitt-titel akzent">Was das Team daraus gelernt hat</p>
+  <ul class="regeln">
+    <li><span class="nr">1</span><span><b>Der Einwand ist kein Preisthema.</b> Wer sofort einen Preis nannte, hat verloren. Es geht um Vertrauen in die Familie und um die Sorge vor einem Ausfall.</span></li>
+    <li><span class="nr">2</span><span><b>Ergänzen schlägt ersetzen.</b> Seit das Team nur Datensicherung und Notfall-Hotline anbietet, endet das Gespräch fast immer mit einem Termin.</span></li>
+    <li><span class="nr">3</span><span><b>Den Neffen einladen.</b> Wer übergangen wird, blockiert. Wer am Tisch sitzt, wird oft zum Fürsprecher.</span></li>
+  </ul>
+  <p class="klein" style="margin-top:2mm">Dienstleister, Praxen, Sätze und Zahlen sind frei erfunden.</p>
+</section>
+
+<!-- 14 · Leere Karten -->
+<section class="seite">
+  <p class="vorzeile">Eigene Bibliothek · Schritt 3</p>
+  <h2 class="blatt">Ihre Einwand-Karten</h2>
+  <p class="so"><b>So füllen Sie sie aus</b>Eine Karte je Einwand, zwei auf jeder Seite. Kopieren Sie die Seite für weitere Karten oder tragen Sie alles direkt ins Blatt „Bibliothek“ der Tabelle ein. Schreiben Sie die Antworten so, wie Sie sprechen.</p>
+  <div id="leere-karten"></div>
+</section>
+
+<!-- 15 · Rollenspiel -->
+<section class="seite">
+  <p class="vorzeile">Üben</p>
+  <h2 class="blatt">Rollenspiel: 30 Minuten zu dritt</h2>
+  <p class="unter">Antworten sitzen erst, wenn man sie ein paarmal laut gesagt hat. Üben Sie in kleinen Runden, regelmäßig und mit klaren Rollen. Die Karten zum Ausschneiden finden Sie auf der nächsten Seite.</p>
+
+  <div class="rollen">
+    <div><h3>Vertrieb</h3><p>Führt das Gespräch mit den vier Schritten. Ziel ist ein nächster Schritt, nicht der Sieg über den Einwand.</p></div>
+    <div><h3>Kunde</h3><p>Zieht eine Karte, liest den verdeckten Teil still und spielt realistisch: nicht unmöglich, aber auch nicht zu leicht. Gibt nach, wenn der Vertrieb den echten Grund trifft.</p></div>
+    <div><h3>Beobachtung</h3><p>Füllt den Bogen unten aus, schreibt den besten Satz wörtlich mit und sagt danach eine Sache, die gut war, und eine, die besser geht.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Ablauf <small>drei Runden, danach tauschen alle die Rolle</small></p>
+  <ol class="regeln">
+    <li><span class="nr">1</span><span><b>Lage setzen, 1 Minute.</b> Der Kunde liest die Lage der Karte laut vor, den verdeckten Teil nicht.</span></li>
+    <li><span class="nr">2</span><span><b>Gespräch, 4 Minuten.</b> Der Kunde beginnt mit dem Einwand auf der Karte. Die Beobachtung achtet auf die Zeit.</span></li>
+    <li><span class="nr">3</span><span><b>Rückmeldung, 4 Minuten.</b> Erst der Vertrieb selbst, dann der Kunde (Was hat bei mir gewirkt?), dann die Beobachtung.</span></li>
+    <li><span class="nr">4</span><span><b>Mitnehmen, 1 Minute.</b> Der beste Satz der Runde kommt auf die passende Karte in der Bibliothek.</span></li>
+  </ol>
+
+  <p class="abschnitt-titel">Beobachtungsbogen</p>
+  <div class="reihe"><p class="feld"><span>Runde</span><span class="strich"></span></p><p class="feld"><span>Vertrieb</span><span class="strich"></span></p><p class="feld breit"><span>Karte und Einwand</span><span class="strich"></span></p></div>
+  <table class="raster">
+    <colgroup><col style="width:52mm"><col style="width:12mm"><col style="width:12mm"><col style="width:12mm"><col></colgroup>
+    <thead><tr><th>Woran Sie es erkennen</th><th class="mitte">ja</th><th class="mitte">teils</th><th class="mitte">nein</th><th>Beobachtung</th></tr></thead>
+    <tbody id="beobachtung"></tbody>
+  </table>
+  <div class="zwei">
+    <div><p class="abschnitt-titel">Bester Satz <small>wörtlich</small></p><div class="linien eng" data-linien="2"></div></div>
+    <div><p class="abschnitt-titel">Eine Sache, die besser geht</p><div class="linien eng" data-linien="2"></div></div>
+  </div>
+</section>
+
+<!-- 16 · Rollenspiel-Karten -->
+<section class="seite">
+  <p class="vorzeile">Üben · zum Ausschneiden</p>
+  <h2 class="blatt">Zwölf Karten für das Rollenspiel</h2>
+  <p class="klein" style="margin-top:1.4mm">Ausschneiden, mischen, verdeckt ziehen. Der untere Teil ist nur für die Person, die den Kunden spielt. Eigene Karten schreiben Sie mit Einwänden aus Ihrem Sammelbogen, gleicher Aufbau.</p>
+  <div class="karten" id="rollenkarten"></div>
+  <p class="schere">✂ an den gestrichelten Linien schneiden</p>
+</section>
+
+<!-- 17 · Fehler und Prüfliste -->
+<section class="seite">
+  <p class="vorzeile">Fehler vermeiden</p>
+  <h2 class="blatt">Acht typische Fehler</h2>
+  <ul class="fehler" style="margin-top:1.6mm">
+    <li class="kopfzeile"><span></span><span>Fehler</span><span>Stattdessen</span></li>
+    <li><span class="nr">1</span><span><b>Sofort antworten.</b> Die Antwort passt zum Satz, aber nicht zum Grund dahinter.</span><span class="besser">Erst eine Rückfrage. Die Antwort kommt im dritten Schritt.</span></li>
+    <li><span class="nr">2</span><span><b>Rabatt als erste Reaktion.</b> Signalisiert: Der Preis war verhandelbar, und es geht noch mehr.</span><span class="besser">Den Wert klären. Nachlass nur gegen Gegenleistung, etwa weniger Umfang oder längere Laufzeit.</span></li>
+    <li><span class="nr">3</span><span><b>Recht haben wollen.</b> Wer den Einwand widerlegt, beschämt sein Gegenüber.</span><span class="besser">Fragen stellen, die Ihr Gegenüber selbst auf die Lösung bringen.</span></li>
+    <li><span class="nr">4</span><span><b>Den Wettbewerb schlechtmachen.</b> Das wirft ein schlechtes Licht auf Sie und auf die frühere Wahl Ihres Kunden.</span><span class="besser">Unterschiede sachlich zeigen: Was ist enthalten, wer kümmert sich, wie läuft es ab.</span></li>
+    <li><span class="nr">5</span><span><b>Zu viele Argumente auf einmal.</b> Fünf Gründe wirken schwächer als einer, der genau passt.</span><span class="besser">Ein Argument, das auf den genannten Grund zielt. Dann fragen, ob es geklärt ist.</span></li>
+    <li><span class="nr">6</span><span><b>Ohne nächsten Schritt enden.</b> „Melden Sie sich gern“ heißt meist: Es meldet sich niemand.</span><span class="besser">Termin mit Datum und Uhrzeit, und wer was bis dahin tut.</span></li>
+    <li><span class="nr">7</span><span><b>Den Vorwand bekämpfen.</b> Ist er widerlegt, kommt der nächste.</span><span class="besser">Den Prüfsatz von Seite 3 nutzen und nach dem echten Grund fragen.</span></li>
+    <li><span class="nr">8</span><span><b>Ein Nein nicht akzeptieren.</b> Drängen kostet Ruf und manchmal eine spätere Chance.</span><span class="besser">Freundlich beenden, nach dem Grund fragen, Wiedervorlage nur mit Einverständnis.</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Wenn es doch um Nachlass geht <small>nur gegen Gegenleistung</small></p>
+  <p class="text" style="margin-top:1.6mm">Legen Sie vor dem Gespräch fest, was Sie geben können und was Sie dafür verlangen.</p>
+  <table class="raster">
+    <colgroup><col style="width:58mm"><col><col style="width:30mm"></colgroup>
+    <thead><tr><th>Gegenleistung</th><th>So fragen Sie danach</th><th>Mein Rahmen</th></tr></thead>
+    <tbody>
+      <tr><td style="color:var(--tinte)">Längere Laufzeit oder mehr Menge</td><td>„Wenn wir auf <span class="lz">24 Monate</span> gehen, kann ich beim Preis entgegenkommen.“</td><td></td></tr>
+      <tr><td style="color:var(--tinte)">Kleinerer Umfang</td><td>„Ohne <span class="lz">Teil</span> liegen wir bei <span class="lz">Betrag</span>. Den Teil können Sie später ergänzen.“</td><td></td></tr>
+      <tr><td style="color:var(--tinte)">Zahlung früher oder vorab</td><td>„Bei Zahlung vorab ist ein Nachlass von <span class="lz">Prozent</span> möglich.“</td><td></td></tr>
+      <tr><td style="color:var(--tinte)">Entscheidung bis zu einem Datum</td><td>„Wenn wir bis <span class="lz">Datum</span> starten, passt das gut in unsere Planung, dann geht <span class="lz">Betrag</span>.“</td><td></td></tr>
+      <tr><td style="color:var(--tinte)">Kundenstimme oder Empfehlung</td><td>„Wären Sie bereit, nach dem Projekt eine kurze Kundenstimme zu geben?“</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Ihre Bibliothek steht, wenn …</p>
+      <ul class="liste">
+        <li><span class="kreuz"></span><span>die zehn häufigsten Einwände als Karten da sind</span></li>
+        <li><span class="kreuz"></span><span>jede Karte mindestens zwei Rückfragen hat</span></li>
+        <li><span class="kreuz"></span><span>es Sätze für Telefon und für Mail gibt</span></li>
+        <li><span class="kreuz"></span><span>eine Person sie pflegt, mit Namen</span></li>
+        <li><span class="kreuz"></span><span>die Wochenrunde einen Einwand der Woche hat</span></li>
+        <li><span class="kreuz"></span><span>jede neue Person sie in der ersten Woche lernt</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Vor jedem wichtigen Gespräch</p>
+      <ul class="liste">
+        <li><span class="kreuz"></span><span>Welche zwei Einwände sind hier wahrscheinlich?</span></li>
+        <li><span class="kreuz"></span><span>Welche Rückfrage stelle ich dann zuerst?</span></li>
+        <li><span class="kreuz"></span><span>Habe ich eine Rechnung oder ein Beispiel dabei?</span></li>
+        <li><span class="kreuz"></span><span>Welchen Einwand nehme ich selbst vorweg?</span></li>
+        <li><span class="kreuz"></span><span>Welchen nächsten Schritt schlage ich vor?</span></li>
+        <li><span class="kreuz"></span><span>Was ist mein Rahmen, falls es um Nachlass geht?</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 18 · Nächste Schritte -->
+<section class="seite">
+  <p class="vorzeile">Zum Schluss</p>
+  <h2 class="blatt">Nächste Schritte</h2>
+  <p class="text" style="margin-top:2mm; max-width:160mm">Ein Heft ändert noch kein Gespräch. Legen Sie jetzt fest, wann Sie mit dem Sammeln beginnen und wann der erste Termin im Team stattfindet, und tragen Sie beides in den Kalender ein.</p>
+
+  <p class="abschnitt-titel">Meine drei nächsten Schritte</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:34mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th></th><th>Was</th><th>Wer</th><th>Bis wann</th></tr></thead>
+    <tbody>
+      <tr><td class="leise">1</td><td class="leise">Sammelbogen an alle im Vertrieb geben, zwei Wochen sammeln</td><td></td><td></td></tr>
+      <tr><td class="leise">2</td><td class="leise">Termin für das Sortieren, 60 Minuten</td><td></td><td></td></tr>
+      <tr><td class="leise">3</td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Weiter mit Fokus Innovation</p>
+  <ol class="wege">
+    <li><span class="nr">1</span><div><h3>Ein Erstgespräch vereinbaren</h3><p class="adresse"><a href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></p><p>Kostenlos, 30 Minuten per Video. Wir schauen auf Ihre häufigsten Einwände und darauf, wo im Vertrieb Gespräche verloren gehen.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Den Vertriebs-Check machen</h3><p class="adresse"><a href="https://fokusinnovation.de/check?thema=vertrieb">fokusinnovation.de/check?thema=vertrieb</a></p><p>Zwölf Fragen zu Organisation, Zahlen und Neukunden, rund fünf Minuten. Sie sehen sofort, wo Ihr Vertrieb steht.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Head of Sales auf Zeit</h3><p class="adresse"><a href="https://fokusinnovation.de/vertrieb/head-of-sales/">fokusinnovation.de/vertrieb/head-of-sales/</a></p><p>Wenn Sie jemanden suchen, der Bibliothek, Leitfäden und Training mit Ihrem Team aufbaut und den Vertrieb eine Zeit lang führt.</p></div></li>
+  </ol>
+
+  <p class="abschnitt-titel">Passt dazu</p>
+  <p class="text" style="margin-top:1.8mm"><b class="stark">Die Tabelle zum Paket</b>: Blatt „Bibliothek“ mit allen zwölf Einwänden vorausgefüllt, Blatt „Gesprächslog“ zum Sammeln und eine Auswertung, die Häufigkeit und Erfolg je Kategorie selbst rechnet.</p>
+  <p class="text"><b class="stark">Skriptset mit BANT</b>: Leitfäden für Erstkontakt und Bedarfsgespräch, mit Qualifizierungs-Bogen. <b class="stark">Nachfassen: 25 Vorlagen</b> für Mails und Nachrichten nach Gespräch, Angebot und Veranstaltung.</p>
+  <p class="hinweis unten">Alle Beispiele, Gespräche und Zahlen in diesem Paket sind frei erfunden. Stand: Oktober 2026.</p>
+</section>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const linie = '<div class="zeile-frei"></div>';
+  const lz = (t) => String(t).replace(/\[([^\]]+)\]/g, '<span class="lz">$1</span>');
+
+  // DATEN-ANFANG
+  const EINWAENDE = [
+    { kat: 'Preis', satz: '„Das ist uns zu teuer.“',
+      dahinter: ['Der Nutzen ist noch nicht in Geld übersetzt.', 'Ein Vergleichspreis, oft für weniger Leistung.', 'Eine Probe: Geht beim Preis noch etwas?'],
+      fragen: ['„Zu teuer im Vergleich wozu?“', '„Wenn Sie den Preis kurz beiseitelassen: Passt die Lösung sonst?“', '„Mit welchem Betrag hatten Sie gerechnet, und wie kam er zustande?“'],
+      antworten: [
+        ['Wenn der Nutzen unklar ist', '„Lassen Sie uns kurz rechnen. Sie sagten, Ihr Team verliert jede Woche rund [Stunden] mit [Aufgabe]. Was kostet Sie das im Jahr? Dann sehen wir, ob sich der Betrag trägt.“'],
+        ['Wenn ein Vergleichsangebot da ist', '„Gut, dass Sie vergleichen. Darf ich mit Ihnen durchgehen, was in beiden Angeboten enthalten ist? Oft liegt der Unterschied bei [Leistung] und [Betreuung].“'],
+        ['Wenn der Rahmen fest ist', '„Dann schauen wir, was Sie innerhalb Ihres Rahmens erreichen. Wir können mit [Teil] beginnen und [Rest] später ergänzen. Der Preis sinkt, weil der Umfang sinkt.“']],
+      telefon: '„Verstehe. Damit ich Ihnen gut antworten kann: Zu teuer gemessen woran?“',
+      mail: '„Danke für Ihre offene Rückmeldung zum Preis. Ich würde gern verstehen, woran Sie ihn messen. Haben Sie am [Tag] um [Uhrzeit] 15 Minuten, damit wir Umfang und Rahmen gemeinsam ansehen?“',
+      weiter: 'Kurztermin zu Umfang und Nutzen, oder eine kleinere Variante anbieten. Nachlass nie ohne Gegenleistung.',
+      vermeiden: 'Sofort Rabatt anbieten. Das sagt: Der Preis war nicht ernst gemeint.' },
+    { kat: 'Budget', satz: '„Dafür haben wir kein Budget.“',
+      dahinter: ['Der Haushalt ist wirklich verplant.', 'Das Thema fehlt bisher in der Planung.', 'Ein höflicher Ausstieg: Der Bedarf ist zu klein.'],
+      fragen: ['„Wann planen Sie das Budget für das nächste Jahr?“', '„Aus welchem Topf wird so etwas bei Ihnen üblicherweise bezahlt?“', '„Wenn es ein Budget gäbe: Wäre das Thema dann dringend?“'],
+      antworten: [
+        ['Wenn die Planung bevorsteht', '„Dann ist jetzt ein guter Zeitpunkt, die Zahlen vorzubereiten. Ich stelle Ihnen gern zusammen, was Sie dafür brauchen: Umfang, Kosten und erwarteten Nutzen.“'],
+        ['Wenn es keinen Topf gibt', '„Oft trägt sich so ein Vorhaben aus dem, was es einspart. Wenn wir das konkret rechnen, haben Sie ein Argument für die Freigabe.“'],
+        ['Wenn der Bedarf zu klein ist', '„Danke für die klare Antwort. Wenn das Thema gerade nicht drückt, ist es richtig, das Geld woanders einzusetzen. Darf ich mich melden, wenn [Anlass]?“']],
+      telefon: '„Das verstehe ich. Wann wird bei Ihnen das Budget für das nächste Jahr geplant?“',
+      mail: '„Danke, dass Sie das offen sagen. Damit Sie das Thema in Ihre nächste Planung aufnehmen können, schicke ich Ihnen gern eine kurze Übersicht mit Umfang und Kosten. Wann steht die Planung an?“',
+      weiter: 'Wiedervorlage vor der Budgetplanung, Unterlage für die Freigabe anbieten.',
+      vermeiden: 'Drängen, Geld umzuschichten, das nicht da ist. Das kostet Vertrauen.' },
+    { kat: 'Zeitpunkt', satz: '„Jetzt ist kein guter Zeitpunkt.“',
+      dahinter: ['Gerade läuft ein anderes Projekt oder die Hochsaison.', 'Das Thema ist nicht dringend genug.', 'Es fehlt noch die Zustimmung einer anderen Person.'],
+      fragen: ['„Was müsste passiert sein, damit der Zeitpunkt passt?“', '„Was kostet es Sie, wenn das Thema noch ein halbes Jahr liegen bleibt?“', '„Was steht gerade oben auf Ihrer Liste?“'],
+      antworten: [
+        ['Wenn es wirklich voll ist', '„Dann melde ich mich bewusst nicht vorher. Ist der [Datum] ein guter Zeitpunkt? Ich trage es mir ein und schicke vorab eine kurze Erinnerung.“'],
+        ['Wenn es nicht dringend ist', '„Verständlich. Viele schieben das Thema, bis [Ereignis] passiert. Wie wahrscheinlich ist das bei Ihnen in den nächsten Monaten?“'],
+        ['Wenn Vorbereitung hilft', '„Wir müssen nicht jetzt starten. Wir können jetzt klären, was es braucht, damit Sie im [Monat] ohne Verzug loslegen.“']],
+      telefon: '„Verstehe. Wann wäre ein besserer Zeitpunkt, damit ich mich gezielt melde?“',
+      mail: '„Danke für die Rückmeldung. Ich trage mir den [Datum] ein und melde mich dann mit einem kurzen Vorschlag. Falls sich vorher etwas ändert, erreichen Sie mich direkt unter [Telefon].“',
+      weiter: 'Ein festes Datum vereinbaren, nicht „irgendwann“. Wiedervorlage mit Anlass in den Kalender.',
+      vermeiden: '„Ich melde mich mal wieder“ ohne Datum. Und künstlicher Zeitdruck, den Ihr Gegenüber sofort durchschaut.' },
+    { kat: 'Unterlagen', satz: '„Schicken Sie mir mal Unterlagen.“',
+      dahinter: ['Ein freundlicher Ausstieg aus dem Gespräch.', 'Echtes Interesse, aber gerade keine Zeit.', 'Die Person braucht etwas, um es intern weiterzugeben.'],
+      fragen: ['„Gern. Damit ich das Richtige schicke: Was interessiert Sie am meisten?“', '„Wer liest die Unterlagen außer Ihnen?“', '„Was müsste darin stehen, damit Sie sagen: Darüber sprechen wir weiter?“'],
+      antworten: [
+        ['Wenn das Interesse echt ist', '„Mache ich gern. Ich schicke Ihnen heute zwei Seiten zu [Thema]. Lassen Sie uns gleich zehn Minuten am [Tag] festhalten, um Ihre Fragen dazu zu klären.“'],
+        ['Wenn es nach Ausstieg klingt', '„Mache ich. Allgemeine Unterlagen helfen Ihnen aber wenig. Darf ich zwei kurze Fragen stellen, damit ich nur schicke, was zu Ihnen passt?“'],
+        ['Wenn es intern weitergeht', '„Dann bereite ich es so vor, dass Sie es direkt weitergeben können: eine Seite mit Ausgangslage, Vorschlag und Kosten. Wer entscheidet mit?“']],
+      telefon: '„Mache ich gern. Damit es kein Prospekt für alle wird: Was ist für Sie dabei gerade das wichtigste Thema?“',
+      mail: '„Wie besprochen anbei die Übersicht zu [Thema], auf Ihre Frage zu [Frage] zugeschnitten. Passt es Ihnen, wenn wir am [Tag] um [Uhrzeit] zehn Minuten darüber sprechen?“',
+      weiter: 'Unterlagen nur mit vereinbartem Folgetermin schicken, zugeschnitten statt allgemein.',
+      vermeiden: 'Den ganzen Prospekt schicken und dann auf eine Antwort warten, die nicht kommt.' },
+    { kat: 'Bestandsanbieter', satz: '„Wir arbeiten schon mit jemandem zusammen.“',
+      dahinter: ['Zufrieden, kein Anlass zum Wechsel.', 'Eigentlich unzufrieden, aber ein Wechsel scheint aufwendig.', 'Treue zu einer Person beim jetzigen Anbieter.'],
+      fragen: ['„Was schätzen Sie an der Zusammenarbeit besonders?“', '„Wenn Sie einen Punkt verbessern könnten, welcher wäre das?“', '„Wann haben Sie das zuletzt mit anderen Angeboten verglichen?“'],
+      antworten: [
+        ['Wenn er zufrieden ist', '„Das freut mich für Sie, ein guter Partner ist viel wert. Ich will Ihnen nichts ausreden. Darf ich mich als zweite Adresse vorstellen, falls einmal etwas nicht passt?“'],
+        ['Wenn er leise unzufrieden ist', '„Viele bleiben, weil ein Wechsel nach Aufwand klingt. Wenn Sie wollen, zeige ich Ihnen, wie ein Übergang bei uns abläuft und was Sie davon merken würden.“'],
+        ['Ergänzung statt Ersatz', '„Wir müssen niemanden ersetzen. Bei [Teilbereich] unterstützen wir oft neben einem bestehenden Partner. Ist das ein Bereich, der bei Ihnen offen ist?“']],
+      telefon: '„Gut, dann haben Sie das Thema im Griff. Was würden Sie an der heutigen Lösung verbessern, wenn Sie einen Wunsch frei hätten?“',
+      mail: '„Danke für Ihre Offenheit. Wenn Sie einmal eine zweite Meinung zu [Thema] möchten, schauen wir uns das gern unverbindlich an. Ich melde mich in drei Monaten noch einmal, wenn es Ihnen recht ist.“',
+      weiter: 'Einen kleinen Vergleich anbieten (zweite Meinung, Prüfung), sonst Wiedervorlage in drei bis sechs Monaten.',
+      vermeiden: 'Schlecht über den jetzigen Anbieter reden. Damit kritisieren Sie auch die Wahl Ihres Gegenübers.' },
+    { kat: 'Wettbewerb', satz: '„Wir holen noch andere Angebote ein.“',
+      dahinter: ['Eine Pflicht zum Vergleich, etwa durch den Einkauf.', 'Unsicherheit, ob der Preis marktüblich ist.', 'Verhandlungsdruck: Der andere soll günstiger sein.'],
+      fragen: ['„Nach welchen Punkten vergleichen Sie die Angebote?“', '„Was ist Ihnen neben dem Preis am wichtigsten?“', '„Bis wann wollen Sie entscheiden, und wer ist dabei?“'],
+      antworten: [
+        ['Wenn der Vergleich Pflicht ist', '„Sehr gut, dann haben Sie eine sichere Grundlage. Ich schicke Ihnen gern eine Liste der Punkte, auf die Sie bei allen Angeboten achten sollten, auch bei unserem.“'],
+        ['Wenn der andere günstiger ist', '„Das kann gut sein. Damit Sie fair vergleichen: Ist bei beiden [Leistung] enthalten? Und wer kümmert sich, wenn es hakt? Dort entstehen die Unterschiede meist.“'],
+        ['Den Unterschied sichtbar machen', '„Wenn alles gleich wäre, sollten Sie das günstigere Angebot nehmen. Lassen Sie uns kurz prüfen, ob es gleich ist.“']],
+      telefon: '„Das ist vernünftig. Worauf achten Sie beim Vergleich am meisten?“',
+      mail: '„Danke für die Info. Damit Ihr Vergleich einfach wird, habe ich unser Angebot auf einer Seite zusammengefasst: Leistung, Zeitplan, Ansprechpartner, Kosten. Ich rufe Sie am [Tag] kurz an, um offene Fragen zu klären.“',
+      weiter: 'Vergleichspunkte gemeinsam festlegen und einen Termin für die Entscheidung vereinbaren.',
+      vermeiden: 'Den Preis des anderen sofort unterbieten, ohne zu wissen, was in dessen Angebot steht.' },
+    { kat: 'Entscheidung', satz: '„Das muss ich noch mit [Person] besprechen.“',
+      dahinter: ['Es gibt wirklich weitere Personen, die entscheiden.', 'Die Person will Zeit gewinnen.', 'Unsicherheit, wie sie das Thema intern vertreten soll.'],
+      fragen: ['„Wer ist außer Ihnen an der Entscheidung beteiligt?“', '„Was wird Ihre Kollegin wahrscheinlich fragen?“', '„Wie würden Sie entscheiden, wenn es nur nach Ihnen ginge?“'],
+      antworten: [
+        ['Wenn andere mitentscheiden', '„Gut, dann holen wir sie gleich dazu. Wollen wir einen kurzen Termin zu dritt machen? Dann beantworte ich die Fragen direkt.“'],
+        ['Wenn die Person es vertreten muss', '„Was brauchen Sie von mir, damit Sie es intern gut erklären können? Ich bereite Ihnen gern eine Seite mit den wichtigsten Punkten vor.“'],
+        ['Wenn es nach Zeit gewinnen klingt', '„Gern. Wie ist Ihre eigene Einschätzung? Gibt es etwas, das für Sie noch nicht passt?“']],
+      telefon: '„Klar. Wer ist noch beteiligt, und was ist dieser Person am wichtigsten?“',
+      mail: '„Damit Sie das Thema gut mit [Person] besprechen können, habe ich die drei wichtigsten Punkte auf einer Seite zusammengefasst. Gern stelle ich es auch selbst kurz vor. Passt ein Termin zu dritt am [Tag]?“',
+      weiter: 'Termin mit allen Beteiligten oder eine Entscheidungsvorlage für den Weg nach innen.',
+      vermeiden: 'Die Person übergehen und direkt die Geschäftsführung anrufen. Sie verlieren damit Ihren Fürsprecher.' },
+    { kat: 'Bedarf', satz: '„Brauchen wir nicht.“',
+      dahinter: ['Es gibt wirklich keinen Bedarf.', 'Das Problem ist nicht bewusst oder gilt als normal.', 'Ein Reflex am Telefon, bevor zugehört wurde.'],
+      fragen: ['„Wie lösen Sie [Aufgabe] heute?“', '„Was läuft dabei gut, und wo hakt es manchmal?“', '„Woran würden Sie merken, dass es nicht mehr reicht?“'],
+      antworten: [
+        ['Wenn es ein Reflex ist', '„Das kann gut sein, ich habe ja noch gar nicht gesagt, worum es geht. Darf ich es in einem Satz sagen? Dann entscheiden Sie, ob es passt.“'],
+        ['Wenn es wirklich keinen Bedarf gibt', '„Dann ist das so, danke für die klare Antwort. Darf ich fragen, wie Sie [Aufgabe] heute lösen? Das hilft mir zu verstehen, für wen wir passen.“'],
+        ['Wenn das Problem normal wirkt', '„Das hören wir oft. Bei näherem Hinsehen stecken dann [Stunden] im Monat in [Aufgabe]. Wie ist das bei Ihnen?“']],
+      telefon: '„Das kann gut sein. Wie machen Sie das heute?“',
+      mail: '„Danke für Ihre Rückmeldung. Falls sich bei [Thema] etwas ändert, zum Beispiel durch [Anlass], melden Sie sich gern. Zu diesem Thema schreibe ich Ihnen sonst nicht wieder.“',
+      weiter: 'Mit einer Frage zur heutigen Lösung ins Gespräch kommen, sonst sauber und freundlich beenden.',
+      vermeiden: 'Trotzdem das ganze Angebot vortragen. Wer nicht gefragt wurde, hört nicht zu.' },
+    { kat: 'Vertrauen', satz: '„Wir haben schlechte Erfahrungen gemacht.“',
+      dahinter: ['Ein früherer Anbieter hat enttäuscht.', 'Sorge, sich vor der eigenen Führung zu blamieren.', 'Zu wenig Belege: keine Beispiele, keine Bekanntheit.'],
+      fragen: ['„Was ist damals passiert?“', '„Was müssten Sie sehen, um sicher zu sein?“', '„Woran würden Sie einen guten Partner erkennen?“'],
+      antworten: [
+        ['Nach schlechter Erfahrung', '„Danke, dass Sie das erzählen. Was hätte damals anders laufen müssen? Ich sage Ihnen offen, was davon wir anders machen und was nicht.“'],
+        ['Wenn Belege fehlen', '„Verständlich. Ich zeige Ihnen gern zwei Beispiele aus ähnlichen Betrieben. Wenn Sie mögen, stelle ich auch den Kontakt zu einem Kunden her.“'],
+        ['Das Risiko senken', '„Wir können klein anfangen: [Einstieg] in vier Wochen. Danach entscheiden Sie, ob es weitergeht.“']],
+      telefon: '„Das ist verständlich, Sie kennen uns ja noch nicht. Was würde Ihnen helfen, uns einzuschätzen?“',
+      mail: '„Damit Sie sich ein Bild machen können, schicke ich Ihnen ein Beispiel aus einem Betrieb ähnlicher Größe. Gern vermittle ich auch ein kurzes Gespräch mit dem Kunden selbst.“',
+      weiter: 'Einen Beleg anbieten (Beispiel, Kundenkontakt, kleiner Einstieg) und dafür einen Termin festhalten.',
+      vermeiden: 'Versprechen, dass bei Ihnen alles anders ist, ohne Beleg. Das klingt wie beim letzten Anbieter.' },
+    { kat: 'Eigenleistung', satz: '„Das machen wir selbst.“',
+      dahinter: ['Leute und Wissen sind wirklich im Haus.', 'Die eigene Zeit wird unterschätzt, weil sie „ohnehin da“ ist.', 'Stolz oder die Sorge, Kontrolle abzugeben.'],
+      fragen: ['„Wer macht das bei Ihnen, und wie viel Zeit geht dafür drauf?“', '„Was würde diese Person tun, wenn sie die Zeit frei hätte?“', '„Was gelingt intern gut, und wo wünschen Sie sich Unterstützung?“'],
+      antworten: [
+        ['Wenn es wirklich im Haus ist', '„Dann haben Sie das Wissen schon. Manche Kunden holen uns nur für [Teil] dazu, den Rest machen sie selbst. Wäre das ein Punkt?“'],
+        ['Wenn die Zeit unterschätzt wird', '„Lassen Sie uns die interne Zeit einmal ansetzen: [Stunden] im Monat mal Stundensatz. Oft ist Selbermachen günstiger, manchmal nicht. Die Rechnung zeigt es.“'],
+        ['Wenn es um Kontrolle geht', '„Sie behalten die Kontrolle. Wir arbeiten so, dass Ihr Team alles nachvollziehen und später selbst weiterführen kann.“']],
+      telefon: '„Gut, dann gibt es bei Ihnen schon jemanden dafür. Wie viel Zeit nimmt das ungefähr ein?“',
+      mail: '„Wenn Sie das weiter selbst machen, ist das eine gute Entscheidung. Falls Sie einmal nur für [Teil] Unterstützung brauchen, sprechen Sie mich gern an.“',
+      weiter: 'Eine Teilleistung anbieten oder die internen Kosten gemeinsam rechnen.',
+      vermeiden: 'Andeuten, dass die eigenen Leute es nicht können. Damit greifen Sie das Team Ihres Gegenübers an.' },
+    { kat: 'Keine Zeit', satz: '„Ich habe gerade keine Zeit.“',
+      dahinter: ['Wirklich ein schlechter Moment.', 'Kein Interesse an einem Gespräch mit Unbekannten.', 'Ein Test, ob es sich lohnt zuzuhören.'],
+      fragen: ['„Wann passt es Ihnen besser, heute Nachmittag oder morgen früh?“', '„Darf ich in einem Satz sagen, worum es geht?“', '„Ist [Thema] grundsätzlich ein Thema für Sie?“'],
+      antworten: [
+        ['Wenn der Moment schlecht ist', '„Dann halte ich Sie nicht auf. Wann erreiche ich Sie besser? Ich rufe genau zu der Zeit an.“'],
+        ['Ein Satz, dann die Wahl', '„Ganz kurz: Ich rufe an, weil [Anlass]. Wenn das kein Thema für Sie ist, sagen Sie es mir, dann melde ich mich nicht wieder.“'],
+        ['Gleich einen Termin festhalten', '„Sollen wir gleich 15 Minuten für [Thema] festhalten? Dann haben Sie es vom Tisch.“']],
+      telefon: '„Verstehe, ich halte Sie nicht auf. Passt Ihnen morgen um 9 Uhr oder eher am Nachmittag?“',
+      mail: '„Danke, dass Sie kurz drangegangen sind. Wie besprochen rufe ich Sie am [Tag] um [Uhrzeit] an. Falls das nicht passt, antworten Sie einfach mit einer besseren Zeit.“',
+      weiter: 'Rückruf mit fester Uhrzeit vereinbaren und pünktlich halten.',
+      vermeiden: '„Es dauert nur zwei Minuten“ und dann zehn Minuten reden.' },
+    { kat: 'Bedenkzeit', satz: '„Ich muss darüber noch nachdenken.“',
+      dahinter: ['Eine offene Frage, die noch nicht ausgesprochen ist.', 'Echte Abwägung bei einer großen Entscheidung.', 'Ein höfliches Nein.'],
+      fragen: ['„Gern. Worüber genau möchten Sie nachdenken?“', '„Was spricht aus Ihrer Sicht noch dagegen?“', '„Auf einer Skala von 1 bis 10: Wo stehen Sie, und was fehlt zur 10?“'],
+      antworten: [
+        ['Wenn eine Frage offen ist', '„Das ist richtig bei so einer Entscheidung. Oft hilft es, die offenen Punkte einmal aufzuschreiben. Welche sind es bei Ihnen?“'],
+        ['Bei einer großen Entscheidung', '„Nehmen Sie sich die Zeit. Damit Sie gut abwägen können, schicke ich Ihnen die wichtigsten Punkte noch einmal schriftlich. Wann sprechen wir uns wieder?“'],
+        ['Wenn es nach Nein klingt', '„Darf ich direkt fragen: Ist es eher ein Nein? Das ist völlig in Ordnung und hilft mir mehr als ein Vielleicht.“']],
+      telefon: '„Klar. Was ist der Punkt, über den Sie am meisten nachdenken?“',
+      mail: '„Wie besprochen anbei die Punkte, über die Sie nachdenken wollten: [Punkte]. Ich melde mich am [Tag] kurz bei Ihnen. Wenn vorher Fragen auftauchen, rufen Sie mich gern an.“',
+      weiter: 'Die offenen Punkte benennen und einen Termin für die Entscheidung vereinbaren.',
+      vermeiden: 'Druck mit einem Angebot, das „nur heute“ gilt. Das bestätigt die Zweifel, statt sie zu lösen.' },
+  ];
+  // DATEN-ENDE
+
+  // Seiten 4–9: zwei Karten je Seite
+  const karte = (e, i) => `<article class="ek">
+    <div class="ek-kopf"><span class="nr">${String(i + 1).padStart(2, '0')}</span><h3>${lz(e.satz)}</h3><span class="kat">${e.kat}</span></div>
+    <div class="ek-raster">
+      <div><p class="ek-t">Was dahinterstecken kann</p><ul class="pk">${e.dahinter.map((t) => `<li>${t}</li>`).join('')}</ul>
+        <p class="ek-t">Rückfragen</p><ul class="pk frage">${e.fragen.map((t) => `<li>${lz(t)}</li>`).join('')}</ul></div>
+      <div><p class="ek-t">Antworten</p><ol class="ant">${e.antworten.map(([w, t]) => `<li><b>${w}</b>${lz(t)}</li>`).join('')}</ol></div>
+    </div>
+    <div class="ek-fuss">
+      <div><p class="ek-t">Am Telefon</p><p class="rede">${lz(e.telefon)}</p></div>
+      <div><p class="ek-t">Per Mail</p><p class="rede">${lz(e.mail)}</p></div>
+      <div><p class="ek-t">Weiterführen</p><p>${lz(e.weiter)}</p></div>
+    </div>
+    <div class="ek-mein">
+      <div><p class="ek-t">Vermeiden</p><p>${lz(e.vermeiden)}</p></div>
+      <div><p class="ek-t">Mein Satz <span>in eigenen Worten</span></p><div class="zeile-frei"></div><div class="zeile-frei"></div></div>
+    </div>
+  </article>`;
+  let seitenHtml = '';
+  for (let i = 0; i < EINWAENDE.length; i += 2) {
+    const s = i / 2 + 1;
+    seitenHtml += `<section class="seite"><p class="vorzeile">Die zwölf Einwände · ${s} von 6</p>${karte(EINWAENDE[i], i)}${karte(EINWAENDE[i + 1], i + 1)}</section>`;
+  }
+  $('einwand-seiten').outerHTML = seitenHtml;
+
+  // Seite 12: Sammelbogen
+  $('sammel').innerHTML = Array.from({ length: 13 }, () => '<tr><td style="height:12.4mm"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+
+  // Seite 14: zwei leere Karten
+  const zl = (label, n, klein) => `<div class="zeile-l"><span>${label}${klein ? `<small>${klein}</small>` : ''}</span><div>${linie.repeat(n)}</div></div>`;
+  const leer = (nr) => `<div class="bogen">
+    <div class="bogen-kopf"><p class="feld"><span>Einwand wörtlich</span><span class="strich"></span></p><p class="feld"><span>Kategorie</span><span class="strich"></span></p></div>
+    ${zl('Was dahinterstecken kann', 2)}
+    ${zl('Rückfragen', 2)}
+    ${zl('Antwort 1', 2, 'wenn …')}
+    ${zl('Antwort 2', 2, 'wenn …')}
+    ${zl('Am Telefon', 1)}
+    ${zl('Per Mail', 2)}
+    ${zl('Weiterführen', 1)}
+    ${zl('Vermeiden', 1)}
+    <p class="status"><span class="stark">Status</span><span class="wahl"><span class="kreuz"></span>Entwurf</span><span class="wahl"><span class="kreuz"></span>im Test</span><span class="wahl"><span class="kreuz"></span>bewährt</span><span class="wahl"><span class="kreuz"></span>überholt</span><span class="feld" style="flex:1;margin-left:2mm"><span>geprüft am</span><span class="strich"></span></span></p>
+  </div>`;
+  $('leere-karten').innerHTML = leer(1) + leer(2);
+
+  // Seite 15: Beobachtungsbogen
+  const beob = [
+    ['Pause gemacht, nicht sofort geantwortet', ''],
+    ['Kurz anerkannt, ohne zuzustimmen', ''],
+    ['Mindestens eine offene Rückfrage gestellt', ''],
+    ['In eigenen Worten wiederholt, nach weiteren Punkten gefragt', ''],
+    ['Antwort zielte auf den eigentlichen Grund', ''],
+    ['Kein Rabatt ohne Gegenleistung', ''],
+    ['Gefragt, ob der Punkt geklärt ist', ''],
+    ['Nächsten Schritt mit Datum vorgeschlagen', ''],
+  ];
+  $('beobachtung').innerHTML = beob.map(([t]) => `<tr><td style="font-size:8.8pt;color:var(--tinte);height:8.4mm">${t}</td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td></td></tr>`).join('');
+
+  // Seite 16: Rollenspiel-Karten
+  const rollen = [
+    ['Preis', 'Sie leiten den Einkauf eines Großhändlers. Das Angebot liegt vor.', '„Das ist uns zu teuer.“', 'Der Vorgänger hat für weniger Leistung deutlich weniger gezahlt.', 'Ihnen gezeigt wird, was Sie mehr bekommen.'],
+    ['Budget', 'Sie führen eine Steuerkanzlei mit 15 Beschäftigten.', '„Dafür haben wir dieses Jahr kein Budget.“', 'Ab nächsten Monat wird für das neue Jahr geplant.', 'man Ihnen hilft, es in die Planung zu bringen.'],
+    ['Zeitpunkt', 'Sie sind Werkleiter, mitten im Umzug einer Halle.', '„Melden Sie sich in einem halben Jahr.“', 'Nach dem Umzug stehen drei Monate Ruhe an, das Thema drückt.', 'nach dem Zeitplan gefragt und ein Datum vereinbart wird.'],
+    ['Unterlagen', 'Sie sind Geschäftsführerin einer Agentur, der Anruf kommt ungelegen.', '„Schicken Sie mir mal was.“', 'Sie wollen eigentlich nur auflegen.', 'nach Ihrem wichtigsten Thema gefragt wird, statt nur Unterlagen anzukündigen.'],
+    ['Bestandsanbieter', 'Sie leiten die Verwaltung einer Wohnungsgesellschaft.', '„Wir haben schon einen Dienstleister.“', 'Er reagiert seit Monaten langsam, Sie scheuen den Wechsel.', 'nach Verbesserungen gefragt und ein einfacher Übergang beschrieben wird.'],
+    ['Wettbewerb', 'Sie sind Einkäuferin in einem Industriebetrieb.', '„Wir holen noch zwei Angebote ein.“', 'Die Richtlinie verlangt drei Angebote, Sie mögen das Angebot.', 'Ihnen Vergleichspunkte angeboten werden, die Ihre Arbeit erleichtern.'],
+    ['Entscheidung', 'Sie sind Teamleiter in der Personalabteilung.', '„Das muss ich mit der Geschäftsführung besprechen.“', 'Sie wissen nicht, wie Sie das intern begründen sollen.', 'man Ihnen eine Seite für die Geschäftsführung anbietet.'],
+    ['Bedarf', 'Sie sind Inhaber eines Handwerksbetriebs mit 25 Leuten.', '„Brauchen wir nicht.“', 'Angebote schreiben Sie abends selbst, es kostet viel Zeit.', 'nach dem heutigen Ablauf gefragt wird, ohne Druck.'],
+    ['Vertrauen', 'Sie führen eine Arztpraxis mit drei Ärzten.', '„Mit so etwas sind wir schon einmal reingefallen.“', 'Ein früherer Anbieter war nach dem Verkauf nicht mehr erreichbar.', 'nach der Erfahrung gefragt und ein kleiner Einstieg angeboten wird.'],
+    ['Eigenleistung', 'Sie leiten das Marketing eines Mittelständlers.', '„Das machen wir intern.“', 'Ihr Team ist voll ausgelastet, Projekte bleiben liegen.', 'die interne Zeit ehrlich gerechnet wird.'],
+    ['Keine Zeit', 'Sie sind Geschäftsführer, der Anruf kommt vor einem Termin.', '„Ich habe gerade keine Zeit.“', 'Das Thema ist eigentlich interessant für Sie.', 'man Sie nicht aufhält und einen festen Rückruf vorschlägt.'],
+    ['Bedenkzeit', 'Sie sind Leiterin einer Bildungseinrichtung, das Angebot ist besprochen.', '„Ich muss noch darüber nachdenken.“', 'Sie zweifeln, ob Ihr Team die Umstellung schafft.', 'nach dem offenen Punkt gefragt und Unterstützung beschrieben wird.'],
+  ];
+  $('rollenkarten').innerHTML = rollen.map(([k, lage, sagt, grund, wenn], i) => `<div class="rk">
+    <p class="kopfz"><span>Karte ${i + 1}</span><span>${k}</span></p>
+    <p class="lage">${lage}</p>
+    <p class="sagt">${sagt}</p>
+    <p class="verdeckt"><b>Verdeckt:</b> ${grund} Sie geben nach, wenn ${wenn}</p>
+  </div>`).join('');
+
+  // Schreiblinien
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = linie.repeat(Number(d.dataset.linien)); });
+
+  // Kopf und Fuß auf jede Seite, Seitenzahlen automatisch
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Nutzung im eigenen Unternehmen</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+</script>
+</body>
+</html>

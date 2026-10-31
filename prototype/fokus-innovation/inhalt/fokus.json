@@ -12,7 +12,7 @@
     "hinweis": "Die Story der Startseite (Kevin 25.10., geschärft 29.10., neu 30.10. abends nach drei Analysen: Aufmerksamkeit, Kernproblem der Gründer, Story-Psychologie; Einstieg von Kevin gewählt). Bild 1 trifft Sichtbarkeit und Vertrieb zugleich, Bild 2 Sichtbarkeit (entschieden wird vor dem Erstkontakt), Bild 3 Vertrieb (wer anfragt, wartet), Bild 4 die Antwort mit dem Slogan, Bild 5 schließt den Bogen von Bild 1. Keine Zahlen im Film.",
     "marke": "Fokus Innovation · Agentur für Sichtbarkeit, Vertrieb und Innovation",
     "laerm": {
-      "titel": "Ihr Produkt ist besser,|als Ihr Umsatz zeigt.",
+      "titel": "Ihr Produkt ist besser,|als Ihr Umsatz zeigt?",
       "satz": "Kaum jemand kennt es, und verkauft wird, wenn neben Produkt, Team und Buchhaltung Zeit bleibt."
     },
     "fokus": {
@@ -1352,5 +1352,46 @@
         }
       ]
     }
+  },
+  "bausteine": {
+    "hinweis": "Kevin 31.10.: Bausteine als Einstieg, 49–590 € netto, auf Rechnung, Lieferung nach Freigabe in MAKE OS. Texte der Übersicht; Preise und Inhalte in inhalt/bausteine.json und inhalt/bausteine/<id>.meta.json.",
+    "lead": "Fertige Arbeitspakete aus unserer Arbeit: Anleitung Schritt für Schritt, ausgefülltes Beispiel und Bögen zum Ausfüllen. Sie setzen selbst um, in Ihrem Tempo. Für Unternehmen, auf Rechnung.",
+    "ablauf": [
+      {
+        "titel": "Bestellen",
+        "text": "Baustein wählen, Firma und Rechnungsanschrift eintragen. Nur für Unternehmen."
+      },
+      {
+        "titel": "Rechnung und Download",
+        "text": "Nach kurzer Prüfung kommen Rechnung und Download-Link per E-Mail, meist am selben Werktag."
+      },
+      {
+        "titel": "Umsetzen",
+        "text": "Mit Anleitung, Beispiel und Bögen, in Ihrem Tempo. Fragen dazu klären wir gern im kostenlosen Erstgespräch."
+      }
+    ],
+    "bedingungen": [
+      [
+        "Preise",
+        "netto zuzüglich 19 % Umsatzsteuer"
+      ],
+      [
+        "Zahlung",
+        "auf Rechnung, zahlbar in 14 Tagen"
+      ],
+      [
+        "Lieferung",
+        "als Download-Link per E-Mail nach kurzer Prüfung, der Link gilt 30 Tage"
+      ],
+      [
+        "Nutzung",
+        "einfaches, unbefristetes Nutzungsrecht in Ihrem Unternehmen; Weitergabe und Weiterverkauf sind nicht erlaubt"
+      ],
+      [
+        "Für wen",
+        "nur für Unternehmen, nicht für Verbraucher"
+      ]
+    ],
+    "bedingungen_hinweis": "Fragen vor dem Kauf? Schreiben Sie uns an kevin@makeinnovation.de oder vereinbaren Sie ein kostenloses Erstgespräch von 30 Minuten."
   }
 }

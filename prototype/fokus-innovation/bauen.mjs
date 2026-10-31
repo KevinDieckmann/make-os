@@ -93,7 +93,11 @@ export function quellen() {
   // Änderungsdatum je Seite (31.10., Prüfung Technik): Inhalts-Fingerabdruck → Datum der letzten echten Änderung (Sitemap, JSON-LD).
   const standDatei = join(ORDNER, 'inhalt', 'seitenstand.json');
   const seitenstand = existsSync(standDatei) ? lies(standDatei) : {};
-  return { inhalt, seite, blaetter, fokus, wissen, stufen, katalog, zahlen, vorlagen, seitenstand };
+  // Bausteine (31.10.): Katalog mit Bereich/Preis + Texte je Baustein aus inhalt/bausteine/<id>.meta.json.
+  const bausteineDatei = join(ORDNER, 'inhalt', 'bausteine.json');
+  const bausteine = existsSync(bausteineDatei) ? lies(bausteineDatei) : null;
+  if (bausteine) for (const b of bausteine.bausteine) { const m = join(ORDNER, 'inhalt', 'bausteine', `${b.id}.meta.json`); if (existsSync(m)) Object.assign(b, { ...lies(m), ...b }); }
+  return { inhalt, seite, blaetter, fokus, wissen, stufen, katalog, zahlen, vorlagen, seitenstand, bausteine };
 }
 
 /**
@@ -127,6 +131,33 @@ export function vorlagenListe(q) {
   }).filter((v) => v.dateien.length);
 }
 
+/** Gebaute Bausteine (vorlagen.mjs --bausteine) — NIE öffentlich; lauf verteilt sie nach unterlagen/bausteine/ (die App liefert nach Freigabe). */
+export const BAUSTEINE_QUELLE = join(ORDNER, 'dateien', 'bausteine');
+export const BAUSTEINE_ZIEL = join(REPO, 'unterlagen', 'bausteine');
+const bausteinDateien = (id) => {
+  const d = [];
+  const pdf = join(BAUSTEINE_QUELLE, `${id}.pdf`);
+  if (existsSync(pdf)) d.push({ art: 'pdf', datei: `${id}.pdf`, seiten: (readFileSync(pdf).toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length });
+  const xlsx = join(BAUSTEINE_QUELLE, `${id}.xlsx`);
+  if (existsSync(xlsx)) d.push({ art: 'xlsx', datei: `${id}.xlsx` });
+  return d;
+};
+/**
+ * Die Bausteine mit Dateien, Seiten und Preis (netto, Cent). Ein Paket hat keine eigenen Dateien: geliefert werden die seiner Teile, Seiten
+ * und Einzelpreise werden summiert. Ohne gebautes PDF (bzw. ohne alle Teile) gibt es den Baustein auf der Seite nicht.
+ */
+export function bausteineListe(q) {
+  const roh = q.bausteine?.bausteine ?? [];
+  const einzeln = new Map(roh.filter((b) => !b.paket).map((b) => { const dateien = bausteinDateien(b.id); return [b.id, { ...b, dateien, seiten: dateien.find((d) => d.art === 'pdf')?.seiten ?? 0, seite: `/bausteine/${b.id}/` }]; }));
+  const liste = roh.map((b) => {
+    if (!b.paket) return einzeln.get(b.id);
+    const teile = b.paket.map((id) => einzeln.get(id));
+    if (teile.some((x) => !x?.dateien.length)) return null;
+    return { ...b, teile, dateien: [], seiten: teile.reduce((s, x) => s + x.seiten, 0), einzelpreis: teile.reduce((s, x) => s + x.preis, 0), seite: `/bausteine/${b.id}/`, inhalt: teile.map((x) => x.titel) };
+  });
+  return liste.filter((b) => b && (b.paket || (b.dateien.length && b.titel)));
+}
+
 /** Adresse einer Seite im Netz: index.html → /, vertrieb/index.html → /vertrieb/. */
 export const webPfad = (pfad) => (pfad === 'index.html' ? '/' : `/${pfad.replace(/index\.html$/, '')}`);
 /** Dateiname des Vorschaubilds einer Seite (assets/bild/og/<name>.png). */
@@ -138,6 +169,9 @@ export function seitenBauen(q = quellen()) {
   const K = F.kostenlos;
   // Vorlagen mit Dateien (30.10.: PDF mit Anleitung und Beispiel, dazu teils eine Tabelle für Excel) — ohne gebaute Datei nicht auf der Seite.
   const VORL = vorlagenListe(q);
+  // Bausteine (31.10.) — früh, weil Kostenlos und Preise auf sie verweisen; das „Regal“ zeigt Titelseiten aufgefächert.
+  const BS_LISTE = bausteineListe(q);
+  const regal = (ids, unterschrift, ordner = 'bausteine') => `<figure class="regal erscheint" aria-label="${e(unterschrift)}">${ids.slice(0, 3).map((id, i) => `<img class="regal-blatt r${i + 1}" src="/assets/bild/${ordner}/${id}-titel.jpg" width="640" height="905" alt="" loading="lazy">`).join('')}<figcaption>${e(unterschrift)}</figcaption></figure>`;
   const vorlageVon = (id) => { const v = VORL.find((x) => x.id === id); if (!v) throw new Error(`Vorlage ${id} fehlt (inhalt/vorlagen.json bzw. assets/vorlagen)`); return v; };
   ANGEBOTE = [...inhalt.angebote];
   const angebot = (id) => inhalt.angebote.find((a) => a.id === id);
@@ -301,7 +335,7 @@ ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Ode
 <div class="fuss-raster">
 <div class="fuss-marke"><a class="marke" href="/" aria-label="Fokus Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a><p class="claim glanz erscheint">${e(F.marke.claim)}</p>
 <p><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p></div>
-${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name]), ['/innovations-check/', 'Innovations-Check'], ['/preise/', 'Preise']])}
+${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name]), ['/innovations-check/', 'Innovations-Check'], ['/preise/', 'Preise'], ...(BS_LISTE.length ? [['/bausteine/', 'Bausteine']] : [])])}
 ${fussSpalte('Kostenlos', [['/kostenlos/#checks', 'Checks'], ['/kostenlos/#ratgeber', 'Ratgeber'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : []), ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/fragen/', 'Häufige Fragen'], ['/begriffe/', 'Begriffe']])}
 ${fussSpalte('Fokus Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
 </div>
@@ -392,7 +426,7 @@ ${suche}<meta name="theme-color" content="${film ? '#0B0C0F' : '#F6F4F0'}">
 <link rel="stylesheet" href="/css/fokus.css?v=${stempel('css/fokus.css')}">
 ${film ? `<link rel="stylesheet" href="/css/film.css?v=${stempel('css/film.css')}">\n` : ''}<script src="/js/frueh.js?v=${stempel('js/frueh.js')}"></script>
 <script src="/js/seite.js?v=${stempel('js/seite.js')}" defer></script>
-${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}${main.includes('data-anfrage') || main.includes('data-wenn-seite') ? `<script src="/js/app-wege.js?v=${stempel('js/app-wege.js')}" defer></script>\n` : ''}<script type="application/ld+json">${ldJson}</script>
+${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}${main.includes('data-baustein') ? `<script src="/js/bestellung.js?v=${stempel('js/bestellung.js')}" defer></script>\n` : ''}${main.includes('data-anfrage') || main.includes('data-wenn-seite') ? `<script src="/js/app-wege.js?v=${stempel('js/app-wege.js')}" defer></script>\n` : ''}<script type="application/ld+json">${ldJson}</script>
 </head>
 <body${klasse ? ` class="${klasse}"` : ''}>
 ${kopf(aktiv)}
@@ -963,6 +997,7 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
 <h2>Cookies und Speicher im Browser</h2><p>Die Website selbst setzt keine Cookies und legt nichts im Speicher Ihres Browsers ab. Kleine Skripte zeigen Abschnitte beim Scrollen an, spielen auf der Startseite eine Animation ab, rechnen den Vertriebsrechner und schließen auf dem Handy das Menü; sie lesen nichts aus und speichern nichts. Gesendet wird nur in zwei Fällen: Fordern Sie eine Vorlage an, schickt das Formular Ihre Angaben an unsere Anwendung (siehe Vorlagen). Und einige Seiten fragen unsere Anwendung, ob das Kontaktformular oder die Newsletter-Anmeldung gerade eingeschaltet ist, um den Link nur dann zu zeigen; dabei gehen keine persönlichen Angaben mit, nur die technischen Angaben jedes Seitenaufrufs. Was die Checks im Speicher Ihres Browsers ablegen, steht im Abschnitt zu den Checks.</p>
 <h2>Links zu Quellen</h2><p>Bei Zahlen nennen wir die Quelle und verlinken sie. Erst wenn Sie einen solchen Link anklicken, öffnet Ihr Browser die Seite des jeweiligen Anbieters; dafür gilt dessen Datenschutzhinweis.</p>
 <h2 id="vorlagen">Vorlagen</h2><p>Kurze Vorlagen laden Sie ohne Anmeldung direkt von unserem Server. Dabei fallen nur die technischen Angaben an, die beim Aufruf jeder Seite entstehen (siehe oben).</p><p>Ausführliche Arbeitshefte schicken wir Ihnen per E-Mail. Dafür geben Sie Ihren Vornamen, Ihre E-Mail-Adresse und, wenn Sie möchten, Ihre Firma an. Wir verwenden die Angaben, um Ihnen den Link zum Herunterladen zu schicken (er gilt 7 Tage), und legen Ihre Anfrage in unserem Kundensystem an, damit wir Ihnen bei Fragen weiterhelfen können (Art. 6 Abs. 1 lit. b DSGVO, Anfrage vor einem möglichen Vertrag). Der Link enthält keine persönlichen Angaben. Werbung schicken wir Ihnen nur, wenn Sie den Newsletter ankreuzen und bestätigen (siehe Newsletter). Anfragen ohne weiteren Kontakt löschen wir spätestens 24 Monate nach dem letzten Kontakt. Die Mail verschicken wir über unser Postfach bei Google Workspace (siehe unten).</p>
+${BS_LISTE.length ? `<h2 id="bausteine">Bausteine bestellen</h2><p>Bestellen Sie einen Baustein, läuft die Bestellung über unsere eigene Anwendung. Wir verarbeiten Vor- und Nachname, Firma, Rechnungsanschrift und E-Mail-Adresse, wenn Sie möchten auch USt-IdNr. und Telefonnummer, um die Bestellung zu bearbeiten, die Rechnung zu stellen und Ihnen den Download-Link zu schicken (Art. 6 Abs. 1 lit. b DSGVO, Vertrag). Dafür legen wir die Bestellung in unserem Kundensystem an. Die Eingangsbestätigung, die Rechnung und den Link schicken wir über unser Postfach bei Google Workspace (siehe unten). Der Link enthält keine persönlichen Angaben und gilt 30 Tage. Rechnungen und die Angaben darauf bewahren wir so lange auf, wie das Steuer- und Handelsrecht es verlangt (bis zu zehn Jahre); alles Übrige löschen wir, wenn es nicht mehr gebraucht wird.</p>` : ''}
 <h2>Checks: Innovations-Check, Vertriebs-Check, Sichtbarkeits-Check</h2><p>Die Checks laufen unter ${e(F.domain)}/check in unserer eigenen Anwendung auf demselben Server. Zoe ist eine KI-Assistentin; in den Checks stellt sie die Fragen mit festen Texten, Ihre Antworten gehen an kein KI-Modell. Wir speichern Ihre Antworten, um Ihr Ergebnis zu berechnen. Beim ausführlichen Innovations-Check sehen Sie ohne Kontaktdaten Ihre Stufe; den vollständigen Bericht schicken wir Ihnen per E-Mail. Geben Sie Kontaktdaten an, schicken wir Ihnen Ihren Bericht per E-Mail, legen Sie als Anfrage in unserem Kundensystem an und bieten Ihnen das Erstgespräch an (Art. 6 Abs. 1 lit. b DSGVO, Anfrage vor einem möglichen Vertrag). Ohne Kontaktdaten löschen wir Ihre Antworten nach 30 Tagen, mit Kontaktdaten spätestens 24 Monate nach dem letzten Kontakt.</p><p>Damit Sie später weitermachen können, legt jeder Check im Speicher Ihres Browsers eine zufällige Kennung ab; sie enthält keine Antworten. Wählen Sie im Ergebnis einen freien Termin, merkt sich Ihr Browser bis zum Schließen des Fensters die gewählte Zeit und, falls Sie sie angegeben haben, Vorname, E-Mail und Firma, damit die Buchungsseite sie vorausfüllt. Die Buchungsseite löscht diese Angaben, sobald sie sie gelesen hat. Vor dem Start jedes Checks sehen Sie einen eigenen Datenschutzhinweis.</p>
 <h2>Erstgespräch buchen</h2><p>Das Erstgespräch buchen Sie unter ${e(F.domain)}/buchen in unserer eigenen Anwendung. Ihre Angaben (Name, E-Mail, Firma, Anliegen) verwenden wir, um Ihre Terminanfrage zu bearbeiten und das Gespräch vorzubereiten (Art. 6 Abs. 1 lit. b DSGVO). Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung. Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir 30 Tage nach der letzten Änderung, bestätigte Buchungen 30 Tage nach dem Termin. Mit der Bestätigung legen wir Sie als Geschäftskontakt an und tragen den Termin mit Ihrem Namen und Ihrer E-Mail-Adresse in unseren Kalender bei Google Workspace ein (siehe unten). Nach dem Absenden zeigt Ihnen die Seite Ihren persönlichen Status; die Adresse mit Ihrem Schlüssel kennen nur Sie. Vor dem Absenden sehen Sie dort einen eigenen Datenschutzhinweis.</p>
 <h2>Kontaktformular</h2><p>Das Kontaktformular unter ${e(F.domain)}/anfrage läuft in unserer eigenen Anwendung. Sie schicken uns Ihren Vornamen, Ihre E-Mail-Adresse und Ihre Nachricht, wenn Sie möchten auch Nachnamen, Firma und Telefonnummer. Wir verwenden die Angaben, um Ihre Anfrage zu beantworten, und legen sie dafür als Anfrage in unserem Kundensystem auf unserem Server an (Art. 6 Abs. 1 lit. b DSGVO, Anfrage vor einem möglichen Vertrag, bzw. lit. f, unser berechtigtes Interesse, Ihre Nachricht zu beantworten). Kennen wir Ihre E-Mail-Adresse schon, hängen wir die Nachricht dort nur als unbestätigt an und prüfen sie von Hand. Das Formular verschickt keine E-Mail, und Werbung schicken wir Ihnen darüber nicht. Anfragen ohne weiteren Kontakt prüfen wir spätestens 24 Monate nach dem letzten Kontakt und löschen sie; verlangen Sie die Löschung, löschen wir sofort.</p>
@@ -1059,9 +1094,11 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
     aktiv: 'kostenlos',
     seitenTyp: 'CollectionPage',
     schema: [{ ...itemListe('Kostenlos bei Fokus Innovation', [...K.checks.map((c) => [c.thema ? `/check?thema=${c.thema}` : c.pfad, c.name]), ...W.artikel.map((a) => [artikelPfad(a), a.titel])]), '@id': `${absolut('/kostenlos/')}#kostenlos` }],
-    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
+    main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Kostenlos']])}${vorzeile('Kostenlos')}<h1 id="held-titel" class="glanz">${titel(K.titel, K.ruhig)}</h1><p class="lead">${t(K.lead)}</p>
-<nav class="az breit" aria-label="Auf dieser Seite"><a href="#checks">Checks</a>${K.phasen?.length ? '<a href="#phasen">Nach Phase</a>' : ''}<a href="#ratgeber">Ratgeber</a>${Z ? '<a href="#zahlen">Zahlen</a>' : ''}${VORL.length ? '<a href="#vorlagen">Vorlagen</a>' : ''}<a href="#newsletter" data-wenn-seite="/newsletter" hidden>Newsletter</a></nav></div>
+<p class="regal-zahlen"><span><b>${K.checks.length}</b> Checks</span>${VORL.length ? `<span><b>${VORL.length}</b> Vorlagen</span>` : ''}<span><b>${W.artikel.length}</b> Ratgeber</span>${Z ? `<span><b>${Z.zahlen.length}</b> Zahlen</span>` : ''}</p>
+<nav class="az breit" aria-label="Auf dieser Seite"><a href="#checks">Checks</a>${K.phasen?.length ? '<a href="#phasen">Nach Phase</a>' : ''}<a href="#ratgeber">Ratgeber</a>${Z ? '<a href="#zahlen">Zahlen</a>' : ''}${VORL.length ? '<a href="#vorlagen">Vorlagen</a>' : ''}<a href="#newsletter" data-wenn-seite="/newsletter" hidden>Newsletter</a>${BS_LISTE.length ? '<a href="/bausteine/">Bausteine</a>' : ''}</nav></div>
+${(() => { const ids = VORL.filter((v) => v.perMail).map((v) => v.id); return ids.length >= 3 ? regal([ids[0], ids.find((id) => VORL.find((v) => v.id === id).bereich === 'sichtbarkeit') ?? ids[1], ids.find((id) => VORL.find((v) => v.id === id).bereich === 'innovation') ?? ids[2]], 'Drei der Vorlagen: Titelseiten', 'vorlagen') : ''; })()}
 </div></section>
 
 <section class="abschnitt" id="checks" aria-labelledby="checks-titel"><div class="w">${abKopf({ marke: 'Checks', h2: 'Wo stehen Sie?', ruhig: 'In Minuten.', lead: 'Fast alles per Klick, Ergebnis sofort, mit nächsten Schritten. Zoe, unsere KI-Assistentin, führt durch die Fragen.', id: 'checks-titel' })}
@@ -1073,6 +1110,7 @@ ${K.phasen?.length ? `<section class="abschnitt" id="phasen" aria-labelledby="ph
 ${BEREICHE.map((k) => { const liste = artikelZu((a) => a.bereich === k && !a.leitfaden); return liste.length ? `<section class="abschnitt" aria-labelledby="ratgeber-${k}"><div class="w">${abKopf({ marke: B[k].name, nr: B[k].nr, h2: B[k].paar, id: `ratgeber-${k}` })}${wissenListe(liste)}</div></section>` : ''; }).join('\n')}
 ${Z ? `<section class="abschnitt" id="zahlen" aria-labelledby="zahlen-titel"><div class="w">${abKopf({ marke: 'Zahlen', h2: K.zahlen.titel, lead: K.zahlen.lead, id: 'zahlen-titel' })}<div class="zahlen-raster">${(Z.zahlen.some((z) => z.vorn) ? Z.zahlen.filter((z) => z.vorn) : Z.zahlen.slice(0, 3)).map(zahlKarte).join('')}</div><div class="knoepfe erscheint">${textlink('/kostenlos/zahlen/', `Alle ${Z.zahlen.length} Zahlen`)}</div></div></section>` : ''}
 ${VORL.length ? `<section class="abschnitt" id="vorlagen" aria-labelledby="vorlagen-titel"><div class="w">${abKopf({ marke: 'Vorlagen', h2: K.vorlagen.titel, lead: K.vorlagen.lead, id: 'vorlagen-titel' })}${BEREICHE.map((k) => { const l = VORL.filter((v) => v.bereich === k); return l.length ? `<h3 class="vorlagen-bereich">${e(B[k].name)}</h3><ul class="vorlagen-liste erscheint">${l.map((v) => vorlageZeile(v)).join('')}</ul>` : ''; }).join('')}</div></section>` : ''}
+${BS_LISTE.length ? `<section class="abschnitt" id="mehr" aria-labelledby="mehr-titel"><div class="w">${abKopf({ marke: 'Mehr als kostenlos', h2: 'Bausteine zum Selbermachen.', lead: `Die ausführliche Fassung: fertige Arbeitspakete aus unserer Arbeit, ab ${(Math.min(...BS_LISTE.map((b) => b.preis)) / 100).toLocaleString('de-DE')}\u00a0€ netto, auf Rechnung.`, id: 'mehr-titel' })}<div class="knoepfe erscheint">${knopf('/bausteine/', 'Alle Bausteine ansehen', 'zweit')}</div></div></section>` : ''}
 <section class="abschnitt" id="newsletter" aria-labelledby="newsletter-titel" data-wenn-seite="/newsletter" hidden><div class="w">${abKopf({ marke: 'Newsletter', h2: K.newsletter.titel, lead: K.newsletter.text, id: 'newsletter-titel' })}<div class="knoepfe erscheint">${knopf(K.newsletter.pfad, K.newsletter.knopf)}</div></div></section>
 <section class="abschnitt" aria-labelledby="nachschlagen-titel"><div class="w">${abKopf({ marke: 'Nachschlagen', h2: 'Begriffe, Fragen, Preise.', id: 'nachschlagen-titel' })}
 <ul class="zeilen erscheint">${[['/begriffe/', 'Begriffe von A bis Z', 'Pipeline, Sales Playbook, Wiedervorlage: kurz und klar erklärt.', `${W.begriffe.length} Begriffe`], ['/fragen/', 'Häufige Fragen', 'Antworten zu Check, Vertrieb, Homepages, Videos und Verträgen.', 'alle Bereiche'], ['/preise/', 'Alle Preise', 'Jedes Angebot mit Preis und Konditionen auf einer Seite.', 'netto']].map(([h, n, s, p]) => `<li><a href="${h}"><span class="z-name">${e(n)}</span><span class="z-text">${e(s)}</span><span class="z-preis">${e(p)}</span>${PFEIL}</a></li>`).join('')}</ul></div></section>
@@ -1113,6 +1151,7 @@ ${schlussakt({ quelle: 'kostenlos_ende' })}`,
 <figure class="vorlage-blatt erscheint"><img class="blatt-titel" src="/assets/bild/vorlagen/${v.id}-titel.jpg" width="640" height="905" alt="Titelseite der Vorlage „${e(v.titel)}“"><img class="blatt-seite" src="/assets/bild/vorlagen/${v.id}-seite.jpg" width="900" height="1273" alt="Seite ${nr} der Vorlage als Beispiel"><figcaption>Seite ${nr} von ${pdf?.seiten ?? ''} · Vorschau</figcaption></figure>
 </div></section>
 ${v.inhalt?.length ? `<section class="abschnitt" aria-labelledby="inhalt-titel"><div class="w">${abKopf({ marke: 'Inhalt', h2: 'Was drin ist.', lead: `${pdf?.seiten ?? ''} Seiten mit Anleitung, ausgefülltem Beispiel und Bögen zum Ausfüllen${v.dateien.some((d) => d.art === 'xlsx') ? ', dazu eine Tabelle, die selbst rechnet' : ''}.`, id: 'inhalt-titel' })}<ol class="vorlage-inhalt erscheint">${v.inhalt.map((x) => `<li>${t(x)}</li>`).join('')}</ol></div></section>` : ''}
+${(() => { const bs = v.baustein && BS_LISTE.find((x) => x.id === v.baustein); return bs ? `<section class="abschnitt eng" aria-label="Die ausführliche Fassung"><div class="w"><div class="risiko erscheint"><p class="etikett">Die ausführliche Fassung</p><p class="gruppe-titel">${e(bs.titel)} · ${(bs.preis / 100).toLocaleString('de-DE')}\u00a0€ netto</p><p>${e(bs.kurz)}</p>${textlink(bs.seite, 'Baustein ansehen')}</div></div></section>` : ''; })()}
 <section class="abschnitt" id="anfordern" aria-labelledby="anfordern-titel"><div class="w">${abKopf({ marke: 'Kostenlos', h2: 'Per E-Mail anfordern.', lead: 'Den Link zum Herunterladen bekommen Sie per E-Mail.', id: 'anfordern-titel' })}
 <div class="anfordern erscheint">
 <form class="anfordern-form" data-unterlage="${v.id}" novalidate hidden>
@@ -1131,6 +1170,95 @@ ${v.inhalt?.length ? `<section class="abschnitt" aria-labelledby="inhalt-titel">
 ${weitere.length ? `<section class="abschnitt" aria-labelledby="weitere-titel"><div class="w">${abKopf({ marke: 'Vorlagen', h2: `Weitere Vorlagen: ${B[v.bereich].name}`, id: 'weitere-titel' })}<ul class="vorlagen-liste erscheint">${weitere.map((x) => vorlageZeile(x, false)).join('')}</ul><div class="knoepfe erscheint">${textlink('/kostenlos/#vorlagen', 'Alle Vorlagen')}</div></div></section>` : ''}
 ${schlussakt({ quelle: `vorlage_${v.id}`, bereich: v.bereich })}`,
     });
+  }
+
+  // ── Bausteine (Kevin 31.10.: „Bausteine, die sich die Leute für 100–300 € kaufen können … der Einstieg“) ──
+  // Übersicht /bausteine/ und je Baustein eine Seite mit Vorschau, Inhalt und Bestellformular (js/bestellung.js → App /api/bestellung).
+  // Lieferung erst nach Freigabe in MAKE OS. Preise netto aus inhalt/bausteine.json; ohne gebautes PDF gibt es den Baustein nicht.
+  const BS = BS_LISTE;
+  const BZ = F.bausteine ?? {};
+  const euro = (cent) => `${(cent / 100).toLocaleString('de-DE', { minimumFractionDigits: cent % 100 ? 2 : 0, maximumFractionDigits: 2 })} €`;
+  const bausteinUmfang = (b) => (b.paket ? `${b.teile.length} Bausteine · ${b.seiten} Seiten` : [`PDF · ${b.seiten} Seiten`, b.dateien.some((d) => d.art === 'xlsx') ? 'Tabelle für Excel' : null].filter(Boolean).join(' · '));
+  const bausteinKarte = (b) => `<li class="preis-karte${b.paket ? ' einstieg' : ''}"><a href="${b.seite}">${b.paket ? '<span class="marke-einstieg">Spar-Paket</span>' : ''}<h3>${e(b.titel)}</h3><p class="karte-preis glanz">${euro(b.preis)}</p><p class="karte-zusatz">netto${b.paket ? `, statt ${euro(b.einzelpreis)}` : ''} · ${e(bausteinUmfang(b))}</p><p class="karte-satz">${e(b.kurz)}</p><span class="textlink"><span>Ansehen und bestellen</span> ${PFEIL}</span></a></li>`;
+  if (BS.length) {
+    const bereiche = (q.bausteine.bereiche ?? []).filter((bb) => BS.some((b) => b.bereich === bb.id));
+    const abAb = euro(Math.min(...BS.map((b) => b.preis)));
+    neu('bausteine/index.html', {
+      titel: 'Bausteine zum Selbermachen · Fokus Innovation',
+      beschreibung: `Fertige Arbeitspakete aus unserer Arbeit, ab ${abAb.replace(' ', ' ')} netto: Vertrieb, Positionierung und KI im Team. Mit Anleitung, ausgefülltem Beispiel und Bögen, auf Rechnung.`,
+      bildVorzeile: 'Bausteine',
+      bildTitel: 'Bausteine zum Selbermachen.',
+      aktiv: 'kostenlos',
+      seitenTyp: 'CollectionPage',
+      schema: [{ ...itemListe('Bausteine von Fokus Innovation', BS.map((b) => [b.seite, b.titel])), '@id': `${absolut('/bausteine/')}#bausteine` }],
+      main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
+<div class="erscheint">${brotkrumen([[null, 'Bausteine']])}${vorzeile('Bausteine')}<h1 id="held-titel" class="glanz">${titel('Bausteine.', 'Zum Selbermachen.')}</h1><p class="lead">${t(BZ.lead ?? '')}</p>
+<nav class="az breit" aria-label="Auf dieser Seite">${bereiche.map((bb) => `<a href="#bausteine-${bb.id}">${e(bb.name)}</a>`).join('')}<a href="#ablauf">So läuft es</a><a href="#bedingungen">Bedingungen</a></nav></div>
+${regal(BS.filter((b) => !b.paket).map((b) => b.id).filter((id, i, l) => i === 0 || BS.find((b) => b.id === id).bereich !== BS.find((b) => b.id === l[i - 1]).bereich), 'Drei der Bausteine: Titelseiten')}
+</div></section>
+${bereiche.map((bb) => `<section class="abschnitt" id="bausteine-${bb.id}" aria-labelledby="bausteine-${bb.id}-titel"><div class="w">${abKopf({ marke: bb.name, h2: bb.satz, id: `bausteine-${bb.id}-titel` })}<ul class="preis-karten erscheint">${BS.filter((b) => b.bereich === bb.id).sort((x, y) => (y.paket ? 1 : 0) - (x.paket ? 1 : 0)).map(bausteinKarte).join('')}</ul></div></section>`).join('\n')}
+<section class="abschnitt" id="ablauf" aria-labelledby="ablauf-titel"><div class="w">${abKopf({ marke: 'Bestellen', h2: 'So läuft es.', id: 'ablauf-titel' })}
+${weg(BZ.ablauf ?? [], { etiketten: ['01', '02', '03'], label: 'So läuft die Bestellung' })}</div></section>
+<section class="abschnitt" id="bedingungen" aria-labelledby="bedingungen-titel"><div class="w">${abKopf({ marke: 'Gut zu wissen', h2: 'Bedingungen auf einen Blick.', id: 'bedingungen-titel' })}
+<div class="zwei-teile"><div class="erscheint"><dl class="daten">${(BZ.bedingungen ?? []).map(([k, v]) => `<div><dt>${e(k)}</dt><dd>${t(v)}</dd></div>`).join('')}</dl></div><div class="erscheint"><p>${t(BZ.bedingungen_hinweis ?? '')}</p><p class="leise klein-text">Die vollständigen Bestellbedingungen sehen Sie vor dem Absenden.</p></div></div></div></section>
+${schlussakt({ quelle: 'bausteine_ende' })}`,
+    });
+
+    for (const b of BS) {
+      const pfad = `bausteine/${b.id}/index.html`;
+      const bild = b.paket ? b.teile[0].id : b.id;
+      const brutto = Math.round(b.preis * 1.19);
+      const betreff = encodeURIComponent(`Bestellung: ${b.titel}`);
+      const ersatz = `Schreiben Sie uns kurz an <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}?subject=${betreff}">${e(seite.kontakt.mail)}</a> mit Firma und Rechnungsanschrift, wir schicken Ihnen Rechnung und Download-Link.`;
+      const weitere = BS.filter((x) => x.id !== b.id && x.bereich === b.bereich).slice(0, 3);
+      const vorschau = b.paket
+        ? regal(b.teile.map((x) => x.id), `Die ${b.teile.length} Bausteine im Paket`)
+        : `<figure class="vorlage-blatt erscheint"><img class="blatt-titel" src="/assets/bild/bausteine/${bild}-titel.jpg" width="640" height="905" alt="Titelseite: ${e(b.titel)}"><img class="blatt-seite" src="/assets/bild/bausteine/${bild}-seite.jpg" width="900" height="1273" alt="Seite ${b.vorschau_seite ?? 2} als Beispiel"><figcaption>Seite ${b.vorschau_seite ?? 2} von ${b.seiten} · Vorschau</figcaption></figure>`;
+      const feld = (name, text, typ = 'text', pflicht = true, auto = '', breit = false) => `<label${breit ? ' class="breit"' : ''}><span>${e(text)}${pflicht ? '' : ' <small>freiwillig</small>'}</span><input name="${name}" type="${typ}"${auto ? ` autocomplete="${auto}"` : ''} maxlength="${name === 'email' ? 160 : 120}"${pflicht ? ' required' : ''}${name === 'land' ? ' value="Deutschland"' : ''}></label>`;
+      neu(pfad, {
+        titel: [`${b.titel}: Baustein · Fokus Innovation`, `${b.titel} · Fokus Innovation`, b.titel].find((x) => x.length <= 65),
+        beschreibung: (() => {
+          const preis = `${euro(b.preis).replace('\u00a0', ' ')} netto`;
+          const wahl = [`${b.kurz} ${bausteinUmfang(b)}, ${preis}.`, `${b.kurz} ${bausteinUmfang(b)}, ${preis}, mit Anleitung, Beispiel und Bögen.`, `${b.titel}: ${bausteinUmfang(b)}, ${preis}, mit Anleitung, ausgefülltem Beispiel und Bögen zum Ausfüllen.`, `${b.titel}: ${preis}, mit Anleitung, ausgefülltem Beispiel und Bögen. Auf Rechnung, für Unternehmen.`].find((x) => x.length >= 110 && x.length <= 165);
+          if (!wahl) throw new Error(`Baustein ${b.id}: keine Beschreibung mit 110–165 Zeichen — „kurz“ anpassen`);
+          return wahl;
+        })(),
+        bildVorzeile: `Baustein · ${(q.bausteine.bereiche ?? []).find((x) => x.id === b.bereich)?.name ?? ''}`,
+        bildTitel: b.titel,
+        aktiv: 'kostenlos',
+        schema: [{ '@type': 'Product', '@id': `${absolut(b.seite)}#baustein`, name: b.titel, description: klar(b.text ?? b.kurz), brand: { '@id': ORG }, offers: { '@type': 'Offer', price: (b.preis / 100).toFixed(2), priceCurrency: 'EUR', availability: 'https://schema.org/InStock', url: absolut(b.seite), priceSpecification: { '@type': 'UnitPriceSpecification', price: (b.preis / 100).toFixed(2), priceCurrency: 'EUR', valueAddedTaxIncluded: false } } }],
+        main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
+<div class="erscheint">${brotkrumen([['/bausteine/', 'Bausteine'], [null, b.titel]])}${vorzeile(`Baustein · ${(q.bausteine.bereiche ?? []).find((x) => x.id === b.bereich)?.name ?? ''}`)}<h1 id="held-titel" class="glanz">${e(b.titel)}</h1><p class="lead">${t(b.text ?? b.kurz)}</p>
+<div class="baustein-preis"><b class="glanz">${euro(b.preis)}</b><span>netto zzgl. 19 % USt${b.paket ? `, statt ${euro(b.einzelpreis)} einzeln` : ''} · ${e(bausteinUmfang(b))}</span></div>
+<div class="knoepfe">${knopf('#bestellen', 'Auf Rechnung bestellen')}${textlink('/bausteine/', 'Alle Bausteine')}</div></div>
+${vorschau}
+</div></section>
+${blick([['Für wen', b.fuer ?? null], ['Ihre Zeit', b.dauer ?? null], ['Lieferung', 'Download-Link per E-Mail nach kurzer Prüfung, meist am selben Werktag']])}
+${b.paket ? `<section class="abschnitt" aria-labelledby="teile-titel"><div class="w">${abKopf({ marke: 'Im Paket', h2: 'Vier Bausteine, ein Fundament.', lead: `Einzeln kosten sie zusammen ${euro(b.einzelpreis)} netto.`, id: 'teile-titel' })}<ul class="preis-karten erscheint">${b.teile.map(bausteinKarte).join('').replace(/Ansehen und bestellen/g, 'Was drin ist')}</ul></div></section>` : ''}
+${!b.paket && b.inhalt?.length ? `<section class="abschnitt" aria-labelledby="inhalt-titel"><div class="w">${abKopf({ marke: 'Inhalt', h2: 'Was drin ist.', lead: `${b.seiten} Seiten mit Anleitung, ausgefülltem Beispiel und Bögen zum Ausfüllen${b.dateien.some((d) => d.art === 'xlsx') ? ', dazu eine Tabelle, die selbst rechnet' : ''}.`, id: 'inhalt-titel' })}<ol class="vorlage-inhalt erscheint">${b.inhalt.map((x) => `<li>${t(x)}</li>`).join('')}</ol></div></section>` : ''}
+${b.ergebnis?.length ? `<section class="abschnitt" aria-labelledby="ergebnis-titel"><div class="w">${abKopf({ marke: 'Ergebnis', h2: 'Was Sie danach haben.', id: 'ergebnis-titel' })}${punkte(b.ergebnis, 'punkte erscheint')}</div></section>` : ''}
+<section class="abschnitt" id="bestellen" aria-labelledby="bestellen-titel"><div class="w">${abKopf({ marke: 'Bestellen', h2: 'Auf Rechnung bestellen.', lead: 'Nur für Unternehmen. Rechnung und Download-Link schicken wir Ihnen per E-Mail.', id: 'bestellen-titel' })}
+<div class="anfordern bestellen erscheint">
+<form class="anfordern-form bestell-form" data-baustein="${b.id}" novalidate hidden>
+<p class="anfordern-vorab">Nach kurzer Prüfung bekommen Sie Rechnung und Download-Link, meist am selben Werktag. Der Link gilt 30 Tage.</p>
+<div class="anfordern-felder bestell-felder">${feld('vorname', 'Vorname', 'text', true, 'given-name')}${feld('nachname', 'Nachname', 'text', true, 'family-name')}${feld('firma', 'Firma', 'text', true, 'organization', true)}${feld('email', 'E-Mail für Rechnung und Download', 'email', true, 'email', true)}${feld('strasse', 'Straße und Hausnummer', 'text', true, 'address-line1', true)}${feld('plz', 'PLZ', 'text', true, 'postal-code')}${feld('ort', 'Ort', 'text', true, 'address-level2')}${feld('land', 'Land', 'text', true, 'country-name')}${feld('ustid', 'USt-IdNr.', 'text', false)}${feld('telefon', 'Telefon', 'tel', false, 'tel')}</div>
+<div class="anfordern-falle" aria-hidden="true"><label>Webseite <input name="webseite" tabindex="-1" autocomplete="off"></label></div>
+<div class="bestell-summe"><span>${e(b.titel)}</span><b data-summe>${euro(b.preis)} netto + 19 % USt = ${euro(brutto)}</b></div>
+<label class="anfordern-haken"><input type="checkbox" name="unternehmer"><span>Ich bestelle für mein Unternehmen, nicht als Verbraucher.</span></label>
+<div class="bestell-bedingungen" data-bedingungen hidden></div>
+<label class="anfordern-haken"><input type="checkbox" name="bedingungen"><span>Ich habe die Bestellbedingungen gelesen und stimme ihnen zu.</span></label>
+<p class="anfordern-hinweis">Ihre Angaben nutzen wir für Bestellung, Rechnung und Lieferung. Mehr im <a class="unterstrichen" href="/datenschutz/#bausteine">Datenschutzhinweis</a>.</p>
+<button class="knopf" type="submit">Kostenpflichtig bestellen ${PFEIL}</button>
+<p class="anfordern-meldung" data-meldung role="status" aria-live="polite"></p>
+</form>
+<div class="anfordern-fertig" data-fertig hidden tabindex="-1"><p class="etikett">Bestellung eingegangen</p><p class="anfordern-fertig-text" data-fertig-text></p></div>
+<p class="anfordern-ersatz" data-ersatz hidden>${ersatz}</p>
+<noscript><p class="anfordern-ersatz">${ersatz}</p></noscript>
+</div></div></section>
+${weitere.length ? `<section class="abschnitt" aria-labelledby="weitere-titel"><div class="w">${abKopf({ marke: 'Bausteine', h2: 'Passt dazu.', id: 'weitere-titel' })}<ul class="preis-karten erscheint">${weitere.map(bausteinKarte).join('')}</ul></div></section>` : ''}
+${schlussakt({ quelle: `baustein_${b.id}`, bereich: b.bereich })}`,
+      });
+    }
   }
 
   if (Z) {
@@ -1319,13 +1447,14 @@ ${schlussakt({ quelle: 'fragen_ende' })}`,
       schema: [{ '@type': 'OfferCatalog', '@id': `${absolut('/preise/')}#katalog`, name: 'Preise von Fokus Innovation', numberOfItems: angeboteAlle.length, itemListElement: angeboteAlle.filter((a) => !bald(a)).flatMap((a) => [angebotDaten(a)].flat().map((o) => ({ ...o, itemOffered: { '@type': 'Service', name: a.name, url: absolut(produktPfad(a)) } }))) }],
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster">
 <div class="erscheint">${brotkrumen([[null, 'Preise']])}${vorzeile('Preise')}<h1 id="held-titel" class="glanz">${titel('Alle Preise.', 'Offen und netto.')}</h1><p class="lead">Jeder Preis gilt für den beschriebenen Umfang. Den genauen Festpreis bekommen Sie vor dem Start schriftlich, ohne Abrechnung nach Stunden. Die Details stehen auf der Seite des Angebots.</p>
-<nav class="az breit" aria-label="Auf dieser Seite">${PREISE_REIHE.map((k) => `<a href="#preise-${k}">${e(B[k].name)}</a>`).join('')}<a href="#kostenlos-titel">Kostenlos</a><a href="#konditionen-titel">Konditionen</a></nav></div>
+<nav class="az breit" aria-label="Auf dieser Seite">${PREISE_REIHE.map((k) => `<a href="#preise-${k}">${e(B[k].name)}</a>`).join('')}${BS_LISTE.length ? '<a href="#preise-bausteine">Bausteine</a>' : ''}<a href="#kostenlos-titel">Kostenlos</a><a href="#konditionen-titel">Konditionen</a></nav></div>
 ${buehne('festpreis', VIDEOS.preise)}
 </div></section>
 <section class="abschnitt dunkel preis-fokus" aria-labelledby="preise-innovation"><div class="w">${abKopf({ marke: 'Unser Ziel · Innovation', h2: 'Wir rücken Innovation in den Fokus.', lead: `${B.innovation.satz} Der Weg dorthin führt oft über Vertrieb und Sichtbarkeit, deshalb stehen diese Preise gleich darunter.`, id: 'preise-innovation' })}
 <ul class="preis-karten erscheint"><li class="preis-karte einstieg"><a href="${check('preise_fokus')}"><span class="marke-einstieg">Guter Einstieg</span><h3>Innovations-Check</h3><p class="karte-preis">kostenlos</p><p class="karte-satz">Wo Ihr Unternehmen bei Strategie, KI im Alltag, Abläufen, Daten und Team steht, im Vergleich mit Ihrer Branche.</p>${punkte(['Kurz: 19 Fragen in rund 10 Minuten, Ergebnis sofort', 'Ausführlich: rund 25 Minuten, Bericht per E‑Mail', 'Danach: das kostenlose Erstgespräch'])}<span class="textlink"><span>Check starten</span> ${PFEIL}</span></a></li>${karten(produkteIn('innovation'), 'innovation').replace(/^<ul class="preis-karten erscheint">|<\/ul>$/g, '')}</ul></div></section>
 ${PREISE_REIHE.filter((k) => k !== 'innovation').map((k) => `<section class="abschnitt" aria-labelledby="preise-${k}"><div class="w">${abKopf({ marke: B[k].name, h2: B[k].paar, lead: F.angebote_lead[k], id: `preise-${k}` })}
 ${gruppenIn(k).map((g, _, alle) => `${alle.length > 1 && g.name ? `<h3 class="gruppe-titel">${e(g.name)}</h3>` : ''}${karten(g.liste, k)}`).join('\n')}${k === 'sichtbarkeit' ? `<h3 class="gruppe-titel">Dazu buchbar</h3><dl class="daten erscheint">${inhalt.zusatzoptionen.map((z) => `<div><dt>${e(z.name)}<span class="leise">${e(z.fuer)}: ${e(z.leistung)}</span></dt><dd>${e(z.preis)}</dd></div>`).join('')}</dl>` : ''}</div></section>`).join('\n')}
+${BS_LISTE.length ? `<section class="abschnitt" id="preise-bausteine" aria-labelledby="preise-bausteine-titel"><div class="w">${abKopf({ marke: 'Einzeln kaufen', h2: 'Bausteine zum Selbermachen.', lead: `Teile aus unserer Arbeit als fertiges Paket: Anleitung, ausgefülltes Beispiel, Bögen. Ab ${(Math.min(...BS_LISTE.map((b) => b.preis)) / 100).toLocaleString('de-DE')}\u00a0€ netto, auf Rechnung.`, id: 'preise-bausteine-titel' })}<ul class="preis-karten erscheint">${[BS_LISTE.find((b) => b.paket), ...BS_LISTE.filter((b) => !b.paket).sort((x, y) => x.preis - y.preis).slice(0, 1), BS_LISTE.find((b) => b.bereich === 'innovation')].filter((b, i, l) => b && l.indexOf(b) === i).map(bausteinKarte).join('')}</ul><div class="knoepfe erscheint">${textlink('/bausteine/', `Alle ${BS_LISTE.length} Bausteine`)}</div></div></section>` : ''}
 <section class="abschnitt" aria-labelledby="kostenlos-titel"><div class="w">${abKopf({ marke: 'Der Einstieg', h2: 'Kostenlos', lead: 'Erstgespräch, Innovations-Check und das Gespräch danach kosten nichts und verpflichten zu nichts.', id: 'kostenlos-titel' })}
 <ul class="preis-karten frei erscheint">${frei.map(([h, n, z]) => freiKarte(h, n, z)).join('')}</ul></div></section>
 <section class="abschnitt" aria-labelledby="konditionen-titel"><div class="w">${abKopf({ marke: 'Gut zu wissen', h2: 'Zahlung und Konditionen', id: 'konditionen-titel' })}
@@ -1470,7 +1599,7 @@ export function pruefen(seiten) {
     if (/\son[a-z]+="/.test(s.html)) fehler.push(`${s.pfad}: Ereignis-Attribut`);
     if (/<(script|img|link|iframe|source|video)\b[^>]*\s(src|href)="https?:/.test(s.html.replace(/<link rel="(canonical|alternate)"[^>]*>/g, ''))) fehler.push(`${s.pfad}: fremde Quelle`);
     // Formulare nur „Vorlage per E-Mail anfordern“ (31.10.): ohne action/method, nur auf den Vorschau-Seiten der Vorlagen.
-    for (const f of s.html.match(/<form\b[^>]*>/g) ?? []) if (!/^<form class="anfordern-form" data-unterlage="[a-z0-9-]+" novalidate hidden>$/.test(f) || !s.pfad.startsWith('kostenlos/vorlagen/')) fehler.push(`${s.pfad}: Formular`);
+    for (const f of s.html.match(/<form\b[^>]*>/g) ?? []) if (!(/^<form class="anfordern-form" data-unterlage="[a-z0-9-]+" novalidate hidden>$/.test(f) && s.pfad.startsWith('kostenlos/vorlagen/')) && !(/^<form class="anfordern-form bestell-form" data-baustein="[a-z0-9-]+" novalidate hidden>$/.test(f) && s.pfad.startsWith('bausteine/'))) fehler.push(`${s.pfad}: Formular`);
     platzhalter += (s.html.match(/class="ph"/g) ?? []).length;
     for (const [, href] of s.html.matchAll(/\shref="([^"]+)"/g)) {
       if (href.startsWith('/assets/vorlagen/') && !existsSync(join(ORDNER, href))) { fehler.push(`${s.pfad}: Vorlage fehlt ${href}`); continue; }
@@ -1497,7 +1626,7 @@ export function pruefen(seiten) {
     } catch (err) { fehler.push(`${s.pfad}: strukturierte Daten ungültig (${err.message})`); }
     if (s.bild && !existsSync(join(ORDNER, s.bild.datei))) fehler.push(`${s.pfad}: Vorschaubild fehlt (node bilder.mjs)`);
   }
-  for (const datei of ['css/fokus.css', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'js/unterlage.js', 'js/app-wege.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
+  for (const datei of ['css/fokus.css', 'css/film.css', 'js/frueh.js', 'js/seite.js', 'js/film.js', 'js/szene.js', 'js/rechner.js', 'js/unterlage.js', 'js/app-wege.js', 'js/bestellung.js', 'assets/zeichen.svg', 'assets/schriften/schibsted-grotesk-latin.woff2', 'assets/bild/logo.png', 'assets/bild/apple-touch-icon.png', 'assets/bild/icon-192.png', 'assets/bild/icon-512.png', 'favicon.ico']) if (!existsSync(join(ORDNER, datei))) fehler.push(`fehlt: ${datei}${/bild|favicon/.test(datei) ? ' (node bilder.mjs)' : ''}`);
   return { fehler, platzhalter };
 }
 
@@ -1523,11 +1652,33 @@ function vorlagenVerteilen(liste, nurPruefen) {
   for (const ordner of [oeffentlich, UNTERLAGEN]) {
     if (!existsSync(ordner)) continue;
     for (const f of readdirSync(ordner)) {
-      if (f === 'katalog.json' || soll.has(join(ordner, f))) continue;
+      if (f === 'katalog.json' || soll.has(join(ordner, f)) || statSync(join(ordner, f)).isDirectory()) continue;
       aenderungen.push(`entfernt: ${join(ordner, f).slice(join(ORDNER, '..', '..').length + 1)}`);
       if (!nurPruefen) unlinkSync(join(ordner, f));
     }
   }
+  return aenderungen;
+}
+
+/**
+ * Bausteine für die App: Dateien nach unterlagen/bausteine/ (nie öffentlich) + katalog.json (Vertrag mit lib/bausteine in der App:
+ * id, titel, bereich, preis netto in Cent, seite, dateien[{ art, datei, name }], paket?[ids]). Liefert die Änderungen.
+ */
+function bausteineVerteilen(liste, nurPruefen) {
+  const aenderungen = [];
+  const dateiName = (titel, art) => `${titel.replace(/[:/\\?*"<>|]+/g, ' –').replace(/\s+/g, ' ').trim()}.${art}`;
+  const katalog = `${JSON.stringify({ hinweis: 'Gebaut von prototype/fokus-innovation/bauen.mjs — nicht von Hand ändern. Bezahlte Bausteine, Lieferung nur über die App nach Freigabe.', bausteine: liste.map((b) => ({ id: b.id, titel: b.titel, bereich: b.bereich, preis: b.preis, seite: b.seite, dateien: b.dateien.map((d) => ({ art: d.art, datei: d.datei, name: dateiName(b.titel, d.art) })), ...(b.paket ? { paket: b.paket } : {}) })) }, null, 2)}\n`;
+  const katalogDatei = join(BAUSTEINE_ZIEL, 'katalog.json');
+  if (!existsSync(katalogDatei) || readFileSync(katalogDatei, 'utf8') !== katalog) { aenderungen.push('unterlagen/bausteine/katalog.json'); if (!nurPruefen) { mkdirSync(BAUSTEINE_ZIEL, { recursive: true }); writeFileSync(katalogDatei, katalog); } }
+  const soll = new Set(['katalog.json']);
+  for (const b of liste) for (const d of b.dateien) {
+    soll.add(d.datei);
+    const quelle = join(BAUSTEINE_QUELLE, d.datei), ziel = join(BAUSTEINE_ZIEL, d.datei);
+    if (existsSync(ziel) && readFileSync(quelle).equals(readFileSync(ziel))) continue;
+    aenderungen.push(`unterlagen/bausteine/${d.datei}`);
+    if (!nurPruefen) { mkdirSync(BAUSTEINE_ZIEL, { recursive: true }); copyFileSync(quelle, ziel); }
+  }
+  if (existsSync(BAUSTEINE_ZIEL)) for (const f of readdirSync(BAUSTEINE_ZIEL)) if (!soll.has(f)) { aenderungen.push(`entfernt: unterlagen/bausteine/${f}`); if (!nurPruefen) unlinkSync(join(BAUSTEINE_ZIEL, f)); }
   return aenderungen;
 }
 
@@ -1546,7 +1697,7 @@ function lauf() {
   let abweichend = 0;
   // Vorlagen verteilen (31.10.): kurze öffentlich nach assets/vorlagen, lange nur nach unterlagen/ (+ katalog.json für die App) — und eine lange
   // Vorlage nie zusätzlich öffentlich. Beim Prüfen wird nur verglichen.
-  for (const d of vorlagenVerteilen(vorlagenListe(q), nurPruefen)) { abweichend++; console.log(`${nurPruefen ? 'weicht ab' : 'verteilt'}: ${d}`); }
+  for (const d of [...vorlagenVerteilen(vorlagenListe(q), nurPruefen), ...bausteineVerteilen(bausteineListe(q), nurPruefen)]) { abweichend++; console.log(`${nurPruefen ? 'weicht ab' : 'verteilt'}: ${d}`); }
   for (const s of seiten) {
     const zielDatei = join(ORDNER, s.pfad);
     const vorher = existsSync(zielDatei) ? readFileSync(zielDatei, 'utf8') : null;

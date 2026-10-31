@@ -1,0 +1,1152 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Salesprozess im CRM</title>
+<link rel="stylesheet" href="../vorlagen/basis.css">
+<style>
+  /* Baustein · eigene Bausteine (basis.css bleibt unverändert) */
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 164mm; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  .vorzeile.bsp { color: var(--akzent); }
+  h2.blatt { margin-top: 1.6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  h2.blatt + .unter { margin-top: 1.6mm; max-width: 170mm; font-size: 10pt; line-height: 1.45; }
+  h3 { font-size: 10.3pt; line-height: 1.3; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 9.7pt; line-height: 1.45; }
+  p.text + p.text { margin-top: 1.4mm; }
+  .klein { font-size: 8.7pt; line-height: 1.4; color: var(--tinte-leise); }
+  .ein { color: var(--akzent); }
+  b { color: var(--tinte); font-weight: 600; }
+  a { color: inherit; text-decoration: none; }
+
+  /* „So füllen Sie ihn aus“ und Hinweise: Linie links */
+  .so { margin-top: 2.4mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; max-width: 170mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9.1pt; line-height: 1.45; }
+  .hinweis.lila { border-left-color: var(--akzent); }
+
+  .abschnitt-titel { margin-top: 4.4mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; gap: 4mm; }
+  .abschnitt-titel small { font-size: 8.3pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+
+  /* Felder */
+  .reihe { display: flex; gap: 6mm; margin-top: 2.4mm; }
+  .reihe .feld { flex: 1; }
+  .reihe .feld.schmal { flex: .55; }
+  .reihe .feld.breit { flex: 1.8; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6.2mm; }
+  .feld .einheit { color: var(--tinte-leise); }
+  .linien .zeile-frei { height: 7.2mm; }
+  .linien.eng .zeile-frei { height: 6.4mm; }
+  .beschriftet { display: grid; grid-template-columns: 50mm 1fr; column-gap: 4mm; align-items: end; }
+  .beschriftet + .beschriftet { margin-top: .3mm; }
+  .beschriftet > span { font-size: 9.1pt; color: var(--tinte); padding-bottom: 1.2mm; line-height: 1.25; }
+  .beschriftet > span small { display: block; color: var(--tinte-leise); font-size: 7.9pt; }
+  .beschriftet .linien .zeile-frei { height: 6.6mm; }
+
+  /* Ausgefüllt: Label links, Eintrag rechts */
+  .gefuellt { display: grid; grid-template-columns: 40mm 1fr; column-gap: 5mm; }
+  .gefuellt > dt, .gefuellt > dd { margin: 0; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.42; }
+  .gefuellt > dt { color: var(--tinte); font-weight: 600; }
+  .gefuellt > dt small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.9pt; margin-top: .3mm; }
+  .gefuellt > dd { color: var(--akzent); }
+  .gefuellt.eng > dt, .gefuellt.eng > dd { padding: 1.2mm 0; }
+  .gefuellt > dd.gross { font-size: 10.6pt; line-height: 1.45; font-weight: 500; }
+
+  /* Begriffe */
+  .begriffe { display: grid; grid-template-columns: 38mm 1fr; column-gap: 5mm; margin-top: 1mm; }
+  .begriffe dt, .begriffe dd { margin: 0; padding: 1.6mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.42; }
+  .begriffe dt { color: var(--tinte); font-weight: 600; }
+  .begriffe dt:last-of-type, .begriffe dd:last-of-type { border-bottom: 0; }
+
+  /* Raster-Tabellen */
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.8mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.4pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.2mm 1.8mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 8.9pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster .mitte { text-align: center; }
+  .raster td.zahl, .raster th.zahl { text-align: right; }
+  .raster td.leise { color: var(--tinte-leise); }
+  .raster td.stark { color: var(--tinte); font-weight: 600; }
+  .raster td.ein { color: var(--akzent); }
+  .raster tr.gruppe td { height: auto; padding-top: 2.4mm; padding-bottom: 1mm; border-left: 0; font-size: 7.6pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); border-bottom: var(--linie) solid var(--haar); }
+  .raster tr.summe td { border-top: .9pt solid var(--haar-stark); font-weight: 600; color: var(--tinte); }
+  .raster tr.bsp td { color: var(--tinte-leise); font-style: italic; font-size: 8.3pt; border-bottom: var(--linie) solid var(--haar); }
+  .raster.text td { height: auto; padding-top: 1.5mm; padding-bottom: 1.5mm; border-bottom-color: var(--haar); }
+  .raster.dicht td { height: 6.8mm; padding-top: .9mm; padding-bottom: .6mm; }
+  .raster.klein td { font-size: 8.3pt; }
+  .raster.klein th { font-size: 7.7pt; }
+
+  /* Ankreuzen, Listen */
+  .wahl { display: inline-flex; align-items: center; gap: 1.6mm; margin-right: 4.5mm; font-size: 9pt; white-space: nowrap; }
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; align-items: start; padding: 1.5mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.3pt; line-height: 1.38; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste li .kreuz { margin-top: .4mm; }
+  .liste.zweispaltig { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .liste.zweispaltig li:nth-last-child(2) { border-bottom: 0; }
+  ul.punkte li { position: relative; padding-left: 4mm; margin-top: 1.1mm; font-size: 9.3pt; line-height: 1.4; }
+  ul.punkte li::before { content: ""; position: absolute; left: .4mm; top: 1.9mm; width: 1.3mm; height: 1.3mm; border-radius: 50%; background: var(--akzent); }
+  ul.punkte.klein li { font-size: 8.8pt; margin-top: .8mm; }
+  .skala { display: inline-flex; gap: 1.1mm; }
+  .skala span { width: 4.6mm; height: 4.6mm; border: var(--linie) solid var(--tinte-leise); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 7.4pt; color: var(--tinte-leise); font-variant-numeric: tabular-nums; }
+
+  /* Spalten */
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .drei { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+  .spalte-kopf { padding-bottom: 1.4mm; border-bottom: .9pt solid var(--haar-stark); }
+  .spalte-kopf .nr { font-size: 8pt; letter-spacing: .1em; }
+  .spalte-kopf h3 { margin-top: .4mm; }
+
+  /* Deckblatt */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3mm; margin-top: 3.2mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 9.8pt; line-height: 1.42; }
+  .inhalt { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+  .inhalt th { font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); text-align: left; padding: 0 0 1.2mm; border-bottom: .9pt solid var(--haar-stark); }
+  .inhalt td { padding: 1.3mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.5pt; }
+  .inhalt td:first-child, .inhalt th:first-child { width: 14mm; color: var(--akzent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .inhalt td.z, .inhalt th.z { width: 34mm; text-align: right; color: var(--tinte-leise); }
+
+  /* Nummerierte Schritte */
+  .schritte-liste li { display: grid; grid-template-columns: 7mm 1fr; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.5pt; line-height: 1.42; }
+  .schritte-liste li:last-child { border-bottom: 0; }
+  .schritte-liste.dicht li { padding: 1.3mm 0; font-size: 9pt; line-height: 1.36; }
+  .schritte-liste h3 { font-size: 9.8pt; }
+  .schritte-liste p { margin-top: .4mm; }
+
+  /* Weg in Schritten */
+  .weg { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); column-gap: 3mm; margin-top: 4.4mm; }
+  .weg::before { content: ""; position: absolute; left: 3.2mm; right: 24mm; top: 3.2mm; border-top: .9pt solid var(--akzent); }
+  .weg li { position: relative; }
+  .weg .kreis { position: relative; z-index: 1; display: inline-flex; width: 6.4mm; height: 6.4mm; border-radius: 50%; background: var(--papier); border: .9pt solid var(--akzent); color: var(--akzent); font-weight: 600; font-size: 8.8pt; align-items: center; justify-content: center; }
+  .weg h3 { margin-top: 2mm; font-size: 9.4pt; line-height: 1.25; }
+  .weg p { margin-top: .8mm; font-size: 8.4pt; line-height: 1.35; color: var(--tinte-leise); }
+
+  /* Beispielkarte */
+  .karte { margin-top: 3mm; padding: 3mm 5mm 3.2mm; background: #fff; border: var(--linie) solid var(--haar); border-radius: 1.6mm; }
+  .karte .gefuellt > dt:last-of-type, .karte .gefuellt > dd:last-of-type { border-bottom: 0; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+
+  /* Nächste Schritte */
+  .wege li { display: grid; grid-template-columns: 9mm 1fr; padding: 2.8mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .wege li:last-child { border-bottom: 0; }
+  .wege .nr { font-size: 13pt; line-height: 1.2; }
+  .wege h3 { font-size: 11.5pt; }
+  .wege .adresse { margin-top: .8mm; font-size: 10.2pt; color: var(--akzent); font-weight: 600; letter-spacing: .005em; }
+  .wege p { margin-top: .8mm; font-size: 9.8pt; line-height: 1.45; }
+  .unten { margin-top: auto; }
+  .unten + .fuss { margin-top: 3mm; }
+
+  /* Fehler-Liste */
+  .fehler li { display: grid; grid-template-columns: 7mm 1fr 1fr; column-gap: 4mm; padding: 1.6mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.38; }
+  .fehler li:last-child { border-bottom: 0; }
+  .fehler li .nr { font-size: 8.6pt; }
+  .fehler li b { display: block; }
+  .fehler .gegen { color: var(--tinte-text); }
+  .fehler-kopf { display: grid; grid-template-columns: 7mm 1fr 1fr; column-gap: 4mm; margin-top: 2.6mm; padding-bottom: 1.2mm; border-bottom: .9pt solid var(--haar-stark); font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); }
+
+  /* Bogen: Label oben links, Schreiblinien rechts */
+  .bogenblock { display: grid; grid-template-columns: 46mm 1fr; column-gap: 4mm; margin-top: 1.6mm; }
+  .bogenblock > span { padding-top: 3.1mm; font-size: 9.2pt; color: var(--tinte); font-weight: 600; line-height: 1.25; }
+  .bogenblock > span small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.9pt; margin-top: .4mm; }
+  .bogenblock .zeile-frei { height: 7mm; }
+  .sitzungen { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 5mm; margin-top: 2.4mm; }
+  .sitzungen > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .sitzungen .nr { font-size: 7.6pt; letter-spacing: .12em; }
+  .sitzungen h3 { margin-top: .4mm; font-size: 9.6pt; }
+  .sitzungen p { margin-top: .6mm; font-size: 8.6pt; line-height: 1.38; color: var(--tinte-text); }
+  /* Nur in diesem Baustein */
+  .inhalt td { padding: 1.05mm 0; }
+  .begriffe dt, .begriffe dd { padding: 1.25mm 0; }
+  .objekte { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 6mm; margin-top: 3mm; }
+  .objekte > div { position: relative; padding: 2.4mm 3.4mm 2.6mm; background: #fff; border: var(--linie) solid var(--haar); border-radius: 1.6mm; }
+  .objekte > div + div::before { content: "→"; position: absolute; left: -5.2mm; top: 3.6mm; color: var(--akzent); font-size: 10pt; }
+  .objekte h3 { font-size: 10pt; }
+  .objekte p { margin-top: .8mm; font-size: 8.5pt; line-height: 1.36; color: var(--tinte-text); }
+  .regeln3 { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; margin-top: 2.4mm; }
+  .regeln3 > div { border-top: .9pt solid var(--akzent); padding-top: 1.8mm; }
+  .regeln3 .nr { font-size: 12pt; }
+  .regeln3 h3 { margin-top: .6mm; font-size: 10pt; }
+  .regeln3 p { margin-top: .6mm; font-size: 8.8pt; line-height: 1.38; }
+  /* Stufen-Band */
+  .band { display: grid; grid-template-columns: repeat(5, 1fr) 30mm; column-gap: 1.6mm; margin-top: 3.4mm; }
+  .band .st { position: relative; padding: 2mm 2.4mm 2.2mm 3.2mm; background: rgba(124, 58, 237, .07); border: var(--linie) solid rgba(124, 58, 237, .35); border-radius: 1.2mm; }
+  .band .st .nr { font-size: 7.6pt; letter-spacing: .1em; }
+  .band .st h3 { margin-top: .4mm; font-size: 9.2pt; line-height: 1.2; }
+  .band .st p { margin-top: .6mm; font-size: 7.8pt; color: var(--tinte-leise); }
+  .band .aus { display: flex; flex-direction: column; justify-content: space-between; gap: 1mm; }
+  .band .aus span { display: block; padding: .8mm 2mm; border: var(--linie) solid var(--haar); border-radius: 1mm; font-size: 8pt; color: var(--tinte); background: #fff; }
+  /* Stufen im Detail */
+  .stufe { margin-top: 3.6mm; border-top: .9pt solid var(--haar-stark); padding-top: 2mm; }
+  .stufe-kopf { display: flex; align-items: baseline; gap: 3mm; }
+  .stufe-kopf .nr { font-size: 8pt; letter-spacing: .1em; }
+  .stufe-kopf h3 { font-size: 11.5pt; }
+  .stufe-kopf .meta { margin-left: auto; font-size: 8.4pt; color: var(--tinte-leise); }
+  .stufe dl { display: grid; grid-template-columns: 34mm 1fr; column-gap: 4mm; margin-top: 1.2mm; }
+  .stufe dt, .stufe dd { margin: 0; padding: 1.1mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.1pt; line-height: 1.4; }
+  .stufe dt { color: var(--tinte-leise); font-size: 8.4pt; padding-top: 1.3mm; }
+  .stufe dt:last-of-type, .stufe dd:last-of-type { border-bottom: 0; }
+  /* Matrix */
+  .matrix-tab td.p, .matrix-tab th.p { text-align: center; padding-left: 0; padding-right: 0; }
+  .matrix-tab td { height: auto; padding-top: 1mm; padding-bottom: 1mm; font-size: 8.5pt; border-bottom-color: var(--haar); }
+  .matrix-tab td.obj { color: var(--tinte-leise); font-size: 7.6pt; letter-spacing: .08em; text-transform: uppercase; }
+  .pp { display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 50%; background: var(--akzent); }
+  .pp.opt { background: none; border: .7pt solid var(--akzent); }
+  /* Notiz-Vorlage */
+  .notiz { margin-top: 2mm; padding: 2.6mm 4mm; background: #fff; border: var(--linie) solid var(--haar); border-left: 1.4pt solid var(--akzent); border-radius: 1mm; font-size: 9pt; line-height: 1.5; color: var(--tinte); }
+  .notiz .z { display: grid; grid-template-columns: 30mm 1fr; column-gap: 3mm; }
+  .notiz .z b { font-weight: 600; color: var(--tinte-leise); font-size: 8.4pt; }
+  .notiz .ein { color: var(--akzent); }
+  .notiz.schwach { border-left-color: var(--haar-stark); color: var(--tinte-leise); font-style: italic; }
+  .rhythmus { display: grid; grid-template-columns: repeat(5, 1fr); column-gap: 4mm; margin-top: 2.6mm; }
+  .rhythmus > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.6mm; }
+  .rhythmus .nr { font-size: 7.4pt; letter-spacing: .1em; }
+  .rhythmus h3 { margin-top: .4mm; font-size: 9.4pt; }
+  .rhythmus p { margin-top: .6mm; font-size: 8.4pt; line-height: 1.36; }
+  .liste.dicht li { padding: 1.05mm 0; font-size: 8.9pt; line-height: 1.34; }
+  .gross-zahl { font-size: 14pt; font-weight: 600; color: var(--tinte); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+</svg>
+
+<!-- 1 · Deckblatt -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Baustein · Vertrieb</p>
+    <h1>Salesprozess im CRM</h1>
+    <p class="lead">Ein Verkaufsablauf mit klaren Stufen, festen Regeln und einem Wochenrhythmus, den Ihr ganzes Team gleich lebt: wann eine Chance weiter darf, was dann im CRM steht und wie Sie jede Woche auf die Pipeline schauen. Für jedes CRM und den Umstieg aus Excel.</p>
+  </div>
+
+  <p class="abschnitt-titel">So nutzen Sie dieses Paket</p>
+  <div class="fakten">
+    <div><b>Wer damit arbeitet</b><p>Die Geschäftsführung, alle, die verkaufen, und die Person, die das CRM einrichtet. Den Prozess legen Sie gemeinsam fest, eingerichtet wird er von einer Person.</p></div>
+    <div><b>Zeitbedarf</b><p>Prozess festlegen: drei bis vier Stunden in zwei Sitzungen. Einrichten im CRM: ein bis zwei Tage. Umstellung im Alltag: vier Wochen.</p></div>
+    <div><b>Was Sie brauchen</b><p>Zugang zu Ihrem CRM mit Verwaltungsrechten oder eine Testversion, Ihre bisherigen Listen und die Tabelle, die zu diesem Paket gehört.</p></div>
+    <div><b>Was Sie danach haben</b><p>Stufen mit Ein- und Austrittskriterien, Pflichtfelder, Regeln für Notizen und Wiedervorlagen, einen festen Review-Termin und ein eingerichtetes CRM.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Inhalt <small>in dieser Reihenfolge bearbeiten</small></p>
+  <table class="inhalt">
+    <thead><tr><th>Seite</th><th>Teil</th><th class="z">Ihre Zeit</th></tr></thead>
+    <tbody>
+      <tr><td>2</td><td>Grundlagen: Begriffe, Aufbau eines CRM, drei Grundregeln</td><td class="z">10 Minuten</td></tr>
+      <tr><td>3</td><td>Der Prozess auf einen Blick, Stufen im Detail, Ihr Bogen</td><td class="z">75 Minuten</td></tr>
+      <tr><td>7</td><td>Pflichtfelder je Stufe, Auswahllisten und Namensregeln</td><td class="z">45 Minuten</td></tr>
+      <tr><td>9</td><td>Notizenstandard und Wiedervorlagen</td><td class="z">20 Minuten</td></tr>
+      <tr><td>11</td><td>Wochenrhythmus und Pipeline-Review, mit Protokollbogen</td><td class="z">20 Minuten</td></tr>
+      <tr><td>13</td><td>Kennzahlen je Stufe und gewichteter Wert, mit Beispiel und Bogen</td><td class="z">30 Minuten</td></tr>
+      <tr><td>16</td><td>Einrichtung im CRM, Schritt für Schritt</td><td class="z">1 bis 2 Tage</td></tr>
+      <tr><td>17</td><td>Import-Vorlage und Datenbereinigung</td><td class="z">2 bis 4 Stunden</td></tr>
+      <tr><td>18</td><td>Umstellung von Excel und aus dem Kopf: Vier-Wochen-Plan</td><td class="z">4 Wochen</td></tr>
+      <tr><td>19</td><td>Typische Fehler und Checkliste</td><td class="z">10 Minuten</td></tr>
+      <tr><td>20</td><td>Nächste Schritte</td><td class="z">5 Minuten</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Ihr Weg in drei Etappen</p>
+  <div class="drei" style="margin-top:2mm">
+    <div><div class="spalte-kopf"><span class="nr">2 SITZUNGEN</span><h3>Festlegen</h3></div><p class="klein" style="margin-top:.8mm;color:var(--tinte-text)">Stufen und Regeln auf Papier, mit allen, die verkaufen.</p></div>
+    <div><div class="spalte-kopf"><span class="nr">1 BIS 2 TAGE</span><h3>Einrichten</h3></div><p class="klein" style="margin-top:.8mm;color:var(--tinte-text)">CRM anlegen, Daten bereinigen und importieren.</p></div>
+    <div><div class="spalte-kopf"><span class="nr">4 WOCHEN</span><h3>Leben</h3></div><p class="klein" style="margin-top:.8mm;color:var(--tinte-text)">Stichtag, Schulung, jede Woche ein Review.</p></div>
+  </div>
+
+  <div class="hinweis unten">Zum Paket gehört eine <b>Tabelle</b> für Excel, Numbers und Google Tabellen: Stufen, Felder, Pipeline mit gewichtetem Wert und Prüfhinweisen, Auswertung, Import-Vorlage und Einführungsplan. Alle Beispiele sind frei erfunden. Hinweise zu Recht sind keine Rechtsberatung. Stand: Oktober 2026.</div>
+</section>
+
+<!-- 2 · Grundlagen -->
+<section class="seite">
+  <p class="vorzeile">Grundlagen</p>
+  <h2 class="blatt">Stufen beschreiben, was der Kunde getan hat</h2>
+  <p class="unter">Ein guter Salesprozess sorgt dafür, dass alle im Team dasselbe meinen, wenn sie „Angebot“ oder „fast sicher“ sagen. Das CRM ist dafür nur das Werkzeug. Entscheidend sind die Regeln, die Sie hier festlegen.</p>
+
+  <p class="abschnitt-titel">Die Begriffe</p>
+  <dl class="begriffe">
+    <dt>CRM</dt><dd>Software für Kundenbeziehungen: Firmen, Kontakte, Chancen, Notizen und Aufgaben an einem Ort, für alle im Team sichtbar.</dd>
+    <dt>Chance</dt><dd>Ein möglicher Auftrag mit einem konkreten Bedarf. In vielen CRM heißt sie Deal, Opportunity oder Verkaufschance.</dd>
+    <dt>Pipeline</dt><dd>Alle offenen Chancen, sortiert nach Stufen. Sie zeigt, was in den nächsten Wochen und Monaten entschieden wird.</dd>
+    <dt>Stufe</dt><dd>Ein Abschnitt im Verkauf, zum Beispiel „Angebot liegt vor“. Im Englischen Stage.</dd>
+    <dt>Eintritts&shy;kriterium</dt><dd>Was erfüllt sein muss, damit eine Chance in eine Stufe darf. Immer etwas, das der Kunde getan oder bestätigt hat.</dd>
+    <dt>Austritts&shy;kriterium</dt><dd>Was erledigt sein muss, damit die Chance die Stufe verlassen kann. Mit ja oder nein zu beantworten.</dd>
+    <dt>Pflichtfeld</dt><dd>Ein Feld, das ab einer bestimmten Stufe ausgefüllt sein muss, etwa der Wert ab dem Angebot.</dd>
+    <dt>Wiedervorlage</dt><dd>Der nächste Schritt mit Datum, als Aufgabe im CRM. Jede offene Chance hat genau einen.</dd>
+    <dt>Gewichteter Wert</dt><dd>Wert einer Chance mal der Wahrscheinlichkeit ihrer Stufe. Zusammengezählt über alle Chancen ergibt das eine realistische Erwartung.</dd>
+    <dt>Pipeline-Review</dt><dd>Fester Wochentermin, in dem das Team die Pipeline durchgeht und Lücken schließt.</dd>
+  </dl>
+
+  <p class="abschnitt-titel">Wie ein CRM aufgebaut ist</p>
+  <div class="objekte">
+    <div><h3>Firma</h3><p>Name, Branche, Größe, Ort, Lead-Klasse, Quelle. Eine Firma hat Kontakte und Chancen.</p></div>
+    <div><h3>Kontakt</h3><p>Person mit Funktion und Rolle im Buying Center. Gehört zu einer Firma.</p></div>
+    <div><h3>Chance</h3><p>Ein möglicher Auftrag mit Stufe, Wert, Verantwortlichem und nächstem Schritt.</p></div>
+    <div><h3>Notiz und Aufgabe</h3><p>Hängen an Kontakt und Chance. Die Aufgabe ist die Wiedervorlage.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Drei Grundregeln für alle</p>
+  <div class="regeln3">
+    <div><span class="nr">1</span><h3>Was nicht im CRM steht, ist nicht passiert.</h3><p>Ein Gespräch ohne Notiz, ein Angebot ohne Datum: Für das Team gibt es sie nicht.</p></div>
+    <div><span class="nr">2</span><h3>Jede offene Chance hat einen nächsten Schritt.</h3><p>Mit Datum und Verantwortlichem. Ohne nächsten Schritt ist sie verloren oder geparkt.</p></div>
+    <div><span class="nr">3</span><h3>Die Stufe ändert sich, wenn der Kunde handelt.</h3><p>Nicht, wenn Sie ein Angebot schreiben, sondern wenn der Kunde einen Termin dafür zusagt.</p></div>
+  </div>
+</section>
+
+<!-- 3 · Prozess auf einen Blick -->
+<section class="seite">
+  <p class="vorzeile">Stufen · Vorschlag zum Übernehmen oder Anpassen</p>
+  <h2 class="blatt">Der Salesprozess auf einen Blick</h2>
+  <p class="unter">Fünf offene Stufen und drei Ausgänge. Wahrscheinlichkeiten und Höchstdauern sind Startwerte. Ersetzen Sie sie nach sechs Monaten durch Ihre eigenen Zahlen.</p>
+
+  <div class="band">
+    <div class="st"><span class="nr">STUFE 1</span><h3>Termin vereinbart</h3><p>10 % · bis 21 Tage</p></div>
+    <div class="st"><span class="nr">STUFE 2</span><h3>Bedarf qualifiziert</h3><p>20 % · bis 14 Tage</p></div>
+    <div class="st"><span class="nr">STUFE 3</span><h3>Lösung abgestimmt</h3><p>40 % · bis 30 Tage</p></div>
+    <div class="st"><span class="nr">STUFE 4</span><h3>Angebot liegt vor</h3><p>60 % · bis 21 Tage</p></div>
+    <div class="st"><span class="nr">STUFE 5</span><h3>Verhandlung</h3><p>80 % · bis 30 Tage</p></div>
+    <div class="aus"><span>Gewonnen</span><span>Verloren</span><span>Geparkt</span></div>
+  </div>
+
+  <table class="raster text klein" style="margin-top:3.6mm">
+    <colgroup><col style="width:27mm"><col><col><col style="width:13mm"><col style="width:15mm"></colgroup>
+    <thead><tr><th>Stufe</th><th>Eintritt: Der Kunde hat …</th><th>Austritt: erledigt, wenn …</th><th class="zahl">Wahr&shy;sch.</th><th class="zahl">Höchst&shy;dauer</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">1 · Termin vereinbart</td><td>einem Gespräch über einen möglichen Bedarf zugestimmt. Die Firma passt zum Ideal-Kundenprofil, der Termin steht im Kalender.</td><td>das Gespräch stattgefunden hat und ein konkretes Problem erkennbar ist. Kein Bedarf: Verloren.</td><td class="zahl">10 %</td><td class="zahl">21 Tage</td></tr>
+      <tr><td class="stark">2 · Bedarf qualifiziert</td><td>ein konkretes Problem bestätigt und einem nächsten Termin zugestimmt.</td><td>vier Punkte geklärt sind: Bedarf in seinen Worten, wer entscheidet, bis wann, Budget-Rahmen.</td><td class="zahl">20 %</td><td class="zahl">14 Tage</td></tr>
+      <tr><td class="stark">3 · Lösung abgestimmt</td><td>die vier Punkte mit Ihnen geklärt und einem Termin zur Lösung zugestimmt.</td><td>der Kunde Lösungsskizze und Preisrahmen zugestimmt hat, der Entscheider beides kennt und ein Termin zur Angebotsbesprechung steht.</td><td class="zahl">40 %</td><td class="zahl">30 Tage</td></tr>
+      <tr><td class="stark">4 · Angebot liegt vor</td><td>das schriftliche Angebot erhalten und einem Termin zugestimmt, um es zu besprechen.</td><td>der Kunde das Angebot besprochen hat, offene Punkte nennt und ein Entscheidungsdatum.</td><td class="zahl">60 %</td><td class="zahl">21 Tage</td></tr>
+      <tr><td class="stark">5 · Verhandlung</td><td>gesagt, dass er grundsätzlich mit Ihnen arbeiten will. Offene Punkte und Entscheidungsdatum stehen fest.</td><td>der Auftrag schriftlich vorliegt (Gewonnen) oder der Kunde abgesagt hat (Verloren).</td><td class="zahl">80 %</td><td class="zahl">30 Tage</td></tr>
+      <tr class="gruppe"><td colspan="5">Ausgänge</td></tr>
+      <tr><td class="stark">Gewonnen</td><td>den Auftrag schriftlich erteilt.</td><td>Übergabe an die Umsetzung erfolgt, Startdatum steht.</td><td class="zahl">100 %</td><td class="zahl">–</td></tr>
+      <tr><td class="stark">Verloren</td><td>abgesagt, keinen Bedarf oder auf drei Versuche nicht geantwortet.</td><td>Verlustgrund aus der Liste und ein Satz dazu stehen im CRM.</td><td class="zahl">0 %</td><td class="zahl">–</td></tr>
+      <tr><td class="stark">Geparkt</td><td>gesagt: ja, aber nicht jetzt, etwa weil das Budget erst im nächsten Jahr kommt.</td><td>Grund und Wiedervorlage stehen fest. Zählt nicht in der Prognose.</td><td class="zahl">0 %</td><td class="zahl">6 Monate</td></tr>
+    </tbody>
+  </table>
+  <p class="abschnitt-titel">Eine Chance auf ihrem Weg <span class="marke-bsp">ERFUNDEN</span></p>
+  <ol class="weg">
+    <li><span class="kreis">1</span><h3>Tag 0</h3><p>Erstgespräch für Tag 9 vereinbart.</p></li>
+    <li><span class="kreis">2</span><h3>Tag 9</h3><p>Problem bestätigt, Termin zur Klärung steht.</p></li>
+    <li><span class="kreis">3</span><h3>Tag 20</h3><p>Entscheider, Zeit und Rahmen geklärt.</p></li>
+    <li><span class="kreis">4</span><h3>Tag 41</h3><p>Angebot verschickt, Besprechung steht.</p></li>
+    <li><span class="kreis">5</span><h3>Tag 52</h3><p>Zwei offene Punkte, Entscheidung für Tag 66 zugesagt.</p></li>
+    <li><span class="kreis">✓</span><h3>Tag 66</h3><p>Auftrag schriftlich: Gewonnen.</p></li>
+  </ol>
+
+  <p class="hinweis lila"><b>Die wichtigste Regel:</b> Eine Chance darf erst weiter, wenn das Austrittskriterium erfüllt ist. Ein Schritt zurück ist erlaubt und ehrlich.</p>
+</section>
+
+<!-- 4 · Stufen 1–3 -->
+<section class="seite">
+  <p class="vorzeile">Stufen im Detail · 1 bis 3</p>
+  <h2 class="blatt">Vom Termin bis zur abgestimmten Lösung</h2>
+  <p class="unter">Je Stufe: was Sie erreichen wollen, was Sie typischerweise tun, was vor dem Wechsel in die nächste Stufe im CRM stehen muss, eine Prüffrage und die Warnzeichen.</p>
+
+  <div class="stufe">
+    <div class="stufe-kopf"><span class="nr">STUFE 1</span><h3>Termin vereinbart</h3><span class="meta">10 % · bis 21 Tage</span></div>
+    <dl>
+      <dt>Ziel</dt><dd>Ein Gespräch, in dem Sie mehr zuhören als reden und verstehen, ob es ein echtes Problem gibt.</dd>
+      <dt>Typische Schritte</dt><dd>Termin mit Kalendereinladung bestätigen, zwei oder drei Fragen vorab schicken, Firma und Person kurz recherchieren, Lead-Klasse prüfen.</dd>
+      <dt>Pflicht vor Stufe 2</dt><dd>Gesprächsnotiz nach Standard (Seite 9), Bedarf in den Worten des Kunden, Größe der Firma, Rolle der Ansprechperson, nächster Termin.</dd>
+      <dt>Prüffrage</dt><dd>Hat der Kunde einem Gespräch über seinen Bedarf zugestimmt, nicht nur einer Vorstellung Ihrer Firma?</dd>
+      <dt>Warnzeichen</dt><dd>Der Termin wird zweimal verschoben. Der Kunde will „erst mal nur Unterlagen“.</dd>
+    </dl>
+  </div>
+
+  <div class="stufe">
+    <div class="stufe-kopf"><span class="nr">STUFE 2</span><h3>Bedarf qualifiziert</h3><span class="meta">20 % · bis 14 Tage</span></div>
+    <dl>
+      <dt>Ziel</dt><dd>Klären, ob und wie Sie helfen können und ob ein Auftrag realistisch ist. Lieber jetzt ein ehrliches Nein als nach dem Angebot.</dd>
+      <dt>Die vier Punkte</dt><dd><b>Bedarf:</b> Problem und Folgen in den Worten des Kunden. <b>Entscheidung:</b> wer entscheidet, wer mitredet, wie es abläuft. <b>Zeit:</b> bis wann es gelöst sein soll und warum dann. <b>Budget:</b> ein Rahmen oder die Bereitschaft, darüber zu sprechen. Im Englischen oft BANT genannt: Budget, Authority, Need, Timing.</dd>
+      <dt>Gute Fragen</dt><dd>Was passiert, wenn Sie nichts ändern? · Wer außer Ihnen ist an der Entscheidung beteiligt? · Bis wann muss es gelöst sein, und warum dann? · Mit welchem Rahmen planen Sie?</dd>
+      <dt>Pflicht vor Stufe 3</dt><dd>Alle vier Punkte im CRM, Entscheider als Kontakt angelegt, Termin zur Lösung.</dd>
+      <dt>Prüffrage</dt><dd>Könnten Sie die vier Punkte einer Kollegin erklären, ohne zu raten?</dd>
+      <dt>Warnzeichen</dt><dd>„Schicken Sie mal ein Angebot“, ohne dass über den Bedarf gesprochen wurde. Kein Zugang zum Entscheider.</dd>
+    </dl>
+  </div>
+
+  <div class="stufe">
+    <div class="stufe-kopf"><span class="nr">STUFE 3</span><h3>Lösung abgestimmt</h3><span class="meta">40 % · bis 30 Tage</span></div>
+    <dl>
+      <dt>Ziel</dt><dd>Eine Lösung, die der Kunde als seine erkennt, bevor Sie ein Angebot schreiben.</dd>
+      <dt>Typische Schritte</dt><dd>Analyse oder Termin vor Ort, Vorführung, Lösungsskizze auf einer Seite, Preisrahmen offen nennen.</dd>
+      <dt>Pflicht vor Stufe 4</dt><dd>Wert der Chance, erwartetes Abschlussdatum, Budget bestätigt, Datum des Angebots, Termin zur Angebotsbesprechung.</dd>
+      <dt>Prüffrage</dt><dd>Hat der Entscheider die Lösungsskizze gesehen oder kennt er zumindest den Preisrahmen?</dd>
+      <dt>Warnzeichen</dt><dd>Nur der spätere Nutzer ist beteiligt. Über Geld wurde noch nie gesprochen.</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 5 · Stufen 4–5 und Ausgänge -->
+<section class="seite">
+  <p class="vorzeile">Stufen im Detail · 4, 5 und die Ausgänge</p>
+  <h2 class="blatt">Vom Angebot bis zur Entscheidung</h2>
+
+  <div class="stufe">
+    <div class="stufe-kopf"><span class="nr">STUFE 4</span><h3>Angebot liegt vor</h3><span class="meta">60 % · bis 21 Tage</span></div>
+    <dl>
+      <dt>Ziel</dt><dd>Das Angebot gemeinsam mit dem Kunden durchgehen, statt es ins Leere zu schicken.</dd>
+      <dt>Typische Schritte</dt><dd>Angebot verschicken und im selben Zug den Besprechungstermin bestätigen, offene Punkte sammeln, Entscheidungsweg noch einmal klären.</dd>
+      <dt>Pflicht vor Stufe 5</dt><dd>Wert genau, Entscheidungsdatum, offene Punkte als Liste.</dd>
+      <dt>Prüffrage</dt><dd>Gibt es einen Termin, an dem der Kunde das Angebot mit Ihnen bespricht?</dd>
+      <dt>Warnzeichen</dt><dd>Angebot ohne Besprechungstermin verschickt. Der Kunde fragt nur noch nach dem Preis.</dd>
+    </dl>
+  </div>
+
+  <div class="stufe">
+    <div class="stufe-kopf"><span class="nr">STUFE 5</span><h3>Verhandlung</h3><span class="meta">80 % · bis 30 Tage</span></div>
+    <dl>
+      <dt>Ziel</dt><dd>Offene Punkte schließen und zum vereinbarten Datum eine Entscheidung bekommen.</dd>
+      <dt>Typische Schritte</dt><dd>Offene Punkte nacheinander klären, Vertragsentwurf, Zugeständnisse nur gegen eine Gegenleistung, Starttermin vorbesprechen.</dd>
+      <dt>Pflicht vor Gewonnen</dt><dd>Schriftlicher Auftrag, Auftragswert, Datum der Entscheidung, Startdatum, Übergabe-Notiz.</dd>
+      <dt>Prüffrage</dt><dd>Was müsste passieren, damit der Kunde jetzt noch Nein sagt?</dd>
+      <dt>Warnzeichen</dt><dd>Das Entscheidungsdatum verstreicht ohne neuen Termin. Kurz vor Schluss tauchen neue Beteiligte auf.</dd>
+    </dl>
+  </div>
+
+  <div class="stufe">
+    <div class="stufe-kopf"><span class="nr">AUSGANG</span><h3>Gewonnen</h3><span class="meta">100 %</span></div>
+    <dl>
+      <dt>Pflicht</dt><dd>Auftragswert, Datum der Entscheidung, Startdatum und eine Übergabe-Notiz an die Umsetzung: was versprochen wurde, wer beim Kunden zuständig ist, was ihm besonders wichtig ist.</dd>
+      <dt>Danach</dt><dd>Kurz danke sagen. Nach dem Start nach der Zufriedenheit fragen, nach drei Monaten nach einer Empfehlung.</dd>
+    </dl>
+  </div>
+
+  <div class="stufe">
+    <div class="stufe-kopf"><span class="nr">AUSGANG</span><h3>Verloren</h3><span class="meta">0 %</span></div>
+    <dl>
+      <dt>Pflicht</dt><dd>Verlustgrund aus der Liste (Seite 8) und ein Satz dazu, Datum der Entscheidung. Auf Wunsch eine Wiedervorlage in sechs bis zwölf Monaten.</dd>
+      <dt>Haltung</dt><dd>„Verloren“ ist keine Niederlage, sondern eine ehrliche Pipeline. Wer Chancen nie schließt, rechnet mit Geld, das nicht kommt.</dd>
+    </dl>
+  </div>
+
+  <div class="stufe">
+    <div class="stufe-kopf"><span class="nr">AUSGANG</span><h3>Geparkt</h3><span class="meta">zählt nicht in der Prognose</span></div>
+    <dl>
+      <dt>Pflicht</dt><dd>Grund und Wiedervorlage-Datum, höchstens sechs Monate.</dd>
+      <dt>Regel</dt><dd>Wer zum zweiten Mal geparkt wird, wird auf Verloren gesetzt, mit Wiedervorlage. So bleibt „Geparkt“ eine Ausnahme und kein Abstellgleis.</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 6 · Bogen Stufen -->
+<section class="seite">
+  <p class="vorzeile">Stufen · Bogen</p>
+  <h2 class="blatt">Ihre Stufen</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Nehmen Sie den Vorschlag von Seite 3 als Ausgangspunkt und passen Sie Namen und Kriterien an Ihr Geschäft an. Schreiben Sie jedes Eintrittskriterium als Handlung des Kunden. Besprechen Sie den Bogen mit allen, die verkaufen, bevor Sie etwas im CRM einrichten.</p>
+
+  <div class="reihe">
+    <p class="feld"><span>Gültig ab</span><span class="strich"></span></p>
+    <p class="feld breit"><span>Verantwortlich für den Prozess</span><span class="strich"></span></p>
+    <p class="feld"><span>nächste Prüfung</span><span class="strich"></span></p>
+  </div>
+
+  <table class="raster klein" style="margin-top:3.4mm">
+    <colgroup><col style="width:9mm"><col style="width:30mm"><col><col><col style="width:13mm"><col style="width:14mm"></colgroup>
+    <thead><tr><th></th><th>Name der Stufe</th><th>Eintritt: Der Kunde hat …</th><th>Austritt: erledigt, wenn …</th><th class="zahl">Wahr&shy;sch.</th><th class="zahl">Höchst&shy;dauer</th></tr></thead>
+    <tbody id="bogen-stufen"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Prüfen Sie Ihre Stufen</p>
+  <ul class="liste zweispaltig">
+    <li><span class="kreuz"></span><span>Jede Stufe beschreibt, was der Kunde getan hat, nicht was wir getan haben.</span></li>
+    <li><span class="kreuz"></span><span>Jedes Austrittskriterium lässt sich mit ja oder nein beantworten.</span></li>
+    <li><span class="kreuz"></span><span>Zwei Personen ordnen dieselbe Chance unabhängig derselben Stufe zu.</span></li>
+    <li><span class="kreuz"></span><span>Höchstens sieben Stufen bis zur Entscheidung.</span></li>
+    <li><span class="kreuz"></span><span>Die Wahrscheinlichkeiten steigen von Stufe zu Stufe.</span></li>
+    <li><span class="kreuz"></span><span>Verloren und Geparkt verlangen einen Grund.</span></li>
+  </ul>
+</section>
+
+<!-- 7 · Pflichtfelder -->
+<section class="seite">
+  <p class="vorzeile">Pflichtfelder · Vorschlag</p>
+  <h2 class="blatt">Was ab welcher Stufe im CRM stehen muss</h2>
+  <p class="unter">Pflichtfelder halten die Daten sauber, aber nur, wenn es wenige sind. Je Stufe kommen höchstens vier neue dazu. Ausgefüllt wird beim Eintritt in die Stufe.</p>
+
+  <table class="raster matrix-tab" style="margin-top:2.4mm">
+    <colgroup><col style="width:17mm"><col><col style="width:27mm"><col style="width:8mm"><col style="width:8mm"><col style="width:8mm"><col style="width:8mm"><col style="width:8mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"></colgroup>
+    <thead><tr><th>Objekt</th><th>Feld</th><th>Art</th><th class="p">1</th><th class="p">2</th><th class="p">3</th><th class="p">4</th><th class="p">5</th><th class="p">Gew.</th><th class="p">Verl.</th><th class="p">Park.</th></tr></thead>
+    <tbody id="matrix"></tbody>
+  </table>
+  <p class="klein" style="margin-top:2mm"><span class="pp"></span> Pflicht &nbsp;&nbsp; <span class="pp opt"></span> wenn bekannt &nbsp;&nbsp; Gew. = Gewonnen, Verl. = Verloren, Park. = Geparkt</p>
+  <p class="hinweis"><b>Wenn Ihr CRM keine Pflichtfelder je Stufe kann:</b> Legen Sie eine Ansicht „Pflichtfeld fehlt“ an (Seite 16) und gehen Sie sie im Pipeline-Review durch. Die Tabelle zu diesem Paket zeigt fehlende Angaben in der Spalte „Hinweis“.</p>
+</section>
+
+<!-- 8 · Auswahllisten und Namensregeln -->
+<section class="seite">
+  <p class="vorzeile">Felder · Auswahllisten und Namensregeln</p>
+  <h2 class="blatt">Auswählen statt frei schreiben</h2>
+  <p class="unter">Was Sie auswerten wollen, gehört in eine Auswahlliste. Freitext ist für Notizen da. Diese Listen sind ein Vorschlag, kurz genug, dass jeder den richtigen Wert findet.</p>
+
+  <table class="raster text klein">
+    <colgroup><col style="width:34mm"><col><col style="width:46mm"></colgroup>
+    <thead><tr><th>Feld</th><th>Werte (Vorschlag)</th><th>Regel</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Quelle</td><td>Empfehlung · Bestandskunde · Netzwerk · Veranstaltung · Website · Ansprache · Partner · Sonstiges</td><td>„Sonstiges“ nur mit Notiz</td></tr>
+      <tr><td class="stark">Größe (Beschäftigte)</td><td>1–9 · 10–49 · 50–249 · 250–999 · ab 1.000</td><td>bei Unsicherheit schätzen</td></tr>
+      <tr><td class="stark">Lead-Klasse</td><td>A · B · C · Ausschluss</td><td>aus Ihrem Punktemodell</td></tr>
+      <tr><td class="stark">Rolle im Buying Center</td><td>Entscheider · Nutzer · Beeinflusser · Einkauf · Türöffner · Fürsprecher · Freigabe</td><td>mehrere Rollen möglich</td></tr>
+      <tr><td class="stark">Verlustgrund</td><td>kein Bedarf · kein Budget · falscher Zeitpunkt · Preis · Wettbewerber gewählt · macht es selbst · keine Rückmeldung · passt nicht zu uns</td><td>immer mit einem Satz</td></tr>
+      <tr><td class="stark">Grund für Geparkt</td><td>Budget später · andere Priorität · Wechsel beim Kunden · wartet auf Entscheidung von außen</td><td>immer mit Wiedervorlage</td></tr>
+      <tr><td class="stark">Aktivität</td><td>Anruf · E-Mail · Video-Termin · Termin vor Ort · Nachricht · Veranstaltung</td><td>zählt für die Kennzahlen</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Namensregeln</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:34mm"><col><col style="width:62mm"></colgroup>
+    <thead><tr><th>Was</th><th>Regel</th><th>Beispiel <span class="marke-bsp" style="margin-left:1mm">ERFUNDEN</span></th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Chance</td><td>Firma · Thema, bei Folgeaufträgen mit Jahr</td><td class="ein">Beispiel GmbH · Wartungsvertrag 2027</td></tr>
+      <tr><td class="stark">Firma</td><td>vollständiger Name mit Rechtsform, wie im Impressum, keine Kürzel</td><td class="ein">Muster Logistik GmbH</td></tr>
+      <tr><td class="stark">Kontakt</td><td>Vor- und Nachname in eigenen Feldern, Funktion ausgeschrieben</td><td class="ein">Leitung Einkauf</td></tr>
+      <tr><td class="stark">Telefon</td><td>einheitlich mit Ländervorwahl, ohne Klammern</td><td class="ein">+49 und Vorwahl ohne die erste 0</td></tr>
+      <tr><td class="stark">Datum</td><td>immer im Datumsfeld, nie als Text in einer Notiz</td><td class="ein">nächster Schritt am 12.11.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="zwei" style="margin-top:1mm">
+    <p class="hinweis"><b>Neues Feld?</b> Nur, wenn jemand es regelmäßig auswertet und klar ist, wer es pflegt. Alles andere gehört in die Notiz.</p>
+    <p class="hinweis"><b>Listen ändern?</b> Werte nicht umbenennen, sondern einen neuen anlegen und den alten stilllegen. Sonst stimmen frühere Auswertungen nicht mehr.</p>
+  </div>
+
+  <p class="abschnitt-titel">Ihre Listen <small>Bogen</small></p>
+  <table class="raster">
+    <colgroup><col style="width:34mm"><col><col style="width:30mm"></colgroup>
+    <thead><tr><th>Feld</th><th>Ihre Werte</th><th>pflegt</th></tr></thead>
+    <tbody>
+      <tr><td class="stark" style="height:10mm">Quelle</td><td></td><td></td></tr>
+      <tr><td class="stark" style="height:10mm">Branche</td><td></td><td></td></tr>
+      <tr><td class="stark" style="height:10mm">Verlustgrund</td><td></td><td></td></tr>
+      <tr><td class="stark" style="height:10mm">Grund für Geparkt</td><td></td><td></td></tr>
+      <tr><td style="height:10mm"></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 9 · Notizenstandard -->
+<section class="seite">
+  <p class="vorzeile">Notizenstandard</p>
+  <h2 class="blatt">Eine Notiz, die auch Ihre Vertretung versteht</h2>
+  <p class="unter">Eine gute Notiz beantwortet in einer Minute Lesezeit: Was ist los, was will der Kunde, wer entscheidet, was ist vereinbart, was passiert als Nächstes.</p>
+
+  <p class="abschnitt-titel">Sechs Regeln</p>
+  <ol class="schritte-liste dicht">
+    <li><span class="nr">1</span><span><b>Innerhalb von 24 Stunden</b> nach jedem Gespräch, am besten direkt danach.</span></li>
+    <li><span class="nr">2</span><span><b>Eine Notiz je Kontakt-Moment</b>, verknüpft mit Kontakt und Chance.</span></li>
+    <li><span class="nr">3</span><span><b>Fakten und Einschätzung trennen.</b> Die eigene Einschätzung steht in der letzten Zeile.</span></li>
+    <li><span class="nr">4</span><span><b>Worte des Kunden in Anführungszeichen.</b> Sie helfen später im Angebot.</span></li>
+    <li><span class="nr">5</span><span><b>Nur, was der Kunde lesen dürfte.</b> Personen haben ein Recht auf Auskunft über ihre Daten (Art.&nbsp;15&nbsp;DSGVO). Keine privaten oder sensiblen Angaben, etwa zu Gesundheit.</span></li>
+    <li><span class="nr">6</span><span><b>Der nächste Schritt wird eine Aufgabe</b> mit Datum, nicht nur ein Satz in der Notiz.</span></li>
+  </ol>
+
+  <p class="abschnitt-titel">Vorlage zum Hinterlegen im CRM</p>
+  <div class="notiz">
+    <div class="z"><b>Datum · Art · mit</b><span>[Datum] · [Telefon, Video, vor Ort] · [Name, Funktion]</span></div>
+    <div class="z"><b>Anlass</b><span>[warum das Gespräch stattfand]</span></div>
+    <div class="z"><b>Situation</b><span>[was beim Kunden los ist, in Fakten]</span></div>
+    <div class="z"><b>Bedarf</b><span>„[in den Worten des Kunden]“</span></div>
+    <div class="z"><b>Entscheidung</b><span>[wer entscheidet, wer redet mit, wie läuft es ab]</span></div>
+    <div class="z"><b>Zeit · Budget</b><span>[bis wann, warum dann] · [Rahmen oder offen]</span></div>
+    <div class="z"><b>Zusagen</b><span>wir: [was, bis wann] · Kunde: [was, bis wann]</span></div>
+    <div class="z"><b>Nächster Schritt</b><span>[was, am, wer] → als Aufgabe angelegt</span></div>
+    <div class="z"><b>Einschätzung</b><span>[Ihre Sicht: Chancen, Risiken, Stimmung]</span></div>
+  </div>
+
+  <p class="abschnitt-titel">So nicht <span class="marke-bsp">ERFUNDEN</span></p>
+  <div class="notiz schwach">Gutes Gespräch, hat Interesse. Melde mich nächste Woche wieder. Angebot vorbereiten?</div>
+  <p class="klein" style="margin-top:1.2mm">Kein Bedarf, keine Entscheider, kein Datum. Niemand außer Ihnen kann damit weiterarbeiten.</p>
+
+  <p class="abschnitt-titel">So <span class="marke-bsp">ERFUNDEN</span></p>
+  <div class="notiz">
+    <div class="z"><b>Datum · Art · mit</b><span class="ein">05.11. · Video · Geschäftsführerin, Leitung IT</span></div>
+    <div class="z"><b>Anlass</b><span class="ein">Rückruf nach einer Anfrage über die Website</span></div>
+    <div class="z"><b>Situation</b><span class="ein">24 Arbeitsplätze, Server im Büro, Sicherung von Hand, Umzug im März</span></div>
+    <div class="z"><b>Bedarf</b><span class="ein">„Wenn der Server ausfällt, stehen wir zwei Tage still.“</span></div>
+    <div class="z"><b>Entscheidung</b><span class="ein">Geschäftsführerin entscheidet, ab 10.000 € mit den Gesellschaftern, Leitung IT prüft fachlich</span></div>
+    <div class="z"><b>Zeit · Budget</b><span class="ein">bis zum Umzug im März · Rahmen 15.000 bis 20.000 €</span></div>
+    <div class="z"><b>Zusagen</b><span class="ein">wir: Lösungsskizze bis 12.11. · Kunde: Liste der Geräte bis 10.11.</span></div>
+    <div class="z"><b>Nächster Schritt</b><span class="ein">Lösungstermin 14.11., 10 Uhr → als Aufgabe angelegt</span></div>
+    <div class="z"><b>Einschätzung</b><span class="ein">Leitung IT ist Fürsprecherin, Geschäftsführerin vorsichtig wegen der Kosten</span></div>
+  </div>
+</section>
+
+<!-- 10 · Wiedervorlagen -->
+<section class="seite">
+  <p class="vorzeile">Wiedervorlagen</p>
+  <h2 class="blatt">Keine Chance ohne nächsten Schritt</h2>
+  <p class="unter">Viele Aufträge gehen nicht im Gespräch verloren, sondern danach, weil niemand nachfasst. Diese Regeln sorgen dafür, dass nichts liegen bleibt.</p>
+
+  <p class="abschnitt-titel">Sieben Regeln</p>
+  <ol class="schritte-liste dicht">
+    <li><span class="nr">1</span><span>Jede offene Chance hat <b>genau einen</b> nächsten Schritt mit Datum und Verantwortlichem, als Aufgabe im CRM.</span></li>
+    <li><span class="nr">2</span><span>Der nächste Schritt ist <b>eine konkrete Handlung</b>: „anrufen und Termin zur Angebotsbesprechung vereinbaren“, nicht „nachhaken“.</span></li>
+    <li><span class="nr">3</span><span>Am besten ist der nächste Schritt <b>ein Termin mit dem Kunden</b>, vereinbart, bevor das aktuelle Gespräch endet.</span></li>
+    <li><span class="nr">4</span><span>Überfällige Aufgaben werden <b>am nächsten Werktag</b> erledigt oder mit Grund neu terminiert.</span></li>
+    <li><span class="nr">5</span><span>Höchstens <b>zweimal verschieben</b> ohne neuen Anlass. Danach die Stufe prüfen: Ist die Chance noch echt?</span></li>
+    <li><span class="nr">6</span><span>Vor Urlaub oder Abwesenheit werden <b>Aufgaben übergeben</b>, nicht verschoben.</span></li>
+    <li><span class="nr">7</span><span>Montag früh ist die Ansicht <b>„Überfällig“ leer</b>.</span></li>
+  </ol>
+
+  <p class="abschnitt-titel">Fristen <small>Vorschlag, anpassbar</small></p>
+  <table class="raster text klein">
+    <colgroup><col style="width:52mm"><col style="width:42mm"><col></colgroup>
+    <thead><tr><th>Anlass</th><th>Frist</th><th>Was genau</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Nach jedem Gespräch</td><td>am selben oder nächsten Werktag</td><td>kurze Zusammenfassung mit Zusagen und nächstem Schritt an den Kunden</td></tr>
+      <tr><td class="stark">Angebot verschickt</td><td>Termin beim Versand vereinbart</td><td>ohne Termin: nach drei Werktagen anrufen</td></tr>
+      <tr><td class="stark">Keine Antwort</td><td>drei Versuche in zwei bis drei Wochen</td><td>auf verschiedenen Wegen, danach Geparkt oder Verloren</td></tr>
+      <tr><td class="stark">Entscheidungsdatum verstrichen</td><td>nächster Werktag</td><td>anrufen, neues Datum vereinbaren oder Stufe zurücksetzen</td></tr>
+      <tr><td class="stark">Geparkt</td><td>spätestens nach sechs Monaten</td><td>mit einem Anlass melden, nicht „wollte mal hören“</td></tr>
+      <tr><td class="stark">Gewonnen</td><td>nach dem Start und nach drei Monaten</td><td>Zufriedenheit erfragen, dann nach einer Empfehlung fragen</td></tr>
+      <tr><td class="stark">Bestandskunden der Klasse A</td><td>mindestens einmal im Quartal</td><td>ein Gespräch über ihre nächsten Pläne</td></tr>
+    </tbody>
+  </table>
+  <p class="hinweis">Nachfassen in einem laufenden Gespräch ist Teil der Geschäftsbeziehung. Werbung per E-Mail an Kontakte ohne laufendes Gespräch braucht eine Einwilligung (§&nbsp;7&nbsp;UWG), eine enge Ausnahme gilt für eigene Bestandskunden. Hinweis, keine Rechtsberatung.</p>
+
+  <p class="abschnitt-titel">Schwache und gute nächste Schritte</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:46mm"><col></colgroup>
+    <thead><tr><th>Statt …</th><th>besser …</th></tr></thead>
+    <tbody>
+      <tr><td class="leise">nachhaken</td><td>anrufen und einen Termin zur Angebotsbesprechung vereinbaren</td></tr>
+      <tr><td class="leise">melden</td><td>Zusammenfassung mit zwei Terminvorschlägen schicken</td></tr>
+      <tr><td class="leise">Angebot nachfassen</td><td>anrufen, offene Punkte zum Angebot klären und das Entscheidungsdatum erfragen</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 11 · Wochenrhythmus und Review -->
+<section class="seite">
+  <p class="vorzeile">Wochenrhythmus</p>
+  <h2 class="blatt">Pipeline-Review: 45 Minuten, jede Woche</h2>
+  <p class="unter">Ein fester Termin, immer am selben Tag zur selben Zeit. Allein dauert er 20 Minuten, im Team 45. Er ist keine Rechtfertigungsrunde, sondern der Ort, an dem das Team Lücken schließt und sich gegenseitig hilft.</p>
+
+  <div class="rhythmus">
+    <div><span class="nr">TÄGLICH</span><h3>Aufgaben des Tages</h3><p>10 Minuten: Wiedervorlagen erledigen, Notizen nachtragen.</p></div>
+    <div><span class="nr">FREITAG</span><h3>Pipeline pflegen</h3><p>Bis 12 Uhr: Stufen, Werte, Daten und Pflichtfelder aktuell.</p></div>
+    <div><span class="nr">MONTAG</span><h3>Pipeline-Review</h3><p>45 Minuten, Ablauf unten, Protokoll auf Seite 12.</p></div>
+    <div><span class="nr">MONATSENDE</span><h3>Prognose und Zahlen</h3><p>60 Minuten, Ablauf unten.</p></div>
+    <div><span class="nr">QUARTAL</span><h3>Prozess prüfen</h3><p>90 Minuten: Stufen, Wahrscheinlichkeiten, Pflichtfelder nachschärfen.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Ablauf des Reviews <small>45 Minuten</small></p>
+  <table class="raster text">
+    <colgroup><col style="width:9mm"><col style="width:46mm"><col><col style="width:16mm"></colgroup>
+    <tbody>
+      <tr><td class="leise">1</td><td class="stark">Zahlen</td><td>gewichteter Wert, neue Chancen, Gewonnen und Verloren seit letzter Woche</td><td class="leise">5 Min.</td></tr>
+      <tr><td class="leise">2</td><td class="stark">Lücken</td><td>Chancen ohne nächsten Schritt, überfällige Aufgaben, fehlende Pflichtfelder. Jede Lücke bekommt sofort einen Verantwortlichen.</td><td class="leise">10 Min.</td></tr>
+      <tr><td class="leise">3</td><td class="stark">Hängende Chancen</td><td>länger als die Höchstdauer in der Stufe: weiter, zurück, parken oder schließen?</td><td class="leise">10 Min.</td></tr>
+      <tr><td class="leise">4</td><td class="stark">Die großen Chancen</td><td>die fünf größten nach Wert, mit den Prüffragen unten</td><td class="leise">15 Min.</td></tr>
+      <tr><td class="leise">5</td><td class="stark">Maßnahmen</td><td>wer macht was bis wann, direkt im CRM als Aufgabe</td><td class="leise">5 Min.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Fünf Prüffragen je Chance</p>
+  <ol class="schritte-liste dicht">
+    <li><span class="nr">1</span><span>Was hat <b>der Kunde</b> zuletzt getan, nicht wir?</span></li>
+    <li><span class="nr">2</span><span>Ist das Austrittskriterium der vorigen Stufe wirklich erfüllt?</span></li>
+    <li><span class="nr">3</span><span>Wer entscheidet, und haben wir mit dieser Person selbst gesprochen?</span></li>
+    <li><span class="nr">4</span><span>Hat der Kunde dem nächsten Schritt zugestimmt, mit Datum?</span></li>
+    <li><span class="nr">5</span><span>Was müsste passieren, damit wir verlieren, und was tun wir dagegen?</span></li>
+  </ol>
+
+  <p class="hinweis lila"><b>Regeln für den Termin:</b> Wer fehlt, pflegt seine Chancen vorher. Diskutiert wird nur, was eine Entscheidung braucht. Jede Entscheidung steht noch im Termin im CRM. Am Ende fasst die Moderation die Maßnahmen in drei Sätzen zusammen.</p>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Am Monatsende <small>60 Minuten</small></p>
+      <ol class="schritte-liste dicht">
+        <li><span class="nr">1</span><span>Prognose für den nächsten Monat: gewichteter Wert nach erwartetem Abschluss</span></li>
+        <li><span class="nr">2</span><span>Prognose des Vormonats gegen das, was gekommen ist</span></li>
+        <li><span class="nr">3</span><span>Kennzahlen je Stufe gegen den Vormonat (Seite 13)</span></li>
+        <li><span class="nr">4</span><span>Verlustgründe: Was wiederholt sich?</span></li>
+        <li><span class="nr">5</span><span>Eine Verbesserung am Prozess, mit Verantwortlichem</span></li>
+      </ol>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Allein statt im Team <small>20 Minuten</small></p>
+      <p class="text" style="margin-top:1.6mm">Verkaufen Sie noch selbst, halten Sie das Review mit sich: dieselben fünf Blöcke, kürzer. Tragen Sie den Termin wie einen Kundentermin ein und verschieben Sie ihn nicht. Gerade allein ist der feste Blick auf die Pipeline der Unterschied zwischen Glück und Planung.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Review-Protokoll -->
+<section class="seite">
+  <p class="vorzeile">Wochenrhythmus · Bogen</p>
+  <h2 class="blatt">Protokoll Pipeline-Review</h2>
+  <div class="reihe">
+    <p class="feld schmal"><span>Datum</span><span class="strich"></span></p>
+    <p class="feld breit"><span>dabei</span><span class="strich"></span></p>
+    <p class="feld"><span>Moderation</span><span class="strich"></span></p>
+  </div>
+
+  <p class="abschnitt-titel">1 · Zahlen</p>
+  <table class="raster dicht">
+    <colgroup><col><col style="width:28mm"><col style="width:28mm"><col style="width:28mm"></colgroup>
+    <thead><tr><th>Kennzahl</th><th class="zahl">diese Woche</th><th class="zahl">Vorwoche</th><th class="zahl">Ziel</th></tr></thead>
+    <tbody id="review-zahlen"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">2 und 3 · Lücken und hängende Chancen</p>
+  <table class="raster">
+    <colgroup><col style="width:48mm"><col style="width:36mm"><col><col style="width:22mm"><col style="width:18mm"></colgroup>
+    <thead><tr><th>Chance</th><th>Was fehlt oder hängt</th><th>Entscheidung</th><th>Wer</th><th>Bis</th></tr></thead>
+    <tbody data-leer="4" data-spalten="5"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">4 · Die großen Chancen</p>
+  <table class="raster">
+    <colgroup><col style="width:48mm"><col style="width:20mm"><col><col style="width:44mm"></colgroup>
+    <thead><tr><th>Chance</th><th class="mitte">Stufe stimmt?</th><th>Nächster Schritt mit dem Kunden, Datum</th><th>Größtes Risiko</th></tr></thead>
+    <tbody id="review-gross"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">5 · Maßnahmen <small>stehen im CRM als Aufgabe</small></p>
+  <table class="raster">
+    <colgroup><col style="width:8mm"><col><col style="width:30mm"><col style="width:22mm"></colgroup>
+    <tbody data-leer="3" data-spalten="4" data-nr="1"></tbody>
+  </table>
+</section>
+
+<!-- 13 · Kennzahlen -->
+<section class="seite">
+  <p class="vorzeile">Kennzahlen</p>
+  <h2 class="blatt">Kennzahlen je Stufe und der gewichtete Wert</h2>
+  <p class="unter">Mit sauberen Stufen kann Ihr CRM Zahlen liefern, die zeigen, wo im Verkauf es klemmt. Fangen Sie mit den ersten fünf an, die anderen kommen, sobald Sie einige Monate Daten haben.</p>
+
+  <table class="raster text klein">
+    <colgroup><col style="width:40mm"><col><col style="width:48mm"><col style="width:20mm"></colgroup>
+    <thead><tr><th>Kennzahl</th><th>So rechnen Sie</th><th>Wozu</th><th>Wie oft</th></tr></thead>
+    <tbody id="kennzahlen"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Der gewichtete Wert, Schritt für Schritt <span class="marke-bsp">ERFUNDEN</span></p>
+  <table class="raster klein" style="margin-top:1.6mm">
+    <colgroup><col><col style="width:30mm"><col style="width:26mm"><col style="width:18mm"><col style="width:28mm"></colgroup>
+    <thead><tr><th>Chance</th><th>Stufe</th><th class="zahl">Wert</th><th class="zahl">Wahrsch.</th><th class="zahl">gewichtet</th></tr></thead>
+    <tbody>
+      <tr><td class="ein">Chance A</td><td class="ein">4 Angebot liegt vor</td><td class="zahl ein">20.000 €</td><td class="zahl">60 %</td><td class="zahl">12.000 €</td></tr>
+      <tr><td class="ein">Chance B</td><td class="ein">2 Bedarf qualifiziert</td><td class="zahl ein">8.000 €</td><td class="zahl">20 %</td><td class="zahl">1.600 €</td></tr>
+      <tr><td class="ein">Chance C</td><td class="ein">5 Verhandlung</td><td class="zahl ein">30.000 €</td><td class="zahl">80 %</td><td class="zahl">24.000 €</td></tr>
+      <tr class="summe"><td>Summe</td><td></td><td class="zahl">58.000 €</td><td></td><td class="zahl">37.600 €</td></tr>
+    </tbody>
+  </table>
+  <div class="zwei">
+    <p class="hinweis"><b>Was er sagt:</b> Über viele Chancen gerechnet ist der gewichtete Wert eine gute Erwartung, was hereinkommt. Für die Planung von Umsatz und Personal ist er ehrlicher als der volle Wert.</p>
+    <p class="hinweis"><b>Was er nicht sagt:</b> Eine einzelne Chance wird nie zu 60 % gewonnen, sondern ganz oder gar nicht. Bei wenigen großen Chancen schwankt das Ergebnis stark.</p>
+  </div>
+  <p class="text" style="margin-top:2.6mm"><b>Wie viel Pipeline Sie brauchen:</b> Teilen Sie das, was zum Umsatzziel noch fehlt, durch Ihre Abschlussquote. Fehlen im Quartal 60.000 € und gewinnen Sie drei von zehn entschiedenen Chancen, brauchen Sie rund 200.000 € an Chancen, die in diesem Quartal entschieden werden. Rechenbeispiel, frei erfunden.</p>
+</section>
+
+<!-- 14 · Beispiel Pipeline -->
+<section class="seite">
+  <p class="vorzeile bsp">Pipeline · Beispiel · frei erfunden</p>
+  <h2 class="blatt">Eine Pipeline am Montagmorgen</h2>
+  <p class="unter">Ein IT-Dienstleister mit zwölf Beschäftigten vor seinem Pipeline-Review am Montag, 2. November. Firmen, Werte und Daten sind frei erfunden. Lila steht für Einträge, schwarz für das, was die Tabelle rechnet.</p>
+
+  <table class="raster klein" style="margin-top:3mm">
+    <colgroup><col style="width:40mm"><col style="width:24mm"><col style="width:19mm"><col style="width:11mm"><col style="width:19mm"><col><col style="width:14mm"><col style="width:10mm"></colgroup>
+    <thead><tr><th>Chance</th><th>Stufe</th><th class="zahl">Wert</th><th class="zahl">Wahr&shy;sch.</th><th class="zahl">gewichtet</th><th>Nächster Schritt</th><th>am</th><th class="zahl">Tage in Stufe</th></tr></thead>
+    <tbody id="bsp-pipeline"></tbody>
+  </table>
+
+  <div class="zwei" style="margin-top:3.4mm">
+    <div>
+      <p class="abschnitt-titel" style="margin-top:0">Stand <span class="marke-bsp">ERFUNDEN</span></p>
+      <dl class="gefuellt eng" style="grid-template-columns:36mm 1fr">
+        <dt>Offene Chancen</dt><dd>6, zusammen 112.000 €</dd>
+        <dt>Gewichteter Wert</dt><dd>63.700 €</dd>
+        <dt>Abschluss im November</dt><dd>2 Chancen, gewichtet 44.400 €</dd>
+        <dt>Abschlussquote seit Jahresbeginn</dt><dd>9 gewonnen, 14 verloren: 39 %</dd>
+      </dl>
+    </div>
+    <div>
+      <p class="abschnitt-titel" style="margin-top:0">Was das Review daraus macht</p>
+      <ul class="punkte klein">
+        <li><b>Ingenieurbüro:</b> überfällig und 26 Tage in Stufe 4, Höchstdauer 21. Gespräch läuft nur mit dem Einkauf. Maßnahme: Termin mit der Geschäftsführung.</li>
+        <li><b>Praxisverbund:</b> Entscheiderin noch unbekannt. Bleibt in Stufe 2, nächster Schritt ist ein Termin mit ihr.</li>
+        <li><b>Maschinenbau:</b> größte Chance. Prüffrage 5 zeigt ein Risiko: Die Konzernmutter muss freigeben. Maßnahme: früh nach dem Ablauf fragen.</li>
+        <li><b>Bäckerei:</b> wegen des Preises verloren. Dritter Preisverlust im Quartal, Thema für das Monatsende.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Prognose nach erwartetem Abschluss <span class="marke-bsp">ERFUNDEN</span></p>
+  <table class="raster klein">
+    <colgroup><col style="width:30mm"><col><col style="width:30mm"><col style="width:34mm"><col style="width:24mm"></colgroup>
+    <thead><tr><th>Monat</th><th>Chancen</th><th class="zahl">gewichtet</th><th class="zahl">Wert in Stufe 4 und 5</th><th class="zahl">Anzahl</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">November</td><td class="ein">Maschinenbau, Steuerkanzlei</td><td class="zahl">44.400&nbsp;€</td><td class="zahl">60.000&nbsp;€</td><td class="zahl">2</td></tr>
+      <tr><td class="stark">Dezember</td><td class="ein">Spedition, Ingenieurbüro</td><td class="zahl">17.100&nbsp;€</td><td class="zahl">12.500&nbsp;€</td><td class="zahl">2</td></tr>
+      <tr><td class="stark">Januar</td><td class="ein">Praxisverbund, Hausverwaltung</td><td class="zahl">2.200&nbsp;€</td><td class="zahl">0&nbsp;€</td><td class="zahl">2</td></tr>
+    </tbody>
+  </table>
+  <p class="text" style="margin-top:2mm"><b>Was die Prognose zeigt:</b> Für Januar kommt fast nichts nach. Die Maßnahme im Review: bis Mitte Dezember zehn neue Erstgespräche mit A&#8209;Firmen vereinbaren, damit Stufe 1 wieder gefüllt ist.</p>
+</section>
+
+<!-- 15 · Pipeline-Bogen -->
+<section class="seite">
+  <p class="vorzeile">Pipeline · Bogen</p>
+  <h2 class="blatt">Pipeline mit gewichtetem Wert</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Für den Start ohne CRM oder für das Review auf Papier. Eine Zeile je offener Chance. Gewichtet = Wert × Wahrscheinlichkeit der Stufe. Die Tabelle zum Paket rechnet das selbst und zeigt, wo etwas fehlt.</p>
+  <div class="reihe">
+    <p class="feld"><span>Stand vom</span><span class="strich"></span></p>
+    <p class="feld breit"><span>Verantwortlich</span><span class="strich"></span></p>
+  </div>
+  <table class="raster klein" style="margin-top:3mm">
+    <colgroup><col style="width:7mm"><col style="width:42mm"><col style="width:12mm"><col style="width:20mm"><col style="width:12mm"><col style="width:20mm"><col><col style="width:14mm"></colgroup>
+    <thead><tr><th></th><th>Chance (Firma · Thema)</th><th class="mitte">Stufe</th><th class="zahl">Wert €</th><th class="zahl">Wahr&shy;sch.</th><th class="zahl">gewichtet €</th><th>Nächster Schritt</th><th>am</th></tr></thead>
+    <tbody data-leer="20" data-spalten="8" data-nr="1"></tbody>
+    <tbody><tr class="summe"><td></td><td>Summe offen</td><td></td><td></td><td></td><td></td><td colspan="2" class="leise" style="font-weight:400">Chancen ohne nächsten Schritt:</td></tr></tbody>
+  </table>
+  <p class="klein" style="margin-top:2mm">Wahrscheinlichkeiten (Vorschlag): Stufe 1: 10 % · Stufe 2: 20 % · Stufe 3: 40 % · Stufe 4: 60 % · Stufe 5: 80 %. Ihre eigenen Werte: <span style="display:inline-block;width:70mm;border-bottom:var(--linie) solid var(--haar-schreib)">&nbsp;</span></p>
+</section>
+
+<!-- 16 · Einrichtung -->
+<section class="seite">
+  <p class="vorzeile">Einrichtung · für jedes CRM</p>
+  <h2 class="blatt">Im CRM einrichten, Schritt für Schritt</h2>
+  <p class="unter">Die Begriffe heißen in jedem System etwas anders, die Schritte sind dieselben. Richten Sie zuerst in einer Testumgebung oder mit fünf Test-Chancen ein, dann für alle.</p>
+
+  <ul class="liste dicht" id="einrichtung" style="margin-top:1.4mm"></ul>
+
+  <p class="abschnitt-titel">Die sechs Ansichten im Detail</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:46mm"><col><col style="width:40mm"></colgroup>
+    <thead><tr><th>Ansicht</th><th>Filter</th><th>Sortierung</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Meine offenen Chancen</td><td>verantwortlich bin ich, Stufe 1 bis 5</td><td>nächster Schritt, früheste zuerst</td></tr>
+      <tr><td class="stark">Überfällig</td><td>Datum des nächsten Schritts vor heute, offen oder geparkt</td><td>älteste zuerst</td></tr>
+      <tr><td class="stark">Ohne nächsten Schritt</td><td>Stufe 1 bis 5, keine offene Aufgabe</td><td>höchster Wert zuerst</td></tr>
+      <tr><td class="stark">Hängt in der Stufe</td><td>Tage in der Stufe länger als die Höchstdauer</td><td>längste zuerst</td></tr>
+      <tr><td class="stark">Abschluss diesen Monat</td><td>erwarteter Abschluss im laufenden Monat</td><td>höchster Wert zuerst</td></tr>
+      <tr><td class="stark">Pflichtfeld fehlt</td><td>ab Stufe 2 und eines der Pflichtfelder der Stufe leer</td><td>nach Stufe</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Was Ihr CRM können sollte <small>wenn Sie noch eins auswählen</small></p>
+  <ul class="liste zweispaltig">
+    <li><span class="kreuz"></span><span>Eigene Stufen mit Wahrscheinlichkeit</span></li>
+    <li><span class="kreuz"></span><span>Pflichtfelder je Stufe oder zumindest Filter</span></li>
+    <li><span class="kreuz"></span><span>Aufgaben mit Fälligkeit und Erinnerung</span></li>
+    <li><span class="kreuz"></span><span>Import und Export als CSV oder Excel</span></li>
+    <li><span class="kreuz"></span><span>Berichte nach Stufe, Monat und Person</span></li>
+    <li><span class="kreuz"></span><span>Rechte je Rolle, Nutzung am Handy</span></li>
+    <li><span class="kreuz"></span><span>Vertrag zur Auftragsverarbeitung, Ort der Daten</span></li>
+    <li><span class="kreuz"></span><span>Vollständiger Datenexport bei einem Wechsel</span></li>
+  </ul>
+</section>
+
+<!-- 17 · Import -->
+<section class="seite">
+  <p class="vorzeile">Import · Vorlage und Bereinigung</p>
+  <h2 class="blatt">Daten sauber ins CRM bringen</h2>
+  <p class="unter">Ein Import ist die beste Gelegenheit aufzuräumen. Was unbereinigt hineinkommt, bleibt jahrelang. Die Spalten unten stehen als leeres Blatt „Import“ in der Tabelle, dazu ein ausgefülltes Beispiel.</p>
+
+  <p class="abschnitt-titel">Spalten der Import-Vorlage</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:44mm"><col style="width:14mm"><col><col style="width:50mm"></colgroup>
+    <thead><tr><th>Spalte</th><th class="mitte">Pflicht</th><th>Format</th><th>Beispiel <span class="marke-bsp" style="margin-left:1mm">ERFUNDEN</span></th></tr></thead>
+    <tbody id="import"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">In sechs Schritten</p>
+  <ol class="schritte-liste dicht">
+    <li><span class="nr">1</span><span><b>Sammeln:</b> alle Listen, Adressbücher, Visitenkarten und Notizen an einem Ort.</span></li>
+    <li><span class="nr">2</span><span><b>In die Vorlage übertragen:</b> eine Zeile je Kontakt, Firmen genau gleich geschrieben.</span></li>
+    <li><span class="nr">3</span><span><b>Bereinigen:</b> Dubletten über E-Mail oder Firma und Name, Schreibweisen vereinheitlichen, Kontakte ohne Gespräch seit mehr als drei Jahren prüfen statt übernehmen.</span></li>
+    <li><span class="nr">4</span><span><b>Reihenfolge:</b> erst Firmen, dann Kontakte mit Zuordnung zur Firma, dann Chancen.</span></li>
+    <li><span class="nr">5</span><span><b>Probeimport</b> mit zehn Zeilen, Ergebnis im CRM prüfen, dann der Rest.</span></li>
+    <li><span class="nr">6</span><span><b>Stichprobe:</b> 20 Datensätze nach dem Import ansehen. Die alte Liste schreibgeschützt ablegen.</span></li>
+  </ol>
+  <p class="hinweis"><b>Datenschutz:</b> Halten Sie fest, woher Kontaktdaten stammen, und übernehmen Sie Einwilligungen für E-Mail-Werbung nur mit Datum und Nachweis. Prüfen Sie, ob alte Kontakte noch gebraucht werden. Mit dem Anbieter des CRM schließen Sie einen Vertrag zur Auftragsverarbeitung (Art.&nbsp;28&nbsp;DSGVO). Hinweis, keine Rechtsberatung.</p>
+</section>
+
+<!-- 18 · Umstellung -->
+<section class="seite">
+  <p class="vorzeile">Umstellung · von Excel und aus dem Kopf</p>
+  <h2 class="blatt">In vier Wochen ins CRM</h2>
+  <p class="unter">Die Technik ist selten das Problem. Schwierig ist, dass alte Gewohnheiten weiterlaufen. Darum gibt es einen festen Stichtag, ab dem nur noch das CRM gilt.</p>
+
+  <table class="raster text">
+    <colgroup><col style="width:18mm"><col><col style="width:30mm"><col style="width:12mm"></colgroup>
+    <thead><tr><th>Woche</th><th>Was</th><th>Wer</th><th class="mitte">✓</th></tr></thead>
+    <tbody id="umstellung"></tbody>
+  </table>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Aus dem Kopf ins CRM <small>60 Minuten</small></p>
+      <p class="text" style="margin-top:1.6mm">Viele Chancen stehen nirgends, nur im Kopf der Geschäftsführung. Setzen Sie sich eine Stunde zusammen: Eine Person fragt, eine trägt ein.</p>
+      <ul class="punkte klein">
+        <li>Mit wem sprechen Sie gerade über einen Auftrag?</li>
+        <li>Was ist der nächste Schritt, und wann?</li>
+        <li>Was wäre der Auftrag wert?</li>
+        <li>Wer entscheidet beim Kunden?</li>
+        <li>Wem haben Sie etwas versprochen?</li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Einwände im Team</p>
+      <dl class="gefuellt eng" style="grid-template-columns:30mm 1fr; margin-top:.6mm">
+        <dt>„Kostet Zeit.“</dt><dd style="color:var(--tinte-text)">Zwei Minuten Notiz sparen später das Suchen und jede Übergabe.</dd>
+        <dt>„Ich habe alles im Kopf.“</dt><dd style="color:var(--tinte-text)">Bis zum ersten Urlaub oder Krankheitstag.</dd>
+        <dt>„Das ist Kontrolle.“</dt><dd style="color:var(--tinte-text)">Das Review hilft, Chancen zu gewinnen, es bewertet keine Menschen.</dd>
+        <dt>„Excel reicht.“</dt><dd style="color:var(--tinte-text)">Für eine Person vielleicht. Für ein Team fehlen Aufgaben und Verlauf.</dd>
+      </dl>
+    </div>
+  </div>
+  <p class="hinweis"><b>Mit Betriebsrat:</b> Ein CRM kann Verhalten und Leistung sichtbar machen. Bei technischen Einrichtungen, die dazu geeignet sind, hat der Betriebsrat ein Mitbestimmungsrecht (§&nbsp;87 Abs.&nbsp;1 Nr.&nbsp;6&nbsp;BetrVG). Beziehen Sie ihn früh ein. Hinweis, keine Rechtsberatung.</p>
+
+  <p class="abschnitt-titel">Woran Sie sehen, dass es läuft <small>nach 30, 60 und 90 Tagen eintragen</small></p>
+  <table class="raster">
+    <colgroup><col><col style="width:26mm"><col style="width:22mm"><col style="width:22mm"><col style="width:22mm"></colgroup>
+    <thead><tr><th>Messgröße</th><th class="zahl">Ziel</th><th class="zahl">Tag 30</th><th class="zahl">Tag 60</th><th class="zahl">Tag 90</th></tr></thead>
+    <tbody>
+      <tr><td>Offene Chancen mit nächstem Schritt</td><td class="zahl leise">alle</td><td></td><td></td><td></td></tr>
+      <tr><td>Offene Chancen mit allen Pflichtfeldern</td><td class="zahl leise">fast alle</td><td></td><td></td><td></td></tr>
+      <tr><td>Notiz binnen 24 Stunden, Stichprobe von zehn Gesprächen</td><td class="zahl leise">10 von 10</td><td></td><td></td><td></td></tr>
+      <tr><td>Pipeline-Reviews, die stattgefunden haben</td><td class="zahl leise">jede Woche</td><td></td><td></td><td></td></tr>
+      <tr><td>Eigene Listen außerhalb des CRM</td><td class="zahl leise">keine</td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 19 · Fehler und Checkliste -->
+<section class="seite">
+  <p class="vorzeile">Zum Prüfen</p>
+  <h2 class="blatt">Typische Fehler und Checkliste</h2>
+
+  <div class="fehler-kopf"><span></span><span>Fehler</span><span>Was stattdessen hilft</span></div>
+  <ol class="fehler" id="fehler"></ol>
+
+  <p class="abschnitt-titel">Checkliste: Ihr Prozess steht, wenn …</p>
+  <ul class="liste zweispaltig" id="check"></ul>
+</section>
+
+<!-- 20 · Nächste Schritte -->
+<section class="seite">
+  <p class="vorzeile">Zum Schluss</p>
+  <h2 class="blatt">Nächste Schritte</h2>
+  <p class="text" style="margin-top:2mm; max-width:160mm">Ein Prozess auf Papier ändert noch nichts, ein Stichtag schon. Legen Sie jetzt fest, wann die erste Sitzung ist und wann Ihr erstes Pipeline-Review stattfindet.</p>
+
+  <p class="abschnitt-titel">Meine drei nächsten Schritte</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:34mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th></th><th>Was</th><th>Wer</th><th>Bis wann</th></tr></thead>
+    <tbody data-leer="3" data-spalten="4" data-nr="1" data-hoehe="10mm"></tbody>
+  </table>
+  <div class="reihe" style="margin-top:3mm">
+    <p class="feld"><span>Stichtag „nur noch CRM“</span><span class="strich"></span></p>
+    <p class="feld"><span>Erstes Pipeline-Review am</span><span class="strich"></span></p>
+  </div>
+
+  <p class="abschnitt-titel">Weiter mit Fokus Innovation</p>
+  <ol class="wege">
+    <li><span class="nr">1</span><div><h3>Den Vertriebs-Check machen</h3><p class="adresse"><a href="https://fokusinnovation.de/check?thema=vertrieb">fokusinnovation.de/check?thema=vertrieb</a></p><p>Zwölf Fragen zu Organisation, Zahlen und Neukunden, rund fünf Minuten. Sie sehen sofort, wo Ihr Vertrieb steht.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Ein Erstgespräch vereinbaren</h3><p class="adresse"><a href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></p><p>Kostenlos, 30 Minuten per Video. Wir schauen gemeinsam auf Ihre Stufen und Ihre Pipeline und legen die nächsten Schritte fest.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Head of Sales auf Zeit</h3><p class="adresse"><a href="https://fokusinnovation.de/vertrieb/head-of-sales/">fokusinnovation.de/vertrieb/head-of-sales/</a></p><p>Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen Ihren Vertrieb auf, machen Ihrem Team vor und übergeben ein System, das ohne uns weiterläuft.</p></div></li>
+  </ol>
+
+  <p class="abschnitt-titel">Passt dazu</p>
+  <p class="text" style="margin-top:1.8mm"><b>Baustein „Zielgruppe und Personas mit Lead-Scoring“</b>: Wer überhaupt in Stufe 1 gehört, mit Ideal-Kundenprofil und Punktemodell. <b>Kostenlose Vorlage „Vertriebskennzahlen je Phase“</b> unter <a href="https://fokusinnovation.de/kostenlos/"><b class="akzent">fokusinnovation.de/kostenlos/</b></a></p>
+  <p class="hinweis unten">Hinweise zu Recht in diesem Paket sind keine Rechtsberatung. Stand: Oktober 2026. Alle Firmen, Personen und Zahlen in Beispielen sind frei erfunden.</p>
+</section>
+
+<script>
+  // Kopf und Fuß auf jede Seite, Seitenzahlen automatisch
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Nutzung im eigenen Unternehmen</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+  const $ = (id) => document.getElementById(id);
+  const linie = '<div class="zeile-frei"></div>';
+  const kreuz = '<span class="kreuz"></span>';
+  const skala = '<span class="skala"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span>';
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = linie.repeat(Number(d.dataset.linien)); });
+  // Leere Tabellenzeilen: <tbody data-leer="Anzahl" data-spalten="Anzahl" data-nr="1">
+  document.querySelectorAll('tbody[data-leer]').forEach((t) => {
+    const n = Number(t.dataset.leer), sp = Number(t.dataset.spalten), ab = t.dataset.nr ? Number(t.dataset.nr) : null, h = t.dataset.hoehe;
+    t.insertAdjacentHTML('beforeend', Array.from({ length: n }, (_, i) => `<tr>${Array.from({ length: sp }, (_, j) => (j === 0 && ab !== null ? `<td class="leise"${h ? ` style="height:${h}"` : ''}>${ab + i}</td>` : `<td${h && j === 0 ? ` style="height:${h}"` : ''}></td>`)).join('')}</tr>`).join(''));
+  });
+  // Prüfung (nur mit ?pruefen): freier Platz je Seite in mm, Überlauf
+  if (location.search.includes('pruefen')) window.addEventListener('load', () => {
+    const mm = 96 / 25.4;
+    const r = seiten.map((s, i) => {
+      const f = s.querySelector('.fuss');
+      const kinder = [...s.children].filter((k) => k !== f && !k.classList.contains('unten'));
+      const unten = Math.max(...kinder.map((k) => k.getBoundingClientRect().bottom));
+      const frei = (f.getBoundingClientRect().top - unten) / mm;
+      const ueber = s.scrollHeight > s.clientHeight + 1 || f.getBoundingClientRect().bottom > s.getBoundingClientRect().bottom + 1;
+      const breit = [...s.querySelectorAll('*')].some((e) => e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflow !== 'visible');
+      const zuviel = (Math.max(s.scrollHeight - s.clientHeight, f.getBoundingClientRect().bottom - s.getBoundingClientRect().bottom + 11 * mm)) / mm;
+      return `${i + 1}:${frei.toFixed(0)}${ueber ? '!UEBERLAUF+' + zuviel.toFixed(1) : ''}${breit ? '!BREIT' : ''}`;
+    });
+    document.body.setAttribute('data-pruefung', r.join(' '));
+  });
+  // Seite 6: Bogen Stufen
+  const st = ['1', '2', '3', '4', '5', 'Gewonnen', 'Verloren', 'Geparkt'];
+  $('bogen-stufen').innerHTML = st.map((s) => (/\d/.test(s) ? `<tr><td class="leise" style="height:19mm">${s}</td><td></td><td></td><td></td><td></td><td></td></tr>` : `<tr><td style="height:11mm"></td><td class="stark">${s}</td><td></td><td></td><td></td><td></td></tr>`)).join('');
+
+  // Seite 7: Pflichtfelder-Matrix
+  const ALLE = ['1', '2', '3', '4', '5', 'G', 'V', 'P'];
+  const ab = (n) => ALLE.filter((s, i) => i >= n - 1);
+  const felder = [
+    ['Firma', 'Name', 'Text', ALLE],
+    ['', 'Branche', 'Auswahl', ALLE],
+    ['', 'Ort und PLZ', 'Text', ALLE],
+    ['', 'Lead-Klasse A, B, C', 'Auswahl', ALLE],
+    ['', 'Quelle', 'Auswahl', ALLE],
+    ['', 'Größe', 'Auswahl', ab(2), ['1']],
+    ['Kontakt', 'Vor- und Nachname, Funktion', 'Text', ALLE],
+    ['', 'E-Mail oder Telefon', 'Text', ALLE],
+    ['', 'Rolle im Buying Center', 'Auswahl', ab(2), ['1']],
+    ['', 'Einwilligung E-Mail-Werbung mit Datum', 'ja/nein, Datum', [], ALLE],
+    ['Chance', 'Name: Firma · Thema', 'Text', ALLE],
+    ['', 'Verantwortlich', 'Person', ALLE],
+    ['', 'Nächster Schritt mit Datum', 'Aufgabe', ['1', '2', '3', '4', '5', 'P']],
+    ['', 'Bedarf in Worten des Kunden', 'Text', ['2', '3', '4', '5', 'G']],
+    ['', 'Entscheider', 'Kontakt', ['3', '4', '5', 'G']],
+    ['', 'Zeitrahmen', 'Text', ['3', '4', '5', 'G']],
+    ['', 'Budget-Rahmen', 'Text', ['3', '4', '5', 'G']],
+    ['', 'Wert netto', 'Zahl', ['4', '5', 'G'], ['3', 'V']],
+    ['', 'Erwarteter Abschluss', 'Datum', ['4', '5']],
+    ['', 'Budget bestätigt', 'ja/nein', ['4', '5', 'G']],
+    ['', 'Angebot verschickt am', 'Datum', ['4', '5', 'G']],
+    ['', 'Entscheidungsdatum, offene Punkte', 'Datum, Text', ['5']],
+    ['', 'Auftragsdatum, Startdatum, Übergabe', 'Datum, Text', ['G']],
+    ['', 'Verlustgrund mit Satz', 'Auswahl, Text', ['V']],
+    ['', 'Grund und Wiedervorlage', 'Auswahl, Datum', ['P']],
+    ['', 'Wettbewerber', 'Text', [], ['3', '4', '5', 'V']],
+  ];
+  $('matrix').innerHTML = felder.map(([o, f, t, p, opt = []]) => `<tr${o ? ' style="border-top:.9pt solid var(--haar-stark)"' : ''}><td class="obj">${o}</td><td>${f}</td><td class="leise">${t}</td>${ALLE.map((s) => `<td class="p">${p.includes(s) ? '<span class="pp"></span>' : opt.includes(s) ? '<span class="pp opt"></span>' : ''}</td>`).join('')}</tr>`).join('');
+
+  // Seite 12: Review-Zahlen und große Chancen
+  $('review-zahlen').innerHTML = ['Offene Chancen (Anzahl)', 'Offener Wert', 'Gewichteter Wert', 'Neue Chancen seit letzter Woche', 'Gewonnen seit letzter Woche (Anzahl, Wert)', 'Verloren seit letzter Woche', 'Chancen ohne nächsten Schritt', 'Überfällige nächste Schritte', 'Hängende Chancen'].map((k) => `<tr><td>${k}</td><td></td><td></td><td></td></tr>`).join('');
+  $('review-gross').innerHTML = [1, 2, 3, 4].map(() => `<tr><td style="height:9mm"></td><td class="mitte leise" style="font-size:8.4pt">ja · nein</td><td></td><td></td></tr>`).join('');
+
+  // Seite 13: Kennzahlen
+  const kz = [
+    ['Zufluss', 'neue Chancen in Stufe 1 je Woche', 'kommt genug nach?', 'wöchentlich'],
+    ['Anzahl und Wert je Stufe', 'offene Chancen je Stufe, Summe der Werte', 'wo sich etwas staut', 'wöchentlich'],
+    ['Gewichteter Wert', 'Summe aus Wert × Wahrscheinlichkeit der offenen Chancen', 'realistische Erwartung', 'wöchentlich'],
+    ['Hängende Chancen', 'länger in der Stufe als die Höchstdauer', 'wo nachgefasst werden muss', 'wöchentlich'],
+    ['Datenqualität', 'offene Chancen mit allen Pflichtfeldern ÷ alle offenen', 'stimmen die Zahlen?', 'wöchentlich'],
+    ['Umwandlung je Stufe', 'Chancen, die Stufe X+1 erreicht haben ÷ Chancen, die Stufe X erreicht haben', 'der Engpass im Verkauf', 'monatlich'],
+    ['Verweildauer je Stufe', 'Ø Tage, die Chancen in der Stufe bleiben', 'wo es langsam wird', 'monatlich'],
+    ['Abschlussquote', 'gewonnen ÷ (gewonnen + verloren)', 'wie gut die späten Stufen laufen', 'monatlich'],
+    ['Ø Auftragswert', 'Wert gewonnen ÷ Anzahl gewonnen', 'Preis und Umfang im Blick', 'monatlich'],
+    ['Prognosegenauigkeit', 'tatsächlicher Umsatz ÷ Prognose vom Monatsanfang', 'wie gut die Stufen vorhersagen', 'monatlich'],
+    ['Ø Dauer bis Abschluss', 'Tage vom Anlegen bis zur Entscheidung', 'wie lange Planung voraus sein muss', 'quartalsweise'],
+    ['Verlustgründe', 'Anzahl je Grund', 'was im Angebot oder Prozess fehlt', 'quartalsweise'],
+  ];
+  $('kennzahlen').innerHTML = kz.map(([k, r, w, o], i) => `<tr${i === 5 ? ' style="border-top:.9pt solid var(--haar-stark)"' : ''}><td class="stark">${k}</td><td>${r}</td><td>${w}</td><td class="leise">${o}</td></tr>`).join('');
+
+  // Seite 14: Beispiel-Pipeline (frei erfunden)
+  const pip = [
+    ['Maschinenbau · Netzwerk-Umbau', '5 Verhandlung', 42000, 0.8, 'Vertragsentwurf besprechen', '04.11.', 9, ''],
+    ['Steuerkanzlei · Arbeitsplätze erneuern', '4 Angebot liegt vor', 18000, 0.6, 'Angebot besprechen', '05.11.', 6, ''],
+    ['Spedition · Betreuungsvertrag (Jahreswert)', '3 Lösung abgestimmt', 24000, 0.4, 'Analyse vor Ort', '03.11.', 12, ''],
+    ['Ingenieurbüro · Arbeitsplätze', '4 Angebot liegt vor', 12500, 0.6, 'Rückruf Einkauf', '28.10.', 26, 'hängt'],
+    ['Praxisverbund · Datensicherung', '2 Bedarf qualifiziert', 6500, 0.2, 'Termin mit Inhaberin', '06.11.', 4, ''],
+    ['Hausverwaltung · Telefonanlage', '1 Termin vereinbart', 9000, 0.1, 'Erstgespräch', '09.11.', 3, ''],
+    ['Autohaus · Workshop IT-Sicherheit', 'Gewonnen', 4800, null, 'Übergabe an die Umsetzung', '', null, ''],
+    ['Bäckerei · Kassensystem', 'Verloren', 15000, null, 'Grund: Preis, anderer Anbieter', '', null, ''],
+  ];
+  const euro = (x) => `${x.toLocaleString('de-DE')}&nbsp;€`;
+  let sw = 0, sg = 0;
+  $('bsp-pipeline').innerHTML = pip.map(([c, s, w, p, n, d, t, h]) => {
+    const g = p ? Math.round(w * p) : null;
+    if (p) { sw += w; sg += g; }
+    const ueber = d === '28.10.';
+    return `<tr><td class="ein">${c}</td><td class="ein">${s}</td><td class="zahl ein">${euro(w)}</td><td class="zahl">${p ? `${Math.round(p * 100)} %` : '–'}</td><td class="zahl">${g ? euro(g) : '–'}</td><td class="ein">${n}</td><td class="ein"${ueber ? ' style="font-weight:600"' : ''}>${d}${ueber ? ' !' : ''}</td><td class="zahl${h ? ' stark' : ''}">${t ?? ''}</td></tr>`;
+  }).join('') + `<tr class="summe"><td>Summe offen</td><td></td><td class="zahl">${euro(sw)}</td><td></td><td class="zahl">${euro(sg)}</td><td colspan="3" class="leise" style="font-weight:400">„!“ = überfällig, fett = länger als die Höchstdauer</td></tr>`;
+
+  // Seite 16: Einrichtung
+  const ein = [
+    ['Grundlagen klären', 'Wer nutzt das CRM, wer verwaltet es, welche Objekte brauchen Sie: Firmen, Kontakte, Chancen, Aufgaben, Notizen.'],
+    ['Benutzer und Rechte', 'Jede Person ein eigenes Konto. Festlegen, wer welche Chancen sieht und wer Daten löschen oder exportieren darf.'],
+    ['Felder anlegen', 'Nur die Felder aus der Pflichtfeld-Matrix (Seite 7) und wenige optionale, Auswahllisten nach Seite 8.'],
+    ['Pipeline anlegen', 'Stufen mit den Namen aus Ihrem Bogen (Seite 6), in der richtigen Reihenfolge, mit Wahrscheinlichkeit.'],
+    ['Pflichtfelder je Stufe', 'Wenn Ihr System es kann: beim Wechsel in die Stufe verlangen. Sonst eine Ansicht „Pflichtfeld fehlt“.'],
+    ['Ansichten anlegen', '„Meine offenen Chancen nach Datum“, „Überfällig“, „Ohne nächsten Schritt“, „Hängt in der Stufe“, „Abschluss diesen Monat“.'],
+    ['Aufgaben und Erinnerungen', 'Der nächste Schritt als Aufgabe mit Fälligkeit, Erinnerung per E-Mail oder App.'],
+    ['Vorlagen hinterlegen', 'Notizvorlage (Seite 9), Zusammenfassung nach dem Gespräch, Begleittext zum Angebot.'],
+    ['Berichte', 'Pipeline nach Stufe mit Anzahl, Wert und gewichtetem Wert, Prognose nach Monat, Gewonnen und Verloren mit Gründen.'],
+    ['Datenschutz', 'Rechte prüfen, Löschfristen festlegen, Einwilligungen mit Datum, Vertrag zur Auftragsverarbeitung mit dem Anbieter.'],
+    ['Testlauf', 'Fünf echte Chancen einmal durch alle Stufen führen. Was hakt, jetzt ändern, nicht nach dem Start.'],
+    ['Schulung', '60 Minuten mit allen: Stufen, Pflichtfelder, Notiz, Wiedervorlage, Review. Die drei Grundregeln aushängen.'],
+  ];
+  $('einrichtung').innerHTML = ein.map(([h, t], i) => `<li style="grid-template-columns:6mm 7mm 1fr"><span class="kreuz"></span><span class="nr">${i + 1}</span><span><b>${h}.</b> ${t}</span></li>`).join('');
+
+  // Seite 17: Import-Spalten
+  const imp = [
+    ['Firma', 'ja', 'Name mit Rechtsform', 'Muster Logistik GmbH'],
+    ['Website', '', 'Adresse ohne https://', 'www.example.com'],
+    ['Branche', 'ja', 'Wert aus der Auswahlliste', 'Logistik'],
+    ['Größe', '', 'Auswahl: 1–9, 10–49, 50–249 …', '50–249'],
+    ['PLZ, Ort, Land', 'ja', 'drei Spalten', '12345 · Musterstadt · DE'],
+    ['Lead-Klasse, Quelle', 'ja', 'Auswahl', 'B · Empfehlung'],
+    ['Vorname, Nachname', 'ja', 'zwei Spalten', 'Erika · Mustermann'],
+    ['Funktion, Rolle', '', 'Text, Auswahl', 'Leitung Einkauf · Einkauf'],
+    ['E-Mail, Telefon', 'ja', 'eine davon reicht', 'erika.mustermann@example.com'],
+    ['Einwilligung E-Mail-Werbung, Datum', '', 'ja oder nein, TT.MM.JJJJ', 'nein'],
+    ['Herkunft der Daten', 'ja', 'woher der Kontakt stammt', 'Visitenkarte Fachmesse'],
+    ['Verantwortlich', 'ja', 'Name wie im CRM', 'Vertrieb 1'],
+    ['Chance, Stufe, Wert', '', 'nur bei offenen Chancen', 'Muster Logistik GmbH · Lager-IT · 2 · 8.000'],
+    ['Nächster Schritt, Datum', '', 'Text, TT.MM.JJJJ', 'Termin zur Lösung · 12.11.2026'],
+  ];
+  $('import').innerHTML = imp.map(([s, p, f, b]) => `<tr><td class="stark">${s}</td><td class="mitte">${p ? '<span class="pp"></span>' : ''}</td><td>${f}</td><td class="ein">${b}</td></tr>`).join('');
+
+  // Seite 18: Umstellung
+  const um = [
+    ['Woche 1', 'Prozess festlegen: Stufen, Pflichtfelder, Regeln (Seite 3 bis 10). Stichtag festlegen und ankündigen.', 'Geschäftsführung'],
+    ['Woche 2', 'CRM einrichten (Seite 16), Testlauf mit fünf Chancen, Daten sammeln und bereinigen (Seite 17).', 'Einrichtung'],
+    ['Woche 3', 'Import, Sitzung „Aus dem Kopf ins CRM“, Schulung. Ab Stichtag gilt nur noch das CRM, alte Listen schreibgeschützt ablegen.', 'alle'],
+    ['Woche 4', 'Erstes Pipeline-Review im CRM, Lücken schließen, Regeln dort nachschärfen, wo sie im Alltag haken.', 'alle'],
+    ['Tag 30, 60, 90', 'Datenqualität messen, kurze Rückmelderunde im Team, nach 90 Tagen Stufen und Pflichtfelder prüfen.', 'Verantwortlich für den Prozess'],
+  ];
+  $('umstellung').innerHTML = um.map(([w, t, p]) => `<tr><td class="stark">${w}</td><td>${t}</td><td class="leise">${p}</td><td class="mitte"><span class="kreuz"></span></td></tr>`).join('');
+
+  // Seite 19: Fehler und Checkliste
+  const fehler = [
+    ['Stufen nach eigenen Tätigkeiten', '„Angebot schreiben“ sagt nichts über den Kunden.', 'Jede Stufe beschreibt, was der Kunde getan hat.'],
+    ['Keine Austrittskriterien', 'Chancen wandern nach Gefühl weiter.', 'Je Stufe ein Kriterium, mit ja oder nein zu beantworten.'],
+    ['Zu viele Pflichtfelder', 'Das Team trägt irgendetwas ein, damit es weitergeht.', 'Höchstens vier neue je Stufe, nur was jemand auswertet.'],
+    ['Freitext statt Auswahl', 'Verlustgründe und Quellen lassen sich nicht zählen.', 'Auswahllisten mit wenigen Werten, Freitext in die Notiz.'],
+    ['Chancen ohne nächsten Schritt', 'Sie schlafen ein, bis der Kunde woanders kauft.', 'Ansicht „Ohne nächsten Schritt“, jede Woche leer machen.'],
+    ['„Verloren“ wird nie gesetzt', 'Die Pipeline sieht größer aus, als sie ist.', 'Drei Versuche ohne Antwort, dann Verloren oder Geparkt.'],
+    ['Wahrscheinlichkeit je Chance geschätzt', 'Jede Zahl ist eine Meinung.', 'Wahrscheinlichkeit kommt aus der Stufe.'],
+    ['Review als Verhör', 'Chancen werden schöngeredet statt geprüft.', 'Fünf Prüffragen, Maßnahmen statt Schuld.'],
+    ['Altdaten ungeprüft importiert', 'Dubletten und tote Kontakte vom ersten Tag an.', 'Bereinigen, Probeimport, Stichprobe.'],
+    ['Excel läuft parallel weiter', 'Zwei Wahrheiten, niemand weiß, welche gilt.', 'Stichtag, alte Listen schreibgeschützt ablegen.'],
+    ['Die Geschäftsführung macht nicht mit', 'Das Team folgt dem Vorbild, nicht der Regel.', 'Die eigenen Chancen zuerst und am vollständigsten pflegen.'],
+  ];
+  $('fehler').innerHTML = fehler.map(([f, w, g], i) => `<li><span class="nr">${i + 1}</span><span><b>${f}</b>${w}</span><span class="gegen">${g}</span></li>`).join('');
+  const check = [
+    'Stufen mit Ein- und Austrittskriterien stehen schriftlich.',
+    'Jede Stufe hat Wahrscheinlichkeit und Höchstdauer.',
+    'Die Pflichtfeld-Matrix ist mit dem Team besprochen.',
+    'Auswahllisten für Quelle, Größe, Rolle, Verlustgrund.',
+    'Die Notizvorlage ist im CRM hinterlegt.',
+    'Die Regeln für Wiedervorlagen sind allen bekannt.',
+    'Die sechs Ansichten von Seite 16 sind angelegt.',
+    'Das Pipeline-Review steht wiederkehrend im Kalender.',
+    'Daten sind bereinigt importiert, alte Listen abgelegt.',
+    'Rechte, Löschfristen, Einwilligungen sind geklärt.',
+    'Alle sind geschult, die Grundregeln hängen aus.',
+    'Der Termin für die Prüfung nach 90 Tagen steht.',
+  ];
+  $('check').innerHTML = check.map((c) => `<li><span class="kreuz"></span><span>${c}</span></li>`).join('');
+</script>
+</body>
+</html>

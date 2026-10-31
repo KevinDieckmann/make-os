@@ -1,0 +1,1808 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 30
+    },
+    {
+     "breite": 90
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Einwandbibliothek",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Fokus Innovation · fokusinnovation.de · Nutzung im eigenen Unternehmen",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "So nutzen Sie die Tabelle",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Bibliothek",
+      "stil": "fett"
+     },
+     {
+      "v": "Eine Zeile je Einwand. Die zwölf Einwände aus dem Heft sind schon eingetragen, mit Status „Entwurf“. Passen Sie die Sätze an Ihre Sprache an und setzen Sie den Status, sobald eine Antwort im Einsatz ist. Lila Felder sind Eingaben, der Rest rechnet selbst.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Gesprächslog",
+      "stil": "fett"
+     },
+     {
+      "v": "Nach jedem Gespräch mit Einwand eine Zeile: Datum, wer, Branche und Größe (keine Namen), Kanal, Phase, Kategorie, Einwand wörtlich, Ergebnis. In „Bibliothek-Nr.“ tragen Sie die Nummer der Karte ein, die Sie genutzt haben.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Gehört und Weitergeführt",
+      "stil": "fett"
+     },
+     {
+      "v": "Die Bibliothek zählt aus dem Gesprächslog, wie oft eine Karte genutzt wurde und wie oft das Gespräch danach weiterging (Ergebnis weiter, Termin oder Angebot).",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Prüfung",
+      "stil": "fett"
+     },
+     {
+      "v": "Tragen Sie bei „Geprüft am“ das Datum der letzten Durchsicht ein. Nach 90 Tagen meldet die Hinweis-Spalte „Prüfung fällig“.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Auswertung",
+      "stil": "fett"
+     },
+     {
+      "v": "Zeigt je Kategorie, wie oft ein Einwand kam, wie oft das Gespräch weiterging und ob es dafür schon eine bewährte Karte gibt.",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Rhythmus",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Jede Woche, 10 Minuten",
+      "stil": "fett"
+     },
+     {
+      "v": "Einwand der Woche in der Wochenrunde: neue Sätze aus dem Gesprächslog in die Bibliothek, Status „im Test“.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Jeden Monat, 30 Minuten",
+      "stil": "fett"
+     },
+     {
+      "v": "Zwei Karten im Rollenspiel üben. Die Antwort mit dem besten Ergebnis wird zur ersten Variante.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Jedes Quartal, 60 Minuten",
+      "stil": "fett"
+     },
+     {
+      "v": "Karten mit „Prüfung fällig“ durchsehen, Überholtes auf „überholt“ setzen, Ausdrucke erneuern.",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Datenschutz",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Keine Namen",
+      "stil": "fett"
+     },
+     {
+      "v": "In die Bibliothek und ins Gesprächslog gehören Branche und Größe, keine Namen von Personen oder Firmen. Die Tabelle wird oft geteilt.",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Bibliothek",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Kategorie",
+     "breite": 15,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Einwand wörtlich",
+     "breite": 30,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Was dahinterstecken kann",
+     "breite": 34,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Rückfragen",
+     "breite": 36,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Antworten (je nach Grund)",
+     "breite": 52,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Am Telefon",
+     "breite": 32,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Per Mail",
+     "breite": 40,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Weiterführen",
+     "breite": 28,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Vermeiden",
+     "breite": 28,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Status",
+     "breite": 11,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Pflegt",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Geprüft am",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Nächste Prüfung",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Gehört (aus Log)",
+     "breite": 9,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Weitergeführt",
+     "breite": 11,
+     "stil": "prozent"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 18,
+     "stil": "hinweis"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": 1,
+      "stil": "zahl"
+     },
+     {
+      "v": "Preis",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Das ist uns zu teuer.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Der Nutzen ist noch nicht in Geld übersetzt.\nEin Vergleichspreis, oft für weniger Leistung.\nEine Probe: Geht beim Preis noch etwas?",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Zu teuer im Vergleich wozu?“\n„Wenn Sie den Preis kurz beiseitelassen: Passt die Lösung sonst?“\n„Mit welchem Betrag hatten Sie gerechnet, und wie kam er zustande?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn der Nutzen unklar ist: „Lassen Sie uns kurz rechnen. Sie sagten, Ihr Team verliert jede Woche rund [Stunden] mit [Aufgabe]. Was kostet Sie das im Jahr? Dann sehen wir, ob sich der Betrag trägt.“\nWenn ein Vergleichsangebot da ist: „Gut, dass Sie vergleichen. Darf ich mit Ihnen durchgehen, was in beiden Angeboten enthalten ist? Oft liegt der Unterschied bei [Leistung] und [Betreuung].“\nWenn der Rahmen fest ist: „Dann schauen wir, was Sie innerhalb Ihres Rahmens erreichen. Wir können mit [Teil] beginnen und [Rest] später ergänzen. Der Preis sinkt, weil der Umfang sinkt.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Verstehe. Damit ich Ihnen gut antworten kann: Zu teuer gemessen woran?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Danke für Ihre offene Rückmeldung zum Preis. Ich würde gern verstehen, woran Sie ihn messen. Haben Sie am [Tag] um [Uhrzeit] 15 Minuten, damit wir Umfang und Rahmen gemeinsam ansehen?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Kurztermin zu Umfang und Nutzen, oder eine kleinere Variante anbieten. Nachlass nie ohne Gegenleistung.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Sofort Rabatt anbieten. Das sagt: Der Preis war nicht ernst gemeint.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 2,
+      "stil": "zahl"
+     },
+     {
+      "v": "Budget",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Dafür haben wir kein Budget.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Der Haushalt ist wirklich verplant.\nDas Thema fehlt bisher in der Planung.\nEin höflicher Ausstieg: Der Bedarf ist zu klein.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wann planen Sie das Budget für das nächste Jahr?“\n„Aus welchem Topf wird so etwas bei Ihnen üblicherweise bezahlt?“\n„Wenn es ein Budget gäbe: Wäre das Thema dann dringend?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn die Planung bevorsteht: „Dann ist jetzt ein guter Zeitpunkt, die Zahlen vorzubereiten. Ich stelle Ihnen gern zusammen, was Sie dafür brauchen: Umfang, Kosten und erwarteten Nutzen.“\nWenn es keinen Topf gibt: „Oft trägt sich so ein Vorhaben aus dem, was es einspart. Wenn wir das konkret rechnen, haben Sie ein Argument für die Freigabe.“\nWenn der Bedarf zu klein ist: „Danke für die klare Antwort. Wenn das Thema gerade nicht drückt, ist es richtig, das Geld woanders einzusetzen. Darf ich mich melden, wenn [Anlass]?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Das verstehe ich. Wann wird bei Ihnen das Budget für das nächste Jahr geplant?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Danke, dass Sie das offen sagen. Damit Sie das Thema in Ihre nächste Planung aufnehmen können, schicke ich Ihnen gern eine kurze Übersicht mit Umfang und Kosten. Wann steht die Planung an?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wiedervorlage vor der Budgetplanung, Unterlage für die Freigabe anbieten.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Drängen, Geld umzuschichten, das nicht da ist. Das kostet Vertrauen.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 3,
+      "stil": "zahl"
+     },
+     {
+      "v": "Zeitpunkt",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Jetzt ist kein guter Zeitpunkt.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Gerade läuft ein anderes Projekt oder die Hochsaison.\nDas Thema ist nicht dringend genug.\nEs fehlt noch die Zustimmung einer anderen Person.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Was müsste passiert sein, damit der Zeitpunkt passt?“\n„Was kostet es Sie, wenn das Thema noch ein halbes Jahr liegen bleibt?“\n„Was steht gerade oben auf Ihrer Liste?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn es wirklich voll ist: „Dann melde ich mich bewusst nicht vorher. Ist der [Datum] ein guter Zeitpunkt? Ich trage es mir ein und schicke vorab eine kurze Erinnerung.“\nWenn es nicht dringend ist: „Verständlich. Viele schieben das Thema, bis [Ereignis] passiert. Wie wahrscheinlich ist das bei Ihnen in den nächsten Monaten?“\nWenn Vorbereitung hilft: „Wir müssen nicht jetzt starten. Wir können jetzt klären, was es braucht, damit Sie im [Monat] ohne Verzug loslegen.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Verstehe. Wann wäre ein besserer Zeitpunkt, damit ich mich gezielt melde?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Danke für die Rückmeldung. Ich trage mir den [Datum] ein und melde mich dann mit einem kurzen Vorschlag. Falls sich vorher etwas ändert, erreichen Sie mich direkt unter [Telefon].“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Ein festes Datum vereinbaren, nicht „irgendwann“. Wiedervorlage mit Anlass in den Kalender.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Ich melde mich mal wieder“ ohne Datum. Und künstlicher Zeitdruck, den Ihr Gegenüber sofort durchschaut.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 4,
+      "stil": "zahl"
+     },
+     {
+      "v": "Unterlagen",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Schicken Sie mir mal Unterlagen.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Ein freundlicher Ausstieg aus dem Gespräch.\nEchtes Interesse, aber gerade keine Zeit.\nDie Person braucht etwas, um es intern weiterzugeben.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Gern. Damit ich das Richtige schicke: Was interessiert Sie am meisten?“\n„Wer liest die Unterlagen außer Ihnen?“\n„Was müsste darin stehen, damit Sie sagen: Darüber sprechen wir weiter?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn das Interesse echt ist: „Mache ich gern. Ich schicke Ihnen heute zwei Seiten zu [Thema]. Lassen Sie uns gleich zehn Minuten am [Tag] festhalten, um Ihre Fragen dazu zu klären.“\nWenn es nach Ausstieg klingt: „Mache ich. Allgemeine Unterlagen helfen Ihnen aber wenig. Darf ich zwei kurze Fragen stellen, damit ich nur schicke, was zu Ihnen passt?“\nWenn es intern weitergeht: „Dann bereite ich es so vor, dass Sie es direkt weitergeben können: eine Seite mit Ausgangslage, Vorschlag und Kosten. Wer entscheidet mit?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Mache ich gern. Damit es kein Prospekt für alle wird: Was ist für Sie dabei gerade das wichtigste Thema?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wie besprochen anbei die Übersicht zu [Thema], auf Ihre Frage zu [Frage] zugeschnitten. Passt es Ihnen, wenn wir am [Tag] um [Uhrzeit] zehn Minuten darüber sprechen?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Unterlagen nur mit vereinbartem Folgetermin schicken, zugeschnitten statt allgemein.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Den ganzen Prospekt schicken und dann auf eine Antwort warten, die nicht kommt.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 5,
+      "stil": "zahl"
+     },
+     {
+      "v": "Bestandsanbieter",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wir arbeiten schon mit jemandem zusammen.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Zufrieden, kein Anlass zum Wechsel.\nEigentlich unzufrieden, aber ein Wechsel scheint aufwendig.\nTreue zu einer Person beim jetzigen Anbieter.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Was schätzen Sie an der Zusammenarbeit besonders?“\n„Wenn Sie einen Punkt verbessern könnten, welcher wäre das?“\n„Wann haben Sie das zuletzt mit anderen Angeboten verglichen?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn er zufrieden ist: „Das freut mich für Sie, ein guter Partner ist viel wert. Ich will Ihnen nichts ausreden. Darf ich mich als zweite Adresse vorstellen, falls einmal etwas nicht passt?“\nWenn er leise unzufrieden ist: „Viele bleiben, weil ein Wechsel nach Aufwand klingt. Wenn Sie wollen, zeige ich Ihnen, wie ein Übergang bei uns abläuft und was Sie davon merken würden.“\nErgänzung statt Ersatz: „Wir müssen niemanden ersetzen. Bei [Teilbereich] unterstützen wir oft neben einem bestehenden Partner. Ist das ein Bereich, der bei Ihnen offen ist?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Gut, dann haben Sie das Thema im Griff. Was würden Sie an der heutigen Lösung verbessern, wenn Sie einen Wunsch frei hätten?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Danke für Ihre Offenheit. Wenn Sie einmal eine zweite Meinung zu [Thema] möchten, schauen wir uns das gern unverbindlich an. Ich melde mich in drei Monaten noch einmal, wenn es Ihnen recht ist.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Einen kleinen Vergleich anbieten (zweite Meinung, Prüfung), sonst Wiedervorlage in drei bis sechs Monaten.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Schlecht über den jetzigen Anbieter reden. Damit kritisieren Sie auch die Wahl Ihres Gegenübers.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 6,
+      "stil": "zahl"
+     },
+     {
+      "v": "Wettbewerb",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wir holen noch andere Angebote ein.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Eine Pflicht zum Vergleich, etwa durch den Einkauf.\nUnsicherheit, ob der Preis marktüblich ist.\nVerhandlungsdruck: Der andere soll günstiger sein.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Nach welchen Punkten vergleichen Sie die Angebote?“\n„Was ist Ihnen neben dem Preis am wichtigsten?“\n„Bis wann wollen Sie entscheiden, und wer ist dabei?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn der Vergleich Pflicht ist: „Sehr gut, dann haben Sie eine sichere Grundlage. Ich schicke Ihnen gern eine Liste der Punkte, auf die Sie bei allen Angeboten achten sollten, auch bei unserem.“\nWenn der andere günstiger ist: „Das kann gut sein. Damit Sie fair vergleichen: Ist bei beiden [Leistung] enthalten? Und wer kümmert sich, wenn es hakt? Dort entstehen die Unterschiede meist.“\nDen Unterschied sichtbar machen: „Wenn alles gleich wäre, sollten Sie das günstigere Angebot nehmen. Lassen Sie uns kurz prüfen, ob es gleich ist.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Das ist vernünftig. Worauf achten Sie beim Vergleich am meisten?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Danke für die Info. Damit Ihr Vergleich einfach wird, habe ich unser Angebot auf einer Seite zusammengefasst: Leistung, Zeitplan, Ansprechpartner, Kosten. Ich rufe Sie am [Tag] kurz an, um offene Fragen zu klären.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Vergleichspunkte gemeinsam festlegen und einen Termin für die Entscheidung vereinbaren.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Den Preis des anderen sofort unterbieten, ohne zu wissen, was in dessen Angebot steht.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 7,
+      "stil": "zahl"
+     },
+     {
+      "v": "Entscheidung",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Das muss ich noch mit [Person] besprechen.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Es gibt wirklich weitere Personen, die entscheiden.\nDie Person will Zeit gewinnen.\nUnsicherheit, wie sie das Thema intern vertreten soll.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wer ist außer Ihnen an der Entscheidung beteiligt?“\n„Was wird Ihre Kollegin wahrscheinlich fragen?“\n„Wie würden Sie entscheiden, wenn es nur nach Ihnen ginge?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn andere mitentscheiden: „Gut, dann holen wir sie gleich dazu. Wollen wir einen kurzen Termin zu dritt machen? Dann beantworte ich die Fragen direkt.“\nWenn die Person es vertreten muss: „Was brauchen Sie von mir, damit Sie es intern gut erklären können? Ich bereite Ihnen gern eine Seite mit den wichtigsten Punkten vor.“\nWenn es nach Zeit gewinnen klingt: „Gern. Wie ist Ihre eigene Einschätzung? Gibt es etwas, das für Sie noch nicht passt?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Klar. Wer ist noch beteiligt, und was ist dieser Person am wichtigsten?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Damit Sie das Thema gut mit [Person] besprechen können, habe ich die drei wichtigsten Punkte auf einer Seite zusammengefasst. Gern stelle ich es auch selbst kurz vor. Passt ein Termin zu dritt am [Tag]?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Termin mit allen Beteiligten oder eine Entscheidungsvorlage für den Weg nach innen.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Die Person übergehen und direkt die Geschäftsführung anrufen. Sie verlieren damit Ihren Fürsprecher.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 8,
+      "stil": "zahl"
+     },
+     {
+      "v": "Bedarf",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Brauchen wir nicht.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Es gibt wirklich keinen Bedarf.\nDas Problem ist nicht bewusst oder gilt als normal.\nEin Reflex am Telefon, bevor zugehört wurde.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wie lösen Sie [Aufgabe] heute?“\n„Was läuft dabei gut, und wo hakt es manchmal?“\n„Woran würden Sie merken, dass es nicht mehr reicht?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn es ein Reflex ist: „Das kann gut sein, ich habe ja noch gar nicht gesagt, worum es geht. Darf ich es in einem Satz sagen? Dann entscheiden Sie, ob es passt.“\nWenn es wirklich keinen Bedarf gibt: „Dann ist das so, danke für die klare Antwort. Darf ich fragen, wie Sie [Aufgabe] heute lösen? Das hilft mir zu verstehen, für wen wir passen.“\nWenn das Problem normal wirkt: „Das hören wir oft. Bei näherem Hinsehen stecken dann [Stunden] im Monat in [Aufgabe]. Wie ist das bei Ihnen?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Das kann gut sein. Wie machen Sie das heute?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Danke für Ihre Rückmeldung. Falls sich bei [Thema] etwas ändert, zum Beispiel durch [Anlass], melden Sie sich gern. Zu diesem Thema schreibe ich Ihnen sonst nicht wieder.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Mit einer Frage zur heutigen Lösung ins Gespräch kommen, sonst sauber und freundlich beenden.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Trotzdem das ganze Angebot vortragen. Wer nicht gefragt wurde, hört nicht zu.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 9,
+      "stil": "zahl"
+     },
+     {
+      "v": "Vertrauen",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wir haben schlechte Erfahrungen gemacht.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Ein früherer Anbieter hat enttäuscht.\nSorge, sich vor der eigenen Führung zu blamieren.\nZu wenig Belege: keine Beispiele, keine Bekanntheit.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Was ist damals passiert?“\n„Was müssten Sie sehen, um sicher zu sein?“\n„Woran würden Sie einen guten Partner erkennen?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Nach schlechter Erfahrung: „Danke, dass Sie das erzählen. Was hätte damals anders laufen müssen? Ich sage Ihnen offen, was davon wir anders machen und was nicht.“\nWenn Belege fehlen: „Verständlich. Ich zeige Ihnen gern zwei Beispiele aus ähnlichen Betrieben. Wenn Sie mögen, stelle ich auch den Kontakt zu einem Kunden her.“\nDas Risiko senken: „Wir können klein anfangen: [Einstieg] in vier Wochen. Danach entscheiden Sie, ob es weitergeht.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Das ist verständlich, Sie kennen uns ja noch nicht. Was würde Ihnen helfen, uns einzuschätzen?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Damit Sie sich ein Bild machen können, schicke ich Ihnen ein Beispiel aus einem Betrieb ähnlicher Größe. Gern vermittle ich auch ein kurzes Gespräch mit dem Kunden selbst.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Einen Beleg anbieten (Beispiel, Kundenkontakt, kleiner Einstieg) und dafür einen Termin festhalten.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Versprechen, dass bei Ihnen alles anders ist, ohne Beleg. Das klingt wie beim letzten Anbieter.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 10,
+      "stil": "zahl"
+     },
+     {
+      "v": "Eigenleistung",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Das machen wir selbst.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Leute und Wissen sind wirklich im Haus.\nDie eigene Zeit wird unterschätzt, weil sie „ohnehin da“ ist.\nStolz oder die Sorge, Kontrolle abzugeben.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wer macht das bei Ihnen, und wie viel Zeit geht dafür drauf?“\n„Was würde diese Person tun, wenn sie die Zeit frei hätte?“\n„Was gelingt intern gut, und wo wünschen Sie sich Unterstützung?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn es wirklich im Haus ist: „Dann haben Sie das Wissen schon. Manche Kunden holen uns nur für [Teil] dazu, den Rest machen sie selbst. Wäre das ein Punkt?“\nWenn die Zeit unterschätzt wird: „Lassen Sie uns die interne Zeit einmal ansetzen: [Stunden] im Monat mal Stundensatz. Oft ist Selbermachen günstiger, manchmal nicht. Die Rechnung zeigt es.“\nWenn es um Kontrolle geht: „Sie behalten die Kontrolle. Wir arbeiten so, dass Ihr Team alles nachvollziehen und später selbst weiterführen kann.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Gut, dann gibt es bei Ihnen schon jemanden dafür. Wie viel Zeit nimmt das ungefähr ein?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wenn Sie das weiter selbst machen, ist das eine gute Entscheidung. Falls Sie einmal nur für [Teil] Unterstützung brauchen, sprechen Sie mich gern an.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Eine Teilleistung anbieten oder die internen Kosten gemeinsam rechnen.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Andeuten, dass die eigenen Leute es nicht können. Damit greifen Sie das Team Ihres Gegenübers an.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 11,
+      "stil": "zahl"
+     },
+     {
+      "v": "Keine Zeit",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Ich habe gerade keine Zeit.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wirklich ein schlechter Moment.\nKein Interesse an einem Gespräch mit Unbekannten.\nEin Test, ob es sich lohnt zuzuhören.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wann passt es Ihnen besser, heute Nachmittag oder morgen früh?“\n„Darf ich in einem Satz sagen, worum es geht?“\n„Ist [Thema] grundsätzlich ein Thema für Sie?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn der Moment schlecht ist: „Dann halte ich Sie nicht auf. Wann erreiche ich Sie besser? Ich rufe genau zu der Zeit an.“\nEin Satz, dann die Wahl: „Ganz kurz: Ich rufe an, weil [Anlass]. Wenn das kein Thema für Sie ist, sagen Sie es mir, dann melde ich mich nicht wieder.“\nGleich einen Termin festhalten: „Sollen wir gleich 15 Minuten für [Thema] festhalten? Dann haben Sie es vom Tisch.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Verstehe, ich halte Sie nicht auf. Passt Ihnen morgen um 9 Uhr oder eher am Nachmittag?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Danke, dass Sie kurz drangegangen sind. Wie besprochen rufe ich Sie am [Tag] um [Uhrzeit] an. Falls das nicht passt, antworten Sie einfach mit einer besseren Zeit.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Rückruf mit fester Uhrzeit vereinbaren und pünktlich halten.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Es dauert nur zwei Minuten“ und dann zehn Minuten reden.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 12,
+      "stil": "zahl"
+     },
+     {
+      "v": "Bedenkzeit",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Ich muss darüber noch nachdenken.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Eine offene Frage, die noch nicht ausgesprochen ist.\nEchte Abwägung bei einer großen Entscheidung.\nEin höfliches Nein.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Gern. Worüber genau möchten Sie nachdenken?“\n„Was spricht aus Ihrer Sicht noch dagegen?“\n„Auf einer Skala von 1 bis 10: Wo stehen Sie, und was fehlt zur 10?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Wenn eine Frage offen ist: „Das ist richtig bei so einer Entscheidung. Oft hilft es, die offenen Punkte einmal aufzuschreiben. Welche sind es bei Ihnen?“\nBei einer großen Entscheidung: „Nehmen Sie sich die Zeit. Damit Sie gut abwägen können, schicke ich Ihnen die wichtigsten Punkte noch einmal schriftlich. Wann sprechen wir uns wieder?“\nWenn es nach Nein klingt: „Darf ich direkt fragen: Ist es eher ein Nein? Das ist völlig in Ordnung und hilft mir mehr als ein Vielleicht.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Klar. Was ist der Punkt, über den Sie am meisten nachdenken?“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "„Wie besprochen anbei die Punkte, über die Sie nachdenken wollten: [Punkte]. Ich melde mich am [Tag] kurz bei Ihnen. Wenn vorher Fragen auftauchen, rufen Sie mich gern an.“",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Die offenen Punkte benennen und einen Termin für die Entscheidung vereinbaren.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Druck mit einem Angebot, das „nur heute“ gilt. Das bestätigt die Zweifel, statt sie zu lösen.",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Entwurf",
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(C{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(M{r}=\"\",\"\",M{r}+90)",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",COUNTIF('Gesprächslog'!$I$2:$I$301,A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(A{r}=\"\",O{r}=0),\"\",(COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$I$2:$I$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\"))/O{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",IF(M{r}=\"\",\"noch nicht geprüft\",IF(TODAY()>N{r},\"Prüfung fällig\",\"\")))",
+      "stil": "hinweis"
+     }
+    ],
+    "anzahl": 48
+   },
+   "auswahl": [
+    {
+     "spalte": "B",
+     "werte": [
+      "Preis",
+      "Budget",
+      "Zeitpunkt",
+      "Unterlagen",
+      "Bestandsanbieter",
+      "Wettbewerb",
+      "Entscheidung",
+      "Bedarf",
+      "Vertrauen",
+      "Eigenleistung",
+      "Keine Zeit",
+      "Bedenkzeit",
+      "Sonstiges"
+     ]
+    },
+    {
+     "spalte": "K",
+     "werte": [
+      "Entwurf",
+      "im Test",
+      "bewährt",
+      "überholt"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Gesprächslog",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Datum",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Wer",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Branche und Größe (keine Namen)",
+     "breite": 24,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Kanal",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Phase",
+     "breite": 15,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Kategorie",
+     "breite": 15,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Einwand wörtlich",
+     "breite": 40,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Ergebnis",
+     "breite": 11,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Bibliothek-Nr.",
+     "breite": 10,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Notiz: Was steckte dahinter, was hat gewirkt?",
+     "breite": 44,
+     "stil": "eingabe"
+    }
+   ],
+   "zeilen": [],
+   "wiederholen": {
+    "zeile": [
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    "anzahl": 300
+   },
+   "auswahl": [
+    {
+     "spalte": "D",
+     "werte": [
+      "Telefon",
+      "Mail",
+      "Video",
+      "vor Ort",
+      "Nachricht"
+     ]
+    },
+    {
+     "spalte": "E",
+     "werte": [
+      "Erstkontakt",
+      "Bedarfsgespräch",
+      "Angebot",
+      "Verhandlung",
+      "Bestandskunde"
+     ]
+    },
+    {
+     "spalte": "F",
+     "werte": [
+      "Preis",
+      "Budget",
+      "Zeitpunkt",
+      "Unterlagen",
+      "Bestandsanbieter",
+      "Wettbewerb",
+      "Entscheidung",
+      "Bedarf",
+      "Vertrauen",
+      "Eigenleistung",
+      "Keine Zeit",
+      "Bedenkzeit",
+      "Sonstiges"
+     ]
+    },
+    {
+     "spalte": "H",
+     "werte": [
+      "weiter",
+      "Termin",
+      "Angebot",
+      "offen",
+      "verloren"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Auswertung",
+   "spalten": [
+    {
+     "titel": "Kategorie",
+     "breite": 18,
+     "stil": "fett"
+    },
+    {
+     "titel": "Gehört",
+     "breite": 10,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Weitergeführt",
+     "breite": 13,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Quote",
+     "breite": 9,
+     "stil": "prozent"
+    },
+    {
+     "titel": "Karten in der Bibliothek",
+     "breite": 13,
+     "stil": "zahl"
+    },
+    {
+     "titel": "davon bewährt",
+     "breite": 10,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 40,
+     "stil": "hinweis"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Preis",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Budget",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Zeitpunkt",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Unterlagen",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Bestandsanbieter",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Wettbewerb",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Entscheidung",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Bedarf",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Vertrauen",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Eigenleistung",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Keine Zeit",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Bedenkzeit",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Sonstiges",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF('Gesprächslog'!$F$2:$F$301,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"weiter\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Termin\")+COUNTIFS('Gesprächslog'!$F$2:$F$301,A{r},'Gesprächslog'!$H$2:$H$301,\"Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "COUNTIF(Bibliothek!$B$2:$B$61,A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Bibliothek!$B$2:$B$61,A{r},Bibliothek!$K$2:$K$61,\"bewährt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(AND(B{r}>=3,F{r}=0),\"häufig gehört, aber noch keine bewährte Karte\",IF(AND(B{r}>=3,D{r}<0.3),\"geht selten weiter: Karte überarbeiten\",\"\"))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Summe",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(B2:B14)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUM(C2:C14)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(B{r}=0,\"\",C{r}/B{r})",
+      "stil": "prozent"
+     },
+     {
+      "f": "SUM(E2:E14)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUM(F2:F14)",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Weitergeführt = Ergebnis „weiter“, „Termin“ oder „Angebot“ im Gesprächslog. Die Schwelle für „geht selten weiter“ (30 %) ist ein Startwert, passen Sie sie in der Formel an.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  }
+ ]
+}

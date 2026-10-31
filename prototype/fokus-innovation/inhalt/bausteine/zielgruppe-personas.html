@@ -1,0 +1,968 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Zielgruppe und Personas mit Lead-Scoring</title>
+<link rel="stylesheet" href="../vorlagen/basis.css">
+<style>
+  /* Baustein · eigene Bausteine (basis.css bleibt unverändert) */
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 164mm; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  .vorzeile.bsp { color: var(--akzent); }
+  h2.blatt { margin-top: 1.6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  h2.blatt + .unter { margin-top: 1.6mm; max-width: 170mm; font-size: 10pt; line-height: 1.45; }
+  h3 { font-size: 10.3pt; line-height: 1.3; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 9.7pt; line-height: 1.45; }
+  p.text + p.text { margin-top: 1.4mm; }
+  .klein { font-size: 8.7pt; line-height: 1.4; color: var(--tinte-leise); }
+  .ein { color: var(--akzent); }
+  b { color: var(--tinte); font-weight: 600; }
+  a { color: inherit; text-decoration: none; }
+
+  /* „So füllen Sie ihn aus“ und Hinweise: Linie links */
+  .so { margin-top: 2.4mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; max-width: 170mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9.1pt; line-height: 1.45; }
+  .hinweis.lila { border-left-color: var(--akzent); }
+
+  .abschnitt-titel { margin-top: 4.4mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; gap: 4mm; }
+  .abschnitt-titel small { font-size: 8.3pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+
+  /* Felder */
+  .reihe { display: flex; gap: 6mm; margin-top: 2.4mm; }
+  .reihe .feld { flex: 1; }
+  .reihe .feld.schmal { flex: .55; }
+  .reihe .feld.breit { flex: 1.8; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6.2mm; }
+  .feld .einheit { color: var(--tinte-leise); }
+  .linien .zeile-frei { height: 7.2mm; }
+  .linien.eng .zeile-frei { height: 6.4mm; }
+  .beschriftet { display: grid; grid-template-columns: 50mm 1fr; column-gap: 4mm; align-items: end; }
+  .beschriftet + .beschriftet { margin-top: .3mm; }
+  .beschriftet > span { font-size: 9.1pt; color: var(--tinte); padding-bottom: 1.2mm; line-height: 1.25; }
+  .beschriftet > span small { display: block; color: var(--tinte-leise); font-size: 7.9pt; }
+  .beschriftet .linien .zeile-frei { height: 6.6mm; }
+
+  /* Ausgefüllt: Label links, Eintrag rechts */
+  .gefuellt { display: grid; grid-template-columns: 40mm 1fr; column-gap: 5mm; }
+  .gefuellt > dt, .gefuellt > dd { margin: 0; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.42; }
+  .gefuellt > dt { color: var(--tinte); font-weight: 600; }
+  .gefuellt > dt small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.9pt; margin-top: .3mm; }
+  .gefuellt > dd { color: var(--akzent); }
+  .gefuellt.eng > dt, .gefuellt.eng > dd { padding: 1.2mm 0; }
+  .gefuellt > dd.gross { font-size: 10.6pt; line-height: 1.45; font-weight: 500; }
+
+  /* Begriffe */
+  .begriffe { display: grid; grid-template-columns: 38mm 1fr; column-gap: 5mm; margin-top: 1mm; }
+  .begriffe dt, .begriffe dd { margin: 0; padding: 1.6mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.42; }
+  .begriffe dt { color: var(--tinte); font-weight: 600; }
+  .begriffe dt:last-of-type, .begriffe dd:last-of-type { border-bottom: 0; }
+
+  /* Raster-Tabellen */
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.8mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.4pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.2mm 1.8mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 8.9pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster .mitte { text-align: center; }
+  .raster td.zahl, .raster th.zahl { text-align: right; }
+  .raster td.leise { color: var(--tinte-leise); }
+  .raster td.stark { color: var(--tinte); font-weight: 600; }
+  .raster td.ein { color: var(--akzent); }
+  .raster tr.gruppe td { height: auto; padding-top: 2.4mm; padding-bottom: 1mm; border-left: 0; font-size: 7.6pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); border-bottom: var(--linie) solid var(--haar); }
+  .raster tr.summe td { border-top: .9pt solid var(--haar-stark); font-weight: 600; color: var(--tinte); }
+  .raster tr.bsp td { color: var(--tinte-leise); font-style: italic; font-size: 8.3pt; border-bottom: var(--linie) solid var(--haar); }
+  .raster.text td { height: auto; padding-top: 1.5mm; padding-bottom: 1.5mm; border-bottom-color: var(--haar); }
+  .raster.dicht td { height: 6.8mm; padding-top: .9mm; padding-bottom: .6mm; }
+  .raster.klein td { font-size: 8.3pt; }
+  .raster.klein th { font-size: 7.7pt; }
+
+  /* Ankreuzen, Listen */
+  .wahl { display: inline-flex; align-items: center; gap: 1.6mm; margin-right: 4.5mm; font-size: 9pt; white-space: nowrap; }
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; align-items: start; padding: 1.5mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.3pt; line-height: 1.38; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste li .kreuz { margin-top: .4mm; }
+  .liste.zweispaltig { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .liste.zweispaltig li:nth-last-child(2) { border-bottom: 0; }
+  ul.punkte li { position: relative; padding-left: 4mm; margin-top: 1.1mm; font-size: 9.3pt; line-height: 1.4; }
+  ul.punkte li::before { content: ""; position: absolute; left: .4mm; top: 1.9mm; width: 1.3mm; height: 1.3mm; border-radius: 50%; background: var(--akzent); }
+  ul.punkte.klein li { font-size: 8.8pt; margin-top: .8mm; }
+  .skala { display: inline-flex; gap: 1.1mm; }
+  .skala span { width: 4.6mm; height: 4.6mm; border: var(--linie) solid var(--tinte-leise); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 7.4pt; color: var(--tinte-leise); font-variant-numeric: tabular-nums; }
+
+  /* Spalten */
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .drei { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+  .spalte-kopf { padding-bottom: 1.4mm; border-bottom: .9pt solid var(--haar-stark); }
+  .spalte-kopf .nr { font-size: 8pt; letter-spacing: .1em; }
+  .spalte-kopf h3 { margin-top: .4mm; }
+
+  /* Deckblatt */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3mm; margin-top: 3.2mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 9.8pt; line-height: 1.42; }
+  .inhalt { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+  .inhalt th { font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); text-align: left; padding: 0 0 1.2mm; border-bottom: .9pt solid var(--haar-stark); }
+  .inhalt td { padding: 1.3mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.5pt; }
+  .inhalt td:first-child, .inhalt th:first-child { width: 14mm; color: var(--akzent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .inhalt td.z, .inhalt th.z { width: 34mm; text-align: right; color: var(--tinte-leise); }
+
+  /* Nummerierte Schritte */
+  .schritte-liste li { display: grid; grid-template-columns: 7mm 1fr; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.5pt; line-height: 1.42; }
+  .schritte-liste li:last-child { border-bottom: 0; }
+  .schritte-liste.dicht li { padding: 1.3mm 0; font-size: 9pt; line-height: 1.36; }
+  .schritte-liste h3 { font-size: 9.8pt; }
+  .schritte-liste p { margin-top: .4mm; }
+
+  /* Weg in Schritten */
+  .weg { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); column-gap: 3mm; margin-top: 4.4mm; }
+  .weg::before { content: ""; position: absolute; left: 3.2mm; right: 24mm; top: 3.2mm; border-top: .9pt solid var(--akzent); }
+  .weg li { position: relative; }
+  .weg .kreis { position: relative; z-index: 1; display: inline-flex; width: 6.4mm; height: 6.4mm; border-radius: 50%; background: var(--papier); border: .9pt solid var(--akzent); color: var(--akzent); font-weight: 600; font-size: 8.8pt; align-items: center; justify-content: center; }
+  .weg h3 { margin-top: 2mm; font-size: 9.4pt; line-height: 1.25; }
+  .weg p { margin-top: .8mm; font-size: 8.4pt; line-height: 1.35; color: var(--tinte-leise); }
+
+  /* Beispielkarte */
+  .karte { margin-top: 3mm; padding: 3mm 5mm 3.2mm; background: #fff; border: var(--linie) solid var(--haar); border-radius: 1.6mm; }
+  .karte .gefuellt > dt:last-of-type, .karte .gefuellt > dd:last-of-type { border-bottom: 0; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+
+  /* Nächste Schritte */
+  .wege li { display: grid; grid-template-columns: 9mm 1fr; padding: 2.8mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .wege li:last-child { border-bottom: 0; }
+  .wege .nr { font-size: 13pt; line-height: 1.2; }
+  .wege h3 { font-size: 11.5pt; }
+  .wege .adresse { margin-top: .8mm; font-size: 10.2pt; color: var(--akzent); font-weight: 600; letter-spacing: .005em; }
+  .wege p { margin-top: .8mm; font-size: 9.8pt; line-height: 1.45; }
+  .unten { margin-top: auto; }
+  .unten + .fuss { margin-top: 3mm; }
+
+  /* Fehler-Liste */
+  .fehler li { display: grid; grid-template-columns: 7mm 1fr 1fr; column-gap: 4mm; padding: 1.6mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.38; }
+  .fehler li:last-child { border-bottom: 0; }
+  .fehler li .nr { font-size: 8.6pt; }
+  .fehler li b { display: block; }
+  .fehler .gegen { color: var(--tinte-text); }
+  /* Bogen: Label oben links, Schreiblinien rechts */
+  .bogenblock { display: grid; grid-template-columns: 46mm 1fr; column-gap: 4mm; margin-top: 1.6mm; }
+  .bogenblock > span { padding-top: 3.1mm; font-size: 9.2pt; color: var(--tinte); font-weight: 600; line-height: 1.25; }
+  .bogenblock > span small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.9pt; margin-top: .4mm; }
+  .bogenblock .zeile-frei { height: 7mm; }
+  .sitzungen { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 5mm; margin-top: 2.4mm; }
+  .sitzungen > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .sitzungen .nr { font-size: 7.6pt; letter-spacing: .12em; }
+  .sitzungen h3 { margin-top: .4mm; font-size: 9.6pt; }
+  .sitzungen p { margin-top: .6mm; font-size: 8.6pt; line-height: 1.38; color: var(--tinte-text); }
+  .fehler-kopf { display: grid; grid-template-columns: 7mm 1fr 1fr; column-gap: 4mm; margin-top: 2.6mm; padding-bottom: 1.2mm; border-bottom: .9pt solid var(--haar-stark); font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); }
+  /* Nur in diesem Baustein */
+  .inhalt td { padding: 1.05mm 0; }
+  .sechs li { display: grid; grid-template-columns: 8mm 34mm 1fr; column-gap: 3mm; padding: 1.8mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.42; }
+  .sechs li:last-child { border-bottom: 0; }
+  .sechs h3 { font-size: 9.8pt; }
+  .ausloeser { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 5mm; margin-top: 1.6mm; }
+  .ausloeser h3 { font-size: 9.2pt; padding-bottom: 1mm; border-bottom: .9pt solid var(--haar-stark); }
+  .kernsatz { margin-top: 2.4mm; padding: 3mm 5mm; background: #fff; border: var(--linie) solid var(--haar); border-radius: 1.6mm; font-size: 11pt; line-height: 1.55; color: var(--tinte); }
+  .kernsatz .platz { color: var(--akzent); font-weight: 500; }
+  .rollen3 { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; margin-top: 3mm; }
+  .rollen3 > div { border-top: .9pt solid var(--haar-stark); padding-top: 2mm; }
+  .rollen3 .nr { font-size: 8pt; letter-spacing: .1em; }
+  .rollen3 p { margin-top: 1mm; font-size: 9.1pt; line-height: 1.4; }
+  .fragen10 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; margin-top: 1mm; counter-reset: f; }
+  .fragen10 li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.5mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.38; }
+  .fragen10 li small { display: block; color: var(--tinte-leise); font-size: 8pt; margin-top: .3mm; }
+  /* Personas nebeneinander */
+  .personas { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 5mm; margin-top: 3mm; }
+  .persona-kopf { padding: 2.2mm 0 1.6mm; border-top: .9pt solid var(--akzent); }
+  .persona-kopf .nr { font-size: 7.6pt; letter-spacing: .12em; text-transform: uppercase; }
+  .persona-kopf h3 { margin-top: .6mm; font-size: 10.4pt; }
+  .persona-kopf p { margin-top: .4mm; font-size: 8.3pt; color: var(--tinte-leise); line-height: 1.3; }
+  .persona-teil { padding: 1.5mm 0; border-top: var(--linie) solid var(--haar); }
+  .persona-teil b { display: block; font-size: 7.2pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); }
+  .persona-teil p, .persona-teil li { margin-top: .5mm; font-size: 8.4pt; line-height: 1.36; color: var(--akzent); }
+  .persona-teil li { padding-left: 2.6mm; text-indent: -2.6mm; }
+  .persona-teil li::before { content: "· "; font-weight: 700; }
+  .persona-teil .zitat { font-style: italic; }
+  /* Matrix Passung × Signal */
+  .matrix { display: grid; grid-template-columns: 9mm 1fr 1fr; grid-template-rows: auto auto auto; margin-top: 3mm; }
+  .matrix .achse-y { grid-row: 1 / 3; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 7.6pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); }
+  .matrix .achse-x { grid-column: 2 / 4; text-align: center; padding-top: 1.6mm; font-size: 7.6pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); }
+  .matrix .f { padding: 2.6mm 4mm 2.8mm; border: var(--linie) solid var(--haar); margin: -.3pt 0 0 -.3pt; min-height: 26mm; }
+  .matrix .f.a { background: rgba(124, 58, 237, .08); border-color: rgba(124, 58, 237, .45); }
+  .matrix .f .ort { font-size: 7.4pt; letter-spacing: .1em; text-transform: uppercase; color: var(--tinte-leise); }
+  .matrix .f h3 { margin-top: .8mm; font-size: 10.4pt; }
+  .matrix .f h3 span { color: var(--akzent); }
+  .matrix .f p { margin-top: .6mm; font-size: 8.9pt; line-height: 1.38; }
+  .p-tab td.pkt { text-align: center; font-variant-numeric: tabular-nums; }
+  .p-tab th.pkt { text-align: center; }
+  .klasse { display: inline-block; min-width: 5.4mm; padding: .1mm 1.2mm; border-radius: 1mm; border: var(--linie) solid var(--akzent); color: var(--akzent); font-weight: 600; font-size: 8pt; text-align: center; }
+  .klasse.voll { background: var(--akzent); color: #fff; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+</svg>
+
+<!-- 1 · Deckblatt -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Baustein · Vertrieb</p>
+    <h1>Zielgruppe und Personas mit Lead-Scoring</h1>
+    <p class="lead">Finden Sie heraus, welche Firmen am besten zu Ihnen passen, beschreiben Sie die Menschen, die dort entscheiden, und bewerten Sie jeden neuen Kontakt nach einer festen Punkteregel. So arbeitet Ihr Vertrieb an den richtigen Firmen, zur richtigen Zeit.</p>
+  </div>
+
+  <p class="abschnitt-titel">So nutzen Sie dieses Paket</p>
+  <div class="fakten">
+    <div><b>Wer damit arbeitet</b><p>Die Geschäftsführung und wer bei Ihnen verkauft. Am besten zu zweit, eine Person davon kennt die Kunden aus dem Alltag gut.</p></div>
+    <div><b>Zeitbedarf</b><p>Rund fünf Stunden in vier Sitzungen über zwei Wochen, dazu fünf Kundengespräche von je 30 Minuten.</p></div>
+    <div><b>Was Sie brauchen</b><p>Eine Liste Ihrer Kunden der letzten zwei bis drei Jahre mit Umsatz, etwa aus der Buchhaltung. Und die Tabelle, die zu diesem Paket gehört.</p></div>
+    <div><b>Was Sie danach haben</b><p>Ein Ideal-Kundenprofil, drei Personas, ein Buying Center, ein Punktemodell für Leads und eine erste Liste mit 50 bewerteten Firmen.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Inhalt <small>in dieser Reihenfolge bearbeiten</small></p>
+  <table class="inhalt">
+    <thead><tr><th>Seite</th><th>Teil</th><th class="z">Ihre Zeit</th></tr></thead>
+    <tbody>
+      <tr><td>2</td><td>Grundlagen: der Weg in sechs Schritten und die Begriffe</td><td class="z">10 Minuten</td></tr>
+      <tr><td>3</td><td>Schritt 1: Bestandskunden auswerten, mit Bogen und Beispiel</td><td class="z">60 Minuten</td></tr>
+      <tr><td>6</td><td>Schritt 2: Ideal-Kundenprofil, mit Beispiel und Bogen</td><td class="z">45 Minuten</td></tr>
+      <tr><td>9</td><td>Schritt 3: Personas, mit Gesprächsleitfaden, Beispiel und Bogen</td><td class="z">60 Min. + Gespräche</td></tr>
+      <tr><td>12</td><td>Schritt 4: Buying Center</td><td class="z">20 Minuten</td></tr>
+      <tr><td>13</td><td>Schritt 5: Lead-Scoring, mit Beispiel und Bogen</td><td class="z">45 Minuten</td></tr>
+      <tr><td>16</td><td>Schritt 6: Listen aufbauen</td><td class="z">30 Min., dann laufend</td></tr>
+      <tr><td>17</td><td>Nach 90 Tagen: Modell prüfen und nachschärfen</td><td class="z">30 Minuten</td></tr>
+      <tr><td>18</td><td>Typische Fehler und Checkliste</td><td class="z">10 Minuten</td></tr>
+      <tr><td>19</td><td>Nächste Schritte</td><td class="z">5 Minuten</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Vorschlag: vier Sitzungen in zwei Wochen</p>
+  <div class="sitzungen">
+    <div><span class="nr">SITZUNG 1 · 70 MIN.</span><h3>Bestand verstehen</h3><p>Grundlagen lesen, Kunden einstufen, Muster finden. Danach fünf Kundengespräche vereinbaren.</p></div>
+    <div><span class="nr">SITZUNG 2 · 45 MIN.</span><h3>Profil schreiben</h3><p>Ideal-Kundenprofil und Kernsatz, Test mit dem Team.</p></div>
+    <div><span class="nr">SITZUNG 3 · 80 MIN.</span><h3>Menschen beschreiben</h3><p>Nach den Gesprächen: drei Personas und das Buying Center.</p></div>
+    <div><span class="nr">SITZUNG 4 · 90 MIN.</span><h3>Punkte und Liste</h3><p>Punktemodell, Probe mit drei Leads, die ersten Firmen recherchieren, Checkliste.</p></div>
+  </div>
+
+  <div class="hinweis unten">Zum Paket gehört eine <b>Tabelle</b> für Excel, Numbers und Google Tabellen: Sie stuft Ihre Bestandskunden ein, bewertet Leads selbst mit Punkten und zeigt die Klasse. Alle Beispiele sind frei erfunden. Hinweise zu Recht sind keine Rechtsberatung. Stand: Oktober 2026.</div>
+</section>
+
+<!-- 2 · Grundlagen -->
+<section class="seite">
+  <p class="vorzeile">Grundlagen</p>
+  <h2 class="blatt">Erst die Firma, dann der Mensch, dann die Punkte</h2>
+  <p class="unter">Vertrieb wird leichter, wenn Sie nicht jede Firma ansprechen, sondern die, bei denen Sie am meisten bewirken, und das zu dem Zeitpunkt, an dem dort Bedarf entsteht. Dieses Paket führt Sie in sechs Schritten dorthin. Jeder Schritt baut auf dem vorigen auf.</p>
+
+  <ol class="weg">
+    <li><span class="kreis">1</span><h3>Bestandskunden auswerten</h3><p>Bei wem gewinnen Sie heute schon am meisten?</p></li>
+    <li><span class="kreis">2</span><h3>Ideal-Kundenprofil</h3><p>Merkmale, Auslöser und Ausschlüsse der Firmen.</p></li>
+    <li><span class="kreis">3</span><h3>Personas</h3><p>Die Menschen, die entscheiden, nutzen und mitreden.</p></li>
+    <li><span class="kreis">4</span><h3>Buying Center</h3><p>Wer bei einem Auftrag wie mitentscheidet.</p></li>
+    <li><span class="kreis">5</span><h3>Lead-Scoring</h3><p>Punkte für Passung und Signal, Klassen A, B, C.</p></li>
+    <li><span class="kreis">6</span><h3>Listen</h3><p>Firmen finden, bewerten und ansprechen.</p></li>
+  </ol>
+
+  <p class="abschnitt-titel">Die Begriffe in diesem Paket</p>
+  <dl class="begriffe">
+    <dt>Ideal-Kundenprofil</dt><dd>Beschreibung der Firma, die am besten zu Ihnen passt: Branche, Größe, Region, Situation, Auslöser und Ausschlüsse. Im Englischen „Ideal Customer Profile“, kurz ICP. Es beschreibt Firmen, keine Menschen.</dd>
+    <dt>Persona</dt><dd>Steckbrief einer typischen Person in diesen Firmen: Ziele, Probleme, Einwände, wo sie sich informiert und welche Worte sie benutzt. Gebaut aus echten Gesprächen, nicht aus Vermutungen.</dd>
+    <dt>Buying Center</dt><dd>Alle Menschen, die bei einer Kaufentscheidung mitreden, von der Geschäftsführung bis zum Einkauf. Je größer der Auftrag, desto mehr Personen sind beteiligt.</dd>
+    <dt>Lead</dt><dd>Ein Kontakt zu einer Firma oder Person, die Kunde werden könnte. Ob es wirklich einen Bedarf gibt, ist noch offen. Erst mit einem bestätigten Bedarf wird daraus eine Chance in Ihrer Pipeline.</dd>
+    <dt>Lead-Scoring</dt><dd>Eine feste Punkteregel, mit der Sie jeden Lead gleich bewerten. Das Ergebnis ist eine Klasse: A heißt jetzt handeln, B pflegen, C beobachten.</dd>
+    <dt>Passung</dt><dd>Wie gut eine Firma zu Ihrem Ideal-Kundenprofil passt. Ändert sich selten, Sie prüfen sie einmal je Firma.</dd>
+    <dt>Signal</dt><dd>Ein Hinweis, dass gerade jetzt Bedarf entsteht: ein Ausfall, ein Umzug, eine neue Leitung, eine Anfrage. Ändert sich laufend. Ereignisse dieser Art heißen in diesem Paket auch Auslöser.</dd>
+    <dt>Ausschluss</dt><dd>Ein Merkmal, bei dem Sie nicht weitermachen, egal wie viele Punkte sonst zusammenkommen. Ausschlüsse sparen die meiste Zeit.</dd>
+  </dl>
+
+  <p class="hinweis lila"><b>Warum zuerst die Bestandskunden?</b> Ihre besten Kunden zeigen, wo Sie heute schon gewinnen. Das ist belastbarer als jede Vermutung über einen neuen Markt. Haben Sie erst wenige Kunden, nehmen Sie Angebote und Gespräche der letzten zwölf Monate dazu und kennzeichnen Sie alles, was Sie nicht belegen können, als Annahme. Nach 90 Tagen prüfen Sie es mit echten Zahlen (Seite 17).</p>
+</section>
+
+<!-- 3 · Schritt 1 Anleitung -->
+<section class="seite">
+  <p class="vorzeile">Schritt 1 · Bestandskunden auswerten · 60 Minuten</p>
+  <h2 class="blatt">Bei wem gewinnen Sie heute schon am meisten?</h2>
+  <p class="unter">Sie stufen jeden Kunden nach seinem Wert für Ihr Unternehmen ein und suchen danach die Gemeinsamkeiten der besten. Daraus entsteht in Schritt 2 Ihr Ideal-Kundenprofil.</p>
+
+  <p class="abschnitt-titel">So gehen Sie vor</p>
+  <ol class="schritte-liste">
+    <li><span class="nr">1</span><div><h3>Liste ziehen</h3><p>Alle Kunden der letzten 24 bis 36 Monate mit Umsatz je Jahr, etwa aus Buchhaltung oder Rechnungsprogramm. Mindestens zehn, besser 20 bis 30. Ein Kürzel je Kunde genügt.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Merkmale ergänzen</h3><p>Branche, Größe (Beschäftigte, Standorte oder eine Größe, die zu Ihrer Leistung passt), Entfernung oder Region, wie der Kunde zu Ihnen kam und was damals der Anlass war.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Wert in Punkten</h3><p>Je Merkmal 3, 2 oder 1 Punkt nach der Regel unten, dann zusammenzählen. Die Tabelle rechnet das selbst, auch das Drittel beim Umsatz.</p></div></li>
+    <li><span class="nr">4</span><div><h3>Einstufen</h3><p>A heißt: Davon wollen wir mehr. B: gut, aber nicht typisch. C: lieber nicht noch einmal. Zuerst gelten die Punkte. Weichen Sie bewusst ab, schreiben Sie den Grund dazu.</p></div></li>
+    <li><span class="nr">5</span><div><h3>Muster suchen</h3><p>Lesen Sie den Bogen Spalte für Spalte: Was haben die A&#8209;Kunden gemeinsam, was die C&#8209;Kunden? Halten Sie es in drei Sätzen fest. Rechnen Sie auch, welchen Anteil am Umsatz die A&#8209;Kunden bringen.</p></div></li>
+  </ol>
+
+  <p class="abschnitt-titel">Punkte für den Kundenwert <small>Vorschlag, in der Tabelle änderbar</small></p>
+  <table class="raster text">
+    <colgroup><col style="width:34mm"><col><col><col></colgroup>
+    <thead><tr><th>Merkmal</th><th>3 Punkte</th><th>2 Punkte</th><th>1 Punkt</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Umsatz je Jahr</td><td>oberes Drittel Ihrer Kunden</td><td>mittleres Drittel</td><td>unteres Drittel</td></tr>
+      <tr><td class="stark">Marge</td><td>hoch, kaum Nachlass</td><td>üblich</td><td>niedrig, viel Nachlass</td></tr>
+      <tr><td class="stark">Betreuungsaufwand</td><td>gering, klare Abläufe</td><td>üblich</td><td>hoch, viele Sonderwünsche</td></tr>
+      <tr><td class="stark">Empfiehlt weiter</td><td>ja, hat schon empfohlen</td><td>würde es vermutlich</td><td>nein</td></tr>
+      <tr><td class="stark">Zahlungsverhalten</td><td>pünktlich</td><td>gelegentlich spät</td><td>oft mit Mahnung</td></tr>
+      <tr class="summe"><td>Klasse</td><td>13 bis 15 Punkte: A</td><td>9 bis 12 Punkte: B</td><td>5 bis 8 Punkte: C</td></tr>
+    </tbody>
+  </table>
+
+  <div class="zwei" style="margin-top:1mm">
+    <p class="hinweis"><b>Wenig Daten?</b> Fehlt die Marge, schätzen Sie sie gemeinsam mit der Person, die die Aufträge abwickelt. Bei unter zehn Kunden nehmen Sie verlorene Angebote mit auf und vermerken, warum sie verloren gingen.</p>
+    <p class="hinweis"><b>Daten schützen.</b> Arbeiten Sie mit Kürzeln statt Firmennamen, wenn Sie den Bogen ausdrucken oder weitergeben. Die Zuordnung der Kürzel bleibt in Ihrer Buchhaltung.</p>
+  </div>
+  <p class="abschnitt-titel">Gut zu wissen</p>
+  <ul class="punkte">
+    <li><b>Umsatz allein macht keinen A&#8209;Kunden.</b> Ein großer Kunde mit niedriger Marge, hohem Aufwand und ohne Empfehlungen landet bei 7 bis 9 Punkten. Das ist gewollt: Von solchen Kunden brauchen Sie nicht mehr.</li>
+    <li><b>Eigene Merkmale sind erlaubt.</b> Zählt bei Ihnen etwas anderes, etwa die Dauer bis zum Auftrag oder der Wert als Referenz, tauschen Sie ein Merkmal aus. Bleiben Sie bei fünf.</li>
+  </ul>
+</section>
+
+<!-- 4 · Bogen Bestandskunden -->
+<section class="seite">
+  <p class="vorzeile">Schritt 1 · Bogen</p>
+  <h2 class="blatt">Bestandskunden einstufen</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Eine Zeile je Kunde. Tragen Sie in die fünf Punktespalten 3, 2 oder 1 ein (Regel auf Seite 3), zählen Sie zusammen und vergeben Sie die Klasse. Bei mehr als 15 Kunden nutzen Sie die Tabelle oder kopieren die Seite.</p>
+
+  <table class="raster klein">
+    <colgroup><col style="width:11mm"><col style="width:27mm"><col style="width:17mm"><col style="width:15mm"><col><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:10mm"><col style="width:11mm"></colgroup>
+    <thead><tr><th>Kürzel</th><th>Branche</th><th>Größe</th><th>Region</th><th>Wie kam er, was war der Anlass?</th><th class="mitte">Um&shy;satz</th><th class="mitte">Mar&shy;ge</th><th class="mitte">Auf&shy;wand</th><th class="mitte">Emp&shy;fiehlt</th><th class="mitte">Zah&shy;lung</th><th class="mitte">Sum&shy;me</th><th class="mitte">Klas&shy;se</th></tr></thead>
+    <tbody data-leer="15" data-spalten="12"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Was die Auswertung zeigt</p>
+  <div class="reihe" style="margin-top:2mm">
+    <p class="feld schmal"><span>A&#8209;Kunden</span><span class="strich"></span></p>
+    <p class="feld"><span>ihr Umsatz</span><span class="strich"></span><span class="einheit">€</span></p>
+    <p class="feld"><span>Anteil am Umsatz</span><span class="strich"></span><span class="einheit">%</span></p>
+  </div>
+  <div class="bogenblock"><span>Gemeinsam bei den A&#8209;Kunden<small>Branche, Größe, Region, Anlass, Weg zu uns</small></span><div class="linien" data-linien="3"></div></div>
+  <div class="bogenblock"><span>Gemeinsam bei den C&#8209;Kunden</span><div class="linien" data-linien="2"></div></div>
+  <div class="bogenblock"><span>Was mich überrascht hat</span><div class="linien" data-linien="1"></div></div>
+</section>
+
+<!-- 5 · Beispiel Bestandskunden -->
+<section class="seite">
+  <p class="vorzeile bsp">Schritt 1 · Beispiel · frei erfunden</p>
+  <h2 class="blatt">So sieht eine Auswertung aus</h2>
+  <p class="unter">Ein Dienstleister für Wartung und Service von Kälteanlagen mit 35 Beschäftigten hat seine Kunden eingestuft, hier acht davon. Firma, Kunden und Zahlen sind frei erfunden. Lila steht für Einträge.</p>
+
+  <table class="raster klein">
+    <colgroup><col style="width:11mm"><col style="width:31mm"><col style="width:17mm"><col style="width:15mm"><col><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col style="width:10mm"><col style="width:11mm"></colgroup>
+    <thead><tr><th>Kürzel</th><th>Branche</th><th>Größe<small>Beschäftigte</small></th><th>Region</th><th>Wie kam er, was war der Anlass?<small>Umsatz je Jahr</small></th><th class="mitte">Um&shy;satz</th><th class="mitte">Mar&shy;ge</th><th class="mitte">Auf&shy;wand</th><th class="mitte">Emp&shy;fiehlt</th><th class="mitte">Zah&shy;lung</th><th class="mitte">Sum&shy;me</th><th class="mitte">Klas&shy;se</th></tr></thead>
+    <tbody id="bsp-kunden"></tbody>
+  </table>
+
+  <div class="karte">
+    <p class="abschnitt-titel" style="margin-top:0">Was die Auswertung zeigt <span class="marke-bsp">ERFUNDEN</span></p>
+    <dl class="gefuellt eng">
+      <dt>In Zahlen</dt><dd>4 von 8 Kunden sind A. Sie bringen 114.000 € von 153.300 € Umsatz, also rund drei Viertel.</dd>
+      <dt>Gemeinsam bei den A&#8209;Kunden</dt><dd>Sie stellen Lebensmittel her oder verkaufen sie, haben 90 bis 150 Beschäftigte oder 9 bis 14 Filialen und liegen höchstens 110 km entfernt. Anlass war immer ein Ereignis mit Frist: ein Audit, ein Ausfall mit verdorbener Ware oder eine Erweiterung.</dd>
+      <dt>Gemeinsam bei den C&#8209;Kunden</dt><dd>Kleine Betriebe aus Gastronomie und Hotellerie. Sie rufen nur im Notfall an, bringen wenig Umsatz und viel Aufwand.</dd>
+      <dt>Überraschend</dt><dd>Die Supermarktgruppe kam über eine Empfehlung der Molkerei. Lebensmittelbetriebe kennen sich untereinander, Empfehlungen sind ein starker Weg.</dd>
+      <dt>Folgerung</dt><dd>Wir konzentrieren uns auf Lebensmittelbetriebe ab 50 Beschäftigten im Umkreis von 150 km. Gastronomie nur noch mit Wartungsvertrag.</dd>
+    </dl>
+  </div>
+  <p class="klein" style="margin-top:2mm">Die Umsatzpunkte folgen der Rangfolge: Die drei umsatzstärksten Kunden bekommen 3 Punkte, die nächsten zwei 2 Punkte, die übrigen 1 Punkt. So rechnet auch die Tabelle.</p>
+</section>
+
+<!-- 6 · Schritt 2 Anleitung -->
+<section class="seite">
+  <p class="vorzeile">Schritt 2 · Ideal-Kundenprofil · 45 Minuten</p>
+  <h2 class="blatt">Welche Firmen wollen Sie gewinnen?</h2>
+  <p class="unter">Das Ideal-Kundenprofil fasst die Muster Ihrer A&#8209;Kunden in sechs Teilen zusammen. Es ist die Grundlage für die Personas, die Punkte im Lead-Scoring und Ihre Listen. Schreiben Sie so genau, dass zwei Personen unabhängig voneinander zur gleichen Einschätzung kommen.</p>
+
+  <p class="abschnitt-titel">Die sechs Teile</p>
+  <ol class="sechs">
+    <li><span class="nr">1</span><h3>Branche</h3><span>So genau wie möglich, mit Teilbranchen: „Lebensmittelherstellung: Molkereien, Fleischverarbeitung, Backwaren“ statt „Industrie“.</span></li>
+    <li><span class="nr">2</span><h3>Größe</h3><span>Beschäftigte, Standorte oder eine Größe, die zu Ihrer Leistung passt, etwa Anlagen, Fahrzeuge oder Arbeitsplätze. Immer mit Unter- und Obergrenze.</span></li>
+    <li><span class="nr">3</span><h3>Region</h3><span>Wie weit Sie fahren oder liefern können und wollen. Bei Leistungen per Video: Sprache und Länder.</span></li>
+    <li><span class="nr">4</span><h3>Situation und Problem</h3><span>Was ist bei diesen Firmen los, bevor sie Sie brauchen? Welche Folgen hat das Problem, in Geld, Zeit, Risiko oder Ärger?</span></li>
+    <li><span class="nr">5</span><h3>Auslöser</h3><span>Ereignisse, die aus einem Problem einen Bedarf mit Frist machen. Aus ihnen werden die Signal-Punkte in Schritt 5.</span></li>
+    <li><span class="nr">6</span><h3>Ausschlüsse</h3><span>Merkmale, bei denen Sie nicht weitermachen: zu klein, zu weit, falscher Bedarf, reine Preisanfragen. Lieber klar als höflich.</span></li>
+  </ol>
+
+  <p class="abschnitt-titel">Ideen für Auslöser <small>was davon trifft auf Ihre A&#8209;Kunden zu?</small></p>
+  <div class="ausloeser">
+    <div><h3>Wachstum</h3><ul class="punkte klein"><li>neuer Standort, Neubau, Umzug</li><li>Zukauf einer Firma</li><li>viele Stellenanzeigen</li><li>neues Produkt, neuer Markt</li></ul></div>
+    <div><h3>Wechsel</h3><ul class="punkte klein"><li>neue Geschäftsführung oder Leitung</li><li>Nachfolge, neuer Eigentümer</li><li>Vertrag mit dem bisherigen Anbieter endet</li><li>Schlüsselperson geht</li></ul></div>
+    <div><h3>Druck</h3><ul class="punkte klein"><li>Ausfall, Reklamation, verlorener Kunde</li><li>Audit, Prüfung, Zertifizierung</li><li>neue Vorschrift mit Frist</li><li>Kosten steigen deutlich</li></ul></div>
+    <div><h3>Planung</h3><ul class="punkte klein"><li>Budgetplanung für das nächste Jahr</li><li>Ausschreibung</li><li>Förderprogramm mit Frist</li><li>Projekt öffentlich angekündigt</li></ul></div>
+  </div>
+
+  <p class="abschnitt-titel">Ihr Kernsatz</p>
+  <p class="kernsatz">Wir passen am besten zu <span class="platz">[Branche]</span> mit <span class="platz">[Größe]</span> in <span class="platz">[Region]</span>, die <span class="platz">[Situation]</span> haben und nach <span class="platz">[Auslöser]</span> <span class="platz">[Ziel]</span> wollen.</p>
+  <p class="text" style="margin-top:2mm"><b>Der Test:</b> Kann jemand aus Ihrem Team nach diesem Satz zehn passende Firmen nennen und drei, die nicht passen? Dann ist er genau genug. Wenn nicht, fehlt meist die Größe oder der Auslöser.</p>
+  <p class="hinweis"><b>Ein Profil zuerst.</b> Zeigen sich zwei sehr verschiedene Gruppen von A&#8209;Kunden, machen Sie je Gruppe ein Profil und beginnen mit der Gruppe, die den größten Teil des Umsatzes bringt.</p>
+</section>
+
+<!-- 7 · Beispiel ICP -->
+<section class="seite">
+  <p class="vorzeile bsp">Schritt 2 · Beispiel · frei erfunden</p>
+  <h2 class="blatt">Ein ausgefülltes Ideal-Kundenprofil</h2>
+  <p class="unter">Der Kälte-Dienstleister von Seite 5 hat aus seinen A&#8209;Kunden dieses Profil gemacht. Lila steht für Einträge.</p>
+
+  <dl class="gefuellt" style="margin-top:3mm">
+    <dt>Branche</dt><dd>Lebensmittelherstellung (Molkereien, Fleischverarbeitung, Backwaren), Lebensmittelhandel mit eigenen Filialen, Lager mit Temperaturführung</dd>
+    <dt>Größe</dt><dd>50 bis 500 Beschäftigte oder 5 bis 40 Filialen, mindestens 10 Kühlstellen</dd>
+    <dt>Region</dt><dd>bis 150 km um unseren Standort, Anfahrt unter zwei Stunden</dd>
+    <dt>Situation und Problem</dt><dd>Anlagen älter als zehn Jahre. Wartung ist auf mehrere Firmen verteilt oder hängt an einem eigenen Haustechniker. Temperaturprotokolle werden von Hand geführt.</dd>
+    <dt>Folgen<small>in Geld, Zeit, Risiko</small></dt><dd>Ein Ausfall kostet verdorbene Ware und Lieferverzug. Beim Audit fehlen Nachweise. Der Haustechniker ist am Wochenende allein.</dd>
+    <dt>Auslöser</dt><dd>Ausfall mit Warenverlust · Audit oder Zertifizierung steht an · Neubau, Erweiterung, neue Filiale · Umstellung auf andere Kältemittel · neue technische Leitung · Stellenanzeige für Haustechnik · Vertrag beim bisherigen Anbieter endet</dd>
+    <dt>Ausschlüsse</dt><dd>weniger als 5 Kühlstellen · weiter als 200 km · nur Notdienst ohne Vertrag gewünscht · Anlagen in Privathaushalten · reine Preisausschreibung ohne Gespräch</dd>
+    <dt>Woran wir sie von außen erkennen</dt><dd>Website zeigt eigene Produktion oder Filialnetz, nennt Zertifizierungen, sucht Personal für Technik oder Qualität. Meldungen zu Neubauten in der regionalen Wirtschaftspresse.</dd>
+    <dt>Wie sie zu uns kommen</dt><dd>Empfehlung anderer Lebensmittelbetriebe, regionale Fachmesse, Gespräche beim Branchenverband</dd>
+    <dt>Kernsatz</dt><dd class="gross">Wir passen am besten zu Lebensmittelbetrieben mit 50 bis 500 Beschäftigten im Umkreis von 150 km, deren Kühlung älter als zehn Jahre ist und die nach einem Ausfall oder vor einem Audit verlässliche Anlagen und lückenlose Nachweise wollen.</dd>
+  </dl>
+  <p class="klein" style="margin-top:2.4mm">Der Test: Das Team konnte in zehn Minuten zwölf passende Betriebe nennen und drei, die nicht passen.</p>
+  <div class="karte">
+    <p class="abschnitt-titel" style="margin-top:0">Was das Profil im Alltag ändert <span class="marke-bsp">ERFUNDEN</span></p>
+    <dl class="gefuellt eng">
+      <dt>Website</dt><dd>Die Startseite spricht Lebensmittelbetriebe direkt an, mit einem Muster-Wartungsbericht als Nachweis fürs Audit.</dd>
+      <dt>Messen</dt><dd>Statt drei allgemeiner Messen nur noch die regionale Fachmesse der Lebensmittelbranche, dafür mit vorab vereinbarten Gesprächen.</dd>
+      <dt>Angebote</dt><dd>Jedes Angebot rechnet die Kosten eines Ausfalls gegen den Wartungsvertrag.</dd>
+      <dt>Was wir nicht mehr tun</dt><dd>Notdienst-Anfragen aus der Gastronomie ohne Vertrag geben wir an einen Partner weiter.</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 8 · Bogen ICP -->
+<section class="seite">
+  <p class="vorzeile">Schritt 2 · Bogen</p>
+  <h2 class="blatt">Ihr Ideal-Kundenprofil</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Arbeiten Sie mit dem Bogen von Seite 4 daneben. Schreiben Sie nur hinein, was Ihre A&#8209;Kunden tatsächlich gemeinsam haben. Was Sie vermuten, kennzeichnen Sie mit „Annahme“.</p>
+
+  <div class="bogenblock" style="margin-top:2.4mm"><span>Branche<small>mit Teilbranchen</small></span><div class="linien" data-linien="2"></div></div>
+  <div class="bogenblock"><span>Größe<small>von … bis …</small></span><div class="linien" data-linien="1"></div></div>
+  <div class="bogenblock"><span>Region</span><div class="linien" data-linien="1"></div></div>
+  <div class="bogenblock"><span>Situation und Problem</span><div class="linien" data-linien="4"></div></div>
+  <div class="bogenblock"><span>Folgen<small>in Geld, Zeit, Risiko</small></span><div class="linien" data-linien="2"></div></div>
+  <div class="bogenblock"><span>Auslöser<small>mindestens fünf</small></span><div class="linien" data-linien="4"></div></div>
+  <div class="bogenblock"><span>Ausschlüsse<small>mindestens drei</small></span><div class="linien" data-linien="3"></div></div>
+  <div class="bogenblock"><span>Woran wir sie von außen erkennen</span><div class="linien" data-linien="2"></div></div>
+  <div class="bogenblock"><span>Wie sie zu uns kommen</span><div class="linien" data-linien="1"></div></div>
+
+  <p class="abschnitt-titel">Kernsatz</p>
+  <div class="linien" data-linien="3"></div>
+  <p style="margin-top:2.6mm"><span class="stark" style="font-size:9.2pt;margin-right:4mm">Test bestanden</span><span class="wahl"><span class="kreuz"></span>zehn passende Firmen genannt</span><span class="wahl"><span class="kreuz"></span>drei unpassende genannt</span></p>
+</section>
+
+<!-- 9 · Schritt 3 Personas -->
+<section class="seite">
+  <p class="vorzeile">Schritt 3 · Personas · 60 Minuten plus Gespräche</p>
+  <h2 class="blatt">Wer entscheidet, wer nutzt, wer redet mit?</h2>
+  <p class="unter">In jeder Firma Ihres Profils kaufen Menschen mit unterschiedlichen Zielen. Beschreiben Sie die drei Rollen, die fast immer vorkommen. Eine Persona ist dann gut, wenn Sie danach wissen, was Sie dieser Person sagen, zeigen und schicken.</p>
+
+  <div class="rollen3">
+    <div><span class="nr">ROLLE 1</span><h3>Entscheider</h3><p>Gibt das Geld frei und trägt das Risiko, oft die Geschäftsführung. Achtet auf Wirkung, Kosten und Sicherheit. Will wenig Zeit investieren und klar wissen, was sich ändert.</p></div>
+    <div><span class="nr">ROLLE 2</span><h3>Nutzer</h3><p>Arbeitet täglich mit Ihrer Leistung oder ihrem Ergebnis. Achtet auf Alltag, Aufwand und Verlässlichkeit. Kann ein Projekt tragen oder still scheitern lassen.</p></div>
+    <div><span class="nr">ROLLE 3</span><h3>Beeinflusser</h3><p>Redet mit, ohne zu entscheiden: Qualität, IT, Einkauf, Steuerberatung, Betriebsrat. Achtet auf eigene Vorgaben und kann ein Nein auslösen.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">So bauen Sie eine Persona</p>
+  <ol class="schritte-liste dicht">
+    <li><span class="nr">1</span><span><b>Fünf Gespräche führen</b> mit A&#8209;Kunden, je Rolle mindestens eines, 30 Minuten mit dem Leitfaden unten. Fragen Sie nach Erlebtem, nicht nach Meinungen.</span></li>
+    <li><span class="nr">2</span><span><b>Wörtlich mitschreiben.</b> Die Worte Ihrer Kunden brauchen Sie später für Website, Angebote und Gespräche. Notieren Sie ganze Sätze in Anführungszeichen.</span></li>
+    <li><span class="nr">3</span><span><b>Bogen füllen</b>, einen je Rolle (Seite 11). Was Sie nicht gehört haben, kennzeichnen Sie mit „Annahme“.</span></li>
+    <li><span class="nr">4</span><span><b>Im Team prüfen:</b> Erkennen alle die Person wieder? Was fehlt? Danach hängen Sie die drei Personas dort auf, wo Angebote und Texte entstehen.</span></li>
+  </ol>
+
+  <p class="abschnitt-titel">Leitfaden für Kundengespräche <small>30 Minuten</small></p>
+  <ol class="fragen10">
+    <li><span class="nr">1</span><span>Was war bei Ihnen los, kurz bevor Sie nach einer Lösung gesucht haben?<small>zeigt den Auslöser</small></span></li>
+    <li><span class="nr">6</span><span>Was hat am Ende den Ausschlag gegeben, mit uns zu arbeiten?<small>zeigt das stärkste Argument</small></span></li>
+    <li><span class="nr">2</span><span>Was hatten Sie vorher versucht, und warum hat es nicht gereicht?<small>zeigt die Alternative</small></span></li>
+    <li><span class="nr">7</span><span>Woran merken Sie heute, dass es sich gelohnt hat?<small>zeigt den Nutzen in eigenen Worten</small></span></li>
+    <li><span class="nr">3</span><span>Wer war an der Entscheidung beteiligt, und was war jeder Person wichtig?<small>zeigt das Buying Center</small></span></li>
+    <li><span class="nr">8</span><span>Wie würden Sie uns jemandem aus Ihrer Branche beschreiben?<small>zeigt die Sprache</small></span></li>
+    <li><span class="nr">4</span><span>Welche Bedenken hatten Sie, bevor Sie zugesagt haben?<small>zeigt die Einwände</small></span></li>
+    <li><span class="nr">9</span><span>Was hätten wir früher sagen oder zeigen sollen?<small>zeigt Lücken im Vertrieb</small></span></li>
+    <li><span class="nr">5</span><span>Wo haben Sie sich informiert, wen haben Sie gefragt?<small>zeigt die Kanäle</small></span></li>
+    <li><span class="nr">10</span><span>Wen kennen Sie, der vor einer ähnlichen Frage steht?<small>bringt Empfehlungen</small></span></li>
+  </ol>
+  <p class="hinweis">Sagen Sie vorher, wozu das Gespräch dient, und verkaufen Sie dabei nichts. Nehmen Sie Gespräche nur mit Einwilligung aller Beteiligten auf (§&nbsp;201&nbsp;StGB). Hinweis, keine Rechtsberatung.</p>
+</section>
+
+<!-- 10 · Beispiel Personas -->
+<section class="seite">
+  <p class="vorzeile bsp">Schritt 3 · Beispiel · frei erfunden</p>
+  <h2 class="blatt">Drei ausgefüllte Personas</h2>
+  <p class="unter">Aus fünf Gesprächen des Kälte-Dienstleisters. Die Sätze in Anführungszeichen sind so notiert, wie Kunden sie gesagt haben könnten. Alles frei erfunden, lila steht für Einträge.</p>
+  <div class="personas" id="personas"></div>
+</section>
+
+<!-- 11 · Bogen Persona -->
+<section class="seite">
+  <p class="vorzeile">Schritt 3 · Bogen · einmal je Rolle kopieren</p>
+  <h2 class="blatt">Persona</h2>
+  <div class="reihe">
+    <p class="feld"><span>Kurzname der Persona</span><span class="strich"></span></p>
+    <p class="feld"><span>typische Funktion</span><span class="strich"></span></p>
+  </div>
+  <p style="margin-top:2.4mm"><span class="stark" style="font-size:9.2pt;margin-right:4mm">Rolle</span><span class="wahl"><span class="kreuz"></span>Entscheider</span><span class="wahl"><span class="kreuz"></span>Nutzer</span><span class="wahl"><span class="kreuz"></span>Beeinflusser</span><span class="wahl" style="margin-left:6mm"><span class="kreuz"></span>aus Gesprächen</span><span class="wahl"><span class="kreuz"></span>teils Annahme</span></p>
+
+  <div class="zwei">
+    <div><p class="abschnitt-titel">Ziele <small>was sie erreichen will</small></p><div class="linien eng" data-linien="3"></div></div>
+    <div><p class="abschnitt-titel">Probleme <small>was sie heute stört</small></p><div class="linien eng" data-linien="3"></div></div>
+    <div><p class="abschnitt-titel">Wenn nichts passiert <small>Folgen für sie</small></p><div class="linien eng" data-linien="2"></div></div>
+    <div><p class="abschnitt-titel">Woran Sie sie erkennen</p><div class="linien eng" data-linien="2"></div></div>
+  </div>
+
+  <p class="abschnitt-titel">Einwände und Ihre Antwort</p>
+  <table class="raster dicht">
+    <colgroup><col style="width:7mm"><col style="width:66mm"><col></colgroup>
+    <thead><tr><th></th><th>Einwand in ihren Worten</th><th>Unsere Antwort, mit Beleg</th></tr></thead>
+    <tbody data-leer="3" data-spalten="3" data-nr="1" data-hoehe="11.5mm"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Wo sie sich informiert</p>
+  <p style="margin-top:2mm; line-height:2"><span class="wahl"><span class="kreuz"></span>Empfehlung</span><span class="wahl"><span class="kreuz"></span>Fachmesse</span><span class="wahl"><span class="kreuz"></span>Verband</span><span class="wahl"><span class="kreuz"></span>Fachpresse</span><span class="wahl"><span class="kreuz"></span>Suchmaschine</span><span class="wahl"><span class="kreuz"></span>berufliche Netzwerke</span><span class="wahl"><span class="kreuz"></span>Veranstaltungen</span><span class="wahl"><span class="kreuz"></span>Newsletter</span><span class="wahl"><span class="kreuz"></span>Berater</span><span class="wahl"><span class="kreuz"></span>Sonstiges:</span></p>
+
+  <div class="zwei">
+    <div><p class="abschnitt-titel">Fragen, die sie stellt</p><div class="linien eng" data-linien="3"></div></div>
+    <div><p class="abschnitt-titel">Was sie von uns braucht <small>Inhalte, Nachweise</small></p><div class="linien eng" data-linien="3"></div></div>
+    <div><p class="abschnitt-titel">Worte, die sie benutzt</p><div class="linien eng" data-linien="2"></div></div>
+    <div><p class="abschnitt-titel">Worte, die sie meidet</p><div class="linien eng" data-linien="2"></div></div>
+  </div>
+  <p class="abschnitt-titel">Ein Satz aus einem Gespräch <small>wörtlich</small></p>
+  <div class="linien eng" data-linien="2"></div>
+</section>
+
+<!-- 12 · Buying Center -->
+<section class="seite">
+  <p class="vorzeile">Schritt 4 · Buying Center · 20 Minuten</p>
+  <h2 class="blatt">Wer bei einem Auftrag mitentscheidet</h2>
+  <p class="unter">Die Personas beschreiben Typen. Das Buying Center zeigt, wer bei einem konkreten Auftrag wie viel Einfluss hat und wie die Person zu Ihnen steht. Machen Sie es zuerst für einen typischen Auftrag, später für jede große Chance.</p>
+
+  <table class="raster text">
+    <colgroup><col style="width:30mm"><col style="width:52mm"><col></colgroup>
+    <thead><tr><th>Rolle</th><th>Wer das oft ist</th><th>Was die Rolle von Ihnen braucht</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Entscheider</td><td>Geschäftsführung, Inhaber, Bereichsleitung</td><td>Wirkung in Zahlen, Risiko, Zeitplan, eine klare Empfehlung</td></tr>
+      <tr><td class="stark">Nutzer</td><td>Fachabteilung, Team im Alltag</td><td>wie der Alltag danach aussieht, wer hilft, wenn etwas klemmt</td></tr>
+      <tr><td class="stark">Beeinflusser</td><td>Qualität, IT, Datenschutz, Steuerberatung</td><td>dass ihre Vorgaben erfüllt sind, schriftlich</td></tr>
+      <tr><td class="stark">Einkauf</td><td>Einkauf, kaufmännische Leitung</td><td>vergleichbare Angebote, Bedingungen, Laufzeiten</td></tr>
+      <tr><td class="stark">Türöffner</td><td>Assistenz, Empfang, Sekretariat</td><td>Respekt, einen klaren Anlass, kurze Unterlagen</td></tr>
+      <tr><td class="stark">Fürsprecher</td><td>wer intern für Sie wirbt, oft ein Nutzer</td><td>Argumente und Unterlagen, die sie weitergeben kann</td></tr>
+      <tr><td class="stark">Freigabe</td><td>Finanzen, Betriebsrat, Konzernmutter</td><td>früh wissen, was kommt, um nicht am Ende zu bremsen</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Bogen für einen typischen Auftrag <small>Haltung: + Fürsprecher · 0 offen · − dagegen</small></p>
+  <table class="raster">
+    <colgroup><col style="width:24mm"><col style="width:30mm"><col><col style="width:31mm"><col style="width:17mm"><col style="width:34mm"></colgroup>
+    <thead><tr><th>Rolle</th><th>Funktion beim Kunden</th><th>Was ihr wichtig ist</th><th>Einfluss</th><th class="mitte">Haltung</th><th>So erreichen wir sie</th></tr></thead>
+    <tbody>
+      <tr class="bsp"><td>Beispiel: Beeinflusser</td><td>Qualitäts&shy;management</td><td>lückenlose Nachweise fürs Audit</td><td>3 von 5</td><td class="mitte">+</td><td>Muster eines Wartungsberichts schicken</td></tr>
+    </tbody>
+    <tbody id="bc-zeilen"></tbody>
+  </table>
+  <p class="abschnitt-titel">Fragen, mit denen Sie das Buying Center herausfinden</p>
+  <ul class="punkte">
+    <li>Wer außer Ihnen ist an der Entscheidung beteiligt, und wer hat das letzte Wort?</li>
+    <li>Wie sind Sie bei der letzten ähnlichen Anschaffung vorgegangen?</li>
+    <li>Ab welchem Betrag muss jemand anderes zustimmen?</li>
+    <li>Wessen Arbeit ändert sich danach am meisten?</li>
+    <li>Wer könnte Bedenken haben, und welche?</li>
+  </ul>
+  <p class="hinweis">Fehlt in Ihrem Kontakt eine Rolle mit hohem Einfluss, ist genau das Ihr nächster Schritt: Fragen Sie Ihren Fürsprecher, wer noch mitredet, und bitten Sie darum, diese Person einzubinden.</p>
+</section>
+
+<!-- 13 · Lead-Scoring Prinzip -->
+<section class="seite">
+  <p class="vorzeile">Schritt 5 · Lead-Scoring · 45 Minuten</p>
+  <h2 class="blatt">Punkte für Passung und Signal</h2>
+  <p class="unter">Jeder Lead bekommt Punkte auf zwei Seiten: Wie gut passt die Firma zu Ihrem Profil, und wie stark sind die Hinweise, dass jetzt Bedarf entsteht? Erst beides zusammen sagt, wo Ihre Zeit am meisten bringt.</p>
+
+  <div class="zwei" style="margin-top:3mm">
+    <div><div class="spalte-kopf"><span class="nr">BIS 50 PUNKTE</span><h3>Passung</h3></div><p class="text" style="margin-top:1.4mm">Fünf Kriterien aus dem Ideal-Kundenprofil: Branche, Größe, Region und zwei, die Ihre A&#8209;Kunden auszeichnen. Ändert sich selten, einmal je Firma prüfen.</p></div>
+    <div><div class="spalte-kopf"><span class="nr">BIS 50 PUNKTE</span><h3>Signal</h3></div><p class="text" style="margin-top:1.4mm">Fünf Kriterien aus Auslösern und Verhalten: Ereignis, Kontakt zur Entscheidungsebene, Reaktion, Vertragsende, Empfehlung. Ändert sich laufend, bei jedem Kontakt prüfen.</p></div>
+  </div>
+
+  <div class="matrix">
+    <div class="achse-y">Signal: niedrig → hoch</div>
+    <div class="f"><span class="ort">Signal hoch · Passung niedrig</span><h3>Prüfen</h3><p>Lautes Interesse, schwache Passung. Kurz klären, ob es wirklich passt, bevor Sie viel Zeit investieren.</p></div>
+    <div class="f a"><span class="ort">Signal hoch · Passung hoch</span><h3><span>A</span> · Jetzt handeln</h3><p>Persönlich ansprechen, innerhalb von zwei Werktagen. Entscheider und Nutzer einbinden.</p></div>
+    <div class="f"><span class="ort">Signal niedrig · Passung niedrig</span><h3><span>C</span> · Beobachten</h3><p>Kein aktiver Aufwand. Neu bewerten, wenn ein Signal auftaucht.</p></div>
+    <div class="f"><span class="ort">Signal niedrig · Passung hoch</span><h3>Pflegen</h3><p>Gute Firma, falscher Zeitpunkt. In Kontakt bleiben und auf Auslöser achten. Meist Klasse B.</p></div>
+    <div></div><div class="achse-x">Passung: niedrig → hoch</div>
+  </div>
+
+  <p class="abschnitt-titel">Regeln für gute Kriterien</p>
+  <ul class="punkte">
+    <li>Höchstens fünf Kriterien je Seite. Mehr pflegt niemand dauerhaft.</li>
+    <li>Jedes Kriterium lässt sich mit ja, teils oder nein beantworten, ohne Diskussion. „Teils“ bringt die halben Punkte.</li>
+    <li>Die Kriterien, die Ihre A&#8209;Kunden am deutlichsten von den C&#8209;Kunden unterscheiden, bekommen die meisten Punkte.</li>
+    <li>Ausschlüsse bleiben getrennt: Trifft einer zu, wird der Lead nicht weiter verfolgt, ganz gleich, wie viele Punkte er hat.</li>
+  </ul>
+
+  <p class="abschnitt-titel">Klassen und was dann passiert <small>Vorschlag, in der Tabelle änderbar</small></p>
+  <table class="raster text klein">
+    <colgroup><col style="width:20mm"><col style="width:46mm"><col><col style="width:28mm"></colgroup>
+    <thead><tr><th>Klasse</th><th>Regel</th><th>Was passiert</th><th>Frist</th></tr></thead>
+    <tbody>
+      <tr><td><span class="klasse voll">A</span></td><td>ab 70 Punkten und Passung mindestens 30</td><td>persönlich ansprechen: anrufen oder Termin vorschlagen, auf den Auslöser eingehen</td><td>2 Werktage</td></tr>
+      <tr><td><span class="klasse">B</span></td><td>45 bis 69 Punkte, oder ab 70 mit Passung unter 30</td><td>pflegen: alle vier bis sechs Wochen ein Anlass. Ist das Signal stark (ab der Hälfte der Signal-Punkte), zuerst kurz prüfen, ob die Firma passt</td><td>laufend</td></tr>
+      <tr><td><span class="klasse">C</span></td><td>unter 45 Punkten</td><td>beobachten: kein aktiver Aufwand</td><td>bei neuem Signal</td></tr>
+      <tr><td class="stark">Ausschluss</td><td>ein Ausschluss trifft zu</td><td>freundlich absagen oder weiterempfehlen, im CRM kennzeichnen</td><td>sofort</td></tr>
+    </tbody>
+  </table>
+  <p class="hinweis lila"><b>Wann Sie neu bewerten:</b> bei jedem neuen Signal, nach jedem Gespräch und spätestens alle drei Monate. Die Passung bleibt meist gleich, das Signal ändert sich. So rutscht ein B&#8209;Lead zur richtigen Zeit nach A.</p>
+</section>
+
+<!-- 14 · Beispiel Scoring -->
+<section class="seite">
+  <p class="vorzeile bsp">Schritt 5 · Beispiel · frei erfunden</p>
+  <h2 class="blatt">Ein Punktemodell und fünf bewertete Leads</h2>
+  <p class="unter">Das Modell des Kälte-Dienstleisters. „Teils“ bringt die halben Punkte. Lila steht für Einträge, alle Firmen und Angaben sind frei erfunden.</p>
+
+  <table class="raster text klein p-tab">
+    <colgroup><col style="width:9mm"><col><col style="width:13mm"><col style="width:52mm"></colgroup>
+    <thead><tr><th></th><th>Kriterium</th><th class="pkt">ja</th><th>teils, wenn …</th></tr></thead>
+    <tbody id="bsp-modell"></tbody>
+  </table>
+  <p class="klein" style="margin-top:1.6mm"><b>Ausschlüsse:</b> <span class="ein">weniger als 5 Kühlstellen · weiter als 200 km · nur Notdienst ohne Vertrag · Wettbewerber oder Partner.</span> <b>Klassen:</b> <span class="ein">A ab 70 und Passung ab 30 · B 45 bis 69 · C unter 45.</span></p>
+
+  <p class="abschnitt-titel">Fünf Leads bewertet</p>
+  <table class="raster klein p-tab">
+    <colgroup><col style="width:36mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:9mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:6.4mm"><col style="width:9mm"><col style="width:9mm"><col style="width:9mm"><col></colgroup>
+    <thead><tr><th>Lead</th><th class="pkt">P1</th><th class="pkt">P2</th><th class="pkt">P3</th><th class="pkt">P4</th><th class="pkt">P5</th><th class="pkt">Pas&shy;sung</th><th class="pkt">S1</th><th class="pkt">S2</th><th class="pkt">S3</th><th class="pkt">S4</th><th class="pkt">S5</th><th class="pkt">Sig&shy;nal</th><th class="pkt">Ge&shy;samt</th><th class="pkt">Kl.</th><th>Nächster Schritt</th></tr></thead>
+    <tbody id="bsp-leads"></tbody>
+  </table>
+  <ul class="punkte klein" style="margin-top:2.4mm">
+    <li><b>Lead 2</b> hat viel Passung, aber kaum Signal: Klasse B, pflegen. Die Empfehlung ist der Anlass für einen ersten Kontakt.</li>
+    <li><b>Lead 3</b> hat starkes Signal, aber nur mittlere Passung: B, prüfen. Der Notfall wird gelöst, ein Wartungsvertrag erst nach einem Gespräch angeboten.</li>
+    <li><b>Lead 4</b> hat zu wenige Kühlstellen: Ausschluss, egal wie dringend der Anruf klingt.</li>
+  </ul>
+</section>
+
+<!-- 15 · Bogen Scoring -->
+<section class="seite">
+  <p class="vorzeile">Schritt 5 · Bogen</p>
+  <h2 class="blatt">Ihr Punktemodell</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Nehmen Sie Branche, Größe und Region aus dem Ideal-Kundenprofil, dazu zwei Merkmale, die Ihre A&#8209;Kunden auszeichnen. Für das Signal nehmen Sie Ihre stärksten Auslöser. Je Seite zusammen 50 Punkte. Danach bewerten Sie zur Probe drei Leads, die Sie gut kennen.</p>
+
+  <table class="raster p-tab">
+    <colgroup><col style="width:9mm"><col><col style="width:16mm"><col style="width:16mm"><col style="width:46mm"></colgroup>
+    <thead><tr><th></th><th>Kriterium</th><th class="pkt">ja<small>Punkte</small></th><th class="pkt">teils<small>Punkte</small></th><th>teils, wenn …</th></tr></thead>
+    <tbody>
+      <tr class="gruppe"><td colspan="5">Passung · zusammen 50</td></tr>
+      <tr><td class="leise">P1</td><td></td><td></td><td></td><td></td></tr><tr><td class="leise">P2</td><td></td><td></td><td></td><td></td></tr><tr><td class="leise">P3</td><td></td><td></td><td></td><td></td></tr><tr><td class="leise">P4</td><td></td><td></td><td></td><td></td></tr><tr><td class="leise">P5</td><td></td><td></td><td></td><td></td></tr>
+      <tr class="gruppe"><td colspan="5">Signal · zusammen 50</td></tr>
+      <tr><td class="leise">S1</td><td></td><td></td><td></td><td></td></tr><tr><td class="leise">S2</td><td></td><td></td><td></td><td></td></tr><tr><td class="leise">S3</td><td></td><td></td><td></td><td></td></tr><tr><td class="leise">S4</td><td></td><td></td><td></td><td></td></tr><tr><td class="leise">S5</td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="zwei">
+    <div><p class="abschnitt-titel">Ausschlüsse</p><div class="linien eng" data-linien="3"></div></div>
+    <div><p class="abschnitt-titel">Klassen</p>
+      <table class="raster dicht" style="margin-top:.6mm"><colgroup><col style="width:12mm"><col><col></colgroup>
+        <thead><tr><th>Klasse</th><th>ab Punkten</th><th>zusätzlich</th></tr></thead>
+        <tbody><tr><td class="stark">A</td><td></td><td class="leise" style="font-size:8pt">Passung ab</td></tr><tr><td class="stark">B</td><td></td><td></td></tr><tr><td class="stark">C</td><td class="leise" style="font-size:8pt">darunter</td><td></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Probe mit drei Leads, die Sie gut kennen</p>
+  <table class="raster p-tab">
+    <colgroup><col style="width:34mm"><col><col><col><col><col><col style="width:11mm"><col><col><col><col><col><col style="width:11mm"><col style="width:11mm"><col style="width:9mm"></colgroup>
+    <thead><tr><th>Lead</th><th class="pkt">P1</th><th class="pkt">P2</th><th class="pkt">P3</th><th class="pkt">P4</th><th class="pkt">P5</th><th class="pkt">Pas&shy;sung</th><th class="pkt">S1</th><th class="pkt">S2</th><th class="pkt">S3</th><th class="pkt">S4</th><th class="pkt">S5</th><th class="pkt">Sig&shy;nal</th><th class="pkt">Ge&shy;samt</th><th class="pkt">Kl.</th></tr></thead>
+    <tbody data-leer="3" data-spalten="15" data-hoehe="9mm"></tbody>
+  </table>
+  <p class="text" style="margin-top:2mm"><b>Stimmt das Bauchgefühl?</b> Bekommen die Leads, die Sie selbst für die besten halten, auch die meisten Punkte? Wenn nicht, fehlt meist ein Kriterium oder die Punkte sind falsch verteilt.</p>
+</section>
+
+<!-- 16 · Listen -->
+<section class="seite">
+  <p class="vorzeile">Schritt 6 · Listen aufbauen · 30 Minuten, dann zwei Stunden je Woche</p>
+  <h2 class="blatt">Von der Zielgruppe zur ersten Liste mit 50 Firmen</h2>
+  <p class="unter">Fünfzig gut recherchierte Firmen bringen mehr als fünfhundert ungeprüfte Adressen. Bauen Sie die Liste Schritt für Schritt auf, bewerten Sie jede Firma beim Eintragen und arbeiten Sie die A&#8209;Firmen zuerst ab.</p>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Wo Sie passende Firmen finden</p>
+      <ul class="punkte">
+        <li><b>Ihre eigenen Daten:</b> Kunden, ehemalige Kunden, verlorene Angebote, alte Anfragen</li>
+        <li><b>Empfehlungen:</b> Fragen Sie jeden A&#8209;Kunden nach zwei Betrieben, die vor einer ähnlichen Frage stehen</li>
+        <li><b>Verbände und Kammern:</b> Mitgliederverzeichnisse, Veranstaltungen</li>
+        <li><b>Fachmessen:</b> Ausstellerverzeichnisse</li>
+        <li><b>Handelsregister-Bekanntmachungen:</b> neue Firmen, neue Geschäftsführung</li>
+        <li><b>Stellenanzeigen:</b> zeigen Wachstum und Engpässe</li>
+        <li><b>Presse:</b> Erweiterungen, Neubauten, Wechsel in der Leitung</li>
+        <li><b>Öffentliche Ausschreibungen</b> in Ihrer Region</li>
+        <li><b>Berufliche Netzwerke:</b> Funktionen und Wechsel von Personen</li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Die Spalten Ihrer Liste</p>
+      <ul class="punkte">
+        <li>Firma, Website, Branche, Größe, Ort</li>
+        <li><b>Quelle des Eintrags</b>: wo die Angaben herkommen</li>
+        <li><b>Signal</b>: was, wann, wo gefunden</li>
+        <li>Ansprechpersonen mit Rolle: Entscheider, Nutzer, Beeinflusser</li>
+        <li>Punkte für Passung und Signal, Klasse</li>
+        <li>Nächster Schritt, Datum, wer</li>
+        <li>Einwilligung für E-Mail-Werbung: ja oder nein, mit Datum</li>
+      </ul>
+      <p class="klein" style="margin-top:2mm">Das Blatt „Leads“ der Tabelle hat genau diese Spalten und rechnet Punkte und Klasse selbst.</p>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Zehn Minuten je Firma</p>
+  <table class="raster text">
+    <colgroup><col style="width:9mm"><col style="width:40mm"><col><col style="width:16mm"></colgroup>
+    <tbody>
+      <tr><td class="leise">1</td><td class="stark">Website ansehen</td><td>Passen Branche, Größe und Region? Trifft ein Ausschluss zu, hören Sie hier auf.</td><td class="leise">2 Min.</td></tr>
+      <tr><td class="leise">2</td><td class="stark">Signal suchen</td><td>Neuigkeiten auf der Website, Stellenanzeigen, Presse. Fundstelle und Datum notieren.</td><td class="leise">3 Min.</td></tr>
+      <tr><td class="leise">3</td><td class="stark">Ansprechperson finden</td><td>Wer entscheidet, wer nutzt? Funktion und Weg zu ihr notieren.</td><td class="leise">3 Min.</td></tr>
+      <tr><td class="leise">4</td><td class="stark">Bewerten</td><td>Punkte eintragen, die Tabelle zeigt die Klasse.</td><td class="leise">1 Min.</td></tr>
+      <tr><td class="leise">5</td><td class="stark">Nächsten Schritt planen</td><td>Bei A sofort mit Datum, bei B den nächsten Anlass.</td><td class="leise">1 Min.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="hinweis"><b>Rechtlich sauber ansprechen.</b> Werbung per E-Mail braucht vorher eine ausdrückliche Einwilligung, eine enge Ausnahme gilt für eigene Bestandskunden (§&nbsp;7 Abs.&nbsp;3&nbsp;UWG). Werbeanrufe bei Unternehmen setzen mindestens eine mutmaßliche Einwilligung voraus, also einen konkreten Grund zur Annahme, dass der Anruf erwünscht ist (§&nbsp;7&nbsp;UWG). Erheben Sie Daten von Personen nicht bei ihnen selbst, müssen Sie sie informieren, spätestens beim ersten Kontakt oder nach einem Monat (Art.&nbsp;14&nbsp;DSGVO). Notieren Sie darum die Quelle jedes Eintrags. Bei gekauften Adresslisten Herkunft und Rechtsgrundlage schriftlich prüfen. Hinweis, keine Rechtsberatung.</p>
+
+  <p class="abschnitt-titel">Zwei Stunden je Woche <small>Vorschlag</small></p>
+  <div class="drei" style="margin-top:2mm">
+    <div><div class="spalte-kopf"><span class="nr">MONTAG · 30 MIN.</span><h3>Zehn neue Firmen</h3></div><p class="klein" style="margin-top:1mm;color:var(--tinte-text)">recherchieren, bewerten und eintragen</p></div>
+    <div><div class="spalte-kopf"><span class="nr">MITTWOCH · 60 MIN.</span><h3>A&#8209;Firmen ansprechen</h3></div><p class="klein" style="margin-top:1mm;color:var(--tinte-text)">anrufen, Termine vorschlagen, Ergebnis notieren</p></div>
+    <div><div class="spalte-kopf"><span class="nr">FREITAG · 30 MIN.</span><h3>Signale prüfen</h3></div><p class="klein" style="margin-top:1mm;color:var(--tinte-text)">B&#8209;Firmen neu bewerten, nächste Woche planen</p></div>
+  </div>
+</section>
+
+<!-- 17 · Nach 90 Tagen -->
+<section class="seite">
+  <p class="vorzeile">Nach 90 Tagen · 30 Minuten</p>
+  <h2 class="blatt">Stimmt Ihr Modell? Prüfen und nachschärfen</h2>
+  <p class="unter">Ein Punktemodell ist am Anfang eine gut begründete Vermutung. Nach 90 Tagen haben Sie genug Leads, um zu sehen, ob die Klassen wirklich vorhersagen, wo Sie gewinnen. Tragen Sie die Zahlen ein und beantworten Sie die fünf Fragen.</p>
+
+  <p class="abschnitt-titel">Ergebnis je Klasse <small>Zeitraum: <span style="display:inline-block;width:40mm;border-bottom:var(--linie) solid var(--haar-schreib)">&nbsp;</span></small></p>
+  <table class="raster">
+    <colgroup><col style="width:30mm"><col><col><col><col><col style="width:34mm"></colgroup>
+    <thead><tr><th>Klasse</th><th class="zahl">Leads</th><th class="zahl">erstes Gespräch</th><th class="zahl">Angebot</th><th class="zahl">Auftrag</th><th class="zahl">Auftrag ÷ Leads</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">A</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="stark">B</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="stark">C</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td class="stark">Ausschluss</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr class="summe"><td>Gesamt</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Fünf Fragen</p>
+  <ol class="schritte-liste dicht">
+    <li><span class="nr">1</span><span><b>Gewinnen Sie A&#8209;Leads deutlich öfter als B&#8209;Leads?</b> Wenn nicht, unterscheiden Ihre Kriterien nicht. Verteilen Sie die Punkte neu, die stärksten Kriterien nach oben.</span></li>
+    <li><span class="nr">2</span><span><b>Was haben die Gewonnenen gemeinsam, das im Modell fehlt?</b> Nehmen Sie es als Kriterium auf und streichen Sie dafür das schwächste.</span></li>
+    <li><span class="nr">3</span><span><b>Welches Kriterium war fast immer „ja“?</b> Es trennt nicht. Geben Sie ihm weniger Punkte oder machen Sie es strenger.</span></li>
+    <li><span class="nr">4</span><span><b>Wie viele A&#8209;Leads entstehen je Woche?</b> Zu wenige: Schwelle senken oder Listen erweitern. Mehr, als Sie bearbeiten können: Schwelle anheben.</span></li>
+    <li><span class="nr">5</span><span><b>Gab es Aufträge aus C oder trotz Ausschluss?</b> Prüfen Sie, ob der Ausschluss zu streng ist oder ob es ein Zufallstreffer war.</span></li>
+  </ol>
+
+  <p class="abschnitt-titel">Was wir geändert haben</p>
+  <table class="raster dicht">
+    <colgroup><col style="width:26mm"><col><col style="width:60mm"></colgroup>
+    <thead><tr><th>Datum</th><th>Was geändert</th><th>Warum</th></tr></thead>
+    <tbody data-leer="4" data-spalten="3" data-hoehe="9mm"></tbody>
+  </table>
+  <p class="hinweis lila"><b>Mit der Tabelle:</b> Pflegen Sie im Blatt „Leads“ die Spalte „Stand“, dann zählt das Blatt „Auswertung“ die Ergebnisse je Klasse selbst. Punkte und Schwellen stehen im Blatt „Modell“. Ändern Sie sie dort, rechnen alle Leads sofort neu. Halten Sie jede Änderung in der Liste oben fest.</p>
+</section>
+
+<!-- 18 · Fehler und Checkliste -->
+<section class="seite">
+  <p class="vorzeile">Zum Prüfen</p>
+  <h2 class="blatt">Typische Fehler und Checkliste</h2>
+
+  <div class="fehler-kopf"><span></span><span>Fehler</span><span>Was stattdessen hilft</span></div>
+  <ol class="fehler" id="fehler"></ol>
+
+  <p class="abschnitt-titel">Checkliste: Ihre Zielgruppe steht, wenn …</p>
+  <ul class="liste zweispaltig" id="check"></ul>
+  <p class="hinweis" style="margin-top:3.4mm"><b>Weniger als neun Kreuze?</b> Holen Sie zuerst nach, was fehlt, bevor Sie Listen aufbauen. Ein unscharfes Profil kostet später bei jeder einzelnen Firma Recherchezeit.</p>
+</section>
+
+<!-- 19 · Nächste Schritte -->
+<section class="seite">
+  <p class="vorzeile">Zum Schluss</p>
+  <h2 class="blatt">Nächste Schritte</h2>
+  <p class="text" style="margin-top:2mm; max-width:160mm">Ein Profil auf Papier ändert noch nichts, ein Termin schon. Legen Sie jetzt fest, womit Sie anfangen, und tragen Sie es in Ihren Kalender ein.</p>
+
+  <p class="abschnitt-titel">Meine drei nächsten Schritte</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:34mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th></th><th>Was</th><th>Wer</th><th>Bis wann</th></tr></thead>
+    <tbody data-leer="3" data-spalten="4" data-nr="1" data-hoehe="10mm"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Weiter mit Fokus Innovation</p>
+  <ol class="wege">
+    <li><span class="nr">1</span><div><h3>Den Vertriebs-Check machen</h3><p class="adresse"><a href="https://fokusinnovation.de/check?thema=vertrieb">fokusinnovation.de/check?thema=vertrieb</a></p><p>Zwölf Fragen zu Organisation, Zahlen und Neukunden, rund fünf Minuten. Sie sehen sofort, wo Ihr Vertrieb steht.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Ein Erstgespräch vereinbaren</h3><p class="adresse"><a href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></p><p>Kostenlos, 30 Minuten per Video. Wir schauen gemeinsam auf Ihr Profil und Ihr Punktemodell und legen die nächsten Schritte fest.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Head of Sales auf Zeit</h3><p class="adresse"><a href="https://fokusinnovation.de/vertrieb/head-of-sales/">fokusinnovation.de/vertrieb/head-of-sales/</a></p><p>Vertriebsleitung auf Zeit für 6 oder 12 Monate: Wir bauen Ihren Vertrieb auf, machen Ihrem Team vor und übergeben ein System, das ohne uns weiterläuft.</p></div></li>
+  </ol>
+
+  <p class="abschnitt-titel">Passt dazu</p>
+  <p class="text" style="margin-top:1.8mm"><b>Baustein „Salesprozess im CRM“</b>: Stufen mit klaren Ein- und Austrittskriterien, Pflichtfelder, Wiedervorlagen und Pipeline-Review. Dort landen Ihre A&#8209;Leads als Chancen. <b>Kostenlose Vorlage „Vertriebs-Pipeline auf einer Seite“</b> unter <a class="akzent" href="https://fokusinnovation.de/kostenlos/"><b class="akzent">fokusinnovation.de/kostenlos/</b></a></p>
+  <p class="hinweis unten">Hinweise zu Recht in diesem Paket sind keine Rechtsberatung. Stand: Oktober 2026. Alle Firmen, Personen und Zahlen in Beispielen sind frei erfunden.</p>
+</section>
+
+<script>
+  // Kopf und Fuß auf jede Seite, Seitenzahlen automatisch
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Nutzung im eigenen Unternehmen</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+  const $ = (id) => document.getElementById(id);
+  const linie = '<div class="zeile-frei"></div>';
+  const kreuz = '<span class="kreuz"></span>';
+  const skala = '<span class="skala"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span>';
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = linie.repeat(Number(d.dataset.linien)); });
+  // Leere Tabellenzeilen: <tbody data-leer="Anzahl" data-spalten="Anzahl" data-nr="1">
+  document.querySelectorAll('tbody[data-leer]').forEach((t) => {
+    const n = Number(t.dataset.leer), sp = Number(t.dataset.spalten), ab = t.dataset.nr ? Number(t.dataset.nr) : null, h = t.dataset.hoehe;
+    t.insertAdjacentHTML('beforeend', Array.from({ length: n }, (_, i) => `<tr>${Array.from({ length: sp }, (_, j) => (j === 0 && ab !== null ? `<td class="leise"${h ? ` style="height:${h}"` : ''}>${ab + i}</td>` : `<td${h && j === 0 ? ` style="height:${h}"` : ''}></td>`)).join('')}</tr>`).join(''));
+  });
+  // Prüfung (nur mit ?pruefen): freier Platz je Seite in mm, Überlauf
+  if (location.search.includes('pruefen')) window.addEventListener('load', () => {
+    const mm = 96 / 25.4;
+    const r = seiten.map((s, i) => {
+      const f = s.querySelector('.fuss');
+      const kinder = [...s.children].filter((k) => k !== f && !k.classList.contains('unten'));
+      const unten = Math.max(...kinder.map((k) => k.getBoundingClientRect().bottom));
+      const frei = (f.getBoundingClientRect().top - unten) / mm;
+      const ueber = s.scrollHeight > s.clientHeight + 1 || f.getBoundingClientRect().bottom > s.getBoundingClientRect().bottom + 1;
+      const breit = [...s.querySelectorAll('*')].some((e) => e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflow !== 'visible');
+      const zuviel = (Math.max(s.scrollHeight - s.clientHeight, f.getBoundingClientRect().bottom - s.getBoundingClientRect().bottom + 11 * mm)) / mm;
+      return `${i + 1}:${frei.toFixed(0)}${ueber ? '!UEBERLAUF+' + zuviel.toFixed(1) : ''}${breit ? '!BREIT' : ''}`;
+    });
+    document.body.setAttribute('data-pruefung', r.join(' '));
+  });
+  // Seite 5: Beispiel Bestandskunden (frei erfunden)
+  const kunden = [
+    ['K01', 'Molkerei', '140', '60 km', 'Messe; Audit stand an', '38.000 €', 3, 3, 3, 3, 3],
+    ['K02', 'Fleischverarbeitung', '90', '110 km', 'Empfehlung; Ausfall, Ware verdorben', '26.000 €', 3, 3, 2, 3, 3],
+    ['K03', 'Supermarktgruppe', '9 Filialen', '75 km', 'Empfehlung der Molkerei; neue Filialen', '31.000 €', 3, 2, 3, 3, 3],
+    ['K04', 'Hausverwaltung', '4 Objekte', '20 km', 'Ausschreibung', '9.000 €', 1, 2, 2, 2, 2],
+    ['K05', 'Kühllager', '60', '140 km', 'Website-Anfrage; Audit', '22.000 €', 2, 3, 1, 2, 3],
+    ['K06', 'Restaurant', '12', '15 km', 'Notfall am Wochenende', '1.800 €', 1, 1, 1, 1, 1],
+    ['K07', 'Hotel', '45', '90 km', 'Anruf; Ausfall der Kühlzelle', '6.500 €', 1, 1, 1, 1, 2],
+    ['K08', 'Bäckerei mit Filialen', '14 Filialen', '50 km', 'Messe; Erweiterung', '19.000 €', 2, 3, 3, 3, 3],
+  ];
+  const klasseVon = (s) => (s >= 13 ? 'A' : s >= 9 ? 'B' : 'C');
+  $('bsp-kunden').innerHTML = kunden.map(([k, b, g, r, a, u, ...p]) => {
+    const s = p.reduce((x, y) => x + y, 0);
+    return `<tr><td class="ein">${k}</td><td class="ein">${b}</td><td class="ein">${g}</td><td class="ein">${r}</td><td class="ein">${a}<span class="klein" style="display:block">${u}</span></td>${p.map((x) => `<td class="ein mitte">${x}</td>`).join('')}<td class="mitte stark">${s}</td><td class="mitte"><span class="klasse${klasseVon(s) === 'A' ? ' voll' : ''}">${klasseVon(s)}</span></td></tr>`;
+  }).join('');
+
+  // Seite 10: Personas (frei erfunden)
+  const personas = [
+    ['Rolle 1 · Entscheider', 'Die Geschäftsführung', 'eines Lebensmittelherstellers, oft mit der technischen Leitung', {
+      Ziele: ['Produktion ohne Stillstand', 'planbare Kosten statt teurer Notfälle', 'Audits ohne Beanstandung'],
+      Probleme: ['Ausfälle kommen ohne Vorwarnung', 'Zuständigkeiten sind verteilt', 'Energiekosten der Kühlung steigen'],
+      Einwände: ['„Wir haben schon einen Dienstleister.“', '„Ein Vertrag kostet mehr als ab und zu ein Notdienst.“', '„Ein Wechsel macht Aufwand.“'],
+      'Wo sie sich informiert': ['Empfehlungen anderer Betriebe', 'Branchenverband, Fachmesse'],
+      'Fragen, die sie stellt': ['Was kostet uns ein Ausfall, was der Vertrag?', 'Wie schnell sind Sie da?'],
+      'Ihre Sprache': ['„Stillstand“, „planbar“, „Audit“'],
+      'Was sie von uns braucht': ['Rechnung: Kosten eines Ausfalls gegen den Vertrag', 'Referenz eines ähnlichen Betriebs', 'feste Reaktionszeit im Vertrag'],
+      'Antwort auf den Haupteinwand': '„Behalten Sie Ihren Dienstleister für den Alltag. Wir übernehmen zuerst die Anlagen, bei denen ein Ausfall am meisten kostet.“',
+      Zitat: '„Ich will nicht am Samstag angerufen werden, weil die Ware im Kühlhaus warm wird.“',
+    }],
+    ['Rolle 2 · Nutzer', 'Die Leitung Haustechnik', 'Instandhaltung, kennt jede Anlage im Betrieb', {
+      Ziele: ['weniger Notfälle am Wochenende', 'eine feste Ansprechperson', 'Berichte, die beim Audit passen'],
+      Probleme: ['zu wenige Leute im eigenen Team', 'Ersatzteile fehlen im Notfall', 'Protokolle von Hand'],
+      Einwände: ['„Dann verliere ich die Kontrolle über meine Anlagen.“', '„Fremde Techniker kennen unsere Anlagen nicht.“'],
+      'Wo sie sich informiert': ['Herstellerschulungen, Fachforen', 'Kolleginnen und Kollegen anderer Betriebe'],
+      'Fragen, die sie stellt': ['Wie läuft eine Störung bei Ihnen ab?', 'Bekomme ich die Berichte digital?', 'Wer kommt, immer dieselbe Person?'],
+      'Ihre Sprache': ['„Störmeldung“, „Reaktionszeit“, „Wartungsplan“'],
+      'Was sie von uns braucht': ['Ablauf einer Störung auf einer Seite', 'immer dasselbe Team vor Ort', 'Berichte digital und durchsuchbar'],
+      'Antwort auf den Haupteinwand': '„Sie behalten den Wartungsplan in der Hand. Wir arbeiten ihn ab und melden Ihnen jeden Einsatz.“',
+      Zitat: '„Ich brauche jemanden, der die Anlage kennt, wenn ich im Urlaub bin.“',
+    }],
+    ['Rolle 3 · Beeinflusser', 'Das Qualitätsmanagement', 'verantwortet Hygiene und Audits, redet bei Dienstleistern mit', {
+      Ziele: ['lückenlose Temperaturnachweise', 'Audit ohne Abweichung'],
+      Probleme: ['Lücken in den Protokollen', 'Nachweise müssen gesucht werden'],
+      Einwände: ['„Das betrifft meine Abteilung nicht.“', '„Noch ein System, das wir pflegen müssen.“'],
+      'Wo sie sich informiert': ['Audit-Vorbereitung, Fachseminare', 'Hinweise der Zertifizierungsstelle'],
+      'Fragen, die sie stellt': ['Welche Nachweise bekomme ich, in welcher Form?', 'Wie schnell nach einer Abweichung?'],
+      'Ihre Sprache': ['„Nachweis“, „Abweichung“, „Korrekturmaßnahme“'],
+      'Was sie von uns braucht': ['Muster eines Wartungsberichts', 'Nachweise in der Form, die das Audit verlangt'],
+      'Antwort auf den Haupteinwand': '„Sie bekommen alle Nachweise fertig für das Audit, ohne ein neues System.“',
+      Zitat: '„Beim letzten Audit haben wir zwei Tage nach Protokollen gesucht.“',
+    }],
+  ];
+  $('personas').innerHTML = personas.map(([nr, name, satz, t]) => `<div>
+    <div class="persona-kopf"><span class="nr">${nr}</span><h3>${name}</h3><p>${satz}</p></div>
+    ${Object.entries(t).map(([k, v]) => `<div class="persona-teil"><b>${k}</b>${Array.isArray(v) ? `<ul>${v.map((x) => `<li>${x}</li>`).join('')}</ul>` : `<p${k === 'Zitat' ? ' class="zitat"' : ''}>${v}</p>`}</div>`).join('')}
+  </div>`).join('');
+
+  // Seite 12: Buying Center leer
+  $('bc-zeilen').innerHTML = Array.from({ length: 6 }, () => `<tr><td style="height:9mm"></td><td></td><td></td><td>${skala}</td><td class="mitte leise" style="font-size:9.6pt">+&nbsp;&nbsp;0&nbsp;&nbsp;−</td><td></td></tr>`).join('');
+
+  // Seite 14: Beispielmodell und Leads (frei erfunden)
+  const modell = [
+    ['gruppe', 'Passung · zusammen 50'],
+    ['P1', 'Branche: stellt Lebensmittel her oder verkauft sie', 14, 'angrenzend: Großküche, Lager mit Kühlung'],
+    ['P2', 'Größe: 50 bis 500 Beschäftigte oder 5 bis 40 Filialen', 10, '20 bis 49 Beschäftigte oder 3 bis 4 Filialen'],
+    ['P3', 'Region: bis 150 km', 10, '150 bis 200 km'],
+    ['P4', 'Anlagen: mindestens 10 Kühlstellen', 10, '5 bis 9 Kühlstellen'],
+    ['P5', 'Situation: Anlagen älter als 10 Jahre oder Wartung bei mehreren Firmen', 6, 'nur vermutet'],
+    ['gruppe', 'Signal · zusammen 50'],
+    ['S1', 'Auslöser steht fest oder ist in den letzten 6 Monaten eingetreten: Ausfall, Audit, Erweiterung, neue Leitung', 16, 'nur angekündigt oder vermutet'],
+    ['S2', 'Kontakt zur Entscheidungsebene', 10, 'nur zu Nutzer oder Beeinflusser'],
+    ['S3', 'Reaktion: eigene Anfrage, Antwort mit Terminwunsch', 10, 'Unterlagen angefordert, noch kein Termin'],
+    ['S4', 'Vertrag beim bisherigen Anbieter endet in den nächsten 12 Monaten', 8, 'vermutet'],
+    ['S5', 'Empfehlung oder gemeinsamer Kontakt', 6, 'nur gemeinsame Bekannte'],
+  ];
+  $('bsp-modell').innerHTML = modell.map((z) => z[0] === 'gruppe' ? `<tr class="gruppe"><td colspan="4">${z[1]}</td></tr>` : `<tr><td class="leise">${z[0]}</td><td class="ein">${z[1]}</td><td class="pkt ein">${z[2]}</td><td class="ein">${z[3]} <span class="leise">· ${z[2] / 2}</span></td></tr>`).join('');
+  const leads = [
+    ['Lead 1 · Molkerei, 120 Beschäftigte, 80 km', [14, 10, 10, 10, 6], [16, 5, 5, 0, 0], 'Technische Leitung anrufen, Audit ansprechen'],
+    ['Lead 2 · Supermarktgruppe, 12 Filialen, 170 km', [14, 10, 5, 10, 3], [0, 0, 0, 0, 6], 'Empfehlung nutzen, Fachabend'],
+    ['Lead 3 · Betriebskantine, 40 Beschäftigte, 30 km', [7, 5, 10, 5, 6], [16, 5, 10, 0, 0], 'Notfall lösen, dann Bedarf klären'],
+    ['Lead 4 · Restaurant, 2 Kühlstellen', null, null, 'Notdienst eines Partners nennen'],
+    ['Lead 5 · Fleischverarbeitung, 200 Beschäftigte, 90 km', [14, 10, 10, 10, 6], [16, 10, 10, 0, 0], 'Rundgang vor Ort anbieten'],
+  ];
+  const summe = (a) => a.reduce((x, y) => x + y, 0);
+  $('bsp-leads').innerHTML = leads.map(([n, p, s, w]) => {
+    if (!p) return `<tr><td class="ein">${n}</td><td colspan="13" class="ein">Ausschluss: weniger als 5 Kühlstellen</td><td class="pkt"><span class="klasse">–</span></td><td class="ein">${w}</td></tr>`;
+    const ps = summe(p), ss = summe(s), g = ps + ss, k = g >= 70 && ps >= 30 ? 'A' : g >= 45 ? 'B' : 'C';
+    return `<tr><td class="ein">${n}</td>${p.map((x) => `<td class="pkt ein">${x}</td>`).join('')}<td class="pkt stark">${ps}</td>${s.map((x) => `<td class="pkt ein">${x}</td>`).join('')}<td class="pkt stark">${ss}</td><td class="pkt stark">${g}</td><td class="pkt"><span class="klasse${k === 'A' ? ' voll' : ''}">${k}</span></td><td class="ein">${w}</td></tr>`;
+  }).join('');
+
+  // Seite 18: Fehler und Checkliste
+  const fehler = [
+    ['Zielgruppe „Mittelstand“', 'Zu breit, niemand fühlt sich gemeint.', 'Branche, Größe und Auslöser so genau, dass Ihr Team zehn Firmen nennen kann.'],
+    ['Personas am Schreibtisch erfunden', 'Sie bestätigen nur, was Sie schon glauben.', 'Fünf echte Gespräche, Sätze wörtlich notieren, Vermutungen kennzeichnen.'],
+    ['Nur der Entscheider im Blick', 'Nutzer und Beeinflusser bremsen später.', 'Buying Center für jede große Chance, fehlende Rollen aktiv einbinden.'],
+    ['Zwanzig Kriterien im Scoring', 'Niemand pflegt es, die Punkte werden geschätzt.', 'Fünf für Passung, fünf für Signal, jedes mit ja, teils oder nein.'],
+    ['Nur Passung, kein Signal', 'Gute Firmen zum falschen Zeitpunkt, viele Absagen.', 'Signal mit gleichem Gewicht, bei jedem Kontakt neu bewerten.'],
+    ['Lautes Interesse bekommt A', 'Viel Zeit für Firmen, die nicht passen.', 'A nur mit Mindestpassung, sonst „prüfen“.'],
+    ['Keine Ausschlüsse', 'Der Vertrieb verliert Zeit mit Anfragen, die nie passen.', 'Drei bis fünf Ausschlüsse, die sofort gelten.'],
+    ['Modell nie geprüft', 'Die Punkte sagen bald nichts mehr.', 'Nach 90 Tagen Ergebnis je Klasse vergleichen (Seite 17).'],
+    ['Adressen kaufen statt recherchieren', 'Schlechte Passung, ungeklärte Herkunft.', 'Eigene Liste mit Quelle je Eintrag, Herkunft gekaufter Daten prüfen.'],
+    ['Personas liegen im Ordner', 'Texte und Gespräche ändern sich nicht.', 'Aushängen, in Angebote und Website übernehmen, bei Einwänden nachschlagen.'],
+  ];
+  $('fehler').innerHTML = fehler.map(([f, w, g], i) => `<li><span class="nr">${i + 1}</span><span><b>${f}</b>${w}</span><span class="gegen">${g}</span></li>`).join('');
+  const check = [
+    'Mindestens zehn Bestandskunden sind eingestuft.',
+    'Die Muster der A&#8209;Kunden stehen in drei Sätzen.',
+    'Das Profil nennt Branche, Größe, Region und Situation.',
+    'Mindestens fünf Auslöser und drei Ausschlüsse stehen fest.',
+    'Der Kernsatz besteht den Zehn-Firmen-Test.',
+    'Drei Personas, jede mit mindestens zwei echten Zitaten.',
+    'Das Buying Center ist für einen typischen Auftrag gefüllt.',
+    'Das Punktemodell hat je fünf Kriterien und feste Schwellen.',
+    'Drei bekannte Leads sind zur Probe bewertet.',
+    'Die erste Liste hat 50 Firmen mit Quelle und Klasse.',
+    'Alle im Team wissen, was bei A, B und C passiert.',
+    'Der Termin für die Prüfung nach 90 Tagen steht.',
+  ];
+  $('check').innerHTML = check.map((c) => `<li><span class="kreuz"></span><span>${c}</span></li>`).join('');
+</script>
+</body>
+</html>

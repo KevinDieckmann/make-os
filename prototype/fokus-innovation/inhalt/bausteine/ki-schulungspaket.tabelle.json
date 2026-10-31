@@ -1,0 +1,2119 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 46
+    },
+    {
+     "breite": 92
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "KI-Schulungspaket fürs Team",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Fokus Innovation · fokusinnovation.de · Nutzung im eigenen Unternehmen",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Einstellungen",
+      "stil": "kopf"
+     },
+     {
+      "v": "Wert",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Test bestanden ab (richtige Antworten von 15)",
+      "stil": "text"
+     },
+     {
+      "v": 12,
+      "stil": "eingabe-zahl"
+     }
+    ],
+    [
+     {
+      "v": "Auffrischung alle (Monate)",
+      "stil": "text"
+     },
+     {
+      "v": 12,
+      "stil": "eingabe-zahl"
+     }
+    ],
+    [
+     {
+      "v": "Werkzeuge prüfen alle (Monate)",
+      "stil": "text"
+     },
+     {
+      "v": 6,
+      "stil": "eingabe-zahl"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "So nutzen Sie die Tabelle",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Lila Felder",
+      "stil": "fett"
+     },
+     {
+      "v": "sind Eingaben. Alle anderen Felder rechnen selbst und bleiben leer, solange etwas fehlt.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Wissenstest",
+      "stil": "fett"
+     },
+     {
+      "v": "Eine Zeile je Person: Name und die angekreuzten Buchstaben A, B oder C je Frage. Zeile 2 enthält den Lösungsschlüssel aus dem PDF (Seite 17). Die Tabelle zählt die richtigen Antworten und zeigt „bestanden“ oder „Nachbesprechung“.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Testauswertung",
+      "stil": "fett"
+     },
+     {
+      "v": "Anteil richtiger Antworten je Frage. Fragen, die viele falsch beantworten, erklären Sie beim nächsten Mal besser.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Teilnahme",
+      "stil": "fett"
+     },
+     {
+      "v": "Wer wann geschult wurde. Das Testergebnis holt die Tabelle über den Namen aus dem Blatt „Wissenstest“, schreiben Sie ihn darum genau gleich. Die Spalte „Status“ zeigt, wo etwas fehlt oder eine Auffrischung fällig ist.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Werkzeuge",
+      "stil": "fett"
+     },
+     {
+      "v": "Das Werkzeug-Register: jedes Werkzeug mit Zweck, Daten-Farbe, Prüfpunkten und Status. Der Hinweis zeigt, was bei freigegebenen Werkzeugen noch fehlt und wann die nächste Prüfung fällig ist. Was hier nicht freigegeben ist, ist nicht freigegeben.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Beispiel-Blätter",
+      "stil": "fett"
+     },
+     {
+      "v": "„Beispiel Teilnahme“ und „Beispiel Werkzeuge“ zeigen ausgefüllte Zeilen. Personen und Werkzeuge sind frei erfunden. Sie fließen in keine Auswertung ein.",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Daten-Ampel",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "grün",
+      "stil": "fett"
+     },
+     {
+      "v": "öffentlich oder ohne Bezug zu Personen und Kunden",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "gelb",
+      "stil": "fett"
+     },
+     {
+      "v": "intern, ohne Personenbezug, nur in Werkzeugen, die für Gelb freigegeben sind",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "rot",
+      "stil": "fett"
+     },
+     {
+      "v": "personenbezogen, vertraulich, unter Geheimhaltung: nie, außer ausdrücklich und schriftlich freigegeben",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Datenschutz",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Testergebnisse",
+      "stil": "fett"
+     },
+     {
+      "v": "sind Daten über Beschäftigte. Nur für die Schulung nutzen, nicht für Beurteilungen. Legen Sie eine Aufbewahrungsfrist fest. Hinweis, keine Rechtsberatung.",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Wissenstest",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Name",
+     "breite": 24,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Abteilung",
+     "breite": 16,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Datum",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "F1",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F2",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F3",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F4",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F5",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F6",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F7",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F8",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F9",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F10",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F11",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F12",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F13",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F14",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "F15",
+     "breite": 5,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Richtige",
+     "breite": 9,
+     "stil": "fett"
+    },
+    {
+     "titel": "Ergebnis",
+     "breite": 16,
+     "stil": "fett"
+    }
+   ],
+   "zeilen": [
+    [
+     null,
+     {
+      "v": "Lösungsschlüssel",
+      "stil": "fett"
+     },
+     {
+      "v": "nicht ändern",
+      "stil": "hinweis"
+     },
+     null,
+     {
+      "v": "B",
+      "stil": "fett"
+     },
+     {
+      "v": "A",
+      "stil": "fett"
+     },
+     {
+      "v": "C",
+      "stil": "fett"
+     },
+     {
+      "v": "C",
+      "stil": "fett"
+     },
+     {
+      "v": "A",
+      "stil": "fett"
+     },
+     {
+      "v": "B",
+      "stil": "fett"
+     },
+     {
+      "v": "C",
+      "stil": "fett"
+     },
+     {
+      "v": "A",
+      "stil": "fett"
+     },
+     {
+      "v": "B",
+      "stil": "fett"
+     },
+     {
+      "v": "C",
+      "stil": "fett"
+     },
+     {
+      "v": "A",
+      "stil": "fett"
+     },
+     {
+      "v": "B",
+      "stil": "fett"
+     },
+     {
+      "v": "C",
+      "stil": "fett"
+     },
+     {
+      "v": "A",
+      "stil": "fett"
+     },
+     {
+      "v": "B",
+      "stil": "fett"
+     }
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-2)",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(E{r}=E$2,1,0)+IF(F{r}=F$2,1,0)+IF(G{r}=G$2,1,0)+IF(H{r}=H$2,1,0)+IF(I{r}=I$2,1,0)+IF(J{r}=J$2,1,0)+IF(K{r}=K$2,1,0)+IF(L{r}=L$2,1,0)+IF(M{r}=M$2,1,0)+IF(N{r}=N$2,1,0)+IF(O{r}=O$2,1,0)+IF(P{r}=P$2,1,0)+IF(Q{r}=Q$2,1,0)+IF(R{r}=R$2,1,0)+IF(S{r}=S$2,1,0))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(T{r}=\"\",\"\",IF(T{r}>=Anleitung!$B$5,\"bestanden\",\"Nachbesprechung\"))",
+      "stil": "fett"
+     }
+    ],
+    "anzahl": 100
+   },
+   "auswahl": [
+    {
+     "spalte": "E",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "F",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "G",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "H",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "I",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "J",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "K",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "L",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "M",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "N",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "O",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "P",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "Q",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "R",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    },
+    {
+     "spalte": "S",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Testauswertung",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Frage",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Thema",
+     "breite": 30,
+     "stil": "text"
+    },
+    {
+     "titel": "Lösung",
+     "breite": 8,
+     "stil": "fett"
+    },
+    {
+     "titel": "richtig beantwortet",
+     "breite": 12,
+     "stil": "zahl"
+    },
+    {
+     "titel": "beantwortet",
+     "breite": 11,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Anteil richtig",
+     "breite": 11,
+     "stil": "prozent"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": 1,
+      "stil": "zahl"
+     },
+     {
+      "v": "Wie KI antwortet",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!E$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!E$3:E$102,Wissenstest!E$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!E$3:E$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 2,
+      "stil": "zahl"
+     },
+     {
+      "v": "Halluzination",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!F$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!F$3:F$102,Wissenstest!F$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!F$3:F$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 3,
+      "stil": "zahl"
+     },
+     {
+      "v": "Wofür geeignet",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!G$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!G$3:G$102,Wissenstest!G$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!G$3:G$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 4,
+      "stil": "zahl"
+     },
+     {
+      "v": "Rote Daten",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!H$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!H$3:H$102,Wissenstest!H$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!H$3:H$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 5,
+      "stil": "zahl"
+     },
+     {
+      "v": "Unkenntlich machen",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!I$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!I$3:I$102,Wissenstest!I$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!I$3:I$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 6,
+      "stil": "zahl"
+     },
+     {
+      "v": "Freigegebene Werkzeuge",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!J$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!J$3:J$102,Wissenstest!J$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!J$3:J$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 7,
+      "stil": "zahl"
+     },
+     {
+      "v": "Fehler melden",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!K$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!K$3:K$102,Wissenstest!K$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!K$3:K$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 8,
+      "stil": "zahl"
+     },
+     {
+      "v": "Verantwortung",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!L$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!L$3:L$102,Wissenstest!L$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!L$3:L$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 9,
+      "stil": "zahl"
+     },
+     {
+      "v": "Prüfen vor dem Versand",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!M$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!M$3:M$102,Wissenstest!M$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!M$3:M$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 10,
+      "stil": "zahl"
+     },
+     {
+      "v": "Quellen prüfen",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!N$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!N$3:N$102,Wissenstest!N$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!N$3:N$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 11,
+      "stil": "zahl"
+     },
+     {
+      "v": "Guter Auftrag",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!O$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!O$3:O$102,Wissenstest!O$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!O$3:O$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 12,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nachsteuern",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!P$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!P$3:P$102,Wissenstest!P$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!P$3:P$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 13,
+      "stil": "zahl"
+     },
+     {
+      "v": "Entscheidungen über Menschen",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!Q$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!Q$3:Q$102,Wissenstest!Q$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!Q$3:Q$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 14,
+      "stil": "zahl"
+     },
+     {
+      "v": "Kennzeichnung",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!R$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!R$3:R$102,Wissenstest!R$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!R$3:R$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": 15,
+      "stil": "zahl"
+     },
+     {
+      "v": "Freigabeprozess",
+      "stil": "text"
+     },
+     {
+      "f": "Wissenstest!S$2",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Wissenstest!S$3:S$102,Wissenstest!S$2)",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTA(Wissenstest!S$3:S$102)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(D{r}/E{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [],
+    [
+     null,
+     {
+      "v": "Teilnehmende mit Test",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "COUNTA(Wissenstest!$B$3:$B$102)",
+      "stil": "fett"
+     }
+    ],
+    [
+     null,
+     {
+      "v": "davon bestanden",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "COUNTIF(Wissenstest!$U$3:$U$102,\"bestanden\")",
+      "stil": "fett"
+     }
+    ],
+    [
+     null,
+     {
+      "v": "Ø richtige Antworten",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "IFERROR(ROUND(AVERAGE(Wissenstest!$T$3:$T$102),1),\"\")",
+      "stil": "fett"
+     }
+    ],
+    [],
+    [
+     null,
+     {
+      "v": "Fragen mit einem Anteil unter 70 % erklären Sie in der nächsten Schulung genauer.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Teilnahme",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Name (wie im Wissenstest)",
+     "breite": 24,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Bereich",
+     "breite": 16,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Rolle",
+     "breite": 16,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Grundschulung am",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Dauer (Min.)",
+     "breite": 8,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Leitung",
+     "breite": 14,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Test: richtige",
+     "breite": 9,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Ergebnis",
+     "breite": 15,
+     "stil": "fett"
+    },
+    {
+     "titel": "Nachbesprechung am",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Vertiefung am",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Letzte Auffrischung am",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Nächste Auffrischung fällig",
+     "breite": 12,
+     "stil": "datum"
+    },
+    {
+     "titel": "Status",
+     "breite": 24,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Nachweis abgelegt",
+     "breite": 10,
+     "stil": "eingabe"
+    }
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IFERROR(INDEX(Wissenstest!$T$3:$T$102,MATCH($B{r},Wissenstest!$B$3:$B$102,0)),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}>=Anleitung!$B$5,\"bestanden\",\"Nachbesprechung\"))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",EDATE(MAX(E{r},K{r},L{r}),Anleitung!$B$6))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(E{r}=\"\",\"Grundschulung fehlt\",IF(H{r}=\"\",\"Testergebnis fehlt\",IF(AND(I{r}=\"Nachbesprechung\",J{r}=\"\"),\"Nachbesprechung offen\",IF(M{r}<=TODAY(),\"Auffrischung fällig\",IF(M{r}<=TODAY()+30,\"Auffrischung in 30 Tagen\",\"aktuell\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    "anzahl": 100
+   },
+   "auswahl": [
+    {
+     "spalte": "D",
+     "werte": [
+      "Nutzung",
+      "Vertiefung",
+      "Verantwortung für KI"
+     ]
+    },
+    {
+     "spalte": "O",
+     "werte": [
+      "ja",
+      "nein"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Werkzeuge",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Werkzeug",
+     "breite": 28,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Zweck, Ablauf",
+     "breite": 28,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Daten bis Farbe",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Firmenkonto",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Training mit Eingaben ausgeschlossen",
+     "breite": 13,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Vertrag zur Auftragsverarbeitung",
+     "breite": 13,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Ort der Verarbeitung",
+     "breite": 16,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Zweiter Faktor",
+     "breite": 9,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Status",
+     "breite": 13,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Freigabe am",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Freigegeben von",
+     "breite": 16,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Nächste Prüfung",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 32,
+     "stil": "hinweis"
+    }
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",EDATE(J{r},Anleitung!$B$7))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(OR(I{r}=\"freigegeben\",I{r}=\"mit Auflagen\"),IF(D{r}<>\"ja\",\"Firmenkonto fehlt\",IF(AND(C{r}<>\"grün\",F{r}<>\"ja\"),\"Vertrag zur Auftragsverarbeitung fehlt\",IF(AND(C{r}<>\"grün\",E{r}<>\"ja\"),\"Training mit Eingaben nicht ausgeschlossen\",IF(OR(G{r}=\"\",G{r}=\"unklar\"),\"Ort der Verarbeitung klären\",IF(ISNUMBER(L{r}),IF(L{r}<=TODAY(),\"Prüfung fällig\",\"\"),\"Freigabedatum fehlt\"))))),IF(I{r}=\"beantragt\",\"Prüfung offen\",IF(I{r}=\"im Test\",\"Test läuft: nur erfundene Daten\",\"\"))))",
+      "stil": "hinweis"
+     }
+    ],
+    "anzahl": 40
+   },
+   "auswahl": [
+    {
+     "spalte": "C",
+     "werte": [
+      "grün",
+      "gelb",
+      "rot"
+     ]
+    },
+    {
+     "spalte": "D",
+     "werte": [
+      "ja",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "E",
+     "werte": [
+      "ja",
+      "nein",
+      "unklar"
+     ]
+    },
+    {
+     "spalte": "F",
+     "werte": [
+      "ja",
+      "nein",
+      "nicht nötig"
+     ]
+    },
+    {
+     "spalte": "G",
+     "werte": [
+      "EU",
+      "Drittland mit Garantien",
+      "unklar"
+     ]
+    },
+    {
+     "spalte": "H",
+     "werte": [
+      "ja",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "I",
+     "werte": [
+      "beantragt",
+      "im Test",
+      "freigegeben",
+      "mit Auflagen",
+      "abgelehnt",
+      "eingestellt"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Beispiel Teilnahme",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Name (wie im Wissenstest)",
+     "breite": 24,
+     "stil": "text"
+    },
+    {
+     "titel": "Bereich",
+     "breite": 16,
+     "stil": "text"
+    },
+    {
+     "titel": "Rolle",
+     "breite": 16,
+     "stil": "text"
+    },
+    {
+     "titel": "Grundschulung am",
+     "breite": 12,
+     "stil": "datum"
+    },
+    {
+     "titel": "Dauer (Min.)",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Leitung",
+     "breite": 14,
+     "stil": "text"
+    },
+    {
+     "titel": "Test: richtige",
+     "breite": 9,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Ergebnis",
+     "breite": 15,
+     "stil": "fett"
+    },
+    {
+     "titel": "Nachbesprechung am",
+     "breite": 12,
+     "stil": "datum"
+    },
+    {
+     "titel": "Vertiefung am",
+     "breite": 12,
+     "stil": "datum"
+    },
+    {
+     "titel": "Letzte Auffrischung am",
+     "breite": 12,
+     "stil": "datum"
+    },
+    {
+     "titel": "Nächste Auffrischung fällig",
+     "breite": 12,
+     "stil": "datum"
+    },
+    {
+     "titel": "Status",
+     "breite": 24,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Nachweis abgelegt",
+     "breite": 10,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Person 1",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb",
+      "stil": "text"
+     },
+     {
+      "v": "Vertiefung",
+      "stil": "text"
+     },
+     {
+      "v": 46050,
+      "stil": "datum"
+     },
+     {
+      "v": 90,
+      "stil": "zahl"
+     },
+     {
+      "v": "Leitung Schulung",
+      "stil": "text"
+     },
+     {
+      "v": 14,
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}>=Anleitung!$B$5,\"bestanden\",\"Nachbesprechung\"))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": 46091,
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",EDATE(MAX(E{r},K{r},L{r}),Anleitung!$B$6))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(E{r}=\"\",\"Grundschulung fehlt\",IF(H{r}=\"\",\"Testergebnis fehlt\",IF(AND(I{r}=\"Nachbesprechung\",J{r}=\"\"),\"Nachbesprechung offen\",IF(M{r}<=TODAY(),\"Auffrischung fällig\",IF(M{r}<=TODAY()+30,\"Auffrischung in 30 Tagen\",\"aktuell\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Person 2",
+      "stil": "text"
+     },
+     {
+      "v": "Verwaltung",
+      "stil": "text"
+     },
+     {
+      "v": "Nutzung",
+      "stil": "text"
+     },
+     {
+      "v": 46050,
+      "stil": "datum"
+     },
+     {
+      "v": 90,
+      "stil": "zahl"
+     },
+     {
+      "v": "Leitung Schulung",
+      "stil": "text"
+     },
+     {
+      "v": 10,
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}>=Anleitung!$B$5,\"bestanden\",\"Nachbesprechung\"))",
+      "stil": "fett"
+     },
+     {
+      "v": 46057,
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",EDATE(MAX(E{r},K{r},L{r}),Anleitung!$B$6))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(E{r}=\"\",\"Grundschulung fehlt\",IF(H{r}=\"\",\"Testergebnis fehlt\",IF(AND(I{r}=\"Nachbesprechung\",J{r}=\"\"),\"Nachbesprechung offen\",IF(M{r}<=TODAY(),\"Auffrischung fällig\",IF(M{r}<=TODAY()+30,\"Auffrischung in 30 Tagen\",\"aktuell\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Person 3",
+      "stil": "text"
+     },
+     {
+      "v": "Marketing",
+      "stil": "text"
+     },
+     {
+      "v": "Nutzung",
+      "stil": "text"
+     },
+     {
+      "v": 46050,
+      "stil": "datum"
+     },
+     {
+      "v": 90,
+      "stil": "zahl"
+     },
+     {
+      "v": "Leitung Schulung",
+      "stil": "text"
+     },
+     {
+      "v": 11,
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}>=Anleitung!$B$5,\"bestanden\",\"Nachbesprechung\"))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",EDATE(MAX(E{r},K{r},L{r}),Anleitung!$B$6))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(E{r}=\"\",\"Grundschulung fehlt\",IF(H{r}=\"\",\"Testergebnis fehlt\",IF(AND(I{r}=\"Nachbesprechung\",J{r}=\"\"),\"Nachbesprechung offen\",IF(M{r}<=TODAY(),\"Auffrischung fällig\",IF(M{r}<=TODAY()+30,\"Auffrischung in 30 Tagen\",\"aktuell\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Person 4",
+      "stil": "text"
+     },
+     {
+      "v": "Geschäftsführung",
+      "stil": "text"
+     },
+     {
+      "v": "Verantwortung für KI",
+      "stil": "text"
+     },
+     {
+      "v": 45945,
+      "stil": "datum"
+     },
+     {
+      "v": 90,
+      "stil": "zahl"
+     },
+     {
+      "v": "Leitung Schulung",
+      "stil": "text"
+     },
+     {
+      "v": 15,
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}>=Anleitung!$B$5,\"bestanden\",\"Nachbesprechung\"))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": 45981,
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",EDATE(MAX(E{r},K{r},L{r}),Anleitung!$B$6))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(E{r}=\"\",\"Grundschulung fehlt\",IF(H{r}=\"\",\"Testergebnis fehlt\",IF(AND(I{r}=\"Nachbesprechung\",J{r}=\"\"),\"Nachbesprechung offen\",IF(M{r}<=TODAY(),\"Auffrischung fällig\",IF(M{r}<=TODAY()+30,\"Auffrischung in 30 Tagen\",\"aktuell\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Person 5",
+      "stil": "text"
+     },
+     {
+      "v": "Verwaltung",
+      "stil": "text"
+     },
+     {
+      "v": "Nutzung",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}>=Anleitung!$B$5,\"bestanden\",\"Nachbesprechung\"))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",EDATE(MAX(E{r},K{r},L{r}),Anleitung!$B$6))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(E{r}=\"\",\"Grundschulung fehlt\",IF(H{r}=\"\",\"Testergebnis fehlt\",IF(AND(I{r}=\"Nachbesprechung\",J{r}=\"\"),\"Nachbesprechung offen\",IF(M{r}<=TODAY(),\"Auffrischung fällig\",IF(M{r}<=TODAY()+30,\"Auffrischung in 30 Tagen\",\"aktuell\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     null,
+     {
+      "v": "Alle Personen und Daten sind frei erfunden. Status und Fälligkeit rechnen mit dem heutigen Datum. Dieses Blatt fließt in keine Auswertung ein.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Beispiel Werkzeuge",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Werkzeug",
+     "breite": 28,
+     "stil": "text"
+    },
+    {
+     "titel": "Zweck, Ablauf",
+     "breite": 28,
+     "stil": "text"
+    },
+    {
+     "titel": "Daten bis Farbe",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "Firmenkonto",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "Training mit Eingaben ausgeschlossen",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "Vertrag zur Auftragsverarbeitung",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "Ort der Verarbeitung",
+     "breite": 16,
+     "stil": "text"
+    },
+    {
+     "titel": "Zweiter Faktor",
+     "breite": 9,
+     "stil": "text"
+    },
+    {
+     "titel": "Status",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "Freigabe am",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Freigegeben von",
+     "breite": 16,
+     "stil": "text"
+    },
+    {
+     "titel": "Nächste Prüfung",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 32,
+     "stil": "hinweis"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "KI-Assistent im Büropaket, Firmenlizenz",
+      "stil": "text"
+     },
+     {
+      "v": "Texte entwerfen, Protokolle, Mails",
+      "stil": "text"
+     },
+     {
+      "v": "gelb",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "EU",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "freigegeben",
+      "stil": "text"
+     },
+     {
+      "v": 46174,
+      "stil": "datum"
+     },
+     {
+      "v": "Geschäftsführung",
+      "stil": "text"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",EDATE(J{r},Anleitung!$B$7))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(OR(I{r}=\"freigegeben\",I{r}=\"mit Auflagen\"),IF(D{r}<>\"ja\",\"Firmenkonto fehlt\",IF(AND(C{r}<>\"grün\",F{r}<>\"ja\"),\"Vertrag zur Auftragsverarbeitung fehlt\",IF(AND(C{r}<>\"grün\",E{r}<>\"ja\"),\"Training mit Eingaben nicht ausgeschlossen\",IF(OR(G{r}=\"\",G{r}=\"unklar\"),\"Ort der Verarbeitung klären\",IF(ISNUMBER(L{r}),IF(L{r}<=TODAY(),\"Prüfung fällig\",\"\"),\"Freigabedatum fehlt\"))))),IF(I{r}=\"beantragt\",\"Prüfung offen\",IF(I{r}=\"im Test\",\"Test läuft: nur erfundene Daten\",\"\"))))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Übersetzungsdienst, Firmenkonto",
+      "stil": "text"
+     },
+     {
+      "v": "Unterlagen von Partnern verstehen",
+      "stil": "text"
+     },
+     {
+      "v": "gelb",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "Drittland mit Garantien",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "mit Auflagen",
+      "stil": "text"
+     },
+     {
+      "v": 46068,
+      "stil": "datum"
+     },
+     {
+      "v": "Geschäftsführung",
+      "stil": "text"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",EDATE(J{r},Anleitung!$B$7))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(OR(I{r}=\"freigegeben\",I{r}=\"mit Auflagen\"),IF(D{r}<>\"ja\",\"Firmenkonto fehlt\",IF(AND(C{r}<>\"grün\",F{r}<>\"ja\"),\"Vertrag zur Auftragsverarbeitung fehlt\",IF(AND(C{r}<>\"grün\",E{r}<>\"ja\"),\"Training mit Eingaben nicht ausgeschlossen\",IF(OR(G{r}=\"\",G{r}=\"unklar\"),\"Ort der Verarbeitung klären\",IF(ISNUMBER(L{r}),IF(L{r}<=TODAY(),\"Prüfung fällig\",\"\"),\"Freigabedatum fehlt\"))))),IF(I{r}=\"beantragt\",\"Prüfung offen\",IF(I{r}=\"im Test\",\"Test läuft: nur erfundene Daten\",\"\"))))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Bildgenerator, Testkonto",
+      "stil": "text"
+     },
+     {
+      "v": "Bildideen für Beiträge",
+      "stil": "text"
+     },
+     {
+      "v": "grün",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "unklar",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "unklar",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "im Test",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",EDATE(J{r},Anleitung!$B$7))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(OR(I{r}=\"freigegeben\",I{r}=\"mit Auflagen\"),IF(D{r}<>\"ja\",\"Firmenkonto fehlt\",IF(AND(C{r}<>\"grün\",F{r}<>\"ja\"),\"Vertrag zur Auftragsverarbeitung fehlt\",IF(AND(C{r}<>\"grün\",E{r}<>\"ja\"),\"Training mit Eingaben nicht ausgeschlossen\",IF(OR(G{r}=\"\",G{r}=\"unklar\"),\"Ort der Verarbeitung klären\",IF(ISNUMBER(L{r}),IF(L{r}<=TODAY(),\"Prüfung fällig\",\"\"),\"Freigabedatum fehlt\"))))),IF(I{r}=\"beantragt\",\"Prüfung offen\",IF(I{r}=\"im Test\",\"Test läuft: nur erfundene Daten\",\"\"))))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "KI-Funktion im Kalenderprogramm",
+      "stil": "text"
+     },
+     {
+      "v": "Termine zusammenfassen",
+      "stil": "text"
+     },
+     {
+      "v": "rot",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "unklar",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "unklar",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "beantragt",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",EDATE(J{r},Anleitung!$B$7))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(OR(I{r}=\"freigegeben\",I{r}=\"mit Auflagen\"),IF(D{r}<>\"ja\",\"Firmenkonto fehlt\",IF(AND(C{r}<>\"grün\",F{r}<>\"ja\"),\"Vertrag zur Auftragsverarbeitung fehlt\",IF(AND(C{r}<>\"grün\",E{r}<>\"ja\"),\"Training mit Eingaben nicht ausgeschlossen\",IF(OR(G{r}=\"\",G{r}=\"unklar\"),\"Ort der Verarbeitung klären\",IF(ISNUMBER(L{r}),IF(L{r}<=TODAY(),\"Prüfung fällig\",\"\"),\"Freigabedatum fehlt\"))))),IF(I{r}=\"beantragt\",\"Prüfung offen\",IF(I{r}=\"im Test\",\"Test läuft: nur erfundene Daten\",\"\"))))",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Werkzeuge und Angaben sind frei erfunden. Nächste Prüfung und Hinweise rechnen mit dem heutigen Datum. Dieses Blatt fließt in keine Auswertung ein.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  }
+ ]
+}

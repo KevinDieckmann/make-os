@@ -1,0 +1,883 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 5
+    },
+    {
+     "breite": 110,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Elevator-Pitch-Baukasten · Tabelle",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Gehört zum Baustein „Elevator-Pitch-Baukasten“ von Fokus Innovation. Nutzung im eigenen Unternehmen. Läuft in Excel, Numbers und Google Tabellen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "1",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Fassungen“: Tragen Sie Ihre Texte in die helle Spalte ein. Die Tabelle zählt Wörter und Zeichen, schätzt die Sprechzeit und sagt, ob die Länge passt.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "2",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Feedback“: Antworten Ihrer drei Zuhörer wörtlich eintragen, Noten von 1 bis 5 und „ja“ oder „nein“. Die Tabelle rechnet Mittelwerte und sagt, ob die Fassung fertig ist.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "3",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Beispiele“: die acht frei erfundenen Beispiele aus dem PDF, mit Wörtern und Sprechzeit.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Ein Pitch wird gesprochen, nicht gelesen. Schreiben, laut sprechen, kürzen. Die Zahlen helfen beim Kürzen, die Stoppuhr entscheidet.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Fassungen",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Fassung",
+     "breite": 28,
+     "stil": "fett"
+    },
+    {
+     "titel": "Ihr Text",
+     "breite": 70,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Wörter",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Sekunden, geschätzt",
+     "breite": 10,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Zeichen",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Wörter mindestens",
+     "breite": 10,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Wörter höchstens",
+     "breite": 10,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Zeichen höchstens",
+     "breite": 10,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Prüfung",
+     "breite": 15,
+     "stil": "text"
+    },
+    {
+     "titel": "Worauf es ankommt",
+     "breite": 44,
+     "stil": "hinweis"
+    }
+   ],
+   "zeilen": [
+    [
+     "10 Sekunden",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     15,
+     25,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Für wen, Problem oder Ergebnis, Lösung. Ein Atemzug."
+    ],
+    [
+     "30 Sekunden",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     55,
+     75,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Ein Satz je Baustein, endet mit einer Frage."
+    ],
+    [
+     "2 Minuten",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     220,
+     290,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Szene, Problem, Ablauf, Unterschied, Fall, Frage."
+    ],
+    [
+     "Vorstellungsrunde",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     30,
+     70,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Halbsatz zur Person, 10 Sekunden, „Ich suche …“."
+    ],
+    [
+     "Telefon mit Anlass",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     30,
+     70,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Name, Anlass, 10 Sekunden, Frage, ob es passt."
+    ],
+    [
+     "Mailbox",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     25,
+     45,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Höchstens 20 Sekunden, Nummer zweimal langsam."
+    ],
+    [
+     "Online-Runde",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     25,
+     50,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "10 Sekunden und ein Satz, warum Sie dabei sind."
+    ],
+    [
+     "LinkedIn: Zeile unter dem Namen",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     5,
+     35,
+     220,
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Für wen und was, dann ein Merkmal. Bis zu 220 Zeichen."
+    ],
+    [
+     "LinkedIn: erster Absatz „Info“",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     20,
+     60,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Ihr 10-Sekunden-Satz, dann Einladung."
+    ],
+    [
+     "E-Mail-Signatur",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     3,
+     10,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Höchstens zehn Wörter, bei allen gleich."
+    ],
+    [
+     "Messewand oder Visitenkarte",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     4,
+     14,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Kurzfassung, gut lesbar aus zwei Metern."
+    ],
+    [
+     "Video, erste fünf Sekunden",
+     null,
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     },
+     {
+      "f": "LEN(TRIM(B{r}))"
+     },
+     6,
+     14,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",IF(AND(H{r}<>\"\",E{r}>H{r}),\"zu viele Zeichen\",IF(C{r}>G{r},\"zu lang\",IF(C{r}<F{r},\"zu kurz\",\"passt\"))))"
+     },
+     "Eine Szene oder Frage, kein Firmenname."
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Schätzung: gut zwei Wörter je Sekunde (Wörter geteilt durch 2,1). Messen Sie trotzdem mit der Stoppuhr. Die Grenzen sind Vorschläge von Fokus Innovation, Sie können sie ändern.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Feedback",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Frage an die Zuhörer",
+     "breite": 36,
+     "stil": "fett"
+    },
+    {
+     "titel": "Zuhörer 1",
+     "breite": 34,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Zuhörer 2",
+     "breite": 34,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Zuhörer 3",
+     "breite": 34,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Mittelwert",
+     "breite": 11,
+     "stil": "standard"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Fassung",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     "Was macht diese Firma?",
+     null,
+     null,
+     null,
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     "Für wen ist das?",
+     null,
+     null,
+     null,
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     "Was ist anders als bei anderen?",
+     null,
+     null,
+     null,
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     "Welcher Satz ist hängen geblieben?",
+     null,
+     null,
+     null,
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     "Welches Wort war unklar?",
+     null,
+     null,
+     null,
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     "Was würden Sie als Nächstes fragen?",
+     null,
+     null,
+     null,
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     "Verständlich (1 bis 5)",
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(COUNT(B9:D9)=0,\"\",ROUND(AVERAGE(B9:D9),1))"
+     }
+    ],
+    [
+     "Natürlich gesprochen (1 bis 5)",
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(COUNT(B10:D10)=0,\"\",ROUND(AVERAGE(B10:D10),1))"
+     }
+    ],
+    [
+     "Länge (kurz, passt, lang)",
+     null,
+     null,
+     null,
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     "Leistung richtig genannt (ja, nein)",
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B12:D12)=0,\"\",COUNTIF(B12:D12,\"ja\")&\" von \"&COUNTA(B12:D12))",
+      "stil": "text"
+     }
+    ],
+    [
+     "Zielgruppe richtig genannt (ja, nein)",
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B13:D13)=0,\"\",COUNTIF(B13:D13,\"ja\")&\" von \"&COUNTA(B13:D13))",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Ergebnis",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(OR(COUNTA(B12:D12)<3,COUNTA(B13:D13)<3),\"Bitte alle drei Zuhörer eintragen\",IF(AND(COUNTIF(B12:D12,\"ja\")=3,COUNTIF(B13:D13,\"ja\")=3),\"Fertig: Alle drei haben Leistung und Zielgruppe verstanden.\",\"Noch nicht fertig: Bausteine 1 bis 3 nachschärfen und neu testen.\"))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ],
+   "auswahl": []
+  },
+  {
+   "name": "Beispiele",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Unternehmen (frei erfunden)",
+     "breite": 32,
+     "stil": "fett"
+    },
+    {
+     "titel": "10-Sekunden-Fassung",
+     "breite": 90,
+     "stil": "text"
+    },
+    {
+     "titel": "Wörter",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Sekunden, geschätzt",
+     "breite": 10,
+     "stil": "zahl"
+    }
+   ],
+   "zeilen": [
+    [
+     "Steuerkanzlei für Arztpraxen",
+     "Wir sind die Steuerkanzlei für niedergelassene Ärztinnen und Ärzte: Sie behandeln Patienten, wir kümmern uns um Buchhaltung, Steuern und die Zahlen der Praxis.",
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     }
+    ],
+    [
+     "Software für ambulante Pflegedienste",
+     "Wir machen Software, mit der ambulante Pflegedienste ihre Touren in fünfzehn Minuten statt in einer Stunde planen, auch wenn morgens jemand krank wird.",
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     }
+    ],
+    [
+     "Kunststoffteile im Spritzguss",
+     "Wir fertigen Kunststoffteile für Hersteller von Labor- und Medizingeräten, in Serien, für die große Spritzgießer keine Zeit haben.",
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     }
+    ],
+    [
+     "Elektrobetrieb für Ladepunkte",
+     "Wir bauen Ladepunkte für Elektroautos auf Firmenparkplätzen, von der Prüfung des Anschlusses bis zur Abrechnung mit den Fahrern.",
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     }
+    ],
+    [
+     "Fachkraft für Arbeitssicherheit",
+     "Ich sorge dafür, dass kleine Betriebe ihre Pflichten im Arbeitsschutz erfüllen, ohne dass der Alltag darunter leidet.",
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     }
+    ],
+    [
+     "Kaffeerösterei für Büros",
+     "Wir rösten Kaffee und beliefern Büros mit frischen Bohnen, Maschine und Wartung, damit niemand mehr über den Kaffee in der Küche schimpft.",
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     }
+    ],
+    [
+     "Hausverwaltung für kleine Häuser",
+     "Wir verwalten kleine Eigentümergemeinschaften mit drei bis zwanzig Wohnungen, die große Verwaltungen nicht mehr gern übernehmen.",
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     }
+    ],
+    [
+     "Messsystem für Kantinen",
+     "Wir messen, welche Gerichte in Kantinen übrig bleiben, damit Küchen weniger wegwerfen und genauer planen.",
+     {
+      "f": "IF(TRIM(B{r})=\"\",0,LEN(TRIM(B{r}))-LEN(SUBSTITUTE(TRIM(B{r}),\" \",\"\"))+1)"
+     },
+     {
+      "f": "IF(C{r}=0,\"\",ROUND(C{r}/2.1,0))"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Alle Firmen und Zahlen sind frei erfunden. Die 30-Sekunden-Fassungen und die 2-Minuten-Fassung stehen im PDF auf Seite 6 bis 8.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ]
+  }
+ ]
+}

@@ -1,0 +1,1055 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 30
+    },
+    {
+     "breite": 92
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Nachfassen",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Fokus Innovation · fokusinnovation.de · Nutzung im eigenen Unternehmen",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "So nutzen Sie die Tabelle",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Nachfass-Plan",
+      "stil": "fett"
+     },
+     {
+      "v": "Eine Zeile je offenem Angebot. Tragen Sie Kontakt, Firma und das Datum des Angebots ein. Die Tabelle rechnet die Termine für Tag 2, 7, 14 und 21 und schlägt die passende Vorlage vor. Lila Felder sind Eingaben.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Zuletzt erledigt",
+      "stil": "fett"
+     },
+     {
+      "v": "Nach jedem Kontakt wählen Sie aus der Liste, welcher Schritt erledigt ist. Dann springt „Nächster Kontakt“ auf den nächsten Termin.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Datum vom Kunden",
+      "stil": "fett"
+     },
+     {
+      "v": "Nennt Ihr Kontakt ein eigenes Datum, tragen Sie es hier ein. Es gilt vor dem Takt.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Ergebnis",
+      "stil": "fett"
+     },
+     {
+      "v": "Sobald es ein Ergebnis gibt (Termin, Zusage, Absage, ruht), wählen Sie es aus. Dann endet der Takt für diese Zeile.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Hinweis",
+      "stil": "fett"
+     },
+     {
+      "v": "Zeigt, was heute fällig oder überfällig ist. Sortieren oder filtern Sie jeden Morgen nach dieser Spalte.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Vorlagen",
+      "stil": "fett"
+     },
+     {
+      "v": "Das Blatt „Vorlagen“ listet alle 25 Vorlagen mit Anlass, Kanal, Betreff und Text. Kopieren Sie den Text, ersetzen Sie die Stellen in eckigen Klammern und ergänzen Sie einen persönlichen Satz.",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Hinweis",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Recht",
+      "stil": "fett"
+     },
+     {
+      "v": "Nachfassen zu einem angefragten Angebot gehört zum laufenden Gespräch. Werbung zu neuen Themen per Mail braucht eine Einwilligung oder die Bestandskunden-Ausnahme (§ 7 Abs. 3 UWG). Hinweis, keine Rechtsberatung.",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Nachfass-Plan",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Kontakt",
+     "breite": 20,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Firma",
+     "breite": 22,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Angebot vom",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Wert (€, netto)",
+     "breite": 12,
+     "stil": "eingabe-euro"
+    },
+    {
+     "titel": "Zuletzt erledigt",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Datum vom Kunden",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Nächster Kontakt",
+     "breite": 12,
+     "stil": "datum"
+    },
+    {
+     "titel": "Vorlage",
+     "breite": 28,
+     "stil": "text"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 22,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Ergebnis",
+     "breite": 11,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Notiz",
+     "breite": 34,
+     "stil": "eingabe"
+    }
+   ],
+   "zeilen": [],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",AND(K{r}<>\"\",K{r}<>\"offen\")),\"\",IF(G{r}<>\"\",G{r},IF(F{r}=\"\",D{r}+2,IF(F{r}=\"Tag 2\",D{r}+7,IF(F{r}=\"Tag 7\",D{r}+14,IF(F{r}=\"Tag 14\",D{r}+21,\"\"))))))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(G{r}<>\"\",\"nach Absprache\",IF(F{r}=\"\",\"09 · Ist alles angekommen?\",IF(F{r}=\"Tag 2\",\"10 · Ein Gedanke zur Entscheidung\",IF(F{r}=\"Tag 7\",\"11 · Wo stehen Sie?\",\"19 · Letzte Nachricht\")))))",
+      "stil": "text"
+     },
+     {
+      "f": "IF(D{r}=\"\",\"\",IF(H{r}=\"\",IF(AND(F{r}=\"Tag 21\",OR(K{r}=\"\",K{r}=\"offen\")),\"Takt beendet: Ergebnis eintragen\",\"\"),IF(H{r}<TODAY(),\"überfällig\",IF(H{r}=TODAY(),\"heute fällig\",IF(H{r}-TODAY()<=3,\"in den nächsten Tagen\",\"\")))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    "anzahl": 60
+   },
+   "auswahl": [
+    {
+     "spalte": "F",
+     "werte": [
+      "Tag 2",
+      "Tag 7",
+      "Tag 14",
+      "Tag 21"
+     ]
+    },
+    {
+     "spalte": "K",
+     "werte": [
+      "offen",
+      "Termin",
+      "Zusage",
+      "Absage",
+      "ruht"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Vorlagen",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Anlass",
+     "breite": 22,
+     "stil": "text"
+    },
+    {
+     "titel": "Vorlage",
+     "breite": 28,
+     "stil": "fett"
+    },
+    {
+     "titel": "Kanal und Zeitpunkt",
+     "breite": 24,
+     "stil": "text"
+    },
+    {
+     "titel": "Betreff",
+     "breite": 36,
+     "stil": "text"
+    },
+    {
+     "titel": "Text",
+     "breite": 90,
+     "stil": "text"
+    },
+    {
+     "titel": "Tipp",
+     "breite": 40,
+     "stil": "hinweis"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": 1,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach dem Erstgespräch",
+      "stil": "text"
+     },
+     {
+      "v": "Zusammenfassung nach dem Gespräch",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · am selben Tag",
+      "stil": "text"
+     },
+     {
+      "v": "Unser Gespräch zu [Thema]: Zusammenfassung und nächster Schritt",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], danke für das offene Gespräch heute. Ich habe mitgenommen: [Punkt 1], [Punkt 2] und [Punkt 3]. Wichtig ist Ihnen vor allem [Ziel], am besten bis [Datum]. Wie besprochen [schicke ich Ihnen bis Freitag … / sprechen wir am … wieder]. Wenn ich etwas falsch verstanden habe, korrigieren Sie mich gern. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Ihre stärkste Nachricht: Sie zeigt, dass Sie zugehört haben, und Ihr Kontakt kann sie intern weiterleiten.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 2,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach dem Erstgespräch",
+      "stil": "text"
+     },
+     {
+      "v": "Unterlagen wie besprochen",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · innerhalb eines Tages",
+      "stil": "text"
+     },
+     {
+      "v": "[Thema]: die Unterlagen, die Sie sich gewünscht haben",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], wie besprochen anbei [Unterlage]. Für Sie am wichtigsten ist wahrscheinlich [Abschnitt], dort steht [Kernpunkt]. Ich rufe Sie am [Tag] kurz an, um Ihre Fragen dazu zu klären. Passt Ihnen [Uhrzeit], oder ist eine andere Zeit besser? Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Nie nur einen Anhang schicken. Sagen Sie, wo das Wichtigste steht, und nennen Sie den Folgetermin.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 3,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach dem Erstgespräch",
+      "stil": "text"
+     },
+     {
+      "v": "Keine Rückmeldung nach dem Gespräch",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · nach 5 bis 7 Werktagen",
+      "stil": "text"
+     },
+     {
+      "v": "Noch einmal zu [Thema]",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], nach unserem Gespräch am [Datum] wollten Sie [intern sprechen / die Unterlagen ansehen]. Hat sich dabei eine Frage ergeben, die ich beantworten kann? Falls das Thema gerade nach hinten gerutscht ist, sagen Sie mir einfach, wann ich mich wieder melden soll. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Erinnern Sie an das, was Ihr Kontakt selbst vorhatte, nicht an Ihr Angebot.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 4,
+      "stil": "zahl"
+     },
+     {
+      "v": "Termine",
+      "stil": "text"
+     },
+     {
+      "v": "Termin bestätigen",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · direkt nach der Vereinbarung",
+      "stil": "text"
+     },
+     {
+      "v": "Bestätigt: [Thema] am [Tag], [Uhrzeit]",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], ich freue mich auf unser Gespräch am [Tag] um [Uhrzeit], [per Video, der Link steht in der Einladung / bei Ihnen vor Ort]. Mein Vorschlag für die 30 Minuten: [Ablauf in einem Satz]. Zur Vorbereitung hilft mir: [Frage]. Wenn noch jemand dabei sein sollte, leiten Sie die Einladung gern weiter. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Die Kalendereinladung trägt Zeit und Link, die Mail den Inhalt. Beides getrennt schicken.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 5,
+      "stil": "zahl"
+     },
+     {
+      "v": "Termine",
+      "stil": "text"
+     },
+     {
+      "v": "Erinnerung am Vortag",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail oder Nachricht · am Vortag",
+      "stil": "text"
+     },
+     {
+      "v": "Morgen, [Uhrzeit]: [Thema]",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], kurze Erinnerung an unser Gespräch morgen um [Uhrzeit]. Hier noch einmal der Link: [Link]. Bis morgen, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Kurz halten: keine neuen Inhalte, nur Zeit, Ort und Link.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 6,
+      "stil": "zahl"
+     },
+     {
+      "v": "Termine",
+      "stil": "text"
+     },
+     {
+      "v": "Termin verpasst",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · am selben Tag",
+      "stil": "text"
+     },
+     {
+      "v": "Wir haben uns heute verpasst",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], heute um [Uhrzeit] haben wir uns leider verpasst. Das kann passieren, sicher ist etwas dazwischengekommen. Passt Ihnen [Tag, Uhrzeit] oder [Tag, Uhrzeit] für einen neuen Termin? Wenn das Thema gerade nicht mehr dringend ist, sagen Sie es mir einfach. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Freundlich, ohne Vorwurf, mit zwei neuen Zeiten. Nach dem zweiten verpassten Termin ist das eine Antwort.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 7,
+      "stil": "zahl"
+     },
+     {
+      "v": "Termine",
+      "stil": "text"
+     },
+     {
+      "v": "Neuer Termin nach einer Absage",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · nach der Absage",
+      "stil": "text"
+     },
+     {
+      "v": "Neuer Termin für [Thema]",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], danke, dass Sie rechtzeitig abgesagt haben. Gern finden wir einen neuen Termin: [Tag, Uhrzeit] oder [Tag, Uhrzeit]? Wenn sich die Lage bei Ihnen geändert hat, passe ich das Gespräch gern daran an. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Für die Absage danken und den neuen Termin innerhalb von zwei Wochen legen.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 8,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach dem Angebot",
+      "stil": "text"
+     },
+     {
+      "v": "Angebot begleiten",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · beim Versand",
+      "stil": "text"
+     },
+     {
+      "v": "Ihr Angebot zu [Thema]: [Kurztitel]",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], wie besprochen anbei unser Angebot. Kurz zusammengefasst: [Variante A] für [Betrag], [Variante B] für [Betrag]. Beide lösen [Kernproblem], B zusätzlich [Erweiterung]. Das Angebot gilt bis [Datum]. Am [Tag] um [Uhrzeit] gehen wir es gemeinsam durch, Fragen vorher gern jederzeit. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Das Wichtigste gehört in die Mail, nicht nur in den Anhang. Viele lesen zuerst auf dem Handy.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 9,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach dem Angebot",
+      "stil": "text"
+     },
+     {
+      "v": "Tag 2: Ist alles angekommen?",
+      "stil": "fett"
+     },
+     {
+      "v": "Anruf oder Mail",
+      "stil": "text"
+     },
+     {
+      "v": "Kurze Frage zu Ihrem Angebot",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], ist das Angebot gut bei Ihnen angekommen? Wenn beim ersten Lesen eine Frage entstanden ist, beantworte ich sie gern schon vor unserem Termin am [Tag]. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Am Telefon wirkt diese Frage am besten: zwei Minuten, keine Verhandlung.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 10,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach dem Angebot",
+      "stil": "text"
+     },
+     {
+      "v": "Tag 7: Ein Gedanke zur Entscheidung",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail",
+      "stil": "text"
+     },
+     {
+      "v": "Ein Gedanke zu [Thema]",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], mir ist nach unserem Gespräch noch etwas zu [Frage oder Sorge] eingefallen: [Gedanke, Beispiel oder Rechnung in zwei Sätzen]. Vielleicht hilft es Ihnen bei der Entscheidung oder im Gespräch mit [Person]. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Der Inhalt zählt: Lösen Sie die Hürde, die im Gespräch zu hören war, nicht eine erfundene.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 11,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach dem Angebot",
+      "stil": "text"
+     },
+     {
+      "v": "Tag 14: Wo stehen Sie?",
+      "stil": "fett"
+     },
+     {
+      "v": "Anruf oder Mail",
+      "stil": "text"
+     },
+     {
+      "v": "Wie ist der Stand bei [Thema]?",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], wie ist der Stand zu unserem Angebot vom [Datum]? Damit ich mich richtig einplane: Fällt die Entscheidung eher in den nächsten Tagen, später, oder hat sich die Lage geändert? Jede Antwort hilft mir, auch ein Nein. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Drei Möglichkeiten anbieten. Das macht eine ehrliche Antwort leicht.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 12,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach dem Angebot",
+      "stil": "text"
+     },
+     {
+      "v": "Nach der Preisfrage: zwei Wege",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · nach einem Einwand zum Preis",
+      "stil": "text"
+     },
+     {
+      "v": "Zwei Wege für [Thema]",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], danke für Ihre offene Rückmeldung zum Preis. Ich sehe zwei Wege: Wir starten mit [Teil] für [Betrag] und ergänzen [Rest] später. Oder wir bleiben beim vollen Umfang, und [Gegenleistung, etwa längere Laufzeit] senkt den Preis auf [Betrag]. Was passt besser zu Ihnen? Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Weniger Preis nur gegen weniger Umfang oder eine Gegenleistung, nie einfach so.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 13,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach dem Angebot",
+      "stil": "text"
+     },
+     {
+      "v": "Absage erhalten: Tür offen halten",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · am selben Tag",
+      "stil": "text"
+     },
+     {
+      "v": "Danke für Ihre Rückmeldung",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], danke, dass Sie mir Ihre Entscheidung mitteilen. Darf ich fragen, was am Ende den Ausschlag gegeben hat? Das hilft uns, besser zu werden. Ich wünsche Ihnen mit [Lösung] viel Erfolg. Wenn Sie mögen, frage ich in [drei Monaten] einmal kurz nach, wie es läuft. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Keine Diskussion, kein Rabatt nach der Absage. Den Grund notieren, er ist wertvoll.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 14,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach Messe oder Veranstaltung",
+      "stil": "text"
+     },
+     {
+      "v": "Nach dem Gespräch am Stand",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · am nächsten Werktag",
+      "stil": "text"
+     },
+     {
+      "v": "[Messe]: unser Gespräch zu [Thema]",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], danke für das Gespräch an unserem Stand auf der [Messe]. Sie hatten erzählt, dass [Situation]. Wie vereinbart [schicke ich Ihnen anbei … / schlage ich ein kurzes Gespräch vor]: Passt Ihnen [Tag, Uhrzeit] für 30 Minuten per Video? Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Ein Detail aus dem Gespräch nennen. Nach einer Messe bekommt Ihr Kontakt viele ähnliche Mails.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 15,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach Messe oder Veranstaltung",
+      "stil": "text"
+     },
+     {
+      "v": "Die versprochene Unterlage",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · innerhalb von zwei Tagen",
+      "stil": "text"
+     },
+     {
+      "v": "Wie versprochen: [Unterlage] von der [Veranstaltung]",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], auf der [Veranstaltung] hatte ich Ihnen [Unterlage / Beispiel / einen Kontakt] versprochen, hier ist es. Besonders interessant für Sie ist wahrscheinlich [Punkt]. Wenn Sie darüber sprechen möchten, antworten Sie einfach mit einem Zeitfenster, dann rufe ich an. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Versprechen schnell halten. Das ist die beste Werbung für Ihre Verlässlichkeit.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 16,
+      "stil": "zahl"
+     },
+     {
+      "v": "Nach Messe oder Veranstaltung",
+      "stil": "text"
+     },
+     {
+      "v": "Wenig Zeit am Stand",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · am nächsten Werktag",
+      "stil": "text"
+     },
+     {
+      "v": "Wir hatten auf der [Messe] nur kurz Zeit",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], auf der [Messe] hatten wir nur wenige Minuten, und Sie wollten mehr zu [Thema] wissen. Wollen wir das in Ruhe nachholen? Ich schlage 20 Minuten per Video vor, am [Tag] oder am [Tag]. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Nur an Personen, die um einen Kontakt gebeten haben. Eine gescannte Karte allein ist keine Einwilligung in Werbung.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 17,
+      "stil": "zahl"
+     },
+     {
+      "v": "Wenn sich niemand meldet",
+      "stil": "text"
+     },
+     {
+      "v": "Funkstille nach einem guten Gespräch",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · nach zwei bis drei Wochen",
+      "stil": "text"
+     },
+     {
+      "v": "Ist [Thema] noch aktuell?",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], unser letztes Gespräch zu [Thema] war sehr konkret, seitdem habe ich nichts mehr gehört. Das ist völlig in Ordnung, Prioritäten ändern sich. Damit ich Sie nicht unnötig störe: Ist das Thema noch aktuell, später wieder, oder erledigt? Ein Wort reicht. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "„Ein Wort reicht“ senkt die Hürde für eine Antwort.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 18,
+      "stil": "zahl"
+     },
+     {
+      "v": "Wenn sich niemand meldet",
+      "stil": "text"
+     },
+     {
+      "v": "Neue Ansprechperson?",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · wenn jemand gewechselt hat",
+      "stil": "text"
+     },
+     {
+      "v": "Wer ist jetzt für [Thema] zuständig?",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], ich hatte mit [frühere Person] über [Thema] gesprochen und erfahren, dass [sie / er] nicht mehr im Unternehmen ist. Sind Sie jetzt die richtige Ansprechperson, oder an wen darf ich mich wenden? Ich fasse Ihnen gern zusammen, was bisher besprochen wurde. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Nur bei einem laufenden Vorgang. Die neue Person kennt Sie nicht, also kurz und hilfsbereit bleiben.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 19,
+      "stil": "zahl"
+     },
+     {
+      "v": "Wenn sich niemand meldet",
+      "stil": "text"
+     },
+     {
+      "v": "Letzte Nachricht",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · nach dem letzten Nachfassen",
+      "stil": "text"
+     },
+     {
+      "v": "Soll ich das Thema schließen?",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], ich habe mich in den letzten Wochen ein paarmal zu [Thema] gemeldet und will Sie nicht weiter damit beschäftigen. Ich gehe davon aus, dass es gerade nicht passt, und schließe das Thema bei mir. Falls ich falsch liege, reicht eine kurze Antwort. Alles Gute, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Ehrlich gemeint, nicht als Trick. Danach wirklich Ruhe, bis Ihr Kontakt sich meldet.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 20,
+      "stil": "zahl"
+     },
+     {
+      "v": "Bestandskunden",
+      "stil": "text"
+     },
+     {
+      "v": "Nach Projektende: Wie läuft es?",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail oder Anruf · etwa 90 Tage danach",
+      "stil": "text"
+     },
+     {
+      "v": "Wie läuft es mit [Lösung]?",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], vor drei Monaten haben wir [Projekt] abgeschlossen. Wie läuft es seitdem? Mich interessiert vor allem, ob [Ziel] erreicht ist und wo es noch hakt. Wenn es passt, nehme ich mir gern 15 Minuten, um gemeinsam draufzuschauen. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Echtes Interesse zuerst. Neue Aufträge ergeben sich aus diesem Gespräch, nicht aus einem Angebot in der Mail.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 21,
+      "stil": "zahl"
+     },
+     {
+      "v": "Bestandskunden",
+      "stil": "text"
+     },
+     {
+      "v": "Ehemalige Kunden wieder ansprechen (§ 7 UWG beachten)",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail · nach längerer Pause",
+      "stil": "text"
+     },
+     {
+      "v": "Lange nicht gesprochen: Wie geht es bei [Firma]?",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], unser letztes gemeinsames Projekt [Projekt] liegt schon eine Weile zurück. Bei uns hat sich seitdem einiges getan, unter anderem [Neuigkeit, die zu Ihnen passt]. Wie ist es bei Ihnen gelaufen? Wenn [Thema] wieder ansteht, freue ich mich, von Ihnen zu hören. Viele Grüße, [Name]. Möchten Sie solche Nachrichten nicht mehr bekommen, genügt eine kurze Antwort.",
+      "stil": "text"
+     },
+     {
+      "v": "Nur unter den Bedingungen für Bestandskunden (Seite 2), mit dem Hinweis auf den Widerspruch in jeder Mail.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 22,
+      "stil": "zahl"
+     },
+     {
+      "v": "Bestandskunden",
+      "stil": "text"
+     },
+     {
+      "v": "Empfehlung erfragen",
+      "stil": "fett"
+     },
+     {
+      "v": "Mail oder im Gespräch · nach einem Erfolg",
+      "stil": "text"
+     },
+     {
+      "v": "Eine Frage, nachdem [Projekt] so gut gelaufen ist",
+      "stil": "text"
+     },
+     {
+      "v": "Guten Tag [Name], es freut mich sehr, dass [Ergebnis]. Darf ich Sie um etwas bitten? Kennen Sie jemanden, der vor einer ähnlichen Aufgabe steht, etwa [Art von Firma oder Rolle]? Dann wäre eine kurze Vorstellung per Mail ideal. Ich melde mich nur, wenn die Person das möchte. Viele Grüße, [Name]",
+      "stil": "text"
+     },
+     {
+      "v": "Beschreiben Sie genau, wen Sie suchen. Und danken Sie für jede Empfehlung, egal wie sie ausgeht.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 23,
+      "stil": "zahl"
+     },
+     {
+      "v": "LinkedIn und kurze Nachrichten",
+      "stil": "text"
+     },
+     {
+      "v": "Nach der Vernetzung",
+      "stil": "fett"
+     },
+     {
+      "v": "LinkedIn · am selben oder nächsten Tag",
+      "stil": "text"
+     },
+     {
+      "v": "(keiner, Nachricht)",
+      "stil": "text"
+     },
+     {
+      "v": "Danke fürs Vernetzen, [Name]. Ihr [Beitrag / Vortrag] zu [Thema] ist mir hängen geblieben, besonders [Punkt]. Wie gehen Sie bei [Firma] gerade mit [Thema] um?",
+      "stil": "text"
+     },
+     {
+      "v": "Kein Angebot, kein Link. Eine Frage, die zeigt, dass Sie sich mit der Person beschäftigt haben.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 24,
+      "stil": "zahl"
+     },
+     {
+      "v": "LinkedIn und kurze Nachrichten",
+      "stil": "text"
+     },
+     {
+      "v": "Wenn die Mail unbeantwortet bleibt",
+      "stil": "fett"
+     },
+     {
+      "v": "LinkedIn · bei einem laufenden Gespräch",
+      "stil": "text"
+     },
+     {
+      "v": "(keiner, Nachricht)",
+      "stil": "text"
+     },
+     {
+      "v": "Hallo [Name], ich hatte Ihnen am [Datum] zu [Thema] eine Mail geschickt, vielleicht ist sie untergegangen. Passt es Ihnen besser, kurz zu telefonieren? Dann schlagen Sie mir gern eine Zeit vor.",
+      "stil": "text"
+     },
+     {
+      "v": "Nur einmal den Kanal wechseln, und nur, wenn es schon einen Kontakt gab.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 25,
+      "stil": "zahl"
+     },
+     {
+      "v": "LinkedIn und kurze Nachrichten",
+      "stil": "text"
+     },
+     {
+      "v": "Einen Anlass aufgreifen",
+      "stil": "fett"
+     },
+     {
+      "v": "LinkedIn · bei neuer Aufgabe oder Beitrag",
+      "stil": "text"
+     },
+     {
+      "v": "(keiner, Nachricht)",
+      "stil": "text"
+     },
+     {
+      "v": "Glückwunsch zur neuen Aufgabe als [Rolle], [Name]! [Persönlicher Satz, etwa ein Bezug zum letzten Gespräch]. Ich bin gespannt, was Sie dort angehen. Wenn [Thema] dabei eine Rolle spielt, tausche ich mich gern aus.",
+      "stil": "text"
+     },
+     {
+      "v": "Der Glückwunsch steht für sich. Der Satz zum Thema ist freiwillig, ein Angebot gehört nie hinein.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  }
+ ]
+}

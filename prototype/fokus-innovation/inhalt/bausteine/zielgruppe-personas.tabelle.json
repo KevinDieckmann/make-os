@@ -1,0 +1,3489 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 30
+    },
+    {
+     "breite": 92
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Zielgruppe und Personas mit Lead-Scoring",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Fokus Innovation · fokusinnovation.de · Nutzung im eigenen Unternehmen",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "So nutzen Sie die Tabelle",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Lila Felder",
+      "stil": "fett"
+     },
+     {
+      "v": "sind Eingaben. Alle anderen Felder rechnen selbst und bleiben leer, solange etwas fehlt. Ja, teils und nein wählen Sie aus der Liste.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "1. Bestandskunden",
+      "stil": "fett"
+     },
+     {
+      "v": "Eine Zeile je Kunde mit Umsatz und vier Einschätzungen. Die Tabelle vergibt Punkte (Umsatz nach Dritteln), zählt zusammen und zeigt die Klasse. Weichen Sie bewusst ab, tragen Sie Klasse und Grund von Hand ein.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "2. Auswertung",
+      "stil": "fett"
+     },
+     {
+      "v": "Zeigt Anzahl und Umsatzanteil der A-, B- und C-Kunden. Tragen Sie Ihre Branchen ein, um zu sehen, wo die A-Kunden liegen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "3. Modell",
+      "stil": "fett"
+     },
+     {
+      "v": "Ihre fünf Kriterien für Passung und Signal mit Punkten, dazu die Schwellen der Klassen. Startwerte wie im PDF, Seite 13 und 14.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "4. Leads",
+      "stil": "fett"
+     },
+     {
+      "v": "Eine Zeile je Firma. Zeile 2 zeigt die Kriterien aus dem Modell. Je Kriterium ja, teils oder nein wählen. Passung, Signal, Gesamt, Klasse und Empfehlung rechnet die Tabelle. „Ausschluss?“ auf ja setzt die Klasse auf Ausschluss.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "5. Höchster Stand",
+      "stil": "fett"
+     },
+     {
+      "v": "Pflegen Sie bei jedem Lead den weitesten Schritt: offen, Gespräch, Angebot, Auftrag. Die Auswertung zeigt dann nach 90 Tagen, wie gut die Klassen vorhersagen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Beispiel-Blätter",
+      "stil": "fett"
+     },
+     {
+      "v": "„Beispiel Kunden“ und „Beispiel Leads“ zeigen ausgefüllte Zeilen mit frei erfundenen Firmen. Sie fließen in keine Auswertung ein.",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Klassen und was dann passiert",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "A",
+      "stil": "fett"
+     },
+     {
+      "v": "persönlich ansprechen, innerhalb von 2 Werktagen",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "B mit schwachem Signal",
+      "stil": "fett"
+     },
+     {
+      "v": "pflegen: alle vier bis sechs Wochen ein Anlass, auf Auslöser achten",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "B mit starkem Signal",
+      "stil": "fett"
+     },
+     {
+      "v": "ab der Hälfte der Signal-Punkte: zuerst kurz prüfen, ob die Firma wirklich passt",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "C",
+      "stil": "fett"
+     },
+     {
+      "v": "beobachten, neu bewerten bei neuem Signal",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Ausschluss",
+      "stil": "fett"
+     },
+     {
+      "v": "nicht verfolgen, freundlich absagen oder weiterempfehlen",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Datenschutz",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Quelle des Eintrags",
+      "stil": "fett"
+     },
+     {
+      "v": "Notieren Sie, woher die Angaben stammen. Werbung per E-Mail nur mit Einwilligung, Datum in der letzten Spalte. Hinweis, keine Rechtsberatung.",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Bestandskunden",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Kürzel",
+     "breite": 9,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Branche",
+     "breite": 20,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Größe",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Region",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Wie kam er, Anlass",
+     "breite": 28,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Umsatz je Jahr (€)",
+     "breite": 12,
+     "stil": "eingabe-euro"
+    },
+    {
+     "titel": "Marge",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Aufwand",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Empfiehlt weiter",
+     "breite": 11,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Zahlung",
+     "breite": 14,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Pkt. Umsatz",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Pkt. Marge",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Pkt. Aufwand",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Pkt. Empf.",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Pkt. Zahlung",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Summe",
+     "breite": 7,
+     "stil": "fett"
+    },
+    {
+     "titel": "Klasse nach Punkten",
+     "breite": 9,
+     "stil": "fett"
+    },
+    {
+     "titel": "Klasse von Hand (optional)",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Grund für die Abweichung",
+     "breite": 24,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Klasse gilt",
+     "breite": 8,
+     "stil": "fett"
+    }
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(OR($A{r}=\"\",F{r}=\"\"),\"\",IF(COUNT($F$2:$F$201)<2,2,IF(COUNTIF($F$2:$F$201,\"<\"&F{r})/(COUNT($F$2:$F$201)-1)>=2/3,3,IF(COUNTIF($F$2:$F$201,\"<\"&F{r})/(COUNT($F$2:$F$201)-1)>=1/3,2,1))))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"hoch\",3,IF(G{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}=\"gering\",3,IF(H{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I{r}=\"\",\"\",IF(I{r}=\"ja\",3,IF(I{r}=\"vermutlich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",IF(J{r}=\"pünktlich\",3,IF(J{r}=\"gelegentlich spät\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(K{r}:O{r})<5,\"\",SUM(K{r}:O{r}))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(P{r}=\"\",\"\",IF(P{r}>=Modell!$C$26,\"A\",IF(P{r}>=Modell!$C$27,\"B\",\"C\")))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IF(R{r}<>\"\",R{r},Q{r}))",
+      "stil": "fett"
+     }
+    ],
+    "anzahl": 200
+   },
+   "auswahl": [
+    {
+     "spalte": "G",
+     "werte": [
+      "hoch",
+      "üblich",
+      "niedrig"
+     ]
+    },
+    {
+     "spalte": "H",
+     "werte": [
+      "gering",
+      "üblich",
+      "hoch"
+     ]
+    },
+    {
+     "spalte": "I",
+     "werte": [
+      "ja",
+      "vermutlich",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "J",
+     "werte": [
+      "pünktlich",
+      "gelegentlich spät",
+      "oft Mahnung"
+     ]
+    },
+    {
+     "spalte": "R",
+     "werte": [
+      "A",
+      "B",
+      "C"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Auswertung",
+   "spalten": [
+    {
+     "breite": 34
+    },
+    {
+     "breite": 12
+    },
+    {
+     "breite": 16
+    },
+    {
+     "breite": 16
+    },
+    {
+     "breite": 14
+    },
+    {
+     "breite": 14
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Auswertung",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Rechnet aus den Blättern „Bestandskunden“ und „Leads“. Lila Felder: hier eintragen.",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Bestandskunden: Klasse",
+      "stil": "kopf"
+     },
+     {
+      "v": "Kunden",
+      "stil": "kopf"
+     },
+     {
+      "v": "Umsatz je Jahr (€)",
+      "stil": "kopf"
+     },
+     {
+      "v": "Anteil am Umsatz",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "A",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Bestandskunden!$T$2:$T$201,\"A\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Bestandskunden!$T$2:$T$201,\"A\",Bestandskunden!$F$2:$F$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(C{r}/SUM(Bestandskunden!$F$2:$F$201),\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": "B",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Bestandskunden!$T$2:$T$201,\"B\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Bestandskunden!$T$2:$T$201,\"B\",Bestandskunden!$F$2:$F$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(C{r}/SUM(Bestandskunden!$F$2:$F$201),\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": "C",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Bestandskunden!$T$2:$T$201,\"C\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Bestandskunden!$T$2:$T$201,\"C\",Bestandskunden!$F$2:$F$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(C{r}/SUM(Bestandskunden!$F$2:$F$201),\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": "Gesamt",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(B5:B7)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(Bestandskunden!$F$2:$F$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(SUM(C5:C7)/C8,\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Branche (genau wie im Blatt eingetragen)",
+      "stil": "kopf"
+     },
+     {
+      "v": "Kunden",
+      "stil": "kopf"
+     },
+     {
+      "v": "davon A",
+      "stil": "kopf"
+     },
+     {
+      "v": "Anteil A",
+      "stil": "kopf"
+     },
+     {
+      "v": "Umsatz (€)",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIF(Bestandskunden!$B$2:$B$201,$A{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$T$2:$T$201,\"A\"))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IFERROR(C{r}/B{r},\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Bestandskunden!$B$2:$B$201,$A{r},Bestandskunden!$F$2:$F$201))",
+      "stil": "euro"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Leads: Klasse",
+      "stil": "kopf"
+     },
+     {
+      "v": "Leads",
+      "stil": "kopf"
+     },
+     {
+      "v": "Gespräch erreicht",
+      "stil": "kopf"
+     },
+     {
+      "v": "Angebot erreicht",
+      "stil": "kopf"
+     },
+     {
+      "v": "Auftrag",
+      "stil": "kopf"
+     },
+     {
+      "v": "Auftrag ÷ Leads",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "A",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Leads!$V$3:$V$202,\"A\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"A\",Leads!$X$3:$X$202,\"Gespräch\")+D{r}",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"A\",Leads!$X$3:$X$202,\"Angebot\")+E{r}",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"A\",Leads!$X$3:$X$202,\"Auftrag\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(E{r}/B{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": "B",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Leads!$V$3:$V$202,\"B\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"B\",Leads!$X$3:$X$202,\"Gespräch\")+D{r}",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"B\",Leads!$X$3:$X$202,\"Angebot\")+E{r}",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"B\",Leads!$X$3:$X$202,\"Auftrag\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(E{r}/B{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": "C",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Leads!$V$3:$V$202,\"C\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"C\",Leads!$X$3:$X$202,\"Gespräch\")+D{r}",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"C\",Leads!$X$3:$X$202,\"Angebot\")+E{r}",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"C\",Leads!$X$3:$X$202,\"Auftrag\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(E{r}/B{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": "Ausschluss",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Leads!$V$3:$V$202,\"Ausschluss\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"Ausschluss\",Leads!$X$3:$X$202,\"Gespräch\")+D{r}",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"Ausschluss\",Leads!$X$3:$X$202,\"Angebot\")+E{r}",
+      "stil": "zahl"
+     },
+     {
+      "f": "COUNTIFS(Leads!$V$3:$V$202,\"Ausschluss\",Leads!$X$3:$X$202,\"Auftrag\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "IFERROR(E{r}/B{r},\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": "Gesamt",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(B23:B26)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(C23:C26)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(D23:D26)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(E23:E26)",
+      "stil": "fett"
+     },
+     {
+      "f": "IFERROR(E27/B27,\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "So lesen Sie das",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Gewinnen Sie A-Leads deutlich öfter als B-Leads? Wenn nicht, verteilen Sie die Punkte im Blatt „Modell“ neu. Die fünf Fragen dazu stehen auf Seite 17 im PDF.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "„Höchster Stand“ im Blatt „Leads“: der weiteste Schritt, den ein Lead erreicht hat. Ein Lead mit Angebot zählt auch als „Gespräch erreicht“.",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Modell",
+   "spalten": [
+    {
+     "breite": 6
+    },
+    {
+     "breite": 58
+    },
+    {
+     "breite": 13
+    },
+    {
+     "breite": 13
+    },
+    {
+     "breite": 40
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Modell: Punkte und Schwellen",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Lila Felder ändern. Leads, Bestandskunden und Auswertung rechnen sofort neu. Je Seite zusammen 50 Punkte (Vorschlag).",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Nr.",
+      "stil": "kopf"
+     },
+     {
+      "v": "Passung: Kriterium",
+      "stil": "kopf"
+     },
+     {
+      "v": "Punkte bei ja",
+      "stil": "kopf"
+     },
+     {
+      "v": "Punkte bei teils",
+      "stil": "kopf"
+     },
+     {
+      "v": "teils, wenn …",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "P1",
+      "stil": "fett"
+     },
+     {
+      "v": "Branche passt zum Ideal-Kundenprofil",
+      "stil": "eingabe"
+     },
+     {
+      "v": 14,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "angrenzende Branche",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "P2",
+      "stil": "fett"
+     },
+     {
+      "v": "Größe im Zielbereich (Beschäftigte, Standorte)",
+      "stil": "eingabe"
+     },
+     {
+      "v": 10,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "knapp darunter oder darüber",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "P3",
+      "stil": "fett"
+     },
+     {
+      "v": "Region im Zielgebiet",
+      "stil": "eingabe"
+     },
+     {
+      "v": 10,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Randgebiet",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "P4",
+      "stil": "fett"
+     },
+     {
+      "v": "Merkmal Ihrer A-Kunden (hier eintragen)",
+      "stil": "eingabe"
+     },
+     {
+      "v": 10,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "teilweise erfüllt",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "P5",
+      "stil": "fett"
+     },
+     {
+      "v": "Typische Situation oder Problem liegt vor",
+      "stil": "eingabe"
+     },
+     {
+      "v": 6,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "nur vermutet",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     null,
+     {
+      "v": "Summe Passung",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(C5:C9)",
+      "stil": "fett"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Nr.",
+      "stil": "kopf"
+     },
+     {
+      "v": "Signal: Kriterium",
+      "stil": "kopf"
+     },
+     {
+      "v": "Punkte bei ja",
+      "stil": "kopf"
+     },
+     {
+      "v": "Punkte bei teils",
+      "stil": "kopf"
+     },
+     {
+      "v": "teils, wenn …",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "S1",
+      "stil": "fett"
+     },
+     {
+      "v": "Auslöser steht fest oder ist in den letzten 6 Monaten eingetreten",
+      "stil": "eingabe"
+     },
+     {
+      "v": 16,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "nur angekündigt oder vermutet",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "S2",
+      "stil": "fett"
+     },
+     {
+      "v": "Kontakt zur Entscheidungsebene",
+      "stil": "eingabe"
+     },
+     {
+      "v": 10,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "nur zu Nutzer oder Beeinflusser",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "S3",
+      "stil": "fett"
+     },
+     {
+      "v": "Reaktion: eigene Anfrage oder Antwort mit Terminwunsch",
+      "stil": "eingabe"
+     },
+     {
+      "v": 10,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Interesse, noch kein Termin",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "S4",
+      "stil": "fett"
+     },
+     {
+      "v": "Vertrag beim bisherigen Anbieter endet in 12 Monaten",
+      "stil": "eingabe"
+     },
+     {
+      "v": 8,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "vermutet",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "S5",
+      "stil": "fett"
+     },
+     {
+      "v": "Empfehlung oder gemeinsamer Kontakt",
+      "stil": "eingabe"
+     },
+     {
+      "v": 6,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(C{r}=\"\",\"\",C{r}/2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "nur gemeinsame Bekannte",
+      "stil": "eingabe"
+     }
+    ],
+    [
+     null,
+     {
+      "v": "Summe Signal",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(C13:C17)",
+      "stil": "fett"
+     }
+    ],
+    [],
+    [
+     null,
+     {
+      "v": "Klassen für Leads",
+      "stil": "kopf"
+     },
+     {
+      "v": "Wert",
+      "stil": "kopf"
+     }
+    ],
+    [
+     null,
+     {
+      "v": "A ab Punkten",
+      "stil": "text"
+     },
+     {
+      "v": 70,
+      "stil": "eingabe-zahl"
+     }
+    ],
+    [
+     null,
+     {
+      "v": "A nur, wenn die Passung mindestens so hoch ist",
+      "stil": "text"
+     },
+     {
+      "v": 30,
+      "stil": "eingabe-zahl"
+     }
+    ],
+    [
+     null,
+     {
+      "v": "B ab Punkten (darunter C)",
+      "stil": "text"
+     },
+     {
+      "v": 45,
+      "stil": "eingabe-zahl"
+     }
+    ],
+    [],
+    [
+     null,
+     {
+      "v": "Klassen für Bestandskunden (5 bis 15 Punkte)",
+      "stil": "kopf"
+     },
+     {
+      "v": "Wert",
+      "stil": "kopf"
+     }
+    ],
+    [
+     null,
+     {
+      "v": "A ab Punkten",
+      "stil": "text"
+     },
+     {
+      "v": 13,
+      "stil": "eingabe-zahl"
+     }
+    ],
+    [
+     null,
+     {
+      "v": "B ab Punkten (darunter C)",
+      "stil": "text"
+     },
+     {
+      "v": 9,
+      "stil": "eingabe-zahl"
+     }
+    ],
+    [],
+    [
+     null,
+     {
+      "v": "Ausschlüsse (zur Erinnerung, gelten im Blatt Leads über die Spalte „Ausschluss?“)",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     null,
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     null,
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     null,
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     null,
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [],
+    [
+     null,
+     {
+      "v": "Änderungen am Modell",
+      "stil": "kopf"
+     },
+     {
+      "v": "Datum",
+      "stil": "kopf"
+     }
+    ],
+    [
+     null,
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     }
+    ],
+    [
+     null,
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     }
+    ],
+    [
+     null,
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Leads",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Firma",
+     "breite": 24,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Website, Ort",
+     "breite": 18,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Branche, Größe",
+     "breite": 18,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Ansprechperson (Rolle)",
+     "breite": 22,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Quelle des Eintrags",
+     "breite": 16,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Signal: was, wann, wo",
+     "breite": 24,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Ausschluss?",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "P1",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "P2",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "P3",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "P4",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "P5",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Passung",
+     "breite": 8,
+     "stil": "fett"
+    },
+    {
+     "titel": "S1",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "S2",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "S3",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "S4",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "S5",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Signal",
+     "breite": 8,
+     "stil": "fett"
+    },
+    {
+     "titel": "Gesamt",
+     "breite": 8,
+     "stil": "fett"
+    },
+    {
+     "titel": "Klasse",
+     "breite": 10,
+     "stil": "fett"
+    },
+    {
+     "titel": "Empfehlung",
+     "breite": 30,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Höchster Stand",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Nächster Schritt",
+     "breite": 28,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Datum",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Verantwortlich",
+     "breite": 14,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Einwilligung E-Mail-Werbung am",
+     "breite": 14,
+     "stil": "eingabe-datum"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Kriterium:",
+      "stil": "hinweis"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "v": "ja / nein",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$5",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$6",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$7",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$8",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$9",
+      "stil": "hinweis"
+     },
+     null,
+     {
+      "f": "Modell!$B$13",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$14",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$15",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$16",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$17",
+      "stil": "hinweis"
+     }
+    ]
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-2)",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(I{r}=\"ja\",Modell!$C$5,IF(I{r}=\"teils\",Modell!$D$5,0))+IF(J{r}=\"ja\",Modell!$C$6,IF(J{r}=\"teils\",Modell!$D$6,0))+IF(K{r}=\"ja\",Modell!$C$7,IF(K{r}=\"teils\",Modell!$D$7,0))+IF(L{r}=\"ja\",Modell!$C$8,IF(L{r}=\"teils\",Modell!$D$8,0))+IF(M{r}=\"ja\",Modell!$C$9,IF(M{r}=\"teils\",Modell!$D$9,0)))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(O{r}=\"ja\",Modell!$C$13,IF(O{r}=\"teils\",Modell!$D$13,0))+IF(P{r}=\"ja\",Modell!$C$14,IF(P{r}=\"teils\",Modell!$D$14,0))+IF(Q{r}=\"ja\",Modell!$C$15,IF(Q{r}=\"teils\",Modell!$D$15,0))+IF(R{r}=\"ja\",Modell!$C$16,IF(R{r}=\"teils\",Modell!$D$16,0))+IF(S{r}=\"ja\",Modell!$C$17,IF(S{r}=\"teils\",Modell!$D$17,0)))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",N{r}+T{r})",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(H{r}=\"ja\",\"Ausschluss\",IF(AND(U{r}>=Modell!$C$21,N{r}>=Modell!$C$22),\"A\",IF(U{r}>=Modell!$C$23,\"B\",\"C\"))))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(V{r}=\"\",\"\",IF(V{r}=\"Ausschluss\",\"nicht verfolgen\",IF(V{r}=\"A\",\"in 2 Werktagen persönlich ansprechen\",IF(V{r}=\"C\",\"beobachten\",IF(T{r}>=Modell!$C$18/2,\"prüfen, Passung klären\",\"pflegen, auf Auslöser achten\")))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     }
+    ],
+    "anzahl": 200
+   },
+   "auswahl": [
+    {
+     "spalte": "H",
+     "werte": [
+      "ja",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "I",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "J",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "K",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "L",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "M",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "O",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "P",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "Q",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "R",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "S",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "X",
+     "werte": [
+      "offen",
+      "Gespräch",
+      "Angebot",
+      "Auftrag"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Beispiel Kunden",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Kürzel",
+     "breite": 9,
+     "stil": "text"
+    },
+    {
+     "titel": "Branche",
+     "breite": 20,
+     "stil": "text"
+    },
+    {
+     "titel": "Größe",
+     "breite": 12,
+     "stil": "text"
+    },
+    {
+     "titel": "Region",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "Wie kam er, Anlass",
+     "breite": 28,
+     "stil": "text"
+    },
+    {
+     "titel": "Umsatz je Jahr (€)",
+     "breite": 12,
+     "stil": "euro"
+    },
+    {
+     "titel": "Marge",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "Aufwand",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "Empfiehlt weiter",
+     "breite": 11,
+     "stil": "text"
+    },
+    {
+     "titel": "Zahlung",
+     "breite": 14,
+     "stil": "text"
+    },
+    {
+     "titel": "Pkt. Umsatz",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Pkt. Marge",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Pkt. Aufwand",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Pkt. Empf.",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Pkt. Zahlung",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Summe",
+     "breite": 7,
+     "stil": "fett"
+    },
+    {
+     "titel": "Klasse nach Punkten",
+     "breite": 9,
+     "stil": "fett"
+    },
+    {
+     "titel": "Klasse von Hand (optional)",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "Grund für die Abweichung",
+     "breite": 24,
+     "stil": "text"
+    },
+    {
+     "titel": "Klasse gilt",
+     "breite": 8,
+     "stil": "fett"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "K01",
+      "stil": "text"
+     },
+     {
+      "v": "Molkerei",
+      "stil": "text"
+     },
+     {
+      "v": "140 Beschäftigte",
+      "stil": "text"
+     },
+     {
+      "v": "60 km",
+      "stil": "text"
+     },
+     {
+      "v": "Messe; Audit stand an",
+      "stil": "text"
+     },
+     {
+      "v": 38000,
+      "stil": "euro"
+     },
+     {
+      "v": "hoch",
+      "stil": "text"
+     },
+     {
+      "v": "gering",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "pünktlich",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OR($A{r}=\"\",F{r}=\"\"),\"\",IF(COUNT($F$2:$F$9)<2,2,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=2/3,3,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=1/3,2,1))))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"hoch\",3,IF(G{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}=\"gering\",3,IF(H{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I{r}=\"\",\"\",IF(I{r}=\"ja\",3,IF(I{r}=\"vermutlich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",IF(J{r}=\"pünktlich\",3,IF(J{r}=\"gelegentlich spät\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(K{r}:O{r})<5,\"\",SUM(K{r}:O{r}))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(P{r}=\"\",\"\",IF(P{r}>=Modell!$C$26,\"A\",IF(P{r}>=Modell!$C$27,\"B\",\"C\")))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IF(R{r}<>\"\",R{r},Q{r}))",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "K02",
+      "stil": "text"
+     },
+     {
+      "v": "Fleischverarbeitung",
+      "stil": "text"
+     },
+     {
+      "v": "90 Beschäftigte",
+      "stil": "text"
+     },
+     {
+      "v": "110 km",
+      "stil": "text"
+     },
+     {
+      "v": "Empfehlung; Ausfall, Ware verdorben",
+      "stil": "text"
+     },
+     {
+      "v": 26000,
+      "stil": "euro"
+     },
+     {
+      "v": "hoch",
+      "stil": "text"
+     },
+     {
+      "v": "üblich",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "pünktlich",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OR($A{r}=\"\",F{r}=\"\"),\"\",IF(COUNT($F$2:$F$9)<2,2,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=2/3,3,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=1/3,2,1))))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"hoch\",3,IF(G{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}=\"gering\",3,IF(H{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I{r}=\"\",\"\",IF(I{r}=\"ja\",3,IF(I{r}=\"vermutlich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",IF(J{r}=\"pünktlich\",3,IF(J{r}=\"gelegentlich spät\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(K{r}:O{r})<5,\"\",SUM(K{r}:O{r}))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(P{r}=\"\",\"\",IF(P{r}>=Modell!$C$26,\"A\",IF(P{r}>=Modell!$C$27,\"B\",\"C\")))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IF(R{r}<>\"\",R{r},Q{r}))",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "K03",
+      "stil": "text"
+     },
+     {
+      "v": "Supermarktgruppe",
+      "stil": "text"
+     },
+     {
+      "v": "9 Filialen",
+      "stil": "text"
+     },
+     {
+      "v": "75 km",
+      "stil": "text"
+     },
+     {
+      "v": "Empfehlung der Molkerei; neue Filialen",
+      "stil": "text"
+     },
+     {
+      "v": 31000,
+      "stil": "euro"
+     },
+     {
+      "v": "üblich",
+      "stil": "text"
+     },
+     {
+      "v": "gering",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "pünktlich",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OR($A{r}=\"\",F{r}=\"\"),\"\",IF(COUNT($F$2:$F$9)<2,2,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=2/3,3,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=1/3,2,1))))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"hoch\",3,IF(G{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}=\"gering\",3,IF(H{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I{r}=\"\",\"\",IF(I{r}=\"ja\",3,IF(I{r}=\"vermutlich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",IF(J{r}=\"pünktlich\",3,IF(J{r}=\"gelegentlich spät\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(K{r}:O{r})<5,\"\",SUM(K{r}:O{r}))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(P{r}=\"\",\"\",IF(P{r}>=Modell!$C$26,\"A\",IF(P{r}>=Modell!$C$27,\"B\",\"C\")))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IF(R{r}<>\"\",R{r},Q{r}))",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "K04",
+      "stil": "text"
+     },
+     {
+      "v": "Hausverwaltung",
+      "stil": "text"
+     },
+     {
+      "v": "4 Objekte",
+      "stil": "text"
+     },
+     {
+      "v": "20 km",
+      "stil": "text"
+     },
+     {
+      "v": "Ausschreibung",
+      "stil": "text"
+     },
+     {
+      "v": 9000,
+      "stil": "euro"
+     },
+     {
+      "v": "üblich",
+      "stil": "text"
+     },
+     {
+      "v": "üblich",
+      "stil": "text"
+     },
+     {
+      "v": "vermutlich",
+      "stil": "text"
+     },
+     {
+      "v": "gelegentlich spät",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OR($A{r}=\"\",F{r}=\"\"),\"\",IF(COUNT($F$2:$F$9)<2,2,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=2/3,3,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=1/3,2,1))))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"hoch\",3,IF(G{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}=\"gering\",3,IF(H{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I{r}=\"\",\"\",IF(I{r}=\"ja\",3,IF(I{r}=\"vermutlich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",IF(J{r}=\"pünktlich\",3,IF(J{r}=\"gelegentlich spät\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(K{r}:O{r})<5,\"\",SUM(K{r}:O{r}))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(P{r}=\"\",\"\",IF(P{r}>=Modell!$C$26,\"A\",IF(P{r}>=Modell!$C$27,\"B\",\"C\")))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IF(R{r}<>\"\",R{r},Q{r}))",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "K05",
+      "stil": "text"
+     },
+     {
+      "v": "Kühllager",
+      "stil": "text"
+     },
+     {
+      "v": "60 Beschäftigte",
+      "stil": "text"
+     },
+     {
+      "v": "140 km",
+      "stil": "text"
+     },
+     {
+      "v": "Website-Anfrage; Audit",
+      "stil": "text"
+     },
+     {
+      "v": 22000,
+      "stil": "euro"
+     },
+     {
+      "v": "hoch",
+      "stil": "text"
+     },
+     {
+      "v": "hoch",
+      "stil": "text"
+     },
+     {
+      "v": "vermutlich",
+      "stil": "text"
+     },
+     {
+      "v": "pünktlich",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OR($A{r}=\"\",F{r}=\"\"),\"\",IF(COUNT($F$2:$F$9)<2,2,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=2/3,3,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=1/3,2,1))))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"hoch\",3,IF(G{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}=\"gering\",3,IF(H{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I{r}=\"\",\"\",IF(I{r}=\"ja\",3,IF(I{r}=\"vermutlich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",IF(J{r}=\"pünktlich\",3,IF(J{r}=\"gelegentlich spät\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(K{r}:O{r})<5,\"\",SUM(K{r}:O{r}))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(P{r}=\"\",\"\",IF(P{r}>=Modell!$C$26,\"A\",IF(P{r}>=Modell!$C$27,\"B\",\"C\")))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IF(R{r}<>\"\",R{r},Q{r}))",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "K06",
+      "stil": "text"
+     },
+     {
+      "v": "Restaurant",
+      "stil": "text"
+     },
+     {
+      "v": "12 Beschäftigte",
+      "stil": "text"
+     },
+     {
+      "v": "15 km",
+      "stil": "text"
+     },
+     {
+      "v": "Notfall am Wochenende",
+      "stil": "text"
+     },
+     {
+      "v": 1800,
+      "stil": "euro"
+     },
+     {
+      "v": "niedrig",
+      "stil": "text"
+     },
+     {
+      "v": "hoch",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "oft Mahnung",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OR($A{r}=\"\",F{r}=\"\"),\"\",IF(COUNT($F$2:$F$9)<2,2,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=2/3,3,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=1/3,2,1))))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"hoch\",3,IF(G{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}=\"gering\",3,IF(H{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I{r}=\"\",\"\",IF(I{r}=\"ja\",3,IF(I{r}=\"vermutlich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",IF(J{r}=\"pünktlich\",3,IF(J{r}=\"gelegentlich spät\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(K{r}:O{r})<5,\"\",SUM(K{r}:O{r}))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(P{r}=\"\",\"\",IF(P{r}>=Modell!$C$26,\"A\",IF(P{r}>=Modell!$C$27,\"B\",\"C\")))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IF(R{r}<>\"\",R{r},Q{r}))",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "K07",
+      "stil": "text"
+     },
+     {
+      "v": "Hotel",
+      "stil": "text"
+     },
+     {
+      "v": "45 Beschäftigte",
+      "stil": "text"
+     },
+     {
+      "v": "90 km",
+      "stil": "text"
+     },
+     {
+      "v": "Anruf; Ausfall der Kühlzelle",
+      "stil": "text"
+     },
+     {
+      "v": 6500,
+      "stil": "euro"
+     },
+     {
+      "v": "niedrig",
+      "stil": "text"
+     },
+     {
+      "v": "hoch",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "gelegentlich spät",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OR($A{r}=\"\",F{r}=\"\"),\"\",IF(COUNT($F$2:$F$9)<2,2,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=2/3,3,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=1/3,2,1))))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"hoch\",3,IF(G{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}=\"gering\",3,IF(H{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I{r}=\"\",\"\",IF(I{r}=\"ja\",3,IF(I{r}=\"vermutlich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",IF(J{r}=\"pünktlich\",3,IF(J{r}=\"gelegentlich spät\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(K{r}:O{r})<5,\"\",SUM(K{r}:O{r}))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(P{r}=\"\",\"\",IF(P{r}>=Modell!$C$26,\"A\",IF(P{r}>=Modell!$C$27,\"B\",\"C\")))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IF(R{r}<>\"\",R{r},Q{r}))",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "K08",
+      "stil": "text"
+     },
+     {
+      "v": "Bäckerei mit Filialen",
+      "stil": "text"
+     },
+     {
+      "v": "14 Filialen",
+      "stil": "text"
+     },
+     {
+      "v": "50 km",
+      "stil": "text"
+     },
+     {
+      "v": "Messe; Erweiterung",
+      "stil": "text"
+     },
+     {
+      "v": 19000,
+      "stil": "euro"
+     },
+     {
+      "v": "hoch",
+      "stil": "text"
+     },
+     {
+      "v": "gering",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "pünktlich",
+      "stil": "text"
+     },
+     {
+      "f": "IF(OR($A{r}=\"\",F{r}=\"\"),\"\",IF(COUNT($F$2:$F$9)<2,2,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=2/3,3,IF(COUNTIF($F$2:$F$9,\"<\"&F{r})/(COUNT($F$2:$F$9)-1)>=1/3,2,1))))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"hoch\",3,IF(G{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H{r}=\"\",\"\",IF(H{r}=\"gering\",3,IF(H{r}=\"üblich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I{r}=\"\",\"\",IF(I{r}=\"ja\",3,IF(I{r}=\"vermutlich\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J{r}=\"\",\"\",IF(J{r}=\"pünktlich\",3,IF(J{r}=\"gelegentlich spät\",2,1)))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(K{r}:O{r})<5,\"\",SUM(K{r}:O{r}))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(P{r}=\"\",\"\",IF(P{r}>=Modell!$C$26,\"A\",IF(P{r}>=Modell!$C$27,\"B\",\"C\")))",
+      "stil": "fett"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "text"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",IF(R{r}<>\"\",R{r},Q{r}))",
+      "stil": "fett"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Gesamt",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "SUM(F2:F9)",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "davon A",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "SUMIF(T2:T9,\"A\",F2:F9)",
+      "stil": "euro"
+     },
+     {
+      "v": "Anteil",
+      "stil": "fett"
+     },
+     {
+      "f": "IFERROR(F12/F11,\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Alle Kunden und Zahlen sind frei erfunden (Kälte-Dienstleister aus dem PDF, Seite 5). Dieses Blatt fließt in keine Auswertung ein.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Beispiel Leads",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Firma",
+     "breite": 24,
+     "stil": "text"
+    },
+    {
+     "titel": "Website, Ort",
+     "breite": 18,
+     "stil": "text"
+    },
+    {
+     "titel": "Branche, Größe",
+     "breite": 18,
+     "stil": "text"
+    },
+    {
+     "titel": "Ansprechperson (Rolle)",
+     "breite": 22,
+     "stil": "text"
+    },
+    {
+     "titel": "Quelle des Eintrags",
+     "breite": 16,
+     "stil": "text"
+    },
+    {
+     "titel": "Signal: was, wann, wo",
+     "breite": 24,
+     "stil": "text"
+    },
+    {
+     "titel": "Ausschluss?",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "P1",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "P2",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "P3",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "P4",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "P5",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "Passung",
+     "breite": 8,
+     "stil": "fett"
+    },
+    {
+     "titel": "S1",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "S2",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "S3",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "S4",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "S5",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "Signal",
+     "breite": 8,
+     "stil": "fett"
+    },
+    {
+     "titel": "Gesamt",
+     "breite": 8,
+     "stil": "fett"
+    },
+    {
+     "titel": "Klasse",
+     "breite": 10,
+     "stil": "fett"
+    },
+    {
+     "titel": "Empfehlung",
+     "breite": 30,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Höchster Stand",
+     "breite": 12,
+     "stil": "text"
+    },
+    {
+     "titel": "Nächster Schritt",
+     "breite": 28,
+     "stil": "text"
+    },
+    {
+     "titel": "Datum",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Verantwortlich",
+     "breite": 14,
+     "stil": "text"
+    },
+    {
+     "titel": "Einwilligung E-Mail-Werbung am",
+     "breite": 14,
+     "stil": "datum"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Kriterium:",
+      "stil": "hinweis"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "v": "ja / nein",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$5",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$6",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$7",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$8",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$9",
+      "stil": "hinweis"
+     },
+     null,
+     {
+      "f": "Modell!$B$13",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$14",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$15",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$16",
+      "stil": "hinweis"
+     },
+     {
+      "f": "Modell!$B$17",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Lead 1 · Molkerei",
+      "stil": "text"
+     },
+     {
+      "v": "80 km",
+      "stil": "text"
+     },
+     {
+      "v": "Lebensmittel, 120 Beschäftigte",
+      "stil": "text"
+     },
+     {
+      "v": "Technische Leitung (Nutzer)",
+      "stil": "text"
+     },
+     {
+      "v": "Fachmesse",
+      "stil": "text"
+     },
+     {
+      "v": "Audit in 3 Monaten (Gespräch Messe)",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(I{r}=\"ja\",Modell!$C$5,IF(I{r}=\"teils\",Modell!$D$5,0))+IF(J{r}=\"ja\",Modell!$C$6,IF(J{r}=\"teils\",Modell!$D$6,0))+IF(K{r}=\"ja\",Modell!$C$7,IF(K{r}=\"teils\",Modell!$D$7,0))+IF(L{r}=\"ja\",Modell!$C$8,IF(L{r}=\"teils\",Modell!$D$8,0))+IF(M{r}=\"ja\",Modell!$C$9,IF(M{r}=\"teils\",Modell!$D$9,0)))",
+      "stil": "fett"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "teils",
+      "stil": "text"
+     },
+     {
+      "v": "teils",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(O{r}=\"ja\",Modell!$C$13,IF(O{r}=\"teils\",Modell!$D$13,0))+IF(P{r}=\"ja\",Modell!$C$14,IF(P{r}=\"teils\",Modell!$D$14,0))+IF(Q{r}=\"ja\",Modell!$C$15,IF(Q{r}=\"teils\",Modell!$D$15,0))+IF(R{r}=\"ja\",Modell!$C$16,IF(R{r}=\"teils\",Modell!$D$16,0))+IF(S{r}=\"ja\",Modell!$C$17,IF(S{r}=\"teils\",Modell!$D$17,0)))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",N{r}+T{r})",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(H{r}=\"ja\",\"Ausschluss\",IF(AND(U{r}>=Modell!$C$21,N{r}>=Modell!$C$22),\"A\",IF(U{r}>=Modell!$C$23,\"B\",\"C\"))))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(V{r}=\"\",\"\",IF(V{r}=\"Ausschluss\",\"nicht verfolgen\",IF(V{r}=\"A\",\"in 2 Werktagen persönlich ansprechen\",IF(V{r}=\"C\",\"beobachten\",IF(T{r}>=Modell!$C$18/2,\"prüfen, Passung klären\",\"pflegen, auf Auslöser achten\")))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Gespräch",
+      "stil": "text"
+     },
+     {
+      "v": "anrufen, Audit ansprechen",
+      "stil": "text"
+     },
+     {
+      "v": 46329,
+      "stil": "datum"
+     },
+     {
+      "v": "Vertrieb 1",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Lead 2 · Supermarktgruppe",
+      "stil": "text"
+     },
+     {
+      "v": "170 km",
+      "stil": "text"
+     },
+     {
+      "v": "Handel, 12 Filialen",
+      "stil": "text"
+     },
+     {
+      "v": "Geschäftsführung (Entscheider)",
+      "stil": "text"
+     },
+     {
+      "v": "Empfehlung K01",
+      "stil": "text"
+     },
+     {
+      "v": "keins bekannt",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "teils",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "teils",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(I{r}=\"ja\",Modell!$C$5,IF(I{r}=\"teils\",Modell!$D$5,0))+IF(J{r}=\"ja\",Modell!$C$6,IF(J{r}=\"teils\",Modell!$D$6,0))+IF(K{r}=\"ja\",Modell!$C$7,IF(K{r}=\"teils\",Modell!$D$7,0))+IF(L{r}=\"ja\",Modell!$C$8,IF(L{r}=\"teils\",Modell!$D$8,0))+IF(M{r}=\"ja\",Modell!$C$9,IF(M{r}=\"teils\",Modell!$D$9,0)))",
+      "stil": "fett"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(O{r}=\"ja\",Modell!$C$13,IF(O{r}=\"teils\",Modell!$D$13,0))+IF(P{r}=\"ja\",Modell!$C$14,IF(P{r}=\"teils\",Modell!$D$14,0))+IF(Q{r}=\"ja\",Modell!$C$15,IF(Q{r}=\"teils\",Modell!$D$15,0))+IF(R{r}=\"ja\",Modell!$C$16,IF(R{r}=\"teils\",Modell!$D$16,0))+IF(S{r}=\"ja\",Modell!$C$17,IF(S{r}=\"teils\",Modell!$D$17,0)))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",N{r}+T{r})",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(H{r}=\"ja\",\"Ausschluss\",IF(AND(U{r}>=Modell!$C$21,N{r}>=Modell!$C$22),\"A\",IF(U{r}>=Modell!$C$23,\"B\",\"C\"))))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(V{r}=\"\",\"\",IF(V{r}=\"Ausschluss\",\"nicht verfolgen\",IF(V{r}=\"A\",\"in 2 Werktagen persönlich ansprechen\",IF(V{r}=\"C\",\"beobachten\",IF(T{r}>=Modell!$C$18/2,\"prüfen, Passung klären\",\"pflegen, auf Auslöser achten\")))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "offen",
+      "stil": "text"
+     },
+     {
+      "v": "Empfehlung nutzen, Einladung Fachabend",
+      "stil": "text"
+     },
+     {
+      "v": 46336,
+      "stil": "datum"
+     },
+     {
+      "v": "Vertrieb 2",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Lead 3 · Betriebskantine",
+      "stil": "text"
+     },
+     {
+      "v": "30 km",
+      "stil": "text"
+     },
+     {
+      "v": "Gastronomie, 40 Beschäftigte",
+      "stil": "text"
+     },
+     {
+      "v": "Küchenleitung",
+      "stil": "text"
+     },
+     {
+      "v": "eigene Anfrage",
+      "stil": "text"
+     },
+     {
+      "v": "Ausfall letzte Woche",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "teils",
+      "stil": "text"
+     },
+     {
+      "v": "teils",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "teils",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(I{r}=\"ja\",Modell!$C$5,IF(I{r}=\"teils\",Modell!$D$5,0))+IF(J{r}=\"ja\",Modell!$C$6,IF(J{r}=\"teils\",Modell!$D$6,0))+IF(K{r}=\"ja\",Modell!$C$7,IF(K{r}=\"teils\",Modell!$D$7,0))+IF(L{r}=\"ja\",Modell!$C$8,IF(L{r}=\"teils\",Modell!$D$8,0))+IF(M{r}=\"ja\",Modell!$C$9,IF(M{r}=\"teils\",Modell!$D$9,0)))",
+      "stil": "fett"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "teils",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(O{r}=\"ja\",Modell!$C$13,IF(O{r}=\"teils\",Modell!$D$13,0))+IF(P{r}=\"ja\",Modell!$C$14,IF(P{r}=\"teils\",Modell!$D$14,0))+IF(Q{r}=\"ja\",Modell!$C$15,IF(Q{r}=\"teils\",Modell!$D$15,0))+IF(R{r}=\"ja\",Modell!$C$16,IF(R{r}=\"teils\",Modell!$D$16,0))+IF(S{r}=\"ja\",Modell!$C$17,IF(S{r}=\"teils\",Modell!$D$17,0)))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",N{r}+T{r})",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(H{r}=\"ja\",\"Ausschluss\",IF(AND(U{r}>=Modell!$C$21,N{r}>=Modell!$C$22),\"A\",IF(U{r}>=Modell!$C$23,\"B\",\"C\"))))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(V{r}=\"\",\"\",IF(V{r}=\"Ausschluss\",\"nicht verfolgen\",IF(V{r}=\"A\",\"in 2 Werktagen persönlich ansprechen\",IF(V{r}=\"C\",\"beobachten\",IF(T{r}>=Modell!$C$18/2,\"prüfen, Passung klären\",\"pflegen, auf Auslöser achten\")))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Gespräch",
+      "stil": "text"
+     },
+     {
+      "v": "Notfall lösen, dann Bedarf klären",
+      "stil": "text"
+     },
+     {
+      "v": 46328,
+      "stil": "datum"
+     },
+     {
+      "v": "Vertrieb 1",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Lead 4 · Restaurant",
+      "stil": "text"
+     },
+     {
+      "v": "10 km",
+      "stil": "text"
+     },
+     {
+      "v": "Gastronomie, 2 Kühlstellen",
+      "stil": "text"
+     },
+     {
+      "v": "Inhaber",
+      "stil": "text"
+     },
+     {
+      "v": "eigene Anfrage",
+      "stil": "text"
+     },
+     {
+      "v": "Kühlschrank defekt",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(I{r}=\"ja\",Modell!$C$5,IF(I{r}=\"teils\",Modell!$D$5,0))+IF(J{r}=\"ja\",Modell!$C$6,IF(J{r}=\"teils\",Modell!$D$6,0))+IF(K{r}=\"ja\",Modell!$C$7,IF(K{r}=\"teils\",Modell!$D$7,0))+IF(L{r}=\"ja\",Modell!$C$8,IF(L{r}=\"teils\",Modell!$D$8,0))+IF(M{r}=\"ja\",Modell!$C$9,IF(M{r}=\"teils\",Modell!$D$9,0)))",
+      "stil": "fett"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(O{r}=\"ja\",Modell!$C$13,IF(O{r}=\"teils\",Modell!$D$13,0))+IF(P{r}=\"ja\",Modell!$C$14,IF(P{r}=\"teils\",Modell!$D$14,0))+IF(Q{r}=\"ja\",Modell!$C$15,IF(Q{r}=\"teils\",Modell!$D$15,0))+IF(R{r}=\"ja\",Modell!$C$16,IF(R{r}=\"teils\",Modell!$D$16,0))+IF(S{r}=\"ja\",Modell!$C$17,IF(S{r}=\"teils\",Modell!$D$17,0)))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",N{r}+T{r})",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(H{r}=\"ja\",\"Ausschluss\",IF(AND(U{r}>=Modell!$C$21,N{r}>=Modell!$C$22),\"A\",IF(U{r}>=Modell!$C$23,\"B\",\"C\"))))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(V{r}=\"\",\"\",IF(V{r}=\"Ausschluss\",\"nicht verfolgen\",IF(V{r}=\"A\",\"in 2 Werktagen persönlich ansprechen\",IF(V{r}=\"C\",\"beobachten\",IF(T{r}>=Modell!$C$18/2,\"prüfen, Passung klären\",\"pflegen, auf Auslöser achten\")))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "offen",
+      "stil": "text"
+     },
+     {
+      "v": "Notdienst eines Partners nennen",
+      "stil": "text"
+     },
+     {
+      "v": 46328,
+      "stil": "datum"
+     },
+     {
+      "v": "Vertrieb 1",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-2)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Lead 5 · Fleischverarbeitung",
+      "stil": "text"
+     },
+     {
+      "v": "90 km",
+      "stil": "text"
+     },
+     {
+      "v": "Lebensmittel, 200 Beschäftigte",
+      "stil": "text"
+     },
+     {
+      "v": "Werkleitung (Entscheider)",
+      "stil": "text"
+     },
+     {
+      "v": "Fachmesse",
+      "stil": "text"
+     },
+     {
+      "v": "neue Werkleitung seit 2 Monaten",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(I{r}=\"ja\",Modell!$C$5,IF(I{r}=\"teils\",Modell!$D$5,0))+IF(J{r}=\"ja\",Modell!$C$6,IF(J{r}=\"teils\",Modell!$D$6,0))+IF(K{r}=\"ja\",Modell!$C$7,IF(K{r}=\"teils\",Modell!$D$7,0))+IF(L{r}=\"ja\",Modell!$C$8,IF(L{r}=\"teils\",Modell!$D$8,0))+IF(M{r}=\"ja\",Modell!$C$9,IF(M{r}=\"teils\",Modell!$D$9,0)))",
+      "stil": "fett"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(O{r}=\"ja\",Modell!$C$13,IF(O{r}=\"teils\",Modell!$D$13,0))+IF(P{r}=\"ja\",Modell!$C$14,IF(P{r}=\"teils\",Modell!$D$14,0))+IF(Q{r}=\"ja\",Modell!$C$15,IF(Q{r}=\"teils\",Modell!$D$15,0))+IF(R{r}=\"ja\",Modell!$C$16,IF(R{r}=\"teils\",Modell!$D$16,0))+IF(S{r}=\"ja\",Modell!$C$17,IF(S{r}=\"teils\",Modell!$D$17,0)))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",N{r}+T{r})",
+      "stil": "fett"
+     },
+     {
+      "f": "IF($B{r}=\"\",\"\",IF(H{r}=\"ja\",\"Ausschluss\",IF(AND(U{r}>=Modell!$C$21,N{r}>=Modell!$C$22),\"A\",IF(U{r}>=Modell!$C$23,\"B\",\"C\"))))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(V{r}=\"\",\"\",IF(V{r}=\"Ausschluss\",\"nicht verfolgen\",IF(V{r}=\"A\",\"in 2 Werktagen persönlich ansprechen\",IF(V{r}=\"C\",\"beobachten\",IF(T{r}>=Modell!$C$18/2,\"prüfen, Passung klären\",\"pflegen, auf Auslöser achten\")))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Angebot",
+      "stil": "text"
+     },
+     {
+      "v": "Rundgang vor Ort anbieten",
+      "stil": "text"
+     },
+     {
+      "v": 46331,
+      "stil": "datum"
+     },
+     {
+      "v": "Vertrieb 2",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     }
+    ],
+    [],
+    [
+     null,
+     {
+      "v": "Alle Firmen und Angaben sind frei erfunden. Das Beispiel rechnet mit dem Blatt „Modell“. Mit den Startwerten entspricht es Seite 14 im PDF. Es fließt in keine Auswertung ein.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  }
+ ]
+}

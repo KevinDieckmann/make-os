@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Elevator-Pitch-Baukasten</title>
+<link rel="stylesheet" href="../vorlagen/basis.css">
+<style>
+  /* Baustein · eigene Bausteine (basis.css bleibt unverändert) */
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 166mm; }
+  h2.blatt { margin-top: 1.6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  .unter { margin-top: 1.6mm; max-width: 170mm; font-size: 10.2pt; line-height: 1.45; }
+  h3 { font-size: 10.5pt; line-height: 1.28; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  .klein { font-size: 8.8pt; line-height: 1.4; color: var(--tinte-leise); }
+  .abschnitt-titel { margin-top: 4.4mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; }
+  .abschnitt-titel small { font-size: 8.4pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .so { margin-top: 2.4mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; max-width: 172mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9pt; line-height: 1.45; }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; text-transform: uppercase; }
+
+  /* Deckblatt */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3mm; margin-top: 3.2mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 9.8pt; line-height: 1.42; }
+  .ablauf { margin-top: 2.2mm; }
+  .ablauf li { display: grid; grid-template-columns: 9mm 1fr 22mm; padding: 2.2mm 0 2mm; border-bottom: var(--linie) solid var(--haar); }
+  .ablauf li:last-child { border-bottom: 0; }
+  .ablauf .nr { font-size: 12pt; line-height: 1.2; }
+  .ablauf h3 { font-size: 10.3pt; }
+  .ablauf p { margin-top: .5mm; font-size: 9.5pt; line-height: 1.4; }
+  .ablauf .s { text-align: right; font-size: 8.5pt; color: var(--tinte-leise); padding-top: .6mm; }
+
+  /* Schreiblinien und Felder */
+  .linien .zeile-frei { height: 7.2mm; }
+  .linien.eng .zeile-frei { height: 6.4mm; }
+  .reihe { display: flex; gap: 6mm; margin-top: 1.6mm; }
+  .reihe .feld { flex: 1; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6mm; }
+
+  /* Raster-Tabellen */
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.8mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.4pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.6pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.3mm 1.8mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.36; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster.text td { border-bottom-color: var(--haar); }
+  .raster td.leise { color: var(--tinte-leise); }
+  .raster td.n { color: var(--akzent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .raster td.stark { color: var(--tinte); font-weight: 600; }
+  .raster .mitte { text-align: center; }
+  .raster td .zeile-frei { height: 6.4mm; }
+  .raster td .zeile-frei:last-child { border-bottom: 0; }
+
+  /* Ankreuzen */
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.5mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.3pt; line-height: 1.38; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste .kreuz { margin-top: .5mm; }
+  .liste b { color: var(--tinte); font-weight: 600; }
+  .pruefen { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; row-gap: 1.8mm; margin-top: 2.4mm; }
+  .pruefen li { display: flex; gap: 2.4mm; font-size: 9.2pt; line-height: 1.36; }
+  .pruefen .kreuz { margin-top: .5mm; }
+  .wahl { display: inline-flex; align-items: center; gap: 1.4mm; margin-right: 4mm; font-size: 8.8pt; white-space: nowrap; }
+  .skala { display: inline-flex; gap: 1mm; }
+  .skala span { width: 4.4mm; height: 4.4mm; border: var(--linie) solid var(--tinte-leise); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 7.2pt; color: var(--tinte-leise); }
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .drei { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+
+  .sechs { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; row-gap: 0; margin-top: .6mm; }
+  .sechs li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.8mm 0 1.6mm; border-bottom: var(--linie) solid var(--haar); }
+  .sechs li:nth-child(n+4) { border-bottom: 0; }
+  .sechs .nr { font-size: 10.5pt; line-height: 1.2; }
+  .sechs b { display: block; color: var(--tinte); font-weight: 600; font-size: 9.6pt; }
+  .sechs span:not(.nr) { display: block; font-size: 8.8pt; line-height: 1.35; color: var(--tinte-leise); margin-top: .2mm; }
+  /* Bausteine-Bogen */
+  .baustein { display: grid; grid-template-columns: 9mm 1fr; padding: 2.4mm 0 1.4mm; border-bottom: var(--linie) solid var(--haar); }
+  .baustein:last-of-type { border-bottom: 0; }
+  .baustein .nr { font-size: 13pt; line-height: 1.15; }
+  .baustein h3 { font-size: 11pt; }
+  .baustein h3 small { font-weight: 400; color: var(--tinte-leise); font-size: 9pt; margin-left: 1.6mm; }
+  .baustein .frage { margin-top: .5mm; font-size: 9.3pt; line-height: 1.38; }
+  .vergleich { margin-top: .9mm; display: grid; grid-template-columns: 1fr 1fr; column-gap: 5mm; font-size: 8.7pt; line-height: 1.35; }
+  .vergleich span b { font-size: 7pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; margin-right: 1.4mm; }
+  .vergleich .schwach { color: var(--tinte-leise); }
+  .vergleich .schwach b { color: var(--tinte-leise); }
+  .vergleich .stark-b { color: var(--tinte); }
+  .vergleich .stark-b b { color: var(--akzent); }
+  .baustein .linien .zeile-frei { height: 6.8mm; }
+
+  /* Gerüste */
+  .geruest { margin-top: 1.6mm; }
+  .geruest li { display: grid; grid-template-columns: 7mm 1fr; padding: 1.2mm 0; font-size: 9.6pt; line-height: 1.6; color: var(--tinte); border-bottom: var(--linie) solid var(--haar); }
+  .geruest li:last-child { border-bottom: 0; }
+  .geruest .nr { font-size: 9pt; }
+  .luecke { display: inline-block; min-width: 22mm; border-bottom: var(--linie) solid var(--haar-schreib); color: var(--akzent); font-size: 7.8pt; font-weight: 600; letter-spacing: .03em; text-align: center; line-height: 1.2; padding: 0 1mm .3mm; }
+  .entwurf { display: grid; grid-template-columns: 21mm 1fr 44mm; column-gap: 3mm; align-items: end; margin-top: .6mm; }
+  .entwurf > span:first-child { font-size: 8pt; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; color: var(--tinte-leise); padding-bottom: 1.2mm; }
+  .entwurf .zaehl { display: flex; gap: 2mm; }
+  .entwurf .zaehl .feld { flex: 1; }
+  .entwurf .zaehl .feld .strich { min-width: 8mm; }
+
+  /* Beispiele */
+  .bsp { padding: 2.6mm 0 2.4mm; border-bottom: var(--linie) solid var(--haar); }
+  .bsp:last-of-type { border-bottom: 0; }
+  .bsp-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }
+  .bsp-kopf h3 { font-size: 10.8pt; }
+  .bsp-kopf h3 .nr { margin-right: 1.6mm; }
+  .bsp-kopf span { font-size: 8.3pt; color: var(--tinte-leise); white-space: nowrap; }
+  .bsp-raster { display: grid; grid-template-columns: 58mm 1fr; column-gap: 6mm; margin-top: 1.4mm; }
+  .bsp-raster b.label { display: block; font-size: 7.4pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--akzent); margin-bottom: .5mm; }
+  .pitch { font-size: 9.1pt; line-height: 1.4; color: var(--tinte); }
+  .zaehler { display: block; margin-top: .6mm; font-size: 7.8pt; color: var(--tinte-leise); }
+  .warum { margin-top: 1.3mm; font-size: 8.6pt; line-height: 1.38; color: var(--tinte-text); }
+  .warum b { color: var(--akzent); font-weight: 600; }
+
+  /* 2-Minuten-Beispiel */
+  .lang { margin-top: 2.6mm; border-top: .9pt solid var(--haar-stark); }
+  .lang li { display: grid; grid-template-columns: 27mm 1fr 44mm; column-gap: 4.5mm; padding: 1.7mm 0 1.6mm; border-bottom: var(--linie) solid var(--haar); }
+  .lang li:last-child { border-bottom: 0; }
+  .lang .zeit { font-size: 8pt; font-variant-numeric: tabular-nums; color: var(--tinte-leise); line-height: 1.35; }
+  .lang .zeit b { display: block; color: var(--akzent); font-size: 8.8pt; font-weight: 600; }
+  .lang .pitch { font-size: 9.3pt; line-height: 1.42; }
+  .lang .anm { font-size: 8.4pt; line-height: 1.36; color: var(--tinte-leise); border-left: var(--linie) solid var(--haar); padding-left: 3mm; }
+
+  .entwurf-alt { display: grid; grid-template-columns: 1fr 72mm; column-gap: 7mm; margin-top: 2mm; }
+  .entwurf-alt .pitch { color: var(--tinte-leise); font-style: italic; padding-left: 4mm; border-left: .9pt solid var(--haar-stark); }
+  .entwurf-alt .regeln li { margin-top: 0; margin-bottom: .8mm; }
+  .entwurf-alt .regeln li b { color: var(--akzent); }
+  /* Varianten */
+  .variante { padding: 2.3mm 0 2mm; border-bottom: var(--linie) solid var(--haar); }
+  .variante:last-of-type { border-bottom: 0; }
+  .variante-kopf { display: grid; grid-template-columns: 9mm 1fr; }
+  .variante-kopf .nr { font-size: 13pt; line-height: 1.15; }
+  .variante-kopf h3 { font-size: 11.5pt; }
+  .variante-kopf p { margin-top: .4mm; font-size: 9pt; color: var(--tinte-leise); }
+  .variante-raster { display: grid; grid-template-columns: 1fr 1fr; column-gap: 7mm; margin-top: 1.6mm; padding-left: 9mm; }
+  .regeln li { padding-left: 3mm; text-indent: -3mm; font-size: 8.9pt; line-height: 1.36; margin-top: .7mm; }
+  .regeln li::before { content: "·"; color: var(--akzent); display: inline-block; width: 3mm; text-indent: 0; font-weight: 700; }
+  .regeln li b { color: var(--tinte); font-weight: 600; }
+  .bsp-text { padding-left: 4mm; border-left: .9pt solid var(--akzent); }
+  .bsp-text b.label { display: block; font-size: 7.4pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--akzent); margin-bottom: .6mm; }
+  .bsp-text p { font-size: 8.9pt; line-height: 1.4; color: var(--tinte); }
+  .bsp-text p + p { margin-top: 1mm; }
+  .bsp-text .klein { font-size: 7.8pt; }
+  .ihre { margin-top: 1.4mm; padding-left: 9mm; }
+  .ihre b.label { display: block; font-size: 7.4pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise); margin-top: 1.2mm; }
+  .ihre .linien .zeile-frei { height: 6.2mm; }
+  .recht { margin-top: 1.6mm; margin-left: 9mm; padding: .6mm 0 .6mm 3.5mm; border-left: .9pt solid var(--haar-stark); font-size: 8.3pt; line-height: 1.4; color: var(--tinte-text); }
+  .recht b { color: var(--tinte); }
+
+  /* Üben */
+  .runden { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; margin-top: 2.4mm; }
+  .runden div { border-top: .9pt solid var(--haar-stark); padding-top: 1.6mm; }
+  .runden .nr { font-size: 8pt; letter-spacing: .1em; }
+  .runden h3 { margin-top: .3mm; font-size: 10pt; }
+  .runden p { margin-top: .6mm; font-size: 8.8pt; line-height: 1.38; }
+  table.feedback td { height: 13.4mm; }
+  table.feedback .wahl { margin-right: 2.4mm; font-size: 8.4pt; }
+  table.feedback td:first-child { font-size: 8.8pt; color: var(--tinte); }
+  table.feedback td:first-child small { display: block; color: var(--tinte-leise); font-size: 7.6pt; }
+
+  /* Fehler */
+  table.fehler td { height: auto; padding-top: 1.4mm; padding-bottom: 1.3mm; font-size: 8.7pt; line-height: 1.34; border-bottom-color: var(--haar); }
+  table.fehler td:nth-child(2) { color: var(--tinte); font-weight: 600; }
+  table.fehler td.n { font-weight: 600; }
+
+  /* Nächste Schritte */
+  .weiter-liste { margin-top: 2.4mm; }
+  .weiter-liste li { display: grid; grid-template-columns: 34mm 1fr; column-gap: 6mm; padding: 3mm 0 2.8mm; border-bottom: var(--linie) solid var(--haar); }
+  .weiter-liste li:last-child { border-bottom: 0; }
+  .weiter-liste .art { font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); padding-top: .8mm; }
+  .weiter-liste h3 { font-size: 11pt; }
+  .weiter-liste p { margin-top: .7mm; font-size: 9.6pt; line-height: 1.42; }
+  .weiter-liste a { display: block; margin-top: 1mm; color: var(--akzent); text-decoration: none; font-weight: 600; font-size: 9.6pt; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+</svg>
+
+<!-- 1 · Deckblatt -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Baustein · Positionierung</p>
+    <h1>Elevator-Pitch-Baukasten</h1>
+    <p class="lead">Sagen Sie in 10 Sekunden, 30 Sekunden oder 2 Minuten, was Sie machen, und zwar so, dass man nachfragt. Mit sechs Bausteinen, Bögen für alle drei Längen, acht ausgefüllten Beispielen und Fassungen für Netzwerk-Abend, Telefon, LinkedIn und E-Mail-Signatur.</p>
+  </div>
+
+  <p class="abschnitt-titel">So nutzen Sie dieses Paket</p>
+  <div class="fakten">
+    <div><b>Ihr Ergebnis</b><p>Drei gesprochene Fassungen Ihres Pitches und sechs Fassungen für einzelne Anlässe, von der Vorstellungsrunde bis zur Signatur. Geprüft mit drei echten Zuhörern.</p></div>
+    <div><b>Zeitbedarf</b><p>Etwa drei Stunden: eine für den Rohstoff, eine für die drei Längen, eine für Anlässe und Üben. Dazu drei Feedback-Runden zu je zehn Minuten, verteilt auf eine Woche.</p></div>
+    <div><b>Sie brauchen</b><p>Notizen aus drei bis fünf Kundengesprächen, eine Stoppuhr (das Handy reicht), einen Stift und zwei bis drei Menschen, die Ihnen zuhören.</p></div>
+    <div><b>Gut zu wissen</b><p>Ein Pitch wird gesprochen, nicht vorgelesen. Schreiben, laut sprechen, kürzen, noch einmal sprechen. Das Ziel ist keine Rede, sondern eine Rückfrage.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Reihenfolge</p>
+  <ol class="ablauf">
+    <li><span class="nr">1</span><div><h3>Das Prinzip verstehen</h3><p>Drei Längen, sechs Bausteine und die zehn Fehler, die fast jeder Pitch am Anfang hat.</p></div><span class="s">Seite 2</span></li>
+    <li><span class="nr">2</span><div><h3>Rohstoff sammeln</h3><p>Die sechs Bausteine in Stichworten, mit je einem schwachen und einem starken Beispiel.</p></div><span class="s">Seite 3</span></li>
+    <li><span class="nr">3</span><div><h3>Drei Längen bauen</h3><p>Erst 10 Sekunden, dann 30 Sekunden, dann 2 Minuten. Jede Länge baut auf der kürzeren auf.</p></div><span class="s">Seite 4–5</span></li>
+    <li><span class="nr">4</span><div><h3>Beispiele lesen</h3><p>Acht frei erfundene Unternehmen von der Kanzlei bis zum Startup, dazu ein 2-Minuten-Pitch Satz für Satz erklärt.</p></div><span class="s">Seite 6–8</span></li>
+    <li><span class="nr">5</span><div><h3>Für jeden Anlass anpassen</h3><p>Netzwerk-Abend, Telefon, Online-Runde, LinkedIn-Profil, E-Mail-Signatur, Messe und Video.</p></div><span class="s">Seite 9–10</span></li>
+    <li><span class="nr">6</span><div><h3>Üben und prüfen</h3><p>Drei Übungsrunden, ein Feedback-Bogen für Ihre Zuhörer und eine Prüfliste vor dem Einsatz.</p></div><span class="s">Seite 11</span></li>
+    <li><span class="nr">7</span><div><h3>Weitermachen</h3><p>Ihre nächsten drei Schritte und wie aus dem Pitch eine ganze Botschaft wird.</p></div><span class="s">Seite 12</span></li>
+  </ol>
+
+  <p class="hinweis"><b>Tipp:</b> Lesen Sie vor dem Ausfüllen zwei Beispiele auf Seite 6, dann wissen Sie, wohin es geht. Haben Sie schon den Kernsatz aus unserer kostenlosen Vorlage „Ihr Kernsatz in fünf Schritten“, übernehmen Sie dessen vier Antworten in den Bogen auf Seite 3. Kopieren Sie die Bögen für jede Person im Team. Die Tabelle zu diesem Paket zählt Wörter und Sekunden und wertet das Feedback Ihrer Zuhörer aus.</p>
+</section>
+
+<!-- 2 · Prinzip -->
+<section class="seite">
+  <p class="vorzeile">Grundlagen</p>
+  <h2 class="blatt">Drei Längen, sechs Bausteine</h2>
+  <p class="unter">Ein Elevator-Pitch ist die Antwort auf „Und was machen Sie?“. Er ist gut, wenn Ihr Gegenüber danach einordnen kann, ob er selbst oder jemand, den er kennt, Sie brauchen könnte, und wenn er eine Frage stellt.</p>
+
+  <p class="abschnitt-titel">Die drei Längen <small>Faustregel: Ruhig gesprochen sind es gut zwei Wörter je Sekunde.</small></p>
+  <table class="raster text">
+    <colgroup><col style="width:22mm"><col style="width:56mm"><col style="width:40mm"><col></colgroup>
+    <thead><tr><th>Länge</th><th>Wann Sie sie brauchen</th><th>Umfang</th><th>Ziel</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">10 Sekunden</td><td>Vorstellungsrunde, Smalltalk, Telefon-Einstieg, Profilzeile</td><td>ein Satz, 20 bis 25 Wörter, Bausteine 1 bis 3</td><td>Einordnen: Man weiß, was Sie tun und für wen.</td></tr>
+      <tr><td class="stark">30 Sekunden</td><td>Netzwerk-Abend, erstes Gespräch, Online-Runde, Mailbox</td><td>ein Satz je Baustein, 60 bis 70 Wörter</td><td>Interesse: Man will mehr wissen und fragt nach.</td></tr>
+      <tr><td class="stark">2 Minuten</td><td>Kennenlernen mit Zeit, Vorstellung vor einer Gruppe, Video</td><td>sechs Abschnitte mit Szene und Fall, 240 bis 280 Wörter</td><td>Vertrauen: Man kennt Ablauf, Unterschied und den nächsten Schritt.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Die sechs Bausteine <small>ausführlich auf Seite 3</small></p>
+  <ol class="sechs">
+    <li><span class="nr">1</span><div><b>Für wen</b><span>Wer genau hat das Problem?</span></div></li>
+    <li><span class="nr">2</span><div><b>Problem</b><span>Was kostet es diese Menschen heute?</span></div></li>
+    <li><span class="nr">3</span><div><b>Lösung</b><span>Was tun Sie, in einfachen Worten?</span></div></li>
+    <li><span class="nr">4</span><div><b>Unterschied</b><span>Was ist anders als die naheliegende Wahl?</span></div></li>
+    <li><span class="nr">5</span><div><b>Beleg</b><span>Woran sieht man, dass es stimmt?</span></div></li>
+    <li><span class="nr">6</span><div><b>Frage zurück</b><span>Welche Frage öffnet das Gespräch?</span></div></li>
+  </ol>
+
+  <p class="abschnitt-titel">Zehn typische Fehler <small>und wie Sie sie vermeiden</small></p>
+  <table class="raster fehler">
+    <colgroup><col style="width:7mm"><col style="width:56mm"><col></colgroup>
+    <tbody>
+      <tr><td class="n">1</td><td>Mit Firmenname und Geschichte beginnen</td><td>Mit Zielgruppe oder Problem beginnen. Der Name kommt, wenn jemand fragt.</td></tr>
+      <tr><td class="n">2</td><td>Für alle da sein</td><td>Eine Zielgruppe nennen. Für andere Runden gibt es andere Fassungen.</td></tr>
+      <tr><td class="n">3</td><td>Leistungen aufzählen statt Ergebnisse</td><td>Sagen, was sich beim Kunden ändert: weniger Aufwand, weniger Risiko.</td></tr>
+      <tr><td class="n">4</td><td>Fachwörter</td><td>Jede Rückfrage „Was heißt das?“ zeigt eines. Kundenwörter nehmen.</td></tr>
+      <tr><td class="n">5</td><td>Zu lang</td><td>Stoppuhr. Die 10-Sekunden-Fassung muss allein stehen können.</td></tr>
+      <tr><td class="n">6</td><td>Große Worte ohne Beleg</td><td>Statt „führend“ und „innovativ“: eine Zahl, ein Ablauf, eine Zusage.</td></tr>
+      <tr><td class="n">7</td><td>Auswendig gelernt</td><td>Die Bausteine lernen, nicht den Wortlaut. Dann klingt es frei.</td></tr>
+      <tr><td class="n">8</td><td>Kein Ende finden</td><td>Mit einer Frage aufhören und dann schweigen.</td></tr>
+      <tr><td class="n">9</td><td>Nach 30 Sekunden einen Termin wollen</td><td>Erst Interesse, dann den nächsten Schritt anbieten.</td></tr>
+      <tr><td class="n">10</td><td>Jeder im Team erzählt etwas anderes</td><td>Eine gemeinsame Fassung. Wörter dürfen variieren, Bausteine nicht.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 3 · Rohstoff -->
+<section class="seite">
+  <p class="vorzeile">Bogen 1 · Rohstoff</p>
+  <h2 class="blatt">Sechs Bausteine in Stichworten</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Stichworte, keine fertigen Sätze. Schreiben Sie mehr auf, als Sie brauchen, und kreisen Sie danach je Baustein das stärkste Stichwort ein. Die Beispiele zeigen den Unterschied zwischen schwach und stark.</p>
+
+  <div class="baustein"><span class="nr">1</span><div>
+    <h3>Für wen <small>Branche, Größe, Rolle, Anlass</small></h3>
+    <p class="vergleich"><span class="schwach"><b>schwach</b>„mittelständische Unternehmen“</span><span class="stark-b"><b>stark</b>„Familienbetriebe mit 50 bis 200 Leuten, die bald an die nächste Generation übergeben“</span></p>
+    <div class="linien" data-linien="2"></div></div></div>
+  <div class="baustein"><span class="nr">2</span><div>
+    <h3>Problem <small>Was es heute kostet, in Kundenworten</small></h3>
+    <p class="vergleich"><span class="schwach"><b>schwach</b>„ineffiziente Prozesse“</span><span class="stark-b"><b>stark</b>„Jeden Freitag sitzt die Chefin bis abends an den Stundenzetteln.“</span></p>
+    <div class="linien" data-linien="2"></div></div></div>
+  <div class="baustein"><span class="nr">3</span><div>
+    <h3>Lösung <small>mit einem Verb, ohne Fachwort</small></h3>
+    <p class="vergleich"><span class="schwach"><b>schwach</b>„ganzheitliche Digitalisierungslösungen“</span><span class="stark-b"><b>stark</b>„Wir richten eine App ein, mit der jede Kolonne ihre Stunden direkt auf der Baustelle erfasst.“</span></p>
+    <div class="linien" data-linien="2"></div></div></div>
+  <div class="baustein"><span class="nr">4</span><div>
+    <h3>Unterschied <small>gegenüber der naheliegenden Wahl, auch „selbst machen“</small></h3>
+    <p class="vergleich"><span class="schwach"><b>schwach</b>„hohe Qualität und persönlicher Service“</span><span class="stark-b"><b>stark</b>„eingerichtet an einem Tag, vor Ort, und wir zeigen es jeder Kolonne selbst“</span></p>
+    <div class="linien" data-linien="2"></div></div></div>
+  <div class="baustein"><span class="nr">5</span><div>
+    <h3>Beleg <small>Zahl mit Messweg, Fall, Zusage</small></h3>
+    <p class="vergleich"><span class="schwach"><b>schwach</b>„viele zufriedene Kunden“</span><span class="stark-b"><b>stark</b>„Bei den letzten zwölf Betrieben dauerte die Abrechnung danach eine Stunde statt eines Tages.“</span></p>
+    <div class="linien" data-linien="2"></div></div></div>
+  <div class="baustein"><span class="nr">6</span><div>
+    <h3>Frage zurück <small>knüpft am Problem an, leicht zu beantworten</small></h3>
+    <p class="vergleich"><span class="schwach"><b>schwach</b>„Wann hätten Sie Zeit für einen Termin?“</span><span class="stark-b"><b>stark</b>„Wie läuft das bei Ihnen gerade mit den Stundenzetteln?“</span></p>
+    <div class="linien" data-linien="2"></div></div></div>
+
+  <p class="abschnitt-titel">Wörter Ihrer Kunden <small>Sätze aus Gesprächen und Bewertungen, wörtlich</small></p>
+  <div class="linien eng" data-linien="2"></div>
+</section>
+
+<!-- 4 · 10 und 30 Sekunden -->
+<section class="seite">
+  <p class="vorzeile">Bogen 2 · Kurze Fassungen</p>
+  <h2 class="blatt">10 Sekunden und 30 Sekunden</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Beginnen Sie mit der kurzen Fassung. Probieren Sie alle drei Gerüste, sprechen Sie jeden Entwurf laut und messen Sie die Zeit. Aus dem besten Entwurf wird der erste Satz der 30-Sekunden-Fassung.</p>
+
+  <p class="abschnitt-titel">10 Sekunden · drei Gerüste</p>
+  <ol class="geruest">
+    <li><span class="nr">A</span><span>Ich helfe <span class="luecke">für wen</span>, <span class="luecke">Ergebnis statt Problem</span>.</span></li>
+    <li><span class="nr">B</span><span>Wir <span class="luecke">Lösung</span> für <span class="luecke">für wen</span>, damit <span class="luecke">Ergebnis</span>.</span></li>
+    <li><span class="nr">C</span><span>Kennen Sie <span class="luecke">Problem</span>? Genau das lösen wir für <span class="luecke">für wen</span>.</span></li>
+  </ol>
+  <div class="entwurf"><span>Entwurf 1</span><div class="zeile-frei"></div><div class="zaehl"><p class="feld"><span>Wörter</span><span class="strich"></span></p><p class="feld"><span>Sek.</span><span class="strich"></span></p></div></div>
+  <div class="entwurf"><span></span><div class="zeile-frei"></div><span></span></div>
+  <div class="entwurf"><span>Entwurf 2</span><div class="zeile-frei"></div><div class="zaehl"><p class="feld"><span>Wörter</span><span class="strich"></span></p><p class="feld"><span>Sek.</span><span class="strich"></span></p></div></div>
+  <div class="entwurf"><span></span><div class="zeile-frei"></div><span></span></div>
+  <div class="entwurf"><span>Entwurf 3</span><div class="zeile-frei"></div><div class="zaehl"><p class="feld"><span>Wörter</span><span class="strich"></span></p><p class="feld"><span>Sek.</span><span class="strich"></span></p></div></div>
+  <div class="entwurf"><span></span><div class="zeile-frei"></div><span></span></div>
+  <ul class="pruefen">
+    <li><span class="kreuz"></span><span>Höchstens 25 Wörter, in einem Atemzug zu sagen</span></li>
+    <li><span class="kreuz"></span><span>Die Zielgruppe erkennt sich wieder</span></li>
+    <li><span class="kreuz"></span><span>Kein Fachwort, kein „Lösungen“, kein „ganzheitlich“</span></li>
+    <li><span class="kreuz"></span><span>Ein Wettbewerber könnte ihn nicht genauso sagen</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">30 Sekunden · ein Satz je Baustein</p>
+  <table class="raster">
+    <colgroup><col style="width:10mm"><col style="width:38mm"><col></colgroup>
+    <thead><tr><th></th><th>Baustein</th><th>Ihr Satz <small>gesprochen, nicht geschrieben</small></th></tr></thead>
+    <tbody>
+      <tr><td class="n">1–2</td><td class="stark">Für wen und Problem<small class="klein" style="display:block;font-weight:400">Ihr 10-Sekunden-Satz oder eine Szene</small></td><td><div class="linien eng" data-linien="2"></div></td></tr>
+      <tr><td class="n">3</td><td class="stark">Lösung<small class="klein" style="display:block;font-weight:400">Was Sie tun, gern in Schritten</small></td><td><div class="linien eng" data-linien="2"></div></td></tr>
+      <tr><td class="n">4</td><td class="stark">Unterschied<small class="klein" style="display:block;font-weight:400">„Anders als …“ ohne Namen</small></td><td><div class="linien eng" data-linien="2"></div></td></tr>
+      <tr><td class="n">5</td><td class="stark">Beleg<small class="klein" style="display:block;font-weight:400">eine Zahl, ein Fall, eine Zusage</small></td><td><div class="linien eng" data-linien="1"></div></td></tr>
+      <tr><td class="n">6</td><td class="stark">Frage zurück</td><td><div class="linien eng" data-linien="1"></div></td></tr>
+    </tbody>
+  </table>
+  <div class="reihe" style="margin-top:2.4mm"><p class="feld"><span>Laut gesprochen: Sekunden</span><span class="strich"></span></p><p class="feld"><span>Wörter</span><span class="strich"></span></p><p class="feld"><span>Gekürzt am</span><span class="strich"></span></p></div>
+</section>
+
+<!-- 5 · 2 Minuten -->
+<section class="seite">
+  <p class="vorzeile">Bogen 3 · Lange Fassung</p>
+  <h2 class="blatt">Die 2-Minuten-Fassung</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Die lange Fassung erzählt. Sie nutzt dieselben Bausteine, gibt ihnen aber Raum: eine Szene aus dem Alltag Ihrer Kunden, einen Ablauf, einen echten Fall. Schreiben Sie Stichworte, sprechen Sie frei und halten Sie die Zeitmarken grob ein.</p>
+  <table class="raster">
+    <colgroup><col style="width:17mm"><col style="width:52mm"><col></colgroup>
+    <thead><tr><th>Zeit</th><th>Abschnitt</th><th>Ihre Stichworte</th></tr></thead>
+    <tbody>
+      <tr><td class="leise">0:00–0:15</td><td><b class="stark">Einstieg</b><p class="klein" style="margin-top:.6mm">Eine Szene oder Frage aus dem Alltag Ihrer Kunden. Nicht Ihr Name, sondern deren Lage.</p></td><td><div class="linien eng" data-linien="4"></div></td></tr>
+      <tr><td class="leise">0:15–0:35</td><td><b class="stark">Für wen und Problem</b><p class="klein" style="margin-top:.6mm">Wen es trifft und was es kostet. Mit einem Satz, den Kunden genau so sagen.</p></td><td><div class="linien eng" data-linien="4"></div></td></tr>
+      <tr><td class="leise">0:35–1:05</td><td><b class="stark">Lösung und Ablauf</b><p class="klein" style="margin-top:.6mm">Was Sie tun, in drei Schritten. Wie lange es dauert und was der Kunde beitragen muss.</p></td><td><div class="linien eng" data-linien="4"></div></td></tr>
+      <tr><td class="leise">1:05–1:25</td><td><b class="stark">Unterschied</b><p class="klein" style="margin-top:.6mm">Was anders ist als die naheliegende Wahl. Gern mit „Statt … machen wir …“.</p></td><td><div class="linien eng" data-linien="3"></div></td></tr>
+      <tr><td class="leise">1:25–1:45</td><td><b class="stark">Beleg</b><p class="klein" style="margin-top:.6mm">Ein Fall: vorher, was Sie getan haben, nachher. Mit Freigabe des Kunden oder ohne Namen.</p></td><td><div class="linien eng" data-linien="4"></div></td></tr>
+      <tr><td class="leise">1:45–2:00</td><td><b class="stark">Frage und nächster Schritt</b><p class="klein" style="margin-top:.6mm">Eine Frage zurück und ein kleines, freiwilliges Angebot.</p></td><td><div class="linien eng" data-linien="3"></div></td></tr>
+    </tbody>
+  </table>
+  <p class="abschnitt-titel">Brücken zwischen den Abschnitten <small>Kreisen Sie ein, was zu Ihnen passt</small></p>
+  <ul class="pruefen">
+    <li><span class="kreuz"></span><span>„Das Schwierige daran ist …“</span></li>
+    <li><span class="kreuz"></span><span>„Wir machen das in drei Schritten: …“</span></li>
+    <li><span class="kreuz"></span><span>„Der Unterschied zu … ist …“</span></li>
+    <li><span class="kreuz"></span><span>„Ein Beispiel aus dem letzten Jahr: …“</span></li>
+    <li><span class="kreuz"></span><span>„Wie ist das bei Ihnen?“</span></li>
+    <li><span class="kreuz"></span><span>Eigene: <span class="lk" style="display:inline-block;width:48mm;border-bottom:var(--linie) solid var(--haar-schreib)">&nbsp;</span></span></li>
+  </ul>
+  <div class="reihe" style="margin-top:3mm"><p class="feld"><span>Laut gesprochen: Minuten</span><span class="strich"></span></p><p class="feld"><span>Wörter</span><span class="strich"></span></p><p class="feld"><span>Was ich als Erstes streiche</span><span class="strich"></span></p></div>
+</section>
+
+<!-- 6 · Beispiele 1 bis 4 -->
+<section class="seite">
+  <p class="vorzeile" style="color:var(--akzent)">Beispiele · frei erfunden</p>
+  <h2 class="blatt">Acht Unternehmen, sechzehn Fassungen</h2>
+  <p class="unter">Jedes Beispiel zeigt die kurze und die mittlere Fassung derselben Firma. Die Zeile darunter erklärt, was Sie davon übernehmen können. Alle Firmen, Zahlen und Abläufe sind frei erfunden.</p>
+
+  <div class="bsp">
+    <div class="bsp-kopf"><h3><span class="nr">1</span>Steuerkanzlei für Arztpraxen</h3><span>Dienstleistung · 9 Beschäftigte</span></div>
+    <div class="bsp-raster">
+      <div><b class="label">10 Sekunden</b><p class="pitch" data-zaehlen>„Wir sind die Steuerkanzlei für niedergelassene Ärztinnen und Ärzte: Sie behandeln Patienten, wir kümmern uns um Buchhaltung, Steuern und die Zahlen der Praxis.“</p></div>
+      <div><b class="label">30 Sekunden</b><p class="pitch" data-zaehlen>„Wir sind eine Steuerkanzlei nur für Arztpraxen. Viele Inhaber sitzen abends über Belegen und erfahren erst ein Jahr später, ob sich die Praxis gerechnet hat. Wir übernehmen Buchhaltung und Steuern und schicken jeden Monat eine Seite mit den fünf Zahlen, die eine Praxis wirklich braucht. Diese Seite liegt am zehnten des Folgemonats im Postfach. Wann wissen Sie heute, wie Ihr Quartal gelaufen ist?“</p></div>
+    </div>
+    <p class="warum"><b>Übernehmen:</b> Die Spezialisierung steht im ersten Satz und macht jeden weiteren Satz glaubwürdiger.</p>
+  </div>
+
+  <div class="bsp">
+    <div class="bsp-kopf"><h3><span class="nr">2</span>Software für ambulante Pflegedienste</h3><span>Software · 25 Beschäftigte</span></div>
+    <div class="bsp-raster">
+      <div><b class="label">10 Sekunden</b><p class="pitch" data-zaehlen>„Wir machen Software, mit der ambulante Pflegedienste ihre Touren in fünfzehn Minuten statt in einer Stunde planen, auch wenn morgens jemand krank wird.“</p></div>
+      <div><b class="label">30 Sekunden</b><p class="pitch" data-zaehlen>„Wir entwickeln Software für ambulante Pflegedienste. Dort plant die Leitung jeden Abend die Touren, und jede Krankmeldung wirft alles um. Unsere Software schlägt Touren vor, beachtet Qualifikation, Wege und Wünsche der Patienten und plant bei Ausfällen in Minuten neu. Sie läuft neben der vorhandenen Abrechnung, ohne Umstieg. Wer plant bei Ihnen die Touren, und wie lange dauert das?“</p></div>
+    </div>
+    <p class="warum"><b>Übernehmen:</b> „Ohne Umstieg“ beantwortet den größten Einwand, bevor er kommt.</p>
+  </div>
+
+  <div class="bsp">
+    <div class="bsp-kopf"><h3><span class="nr">3</span>Kunststoffteile im Spritzguss</h3><span>Industrie · 60 Beschäftigte</span></div>
+    <div class="bsp-raster">
+      <div><b class="label">10 Sekunden</b><p class="pitch" data-zaehlen>„Wir fertigen Kunststoffteile für Hersteller von Labor- und Medizingeräten, in Serien, für die große Spritzgießer keine Zeit haben.“</p></div>
+      <div><b class="label">30 Sekunden</b><p class="pitch" data-zaehlen>„Wir fertigen Kunststoffteile im Spritzguss für Hersteller von Labor- und Medizingeräten, in Serien von 500 bis 50.000 Stück. Unsere Kunden kennen das: Für kleine Serien nennen große Lieferanten Termine in drei Monaten. Wir bauen das Werkzeug im eigenen Haus und liefern erste Muster nach vier Wochen, jede Lieferung mit Prüfprotokoll. Wo hakt es bei Ihnen gerade in der Beschaffung?“</p></div>
+    </div>
+    <p class="warum"><b>Übernehmen:</b> Zahlen machen die Zielgruppe greifbar: Branche, Seriengröße, Frist.</p>
+  </div>
+
+  <div class="bsp">
+    <div class="bsp-kopf"><h3><span class="nr">4</span>Elektrobetrieb für Ladepunkte</h3><span>Handwerk · 18 Beschäftigte</span></div>
+    <div class="bsp-raster">
+      <div><b class="label">10 Sekunden</b><p class="pitch" data-zaehlen>„Wir bauen Ladepunkte für Elektroautos auf Firmenparkplätzen, von der Prüfung des Anschlusses bis zur Abrechnung mit den Fahrern.“</p></div>
+      <div><b class="label">30 Sekunden</b><p class="pitch" data-zaehlen>„Wir bauen Ladepunkte für Elektroautos auf Firmenparkplätzen. Viele Firmen haben die ersten E-Dienstwagen und merken dann: Der Anschluss reicht nicht, und keiner weiß, wie der Strom abgerechnet wird. Wir prüfen, planen, bauen und richten die Abrechnung ein, alles aus einer Hand, mit Festpreis nach einem Termin vor Ort. Wie viele E-Autos stehen bei Ihnen heute auf dem Hof?“</p></div>
+    </div>
+    <p class="warum"><b>Übernehmen:</b> Das Problem ist ein Moment, den Kunden kennen. Die 2-Minuten-Fassung dieser Firma steht auf Seite 8.</p>
+  </div>
+</section>
+
+<!-- 7 · Beispiele 5 bis 8 -->
+<section class="seite">
+  <p class="vorzeile" style="color:var(--akzent)">Beispiele · frei erfunden</p>
+  <h2 class="blatt">Vier weitere Unternehmensarten</h2>
+  <p class="unter">Eine Einzelunternehmerin, ein Produkt, eine Dienstleistung mit vielen kleinen Kunden und ein junges Unternehmen ohne Referenzen. Auch hier ist alles frei erfunden.</p>
+
+  <div class="bsp">
+    <div class="bsp-kopf"><h3><span class="nr">5</span>Fachkraft für Arbeitssicherheit</h3><span>Einzelunternehmen · selbstständig</span></div>
+    <div class="bsp-raster">
+      <div><b class="label">10 Sekunden</b><p class="pitch" data-zaehlen>„Ich sorge dafür, dass kleine Betriebe ihre Pflichten im Arbeitsschutz erfüllen, ohne dass der Alltag darunter leidet.“</p></div>
+      <div><b class="label">30 Sekunden</b><p class="pitch" data-zaehlen>„Ich bin selbstständige Fachkraft für Arbeitssicherheit für Betriebe mit 10 bis 50 Beschäftigten. Die meisten wissen, dass sie Gefährdungsbeurteilungen brauchen, haben aber keine Zeit für Vorschriften. Ich komme zweimal im Jahr, gehe mit Ihnen durch den Betrieb und lasse fertige Unterlagen da, dazu einen Plan mit den drei wichtigsten Punkten. Wann wurde bei Ihnen zuletzt die Gefährdungsbeurteilung angeschaut?“</p></div>
+    </div>
+    <p class="warum"><b>Übernehmen:</b> Allein arbeiten ist kein Nachteil, wenn der Ablauf klar ist: zweimal im Jahr, fertige Unterlagen.</p>
+  </div>
+
+  <div class="bsp">
+    <div class="bsp-kopf"><h3><span class="nr">6</span>Kaffeerösterei für Büros</h3><span>Produkt · 7 Beschäftigte</span></div>
+    <div class="bsp-raster">
+      <div><b class="label">10 Sekunden</b><p class="pitch" data-zaehlen>„Wir rösten Kaffee und beliefern Büros mit frischen Bohnen, Maschine und Wartung, damit niemand mehr über den Kaffee in der Küche schimpft.“</p></div>
+      <div><b class="label">30 Sekunden</b><p class="pitch" data-zaehlen>„Wir sind eine kleine Rösterei und beliefern Büros mit 20 bis 200 Leuten. In vielen Firmen steht ein Automat, den keiner mag. Wir stellen eine Maschine hin, liefern alle zwei Wochen frisch geröstete Bohnen und kümmern uns um Wartung und Reinigung. Sie zahlen einen festen Betrag im Monat, ohne Leasing, und die ersten zwei Wochen sind zum Probieren. Wie wird bei Ihnen im Büro Kaffee gemacht?“</p></div>
+    </div>
+    <p class="warum"><b>Übernehmen:</b> Ein Produkt braucht im Pitch den Ablauf drumherum: Lieferung, Wartung, Preis, Probezeit.</p>
+  </div>
+
+  <div class="bsp">
+    <div class="bsp-kopf"><h3><span class="nr">7</span>Hausverwaltung für kleine Häuser</h3><span>Immobilien · 12 Beschäftigte</span></div>
+    <div class="bsp-raster">
+      <div><b class="label">10 Sekunden</b><p class="pitch" data-zaehlen>„Wir verwalten kleine Eigentümergemeinschaften mit drei bis zwanzig Wohnungen, die große Verwaltungen nicht mehr gern übernehmen.“</p></div>
+      <div><b class="label">30 Sekunden</b><p class="pitch" data-zaehlen>„Wir sind eine Hausverwaltung für Eigentümergemeinschaften mit drei bis zwanzig Wohnungen. Viele bekommen gerade Kündigungen, weil große Verwaltungen kleine Häuser nicht mehr wollen. Wir übernehmen Abrechnung, Versammlung und Handwerker, mit einer festen Ansprechperson je Haus. Alle Unterlagen liegen in einem Online-Ordner, und die Jahresabrechnung kommt bis Ende Mai. Wer kümmert sich bei Ihnen gerade um das Haus?“</p></div>
+    </div>
+    <p class="warum"><b>Übernehmen:</b> Der Unterschied steckt in der Zielgruppe selbst: genau die Kunden, die andere nicht wollen.</p>
+  </div>
+
+  <div class="bsp">
+    <div class="bsp-kopf"><h3><span class="nr">8</span>Messsystem für Kantinen</h3><span>Gründung · Pilotphase</span></div>
+    <div class="bsp-raster">
+      <div><b class="label">10 Sekunden</b><p class="pitch" data-zaehlen>„Wir messen, welche Gerichte in Kantinen übrig bleiben, damit Küchen weniger wegwerfen und genauer planen.“</p></div>
+      <div><b class="label">30 Sekunden</b><p class="pitch" data-zaehlen>„Wir sind ein junges Unternehmen und haben ein Messsystem für Kantinen gebaut. Jeden Tag landet ein Teil der Speisen im Müll, und keiner weiß genau, welcher. Eine Waage am Rückgabeband erfasst die Reste je Gericht, und die Küche sieht am nächsten Morgen, was sie anders planen kann. Gerade testen wir in zwei Betriebskantinen und suchen drei weitere. Wie plant Ihre Küche heute die Mengen?“</p></div>
+    </div>
+    <p class="warum"><b>Übernehmen:</b> Ohne Referenzen ist die Pilotphase der ehrliche Beleg, und die Suche nach Testkunden ist die Einladung.</p>
+  </div>
+</section>
+
+<!-- 8 · 2 Minuten Satz für Satz -->
+<section class="seite">
+  <p class="vorzeile" style="color:var(--akzent)">Beispiel · frei erfunden</p>
+  <h2 class="blatt">Ein 2-Minuten-Pitch, Satz für Satz</h2>
+  <p class="unter">Der Elektrobetrieb aus Beispiel 4 bei einem Kennenlern-Frühstück. Die 30-Sekunden-Fassung auf Seite 6 nimmt aus jedem Abschnitt den stärksten Satz.</p>
+  <ol class="lang">
+    <li><span class="zeit"><b>Einstieg</b>0:00–0:15</span><p class="pitch">„Stellen Sie sich vor: Ihre Firma bestellt die ersten fünf Elektroautos als Dienstwagen. Die Autos kommen in drei Wochen. Und dann fragt jemand: Wo laden die eigentlich?“</p><p class="anm">Eine Szene statt des Firmennamens. Jeder im Raum sieht das Bild vor sich.</p></li>
+    <li><span class="zeit"><b>Für wen und Problem</b>0:15–0:35</span><p class="pitch">„Genau an dieser Stelle rufen uns die meisten Kunden an. Das sind Firmen mit 20 bis 300 Beschäftigten und eigenem Parkplatz. Fast immer gibt es drei offene Fragen: Reicht unser Anschluss? Wer baut das? Und wie rechnen wir den Strom mit den Fahrern ab?“</p><p class="anm">Zielgruppe mit Größe und Merkmal. Das Problem als drei Fragen, die Kunden selbst stellen.</p></li>
+    <li><span class="zeit"><b>Lösung und Ablauf</b>0:35–1:05</span><p class="pitch">„Wir sind ein Elektrobetrieb mit 18 Leuten und machen das aus einer Hand. Erst kommen wir zu einem Termin vor Ort und messen den Anschluss. Dann bekommen Sie ein Angebot mit Festpreis und einen Plan, wie viele Ladepunkte heute gehen und wie viele später. Danach bauen wir, meist in zwei bis drei Tagen, und richten die Abrechnung so ein, dass jede Fahrerin ihre Ladungen sieht.“</p><p class="anm">Drei Schritte mit Dauer. Wer zuhört, weiß, was als Nächstes passieren würde.</p></li>
+    <li><span class="zeit"><b>Unterschied</b>1:05–1:25</span><p class="pitch">„Der Unterschied zu einem reinen Händler für Ladesäulen: Bei uns plant, baut und betreut dieselbe Firma. Sie haben einen Ansprechpartner, nicht drei Gewerke, die aufeinander warten. Und wenn später ein Ladepunkt hängt, kommen wir, meist am nächsten Werktag.“</p><p class="anm">„Der Unterschied zu …“ beschreibt eine Art von Anbieter, nennt aber keinen Namen und redet niemanden schlecht.</p></li>
+    <li><span class="zeit"><b>Beleg</b>1:25–1:45</span><p class="pitch">„Ein Beispiel: Ein Großhändler aus der Region hatte zwölf E-Autos und zwei Steckdosen. Mit einer Lastregelung reichte sein Anschluss für acht Ladepunkte. Vier Wochen nach dem ersten Termin wurde geladen, und die Abrechnung läuft seitdem von allein. Der Geschäftsführer muss sich um nichts mehr kümmern.“</p><p class="anm">Ein Fall mit vorher und nachher, ohne Namen. Für einen Namen bräuchte es die Freigabe des Kunden.</p></li>
+    <li><span class="zeit"><b>Frage und nächster Schritt</b>1:45–2:00</span><p class="pitch">„Wie ist das bei Ihnen: Stehen schon E-Autos auf dem Hof, oder kommen sie erst? Wenn Sie mögen, schaue ich mir Ihren Anschluss an. Das dauert eine Stunde, und danach wissen Sie, was bei Ihnen geht.“</p><p class="anm">Eine leichte Frage, dann ein kleines Angebot ohne Druck. Danach: schweigen.</p></li>
+  </ol>
+  <p class="zaehler" id="zaehl-lang" style="margin-top:2mm"></p>
+  <p class="abschnitt-titel">Zum Vergleich: der erste Entwurf derselben Firma <small>Nummern = Fehler auf Seite 2</small></p>
+  <div class="entwurf-alt">
+    <p class="pitch">„Wir sind die [Firmenname] GmbH, seit 1998 Ihr innovativer Partner für Elektrotechnik in der Region. Unser Leistungsspektrum reicht von der Installation über Gebäudetechnik bis zu ganzheitlichen E-Mobilitätslösungen. Mit unserem kompetenten Team bieten wir höchste Qualität zu fairen Preisen. Sprechen Sie uns gern an!“</p>
+    <ul class="regeln">
+      <li><b>1</b> Name und Gründungsjahr zuerst, das Problem fehlt ganz.</li>
+      <li><b>2 · 3</b> Alles für alle, aufgezählt statt erklärt.</li>
+      <li><b>4</b> „Ganzheitliche E-Mobilitätslösungen“ sagt niemand, der ein Problem hat.</li>
+      <li><b>6</b> „Innovativ“, „kompetent“, „höchste Qualität“: kein Beleg.</li>
+      <li><b>8 · 9</b> Endet mit einer Aufforderung statt mit einer Frage.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 9 · Varianten gesprochen -->
+<section class="seite">
+  <p class="vorzeile">Anlässe · gesprochen</p>
+  <h2 class="blatt">Netzwerk-Abend, Telefon, Online-Runde</h2>
+  <p class="unter">Dieselben Bausteine, je nach Anlass anders gemischt. Beispiele aus den frei erfundenen Firmen auf Seite 6 und 7.</p>
+
+  <div class="variante">
+    <div class="variante-kopf"><span class="nr">1</span><div><h3>Netzwerk-Abend</h3><p>Vorstellungsrunde mit 20 bis 30 Sekunden und Gespräche im Stehen</p></div></div>
+    <div class="variante-raster">
+      <ul class="regeln">
+        <li><b>Runde:</b> Halbsatz zur Person, dann der 10-Sekunden-Satz, dann ein „Ich suche …“-Satz.</li>
+        <li>Der „Ich suche …“-Satz nennt, wen Sie kennenlernen möchten. So können andere Sie empfehlen.</li>
+        <li><b>Im Gespräch:</b> erst fragen, was Ihr Gegenüber herführt, dann Ihre 10 Sekunden, angepasst an das Gehörte. Am nächsten Tag eine kurze Nachricht.</li>
+      </ul>
+      <div class="bsp-text"><b class="label">Beispiel · Hausverwaltung</b><p>„Guten Abend, ich leite eine Hausverwaltung hier in der Stadt. Wir verwalten kleine Eigentümergemeinschaften mit drei bis zwanzig Wohnungen, die große Verwaltungen nicht mehr gern übernehmen. Ich freue mich über Kontakte zu Maklern und Steuerberatern, die solche Eigentümer betreuen.“</p></div>
+    </div>
+    <div class="ihre"><b class="label">Ihre Vorstellungsrunde</b><div class="linien" data-linien="2"></div><b class="label">Ihr „Ich suche …“-Satz</b><div class="linien" data-linien="1"></div></div>
+  </div>
+
+  <div class="variante">
+    <div class="variante-kopf"><span class="nr">2</span><div><h3>Telefon</h3><p>Anruf mit Anlass und Nachricht auf der Mailbox</p></div></div>
+    <div class="variante-raster">
+      <ul class="regeln">
+        <li><b>Anruf:</b> Name und Firma, dann der Anlass, dann Ihre 10 Sekunden, dann die Frage, ob es gerade passt.</li>
+        <li>Der Anlass kommt zuerst: ein Gespräch auf einer Veranstaltung, eine Empfehlung, eine Anfrage.</li>
+        <li><b>Mailbox:</b> höchstens 20 Sekunden. Name, Anlass, ein Satz Nutzen, Rückrufnummer zweimal langsam.</li>
+      </ul>
+      <div class="bsp-text"><b class="label">Beispiel · Arbeitssicherheit</b><p>„Guten Tag, [Name] hier, Fachkraft für Arbeitssicherheit. Wir haben letzte Woche beim Unternehmerfrühstück kurz gesprochen. Sie sagten, die Gefährdungsbeurteilung liege seit zwei Jahren in der Schublade. Genau dabei helfe ich kleinen Betrieben. Passt es gerade fünf Minuten, oder rufe ich morgen an?“</p></div>
+    </div>
+    <p class="recht"><b>Hinweis:</b> Werbende Anrufe sind bei Privatpersonen nur mit vorheriger ausdrücklicher Einwilligung erlaubt, bei Unternehmen nur mit zumindest mutmaßlicher Einwilligung (§ 7 UWG). Rufen Sie an, wenn es einen echten Anlass gibt. Hinweis, keine Rechtsberatung.</p>
+    <div class="ihre"><b class="label">Ihr Anruf mit Anlass</b><div class="linien" data-linien="2"></div></div>
+  </div>
+
+  <div class="variante">
+    <div class="variante-kopf"><span class="nr">3</span><div><h3>Online-Runde</h3><p>Vorstellung in einer Videokonferenz mit vielen Teilnehmern</p></div></div>
+    <div class="variante-raster">
+      <ul class="regeln">
+        <li>Ihr Anzeigename trägt die Kurzfassung, etwa „Name · Software für Pflegedienste“.</li>
+        <li>20 Sekunden: 10-Sekunden-Satz und ein Satz, warum Sie heute dabei sind.</li>
+        <li>Kamera auf Augenhöhe, Ton vorher prüfen, danach Kontakt im Chat anbieten.</li>
+      </ul>
+      <div class="bsp-text"><b class="label">Beispiel · Pflegesoftware</b><p>„Wir machen Software, mit der ambulante Pflegedienste ihre Touren in fünfzehn Minuten statt in einer Stunde planen. Ich bin heute hier, weil mich interessiert, wie andere Branchen mit kurzfristigen Ausfällen umgehen.“</p></div>
+    </div>
+    <div class="ihre"><b class="label">Ihre Online-Vorstellung</b><div class="linien" data-linien="2"></div></div>
+  </div>
+</section>
+
+<!-- 10 · Varianten geschrieben -->
+<section class="seite">
+  <p class="vorzeile">Anlässe · geschrieben</p>
+  <h2 class="blatt">LinkedIn, E-Mail-Signatur, Messe und Video</h2>
+  <p class="unter">Geschrieben wird gelesen, nicht gehört: Das Wichtigste gehört an den Anfang, weil Profilzeilen, Vorschauen und Signaturen gekürzt angezeigt werden.</p>
+
+  <div class="variante">
+    <div class="variante-kopf"><span class="nr">4</span><div><h3>LinkedIn-Profil</h3><p>Die Zeile unter dem Namen und der Abschnitt „Info“</p></div></div>
+    <div class="variante-raster">
+      <ul class="regeln">
+        <li><b>Zeile unter dem Namen</b> (bis zu 220 Zeichen): für wen und was, dann ein Merkmal oder Beleg. Keine Kette aus Titeln.</li>
+        <li><b>Info, Absatz 1:</b> Ihr 10-Sekunden-Satz. Nur der Anfang ist ohne Klick auf „mehr“ sichtbar.</li>
+        <li><b>Absatz 2 bis 4:</b> Problem in Kundenworten, Ablauf und Unterschied, ein Beleg.</li>
+        <li><b>Schluss:</b> für wen es passt und wie man Kontakt aufnimmt.</li>
+      </ul>
+      <div class="bsp-text"><b class="label">Beispiel · Steuerkanzlei</b><p><b class="stark">Zeile:</b> Steuerberaterin für Arztpraxen · Jeden Monat die fünf Zahlen, die eine Praxis braucht · Gründung und Übergabe von Praxen</p><p><b class="stark">Info, Anfang:</b> „Ich betreue mit meinem Team nur Arztpraxen: Buchhaltung, Steuern und eine Seite mit den wichtigsten Zahlen, jeden Monat bis zum zehnten. Schreiben Sie mir, wenn Sie eine Praxis gründen, übernehmen oder abgeben.“</p></div>
+    </div>
+    <div class="ihre"><b class="label">Ihre Zeile unter dem Namen</b><div class="linien" data-linien="1"></div><b class="label">Ihr erster Absatz im Abschnitt „Info“</b><div class="linien" data-linien="3"></div></div>
+  </div>
+
+  <div class="variante">
+    <div class="variante-kopf"><span class="nr">5</span><div><h3>E-Mail-Signatur</h3><p>Eine Zeile mit höchstens zehn Wörtern, bei allen im Team gleich</p></div></div>
+    <div class="variante-raster">
+      <ul class="regeln">
+        <li>Name, Funktion, dann die Kurzfassung als eigene Zeile, dann die Kontaktdaten.</li>
+        <li>Keine Bilder mit Text, keine Zitate, keine drei Slogans.</li>
+        <li>Pflichtangaben für Geschäftsbriefe Ihrer Rechtsform nicht vergessen. Hinweis, keine Rechtsberatung.</li>
+      </ul>
+      <div class="bsp-text"><b class="label">Beispiel · Kaffeerösterei</b><p>„Kaffee fürs Büro: frisch geröstet, alle zwei Wochen geliefert.“</p><p class="klein">Darunter Name, Funktion, Telefon, Website und die Pflichtangaben.</p></div>
+    </div>
+    <div class="ihre"><b class="label">Ihre Signaturzeile</b><div class="linien" data-linien="1"></div></div>
+  </div>
+
+  <div class="variante">
+    <div class="variante-kopf"><span class="nr">6</span><div><h3>Messe, Visitenkarte, Video</h3><p>Wo der Pitch gesehen statt gehört wird</p></div></div>
+    <div class="variante-raster">
+      <ul class="regeln">
+        <li><b>Messestand:</b> der 10-Sekunden-Satz groß an der Wand, die Frage zurück als Einstieg ins Gespräch.</li>
+        <li><b>Visitenkarte:</b> die Kurzfassung auf die Vorderseite, nicht nur Name und Logo.</li>
+        <li><b>Video, 60 bis 90 Sekunden:</b> die 2-Minuten-Fassung ohne Fall, Szene in den ersten fünf Sekunden, mit Untertiteln.</li>
+      </ul>
+      <div class="bsp-text"><b class="label">Beispiel · Spritzguss</b><p><b class="stark">Wand:</b> „Kunststoffteile für Labor- und Medizingeräte. Erste Muster nach vier Wochen.“</p><p><b class="stark">Einstieg am Stand:</b> „Wo hakt es bei Ihnen gerade in der Beschaffung?“</p></div>
+    </div>
+    <div class="ihre"><b class="label">Ihr Satz für Wand oder Visitenkarte</b><div class="linien" data-linien="1"></div><b class="label">Ihre ersten fünf Sekunden im Video</b><div class="linien" data-linien="1"></div></div>
+  </div>
+</section>
+
+<!-- 11 · Üben -->
+<section class="seite">
+  <p class="vorzeile">Üben und prüfen</p>
+  <h2 class="blatt">Drei Runden bis zur fertigen Fassung</h2>
+  <p class="unter">Ob ein Pitch wirkt, merken Sie nicht beim Schreiben, sondern beim Sprechen und an den Fragen der anderen. Planen Sie die drei Runden über eine Woche.</p>
+  <div class="runden">
+    <div><span class="nr">Runde 1</span><h3>Allein und laut</h3><p>Dreimal mit Stoppuhr sprechen. Wo Sie stolpern, ist der Satz zu lang oder das Wort zu schwer. Streichen Sie es.</p></div>
+    <div><span class="nr">Runde 2</span><h3>Aufnehmen und anhören</h3><p>Mit dem Handy aufnehmen und am nächsten Tag anhören. Wo klingt es abgelesen? Wo fehlt eine Pause?</p></div>
+    <div><span class="nr">Runde 3</span><h3>Drei Zuhörer</h3><p>Menschen aus der Zielgruppe oder nah dran, nicht aus Ihrem Team. Pitch sprechen, Fragen unten stellen, wörtlich mitschreiben.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Feedback-Bogen <span style="display:inline-flex;align-items:center;gap:1mm;text-transform:none;letter-spacing:0;font-weight:400;font-size:8.6pt"><span style="margin-right:2.4mm">Fassung:</span><span class="wahl"><span class="kreuz"></span>10 Sek.</span><span class="wahl"><span class="kreuz"></span>30 Sek.</span><span class="wahl" style="margin-right:0"><span class="kreuz"></span>2 Min.</span></span></p>
+  <table class="raster feedback">
+    <colgroup><col style="width:52mm"><col><col><col></colgroup>
+    <thead><tr><th>Frage an die Zuhörer</th><th>Zuhörer 1</th><th>Zuhörer 2</th><th>Zuhörer 3</th></tr></thead>
+    <tbody>
+      <tr><td>Was macht diese Firma?<small>in Ihren eigenen Worten</small></td><td></td><td></td><td></td></tr>
+      <tr><td>Für wen ist das?</td><td></td><td></td><td></td></tr>
+      <tr><td>Was ist anders als bei anderen?</td><td></td><td></td><td></td></tr>
+      <tr><td>Welcher Satz ist hängen geblieben?</td><td></td><td></td><td></td></tr>
+      <tr><td>Welches Wort war unklar?</td><td></td><td></td><td></td></tr>
+      <tr><td>Was würden Sie als Nächstes fragen?</td><td></td><td></td><td></td></tr>
+      <tr><td>Verständlich<small>1 = gar nicht, 5 = sofort</small></td><td><span class="skala" data-skala></span></td><td><span class="skala" data-skala></span></td><td><span class="skala" data-skala></span></td></tr>
+      <tr><td>Natürlich gesprochen<small>1 = abgelesen, 5 = frei</small></td><td><span class="skala" data-skala></span></td><td><span class="skala" data-skala></span></td><td><span class="skala" data-skala></span></td></tr>
+      <tr><td>Länge<small>zu kurz, passt, zu lang</small></td><td><span class="wahl"><span class="kreuz"></span>kurz</span><span class="wahl"><span class="kreuz"></span>passt</span><span class="wahl"><span class="kreuz"></span>lang</span></td><td><span class="wahl"><span class="kreuz"></span>kurz</span><span class="wahl"><span class="kreuz"></span>passt</span><span class="wahl"><span class="kreuz"></span>lang</span></td><td><span class="wahl"><span class="kreuz"></span>kurz</span><span class="wahl"><span class="kreuz"></span>passt</span><span class="wahl"><span class="kreuz"></span>lang</span></td></tr>
+    </tbody>
+  </table>
+  <p class="klein" style="margin-top:1.4mm">Fertig ist eine Fassung, wenn alle drei Zuhörer Leistung und Zielgruppe richtig nennen und mindestens zwei eine echte Rückfrage stellen.</p>
+
+  <p class="abschnitt-titel">Prüfliste vor dem Einsatz</p>
+  <ul class="pruefen">
+    <li><span class="kreuz"></span><span>Die 10-Sekunden-Fassung steht für sich allein</span></li>
+    <li><span class="kreuz"></span><span>Jede Zahl lässt sich auf Nachfrage zeigen</span></li>
+    <li><span class="kreuz"></span><span>Kein Wort aus Werbeprospekten, kein Superlativ</span></li>
+    <li><span class="kreuz"></span><span>Jede Fassung endet mit einer Frage</span></li>
+    <li><span class="kreuz"></span><span>Profilzeile, Signatur und Pitch sagen dasselbe</span></li>
+    <li><span class="kreuz"></span><span>Alle im Team kennen die Fassung und sagen sie gleich</span></li>
+  </ul>
+</section>
+
+<!-- 12 · Nächste Schritte -->
+<section class="seite">
+  <p class="vorzeile">Zum Schluss</p>
+  <h2 class="blatt">Nächste Schritte</h2>
+  <p class="unter">Ein Pitch wird besser, je öfter Sie ihn sagen. Nehmen Sie sich drei Anlässe in den nächsten vier Wochen vor und prüfen Sie die Fassungen danach noch einmal mit dem Feedback-Bogen.</p>
+  <p class="abschnitt-titel">Ihre nächsten drei Schritte</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:36mm"><col style="width:28mm"></colgroup>
+    <thead><tr><th></th><th>Was genau? <small>etwa: Profilzeile ändern, Signatur fürs Team, Vorstellung beim nächsten Netzwerk-Abend</small></th><th>Wer?</th><th>Bis wann?</th></tr></thead>
+    <tbody><tr><td class="n" style="height:10mm">1</td><td></td><td></td><td></td></tr><tr><td class="n" style="height:10mm">2</td><td></td><td></td><td></td></tr><tr><td class="n" style="height:10mm">3</td><td></td><td></td><td></td></tr></tbody>
+  </table>
+  <div class="zwei" style="margin-top:3mm"><p class="feld"><span>Pitch wieder prüfen am</span><span class="strich"></span></p><p class="feld"><span>Verantwortlich</span><span class="strich"></span></p></div>
+
+  <p class="abschnitt-titel">Weiter geht es hier</p>
+  <ul class="weiter-liste">
+    <li><span class="art">Baustein</span><div><h3>Botschaftshaus</h3><p>Aus dem Pitch wird die ganze Kommunikation: Kernbotschaft, drei belegte Säulen, Ton und Texte für Website, Angebote und Beiträge.</p><a href="https://fokusinnovation.de/bausteine/botschaftshaus/">fokusinnovation.de/bausteine/botschaftshaus/</a></div></li>
+    <li><span class="art">Selbst prüfen</span><div><h3>Sichtbarkeits-Check</h3><p>Zwölf Fragen zu Botschaft, Website und Reichweite in rund fünf Minuten. Sie sehen sofort, wo es noch hakt.</p><a href="https://fokusinnovation.de/check?thema=sichtbarkeit">fokusinnovation.de/check?thema=sichtbarkeit</a></div></li>
+    <li><span class="art">Mit uns arbeiten</span><div><h3>Positionierung S, M, L</h3><p>Wenn Sie es nicht allein machen wollen: Wir bereiten vor, Sie entscheiden mit uns im Workshop. In M und L gehören Kundeninterviews, der Blick auf den Wettbewerb und ein fertiger Pitch dazu.</p><a href="https://fokusinnovation.de/sichtbarkeit/positionierung/">fokusinnovation.de/sichtbarkeit/positionierung/</a></div></li>
+    <li><span class="art">Mit uns sprechen</span><div><h3>Kostenloses Erstgespräch</h3><p>30 Minuten per Video. Wir schauen gemeinsam auf Ihren Pitch und Ihren Stand und legen die nächsten Schritte fest.</p><a href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></div></li>
+  </ul>
+  <p class="hinweis" style="margin-top:auto;margin-bottom:3mm">Alle Beispiele, Firmen und Zahlen in diesem Baustein sind frei erfunden. Rechtliche Hinweise sind keine Rechtsberatung. Stand: Oktober 2026.</p>
+</section>
+
+<script>
+  // Kopf und Fuß auf jede Seite, Seitenzahlen automatisch
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Nutzung im eigenen Unternehmen</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+  const linie = '<div class="zeile-frei"></div>';
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = linie.repeat(Number(d.dataset.linien)); });
+  document.querySelectorAll('[data-skala]').forEach((d) => { d.innerHTML = [1, 2, 3, 4, 5].map((n) => `<span>${n}</span>`).join(''); });
+  // Wörter zählen und Sprechzeit schätzen (gut zwei Wörter je Sekunde)
+  const woerter = (t) => t.replace(/[„“"]/g, ' ').split(/\s+/).filter((w) => /[0-9A-Za-zÄÖÜäöüß]/.test(w)).length;
+  const zeit = (n) => { const s = n / 2.1; return s < 90 ? `etwa ${Math.max(5, Math.round(s / 5) * 5)} Sekunden` : `etwa ${String(Math.round(s / 60 * 2) / 2).replace('.', ',')} Minuten`; };
+  document.querySelectorAll('[data-zaehlen]').forEach((p) => { const n = woerter(p.textContent); p.insertAdjacentHTML('afterend', `<span class="zaehler">${n} Wörter · ${zeit(n)}</span>`); });
+  const lang = [...document.querySelectorAll('.lang .pitch')].reduce((s, p) => s + woerter(p.textContent), 0);
+  document.getElementById('zaehl-lang').textContent = `Zusammen ${lang} Wörter · ${zeit(lang)} ruhig gesprochen`;
+</script>
+</body>
+</html>

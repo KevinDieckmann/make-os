@@ -1,0 +1,4364 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 30
+    },
+    {
+     "breite": 96
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Salesprozess im CRM",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Fokus Innovation · fokusinnovation.de · Nutzung im eigenen Unternehmen",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "So nutzen Sie die Tabelle",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Lila Felder",
+      "stil": "fett"
+     },
+     {
+      "v": "sind Eingaben. Alle anderen Felder rechnen selbst und bleiben leer, solange etwas fehlt.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Stufen",
+      "stil": "fett"
+     },
+     {
+      "v": "Die acht Stufen mit Wahrscheinlichkeit und Höchstdauer. Startwerte wie im PDF, Seite 3. Ändern Sie dort die Zahlen, nicht die Namen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Pipeline",
+      "stil": "fett"
+     },
+     {
+      "v": "Eine Zeile je Chance, solange Sie noch ohne CRM arbeiten oder als Abgleich. Stufe aus der Liste wählen, „In Stufe seit“ bei jedem Wechsel neu setzen. Die Spalte „Hinweis“ zeigt, was fehlt: nächster Schritt, Datum, Entscheider, Wert, Budget, Verlustgrund, Wiedervorlage, oder ob eine Chance länger als die Höchstdauer in der Stufe hängt.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Hilfsspalten",
+      "stil": "fett"
+     },
+     {
+      "v": "Die grauen Spalten „Hilfe“ rechnen für die Auswertung. Nicht überschreiben.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Auswertung",
+      "stil": "fett"
+     },
+     {
+      "v": "Je Stufe Anzahl, Wert, gewichteter Wert, Verweildauer, hängende und lückenhafte Chancen. Dazu Abschlussquote, Auftragswert, Verlustgründe, Prognose nach Monat (Monatsersten eintragen) und Zahlen je Person (Namen eintragen).",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Felder",
+      "stil": "fett"
+     },
+     {
+      "v": "Der Feldkatalog: welches Feld ab welcher Stufe Pflicht ist, mit Werten und Zweck. Vorlage für die Einrichtung im CRM.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Import",
+      "stil": "fett"
+     },
+     {
+      "v": "Leere Import-Vorlage. „Import Beispiel“ zeigt zwei ausgefüllte Zeilen. Als CSV speichern und im CRM importieren, zuerst zur Probe mit zehn Zeilen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Einführung",
+      "stil": "fett"
+     },
+     {
+      "v": "Der Vier-Wochen-Plan zum Abhaken mit Fortschritt.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Beispiel",
+      "stil": "fett"
+     },
+     {
+      "v": "Eine ausgefüllte Pipeline mit frei erfundenen Chancen. Fließt in keine Auswertung ein.",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Wochenrhythmus",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Freitag bis 12 Uhr",
+      "stil": "fett"
+     },
+     {
+      "v": "Pipeline pflegen: Stufen, Werte, Daten, nächste Schritte.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Montag, 45 Minuten",
+      "stil": "fett"
+     },
+     {
+      "v": "Pipeline-Review: Zahlen, Lücken, hängende Chancen, die fünf größten Chancen, Maßnahmen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Monatsende, 60 Minuten",
+      "stil": "fett"
+     },
+     {
+      "v": "Prognose, Kennzahlen je Stufe, Verlustgründe, eine Verbesserung am Prozess.",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Datenschutz",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Hinweis",
+      "stil": "fett"
+     },
+     {
+      "v": "Halten Sie fest, woher Kontaktdaten stammen. Einwilligungen für E-Mail-Werbung nur mit Datum. Keine privaten oder sensiblen Angaben in Notizen. Hinweis, keine Rechtsberatung.",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Stufen",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Stufe (Name nicht ändern)",
+     "breite": 22,
+     "stil": "fett"
+    },
+    {
+     "titel": "Wahrscheinlichkeit",
+     "breite": 14,
+     "stil": "eingabe-prozent"
+    },
+    {
+     "titel": "Höchstdauer (Tage)",
+     "breite": 13,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Eintritt: Der Kunde hat …",
+     "breite": 52,
+     "stil": "text"
+    },
+    {
+     "titel": "Austritt: erledigt, wenn …",
+     "breite": 46,
+     "stil": "text"
+    },
+    {
+     "titel": "Pflicht beim Eintritt",
+     "breite": 44,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "1 Termin vereinbart",
+      "stil": "fett"
+     },
+     {
+      "v": 0.1,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": 21,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": "einem Gespräch über einen möglichen Bedarf zugestimmt; Firma passt zum Ideal-Kundenprofil, Termin steht",
+      "stil": "text"
+     },
+     {
+      "v": "Gespräch fand statt, konkretes Problem erkennbar (sonst Verloren)",
+      "stil": "text"
+     },
+     {
+      "v": "Firma, Kontakt, Quelle, Lead-Klasse, Verantwortlich, nächster Schritt mit Datum",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "2 Bedarf qualifiziert",
+      "stil": "fett"
+     },
+     {
+      "v": 0.2,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": 14,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": "ein konkretes Problem bestätigt und einem nächsten Termin zugestimmt",
+      "stil": "text"
+     },
+     {
+      "v": "Bedarf, Entscheidung, Zeit, Budget-Rahmen geklärt",
+      "stil": "text"
+     },
+     {
+      "v": "Bedarf in Worten des Kunden, Größe, Rolle der Ansprechperson",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "3 Lösung abgestimmt",
+      "stil": "fett"
+     },
+     {
+      "v": 0.4,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": 30,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": "die vier Punkte geklärt und einem Termin zur Lösung zugestimmt",
+      "stil": "text"
+     },
+     {
+      "v": "Lösungsskizze und Preisrahmen zugestimmt, Entscheider kennt beides, Termin zur Angebotsbesprechung",
+      "stil": "text"
+     },
+     {
+      "v": "Entscheider, Zeitrahmen, Budget-Rahmen",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "4 Angebot liegt vor",
+      "stil": "fett"
+     },
+     {
+      "v": 0.6,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": 21,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": "das schriftliche Angebot erhalten und einem Besprechungstermin zugestimmt",
+      "stil": "text"
+     },
+     {
+      "v": "Angebot besprochen, offene Punkte und Entscheidungsdatum genannt",
+      "stil": "text"
+     },
+     {
+      "v": "Wert, erwarteter Abschluss, Budget bestätigt, Angebot verschickt am",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "5 Verhandlung",
+      "stil": "fett"
+     },
+     {
+      "v": 0.8,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": 30,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": "gesagt, dass er grundsätzlich mit Ihnen arbeiten will; offene Punkte und Entscheidungsdatum stehen",
+      "stil": "text"
+     },
+     {
+      "v": "schriftlicher Auftrag (Gewonnen) oder Absage (Verloren)",
+      "stil": "text"
+     },
+     {
+      "v": "Entscheidungsdatum, offene Punkte, Wert genau",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Gewonnen",
+      "stil": "fett"
+     },
+     {
+      "v": 1,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": "den Auftrag schriftlich erteilt",
+      "stil": "text"
+     },
+     {
+      "v": "Übergabe an die Umsetzung, Startdatum",
+      "stil": "text"
+     },
+     {
+      "v": "Auftragsdatum, Startdatum, Übergabe-Notiz",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Verloren",
+      "stil": "fett"
+     },
+     {
+      "v": 0,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": "abgesagt, keinen Bedarf oder auf drei Versuche nicht geantwortet",
+      "stil": "text"
+     },
+     {
+      "v": "Verlustgrund und ein Satz dazu",
+      "stil": "text"
+     },
+     {
+      "v": "Verlustgrund, Datum der Entscheidung",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Geparkt",
+      "stil": "fett"
+     },
+     {
+      "v": 0,
+      "stil": "eingabe-prozent"
+     },
+     {
+      "v": 180,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": "gesagt: ja, aber nicht jetzt",
+      "stil": "text"
+     },
+     {
+      "v": "Grund und Wiedervorlage stehen fest; zählt nicht in der Prognose",
+      "stil": "text"
+     },
+     {
+      "v": "Grund, Wiedervorlage (höchstens 6 Monate)",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Hinweis",
+      "stil": "fett"
+     },
+     {
+      "v": "Wahrscheinlichkeiten und Höchstdauern sind Startwerte, keine Erfahrungswerte. Ersetzen Sie sie nach sechs Monaten durch Ihre eigenen Quoten aus dem Blatt „Auswertung“. Die Namen der Stufen nicht ändern, sonst passt die Auswahlliste im Blatt „Pipeline“ nicht mehr.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Pipeline",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Chance (Firma · Thema)",
+     "breite": 32,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Ansprechperson (Rolle)",
+     "breite": 22,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Verantwortlich",
+     "breite": 13,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Quelle",
+     "breite": 13,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Angelegt am",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Stufe",
+     "breite": 19,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "In Stufe seit",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Tage in Stufe",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Höchstdauer",
+     "breite": 9,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Wert netto (€)",
+     "breite": 12,
+     "stil": "eingabe-euro"
+    },
+    {
+     "titel": "Wahrsch.",
+     "breite": 8,
+     "stil": "prozent"
+    },
+    {
+     "titel": "Gewichtet (€)",
+     "breite": 12,
+     "stil": "euro"
+    },
+    {
+     "titel": "Erwarteter Abschluss",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Nächster Schritt",
+     "breite": 30,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Nächster Schritt am",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Entscheider bekannt",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Budget bestätigt",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Grund (Verloren, Geparkt)",
+     "breite": 20,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Entschieden am",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 30,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Hilfe: Stufe Nr.",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Hilfe: offen",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Hilfe: hängt",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Hilfe: Lücke",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Hilfe: überfällig",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Tage bis Entscheidung",
+     "breite": 10,
+     "stil": "zahl"
+    }
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(OR(G{r}=\"\",H{r}=\"\"),\"\",IF(OR(G{r}=\"Gewonnen\",G{r}=\"Verloren\"),\"\",TODAY()-H{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$C$9,3,FALSE),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$B$9,2,FALSE),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",L{r}=\"\",W{r}<>1),\"\",K{r}*L{r})",
+      "stil": "euro"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"Gewonnen\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\"),IF(G{r}=\"Verloren\",IF(S{r}=\"\",\"Verlustgrund fehlt\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\")),IF(G{r}=\"Geparkt\",IF(S{r}=\"\",\"Grund fehlt\",IF(P{r}=\"\",\"Wiedervorlage fehlt\",IF(P{r}<TODAY(),\"Wiedervorlage überfällig\",\"\"))),IF(O{r}=\"\",\"Nächster Schritt fehlt\",IF(P{r}=\"\",\"Datum für den nächsten Schritt fehlt\",IF(P{r}<TODAY(),\"Nächster Schritt überfällig\",IF(AND(V{r}>=3,Q{r}<>\"ja\"),\"Entscheider unklar\",IF(AND(V{r}>=4,K{r}=\"\"),\"Wert fehlt\",IF(AND(V{r}>=4,N{r}=\"\"),\"Abschlussdatum fehlt\",IF(AND(V{r}>=4,R{r}<>\"ja\"),\"Budget nicht bestätigt\",IF(X{r}=1,\"hängt: länger als die Höchstdauer\",IF(ISNUMBER(N{r}),IF(N{r}<TODAY(),\"Abschlussdatum liegt zurück\",\"\"),\"\")))))))))))))",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VALUE(LEFT(G{r},1)),0))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(ISNUMBER(V{r}),IF(AND(V{r}>=1,V{r}<=5),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),IF(I{r}>J{r},1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(OR(O{r}=\"\",P{r}=\"\"),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(W{r}=1,G{r}=\"Geparkt\"),IF(ISNUMBER(P{r}),IF(P{r}<TODAY(),1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",T{r}=\"\"),\"\",T{r}-F{r})",
+      "stil": "zahl"
+     }
+    ],
+    "anzahl": 200
+   },
+   "auswahl": [
+    {
+     "spalte": "G",
+     "werte": [
+      "1 Termin vereinbart",
+      "2 Bedarf qualifiziert",
+      "3 Lösung abgestimmt",
+      "4 Angebot liegt vor",
+      "5 Verhandlung",
+      "Gewonnen",
+      "Verloren",
+      "Geparkt"
+     ]
+    },
+    {
+     "spalte": "E",
+     "werte": [
+      "Empfehlung",
+      "Bestandskunde",
+      "Netzwerk",
+      "Veranstaltung",
+      "Website",
+      "Ansprache",
+      "Partner",
+      "Sonstiges"
+     ]
+    },
+    {
+     "spalte": "Q",
+     "werte": [
+      "ja",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "R",
+     "werte": [
+      "ja",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "S",
+     "werte": [
+      "kein Bedarf",
+      "kein Budget",
+      "falscher Zeitpunkt",
+      "Preis",
+      "Wettbewerber gewählt",
+      "macht es selbst",
+      "keine Rückmeldung",
+      "passt nicht zu uns",
+      "Budget später",
+      "andere Priorität",
+      "Wechsel beim Kunden",
+      "wartet auf Entscheidung von außen"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Auswertung",
+   "spalten": [
+    {
+     "breite": 44
+    },
+    {
+     "breite": 13
+    },
+    {
+     "breite": 15
+    },
+    {
+     "breite": 15
+    },
+    {
+     "breite": 14
+    },
+    {
+     "breite": 10
+    },
+    {
+     "breite": 14
+    },
+    {
+     "breite": 11
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Auswertung",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Rechnet aus dem Blatt „Pipeline“. Lila Felder: hier eintragen.",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Stufe",
+      "stil": "kopf"
+     },
+     {
+      "v": "Chancen",
+      "stil": "kopf"
+     },
+     {
+      "v": "Wert (€)",
+      "stil": "kopf"
+     },
+     {
+      "v": "Gewichtet (€)",
+      "stil": "kopf"
+     },
+     {
+      "v": "Ø Tage in Stufe",
+      "stil": "kopf"
+     },
+     {
+      "v": "hängt",
+      "stil": "kopf"
+     },
+     {
+      "v": "ohne nächsten Schritt",
+      "stil": "kopf"
+     },
+     {
+      "v": "überfällig",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "1 Termin vereinbart",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Pipeline!$G$2:$G$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$K$2:$K$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$M$2:$M$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGEIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$I$2:$I$201),0),\"\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$X$2:$X$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Y$2:$Y$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Z$2:$Z$201)",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": "2 Bedarf qualifiziert",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Pipeline!$G$2:$G$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$K$2:$K$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$M$2:$M$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGEIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$I$2:$I$201),0),\"\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$X$2:$X$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Y$2:$Y$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Z$2:$Z$201)",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": "3 Lösung abgestimmt",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Pipeline!$G$2:$G$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$K$2:$K$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$M$2:$M$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGEIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$I$2:$I$201),0),\"\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$X$2:$X$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Y$2:$Y$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Z$2:$Z$201)",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": "4 Angebot liegt vor",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Pipeline!$G$2:$G$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$K$2:$K$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$M$2:$M$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGEIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$I$2:$I$201),0),\"\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$X$2:$X$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Y$2:$Y$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Z$2:$Z$201)",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": "5 Verhandlung",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Pipeline!$G$2:$G$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$K$2:$K$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$M$2:$M$201)",
+      "stil": "euro"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGEIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$I$2:$I$201),0),\"\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$X$2:$X$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Y$2:$Y$201)",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,$A{r},Pipeline!$Z$2:$Z$201)",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": "Summe offen",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(B5:B9)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(C5:C9)",
+      "stil": "euro"
+     },
+     {
+      "f": "SUM(D5:D9)",
+      "stil": "euro"
+     },
+     null,
+     {
+      "f": "SUM(F5:F9)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(G5:G9)",
+      "stil": "fett"
+     },
+     {
+      "f": "SUM(H5:H9)",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "Geparkt",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Pipeline!$G$2:$G$201,\"Geparkt\")",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,\"Geparkt\",Pipeline!$K$2:$K$201)",
+      "stil": "euro"
+     },
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,\"Geparkt\",Pipeline!$Z$2:$Z$201)",
+      "stil": "zahl"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Abschlüsse und Datenqualität",
+      "stil": "kopf"
+     },
+     {
+      "v": "Wert",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Gewonnen (Anzahl)",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIF(Pipeline!$G$2:$G$201,\"Gewonnen\")",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "Verloren (Anzahl)",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIF(Pipeline!$G$2:$G$201,\"Verloren\")",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "Abschlussquote: gewonnen ÷ (gewonnen + verloren)",
+      "stil": "text"
+     },
+     {
+      "f": "IFERROR(B14/(B14+B15),\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [
+     {
+      "v": "Wert gewonnen (€)",
+      "stil": "text"
+     },
+     {
+      "f": "SUMIF(Pipeline!$G$2:$G$201,\"Gewonnen\",Pipeline!$K$2:$K$201)",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "Ø Auftragswert (€)",
+      "stil": "text"
+     },
+     {
+      "f": "IFERROR(B17/B14,\"\")",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "Ø Tage vom Anlegen bis zum Auftrag",
+      "stil": "text"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGEIF(Pipeline!$G$2:$G$201,\"Gewonnen\",Pipeline!$AA$2:$AA$201),0),\"\")",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": "Datenqualität: offene Chancen ohne Hinweis ÷ alle offenen",
+      "stil": "text"
+     },
+     {
+      "f": "IFERROR(COUNTIFS(Pipeline!$W$2:$W$201,1,Pipeline!$U$2:$U$201,\"\")/B10,\"\")",
+      "stil": "prozent"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Verlustgrund",
+      "stil": "kopf"
+     },
+     {
+      "v": "Anzahl",
+      "stil": "kopf"
+     },
+     {
+      "v": "Wert (€)",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "kein Bedarf",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIFS(Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "kein Budget",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIFS(Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "falscher Zeitpunkt",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIFS(Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "Preis",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIFS(Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "Wettbewerber gewählt",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIFS(Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "macht es selbst",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIFS(Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "keine Rückmeldung",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIFS(Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "passt nicht zu uns",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIFS(Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "zahl"
+     },
+     {
+      "f": "SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$G$2:$G$201,\"Verloren\",Pipeline!$S$2:$S$201,$A{r})",
+      "stil": "euro"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Prognose: Monat (Monatserster eintragen)",
+      "stil": "kopf"
+     },
+     {
+      "v": "Gewichtet (€)",
+      "stil": "kopf"
+     },
+     {
+      "v": "Wert in Stufe 4 und 5 (€)",
+      "stil": "kopf"
+     },
+     {
+      "v": "Anzahl offen",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$M$2:$M$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1)))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$V$2:$V$201,\">=4\",Pipeline!$W$2:$W$201,1))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(OFFSET(A{r},-1,0)=\"\",\"\",EDATE(OFFSET(A{r},-1,0),1))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$M$2:$M$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1)))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$V$2:$V$201,\">=4\",Pipeline!$W$2:$W$201,1))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(OFFSET(A{r},-1,0)=\"\",\"\",EDATE(OFFSET(A{r},-1,0),1))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$M$2:$M$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1)))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$V$2:$V$201,\">=4\",Pipeline!$W$2:$W$201,1))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(OFFSET(A{r},-1,0)=\"\",\"\",EDATE(OFFSET(A{r},-1,0),1))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$M$2:$M$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1)))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$V$2:$V$201,\">=4\",Pipeline!$W$2:$W$201,1))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(OFFSET(A{r},-1,0)=\"\",\"\",EDATE(OFFSET(A{r},-1,0),1))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$M$2:$M$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1)))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$V$2:$V$201,\">=4\",Pipeline!$W$2:$W$201,1))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(OFFSET(A{r},-1,0)=\"\",\"\",EDATE(OFFSET(A{r},-1,0),1))",
+      "stil": "datum"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$M$2:$M$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1)))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIFS(Pipeline!$K$2:$K$201,Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$V$2:$V$201,\">=4\",Pipeline!$W$2:$W$201,1))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$N$2:$N$201,\">=\"&$A{r},Pipeline!$N$2:$N$201,\"<\"&EDATE($A{r},1),Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Je Person (Name wie in „Verantwortlich“)",
+      "stil": "kopf"
+     },
+     {
+      "v": "offene Chancen",
+      "stil": "kopf"
+     },
+     {
+      "v": "Gewichtet (€)",
+      "stil": "kopf"
+     },
+     {
+      "v": "ohne nächsten Schritt",
+      "stil": "kopf"
+     },
+     {
+      "v": "überfällig",
+      "stil": "kopf"
+     },
+     {
+      "v": "hängt",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$D$2:$D$201,$A{r},Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$M$2:$M$201))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Y$2:$Y$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Z$2:$Z$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$X$2:$X$201))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$D$2:$D$201,$A{r},Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$M$2:$M$201))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Y$2:$Y$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Z$2:$Z$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$X$2:$X$201))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$D$2:$D$201,$A{r},Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$M$2:$M$201))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Y$2:$Y$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Z$2:$Z$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$X$2:$X$201))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$D$2:$D$201,$A{r},Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$M$2:$M$201))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Y$2:$Y$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Z$2:$Z$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$X$2:$X$201))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$D$2:$D$201,$A{r},Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$M$2:$M$201))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Y$2:$Y$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Z$2:$Z$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$X$2:$X$201))",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",COUNTIFS(Pipeline!$D$2:$D$201,$A{r},Pipeline!$W$2:$W$201,1))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$M$2:$M$201))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Y$2:$Y$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$Z$2:$Z$201))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($A{r}=\"\",\"\",SUMIF(Pipeline!$D$2:$D$201,$A{r},Pipeline!$X$2:$X$201))",
+      "stil": "zahl"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Felder",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Objekt",
+     "breite": 10,
+     "stil": "fett"
+    },
+    {
+     "titel": "Feld",
+     "breite": 34,
+     "stil": "text"
+    },
+    {
+     "titel": "Art",
+     "breite": 14,
+     "stil": "text"
+    },
+    {
+     "titel": "Pflicht ab",
+     "breite": 16,
+     "stil": "text"
+    },
+    {
+     "titel": "Werte oder Format",
+     "breite": 52,
+     "stil": "text"
+    },
+    {
+     "titel": "Wozu",
+     "breite": 36,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Firma",
+      "stil": "fett"
+     },
+     {
+      "v": "Name",
+      "stil": "text"
+     },
+     {
+      "v": "Text",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1",
+      "stil": "text"
+     },
+     {
+      "v": "mit Rechtsform, wie im Impressum",
+      "stil": "text"
+     },
+     {
+      "v": "eindeutige Zuordnung",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Firma",
+      "stil": "fett"
+     },
+     {
+      "v": "Branche",
+      "stil": "text"
+     },
+     {
+      "v": "Auswahl",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1",
+      "stil": "text"
+     },
+     {
+      "v": "Ihre Branchenliste",
+      "stil": "text"
+     },
+     {
+      "v": "Auswertung nach Zielgruppe",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Firma",
+      "stil": "fett"
+     },
+     {
+      "v": "Ort und PLZ",
+      "stil": "text"
+     },
+     {
+      "v": "Text",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1",
+      "stil": "text"
+     },
+     {
+      "v": "zwei Felder",
+      "stil": "text"
+     },
+     {
+      "v": "Region, Anfahrt",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Firma",
+      "stil": "fett"
+     },
+     {
+      "v": "Lead-Klasse",
+      "stil": "text"
+     },
+     {
+      "v": "Auswahl",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1",
+      "stil": "text"
+     },
+     {
+      "v": "A · B · C · Ausschluss",
+      "stil": "text"
+     },
+     {
+      "v": "Priorität",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Firma",
+      "stil": "fett"
+     },
+     {
+      "v": "Quelle",
+      "stil": "text"
+     },
+     {
+      "v": "Auswahl",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1",
+      "stil": "text"
+     },
+     {
+      "v": "Empfehlung · Bestandskunde · Netzwerk · Veranstaltung · Website · Ansprache · Partner · Sonstiges",
+      "stil": "text"
+     },
+     {
+      "v": "welche Wege Aufträge bringen",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Firma",
+      "stil": "fett"
+     },
+     {
+      "v": "Größe",
+      "stil": "text"
+     },
+     {
+      "v": "Auswahl",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 2",
+      "stil": "text"
+     },
+     {
+      "v": "1–9 · 10–49 · 50–249 · 250–999 · ab 1.000",
+      "stil": "text"
+     },
+     {
+      "v": "Passung, Auswertung",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Kontakt",
+      "stil": "fett"
+     },
+     {
+      "v": "Vor- und Nachname, Funktion",
+      "stil": "text"
+     },
+     {
+      "v": "Text",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1",
+      "stil": "text"
+     },
+     {
+      "v": "getrennte Felder",
+      "stil": "text"
+     },
+     {
+      "v": "Ansprache",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Kontakt",
+      "stil": "fett"
+     },
+     {
+      "v": "E-Mail oder Telefon",
+      "stil": "text"
+     },
+     {
+      "v": "Text",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1",
+      "stil": "text"
+     },
+     {
+      "v": "Telefon mit Ländervorwahl",
+      "stil": "text"
+     },
+     {
+      "v": "Erreichbarkeit",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Kontakt",
+      "stil": "fett"
+     },
+     {
+      "v": "Rolle im Buying Center",
+      "stil": "text"
+     },
+     {
+      "v": "Auswahl",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 2",
+      "stil": "text"
+     },
+     {
+      "v": "Entscheider · Nutzer · Beeinflusser · Einkauf · Türöffner · Fürsprecher · Freigabe",
+      "stil": "text"
+     },
+     {
+      "v": "wer wie mitentscheidet",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Kontakt",
+      "stil": "fett"
+     },
+     {
+      "v": "Einwilligung E-Mail-Werbung",
+      "stil": "text"
+     },
+     {
+      "v": "ja/nein, Datum",
+      "stil": "text"
+     },
+     {
+      "v": "wenn vorhanden",
+      "stil": "text"
+     },
+     {
+      "v": "mit Datum und Nachweis",
+      "stil": "text"
+     },
+     {
+      "v": "rechtlich saubere Ansprache",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Name",
+      "stil": "text"
+     },
+     {
+      "v": "Text",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1",
+      "stil": "text"
+     },
+     {
+      "v": "Firma · Thema",
+      "stil": "text"
+     },
+     {
+      "v": "eindeutig auf einen Blick",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Verantwortlich",
+      "stil": "text"
+     },
+     {
+      "v": "Person",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1",
+      "stil": "text"
+     },
+     {
+      "v": "eine Person",
+      "stil": "text"
+     },
+     {
+      "v": "klare Zuständigkeit",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Nächster Schritt mit Datum",
+      "stil": "text"
+     },
+     {
+      "v": "Aufgabe",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 1 bis 5, Geparkt",
+      "stil": "text"
+     },
+     {
+      "v": "konkrete Handlung",
+      "stil": "text"
+     },
+     {
+      "v": "nichts bleibt liegen",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Bedarf in Worten des Kunden",
+      "stil": "text"
+     },
+     {
+      "v": "Text",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 2",
+      "stil": "text"
+     },
+     {
+      "v": "Zitat",
+      "stil": "text"
+     },
+     {
+      "v": "Angebot und Gespräch",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Entscheider",
+      "stil": "text"
+     },
+     {
+      "v": "Kontakt",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 3",
+      "stil": "text"
+     },
+     {
+      "v": "verknüpfter Kontakt",
+      "stil": "text"
+     },
+     {
+      "v": "realistische Einschätzung",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Zeitrahmen",
+      "stil": "text"
+     },
+     {
+      "v": "Text",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 3",
+      "stil": "text"
+     },
+     {
+      "v": "bis wann und warum",
+      "stil": "text"
+     },
+     {
+      "v": "Dringlichkeit",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Budget-Rahmen",
+      "stil": "text"
+     },
+     {
+      "v": "Text",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 3",
+      "stil": "text"
+     },
+     {
+      "v": "Spanne oder „offen“",
+      "stil": "text"
+     },
+     {
+      "v": "Passung des Angebots",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Wert netto",
+      "stil": "text"
+     },
+     {
+      "v": "Zahl",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 4 (geschätzt ab 3)",
+      "stil": "text"
+     },
+     {
+      "v": "Euro, ohne Umsatzsteuer",
+      "stil": "text"
+     },
+     {
+      "v": "Pipeline und Prognose",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Erwarteter Abschluss",
+      "stil": "text"
+     },
+     {
+      "v": "Datum",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 4",
+      "stil": "text"
+     },
+     {
+      "v": "Tag",
+      "stil": "text"
+     },
+     {
+      "v": "Prognose nach Monat",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Budget bestätigt",
+      "stil": "text"
+     },
+     {
+      "v": "ja/nein",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 4",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": "Risiko im Angebot",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Angebot verschickt am",
+      "stil": "text"
+     },
+     {
+      "v": "Datum",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 4",
+      "stil": "text"
+     },
+     {
+      "v": "Tag",
+      "stil": "text"
+     },
+     {
+      "v": "Nachfassen, Dauer",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Entscheidungsdatum, offene Punkte",
+      "stil": "text"
+     },
+     {
+      "v": "Datum, Text",
+      "stil": "text"
+     },
+     {
+      "v": "Stufe 5",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": "Verhandlung steuern",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Auftragsdatum, Startdatum, Übergabe",
+      "stil": "text"
+     },
+     {
+      "v": "Datum, Text",
+      "stil": "text"
+     },
+     {
+      "v": "Gewonnen",
+      "stil": "text"
+     },
+     {
+      "v": "Übergabe-Notiz an die Umsetzung",
+      "stil": "text"
+     },
+     {
+      "v": "sauberer Start",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Verlustgrund",
+      "stil": "text"
+     },
+     {
+      "v": "Auswahl, Text",
+      "stil": "text"
+     },
+     {
+      "v": "Verloren",
+      "stil": "text"
+     },
+     {
+      "v": "kein Bedarf · kein Budget · falscher Zeitpunkt · Preis · Wettbewerber gewählt · macht es selbst · keine Rückmeldung · passt nicht zu uns",
+      "stil": "text"
+     },
+     {
+      "v": "lernen, was fehlt",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Grund und Wiedervorlage",
+      "stil": "text"
+     },
+     {
+      "v": "Auswahl, Datum",
+      "stil": "text"
+     },
+     {
+      "v": "Geparkt",
+      "stil": "text"
+     },
+     {
+      "v": "Budget später · andere Priorität · Wechsel beim Kunden · wartet auf Entscheidung von außen",
+      "stil": "text"
+     },
+     {
+      "v": "nichts geht verloren",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Chance",
+      "stil": "fett"
+     },
+     {
+      "v": "Wettbewerber",
+      "stil": "text"
+     },
+     {
+      "v": "Text",
+      "stil": "text"
+     },
+     {
+      "v": "wenn bekannt",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": "Einordnung im Angebot",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Import",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Firma",
+     "breite": 26,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Website",
+     "breite": 18,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Branche",
+     "breite": 16,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Größe",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "PLZ",
+     "breite": 7,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Ort",
+     "breite": 14,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Land",
+     "breite": 6,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Lead-Klasse",
+     "breite": 8,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Quelle",
+     "breite": 13,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Vorname",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Nachname",
+     "breite": 14,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Funktion",
+     "breite": 18,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Rolle",
+     "breite": 13,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "E-Mail",
+     "breite": 26,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Telefon",
+     "breite": 16,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Einwilligung E-Mail-Werbung",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Einwilligung am",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Herkunft der Daten",
+     "breite": 20,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Verantwortlich",
+     "breite": 13,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Chance",
+     "breite": 28,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Stufe",
+     "breite": 18,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Wert netto",
+     "breite": 11,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Nächster Schritt",
+     "breite": 26,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Nächster Schritt am",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Notiz",
+     "breite": 30,
+     "stil": "eingabe"
+    }
+   ],
+   "wiederholen": {
+    "zeile": [
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    "anzahl": 100
+   }
+  },
+  {
+   "name": "Import Beispiel",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Firma",
+     "breite": 26,
+     "stil": "text"
+    },
+    {
+     "titel": "Website",
+     "breite": 18,
+     "stil": "text"
+    },
+    {
+     "titel": "Branche",
+     "breite": 16,
+     "stil": "text"
+    },
+    {
+     "titel": "Größe",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "PLZ",
+     "breite": 7,
+     "stil": "text"
+    },
+    {
+     "titel": "Ort",
+     "breite": 14,
+     "stil": "text"
+    },
+    {
+     "titel": "Land",
+     "breite": 6,
+     "stil": "text"
+    },
+    {
+     "titel": "Lead-Klasse",
+     "breite": 8,
+     "stil": "text"
+    },
+    {
+     "titel": "Quelle",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "Vorname",
+     "breite": 12,
+     "stil": "text"
+    },
+    {
+     "titel": "Nachname",
+     "breite": 14,
+     "stil": "text"
+    },
+    {
+     "titel": "Funktion",
+     "breite": 18,
+     "stil": "text"
+    },
+    {
+     "titel": "Rolle",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "E-Mail",
+     "breite": 26,
+     "stil": "text"
+    },
+    {
+     "titel": "Telefon",
+     "breite": 16,
+     "stil": "text"
+    },
+    {
+     "titel": "Einwilligung E-Mail-Werbung",
+     "breite": 12,
+     "stil": "text"
+    },
+    {
+     "titel": "Einwilligung am",
+     "breite": 12,
+     "stil": "text"
+    },
+    {
+     "titel": "Herkunft der Daten",
+     "breite": 20,
+     "stil": "text"
+    },
+    {
+     "titel": "Verantwortlich",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "Chance",
+     "breite": 28,
+     "stil": "text"
+    },
+    {
+     "titel": "Stufe",
+     "breite": 18,
+     "stil": "text"
+    },
+    {
+     "titel": "Wert netto",
+     "breite": 11,
+     "stil": "text"
+    },
+    {
+     "titel": "Nächster Schritt",
+     "breite": 26,
+     "stil": "text"
+    },
+    {
+     "titel": "Nächster Schritt am",
+     "breite": 12,
+     "stil": "text"
+    },
+    {
+     "titel": "Notiz",
+     "breite": 30,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Muster Logistik GmbH",
+      "stil": "text"
+     },
+     {
+      "v": "www.example.com",
+      "stil": "text"
+     },
+     {
+      "v": "Logistik",
+      "stil": "text"
+     },
+     {
+      "v": "50–249",
+      "stil": "text"
+     },
+     {
+      "v": "12345",
+      "stil": "text"
+     },
+     {
+      "v": "Musterstadt",
+      "stil": "text"
+     },
+     {
+      "v": "DE",
+      "stil": "text"
+     },
+     {
+      "v": "B",
+      "stil": "text"
+     },
+     {
+      "v": "Empfehlung",
+      "stil": "text"
+     },
+     {
+      "v": "Erika",
+      "stil": "text"
+     },
+     {
+      "v": "Mustermann",
+      "stil": "text"
+     },
+     {
+      "v": "Leitung Einkauf",
+      "stil": "text"
+     },
+     {
+      "v": "Einkauf",
+      "stil": "text"
+     },
+     {
+      "v": "erika.mustermann@example.com",
+      "stil": "text"
+     },
+     null,
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     null,
+     {
+      "v": "Visitenkarte Fachmesse",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 1",
+      "stil": "text"
+     },
+     {
+      "v": "Muster Logistik GmbH · Lager-IT",
+      "stil": "text"
+     },
+     {
+      "v": "2 Bedarf qualifiziert",
+      "stil": "text"
+     },
+     {
+      "v": 8000,
+      "stil": "euro"
+     },
+     {
+      "v": "Termin zur Lösung",
+      "stil": "text"
+     },
+     {
+      "v": 46338,
+      "stil": "datum"
+     },
+     {
+      "v": "kam über die Empfehlung eines Bestandskunden",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Beispiel Bau GmbH",
+      "stil": "text"
+     },
+     {
+      "v": "www.example.org",
+      "stil": "text"
+     },
+     {
+      "v": "Bau",
+      "stil": "text"
+     },
+     {
+      "v": "10–49",
+      "stil": "text"
+     },
+     {
+      "v": "23456",
+      "stil": "text"
+     },
+     {
+      "v": "Beispielstadt",
+      "stil": "text"
+     },
+     {
+      "v": "DE",
+      "stil": "text"
+     },
+     {
+      "v": "A",
+      "stil": "text"
+     },
+     {
+      "v": "Website",
+      "stil": "text"
+     },
+     {
+      "v": "Max",
+      "stil": "text"
+     },
+     {
+      "v": "Mustermann",
+      "stil": "text"
+     },
+     {
+      "v": "Geschäftsführung",
+      "stil": "text"
+     },
+     {
+      "v": "Entscheider",
+      "stil": "text"
+     },
+     {
+      "v": "max.mustermann@example.org",
+      "stil": "text"
+     },
+     null,
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": 46280,
+      "stil": "datum"
+     },
+     {
+      "v": "Anfrage über das Kontaktformular",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 2",
+      "stil": "text"
+     },
+     null,
+     null,
+     null,
+     {
+      "v": "Rückruf zur Anfrage",
+      "stil": "text"
+     },
+     {
+      "v": 46330,
+      "stil": "datum"
+     },
+     null
+    ],
+    [],
+    [
+     {
+      "v": "Alle Angaben frei erfunden. Vor dem Import löschen Sie Beispielzeilen und Hinweise. Viele CRM erwarten CSV mit UTF-8: Datei › Speichern unter › CSV UTF-8.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Einführung",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Wann",
+     "breite": 10,
+     "stil": "fett"
+    },
+    {
+     "titel": "Schritt",
+     "breite": 64,
+     "stil": "text"
+    },
+    {
+     "titel": "Verantwortlich",
+     "breite": 16,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Erledigt",
+     "breite": 9,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "am",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Notiz",
+     "breite": 30,
+     "stil": "eingabe"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Woche 1",
+      "stil": "fett"
+     },
+     {
+      "v": "Stufen mit Ein- und Austrittskriterien festlegen (PDF Seite 3 bis 6)",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 1",
+      "stil": "fett"
+     },
+     {
+      "v": "Pflichtfelder und Auswahllisten festlegen (Seite 7 und 8)",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 1",
+      "stil": "fett"
+     },
+     {
+      "v": "Regeln für Notizen und Wiedervorlagen besprechen (Seite 9 und 10)",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 1",
+      "stil": "fett"
+     },
+     {
+      "v": "Stichtag „nur noch CRM“ festlegen und im Team ankündigen",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 2",
+      "stil": "fett"
+     },
+     {
+      "v": "Benutzer, Rechte, Felder und Pipeline im CRM anlegen (Seite 16)",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 2",
+      "stil": "fett"
+     },
+     {
+      "v": "Sechs Ansichten und Berichte anlegen",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 2",
+      "stil": "fett"
+     },
+     {
+      "v": "Testlauf mit fünf Chancen durch alle Stufen",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 2",
+      "stil": "fett"
+     },
+     {
+      "v": "Daten sammeln und im Blatt „Import“ bereinigen (Seite 17)",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 3",
+      "stil": "fett"
+     },
+     {
+      "v": "Probeimport mit zehn Zeilen, dann alles importieren, Stichprobe",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 3",
+      "stil": "fett"
+     },
+     {
+      "v": "Sitzung „Aus dem Kopf ins CRM“ (60 Minuten)",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 3",
+      "stil": "fett"
+     },
+     {
+      "v": "Schulung mit allen (60 Minuten), Grundregeln aushängen",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 3",
+      "stil": "fett"
+     },
+     {
+      "v": "Stichtag: alte Listen schreibgeschützt ablegen",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 4",
+      "stil": "fett"
+     },
+     {
+      "v": "Erstes Pipeline-Review im CRM, Protokoll führen",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Woche 4",
+      "stil": "fett"
+     },
+     {
+      "v": "Regeln dort nachschärfen, wo sie im Alltag haken",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Tag 30",
+      "stil": "fett"
+     },
+     {
+      "v": "Datenqualität messen, Rückmelderunde im Team",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [
+     {
+      "v": "Tag 90",
+      "stil": "fett"
+     },
+     {
+      "v": "Stufen, Wahrscheinlichkeiten und Pflichtfelder prüfen",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Stand",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(D2:D17,\"ja\")&\" von 16 Schritten erledigt\"",
+      "stil": "fett"
+     },
+     null,
+     {
+      "f": "COUNTIF(D2:D17,\"ja\")/16",
+      "stil": "prozent"
+     }
+    ]
+   ],
+   "auswahl": [
+    {
+     "spalte": "D",
+     "werte": [
+      "ja",
+      "nein"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Beispiel",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Chance (Firma · Thema)",
+     "breite": 32,
+     "stil": "text"
+    },
+    {
+     "titel": "Ansprechperson (Rolle)",
+     "breite": 22,
+     "stil": "text"
+    },
+    {
+     "titel": "Verantwortlich",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "Quelle",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "Angelegt am",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Stufe",
+     "breite": 19,
+     "stil": "text"
+    },
+    {
+     "titel": "In Stufe seit",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Tage in Stufe",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Höchstdauer",
+     "breite": 9,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Wert netto (€)",
+     "breite": 12,
+     "stil": "euro"
+    },
+    {
+     "titel": "Wahrsch.",
+     "breite": 8,
+     "stil": "prozent"
+    },
+    {
+     "titel": "Gewichtet (€)",
+     "breite": 12,
+     "stil": "euro"
+    },
+    {
+     "titel": "Erwarteter Abschluss",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Nächster Schritt",
+     "breite": 30,
+     "stil": "text"
+    },
+    {
+     "titel": "Nächster Schritt am",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Entscheider bekannt",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "Budget bestätigt",
+     "breite": 10,
+     "stil": "text"
+    },
+    {
+     "titel": "Grund (Verloren, Geparkt)",
+     "breite": 20,
+     "stil": "text"
+    },
+    {
+     "titel": "Entschieden am",
+     "breite": 11,
+     "stil": "datum"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 30,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Hilfe: Stufe Nr.",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Hilfe: offen",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Hilfe: hängt",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Hilfe: Lücke",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Hilfe: überfällig",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Tage bis Entscheidung",
+     "breite": 10,
+     "stil": "zahl"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Maschinenbau · Netzwerk-Umbau",
+      "stil": "text"
+     },
+     {
+      "v": "Werkleitung (Entscheider)",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 1",
+      "stil": "text"
+     },
+     {
+      "v": "Empfehlung",
+      "stil": "text"
+     },
+     {
+      "v": 46254,
+      "stil": "datum"
+     },
+     {
+      "v": "5 Verhandlung",
+      "stil": "text"
+     },
+     {
+      "v": 46319,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(OR(G{r}=\"\",H{r}=\"\"),\"\",IF(OR(G{r}=\"Gewonnen\",G{r}=\"Verloren\"),\"\",TODAY()-H{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$C$9,3,FALSE),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "v": 42000,
+      "stil": "euro"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$B$9,2,FALSE),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",L{r}=\"\",W{r}<>1),\"\",K{r}*L{r})",
+      "stil": "euro"
+     },
+     {
+      "v": 46346,
+      "stil": "datum"
+     },
+     {
+      "v": "Vertragsentwurf besprechen",
+      "stil": "text"
+     },
+     {
+      "v": 46330,
+      "stil": "datum"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"Gewonnen\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\"),IF(G{r}=\"Verloren\",IF(S{r}=\"\",\"Verlustgrund fehlt\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\")),IF(G{r}=\"Geparkt\",IF(S{r}=\"\",\"Grund fehlt\",IF(P{r}=\"\",\"Wiedervorlage fehlt\",IF(P{r}<TODAY(),\"Wiedervorlage überfällig\",\"\"))),IF(O{r}=\"\",\"Nächster Schritt fehlt\",IF(P{r}=\"\",\"Datum für den nächsten Schritt fehlt\",IF(P{r}<TODAY(),\"Nächster Schritt überfällig\",IF(AND(V{r}>=3,Q{r}<>\"ja\"),\"Entscheider unklar\",IF(AND(V{r}>=4,K{r}=\"\"),\"Wert fehlt\",IF(AND(V{r}>=4,N{r}=\"\"),\"Abschlussdatum fehlt\",IF(AND(V{r}>=4,R{r}<>\"ja\"),\"Budget nicht bestätigt\",IF(X{r}=1,\"hängt: länger als die Höchstdauer\",IF(ISNUMBER(N{r}),IF(N{r}<TODAY(),\"Abschlussdatum liegt zurück\",\"\"),\"\")))))))))))))",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VALUE(LEFT(G{r},1)),0))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(ISNUMBER(V{r}),IF(AND(V{r}>=1,V{r}<=5),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),IF(I{r}>J{r},1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(OR(O{r}=\"\",P{r}=\"\"),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(W{r}=1,G{r}=\"Geparkt\"),IF(ISNUMBER(P{r}),IF(P{r}<TODAY(),1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",T{r}=\"\"),\"\",T{r}-F{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Steuerkanzlei · Arbeitsplätze erneuern",
+      "stil": "text"
+     },
+     {
+      "v": "Partnerin (Entscheider)",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 2",
+      "stil": "text"
+     },
+     {
+      "v": "Website",
+      "stil": "text"
+     },
+     {
+      "v": 46275,
+      "stil": "datum"
+     },
+     {
+      "v": "4 Angebot liegt vor",
+      "stil": "text"
+     },
+     {
+      "v": 46322,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(OR(G{r}=\"\",H{r}=\"\"),\"\",IF(OR(G{r}=\"Gewonnen\",G{r}=\"Verloren\"),\"\",TODAY()-H{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$C$9,3,FALSE),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "v": 18000,
+      "stil": "euro"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$B$9,2,FALSE),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",L{r}=\"\",W{r}<>1),\"\",K{r}*L{r})",
+      "stil": "euro"
+     },
+     {
+      "v": 46353,
+      "stil": "datum"
+     },
+     {
+      "v": "Angebot besprechen",
+      "stil": "text"
+     },
+     {
+      "v": 46331,
+      "stil": "datum"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"Gewonnen\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\"),IF(G{r}=\"Verloren\",IF(S{r}=\"\",\"Verlustgrund fehlt\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\")),IF(G{r}=\"Geparkt\",IF(S{r}=\"\",\"Grund fehlt\",IF(P{r}=\"\",\"Wiedervorlage fehlt\",IF(P{r}<TODAY(),\"Wiedervorlage überfällig\",\"\"))),IF(O{r}=\"\",\"Nächster Schritt fehlt\",IF(P{r}=\"\",\"Datum für den nächsten Schritt fehlt\",IF(P{r}<TODAY(),\"Nächster Schritt überfällig\",IF(AND(V{r}>=3,Q{r}<>\"ja\"),\"Entscheider unklar\",IF(AND(V{r}>=4,K{r}=\"\"),\"Wert fehlt\",IF(AND(V{r}>=4,N{r}=\"\"),\"Abschlussdatum fehlt\",IF(AND(V{r}>=4,R{r}<>\"ja\"),\"Budget nicht bestätigt\",IF(X{r}=1,\"hängt: länger als die Höchstdauer\",IF(ISNUMBER(N{r}),IF(N{r}<TODAY(),\"Abschlussdatum liegt zurück\",\"\"),\"\")))))))))))))",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VALUE(LEFT(G{r},1)),0))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(ISNUMBER(V{r}),IF(AND(V{r}>=1,V{r}<=5),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),IF(I{r}>J{r},1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(OR(O{r}=\"\",P{r}=\"\"),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(W{r}=1,G{r}=\"Geparkt\"),IF(ISNUMBER(P{r}),IF(P{r}<TODAY(),1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",T{r}=\"\"),\"\",T{r}-F{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Spedition · Betreuungsvertrag (Jahreswert)",
+      "stil": "text"
+     },
+     {
+      "v": "Geschäftsführung",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 1",
+      "stil": "text"
+     },
+     {
+      "v": "Netzwerk",
+      "stil": "text"
+     },
+     {
+      "v": 46293,
+      "stil": "datum"
+     },
+     {
+      "v": "3 Lösung abgestimmt",
+      "stil": "text"
+     },
+     {
+      "v": 46316,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(OR(G{r}=\"\",H{r}=\"\"),\"\",IF(OR(G{r}=\"Gewonnen\",G{r}=\"Verloren\"),\"\",TODAY()-H{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$C$9,3,FALSE),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "v": 24000,
+      "stil": "euro"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$B$9,2,FALSE),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",L{r}=\"\",W{r}<>1),\"\",K{r}*L{r})",
+      "stil": "euro"
+     },
+     {
+      "v": 46371,
+      "stil": "datum"
+     },
+     {
+      "v": "Analyse vor Ort",
+      "stil": "text"
+     },
+     {
+      "v": 46329,
+      "stil": "datum"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"Gewonnen\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\"),IF(G{r}=\"Verloren\",IF(S{r}=\"\",\"Verlustgrund fehlt\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\")),IF(G{r}=\"Geparkt\",IF(S{r}=\"\",\"Grund fehlt\",IF(P{r}=\"\",\"Wiedervorlage fehlt\",IF(P{r}<TODAY(),\"Wiedervorlage überfällig\",\"\"))),IF(O{r}=\"\",\"Nächster Schritt fehlt\",IF(P{r}=\"\",\"Datum für den nächsten Schritt fehlt\",IF(P{r}<TODAY(),\"Nächster Schritt überfällig\",IF(AND(V{r}>=3,Q{r}<>\"ja\"),\"Entscheider unklar\",IF(AND(V{r}>=4,K{r}=\"\"),\"Wert fehlt\",IF(AND(V{r}>=4,N{r}=\"\"),\"Abschlussdatum fehlt\",IF(AND(V{r}>=4,R{r}<>\"ja\"),\"Budget nicht bestätigt\",IF(X{r}=1,\"hängt: länger als die Höchstdauer\",IF(ISNUMBER(N{r}),IF(N{r}<TODAY(),\"Abschlussdatum liegt zurück\",\"\"),\"\")))))))))))))",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VALUE(LEFT(G{r},1)),0))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(ISNUMBER(V{r}),IF(AND(V{r}>=1,V{r}<=5),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),IF(I{r}>J{r},1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(OR(O{r}=\"\",P{r}=\"\"),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(W{r}=1,G{r}=\"Geparkt\"),IF(ISNUMBER(P{r}),IF(P{r}<TODAY(),1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",T{r}=\"\"),\"\",T{r}-F{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Ingenieurbüro · Arbeitsplätze",
+      "stil": "text"
+     },
+     {
+      "v": "Einkauf",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 2",
+      "stil": "text"
+     },
+     {
+      "v": "Ansprache",
+      "stil": "text"
+     },
+     {
+      "v": 46265,
+      "stil": "datum"
+     },
+     {
+      "v": "4 Angebot liegt vor",
+      "stil": "text"
+     },
+     {
+      "v": 46302,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(OR(G{r}=\"\",H{r}=\"\"),\"\",IF(OR(G{r}=\"Gewonnen\",G{r}=\"Verloren\"),\"\",TODAY()-H{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$C$9,3,FALSE),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "v": 12500,
+      "stil": "euro"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$B$9,2,FALSE),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",L{r}=\"\",W{r}<>1),\"\",K{r}*L{r})",
+      "stil": "euro"
+     },
+     {
+      "v": 46366,
+      "stil": "datum"
+     },
+     {
+      "v": "Rückruf Einkauf",
+      "stil": "text"
+     },
+     {
+      "v": 46323,
+      "stil": "datum"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"Gewonnen\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\"),IF(G{r}=\"Verloren\",IF(S{r}=\"\",\"Verlustgrund fehlt\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\")),IF(G{r}=\"Geparkt\",IF(S{r}=\"\",\"Grund fehlt\",IF(P{r}=\"\",\"Wiedervorlage fehlt\",IF(P{r}<TODAY(),\"Wiedervorlage überfällig\",\"\"))),IF(O{r}=\"\",\"Nächster Schritt fehlt\",IF(P{r}=\"\",\"Datum für den nächsten Schritt fehlt\",IF(P{r}<TODAY(),\"Nächster Schritt überfällig\",IF(AND(V{r}>=3,Q{r}<>\"ja\"),\"Entscheider unklar\",IF(AND(V{r}>=4,K{r}=\"\"),\"Wert fehlt\",IF(AND(V{r}>=4,N{r}=\"\"),\"Abschlussdatum fehlt\",IF(AND(V{r}>=4,R{r}<>\"ja\"),\"Budget nicht bestätigt\",IF(X{r}=1,\"hängt: länger als die Höchstdauer\",IF(ISNUMBER(N{r}),IF(N{r}<TODAY(),\"Abschlussdatum liegt zurück\",\"\"),\"\")))))))))))))",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VALUE(LEFT(G{r},1)),0))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(ISNUMBER(V{r}),IF(AND(V{r}>=1,V{r}<=5),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),IF(I{r}>J{r},1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(OR(O{r}=\"\",P{r}=\"\"),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(W{r}=1,G{r}=\"Geparkt\"),IF(ISNUMBER(P{r}),IF(P{r}<TODAY(),1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",T{r}=\"\"),\"\",T{r}-F{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Praxisverbund · Datensicherung",
+      "stil": "text"
+     },
+     {
+      "v": "Praxismanagement (Nutzer)",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 1",
+      "stil": "text"
+     },
+     {
+      "v": "Empfehlung",
+      "stil": "text"
+     },
+     {
+      "v": 46315,
+      "stil": "datum"
+     },
+     {
+      "v": "2 Bedarf qualifiziert",
+      "stil": "text"
+     },
+     {
+      "v": 46324,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(OR(G{r}=\"\",H{r}=\"\"),\"\",IF(OR(G{r}=\"Gewonnen\",G{r}=\"Verloren\"),\"\",TODAY()-H{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$C$9,3,FALSE),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "v": 6500,
+      "stil": "euro"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$B$9,2,FALSE),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",L{r}=\"\",W{r}<>1),\"\",K{r}*L{r})",
+      "stil": "euro"
+     },
+     {
+      "v": 46407,
+      "stil": "datum"
+     },
+     {
+      "v": "Termin mit Inhaberin",
+      "stil": "text"
+     },
+     {
+      "v": 46332,
+      "stil": "datum"
+     },
+     {
+      "v": "nein",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"Gewonnen\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\"),IF(G{r}=\"Verloren\",IF(S{r}=\"\",\"Verlustgrund fehlt\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\")),IF(G{r}=\"Geparkt\",IF(S{r}=\"\",\"Grund fehlt\",IF(P{r}=\"\",\"Wiedervorlage fehlt\",IF(P{r}<TODAY(),\"Wiedervorlage überfällig\",\"\"))),IF(O{r}=\"\",\"Nächster Schritt fehlt\",IF(P{r}=\"\",\"Datum für den nächsten Schritt fehlt\",IF(P{r}<TODAY(),\"Nächster Schritt überfällig\",IF(AND(V{r}>=3,Q{r}<>\"ja\"),\"Entscheider unklar\",IF(AND(V{r}>=4,K{r}=\"\"),\"Wert fehlt\",IF(AND(V{r}>=4,N{r}=\"\"),\"Abschlussdatum fehlt\",IF(AND(V{r}>=4,R{r}<>\"ja\"),\"Budget nicht bestätigt\",IF(X{r}=1,\"hängt: länger als die Höchstdauer\",IF(ISNUMBER(N{r}),IF(N{r}<TODAY(),\"Abschlussdatum liegt zurück\",\"\"),\"\")))))))))))))",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VALUE(LEFT(G{r},1)),0))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(ISNUMBER(V{r}),IF(AND(V{r}>=1,V{r}<=5),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),IF(I{r}>J{r},1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(OR(O{r}=\"\",P{r}=\"\"),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(W{r}=1,G{r}=\"Geparkt\"),IF(ISNUMBER(P{r}),IF(P{r}<TODAY(),1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",T{r}=\"\"),\"\",T{r}-F{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Hausverwaltung · Telefonanlage",
+      "stil": "text"
+     },
+     {
+      "v": "Verwaltungsleitung",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 2",
+      "stil": "text"
+     },
+     {
+      "v": "Veranstaltung",
+      "stil": "text"
+     },
+     {
+      "v": 46325,
+      "stil": "datum"
+     },
+     {
+      "v": "1 Termin vereinbart",
+      "stil": "text"
+     },
+     {
+      "v": 46325,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(OR(G{r}=\"\",H{r}=\"\"),\"\",IF(OR(G{r}=\"Gewonnen\",G{r}=\"Verloren\"),\"\",TODAY()-H{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$C$9,3,FALSE),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "v": 9000,
+      "stil": "euro"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$B$9,2,FALSE),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",L{r}=\"\",W{r}<>1),\"\",K{r}*L{r})",
+      "stil": "euro"
+     },
+     {
+      "v": 46416,
+      "stil": "datum"
+     },
+     {
+      "v": "Erstgespräch",
+      "stil": "text"
+     },
+     {
+      "v": 46335,
+      "stil": "datum"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"Gewonnen\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\"),IF(G{r}=\"Verloren\",IF(S{r}=\"\",\"Verlustgrund fehlt\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\")),IF(G{r}=\"Geparkt\",IF(S{r}=\"\",\"Grund fehlt\",IF(P{r}=\"\",\"Wiedervorlage fehlt\",IF(P{r}<TODAY(),\"Wiedervorlage überfällig\",\"\"))),IF(O{r}=\"\",\"Nächster Schritt fehlt\",IF(P{r}=\"\",\"Datum für den nächsten Schritt fehlt\",IF(P{r}<TODAY(),\"Nächster Schritt überfällig\",IF(AND(V{r}>=3,Q{r}<>\"ja\"),\"Entscheider unklar\",IF(AND(V{r}>=4,K{r}=\"\"),\"Wert fehlt\",IF(AND(V{r}>=4,N{r}=\"\"),\"Abschlussdatum fehlt\",IF(AND(V{r}>=4,R{r}<>\"ja\"),\"Budget nicht bestätigt\",IF(X{r}=1,\"hängt: länger als die Höchstdauer\",IF(ISNUMBER(N{r}),IF(N{r}<TODAY(),\"Abschlussdatum liegt zurück\",\"\"),\"\")))))))))))))",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VALUE(LEFT(G{r},1)),0))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(ISNUMBER(V{r}),IF(AND(V{r}>=1,V{r}<=5),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),IF(I{r}>J{r},1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(OR(O{r}=\"\",P{r}=\"\"),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(W{r}=1,G{r}=\"Geparkt\"),IF(ISNUMBER(P{r}),IF(P{r}<TODAY(),1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",T{r}=\"\"),\"\",T{r}-F{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Autohaus · Workshop IT-Sicherheit",
+      "stil": "text"
+     },
+     {
+      "v": "Geschäftsführung",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 1",
+      "stil": "text"
+     },
+     {
+      "v": "Bestandskunde",
+      "stil": "text"
+     },
+     {
+      "v": 46266,
+      "stil": "datum"
+     },
+     {
+      "v": "Gewonnen",
+      "stil": "text"
+     },
+     {
+      "v": 46321,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(OR(G{r}=\"\",H{r}=\"\"),\"\",IF(OR(G{r}=\"Gewonnen\",G{r}=\"Verloren\"),\"\",TODAY()-H{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$C$9,3,FALSE),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "v": 4800,
+      "stil": "euro"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$B$9,2,FALSE),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",L{r}=\"\",W{r}<>1),\"\",K{r}*L{r})",
+      "stil": "euro"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": "Übergabe an die Umsetzung",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": 46321,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"Gewonnen\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\"),IF(G{r}=\"Verloren\",IF(S{r}=\"\",\"Verlustgrund fehlt\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\")),IF(G{r}=\"Geparkt\",IF(S{r}=\"\",\"Grund fehlt\",IF(P{r}=\"\",\"Wiedervorlage fehlt\",IF(P{r}<TODAY(),\"Wiedervorlage überfällig\",\"\"))),IF(O{r}=\"\",\"Nächster Schritt fehlt\",IF(P{r}=\"\",\"Datum für den nächsten Schritt fehlt\",IF(P{r}<TODAY(),\"Nächster Schritt überfällig\",IF(AND(V{r}>=3,Q{r}<>\"ja\"),\"Entscheider unklar\",IF(AND(V{r}>=4,K{r}=\"\"),\"Wert fehlt\",IF(AND(V{r}>=4,N{r}=\"\"),\"Abschlussdatum fehlt\",IF(AND(V{r}>=4,R{r}<>\"ja\"),\"Budget nicht bestätigt\",IF(X{r}=1,\"hängt: länger als die Höchstdauer\",IF(ISNUMBER(N{r}),IF(N{r}<TODAY(),\"Abschlussdatum liegt zurück\",\"\"),\"\")))))))))))))",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VALUE(LEFT(G{r},1)),0))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(ISNUMBER(V{r}),IF(AND(V{r}>=1,V{r}<=5),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),IF(I{r}>J{r},1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(OR(O{r}=\"\",P{r}=\"\"),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(W{r}=1,G{r}=\"Geparkt\"),IF(ISNUMBER(P{r}),IF(P{r}<TODAY(),1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",T{r}=\"\"),\"\",T{r}-F{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": "Bäckerei · Kassensystem",
+      "stil": "text"
+     },
+     {
+      "v": "Inhaber",
+      "stil": "text"
+     },
+     {
+      "v": "Vertrieb 2",
+      "stil": "text"
+     },
+     {
+      "v": "Website",
+      "stil": "text"
+     },
+     {
+      "v": 46249,
+      "stil": "datum"
+     },
+     {
+      "v": "Verloren",
+      "stil": "text"
+     },
+     {
+      "v": 46317,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(OR(G{r}=\"\",H{r}=\"\"),\"\",IF(OR(G{r}=\"Gewonnen\",G{r}=\"Verloren\"),\"\",TODAY()-H{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$C$9,3,FALSE),\"\"))",
+      "stil": "zahl"
+     },
+     {
+      "v": 15000,
+      "stil": "euro"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VLOOKUP(G{r},Stufen!$A$2:$B$9,2,FALSE),\"\"))",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",L{r}=\"\",W{r}<>1),\"\",K{r}*L{r})",
+      "stil": "euro"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": "",
+      "stil": "text"
+     },
+     {
+      "v": null,
+      "stil": "datum"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "ja",
+      "stil": "text"
+     },
+     {
+      "v": "Preis",
+      "stil": "text"
+     },
+     {
+      "v": 46317,
+      "stil": "datum"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IF(G{r}=\"Gewonnen\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\"),IF(G{r}=\"Verloren\",IF(S{r}=\"\",\"Verlustgrund fehlt\",IF(T{r}=\"\",\"Datum der Entscheidung fehlt\",\"\")),IF(G{r}=\"Geparkt\",IF(S{r}=\"\",\"Grund fehlt\",IF(P{r}=\"\",\"Wiedervorlage fehlt\",IF(P{r}<TODAY(),\"Wiedervorlage überfällig\",\"\"))),IF(O{r}=\"\",\"Nächster Schritt fehlt\",IF(P{r}=\"\",\"Datum für den nächsten Schritt fehlt\",IF(P{r}<TODAY(),\"Nächster Schritt überfällig\",IF(AND(V{r}>=3,Q{r}<>\"ja\"),\"Entscheider unklar\",IF(AND(V{r}>=4,K{r}=\"\"),\"Wert fehlt\",IF(AND(V{r}>=4,N{r}=\"\"),\"Abschlussdatum fehlt\",IF(AND(V{r}>=4,R{r}<>\"ja\"),\"Budget nicht bestätigt\",IF(X{r}=1,\"hängt: länger als die Höchstdauer\",IF(ISNUMBER(N{r}),IF(N{r}<TODAY(),\"Abschlussdatum liegt zurück\",\"\"),\"\")))))))))))))",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(G{r}=\"\",\"\",IFERROR(VALUE(LEFT(G{r},1)),0))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(ISNUMBER(V{r}),IF(AND(V{r}>=1,V{r}<=5),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(AND(ISNUMBER(I{r}),ISNUMBER(J{r})),IF(I{r}>J{r},1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(W{r}=1,IF(OR(O{r}=\"\",P{r}=\"\"),1,0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(W{r}=1,G{r}=\"Geparkt\"),IF(ISNUMBER(P{r}),IF(P{r}<TODAY(),1,0),0),0)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(OR(F{r}=\"\",T{r}=\"\"),\"\",T{r}-F{r})",
+      "stil": "zahl"
+     }
+    ],
+    [],
+    [
+     null,
+     {
+      "v": "Alle Firmen und Zahlen sind frei erfunden (IT-Dienstleister aus dem PDF, Seite 14). Tage und Hinweise rechnen mit dem heutigen Datum. Dieses Blatt fließt in keine Auswertung ein.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  }
+ ]
+}

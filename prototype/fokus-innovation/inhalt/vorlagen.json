@@ -1,5 +1,5 @@
 {
-  "hinweis": "Kostenlos › Vorlagen (30.10.): Quelle inhalt/vorlagen/<id>.html (+ <id>.tabelle.json), gebaut mit vorlagen.mjs nach dateien/vorlagen (nicht öffentlich). bauen.mjs verteilt: kurze Vorlagen nach assets/vorlagen (Download), lange (ab fokus.json › kostenlos.vorlagen.per_mail_ab_seiten) nach unterlagen/ im Repo — die gibt es nur per E-Mail über die App. Seitenzahl und Größe liest bauen.mjs aus den Dateien. Felder: id, titel, text, bereich, ratgeber, phase, inhalt. `vorschau_seite`: welche Seite des PDFs die Vorschau zeigt (vorlagen.mjs rendert sie nach assets/bild/vorlagen/).",
+  "hinweis": "Kostenlos › Vorlagen (30.10.): Quelle inhalt/vorlagen/<id>.html (+ <id>.tabelle.json), gebaut mit vorlagen.mjs nach dateien/vorlagen (nicht öffentlich). bauen.mjs verteilt: kurze Vorlagen nach assets/vorlagen (Download), lange (ab fokus.json › kostenlos.vorlagen.per_mail_ab_seiten) nach unterlagen/ im Repo — die gibt es nur per E-Mail über die App. Seitenzahl und Größe liest bauen.mjs aus den Dateien. Felder: id, titel, text, bereich, ratgeber, phase, inhalt. `vorschau_seite`: welche Seite des PDFs die Vorschau zeigt (vorlagen.mjs rendert sie nach assets/bild/vorlagen/). `baustein`: der passende bezahlte Baustein (Hinweis „Die ausführliche Fassung“ auf der Vorschau-Seite).",
   "vorlagen": [
     {
       "id": "vertriebsteam-aufbauen",
@@ -27,7 +27,8 @@
         "Einzelgespräch",
         "Nächste Schritte"
       ],
-      "vorschau_seite": 10
+      "vorschau_seite": 10,
+      "baustein": "paket-vertrieb"
     },
     {
       "id": "vertriebskennzahlen-je-phase",
@@ -50,7 +51,8 @@
         "Ausgefülltes Beispiel",
         "Tabelle mit Wochen- und Monatsblättern"
       ],
-      "vorschau_seite": 9
+      "vorschau_seite": 9,
+      "baustein": "salesprozess-crm"
     },
     {
       "id": "vertriebs-pipeline",
@@ -69,7 +71,8 @@
         "Monatsauswertung",
         "Tabelle mit Auswahlliste und Auswertung"
       ],
-      "vorschau_seite": 2
+      "vorschau_seite": 2,
+      "baustein": "salesprozess-crm"
     },
     {
       "id": "kernsatz-in-fuenf-schritten",
@@ -90,7 +93,8 @@
         "Liste: wo der Satz hingehört",
         "Nächste Schritte"
       ],
-      "vorschau_seite": 2
+      "vorschau_seite": 2,
+      "baustein": "botschaftshaus"
     },
     {
       "id": "startseiten-check",
@@ -111,7 +115,8 @@
         "Die drei wichtigsten Änderungen",
         "Tabelle mit Formeln"
       ],
-      "vorschau_seite": 2
+      "vorschau_seite": 2,
+      "baustein": "botschaftshaus"
     },
     {
       "id": "kundenstimmen-einholen",
@@ -154,7 +159,8 @@
         "Teilnehmerliste für Schulungen",
         "Nächste Schritte"
       ],
-      "vorschau_seite": 2
+      "vorschau_seite": 2,
+      "baustein": "ki-schulungspaket"
     },
     {
       "id": "ki-anwendungsfall-bewerten",
@@ -177,7 +183,8 @@
         "Übersicht zum Vergleichen",
         "Tabelle mit Formeln"
       ],
-      "vorschau_seite": 4
+      "vorschau_seite": 4,
+      "baustein": "ki-schulungspaket"
     },
     {
       "id": "ki-pilot-30-tage",
@@ -199,7 +206,8 @@
         "Auswertung und Entscheidung",
         "Tabelle mit Formeln"
       ],
-      "vorschau_seite": 2
+      "vorschau_seite": 2,
+      "baustein": "ki-schulungspaket"
     }
   ]
 }

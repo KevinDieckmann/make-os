@@ -1,0 +1,20 @@
+{
+  "hinweis": "Bausteine (Kevin 31.10.): fertige Arbeitspakete zum Selbermachen für 49–249 €, „schnell weg, ohne Arbeit für uns, der Einstieg“. Preise netto in Cent. Inhalt je Baustein: inhalt/bausteine/<id>.html (+ .tabelle.json) und <id>.meta.json (Texte für die Website). Gebaut mit `node vorlagen.mjs --bausteine`, bauen.mjs verteilt nach unterlagen/bausteine/ (nie öffentlich) und baut /bausteine/ samt Detailseiten. Bestellung auf Rechnung über die App (/api/bestellung), Lieferung erst nach Freigabe-Klick.",
+  "bereiche": [
+    { "id": "vertrieb", "name": "Vertrieb", "satz": "Teile aus unserem Sales Playbook, einzeln zum Selbermachen." },
+    { "id": "sichtbarkeit", "name": "Positionierung", "satz": "Klar sagen, was Sie machen, und warum man Sie wählt." },
+    { "id": "innovation", "name": "Innovation", "satz": "KI im Team einführen, mit Regeln und Nachweis." }
+  ],
+  "bausteine": [
+    { "id": "einwandbibliothek", "bereich": "vertrieb", "preis": 14900 },
+    { "id": "skriptset-bant", "bereich": "vertrieb", "preis": 19900 },
+    { "id": "zielgruppe-personas", "bereich": "vertrieb", "preis": 14900 },
+    { "id": "salesprozess-crm", "bereich": "vertrieb", "preis": 24900 },
+    { "id": "nachfassen-vorlagen", "bereich": "vertrieb", "preis": 4900 },
+    { "id": "paket-vertrieb", "bereich": "vertrieb", "preis": 59000, "paket": ["einwandbibliothek", "skriptset-bant", "zielgruppe-personas", "salesprozess-crm"], "titel": "Vertriebs-Paket: alle vier Playbook-Bausteine", "kurz": "Einwandbibliothek, Skriptset mit BANT, Zielgruppe und Personas, Salesprozess im CRM: das Fundament Ihres Vertriebs, zusammen günstiger." },
+    { "id": "elevator-pitch", "bereich": "sichtbarkeit", "preis": 6900 },
+    { "id": "botschaftshaus", "bereich": "sichtbarkeit", "preis": 14900 },
+    { "id": "wettbewerb-unterschied", "bereich": "sichtbarkeit", "preis": 14900 },
+    { "id": "ki-schulungspaket", "bereich": "innovation", "preis": 17900 }
+  ]
+}

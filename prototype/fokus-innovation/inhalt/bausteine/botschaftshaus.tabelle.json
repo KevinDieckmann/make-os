@@ -1,0 +1,2268 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 5
+    },
+    {
+     "breite": 110,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Botschaftshaus · Tabelle",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Gehört zum Baustein „Botschaftshaus“ von Fokus Innovation. Nutzung im eigenen Unternehmen. Läuft in Excel, Numbers und Google Tabellen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "1",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Haus“: Übertragen Sie Dach, Säulen, Belege, Werte und Ton aus den Bögen. Die Tabelle zählt Wörter, prüft die Grenzen und zeigt, was noch fehlt.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "2",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Belege“: jeden Beleg mit Art, Ort des Nachweises, Freigabe und Ablaufdatum. Die Tabelle markiert fehlende Nachweise, fehlende Freigaben und Abgelaufenes.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "3",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Zielgruppen“: Botschaft je Zielgruppe, mit Wortzahl.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "4",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Abgleich“: Jeden Ort mit „ja“, „teils“ oder „nein“ bewerten. Die Tabelle rechnet Punkte und zeigt, wo Sie überarbeiten müssen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Kundenstimmen nur mit schriftlicher Freigabe verwenden. Hinweis, keine Rechtsberatung.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Haus",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Teil",
+     "breite": 12,
+     "stil": "fett"
+    },
+    {
+     "titel": "Feld",
+     "breite": 34,
+     "stil": "text"
+    },
+    {
+     "titel": "Ihre Fassung",
+     "breite": 70,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Wörter",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Höchstens Wörter",
+     "breite": 10,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Prüfung",
+     "breite": 13,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     "Dach",
+     "Kernbotschaft in einem Satz",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     20,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Dach",
+     "Kurzform",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     7,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 1",
+     "Name",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     4,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 1",
+     "Versprechen in einem Satz",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     25,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 1",
+     "Beleg 1",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 1",
+     "Beleg 2",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 1",
+     "Beleg 3",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 2",
+     "Name",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     4,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 2",
+     "Versprechen in einem Satz",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     25,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 2",
+     "Beleg 1",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 2",
+     "Beleg 2",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 2",
+     "Beleg 3",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 3",
+     "Name",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     4,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 3",
+     "Versprechen in einem Satz",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     25,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 3",
+     "Beleg 1",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 3",
+     "Beleg 2",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Säule 3",
+     "Beleg 3",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Wert 1",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     3,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Wert 1: Das heißt bei uns …",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Wert 1: Deshalb tun wir nicht …",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Wert 2",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     3,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Wert 2: Das heißt bei uns …",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Wert 2: Deshalb tun wir nicht …",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Wert 3",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     3,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Wert 3: Das heißt bei uns …",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Wert 3: Deshalb tun wir nicht …",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Fundament",
+     "Haltung in einem Satz",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     30,
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"fehlt\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Ton",
+     "Anrede: Sie, Du oder je nach Kanal",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Ton",
+     "Regler: förmlich (1) bis locker (5)",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Ton",
+     "Regler: sachlich (1) bis gefühlvoll (5)",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Ton",
+     "Regler: zurückhaltend (1) bis selbstbewusst (5)",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Ton",
+     "Regler: fachlich (1) bis einfach (5)",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     "Ton",
+     "Regler: ernst (1) bis mit Humor (5)",
+     null,
+     {
+      "f": "IF(TRIM(C{r})=\"\",0,LEN(TRIM(C{r}))-LEN(SUBSTITUTE(TRIM(C{r}),\" \",\"\"))+1)"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(TRIM(C{r})=\"\",\"\",IF(AND(E{r}<>\"\",D{r}>E{r}),\"zu lang\",\"in Ordnung\"))"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Stand",
+      "stil": "fett"
+     },
+     {
+      "v": "Pflichtfelder ausgefüllt",
+      "stil": "text"
+     },
+     {
+      "f": "(27-COUNTIF(F2:F28,\"fehlt\"))&\" von 27\"",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Zu lang",
+      "stil": "text"
+     },
+     {
+      "f": "COUNTIF(F2:F34,\"zu lang\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Ergebnis",
+      "stil": "text"
+     },
+     {
+      "f": "IF(AND(COUNTIF(F2:F28,\"fehlt\")=0,COUNTIF(F2:F34,\"zu lang\")=0),\"Ihr Haus ist vollständig. Jetzt mit drei Kunden testen.\",\"Noch offen: siehe Spalte Prüfung.\")",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Wörter werden an Leerzeichen gezählt. Grenzen: Dach 20, Kurzform 7, Säulen-Name 4, Versprechen 25, Wert 3, Haltung 30 Wörter. Sie können die Grenzen in Spalte E ändern.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Belege",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Beleg",
+     "breite": 46,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Gehört zu",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Art",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Nachweis liegt in",
+     "breite": 30,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Freigabe nötig?",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Freigabe liegt vor?",
+     "breite": 10,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Gültig bis",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Status",
+     "breite": 16,
+     "stil": "text"
+    },
+    {
+     "breite": 3
+    },
+    {
+     "titel": "Übersicht",
+     "breite": 22,
+     "stil": "text"
+    },
+    {
+     "titel": "Anzahl",
+     "breite": 9,
+     "stil": "zahl"
+    }
+   ],
+   "zeilen": [
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Belege je Teil",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     "Säule 1",
+     {
+      "f": "COUNTIF($B$2:$B$31,J{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     "Säule 2",
+     {
+      "f": "COUNTIF($B$2:$B$31,J{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     "Säule 3",
+     {
+      "f": "COUNTIF($B$2:$B$31,J{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     "Fundament",
+     {
+      "f": "COUNTIF($B$2:$B$31,J{r})",
+      "stil": "zahl"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Mit offenem Punkt",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF($H$2:$H$31,\"Nachweis fehlt\")+COUNTIF($H$2:$H$31,\"Freigabe fehlt\")+COUNTIF($H$2:$H$31,\"abgelaufen\")",
+      "stil": "zahl"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Ziel: drei Belege je Säule, keiner mit offenem Punkt.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(A{r}=\"\",\"\",IF(D{r}=\"\",\"Nachweis fehlt\",IF(AND(E{r}=\"ja\",F{r}<>\"ja\"),\"Freigabe fehlt\",IF(AND(G{r}<>\"\",G{r}<TODAY()),\"abgelaufen\",\"in Ordnung\"))))",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ],
+   "auswahl": [
+    {
+     "spalte": "B",
+     "werte": [
+      "Säule 1",
+      "Säule 2",
+      "Säule 3",
+      "Fundament"
+     ]
+    },
+    {
+     "spalte": "C",
+     "werte": [
+      "Zahl",
+      "Fall",
+      "Zitat",
+      "Ablauf",
+      "Zusage",
+      "Prüfzeichen"
+     ]
+    },
+    {
+     "spalte": "E",
+     "werte": [
+      "ja",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "F",
+     "werte": [
+      "ja",
+      "nein"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Zielgruppen",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Zielgruppe",
+     "breite": 24,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Was ihr wichtig ist",
+     "breite": 30,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Zuerst",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Botschaft in einem Satz",
+     "breite": 50,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Wörter",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Beleg, der zählt",
+     "breite": 28,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Häufiger Einwand",
+     "breite": 28,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Unsere Antwort",
+     "breite": 36,
+     "stil": "eingabe"
+    }
+   ],
+   "zeilen": [
+    [
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(TRIM(D{r})=\"\",0,LEN(TRIM(D{r}))-LEN(SUBSTITUTE(TRIM(D{r}),\" \",\"\"))+1)"
+     },
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(TRIM(D{r})=\"\",0,LEN(TRIM(D{r}))-LEN(SUBSTITUTE(TRIM(D{r}),\" \",\"\"))+1)"
+     },
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(TRIM(D{r})=\"\",0,LEN(TRIM(D{r}))-LEN(SUBSTITUTE(TRIM(D{r}),\" \",\"\"))+1)"
+     },
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(TRIM(D{r})=\"\",0,LEN(TRIM(D{r}))-LEN(SUBSTITUTE(TRIM(D{r}),\" \",\"\"))+1)"
+     },
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(TRIM(D{r})=\"\",0,LEN(TRIM(D{r}))-LEN(SUBSTITUTE(TRIM(D{r}),\" \",\"\"))+1)"
+     },
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(TRIM(D{r})=\"\",0,LEN(TRIM(D{r}))-LEN(SUBSTITUTE(TRIM(D{r}),\" \",\"\"))+1)"
+     },
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Gleiches Haus, andere Reihenfolge: Das Versprechen bleibt für jede Zielgruppe dasselbe. Botschaft möglichst unter 25 Wörtern.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ],
+   "auswahl": [
+    {
+     "spalte": "C",
+     "werte": [
+      "Säule 1",
+      "Säule 2",
+      "Säule 3",
+      "Fundament"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Abgleich",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Ort",
+     "breite": 32,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Dach erkennbar",
+     "breite": 11,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Säulen erkennbar",
+     "breite": 11,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Ton passt",
+     "breite": 11,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Punkte (von 6)",
+     "breite": 10,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Stand",
+     "breite": 14,
+     "stil": "text"
+    },
+    {
+     "titel": "Was ändern wir?",
+     "breite": 40,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Bis wann?",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Startseite",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Leistungsseiten",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Angebotsvorlage",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Profile in sozialen Netzwerken",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Unternehmensprofil bei Google",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Präsentation",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     {
+      "v": "E-Mail-Signatur",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Stellenanzeige",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Telefonbegrüßung",
+      "stil": "fett"
+     },
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(COUNTA(B{r}:D{r})=0,\"\",(B{r}=\"ja\")*2+(B{r}=\"teils\")+(C{r}=\"ja\")*2+(C{r}=\"teils\")+(D{r}=\"ja\")*2+(D{r}=\"teils\"))"
+     },
+     {
+      "f": "IF(E{r}=\"\",\"\",IF(E{r}=6,\"passt\",IF(E{r}>=4,\"fast\",\"überarbeiten\")))"
+     },
+     null,
+     null
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Orte geprüft",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "COUNT(E2:E13)",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Passen schon",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "COUNTIF(F2:F13,\"passt\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Überarbeiten",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "COUNTIF(F2:F13,\"überarbeiten\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Je Spalte „ja“, „teils“ oder „nein“ wählen. ja = 2 Punkte, teils = 1, nein = 0. 6 Punkte = passt, 4 oder 5 = fast, darunter überarbeiten.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ],
+   "auswahl": [
+    {
+     "spalte": "B",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "C",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    },
+    {
+     "spalte": "D",
+     "werte": [
+      "ja",
+      "teils",
+      "nein"
+     ]
+    }
+   ]
+  }
+ ]
+}

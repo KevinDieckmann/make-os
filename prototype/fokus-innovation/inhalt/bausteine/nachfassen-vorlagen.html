@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Nachfassen: 25 Mail- und Nachrichtenvorlagen</title>
+<link rel="stylesheet" href="../vorlagen/basis.css">
+<style>
+  /* Baustein · gemeinsame Gestaltung der Bausteine (basis.css bleibt unverändert) */
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 166mm; }
+  h2.blatt { margin-top: 1.6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  .vorzeile.bsp { color: var(--akzent); }
+  .unter { margin-top: 1.6mm; max-width: 168mm; font-size: 10.2pt; line-height: 1.45; }
+  h3 { font-size: 10.5pt; line-height: 1.3; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  p.text + p.text { margin-top: 1.6mm; }
+  .klein { font-size: 8.8pt; line-height: 1.4; color: var(--tinte-leise); }
+  .lz { color: var(--akzent); font-weight: 500; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+
+  .so { margin-top: 2.6mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; max-width: 170mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9.2pt; line-height: 1.45; }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .abschnitt-titel { margin-top: 4.6mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; }
+  .abschnitt-titel small { font-size: 8.4pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+
+  /* Deckblatt */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3mm; margin-top: 3.2mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 9.8pt; line-height: 1.42; }
+  .ablauf { margin-top: 1.6mm; }
+  .ablauf li { display: grid; grid-template-columns: 9mm 1fr 24mm; padding: 2mm 0 1.9mm; border-bottom: var(--linie) solid var(--haar); }
+  .ablauf li:last-child { border-bottom: 0; }
+  .ablauf .nr { font-size: 11.5pt; line-height: 1.2; }
+  .ablauf h3 { font-size: 10.2pt; }
+  .ablauf p { margin-top: .4mm; font-size: 9.4pt; line-height: 1.4; }
+  .ablauf .s { text-align: right; font-size: 8.5pt; color: var(--tinte-leise); padding-top: .6mm; }
+
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .drei { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+
+
+
+  /* Vorlage (Mail) */
+  .vorlage { margin-top: 2.6mm; padding: 3mm 5mm 3.2mm; border: var(--linie) solid var(--haar); border-radius: 1.2mm; background: rgba(255,255,255,.35); }
+  .vorlage .art { font-size: 7.6pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); }
+  .vorlage p { margin-top: 1.3mm; font-size: 9.4pt; line-height: 1.42; color: var(--tinte); }
+  .vorlage p.betreff { margin-top: 1.6mm; font-weight: 600; }
+
+  /* Listen */
+  .regeln li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.4mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.4; }
+  .regeln li:last-child { border-bottom: 0; }
+  .regeln b { color: var(--tinte); font-weight: 600; }
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.4mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.4; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste .kreuz { margin-top: .5mm; }
+
+  /* Formular */
+  .linien .zeile-frei { height: 7.2mm; }
+  .linien.eng .zeile-frei { height: 6.4mm; }
+  .reihe { display: flex; gap: 6mm; margin-top: 2.2mm; }
+  .reihe .feld { flex: 1; }
+  .reihe .feld.schmal { flex: .55; }
+  .reihe .feld.breit { flex: 1.8; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6.2mm; }
+  .wahl { display: inline-flex; align-items: center; gap: 1.6mm; margin-right: 4mm; font-size: 8.8pt; white-space: nowrap; }
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.6mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.4pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.1mm 1.6mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 8.8pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster td.leise { color: var(--tinte-leise); }
+  .raster .mitte { text-align: center; }
+  .raster.bsp td { color: var(--tinte); font-size: 8.4pt; line-height: 1.32; border-bottom-color: var(--haar); }
+  .raster.bsp td.leise { color: var(--tinte-leise); }
+  .raster td .zeile-frei { height: 6.4mm; }
+  .raster td .zeile-frei:last-child { border-bottom: 0; }
+
+
+
+
+  /* Fehler */
+  .fehler li { display: grid; grid-template-columns: 7mm 1fr 1fr; column-gap: 5mm; padding: 1.25mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.38; }
+  .fehler li:last-child { border-bottom: 0; }
+  .fehler b { color: var(--tinte); font-weight: 600; }
+  .fehler .besser { color: var(--tinte); }
+  .fehler .kopfzeile { font-size: 7.6pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise); padding-bottom: 1.2mm; border-bottom: .9pt solid var(--haar-stark); }
+
+  /* Nächste Schritte */
+  .wege li { display: grid; grid-template-columns: 9mm 1fr; padding: 3mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .wege li:last-child { border-bottom: 0; }
+  .wege .nr { font-size: 13pt; line-height: 1.2; }
+  .wege h3 { font-size: 12pt; }
+  .wege .adresse { margin-top: .8mm; font-size: 10.5pt; color: var(--akzent); font-weight: 600; }
+  .wege .adresse a { color: inherit; text-decoration: none; }
+  .wege p { margin-top: .8mm; font-size: 10pt; line-height: 1.45; }
+  .unten { margin-top: auto; }
+  .unten + .fuss { margin-top: 3mm; }
+</style>
+
+<style>
+  /* Nachfassen · zusätzliche Bausteine */
+  .uebersicht { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; margin-top: 1.4mm; }
+  .uebersicht li { display: grid; grid-template-columns: 8mm 1fr 14mm; padding: 1.15mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.3; }
+  .uebersicht li .nr { font-size: 8.6pt; }
+  .uebersicht li .s { text-align: right; color: var(--tinte-leise); font-size: 8pt; }
+  .uebersicht .gruppe-z { grid-template-columns: 1fr; padding: 2.2mm 0 .8mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--akzent); border-bottom: var(--linie) solid var(--haar); }
+
+  .takt { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 4mm; margin-top: 2.6mm; }
+  .takt > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .takt h3 { font-size: 10.2pt; }
+  .takt ol { margin-top: 1.2mm; }
+  .takt li { display: grid; grid-template-columns: 15mm 1fr; padding: 1mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 8.6pt; line-height: 1.32; }
+  .takt li:last-child { border-bottom: 0; }
+  .takt li b { color: var(--akzent); font-weight: 600; }
+  .takt li span.v { color: var(--tinte-leise); }
+
+  .vl { margin-top: 2.2mm; padding-top: 1.5mm; border-top: .9pt solid var(--haar-stark); }
+  .vl-kopf { display: grid; grid-template-columns: 9mm 1fr auto; align-items: baseline; column-gap: 1mm; }
+  .vl-kopf .nr { font-size: 11.5pt; }
+  .vl-kopf h3 { font-size: 11pt; line-height: 1.2; }
+  .vl-kopf .wann { font-size: 7.4pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); text-align: right; }
+  .vl-inhalt { margin-left: 10mm; }
+  .vl .betreff { margin-top: 1mm; font-size: 9.2pt; line-height: 1.35; color: var(--tinte); }
+  .vl .betreff b { font-weight: 600; }
+  .vl .betreff i { font-style: normal; color: var(--tinte-leise); margin: 0 1mm; }
+  .vl .text { margin-top: .9mm; padding: 1.8mm 3.6mm; border: var(--linie) solid var(--haar); border-radius: 1.2mm; background: rgba(255,255,255,.35); font-size: 9.3pt; line-height: 1.44; color: var(--tinte); }
+  .vl .text p + p { margin-top: .7mm; }
+  .vl .text p.ps { font-size: 8.6pt; color: var(--tinte-text); }
+  .vl .tipp { margin-top: .9mm; font-size: 8.6pt; line-height: 1.38; color: var(--tinte-leise); }
+  .vl .tipp b { color: var(--tinte-text); font-weight: 600; }
+  .vl .uwg { display: inline-block; margin-left: 1.6mm; padding: .1mm 1.4mm; border: var(--linie) solid var(--tinte-leise); border-radius: 1mm; font-size: 6.6pt; font-weight: 600; letter-spacing: .1em; color: var(--tinte-text); vertical-align: 1px; }
+  .gruppe-titel { margin-top: 4.4mm; font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .seite > .gruppe-titel:first-of-type { margin-top: 5mm; }
+  .gruppe-titel + .gruppe-satz { margin-top: .8mm; font-size: 9.4pt; color: var(--tinte-text); }
+
+  .verlauf li { display: grid; grid-template-columns: 22mm 1fr; column-gap: 5mm; padding: 2mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .verlauf li:last-child { border-bottom: 0; }
+  .verlauf .tag { font-size: 8pt; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--tinte-leise); padding-top: .6mm; }
+  .verlauf .tag b { display: block; font-size: 11pt; letter-spacing: 0; text-transform: none; color: var(--akzent); }
+  .verlauf h3 { font-size: 9.8pt; }
+  .verlauf h3 small { font-weight: 400; color: var(--tinte-leise); font-size: 8.4pt; margin-left: 1.4mm; }
+  .verlauf p.ein { margin-top: .8mm; font-size: 9.2pt; line-height: 1.42; color: var(--akzent); }
+  .verlauf p.ein b { color: var(--tinte); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+</svg>
+
+<!-- 1 · Deckblatt -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Baustein · Vertrieb</p>
+    <h1>Nachfassen: 25 Mail- und Nachrichten&shy;vorlagen</h1>
+    <p class="lead">Kurze, sofort nutzbare Mails und Nachrichten für jeden Anlass: nach dem Erstgespräch, rund um Termine, nach dem Angebot, nach Messen und Veranstaltungen, wenn sich niemand meldet, für Bestandskunden und auf LinkedIn. Mit Betreffzeilen, Takt und einem ausgefüllten Beispiel.</p>
+  </div>
+
+  <p class="abschnitt-titel">So nutzen Sie dieses Paket</p>
+  <div class="fakten">
+    <div><b>Ihre Zeit</b><p>Lesen 30 Minuten. Die fünf wichtigsten Vorlagen in Ihr Mailprogramm übernehmen: eine Stunde. Danach je Nachricht zwei Minuten.</p></div>
+    <div><b>So geht es</b><p>Anlass in der Übersicht suchen, Vorlage kopieren, Stellen in <span class="lz">Lila</span> ersetzen, einen persönlichen Satz ergänzen, senden, nächsten Termin eintragen.</p></div>
+    <div><b>Sie brauchen</b><p>Ihr Mailprogramm oder CRM mit Textbausteinen, Ihren Kalender und die Tabelle zum Paket, die Ihre Nachfass-Termine rechnet.</p></div>
+    <div><b>Gut zu wissen</b><p>Eine Vorlage spart Zeit, der persönliche Satz macht die Wirkung. Schicken Sie nie eine Vorlage unverändert.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Die 25 Vorlagen <small>Takt und Regeln auf Seite 2</small></p>
+  <div class="uebersicht" id="uebersicht"></div>
+
+  <p class="hinweis unten">Die Vorlagen sind für laufende Gespräche, Anfragen und Bestandskunden gedacht. Für Werbung per Mail oder Nachricht gelten eigene Regeln (Seite 2), die Hinweise sind keine Rechtsberatung. Beispiele frei erfunden. Stand: Oktober 2026.</p>
+</section>
+
+<!-- 2 · Takt und Regeln -->
+<section class="seite">
+  <p class="vorzeile">Vorher lesen</p>
+  <h2 class="blatt">Takt und Regeln</h2>
+  <p class="unter">Nachfassen ist kein Betteln, sondern Teil eines guten Angebots: Sie halten zusammen, was besprochen wurde, und machen die Entscheidung leichter. Wichtig ist der Takt. Wer zu früh drängt, nervt. Wer sich nie meldet, wird vergessen.</p>
+
+  <p class="abschnitt-titel">Der Takt je Anlass <small>Zahlen = Vorlage</small></p>
+  <div class="takt">
+    <div><h3>Nach dem Erstgespräch</h3><ol>
+      <li><b>Tag 0</b><span>Zusammenfassung <span class="v">01</span></span></li>
+      <li><b>Tag 1</b><span>Unterlagen, wenn versprochen <span class="v">02</span></span></li>
+      <li><b>Tag 5–7</b><span>Ohne Rückmeldung <span class="v">03</span></span></li>
+      <li><b>Woche 3</b><span>Funkstille <span class="v">17</span></span></li></ol></div>
+    <div><h3>Nach dem Angebot</h3><ol>
+      <li><b>Tag 0</b><span>Angebot begleiten <span class="v">08</span></span></li>
+      <li><b>Tag 2</b><span>Angekommen? <span class="v">09</span></span></li>
+      <li><b>Tag 7</b><span>Ein Gedanke <span class="v">10</span></span></li>
+      <li><b>Tag 14</b><span>Wo stehen Sie? <span class="v">11</span></span></li>
+      <li><b>Tag 21</b><span>Letzte Nachricht <span class="v">19</span></span></li></ol></div>
+    <div><h3>Nach Messe oder Event</h3><ol>
+      <li><b>Tag 1</b><span>Nach dem Gespräch <span class="v">14 · 16</span></span></li>
+      <li><b>Tag 1–2</b><span>Versprochene Unterlage <span class="v">15</span></span></li>
+      <li><b>Tag 1–2</b><span>Vernetzen <span class="v">23</span></span></li>
+      <li><b>Woche 3</b><span>Funkstille <span class="v">17</span></span></li></ol></div>
+    <div><h3>Bestandskunden</h3><ol>
+      <li><b>Tag 90</b><span>Wie läuft es? <span class="v">20</span></span></li>
+      <li><b>nach Erfolg</b><span>Empfehlung <span class="v">22</span></span></li>
+      <li><b>nach Pause</b><span>Wieder ansprechen <span class="v">21</span></span></li></ol></div>
+  </div>
+  <p class="klein" style="margin-top:1.4mm">Sagt Ihr Kontakt ein eigenes Datum („Melden Sie sich nach der Messe“), gilt sein Datum, nicht der Takt.</p>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Sieben Regeln</p>
+      <ol class="regeln">
+        <li><span class="nr">1</span><span><b>Ein Ziel je Nachricht.</b> Eine Frage, ein Vorschlag, ein Termin.</span></li>
+        <li><span class="nr">2</span><span><b>Neuer Inhalt.</b> Eine Antwort, ein Beispiel oder eine Erleichterung, nie „nur mal nachfragen“.</span></li>
+        <li><span class="nr">3</span><span><b>Kurz.</b> Höchstens 120 Wörter, lesbar auf dem Handy.</span></li>
+        <li><span class="nr">4</span><span><b>Ein persönlicher Satz.</b> Jede Vorlage bekommt ein Detail aus Ihrem Gespräch.</span></li>
+        <li><span class="nr">5</span><span><b>Konkrete Zeiten.</b> Zwei Vorschläge statt „Wann passt es Ihnen?“.</span></li>
+        <li><span class="nr">6</span><span><b>Kanal wechseln.</b> Telefon und Mail abwechseln, nie zweimal dieselbe Frage.</span></li>
+        <li><span class="nr">7</span><span><b>Sofort eintragen.</b> Nach dem Senden den nächsten Kontakt in den Kalender.</span></li>
+      </ol>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Gute Betreffzeilen</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Nennen das Thema des Kunden, nicht Ihr Produkt: „Ihre Lohnabrechnung“ statt „Unser Angebot“.</span></li>
+        <li><span class="nr">·</span><span>Greifen auf, was vereinbart war: „Wie besprochen: …“.</span></li>
+        <li><span class="nr">·</span><span>Sind kurz genug für das Handy, etwa sechs Wörter.</span></li>
+        <li><span class="nr">·</span><span>Versprechen nichts, was die Mail nicht hält, und kommen ohne „Dringend“ und Ausrufezeichen aus.</span></li>
+      </ul>
+      <p class="abschnitt-titel">Platzhalter</p>
+      <p class="text" style="margin-top:1.6mm"><span class="lz">Lila</span> = hier eintragen. <span class="lz">A / B</span> = eines wählen. Lesen Sie jede Nachricht vor dem Senden einmal laut.</p>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Recht in Kürze <small>Hinweis, keine Rechtsberatung</small></p>
+  <ul class="regeln">
+    <li><span class="nr">·</span><span><b>Laufendes Gespräch:</b> Nachfassen zu einer Anfrage, einem Termin oder einem angefragten Angebot gehört zum Gespräch, das Ihr Kontakt selbst begonnen hat.</span></li>
+    <li><span class="nr">·</span><span><b>Werbung per Mail oder Nachricht</b> zu neuen Themen braucht eine ausdrückliche Einwilligung, auch bei Unternehmen (§ 7 UWG). Eine Visitenkarte oder eine Vernetzung ist keine Einwilligung.</span></li>
+    <li><span class="nr">·</span><span><b>Bestandskunden</b> dürfen Sie per Mail auf eigene ähnliche Leistungen ansprechen, wenn Sie die Adresse beim Verkauf erhalten haben, der Kunde nicht widersprochen hat und Sie in jeder Mail auf das Widerspruchsrecht hinweisen (§ 7 Abs. 3 UWG). Vorlagen, bei denen das gilt, tragen das Zeichen <span class="uwg" style="display:inline-block;padding:.1mm 1.4mm;border:var(--linie) solid var(--tinte-leise);border-radius:1mm;font-size:6.6pt;font-weight:600;letter-spacing:.1em">§ 7 UWG</span>.</span></li>
+    <li><span class="nr">·</span><span><b>Wer widerspricht</b>, bekommt keine Nachricht mehr. Vermerken Sie das sofort.</span></li>
+  </ul>
+</section>
+
+<!-- 3–9 · Vorlagen (werden aus den Daten unten erzeugt) -->
+<div id="vorlagen-seiten"></div>
+
+<!-- 10 · Beispiel -->
+<section class="seite">
+  <p class="vorzeile bsp">Beispiel · frei erfunden</p>
+  <h2 class="blatt">Ein Angebot, vier Nachrichten, ein Auftrag</h2>
+  <p class="unter">Ein Reinigungsdienst hat einer Hausverwaltung mit rund 400 Wohnungen ein Angebot für die Treppenhausreinigung in zwölf Häusern geschickt. Die Verwalterin wollte erst mit dem Beirat der Eigentümer sprechen. So sieht der Takt mit ausgefüllten Vorlagen aus.</p>
+
+  <ol class="verlauf" style="margin-top:2.6mm; border-top:.9pt solid var(--haar-stark)">
+    <li><span class="tag"><b>Tag 0</b>Mail</span><div><h3>Angebot begleiten <small>Vorlage 08</small></h3>
+      <p class="ein"><b>Betreff: Ihr Angebot zur Treppenhausreinigung: zwölf Häuser ab März</b></p>
+      <p class="ein">„Guten Tag Frau Muster, wie besprochen anbei unser Angebot. Kurz zusammengefasst: wöchentliche Reinigung für 1.480 Euro im Monat, oder zusätzlich die Glasflächen im Eingang einmal im Monat für 1.620 Euro. Beide lösen das Problem mit den wechselnden Kräften, weil bei uns je Haus feste Personen eingesetzt werden. Das Angebot gilt bis 15. Februar. Am Donnerstag um 10 Uhr gehen wir es gemeinsam durch. Viele Grüße, Max Beispiel“</p></div></li>
+    <li><span class="tag"><b>Tag 2</b>Anruf</span><div><h3>Angekommen? <small>Vorlage 09, am Telefon</small></h3>
+      <p class="ein">Kurzer Anruf. Frage der Verwalterin: Wie wird nachgewiesen, dass gereinigt wurde? Antwort: Reinigungsplan im Treppenhaus mit Unterschrift und ein Foto je Termin auf Wunsch.</p></div></li>
+    <li><span class="tag"><b>Tag 7</b>Mail</span><div><h3>Ein Gedanke zur Entscheidung <small>Vorlage 10</small></h3>
+      <p class="ein">„Guten Tag Frau Muster, mir ist nach unserem Gespräch noch etwas zu Ihrer Sorge mit dem Beirat eingefallen: Wir können die Reinigung in zwei Häusern einen Monat zur Probe übernehmen, zum selben Preis je Haus. Dann sieht der Beirat das Ergebnis, bevor alle zwölf Häuser umgestellt werden. Viele Grüße, Max Beispiel“</p></div></li>
+    <li><span class="tag"><b>Tag 14</b>Anruf</span><div><h3>Wo stehen Sie? <small>Vorlage 11, am Telefon</small></h3>
+      <p class="ein">Die Verwalterin hat den Probemonat im Beirat vorgestellt. Entscheidung: Start mit zwei Häusern im März, die übrigen zehn ab April, wenn der Probemonat gut läuft. Auftrag kommt bis Freitag.</p></div></li>
+  </ol>
+
+  <p class="abschnitt-titel">Zum Vergleich · Tag 7 <small>so schreiben es viele, und so geht es besser</small></p>
+  <div class="zwei">
+    <div class="vorlage"><p class="art">Typisch</p><p>„Guten Tag Frau Muster, ich wollte nur mal nachfragen, ob Sie schon Zeit hatten, sich unser Angebot anzusehen. Gerne stehe ich für Rückfragen zur Verfügung. Ich freue mich auf Ihre Rückmeldung.“</p><p class="klein" style="margin-top:1.4mm">Kein neuer Inhalt, keine Frage, die sich leicht beantworten lässt, kein Bezug zur echten Hürde.</p></div>
+    <div class="vorlage"><p class="art">Besser</p><p>„Guten Tag Frau Muster, zu Ihrer Sorge mit dem Beirat: Wir können zwei Häuser einen Monat zur Probe übernehmen. Dann sieht der Beirat das Ergebnis vorher. Soll ich das als Variante ins Angebot aufnehmen?“</p><p class="klein" style="margin-top:1.4mm">Greift die Hürde aus dem Gespräch auf, bringt einen Vorschlag mit und endet mit einer Ja-Nein-Frage.</p></div>
+  </div>
+
+  <p class="abschnitt-titel akzent">Was hier den Unterschied gemacht hat</p>
+  <ul class="regeln">
+    <li><span class="nr">1</span><span><b>Jede Nachricht hatte neuen Inhalt:</b> eine Antwort am Tag 2, ein Vorschlag am Tag 7, keine leere Nachfrage.</span></li>
+    <li><span class="nr">2</span><span><b>Der Vorschlag am Tag 7 hat die echte Hürde gelöst:</b> Nicht der Preis war das Problem, sondern die Zustimmung des Beirats.</span></li>
+    <li><span class="nr">3</span><span><b>Telefon und Mail haben sich abgewechselt.</b> Die Vorlage 19 wurde nicht gebraucht.</span></li>
+  </ul>
+  <p class="klein" style="margin-top:1.6mm">Firmen, Personen, Beträge und Gespräche sind frei erfunden. „Frau Muster“ und „Max Beispiel“ stehen für echte Namen.</p>
+</section>
+
+<!-- 11 · Plan und Prüfliste -->
+<section class="seite">
+  <p class="vorzeile">Bogen</p>
+  <h2 class="blatt">Mein Nachfass-Plan</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Eine Zeile je offenem Angebot oder Gespräch. Tragen Sie die Daten direkt nach dem Versand ein, rechnen Sie vom Tag des Angebots aus und übertragen Sie jedes Datum sofort in den Kalender. Die Tabelle zum Paket rechnet die Daten selbst.</p>
+  <table class="raster">
+    <colgroup><col style="width:38mm"><col style="width:17mm"><col><col><col><col><col style="width:24mm"></colgroup>
+    <thead><tr><th>Kontakt und Firma</th><th>Angebot am</th><th>Tag 2<small>Vorlage 09</small></th><th>Tag 7<small>Vorlage 10</small></th><th>Tag 14<small>Vorlage 11</small></th><th>Tag 21<small>Vorlage 19</small></th><th>Ergebnis</th></tr></thead>
+    <tbody id="plan"></tbody>
+  </table>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Vor dem Senden prüfen</p>
+      <ul class="liste">
+        <li><span class="kreuz"></span><span>Alle lila Stellen ersetzt, Name richtig geschrieben</span></li>
+        <li><span class="kreuz"></span><span>Ein persönlicher Satz aus dem Gespräch</span></li>
+        <li><span class="kreuz"></span><span>Ein Ziel, eine Frage</span></li>
+        <li><span class="kreuz"></span><span>Neuer Inhalt statt „nur mal nachfragen“</span></li>
+        <li><span class="kreuz"></span><span>Konkrete Zeiten statt „Wann passt es?“</span></li>
+        <li><span class="kreuz"></span><span>Einmal laut gelesen, auf dem Handy lesbar</span></li>
+        <li><span class="kreuz"></span><span>Bei Werbung: Einwilligung oder Bestandskunde geprüft</span></li>
+        <li><span class="kreuz"></span><span>Nächster Kontakt im Kalender</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Fünf typische Fehler</p>
+      <ul class="regeln">
+        <li><span class="nr">1</span><span><b>Zu spät.</b> Eine Zusammenfassung nach einer Woche wirkt wie Pflicht, nicht wie Interesse.</span></li>
+        <li><span class="nr">2</span><span><b>Zu oft dasselbe.</b> Dreimal „Haben Sie schon entschieden?“ ist Druck.</span></li>
+        <li><span class="nr">3</span><span><b>Zu lang.</b> Wer alles noch einmal erklärt, wird nicht gelesen.</span></li>
+        <li><span class="nr">4</span><span><b>Ohne Ende.</b> Nach der letzten Nachricht ist Ruhe, bis ein vereinbarter Anlass kommt.</span></li>
+        <li><span class="nr">5</span><span><b>Ohne Notiz.</b> Wer nicht einträgt, wann er sich gemeldet hat, meldet sich doppelt oder gar nicht.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 12 · Nächste Schritte -->
+<section class="seite">
+  <p class="vorzeile">Zum Schluss</p>
+  <h2 class="blatt">Nächste Schritte</h2>
+  <p class="text" style="margin-top:2mm; max-width:160mm">Am meisten bringt dieses Paket, wenn die Vorlagen dort liegen, wo Sie schreiben. Legen Sie die fünf, die Sie am häufigsten brauchen, als Textbausteine in Ihrem Mailprogramm oder CRM an, und gehen Sie heute Ihre offenen Angebote durch.</p>
+
+  <p class="abschnitt-titel">Meine drei nächsten Schritte</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:34mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th></th><th>Was</th><th>Wer</th><th>Bis wann</th></tr></thead>
+    <tbody>
+      <tr><td class="leise">1</td><td class="leise">Vorlagen 01, 08, 09, 11 und 19 als Textbausteine anlegen</td><td></td><td></td></tr>
+      <tr><td class="leise">2</td><td class="leise">Alle offenen Angebote in den Nachfass-Plan eintragen</td><td></td><td></td></tr>
+      <tr><td class="leise">3</td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Weiter mit Fokus Innovation</p>
+  <ol class="wege">
+    <li><span class="nr">1</span><div><h3>Ein Erstgespräch vereinbaren</h3><p class="adresse"><a href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></p><p>Kostenlos, 30 Minuten per Video. Wir schauen gemeinsam, wo zwischen Angebot und Auftrag bei Ihnen am meisten liegen bleibt.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Den Vertriebs-Check machen</h3><p class="adresse"><a href="https://fokusinnovation.de/check?thema=vertrieb">fokusinnovation.de/check?thema=vertrieb</a></p><p>Zwölf Fragen zu Organisation, Zahlen und Neukunden, rund fünf Minuten. Sie sehen sofort, wo Ihr Vertrieb steht.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Head of Sales auf Zeit</h3><p class="adresse"><a href="https://fokusinnovation.de/vertrieb/head-of-sales/">fokusinnovation.de/vertrieb/head-of-sales/</a></p><p>Wenn Sie jemanden suchen, der Abläufe, Vorlagen und Takt mit Ihrem Team einführt und den Vertrieb eine Zeit lang führt.</p></div></li>
+  </ol>
+
+  <p class="abschnitt-titel">Passt dazu</p>
+  <p class="text" style="margin-top:1.8mm"><b class="stark">Die Tabelle zum Paket</b>: Nachfass-Plan, der aus dem Angebotsdatum die nächsten Termine rechnet, die passende Vorlage vorschlägt und Überfälliges markiert, dazu alle 25 Vorlagen als Liste.</p>
+  <p class="text"><b class="stark">Skriptset mit BANT</b>: Leitfäden für Erstkontakt und Bedarfsgespräch. <b class="stark">Einwandbibliothek</b>: zwölf Einwände mit Rückfragen und Antworten.</p>
+  <p class="hinweis unten">Alle Beispiele sind frei erfunden. Die Hinweise zum Wettbewerbsrecht sind keine Rechtsberatung. Stand: Oktober 2026.</p>
+</section>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const linie = '<div class="zeile-frei"></div>';
+  const lz = (t) => String(t).replace(/\[([^\]]+)\]/g, '<span class="lz">$1</span>');
+
+  // DATEN-ANFANG
+  const GRUPPEN = {
+    A: ['Nach dem Erstgespräch', 'Zusammenfassen, liefern, was versprochen war, und nachhaken, wenn es still wird.'],
+    B: ['Termine', 'Bestätigen, erinnern, und freundlich bleiben, wenn ein Termin platzt.'],
+    C: ['Nach dem Angebot', 'Begleiten, nachfassen mit Inhalt, und eine Absage in Würde annehmen.'],
+    D: ['Nach Messe oder Veranstaltung', 'Schnell sein und an das konkrete Gespräch anknüpfen.'],
+    E: ['Wenn sich niemand meldet', 'Die Antwort leicht machen, und irgendwann loslassen.'],
+    F: ['Bestandskunden', 'Interesse zeigen, wiederkommen, Empfehlungen erfragen.'],
+    G: ['LinkedIn und kurze Nachrichten', 'Persönlich, kurz, mit einer Frage statt einem Angebot.'],
+  };
+  const VORLAGEN = [
+    { g: 'A', titel: 'Zusammenfassung nach dem Gespräch', wann: 'Mail · am selben Tag',
+      betreff: ['Unser Gespräch zu [Thema]: Zusammenfassung und nächster Schritt'],
+      text: 'Guten Tag [Name], danke für das offene Gespräch heute. Ich habe mitgenommen: [Punkt 1], [Punkt 2] und [Punkt 3]. Wichtig ist Ihnen vor allem [Ziel], am besten bis [Datum]. Wie besprochen [schicke ich Ihnen bis Freitag … / sprechen wir am … wieder]. Wenn ich etwas falsch verstanden habe, korrigieren Sie mich gern. Viele Grüße, [Name]',
+      tipp: 'Ihre stärkste Nachricht: Sie zeigt, dass Sie zugehört haben, und Ihr Kontakt kann sie intern weiterleiten.' },
+    { g: 'A', titel: 'Unterlagen wie besprochen', wann: 'Mail · innerhalb eines Tages',
+      betreff: ['[Thema]: die Unterlagen, die Sie sich gewünscht haben'],
+      text: 'Guten Tag [Name], wie besprochen anbei [Unterlage]. Für Sie am wichtigsten ist wahrscheinlich [Abschnitt], dort steht [Kernpunkt]. Ich rufe Sie am [Tag] kurz an, um Ihre Fragen dazu zu klären. Passt Ihnen [Uhrzeit], oder ist eine andere Zeit besser? Viele Grüße, [Name]',
+      tipp: 'Nie nur einen Anhang schicken. Sagen Sie, wo das Wichtigste steht, und nennen Sie den Folgetermin.' },
+    { g: 'A', titel: 'Keine Rückmeldung nach dem Gespräch', wann: 'Mail · nach 5 bis 7 Werktagen',
+      betreff: ['Noch einmal zu [Thema]'],
+      text: 'Guten Tag [Name], nach unserem Gespräch am [Datum] wollten Sie [intern sprechen / die Unterlagen ansehen]. Hat sich dabei eine Frage ergeben, die ich beantworten kann? Falls das Thema gerade nach hinten gerutscht ist, sagen Sie mir einfach, wann ich mich wieder melden soll. Viele Grüße, [Name]',
+      tipp: 'Erinnern Sie an das, was Ihr Kontakt selbst vorhatte, nicht an Ihr Angebot.' },
+    { g: 'B', titel: 'Termin bestätigen', wann: 'Mail · direkt nach der Vereinbarung',
+      betreff: ['Bestätigt: [Thema] am [Tag], [Uhrzeit]'],
+      text: 'Guten Tag [Name], ich freue mich auf unser Gespräch am [Tag] um [Uhrzeit], [per Video, der Link steht in der Einladung / bei Ihnen vor Ort]. Mein Vorschlag für die 30 Minuten: [Ablauf in einem Satz]. Zur Vorbereitung hilft mir: [Frage]. Wenn noch jemand dabei sein sollte, leiten Sie die Einladung gern weiter. Viele Grüße, [Name]',
+      tipp: 'Die Kalendereinladung trägt Zeit und Link, die Mail den Inhalt. Beides getrennt schicken.' },
+    { g: 'B', titel: 'Erinnerung am Vortag', wann: 'Mail oder Nachricht · am Vortag',
+      betreff: ['Morgen, [Uhrzeit]: [Thema]'],
+      text: 'Guten Tag [Name], kurze Erinnerung an unser Gespräch morgen um [Uhrzeit]. Hier noch einmal der Link: [Link]. Bis morgen, [Name]',
+      tipp: 'Kurz halten: keine neuen Inhalte, nur Zeit, Ort und Link.' },
+    { g: 'B', titel: 'Termin verpasst', wann: 'Mail · am selben Tag',
+      betreff: ['Wir haben uns heute verpasst'],
+      text: 'Guten Tag [Name], heute um [Uhrzeit] haben wir uns leider verpasst. Das kann passieren, sicher ist etwas dazwischengekommen. Passt Ihnen [Tag, Uhrzeit] oder [Tag, Uhrzeit] für einen neuen Termin? Wenn das Thema gerade nicht mehr dringend ist, sagen Sie es mir einfach. Viele Grüße, [Name]',
+      tipp: 'Freundlich, ohne Vorwurf, mit zwei neuen Zeiten. Nach dem zweiten verpassten Termin ist das eine Antwort.' },
+    { g: 'B', titel: 'Neuer Termin nach einer Absage', wann: 'Mail · nach der Absage',
+      betreff: ['Neuer Termin für [Thema]'],
+      text: 'Guten Tag [Name], danke, dass Sie rechtzeitig abgesagt haben. Gern finden wir einen neuen Termin: [Tag, Uhrzeit] oder [Tag, Uhrzeit]? Wenn sich die Lage bei Ihnen geändert hat, passe ich das Gespräch gern daran an. Viele Grüße, [Name]',
+      tipp: 'Für die Absage danken und den neuen Termin innerhalb von zwei Wochen legen.' },
+    { g: 'C', titel: 'Angebot begleiten', wann: 'Mail · beim Versand',
+      betreff: ['Ihr Angebot zu [Thema]: [Kurztitel]'],
+      text: 'Guten Tag [Name], wie besprochen anbei unser Angebot. Kurz zusammengefasst: [Variante A] für [Betrag], [Variante B] für [Betrag]. Beide lösen [Kernproblem], B zusätzlich [Erweiterung]. Das Angebot gilt bis [Datum]. Am [Tag] um [Uhrzeit] gehen wir es gemeinsam durch, Fragen vorher gern jederzeit. Viele Grüße, [Name]',
+      tipp: 'Das Wichtigste gehört in die Mail, nicht nur in den Anhang. Viele lesen zuerst auf dem Handy.' },
+    { g: 'C', titel: 'Tag 2: Ist alles angekommen?', wann: 'Anruf oder Mail',
+      betreff: ['Kurze Frage zu Ihrem Angebot'],
+      text: 'Guten Tag [Name], ist das Angebot gut bei Ihnen angekommen? Wenn beim ersten Lesen eine Frage entstanden ist, beantworte ich sie gern schon vor unserem Termin am [Tag]. Viele Grüße, [Name]',
+      tipp: 'Am Telefon wirkt diese Frage am besten: zwei Minuten, keine Verhandlung.' },
+    { g: 'C', titel: 'Tag 7: Ein Gedanke zur Entscheidung', wann: 'Mail',
+      betreff: ['Ein Gedanke zu [Thema]'],
+      text: 'Guten Tag [Name], mir ist nach unserem Gespräch noch etwas zu [Frage oder Sorge] eingefallen: [Gedanke, Beispiel oder Rechnung in zwei Sätzen]. Vielleicht hilft es Ihnen bei der Entscheidung oder im Gespräch mit [Person]. Viele Grüße, [Name]',
+      tipp: 'Der Inhalt zählt: Lösen Sie die Hürde, die im Gespräch zu hören war, nicht eine erfundene.' },
+    { g: 'C', titel: 'Tag 14: Wo stehen Sie?', wann: 'Anruf oder Mail',
+      betreff: ['Wie ist der Stand bei [Thema]?'],
+      text: 'Guten Tag [Name], wie ist der Stand zu unserem Angebot vom [Datum]? Damit ich mich richtig einplane: Fällt die Entscheidung eher in den nächsten Tagen, später, oder hat sich die Lage geändert? Jede Antwort hilft mir, auch ein Nein. Viele Grüße, [Name]',
+      tipp: 'Drei Möglichkeiten anbieten. Das macht eine ehrliche Antwort leicht.' },
+    { g: 'C', titel: 'Nach der Preisfrage: zwei Wege', wann: 'Mail · nach einem Einwand zum Preis',
+      betreff: ['Zwei Wege für [Thema]'],
+      text: 'Guten Tag [Name], danke für Ihre offene Rückmeldung zum Preis. Ich sehe zwei Wege: Wir starten mit [Teil] für [Betrag] und ergänzen [Rest] später. Oder wir bleiben beim vollen Umfang, und [Gegenleistung, etwa längere Laufzeit] senkt den Preis auf [Betrag]. Was passt besser zu Ihnen? Viele Grüße, [Name]',
+      tipp: 'Weniger Preis nur gegen weniger Umfang oder eine Gegenleistung, nie einfach so.' },
+    { g: 'C', titel: 'Absage erhalten: Tür offen halten', wann: 'Mail · am selben Tag',
+      betreff: ['Danke für Ihre Rückmeldung'],
+      text: 'Guten Tag [Name], danke, dass Sie mir Ihre Entscheidung mitteilen. Darf ich fragen, was am Ende den Ausschlag gegeben hat? Das hilft uns, besser zu werden. Ich wünsche Ihnen mit [Lösung] viel Erfolg. Wenn Sie mögen, frage ich in [drei Monaten] einmal kurz nach, wie es läuft. Viele Grüße, [Name]',
+      tipp: 'Keine Diskussion, kein Rabatt nach der Absage. Den Grund notieren, er ist wertvoll.' },
+    { g: 'D', titel: 'Nach dem Gespräch am Stand', wann: 'Mail · am nächsten Werktag',
+      betreff: ['[Messe]: unser Gespräch zu [Thema]'],
+      text: 'Guten Tag [Name], danke für das Gespräch an unserem Stand auf der [Messe]. Sie hatten erzählt, dass [Situation]. Wie vereinbart [schicke ich Ihnen anbei … / schlage ich ein kurzes Gespräch vor]: Passt Ihnen [Tag, Uhrzeit] für 30 Minuten per Video? Viele Grüße, [Name]',
+      tipp: 'Ein Detail aus dem Gespräch nennen. Nach einer Messe bekommt Ihr Kontakt viele ähnliche Mails.' },
+    { g: 'D', titel: 'Die versprochene Unterlage', wann: 'Mail · innerhalb von zwei Tagen',
+      betreff: ['Wie versprochen: [Unterlage] von der [Veranstaltung]'],
+      text: 'Guten Tag [Name], auf der [Veranstaltung] hatte ich Ihnen [Unterlage / Beispiel / einen Kontakt] versprochen, hier ist es. Besonders interessant für Sie ist wahrscheinlich [Punkt]. Wenn Sie darüber sprechen möchten, antworten Sie einfach mit einem Zeitfenster, dann rufe ich an. Viele Grüße, [Name]',
+      tipp: 'Versprechen schnell halten. Das ist die beste Werbung für Ihre Verlässlichkeit.' },
+    { g: 'D', titel: 'Wenig Zeit am Stand', wann: 'Mail · am nächsten Werktag',
+      betreff: ['Wir hatten auf der [Messe] nur kurz Zeit'],
+      text: 'Guten Tag [Name], auf der [Messe] hatten wir nur wenige Minuten, und Sie wollten mehr zu [Thema] wissen. Wollen wir das in Ruhe nachholen? Ich schlage 20 Minuten per Video vor, am [Tag] oder am [Tag]. Viele Grüße, [Name]',
+      tipp: 'Nur an Personen, die um einen Kontakt gebeten haben. Eine gescannte Karte allein ist keine Einwilligung in Werbung.' },
+    { g: 'E', titel: 'Funkstille nach einem guten Gespräch', wann: 'Mail · nach zwei bis drei Wochen',
+      betreff: ['Ist [Thema] noch aktuell?'],
+      text: 'Guten Tag [Name], unser letztes Gespräch zu [Thema] war sehr konkret, seitdem habe ich nichts mehr gehört. Das ist völlig in Ordnung, Prioritäten ändern sich. Damit ich Sie nicht unnötig störe: Ist das Thema noch aktuell, später wieder, oder erledigt? Ein Wort reicht. Viele Grüße, [Name]',
+      tipp: '„Ein Wort reicht“ senkt die Hürde für eine Antwort.' },
+    { g: 'E', titel: 'Neue Ansprechperson?', wann: 'Mail · wenn jemand gewechselt hat',
+      betreff: ['Wer ist jetzt für [Thema] zuständig?'],
+      text: 'Guten Tag [Name], ich hatte mit [frühere Person] über [Thema] gesprochen und erfahren, dass [sie / er] nicht mehr im Unternehmen ist. Sind Sie jetzt die richtige Ansprechperson, oder an wen darf ich mich wenden? Ich fasse Ihnen gern zusammen, was bisher besprochen wurde. Viele Grüße, [Name]',
+      tipp: 'Nur bei einem laufenden Vorgang. Die neue Person kennt Sie nicht, also kurz und hilfsbereit bleiben.' },
+    { g: 'E', titel: 'Letzte Nachricht', wann: 'Mail · nach dem letzten Nachfassen',
+      betreff: ['Soll ich das Thema schließen?'],
+      text: 'Guten Tag [Name], ich habe mich in den letzten Wochen ein paarmal zu [Thema] gemeldet und will Sie nicht weiter damit beschäftigen. Ich gehe davon aus, dass es gerade nicht passt, und schließe das Thema bei mir. Falls ich falsch liege, reicht eine kurze Antwort. Alles Gute, [Name]',
+      tipp: 'Ehrlich gemeint, nicht als Trick. Danach wirklich Ruhe, bis Ihr Kontakt sich meldet.' },
+    { g: 'F', titel: 'Nach Projektende: Wie läuft es?', wann: 'Mail oder Anruf · etwa 90 Tage danach',
+      betreff: ['Wie läuft es mit [Lösung]?'],
+      text: 'Guten Tag [Name], vor drei Monaten haben wir [Projekt] abgeschlossen. Wie läuft es seitdem? Mich interessiert vor allem, ob [Ziel] erreicht ist und wo es noch hakt. Wenn es passt, nehme ich mir gern 15 Minuten, um gemeinsam draufzuschauen. Viele Grüße, [Name]',
+      tipp: 'Echtes Interesse zuerst. Neue Aufträge ergeben sich aus diesem Gespräch, nicht aus einem Angebot in der Mail.' },
+    { g: 'F', titel: 'Ehemalige Kunden wieder ansprechen', wann: 'Mail · nach längerer Pause', uwg: true,
+      betreff: ['Lange nicht gesprochen: Wie geht es bei [Firma]?'],
+      text: 'Guten Tag [Name], unser letztes gemeinsames Projekt [Projekt] liegt schon eine Weile zurück. Bei uns hat sich seitdem einiges getan, unter anderem [Neuigkeit, die zu Ihnen passt]. Wie ist es bei Ihnen gelaufen? Wenn [Thema] wieder ansteht, freue ich mich, von Ihnen zu hören. Viele Grüße, [Name]. Möchten Sie solche Nachrichten nicht mehr bekommen, genügt eine kurze Antwort.',
+      tipp: 'Nur unter den Bedingungen für Bestandskunden (Seite 2), mit dem Hinweis auf den Widerspruch in jeder Mail.' },
+    { g: 'F', titel: 'Empfehlung erfragen', wann: 'Mail oder im Gespräch · nach einem Erfolg',
+      betreff: ['Eine Frage, nachdem [Projekt] so gut gelaufen ist'],
+      text: 'Guten Tag [Name], es freut mich sehr, dass [Ergebnis]. Darf ich Sie um etwas bitten? Kennen Sie jemanden, der vor einer ähnlichen Aufgabe steht, etwa [Art von Firma oder Rolle]? Dann wäre eine kurze Vorstellung per Mail ideal. Ich melde mich nur, wenn die Person das möchte. Viele Grüße, [Name]',
+      tipp: 'Beschreiben Sie genau, wen Sie suchen. Und danken Sie für jede Empfehlung, egal wie sie ausgeht.' },
+    { g: 'G', titel: 'Nach der Vernetzung', wann: 'LinkedIn · am selben oder nächsten Tag',
+      betreff: null,
+      text: 'Danke fürs Vernetzen, [Name]. Ihr [Beitrag / Vortrag] zu [Thema] ist mir hängen geblieben, besonders [Punkt]. Wie gehen Sie bei [Firma] gerade mit [Thema] um?',
+      tipp: 'Kein Angebot, kein Link. Eine Frage, die zeigt, dass Sie sich mit der Person beschäftigt haben.' },
+    { g: 'G', titel: 'Wenn die Mail unbeantwortet bleibt', wann: 'LinkedIn · bei einem laufenden Gespräch',
+      betreff: null,
+      text: 'Hallo [Name], ich hatte Ihnen am [Datum] zu [Thema] eine Mail geschickt, vielleicht ist sie untergegangen. Passt es Ihnen besser, kurz zu telefonieren? Dann schlagen Sie mir gern eine Zeit vor.',
+      tipp: 'Nur einmal den Kanal wechseln, und nur, wenn es schon einen Kontakt gab.' },
+    { g: 'G', titel: 'Einen Anlass aufgreifen', wann: 'LinkedIn · bei neuer Aufgabe oder Beitrag',
+      betreff: null,
+      text: 'Glückwunsch zur neuen Aufgabe als [Rolle], [Name]! [Persönlicher Satz, etwa ein Bezug zum letzten Gespräch]. Ich bin gespannt, was Sie dort angehen. Wenn [Thema] dabei eine Rolle spielt, tausche ich mich gern aus.',
+      tipp: 'Der Glückwunsch steht für sich. Der Satz zum Thema ist freiwillig, ein Angebot gehört nie hinein.' },
+  ];
+  // DATEN-ENDE
+
+  const SAETZE = `<p class="abschnitt-titel" style="margin-top:4.4mm">Der persönliche Satz <small>Regel 4: ein Detail aus Ihrem Gespräch</small></p>
+  <div class="zwei"><ul class="regeln">
+    <li><span class="nr">·</span><span>„Sie hatten erwähnt, dass <span class="lz">Detail</span>. Daran musste ich denken, als …“</span></li>
+    <li><span class="nr">·</span><span>„Ihre Frage nach <span class="lz">Punkt</span> ist mir nachgegangen.“</span></li>
+  </ul><ul class="regeln">
+    <li><span class="nr">·</span><span>„Ich habe gesehen, dass <span class="lz">Neuigkeit Ihrer Firma</span>. Glückwunsch!“</span></li>
+    <li><span class="nr">·</span><span>„Zu Ihrem Hinweis auf <span class="lz">Sorge</span> habe ich eine Idee.“</span></li>
+  </ul></div>`;
+  const SEITEN = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20], [21, 22, 23, 24, 25]];
+  const ERSTE_SEITE = 3;
+  const seiteVon = (nr) => ERSTE_SEITE + SEITEN.findIndex((s) => s.includes(nr));
+  const nn = (n) => String(n).padStart(2, '0');
+
+  // Mailtext in Anrede, Text, Gruß und Nachsatz zerlegen, damit er aussieht wie eine echte Mail
+  const mailHtml = (t) => {
+    let anrede = '', rest = t, gruss = '', nach = '';
+    const a = t.match(/^((?:Guten Tag|Hallo) \[Name\]),\s*/);
+    if (a) { anrede = a[1] + ','; rest = t.slice(a[0].length); }
+    const g = rest.match(/\s*(Viele Grüße|Bis morgen|Alles Gute), \[Name\]\.?\s*(.*)$/);
+    if (g) { gruss = g[1]; nach = g[2]; rest = rest.slice(0, g.index); }
+    return (anrede ? `<p>${lz(anrede)}</p>` : '') + `<p>${lz(rest)}</p>` + (gruss ? `<p>${gruss}<br>${lz('[Name]')}</p>` : '') + (nach ? `<p class="ps">${lz(nach)}</p>` : '');
+  };
+  const vorlage = (v, nr) => `<article class="vl">
+    <div class="vl-kopf"><span class="nr">${nn(nr)}</span><h3>${v.titel}${v.uwg ? '<span class="uwg">§ 7 UWG</span>' : ''}</h3><span class="wann">${v.wann}</span></div>
+    <div class="vl-inhalt">
+      ${v.betreff ? `<p class="betreff"><b>Betreff:</b> ${v.betreff.map(lz).join('<i>oder</i>')}</p>` : ''}
+      <div class="text">${mailHtml(v.text)}</div>
+      <p class="tipp"><b>Tipp:</b> ${v.tipp}</p>
+    </div>
+  </article>`;
+
+  let html = '';
+  SEITEN.forEach((nrs) => {
+    let teil = '<section class="seite">';
+    let gruppe = null;
+    nrs.forEach((nr) => {
+      const v = VORLAGEN[nr - 1];
+      if (v.g !== gruppe) {
+        const [name, satz] = GRUPPEN[v.g];
+        const fortsetzung = gruppe === null && VORLAGEN[nr - 2] && VORLAGEN[nr - 2].g === v.g;
+        teil += `<p class="gruppe-titel">${v.g} · ${name}${fortsetzung ? ' · Fortsetzung' : ''}</p>${fortsetzung ? '' : `<p class="gruppe-satz">${satz}</p>`}`;
+        gruppe = v.g;
+      }
+      teil += vorlage(v, nr);
+    });
+    if (nrs.includes(12)) teil += SAETZE;
+    html += teil + '</section>';
+  });
+  $('vorlagen-seiten').outerHTML = html;
+
+  // Deckblatt: Übersicht in zwei Spalten
+  const zeilen = [];
+  let g = null;
+  VORLAGEN.forEach((v, i) => {
+    if (v.g !== g) { zeilen.push(`<li class="gruppe-z">${v.g} · ${GRUPPEN[v.g][0]}</li>`); g = v.g; }
+    zeilen.push(`<li><span class="nr">${nn(i + 1)}</span><span>${v.titel}</span><span class="s">Seite ${seiteVon(i + 1)}</span></li>`);
+  });
+  const haelfte = zeilen.findIndex((z) => z.includes('D · '));
+  $('uebersicht').innerHTML = `<ul>${zeilen.slice(0, haelfte).join('')}</ul><ul>${zeilen.slice(haelfte).join('')}</ul>`;
+
+  // Seite 11: Plan
+  $('plan').innerHTML = Array.from({ length: 13 }, () => '<tr><td style="height:9mm"></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = linie.repeat(Number(d.dataset.linien)); });
+
+  // Kopf und Fuß auf jede Seite, Seitenzahlen automatisch
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Nutzung im eigenen Unternehmen</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+</script>
+</body>
+</html>

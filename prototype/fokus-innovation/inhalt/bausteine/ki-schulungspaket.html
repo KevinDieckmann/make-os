@@ -1,0 +1,1130 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>KI-Schulungspaket fürs Team</title>
+<link rel="stylesheet" href="../vorlagen/basis.css">
+<style>
+  /* Baustein · eigene Bausteine (basis.css bleibt unverändert) */
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 164mm; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  .vorzeile.bsp { color: var(--akzent); }
+  h2.blatt { margin-top: 1.6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  h2.blatt + .unter { margin-top: 1.6mm; max-width: 170mm; font-size: 10pt; line-height: 1.45; }
+  h3 { font-size: 10.3pt; line-height: 1.3; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 9.7pt; line-height: 1.45; }
+  p.text + p.text { margin-top: 1.4mm; }
+  .klein { font-size: 8.7pt; line-height: 1.4; color: var(--tinte-leise); }
+  .ein { color: var(--akzent); }
+  b { color: var(--tinte); font-weight: 600; }
+  a { color: inherit; text-decoration: none; }
+
+  /* „So füllen Sie ihn aus“ und Hinweise: Linie links */
+  .so { margin-top: 2.4mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; max-width: 170mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9.1pt; line-height: 1.45; }
+  .hinweis.lila { border-left-color: var(--akzent); }
+
+  .abschnitt-titel { margin-top: 4.4mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; gap: 4mm; }
+  .abschnitt-titel small { font-size: 8.3pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+
+  /* Felder */
+  .reihe { display: flex; gap: 6mm; margin-top: 2.4mm; }
+  .reihe .feld { flex: 1; }
+  .reihe .feld.schmal { flex: .55; }
+  .reihe .feld.breit { flex: 1.8; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6.2mm; }
+  .feld .einheit { color: var(--tinte-leise); }
+  .linien .zeile-frei { height: 7.2mm; }
+  .linien.eng .zeile-frei { height: 6.4mm; }
+  .beschriftet { display: grid; grid-template-columns: 50mm 1fr; column-gap: 4mm; align-items: end; }
+  .beschriftet + .beschriftet { margin-top: .3mm; }
+  .beschriftet > span { font-size: 9.1pt; color: var(--tinte); padding-bottom: 1.2mm; line-height: 1.25; }
+  .beschriftet > span small { display: block; color: var(--tinte-leise); font-size: 7.9pt; }
+  .beschriftet .linien .zeile-frei { height: 6.6mm; }
+
+  /* Ausgefüllt: Label links, Eintrag rechts */
+  .gefuellt { display: grid; grid-template-columns: 40mm 1fr; column-gap: 5mm; }
+  .gefuellt > dt, .gefuellt > dd { margin: 0; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.42; }
+  .gefuellt > dt { color: var(--tinte); font-weight: 600; }
+  .gefuellt > dt small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.9pt; margin-top: .3mm; }
+  .gefuellt > dd { color: var(--akzent); }
+  .gefuellt.eng > dt, .gefuellt.eng > dd { padding: 1.2mm 0; }
+  .gefuellt > dd.gross { font-size: 10.6pt; line-height: 1.45; font-weight: 500; }
+
+  /* Begriffe */
+  .begriffe { display: grid; grid-template-columns: 38mm 1fr; column-gap: 5mm; margin-top: 1mm; }
+  .begriffe dt, .begriffe dd { margin: 0; padding: 1.6mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.4pt; line-height: 1.42; }
+  .begriffe dt { color: var(--tinte); font-weight: 600; }
+  .begriffe dt:last-of-type, .begriffe dd:last-of-type { border-bottom: 0; }
+
+  /* Raster-Tabellen */
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.8mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.4pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.2mm 1.8mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 8.9pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster .mitte { text-align: center; }
+  .raster td.zahl, .raster th.zahl { text-align: right; }
+  .raster td.leise { color: var(--tinte-leise); }
+  .raster td.stark { color: var(--tinte); font-weight: 600; }
+  .raster td.ein { color: var(--akzent); }
+  .raster tr.gruppe td { height: auto; padding-top: 2.4mm; padding-bottom: 1mm; border-left: 0; font-size: 7.6pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); border-bottom: var(--linie) solid var(--haar); }
+  .raster tr.summe td { border-top: .9pt solid var(--haar-stark); font-weight: 600; color: var(--tinte); }
+  .raster tr.bsp td { color: var(--tinte-leise); font-style: italic; font-size: 8.3pt; border-bottom: var(--linie) solid var(--haar); }
+  .raster.text td { height: auto; padding-top: 1.5mm; padding-bottom: 1.5mm; border-bottom-color: var(--haar); }
+  .raster.dicht td { height: 6.8mm; padding-top: .9mm; padding-bottom: .6mm; }
+  .raster.klein td { font-size: 8.3pt; }
+  .raster.klein th { font-size: 7.7pt; }
+
+  /* Ankreuzen, Listen */
+  .wahl { display: inline-flex; align-items: center; gap: 1.6mm; margin-right: 4.5mm; font-size: 9pt; white-space: nowrap; }
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; align-items: start; padding: 1.5mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.3pt; line-height: 1.38; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste li .kreuz { margin-top: .4mm; }
+  .liste.zweispaltig { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .liste.zweispaltig li:nth-last-child(2) { border-bottom: 0; }
+  ul.punkte li { position: relative; padding-left: 4mm; margin-top: 1.1mm; font-size: 9.3pt; line-height: 1.4; }
+  ul.punkte li::before { content: ""; position: absolute; left: .4mm; top: 1.9mm; width: 1.3mm; height: 1.3mm; border-radius: 50%; background: var(--akzent); }
+  ul.punkte.klein li { font-size: 8.8pt; margin-top: .8mm; }
+  .skala { display: inline-flex; gap: 1.1mm; }
+  .skala span { width: 4.6mm; height: 4.6mm; border: var(--linie) solid var(--tinte-leise); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 7.4pt; color: var(--tinte-leise); font-variant-numeric: tabular-nums; }
+
+  /* Spalten */
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .drei { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+  .spalte-kopf { padding-bottom: 1.4mm; border-bottom: .9pt solid var(--haar-stark); }
+  .spalte-kopf .nr { font-size: 8pt; letter-spacing: .1em; }
+  .spalte-kopf h3 { margin-top: .4mm; }
+
+  /* Deckblatt */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3mm; margin-top: 3.2mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 9.8pt; line-height: 1.42; }
+  .inhalt { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+  .inhalt th { font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); text-align: left; padding: 0 0 1.2mm; border-bottom: .9pt solid var(--haar-stark); }
+  .inhalt td { padding: 1.3mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.5pt; }
+  .inhalt td:first-child, .inhalt th:first-child { width: 14mm; color: var(--akzent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .inhalt td.z, .inhalt th.z { width: 34mm; text-align: right; color: var(--tinte-leise); }
+
+  /* Nummerierte Schritte */
+  .schritte-liste li { display: grid; grid-template-columns: 7mm 1fr; padding: 1.7mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.5pt; line-height: 1.42; }
+  .schritte-liste li:last-child { border-bottom: 0; }
+  .schritte-liste.dicht li { padding: 1.3mm 0; font-size: 9pt; line-height: 1.36; }
+  .schritte-liste h3 { font-size: 9.8pt; }
+  .schritte-liste p { margin-top: .4mm; }
+
+  /* Weg in Schritten */
+  .weg { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); column-gap: 3mm; margin-top: 4.4mm; }
+  .weg::before { content: ""; position: absolute; left: 3.2mm; right: 24mm; top: 3.2mm; border-top: .9pt solid var(--akzent); }
+  .weg li { position: relative; }
+  .weg .kreis { position: relative; z-index: 1; display: inline-flex; width: 6.4mm; height: 6.4mm; border-radius: 50%; background: var(--papier); border: .9pt solid var(--akzent); color: var(--akzent); font-weight: 600; font-size: 8.8pt; align-items: center; justify-content: center; }
+  .weg h3 { margin-top: 2mm; font-size: 9.4pt; line-height: 1.25; }
+  .weg p { margin-top: .8mm; font-size: 8.4pt; line-height: 1.35; color: var(--tinte-leise); }
+
+  /* Beispielkarte */
+  .karte { margin-top: 3mm; padding: 3mm 5mm 3.2mm; background: #fff; border: var(--linie) solid var(--haar); border-radius: 1.6mm; }
+  .karte .gefuellt > dt:last-of-type, .karte .gefuellt > dd:last-of-type { border-bottom: 0; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+
+  /* Nächste Schritte */
+  .wege li { display: grid; grid-template-columns: 9mm 1fr; padding: 2.8mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .wege li:last-child { border-bottom: 0; }
+  .wege .nr { font-size: 13pt; line-height: 1.2; }
+  .wege h3 { font-size: 11.5pt; }
+  .wege .adresse { margin-top: .8mm; font-size: 10.2pt; color: var(--akzent); font-weight: 600; letter-spacing: .005em; }
+  .wege p { margin-top: .8mm; font-size: 9.8pt; line-height: 1.45; }
+  .unten { margin-top: auto; }
+  .unten + .fuss { margin-top: 3mm; }
+
+  /* Fehler-Liste */
+  .fehler li { display: grid; grid-template-columns: 7mm 1fr 1fr; column-gap: 4mm; padding: 1.6mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.38; }
+  .fehler li:last-child { border-bottom: 0; }
+  .fehler li .nr { font-size: 8.6pt; }
+  .fehler li b { display: block; }
+  .fehler .gegen { color: var(--tinte-text); }
+  .fehler-kopf { display: grid; grid-template-columns: 7mm 1fr 1fr; column-gap: 4mm; margin-top: 2.6mm; padding-bottom: 1.2mm; border-bottom: .9pt solid var(--haar-stark); font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); }
+
+  /* Bogen: Label oben links, Schreiblinien rechts */
+  .bogenblock { display: grid; grid-template-columns: 46mm 1fr; column-gap: 4mm; margin-top: 1.6mm; }
+  .bogenblock > span { padding-top: 3.1mm; font-size: 9.2pt; color: var(--tinte); font-weight: 600; line-height: 1.25; }
+  .bogenblock > span small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.9pt; margin-top: .4mm; }
+  .bogenblock .zeile-frei { height: 7mm; }
+  .sitzungen { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 5mm; margin-top: 2.4mm; }
+  .sitzungen > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .sitzungen .nr { font-size: 7.6pt; letter-spacing: .12em; }
+  .sitzungen h3 { margin-top: .4mm; font-size: 9.6pt; }
+  .sitzungen p { margin-top: .6mm; font-size: 8.6pt; line-height: 1.38; color: var(--tinte-text); }
+  /* Nur in diesem Baustein */
+  .inhalt td { padding: .95mm 0; font-size: 9.3pt; }
+  /* Sprechertext */
+  .abschnitt { margin-top: 3.4mm; padding-top: 2mm; border-top: .9pt solid var(--haar-stark); }
+  .abschnitt-kopf { display: flex; align-items: baseline; gap: 3mm; }
+  .abschnitt-kopf .nr { font-size: 8pt; letter-spacing: .1em; }
+  .abschnitt-kopf h3 { font-size: 11.5pt; }
+  .abschnitt-kopf .zeit { margin-left: auto; font-size: 8.6pt; color: var(--tinte-leise); font-variant-numeric: tabular-nums; }
+  .ziel { margin-top: .8mm; font-size: 8.8pt; color: var(--tinte-leise); }
+  .sprich, .tun, .frag { display: grid; grid-template-columns: 25mm 1fr; column-gap: 3mm; margin-top: 1.8mm; font-size: 9.4pt; line-height: 1.46; }
+  .sprich > b, .tun > b, .frag > b { font-size: 7.2pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; padding-top: .9mm; }
+  .sprich > b { color: var(--akzent); }
+  .sprich > span { color: var(--tinte); padding-left: 3.4mm; border-left: .9pt solid var(--akzent); }
+  .tun > b, .frag > b { color: var(--tinte-leise); }
+  .tun > span { color: var(--tinte-text); }
+  .frag > span { color: var(--tinte-text); font-style: italic; }
+  .faelle { display: grid; grid-template-columns: 1fr 1fr 1fr; column-gap: 4mm; margin: 1.8mm 0 0 28mm; }
+  .faelle > div { padding: 2mm 3mm; background: #fff; border: var(--linie) solid var(--haar); border-radius: 1.2mm; font-size: 8.8pt; line-height: 1.4; }
+  .faelle b { display: block; font-size: 7.4pt; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); }
+  .faelle .los { margin-top: 1mm; color: var(--akzent); }
+  .kannnicht { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6mm; margin: 2mm 0 0 28mm; }
+  .kannnicht h3 { font-size: 9pt; padding-bottom: .8mm; border-bottom: .9pt solid var(--haar-stark); }
+  /* Ampel */
+  .ampel td.farbe { font-weight: 600; }
+  .punkt-farbe { display: inline-block; width: 3mm; height: 3mm; border-radius: 50%; margin-right: 1.6mm; vertical-align: -.3mm; }
+  .gruen { background: #3E9B6B; } .gelb { background: #D9A422; } .rot { background: #C2412D; }
+  /* Prompt-Kasten */
+  .prompt { margin-top: 1.2mm; padding: 1.9mm 3.4mm; background: #fff; border: var(--linie) solid var(--haar); border-left: 1.4pt solid var(--akzent); border-radius: 1mm; font-size: 8.8pt; line-height: 1.44; color: var(--tinte); }
+  .prompt .p { color: var(--akzent); }
+  .bsp-prompt { margin-top: 2.6mm; }
+  .bsp-prompt h3 { display: flex; gap: 2.4mm; align-items: baseline; font-size: 9.8pt; }
+  .bsp-prompt h3 .nr { font-size: 8.4pt; }
+  .bsp-prompt .pruef { margin-top: .9mm; font-size: 8.4pt; line-height: 1.38; color: var(--tinte-leise); }
+  .bsp-prompt .pruef b { color: var(--tinte-text); }
+  .baustein6 td { height: auto; }
+  /* Übungen und Test */
+  .uebung { margin-top: 2.6mm; padding-top: 1.6mm; border-top: .9pt solid var(--haar-stark); }
+  .uebung h3 { display: flex; gap: 2.4mm; align-items: baseline; font-size: 10pt; }
+  .uebung p { margin-top: .6mm; font-size: 8.9pt; line-height: 1.4; }
+  .stichpunkte { margin-top: 1mm; padding: 1.6mm 3mm; background: #fff; border: var(--linie) solid var(--haar); border-radius: 1mm; font-size: 8.5pt; line-height: 1.4; color: var(--tinte-text); }
+  .test .frage { padding: 1.35mm 0 1.45mm; border-bottom: var(--linie) solid var(--haar); }
+  .test .frage h3 { display: grid; grid-template-columns: 6mm 1fr; font-size: 9.2pt; line-height: 1.3; }
+  .test .frage ol { margin-top: .8mm; padding-left: 6mm; display: grid; grid-template-columns: 1fr; row-gap: .4mm; }
+  .test .frage li { display: grid; grid-template-columns: 4.6mm 5mm 1fr; font-size: 8.6pt; line-height: 1.32; }
+  .test .frage li b { color: var(--akzent); font-weight: 600; }
+  .test .frage li .kreuz { margin-top: .2mm; }
+  .test.spalten { column-count: 2; column-gap: 7mm; margin-top: 1mm; }
+  .test.spalten .frage { break-inside: avoid; }
+  .recht { margin-top: 2.6mm; padding: 3mm 5mm; background: #fff; border: var(--linie) solid var(--haar); border-radius: 1.6mm; }
+  .recht p { font-size: 9.4pt; line-height: 1.48; }
+  .recht p + p { margin-top: 1.6mm; }
+  .recht blockquote { margin: 2mm 0 0; padding-left: 5mm; border-left: .9pt solid var(--akzent); font-size: 9.5pt; line-height: 1.5; color: var(--tinte); }
+  .recht .quelle { margin-top: 1.6mm; font-size: 8pt; color: var(--tinte-leise); line-height: 1.4; }
+  .nachweis-titel { margin-top: 5mm; text-align: center; }
+  .nachweis-titel h2 { font-size: 18pt; }
+  .nachweis-titel p { margin-top: 1.4mm; font-size: 9.6pt; color: var(--tinte-leise); }
+  .unterschrift { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10mm; margin-top: 11mm; }
+  .unterschrift div { border-top: var(--linie) solid var(--haar-stark); padding-top: 1.4mm; font-size: 8.4pt; color: var(--tinte-leise); }
+  .inhalte-wahl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; row-gap: 1.4mm; margin-top: 2mm; }
+  .inhalte-wahl li { display: flex; gap: 2.4mm; font-size: 9.2pt; line-height: 1.36; }
+  .inhalte-wahl .kreuz { margin-top: .4mm; }
+  .weiter-liste li { display: grid; grid-template-columns: 34mm 1fr; column-gap: 6mm; padding: 2.8mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .weiter-liste li:last-child { border-bottom: 0; }
+  .weiter-liste .art { font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); padding-top: .8mm; }
+  .weiter-liste h3 { font-size: 11pt; }
+  .weiter-liste p { margin-top: .6mm; font-size: 9.6pt; line-height: 1.42; }
+  .weiter-liste a { display: block; margin-top: .8mm; color: var(--akzent); font-weight: 600; font-size: 9.8pt; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+</svg>
+
+<!-- 1 · Deckblatt -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Baustein · Innovation</p>
+    <h1>KI-Schulungspaket fürs Team</h1>
+    <p class="lead">Alles, um Ihr Team in 90 Minuten sicher im Umgang mit KI zu schulen: Ablauf mit Sprechertext, Übungen mit Lösungen, Wissenstest, Nachweis je Person, erweiterte Regeln, Prompt-Leitfaden mit Beispielen je Abteilung und ein Freigabeprozess für neue Werkzeuge.</p>
+  </div>
+
+  <p class="abschnitt-titel">So nutzen Sie dieses Paket</p>
+  <div class="fakten">
+    <div><b>Wer schult</b><p>Eine Person aus Ihrem Haus, die KI selbst nutzt und die Regeln kennt. Erfahrung als Trainer ist nicht nötig, der Sprechertext trägt Sie durch.</p></div>
+    <div><b>Zeitbedarf</b><p>Vorbereitung zwei bis drei Stunden, Schulung 90 Minuten, Nachbereitung 30 Minuten. Jede weitere Gruppe braucht nur noch die 90 Minuten.</p></div>
+    <div><b>Was Sie brauchen</b><p>Ihre KI-Regeln, etwa aus unserer kostenlosen Vorlage „KI-Regeln für Ihr Team“, Zugang zu Ihrem freigegebenen KI-Assistenten und einen Bildschirm für alle.</p></div>
+    <div><b>Was Sie danach haben</b><p>Ein geschultes Team, einen Nachweis je Person, eine Sammlung guter Aufträge für den Alltag und einen festen Weg, wie neue Werkzeuge geprüft werden.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Inhalt</p>
+  <table class="inhalt">
+    <thead><tr><th>Seite</th><th>Teil</th><th class="z">für wen</th></tr></thead>
+    <tbody>
+      <tr><td>2</td><td>Vorbereitung: Checkliste und was Sie anpassen</td><td class="z">Schulungsleitung</td></tr>
+      <tr><td>3</td><td>Der Ablauf der 90 Minuten auf einen Blick</td><td class="z">Schulungsleitung</td></tr>
+      <tr><td>4</td><td>Sprechertext für alle sieben Abschnitte</td><td class="z">Schulungsleitung</td></tr>
+      <tr><td>8</td><td>Erweiterte Regeln: Daten, Vertraulichkeit, Kennzeichnung, Urheberrecht</td><td class="z">alle</td></tr>
+      <tr><td>10</td><td>Prompt-Leitfaden: der gute Auftrag in sechs Bausteinen</td><td class="z">alle</td></tr>
+      <tr><td>11</td><td>Beispiele für Vertrieb, Verwaltung und Marketing</td><td class="z">alle</td></tr>
+      <tr><td>14</td><td>Übungen und Lösungen</td><td class="z">Teilnehmende</td></tr>
+      <tr><td>16</td><td>Wissenstest mit Lösungsschlüssel</td><td class="z">Teilnehmende</td></tr>
+      <tr><td>18</td><td>KI-Kompetenz nachweisen: Konzept und Vorlage je Person</td><td class="z">Geschäftsführung</td></tr>
+      <tr><td>20</td><td>Freigabeprozess für neue Werkzeuge, mit Antrag und Prüfbogen</td><td class="z">Geschäftsführung</td></tr>
+      <tr><td>22</td><td>Die 30 Tage danach und nächste Schritte</td><td class="z">Schulungsleitung</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Drei Sätze, die danach alle kennen</p>
+  <div class="drei" style="margin-top:2mm">
+    <div><div class="spalte-kopf"><span class="nr">1</span><h3>Keine Kunden-, Personal- oder vertraulichen Daten hinein.</h3></div></div>
+    <div><div class="spalte-kopf"><span class="nr">2</span><h3>Was unser Haus verlässt, prüft vorher ein Mensch.</h3></div></div>
+    <div><div class="spalte-kopf"><span class="nr">3</span><h3>Fehler sofort melden, ohne Schuldfrage.</h3></div></div>
+  </div>
+
+  <div class="hinweis unten">Ergänzt die kostenlose Vorlage „KI-Regeln für Ihr Team“. Das Paket nennt bewusst keine Anbieter: „Ihr KI-Assistent“ steht für das Werkzeug, das Sie freigegeben haben. Zum Paket gehört eine <b>Tabelle</b> für Teilnahme, Wissenstest mit Auswertung und Werkzeug-Register. Hinweise zu Recht sind keine Rechtsberatung. Stand: Oktober 2026.</div>
+</section>
+
+<!-- 2 · Vorbereitung -->
+<section class="seite">
+  <p class="vorzeile">Vorbereitung · zwei bis drei Stunden</p>
+  <h2 class="blatt">Bevor Sie schulen: an Ihr Haus anpassen</h2>
+  <p class="unter">Eine Schulung wirkt, wenn sie an Ihren eigenen Werkzeugen, Regeln und Aufgaben stattfindet. Arbeiten Sie diese Liste in den zwei Wochen davor ab.</p>
+
+  <div class="drei" style="margin-top:3mm">
+    <div>
+      <div class="spalte-kopf"><span class="nr">ZWEI WOCHEN VORHER</span></div>
+      <ul class="liste" style="margin-top:.6mm">
+        <li><span class="kreuz"></span><span>KI-Regeln stehen und sind von der Geschäftsführung freigegeben</span></li>
+        <li><span class="kreuz"></span><span>Freigegebene Werkzeuge stehen fest, alle haben Zugang mit Firmenkonto</span></li>
+        <li><span class="kreuz"></span><span>Termin für alle, bei mehr als zwölf Personen in Gruppen</span></li>
+        <li><span class="kreuz"></span><span>Datenschutz-Ansprechperson und, falls vorhanden, Betriebsrat informiert</span></li>
+        <li><span class="kreuz"></span><span>Leitung und Unterstützung für Technik festgelegt</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="spalte-kopf"><span class="nr">EINE WOCHE VORHER</span></div>
+      <ul class="liste" style="margin-top:.6mm">
+        <li><span class="kreuz"></span><span>Je Abteilung zwei echte Aufgaben gesammelt, ohne Kundendaten</span></li>
+        <li><span class="kreuz"></span><span>Beispiele auf Seite 11 bis 13 an diese Aufgaben angepasst</span></li>
+        <li><span class="kreuz"></span><span>Vorführung einmal geprobt, Bildschirmfotos als Ersatz gesichert</span></li>
+        <li><span class="kreuz"></span><span>Übungsblatt, Test und Nachweise je Person kopiert</span></li>
+        <li><span class="kreuz"></span><span>Einladung verschickt (Text unten)</span></li>
+      </ul>
+    </div>
+    <div>
+      <div class="spalte-kopf"><span class="nr">AM TAG</span></div>
+      <ul class="liste" style="margin-top:.6mm">
+        <li><span class="kreuz"></span><span>Raum, Bildschirm, Internet und Zugänge geprüft</span></li>
+        <li><span class="kreuz"></span><span>Regeln für alle ausgedruckt</span></li>
+        <li><span class="kreuz"></span><span>Zeitplan sichtbar, Uhr im Blick</span></li>
+        <li><span class="kreuz"></span><span>Nachweise und Stifte bereit</span></li>
+        <li><span class="kreuz"></span><span>Zettel für offene Fragen</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Was Sie an Ihr Haus anpassen</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:52mm"><col></colgroup>
+    <tbody>
+      <tr><td class="stark">Abschnitt 3: Unsere Regeln</td><td>Ihre Regeln, Ihre Werkzeuge, Ihre Ansprechperson. Alles in eckigen Klammern im Sprechertext ersetzen.</td></tr>
+      <tr><td class="stark">Abschnitt 2 und 4: Vorführung</td><td>Eine echte, anonymisierte Aufgabe aus Ihrem Alltag statt des Beispiels zur Lieferverzögerung.</td></tr>
+      <tr><td class="stark">Übungen 3 bis 5</td><td>Begriffe und Aufgaben Ihrer Branche statt der Stichpunkte im Beispiel.</td></tr>
+      <tr><td class="stark">Wissenstest, Fragen 6, 7 und 15</td><td>Werkzeuge, Ansprechperson und Freigabeweg so, wie sie bei Ihnen heißen.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Einladung <small>Vorlage</small></p>
+  <div class="prompt" style="font-size:9.2pt;margin-top:2mm">Am <span class="p">[Datum]</span> von <span class="p">[Uhrzeit]</span> bis <span class="p">[Uhrzeit]</span> lernen wir gemeinsam, wie wir <span class="p">[Name Ihres KI-Assistenten]</span> sicher und sinnvoll im Alltag nutzen. 90 Minuten, mit Übungen am eigenen Rechner. Bitte bringen Sie eine Aufgabe mit, die Sie regelmäßig Zeit kostet, ohne Kundendaten. Am Ende gibt es einen kurzen Wissenstest und einen Nachweis für Ihre Unterlagen. Fragen vorab an <span class="p">[Ansprechperson]</span>.</div>
+  <p class="abschnitt-titel">Rollen in der Schulung</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:44mm"><col></colgroup>
+    <tbody>
+      <tr><td class="stark">Leitung</td><td>führt durch den Ablauf, spricht, zeigt die Vorführung, leitet den Test</td></tr>
+      <tr><td class="stark">Unterstützung</td><td>Technik, Zeit, Zettel für offene Fragen, hilft in den Übungen, achtet auf Daten</td></tr>
+      <tr><td class="stark">Geschäftsführung</td><td>eröffnet mit zwei Sätzen, warum das Thema wichtig ist, und bleibt möglichst bis zum Ende. Das zeigt, dass die Regeln für alle gelten.</td></tr>
+    </tbody>
+  </table>
+  <p class="hinweis"><b>Online statt im Raum?</b> Kameras an, Übungen zu zweit in getrennten Räumen der Videokonferenz, Übungsblatt und Test vorher als Datei verschicken und die Antworten am Ende einsammeln. Planen Sie zehn Minuten mehr ein.</p>
+</section>
+
+<!-- 3 · Ablauf -->
+<section class="seite">
+  <p class="vorzeile">Ablauf · 90 Minuten</p>
+  <h2 class="blatt">Die Schulung auf einen Blick</h2>
+  <p class="unter">Sieben Abschnitte mit festem Ziel. Die Zeiten sind Richtwerte. Wird es knapp, kürzen Sie bei Abschnitt 2 und 5, nie bei den Regeln und beim Test.</p>
+
+  <table class="raster text" style="margin-top:3mm">
+    <colgroup><col style="width:22mm"><col style="width:36mm"><col><col style="width:34mm"><col style="width:24mm"></colgroup>
+    <thead><tr><th>Zeit</th><th>Abschnitt</th><th>Ziel</th><th>Methode</th><th>Material</th></tr></thead>
+    <tbody>
+      <tr><td class="leise">0:00 – 0:05</td><td class="stark">1 · Begrüßung</td><td>Ziel und Ablauf sind klar, Sorgen werden ernst genommen</td><td>kurze Runde</td><td class="leise">Seite 4</td></tr>
+      <tr><td class="leise">0:05 – 0:20</td><td class="stark">2 · Was KI kann und was nicht</td><td>ein realistisches Bild: Stärken, Schwächen, typische Fehler</td><td>Vortrag, ein Beispiel live</td><td class="leise">Seite 4</td></tr>
+      <tr><td class="leise">0:20 – 0:35</td><td class="stark">3 · Unsere Regeln</td><td>jede Regel verstanden, an Fällen aus dem Alltag geprüft</td><td>Regeln Punkt für Punkt, zwei Fälle</td><td class="leise">Regeln, Seite 5</td></tr>
+      <tr><td class="leise">0:35 – 0:55</td><td class="stark">4 · Gut fragen</td><td>den Aufbau eines guten Auftrags kennen und gesehen haben</td><td>Vorführung am Bildschirm</td><td class="leise">Seite 6 und 10</td></tr>
+      <tr><td class="leise">0:55 – 1:15</td><td class="stark">5 · Übungen</td><td>selbst ausprobieren und das Ergebnis prüfen</td><td>zu zweit, drei Übungen</td><td class="leise">Seite 14</td></tr>
+      <tr><td class="leise">1:15 – 1:25</td><td class="stark">6 · Wissenstest</td><td>sehen, was angekommen ist</td><td>allein, 15 Fragen</td><td class="leise">Seite 16</td></tr>
+      <tr><td class="leise">1:25 – 1:30</td><td class="stark">7 · Abschluss</td><td>offene Fragen, nächste Schritte, Nachweis unterschreiben</td><td>Runde</td><td class="leise">Seite 19</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">So lesen Sie den Sprechertext</p>
+  <div class="sprich"><b>Sagen Sie</b><span>Text zum Vorlesen oder frei Nachsprechen. Eigene Worte sind besser als abgelesene, der Inhalt zählt.</span></div>
+  <div class="tun"><b>Tun Sie</b><span>Was Sie zeigen, verteilen oder vorbereiten.</span></div>
+  <div class="frag"><b>Fragen Sie</b><span>Fragen an die Gruppe. Antworten kurz sammeln, nicht bewerten.</span></div>
+  <p class="text" style="margin-top:2.4mm">Stellen in <span class="ein">[eckigen Klammern]</span> ersetzen Sie durch Ihre eigenen Angaben, etwa den Namen Ihres Werkzeugs oder Ihrer Ansprechperson.</p>
+
+  <p class="abschnitt-titel">Wenn etwas anders läuft</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:60mm"><col></colgroup>
+    <tbody>
+      <tr><td class="stark">Die Technik streikt</td><td>Zeigen Sie die gesicherten Bildschirmfotos der Vorführung. Die Übungen gehen auch auf Papier: Auftrag schreiben, gegenseitig bewerten.</td></tr>
+      <tr><td class="stark">Jemand ist grundsätzlich dagegen</td><td>Ernst nehmen, nicht überzeugen wollen. „Gut, dass Sie das sagen. Genau dafür haben wir Regeln.“ Danach im Einzelgespräch weiter.</td></tr>
+      <tr><td class="stark">Jemand weiß schon sehr viel</td><td>Einbinden: als Partner für Unsichere in den Übungen oder mit Übung 6.</td></tr>
+      <tr><td class="stark">Eine Frage, die Sie nicht beantworten können</td><td>„Das kläre ich und melde mich bis [Tag].“ Auf den Zettel für offene Fragen schreiben.</td></tr>
+      <tr><td class="stark">Die Zeit läuft davon</td><td>Abschnitt 2 auf zehn Minuten, Übungen auf zwei. Test und Regeln bleiben vollständig.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 4 · Sprechertext 1 und 2 -->
+<section class="seite">
+  <p class="vorzeile">Sprechertext · Abschnitt 1 und 2</p>
+  <h2 class="blatt">Begrüßung und was KI kann</h2>
+
+  <div class="abschnitt">
+    <div class="abschnitt-kopf"><span class="nr">ABSCHNITT 1</span><h3>Begrüßung</h3><span class="zeit">0:00 – 0:05</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Schön, dass Sie da sind. In den nächsten 90 Minuten geht es darum, wie wir KI bei uns sicher und sinnvoll nutzen. Sie gehen mit drei Dingen raus: Sie wissen, was KI gut kann und wo sie Fehler macht. Sie kennen unsere Regeln. Und Sie haben selbst ausprobiert, wie man einen guten Auftrag formuliert. Am Ende gibt es einen kurzen Test. Der zeigt uns vor allem, was wir noch besser erklären müssen.“</span></div>
+    <div class="frag"><b>Fragen Sie</b><span>„Wer hat KI schon genutzt, beruflich oder privat? Und wie war Ihr Eindruck, in einem Wort?“</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Antworten kurz sammeln. Sorgen ernst nehmen: „Darauf kommen wir in den Regeln.“ Bei der Sorge um Arbeitsplätze: „Bei uns übernimmt KI Entwürfe und Routine. Die Verantwortung und die Entscheidung bleiben bei Ihnen.“</span></div>
+  </div>
+
+  <div class="abschnitt">
+    <div class="abschnitt-kopf"><span class="nr">ABSCHNITT 2</span><h3>Was KI kann und was nicht</h3><span class="zeit">0:05 – 0:20</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Ein KI-Assistent wie unserer ist ein Sprachmodell. Er hat aus sehr vielen Texten gelernt, welche Wörter wahrscheinlich aufeinander folgen. Er schlägt also nicht nach wie in einem Lexikon, sondern formuliert die wahrscheinlichste Antwort. Das macht ihn stark bei allem, was mit Sprache zu tun hat: entwerfen, zusammenfassen, umformulieren, übersetzen, Ideen sammeln. Und es macht ihn unzuverlässig, wenn es auf exakte Fakten ankommt.“</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Ein vorbereitetes Beispiel zeigen, in dem der Assistent eine Quelle, eine Zahl oder ein Zitat erfindet. Am einfachsten: vorher nach Belegen zu einem sehr speziellen Thema fragen und die genannten Quellen selbst prüfen.</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Das nennt man Halluzination: Die Antwort klingt überzeugend und ist trotzdem falsch. Deshalb gilt bei uns: Zahlen, Namen, Zitate, Quellen und alles Rechtliche prüft immer ein Mensch.“</span></div>
+    <div class="kannnicht">
+      <div><h3>Gut geeignet</h3><ul class="punkte klein"><li>Entwürfe für Mails, Texte, Anleitungen</li><li>eigene Texte zusammenfassen und kürzen</li><li>umformulieren: freundlicher, einfacher, förmlicher</li><li>Gliederungen, Ideen, Übersetzungen zum Verstehen</li></ul></div>
+      <div><h3>Mit Vorsicht</h3><ul class="punkte klein"><li>Fakten, Zahlen, Quellen, aktuelle Ereignisse</li><li>Rechnen mit vielen Schritten</li><li>Recht, Steuern, Gesundheit, Aussagen über Personen</li><li>Entscheidungen, vor allem über Menschen</li></ul></div>
+    </div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Drei Dinge noch: Erstens hängt die Antwort stark davon ab, wie wir fragen, dazu gleich mehr. Zweitens weiß der Assistent nur, was wir ihm geben. Er kennt unsere Kunden und Abläufe nicht. Drittens kann das, was wir eingeben, unser Haus verlassen. Darum haben wir Regeln.“</span></div>
+    <div class="frag"><b>Fragen Sie</b><span>„Wo in Ihrem Alltag würde ein guter Entwurf Zeit sparen?“ Zwei, drei Antworten notieren und in den Übungen aufgreifen.</span></div>
+  </div>
+
+  <p class="abschnitt-titel">Fragen, die oft kommen, und eine mögliche Antwort</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:58mm"><col></colgroup>
+    <tbody>
+      <tr><td class="stark">„Lernt die KI aus dem, was ich eingebe?“</td><td>Das hängt vom Werkzeug und vom Vertrag ab. Für unsere freigegebenen Werkzeuge haben wir das geprüft: <span class="ein">[Ergebnis aus der Freigabe]</span>.</td></tr>
+      <tr><td class="stark">„Stimmt, was die KI schreibt?“</td><td>Oft, aber nicht immer, und man sieht es dem Text nicht an. Darum prüfen wir alles, was rausgeht.</td></tr>
+      <tr><td class="stark">„Darf ich KI auch privat nutzen?“</td><td>Privat ist Ihre Sache. Für die Arbeit nur unsere Werkzeuge, und nie Firmendaten in private Konten.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 5 · Sprechertext 3 -->
+<section class="seite">
+  <p class="vorzeile">Sprechertext · Abschnitt 3</p>
+  <h2 class="blatt">Unsere Regeln</h2>
+
+  <div class="abschnitt">
+    <div class="abschnitt-kopf"><span class="nr">ABSCHNITT 3</span><h3>Unsere Regeln</h3><span class="zeit">0:20 – 0:35</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Die Regeln austeilen. Jede Regel kurz vorlesen, mit einem Satz erklären, Fragen zulassen.</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Unsere Regeln sind kurz, damit man sie sich merken kann. Sie schützen unsere Kunden, unser Wissen und Sie selbst. Wenn Sie unsicher sind, gilt immer: fragen statt raten.“</span></div>
+    <div class="sprich"><b>Werkzeuge</b><span>„Wir nutzen nur <span class="ein">[freigegebene Werkzeuge]</span>, und nur mit Firmenkonto. Private oder kostenlose Zugänge nutzen wir nicht, weil wir dort nicht wissen, was mit den Daten passiert.“</span></div>
+    <div class="sprich"><b>Daten</b><span>„Nie hinein: Kundendaten, Personaldaten, Vertrauliches wie Preise und Kalkulationen, Zugangsdaten. Im Zweifel weglassen oder unkenntlich machen. Statt des Kundennamens schreiben Sie ‚ein Kunde aus dem Maschinenbau‘.“</span></div>
+    <div class="sprich"><b>Ja und nein</b><span>„Ja für Entwürfe, Zusammenfassungen und Umformulierungen. Nein für Entscheidungen über Menschen, für Rechts- und Steuerfragen und für alles, wo ein Fehler teuer wird, bevor ihn jemand sieht.“</span></div>
+    <div class="sprich"><b>Prüfen</b><span>„Was unser Haus verlässt, liest vorher ein Mensch. Verantwortlich sind wir, nicht der Assistent.“</span></div>
+    <div class="sprich"><b>Kennzeichnen</b><span>„Stammt ein Inhalt überwiegend von KI und geht er nach außen, sagen wir das offen, so wie es in Regel 5 steht.“</span></div>
+    <div class="sprich"><b>Melden</b><span>„Ist doch etwas Vertrauliches hineingeraten oder ein falsches Ergebnis rausgegangen: sofort an <span class="ein">[Ansprechperson]</span>, ohne Schuldfrage. Je früher, desto leichter lässt es sich beheben.“</span></div>
+    <div class="sprich"><b>Neues</b><span>„Neue Werkzeuge nutzen wir erst nach Freigabe. Wer ein gutes Werkzeug kennt, stellt einen kurzen Antrag, wir prüfen es.“</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Zwei Fälle vorlesen. Die Gruppe entscheidet per Handzeichen: erlaubt oder nicht? Dann auflösen.</span></div>
+    <div class="faelle">
+      <div><b>Fall A</b>Eine Kollegin lässt eine Antwort an einen Kunden glätten und kopiert die ganze Mail hinein, mit Signatur und Namen des Kunden.<p class="los">Nicht erlaubt: Kundendaten. Besser: Namen und Kontaktdaten entfernen, nur den eigenen Text glätten lassen.</p></div>
+      <div><b>Fall B</b>Ein Kollege lässt sich eine Gliederung für die Einarbeitung neuer Auszubildender vorschlagen, ohne Namen.<p class="los">Erlaubt: interner Entwurf ohne Personenbezug. Ergebnis prüfen und an den eigenen Ablauf anpassen.</p></div>
+      <div><b>Fall C</b>Ein Kollege lässt die Kalkulation für ein großes Angebot auf Fehler prüfen. Den Kundennamen hat er entfernt.<p class="los">Nicht erlaubt: Preise und Kalkulationen sind vertraulich, auch ohne Namen. Besser: die Formel prüfen lassen, nicht die Zahlen.</p></div>
+    </div>
+    <div class="frag"><b>Fragen Sie</b><span>„Welche Regel ist für Ihre Arbeit am schwersten einzuhalten?“ Antworten notieren. Sie sind der wichtigste Stoff für die nächste Prüfung der Regeln.</span></div>
+  </div>
+  <div class="sprich" style="margin-top:2.4mm"><b>Sagen Sie</b><span>„Und wenn doch etwas schiefgeht: Wer einen Fehler meldet, bekommt Hilfe, keinen Ärger. Schwierig wird es nur, wenn Regeln bewusst umgangen werden, weil dann Kunden und Kollegen den Schaden haben.“</span></div>
+  <p class="hinweis lila"><b>Tipp:</b> Erzählen Sie einen eigenen kleinen Fehler mit KI, etwa eine falsche Zahl, die Sie im letzten Moment gefunden haben. Das senkt die Hemmschwelle, später selbst Fehler zu melden.</p>
+</section>
+
+<!-- 6 · Sprechertext 4 -->
+<section class="seite">
+  <p class="vorzeile">Sprechertext · Abschnitt 4</p>
+  <h2 class="blatt">Gut fragen, mit Vorführung</h2>
+
+  <div class="abschnitt">
+    <div class="abschnitt-kopf"><span class="nr">ABSCHNITT 4</span><h3>Gut fragen</h3><span class="zeit">0:35 – 0:55</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Stellen Sie sich den Assistenten vor wie eine neue Aushilfe, die sehr schnell schreibt, aber nichts über uns weiß. Je besser wir den Auftrag beschreiben, desto besser das Ergebnis. Ein guter Auftrag hat sechs Bausteine: wer schreibt, was entstehen soll, was man wissen muss, womit gearbeitet wird, wie das Ergebnis aussehen soll und was zu beachten ist.“</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Seite 10 zeigen. Dann am Bildschirm zuerst den schwachen, dann den guten Auftrag eingeben und beide Ergebnisse nebeneinander stehen lassen.</span></div>
+    <p class="text" style="margin:2mm 0 0 28mm"><b>Schwach</b></p>
+    <div class="prompt" style="margin-left:28mm">Schreib eine Mail an einen Kunden wegen Lieferverzug.</div>
+    <p class="text" style="margin:2mm 0 0 28mm"><b>Gut</b></p>
+    <div class="prompt" style="margin-left:28mm">Du bist Kundenbetreuer in einem Handwerksbetrieb. Schreibe eine kurze E-Mail an einen Kunden, dessen Auftrag sich um zwei Wochen verzögert, weil ein Bauteil fehlt. Ton: freundlich und sachlich, ohne Übertreibung. Biete zwei Möglichkeiten an: warten oder ein gleichwertiges Ersatzteil. Höchstens 120 Wörter, Anrede mit Sie, Namen und Termine als Platzhalter in eckigen Klammern. Erfinde keine Gründe dazu.</div>
+    <div class="frag"><b>Fragen Sie</b><span>„Was ist am zweiten Ergebnis anders?“ Erwartbare Antworten: passt besser, richtige Länge, weniger Nacharbeit, nichts Erfundenes.</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Der zweite Entwurf ist fast fertig. Ich setze nur noch Namen und Termine ein, lese ihn einmal und schicke ihn ab. Und wenn etwas nicht passt, steuere ich nach.“</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Live nachsteuern: „Kürzer, bitte.“ · „Etwas förmlicher.“ · „Gib mir drei Betreffzeilen zur Auswahl.“ · „Was könnte den Kunden an dieser Mail stören?“</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Zwei Tricks, die fast immer helfen. Erstens: ein Beispiel mitgeben, etwa eine frühere Mail, deren Ton Ihnen gefällt, natürlich ohne Kundendaten. Zweitens: den Assistenten zuerst fragen lassen. Schreiben Sie dazu: ‚Stell mir zuerst drei Fragen, bevor du schreibst.‘ Dann bekommen Sie, was Sie brauchen, statt was er vermutet.“</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Und das Wichtigste zum Schluss: Prüfen gehört zum Auftrag. Bevor etwas rausgeht, lesen Sie es so, als hätten Sie es selbst geschrieben. Würden Sie jeden Satz unterschreiben? Dann passt es.“</span></div>
+    <div class="frag"><b>Fragen Sie</b><span>„Welche Aufgabe aus Ihrer Abteilung würden Sie jetzt gern so ausprobieren?“ Überleitung zu den Übungen.</span></div>
+  </div>
+
+  <p class="abschnitt-titel">So kann das Ergebnis des guten Auftrags aussehen <span class="marke-bsp">ERFUNDEN</span></p>
+  <div class="stichpunkte" style="font-size:8.9pt;line-height:1.5;margin-top:2mm"><b>Betreff:</b> Ihr Auftrag [Nummer]: neuer Liefertermin<br>Guten Tag [Anrede] [Name],<br>leider verzögert sich Ihr Auftrag um etwa zwei Wochen, weil ein Bauteil bei unserem Zulieferer fehlt. Das tut uns leid. Sie haben zwei Möglichkeiten: Wir warten auf das Originalteil und liefern voraussichtlich am [Datum], oder wir verwenden ein gleichwertiges Ersatzteil und liefern wie geplant am [Datum]. Geben Sie uns bitte bis [Datum] Bescheid, was Ihnen lieber ist. Für Fragen erreichen Sie mich unter [Telefon].<br>Freundliche Grüße, [Name]</div>
+  <p class="klein" style="margin-top:1.4mm">Ein Ausdruck dieses Ergebnisses ist der Ersatz, falls die Technik in der Schulung streikt. Zeigen Sie dann, was Sie noch prüfen: Termine, Name, ob das Ersatzteil wirklich gleichwertig ist.</p>
+</section>
+
+<!-- 7 · Sprechertext 5 bis 7 -->
+<section class="seite">
+  <p class="vorzeile">Sprechertext · Abschnitt 5 bis 7</p>
+  <h2 class="blatt">Üben, testen, abschließen</h2>
+
+  <div class="abschnitt">
+    <div class="abschnitt-kopf"><span class="nr">ABSCHNITT 5</span><h3>Übungen</h3><span class="zeit">0:55 – 1:15</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Paare bilden, möglichst aus verschiedenen Abteilungen. Übungsblatt austeilen. Jedes Paar macht Übung 1 und 2 und eine Übung aus seinem Bereich (3, 4 oder 5). Übung 6 ist für alle, die früher fertig sind.</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Sie haben 15 Minuten. Schreiben Sie Ihren Auftrag zuerst auf das Blatt, dann in den Assistenten. Prüfen Sie das Ergebnis mit der Liste unten auf dem Blatt. Danach zeigen zwei Paare ihr Ergebnis.“</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Herumgehen und helfen. Auf Daten achten: Wer echte Namen oder Kundendaten eintippt, freundlich stoppen und zeigen, wie man unkenntlich macht.</span></div>
+    <div class="frag"><b>Fragen Sie</b><span>Bei der Auswertung, fünf Minuten: „Was hat gut funktioniert? Was mussten Sie korrigieren? Was hat Sie überrascht?“</span></div>
+  </div>
+
+  <div class="abschnitt">
+    <div class="abschnitt-kopf"><span class="nr">ABSCHNITT 6</span><h3>Wissenstest</h3><span class="zeit">1:15 – 1:25</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Jetzt der kurze Test: 15 Fragen, je eine Antwort ist richtig. Allein und ohne Hilfsmittel, zehn Minuten. Ab zwölf richtigen Antworten haben Sie bestanden. Wer darunter liegt, bekommt eine kurze Nachbesprechung. Das ist kein Problem, sondern genau dafür da.“</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Test austeilen, Zeit ansagen, einsammeln. Ausgewertet wird danach, mit dem Lösungsschlüssel auf Seite 17 oder der Tabelle. Ergebnisse nur für die Schulung verwenden, nicht für Beurteilungen.</span></div>
+  </div>
+
+  <div class="abschnitt">
+    <div class="abschnitt-kopf"><span class="nr">ABSCHNITT 7</span><h3>Abschluss</h3><span class="zeit">1:25 – 1:30</span></div>
+    <div class="sprich"><b>Sagen Sie</b><span>„Danke für Ihre Zeit. Drei Dinge zum Mitnehmen: Keine Kundendaten, Personaldaten oder Vertrauliches hinein. Alles, was rausgeht, prüft ein Mensch. Bei Fragen oder Fehlern: <span class="ein">[Ansprechperson]</span>. Die Beispiele für Ihre Abteilung bekommen Sie als Sammlung. In vier Wochen fragen wir nach, was im Alltag funktioniert und was nicht.“</span></div>
+    <div class="tun"><b>Tun Sie</b><span>Nachweise unterschreiben lassen (Seite 19). Offene Fragen vom Zettel vorlesen und sagen, bis wann es Antworten gibt. Termin für eine Fragestunde in zwei Wochen nennen.</span></div>
+  </div>
+
+  <p class="abschnitt-titel">Nach der Schulung · 30 Minuten</p>
+  <ul class="liste">
+    <li><span class="kreuz"></span><span>Tests auswerten, Ergebnisse in die Tabelle, Nachbesprechungen vereinbaren</span></li>
+    <li><span class="kreuz"></span><span>Nachweise zu den Unterlagen, Teilnahme in der Tabelle eintragen</span></li>
+    <li><span class="kreuz"></span><span>Offene Fragen beantworten und allen schicken</span></li>
+    <li><span class="kreuz"></span><span>Fragen notieren, die im Test oft falsch waren, und beim nächsten Mal besser erklären</span></li>
+    <li><span class="kreuz"></span><span>Die genannten schwierigen Regeln für die nächste Prüfung der Regeln vormerken</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Nachricht an alle nach der Schulung <small>Vorlage</small></p>
+  <div class="prompt" style="font-size:9pt;margin-top:2mm">Danke für Ihre Teilnahme an der KI-Schulung am <span class="p">[Datum]</span>. Im Anhang finden Sie unsere KI-Regeln und die Beispiele für gute Aufträge aus Ihrer Abteilung. Ihre besten eigenen Aufträge tragen Sie bitte in die Sammlung unter <span class="p">[Ablageort]</span> ein. Offene Fragen beantworten wir in der Fragestunde am <span class="p">[Datum]</span>. Bei Fragen oder Fehlern erreichen Sie <span class="p">[Ansprechperson]</span> unter <span class="p">[Kontakt]</span>.</div>
+</section>
+
+<!-- 8 · Regeln erweitert 1 -->
+<section class="seite">
+  <p class="vorzeile">Erweiterte Regeln · Teil 1</p>
+  <h2 class="blatt">Daten und Vertraulichkeit</h2>
+  <p class="unter">Die kostenlosen KI-Regeln sagen, was nie hineinkommt. Die Daten-Ampel macht daraus eine Regel für jeden Fall: Jede Information hat eine Farbe, jedes Werkzeug ist für bestimmte Farben freigegeben.</p>
+
+  <p class="abschnitt-titel">Die Daten-Ampel</p>
+  <table class="raster text ampel">
+    <colgroup><col style="width:22mm"><col style="width:44mm"><col><col style="width:52mm"></colgroup>
+    <thead><tr><th>Farbe</th><th>Was</th><th>Beispiele</th><th>Im KI-Assistenten</th></tr></thead>
+    <tbody>
+      <tr><td class="farbe"><span class="punkt-farbe gruen"></span>Grün</td><td>öffentlich oder ohne Bezug zu Personen und Kunden</td><td>Texte unserer Website, allgemeine Fachfragen, eigene Entwürfe ohne Namen</td><td>in allen freigegebenen Werkzeugen</td></tr>
+      <tr><td class="farbe"><span class="punkt-farbe gelb"></span>Gelb</td><td>intern, ohne Personenbezug</td><td>interne Abläufe, Protokolle ohne Namen, Angebotsentwürfe ohne Preise</td><td>nur mit Firmenkonto, in Werkzeugen, die für Gelb freigegeben sind</td></tr>
+      <tr><td class="farbe"><span class="punkt-farbe rot"></span>Rot</td><td>personenbezogen, vertraulich, unter Geheimhaltung</td><td>Kunden- und Personaldaten, Gesundheit, Preise, Kalkulationen, Verträge, Zugangsdaten</td><td>nie, außer ein Werkzeug ist ausdrücklich und schriftlich für genau diese Daten freigegeben</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Datenschutz <small>Hinweise, keine Rechtsberatung</small></p>
+  <ul class="punkte">
+    <li><b>Personenbezogen</b> ist jede Angabe zu einer bestimmten oder bestimmbaren Person, auch ein Name in einer Mail-Signatur oder ein Gesprächsprotokoll mit Namen.</li>
+    <li>Wer solche Daten in ein KI-Werkzeug gibt, verarbeitet sie. Dafür braucht es eine <b>Rechtsgrundlage</b> und mit dem Anbieter in der Regel einen <b>Vertrag zur Auftragsverarbeitung</b> (Art.&nbsp;28&nbsp;DSGVO).</li>
+    <li>Werden Daten <b>außerhalb der EU</b> verarbeitet, sind zusätzliche Garantien nötig. Das klären Sie bei der Freigabe des Werkzeugs (Seite 20).</li>
+    <li><b>Gesundheitsdaten</b> und andere besondere Kategorien sind besonders geschützt (Art.&nbsp;9&nbsp;DSGVO). Sie gehören nicht in KI-Werkzeuge, außer nach ausdrücklicher Prüfung.</li>
+    <li><b>Unkenntlich machen</b> heißt: Namen, Firmen, Orte und auffällige Details ersetzen. Achtung: Lässt sich die Person aus dem Zusammenhang erkennen, ist der Text nicht anonym.</li>
+  </ul>
+
+  <div class="zwei" style="margin-top:1mm">
+    <div>
+      <p class="abschnitt-titel">Vorher <span class="marke-bsp">ERFUNDEN</span></p>
+      <div class="stichpunkte">Hallo Herr <b>Beispiel</b>, wie am Telefon besprochen, liefern wir die Anlage für Ihr Werk in <b>Musterstadt</b> erst am <b>14.03.</b>, weil unser Zulieferer ausgefallen ist. Ihr <b>Rabatt von 8 %</b> bleibt.</div>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Nachher, darf hinein <small>fett: was ersetzt wurde</small></p>
+      <div class="stichpunkte">Hallo [Name], wie besprochen liefern wir die Anlage erst am [Datum], weil ein Zulieferer ausgefallen ist. Die vereinbarten Konditionen bleiben.</div>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Vertraulichkeit</p>
+  <ul class="punkte">
+    <li><b>Geschäftsgeheimnisse</b> wie Kalkulationen, Rezepturen, Pläne und Strategien schützt das Gesetz nur, wenn Sie angemessene Maßnahmen treffen, um sie geheim zu halten (§&nbsp;2&nbsp;GeschGehG). Klare KI-Regeln gehören dazu.</li>
+    <li><b>Vorgaben von Kunden:</b> Verträge und Geheimhaltungsvereinbarungen können KI ausschließen oder an Bedingungen knüpfen. Im Zweifel vorher nachsehen.</li>
+    <li><b>Berufsgeheimnisse:</b> Wer einer Schweigepflicht unterliegt, etwa in Gesundheits- oder Beratungsberufen, braucht vor jedem Einsatz eine eigene Prüfung (§&nbsp;203&nbsp;StGB).</li>
+  </ul>
+</section>
+
+<!-- 9 · Regeln erweitert 2 -->
+<section class="seite">
+  <p class="vorzeile">Erweiterte Regeln · Teil 2</p>
+  <h2 class="blatt">Kennzeichnung, Urheberrecht, Verantwortung</h2>
+
+  <p class="abschnitt-titel">Kennzeichnung</p>
+  <ul class="punkte">
+    <li><b>Unsere Regel:</b> Stammt ein Inhalt überwiegend von KI und geht er nach außen, sagen wir das offen. Wie, steht in Regel 5 Ihrer KI-Regeln.</li>
+    <li>Für bestimmte Inhalte sieht die KI-Verordnung eigene Pflichten zur Transparenz vor. Ob und ab wann sie für Sie gelten, klären Sie mit Ihrer Beratung.</li>
+    <li><b>Formulierungen</b>, die sich bewährt haben: „Dieser Text wurde mit Unterstützung von KI erstellt und von <span class="ein">[Name]</span> geprüft.“ · Bildnachweis: „Bild mit KI erstellt“.</li>
+  </ul>
+
+  <p class="abschnitt-titel">Urheberrecht</p>
+  <ul class="punkte">
+    <li><b>Eingaben:</b> Laden Sie keine fremden geschützten Texte, Bilder oder Unterlagen hoch, an denen Sie keine Rechte haben, etwa Fachbücher, Studien oder Fotos aus dem Internet.</li>
+    <li><b>Ergebnisse:</b> Rein maschinell erzeugte Inhalte sind in der Regel nicht urheberrechtlich geschützt, weil das Gesetz eine persönliche geistige Schöpfung verlangt (§&nbsp;2 Abs.&nbsp;2&nbsp;UrhG). Andere dürfen sie dann unter Umständen auch nutzen.</li>
+    <li><b>Ähnlichkeiten:</b> Ergebnisse können bestehenden Werken ähneln. Übernehmen Sie keine Logos, Marken, Figuren oder bekannten Formulierungen. Bilder mit erkennbaren echten Personen nur mit deren Einwilligung.</li>
+  </ul>
+
+  <p class="abschnitt-titel">Entscheidungen über Menschen</p>
+  <ul class="punkte">
+    <li>Über Bewerbungen, Beurteilungen, Kündigungen oder Konditionen für einzelne Personen entscheidet ein Mensch. Personen haben das Recht, keiner ausschließlich automatisierten Entscheidung mit rechtlicher Wirkung unterworfen zu werden (Art.&nbsp;22&nbsp;DSGVO).</li>
+    <li>Einsätze in Personalauswahl und Beschäftigung können nach der KI-Verordnung strengeren Regeln unterliegen. Solche Werkzeuge nur nach eigener Prüfung.</li>
+  </ul>
+
+  <p class="abschnitt-titel">Prüfen und Verantwortung</p>
+  <div class="zwei">
+    <ul class="liste">
+      <li><span class="kreuz"></span><span>Fakten und Zahlen stimmen</span></li>
+      <li><span class="kreuz"></span><span>Namen, Termine, Beträge richtig</span></li>
+      <li><span class="kreuz"></span><span>nichts erfunden: Quellen, Zitate, Studien</span></li>
+    </ul>
+    <ul class="liste">
+      <li><span class="kreuz"></span><span>Ton passt zu uns und zum Empfänger</span></li>
+      <li><span class="kreuz"></span><span>nichts Vertrauliches im Ergebnis</span></li>
+      <li><span class="kreuz"></span><span>ich kann jeden Satz vertreten</span></li>
+    </ul>
+  </div>
+
+  <p class="abschnitt-titel">Sicherheit</p>
+  <ul class="punkte">
+    <li>Fremde Dokumente und Webseiten können <b>versteckte Anweisungen</b> enthalten, die den Assistenten zu etwas verleiten sollen. Ergebnisse aus fremden Quellen nie ungeprüft weiterverwenden, Links und Dateien aus Antworten nicht blind öffnen.</li>
+    <li>Zugangsdaten nie eingeben. Konten mit sicherem Passwort und, wo möglich, mit zweitem Faktor schützen.</li>
+  </ul>
+
+  <p class="hinweis"><b>Mit Betriebsrat:</b> Die Einführung von KI-Werkzeugen kann mitbestimmungspflichtig sein, etwa wenn sie Verhalten oder Leistung sichtbar machen (§&nbsp;87 Abs.&nbsp;1 Nr.&nbsp;6&nbsp;BetrVG), und der Betriebsrat ist bei der Planung zu unterrichten (§&nbsp;90&nbsp;BetrVG). Alle Hinweise auf dieser Seite sind keine Rechtsberatung.</p>
+</section>
+
+<!-- 10 · Prompt-Leitfaden -->
+<section class="seite">
+  <p class="vorzeile">Prompt-Leitfaden</p>
+  <h2 class="blatt">Der gute Auftrag in sechs Bausteinen</h2>
+  <p class="unter">Ein Prompt ist der Auftrag, den Sie Ihrem KI-Assistenten geben. Nicht jeder Auftrag braucht alle sechs Bausteine. Je wichtiger das Ergebnis, desto mehr davon.</p>
+
+  <table class="raster text baustein6" style="margin-top:2.6mm">
+    <colgroup><col style="width:8mm"><col style="width:30mm"><col style="width:48mm"><col></colgroup>
+    <thead><tr><th></th><th>Baustein</th><th>Die Frage dahinter</th><th>Beispiel</th></tr></thead>
+    <tbody>
+      <tr><td class="leise">1</td><td class="stark">Rolle</td><td>Aus welcher Sicht soll geschrieben werden?</td><td class="ein">„Du bist Assistenz der Geschäftsführung in einem Handwerksbetrieb.“</td></tr>
+      <tr><td class="leise">2</td><td class="stark">Aufgabe</td><td>Was genau soll entstehen?</td><td class="ein">„Schreibe eine Einladung zur Betriebsversammlung.“</td></tr>
+      <tr><td class="leise">3</td><td class="stark">Hintergrund</td><td>Was muss der Assistent wissen?</td><td class="ein">„Es geht um neue Arbeitszeiten ab März. Viele sind verunsichert.“</td></tr>
+      <tr><td class="leise">4</td><td class="stark">Material</td><td>Womit soll er arbeiten?</td><td class="ein">„Hier sind die Stichpunkte: …“ (nur Grün und, wo freigegeben, Gelb)</td></tr>
+      <tr><td class="leise">5</td><td class="stark">Form</td><td>Wie soll das Ergebnis aussehen?</td><td class="ein">„Höchstens 150 Wörter, drei Absätze, Anrede mit Sie.“</td></tr>
+      <tr><td class="leise">6</td><td class="stark">Grenzen</td><td>Was soll er lassen, was markieren?</td><td class="ein">„Erfinde keine Zahlen. Markiere, was ich ergänzen muss, in eckigen Klammern.“</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Kopiervorlage</p>
+  <div class="prompt" style="font-size:9.3pt;margin-top:2mm">Du bist <span class="p">[Rolle]</span>. Deine Aufgabe: <span class="p">[was entstehen soll]</span>. Hintergrund: <span class="p">[was du wissen musst]</span>. Arbeite mit diesem Material: <span class="p">[Text oder Stichpunkte, ohne vertrauliche Daten]</span>. Form: <span class="p">[Länge, Aufbau, Ton, Anrede]</span>. Achte darauf: <span class="p">[was du lassen sollst]</span>. Wenn dir Angaben fehlen, frag mich zuerst.</div>
+
+  <p class="abschnitt-titel">Sechs Techniken für bessere Ergebnisse</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:40mm"><col></colgroup>
+    <tbody>
+      <tr><td class="stark">Fragen lassen</td><td>„Stell mir zuerst drei Fragen, bevor du schreibst.“</td></tr>
+      <tr><td class="stark">Beispiel geben</td><td>„Schreibe im Ton dieses Beispiels: …“ (eigener Text, ohne Kundendaten)</td></tr>
+      <tr><td class="stark">Schritt für Schritt</td><td>„Mach zuerst nur eine Gliederung. Den Text schreiben wir, wenn ich sie freigegeben habe.“</td></tr>
+      <tr><td class="stark">Varianten</td><td>„Gib mir drei Betreffzeilen: sachlich, persönlich, kurz.“</td></tr>
+      <tr><td class="stark">Kritik einholen</td><td>„Was fehlt in meinem Entwurf? Was ist unklar? Nenne drei Punkte.“</td></tr>
+      <tr><td class="stark">Perspektive wechseln</td><td>„Lies den Text als skeptischer Kunde. Was stört dich?“</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Typische Fehler beim Fragen</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:52mm"><col></colgroup>
+    <tbody>
+      <tr><td class="stark">Zu kurz gefragt</td><td>Der Assistent füllt die Lücken mit Vermutungen. Lieber zwei Sätze Hintergrund mehr.</td></tr>
+      <tr><td class="stark">Alles auf einmal</td><td>Zehn Aufgaben in einem Auftrag führen zu zehn halben Ergebnissen. Eine Aufgabe je Auftrag, dann die nächste.</td></tr>
+      <tr><td class="stark">Nicht nachgesteuert</td><td>Der erste Entwurf ist selten der beste. Zwei, drei Runden „kürzer“, „konkreter“, „freundlicher“ lohnen sich.</td></tr>
+      <tr><td class="stark">„Nur kurz“ rote Daten</td><td>Auch ein einzelner Name oder eine Preisliste ist zu viel. Platzhalter kosten zehn Sekunden.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="hinweis lila"><b>Gute Aufträge sammeln:</b> Legen Sie je Abteilung eine Sammlung an, in die alle ihre besten Aufträge eintragen, mit Zweck und Hinweis, was man prüfen muss. Die Beispiele auf den nächsten drei Seiten sind ein Startpunkt.</p>
+</section>
+
+<!-- 11 · Vertrieb -->
+<section class="seite">
+  <p class="vorzeile">Beispiele · Vertrieb</p>
+  <h2 class="blatt">Gute Aufträge für den Vertrieb</h2>
+  <p class="unter">Anpassen, ausprobieren, in die eigene Sammlung übernehmen. Was in <span class="ein">[Klammern]</span> steht, ersetzen Sie, ohne vertrauliche Daten.</p>
+  <div id="vertrieb"></div>
+</section>
+
+<!-- 12 · Verwaltung -->
+<section class="seite">
+  <p class="vorzeile">Beispiele · Verwaltung</p>
+  <h2 class="blatt">Gute Aufträge für die Verwaltung</h2>
+  <p class="unter">Anpassen, ausprobieren, in die eigene Sammlung übernehmen. Was in <span class="ein">[Klammern]</span> steht, ersetzen Sie, ohne vertrauliche Daten.</p>
+  <div id="verwaltung"></div>
+</section>
+
+<!-- 13 · Marketing -->
+<section class="seite">
+  <p class="vorzeile">Beispiele · Marketing</p>
+  <h2 class="blatt">Gute Aufträge für das Marketing</h2>
+  <p class="unter">Anpassen, ausprobieren, in die eigene Sammlung übernehmen. Was in <span class="ein">[Klammern]</span> steht, ersetzen Sie, ohne vertrauliche Daten.</p>
+  <div id="marketing"></div>
+</section>
+
+<!-- 14 · Übungen -->
+<section class="seite">
+  <p class="vorzeile">Übungen · für Teilnehmende</p>
+  <h2 class="blatt">Übungsblatt</h2>
+  <div class="reihe">
+    <p class="feld breit"><span>Namen</span><span class="strich"></span></p>
+    <p class="feld"><span>Abteilung</span><span class="strich"></span></p>
+  </div>
+
+  <div class="uebung">
+    <h3><span class="nr">1</span>Vom schwachen zum guten Auftrag <span class="leise" style="font-weight:400;font-size:8.6pt">alle</span></h3>
+    <p>Der Auftrag „Schreib was über unsere Firma.“ bringt nichts Brauchbares. Machen Sie daraus mit den sechs Bausteinen einen Auftrag für einen kurzen Text, der neuen Kunden erklärt, was Sie anbieten.</p>
+    <div class="linien eng" data-linien="3"></div>
+  </div>
+
+  <div class="uebung">
+    <h3><span class="nr">2</span>Grün, gelb oder rot? <span class="leise" style="font-weight:400;font-size:8.6pt">alle</span></h3>
+    <table class="raster dicht" style="margin-top:1mm">
+      <colgroup><col><col style="width:16mm"><col style="width:16mm"><col style="width:16mm"></colgroup>
+      <thead><tr><th>Information</th><th class="mitte">grün</th><th class="mitte">gelb</th><th class="mitte">rot</th></tr></thead>
+      <tbody id="ampel-uebung"></tbody>
+    </table>
+  </div>
+
+  <div class="uebung">
+    <h3><span class="nr">3–5</span>Eine Aufgabe aus Ihrem Bereich <span class="leise" style="font-weight:400;font-size:8.6pt">eine davon wählen</span></h3>
+    <div class="drei" style="margin-top:1.2mm">
+      <div><p><b>3 · Vertrieb:</b> Zusammenfassung nach einem Gespräch an den Kunden.</p><div class="stichpunkte">Gespräch Di. · Kunde will Wartung für 3 Standorte · Entscheidung bis Ende Monat · wir schicken Angebot bis Fr. · Rückfrage zu Reaktionszeit offen</div></div>
+      <div><p><b>4 · Verwaltung:</b> Protokoll einer Teambesprechung.</p><div class="stichpunkte">Urlaubsplanung bis 15.12. abgeben · neuer Drucker kommt Mo. · Aufgabe: Leitung Büro bestellt Toner · nächste Besprechung in 2 Wochen</div></div>
+      <div><p><b>5 · Marketing:</b> Beitrag für ein berufliches Netzwerk.</p><div class="stichpunkte">Thema: 10 Jahre Betrieb · 3 neue Azubis · Dank an Kunden · Tag der offenen Tür am [Datum]</div></div>
+    </div>
+    <p style="margin-top:1.4mm">Ihr Auftrag an den Assistenten:</p>
+    <div class="linien eng" data-linien="3"></div>
+  </div>
+
+  <div class="uebung">
+    <h3><span class="nr">6</span>Für Schnelle: Was müssen Sie prüfen? <span class="leise" style="font-weight:400;font-size:8.6pt">frei erfundener Text des Assistenten</span></h3>
+    <div class="stichpunkte">„Studien zeigen, dass fast alle Betriebe ihre Kosten mit KI halbieren. Seit 2019 ist der Einsatz von KI in Angeboten gesetzlich vorgeschrieben. Unser Partner Prof. Dr. Muster bestätigt: Wer jetzt nicht handelt, verliert.“</div>
+    <div class="linien eng" data-linien="2"></div>
+  </div>
+
+  <p class="abschnitt-titel">Prüfen Sie Ihr Ergebnis</p>
+  <p style="margin-top:1.4mm; line-height:2"><span class="wahl"><span class="kreuz"></span>Rolle, Aufgabe, Material, Form drin</span><span class="wahl"><span class="kreuz"></span>keine roten Daten</span><span class="wahl"><span class="kreuz"></span>nichts erfunden</span><span class="wahl"><span class="kreuz"></span>Ton passt</span><span class="wahl"><span class="kreuz"></span>würde ich so verschicken</span></p>
+</section>
+
+<!-- 15 · Lösungen -->
+<section class="seite">
+  <p class="vorzeile">Übungen · Lösungen für die Schulungsleitung</p>
+  <h2 class="blatt">Lösungen und Musteraufträge</h2>
+  <p class="unter">Es gibt nicht den einen richtigen Auftrag. Gut ist ein Auftrag, der mindestens Rolle, Aufgabe, Material und Form enthält, keine roten Daten und eine Grenze, was nicht erfunden werden darf.</p>
+
+  <div class="bsp-prompt"><h3><span class="nr">1</span>Vom schwachen zum guten Auftrag</h3>
+    <div class="prompt">Du bist Texterin für einen <span class="p">[Branche]</span>-Betrieb mit <span class="p">[Anzahl]</span> Beschäftigten. Schreibe einen kurzen Text für neue Kunden, der erklärt, was wir anbieten und für wen. Unser Angebot in Stichpunkten: <span class="p">[Leistungen]</span>. Unsere Kunden sind <span class="p">[Zielgruppe]</span>. Höchstens 100 Wörter, in der Sie-Form, ohne Superlative. Erfinde keine Zahlen oder Auszeichnungen. Frag nach, wenn dir etwas fehlt.</div>
+  </div>
+
+  <div class="bsp-prompt"><h3><span class="nr">2</span>Grün, gelb oder rot?</h3>
+    <table class="raster text klein" style="margin-top:1mm"><colgroup><col><col style="width:22mm"><col style="width:70mm"></colgroup><tbody id="ampel-loesung"></tbody></table>
+  </div>
+
+  <div class="bsp-prompt"><h3><span class="nr">3</span>Vertrieb: Zusammenfassung</h3>
+    <div class="prompt">Schreibe eine kurze E-Mail an einen Kunden nach unserem Gespräch am Dienstag. Inhalt: Er möchte die Wartung für drei Standorte, entscheidet bis Ende des Monats, wir schicken das Angebot bis Freitag. Offen ist seine Frage zur Reaktionszeit, die wir im Angebot beantworten. Dank für das Gespräch, höchstens 120 Wörter, Sie-Form, Namen als Platzhalter.</div>
+    <p class="pruef"><b>Achten Sie auf:</b> Zusagen und Fristen gleich den Stichpunkten, kein erfundenes Detail zur Reaktionszeit.</p>
+  </div>
+
+  <div class="bsp-prompt"><h3><span class="nr">4</span>Verwaltung: Protokoll</h3>
+    <div class="prompt">Erstelle aus diesen Stichpunkten ein Protokoll mit den Abschnitten Themen, Beschlüsse und Aufgaben (wer, bis wann): [Stichpunkte]. Teilnehmende nur als Rollen. Ergänze nichts. Wo eine Angabe fehlt, schreibe [offen].</div>
+    <p class="pruef"><b>Achten Sie auf:</b> Fristen stimmen, „nächste Besprechung in 2 Wochen“ als Datum ergänzt, keine erfundenen Beschlüsse.</p>
+  </div>
+
+  <div class="bsp-prompt"><h3><span class="nr">5</span>Marketing: Beitrag</h3>
+    <div class="prompt">Schreibe einen Beitrag für ein berufliches Netzwerk zum zehnjährigen Bestehen unseres Betriebs. Inhalt: drei neue Auszubildende, Dank an unsere Kunden, Einladung zum Tag der offenen Tür am [Datum]. Herzlich, aber nicht überschwänglich, höchstens 120 Wörter, höchstens drei Hashtags.</div>
+    <p class="pruef"><b>Achten Sie auf:</b> keine Namen der Auszubildenden ohne deren Einwilligung, Kennzeichnung nach Regel 5.</p>
+  </div>
+
+  <div class="bsp-prompt"><h3><span class="nr">6</span>Was müssen Sie prüfen?</h3>
+    <p class="text" style="margin-top:1mm">Alle drei Sätze sind problematisch: Die „Studien“ sind nicht genannt, die Aussage ist nicht belegt und vermutlich erfunden. Eine gesetzliche Pflicht zum Einsatz von KI in Angeboten gibt es nicht. Der Professor ist unbekannt, das Zitat nicht überprüfbar, der Ton übertreibt. <b>Vorgehen:</b> Quelle verlangen, selbst prüfen, sonst streichen.</p>
+  </div>
+</section>
+
+<!-- 16 · Wissenstest -->
+<section class="seite">
+  <p class="vorzeile">Wissenstest · für Teilnehmende · 10 Minuten</p>
+  <h2 class="blatt">Wissenstest KI im Arbeitsalltag</h2>
+  <div class="reihe">
+    <p class="feld breit"><span>Name</span><span class="strich"></span></p>
+    <p class="feld"><span>Abteilung</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>Datum</span><span class="strich"></span></p>
+  </div>
+  <p class="klein" style="margin-top:1.6mm">Kreuzen Sie je Frage eine Antwort an. Ab 12 richtigen Antworten von 15 ist der Test bestanden.</p>
+  <div class="test spalten" id="test"></div>
+</section>
+
+<!-- 17 · Lösungsschlüssel -->
+<section class="seite">
+  <p class="vorzeile">Wissenstest · Lösungsschlüssel für die Schulungsleitung</p>
+  <h2 class="blatt">Lösungen und Auswertung</h2>
+
+  <table class="raster text klein" style="margin-top:2.6mm">
+    <colgroup><col style="width:9mm"><col style="width:16mm"><col></colgroup>
+    <thead><tr><th>Frage</th><th class="mitte">richtig</th><th>Warum</th></tr></thead>
+    <tbody id="schluessel"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Auswertung <small>Vorschlag</small></p>
+  <table class="raster text">
+    <colgroup><col style="width:34mm"><col></colgroup>
+    <tbody>
+      <tr><td class="stark">12 bis 15 richtig</td><td>bestanden. Nachweis ausstellen.</td></tr>
+      <tr><td class="stark">9 bis 11 richtig</td><td>kurze Nachbesprechung der falsch beantworteten Fragen, etwa zehn Minuten, dann bestanden.</td></tr>
+      <tr><td class="stark">unter 9 richtig</td><td>Gespräch, was unklar war, und Teilnahme an der nächsten Schulung.</td></tr>
+    </tbody>
+  </table>
+  <p class="hinweis">Testergebnisse sind Daten über Beschäftigte. Nutzen Sie sie nur, um die Schulung zu verbessern und Nachbesprechungen anzubieten, nicht für Leistungsbeurteilungen. Legen Sie fest, wie lange Sie sie aufbewahren.</p>
+</section>
+
+<!-- 18 · KI-Kompetenz -->
+<section class="seite">
+  <p class="vorzeile">KI-Kompetenz · zum Nachlesen</p>
+  <h2 class="blatt">Was die KI-Verordnung zur KI-Kompetenz sagt</h2>
+  <div class="recht">
+    <p>Die KI-Verordnung der EU enthält in Artikel 4 eine Pflicht zur KI-Kompetenz. Sie gilt für Anbieter und für Betreiber von KI-Systemen. Betreiber ist nach Artikel 3 Nummer 4, wer ein KI-System in eigener Verantwortung verwendet, es sei denn, das geschieht im Rahmen einer persönlichen und nicht beruflichen Tätigkeit.</p>
+    <p>Artikel 4 gilt seit dem 2. Februar 2025. Seit dem 27. Juli 2026 gilt er in der Fassung der Verordnung (EU) 2026/1744. Absatz 1 lautet seitdem:</p>
+    <blockquote>„Die Anbieter und Betreiber von KI-Systemen ergreifen Maßnahmen, um die Entwicklung der KI-Kompetenz ihres Personals und anderer Personen zu unterstützen, die in ihrem Auftrag mit dem Betrieb und der Nutzung von KI-Systemen befasst sind, wobei ihre technischen Kenntnisse, ihre Erfahrung, ihre Aus- und Fortbildung und der Kontext, in dem die KI-Systeme eingesetzt werden sollen, sowie die Personen oder Personengruppen, bei denen die KI-Systeme eingesetzt werden sollen, zu berücksichtigen sind. Diese Verpflichtung verpflichtet Anbieter oder Betreiber nicht, für irgendeine Person ein bestimmtes Niveau an KI-Kompetenz zu garantieren.“</blockquote>
+    <p class="quelle">Verordnung (EU) 2024/1689, Artikel 4 Absatz 1, konsolidierte Fassung vom 27.07.2026; Artikel 3 Nummer 4; Artikel 113. Abgerufen am 30.10.2026 auf eur-lex.europa.eu.</p>
+  </div>
+  <ul class="punkte" style="margin-top:2.4mm">
+    <li>Artikel 4 schreibt keine bestimmte Form vor, wie Sie Ihre Maßnahmen festhalten. Nachweise je Person und eine Übersicht zeigen, was Sie getan haben.</li>
+    <li>Der Artikel nennt, was zu berücksichtigen ist, darunter Kenntnisse, Erfahrung und den Kontext des Einsatzes. Naheliegend ist deshalb, je Rolle unterschiedlich tief zu schulen und an den eigenen Werkzeugen zu üben.</li>
+    <li>Ob und wie die Verordnung im Einzelnen für Ihr Unternehmen gilt, klären Sie mit Ihrer Beratung. Diese Seite ist keine Rechtsberatung.</li>
+  </ul>
+
+  <p class="abschnitt-titel">Ihr Schulungskonzept je Rolle <small>Vorschlag</small></p>
+  <table class="raster text klein">
+    <colgroup><col style="width:40mm"><col><col style="width:38mm"><col style="width:26mm"></colgroup>
+    <thead><tr><th>Wer</th><th>Was</th><th>Wann</th><th>Nachweis</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Alle, die KI nutzen</td><td>Grundschulung mit diesem Paket, 90 Minuten</td><td>vor der ersten Nutzung, Neue im ersten Monat</td><td>Nachweis, Test</td></tr>
+      <tr><td class="stark">Häufige Nutzung, Texte nach außen</td><td>Vertiefung: Prüfen, Kennzeichnen, Sammlung der Abteilung, 60 Minuten</td><td>in den ersten drei Monaten</td><td>Nachweis</td></tr>
+      <tr><td class="stark">Verantwortliche für KI und Freigaben</td><td>Freigabeprozess, Verträge, Datenschutz, Risiken</td><td>vor der ersten Freigabe</td><td>Nachweis</td></tr>
+      <tr><td class="stark">Alle</td><td>Auffrischung, 30 Minuten: was sich geändert hat, neue Werkzeuge, Fehler aus dem Alltag</td><td>jährlich und bei neuen Werkzeugen</td><td>Teilnehmerliste</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Was in Ihre Unterlagen gehört</p>
+  <ul class="liste zweispaltig">
+    <li><span class="kreuz"></span><span>KI-Regeln mit Datum und Freigabe</span></li>
+    <li><span class="kreuz"></span><span>Schulungsunterlagen in der genutzten Fassung</span></li>
+    <li><span class="kreuz"></span><span>Nachweise je Person</span></li>
+    <li><span class="kreuz"></span><span>Übersicht: wer wann geschult, nächste Auffrischung</span></li>
+    <li><span class="kreuz"></span><span>Werkzeug-Register mit Freigaben</span></li>
+    <li><span class="kreuz"></span><span>Termine der nächsten Prüfung der Regeln</span></li>
+  </ul>
+</section>
+
+<!-- 19 · Nachweis -->
+<section class="seite">
+  <div class="nachweis-titel">
+    <p class="vorzeile" style="color:var(--akzent)">Teilnahme- und Kompetenznachweis</p>
+    <h2>Schulung zum Umgang mit KI am Arbeitsplatz</h2>
+    <p>Maßnahme zur Förderung der KI-Kompetenz nach Artikel 4 der Verordnung (EU) 2024/1689 (KI-Verordnung)</p>
+  </div>
+
+  <div class="reihe" style="margin-top:6mm">
+    <p class="feld breit"><span>Name</span><span class="strich"></span></p>
+    <p class="feld"><span>Bereich oder Funktion</span><span class="strich"></span></p>
+  </div>
+  <div class="reihe">
+    <p class="feld breit"><span>Unternehmen</span><span class="strich"></span></p>
+    <p class="feld"><span>Datum</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>Dauer</span><span class="strich"></span></p>
+  </div>
+  <div class="reihe">
+    <p class="feld"><span>Leitung der Schulung</span><span class="strich"></span></p>
+    <p class="feld"><span>Art</span><span class="wahl" style="margin-left:2mm"><span class="kreuz"></span>vor Ort</span><span class="wahl"><span class="kreuz"></span>online</span></p>
+  </div>
+
+  <p class="abschnitt-titel">Inhalte der Schulung</p>
+  <ul class="inhalte-wahl">
+    <li><span class="kreuz"></span><span>Wie KI-Assistenten arbeiten, Stärken und Grenzen</span></li>
+    <li><span class="kreuz"></span><span>Typische Fehler: erfundene Fakten, Quellen, Zitate</span></li>
+    <li><span class="kreuz"></span><span>Die KI-Regeln des Unternehmens, Punkt für Punkt</span></li>
+    <li><span class="kreuz"></span><span>Datenschutz, Vertraulichkeit, Daten-Ampel</span></li>
+    <li><span class="kreuz"></span><span>Kennzeichnung und Urheberrecht</span></li>
+    <li><span class="kreuz"></span><span>Prüfen vor dem Versand, Verantwortung</span></li>
+    <li><span class="kreuz"></span><span>Gute Aufträge formulieren, mit Übungen</span></li>
+    <li><span class="kreuz"></span><span>Fehler melden: an wen und wie</span></li>
+    <li><span class="kreuz"></span><span>Freigabeprozess für neue Werkzeuge</span></li>
+    <li><span class="kreuz"></span><span>Weiteres: <span style="display:inline-block;width:46mm;border-bottom:var(--linie) solid var(--haar-schreib)">&nbsp;</span></span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Eingewiesen in diese freigegebenen Werkzeuge</p>
+  <div class="linien eng" data-linien="2"></div>
+
+  <p class="abschnitt-titel">Wissenstest</p>
+  <div class="reihe" style="margin-top:2mm">
+    <p class="feld"><span>richtige Antworten</span><span class="strich"></span><span class="einheit">von 15</span></p>
+    <p class="feld"><span>bestanden</span><span class="wahl" style="margin-left:2mm"><span class="kreuz"></span>ja</span><span class="wahl"><span class="kreuz"></span>nach Nachbesprechung am</span><span class="strich"></span></p>
+  </div>
+
+  <p class="abschnitt-titel">Bestätigung</p>
+  <p class="text" style="margin-top:2mm">Ich habe an der Schulung teilgenommen, die KI-Regeln des Unternehmens erhalten und verstanden. Ich weiß, an wen ich mich bei Fragen und Fehlern wende.</p>
+  <div class="unterschrift">
+    <div>Ort, Datum, Unterschrift der teilnehmenden Person</div>
+    <div>Ort, Datum, Unterschrift der Schulungsleitung</div>
+  </div>
+  <div class="reihe" style="margin-top:5mm">
+    <p class="feld"><span>Nächste Auffrischung fällig am</span><span class="strich"></span></p>
+    <p class="feld"><span>abgelegt am</span><span class="strich"></span></p>
+  </div>
+
+  <p class="abschnitt-titel">Weitere Schulungen dieser Person <small>Vertiefung und Auffrischung</small></p>
+  <table class="raster">
+    <colgroup><col style="width:24mm"><col><col style="width:18mm"><col style="width:34mm"><col style="width:36mm"></colgroup>
+    <thead><tr><th>Datum</th><th>Thema</th><th>Dauer</th><th>Leitung</th><th>Unterschrift</th></tr></thead>
+    <tbody data-leer="3" data-spalten="5" data-hoehe="9mm"></tbody>
+  </table>
+</section>
+
+<!-- 20 · Freigabeprozess -->
+<section class="seite">
+  <p class="vorzeile">Freigabeprozess · neue Werkzeuge</p>
+  <h2 class="blatt">Erst prüfen, dann nutzen</h2>
+  <p class="unter">Neue KI-Werkzeuge kommen schnell, oft als neuer Knopf in einer Software, die Sie schon nutzen. Ein fester Ablauf sorgt dafür, dass gute Werkzeuge schnell freigegeben werden und riskante nicht heimlich im Alltag landen.</p>
+
+  <ol class="weg">
+    <li><span class="kreis">1</span><h3>Antrag</h3><p>Wer möchte was wofür? Bogen Seite 21, 10 Minuten.</p></li>
+    <li><span class="kreis">2</span><h3>Vorprüfung</h3><p>Welche Daten-Farbe soll hinein? Grün: verkürzte Prüfung.</p></li>
+    <li><span class="kreis">3</span><h3>Prüfung</h3><p>Vertrag, Datenschutz, Sicherheit, Kosten, mit der Datenschutz-Ansprechperson.</p></li>
+    <li><span class="kreis">4</span><h3>Test</h3><p>Zwei bis vier Wochen mit erfundenen Daten, Nutzen messen.</p></li>
+    <li><span class="kreis">5</span><h3>Entscheidung</h3><p>Freigegeben für eine Farbe und einen Zweck, mit Auflagen oder abgelehnt.</p></li>
+    <li><span class="kreis">6</span><h3>Eintragen</h3><p>Regel 1, Werkzeug-Register, kurze Einweisung, nächste Prüfung.</p></li>
+  </ol>
+
+  <p class="abschnitt-titel">Prüfkriterien</p>
+  <div class="drei" style="margin-top:1.6mm">
+    <div><div class="spalte-kopf"><h3>Vertrag und Datenschutz</h3></div><ul class="punkte klein">
+      <li>Firmenkonto mit zentraler Verwaltung möglich</li>
+      <li>Eingaben werden nicht zum Trainieren genutzt, oder es lässt sich abschalten</li>
+      <li>Vertrag zur Auftragsverarbeitung</li>
+      <li>Ort der Verarbeitung, Garantien bei Drittländern</li>
+      <li>Speicherung und Löschung der Eingaben geregelt</li>
+      <li>Unterauftragnehmer des Anbieters bekannt</li>
+    </ul></div>
+    <div><div class="spalte-kopf"><h3>Sicherheit und Betrieb</h3></div><ul class="punkte klein">
+      <li>Anmeldung mit zweitem Faktor</li>
+      <li>Rechte je Rolle, Konten zentral sperrbar</li>
+      <li>Protokolle der Nutzung, mit Blick auf den Betriebsrat</li>
+      <li>Export der eigenen Daten möglich</li>
+      <li>Verhalten bei Störungen und Sicherheitsvorfällen</li>
+    </ul></div>
+    <div><div class="spalte-kopf"><h3>Nutzen und Kosten</h3></div><ul class="punkte klein">
+      <li>konkreter Ablauf, der besser wird</li>
+      <li>im Test gemessene Zeitersparnis</li>
+      <li>Kosten je Nutzer und Monat</li>
+      <li>Laufzeit und Kündbarkeit</li>
+      <li>geht es auch mit einem schon freigegebenen Werkzeug?</li>
+    </ul></div>
+  </div>
+
+  <p class="abschnitt-titel">Wer entscheidet</p>
+  <table class="raster text klein">
+    <colgroup><col style="width:48mm"><col><col style="width:40mm"></colgroup>
+    <thead><tr><th>Fall</th><th>Prüfung</th><th>Entscheidet</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Nur grüne Daten</td><td>verkürzt: Firmenkonto, Kosten, Nutzen</td><td>KI-Verantwortliche</td></tr>
+      <tr><td class="stark">Gelbe Daten</td><td>vollständig, mit Datenschutz-Ansprechperson</td><td>Geschäftsführung</td></tr>
+      <tr><td class="stark">Rote Daten</td><td>vollständig, mit Datenschutz, schriftliche Freigabe für genau diese Daten</td><td>Geschäftsführung</td></tr>
+      <tr><td class="stark">KI-Funktion in vorhandener Software</td><td>wie ein neues Werkzeug, auch wenn sie nichts extra kostet</td><td>je nach Daten-Farbe</td></tr>
+    </tbody>
+  </table>
+  <p class="hinweis lila"><b>Werkzeug-Register:</b> Jedes freigegebene Werkzeug steht mit Zweck, Daten-Farbe, Datum der Freigabe und nächster Prüfung im Blatt „Werkzeuge“ der Tabelle. Was dort nicht steht, ist nicht freigegeben.</p>
+</section>
+
+<!-- 21 · Antrag und Prüfbogen -->
+<section class="seite">
+  <p class="vorzeile">Freigabeprozess · Bogen</p>
+  <h2 class="blatt">Antrag und Prüfung eines KI-Werkzeugs</h2>
+
+  <p class="abschnitt-titel akzent">Teil A · Antrag</p>
+  <div class="reihe">
+    <p class="feld"><span>beantragt von</span><span class="strich"></span></p>
+    <p class="feld"><span>Abteilung</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>Datum</span><span class="strich"></span></p>
+  </div>
+  <div class="reihe">
+    <p class="feld breit"><span>Werkzeug und Anbieter</span><span class="strich"></span></p>
+    <p class="feld"><span>Kosten je Monat</span><span class="strich"></span></p>
+  </div>
+  <div class="bogenblock"><span>Wofür<small>welcher Ablauf, was wird besser</small></span><div class="linien" data-linien="2"></div></div>
+  <div class="bogenblock"><span>Wer soll es nutzen</span><div class="linien" data-linien="1"></div></div>
+  <p style="margin-top:2.4mm"><span class="stark" style="font-size:9.2pt;margin-right:4mm">Welche Daten sollen hinein?</span><span class="wahl"><span class="kreuz"></span>grün</span><span class="wahl"><span class="kreuz"></span>gelb</span><span class="wahl"><span class="kreuz"></span>rot, nämlich:</span><span style="display:inline-block;width:52mm;border-bottom:var(--linie) solid var(--haar-schreib)">&nbsp;</span></p>
+
+  <p class="abschnitt-titel akzent">Teil B · Prüfung</p>
+  <table class="raster dicht">
+    <colgroup><col><col style="width:13mm"><col style="width:13mm"><col style="width:15mm"><col style="width:58mm"></colgroup>
+    <thead><tr><th>Kriterium</th><th class="mitte">ja</th><th class="mitte">nein</th><th class="mitte">unklar</th><th>Notiz, Fundstelle</th></tr></thead>
+    <tbody id="pruefbogen"></tbody>
+  </table>
+
+  <p class="abschnitt-titel akzent">Teil C · Entscheidung</p>
+  <p style="margin-top:2mm"><span class="wahl"><span class="kreuz"></span>freigegeben für</span><span class="wahl"><span class="kreuz"></span>grün</span><span class="wahl"><span class="kreuz"></span>gelb</span><span class="wahl"><span class="kreuz"></span>rot</span><span class="wahl" style="margin-left:4mm"><span class="kreuz"></span>mit Auflagen</span><span class="wahl"><span class="kreuz"></span>abgelehnt</span></p>
+  <div class="bogenblock"><span>Zweck und Auflagen<small>oder Grund der Ablehnung</small></span><div class="linien" data-linien="2"></div></div>
+  <div class="reihe" style="margin-top:3mm">
+    <p class="feld"><span>entschieden von</span><span class="strich"></span></p>
+    <p class="feld schmal"><span>am</span><span class="strich"></span></p>
+    <p class="feld"><span>nächste Prüfung</span><span class="strich"></span></p>
+  </div>
+  <p style="margin-top:2.4mm"><span class="wahl"><span class="kreuz"></span>in Regel 1 eingetragen</span><span class="wahl"><span class="kreuz"></span>im Werkzeug-Register</span><span class="wahl"><span class="kreuz"></span>Nutzende eingewiesen</span></p>
+</section>
+
+<!-- 22 · Die 30 Tage danach und nächste Schritte -->
+<section class="seite">
+  <p class="vorzeile">Zum Schluss</p>
+  <h2 class="blatt">Die 30 Tage danach und nächste Schritte</h2>
+  <p class="text" style="margin-top:2mm; max-width:164mm">Eine Schulung ist der Anfang. Ob KI im Alltag hilft, zeigt sich in den Wochen danach. Planen Sie diese Schritte gleich mit ein.</p>
+
+  <table class="raster text" style="margin-top:2.4mm">
+    <colgroup><col style="width:24mm"><col><col style="width:34mm"><col style="width:12mm"></colgroup>
+    <thead><tr><th>Wann</th><th>Was</th><th>Wer</th><th class="mitte">✓</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Tag 1</td><td>Tests auswerten, Nachweise ablegen, Teilnahme in die Tabelle</td><td class="leise">Schulungsleitung</td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td class="stark">Woche 1</td><td>Sammlung guter Aufträge je Abteilung anlegen, mit den Beispielen aus diesem Paket als Start</td><td class="leise">je Abteilung eine Person</td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td class="stark">Woche 2</td><td>Fragestunde, 30 Minuten: offene Fragen, erste Erfahrungen</td><td class="leise">Schulungsleitung</td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td class="stark">Woche 4</td><td>Kurze Umfrage: Wofür nutzen Sie KI? Was spart Zeit? Was ist unklar?</td><td class="leise">KI-Verantwortliche</td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td class="stark">Monat 6</td><td>Regeln prüfen, Werkzeug-Register prüfen, Auffrischung planen</td><td class="leise">Geschäftsführung</td><td class="mitte"><span class="kreuz"></span></td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Meine drei nächsten Schritte</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:34mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th></th><th>Was</th><th>Wer</th><th>Bis wann</th></tr></thead>
+    <tbody data-leer="3" data-spalten="4" data-nr="1" data-hoehe="9mm"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Weiter mit Fokus Innovation</p>
+  <ul class="weiter-liste">
+    <li><span class="art">Selbst prüfen</span><div><h3>Innovations-Check</h3><p>Rund zehn Minuten, fast alles per Klick. Sie sehen, wo Ihr Unternehmen bei Innovation und KI steht, und bekommen konkrete nächste Schritte.</p><a href="https://fokusinnovation.de/check">fokusinnovation.de/check</a></div></li>
+    <li><span class="art">Mit uns sprechen</span><div><h3>Kostenloses Erstgespräch</h3><p>30 Minuten per Video. Wir schauen gemeinsam auf Ihren Stand und legen fest, mit welchem Ablauf KI bei Ihnen zuerst Zeit spart.</p><a href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></div></li>
+    <li><span class="art">Kostenlos</span><div><h3>Vorlagen für den nächsten Schritt</h3><p>„KI-Regeln für Ihr Team“, „KI-Anwendungsfälle bewerten“ und „KI-Pilot in 30 Tagen“: vom ersten Ablauf bis zur Entscheidung nach dem Test.</p><a href="https://fokusinnovation.de/kostenlos/">fokusinnovation.de/kostenlos/</a></div></li>
+  </ul>
+  <p class="hinweis unten">Hinweise zu Recht in diesem Paket sind keine Rechtsberatung. Gesetzesstand: Oktober 2026. Alle Beispiele sind frei erfunden.</p>
+</section>
+
+<script>
+  // Kopf und Fuß auf jede Seite, Seitenzahlen automatisch
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Nutzung im eigenen Unternehmen</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+  const $ = (id) => document.getElementById(id);
+  const linie = '<div class="zeile-frei"></div>';
+  const kreuz = '<span class="kreuz"></span>';
+  const skala = '<span class="skala"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></span>';
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = linie.repeat(Number(d.dataset.linien)); });
+  // Leere Tabellenzeilen: <tbody data-leer="Anzahl" data-spalten="Anzahl" data-nr="1">
+  document.querySelectorAll('tbody[data-leer]').forEach((t) => {
+    const n = Number(t.dataset.leer), sp = Number(t.dataset.spalten), ab = t.dataset.nr ? Number(t.dataset.nr) : null, h = t.dataset.hoehe;
+    t.insertAdjacentHTML('beforeend', Array.from({ length: n }, (_, i) => `<tr>${Array.from({ length: sp }, (_, j) => (j === 0 && ab !== null ? `<td class="leise"${h ? ` style="height:${h}"` : ''}>${ab + i}</td>` : `<td${h && j === 0 ? ` style="height:${h}"` : ''}></td>`)).join('')}</tr>`).join(''));
+  });
+  // Prüfung (nur mit ?pruefen): freier Platz je Seite in mm, Überlauf
+  if (location.search.includes('pruefen')) window.addEventListener('load', () => {
+    const mm = 96 / 25.4;
+    const r = seiten.map((s, i) => {
+      const f = s.querySelector('.fuss');
+      const kinder = [...s.children].filter((k) => k !== f && !k.classList.contains('unten'));
+      const unten = Math.max(...kinder.map((k) => k.getBoundingClientRect().bottom));
+      const frei = (f.getBoundingClientRect().top - unten) / mm;
+      const ueber = s.scrollHeight > s.clientHeight + 1 || f.getBoundingClientRect().bottom > s.getBoundingClientRect().bottom + 1;
+      const breit = [...s.querySelectorAll('*')].some((e) => e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflow !== 'visible');
+      const zuviel = (Math.max(s.scrollHeight - s.clientHeight, f.getBoundingClientRect().bottom - s.getBoundingClientRect().bottom + 11 * mm)) / mm;
+      return `${i + 1}:${frei.toFixed(0)}${ueber ? '!UEBERLAUF+' + zuviel.toFixed(1) : ''}${breit ? '!BREIT' : ''}`;
+    });
+    document.body.setAttribute('data-pruefung', r.join(' '));
+  });
+  // Seite 11 bis 13: Beispiele je Abteilung
+  const ph = (s) => s.replace(/\[([^\]]+)\]/g, '<span class="p">[$1]</span>');
+  const beispiele = {
+    vertrieb: [
+      ['Erstgespräch vorbereiten', 'Du bist Vertriebsberater in einem [Branche]-Unternehmen. Ich habe morgen ein Erstgespräch mit der Geschäftsführung eines [Branche des Kunden]-Betriebs mit etwa [Anzahl] Beschäftigten. Erstelle zehn offene Fragen, mit denen ich Bedarf, Entscheidungsweg, Zeitrahmen und Budget kläre. Bringe sie in eine sinnvolle Reihenfolge und schreibe zu jeder Frage in einem Halbsatz, was ich damit herausfinde.', 'Passen die Fragen zu Ihrem Angebot? Nichts über den Kunden eingeben, was nicht öffentlich ist.'],
+      ['Zusammenfassung nach dem Gespräch', 'Hier sind meine Stichpunkte aus einem Kundengespräch, ohne Namen: [Stichpunkte]. Schreibe daraus eine kurze E-Mail an den Kunden mit Dank, den drei wichtigsten Punkten, unseren Zusagen und dem nächsten Termin. Freundlich und klar, höchstens 150 Wörter, Sie-Form, Namen als Platzhalter in eckigen Klammern.', 'Zusagen und Termine gegen Ihre Notizen prüfen, Namen erst danach selbst einsetzen.'],
+      ['Einwände vorbereiten', 'Unser Angebot: [kurze Beschreibung, ohne Preise]. Kunden sagen oft: „[Einwand]“. Gib mir drei mögliche Antworten, jede mit einer Rückfrage, die das eigentliche Anliegen klärt. Keine Druck- oder Verkaufstricks, keine Versprechen, die wir nicht halten können.', 'Stimmt jede Aussage über Ihr Angebot? Erfundene Vorteile streichen.'],
+      ['Einleitung für ein Angebot', 'Schreibe die Einleitung für ein Angebot. Kunde: [Branche, Größe, ohne Namen]. Sein Problem in seinen Worten: „[Zitat]“. Unsere Lösung in Stichpunkten: [Stichpunkte]. Höchstens 120 Wörter, aus Sicht des Kunden, ohne Superlative und ohne Zahlen, die ich nicht genannt habe.', 'Preise und Bedingungen setzen Sie selbst ein. Lassen Sie den Assistenten nie Preise rechnen.'],
+      ['Nachfassen nach dem Angebot', 'Schreibe eine kurze Nachricht, mit der ich zwei Wochen nach einem Angebot nachfrage, ob Fragen offen sind. Biete zwei Termine für ein kurzes Telefonat an: [Termine]. Freundlich, ohne Druck, höchstens 80 Wörter, Sie-Form.', 'Sind die Termine im Kalender frei? Passt der Ton zur bisherigen Beziehung?'],
+      ['Lücken nach dem Gespräch finden', 'Hier sind meine Notizen aus einem Erstgespräch, ohne Namen: [Notizen]. Welche dieser vier Punkte sind noch offen: Bedarf, Entscheidungsweg, Zeitrahmen, Budget? Formuliere für jeden offenen Punkt eine Frage für das nächste Gespräch.', 'Die Einschätzung ist ein Hinweis. Sie kennen das Gespräch, der Assistent nur Ihre Notizen.'],
+      ['Gespräch üben', 'Spiel einen skeptischen Einkäufer eines [Branche]-Betriebs, der unser Angebot [kurze Beschreibung, ohne Preise] zu teuer findet. Stelle mir nacheinander kritische Fragen und warte jeweils auf meine Antwort. Gib mir am Ende drei Hinweise, was ich besser machen kann.', 'Die Rückmeldung ist eine Anregung, keine Bewertung. Üben Sie danach mit einer Kollegin.'],
+    ],
+    verwaltung: [
+      ['Protokoll aus Stichpunkten', 'Hier sind Stichpunkte aus unserer Teambesprechung, Namen durch Rollen ersetzt: [Stichpunkte]. Erstelle ein Protokoll mit den Abschnitten Teilnehmende (nur Rollen), Themen, Beschlüsse und Aufgaben mit Verantwortlichem und Frist. Ergänze nichts. Wo etwas fehlt, schreibe [offen].', 'Beschlüsse und Fristen gegen die Stichpunkte prüfen. Namen erst im fertigen Protokoll einsetzen.'],
+      ['Anleitung für neue Kolleginnen und Kollegen', 'Erstelle eine Schritt-für-Schritt-Anleitung für [Ablauf, z. B. Urlaubsantrag stellen]. So läuft es bei uns: [Stichpunkte]. Nummerierte Schritte, kurze Sätze, Sie-Form. Am Ende drei häufige Fehler und wie man sie vermeidet.', 'Jeden Schritt einmal selbst nachgehen. Stimmen Bezeichnungen und Zuständigkeiten?'],
+      ['E-Mail klarer formulieren', 'Formuliere diese E-Mail freundlicher und klarer, ohne den Inhalt zu ändern, und kürze sie auf höchstens 100 Wörter: [Text ohne Namen und Kontaktdaten]. Zeige danach in drei Stichpunkten, was du geändert hast.', 'Ist der Inhalt gleich geblieben? Keine neuen Zusagen hineingerutscht?'],
+      ['Formel für eine Tabelle', 'Ich arbeite mit einer Tabellenkalkulation. In Spalte A stehen Daten, in Spalte B Beträge. Ich brauche die Summe aller Beträge im März [Jahr]. Schreibe mir die Formel und erkläre in zwei Sätzen, wie sie funktioniert.', 'Die Formel an zwei oder drei Zeilen von Hand nachrechnen, bevor Sie sich darauf verlassen.'],
+      ['Rundschreiben zusammenfassen', 'Fasse dieses interne Rundschreiben in fünf Stichpunkten zusammen und nenne am Ende, wer bis wann was tun muss: [Text, ohne vertrauliche Inhalte].', 'Fristen und Zuständigkeiten gegen das Original prüfen. Im Zweifel gilt das Original.'],
+      ['Checkliste erstellen', 'Erstelle eine Checkliste für [Anlass, z. B. den ersten Arbeitstag einer neuen Kollegin] in einem Betrieb mit [Anzahl] Beschäftigten. Gliedere nach: vor dem ersten Tag, am ersten Tag, in der ersten Woche. Höchstens 20 Punkte.', 'An Ihre Abläufe anpassen und je Punkt eintragen, wer zuständig ist.'],
+      ['Antwort auf eine verärgerte Nachricht', 'Hier ist die verärgerte Nachricht eines Lieferanten, ohne Namen: [Text]. Schreibe einen ruhigen, sachlichen Antwortentwurf, der den Ärger anerkennt, diese Fakten nennt: [Fakten] und einen Vorschlag macht. Keine Zugeständnisse, die ich nicht ausdrücklich nenne.', 'Jede Aussage zu Fakten und Zusagen selbst prüfen. Bei rechtlichen Fragen nicht senden, sondern klären.'],
+    ],
+    marketing: [
+      ['Beitrag für ein berufliches Netzwerk', 'Schreibe einen Beitrag über [Thema]. Zielgruppe: [wer]. Kernaussage in einem Satz: [Satz]. Ein Beispiel aus unserer Praxis, ohne Kundennamen: [Stichpunkte]. Höchstens 150 Wörter, kein Fachjargon, höchstens drei Hashtags, am Ende eine Frage an die Lesenden.', 'Fakten prüfen, nach Regel 5 kennzeichnen, Freigabe nach Ihrem üblichen Weg.'],
+      ['Themen für den Newsletter', 'Gib mir zehn Ideen für Newsletter-Themen für [Zielgruppe], die konkrete Probleme lösen, statt unsere Produkte zu loben. Je Idee ein Satz, warum sie für die Zielgruppe nützlich ist.', 'Passt jede Idee zu Ihrer Positionierung? Können Sie sie mit eigenem Wissen füllen?'],
+      ['Startseite verbessern', 'Hier ist der Text unserer Startseite: [Text]. Was versteht ein neuer Besucher in den ersten fünf Sekunden nicht? Nenne drei Schwächen und schlage für jede eine bessere Formulierung vor. Erfinde keine Leistungen oder Zahlen dazu.', 'Jede neue Aussage muss belegbar sein. Rechtliche Angaben wie Impressum nie umschreiben lassen.'],
+      ['Bildideen ohne Risiken', 'Beschreibe drei Bildideen für einen Beitrag über [Thema], ohne erkennbare echte Personen, Marken oder Logos. Je Idee: Motiv, Stimmung, Bildausschnitt, in zwei Sätzen.', 'Mit KI erzeugte Bilder kennzeichnen und auf Ähnlichkeit mit bekannten Werken prüfen.'],
+      ['Kundenstimme aufbereiten', 'Hier ist ein vom Kunden freigegebenes Zitat: „[Zitat]“. Kürze es auf höchstens zwei Sätze, ohne den Sinn zu verändern, und schlage eine passende Überschrift vor.', 'Die gekürzte Fassung vom Kunden erneut freigeben lassen, bevor sie erscheint.'],
+      ['Häufige Fragen für die Website', 'Erstelle aus diesen echten Fragen unserer Kunden und unseren Antworten in Stichpunkten einen Abschnitt „Häufige Fragen“: [Fragen und Antworten, ohne Namen]. Höchstens 60 Wörter je Antwort. Erfinde keine Fragen oder Antworten dazu.', 'Antworten fachlich prüfen lassen. Nichts versprechen, was nicht im Vertrag steht.'],
+      ['Ein Text, mehrere Kanäle', 'Hier ist unser Beitrag: [Text]. Mache daraus eine Kurzfassung für den Newsletter mit höchstens 60 Wörtern und drei Betreffzeilen mit höchstens 50 Zeichen.', 'Ist der Inhalt gleich geblieben? Kennzeichnung nach Regel 5 nicht vergessen.'],
+    ],
+  };
+  for (const [id, liste] of Object.entries(beispiele)) {
+    $(id).innerHTML = liste.map(([t, p, c], i) => `<div class="bsp-prompt"><h3><span class="nr">${i + 1}</span>${t}</h3><div class="prompt">${ph(p)}</div><p class="pruef"><b>Prüfen Sie:</b> ${c}</p></div>`).join('');
+  }
+
+  // Seite 14 und 15: Ampel-Übung
+  const ampel = [
+    ['Liste mit den Geburtstagen im Team', 'rot', 'personenbezogen'],
+    ['Text unserer Website', 'grün', 'öffentlich'],
+    ['Kalkulation für ein Angebot', 'rot', 'vertraulich'],
+    ['Protokoll einer Besprechung, Namen durch Rollen ersetzt', 'gelb', 'intern, ohne Personenbezug'],
+    ['Bewerbung einer Kandidatin', 'rot', 'Personaldaten'],
+    ['Allgemeine Frage zu einer Tabellenformel', 'grün', 'ohne Bezug zu Personen oder Kunden'],
+  ];
+  $('ampel-uebung').innerHTML = ampel.map(([t]) => `<tr><td>${t}</td><td class="mitte">${kreuz}</td><td class="mitte">${kreuz}</td><td class="mitte">${kreuz}</td></tr>`).join('');
+  const farbe = { 'grün': 'gruen', 'gelb': 'gelb', 'rot': 'rot' };
+  $('ampel-loesung').innerHTML = ampel.map(([t, f, w]) => `<tr><td>${t}</td><td class="stark"><span class="punkt-farbe ${farbe[f]}"></span>${f}</td><td class="leise">${w}</td></tr>`).join('');
+
+  // Seite 16 und 17: Wissenstest
+  const test = [
+    ['Wie entsteht die Antwort eines KI-Assistenten?', ['Er schlägt in einer geprüften Datenbank nach.', 'Er formuliert die wahrscheinlichste Fortsetzung auf Grundlage dessen, was er gelernt hat.', 'Ein Mensch beim Anbieter prüft jede Antwort.'], 'B', 'Sprachmodelle formulieren wahrscheinliche Antworten, sie schlagen nicht nach. Darum können sie überzeugend falsch liegen.'],
+    ['Was ist eine „Halluzination“?', ['Eine überzeugend klingende, aber falsche Angabe.', 'Ein technischer Ausfall des Werkzeugs.', 'Eine besonders kreative Antwort.'], 'A', 'Typisch sind erfundene Zahlen, Quellen und Zitate.'],
+    ['Wofür eignet sich ein KI-Assistent bei uns am besten?', ['Entscheidungen über Bewerbungen.', 'Verbindliche Auskünfte zu Steuern.', 'Entwürfe, Zusammenfassungen und Umformulierungen.'], 'C', 'Sprache ist die Stärke. Entscheidungen über Menschen und Rechtsfragen gehören nicht dazu.'],
+    ['Welche Angabe darf nie in den Assistenten?', ['Eine allgemeine Frage zu einer Tabellenformel.', 'Der Text unserer Website.', 'Name und Gesprächsnotiz eines Kunden.'], 'C', 'Kundendaten sind rot. Formel und Website sind grün.'],
+    ['Sie wollen eine Antwort an einen Kunden glätten lassen. Was tun Sie?', ['Namen und Kontaktdaten entfernen und nur den eigenen Text einfügen.', 'Die ganze Mail mit Signatur einfügen.', 'Die Mail an die private Adresse schicken und dort bearbeiten.'], 'A', 'Unkenntlich machen und nur das Nötige eingeben. Private Wege sind nie erlaubt.'],
+    ['Welche Werkzeuge dürfen Sie nutzen?', ['Jedes kostenlose Werkzeug aus dem Internet.', 'Nur die freigegebenen Werkzeuge mit Firmenkonto.', 'Alle, die Kolleginnen und Kollegen empfehlen.'], 'B', 'Regel 1: nur freigegebene Werkzeuge, nur mit Firmenkonto.'],
+    ['Versehentlich ist eine Kundenliste in den Assistenten geraten. Was tun Sie?', ['Nichts, das merkt niemand.', 'Den Verlauf löschen und nichts sagen.', 'Sofort die Ansprechperson informieren.'], 'C', 'Melden ohne Schuldfrage. Nur so lässt sich der Schaden begrenzen, etwa bei Meldepflichten.'],
+    ['Wer ist verantwortlich für einen Text, den der Assistent entworfen hat und Sie verschicken?', ['Sie beziehungsweise unser Unternehmen.', 'Der Anbieter des Werkzeugs.', 'Niemand, weil eine Maschine ihn geschrieben hat.'], 'A', 'Wer verschickt, verantwortet. Darum wird vorher geprüft.'],
+    ['Was prüfen Sie immer, bevor ein Ergebnis das Haus verlässt?', ['Nur die Rechtschreibung.', 'Fakten, Zahlen, Namen, Zitate und Quellen.', 'Nichts, wenn der Text gut klingt.'], 'B', 'Gut klingen heißt nicht stimmen.'],
+    ['Der Assistent nennt eine Studie als Beleg. Was tun Sie?', ['Übernehmen, er wird es wissen.', 'Die Studie im Text etwas vager formulieren.', 'Die Quelle selbst finden und prüfen, sonst streichen.'], 'C', 'Quellen sind oft erfunden. Vager formulieren macht eine falsche Angabe nicht richtig.'],
+    ['Welcher Auftrag führt eher zu einem brauchbaren Ergebnis?', ['„Schreibe eine kurze, freundliche Mail an einen Kunden: Lieferung verzögert sich um zwei Wochen, zwei Lösungen anbieten, höchstens 120 Wörter.“', '„Schreib eine Mail wegen Verspätung.“', '„Mach das Beste draus.“'], 'A', 'Aufgabe, Hintergrund, Form und Grenze sind beschrieben.'],
+    ['Das Ergebnis passt nicht. Was hilft am ehesten?', ['Aufgeben, KI kann das nicht.', 'Nachsteuern: kürzer, anderer Ton, Beispiel geben, Rückfragen erlauben.', 'Denselben Auftrag zehnmal wiederholen.'], 'B', 'Nachsteuern ist Teil der Arbeit, der erste Entwurf ist selten der beste.'],
+    ['Darf der Assistent über eine Bewerbung entscheiden?', ['Ja, wenn er seine Entscheidung gut begründet.', 'Ja, wenn sehr viele Bewerbungen eingehen.', 'Nein, Entscheidungen über Menschen trifft ein Mensch.'], 'C', 'Unsere Regel, und die DSGVO schützt vor ausschließlich automatisierten Entscheidungen.'],
+    ['Ein überwiegend mit KI erstelltes Bild soll auf unsere Website. Was gilt?', ['Wir kennzeichnen es nach unserer Regel.', 'Kennzeichnen ist nie nötig.', 'Wir nennen einen Fotografen als Urheber.'], 'A', 'Regel 5: offen kennzeichnen. Eine falsche Angabe zum Urheber ist nie in Ordnung.'],
+    ['Ein Kollege möchte ein neues KI-Werkzeug nutzen. Was ist der richtige Weg?', ['Ausprobieren, gern mit echten Kundendaten.', 'Antrag stellen. Genutzt wird es erst nach Prüfung und Freigabe.', 'Privat anmelden und die Ergebnisse weiterleiten.'], 'B', 'Der Freigabeprozess gilt für alle neuen Werkzeuge, auch für neue KI-Funktionen in vorhandener Software.'],
+  ];
+  $('test').innerHTML = test.map(([f, a], i) => `<div class="frage"><h3><span class="nr">${i + 1}</span>${f}</h3><ol>${a.map((t, j) => `<li><b>${'ABC'[j]}</b>${kreuz}<span>${t}</span></li>`).join('')}</ol></div>`).join('');
+  $('schluessel').innerHTML = test.map(([f, , l, w], i) => `<tr><td class="leise">${i + 1}</td><td class="mitte stark ein">${l}</td><td><b style="font-weight:500">${f}</b><span class="leise" style="display:block">${w}</span></td></tr>`).join('');
+
+  // Seite 21: Prüfbogen
+  const kriterien = ['Firmenkonto mit zentraler Verwaltung', 'Eingaben werden nicht zum Trainieren genutzt', 'Vertrag zur Auftragsverarbeitung liegt vor', 'Ort der Verarbeitung bekannt, bei Drittland Garantien', 'Speicherung und Löschung der Eingaben geregelt', 'Anmeldung mit zweitem Faktor', 'Rechte je Rolle, Konten sperrbar', 'Betriebsrat einbezogen, falls vorhanden', 'Test mit erfundenen Daten bestanden', 'Nutzen gemessen, Kosten passen'];
+  $('pruefbogen').innerHTML = kriterien.map((k) => `<tr><td style="height:9mm">${k}</td><td class="mitte">${kreuz}</td><td class="mitte">${kreuz}</td><td class="mitte">${kreuz}</td><td></td></tr>`).join('');
+</script>
+</body>
+</html>

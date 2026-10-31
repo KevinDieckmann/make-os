@@ -1,0 +1,1253 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 30
+    },
+    {
+     "breite": 92
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Qualifizierung mit BANT",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "Fokus Innovation · fokusinnovation.de · Nutzung im eigenen Unternehmen",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "So nutzen Sie die Tabelle",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Eine Zeile je Kontakt",
+      "stil": "fett"
+     },
+     {
+      "v": "Nach jedem Bedarfsgespräch tragen Sie im Blatt „Qualifizierung“ Firma, Kontakt, Herkunft und Datum ein. Lila Felder sind Eingaben, der Rest rechnet selbst.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Punkte 0 bis 3",
+      "stil": "fett"
+     },
+     {
+      "v": "Je Punkt (Mittel, Entscheidung, Bedarf, Zeitpunkt) wählen Sie 0, 1, 2 oder 3 aus der Liste. Was die Stufen bedeuten, steht im Blatt „Punkte“ und auf Seite 12 im Heft. Im Zweifel die niedrigere Stufe.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Einstufung",
+      "stil": "fett"
+     },
+     {
+      "v": "Bereit fürs Angebot: mindestens 8 Punkte, Bedarf mindestens 2, kein Punkt bei 0. Pflegen: höchstens 4 Punkte oder Bedarf 0. Weiter qualifizieren: alles dazwischen. Das sind Startwerte, passen Sie sie nach einigen Monaten in der Formel an.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Schwächster Punkt und Tipp",
+      "stil": "fett"
+     },
+     {
+      "v": "Die Tabelle zeigt, welcher Punkt am niedrigsten ist, und schlägt den nächsten sinnvollen Schritt vor.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Wiedervorlage",
+      "stil": "fett"
+     },
+     {
+      "v": "Jeder Kontakt braucht einen nächsten Schritt und ein Datum. Die Hinweis-Spalte meldet, was fehlt, was überfällig ist und was diese Woche ansteht.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Beispiel",
+      "stil": "fett"
+     },
+     {
+      "v": "Das Blatt „Beispiel“ zeigt sechs frei erfundene Kontakte mit denselben Formeln. Es fließt in keine Auswertung ein.",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Wochenroutine, 15 Minuten",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "1. Überfälliges",
+      "stil": "fett"
+     },
+     {
+      "v": "Hinweis-Spalte filtern: Was ist überfällig? Heute erledigen oder ein neues Datum setzen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "2. Neu bewerten",
+      "stil": "fett"
+     },
+     {
+      "v": "Wer hat diese Woche ein Gespräch gehabt? Punkte nachziehen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "3. Bereit fürs Angebot",
+      "stil": "fett"
+     },
+     {
+      "v": "Steht für jeden bereiten Kontakt ein Termin zum Vorstellen des Angebots im Kalender?",
+      "stil": "text"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Datenschutz",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Nur Sachliches",
+      "stil": "fett"
+     },
+     {
+      "v": "Die Tabelle enthält Daten über Personen. Nur Geschäftliches eintragen, sicher ablegen und nicht länger behalten als nötig.",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Qualifizierung",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Firma",
+     "breite": 24,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Kontakt und Rolle",
+     "breite": 22,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Herkunft und Anlass",
+     "breite": 20,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Gespräch am",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Mittel",
+     "breite": 8,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Entscheidung",
+     "breite": 11,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Bedarf",
+     "breite": 8,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Zeitpunkt",
+     "breite": 9,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Summe",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Einstufung",
+     "breite": 19,
+     "stil": "fett"
+    },
+    {
+     "titel": "Schwächster Punkt",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "Tipp",
+     "breite": 30,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Nächster Schritt",
+     "breite": 30,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Wiedervorlage am",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Zuständig",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 20,
+     "stil": "hinweis"
+    }
+   ],
+   "zeilen": [],
+   "wiederholen": {
+    "zeile": [
+     {
+      "f": "IF(B{r}=\"\",\"\",ROW()-1)",
+      "stil": "zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",SUM(F{r}:I{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,IF(B{r}=\"\",\"\",\"Punkte fehlen\"),IF(OR(H{r}=0,J{r}<=4),\"pflegen\",IF(AND(J{r}>=8,H{r}>=2,MIN(F{r}:I{r})>=1),\"bereit fürs Angebot\",\"weiter qualifizieren\")))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",INDEX($F$1:$I$1,MATCH(MIN(F{r}:I{r}),F{r}:I{r},0)))",
+      "stil": "text"
+     },
+     {
+      "f": "IF(K{r}=\"pflegen\",\"Kein Angebot. Wissen teilen, Wiedervorlage mit Anlass\",IF(K{r}=\"bereit fürs Angebot\",\"Angebot mit Termin zum Vorstellen\",IF(K{r}<>\"weiter qualifizieren\",\"\",IF(L{r}=\"Bedarf\",\"Folgen erfragen, ein Beispiel teilen\",IF(L{r}=\"Entscheidung\",\"Termin mit der Person vorschlagen, die entscheidet\",IF(L{r}=\"Zeitpunkt\",\"Wiedervorlage vier Wochen vor dem Zeitpunkt\",\"Spanne nennen, kleinere Variante anbieten\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": null,
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(N{r}=\"\",\"Nächster Schritt fehlt\",IF(O{r}=\"\",\"Datum fehlt\",IF(O{r}<TODAY(),\"Wiedervorlage überfällig\",IF(O{r}-TODAY()<=7,\"diese Woche\",\"\")))))",
+      "stil": "hinweis"
+     }
+    ],
+    "anzahl": 100
+   },
+   "auswahl": [
+    {
+     "spalte": "F",
+     "werte": [
+      0,
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "spalte": "G",
+     "werte": [
+      0,
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "spalte": "H",
+     "werte": [
+      0,
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "spalte": "I",
+     "werte": [
+      0,
+      1,
+      2,
+      3
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Punkte",
+   "spalten": [
+    {
+     "titel": "Punkt",
+     "breite": 14,
+     "stil": "fett"
+    },
+    {
+     "titel": "BANT",
+     "breite": 10,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "0 · nicht erkennbar",
+     "breite": 26,
+     "stil": "text"
+    },
+    {
+     "titel": "1 · schwach",
+     "breite": 30,
+     "stil": "text"
+    },
+    {
+     "titel": "2 · gut",
+     "breite": 30,
+     "stil": "text"
+    },
+    {
+     "titel": "3 · klar",
+     "breite": 30,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Mittel",
+      "stil": "fett"
+     },
+     {
+      "v": "Budget",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Kein Geld und keine Aussicht darauf",
+      "stil": "text"
+     },
+     {
+      "v": "Kein Budget, aber ein Weg denkbar, etwa die nächste Planung",
+      "stil": "text"
+     },
+     {
+      "v": "Rahmen grob bekannt, passt ungefähr",
+      "stil": "text"
+     },
+     {
+      "v": "Rahmen genannt oder freigegeben, passt",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Entscheidung",
+      "stil": "fett"
+     },
+     {
+      "v": "Authority",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Wer entscheidet, ist unbekannt",
+      "stil": "text"
+     },
+     {
+      "v": "Bekannt, aber nicht erreichbar, Ablauf unklar",
+      "stil": "text"
+     },
+     {
+      "v": "Entscheider eingebunden oder Ablauf klar",
+      "stil": "text"
+     },
+     {
+      "v": "Entscheider im Gespräch, Ablauf und Kriterien bekannt",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Bedarf",
+      "stil": "fett"
+     },
+     {
+      "v": "Need",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Kein erkennbares Problem",
+      "stil": "text"
+     },
+     {
+      "v": "Problem benannt, eher „wäre schön“",
+      "stil": "text"
+     },
+     {
+      "v": "Problem mit spürbaren Folgen, soll gelöst werden",
+      "stil": "text"
+     },
+     {
+      "v": "Folgen beziffert, Lösung hat Vorrang",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "Zeitpunkt",
+      "stil": "fett"
+     },
+     {
+      "v": "Timing",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Kein Zeitpunkt, „irgendwann“",
+      "stil": "text"
+     },
+     {
+      "v": "Grob, später als in sechs Monaten",
+      "stil": "text"
+     },
+     {
+      "v": "In drei bis sechs Monaten, mit Grund",
+      "stil": "text"
+     },
+     {
+      "v": "In den nächsten drei Monaten, mit konkretem Anlass",
+      "stil": "text"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Auswertung",
+   "spalten": [
+    {
+     "breite": 34
+    },
+    {
+     "breite": 14
+    },
+    {
+     "breite": 50
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Auswertung",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "rechnet aus dem Blatt „Qualifizierung“",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Einstufung",
+      "stil": "kopf"
+     },
+     {
+      "v": "Anzahl",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Bereit fürs Angebot",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Qualifizierung!$K$2:$K$101,\"bereit fürs Angebot\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "Für jeden: Angebot mit Termin zum Vorstellen",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Weiter qualifizieren",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Qualifizierung!$K$2:$K$101,\"weiter qualifizieren\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "Gezielt den schwächsten Punkt klären",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Pflegen",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Qualifizierung!$K$2:$K$101,\"pflegen\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "Kein Angebot, in Kontakt bleiben",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Punkte fehlen",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Qualifizierung!$K$2:$K$101,\"Punkte fehlen\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "Bewertung nachholen",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Durchschnitt je Punkt",
+      "stil": "kopf"
+     },
+     {
+      "v": "0 bis 3",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "Mittel",
+      "stil": "fett"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(Qualifizierung!$F$2:$F$101),1),\"\")",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Entscheidung",
+      "stil": "fett"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(Qualifizierung!$G$2:$G$101),1),\"\")",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Bedarf",
+      "stil": "fett"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(Qualifizierung!$H$2:$H$101),1),\"\")",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "Zeitpunkt",
+      "stil": "fett"
+     },
+     {
+      "f": "IFERROR(ROUND(AVERAGE(Qualifizierung!$I$2:$I$101),1),\"\")",
+      "stil": "text"
+     },
+     {
+      "v": "Der niedrigste Durchschnitt zeigt, welche Frage Ihr Team früher stellen sollte.",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Wiedervorlagen",
+      "stil": "kopf"
+     },
+     {
+      "v": "Anzahl",
+      "stil": "kopf"
+     },
+     {
+      "v": "",
+      "stil": "kopf"
+     }
+    ],
+    [
+     {
+      "v": "überfällig",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Qualifizierung!$Q$2:$Q$101,\"Wiedervorlage überfällig\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "diese Woche",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Qualifizierung!$Q$2:$Q$101,\"diese Woche\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "ohne nächsten Schritt oder Datum",
+      "stil": "fett"
+     },
+     {
+      "f": "COUNTIF(Qualifizierung!$Q$2:$Q$101,\"Nächster Schritt fehlt\")+COUNTIF(Qualifizierung!$Q$2:$Q$101,\"Datum fehlt\")",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Beispiel",
+   "fixieren": true,
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Firma",
+     "breite": 24,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Kontakt und Rolle",
+     "breite": 22,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Herkunft und Anlass",
+     "breite": 20,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Gespräch am",
+     "breite": 11,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Mittel",
+     "breite": 8,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Entscheidung",
+     "breite": 11,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Bedarf",
+     "breite": 8,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Zeitpunkt",
+     "breite": 9,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Summe",
+     "breite": 7,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Einstufung",
+     "breite": 19,
+     "stil": "fett"
+    },
+    {
+     "titel": "Schwächster Punkt",
+     "breite": 13,
+     "stil": "text"
+    },
+    {
+     "titel": "Tipp",
+     "breite": 30,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Nächster Schritt",
+     "breite": 30,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Wiedervorlage am",
+     "breite": 12,
+     "stil": "eingabe-datum"
+    },
+    {
+     "titel": "Zuständig",
+     "breite": 12,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 20,
+     "stil": "hinweis"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": 1,
+      "stil": "zahl"
+     },
+     {
+      "v": "Ingenieurbüro, 35 Beschäftigte",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Büroleitung",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Anfrage über die Website",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()-6",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": 2,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 2,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 3,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 2,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",SUM(F{r}:I{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,IF(B{r}=\"\",\"\",\"Punkte fehlen\"),IF(OR(H{r}=0,J{r}<=4),\"pflegen\",IF(AND(J{r}>=8,H{r}>=2,MIN(F{r}:I{r})>=1),\"bereit fürs Angebot\",\"weiter qualifizieren\")))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",INDEX($F$1:$I$1,MATCH(MIN(F{r}:I{r}),F{r}:I{r},0)))",
+      "stil": "text"
+     },
+     {
+      "f": "IF(K{r}=\"pflegen\",\"Kein Angebot. Wissen teilen, Wiedervorlage mit Anlass\",IF(K{r}=\"bereit fürs Angebot\",\"Angebot mit Termin zum Vorstellen\",IF(K{r}<>\"weiter qualifizieren\",\"\",IF(L{r}=\"Bedarf\",\"Folgen erfragen, ein Beispiel teilen\",IF(L{r}=\"Entscheidung\",\"Termin mit der Person vorschlagen, die entscheidet\",IF(L{r}=\"Zeitpunkt\",\"Wiedervorlage vier Wochen vor dem Zeitpunkt\",\"Spanne nennen, kleinere Variante anbieten\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Angebot vorstellen, beide Partner dabei",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()+2",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": "A",
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(N{r}=\"\",\"Nächster Schritt fehlt\",IF(O{r}=\"\",\"Datum fehlt\",IF(O{r}<TODAY(),\"Wiedervorlage überfällig\",IF(O{r}-TODAY()<=7,\"diese Woche\",\"\")))))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 2,
+      "stil": "zahl"
+     },
+     {
+      "v": "Steuerkanzlei, 18 Beschäftigte",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Kanzleileitung",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Empfehlung eines Kunden",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()-10",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": 1,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 3,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 2,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 1,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",SUM(F{r}:I{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,IF(B{r}=\"\",\"\",\"Punkte fehlen\"),IF(OR(H{r}=0,J{r}<=4),\"pflegen\",IF(AND(J{r}>=8,H{r}>=2,MIN(F{r}:I{r})>=1),\"bereit fürs Angebot\",\"weiter qualifizieren\")))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",INDEX($F$1:$I$1,MATCH(MIN(F{r}:I{r}),F{r}:I{r},0)))",
+      "stil": "text"
+     },
+     {
+      "f": "IF(K{r}=\"pflegen\",\"Kein Angebot. Wissen teilen, Wiedervorlage mit Anlass\",IF(K{r}=\"bereit fürs Angebot\",\"Angebot mit Termin zum Vorstellen\",IF(K{r}<>\"weiter qualifizieren\",\"\",IF(L{r}=\"Bedarf\",\"Folgen erfragen, ein Beispiel teilen\",IF(L{r}=\"Entscheidung\",\"Termin mit der Person vorschlagen, die entscheidet\",IF(L{r}=\"Zeitpunkt\",\"Wiedervorlage vier Wochen vor dem Zeitpunkt\",\"Spanne nennen, kleinere Variante anbieten\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Wiedervorlage vor der Jahresplanung",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()+30",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": "B",
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(N{r}=\"\",\"Nächster Schritt fehlt\",IF(O{r}=\"\",\"Datum fehlt\",IF(O{r}<TODAY(),\"Wiedervorlage überfällig\",IF(O{r}-TODAY()<=7,\"diese Woche\",\"\")))))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 3,
+      "stil": "zahl"
+     },
+     {
+      "v": "Maschinenbau, 120 Beschäftigte",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Leitung Einkauf",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Gespräch am Messestand",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()-4",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": 2,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 1,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 2,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 2,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",SUM(F{r}:I{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,IF(B{r}=\"\",\"\",\"Punkte fehlen\"),IF(OR(H{r}=0,J{r}<=4),\"pflegen\",IF(AND(J{r}>=8,H{r}>=2,MIN(F{r}:I{r})>=1),\"bereit fürs Angebot\",\"weiter qualifizieren\")))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",INDEX($F$1:$I$1,MATCH(MIN(F{r}:I{r}),F{r}:I{r},0)))",
+      "stil": "text"
+     },
+     {
+      "f": "IF(K{r}=\"pflegen\",\"Kein Angebot. Wissen teilen, Wiedervorlage mit Anlass\",IF(K{r}=\"bereit fürs Angebot\",\"Angebot mit Termin zum Vorstellen\",IF(K{r}<>\"weiter qualifizieren\",\"\",IF(L{r}=\"Bedarf\",\"Folgen erfragen, ein Beispiel teilen\",IF(L{r}=\"Entscheidung\",\"Termin mit der Person vorschlagen, die entscheidet\",IF(L{r}=\"Zeitpunkt\",\"Wiedervorlage vier Wochen vor dem Zeitpunkt\",\"Spanne nennen, kleinere Variante anbieten\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Termin mit der Geschäftsführung vorschlagen",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()+5",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": "A",
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(N{r}=\"\",\"Nächster Schritt fehlt\",IF(O{r}=\"\",\"Datum fehlt\",IF(O{r}<TODAY(),\"Wiedervorlage überfällig\",IF(O{r}-TODAY()<=7,\"diese Woche\",\"\")))))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 4,
+      "stil": "zahl"
+     },
+     {
+      "v": "Großhandel, 60 Beschäftigte",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Geschäftsführung",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Rückrufbitte",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()-12",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": 0,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 3,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 1,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 0,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",SUM(F{r}:I{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,IF(B{r}=\"\",\"\",\"Punkte fehlen\"),IF(OR(H{r}=0,J{r}<=4),\"pflegen\",IF(AND(J{r}>=8,H{r}>=2,MIN(F{r}:I{r})>=1),\"bereit fürs Angebot\",\"weiter qualifizieren\")))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",INDEX($F$1:$I$1,MATCH(MIN(F{r}:I{r}),F{r}:I{r},0)))",
+      "stil": "text"
+     },
+     {
+      "f": "IF(K{r}=\"pflegen\",\"Kein Angebot. Wissen teilen, Wiedervorlage mit Anlass\",IF(K{r}=\"bereit fürs Angebot\",\"Angebot mit Termin zum Vorstellen\",IF(K{r}<>\"weiter qualifizieren\",\"\",IF(L{r}=\"Bedarf\",\"Folgen erfragen, ein Beispiel teilen\",IF(L{r}=\"Entscheidung\",\"Termin mit der Person vorschlagen, die entscheidet\",IF(L{r}=\"Zeitpunkt\",\"Wiedervorlage vier Wochen vor dem Zeitpunkt\",\"Spanne nennen, kleinere Variante anbieten\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Fachbeitrag schicken, in einem halben Jahr fragen",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()+120",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": "B",
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(N{r}=\"\",\"Nächster Schritt fehlt\",IF(O{r}=\"\",\"Datum fehlt\",IF(O{r}<TODAY(),\"Wiedervorlage überfällig\",IF(O{r}-TODAY()<=7,\"diese Woche\",\"\")))))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 5,
+      "stil": "zahl"
+     },
+     {
+      "v": "Pflegedienst, 45 Beschäftigte",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Verwaltungsleitung",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Anfrage per Mail",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()-3",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": 3,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 2,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 3,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 3,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",SUM(F{r}:I{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,IF(B{r}=\"\",\"\",\"Punkte fehlen\"),IF(OR(H{r}=0,J{r}<=4),\"pflegen\",IF(AND(J{r}>=8,H{r}>=2,MIN(F{r}:I{r})>=1),\"bereit fürs Angebot\",\"weiter qualifizieren\")))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",INDEX($F$1:$I$1,MATCH(MIN(F{r}:I{r}),F{r}:I{r},0)))",
+      "stil": "text"
+     },
+     {
+      "f": "IF(K{r}=\"pflegen\",\"Kein Angebot. Wissen teilen, Wiedervorlage mit Anlass\",IF(K{r}=\"bereit fürs Angebot\",\"Angebot mit Termin zum Vorstellen\",IF(K{r}<>\"weiter qualifizieren\",\"\",IF(L{r}=\"Bedarf\",\"Folgen erfragen, ein Beispiel teilen\",IF(L{r}=\"Entscheidung\",\"Termin mit der Person vorschlagen, die entscheidet\",IF(L{r}=\"Zeitpunkt\",\"Wiedervorlage vier Wochen vor dem Zeitpunkt\",\"Spanne nennen, kleinere Variante anbieten\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Angebot mit zwei Varianten bis Freitag",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()+3",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": "A",
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(N{r}=\"\",\"Nächster Schritt fehlt\",IF(O{r}=\"\",\"Datum fehlt\",IF(O{r}<TODAY(),\"Wiedervorlage überfällig\",IF(O{r}-TODAY()<=7,\"diese Woche\",\"\")))))",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": 6,
+      "stil": "zahl"
+     },
+     {
+      "v": "Agentur, 12 Beschäftigte",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Inhaberin",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Vernetzung nach Vortrag",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()-20",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": 1,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 3,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 1,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": 1,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",SUM(F{r}:I{r}))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,IF(B{r}=\"\",\"\",\"Punkte fehlen\"),IF(OR(H{r}=0,J{r}<=4),\"pflegen\",IF(AND(J{r}>=8,H{r}>=2,MIN(F{r}:I{r})>=1),\"bereit fürs Angebot\",\"weiter qualifizieren\")))",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(COUNT(F{r}:I{r})<4,\"\",INDEX($F$1:$I$1,MATCH(MIN(F{r}:I{r}),F{r}:I{r},0)))",
+      "stil": "text"
+     },
+     {
+      "f": "IF(K{r}=\"pflegen\",\"Kein Angebot. Wissen teilen, Wiedervorlage mit Anlass\",IF(K{r}=\"bereit fürs Angebot\",\"Angebot mit Termin zum Vorstellen\",IF(K{r}<>\"weiter qualifizieren\",\"\",IF(L{r}=\"Bedarf\",\"Folgen erfragen, ein Beispiel teilen\",IF(L{r}=\"Entscheidung\",\"Termin mit der Person vorschlagen, die entscheidet\",IF(L{r}=\"Zeitpunkt\",\"Wiedervorlage vier Wochen vor dem Zeitpunkt\",\"Spanne nennen, kleinere Variante anbieten\"))))))",
+      "stil": "hinweis"
+     },
+     {
+      "v": "Nachfassen per Mail",
+      "stil": "eingabe"
+     },
+     {
+      "f": "TODAY()-2",
+      "stil": "eingabe-datum"
+     },
+     {
+      "v": "B",
+      "stil": "eingabe"
+     },
+     {
+      "f": "IF(B{r}=\"\",\"\",IF(N{r}=\"\",\"Nächster Schritt fehlt\",IF(O{r}=\"\",\"Datum fehlt\",IF(O{r}<TODAY(),\"Wiedervorlage überfällig\",IF(O{r}-TODAY()<=7,\"diese Woche\",\"\")))))",
+      "stil": "hinweis"
+     }
+    ],
+    [],
+    [
+     {
+      "v": "Alle Firmen und Angaben sind frei erfunden. Die Daten rechnen vom heutigen Tag aus, damit die Hinweise sichtbar werden.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  }
+ ]
+}

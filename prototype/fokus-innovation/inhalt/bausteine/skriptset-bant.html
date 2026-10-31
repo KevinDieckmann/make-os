@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Skriptset mit BANT</title>
+<link rel="stylesheet" href="../vorlagen/basis.css">
+<style>
+  /* Baustein · gemeinsame Gestaltung der Bausteine (basis.css bleibt unverändert) */
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 166mm; }
+  h2.blatt { margin-top: 1.6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  .vorzeile.bsp { color: var(--akzent); }
+  .unter { margin-top: 1.6mm; max-width: 168mm; font-size: 10.2pt; line-height: 1.45; }
+  h3 { font-size: 10.5pt; line-height: 1.3; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  p.text + p.text { margin-top: 1.6mm; }
+  .klein { font-size: 8.8pt; line-height: 1.4; color: var(--tinte-leise); }
+  .lz { color: var(--akzent); font-weight: 500; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; }
+
+  .so { margin-top: 2.6mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; max-width: 170mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9.2pt; line-height: 1.45; }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .abschnitt-titel { margin-top: 4.6mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; }
+  .abschnitt-titel small { font-size: 8.4pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .abschnitt-titel.akzent { color: var(--akzent); }
+
+  /* Deckblatt */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3mm; margin-top: 3.2mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 9.8pt; line-height: 1.42; }
+  .ablauf { margin-top: 1.6mm; }
+  .ablauf li { display: grid; grid-template-columns: 9mm 1fr 24mm; padding: 2mm 0 1.9mm; border-bottom: var(--linie) solid var(--haar); }
+  .ablauf li:last-child { border-bottom: 0; }
+  .ablauf .nr { font-size: 11.5pt; line-height: 1.2; }
+  .ablauf h3 { font-size: 10.2pt; }
+  .ablauf p { margin-top: .4mm; font-size: 9.4pt; line-height: 1.4; }
+  .ablauf .s { text-align: right; font-size: 8.5pt; color: var(--tinte-leise); padding-top: .6mm; }
+
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .drei { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+
+
+
+  /* Vorlage (Mail) */
+  .vorlage { margin-top: 2.6mm; padding: 3mm 5mm 3.2mm; border: var(--linie) solid var(--haar); border-radius: 1.2mm; background: rgba(255,255,255,.35); }
+  .vorlage .art { font-size: 7.6pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); }
+  .vorlage p { margin-top: 1.3mm; font-size: 9.4pt; line-height: 1.42; color: var(--tinte); }
+  .vorlage p.betreff { margin-top: 1.6mm; font-weight: 600; }
+
+  /* Listen */
+  .regeln li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.4mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.4; }
+  .regeln li:last-child { border-bottom: 0; }
+  .regeln b { color: var(--tinte); font-weight: 600; }
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.4mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; line-height: 1.4; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste .kreuz { margin-top: .5mm; }
+
+  /* Formular */
+  .linien .zeile-frei { height: 7.2mm; }
+  .linien.eng .zeile-frei { height: 6.4mm; }
+  .reihe { display: flex; gap: 6mm; margin-top: 2.2mm; }
+  .reihe .feld { flex: 1; }
+  .reihe .feld.schmal { flex: .55; }
+  .reihe .feld.breit { flex: 1.8; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6.2mm; }
+  .wahl { display: inline-flex; align-items: center; gap: 1.6mm; margin-right: 4mm; font-size: 8.8pt; white-space: nowrap; }
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.6mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.4pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.1mm 1.6mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 8.8pt; line-height: 1.35; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster td.leise { color: var(--tinte-leise); }
+  .raster .mitte { text-align: center; }
+  .raster.bsp td { color: var(--tinte); font-size: 8.4pt; line-height: 1.32; border-bottom-color: var(--haar); }
+  .raster.bsp td.leise { color: var(--tinte-leise); }
+  .raster td .zeile-frei { height: 6.4mm; }
+  .raster td .zeile-frei:last-child { border-bottom: 0; }
+
+
+
+
+  /* Fehler */
+  .fehler li { display: grid; grid-template-columns: 7mm 1fr 1fr; column-gap: 5mm; padding: 1.25mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.38; }
+  .fehler li:last-child { border-bottom: 0; }
+  .fehler b { color: var(--tinte); font-weight: 600; }
+  .fehler .besser { color: var(--tinte); }
+  .fehler .kopfzeile { font-size: 7.6pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise); padding-bottom: 1.2mm; border-bottom: .9pt solid var(--haar-stark); }
+
+  /* Nächste Schritte */
+  .wege li { display: grid; grid-template-columns: 9mm 1fr; padding: 3mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .wege li:last-child { border-bottom: 0; }
+  .wege .nr { font-size: 13pt; line-height: 1.2; }
+  .wege h3 { font-size: 12pt; }
+  .wege .adresse { margin-top: .8mm; font-size: 10.5pt; color: var(--akzent); font-weight: 600; }
+  .wege .adresse a { color: inherit; text-decoration: none; }
+  .wege p { margin-top: .8mm; font-size: 10pt; line-height: 1.45; }
+  .unten { margin-top: auto; }
+  .unten + .fuss { margin-top: 3mm; }
+</style>
+
+<style>
+  /* Skriptset · zusätzliche Bausteine */
+  .ampel { width: 100%; margin-top: 2.4mm; border-collapse: collapse; table-layout: fixed; }
+  .ampel th { text-align: left; padding: 0 2mm 1.4mm 0; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; color: var(--tinte); }
+  .ampel td { padding: 1.7mm 2mm 1.7mm 0; vertical-align: top; border-bottom: var(--linie) solid var(--haar); font-size: 8.9pt; line-height: 1.38; }
+  .ampel td:first-child { color: var(--tinte); font-weight: 600; font-size: 9pt; }
+  .ampel td:first-child small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 8pt; }
+  .stufe { display: inline-flex; align-items: flex-start; gap: 1.4mm; font-size: 8pt; font-weight: 600; letter-spacing: .02em; line-height: 1.3; color: var(--tinte); }
+  .stufe i { flex: none; margin-top: .4mm; }
+  .stufe i { display: inline-block; width: 2.6mm; height: 2.6mm; border-radius: 50%; border: .7pt solid var(--akzent); }
+  .stufe.gut i { background: var(--akzent); }
+  .stufe.mit i { background: linear-gradient(90deg, var(--akzent) 50%, transparent 50%); }
+  .stufe.nein i { border-color: var(--tinte-leise); }
+
+  .phasen { display: grid; grid-template-columns: repeat(5, 1fr); column-gap: 3.6mm; margin-top: 3mm; }
+  .phasen > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .phasen .nr { font-size: 13pt; line-height: 1; }
+  .phasen h3 { margin-top: 1.2mm; font-size: 10pt; }
+  .phasen .dauer { font-size: 7.6pt; color: var(--tinte-leise); letter-spacing: .04em; }
+  .phasen p { margin-top: 1mm; font-size: 8.7pt; line-height: 1.38; }
+  .phasen .satz { margin-top: 1.6mm; padding-top: 1.4mm; border-top: var(--linie) solid var(--haar); color: var(--tinte); }
+
+  .skript { margin-top: 2.6mm; border-top: .9pt solid var(--haar-stark); }
+  .skript > li { display: grid; grid-template-columns: 8mm 33mm 1fr; column-gap: 3.6mm; padding: 2.1mm 0; border-bottom: var(--linie) solid var(--haar); }
+  .skript .nr { font-size: 12pt; line-height: 1.2; }
+  .skript h3 { font-size: 10pt; }
+  .skript .dauer { display: block; margin-top: .5mm; font-size: 7.8pt; color: var(--tinte-leise); }
+  .skript .sagen { font-size: 9.5pt; line-height: 1.42; color: var(--tinte); }
+  .skript .sagen + .sagen { margin-top: 1mm; }
+  .skript .achten { margin-top: 1mm; font-size: 8.6pt; line-height: 1.38; color: var(--tinte-leise); }
+  .skript .achten b { color: var(--tinte-text); font-weight: 600; }
+
+  .wenn li { display: grid; grid-template-columns: 52mm 1fr; column-gap: 5mm; padding: 1.6mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.4; }
+  .wenn li:last-child { border-bottom: 0; }
+  .wenn.dicht li { grid-template-columns: 20mm 1fr; padding: 1.05mm 0; }
+  .wenn li > span:first-child { color: var(--tinte); font-weight: 600; }
+  .wenn .rede { color: var(--tinte); }
+
+  .bant { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 4.4mm; margin-top: 3mm; }
+  .bant > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .bant .buchst { font-size: 22pt; line-height: 1; font-weight: 700; color: var(--akzent); letter-spacing: -.02em; }
+  .bant .engl { margin-top: .6mm; font-size: 7.6pt; letter-spacing: .1em; text-transform: uppercase; color: var(--tinte-leise); }
+  .bant h3 { margin-top: .8mm; font-size: 12pt; }
+  .bant p { margin-top: 1mm; font-size: 8.9pt; line-height: 1.4; }
+  .bant .t { margin-top: 2mm; font-size: 7.2pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise); }
+  .bant ul li { position: relative; padding-left: 3mm; margin-top: .6mm; font-size: 8.7pt; line-height: 1.36; }
+  .bant ul li::before { content: "·"; position: absolute; left: 0; color: var(--akzent); font-weight: 700; }
+
+  .zeitplan { width: 100%; margin-top: 2.4mm; border-collapse: collapse; table-layout: fixed; }
+  .zeitplan th { text-align: left; padding: 0 2mm 1.4mm 0; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; color: var(--tinte); }
+  .zeitplan td { padding: 1.9mm 2mm 1.9mm 0; vertical-align: top; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.4; }
+  .zeitplan td:first-child { color: var(--akzent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .zeitplan td:nth-child(2) { color: var(--tinte); font-weight: 600; }
+  .zeitplan td.rede { color: var(--tinte); }
+
+  .katalog { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; row-gap: 1mm; }
+  .katalog h3 { margin-top: 3.6mm; padding-bottom: 1.2mm; border-bottom: .9pt solid var(--haar-stark); font-size: 10.6pt; display: flex; justify-content: space-between; align-items: baseline; }
+  .katalog h3 span { font-size: 7.4pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--akzent); }
+  .katalog li { display: grid; grid-template-columns: 5mm 1fr; padding: 1.15mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.36; color: var(--tinte); }
+  .katalog li:last-child { border-bottom: 0; }
+  .katalog li .nr { font-size: 8pt; }
+  .katalog li small { display: block; color: var(--tinte-leise); font-size: 8pt; }
+
+  .punkte { width: 100%; margin-top: 2.4mm; border-collapse: collapse; table-layout: fixed; }
+  .punkte th { text-align: left; padding: 0 1.6mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.2pt; font-weight: 600; color: var(--tinte); }
+  .punkte th:first-child, .punkte td:first-child { padding-left: 0; }
+  .punkte td { padding: 1.6mm 1.6mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar); border-left: var(--linie) solid var(--haar); font-size: 8.4pt; line-height: 1.34; }
+  .punkte td:first-child { border-left: 0; color: var(--tinte); font-weight: 600; font-size: 9pt; }
+  .punkte td:first-child small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.8pt; }
+  .punkte th .p { color: var(--akzent); }
+  .punkte td.wahl-zelle { text-align: center; vertical-align: middle; }
+  .punkte .kasten { display: inline-block; width: 9mm; height: 7mm; border: var(--linie) solid var(--tinte-leise); border-radius: .8mm; }
+  .punkte.gefuellt td { color: var(--tinte-text); }
+  .punkte.gefuellt td.an { color: var(--akzent); font-weight: 600; background: rgba(124,58,237,.06); }
+
+  .regelkasten { margin-top: 3mm; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 5mm; }
+  .regelkasten > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .regelkasten b { display: block; font-size: 7.6pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--akzent); }
+  .regelkasten h3 { margin-top: .6mm; font-size: 10.6pt; }
+  .regelkasten p { margin-top: .8mm; font-size: 8.9pt; line-height: 1.4; }
+
+  .notiz .block { padding: 1.6mm 0 1.2mm; border-bottom: var(--linie) solid var(--haar); }
+  .notiz .block:first-child { border-top: .9pt solid var(--haar-stark); }
+  .notiz .block > h3 { font-size: 9.4pt; display: flex; justify-content: space-between; align-items: baseline; }
+  .notiz .block > h3 small { font-size: 8pt; font-weight: 400; color: var(--tinte-leise); }
+  .notiz .zeile-frei { height: 6.4mm; }
+  .notiz .zwei .feld .strich, .notiz .drei .feld .strich { height: 6mm; }
+  .notiz.bsp .eintrag { margin-top: .9mm; font-size: 9pt; line-height: 1.38; color: var(--akzent); }
+  .notiz.bsp .eintrag b { color: var(--tinte-text); font-weight: 600; }
+  .zitat { font-style: italic; }
+
+  .takt { display: grid; grid-template-columns: repeat(5, 1fr); column-gap: 3.4mm; margin-top: 3mm; }
+  .takt > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.8mm; }
+  .takt b { display: block; font-size: 7.6pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--akzent); }
+  .takt h3 { margin-top: .6mm; font-size: 10pt; }
+  .takt p { margin-top: 1mm; font-size: 8.6pt; line-height: 1.38; }
+  .takt .rede { color: var(--tinte); }
+  .takt .kanal { margin-top: 1.4mm; font-size: 7.2pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); }
+
+  .branchen { width: 100%; margin-top: 2.6mm; border-collapse: collapse; table-layout: fixed; }
+  .branchen th { text-align: left; vertical-align: bottom; padding: 0 2mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 9.4pt; font-weight: 600; color: var(--tinte); line-height: 1.2; }
+  .branchen th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.8pt; margin-top: .4mm; }
+  .branchen th:first-child, .branchen td:first-child { padding-left: 0; }
+  .branchen td { padding: 1.6mm 2mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar); border-left: var(--linie) solid var(--haar); font-size: 8.5pt; line-height: 1.36; }
+  .branchen td:first-child { border-left: 0; font-size: 8.4pt; font-weight: 600; color: var(--tinte); line-height: 1.3; }
+  .branchen td.rede { color: var(--tinte); }
+
+  .eigen .zeile-l { display: grid; grid-template-columns: 44mm 1fr; column-gap: 3mm; align-items: start; }
+  .eigen .zeile-l + .zeile-l { margin-top: .8mm; }
+  .eigen .zeile-l > span { font-size: 8.8pt; color: var(--tinte); padding-top: 2.5mm; line-height: 1.22; }
+  .eigen .zeile-l > span small { display: block; font-size: 7.6pt; color: var(--tinte-leise); }
+  .eigen .zeile-frei { height: 6.6mm; }
+  .eigen .gruppe { margin-top: 3mm; padding-bottom: 1.2mm; border-bottom: .9pt solid var(--haar-stark); font-size: 7.6pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+</svg>
+
+<!-- 1 · Deckblatt -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Baustein · Vertrieb</p>
+    <h1>Skriptset mit BANT</h1>
+    <p class="lead">Leitfäden für den Erstkontakt am Telefon, auf LinkedIn und per Mail, ein Bedarfsgespräch mit den vier BANT-Fragen auf Deutsch, Notiz und Qualifizierungs-Bogen mit Punkten, der Übergang zum Angebot und das Nachfassen. Mit Varianten für drei Branchenarten.</p>
+  </div>
+
+  <p class="abschnitt-titel">So nutzen Sie dieses Paket</p>
+  <div class="fakten">
+    <div><b>Ziel</b><p>Jedes Gespräch hat einen klaren Ablauf, Sie wissen danach, ob ein Kontakt bereit für ein Angebot ist, und kein Angebot geht ohne nächsten Termin raus.</p></div>
+    <div><b>Ihre Zeit</b><p>Lesen etwa anderthalb Stunden. Leitfäden auf Ihr Angebot anpassen: zwei bis drei Stunden. Danach je Gespräch fünf Minuten Vorbereitung.</p></div>
+    <div><b>Sie brauchen</b><p>Dieses Heft, Ihr Angebot in einem Satz und die Tabelle zum Paket für Ihre Qualifizierung. Notiz und Bogen kopieren Sie je Gespräch.</p></div>
+    <div><b>Gut zu wissen</b><p>Ein Leitfaden ist kein Ablesetext. Lernen Sie den Ablauf und die Fragen, nicht jedes Wort. Am Telefon hört man sofort, wer abliest.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Reihenfolge</p>
+  <ol class="ablauf">
+    <li><span class="nr">1</span><div><h3>Vorher klären</h3><p>Was beim Erstkontakt erlaubt ist, und wie jedes Gespräch aufgebaut ist.</p></div><span class="s">Seite 2 und 3</span></li>
+    <li><span class="nr">2</span><div><h3>Erstkontakt</h3><p>Leitfäden für Telefon, LinkedIn und die Mail auf eine Anfrage.</p></div><span class="s">Seite 4 bis 7</span></li>
+    <li><span class="nr">3</span><div><h3>Bedarfsgespräch mit BANT</h3><p>Die vier Fragen, ein Ablauf für 30 Minuten und ein Fragenkatalog.</p></div><span class="s">Seite 8 bis 10</span></li>
+    <li><span class="nr">4</span><div><h3>Festhalten und bewerten</h3><p>Gesprächsnotiz, Qualifizierungs-Bogen mit Punkten und ein ausgefülltes Beispiel.</p></div><span class="s">Seite 11 bis 13</span></li>
+    <li><span class="nr">5</span><div><h3>Angebot und Nachfassen</h3><p>Vom Gespräch zum Angebot, und der Takt danach.</p></div><span class="s">Seite 14 und 15</span></li>
+    <li><span class="nr">6</span><div><h3>Anpassen</h3><p>Varianten für drei Branchenarten, Ihr eigener Leitfaden, typische Fehler, nächste Schritte.</p></div><span class="s">Seite 16 bis 19</span></li>
+  </ol>
+
+  <p class="hinweis unten">Alle Beispiele und Gespräche sind frei erfunden. Stellen in <span class="lz">Lila</span> ersetzen Sie durch Ihre Angaben. Die Hinweise zum Wettbewerbsrecht sind keine Rechtsberatung. Stand: Oktober 2026.</p>
+</section>
+
+<!-- 2 · Recht -->
+<section class="seite">
+  <p class="vorzeile">Vorher klären</p>
+  <h2 class="blatt">Wen Sie wie ansprechen dürfen</h2>
+  <p class="unter">Das Gesetz gegen den unlauteren Wettbewerb (§ 7 UWG) regelt, wann Werbung per Telefon, Mail oder Nachricht als unzumutbare Belästigung gilt. Werbung ist dabei weit gemeint: Auch ein Anruf, der einen Termin für ein Verkaufsgespräch vereinbaren soll, zählt dazu. Die Übersicht ist ein Hinweis, keine Rechtsberatung.</p>
+
+  <table class="ampel">
+    <colgroup><col style="width:33mm"><col style="width:27mm"><col><col></colgroup>
+    <thead><tr><th>Kanal</th><th>Einordnung</th><th>Geht, wenn …</th><th>Vorsicht</th></tr></thead>
+    <tbody>
+      <tr><td>Anruf bei Unternehmen</td><td><span class="stufe mit"><i></i>mit Anlass</span></td><td>eine zumindest mutmaßliche Einwilligung besteht: ein konkreter Grund zur Annahme, dass der Anruf erwünscht ist, etwa eine Anfrage, eine Bitte um Rückruf oder eine laufende Geschäftsbeziehung.</td><td>Dass Ihr Angebot „passen könnte“, reicht nach der Rechtsprechung in der Regel nicht. Kaltakquise ohne Anlass ist riskant.</td></tr>
+      <tr><td>Anruf bei Verbrauchern</td><td><span class="stufe nein"><i></i>nur mit Einwilligung</span></td><td>vorher eine ausdrückliche Einwilligung vorliegt, die Sie dokumentiert haben.</td><td>Ohne diese Einwilligung nicht anrufen, auch nicht „nur kurz“.</td></tr>
+      <tr><td>Werbe-Mail<small>auch an Unternehmen</small></td><td><span class="stufe nein"><i></i>nur mit Einwilligung</span></td><td>eine vorherige ausdrückliche Einwilligung vorliegt.</td><td>Eine Visitenkarte oder eine Adresse auf der Website ist keine Einwilligung.</td></tr>
+      <tr><td>Antwort auf eine Anfrage</td><td><span class="stufe gut"><i></i>geht</span></td><td>Sie beim angefragten Thema bleiben. Wer anfragt, will eine Antwort.</td><td>Aus einer Anfrage folgt keine Erlaubnis für Newsletter oder andere Themen.</td></tr>
+      <tr><td>Mail an Bestandskunden</td><td><span class="stufe mit"><i></i>mit Bedingungen</span></td><td>alle vier Punkte erfüllt sind (§ 7 Abs. 3 UWG): Adresse beim Verkauf erhalten, Werbung für eigene ähnliche Leistungen, kein Widerspruch, Hinweis auf das Widerspruchsrecht bei der Erhebung und in jeder Mail.</td><td>Fehlt ein Punkt, gilt die Ausnahme nicht.</td></tr>
+      <tr><td>LinkedIn-Vernetzung</td><td><span class="stufe gut"><i></i>geht</span></td><td>die Anfrage persönlich ist, mit Bezug und ohne Werbung.</td><td>Eine angenommene Vernetzung ist keine Einwilligung in Werbung.</td></tr>
+      <tr><td>LinkedIn-Nachricht</td><td><span class="stufe mit"><i></i>persönlich, ohne Werbung</span></td><td>die Nachricht persönlich ist, sich auf etwas Konkretes bezieht und eine Frage stellt statt ein Angebot zu machen.</td><td>Werbliche Nachrichten können wie Werbe-Mails bewertet werden. Keine Serienwerbung.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Was als Anlass zählen kann</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Eine Anfrage über Website, Telefon oder Mail.</span></li>
+        <li><span class="nr">·</span><span>Eine Bitte um Rückruf, etwa auf einer Messe.</span></li>
+        <li><span class="nr">·</span><span>Eine laufende oder frühere Geschäftsbeziehung zum Thema.</span></li>
+        <li><span class="nr">·</span><span>Eine Empfehlung, bei der die Person zugestimmt hat, dass Sie sich melden.</span></li>
+        <li><span class="nr">·</span><span>Ein Gespräch, in dem der Anruf vereinbart wurde.</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">So bleiben Sie sauber</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Halten Sie bei jedem Kontakt fest, woher er kommt und welchen Anlass Sie hatten.</span></li>
+        <li><span class="nr">·</span><span>Wer widerspricht, wird nicht mehr angesprochen. Sofort im CRM oder der Liste vermerken.</span></li>
+        <li><span class="nr">·</span><span>Gespräche nehmen Sie nur auf, wenn alle vorher zustimmen (§ 201 StGB).</span></li>
+        <li><span class="nr">·</span><span>Im Zweifel: anwaltlich prüfen lassen, bevor Sie eine Aktion starten.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · Aufbau -->
+<section class="seite">
+  <p class="vorzeile">Vorher klären</p>
+  <h2 class="blatt">Jedes Gespräch hat fünf Teile</h2>
+  <p class="unter">Ob Anruf, Video oder Termin vor Ort: Gute Gespräche folgen demselben Bogen, und alle Leitfäden in diesem Heft sind danach gebaut. Wer ihn kennt, findet zurück, wenn es anders läuft.</p>
+
+  <div class="phasen">
+    <div><span class="nr">1</span><h3>Einstieg</h3><span class="dauer">wenige Sekunden</span><p>Name, Firma, Rahmen. Kein Smalltalk-Zwang, keine Frage nach dem Befinden am Telefon.</p><p class="satz">„Guten Tag, hier ist <span class="lz">Name</span> von <span class="lz">Firma</span>.“</p></div>
+    <div><span class="nr">2</span><h3>Anlass</h3><span class="dauer">ein Satz</span><p>Warum Sie sich gerade jetzt melden. Ohne Anlass kein Gespräch.</p><p class="satz">„Sie hatten nach <span class="lz">Thema</span> gefragt.“</p></div>
+    <div><span class="nr">3</span><h3>Fragen</h3><span class="dauer">der größte Teil</span><p>Offene Fragen, zuhören, nachfragen. Ihr Gegenüber redet mehr als Sie.</p><p class="satz">„Wie läuft <span class="lz">Aufgabe</span> heute bei Ihnen?“</p></div>
+    <div><span class="nr">4</span><h3>Zusammenfassen</h3><span class="dauer">eine Minute</span><p>In eigenen Worten wiedergeben, was Sie gehört haben, und bestätigen lassen.</p><p class="satz">„Habe ich richtig verstanden, dass …?“</p></div>
+    <div><span class="nr">5</span><h3>Nächster Schritt</h3><span class="dauer">eine Minute</span><p>Ein konkreter Schritt mit Datum, oder ein klares Nein. Beides ist besser als „mal sehen“.</p><p class="satz">„Passt Ihnen <span class="lz">Tag</span> um <span class="lz">Uhrzeit</span>?“</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Sechs Regeln für Leitfäden</p>
+  <ul class="regeln">
+    <li><span class="nr">1</span><span><b>Ablauf lernen, nicht Wörter.</b> Lesen Sie den Leitfaden dreimal laut, dann legen Sie ihn weg. Nur die Fragen dürfen auf dem Zettel stehen.</span></li>
+    <li><span class="nr">2</span><span><b>Ein Ziel je Gespräch.</b> Der Erstkontakt will einen Termin, das Bedarfsgespräch will Klarheit. Verkaufen kommt später.</span></li>
+    <li><span class="nr">3</span><span><b>Erlaubnis holen.</b> Fragen Sie, ob es gerade passt, und sagen Sie, wie lange es dauert. Das schafft Ruhe auf beiden Seiten.</span></li>
+    <li><span class="nr">4</span><span><b>Eine Frage, dann Stille.</b> Wer zwei Fragen auf einmal stellt, bekommt eine halbe Antwort.</span></li>
+    <li><span class="nr">5</span><span><b>Die Worte des Kunden aufschreiben.</b> Wörtliche Sätze sind später Gold: für das Angebot, die Zusammenfassung und die Einwandbibliothek.</span></li>
+    <li><span class="nr">6</span><span><b>Nie ohne nächsten Schritt.</b> Jedes Gespräch endet mit einem Datum oder einem Nein.</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Die Gesprächskette <small>jedes Gespräch hat genau ein Ziel</small></p>
+  <table class="zeitplan" style="margin-top:1.4mm">
+    <colgroup><col style="width:9mm"><col style="width:42mm"><col style="width:22mm"><col><col style="width:16mm"></colgroup>
+    <tbody>
+      <tr><td>1</td><td>Erstkontakt</td><td class="leise">2–4 Minuten</td><td>Ziel: ein Termin für das Bedarfsgespräch</td><td class="leise">Seite 4</td></tr>
+      <tr><td>2</td><td>Bedarfsgespräch</td><td class="leise">30 Minuten</td><td>Ziel: Klarheit über Bedarf, Zeitpunkt, Entscheidung, Mittel</td><td class="leise">Seite 9</td></tr>
+      <tr><td>3</td><td>Angebot vorstellen</td><td class="leise">20 Minuten</td><td>Ziel: Fragen klären, Entscheidung vorbereiten</td><td class="leise">Seite 14</td></tr>
+      <tr><td>4</td><td>Nachfassen</td><td class="leise">2 Minuten</td><td>Ziel: der nächste Schritt oder ein klares Nein</td><td class="leise">Seite 15</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Fünf Minuten Vorbereitung vor jedem Gespräch</p>
+  <ul class="liste">
+    <li><span class="kreuz"></span><span>Website und Profil der Person angesehen: Was macht die Firma, welche Rolle hat die Person?</span></li>
+    <li><span class="kreuz"></span><span>Anlass notiert: Woher kommt der Kontakt, worauf beziehe ich mich?</span></li>
+    <li><span class="kreuz"></span><span>Eine Vermutung zum Problem: Was könnte bei dieser Firma gerade haken?</span></li>
+    <li><span class="kreuz"></span><span>Drei Fragen aufgeschrieben, die ich auf jeden Fall stellen will.</span></li>
+    <li><span class="kreuz"></span><span>Ein Beispiel aus einem ähnlichen Betrieb parat, falls gefragt wird, wie andere es lösen.</span></li>
+      </ul>
+</section>
+
+<!-- 4 · Telefon -->
+<section class="seite">
+  <p class="vorzeile">Erstkontakt · Leitfaden 1</p>
+  <h2 class="blatt">Telefon: der erste Anruf mit Anlass</h2>
+  <p class="unter">Ziel des Anrufs ist ein Termin für das Bedarfsgespräch, 30 Minuten per Video oder vor Ort. Nicht mehr. Wer am Telefon verkaufen will, verliert den Termin. Der Anruf dauert zwei bis vier Minuten.</p>
+
+  <ol class="skript">
+    <li><span class="nr">1</span><div><h3>Einstieg</h3><span class="dauer">etwa 10 Sekunden</span></div><div><p class="sagen">„Guten Tag <span class="lz">Frau / Herr Name</span>, hier ist <span class="lz">Ihr Name</span> von <span class="lz">Firma</span>.“</p><p class="achten"><b>Achten auf:</b> kurze Pause nach dem Namen. Kein „Störe ich gerade?“, keine Frage nach dem Befinden.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Anlass und Erlaubnis</h3><span class="dauer">etwa 15 Sekunden</span></div><div><p class="sagen">„Sie hatten <span class="lz">auf der Messe / über unsere Website / in unserem Projekt</span> nach <span class="lz">Thema</span> gefragt. Passt es gerade für drei Minuten?“</p><p class="achten"><b>Wenn nein:</b> „Wann erreiche ich Sie besser, heute Nachmittag oder morgen früh?“ Uhrzeit festhalten und genau dann anrufen.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Grund in einem Satz</h3><span class="dauer">etwa 20 Sekunden</span></div><div><p class="sagen">„Wir helfen <span class="lz">Zielgruppe</span> dabei, <span class="lz">Ergebnis</span>, ohne dass <span class="lz">häufige Sorge</span>. Ich rufe an, um zu verstehen, ob das bei Ihnen gerade ein Thema ist.“</p><p class="achten"><b>Achten auf:</b> ein Ergebnis, das der Kunde spürt, nicht Ihre Methode. Keine Aufzählung von Leistungen.</p></div></li>
+    <li><span class="nr">4</span><div><h3>Zwei Fragen</h3><span class="dauer">ein bis zwei Minuten</span></div><div><p class="sagen">„Wie lösen Sie <span class="lz">Aufgabe</span> heute?“</p><p class="sagen">„Was davon würden Sie gern ändern?“</p><p class="achten"><b>Achten auf:</b> zuhören, mitschreiben, einmal nachfragen: „Was heißt das konkret?“ Noch keine Lösung anbieten.</p></div></li>
+    <li><span class="nr">5</span><div><h3>Brücke zum Termin</h3><span class="dauer">etwa 30 Sekunden</span></div><div><p class="sagen">„Das klingt nach einem Thema, das wir uns genauer ansehen sollten. Mein Vorschlag: 30 Minuten per Video. Sie erzählen mehr zu <span class="lz">Problem</span>, ich zeige Ihnen, wie andere Betriebe das lösen. Danach wissen Sie, ob es passt. Geht <span class="lz">Dienstag um 10 Uhr</span> oder eher <span class="lz">Donnerstag um 14 Uhr</span>?“</p><p class="achten"><b>Achten auf:</b> zwei konkrete Zeiten anbieten, nicht „Wann passt es Ihnen?“.</p></div></li>
+    <li><span class="nr">6</span><div><h3>Abschluss</h3><span class="dauer">etwa 20 Sekunden</span></div><div><p class="sagen">„Ich schicke Ihnen gleich die Einladung mit drei kurzen Fragen zur Vorbereitung. Wer sollte von Ihrer Seite noch dabei sein?“</p><p class="achten"><b>Achten auf:</b> nach weiteren Personen fragen. Wer mitentscheidet, sollte im Bedarfsgespräch sitzen.</p></div></li>
+  </ol>
+  <p class="hinweis">Nur mit Anlass (Seite 2): Wenn Sie den Satz „Ich rufe an, weil Sie …“ nicht ehrlich zu Ende sprechen können, gibt es keinen.</p>
+
+  <p class="abschnitt-titel akzent">So klingt es am Stück · frei erfunden <small>Schulungsanbieter ruft nach einer Anfrage am Messestand an</small></p>
+  <ul class="wenn dicht" style="margin-top:.4mm">
+    <li><span>Vertrieb</span><span class="rede">„Guten Tag Frau Muster, hier ist Max Beispiel von der Schulungsfirma. Sie hatten am Stand nach Unterweisungen für neue Leute gefragt. Passt es gerade für drei Minuten?“</span></li>
+    <li><span>Kundin</span><span class="rede">„Ja, kurz.“</span></li>
+    <li><span>Vertrieb</span><span class="rede">„Wir helfen Betrieben dabei, Unterweisungen in einer Stunde statt an einem Tag zu erledigen, ohne dass die Nachweise fehlen. Wie machen Sie das heute?“</span></li>
+    <li><span>Kundin</span><span class="rede">„Der Meister macht das, wenn er Zeit hat. Und die Nachweise suchen wir dann bei der Prüfung.“</span></li>
+    <li><span>Vertrieb</span><span class="rede">„Das klingt nach einem Thema, das wir uns ansehen sollten. 30 Minuten per Video, Dienstag um 10 oder Donnerstag um 14 Uhr?“</span></li>
+    <li><span>Kundin</span><span class="rede">„Donnerstag. Ich bringe den Meister mit.“</span></li>
+  </ul>
+</section>
+
+<!-- 5 · Telefon: wenn, dann -->
+<section class="seite">
+  <p class="vorzeile">Erstkontakt · Leitfaden 1, Fortsetzung</p>
+  <h2 class="blatt">Telefon: wenn es anders läuft</h2>
+
+  <p class="abschnitt-titel">Die vier häufigsten Reaktionen</p>
+  <ul class="wenn">
+    <li><span>„Ich habe gerade keine Zeit.“</span><span class="rede">„Dann halte ich Sie nicht auf. Passt es morgen um 9 Uhr oder eher am Nachmittag?“ Uhrzeit festhalten, pünktlich anrufen.</span></li>
+    <li><span>„Kein Interesse.“</span><span class="rede">„Danke, dass Sie es direkt sagen. Darf ich fragen, wie Sie <span class="lz">Aufgabe</span> heute lösen?“ Kommt ein klares Nein: freundlich beenden und vermerken, dass Sie nicht wieder anrufen.</span></li>
+    <li><span>„Schicken Sie mir Unterlagen.“</span><span class="rede">„Mache ich gern. Damit es kein Prospekt für alle wird: Was interessiert Sie am meisten?“ Danach: „Lassen Sie uns gleich zehn Minuten festhalten, um Ihre Fragen dazu zu klären.“</span></li>
+    <li><span>„Wir haben schon jemanden.“</span><span class="rede">„Gut, dann haben Sie das Thema im Griff. Was würden Sie an der heutigen Lösung verbessern, wenn Sie einen Wunsch frei hätten?“</span></li>
+  </ul>
+  <p class="klein" style="margin-top:1.4mm">Antworten auf zwölf Einwände mit Rückfragen und Varianten finden Sie im Baustein „Einwandbibliothek“.</p>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Empfang oder Assistenz</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Freundlich, mit vollem Namen, und den Anlass offen sagen. Keine Tricks wie „Er kennt mich“.</span></li>
+        <li><span class="nr">·</span><span>Die Assistenz ist eine Verbündete. Fragen Sie nach der besten Zeit und merken Sie sich ihren Namen.</span></li>
+      </ul>
+      <div class="vorlage"><p class="art">So klingt es</p><p>„Guten Tag, <span class="lz">Ihr Name</span> von <span class="lz">Firma</span>. Ich rufe wegen der Anfrage von <span class="lz">Frau / Herr Name</span> zu <span class="lz">Thema</span> an. Können Sie mich verbinden, oder wann erreiche ich <span class="lz">sie / ihn</span> am besten?“</p></div>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Mailbox <small>höchstens 20 Sekunden</small></p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Name, Firma, Anlass, Nummer zweimal langsam, wann Sie es wieder versuchen.</span></li>
+        <li><span class="nr">·</span><span>Höchstens drei Versuche zu verschiedenen Tageszeiten, danach eine kurze Mail.</span></li>
+      </ul>
+      <div class="vorlage"><p class="art">So klingt es</p><p>„Guten Tag <span class="lz">Name</span>, <span class="lz">Ihr Name</span> von <span class="lz">Firma</span>. Es geht um Ihre Anfrage zu <span class="lz">Thema</span>. Ich versuche es morgen Vormittag noch einmal. Sie erreichen mich auch unter <span class="lz">Nummer</span>, ich wiederhole: <span class="lz">Nummer</span>. Einen guten Tag.“</p></div>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Kurznotiz nach jedem Anruf <small>eine Zeile, direkt nach dem Auflegen</small></p>
+  <table class="raster">
+    <colgroup><col style="width:15mm"><col style="width:38mm"><col style="width:28mm"><col style="width:32mm"><col></colgroup>
+    <thead><tr><th>Datum</th><th>Kontakt und Firma</th><th>Anlass</th><th>Ergebnis<small>Termin · Rückruf · Nein · Mail</small></th><th>Nächster Schritt mit Datum</th></tr></thead>
+    <tbody id="kurznotiz"></tbody>
+  </table>
+</section>
+
+<!-- 6 · LinkedIn -->
+<section class="seite">
+  <p class="vorzeile">Erstkontakt · Leitfaden 2</p>
+  <h2 class="blatt">LinkedIn: vernetzen, dann fragen</h2>
+  <p class="unter">Auf LinkedIn gewinnt, wer sich wie ein Mensch verhält: persönlich, mit Bezug, mit einer Frage. Wer direkt nach der Vernetzung ein Angebot schickt, wird ignoriert oder gemeldet. Ziel ist ein Gespräch, nicht ein Verkauf per Nachricht.</p>
+
+  <p class="abschnitt-titel">Schritt 1 · Vernetzungsanfrage <small>mit Notiz, höchstens 300 Zeichen</small></p>
+  <div class="drei">
+    <div class="vorlage"><p class="art">Nach einer Veranstaltung</p><p>„Guten Tag <span class="lz">Name</span>, wir haben uns auf <span class="lz">Veranstaltung</span> kurz zu <span class="lz">Thema</span> unterhalten. Ich würde mich gern vernetzen. Viele Grüße, <span class="lz">Name</span>“</p></div>
+    <div class="vorlage"><p class="art">Nach einem Beitrag</p><p>„Guten Tag <span class="lz">Name</span>, Ihr Beitrag zu <span class="lz">Thema</span> hat mich angesprochen, vor allem <span class="lz">Punkt</span>. Ich würde mich gern vernetzen. Viele Grüße, <span class="lz">Name</span>“</p></div>
+    <div class="vorlage"><p class="art">Über einen Kontakt</p><p>„Guten Tag <span class="lz">Name</span>, <span class="lz">Kontakt</span> hat mir erzählt, dass Sie sich mit <span class="lz">Thema</span> beschäftigen. Ich würde mich freuen, wenn wir uns vernetzen. Viele Grüße, <span class="lz">Name</span>“</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Schritt 2 · Nachricht nach der Vernetzung <small>am selben oder nächsten Tag</small></p>
+  <div class="vorlage"><p class="art">Ohne Angebot, mit einer Frage</p><p>„Danke fürs Vernetzen, <span class="lz">Name</span>. Mich interessiert, wie Sie bei <span class="lz">Firma</span> mit <span class="lz">Thema</span> umgehen. Ist das bei Ihnen gerade ein Thema, oder eher nicht?“</p></div>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Schritt 3a · Wenn Interesse kommt</p>
+      <div class="vorlage"><p>„Danke für die offene Antwort. Wenn Sie mögen, tauschen wir uns 30 Minuten per Video dazu aus. Passt Ihnen <span class="lz">Dienstag</span> oder <span class="lz">Donnerstag</span> am Vormittag?“</p></div>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Schritt 3b · Wenn keine Antwort kommt</p>
+      <div class="vorlage"><p>Nach zehn Tagen, einmal: „<span class="lz">Name</span>, kurze Nachfrage zu meiner Nachricht. Wenn das Thema gerade nicht passt, ist das völlig in Ordnung.“ Danach: Ruhe.</p></div>
+    </div>
+  </div>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Regeln</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Kein Angebot, kein Link, keine Broschüre in der ersten Nachricht.</span></li>
+        <li><span class="nr">·</span><span>Mindestens ein persönlicher Bezug je Nachricht, nichts aus der Kopiervorlage ohne Anpassung.</span></li>
+        <li><span class="nr">·</span><span>Eine Frage je Nachricht, kurz genug für das Handy.</span></li>
+        <li><span class="nr">·</span><span>Jeden Tag 15 Minuten statt einmal im Monat drei Stunden.</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Vorher: Ihr eigenes Profil</p>
+      <ul class="liste">
+        <li><span class="kreuz"></span><span>Ein aktuelles, freundliches Foto</span></li>
+        <li><span class="kreuz"></span><span>Eine Zeile unter dem Namen, die sagt, wem Sie wobei helfen</span></li>
+        <li><span class="kreuz"></span><span>Ein Infotext mit einem Beispiel und einem Kontaktweg</span></li>
+        <li><span class="kreuz"></span><span>Ein paar eigene Beiträge oder Kommentare aus den letzten Wochen</span></li>
+      </ul>
+    </div>
+  </div>
+  <p class="hinweis"><b>Hinweis, keine Rechtsberatung:</b> Eine angenommene Vernetzung ist keine Einwilligung in Werbung. Bleiben Sie persönlich und fragen Sie, statt zu werben.</p>
+</section>
+
+<!-- 7 · Mail auf Anfrage -->
+<section class="seite">
+  <p class="vorzeile">Erstkontakt · Leitfaden 3</p>
+  <h2 class="blatt">Mail auf eine Anfrage</h2>
+  <p class="unter">Eine Anfrage ist das Wertvollste, was der Vertrieb bekommen kann: Jemand hat ein Problem und denkt dabei an Sie. Antworten Sie schnell, konkret und mit einem Vorschlag für das Gespräch. Wenn Sie eine Telefonnummer haben, rufen Sie zuerst an und schicken die Mail danach.</p>
+
+  <div class="zwei" style="grid-template-columns: 1fr 1.35fr">
+    <div>
+      <p class="abschnitt-titel">Sieben Regeln</p>
+      <ol class="regeln">
+        <li><span class="nr">1</span><span>Innerhalb eines Werktags antworten, am besten am selben Tag.</span></li>
+        <li><span class="nr">2</span><span>Im Betreff die Anfrage aufgreifen, nicht „Ihre Anfrage“.</span></li>
+        <li><span class="nr">3</span><span>Danken und zeigen, dass Sie die Anfrage gelesen haben.</span></li>
+        <li><span class="nr">4</span><span>In zwei Sätzen sagen, wer Sie sind und für wen Sie arbeiten.</span></li>
+        <li><span class="nr">5</span><span>Die konkrete Frage beantworten, soweit es ohne Gespräch geht.</span></li>
+        <li><span class="nr">6</span><span>Ein Gespräch mit zwei Terminen vorschlagen.</span></li>
+        <li><span class="nr">7</span><span>Höchstens drei Fragen zur Vorbereitung, und eine Telefonnummer in der Signatur.</span></li>
+      </ol>
+    </div>
+    <div class="vorlage" style="margin-top:4.6mm">
+      <p class="art">E-Mail</p>
+      <p class="betreff">Betreff: <span class="lz">Thema der Anfrage</span>: Vorschlag für ein kurzes Gespräch</p>
+      <p>Guten Tag <span class="lz">Frau / Herr Name</span>,</p>
+      <p>danke für Ihre Anfrage zu <span class="lz">Thema</span>. Sie schreiben, dass <span class="lz">Problem in den Worten des Kunden</span>. Das hören wir oft, und es lässt sich gut lösen.</p>
+      <p>Kurz zu uns: Wir unterstützen <span class="lz">Zielgruppe</span> dabei, <span class="lz">Ergebnis</span>. Zu Ihrer Frage nach <span class="lz">Frage</span>: <span class="lz">kurze Antwort</span>.</p>
+      <p>Damit ich Ihnen etwas Passendes vorschlagen kann, würde ich gern 30 Minuten mit Ihnen sprechen. Passt Ihnen <span class="lz">Tag, Uhrzeit</span> oder <span class="lz">Tag, Uhrzeit</span>?</p>
+      <p>Zur Vorbereitung helfen mir drei Angaben: <span class="lz">Frage 1</span>, <span class="lz">Frage 2</span>, <span class="lz">Frage 3</span>.</p>
+      <p>Viele Grüße<br><span class="lz">Name, Funktion, Telefon</span></p>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Rückruf auf eine Anfrage <small>Telefon, vor oder statt der Mail</small></p>
+  <div class="vorlage"><p>„Guten Tag <span class="lz">Name</span>, hier ist <span class="lz">Ihr Name</span> von <span class="lz">Firma</span>. Sie hatten heute über unsere Website nach <span class="lz">Thema</span> gefragt, danke dafür. Haben Sie gerade fünf Minuten, damit ich verstehe, worum es geht? Dann kann ich Ihnen sagen, ob und wie wir helfen können.“</p></div>
+
+  <p class="abschnitt-titel">Wenn die Anfrage nicht zu Ihnen passt</p>
+  <div class="vorlage"><p>„Danke für Ihre Anfrage. Nach Ihrer Beschreibung passt <span class="lz">Thema</span> nicht zu dem, was wir am besten können. Statt Ihnen etwas Halbes anzubieten, empfehle ich Ihnen, nach <span class="lz">Art von Anbieter</span> zu suchen. Wenn sich bei <span class="lz">passendes Thema</span> etwas ergibt, melden Sie sich gern.“</p></div>
+  <p class="klein" style="margin-top:1.6mm">Eine ehrliche Absage kostet nichts, bleibt in Erinnerung und kommt manchmal als Empfehlung zurück.</p>
+
+  <p class="abschnitt-titel">Fragen zur Vorbereitung, die sich eignen <small>höchstens drei auswählen</small></p>
+  <div class="zwei">
+    <ul class="regeln">
+      <li><span class="nr">·</span><span>„Wie lösen Sie <span class="lz">Aufgabe</span> heute, mit welchem Werkzeug?“</span></li>
+      <li><span class="nr">·</span><span>„Wie viele Personen arbeiten daran oder sind betroffen?“</span></li>
+      <li><span class="nr">·</span><span>„Was hat Sie gerade jetzt zu der Anfrage bewegt?“</span></li>
+    </ul>
+    <ul class="regeln">
+      <li><span class="nr">·</span><span>„Bis wann soll das gelöst sein?“</span></li>
+      <li><span class="nr">·</span><span>„Wer sollte beim Gespräch noch dabei sein?“</span></li>
+      <li><span class="nr">·</span><span>„Gibt es Unterlagen, die ich vorher ansehen sollte?“</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- 8 · BANT erklärt -->
+<section class="seite">
+  <p class="vorzeile">Bedarfsgespräch · Grundlage</p>
+  <h2 class="blatt">BANT auf Deutsch: vier Fragen, die entscheiden</h2>
+  <p class="unter">BANT ist ein bewährtes Raster, um zu prüfen, ob aus einem Kontakt ein Auftrag werden kann. Die vier Buchstaben stehen für Budget, Authority, Need und Timing. Wir übersetzen sie mit Mittel, Entscheidung, Bedarf und Zeitpunkt.</p>
+
+  <div class="bant">
+    <div><p class="buchst">B</p><p class="engl">Budget</p><h3>Mittel</h3><p>Gibt es Geld dafür, oder kann es beschafft werden?</p>
+      <p class="t">Gutes Zeichen</p><ul><li>Ein Rahmen wird genannt oder ist eingeplant</li><li>Der Weg zur Freigabe ist bekannt</li></ul>
+      <p class="t">Warnzeichen</p><ul><li>„Wir schauen erst mal, was es kostet“ ohne jede Vorstellung</li><li>Niemand weiß, aus welchem Topf es kommt</li></ul></div>
+    <div><p class="buchst">A</p><p class="engl">Authority</p><h3>Entscheidung</h3><p>Wer entscheidet, wer redet mit, und wie läuft eine Entscheidung ab?</p>
+      <p class="t">Gutes Zeichen</p><ul><li>Die entscheidende Person sitzt im Gespräch</li><li>Ablauf und Kriterien werden offen erklärt</li></ul>
+      <p class="t">Warnzeichen</p><ul><li>„Das entscheidet jemand anders“, ohne Namen</li><li>Kein Zugang zu der Person, die unterschreibt</li></ul></div>
+    <div><p class="buchst">N</p><p class="engl">Need</p><h3>Bedarf</h3><p>Welches Problem soll gelöst werden, und was kostet es, wenn es bleibt?</p>
+      <p class="t">Gutes Zeichen</p><ul><li>Der Kunde beschreibt das Problem in eigenen Worten</li><li>Die Folgen sind spürbar oder sogar beziffert</li></ul>
+      <p class="t">Warnzeichen</p><ul><li>„Wäre schön zu haben“</li><li>Das Problem stört Sie mehr als den Kunden</li></ul></div>
+    <div><p class="buchst">T</p><p class="engl">Timing</p><h3>Zeitpunkt</h3><p>Bis wann muss es gelöst sein, und warum gerade dann?</p>
+      <p class="t">Gutes Zeichen</p><ul><li>Ein Datum mit Grund: Frist, Projekt, Saison</li><li>Es ist klar, was vorher passieren muss</li></ul>
+      <p class="t">Warnzeichen</p><ul><li>„Irgendwann dieses Jahr“</li><li>Andere Themen haben ausdrücklich Vorrang</li></ul></div>
+  </div>
+
+  <p class="abschnitt-titel">Die Reihenfolge im Gespräch: Bedarf, Zeitpunkt, Entscheidung, Mittel</p>
+  <div class="regelkasten">
+    <div><b>Zuerst</b><h3>Bedarf</h3><p>Ohne Problem gibt es nichts zu entscheiden und nichts zu bezahlen. Wer mit dem Budget anfängt, wirkt wie ein Verkäufer, der nur ans Geld denkt.</p></div>
+    <div><b>Dann</b><h3>Zeitpunkt und Entscheidung</h3><p>Wenn das Problem klar ist, fragt es sich leicht: „Bis wann?“ und „Wer entscheidet mit?“ Beides klingt dann nach Planung, nicht nach Druck.</p></div>
+    <div><b>Zum Schluss</b><h3>Mittel</h3><p>Nach Bedarf und Folgen ist die Frage nach dem Rahmen natürlich. Nennen Sie notfalls zuerst eine Spanne, dann reagiert Ihr Gegenüber darauf.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Übung, 15 Minuten · Ihre letzten verlorenen Angebote <small>Was war wirklich klar, bevor Sie das Angebot geschickt haben?</small></p>
+  <table class="raster">
+    <colgroup><col style="width:38mm"><col style="width:15mm"><col style="width:19mm"><col style="width:15mm"><col style="width:18mm"><col></colgroup>
+    <thead><tr><th>Angebot an</th><th class="mitte">Mittel</th><th class="mitte">Entschei&shy;dung</th><th class="mitte">Bedarf</th><th class="mitte">Zeitpunkt</th><th>Was hätte ich früher fragen müssen?</th></tr></thead>
+    <tbody>
+      <tr><td style="height:9mm"></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td></td></tr>
+      <tr><td style="height:9mm"></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td></td></tr>
+      <tr><td style="height:9mm"></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td class="mitte"><span class="kreuz"></span></td><td></td></tr>
+    </tbody>
+  </table>
+  <p class="klein" style="margin-top:1.2mm">Ankreuzen, was vor dem Angebot klar war. Fehlt in mehreren Zeilen dasselbe Kreuz, haben Sie Ihre wichtigste Frage für die nächsten Gespräche gefunden.</p>
+
+  <p class="hinweis"><b>BANT ist kein Verhör.</b> Die vier Punkte sind eine Merkhilfe für Sie, keine Fragenliste zum Abhaken. Ein gutes Bedarfsgespräch fühlt sich für den Kunden wie Beratung an. Was im ersten Gespräch offen bleibt, klären Sie im nächsten.</p>
+</section>
+
+<!-- 9 · Bedarfsgespräch -->
+<section class="seite">
+  <p class="vorzeile">Bedarfsgespräch · Leitfaden 4</p>
+  <h2 class="blatt">Das Bedarfsgespräch in 30 Minuten</h2>
+  <p class="unter">Ziel ist Klarheit für beide Seiten: Gibt es ein Problem, das sich zu lösen lohnt, und passen Sie dazu? Am Ende steht ein Angebotstermin oder ein ehrliches Nein.</p>
+
+  <table class="zeitplan">
+    <colgroup><col style="width:14mm"><col style="width:30mm"><col style="width:42mm"><col></colgroup>
+    <thead><tr><th>Minute</th><th>Teil</th><th>Ziel</th><th>So klingt es</th></tr></thead>
+    <tbody>
+      <tr><td>0–3</td><td>Einstieg</td><td>Rahmen setzen, Erlaubnis für Fragen</td><td class="rede">„Danke für Ihre Zeit. Mein Vorschlag für die halbe Stunde: Sie erzählen, wie es heute läuft und wo es hakt, ich stelle Fragen. Am Ende sagen wir beide offen, ob und wie es weitergeht. Passt das?“</td></tr>
+      <tr><td>3–15</td><td>Bedarf</td><td>Lage, Problem, Folgen, Ziel verstehen</td><td class="rede">„Wie läuft <span class="lz">Aufgabe</span> heute ab?“ · „Woran merken Sie, dass es hakt?“ · „Was kostet Sie das im Monat?“ · „Was passiert, wenn es so bleibt?“</td></tr>
+      <tr><td>15–18</td><td>Zeitpunkt</td><td>Datum mit Grund</td><td class="rede">„Bis wann sollte das gelöst sein, und was passiert an diesem Datum?“</td></tr>
+      <tr><td>18–22</td><td>Entscheidung</td><td>Wer, wie, nach welchen Punkten</td><td class="rede">„Wie entscheiden Sie bei Ihnen über so etwas? Wer ist außer Ihnen beteiligt?“</td></tr>
+      <tr><td>22–25</td><td>Mittel</td><td>Rahmen und Weg zur Freigabe</td><td class="rede">„Haben Sie einen Rahmen im Kopf, oder soll ich Ihnen zuerst Größenordnungen nennen? Ähnliche Vorhaben liegen bei uns zwischen <span class="lz">Betrag</span> und <span class="lz">Betrag</span>.“</td></tr>
+      <tr><td>25–28</td><td>Zusammenfassen</td><td>Verständnis bestätigen lassen</td><td class="rede">„Habe ich es richtig verstanden: Heute <span class="lz">Lage</span>, das kostet Sie <span class="lz">Folge</span>, und bis <span class="lz">Datum</span> soll <span class="lz">Ziel</span> erreicht sein. Stimmt das so?“</td></tr>
+      <tr><td>28–30</td><td>Nächster Schritt</td><td>Angebotstermin oder ehrliches Nein</td><td class="rede">„Ich mache Ihnen bis <span class="lz">Tag</span> einen Vorschlag mit zwei Varianten. Lassen Sie uns gleich 20 Minuten am <span class="lz">Tag</span> festhalten, in denen ich ihn Ihnen und <span class="lz">Person</span> vorstelle.“</td></tr>
+    </tbody>
+  </table>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Was gut läuft</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Der Kunde redet mehr als Sie, deutlich.</span></li>
+        <li><span class="nr">·</span><span>Sie haben mindestens einen Satz wörtlich notiert.</span></li>
+        <li><span class="nr">·</span><span>Die Folgen des Problems haben eine Zahl.</span></li>
+        <li><span class="nr">·</span><span>Sie wissen, wer neben Ihrem Gegenüber entscheidet.</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Was Sie lassen</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Eine Präsentation zeigen, bevor der Bedarf klar ist.</span></li>
+        <li><span class="nr">·</span><span>Einen Preis nennen, bevor Sie wissen, was gebraucht wird.</span></li>
+        <li><span class="nr">·</span><span>Ein Angebot versprechen, ohne einen Termin, es zu besprechen.</span></li>
+        <li><span class="nr">·</span><span>Bei wenig Bedarf trotzdem ein Angebot schreiben, aus Höflichkeit.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Die Einladung zum Bedarfsgespräch <small>direkt nach dem Erstkontakt</small></p>
+  <div class="vorlage">
+    <p class="betreff">Betreff: <span class="lz">Thema</span>: unser Gespräch am <span class="lz">Tag, Uhrzeit</span></p>
+    <p>Guten Tag <span class="lz">Name</span>, danke für das kurze Telefonat. Wie besprochen sprechen wir am <span class="lz">Tag</span> um <span class="lz">Uhrzeit</span> 30 Minuten per Video, der Link ist in der Einladung. Mein Vorschlag für den Ablauf: Sie erzählen, wie <span class="lz">Aufgabe</span> heute läuft, ich stelle Fragen, und am Ende klären wir, ob und wie es weitergeht. Zur Vorbereitung hilft mir: <span class="lz">Frage 1</span> und <span class="lz">Frage 2</span>. Viele Grüße, <span class="lz">Name</span></p>
+  </div>
+</section>
+
+<!-- 10 · Fragenkatalog -->
+<section class="seite">
+  <p class="vorzeile">Bedarfsgespräch · Fragen</p>
+  <h2 class="blatt">Fragenkatalog nach BANT</h2>
+  <p class="unter">Wählen Sie je Gespräch zwei bis drei Fragen je Punkt. Die mit ★ sollten Sie in keinem Gespräch auslassen.</p>
+  <div class="katalog" id="katalog"></div>
+
+  <p class="abschnitt-titel">Wenn die Antwort ausweicht</p>
+  <ul class="regeln">
+    <li><span class="nr">·</span><span><b>Konkret nachfragen:</b> „Können Sie mir ein Beispiel aus den letzten Wochen geben?“ Beispiele sind ehrlicher als Einschätzungen.</span></li>
+    <li><span class="nr">·</span><span><b>Eine Spanne anbieten:</b> „Eher zehn Stunden im Monat oder eher fünfzig?“ Wer zwischen zwei Zahlen wählt, antwortet leichter.</span></li>
+    <li><span class="nr">·</span><span><b>Offen sagen, warum Sie fragen:</b> „Ich frage, damit ich Ihnen nichts anbiete, was nicht in Ihren Rahmen passt.“</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Fragen, die Sie besser anders stellen</p>
+  <ul class="fehler" style="margin-top:.6mm">
+    <li class="kopfzeile"><span></span><span>So nicht</span><span>Besser</span></li>
+    <li><span class="nr">1</span><span>„Haben Sie Budget?“ <span class="leise">Ja oder nein sagt wenig.</span></span><span class="besser">„Wie wird so etwas bei Ihnen üblicherweise bezahlt?“</span></li>
+    <li><span class="nr">2</span><span>„Sind Sie der Entscheider?“ <span class="leise">Niemand sagt gern nein.</span></span><span class="besser">„Wer ist außer Ihnen an so einer Entscheidung beteiligt?“</span></li>
+    <li><span class="nr">3</span><span>„Sie wollen doch auch Kosten sparen?“ <span class="leise">Macht misstrauisch.</span></span><span class="besser">„Was würde sich ändern, wenn das gelöst wäre?“</span></li>
+    <li><span class="nr">4</span><span>„Wann wollen Sie kaufen?“ <span class="leise">Klingt nach Druck.</span></span><span class="besser">„Bis wann sollte das gelöst sein, und warum dann?“</span></li>
+  </ul>
+</section>
+
+<!-- 11 · Gesprächsnotiz -->
+<section class="seite">
+  <p class="vorzeile">Festhalten · Bogen</p>
+  <h2 class="blatt">Gesprächsnotiz Bedarfsgespräch</h2>
+  <p class="so"><b>So füllen Sie sie aus</b>Während des Gesprächs Stichworte, direkt danach in zehn Minuten ins Reine schreiben. Wörtliche Sätze des Kunden in Anführungszeichen. Danach vergeben Sie die Punkte auf Seite 12.</p>
+
+  <div class="notiz" style="margin-top:2.6mm">
+    <div class="block"><div class="drei"><p class="feld"><span>Firma</span><span class="strich"></span></p><p class="feld"><span>Gesprächspartner, Rolle</span><span class="strich"></span></p><p class="feld"><span>Datum, Dauer</span><span class="strich"></span></p></div>
+      <div class="zwei" style="margin-top:.6mm"><p class="feld"><span>Dabei waren</span><span class="strich"></span></p><p class="feld"><span>Anlass, Herkunft des Kontakts</span><span class="strich"></span></p></div></div>
+    <div class="block"><h3>Ausgangslage <small>wie läuft es heute?</small></h3><div class="linien eng" data-linien="3"></div></div>
+    <div class="block"><h3>Bedarf <small>Problem, Folgen mit Zahl, Ziel</small></h3><div class="linien eng" data-linien="5"></div></div>
+    <div class="block"><h3>Wörtlich <small>der wichtigste Satz des Kunden</small></h3><div class="linien eng" data-linien="1"></div></div>
+    <div class="block"><h3>Zeitpunkt <small>bis wann, und warum dann?</small></h3><div class="linien eng" data-linien="1"></div></div>
+    <div class="block"><h3>Entscheidung <small>wer entscheidet, wer redet mit, nach welchen Punkten?</small></h3><div class="linien eng" data-linien="3"></div></div>
+    <div class="block"><h3>Mittel <small>Rahmen, Topf, Weg zur Freigabe</small></h3><div class="linien eng" data-linien="2"></div></div>
+    <div class="block"><h3>Wettbewerb und andere Optionen <small>auch: selbst machen, nichts tun</small></h3><div class="linien eng" data-linien="1"></div></div>
+    <div class="block"><h3>Offene Fragen</h3><div class="linien eng" data-linien="2"></div></div>
+    <div class="block" style="border-bottom:0"><h3>Nächster Schritt</h3><div class="drei" style="grid-template-columns:2fr 1fr 1fr"><p class="feld"><span>Was</span><span class="strich"></span></p><p class="feld"><span>Wer</span><span class="strich"></span></p><p class="feld"><span>Bis wann</span><span class="strich"></span></p></div></div>
+  </div>
+  <p class="klein" style="margin-top:1.6mm">Notizen enthalten Daten über Personen: nur Sachliches aufschreiben, sicher ablegen, im CRM statt in privaten Dateien.</p>
+</section>
+
+<!-- 12 · Qualifizierungs-Bogen -->
+<section class="seite">
+  <p class="vorzeile">Bewerten · Bogen</p>
+  <h2 class="blatt">Qualifizierungs-Bogen mit Punkten</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Kreuzen Sie je Zeile die Stufe an, die nach dem Gespräch belegt ist, nicht die, die Sie hoffen. Im Zweifel die niedrigere. Zählen Sie die Punkte zusammen und prüfen Sie die drei Regeln unten. Die Tabelle zum Paket rechnet dasselbe für alle Kontakte.</p>
+  <div class="reihe"><p class="feld breit"><span>Firma, Kontakt</span><span class="strich"></span></p><p class="feld"><span>Gespräch am</span><span class="strich"></span></p><p class="feld"><span>bewertet von</span><span class="strich"></span></p></div>
+
+  <table class="punkte">
+    <colgroup><col style="width:24mm"><col><col><col><col><col style="width:15mm"></colgroup>
+    <thead><tr><th>Punkt</th><th><span class="p">0</span> · nicht erkennbar</th><th><span class="p">1</span> · schwach</th><th><span class="p">2</span> · gut</th><th><span class="p">3</span> · klar</th><th style="text-align:center">Punkte</th></tr></thead>
+    <tbody id="punkte-leer"></tbody>
+    <tbody><tr><td style="border-top:.9pt solid var(--haar-stark)">Summe</td><td colspan="4" style="border-top:.9pt solid var(--haar-stark);color:var(--tinte-leise)">von 12 möglichen Punkten</td><td class="wahl-zelle" style="border-top:.9pt solid var(--haar-stark)"><span class="kasten"></span></td></tr></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Auswertung <small>Startwerte, nach einigen Monaten an Ihre Erfahrung anpassen</small></p>
+  <div class="regelkasten" style="margin-top:2mm">
+    <div><b>Bereit fürs Angebot</b><h3>mindestens 8 Punkte</h3><p>und Bedarf mindestens 2 und kein Punkt bei 0. Angebot mit Besprechungstermin (Seite 14).</p><p style="margin-top:1.6mm"><span class="wahl"><span class="kreuz"></span>trifft zu</span></p></div>
+    <div><b>Weiter qualifizieren</b><h3>alles dazwischen</h3><p>etwa 5 bis 7 Punkte oder ein Punkt bei 0. Gezielt die schwache Stelle klären, dann neu bewerten.</p><p style="margin-top:1.6mm"><span class="wahl"><span class="kreuz"></span>trifft zu</span></p></div>
+    <div><b>Pflegen</b><h3>höchstens 4 Punkte</h3><p>oder Bedarf bei 0. Kein Angebot. Wissen teilen, eine Wiedervorlage vereinbaren, freundlich in Kontakt bleiben.</p><p style="margin-top:1.6mm"><span class="wahl"><span class="kreuz"></span>trifft zu</span></p></div>
+  </div>
+
+  <p class="abschnitt-titel">Was tun, wenn ein Punkt schwach ist</p>
+  <ul class="wenn">
+    <li><span>Bedarf bei 0 oder 1</span><span>Kein Angebot. Fragen Sie nach den Folgen, teilen Sie ein Beispiel, vereinbaren Sie eine Wiedervorlage mit Anlass.</span></li>
+    <li><span>Entscheidung bei 0 oder 1</span><span>Einen Termin mit der Person vorschlagen, die entscheidet, oder eine Seite für den Weg nach innen anbieten.</span></li>
+    <li><span>Zeitpunkt bei 0 oder 1</span><span>Wiedervorlage vier Wochen vor dem genannten Zeitpunkt. Bis dahin nur mit echtem Mehrwert melden.</span></li>
+    <li><span>Mittel bei 0 oder 1</span><span>Eine Spanne nennen und eine kleinere Variante anbieten, die in einen vorhandenen Topf passt.</span></li>
+  </ul>
+</section>
+
+<!-- 13 · Beispiel -->
+<section class="seite">
+  <p class="vorzeile bsp">Beispiel · frei erfunden</p>
+  <h2 class="blatt">Ein Ingenieurbüro sucht eine Zeiterfassung</h2>
+  <p class="unter">Ein Anbieter für Zeiterfassung und Projektabrechnung führt das Bedarfsgespräch mit dem Büroleiter eines Ingenieurbüros mit 35 Beschäftigten. Die Anfrage kam über die Website. So sehen Notiz und Bewertung danach aus.</p>
+
+  <div class="notiz bsp" style="margin-top:2.4mm">
+    <div class="block"><h3>Ausgangslage</h3><p class="eintrag">Stunden werden in Tabellen erfasst, jede Woche von der Büroleitung zusammengeführt. Zwei Partner, 35 Beschäftigte, rund 60 laufende Projekte.</p></div>
+    <div class="block"><h3>Bedarf</h3><p class="eintrag">Stunden kommen zu spät und unvollständig. Schätzung des Büroleiters: 20 bis 30 Stunden im Monat, die nicht abgerechnet werden. Dazu zwei Tage Arbeit zum Quartalsende. Ziel: Stunden täglich am Handy, Abrechnung je Projekt auf Knopfdruck.</p></div>
+    <div class="block"><h3>Wörtlich</h3><p class="eintrag zitat">„Wir arbeiten gut, aber wir rechnen schlecht ab.“</p></div>
+    <div class="block"><h3>Zeitpunkt</h3><p class="eintrag">Start zum neuen Geschäftsjahr in rund fünf Monaten. Grund: Die Partner wollen ab dann die Zahlen je Projekt monatlich sehen, auch für das Jahresgespräch mit der Bank.</p></div>
+    <div class="block"><h3>Entscheidung</h3><p class="eintrag">Die beiden Partner entscheiden gemeinsam, der Büroleiter bereitet vor und empfiehlt. Kriterien: einfach für die Beschäftigten, Daten in Deutschland, Kosten im ersten Jahr.</p></div>
+    <div class="block"><h3>Mittel</h3><p class="eintrag">Rahmen „bis etwa 8.000 Euro im ersten Jahr“, Freigabe durch die Partner, kein eigener Topf. Wird aus den Mehreinnahmen begründet.</p></div>
+    <div class="block"><h3>Wettbewerb und andere Optionen</h3><p class="eintrag">Ein zweites Angebot liegt vor. Selber weitermachen mit Tabellen ist für den Büroleiter keine Option mehr.</p></div>
+    <div class="block" style="border-bottom:0"><h3>Nächster Schritt</h3><p class="eintrag">Angebot mit zwei Varianten bis Freitag. Vorstellung am Dienstag, 10 Uhr, per Video mit beiden Partnern. Vorher eine Rechnung der nicht abgerechneten Stunden schicken.</p></div>
+  </div>
+
+  <p class="abschnitt-titel akzent">Die Bewertung</p>
+  <table class="punkte gefuellt">
+    <colgroup><col style="width:26mm"><col><col style="width:16mm"></colgroup>
+    <thead><tr><th>Punkt</th><th>Begründung</th><th>Punkte</th></tr></thead>
+    <tbody>
+      <tr><td>Bedarf</td><td>Problem in eigenen Worten, Folgen mit Zahl, Ziel klar.</td><td class="an">3</td></tr>
+      <tr><td>Zeitpunkt</td><td>Datum mit Grund, Start in rund fünf Monaten.</td><td class="an">2</td></tr>
+      <tr><td>Entscheidung</td><td>Partner bekannt, aber noch nicht im Gespräch. Termin mit beiden steht.</td><td class="an">2</td></tr>
+      <tr><td>Mittel</td><td>Rahmen genannt, passt zur kleineren Variante. Freigabe offen.</td><td class="an">2</td></tr>
+      <tr><td>Summe</td><td><b class="akzent">Bereit fürs Angebot:</b> 9 Punkte, Bedarf 3, kein Punkt bei 0.</td><td class="an">9</td></tr>
+    </tbody>
+  </table>
+  <p class="klein" style="margin-top:1.6mm">Büro, Anbieter, Zahlen und Zitate sind frei erfunden.</p>
+</section>
+
+<!-- 14 · Übergang zum Angebot -->
+<section class="seite">
+  <p class="vorzeile">Vom Gespräch zum Angebot</p>
+  <h2 class="blatt">Das Angebot vorstellen, nicht nur schicken</h2>
+  <p class="unter">Ein Angebot per Mail wird nebenbei gelesen, falsch verstanden oder ohne Sie weitergeleitet. Eines, das Sie in 20 Minuten vorstellen, wird verstanden. Den Termin dafür vereinbaren Sie noch im Bedarfsgespräch.</p>
+
+  <p class="abschnitt-titel">Drei Sätze, die den Übergang machen</p>
+  <ol class="skript" style="border-top:0; margin-top:.6mm">
+    <li><span class="nr">1</span><div><h3>Zusammenfassen</h3><span class="dauer">und bestätigen lassen</span></div><div><p class="sagen">„Habe ich es richtig verstanden: Heute <span class="lz">Lage</span>. Das kostet Sie <span class="lz">Folge mit Zahl</span>. Bis <span class="lz">Datum</span> wollen Sie <span class="lz">Ziel</span>. Entscheiden werden <span class="lz">Personen</span>, wichtig sind <span class="lz">Kriterien</span>. Stimmt das so?“</p><p class="achten"><b>Achten auf:</b> warten, bis ein klares Ja kommt. Ergänzungen des Kunden aufschreiben.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Ankündigen</h3><span class="dauer">mit zwei Varianten</span></div><div><p class="sagen">„Dann schlage ich vor, dass ich Ihnen bis <span class="lz">Tag</span> ein Angebot mit zwei Varianten mache: eine, die <span class="lz">Kernproblem</span> löst, und eine, die zusätzlich <span class="lz">Erweiterung</span> abdeckt.“</p><p class="achten"><b>Achten auf:</b> zwei, höchstens drei Varianten. Mehr Auswahl macht die Entscheidung schwerer.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Termin festhalten</h3><span class="dauer">mit allen, die entscheiden</span></div><div><p class="sagen">„Lassen Sie uns gleich 20 Minuten festhalten, in denen ich es Ihnen und <span class="lz">Person</span> vorstelle. Dann können Sie Fragen direkt klären. Passt <span class="lz">Tag, Uhrzeit</span>?“</p><p class="achten"><b>Achten auf:</b> Will Ihr Gegenüber das Angebot „erst mal in Ruhe lesen“, schicken Sie es und vereinbaren den Termin zwei Tage danach.</p></div></li>
+  </ol>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Prüfliste vor dem Angebot</p>
+      <ul class="liste">
+        <li><span class="kreuz"></span><span>Der Bedarf steht in den Worten des Kunden im Angebot.</span></li>
+        <li><span class="kreuz"></span><span>Die Folgen des Problems haben eine Zahl.</span></li>
+        <li><span class="kreuz"></span><span>Alle, die entscheiden, sind beim Vorstellen dabei.</span></li>
+        <li><span class="kreuz"></span><span>Der Zeitpunkt und sein Grund stehen im Angebot.</span></li>
+        <li><span class="kreuz"></span><span>Der Preis passt zum genannten Rahmen, oder Sie erklären, warum nicht.</span></li>
+        <li><span class="kreuz"></span><span>Der Termin zum Vorstellen steht im Kalender.</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Wenn es noch nicht so weit ist</p>
+      <div class="vorlage" style="margin-top:2.6mm"><p class="art">Ehrlich sagen</p><p>„Nach dem, was Sie erzählt haben, würde ich Ihnen heute noch kein Angebot schicken. Es wäre zu früh, weil <span class="lz">offener Punkt</span>. Mein Vorschlag: Wir klären zuerst <span class="lz">Punkt</span>, zum Beispiel in einem kurzen Gespräch mit <span class="lz">Person</span>. Danach weiß ich, was Ihnen wirklich hilft.“</p></div>
+      <p class="klein" style="margin-top:1.8mm">Ein zu frühes Angebot landet in der Schublade und macht Ihren Preis zum Thema, bevor der Wert klar ist. Ein ehrlicher Zwischenschritt baut Vertrauen auf.</p>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Ein Angebot, das man auch ohne Sie versteht <small>sechs Teile, in dieser Reihenfolge</small></p>
+  <table class="zeitplan" style="margin-top:1.2mm">
+    <colgroup><col style="width:9mm"><col style="width:42mm"><col></colgroup>
+    <tbody>
+      <tr><td>1</td><td>Ausgangslage</td><td>In den Worten des Kunden, mit der Zahl aus dem Gespräch.</td></tr>
+      <tr><td>2</td><td>Ziel</td><td>Was nach dem Projekt anders ist, und bis wann.</td></tr>
+      <tr><td>3</td><td>Vorschlag mit Varianten</td><td>Zwei, höchstens drei Varianten: was enthalten ist und was nicht.</td></tr>
+      <tr><td>4</td><td>Ablauf</td><td>Die ersten Wochen Schritt für Schritt, mit dem Aufwand für sein Team.</td></tr>
+      <tr><td>5</td><td>Preis und Bedingungen</td><td>Klar, ohne Kleingedrucktes, mit Zahlungsplan und Laufzeit.</td></tr>
+      <tr><td>6</td><td>Nächster Schritt</td><td>Was der Kunde tun muss, um zu starten, und bis wann das Angebot gilt.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 15 · Nachfassen -->
+<section class="seite">
+  <p class="vorzeile">Nachfassen</p>
+  <h2 class="blatt">Der Takt nach dem Gespräch</h2>
+  <p class="unter">Die meisten Angebote scheitern nicht am Preis, sondern an der Stille danach. Legen Sie den nächsten Kontakt immer im Gespräch fest und bringen Sie mit jeder Nachricht etwas Neues mit: eine Antwort, ein Beispiel, eine Erleichterung.</p>
+
+  <div class="takt">
+    <div><b>Tag 0</b><h3>Zusammenfassung</h3><p class="kanal">Mail, am selben Tag</p><p class="rede">„Danke für das Gespräch. Wie besprochen die drei wichtigsten Punkte: <span class="lz">Punkte</span>. Ihr Angebot kommt bis <span class="lz">Tag</span>, wir sprechen am <span class="lz">Termin</span>.“</p></div>
+    <div><b>Tag 2 nach Angebot</b><h3>Angekommen?</h3><p class="kanal">Anruf, zwei Minuten</p><p class="rede">„Ist das Angebot gut angekommen? Gibt es beim ersten Lesen Fragen, die ich vor unserem Termin klären kann?“</p></div>
+    <div><b>Tag 7</b><h3>Mehrwert</h3><p class="kanal">Mail, kurz</p><p class="rede">„Mir ist noch etwas zu <span class="lz">Frage</span> eingefallen: <span class="lz">Gedanke oder Beispiel</span>. Vielleicht hilft es bei der Entscheidung.“</p></div>
+    <div><b>Tag 14</b><h3>Stand klären</h3><p class="kanal">Anruf</p><p class="rede">„Wo stehen Sie mit der Entscheidung? Gibt es etwas, das noch fehlt oder nicht passt?“</p></div>
+    <div><b>Tag 21</b><h3>Letzte Nachricht</h3><p class="kanal">Mail</p><p class="rede">„Ich will nicht drängen. Wenn das Thema gerade nicht passt, sagen Sie es mir kurz, dann melde ich mich erst wieder, wenn Sie es möchten.“</p></div>
+  </div>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Regeln für den Takt</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Jede Nachricht hat einen neuen Inhalt. „Wollte nur mal nachfragen“ ist keiner.</span></li>
+        <li><span class="nr">·</span><span>Telefon und Mail abwechseln, nie zweimal hintereinander dieselbe Frage.</span></li>
+        <li><span class="nr">·</span><span>Jeden Kontakt sofort mit Datum und nächstem Schritt eintragen.</span></li>
+        <li><span class="nr">·</span><span>Sagt der Kunde ein Datum, gilt sein Datum, nicht der Takt.</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Was am Tag 7 mitkommen kann</p>
+      <ul class="regeln">
+        <li><span class="nr">·</span><span>Eine Antwort auf eine Frage, die im Gespräch offen blieb.</span></li>
+        <li><span class="nr">·</span><span>Ein kurzes Beispiel aus einem ähnlichen Betrieb.</span></li>
+        <li><span class="nr">·</span><span>Eine Rechnung, die der Kunde intern nutzen kann.</span></li>
+        <li><span class="nr">·</span><span>Eine Übersicht des Ablaufs der ersten vier Wochen.</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Wenn der Kunde zusagt</p>
+      <div class="vorlage"><p>„Danke für Ihr Vertrauen, darauf freuen wir uns. Als Nächstes <span class="lz">schicke ich Ihnen den Auftrag zur Unterschrift / stimmen wir den Starttermin ab</span>. Wer ist bei Ihnen unser Ansprechpartner für den Start?“</p></div>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Wenn der Kunde absagt</p>
+      <div class="vorlage"><p>„Danke, dass Sie es offen sagen. Eine Frage, auch zum Lernen: Woran lag es am Ende? Wenn Sie mögen, melde ich mich in <span class="lz">drei Monaten</span> einmal, wie es läuft.“</p></div>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Mein Nachfass-Plan <small>Daten vom Angebotstag aus rechnen und sofort in den Kalender</small></p>
+  <table class="raster">
+    <colgroup><col style="width:40mm"><col><col><col><col><col><col style="width:26mm"></colgroup>
+    <thead><tr><th>Kontakt</th><th>Angebot am</th><th>Tag 2</th><th>Tag 7</th><th>Tag 14</th><th>Tag 21</th><th>Ergebnis</th></tr></thead>
+    <tbody><tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr></tbody>
+  </table>
+
+  <p class="hinweis"><b>Hinweis, keine Rechtsberatung:</b> Nachfassen zu einem angefragten Angebot gehört zum laufenden Gespräch. Werbung zu anderen Themen per Mail braucht eine Einwilligung oder die Bestandskunden-Ausnahme (Seite 2). 25 fertige Vorlagen: Baustein „Nachfassen“.</p>
+</section>
+
+<!-- 16 · Branchen -->
+<section class="seite">
+  <p class="vorzeile">Anpassen · Varianten</p>
+  <h2 class="blatt">Drei Branchenarten, drei Varianten</h2>
+  <p class="unter">Der Ablauf bleibt gleich, die Worte ändern sich. Suchen Sie die Spalte, die Ihren Kunden am nächsten kommt, und übernehmen Sie Einstieg, Fragen und Hinweise in Ihren eigenen Leitfaden auf Seite 17.</p>
+  <table class="branchen">
+    <colgroup><col style="width:27mm"><col><col><col></colgroup>
+    <thead><tr><th></th><th>Beratende Dienstleister<small>z. B. Kanzleien, Agenturen, Ingenieurbüros</small></th><th>Handwerk, Bau, Produktion<small>z. B. Betriebe, Werkstätten, Hersteller</small></th><th>Software und IT-Dienste<small>z. B. Lizenzen, Abos, Betreuung</small></th></tr></thead>
+    <tbody id="branchen"></tbody>
+  </table>
+</section>
+
+<!-- 17 · Eigener Leitfaden -->
+<section class="seite">
+  <p class="vorzeile">Anpassen · Bogen</p>
+  <h2 class="blatt">Ihr eigener Leitfaden</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Schreiben Sie jeden Teil so, wie Sie sprechen, und lesen Sie ihn danach laut. Was beim Sprechen holpert, kürzen Sie. Testen Sie den Leitfaden in einem Rollenspiel, bevor Sie ihn im echten Gespräch nutzen.</p>
+  <div class="eigen" id="eigen"></div>
+</section>
+
+<!-- 18 · Fehler -->
+<section class="seite">
+  <p class="vorzeile">Fehler vermeiden</p>
+  <h2 class="blatt">Acht typische Fehler</h2>
+  <ul class="fehler" style="margin-top:2mm">
+    <li class="kopfzeile"><span></span><span>Fehler</span><span>Stattdessen</span></li>
+    <li><span class="nr">1</span><span><b>Am Telefon verkaufen.</b> Der Erstkontakt wird zur Präsentation, der Termin geht verloren.</span><span class="besser">Ein Ziel: der Termin. Alles andere kommt im Bedarfsgespräch.</span></li>
+    <li><span class="nr">2</span><span><b>Ohne Anlass anrufen.</b> Rechtlich riskant und am Telefon sofort spürbar.</span><span class="besser">Nur mit Anlass anrufen (Seite 2), sonst über Inhalte, Veranstaltungen oder Empfehlungen Kontakt aufbauen.</span></li>
+    <li><span class="nr">3</span><span><b>Mit dem Budget anfangen.</b> Wirkt, als ginge es nur ums Geld.</span><span class="besser">Erst Bedarf, dann Zeitpunkt und Entscheidung, zum Schluss Mittel.</span></li>
+    <li><span class="nr">4</span><span><b>Fragen abhaken.</b> Das Gespräch wird zum Verhör.</span><span class="besser">Auf Antworten eingehen, nachfragen, die Liste nur als Merkhilfe nutzen.</span></li>
+    <li><span class="nr">5</span><span><b>Zu früh eine Lösung zeigen.</b> Sie antworten auf Probleme, die der Kunde nicht hat.</span><span class="besser">Erst zusammenfassen und bestätigen lassen, dann zeigen.</span></li>
+    <li><span class="nr">6</span><span><b>Die Bewertung schönen.</b> Hoffnung wird zur Prognose.</span><span class="besser">Nur belegte Stufen ankreuzen, im Zweifel die niedrigere.</span></li>
+    <li><span class="nr">7</span><span><b>Angebot ohne Termin schicken.</b> Danach beginnt das Warten.</span><span class="besser">Den Vorstellungstermin noch im Bedarfsgespräch festhalten.</span></li>
+    <li><span class="nr">8</span><span><b>Nachfassen ohne Inhalt.</b> „Wollte nur mal hören“ nervt.</span><span class="besser">Jede Nachricht bringt eine Antwort, ein Beispiel oder eine Erleichterung mit.</span></li>
+  </ul>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Vor jedem Anruf</p>
+      <ul class="liste">
+        <li><span class="kreuz"></span><span>Anlass notiert und ehrlich aussprechbar</span></li>
+        <li><span class="kreuz"></span><span>Grund in einem Satz geübt</span></li>
+        <li><span class="kreuz"></span><span>Zwei Fragen und zwei Terminvorschläge bereit</span></li>
+        <li><span class="kreuz"></span><span>Antwort auf „Keine Zeit“ und „Kein Interesse“ parat</span></li>
+        <li><span class="kreuz"></span><span>Kurznotiz offen, um direkt danach einzutragen</span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Nach jedem Bedarfsgespräch</p>
+      <ul class="liste">
+        <li><span class="kreuz"></span><span>Notiz in zehn Minuten ins Reine geschrieben</span></li>
+        <li><span class="kreuz"></span><span>Punkte vergeben und eingetragen</span></li>
+        <li><span class="kreuz"></span><span>Zusammenfassung an den Kunden geschickt</span></li>
+        <li><span class="kreuz"></span><span>Nächster Termin im Kalender, mit Zweck</span></li>
+        <li><span class="kreuz"></span><span>Neue Einwände in die Bibliothek übernommen</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Ihr Wochenrhythmus für den Erstkontakt <small>feste Blöcke schlagen gute Vorsätze</small></p>
+  <table class="raster">
+    <colgroup><col style="width:30mm"><col style="width:56mm"><col><col style="width:28mm"></colgroup>
+    <thead><tr><th>Block</th><th>Vorschlag</th><th>Ihr Plan</th><th>Wann</th></tr></thead>
+    <tbody>
+      <tr><td style="color:var(--tinte)">Vorbereiten</td><td class="leise">60 Minuten: Anlässe sammeln, Kontakte und Fragen vorbereiten</td><td></td><td></td></tr>
+      <tr><td style="color:var(--tinte)">Anrufen</td><td class="leise">zweimal 60 Minuten am Stück, ohne Mails dazwischen</td><td></td><td></td></tr>
+      <tr><td style="color:var(--tinte)">LinkedIn</td><td class="leise">jeden Tag 15 Minuten: vernetzen, antworten, kommentieren</td><td></td><td></td></tr>
+      <tr><td style="color:var(--tinte)">Nachfassen</td><td class="leise">30 Minuten: Takt nach Seite 15 abarbeiten</td><td></td><td></td></tr>
+      <tr><td style="color:var(--tinte)">Rückblick</td><td class="leise">30 Minuten: Punkte prüfen, Zahlen der Woche, Einwand der Woche</td><td></td><td></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 19 · Nächste Schritte -->
+<section class="seite">
+  <p class="vorzeile">Zum Schluss</p>
+  <h2 class="blatt">Nächste Schritte</h2>
+  <p class="text" style="margin-top:2mm; max-width:160mm">Leitfäden wirken erst, wenn sie im Alltag benutzt werden. Passen Sie diese Woche einen an, testen Sie ihn im Rollenspiel und führen Sie damit die nächsten drei echten Gespräche.</p>
+
+  <p class="abschnitt-titel">Meine drei nächsten Schritte</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:34mm"><col style="width:30mm"></colgroup>
+    <thead><tr><th></th><th>Was</th><th>Wer</th><th>Bis wann</th></tr></thead>
+    <tbody>
+      <tr><td class="leise">1</td><td class="leise">Grund in einem Satz und eigenen Leitfaden schreiben (Seite 17)</td><td></td><td></td></tr>
+      <tr><td class="leise">2</td><td class="leise">Alle offenen Kontakte mit Punkten bewerten, in der Tabelle</td><td></td><td></td></tr>
+      <tr><td class="leise">3</td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Weiter mit Fokus Innovation</p>
+  <ol class="wege">
+    <li><span class="nr">1</span><div><h3>Ein Erstgespräch vereinbaren</h3><p class="adresse"><a href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></p><p>Kostenlos, 30 Minuten per Video. Wir schauen auf Ihre Leitfäden, Ihre Qualifizierung und darauf, wo zwischen Erstkontakt und Auftrag am meisten verloren geht.</p></div></li>
+    <li><span class="nr">2</span><div><h3>Den Vertriebs-Check machen</h3><p class="adresse"><a href="https://fokusinnovation.de/check?thema=vertrieb">fokusinnovation.de/check?thema=vertrieb</a></p><p>Zwölf Fragen zu Organisation, Zahlen und Neukunden, rund fünf Minuten. Sie sehen sofort, wo Ihr Vertrieb steht.</p></div></li>
+    <li><span class="nr">3</span><div><h3>Head of Sales auf Zeit</h3><p class="adresse"><a href="https://fokusinnovation.de/vertrieb/head-of-sales/">fokusinnovation.de/vertrieb/head-of-sales/</a></p><p>Wenn Sie jemanden suchen, der Leitfäden, Qualifizierung und Nachfassen mit Ihrem Team einführt und den Vertrieb eine Zeit lang führt.</p></div></li>
+  </ol>
+
+  <p class="abschnitt-titel">Passt dazu</p>
+  <p class="text" style="margin-top:1.8mm"><b class="stark">Die Tabelle zum Paket</b>: Qualifizierung aller Kontakte mit Punkten, Status und Wiedervorlage, die Summen und Einstufung selbst rechnet, dazu ein ausgefülltes Beispiel.</p>
+  <p class="text"><b class="stark">Einwandbibliothek</b>: zwölf Einwände mit Rückfragen und Antworten. <b class="stark">Nachfassen: 25 Vorlagen</b> für Mails und Nachrichten nach Gespräch, Angebot und Veranstaltung.</p>
+  <p class="hinweis unten">Alle Beispiele, Gespräche und Zahlen sind frei erfunden. Die Hinweise zum Wettbewerbsrecht sind keine Rechtsberatung. Stand: Oktober 2026.</p>
+</section>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const linie = '<div class="zeile-frei"></div>';
+  const lz = (t) => String(t).replace(/\[([^\]]+)\]/g, '<span class="lz">$1</span>');
+
+  // Seite 5: Kurznotiz
+  $('kurznotiz').innerHTML = Array.from({ length: 6 }, () => '<tr><td style="height:9mm"></td><td></td><td></td><td></td><td></td></tr>').join('');
+
+  // Seite 10: Fragenkatalog
+  const katalog = [
+    ['Bedarf', 'Need', [
+      ['Wie läuft [Aufgabe] heute bei Ihnen ab?', true], ['Woran merken Sie im Alltag, dass es hakt?', true], ['Was kostet Sie das, in Stunden oder Geld?', true],
+      ['Was haben Sie schon versucht?'], ['Was passiert, wenn alles bleibt, wie es ist?'], ['Woran würden Sie in einem Jahr merken, dass es gelöst ist?'], ['Warum ist das gerade jetzt ein Thema?']]],
+    ['Zeitpunkt', 'Timing', [
+      ['Bis wann soll das gelöst sein?', true], ['Was passiert an diesem Datum?', true], ['Was muss vorher passieren?'],
+      ['Was hat gerade Vorrang vor diesem Thema?'], ['Wenn wir uns einig werden: Wann sollte es losgehen?']]],
+    ['Entscheidung', 'Authority', [
+      ['Wie entscheiden Sie bei Ihnen über so etwas?', true], ['Wer ist außer Ihnen beteiligt, und wer hat das letzte Wort?', true], ['Was ist den anderen Beteiligten wichtig?'],
+      ['Wie lief die letzte ähnliche Entscheidung ab?'], ['Gibt es Vorgaben, etwa vom Einkauf?'], ['Nach welchen Punkten werden Sie entscheiden?']]],
+    ['Mittel', 'Budget', [
+      ['Haben Sie einen Rahmen im Kopf?', true], ['Soll ich Ihnen zuerst Größenordnungen nennen?', true], ['Ist dafür schon Geld eingeplant, oder müsste es freigegeben werden?'],
+      ['Aus welchem Topf wird so etwas bei Ihnen bezahlt?'], ['Was wäre es Ihnen wert, wenn [Problem] gelöst ist?'], ['Was würde die Freigabe erleichtern, etwa eine Rechnung für die Führung?']]],
+  ];
+  $('katalog').innerHTML = katalog.map(([t, e, fr]) => `<div><h3>${t}<span>${e}</span></h3><ul>${fr.map(([f, stern]) => `<li><span class="nr">${stern ? '★' : '·'}</span><span>„${lz(f)}“</span></li>`).join('')}</ul></div>`).join('');
+
+  // Seite 12: Punkte-Tabelle
+  const stufen = [
+    ['Mittel', 'Budget', ['Kein Geld und keine Aussicht darauf', 'Kein Budget, aber ein Weg denkbar, etwa die nächste Planung', 'Rahmen grob bekannt, passt ungefähr', 'Rahmen genannt oder freigegeben, passt']],
+    ['Entscheidung', 'Authority', ['Wer entscheidet, ist unbekannt', 'Bekannt, aber nicht erreichbar, Ablauf unklar', 'Entscheider eingebunden oder Ablauf klar', 'Entscheider im Gespräch, Ablauf und Kriterien bekannt']],
+    ['Bedarf', 'Need', ['Kein erkennbares Problem', 'Problem benannt, eher „wäre schön“', 'Problem mit spürbaren Folgen, soll gelöst werden', 'Folgen beziffert, Lösung hat Vorrang']],
+    ['Zeitpunkt', 'Timing', ['Kein Zeitpunkt, „irgendwann“', 'Grob, später als in sechs Monaten', 'In drei bis sechs Monaten, mit Grund', 'In den nächsten drei Monaten, mit konkretem Anlass']],
+  ];
+  $('punkte-leer').innerHTML = stufen.map(([t, e, s]) => `<tr><td>${t}<small>${e}</small></td>${s.map((x) => `<td><span class="kreuz" style="margin-right:1.4mm"></span>${x}</td>`).join('')}<td class="wahl-zelle"><span class="kasten"></span></td></tr>`).join('');
+
+  // Seite 16: Branchen
+  const branchen = [
+    ['Wer entscheidet meist', ['Inhaber oder Partner, oft selbst im Gespräch', 'Inhaber oder Werkleitung, bei größeren Betrieben prüft der Einkauf', 'Der Fachbereich will, die IT prüft, Geschäftsführung oder Einkauf unterschreibt']],
+    ['Typische Anlässe', ['Wachstum, neue Vorschriften, Wechsel in der Führung, zu viel Arbeit, die nicht abgerechnet wird', 'Volle Auftragsbücher, fehlende Leute, eine Investition, Ärger mit einer Anlage oder einem Lieferanten', 'Der Vertrag des alten Systems läuft aus, ein neues Team, ein Sicherheitsvorfall, Wachstum']],
+    ['Einstieg am Telefon', ['„Sie hatten auf [Veranstaltung] nach [Thema] gefragt. Ich wollte verstehen, wie Sie das heute lösen.“', '„Sie haben über unser Formular nach [Thema] gefragt. Damit ich Ihnen etwas Passendes sagen kann: Worum geht es genau?“', '„Sie haben sich [Lösung] angesehen und um einen Rückruf gebeten. Was hat Sie neugierig gemacht?“']],
+    ['Anlass für einen Bezug', ['Ein Fachbeitrag, ein neuer Partner, eine Stellenanzeige, ein Vortrag auf einer Veranstaltung', 'Eine neue Halle, Stellenanzeigen, ein Messeauftritt, ein großer Auftrag in der Presse', 'Stellen in der IT, ein angekündigter Systemwechsel, ein Beitrag zu Sicherheit oder Daten']],
+    ['Bedarfsfrage, die passt', ['„Wie viele Stunden gehen im Monat in Arbeit, die Sie nicht abrechnen können?“', '„Was kostet Sie ein Tag, an dem [Maschine / Baustelle] steht?“', '„Was machen Ihre Leute heute von Hand, das eigentlich ein System machen sollte?“']],
+    ['Entscheidung erfragen', ['„Entscheiden Sie das als Partner allein oder gemeinsam mit den anderen?“', '„Wer muss bei einer Investition dieser Größe noch zustimmen?“', '„Wer muss außer dem Fachbereich zustimmen, etwa die IT oder der Datenschutz?“']],
+    ['Zeitpunkt hängt an', ['Jahresplanung, Mandats- und Projektzyklen, Kanzlei- oder Büroumzug', 'Saison, Betriebsferien, Investitionsplanung, Lieferzeiten', 'Kündigungsfrist des alten Vertrags, Budgetjahr, Einführungsfenster']],
+    ['Mittel besprechen', ['Honorar gegen eigenen Stundensatz rechnen: Was kostet es, wenn Sie es selbst machen?', 'Investition gegen Ausfallzeit oder Stunden rechnen, Finanzierung und Förderprogramme früh ansprechen', 'Lizenzen je Person plus Einführung, Gesamtkosten über drei Jahre statt Monatspreis']],
+    ['Typischer Einwand', ['„Das machen wir selbst.“', '„Für so etwas haben wir keine Zeit.“', '„Wir haben schon ein System.“']],
+    ['Angebot am besten als', ['Festes Paket mit klaren Leistungen statt Stundenschätzung', 'Stufen: erst ein Start, dann der Ausbau, vor Ort besprochen', 'Testphase, danach Lizenzen, die Einführung als eigener Posten']],
+    ['Was überzeugt', ['Beispiele aus derselben Branche, die Person, die später betreut, ein klarer Ablauf', 'Ein Termin vor Ort, ein Kunde in der Nähe als Beispiel, eine pragmatische erste Stufe', 'Eine Testphase mit echten Daten, Anbindung an bestehende Systeme, Datenschutz schriftlich']],
+  ];
+  $('branchen').innerHTML = branchen.map(([t, z]) => `<tr><td>${t}</td>${z.map((x) => `<td${x.startsWith('„') ? ' class="rede"' : ''}>${lz(x)}</td>`).join('')}</tr>`).join('');
+
+  // Seite 17: eigener Leitfaden
+  const zl = (label, n, klein) => `<div class="zeile-l"><span>${label}${klein ? `<small>${klein}</small>` : ''}</span><div>${linie.repeat(n)}</div></div>`;
+  $('eigen').innerHTML =
+    '<p class="gruppe">Grundlage</p>' +
+    zl('Unsere Zielgruppe', 1, 'wer genau, welche Größe') +
+    zl('Grund in einem Satz', 2, 'Wir helfen … dabei, …, ohne …') +
+    zl('Typische Anlässe', 1, 'Woher kommen unsere Kontakte?') +
+    '<p class="gruppe">Telefon-Erstkontakt</p>' +
+    zl('Einstieg und Anlass', 2) +
+    zl('Zwei Fragen', 2) +
+    zl('Brücke zum Termin', 2) +
+    zl('Mailbox-Text', 2) +
+    '<p class="gruppe">LinkedIn und Mail</p>' +
+    zl('Vernetzungsnotiz', 2, 'höchstens 300 Zeichen') +
+    zl('Antwort auf Anfragen', 2, 'wer wir sind, in zwei Sätzen') +
+    '<p class="gruppe">Bedarfsgespräch</p>' +
+    zl('Einstieg und Rahmen', 1) +
+    zl('Meine Bedarfsfragen', 2, 'die drei wichtigsten') +
+    zl('Frage nach dem Rahmen', 1, 'mit unserer Spanne') +
+    '<p class="gruppe">Einwände</p>' +
+    zl('Häufigster Einwand', 1) + zl('Meine Antwort', 1) +
+    zl('Zweithäufigster Einwand', 1) + zl('Meine Antwort', 1);
+
+  // Schreiblinien
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = linie.repeat(Number(d.dataset.linien)); });
+
+  // Kopf und Fuß auf jede Seite, Seitenzahlen automatisch
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Nutzung im eigenen Unternehmen</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+</script>
+</body>
+</html>

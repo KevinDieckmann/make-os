@@ -25,15 +25,22 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HIER = dirname(fileURLToPath(import.meta.url));
-const QUELLE = join(HIER, 'inhalt', 'vorlagen');
-const ZIEL = join(HIER, 'dateien', 'vorlagen');
-const BILDER = join(HIER, 'assets', 'bild', 'vorlagen');
-const VORLAGEN = JSON.parse(readFileSync(join(HIER, 'inhalt', 'vorlagen.json'), 'utf8')).vorlagen;
-const AB_SEITEN = JSON.parse(readFileSync(join(HIER, 'inhalt', 'fokus.json'), 'utf8')).kostenlos?.vorlagen?.per_mail_ab_seiten ?? Infinity;
+// `--bausteine` (31.10.): dieselbe Strecke für die Bausteine (bezahlt): inhalt/bausteine/<id>.html (+ .tabelle.json) → dateien/bausteine/,
+// Vorschau nach assets/bild/bausteine/, Seite der Vorschau aus inhalt/bausteine/<id>.meta.json › vorschau_seite. Bausteine haben IMMER eine Vorschau.
+const BAUSTEINE = process.argv.includes('--bausteine');
+const ART = BAUSTEINE ? 'bausteine' : 'vorlagen';
+const QUELLE = join(HIER, 'inhalt', ART);
+const ZIEL = join(HIER, 'dateien', ART);
+const BILDER = join(HIER, 'assets', 'bild', ART);
+const VORLAGEN = BAUSTEINE
+  ? readdirSync(QUELLE).filter((f) => f.endsWith('.meta.json')).map((f) => ({ id: f.replace(/\.meta\.json$/, ''), ...JSON.parse(readFileSync(join(QUELLE, f), 'utf8')) }))
+  : JSON.parse(readFileSync(join(HIER, 'inhalt', 'vorlagen.json'), 'utf8')).vorlagen;
+const AB_SEITEN = BAUSTEINE ? 0 : JSON.parse(readFileSync(join(HIER, 'inhalt', 'fokus.json'), 'utf8')).kostenlos?.vorlagen?.per_mail_ab_seiten ?? Infinity;
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
 // ── PDF ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 function pdfBauen(id) {
+  mkdirSync(ZIEL, { recursive: true });
   const html = join(QUELLE, `${id}.html`);
   if (!existsSync(html)) return null;
   const ziel = join(ZIEL, `${id}.pdf`);

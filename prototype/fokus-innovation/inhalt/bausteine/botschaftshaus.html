@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Botschaftshaus</title>
+<link rel="stylesheet" href="../vorlagen/basis.css">
+<style>
+  /* Baustein · eigene Bausteine (basis.css bleibt unverändert) */
+  .titel { padding-top: 6mm; }
+  .lead { max-width: 166mm; }
+  h2.blatt { margin-top: 1.6mm; font-size: 17pt; line-height: 1.15; letter-spacing: -.02em; }
+  .seite > .vorzeile:first-of-type { margin-top: 5.5mm; }
+  .unter { margin-top: 1.6mm; max-width: 170mm; font-size: 10.2pt; line-height: 1.45; }
+  h3 { font-size: 10.5pt; line-height: 1.28; color: var(--tinte); font-weight: 600; }
+  p.text { font-size: 10pt; line-height: 1.45; }
+  .klein { font-size: 8.8pt; line-height: 1.4; color: var(--tinte-leise); }
+  .abschnitt-titel { margin-top: 4.4mm; padding-bottom: 1.6mm; border-bottom: var(--linie) solid var(--haar); font-size: 8pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--tinte-leise); display: flex; justify-content: space-between; align-items: flex-end; }
+  .abschnitt-titel small { font-size: 8.4pt; letter-spacing: 0; text-transform: none; font-weight: 400; }
+  .so { margin-top: 2.4mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--akzent); font-size: 9.6pt; line-height: 1.45; max-width: 172mm; }
+  .so b { display: block; margin-bottom: .5mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .15em; text-transform: uppercase; color: var(--akzent); }
+  .hinweis { margin-top: 3mm; padding: .5mm 0 .5mm 4.5mm; border-left: .9pt solid var(--haar-stark); font-size: 9pt; line-height: 1.45; }
+  .hinweis b { color: var(--tinte); font-weight: 600; }
+  .marke-bsp { display: inline-block; margin-left: 2mm; padding: .2mm 1.6mm; border: var(--linie) solid var(--akzent); border-radius: 1mm; font-size: 6.8pt; font-weight: 600; letter-spacing: .12em; color: var(--akzent); vertical-align: 1px; text-transform: uppercase; }
+
+  /* Deckblatt */
+  .fakten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 9mm; row-gap: 3mm; margin-top: 3.2mm; }
+  .fakten div { border-top: var(--linie) solid var(--haar); padding-top: 2mm; }
+  .fakten div:nth-child(-n+2) { border-top: 0; padding-top: .4mm; }
+  .fakten b { display: block; font-size: 8pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); margin-bottom: .8mm; }
+  .fakten p { font-size: 9.8pt; line-height: 1.42; }
+  .ablauf { margin-top: 2.2mm; }
+  .ablauf li { display: grid; grid-template-columns: 9mm 1fr 22mm; padding: 2.2mm 0 2mm; border-bottom: var(--linie) solid var(--haar); }
+  .ablauf li:last-child { border-bottom: 0; }
+  .ablauf .nr { font-size: 12pt; line-height: 1.2; }
+  .ablauf h3 { font-size: 10.3pt; }
+  .ablauf p { margin-top: .5mm; font-size: 9.5pt; line-height: 1.4; }
+  .ablauf .s { text-align: right; font-size: 8.5pt; color: var(--tinte-leise); padding-top: .6mm; }
+
+  /* Schreiblinien und Felder */
+  .linien .zeile-frei { height: 7.2mm; }
+  .linien.eng .zeile-frei { height: 6.4mm; }
+  .reihe { display: flex; gap: 6mm; margin-top: 1.6mm; }
+  .reihe .feld { flex: 1; }
+  .feld { font-size: 8.8pt; }
+  .feld > span:first-child { white-space: nowrap; }
+  .feld .strich { height: 6mm; }
+
+  /* Raster-Tabellen */
+  table.raster { width: 100%; margin-top: 2.2mm; border-collapse: collapse; table-layout: fixed; }
+  .raster th { text-align: left; vertical-align: bottom; padding: 0 1.8mm 1.4mm; border-bottom: .9pt solid var(--haar-stark); font-size: 8.4pt; font-weight: 600; line-height: 1.2; color: var(--tinte); }
+  .raster th small { display: block; font-weight: 400; color: var(--tinte-leise); font-size: 7.6pt; margin-top: .4mm; }
+  .raster td { height: 8mm; padding: 1.3mm 1.8mm; vertical-align: top; border-bottom: var(--linie) solid var(--haar-schreib); border-left: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.36; }
+  .raster td:first-child, .raster th:first-child { border-left: 0; padding-left: 0; }
+  .raster.text td { border-bottom-color: var(--haar); }
+  .raster td.leise { color: var(--tinte-leise); }
+  .raster td.n { color: var(--akzent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .raster td.stark { color: var(--tinte); font-weight: 600; }
+  .raster .mitte { text-align: center; }
+  .raster td .zeile-frei { height: 6.4mm; }
+  .raster td .zeile-frei:last-child { border-bottom: 0; }
+
+  /* Ankreuzen */
+  .liste li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.5mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.3pt; line-height: 1.38; }
+  .liste li:last-child { border-bottom: 0; }
+  .liste .kreuz { margin-top: .5mm; }
+  .liste b { color: var(--tinte); font-weight: 600; }
+  .pruefen { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; row-gap: 1.8mm; margin-top: 2.4mm; }
+  .pruefen li { display: flex; gap: 2.4mm; font-size: 9.2pt; line-height: 1.36; }
+  .pruefen .kreuz { margin-top: .5mm; }
+  .wahl { display: inline-flex; align-items: center; gap: 1.4mm; margin-right: 4mm; font-size: 8.8pt; white-space: nowrap; }
+  .skala { display: inline-flex; gap: 1mm; }
+  .skala span { width: 4.4mm; height: 4.4mm; border: var(--linie) solid var(--tinte-leise); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 7.2pt; color: var(--tinte-leise); }
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8mm; }
+  .drei { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+
+  .sechs { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; row-gap: 0; margin-top: .6mm; }
+  .sechs li { display: grid; grid-template-columns: 6mm 1fr; padding: 1.8mm 0 1.6mm; border-bottom: var(--linie) solid var(--haar); }
+  .sechs li:nth-child(n+4) { border-bottom: 0; }
+  .sechs .nr { font-size: 10.5pt; line-height: 1.2; }
+  .sechs b { display: block; color: var(--tinte); font-weight: 600; font-size: 9.6pt; }
+  .sechs span:not(.nr) { display: block; font-size: 8.8pt; line-height: 1.35; color: var(--tinte-leise); margin-top: .2mm; }
+  /* Bausteine-Bogen */
+  .baustein { display: grid; grid-template-columns: 9mm 1fr; padding: 2.4mm 0 1.4mm; border-bottom: var(--linie) solid var(--haar); }
+  .baustein:last-of-type { border-bottom: 0; }
+  .baustein .nr { font-size: 13pt; line-height: 1.15; }
+  .baustein h3 { font-size: 11pt; }
+  .baustein h3 small { font-weight: 400; color: var(--tinte-leise); font-size: 9pt; margin-left: 1.6mm; }
+  .baustein .frage { margin-top: .5mm; font-size: 9.3pt; line-height: 1.38; }
+  .vergleich { margin-top: .9mm; display: grid; grid-template-columns: 1fr 1fr; column-gap: 5mm; font-size: 8.7pt; line-height: 1.35; }
+  .vergleich span b { font-size: 7pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; margin-right: 1.4mm; }
+  .vergleich .schwach { color: var(--tinte-leise); }
+  .vergleich .schwach b { color: var(--tinte-leise); }
+  .vergleich .stark-b { color: var(--tinte); }
+  .vergleich .stark-b b { color: var(--akzent); }
+  .baustein .linien .zeile-frei { height: 6.8mm; }
+
+  /* Gerüste */
+  .geruest { margin-top: 1.6mm; }
+  .geruest li { display: grid; grid-template-columns: 7mm 1fr; padding: 1.2mm 0; font-size: 9.6pt; line-height: 1.6; color: var(--tinte); border-bottom: var(--linie) solid var(--haar); }
+  .geruest li:last-child { border-bottom: 0; }
+  .geruest .nr { font-size: 9pt; }
+  .luecke { display: inline-block; min-width: 22mm; border-bottom: var(--linie) solid var(--haar-schreib); color: var(--akzent); font-size: 7.8pt; font-weight: 600; letter-spacing: .03em; text-align: center; line-height: 1.2; padding: 0 1mm .3mm; }
+  .entwurf { display: grid; grid-template-columns: 21mm 1fr 44mm; column-gap: 3mm; align-items: end; margin-top: .6mm; }
+  .entwurf > span:first-child { font-size: 8pt; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; color: var(--tinte-leise); padding-bottom: 1.2mm; }
+  .entwurf .zaehl { display: flex; gap: 2mm; }
+  .entwurf .zaehl .feld { flex: 1; }
+  .entwurf .zaehl .feld .strich { min-width: 8mm; }
+
+  /* Beispiele */
+  .bsp { padding: 2.6mm 0 2.4mm; border-bottom: var(--linie) solid var(--haar); }
+  .bsp:last-of-type { border-bottom: 0; }
+  .bsp-kopf { display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }
+  .bsp-kopf h3 { font-size: 10.8pt; }
+  .bsp-kopf h3 .nr { margin-right: 1.6mm; }
+  .bsp-kopf span { font-size: 8.3pt; color: var(--tinte-leise); white-space: nowrap; }
+  .bsp-raster { display: grid; grid-template-columns: 58mm 1fr; column-gap: 6mm; margin-top: 1.4mm; }
+  .bsp-raster b.label { display: block; font-size: 7.4pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--akzent); margin-bottom: .5mm; }
+  .pitch { font-size: 9.1pt; line-height: 1.4; color: var(--tinte); }
+  .zaehler { display: block; margin-top: .6mm; font-size: 7.8pt; color: var(--tinte-leise); }
+  .warum { margin-top: 1.3mm; font-size: 8.6pt; line-height: 1.38; color: var(--tinte-text); }
+  .warum b { color: var(--akzent); font-weight: 600; }
+
+  /* 2-Minuten-Beispiel */
+  .lang { margin-top: 2.6mm; border-top: .9pt solid var(--haar-stark); }
+  .lang li { display: grid; grid-template-columns: 27mm 1fr 44mm; column-gap: 4.5mm; padding: 1.7mm 0 1.6mm; border-bottom: var(--linie) solid var(--haar); }
+  .lang li:last-child { border-bottom: 0; }
+  .lang .zeit { font-size: 8pt; font-variant-numeric: tabular-nums; color: var(--tinte-leise); line-height: 1.35; }
+  .lang .zeit b { display: block; color: var(--akzent); font-size: 8.8pt; font-weight: 600; }
+  .lang .pitch { font-size: 9.3pt; line-height: 1.42; }
+  .lang .anm { font-size: 8.4pt; line-height: 1.36; color: var(--tinte-leise); border-left: var(--linie) solid var(--haar); padding-left: 3mm; }
+
+  .entwurf-alt { display: grid; grid-template-columns: 1fr 72mm; column-gap: 7mm; margin-top: 2mm; }
+  .entwurf-alt .pitch { color: var(--tinte-leise); font-style: italic; padding-left: 4mm; border-left: .9pt solid var(--haar-stark); }
+  .entwurf-alt .regeln li { margin-top: 0; margin-bottom: .8mm; }
+  .entwurf-alt .regeln li b { color: var(--akzent); }
+  /* Varianten */
+  .variante { padding: 2.3mm 0 2mm; border-bottom: var(--linie) solid var(--haar); }
+  .variante:last-of-type { border-bottom: 0; }
+  .variante-kopf { display: grid; grid-template-columns: 9mm 1fr; }
+  .variante-kopf .nr { font-size: 13pt; line-height: 1.15; }
+  .variante-kopf h3 { font-size: 11.5pt; }
+  .variante-kopf p { margin-top: .4mm; font-size: 9pt; color: var(--tinte-leise); }
+  .variante-raster { display: grid; grid-template-columns: 1fr 1fr; column-gap: 7mm; margin-top: 1.6mm; padding-left: 9mm; }
+  .regeln li { padding-left: 3mm; text-indent: -3mm; font-size: 8.9pt; line-height: 1.36; margin-top: .7mm; }
+  .regeln li::before { content: "·"; color: var(--akzent); display: inline-block; width: 3mm; text-indent: 0; font-weight: 700; }
+  .regeln li b { color: var(--tinte); font-weight: 600; }
+  .bsp-text { padding-left: 4mm; border-left: .9pt solid var(--akzent); }
+  .bsp-text b.label { display: block; font-size: 7.4pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--akzent); margin-bottom: .6mm; }
+  .bsp-text p { font-size: 8.9pt; line-height: 1.4; color: var(--tinte); }
+  .bsp-text p + p { margin-top: 1mm; }
+  .bsp-text .klein { font-size: 7.8pt; }
+  .ihre { margin-top: 1.4mm; padding-left: 9mm; }
+  .ihre b.label { display: block; font-size: 7.4pt; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; color: var(--tinte-leise); margin-top: 1.2mm; }
+  .ihre .linien .zeile-frei { height: 6.2mm; }
+  .recht { margin-top: 1.6mm; margin-left: 9mm; padding: .6mm 0 .6mm 3.5mm; border-left: .9pt solid var(--haar-stark); font-size: 8.3pt; line-height: 1.4; color: var(--tinte-text); }
+  .recht b { color: var(--tinte); }
+
+  /* Üben */
+  .runden { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; margin-top: 2.4mm; }
+  .runden div { border-top: .9pt solid var(--haar-stark); padding-top: 1.6mm; }
+  .runden .nr { font-size: 8pt; letter-spacing: .1em; }
+  .runden h3 { margin-top: .3mm; font-size: 10pt; }
+  .runden p { margin-top: .6mm; font-size: 8.8pt; line-height: 1.38; }
+  table.feedback td { height: 13.4mm; }
+  table.feedback .wahl { margin-right: 2.4mm; font-size: 8.4pt; }
+  table.feedback td:first-child { font-size: 8.8pt; color: var(--tinte); }
+  table.feedback td:first-child small { display: block; color: var(--tinte-leise); font-size: 7.6pt; }
+
+  /* Fehler */
+  table.fehler td { height: auto; padding-top: 1.4mm; padding-bottom: 1.3mm; font-size: 8.7pt; line-height: 1.34; border-bottom-color: var(--haar); }
+  table.fehler td:nth-child(2) { color: var(--tinte); font-weight: 600; }
+  table.fehler td.n { font-weight: 600; }
+
+  /* Nächste Schritte */
+  .weiter-liste { margin-top: 2.4mm; }
+  .weiter-liste li { display: grid; grid-template-columns: 34mm 1fr; column-gap: 6mm; padding: 3mm 0 2.8mm; border-bottom: var(--linie) solid var(--haar); }
+  .weiter-liste li:last-child { border-bottom: 0; }
+  .weiter-liste .art { font-size: 8pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--tinte-leise); padding-top: .8mm; }
+  .weiter-liste h3 { font-size: 11pt; }
+  .weiter-liste p { margin-top: .7mm; font-size: 9.6pt; line-height: 1.42; }
+  .weiter-liste a { display: block; margin-top: 1mm; color: var(--akzent); text-decoration: none; font-weight: 600; font-size: 9.6pt; }
+  /* Beschriftete Schreibzeilen */
+  .beschriftet { display: grid; grid-template-columns: 50mm 1fr; column-gap: 4mm; align-items: start; }
+  .beschriftet + .beschriftet { margin-top: .6mm; }
+  .beschriftet > span { font-size: 9.2pt; color: var(--tinte); padding-top: 2.2mm; line-height: 1.25; }
+  .beschriftet > span small { display: block; color: var(--tinte-leise); font-size: 8pt; margin-top: .3mm; }
+  .beschriftet > span.nr { padding-top: 2.6mm; }
+  /* ── Das Haus ── */
+  .haus { margin-top: 3mm; }
+  .haus .dach { position: relative; height: 34mm; }
+  .haus .dach svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .haus .dach .inhalt { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.6mm; width: 108mm; text-align: center; }
+  .haus .teil { display: block; font-size: 7.2pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--akzent); }
+  .haus .dach .satz { margin-top: .8mm; font-size: 10.6pt; line-height: 1.35; font-weight: 600; color: var(--tinte); }
+  .haus .dach .kurz { margin-top: .8mm; font-size: 8.8pt; color: var(--tinte-leise); }
+  .haus .dach .kurz b { color: var(--akzent); font-weight: 600; }
+  .haus .gebaelk { margin: 0 1mm; height: 2mm; border-top: .9pt solid var(--tinte); border-bottom: var(--linie) solid var(--haar-schreib); }
+  .haus .saeulen { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 4mm; padding: 0 5mm; }
+  .haus .saeule { border-left: .9pt solid var(--tinte); border-right: .9pt solid var(--tinte); padding: 2.4mm 3mm 2.6mm; background: rgba(124, 58, 237, .035); }
+  .haus .saeule h3 { margin-top: .6mm; font-size: 10.4pt; }
+  .haus .saeule .versprechen { margin-top: .8mm; font-size: 8.8pt; line-height: 1.38; color: var(--tinte); }
+  .haus .saeule ul { margin-top: 1.4mm; border-top: var(--linie) solid var(--haar); }
+  .haus .saeule li { padding: 1mm 0 1mm 3mm; text-indent: -3mm; font-size: 8.2pt; line-height: 1.34; border-bottom: var(--linie) solid var(--haar); }
+  .haus .saeule li:last-child { border-bottom: 0; }
+  .haus .saeule li::before { content: "✓"; color: var(--akzent); display: inline-block; width: 3mm; text-indent: 0; font-size: 7.4pt; }
+  .haus .fundament { margin: 0 1mm; border-top: .9pt solid var(--tinte); border-bottom: .9pt solid var(--tinte); padding: 2.4mm 4mm 2.6mm; background: rgba(17, 19, 22, .045); }
+  .haus .fundament .werte { margin-top: 1.2mm; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 6mm; }
+  .haus .fundament .werte b { display: block; font-size: 9.4pt; color: var(--tinte); }
+  .haus .fundament .werte span { display: block; margin-top: .3mm; font-size: 8.3pt; line-height: 1.34; }
+  .haus .fundament .haltung { margin-top: 1.6mm; padding-top: 1.4mm; border-top: var(--linie) solid var(--haar); font-size: 9pt; line-height: 1.38; color: var(--tinte); }
+  .haus .ton { margin: 0 1mm; display: grid; grid-template-columns: 1fr 1fr; column-gap: 6mm; padding: 2mm 3mm 0; font-size: 8.6pt; line-height: 1.38; }
+  .haus .ton b { color: var(--tinte); font-weight: 600; }
+  .haus .leer .linien .zeile-frei { height: 6.4mm; }
+  .haus .leer .saeule .zeile-frei { height: 6.2mm; }
+  .haus .leer .saeule .klein { margin-top: 1.2mm; font-size: 7.4pt; letter-spacing: .1em; text-transform: uppercase; }
+  .haus .erklaer { font-size: 8.8pt; line-height: 1.38; color: var(--tinte-text); margin-top: .6mm; }
+
+  /* Bewertung von Themen */
+  table.themen td { height: 9.2mm; vertical-align: middle; }
+  table.themen td.mitte { text-align: center; color: var(--tinte-leise); font-size: 8.6pt; }
+  table.themen tr.bsp td { height: auto; color: var(--tinte-leise); font-style: italic; font-size: 8.6pt; border-bottom-color: var(--haar); }
+
+  /* Säulen-Bogen */
+  .saeulen-bogen { display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 4mm; margin-top: 2.4mm; }
+  .saeulen-bogen > div { border-top: .9pt solid var(--haar-stark); padding-top: 1.6mm; }
+  .saeulen-bogen .nr { font-size: 8pt; letter-spacing: .1em; }
+  .saeulen-bogen .unterzeile { margin-top: 2mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); }
+  .saeulen-bogen .zeile-frei { height: 6mm; }
+  .saeulen-bogen .unterzeile { margin-top: 1.6mm; }
+  .belegart { margin-top: .9mm; display: flex; flex-wrap: nowrap; gap: 1.5mm; font-size: 6.9pt; color: var(--tinte-leise); white-space: nowrap; }
+  .belegart span { display: inline-flex; align-items: center; gap: .7mm; }
+  .belegart .kreuz { width: 2.4mm; height: 2.4mm; }
+
+  /* Werte zum Einkreisen */
+  .wortfeld { display: grid; grid-template-columns: repeat(6, 1fr); row-gap: 1.6mm; column-gap: 2mm; margin-top: 2.4mm; }
+  .wortfeld span { font-size: 9pt; color: var(--tinte); text-align: center; padding: 1mm 0; border-bottom: var(--linie) solid var(--haar); }
+  table.werte td { height: 22mm; }
+
+  /* Regler */
+  .regler li { display: grid; grid-template-columns: 34mm 1fr 34mm 1fr; align-items: center; column-gap: 4mm; padding: 1.8mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 9.2pt; }
+  .regler li:last-child { border-bottom: 0; }
+  .regler .links { text-align: right; color: var(--tinte); }
+  .regler .rechts { color: var(--tinte); }
+  .regler .punkte { display: flex; justify-content: space-between; position: relative; }
+  .regler .punkte::before { content: ""; position: absolute; left: 2mm; right: 2mm; top: 50%; border-top: var(--linie) solid var(--haar); }
+  .regler .punkte span { position: relative; width: 4.2mm; height: 4.2mm; border: var(--linie) solid var(--tinte-leise); border-radius: 50%; background: var(--papier); }
+  .regler .punkte span.an { background: var(--akzent); border-color: var(--akzent); }
+  .regler .notiz { font-size: 8.4pt; color: var(--tinte-leise); }
+  .regler.klein li { grid-template-columns: 26mm 30mm 26mm 1fr; padding: 1.2mm 0; font-size: 8.6pt; }
+  .regler.klein .punkte span { width: 3.4mm; height: 3.4mm; }
+
+  /* Wortliste */
+  table.woerter td { height: 7.4mm; }
+  table.woerter td.pfeil { text-align: center; color: var(--akzent); border-left: 0; padding-left: 0; padding-right: 0; }
+
+  /* Zielgruppen-Karten */
+  .karten { display: grid; grid-template-columns: 1fr 1fr; column-gap: 7mm; row-gap: 4mm; margin-top: 3mm; }
+  .karte { border-top: .9pt solid var(--haar-stark); padding-top: 1.4mm; }
+  .karte .feld .strich { height: 6mm; }
+  .karte .unterzeile { margin-top: 1.8mm; font-size: 7.4pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--tinte-leise); }
+  .karte .zeile-frei { height: 6.1mm; }
+  .karte .wahl-reihe { margin-top: 1.2mm; }
+
+  /* Beispiel-Tabellen */
+  table.bsp-tab td { font-size: 8.6pt; height: auto; padding-top: 1.4mm; padding-bottom: 1.3mm; border-bottom-color: var(--haar); }
+  table.bsp-tab td.stark { font-size: 8.8pt; }
+  .text-bsp { display: grid; grid-template-columns: 30mm 1fr; column-gap: 5mm; padding: 1.6mm 0; border-bottom: var(--linie) solid var(--haar); font-size: 8.8pt; line-height: 1.4; }
+  .text-bsp:last-child { border-bottom: 0; }
+  .text-bsp > b { font-size: 7.4pt; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--akzent); padding-top: .5mm; }
+  .text-bsp p { color: var(--tinte); }
+  .text-bsp p + p { margin-top: .6mm; }
+  .chips { display: flex; flex-wrap: wrap; gap: 1.2mm 1.6mm; margin-top: 1mm; }
+  .chips span { font-size: 8.2pt; padding: .3mm 1.8mm; border: var(--linie) solid var(--haar-schreib); border-radius: 1mm; color: var(--tinte); }
+  .chips.meiden span { color: var(--tinte-leise); }
+  .chips.meiden span s { color: var(--tinte-leise); }
+
+  table.regeln-tab td:first-child { color: var(--tinte); font-weight: 600; }
+  /* Einführung */
+  .wochen { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 5mm; margin-top: 2.4mm; }
+  .wochen div { border-top: .9pt solid var(--haar-stark); padding-top: 1.6mm; }
+  .wochen .nr { font-size: 8pt; letter-spacing: .1em; }
+  .wochen h3 { margin-top: .3mm; font-size: 9.8pt; }
+  .wochen p { margin-top: .6mm; font-size: 8.6pt; line-height: 1.36; }
+  table.agenda td { height: auto; padding-top: 1.1mm; padding-bottom: 1mm; font-size: 8.8pt; border-bottom-color: var(--haar); }
+  table.konsistenz td { height: 8.6mm; vertical-align: middle; }
+  table.konsistenz td.jtn { text-align: center; font-size: 8pt; color: var(--tinte-leise); letter-spacing: .2em; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="marke" viewBox="0 0 48 48"><path d="M37.86,16 A16,16 0 1 1 26.78,8.24" fill="none" stroke="#111316" stroke-width="3" stroke-linecap="round"/><circle cx="35.33" cy="7.81" r="2.8" fill="#111316"/><circle cx="24" cy="24" r="7" fill="#7C3AED"/></symbol>
+  <symbol id="dach" viewBox="0 0 176 34" preserveAspectRatio="none"><polygon points="1,33.4 32,0.6 144,0.6 175,33.4" fill="rgba(124,58,237,.06)" stroke="#111316" stroke-width="1.2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></symbol>
+</svg>
+
+<!-- 1 · Deckblatt -->
+<section class="seite">
+  <div class="titel">
+    <p class="vorzeile">Baustein · Positionierung</p>
+    <h1>Botschaftshaus</h1>
+    <p class="lead">Eine Kernbotschaft, drei belegte Säulen, ein Fundament aus Haltung und ein klarer Ton. Damit sagen Website, Angebote, Gespräche und Beiträge dasselbe, egal wer im Team spricht oder schreibt.</p>
+  </div>
+
+  <p class="abschnitt-titel">So nutzen Sie dieses Paket</p>
+  <div class="fakten">
+    <div><b>Ihr Ergebnis</b><p>Ihr Botschaftshaus auf einer Seite, Botschaften für bis zu vier Zielgruppen, eine Wortliste für den Ton und Texte für Startseite, Leistungsseite, Angebot, Pitch und Beiträge.</p></div>
+    <div><b>Zeitbedarf</b><p>Fünf bis sieben Stunden über zwei bis drei Wochen: eine Stunde Material, drei Stunden für die Bögen, eine Stunde Übersetzen, dazu eine Team-Runde von 90 Minuten.</p></div>
+    <div><b>Sie brauchen</b><p>Notizen aus drei bis fünf Kundengesprächen, Kundenstimmen und Bewertungen, Ihre Website und zwei bis drei Angebote. Dazu eine Person aus dem Team, die gegenliest.</p></div>
+    <div><b>Gut zu wissen</b><p>Das Haus ist ein Werkzeug für innen. Nach außen gehen nie die Säulen selbst, sondern Texte, die daraus entstehen, in den Worten Ihrer Kunden.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Reihenfolge</p>
+  <ol class="ablauf">
+    <li><span class="nr">1</span><div><h3>Das Haus verstehen</h3><p>Aufbau und Regeln, dazu ein vollständig ausgefülltes Beispiel mit Texten.</p></div><span class="s">Seite 2–4</span></li>
+    <li><span class="nr">2</span><div><h3>Material sammeln</h3><p>Kundenwörter, Gründe für den Kauf und wie Ihr Team Sie heute erklärt.</p></div><span class="s">Seite 5</span></li>
+    <li><span class="nr">3</span><div><h3>Dach, Säulen und Fundament bauen</h3><p>Kernbotschaft, drei Säulen mit Belegen, Werte mit Beweis im Alltag.</p></div><span class="s">Seite 6–9</span></li>
+    <li><span class="nr">4</span><div><h3>Ton und Zielgruppen festlegen</h3><p>Fünf Regler, Wörter, die Sie nutzen und meiden, Botschaften je Zielgruppe.</p></div><span class="s">Seite 10–11</span></li>
+    <li><span class="nr">5</span><div><h3>Das Haus auf einer Seite</h3><p>Zum Aushängen, für jedes Angebot und für neue Leute im Team.</p></div><span class="s">Seite 12</span></li>
+    <li><span class="nr">6</span><div><h3>Übersetzen</h3><p>Startseite, Leistungsseiten, Angebot, Pitch, Beiträge und weitere Orte.</p></div><span class="s">Seite 13–14</span></li>
+    <li><span class="nr">7</span><div><h3>Prüfen und im Team einführen</h3><p>Prüfliste, Abgleich aller Orte und eine Team-Runde mit fertigem Ablauf.</p></div><span class="s">Seite 15–16</span></li>
+    <li><span class="nr">8</span><div><h3>Fehler vermeiden, weitermachen</h3><p>Zwölf typische Fehler und Ihre nächsten Schritte.</p></div><span class="s">Seite 17–18</span></li>
+  </ol>
+  <p class="hinweis"><b>Tipp:</b> Haben Sie den Kernsatz aus unserer kostenlosen Vorlage oder den Elevator-Pitch-Baukasten bearbeitet, ist das Ihr Rohstoff für Dach und Säulen. Lesen Sie vor dem Ausfüllen das Beispiel auf Seite 3 und 4. Die Tabelle zu diesem Paket prüft Wortgrenzen, Belege, Freigaben und den Abgleich aller Orte.</p>
+</section>
+
+<!-- 2 · Aufbau -->
+<section class="seite">
+  <p class="vorzeile">Grundlagen</p>
+  <h2 class="blatt">So ist das Haus gebaut</h2>
+  <p class="unter">Ein Botschaftshaus ordnet alles, was Sie über Ihr Unternehmen sagen. Oben die eine Botschaft, darunter drei Gründe, warum man Sie wählt, unten die Haltung, die alles trägt. Wer im Team etwas schreibt oder sagt, nimmt sich daraus, was er braucht.</p>
+
+  <div class="haus">
+    <div class="dach"><svg aria-hidden="true"><use href="#dach"/></svg><div class="inhalt"><span class="teil">Dach · Kernbotschaft</span><p class="satz">Ein Satz: für wen Sie da sind und was sich für diese Menschen ändert</p><p class="kurz">dazu eine <b>Kurzform</b> mit höchstens sieben Wörtern</p></div></div>
+    <div class="gebaelk"></div>
+    <div class="saeulen">
+      <div class="saeule"><span class="teil">Säule 1</span><h3>Name aus 2 bis 4 Wörtern</h3><p class="versprechen">Ein Versprechen in einem Satz: der erste Grund, warum Kunden Sie wählen.</p><ul><li>Beleg: Zahl mit Messweg</li><li>Beleg: Fall oder Kundenstimme</li><li>Beleg: Ablauf oder Zusage</li></ul></div>
+      <div class="saeule"><span class="teil">Säule 2</span><h3>Name aus 2 bis 4 Wörtern</h3><p class="versprechen">Der zweite Grund. Für Kunden wichtig, von Ihnen belegbar.</p><ul><li>drei Belege</li><li>nur, was Sie zeigen können</li><li>mit Ort des Nachweises</li></ul></div>
+      <div class="saeule"><span class="teil">Säule 3</span><h3>Name aus 2 bis 4 Wörtern</h3><p class="versprechen">Der dritte Grund. Drei Säulen, nicht fünf: mehr behält niemand.</p><ul><li>drei Belege</li><li>keine Säule ohne Beleg</li><li>„Qualität“ ist keine Säule</li></ul></div>
+    </div>
+    <div class="fundament"><span class="teil">Fundament · Werte und Haltung</span><p class="erklaer">Höchstens drei Werte, jeder mit „Das heißt bei uns …“ und „Deshalb tun wir nicht …“. Dazu ein Satz, wofür Sie stehen.</p></div>
+    <div class="ton"><p><b>Ton:</b> wie Sie sprechen. Fünf Regler, Sie oder Du, Wörter, die Sie nutzen und meiden.</p><p><b>Zielgruppen:</b> wer welche Säule zuerst hört. Andere Reihenfolge, nie ein anderes Versprechen.</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Die Regeln je Teil</p>
+  <table class="raster bsp-tab regeln-tab">
+    <colgroup><col style="width:30mm"><col><col style="width:62mm"></colgroup>
+    <thead><tr><th>Teil</th><th>Regel</th><th>Prüffrage</th></tr></thead>
+    <tbody>
+      <tr><td>Dach</td><td>Ein Satz, höchstens 20 Wörter, ohne Fachwort. Klartext, kein Slogan.</td><td>Versteht ihn jemand ohne Vorwissen?</td></tr>
+      <tr><td>Kurzform</td><td>Höchstens sieben Wörter, für Profilzeile, Signatur und Unterzeile.</td><td>Passt sie auf ein Namensschild?</td></tr>
+      <tr><td>Säulen</td><td>Genau drei. Jede mit Name, Versprechen und drei Belegen.</td><td>Würde ein Kunde genau diese Gründe nennen?</td></tr>
+      <tr><td>Belege</td><td>Nur, was Sie auf Nachfrage zeigen können. Kundenstimmen nur mit Freigabe.</td><td>Wo liegt der Nachweis?</td></tr>
+      <tr><td>Fundament</td><td>Höchstens drei Werte, jeder im Alltag sichtbar.</td><td>Woran merkt ein Kunde diesen Wert?</td></tr>
+      <tr><td>Ton</td><td>Festgelegt auf fünf Reglern und in einer Wortliste.</td><td>Klingt ein Text nach Ihnen, auch ohne Logo?</td></tr>
+      <tr><td>Zielgruppen</td><td>Gleiches Haus, andere Reihenfolge und Wörter.</td><td>Hört jede Gruppe dasselbe Versprechen?</td></tr>
+    </tbody>
+  </table>
+  <p class="hinweis"><b>Kernsatz, Pitch und Haus:</b> Der Kernsatz sagt in einem Satz, was Sie tun. Der Pitch erzählt es in 10 Sekunden bis 2 Minuten. Das Haus ordnet alles, was danach kommt: jede Seite, jedes Angebot, jeden Beitrag.</p>
+</section>
+
+<!-- 3 · Beispiel: das fertige Haus -->
+<section class="seite">
+  <p class="vorzeile" style="color:var(--akzent)">Beispiel · frei erfunden</p>
+  <h2 class="blatt">Das fertige Haus eines IT-Dienstleisters</h2>
+  <p class="unter">Ein frei erfundener IT-Dienstleister mit elf Beschäftigten. Seine Kunden sind Arztpraxen sowie Steuer- und Anwaltskanzleien mit 3 bis 25 Arbeitsplätzen.</p>
+
+  <div class="haus">
+    <div class="dach"><svg aria-hidden="true"><use href="#dach"/></svg><div class="inhalt"><span class="teil">Dach · Kernbotschaft</span><p class="satz">„Wir kümmern uns um die IT von Praxen und Kanzleien, damit Ihr Team arbeiten kann und Ihre Daten sicher sind.“</p><p class="kurz"><b>Kurzform:</b> „IT, um die Sie sich nicht kümmern müssen.“</p></div></div>
+    <div class="gebaelk"></div>
+    <div class="saeulen">
+      <div class="saeule"><span class="teil">Säule 1</span><h3>Erreichbar wie ein Kollege</h3><p class="versprechen">Bei einer Störung ist innerhalb einer Stunde jemand dran, der Ihre Technik kennt.</p><ul><li>Reaktion binnen einer Stunde, werktags 7 bis 19 Uhr, steht im Vertrag</li><li>im letzten Jahr im Schnitt 23 Minuten bis zur ersten Hilfe, gemessen im eigenen Ticketsystem</li><li>feste Ansprechperson je Kunde, mit Vertretung</li></ul></div>
+      <div class="saeule"><span class="teil">Säule 2</span><h3>Sicher, mit Nachweis</h3><p class="versprechen">Sicherung, Updates und Virenschutz laufen jeden Tag, und Sie sehen jeden Monat auf einer Seite, dass es funktioniert.</p><ul><li>Monatsbericht auf einer Seite</li><li>Wiederherstellung jedes Quartal getestet, mit Protokoll</li><li>Schulung gegen gefälschte Mails einmal im Jahr inklusive</li></ul></div>
+      <div class="saeule"><span class="teil">Säule 3</span><h3>Feste Kosten</h3><p class="versprechen">Ein Festpreis je Arbeitsplatz und Monat, Hilfe bei Störungen inklusive.</p><ul><li>Preisliste offen auf der Website</li><li>Laufzeit höchstens zwölf Monate</li><li>Projekte wie ein Umzug immer mit Festpreisangebot vorab</li></ul></div>
+    </div>
+    <div class="fundament"><span class="teil">Fundament · Werte und Haltung</span>
+      <div class="werte"><p><b>Klartext</b><span>Wir erklären ohne Fachwörter und sagen auch, was Sie nicht brauchen.</span></p><p><b>Vorsorge statt Feuerwehr</b><span>Wir beheben Probleme, bevor sie stören, und planen Wartung statt Notfälle.</span></p><p><b>Verlässlich</b><span>Was wir zusagen, steht schriftlich. Kein Versprechen am Telefon, das nicht im Vertrag steht.</span></p></div>
+      <p class="haltung"><b>Haltung:</b> „Gute IT merkt man nicht. Deshalb verdienen wir nicht an Störungen, sondern an Ruhe.“</p></div>
+    <div class="ton"><p><b>Ton:</b> Sie, sachlich und freundlich, einfache Wörter, ruhig selbstbewusst, ohne Superlative.</p><p><b>Zielgruppen:</b> Inhaber, Praxis- und Büroleitung, Empfehler, Bewerber (Seite 4).</p></div>
+  </div>
+
+  <p class="abschnitt-titel">So kam die Firma zu diesem Haus <small>Bewertung wie auf Seite 7: 3 = stark, 1 = kaum</small></p>
+  <table class="raster bsp-tab">
+    <colgroup><col><col style="width:20mm"><col style="width:18mm"><col style="width:24mm"><col style="width:14mm"><col style="width:36mm"></colgroup>
+    <thead><tr><th>Thema aus 14 Kundengründen</th><th class="mitte">Zählt für Kunden</th><th class="mitte">Belegbar</th><th class="mitte">Unterscheidet</th><th class="mitte">Summe</th><th>Ergebnis</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">schnell erreichbar</td><td class="mitte">3</td><td class="mitte">3</td><td class="mitte">3</td><td class="mitte stark">9</td><td>Säule 1</td></tr>
+      <tr><td class="stark">Datensicherheit mit Nachweis</td><td class="mitte">3</td><td class="mitte">3</td><td class="mitte">2</td><td class="mitte stark">8</td><td>Säule 2</td></tr>
+      <tr><td class="stark">planbare Kosten</td><td class="mitte">3</td><td class="mitte">3</td><td class="mitte">2</td><td class="mitte stark">8</td><td>Säule 3</td></tr>
+      <tr><td class="stark">aus der Region</td><td class="mitte">2</td><td class="mitte">3</td><td class="mitte">1</td><td class="mitte stark">6</td><td>Beleg, keine Säule</td></tr>
+      <tr><td class="stark">Erfahrung mit Praxis-Software</td><td class="mitte">2</td><td class="mitte">2</td><td class="mitte">1</td><td class="mitte stark">5</td><td>Beleg zu Säule 1</td></tr>
+    </tbody>
+  </table>
+  <p class="klein" style="margin-top:1.6mm">Die 23 Minuten standen schon im Ticketsystem, ausgewertet hatte sie niemand. Der Satz „Gute IT merkt man nicht“ stammt wörtlich aus einem Kundengespräch.</p>
+</section>
+
+<!-- 4 · Beispiel: Ton, Zielgruppen, Texte -->
+<section class="seite">
+  <p class="vorzeile" style="color:var(--akzent)">Beispiel · frei erfunden</p>
+  <h2 class="blatt">Ton, Zielgruppen und Texte aus dem Haus</h2>
+  <p class="unter">Derselbe IT-Dienstleister. So wird aus dem Haus der Ton, die Botschaft je Zielgruppe und die Texte, die nach außen gehen.</p>
+
+  <p class="abschnitt-titel">Ton</p>
+  <div class="zwei">
+    <ol class="regler klein">
+      <li><span class="links">förmlich</span><span class="punkte"><span></span><span class="an"></span><span></span><span></span><span></span></span><span class="rechts">locker</span><span></span></li>
+      <li><span class="links">sachlich</span><span class="punkte"><span></span><span class="an"></span><span></span><span></span><span></span></span><span class="rechts">gefühlvoll</span><span></span></li>
+      <li><span class="links">zurückhaltend</span><span class="punkte"><span></span><span></span><span></span><span class="an"></span><span></span></span><span class="rechts">selbstbewusst</span><span></span></li>
+      <li><span class="links">fachlich</span><span class="punkte"><span></span><span></span><span></span><span></span><span class="an"></span></span><span class="rechts">einfach</span><span></span></li>
+      <li><span class="links">ernst</span><span class="punkte"><span></span><span></span><span class="an"></span><span></span><span></span></span><span class="rechts">mit Humor</span><span></span></li>
+    </ol>
+    <div>
+      <p class="klein" style="color:var(--tinte)"><b class="stark">Nutzen:</b></p>
+      <div class="chips"><span>kümmern</span><span>erreichbar</span><span>in einer Stunde</span><span>Festpreis</span><span>Ihre Praxis</span><span>schriftlich</span><span>Monatsbericht</span></div>
+      <p class="klein" style="color:var(--tinte);margin-top:2mm"><b class="stark">Meiden, stattdessen:</b></p>
+      <div class="chips meiden"><span><s>Lösungen</s> → was wir einrichten</span><span><s>proaktiv</s> → bevor es stört</span><span><s>kostengünstig</s> → Festpreis je Arbeitsplatz</span><span><s>Ticket</s> → Ihre Anfrage</span><span><s>Rundum-sorglos</s> → sagen, was enthalten ist</span></div>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Botschaften je Zielgruppe</p>
+  <table class="raster bsp-tab">
+    <colgroup><col style="width:36mm"><col style="width:19mm"><col><col style="width:40mm"></colgroup>
+    <thead><tr><th>Zielgruppe</th><th>Zuerst</th><th>Botschaft</th><th>Beleg, der zählt</th></tr></thead>
+    <tbody>
+      <tr><td class="stark">Inhaber von Praxis oder Kanzlei</td><td>Säule 3, dann 2</td><td>„Eine feste Summe im Monat, und Ihre Daten sind gesichert, mit Nachweis.“</td><td>Preisliste, Monatsbericht</td></tr>
+      <tr><td class="stark">Praxis- und Büroleitung</td><td>Säule 1</td><td>„Sie rufen an, und in einer Stunde ist jemand dran, der Ihre Technik kennt.“</td><td>Reaktionszeit, feste Ansprechperson</td></tr>
+      <tr><td class="stark">Empfehler: Steuer- und Praxisberater</td><td>Säule 2</td><td>„Ihre Mandanten bekommen IT, die geprüft läuft, und Sie keine Beschwerden darüber.“</td><td>Wiederherstellungstests mit Protokoll</td></tr>
+      <tr><td class="stark">Bewerberinnen und Bewerber</td><td>Fundament</td><td>„Bei uns planen Sie Wartung statt Nachtschichten im Notfall.“</td><td>feste Kunden, planbare Arbeitszeiten</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Texte, die daraus entstehen</p>
+  <div class="text-bsp"><b>Startseite</b><div><p><b class="stark">Überschrift:</b> „IT für Praxen und Kanzleien, um die Sie sich nicht kümmern müssen.“</p><p><b class="stark">Unterzeile:</b> „In einer Stunde erreichbar, jeden Tag gesichert, zum Festpreis je Arbeitsplatz.“</p><p><b class="stark">Drei Kacheln:</b> Erreichbar wie ein Kollege · Sicher, mit Nachweis · Feste Kosten. <b class="stark">Knopf:</b> „Kennenlernen vereinbaren“</p></div></div>
+  <div class="text-bsp"><b>Angebot</b><p>„Sie möchten, dass die Technik in Ihrer Praxis läuft und Sie bei einer Störung nicht warten. Dieses Angebot beschreibt, wie wir Ihre acht Arbeitsplätze betreuen: mit Antwort innerhalb einer Stunde, täglicher Sicherung mit Monatsbericht und einem festen Preis je Arbeitsplatz.“</p></div>
+  <div class="text-bsp"><b>Pitch, 30 Sek.</b><p>„Wir kümmern uns um die IT von Praxen und Kanzleien mit 3 bis 25 Arbeitsplätzen. Viele rufen bei einer Störung irgendwo an und warten einen halben Tag. Bei uns ist in einer Stunde jemand dran, der Ihre Technik kennt. Die Sicherung läuft jeden Tag, und Sie sehen das jeden Monat auf einer Seite, zum festen Preis je Arbeitsplatz. Wer kümmert sich bei Ihnen gerade um die IT?“</p></div>
+  <div class="text-bsp"><b>Beiträge</b><p>Säule 1: „Die erste Stunde nach einer Störung, Schritt für Schritt“ · Säule 2: „Unser Monatsbericht erklärt: eine Seite, fünf Zeilen“ · Säule 3: „Was ein Arbeitsplatz im Monat wirklich kostet“ · Fundament: „Drei Dinge, die wir Kunden ausgeredet haben“</p></div>
+</section>
+
+<!-- 5 · Material -->
+<section class="seite">
+  <p class="vorzeile">Vorbereitung</p>
+  <h2 class="blatt">Material sammeln</h2>
+  <p class="so"><b>So gehen Sie vor</b>Ein gutes Haus entsteht aus dem, was Kunden sagen, nicht aus dem, was Sie gern hören möchten. Sammeln Sie eine Woche lang, bevor Sie Sätze formulieren. Haken Sie ab, was Sie haben.</p>
+  <p class="abschnitt-titel">Quellen</p>
+  <ul class="pruefen">
+    <li><span class="kreuz"></span><span>Notizen aus drei bis fünf Kundengesprächen</span></li>
+    <li><span class="kreuz"></span><span>Bewertungen, Dankes-Mails, Empfehlungen</span></li>
+    <li><span class="kreuz"></span><span>Gewonnene Angebote: Warum gewonnen?</span></li>
+    <li><span class="kreuz"></span><span>Verlorene Angebote: Warum, und an wen?</span></li>
+    <li><span class="kreuz"></span><span>Website, Profile und Präsentation von heute</span></li>
+    <li><span class="kreuz"></span><span>Häufige Fragen von Interessenten</span></li>
+    <li><span class="kreuz"></span><span>Kernsatz oder Pitch, falls vorhanden</span></li>
+    <li><span class="kreuz"></span><span>Die Sätze Ihres Teams (unten)</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Drei Fragen an drei Kunden <small>je zehn Minuten, am Telefon oder nach einem Termin</small></p>
+  <ol class="ablauf">
+    <li style="grid-template-columns:9mm 1fr"><span class="nr">1</span><div><h3>„Was war los, bevor Sie zu uns kamen?“</h3><p>Zeigt das Problem in Kundenworten. Fragen Sie nach: „Was hat das gekostet?“</p></div></li>
+    <li style="grid-template-columns:9mm 1fr"><span class="nr">2</span><div><h3>„Warum haben Sie sich für uns entschieden, und wen hatten Sie noch im Blick?“</h3><p>Zeigt die Säulen und die Alternativen, mit denen man Sie vergleicht.</p></div></li>
+    <li style="grid-template-columns:9mm 1fr"><span class="nr">3</span><div><h3>„Was würden Sie einem Kollegen über uns erzählen?“</h3><p>Zeigt die Wörter für Dach und Kurzform. Schreiben Sie wörtlich mit.</p></div></li>
+  </ol>
+  <p class="klein">Fragen Sie, ob Sie Sätze zitieren dürfen. Für eine Veröffentlichung mit Namen brauchen Sie eine schriftliche Freigabe.</p>
+
+  <p class="abschnitt-titel">Kundenwörter, wörtlich</p>
+  <table class="raster">
+    <colgroup><col><col style="width:32mm"><col style="width:28mm"><col style="width:18mm"></colgroup>
+    <thead><tr><th>Satz, so wie er gesagt wurde</th><th>Von wem <small>Rolle, nicht Name</small></th><th>Thema</th><th class="mitte">Zitat frei</th></tr></thead>
+    <tbody>
+      <tr><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td></td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Wie erklärt uns das Team heute? <small>Drei Personen schreiben getrennt je einen Satz</small></p>
+  <table class="raster">
+    <colgroup><col style="width:32mm"><col><col style="width:40mm"></colgroup>
+    <thead><tr><th>Person oder Rolle</th><th>„Wir machen … und Kunden kommen zu uns, weil …“</th><th>Gleiche Wörter?</th></tr></thead>
+    <tbody><tr><td style="height:10.6mm"></td><td></td><td></td></tr><tr><td style="height:10.6mm"></td><td></td><td></td></tr><tr><td style="height:10.6mm"></td><td></td><td></td></tr></tbody>
+  </table>
+</section>
+
+<!-- 6 · Dach -->
+<section class="seite">
+  <p class="vorzeile">Bogen 1 · Dach</p>
+  <h2 class="blatt">Die Kernbotschaft</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Das Dach ist der Satz, unter dem alles andere Platz hat. Er nennt, für wen Sie da sind und was sich für diese Menschen ändert. Er ist kein Slogan, sondern Klartext. Erst Rohstoff, dann drei Entwürfe, dann prüfen.</p>
+
+  <p class="abschnitt-titel">Rohstoff</p>
+  <div class="beschriftet"><span>Für wen?<small>Branche, Größe, Rolle, Anlass</small></span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+  <div class="beschriftet"><span>Was ändert sich für sie?<small>Ergebnis, nicht Tätigkeit</small></span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+  <div class="beschriftet"><span>Wie, in wenigen Worten?<small>Ihre Leistung mit einem Verb</small></span><div class="linien"><div class="zeile-frei"></div></div></div>
+
+  <p class="abschnitt-titel">Drei Gerüste</p>
+  <ol class="geruest">
+    <li><span class="nr">A</span><span>Wir <span class="luecke">tun was</span> für <span class="luecke">für wen</span>, damit <span class="luecke">Ergebnis</span>.</span></li>
+    <li><span class="nr">B</span><span><span class="luecke">Ergebnis</span> für <span class="luecke">für wen</span>.</span></li>
+    <li><span class="nr">C</span><span>Für <span class="luecke">für wen</span>, die <span class="luecke">Problem</span>, sorgen wir für <span class="luecke">Ergebnis</span>.</span></li>
+  </ol>
+
+  <p class="abschnitt-titel">Entwürfe</p>
+  <div class="beschriftet"><span>Entwurf A</span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+  <div class="beschriftet"><span>Entwurf B</span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+  <div class="beschriftet"><span>Entwurf C</span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+
+  <p class="abschnitt-titel">Prüfen</p>
+  <ul class="pruefen">
+    <li><span class="kreuz"></span><span>Höchstens 20 Wörter, ohne Fachwort</span></li>
+    <li><span class="kreuz"></span><span>Die Zielgruppe erkennt sich wieder</span></li>
+    <li><span class="kreuz"></span><span>Er nennt ein Ergebnis, nicht nur eine Tätigkeit</span></li>
+    <li><span class="kreuz"></span><span>Alle drei Säulen passen darunter</span></li>
+    <li><span class="kreuz"></span><span><b class="stark">Wettbewerber-Test:</b> Mit dem Namen eines Wettbewerbers stimmt er nicht mehr</span></li>
+    <li><span class="kreuz"></span><span>Sie können ihn jeden Tag halten</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Ihr Dach <small>Stand vom ________________</small></p>
+  <div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div>
+  <div class="beschriftet" style="margin-top:1mm"><span>Kurzform<small>höchstens sieben Wörter</small></span><div class="linien"><div class="zeile-frei"></div></div></div>
+</section>
+
+<!-- 7 · Säulen finden -->
+<section class="seite">
+  <p class="vorzeile">Bogen 2 · Säulen finden</p>
+  <h2 class="blatt">Die drei Säulen finden</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Säulen sind die Gründe, warum Kunden Sie wählen. Sammeln Sie erst alle Gründe aus dem Material, fassen Sie sie zu Themen zusammen und bewerten Sie die Themen. Die drei stärksten werden Säulen.</p>
+
+  <p class="abschnitt-titel">Schritt 1 · Alle Gründe sammeln <small>aus Kundenwörtern, Angeboten, Bewertungen</small></p>
+  <div class="zwei">
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">1</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">9</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">2</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">10</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">3</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">11</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">4</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">12</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">5</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">13</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">6</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">14</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">7</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">15</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">8</span><div class="zeile-frei"></div></div>
+    <div class="beschriftet" style="grid-template-columns:7mm 1fr"><span class="nr">16</span><div class="zeile-frei"></div></div>
+  </div>
+
+  <p class="abschnitt-titel">Schritt 2 und 3 · Zu Themen bündeln und bewerten <small>3 = stark · 2 = teilweise · 1 = kaum</small></p>
+  <table class="raster themen">
+    <colgroup><col><col style="width:22mm"><col style="width:22mm"><col style="width:24mm"><col style="width:16mm"><col style="width:16mm"></colgroup>
+    <thead><tr><th>Thema <small>Gründe mit Nummern</small></th><th class="mitte">Zählt für Kunden</th><th class="mitte">Belegbar</th><th class="mitte">Unterscheidet uns</th><th class="mitte">Summe</th><th class="mitte">Säule?</th></tr></thead>
+    <tbody>
+      <tr class="bsp"><td>Beispiel: schnell erreichbar (2, 5, 9)</td><td class="mitte">3</td><td class="mitte">3</td><td class="mitte">3</td><td class="mitte">9</td><td class="mitte">ja</td></tr>
+      <tr><td></td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+      <tr><td></td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td class="mitte">1 · 2 · 3</td><td></td><td class="mitte"><span class="kreuz"></span></td></tr>
+    </tbody>
+  </table>
+  <p class="abschnitt-titel">So entscheiden Sie</p>
+  <ul class="regeln">
+    <li>Säulen werden die drei Themen mit der höchsten Summe. Keines der drei Merkmale darf bei 1 stehen.</li>
+    <li>Gleichstand: Es gewinnt das Thema, das Kunden öfter von sich aus genannt haben.</li>
+    <li>Themen ohne Säule werden Belege einer Säule oder fallen weg. Nichts geht verloren.</li>
+    <li>„Qualität“, „Erfahrung“ und „Service“ sind fast nie Säulen, sondern Überschriften ohne Inhalt. Fragen Sie: Woran genau merkt der Kunde das?</li>
+  </ul>
+</section>
+
+<!-- 8 · Säulen formulieren und belegen -->
+<section class="seite">
+  <p class="vorzeile">Bogen 3 · Säulen und Belege</p>
+  <h2 class="blatt">Säulen formulieren und belegen</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Jede Säule bekommt einen Namen aus zwei bis vier Wörtern, ein Versprechen in einem Satz und drei Belege. Kreuzen Sie an, welche Art von Beleg es ist, und notieren Sie, wo der Nachweis liegt.</p>
+  <div class="saeulen-bogen" id="saeulen-bogen"></div>
+
+  <p class="abschnitt-titel">Belege prüfen</p>
+  <table class="raster bsp-tab regeln-tab">
+    <colgroup><col style="width:26mm"><col><col style="width:70mm"></colgroup>
+    <thead><tr><th>Art</th><th>Stark, wenn …</th><th>Vorsicht</th></tr></thead>
+    <tbody>
+      <tr><td>Zahl</td><td>Zeitraum und Messweg bekannt sind.</td><td>Keine geschätzten Werte als Messung ausgeben.</td></tr>
+      <tr><td>Kundenstimme</td><td>eine echte Person sie so gesagt und freigegeben hat.</td><td>Nie erfinden, nie ohne Zustimmung umformulieren.</td></tr>
+      <tr><td>Fall</td><td>vorher, Maßnahme und nachher erzählt werden.</td><td>Ohne Freigabe des Kunden ohne Namen.</td></tr>
+      <tr><td>Ablauf</td><td>er öffentlich beschrieben ist, mit Dauer.</td><td>Er muss im Alltag genau so laufen.</td></tr>
+      <tr><td>Zusage</td><td>sie im Vertrag oder in den Bedingungen steht.</td><td>Nur zusagen, was Sie auch in vollen Wochen halten.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Belege, die noch fehlen</p>
+  <table class="raster">
+    <colgroup><col><col style="width:52mm"><col style="width:26mm"><col style="width:22mm"></colgroup>
+    <thead><tr><th>Was fehlt?</th><th>So beschaffen wir es</th><th>Wer?</th><th>Bis wann?</th></tr></thead>
+    <tbody><tr><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td></tr></tbody>
+  </table>
+</section>
+
+<!-- 9 · Fundament -->
+<section class="seite">
+  <p class="vorzeile">Bogen 4 · Fundament</p>
+  <h2 class="blatt">Werte und Haltung</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Werte tragen das Haus nur, wenn man sie im Alltag sieht. Kreisen Sie Wörter ein, die zu Ihnen passen, wählen Sie höchstens drei aus und schreiben Sie für jeden auf, was er konkret heißt und was Sie deshalb nicht tun.</p>
+
+  <p class="abschnitt-titel">Wörter zum Einkreisen <small>oder eigene ergänzen</small></p>
+  <div class="wortfeld"><span>Verlässlichkeit</span><span>Klartext</span><span>Tempo</span><span>Sorgfalt</span><span>Nähe</span><span>Mut</span><span>Fairness</span><span>Gründlichkeit</span><span>Offenheit</span><span>Bodenständigkeit</span><span>Neugier</span><span>Pünktlichkeit</span><span>Handwerk</span><span>Verantwortung</span><span>Ruhe</span><span>Unabhängigkeit</span><span>Einfachheit</span><span>Respekt</span><span>Nachhaltigkeit</span><span>Humor</span><span>Präzision</span><span>Gastfreundschaft</span><span>Beharrlichkeit</span><span>Ehrlichkeit</span><span>&nbsp;</span><span>&nbsp;</span><span>&nbsp;</span><span>&nbsp;</span><span>&nbsp;</span><span>&nbsp;</span></div>
+  <p class="klein" style="margin-top:1.6mm">Werte, die fast jedes Unternehmen für sich beansprucht, etwa Qualität, Kundenorientierung oder Innovation, zählen nur mit einem Beweis aus dem Alltag.</p>
+
+  <p class="abschnitt-titel">Ihre drei Werte</p>
+  <table class="raster werte">
+    <colgroup><col style="width:30mm"><col><col><col></colgroup>
+    <thead><tr><th>Wert</th><th>Das heißt bei uns konkret …</th><th>Daran merkt es ein Kunde …</th><th>Deshalb tun wir nicht …</th></tr></thead>
+    <tbody>
+      <tr class="bsp"><td style="height:auto">Beispiel: Klartext</td><td style="height:auto">Wir erklären ohne Fachwörter.</td><td style="height:auto">Angebote passen auf zwei Seiten.</td><td style="height:auto">Wir verkaufen keine Technik, die nicht gebraucht wird.</td></tr>
+      <tr><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel">Haltung in einem Satz <small>Beispiel auf Seite 3, unter den Werten</small></p>
+  <div class="beschriftet"><span>Wir glauben, dass …</span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+  <div class="beschriftet"><span>Deshalb …</span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+  <div class="beschriftet"><span>Wogegen wir uns wenden<small>freiwillig, ohne andere zu nennen</small></span><div class="linien"><div class="zeile-frei"></div></div></div>
+</section>
+
+<!-- 10 · Ton -->
+<section class="seite">
+  <p class="vorzeile">Bogen 5 · Ton</p>
+  <h2 class="blatt">Wie wir sprechen</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Der Ton entscheidet, ob ein Text nach Ihnen klingt, auch ohne Logo. Kreuzen Sie auf jedem Regler an, wo Sie stehen, legen Sie die Anrede fest und füllen Sie die Wortliste mit echten Beispielen.</p>
+
+  <p class="abschnitt-titel">Fünf Regler <small>ein Kreis je Zeile</small></p>
+  <ol class="regler">
+    <li><span class="links">förmlich</span><span class="punkte"><span></span><span></span><span></span><span></span><span></span></span><span class="rechts">locker</span><span class="notiz">Beispiel: „Wir freuen uns“ oder „Schön, dass Sie da sind“</span></li>
+    <li><span class="links">sachlich</span><span class="punkte"><span></span><span></span><span></span><span></span><span></span></span><span class="rechts">gefühlvoll</span><span class="notiz">Zahlen und Abläufe oder Geschichten und Bilder</span></li>
+    <li><span class="links">zurückhaltend</span><span class="punkte"><span></span><span></span><span></span><span></span><span></span></span><span class="rechts">selbstbewusst</span><span class="notiz">„Wir versuchen“ oder „Wir sorgen dafür“</span></li>
+    <li><span class="links">fachlich</span><span class="punkte"><span></span><span></span><span></span><span></span><span></span></span><span class="rechts">einfach</span><span class="notiz">Fachbegriffe erklären oder weglassen</span></li>
+    <li><span class="links">ernst</span><span class="punkte"><span></span><span></span><span></span><span></span><span></span></span><span class="rechts">mit Humor</span><span class="notiz">Ein Augenzwinkern ja oder nein</span></li>
+  </ol>
+  <p style="margin-top:2.6mm;font-size:9.2pt"><span class="stark" style="margin-right:4mm">Anrede</span><span class="wahl"><span class="kreuz"></span>Sie</span><span class="wahl"><span class="kreuz"></span>Du</span><span class="wahl"><span class="kreuz"></span>je nach Kanal:</span><span style="display:inline-block;width:70mm;border-bottom:var(--linie) solid var(--haar-schreib)">&nbsp;</span></p>
+
+  <p class="abschnitt-titel">Satzregeln <small>kreuzen Sie an, was für Sie gilt</small></p>
+  <ul class="pruefen">
+    <li><span class="kreuz"></span><span>Kurze Sätze, im Schnitt unter 15 Wörtern</span></li>
+    <li><span class="kreuz"></span><span>Verben statt Hauptwörter: „Wir prüfen“ statt „Durchführung einer Prüfung“</span></li>
+    <li><span class="kreuz"></span><span>Aktiv statt passiv: wer tut was</span></li>
+    <li><span class="kreuz"></span><span>Zahlen statt Adjektive</span></li>
+    <li><span class="kreuz"></span><span>Öfter „Sie“ als „wir“</span></li>
+    <li><span class="kreuz"></span><span>Keine Superlative ohne Beleg</span></li>
+    <li><span class="kreuz"></span><span>Fremdwörter nur, wenn Kunden sie selbst benutzen</span></li>
+    <li><span class="kreuz"></span><span>Keine Ausrufezeichen im Fließtext</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Wortliste</p>
+  <table class="raster woerter">
+    <colgroup><col><col style="width:8mm"><col><col style="width:6mm"><col></colgroup>
+    <thead><tr><th>Wörter, die wir nutzen</th><th></th><th>Wörter, die wir meiden</th><th></th><th>stattdessen</th></tr></thead>
+    <tbody id="woerter"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Ein Satz im neuen Ton <small>von Ihrer Website oder aus einem Angebot</small></p>
+  <div class="beschriftet"><span>Vorher</span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+  <div class="beschriftet"><span>Nachher</span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div>
+</section>
+
+<!-- 11 · Zielgruppen -->
+<section class="seite">
+  <p class="vorzeile">Bogen 6 · Zielgruppen</p>
+  <h2 class="blatt">Botschaften je Zielgruppe</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Dasselbe Haus, für jede Zielgruppe eine andere Reihenfolge: Wer entscheidet, hört zuerst etwas anderes als jemand, der Ihre Leistung täglich nutzt oder Sie empfiehlt. Das Versprechen ändert sich nie. Typische Rollen: wer entscheidet, wer nutzt, wer zahlt, wer empfiehlt, wer bei Ihnen arbeiten möchte.</p>
+  <div class="karten" id="karten"></div>
+</section>
+
+<!-- 12 · Haus auf einer Seite -->
+<section class="seite">
+  <p class="vorzeile">Zusammenfassung</p>
+  <h2 class="blatt">Ihr Botschaftshaus auf einer Seite</h2>
+  <p class="unter">Übertragen Sie die Ergebnisse der Bögen. Diese Seite hängt am Arbeitsplatz, liegt neben jedem Angebot und bekommen neue Leute am ersten Tag.</p>
+  <div class="haus leer">
+    <div class="dach" style="height:44mm"><svg aria-hidden="true"><use href="#dach"/></svg><div class="inhalt" style="width:112mm;bottom:2mm;text-align:left"><span class="teil" style="text-align:center">Dach · Kernbotschaft</span><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div><p class="feld" style="margin-top:.6mm"><span>Kurzform</span><span class="strich"></span></p></div></div>
+    <div class="gebaelk"></div>
+    <div class="saeulen" id="saeulen-leer"></div>
+    <div class="fundament"><span class="teil">Fundament · Werte und Haltung</span>
+      <div class="werte" style="margin-top:.6mm"><div><p class="klein" style="margin-top:.6mm">Wert 1</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div><div><p class="klein" style="margin-top:.6mm">Wert 2</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div><div><p class="klein" style="margin-top:.6mm">Wert 3</p><div class="linien"><div class="zeile-frei"></div><div class="zeile-frei"></div><div class="zeile-frei"></div></div></div></div>
+      <p class="feld" style="margin-top:1mm"><span>Haltung</span><span class="strich"></span></p><div class="linien" style="margin-left:15mm"><div class="zeile-frei"></div></div></div>
+    <div class="ton" style="padding-top:2.4mm">
+      <div><p class="feld"><span><b>Ton</b> · Anrede</span><span class="strich"></span></p><p class="feld"><span>Regler</span><span class="strich"></span></p></div>
+      <div><p class="feld"><span><b>Wir sagen</b></span><span class="strich"></span></p><p class="feld"><span><b>Wir sagen nie</b></span><span class="strich"></span></p></div>
+    </div>
+    <div class="ton" style="padding-top:2.4mm">
+      <div><p class="feld"><span><b>Zielgruppe 1</b> hört zuerst</span><span class="strich"></span></p><p class="feld"><span><b>Zielgruppe 2</b> hört zuerst</span><span class="strich"></span></p></div>
+      <div><p class="feld"><span><b>Zielgruppe 3</b> hört zuerst</span><span class="strich"></span></p><p class="feld"><span><b>Zielgruppe 4</b> hört zuerst</span><span class="strich"></span></p></div>
+    </div>
+  </div>
+  <div class="reihe" style="margin-top:3mm"><p class="feld"><span>Stand vom</span><span class="strich"></span></p><p class="feld"><span>Hüterin oder Hüter des Hauses</span><span class="strich"></span></p><p class="feld"><span>Nächste Durchsicht</span><span class="strich"></span></p></div>
+</section>
+
+<!-- 13 · Website -->
+<section class="seite">
+  <p class="vorzeile">Übersetzen · Teil 1</p>
+  <h2 class="blatt">Startseite und Leistungsseiten</h2>
+  <p class="so"><b>So füllen Sie ihn aus</b>Nach außen geht nie das Haus selbst. Jeder Abschnitt der Website nimmt sich einen Teil daraus und sagt ihn in den Worten der Kunden. Schreiben Sie Ihre Fassung in Stichworten, den fertigen Text danach am Rechner.</p>
+  <p class="abschnitt-titel">Startseite, von oben nach unten</p>
+  <table class="raster">
+    <colgroup><col style="width:34mm"><col style="width:44mm"><col></colgroup>
+    <thead><tr><th>Abschnitt</th><th>Kommt aus dem Haus</th><th>Ihre Fassung</th></tr></thead>
+    <tbody id="startseite"></tbody>
+  </table>
+  <p class="abschnitt-titel">Eine Leistungsseite <small>Leistung: ______________________________</small></p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col style="width:70mm"><col></colgroup>
+    <tbody id="leistung"></tbody>
+  </table>
+</section>
+
+<!-- 14 · Angebot, Pitch, Beiträge -->
+<section class="seite">
+  <p class="vorzeile">Übersetzen · Teil 2</p>
+  <h2 class="blatt">Angebot, Pitch, Beiträge und weitere Orte</h2>
+  <p class="abschnitt-titel">Die erste Seite jedes Angebots</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col style="width:58mm"><col></colgroup>
+    <tbody id="angebot"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Pitch aus dem Haus <small>ausführlich im Elevator-Pitch-Baukasten</small></p>
+  <p class="geruest" style="margin-top:1.6mm;font-size:9.6pt;line-height:1.7;color:var(--tinte)"><span class="luecke">Dach</span> + <span class="luecke">Problem der Zielgruppe</span> + <span class="luecke">stärkste Säule für sie</span> + <span class="luecke">ein Beleg</span> + <span class="luecke">Frage zurück</span></p>
+  <div class="linien" data-linien="3"></div>
+
+  <p class="abschnitt-titel">Beiträge in sozialen Netzwerken und Newsletter <small>zwei Themen je Teil des Hauses</small></p>
+  <table class="raster">
+    <colgroup><col style="width:24mm"><col style="width:38mm"><col><col></colgroup>
+    <thead><tr><th>Quelle</th><th>Beitragsart <small>Beleg zeigen · Fall erzählen · hinter die Kulissen · Kundenfrage · Haltung</small></th><th>Thema 1</th><th>Thema 2</th></tr></thead>
+    <tbody><tr><td class="stark">Säule 1</td><td></td><td></td><td></td></tr><tr><td class="stark">Säule 2</td><td></td><td></td><td></td></tr><tr><td class="stark">Säule 3</td><td></td><td></td><td></td></tr><tr><td class="stark">Fundament</td><td></td><td></td><td></td></tr></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Weitere Orte <small>haken Sie ab, was angepasst ist</small></p>
+  <ul class="pruefen">
+    <li><span class="kreuz"></span><span><b class="stark">E-Mail-Signatur:</b> Kurzform als eigene Zeile</span></li>
+    <li><span class="kreuz"></span><span><b class="stark">Profile:</b> Kurzform in der Profilzeile, Dach im Info-Text</span></li>
+    <li><span class="kreuz"></span><span><b class="stark">Unternehmensprofil bei Google:</b> Dach und Säulen</span></li>
+    <li><span class="kreuz"></span><span><b class="stark">Präsentation:</b> eine Folie mit Dach und Säulen</span></li>
+    <li><span class="kreuz"></span><span><b class="stark">Stellenanzeigen:</b> Fundament und Haltung</span></li>
+    <li><span class="kreuz"></span><span><b class="stark">Telefon:</b> Begrüßung und Ansage im neuen Ton</span></li>
+    <li><span class="kreuz"></span><span><b class="stark">Visitenkarte und Messestand:</b> Kurzform</span></li>
+    <li><span class="kreuz"></span><span><b class="stark">Vorlagen:</b> Angebot, Rechnung, Antwort-Mails</span></li>
+  </ul>
+</section>
+
+<!-- 15 · Prüfen -->
+<section class="seite">
+  <p class="vorzeile">Prüfen</p>
+  <h2 class="blatt">Ist das Haus fertig, und sagen alle dasselbe?</h2>
+  <p class="abschnitt-titel">Prüfliste für das Haus</p>
+  <div class="zwei">
+    <div>
+      <p class="unterzeile" style="margin-top:1.6mm;font-size:7.4pt;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--akzent)">Dach</p>
+      <ul class="liste"><li><span class="kreuz"></span><span>Ein Satz, höchstens 20 Wörter, ohne Fachwort</span></li><li><span class="kreuz"></span><span>Zielgruppe und Ergebnis sind genannt</span></li><li><span class="kreuz"></span><span>Besteht den Wettbewerber-Test</span></li></ul>
+      <p class="unterzeile" style="margin-top:2mm;font-size:7.4pt;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--akzent)">Säulen</p>
+      <ul class="liste"><li><span class="kreuz"></span><span>Genau drei, jede mit Name und Versprechen</span></li><li><span class="kreuz"></span><span>Jede hat drei Belege, jeder mit Nachweis</span></li><li><span class="kreuz"></span><span>Kundenstimmen sind schriftlich freigegeben</span></li><li><span class="kreuz"></span><span>Kunden haben diese Gründe selbst genannt</span></li></ul>
+    </div>
+    <div>
+      <p class="unterzeile" style="margin-top:1.6mm;font-size:7.4pt;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--akzent)">Fundament und Ton</p>
+      <ul class="liste"><li><span class="kreuz"></span><span>Höchstens drei Werte, jeder mit Beweis</span></li><li><span class="kreuz"></span><span>Regler, Anrede und Wortliste stehen</span></li><li><span class="kreuz"></span><span>Ein Satz vorher und nachher zeigt den Ton</span></li></ul>
+      <p class="unterzeile" style="margin-top:2mm;font-size:7.4pt;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--akzent)">Zielgruppen und Test</p>
+      <ul class="liste"><li><span class="kreuz"></span><span>Jede Zielgruppe hört dasselbe Versprechen</span></li><li><span class="kreuz"></span><span>Drei Kunden haben das Dach gelesen und verstanden</span></li><li><span class="kreuz"></span><span>Zwei Personen im Team erklären es frei</span></li><li><span class="kreuz"></span><span>Das Haus passt auf eine Seite</span></li></ul>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Abgleich aller Orte <small>j = ja · t = teilweise · n = nein, einkreisen</small></p>
+  <table class="raster konsistenz">
+    <colgroup><col style="width:42mm"><col style="width:18mm"><col style="width:18mm"><col style="width:18mm"><col><col style="width:22mm"></colgroup>
+    <thead><tr><th>Ort</th><th class="mitte">Dach erkennbar</th><th class="mitte">Säulen erkennbar</th><th class="mitte">Ton passt</th><th>Was ändern wir?</th><th>Bis wann?</th></tr></thead>
+    <tbody id="orte"></tbody>
+  </table>
+
+  <p class="abschnitt-titel">Test mit drei Kunden <small>Dach und Kurzform zeigen, dann fragen: „Was sagt Ihnen das?“</small></p>
+  <table class="raster">
+    <colgroup><col style="width:32mm"><col><col style="width:52mm"></colgroup>
+    <thead><tr><th>Kunde <small>Rolle, nicht Name</small></th><th>Antwort, wörtlich</th><th>Fehlt etwas, stört etwas?</th></tr></thead>
+    <tbody><tr><td style="height:10mm"></td><td></td><td></td></tr><tr><td style="height:10mm"></td><td></td><td></td></tr><tr><td style="height:10mm"></td><td></td><td></td></tr></tbody>
+  </table>
+</section>
+
+<!-- 16 · Im Team einführen -->
+<section class="seite">
+  <p class="vorzeile">Einführen</p>
+  <h2 class="blatt">Das Haus im Team einführen</h2>
+  <p class="unter">Ein Haus im Ordner ändert nichts. Wirksam wird es, wenn alle es in eigenen Worten erklären und neue Texte daran prüfen.</p>
+  <div class="wochen">
+    <div><span class="nr">Woche 1</span><h3>Team-Runde</h3><p>90 Minuten mit allen, die schreiben, verkaufen oder Kunden betreuen. Ablauf unten.</p></div>
+    <div><span class="nr">Woche 2</span><h3>Jeder übersetzt</h3><p>Jede Person passt einen Ort an: Signatur, Profil, Angebotsvorlage, eine Seite.</p></div>
+    <div><span class="nr">Woche 3</span><h3>Gegenlesen</h3><p>In Paaren mit der Prüfliste von Seite 15. Was nicht passt, geht zurück.</p></div>
+    <div><span class="nr">Woche 4</span><h3>Rückschau</h3><p>30 Minuten: Was klappt, was hakt, welche Belege fehlen noch?</p></div>
+  </div>
+
+  <p class="abschnitt-titel">Ablauf der Team-Runde · 90 Minuten</p>
+  <table class="raster agenda">
+    <colgroup><col style="width:16mm"><col style="width:50mm"><col></colgroup>
+    <tbody>
+      <tr><td class="leise">0:00</td><td class="stark">Warum wir das machen</td><td>Die Sätze aus „Wie erklärt uns das Team heute?“ zeigen, ohne Namen. Meist sind sie überraschend verschieden.</td></tr>
+      <tr><td class="leise">0:10</td><td class="stark">Das Haus vorstellen</td><td>Dach, Säulen, Fundament, Ton. Fragen zum Verständnis, noch keine Änderungen.</td></tr>
+      <tr><td class="leise">0:25</td><td class="stark">In eigenen Worten</td><td>Jede Person erklärt das Dach in eigenen Worten. Die anderen prüfen: Ist das Versprechen dasselbe?</td></tr>
+      <tr><td class="leise">0:45</td><td class="stark">Säulen mit eigenen Fällen</td><td>Jede Person nennt zu jeder Säule einen Fall aus ihrem Alltag. So entstehen neue Belege.</td></tr>
+      <tr><td class="leise">1:05</td><td class="stark">Ton üben</td><td>Drei Sätze aus alten Texten gemeinsam umschreiben, mit der Wortliste.</td></tr>
+      <tr><td class="leise">1:20</td><td class="stark">Verabreden</td><td>Wer übersetzt welchen Ort bis wann? Wer wird Hüterin oder Hüter des Hauses?</td></tr>
+    </tbody>
+  </table>
+
+  <div class="zwei">
+    <div>
+      <p class="abschnitt-titel">Hüterin oder Hüter des Hauses</p>
+      <ul class="regeln">
+        <li>pflegt das Haus und die Sammlung der Belege</li>
+        <li>liest neue Texte gegen, bevor sie rausgehen</li>
+        <li>lädt jedes Quartal zu 30 Minuten Durchsicht ein</li>
+        <li>gibt neuen Leuten das Haus am ersten Tag</li>
+      </ul>
+      <p class="feld" style="margin-top:2.4mm"><span>Name</span><span class="strich"></span></p>
+    </div>
+    <div>
+      <p class="abschnitt-titel">Das Haus ändern, wenn …</p>
+      <ul class="regeln">
+        <li>eine neue Zielgruppe oder ein neues Hauptangebot dazukommt</li>
+        <li>eine Säule sich nicht mehr belegen lässt</li>
+        <li>Kunden oder verlorene Angebote andere Gründe zeigen als die Säulen</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="abschnitt-titel">Prüfliste Einführung</p>
+  <ul class="pruefen">
+    <li><span class="kreuz"></span><span>Das Haus liegt an einem Ort, den alle kennen</span></li>
+    <li><span class="kreuz"></span><span>Alle haben die Team-Runde mitgemacht</span></li>
+    <li><span class="kreuz"></span><span>Jede Person kann das Dach frei erklären</span></li>
+    <li><span class="kreuz"></span><span>Neue Texte werden gegen das Haus geprüft</span></li>
+  </ul>
+
+  <p class="abschnitt-titel">Fünf Fragen für jede Person im Team <small>nach der Runde und für neue Leute</small></p>
+  <div class="beschriftet" style="grid-template-columns:78mm 1fr"><span>Wie sagen Sie unser Dach in eigenen Worten?</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet" style="grid-template-columns:78mm 1fr"><span>Welche drei Säulen haben wir, mit je einem Beleg?</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet" style="grid-template-columns:78mm 1fr"><span>Was erzählen Sie einer Inhaberin zuerst?</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet" style="grid-template-columns:78mm 1fr"><span>Welche Wörter meiden wir, und was sagen wir stattdessen?</span><div class="zeile-frei"></div></div>
+  <div class="beschriftet" style="grid-template-columns:78mm 1fr"><span>Wo zeigt sich einer unserer Werte in Ihrer Arbeit?</span><div class="zeile-frei"></div></div>
+</section>
+
+<!-- 17 · Fehler -->
+<section class="seite">
+  <p class="vorzeile">Vermeiden</p>
+  <h2 class="blatt">Zwölf typische Fehler</h2>
+  <p class="unter">Diese Fehler kommen beim Bau eines Botschaftshauses am häufigsten vor. Prüfen Sie Ihr Haus am Ende einmal gegen die Liste.</p>
+  <table class="raster fehler">
+    <colgroup><col style="width:7mm"><col style="width:46mm"><col style="width:52mm"><col></colgroup>
+    <thead><tr><th></th><th>Fehler</th><th>Woran Sie es merken</th><th>So beheben Sie es</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td>Das Dach ist ein Slogan</td><td>Klingt gut, sagt aber nicht, für wen und was sich ändert.</td><td>Erst Klartext. Ein Slogan kann später daraus entstehen.</td></tr>
+      <tr><td class="n">2</td><td>Zu viele Säulen</td><td>Fünf oder sechs Gründe, keiner bleibt hängen.</td><td>Genau drei. Der Rest wird Beleg oder fällt weg.</td></tr>
+      <tr><td class="n">3</td><td>Säulen, die jeder hat</td><td>„Qualität, Service, Erfahrung“.</td><td>Wettbewerber-Test. Fragen: Woran genau merkt der Kunde das?</td></tr>
+      <tr><td class="n">4</td><td>Belege fehlen</td><td>Zahlen ohne Messweg, Stimmen ohne Freigabe.</td><td>Belege prüfen, fehlende beschaffen, bis dahin nicht behaupten.</td></tr>
+      <tr><td class="n">5</td><td>Werte als Wandschmuck</td><td>„Wir leben Innovation“, im Alltag sieht man nichts davon.</td><td>Jeder Wert mit „Das heißt bei uns“ und „Deshalb tun wir nicht“.</td></tr>
+      <tr><td class="n">6</td><td>Je Zielgruppe ein neues Versprechen</td><td>Der Einkauf hört „günstig“, die Leitung „besonders hochwertig“.</td><td>Gleiche Säulen, andere Reihenfolge und Wörter.</td></tr>
+      <tr><td class="n">7</td><td>Allein gebaut</td><td>Das Team kennt das Haus nicht oder hält es für Theorie.</td><td>Team-Runde mit Übung in eigenen Worten.</td></tr>
+      <tr><td class="n">8</td><td>Das Haus wörtlich veröffentlicht</td><td>Säulen-Namen stehen als Überschriften auf der Website.</td><td>Übersetzen in Kundenworte, je Ort passend.</td></tr>
+      <tr><td class="n">9</td><td>Ton nur beschrieben</td><td>„Locker“ heißt für jeden etwas anderes.</td><td>Wortliste und Vorher-nachher-Sätze als Beispiele.</td></tr>
+      <tr><td class="n">10</td><td>Wörter aus der Branche</td><td>„Lösungen“, „Mehrwert“, „ganzheitlich“.</td><td>Kundenwörter sammeln und übernehmen.</td></tr>
+      <tr><td class="n">11</td><td>Mit der Gestaltung anfangen</td><td>Logo und Farben stehen, die Sätze nicht.</td><td>Erst das Haus, dann die Gestaltung.</td></tr>
+      <tr><td class="n">12</td><td>Einmal gebaut, nie geprüft</td><td>Nach einem Jahr sagt die Website etwas anderes als das Team.</td><td>Durchsicht jedes Quartal, eine verantwortliche Person.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="abschnitt-titel" style="color:var(--akzent)">Vier Korrekturen aus dem Beispiel <small>frei erfunden</small></p>
+  <table class="raster bsp-tab regeln-tab">
+    <colgroup><col style="width:22mm"><col style="width:62mm"><col></colgroup>
+    <thead><tr><th>Teil</th><th>Vorher</th><th>Nachher</th></tr></thead>
+    <tbody>
+      <tr><td>Dach</td><td class="leise">„Ihr Partner für die digitale Zukunft.“</td><td>„Wir kümmern uns um die IT von Praxen und Kanzleien, damit Ihr Team arbeiten kann und Ihre Daten sicher sind.“</td></tr>
+      <tr><td>Säule</td><td class="leise">„Service-Qualität“</td><td>„Erreichbar wie ein Kollege: In einer Stunde ist jemand dran, der Ihre Technik kennt.“</td></tr>
+      <tr><td>Wert</td><td class="leise">„Innovation“</td><td>„Vorsorge statt Feuerwehr: Wir planen Wartung, bevor etwas stört.“</td></tr>
+      <tr><td>Ton</td><td class="leise">„Wir bieten proaktive Managed Services zu attraktiven Konditionen.“</td><td>„Wir kümmern uns, bevor es stört, zum Festpreis je Arbeitsplatz.“</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 18 · Nächste Schritte -->
+<section class="seite">
+  <p class="vorzeile">Zum Schluss</p>
+  <h2 class="blatt">Nächste Schritte</h2>
+  <p class="unter">Das Haus wirkt erst, wenn es draußen ankommt. Beginnen Sie mit dem Ort, den die meisten Kunden zuerst sehen, meist die Startseite oder Ihr Profil.</p>
+  <p class="abschnitt-titel">Ihre nächsten drei Schritte</p>
+  <table class="raster">
+    <colgroup><col style="width:7mm"><col><col style="width:36mm"><col style="width:28mm"></colgroup>
+    <thead><tr><th></th><th>Was genau? <small>etwa: Startseite umschreiben, Team-Runde ansetzen, fehlende Belege beschaffen</small></th><th>Wer?</th><th>Bis wann?</th></tr></thead>
+    <tbody><tr><td class="n" style="height:10mm">1</td><td></td><td></td><td></td></tr><tr><td class="n" style="height:10mm">2</td><td></td><td></td><td></td></tr><tr><td class="n" style="height:10mm">3</td><td></td><td></td><td></td></tr></tbody>
+  </table>
+  <div class="zwei" style="margin-top:3mm"><p class="feld"><span>Erste Durchsicht am</span><span class="strich"></span></p><p class="feld"><span>Verantwortlich</span><span class="strich"></span></p></div>
+
+  <p class="abschnitt-titel">Weiter geht es hier</p>
+  <ul class="weiter-liste">
+    <li><span class="art">Baustein</span><div><h3>Wettbewerb und Unterschied</h3><p>Ihre Säulen im Vergleich: mit wem Kunden Sie vergleichen, wo Sie vorn liegen und wie Sie den Unterschied belegen.</p><a href="https://fokusinnovation.de/bausteine/wettbewerb-unterschied/">fokusinnovation.de/bausteine/wettbewerb-unterschied/</a></div></li>
+    <li><span class="art">Selbst prüfen</span><div><h3>Sichtbarkeits-Check</h3><p>Zwölf Fragen zu Botschaft, Website und Reichweite in rund fünf Minuten. Sie sehen sofort, wo es noch hakt.</p><a href="https://fokusinnovation.de/check?thema=sichtbarkeit">fokusinnovation.de/check?thema=sichtbarkeit</a></div></li>
+    <li><span class="art">Mit uns arbeiten</span><div><h3>Positionierung S, M, L</h3><p>Wenn Sie es nicht allein machen wollen: Wir bereiten mit KI vor, Sie entscheiden mit uns im Workshop. In M und L gehören Kundeninterviews, Wettbewerb, Pitch und Kernbotschaften dazu.</p><a href="https://fokusinnovation.de/sichtbarkeit/positionierung/">fokusinnovation.de/sichtbarkeit/positionierung/</a></div></li>
+    <li><span class="art">Mit uns sprechen</span><div><h3>Kostenloses Erstgespräch</h3><p>30 Minuten per Video. Wir schauen gemeinsam auf Ihr Haus und Ihre Texte und legen die nächsten Schritte fest.</p><a href="https://fokusinnovation.de/kontakt/">fokusinnovation.de/kontakt/</a></div></li>
+  </ul>
+  <p class="hinweis" style="margin-top:auto;margin-bottom:3mm">Alle Beispiele, Firmen und Zahlen in diesem Baustein sind frei erfunden. Hinweise zu Kundenstimmen und Freigaben sind keine Rechtsberatung. Stand: Oktober 2026.</p>
+</section>
+
+<script>
+  const seiten = [...document.querySelectorAll('.seite')];
+  seiten.forEach((s, i) => {
+    s.insertAdjacentHTML('afterbegin', '<header class="kopf"><span class="marke"><svg aria-hidden="true"><use href="#marke"/></svg>FOKUS INNOVATION</span><span class="leitsatz">Fortschritt braucht Fokus.</span></header>');
+    s.insertAdjacentHTML('beforeend', `<footer class="fuss"><span>fokusinnovation.de · Nutzung im eigenen Unternehmen</span><span>Seite ${i + 1} von ${seiten.length}</span></footer>`);
+  });
+  const $ = (id) => document.getElementById(id);
+  const linie = '<div class="zeile-frei"></div>';
+  const linien = (n) => `<div class="linien">${linie.repeat(n)}</div>`;
+  document.querySelectorAll('[data-linien]').forEach((d) => { d.innerHTML = linie.repeat(Number(d.dataset.linien)); });
+  const kreuz = '<span class="kreuz"></span>';
+
+  // Seite 8: drei Säulen zum Ausfüllen
+  const belegart = `<p class="belegart">${['Zahl', 'Fall', 'Zitat', 'Ablauf', 'Zusage'].map((a) => `<span>${kreuz}${a}</span>`).join('')}</p>`;
+  $('saeulen-bogen').innerHTML = [1, 2, 3].map((n) => `<div>
+    <span class="nr">Säule ${n}</span>
+    <p class="unterzeile">Name</p>${linien(1)}
+    <p class="unterzeile">Versprechen in einem Satz</p>${linien(2)}
+    ${[1, 2, 3].map((b) => `<p class="unterzeile">Beleg ${b}</p>${linien(2)}${belegart}`).join('')}
+    <p class="unterzeile">Nachweis liegt in</p>${linien(1)}
+  </div>`).join('');
+
+  // Seite 10: Wortliste
+  $('woerter').innerHTML = Array.from({ length: 6 }, () => '<tr><td></td><td></td><td></td><td class="pfeil">→</td><td></td></tr>').join('');
+
+  // Seite 11: vier Zielgruppen-Karten
+  $('karten').innerHTML = [1, 2, 3, 4].map((n) => `<div class="karte">
+    <p class="feld"><span class="nr" style="margin-right:2mm">${n}</span><span>Zielgruppe</span><span class="strich"></span></p>
+    <p class="unterzeile">Was ihr wichtig ist</p>${linien(2)}
+    <p class="unterzeile">Zuerst erzählen wir</p>
+    <p class="wahl-reihe"><span class="wahl">${kreuz}Säule 1</span><span class="wahl">${kreuz}Säule 2</span><span class="wahl">${kreuz}Säule 3</span><span class="wahl">${kreuz}Fundament</span></p>
+    <p class="unterzeile">Botschaft in einem Satz</p>${linien(2)}
+    <p class="unterzeile">Beleg, der hier zählt</p>${linien(1)}
+    <p class="unterzeile">Wörter, die diese Gruppe selbst benutzt</p>${linien(1)}
+    <p class="unterzeile">Häufiger Einwand und unsere Antwort</p>${linien(3)}
+  </div>`).join('');
+
+  // Seite 12: leere Säulen
+  $('saeulen-leer').innerHTML = [1, 2, 3].map((n) => `<div class="saeule"><span class="teil">Säule ${n}</span><p class="klein">Name</p>${linien(1)}<p class="klein">Versprechen</p>${linien(3)}<p class="klein">Belege</p>${linien(5)}</div>`).join('');
+
+  // Seite 13: Startseite und Leistungsseite
+  const start = [
+    ['Überschrift', 'Dach, in Kundenworten'],
+    ['Unterzeile', 'Kurzform oder die drei Säulen in einem Satz'],
+    ['Hauptknopf', 'der nächste Schritt, ein klares Wort'],
+    ['Drei Kacheln', 'die Säulen, je ein Satz'],
+    ['Belegleiste', 'die drei stärksten Belege'],
+    ['Ablauf', 'drei bis fünf Schritte mit Dauer'],
+    ['Kundenstimmen', 'Belege mit Freigabe'],
+    ['So arbeiten wir', 'Fundament und Haltung'],
+    ['Seitentitel und Beschreibung', 'Dach mit Zielgruppe oder Ort, für Suchmaschinen und KI-Assistenten'],
+  ];
+  $('startseite').innerHTML = start.map(([a, h]) => `<tr><td class="stark" style="height:10.6mm">${a}</td><td class="leise" style="font-size:8.6pt">${h}</td><td></td></tr>`).join('');
+  const leistung = [
+    'Das Problem der Zielgruppe, in Kundenworten',
+    'Das Ergebnis: was danach anders ist',
+    'Der Ablauf in drei bis fünf Schritten',
+    'Warum mit uns: die passende Säule',
+    'Belege: Fall, Zahl, Kundenstimme',
+    'Preis oder Preisrahmen',
+    'Drei häufige Fragen mit Antwort',
+    'Knopf: der nächste Schritt',
+  ];
+  $('leistung').innerHTML = leistung.map((t, i) => `<tr><td class="n" style="height:9mm">${i + 1}</td><td style="font-size:8.8pt">${t}</td><td></td></tr>`).join('');
+
+  // Seite 14: Angebot
+  const angebot = [
+    ['Ausgangslage', 'in den Worten des Kunden, aus dem Gespräch'],
+    ['Ziel', 'was nach dem Auftrag anders ist'],
+    ['Leitsatz', 'das Dach, auf diesen Kunden bezogen'],
+    ['Warum mit uns', 'die drei Säulen, je ein Satz, die wichtigste zuerst'],
+    ['Belege', 'passend zu diesem Kunden'],
+    ['So arbeiten wir', 'Fundament und Ablauf'],
+    ['Nächster Schritt', 'mit Datum'],
+  ];
+  $('angebot').innerHTML = angebot.map(([a, h], i) => `<tr><td class="n" style="height:9mm">${i + 1}</td><td><b class="stark">${a}</b> <span class="leise" style="font-size:8.4pt">· ${h}</span></td><td></td></tr>`).join('');
+
+  // Seite 15: Orte
+  const orte = ['Startseite', 'Leistungsseiten', 'Angebotsvorlage', 'Profile in sozialen Netzwerken', 'Unternehmensprofil bei Google', 'Präsentation', 'E-Mail-Signatur', 'Stellenanzeige', 'Telefonbegrüßung'];
+  const jtn = '<td class="jtn">j t n</td>';
+  $('orte').innerHTML = orte.map((o) => `<tr><td class="stark">${o}</td>${jtn}${jtn}${jtn}<td></td><td></td></tr>`).join('') + ``;
+</script>
+</body>
+</html>

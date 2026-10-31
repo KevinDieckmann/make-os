@@ -1,0 +1,3231 @@
+{
+ "blaetter": [
+  {
+   "name": "Anleitung",
+   "spalten": [
+    {
+     "breite": 5
+    },
+    {
+     "breite": 110,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Wettbewerb und Unterschied · Tabelle",
+      "stil": "titel"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Diese Tabelle gehört zum Baustein „Wettbewerb und Unterschied“ von Fokus Innovation. Nutzung im eigenen Unternehmen. Sie läuft in Excel, Numbers und Google Tabellen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "So arbeiten Sie damit",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "1",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Raster“: Kriterien und Gewichte aus Bogen 3 eintragen, Namen der Alternativen in Zeile 2, dann je Alternative 1 bis 5 Punkte vergeben. Helle Flächen sind zum Eintragen.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "2",
+      "stil": "zahl"
+     },
+     {
+      "v": "Die Tabelle rechnet je Zeile den Abstand zur besten Alternative und schlägt vor, was zu tun ist. Unten stehen Summe, Anteil und Rang.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "3",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Matrix“: für jede Alternative zwei Werte von 1 bis 5 eintragen. Die Tabelle nennt das Feld, den Abstand zu Ihnen und die nächste Alternative.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "4",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Gesamtkosten“: Preis, Zusatzkosten, eigenen Aufwand des Kunden und Ausfälle eintragen. Die Tabelle rechnet Gesamtkosten je Monat und Jahr.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "5",
+      "stil": "zahl"
+     },
+     {
+      "v": "Blatt „Beispiel“: das ausgefüllte, frei erfundene Raster aus dem PDF zum Vergleichen. Blatt „Kriterien-Ideen“: Vorschläge mit Fragen an Kunden.",
+      "stil": "text"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Bewerten Sie aus Sicht Ihrer Kunden und lassen Sie zwei Personen getrennt bewerten. Was Sie nicht wissen, bleibt leer, statt zu raten.",
+      "stil": "hinweis"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Hinweise zu vergleichender Werbung im PDF auf Seite 13 sind keine Rechtsberatung.",
+      "stil": "hinweis"
+     }
+    ]
+   ]
+  },
+  {
+   "name": "Raster",
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Kriterium (in Kundenworten)",
+     "breite": 36,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Gewicht (1 bis 3)",
+     "breite": 9,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Wir",
+     "breite": 8,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Alternative 1",
+     "breite": 12,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Alternative 2",
+     "breite": 12,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Alternative 3",
+     "breite": 12,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Alternative 4",
+     "breite": 12,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Selbst machen",
+     "breite": 9,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Nichts tun",
+     "breite": 9,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Abstand zur besten Alternative",
+     "breite": 12,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Lage",
+     "breite": 11,
+     "stil": "text"
+    },
+    {
+     "titel": "Was tun",
+     "breite": 21,
+     "stil": "text"
+    },
+    {
+     "titel": "Beleg oder Notiz",
+     "breite": 34,
+     "stil": "eingabe"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Namen der Alternativen →",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Wir",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Selbst machen",
+      "stil": "fett"
+     },
+     {
+      "v": "Nichts tun",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     1,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     2,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     3,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     4,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     5,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     6,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     7,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     8,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     9,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     10,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     11,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     12,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     null
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Summe Punkte × Gewicht",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(COUNT(D3:D14)=0,\"\",SUMPRODUCT($C$3:$C$14,D3:D14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(E3:E14)=0,\"\",SUMPRODUCT($C$3:$C$14,E3:E14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F3:F14)=0,\"\",SUMPRODUCT($C$3:$C$14,F3:F14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(G3:G14)=0,\"\",SUMPRODUCT($C$3:$C$14,G3:G14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(H3:H14)=0,\"\",SUMPRODUCT($C$3:$C$14,H3:H14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(I3:I14)=0,\"\",SUMPRODUCT($C$3:$C$14,I3:I14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(J3:J14)=0,\"\",SUMPRODUCT($C$3:$C$14,J3:J14))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Höchstmöglich",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(D16=\"\",\"\",5*SUMIF(D3:D14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(E16=\"\",\"\",5*SUMIF(E3:E14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(F16=\"\",\"\",5*SUMIF(F3:F14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G16=\"\",\"\",5*SUMIF(G3:G14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H16=\"\",\"\",5*SUMIF(H3:H14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I16=\"\",\"\",5*SUMIF(I3:I14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J16=\"\",\"\",5*SUMIF(J3:J14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Anteil vom Höchstwert",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(OR(D16=\"\",N(D17)=0),\"\",D16/D17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(E16=\"\",N(E17)=0),\"\",E16/E17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(F16=\"\",N(F17)=0),\"\",F16/F17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(G16=\"\",N(G17)=0),\"\",G16/G17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(H16=\"\",N(H17)=0),\"\",H16/H17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(I16=\"\",N(I17)=0),\"\",I16/I17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(J16=\"\",N(J17)=0),\"\",J16/J17)",
+      "stil": "prozent"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Rang (1 = vorn)",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(D16=\"\",\"\",RANK(D16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(E16=\"\",\"\",RANK(E16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(F16=\"\",\"\",RANK(F16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G16=\"\",\"\",RANK(G16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H16=\"\",\"\",RANK(H16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I16=\"\",\"\",RANK(I16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J16=\"\",\"\",RANK(J16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Summe ohne Gewichte",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(COUNT(D3:D14)=0,\"\",SUM(D3:D14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(E3:E14)=0,\"\",SUM(E3:E14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F3:F14)=0,\"\",SUM(F3:F14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(G3:G14)=0,\"\",SUM(G3:G14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(H3:H14)=0,\"\",SUM(H3:H14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(I3:I14)=0,\"\",SUM(I3:I14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(J3:J14)=0,\"\",SUM(J3:J14))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Punkte aus Kundensicht: 1 = deutlich schwächer als üblich, 3 = üblich, 5 = deutlich besser. Was Sie nicht wissen, bleibt leer.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Gewicht: 3 = entscheidet über den Auftrag, 2 = wichtig, 1 = schön zu haben. Höchstens vier Kriterien mit Gewicht 3.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Abstand = unsere Punkte minus die besten Punkte aller Alternativen in dieser Zeile. Positiv heißt: Wir liegen vorn.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "„Als Unterschied prüfen“ = Vorsprung bei Gewicht 3. „Zuerst angehen“ = Rückstand bei Gewicht 3. „Betonen“ und „Im Blick behalten“ gelten für Gewicht 2.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Die Summe zeigt die Lage, entscheidet aber nichts. Wichtig sind die einzelnen Zeilen.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ],
+   "fixieren": true
+  },
+  {
+   "name": "Matrix",
+   "spalten": [
+    {
+     "titel": "Anbieter",
+     "breite": 32,
+     "stil": "eingabe"
+    },
+    {
+     "titel": "Waagerecht (1 bis 5)",
+     "breite": 13,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Senkrecht (1 bis 5)",
+     "breite": 13,
+     "stil": "eingabe-zahl"
+    },
+    {
+     "titel": "Feld",
+     "breite": 17,
+     "stil": "text"
+    },
+    {
+     "titel": "Abstand zu uns",
+     "breite": 11,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Notiz",
+     "breite": 34,
+     "stil": "eingabe"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Wir",
+      "stil": "fett"
+     },
+     null,
+     null,
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IF(C{r}>3,\"oben\",IF(C{r}<3,\"unten\",\"Mitte\"))&\" · \"&IF(B{r}>3,\"rechts\",IF(B{r}<3,\"links\",\"Mitte\")))"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IF(C{r}>3,\"oben\",IF(C{r}<3,\"unten\",\"Mitte\"))&\" · \"&IF(B{r}>3,\"rechts\",IF(B{r}<3,\"links\",\"Mitte\")))"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",$D$2=\"\"),\"\",ROUND(SQRT((B{r}-$B$2)^2+(C{r}-$C$2)^2),1))"
+     },
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IF(C{r}>3,\"oben\",IF(C{r}<3,\"unten\",\"Mitte\"))&\" · \"&IF(B{r}>3,\"rechts\",IF(B{r}<3,\"links\",\"Mitte\")))"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",$D$2=\"\"),\"\",ROUND(SQRT((B{r}-$B$2)^2+(C{r}-$C$2)^2),1))"
+     },
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IF(C{r}>3,\"oben\",IF(C{r}<3,\"unten\",\"Mitte\"))&\" · \"&IF(B{r}>3,\"rechts\",IF(B{r}<3,\"links\",\"Mitte\")))"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",$D$2=\"\"),\"\",ROUND(SQRT((B{r}-$B$2)^2+(C{r}-$C$2)^2),1))"
+     },
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IF(C{r}>3,\"oben\",IF(C{r}<3,\"unten\",\"Mitte\"))&\" · \"&IF(B{r}>3,\"rechts\",IF(B{r}<3,\"links\",\"Mitte\")))"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",$D$2=\"\"),\"\",ROUND(SQRT((B{r}-$B$2)^2+(C{r}-$C$2)^2),1))"
+     },
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IF(C{r}>3,\"oben\",IF(C{r}<3,\"unten\",\"Mitte\"))&\" · \"&IF(B{r}>3,\"rechts\",IF(B{r}<3,\"links\",\"Mitte\")))"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",$D$2=\"\"),\"\",ROUND(SQRT((B{r}-$B$2)^2+(C{r}-$C$2)^2),1))"
+     },
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IF(C{r}>3,\"oben\",IF(C{r}<3,\"unten\",\"Mitte\"))&\" · \"&IF(B{r}>3,\"rechts\",IF(B{r}<3,\"links\",\"Mitte\")))"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",$D$2=\"\"),\"\",ROUND(SQRT((B{r}-$B$2)^2+(C{r}-$C$2)^2),1))"
+     },
+     null
+    ],
+    [
+     null,
+     null,
+     null,
+     {
+      "f": "IF(OR(B{r}=\"\",C{r}=\"\"),\"\",IF(C{r}>3,\"oben\",IF(C{r}<3,\"unten\",\"Mitte\"))&\" · \"&IF(B{r}>3,\"rechts\",IF(B{r}<3,\"links\",\"Mitte\")))"
+     },
+     {
+      "f": "IF(OR(D{r}=\"\",$D$2=\"\"),\"\",ROUND(SQRT((B{r}-$B$2)^2+(C{r}-$C$2)^2),1))"
+     },
+     null
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Waagerecht: 1 bedeutet",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Waagerecht: 5 bedeutet",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Senkrecht: 1 bedeutet",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Senkrecht: 5 bedeutet",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Alternativen im selben Feld wie wir",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(D2=\"\",\"\",COUNTIF(D3:D9,D2))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Am nächsten an uns",
+      "stil": "fett"
+     },
+     {
+      "f": "IFERROR(INDEX(A3:A9,MATCH(MIN(E3:E9),E3:E9,0)),\"\")",
+      "stil": "text"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Abstand dieser Alternative",
+      "stil": "fett"
+     },
+     {
+      "f": "IF(B17=\"\",\"\",MIN(E3:E9))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Werte von 1 bis 5, auch halbe Zahlen. Wählen Sie zwei Achsen aus Ihren wichtigsten Kriterien, die voneinander unabhängig sind.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Feld „oben · rechts“ ist nur dann gut, wenn Kunden dorthin wollen. Prüfen Sie das mit drei Kunden. Zum Einzeichnen: Seite 8 im PDF.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ],
+   "fixieren": true
+  },
+  {
+   "name": "Gesamtkosten",
+   "spalten": [
+    {
+     "titel": "Posten",
+     "breite": 40,
+     "stil": "text"
+    },
+    {
+     "titel": "Hinweis",
+     "breite": 40,
+     "stil": "hinweis"
+    },
+    {
+     "titel": "Wir",
+     "breite": 14,
+     "stil": "eingabe-euro"
+    },
+    {
+     "titel": "Alternative 1",
+     "breite": 14,
+     "stil": "eingabe-euro"
+    },
+    {
+     "titel": "Alternative 2",
+     "breite": 14,
+     "stil": "eingabe-euro"
+    },
+    {
+     "titel": "Alternative 3",
+     "breite": 14,
+     "stil": "eingabe-euro"
+    },
+    {
+     "titel": "Selbst machen",
+     "breite": 14,
+     "stil": "eingabe-euro"
+    },
+    {
+     "titel": "Nichts tun",
+     "breite": 14,
+     "stil": "eingabe-euro"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "Name",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Wir",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "",
+      "stil": "eingabe"
+     },
+     {
+      "v": "Selbst machen",
+      "stil": "fett"
+     },
+     {
+      "v": "Nichts tun",
+      "stil": "fett"
+     }
+    ],
+    [
+     {
+      "v": "Preis je Monat (€)",
+      "stil": "fett"
+     },
+     {
+      "v": "laut Angebot oder Preisliste; bei „Nichts tun“ die heutigen Kosten",
+      "stil": "hinweis"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Material und Zusatzkosten je Monat (€)",
+      "stil": "fett"
+     },
+     {
+      "v": "was der Kunde zusätzlich zahlt",
+      "stil": "hinweis"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Eigener Aufwand des Kunden (Stunden je Monat)",
+      "stil": "fett"
+     },
+     {
+      "v": "organisieren, nacharbeiten, selbst machen",
+      "stil": "hinweis"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     }
+    ],
+    [
+     {
+      "v": "Kosten einer Stunde beim Kunden (€)",
+      "stil": "fett"
+     },
+     {
+      "v": "einmal eintragen, in der Spalte „Wir“",
+      "stil": "hinweis"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-euro"
+     },
+     {
+      "f": "IF($C$6=\"\",\"\",$C$6)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($C$6=\"\",\"\",$C$6)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($C$6=\"\",\"\",$C$6)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($C$6=\"\",\"\",$C$6)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF($C$6=\"\",\"\",$C$6)",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "Eigener Aufwand in €",
+      "stil": "fett"
+     },
+     {
+      "v": "rechnet sich selbst",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(OR(C5=\"\",C6=\"\"),\"\",C5*C6)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(D5=\"\",D6=\"\"),\"\",D5*D6)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(E5=\"\",E6=\"\"),\"\",E5*E6)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(F5=\"\",F6=\"\"),\"\",F5*F6)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(G5=\"\",G6=\"\"),\"\",G5*G6)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(H5=\"\",H6=\"\"),\"\",H5*H6)",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "Ausfälle, Nacharbeit, Risiko je Monat (€)",
+      "stil": "fett"
+     },
+     {
+      "v": "ehrlich geschätzt",
+      "stil": "hinweis"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Einmalige Wechselkosten (€)",
+      "stil": "fett"
+     },
+     {
+      "v": "Einrichtung, Umstellung, doppelte Kosten",
+      "stil": "hinweis"
+     },
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     {
+      "v": "Wechselkosten verteilt auf Monate",
+      "stil": "fett"
+     },
+     {
+      "v": "einmal eintragen, in der Spalte „Wir“, etwa 12",
+      "stil": "hinweis"
+     },
+     {
+      "v": null,
+      "stil": "eingabe-zahl"
+     },
+     {
+      "f": "IF($C$10=\"\",\"\",$C$10)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($C$10=\"\",\"\",$C$10)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($C$10=\"\",\"\",$C$10)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($C$10=\"\",\"\",$C$10)",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF($C$10=\"\",\"\",$C$10)",
+      "stil": "zahl"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Gesamtkosten je Monat",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(COUNT(C3,C4,C5,C8,C9)=0,\"\",N(C3)+N(C4)+N(C7)+N(C8)+IF(N(C10)>0,N(C9)/C10,0))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(COUNT(D3,D4,D5,D8,D9)=0,\"\",N(D3)+N(D4)+N(D7)+N(D8)+IF(N(D10)>0,N(D9)/D10,0))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(COUNT(E3,E4,E5,E8,E9)=0,\"\",N(E3)+N(E4)+N(E7)+N(E8)+IF(N(E10)>0,N(E9)/E10,0))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(COUNT(F3,F4,F5,F8,F9)=0,\"\",N(F3)+N(F4)+N(F7)+N(F8)+IF(N(F10)>0,N(F9)/F10,0))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(COUNT(G3,G4,G5,G8,G9)=0,\"\",N(G3)+N(G4)+N(G7)+N(G8)+IF(N(G10)>0,N(G9)/G10,0))",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(COUNT(H3,H4,H5,H8,H9)=0,\"\",N(H3)+N(H4)+N(H7)+N(H8)+IF(N(H10)>0,N(H9)/H10,0))",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "Gesamtkosten je Jahr",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(C12=\"\",\"\",C12*12)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(D12=\"\",\"\",D12*12)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(E12=\"\",\"\",E12*12)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(F12=\"\",\"\",F12*12)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(G12=\"\",\"\",G12*12)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(H12=\"\",\"\",H12*12)",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "Unterschied zu uns je Jahr",
+      "stil": "fett"
+     },
+     {
+      "v": "positiv = teurer als wir",
+      "stil": "hinweis"
+     },
+     {
+      "f": "IF(OR(C13=\"\",$C$13=\"\"),\"\",C13-$C$13)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(D13=\"\",$C$13=\"\"),\"\",D13-$C$13)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(E13=\"\",$C$13=\"\"),\"\",E13-$C$13)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(F13=\"\",$C$13=\"\"),\"\",F13-$C$13)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(G13=\"\",$C$13=\"\"),\"\",G13-$C$13)",
+      "stil": "euro"
+     },
+     {
+      "f": "IF(OR(H13=\"\",$C$13=\"\"),\"\",H13-$C$13)",
+      "stil": "euro"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "Beispiel mit frei erfundenen Zahlen im PDF auf Seite 12. Rechnen Sie die Gesamtkosten gemeinsam mit dem Kunden, nicht für ihn.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ],
+   "fixieren": true
+  },
+  {
+   "name": "Beispiel",
+   "spalten": [
+    {
+     "titel": "Nr.",
+     "breite": 5,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Kriterium (in Kundenworten)",
+     "breite": 36,
+     "stil": "text"
+    },
+    {
+     "titel": "Gewicht (1 bis 3)",
+     "breite": 9,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Wir",
+     "breite": 8,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Alternative 1",
+     "breite": 12,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Alternative 2",
+     "breite": 12,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Alternative 3",
+     "breite": 12,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Alternative 4",
+     "breite": 12,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Selbst machen",
+     "breite": 9,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Nichts tun",
+     "breite": 9,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Abstand zur besten Alternative",
+     "breite": 12,
+     "stil": "zahl"
+    },
+    {
+     "titel": "Lage",
+     "breite": 11,
+     "stil": "text"
+    },
+    {
+     "titel": "Was tun",
+     "breite": 21,
+     "stil": "text"
+    },
+    {
+     "titel": "Beleg oder Notiz",
+     "breite": 34,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Namen der Alternativen →",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Wir",
+      "stil": "fett"
+     },
+     {
+      "v": "A · großer Gebäudereiniger",
+      "stil": "fett"
+     },
+     {
+      "v": "B · regionaler Reiniger",
+      "stil": "fett"
+     },
+     {
+      "v": "C · Minijob",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "fett"
+     },
+     {
+      "v": "Selbst machen",
+      "stil": "fett"
+     },
+     {
+      "v": "Nichts tun",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     1,
+     "Hygiene nach Plan, mit Nachweis",
+     3,
+     5,
+     3,
+     2,
+     1,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     1,
+     2,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     "Hygieneplan je Praxis, Protokoll je Raum"
+    ],
+    [
+     2,
+     "Verlässlich, Ersatz bei Ausfall",
+     3,
+     5,
+     4,
+     3,
+     1,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     2,
+     3,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     "Ersatz am selben Abend, steht im Vertrag"
+    ],
+    [
+     3,
+     "Festes Team, das die Praxis kennt",
+     2,
+     4,
+     2,
+     3,
+     4,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     5,
+     3,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     "im Sommer öfter Wechsel durch Urlaub"
+    ],
+    [
+     4,
+     "Reinigung außerhalb der Sprechzeiten",
+     2,
+     4,
+     4,
+     4,
+     3,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     2,
+     4,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     ""
+    ],
+    [
+     5,
+     "Preis je Monat",
+     3,
+     2,
+     3,
+     3,
+     5,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     4,
+     3,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     "Gesamtkosten zeigen, Blatt Gesamtkosten"
+    ],
+    [
+     6,
+     "Schnelle Nachreinigung bei Beanstandung",
+     2,
+     4,
+     2,
+     3,
+     2,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     3,
+     2,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     "binnen 24 Stunden, laut Protokoll"
+    ],
+    [
+     7,
+     "Erfahrung mit Praxen und Laboren",
+     2,
+     5,
+     3,
+     2,
+     1,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     2,
+     3,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     "nur Praxen und Labore seit Gründung"
+    ],
+    [
+     8,
+     "Wenig Aufwand für das Praxisteam",
+     2,
+     4,
+     4,
+     3,
+     3,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     1,
+     5,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     ""
+    ],
+    [
+     9,
+     "Laufzeit und Kündigung",
+     1,
+     4,
+     2,
+     3,
+     4,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     5,
+     3,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     ""
+    ],
+    [
+     10,
+     "Feste Ansprechperson",
+     1,
+     5,
+     2,
+     4,
+     3,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     5,
+     3,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     ""
+    ],
+    [
+     11,
+     "Umweltverträgliche Mittel",
+     1,
+     4,
+     3,
+     3,
+     2,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     2,
+     3,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     ""
+    ],
+    [
+     12,
+     "Bekanntheit, Vertrauen",
+     1,
+     2,
+     5,
+     3,
+     1,
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     3,
+     4,
+     {
+      "f": "IF(OR(D{r}=\"\",COUNT(E{r}:J{r})=0),\"\",D{r}-MAX(E{r}:J{r}))"
+     },
+     {
+      "f": "IF(K{r}=\"\",\"\",IF(K{r}>=1,\"Vorsprung\",IF(K{r}<=-1,\"Rückstand\",\"gleichauf\")))"
+     },
+     {
+      "f": "IF(OR(K{r}=\"\",C{r}=\"\"),\"\",IF(AND(C{r}=3,K{r}>=1),\"Als Unterschied prüfen\",IF(AND(C{r}=3,K{r}<=-1),\"Zuerst angehen\",IF(AND(C{r}=2,K{r}>=1),\"Betonen\",IF(AND(C{r}=2,K{r}<=-1),\"Im Blick behalten\",\"\")))))"
+     },
+     ""
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Summe Punkte × Gewicht",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(COUNT(D3:D14)=0,\"\",SUMPRODUCT($C$3:$C$14,D3:D14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(E3:E14)=0,\"\",SUMPRODUCT($C$3:$C$14,E3:E14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F3:F14)=0,\"\",SUMPRODUCT($C$3:$C$14,F3:F14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(G3:G14)=0,\"\",SUMPRODUCT($C$3:$C$14,G3:G14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(H3:H14)=0,\"\",SUMPRODUCT($C$3:$C$14,H3:H14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(I3:I14)=0,\"\",SUMPRODUCT($C$3:$C$14,I3:I14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(J3:J14)=0,\"\",SUMPRODUCT($C$3:$C$14,J3:J14))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Höchstmöglich",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(D16=\"\",\"\",5*SUMIF(D3:D14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(E16=\"\",\"\",5*SUMIF(E3:E14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(F16=\"\",\"\",5*SUMIF(F3:F14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G16=\"\",\"\",5*SUMIF(G3:G14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H16=\"\",\"\",5*SUMIF(H3:H14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I16=\"\",\"\",5*SUMIF(I3:I14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J16=\"\",\"\",5*SUMIF(J3:J14,\">0\",$C$3:$C$14))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Anteil vom Höchstwert",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(OR(D16=\"\",N(D17)=0),\"\",D16/D17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(E16=\"\",N(E17)=0),\"\",E16/E17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(F16=\"\",N(F17)=0),\"\",F16/F17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(G16=\"\",N(G17)=0),\"\",G16/G17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(H16=\"\",N(H17)=0),\"\",H16/H17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(I16=\"\",N(I17)=0),\"\",I16/I17)",
+      "stil": "prozent"
+     },
+     {
+      "f": "IF(OR(J16=\"\",N(J17)=0),\"\",J16/J17)",
+      "stil": "prozent"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Rang (1 = vorn)",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(D16=\"\",\"\",RANK(D16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(E16=\"\",\"\",RANK(E16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(F16=\"\",\"\",RANK(F16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(G16=\"\",\"\",RANK(G16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(H16=\"\",\"\",RANK(H16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(I16=\"\",\"\",RANK(I16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(J16=\"\",\"\",RANK(J16,$D$16:$J$16))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Summe ohne Gewichte",
+      "stil": "fett"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "f": "IF(COUNT(D3:D14)=0,\"\",SUM(D3:D14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(E3:E14)=0,\"\",SUM(E3:E14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(F3:F14)=0,\"\",SUM(F3:F14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(G3:G14)=0,\"\",SUM(G3:G14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(H3:H14)=0,\"\",SUM(H3:H14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(I3:I14)=0,\"\",SUM(I3:I14))",
+      "stil": "zahl"
+     },
+     {
+      "f": "IF(COUNT(J3:J14)=0,\"\",SUM(J3:J14))",
+      "stil": "zahl"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "Frei erfundenes Beispiel: Reinigungsfirma für Arztpraxen und Labore, 35 Beschäftigte. Alle Namen, Punkte und Zahlen sind erfunden.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ],
+    [
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "So liest die Firma ihr Raster: Hygiene mit Nachweis und Verlässlichkeit sind der Unterschied, der Monatspreis wird über Gesamtkosten beantwortet.",
+      "stil": "hinweis"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     },
+     {
+      "v": "",
+      "stil": "standard"
+     }
+    ]
+   ],
+   "fixieren": true
+  },
+  {
+   "name": "Kriterien-Ideen",
+   "spalten": [
+    {
+     "titel": "Kriterium",
+     "breite": 34,
+     "stil": "fett"
+    },
+    {
+     "titel": "Woran man es erkennt",
+     "breite": 40,
+     "stil": "text"
+    },
+    {
+     "titel": "Frage an Kunden",
+     "breite": 44,
+     "stil": "text"
+    }
+   ],
+   "zeilen": [
+    [
+     "Preis je Auftrag oder Monat",
+     "Preisliste, Angebote",
+     "Was haben Sie bisher dafür bezahlt?"
+    ],
+    [
+     "Gesamtkosten mit eigenem Aufwand",
+     "Preis plus Stunden des Kunden plus Ausfälle",
+     "Wie viel Zeit kostet Sie das heute?"
+    ],
+    [
+     "Qualität des Ergebnisses",
+     "Beanstandungen, Nacharbeit, Prüfungen",
+     "Woran merken Sie, dass es gut gemacht ist?"
+    ],
+    [
+     "Geschwindigkeit, Lieferzeit",
+     "Tage bis zum Ergebnis",
+     "Wie schnell muss es gehen?"
+    ],
+    [
+     "Erreichbarkeit, Reaktionszeit",
+     "Stunden bis zur ersten Antwort",
+     "Was passiert, wenn etwas schiefgeht?"
+    ],
+    [
+     "Erfahrung in der Branche des Kunden",
+     "Anzahl Kunden dieser Branche, Fälle",
+     "Wie wichtig ist Ihnen Branchenwissen?"
+    ],
+    [
+     "Verlässlichkeit, Termintreue",
+     "Anteil pünktlicher Termine",
+     "Wie oft wurden Sie schon versetzt?"
+    ],
+    [
+     "Risiko: Garantie, Probezeit, Laufzeit",
+     "Vertragsbedingungen",
+     "Wie lange wollen Sie sich binden?"
+    ],
+    [
+     "Aufwand für den Kunden",
+     "Stunden, die der Kunde beitragen muss",
+     "Wie viel wollen Sie selbst tun?"
+    ],
+    [
+     "Feste Ansprechperson",
+     "eine Person mit Vertretung",
+     "Wen rufen Sie heute an?"
+    ],
+    [
+     "Nähe, Arbeit vor Ort",
+     "Entfernung, Präsenz",
+     "Muss jemand vor Ort sein?"
+    ],
+    [
+     "Belege, Referenzen",
+     "Fälle, Stimmen mit Freigabe",
+     "Was würde Sie überzeugen?"
+    ],
+    [
+     "Flexibilität bei Änderungen",
+     "Fristen für Änderungen",
+     "Wie oft ändert sich bei Ihnen etwas?"
+    ],
+    [
+     "Bekanntheit, Vertrauen",
+     "wie oft Kunden den Namen von selbst nennen",
+     "Wen kennen Sie in diesem Bereich?"
+    ],
+    [
+     "Nachhaltigkeit",
+     "Mittel, Wege, Nachweise",
+     "Spielt das bei Ihrer Entscheidung eine Rolle?"
+    ],
+    [
+     "Beratung und Zusatzleistungen",
+     "was ohne Aufpreis dazukommt",
+     "Was erwarten Sie über die Leistung hinaus?"
+    ]
+   ],
+   "fixieren": true
+  }
+ ]
+}
