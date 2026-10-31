@@ -453,16 +453,31 @@ export function mandatMonatVorgabe(m: Partial<Pick<Mandat, 'start' | 'ende'>>, h
   return mo;
 }
 
+const monatWeiter = (mo: string) => { const [j, m] = mo.split('-').map(Number); return m === 12 ? `${j + 1}-01` : `${j}-${String(m + 1).padStart(2, '0')}`; };
+/**
+ * Die Monate einer Rechnung (31.10.): vom Leistungsbeginn bis zum Leistungsende (höchstens 24 Monate) — eine Quartalsrechnung deckt drei Monate.
+ * Ohne Ende bzw. im selben Monat nur der Monat des Beginns (wie bisher). Rein.
+ */
+export function rechnungsMonate(r: Partial<Pick<Rechnung, 'leistungVon' | 'leistungBis'>>): string[] {
+  if (typeof r.leistungVon !== 'string' || !/^\d{4}-\d{2}$/.test(r.leistungVon.slice(0, 7))) return [];
+  const von = r.leistungVon.slice(0, 7);
+  const bis = typeof r.leistungBis === 'string' && /^\d{4}-\d{2}$/.test(r.leistungBis.slice(0, 7)) ? r.leistungBis.slice(0, 7) : von;
+  const raus = [von];
+  for (let mo = monatWeiter(von), n = 0; mo <= bis && n < 23; n++, mo = monatWeiter(mo)) raus.push(mo);
+  return raus;
+}
+
 /**
  * Die Leistungsmonate eines Mandats, für die die Monatsrechnung schon gestellt (bzw. bezahlt) ist (25.10., Kern-Bau-Test 2): gültige Rechnungen des Mandats (nicht
  * storniert, keine Stornorechnung, nicht aus einem Angebot, nicht nur „abgerechnet“ nach Menge) mit Leistungsbeginn. Ein Entwurf hält den Monat nicht — der Knopf
  * öffnet ihn dann.
  */
-export function abgerechneteMonate(mandatId: string, rechnungen: readonly Partial<Pick<Rechnung, 'mandatId' | 'status' | 'art' | 'angebotId' | 'leistungVon' | 'positionen'>>[]): Set<string> {
+export function abgerechneteMonate(mandatId: string, rechnungen: readonly Partial<Pick<Rechnung, 'mandatId' | 'status' | 'art' | 'angebotId' | 'leistungVon' | 'leistungBis' | 'positionen'>>[]): Set<string> {
   const nurNachMenge = (r: Partial<Pick<Rechnung, 'positionen'>>) => !!r.positionen?.length && r.positionen.every(p => p.id.startsWith(ABGERECHNET_PRAEFIX));
   return new Set(rechnungen
     .filter(r => r.mandatId === mandatId && (r.status === 'gestellt' || r.status === 'bezahlt') && r.art !== 'storno' && !r.angebotId && typeof r.leistungVon === 'string' && !nurNachMenge(r))
-    .map(r => r.leistungVon!.slice(0, 7)));
+    // 31.10.: eine Rechnung über mehrere Monate (Quartal) hält jeden ihrer Monate (`rechnungsMonate`; ein Monat wie bisher).
+    .flatMap(r => rechnungsMonate(r)));
 }
 /**
  * Der nächste offene Leistungsmonat ab `ab` (25.10.: nach dem Stellen der November-Rechnung bot der Knopf weiter „Rechnung für November 2026 schreiben“ an): der

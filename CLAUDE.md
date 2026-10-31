@@ -828,6 +828,18 @@ Morgenlauf legt den Rechnungs-ENTWURF an + Aufgabe ‚Rechnung prüfen & stellen
   Arbeits-Marke über `rechnungEreignisBereich`. Kontoauszug: nach dem Übernehmen „Als bezahlt vermerken“ (`bezahltVorschlaege`, Weg der Rechnungsansicht).
 - **Raten nach dem Mandatsende** bleiben im Soll (`mandatPosten`, auch beendet); abgerechnete Raten VOR dem laufenden Monat fallen weg. Liquidität zeigt
   „n Mandate nicht im Liquiplan“ (`mandateNichtImLiquiplan`).
+- **Kreislauf-Rest (31.10., Branch `paket-kreislauf`; Tests `tests/kreislauf-rest-3110.test.ts`):** WAS fällig ist, sagt NUR `vorbereitenFaellig` (kreislauf-regeln.ts;
+  `vorbereitenMonate` = nur die Monate) — Art `monat` · `rate` · `quartal` (EIN Entwurf je Quartal im Rhythmus des Mandats ab Beginn, `entwurfNeu({ quartal: true })`,
+  Leistungszeitraum über die Monate; ein Quartal mit gestelltem Monat fällt ganz weg) · `einmalig` (einmaliges Honorar ohne Zahlplan: EIN Entwurf zum Beginn) · `tag`
+  (erst nach dem Leistungsmonat; Tage = erfasste Zeit des Mandats ÷ `stundenJeTag` (Vorgabe 8, `kreislauf.vorbereiten.stundenJeTag`), `tageAusZeit` Vierteltage,
+  `entwurfNeu({ tage, tageHinweis })`; ohne Zeit KEIN Entwurf, nur die Aufgabe mit Hinweis). Eine Rechnung über mehrere Monate deckt jeden davon (`rechnungsMonate` in
+  regeln.ts → `abgerechneteMonate`, `rechnungFuerMonat`, Knopf `imMonat`). **Einmalposten eines gemischten Angebots** (Mandat rechnet NICHT selbst einmal ab): je Zahlung
+  nach `einmalZahlungen` (Raten · Anzahlung/Rest über `restMonat` · sonst ganz zum Mandatsstart) EIN Entwurf `nur: 'einmalig'` + `rate` (feste Kennung
+  `einmalRateRechnungId`, ganz = `einmalRechnungId`; die Rechnung über ALLE Einmalposten deckt jede Rate), Positionen anteilig `einmalTeilPositionen` (Summe exakt),
+  Merker `<mandat>|e:<angebot>:<nr>`, Aufgabe `rve-…`. Je Mandat und Lauf höchstens ein Honorar- und ein Einmalposten-Entwurf; alles erst ab `vorbereitenAbMonat`.
+  **Selbstständigkeit:** die Automatik trägt auch Mandate einer Privat-Arbeits-Einheit in den Liquiplan ein (`privatArbeitsEinheit`, Posten mit ihrer Firma);
+  `/api/crm/liquiplan` gibt einem Konto „nur Business“ weder diese Mandate noch Posten einer Privat-Firma, Schreiben darauf → 403. Offen: die Liquidität plant ein
+  Quartals-Mandat mit EINEM Monatsbetrag je Quartal (`hauptPosten`), die Quartalsrechnung sind drei Monate — Kevins Entscheidung.
 
 ## Gesundheits-Index & Traktions-Index (seit 26.09.2026, online)
 - **Ein Kern für alle Indizes:** `lib/kennzahlen/kern.ts` (`berechneModell`, `geometrisch` für den

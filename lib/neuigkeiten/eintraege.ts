@@ -33,6 +33,20 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-01-3',
+    datum: '2026-11-01',
+    titel: 'Rechnungen vorbereiten für alle Honorare',
+    kurz: 'Der Morgenlauf legt jetzt auch für Quartals-, Einmal- und Tageshonorare den Rechnungsentwurf an — und bei Angeboten mit einmaligen und laufenden Posten auch für die Einmalposten, je Rate. Gestellt wird weiter nur per Klick.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Angebot mit einmaligen und laufenden Posten: für die Einmalposten entsteht ein Entwurf — mit Raten bzw. Anzahlung je Zahlung im fälligen Monat, sonst einer zum Beginn des Mandats. Die laufende Leistung rechnet das Mandat weiter monatlich ab.', bereich: 'business', weg: WEG.rechnungen() },
+        { text: 'Rechnung je Quartal: ein Entwurf über die drei Monate im ersten Monat des Quartals. Einmaliges Honorar: ein Entwurf zum Beginn.', bereich: 'business', weg: WEG.rechnungen() },
+        { text: 'Tagessatz: am Monatsersten ein Entwurf mit den Tagen aus der erfassten Zeit des Vormonats (8 Stunden = 1 Tag, bitte prüfen). Ohne erfasste Zeit gibt es nur die Aufgabe mit Hinweis.', bereich: 'alle' },
+        { text: 'Angenommenes Angebot der Selbstständigkeit: Mandat und Liquiditätsposten entstehen jetzt genauso von selbst — sie zählen in der Liquidität der Selbstständigkeit, nie im Business.', bereich: 'privat' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-10-31-9',
     datum: '2026-10-31',
     titel: 'Rechnungen & Zahlungen aufgeräumt',

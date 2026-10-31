@@ -33,7 +33,7 @@ import {
   MAHN_VORGABE_TAGE, EINLEITUNG_VORLAGE, SCHLUSS_VORLAGE, entwurfAnwenden, entwurfGrenzen, empfaengerAusCrm, kundeAus, kurzVon, mahnLabel, mahnMail,
   mahnTageSaeubern, mahnVorschlaege, mahnstufeVon, mahnAufgabeId, monatsGrenzen, naechsteNummer, neuerEntwurf, pflichtFehlt,
   positionenAusAngebot, rechnungMail, rechnungSummen, stornoEntwurf, betragFelder, kreisSchluessel, monatsName, angebotIdOk, firmaIdOk, kontaktIdOk,
-  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, abgerechneteMonate, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen, faelligAm,
+  vorlageSaeubern, positionAusBrutto, leistungsmonat, mandatMonatVorgabe, abgerechneteMonate, rechnungsMonate, ausserhalbLaufzeit, anschriftVon, anschriftGleich, anschriftFuerFirma, anschriftZerlegen, faelligAm,
   istZugeordnet, ZUORDNUNG_FEHLT, ZUORDNUNG_NACHTRAGEN, empfaengerSaeubern,
   type MahnVorschlag, type Pflicht, type Zuordnung,
 } from './regeln';
@@ -42,6 +42,7 @@ import { abrechnenPositionen, abrechnenWahlAus, anrechnungPositionen, istAnrechn
 import type { RechnungPosition } from './typen';
 import { rechnungDokument, bankZeile } from './dokument';
 import type { AnschriftAnFirma, Mahnstufe } from './typen';
+import { einmalTeilPositionen, einmalZahlungen, einmalZahlungText, quartalMonate, type EinmalZahlung } from './kreislauf-regeln';
 
 export class RechnungFehler extends Error {
   constructor(msg: string, readonly status: number, readonly extra: Record<string, unknown> = {}) { super(msg); }
@@ -157,13 +158,19 @@ export async function rechnungPdf(id: string, z: { haushalt: string; sicht: Sich
 
 export interface NeuEingabe { quelle?: unknown; firmaId?: unknown; kontaktId?: unknown; kundeFirmaId?: unknown; mandatId?: unknown; angebotId?: unknown; monat?: unknown; /** Nur bei `angebot`: `einmalig` = nur die Einmalposten (Woche 1 · 3.6). */ nur?: unknown;
   /** Nur bei `mandat` (19.10., P3): Zusatzmodule „abrechnen“ — `[{ zusatzId, menge }]` (je Einheit, Tag, Stunde; lib/crm/mandat-zusatz.ts). */ einheiten?: unknown;
-  /** Nur bei `frei`: Vorbelegung aus einem abgelegten Angebot (Titel, Bruttobetrag, Angebotsnummer/-datum — Woche 2 · 3.13, `vorlageSaeubern`). */ vorlage?: unknown }
+  /** Nur bei `frei`: Vorbelegung aus einem abgelegten Angebot (Titel, Bruttobetrag, Angebotsnummer/-datum — Woche 2 · 3.13, `vorlageSaeubern`). */ vorlage?: unknown;
+  /** Nur bei `angebot` + `nur: 'einmalig'` (31.10.): die Zahlung der Einmalposten nach der Zahlungsweise des Angebots (1-basiert; `einmalZahlungen`). */ rate?: unknown;
+  /** Nur bei `mandat` (31.10.): die Rechnung für das ganze Quartal ab `monat` (Monatshonorar mit Rechnung je Quartal). */ quartal?: unknown;
+  /** Nur bei `mandat` mit Tagessatz (31.10.): Tage des Monats aus der erfassten Zeit (Morgenlauf) — Menge der Honorar-Position. */ tage?: unknown;
+  /** Nur mit `tage`: Satz, woher die Tage kommen (steht im Text der Position, ohne Namen). */ tageHinweis?: unknown }
 
 /**
  * Feste Kennung der Rechnung für die Einmalposten eines gemischten Angebots (08.10., Woche 1 · 3.6) — aus der Angebots-Kennung abgeleitet,
  * damit ein zweiter Klick (oder „Mandat anlegen“ und der Knopf danach) nie eine zweite Rechnung anlegt.
  */
 export const einmalRechnungId = (angebotId: string) => `r-e${createHash('sha256').update(`einmalig|${angebotId}`).digest('hex').slice(0, 24)}`;
+/** Feste Kennung einer Zahlung (Rate, Anzahlung, Rest) der Einmalposten (31.10.) — je Angebot und Zahlung höchstens eine Rechnung. */
+export const einmalRateRechnungId = (angebotId: string, nr: number) => `r-e${createHash('sha256').update(`einmalig|${angebotId}|${nr}`).digest('hex').slice(0, 24)}`;
 /** Die Einmalposten-Rechnung eines Angebots, solange sie gilt (nicht storniert). */
 const einmalSchon = (l: readonly Rechnung[], fest: string) => l.find(r => r.id === fest && r.status !== 'storniert');
 /** Eine gültige gestellte (oder bezahlte) Rechnung über ein Angebot — ohne die Einmalposten-Rechnung und ohne Stornos (27.10.). */
@@ -234,9 +241,23 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const einmalRest = angebotEinmalRest(a, crm.leistungen);
     if (nurEinmalig && !einmalRest.length) throw new RechnungFehler(a.positionen.some(x => x.basis === 'einmalig') ? 'Die Einmalposten dieses Angebots rechnet das Mandat ab (Zusatzmodul) — keine eigene Rechnung nötig.' : 'Dieses Angebot hat keine Einmalposten.', 409, { grund: 'ohne-einmalposten' });
     const fest = einmalRechnungId(a.id);
-    vorhandenIn = nurEinmalig
-      ? l => l.find(r => r.id === fest) ?? l.find(r => r.angebotId === a.id && r.art !== 'storno' && r.status !== 'storniert')
-      : l => l.find(r => r.angebotId === a.id && r.status === 'geplant');
+    // 31.10. (Kreislauf-Rest): eine Zahlung der Einmalposten nach der Zahlungsweise des Angebots (Rate i von n, Anzahlung/Rest) — nur mit Mandat (sein
+    // Beginn zählt). Steht schon die Rechnung über ALLE Einmalposten (`fest`), kommt DIE zurück (sie deckt jede Zahlung).
+    const rateNr = nurEinmalig && typeof p.rate === 'number' && Number.isInteger(p.rate) && p.rate >= 1 ? p.rate : null;
+    let zahlung: EinmalZahlung | null = null;
+    if (rateNr) {
+      if (!mandatDa) throw new RechnungFehler('Eine Zahlung der Einmalposten gibt es nur mit Mandat (sein Beginn zählt) — erst das Mandat anlegen.', 409, { grund: 'ohne-mandat' });
+      const zs = einmalZahlungen(a, mandatDa);
+      const z = zs.find(x => x.nr === rateNr);
+      if (!z) throw new RechnungFehler('Diese Zahlung gibt es laut Zahlungsweise des Angebots nicht.', 400);
+      if (zs.length > 1) zahlung = z;
+    }
+    const teilId = zahlung ? einmalRateRechnungId(a.id, zahlung.nr) : null;
+    vorhandenIn = teilId
+      ? l => l.find(r => r.id === fest && r.status !== 'storniert') ?? l.find(r => r.id === teilId)
+      : nurEinmalig
+        ? l => l.find(r => r.id === fest) ?? l.find(r => r.angebotId === a.id && r.art !== 'storno' && r.status !== 'storniert')
+        : l => l.find(r => r.angebotId === a.id && r.status === 'geplant');
     const offen = vorhandenIn(plan.rechnungen);
     if (offen) {
       if (!inSicht(offen, p.sicht)) throw new RechnungFehler('Kein Zugang zu dieser Gesellschaft.', 403);
@@ -268,9 +289,10 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     // Gesellschaft wie überall (08.10., 3.6): eine Register-Gesellschaft führt der Finanzplan nicht (409 „nur Grunddaten“), nie still kdc.
     const g = gesellschaftFuer(a.gesellschaft);
     if (!g) throw new RechnungFehler('Für dieses Angebot steht keine Gesellschaft fest — die Rechnung frei schreiben.', 409, { grund: 'gesellschaft' });
-    const positionen = positionenAusAngebot(nurEinmalig ? { positionen: einmalRest } : a, ku(g));
+    const alle = positionenAusAngebot(nurEinmalig ? { positionen: einmalRest } : a, ku(g));
+    const positionen = zahlung ? einmalTeilPositionen(alle, zahlung) : alle;
     entwurf = neuerEntwurf({
-      id: nurEinmalig ? fest : id, firmaId: g, kunde: kundeAus(empf, a.empfaenger?.firma ?? a.empfaenger?.name), titel: nurEinmalig ? `${titelAusAngebot || 'Leistung'} — einmalig`.slice(0, 160) : titelAusAngebot, empfaenger: empf, positionen,
+      id: nurEinmalig ? teilId ?? fest : id, firmaId: g, kunde: kundeAus(empf, a.empfaenger?.firma ?? a.empfaenger?.name), titel: nurEinmalig ? `${titelAusAngebot || 'Leistung'} — einmalig${zahlung ? `, ${einmalZahlungText(zahlung)}` : ''}`.slice(0, 160) : titelAusAngebot, empfaenger: empf, positionen,
       zahlungszielTage: a.zahlungszielTage, heute, ...(mandat ? { mandatId: mandat.id } : {}), ...(a.nummer ? { angebot: a.nummer } : {}), ...(a.gestelltAm ? { angebotAm: tagVon(a.gestelltAm) } : {}),
       ...(k ? { kontaktId: k.id } : {}), ...(f ? { kundeFirmaId: f.id } : {}), angebotId: a.id, einleitung: EINLEITUNG_VORLAGE, schluss: SCHLUSS_VORLAGE,
     }, { kleinunternehmer: ku(g) });
@@ -287,11 +309,20 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     // des Mandats (26.10.) trägt als Zeitraum den ganzen Monat — die Rate ist eine Zahlung, kein neuer Leistungsmonat.
     const lm0 = leistungsmonat(m, monat)!;
     const ratenMonat = !!m.raten && !!zpMonate?.includes(monat);
-    const lm = !lm0.tage && ratenMonat ? { ...lm0, von: grenzen.von, bis: grenzen.bis, tage: lm0.monatsTage, anteilig: false } : lm0;
+    // Quartal (31.10., Kreislauf-Rest): Monatshonorar mit Rechnung je Quartal — EINE Rechnung über die Monate des Quartals ab `monat`, in denen das
+    // Mandat läuft (Leistungszeitraum vom ersten bis zum letzten; jeder Monat seine Position wie die Monatsrechnung, angebrochene anteilig).
+    const quartal = p.quartal === true && m.honorar.basis === 'monat' && m.rechnungsrhythmus === 'quartal';
+    const qMonate = quartal ? quartalMonate(monat).filter(mo => (leistungsmonat(m, mo)?.tage ?? 0) > 0) : [];
+    const qErst = qMonate.length ? leistungsmonat(m, qMonate[0])! : null;
+    const qLetzt = qMonate.length ? leistungsmonat(m, qMonate[qMonate.length - 1])! : null;
+    const lm = qErst && qLetzt ? { ...qErst, bis: qLetzt.bis } : !lm0.tage && ratenMonat ? { ...lm0, von: grenzen.von, bis: grenzen.bis, tage: lm0.monatsTage, anteilig: false } : lm0;
     // Zusatzmodule „abrechnen“ (19.10., P3): je Einheit / Tag / Stunde mit Menge — nur auf Klick, nie von selbst.
     const wahl = abrechnenWahlAus(p.einheiten);
     if (!wahl.ok) throw new RechnungFehler(wahl.fehler, wahl.status);
-    const imMonat = (r: Rechnung) => r.mandatId === m.id && !r.angebotId && (r.leistungVon === grenzen.von || r.leistungVon === lm.von) && r.art !== 'storno' && r.status !== 'storniert';
+    if (quartal && wahl.wahl.length) throw new RechnungFehler('Abrechnen nach Menge geht nur mit der Monatsrechnung, nicht mit der Rechnung je Quartal.', 400);
+    // 31.10.: eine Rechnung über mehrere Monate (Quartal) deckt jeden ihrer Monate — für die Quartalsrechnung zählt jeder Monat des Quartals.
+    const deckt = (r: Rechnung) => { const mo = rechnungsMonate(r); return quartal ? mo.some(x => qMonate.includes(x)) : mo.length > 1 && mo.includes(monat); };
+    const imMonat = (r: Rechnung) => r.mandatId === m.id && !r.angebotId && (r.leistungVon === grenzen.von || r.leistungVon === lm.von || deckt(r)) && r.art !== 'storno' && r.status !== 'storniert';
     // Je Mandat und Leistungsmonat höchstens eine Monatsrechnung: erkannt am Monatsersten (bisher) oder am anteiligen Beginn (neu).
     // Rechnungen aus einem Angebot (`angebotId`, z. B. die Einmalposten) sind keine Monatsrechnung — sie halten den Monat nicht auf; ebenso eine
     // Rechnung nur aus abgerechneten Zusatzmodulen (P3, `nurAbgerechnet`).
@@ -327,14 +358,21 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     }
     // Monatsrechnung (P3): Honorar wie bisher + Zusatzmodule (lib/crm/mandat-zusatz.ts) + Abgerechnetes + einmal die Anrechnung eines gekauften Produkts.
     // Steht die Monatsrechnung schon (gestellt), werden die abgerechneten Module eine eigene Rechnung (nur sie).
-    const basisPositionen = da ? abgerechnet : [...monatsPositionen(m, monat, { katalog: crm.leistungen, kleinunternehmer: ku(g), nettoAusBrutto }), ...abgerechnet];
+    const honorarPositionen = quartal
+      ? qMonate.flatMap(mo => monatsPositionen(m, mo, { katalog: crm.leistungen, kleinunternehmer: ku(g), nettoAusBrutto }))
+      : monatsPositionen(m, monat, { katalog: crm.leistungen, kleinunternehmer: ku(g), nettoAusBrutto });
+    // Tagessatz (31.10.): die Tage aus der erfassten Zeit (Morgenlauf) sind die Menge der Honorar-Position — der Satz dazu steht im Text (prüfen!).
+    const tage = m.honorar.basis === 'tag' && typeof p.tage === 'number' && p.tage > 0 && p.tage <= 31 ? Math.round(p.tage * 100) / 100 : null;
+    const hinweis = tage && typeof p.tageHinweis === 'string' ? p.tageHinweis.slice(0, 300) : '';
+    const mitTagen = tage ? honorarPositionen.map((x, i) => (i === 0 ? { ...x, menge: tage, ...(hinweis ? { text: [x.text, hinweis].filter(Boolean).join('\n\n').slice(0, 6000) } : {}) } : x)) : honorarPositionen;
+    const basisPositionen = da ? abgerechnet : [...mitTagen, ...abgerechnet];
     // Anrechnung (Kevin 21.10.): was vom gekauften Produkt (inkl. Optionen) noch offen ist, höchstens bis zum Betrag dieser Rechnung — der Rest folgt.
     const anrechnungFuer = (rechnungen: Rechnung[]) => anrechnungPositionen(m, basisPositionen, { katalog: crm.leistungen, mandate: crm.mandate, rechnungen, nettoAusBrutto }, { kleinunternehmer: ku(g) });
     if (!da) anrechnungNeu = anrechnungFuer;
     const positionen = da ? basisPositionen : [...basisPositionen, ...anrechnungFuer(plan.rechnungen)];
     if (da) vorhandenIn = null;
     entwurf = neuerEntwurf({
-      id, firmaId: g, kunde: kundeAus(empf, m.kunde), titel: `${m.titel || 'Leistung'} — ${monatsName(monat)}${da ? ' (abgerechnete Zusatzmodule)' : ''}`, empfaenger: empf,
+      id, firmaId: g, kunde: kundeAus(empf, m.kunde), titel: `${m.titel || 'Leistung'} — ${quartal && qMonate.length > 1 ? `${monatsName(qMonate[0])} bis ${monatsName(qMonate[qMonate.length - 1])}` : monatsName(quartal ? qMonate[0] : monat)}${da ? ' (abgerechnete Zusatzmodule)' : ''}`, empfaenger: empf,
       positionen,
       zahlungszielTage: ziel(g, m.zahlungszielTage || undefined), heute, mandatId: m.id, leistungVon: lm.von, leistungBis: lm.bis,
       ...(ang?.nummer ? { angebot: ang.nummer } : {}), ...(ang?.nummer && ang.gestelltAm ? { angebotAm: tagVon(ang.gestelltAm) } : {}),

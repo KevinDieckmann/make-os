@@ -10,6 +10,10 @@
 //                                                 `rv-<mandat>-<monat>` „Rechnung prüfen & stellen“. Gestellt wird nie — das bleibt ein Klick im Editor.
 //                                                 Altbestand: wirkt erst ab dem Monat NACH dem ersten Lauf (`kreislauf.vorbereiten.ab`), je Mandat und Monat
 //                                                 genau einmal (Merker — auch ein gelöschter Entwurf kommt nicht wieder). Stellschraube `an` (Vorgabe an).
+//                                                 31.10. (Kreislauf-Rest): auch Quartal (EIN Entwurf je Quartal im Rhythmus des Mandats), einmaliges
+//                                                 Honorar ohne Zahlplan (EIN Entwurf zum Beginn), Tagessatz (am Monatsersten aus der erfassten Zeit des
+//                                                 Vormonats; ohne Zeit nur die Aufgabe mit Hinweis) und die Einmalposten eines gemischten Angebots (je
+//                                                 Zahlung laut Zahlungsweise ein Entwurf `nur: 'einmalig'` + `rate`, Aufgabe `rve-…`).
 // Merker und Stellschraube liegen im Bestand `rechnungswesen` (Feld `kreislauf`, optional — nur Kennungen, keine Personen).
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
@@ -18,7 +22,10 @@ import { bereichVon, finanzFirmaFuer, istGesellschaft } from '@/lib/einheiten';
 import { WEG } from '@/lib/wege';
 import { sauberFile, type FinanzplanFile, type Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import { abgerechneteMonate, monatsName } from './regeln';
-import { istMahnAufgabeVon, rateNummer, vorbereitenAbMonat, rechnungFuerMonat, ueberfaelligFrisch, vorbereitenAufgabeId, vorbereitenMonate, vorbereitenSchluessel } from './kreislauf-regeln';
+import {
+  einmalAufgabeId, einmalSchluessel, einmalZahlungen, einmalZahlungText, istMahnAufgabeVon, quartalMonate, rateNummer, rechnungFuerMandat, rechnungFuerMonat, STUNDEN_JE_TAG_VORGABE,
+  tageAusZeit, ueberfaelligFrisch, vorbereitenAbMonat, vorbereitenAufgabeId, vorbereitenFaellig, vorbereitenSchluessel, type EinmalZahlung, type VorbereitenFaellig,
+} from './kreislauf-regeln';
 
 /** Der Teil des Bestands `rechnungswesen`, den der Kreislauf führt (additiv — alte Stände kennen ihn nicht). */
 export interface KreislaufStand {
@@ -27,8 +34,10 @@ export interface KreislaufStand {
     an?: boolean;
     /** Tag des ersten Laufs (JJJJ-MM-TT): Monate davor bekommen nie einen Entwurf. */
     ab?: string;
-    /** Je `<mandat>|<monat>`: `r:<tag>` reserviert (Entwurf/Aufgabe noch nicht sicher da), `f:<tag>` fertig — dann nie wieder. */
+    /** Je `<mandat>|<monat>` (Einmalposten: `<mandat>|e:<angebot>:<nr>`): `r:<tag>` reserviert (Entwurf/Aufgabe noch nicht sicher da), `f:<tag>` fertig — dann nie wieder. */
     erledigt?: Record<string, string>;
+    /** Tagessatz (31.10.): so viele erfasste Stunden sind ein Tag (fehlt = 8). */
+    stundenJeTag?: number;
   };
   /**
    * Mandate, die „Angebot angenommen“ AUTOMATISCH angelegt hat (Kevin 29.10.) — je Mandat das Angebot, der Tag und die Liquiplan-Posten. Nur so weiß
@@ -139,46 +148,132 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
       return { ...(cur ?? {}), kreislauf: { ...(cur?.kreislauf ?? {}), vorbereiten: { ...v, erledigt: { ...(v.erledigt ?? {}), [schluessel]: wert } } } };
     });
   };
+  // Tagessatz (31.10.): die erfasste Zeit je Mandat und Monat — EINMAL je Monat gelesen (Haushalt des Inhabers, Arbeit inkl. Selbstständigkeit).
+  const zeitJeMonat = new Map<string, Promise<Map<string, number> | null>>();
+  const zeitFuer = (monat: string) => {
+    if (!zeitJeMonat.has(monat)) zeitJeMonat.set(monat, (async () => {
+      const { inhaberSpeicher } = await import('@/lib/zugang/haushalt-inhaber');
+      const wer = await inhaberSpeicher();
+      if (!wer) return null;
+      const { zeitJeMandatFuer } = await import('@/lib/zeitmessung/mandate-server');
+      const z = await zeitJeMandatFuer(wer, 'monat', `${monat}-15`);
+      return new Map(z.gesamt.zeilen.filter(x => x.art === 'mandat').map(x => [x.id, x.sek]));
+    })().catch(() => null));
+    return zeitJeMonat.get(monat)!;
+  };
+  const sjt = k0.vorbereiten?.stundenJeTag;
+  const stundenJeTag = typeof sjt === 'number' && sjt > 0 && sjt <= 24 ? sjt : STUNDEN_JE_TAG_VORGABE;
+  const { mandatZumAngebot, einmalRechnungId, einmalRateRechnungId } = await import('./server');
+  const { angebotEinmalRest } = await import('@/lib/crm/angebote');
+  const { zahlplanMonate } = await import('@/lib/crm/mandat-zusatz');
   for (const m of crm.mandate) {
     const g = m.gesellschaft;
     // Rechnungsfähig wie der Knopf in der Mandatsakte: Gesellschaft gewählt und im Finanzplan geführt (Register-Gesellschaften: nur Grunddaten).
     if (mandatGesellschaftOffen(g) || !finanzFirmaFuer(g)) continue;
-    const monate = vorbereitenMonate(m, heute, abgerechneteMonate(m.id, plan.rechnungen), abMonat);
-    if (!monate.length) continue;
-    const erledigt = (await kreislaufLaden()).vorbereiten?.erledigt ?? {};
-    for (const monat of monate) {
-      const schl = vorbereitenSchluessel(m.id, monat);
-      const stand = erledigt[schl];
-      if (stand?.startsWith('f:')) continue;
-      // Von Hand schon angelegt (Entwurf oder Rechnung) — nichts vorbereiten, nur merken.
-      if (!stand && rechnungFuerMonat(plan.rechnungen, m.id, monat)) { await merken(schl, `f:${heute}`); continue; }
-      // Reservieren VOR dem Schreiben: bricht der Lauf ab, holt der nächste Entwurf (idempotent) und Aufgabe (feste Kennung) nach.
-      if (!stand) await merken(schl, `r:${heute}`);
-      let id: string;
-      try {
-        const e = await entwurfNeu({ quelle: 'mandat', mandatId: m.id, monat, person: 'system', haushalt, sicht: 'privat', wer: { art: 'system' }, jetzt });
-        id = e.rechnung.id;
-        if (!e.vorhanden) erg.entwuerfe++;
-      } catch (e) {
-        erg.uebersprungen++;
-        console.warn(`[rechnung] vorbereiten übersprungen (${m.id} ${monat}):`, e instanceof Error ? e.message.slice(0, 120) : e);
-        break;
+    // ── A: das Honorar (Monat, Rate/Zahlplan, Quartal, einmalig, Tagessatz) ──
+    const faellig = vorbereitenFaellig(m, heute, abgerechneteMonate(m.id, plan.rechnungen), abMonat);
+    if (faellig.length) {
+      const erledigt = (await kreislaufLaden()).vorbereiten?.erledigt ?? {};
+      for (const f of faellig) {
+        const monat = f.monat;
+        const schl = vorbereitenSchluessel(m.id, monat);
+        const stand = erledigt[schl];
+        if (stand?.startsWith('f:')) continue;
+        // Von Hand schon angelegt (Entwurf oder Rechnung) — nichts vorbereiten, nur merken. Quartal: irgendein Monat des Quartals; einmalig: irgendeine Rechnung.
+        const schon = f.art === 'quartal' ? quartalMonate(monat).some(mo => rechnungFuerMonat(plan.rechnungen, m.id, mo))
+          : f.art === 'einmalig' ? rechnungFuerMandat(plan.rechnungen, m.id) : rechnungFuerMonat(plan.rechnungen, m.id, monat);
+        if (!stand && schon) { await merken(schl, `f:${heute}`); continue; }
+        // Tagessatz: die Tage aus der erfassten Zeit des Monats; ohne Zeit KEIN Entwurf — nur die Aufgabe mit Hinweis (dann fertig).
+        let tage = 0;
+        let stunden = 0;
+        if (f.art === 'tag') {
+          const zeit = await zeitFuer(monat);
+          if (!zeit) { erg.uebersprungen++; break; } // Zeit nicht lesbar → ohne Merker, der nächste Lauf versucht es wieder
+          stunden = Math.round(((zeit.get(m.id) ?? 0) / 3600) * 10) / 10;
+          tage = tageAusZeit(zeit.get(m.id) ?? 0, stundenJeTag);
+          if (!tage) {
+            if (!stand) await merken(schl, `r:${heute}`);
+            erg.aufgaben += await vorbereitenAufgabe(m, f, null, heute);
+            await merken(schl, `f:${heute}`);
+            break;
+          }
+        }
+        // Reservieren VOR dem Schreiben: bricht der Lauf ab, holt der nächste Entwurf (idempotent) und Aufgabe (feste Kennung) nach.
+        if (!stand) await merken(schl, `r:${heute}`);
+        let id: string;
+        try {
+          const e = await entwurfNeu({
+            quelle: 'mandat', mandatId: m.id, monat, person: 'system', haushalt, sicht: 'privat', wer: { art: 'system' }, jetzt,
+            ...(f.art === 'quartal' ? { quartal: true } : {}),
+            ...(tage ? { tage, tageHinweis: `Tage aus der erfassten Zeit (${String(stunden).replace('.', ',')} h, ${stundenJeTag} h = 1 Tag) — bitte prüfen.` } : {}),
+          });
+          id = e.rechnung.id;
+          if (!e.vorhanden) erg.entwuerfe++;
+        } catch (e) {
+          erg.uebersprungen++;
+          console.warn(`[rechnung] vorbereiten übersprungen (${m.id} ${monat}):`, e instanceof Error ? e.message.slice(0, 120) : e);
+          break;
+        }
+        erg.aufgaben += await vorbereitenAufgabe(m, f, id, heute, tage || undefined);
+        await merken(schl, `f:${heute}`);
+        plan = await planLaden();
+        break; // höchstens EIN Entwurf je Mandat und Lauf
       }
-      erg.aufgaben += await vorbereitenAufgabe(m, monat, id, heute);
-      await merken(schl, `f:${heute}`);
-      plan = await planLaden();
-      break; // höchstens EIN Entwurf je Mandat und Lauf
+    }
+    // ── B: die Einmalposten eines gemischten Angebots (31.10.) — je Zahlung (Rate, Anzahlung/Rest bzw. ganz) EIN Entwurf im fälligen Monat ──
+    // Nur, wenn das Mandat den Einmalbetrag NICHT selbst abrechnet (einmaliges Honorar bzw. Raten/Zahlplan am Mandat — dann wie bisher dort).
+    if (m.status !== 'aktiv' || m.geloeschtAm || m.honorar?.basis === 'einmalig' || zahlplanMonate(m)) continue;
+    const angebote = (crm.angebote ?? []).filter(a => a.status === 'angenommen' && !a.geloeschtAm && mandatZumAngebot(crm.mandate, a)?.id === m.id && angebotEinmalRest(a, crm.leistungen).length);
+    einmal: for (const a of angebote) {
+      const zahlungen = einmalZahlungen(a, m).filter(z => z.monat >= abMonat && z.monat <= heute.slice(0, 7));
+      if (!zahlungen.length) continue;
+      const erledigt = (await kreislaufLaden()).vorbereiten?.erledigt ?? {};
+      const fest = einmalRechnungId(a.id);
+      for (const z of zahlungen) {
+        const schl = einmalSchluessel(m.id, a.id, z.nr);
+        const stand = erledigt[schl];
+        if (stand?.startsWith('f:')) continue;
+        const teil = z.von > 1 ? einmalRateRechnungId(a.id, z.nr) : fest;
+        // Von Hand schon da (die Rechnung über alle Einmalposten bzw. genau diese Zahlung) — nichts vorbereiten, nur merken.
+        const schon = plan.rechnungen.some(r => (r.id === fest || r.id === teil) && r.status !== 'storniert');
+        if (!stand && schon) { await merken(schl, `f:${heute}`); continue; }
+        if (!stand) await merken(schl, `r:${heute}`);
+        let id: string;
+        try {
+          const e = await entwurfNeu({ quelle: 'angebot', angebotId: a.id, nur: 'einmalig', ...(z.von > 1 ? { rate: z.nr } : {}), person: 'system', haushalt, sicht: 'privat', wer: { art: 'system' }, jetzt });
+          id = e.rechnung.id;
+          if (!e.vorhanden) erg.entwuerfe++;
+        } catch (e) {
+          erg.uebersprungen++;
+          console.warn(`[rechnung] Einmalposten übersprungen (${m.id} ${z.nr}):`, e instanceof Error ? e.message.slice(0, 120) : e);
+          break einmal;
+        }
+        erg.aufgaben += await einmalAufgabe(m, a.id, z, id, heute);
+        await merken(schl, `f:${heute}`);
+        plan = await planLaden();
+        break einmal; // höchstens EIN Entwurf der Einmalposten je Mandat und Lauf
+      }
     }
   }
   return erg;
 }
 
-/** Die Aufgabe „Rechnung prüfen & stellen“ (feste Kennung, idempotent — gibt es sie schon, auch erledigt/im Papierkorb, passiert nichts). Titel ohne Betrag/Namen. */
-async function vorbereitenAufgabe(m: import('@/lib/crm/typen').Mandat, monat: string, rechnungId: string, heute: string): Promise<number> {
+/** Was die Aufgabe nennt (ohne Betrag/Namen): Zahlung bzw. Zeitraum. */
+function aufgabeWas(m: import('@/lib/crm/typen').Mandat, f: VorbereitenFaellig): { kurz: string; lang: string } {
+  if (f.art === 'rate') {
+    const rate = rateNummer(m, f.monat);
+    if (rate) return { kurz: `Rate ${rate.nr} von ${rate.von}`, lang: `Rate ${rate.nr} von ${rate.von}, ${monatsName(f.monat)}` };
+  }
+  if (f.art === 'quartal') { const q = quartalMonate(f.monat); return { kurz: `${monatsName(q[0])} bis ${monatsName(q[2])}`, lang: `Quartal ${monatsName(q[0])} bis ${monatsName(q[2])}` }; }
+  if (f.art === 'einmalig') return { kurz: 'einmaliges Honorar', lang: `einmaliges Honorar, Beginn ${monatsName(f.monat)}` };
+  if (f.art === 'tag') return { kurz: `${monatsName(f.monat)} (Tage)`, lang: `Tage im ${monatsName(f.monat)}` };
+  return { kurz: monatsName(f.monat), lang: `Leistungsmonat ${monatsName(f.monat)}` };
+}
+
+/** Eine Aufgabe „Rechnung prüfen & stellen“ über den EINEN Server-Schreibweg (feste Kennung — gibt es sie schon, auch erledigt/im Papierkorb, passiert nichts). */
+async function aufgabeAnlegen(m: import('@/lib/crm/typen').Mandat, tid: string, titel: string, beschreibung: string, notiz: string, heute: string): Promise<number> {
   const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
   const { BEIDE } = await import('@/lib/crm/team');
-  const tid = vorbereitenAufgabeId(m.id, monat);
-  const rate = rateNummer(m, monat);
   const bereich = bereichVon(m.gesellschaft);
   const jetzt = new Date().toISOString();
   let neu = 0;
@@ -187,9 +282,7 @@ async function vorbereitenAufgabe(m: import('@/lib/crm/typen').Mandat, monat: st
     neu = 1;
     return {
       neu: [{
-        id: tid, title: `Rechnung prüfen & stellen — ${rate ? `Rate ${rate.nr} von ${rate.von}` : monatsName(monat)}`,
-        description: `Der Entwurf aus dem Mandat liegt bereit (${rate ? `Rate ${rate.nr} von ${rate.von}, ${monatsName(monat)}` : `Leistungsmonat ${monatsName(monat)}`}). Prüfen und per Klick stellen — MAKE OS stellt nichts selbst.`,
-        notiz: `[Entwurf öffnen](${WEG.rechnungSchreiben(rechnungId, WEG.mandat(m.id), bereich === 'privat' ? 'privat' : 'business')}) · [Mandat](${WEG.mandat(m.id)})`,
+        id: tid, title: titel, description: beschreibung, notiz,
         status: 'todo', priority: 'medium', assignee: m.zustaendig && m.zustaendig !== BEIDE ? m.zustaendig : 'both', dueDate: heute,
         tags: ['rechnung'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetzt, updatedAt: jetzt,
         space: bereich, ...(istGesellschaft(m.gesellschaft) ? { spaceId: m.gesellschaft } : {}),
@@ -197,4 +290,27 @@ async function vorbereitenAufgabe(m: import('@/lib/crm/typen').Mandat, monat: st
     };
   }, { jetzt });
   return neu;
+}
+
+const entwurfLink = (m: import('@/lib/crm/typen').Mandat, rechnungId: string) => `[Entwurf öffnen](${WEG.rechnungSchreiben(rechnungId, WEG.mandat(m.id), bereichVon(m.gesellschaft) === 'privat' ? 'privat' : 'business')}) · [Mandat](${WEG.mandat(m.id)})`;
+
+/** Die Aufgabe „Rechnung prüfen & stellen“ zum Honorar (feste Kennung `rv-<mandat>-<monat>`, idempotent). Ohne Entwurf (Tagessatz ohne Zeit): nur der Hinweis. */
+async function vorbereitenAufgabe(m: import('@/lib/crm/typen').Mandat, f: VorbereitenFaellig, rechnungId: string | null, heute: string, tage?: number): Promise<number> {
+  const was = aufgabeWas(m, f);
+  if (!rechnungId) {
+    return aufgabeAnlegen(m, vorbereitenAufgabeId(m.id, f.monat), `Rechnung prüfen & stellen — ${was.kurz}`,
+      `Für ${monatsName(f.monat)} ist am Mandat keine Zeit erfasst — darum liegt kein Entwurf bereit. Die Tage in der Mandatsakte eintragen und die Rechnung dort schreiben (bzw. Zeit nachtragen). MAKE OS stellt nichts selbst.`,
+      `[Mandat](${WEG.mandat(m.id)})`, heute);
+  }
+  const zusatz = tage ? ` ${String(tage).replace('.', ',')} Tage aus der erfassten Zeit — Menge bitte prüfen.` : '';
+  return aufgabeAnlegen(m, vorbereitenAufgabeId(m.id, f.monat), `Rechnung prüfen & stellen — ${was.kurz}`,
+    `Der Entwurf aus dem Mandat liegt bereit (${was.lang}).${zusatz} Prüfen und per Klick stellen — MAKE OS stellt nichts selbst.`, entwurfLink(m, rechnungId), heute);
+}
+
+/** Die Aufgabe zu einer Zahlung der Einmalposten (feste Kennung `rve-…`, idempotent). */
+async function einmalAufgabe(m: import('@/lib/crm/typen').Mandat, angebotId: string, z: EinmalZahlung, rechnungId: string, heute: string): Promise<number> {
+  const was = z.von > 1 ? `Einmalposten, ${einmalZahlungText(z)}` : 'Einmalposten';
+  return aufgabeAnlegen(m, einmalAufgabeId(m.id, angebotId, z.nr), `Rechnung prüfen & stellen — ${was}`,
+    `Der Entwurf über die Einmalposten des angenommenen Angebots liegt bereit (${was}, ${monatsName(z.monat)}). Die laufende Leistung rechnet das Mandat monatlich ab. Prüfen und per Klick stellen — MAKE OS stellt nichts selbst.`,
+    entwurfLink(m, rechnungId), heute);
 }

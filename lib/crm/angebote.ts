@@ -820,7 +820,7 @@ export function zahlweiseFuerMandat(a: Pick<Angebot, 'zahlweise'>, honorarBasis:
   const z = a.zahlweise;
   if (!z) return {};
   if (z.art === 'frei') return { offen: [`Zahlung laut Angebot: „${z.text}“ — die Rechnungen entsprechend schreiben.`] };
-  if (honorarBasis !== 'einmalig') return { offen: [`Zahlung laut Angebot (${z.art === 'raten' ? `${z.anzahl} Raten` : `${z.prozent} % Anzahlung`}) gilt für den einmaligen Betrag — am Mandat mit laufendem Honorar bitte von Hand abrechnen.`] };
+  if (honorarBasis !== 'einmalig') return { offen: [`Zahlung laut Angebot (${z.art === 'raten' ? `${z.anzahl} Raten` : `${z.prozent} % Anzahlung`}) gilt für die Einmalposten — der Morgenlauf legt je Zahlung einen Rechnungsentwurf an (Aufgabe „Rechnung prüfen & stellen“).`] };
   return z.art === 'raten' ? { raten: { anzahl: z.anzahl, abstandMonate: z.abstandMonate } } : { zahlplan: { anzahlungProzent: z.prozent } };
 }
 
