@@ -87,6 +87,11 @@ export interface Eingang {
   /** Versand begonnen (vor dem Senden gesetzt) — ein Abbruch danach sendet nie ein zweites Mal von selbst. */
   versandBegonnen?: string;
   versendet?: { am: string; ueber: string; von: string };
+  /**
+   * Adresse unbestätigt (31.10., optional): über einen externen Link kam die Mail einer Person, die schon in der Kartei steht. Dann gab es KEINE
+   * Einwilligung, KEINEN Deal (Lead/Stufe unberührt) und nie einen automatischen Versand — erst die Freigabe „Senden“ übernimmt die Anfrage.
+   */
+  adresseUnbestaetigt?: true;
   entschieden?: { am: string; von: string; art: 'gesendet' | 'abgelehnt'; grund?: string };
 }
 
@@ -297,6 +302,11 @@ export interface LeitplankenLage {
   /** Datenschutzhinweis vollständig (Verantwortlicher + Kontaktweg eingerichtet). */
   datenschutzOk: boolean;
   /**
+   * Adresse unbestätigt (Kevin 31.10.): ein externer Link nannte die Mail einer Person, die schon in der Kartei steht — nie automatisch an sie,
+   * ein Inhaber prüft und gibt frei (fehlt das Feld: wie bisher).
+   */
+  adresseUnbestaetigt?: boolean;
+  /**
    * Name oder Firma aus dem Formular tragen einen Link, eine Adresse oder spitze Klammern (`namenAuffaellig`) — Sicherheitsprüfung 30.10.: diese
    * Felder stehen wörtlich in Mail und PDF, die aus dem eigenen Postfach rausgehen; ein geleakter Link wäre sonst ein Weg für Phishing-Mails.
    * Fehlt = unauffällig (wie vorher).
@@ -305,6 +315,7 @@ export interface LeitplankenLage {
 }
 /** Sieht ein Name/Firmenname aus dem Formular nach Link oder Adresse aus? (rein) — dann entscheidet ein Mensch, nie der Automat. */
 export const namenAuffaellig = (...werte: readonly (string | undefined)[]): boolean => werte.some(w => !!w && /:\/\/|www\.|@|[<>]/i.test(w));
+export const ADRESSE_UNBESTAETIGT = 'Adresse unbestätigt — die Mail gehört zu einer Person, die schon in der Kartei steht. Erst prüfen, ob die Anfrage wirklich zu ihr gehört; „Senden“ übernimmt sie.';
 export const NAMEN_AUFFAELLIG = 'Name oder Firma enthält einen Link, eine Adresse oder Zeichen wie < > — ein Mensch prüft, bevor etwas rausgeht.';
 export const ABSENDER_FEHLT = 'Absender-Postfach fehlt — unter Markttraktion › Formulare › Einstellungen wählen.';
 /**
@@ -321,6 +332,7 @@ export function leitplanken(l: LeitplankenLage): { versenden: boolean; gruende: 
   if (!l.absenderOk) g.push(ABSENDER_FEHLT);
   if (!l.datenschutzOk) g.push('Datenschutzhinweis unvollständig — Verantwortlichen und Kontaktweg unter Einstellungen › Datenschutz eintragen.');
   if (l.namenAuffaellig) g.push(NAMEN_AUFFAELLIG);
+  if (l.adresseUnbestaetigt) g.push(ADRESSE_UNBESTAETIGT);
   return { versenden: g.length === 0, gruende: [...new Set(g)] };
 }
 

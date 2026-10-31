@@ -63,6 +63,15 @@ export const ANFRAGE_FOLLOWUP = 'Anfrage beantworten';
 export const istAnfrage = (a: Pick<Aktivitaet, 'art' | 'text'>) => a.art === 'antwort' && (a.text ?? '').startsWith(ANFRAGE_PRAEFIX);
 /** Ein Follow-up aus dem Anfragen-Eingang — erkennbar am Text. */
 export const istAnfrageFollowUp = (f: { text: string }) => f.text.startsWith(ANFRAGE_FOLLOWUP);
+/**
+ * Adresse unbestätigt (Kevin 31.10., wie die Buchung): kommt eine Anfrage über eine ÖFFENTLICHE Strecke (Innovations-Check, Link des
+ * Angebots-Formulars) und trifft ihre Mail eine Person, die schon in der Kartei steht, wird sie nur angehängt — als System-Vermerk mit
+ * dieser Marke, ohne Einwilligung, ohne Stufe, ohne Lead. Wer die Adresse kennt, löst so bei einer echten Person nichts aus. Die Marke
+ * zählt bewusst NICHT als Anfrage (`istAnfrage`), das Follow-up nicht als „Anfrage beantworten“ — erst „Anfrage übernehmen“ (von Hand).
+ */
+export const ANFRAGE_UNBESTAETIGT_PRAEFIX = 'Anfrage (Adresse unbestätigt) über ';
+export const ANFRAGE_PRUEFEN = 'Anfrage prüfen — Adresse unbestätigt';
+export const istAnfragePruefen = (f: { text: string }) => f.text.startsWith(ANFRAGE_PRUEFEN);
 /** Quoten und Kosten je Stück erst ab fünf Fällen im Nenner — darunter ist es Rauschen, keine Zahl. */
 export const MINDESTMENGE = 5;
 export const quote = (zaehler: number, nenner: number, mindest = MINDESTMENGE): number | null => (nenner >= mindest ? zaehler / nenner : null);

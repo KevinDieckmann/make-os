@@ -23,7 +23,7 @@ import type { Beitrag, CrmBestand, FollowUp, FollowUpArt, Kampagne, Lead } from 
 import { neuesFollowUp, tagPlus } from './followup';
 import { personEntwurf, leadZiel } from './person-anlegen';
 import { firmaNachName } from './firmen-bezug';
-import { ANFRAGE_PRAEFIX, ANFRAGE_FOLLOWUP, istAnfrage, istAnfrageFollowUp } from './marketing';
+import { ANFRAGE_PRAEFIX, ANFRAGE_FOLLOWUP, ANFRAGE_PRUEFEN, ANFRAGE_UNBESTAETIGT_PRAEFIX, istAnfrage, istAnfrageFollowUp } from './marketing';
 import { OFFENE_STUFEN } from './pipeline';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { alleAdressen } from './emails';
@@ -85,6 +85,12 @@ export interface AnfrageKontext {
    * „Beispiel Werke“ (Inbox, Name aus der Mail-Domain) fand „Beispiel Werke GmbH“ nicht, die Person blieb ohne Firma und der Lead an ihr.
    */
   firma?: { id: string; name: string };
+  /**
+   * Öffentliche Strecke (Kevin 31.10.: Innovations-Check der Website): die Adresse hat niemand bestätigt. Trifft sie (bzw. die Nummer) eine
+   * VORHANDENE Person, wird die Anfrage nur als „Adresse unbestätigt“ angehängt — keine Einwilligung, keine Stufe, kein Lead, keine Kampagne,
+   * Follow-up „Anfrage prüfen — Adresse unbestätigt“ (kein Werbekanal). Eine NEUE Person (die Adresse gab sie selbst ein) bleibt wie bisher.
+   */
+  oeffentlich?: boolean;
 }
 export interface AnfrageBau {
   /** Die Person nach der Anfrage — neu oder mit Aktivität, Einwilligung, Stufe (und Lead, wenn sie keine Firma hat). */
@@ -100,6 +106,8 @@ export interface AnfrageBau {
   kampagne?: { id: string; kontaktIds: string[]; ergebnis: Kampagne['ergebnisse'][number] };
   /** Lead der Firma geht auf „kontaktiert“ (Person ohne Firma: schon in `kontakt.lead`). */
   firmaLead?: { firmaId: string; lead: Lead };
+  /** Öffentliche Strecke traf eine vorhandene Person — nur angehängt, nichts ausgelöst (siehe `AnfrageKontext.oeffentlich`). */
+  unbestaetigt?: true;
 }
 export type AnfrageErgebnis = { ok: true; bau: AnfrageBau } | { ok: false; fehler: string };
 
@@ -112,6 +120,16 @@ const telSchluessel = (v: unknown) => normTelefon(String(v ?? '')).replace(/^\+/
 /** Vor der Anfrage „neu“, „ansprechen“ oder abgelegt (verloren/ruht) — jetzt angesprochen. Wer weiter ist, bleibt, wo er ist. */
 export function stufeNachAnfrage(stufe: Kontakt['stufe']): Kontakt['stufe'] {
   return STUFEN.indexOf(stufe) < STUFEN.indexOf('angesprochen') || stufe === 'verloren' || stufe === 'ruht' ? 'angesprochen' : stufe;
+}
+/** Vermerk einer Anfrage mit unbestätigter Adresse (System-Aktivität, zählt nie als Anfrage — `ANFRAGE_UNBESTAETIGT_PRAEFIX`). */
+export const anfrageUnbestaetigtText = (kanal: AnfrageKanal, text: string) => `${ANFRAGE_UNBESTAETIGT_PRAEFIX}${kanalInfo(kanal)?.label ?? kanal}: ${text}`.slice(0, GRENZEN.text);
+/** Text des Follow-ups „Anfrage prüfen — Adresse unbestätigt — <Kanal>“ (der Kanal steht am Ende, damit „Anfrage übernehmen“ ihn kennt). */
+export const anfragePruefenText = (label: string) => `${ANFRAGE_PRUEFEN} — ${label}`;
+/** Der Anfrage-Kanal eines solchen Follow-ups — `undefined`, wenn es keiner der Anfrage-Kanäle ist (z. B. das Angebots-Formular). */
+export function kanalAusPruefen(text: string): AnfrageKanal | undefined {
+  if (!text.startsWith(`${ANFRAGE_PRUEFEN} — `)) return undefined;
+  const label = text.slice(ANFRAGE_PRUEFEN.length + 3).trim();
+  return ANFRAGE_KANAELE.find(k => k.label === label)?.id;
 }
 /** Text der Aktivität — die Marke, an der eine Anfrage erkannt wird. */
 export const anfrageText = (kanal: AnfrageKanal, text: string) => `${ANFRAGE_PRAEFIX}${kanalInfo(kanal)?.label ?? kanal}: ${text}`.slice(0, GRENZEN.text);
@@ -184,6 +202,8 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
     }
   }
   if (basis.eingeschraenkt) return { ok: false, fehler: `${anzeigename(basis)}: Verarbeitung eingeschränkt (Art. 18) — nichts festhalten, erst unter Kontakt › Datenschutz klären.` };
+  // Öffentliche Strecke trifft eine vorhandene Person (Kevin 31.10.): nur anhängen, nichts auslösen — wie die Buchung („Adresse unbestätigt“).
+  if (ctx.oeffentlich && !neuePerson && !e.kontaktId) return unbestaetigtBauen(basis, e.kanal, text, datum, jetztAm, ctx, hinweis);
   // Werbesperre (08.10., Woche 2 · 5.9): vorher 400 — die Anfrage ging verloren, eine neue Person auf der Sperrliste wurde dagegen erfasst.
   // Jetzt wird sie festgehalten (Verlauf, Follow-up „beantworten“), aber OHNE Einwilligung und ohne Kampagne — antworten ja, Werbung nie.
   const gesperrt = !!basis.werbesperre;
@@ -239,6 +259,23 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
   }, kontakt, ctx.person, ctx.jetzt);
 
   return { ok: true, bau: { kontakt, neuePerson, ...(hinweis ? { hinweis } : {}), aktivitaetText, followUp, ...(wirkung ? { wirkung } : {}), ...(kp ? { kampagne: kp } : {}), ...(firmaLead ? { firmaLead } : {}) } };
+}
+
+/**
+ * Anfrage über eine öffentliche Strecke an einer VORHANDENEN Person (Kevin 31.10.): ein System-Vermerk „Anfrage (Adresse unbestätigt) über …“
+ * (kein echter Kontakt: weder letzter Kontakt noch Stufe noch Wiedervorlage), KEINE Einwilligung, KEIN Lead, keine Kampagne/Wirkung, und ein
+ * Follow-up „Anfrage prüfen — Adresse unbestätigt“ der Art „sonstig“ (kein Werbekanal). Erst „Anfrage übernehmen“ (von Hand) wirkt wie bisher.
+ */
+function unbestaetigtBauen(basis: Kontakt, kanal: AnfrageKanal, text: string, datum: string, jetztAm: string, ctx: AnfrageKontext, hinweis?: string): AnfrageErgebnis {
+  const info = kanalInfo(kanal)!;
+  const aktivitaetText = anfrageUnbestaetigtText(kanal, text);
+  const kontakt: Kontakt = { ...wendeAktivitaetAn(basis, { art: 'system', text: aktivitaetText, von: 'system' }, datum, jetztAm, tagPlus), geaendertAm: ctx.heute };
+  const followUp = neuesFollowUp({
+    id: ctx.ids.followUp, bezug: { art: 'kontakt', id: kontakt.id }, kontaktId: kontakt.id, art: 'sonstig',
+    text: anfragePruefenText(info.label), faellig: ctx.heute, quelle: 'hand', notiz: text.slice(0, 1000),
+  }, kontakt, ctx.person, ctx.jetzt);
+  const satz = 'Adresse unbestätigt — die Anfrage hängt an der vorhandenen Person, aber ohne Einwilligung und ohne Stufe; erst prüfen, dann „Anfrage übernehmen“.';
+  return { ok: true, bau: { kontakt, neuePerson: false, hinweis: [hinweis, satz].filter(Boolean).join(' '), aktivitaetText, followUp, unbestaetigt: true } };
 }
 
 // ── Liste der Anfragen ─────────────────────────────────────────────────────

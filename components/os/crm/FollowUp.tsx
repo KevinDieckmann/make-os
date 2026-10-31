@@ -23,6 +23,8 @@ import { wertelistenVollstaendig } from '@/lib/crm/wertelisten';
 import { Person, ZustaendigWahl, WerFilter, useWerFilter, passtWer } from './team';
 import { TEAM, BEIDE, haeltBeziehung, mitglied } from '@/lib/crm/team';
 import { FOLLOWUP_ARTEN, VERSCHIEBEN_TAGE, absagenText, kalenderWoche, type Faellig, type Gruppe } from '@/lib/crm/followup';
+import { istAnfragePruefen } from '@/lib/crm/marketing';
+import { kanalAusPruefen } from '@/lib/crm/anfragen';
 import { suchPasst } from '@/lib/text/such-norm';
 import { kalenderwoche } from '@/lib/zeit/kalender-kern';
 import type { FollowUpArt } from '@/lib/crm/typen';
@@ -173,6 +175,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
   const { bestaetigen, dialog } = useRueckfrage();
   const farbe = GRUPPEN.find(g => g.id === f.gruppe)!.farbe;
   const ziel = () => (f.bezug.art === 'chance' ? zuDeal(f.bezug.id) : f.kontaktId ? zuAkte(f.kontaktId) : undefined);
+  const pruefen = !f.virtuell && istAnfragePruefen(f);
   return (
     <div>
       <Zeile onClick={() => setOffen(!offen)} aktiv={offen} links={<Punkt farbe={farbe} />}
@@ -186,7 +189,9 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
       {offen && (
         <div style={{ padding: '8px 2px 14px', display: 'grid', gap: 10, borderBottom: '1px solid rgba(255,255,255,.06)' }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Knopf farbe={LEUCHT.gut} onClick={() => setErledigen(!erledigen)}>✓ Erledigt</Knopf>
+            {/* 31.10.: Anfrage mit unbestätigter Adresse (öffentliche Strecke an einer vorhandenen Person) — erst prüfen, dann von Hand übernehmen. */}
+            {pruefen && kanalAusPruefen(f.text) && <Knopf farbe={LEUCHT.gut} onClick={async () => { if (await bestaetigen({ titel: 'Anfrage übernehmen?', text: 'Nur, wenn die Anfrage wirklich von dieser Person kommt (z. B. Adresse geprüft). Danach gilt sie wie jede Anfrage: Einwilligung „Antwort auf Anfrage“, Stufe, Lead und Follow-up „Anfrage beantworten“.', ja: 'Übernehmen' })) void aktion({ aktion: 'anfrage-uebernehmen', id: f.id }); }}>Anfrage übernehmen</Knopf>}
+            <Knopf farbe={pruefen ? undefined : LEUCHT.gut} leise={pruefen} onClick={() => setErledigen(!erledigen)}>✓ Erledigt</Knopf>
             {VERSCHIEBEN_TAGE.map(t => <Knopf key={t} leise onClick={() => void aktion({ aktion: 'verschieben', id: f.id, tage: t })}>+{t} {t === 1 ? 'Tag' : 'Tage'}</Knopf>)}
             {/* 4.14 (08.10.): Text der Rückfrage nach Quelle — bei der Kadenz fällt nichts weg, es kommt der nächste Anlauf (`absagenText`). */}
             {f.quelle !== 'dealschritt' && f.quelle !== 'dealwiedervorlage' && <Knopf leise onClick={async () => { if (await bestaetigen(absagenText(f.quelle))) void aktion({ aktion: 'absagen', id: f.id }); }}>{absagenText(f.quelle).ja}</Knopf>}
@@ -195,6 +200,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
             {f.bezug.art === 'event' && <Knopf leise onClick={() => router.push(eventHref ? eventHref(f.bezug.id) : eventLink({ id: f.bezug.id }))}>Event öffnen</Knopf>}
             {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Kontakt öffnen'}</Knopf>}
           </div>
+          {pruefen && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Adresse unbestätigt: Die Anfrage kam über eine öffentliche Strecke mit der Mail einer Person, die schon in der Kartei steht. Ohne Prüfung wurde nichts ausgelöst — keine Einwilligung, keine Stufe, keine Mail. {kanalAusPruefen(f.text) ? '„Anfrage übernehmen“, wenn sie echt ist; sonst absagen.' : 'Das Angebot liegt zur Freigabe — „Senden“ dort übernimmt die Anfrage.'}</div>}
           {f.verschoben ? <div style={{ fontSize: TYP.bedien, color: f.verschoben >= 3 ? LEUCHT.kritisch : C.inkLeise }}>{f.verschoben}× verschoben{f.verschoben >= 3 ? ' — ehrlicherweise keine Zusage mehr.' : ''}</div> : null}
           {erledigen && <Erledigen f={f} heute={heute} eigene={eigene} onFertig={async b => { const r = await aktion({ aktion: 'erledigen', id: f.id, ...b }); if (r.ok) { setErledigen(false); setOffen(false); } return r; }} onAbbruch={() => setErledigen(false)} />}
         </div>

@@ -58,7 +58,8 @@ export interface CheckSitzung {
   abgeschlossen?: string;
   ergebnis?: CheckErgebnisStand;
   /** Verweis ins CRM (Anfrage über die Website) — `abgelehnt` z. B. bei Art. 18, nie an den Teilnehmer. */
-  crm?: { status: 'ok' | 'abgelehnt' | 'fehler'; am: string; kontaktId?: string; followUpId?: string; grund?: string };
+  /** `unbestaetigt` (31.10.): die Mail traf eine vorhandene Person — nur angehängt, „Anfrage prüfen — Adresse unbestätigt“. */
+  crm?: { status: 'ok' | 'abgelehnt' | 'fehler'; am: string; kontaktId?: string; followUpId?: string; grund?: string; unbestaetigt?: true };
 }
 
 export interface CheckBestand { sitzungen: CheckSitzung[] }

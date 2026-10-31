@@ -37,7 +37,7 @@ function zeile(s: CheckSitzung) {
     beantwortet: Object.keys(s.antworten).length, kontaktStand: s.kontaktStand,
     kontakt: s.kontakt ? { vorname: s.kontakt.vorname, firma: s.kontakt.firma, email: s.kontakt.email, telefon: s.kontakt.telefon ?? null, newsletterWunsch: s.kontakt.newsletterWunsch } : null,
     ergebnis: s.ergebnis ?? null, abgeschlossen: s.abgeschlossen ?? null,
-    crm: s.crm ? { status: s.crm.status, kontaktId: s.crm.kontaktId ?? null, ...(s.crm.status !== 'ok' && s.crm.grund ? { grund: s.crm.grund } : {}) } : null,
+    crm: s.crm ? { status: s.crm.status, kontaktId: s.crm.kontaktId ?? null, ...(s.crm.unbestaetigt ? { unbestaetigt: true } : {}), ...(s.crm.status !== 'ok' && s.crm.grund ? { grund: s.crm.grund } : {}) } : null,
     belegeOffen: offen,
   };
 }
