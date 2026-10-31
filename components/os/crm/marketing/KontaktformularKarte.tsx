@@ -32,7 +32,7 @@ export function KontaktformularKarte() {
     <Karte i={0}>
       <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{d.aktiv ? `öffentlich unter ${d.pfad}` : 'aus'}</span>}>Kontaktformular der Website</Ueberschrift>
       <div style={{ display: 'grid', gap: 8 }}>
-        <Schalter an={d.aktiv} aus={!d.istInhaber} onChange={an => void schalten(an)} erklaerungOhne="Öffentlich erreichbar unter /anfrage dieser Instanz (auch über die Adresse der Website, wenn sie dorthin weiterleitet). Kommt ausgeschaltet; ausgeschaltet antwortet die Seite mit „gibt es nicht“.">Formular öffentlich</Schalter>
+        <Schalter an={d.aktiv} aus={!d.istInhaber} onChange={an => void schalten(an)} erklaerung="kontaktformular.oeffentlich">Formular öffentlich</Schalter>
         <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nachrichten kommen hier als Anfrage „über Website“ an, mit Follow-up „Anfrage beantworten“. Keine Werbe-Einwilligung, keine Mail — geantwortet wird von Hand.</span>
         {!d.istInhaber && <Hinweis art="info">Einschalten kann nur ein Inhaber — du siehst den Stand.</Hinweis>}
         {d.gruende.length > 0 && <Hinweis art="achtung" titel="Verantwortlicher fehlt">{d.gruende.join(' ')} <Link href={WEG.datenschutz('verantwortlicher')} style={{ color: C.aktiv }}>Jetzt eintragen</Link></Hinweis>}

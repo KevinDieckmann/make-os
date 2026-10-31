@@ -176,7 +176,7 @@ function belegt(t: WvTag, puffer: number): Spanne[] {
  * `jetzt` = Berliner Wandzeit „YYYY-MM-DDTHH:mm…“.
  */
 export function freieSpannen(t: WvTag, bereich: WvBereich, jetzt: string, puffer: number = WV.PUFFER_MIN): Spanne[] {
-  const heute = jetzt.slice(0, 10);
+  const heute = jetzt.split('T')[0]; // `jetzt` ist schon Berliner Wandzeit — der Tag davor ist der Berliner Tag
   if (t.tag < heute) return [];
   let frei = abziehen(rahmen(t, bereich), belegt(t, puffer));
   frei = abziehen(frei, [[0, WV.TAG_VON_MIN], [WV.TAG_BIS_MIN, 1440]]);

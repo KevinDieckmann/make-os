@@ -16,6 +16,12 @@ export const EINSTELLUNGEN_BUSINESS = {
   },
 
   // ── Markttraktion › Marketing › Newsletter: Anmeldung über die Website (30.10.) ──────────────────────────────────────────
+  'kontaktformular.oeffentlich': {
+    was: 'Schaltet das Kontaktformular der Website ein: Unter /anfrage dieser Instanz (auch über die Adresse der Website, wenn sie dorthin weiterleitet) kann jemand eine Nachricht schicken.',
+    beispiel: 'Jemand liest eure Website und schreibt über das Formular „Bitte um Rückruf“: Die Person steht als Anfrage in der Kartei, mit dem Follow-up „Anfrage beantworten“.',
+    an: 'Das Formular ist öffentlich; der Knopf auf der Website erscheint. Nachrichten kommen als Anfrage über die Website an — ohne Werbe-Einwilligung, ohne Mail, geantwortet wird von Hand.',
+    aus: 'Die Seite antwortet mit „gibt es nicht“, der Knopf auf der Website bleibt verborgen. Das ist die Vorgabe.',
+  },
   'newsletter.anmeldung': {
     was: 'Schaltet die öffentliche Seite /newsletter ein: Besucher tragen ihre Adresse ein, bekommen aus dem gewählten Postfach eine Bestätigungsmail und sind erst nach dem Klick auf den Link angemeldet (Double-Opt-in). Danach steht die Person mit der Einwilligung „Newsletter“ samt Nachweis im CRM. Den Newsletter selbst verschickt ihr weiter von Hand.',
     beispiel: 'Eine Besucherin trägt sich um 9:12 Uhr ein, die Mail geht um 9:12 Uhr raus, sie klickt um 9:20 Uhr. In ihrer Akte steht dann die Einwilligung mit Wortlaut, Fassung und den drei Zeitpunkten — und sie zählt zu den Empfängern mit Double-Opt-in.',

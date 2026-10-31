@@ -106,7 +106,6 @@ const GESELLSCHAFTEN = /KD[ -]Ventures|MAKE Innovation|Fokus Innovation/;
 const GESELLSCHAFT_AUSNAHMEN: Record<string, string> = {
   'lib/einheiten.ts': 'die EINE Stelle der Gesellschaftsnamen (Vorgabe der gewachsenen Instanz, je Instanz über NEXT_PUBLIC_MAKE_OS_EINHEITEN)',
   'lib/altbestand/nordstern-uebernahme.ts': NAMEN_AUSNAHMEN['lib/altbestand/nordstern-uebernahme.ts'],
-  'lib/check/vorlagen/innovations-check/scoring.json': 'OFFEN für Kevin: Siegel-Name der Innovationscheck-Vorlage ist Produktinhalt (eigene Vorlage je Instanz?)',
 };
 
 describe('Quelltext (app, lib, components, hooks, context): keine festen Personen, Firmen, Domains', () => {
