@@ -63,6 +63,8 @@ const istPlatzhalter = (s) => /\[\[KEVIN:/.test(String(s ?? ''));
 const stempel = (datei) => createHash('sha256').update(readFileSync(join(ORDNER, datei))).digest('hex').slice(0, 10);
 const PFEIL = '<svg class="pfeil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
 const ZEICHEN = (klasse = 'zeichen') => `<svg class="${klasse}" viewBox="0 0 48 48" aria-hidden="true"><path class="bahn" d="M37.86,16 A16,16 0 1 1 26.78,8.24"/><circle class="punkt" cx="35.33" cy="7.81" r="2.8"/><circle class="kern" cx="24" cy="24" r="7"/></svg>`;
+/** Monogramm im Stil des Logos (31.10.: Personen ohne Foto): Ring mit Lücke und Punkt, die Initialen in der Mitte. */
+const MONOGRAMM = (kuerzel, klasse = '') => `<svg class="monogramm${klasse ? ` ${klasse}` : ''}" viewBox="0 0 48 48" aria-hidden="true"><path class="bahn" d="M37.86,16 A16,16 0 1 1 26.78,8.24"/><circle class="punkt" cx="35.33" cy="7.81" r="2.8"/><text x="24" y="28.3" text-anchor="middle">${String(kuerzel).replace(/[<&>"]/g, '')}</text></svg>`;
 const WORTBILD = '<span class="wortbild" aria-hidden="true"><b>FOKUS</b><small>Innovation</small></span>';
 
 /** Reihenfolge der Bereiche (Positionierung 25.10.: gesehen → verkauft → im Alltag angekommen). */
@@ -381,7 +383,7 @@ ${fuss()}
   };
 
   /** Der dunkle Schlussakt: eine Frage, ein Satz, der Einstieg in drei Schritten, zwei Knöpfe. */
-  const ansprechpartner = () => { const p = F.team[0]; return `<p class="ansprechpartner"><span class="kuerzel" aria-hidden="true">${e(p.kuerzel)}</span><span>Ihr Ansprechpartner im Erstgespräch<b>${e(p.name)}</b></span></p>`; };
+  const ansprechpartner = () => { const p = F.team[0]; return `<p class="ansprechpartner">${MONOGRAMM(p.kuerzel)}<span>Ihr Ansprechpartner im Erstgespräch<b>${e(p.name)}</b></span></p>`; };
   const schlussakt = ({ quelle, bereich, h2 = 'Bereit für den nächsten Schritt?', lead, knoepfe, stufen = F.einstieg, ablauf = true }) => `<section class="schlussakt dunkel" aria-labelledby="schluss-titel"><div class="w">
 <div class="schluss-kopf erscheint">${ZEICHEN('zeichen schluss-zeichen')}<p class="vorzeile">Der Einstieg</p><h2 id="schluss-titel">${e(h2)}</h2><p class="lead">${t(lead ?? `Im kostenlosen Erstgespräch, 30 Minuten per Video, klären wir, ob und womit wir helfen können. ${passenderCheck(bereich, quelle).satz}`)}</p>
 <div class="knoepfe">${knoepfe ?? `${erstKnopf()}${passenderKnopf(bereich, quelle)}`}</div>${ansprechpartner()}</div>
@@ -502,7 +504,7 @@ ${block('fokus', fl.fokus)}
 ${block('luecke', fl.luecke)}
 ${block('momentum', fl.momentum)}
 ${block('durchbruch', fl.durchbruch)}
-<div class="block" data-block="ende" aria-hidden="true"><div class="ende-marke"><span class="ende-wort">FOKUS</span><span class="ende-unter">Innovation</span><span class="ende-claim">${e(F.marke.claim)}</span></div></div>
+<div class="block" data-block="ende"><div class="ende-marke"><span class="ende-wort" aria-hidden="true">FOKUS</span><span class="ende-unter" aria-hidden="true">Innovation</span><span class="ende-claim" aria-hidden="true">${e(F.marke.claim)}</span><div class="ende-knoepfe dunkel">${erstKnopf()}${passenderKnopf(undefined, 'film_ende')}</div></div></div>
 <a class="ueberspringen" href="#einstieg">Film überspringen</a>
 </div>
 </section>
@@ -534,8 +536,8 @@ ${raster(F.warum_wir.map((w) => ({ titel: w.titel, text: w.text, unter: w.beleg 
 ${fragen(F.einwaende.filter((x) => /Wer arbeitet|Was kostet|Verkaufsgespräch/.test(x.f)), F.einwaende_titel ?? 'Bevor Sie fragen', { id: 'einwaende', marke: F.einwaende_marke ?? 'Fragen', mehr: true })}
 
 <section class="abschnitt" id="events" aria-labelledby="events-titel"><div class="w">
-<div class="events-block">
-<div class="events-kopf erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${titel(F.events.start_titel.join('|'), F.events.start_ruhig)}</h2></div>
+<div class="events-block kompakt">
+<div class="events-kopf erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${e(F.events.start_ruhig)}</h2></div>
 <div class="events-text erscheint"><p class="lead">${t(F.events.start_text ?? F.events.text)}</p>
 <div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten')}${textlink('/events/', 'Formate und Termine')}</div></div>
 </div>
@@ -822,7 +824,7 @@ ${raster(F.fuer_wen.map((w) => ({ etikett: w.richtung, titel: w.titel, text: w.t
 </div></section>
 
 <section class="abschnitt" aria-labelledby="team-titel"><div class="w">${abKopf({ marke: 'Team', h2: 'Ein Kernteam, das führt.', ruhig: 'Ein Netzwerk, das liefert.', lead: 'Kevin verantwortet Vertrieb und Umsetzung, Malin Bühne und Netzwerk. Dahinter steht ein festes Netzwerk aus Spezialisten für Film, Design, Entwicklung, PR, Daten und Leadgenerierung. Für jedes Projekt stellen wir das Team zusammen, das es braucht.', id: 'team-titel' })}
-<div class="team erscheint">${F.team.map((p) => `<article class="person" id="${personAnker(p)}"><span class="kuerzel" aria-hidden="true">${e(p.kuerzel)}</span><div><p class="etikett">${e(p.rolle)}</p><h3>${e(p.name)}</h3><p>${t(p.text)}</p></div></article>`).join('')}${F.team_netzwerk ? `<article class="person person-netzwerk"><span class="kuerzel" aria-hidden="true">${ZEICHEN()}</span><div><p class="etikett">${e(F.team_netzwerk.rolle)}</p><h3>${e(F.team_netzwerk.titel)}</h3><p>${t(F.team_netzwerk.text)}</p><ul class="felder-liste">${F.team_netzwerk.felder.map((x) => `<li>${e(x)}</li>`).join('')}</ul></div></article>` : ''}</div></div></section>
+<div class="team erscheint">${F.team.map((p) => `<article class="person" id="${personAnker(p)}"><span class="kuerzel mono">${MONOGRAMM(p.kuerzel)}</span><div><p class="etikett">${e(p.rolle)}</p><h3>${e(p.name)}</h3><p>${t(p.text)}</p></div></article>`).join('')}${F.team_netzwerk ? `<article class="person person-netzwerk"><span class="kuerzel" aria-hidden="true">${ZEICHEN()}</span><div><p class="etikett">${e(F.team_netzwerk.rolle)}</p><h3>${e(F.team_netzwerk.titel)}</h3><p>${t(F.team_netzwerk.text)}</p><ul class="felder-liste">${F.team_netzwerk.felder.map((x) => `<li>${e(x)}</li>`).join('')}</ul></div></article>` : ''}</div></div></section>
 
 <section class="abschnitt" aria-labelledby="werte-titel"><div class="w">${abKopf({ marke: 'Werte', h2: 'Woran man uns erkennt.', lead: 'Drei Werte, an denen Sie uns messen können.', id: 'werte-titel' })}
 ${raster(F.werte, 3)}

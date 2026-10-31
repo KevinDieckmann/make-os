@@ -898,3 +898,19 @@ html.menue-offen { overflow: hidden; }
   .problem-bild, .problem-bild * { transition: none !important; animation: none !important; }
 }
 @media (max-width: 560px) { .pb-text { font-size: 14px; } .pb-klein { font-size: 13px; } }
+
+/* ── Monogramm im Logo-Stil + Ansprechpartner im Schluss (31.10.) ── */
+.monogramm { display: block; width: 100%; height: 100%; overflow: visible; }
+.monogramm .bahn { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+.monogramm .punkt { fill: var(--akzent-papier); }
+.monogramm text { fill: currentColor; font: 600 12.5px var(--schrift); letter-spacing: .04em; }
+.kuerzel.mono { background: transparent; color: var(--tinte); padding: 4px; }
+.dunkel .monogramm .punkt, .person-netzwerk .monogramm .punkt { fill: var(--akzent); }
+.ansprechpartner { margin-top: 32px; display: flex; align-items: center; gap: 16px; color: var(--leise-dunkel); font-size: .95rem; line-height: 1.35; }
+.ansprechpartner .monogramm { width: 52px; height: 52px; flex: none; color: var(--hell); }
+.ansprechpartner > span { display: flex; flex-direction: column; gap: 2px; }
+.ansprechpartner b { color: var(--hell); font-weight: 600; font-size: 1.05rem; }
+/* Events auf der Startseite: kompakt, Überschrift links, Text rechts */
+.events-block.kompakt { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: end; }
+.events-block.kompakt .events-kopf { grid-column: auto; }
+@media (max-width: 900px) { .events-block.kompakt { grid-template-columns: minmax(0, 1fr); } }

@@ -774,7 +774,8 @@
         "lage": "Ihre Website bringt kaum Anfragen.",
         "ziel": "/sichtbarkeit/homepages/",
         "name": "Homepages",
-        "preis": "ab 1.990 €"
+        "gruppe": "Homepage-Pakete",
+        "bereich": "sichtbarkeit"
       },
       {
         "lage": "Besucher verstehen Ihr Angebot nicht schnell genug.",
@@ -802,13 +803,15 @@
         "lage": "KI wird ausprobiert, aber nicht genutzt.",
         "ziel": "/innovations-check/",
         "name": "Innovations-Check",
-        "preis": "kostenlos"
+        "preis": "kostenlos",
+        "bereich": "innovation"
       },
       {
         "lage": "Abläufe hängen an einer Person, Daten liegen verstreut.",
         "ziel": "/innovation/umsetzungsprojekte/",
         "name": "Umsetzungsprojekte",
-        "preis": "Anfrage starten"
+        "preis": "Anfrage starten",
+        "bereich": "innovation"
       }
     ]
   },
