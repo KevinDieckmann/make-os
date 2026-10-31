@@ -20,6 +20,8 @@ export interface OeffentlicheFrage {
   hilfe?: string;
   /** Bausteine zum Antippen (Beleg-Fragen). */
   bausteine?: readonly string[];
+  /** Pflichtfrage in eigenen Worten (nie überspringbar). */
+  pflicht?: true;
 }
 
 export interface OeffentlicherKatalog { vorlage: string; name: string; fragen: OeffentlicheFrage[]; abschnittSatz: Record<string, string>; /** Name je Abschnitt für den Fortschritt („Strategie und Führung“). */ abschnittName: Record<string, string> }
@@ -31,6 +33,7 @@ function oeffentlich(f: FrageMitAbschnitt): OeffentlicheFrage {
     text: f.text,
     typ: f.typ,
     ...(f.kurzcheck ? { kurz: true as const } : {}),
+    ...(f.pflicht ? { pflicht: true as const } : {}),
     ...(f.optionen ? { optionen: f.optionen.map(o => ({ id: o.id, text: o.text, ...(o.freitext ? { freitext: true } : {}), ...(o.exklusiv ? { exklusiv: true } : {}) })) } : {}),
     ...(f.zusatz ? { zusatz: { text: f.zusatz.text } } : {}),
     ...(f.typ === 'beleg' ? { hilfe: belegHilfe(f.nachfragen), bausteine: BELEG_BAUSTEINE[f.id] ?? [] } : f.hinweis ? { hilfe: f.hinweis } : {}),

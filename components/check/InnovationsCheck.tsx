@@ -21,7 +21,7 @@ import type { OeffentlicherKatalog, OeffentlicheFrage } from '@/lib/check/oeffen
 import type { Schritt } from '@/lib/check/ablauf';
 import type { ErgebnisAnsicht, ErgebnisVorschau } from '@/lib/check/ergebnis';
 
-interface Antwort { optionIds?: string[]; freitext?: string; zusatz?: boolean; optionText?: string }
+interface Antwort { optionIds?: string[]; freitext?: string; zusatz?: boolean; optionText?: string; anmerkung?: string }
 interface Strom {
   schritt: Schritt;
   fortschritt: { kurz: number; kurzVon: number; prozent: number };
@@ -62,6 +62,8 @@ interface Sitzung { id: string; token: string }
 /** Gemerkte Sitzung je Check (30.10.: mehrere Checks auf derselben Seite — jeder hat seine eigene). */
 const speicherVon = (vorlage: string) => `make-check:${vorlage}`;
 const FREITEXT_MAX = 2000;
+/** Eigene Antwort zu einer Auswahlfrage — wie ANMERKUNG_MAX in lib/check/ablauf.ts. */
+const ANMERKUNG_MAX = 1000;
 const QUITTUNG = ['Danke.', 'Notiert.', 'Gut zu wissen.', 'Verstanden.', 'Alles klar.'];
 
 function sitzungLesen(vorlage: string): Sitzung | null {
@@ -254,13 +256,13 @@ export function InnovationsCheck({ marke, claim, seite, katalog, zoe, hinweis, n
             </>
           ) : bearbeite && fragen.get(bearbeite) ? (
             <FrageKarte key={`b-${bearbeite}`} f={fragen.get(bearbeite)!} satz={katalog.abschnittSatz[fragen.get(bearbeite)!.abschnitt]} a={strom?.antworten[bearbeite]} laedt={laedt}
-              ueberspringbar={fragen.get(bearbeite)!.typ === 'beleg' || fragen.get(bearbeite)!.typ === 'offen' || !fragen.get(bearbeite)!.kurz}
+              ueberspringbar={!fragen.get(bearbeite)!.pflicht && (fragen.get(bearbeite)!.typ === 'beleg' || fragen.get(bearbeite)!.typ === 'offen' || !fragen.get(bearbeite)!.kurz)}
               zurueck={vorige(bearbeite) ? () => setBearbeite(vorige(bearbeite)) : undefined} abbrechen={() => setBearbeite(null)}
               antworten={a => beantworten(fragen.get(bearbeite)!, a)} ueberspringen={() => ueberspringen(fragen.get(bearbeite)!)} />
           ) : aktuell.art === 'frage' && fragen.get(aktuell.frageId) ? (
             <FrageKarte key={aktuell.frageId} f={fragen.get(aktuell.frageId)!} laedt={laedt}
               satz={(() => { const f = fragen.get(aktuell.frageId)!; const letzte = erledigt.length ? fragen.get(erledigt[erledigt.length - 1]) : undefined; return letzte && letzte.abschnitt !== f.abschnitt ? katalog.abschnittSatz[f.abschnitt] : letzte ? QUITTUNG[erledigt.length % QUITTUNG.length] : undefined; })()}
-              a={strom?.antworten[aktuell.frageId]} ueberspringbar={aktuell.phase !== 'kurzcheck' || fragen.get(aktuell.frageId)!.typ === 'beleg' || fragen.get(aktuell.frageId)!.typ === 'offen'}
+              a={strom?.antworten[aktuell.frageId]} ueberspringbar={!fragen.get(aktuell.frageId)!.pflicht && (aktuell.phase !== 'kurzcheck' || fragen.get(aktuell.frageId)!.typ === 'beleg' || fragen.get(aktuell.frageId)!.typ === 'offen')}
               zurueck={vorige(null) && aenderbar(vorige(null)!) ? () => setBearbeite(vorige(null)) : undefined}
               ergebnisZeigen={aktuell.phase !== 'kurzcheck' ? () => void sende({ aktion: 'wahl', wahl: 'ergebnis' }) : undefined}
               antworten={a => beantworten(fragen.get(aktuell.frageId)!, a)} ueberspringen={() => ueberspringen(fragen.get(aktuell.frageId)!)} />
@@ -335,8 +337,8 @@ function antwortText(f: OeffentlicheFrage, a: Antwort | undefined, uebersprungen
   if (!a) return '';
   if (a.freitext) return a.freitext;
   const texte = (a.optionIds ?? []).map(id => f.optionen?.find(o => o.id === id)?.text ?? '').filter(Boolean);
-  const t = texte.join(', ') + (a.optionText ? `: ${a.optionText}` : '');
-  return a.zusatz === true ? `${t} · Start-up` : t;
+  const t = texte.join(', ') + (a.optionText ? `: ${a.optionText}` : '') + (a.zusatz === true ? ' · Start-up' : '');
+  return a.anmerkung ? `${t} · „${a.anmerkung}“` : t;
 }
 
 function Zoe({ zeilen, leise }: { zeilen: readonly string[]; leise?: boolean }) {
@@ -360,6 +362,11 @@ function FrageKarte({ f, satz, a, laedt, ueberspringbar, zurueck, abbrechen, erg
   const [text, setText] = useState(a?.freitext ?? '');
   const [optionText, setOptionText] = useState(a?.optionText ?? '');
   const [zusatz, setZusatz] = useState(a?.zusatz ?? false);
+  // Eigene Antwort zur Auswahl (31.10., freiwillig): ist das Feld offen, wählt ein Klick nur aus, „Weiter“ schickt beides.
+  const [anmerkung, setAnmerkung] = useState(a?.anmerkung ?? '');
+  const [anmerkungOffen, setAnmerkungOffen] = useState(!!a?.anmerkung);
+  const auswahl = f.typ === 'einfach' || f.typ === 'mehrfach';
+  const mitAnmerkung = () => (anmerkungOffen && anmerkung.trim() ? { anmerkung: anmerkung.trim() } : {});
   const freiOption = f.optionen?.find(o => o.freitext);
   const sonstigeOffen = !!freiOption && gewaehlt[0] === freiOption.id;
 
@@ -369,7 +376,7 @@ function FrageKarte({ f, satz, a, laedt, ueberspringbar, zurueck, abbrechen, erg
       setGewaehlt(g => (g.includes(id) ? g.filter(x => x !== id) : o?.exklusiv ? [id] : [...g.filter(x => !f.optionen?.find(y => y.id === x)?.exklusiv), id]));
       return;
     }
-    if (freiOption && id === freiOption.id) { setGewaehlt([id]); return; }
+    if ((freiOption && id === freiOption.id) || anmerkungOffen) { setGewaehlt([id]); return; }
     antworten({ optionIds: [id], ...(f.zusatz ? { zusatz } : {}) });
   };
 
@@ -397,6 +404,16 @@ function FrageKarte({ f, satz, a, laedt, ueberspringbar, zurueck, abbrechen, erg
             <input className={s.eingabe} value={optionText} onChange={e => setOptionText(e.target.value)} maxLength={120} placeholder="Welche Branche?" aria-label="Welche Branche?" />
           </div>
         )}
+        {auswahl && !anmerkungOffen && (
+          <button type="button" className={s.ergaenzen} disabled={laedt} onClick={() => setAnmerkungOffen(true)}>+ Eigene Antwort ergänzen</button>
+        )}
+        {auswahl && anmerkungOffen && (
+          <div className={s.anmerkung}>
+            <textarea className={`${s.textfeld} ${s.textfeldKlein}`} value={anmerkung} onChange={e => setAnmerkung(e.target.value)} maxLength={ANMERKUNG_MAX}
+              aria-label="Eigene Antwort, freiwillig" placeholder="Was Sie dazu sagen möchten, in Ihren Worten (freiwillig)." autoFocus={!a?.anmerkung} />
+            {anmerkung.length > ANMERKUNG_MAX * 0.8 && <div className={s.zaehler}>{anmerkung.length} / {ANMERKUNG_MAX}</div>}
+          </div>
+        )}
         {(f.typ === 'beleg' || f.typ === 'offen') && (
           <>
             {!!f.bausteine?.length && (
@@ -404,13 +421,13 @@ function FrageKarte({ f, satz, a, laedt, ueberspringbar, zurueck, abbrechen, erg
                 {f.bausteine.map(b => <button key={b} type="button" className={s.chip} onClick={() => setText(t => (t.trim() ? `${t.trim()} ${b}` : b))}>{b.replace(/: $/, ' …')}</button>)}
               </div>
             )}
-            <textarea className={s.textfeld} value={text} onChange={e => setText(e.target.value)} maxLength={FREITEXT_MAX} aria-label={f.text} placeholder="Ein, zwei Sätze reichen." />
+            <textarea className={s.textfeld} value={text} onChange={e => setText(e.target.value)} maxLength={FREITEXT_MAX} aria-label={f.text} aria-required={f.pflicht ? true : undefined} placeholder="Ein, zwei Sätze reichen." />
             <div className={s.zaehler}>{text.length} / {FREITEXT_MAX}</div>
           </>
         )}
         <div className={s.zeile}>
-          {(f.typ === 'mehrfach' || sonstigeOffen) && (
-            <button type="button" className={s.knopf} disabled={laedt || !gewaehlt.length} onClick={() => antworten({ optionIds: gewaehlt, ...(sonstigeOffen && optionText.trim() ? { optionText: optionText.trim() } : {}), ...(f.zusatz ? { zusatz } : {}) })}>Weiter</button>
+          {(f.typ === 'mehrfach' || sonstigeOffen || (auswahl && anmerkungOffen)) && (
+            <button type="button" className={s.knopf} disabled={laedt || !gewaehlt.length} onClick={() => antworten({ optionIds: gewaehlt, ...(sonstigeOffen && optionText.trim() ? { optionText: optionText.trim() } : {}), ...(f.zusatz ? { zusatz } : {}), ...mitAnmerkung() })}>Weiter</button>
           )}
           {(f.typ === 'beleg' || f.typ === 'offen') && (
             <button type="button" className={s.knopf} disabled={laedt || !text.trim()} onClick={() => antworten({ freitext: text.trim() })}>Weiter</button>

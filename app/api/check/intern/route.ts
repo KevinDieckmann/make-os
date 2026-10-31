@@ -75,6 +75,7 @@ export async function GET(req: Request) {
         frage: fid, text: f?.text ?? fid, typ: f?.typ ?? 'offen', abschnitt: f?.abschnitt ?? '',
         auswahl: (a.optionIds ?? []).map(o => f?.optionen?.find(x => x.id === o)?.text ?? o),
         ...(a.freitext ? { freitext: a.freitext } : {}), ...(a.optionText ? { optionText: a.optionText } : {}), ...(typeof a.zusatz === 'boolean' ? { zusatz: a.zusatz } : {}),
+        ...(a.anmerkung ? { anmerkung: a.anmerkung } : {}), ...(f?.pflicht ? { pflicht: true } : {}),
         ...(f?.typ === 'beleg' ? { rubrik: f.rubrik ?? [], ...(Number.isInteger(a.belegScore) ? { belegScore: a.belegScore, belegVon: a.belegVon ?? null } : {}) } : {}),
       };
     });

@@ -3,7 +3,7 @@
 // POST { aktion, … } — alle Aktionen außer `start` mit { sitzung, token } (Token nur im Browser, hier als SHA-256):
 //   start { vorlage?, quelle?, webseite (Honigtopf, leer) } → { sitzung, token, katalog, zoe, hinweis, … }
 //   stand                                  → Weitermachen nach dem Neuladen (gleiche Nutzlast ohne Token)
-//   antwort { frage, optionIds | freitext, zusatz?, optionText? } · ueberspringen { frage }
+//   antwort { frage, optionIds | freitext, zusatz?, optionText?, anmerkung? } · ueberspringen { frage }
 //   kontakt { vorname, email, firma, rolle (A5-Option), telefon?, newsletter?, webseite } · ohne-kontakt
 //   wahl { wahl: ergebnis | mehr } · ergebnis
 // Ausführlich (`umfang: 'lang'`, 31.10., Kevin: „die größeren brauchen eine e-mail“): ohne erfasste Kontaktdaten liefert `ergebnis` NUR die Vorschau
@@ -18,7 +18,7 @@ import { NextResponse } from 'next/server';
 import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { vorlageVon, STANDARD_VORLAGE } from '@/lib/check/katalog';
-import { antwortPruefen, frageVon, kurzFertig, phaseVon, ueberspringbar } from '@/lib/check/ablauf';
+import { antwortPruefen, eigeneWorte, frageVon, kurzFertig, phaseVon, ueberspringbar } from '@/lib/check/ablauf';
 import { auswerten, leadPunkte, profilAus, saeulenAuswerten } from '@/lib/check/auswertung';
 import { ergebnisAnsicht, ergebnisVorschau, berichtGesperrt } from '@/lib/check/ergebnis';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
@@ -159,7 +159,8 @@ export async function POST(req: Request) {
       // Mit Säulen deren Werte; der Innovations-Check (nur Innovation, 30.10.) nennt seine Bereiche.
       const teile = (v.regeln.saeulen?.length ? Object.entries(vorl.werte).map(([sk, w]) => `${namen[sk] ?? sk} ${w}`)
         : (Object.entries(inno.dimensionen) as [DimKey, number][]).map(([d, w]) => `${dimensionName(d)} ${w}`)).join(', ');
-      const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100${teile ? `; ${teile}` : ''}).`);
+      const worte = eigeneWorte(v, r.antworten);
+      const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100${teile ? `; ${teile}` : ''}).${worte ? ` ${worte}` : ''}`);
       await sitzungIntern(r.id, s => ({ ...s, crm }));
     }
     // Kam der Kontakt NACH dem Ergebnis (ausführlicher Check, „Termin buchen“), geht der Bericht jetzt (genau einmal je Sitzung).

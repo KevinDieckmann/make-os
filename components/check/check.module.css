@@ -314,3 +314,9 @@
 .platzhalterWert { font-size: 22px; font-weight: 600; letter-spacing: .1em; color: var(--c-leise); opacity: .6; }
 .platzhalterFuell { width: 100%; height: 100%; border-radius: 3px; background: repeating-linear-gradient(90deg, var(--c-linie) 0 6px, transparent 6px 12px); opacity: .8; }
 .berichtUnterwegs { margin: 14px 0 0; font-size: 14px; color: var(--c-text); background: var(--c-flaeche-2); border: 1px solid var(--c-linie); border-radius: 10px; padding: 10px 12px; }
+
+/* Eigene Antwort zur Auswahl (31.10., freiwillig) — leiser Link unter den Antworten, aufgeklappt ein kleines Feld. */
+.ergaenzen { display: inline-flex; align-items: center; min-height: 44px; margin-top: 6px; padding: 0 4px; border: 0; background: none; color: var(--c-leise); cursor: pointer; font: inherit; font-size: 15px; text-decoration: underline; text-underline-offset: 3px; }
+.ergaenzen:hover { color: var(--c-text, inherit); }
+.anmerkung { margin-top: 12px; }
+.textfeldKlein { min-height: 84px; }

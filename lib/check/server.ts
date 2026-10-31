@@ -44,8 +44,8 @@ export const ablaufStand = (s: CheckSitzung): AblaufStand => ({ antworten: s.ant
 /** Was der Browser nach jedem Schritt bekommt — nur eigene Angaben, nie Punkte, Bewertungen, Hash oder CRM-Verweis. */
 export function stromFuerBrowser(v: CheckVorlage, s: CheckSitzung) {
   const stand = ablaufStand(s);
-  const antworten: Record<string, { optionIds?: string[]; freitext?: string; zusatz?: boolean; optionText?: string }> = {};
-  for (const [id, a] of Object.entries(s.antworten)) antworten[id] = { ...(a.optionIds ? { optionIds: a.optionIds } : {}), ...(a.freitext ? { freitext: a.freitext } : {}), ...(typeof a.zusatz === 'boolean' ? { zusatz: a.zusatz } : {}), ...(a.optionText ? { optionText: a.optionText } : {}) };
+  const antworten: Record<string, { optionIds?: string[]; freitext?: string; zusatz?: boolean; optionText?: string; anmerkung?: string }> = {};
+  for (const [id, a] of Object.entries(s.antworten)) antworten[id] = { ...(a.optionIds ? { optionIds: a.optionIds } : {}), ...(a.freitext ? { freitext: a.freitext } : {}), ...(typeof a.zusatz === 'boolean' ? { zusatz: a.zusatz } : {}), ...(a.optionText ? { optionText: a.optionText } : {}), ...(a.anmerkung ? { anmerkung: a.anmerkung } : {}) };
   return {
     schritt: naechsterSchritt(v, stand),
     fortschritt: fortschritt(v, stand),

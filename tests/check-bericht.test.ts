@@ -54,6 +54,7 @@ const KURZ: [string, Record<string, unknown>][] = [
   ['C5', { freitext: 'Wir probieren ein Werkzeug für Angebotstexte aus.' }], ['D1', { optionIds: ['D1_1'] }], ['D2', { optionIds: ['D2_1'] }],
   ['D7', { optionIds: ['D7_1'] }], ['E1', { optionIds: ['E1_1'] }], ['E4', { optionIds: ['E4_2'] }], ['E6', { optionIds: ['E6_1'] }],
   ['G1', { optionIds: ['G1_1'] }], ['G2', { optionIds: ['G2_1'] }], ['G6', { optionIds: ['G6_1'] }],
+  ['W1', { freitext: 'Uns fehlt die Zeit, Neues in Ruhe auszuprobieren.' }],
 ];
 const T0 = new Date('2026-11-09T08:00:00Z');
 let uhr = T0.getTime();

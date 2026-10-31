@@ -4,8 +4,8 @@
  "freigabe": "Zur Abnahme durch den Inhaber (30.10.2026)",
  "sprache": "de, Sie-Form",
  "hinweis": "IDs sind stabil und werden in Datenbank, Scoring und Bericht verwendet. Texte dürfen nur nach Freigabe durch den Inhaber geändert werden.",
- "anzahl_fragen": 13,
- "anzahl_kurzcheck": 12,
+ "anzahl_fragen": 15,
+ "anzahl_kurzcheck": 14,
  "abschnitte": [
   {
    "id": "A",
@@ -405,7 +405,7 @@
    "name": "Reichweite",
    "dimension": null,
    "saeule": "reichweite",
-   "satz": "Zum Schluss: Wie weit reicht Ihre Sichtbarkeit?",
+   "satz": "Und wie weit reicht Ihre Sichtbarkeit?",
    "intro": "Bereich Reichweite. 3 Fragen.",
    "fragen": [
     {
@@ -505,6 +505,38 @@
        "text": "Viele Belege, aktiv gesammelt und überall gezeigt",
        "punkte": 4
       }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "W",
+   "key": "eigene_worte",
+   "name": "In Ihren Worten",
+   "dimension": null,
+   "satz": "Zum Schluss zwei Fragen in Ihren eigenen Worten.",
+   "intro": "Eigene Worte, ohne Punkte. 2 Pflichtfragen (31.10.: Auswahl geben, aber zwischendrin auch selbst schreiben).",
+   "fragen": [
+    {
+     "id": "W1",
+     "text": "Was stört Sie an Ihrer Sichtbarkeit im Moment am meisten?",
+     "kurzcheck": true,
+     "typ": "offen",
+     "pflicht": true,
+     "punkte": false,
+     "eingabe": [
+      "text"
+     ]
+    },
+    {
+     "id": "W2",
+     "text": "Woran würden Sie in 90 Tagen merken, dass es besser geworden ist?",
+     "kurzcheck": true,
+     "typ": "offen",
+     "pflicht": true,
+     "punkte": false,
+     "eingabe": [
+      "text"
      ]
     }
    ]

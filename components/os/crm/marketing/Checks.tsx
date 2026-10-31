@@ -32,7 +32,7 @@ interface Daten {
   buchungsseiten: { slug: string; titel: string }[];
   liste: ZeileDaten[];
 }
-interface Detail { antworten: { frage: string; text: string; typ: string; abschnitt: string; auswahl: string[]; freitext?: string; optionText?: string; rubrik?: [number, string][]; belegScore?: number }[] }
+interface Detail { antworten: { frage: string; text: string; typ: string; abschnitt: string; auswahl: string[]; freitext?: string; optionText?: string; anmerkung?: string; pflicht?: boolean; rubrik?: [number, string][]; belegScore?: number }[] }
 
 const KLASSE_FARBE: Record<string, string> = { A: LEUCHT.gut, B: LEUCHT.achtung, C: C.inkLeise };
 
@@ -219,6 +219,7 @@ export function Checks({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                       <div key={a.frage} style={{ borderTop: `1px solid ${C.linie}`, paddingTop: 8 }}>
                         <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{a.frage} · {a.text}</div>
                         <div style={{ color: C.ink, whiteSpace: 'pre-wrap' }}>{a.freitext ?? [a.auswahl.join(', '), a.optionText].filter(Boolean).join(': ')}</div>
+                        {a.anmerkung && <div style={{ color: C.ink, whiteSpace: 'pre-wrap', fontStyle: 'italic', marginTop: 4 }}>„{a.anmerkung}“</div>}
                         {a.typ === 'beleg' && a.freitext && (
                           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
                             {(a.rubrik ?? []).map(([p, t]) => (

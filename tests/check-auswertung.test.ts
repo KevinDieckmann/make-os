@@ -86,11 +86,11 @@ describe('gleich wie die Referenz (600 Zufallsfälle)', () => {
 });
 
 describe('Hilfen', () => {
-  it('Katalog: 65 Fragen, 19 im Kurzcheck (seit 30.10. nur Innovation — Sichtbarkeit und Vertrieb haben eigene Checks)', () => {
+  it('Katalog: 66 Fragen, 20 im Kurzcheck (seit 30.10. nur Innovation; seit 31.10. mit einer Pflichtfrage in eigenen Worten)', () => {
     expect(alleFragen(katalog)).toHaveLength(katalog.anzahl_fragen);
-    expect(katalog.anzahl_fragen).toBe(65);
+    expect(katalog.anzahl_fragen).toBe(66);
     expect(alleFragen(katalog).filter(f => f.kurzcheck)).toHaveLength(katalog.anzahl_kurzcheck);
-    expect(kurzSequenz(V).map(f => f.id)).toEqual(['A1', 'A2', 'A6', 'B1', 'B2', 'B4', 'C1', 'C2', 'C3', 'C5', 'D1', 'D2', 'D7', 'E1', 'E4', 'E6', 'G1', 'G2', 'G6']);
+    expect(kurzSequenz(V).map(f => f.id)).toEqual(['A1', 'A2', 'A6', 'B1', 'B2', 'B4', 'C1', 'C2', 'C3', 'C5', 'D1', 'D2', 'D7', 'E1', 'E4', 'E6', 'G1', 'G2', 'G6', 'W1']);
     expect(katalog.abschnitte.some(x => x.id === 'S' || x.id === 'V')).toBe(false);
     // Jede Frage eines Säulen-Checks hat fünf Antworten mit 0 bis 4 Punkten, in dieser Reihenfolge.
     for (const f of alleFragen(VV.katalog).filter(x => x.abschnitt.startsWith('V'))) expect(f.optionen?.map(o => o.punkte), f.id).toEqual([0, 1, 2, 3, 4]);
