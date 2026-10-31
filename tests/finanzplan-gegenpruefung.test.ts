@@ -530,6 +530,8 @@ describe('f) Fund 4: Wächter-Tabelle „Pfad → aus Business erlaubt?“ über
     ['/eroeffnung', {}, false], ['/eroeffnung/ug/betrag', 1, false],
     // Konten-Register (08.10.): Ist der Privat-Konten/Selbstständigkeit — nur gelesen (beim Lesen gesetzt), nie ein Schreibweg
     ['/kontenIst', {}, false], ['/kontenIst/privat/betrag', 1, false],
+    // Haushalt → Finanzplanung (31.10.): der Schalter ist privat, die Quelle wird nur beim Lesen gesetzt — beides nie aus Business
+    ['/haushaltBruecke', { an: true }, false], ['/haushaltBruecke', { an: false }, false], ['/haushaltQuelle', {}, false],
     // Unbekanntes
     ['/irgendwas', 1, false],
   ];
@@ -544,7 +546,7 @@ describe('f) Fund 4: Wächter-Tabelle „Pfad → aus Business erlaubt?“ über
     }
   });
   it('die Tabelle deckt jeden Wurzelschlüssel von FinanzDaten ab (auch die optionalen)', () => {
-    const schluessel = new Set([...Object.keys(basis()), ...Object.keys(leeresDokument('2026-10-05')), 'planszenarien', 'arbeitsplan', 'bereiche', 'steuern', 'schwellen', 'darlehen', 'kernStand', 'handAlt', 'eroeffnung', 'kontenIst']);
+    const schluessel = new Set([...Object.keys(basis()), ...Object.keys(leeresDokument('2026-10-05')), 'planszenarien', 'arbeitsplan', 'bereiche', 'steuern', 'schwellen', 'darlehen', 'kernStand', 'handAlt', 'eroeffnung', 'kontenIst', 'haushaltBruecke', 'haushaltQuelle']);
     const abgedeckt = new Set(T.map(([p]) => p.split('/')[1]));
     for (const k of schluessel) expect(abgedeckt.has(k), `Wurzelschlüssel ${k} fehlt in der Tabelle`).toBe(true);
   });

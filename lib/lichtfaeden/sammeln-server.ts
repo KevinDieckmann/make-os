@@ -95,7 +95,7 @@ async function finanzen(heute: string, bezuege: ZielBezuege): Promise<Strang[]> 
   const h = await sicher(haushaltDesInhabers(), null);
   const [plan, posten, belege, steuer] = await Promise.all([
     sicher(loadJson<{ zahlungen?: { id: string; titel: string; faellig?: string; status: string; firmaId?: string }[]; rechnungen?: { id: string; titel: string; faellig?: string; datum?: string; status: string; firmaId?: string; mandatId?: string }[] }>('finanzplan'), null),
-    h ? sicher(async () => (await (await import('@/lib/finanzen/plan/speicher')).ladeFinanzplan(h))?.posten ?? [], []) : Promise.resolve([]),
+    h ? sicher(async () => (await (await import('@/lib/finanzen/plan/speicher')).ladeFinanzplan(h, { mitHaushalt: false }))?.posten ?? [], []) : Promise.resolve([]),
     h ? sicher(async () => (await (await import('@/lib/finanzen/haushalt/speicher')).ladeHaushalt(h)).belege, []) : Promise.resolve([]),
     sicher(async () => {
       const [{ ladeSteuerEinstellungenMitPlan: ladeSteuerEinstellungen, STEUERN }, { fristen }] = await Promise.all([import('@/lib/steuern/speicher'), import('@/lib/steuern/rechnen')]);

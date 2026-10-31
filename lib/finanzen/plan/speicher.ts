@@ -18,6 +18,9 @@ import { EROEFFNUNG_BESTAND, kontoStartFuerPlan, type Geltende } from '@/lib/bus
 import { geltendeLaden } from '@/lib/business/eroeffnung-server';
 import { kontenName, planMitIst, planStartMitRegister, type GesellschaftsKasse, type KontenIst } from '@/lib/finanzen/konten/register';
 import { registerFuerPlan } from '@/lib/finanzen/konten/server';
+import { ladeHaushalt, speicherName as haushaltSpeicher } from '@/lib/finanzen/haushalt/speicher';
+import { heuteBerlin } from '@/lib/finanzen/haushalt/monat';
+import { mitHaushalt, type PrivatRechner } from './haushalt-bruecke';
 
 export function speicherName(haushalt: string): string {
   if (!HAUSHALT_OK.test(haushalt)) throw new Error(`Ungültiger Haushalt: ${haushalt}`);
@@ -25,12 +28,31 @@ export function speicherName(haushalt: string): string {
 }
 
 /** Das Dokument des Haushalts — null, wenn noch keins hochgeladen wurde. Mit dem 0-Punkt der Gesellschaften (`eroeffnung`, nie gespeichert). */
-export async function ladeFinanzplan(haushalt: string): Promise<FinanzDaten | null> {
+export async function ladeFinanzplan(haushalt: string, o: { mitHaushalt?: boolean } = {}): Promise<FinanzDaten | null> {
   const roh = await loadJson<unknown>(speicherName(haushalt));
   if (!roh) return null;
   const p = pruefeDokument(roh);
   if (!p.ok) { console.error(`[finanzplan] ${speicherName(haushalt)}: ${p.fehler}`); return null; }
-  return mitKontoStart(p.dokument, haushalt);
+  const d = await mitKontoStart(p.dokument, haushalt);
+  // Haushalt → Finanzplanung (31.10.): nur für die Privat-Sicht gelesen (`mitHaushalt: false` = Business-Sicht — dort käme ohnehin nichts davon an).
+  return o.mitHaushalt === false ? d : mitHaushaltLesen(d, haushalt);
+}
+
+/** Privat-Monate des Kerns für die Vorschau der Brücke — mit dem Arbeitsplan des Bereichs Privat (wie die Oberfläche). */
+const privatRechner: PrivatRechner = d => rechneMit(mitBereich(d, 'privat'), arbeitsplanFuer(d, 'privat')).pr;
+
+/**
+ * Haushalt → Finanzplanung (31.10., lib/finanzen/plan/haushalt-bruecke.ts): Buchungen, Fixkosten und Kredite des Haushalts beim LESEN dazulegen —
+ * nur mit Schalter an; ohne Entscheidung (Altbestand) bleibt alles wie vorher, dazu die Vorschau. Nie gespeichert. Haushalt nicht lesbar → wie vorher.
+ */
+export async function mitHaushaltLesen(d: FinanzDaten, haushalt: string): Promise<FinanzDaten> {
+  try {
+    const hh = await ladeHaushalt(haushalt);
+    return mitHaushalt(d, hh, heuteBerlin(), privatRechner);
+  } catch (e) {
+    console.error(`[finanzplan] Haushalt ${haushalt} nicht lesbar: ${(e as Error).message}`);
+    return mitHaushalt(d, null, heuteBerlin(), undefined, 'Die Haushaltsfinanzen sind gerade nicht lesbar — die Finanzplanung zeigt nur ihre eigenen Werte.');
+  }
 }
 
 /**
@@ -50,7 +72,9 @@ export function mitIst(d: FinanzDaten, geltend: Geltende, kasse: GesellschaftsKa
 }
 
 /** Stand der Datei (Änderungszeit + Größe) samt Eröffnung und Konten-Register — für das ETag der GET-Antwort. */
-export const dateiStand = (haushalt: string) => speicherStand([speicherName(haushalt), EROEFFNUNG_BESTAND, kontenName(haushalt)]);
+export const dateiStand = (haushalt: string) => speicherStand([speicherName(haushalt), EROEFFNUNG_BESTAND, kontenName(haushalt),
+  // Haushalt → Finanzplanung (31.10.): Buchungen, Stamm (Kategorien, Konten) und Schulden des Haushalts.
+  haushaltSpeicher('buchungen', haushalt), haushaltSpeicher('stamm', haushalt), haushaltSpeicher('schulden', haushalt)]);
 
 export type PatchErgebnis =
   | { ok: true; stand: string; protokoll: Aenderung[]; meta: Record<string, { wer: string; wann: string } | null>; nachladen: boolean }
@@ -64,7 +88,7 @@ export type PatchErgebnis =
 export async function patchen(haushalt: string, basisStand: unknown, ops: Operation[], person: string, sicht: PlanSicht = 'privat'): Promise<PatchErgebnis> {
   const jetzt = new Date();
   // Für die 409-Antwort (das Dokument geht zurück an die Oberfläche): 0-Punkt und Konten-Register wie beim Lesen — außerhalb der Sperre geladen.
-  const [geltend, reg] = await Promise.all([geltendeLaden(), registerFuerPlan(haushalt)]);
+  const [geltend, reg, hh] = await Promise.all([geltendeLaden(), registerFuerPlan(haushalt), sicht === 'privat' ? ladeHaushalt(haushalt).catch(() => null) : Promise.resolve(null)]);
   let ergebnis: PatchErgebnis = { ok: false, status: 404, fehler: 'Noch kein Finanzplan — erst den Startbestand hochladen oder leer beginnen.' };
   await updateJson<unknown>(speicherName(haushalt), aktuell => {
     if (!aktuell) return aktuell;
@@ -73,7 +97,7 @@ export async function patchen(haushalt: string, basisStand: unknown, ops: Operat
     const d = p.dokument;
     if (typeof basisStand !== 'string' || basisStand !== d.stand) {
       // Die 409-Antwort trägt das Dokument — in der Business-Sicht nur den Business-Teil (Privat verlässt den Server nie).
-      ergebnis = { ok: false, status: 409, fehler: 'Inzwischen hat jemand geändert — der Plan wurde neu geladen, bitte noch einmal.', stand: d.stand, dokument: fuerSicht(mitIst(d, geltend, reg.kasse, reg.ist), sicht) };
+      ergebnis = { ok: false, status: 409, fehler: 'Inzwischen hat jemand geändert — der Plan wurde neu geladen, bitte noch einmal.', stand: d.stand, dokument: fuerSicht(sicht === 'privat' ? mitHaushalt(mitIst(d, geltend, reg.kasse, reg.ist), hh, heuteBerlin(), privatRechner) : mitIst(d, geltend, reg.kasse, reg.ist), sicht) };
       return aktuell;
     }
     // Business-Sicht (04.10.; Gegenprüfung 05.10.): jeder Schritt muss Business sein UND der private Teil bleibt unverändert — sonst 403, nichts
@@ -110,7 +134,11 @@ export async function importieren(haushalt: string, dokument: FinanzDaten, erset
     const stand = neuerStand(altStand && altStand > dokument.stand ? altStand : dokument.stand, jetzt);
     const eintrag: Aenderung = { wer: person, wann: jetzt.toISOString(), feld: aktuell ? 'Plan ersetzt' : 'Startbestand hochgeladen', alt: '', neu: quelle };
     ergebnis = { ok: true, stand, ersetzt: !!aktuell };
-    return { ...dokument, stand, protokoll: [eintrag, ...dokument.protokoll].slice(0, 500) };
+    // Haushalt → Finanzplanung (31.10.): ein NEUES Dokument liest von Anfang an aus dem Haushalt (Vorgabe an); beim Ersetzen bleibt die Entscheidung.
+    const altBruecke = aktuell && typeof aktuell === 'object' ? (aktuell as { haushaltBruecke?: unknown }).haushaltBruecke : undefined;
+    const bruecke = dokument.haushaltBruecke ?? (altBruecke && typeof (altBruecke as { an?: unknown }).an === 'boolean' ? { an: (altBruecke as { an: boolean }).an } : aktuell ? undefined : { an: true });
+    const { haushaltQuelle: _q, ...ohneQuelle } = dokument;
+    return { ...ohneQuelle, ...(bruecke ? { haushaltBruecke: bruecke } : {}), stand, protokoll: [eintrag, ...dokument.protokoll].slice(0, 500) };
   });
   return ergebnis;
 }

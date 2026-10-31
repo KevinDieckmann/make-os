@@ -21,6 +21,8 @@
 // Mehrere Blatt-Tabellen auf einer Seite (08.10. abends): die Tastatur gehört nur der aktiven Tabelle — Regel in ./tastatur.ts.
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import Link from 'next/link';
+import { Home } from 'lucide-react';
 import { FARBE as C, SCHRIFT, MIKRO, TYP, ECKE } from '@/lib/make-one/design';
 import { LEUCHT, Knopf, feld } from '../ui';
 import type { Zeile } from '@/lib/finanzen/rechenkern';
@@ -394,7 +396,9 @@ export function Blatt({ zeilen, titel, hist, extra, onZeile, onNeueZeile, onDril
     koerper.push(
       <tr key={eid(r) ?? r.name} style={{ background: r.sum ? 'rgba(255,255,255,.025)' : undefined }}>
         <td style={{ ...nameStil, paddingLeft: r.ind ? 16 : 4, fontWeight: r.sum || r.key ? 700 : 500, color: r.key ? C.aktiv : C.ink }}>
-          <span style={nameText} title={r.name}>{r.zeile && onZeile ? <button type="button" onClick={() => onZeile(r.zeile!)} title="Zeile bearbeiten" style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', borderBottom: `1px dotted ${C.inkLeise}`, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</button> : r.name}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}><span style={nameText} title={r.name}>{r.zeile && onZeile ? <button type="button" onClick={() => onZeile(r.zeile!)} title="Zeile bearbeiten" style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer', borderBottom: `1px dotted ${C.inkLeise}`, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</button> : r.name}</span>
+          {/* Haushalt → Finanzplanung (31.10.): Zeile aus dem Haushalt — Zeichen mit Sprung dorthin (geändert wird dort; Monatswerte von Hand gewinnen). */}
+          {r.zeile && d.haushaltQuelle?.zeilen[r.zeile] && <Link href={d.haushaltQuelle.zeilen[r.zeile].weg} title="aus dem Haushalt — dort ändern" aria-label={`${r.name}: aus dem Haushalt`} style={{ color: C.aktiv, display: 'inline-flex', flex: '0 0 auto' }}><Home size={13} aria-hidden /></Link>}</span>
         </td>
         {extra?.map((x, i) => <td key={`x${i}`} style={zellStil({ color: C.inkDim, background: 'rgba(255,255,255,.02)' })}><span style={geldStil}>{x.get(r)}</span></td>)}
         {zellen}

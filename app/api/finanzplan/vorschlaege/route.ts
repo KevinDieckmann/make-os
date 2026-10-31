@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   if (!z) return NextResponse.json(KEIN_ZUGANG, { status: 403 });
   leseZugriff(req, 'finanzplan');
   const sicht = wirksameSicht(z.sicht, new URL(req.url).searchParams.get('sicht'));
-  const [crm, roh] = await Promise.all([ladeCrm().catch(() => null), ladeFinanzplan(z.haushalt)]);
+  const [crm, roh] = await Promise.all([ladeCrm().catch(() => null), ladeFinanzplan(z.haushalt, { mitHaushalt: false })]);
   const plan = roh ? fuerSicht(roh, sicht) : null;
   const heute = plan?.einstellungen.heute ?? heuteBerlin();
   const business = sicht === 'business';

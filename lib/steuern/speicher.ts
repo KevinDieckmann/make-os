@@ -75,7 +75,7 @@ export async function ladeSteuerEinstellungenMitPlan(heute = localDay()): Promis
   const [e, hh] = await Promise.all([ladeSteuerEinstellungen(), haushaltDesInhabers().catch(() => null)]);
   const mitSeit = mitGruendung(e, await gruendungen(hh));
   try {
-    const plan = hh ? await ladeFinanzplan(hh) : null;
+    const plan = hh ? await ladeFinanzplan(hh, { mitHaushalt: false }) : null;
     const p = steuerAusPlan(plan, Number(heute.slice(0, 4)));
     return mitFinanzplanung(mitSeit, p.est, p.ug, p.kdv);
   } catch { return mitSeit; }
@@ -168,7 +168,7 @@ export async function steuernStand(heute = localDay(), bereich: 'privat' | 'busi
   ]);
   const jahr = Number(heute.slice(0, 4));
   // Die Finanzplanung des Haushalts (dieselbe Rechnung wie Finanzen › Privat › Finanzplanung) — Fehler dort kippen die Steuer-Seite nie.
-  const plan = hhId ? await ladeFinanzplan(hhId).catch(() => null) : null;
+  const plan = hhId ? await ladeFinanzplan(hhId, { mitHaushalt: false }).catch(() => null) : null;
   let ausPlan: ReturnType<typeof steuerAusPlan> = { est: null, ug: null, kdv: null };
   try { ausPlan = steuerAusPlan(plan, jahr); } catch (err) { console.error('[steuern] Finanzplanung nicht rechenbar:', err); }
   const est = ausPlan.est;

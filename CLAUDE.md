@@ -3453,6 +3453,20 @@ desselben Abends: „Firma und Privat liegen getrennt — auch in der Datenhaltu
   Steuerrechnung daneben. (6) **Kennzahlen** je Bereich mit dessen Arbeitsplan (`arbeitsplanFuer`). (7) Neue optionale Felder: `kernStand`, `handAlt`,
   `selbst.lohn2VorPlan` (Gehalt 2 Jan–Sep, nur bei Zusammenveranlagung), `Aenderung.eintrag`. **Rückweg nur mit Sicherung** (UPDATES.md).
 
+## Haushalt → Finanzplanung (31.10., Branch `paket-haushalt`; FINANZPLANUNG_JETZT.md)
+Kevin 31.10.: „Haushalt → Finanzplan — heute fertig“ (ROADMAP_Q4 Lücke 2, R4: „Der Haushalt führt das Ist; die Finanzplanung liest daraus.“)
+- **EINE Stelle** `lib/finanzen/plan/haushalt-bruecke.ts` (rein) legt beim LESEN der Privat-Sicht (`ladeFinanzplan` → `mitHaushaltLesen`) Ist-Buchungen (`hhb-…`,
+  Einordnung über `einordnen`), Fixkosten (`sockel` → Zeile „fix“ `p.b.hhf-…`) und Kredite (Schuld `hhs-…` + Rate `p.d.hhk-…` bis schuldenfrei) aus den Haushaltsbeständen
+  dazu — nie gespeichert, Rechenkern unverändert (nur zwei optionale Typfelder). Kontostände kommen weiter aus dem Konten-Register (`kontenIst`, nur gekennzeichnet).
+- **Handwert gewinnt:** eigene Zeile/Schuld gleichen Namens, Regel auf eine eigene Zeile, Monatswert von Hand (`plan["p.b.hhf-…:<m>"]`), Monat mit eigenen Buchungen.
+- **Schalter** `haushaltBruecke: { an }` (Op `/haushaltBruecke`, Antwort `nachladen`): fehlt = Altbestand, alles wie vorher + Vorschau vorher/nachher
+  (`haushaltQuelle.vorschau`, Karte `components/os/finanzplan/HaushaltBruecke.tsx`, „Übernehmen“/„Nicht verwenden“); neue Dokumente beginnen mit `an: true` (`importieren`).
+- Lesefeld `haushaltQuelle` (Zustand, Zeilen/Schulden → Weg in den Haushalt, `vonHand`, Umfang) — Haus-Zeichen an Zeilen (Blatt), Kredite nur lesbar (Fällig & Schulden),
+  Buchungen ordnet Monat immer über „merken“ zu. Schreibschritte auf Haushalts-Kennungen → 400 (`istHaushaltKennung`, auch in ganzen Listen).
+- **Trennung:** nur Privat-Sicht; `businessSicht` entfernt Schalter + Quelle (Zeilen/Schulden/Buchungen sind privat), Schalter in `NUR_PRIVAT`/`privatTeil` (Business 403).
+  ETag umfasst Haushalt-Buchungen/-Stamm/-Schulden + Tag. Leser ohne Privat-Bedarf (Steuern, Lichtfäden, Vorschläge) rufen `ladeFinanzplan(h, { mitHaushalt: false })`.
+- Neue Haushaltsgröße für die Planung → in `uebernahme` + Test (`tests/finanzplan-haushalt-bruecke.test.ts`), nie in einer Ansicht.
+
 ## ZOE (27.09.)
 - Der Assistent heißt **ZOE** (immer groß in Texten). Code: `lib/zoe`, `app/zoe`, `/api/zoe/*`, Bestände `zoe-*`. Alte `jarvis-*`-Dateien werden beim ersten Lesen übernommen (local-db); `/jarvis` und `/api/jarvis/*` leiten um — beides nicht entfernen, solange alte Arbeiter, Boten oder Lesezeichen leben.
 

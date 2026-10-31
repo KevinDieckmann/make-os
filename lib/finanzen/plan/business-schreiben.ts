@@ -24,7 +24,7 @@ export function privatTeil(d: FinanzDaten, vergleich?: FinanzDaten): unknown {
   const st = d.steuern as Record<string, unknown> | undefined;
   return {
     privatEinnahmen: d.privatEinnahmen, privatBudget: d.privatBudget, privatSchulden: d.privatSchulden, check: d.check, fokus: d.fokus,
-    abschluesse: d.abschluesse, regeln: d.regeln, schwellen: d.schwellen ?? null, selbst: d.selbst, handAlt: d.handAlt ?? null,
+    abschluesse: d.abschluesse, regeln: d.regeln, schwellen: d.schwellen ?? null, selbst: d.selbst, handAlt: d.handAlt ?? null, haushaltBruecke: d.haushaltBruecke ?? null,
     nettoTabelle: d.annahmen?.nettoTabelle ?? null,
     plan: nichtBusiness(d.plan, zeilen), ist: nichtBusiness(d.ist, zeilen), notizen: nichtBusiness(d.notizen, zeilen),
     sachkosten: d.sachkosten.filter(z => !istBusinessEinheit(z.einheit)),

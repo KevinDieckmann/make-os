@@ -40,6 +40,7 @@ import { pruefeSteuern } from '@/lib/finanzen/steuern';
 import { pruefeSchwellen } from '@/lib/finanzen/schwellen';
 import { darlehenMonatFehler, pruefeDarlehen } from '@/lib/finanzen/darlehen';
 import { KAL, istUnterseite } from './hilfen';
+import { istHaushaltKennung, HAUSHALT_SCHREIBEN_TEXT } from './haushalt-bruecke';
 import { GRENZE_PLAN_ZELLEN, ZELLE_MUSTER, zelleTeile, HAND_FELDER, KERN_STAND, handAltUmzug, bedeutungNeu } from '@/lib/finanzen/handwerte';
 
 import { localDay } from '@/lib/zeit';
@@ -58,8 +59,11 @@ const MAX_TEXT = 4000;
 const MAX_WERT_JSON = 40_000;
 const PROTOKOLL_MAX = 500;
 const GESPERRT = new Set(['version', 'stand', 'monate', 'historie', 'meta', 'protokoll', 'kernStand']);
-const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan', 'bereiche', 'steuern', 'schwellen', 'darlehen', 'handAlt']);
+const ERLAUBT = new Set(['aktiv', 'schulden', 'abschluesse', 'einstellungen', 'buchungen', 'regeln', 'ziele', 'check', 'notizen', 'annahmen', 'sachkosten', 'privatEinnahmen', 'privatBudget', 'privatSchulden', 'szenarien', 'selbst', 'posten', 'fokus', 'plan', 'ist', 'planszenarien', 'arbeitsplan', 'bereiche', 'steuern', 'schwellen', 'darlehen', 'handAlt', 'haushaltBruecke']);
 const GEFAEHRLICH = new Set(['__proto__', 'constructor', 'prototype']);
+/** Listen, in die die Brücke Haushaltswerte legt (lib/finanzen/plan/haushalt-bruecke.ts). */
+const HH_LISTEN = new Set(['privatBudget', 'privatSchulden', 'schulden', 'buchungen']);
+const enthaeltHaushaltKennung = (v: unknown): boolean => (Array.isArray(v) ? v.some(enthaeltHaushaltKennung) : !!v && typeof v === 'object' && istHaushaltKennung((v as { id?: unknown }).id));
 
 export class OperationUngueltig extends Error {}
 /** Das Dokument würde über eine Grenze wachsen — der Schreibweg antwortet 413, gekürzt wird nie. */
@@ -190,6 +194,14 @@ export function wendeOperationenAn(doc: FinanzDaten, ops: Operation[], person: s
     // Rückgängig (eine Zahl auf einem Schlüssel mit geänderter Bedeutung) — gerechnet wird damit nie.
     if (teile[0] === 'handAlt' && (teile.length !== 2 || (op.neu !== undefined && (typeof op.neu !== 'number' || !Number.isFinite(op.neu) || !ZELLE_MUSTER.test(teile[1]) || !bedeutungNeu(teile[1]) || teile[1] in (d.plan ?? {})))))
       throw new OperationUngueltig('Alte Handwerte: /handAlt/<schlüssel> entfernen (verwerfen) — übernehmen über /plan/<schlüssel>.');
+    // Haushalt → Finanzplanung (31.10.): der Schalter ist { an: true|false } (entfernen = wieder „noch nicht entschieden“). Werte aus dem Haushalt
+    // (Kennungen `p.b.hhf-` · `p.d.hhk-` · `hhs-` · `hhb-`, nur beim Lesen gesetzt) ändert man im Haushalt — kein Schreibschritt darauf, auch nicht in einer ganzen Liste.
+    if (teile[0] === 'haushaltBruecke' && (teile.length !== 1 || (op.neu !== undefined && (!istObjekt(op.neu) || Object.keys(op.neu).some(k => k !== 'an') || typeof op.neu.an !== 'boolean'))))
+      throw new OperationUngueltig('Haushalt → Finanzplanung: /haushaltBruecke = { an: true | false }.');
+    // Schalter umgelegt: die Werte aus dem Haushalt legt nur der Server beim Lesen dazu — der Browser lädt neu.
+    if (teile[0] === 'haushaltBruecke') nachladen = true;
+    if (HH_LISTEN.has(teile[0]) && (teile.slice(1).some(t => t.startsWith('id=') && istHaushaltKennung(t.slice(3))) || enthaeltHaushaltKennung(op.neu)))
+      throw new OperationUngueltig(HAUSHALT_SCHREIBEN_TEXT);
     if (teile[0] === 'aktiv') {
       if (teile.length !== 1 || typeof op.neu !== 'string' || !d.szenarien.some(s => s.id === op.neu)) throw new OperationUngueltig('Dieses Szenario gibt es nicht.');
     }
@@ -380,6 +392,8 @@ export function pruefeDokument(roh: unknown): Pruefung {
     ...(darlehen ? { darlehen } : {}),
     kernStand: KERN_STAND,
     ...(hw.handAlt ? { handAlt: hw.handAlt } : {}),
+    // Haushalt → Finanzplanung (31.10., optional): nur { an: boolean } bleibt; fehlt es, gilt „noch nicht entschieden“ (alles wie vorher).
+    ...(istObjekt(roh.haushaltBruecke) && typeof roh.haushaltBruecke.an === 'boolean' ? { haushaltBruecke: { an: roh.haushaltBruecke.an } } : {}),
     schulden: liste(roh.schulden),
     meta: objekt(roh.meta) as FinanzDaten['meta'],
     abschluesse: liste(roh.abschluesse),

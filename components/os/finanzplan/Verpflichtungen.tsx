@@ -7,6 +7,9 @@
 // Kündigungsfrist und Ø IST).
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { Home } from 'lucide-react';
+import { schuldAusHaushalt } from '@/lib/finanzen/plan/haushalt-bruecke';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Spalten, Spalte, Haken, LEUCHT } from '../ui';
 import type { Darlehen, DarlehenOrt, Einheit, Posten, Schuld } from '@/lib/finanzen/rechenkern';
@@ -62,7 +65,19 @@ export function Schulden() {
               <td style={TDr}><Geld v={d.annahmen.bjoernBetrag} /></td><td style={TDr}><Geld v={d.annahmen.bjoernRate} /></td><td style={TDr}>—</td>
               <td style={TD}>{d.annahmen.bjoernRateVon ? monatLabel(d, d.annahmen.bjoernRateVon) : '—'}</td><td style={TDleise}>Annahmen &amp; Steuern</td><td style={TD}>{darlehenFrei}</td><td style={TDr}><Geld v={d.annahmen.bjoernZinsDeckel} farbe={C.inkLeise} /></td><td style={TD}></td>
             </tr>
-            {plaene.map(({ s, t, t0 }) => (
+            {plaene.map(({ s, t, t0 }) => schuldAusHaushalt(d, s.id) ? (
+              // Haushalt → Finanzplanung (31.10.): Kredit aus dem Haushalt — dort ändern; hier nur lesen (die Sondertilgung bleibt eine Probe).
+              <tr key={s.id}>
+                <td style={TD}><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>{s.name}<Link href={schuldAusHaushalt(d, s.id)!} title="aus dem Haushalt — dort ändern" aria-label={`${s.name}: aus dem Haushalt`} style={{ color: C.aktiv, display: 'inline-flex' }}><Home size={13} aria-hidden /></Link></span>{s.notiz && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, maxWidth: 240 }}>{s.notiz}</div>}</td>
+                <td style={TD}><Etikett einheit={s.einheit} /></td><td style={TD}>{s.status}</td>
+                <td style={TDr}><Geld v={s.rest} /></td><td style={TDr}><Geld v={s.rate} /></td><td style={TDr}>{s.zins}</td>
+                <td style={TD}>{monatLabel(d, s.start)}</td>
+                <td style={TD}><span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><input type="range" min={0} max={500} step={10} value={sonder[s.id] ?? 0} aria-label="Sondertilgung je Monat" onChange={e => setSonder({ ...sonder, [s.id]: Number(e.target.value) })} style={{ width: 90, accentColor: C.aktiv }} /><Geld v={sonder[s.id] ?? 0} farbe={C.inkDim} /></span></td>
+                <td style={TD}>{t.frei === null ? <span style={{ color: C.inkLeise }}>—</span> : t.frei === 0 ? 'jetzt' : monatLabel(d, t.frei)}</td>
+                <td style={TDr}><Geld v={t.zinsen} farbe={C.inkLeise} /></td>
+                <td style={TD}></td>
+              </tr>
+            ) : (
               <tr key={s.id}>
                 <td style={TD}><TextFeld wert={s.name} onFertig={v => setze(s, 'name', s.name, v, 'Name')} breite={160} titel="Name" />{s.notiz && <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 3, maxWidth: 240 }}>{s.notiz}</div>}</td>
                 <td style={TD}><Auswahl wert={s.einheit} onWahl={v => setze(s, 'einheit', s.einheit, v, 'Einheit')} optionen={einheitenFuer(business)} titel="Einheit" /></td>

@@ -34,6 +34,7 @@ import { Meldungen, PersonMarke, personName, Auswahl } from './teile';
 import { Einrichtung } from './Einrichtung';
 import { useTeam } from '@/hooks/useTeam';
 import { BlattSeite } from './Blaetter';
+import { HaushaltBruecke } from './HaushaltBruecke';
 
 /**
  * `bereich`: Privat oder Business (aus der Adresse) — wählt NUR das eigene Szenario, die eigene Ansicht und die eigenen Kennzahlen.
@@ -165,6 +166,8 @@ function FinanzplanInnen({ bereich, eingebettet }: { bereich: Bereich; eingebett
           </Knopf>
         </div>
         <div style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.5 }}>{zahnradAn && <b style={{ color: C.ink }}>{ZAHNRAD.label} · </b>}{(sicht === 'business' && FRAGE_BUSINESS[u]) || (bereich === 'business' && u === 'lage' && FRAGE_BUSINESS.lage) || FRAGE[u]}</div>
+        {/* Haushalt → Finanzplanung (31.10.): was aus dem Haushalt kommt, Schalter und — im Altbestand — die Vorschau. Nur Privat. */}
+        {!zahnradAn && <HaushaltBruecke />}
         <BlattSeite key={u} u={u} />
       </div>
     </div>
