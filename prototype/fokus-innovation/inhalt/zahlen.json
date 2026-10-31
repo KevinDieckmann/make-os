@@ -13,7 +13,8 @@
       "jahr_der_daten": 2025,
       "url": "https://ec.europa.eu/eurostat/databrowser/view/isoc_cismt/default/table?lang=de",
       "zitat": "Use any social media – DE, 10-49, 2025: 59.38; GE250, 2025: 90.98",
-      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (isoc_cismt, Indikator E_SM1_ANY, geo=DE, unit=PC_ENT, Stand 27.02.2026). Mittlere Unternehmen (50–249): 77 %."
+      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (isoc_cismt, Indikator E_SM1_ANY, geo=DE, unit=PC_ENT, Stand 27.02.2026). Mittlere Unternehmen (50–249): 77 %.",
+      "kurz": "der kleinen Unternehmen nutzen soziale Medien, bei großen 91 %."
     },
     {
       "id": "forrester-ki-einkauf-2026",
@@ -41,7 +42,8 @@
       "jahr_der_daten": null,
       "url": "https://www.forrester.com/press-newsroom/forrester-2026-the-state-of-business-buying/",
       "zitat": "„The typical buying decision now includes 13 internal stakeholders and nine external influencers“",
-      "geprueft": "Pressemitteilung auf forrester.com am 2026-10-30 abgerufen (Cambridge, Mass., 21.01.2026). International, kein Deutschland-Wert. Stichprobe und Erhebungszeitraum nennt die Seite nicht, deshalb jahr_der_daten leer."
+      "geprueft": "Pressemitteilung auf forrester.com am 2026-10-30 abgerufen (Cambridge, Mass., 21.01.2026). International, kein Deutschland-Wert. Stichprobe und Erhebungszeitraum nennt die Seite nicht, deshalb jahr_der_daten leer.",
+      "kurz": "Beteiligte intern und extern an einer B2B-Kaufentscheidung."
     },
     {
       "id": "dsm-referenzkunden-2026",
@@ -54,7 +56,8 @@
       "jahr_der_daten": 2026,
       "url": "https://startupverband.de/media/file/rs-deutscherstartupmonitor2026",
       "zitat": "72,3 % nennen die Gewinnung von Referenzkunden als Ziel (S. 43, Abb. 28)",
-      "geprueft": "Original-PDF am 30.10.2026 im Volltext geprüft. 1.803 Datensätze, Feldzeit 15.06. bis 31.08.2026; gewonnen über Multiplikatoren."
+      "geprueft": "Original-PDF am 30.10.2026 im Volltext geprüft. 1.803 Datensätze, Feldzeit 15.06. bis 31.08.2026; gewonnen über Multiplikatoren.",
+      "kurz": "der Start-ups suchen bei Kooperationen vor allem Referenzkunden."
     },
     {
       "id": "dihk-inlandsnachfrage-risiko",
@@ -67,7 +70,8 @@
       "jahr_der_daten": 2026,
       "url": "https://www.dihk.de/de/newsroom/konjunkturumfrage-fruehsommer-2026-178080",
       "zitat": "„Inlandsnachfrage (56 Prozent nach 59 Prozent)“",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen. Mehr als 23.000 Unternehmen aus nahezu allen Branchen und Regionen. Häufigstes Risiko war in dieser Umfrage die Energie- und Rohstoffpreise (70 %). Eine bundesweite Herbstumfrage 2026 war bei der Recherche noch nicht auffindbar."
+      "geprueft": "Originalseite am 2026-10-30 abgerufen. Mehr als 23.000 Unternehmen aus nahezu allen Branchen und Regionen. Häufigstes Risiko war in dieser Umfrage die Energie- und Rohstoffpreise (70 %). Eine bundesweite Herbstumfrage 2026 war bei der Recherche noch nicht auffindbar.",
+      "kurz": "der Unternehmen sehen die Inlandsnachfrage als Geschäftsrisiko."
     },
     {
       "id": "eurostat-crm-groesse",
@@ -80,7 +84,8 @@
       "jahr_der_daten": 2025,
       "url": "https://ec.europa.eu/eurostat/databrowser/view/isoc_eb_iip/default/table?lang=de",
       "zitat": "Enterprises using Customer Relationship Management (CRM) software – DE, 10-49, 2025: 25.95",
-      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_CRM1, geo=DE, unit=PC_ENT, Stand 27.02.2026). Werte 2025: 10–49: 25,95; 50–249: 43,53; ab 250: 61,07; alle ab 10: 29,64."
+      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_CRM1, geo=DE, unit=PC_ENT, Stand 27.02.2026). Werte 2025: 10–49: 25,95; 50–249: 43,53; ab 250: 61,07; alle ab 10: 29,64.",
+      "kurz": "der kleinen Unternehmen nutzen eine CRM-Software, bei großen 61 %."
     },
     {
       "id": "salesforce-verkaufszeit-2026",
@@ -93,7 +98,8 @@
       "jahr_der_daten": 2025,
       "url": "https://www.salesforce.com/news/stories/state-of-sales-report-announcement-2026/",
       "zitat": "the average seller spends 40% of their time selling",
-      "geprueft": "Salesforce-Newsroom am 30.10.2026 geprüft. Doppelt anonyme Befragung August/September 2025. Der Herausgeber verkauft selbst Vertriebssoftware."
+      "geprueft": "Salesforce-Newsroom am 30.10.2026 geprüft. Doppelt anonyme Befragung August/September 2025. Der Herausgeber verkauft selbst Vertriebssoftware.",
+      "kurz": "ihrer Arbeitszeit verbringen Vertriebler mit dem Verkaufen."
     },
     {
       "id": "forrester-testphase",
@@ -106,7 +112,8 @@
       "jahr_der_daten": null,
       "url": "https://www.forrester.com/press-newsroom/forrester-2026-the-state-of-business-buying/",
       "zitat": "„More than 60% of business buyers now make use of a trial“",
-      "geprueft": "Pressemitteilung auf forrester.com am 2026-10-30 abgerufen. International, kein Deutschland-Wert; Stichprobe und Erhebungszeitraum nennt die Seite nicht. Dieselbe Seite: Bei Käufen ab 10 Mio. US-Dollar testen 78 % vorher."
+      "geprueft": "Pressemitteilung auf forrester.com am 2026-10-30 abgerufen. International, kein Deutschland-Wert; Stichprobe und Erhebungszeitraum nennt die Seite nicht. Dieselbe Seite: Bei Käufen ab 10 Mio. US-Dollar testen 78 % vorher.",
+      "kurz": "der Geschäftskunden testen vor dem Kauf."
     },
     {
       "id": "ifo-auftragsmangel-2026",
@@ -134,7 +141,8 @@
       "jahr_der_daten": 2026,
       "url": "https://www.kfw.de/PDF/Download-Center/Konzernthemen/Research/PDF-Dokumente-KfW-Mittelstandspanel/KfW-Mittelstandspanel-2026.pdf",
       "zitat": "„Jeweils 29 % der KMU gehen davon aus, dass ihr Umsatz in den kommenden drei Jahren über bzw. unter dem Vorjahresniveau liegen wird.“",
-      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). PDF (Oktober 2026), 10.773 mittelständische Unternehmen, Befragung Februar bis Juli 2026; Datum laut Veröffentlichungsliste der KfW."
+      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). PDF (Oktober 2026), 10.773 mittelständische Unternehmen, Befragung Februar bis Juli 2026; Datum laut Veröffentlichungsliste der KfW.",
+      "kurz": "der Mittelständler erwarten mehr Umsatz, genauso viele weniger."
     },
     {
       "id": "dihk-dienstleister-nachfrage-2026",
@@ -147,7 +155,8 @@
       "jahr_der_daten": 2026,
       "url": "https://www.dihk.de/resource/blob/181536/35b4934a6d2a4e34b5fb05539ab768a8/konjunktur-dihk-insight-diensleistungswirtschaft-fruehsommer-2026-data.pdf",
       "zitat": "„In vielen Branchen ist die Inlandsnachfrage das am häufigsten genannte Risiko, unter anderem bei IT-Dienstleistungen (78 Prozent)“",
-      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). PDF mit Stand Mai 2026, über 11.000 Dienstleistungsunternehmen."
+      "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). PDF mit Stand Mai 2026, über 11.000 Dienstleistungsunternehmen.",
+      "kurz": "der IT-Dienstleister sehen die Inlandsnachfrage als größtes Risiko."
     },
     {
       "id": "ifo-ki-nutzung-2026",
@@ -161,7 +170,8 @@
       "url": "https://www.ifo.de/fakten/2026-06-05/mehr-als-die-haelfte-der-unternehmen-nutzt-kuenstliche-intelligenz",
       "zitat": "54,5% der Unternehmen nutzen Künstliche Intelligenz",
       "geprueft": "Originalseite am 30.10.2026 geprüft. ifo-Konjunkturumfrage Mai 2026; groß 67,2 %, mittel 47,2 %, klein 51,2 %.",
-      "vorn": true
+      "vorn": true,
+      "kurz": "der Unternehmen in Deutschland nutzen KI, ein Jahr zuvor 40,9 %."
     },
     {
       "id": "bitkom-ki-mehrheit-2026",
@@ -174,7 +184,8 @@
       "jahr_der_daten": 2026,
       "url": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-die-Mehrheit-der-Unternehmen-KI",
       "zitat": "„Erstmals setzt mit 57 Prozent der Großteil der Unternehmen KI ein.“",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen. Bereits genutzte Zahl stimmt. Telefonische, repräsentative Befragung von 603 Unternehmen ab 20 Beschäftigten durch Bitkom Research, KW 28 bis 33 2026."
+      "geprueft": "Originalseite am 2026-10-30 abgerufen. Bereits genutzte Zahl stimmt. Telefonische, repräsentative Befragung von 603 Unternehmen ab 20 Beschäftigten durch Bitkom Research, KW 28 bis 33 2026.",
+      "kurz": "der Unternehmen ab 20 Beschäftigten setzen KI ein."
     },
     {
       "id": "bitkom-ki-datenaufbereitung",
@@ -187,7 +198,8 @@
       "jahr_der_daten": 2026,
       "url": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI",
       "zitat": "Als großen Kostenpunkt nennen 51 Prozent der KI-Anwender die Infrastruktur wie Cloud und Rechenleistung, 50 Prozent die Aufbereitung von Daten und 41 Prozent die Integration in bestehende Systeme.",
-      "geprueft": "Originalseite am 2026-10-30 abgerufen (Presseinformation 14.09.2026, 603 Unternehmen ab 20 Beschäftigten, KW 28 bis 33 2026). Dieselbe Seite: 40 % der Unternehmen ohne KI fehlen die notwendigen Daten."
+      "geprueft": "Originalseite am 2026-10-30 abgerufen (Presseinformation 14.09.2026, 603 Unternehmen ab 20 Beschäftigten, KW 28 bis 33 2026). Dieselbe Seite: 40 % der Unternehmen ohne KI fehlen die notwendigen Daten.",
+      "kurz": "der KI-Nutzer nennen Datenaufbereitung als großen Kostenpunkt."
     },
     {
       "id": "zew-genai-bereitstellung-2026",
@@ -200,7 +212,8 @@
       "jahr_der_daten": 2026,
       "url": "https://www.zew.de/presse/pressearchiv/kaum-unternehmen-verbieten-ki-einsatz",
       "zitat": "Im Verarbeitenden Gewerbe liegt dieser Anteil bei 30 Prozent.",
-      "geprueft": "Pressemitteilung am 30.10.2026 geprüft. ZEW-Branchenreport März/April 2026, rund 1.500 Unternehmen, repräsentativ."
+      "geprueft": "Pressemitteilung am 30.10.2026 geprüft. ZEW-Branchenreport März/April 2026, rund 1.500 Unternehmen, repräsentativ.",
+      "kurz": "der Informationswirtschaft stellen generative KI gezielt bereit."
     },
     {
       "id": "eurostat-digitale-intensitaet",
@@ -213,7 +226,8 @@
       "jahr_der_daten": 2025,
       "url": "https://ec.europa.eu/eurostat/databrowser/view/isoc_e_dii/default/table?lang=de",
       "zitat": "Enterprises with very low digital intensity index (DII version 3) – DE, 10-49, 2025: 29.01",
-      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_DI3_VLO, geo=DE, unit=PC_ENT, Stand 27.02.2026). Der Index zählt, wie viele von zwölf digitalen Technologien ein Unternehmen nutzt; die Indikatoren wechseln je Erhebungsjahr (2025: Version 3). Mindestens grundlegende digitale Intensität hatten 2025 74 % der KMU (10–249)."
+      "geprueft": "Datensatz über die offizielle Eurostat-API am 2026-10-30 abgerufen (Indikator E_DI3_VLO, geo=DE, unit=PC_ENT, Stand 27.02.2026). Der Index zählt, wie viele von zwölf digitalen Technologien ein Unternehmen nutzt; die Indikatoren wechseln je Erhebungsjahr (2025: Version 3). Mindestens grundlegende digitale Intensität hatten 2025 74 % der KMU (10–249).",
+      "kurz": "der kleinen Unternehmen sind kaum digitalisiert."
     },
     {
       "id": "salesforce-daten-ki-2026",
@@ -226,7 +240,8 @@
       "jahr_der_daten": 2025,
       "url": "https://www.salesforce.com/news/stories/state-of-sales-report-announcement-2026/",
       "zitat": "Over half of sales leaders with AI (51%) say disconnected systems are slowing down their AI initiatives.",
-      "geprueft": "Wie oben: 4.050 Befragte in 22 Ländern inkl. Deutschland, August/September 2025. Der Herausgeber verkauft selbst Software."
+      "geprueft": "Wie oben: 4.050 Befragte in 22 Ländern inkl. Deutschland, August/September 2025. Der Herausgeber verkauft selbst Software.",
+      "kurz": "der Vertriebsleitungen: Unverbundene Systeme bremsen ihre KI."
     },
     {
       "id": "dihk-ki-produktivitaet-2026",
@@ -239,7 +254,8 @@
       "jahr_der_daten": 2025,
       "url": "https://www.dihk.de/de/newsroom/digitalisierung-2026-unternehmen-halten-kurs-163290",
       "zitat": "41 Prozent den Produktivitätseffekt als hoch",
-      "geprueft": "Pressemitteilung und PDF am 30.10.2026 geprüft. 4.686 Unternehmen, Feldzeit 10. bis 28.11.2025; Grundgesamtheit: Unternehmen mit praktischem KI-Einsatz."
+      "geprueft": "Pressemitteilung und PDF am 30.10.2026 geprüft. 4.686 Unternehmen, Feldzeit 10. bis 28.11.2025; Grundgesamtheit: Unternehmen mit praktischem KI-Einsatz.",
+      "kurz": "der KI-Nutzer sehen einen hohen Effekt auf die Produktivität."
     },
     {
       "id": "bitkom-ki-potenzial-2026",
@@ -253,7 +269,8 @@
       "url": "https://www.bitkom.org/Presse/Presseinformation/Erstmals-nutzt-Mehrheit-Unternehmen-KI",
       "zitat": "„Kein Unternehmen schöpft nach eigener Einschätzung das Potenzial von KI vollständig aus, nur 3 Prozent tun es eher stark.“",
       "geprueft": "Am Original geprüft am 30.10.2026 (Recherche für die Website). 603 Unternehmen ab 20 Beschäftigten, Befragung in den Kalenderwochen 28 bis 33/2026.",
-      "vorn": true
+      "vorn": true,
+      "kurz": "der Unternehmen schöpfen das Potenzial von KI eher stark aus."
     },
     {
       "id": "zew-genai-eigenregie-2026",

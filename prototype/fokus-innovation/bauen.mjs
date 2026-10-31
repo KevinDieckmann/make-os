@@ -973,6 +973,9 @@ ${vp?.name ? `<h2>Vertragspartner für unsere Leistungen</h2><p>Verträge über 
   /** Eine belegte Zahl im Stil der Belege der Website (`zahl`), mit Herausgeber und Jahr. */
   // Zitiert wird wie üblich mit Herausgeber und Erscheinungsjahr; das Jahr der Daten steht, wo es abweicht, im Satz selbst.
   const zahlKarte = (z) => zahl({ wert: z.wert, text: z.satz, link: z.url, quelle: `${z.quelle}, ${String(z.datum).slice(0, 4)}` });
+  /** Kachel der Zahlen-Seite (31.10.): Zahl, kurze Aussage, Anteilsbalken (SVG, keine Inline-Stile), Wortlaut auf Klick, Quelle. */
+  const anteil = (w) => { const m = String(w).match(/(\d+(?:,\d+)?)\s*%/); return m ? Math.min(100, parseFloat(m[1].replace(',', '.'))) : null; };
+  const zahlKachel = (z) => { const a = anteil(z.wert); return `<figure class="zahl-kachel erscheint"><b>${e(z.wert)}</b><figcaption><p class="zk-kurz">${e(z.kurz ?? z.satz)}</p>${a != null ? `<svg class="zk-balken" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="grund" width="100" height="4" rx="2"/><rect class="wert" width="${a}" height="4" rx="2"/></svg>` : ''}<details><summary>Wortlaut und Grundlage</summary><p>${e(z.satz)}</p></details><cite><a href="${e(z.url)}" rel="noopener" target="_blank">${e(z.quelle)}, ${String(z.datum).slice(0, 4)}</a></cite></figcaption></figure>`; };
   neu('kostenlos/index.html', {
     seo: 'kostenlos',
     bildVorzeile: 'Kostenlos',
@@ -1010,8 +1013,8 @@ ${schlussakt({ quelle: 'kostenlos_ende' })}`,
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
 <div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, 'Zahlen']])}${vorzeile(`Stand ${datum(Z.stand)}`)}<h1 id="held-titel">${titel(K.zahlen.titel)}</h1><p class="lead">${t(K.zahlen.lead)}</p></div>
 </div></section>
-${BEREICHE.map((k) => { const liste = Z.zahlen.filter((z) => z.bereich === k); return liste.length ? `<section class="abschnitt" aria-labelledby="zahlen-${k}"><div class="w">${abKopf({ marke: B[k].name, nr: B[k].nr, h2: B[k].paar, id: `zahlen-${k}` })}<div class="zahlen-raster">${liste.map(zahlKarte).join('')}</div></div></section>` : ''; }).join('\n')}
-<section class="abschnitt" aria-labelledby="zahlen-hinweis"><div class="w"><p class="leise klein-text erscheint" id="zahlen-hinweis">Wir geben die Zahlen so wieder, wie die Herausgeber sie veröffentlicht haben. Der Link führt jeweils zur Quelle. Die Zahlen beziehen sich auf Deutschland, wo nicht anders genannt.</p></div></section>
+${BEREICHE.map((k) => { const liste = Z.zahlen.filter((z) => z.bereich === k); return liste.length ? `<section class="abschnitt" aria-labelledby="zahlen-${k}"><div class="w">${abKopf({ marke: B[k].name, nr: B[k].nr, h2: B[k].paar, id: `zahlen-${k}` })}<div class="zahlen-raster kacheln">${liste.map(zahlKachel).join('')}</div></div></section>` : ''; }).join('\n')}
+<section class="abschnitt" aria-labelledby="zahlen-hinweis"><div class="w"><p class="leise klein-text erscheint" id="zahlen-hinweis">Wir geben die Zahlen so wieder, wie die Herausgeber sie veröffentlicht haben. Der Link führt jeweils zur Quelle. Die Zahlen beziehen sich auf Deutschland, wo nicht anders genannt. Zahlen verschiedener Quellen können voneinander abweichen, weil sie unterschiedliche Unternehmensgrößen und Begriffe zählen.</p></div></section>
 ${schlussakt({ quelle: 'zahlen_ende' })}`,
     });
   }
