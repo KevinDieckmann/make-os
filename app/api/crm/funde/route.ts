@@ -7,6 +7,7 @@
 //      { aktion: 'hand', fund: {...} }                           → Fund von Hand (z. B. auf Google Maps gesehen)
 //      { aktion: 'verwerfen', id, grund? }                       → bleibt bekannt, kommt nie wieder
 //      { aktion: 'lauf' }                                        → Abendlauf jetzt (im Hintergrund, KI-Tor), nur Inhaber
+//      { aktion: 'import', datei: { format: 'make-os-funde', funde: [...] } } → Funde aus einer Recherche-Datei (≤ 200), nur Inhaber; Körper ≤ 1 MB
 //      { aktion: 'senden', id }                                  → übernommenen Fund nachsenden (gleiche Bedingungen wie die Freigabe)
 // Zugang: Haushalt des Inhabers (Modul Markttraktion). Schreiben nur per Sitzung (Dienstweg 403) mit Bau-Kennung. Übernommen wird über den
 // ZOE-Stapel (Art `fund`) — nicht hier.
@@ -23,8 +24,8 @@ import { formularPostfachBereichOk } from '@/lib/crm/formulare';
 import { ladeFunde, fundSicht, FundeFehler } from '@/lib/funde/speicher';
 import { GEBIETS_VORLAGEN, OSM_NAMENSNENNUNG } from '@/lib/funde/osm';
 import { RISIKO_HINWEIS } from '@/lib/funde/entwurf';
-import { FUND_BRANCHEN, istFundBranche, type FundeEinstellungen } from '@/lib/funde/typen';
-import { einstellungenAendern, fundVerwerfen, fundVonHand, handEingabeSaeubern, kampagneEinrichten, risikoSetzen } from '@/lib/funde/einrichten';
+import { ARTEN_VORLAGEN, FUND_BRANCHEN, istFundBranche, type FundeEinstellungen } from '@/lib/funde/typen';
+import { einstellungenAendern, fundeImportieren, fundVerwerfen, fundVonHand, handEingabeSaeubern, kampagneEinrichten, risikoSetzen } from '@/lib/funde/einrichten';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -58,14 +59,14 @@ export async function GET(req: Request) {
     ...(kampagne ? { kampagne: { id: kampagne.id, name: kampagne.name, status: kampagne.status } } : {}),
     einstellungen: {
       ...(e.stadt ? { stadt: e.stadt } : {}), gebiete: e.gebiete, gebietIndex: e.gebietIndex, branchen: e.branchen, jeAbend: e.jeAbend,
-      ...(e.gesellschaft ? { gesellschaft: e.gesellschaft } : {}), ...(e.produktId ? { produktId: e.produktId } : {}), ...(e.segmentId ? { segmentId: e.segmentId } : {}),
+      ...(e.gesellschaft ? { gesellschaft: e.gesellschaft } : {}), ...(e.arten ? { arten: e.arten } : {}), nurMitMail: !!e.nurMitMail, ...(e.produktId ? { produktId: e.produktId } : {}), ...(e.segmentId ? { segmentId: e.segmentId } : {}),
       absender: abs ? { postfach: abs.postfach, person: namen[abs.person] ?? abs.person, eigenes: abs.person === z.person } : null,
       eigenesRisiko: e.eigenesRisiko ? { seit: e.eigenesRisiko.seit, von: namen[e.eigenesRisiko.von] ?? e.eigenesRisiko.von } : null,
     },
     risikoHinweis: RISIKO_HINWEIS, namensnennung: OSM_NAMENSNENNUNG,
     funde, zahlen, ...(b.lauf ? { lauf: b.lauf } : {}),
     produkte: crm.leistungen.filter(l => l.status === 'aktiv').map(l => ({ id: l.id, name: l.name })),
-    branchen: FUND_BRANCHEN, gebietsVorlagen: GEBIETS_VORLAGEN,
+    branchen: FUND_BRANCHEN, gebietsVorlagen: GEBIETS_VORLAGEN, artenVorlagen: ARTEN_VORLAGEN,
     ...(absenderWahl ? { absenderWahl } : {}),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
@@ -77,7 +78,8 @@ export async function POST(req: Request) {
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   let b: Record<string, unknown>;
-  try { b = await jsonBegrenzt(req, 64 * 1024); } catch (e) { return jsonZuGross(e) ?? fehler('Kein JSON.', 400); }
+  // 1 MB: eine Import-Datei mit bis zu 200 Funden (sonst reichen wenige KB).
+  try { b = await jsonBegrenzt(req, 1024 * 1024); } catch (e) { return jsonZuGross(e) ?? fehler('Kein JSON.', 400); }
   const wer = werAus(req);
   const inhaber = await istInhaber(z.person);
   try {
@@ -103,6 +105,10 @@ export async function POST(req: Request) {
     if (!inhaber) return fehler('Einrichten, Einstellungen, Risiko und den Lauf steuert nur ein Inhaber.', 403);
     switch (b.aktion) {
       case 'einrichten': return NextResponse.json({ ok: true, ...(await kampagneEinrichten(z.person, wer)) });
+      case 'import': {
+        const r = await fundeImportieren(b.datei, z.person, wer);
+        return NextResponse.json({ ok: true, ...r, text: `${r.neu} Funde übernommen${r.uebersprungen.length ? `, ${r.uebersprungen.length} übersprungen` : ''} — sie warten im ZOE-Stapel auf Freigabe.` });
+      }
       case 'risiko': {
         if (typeof b.an !== 'boolean') return fehler('an: true oder false.', 400);
         const e = await risikoSetzen(b.an, z.person, wer);
@@ -116,6 +122,8 @@ export async function POST(req: Request) {
         if (b.jeAbend !== undefined) teil.jeAbend = Number(b.jeAbend);
         if (typeof b.gesellschaft === 'string') teil.gesellschaft = b.gesellschaft;
         if (typeof b.produktId === 'string') teil.produktId = b.produktId;
+        if (Array.isArray(b.arten)) teil.arten = b.arten.filter((x): x is string => typeof x === 'string' && /^[a-z_]{2,40}$/.test(x)).slice(0, 20);
+        if (typeof b.nurMitMail === 'boolean') teil.nurMitMail = b.nurMitMail;
         if (b.absender === null) teil.absender = undefined;
         else if (typeof b.absender === 'string') {
           const { ladePostfach } = await import('@/lib/postfach/register');
@@ -136,7 +144,7 @@ export async function POST(req: Request) {
         });
         return NextResponse.json({ ok: true, text: 'Lauf gestartet — die Funde erscheinen in einigen Minuten hier und im ZOE-Stapel.' });
       }
-      default: return fehler('aktion: einrichten, einstellungen, risiko, hand, verwerfen, lauf oder senden.', 400);
+      default: return fehler('aktion: einrichten, einstellungen, risiko, hand, import, verwerfen, lauf oder senden.', 400);
     }
   } catch (e) {
     if (e instanceof FundeFehler) return fehler(e.message, e.status);

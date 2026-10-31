@@ -101,7 +101,16 @@ export interface FundeEinstellungen {
   gesellschaft?: string;
   /** Das Angebot: ein Produkt aus dem Katalog (`crm.leistungen`) — Name und Preis kommen nur von dort. */
   produktId?: string;
+  /** Persona (31.10.): nur diese OSM-Arten (z. B. restaurant, cafe) — fehlt es, zählt jede Art der gewählten Branchen. */
+  arten?: string[];
+  /** Persona (31.10.): nur Betriebe mit veröffentlichter Mail-Adresse (OSM oder Startseite) — der Kanal ist die Mail. */
+  nurMitMail?: boolean;
 }
+
+/** Vorlagen für die Persona-Filter (Kevin 31.10.: „Restaurants & Cafés“). */
+export const ARTEN_VORLAGEN: { id: string; name: string; arten: string[] }[] = [
+  { id: 'restaurant-cafe', name: 'Nur Restaurants & Cafés', arten: ['restaurant', 'cafe'] },
+];
 
 export interface FundeLaufStand { tag: string; gebiet?: string; geholt: number; neu: number; vorbereitet: number; fehler?: string; am: string }
 

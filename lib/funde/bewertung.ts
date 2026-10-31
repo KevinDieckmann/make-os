@@ -14,7 +14,18 @@ export interface SeitenSignale {
   impressum: boolean;
   /** Die geschäftliche Adresse, die der Betrieb selbst auf der Startseite angibt (erster `mailto:`), sonst fehlt sie. */
   email?: string;
+  /** Warum nicht erreichbar: Domain weg · Zertifikat ungültig · keine Verbindung · Fehlerseite (4xx/5xx). */
+  fehler?: 'dns' | 'zertifikat' | 'verbindung' | 'status';
+  /** Die Seite weist automatische Abrufe ab (401/403/429) — nicht prüfbar, also KEIN Mangel. */
+  blockiert?: boolean;
 }
+
+const FEHLER_GRUND: Record<NonNullable<SeitenSignale['fehler']>, string> = {
+  dns: 'Die Adresse der Website führt ins Leere — die Domain gibt es nicht (mehr).',
+  zertifikat: 'Das Sicherheitszertifikat der Website ist ungültig — Browser zeigen Besuchern eine Warnung.',
+  verbindung: 'Die angegebene Website ist nicht erreichbar.',
+  status: 'Die angegebene Website zeigt nur eine Fehlerseite.',
+};
 
 /** Erste veröffentlichte Mail-Adresse (`mailto:`) — keine Plattform-/Platzhalter-Adressen. */
 export function mailAusHtml(html: string): string | undefined {
@@ -50,7 +61,8 @@ export function bewerten(o: { website: boolean; signale?: SeitenSignale | null; 
   const basis = { gemessenAm: o.gemessenAm };
   if (!o.website) return { ...basis, punkte: 100, website: false, gruende: ['Keine eigene Website gefunden.'] };
   const s = o.signale;
-  if (!s || !s.erreichbar) return { ...basis, punkte: 90, website: true, erreichbar: false, gruende: ['Die angegebene Website ist nicht erreichbar.'] };
+  if (s?.blockiert) return { ...basis, punkte: 0, website: true, erreichbar: true, gruende: ['Die Seite lässt keine automatische Prüfung zu — bei Bedarf von Hand ansehen.'] };
+  if (!s || !s.erreichbar) return { ...basis, punkte: 90, website: true, erreichbar: false, gruende: [FEHLER_GRUND[s?.fehler ?? 'verbindung']] };
   let p = 0;
   const g: string[] = [];
   if (!s.https) { p += 25; g.push('Keine sichere Verbindung (kein HTTPS) — Browser warnen Besucher.'); }
@@ -81,6 +93,15 @@ export function websiteNormal(roh: string | undefined | null): string | null {
     if (!/^https?:$/.test(u.protocol) || !u.hostname.includes('.') || (u.port && u.port !== '80' && u.port !== '443')) return null;
     return u.toString();
   } catch { return null; }
+}
+
+/**
+ * Zeigt die Angabe auf eine tiefe Unterseite (z. B. `hotel.example/standorte/berlin/restaurant`)? Dann gehört der Betrieb zu einem Haus mit
+ * eigener Website (Hotel, Museum, Kette) — keine Persona „inhabergeführt“, kein Fund. Rein.
+ */
+export function fremdeUnterseite(url: string | null): boolean {
+  if (!url) return false;
+  try { return new URL(url).pathname.split('/').filter(Boolean).length >= 2; } catch { return false; }
 }
 
 /** Seiten großer Plattformen sind keine eigene Website (Facebook, Instagram, Lieferdienste …) — sie zählen als „keine Website“. */

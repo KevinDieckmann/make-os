@@ -95,8 +95,19 @@ describe('Regeln (rein)', () => {
     expect(b.punkte).toBe(100);
     expect(b.gruende.join(' ')).toMatch(/HTTPS/);
     expect(eigeneWebsite(websiteNormal('facebook.com/cafe'))).toBe(false);
+    const { fremdeUnterseite } = await import('@/lib/funde/bewertung');
+    expect(fremdeUnterseite('https://hotel.example.invalid/standorte/berlin')).toBe(true);
+    expect(fremdeUnterseite('https://cafe.example.invalid/')).toBe(false);
     expect(websiteNormal('javascript:alert(1)')).toBeNull();
     expect(mailAusHtml('<a href="mailto:name@domain.de">')).toBeUndefined();
+    // Bot-Sperre ist kein Mangel; tote Domain und kaputtes Zertifikat schon — mit eigenem Satz.
+    const nichts = { erreichbar: false, https: true, mobil: false, alteTechnik: false, impressum: false };
+    expect(bewerten({ website: true, signale: { ...nichts, erreichbar: true, blockiert: true }, jahrHeute: 2026, gemessenAm: 'x' }).punkte).toBe(0);
+    expect(bewerten({ website: true, signale: { ...nichts, fehler: 'zertifikat' }, jahrHeute: 2026, gemessenAm: 'x' }).gruende[0]).toMatch(/zertifikat/i);
+    expect(bewerten({ website: true, signale: { ...nichts, fehler: 'dns' }, jahrHeute: 2026, gemessenAm: 'x' }).gruende[0]).toMatch(/Domain/);
+    const { fehlerArt } = await import('@/lib/funde/web');
+    expect(fehlerArt({ cause: { code: 'CERT_HAS_EXPIRED' } })).toBe('zertifikat');
+    expect(fehlerArt({ cause: { code: 'ENOTFOUND' } })).toBe('dns');
   });
 
   it('OSM: Abfrage maskiert, Ketten und Doppelte fallen weg, robots.txt „Disallow: /“ wird erkannt', async () => {
@@ -112,6 +123,12 @@ describe('Regeln (rein)', () => {
     expect(l.map(x => x.osmId)).toEqual(['n1']);
     expect(robotsVerbietet('User-agent: *\nDisallow: /')).toBe(true);
     expect(robotsVerbietet('User-agent: Googlebot\nDisallow: /\nUser-agent: *\nDisallow: /intern')).toBe(false);
+    const { adresseIntern } = await import('@/lib/funde/web');
+    expect(adresseIntern('64:ff9b::d9a0:3')).toBe(false);          // 217.160.0.3 — öffentlich
+    expect(adresseIntern('64:ff9b::a00:1')).toBe(true);            // 10.0.0.1 — intern
+    expect(adresseIntern('64:ff9b::127.0.0.1')).toBe(true);
+    expect(adresseIntern('64:ff9b:1::1')).toBe(true);              // anderes Präfix: wie die gemeinsame Regel (fail-closed)
+    expect(adresseIntern('127.0.0.1')).toBe(true);
   });
 
   it('Vorschau maskiert alles und lädt nichts von außen; Entwurf ohne KI, mit Datenschutz, Platzhaltern und Risiko-Hinweis', async () => {
@@ -179,6 +196,16 @@ describe('Abendlauf, Freigabe, Versand', () => {
     expect(g.text).not.toMatch(/tokenHash/);
   });
 
+  it('Persona-Filter: nur gewählte Arten, nur mit Mail-Adresse', async () => {
+    await einrichten();
+    expect((await POST(funde, '/api/crm/funde', { aktion: 'einstellungen', arten: ['cafe'], nurMitMail: true })).status).toBe(200);
+    const r = await laufen();
+    expect(r.vorbereitet).toBe(1);
+    const b = await (await import('@/lib/funde/speicher')).ladeFunde();
+    expect(b.funde.map(f => f.name)).toEqual(['Café Erfunden <b>']);
+    expect(b.einstellungen).toMatchObject({ arten: ['cafe'], nurMitMail: true });
+  });
+
   it('Freigabe ohne „eigenes Risiko“: übernommen (Kontakt, Firma, Label, Kampagne, Follow-up), KEINE Mail', async () => {
     await einrichten();
     await laufen();
@@ -228,6 +255,27 @@ describe('Abendlauf, Freigabe, Versand', () => {
     // Kein zweites Mal (nachsenden nur aus „übernommen“).
     expect((await POST(funde, '/api/crm/funde', { aktion: 'senden', id: cafe.id })).status).toBe(409);
     expect(server.gesendet).toHaveLength(1);
+  });
+
+  it('Import einer Recherche-Datei: nur Inhaber, Doppelte und Kartei-Firmen übersprungen, über 200 → 413, alles wartet im Stapel', async () => {
+    await einrichten();
+    const datei = { format: 'make-os-funde', funde: [
+      { osmId: 'n77', name: 'Bistro Datei', branche: 'gastro', adresse: { strasse: 'Dateiweg', hausnummer: '2', plz: '10999', ort: 'Berlin' }, email: `kontakt@bistro.${D}`, gebiet: 'Mitte', bewertung: { punkte: 90, website: true, erreichbar: false, gruende: ['Die Adresse der Website führt ins Leere — die Domain gibt es nicht (mehr).'] } },
+      { osmId: 'n78', name: 'Laden Mit Seite', branche: 'gastro' },
+      { osmId: 'n79', name: 'Bistro Datei', branche: 'gastro' },
+      { name: '', branche: 'gastro' },
+    ] };
+    expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei }, sitzung('malin'))).status).toBe(403);
+    const r = await POST(funde, '/api/crm/funde', { aktion: 'import', datei });
+    expect(r.status, r.text).toBe(200);
+    expect(r.d.neu).toBe(1);
+    expect(r.d.uebersprungen.map((u: { grund: string }) => u.grund).sort()).toEqual(['Firma steht schon in der Kartei', 'Name des Betriebs fehlt.', 'schon als Fund bekannt']);
+    expect(await offeneFundVorschlaege()).toHaveLength(1);
+    const f = (await (await import('@/lib/funde/speicher')).ladeFunde()).funde[0];
+    expect(f).toMatchObject({ quelle: 'osm', osmId: 'n77', status: 'vorbereitet', bewertung: { punkte: 90 } });
+    expect(f.entwurf?.text).toMatch(/Domain/);
+    expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei: { format: 'make-os-funde', funde: Array.from({ length: 201 }, (_, i) => ({ name: `X${i}`, branche: 'gastro' })) } })).status).toBe(413);
+    expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei: { funde: [] } })).status).toBe(400);
   });
 
   it('Art. 17: Funde, die die Person nennen, fallen weg', async () => {

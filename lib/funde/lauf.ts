@@ -14,7 +14,7 @@ import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { alleAdressen } from '@/lib/crm/emails';
 import { aendereFunde, fundeHaushalt, ladeFunde } from './speicher';
 import { osmHolen, type OsmRoh } from './osm';
-import { bewerten, eigeneWebsite, websiteNormal } from './bewertung';
+import { bewerten, eigeneWebsite, fremdeUnterseite, websiteNormal } from './bewertung';
 import { seitePruefen, pagespeed } from './web';
 import { vorschauAusKi, vorschauPrompt, vorschauRegelwerk } from './vorschau';
 import { entwurfBauen } from './entwurf';
@@ -87,6 +87,7 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
   const adressen = new Set(kontakte.flatMap(k => alleAdressen(k)));
   const namen = new Set(b.funde.map(f => normName(f.name)));
   const kandidaten = roh.filter(r => {
+    if (e.arten?.length && !e.arten.includes(r.kategorie ?? '')) return false; // Persona: nur diese Arten
     if (bekannt.has(r.osmId) || namen.has(normName(r.name))) return false;
     if (bestehendeFirma(crm.firmen, r.name)) return false;
     if (r.email && adressen.has(r.email)) return false;
@@ -104,12 +105,14 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
     if (neu.length >= e.jeAbend || geprueft >= e.jeAbend * PRUEF_FAKTOR || Date.now() - start > LAUF_MS) break;
     geprueft++;
     const site = websiteNormal(r.website);
+    if (fremdeUnterseite(site)) { gut.push(r.osmId); continue; } // Teil eines Hauses mit eigener Website (Hotel, Museum …)
     const eigen = eigeneWebsite(site);
     const signale = eigen && site ? await seitePruefen(site) : null;
     const ps = eigen && site && signale?.erreichbar ? await pagespeed(site) : null;
     const bew: FundBewertung = bewerten({ website: eigen, signale, pagespeed: ps, jahrHeute: Number(heute.slice(0, 4)), gemessenAm: am });
     if (bew.punkte < BEDARF_AB) { gut.push(r.osmId); continue; }
     const email = r.email ?? signale?.email;
+    if (e.nurMitMail && !email) continue; // Persona: ohne veröffentlichte Mail-Adresse kein Fund (nicht „bekannt“ — die Mail kann später dazukommen)
     const f: Fund = {
       id: neueKennung('fd'), kampagneId: e.kampagneId, quelle: 'osm', osmId: r.osmId, name: r.name, branche: r.branche,
       ...(r.kategorie ? { kategorie: r.kategorie } : {}), ...(r.adresse ? { adresse: r.adresse } : {}), gebiet,

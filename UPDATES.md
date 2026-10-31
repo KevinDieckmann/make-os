@@ -27,6 +27,11 @@ Innovation als Absender, Gastro/Handwerk/Einzelhandel, Preis offen).
   (eigenes Risiko)“. Agent „Homepage-Funde“ unter /os/agenten ist an; Hintergrund-KI muss an sein.
 - **Tests:** `tests/funde.test.ts` (rein + von Ende zu Ende mit nachgebautem Postfach und OSM); Wächter routen-register, datenschutz-register,
   betroffenenrechte, ki-datenschutz u. a. grün.
+- **31.10. Persona + 50 Funde (Kevin: „50 aus Berlin raussuchen und mit als Upload machen“):** Persona Restaurants & Cafés, Innenstadt, halb ohne/halb
+  tote Seite, nur mit Mail (KAMPAGNE_HOMEPAGE_PLAN.md › Persona). Neu: Import einer Funde-Datei (`aktion: 'import'`, nur Inhaber, ≤ 200), Persona-Filter
+  `arten`/`nurMitMail`, Bot-Sperre ≠ Mangel, NAT64, Overpass-Wiederholung. **Einmal-Schritt nach dem Upload:** Kampagne einrichten → „Nur Restaurants &
+  Cafés“ + „Nur mit Mail-Adresse“ → Gebiete Berlin → Datei `~/Desktop/Homepage-Funde Berlin 2026-10-31.json` über „Funde importieren (Datei)“ (die
+  Datei liegt NUR auf Kevins Mac, nie im Repo) → 50 Vorschläge im ZOE-Stapel.
 
 ## 30.10.2026 — Kalender: weitere Google-Konten je Person, nur lesen (nur lokal — Branch `weitere-kalender`, Basis main 91d0e277)
 Kevin 30.10.: „Ich möchte, dass wir einfach ein zweites Konto bei MAKE OS anlegen können — es geht erstmal um uns, also Malin und mich.“ Wer auch für andere Firmen

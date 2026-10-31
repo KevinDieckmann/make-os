@@ -30,7 +30,7 @@ export function abfrage(stadt: string, gebiet: string, branche: FundBranche, max
     `rel(area.s)["boundary"="administrative"]["name"="${qlText(gebiet)}"];`,
     'map_to_area->.a;',
     `(\n  ${teile}\n);`,
-    `out center tags ${Math.max(1, Math.min(1000, Math.floor(max)))};`,
+    `out center tags ${Math.max(1, Math.min(5000, Math.floor(max)))};`,
   ].join('\n');
 }
 
@@ -82,13 +82,20 @@ export const OSM_NAMENSNENNUNG = '© OpenStreetMap-Mitwirkende (ODbL)';
 const OVERPASS_STANDARD = 'https://overpass-api.de/api/interpreter';
 
 /** Overpass fragen (nur Server). Wirft bei Netz-/Statusfehlern mit kurzem Text. `fetchFn` für Tests. */
-export async function osmHolen(stadt: string, gebiet: string, branche: FundBranche, o: { max?: number; fetchFn?: typeof fetch } = {}): Promise<OsmRoh[]> {
+export async function osmHolen(stadt: string, gebiet: string, branche: FundBranche, o: { max?: number; fetchFn?: typeof fetch; pausen?: number[] } = {}): Promise<OsmRoh[]> {
   const url = (process.env.OVERPASS_URL ?? '').trim() || OVERPASS_STANDARD;
   const f = o.fetchFn ?? fetch;
-  const r = await f(url, {
+  const anfrage = () => f(url, {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'MAKE-OS-Funde/1.0' },
     body: `data=${encodeURIComponent(abfrage(stadt, gebiet, branche, o.max ?? 300))}`, signal: AbortSignal.timeout(100_000),
   });
+  let r = await anfrage();
+  // Die öffentliche Instanz ist oft kurz überlastet (429/502/503/504) — höchstens zwei weitere Versuche mit Pause (15 s, 45 s), dann Fehler.
+  for (const pause of o.pausen ?? [15_000, 45_000]) {
+    if (r.ok || ![429, 502, 503, 504].includes(r.status)) break;
+    await new Promise(res => setTimeout(res, pause));
+    r = await anfrage();
+  }
   if (!r.ok) throw new Error(`OpenStreetMap antwortet mit ${r.status}${r.status === 429 ? ' (zu viele Anfragen — später noch einmal)' : ''}.`);
   return antwortLesen(await r.json(), branche);
 }

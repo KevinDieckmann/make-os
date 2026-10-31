@@ -283,3 +283,38 @@ Kevin: „okay bau es sauber in make os ein und baue alles zusammen was zusammen
 
 **Nicht gebaut (bewusst, später):** Brief-Serienbrief/Druckdienst (E7), Bild der Vorschau im Brief, Web-Suche für Funde ohne Website-Angabe, Kennzahl-Kachel im Traktions-Index,
 Produktkarte „Website“ (Instanz-Daten — Kevin legt sie im Katalog an). **Vor dem ersten Versand:** anwaltlich prüfen lassen (Risiko-Hinweis bleibt sichtbar).
+
+---
+
+## Persona Berlin + Segment-Recherche (31.10.2026, mit Kevin festgelegt)
+
+**Persona:** inhabergeführte **Restaurants & Cafés** in der **Berliner Innenstadt** (Mitte, Friedrichshain-Kreuzberg, Pankow mit Prenzlauer Berg,
+Neukölln) — **halb ohne eigene Website, halb mit toter oder unsicherer Seite**; nur Betriebe mit veröffentlichter Mail-Adresse (Kanal Mail, Kevin 30.10.).
+Keine Ketten, keine Restaurants in Häusern mit eigener Website (Hotel, Museum).
+**Angebot:** die Homepage-Pakete der Website — **Landing 2.990 €** (10 Werktage), **Story 4.990 €** (15 Werktage), **Cinematic 9.990 €** (25 Werktage),
+netto, einmalig; Hosting/Domain beim Kunden. Für die Persona führt Landing; die Produktkarte(n) legt Kevin im Katalog an, die Mail nennt das gewählte Produkt.
+
+**Segment gemessen (OpenStreetMap, 31.10.):**
+
+| Bezirk | Gastro gesamt | Restaurants & Cafés | mit eigener Website | ohne Website-Angabe | mit Mail | mit Telefon |
+|---|---|---|---|---|---|---|
+| Mitte | 2.272 | 1.394 | 712 | 682 | 212 | 557 |
+| Friedrichshain-Kreuzberg | 1.876 | 1.132 | 548 | 584 | 179 | 456 |
+| Pankow | 1.230 | 772 | 410 | 362 | 96 | 349 |
+| Neukölln | 1.079 | 548 | 211 | 337 | 82 | 184 |
+| **Summe** | **6.457** | **3.846** | **1.881 (49 %)** | **1.965 (51 %)** | **569 (15 %)** | **1.546 (40 %)** |
+
+**Was die Prüfung der Websites zeigt (Stichprobe 225 Seiten mit Mail):** die meisten sind technisch ordentlich (HTTPS + Handy) — „schlecht“ heißt in
+Berlin vor allem **tot oder unsicher**: Domain weg, Zertifikat ungültig, kein HTTPS, Fehlerseite. Rund jede achte geprüfte Seite fällt darunter.
+Ohne PageSpeed-Schlüssel misst der Lauf keine Ladezeit — mit `PAGESPEED_API_KEY` kämen langsame Seiten dazu. „Ohne Website laut OSM“ ist oft nur eine
+Lücke in OSM: die Recherche prüft deshalb die Domain der Mail-Adresse (eigene Domain mit Seite → wie eine Website bewertet; Freemail → wahrscheinlich
+keine Seite). **Wichtigste Engstelle: nur 15 % haben eine veröffentlichte Mail** — der Rest ist nur per Telefon/Besuch erreichbar.
+
+**Die 50 (Recherche 31.10.):** 25 mit toter/unsicherer Seite (7 Domain weg, 6 Zertifikat ungültig, 6 kein HTTPS, 4 nicht erreichbar, 2 Fehlerseite),
+25 ohne eigene Website (20 nur Freemail, 5 Domain ohne Seite); 34 Restaurants, 16 Cafés; Mitte 16, Friedrichshain-Kreuzberg 18, Pankow 10, Neukölln 6.
+Datei: `~/Desktop/Homepage-Funde Berlin 2026-10-31.json` (Instanz-Daten — nie ins Repo) → nach dem Upload unter Homepage-Funde „Funde importieren (Datei)“.
+
+**Im Code nachgeschärft (aus der Recherche):** Overpass-Grenze 1.000 → 5.000 Treffer je Abfrage + zwei Wiederholversuche bei 429/502/503/504;
+Bot-Sperre (401/403/429) ist KEIN Mangel (vorher fälschlich „nicht erreichbar“); eigener Satz für tote Domain und kaputtes Zertifikat; NAT64-Adressen
+(DNS64-Netze) nach eingebetteter IPv4 geprüft; Unterseiten fremder Häuser (Hotel, Museum) sind kein Fund; Persona-Filter „nur Restaurants & Cafés“ und
+„nur mit Mail-Adresse“ in den Einstellungen; Import einer Funde-Datei (nur Inhaber, ≤ 200).

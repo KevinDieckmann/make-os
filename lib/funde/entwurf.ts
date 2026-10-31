@@ -37,7 +37,7 @@ export function preisKurz(p: { betrag: number; bis?: number; einheit?: string; b
 function anlass(f: Pick<Fund, 'bewertung'>): string {
   const b = f.bewertung;
   if (!b || !b.website) return 'Ich habe gesehen, dass Sie noch keine eigene Website haben.';
-  if (b.erreichbar === false) return 'Ich wollte mir Ihre Website ansehen, sie war aber nicht erreichbar.';
+  if (b.erreichbar === false) return `Ich wollte mir Ihre Website ansehen: ${(b.gruende[0] ?? 'Sie war nicht erreichbar.').replace(/^Die /, 'die ').replace(/^Das /, 'das ')}`;
   const g = b.gruende.filter(x => !/Keine deutlichen/.test(x)).slice(0, 2).map(x => x.replace(/\.$/, ''));
   return g.length ? `Mir ist bei Ihrer Website aufgefallen: ${g.join('; ')}.` : 'Ich habe mir Ihre Website angesehen.';
 }

@@ -42,6 +42,9 @@ export function einstellungenSaeubern(roh: unknown): FundeEinstellungen {
   if (k) e.kampagneId = k;
   if (s) e.segmentId = s;
   const g = txt(o.gesellschaft, 60), p = txt(o.produktId, 80);
+  const arten = Array.isArray(o.arten) ? [...new Set(o.arten.filter((x): x is string => typeof x === 'string' && /^[a-z_]{2,40}$/.test(x)))].slice(0, 20) : [];
+  if (arten.length) e.arten = arten;
+  if (o.nurMitMail === true) e.nurMitMail = true;
   if (g) e.gesellschaft = g;
   if (p) e.produktId = p;
   return e;

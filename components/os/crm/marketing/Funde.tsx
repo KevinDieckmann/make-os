@@ -19,12 +19,13 @@ interface Fund {
 }
 interface Daten {
   istInhaber: boolean; eingerichtet: boolean; kampagne?: { id: string; name: string; status: string };
-  einstellungen: { stadt?: string; gebiete: string[]; gebietIndex: number; branchen: string[]; jeAbend: number; produktId?: string; absender: { postfach: string; person: string; eigenes: boolean } | null; eigenesRisiko: { seit: string; von: string } | null };
+  einstellungen: { stadt?: string; gebiete: string[]; gebietIndex: number; branchen: string[]; jeAbend: number; produktId?: string; arten?: string[]; nurMitMail: boolean; absender: { postfach: string; person: string; eigenes: boolean } | null; eigenesRisiko: { seit: string; von: string } | null };
   risikoHinweis: string; namensnennung: string; funde: Fund[];
   zahlen: { vorbereitet: number; uebernommen: number; gesendet: number; verworfen: number; angesehen: number };
   lauf?: { tag: string; gebiet?: string; geholt: number; vorbereitet: number; fehler?: string };
   produkte: { id: string; name: string }[]; branchen: { id: string; name: string }[];
   gebietsVorlagen: { id: string; name: string; stadt: string; gebiete: string[] }[];
+  artenVorlagen: { id: string; name: string; arten: string[] }[];
   absenderWahl?: { id: string; name: string }[];
 }
 
@@ -104,6 +105,13 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                 return <Knopf key={b.id} leise={!an} onClick={async () => { await tun({ aktion: 'einstellungen', branchen: an ? e.branchen.filter(x => x !== b.id) : [...e.branchen, b.id] }); }}>{`${an ? '✓ ' : ''}${b.name}`}</Knopf>;
               })}
             </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {d.artenVorlagen.map(v => {
+                const an = !!e.arten && v.arten.every(a => e.arten!.includes(a)) && e.arten.length === v.arten.length;
+                return <Knopf key={v.id} leise={!an} onClick={async () => { await tun({ aktion: 'einstellungen', arten: an ? [] : v.arten }); }}>{`${an ? '✓ ' : ''}${v.name}`}</Knopf>;
+              })}
+              <Knopf leise={!e.nurMitMail} onClick={async () => { await tun({ aktion: 'einstellungen', nurMitMail: !e.nurMitMail }); }}>{`${e.nurMitMail ? '✓ ' : ''}Nur mit Mail-Adresse`}</Knopf>
+            </div>
             <label style={{ display: 'grid', gap: 4, fontSize: TYP.bedien, color: C.inkDim }}>
               Funde je Abend
               <select value={e.jeAbend} onChange={ev => void tun({ aktion: 'einstellungen', jeAbend: Number(ev.target.value) })} style={FELD}>
@@ -127,6 +135,17 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Knopf leise onClick={async () => { await tun({ aktion: 'lauf' }); }}>Jetzt suchen</Knopf>
               <Knopf leise onClick={() => setHand(h => (h ? null : { branche: 'gastro' }))}>Fund von Hand</Knopf>
+              <label className="ui-knopf fassbar" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 14px', borderRadius: 10, border: `1px solid ${C.linie}`, color: C.ink, cursor: 'pointer', fontSize: TYP.bedien }}>
+                Funde importieren (Datei)
+                <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={async ev => {
+                  const datei = ev.target.files?.[0];
+                  ev.target.value = '';
+                  if (!datei) return;
+                  let inhalt: unknown;
+                  try { inhalt = JSON.parse(await datei.text()); } catch { setMeldung({ art: 'kritisch', text: 'Die Datei ist kein gültiges JSON.' }); return; }
+                  await tun({ aktion: 'import', datei: inhalt });
+                }} />
+              </label>
             </div>
           </div>
         )}

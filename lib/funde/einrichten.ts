@@ -48,6 +48,8 @@ export async function einstellungenAendern(teil: Partial<FundeEinstellungen>, we
     if (teil.absender !== undefined) e.absender = teil.absender;
     if (teil.gesellschaft !== undefined) e.gesellschaft = teil.gesellschaft;
     if (teil.produktId !== undefined) e.produktId = teil.produktId;
+    if (teil.arten !== undefined) { if (teil.arten.length) e.arten = teil.arten; else delete e.arten; }
+    if (teil.nurMitMail !== undefined) { if (teil.nurMitMail) e.nurMitMail = true; else delete e.nurMitMail; }
     const s = einstellungenSaeubern(e);
     if (teil.branchen !== undefined && !s.branchen.length) throw new FundeFehler(400, 'Mindestens eine Branche wählen.');
     return { ...x, einstellungen: s };
@@ -110,6 +112,86 @@ export async function fundVonHand(e: HandEingabe, person: string, wer: Wer): Pro
   const { fundVorschlagLegen } = await import('./uebernehmen');
   await fundVorschlagLegen(f, person);
   return f;
+}
+
+/** Höchstens so viele Funde je Import-Datei — darüber 413 (nie kürzen). */
+export const IMPORT_MAX = 200;
+export const IMPORT_FORMAT = 'make-os-funde';
+
+/** Eine Bewertung aus der Datei säubern (nur Form: Punkte 0–100, höchstens 5 Gründe à 200 Zeichen). Rein. */
+function bewertungAus(roh: unknown, am: string): Fund['bewertung'] | null {
+  const o = roh && typeof roh === 'object' ? roh as Record<string, unknown> : null;
+  if (!o || typeof o.punkte !== 'number' || !Number.isFinite(o.punkte) || typeof o.website !== 'boolean') return null;
+  const gruende = Array.isArray(o.gruende) ? o.gruende.filter((x): x is string => typeof x === 'string').map(x => x.replace(/[\u0000-\u001f<>]/g, ' ').slice(0, 200)).slice(0, 5) : [];
+  const b = (k: string) => (typeof o[k] === 'boolean' ? { [k]: o[k] as boolean } : {});
+  return {
+    punkte: Math.round(Math.min(100, Math.max(0, o.punkte))), website: o.website, gruende: gruende.length ? gruende : ['Aus einer Recherche übernommen.'],
+    ...b('erreichbar'), ...b('https'), ...b('mobil'), ...b('impressum'),
+    ...(typeof o.jahr === 'number' && o.jahr > 1990 && o.jahr < 2100 ? { jahr: Math.round(o.jahr) } : {}),
+    gemessenAm: typeof o.gemessenAm === 'string' && !Number.isNaN(Date.parse(o.gemessenAm)) ? o.gemessenAm.slice(0, 30) : am,
+  };
+}
+
+/**
+ * Funde aus einer Recherche-Datei übernehmen (nur Inhaber — die Route prüft): `{ format: 'make-os-funde', funde: [...] }`. Je Eintrag dieselbe Säuberung
+ * wie „Fund von Hand“ (+ OSM-Kennung, Gebiet, Art, Öffnungszeiten, Bewertung der Datei). Übersprungen: schon Fund/bekannt, Firma steht in der Kartei,
+ * Adresse gehört einer Person der Kartei, Sperrliste. Danach je Fund ein Vorschlag im ZOE-Stapel — nichts in der Kartei, nichts gesendet.
+ * Die Datei selbst liegt nie im Repo (echte Betriebe = Instanz-Daten).
+ */
+export async function fundeImportieren(roh: unknown, person: string, wer: Wer): Promise<{ neu: number; uebersprungen: { name: string; grund: string }[] }> {
+  const o = roh && typeof roh === 'object' ? roh as Record<string, unknown> : {};
+  if (o.format !== IMPORT_FORMAT || !Array.isArray(o.funde)) throw new FundeFehler(400, `Keine Funde-Datei (erwartet „format: ${IMPORT_FORMAT}“).`);
+  if (o.funde.length > IMPORT_MAX) throw new FundeFehler(413, `Höchstens ${IMPORT_MAX} Funde je Datei — nichts übernommen.`);
+  const h = await fundeHaushalt();
+  const b0 = await ladeFunde(h);
+  if (!b0.einstellungen.kampagneId) throw new FundeFehler(409, 'Erst die Kampagne einrichten.');
+  const ctx = await fundKontext(b0.einstellungen, h);
+  const am = new Date().toISOString();
+  const [{ ladeCrm }, { bestehendeFirma }, { sperrlisteLaden, sperrTreffer }, { kontakteFuerVerarbeitung }, { alleAdressen }] = await Promise.all([
+    import('@/lib/crm/speicher'), import('@/lib/crm/firmen'), import('@/lib/crm/sperrliste'), import('@/lib/crm/verarbeitung'), import('@/lib/crm/emails'),
+  ]);
+  const [crm, kontakte, sperre] = await Promise.all([ladeCrm(), kontakteFuerVerarbeitung({ mitEingeschraenkten: true }), sperrlisteLaden()]);
+  const adressen = new Set(kontakte.flatMap(k => alleAdressen(k)));
+  const uebersprungen: { name: string; grund: string }[] = [];
+  const kandidaten: Fund[] = [];
+  for (const e of o.funde) {
+    const x = e && typeof e === 'object' ? e as Record<string, unknown> : {};
+    let ein: HandEingabe;
+    try { ein = handEingabeSaeubern({ ...x, ...(x.adresse && typeof x.adresse === 'object' ? { strasse: [(x.adresse as Record<string, unknown>).strasse, (x.adresse as Record<string, unknown>).hausnummer].filter(v => typeof v === 'string').join(' ') || undefined, plz: (x.adresse as Record<string, unknown>).plz, ort: (x.adresse as Record<string, unknown>).ort ?? 'Berlin' } : {}) }); }
+    catch (err) { uebersprungen.push({ name: String(x.name ?? '?').slice(0, 80), grund: err instanceof Error ? err.message : 'ungültig' }); continue; }
+    const osmId = typeof x.osmId === 'string' && /^[nwr]\d{1,15}$/.test(x.osmId) ? x.osmId : undefined;
+    const weg = (grund: string) => uebersprungen.push({ name: ein.name, grund });
+    if (bestehendeFirma(crm.firmen, ein.name)) { weg('Firma steht schon in der Kartei'); continue; }
+    if (ein.email && adressen.has(ein.email)) { weg('Adresse gehört schon einer Person der Kartei'); continue; }
+    if (sperrTreffer(sperre, { firma: ein.name, ...(ein.email ? { email: ein.email } : {}) } as never)) { weg('Sperrliste'); continue; }
+    const site = websiteNormal(ein.website);
+    const bewertung = bewertungAus(x.bewertung, am) ?? bewerten({ website: eigeneWebsite(site), signale: null, jahrHeute: Number(localDay().slice(0, 4)), gemessenAm: am });
+    const t = (k: string, n: number) => (typeof x[k] === 'string' && (x[k] as string).trim() ? (x[k] as string).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n) : undefined);
+    const f: Fund = {
+      id: neueKennung('fd'), kampagneId: b0.einstellungen.kampagneId, quelle: osmId ? 'osm' : 'hand', ...(osmId ? { osmId } : {}), name: ein.name, branche: ein.branche,
+      ...(t('kategorie', 60) ? { kategorie: t('kategorie', 60) } : {}), ...(t('gebiet', 80) ? { gebiet: t('gebiet', 80) } : {}), ...(t('oeffnungszeiten', 200) ? { oeffnungszeiten: t('oeffnungszeiten', 200) } : {}),
+      ...(ein.strasse || ein.plz || ein.ort ? { adresse: { ...(ein.strasse ? { strasse: ein.strasse } : {}), ...(ein.plz ? { plz: ein.plz } : {}), ...(ein.ort ? { ort: ein.ort } : {}) } } : {}),
+      ...(site ? { website: site } : {}), ...(ein.email ? { email: ein.email } : {}), ...(ein.telefon ? { telefon: ein.telefon } : {}),
+      bewertung, status: 'vorbereitet', angelegt: am, geaendert: am, von: person,
+    };
+    f.vorschau = vorschauRegelwerk(f);
+    f.entwurf = entwurfBauen(f, ctx);
+    kandidaten.push(f);
+  }
+  const neu: Fund[] = [];
+  await aendereFunde(b => {
+    const bekannt = new Set([...b.bekannt, ...b.funde.map(f => f.osmId).filter((v): v is string => !!v)]);
+    const namen = new Set(b.funde.filter(f => f.status !== 'verworfen').map(f => f.name.toLowerCase()));
+    for (const f of kandidaten) {
+      if ((f.osmId && bekannt.has(f.osmId)) || namen.has(f.name.toLowerCase())) { uebersprungen.push({ name: f.name, grund: 'schon als Fund bekannt' }); continue; }
+      namen.add(f.name.toLowerCase()); if (f.osmId) bekannt.add(f.osmId);
+      neu.push(f);
+    }
+    return { ...b, funde: [...b.funde, ...neu] };
+  }, { h, wer });
+  const { fundVorschlagLegen } = await import('./uebernehmen');
+  for (const f of neu) await fundVorschlagLegen(f, person);
+  return { neu: neu.length, uebersprungen };
 }
 
 /** Verwerfen (bleibt bekannt, kommt nie wieder). */
