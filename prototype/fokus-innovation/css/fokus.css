@@ -1045,9 +1045,9 @@ html.menue-offen { overflow: hidden; }
 .regal-blatt img { display: block; width: 100%; height: auto; }
 /* Unser lila Balken (31.10., Kevin: „nur leicht, jedes Blatt einzeln, viel feiner und nur, wenn man drübergeht“): eine feine Linie oben am
    Blatt läuft beim Drüberfahren von links nach rechts und beim Weggehen zurück. Ohne Maus (Handy) gibt es ihn nicht. */
-.regal-blatt::before { content: ""; position: absolute; left: 0; top: 0; z-index: 1; width: 100%; height: 2px; background: linear-gradient(90deg, #6D28D9, #A78BFA); transform: scaleX(0); transform-origin: left center; transition: transform .5s var(--ease); }
-@media (hover: hover) { .regal-blatt:hover::before { transform: scaleX(1); } }
-@media (prefers-reduced-motion: reduce) { .regal-blatt::before { transition: none; } }
+.regal-blatt::before { content: ""; position: absolute; left: 6%; right: 6%; top: 3.2%; z-index: 1; height: 1px; background: linear-gradient(90deg, rgba(124, 58, 237, 0), rgba(124, 58, 237, .85) 22%, rgba(167, 139, 250, .85) 78%, rgba(167, 139, 250, 0)); opacity: 0; transform: scaleX(0); transform-origin: left center; transition: transform .9s var(--ease), opacity .6s ease; }
+@media (hover: hover) { .regal-blatt:hover::before { opacity: 1; transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .regal-blatt::before { transition: opacity .3s ease; transform: none; } }
 .regal-blatt.r1 { left: 0; top: 10%; transform: rotate(-6deg); }
 .regal-blatt.r2 { left: 24%; top: 3%; transform: rotate(-1deg); z-index: 1; }
 .regal-blatt.r3 { left: 48%; top: 10%; transform: rotate(5deg); z-index: 2; }
