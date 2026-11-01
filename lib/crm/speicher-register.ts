@@ -439,6 +439,7 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Einträge der Person zählen in der Auskunft (weitere Speicher, person-weitere.ts); gesendete Mails stehen zusätzlich als Aktivität (Betreff) in der Akte',
     loeschfrist: 'Gesendet, verworfen, gesperrt, unzustellbar oder gedruckt: 12 Monate nach der letzten Änderung (Motor-Lauf `postAufraeumen`); Entwürfe, solange die Kampagne läuft',
   }),
+  K('kampagnen-motor-lauf', 'Herzschlag des Kampagnen-Motors (B-Prüfung, 02.11., lib/crm/kampagnen-motor.ts `motorImTakt`): Zeit des letzten Laufs und je Teil der letzte gute Lauf bzw. die Fehler in Folge — nur Zeiten und Zähler, keine Personen, keine Inhalte. HOI-Befund „Kampagnen-Motor“.'),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):
@@ -998,7 +999,7 @@ const IN_PRIVAT: readonly string[] = [
 ];
 const IN_BUSINESS: readonly string[] = [
   // Kampagne „Homepage“ und Kampagnen-Motor (31.10./01.11.): Funde und Mail-Stapel gehören zur Kundengewinnung.
-  'kampagne-funde--*', 'kampagnen-post--*',
+  'kampagne-funde--*', 'kampagnen-post--*', 'kampagnen-motor-lauf',
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',

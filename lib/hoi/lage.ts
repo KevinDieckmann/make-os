@@ -89,6 +89,8 @@ export interface InnenLage {
   postfaecher?: PostfachLage | null;
   /** WhatsApp Business (07.10.): Zustand der Business-Nummer — nur Zahlen und Zustände, nie Nummern oder Namen. null = nicht eingerichtet. */
   whatsapp?: WhatsappLage | null;
+  /** Kampagnen-Motor (02.11., B-Prüfung): Herzschlag, Fehler je Teil, offene Freigaben/Fehler — nur Zahlen. null = nie gelaufen und nichts zu tun. */
+  kampagnenMotor?: KampagnenMotorLageHoi | null;
   /** ZOE auf WhatsApp (08.10.): die eigene ZOE-Nummer — nur Zähler und Zustände, nie Nummern/Texte. null = nicht eingerichtet. */
   zoeWhatsapp?: ZoeWhatsappLage | null;
   /** WHOOP je Person (08.10.): Verbindungen, Alter des Abgleichs, Webhooks — nur Zähler, nie Adressen/Kennungen/Werte. null = nicht eingerichtet. */
@@ -453,6 +455,34 @@ export interface WhatsappLage {
 }
 
 /** Befund zur WhatsApp-Business-Nummer (rein): Schlüssel abgelehnt oder Qualität niedrig = rot; Auffälliges gelb; sonst grün. */
+/** Kampagnen-Motor (lib/crm/kampagnen-motor.ts `kampagnenMotorLage`) — nur Zähler und Zeiten, nie Namen, Adressen oder Texte. */
+export interface KampagnenMotorLageHoi { zuletzt: string | null; minutenSeit: number | null; fehlerTeile: { teil: string; n: number }[]; freigegeben: number; fehler: number; unklar: number; sequenzen: number }
+
+/**
+ * Kampagnen-Motor (02.11., B-Prüfung Fund 5): läuft er (Herzschlag alle 2 Minuten aus dem Takt), scheitert ein Teil wiederholt, warten Mails?
+ * Rot: seit über 30 Minuten kein Lauf, obwohl Sequenzen laufen bzw. Mails freigegeben sind — oder ein Teil scheitert ≥ 3-mal in Folge.
+ * Gelb: ein Teil scheiterte zuletzt, Fehler bzw. „unklar“ im Stapel. Rein, getestet (tests/kg-versand.test.ts).
+ */
+export function kampagnenMotorBefunde(m: KampagnenMotorLageHoi | null | undefined): Befund[] {
+  if (!m) return [];
+  const arbeit = m.sequenzen > 0 || m.freigegeben > 0;
+  const steht = arbeit && (m.minutenSeit === null || m.minutenSeit > 30);
+  const hart = m.fehlerTeile.filter(t => t.n >= 3);
+  const ampel: Ampel = steht || hart.length ? 'rot' : m.fehlerTeile.length || m.fehler || m.unklar ? 'gelb' : 'gruen';
+  const teile = [
+    m.minutenSeit === null ? 'noch nie gelaufen' : `letzter Lauf vor ${m.minutenSeit} Min.`,
+    `${m.sequenzen} aktive Sequenz${m.sequenzen === 1 ? '' : 'en'}`, `${m.freigegeben} freigegeben`,
+    ...(m.fehler ? [`${m.fehler} mit Fehler`] : []), ...(m.unklar ? [`${m.unklar} unklar`] : []),
+    ...(m.fehlerTeile.length ? [`scheitert: ${m.fehlerTeile.map(t => `${t.teil} (${t.n}×)`).join(', ')}`] : []),
+  ];
+  const satz = steht ? 'der Motor läuft nicht — es wird nichts vorbereitet, gesendet oder zurückgemeldet; Takt/Arbeiter prüfen (Logs „[kampagnen] Motor“)'
+    : hart.length ? 'ein Teil des Motors scheitert wiederholt — die übrigen laufen weiter; Logs „[kampagnen] Motor ›“ prüfen'
+    : m.fehlerTeile.length ? 'ein Teil scheiterte im letzten Lauf — wird im nächsten Takt erneut versucht'
+    : m.fehler || m.unklar ? 'Mails mit Fehler bzw. „unklar“ warten im Mail-Stapel der Kampagnen auf einen Blick'
+    : 'läuft — Sequenzen, Versand und Rückfluss im Takt';
+  return [{ id: 'kampagnen-motor', bereich: 'app', label: 'Kampagnen-Motor', ampel, wert: teile.join(' · '), satz }];
+}
+
 export function whatsappBefunde(w: WhatsappLage | null | undefined): Befund[] {
   if (!w) return [];
   const alt = w.webhookVorMin;
@@ -749,6 +779,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...gmailBefunde(innen.gmail));
   b.push(...postfachBefunde(innen.postfaecher));
   b.push(...whatsappBefunde(innen.whatsapp));
+  b.push(...kampagnenMotorBefunde(innen.kampagnenMotor));
   b.push(...zoeWhatsappBefunde(innen.zoeWhatsapp));
   b.push(...whoopBefunde(innen.whoop));
   b.push(...medienBefunde(innen.medien));

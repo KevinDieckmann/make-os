@@ -154,7 +154,8 @@ export async function adresseGesperrt(email: string): Promise<'eingeschraenkt' |
 /** Wofür die Mail ist (nur für Log und Fehlertext) — z. B. `unterlage`, `bericht`, `eingang`. */
 export type WebsiteMailArt = string;
 export type WebsiteMailGrund = 'aus' | 'adresse' | 'grenze' | 'eingeschraenkt' | 'werbesperre' | 'sperrliste' | 'unklar' | 'fehler';
-export type WebsiteMailErgebnis = { ok: true; ueber: string } | { ok: false; grund: WebsiteMailGrund; text: string };
+/** `id`/`threadId`/`messageId` (B-Prüfung, 02.11.): der Kampagnen-Motor erkennt daran Antworten auf Willkommens-Mails — die Kennungen, nie Inhalte. */
+export type WebsiteMailErgebnis = { ok: true; ueber: string; id?: string; threadId?: string; messageId?: string } | { ok: false; grund: WebsiteMailGrund; text: string };
 
 /**
  * EINE Mail über den Website-Absender (siehe Kopf) — allgemein, ohne Wissen über den Weg, der sie auslöst. `betreff`/`text` kommen nur aus einer
@@ -189,5 +190,5 @@ export async function websiteMailSenden(m: { an: string; vorname?: string; betre
     console.warn(`[website-post] ${String(m.art).slice(0, 30)}: ${text}`);
     return nein('fehler', text);
   }
-  return { ok: true, ueber: adresseMaskiert(String(r.body.von ?? '')) };
+  return { ok: true, ueber: adresseMaskiert(String(r.body.von ?? '')), ...(typeof r.body.id === 'string' ? { id: r.body.id } : {}), ...(typeof r.body.threadId === 'string' ? { threadId: r.body.threadId } : {}), ...(typeof r.body.messageId === 'string' ? { messageId: r.body.messageId } : {}) };
 }

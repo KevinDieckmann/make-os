@@ -116,7 +116,20 @@ export async function POST(req: Request) {
         if (!x) return fehler('Die Kampagnen-Mail zu dieser Antwort gibt es nicht (mehr).', 404);
         const { ergebnisFesthalten } = await import('@/lib/crm/kampagnen-ergebnis');
         const { localDay } = await import('@/lib/zeit');
+        // B-Prüfung (02.11., Fund 14): das Follow-up „Antwort bearbeiten“ wird in DERSELBEN Sperre beansprucht und erledigt — ein Doppelklick bzw. ein
+        // zweiter Aufruf hält das Ergebnis nicht zweimal fest; scheitert das Festhalten, ist das Follow-up wieder offen.
+        const fuId = b.followupId as string, jetzt = new Date().toISOString();
+        let lage = 'fehlt' as 'neu' | 'schon' | 'fehlt';
+        await aendereCrm(c => {
+          const f = (c.followups ?? []).find(y => y.id === fuId);
+          if (!f) { lage = 'fehlt'; return c; }
+          if (f.status !== 'offen') { lage = 'schon'; return c; }
+          lage = 'neu';
+          return { ...c, followups: (c.followups ?? []).map(y => (y.id === fuId ? { ...y, status: 'erledigt' as const, ergebnis: 'chance', erledigtAm: jetzt, geaendert: jetzt, geaendertVon: z.person } : y)) };
+        }, wer);
+        if (lage === 'schon') return NextResponse.json({ ok: true, schon: true, text: 'Diese Antwort ist schon bearbeitet — nichts doppelt festgehalten.' });
         const r = await ergebnisFesthalten({ kampagneId: x.kampagneId, ziel: x.ziel, ergebnis: 'chance', von: z.person, person: z.person, wer, heute: localDay() });
+        if (r.status !== 200 && lage === 'neu') await aendereCrm(c => ({ ...c, followups: (c.followups ?? []).map(y => (y.id === fuId && y.status === 'erledigt' && y.erledigtAm === jetzt ? { ...y, status: 'offen' as const, ergebnis: undefined, erledigtAm: undefined, geaendert: new Date().toISOString() } : y)) }), wer);
         return NextResponse.json(r.status === 200 ? { ...r.body, text: `Als Lead übernommen — ${x.an.name} steht jetzt in der Qualifizierung.${r.body.hinweis ? ` ${String(r.body.hinweis)}` : ''}` } : r.body, { status: r.status });
       }
       case 'entwurf': {
@@ -153,6 +166,10 @@ export async function POST(req: Request) {
       }
       case 'verwerfen': case 'gedruckt': case 'erneut': {
         if (!kampagneId) return fehler('kampagneId fehlt.', 400);
+        // B-Prüfung (02.11., Fund 18): „unklar“ heißt, die Mail ist womöglich schon raus — erneut vorbereiten nur nach ausdrücklicher Rückfrage.
+        if (b.aktion === 'erneut' && b.bestaetigt !== true && (await ladePost()).eintraege.some(y => idsAus(b.ids).includes(y.id) && y.status === 'unklar')) {
+          return NextResponse.json({ ok: false, rueckfrage: true, fehler: 'Erst im Postfach unter „Gesendet“ nachsehen, ob die Mail schon raus ist — sonst bekommt das Ziel sie zweimal. Dann noch einmal mit Bestätigung.' }, { status: 409 });
+        }
         const n = await eintraegeSetzen({ person: z.person, kampagneId, ids: idsAus(b.ids), aktion: b.aktion, wer });
         return NextResponse.json({ ok: true, geaendert: n });
       }
@@ -217,11 +234,13 @@ async function willkommenLage(req: Request, person: string): Promise<Response> {
   const kontakte = new Map((await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).map(k => [k.id, k]));
   const e = post.einstellungen;
   const stufen = e.willkommenStufen ?? WILLKOMMEN_VORGABE;
-  const empfaenger = Object.entries(post.willkommen).map(([id, w]) => ({ id, name: kontakte.get(id) ? anzeigename(kontakte.get(id)!) : 'Kontakt (nicht mehr in der Kartei)', start: w.start, gesendet: [...w.gesendet].sort((a, b) => a - b) }))
+  const empfaenger = Object.entries(post.willkommen).map(([id, w]) => ({ id, name: kontakte.get(id) ? anzeigename(kontakte.get(id)!) : 'Kontakt (nicht mehr in der Kartei)', start: w.start, gesendet: [...w.gesendet].sort((a, b) => a - b),
+    // B-Prüfung (02.11., Fund 10/11): gescheiterte Stufen (mit Grund, ohne Adresse) und ob geantwortet wurde.
+    ...(w.gescheitert?.length ? { gescheitert: w.gescheitert.map(g => ({ stufe: g.stufe, am: g.am, grund: g.grund })) } : {}), ...((w.mails ?? []).some(m => m.rueckfluss?.art === 'antwort') ? { geantwortet: true } : {}) }))
     .sort((a, b) => b.start.localeCompare(a.start));
   leseZugriff(req, 'kontakte', { anzahl: empfaenger.length });
   return NextResponse.json({
     ok: true, istInhaber: inhaber, willkommen: e.willkommen ? { seit: e.willkommen.seit, von: namen[e.willkommen.von] ?? e.willkommen.von } : null,
-    stufen, vorgabe: WILLKOMMEN_VORGABE, empfaenger,
+    stufen, vorgabe: WILLKOMMEN_VORGABE, empfaenger, lauf: post.willkommenLauf ?? null,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }

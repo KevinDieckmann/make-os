@@ -20,7 +20,7 @@ import { PROFIL_HOMEPAGE, istFundBranche, istIcpBranche, kampagneVon, profilFuer
 export const SEGMENT_ID = PROFIL_HOMEPAGE.segmentId;
 
 /** Kampagne + Segment eines Profils (Vorgabe Homepage) — einmal; eine offene Kampagne des Playbooks wird weiterbenutzt. */
-export async function kampagneEinrichten(person: string, wer: Wer, profil: FundProfil = PROFIL_HOMEPAGE): Promise<{ kampagneId: string; segmentId: string; neu: boolean }> {
+export async function kampagneEinrichten(person: string, wer: Wer, profil: FundProfil = PROFIL_HOMEPAGE): Promise<{ kampagneId: string; segmentId: string; neu: boolean; aktiv: boolean; text?: string }> {
   const h = await fundeHaushalt();
   const pb = PLAYBOOKS.find(p => p.id === profil.playbook);
   if (!pb) throw new FundeFehler(409, 'Playbook fehlt.');
@@ -28,18 +28,20 @@ export async function kampagneEinrichten(person: string, wer: Wer, profil: FundP
   const heute = localDay(), jetzt = new Date().toISOString();
   let kampagneId = '';
   let neu = false;
+  let aktiv = true;
   await aendereCrm(c => {
     const segmente = c.segmente.some(s => s.id === profil.segmentId) ? c.segmente
       : [...c.segmente, { id: profil.segmentId, name: profil.segmentName, beschreibung: profil.beschreibung, kriterien: { herkunft: ['recherche'], label: [profil.label] }, geaendert: jetzt, geaendertVon: person }];
     const offen = c.kampagnen.find(k => k.playbook === profil.playbook && !k.geloeschtAm && !k.archiviertAm && (k.status === 'aktiv' || k.status === 'entwurf'));
-    if (offen) { kampagneId = offen.id; return { ...c, segmente }; }
+    if (offen) { kampagneId = offen.id; aktiv = offen.status === 'aktiv'; return { ...c, segmente }; }
     kampagneId = neueKennung('kp'); neu = true;
     // Ohne festes `zustaendig` (M1, 01.11.): die Welt des Playbooks entscheidet (lib/crm/kampagnen-welt.ts — Homepage-Funde → Marketing), nicht wer einrichtet.
     const k = { ...planen(pb, [], { ...crm, segmente }, heute, kampagneId), status: 'aktiv' as const, segmentId: profil.segmentId, geaendertVon: person };
     return { ...c, segmente, kampagnen: [...c.kampagnen, k] };
   }, wer);
   await aendereFunde(b => ({ ...b, einstellungen: profil.id === 'startup' ? { ...b.einstellungen, kampagneStartupId: kampagneId } : profil.id === 'scaleup' ? { ...b.einstellungen, kampagneScaleupId: kampagneId } : profil.id === 'unternehmer' ? { ...b.einstellungen, kampagneUnternehmerId: kampagneId } : { ...b.einstellungen, kampagneId, segmentId: profil.segmentId } }), { h, wer });
-  return { kampagneId, segmentId: profil.segmentId, neu };
+  // B-Prüfung (02.11., Fund 12): ehrlich sagen, wenn die weiterbenutzte Kampagne nicht aktiv ist — ihre Fund-Mails lägen sonst still im Stapel.
+  return { kampagneId, segmentId: profil.segmentId, neu, aktiv, ...(aktiv ? {} : { text: 'Die Kampagne der Funde steht noch auf „Entwurf“ — erst auf „Aktiv“ stellen, sonst bleiben freigegebene Fund-Mails im Stapel liegen.' }) };
 }
 
 /** Einstellungen ändern (nur Gebiete, Branchen, Menge, Absender, Gesellschaft, Produkt — das Risiko hat einen eigenen Weg). */

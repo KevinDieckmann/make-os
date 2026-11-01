@@ -91,7 +91,8 @@ export async function imapSenden(e: ImapSendenEingabe): Promise<ImapSendenErgebn
     await l.smtp({ host: p.smtp.host, port: p.smtp.port, sicherheit: p.smtp.sicherheit, benutzer: p.smtpBenutzer ?? p.adresse, passwort }, { von: p.adresse, an: [...an, ...cc].map(a => a.email) }, bytes);
   } catch (x) {
     const f = x instanceof PostfachFehler ? x : new PostfachFehler('server', FEHLER_TEXT.server, 502);
-    throw new SendenFehler('versand', `Nicht gesendet: ${f.message}`, f.code === 'anmeldung' ? 409 : 502);
+    // `ursache` (B-Prüfung, 02.11.): der Kampagnen-Motor unterscheidet daran vorübergehend (Verbindung, Anmeldung) von endgültig (abgelehnt).
+    throw new SendenFehler('versand', `Nicht gesendet: ${f.message}`, f.code === 'anmeldung' ? 409 : 502, { ursache: f.code });
   }
   // Kopie in „Gesendet“: nur, wenn der Anbieter sie nicht selbst abgelegt hat (Suche nach der Message-ID). Fehler hier halten nichts auf.
   let abgelegt: ImapSendenErgebnis['abgelegt'] = 'nicht';

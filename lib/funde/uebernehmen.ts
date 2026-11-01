@@ -204,8 +204,11 @@ export async function fundUebernehmen(fundId: string, person: string, o: { sitzu
   await aendereCrm(c => ((c.followups ?? []).some(x => x.id === fuId) ? c : {
     ...c, followups: [...(c.followups ?? []), { ...neuesFollowUp({ id: fuId, bezug: kontaktId ? { art: 'kontakt', id: kontaktId } : { art: 'firma', id: firmaId }, ...(kontaktId ? { kontaktId } : {}), art: gesendet || imStapel ? 'anruf' : 'sonstig', text: gesendet || imStapel ? 'Anrufen: Website-Entwurf besprechen (nur ohne Antwort/Abmeldung)' : 'Kontakt aufnehmen: Website-Entwurf (Mail ging nicht raus)', faellig: gesendet || imStapel ? tagPlus(heute, ANRUF_NACH_TAGEN) : heute, quelle: 'hand' }, kontakt, person, jetzt), geaendertVon: person }],
   }), wer);
+  // B-Prüfung (02.11., Fund 12): liegt die Mail im Stapel einer nicht aktiven Kampagne, sagt die Antwort das — sonst wartete sie still.
+  const kStatus = imStapel ? (await ladeCrm()).kampagnen.find(k => k.id === f!.kampagneId)?.status : undefined;
+  const wartet = imStapel && kStatus !== 'aktiv' ? ' Achtung: die Kampagne der Funde ist nicht aktiv — die Mail wartet, bis sie auf „Aktiv“ steht.' : '';
   return { ok: true, gesendet: gesendet || imStapel, ...(imStapel ? { imStapel: true } : {}), fund: f, text: gesendet ? 'Übernommen, Mail gesendet, Anruf in 3 Tagen vorgemerkt.'
-    : imStapel ? 'Übernommen. Die Mail liegt freigegeben (auf eigenes Risiko) im Mail-Stapel der Kampagne — gesendet wird werktags zwischen 8 und 18 Uhr, gedrosselt je Postfach. Anruf in 3 Tagen vorgemerkt.'
+    : imStapel ? `Übernommen. Die Mail liegt freigegeben (auf eigenes Risiko) im Mail-Stapel der Kampagne — gesendet wird werktags zwischen 8 und 18 Uhr, gedrosselt je Postfach. Anruf in 3 Tagen vorgemerkt.${wartet}`
     : `Übernommen. ${grund}`.trim() };
 }
 

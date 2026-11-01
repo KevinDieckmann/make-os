@@ -191,11 +191,13 @@ describe('Motor von Ende zu Ende', () => {
     const pf = await postfachAnlegen();
     await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'einstellungen', fusszeile: 'Beispiel Innovation GmbH · Impressum' });
     const dora = (await M.ladePost()).eintraege.find(x => x.ziel.id === 'c-dora-0004')!;
-    await M.stapelFreigeben({ person: 'kevin', kampagneId: 'kp-test', ids: [dora.id], postfach: pf, wer: { art: 'person', person: 'kevin' } });
-    expect((await M.versenden(MONTAG_10)).gesperrt).toBe(1);
+    // Seit 02.11. (B-Prüfung, Fund 15) prüft schon die Freigabe die Lage von jetzt: Werbesperre → 409, nichts freigegeben.
+    await expect(M.stapelFreigeben({ person: 'kevin', kampagneId: 'kp-test', ids: [dora.id], postfach: pf, wer: { art: 'person', person: 'kevin' } })).rejects.toMatchObject({ status: 409 });
+    expect((await M.versenden(MONTAG_10)).gesendet).toBe(0);
     expect(server.gesendet).toHaveLength(0);
     await M.sequenzenFortschreiben(MONTAG_10);
     expect(await stand('c-dora-0004')).toMatchObject({ status: 'gestoppt' });
+    expect((await M.ladePost()).eintraege.find(x => x.id === dora.id)?.status).toBe('verworfen');
     // Tag 3: Cora (kalt, Telefon rot, kein „eigenes Risiko“) wird übersprungen — kein Kaltanruf.
     await M.sequenzenFortschreiben(new Date('2026-11-05T09:00:00Z'));
     expect((await stand('c-cora-0003'))?.status).toBe('fertig');
@@ -297,10 +299,12 @@ describe('Motor von Ende zu Ende', () => {
     expect(f.status, f.text).toBe(200);
     expect(f.d.eigenesRisiko.von).toMatch(/Kevin/);
     expect((await M.ladePost()).eintraege[0].freigabe?.eigenesRisiko?.von).toBe('kevin');
-    // Schalter wieder aus → der Takt sendet nicht, der Eintrag ist gesperrt.
+    // Schalter wieder aus → der Takt sendet nicht; seit 02.11. (B-Prüfung, Fund 7) zurück in den Entwurf mit Hinweis — ein vorübergehender Grund
+    // stoppt das Ziel nicht endgültig.
     await db.saveJson('kampagne-funde--h', { funde: [], bekannt: [], einstellungen: {} });
-    expect((await M.versenden(MONTAG_10)).gesperrt).toBe(1);
+    expect((await M.versenden(MONTAG_10)).spaeter).toBe(1);
     expect(server.gesendet).toHaveLength(0);
+    expect((await M.ladePost()).eintraege[0]).toMatchObject({ status: 'entwurf', hinweis: expect.stringMatching(/eigenes Risiko/) });
   });
 
   it('Unbekannter Platzhalter: Entwurf mit Fehler, nicht freigebbar; Sequenz mit unbekanntem Platzhalter wird nicht gespeichert', async () => {

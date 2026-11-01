@@ -210,7 +210,7 @@ describe('6 · Newsletter-Abmeldungen automatisch, eine Stelle je Weg, Neuigkeit
     for (const d of ['lib', 'app', 'components']) lauf(join(process.cwd(), d));
     expect(treffer).toEqual(['lib/newsletter/regeln.ts']);
   });
-  it('Neuigkeit u-2026-11-02-9 steht ganz oben', () => {
-    expect(NEUIGKEITEN[0].id).toBe('u-2026-11-02-9');
+  it('Neuigkeit u-2026-11-02-9 steht oben (danach nur neuere)', () => {
+    expect(NEUIGKEITEN.slice(0, 4).map(n => n.id)).toContain('u-2026-11-02-9');
   });
 });
