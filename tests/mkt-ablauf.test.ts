@@ -38,6 +38,8 @@ const MOTOR = '/api/crm/kampagnen/motor';
 const KONTEN = { konten: [
   { id: 'k1', speicher: 'kevin', email: `kevin@${D}`, name: 'Kevin Beispiel', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'h' },
   { id: 'k2', speicher: 'malin', email: `malin@${D}`, name: 'Malin Beispiel', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'h' },
+  // 02.11. (Prüfung D): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+  { id: 'k3', speicher: 'nurbusiness', email: `nb@${D}`, name: 'Team Beispiel', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'h', finanzRecht: 'business' },
 ], einladungen: [] };
 const EINW = { kanal: 'mail', grundlage: 'einwilligung', erteiltAm: '2026-10-01', zeitpunkt: '2026-10-01T10:00:00.000Z', erfasstVon: 'kevin', wortlaut: 'Ja, gern per Mail.', belegRef: 'Gespräch vom 2026-10-01' };
 const kontakt = (id: string, vorname: string, extra: Record<string, unknown> = {}) => ({ id, vorname, nachname: 'Beispiel', email: `${vorname.toLowerCase()}@kunde.${D}`, stufe: 'neu', aktivitaeten: [], importiertAm: '2026-10-01', ...extra });
@@ -301,12 +303,12 @@ describe('10 · Willkommensstrecke: vermerken erst nach der Vorprüfung, Übersi
     expect((await M.ladePost()).willkommen).toEqual({});
     // Übersicht: mit einem Empfänger (wie nach einem Versand).
     await db.updateJson<Record<string, unknown>>('kampagnen-post--h', c => ({ ...c!, willkommen: { 'c-wim-0001': { start: '2026-10-20', gesendet: [0] } } }));
-    const g = await GET(`${MOTOR}?teil=willkommen`, sitzung('malin'));
+    const g = await GET(`${MOTOR}?teil=willkommen`, sitzung('nurbusiness'));
     expect(g.status, g.text).toBe(200);
     expect(g.d).toMatchObject({ istInhaber: false, willkommen: { von: 'Kevin' }, empfaenger: [{ id: 'c-wim-0001', name: expect.stringMatching(/Wim/), gesendet: [0] }] });
     expect(g.text).not.toMatch(/@kunde\./); // nie Adressen
-    // Texte ändern nur ein Inhaber.
-    expect((await POST(motorRoute, MOTOR, { aktion: 'einstellungen', willkommenStufen: [{ tag: 2, betreff: 'Hallo', text: '{{anrede}}, schön.' }] }, sitzung('malin'))).status).toBe(403);
+    // Texte ändern Inhaber und volle Mitglieder — nie ein Konto „nur Business“.
+    expect((await POST(motorRoute, MOTOR, { aktion: 'einstellungen', willkommenStufen: [{ tag: 2, betreff: 'Hallo', text: '{{anrede}}, schön.' }] }, sitzung('nurbusiness'))).status).toBe(403);
     expect((await POST(motorRoute, MOTOR, { aktion: 'einstellungen', willkommenStufen: [{ tag: 2, betreff: 'Hallo', text: '{{anrede}}, schön.' }] })).status).toBe(200);
     expect((await GET(`${MOTOR}?teil=willkommen`)).d.stufen).toEqual([{ tag: 2, betreff: 'Hallo', text: '{{anrede}}, schön.' }]);
   });

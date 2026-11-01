@@ -54,7 +54,7 @@ describe('Kapazität — wer darf sehen', () => {
     const j = await (await route.GET(get('pb'))).json();
     expect(j.ok).toBe(true);
     expect(j.ich).toBe('konto-pb');
-    expect(j.inhaber).toBe(false);
+    expect(j.inhaber).toBe(true); // 02.11. (Prüfung D): ein volles Mitglied steuert wie ein Inhaber
     expect(j.stand.personen.map((p: { id: string }) => p.id)).toEqual(['konto-pa', 'konto-pb']);
     const gross = j.stand.posten.find((p: { id: string }) => p.id === 'ms-gross');
     expect(gross.status).toBe('nicht-machbar');
@@ -119,8 +119,10 @@ describe('Kapazität — Einwilligung Erholung (Art. 9 Abs. 2 lit. a, Vorgabe au
 });
 
 describe('Kapazität — wer darf ändern', () => {
-  it('eigene Kapa ja, fremde 403, Inhaber für das Team ja; Ausnahme-Titel sieht nur die Person selbst', async () => {
-    expect((await route.PATCH(patch('pb', [{ op: 'grundwert', person: 'konto-pa', stundenWoche: 10 }]))).status).toBe(403);
+  it('eigene Kapa ja, fremder Haushalt 403, wer steuern darf (Inhaber, volles Mitglied) für das Team ja; Ausnahme-Titel sieht nur die Person selbst', async () => {
+    // 02.11. (Prüfung D): ein volles Mitglied steuert wie ein Inhaber — die Kapa der anderen Person ändern darf es (Erholung bleibt nur die Person selbst).
+    expect((await route.PATCH(patch('pb', [{ op: 'grundwert', person: 'konto-pa', stundenWoche: 10 }]))).status).toBe(200);
+    expect((await route.PATCH(patch('px', [{ op: 'grundwert', person: 'konto-pa', stundenWoche: 10 }]))).status).toBe(403);
     const eigen = await route.PATCH(patch('pb', [{ op: 'grundwert', person: 'konto-pb', stundenWoche: 20 }, { op: 'ausnahme', person: 'konto-pb', ausnahme: { art: 'urlaub', von: tag(40), bis: tag(44), titel: 'Erfundene Notiz' } }]));
     expect(eigen.status).toBe(200);
     expect((await route.PATCH(patch('pa', [{ op: 'grundwert', person: 'konto-pb', stundenWoche: 24 }]))).status).toBe(200);

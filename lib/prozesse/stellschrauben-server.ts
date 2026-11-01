@@ -99,7 +99,7 @@ export function mitStellschrauben(prozesse: readonly ProzessDef[], q: Stellschra
  * Was die Person je Weg ändern darf — dieselben Regeln wie die Routen: Dienstweg nie; neue Stellschrauben (/api/prozesse/stellschrauben) nur volle Mitglieder; Wertelisten, Löschfristen und Fulfillment-Einstellungen jede Person im
  * Haushalt des Inhabers (wie /api/crm/stammdaten, /api/crm/datenschutz, /api/fulfillment[/kunde]); Mahnstufen nur mit vollem Finanz-Zugang (wie /api/rechnung
  * `mahntage`). Restpunkte (24.10.): Scoring und Buchungsseiten jede Person im Haushalt (wie /api/crm/scoring, /api/kalender/buchung); die Agenten-Regler der
- * Heads nur der Inhaber (CLAUDE.md Regel 7 — der Weiterleiter lehnt sonst mit 403 ab). Die Route prüft beim Schreiben noch einmal — das hier entscheidet nur,
+ * Heads Inhaber und volle Mitglieder (02.11., lib/zugang/steuern.ts — der Weiterleiter lehnt sonst mit 403 ab). Die Route prüft beim Schreiben noch einmal — das hier entscheidet nur,
  * ob ein Feld oder nur der Wert erscheint.
  */
 export async function stellschraubenRechte(req: Request, z: Pick<ProzesseTor, 'dienst' | 'rechte' | 'person'>): Promise<StellschraubenRechte> {
@@ -109,6 +109,7 @@ export async function stellschraubenRechte(req: Request, z: Pick<ProzesseTor, 'd
     const p = await planZugangVon(req);
     return !!p && p.sicht === 'privat' && p.haushalt === (await haushaltDesInhabers());
   });
-  const inhaber = await sicher(async () => (await import('@/lib/zugang/haushalt-inhaber')).istInhaber(z.person));
+  // Heads (02.11.): wer steuern darf — Inhaber ODER volles Mitglied (lib/zugang/steuern.ts; `einstellungAendern` prüft dasselbe).
+  const inhaber = await sicher(async () => (await import('@/lib/zugang/steuern')).darfSteuern(z.person));
   return { prozesse: z.rechte.veroeffentlichen, wertelisten: true, loeschfrist: true, 'puls-schwelle': true, fulfillment: true, mahntage: !!finanz, scoring: true, buchung: true, head: !!inhaber };
 }

@@ -33,6 +33,28 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-13',
+    datum: '2026-11-02',
+    titel: 'Kundengewinnung meldet sich',
+    kurz: 'Anrufe bei Betrieben ohne Ansprechpartner stehen jetzt in der Power Hour. Mails zur Freigabe, Briefe zum Drucken und neue Funde melden sich in der Glocke und unter „Steht an“.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Die Power Hour zeigt fällige Anrufe und Besuche bei Betrieben ohne Ansprechpartner — mit Telefonnummer der Firma, Leitfaden und Ergebnis-Knöpfen.', bereich: 'business', weg: WEG.powerHour() },
+        { text: 'Glocke, „Steht an“ und „Für dich“ sagen, wenn Kampagnen-Mails auf eure Freigabe warten, Briefe gedruckt werden wollen oder neue Funde zu prüfen sind.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Wer im Haushalt voll mitarbeitet, kann jetzt alle Marketing- und Vertriebs-Einstellungen selbst ändern: Versand, Funde, Newsletter, Kontaktformular, Website, Checks, Formulare und die Heads.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Ist das Monatsbudget eines Heads erreicht, arbeitet er ohne KI weiter — die Power Hour wird trotzdem vorbereitet. Die Meldung geht an die Person, die den Bereich verantwortet.', bereich: 'business', weg: WEG.agenten() },
+        { text: 'Die Homepage-Funde laufen auch ohne Hintergrund-KI — die Texte kommen dann aus festen Vorlagen, und der Lauf sagt es.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Marketing › Übersicht und der Head of Marketing rechnen dieselben Zahlen wie der Traktions-Score.', bereich: 'business', weg: WEG.marketing() },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: '„Personen aus deinen Kampagnen“ zählt Kampagnen mit Ablauf nicht mehr doppelt.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Die Morgen-Nachricht der Markttraktion richtet sich nach deutscher Zeit.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-9',
     datum: '2026-11-02',
     titel: 'Marketing-Zahlen stimmen',

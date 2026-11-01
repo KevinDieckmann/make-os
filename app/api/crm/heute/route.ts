@@ -69,6 +69,8 @@ export async function GET(req: Request) {
         ...(c.aufgabe ? { aufgabeId: c.aufgabe.id } : {}),
       };
     }),
+    // Betriebe ohne Person (02.11., Prüfung D): fällige Kampagnen-Anrufe/-Besuche an Firmen — Ergebnis über POST /api/crm/followup { aktion: 'firma-ergebnis' }.
+    firmen: a.firmen,
     // Die Sitzungen der letzten Wochen — für Serie und Zähler (der Person, deren Liste es ist).
     sitzungen: crm.sitzungen.filter(s => s.person === person).slice(-30),
     team: teamZahlen(kontakte, crm.sitzungen, heute),

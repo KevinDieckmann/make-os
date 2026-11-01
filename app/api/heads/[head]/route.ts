@@ -182,10 +182,14 @@ const SYSTEMLAUF_NUR_TAKT = { ok: false, fehler: 'Ohne Person nur Takt-Läufe de
  * war die einzige Prüfung dieser Route — ein Lauf von Hand lief trotz Not-Aus, ausgeschaltetem Head oder erreichtem Budget. Jetzt gilt
  * dieselbe Sperre wie für Threads, Arbeiter und Takt (lib/agenten/einstellung.ts `laufSperre`); 409 mit ruhigem Satz, kein Modellaufruf.
  */
-async function laufGesperrt(person: string | null, h: HeadId): Promise<Response | null> {
-  const { laufSperre } = await import('@/lib/agenten/einstellung');
+async function laufGesperrt(person: string | null, h: HeadId, modus: string): Promise<{ antwort: Response } | { ohneKi?: string }> {
+  const { laufSperre, nurKiGesperrt } = await import('@/lib/agenten/einstellung');
   const s = await laufSperre(person, h);
-  return s ? NextResponse.json({ ok: false, fehler: s.text, gesperrt: s.grund }, { status: 409 }) : null;
+  if (!s) return {};
+  // Budget erreicht (02.11., Prüfung D): nur die KI ist gesperrt — Grundlauf, Power-Hour-Vorbereitung und Reviews laufen mit dem Regelwerk weiter.
+  // Eine Frage braucht das Modell und bleibt gesperrt.
+  if (modus !== 'frage' && nurKiGesperrt(s, h)) return { ohneKi: 'Monatsbudget erreicht' };
+  return { antwort: NextResponse.json({ ok: false, fehler: s.text, gesperrt: s.grund }, { status: 409 }) };
 }
 
 export async function POST(req: Request, props: { params: Promise<{ head: string }> }) {
@@ -204,15 +208,15 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
   if (zugang.person === null) {
     const modus = String(b.modus ?? 'frage');
     if (b.aktion !== 'lauf' || b.ausgeloest !== 'takt' || NUR_MIT_PERSON.has(modus)) return NextResponse.json(SYSTEMLAUF_NUR_TAKT, { status: 403 });
-    const gesperrt = await laufGesperrt(null, h); if (gesperrt) return gesperrt;
-    const r = await headLauf({ head: h, modus, person: null, ausgeloest: 'takt' });
+    const g = await laufGesperrt(null, h, modus); if ('antwort' in g) return g.antwort;
+    const r = await headLauf({ head: h, modus, person: null, ausgeloest: 'takt', ...(g.ohneKi ? { ohneKi: g.ohneKi } : {}) });
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
   }
   const person = zugang.person;
 
   if (b.aktion === 'lauf') {
-    const gesperrt = await laufGesperrt(person, h); if (gesperrt) return gesperrt;
-    const r = await headLauf({ head: h, modus: String(b.modus ?? 'frage'), person, frage: b.frage ? String(b.frage) : undefined, ausgeloest: b.ausgeloest === 'takt' ? 'takt' : b.ausgeloest === 'zoe' ? 'zoe' : 'hand' });
+    const g = await laufGesperrt(person, h, String(b.modus ?? 'frage')); if ('antwort' in g) return g.antwort;
+    const r = await headLauf({ head: h, modus: String(b.modus ?? 'frage'), person, ...(g.ohneKi ? { ohneKi: g.ohneKi } : {}), frage: b.frage ? String(b.frage) : undefined, ausgeloest: b.ausgeloest === 'takt' ? 'takt' : b.ausgeloest === 'zoe' ? 'zoe' : 'hand' });
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
   }
 

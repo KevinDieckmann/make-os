@@ -44,6 +44,9 @@ export interface AGeburtstag {
   anlass?: { tagId: string; aktion: AnlassAktion; ab: string; erledigt: boolean };
 }
 
+/** Was in der Kundengewinnung auf die Person wartet (02.11., Prüfung D): Mail-Stapel, Druckliste, Homepage-Funde — nur Zahl, Satz, Ziel. */
+export interface AMotor { id: 'mails' | 'briefe' | 'funde'; n: number; titel: string; href: string }
+
 /** Danke-Mails, die zu einem Event bereitliegen (Netzwerken, 02.10.) — nur die Zahl und das Ziel. */
 export interface ADanke { id: string; n: number; eventTitel: string; href: string }
 
@@ -58,6 +61,8 @@ export interface Anstehend {
   geburtstage: AGeburtstag[];
   /** Danke-Mails nach einem Event (Netzwerken, 02.10.) — fehlt in älteren Ständen. */
   danke?: ADanke[];
+  /** Kampagnen-Mails zur Freigabe, Briefe zum Drucken, Funde zum Prüfen (02.11.) — nur Business; fehlt in älteren Ständen. */
+  motor?: AMotor[];
   /**
    * Zeiten der Termine hinter Meetings der letzten Tage (nur Schlüssel, auf die ein Meeting zeigt) — damit die Power Hour
    * „Wie lief's?“ aus der Kartei auf der Seite rechnen kann (lib/crm/erfassen.ts `nachbereitung` mit `termine`).
@@ -95,7 +100,7 @@ export function anstehendFuerSpace(a: Anstehend, space: 'privat' | 'business' | 
     return { ...z, jeBereich: { privat: s === 'privat' ? z : null0, business: s === 'business' ? z : null0 } };
   };
   const termine = (s: 'privat' | 'business') => a.termine.filter(t => !t.bereich || t.bereich === s);
-  if (space === 'privat') return { ...a, vorschlaege: vorschlaege('privat'), termine: termine('privat'), buchungen: [], followups: [], nachbereiten: [], danke: [], nachbereitZeiten: {}, fristen: a.fristen.filter(f => !f.business), geburtstage: a.geburtstage.filter(g => g.herkunft !== 'crm') };
+  if (space === 'privat') return { ...a, vorschlaege: vorschlaege('privat'), termine: termine('privat'), buchungen: [], followups: [], nachbereiten: [], danke: [], motor: [], nachbereitZeiten: {}, fristen: a.fristen.filter(f => !f.business), geburtstage: a.geburtstage.filter(g => g.herkunft !== 'crm') };
   if (space === 'business') return { ...a, vorschlaege: vorschlaege('business'), termine: termine('business'), fristen: a.fristen.filter(f => f.business), geburtstage: a.geburtstage.filter(g => g.herkunft === 'crm') };
   return a;
 }

@@ -14,7 +14,7 @@ import { bauPruefen } from '@/lib/bau/pruefen';
 import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
 import { businessHaushaltVon } from '@/lib/zugang/konto-sicht-server';
 import { istDienst } from '@/lib/zugang/dienst';
-import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { darfSteuern } from '@/lib/zugang/steuern';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { FESTE_PLATZHALTER, STANDARD_FELDER, STARTVORLAGEN, VERTRAG_HINWEIS, VORLAGE_ARTEN, FELD_TYPEN } from '@/lib/vertraege/modell';
 import { VertragFehler, eigeneArtAnlegen, vorlageAnzeige, vorlageArchiv, vorlageAusGeruest, vorlagePruefung, vorlageSpeichern, vorlagenLaden } from '@/lib/vertraege/server';
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     ok: true, vorlagen: d.vorlagen.map(vorlageAnzeige), arten: [...VORLAGE_ARTEN, ...(d.arten ?? [])], feste: FESTE_PLATZHALTER, standard: STANDARD_FELDER, feldTypen: FELD_TYPEN,
     geruest: STARTVORLAGEN.map(s => ({ id: s.id, titel: s.titel, art: s.art, paragraphen: s.paragraphen.length })), hinweis: VERTRAG_HINWEIS, ...(z.nurBusiness ? { nurLesen: true } : {}),
     // „Vorlagen importieren (Datei)“ nur für einen Inhaber per Sitzung — die Route /api/vertraege/vorlagen/sammel prüft selbst.
-    ...(!istDienst(req) && !z.nurBusiness && (await istInhaber(z.person)) ? { sammelImport: true } : {}),
+    ...(!istDienst(req) && !z.nurBusiness && (await darfSteuern(z.person)) ? { sammelImport: true } : {}),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
 

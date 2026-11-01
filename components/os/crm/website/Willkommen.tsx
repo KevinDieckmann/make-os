@@ -46,7 +46,7 @@ export function WillkommenKarte({ i = 3 }: { i?: number }) {
         <Schalter an={!!d.willkommen} aus={!d.istInhaber} onChange={an => void senden({ willkommen: an }, an ? 'Willkommens-Mails an — für Einwilligungen ab heute.' : 'Willkommens-Mails aus.')} erklaerung="kampagnen.willkommen">
           Willkommens-Mails nach Einwilligung{d.willkommen ? ` (an seit ${tag(d.willkommen.seit)}, ${d.willkommen.von})` : ''}
         </Schalter>
-        {!d.istInhaber && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Einschalten und Texte ändern darf nur ein Inhaber.</span>}
+        {!d.istInhaber && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Einschalten und Texte ändern dürfen Inhaber und volle Mitglieder des Haushalts.</span>}
 
         <b style={{ fontSize: TYP.bedien, color: C.ink }}>Texte</b>
         {bearbeitet.map((s, j) => (

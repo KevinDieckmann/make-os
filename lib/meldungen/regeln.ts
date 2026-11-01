@@ -52,7 +52,9 @@ export type GespeicherteArt = MeldungArt | 'sammel';
  * heute/überfällig, Kalender-Vorschläge von ZOE im Stapel — alle aus lib/heute/anstehend.ts (`anstehendAbleiten`).
  * Offene Buchungsanfragen meldet die Glocke schon beim Eingang (gespeicherte Art „buchung“) — hier nicht doppelt.
  */
-export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag' | 'danke' | 'businessfrei' | 'routine';
+export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag' | 'danke' | 'businessfrei' | 'routine' | 'kampagne';
+// `kampagne` (02.11., Prüfung D): „n Kampagnen-Mails warten auf Freigabe“ · „n Briefe drucken“ · „n Funde prüfen“ — aus Mail-Stapel und Homepage-Funden
+// abgeleitet (lib/crm/motor-dran.ts), nie gespeichert, die Zahl steckt in der Kennung (wie `danke`), immer Business.
 // `routine` (10.10., Routinen 2): eine Routine mit „Erinnerung“ ist jetzt dran (Uhrzeit bzw. Tageszeit erreicht, noch nicht erledigt) —
 // aus Routinen + eigenem Log abgeleitet (lib/planung/routinen-erinnerung.ts), nie gespeichert; ein älterer Stand leitet sie einfach nicht ab.
 // `danke` (02.10., Netzwerken): „n Danke-Mails bereit“ — ab dem Folgetag eines Events, aus Teilnahme + Kartei abgeleitet.
@@ -293,6 +295,8 @@ export interface AnstehendFuerGlocke {
   vorschlaege?: { kalender: number; jeBereich?: { privat: { kalender: number }; business: { kalender: number } } };
   /** Danke-Mails, die bereitliegen (Netzwerken, 02.10.) — je Event eine Zeile mit der Zahl. */
   danke?: readonly { id: string; n: number; eventTitel: string; href: string }[];
+  /** Kundengewinnung (02.11.): Mail-Stapel, Druckliste, Funde — je Art eine Zeile mit der Zahl. */
+  motor?: readonly { id: string; n: number; titel: string; href: string }[];
 }
 
 /**
@@ -324,6 +328,8 @@ export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; je
   if (a.vorschlaege?.kalender) dazu('vorschlag', `kalender-${a.vorschlaege.kalender}`, `${a.vorschlaege.kalender} Kalender-Vorschl${a.vorschlaege.kalender === 1 ? 'ag' : 'äge'} von ZOE ${a.vorschlaege.kalender === 1 ? 'wartet' : 'warten'} auf Freigabe`, stapelLink(a.vorschlaege));
   // Die Zahl steckt in der Kennung: wird eine Danke-Mail verschickt oder kommt eine dazu, meldet sich die Glocke neu.
   for (const d of a.danke ?? []) if (d.n > 0) dazu('danke', `${d.id}-${d.n}`, `${d.n} Danke-Mail${d.n === 1 ? '' : 's'} bereit — ${d.eventTitel}`, d.href);
+  // Die Zahl steckt in der Kennung: kommt eine Mail/ein Fund dazu oder wird freigegeben, meldet sich die Glocke neu. Immer Business (ruht in einer Business-freien Zeit).
+  for (const m of a.motor ?? []) if (m.n > 0) dazu('kampagne', `${m.id}-${m.n}`, m.titel, m.href, true);
   for (const f of a.followups) dazu('followup', f.id, `${f.tageUeber > 0 ? `Überfällig seit ${f.tageUeber} ${f.tageUeber === 1 ? 'Tag' : 'Tagen'}` : 'Heute'}: ${f.text}${f.name && !f.text.includes(f.name) ? ` (${f.name})` : ''}`, f.href);
   return raus;
 }
@@ -353,7 +359,7 @@ function kurzSchluessel(s: string): string {
  * Arten, die immer Business sind (Markttraktion, Netzwerken, Buchungsseiten, Verträge der Gesellschaften; Paket 4c: `medien` — Freigaben fürs Marketing
  * und KI-Videos aus dem Agenten-Bereich, beides nur im Business).
  */
-export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke', 'medien', 'produkte', 'prozess', 'angebot']);
+export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke', 'medien', 'produkte', 'prozess', 'angebot', 'kampagne']);
 
 /**
  * Ist eine Meldung Business? Arten aus `BUSINESS_ARTEN`, Buchungs-Bezüge, abgeleitete Business-Fristen (`business`) und alles mit

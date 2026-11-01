@@ -8,7 +8,8 @@ import { NextResponse } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { istDienst } from '@/lib/zugang/dienst';
-import { istInhaber, personDerSitzung, nurDerInhaber, ohnePerson } from '@/lib/zugang/tor';
+import { personDerSitzung, ohnePerson } from '@/lib/zugang/tor';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { haushaltFuer } from '@/lib/finanzen/haushalt/zugriff';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { SAMMEL_MAX_BYTES } from '@/lib/vertraege/sammel';
@@ -20,10 +21,11 @@ export const dynamic = 'force-dynamic';
 const fehler = (text: string, status: number) => NextResponse.json({ ok: false, fehler: text }, { status });
 
 export async function POST(req: Request) {
-  if (istDienst(req)) return fehler('Vorlagen importiert nur ein Inhaber per Sitzung — nie der Dienstweg.', 403);
+  if (istDienst(req)) return fehler('Vorlagen importieren nur Inhaber und volle Mitglieder per Sitzung — nie der Dienstweg.', 403);
   const person = personDerSitzung(req);
   if (!person) return ohnePerson();
-  if (!(await istInhaber(person))) return nurDerInhaber();
+  // Steuern (02.11., Kevin: volles Mitglied wie Inhaber): EINE Regel lib/zugang/steuern.ts.
+  if (!(await darfSteuern(person))) return fehler(NUR_STEUERN, 403);
   const h = await haushaltFuer(person);
   if (!h) return fehler('Für dieses Konto nicht freigegeben.', 403);
   const alterBau = bauPruefen(req);

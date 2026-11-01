@@ -93,6 +93,8 @@ export function telegramText(m: Pick<Meldung, 'art' | 'titel'> & Partial<Pick<Me
   if (m.art === 'angebot' && /^Neue Baustein-Bestellung/.test(m.titel)) return 'Eine Bestellung wartet auf Freigabe — Details in MAKE OS';
   if (m.art === 'angebot') return 'Ein angefordertes Angebot ist raus bzw. wartet auf Freigabe — Details in MAKE OS';
   if (m.art === 'danke') return 'Danke-Mails bereit — Details in MAKE OS';
+  // Kundengewinnung (02.11.): Mail-Stapel, Druckliste, Funde — nie Kampagne, Betrieb oder Zahl auf einen Messenger.
+  if (m.art === 'kampagne') return 'In der Kundengewinnung wartet etwas auf dich — Details in MAKE OS';
   // Schlaf-Hilfe (09.10.): Gesundheit nie im Wortlaut auf einen Messenger.
   if (m.art === 'gesundheit') return 'Ein Gesundheits-Hinweis wartet — Details in MAKE OS';
   // Routinen 2 (10.10.): nie der Name einer Routine auf einen Messenger (oft Gesundheit).

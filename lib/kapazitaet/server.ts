@@ -17,7 +17,8 @@ import { localDay } from '@/lib/zeit';
 import { tagPlus, montagVon } from '@/lib/zeit/kalender-kern';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
 import { ladeKonten } from '@/lib/zugang/konten';
-import { haushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { darfSteuern } from '@/lib/zugang/steuern';
 import { teamStand, teamSpeicherName, type TeamDatei } from '@/lib/make-one/team-speicher';
 import { protokolliere } from '@/lib/store/aenderungsprotokoll';
 import { verfuegbarkeitFuer } from '@/lib/kalender/verfuegbarkeit';
@@ -74,7 +75,7 @@ export const kapaIdVon = (speicher: string) => `${KONTO}${speicher}`;
 
 /** Ändern (Ops) — Rechte rein in aendern.ts; hier nur Wer, Team und die Sperre. */
 export async function kapaSchreiben(person: string, ops: unknown): Promise<Ergebnis> {
-  const [personen, inhaber, name] = await Promise.all([kapaPersonen(), istInhaber(person), kapaSpeicher()]);
+  const [personen, inhaber, name] = await Promise.all([kapaPersonen(), darfSteuern(person), kapaSpeicher()]);
   const ids = new Set(personen.map(p => p.id));
   let ergebnis: Ergebnis = { ok: false, status: 400, fehler: 'Keine Änderung.' };
   await updateJson<KapaDatei>(name, alt => {

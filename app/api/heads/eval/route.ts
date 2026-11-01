@@ -24,7 +24,8 @@ import { HEADS, SYSTEM, SCHEMA, AGENT_ID, REVIEW_MODI, aufgabe, datenBlock, type
 import { normalisiere } from '@/lib/heads/pruefer';
 import { bewerte, passK, type Bewertung } from '@/lib/heads/eval';
 import type { ReplayStand } from '@/lib/heads/lauf';
-import { nurInhaber, imHaushaltDesInhabers, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltDesInhabers, imHaushaltOderSystemlauf, KARTEI_GESPERRT } from '@/lib/zugang/haushalt-inhaber';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { zuGross, ZU_GROSS } from '@/lib/zugang/umfang';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
@@ -53,7 +54,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const schranke = modellSchranke(req); if (schranke) return schranke;
   if (zuGross(req, 1000000)) return ZU_GROSS(1000000);
-  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
+  // Bewertung auslösen (02.11., Prüfung D): Inhaber ODER volles Mitglied des Haushalts — wie die Einstellungen der Heads; Systemlauf ohne Person wie bisher.
+  const zugang = await imHaushaltOderSystemlauf(req);
+  if (!zugang || (zugang.person !== null && !(await darfSteuern(zugang.person)))) return NextResponse.json({ ok: false, error: NUR_STEUERN }, { status: 403 });
   let b: { head?: string; n?: number; k?: number; modus?: string; vergleich?: boolean };
   try { b = await jsonBegrenzt(req, 1000000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const h = headAus(b.head);

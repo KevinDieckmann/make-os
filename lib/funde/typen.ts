@@ -144,7 +144,8 @@ export const ARTEN_VORLAGEN: { id: string; name: string; arten: string[] }[] = [
   { id: 'restaurant-cafe', name: 'Nur Restaurants & Cafés', arten: ['restaurant', 'cafe'] },
 ];
 
-export interface FundeLaufStand { tag: string; gebiet?: string; geholt: number; neu: number; vorbereitet: number; fehler?: string; am: string }
+/** `texte` (02.11.): womit die Vorschau-Texte dieses Laufs entstanden — Modell oder Regelwerk; `ohneKi` = warum ohne (z. B. Hintergrund-KI aus). */
+export interface FundeLaufStand { tag: string; gebiet?: string; geholt: number; neu: number; vorbereitet: number; fehler?: string; am: string; texte?: 'ki' | 'regelwerk'; ohneKi?: string }
 
 export interface FundeBestand {
   funde: Fund[];

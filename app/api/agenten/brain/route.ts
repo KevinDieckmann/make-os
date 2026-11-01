@@ -10,7 +10,8 @@
 // Nur ein Inhaber mit eigener Sitzung (`eigenePerson`: Dienstweg 403, Haushalt des Inhabers; dann `istInhaber`, sonst 403). Logik:
 // lib/agenten/brain-agenten.ts (rein) + brain-agenten-server.ts. Body ≤ 64 KB (`jsonBegrenzt`), Bau-Kennung beim Schreiben.
 import { NextResponse } from 'next/server';
-import { eigenePerson, istInhaber } from '@/lib/zugang/tor';
+import { eigenePerson } from '@/lib/zugang/tor';
+import { darfSteuern } from '@/lib/zugang/steuern';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { AGENTEN_NUR_SELBST } from '@/lib/agenten/typen';
 
@@ -18,12 +19,13 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const nein = (status: number, fehler: string) => NextResponse.json({ ok: false, fehler, error: fehler }, { status });
-const NUR_INHABER = 'Aus dem Brain übernimmt nur ein Inhaber der Instanz.';
+const NUR_INHABER = 'Aus dem Brain übernehmen nur Inhaber und volle Mitglieder des Haushalts.';
 
 async function zugang(req: Request, schreibend: boolean): Promise<{ person: string } | NextResponse> {
   const z = await eigenePerson(req, schreibend, AGENTEN_NUR_SELBST);
   if (z instanceof NextResponse) return z;
-  if (!(await istInhaber(z.person))) return nein(403, NUR_INHABER);
+  // Steuern (02.11., Kevin: volles Mitglied wie Inhaber): EINE Regel lib/zugang/steuern.ts.
+  if (!(await darfSteuern(z.person))) return nein(403, NUR_INHABER);
   return z;
 }
 

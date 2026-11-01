@@ -6,7 +6,6 @@
 import { UG_NAME } from '@/lib/einheiten';
 import { firmaOhneRechtsform } from '@/lib/kalender/verbinden-anzeige';
 import { vornameVon } from '@/lib/zoe/grundauftrag';
-import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
 import { datenschutzOeffentlichLaden } from '@/lib/datenschutz/einrichtung-server';
 import { datenschutzLink } from '@/lib/kalender/buchung';
 import { naechsterSchritt, fortschritt, type AblaufStand } from './ablauf';
@@ -16,8 +15,14 @@ import type { ZoeKontext } from './zoe-texte';
 import type { CheckVorlage } from './typen';
 import type { ErgebnisAnsicht } from './ergebnis';
 
+/**
+ * Wer die Leads der Website empfängt (Check, Kontaktformular, Unterlagen, Bausteine): die Einstellung, sonst (02.11., Prüfung D) die/der
+ * Marketing-Verantwortliche (lib/crm/verantwortung-server.ts — nur ein Konto im Haushalt der Inhaber, sonst Rückfall auf den Haupt-Inhaber).
+ */
 export async function gastgeberVon(e: CheckEinstellungen): Promise<string | null> {
-  return e.gastgeber || (await inhaberSpeicher());
+  if (e.gastgeber) return e.gastgeber;
+  const { verantwortlichePerson } = await import('@/lib/crm/verantwortung-server');
+  return verantwortlichePerson('marketing');
 }
 
 export async function zoeKontext(e: CheckEinstellungen): Promise<ZoeKontext> {

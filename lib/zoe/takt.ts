@@ -136,7 +136,9 @@ interface NutzungStand { letzteAnalyse?: string; /** letzter echter Versuch des 
  * Tagesstart) bzw. mit Regelwerk statt Modell, weil das KI-Tor den Aufruf sperrt (Morgen-/Abendlauf, Tageslauf-Schritte
  * „übersprungen“, Heads, Brain-Konsolidierung). Kein Byte geht in beiden Fällen an das Modell.
  */
-export const KI_LAEUFE: ReadonlySet<string> = new Set(['verbesserung', 'zoe-aufgaben', 'finanzchef', 'faden', 'funde']);
+// `funde` seit 02.11. (Prüfung D) NICHT mehr: die Homepage-Funde laufen ohne Hintergrund-KI mit dem Regelwerk (lib/funde/lauf.ts `vorschauFuer` fragt
+// den Schalter selbst, nichts geht ans Modell) — vorher lief der Abendlauf dann still gar nicht.
+export const KI_LAEUFE: ReadonlySet<string> = new Set(['verbesserung', 'zoe-aufgaben', 'finanzchef', 'faden']);
 
 export async function faellig(jetzt = new Date()): Promise<Faellig[]> {
   return sperrenFiltern(await faelligOhnePause(jetzt), jetzt);
@@ -329,7 +331,7 @@ async function faelligOhnePause(jetzt: Date): Promise<Faellig[]> {
   }
 
   // 3b) Homepage-Funde (30.10., Kampagne „Homepage“) — ab 20 Uhr, einmal am Tag, nur mit aktiver Kampagne, Gebieten und eingeschaltetem
-  //     Agenten (`fundeFaellig`); Hintergrund-KI aus → gar nicht eingereiht (KI_LAEUFE). Der Lauf legt nur Vorschläge in den Stapel.
+  //     Agenten (`fundeFaellig`); Hintergrund-KI aus → Regelwerk statt Modell (02.11.). Der Lauf legt nur Vorschläge in den Stapel.
   const fundeHeute = (auftraege?.auftraege ?? []).some(a => a.name === 'funde' && a.tag === heute && a.status !== 'fehler');
   if (h >= 20 && !fundeHeute) {
     try {

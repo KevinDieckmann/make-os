@@ -117,6 +117,8 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     vorschlaege,
     geburtstage: geburtstageVorlauf(geburtstage, person, heute),
     danke: dankeAnstehend(crm, kontakte, heute, person),
+    // Kundengewinnung (02.11., Prüfung D): Mail-Stapel, Druckliste, Homepage-Funde — an die Zuständige (lib/crm/motor-dran.ts), nur Business.
+    motor: await sicher((await import('@/lib/crm/motor-dran-server')).motorDranLesen(person, crm), []),
   };
   return nurBusiness ? anstehendFuerSpace(a, 'business') : a;
 }
@@ -131,6 +133,8 @@ export async function anstehendStand(jetzt: Date = new Date()): Promise<string> 
   // F2 N9: alle Quellen von `anstehendLesen` — Bauplan-Etappen (`backlog`), Steuer-Vorlage (`steuern`), Familie (Geburtstage,
   // Wichtige Tage mit Geschenk-Vorlauf) — sonst bliebe das ETag nach einer Änderung dort stehen.
   // 08.10.: Meilensteine an eigenen Zielen hängen an Konten (teilen) und Zielen — beide zählen mit.
-  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'ziele', 'konten', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h)] : [])];
+  // 02.11. (Prüfung D): Mail-Stapel und Homepage-Funde (Steht an › Kundengewinnung).
+  const motor = await sicher((await import('@/lib/crm/motor-dran-server')).motorDranBestaende(), [] as string[]);
+  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'ziele', 'konten', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h)] : []), ...motor];
   return `${wandzeit(jetzt).slice(0, 15)}:${await sicher(speicherStand(namen), '0')}`;
 }

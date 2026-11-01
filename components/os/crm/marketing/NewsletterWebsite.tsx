@@ -5,7 +5,7 @@
 // (wie beim Formular „Angebot anfordern“ — die Wahl ist die Freigabe der automatischen Bestätigungsmails), Name in der Mail, Einwilligungstext
 // (Fassung zählt hoch, sobald sich der Wortlaut ändert), Adresse der Website, optional Verantwortlich/Datenschutz-Link als Abweichung von
 // Einstellungen › Datenschutz. Darunter die Anmeldungen (Stand, Datum, Adresse maskiert) mit „löschen“ und „ins CRM übernehmen“.
-// Einstellen nur ein Inhaber (der Server prüft); alle anderen sehen nur. Daten nur über /api/newsletter/intern.
+// Einstellen nur Inhaber und volle Mitglieder des Haushalts (02.11., der Server prüft); alle anderen sehen nur. Daten nur über /api/newsletter/intern.
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -97,7 +97,7 @@ export function NewsletterWebsite() {
           Öffentliche Seite /newsletter mit Double-Opt-in: Bestätigungsmail aus eurem Postfach, erst nach dem Klick steht die Person mit der Einwilligung
           „Newsletter“ im CRM. Der Versand der Ausgaben bleibt Handarbeit (oben). Kommt ausgeschaltet.
         </p>
-        {aus && <Hinweis art="info">Einstellen kann nur ein Inhaber — du siehst den Stand.</Hinweis>}
+        {aus && <Hinweis art="info">Einstellen dürfen Inhaber und volle Mitglieder des Haushalts — du siehst den Stand.</Hinweis>}
         {e.aktiv && !d.bereit && d.gruende.length > 0 && <Hinweis art="achtung" titel="Die Seite ist trotzdem zu">{d.gruende.join(' ')}</Hinweis>}
         {!d.vorgabe.verantwortlich && !e.verantwortlich && (
           <Hinweis art="achtung" titel="Verantwortlicher fehlt">Ohne Verantwortlichen bleibt die Anmeldung zu. <Link href={WEG.datenschutz('verantwortlicher')} style={{ color: C.aktiv }}>Jetzt eintragen</Link></Hinweis>

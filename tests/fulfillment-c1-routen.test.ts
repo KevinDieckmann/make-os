@@ -100,9 +100,9 @@ describe('Update-Probe und Ablauf', () => {
     const ue = await rufe('fulfillment', 'GET', sitzung('partnerin'));
     expect(ue.status).toBe(200);
     expect((ue.j.prozesse as { art: string }[]).filter(p => p.art === 'paket')).toHaveLength(3);
-    // EIN Schreibweg für den Schalter (zusammengeführt 11.10.): POST /api/fulfillment/kunde { aktion: 'schalter' } — nur der Inhaber; die Vorlagen-Ops lehnen ab.
+    // EIN Schreibweg für den Schalter (zusammengeführt 11.10.): POST /api/fulfillment/kunde { aktion: 'schalter' } — nur wer steuern darf (Inhaber, volles Mitglied); die Vorlagen-Ops lehnen ab.
     expect((await rufe('fulfillment', 'PATCH', sitzung('pia'), { ops: [{ op: 'einstellungen', felder: { kundenLink: { an: true } } }] })).status).toBe(400);
-    expect((await rufe('fulfillment/kunde', 'POST', sitzung('olaf'), { aktion: 'schalter', an: true })).status).toBe(403);
+    expect((await rufe('fulfillment/kunde', 'POST', sitzung('partnerin'), { aktion: 'schalter', an: true })).status).toBe(403); // 02.11.: volle Mitglieder steuern wie Inhaber
     expect((await rufe('fulfillment/kunde', 'POST', dienst('pia'), { aktion: 'schalter', an: true })).status).toBe(403);
     const sch = await rufe('fulfillment/kunde', 'POST', sitzung('pia'), { aktion: 'schalter', an: false });
     expect(sch.status).toBe(200);

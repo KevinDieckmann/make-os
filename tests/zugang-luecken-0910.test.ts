@@ -30,16 +30,16 @@ beforeAll(async () => {
   const db = await import('@/lib/store/local-db');
   const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied') =>
     ({ id, speicher, email: `${speicher}@example.invalid`, name: speicher, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'haus-probe' });
-  await db.saveJson('konten', { konten: [konto('k1', 'erste', 'inhaber'), konto('k2', 'zweite', 'inhaber'), konto('k3', 'dritte', 'mitglied')], einladungen: [] });
+  await db.saveJson('konten', { konten: [konto('k1', 'erste', 'inhaber'), konto('k2', 'zweite', 'inhaber'), konto('k3', 'dritte', 'mitglied'), { ...konto('k4', 'vierte', 'mitglied'), finanzRecht: 'business' }], einladungen: [] });
   await db.saveJson('apple-reminders-cache', { daten: [{ id: 'r1', list: 'Liste', title: 'MARKE-ERINNERUNG-HAUPT', completed: false, priority: 0, source: 'apple-reminders' }], at: new Date().toISOString(), quelle: 'zulieferung' });
 }, 60_000);
 afterAll(() => { globalThis.fetch = echtesFetch; rmSync(ordner, { recursive: true, force: true }); });
 
 describe('POST /api/loop/verbesserung — nur Systemlauf oder Inhaber', () => {
-  it('Mitglied per Sitzung → 403 „Nur der Inhaber.“', async () => {
-    const r = await rufe('loop/verbesserung', 'POST', sitzung('dritte'));
+  it('Konto „nur Business“ per Sitzung → 403 (02.11.: ein volles Mitglied steuert wie ein Inhaber)', async () => {
+    const r = await rufe('loop/verbesserung', 'POST', sitzung('vierte'));
     expect(r.status).toBe(403);
-    expect(r.text).toContain('Nur der Inhaber.');
+    expect(r.text).toContain('volle Mitglieder');
   });
   it('Inhaber (auch der zweite) und Dienstweg kommen am Tor vorbei', async () => {
     for (const kopf of [sitzung('erste'), sitzung('zweite'), dienst()]) expect((await rufe('loop/verbesserung', 'POST', kopf)).text).not.toContain('Nur der Inhaber.');

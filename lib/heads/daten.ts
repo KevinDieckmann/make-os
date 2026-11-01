@@ -17,7 +17,8 @@ import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, zielKriterien, ka
 import { leads as leadZeilen, fehltBisSqlZeile, salesBereit, mqlErreicht, geklaert, inArbeit, sqlEntscheidungOffen } from '@/lib/crm/leads';
 import { tagPlus } from '@/lib/zeit/kalender-kern';
 import { kanalLeistung } from '@/lib/crm/score';
-import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote, marketingTrichter, ideeTitel, schonUebernommen } from '@/lib/crm/marketing';
+import { marketingKennzahlenMitQuellen, type TraktionQuellen } from '@/lib/crm/traktion-index';
+import { einstellungAus, wirkungZahlen, newsletterEmpfaenger, abmeldequote, marketingTrichter, ideeTitel, schonUebernommen } from '@/lib/crm/marketing';
 import { anfragenListe } from '@/lib/crm/anfragen';
 import { kontextAus, segmentAuswerten, segmentZiele, segmentFirmen } from '@/lib/crm/segmente';
 import { staendeZaehlen } from '@/lib/crm/sequenz';
@@ -85,7 +86,9 @@ export function dealSignale(c: CrmBestand['chancen'][number], personen: Kontakt[
  * `marketingLage` (02.11., M2 K2): Social, Website, Homepage-Funde und Mail-Stapel als Zahlen (lib/heads/marketing-lage-server.ts) — ohne Angabe
  * (reine Läufe, Tests, Vorschau ohne Server) stehen die Blöcke als null da.
  */
-export type DatenpaketOptionen = WerIstDranOptionen & { playbooks?: readonly Playbook[]; marketingLage?: MarketingLage };
+/** `traktionQuellen` (02.11., Prüfung D): Website, Social, Kampagnen-Motor (lib/crm/traktion-quellen-server.ts) — die Kennzahlen des Head of Marketing
+ *  rechnen damit DIESELBE Zahl wie der Traktions-Index und Marketing › Übersicht (`marketingKennzahlenMitQuellen`). Ohne Angabe ohne Quellen. */
+export type DatenpaketOptionen = WerIstDranOptionen & { playbooks?: readonly Playbook[]; marketingLage?: MarketingLage; traktionQuellen?: TraktionQuellen };
 
 /** Kundenprofil kompakt (02.11., M2): Branchen, Orte, Größe, MRR je Kunde und Anzahl — ohne Namen (die stehen nur im Kampagnen-Modus). */
 function kundenprofilKurz(crm: CrmBestand, heute: string) {
@@ -191,7 +194,7 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       bean_verteilung: bean(),
       positionierung: { text: kurz(einst.positionierung, 1500), zielgruppe: kurz(einst.icp, 1500), ton: einst.ton, saeulen: einst.saeulen.map(x => ({ id: x.id, name: x.name, beschreibung: kurz(x.beschreibung, 200) })) },
       kundenprofil: kundenprofilKurz(crm, heute),
-      kennzahlen: marketingKennzahlen(aktiv, crm, heute).map(x => ({ label: x.label, wert: x.anzeige, ampel: x.ampel, ziel: x.ziel })),
+      kennzahlen: marketingKennzahlenMitQuellen({ kontakte: aktiv, crm, heute, ...(opt.traktionQuellen ?? {}) }).map(x => ({ label: x.label, wert: x.anzeige, ampel: x.ampel, ziel: x.ziel })),
       // 27.09.: die Marketing-Strecke und die offenen Anfragen — der Head sieht, was hängt.
       trichter: (() => { const t = marketingTrichter(aktiv, crm, heute); return { reichweite: t.reichweite, resonanz: t.resonanz, anfragen: { gesamt: t.anfragen.gesamt, offen: t.anfragen.offen, quote: t.anfragen.quote }, uebergabe: t.uebergabe, kosten: t.kosten }; })(),
       anfragen_offen: anfragenListe(aktiv, crm, heute, 30).filter(a => a.offen).slice(0, 10).map(a => ({ name: a.name, kanal: a.kanal, datum: a.am.slice(0, 10), text: kurz(a.text, 200) })),
