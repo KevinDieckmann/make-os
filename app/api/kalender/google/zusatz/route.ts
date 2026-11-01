@@ -5,7 +5,9 @@
 // GET ?start=<wand>&ende=<wand>[&uid=]  → Überschneidungen mit Terminen der weiteren Konten (Hinweis beim Anlegen/Verschieben)
 // POST { aktion: 'verbinden', konto? }  → Adresse der Google-Anmeldung (konto = neu verbinden)
 //      { aktion: 'kalender', konto, kalender: [id…] } · { aktion: 'label', konto, label } · { aktion: 'abgleichen', konto? }
-//      { aktion: 'trennen', konto }     → bei Google widerrufen, Konto + Spiegel weg
+//      { aktion: 'gruppe', konto, gruppe } (leer = keine; 01.11.: Konten mit derselben Gruppe = EINE Ebene im Kalender)
+//      { aktion: 'spiegeln', konto, an }  (01.11.: „Belegt“ in den eigenen Google-Hauptkalender; Vorgabe an)
+//      { aktion: 'trennen', konto }     → bei Google widerrufen, Konto + Spiegel weg (die „Belegt“-Blöcke dieses Kontos ebenso)
 // Nur die eigene Person (Sitzung) — Dienstweg und andere Konten 403 (lib/google/zugang.ts). Nie Tokens, nie volle Adressen.
 import { NextResponse } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
@@ -14,6 +16,7 @@ import { GoogleApiFehler } from '@/lib/google/http';
 import { zusatzStatus, zusatzStarten, zusatzSetzen, zusatzKontoTrennen, labelSauber, istZusatzKonto, ZusatzFehler, ladeZusatzKonto, ZUSATZ_KALENDER_MAX } from '@/lib/google/zusatz';
 import { zusatzAbgleichen, zusatzKalenderListe, zusatzKalenderWaehlen, zusatzSpiegelEntfernen, zusatzSpiegelStatus, ueberschneidungenFuer } from '@/lib/kalender/google/zusatz';
 import { cacheNeuSchreiben } from '@/lib/kalender/icloud';
+import { belegtSpiegeln, belegtSpiegelStatus } from '@/lib/kalender/google/belegt-spiegel';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
 
 export const runtime = 'nodejs';
@@ -48,14 +51,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, liste: l.map(x => ({ id: x.id, name: x.name, primary: x.primary, gewaehlt: k.kalender.includes(x.id) || (x.primary && k.kalender.includes('primary')) })) }, { headers: { 'Cache-Control': 'no-store' } });
     } catch (e) { return fehlerAntwort(e); }
   }
-  const [status, spiegel] = await Promise.all([zusatzStatus(z.person), zusatzSpiegelStatus(z.person)]);
-  return NextResponse.json({ ok: true, ...status, konten: status.konten.map(k => ({ ...k, spiegel: spiegel[k.id] ?? [] })) }, { headers: { 'Cache-Control': 'no-store' } });
+  const [status, spiegel, belegt] = await Promise.all([zusatzStatus(z.person), zusatzSpiegelStatus(z.person), belegtSpiegelStatus(z.person).catch(() => ({ je: {} as Record<string, number>, offen: 0 }))]);
+  return NextResponse.json({ ok: true, ...status, konten: status.konten.map(k => ({ ...k, spiegel: spiegel[k.id] ?? [], belegt: belegt.je[k.id] ?? 0 })), belegtSpiegel: { offen: belegt.offen, ...('fehler' in belegt && belegt.fehler ? { fehler: belegt.fehler } : {}) } }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
 export async function POST(req: Request) {
   const z = await eigenePerson(req, true, NUR_SELBST);
   if (z instanceof NextResponse) return z;
-  let b: { aktion?: unknown; konto?: unknown; kalender?: unknown; label?: unknown };
+  let b: { aktion?: unknown; konto?: unknown; kalender?: unknown; label?: unknown; gruppe?: unknown; an?: unknown };
   try { b = await jsonBegrenzt(req, 16_000); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein JSON.' }, { status: 400 }); }
   const konto = b.konto === undefined ? undefined : istZusatzKonto(b.konto) ? b.konto : null;
   if (konto === null) return NextResponse.json({ ok: false, fehler: 'Unbekanntes Konto.' }, { status: 400 });
@@ -73,6 +76,24 @@ export async function POST(req: Request) {
       await cacheNeuSchreiben().catch(() => { /* nächster Lauf */ });
       return NextResponse.json({ ok: true });
     }
+    if (b.aktion === 'gruppe') {
+      const roh = typeof b.gruppe === 'string' ? b.gruppe.trim() : b.gruppe === null ? '' : undefined;
+      if (roh === undefined) return NextResponse.json({ ok: false, fehler: 'gruppe als Text (leer = keine Gruppe).' }, { status: 400 });
+      const gruppe = roh ? labelSauber(roh) : null;
+      if (roh && !gruppe) return NextResponse.json({ ok: false, fehler: 'Gruppe: 1–40 Zeichen.' }, { status: 400 });
+      await zusatzSetzen(z.person, konto, { gruppe });
+      await protokoll('geaendert', konto, ['gruppe']);
+      await cacheNeuSchreiben().catch(() => { /* nächster Lauf */ });
+      const spiegel = await belegtSpiegeln(z.person, { erzwingen: true }).catch(() => null);
+      return NextResponse.json({ ok: true, ...(spiegel ? { spiegel } : {}) });
+    }
+    if (b.aktion === 'spiegeln') {
+      if (typeof b.an !== 'boolean') return NextResponse.json({ ok: false, fehler: 'an: true | false.' }, { status: 400 });
+      await zusatzSetzen(z.person, konto, { spiegeln: b.an });
+      await protokoll('geaendert', konto, ['spiegeln']);
+      const spiegel = await belegtSpiegeln(z.person, { erzwingen: true }).catch(() => null);
+      return NextResponse.json({ ok: true, ...(spiegel ? { spiegel } : {}) });
+    }
     if (b.aktion === 'kalender') {
       const ids = Array.isArray(b.kalender) ? b.kalender.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length <= 300) : [];
       if (!ids.length) return NextResponse.json({ ok: false, fehler: 'Bitte mindestens einen Kalender wählen.' }, { status: 400 });
@@ -87,8 +108,10 @@ export async function POST(req: Request) {
       await zusatzSpiegelEntfernen(z.person, konto);
       await cacheNeuSchreiben().catch(() => { /* nächster Lauf */ });
       await protokoll('geloescht', konto);
+      // Die „Belegt“-Blöcke dieses Kontos im Hauptkalender gehen mit (01.11.).
+      await belegtSpiegeln(z.person, { erzwingen: true }).catch(() => { /* der Takt holt es nach */ });
       return NextResponse.json({ ok: true, ...r });
     }
-    return NextResponse.json({ ok: false, fehler: 'aktion = verbinden | kalender | label | abgleichen | trennen' }, { status: 400 });
+    return NextResponse.json({ ok: false, fehler: 'aktion = verbinden | kalender | label | gruppe | spiegeln | abgleichen | trennen' }, { status: 400 });
   } catch (e) { return fehlerAntwort(e); }
 }

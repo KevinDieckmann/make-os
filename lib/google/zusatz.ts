@@ -96,6 +96,16 @@ export interface ZusatzKonto {
   abgelaufenAm?: string;
   /** Die Glocke „neu verbinden“ ging schon — höchstens eine je Ablauf. */
   gemeldet?: true;
+  /**
+   * Firma/Gruppe (01.11., frei wählbar, 1–40 Zeichen): Konten mit derselben Gruppe erscheinen im Kalender als EINE Ebene
+   * („<Gruppe> · <Vorname>“, eigene Farbe). Ohne Gruppe je gewähltem Kalender eine Ebene wie bisher. Nie ein fester Firmenname im Code.
+   */
+  gruppe?: string;
+  /**
+   * „Belegt“ in den eigenen Google-Hauptkalender spiegeln (01.11., lib/kalender/google/belegt-spiegel.ts). Vorgabe AN — gespeichert wird
+   * nur das Ausschalten (`false`); schalten darf nur die Person selbst.
+   */
+  spiegeln?: false;
 }
 export interface ZusatzBestand { v: 1; konten: ZusatzKonto[] }
 
@@ -261,6 +271,7 @@ export async function zusatzAbschliessen(person: string, code: string, state: st
       id, email, ...(hd ? { hd } : {}), label: alt?.label ?? vorgabeLabel(email), refreshToken, accessToken: access, ablauf,
       scopes: Array.from(new Set(gewaehrt)), kalender: alt?.kalender?.length ? alt.kalender : ['primary'],
       verbundenAm: alt?.verbundenAm ?? zeit, erneuertAm: zeit, status: 'verbunden',
+      ...(alt?.gruppe ? { gruppe: alt.gruppe } : {}), ...(alt?.spiegeln === false ? { spiegeln: false as const } : {}),
     };
     return alt ? konten.map(k => (k.id === id ? neu : k)) : [...konten, neu];
   });
@@ -328,13 +339,22 @@ export async function zusatzZugriffstoken(person: string, id: string, opt: { ern
 // ── Einstellen, Trennen ─────────────────────────────────────────────────────
 
 /** Bezeichnung und/oder gewählte Kalender eines Kontos setzen. false = Konto unbekannt. */
-export async function zusatzSetzen(person: string, id: string, felder: { label?: string; kalender?: string[] }): Promise<boolean> {
+export async function zusatzSetzen(person: string, id: string, felder: { label?: string; kalender?: string[]; gruppe?: string | null; spiegeln?: boolean }): Promise<boolean> {
   if (!(await ladeZusatzKonto(person, id))) return false;
-  await aendereZusatz(person, konten => konten.map(k => (k.id === id ? {
-    ...k, ...(felder.label ? { label: felder.label } : {}), ...(felder.kalender ? { kalender: felder.kalender.slice(0, ZUSATZ_KALENDER_MAX) } : {}),
-  } : k)));
+  await aendereZusatz(person, konten => konten.map(k => {
+    if (k.id !== id) return k;
+    const neu: ZusatzKonto = { ...k, ...(felder.label ? { label: felder.label } : {}), ...(felder.kalender ? { kalender: felder.kalender.slice(0, ZUSATZ_KALENDER_MAX) } : {}) };
+    if (felder.gruppe !== undefined) { delete neu.gruppe; if (felder.gruppe) neu.gruppe = felder.gruppe; }
+    if (felder.spiegeln !== undefined) { delete neu.spiegeln; if (!felder.spiegeln) neu.spiegeln = false; }
+    return neu;
+  }));
   return true;
 }
+
+/** Spiegelt dieses Konto „Belegt“ in den Hauptkalender? Vorgabe an. Rein. */
+export const spiegeltBelegt = (k: Pick<ZusatzKonto, 'spiegeln'>): boolean => k.spiegeln !== false;
+/** Gruppe einer Zeile (leer = keine). Rein. */
+export const gruppeVon = (k: Pick<ZusatzKonto, 'gruppe'>): string | null => (k.gruppe ? labelSauber(k.gruppe) : null);
 
 /** Ein Konto trennen: bei Google widerrufen, aus dem Bestand nehmen; das letzte Konto → Bestand ganz weg. */
 export async function zusatzKontoTrennen(person: string, id: string): Promise<{ war: boolean; widerrufen: boolean }> {
@@ -358,14 +378,14 @@ export async function zusatzAlleTrennen(person: string): Promise<{ konten: numbe
 
 // ── Status (für die Oberfläche — nie Tokens, nie volle Adressen) ────────────
 
-export interface ZusatzKontoStatus { id: string; konto: string; label: string; status: 'verbunden' | 'abgelaufen'; seit: string; abgelaufenAm?: string; kalender: string[] }
+export interface ZusatzKontoStatus { id: string; konto: string; label: string; status: 'verbunden' | 'abgelaufen'; seit: string; abgelaufenAm?: string; kalender: string[]; gruppe?: string; spiegeln: boolean }
 export interface ZusatzStatus { konfiguriert: boolean; max: number; konten: ZusatzKontoStatus[] }
 
 export async function zusatzStatus(person: string): Promise<ZusatzStatus> {
   const b = await ladeZusatz(person);
   return {
     konfiguriert: zusatzKonfiguriert(), max: ZUSATZ_MAX,
-    konten: b.konten.map(k => ({ id: k.id, konto: adresseMaskiert(k.email), label: k.label, status: k.status, seit: k.verbundenAm, ...(k.abgelaufenAm ? { abgelaufenAm: k.abgelaufenAm } : {}), kalender: k.kalender })),
+    konten: b.konten.map(k => ({ id: k.id, konto: adresseMaskiert(k.email), label: k.label, status: k.status, seit: k.verbundenAm, ...(k.abgelaufenAm ? { abgelaufenAm: k.abgelaufenAm } : {}), kalender: k.kalender, ...(gruppeVon(k) ? { gruppe: gruppeVon(k)! } : {}), spiegeln: spiegeltBelegt(k) })),
   };
 }
 

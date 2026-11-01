@@ -7,14 +7,18 @@
 // Bausteine aus components/os/ui (Design-Standard), Tasten ≥ 44 px, Eingaben 16 px.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Karte, Knopf, Hinweis, Zeile, Beschriftung, eingabe, useRueckfrage } from '../ui';
+import { Karte, Knopf, Hinweis, Zeile, Beschriftung, Schalter, eingabe, useRueckfrage } from '../ui';
 import { anzahl } from '@/lib/text/zahlwort';
 
 interface KontoStand {
   id: string; konto: string; label: string; status: 'verbunden' | 'abgelaufen'; seit: string; abgelaufenAm?: string;
+  /** Firma/Gruppe (01.11.): Konten mit derselben Gruppe = eine Ebene im Kalender. */
+  gruppe?: string;
+  /** „Belegt“ in den eigenen Google-Kalender spiegeln (Vorgabe an) und wie viele Blöcke dort stehen. */
+  spiegeln: boolean; belegt?: number;
   spiegel: { kennung: string; name: string; termine: number; at?: string; fehler?: string }[];
 }
-interface Stand { ok: boolean; konfiguriert: boolean; max: number; konten: KontoStand[]; fehler?: string }
+interface Stand { ok: boolean; konfiguriert: boolean; max: number; konten: KontoStand[]; fehler?: string; belegtSpiegel?: { offen: number; fehler?: string } }
 interface Wahl { id: string; name: string; primary: boolean; gewaehlt: boolean }
 
 /** Rückkehr von Google (`?google-zusatz=…`) — eigene Texte, keine Adressen. */
@@ -43,6 +47,7 @@ export function GoogleZusatzKonten({ onGeaendert }: { onGeaendert?: () => void }
   const [offen, setOffen] = useState<string | null>(null);
   const [wahl, setWahl] = useState<Wahl[] | null>(null);
   const [label, setLabel] = useState('');
+  const [gruppe, setGruppe] = useState('');
   const { bestaetigen, dialog } = useRueckfrage();
 
   const laden = useCallback(async () => {
@@ -68,7 +73,7 @@ export function GoogleZusatzKonten({ onGeaendert }: { onGeaendert?: () => void }
   };
   const oeffnen = async (k: KontoStand) => {
     if (offen === k.id) { setOffen(null); return; }
-    setOffen(k.id); setLabel(k.label); setWahl(null);
+    setOffen(k.id); setLabel(k.label); setGruppe(k.gruppe ?? ''); setWahl(null);
     if (k.status !== 'verbunden') return;
     const d = await fetch(`/api/kalender/google/zusatz?liste=${encodeURIComponent(k.id)}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null) as { ok?: boolean; liste?: Wahl[]; fehler?: string } | null;
     if (d?.ok && d.liste) setWahl(d.liste); else setHinweis({ text: d?.fehler ?? 'Die Kalender dieses Kontos ließen sich nicht lesen.', art: 'achtung' });
@@ -78,6 +83,10 @@ export function GoogleZusatzKonten({ onGeaendert }: { onGeaendert?: () => void }
       const r = await post({ aktion: 'label', konto: k.id, label });
       if (!r.d.ok) { setHinweis({ text: r.d.fehler ?? 'Bezeichnung nicht gespeichert.', art: 'achtung' }); return; }
     }
+    if (gruppe.trim() !== (k.gruppe ?? '')) {
+      const r = await post({ aktion: 'gruppe', konto: k.id, gruppe: gruppe.trim() });
+      if (!r.d.ok) { setHinweis({ text: r.d.fehler ?? 'Gruppe nicht gespeichert.', art: 'achtung' }); return; }
+    }
     if (wahl) {
       const ids = wahl.filter(w => w.gewaehlt).map(w => w.id);
       const r = await post({ aktion: 'kalender', konto: k.id, kalender: ids });
@@ -85,6 +94,11 @@ export function GoogleZusatzKonten({ onGeaendert }: { onGeaendert?: () => void }
     }
     setHinweis({ text: 'Gespeichert — die Kalender werden neu gelesen.', art: 'gut' });
     setOffen(null); await laden(); onGeaendert?.();
+  };
+  const spiegelnSetzen = async (k: KontoStand, an: boolean) => {
+    const r = await post({ aktion: 'spiegeln', konto: k.id, an });
+    setHinweis(r.d.ok ? { text: an ? '„Belegt“ wird in deinen Google-Kalender gespiegelt.' : 'Die „Belegt“-Blöcke dieses Kontos werden aus deinem Google-Kalender gelöscht.', art: 'gut' } : { text: r.d.fehler ?? 'Ging nicht.', art: 'achtung' });
+    await laden(); onGeaendert?.();
   };
   const abgleichen = async (k: KontoStand) => {
     const r = await post({ aktion: 'abgleichen', konto: k.id });
@@ -108,7 +122,7 @@ export function GoogleZusatzKonten({ onGeaendert }: { onGeaendert?: () => void }
         {s.konten.map(k => (
           <div key={k.id} style={{ display: 'grid', gap: 8 }}>
             <Zeile
-              titel={k.label} umbrechen
+              titel={k.gruppe ? `${k.gruppe} · ${k.label}` : k.label} umbrechen
               unter={`${k.konto} · ${k.status === 'verbunden' ? `${anzahl(k.spiegel.reduce((n, x) => n + x.termine, 0), 'Termin', 'Termine')}, zuletzt ${seit(k.spiegel.map(x => x.at).filter(Boolean).sort().pop())}` : 'Anmeldung abgelaufen'}`}
               rechts={k.status === 'abgelaufen'
                 ? <Knopf onClick={() => verbinden(k.id)}>Neu verbinden</Knopf>
@@ -121,6 +135,13 @@ export function GoogleZusatzKonten({ onGeaendert }: { onGeaendert?: () => void }
                   Bezeichnung (steht hinter dem Kalendernamen)
                   <input value={label} maxLength={40} onChange={e => setLabel(e.target.value)} style={{ ...eingabe, fontSize: 16 }} />
                 </label>
+                <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+                  Firma / Gruppe (gleiche Gruppe = eine Ebene im Kalender, leer = keine)
+                  <input value={gruppe} maxLength={40} onChange={e => setGruppe(e.target.value)} style={{ ...eingabe, fontSize: 16 }} />
+                </label>
+                <Schalter erklaerung="kalender.belegtSpiegel" an={k.spiegeln} onChange={an => void spiegelnSetzen(k, an)}>
+                  {`„Belegt“ in meinen Google-Kalender${k.spiegeln && k.belegt ? ` (${anzahl(k.belegt, 'Block', 'Blöcke')})` : ''}`}
+                </Schalter>
                 {wahl && (
                   <div style={{ display: 'grid', gap: 4 }}>
                     <span style={{ fontSize: 13 }}>Welche Kalender zählen als belegt?</span>
@@ -142,6 +163,7 @@ export function GoogleZusatzKonten({ onGeaendert }: { onGeaendert?: () => void }
             {k.status === 'abgelaufen' && <div><Knopf leise ton="warn" onClick={() => trennen(k)}>Trennen</Knopf></div>}
           </div>
         ))}
+        {s.belegtSpiegel?.fehler && <Hinweis art="achtung">{`„Belegt“-Spiegel: ${s.belegtSpiegel.fehler}`}</Hinweis>}
         {s.konfiguriert && s.konten.length < s.max && (
           <div><Knopf onClick={() => verbinden()}>{s.konten.length ? 'Noch ein Google-Konto verbinden' : 'Weiteres Google-Konto verbinden'}</Knopf></div>
         )}

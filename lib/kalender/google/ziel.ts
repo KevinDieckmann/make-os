@@ -36,3 +36,52 @@ export async function kalenderZiel(person: string, art: KalenderBereich, einst?:
   const google = art === 'business' ? await googleKalenderNamen() : {};
   return zielRein({ person, art, icloud: e.kalender, google });
 }
+
+// ── Business „Für wen“ (01.11.) ─────────────────────────────────────────────
+// Kevin 01.11.: „Jeder hat Zugang zu seinem Google-Kalender und jeder plant seine Woche.“ Im Business-Bereich:
+//   · eine Person (Fach) → ihr Google-Hauptkalender (Fach → Person über die Konten, nie ein fester Name); ohne Google wie bisher ihr
+//     iCloud-Kalender; fehlt beides, eine klare Meldung mit dem Weg zum Verbinden (statt eines iCloud-Fehlers).
+//   · „Gemeinsam“ → der Google-Kalender der ANLEGENDEN Person, die anderen Personen des Haushalts als Gäste (ihre Google-Adresse). Die
+//     Einladung geht nie still: `anlegen` verlangt die Bestätigung (`EinladungNoetig` → Rückfrage mit den Adressen).
+//     Ist eine Person nicht mit Google verbunden → Meldung mit dem Weg zum Verbinden.
+
+export const GOOGLE_VERBINDEN_WEG = 'Kalender › Einstellungen › Google Kalender verbinden';
+export interface BusinessZiel { kalender: string; gaeste: { email: string; name?: string }[] }
+export interface BusinessZielFehler { fehler: string; verbinden: 'google' }
+
+/** Rein: aus Fach, Personen hinter den Fächern, Google-Kalendern (Person → Name) und Google-Adressen (Person → Adresse) das Ziel. */
+export function businessZielRein(o: {
+  wer: 'kevin' | 'malin' | 'beide'; anlegend: string;
+  personen: Partial<Record<'kevin' | 'malin', { id: string; name: string }>>;
+  google: Readonly<Record<string, string>>; adressen: Readonly<Record<string, string>>; icloud: Partial<Record<string, string>>;
+}): BusinessZiel | BusinessZielFehler {
+  const vorname = (p: { name: string } | undefined, ersatz: string) => (p?.name ?? '').trim().split(/\s+/)[0] || ersatz;
+  if (o.wer !== 'beide') {
+    const p = o.personen[o.wer];
+    const id = p?.id ?? o.wer;
+    if (o.google[id]) return { kalender: o.google[id], gaeste: [] };
+    if (o.icloud[o.wer]) return { kalender: o.icloud[o.wer]!, gaeste: [] };
+    return { fehler: `${vorname(p, 'Diese Person')} hat keinen Google-Kalender verbunden — ${GOOGLE_VERBINDEN_WEG} (angemeldet als diese Person).`, verbinden: 'google' };
+  }
+  const eigen = o.google[o.anlegend];
+  if (!eigen) return { fehler: `„Gemeinsam“ im Business legt den Termin in deinem Google-Kalender an — bitte zuerst verbinden: ${GOOGLE_VERBINDEN_WEG}.`, verbinden: 'google' };
+  const andere = (['kevin', 'malin'] as const).map(f => o.personen[f]).filter((p): p is { id: string; name: string } => !!p && p.id !== o.anlegend);
+  const gaeste: BusinessZiel['gaeste'] = [];
+  for (const p of andere) {
+    const mail = o.adressen[p.id];
+    if (!o.google[p.id] || !mail) return { fehler: `${vorname(p, 'Die andere Person')} hat keinen Google-Kalender verbunden — so kann MAKE OS nicht einladen. ${GOOGLE_VERBINDEN_WEG} (angemeldet als diese Person).`, verbinden: 'google' };
+    const v = vorname(p, '');
+    gaeste.push({ email: mail, ...(v ? { name: v } : {}) });
+  }
+  return { kalender: eigen, gaeste };
+}
+
+/** Das Ziel eines neuen Business-Termins ohne gewählten Kalender (Server). */
+export async function businessZiel(anlegend: string, wer: 'kevin' | 'malin' | 'beide', einst?: Pick<KalenderEinstellungen, 'kalender'>): Promise<BusinessZiel | BusinessZielFehler> {
+  const { fachKonten } = await import('../einstellungen');
+  const { ladeGoogleStand } = await import('./stand');
+  const [e, google, personen] = await Promise.all([einst ? Promise.resolve(einst) : ladeEinstellungen(), googleKalenderNamen(), fachKonten().catch(() => ({}))]);
+  const adressen: Record<string, string> = {};
+  for (const p of Object.keys(google)) { const s = await ladeGoogleStand(p).catch(() => null); if (s?.email) adressen[p] = s.email; }
+  return businessZielRein({ wer, anlegend, personen, google, adressen, icloud: e.kalender });
+}

@@ -78,6 +78,8 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
   const [bfFrage, setBfFrage] = useState<{ x: Formular; einladung: boolean } | null>(null);
   /** Hinweis Überschneidung (30.10.): ein Termin in einem weiteren Kalender-Konto der eigenen Person liegt in derselben Zeit — nie blockieren, bewusst speichern. */
   const [ueFrage, setUeFrage] = useState<{ x: Formular; einladung: boolean; liste: UeberschneidungKurz[] } | null>(null);
+  /** iCloud-Ziel fehlt (01.11.): einmal einen vorhandenen Kalender festlegen (Kalender-Einstellungen), dann speichern. */
+  const [kalWahl, setKalWahl] = useState<{ x: Formular; einladung: boolean; fach: Wer; auswahl: string[]; gewaehlt: string } | null>(null);
   const [altOffen, setAltOffen] = useState(!!alt);
   const [voll, setVoll] = useState(false);
   const [eigenOffen, setEigenOffen] = useState(false);
@@ -106,7 +108,8 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
     if (x !== roh) setF(x);
     const fe = formularFehler(x);
     if (fe) { setFehler(fe); return; }
-    const a = formularAnfrage(x, bereich === 'business' && googleStandard(x.wer) ? 'business' : undefined);
+    // Business (01.11.): immer der Business-Weg — die Person landet in ihrem Google-Kalender, „Gemeinsam“ im eigenen mit Einladung (der Server entscheidet).
+    const a = formularAnfrage(x, bereich === 'business' ? 'business' : undefined);
     // Gäste: erst die Rückfrage — ohne „Senden“ geht nichts an iCloud.
     if (a.art === 'termin' && x.gaeste.length && !bestaetigt) { setFehler(null); setFrage({ adressen: x.gaeste.map(g => g.email), x }); return; }
     setLaeuft(true); setFehler(null);
@@ -134,6 +137,14 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
     if (r.status === 409 && r.d.einladung && Array.isArray(r.d.adressen)) { setFrage({ adressen: r.d.adressen, x }); return; }
     // Business-frei (Lücke 7): Rückfrage — die Einladung (falls schon bestätigt) bleibt bestätigt.
     if (r.status === 409 && r.d.businessFrei) { setFrage(null); setBfFrage({ x, einladung: bestaetigt }); return; }
+    // iCloud-Kalender aus der Zuordnung gibt es nicht (01.11.): wählen lassen statt Fehler.
+    const kw = r.d.kalenderWaehlen as { fach?: Wer; auswahl?: unknown } | undefined;
+    if (r.status === 409 && kw && Array.isArray(kw.auswahl) && kw.auswahl.length && kw.fach) {
+      const auswahl = kw.auswahl.filter((n): n is string => typeof n === 'string');
+      setFrage(null); setBfFrage(null); setFehler(null);
+      setKalWahl({ x, einladung: bestaetigt, fach: kw.fach, auswahl, gewaehlt: auswahl[0] ?? '' });
+      return;
+    }
     setFrage(null); setBfFrage(null);
     setFehler(speicherFehlerText(r.d.fehler, r.status));
   };
@@ -144,8 +155,10 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
   const zeile = { display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center' };
   const art = f.art;
   const schreibbar = kalender.filter(k => k.schreibbar);
-  const kalStandardName = bereich === 'business' ? googleStandard(f.wer) ?? kalenderStandard?.[f.wer] : kalenderStandard?.[f.wer];
-  const kalName = f.kalender || kalStandardName || '';
+  // Business „Gemeinsam“ (01.11.): im eigenen Google-Kalender, die anderen werden eingeladen (nach Bestätigung).
+  const gemeinsamBusiness = bereich === 'business' && f.wer === 'beide' && !f.kalender;
+  const kalStandardName = gemeinsamBusiness ? 'Dein Google-Kalender + Einladung' : bereich === 'business' ? googleStandard(f.wer) ?? kalenderStandard?.[f.wer] : kalenderStandard?.[f.wer];
+  const kalName = gemeinsamBusiness ? '' : f.kalender || kalStandardName || '';
   const kalFarbe = kalender.find(k => k.name === kalName)?.farbe ?? WER_FARBE[f.wer];
   const gmt = gmtText(f.zone, f.ganztags ? ausWandzeit(`${f.tag}T12:00:00`) : ausWandzeitIn(`${f.tag}T${f.von}:00`, f.zone));
   const vorlagen = wiederholungVorlagen(f.tag);
@@ -375,14 +388,35 @@ export function NeuerTermin({ vorgabe, heute, standardDauer, fokusDauer = 90, ka
           </div>
         </div>
       )}
-      {!frage && !bfFrage && !ueFrage && <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
+      {kalWahl && (
+        <div role="alertdialog" aria-label="Kalender festlegen" style={{ display: 'grid', gap: 8, background: `${LEUCHT.achtung}14`, border: `1px solid ${LEUCHT.achtung}55`, borderRadius: 12, padding: '10px 12px' }}>
+          <b style={{ fontSize: TYP.bedien }}>In welchen Kalender gehören Termine für {WER_LABEL[kalWahl.fach]}?</b>
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim, lineHeight: 1.45 }}>Der eingestellte Kalender fehlt in iCloud. Einmal festlegen — danach landen diese Termine immer dort (änderbar unter Kalender › Einstellungen).</span>
+          <select value={kalWahl.gewaehlt} onChange={e => setKalWahl({ ...kalWahl, gewaehlt: e.target.value })} aria-label="Kalender wählen" style={{ ...feld, fontSize: TYP.bedien, padding: '9px 12px', colorScheme: 'dark', width: 'auto' }}>
+            {kalWahl.auswahl.map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Knopf farbe={LEUCHT.puls} aus={laeuft || !kalWahl.gewaehlt} onClick={async () => {
+              const w = kalWahl;
+              setLaeuft(true);
+              const ok = await fetch('/api/state/kalender-einstellungen', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teil: { kalender: { [w.fach]: w.gewaehlt } } }) }).then(res => res.ok).catch(() => false);
+              setLaeuft(false);
+              if (!ok) { setFehler('Die Wahl ließ sich gerade nicht speichern — bitte noch einmal.'); return; }
+              setKalWahl(null);
+              await speichern(w.x, w.einladung);
+            }}>{laeuft ? 'speichert …' : 'Einmal festlegen'}</Knopf>
+            <Knopf leise onClick={() => setKalWahl(null)}>Zurück</Knopf>
+          </div>
+        </div>
+      )}
+      {!frage && !bfFrage && !ueFrage && !kalWahl && <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', flexWrap: 'wrap', alignItems: 'center' }}>
         {art !== 'aufgabe' ? <Knopf leise onClick={() => setVoll(v => !v)}>{voll ? 'Weniger Optionen' : 'Weitere Optionen'}</Knopf> : <span />}
         <div style={{ display: 'flex', gap: 8 }}>
           <Knopf leise onClick={onZu}>Abbrechen</Knopf>
           <Knopf farbe={LEUCHT.puls} aus={laeuft} onClick={() => void speichern()}>{laeuft ? 'speichert …' : f.gaeste.length && art === 'termin' ? 'Speichern …' : 'Speichern'}</Knopf>
         </div>
       </div>}
-      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{art === 'aufgabe' ? 'Landet in den Aufgaben — dieselbe Aufgabe, keine Kopie.' : art === 'termin' && f.gaeste.length ? 'Landet in iCloud — die Gäste bekommen die Einladung erst nach deiner Bestätigung.' : 'Landet in iCloud — auf iPhone und Mac sichtbar. Ohne Gäste kein Versand.'}</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{art === 'aufgabe' ? 'Landet in den Aufgaben — dieselbe Aufgabe, keine Kopie.' : gemeinsamBusiness ? 'Landet in deinem Google-Kalender — die anderen bekommen die Einladung erst nach deiner Bestätigung.' : art === 'termin' && f.gaeste.length ? 'Landet in iCloud — die Gäste bekommen die Einladung erst nach deiner Bestätigung.' : 'Landet in iCloud — auf iPhone und Mac sichtbar. Ohne Gäste kein Versand.'}</span>
     </Fenster>
   );
 }

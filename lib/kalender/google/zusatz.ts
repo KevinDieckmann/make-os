@@ -20,7 +20,8 @@ import { localDay } from '@/lib/zeit';
 import { alleSpeicher, namenVon } from '@/lib/zugang/konten';
 import { anfrageMitToken, GoogleApiFehler, GoogleUeberlastet } from '@/lib/google/http';
 import { googleKonfiguriert } from '@/lib/google/verbindung';
-import { ladeZusatz, ladeZusatzKonto, zusatzZugriffstoken, zusatzSetzen, ZusatzFehler, ZUSATZ_KALENDER_MAX, personenMitZusatz, type ZusatzKonto } from '@/lib/google/zusatz';
+import { ladeZusatz, ladeZusatzKonto, zusatzZugriffstoken, zusatzSetzen, ZusatzFehler, ZUSATZ_KALENDER_MAX, personenMitZusatz, gruppeVon, type ZusatzKonto } from '@/lib/google/zusatz';
+import { TERMIN_FARBEN } from '../arten';
 import { schlank, objekteAus, type GEvent } from './abbilden';
 import { ereignisseAnwenden } from './stand';
 import { aufraeumen, ausnahmeAusId, FENSTER_ZURUECK, EREIGNISSE_MAX, type GoogleKalenderInfo } from './abgleich';
@@ -35,6 +36,14 @@ const MIN = 60_000;
 
 /** Vorsatz des neutralen Namens, unter dem ANDERE Personen diese Kalender sehen („Weitere Termine · <Vorname>“). */
 export const NEUTRAL_ZUSATZ = NEUTRAL_ZUSATZ_VORSATZ;
+/** Kennung einer Gruppe (01.11.) in MAKE OS — aus Person + Gruppe (klein), nie aus einem Namen im Code. */
+export const gruppenKennung = (person: string, gruppe: string): string => `gg-${createHash('sha256').update(`${person}|${gruppe.trim().toLowerCase()}`).digest('hex').slice(0, 16)}`;
+/** Feste Farbe je Gruppe (aus der Palette der Termin-Farben, über den Namen gewählt). Rein. */
+export function gruppeFarbe(gruppe: string): string {
+  const h = createHash('sha256').update(gruppe.trim().toLowerCase()).digest()[0];
+  const palette = TERMIN_FARBEN.filter(f => f.id !== 'gray');
+  return palette[h % palette.length].hex;
+}
 /** Kennung der Kalender in MAKE OS (Teil der Kalender-Adresse, → `kalenderKennung`). */
 export const kennungFuer = (konto: string, kalenderId: string): string => `gz-${createHash('sha256').update(`${konto}|${kalenderId}`).digest('hex').slice(0, 16)}`;
 export const kalenderIdVon = (kennung: string): string => `gzusatz:kalender/${kennung}`;
@@ -231,6 +240,8 @@ export async function zusatzAbgleichen(person: string, opt: { konto?: string; vo
       else await aendereSpiegel(person, k => Object.fromEntries(Object.entries(k).filter(([, x]) => ids.has(x.konto))));
     }
     await import('../icloud').then(m => m.cacheNeuSchreiben()).catch(() => { /* nächster Lauf */ });
+    // 01.11.: danach „Belegt“ in den eigenen Google-Hauptkalender spiegeln (Schalter je Konto, Vorgabe an) — Fehler stehen im Spiegel-Bestand.
+    await import('./belegt-spiegel').then(m => m.belegtSpiegeln(person)).catch(e => console.warn(`[kalender-belegt-spiegel] ${e instanceof Error ? e.name : 'Fehler'}`));
     return { kalender, fehler };
   })().finally(() => laeuft.delete(person));
   laeuft.set(person, p);
@@ -260,7 +271,12 @@ export async function zusatzJobsImTakt(jetzt = Date.now()): Promise<{ gestartet:
   for (const p of personen) {
     if (zusatzAbgleichLaeuft(p)) continue;
     const [b, s] = await Promise.all([ladeZusatz(p), ladeZusatzSpiegel(p).catch(() => null)]);
-    if (!zusatzFaellig(s, b.konten, jetzt)) continue;
+    if (!zusatzFaellig(s, b.konten, jetzt)) {
+      // Drossel-Rest oder Fehler des „Belegt“-Spiegels nach der Pause nachholen (01.11.).
+      const bs = await import('./belegt-spiegel');
+      if (bs.spiegelNachholen(await bs.ladeBelegtSpiegel(p).catch(() => null), jetzt)) void bs.belegtSpiegeln(p).catch(() => { /* steht im Bestand */ });
+      continue;
+    }
     gestartet.push(p);
     void zusatzAbgleichen(p).catch(e => console.warn(`[kalender-google-zusatz] Abgleich: ${e instanceof Error ? e.name : 'Fehler'}`));
   }
@@ -288,9 +304,20 @@ export async function zusatzUeberlagerung(personen: readonly string[], vorhanden
     const [b, s] = await Promise.all([ladeZusatz(p), ladeZusatzSpiegel(p)]);
     if (!s) continue;
     const vorname = ((namen[p] ?? p).trim().split(/\s+/)[0] || p).slice(0, 40);
+    // Gruppen (01.11.): alle gewählten Kalender der Konten mit derselben Gruppe → EINE Ebene „<Gruppe> · <Vorname>“.
+    const gruppen = new Map<string, { name: string; ich: string[]; teile: { kennung: string; k: ZusatzKalenderStand }[] }>();
     for (const konto of b.konten) {
+      const g = gruppeVon(konto);
       for (const [kennung, k] of Object.entries(s.kalender)) {
         if (k.konto !== konto.id || !konto.kalender.includes(k.kalenderId)) continue;
+        if (g) {
+          const schl = g.toLowerCase();
+          const e = gruppen.get(schl) ?? { name: g, ich: [], teile: [] };
+          if (!e.ich.includes(konto.email)) e.ich.push(konto.email);
+          e.teile.push({ kennung, k });
+          gruppen.set(schl, e);
+          continue;
+        }
         let name = `${k.name} · ${konto.label}`;
         for (let n = 2; vergeben.has(name.toLowerCase()); n++) name = `${k.name} · ${konto.label} (${n})`;
         vergeben.add(name.toLowerCase());
@@ -298,6 +325,23 @@ export async function zusatzUeberlagerung(personen: readonly string[], vorhanden
         kalender.push({ id, name, ...(k.farbe ? { farbe: k.farbe } : {}), ctag: `${s.rev}`, schreibbar: false, quelle: 'google-zusatz', person: p, ich: [konto.email], neutral: `${NEUTRAL_ZUSATZ}${vorname}` });
         objekte[id] = objekteAus(k.events, `${p}~${kennung}`).objekte.filter(o => { const u = uidVon(o.ics); return !u || !vorhanden.has(u); });
       }
+    }
+    for (const [schl, g] of Array.from(gruppen.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+      let name = `${g.name} · ${vorname}`;
+      for (let n = 2; vergeben.has(name.toLowerCase()); n++) name = `${g.name} · ${vorname} (${n})`;
+      vergeben.add(name.toLowerCase());
+      const id = kalenderIdVon(gruppenKennung(p, schl));
+      // Dieselbe Einladung in zwei Konten der Gruppe zählt einmal.
+      const gesehen = new Set<string>();
+      const liste: KalenderObjekt[] = [];
+      for (const t of g.teile) for (const o of objekteAus(t.k.events, `${p}~${t.kennung}`).objekte) {
+        const u = uidVon(o.ics);
+        if (u && (vorhanden.has(u) || gesehen.has(u))) continue;
+        if (u) gesehen.add(u);
+        liste.push(o);
+      }
+      kalender.push({ id, name, farbe: gruppeFarbe(g.name), ctag: `${s.rev}`, schreibbar: false, quelle: 'google-zusatz', person: p, ich: g.ich, neutral: `${NEUTRAL_ZUSATZ}${vorname}` });
+      objekte[id] = liste;
     }
   }
   return { kalender, objekte };
