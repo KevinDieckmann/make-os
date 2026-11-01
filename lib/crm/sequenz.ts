@@ -182,11 +182,13 @@ export function standErsetzen(k: Kampagne, s: ZielStand): Kampagne {
  * reagierten, und — für Personen — Gespräch/Chance aus den Ergebnissen der Kampagne. Ohne Sequenz: leer.
  */
 export interface SchrittZahlen { id: string; kanal: SequenzKanal; erreicht: number; reagiert: number; gespraech: number; chance: number }
-export function kennzahlenJeSchritt(k: Pick<Kampagne, 'sequenz' | 'zielStaende' | 'ergebnisse'>): SchrittZahlen[] {
+export function kennzahlenJeSchritt(k: Pick<Kampagne, 'sequenz' | 'zielStaende' | 'ergebnisse'> & Partial<Pick<Kampagne, 'firmenErgebnisse'>>): SchrittZahlen[] {
   const seq = k.sequenz ?? [];
   if (!seq.length) return [];
+  // Letztes Ergebnis je Ziel — Personen aus `ergebnisse`, Betriebe ohne Person aus `firmenErgebnisse` (B-Prüfung 02.11., Fund 13).
   const letztes = new Map<string, string>();
-  for (const e of [...(k.ergebnisse ?? [])].sort((a, b) => a.am.localeCompare(b.am))) letztes.set(e.kontaktId, e.ergebnis);
+  for (const e of [...(k.ergebnisse ?? [])].sort((a, b) => a.am.localeCompare(b.am))) letztes.set(`kontakt:${e.kontaktId}`, e.ergebnis);
+  for (const e of [...(k.firmenErgebnisse ?? [])].sort((a, b) => a.am.localeCompare(b.am))) letztes.set(`firma:${e.firmaId}`, e.ergebnis);
   const z = seq.map(s => ({ id: s.id, kanal: s.kanal, erreicht: 0, reagiert: 0, gespraech: 0, chance: 0 }));
   for (const st of k.zielStaende ?? []) {
     // Zuletzt getaner Schritt (gesendet/erledigt) — dort zählt die Reaktion.
@@ -199,11 +201,9 @@ export function kennzahlenJeSchritt(k: Pick<Kampagne, 'sequenz' | 'zielStaende' 
     }
     if (zuletzt < 0) continue;
     if (st.status === 'reagiert') z[zuletzt].reagiert++;
-    if (st.art === 'kontakt') {
-      const e = letztes.get(st.id);
-      if (e === 'gespraech' || e === 'chance') z[zuletzt].gespraech++;
-      if (e === 'chance') z[zuletzt].chance++;
-    }
+    const e = letztes.get(zielSchluessel(st));
+    if (e === 'gespraech' || e === 'chance') z[zuletzt].gespraech++;
+    if (e === 'chance') z[zuletzt].chance++;
   }
   return z;
 }

@@ -40,6 +40,15 @@ export interface PostEintrag {
   gesendet?: { am: string; id?: string; threadId?: string; messageId?: string };
   rueckfluss?: { art: 'antwort' | 'bounce' | 'abmeldung'; am: string };
   gedruckt?: { von: string; am: string };
+  /**
+   * Vorübergehender Hinweis (B-Prüfung, 02.11.): warum ein Eintrag gerade wartet — Versand vorübergehend gescheitert (Verbindung, Anmeldung, 429, 5xx),
+   * Kampagne nicht aktiv, Adresse geändert. Kein Fehler: der Eintrag bleibt freigegeben bzw. im Entwurf.
+   */
+  hinweis?: string;
+  /** Vorübergehend gescheiterte Versuche (Rückoff `rueckoffMs`) — ab `VERSUCHE_MAX` wird es ein Fehler. */
+  versuche?: number;
+  /** Frühestens dann der nächste Versuch (ISO). */
+  naechsterVersuch?: string;
   angelegt: string;
   geaendert: string;
 }
@@ -66,6 +75,45 @@ export const ZEITFENSTER = { von: 8, bis: 18 } as const;
 /** Ein Versand, der länger „sendet“, gilt als unklar (nie automatisch noch einmal). */
 export const SENDET_HAENGT_MS = 15 * 60_000;
 export const POST_GRENZEN = { eintraege: 20_000, fusszeile: 600, art14: 1500, stufen: 6 } as const;
+/** Vorübergehend gescheiterte Versuche, bis ein Eintrag „fehler“ wird (B-Prüfung, 02.11.). */
+export const VERSUCHE_MAX = 8;
+/** Rückoff nach dem n-ten vorübergehenden Fehlschlag: 5 · 3^(n−1) Minuten, höchstens 3 Stunden (wie der Takt). */
+export const rueckoffMs = (n: number): number => Math.min(3 * 3600_000, 5 * 60_000 * 3 ** Math.max(0, n - 1));
+/** Erstansprache über Kampagnen hinweg (B-Prüfung, 02.11.): wer in den letzten so vielen Tagen eine Kampagnen-Mail bekam, startet nicht neu. */
+export const ERSTANSPRACHE_SPERRE_TAGE = 30;
+
+/**
+ * Was ein gescheiterter Sendeversuch bedeutet (B-Prüfung, 02.11.) — rein, aus der Antwort von `inboxSenden`:
+ *   sperre      § 7 UWG / Art. 18 — der Eintrag wird gesperrt
+ *   vorlaeufig  Verbindung/Anmeldung weg, Anbieter nicht erreichbar, 429, 5xx (vor dem Senden) — bleibt freigegeben, später erneut
+ *   unklar      Ende unbekannt (Zeitüberschreitung, unerwartete Ausnahme) — nie automatisch noch einmal (wie ein hängender Versuch)
+ *   endgueltig  alles andere (Adresse ungültig, abgelehnt, zu lang …) — „fehler“
+ */
+export function sendefehlerArt(r: { status: number; body: Record<string, unknown> }): 'sperre' | 'vorlaeufig' | 'unklar' | 'endgueltig' {
+  const code = typeof r.body.code === 'string' ? r.body.code : '';
+  const ursache = typeof r.body.ursache === 'string' ? r.body.ursache : '';
+  if (code === 'uwg' || code === 'eingeschraenkt') return 'sperre';
+  if (r.body.geworfen === true) return r.body.ueberlastet === true ? 'vorlaeufig' : 'unklar';
+  if (ursache === 'zeit') return 'unklar';
+  if (['anmeldung', 'netz', 'tls', 'server'].includes(ursache)) return 'vorlaeufig';
+  if (ursache) return 'endgueltig'; // abgelehnt, ziel, ordner — ein Mensch muss hinsehen
+  if (code === 'versand' && !ursache && r.status >= 500) return 'vorlaeufig';
+  if (code === 'nicht-verbunden' && r.status === 409) return 'vorlaeufig';
+  if (code === 'google') return 'vorlaeufig';
+  if (!code && r.status === 409) return 'vorlaeufig'; // „Gmail ist nicht verbunden.“
+  if (r.status === 429 || r.status >= 500) return 'vorlaeufig';
+  return 'endgueltig';
+}
+
+/**
+ * Drossel über das Versandfenster verteilt (B-Prüfung, 02.11.): je Stunde höchstens der Rest der Tagesgrenze geteilt durch die verbleibenden
+ * Fensterstunden (aufgerundet) — sonst ginge das ganze Kontingent in den ersten Minuten raus. `dieseStunde` = in dieser Stunde schon gesendet. Rein.
+ */
+export function stundenKontingent(e: { tagesgrenze: number; heuteGesendet: number; dieseStunde: number; stunde: number }): number {
+  const rest = Math.max(0, e.tagesgrenze - e.heuteGesendet);
+  const stunden = Math.max(1, ZEITFENSTER.bis - e.stunde);
+  return Math.max(0, Math.ceil((rest + e.dieseStunde) / stunden) - e.dieseStunde);
+}
 
 /** Neutrale Vorgabe des Art.-14-Hinweises (keine Namen, keine Firma — die stehen in der Fußzeile der Instanz). */
 export const ART14_VORGABE = 'Datenschutz-Hinweis (Art. 14 DSGVO): Ihre geschäftlichen Kontaktdaten stammen aus öffentlich zugänglichen Quellen. Wir nutzen sie nur, um Ihnen dieses Angebot zu machen (Art. 6 Abs. 1 lit. f DSGVO). Sie können jederzeit widersprechen — ein Klick auf den Abmeldelink genügt, dann löschen wir Ihre Daten bzw. sperren sie für Werbung.';
@@ -202,6 +250,8 @@ export function einstellungenPruefen(v: Record<string, unknown>): { status: 400 
 export interface RueckKopf {
   id: string; threadId: string; am: string; von: { email: string }; antwortAn?: { email: string }; betreff: string; ausschnitt: string;
   messageId?: string; inReplyTo?: string; references?: string[]; labels: string[]; liste?: boolean; automatisch?: boolean; ordner?: string;
+  /** Empfänger (Gmail-/IMAP-Spiegel) — nur für „gesendete Kopie eines unklaren Versuchs“ (B-Prüfung, 02.11.). */
+  an?: { email: string }[];
 }
 const DAEMON = /^(mailer-daemon|postmaster|mail-daemon|mailerdaemon)@/i;
 const BOUNCE_BETREFF = /(undeliver|unzustellbar|delivery (status|failure|has failed)|nicht zugestellt|returned mail|mail delivery (failed|subsystem)|failure notice|zustellung fehlgeschlagen|unbekannt.*empf)/i;

@@ -74,6 +74,28 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-11-02-12',
+    datum: '2026-11-02',
+    titel: 'Kampagnen-Versand ohne Zufall',
+    kurz: 'Antworten, Abmeldungen und Sperren stoppen jetzt jede schon freigegebene Mail. Hakt die Postfach-Verbindung, wartet die Mail und kommt später — statt verloren zu gehen.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Kommt eine Antwort, gibt es eine Abmeldung oder wird ein Ziel aus der Kampagne genommen, geht keine weitere Mail mehr an dieses Ziel — auch keine, die schon freigegeben war. Eine Abmeldung gilt in jeder Kampagne.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Sagt ein Betrieb Nein (Werbesperre), fallen seine Anrufe, LinkedIn-Schritte und Besuche aus allen Listen.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Hakt die Verbindung zum Postfach, bleibt die Mail freigegeben und wird später noch einmal versucht. Die freigebende Person bekommt dazu höchstens eine Glocke am Tag.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Die Kanal-Ampel zählt beim Freigeben, wie sie jetzt steht. Mails verteilen sich über den Tag statt in den ersten Minuten.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Antworten auf Kampagnen-Mails stehen in der Akte und zählen im Lead. Eine Antwort beendet das Ziel auch in anderen Kampagnen, und wer gerade angeschrieben wurde, bekommt 30 Tage keine zweite Erstansprache.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Antworten auf Willkommens-Mails werden ein Follow-up für Marketing. Die Karte der Willkommens-Mails sagt, warum sie gerade nichts senden, und zeigt gescheiterte Mails.', bereich: 'business', weg: WEG.website('formulare') },
+        { text: 'Briefe mit Fehler stehen in der Druckliste und lassen sich bearbeiten.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: '„Als Lead übernehmen“ zählt bei einem Doppelklick nur einmal und schließt das Follow-up „Antwort bearbeiten“.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Der Trichter je Schritt zählt jetzt auch Betriebe ohne Person.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Eine Mail mit unklarem Versand wird „gesendet“, sobald sie im Postfach unter „Gesendet“ auftaucht. „Erneut vorbereiten“ fragt vorher nach.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-9',
     datum: '2026-11-02',
     titel: 'Marketing-Zahlen stimmen',

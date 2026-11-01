@@ -62,7 +62,9 @@ export function KampagneSequenz({ kampagneId }: { kampagneId: string }) {
   const sendefehler = (x: PostEintrag) => x.status === 'fehler' && !!x.freigabe;
   const stapel = mails.filter(x => x.status === 'entwurf' || (x.status === 'fehler' && !sendefehler(x)));
   const unterwegs = mails.filter(x => !['entwurf', 'verworfen'].includes(x.status) && (x.status !== 'fehler' || sendefehler(x)));
-  const briefe = d.eintraege.filter(x => x.kanal === 'brief' && x.status === 'entwurf');
+  // B-Prüfung (02.11., Fund 6): auch Briefe mit Fehler (z. B. fehlender Wert) stehen in der Druckliste — sichtbar und bearbeitbar.
+  const briefe = d.eintraege.filter(x => x.kanal === 'brief' && (x.status === 'entwurf' || x.status === 'fehler'));
+  const druckbar = briefe.filter(x => x.status === 'entwurf');
   const freigebbar = stapel.filter(x => x.status === 'entwurf' && (!x.risiko || d.eigenesRisiko));
   // Gelbe Ampel (M1, 01.11.): nur einzeln freigebbar — nie in der Sammelauswahl.
   const sammelbar = freigebbar.filter(x => !x.gelb);
@@ -157,6 +159,7 @@ export function KampagneSequenz({ kampagneId }: { kampagneId: string }) {
                 </span>
               </div>
               {x.status === 'fehler' && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{x.fehler}</div>}
+              {x.hinweis && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>{x.hinweis}</div>}
               {x.gelb && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung }}>Kanal-Ampel gelb: {x.gelb}</div>}
               {offen === x.id && <div style={{ fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'pre-wrap', lineHeight: 1.5, background: 'rgba(255,255,255,.03)', borderRadius: 10, padding: 10 }}><b style={{ color: C.ink }}>{x.betreff}</b>{'\n\n'}{x.text}{'\n\n'}<span style={{ color: C.inkLeise }}>— Absender/Impressum · Datenschutz-Hinweis (bei Fremddaten) · Abmeldelink kommen beim Versand dazu.</span></div>}
               {bearbeiten?.id === x.id && (
@@ -194,7 +197,9 @@ export function KampagneSequenz({ kampagneId }: { kampagneId: string }) {
               <span>{STATUS_NAME[x.status] ?? x.status}{x.gesendet ? ` · ${tag(x.gesendet.am)}` : ''}{x.rueckfluss ? ` · ${x.rueckfluss.art === 'antwort' ? 'Antwort kam' : x.rueckfluss.art === 'bounce' ? 'Rückläufer' : 'abgemeldet'}` : ''}</span>
               {x.freigabe && <span style={{ color: C.inkLeise }}>freigegeben von {x.freigabe.von} am {tag(x.freigabe.am)}{x.freigabe.eigenesRisiko ? ` — auf eigenes Risiko (Schalter von ${x.freigabe.eigenesRisiko.von} seit ${tag(x.freigabe.eigenesRisiko.seit)})` : ''}</span>}
               {x.fehler && <span style={{ color: LEUCHT.achtung }}>{x.fehler}</span>}
-              {(x.status === 'unklar' || (x.status === 'fehler' && x.freigabe)) && <Knopf leise onClick={() => tun({ aktion: 'erneut', ids: [x.id] }, 'Zurück im Entwurf.')}>Erneut vorbereiten</Knopf>}
+              {x.hinweis && <span style={{ color: LEUCHT.achtung }}>{x.hinweis}</span>}
+              {/* „Unklar“ (B-Prüfung, 02.11.): womöglich schon raus — erst nach Rückfrage zurück in den Entwurf. */}
+              {(x.status === 'unklar' || (x.status === 'fehler' && x.freigabe)) && <Knopf leise onClick={() => { if (x.status === 'unklar' && !window.confirm('Ist die Mail wirklich nicht raus? Bitte vorher im Postfach unter „Gesendet“ nachsehen — sonst bekommt das Ziel sie zweimal.')) return; void tun({ aktion: 'erneut', ids: [x.id], ...(x.status === 'unklar' ? { bestaetigt: true } : {}) }, 'Zurück im Entwurf.'); }}>Erneut vorbereiten</Knopf>}
             </div>
           ))}
         </div>
@@ -202,11 +207,26 @@ export function KampagneSequenz({ kampagneId }: { kampagneId: string }) {
 
       {briefe.length > 0 && (
         <div>
-          <Ueberschrift rechts={<Knopf leise onClick={() => tun({ aktion: 'gedruckt', ids: briefe.map(x => x.id) }, 'Als gedruckt vermerkt — die Sequenz läuft weiter.')}>{`Alle ${briefe.length} als gedruckt markieren`}</Knopf>}>Druckliste (Briefe)</Ueberschrift>
+          <Ueberschrift rechts={druckbar.length ? <Knopf leise onClick={() => tun({ aktion: 'gedruckt', ids: druckbar.map(x => x.id) }, 'Als gedruckt vermerkt — die Sequenz läuft weiter.')}>{`Alle ${druckbar.length} als gedruckt markieren`}</Knopf> : undefined}>Druckliste (Briefe)</Ueberschrift>
           {briefe.map(x => (
-            <details key={x.id} style={{ padding: '6px 0', fontSize: TYP.bedien, color: C.inkDim, borderBottom: '1px solid rgba(255,255,255,.04)' }}>
-              <summary style={{ cursor: 'pointer', color: C.ink }}>{x.an.name}{x.an.ort ? ` · ${x.an.ort}` : ' · Anschrift fehlt'}{x.fehler ? ` — ${x.fehler}` : ''}</summary>
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 6 }}>{x.text}</div>
+            <details key={x.id} open={x.status === 'fehler' || bearbeiten?.id === x.id} style={{ padding: '6px 0', fontSize: TYP.bedien, color: C.inkDim, borderBottom: '1px solid rgba(255,255,255,.04)' }}>
+              <summary style={{ cursor: 'pointer', color: C.ink }}>{x.an.name}{x.an.ort ? ` · ${x.an.ort}` : ' · Anschrift fehlt'}{x.status === 'fehler' ? ' — nicht druckbar' : ''}</summary>
+              {x.fehler && <div style={{ color: LEUCHT.achtung, marginTop: 6 }}>{x.fehler}</div>}
+              {bearbeiten?.id === x.id ? (
+                <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
+                  <input aria-label="Betreff" value={bearbeiten.betreff} onChange={e => setBearbeiten({ ...bearbeiten, betreff: e.target.value })} style={eingabe} />
+                  <textarea aria-label="Text" rows={8} value={bearbeiten.text} onChange={e => setBearbeiten({ ...bearbeiten, text: e.target.value })} style={eingabe} />
+                  <div style={{ display: 'flex', gap: 8 }}><Knopf haupt onClick={async () => { const r = await tun({ aktion: 'entwurf', ...bearbeiten }, 'Brief gespeichert.'); if (r.ok) setBearbeiten(null); }}>Speichern</Knopf><Knopf leise onClick={() => setBearbeiten(null)}>Abbrechen</Knopf></div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 6 }}>{x.text}</div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                    <Knopf leise onClick={() => setBearbeiten({ id: x.id, betreff: x.betreff, text: x.text })}>Bearbeiten</Knopf>
+                    <Knopf leise onClick={() => tun({ aktion: 'verwerfen', ids: [x.id] }, 'Verworfen — das Ziel läuft in dieser Kampagne nicht weiter.')}>Verwerfen</Knopf>
+                  </div>
+                </>
+              )}
             </details>
           ))}
         </div>

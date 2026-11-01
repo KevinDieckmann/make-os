@@ -12,7 +12,9 @@ import type { WillkommenStufe } from '@/lib/crm/kampagnen-post';
 
 interface Lage {
   istInhaber: boolean; willkommen: { seit: string; von: string } | null; stufen: WillkommenStufe[]; vorgabe: WillkommenStufe[];
-  empfaenger: { id: string; name: string; start: string; gesendet: number[] }[];
+  empfaenger: { id: string; name: string; start: string; gesendet: number[]; gescheitert?: { stufe: number; am: string; grund: string }[]; geantwortet?: boolean }[];
+  /** Stand des letzten Laufs (B-Prüfung, 02.11.): warum die Strecke nichts tut bzw. wie viele Versuche scheiterten. */
+  lauf: { am: string; grund?: string; gesendet: number; gescheitert: number } | null;
 }
 const tag = (iso: string) => new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const MAX_STUFEN = 6;
@@ -47,6 +49,7 @@ export function WillkommenKarte({ i = 3 }: { i?: number }) {
           Willkommens-Mails nach Einwilligung{d.willkommen ? ` (an seit ${tag(d.willkommen.seit)}, ${d.willkommen.von})` : ''}
         </Schalter>
         {!d.istInhaber && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Einschalten und Texte ändern dürfen Inhaber und volle Mitglieder des Haushalts.</span>}
+        {d.willkommen && d.lauf?.grund && <Hinweis art="achtung">{d.lauf.grund} (Stand {tag(d.lauf.am)})</Hinweis>}
 
         <b style={{ fontSize: TYP.bedien, color: C.ink }}>Texte</b>
         {bearbeitet.map((s, j) => (
@@ -87,6 +90,8 @@ export function WillkommenKarte({ i = 3 }: { i?: number }) {
                 <span style={{ color: C.ink }}>{x.name}</span>
                 <span>seit {tag(x.start)}</span>
                 <span>{x.gesendet.length ? `bekam Mail ${x.gesendet.map(n => n + 1).join(', ')} von ${d.stufen.length}` : 'noch keine'}</span>
+                {x.geantwortet && <span style={{ color: C.ink }}>hat geantwortet</span>}
+                {(x.gescheitert ?? []).map(g => <span key={g.stufe} style={{ color: C.inkLeise }}>Mail {g.stufe + 1} gescheitert am {tag(g.am)}: {g.grund}</span>)}
               </div>
             ))}
             {d.empfaenger.length > 12 && <button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, minHeight: 44 }}>{alle ? 'weniger' : `alle ${d.empfaenger.length}`}</button>}

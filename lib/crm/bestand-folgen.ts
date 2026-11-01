@@ -13,6 +13,7 @@
 //     `firmaId`). Standen sie auf dem ALTEN Namen, ziehen sie mit; ein bewusst anderer Name bleibt.
 
 import type { Kontakt } from '@/lib/make-one/crm';
+import { tagVon } from '@/lib/zeit';
 import type { CrmBestand, Firma, Lead } from './typen';
 
 /** Kennungen der Deals, die zwischen `vorher` und `nachher` verschwunden sind. */
@@ -93,10 +94,30 @@ export function firmenNamenNachziehen(vorher: Pick<CrmBestand, 'firmen'>, nachhe
   return mandate === nachher.mandate && chancen === nachher.chancen ? nachher : { ...nachher, mandate, chancen };
 }
 
-/** Beide Regeln für den CRM-Bestand selbst (die Kartei führt `aendereCrm` nach). */
+/**
+ * 3 · Neue Werbesperre an einem Betrieb (B-Prüfung, 02.11., Fund 1) — dieselbe Absage-Regel wie bei Personen (lib/crm/aktivitaet-folgen.ts):
+ * offene werbliche Follow-ups des Betriebs (Bezug Firma; Mail, LinkedIn, Anruf, jeder Sequenz-Schritt `fu-ks-…` inkl. Besuch) werden abgesagt, mit
+ * Vermerk. Laufende Sequenzen und noch nicht gesendete Mails beendet der Kampagnen-Motor im nächsten Lauf (er verwirft dabei die Entwürfe).
+ */
+export function firmenWerbesperreFolgen(vorher: CrmBestand, nachher: CrmBestand, jetzt: string, person?: string): CrmBestand {
+  const alt = new Map((vorher.firmen ?? []).map(f => [f.id, f]));
+  const neu = new Set((nachher.firmen ?? []).filter(f => f.werbesperre && !alt.get(f.id)?.werbesperre).map(f => f.id));
+  if (!neu.size || !(nachher.followups ?? []).length) return nachher;
+  const werblich = (f: NonNullable<CrmBestand['followups']>[number]) => ['mail', 'linkedin', 'anruf'].includes(f.art) || f.id.startsWith('fu-ks-');
+  const vermerk = `Abgesagt am ${tagVon(jetzt)}: Werbewiderspruch des Betriebs (Art. 21 DSGVO).`;
+  let n = 0;
+  const followups = nachher.followups!.map(f => {
+    if (f.status !== 'offen' || f.bezug.art !== 'firma' || !neu.has(f.bezug.id) || !werblich(f)) return f;
+    n++;
+    return { ...f, status: 'abgesagt' as const, notiz: [f.notiz, vermerk].filter(Boolean).join(' · ').slice(0, 1000), geaendert: jetzt, ...(person ? { geaendertVon: person } : {}) };
+  });
+  return n ? { ...nachher, followups } : nachher;
+}
+
+/** Die Regeln für den CRM-Bestand selbst (die Kartei führt `aendereCrm` nach). */
 export function crmFolgen(vorher: CrmBestand, nachher: CrmBestand, jetzt: string, person?: string): CrmBestand {
   const weg = geloeschteDeals(vorher, nachher);
   const firmen = firmenLeadsOhneDeals(nachher.firmen ?? [], weg, jetzt, person);
   const mitLeads = firmen === nachher.firmen ? nachher : { ...nachher, firmen };
-  return firmenNamenNachziehen(vorher, mitLeads, jetzt, person);
+  return firmenWerbesperreFolgen(vorher, firmenNamenNachziehen(vorher, mitLeads, jetzt, person), jetzt, person);
 }
