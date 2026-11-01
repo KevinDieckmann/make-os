@@ -83,6 +83,8 @@ const R = {
   deal: () => import('@/app/api/crm/deal/route') as Promise<Modul>,
   lead: () => import('@/app/api/crm/lead/route') as Promise<Modul>,
   gesellschaften: () => import('@/app/api/gesellschaften/route') as Promise<Modul>,
+  vertragVorlagen: () => import('@/app/api/vertraege/vorlagen/route') as Promise<Modul>,
+  vertraege: () => import('@/app/api/vertraege/route') as Promise<Modul>,
   schild: () => import('@/app/api/gesellschaften/schild/route') as Promise<Modul>,
   eroeffnung: () => import('@/app/api/business/eroeffnung/route') as Promise<Modul>,
   konten: () => import('@/app/api/finanzen/konten/route') as Promise<Modul>,
@@ -499,6 +501,21 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   ng = (await rufe(R.gesellschaften(), 'PATCH', '/api/gesellschaften', LENA, { id: neu.id, stand: ng.stand, liste: 'gesellschafter', eintrag: { wer: { art: 'person', id: JONAS }, nennbetragCent: '10.000', einlage: 'nein' } })).gesellschaft as { stand: string };
   void ng; void kdv;
   schritt('Gesellschaften', 4);
+
+  // 4·V) Verträge (01.11.): eine erfundene Vorlage (Beispieltext, keine echte Klausel) und ein Entwurf für eine Demo-Firma — über die Routen.
+  const vv = (await rufe(R.vertragVorlagen(), 'POST', '/api/vertraege/vorlagen', LENA, { aktion: 'speichern', felder: {
+    titel: 'Beratungsvertrag (Beispiel)', art: 'dienstleistung', fassung: '1', anrede: 'Sie',
+    felder: [{ schluessel: 'termine', label: 'Termine je Monat', typ: 'zahl', pflicht: true, vorgabe: '2' }],
+    paragraphen: [
+      { id: 'p-1', nr: '§ 1', titel: 'Gegenstand', text: '{{absender.firmierung}} berät {{partner.name}} zu {{leistung.titel}} (Beispieltext).' },
+      { id: 'p-2', nr: '§ 2', titel: 'Umfang', text: 'Je Monat {{termine}} Termine (Beispieltext).' },
+      { id: 'p-3', nr: '§ 3', titel: 'Vergütung', text: 'Die Vergütung beträgt {{verguetung}}, zahlbar binnen {{zahlungsziel}} Tagen (Beispieltext).' },
+      { id: 'p-4', nr: '§ 4', titel: 'Laufzeit', text: 'Beginn {{beginn}}, Kündigungsfrist {{kuendigungsfrist}} (Beispieltext).' },
+      { id: 'p-5', nr: '§ 5', titel: 'Vertraulichkeit', text: 'Beide Seiten behandeln Informationen vertraulich (Beispieltext).', optional: true },
+    ],
+  } })).vorlage as { id: string };
+  await rufe(R.vertraege(), 'POST', '/api/vertraege', LENA, { aktion: 'anlegen', vorlageId: vv.id, gesellschaft: 'ug', vorbelegung: { mandatId: 'm-demo-nordwerk' } });
+  schritt('Verträge (Vorlage + Entwurf)', 2);
 
   // 4a) Beschluss-Buch (10.10.): erfundene Fassungen und Beschlüsse der operativen Gesellschaft — über dieselbe Route wie die Oberfläche (Stand aus der
   //     letzten Antwort). Die Kapitalerhöhung ist „gefasst“ → ihre Folgen (Pflichten, Fassung, Cap-Table) liegen danach als Vorschläge im Stapel.

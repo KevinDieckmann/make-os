@@ -20,7 +20,7 @@
 //   Gesundheit  /os/gesundheit?fuer=<person>#morgen|routinen|haut|streak|index
 //   Markttraktion über lib/crm/adresse.ts (s · a · k)
 
-import { mandateLink, markttraktion, dealAkte, angebotLink, planungLink, auswertungLink, formulareLink, websiteLink, type AngebotAdresse, type PlanungAnsicht, type WebsiteAnsicht } from '@/lib/crm/adresse';
+import { mandateLink, markttraktion, dealAkte, angebotLink, vertragLink, planungLink, auswertungLink, formulareLink, websiteLink, type AngebotAdresse, type VertragAdresse, type PlanungAnsicht, type WebsiteAnsicht } from '@/lib/crm/adresse';
 import { aufgabenLink, type AufgabenAdresse } from '@/lib/aufgaben/adresse';
 import { fulfillmentLink, fallLink, type FulfillmentBereich, type AlterBereich, type FallReiter, type AlterFallReiter } from '@/lib/fulfillment/adresse';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
@@ -192,6 +192,10 @@ export const WEG = {
   /** Qualifizierungs-Runde mit dem Filter „Nicht zugeordnet“ (08.10., Woche 2 · 6.2): Leads ohne Zuständigkeit übernehmen. */
   nichtZugeordnet: () => `${markttraktion('qualifizierung')}&wer=ohne`,
   angebot: (x?: AngebotAdresse) => angebotLink(x),
+  /** Vertrieb › Angebote › Verträge (01.11.): Liste, ein Vertrag (`vertragId`) bzw. neu vorbelegt aus Angebot/Deal/Mandat. */
+  vertrag: (x?: VertragAdresse) => vertragLink(x),
+  /** Unternehmen › Verträge › Vorlagen (01.11.). */
+  vertragVorlagen: (vorlageId?: string) => q('/os/unternehmen', { s: 'vertraege', a: 'vorlagen', v: vorlageId }),
   /** Markttraktion › Formulare (25.10.): „Angebot anfordern“, externe Links, Eingänge, Einstellungen. */
   formulare: (anker?: Parameters<typeof formulareLink>[0]) => formulareLink(anker),
   /** Markttraktion › Planung (10.10.): Kreislauf, Umsatzziele → Aktivitäten, Leadkanäle, Challenges; `kanal` filtert auf einen Leadkanal. */

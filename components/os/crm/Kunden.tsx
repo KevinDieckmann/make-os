@@ -404,6 +404,8 @@ function MandatAkte({ zurueck, ...p }: MandatDetailProps & { zurueck: () => void
             <Chip farbe={statusFarbe(m.status)}>{STATUS.find(x => x.id === m.status)?.label ?? m.status}</Chip>
             {produkt && <Chip farbe={LEUCHT.business}>{`${produkt.name.slice(0, 48)}${ph ? ` · Phase ${ph.nr}/${ph.von}` : ''}`}</Chip>}
             {!m.vertragUnterschrieben && m.status !== 'beendet' && <Chip farbe={C.inkLeise}>ohne Vertrag</Chip>}
+            {/* Verträge (01.11.): Vertrag zum Mandat — unterschrieben setzt „Vertrag unterschrieben“ hier von selbst. */}
+            {!m.vertragUnterschrieben && m.status !== 'beendet' && <Link href={WEG.vertrag({ mandatId: m.id })} style={{ fontSize: TYP.bedien, color: C.aktiv }}>Vertrag erstellen ›</Link>}
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: TYP.bedien, color: C.inkDim }}><Person id={zustaendig(m.zustaendig, 'sales')} groesse={18} /> {nameVon(zustaendig(m.zustaendig, 'sales'))}</span>
           </div>
           <div style={{ display: 'flex', gap: '8px 22px', flexWrap: 'wrap', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,.06)' }}>

@@ -165,7 +165,8 @@ describe('Angebote als Arbeitsfläche', () => {
   it('nur die Liste ist die Fläche: Editor und Ansicht stehen weiter im Rahmen der Seite (`huelle`)', () => {
     expect(a).toContain("if (!offenId) return rahmen(<AngebotListe");
     expect(a).toContain(', true);');
-    expect(m).toContain('huelle={(inhalt, liste) => (liste ? <>{mitlaeufer}{inhalt}</> : <Seite titel="Markttraktion"');
+    // 01.11.: über der Liste steht der Reiter „Angebote | Verträge“ (reiterAV).
+    expect(m).toContain('huelle={(inhalt, liste) => (liste ? <>{mitlaeufer}{reiterAV}{inhalt}</> : <Seite titel="Markttraktion"');
   });
 });
 

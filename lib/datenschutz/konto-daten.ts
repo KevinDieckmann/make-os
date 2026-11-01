@@ -127,6 +127,8 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'kampagne-funde--*': 'Homepage-Funde je Haushalt (Betriebe aus öffentlichen Quellen — Dritte, keine Konto-Daten); am Fund steht höchstens der Speichername der Person, die ihn eingetragen bzw. entschieden hat, und die Kennung des Absender-Postfachs (wie in Protokollen); Funde laufen nach höchstens 60 Tagen ab',
   'kampagnen-post--*': 'Mail-Stapel und Druckliste der Kampagnen je Haushalt (Ziele sind Dritte) — am Eintrag steht nur der Speichername der freigebenden Person und die Kennung ihres Postfachs (wie in Protokollen); die Einträge laufen nach 12 Monaten ab',
   'angebot-formular--*': 'Formular „Angebot anfordern“ je Haushalt (Eingänge nur mit Kennungen, Links externer Vertriebler, Einstellungen) — im Export die eigenen Stempel, beim Löschen wird der Speichername „[gelöscht]“, das eigene Absender-Postfach fällt weg',
+  'vertrag-vorlagen--*': 'Vertragsvorlagen je Haushalt (Wortlaut der Instanz, kein Personenbezug außer „geprüft von“/„geändert von“ als Speichername) — beim Löschen bleiben die Vorlagen',
+  'vertraege--*': 'Verträge je Haushalt (Geschäftsunterlagen, § 257 HGB) — Personenbezug der Vertragspartner über Art. 17 der Kartei; der Speichername bleibt als Bearbeiter in der Unterlage',
   'crm-dateien--*': 'Dateiablage der Kartei je Haushalt',
   'crm-import-laeufe--*': 'Import-Läufe der Kartei',
   'crm-sperrliste--*': 'Sperrliste (nur Fingerabdrücke)',

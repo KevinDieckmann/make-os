@@ -192,6 +192,8 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
           {/* 31.10.: auch nach dem Neuladen — solange der Server sagt, dass die Automatik noch zurückgenommen werden kann (keine Rechnung, kein Fall). */}
           {!auto && !nur && a.status === 'angenommen' && daten.automatikZurueck[a.id] && <Knopf leise onClick={autoZurueck}>Mandat + Liquiplan zurücknehmen</Knopf>}
           {a.status === 'angenommen' && hatMandat && !mandat && <Chip farbe={LEUCHT.gut}>Mandat angelegt</Chip>}
+          {/* Verträge (01.11.): aus einem angenommenen Angebot einen Vertrag erstellen — vorbelegt mit Partner, Gesellschaft, Leistung, Vergütung. */}
+          {!nur && a.status === 'angenommen' && <Knopf leise href={WEG.vertrag({ angebotId: a.id })}>Vertrag erstellen</Knopf>}
           {a.status === 'angenommen' && mandatZiel && <Link href={WEG.mandat(mandatZiel)} style={{ ...link, alignSelf: 'center' }}>Zum Mandat ›</Link>}
           {!nur && a.status === 'angenommen' && mandatZiel && <Knopf leise onClick={ersteRechnung}>Erste Rechnung</Knopf>}
           {!nur && a.status === 'angenommen' && mandatZiel && gemischt && !einmal?.id && <Knopf leise onClick={einmalPlanen}>Einmalbetrag als Rechnung planen</Knopf>}

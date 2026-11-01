@@ -33,6 +33,23 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-6',
+    datum: '2026-11-02',
+    titel: 'Verträge aus Vorlagen',
+    kurz: 'Unter Vertrieb › Angebote gibt es jetzt den Reiter „Verträge“. Verträge entstehen aus euren Vorlagen, bekommen eine Nummer und ein PDF.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Vorlagen pflegt ihr unter Unternehmen › Verträge › Vorlagen. Ihr könnt einen eigenen Vertrag als Word, PDF oder Text einlesen und Werte als Felder markieren.', bereich: 'business', weg: WEG.vertragVorlagen() },
+        { text: 'Vertrag erstellen geht auch direkt aus einem angenommenen Angebot, einem Deal oder einem Mandat. Partner, Gesellschaft und Vergütung sind dann schon eingetragen.', bereich: 'business', weg: WEG.vertrag() },
+        { text: 'Beim Fertigstellen bekommt der Vertrag seine Nummer und ein festes PDF. Ändern geht danach nur als neue Version.', bereich: 'business', weg: WEG.vertrag() },
+        { text: 'Lädst du das unterschriebene PDF hoch, steht der Vertrag im Register der Gesellschaft. Die Kündigungsfrist kommt in den Kalender, mit Erinnerung.', bereich: 'business', weg: WEG.vertrag() },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Jede Vorlage zeigt, ob sie anwaltlich geprüft ist. Ungeprüfte oder geänderte Vorlagen fragen vor dem Fertigstellen nach. Das ist eine Vorlage, keine Rechtsberatung.', bereich: 'business', weg: WEG.vertragVorlagen() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-5',
     datum: '2026-11-02',
     titel: 'Kalender: Firmen bündeln, Belegt bei Google',
