@@ -128,6 +128,25 @@ describe('Eingang über den Anfrage-Weg', () => {
   });
 });
 
+describe('Anlass aus dem Knopf der Website (01.11.)', () => {
+  it('nur bekannte Formen; unförmig oder unbekannt → kein Anlass, nie ein Fehler', async () => {
+    const { anlassVon } = await import('@/lib/kontaktformular/regeln');
+    expect(anlassVon('events')).toMatchObject({ anlass: 'events', titel: 'Einladung zu den Events' });
+    expect(anlassVon('baustein-elevator-pitch', { baustein: 'Elevator-Pitch-Baukasten' })?.titel).toBe('Baustein bestellen: Elevator-Pitch-Baukasten');
+    expect(anlassVon('vorlage-unbekannt', { vorlage: null })?.titel).toBe('Vorlage anfordern');
+    expect(anlassVon('angebot-ki-brain')?.titel).toBe('Anfrage zu einem Angebot');
+    for (const x of ['kontakt', 'EVENTS', '<b>x</b>', '../events', 'a'.repeat(61), 'angebot-', 42, null]) expect(anlassVon(x)).toBeNull();
+  });
+  it('der Anlass steht vor der Nachricht in der Anfrage; ein unförmiger fällt still weg', async () => {
+    expect(await senden(gut({ email: `ella.event@${D}`, vorname: 'Ella', nachricht: 'Gern beim nächsten Abend dabei.', anlass: 'events' }))).toMatchObject({ status: 200, d: { ok: true } });
+    const ella = (await kontakte()).find(x => x.email === `ella.event@${D}`)!;
+    expect(ella.aktivitaeten.some(a => a.text === 'Anfrage über Website: Kontaktformular · Einladung zu den Events (events) — Gern beim nächsten Abend dabei.')).toBe(true);
+    expect(await senden(gut({ email: `olaf.ohne@${D}`, vorname: 'Olaf', anlass: '<script>' }))).toMatchObject({ status: 200, d: { ok: true } });
+    const olaf = (await kontakte()).find(x => x.email === `olaf.ohne@${D}`)!;
+    expect(olaf.aktivitaeten.some(a => (a.text ?? '').startsWith('Anfrage über Website: Kontaktformular — '))).toBe(true);
+  });
+});
+
 describe('Middleware, Caddy, Köpfe, Register', () => {
   let middleware: typeof import('@/middleware').middleware;
   beforeAll(async () => { ({ middleware } = await import('@/middleware')); });

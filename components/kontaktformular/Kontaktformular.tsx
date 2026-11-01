@@ -8,7 +8,7 @@
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { C, seite, seiteKlasse, rahmen, karte, titel, leise, klein, feld, label, knopf } from '@/components/buchen/hell';
-import { GRENZEN } from '@/lib/kontaktformular/regeln';
+import { GRENZEN, type Anlass } from '@/lib/kontaktformular/regeln';
 import { ZoeBegleiterin } from '@/components/oeffentlich/ZoeBegleiterin';
 
 interface Props {
@@ -17,13 +17,15 @@ interface Props {
   erstgespraech: string | null;
   website: string | null;
   stempel: string;
+  /** Woher der Gast kommt (Knopf der Website, 01.11.) — zeigt das Anliegen und schlägt eine Nachricht vor. */
+  anlass?: Anlass | null;
 }
 
 const FALLE = { position: 'absolute', left: -10000, width: 1, height: 1, overflow: 'hidden' } as const;
 const leer = { vorname: '', nachname: '', firma: '', email: '', telefon: '', nachricht: '' };
 
-export function Kontaktformular({ marke, gastgeber, hinweis, erstgespraech, website, stempel }: Props) {
-  const [w, setW] = useState(leer);
+export function Kontaktformular({ marke, gastgeber, hinweis, erstgespraech, website, stempel, anlass = null }: Props) {
+  const [w, setW] = useState({ ...leer, nachricht: anlass?.vorschlag ?? '' });
   const [falle, setFalle] = useState('');
   const [fehler, setFehler] = useState('');
   const [laeuft, setLaeuft] = useState(false);
@@ -37,7 +39,7 @@ export function Kontaktformular({ marke, gastgeber, hinweis, erstgespraech, webs
     if (!w.vorname.trim() || !w.email.trim() || !w.nachricht.trim()) { setFehler('Bitte Vorname, E-Mail-Adresse und Ihre Nachricht angeben.'); return; }
     setLaeuft(true);
     try {
-      const r = await fetch('/api/anfrage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...w, stempel, webseite: falle }) });
+      const r = await fetch('/api/anfrage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...w, stempel, webseite: falle, ...(anlass ? { anlass: anlass.anlass } : {}) }) });
       const j = await r.json().catch(() => ({}));
       if (r.ok && j.ok) setDanke(String(j.text ?? '')); else setFehler(String(j.fehler ?? 'Das hat leider nicht geklappt. Bitte versuchen Sie es noch einmal.'));
     } catch { setFehler('Keine Verbindung — bitte noch einmal versuchen.'); }
@@ -53,6 +55,7 @@ export function Kontaktformular({ marke, gastgeber, hinweis, erstgespraech, webs
           <section style={{ ...karte, display: 'grid', gap: 16 }}>
             <div style={{ display: 'grid', gap: 8 }}>
               <h1 style={titel}>Nachricht schreiben</h1>
+              {anlass && <p style={{ ...klein, margin: 0, color: C.ink }}>Ihr Anliegen: <strong>{anlass.titel}</strong></p>}
               <p style={{ ...leise, margin: 0 }}>Erzählen Sie kurz, worum es geht — wir melden uns persönlich.</p>
               {erstgespraech && <p style={{ ...klein, margin: 0 }}>Lieber gleich einen Termin? <Link href={erstgespraech} style={{ color: C.ink, fontWeight: 600 }}>Erstgespräch buchen</Link></p>}
             </div>

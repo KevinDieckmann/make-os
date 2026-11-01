@@ -6,7 +6,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { sitzungsGeheimnis } from '@/lib/zugang/sitzung';
-import { EINSTELLUNGEN, anfrageText, datenschutzZeilen, type KontaktEingabe, type KontaktformularEinstellungen } from './regeln';
+import { ANLASS_OK, EINSTELLUNGEN, anfrageText, anlassVon, datenschutzZeilen, type Anlass, type KontaktEingabe, type KontaktformularEinstellungen } from './regeln';
 
 export async function ladeKontaktformularEinstellungen(): Promise<KontaktformularEinstellungen> {
   const e = await loadJson<KontaktformularEinstellungen>(EINSTELLUNGEN);
@@ -81,13 +81,24 @@ export type EingangErgebnis = { ok: true; kontaktId: string; followUpId: string;
  * Protokoll. Öffentlich: trifft die Adresse eine vorhandene Person, nur „Adresse unbestätigt“ (nichts ausgelöst). Lehnt der Weg ab (Art. 18 …),
  * entsteht nichts — der Grund geht nie an den Gast.
  */
+/** Anlass aus der Adresse bzw. dem Formular — Titel von Baustein/Vorlage aus den eigenen Katalogen. Wirft nie (Katalog kaputt → Anlass ohne Titel). */
+export async function anlassAufloesen(roh: unknown): Promise<Anlass | null> {
+  if (typeof roh !== 'string' || !ANLASS_OK.test(roh)) return null;
+  const katalog: { baustein?: string | null; vorlage?: string | null } = {};
+  try {
+    if (roh.startsWith('baustein-')) katalog.baustein = (await (await import('@/lib/bausteine/server')).bausteinVon(roh.slice('baustein-'.length)))?.titel ?? null;
+    if (roh.startsWith('vorlage-')) katalog.vorlage = (await (await import('@/lib/unterlagen/server')).unterlageVon(roh.slice('vorlage-'.length)))?.titel ?? null;
+  } catch { /* Katalog nicht lesbar: Anlass ohne Titel */ }
+  return anlassVon(roh, katalog);
+}
+
 export async function eingangVerarbeiten(e: KontaktEingabe): Promise<EingangErgebnis> {
   const { ladeCheckEinstellungen } = await import('@/lib/check/speicher');
   const { gastgeberVon } = await import('@/lib/check/server');
   const person = (await gastgeberVon(await ladeCheckEinstellungen())) ?? 'system';
   const { anfrageAnlegen } = await import('@/lib/crm/anfrage-anlegen');
   const r = await anfrageAnlegen(
-    { neu: { vorname: e.vorname, ...(e.nachname ? { nachname: e.nachname } : {}), email: e.email, ...(e.firma ? { firma: e.firma } : {}), ...(e.telefon ? { telefon: e.telefon } : {}) }, kanal: 'website', text: anfrageText(e) },
+    { neu: { vorname: e.vorname, ...(e.nachname ? { nachname: e.nachname } : {}), email: e.email, ...(e.firma ? { firma: e.firma } : {}), ...(e.telefon ? { telefon: e.telefon } : {}) }, kanal: 'website', text: anfrageText(e, await anlassAufloesen(e.anlass)) },
     { person, wer: { art: 'system' }, oeffentlich: true, webseite: 'formular' },
   );
   return r.ok ? { ok: true, kontaktId: r.bau.kontakt.id, followUpId: r.bau.followUp.id, unbestaetigt: !!r.bau.unbestaetigt } : { ok: false, grund: r.fehler.slice(0, 200) };
