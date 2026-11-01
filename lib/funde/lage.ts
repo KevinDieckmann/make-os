@@ -23,7 +23,7 @@ export const SEGMENT_TEXT: Record<LageSegment, string> = {
 export const LAGE_REGELN = {
   vertriebsleitung: 'Beleg-Leiter: besetzt (Team-/Über-uns-Seite oder Pressemeldung zur Besetzung) · wird gesucht (Stellenanzeige für die Leitung) · Vertrieb ohne sichtbare Leitung (Vertriebsstellen, Vertriebsrollen oder Vertriebskontakt, aber keine Leitung) · keine sichtbar (Team-Seite gelesen, keine Leitung) · unbekannt',
   bedarf: 'Bedarf 0–100: Leitung gesucht 35 · Vertrieb ohne Leitung 30 · keine Leitung sichtbar 25 · unbekannt 10 · Vertriebsstellen offen 15 (ab 3: 20) · Demo-Vertrieb ohne CRM 10 · Finanzierung in den letzten 12 Monaten 15 · laufendes EU-Projekt ohne Referenzen 10 · keine Referenzen 5',
-  potenzial: 'Potenzial 0–100: Finanzierung in 24 Monaten 20 (ab 5 Mio. +5) · offene Stellen 5/10/15 (ab 1/3/10) · Mitarbeitende 10–49: 10, 50–249: 15, ab 250: 10 · Website-Reichweite (Tranco Top 200.000: 10, Top 1 Mio.: 5) · international 8 · ab 50 Kunden 7 · laufendes EU-Projekt 7 · Wachstums-/Pressemeldungen 8 · Zertifikat 5 · Website gepflegt 5 · 2–10 Jahre alt 5 · übernommen −20',
+  potenzial: 'Potenzial 0–100: Finanzierung in 24 Monaten 20 (ab 5 Mio. +5) · offene Stellen 5/10/15 (ab 1/3/10) · Mitarbeitende 10–49: 10, 50–249: 15, ab 250: 10 · Website-Reichweite (Tranco Top 200.000: 10, Top 1 Mio.: 5) · international 8 · ab 50 Kunden 7 · laufendes EU-Projekt 7 · Wachstums-/Pressemeldungen 8 · Innovationspreis/Auszeichnung in den letzten 2 Jahren 10 · Zertifikat 5 · Website gepflegt 5 · 2–10 Jahre alt 5 · übernommen −20',
   segment: 'Jetzt ansprechen: Bedarf ab 40 und Potenzial ab 30 (oder Bedarf ab 55 und Potenzial ab 20) · Beobachten: Vertriebsleitung besetzt · Kein Fokus: Passung unter 35 oder Bedarf unter 25 und Potenzial unter 15 · sonst Aufbauen',
   leadScore: 'Lead-Score = 45 % Passung + 25 % Bedarf + 20 % Potenzial + Erreichbarkeit (Handy 10 · Festnetz 6 · nur Mail 3)',
 } as const;
@@ -60,6 +60,8 @@ export interface LageSignale {
   kunden?: number;
   mitarbeitende?: number;
   zertifikate?: number;
+  /** Jüngste Innovations-Auszeichnung (Preis, Wettbewerb, Ranking) laut Quelle. */
+  auszeichnung?: { jahr: number; titel: string };
   gruendungsjahr?: number;
   /** Stichtag JJJJ-MM-TT. */
   heute: string;
@@ -131,6 +133,7 @@ export function lageBewerten(s: LageSignale): Lage {
   P((s.euLaufend ?? 0) > 0, 7, 'laufendes EU-Projekt');
   P((s.wachstumsMeldungen ?? 0) > 0, 8, 'Wachstum in der Presse');
   P((s.zertifikate ?? 0) > 0, 5, 'Zertifikat/Siegel');
+  P(s.auszeichnung && Number(s.heute.slice(0, 4)) - s.auszeichnung.jahr <= 2, 10, `${s.auszeichnung?.titel} ${s.auszeichnung?.jahr}`);
   P((s.versionen12 ?? 0) >= 3, 5, 'Website gepflegt');
   const alter = s.gruendungsjahr ? Number(s.heute.slice(0, 4)) - s.gruendungsjahr : null;
   P(alter !== null && alter >= 2 && alter <= 10, 5, `${alter} Jahre am Markt`);

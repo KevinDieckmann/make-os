@@ -57,6 +57,14 @@ describe('Bedarf, Potenzial, Segment', () => {
     expect(voll.bedarf).toBeLessThanOrEqual(100);
     expect(voll.potenzial).toBe(100);
   });
+  it('frische Innovations-Auszeichnung hebt das Potenzial, alte nicht', () => {
+    const ohne = lageBewerten(s({})).potenzial;
+    const frisch = lageBewerten(s({ auszeichnung: { jahr: 2025, titel: 'TOP 100' } }));
+    expect(frisch.potenzial - ohne).toBe(10);
+    expect(frisch.gruendePotenzial.join(' ')).toContain('TOP 100 2025');
+    expect(lageBewerten(s({ auszeichnung: { jahr: 2021, titel: 'TOP 100' } })).potenzial).toBe(ohne);
+    expect(LAGE_REGELN.potenzial).toContain('Innovationspreis');
+  });
   it('Lead-Score nach Regel, Ausschluss = 0', () => {
     expect(leadScoreTief(80, { bedarf: 60, potenzial: 40 }, { mobil: '+49 170 0000000' })).toBe(Math.round(36 + 15 + 8 + 10));
     expect(leadScoreTief(0, { bedarf: 100, potenzial: 100 }, { mobil: 'x' })).toBe(0);
