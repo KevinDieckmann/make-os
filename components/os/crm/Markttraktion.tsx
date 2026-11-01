@@ -23,7 +23,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Seite, Knopf } from '../ui';
-import { aufloesen, mitAkte, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, planungLink, punktVon, eventsReiterVon, EVENTS_REITER, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht, type PlanungAnsicht, type EventsReiterId, type WebsiteAnsicht } from '@/lib/crm/adresse';
+import { aufloesen, mitAkte, markttraktion, kontaktAkte, angebotAusAdresse, angebotVonHier, vertragAusAdresse, angebotLink, vertragLink, planungLink, punktVon, eventsReiterVon, EVENTS_REITER, PFAD, type Bereich, type DealsAnsicht, type FollowupAnsicht, type AkteReiter, type BesucheAnsicht, type QualiAnsicht, type PlanungAnsicht, type EventsReiterId, type WebsiteAnsicht } from '@/lib/crm/adresse';
 import { istBesuch } from '@/lib/crm/besuche-form';
 import { useCrm } from './daten';
 import { Pillen } from './teile';
@@ -46,6 +46,7 @@ import { KontaktAkte } from './Akte';
 import { FirmenAkte } from './Firmen';
 import { IndexStreifen, STREIFEN } from '../business/IndexStreifen';
 import { AngebotStart } from './angebot/AngebotStart';
+import { VertraegeStart } from '../vertraege/VertraegeStart';
 import { MtPlanung } from './planung/Planung';
 import { ZoeFragenKnopf } from './ZoeFragen';
 import { zoeBezugFuer } from '@/lib/zoe/crm-bezug';
@@ -206,10 +207,16 @@ export function MarkttraktionSeite() {
     );
   }
   // Angebote (31.10.): die Liste ist eine Arbeitsfläche; Editor und Ansicht eines Angebots stehen weiter im Rahmen der Seite.
+  // Verträge (01.11., Kevin: „im Vertrieb unter Angebote ein Thema Vertrag“): Reiter „Angebote | Verträge“, Adresse `a=vertraege` (alte Links ohne `a` bleiben Angebote).
   if (bereich === 'angebot') {
+    const vertraegeOffen = ansicht === 'vertraege';
+    const reiterAV = <div role="group" aria-label="Angebote oder Verträge"><Pillen liste={[{ id: 'angebote', label: 'Angebote' }, { id: 'vertraege', label: 'Verträge' }]} aktiv={vertraegeOffen ? 'vertraege' : 'angebote'} onWahl={x => router.push(x === 'vertraege' ? vertragLink() : angebotLink())} /></div>;
+    if (vertraegeOffen) {
+      return <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>{zoeKnopf}{kopfAktionen}</>}>{mitlaeufer}<VertraegeStart api={api} {...vertragAusAdresse(params)} reiter={reiterAV} /></Seite>;
+    }
     return (
       <AngebotStart api={api} {...angebotAusAdresse(params)} zuKontakt={zuKontakt} zuDeal={zuDeal} kopf={{ neben: zoeKnopf, mehr: kopfAktionen }}
-        huelle={(inhalt, liste) => (liste ? <>{mitlaeufer}{inhalt}</> : <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>{zoeKnopf}{kopfAktionen}</>}>{mitlaeufer}{inhalt}</Seite>)} />
+        huelle={(inhalt, liste) => (liste ? <>{mitlaeufer}{reiterAV}{inhalt}</> : <Seite titel="Markttraktion" unter={UNTER[bereich]} rechts={<>{zoeKnopf}{kopfAktionen}</>}>{mitlaeufer}{inhalt}</Seite>)} />
     );
   }
   // Deals › Liste (31.10.): die Stufen als Abschnitte EINER Liste, rechts der Deal bzw. die Prognose; Board · Liste steht in der Filterzeile.

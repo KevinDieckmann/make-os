@@ -201,6 +201,21 @@ export function angebotVonHier(bereich: string, ansicht: string | null | undefin
   return angebotLink();
 }
 
+/**
+ * Verträge (01.11., Kevin: „im Vertrieb unter Angebote ein Thema Vertrag“): Reiter „Angebote | Verträge“ im Bereich `angebot` — `a=vertraege`,
+ * `k` = Vertrag (`vtr-…`), Vorbelegung aus `angebot`, `deal`, `mandat`, `kontakt`, `firma`. Ohne `a` bleibt alles wie bisher (alte Links gelten).
+ */
+export interface VertragAdresse { vertragId?: string | null; angebotId?: string | null; dealId?: string | null; mandatId?: string | null; kontaktId?: string | null; firmaId?: string | null }
+export function vertragLink({ vertragId, angebotId, dealId, mandatId, kontaktId, firmaId }: VertragAdresse = {}): string {
+  const q = new URLSearchParams({ s: 'angebot', a: 'vertraege' });
+  for (const [n, w] of [['k', vertragId], ['angebot', angebotId], ['deal', dealId], ['mandat', mandatId], ['kontakt', kontaktId], ['firma', firmaId]] as const) { const x = kennung(w); if (x) q.set(n, x); }
+  return `${PFAD}?${q}`;
+}
+/** Liest die Adresse der Verträge (Gegenstück zu `vertragLink`). */
+export function vertragAusAdresse(p: { get(name: string): string | null }): Required<{ [K in keyof VertragAdresse]: string | null }> {
+  return { vertragId: kennung(p.get('k')), angebotId: kennung(p.get('angebot')), dealId: kennung(p.get('deal')), mandatId: kennung(p.get('mandat')), kontaktId: kennung(p.get('kontakt')), firmaId: kennung(p.get('firma')) };
+}
+
 /** Liest die Vorbelegung des Angebots aus der Adresse (Gegenstück zu `angebotLink`). */
 export function angebotAusAdresse(p: { get(name: string): string | null }): { angebotId: string | null; kontaktId: string | null; firmaId: string | null; dealId: string | null } {
   return { angebotId: kennung(p.get('k')), kontaktId: kennung(p.get('kontakt')), firmaId: kennung(p.get('firma')), dealId: kennung(p.get('deal')) };

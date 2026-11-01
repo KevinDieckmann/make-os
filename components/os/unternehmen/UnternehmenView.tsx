@@ -51,6 +51,7 @@ import { Risiken } from './schild/Risiken';
 import { Struktur } from './schild/Struktur';
 import { Schutz } from './schild/Schutz';
 import { VertraegeOrgane } from './schild/VertraegeOrgane';
+import { VorlagenBereich } from '../vertraege/VorlagenBereich';
 import { BeschluesseBereich, type BuchAnsicht } from './Beschluesse';
 import { BlickUeberblick } from './blick/Blick';
 import { Assistent } from './blick/Assistent';
@@ -177,7 +178,10 @@ export function UnternehmenView() {
         </>
       )}
       {sicht === 'struktur' && <Struktur daten={daten} schild={schild.daten?.eintraege ?? []} gewaehlt={params.get('w') ?? undefined} waehle={w => geh({ s: 'struktur', w })} oeffne={id => geh({ g: id })} />}
-      {sicht === 'vertraege' && <VertraegeOrgane daten={daten} liste={daten.gesellschaften.filter(x => !x.geloeschtAm && business.some(b => b.id === x.id))} heute={heute} />}
+      {/* Verträge › Vorlagen (01.11.): `?s=vertraege&a=vorlagen[&v=<vorlage>]` — die Vertragsvorlagen für Vertrieb › Angebote › Verträge. */}
+      {sicht === 'vertraege' && <div role="group" aria-label="Verträge oder Vorlagen"><Pillen liste={[{ id: 'liste', label: 'Verträge & Organe' }, { id: 'vorlagen', label: 'Vorlagen' }]} aktiv={params.get('a') === 'vorlagen' ? 'vorlagen' : 'liste'} onWahl={x => router.push(x === 'vorlagen' ? WEG.vertragVorlagen() : WEG.schild('vertraege'))} /></div>}
+      {sicht === 'vertraege' && params.get('a') === 'vorlagen' && <VorlagenBereich offenId={params.get('v') ?? undefined} oeffnen={id => router.push(WEG.vertragVorlagen(id))} />}
+      {sicht === 'vertraege' && params.get('a') !== 'vorlagen' && <VertraegeOrgane daten={daten} liste={daten.gesellschaften.filter(x => !x.geloeschtAm && business.some(b => b.id === x.id))} heute={heute} />}
       {sicht === 'beschluesse' && <Beschluesse daten={daten} wahl={params.get('w') ?? gewaehlt} offenId={params.get('b') ?? undefined} ansicht={params.get('a') === 'satzung' ? 'satzung' : 'buch'}
         risikenVon={id => (schild.daten?.eintraege.find(e => e.id === id)?.risiken ?? []).filter(r => !r.geloeschtAm).map(r => ({ id: r.id, titel: r.titel }))}
         geh={(w, a) => geh({ s: 'beschluesse', w, ...(a === 'satzung' ? { a } : {}) })} ersetzen={ersetzen}

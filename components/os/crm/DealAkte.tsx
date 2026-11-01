@@ -27,7 +27,7 @@ import { firmaVonDeal } from '@/lib/crm/firmen-bezug';
 import { mitglied } from '@/lib/crm/team';
 import { WEG } from '@/lib/wege';
 import type { DealRolle } from '@/lib/crm/typen';
-import { angebotLink } from '@/lib/crm/adresse';
+import { angebotLink, vertragLink } from '@/lib/crm/adresse';
 import { angeboteZu, ANGEBOT_STATUS_LABEL } from '@/lib/crm/angebote';
 import { anzahl } from '@/lib/text/zahlwort';
 import { FallAmDeal } from '../fulfillment/prozesse/FallAmDeal';
@@ -121,6 +121,8 @@ export function DealAkte({ api, id, zuKontakt, zurueck }: { api: CrmApi; id: str
               {/* 3.3: zu einem geschlossenen Deal (Folgeauftrag) ohne Deal starten — beim Stellen entsteht ein neuer. 24.10. (Bau-Test): nicht am gewonnenen
                   Deal — dort gilt das angenommene Angebot (Mandat anlegen); ein Folgeauftrag startet als neuer Deal. */}
               {c.stufe !== 'gewonnen' && <Link href={angebotLink({ ...(OFFENE_STUFEN.includes(c.stufe) ? { dealId: c.id } : {}), kontaktId: c.kontaktIds[0], firmaId: c.firmaId })} style={{ fontSize: TYP.bedien, fontWeight: 700, color: LEUCHT.gut, textDecoration: 'none', border: `1px solid ${LEUCHT.gut}80`, background: `${LEUCHT.gut}24`, borderRadius: 10, padding: '6px 11px' }}>Angebot erstellen</Link>}
+              {/* Verträge (01.11.): Vertrag zum Deal, vorbelegt (Partner, Gesellschaft, Produkt). */}
+              <Link href={vertragLink({ dealId: c.id })} style={{ fontSize: TYP.bedien, fontWeight: 700, color: C.aktiv, textDecoration: 'none', border: `1px solid ${C.aktiv}80`, background: `${C.aktiv}24`, borderRadius: 10, padding: '6px 11px' }}>Vertrag erstellen</Link>
             </div>
           </div>
         </div>

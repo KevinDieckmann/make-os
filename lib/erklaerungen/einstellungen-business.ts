@@ -15,6 +15,20 @@ export const EINSTELLUNGEN_BUSINESS = {
     beispiel: '„60 % auf echten Daten · 4 Messlücken“ heißt: Die Zahl ist ein guter Hinweis, aber vier Kennzahlen warten noch auf eine Messung — jede Kachel mit „—“ sagt, was fehlt.',
   },
 
+  // ── Unternehmen › Verträge › Vorlagen (01.11.) ────────────────────────────────────────────────────────────────────────────────
+  'vertraege.pflichtfeld': {
+    was: 'Ein Pflichtfeld muss im Vertrag gefüllt sein, bevor er fertiggestellt werden kann. So steht nie ein leerer Wert im fertigen PDF.',
+    beispiel: 'Das Feld „Stundensatz“ ist Pflicht. Solange es im Entwurf leer ist, bleibt „Fertigstellen“ gesperrt und nennt den Grund.',
+    an: 'Leer = Fertigstellen gesperrt.',
+    aus: 'Das Feld darf leer bleiben — steht sein Platzhalter aber in einem aktiven Paragraphen, sperrt das Fertigstellen trotzdem.',
+  },
+  'vertraege.optional': {
+    was: 'Ein optionaler Paragraph lässt sich im einzelnen Vertrag weglassen. Ein Pflicht-Paragraph steht immer drin.',
+    beispiel: 'Der Paragraph „Wettbewerb“ ist optional. Im Vertrag mit der Beispiel GmbH wird er weggelassen — im PDF fehlt er, die Vorlage bleibt gleich.',
+    an: 'Im Vertrag gibt es „Weglassen“ und „Aufnehmen“.',
+    aus: 'Der Paragraph steht in jedem Vertrag aus dieser Vorlage.',
+  },
+
   // ── Markttraktion › Kampagne › Sequenz & Mail-Stapel (31.10., Kampagnen-Motor) ─────────────────────────────────────────────
   'funde.eigenesRisiko': {
     was: 'Erlaubt Mail und Anruf an Betriebe ohne Einwilligung — auf eigenes Risiko des Inhabers, denn Werbe-Mail und Werbeanruf ohne Einwilligung sind auch an Firmen abmahnfähig (§ 7 UWG). Die Kanal-Ampel bleibt rot; gesendet wird nur nach Freigabe im Stapel, mit Abmeldelink. Hinweis, keine Rechtsberatung.',
