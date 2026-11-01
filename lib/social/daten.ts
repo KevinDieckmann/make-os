@@ -20,6 +20,8 @@ const SPEICHER = /^[a-z0-9-]{1,40}$/;
 /** Feste Gesellschaft (kdc · kdv · ug) oder Register-Kennung `g-…` — ob sie existiert und Business ist, prüft der Schreibweg. */
 const GESELLSCHAFT = /^(kdc|kdv|ug|g-[a-z0-9][a-z0-9-]{3,62})$/;
 const istKennung = (v: unknown): v is string => typeof v === 'string' && KENNUNG.test(v);
+/** Kennung eines Eintrags im CRM-Bestand (Beitrag des Redaktionsplans) — dieselbe Form wie der CRM-Säuberer. */
+const CRM_KENNUNG = /^[a-z0-9][a-z0-9-]{1,63}$/;
 const text = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim() : '').slice(0, max);
 const zahl = (v: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): number | undefined => {
   const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v.replace(',', '.')) : NaN;
@@ -201,6 +203,7 @@ export function folgeAus(o: Record<string, unknown>): SocialFolge | null {
     status: st, geplantAm: istKalendertag(o.geplantAm) ? o.geplantAm : undefined,
     geplantUm: istKalendertag(o.geplantAm) && istUhrzeit(o.geplantUm) ? o.geplantUm : undefined,
     quelle: o.quelle === 'agent' ? 'agent' : undefined,
+    beitragId: typeof o.beitragId === 'string' && CRM_KENNUNG.test(o.beitragId) ? o.beitragId : undefined,
     platz: typeof o.platz === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(o.platz) ? o.platz : undefined,
     versuche: (() => { const l = liste(o.versuche, versuchAus); return l.length ? l : undefined; })(),
     veroeffentlicht: liste(o.veroeffentlicht, veroeffentlichungAus),
@@ -282,6 +285,15 @@ export function socialFuerPerson(d: SocialDatei, person: string | null | undefin
 }
 
 export const NUR_PERSON_SELBST = 'Bei einer Personenmarke entscheidet das nur die Person selbst.';
+
+/**
+ * Folgen, die auf eine Freigabe warten (02.11., Marketing-Projekt M3 — für die Zähler im Marketing): Entwurf ohne Freigabe in einem laufenden
+ * Kanal, den die Person sieht. Rein; der Aufrufer filtert vorher mit `socialFuerPerson`.
+ */
+export function folgenZurFreigabe(d: Pick<SocialDatei, 'kanaele' | 'folgen'>): SocialFolge[] {
+  const laufend = new Set(d.kanaele.filter(k => !k.archiviertAm && k.status === 'aktiv').map(k => k.id));
+  return d.folgen.filter(f => f.status === 'entwurf' && !f.freigegebenAm && laufend.has(f.kanalId));
+}
 export const GEHOERT_ZU_PRIVAT_SOCIAL = 'Diese Einheit gehört zu Privat — Social ist Business. Bitte eine Business-Gesellschaft wählen.';
 /** Inhalt einer Folge, den eine Freigabe gesehen haben muss — ändert sich einer davon, fällt die Freigabe weg. */
 const folgeInhalt = (f: SocialFolge) => JSON.stringify([f.titel, f.skript, f.hooks.map(h => [h.text, h.bildschirm ?? '']), f.cta ?? '', f.personenImBild ?? 'keine', f.werbung === true, f.quellen, f.medien ?? [], f.beschriftung ?? '']);

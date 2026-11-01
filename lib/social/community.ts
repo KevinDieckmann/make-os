@@ -9,6 +9,7 @@
 //     Not-Aus „Antworten anhalten“ und die Tageslimits des Kanals gelten; DMs nur im 24-h-Fenster (Messaging-Regel von Meta).
 //   · Frist: Einträge älter als `COMMUNITY_TAGE` fallen beim Abholen weg (die Originale bleiben bei Instagram).
 
+import { kanalMitMarkenVorgabe } from './marke-vorgabe-server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { neueKennung } from '@/lib/kennung';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
@@ -369,6 +370,7 @@ Antworte NUR mit dem Antworttext (ohne Anführungszeichen).`;
 
 export async function antwortVorschlag(person: string, kanal: SocialKanal, faden: FadenSicht, lauf: 'aufruf' | 'hintergrund' = 'aufruf'): Promise<{ ok: true; text: string } | { ok: false; fehler: string }> {
   const { askText, fremd } = await import('@/lib/anthropic');
+  kanal = await kanalMitMarkenVorgabe(kanal); // Positionierung als Vorgabe (02.11., M3)
   const verlauf = faden.eintraege.slice(-12).map(e => `${e.richtung === 'ein' ? `@${e.gegen.name ?? 'jemand'}` : 'Wir'}: ${e.text}`).join('\n');
   const marke = [kanal.marke.ton && `Ton: ${kanal.marke.ton}`, kanal.marke.versprechen && `Worum es im Account geht: ${kanal.marke.versprechen}`].filter(Boolean).join('\n');
   const r = await askText({
@@ -395,6 +397,7 @@ export async function fremdEntwurf(person: string, kanal: SocialKanal, link: str
   const d = await ladeCommunity();
   if ((d.fremd ?? []).length >= FREMD_MAX) return { ok: false, status: 413, fehler: `Höchstens ${FREMD_MAX} Einträge — erledigte entfernen.` };
   const { askText, fremd } = await import('@/lib/anthropic');
+  kanal = await kanalMitMarkenVorgabe(kanal); // Positionierung als Vorgabe (02.11., M3)
   const marke = [kanal.marke.ton && `Ton: ${kanal.marke.ton}`, kanal.marke.versprechen && `Worum es im eigenen Account geht: ${kanal.marke.versprechen}`].filter(Boolean).join('\n');
   const r = await askText({
     system: FREMD_SYSTEM, systemStabil: FREMD_SYSTEM, maxTokens: 300, zweck: 'social-fremd', timeoutMs: 45_000, retries: 1,

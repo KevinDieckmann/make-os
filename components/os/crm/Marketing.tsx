@@ -16,7 +16,8 @@
 //   Newsletter      Ausgaben, Empfänger nur mit Double-Opt-in
 //   Positionierung  Positionierung, Zielgruppe, Ton, Themensäulen
 // Gemessen wird an Gesprächen und Chancen — keine Likes, keine Öffnungsraten.
-// MAKE OS versendet und veröffentlicht nichts.
+// Nach außen geht nur, was eine Person per Klick freigibt: der Mail-Stapel der Kampagnen und Social-Folgen (nach den Leitplanken des
+// Kanals). Redaktionsplan und Newsletter veröffentlicht bzw. versendet MAKE OS nicht selbst.
 //
 // Zu zweit (25.09.): Marketing verantwortet Malin (lib/crm/team.ts) — die
 // Zeile ganz oben sagt, wer führt. Beide sehen alles und arbeiten überall
@@ -84,6 +85,13 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
     const l = api.crm ? freigabeLage(api.crm.stand).filter(x => liegtBei(x, ich)) : [];
     return { redaktion: l.filter(x => x.art === 'beitrag').length, newsletter: l.filter(x => x.art === 'newsletter').length } as Partial<Record<Unter, number>>;
   }, [api.crm, ich]);
+  // Social-Freigaben (02.11., M3): Folgen im Entwurf ohne Freigabe zählen am Reiter „Social“ mit — nur die Zahl, gefiltert auf dem Server.
+  const [socialFreigabe, setSocialFreigabe] = useState(0);
+  useEffect(() => {
+    let weg = false;
+    fetch('/api/social?nur=zaehler', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => { if (!weg && j?.ok && typeof j.zurFreigabe === 'number') setSocialFreigabe(j.zurFreigabe); }).catch(() => { /* ohne Zahl bleibt der Reiter ohne Zusatz */ });
+    return () => { weg = true; };
+  }, [unter]);
   const anfragen = useMemo(() => (api.crm ? anfragenListe(api.kontakte ?? [], api.crm.stand, api.crm.heute) : []), [api.crm, api.kontakte]);
   const n = { anfragen: anfragen.length, segmente: api.crm?.stand.segmente?.length ?? 0, kampagnen: api.crm?.stand.kampagnen?.length ?? 0, redaktion: api.crm?.stand.beitraege?.length ?? 0, newsletter: api.crm?.stand.newsletter?.length ?? 0 } as Partial<Record<Unter, number>>;
   const offeneAnfragen = anfragen.filter(a => a.offen).length;
@@ -96,7 +104,7 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
     setStartAktiv(!uebersprungen && !einstellungAus(api.crm.stand).positionierung.trim() && !(api.crm.stand.beitraege ?? []).length);
   }, [api.crm, startAktiv]);
   const startBeenden = (merken: boolean) => { setStartAktiv(false); if (merken) { try { sessionStorage.setItem(START_SCHLUESSEL, '1'); } catch { /* egal */ } } };
-  const liste = UNTER.map(u => ({ id: u.id, label: `${n[u.id] ? `${u.label} ${n[u.id]}` : u.label}${fuerMich[u.id] ? ` · ${fuerMich[u.id]} für dich` : ''}${u.id === 'anfragen' && offeneAnfragen ? ` · ${offeneAnfragen} offen` : ''}` }));
+  const liste = UNTER.map(u => ({ id: u.id, label: `${n[u.id] ? `${u.label} ${n[u.id]}` : u.label}${fuerMich[u.id] ? ` · ${fuerMich[u.id]} für dich` : ''}${u.id === 'anfragen' && offeneAnfragen ? ` · ${offeneAnfragen} offen` : ''}${u.id === 'social' && socialFreigabe ? ` · ${socialFreigabe} zur Freigabe` : ''}` }));
   const fuehrt = verantwortlich('marketing');
 
   return (

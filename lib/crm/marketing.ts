@@ -9,13 +9,14 @@
 //   · Mail-Adressen im Segment-Export nur, wo Werbung per Mail zulässig ist
 //   · Personen mit Werbesperre stehen in keiner Liste und keinem Export
 //   · Privatnotizen verlassen die Kartei nie
-// MAKE OS versendet und veröffentlicht nichts — Export und Zahlen von Hand.
+// Redaktionsplan und Newsletter: MAKE OS veröffentlicht bzw. versendet nichts selbst — Export und Zahlen von Hand (Abmeldungen über den
+// Abmeldelink zählt es selbst). Nach außen geht nur, was eine Person per Klick freigibt (Mail-Stapel, Social-Folgen nach Leitplanken).
 
 import { anzeigename, type Aktivitaet, type Kontakt } from '@/lib/make-one/crm';
-import type { Beitrag, Chance, CrmBestand, Firma, Freigabe, MarketingEinstellung, NewsletterAusgabe, Quelle, Segment, SegmentKriterien } from './typen';
+import type { Beitrag, Chance, CrmBestand, Firma, Freigabe, Kampagne, MarketingEinstellung, NewsletterAusgabe, Quelle, Segment, SegmentKriterien } from './typen';
 import { nurBusinessGezaehlt } from './zaehlung-business';
 import { leadZeileFuer, inArbeit } from './leads';
-import { anfrageIstMarketing } from './scoring';
+import { anfrageIstMarketing, istMarketingKampagne } from './scoring';
 import type { Kpi, KpiAmpel } from './kennzahlen';
 import { art14, kanalStatus, firmaKanalStatus, firmaAmpel, type Kanal, type Kontext } from './recht';
 import { segmentAuswerten, segmentFirmen, type SegmentKontext } from './segmente';
@@ -49,10 +50,15 @@ export const WIRKUNG_ARTEN: { id: Beitrag['wirkung'][number]['art']; label: stri
 export const AUSGABE_STATUS: { id: NewsletterAusgabe['status']; label: string }[] = [
   { id: 'entwurf', label: 'Entwurf' }, { id: 'bereit', label: 'Bereit' }, { id: 'versendet', label: 'Versendet' },
 ];
-/** Chancen-Quellen, die Marketing zugerechnet werden. Events zählt der Head of Event. */
-export const MARKETING_QUELLEN: readonly NonNullable<Chance['quelle']>[] = ['content', 'inbound'];
-/** Quellen, die im Marketing-Trichter als „Übergabe“ zählen (27.09.): Content, Anfrage — und Kampagnen, die beide Heads planen. */
-export const TRICHTER_QUELLEN: readonly Quelle[] = ['content', 'inbound', 'kampagne'];
+/**
+ * EINE Quellen-Liste für „Deals aus Marketing“ (02.11., Marketing-Projekt M3): Content, Anfrage und Kampagne. Vorher rechneten Kennzahl
+ * („Neue Deals aus Marketing“, nur Content/Anfrage) und Trichter („Übergabe“, mit Kampagne) mit zwei Listen — dieselbe Frage, zwei Antworten.
+ * Gefragt wird NUR über `dealAusMarketing`; eine Kampagne zählt nur, wenn sie Marketing ist (`istMarketingKampagne`, dieselbe Regel wie die
+ * Marketing-Herkunft eines Leads). Events zählt der Head of Event.
+ */
+export const MARKETING_QUELLEN: readonly Quelle[] = ['content', 'inbound', 'kampagne'];
+/** Alter Name (27.09.) — dieselbe Liste. */
+export const TRICHTER_QUELLEN: readonly Quelle[] = MARKETING_QUELLEN;
 
 // ── Anfragen (27.09.) — die Marke im Verlauf, an der man eine Anfrage erkennt ──
 // Der Anfragen-Eingang (lib/crm/anfragen.ts) schreibt an die Person eine Aktivität
@@ -62,6 +68,12 @@ export const TRICHTER_QUELLEN: readonly Quelle[] = ['content', 'inbound', 'kampa
 export const ANFRAGE_PRAEFIX = 'Anfrage über ';
 export const ANFRAGE_FOLLOWUP = 'Anfrage beantworten';
 export const istAnfrage = (a: Pick<Aktivitaet, 'art' | 'text'>) => a.art === 'antwort' && (a.text ?? '').startsWith(ANFRAGE_PRAEFIX);
+/**
+ * Eine Anfrage über die Website (Check, Kontaktformular, Bausteine, Unterlagen, Terminbuchung — alle über `anfrageBauen` mit Kanal „website“,
+ * Beschriftung „Website“ in `ANFRAGE_KANAELE`). EINE Erkennung für Marketing › Anfragen, Website › Eingänge und die Website-Kennzahlen.
+ */
+export const ANFRAGE_WEBSITE = `${ANFRAGE_PRAEFIX}Website: `;
+export const istWebseiteAnfrage = (a: Pick<Aktivitaet, 'art' | 'text'>) => istAnfrage(a) && (a.text ?? '').startsWith(ANFRAGE_WEBSITE);
 /** Ein Follow-up aus dem Anfragen-Eingang — erkennbar am Text. */
 export const istAnfrageFollowUp = (f: { text: string }) => f.text.startsWith(ANFRAGE_FOLLOWUP);
 /**
@@ -157,17 +169,46 @@ export function contentGespraeche(beitraege: Beitrag[], von: string, bis: string
   return s.size;
 }
 
+/** Was `dealAusMarketing` zur Attribution braucht — einmal je Bestand gebaut (`marketingDealKontext`). */
+export interface MarketingDealKontext {
+  beitraege: readonly Beitrag[];
+  /** Kampagnen (ohne Papierkorb) — für die Quelle „Kampagne“: zählt nur eine Marketing-Kampagne. */
+  kampagnen?: readonly Kampagne[];
+  /** kontaktId → Tage mit einer Marketing-Anfrage (Wirkung „Anfrage“ am Beitrag oder Anfrage im Verlauf, `anfrageIstMarketing`). */
+  anfrageTage?: ReadonlyMap<string, readonly string[]>;
+}
+/** Die Tage mit Marketing-Anfragen je Person — dieselbe Regel wie der Trichter (`istAnfrage` + `anfrageIstMarketing`). */
+export function marketingAnfrageTage(kontakte: readonly Kontakt[], crm: Pick<CrmBestand, 'beitraege' | 'events'>): Map<string, string[]> {
+  const m = new Map<string, string[]>();
+  const merke = (id: string, t: string) => m.set(id, [...(m.get(id) ?? []), t]);
+  for (const b of crm.beitraege ?? []) for (const w of b.wirkung ?? []) if (w.art === 'anfrage') merke(w.kontaktId, w.am);
+  for (const k of kontakte) for (const a of k.aktivitaeten ?? []) if (istAnfrage(a) && anfrageIstMarketing(a, crm.events)) merke(k.id, tag(a.am));
+  return m;
+}
+export const marketingDealKontext = (kontakte: readonly Kontakt[], crm: Pick<CrmBestand, 'beitraege' | 'events' | 'kampagnen'>): MarketingDealKontext =>
+  ({ beitraege: crm.beitraege ?? [], kampagnen: crm.kampagnen ?? [], anfrageTage: marketingAnfrageTage(kontakte, crm) });
+
 /**
- * Stammt eine Chance aus dem Marketing? Ja, wenn die Quelle Content oder
- * Anfrage ist — oder wenn eine ihrer Personen in den 90 Tagen vor Anlage über
- * einen Beitrag ins Gespräch kam (Attribution per Kontakt, nicht per Klick).
+ * Stammt ein Deal aus dem Marketing? EINE Stelle (02.11., M3) für Kennzahl, Trichter, Index-Details und Head: ja, wenn
+ *   · die Quelle in `MARKETING_QUELLEN` steht (Kampagne nur, wenn die verknüpfte Kampagne Marketing ist — unbekannte zählen), oder
+ *   · eine seiner Personen in den 90 Tagen vor Anlage über einen Beitrag ins Gespräch kam (Wirkung Gespräch/Anfrage), oder
+ *   · eine seiner Personen in den 90 Tagen vor Anlage über Marketing angefragt hat (`anfrageTage`).
+ * Attribution per Kontakt, nicht per Klick. Ohne Kontext (alter Aufruf mit Beitragsliste) gilt nur Quelle + Beiträge.
  */
-export function ausMarketing(c: Pick<Chance, 'quelle' | 'kontaktIds' | 'angelegt'>, beitraege: Beitrag[]): boolean {
-  if (c.quelle && MARKETING_QUELLEN.includes(c.quelle)) return true;
+export function dealAusMarketing(c: Pick<Chance, 'quelle' | 'kontaktIds' | 'angelegt'> & { quelleBezug?: string }, ctx: MarketingDealKontext): boolean {
+  if (c.quelle && MARKETING_QUELLEN.includes(c.quelle)) {
+    if (c.quelle !== 'kampagne' || !c.quelleBezug || !ctx.kampagnen) return true;
+    const k = ctx.kampagnen.find(x => x.id === c.quelleBezug);
+    if (!k || istMarketingKampagne(k)) return true;
+  }
   const bis = tag(c.angelegt), von = tagPlus(bis, -90);
   const ids = new Set(c.kontaktIds);
-  return beitraege.some(b => (b.wirkung ?? []).some(w => ids.has(w.kontaktId) && (w.art === 'gespraech' || w.art === 'anfrage') && w.am >= von && w.am <= bis));
+  if (ctx.beitraege.some(b => (b.wirkung ?? []).some(w => ids.has(w.kontaktId) && (w.art === 'gespraech' || w.art === 'anfrage') && w.am >= von && w.am <= bis))) return true;
+  return !!ctx.anfrageTage && c.kontaktIds.some(id => (ctx.anfrageTage!.get(id) ?? []).some(t => t >= von && t <= bis));
 }
+/** Alter Aufruf (Beitragsliste) — dieselbe Regel über `dealAusMarketing`. */
+export const ausMarketing = (c: Pick<Chance, 'quelle' | 'kontaktIds' | 'angelegt'> & { quelleBezug?: string }, x: readonly Beitrag[] | MarketingDealKontext): boolean =>
+  dealAusMarketing(c, Array.isArray(x) ? { beitraege: x as readonly Beitrag[] } : x as MarketingDealKontext);
 
 // ── Stimme der Kunden ──────────────────────────────────────────────────────
 export interface Stimme { kontaktId: string; name: string; am: string; bedarf: string }
@@ -189,13 +230,82 @@ export const schonUebernommen = (s: Stimme, beitraege: Beitrag[]) => beitraege.s
 export function newsletterEmpfaenger(kontakte: Kontakt[]): Kontakt[] {
   return kontakte.filter(k => !ausgenommen(k) && kanalStatus(k, 'newsletter').farbe === 'gruen');
 }
-/** Abmeldungen je Empfänger — nur für versendete Ausgaben mit beiden Zahlen. */
-export function abmeldequote(a: Pick<NewsletterAusgabe, 'status' | 'empfaenger' | 'abmeldungen'>): number | null {
-  if (a.status !== 'versendet' || !a.empfaenger || a.abmeldungen === undefined || a.abmeldungen === null) return null;
-  return a.abmeldungen / a.empfaenger;
+/** So lange nach dem Versand zählt eine Abmeldung über den Abmeldelink zur Ausgabe (höchstens bis zur nächsten Ausgabe). */
+export const ABMELDE_FENSTER_TAGE = 30;
+/**
+ * Abmeldungen über den Abmeldelink je versendeter Ausgabe — automatisch gezählt (02.11., M3): der Link (lib/datenschutz/abmelden-server.ts)
+ * widerruft die Newsletter-Einwilligung mit `widerrufenVon: 'abmeldelink'`; gezählt wird je Person einmal im Fenster ab dem Versandtag bis
+ * vor die nächste versendete Ausgabe (höchstens `ABMELDE_FENSTER_TAGE`). Nur Zahlen, nie Namen.
+ */
+export function abmeldungenUeberLink(ausgaben: readonly Pick<NewsletterAusgabe, 'id' | 'status' | 'datum'>[], kontakte: readonly Kontakt[]): Map<string, number> {
+  const versendet = ausgaben.filter(a => a.status === 'versendet' && a.datum).sort((a, b) => a.datum!.localeCompare(b.datum!));
+  const raus = new Map<string, number>();
+  if (!versendet.length) return raus;
+  const tage = kontakte.map(k => (k.einwilligungen ?? []).filter(e => e.kanal === 'newsletter' && e.widerrufenVon === 'abmeldelink' && e.widerrufenAm).map(e => e.widerrufenAm!).sort()[0]).filter((t): t is string => !!t);
+  versendet.forEach((a, i) => {
+    const naechste = versendet.slice(i + 1).find(x => x.datum! > a.datum!)?.datum;
+    const ende = [tagPlus(a.datum!, ABMELDE_FENSTER_TAGE - 1), naechste ? tagPlus(naechste, -1) : undefined].filter((x): x is string => !!x).sort()[0];
+    raus.set(a.id, tage.filter(t => t >= a.datum! && t <= ende).length);
+  });
+  return raus;
 }
+/**
+ * Abmeldungen je Empfänger — nur für versendete Ausgaben mit Empfängerzahl. Abmeldungen = die größere Zahl aus „von Hand eingetragen“ (aus dem
+ * Versandwerkzeug) und „über den Abmeldelink gezählt“ (`auto`, `abmeldungenUeberLink`) — beide meinen dieselben Menschen, nie addiert.
+ */
+export function abmeldequote(a: Pick<NewsletterAusgabe, 'status' | 'empfaenger' | 'abmeldungen'>, auto?: number): number | null {
+  if (a.status !== 'versendet' || !a.empfaenger) return null;
+  const hand = a.abmeldungen === undefined || a.abmeldungen === null ? null : a.abmeldungen;
+  const n = hand === null ? (auto === undefined ? null : auto) : Math.max(hand, auto ?? 0);
+  return n === null ? null : n / a.empfaenger;
+}
+/** Die wirksame Zahl der Abmeldungen einer Ausgabe (wie `abmeldequote`) — null, wenn weder eingetragen noch gezählt. */
+export const abmeldungenWirksam = (a: Pick<NewsletterAusgabe, 'abmeldungen'>, auto?: number): number | null =>
+  (a.abmeldungen === undefined || a.abmeldungen === null) ? (auto ?? null) : Math.max(a.abmeldungen, auto ?? 0);
 /** < 0,5 % grün · 0,5–1 % gelb · > 1 % rot. */
 export const quotenAmpel = (q: number): KpiAmpel => (q < 0.005 ? 'gruen' : q <= 0.01 ? 'gelb' : 'rot');
+
+// ── Veröffentlichungen — EINE Zählung (02.11., M3) ───────────────────────────
+/** Eine veröffentlichte Social-Folge (Marketing › Social) in der Form, die die Zählung braucht — ohne Inhalt, nur Kennung, Titel, Tag. */
+export interface SocialVeroeffentlichung {
+  folgeId: string; kanalName: string; titel: string;
+  /** Erster Tag, an dem die Folge online ging (Berliner Tag). */
+  tag: string;
+  plattformen: string[];
+  /** Verknüpfter Beitrag des Redaktionsplans — ist er selbst veröffentlicht, zählt die Folge nicht noch einmal. */
+  beitragId?: string;
+}
+export interface Veroeffentlichung { art: 'beitrag' | 'ausgabe' | 'social'; id: string; titel: string; tag: string; unter: string }
+/** Newsletter-Beiträge, die in einer versendeten Ausgabe stehen — sie zählen als die Ausgabe, nicht noch einmal als Beitrag. */
+export function newsletterBeitraegeVersendet(ausgaben: readonly Pick<NewsletterAusgabe, 'status' | 'beitragIds'>[]): Set<string> {
+  return new Set(ausgaben.filter(a => a.status === 'versendet').flatMap(a => a.beitragIds ?? []));
+}
+/**
+ * Was im Fenster [von, bis] veröffentlicht wurde, jedes Ding EINMAL: Beiträge des Redaktionsplans (ohne Newsletter-Beiträge einer versendeten
+ * Ausgabe — die zählen als die Ausgabe), versendete Newsletter-Ausgaben und Social-Folgen (ohne die, deren verknüpfter Beitrag schon zählt;
+ * eine Folge auf mehreren Plattformen ist eine Veröffentlichung). Neueste zuerst.
+ */
+export function veroeffentlichungen(crm: Pick<CrmBestand, 'beitraege' | 'newsletter'>, von: string, bis: string, social: readonly SocialVeroeffentlichung[] = []): Veroeffentlichung[] {
+  const im = (t?: string) => !!t && t >= von && t <= bis;
+  const beitraege = crm.beitraege ?? [], ausgaben = crm.newsletter ?? [];
+  const inAusgabe = newsletterBeitraegeVersendet(ausgaben);
+  const zaehlt = (b: Beitrag) => b.status === 'veroeffentlicht' && !!b.datum && !(b.kanal === 'newsletter' && inAusgabe.has(b.id));
+  const veroeffentlichteBeitraege = new Set(beitraege.filter(zaehlt).map(b => b.id));
+  const raus: Veroeffentlichung[] = [
+    ...beitraege.filter(b => zaehlt(b) && im(b.datum)).map(b => ({ art: 'beitrag' as const, id: b.id, titel: b.titel, tag: b.datum!, unter: `${b.kanal} · ${(b.wirkung ?? []).length} Reaktionen` })),
+    ...ausgaben.filter(a => a.status === 'versendet' && im(a.datum)).map(a => ({ art: 'ausgabe' as const, id: a.id, titel: a.titel, tag: a.datum!, unter: 'Newsletter-Ausgabe' })),
+    ...social.filter(f => im(f.tag) && !(f.beitragId && veroeffentlichteBeitraege.has(f.beitragId))).map(f => ({ art: 'social' as const, id: f.folgeId, titel: f.titel, tag: f.tag, unter: `Social · ${f.kanalName}${f.plattformen.length ? ` · ${f.plattformen.join(', ')}` : ''}` })),
+  ];
+  return raus.sort((a, b) => b.tag.localeCompare(a.tag) || a.titel.localeCompare(b.titel));
+}
+/** Die Kennzahl „Veröffentlichungen · 7 Tage“ — hier UND im Traktions-Index (dort mit den Social-Folgen). */
+export function veroeffentlichungenKpi(crm: Pick<CrmBestand, 'beitraege' | 'newsletter'>, heute: string, social?: readonly SocialVeroeffentlichung[]): Kpi {
+  const v7 = veroeffentlichungen(crm, tagPlus(heute, -6), heute, social).length;
+  const v28 = veroeffentlichungen(crm, tagPlus(heute, -27), heute, social).length;
+  const messbar = (crm.beitraege ?? []).length > 0 || (crm.newsletter ?? []).some(a => a.status === 'versendet') || !!social?.length;
+  const quelle = social ? 'Redaktionsplan, Newsletter und Social' : 'Redaktionsplan und Newsletter';
+  return { id: 'veroeffentlichungen', label: 'Veröffentlichungen · 7 Tage', wert: messbar ? v7 : null, anzeige: messbar ? String(v7) : '—', ampel: messbar ? stufe(v7, 2, 1) : 'grau', ziel: '≥ 2 je Woche', quelle: messbar ? `${v28} in 4 Wochen · ${quelle}` : 'noch kein Beitrag im Redaktionsplan' };
+}
 
 // ── Kennzahlen ─────────────────────────────────────────────────────────────
 export function marketingKennzahlen(kontakte: Kontakt[], crm0: CrmBestand, heute: string): Kpi[] {
@@ -204,22 +314,22 @@ export function marketingKennzahlen(kontakte: Kontakt[], crm0: CrmBestand, heute
   const trichter = marketingTrichter(kontakte, crm, heute);
   const beitraege = crm.beitraege ?? [];
   const ausgaben = crm.newsletter ?? [];
-  const vor7 = tagPlus(heute, -6), vor28 = tagPlus(heute, -27), vor30 = tagPlus(heute, -29), vor90 = tagPlus(heute, -89);
+  const vor30 = tagPlus(heute, -29), vor90 = tagPlus(heute, -89);
   const veroeffentlicht = beitraege.filter(b => b.status === 'veroeffentlicht' && b.datum);
-  const v7 = veroeffentlicht.filter(b => b.datum! >= vor7 && b.datum! <= heute).length;
-  const v28 = veroeffentlicht.filter(b => b.datum! >= vor28 && b.datum! <= heute).length;
 
   const hatWirkung = beitraege.some(b => (b.wirkung ?? []).length > 0);
   const gespraeche = contentGespraeche(beitraege, vor30, heute);
   const gespraecheMessbar = veroeffentlicht.length > 0 || hatWirkung;
 
   const neu = (crm.chancen ?? []).filter(c => tag(c.angelegt) >= vor90 && tag(c.angelegt) <= heute);
-  const ausMk = neu.filter(c => ausMarketing(c, beitraege)).length;
+  const dealKx = marketingDealKontext(kontakte, crm);
+  const ausMk = neu.filter(c => dealAusMarketing(c, dealKx)).length;
   // 7.4 (08.10.): Quote erst ab MINDESTMENGE neuen Deals — vorher war ein einziger Deal „100 %“.
   const anteil = neu.length >= MINDESTMENGE ? ausMk / neu.length : null;
 
-  const letzte = ausgaben.filter(a => abmeldequote(a) !== null).sort((a, b) => (b.datum ?? '').localeCompare(a.datum ?? '') || b.geaendert.localeCompare(a.geaendert))[0];
-  const quote = letzte ? abmeldequote(letzte)! : null;
+  const auto = abmeldungenUeberLink(ausgaben, kontakte);
+  const letzte = ausgaben.filter(a => abmeldequote(a, auto.get(a.id)) !== null).sort((a, b) => (b.datum ?? '').localeCompare(a.datum ?? '') || b.geaendert.localeCompare(a.geaendert))[0];
+  const quote = letzte ? abmeldequote(letzte, auto.get(letzte.id))! : null;
 
   const faellig = kontakte.filter(k => art14(k, heute)?.faellig).length;
   const laufend = kontakte.filter(k => { const a = art14(k, heute); return a && !a.faellig; }).length;
@@ -232,10 +342,10 @@ export function marketingKennzahlen(kontakte: Kontakt[], crm0: CrmBestand, heute
   const doi = newsletterEmpfaenger(kontakte).length;
 
   return [
-    { id: 'veroeffentlichungen', label: 'Veröffentlichungen · 7 Tage', wert: beitraege.length ? v7 : null, anzeige: beitraege.length ? String(v7) : '—', ampel: beitraege.length ? stufe(v7, 2, 1) : 'grau', ziel: '≥ 2 je Woche', quelle: beitraege.length ? `${v28} in 4 Wochen · Redaktionsplan` : 'noch kein Beitrag im Redaktionsplan' },
+    veroeffentlichungenKpi(crm, heute),
     { id: 'content_gespraeche', label: 'Gespräche aus Content · 30 Tage', wert: gespraecheMessbar ? gespraeche : null, anzeige: gespraecheMessbar ? String(gespraeche) : '—', ampel: gespraecheMessbar ? stufe(gespraeche, 2, 1) : 'grau', ziel: '≥ 2 je Monat', quelle: 'Wirkung „Gespräch“ oder „Anfrage“ an Beiträgen, je Person und Beitrag einmal' },
-    { id: 'marketing_anteil', label: 'Neue Deals aus Marketing · 90 Tage', wert: anteil, anzeige: anteil === null ? '—' : `${Math.round(anteil * 100)} %`, ampel: anteil === null ? 'grau' : stufe(anteil, 0.25, 0.1), ziel: '≥ 25 %', quelle: neu.length ? `${ausMk} von ${neu.length} neuen Deals · Quelle Content/Anfrage oder Gespräch aus einem Beitrag${anteil === null ? ` — Quote erst ab ${MINDESTMENGE} Deals` : ''}` : 'kein neuer Deal in 90 Tagen' },
-    { id: 'abmeldequote', label: 'Abmeldequote letzte Ausgabe', wert: quote, anzeige: quote === null ? '—' : prozent(quote), ampel: quote === null ? 'grau' : quotenAmpel(quote), ziel: '< 0,5 %', quelle: letzte ? `„${kurz(letzte.titel, 60)}“: ${letzte.abmeldungen} von ${letzte.empfaenger}` : 'noch keine versendete Ausgabe mit Zahlen' },
+    { id: 'marketing_anteil', label: 'Neue Deals aus Marketing · 90 Tage', wert: anteil, anzeige: anteil === null ? '—' : `${Math.round(anteil * 100)} %`, ampel: anteil === null ? 'grau' : stufe(anteil, 0.25, 0.1), ziel: '≥ 25 %', quelle: neu.length ? `${ausMk} von ${neu.length} neuen Deals · Quelle Content/Anfrage/Kampagne oder Gespräch bzw. Anfrage über Marketing${anteil === null ? ` — Quote erst ab ${MINDESTMENGE} Deals` : ''}` : 'kein neuer Deal in 90 Tagen' },
+    { id: 'abmeldequote', label: 'Abmeldequote letzte Ausgabe', wert: quote, anzeige: quote === null ? '—' : prozent(quote), ampel: quote === null ? 'grau' : quotenAmpel(quote), ziel: '< 0,5 %', quelle: letzte ? `„${kurz(letzte.titel, 60)}“: ${abmeldungenWirksam(letzte, auto.get(letzte.id))} von ${letzte.empfaenger}${auto.get(letzte.id) ? ` (${auto.get(letzte.id)} über den Abmeldelink gezählt)` : ''}` : 'noch keine versendete Ausgabe mit Zahlen' },
     { id: 'newsletter_netto', label: 'Newsletter netto · 30 Tage', wert: nl.length ? netto : null, anzeige: nl.length ? (netto > 0 ? `+${netto}` : String(netto)) : '—', ampel: nl.length ? (netto > 0 ? 'gruen' : netto === 0 ? 'gelb' : 'rot') : 'grau', ziel: '> 0 je Monat', quelle: nl.length ? `${doi} mit Double-Opt-in · ${zugang} neu, ${abgang} weg` : 'noch keine Newsletter-Einwilligung' },
     // 27.09.: Anfragen (Eingang + Wirkung an Beiträgen) und Kosten je Anfrage aus der Marketing-Strecke.
     { id: 'anfragen_90', label: 'Anfragen · 90 Tage', wert: trichter.anfragen.messbar ? trichter.anfragen.gesamt : null, anzeige: trichter.anfragen.messbar ? String(trichter.anfragen.gesamt) : '—', ampel: trichter.anfragen.messbar ? stufe(trichter.anfragen.gesamt, 6, 2) : 'grau', ziel: '≥ 6 je Quartal', quelle: trichter.anfragen.messbar ? `${trichter.anfragen.ausEingang} über den Eingang, ${trichter.anfragen.anBeitraegen} an Beiträgen · ${trichter.anfragen.offen} offen` : 'noch keine Beiträge oder Anfragen' },
@@ -699,7 +809,9 @@ export interface MarketingTrichter {
   tage: number; von: string; bis: string;
   reichweite: { beitraege: number; beitraege30: number; beitraege90: number; ausgaben: number; newsletterEmpfaenger: number; messbar: boolean };
   resonanz: { reaktionen: number; personen: number; jeBeitrag: number | null; messbar: boolean };
-  anfragen: { gesamt: number; anBeitraegen: number; ausEingang: number; offen: number; personen: string[]; quote: number | null; messbar: boolean };
+  anfragen: { gesamt: number; anBeitraegen: number; ausEingang: number; offen: number; personen: string[]; quote: number | null; messbar: boolean;
+    /** Ohne Anfragen, die NUR über die Website kamen (für den Traktions-Index, wenn die Website eine eigene Kennzahl hat). */
+    ohneWebseite: number; personenOhneWebseite: string[] };
   uebergabe: { leads: number; deals: number; sql: number; quote: number | null; dealIds: string[]; messbar: boolean };
   kosten: { gesamt: number; beitraege: number; kampagnen: number; jeAnfrage: number | null; jeSql: number | null; messbar: boolean };
   stufen: TrichterStufe[];
@@ -714,7 +826,8 @@ export function marketingTrichter(kontakte: Kontakt[], crm0: CrmBestand, heute: 
   const ausgaben = crm.newsletter ?? [];
   const chancen = crm.chancen ?? [];
   const veroeffentlicht = beitraege.filter(b => b.status === 'veroeffentlicht' && b.datum);
-  const zaehl = (v: string) => veroeffentlicht.filter(b => b.datum! >= v && b.datum! <= bis).length;
+  // EINE Zählung (02.11., M3): ein Newsletter-Beitrag einer versendeten Ausgabe zählt als die Ausgabe, nicht noch einmal als Beitrag.
+  const zaehl = (v: string) => veroeffentlichungen(crm, v, bis).filter(x => x.art === 'beitrag').length;
 
   // Reichweite
   const reichweite = {
@@ -731,22 +844,28 @@ export function marketingTrichter(kontakte: Kontakt[], crm0: CrmBestand, heute: 
   const resonanz = { reaktionen: reakt.size, personen: reaktPersonen.size, jeBeitrag: quote(reakt.size, reichweite.beitraege), messbar: veroeffentlicht.length > 0 || hatWirkung };
 
   // Anfragen — je Person und Tag einmal, egal ob am Beitrag, im Verlauf oder beides.
-  const anBeitraegen = new Set<string>(), ausEingang = new Set<string>();
+  const anBeitraegen = new Set<string>(), ausEingang = new Set<string>(), ausWebseite = new Set<string>(), nichtWebEingang = new Set<string>();
   const anfrageTage = new Map<string, string[]>(); // kontaktId → Tage mit Anfrage (auch außerhalb des Fensters, für die Attribution)
   const merke = (id: string, t: string) => anfrageTage.set(id, [...(anfrageTage.get(id) ?? []), t]);
   for (const b of beitraege) for (const w of b.wirkung ?? []) if (w.art === 'anfrage') { merke(w.kontaktId, w.am); if (im(w.am)) anBeitraegen.add(`${w.kontaktId}|${w.am}`); }
   let eingangJe = false;
   // Nur Anfragen, die ein Marketing-Signal sind (17.10., L2 B6: `anfrageIstMarketing`, dieselbe Regel wie die Marketing-Herkunft des
   // Scorings) — eine Anfrage nach Empfehlung oder auf einem besuchten Event ist eine Begegnung, kein Marketing-Erfolg.
-  for (const k of kontakte) for (const a of k.aktivitaeten ?? []) if (istAnfrage(a) && anfrageIstMarketing(a, crm.events)) { eingangJe = true; const t = tag(a.am); merke(k.id, t); if (im(t)) ausEingang.add(`${k.id}|${t}`); }
+  for (const k of kontakte) for (const a of k.aktivitaeten ?? []) if (istAnfrage(a) && anfrageIstMarketing(a, crm.events)) { eingangJe = true; const t = tag(a.am); merke(k.id, t); if (im(t)) { ausEingang.add(`${k.id}|${t}`); (istWebseiteAnfrage(a) ? ausWebseite : nichtWebEingang).add(`${k.id}|${t}`); } }
   const alle = new Set([...anBeitraegen, ...ausEingang]);
   const personen = Array.from(new Set(Array.from(alle).map(x => x.split('|')[0])));
+  // Ohne die Website-Anfragen (02.11., M3): läuft die Website, zählt der Traktions-Index sie in IHRER Kennzahl — hier nicht noch einmal.
+  // Dieselbe Person am selben Tag auch am Beitrag oder über einen anderen Kanal bleibt drin (dann war es nicht nur die Website).
+  const nurWeb = (x: string) => ausWebseite.has(x) && !anBeitraegen.has(x) && !nichtWebEingang.has(x);
+  const ohneWeb = Array.from(alle).filter(x => !nurWeb(x));
   const offen = (crm.followups ?? []).filter(f => f.status === 'offen' && istAnfrageFollowUp(f)).length;
-  const anfragen = { gesamt: alle.size, anBeitraegen: anBeitraegen.size, ausEingang: ausEingang.size, offen, personen, quote: quote(alle.size, resonanz.personen), messbar: resonanz.messbar || eingangJe };
+  const anfragen = { gesamt: alle.size, anBeitraegen: anBeitraegen.size, ausEingang: ausEingang.size, offen, personen, quote: quote(alle.size, resonanz.personen), messbar: resonanz.messbar || eingangJe,
+    ohneWebseite: ohneWeb.length, personenOhneWebseite: Array.from(new Set(ohneWeb.map(x => x.split('|')[0]))) };
 
   // Übergabe — Deals aus Marketing im Fenster (Quelle oder Attribution über die Person).
-  const ausAnfrage = (c: Pick<Chance, 'kontaktIds' | 'angelegt'>) => { const b2 = tag(c.angelegt), v2 = tagPlus(b2, -90); return c.kontaktIds.some(id => (anfrageTage.get(id) ?? []).some(t => t >= v2 && t <= b2)); };
-  const deals = chancen.filter(c => im(tag(c.angelegt)) && ((c.quelle && TRICHTER_QUELLEN.includes(c.quelle)) || ausMarketing(c, beitraege) || ausAnfrage(c)));
+  // EINE Regel (02.11., M3): `dealAusMarketing` — dieselbe wie die Kennzahl „Neue Deals aus Marketing“.
+  const dealKx: MarketingDealKontext = { beitraege, kampagnen: crm.kampagnen ?? [], anfrageTage };
+  const deals = chancen.filter(c => im(tag(c.angelegt)) && dealAusMarketing(c, dealKx));
   const imDeal = new Set(deals.flatMap(c => c.kontaktIds));
   // Leads im Prozess (17.10., L2 B6): die Lead-Zeile der Person (`leadZeileFuer` — dieselbe Rechnung wie die Leads-Liste, Status auch
   // abgeleitet) und „In Arbeit“ wie Liste, Trichter und Head (`inArbeit`) — vorher eine eigene Statuslese am Firmen-/Personen-Lead.
@@ -761,9 +880,11 @@ export function marketingTrichter(kontakte: Kontakt[], crm0: CrmBestand, heute: 
   const uebergabe = { leads: leadEinheiten.size, deals: deals.length, sql: deals.length, quote: quote(deals.length, alle.size), dealIds: deals.map(c => c.id), messbar: chancen.length > 0 || anfragen.messbar };
 
   // Kosten
-  const kostenBeitraege = beitraege.filter(b => im(b.datum ?? tag(b.geaendert))).reduce((s, b) => s + (b.kostenEuro ?? 0), 0);
-  const kostenKampagnen = (crm.kampagnen ?? []).filter(k => { const s = k.start ?? tag(k.geaendert), e = k.ende ?? bis; return s <= bis && e >= von; }).reduce((s, k) => s + (k.kostenEuro ?? 0), 0);
-  const kostenMessbar = beitraege.some(b => (b.kostenEuro ?? 0) > 0) || (crm.kampagnen ?? []).some(k => (k.kostenEuro ?? 0) > 0);
+  // Kosten ohne Papierkorb (02.11., M3): auch wenn ein Aufrufer den vollen Bestand gibt — Gelöschtes kostet nichts mehr.
+  const kostenB = beitraege.filter(b => !b.geloeschtAm), kostenK = (crm.kampagnen ?? []).filter(k => !k.geloeschtAm);
+  const kostenBeitraege = kostenB.filter(b => im(b.datum ?? tag(b.geaendert))).reduce((s, b) => s + (b.kostenEuro ?? 0), 0);
+  const kostenKampagnen = kostenK.filter(k => { const s = k.start ?? tag(k.geaendert), e = k.ende ?? bis; return s <= bis && e >= von; }).reduce((s, k) => s + (k.kostenEuro ?? 0), 0);
+  const kostenMessbar = kostenB.some(b => (b.kostenEuro ?? 0) > 0) || kostenK.some(k => (k.kostenEuro ?? 0) > 0);
   const gesamt = kostenBeitraege + kostenKampagnen;
   const kosten = { gesamt, beitraege: kostenBeitraege, kampagnen: kostenKampagnen, jeAnfrage: kostenMessbar ? quote(gesamt, alle.size) : null, jeSql: kostenMessbar ? quote(gesamt, deals.length) : null, messbar: kostenMessbar };
 

@@ -118,7 +118,11 @@ async function inhaltAnlegen(t: HeadVorschlag, entwurfFinal: string | undefined,
   }
   const id = inhaltKennung('bt', t.id);
   const link = WEG.marketing('redaktion', id);
-  if ((crm.beitraege ?? []).some(x => x.id === id)) return { ok: true, wohin: 'Beitrag im Redaktionsplan (schon angelegt)', link };
+  const instagram = t.entwurf?.kanal === 'instagram';
+  if ((crm.beitraege ?? []).some(x => x.id === id)) {
+    const f = instagram ? await instagramFolge(id, t, text, person, req) : '';
+    return { ok: true, wohin: `Beitrag im Redaktionsplan (schon angelegt)${f}`, link };
+  }
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const quellen = (t.inhalt?.quellen ?? []).filter(q => kontakte.some(k => k.id === q && !ausgenommen(k)));
   const saeule = t.saeule && einstellungAus(crm).saeulen.some(x => x.id === t.saeule) ? t.saeule : undefined;
@@ -128,7 +132,31 @@ async function inhaltAnlegen(t: HeadVorschlag, entwurfFinal: string | undefined,
     status: mitEntwurf ? 'entwurf' : 'idee', text: mitEntwurf ? text : t.inhalt?.text ?? t.begruendung, wirkung: [], quellen, zustaendig, ...(saeule ? { saeule } : {}),
   };
   const r = await crmOps([{ liste: 'beitraege', op: 'upsert', eintrag }], person, jetzt, req);
-  return r ?? { ok: true, wohin: `${mitEntwurf ? 'Beitrags-Entwurf' : 'Idee'} im Redaktionsplan — veröffentlicht wird nichts`, link };
+  if (r) return r;
+  // Instagram (02.11., M3): dazu EINE Social-Folge im Instagram-Kanal, verknüpft über `beitragId` — Entwurf, ohne Freigabe.
+  const f = instagram ? await instagramFolge(id, t, text, person, req) : '';
+  return { ok: true, wohin: `${mitEntwurf ? 'Beitrags-Entwurf' : 'Idee'} im Redaktionsplan${f} — veröffentlicht wird nichts ohne Freigabe`, link };
+}
+
+/**
+ * Social-Folge zu einem Instagram-Beitrag (02.11., M3, lib/social/beitrag-folge.ts): nur, wenn es genau EINEN laufenden Instagram-Kanal gibt, den die
+ * Person sieht; idempotent über `beitragId`. Über den Schreibweg der Social-Seite (`socialSchreiben`, Säuberung, Grenzen, Protokoll). Liefert einen
+ * kurzen Zusatz für die Rückmeldung — scheitert es, steht der Beitrag trotzdem (nie ein Fehler fürs Annehmen).
+ */
+async function instagramFolge(beitragId: string, t: HeadVorschlag, text: string, person: string, req: Request): Promise<string> {
+  try {
+    const [{ ladeSocial, socialSchreiben }, { socialFuerPerson }, bf] = await Promise.all([import('@/lib/social/server'), import('@/lib/social/daten'), import('@/lib/social/beitrag-folge')]);
+    const d = socialFuerPerson(await ladeSocial(), person);
+    if (bf.folgeZumBeitrag(d, beitragId)) return ' und als Folge unter Social';
+    const k = bf.instagramKanalFuer(d);
+    if (!k.kanal) return ` (${k.grund})`;
+    const saeule = t.saeule ? einstellungAus(await ladeCrm()).saeulen.find(x => x.id === t.saeule)?.name : undefined;
+    const r = await socialSchreiben([{ op: 'folge', eintrag: bf.folgeEintragAusBeitrag(k.kanal.id, { id: beitragId, titel: t.inhalt?.titel ?? t.titel, text, ...(saeule ? { saeule } : {}), mitEntwurf: !!text }) }], person, werAus(req));
+    return r.ok ? ` und als Entwurf im Instagram-Kanal „${k.kanal.name}“ (wartet auf Freigabe)` : ` (Social-Folge nicht angelegt: ${r.fehler})`;
+  } catch (e) {
+    console.error('[head-marketing] Social-Folge:', e instanceof Error ? e.message.slice(0, 160) : e);
+    return ' (Social-Folge nicht angelegt — bitte unter Marketing › Social)';
+  }
 }
 
 /** Eine Änderung am CRM-Bestand wie PATCH /api/crm/bestand — `null` = geschrieben, sonst der Grund (409/413/400). */

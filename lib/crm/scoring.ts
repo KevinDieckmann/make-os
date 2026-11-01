@@ -108,11 +108,16 @@ export const MARKETING_QUELLEN_LABEL: Record<MarketingQuelle, string> = {
 /** Kampagnen der Direktansprache zählen nicht als Marketing. */
 const DIREKT_PLAYBOOKS: ReadonlySet<string> = new Set(['vernetzen']);
 const DIREKT_KANAELE: ReadonlySet<string> = new Set(['persoenlich', 'telefon']);
+/**
+ * Ist diese Kampagne Marketing (gestartet, keine Direktansprache)? EINE Regel — dieselbe für die Herkunft eines Leads (hier) und für „Deals aus
+ * Marketing“ mit Quelle Kampagne (lib/crm/marketing.ts `dealAusMarketing`, 02.11. M3).
+ */
+export const istMarketingKampagne = (k: Pick<Kampagne, 'status' | 'playbook' | 'kanal'>): boolean => k.status !== 'entwurf' && !DIREKT_PLAYBOOKS.has(k.playbook) && !DIREKT_KANAELE.has(k.kanal);
 const kampagnenMerk = new WeakMap<readonly Kampagne[], Set<string>>();
 function marketingKampagnenPersonen(l: readonly Kampagne[]): Set<string> {
   let s = kampagnenMerk.get(l);
   if (!s) {
-    s = new Set(l.filter(k => k.status !== 'entwurf' && !DIREKT_PLAYBOOKS.has(k.playbook) && !DIREKT_KANAELE.has(k.kanal)).flatMap(k => k.kontaktIds));
+    s = new Set(l.filter(istMarketingKampagne).flatMap(k => k.kontaktIds));
     kampagnenMerk.set(l, s);
   }
   return s;

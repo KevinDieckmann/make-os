@@ -252,7 +252,7 @@ export function EmailNeu({ k, api, onFertig, onAbbruch }: FormProps) {
       <Zeile><span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Was</span><Wahl liste={MAIL_ARTEN} wert={art} onWahl={setArt} label="Art" /></Zeile>
       {art !== 'linkedin' && <input value={betreff} onChange={e => setBetreff(e.target.value)} placeholder="Betreff" aria-label="Betreff" style={eingabe} />}
       <textarea value={text} onChange={e => setText(e.target.value)} rows={4} placeholder="Inhalt oder Kernaussage" aria-label="Inhalt" style={{ ...eingabe, resize: 'vertical' }} />
-      <Hinweis>Nur festhalten, was außerhalb gesendet oder empfangen wurde — MAKE OS verschickt nichts. Einen Entwurf gibt es oben im Kopf.</Hinweis>
+      <Hinweis>Nur festhalten, was außerhalb gesendet oder empfangen wurde — hier wird nichts verschickt. Einen Entwurf gibt es oben im Kopf; senden geht nur per Klick in der Inbox.</Hinweis>
       <Fuss ok={!!inhalt} laeuft={laeuft} knopf="Festhalten" onSpeichern={() => void los()} onAbbruch={onAbbruch} />
     </div>
   );

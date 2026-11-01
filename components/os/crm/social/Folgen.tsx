@@ -3,7 +3,8 @@
 // ─── Markttraktion · Social › Folgen (26.10.2026) ───────────────────────────────────────────────────────────────────────────────────
 // Je Kanal die Folgen mit Status, Prüf-Befunden und der Leitplanken-Entscheidung („würde selbst posten“ / „Stapel, weil …“ / „gesperrt“).
 // Öffnen = Editor: Titel, Format, Säule, Skript, bis zu drei Hook-Varianten, CTA, Quellen, KI-Inhalt, Status; darunter „Veröffentlicht“ und
-// „Messung eintragen“ (Zahlen aus den Plattform-Insights — nie geschätzt). MAKE OS veröffentlicht nichts selbst.
+// „Messung eintragen“ (Zahlen aus den Plattform-Insights — nie geschätzt). Veröffentlicht wird nur nach den Leitplanken des Kanals (Freigabe
+// durch eine Person bzw. freigegebenes Format), über den Takt — nie von hier aus.
 
 import { useMemo, useState } from 'react';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
@@ -11,6 +12,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Hinweis, Leerzustand, F
 import { FOLGE_STATUS, FOLGE_STATUS_NAME, PLATTFORM_NAME, SOCIAL_PLATTFORMEN, type FolgeStatus, type SocialPlattform, type SocialFolge, type SocialKanal, type PersonenImBild } from '@/lib/social/typen';
 import { datumKurz } from '@/lib/make-one/faelligkeit';
 import { tagVon } from '@/lib/zeit';
+import { WEG } from '@/lib/wege';
 import type { Befund } from '@/lib/social/pruefer';
 import type { AutonomieErgebnis } from '@/lib/social/autonomie';
 import type { MitStand, SocialApi } from './daten';
@@ -100,6 +102,7 @@ function FolgeEditor({ api, kanal, folge, onZu, zurWerkstatt }: { api: SocialApi
         <form onSubmit={e => { e.preventDefault(); void speichern(); }} style={{ display: 'grid', gap: 12 }}>
           <Ueberschrift rechts={<Knopf leise onClick={onZu}>← Folgen</Knopf>}>{folge ? folge.titel : 'Neue Folge'}</Ueberschrift>
           {weg && <Hinweis art={weg.weg === 'selbst' || weg.weg === 'bereit' ? 'gut' : weg.weg === 'stapel' ? 'achtung' : 'kritisch'} titel={WEG_TEXT[weg.weg]}>{weg.grund}</Hinweis>}
+          {folge?.beitragId && <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Gehört zu einem Beitrag im Redaktionsplan — gezählt wird die Veröffentlichung einmal. <Knopf leise href={WEG.marketing('redaktion', folge.beitragId)}>Beitrag öffnen</Knopf></span>}
           {folge?.freigegebenAm && <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Freigegeben {folge.freigegebenVon === lage.ich ? 'von dir' : 'von einer Person des Haushalts'} am {datumKurz(tagVon(folge.freigegebenAm))} — jede Änderung am Inhalt nimmt die Freigabe zurück.</span>}
           <Feldzeile label="Titel"><input style={eingabe} value={titel} onChange={e => setTitel(e.target.value)} required maxLength={300} /></Feldzeile>
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))' }}>

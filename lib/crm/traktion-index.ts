@@ -13,7 +13,7 @@ import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand, Chance, Mandat } from './typen';
 import { nurBusinessGezaehlt } from './zaehlung-business';
 import { kennzahlen, messlatte, type Kpi } from './kennzahlen';
-import { marketingKennzahlen, ausMarketing, abmeldequote, marketingTrichter } from './marketing';
+import { marketingKennzahlen, dealAusMarketing, marketingDealKontext, abmeldequote, abmeldungenUeberLink, abmeldungenWirksam, marketingTrichter, veroeffentlichungen, veroeffentlichungenKpi } from './marketing';
 import { eventKennzahlen, WELTEN, IM_SCORE, GRUNDLAGE, type Welt, type Traktion } from './traktion';
 import { OFFENE_STUFEN, gesundheit, gesamtwert, echtesGespraech, WIN_RATE, WIN_RATE_TEXT } from './pipeline';
 import { verweildauer } from './deal-auswertung';
@@ -27,6 +27,7 @@ import { markttraktion } from './adresse';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { nameVon } from './team';
 import { webseiteKennzahlen, webseiteDetails, type WebseiteStand } from './webseite-zahlen';
+import { motorKennzahlen, motorDetails, motorAktiv, motorImBestand, type SocialStand, type MotorStand } from './traktion-quellen';
 
 export type TraktionsIndex = IndexErgebnis;
 
@@ -54,12 +55,12 @@ export const TRAKTION_KENNZAHLEN: KennzahlDefBasis[] = [
   D({ id: 'ueberfaellig', label: 'Überfällige Follow-ups', saeule: 'sales', gruppe: 'Follow-up', einheit: 'anzahl', richtung: 'niedrig', gruen: 0, rot: 5, formel: 'Offene Follow-ups mit Termin vor heute (Zusagen, Wiedervorlagen, Deal-Schritte, Nachfassen, Kadenz)', quelle: 'Follow-up-Ebene', luecke: 'Noch keine Zusagen oder Wiedervorlagen', pflegen: { text: 'Fällige öffnen', href: markttraktion('followup') } }),
   D({ id: 'umsatz_ziel', label: 'Neuumsatz gegen Ziel · Monat', saeule: 'sales', gruppe: 'Deals', einheit: 'prozent', richtung: 'hoch', gruen: 100, rot: 50, formel: 'Gesamtwert der im Monat gewonnenen Deals ÷ Monatsziel', quelle: 'Ziel aus Stammdaten › Wertelisten', luecke: 'Monatsziel fehlt — Stammdaten › Wertelisten › Ziele', pflegen: { text: 'Ziel eintragen', href: markttraktion('stammdaten', 'wertelisten') } }),
   // ── Marketing
-  D({ id: 'veroeffentlichungen', label: 'Veröffentlichungen · 7 Tage', saeule: 'marketing', gruppe: 'Sichtbarkeit', gewicht: 1.25, einheit: 'anzahl', richtung: 'hoch', gruen: 2, rot: 1, formel: 'Veröffentlichte Beiträge der letzten 7 Tage', quelle: 'Redaktionsplan', luecke: 'Noch kein Beitrag im Redaktionsplan', pflegen: { text: 'Redaktionsplan', href: WEG.marketing('redaktion') } }),
+  D({ id: 'veroeffentlichungen', label: 'Veröffentlichungen · 7 Tage', saeule: 'marketing', gruppe: 'Sichtbarkeit', gewicht: 1.25, einheit: 'anzahl', richtung: 'hoch', gruen: 2, rot: 1, formel: 'Veröffentlichte Beiträge, versendete Newsletter-Ausgaben und Social-Folgen der letzten 7 Tage — jedes Ding einmal', quelle: 'Redaktionsplan, Newsletter, Social', luecke: 'Noch kein Beitrag im Redaktionsplan', pflegen: { text: 'Redaktionsplan', href: WEG.marketing('redaktion') } }),
   D({ id: 'content_gespraeche', label: 'Gespräche aus Content · 30 Tage', saeule: 'marketing', gruppe: 'Marketing', gewicht: 1.25, einheit: 'anzahl', richtung: 'hoch', gruen: 2, rot: 1, formel: 'Wirkung „Gespräch“ oder „Anfrage“ an Beiträgen, je Person und Beitrag einmal', quelle: 'Redaktionsplan · Wirkung', luecke: 'Noch kein veröffentlichter Beitrag', pflegen: { text: 'Wirkung festhalten', href: WEG.marketing('redaktion') } }),
-  D({ id: 'marketing_anteil', label: 'Neue Deals aus Marketing · 90 Tage', saeule: 'marketing', gruppe: 'Marketing', einheit: 'prozent', richtung: 'hoch', gruen: 25, rot: 10, skala: 100, formel: 'Deals mit Quelle Content/Anfrage oder Gespräch aus einem Beitrag ÷ neue Deals', quelle: 'Deals + Redaktionsplan', luecke: 'Kein neuer Deal in 90 Tagen', pflegen: { text: 'Deals öffnen', href: WEG.deals() } }),
+  D({ id: 'marketing_anteil', label: 'Neue Deals aus Marketing · 90 Tage', saeule: 'marketing', gruppe: 'Marketing', einheit: 'prozent', richtung: 'hoch', gruen: 25, rot: 10, skala: 100, formel: 'Deals aus Marketing (Quelle Content/Anfrage/Marketing-Kampagne oder Gespräch bzw. Anfrage über Marketing vor Anlage) ÷ neue Deals', quelle: 'Deals + Redaktionsplan', luecke: 'Kein neuer Deal in 90 Tagen', pflegen: { text: 'Deals öffnen', href: WEG.deals() } }),
   D({ id: 'abmeldequote', label: 'Abmeldequote letzte Ausgabe', saeule: 'marketing', gruppe: 'Sichtbarkeit', einheit: 'prozent', richtung: 'niedrig', gruen: 0.5, rot: 1, skala: 100, formel: 'Abmeldungen ÷ Empfänger der letzten versendeten Ausgabe', quelle: 'Newsletter', luecke: 'Noch keine versendete Ausgabe mit Zahlen', pflegen: { text: 'Newsletter', href: WEG.marketing('newsletter') } }),
   D({ id: 'newsletter_netto', label: 'Newsletter netto · 30 Tage', saeule: 'marketing', gruppe: 'Sichtbarkeit', einheit: 'anzahl', richtung: 'hoch', gruen: 1, rot: 0, formel: 'Neue Double-Opt-ins minus Widerrufe und Sperren in 30 Tagen', quelle: 'Einwilligungen der Kartei', luecke: 'Noch keine Newsletter-Einwilligung', pflegen: { text: 'Kartei', href: WEG.kontakt() } }),
-  D({ id: 'anfragen_90', label: 'Anfragen · 90 Tage', saeule: 'marketing', gruppe: 'Marketing', einheit: 'anzahl', richtung: 'hoch', gruen: 6, rot: 2, formel: 'Anfragen über den Eingang + Wirkung „Anfrage“ an Beiträgen, je Person und Tag einmal, 90 Tage', quelle: 'Marketing › Anfragen', luecke: 'Noch keine Beiträge oder Anfragen', pflegen: { text: 'Anfrage erfassen', href: markttraktion('marketing', 'anfragen') } }),
+  D({ id: 'anfragen_90', label: 'Anfragen · 90 Tage', saeule: 'marketing', gruppe: 'Marketing', einheit: 'anzahl', richtung: 'hoch', gruen: 6, rot: 2, formel: 'Anfragen über den Eingang + Wirkung „Anfrage“ an Beiträgen, je Person und Tag einmal, 90 Tage — läuft die Website, ohne ihre Anfragen (eigene Kennzahl)', quelle: 'Marketing › Anfragen', luecke: 'Noch keine Beiträge oder Anfragen', pflegen: { text: 'Anfrage erfassen', href: markttraktion('marketing', 'anfragen') } }),
   D({ id: 'kosten_je_anfrage', label: 'Kosten je Anfrage · 90 Tage', saeule: 'marketing', gruppe: 'Marketing', einheit: 'eur', richtung: 'niedrig', gruen: 100, rot: 300, formel: 'Kosten an Beiträgen und Kampagnen ÷ Anfragen, erst ab 5 Anfragen', quelle: 'Kosten (€) am Beitrag und an der Kampagne', luecke: 'Kosten oder Anfragen fehlen', pflegen: { text: 'Kosten eintragen', href: markttraktion('marketing', 'kampagnen') } }),
   // ── Event
   D({ id: 'events_90', label: 'Events · 90 Tage', saeule: 'event', gruppe: 'Events', gewicht: 1.25, einheit: 'anzahl', richtung: 'hoch', gruen: 1, rot: 0, formel: 'Stattgefundene Events der letzten 90 Tage (geplantes Event = gelb)', quelle: 'Events', luecke: 'Noch kein Event angelegt', pflegen: { text: 'Event anlegen', href: WEG.event() } }),
@@ -84,11 +85,25 @@ export const WEBSEITE_KENNZAHLEN: KennzahlDefBasis[] = [
   D({ id: 'web_termine', label: 'Termine aus der Website · 30 Tage', saeule: 'marketing', gruppe: 'Website', gewicht: GEWICHT_WEB, einheit: 'anzahl', richtung: 'hoch', gruen: 2, rot: 1, formel: 'Freigegebene Buchungen der Buchungsseite (Erstgespräch) — je Person und Tag einmal', quelle: 'Buchungsseite', luecke: 'Website nicht eingeschaltet (Check oder Kontaktformular)', pflegen: { text: 'Buchungsseite fürs Erstgespräch wählen', href: WEG.website('formulare') } }),
 ];
 
+/**
+ * Kampagnen-Motor (02.11., M3, lib/crm/traktion-quellen.ts): gesendete Mails des Mail-Stapels und die Antworten darauf — nur im Modell, wenn der
+ * Motor schon einmal gesendet hat (`TraktionBestand.motor`), sonst bleibt der Index genau der bisherige.
+ */
+const GEWICHT_MOTOR = 0.5;
+export const MOTOR_KENNZAHLEN: KennzahlDefBasis[] = [
+  D({ id: 'motor_gesendet', label: 'Kampagnen-Mails gesendet · 30 Tage', saeule: 'marketing', gruppe: 'Kampagnen', gewicht: GEWICHT_MOTOR, einheit: 'anzahl', richtung: 'hoch', gruen: 20, rot: 5, formel: 'Mails aus dem Mail-Stapel des Kampagnen-Motors, die nach Freigabe gesendet wurden (Kampagnen im Papierkorb zählen nicht)', quelle: 'Mail-Stapel', luecke: 'Der Mail-Stapel hat noch nichts gesendet', pflegen: { text: 'Kampagnen öffnen', href: WEG.kampagne() } }),
+  D({ id: 'motor_antworten', label: 'Antwortquote Kampagnen-Mails · 30 Tage', saeule: 'marketing', gruppe: 'Kampagnen', gewicht: GEWICHT_MOTOR, einheit: 'prozent', richtung: 'hoch', gruen: 5, rot: 2, formel: 'Gesendete Mails mit Antwort ÷ gesendete Mails (30 Tage), erst ab 5 gesendeten', quelle: 'Mail-Stapel · Rückfluss', luecke: 'Der Mail-Stapel hat noch nichts gesendet', pflegen: { text: 'Antworten bearbeiten', href: WEG.kampagne() } }),
+];
+
 export interface TraktionBestand { kontakte: Kontakt[]; crm: CrmBestand; heute: string; schwellen?: Record<string, Schwelle>; /** Schon gerechnete Kennzahlen der Welten — spart die zweite Runde (Prüfbericht 27.09., Punkt 18). */ kpis?: Kpi[];
   /** Erster Tag mit einem Schnappschuss des Index (`ersterLauf(datei)`) — die ersten `ANLAUF_TAGE` danach ist er „vorläufig“ (7.1). */
   ersterLauf?: string;
   /** Website-Anbau (31.10.): Schalter und abgeschlossene Checks (`webseiteStandLaden`) — fehlt es, sind die Website-Kennzahlen Lücken. */
-  webseite?: WebseiteStand }
+  webseite?: WebseiteStand;
+  /** Social (02.11., M3): veröffentlichte Folgen — fehlt es, zählen in „Veröffentlichungen“ nur Redaktionsplan und Newsletter. */
+  social?: SocialStand;
+  /** Kampagnen-Motor (02.11., M3): gesendete Mails + Antworten — fehlt es, sind die Motor-Kennzahlen nicht im Modell. */
+  motor?: MotorStand }
 
 /** So lange ist der Traktions-Index nach seinem ersten Lauf „vorläufig“ (08.10., Woche 1 · 7.1: er startete rot, die Kartei lief erst an). */
 export const ANLAUF_TAGE = 28;
@@ -127,6 +142,8 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   web_anfragen: b => webseiteDetails('web_anfragen', b.kontakte, b.webseite, b.heute),
   web_checks: b => webseiteDetails('web_checks', b.kontakte, b.webseite, b.heute),
   web_termine: b => webseiteDetails('web_termine', b.kontakte, b.webseite, b.heute),
+  motor_gesendet: b => motorDetails(motorImBestand(b.motor, b.crm.kampagnen ?? []), b.heute, b.crm.kampagnen ?? []),
+  motor_antworten: b => motorDetails(motorImBestand(b.motor, b.crm.kampagnen ?? []), b.heute, b.crm.kampagnen ?? []),
   power_hours(b) {
     return (b.crm.sitzungen ?? []).slice().sort((x, y) => y.datum.localeCompare(x.datum)).slice(0, 3)
       .map(s => ({ titel: `Power Hour ${tagKurz(s.datum)}`, wert: `${s.karten.length} Karten`, unter: `${nameVon(s.person)}${s.gelernt ? ` · ${s.gelernt.slice(0, 60)}` : ''}`, href: WEG.powerHour() }));
@@ -188,7 +205,8 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   },
   anfragen_90(b) {
     const t = trichter(b);
-    return t.anfragen.personen.slice(0, 4).map(id => personDetail(b, id, 'Anfrage', undefined)).filter((d): d is Detail => !!d);
+    // Läuft die Website, stehen ihre Anfragen in der eigenen Kennzahl (02.11., M3) — hier nicht noch einmal.
+    return (b.webseite?.aktiv ? t.anfragen.personenOhneWebseite : t.anfragen.personen).slice(0, 4).map(id => personDetail(b, id, 'Anfrage', undefined)).filter((d): d is Detail => !!d);
   },
   kosten_je_anfrage(b) {
     const t = trichter(b);
@@ -199,8 +217,9 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
     ];
   },
   veroeffentlichungen(b) {
-    return (b.crm.beitraege ?? []).filter(x => x.status === 'veroeffentlicht' && x.datum).sort((x, y) => y.datum!.localeCompare(x.datum!)).slice(0, 3)
-      .map(x => ({ titel: x.titel, wert: tagKurz(x.datum!), unter: `${x.kanal} · ${(x.wirkung ?? []).length} Reaktionen`, href: WEG.marketing('redaktion', x.id) }));
+    // EINE Zählung (02.11., M3): Redaktionsplan, Newsletter-Ausgaben und Social-Folgen — jedes Ding einmal.
+    return veroeffentlichungen(b.crm, '0000-01-01', b.heute, b.social?.posts).slice(0, 3)
+      .map(x => ({ titel: x.titel, wert: tagKurz(x.tag), unter: x.unter, href: x.art === 'beitrag' ? WEG.marketing('redaktion', x.id) : x.art === 'ausgabe' ? WEG.marketing('newsletter', x.id) : WEG.marketing('social') }));
   },
   content_gespraeche(b) {
     const vor30 = tagMinus(b.heute, 29);
@@ -212,11 +231,13 @@ const DETAILS: Record<string, (b: TraktionBestand) => Detail[]> = {
   marketing_anteil(b) {
     const vor90 = tagMinus(b.heute, 89);
     const neu = b.crm.chancen.filter(c => c.angelegt.slice(0, 10) >= vor90 && c.angelegt.slice(0, 10) <= b.heute);
-    return neu.sort((x, y) => y.angelegt.localeCompare(x.angelegt)).slice(0, 4).map(c => { const mk = ausMarketing(c, b.crm.beitraege ?? []); return dealDetail(c, mk ? 'aus Marketing' : c.quelle ?? 'ohne Quelle', tagKurz(c.angelegt.slice(0, 10)), mk ? 'gruen' : undefined); });
+    const kx = marketingDealKontext(b.kontakte, b.crm);
+    return neu.sort((x, y) => y.angelegt.localeCompare(x.angelegt)).slice(0, 4).map(c => { const mk = dealAusMarketing(c, kx); return dealDetail(c, mk ? 'aus Marketing' : c.quelle ?? 'ohne Quelle', tagKurz(c.angelegt.slice(0, 10)), mk ? 'gruen' : undefined); });
   },
   abmeldequote(b) {
-    return (b.crm.newsletter ?? []).filter(a => abmeldequote(a) !== null).sort((x, y) => (y.datum ?? '').localeCompare(x.datum ?? '')).slice(0, 3)
-      .map(a => ({ titel: a.titel, wert: `${(abmeldequote(a)! * 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} %`, unter: `${a.abmeldungen} von ${a.empfaenger}${a.datum ? ` · ${tagKurz(a.datum)}` : ''}`, href: WEG.marketing('newsletter', a.id) }));
+    const auto = abmeldungenUeberLink(b.crm.newsletter ?? [], b.kontakte);
+    return (b.crm.newsletter ?? []).filter(a => abmeldequote(a, auto.get(a.id)) !== null).sort((x, y) => (y.datum ?? '').localeCompare(x.datum ?? '')).slice(0, 3)
+      .map(a => ({ titel: a.titel, wert: `${(abmeldequote(a, auto.get(a.id))! * 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} %`, unter: `${abmeldungenWirksam(a, auto.get(a.id))} von ${a.empfaenger}${a.datum ? ` · ${tagKurz(a.datum)}` : ''}`, href: WEG.marketing('newsletter', a.id) }));
   },
   newsletter_netto(b) {
     const vor30 = tagMinus(b.heute, 29);
@@ -297,6 +318,18 @@ export function traktionsIndex(b0: TraktionBestand): TraktionsIndex {
   for (const k of b.kpis ?? [...kennzahlen(b.kontakte, b.crm, b.heute), ...marketingKennzahlen(b.kontakte, b.crm, b.heute), ...eventKennzahlen(b.kontakte, b.crm, b.heute)]) kpis[k.id] = k;
   // Website (31.10.): immer hier gerechnet (auch wenn `kpis` mitkommen) — dieselbe Zahl überall.
   for (const k of webseiteKennzahlen(b.kontakte, b.webseite, b.heute)) kpis[k.id] = k;
+  // Social (02.11., M3): veröffentlichte Folgen zählen in „Veröffentlichungen“ — EINE Zählung mit Redaktionsplan und Newsletter.
+  if (b.social) kpis.veroeffentlichungen = veroeffentlichungenKpi(b.crm, b.heute, b.social.posts);
+  // Website nicht doppelt (02.11., M3): läuft sie, stehen ihre Anfragen in „Anfragen über die Website“ — „Anfragen · 90 Tage“ zählt dann den Rest.
+  if (b.webseite?.aktiv && kpis.anfragen_90 && kpis.anfragen_90.ampel !== 'grau') {
+    const a = trichter(b).anfragen;
+    const n = a.ohneWebseite;
+    kpis.anfragen_90 = { ...kpis.anfragen_90, wert: n, anzeige: String(n), ampel: n >= 6 ? 'gruen' : n >= 2 ? 'gelb' : 'rot', quelle: `${n} ohne Website (die ${a.gesamt - n} über die Website zählen in ihrer eigenen Kennzahl) · ${a.offen} offen` };
+  }
+  // Kampagnen-Motor (02.11., M3): nur Kampagnen, die es noch gibt (ohne Papierkorb).
+  const motor = motorImBestand(b.motor, b.crm.kampagnen ?? []);
+  const mitMotor = motorAktiv(motor);
+  for (const k of motorKennzahlen(motor, b.heute)) kpis[k.id] = k;
   // „Größter Kunde“: die Kpi mrr trägt die Konzentration nur in der Quelle — hier als Prozentwert.
   if (kpis.mrr) {
     const je = new Map<string, number>();
@@ -311,10 +344,10 @@ export function traktionsIndex(b0: TraktionBestand): TraktionsIndex {
     kpis.ansprechbar = aktiv ? { ...kpis.ansprechbar, wert: (kpis.ansprechbar.wert ?? 0) / aktiv } : { ...kpis.ansprechbar, wert: null, ampel: 'grau' };
   }
   const messen: Record<string, (x: TraktionBestand) => Messung> = {};
-  for (const def of [...TRAKTION_KENNZAHLEN, ...WEBSEITE_KENNZAHLEN]) messen[def.id] = x => messung(x, def, kpis[def.id]);
+  for (const def of [...TRAKTION_KENNZAHLEN, ...WEBSEITE_KENNZAHLEN, ...MOTOR_KENNZAHLEN]) messen[def.id] = x => messung(x, def, kpis[def.id]);
   const schwellen = { ...(b.schwellen ?? {}), ...zielSchwellen(b.crm) };
   const anlaufBis = b.ersterLauf && /^\d{4}-\d{2}-\d{2}$/.test(b.ersterLauf) ? (() => { const d = new Date(`${b.ersterLauf}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + ANLAUF_TAGE); return d.toISOString().slice(0, 10); })() : undefined;
-  return berechneModell({ saeulen: TRAKTION_SAEULEN, kennzahlen: b.webseite?.aktiv ? [...TRAKTION_KENNZAHLEN, ...WEBSEITE_KENNZAHLEN] : TRAKTION_KENNZAHLEN, messen, bestand: b, schwellen, stand: b.heute, scope: 'markttraktion', geometrisch: true, ...(anlaufBis ? { anlaufBis } : {}) });
+  return berechneModell({ saeulen: TRAKTION_SAEULEN, kennzahlen: [...TRAKTION_KENNZAHLEN, ...(b.webseite?.aktiv ? WEBSEITE_KENNZAHLEN : []), ...(mitMotor ? MOTOR_KENNZAHLEN : [])], messen, bestand: b, schwellen, stand: b.heute, scope: 'markttraktion', geometrisch: true, ...(anlaufBis ? { anlaufBis } : {}) });
 }
 
 /** Die alte Form (Score, Welten) — für Scoreboard-Verlauf und Business-Index. */

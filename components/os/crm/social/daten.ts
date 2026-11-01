@@ -13,6 +13,7 @@ import type { ImportVorschau } from '@/lib/social/csv';
 import type { ZielStand } from '@/lib/social/ziele';
 import type { AutomatikLage } from '@/lib/social/server';
 import type { SocialMedium } from '@/lib/social/medien';
+import type { MarkenVorgabe } from '@/lib/social/marke-vorgabe';
 
 export type MitStand<T> = T & { stand: string };
 export interface Lage {
@@ -29,6 +30,8 @@ export interface Lage {
   automatik: AutomatikLage;
   /** Angehängte Medien der sichtbaren Folgen (Lese-Form vom Server: Art, Freigabe für Social, Werkstatt-Ergebnis). */
   medien: Record<string, SocialMedium | null>;
+  /** Vorgabe aus Marketing › Positionierung für leere Felder der Markenprofile (Firmen-/Personenkanal, 02.11.) — null ohne Positionierung. */
+  markenVorgabe?: MarkenVorgabe | null;
 }
 
 export interface SocialApi {
