@@ -267,6 +267,16 @@ export function seitenBauen(q = quellen()) {
   };
   const passenderKnopf = (bereich, quelle, art = 'zweit') => { const c = passenderCheck(bereich, quelle); return knopf(c.href, c.knopf, art); };
   const textlink = (href, text) => `<a class="textlink" href="${href}"><span>${e(text)}</span> ${PFEIL}</a>`;
+  /** Anfrage (01.11., Kevin: „ich kann nicht auf Anfrage reingehen“): jeder Knopf, der früher das Mail-Programm öffnete, führt auf das
+   *  Anfrage-Formular der App (/anfrage, Caddy reicht es durch) und nennt den Anlass. Ist das Formular aus oder die App nicht erreichbar, setzt
+   *  js/app-wege.js die Mail aus `data-anfrage-mail` ein — nie ein Weg ins Leere. Anlass nur [a-z0-9-]; die App kennt ihn oder übergeht ihn. */
+  const anfrageAttr = (anlass, betreff) => {
+    if (!/^[a-z0-9-]{1,60}$/.test(anlass)) throw new Error(`Anlass ungültig: ${anlass}`);
+    return `href="/anfrage?anlass=${anlass}" data-anfrage-mail="${e(mail(betreff))}"`;
+  };
+  const anfrageKnopf = (anlass, betreff, text, art = '') => `<a class="knopf${art ? ` ${art}` : ''}" ${anfrageAttr(anlass, betreff)}>${e(text)} ${PFEIL}</a>`;
+  const anfrageTextlink = (anlass, betreff, text) => `<a class="textlink" ${anfrageAttr(anlass, betreff)}><span>${e(text)}</span> ${PFEIL}</a>`;
+  const anfrageInline = (anlass, betreff, text) => `<a class="unterstrichen" ${anfrageAttr(anlass, betreff)}>${e(text)}</a>`;
   const vorzeile = (text, nr) => `<p class="vorzeile${nr ? ' mit-nr' : ''}">${nr ? `<span class="nr">${e(nr)}</span>` : ''}${e(text)}</p>`;
   const zeilen = (s) => (String(s).includes('|') ? String(s).split('|').map((z) => `<span class="zeile">${e(z)}</span>`).join('') : e(s));
   // Leerzeichen vor der Unterzeile: sie steht als Block darunter, aber im Text (Crawler, Vorlesen) kleben die Sätze sonst aneinander.
@@ -285,7 +295,7 @@ export function seitenBauen(q = quellen()) {
     if (!liste.length) return '';
     for (const f of liste) if (!ausgezeichnet.has(klar(f.f))) { ausgezeichnet.add(klar(f.f)); seitenFragen.push(f); }
     return `<section class="abschnitt" id="${id}" aria-labelledby="${id}-titel"><div class="w"><div class="zweispaltig">
-<div class="erscheint"><p class="ab-marke">${e(marke)}</p><h2 id="${id}-titel">${e(titelText)}</h2>${hinweis ? `<p class="leise">Noch etwas offen? Schreiben Sie uns an <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a>.</p>` : ''}</div>
+<div class="erscheint"><p class="ab-marke">${e(marke)}</p><h2 id="${id}-titel">${e(titelText)}</h2>${hinweis ? `<p class="leise">Noch etwas offen? ${anfrageInline('frage', 'Frage', 'Schreiben Sie uns')}, wir antworten persönlich.</p>` : ''}</div>
 <div class="fragen erscheint">${liste.map((f) => `<details><summary>${t(f.f)}<span class="plus" aria-hidden="true"></span></summary><p>${t(f.a)}</p></details>`).join('')}${mehr ? `<p class="fragen-mehr">${textlink('/fragen/', 'Alle Fragen und Antworten')}</p>` : ''}</div>
 </div></div></section>`;
   };
@@ -357,7 +367,7 @@ ${erstKnopf()}<a class="textlink menue-check" href="${check('menue')}"><span>Ode
   const fuss = () => `<footer class="fuss"><div class="w">
 <div class="fuss-raster">
 <div class="fuss-marke"><a class="marke" href="/" aria-label="Fokus Innovation, zur Startseite">${ZEICHEN()}${WORTBILD}</a><p class="claim glanz erscheint">${e(F.marke.claim)}</p>
-<p><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p></div>
+<p><a ${anfrageAttr('kontakt', 'Anfrage')}>Nachricht schreiben</a><br><a href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a><br>${seite.kontakt.adresse.map(t).join('<br>')}</p></div>
 ${fussSpalte('Leistungen', [...BEREICHE.map((b) => [`/${b}/`, F.bereiche[b].name]), ['/innovations-check/', 'Innovations-Check'], ['/preise/', 'Preise'], ...(BS_LISTE.length ? [['/bausteine/', 'Bausteine']] : [])])}
 ${fussSpalte('Kostenlos', [['/kostenlos/#checks', 'Checks'], ['/kostenlos/#ratgeber', 'Ratgeber'], ...(Z ? [['/kostenlos/zahlen/', 'Zahlen']] : []), ...(VL ? [['/kostenlos/#vorlagen', 'Vorlagen']] : []), ['/fragen/', 'Häufige Fragen'], ['/begriffe/', 'Begriffe']])}
 ${fussSpalte('Fokus Innovation', [['/events/', 'Events'], ['/ueber-uns/', 'Über uns'], ['/kontakt/', 'Kontakt'], ['/impressum/', 'Impressum'], ['/datenschutz/', 'Datenschutz']])}
@@ -449,7 +459,7 @@ ${suche}<meta name="theme-color" content="${film ? '#0B0C0F' : '#F6F4F0'}">
 <link rel="stylesheet" href="/css/fokus.css?v=${stempel('css/fokus.css')}">
 ${film ? `<link rel="stylesheet" href="/css/film.css?v=${stempel('css/film.css')}">\n` : ''}<script src="/js/frueh.js?v=${stempel('js/frueh.js')}"></script>
 <script src="/js/seite.js?v=${stempel('js/seite.js')}" defer></script>
-${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}${main.includes('data-baustein') ? `<script src="/js/bestellung.js?v=${stempel('js/bestellung.js')}" defer></script>\n` : ''}${main.includes('data-mk=') ? `<script src="/js/inhalt.js?v=${stempel('js/inhalt.js')}" defer></script>\n` : ''}${main.includes('data-anfrage') || main.includes('data-wenn-seite') ? `<script src="/js/app-wege.js?v=${stempel('js/app-wege.js')}" defer></script>\n` : ''}<script type="application/ld+json">${ldJson}</script>
+${film ? `<link rel="modulepreload" href="/js/szene.js?v=${stempel('js/szene.js')}">\n<script type="module" src="/js/film.js?v=${stempel('js/film.js')}"></script>\n` : ''}${main.includes('data-rechner') ? `<script src="/js/rechner.js?v=${stempel('js/rechner.js')}" defer></script>\n` : ''}${main.includes('data-unterlage') ? `<script src="/js/unterlage.js?v=${stempel('js/unterlage.js')}" defer></script>\n` : ''}${main.includes('data-baustein') ? `<script src="/js/bestellung.js?v=${stempel('js/bestellung.js')}" defer></script>\n` : ''}${main.includes('data-mk=') ? `<script src="/js/inhalt.js?v=${stempel('js/inhalt.js')}" defer></script>\n` : ''}<script src="/js/app-wege.js?v=${stempel('js/app-wege.js')}" defer></script>\n<script type="application/ld+json">${ldJson}</script>
 </head>
 <body${klasse ? ` class="${klasse}"` : ''}>
 ${kopf(aktiv)}
@@ -671,7 +681,7 @@ ${fragen(F.einwaende.filter((x) => /Wer arbeitet|Was kostet|Verkaufsgespräch/.t
 <div class="events-block kompakt">
 <div class="events-kopf erscheint">${vorzeile(F.events.titel)}<h2 id="events-titel">${e(F.events.start_ruhig)}</h2></div>
 <div class="events-text erscheint"><p class="lead">${t(F.events.start_text ?? F.events.text)}</p>
-<div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten')}${textlink('/events/', 'Formate und Termine')}</div><p class="leise klein-text" data-mk="termin-naechster" hidden></p></div>
+<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}${textlink('/events/', 'Formate und Termine')}</div><p class="leise klein-text" data-mk="termin-naechster" hidden></p></div>
 </div>
 </div></section>
 
@@ -727,7 +737,7 @@ ${raster(b.felder, 4)}
 <div class="zwei-teile check-unten"><div class="erscheint">${punkte(seite.check_punkte.punkte)}</div><div class="erscheint"><div class="knoepfe">${checkKnopf('innovation_check')}${textlink('/innovations-check/', 'So funktioniert der Check')}</div></div></div></div></section>
 
 <section class="abschnitt" id="ki-brain" aria-label="KI-Brain"><div class="w">
-<div class="kasten brain-kasten erscheint"><div>${vorzeile(b.brain.stand)}<h3>${e(b.brain.titel)}</h3></div><div><p>${t(b.brain.text)}</p><div class="knoepfe">${knopf(mail(b.brain.betreff), 'Interesse anmelden', 'zweit')}</div></div></div>
+<div class="kasten brain-kasten erscheint"><div>${vorzeile(b.brain.stand)}<h3>${e(b.brain.titel)}</h3></div><div><p>${t(b.brain.text)}</p><div class="knoepfe">${anfrageKnopf('angebot-ki-brain', b.brain.betreff, 'Interesse anmelden', 'zweit')}</div></div></div>
 </div></section>`,
     }[k]();
 
@@ -805,7 +815,7 @@ ${schlussakt({ quelle: `${gs.pfad}_ende`, bereich: k })}`,
     const b = B[k];
     const pb = produktBlatt(a);
     const istBald = bald(a);
-    const terminKnopf = istBald ? knopf(mail(`Anfrage: ${a.name}`), 'Anfrage starten') : erstKnopf();
+    const terminKnopf = istBald ? anfrageKnopf(`angebot-${a.id}`, `Anfrage: ${a.name}`, 'Anfrage starten') : erstKnopf();
     const mandat = monatlich(a) && k === 'vertrieb';
     const zweitKnopf = k === 'innovation' ? checkKnopf(`produkt_${a.id}`, 'Innovations-Check starten', 'zweit') : knopf('#fragen', 'Häufige Fragen', 'zweit');
     const homepage = a.gruppe === 'Homepage-Pakete';
@@ -918,7 +928,7 @@ ${schlussakt({ quelle: 'check_seite_ende', h2: 'Bereit?', lead: 'Kurz in rund 10
     aktiv: 'events',
     main: `<section class="held sand" aria-labelledby="held-titel"><div class="w held-raster mitte">
 <div class="erscheint">${brotkrumen([[null, 'Events']])}${vorzeile(F.events.titel)}<h1 id="held-titel" class="glanz">${titel(F.events.start_titel[0], F.events.start_titel.slice(1).join('|'))}</h1><p class="lead" data-mk="text:events.einleitung">${t(F.events.held_text ?? F.events.text)}</p>
-<div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten')}</div><p class="leise klein-text">${e(F.events.kosten)} · <span data-mk="termin-naechster">Termine folgen</span></p></div>
+<div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten')}</div><p class="leise klein-text">${e(F.events.kosten)} · <span data-mk="termin-naechster">Termine folgen</span></p></div>
 <div class="events-tafel">${tafel()}<p class="etikett">Formate</p><ul class="felder-liste erscheint">${F.events.formate.map((f) => `<li>${e(f.titel)}</li>`).join('')}</ul></div>
 </div></section>
 
@@ -930,7 +940,7 @@ ${raster(F.events.merkmale, 3)}</div></section>
 
 <section class="abschnitt" aria-labelledby="gast-titel"><div class="w">${abKopf({ marke: 'Gastgeberin', h2: 'Malin bringt Menschen zusammen.', lead: F.team.find((p) => p.kuerzel === 'MA').text, id: 'gast-titel' })}
 <div class="zwei-teile"><div class="erscheint"><h3 class="gruppe-titel">Warum wir Events machen</h3><p>${t(F.events.warum)}</p></div>
-<div class="erscheint"><h3 class="gruppe-titel">Termine</h3><ul class="termine-liste" data-mk="events" hidden></ul><p data-mk="text:events.termine">${t(F.events.termine)}</p><div class="knoepfe">${knopf(mail(F.events.betreff), 'Einladung erhalten', 'zweit')}</div></div></div></div></section>
+<div class="erscheint"><h3 class="gruppe-titel">Termine</h3><ul class="termine-liste" data-mk="events" hidden></ul><p data-mk="text:events.termine">${t(F.events.termine)}</p><div class="knoepfe">${anfrageKnopf('events', F.events.betreff, 'Einladung erhalten', 'zweit')}</div></div></div></div></section>
 
 ${schlussakt({ quelle: 'events_ende' })}`,
   });
@@ -990,9 +1000,9 @@ ${schlussakt({ quelle: 'ueber_uns_ende' })}`,
 <section class="abschnitt" aria-labelledby="weiter-titel"><div class="w">${abKopf({ marke: 'So geht es weiter', h2: 'Drei Schritte bis zum Start.', id: 'weiter-titel' })}
 ${weg(F.einstieg, { etiketten: ['01', '02', '03'], label: 'Drei Schritte bis zum Start' })}</div></section>
 <section class="abschnitt" aria-label="Kontaktdaten"><div class="w"><div class="kontakt-liste erscheint">
-<div><p class="etikett">E-Mail</p><a class="gross-link" href="mailto:${e(k.mail)}">${e(k.mail)}</a><p class="kontakt-formular" data-anfrage hidden>${textlink('/anfrage', 'Oder über unser Kontaktformular')}</p></div>
+<div><p class="etikett">Nachricht</p><a class="gross-link" ${anfrageAttr('kontakt', 'Anfrage')}>Nachricht schreiben</a><p class="leise klein-text">Oder per E-Mail an <a class="unterstrichen" href="mailto:${e(k.mail)}">${e(k.mail)}</a></p></div>
 <div><p class="etikett">Adresse</p><address>${e(F.marke.name)}<br>${e(anbieter.name)}<br>${k.adresse.map(t).join('<br>')}</address><p class="leise klein-text">${e(F.marke.name)} ist eine Marke der ${e(anbieter.name)}.</p></div>
-<div><p class="etikett">Events</p><p>Für die nächste Einladung genügt eine kurze Mail.</p>${textlink(mail(F.events.betreff), 'Einladung erhalten')}</div>
+<div><p class="etikett">Events</p><p>Für die nächste Einladung genügt eine kurze Nachricht.</p>${anfrageTextlink('events', F.events.betreff, 'Einladung erhalten')}</div>
 </div></div></section>`,
     });
   }
@@ -1161,8 +1171,7 @@ ${schlussakt({ quelle: 'kostenlos_ende' })}`,
     const pdf = v.dateien.find((d) => d.art === 'pdf');
     const nr = v.vorschau_seite ?? 2;
     const weitere = VORL.filter((x) => x.id !== v.id && x.bereich === v.bereich).slice(0, 3);
-    const betreff = encodeURIComponent(`Vorlage: ${v.titel}`);
-    const ersatz = `Schreiben Sie uns kurz an <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}?subject=${betreff}">${e(seite.kontakt.mail)}</a>, wir schicken Ihnen die Vorlage zu.`;
+    const ersatz = `Schreiben Sie uns kurz ${anfrageInline(`vorlage-${v.id}`, `Vorlage: ${v.titel}`, 'über das Formular')}, wir schicken Ihnen die Vorlage zu.`;
     neu(pfad, {
       titel: [`${v.titel}: Vorlage kostenlos · Fokus Innovation`, `${v.titel} · Fokus Innovation`, `${v.titel}: Vorlage kostenlos`, v.titel].find((x) => x.length <= 65),
       beschreibung: vorlageBeschreibung(v),
@@ -1235,8 +1244,7 @@ ${schlussakt({ quelle: 'bausteine_ende' })}`,
       const pfad = `bausteine/${b.id}/index.html`;
       const bild = b.paket ? b.teile[0].id : b.id;
       const brutto = Math.round(b.preis * 1.19);
-      const betreff = encodeURIComponent(`Bestellung: ${b.titel}`);
-      const ersatz = `Schreiben Sie uns kurz an <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}?subject=${betreff}">${e(seite.kontakt.mail)}</a> mit Firma und Rechnungsanschrift, wir schicken Ihnen Rechnung und Download-Link.`;
+      const ersatz = `Schreiben Sie uns kurz ${anfrageInline(`baustein-${b.id}`, `Bestellung: ${b.titel}`, 'über das Formular')} mit Firma und Rechnungsanschrift, wir schicken Ihnen Rechnung und Download-Link.`;
       const weitere = BS.filter((x) => x.id !== b.id && x.bereich === b.bereich).slice(0, 3);
       const vorschau = b.paket
         ? regal(b.teile.map((x) => x.id), `Die ${b.teile.length} Bausteine im Paket`)
@@ -1444,7 +1452,7 @@ ${schlussakt({ quelle: 'begriffe_ende' })}`,
       bildTitel: 'Was Sie vor dem ersten Gespräch wissen wollen.',
       aktiv: 'kostenlos',
       main: `<section class="held" aria-labelledby="held-titel"><div class="w held-raster einspaltig">
-<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, 'Häufige Fragen']])}${vorzeile('Häufige Fragen')}<h1 id="held-titel" class="glanz">${titel('Häufige Fragen.', 'Kurz beantwortet.')}</h1><p class="lead">Was Gründer, Unternehmer und Mittelständler uns vor dem ersten Gespräch fragen. Fehlt Ihre Frage, schreiben Sie uns an <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a>.</p>
+<div class="erscheint">${brotkrumen([['/kostenlos/', 'Kostenlos'], [null, 'Häufige Fragen']])}${vorzeile('Häufige Fragen')}<h1 id="held-titel" class="glanz">${titel('Häufige Fragen.', 'Kurz beantwortet.')}</h1><p class="lead">Was Gründer, Unternehmer und Mittelständler uns vor dem ersten Gespräch fragen. Fehlt Ihre Frage, ${anfrageInline('frage', 'Frage', 'schreiben Sie uns')}.</p>
 <nav class="az breit" aria-label="Themen">${gruppen.map(([k, n]) => `<a href="#fragen-${k}">${e(n)}</a>`).join('')}</nav></div>
 </div></section>
 ${gruppen.map(([k, n, liste]) => fragen(liste, n, { id: `fragen-${k}`, marke: 'Fragen', hinweis: false })).join('\n')}
@@ -1656,7 +1664,7 @@ export function pruefen(seiten) {
     platzhalter += (s.html.match(/class="ph"/g) ?? []).length;
     for (const [, href] of s.html.matchAll(/\shref="([^"]+)"/g)) {
       if (href.startsWith('/assets/vorlagen/') && !existsSync(join(ORDNER, href))) { fehler.push(`${s.pfad}: Vorlage fehlt ${href}`); continue; }
-      if (/^(https?:|mailto:|tel:)/.test(href) || href.startsWith('/check') || href === '/newsletter' || href === '/anfrage' || href === ERSTGESPRAECH || BUCHUNG.test(href) || href.startsWith('/css/') || href.startsWith('/js/') || href.startsWith('/assets/') || ['/favicon.ico', '/site.webmanifest'].includes(href)) continue;
+      if (/^(https?:|mailto:|tel:)/.test(href) || href.startsWith('/check') || href === '/newsletter' || href === '/anfrage' || /^\/anfrage\?anlass=[a-z0-9-]{1,60}$/.test(href) || href === ERSTGESPRAECH || BUCHUNG.test(href) || href.startsWith('/css/') || href.startsWith('/js/') || href.startsWith('/assets/') || ['/favicon.ico', '/site.webmanifest'].includes(href)) continue;
       const [teil, hash] = href.split('#');
       const seite = teil ? ziel(teil.split('?')[0]) : s.pfad;
       if (!pfade.has(seite)) { fehler.push(`${s.pfad}: Link ins Leere ${href}`); continue; }
