@@ -28,7 +28,7 @@ import { SYSTEM, SCHEMA, aufgabe, datenBlock, AGENT_ID, HEAD_NAME, MODI, REVIEW_
 import { vollesPaket, fuerWen } from './paket';
 import { grundlauf } from './grundlauf';
 import { normalisiere, pruefe, korrekturAuftrag, qualitaet, type Antwort, type Pruefung, type Vorschlag } from './pruefer';
-import { leererStand, standName, mischen, type HeadStand, type HeadBericht, type HeadVorschlag } from './stand';
+import { leererStand, standName, mischen, kampagnenDerAnderen, ohneKampagnenDerAnderen, type HeadStand, type HeadBericht, type HeadVorschlag } from './stand';
 import { automatisch, aufgabeAus, OHNE_AUTO_MODI } from './autonomie';
 import { autonomieWirksam } from '@/lib/agenten/leistung';
 import { einheitAusBezug } from '@/lib/aufgaben/einheit';
@@ -107,7 +107,9 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   const geradeGeschrieben = a.person && ev ? await ev.geradeGeschriebenFuer(a.person).catch(() => new Set<string>()) : new Set<string>();
   // Restpunkte (24.10.): Kampagnen plant der Head mit den Playbooks des Haushalts (angepasst + eigene) — EINE Lesestelle; scheitert sie, die Vorgaben.
   const playbooks = a.modus === 'kampagne' ? await (await import('@/lib/crm/vorlagen-anpassung-server')).playbooksDesHaushalts().catch(() => undefined) : undefined;
-  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele, { geradeGeschrieben, ...(playbooks ? { playbooks } : {}) }) as Record<string, unknown>;
+  // 02.11. (M2 K2): der Head of Marketing sieht Social, Website, Homepage-Funde und den Mail-Stapel — nur Zahlen/Kennungen, je Quelle für sich.
+  const marketingLage = a.head === 'marketing' ? await (await import('./marketing-lage-server')).marketingLageLaden(a.person, crm).catch(() => undefined) : undefined;
+  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele, { geradeGeschrieben, ...(playbooks ? { playbooks } : {}), ...(marketingLage ? { marketingLage } : {}) }) as Record<string, unknown>;
   // Leistungstreppe & Positionierung (10.10., Produkte & Mandate) — nur der Head of Sales; Daten, nie Anweisung; ohne Pflege fehlt der Block.
   if (a.head === 'sales') { const t = await (await import('@/lib/crm/treppe-server')).treppeFuerHead(heute).catch(() => null); if (t) daten.leistungstreppe = t; }
   const ereignisKategorien: KiKategorie[] = [];
@@ -189,8 +191,14 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
     const q = qualitaet(v, v.kontakt_id ? nachId.get(v.kontakt_id) : undefined, heute);
     const entwurf = q.entwurfUnbrauchbar ? null : v.entwurf;
     const b = belege(daten, v.quelle);
-    return { ...v, entwurf, fuer: v.fuer ?? fuerWen(v, a.head, nachId, crm, a.person), belege: b.belege, ...(q.maengel.length || b.insLeere.length ? { maengel: [...q.maengel, ...(q.entwurfUnbrauchbar ? ['Entwurf entfernt'] : []), ...(b.insLeere.length ? [`Quelle ins Leere: ${b.insLeere.join(', ')}`] : [])] } : { maengel: undefined }) };
+    return { ...v, entwurf, ...inhaltAusQuellen(v, daten, g?.antwort.vorschlaege), fuer: v.fuer ?? fuerWen(v, a.head, nachId, crm, a.person), belege: b.belege, ...(q.maengel.length || b.insLeere.length ? { maengel: [...q.maengel, ...(q.entwurfUnbrauchbar ? ['Entwurf entfernt'] : []), ...(b.insLeere.length ? [`Quelle ins Leere: ${b.insLeere.join(', ')}`] : [])] } : { maengel: undefined }) };
   }).sort((x, y) => RANG[x.prioritaet] - RANG[y.prioritaet] || (x.frist ?? '9999').localeCompare(y.frist ?? '9999')) };
+
+  // Kampagnen-Dubletten über beide Heads (02.11., M2 K3): ein Playbook, das der andere Head offen hat oder eben entschieden hat, kommt nicht.
+  if (a.head === 'sales' || a.head === 'marketing') {
+    const andere = await loadJson<HeadStand>(standName(a.head === 'sales' ? 'marketing' : 'sales')).catch(() => null);
+    if (andere?.vorschlaege?.length) antwort = { ...antwort, vorschlaege: ohneKampagnenDerAnderen(antwort.vorschlaege, kampagnenDerAnderen(andere.vorschlaege, jetzt)) };
+  }
 
   const bericht: HeadBericht = { id: neueKennung('hb'), zeit: jetzt, modus: a.modus, ausgeloest: a.ausgeloest, ...(a.person ? { person: a.person } : {}), ...(a.frage ? { frage: a.frage.slice(0, 500) } : {}), antwort, pruefung: { ...pruefung!, korrigiert }, modell: art.quelle === 'ki' ? art.modell ?? agent.model : 'regelwerk', dauer_ms: Date.now() - start, ...(verbrauch.aufrufe ? { verbrauch } : {}), quelle: art.quelle, ...(art.ohneKiGrund ? { ohneKiGrund: art.ohneKiGrund } : {}) };
   let neu = 0;
@@ -210,6 +218,22 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   // Je Person (08.10.): ausgelöst von einer Person → ihr Lauf; der Takt ist ein Systemlauf (ohne Person).
   await logRun(AGENT_ID[a.head], `${MODI[a.head].find(m => m.id === a.modus)?.label} · ${antwort.status}${art.quelle === 'regelwerk' ? ' · Regelwerk' : ''}`, { vorschlaege: antwort.vorschlaege.map(v => v.titel), gestrichen: pruefung!.gestrichen.length, unbelegt: pruefung!.unbelegt.length, quelle: art.quelle }, { person: a.ausgeloest === 'takt' ? null : a.person });
   return { ok: true, bericht, neu, ...(auto ? { auto } : {}) };
+}
+
+/**
+ * Inhalt eines Beitrags aus seinen Quellen (02.11., M2 K1, rein): ein Beitrag, der auf `stimme_der_kunden[i]` steht, trägt die Kennungen dieser
+ * Personen als `quellen` (wie „Als Idee übernehmen“) — vom Code aus dem Datenpaket, nie vom Modell; die Person wird im Text nie genannt.
+ */
+export function inhaltAusQuellen(v: Pick<Vorschlag, 'art' | 'quelle' | 'inhalt' | 'dedup_schluessel'>, daten: Record<string, unknown>, grund: readonly Pick<Vorschlag, 'dedup_schluessel' | 'inhalt'>[] = []): Pick<Vorschlag, 'inhalt'> | Record<string, never> {
+  if (v.art !== 'beitrag_entwurf') return v.inhalt ? { inhalt: v.inhalt } : {};
+  // Übernimmt das Modell einen Grundlauf-Vorschlag (gleicher dedup_schluessel), bleibt dessen Inhalt (Titel/Text der Idee) — sonst fände
+  // „schon übernommen“ die Idee später nicht wieder.
+  const ausGrund = grund.find(x => x.dedup_schluessel === v.dedup_schluessel)?.inhalt;
+  if (ausGrund) v = { ...v, inhalt: { ...ausGrund, ...(v.inhalt ?? {}) } };
+  const stimmen = (daten.stimme_der_kunden as { kontakt_id?: string }[] | undefined) ?? [];
+  const ids = v.quelle.map(q => /^stimme_der_kunden\[(\d+)\]/.exec(q)).filter((m): m is RegExpExecArray => !!m).map(m => stimmen[Number(m[1])]?.kontakt_id).filter((x): x is string => typeof x === 'string' && /^c-/.test(x));
+  const quellen = Array.from(new Set([...(v.inhalt?.quellen ?? []), ...ids])).slice(0, 20);
+  return v.inhalt || quellen.length ? { inhalt: { ...(v.inhalt ?? {}), ...(quellen.length ? { quellen } : {}) } } : {};
 }
 
 /** Fehlerbild nach Status statt Textsuche (Anthropic-Doku „errors“). */

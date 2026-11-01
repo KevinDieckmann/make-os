@@ -13,7 +13,7 @@
 //   · Hintergrund-KI-Schalter, Not-Aus und Budget des Head of Marketing gelten (`laufSperre`); ohne KI: nichts (kein Platzhalter-Text).
 
 import { localDay } from '@/lib/zeit';
-import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
+import { verantwortlichePerson } from '@/lib/crm/verantwortung-server';
 import { updateJson } from '@/lib/store/local-db';
 import { aehnlichkeit, BERATUNG } from './pruefer';
 import { communityVon } from './daten';
@@ -94,7 +94,8 @@ export async function communityAgentLauf(jetzt = new Date()): Promise<AgentErgeb
   const { laufSperre } = await import('@/lib/agenten/einstellung');
   const sperre = await laufSperre(null, 'marketing', jetzt).catch(() => ({ text: 'Agenten-Einstellungen nicht lesbar' }));
   if (sperre) return { ...erg, gestoppt: sperre.text };
-  const inhaber = await inhaberSpeicher().catch(() => null);
+  // B4 (02.11.): Firmenkanäle handeln als Marketing-Verantwortliche (Rückfall Inhaber) — nie fest der Haupt-Inhaber.
+  const inhaber = await verantwortlichePerson('marketing').catch(() => null);
   let d = await ladeCommunity();
   for (const k of kanaele) {
     const person = (k.art === 'person' && k.person) || (k.sichtbarkeit === 'person' && k.person) || inhaber;

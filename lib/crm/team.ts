@@ -16,7 +16,7 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
-import type { CrmBestand, CrmListe } from './typen';
+import type { CrmBestand } from './typen';
 import type { Welt } from './traktion';
 import { leads, salesBereit, passtLeadFilter, sqlEntscheidungOffen, type LeadFilter } from './leads';
 import { nachbereitung } from './erfassen';
@@ -42,12 +42,8 @@ export function wer(v: unknown): string | undefined {
   return s === BEIDE || TEAM.some(t => t.id === s) ? s : undefined;
 }
 
-/** Welche Welt eine Liste hat — für die Standard-Zuständigkeit. */
-export const WELT_DER_LISTE: Partial<Record<CrmListe, Welt>> = {
-  chancen: 'sales', mandate: 'sales', sitzungen: 'sales', kampagnen: 'sales',
-  beitraege: 'marketing', newsletter: 'marketing', segmente: 'marketing',
-  events: 'event', teilnahmen: 'event',
-};
+// `WELT_DER_LISTE` (Welt je CRM-Liste) ist am 02.11. (M2) entfernt — niemand las sie mehr, und sie sagte für Kampagnen „Sales“, obwohl die Welt
+// einer Kampagne aus ihrem Playbook kommt (lib/crm/kampagnen-welt.ts `weltDerKampagne`).
 
 /** Wer tatsächlich zuständig ist — die Eintragung, sonst die/der Verantwortliche. */
 export const zustaendig = (z: string | undefined, w: Welt) => wer(z) ?? verantwortlich(w);

@@ -36,6 +36,7 @@ const GESELLSCHAFTEN = ARBEIT_EINHEITEN_NAMEN.join(' und ') || 'den eigenen Gese
 
 import { sqlRegelText, standardScoring } from '@/lib/crm/scoring';
 
+
 /**
  * Die SQL-Regel im Prompt (08.10., Markttraktion Woche 2): derselbe Satz wie in Runde und Leads (`sqlRegelText`) — vorher stand hier die
  * alte feste Regel. Aus den Standard-Einstellungen, damit der System-Text stabil bleibt (Prompt-Cache); eigene Einstellungen der Instanz
@@ -59,9 +60,14 @@ export const REVIEW_MODI = new Set(['deal_review', 'kundenreview', 'kampagne', '
 
 export const ARTEN: Record<HeadId, string[]> = {
   sales: ['anrufen', 'nachfassen', 'intro_erbitten', 'sql_anlegen', 'angebot_nachfassen', 'qualifizierung_klaeren', 'chance_parken', 'verlaengerung_ansprechen', 'review_ansetzen', 'upsell_pruefen', 'winloss_gespraech', 'grundlage_klaeren', 'kampagne_planen', 'daten_pflegen', 'merken'],
-  marketing: ['beitrag_entwurf', 'newsletter_ausgabe', 'fallstudie_anfragen', 'empfehlung_erbitten', 'lead_magnet', 'einwilligung_einholen', 'info_art14_nachholen', 'einwilligung_auffrischen', 'liste_bereinigen', 'positionierung_schaerfen', 'kampagne_planen', 'vernetzen_runde', 'merken'],
+  // 02.11. (M2): Hinweis-Arten auf die neuen Teile — Social-Plan, Kommentare/DMs, Mail-Stapel, Antworten, Homepage-Funde (lib/heads/autonomie.ts HINWEIS_ARTEN).
+  marketing: ['beitrag_entwurf', 'newsletter_ausgabe', 'fallstudie_anfragen', 'empfehlung_erbitten', 'lead_magnet', 'einwilligung_einholen', 'info_art14_nachholen', 'einwilligung_auffrischen', 'liste_bereinigen', 'positionierung_schaerfen', 'kampagne_planen', 'vernetzen_runde', 'social_planen', 'community_beantworten', 'stapel_freigeben', 'antworten_bearbeiten', 'funde_pruefen', 'merken'],
   event: ['einladen', 'erinnern', 'nachruecken', 'intro_am_abend', 'nachfassen', 'folgetermin', 'format_anpassen', 'co_host_anfragen', 'fotofreigabe_einholen', 'ziel_schaerfen', 'merken'],
 };
+
+/** Kanäle eines Entwurfs an eine Person (Ampel-Prüfung) und eines Inhalts-Entwurfs (02.11., M2: Beitrag/Newsletter — geht an keine Person). */
+export const PERSON_KANAELE = ['mail', 'linkedin', 'telefon', 'vernetzen', 'persoenlich'] as const;
+export const INHALT_KANAELE = ['linkedin_beitrag', 'instagram', 'newsletter'] as const;
 
 /** Woran ein „Warum jetzt“ hängt. Pflicht-Signale (Frist, Zusage, Vertrag) dürfen älter sein. */
 export const SIGNAL_TYPEN = ['zusage', 'antwort', 'termin', 'frist', 'chance', 'kunde', 'event', 'pflege', 'kampagne', 'stimme', 'pflicht', 'sonstiges'] as const;
@@ -94,6 +100,7 @@ Der Prüfer misst jeden Vorschlag daran — erfülle es von selbst:
 - begruendung: warum gerade jetzt, mit Bezug auf die Daten, 1–3 Sätze. frist: JJJJ-MM-TT, nicht in der Vergangenheit.
 - quelle: die Pfade, aus denen du es hast. dedup_schluessel: stabil, z. B. "nachfassen:<kontakt_id>".
 - Entwurf: höchstens 80 Wörter, ein Anliegen, Anrede laut "anrede" (Sie oder Du, durchgehend), konkreter Bezug auf das letzte Gespräch oder das Signal, keine Platzhalter wie [Name], keine erfundenen Fakten, Zahlen oder Kundennamen, endet mit einer leicht zu beantwortenden Frage.
+- Inhalts-Entwurf (nur art "beitrag_entwurf" oder "newsletter_ausgabe"): kanal "linkedin_beitrag", "instagram" oder "newsletter", ohne kontakt_id, höchstens 220 Wörter, Ton laut "positionierung"/"stimme", keine Person aus den Daten genannt. "saeule" = Kennung aus "positionierung.saeulen", sonst null. Angenommen wird daraus ein Entwurf im Redaktionsplan — veröffentlicht wird nichts.
 - Verbotene Wörter überall: ${VERBOTEN_TEXT}.
 - Keine Vollzugsmeldungen („habe gesendet“) — du schlägst vor.
 - Keine Rechtsberatung: Ist die Grundlage offen, schlag „grundlage_klaeren“ vor bzw. persönliche Ansprache.
@@ -180,14 +187,14 @@ const AUFGABEN: Record<string, string> = {
   deal_review: 'Prüfe die offenen Chancen mit ihren "signale" und "luecken": Was hängt, welche Qualifizierungsfrage fehlt, wo fehlt ein nächster Schritt mit Datum? Je Chance höchstens eine Handlung — die, die sie am ehesten bewegt.',
   kundenreview: 'Prüfe die Mandate: Laufzeitende, Health, offene Punkte und Widersprüche, Kundenkonzentration. Schlag Verlängerungs-, Review- und Klärungsgespräche vor; Widersprüche als Befunde.',
   wochenreview: 'Wochenrückblick Vertrieb: Power Hours, echte Gespräche, neue Chancen, Pipeline-Bewegung — je Person, wenn mehrere gearbeitet haben. Was lief, was fehlt, was ist nächste Woche der eine Hebel?',
-  wochenplan: 'Plane die Woche: drei Themen aus der Stimme der Kunden mit je einem Entwurfsanstoß, dazu fällige Pflichten (Art. 14, Einwilligungen) und Freigaben, die warten.',
+  wochenplan: 'Plane die Woche: drei Themen aus der Stimme der Kunden mit je einem Entwurfsanstoß (stimme_der_kunden mit "uebernommen": true sind schon im Redaktionsplan — nicht noch einmal), dazu fällige Pflichten (Art. 14, Einwilligungen) und Freigaben, die warten. Sieh auch "social" (Lücken im Plan, offene Kommentare/DMs), "mail_stapel" (wartende Freigaben, offene Antworten), "funde", "website" und "sequenzen" — dort Liegendes geht vor neuem Inhalt.',
   netzwerk: 'LinkedIn-Netzwerk: Plane für jedes Profil in "netzwerk" den Tag — erst die Annahmen, die auf eine Nachricht warten (schreiben), dann die Tagesportion neuer Anfragen, dann Profile anreichern (LinkedIn-Export importieren). Art "vernetzen_runde", je Profil höchstens ein Vorschlag je Schritt; die Arbeit selbst passiert in der Vernetzen-Runde. Nie eine Nachricht an jemanden vorschlagen, der nicht vernetzt ist.',
-  monatsreview: 'Monatsrückblick Marketing: Einwilligungsbestand, Quellen der Chancen, was Gespräche ausgelöst hat, Listenpflege — und was im nächsten Monat anders laufen soll.',
+  monatsreview: 'Monatsrückblick Marketing: Einwilligungsbestand, Quellen der Chancen, was Gespräche ausgelöst hat (auch Website-Eingänge, Social, Kampagnen-Sequenzen), Listenpflege — und was im nächsten Monat anders laufen soll.',
   planung: 'Plane die anstehenden Events: Ist das Ziel messbar? Passt die Gästemischung? Was fehlt bis zum Termin (Checkliste)?',
   einladung: 'Stelle für das nächste Event eine Gästeliste aus der Kartei zusammen (nur Personen aus "kandidaten"), je mit Grund und — laut Ampel — Einladungsweg.',
   nachfassen: 'Für jedes vergangene Event: Wer war da und ist noch nicht nachgefasst? Je Person ein Vorschlag mit Bezug auf die Notiz vom Abend.',
   wirkung: 'Werte die vergangenen Events aus: Folgegespräche, beeinflusste und verursachte Pipeline, Kosten je Folgegespräch, Lehren fürs nächste Format.',
-  kampagne: 'Plane bis zu drei Kampagnen auf Basis unserer echten Kunden (kundenprofil) und der bewährten Vorgehen (playbooks): wähle je Kampagne ein Playbook, das zur Lage passt, begründe es mit Zahlen aus den Daten und nenne die Personen (kontakt_ids nur aus zielgruppen/aehnliche, höchstens 25). Art "kampagne_planen", Feld "kampagne" ausfüllen. Keine Kampagne auf einen Kanal, den die Personen nicht erlauben — das Playbook nennt den Kanal.',
+  kampagne: 'Plane bis zu drei Kampagnen auf Basis unserer echten Kunden (kundenprofil) und der bewährten Vorgehen (playbooks): wähle je Kampagne ein Playbook, das zur Lage passt (Ziele = Personen plus Betriebe ohne Person, "ziele_anzahl"), begründe es mit Zahlen aus den Daten und nenne die Personen (kontakt_ids nur aus zielgruppen/aehnliche, höchstens 25). Art "kampagne_planen", Feld "kampagne" ausfüllen. Hat ein Playbook schon eine laufende Kampagne ("laufend"), schlag keine zweite vor — sie wird beim Annehmen weiterverwendet. Keine Kampagne auf einen Kanal, den die Personen nicht erlauben — das Playbook nennt den Kanal.',
   frage: 'Beantworte die Frage in "antwort" knapp und belegt. Vorschläge nur, wenn die Frage danach verlangt.',
 };
 
@@ -210,7 +217,7 @@ export const SCHEMA = {
     zusammenfassung: { type: 'string' },
     befunde: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['titel', 'text', 'quelle'], properties: { titel: { type: 'string' }, text: { type: 'string' }, quelle: { type: 'array', items: { type: 'string' } } } } },
     vorschlaege: { type: 'array', items: { type: 'object', additionalProperties: false,
-      required: ['art', 'titel', 'begruendung', 'kontakt_id', 'chance_id', 'mandat_id', 'event_id', 'frist', 'prioritaet', 'signal', 'dedup_schluessel', 'quelle', 'entwurf', 'kampagne'],
+      required: ['art', 'titel', 'begruendung', 'kontakt_id', 'chance_id', 'mandat_id', 'event_id', 'frist', 'prioritaet', 'signal', 'dedup_schluessel', 'quelle', 'entwurf', 'kampagne', 'saeule'],
       properties: {
         art: { type: 'string' }, titel: { type: 'string' }, begruendung: { type: 'string' },
         kontakt_id: ID, chance_id: ID, mandat_id: ID, event_id: ID,
@@ -218,8 +225,9 @@ export const SCHEMA = {
         signal: { anyOf: [{ type: 'null' }, { type: 'object', additionalProperties: false, required: ['typ', 'datum', 'text'], properties: { typ: { type: 'string', enum: [...SIGNAL_TYPEN] }, datum: { type: ['string', 'null'] }, text: { type: 'string' } } }] },
         dedup_schluessel: { type: 'string' },
         quelle: { type: 'array', items: { type: 'string' } },
-        entwurf: { anyOf: [{ type: 'null' }, { type: 'object', additionalProperties: false, required: ['kanal', 'text'], properties: { kanal: { type: 'string', enum: ['mail', 'linkedin', 'telefon', 'vernetzen', 'persoenlich'] }, text: { type: 'string' } } }] },
+        entwurf: { anyOf: [{ type: 'null' }, { type: 'object', additionalProperties: false, required: ['kanal', 'text'], properties: { kanal: { type: 'string', enum: [...PERSON_KANAELE, ...INHALT_KANAELE] }, text: { type: 'string' } } }] },
         kampagne: { anyOf: [{ type: 'null' }, { type: 'object', additionalProperties: false, required: ['playbook', 'name', 'ziel', 'kontakt_ids'], properties: { playbook: { type: 'string' }, name: { type: 'string' }, ziel: { type: 'string' }, kontakt_ids: { type: 'array', items: { type: 'string' } } } }] },
+        saeule: { type: ['string', 'null'] },
       } } },
     verworfen: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['dedup_schluessel', 'grund'], properties: { dedup_schluessel: { type: 'string' }, grund: { type: 'string' } } } },
     fragen: { type: 'array', items: { type: 'string' } },

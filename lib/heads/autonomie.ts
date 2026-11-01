@@ -28,12 +28,25 @@ export type AutoWirkung = 'schritt' | 'aufgabe';
  * Liste schaukelte sich selbst hoch. Fragen erzeugen nie etwas.
  */
 export const OHNE_AUTO_MODI = new Set(['power_hour', 'nachfassen', 'frage', 'netzwerk']);
-/** Meta-Arten („pflegen“, „schärfen“) werden Aufgaben, nie ein nächster Schritt an einer Person. */
-const NUR_AUFGABE = new Set(['daten_pflegen', 'ziel_schaerfen', 'positionierung_schaerfen', 'liste_bereinigen', 'format_anpassen']);
+/**
+ * Meta-Arten („pflegen“, „schärfen“) werden Aufgaben, nie ein nächster Schritt an einer Person. Seit 02.11. (Marketing-Projekt M2, W3) auch
+ * „Art. 14 nachholen“: eine Datenschutz-Pflicht gehört in die Aufgaben, nicht als Vertriebsschritt in die Power Hour der Person.
+ */
+export const NUR_AUFGABE = new Set(['daten_pflegen', 'ziel_schaerfen', 'positionierung_schaerfen', 'liste_bereinigen', 'format_anpassen', 'info_art14_nachholen']);
+/**
+ * Inhalts-Arten (02.11., M2 K1): angenommen wird daraus ein echter Beitrag bzw. eine Newsletter-Ausgabe im Redaktionsplan (app/api/heads/[head]
+ * `inhaltAnlegen`) — nie eine Aufgabe und nie selbst übernommen (ein Text für außen geht immer über einen Menschen).
+ */
+export const INHALT_ARTEN = new Set(['beitrag_entwurf', 'newsletter_ausgabe']);
+/**
+ * Hinweis-Arten (02.11., M2 K2): sie zeigen auf eine Liste, die es schon gibt (Social-Plan, Mail-Stapel, Antworten, Homepage-Funde) — der Head
+ * legt dafür nie selbst eine Aufgabe an (die Liste IST die Arbeit, sonst doppelte Arbeit); angenommen = Aufgabe mit Link dorthin.
+ */
+export const HINWEIS_ARTEN = new Set(['social_planen', 'community_beantworten', 'stapel_freigeben', 'antworten_bearbeiten', 'funde_pruefen']);
 
 /** Was der Head mit diesem Vorschlag selbst tun darf — null = zur Freigabe. */
 export function automatisch(v: HeadVorschlag, k: Kontakt | undefined): AutoWirkung | null {
-  if (v.status !== 'offen' || v.entwurf || v.kampagne || v.art === 'merken') return null;
+  if (v.status !== 'offen' || v.entwurf || v.kampagne || v.art === 'merken' || INHALT_ARTEN.has(v.art) || HINWEIS_ARTEN.has(v.art)) return null;
   if (v.kontakt_id) {
     if (!k || ausgenommen(k)) return null;
     return v.frist && !k.naechsterSchritt && !NUR_AUFGABE.has(v.art) ? 'schritt' : 'aufgabe';

@@ -13,6 +13,7 @@
 // Platzhalter — nie ein Personenname.
 
 import type { Welt } from './traktion';
+import { hauptInhaber, type InhaberKern } from '@/lib/zugang/inhaber';
 
 export interface Mitglied { id: string; name: string; farbe: string; verantwortet: Welt[] }
 const WELTEN: readonly Welt[] = ['sales', 'marketing', 'event'];
@@ -39,10 +40,14 @@ export interface KontoKurz { speicher: string; name?: string; rolle?: string; ha
 /**
  * Das CRM-Team aus den Konten (rein, 14.10.): die Konten im Haushalt der Inhaberin/des Inhabers mit vollem Zugang (ein Konto „nur Business“
  * ist Partner, kein Team-Mitglied), Inhaber zuerst, dann nach Anlage; höchstens vier. `null`, wenn es kein Konto gibt.
+ * Inhaber = der HAUPT-Inhaber (02.11., M2 — lib/zugang/inhaber.ts `hauptInhaber`, auch die ausdrückliche Einstellung): mit zwei Inhabern sonst das
+ * erste Konto mit der Rolle; ohne Einstellung ist das dasselbe wie vorher.
  */
-export function teamAusKonten(konten: readonly KontoKurz[]): Mitglied[] | null {
+export function teamAusKonten(konten: readonly KontoKurz[], einstellungen?: { hauptInhaber?: string } | null): Mitglied[] | null {
   const ok = konten.filter(k => typeof k?.speicher === 'string' && /^[a-z0-9-]{1,40}$/.test(k.speicher) && k.speicher !== 'beide');
-  const inhaber = ok.find(k => k.rolle === 'inhaber');
+  // Nur die Rolle zählt für die Wahl (`hauptInhaber` braucht Speichername + Rolle); die Kurzform trägt die Rolle als Text.
+  const wahl = hauptInhaber({ konten: ok as unknown as InhaberKern[], einstellungen: einstellungen ?? null });
+  const inhaber = wahl ? ok.find(k => k.speicher === wahl.speicher) : undefined;
   if (!inhaber) return null;
   const haus = inhaber.haushalt;
   const mitglieder = ok

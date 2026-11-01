@@ -33,6 +33,25 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-8',
+    datum: '2026-11-02',
+    titel: 'Head of Marketing kennt alles',
+    kurz: 'Der Head of Marketing plant jetzt mit Social, Website, Homepage-Funden und dem Mail-Stapel. Nimmst du einen Beitrag an, steht er als Entwurf im Redaktionsplan.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Beitrags- und Newsletter-Vorschläge werden beim Annehmen ein echter Entwurf bzw. eine Idee im Redaktionsplan, mit Säule und Quelle. Es entsteht keine Aufgabe mehr, und veröffentlicht wird nichts.', bereich: 'business', weg: WEG.marketing('redaktion') },
+        { text: 'Der Head sieht freie Plätze im Social-Plan, offene Kommentare und Nachrichten, wartende Mails im Stapel, offene Antworten auf Kampagnen-Mails und vorbereitete Homepage-Funde. Daraus macht er Vorschläge mit Link zur Liste.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Den Head of Marketing gibt es jetzt auch im Reiter Social. Seine Kosten zählen die Social-Läufe mit.', bereich: 'business', weg: WEG.marketing('social') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Kampagnen-Vorschläge zählen auch Betriebe ohne Person. Läuft schon eine Kampagne mit demselben Vorgehen, wird sie weiterverwendet. Sales und Marketing schlagen dieselbe Kampagne nicht doppelt vor.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Vorschläge des Head of Marketing gehen an die Person, die Marketing verantwortet. Wer eine Beziehung ausdrücklich hält, bekommt sie weiter selbst. Art. 14 wird immer eine Aufgabe.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Kundenstimmen, die schon als Idee im Plan stehen, schlägt der Head nicht noch einmal vor.', bereich: 'business', weg: WEG.marketing('redaktion') },
+        { text: 'Social-Läufe für Firmenkanäle arbeiten im Namen der Person, die Marketing verantwortet.', bereich: 'business', weg: WEG.marketing('social') },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-6',
     datum: '2026-11-02',
     titel: 'Verträge aus Vorlagen',
