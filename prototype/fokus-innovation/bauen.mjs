@@ -224,6 +224,12 @@ export function seitenBauen(q = quellen()) {
   if (F.bausteine?.verkaeufer && !verkaeuferDaten) throw new Error(`bausteine.verkaeufer „${F.bausteine.verkaeufer}“ fehlt in seite.anbieter`);
   const verkaeufer = verkaeuferDaten && ![verkaeuferDaten.name, ...verkaeuferDaten.adresse, verkaeuferDaten.vertreten, verkaeuferDaten.register].some(istPlatzhalter) ? verkaeuferDaten : null;
   const verkaeuferEigen = verkaeufer && F.bausteine.verkaeufer !== seite.anbieter_aktiv;
+  // Verantwortlich für die eigene Anwendung (Kevin 01.11.: MAKE Innovation GmbH) — Checks, Formular, Buchung, Vorlagen, Newsletter und Bausteine
+  // nennen in ihrem Hinweis den Verantwortlichen aus MAKE OS; die Datenschutzerklärung sagt dasselbe. Betreiber der Website bleibt anbieter_aktiv.
+  const anwendungDaten = seite.anwendung ? seite.anbieter[seite.anwendung.anbieter] : null;
+  if (seite.anwendung && !anwendungDaten) throw new Error(`anwendung.anbieter „${seite.anwendung.anbieter}“ fehlt in seite.anbieter`);
+  if (anwendungDaten && [anwendungDaten.name, ...anwendungDaten.adresse, seite.anwendung.mail].some((x) => !x || istPlatzhalter(x))) throw new Error('anwendung: Name, Anschrift oder E-Mail fehlt');
+  const anwendung = anwendungDaten && seite.anwendung.anbieter !== seite.anbieter_aktiv ? { ...anwendungDaten, mail: seite.anwendung.mail } : null;
 
   /** Produktblatt eines Angebots: eigene Angaben über denen der Familie; null, wenn es keins gibt. */
   const produktBlatt = (a) => {
@@ -1027,7 +1033,7 @@ ${BS_LISTE.length && verkaeuferEigen ? `<h2 id="bausteine">Verkäufer der Bauste
   neu('datenschutz/index.html', {
     seo: 'datenschutz',
     main: recht('Datenschutz', `<h2>Kurz gesagt</h2><p>Diese Website setzt keine Cookies und nutzt kein Tracking, keine Analyse und keine Werbung. Sie lädt nur Dateien von unserem eigenen Server: Schriften, Bilder, Stile und kleine Skripte liegen hier, nichts kommt von fremden Diensten. Persönliche Daten verarbeiten wir nur, wenn es technisch nötig ist, um die Seite auszuliefern, und wenn Sie selbst etwas tun: einen unserer Checks machen, eine Vorlage anfordern, ein Gespräch buchen, den Newsletter bestellen oder uns schreiben.</p>
-<h2>Verantwortlich</h2>${anschrift}<p>vertreten durch ${t(anbieter.vertreten)}. Für alle Fragen zum Datenschutz: <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a>.</p>
+<h2>Verantwortlich</h2>${anwendung ? '<p>Für diese Website:</p>' : ''}${anschrift}<p>vertreten durch ${t(anbieter.vertreten)}. Für alle Fragen zum Datenschutz: <a class="unterstrichen" href="mailto:${e(seite.kontakt.mail)}">${e(seite.kontakt.mail)}</a>.</p>${anwendung ? `<p>Für alles, was in unserer eigenen Anwendung läuft, also die Checks, Vorlagen per E-Mail, die Terminbuchung, das Kontaktformular, den Newsletter und die Bausteine:</p><address>${wort(anwendung.name)}<br>${anwendung.adresse.map(wort).join('<br>')}</address><p>E-Mail: <a class="unterstrichen" href="mailto:${e(anwendung.mail)}">${e(anwendung.mail)}</a></p>` : ''}
 <h2>Hosting</h2><p>Die Website liegt auf einem Server der Hetzner Online GmbH (Industriestr. 25, 91710 Gunzenhausen) in einem Rechenzentrum in Deutschland. Auf demselben Server läuft unsere eigene Anwendung für die Checks, die Vorlagen per E-Mail, die Terminbuchung, das Kontaktformular und die Newsletter-Anmeldung. Hetzner verarbeitet die Daten nur in unserem Auftrag (Art. 28 DSGVO).</p>
 <h2>Aufruf der Seite</h2><p>Wenn Sie die Seite öffnen, schickt Ihr Browser technisch bedingt Ihre IP-Adresse, den Zeitpunkt, die aufgerufene Adresse und eine Browser-Kennung an unseren Server. Wir brauchen diese Angaben, um die Seite verschlüsselt (HTTPS) auszuliefern und den Server sicher zu betreiben. Rechtsgrundlage ist unser berechtigtes Interesse an einem sicheren, funktionierenden Angebot (Art. 6 Abs. 1 lit. f DSGVO). Unser Webserver führt kein Zugriffsprotokoll. Technische Fehlermeldungen können eine IP-Adresse enthalten; sie bleiben auf dem Server, werden nicht ausgewertet und rollierend überschrieben.</p>
 <h2>Cookies und Speicher im Browser</h2><p>Die Website selbst setzt keine Cookies und legt nichts im Speicher Ihres Browsers ab. Kleine Skripte zeigen Abschnitte beim Scrollen an, spielen auf der Startseite eine Animation ab, rechnen den Vertriebsrechner und schließen auf dem Handy das Menü; sie lesen nichts aus und speichern nichts. Gesendet wird nur in zwei Fällen: Fordern Sie eine Vorlage an, schickt das Formular Ihre Angaben an unsere Anwendung (siehe Vorlagen). Und einige Seiten fragen unsere Anwendung, ob das Kontaktformular oder die Newsletter-Anmeldung gerade eingeschaltet ist, um den Link nur dann zu zeigen; dabei gehen keine persönlichen Angaben mit, nur die technischen Angaben jedes Seitenaufrufs. Was die Checks im Speicher Ihres Browsers ablegen, steht im Abschnitt zu den Checks.</p>
@@ -1611,6 +1617,7 @@ ${W.artikel.map(artikelMd).join('\n\n')}
   seiten.stand = STAND;
   // Firmierungen sind Rechtsangaben (Impressum, Verkäufer der Bausteine), keine Marke — der Prüfer lässt genau diese Namen zu.
   seiten.firmierungen = Object.values(seite.anbieter ?? {}).map((a) => a.name).filter((n) => n && !istPlatzhalter(n));
+  seiten.erlaubteMails = [seite.kontakt.mail, seite.anwendung?.mail].filter(Boolean);
   const cent = (txt) => Math.round(Number(String(txt).replace(/[^\d,]/g, '').replace(',', '.')) * 100);
   seiten.startwerte = {
     hinweis: 'Startwerte aus dem statischen Stand von fokusinnovation.de (node prototype/fokus-innovation/bauen.mjs --startwerte <datei>). Alles hier steht öffentlich auf der Website. Für die Demo-Saat nur die Struktur übernehmen (ids, Bereiche, welche Felder es gibt), die Werte erfinden.',
@@ -1651,7 +1658,8 @@ export function pruefen(seiten) {
     const sichtbar = s.html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ');
     const ohneFirmierung = (seiten.firmierungen ?? []).reduce((x, n) => x.split(e(n)).join(' '), sichtbar);
     for (const [re, was] of SPERRWOERTER) if (re.test(ohneFirmierung)) fehler.push(`${s.pfad}: ${was}`);
-    if (/makeinnovation/i.test(sichtbar.replace(/kevin@makeinnovation\.de/g, ''))) fehler.push(`${s.pfad}: alte Domain im Text`);
+    // Erlaubt sind nur die Kontaktadresse und die Adresse des Verantwortlichen der Anwendung (seite.anwendung.mail, wie im Hinweis aus MAKE OS).
+    if (/makeinnovation/i.test((seiten.erlaubteMails ?? ['kevin@makeinnovation.de']).reduce((x, m) => x.split(m).join(''), sichtbar))) fehler.push(`${s.pfad}: alte Domain im Text`);
     if (/\bZoe\b/.test(sichtbar) && !/KI-Assistentin/.test(sichtbar)) fehler.push(`${s.pfad}: Zoe ohne Kennzeichnung als KI-Assistentin`);
     if (/\{(preis|ab|zusatz):/.test(s.html)) fehler.push(`${s.pfad}: Platzhalter nicht ersetzt`);
     if (s.datei) continue;

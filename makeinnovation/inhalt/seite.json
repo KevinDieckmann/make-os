@@ -15,6 +15,10 @@
   ]
  },
  "anbieter_aktiv": "kdv",
+ "anwendung": {
+  "anbieter": "make",
+  "mail": "hello@makeinnovation.de"
+ },
  "anbieter_hinweis": "Bis 08.11.2026 KD Ventures UG, ab 09.11.2026 MAKE Innovation GmbH: anbieter_aktiv auf \"make\" stellen und node makeinnovation/bauen.mjs ausführen. Kevin 31.10.: Die GmbH ist noch nicht im Handelsregister eingetragen — umstellen erst nach der Eintragung, wenn Anschrift, Geschäftsführer und HRB unten ohne Platzhalter stehen (sonst stünden Platzhalter im Impressum).",
  "anbieter": {
   "kdv": {
@@ -30,8 +34,8 @@
   "make": {
    "name": "MAKE Innovation GmbH",
    "adresse": [
-    "[[KEVIN: Straße und Hausnummer der MAKE Innovation GmbH]]",
-    "[[KEVIN: PLZ und Ort]]"
+    "Atillastrasse 18",
+    "12529 Schönefeld"
    ],
    "vertreten": "[[KEVIN: Geschäftsführer der MAKE Innovation GmbH]]",
    "register": "[[KEVIN: Registergericht und HRB-Nummer nach Eintragung]]",
