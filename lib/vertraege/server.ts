@@ -21,6 +21,7 @@ import {
   type VertragVorlage, type VorlagenDatei, type Vertrag, type VertraegeDatei, type FuellKontext, type VertragStatus, type VertragAbsender, type VertragPartner,
 } from './modell';
 import { vorlageAusText, type VorlageImport } from './import';
+import { sammelLesen, sammelPruefen, SammelFormatFehler, type SammelVorschau } from './sammel';
 
 export class VertragFehler extends Error { constructor(msg: string, readonly status: number, readonly extra: Record<string, unknown> = {}) { super(msg); } }
 
@@ -117,6 +118,38 @@ export async function eigeneArtAnlegen(p: { haushalt: string; label: unknown }):
     return { vorlagen: cur?.vorlagen ?? [], arten: [...arten, a] };
   });
   return raus;
+}
+
+/**
+ * Sammel-Import aus einer JSON-Datei (`make-os-vertragsvorlagen`, lib/vertraege/sammel.ts): `uebernehmen: false` = Vorschau (liest nur, schreibt
+ * NICHTS); `true` = in EINER Sperre gegen den aktuellen Bestand neu prüfen und nur Vorlagen anlegen, deren Titel+Art es noch nicht gibt (nie
+ * überschreiben). Jede neue Vorlage startet „ungeprüft“. Protokoll ohne Werte.
+ */
+export async function vorlagenSammelImport(p: { haushalt: string; person: string; inhalt: string; uebernehmen: boolean; wer?: Wer; jetzt?: Date }): Promise<SammelVorschau & { uebernommen: string[] }> {
+  const jetzt = (p.jetzt ?? new Date()).toISOString();
+  const lauf = (roh: unknown, d: VorlagenDatei) => {
+    const ids = new Map<number, string>();
+    return sammelPruefen(roh, d, { jetzt, person: p.person, neueId: i => { if (!ids.has(i)) ids.set(i, neueKennung('vv')); return ids.get(i)!; } });
+  };
+  const fang = <T>(f: () => T): T => { try { return f(); } catch (e) { if (e instanceof SammelFormatFehler) throw new VertragFehler(e.message, e.status); throw e; } };
+  const roh = fang(() => sammelLesen(p.inhalt));
+  if (!p.uebernehmen) { const d = await vorlagenLaden(p.haushalt); return { ...fang(() => lauf(roh, d)).vorschau, uebernommen: [] }; }
+  let ergebnis: ReturnType<typeof lauf> | null = null;
+  let fehler: unknown = null;
+  let vorher: VorlagenDatei | null = null;
+  const nachher = await updateJson<VorlagenDatei>(vorlagenName(p.haushalt), cur => {
+    vorher = cur;
+    const d: VorlagenDatei = { vorlagen: cur?.vorlagen ?? [], arten: cur?.arten ?? [] };
+    try { ergebnis = fang(() => lauf(roh, d)); } catch (e) { fehler = e; return cur ?? d; }
+    const r = ergebnis!;
+    if (!r.neu.length) return cur ?? d;
+    return { vorlagen: [...d.vorlagen, ...r.neu], arten: [...(d.arten ?? []), ...r.arten] };
+  });
+  if (fehler) throw fehler;
+  const r = ergebnis as ReturnType<typeof lauf> | null;
+  if (!r) throw new VertragFehler('Nicht übernommen — interner Fehler.', 500);
+  if (r.neu.length) await protokolliereBestand(vorlagenName(p.haushalt), vorher, nachher, p.wer ?? { art: 'person', person: p.person });
+  return { ...r.vorschau, uebernommen: r.neu.map(v => v.id) };
 }
 
 /** Import-Vorschau aus einer Datei (DOCX/PDF/Text) — liest nur, schreibt NICHTS (kein Bestand, keine Ablage). */

@@ -118,7 +118,7 @@ export interface VertragVorlage {
 }
 export interface VorlagenDatei { vorlagen: VertragVorlage[]; arten?: EigeneArt[] }
 
-export const VERTRAG_GRENZEN = { vorlagen: 200, paragraphen: 120, felder: 60, titel: 160, paragraphTitel: 160, text: 20_000, notiz: 2000, optionen: 30, vertraege: 5000, grund: 600 } as const;
+export const VERTRAG_GRENZEN = { vorlagen: 200, paragraphen: 200, felder: 60, titel: 160, paragraphTitel: 160, text: 20_000, notiz: 2000, optionen: 30, vertraege: 5000, grund: 600 } as const;
 
 export interface VertragFehler { feld: string; text: string }
 

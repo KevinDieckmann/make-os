@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Vertrag, VertragVorlage, AmpelStand, VorlageFeld, FeldTyp } from '@/lib/vertraege/modell';
 import type { VorlageImport } from '@/lib/vertraege/import';
+import type { SammelVorschau } from '@/lib/vertraege/sammel';
 
 export type VertragMitStand = Vertrag & { stand: string };
 export type VorlageMitStand = VertragVorlage & { stand: string; ampel: AmpelStand };
@@ -50,6 +51,8 @@ export interface VorlagenStand {
   geruest: { id: string; titel: string; art: string; paragraphen: number }[];
   hinweis: string;
   nurLesen?: boolean;
+  /** Nur ein Inhaber per Sitzung: „Vorlagen importieren (Datei)“. */
+  sammelImport?: boolean;
 }
 export function useVorlagen() {
   const [stand, setStand] = useState<VorlagenStand | null>(null);
@@ -86,4 +89,10 @@ export async function unterschriftHochladen(v: VertragMitStand, datei: File, am?
     const d = await r.json().catch(() => null) as { ok?: boolean; vertrag?: VertragMitStand; hinweise?: string[]; fehler?: string } | null;
     return d?.ok && d.vertrag ? { ok: true, vertrag: d.vertrag, hinweise: d.hinweise ?? [] } : { ok: false, fehler: d?.fehler ?? `Antwort ${r.status}.` };
   } catch { return { ok: false, fehler: 'Keine Verbindung.' }; }
+}
+
+/** Sammel-Import: Text der JSON-Datei → Vorschau bzw. Übernahme (nur neue Vorlagen, nie überschreiben). */
+export async function sammelSenden(aktion: 'vorschau' | 'uebernehmen', inhalt: string): Promise<{ ok: true; d: SammelVorschau & { uebernommen: string[] } } | { ok: false; fehler: string }> {
+  const r = await senden<SammelVorschau & { uebernommen: string[] }>('/api/vertraege/vorlagen/sammel', { aktion, inhalt });
+  return r.ok ? { ok: true, d: r.d } : { ok: false, fehler: r.d.fehler ?? (r.status === 413 ? 'Datei zu groß (höchstens 2 MB).' : `Antwort ${r.status}.`) };
 }

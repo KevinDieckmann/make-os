@@ -346,6 +346,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Vertrieb › Verträge (01.11.): Bestände je Haushalt (`businessHaushaltVon`); Dienstweg stellt nie fertig, vermerkt nie „versendet“/„unterschrieben“.
   'vertraege': r('GET,POST', 'haushalt', 'Vertrieb › Verträge: Entwürfe aus Vorlagen, fertigstellen (Nummer, PDF als Beleg), Version, Status — Haushalt des Inhabers; „nur Business“ nur Entwürfe; Dienstweg nie fertigstellen/Status (403).'),
   'vertraege/vorlagen': r('GET,POST', 'haushalt', 'Unternehmen › Verträge › Vorlagen: lesen im Haushalt, schreiben nur volle Mitglieder per Sitzung (Dienstweg 403).'),
+  'vertraege/vorlagen/sammel': r('POST', 'inhaber', 'Sammel-Import von Vorlagen aus einer JSON-Datei: Vorschau schreibt nichts, Übernahme legt nur neue an (nie überschreiben, ungeprüft) — nur ein Inhaber per Sitzung (Dienstweg 403).'),
   'vertraege/import': r('POST', 'haushalt', 'Import-Vorschau einer Vorlage aus DOCX/PDF/Text — liest nur, schreibt nichts; volle Mitglieder per Sitzung.'),
   'vertraege/unterschrift': r('POST', 'haushalt', 'Unterschriebenes PDF hochladen → Beleg, Mandat, Register-Eintrag mit Fristen; nur per Sitzung (Dienstweg 403).'),
   'crm/formulare': r('GET,POST', MT, 'Formulare › „Angebot anfordern“ (25.10.): Anfordern jede Person im Haushalt (auch „nur Business“), nur per Sitzung; Links und Einstellungen nur Inhaber; Eingänge: Inhaber alle, sonst nur die eigenen (serverseitig).'),

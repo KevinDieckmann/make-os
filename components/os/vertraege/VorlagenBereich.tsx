@@ -13,7 +13,8 @@ import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { localDay } from '@/lib/zeit';
 import { VERTRAG_HINWEIS, artLabel, type VorlageFeld, type VorlageParagraph, type FeldTyp } from '@/lib/vertraege/modell';
 import { wertAlsPlatzhalter, schluesselAus, type VorlageImport } from '@/lib/vertraege/import';
-import { importLesen, senden, useVorlagen, type VorlageMitStand } from './daten';
+import { importLesen, senden, sammelSenden, useVorlagen, type VorlageMitStand } from './daten';
+import { SAMMEL_MAX_BYTES, type SammelVorschau, type SammelZustand } from '@/lib/vertraege/sammel';
 
 const klein = { fontSize: TYP.bedien, color: C.inkDim } as const;
 interface Entwurf { id?: string; stand?: string; titel: string; art: string; fassung: string; anrede: 'Sie' | 'Du'; paragraphen: VorlageParagraph[]; felder: VorlageFeld[]; notiz?: string }
@@ -24,6 +25,7 @@ export function VorlagenBereich({ offenId, oeffnen }: { offenId?: string; oeffne
   const daten = useVorlagen();
   const [entwurf, setEntwurf] = useState<Entwurf | null>(null);
   const [importOffen, setImportOffen] = useState(false);
+  const [sammelOffen, setSammelOffen] = useState(false);
   const [archiv, setArchiv] = useState(false);
   const [meldung, setMeldung] = useState<{ art: 'kritisch' | 'gut'; text: string } | null>(null);
   const s = daten.stand;
@@ -39,11 +41,13 @@ export function VorlagenBereich({ offenId, oeffnen }: { offenId?: string; oeffne
     <>
       <Hinweis art="info">{s.hinweis} Startgerüste tragen nur übliche Überschriften — den Wortlaut bringt ihr selbst ein (Import oder Eingabe).</Hinweis>
       {meldung && <Hinweis art={meldung.art} rolle="alert">{meldung.text}</Hinweis>}
+      {sammelOffen && <SammelKarte onSchliessen={() => setSammelOffen(false)} onFertig={async n => { setSammelOffen(false); await daten.laden(); setMeldung({ art: 'gut', text: n === 1 ? 'Eine Vorlage übernommen — ungeprüft.' : `${n} Vorlagen übernommen — ungeprüft.` }); }} />}
       {importOffen && <ImportKarte felderSchon={[]} onAbbrechen={() => setImportOffen(false)} onUebernehmen={v => { setImportOffen(false); setEntwurf({ ...leer(), titel: v.titel, paragraphen: v.paragraphen, felder: v.felder }); }} />}
       <Karte>
         <Ueberschrift rechts={!s.nurLesen && (
           <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
             <Knopf leise onClick={() => setImportOffen(true)}>Importieren</Knopf>
+            {s.sammelImport && <Knopf leise onClick={() => setSammelOffen(true)}>Vorlagen importieren (Datei)</Knopf>}
             <Knopf haupt onClick={() => setEntwurf(leer())}>+ Vorlage</Knopf>
           </span>
         )}>Vorlagen</Ueberschrift>
@@ -74,6 +78,52 @@ export function VorlagenBereich({ offenId, oeffnen }: { offenId?: string; oeffne
         </Karte>
       )}
     </>
+  );
+}
+
+const ZUSTAND: Record<SammelZustand, { label: string; farbe: string }> = {
+  neu: { label: 'neu', farbe: LEUCHT.gut }, vorhanden: { label: 'gibt es schon', farbe: LEUCHT.business }, doppelt: { label: 'doppelt in der Datei', farbe: LEUCHT.business }, fehler: { label: 'Fehler', farbe: LEUCHT.kritisch },
+};
+
+/** Sammel-Import: JSON-Datei → Vorschau je Vorlage → Übernahme nur per Klick (nur neue, nie überschreiben, ungeprüft). */
+function SammelKarte({ onSchliessen, onFertig }: { onSchliessen: () => void; onFertig: (n: number) => void | Promise<void> }) {
+  const [inhalt, setInhalt] = useState<string | null>(null);
+  const [vorschau, setVorschau] = useState<SammelVorschau | null>(null);
+  const [fehler, setFehler] = useState<string | null>(null);
+  const lesen = async (f: File) => {
+    setVorschau(null); setInhalt(null);
+    if (f.size > SAMMEL_MAX_BYTES) { setFehler('Datei zu groß (höchstens 2 MB).'); return; }
+    const t = await f.text();
+    const r = await sammelSenden('vorschau', t);
+    if (!r.ok) { setFehler(r.fehler); return; }
+    setFehler(null); setInhalt(t); setVorschau(r.d);
+  };
+  return (
+    <Karte>
+      <Ueberschrift rechts={<Knopf leise onClick={onSchliessen}>Schließen</Knopf>}>Vorlagen importieren (Datei)</Ueberschrift>
+      <div style={klein}>JSON-Datei im Format „make-os-vertragsvorlagen“. Erst die Vorschau — übernommen wird nur, was es mit Titel und Art noch nicht gibt; jede Vorlage startet ungeprüft.</div>
+      <Feldzeile label="Datei (JSON, höchstens 2 MB)"><input aria-label="Datei" type="file" accept=".json,application/json" style={eingabe} onChange={e => { const f = e.target.files?.[0]; if (f) void lesen(f); }} /></Feldzeile>
+      {fehler && <Hinweis art="kritisch" rolle="alert">{fehler}</Hinweis>}
+      {vorschau && (
+        <>
+          <div style={klein}>{vorschau.neu} neu · {vorschau.vorhanden} gibt es schon · {vorschau.fehlerhaft} mit Fehlern{vorschau.neueArten.length ? ` · neue Arten: ${vorschau.neueArten.map(a => a.label).join(', ')}` : ''}</div>
+          <Liste>
+            {vorschau.zeilen.map(z => (
+              <Zeile key={z.nr} titel={z.titel || `Vorlage ${z.nr}`} unter={[`${z.artLabel} · ${z.paragraphen} Paragraphen · ${z.felder} Felder`, ...z.fehler].join(' · ')}
+                rechts={<Chip farbe={ZUSTAND[z.zustand].farbe}>{ZUSTAND[z.zustand].label}</Chip>} />
+            ))}
+          </Liste>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <Knopf haupt aus={!vorschau.neu || !inhalt} onClick={async () => {
+              if (!inhalt) return;
+              const r = await sammelSenden('uebernehmen', inhalt);
+              if (!r.ok) { setFehler(r.fehler); return; }
+              await onFertig(r.d.uebernommen.length);
+            }}>{vorschau.neu === 1 ? 'Eine Vorlage übernehmen' : `${vorschau.neu} Vorlagen übernehmen`}</Knopf>
+          </div>
+        </>
+      )}
+    </Karte>
   );
 }
 
