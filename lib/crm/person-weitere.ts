@@ -23,6 +23,8 @@ import { emailsVon } from './emails';
 import { telefonSchluessel } from '@/lib/whatsapp/zuordnung';
 import { waOhnePerson, waZaehlen } from '@/lib/whatsapp/art17';
 import type { EmailAdresse } from './emails';
+import { vertraegePersonOhne } from '@/lib/vertraege/modell';
+import { localDay } from '@/lib/zeit';
 
 export const GELOESCHT = '[gelöscht]';
 
@@ -136,6 +138,15 @@ const eintraegeRaus = (feld: string): Wirkung => (cur, m) => {
 };
 /** Eintrag bleibt, Person wird getilgt. */
 const tilgen: Wirkung = (cur, m) => { const t = tilgeTief(cur, m); return { neu: t.wert, n: t.n }; };
+
+/** Verträge (01.11.): Entwürfe der Person raus, fertige mit gelöstem Bezug behalten — der Rest wird getilgt. */
+const vertraegeOhne: Wirkung = (cur, m) => {
+  const l = liste(cur, 'vertraege') as import('@/lib/vertraege/modell').Vertrag[];
+  const r = vertraegePersonOhne(l, m.id, localDay());
+  const basis = r.n ? { ...cur, vertraege: r.liste } : cur;
+  const t = tilgeTief(basis, m);
+  return { neu: t.wert, n: r.n + t.n };
+};
 
 /**
  * Formular „Angebot anfordern“ (25.10.): am Eingang der Person fällt der Empfänger (Fingerabdruck + maskierte Adresse) weg, die Kennung wird
@@ -431,6 +442,10 @@ export const WEITERE_SPEICHER: readonly WeitererSpeicher[] = [
       return { neu: { ...(r.neu as Obj), willkommen: rest }, n: r.n + 1 };
     },
     zaehlen: (cur, m) => liste((cur ?? {}) as Obj, 'eintraege').filter(x => ((x as Obj)?.ziel as Obj | undefined)?.id === m.id || (!!((x as Obj)?.an as Obj | undefined)?.email && m.emails.includes(String(((x as Obj).an as Obj).email)))).length },
+  // Vertrieb › Verträge (01.11.): Entwürfe der Person fallen weg; fertige Verträge bleiben als Geschäftsunterlage (§ 257 HGB) mit gelöstem Bezug,
+  // Name/Adressen getilgt (lib/vertraege/modell.ts `vertraegePersonOhne`).
+  { name: 'vertraege--*', muster: /^vertraege--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: vertraegeOhne,
+    zaehlen: (cur, m) => liste((cur ?? {}) as Obj, 'vertraege').filter(x => (x as Obj)?.kontaktId === m.id).length },
   // Gesellschafts-Register (04.10.): Kontakt-Kennungen in Gesellschaftern/Vertragsparteien → „[gelöscht]“, der Eintrag bleibt.
   { name: 'gesellschaften--*', muster: /^gesellschaften--[a-z0-9-]+$/, behandlung: 'tilgen', wirkung: tilgen },
   // Austausch am Meilenstein (30.09.): Nachrichten, Notiz, Link-Titel können Dritte nennen — getilgt, der Raum bleibt.

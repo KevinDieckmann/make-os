@@ -73,6 +73,11 @@ export interface DateiEintrag {
    */
   angebotId?: string;
   /**
+   * Vertrag aus Vertrieb › Verträge (01.11., lib/vertraege/server.ts) — setzt NUR der Server beim Fertigstellen (PDF) bzw. beim Hochladen des
+   * unterschriebenen PDFs. Geschäftsunterlage (§ 257 HGB): nicht löschbar (`istBeleg`), der Bezug bleibt fest.
+   */
+  vertragId?: string;
+  /**
    * Das PDF einer gestellten Rechnung bzw. Stornorechnung (08.10., lib/finanzen/rechnung/server.ts) — setzt NUR der Server beim
    * Stellen, Wert = Kennung der Rechnung (steht dazu in `rechnungId`). Geschäftsunterlage (§ 147 AO): nicht löschbar, auch nicht
    * vom Bezug lösbar (`aendern` hält `rechnungId` fest).
@@ -204,14 +209,14 @@ export function metaSaeubern(roh: unknown): Partial<Pick<DateiEintrag, 'art' | '
  * Hängt der Eintrag an einer Rechnung oder einem Mandat (28.09., K3 · #50/#81)? Dann ist er ein Beleg
  * und wird nicht gelöscht (DELETE → 409) — nur vom Bezug gelöst (PATCH `{ rechnungId: null, mandatId: null }`).
  */
-export const istBeleg = (e: Pick<DateiEintrag, 'rechnungId' | 'mandatId'> & Partial<Pick<DateiEintrag, 'angebotId' | 'rechnungsPdf' | 'bericht'>>) =>
-  !!(e.rechnungId || e.angebotId || e.rechnungsPdf || (e.mandatId && e.bericht !== 'fortschritt'));
+export const istBeleg = (e: Pick<DateiEintrag, 'rechnungId' | 'mandatId'> & Partial<Pick<DateiEintrag, 'angebotId' | 'rechnungsPdf' | 'bericht' | 'vertragId'>>) =>
+  !!(e.rechnungId || e.angebotId || e.vertragId || e.rechnungsPdf || (e.mandatId && e.bericht !== 'fortschritt'));
 
 /**
  * Hängt der Eintrag an irgendetwas? Ohne Bezug wird nichts abgelegt (er wäre nirgends zu finden).
  * Seit 28.09. (C2) zählen auch Projekt und Aufgabe — gesetzt nur über die Aufgaben-Ablage (dort Pflicht: Projekt).
  */
-export const hatBezug = (e: Pick<DateiEintrag, 'kontaktId' | 'firmaId' | 'mandatId' | 'dealId' | 'rechnungId'> & Partial<Pick<DateiEintrag, 'angebotId' | 'rechnungsPdf' | 'gesellschaft' | 'projektId' | 'aufgabeId'>>) => !!(e.kontaktId || e.firmaId || e.mandatId || e.dealId || e.rechnungId || e.angebotId || e.rechnungsPdf || e.gesellschaft || e.projektId || e.aufgabeId);
+export const hatBezug = (e: Pick<DateiEintrag, 'kontaktId' | 'firmaId' | 'mandatId' | 'dealId' | 'rechnungId'> & Partial<Pick<DateiEintrag, 'angebotId' | 'vertragId' | 'rechnungsPdf' | 'gesellschaft' | 'projektId' | 'aufgabeId'>>) => !!(e.kontaktId || e.firmaId || e.mandatId || e.dealId || e.rechnungId || e.angebotId || e.vertragId || e.rechnungsPdf || e.gesellschaft || e.projektId || e.aufgabeId);
 
 /** Gehört der Eintrag zu Projekten/Aufgaben (C2)? Solche Einträge erscheinen nie in einer CRM-Sicht. */
 export const istAufgabenDatei = (e: Pick<DateiEintrag, 'projektId' | 'aufgabeId' | 'bereich'>) => !!(e.projektId || e.aufgabeId || e.bereich);
@@ -219,7 +224,7 @@ export const istAufgabenDatei = (e: Pick<DateiEintrag, 'projektId' | 'aufgabeId'
 export const nurCrm = <T extends Pick<DateiEintrag, 'projektId' | 'aufgabeId' | 'bereich'>>(l: readonly T[]): T[] => l.filter(e => !istAufgabenDatei(e));
 
 /** Bezüge, die nur der Server setzt (Angebots-PDF, Logo) — `metaSaeubern` liest sie nie aus dem Netz. */
-export interface FesteBezuege { angebotId?: string; /** Rechnungs-PDF (08.10.): Kennung der Rechnung. */ rechnungsPdf?: string; gesellschaft?: import('@/lib/einheiten').GesellschaftId; /** Fortschritts-Report (11.10.). */ bericht?: 'fortschritt' }
+export interface FesteBezuege { angebotId?: string; /** Vertrag (01.11.): Kennung `vtr-…`. */ vertragId?: string; /** Rechnungs-PDF (08.10.): Kennung der Rechnung. */ rechnungsPdf?: string; gesellschaft?: import('@/lib/einheiten').GesellschaftId; /** Fortschritts-Report (11.10.). */ bericht?: 'fortschritt' }
 
 export interface DateiFilter { kontaktId?: string; firmaId?: string; mandatIds?: string[]; dealIds?: string[]; rechnungIds?: string[] }
 /** Einträge eines Kontakts: an ihm, an seiner Firma, an seinen Mandaten, Deals oder Rechnungen. Neueste zuerst. */

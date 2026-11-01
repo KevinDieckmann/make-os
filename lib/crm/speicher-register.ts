@@ -399,6 +399,20 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
   K('unternehmen-verlauf--*', 'Gesundheits-Verlauf des Schilds je Haushalt (lib/gesellschaften/schild/verlauf.ts, Morgenlauf): je Tag Ton und vier ganze Prozentzahlen (Dokumente, Pflichten, Risiken, Schutz) je Business-Gesellschaft, nur deren Kennung — keine Personen, keine Titel; rollend 400 Tage, mit der Instanz gelöscht.'),
   // Formulare „Angebot anfordern“ (25.10., lib/crm/formulare-speicher.ts): Einstellungen, externe Links (Name/Adresse des Vertrieblers, Token nur als
   // Fingerabdruck), Eingänge (nur Kennungen von Kontakt/Firma/Deal/Angebot, Empfänger als Fingerabdruck + maskiert, Status, Gründe ohne Kundendaten).
+  // Vertrieb › Verträge (01.11., lib/vertraege): Vorlagen (Wortlaut der Instanz, Felder, Prüfvermerk mit Speichername) und Verträge (Kennungen von
+  // Kontakt/Firma/Deal/Mandat/Angebot, Werte der Felder, beim Fertigstellen festgeschriebener Absender, Vertragspartner und gefüllter Wortlaut).
+  mit(H('vertrag-vorlagen--*', 'Vertragsvorlagen je Haushalt (lib/vertraege): Titel, Art, Fassung, Paragraphen mit Platzhaltern, eigene Felder, Vermerk „anwaltlich geprüft am“ (Speichername eines Kontos), eigene Arten. Keine Dritten.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. f DSGVO (eigene Vertragsmuster der Gesellschaften) — Personen nur als Speichername eines Kontos des Haushalts',
+    art15: 'die Personen des Haushalts sehen die Vorlagen unter Unternehmen › Verträge › Vorlagen (mit „geprüft von“)',
+    loeschfrist: 'bis die Vorlage gelöscht bzw. die Instanz aufgelöst wird; Konto löschen tilgt „von“',
+    kategorie: ['vertraulich'],
+  }),
+  mit(T('vertraege--*', 'Verträge je Haushalt (lib/vertraege): Entwürfe und fertige Verträge mit Kennungen von Kontakt/Firma/Deal/Mandat/Angebot, Feldwerten, festgeschriebenem Absender, Vertragspartner (Name, Anschrift, Ansprechpartner) und gefülltem Wortlaut, Nummer, Prüfsumme, Datei-Kennungen. Art. 17: Entwürfe der Person fallen weg, fertige Verträge bleiben als Geschäftsunterlage (§ 257 HGB) mit gelöstem Personenbezug.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Vertrag bzw. Vertragsanbahnung), lit. c (Aufbewahrung § 257 HGB / § 147 AO)',
+    art15: 'Auskunft der Kontaktakte (personAufzaehlen › vertraege: Nummer, Titel, Status — ohne PDF-Inhalt)',
+    loeschfrist: 'Entwürfe bis zur Löschung durch den Haushalt bzw. Art. 17; fertige Verträge 6 bzw. 10 Jahre (§ 257 HGB), PDFs in crm-dateien--* als Beleg',
+    kategorie: ['vertraulich'],
+  }),
   mit(T('angebot-formular--*', 'Formular „Angebot anfordern“: Einstellungen (Absender-Postfach als Kennung, Mail-Vorlage), externe Links (Name und optional Adresse des Vertrieblers, freigegebene Produkte, Ablauf, Fingerabdruck des Tokens), Eingänge (Kennungen von Kontakt/Firma/Deal/Angebot, Empfänger nur als Fingerabdruck und maskiert, Status, Leitplanken-Gründe, Versand-Vermerk). Art. 17 eines Kontakts tilgt seine Kennung am Eingang (person-weitere.ts), der Nachweis der Sendung bleibt.'), {
     rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (Anbahnung eines Vertrags auf Anfrage des Kunden über den Vertrieb); für die Vertriebler-Angaben Art. 6 Abs. 1 lit. b/f (Zusammenarbeit im Vertrieb)',
     art15: 'Kontakte: die Eingänge der Person zählen in der Auskunft nach Art. 15 (weitere Speicher, person-weitere.ts); Vertriebler: unter Markttraktion › Formulare (Inhaber) — auf Anfrage über den Inhaber',
@@ -982,7 +996,7 @@ const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
-  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'bausteine-einstellungen', 'website-inhalt', 'baustein-bestellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'vertrag-vorlagen--*', 'vertraege--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'bausteine-einstellungen', 'website-inhalt', 'baustein-bestellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)
