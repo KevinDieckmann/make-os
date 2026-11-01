@@ -19,6 +19,7 @@ import { KontaktformularKarte } from '../marketing/KontaktformularKarte';
 import { NewsletterWebsite } from '../marketing/NewsletterWebsite';
 import { useWebsite, type WebsiteApi } from './daten';
 import { AngeboteReiter, BausteineReiter, InhalteReiter } from './Pflege';
+import { WillkommenKarte } from './Willkommen';
 
 const REITER: { id: WebsiteAnsicht; label: string }[] = [
   { id: 'ueberblick', label: 'Überblick' }, { id: 'eingaenge', label: 'Eingänge' }, { id: 'checks', label: 'Checks' }, { id: 'angebote', label: 'Angebote & Preise' },
@@ -144,10 +145,8 @@ function Formulare({ w }: { w: WebsiteApi }) {
       )}
       <KontaktformularKarte />
       <NewsletterWebsite />
-      <Karte i={3}>
-        <Ueberschrift>Willkommens-Mails</Ueberschrift>
-        <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nach einer Einwilligung über die Website (Check, Unterlage, Newsletter) laufen feste Willkommens-Mails — nur wenn ein Inhaber sie eingeschaltet hat. Einstellen unter <Link href={WEG.kampagne()} style={{ color: C.aktiv }}>Marketing › Kampagnen</Link>.</span>
-      </Karte>
+      {/* M1 (01.11.): eigene Karte — Schalter, bearbeitbare Texte, wer welche Stufe bekam (bis dahin versteckt im Kampagnen-Detail). */}
+      <WillkommenKarte i={3} />
     </>
   );
 }

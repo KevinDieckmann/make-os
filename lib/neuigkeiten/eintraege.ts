@@ -52,6 +52,33 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-11-02-7',
+    datum: '2026-11-02',
+    titel: 'Kampagnen: Betriebe und Versand',
+    kurz: 'Kampagnen nehmen jetzt auch Betriebe ohne Person mit. Jede Kampagne zeigt alle Ziele mit ihrem Stand. Alle Kampagnen-Mails gehen über denselben Mail-Stapel.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Eine Kampagne aus einem Segment nimmt auch die Betriebe ohne Person mit. Betriebe mit roter Ampel kommen nicht hinein.', bereich: 'business', weg: WEG.marketing('segmente') },
+        { text: 'Im Kampagnen-Detail steht die Liste „Ziele“: Personen und Betriebe, mit Schritt, Fälligkeit und Grund. Dort kannst du ein Ziel stoppen und Betriebe hinzufügen oder herausnehmen.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Antwortet jemand auf eine Kampagnen-Mail, steht im Follow-up „Antwort bearbeiten“ der Knopf „Als Lead übernehmen“.', bereich: 'business', weg: WEG.followup() },
+        { text: 'Die Willkommens-Mails haben eine eigene Karte unter Website › Formulare & Termine. Dort stehen der Schalter, die Texte und wer welche Mail bekam.', bereich: 'business', weg: WEG.website('formulare') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Die Mail eines Homepage-Funds geht jetzt über den Mail-Stapel der Kampagne. Sie wird gedrosselt gesendet, mit Abmeldelink und Absenderzeile. Eine Antwort sagt den Anruf ab.', bereich: 'business', weg: WEG.kampagne() },
+        { text: '„Jetzt vorbereiten“ sagt, was passiert ist und warum etwas nicht vorbereitet wurde.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Mails mit gelber Ampel gibst du einzeln frei, nicht in der Sammelfreigabe.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Die Zahlen einer Kampagne zählen Betriebe mit. Wer einmal reagiert hat, bleibt bei „reagiert“.', bereich: 'business', weg: WEG.kampagne() },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Wer schon eine Mail bekam, bekommt beim Start der Sequenz keine zweite Erstansprache.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Ändert ihr eine Sequenz, bleiben laufende Ziele an ihrem Schritt.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Ein Anruf mit Gespräch zählt jetzt im Trichter je Schritt.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Ohne Absenderzeile oder Abmeldelink verbraucht eine Mail kein Tageskontingent mehr.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Sendefehler lassen sich wieder „erneut vorbereiten“.', bereich: 'business', weg: WEG.kampagne() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-6',
     datum: '2026-11-02',
     titel: 'Verträge aus Vorlagen',

@@ -856,6 +856,8 @@ export interface Kampagne {
   /** Betriebe ohne Ansprechpartner als Ziele (01.11., Welle A) — Ziel = { art: 'firma', id } (lib/crm/segmente.ts `segmentZiele`). */
   firmaIds?: string[];
   ergebnisse: { kontaktId: string; ergebnis: KampagnenErgebnis; am: string; /** Wer angesprochen hat. */ von?: string }[];
+  /** Ergebnisse je Betrieb ohne Person (M1, 01.11.) — dieselbe Form wie `ergebnisse`, nur mit `firmaId`; die Personen-Liste bleibt unberührt. */
+  firmenErgebnisse?: { firmaId: string; ergebnis: KampagnenErgebnis; am: string; von?: string }[];
   /** Wer sie angelegt hat — von Hand oder aus einem Vorschlag eines Heads. */
   von: 'hand' | 'head-sales' | 'head-marketing';
   /** Kosten der Kampagne in Euro (27.09.) — für Kosten je qualifiziertem Lead. */
@@ -896,7 +898,12 @@ export interface KampagnenZiel { art: ZielArt; id: string }
 export type ZielStatus = 'offen' | 'wartet' | 'reagiert' | 'gestoppt' | 'fertig';
 export type ZielVerlaufWas = 'start' | 'entwurf' | 'freigegeben' | 'gesendet' | 'erledigt' | 'uebersprungen' | 'reagiert' | 'bounce' | 'abgemeldet' | 'gestoppt' | 'fertig';
 export interface ZielVerlauf { am: string; was: ZielVerlaufWas; schritt?: string; von?: string }
-export interface ZielStand extends KampagnenZiel { schritt: number; faelligAm: string; status: ZielStatus; grund?: string; verlauf: ZielVerlauf[] }
+/**
+ * Stand je Ziel. `schritt` ist der Index in der Sequenz (Altstand bis 01.11.); seit M1 (01.11.) führt `schrittId` (die Kennung des Schritts) —
+ * so verschiebt ein eingefügter oder entfernter Schritt keinen laufenden Stand. Fehlt `schrittId`, wird der Index beim Lesen übersetzt
+ * (lib/crm/sequenz.ts `schrittIndex`).
+ */
+export interface ZielStand extends KampagnenZiel { schritt: number; schrittId?: string; faelligAm: string; status: ZielStatus; grund?: string; verlauf: ZielVerlauf[] }
 
 export interface MarketingEinstellung { positionierung: string; icp: string; ton: string; saeulen: { id: string; name: string; beschreibung: string }[] }
 

@@ -176,6 +176,9 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
   const farbe = GRUPPEN.find(g => g.id === f.gruppe)!.farbe;
   const ziel = () => (f.bezug.art === 'chance' ? zuDeal(f.bezug.id) : f.kontaktId ? zuAkte(f.kontaktId) : undefined);
   const pruefen = !f.virtuell && istAnfragePruefen(f);
+  // M1 (01.11.): Antwort auf eine Kampagnen-Mail („Antwort bearbeiten“, fu-kr-…) — direkt als Lead übernehmen (Ergebnis „Interesse → Lead“).
+  const kampagnenAntwort = !f.virtuell && /^fu-kr-[0-9a-f]{16}$/.test(f.id);
+  const [leadText, setLeadText] = useState('');
   return (
     <div>
       <Zeile onClick={() => setOffen(!offen)} aktiv={offen} links={<Punkt farbe={farbe} />}
@@ -191,6 +194,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {/* 31.10.: Anfrage mit unbestätigter Adresse (öffentliche Strecke an einer vorhandenen Person) — erst prüfen, dann von Hand übernehmen. */}
             {pruefen && kanalAusPruefen(f.text) && <Knopf farbe={LEUCHT.gut} onClick={async () => { if (await bestaetigen({ titel: 'Anfrage übernehmen?', text: 'Nur, wenn die Anfrage wirklich von dieser Person kommt (z. B. Adresse geprüft). Danach gilt sie wie jede Anfrage: Einwilligung „Antwort auf Anfrage“, Stufe, Lead und Follow-up „Anfrage beantworten“.', ja: 'Übernehmen' })) void aktion({ aktion: 'anfrage-uebernehmen', id: f.id }); }}>Anfrage übernehmen</Knopf>}
+            {kampagnenAntwort && <Knopf farbe={LEUCHT.business} onClick={async () => { const r = await fetch('/api/crm/kampagnen/motor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'als-lead', followupId: f.id }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' })); setLeadText(r.ok ? String(r.text ?? 'Als Lead übernommen.') : r.fehler ?? 'Nicht übernommen.'); }}>Als Lead übernehmen</Knopf>}
             <Knopf farbe={pruefen ? undefined : LEUCHT.gut} leise={pruefen} onClick={() => setErledigen(!erledigen)}>✓ Erledigt</Knopf>
             {VERSCHIEBEN_TAGE.map(t => <Knopf key={t} leise onClick={() => void aktion({ aktion: 'verschieben', id: f.id, tage: t })}>+{t} {t === 1 ? 'Tag' : 'Tage'}</Knopf>)}
             {/* 4.14 (08.10.): Text der Rückfrage nach Quelle — bei der Kadenz fällt nichts weg, es kommt der nächste Anlauf (`absagenText`). */}
@@ -200,6 +204,7 @@ function FollowUpZeile({ f, heute, zuKontakt, zuDeal, zuAkte, aktion, eigene = [
             {f.bezug.art === 'event' && <Knopf leise onClick={() => router.push(eventHref ? eventHref(f.bezug.id) : eventLink({ id: f.bezug.id }))}>Event öffnen</Knopf>}
             {(f.bezug.art === 'chance' || f.kontaktId) && <Knopf leise onClick={ziel}>{f.bezug.art === 'chance' ? 'Deal öffnen' : 'Kontakt öffnen'}</Knopf>}
           </div>
+          {leadText && <div role="status" style={{ fontSize: TYP.bedien, color: C.inkDim }}>{leadText}</div>}
           {pruefen && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Adresse unbestätigt: Die Anfrage kam über eine öffentliche Strecke mit der Mail einer Person, die schon in der Kartei steht. Ohne Prüfung wurde nichts ausgelöst — keine Einwilligung, keine Stufe, keine Mail. {kanalAusPruefen(f.text) ? '„Anfrage übernehmen“, wenn sie echt ist; sonst absagen.' : 'Das Angebot liegt zur Freigabe — „Senden“ dort übernimmt die Anfrage.'}</div>}
           {f.verschoben ? <div style={{ fontSize: TYP.bedien, color: f.verschoben >= 3 ? LEUCHT.kritisch : C.inkLeise }}>{f.verschoben}× verschoben{f.verschoben >= 3 ? ' — ehrlicherweise keine Zusage mehr.' : ''}</div> : null}
           {erledigen && <Erledigen f={f} heute={heute} eigene={eigene} onFertig={async b => { const r = await aktion({ aktion: 'erledigen', id: f.id, ...b }); if (r.ok) { setErledigen(false); setOffen(false); } return r; }} onAbbruch={() => setErledigen(false)} />}

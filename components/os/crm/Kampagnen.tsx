@@ -46,6 +46,7 @@ import { NEU_MAX, kampagneInPowerHour } from '@/lib/crm/heute';
 import { weltDerKampagne, sichtbareKampagnen } from '@/lib/crm/kampagnen-welt';
 import { PlaybooksBearbeiten } from './vorlagen/PlaybooksBearbeiten';
 import { KampagneSequenz } from './kampagne/Sequenz';
+import { KampagneZiele } from './kampagne/Ziele';
 
 interface Daten {
   heute: string; playbooks: (Playbook & { anzahl: number; hinweise?: string[] })[];
@@ -145,7 +146,7 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
                   <ZeileAktionen href={WEG.kampagne(k.id)} onOeffnen={() => setOffen(k.id)} titel={k.name} archiviert={sicht === 'archiv'} onArchivieren={() => { setOffen(null); if (sicht === 'archiv') ablage.zurueckholen(k.id, k.name); else ablage.archivieren(k.id, k.name); }} onLoeschen={() => { setOffen(null); kampagneLoeschen(ablage, k); }}>
                   <Zeile onClick={() => setOffen(offen === k.id ? null : k.id)} aktiv={offen === k.id}
                     links={<Punkt farbe={k.status === 'aktiv' ? LEUCHT.gut : k.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise} />}
-                    titel={k.name} unter={z ? `${z.personen} Personen · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Leads${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}${k.kostenEuro ? ` · ${euro(k.kostenEuro)} Kosten` : ''}` : ''}
+                    titel={k.name} unter={z ? `${z.personen} Personen${z.firmen ? ` · ${z.firmen} Betriebe` : ''} · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Leads${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}${k.kostenEuro ? ` · ${euro(k.kostenEuro)} Kosten` : ''}` : ''}
                     rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{k.archiviertAm && sicht !== 'archiv' && <Chip farbe={C.inkLeise}>archiviert</Chip>}{k.von !== 'hand' && <Chip farbe={LEUCHT.agenten}>{k.von === 'head-sales' ? 'Head of Sales' : 'Head of Marketing'}</Chip>}<Chip farbe={C.inkDim}>{STATUS.find(s => s.id === k.status)?.label}</Chip><Person id={zustaendig(k.zustaendig, weltDerKampagne(k))} groesse={18} /></span>} />
                   </ZeileAktionen>
                   {offen === k.id && <KampagnenDetail k={k} api={api} ablage={ablage} pb={d.playbooks.find(p => p.id === k.playbook)} z={z} heute={d.heute} post={post} zuKontakt={zuKontakt} meldung={meldung} setMeldung={setMeldung} />}
@@ -252,8 +253,8 @@ function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt, meldun
   const naechstes = !z ? '' : k.status === 'abgeschlossen' || k.status === 'abgebrochen' ? ''
     : z.schritteFaellig ? `${z.schritteFaellig} ${z.schritteFaellig === 1 ? 'Schritt ist' : 'Schritte sind'} fällig — abhaken oder als Aufgabe an ${nameVon(aufgabenAn)} geben.`
     // 5.3 (08.10.): ehrlich — die Power Hour nimmt je Tag höchstens NEU_MAX neue Karten über alle Quellen; rote Ampel und kürzlich Kontaktierte fallen raus.
-    : z.offen ? `${z.offen} ${z.offen === 1 ? 'Person ist' : 'Personen sind'} noch nicht angesprochen${k.status === 'aktiv' ? ` — die Power Hour von ${fuehrt === BEIDE ? 'euch beiden' : nameVon(fuehrt)} nimmt je Tag höchstens ${NEU_MAX} neue Karten (über alle Quellen, ohne rote Ampel und kürzlich Kontaktierte)${inPowerHour !== null ? `; heute in der Power Hour: ${inPowerHour}` : ''}` : ' — Status auf „Aktiv“, dann kommen sie nach und nach in die Power Hour'}.`
-    : z.personen ? 'Alle angesprochen — Kampagne abschließen und in der Notiz festhalten, was funktioniert hat.' : 'Personen hinzufügen — über die Suche unten.';
+    : z.offen ? `${z.offen} ${z.offen === 1 ? 'Ziel ist' : 'Ziele sind'} noch nicht angesprochen${k.status === 'aktiv' ? ` — die Power Hour von ${fuehrt === BEIDE ? 'euch beiden' : nameVon(fuehrt)} nimmt je Tag höchstens ${NEU_MAX} neue Karten (über alle Quellen, ohne rote Ampel und kürzlich Kontaktierte)${inPowerHour !== null ? `; heute in der Power Hour: ${inPowerHour}` : ''}` : ' — Status auf „Aktiv“, dann kommen sie nach und nach in die Power Hour'}.`
+    : (z.ziele ?? z.personen) ? 'Alle angesprochen — Kampagne abschließen und in der Notiz festhalten, was funktioniert hat.' : 'Personen hinzufügen — über die Suche unten.';
   const kanal = k.kanal === 'telefon' || k.kanal === 'mail' || k.kanal === 'linkedin' ? k.kanal : null;
   const treffer = suche.trim().length >= 2 ? (api.kontakte ?? []).filter(x => !k.kontaktIds.includes(x.id) && !ausgenommen(x) && `${anzeigename(x)} ${x.firma ?? ''}`.toLowerCase().includes(suche.toLowerCase())).slice(0, 6) : [];
   // Offener Deal mit dieser Person — dann führt „Deal“ dorthin statt einen zweiten anzulegen.
@@ -265,7 +266,7 @@ function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt, meldun
       {meldung && <Hinweis art={/nicht|Fehl|keine Verbindung/i.test(meldung) ? 'achtung' : 'gut'} rolle="status" aktion={<Knopf leise onClick={() => setMeldung('')}>ok</Knopf>}>{meldung}</Hinweis>}
       {api.fehler && <Hinweis art="kritisch" rolle="alert" aktion={<Knopf leise onClick={() => api.setFehler(null)}>ok</Knopf>}>{api.fehler}</Hinweis>}
       {api.hinweis && <Hinweis art="achtung" rolle="status" aktion={<Knopf leise onClick={() => api.setHinweis(null)}>ok</Knopf>}>{api.hinweis}</Hinweis>}
-      {z && <Raster min={110}><Zahl wert={String(z.personen)} label="Personen" /><Zahl wert={String(z.angesprochen)} label="angesprochen" /><Zahl wert={String(z.reagiert)} label="reagiert" /><Zahl wert={String(z.gespraeche)} label="Gespräche" farbe={LEUCHT.gut} /><Zahl wert={String(z.chancen)} label="Chancen" farbe={LEUCHT.business} /></Raster>}
+      {z && <Raster min={110}><Zahl wert={String(z.personen)} label="Personen" />{(z.firmen ?? 0) > 0 && <Zahl wert={String(z.firmen)} label="Betriebe" />}<Zahl wert={String(z.angesprochen)} label="angesprochen" /><Zahl wert={String(z.reagiert)} label="reagiert" /><Zahl wert={String(z.gespraeche)} label="Gespräche" farbe={LEUCHT.gut} /><Zahl wert={String(z.chancen)} label="Chancen" farbe={LEUCHT.business} /></Raster>}
       {naechstes && <div style={{ fontSize: TYP.bedien, color: C.ink }}>Als Nächstes: {naechstes}</div>}
       {jePerson.length > 0 && (
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
@@ -314,6 +315,8 @@ function KampagnenDetail({ k, api, ablage, pb, z, heute, post, zuKontakt, meldun
       </div>
       {/* Kampagnen-Motor (31.10., Welle A): Sequenz je Ziel, Mail-Stapel mit Sammelfreigabe, Versand-Stand, Druckliste. */}
       <KampagneSequenz kampagneId={k.id} />
+      {/* M1 (01.11.): EINE Ziel-Liste — Personen und Betriebe, mit Schritt, fällig, Status/Grund und „Stoppen“; Betriebe hier hinzufügen/herausnehmen. */}
+      <KampagneZiele k={k} api={api} zuKontakt={zuKontakt} />
       <div>
         <Ueberschrift rechts={`${personen.length}`}>Personen</Ueberschrift>
         {personen.slice(0, alle ? 500 : 12).map(x => {

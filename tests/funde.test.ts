@@ -275,8 +275,17 @@ describe('Abendlauf, Freigabe, Versand', () => {
     // Dienstweg gibt nie frei (der Stapel lässt nur die Person selbst).
     const f = await POST(stapel, '/api/zoe/stapel', { id: v.id, entscheidung: 'freigeben' });
     expect(f.status, f.text).toBe(200);
+    // M1 (01.11.): EIN Versandweg — die Freigabe legt die Mail freigegeben (auf eigenes Risiko) in den Mail-Stapel der Kampagne; der Takt sendet
+    // gedrosselt im Zeitfenster (Montag 10 Uhr Berlin).
+    expect(server.gesendet).toHaveLength(0);
+    const M = await import('@/lib/crm/kampagnen-motor');
+    const imStapel = (await M.ladePost()).eintraege.filter(x => x.fundId === cafe.id);
+    expect(imStapel).toHaveLength(1);
+    expect(imStapel[0]).toMatchObject({ status: 'freigegeben', risiko: true, freigabe: { eigenesRisiko: { von: 'kevin' } } });
+    expect((await M.versenden(new Date('2026-11-02T09:00:00Z'))).gesendet).toBe(1);
     expect(server.gesendet).toHaveLength(1);
     expect(server.gesendet[0].an).toEqual([`hallo@cafe.${D}`]);
+    expect(server.gesendet[0].roh.toString('utf8')).toMatch(/^List-Unsubscribe: </m);
     const roh = server.gesendet[0].roh.toString('utf8').replace(/=\r?\n/g, '');
     const token = /\/vorschau\/(v1-[0-9a-f]{32})/.exec(roh)?.[1];
     expect(token).toBeTruthy();

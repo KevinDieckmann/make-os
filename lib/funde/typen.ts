@@ -99,6 +99,8 @@ export interface Fund {
   kontaktId?: string;
   firmaId?: string;
   gesendet?: { am: string; ueber: string; von: string; eigenesRisiko: true };
+  /** Die Mail liegt (freigegeben „auf eigenes Risiko“) im Mail-Stapel der Funde-Kampagne (M1, 01.11.) — gesendet wird gedrosselt im Takt. */
+  post?: { id: string; am: string; von: string };
   /** Die öffentliche Vorschau wurde geöffnet (nur Zeitpunkt, keine Adresse/Kennung des Aufrufs). */
   angesehenAm?: string;
 }

@@ -9,7 +9,8 @@
 //   · gesendet über den Website-Absender (`websiteMailSenden`: Grenze je Adresse und Tag, Sperren, `inboxSenden`), mit Abmeldelink im Text und
 //     `List-Unsubscribe`, Fußzeile wie die Kampagnen; je Lauf höchstens `JE_LAUF_MAX`, nur im Zeitfenster werktags 8–18 Uhr
 //   · eine Abmeldung widerruft die Einwilligung → die Strecke endet von selbst
-// Neustart-fest: die Stufe wird VOR dem Senden als gesendet vermerkt (nie zweimal; scheitert der Versand, steht der Grund im Log, nicht der Text).
+// Neustart-fest: die Stufe wird VOR dem Senden als gesendet vermerkt (nie zweimal; scheitert der Versand, steht der Grund im Log, nicht der Text) —
+// seit M1 (01.11.) erst NACH der Vorprüfung (Abmeldelink, Vorlage, Fußzeile): was nie sendbar war, gilt nicht als gesendet.
 
 import { localDay, tagePlus } from '@/lib/zeit';
 import type { Einwilligung, Kontakt } from '@/lib/make-one/crm';
@@ -56,14 +57,14 @@ export async function willkommenImTakt(jetzt = new Date()): Promise<number> {
     if (i !== null) dran.push({ k, stufe: i, start: st.start });
   }
   if (!dran.length) return 0;
-  // Vermerken VOR dem Senden (nie zweimal).
-  await aenderePost(b => ({ ...b, willkommen: { ...b.willkommen, ...Object.fromEntries(dran.map(d => [d.k.id, { start: d.start, gesendet: Array.from(new Set([...(b.willkommen[d.k.id]?.gesendet ?? []), d.stufe])) }])) } }), { felder: () => dran.map(d => ({ id: `willkommen:${d.k.id.slice(0, 2)}`, felder: ['willkommen'] })) });
   const { websiteMailSenden, websiteLage } = await import('@/lib/oeffentlich/website-post');
   const { abmeldeLink } = await import('@/lib/datenschutz/abmelden');
   const lage = await websiteLage().catch(() => null);
   if (!lage) return 0;
   const fuss = post.einstellungen.fusszeile?.trim() || `${lage.verantwortlich}${lage.datenschutzLink ? ` · Datenschutz: ${lage.datenschutzLink}` : ''}`;
-  let n = 0;
+  // M1 (01.11.): erst prüfen (Abmeldelink, Vorlage, Fußzeile), DANN vermerken — eine Stufe, die nie sendbar war, gilt nicht als „gesendet“ und kommt
+  // nach der Korrektur der Vorlage. Vermerkt wird weiter VOR dem Senden (neustart-fest, nie zweimal).
+  const bereit: { d: typeof dran[number]; betreff: string; text: string; ab: string }[] = [];
   for (const d of dran) {
     const s = stufen[d.stufe];
     const ab = abmeldeLink(d.k.email);
@@ -72,7 +73,13 @@ export async function willkommenImTakt(jetzt = new Date()): Promise<number> {
     if (f.fehler) { console.warn('[willkommen] Vorlage nicht sendbar:', f.fehler.slice(0, 160)); continue; }
     const fertig = mailFertig(f.text, { abmeldeLink: ab.link, fusszeile: fuss });
     if (fertig.fehler) continue;
-    const r = await websiteMailSenden({ an: d.k.email!, vorname: d.k.vorname, betreff: f.betreff, text: fertig.text, art: 'willkommen', lage, listeAbmelden: { link: ab.link } }, jetzt);
+    bereit.push({ d, betreff: f.betreff, text: fertig.text, ab: ab.link });
+  }
+  if (!bereit.length) return 0;
+  await aenderePost(b => ({ ...b, willkommen: { ...b.willkommen, ...Object.fromEntries(bereit.map(({ d }) => [d.k.id, { start: d.start, gesendet: Array.from(new Set([...(b.willkommen[d.k.id]?.gesendet ?? []), d.stufe])) }])) } }), { felder: () => bereit.map(({ d }) => ({ id: `willkommen:${d.k.id.slice(0, 2)}`, felder: ['willkommen'] })) });
+  let n = 0;
+  for (const x of bereit) {
+    const r = await websiteMailSenden({ an: x.d.k.email!, vorname: x.d.k.vorname, betreff: x.betreff, text: x.text, art: 'willkommen', lage, listeAbmelden: { link: x.ab } }, jetzt);
     if (r.ok) n++;
   }
   return n;

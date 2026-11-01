@@ -20,7 +20,7 @@ interface Fund {
   adresse?: { strasse?: string; hausnummer?: string; plz?: string; ort?: string };
   bewertung?: { punkte: number; gruende: string[] }; entwurf?: { betreff: string; text: string; anruf: string };
   status: 'neu' | 'vorbereitet' | 'uebernommen' | 'gesendet' | 'verworfen' | 'gesperrt'; grund?: string; angelegt: string;
-  vorschlagId?: string; kontaktId?: string; firmaId?: string; gesendet?: { am: string; ueber: string }; angesehenAm?: string;
+  vorschlagId?: string; kontaktId?: string; firmaId?: string; gesendet?: { am: string; ueber: string }; post?: { am: string }; angesehenAm?: string;
 }
 interface Daten {
   istInhaber: boolean; eingerichtet: boolean; kampagne?: { id: string; name: string; status: string };
@@ -224,10 +224,11 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                       <Knopf leise onClick={() => { window.open(`/api/crm/funde/vorschau?id=${encodeURIComponent(f.id)}`, '_blank', 'noopener'); }}>Vorschau ansehen</Knopf>
                       {f.vorschlagId && f.status === 'vorbereitet' && <Knopf haupt onClick={async () => { await tun({ id: f.vorschlagId, entscheidung: 'freigeben' }, '/api/zoe/stapel'); }}>{e.eigenesRisiko && f.email ? 'Freigeben und Mail senden' : 'Freigeben (übernehmen)'}</Knopf>}
                       {(f.status === 'vorbereitet' || f.status === 'neu') && <Knopf leise onClick={async () => { if (await bestaetigen({ titel: 'Diesen Fund verwerfen?', text: 'Er kommt nicht wieder.', ja: 'Verwerfen' })) await tun({ aktion: 'verwerfen', id: f.id }); }}>Verwerfen</Knopf>}
-                      {f.status === 'uebernommen' && e.eigenesRisiko && f.email && <Knopf leise onClick={async () => { await tun({ aktion: 'senden', id: f.id }); }}>Mail senden</Knopf>}
+                      {f.status === 'uebernommen' && !f.post && e.eigenesRisiko && f.email && <Knopf leise onClick={async () => { await tun({ aktion: 'senden', id: f.id }); }}>Mail senden</Knopf>}
                       {f.kontaktId && f.status !== 'vorbereitet' && <Knopf leise onClick={() => zuKontakt(f.kontaktId!)}>Zur Person</Knopf>}
                       {f.firmaId && f.status !== 'vorbereitet' && <Link href={WEG.firma(f.firmaId)} style={{ fontSize: TYP.bedien, color: C.aktiv, alignSelf: 'center' }}>Zur Firma ›</Link>}
                     </div>
+                    {!f.gesendet && f.post && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Mail freigegeben am {datum(f.post.am.slice(0, 10))} — liegt im Mail-Stapel der Kampagne und geht werktags zwischen 8 und 18 Uhr gedrosselt raus.</div>}
                     {f.gesendet && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Gesendet am {datum(f.gesendet.am.slice(0, 10))} über {f.gesendet.ueber}{f.angesehenAm ? ` · Vorschau geöffnet am ${datum(f.angesehenAm.slice(0, 10))}` : ''}</div>}
                     {f.entwurf && (
                       <details>
