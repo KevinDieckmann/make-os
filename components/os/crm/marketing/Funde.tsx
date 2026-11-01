@@ -27,7 +27,7 @@ interface Daten {
   einstellungen: { stadt?: string; gebiete: string[]; gebietIndex: number; branchen: string[]; jeAbend: number; produktId?: string; arten?: string[]; nurMitMail: boolean; nurMitTelefon: boolean; absender: { postfach: string; person: string; eigenes: boolean } | null; eigenesRisiko: { seit: string; von: string } | null };
   risikoHinweis: string; namensnennung: string; funde: Fund[];
   zahlen: { vorbereitet: number; uebernommen: number; gesendet: number; verworfen: number; angesehen: number; mitHandy: number; mitTelefon: number };
-  lauf?: { tag: string; gebiet?: string; geholt: number; vorbereitet: number; fehler?: string };
+  lauf?: { tag: string; gebiet?: string; geholt: number; vorbereitet: number; fehler?: string; texte?: 'ki' | 'regelwerk'; ohneKi?: string };
   produkte: { id: string; name: string }[]; branchen: { id: string; name: string }[];
   gebietsVorlagen: { id: string; name: string; stadt: string; gebiete: string[] }[];
   artenVorlagen: { id: string; name: string; arten: string[] }[];
@@ -184,7 +184,7 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
 
       <Karte>
         <Ueberschrift>Funde</Ueberschrift>
-        {d.lauf && <p style={{ margin: '0 0 8px', fontSize: TYP.bedien, color: C.inkLeise }}>Letzter Lauf {datum(d.lauf.tag)}{d.lauf.gebiet ? ` · ${d.lauf.gebiet}` : ''} · {d.lauf.geholt} Betriebe gelesen · {d.lauf.vorbereitet} vorbereitet{d.lauf.fehler ? ` · ${d.lauf.fehler}` : ''}</p>}
+        {d.lauf && <p style={{ margin: '0 0 8px', fontSize: TYP.bedien, color: C.inkLeise }}>Letzter Lauf {datum(d.lauf.tag)}{d.lauf.gebiet ? ` · ${d.lauf.gebiet}` : ''} · {d.lauf.geholt} Betriebe gelesen · {d.lauf.vorbereitet} vorbereitet{d.lauf.texte === 'regelwerk' ? ` · Texte ohne KI${d.lauf.ohneKi ? ` (${d.lauf.ohneKi})` : ''}` : d.lauf.texte === 'ki' ? ' · Texte mit KI' : ''}{d.lauf.fehler ? ` · ${d.lauf.fehler}` : ''}</p>}
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <Knopf leise={filter !== 'offen'} onClick={() => setFilter('offen')}>Offen</Knopf>
           <Knopf leise={filter !== 'alle'} onClick={() => setFilter('alle')}>Alle</Knopf>

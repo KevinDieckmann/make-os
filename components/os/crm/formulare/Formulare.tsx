@@ -3,8 +3,9 @@
 // ─── Markttraktion › Formulare (25.10.2026) ─────────────────────────────────────────────────────────────────────────────────────────────
 // Kevin 25.10.: „Wir brauchen ein Formular, wo die Vertriebler Kunden eintragen können, die ein Angebot brauchen … am besten unter Formulare unter
 // Markttraktion.“ Eine Seite mit vier Karten: „Angebot anfordern“ (Kundensuche + Formular), „Eingänge“ (letzte Anfragen mit Status, Freigabe
-// „Senden“ für Inhaber), „Externe Links“ (je Vertriebler, nur Inhaber) und „Einstellungen“ (Absender-Postfach, Mail-Vorlage, nur Inhaber).
-// Alles kommt gefiltert vom Server (GET /api/crm/formulare): Eingänge sieht ein Inhaber alle, jede andere Person nur die eigenen; Links und Einstellungen
+// „Senden“), „Externe Links“ (je Vertriebler) und „Einstellungen“ (Absender-Postfach, Mail-Vorlage) — seit 02.11. für Inhaber UND volle Mitglieder
+// des Haushalts (`istInhaber` der Antwort = darf steuern, lib/zugang/steuern.ts).
+// Alles kommt gefiltert vom Server (GET /api/crm/formulare): Eingänge sieht, wer steuern darf, alle, jede andere Person nur die eigenen; Links und Einstellungen
 // nur Inhaber. Später gehören die Website-Formulare (z. B. Innovations-Check) ebenfalls hierher.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -98,7 +99,7 @@ function AnfordernKarte({ api, d, nachher }: { api: CrmApi; d: Daten; nachher: (
     <>
       <Ueberschrift farbe={LEUCHT.gut}>Angebot anfordern</Ueberschrift>
       <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 12, lineHeight: 1.5 }}>
-        Kunde eintragen, Produkte wählen, absenden — das Angebot geht zu Listenpreisen automatisch raus. Mit Rabatt, eigenem Preis oder einer Sperre liegt es zur Freigabe bei den Inhabern.
+        Kunde eintragen, Produkte wählen, absenden — das Angebot geht zu Listenpreisen automatisch raus. Mit Rabatt, eigenem Preis oder einer Sperre liegt es zur Freigabe im Haushalt.
         {!d.einstellungen.absenderOk && <> Noch kein Absender-Postfach gewählt — bis dahin liegt jedes Angebot zur Freigabe.</>}
       </div>
       <AnfrageFormular intern katalog={d.katalog} werte={werte} setWerte={setWerte} onSenden={senden}

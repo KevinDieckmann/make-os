@@ -42,6 +42,8 @@ beforeAll(async () => {
   await db.saveJson('konten', { konten: [
     { id: 'k1', speicher: 'kevin', email: `k@${D}`, name: 'Inhaber Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
     { id: 'k2', speicher: 'malin', email: `m@${D}`, name: 'Mitglied Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
+    // 02.11. (Prüfung D, Kevin: „voller Zugriff“): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    { id: 'k4', speicher: 'nurbusiness', email: `nb@${D}`, name: 'Team Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS, finanzRecht: 'business' },
     { id: 'k3', speicher: 'fremd', email: `f@${D}`, name: 'Fremd Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'anderer' },
   ], einladungen: [] });
   intern = await import('@/app/api/website/intern/route') as Route;
@@ -178,7 +180,7 @@ describe('Routen', () => {
   });
   it('Startwerte übernehmen: nur ein Inhaber, Vorschau zuerst', async () => {
     const post = (b: unknown, wer = 'kevin') => intern.POST!(new Request('http://test/api/website/intern', { method: 'POST', headers: kopf(wer), body: JSON.stringify(b) }));
-    expect((await post({ aktion: 'startwerte' }, 'malin')).status).toBe(403);
+    expect((await post({ aktion: 'startwerte' }, 'nurbusiness')).status).toBe(403);
     const v = await (await post({ aktion: 'startwerte' })).json();
     expect(v.vorschau).toBe(true);
     expect((await lesen()).inhalt.faq).toHaveLength(0);

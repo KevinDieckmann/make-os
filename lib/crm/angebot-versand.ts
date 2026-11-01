@@ -35,8 +35,9 @@ const nein = (status: number, fehler: string): VersandErgebnis => ({ ok: false, 
  */
 export async function absenderPruefen(a: FormularEinstellungen['absender']): Promise<{ ok: true; adresse: string } | { ok: false; grund: string }> {
   if (!a) return { ok: false, grund: ABSENDER_FEHLT };
-  const { istInhaber } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!(await istInhaber(a.person))) return { ok: false, grund: 'Das gewählte Absender-Postfach gehört keinem Inhaber (mehr) — bitte neu wählen.' };
+  // 02.11. (Prüfung D): das Postfach einer Person, die steuern darf (Inhaber oder volles Mitglied) — nicht mehr nur eines Inhabers.
+  const { darfSteuern } = await import('@/lib/zugang/steuern');
+  if (!(await darfSteuern(a.person))) return { ok: false, grund: 'Das gewählte Absender-Postfach gehört keiner Person mehr, die Angebote versenden darf — bitte neu wählen.' };
   const { ladePostfach } = await import('@/lib/postfach/register');
   const p = await ladePostfach(a.person, a.postfach);
   if (!p || p.quelle === 'whatsapp') return { ok: false, grund: 'Das gewählte Absender-Postfach gibt es nicht (mehr) — bitte neu wählen.' };

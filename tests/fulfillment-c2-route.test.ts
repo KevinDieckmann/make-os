@@ -109,7 +109,7 @@ beforeAll(async () => {
   puls = await import('@/app/api/kunde/[link]/puls/route') as unknown as Mod;
   const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', extra: J = {}) =>
     ({ id, speicher, email: `${speicher}@example.invalid`, name: `${speicher} Probe`, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...extra });
-  await db.saveJson('konten', { konten: [konto('k1', 'pia', 'inhaber', { haushalt: H }), konto('k2', 'olaf', 'mitglied', { haushalt: H }), konto('k3', 'gast', 'mitglied', { haushalt: 'anderer-haus' }), konto('k4', 'kunde', 'mitglied')], einladungen: [] });
+  await db.saveJson('konten', { konten: [konto('k1', 'pia', 'inhaber', { haushalt: H }), konto('k2', 'olaf', 'mitglied', { haushalt: H }), konto('k5', 'nurbusiness', 'mitglied', { haushalt: H, finanzRecht: 'business' }), konto('k3', 'gast', 'mitglied', { haushalt: 'anderer-haus' }), konto('k4', 'kunde', 'mitglied')], einladungen: [] });
   await db.saveJson('crm', {
     firmen: [], chancen: [], leistungen: [{ id: 'l-paket', name: 'Vertriebsleitung auf Zeit', typ: 'retainer', stufe: 'kern', preis: { betrag: 1, einheit: 'Monat' }, lieferumfang: [], gesellschaft: 'ug', status: 'aktiv', geaendert: '2026-09-01T00:00:00.000Z' }],
     mandate: [mandat('m-a', { leistungId: 'l-paket' }), mandat('m-b'), mandat('m-privat', { gesellschaft: 'kdc' }), mandat('m-ohne')],
@@ -131,7 +131,8 @@ beforeEach(drosselLeeren);
 describe('Schalter und Link anlegen (Token genau einmal)', () => {
   it('Schalter: kommt aus; nur der Inhaber legt ihn um; ohne Umgebung kein Link', async () => {
     expect((await iGET('')).d.schalter).toMatchObject({ umgebung: false, instanz: false, an: false, grund: 'betrieb' });
-    expect((await iPOST({ aktion: 'schalter', an: true }, 'olaf')).status).toBe(403);
+    // 02.11. (Prüfung D, Kevin: „voller Zugriff“): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    expect((await iPOST({ aktion: 'schalter', an: true }, 'nurbusiness')).status).toBe(403);
     expect((await iPOST({ aktion: 'schalter', an: true }, 'pia')).d.schalter).toMatchObject({ instanz: true, an: false, grund: 'betrieb' });
     const aus = await iPOST({ aktion: 'link-anlegen', mandatId: 'm-a' });
     expect(aus.status).toBe(409);

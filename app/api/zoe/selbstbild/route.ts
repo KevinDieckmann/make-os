@@ -6,7 +6,8 @@
 // Beschreibung im Gehirn ist schlimmer als keine — ZOE antwortet daraus.
 
 import { NextResponse } from 'next/server';
-import { imHaushaltDesInhabers, nurHaushalt, nurInhaber, nurDerInhaber } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
+import { steuernOderSystemlauf, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { blaetter } from '@/lib/zoe/selbstbild';
 import { dokuWurzelEingerichtet, schreibeEigene } from '@/lib/zoe/vault';
 
@@ -23,7 +24,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!(await nurInhaber(req))) return nurDerInhaber();
+  // Steuern (02.11., Kevin: volles Mitglied wie Inhaber): EINE Regel lib/zugang/steuern.ts.
+  if (!(await steuernOderSystemlauf(req))) return NextResponse.json({ ok: false, error: NUR_STEUERN }, { status: 403 });
   // Ohne Doku-Wurzel (Server, Demo-Instanz) gibt es keinen Ort fürs Selbstbild — das ist kein Fehler (Rundgang 09.10. „Agenten live“: vorher lief
   // der Takt-Auftrag „selbstbild“ jeden Tag mehrfach in „Fehler“ und füllte Agenten › Fehler und die Fehlerquote des Head of IT).
   if (!dokuWurzelEingerichtet()) return NextResponse.json({ ok: true, geschrieben: 0, von: 0, uebersprungen: 'keine Doku-Wurzel eingerichtet (MAKE_OS_DOKU_WURZEL)' });

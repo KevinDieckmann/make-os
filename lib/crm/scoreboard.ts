@@ -35,7 +35,7 @@ import { werIstDran } from './heute';
 import { fuerDich, nameVon, TEAM } from './team';
 import { messlatte, sqlJeWoche } from './kennzahlen';
 import { localDay, tagVon } from '@/lib/zeit';
-import { isoWoche as kalenderwoche, montagVon as kernMontag } from '@/lib/zeit/kalender-kern';
+import { isoWoche as kalenderwoche, montagVon as kernMontag, wandzeit, wochentag } from '@/lib/zeit/kalender-kern';
 import type { PlanWoche } from './planung';
 
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
@@ -426,8 +426,10 @@ export function rhythmusStand(roh: unknown): RhythmusStand {
 /** Was ist jetzt fällig — je Person (nur, wer ein Konto hat und gekoppelt ist; das filtert der Aufrufer)? */
 export function faelligeRhythmen(stand: RhythmusStand, personen: string[], jetzt: Date): { person: string; slot: RhythmusSlot }[] {
   const heute = localDay(jetzt);
-  const min = jetzt.getHours() * 60 + jetzt.getMinutes();
-  const wtag = jetzt.getDay();
+  // Berliner Wandzeit (02.11., Prüfung D) — nicht die Uhr der Maschine (der Server läuft in UTC: die Nachricht kam eine bzw. zwei Stunden zu spät).
+  const wand = wandzeit(jetzt);
+  const min = Number(wand.slice(11, 13)) * 60 + Number(wand.slice(14, 16));
+  const wtag = wochentag(heute) % 7; // 0 = Sonntag … 6 = Samstag (wie getDay)
   const raus: { person: string; slot: RhythmusSlot }[] = [];
   for (const person of personen) {
     const s = stand[person] ?? {};

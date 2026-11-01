@@ -20,7 +20,8 @@
 
 import { NextResponse } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
-import { imHaushaltDesInhabers, istInhaber, istDienst, nurHaushalt } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, istDienst, nurHaushalt } from '@/lib/zugang/tor';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
@@ -44,7 +45,7 @@ export async function GET(req: Request) {
   if (new URL(req.url).searchParams.get('teil') === 'willkommen') return willkommenLage(req, z.person);
   const kampagneId = new URL(req.url).searchParams.get('kampagneId') ?? '';
   if (!KENNUNG.test(kampagneId)) return fehler('kampagneId fehlt.', 400);
-  const [crm, post, risiko, inhaber, namen] = await Promise.all([ladeCrm(), ladePost(), eigenesRisiko(), istInhaber(z.person), namenVon().catch(() => ({} as Record<string, string>))]);
+  const [crm, post, risiko, inhaber, namen] = await Promise.all([ladeCrm(), ladePost(), eigenesRisiko(), darfSteuern(z.person), namenVon().catch(() => ({} as Record<string, string>))]);
   const k = crm.kampagnen.find(x => x.id === kampagneId);
   if (!k) return fehler('Diese Kampagne gibt es nicht (mehr).', 404);
   const eintraege = post.eintraege.filter(x => x.kampagneId === k.id).sort((a, b) => a.angelegt.localeCompare(b.angelegt));
@@ -171,7 +172,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true });
       }
       case 'einstellungen': {
-        if (!(await istInhaber(z.person))) return fehler('Die Einstellungen des Kampagnen-Versands ändert nur ein Inhaber.', 403);
+        // Marketing steuern (02.11., Prüfung D): Inhaber ODER volles Mitglied des Haushalts — eine Regel (lib/zugang/steuern.ts).
+        if (!(await darfSteuern(z.person))) return fehler(NUR_STEUERN, 403);
         const f = einstellungenPruefen(b);
         if (f.length) return fehler(f.map(x => x.text).join(' '), f.some(x => x.status === 413) ? 413 : 400);
         const jetzt = new Date().toISOString();
@@ -211,7 +213,7 @@ function vorbereitetText(r: Awaited<ReturnType<typeof sequenzenFortschreiben>>):
 
 /** Willkommensstrecke (M1, 01.11.): Schalter, Texte und wer welche Stufe bekam — nur Name und Stufen, nie Adressen. Lesen: Haushalt des Inhabers. */
 async function willkommenLage(req: Request, person: string): Promise<Response> {
-  const [post, inhaber, namen] = await Promise.all([ladePost(), istInhaber(person), namenVon().catch(() => ({} as Record<string, string>))]);
+  const [post, inhaber, namen] = await Promise.all([ladePost(), darfSteuern(person), namenVon().catch(() => ({} as Record<string, string>))]);
   const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
   const { anzeigename } = await import('@/lib/make-one/crm');
   const kontakte = new Map((await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).map(k => [k.id, k]));

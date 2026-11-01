@@ -95,9 +95,8 @@ export async function stellschraubeWeiter(b: unknown, o: { person: string; wer: 
     return r.ok ? { ok: true, text: wert === null ? 'Auf die Vorgabe zurückgesetzt.' : 'Gespeichert — die Seite zeigt ab jetzt die neuen Zeiten.' } : nein(r.status, r.fehler);
   }
 
-  // Heads: die Agenten-Regler sind Inhaber-Dinge (CLAUDE.md Regel 7) — der Steckbrief zeigt sie anderen nur an.
-  const { istInhaber } = await import('@/lib/zugang/haushalt-inhaber');
-  if (!(await istInhaber(o.person))) return nein(403, 'Die Agenten-Regler der Heads ändert nur der Inhaber — ansehen kannst du sie.');
+  // Heads (02.11., Prüfung D): dieselbe Regel wie unter /os/agenten — `einstellungAendern` prüft sie (`einstellungDarf`: Haushalts-Heads volle
+  // Mitglieder des Haushalts, Privat-Heads die Person selbst). Vorher stand hier zusätzlich „nur Inhaber“ — ein Widerspruch zur Agenten-Seite.
   let v: unknown = wert;
   if (weg.feld === 'budget') {
     // Euro in der Maske, Cent im Bestand (kaufmännisch gerundet; `einstellungAendern` prüft Grenze und Form noch einmal).

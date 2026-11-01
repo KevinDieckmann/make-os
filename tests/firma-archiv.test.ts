@@ -147,7 +147,7 @@ describe('Server: Sicherung vor dem ersten Schreibschritt, 30 Tage, Art. 17, Inh
     ab = await import('@/lib/store/absichten');
     ab.absichtTest.vorAbhaken = null; ab.absichtTest.nachAbhaken = null; ab.absichtTest.vorSchritt = null;
     const s = STAND();
-    await db.saveJson('konten', { konten: [konto('k1', 'kevin', 'inhaber'), konto('k2', 'malin', 'mitglied')], einladungen: [] });
+    await db.saveJson('konten', { konten: [konto('k1', 'kevin', 'inhaber'), konto('k2', 'malin', 'mitglied'), { ...konto('k3', 'nurbusiness', 'mitglied'), finanzRecht: 'business' }], einladungen: [] });
     await db.saveJson('absichten--archiv-haus', { absichten: [] });
     await db.saveJson('crm', s.crm);
     await db.saveJson('kontakte', { kontakte: s.kontakte });
@@ -264,7 +264,8 @@ describe('Server: Sicherung vor dem ersten Schreibschritt, 30 Tage, Art. 17, Inh
     const post = async (body: unknown, kopf: Record<string, string>) => { const r = await route.POST(new Request('http://test/api/crm/firma-archiv', { method: 'POST', headers: { 'content-type': 'application/json', ...kopf }, body: JSON.stringify(body) })); return { status: r.status, d: await r.json() }; };
     const dienst = { 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' };
     expect((await post({ aktion: 'liste' }, dienst)).status).toBe(403);
-    expect((await post({ aktion: 'liste' }, { 'x-make-user': 'malin' })).status).toBe(403);
+    // 02.11. (Prüfung D, Kevin: „voller Zugriff“): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    expect((await post({ aktion: 'liste' }, { 'x-make-user': 'nurbusiness' })).status).toBe(403);
     const liste = await post({ aktion: 'liste' }, { 'x-make-user': 'kevin' });
     expect(liste.status).toBe(200);
     expect(liste.d.sicherungen).toHaveLength(1);

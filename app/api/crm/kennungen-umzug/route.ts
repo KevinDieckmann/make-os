@@ -11,7 +11,8 @@
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
-import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { darfSteuern } from '@/lib/zugang/steuern';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { umzugVorschau, umzugAusfuehren, umzugRueckweg, UmzugAbgelehnt } from '@/lib/crm/kennungen-umzug';
 
@@ -22,7 +23,8 @@ async function zugang(req: Request): Promise<{ person: string } | NextResponse> 
   if (!(await imHaushaltDesInhabers(req))) return NextResponse.json({ ok: false, fehler: 'Nur im Haushalt des Inhabers.' }, { status: 403 });
   const person = personStreng(req);
   if (!person) return NextResponse.json({ ok: false, fehler: 'Nur mit angemeldeter Person.' }, { status: 401 });
-  if (!(await istInhaber(person))) return NextResponse.json({ ok: false, fehler: 'Den Kennungs-Umzug startet nur der Inhaber.' }, { status: 403 });
+  // Steuern (02.11., Kevin: volles Mitglied wie Inhaber): EINE Regel lib/zugang/steuern.ts.
+  if (!(await darfSteuern(person))) return NextResponse.json({ ok: false, fehler: 'Den Kennungs-Umzug starten nur Inhaber und volle Mitglieder des Haushalts.' }, { status: 403 });
   return { person };
 }
 

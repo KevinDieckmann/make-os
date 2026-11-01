@@ -204,8 +204,8 @@ describe('Angebot anfordern — von Ende zu Ende', () => {
     expect(a.status).toBe('entwurf');
     const e = (await formular()).eingaenge[0];
     expect(e.status).toBe('freigabe');
-    // Nicht-Inhaber gibt nicht frei; der Inhaber per Sitzung schon.
-    expect((await POST(stapel, '/api/zoe/stapel', { id: e.vorschlagId }, sitzung('malin'))).status).toBe(403);
+    // Ein Konto „nur Business“ gibt nicht frei; Inhaber (und volle Mitglieder, 02.11.) per Sitzung schon.
+    expect((await POST(stapel, '/api/zoe/stapel', { id: e.vorschlagId }, sitzung('partner'))).status).toBe(403);
     const f = await POST(stapel, '/api/zoe/stapel', { id: e.vorschlagId }, sitzung('kevin'));
     expect(f.status, f.text).toBe(200);
     expect(server.gesendet).toHaveLength(1);
@@ -344,11 +344,13 @@ describe('Sicht X bekommt nichts aus Y', () => {
     const kevin = await GET(formulare, '/api/crm/formulare');
     expect(kevin.d.eingaenge).toHaveLength(2);
     expect(kevin.d.links).toHaveLength(1);
-    const malin = await GET(formulare, '/api/crm/formulare', sitzung('malin'));
-    expect(malin.d.eingaenge).toHaveLength(1);
+    // 02.11. (Prüfung D, Kevin: „voller Zugriff“): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    expect((await GET(formulare, '/api/crm/formulare', sitzung('malin'))).d.eingaenge).toHaveLength(2);
+    const malin = await GET(formulare, '/api/crm/formulare', sitzung('partner'));
+    expect(malin.d.eingaenge.length).toBeLessThan(2);
     expect(malin.d.links).toEqual([]);
     expect(malin.text).not.toContain('Rita');
-    expect((await POST(formulare, '/api/crm/formulare', { aktion: 'link-neu', name: 'X', produkte: ['l-beratung'] }, sitzung('malin'))).status).toBe(403);
+    expect((await POST(formulare, '/api/crm/formulare', { aktion: 'link-neu', name: 'X', produkte: ['l-beratung'] }, sitzung('partner'))).status).toBe(403);
     expect((await GET(formulare, '/api/crm/formulare', sitzung('fremd'))).status).toBe(403);
     expect((await POST(formulare, '/api/crm/formulare', { aktion: 'anfordern', anfrage: anfrage(`d@neu.${D}`) }, { 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin', 'content-type': 'application/json' })).status).toBe(403);
     // Eine Adresse steht nie im Klartext in der Antwort.

@@ -50,7 +50,8 @@ export interface ReplayStand { faelle: ReplayFall[] }
  * Vorschlag (bei „beide“ bleibt es „beide“), und selbst übernommen wird nur, was eine eindeutige zuständige Person hat.
  * Power Hour und Fragen brauchen immer eine Person.
  */
-export interface HeadAuftrag { head: HeadId; modus: string; person: string | null; frage?: string; ausgeloest: HeadBericht['ausgeloest'] }
+/** `ohneKi` (02.11., Prüfung D): der Lauf darf das Modell nicht fragen (z. B. Monatsbudget erreicht) — er läuft mit dem Regelwerk, der Grund steht im Bericht. */
+export interface HeadAuftrag { head: HeadId; modus: string; person: string | null; frage?: string; ausgeloest: HeadBericht['ausgeloest']; ohneKi?: string }
 /** Modi, die nur MIT Person laufen (ihre Karten, ihr Gespräch). */
 export const NUR_MIT_PERSON = new Set(['power_hour', 'frage']);
 /** Modi, die das Regelwerk allein trägt (kein Modell nötig). */
@@ -109,7 +110,9 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   const playbooks = a.modus === 'kampagne' ? await (await import('@/lib/crm/vorlagen-anpassung-server')).playbooksDesHaushalts().catch(() => undefined) : undefined;
   // 02.11. (M2 K2): der Head of Marketing sieht Social, Website, Homepage-Funde und den Mail-Stapel — nur Zahlen/Kennungen, je Quelle für sich.
   const marketingLage = a.head === 'marketing' ? await (await import('./marketing-lage-server')).marketingLageLaden(a.person, crm).catch(() => undefined) : undefined;
-  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele, { geradeGeschrieben, ...(playbooks ? { playbooks } : {}), ...(marketingLage ? { marketingLage } : {}) }) as Record<string, unknown>;
+  // 02.11. (Prüfung D): die Kennzahlen des Head of Marketing mit denselben Quellen wie der Traktions-Index (EINE Rechnung, `marketingKennzahlenMitQuellen`).
+  const traktionQuellen = a.head === 'marketing' ? await (await import('@/lib/crm/traktion-quellen-server')).traktionQuellenLaden().catch(() => undefined) : undefined;
+  const daten = vollesPaket(a.head, a.modus, mitKalender ? await kontakteMitTerminZeitenLesen(kontakte, a.person ?? '') : kontakte, crm, heute, a.person, alt, ziele, { geradeGeschrieben, ...(playbooks ? { playbooks } : {}), ...(marketingLage ? { marketingLage } : {}), ...(traktionQuellen ? { traktionQuellen } : {}) }) as Record<string, unknown>;
   // Leistungstreppe & Positionierung (10.10., Produkte & Mandate) — nur der Head of Sales; Daten, nie Anweisung; ohne Pflege fehlt der Block.
   if (a.head === 'sales') { const t = await (await import('@/lib/crm/treppe-server')).treppeFuerHead(heute).catch(() => null); if (t) daten.leistungstreppe = t; }
   const ereignisKategorien: KiKategorie[] = [];
@@ -144,9 +147,9 @@ export async function headLauf(a: HeadAuftrag): Promise<HeadErgebnis> {
   };
 
   // Netzwerk ist reine Planung aus Zahlen — das Regelwerk genügt, kein Modellaufruf.
-  const kiMoeglich = hasAnthropicKey() && !NUR_REGELWERK.has(a.modus);
-  if (!kiMoeglich && !g) return { ok: false, fehler: 'Fragen beantwortet der Head nur mit KI — kein Anthropic-Schlüssel hinterlegt.' };
-  if (!kiMoeglich) regelwerk(NUR_REGELWERK.has(a.modus) ? 'Planung aus Zahlen' : 'kein Anthropic-Schlüssel');
+  const kiMoeglich = hasAnthropicKey() && !NUR_REGELWERK.has(a.modus) && !a.ohneKi;
+  if (!kiMoeglich && !g) return { ok: false, fehler: a.ohneKi ? `Fragen beantwortet der Head nur mit KI — ${a.ohneKi}.` : 'Fragen beantwortet der Head nur mit KI — kein Anthropic-Schlüssel hinterlegt.' };
+  if (!kiMoeglich) regelwerk(NUR_REGELWERK.has(a.modus) ? 'Planung aus Zahlen' : a.ohneKi ?? 'kein Anthropic-Schlüssel');
   else {
     // Kevin 25.09.: stark für Reviews, sonst ausgewogen — ANTHROPIC_MODEL übersteuert alles.
     const review = REVIEW_MODI.has(a.modus);

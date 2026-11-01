@@ -34,6 +34,8 @@ const POST = (route: R, url: string, body: unknown, h: Record<string, string> = 
 const KONTEN = { konten: [
   { id: 'k1', speicher: 'kevin', email: `kevin@${D}`, name: 'Kevin Beispiel', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'h' },
   { id: 'k2', speicher: 'malin', email: `malin@${D}`, name: 'Malin Beispiel', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'h' },
+  // 02.11. (Prüfung D): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+  { id: 'k3', speicher: 'nurbusiness', email: `nb@${D}`, name: 'Team Beispiel', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'h', finanzRecht: 'business' },
   { id: 'k4', speicher: 'fremd', email: `fremd@${D}`, name: 'Fremd', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: 'anderer' },
 ], einladungen: [] };
 
@@ -200,11 +202,11 @@ describe('Rechte (Trennung auf dem Server)', () => {
   it('fremder Haushalt bekommt nichts; Dienstweg schreibt nichts; nur der Inhaber richtet ein und schaltet das Risiko', async () => {
     expect((await GET(funde, '/api/crm/funde', sitzung('fremd'))).status).toBe(403);
     expect((await POST(funde, '/api/crm/funde', { aktion: 'einrichten' }, sitzung('fremd'))).status).toBe(403);
-    expect((await POST(funde, '/api/crm/funde', { aktion: 'einrichten' }, sitzung('malin'))).status).toBe(403);
+    expect((await POST(funde, '/api/crm/funde', { aktion: 'einrichten' }, sitzung('nurbusiness'))).status).toBe(403);
     expect((await POST(funde, '/api/crm/funde', { aktion: 'einrichten' }, { 'x-make-key': 'dienst-test-funde', 'x-make-person': 'kevin', 'content-type': 'application/json' })).status).toBe(403);
     await einrichten();
-    expect((await POST(funde, '/api/crm/funde', { aktion: 'risiko', an: true }, sitzung('malin'))).status).toBe(403);
-    const g = await GET(funde, '/api/crm/funde', sitzung('malin'));
+    expect((await POST(funde, '/api/crm/funde', { aktion: 'risiko', an: true }, sitzung('nurbusiness'))).status).toBe(403);
+    const g = await GET(funde, '/api/crm/funde', sitzung('nurbusiness'));
     expect(g.status).toBe(200);
     expect(g.d.eingerichtet).toBe(true);
     expect(g.d.absenderWahl).toBeUndefined();
@@ -317,7 +319,7 @@ describe('Abendlauf, Freigabe, Versand', () => {
       { osmId: 'n79', name: 'Bistro Datei', branche: 'gastro' },
       { name: '', branche: 'gastro' },
     ] };
-    expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei }, sitzung('malin'))).status).toBe(403);
+    expect((await POST(funde, '/api/crm/funde', { aktion: 'import', datei }, sitzung('nurbusiness'))).status).toBe(403);
     const r = await POST(funde, '/api/crm/funde', { aktion: 'import', datei });
     expect(r.status, r.text).toBe(200);
     expect(r.d.neu).toBe(1);

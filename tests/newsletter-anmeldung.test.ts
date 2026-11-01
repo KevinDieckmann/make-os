@@ -72,6 +72,8 @@ beforeAll(async () => {
   await db.saveJson('konten', { konten: [
     { id: 'k1', speicher: 'kevin', email: `k@${D}`, name: 'Testo Inhaber', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
     { id: 'k2', speicher: 'malin', email: `m@${D}`, name: 'Proba Partnerin', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
+    // 02.11. (Prüfung D): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    { id: 'k3', speicher: 'nurbusiness', email: `nb@${D}`, name: 'Proba Team', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS, finanzRecht: 'business' },
   ], einladungen: [] });
   await db.saveJson('kontakte', { kontakte: [
     k('c-bekannt', { email: `bekannt@${D}` }),
@@ -95,7 +97,7 @@ describe('kommt ausgeschaltet — einschalten nur der Inhaber und nur, wenn alle
     expect(await S.newsletterBereit()).toBeNull();
   });
   it('Einstellungen nur der Inhaber per Sitzung — nie Partner, nie Dienstweg, nie fremd', async () => {
-    expect((await innen({ aktion: 'einstellungen', aktiv: true }, 'malin')).status).toBe(403);
+    expect((await innen({ aktion: 'einstellungen', aktiv: true }, 'nurbusiness')).status).toBe(403);
     expect((await innen({ aktion: 'einstellungen', aktiv: true }, 'gast')).status).toBe(403);
     const dienst = await intern.POST(new Request('http://test/api/newsletter/intern', { method: 'POST', headers: { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' }, body: JSON.stringify({ aktion: 'einstellungen', aktiv: true }) }));
     expect(dienst.status).toBe(403);
@@ -281,7 +283,7 @@ describe('bestätigen: Einwilligung mit vollem Nachweis, einmalig, neutral', () 
 
 describe('intern: Liste maskiert, Fassung, Löschen', () => {
   it('der Haushalt sieht die Anmeldungen nur maskiert — nie Adresse, nie Token-Fingerabdruck', async () => {
-    const r = await innenLesen('malin');
+    const r = await innenLesen('nurbusiness');
     expect(r.status).toBe(200);
     expect(r.d.istInhaber).toBe(false);
     const text = JSON.stringify(r.d);
@@ -302,7 +304,7 @@ describe('intern: Liste maskiert, Fassung, Löschen', () => {
   });
   it('löschen nur der Inhaber', async () => {
     const id = (await bestand()).anmeldungen.find(a => a.email === `fassung@${D}`)!.id;
-    expect((await innen({ aktion: 'loeschen', id }, 'malin')).status).toBe(403);
+    expect((await innen({ aktion: 'loeschen', id }, 'nurbusiness')).status).toBe(403);
     expect((await innen({ aktion: 'loeschen', id })).status).toBe(200);
     expect((await bestand()).anmeldungen.some(a => a.id === id)).toBe(false);
   });

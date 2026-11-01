@@ -11,7 +11,9 @@
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
-import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { darfSteuern } from '@/lib/zugang/steuern';
+import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { zuGross } from '@/lib/zugang/umfang';
 import { kapaStandFuer, kapaSchreiben, kapaIdVon, kapaAuskunftLaden } from '@/lib/kapazitaet/server';
 import { localDay } from '@/lib/zeit';
@@ -29,7 +31,7 @@ export async function GET(req: Request) {
   const auskunft = new URL(req.url).searchParams.get('auskunft');
   if (auskunft !== null) return auskunftAntwort(auskunft, wer.person);
   // Sicht Privat · Business (10.10.): `?space=` — Business ohne Erholung/Privat-Titel, Privat ohne Business-Titel und Mandats-Namen (lib/kapazitaet/server.ts).
-  const [{ stand, bezuege }, inhaber] = await Promise.all([kapaStandFuer(wer.person, undefined, sichtDerAnfrage(req)), istInhaber(wer.person)]);
+  const [{ stand, bezuege }, inhaber] = await Promise.all([kapaStandFuer(wer.person, undefined, sichtDerAnfrage(req)), darfSteuern(wer.person)]);
   // Lese-Protokoll (Art. 9, 05.10.): der eigene Erholungswert steht nur für die Person selbst in der Antwort (fuerBetrachter).
   if (stand.personen.some(p => p.erholung)) leseZugriff(req, 'erholung', { betroffen: wer.person });
   return NextResponse.json({ ok: true, ich: kapaIdVon(wer.person), inhaber, stand, bezuege }, { headers: { 'Cache-Control': 'no-store' } });
@@ -41,6 +43,7 @@ async function auskunftAntwort(id: string, person: string): Promise<Response> {
   const r = await kapaAuskunftLaden(id);
   if (!r) return NextResponse.json({ ok: false, fehler: 'Diese Person gibt es im Team nicht.' }, { status: 404 });
   const selbst = id === kapaIdVon(person);
+  // Art. 15 bleibt beim Inhaber (02.11.: Auskunft ist kein Steuer-Recht — lib/zugang/steuern.ts).
   if (r.konto ? !selbst : !(await istInhaber(person))) {
     return NextResponse.json({ ok: false, fehler: r.konto ? 'Die Auskunft über ein Konto bekommt nur die Person selbst.' : 'Die Auskunft über eine Team-Person gibt der Inhaber.' }, { status: 403 });
   }
@@ -57,6 +60,6 @@ export async function PATCH(req: Request) {
   try { b = await jsonBegrenzt(req, 64 * 1024); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, fehler: 'Kein gültiges JSON.' }, { status: 400 }); }
   const r = await kapaSchreiben(wer.person, b.ops);
   if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
-  const [{ stand, bezuege }, inhaber] = await Promise.all([kapaStandFuer(wer.person, undefined, sichtDerAnfrage(req)), istInhaber(wer.person)]);
+  const [{ stand, bezuege }, inhaber] = await Promise.all([kapaStandFuer(wer.person, undefined, sichtDerAnfrage(req)), darfSteuern(wer.person)]);
   return NextResponse.json({ ok: true, ich: kapaIdVon(wer.person), inhaber, stand, bezuege });
 }

@@ -119,6 +119,44 @@ export function zielSchwellen(crm: Pick<CrmBestand, 'wertelisten'>): Record<stri
 const TRICHTER = new WeakMap<TraktionBestand, ReturnType<typeof marketingTrichter>>();
 function trichter(b: TraktionBestand) { let t = TRICHTER.get(b); if (!t) { t = marketingTrichter(b.kontakte, b.crm, b.heute); TRICHTER.set(b, t); } return t; }
 
+/**
+ * Die Quellen außerhalb von Kartei und CRM in die Kennzahlen (in `kpis`, rein): Website-Kennzahlen (immer gerechnet — das Modell nimmt sie nur, wenn
+ * die Website läuft), „Veröffentlichungen“ mit Social, „Anfragen · 90 Tage“ ohne die Website-Anfragen, die Kennzahlen des Kampagnen-Motors.
+ */
+function quellenAnwenden(b: TraktionBestand, kpis: Record<string, Kpi>): { mitMotor: boolean } {
+  // Website (31.10.): immer hier gerechnet (auch wenn `kpis` mitkommen) — dieselbe Zahl überall.
+  for (const k of webseiteKennzahlen(b.kontakte, b.webseite, b.heute)) kpis[k.id] = k;
+  // Social (02.11., M3): veröffentlichte Folgen zählen in „Veröffentlichungen“ — EINE Zählung mit Redaktionsplan und Newsletter.
+  if (b.social) kpis.veroeffentlichungen = veroeffentlichungenKpi(b.crm, b.heute, b.social.posts);
+  // Website nicht doppelt (02.11., M3): läuft sie, stehen ihre Anfragen in „Anfragen über die Website“ — „Anfragen · 90 Tage“ zählt dann den Rest.
+  if (b.webseite?.aktiv && kpis.anfragen_90 && kpis.anfragen_90.ampel !== 'grau') {
+    const a = trichter(b).anfragen;
+    const n = a.ohneWebseite;
+    kpis.anfragen_90 = { ...kpis.anfragen_90, wert: n, anzeige: String(n), ampel: n >= 6 ? 'gruen' : n >= 2 ? 'gelb' : 'rot', quelle: `${n} ohne Website (die ${a.gesamt - n} über die Website zählen in ihrer eigenen Kennzahl) · ${a.offen} offen` };
+  }
+  // Kampagnen-Motor (02.11., M3): nur Kampagnen, die es noch gibt (ohne Papierkorb).
+  const motor = motorImBestand(b.motor, b.crm.kampagnen ?? []);
+  for (const k of motorKennzahlen(motor, b.heute)) kpis[k.id] = k;
+  return { mitMotor: motorAktiv(motor) };
+}
+
+/**
+ * Die Marketing-Kennzahlen MIT ihren Quellen (02.11., Prüfung D) — EINE Rechnung für Marketing › Übersicht, das Datenpaket des Head of Marketing und
+ * den Traktions-Index (`quellenAnwenden`): vorher rechneten Übersicht und Head nur `marketingKennzahlen` — ohne Social in „Veröffentlichungen“, mit den
+ * Website-Anfragen doppelt und ohne den Kampagnen-Motor. Website-Kennzahlen nur, wenn die Website läuft; Motor-Kennzahlen nur, wenn er gesendet hat.
+ * Quellen über lib/crm/traktion-quellen-server.ts `traktionQuellenLaden`; ohne Quellen = `marketingKennzahlen`. Nur Business (wie der Index).
+ */
+export type TraktionQuellen = Pick<TraktionBestand, 'webseite' | 'social' | 'motor'>;
+export function marketingKennzahlenMitQuellen(b0: Pick<TraktionBestand, 'kontakte' | 'crm' | 'heute'> & TraktionQuellen): Kpi[] {
+  const crm = nurBusinessGezaehlt(b0.crm);
+  const b: TraktionBestand = { ...b0, crm };
+  const basis = marketingKennzahlen(b.kontakte, b.crm, b.heute);
+  const kpis: Record<string, Kpi> = Object.fromEntries(basis.map(k => [k.id, k]));
+  const { mitMotor } = quellenAnwenden(b, kpis);
+  const extra = [...(b.webseite?.aktiv ? webseiteKennzahlen(b.kontakte, b.webseite, b.heute) : []), ...(mitMotor ? motorKennzahlen(motorImBestand(b.motor, b.crm.kampagnen ?? []), b.heute) : [])];
+  return [...basis.map(k => kpis[k.id]), ...extra.map(k => kpis[k.id] ?? k).filter(k => !basis.some(x => x.id === k.id))];
+}
+
 // ── Hilfen ──────────────────────────────────────────────────────────────────
 const tagMinus = (heute: string, n: number) => { const d = new Date(`${heute}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
 const tagKurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
@@ -316,20 +354,8 @@ export function traktionsIndex(b0: TraktionBestand): TraktionsIndex {
   const b: TraktionBestand = crm === b0.crm ? b0 : { ...b0, crm };
   const kpis: Record<string, Kpi> = {};
   for (const k of b.kpis ?? [...kennzahlen(b.kontakte, b.crm, b.heute), ...marketingKennzahlen(b.kontakte, b.crm, b.heute), ...eventKennzahlen(b.kontakte, b.crm, b.heute)]) kpis[k.id] = k;
-  // Website (31.10.): immer hier gerechnet (auch wenn `kpis` mitkommen) — dieselbe Zahl überall.
-  for (const k of webseiteKennzahlen(b.kontakte, b.webseite, b.heute)) kpis[k.id] = k;
-  // Social (02.11., M3): veröffentlichte Folgen zählen in „Veröffentlichungen“ — EINE Zählung mit Redaktionsplan und Newsletter.
-  if (b.social) kpis.veroeffentlichungen = veroeffentlichungenKpi(b.crm, b.heute, b.social.posts);
-  // Website nicht doppelt (02.11., M3): läuft sie, stehen ihre Anfragen in „Anfragen über die Website“ — „Anfragen · 90 Tage“ zählt dann den Rest.
-  if (b.webseite?.aktiv && kpis.anfragen_90 && kpis.anfragen_90.ampel !== 'grau') {
-    const a = trichter(b).anfragen;
-    const n = a.ohneWebseite;
-    kpis.anfragen_90 = { ...kpis.anfragen_90, wert: n, anzeige: String(n), ampel: n >= 6 ? 'gruen' : n >= 2 ? 'gelb' : 'rot', quelle: `${n} ohne Website (die ${a.gesamt - n} über die Website zählen in ihrer eigenen Kennzahl) · ${a.offen} offen` };
-  }
-  // Kampagnen-Motor (02.11., M3): nur Kampagnen, die es noch gibt (ohne Papierkorb).
-  const motor = motorImBestand(b.motor, b.crm.kampagnen ?? []);
-  const mitMotor = motorAktiv(motor);
-  for (const k of motorKennzahlen(motor, b.heute)) kpis[k.id] = k;
+  // Website, Social, Kampagnen-Motor: EINE Stelle (02.11., Prüfung D) — dieselbe Rechnung wie Marketing › Übersicht und der Head of Marketing.
+  const { mitMotor } = quellenAnwenden(b, kpis);
   // „Größter Kunde“: die Kpi mrr trägt die Konzentration nur in der Quelle — hier als Prozentwert.
   if (kpis.mrr) {
     const je = new Map<string, number>();

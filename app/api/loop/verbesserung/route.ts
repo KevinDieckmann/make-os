@@ -14,8 +14,8 @@ import { askText, hasAnthropicKey } from '@/lib/anthropic';
 import { localDay } from '@/lib/zeit';
 import { SEITEN_SUCHE } from '@/lib/make-one/seiten';
 import { modellSchranke } from '@/lib/zugang/umfang';
-import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
-import { istDienst, nurDerInhaber } from '@/lib/zugang/tor';
+import { istDienst } from '@/lib/zugang/tor';
+import { steuernOderSystemlauf, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { kiAus } from '@/lib/datenschutz/ki-lauf';
 
 export const runtime = 'nodejs';
@@ -36,10 +36,11 @@ const ABSTAND_TAGE = 7;
 export async function POST(req: Request) {
   // Zugang (09.10., Befund der Prüfung „zweite Inhaberin“): das Register sagt „Inhaber bzw. Systemlauf“, die Route ließ aber jede
   // angemeldete Person durch (nur `jetzt=1` war Inhaber-Sache) — jetzt nur der Takt (Dienstweg) oder ein Inhaber per Sitzung.
-  if (!istDienst(req) && !(await nurInhaber(req))) return nurDerInhaber();
+  // Steuern (02.11., Kevin: volles Mitglied wie Inhaber): EINE Regel lib/zugang/steuern.ts.
+  if (!istDienst(req) && !(await steuernOderSystemlauf(req))) return NextResponse.json({ ok: false, error: NUR_STEUERN }, { status: 403 });
   const schranke = modellSchranke(req); if (schranke) return schranke;
   // „jetzt=1“ umgeht den 7-Tage-Abstand — nur der Inhaber (26.09.).
-  const erzwingen = new URL(req.url).searchParams.get('jetzt') === '1' && (await nurInhaber(req));
+  const erzwingen = new URL(req.url).searchParams.get('jetzt') === '1' && (await steuernOderSystemlauf(req));
 
   const [nutzung, backlog, fehler, aenderungen] = await Promise.all([
     loadJson<{ seiten?: Record<string, Seitennutzung>; tage?: Record<string, number>; letzteAnalyse?: string }>('nutzung'),

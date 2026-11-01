@@ -19,9 +19,9 @@ const KEIN_ZUGANG = 'Nicht ausgeführt: Fulfillment gehört zum Haushalt des Inh
 
 /** Darf die Person den Personenteil sehen (dieselbe Regel wie `personenteilZugang`)? */
 export async function personenteilErlaubt(person: string): Promise<boolean> {
-  const { istInhaber, personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
+  const { personImHaushaltDesInhabers } = await import('@/lib/zugang/haushalt-inhaber');
   if (!(await personImHaushaltDesInhabers(person))) return false;
-  if (await istInhaber(person)) return true;
+  if (await (await import('@/lib/zugang/steuern')).darfSteuern(person)) return true;
   const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
   const k = await kontoSicht(person);
   return !!k && !k.nurBusiness && k.imHaushalt;

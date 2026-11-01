@@ -8,6 +8,7 @@
 //                                                          Follow-up mit Zähler „verschoben“, das alte Feld fällt weg — 08.10., 4.17)
 //      { aktion: 'absagen', id }                          (überfällig abgesagt = verpasst)
 //      { aktion: 'anfrage-uebernehmen', id }              (31.10.: „Anfrage prüfen — Adresse unbestätigt“ nach der Prüfung übernehmen)
+//      { aktion: 'firma-ergebnis', id, ergebnis, notiz? }   (02.11.: Ergebnis-Knopf einer Betriebs-Karte der Power Hour — lib/crm/firma-karte.ts)
 // Regeln (Prüfbericht 27.09.):
 //   · Jede Änderung an echten Follow-ups liest den Eintrag IN der Schreibsperre — nie aus einem
 //     vorab geladenen Stand (zu zweit gingen sonst Änderungen verloren).
@@ -157,6 +158,29 @@ export async function POST(req: Request) {
     const r = await anfrageUebernehmen(String(b.id ?? ''), { person, wer: werAus(req) });
     if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: 'status' in r ? r.status : 400 });
     return NextResponse.json({ ok: true, followup: r.bau.followUp, text: `Anfrage übernommen — Follow-up „${r.bau.followUp.text}“ steht heute.` });
+  }
+
+  // Ergebnis an einer Betriebs-Karte der Power Hour (02.11., Prüfung D): Follow-up an einer Firma ohne Person — dieselbe Regel wie an einer Person
+  // (nicht erreicht · Mailbox · Rückruf → das Follow-up wandert, sonst erledigt), Ergebnis am Betrieb in der Kampagne, „Sperre“ = Werbewiderspruch
+  // am Betrieb (lib/crm/firma-karte.ts `firmaErgebnisImCrm`). In EINER Sperre; nichts wird versendet.
+  if (b.aktion === 'firma-ergebnis') {
+    const ergebnis = ERGEBNISSE.includes(b.ergebnis as Ergebnis) ? (b.ergebnis as Ergebnis) : null;
+    if (!ergebnis || !idOk(b.id)) return NextResponse.json({ ok: false, fehler: 'id und ergebnis sind Pflicht.' }, { status: 400 });
+    const notiz = typeof b.notiz === 'string' ? b.notiz.trim() : '';
+    const { firmaErgebnisImCrm } = await import('@/lib/crm/firma-karte');
+    const nochmalAm = folgeAus(ergebnis, heute, 'neu').wiedervorlage;
+    let r: ReturnType<typeof firmaErgebnisImCrm> | null = null;
+    let zuLang = false;
+    await aendereCrm(c => {
+      const fu = (c.followups ?? []).find(f => f.id === String(b.id));
+      if (fu && notiz && `${fu.notiz ? `${fu.notiz}\n` : ''}${notiz}`.length > NOTIZ_MAX) { zuLang = true; return c; }
+      r = firmaErgebnisImCrm(c, { followupId: String(b.id), ergebnis, heute, jetzt, von: person, ...(nochmalAm ? { nochmalAm } : {}), ...(notiz ? { notiz } : {}) });
+      return 'crm' in r ? r.crm : c;
+    }, werAus(req));
+    if (zuLang) return ZU_LANG('Notiz (zusammen mit der bisherigen)', NOTIZ_MAX);
+    const x = r as ReturnType<typeof firmaErgebnisImCrm> | null;
+    if (!x || !('crm' in x)) return NextResponse.json({ ok: false, fehler: x?.fehler ?? 'Follow-up nicht gefunden.' }, { status: x?.status ?? 404 });
+    return NextResponse.json({ ok: true, wie: x.wie, text: x.wie === 'verschoben' ? 'Festgehalten — die Karte kommt wieder, wenn der nächste Versuch dran ist.' : ergebnis === 'sperre' ? 'Werbesperre am Betrieb gesetzt — er taucht nirgends mehr auf.' : 'Festgehalten.' });
   }
 
   const id = String(b.id ?? '');

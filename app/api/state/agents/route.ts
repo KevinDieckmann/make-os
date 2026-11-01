@@ -6,7 +6,7 @@ import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze'
 import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
-import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { steuernOderSystemlauf } from '@/lib/zugang/steuern';
 import { MODEL_BY_TIER } from '@/lib/agent-config';
 import type { Autonomy, ModelTier } from '@/lib/make-one/agents-data';
 
@@ -26,8 +26,10 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  // Autonomie-Regler wirken in Kevins Kalender und Aufgaben — nur der Inhaber stellt sie (26.09.).
-  if (!(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
+  // Autonomie-Regler wirken in Kalender und Aufgaben — sie stellt, wer die Arbeit steuern darf (26.09. nur der Inhaber; seit 02.11. Kevin: „sie kann
+  // vollen Zugriff haben“ — Inhaber ODER volles Mitglied des Haushalts, lib/zugang/steuern.ts). Systemlauf ohne Person wie bisher; Konto „nur Business“,
+  // fremder Haushalt, Testkunde → 403.
+  if (!(await steuernOderSystemlauf(req))) return NextResponse.json({ ok: false, error: 'Nur für Inhaber und volle Mitglieder des Haushalts.' }, { status: 403 });
   let body: unknown;
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const roh = body as Record<string, Record<string, unknown>>;

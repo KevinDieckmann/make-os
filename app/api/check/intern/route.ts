@@ -11,8 +11,9 @@
 // Zahlen nur aus lib/check/auswertung.ts. Nichts geht an den Teilnehmer (kein Versand aus dieser Route).
 
 import { NextResponse } from 'next/server';
-import { imHaushaltDesInhabers, nurInhaber } from '@/lib/zugang/haushalt-inhaber';
-import { nurHaushalt, nurDerInhaber } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { nurHaushalt } from '@/lib/zugang/tor';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
@@ -101,7 +102,8 @@ export async function POST(req: Request) {
   const jetzt = new Date().toISOString();
 
   if (b.aktion === 'einstellungen') {
-    if (!(await nurInhaber(req))) return nurDerInhaber();
+    // Marketing steuern (02.11., Prüfung D): Inhaber ODER volles Mitglied des Haushalts (lib/zugang/steuern.ts).
+    if (!(await darfSteuern(zugang.person))) return NextResponse.json({ ok: false, fehler: NUR_STEUERN }, { status: 403 });
     const alt = await ladeCheckEinstellungen();
     const aktiv = typeof b.aktiv === 'boolean' ? b.aktiv : alt.aktiv;
     let verantwortlich = alt.verantwortlich, datenschutzLink = alt.datenschutzLink;

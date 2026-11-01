@@ -290,8 +290,9 @@ describe('Laufzeit: nur der Inhaber', () => {
     expect(await status('konto/einladen', dienst('kevin'), 'POST', {})).toBe(401);
     expect(await status('konto/einladen', sitzung('malin'), 'POST', {})).toBe(403);
   });
-  it('Selbstbild in den Vault schreiben: Mitglied → 403', async () => {
-    expect(await status('zoe/selbstbild', sitzung('malin'), 'POST')).toBe(403);
+  it('Selbstbild in den Vault schreiben: Konto „nur Business“ und fremder Haushalt → 403 (volles Mitglied steuert seit 02.11. wie ein Inhaber)', async () => {
+    expect(await status('zoe/selbstbild', sitzung('partner'), 'POST')).toBe(403);
+    expect(await status('zoe/selbstbild', sitzung('gast'), 'POST')).toBe(403);
   });
 });
 

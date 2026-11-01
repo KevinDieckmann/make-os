@@ -99,7 +99,8 @@ export async function GET(req: Request) {
   ]);
   return {
     ok: true, heute, ich, team: TEAM,
-    fuerDich: fuerDich(ich, kontakte, crm, heute),
+    // 02.11. (Prüfung D): Mail-Stapel, Druckliste, Homepage-Funde — dieselbe Zahl wie Glocke und Heute › Steht an.
+    fuerDich: fuerDich(ich, kontakte, crm, heute, await (await import('@/lib/crm/motor-dran-server')).motorDranLesen(ich, crm).catch(() => [])),
     // Überblick „Für dich“ (04.10. abends): Umsatz der letzten 3 Monate → heute → Pipeline × Wahrscheinlichkeit (lib/fluss).
     fluss: flussAusCrm(crm, heute),
     teamFeed: teamFeed(kontakte, crm, new Date(Date.now() - 14 * 864e5).toISOString(), 14),
