@@ -254,6 +254,7 @@ function Antraege({ d, api, laden, zuKontakt }: { d: Daten; api: CrmApi; laden: 
                 <b style={{ fontWeight: 600 }}>{ANTRAG_ART.find(x => x.id === a.art)?.label}</b><span style={{ color: C.inkDim, fontSize: TYP.bedien }}>{a.name}{a.email ? ` · ${a.email}` : ''} · Eingang {datum(a.eingang)}</span>
                 <Chip farbe={t < 0 ? LEUCHT.kritisch : t < 7 ? LEUCHT.achtung : C.inkDim}>{t < 0 ? `${anzahl(-t, 'Tag', 'Tage')} überfällig` : `noch ${anzahl(t, 'Tag', 'Tage')}`}</Chip>
               </div>
+              {a.nachricht && <div style={{ fontSize: TYP.bedien, color: C.inkDim, whiteSpace: 'pre-wrap' }}>Nachricht: {a.nachricht}</div>}
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {a.kontaktId && <Knopf leise onClick={() => { window.location.href = `/api/crm/datenschutz?id=${a.kontaktId}`; }}>Datenkopie (JSON)</Knopf>}
                 {a.kontaktId && <Knopf leise onClick={() => zuKontakt(a.kontaktId!)}>Zur Person</Knopf>}

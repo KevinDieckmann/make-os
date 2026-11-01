@@ -13,8 +13,11 @@ import { naechsterSchritt, fortschritt, type AblaufStand } from './ablauf';
 import { checkHinweis } from './datenschutz';
 import type { CheckSitzung, CheckEinstellungen } from './speicher';
 import type { ZoeKontext } from './zoe-texte';
-import type { CheckVorlage } from './typen';
+import type { CheckVorlage, CheckAntworten, DimKey } from './typen';
 import type { ErgebnisAnsicht } from './ergebnis';
+import { eigeneWorte } from './ablauf';
+import { auswerten, profilAus, saeulenAuswerten } from './auswertung';
+import { dimensionName } from './zoe-texte';
 
 export async function gastgeberVon(e: CheckEinstellungen): Promise<string | null> {
   return e.gastgeber || (await inhaberSpeicher());
@@ -58,9 +61,35 @@ export function stromFuerBrowser(v: CheckVorlage, s: CheckSitzung) {
   };
 }
 
+/** Der Satz zum Stand nach dem Kurzcheck (Werte je Säule bzw. Bereich und die eigenen Worte) — EINE Stelle für Strecke und Nachholen. */
+export function kurzcheckText(v: CheckVorlage, antworten: CheckAntworten): string {
+  const profil = profilAus(v.katalog, antworten);
+  const inno = auswerten(v.katalog, v.regeln, profil, antworten);
+  const vorl = saeulenAuswerten(v.katalog, v.regeln, antworten, inno);
+  const namen = Object.fromEntries((v.regeln.saeulen ?? []).map(sa => [sa.key, sa.name]));
+  // Mit Säulen deren Werte; der Innovations-Check (nur Innovation, 30.10.) nennt seine Bereiche.
+  const teile = (v.regeln.saeulen?.length ? Object.entries(vorl.werte).map(([sk, w]) => `${namen[sk] ?? sk} ${w}`)
+    : (Object.entries(inno.dimensionen) as [DimKey, number][]).map(([d, w]) => `${dimensionName(d)} ${w}`)).join(', ');
+  const worte = eigeneWorte(v, antworten);
+  return `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100${teile ? `; ${teile}` : ''}).${worte ? ` ${worte}` : ''}`;
+}
+
+/** Herkunft `quelle` (Link-Parameter des Checks) → bekannte Kampagne (dann „reagiert“ an ihr) bzw. nur als Unterkanal im Text (Prüfung A, Fund 9). */
+async function quelleBezug(quelle: string | undefined): Promise<{ bezug?: { art: 'kampagne'; id: string }; zusatz: string }> {
+  if (!quelle) return { zusatz: '' };
+  try {
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const k = ((await ladeCrm()).kampagnen ?? []).find(x => x.id === quelle);
+    if (k) return { bezug: { art: 'kampagne', id: k.id }, zusatz: '' };
+  } catch { /* CRM nicht lesbar: nur als Unterkanal */ }
+  return { zusatz: ` Herkunft: ${quelle}.` };
+}
+
 /**
  * Lead ins CRM (nach der Kontakt-Frage): Anfrage über die Website mit einem Satz zum Stand. Lehnt der Anfrage-Weg ab (Art. 18,
  * eingeschränkte Person …), entsteht nichts — der Grund steht nur intern an der Sitzung, nie beim Teilnehmer.
+ * 02.11. (Prüfung A): feste Kennungen der Sitzung (`anfrageIds`, kein Doppel beim Nachholen) · Herkunft → Kampagne (Fund 9) · Art. 18 → Betroffenenantrag +
+ * Glocke an den Inhaber (Fund 5) · technischer Fehler → EINE neutrale Glocke an die Marketing-Verantwortliche (Fund 3; der Morgenlauf holt nach).
  */
 export async function leadAnlegen(s: CheckSitzung, e: CheckEinstellungen, text: string): Promise<CheckSitzung['crm']> {
   const am = new Date().toISOString();
@@ -68,16 +97,50 @@ export async function leadAnlegen(s: CheckSitzung, e: CheckEinstellungen, text: 
   const person = (await gastgeberVon(e)) ?? 'system';
   try {
     const { anfrageAnlegen } = await import('@/lib/crm/anfrage-anlegen');
+    const q = await quelleBezug(s.quelle);
     const r = await anfrageAnlegen(
-      { neu: { vorname: s.kontakt.vorname, email: s.kontakt.email, firma: s.kontakt.firma, ...(s.kontakt.telefon ? { telefon: s.kontakt.telefon } : {}) }, kanal: 'website', text },
+      { neu: { vorname: s.kontakt.vorname, email: s.kontakt.email, firma: s.kontakt.firma, ...(s.kontakt.telefon ? { telefon: s.kontakt.telefon } : {}) }, kanal: 'website', text: `${text}${q.zusatz}`, ...(q.bezug ? { bezug: q.bezug } : {}) },
       // Öffentliche Strecke (Kevin 31.10.): trifft die Mail eine vorhandene Person, nur „Adresse unbestätigt“ anhängen — nichts auslösen.
-      { person, wer: { art: 'system' }, oeffentlich: true, webseite: 'check' },
+      { person, wer: { art: 'system' }, oeffentlich: true, webseite: 'check', ...(s.anfrageIds ? { ids: s.anfrageIds } : {}) },
     );
-    return r.ok ? { status: 'ok', am, kontaktId: r.bau.kontakt.id, followUpId: r.bau.followUp.id, ...(r.bau.unbestaetigt ? { unbestaetigt: true as const } : {}) } : { status: 'abgelehnt', am, grund: r.fehler.slice(0, 200) };
+    if (r.ok) return { status: 'ok', am, kontaktId: r.bau.kontakt.id, followUpId: r.bau.followUp.id, ...(r.bau.unbestaetigt ? { unbestaetigt: true as const } : {}) };
+    if (r.eingeschraenkt) {
+      const { eingeschraenktMelden } = await import('@/lib/oeffentlich/eingang-server');
+      await eingeschraenktMelden({ ...r.eingeschraenkt, email: s.kontakt.email, weg: 'Check', text, schluessel: s.id });
+      return { status: 'abgelehnt', am, grund: r.fehler.slice(0, 200), eingeschraenkt: true };
+    }
+    return { status: 'abgelehnt', am, grund: r.fehler.slice(0, 200) };
   } catch (x) {
+    const { websiteHinweisMelden } = await import('@/lib/oeffentlich/eingang-server');
+    await websiteHinweisMelden('eingang').catch(() => null);
     return { status: 'fehler', am, grund: String((x as Error)?.message ?? x).slice(0, 200) };
   }
 }
+
+/**
+ * Morgenlauf (Prüfung A, Fund 3): Sitzungen mit Kontakt, deren Lead nicht ins CRM kam (technischer Fehler bzw. abgebrochen — nie „abgelehnt“), noch
+ * einmal anlegen — mit den festen Kennungen der Sitzung, also ohne Doppel. Erst nach 10 Minuten. Liefert: nachgeholt, weiter offen. Wirft nie.
+ */
+export async function checkLeadsNachholen(jetzt = new Date()): Promise<{ nachgeholt: number; offen: number }> {
+  const { ladeCheckBestand, ladeCheckEinstellungen, sitzungIntern } = await import('./speicher');
+  const { vorlageVon } = await import('./katalog');
+  const alt = jetzt.getTime() - 10 * 60_000;
+  const kandidaten = (await ladeCheckBestand().catch(() => ({ sitzungen: [] as CheckSitzung[] }))).sitzungen.filter(x => checkLeadFehlt(x, alt));
+  if (!kandidaten.length) return { nachgeholt: 0, offen: 0 };
+  const e = await ladeCheckEinstellungen();
+  let nachgeholt = 0, offen = 0;
+  for (const x of kandidaten) {
+    const v = vorlageVon(x.vorlage);
+    const text = v ? kurzcheckText(v, x.antworten) : 'Check auf der Website: Kurzcheck ausgefüllt.';
+    const crm = await leadAnlegen(x, e, text).catch(() => null);
+    if (crm) await sitzungIntern(x.id, y => ({ ...y, crm })).catch(() => null);
+    if (crm?.status === 'ok') nachgeholt++; else if (crm?.status !== 'abgelehnt') offen++;
+  }
+  return { nachgeholt, offen };
+}
+/** Fehlt der Lead dieser Sitzung im CRM? Kontakt erfasst, älter als `alt`, kein „ok“ und kein „abgelehnt“. Rein. */
+export const checkLeadFehlt = (x: CheckSitzung, altMs: number): boolean =>
+  !!x.kontakt && x.kontaktStand === 'erfasst' && Date.parse(x.kontakt.am) <= altMs && (!x.crm || x.crm.status === 'fehler');
 
 /**
  * Zu jedem nächsten Schritt das Angebot der Instanz (Einstellungen, je Bereich) — nur Titel, Satz und Link, und jedes Angebot nur einmal (im

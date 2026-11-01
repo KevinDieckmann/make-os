@@ -921,7 +921,8 @@ export interface PowerHourSitzung {
 
 /** Betroffenenantrag (Art. 15–21 DSGVO) — Frist ein Monat ab Eingang. */
 export type AntragArt = 'auskunft' | 'berichtigung' | 'loeschung' | 'einschraenkung' | 'uebertragbarkeit' | 'widerspruch';
-export interface Antrag { id: string; art: AntragArt; name: string; email?: string; kontaktId?: string; eingang: string; frist: string; status: 'offen' | 'erledigt'; ergebnis?: string; erledigtAm?: string; von?: string; geaendert: string }
+/** `nachricht` (02.11., Prüfung A Fund 5): der Text einer Nachricht, die eine eingeschränkte Person (Art. 18) über die Website schickte — nur zum Prüfen unter Datenschutz. */
+export interface Antrag { id: string; art: AntragArt; name: string; email?: string; kontaktId?: string; eingang: string; frist: string; status: 'offen' | 'erledigt'; ergebnis?: string; erledigtAm?: string; von?: string; geaendert: string; nachricht?: string }
 /** Verzeichnis der Verarbeitungstätigkeiten (Art. 30 DSGVO). */
 export interface Verarbeitung {
   id: string; name: string; zweck: string; personen: string; daten: string; rechtsgrundlage: string; empfaenger: string; drittland: string; loeschfrist: string; toms: string; verantwortlich: string; stand: string;

@@ -14,7 +14,7 @@ import { loadJson, updateJson } from '@/lib/store/local-db';
 import { karteiHaushalt } from '@/lib/crm/sperrliste';
 import { sitzungsGeheimnis } from '@/lib/zugang/sitzung';
 import { protokolliere, type Aenderung, type Wer } from '@/lib/store/aenderungsprotokoll';
-import { bestandSauber, ablaufNachziehen, loeschfristAnwenden, slugVorsatz, MAIL_LINK_TAGE, type BuchungBestand, type HinweisFristen } from './buchung';
+import { bestandSauber, ablaufNachziehen, loeschfristAnwenden, slugVorsatz, verfalleneUngemeldet, MAIL_LINK_TAGE, type BuchungBestand, type HinweisFristen } from './buchung';
 import { fristenWirksam, LOESCHFRISTEN_SPEICHER, type LoeschfristenBestand } from '@/lib/crm/loeschfristen';
 
 export async function buchungHaushalt(): Promise<string> { return karteiHaushalt(); }
@@ -66,6 +66,33 @@ export async function buchungenLoeschfrist(jetzt: Date, tage: number): Promise<n
   });
   if (entfernt.length) await protokolliere(`buchung--${h}`, entfernt.map(id => ({ liste: 'buchungen', op: 'geloescht' as const, id, felder: ['loeschfrist'] })), { art: 'system' });
   return entfernt.length;
+}
+
+/**
+ * Terminanfragen, die OHNE Reaktion verfallen sind (02.11., Prüfung A Fund 1): bisher setzte `buchungenErledigen` die Glocke „Neue Terminanfrage“
+ * still auf gelesen, sobald der Termin vorbei war — niemand erfuhr, dass eine Anfrage liegen blieb. Jetzt: genau EINE Glocke je Lauf und Person
+ * der Seite (ohne Namen, nur die Zahl), sonst an den Haushalt. Idempotent über `verfallGemeldet` (in der Sperre gesetzt). Takt und Morgenlauf.
+ */
+export async function buchungenVerfallenMelden(jetzt = new Date()): Promise<number> {
+  const h = await buchungHaushalt();
+  if ((await loadJson<BuchungBestand>(`buchung--${h}`)) === null) return 0;
+  let faellig: { id: string; person: string | null }[] = [];
+  await updateJson<BuchungBestand>(`buchung--${h}`, cur => {
+    const b = ablaufNachziehen(bestandSauber(cur), jetzt).bestand;
+    faellig = verfalleneUngemeldet(b);
+    if (!faellig.length) return b;
+    const ids = new Set(faellig.map(x => x.id)), am = jetzt.toISOString();
+    return { ...b, buchungen: b.buchungen.map(x => (ids.has(x.id) ? { ...x, verfallGemeldet: am } : x)) };
+  });
+  if (!faellig.length) return 0;
+  const [{ melde }, { haushaltsSpeicher }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/aufgaben/sicht')]);
+  const haushalt = await haushaltsSpeicher().catch(() => [] as string[]);
+  const je = new Map<string, number>();
+  for (const f of faellig) for (const an of f.person && haushalt.includes(f.person) ? [f.person] : haushalt) je.set(an, (je.get(an) ?? 0) + 1);
+  for (const [an, n] of je) {
+    await melde({ an, art: 'buchung', titel: n === 1 ? 'Eine Terminanfrage ist verfallen, ohne Reaktion — bitte nachfassen' : `${n} Terminanfragen sind verfallen, ohne Reaktion — bitte nachfassen`, link: '/os/kalender?buchungen=1' });
+  }
+  return faellig.length;
 }
 
 // ── Token, Adresse, Stempel ─────────────────────────────────────────────────

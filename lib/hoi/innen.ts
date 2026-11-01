@@ -206,6 +206,8 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     laufSpur: await laufSpurLage(new Date(jetzt)).catch(() => null),
     // Prozesse (21.10., C1, Punkt 88): nur Zähler aus dem Bestand der Läufe (lib/prozesse/lauf-server.ts) — nie Kennungen.
     prozesse: await import('@/lib/prozesse/lauf-server').then(m => m.prozesseLage(new Date(jetzt))).catch(() => null),
+    // Website-Eingänge (02.11., Prüfung A): ohne CRM, wartend, gescheitert — nur Zahlen (lib/oeffentlich/eingang-server.ts).
+    websiteEingang: await import('@/lib/oeffentlich/eingang-server').then(m => m.websiteEingangLage(new Date(jetzt))).catch(() => null),
   };
 }
 

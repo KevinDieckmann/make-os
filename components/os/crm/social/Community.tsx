@@ -8,7 +8,8 @@
 // „Als Anfrage übernehmen“ (02.11., M3): aus der jüngsten eingehenden Nachricht eines Fadens eine Anfrage im CRM — über den EINEN Anfrage-Weg
 // (`/api/crm/anfrage`, Kanal „instagram“ = Marketing-Anfrage; Art. 18 und Werbesperre prüft der Server). Es geht nichts nach außen.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { neueKennung } from '@/lib/kennung';
 import { FARBE as C, TYP, LEUCHT } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Chip, Knopf, Hinweis, Leerzustand, Feldzeile, feld, eingabe, Pillen, Segmente, Schalter } from '../../ui';
 import type { FadenSicht, IgEntwurf, IgEintrag, FremdKommentar } from '@/lib/social/community';
@@ -204,20 +205,26 @@ function FadenAnsicht({ c, kanal, f, entwurf, onZu }: { c: ReturnType<typeof use
 /** Kommentar oder DM als Anfrage ins CRM (Person neu oder per Mail wiedererkannt) — nur nach Klick, nichts wird gesendet. */
 function AlsAnfrage({ f, eintrag }: { f: FadenSicht; eintrag: IgEintrag }) {
   const [offen, setOffen] = useState(false);
-  const [name, setName] = useState(eintrag.gegen.name ?? '');
+  // Prüfung A (Fund 6): der Benutzername ist kein Vorname — das Feld bleibt leer (der Name steht dann im Text der Anfrage, „von @…“).
+  const [name, setName] = useState('');
+  const anfrageId = useRef(neueKennung('anf'));
   const [firma, setFirma] = useState('');
   const [email, setEmail] = useState('');
   const [text, setText] = useState(eintrag.text.slice(0, 2800));
   const [laeuft, setLaeuft] = useState(false);
   const [ergebnis, setErgebnis] = useState<{ ok: boolean; text: string; kontaktId?: string } | null>(null);
   const art = f.art === 'dm' ? 'Direktnachricht' : 'Kommentar';
+  // Schon übernommen (der Server merkt die Akte am Faden): nur der Weg dorthin — nie ein zweites Mal anlegen.
+  const schon = f.anfragen?.[eintrag.id]?.kontaktId;
+  if (schon && !ergebnis) return <div><Knopf leise href={WEG.akte(schon)}>Als Anfrage übernommen ›</Knopf></div>;
   if (!offen && !ergebnis) return <div><Knopf leise onClick={() => setOffen(true)}>Als Anfrage übernehmen</Knopf></div>;
   if (ergebnis?.ok) return <Hinweis art="gut" aktion={ergebnis.kontaktId ? <Knopf leise href={WEG.akte(ergebnis.kontaktId)}>Kontakt öffnen</Knopf> : undefined}>{ergebnis.text}</Hinweis>;
   const senden = async () => {
     setLaeuft(true);
     try {
       const r = await fetch('/api/crm/anfrage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
-        aktion: 'anlegen', kanal: 'instagram', text: `Instagram-${art} von @${eintrag.gegen.name ?? 'unbekannt'}: ${text}`.slice(0, 3000),
+        aktion: 'anlegen', anfrageId: anfrageId.current, social: { faden: f.id, eintrag: eintrag.id },
+        kanal: 'instagram', text: `Instagram-${art} von @${eintrag.gegen.name ?? 'unbekannt'}: ${text}`.slice(0, 3000),
         neu: { vorname: name.trim(), ...(firma.trim() ? { firma: firma.trim() } : {}), ...(email.trim() ? { email: email.trim() } : {}) },
       }) });
       const j = await r.json().catch(() => ({}));
@@ -231,7 +238,7 @@ function AlsAnfrage({ f, eintrag }: { f: FadenSicht; eintrag: IgEintrag }) {
       <form onSubmit={e => { e.preventDefault(); void senden(); }} style={{ display: 'grid', gap: 10 }}>
         <span style={{ color: C.inkDim, fontSize: TYP.bedien }}>Legt die Person in der Kartei an (oder findet sie über die Mail), hält die Anfrage im Verlauf fest und legt das Follow-up „Anfrage beantworten“ an. Zählt als Marketing-Anfrage. Geantwortet wird weiter hier im Faden — es wird nichts gesendet.</span>
         {ergebnis && !ergebnis.ok && <Hinweis art="kritisch">{ergebnis.text}</Hinweis>}
-        <Feldzeile label="Name (oder Benutzername)"><input style={eingabe} value={name} maxLength={80} onChange={e => setName(e.target.value)} /></Feldzeile>
+        <Feldzeile label="Name (wenn bekannt — nicht der Benutzername)"><input style={eingabe} value={name} maxLength={80} placeholder={eintrag.gegen.name ? `z. B. der echte Name hinter @${eintrag.gegen.name}` : undefined} onChange={e => setName(e.target.value)} /></Feldzeile>
         <Feldzeile label="Firma (optional)"><input style={eingabe} value={firma} maxLength={160} onChange={e => setFirma(e.target.value)} /></Feldzeile>
         <Feldzeile label="E-Mail (optional, wenn die Person sie genannt hat)"><input style={eingabe} inputMode="email" value={email} maxLength={160} onChange={e => setEmail(e.target.value)} /></Feldzeile>
         <Feldzeile label="Worum geht es?"><textarea style={{ ...feld, minHeight: 72, fontSize: 16 }} value={text} maxLength={2800} onChange={e => setText(e.target.value)} /></Feldzeile>

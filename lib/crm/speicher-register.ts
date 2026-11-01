@@ -373,6 +373,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Kontakt-Auskunft (Art. 15) listet die Bestellungen der Person (Kennung oder Adresse, `bestellungenAuskunft`) samt Rechnungsnummer und Fassung der Bedingungen; der Haushalt sieht sie unter Markttraktion › Marketing › Anfragen › Bausteine',
     loeschfrist: 'abgelehnt 90 Tage nach der Entscheidung, geliefert 6 Jahre ab Ende des Lieferjahres (§ 257 Abs. 4 HGB) — rollend bei jeder neuen Bestellung (`nachFrist`); offene bleiben bis zur Entscheidung; Art. 17 sofort (gelieferte nur ohne Telefon und Kartei-Bezug)',
   }),
+  // ── Website-Eingänge (02.11., Prüfung A, lib/oeffentlich/eingang*.ts) — die Eingangszeile VOR der Antwort (Unterlage, Newsletter) ──
+  mit(E('website-eingang', 'Eingangszeilen der öffentlichen Website-Wege (je Instanz): Unterlage anfordern und Newsletter-Anmeldung — E-Mail, Vorname, Firma (freiwillig), Kennung der Unterlage, Newsletter-Wunsch, feste Kennungen der Anfrage im CRM, abgehakte Schritte (nur Wörter), Versuche, technischer Grund ohne Adresse. Die Daten nur, bis die Zeile verarbeitet ist (dann geleert). Art. 17: Zeilen, die die Person nennen, raus (person-weitere.ts).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (die Person fordert selbst eine Unterlage an) bzw. lit. a (Newsletter-Anmeldung, Double-Opt-in im eigenen Bestand) — die Zeile sichert nur, dass die Anforderung nicht verloren geht',
+    art15: 'entfällt eigens — die Anforderung steht nach der Verarbeitung als Anfrage an der Akte bzw. als Anmeldung (dort die Auskunft); offene Zeilen sind höchstens Minuten bis Tage alt',
+    loeschfrist: 'Daten mit der Verarbeitung geleert; fertige Zeilen (ohne Daten) nach 7 Tagen, nie fertig gewordene nach 30 Tagen (Takt und Morgenlauf); Art. 17 sofort',
+  }),
   H('newsletter-einstellungen', 'Schalter der Newsletter-Anmeldung, Absender-Postfach (Speichername eines Inhabers + Postfach-Kennung), Name, Einwilligungstext und Fassung, Adresse der Website, Abweichungen zum Verantwortlichen — kein Bezug zu Dritten.'),
   E('kennung-alias--*', 'Weiterleitung alter Kontakt-Kennungen (Kennungs-Umzug, lib/crm/kennung-alias.ts) — Zeilen der Person raus (aliasOhnePerson); ihre alten Kennungen bekommen vorher einen eigenen Grabstein.'),
   // ── Netzwerken (02.10., Erfassen) ──
@@ -1002,7 +1008,7 @@ const IN_BUSINESS: readonly string[] = [
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
-  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'vertrag-vorlagen--*', 'vertraege--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'bausteine-einstellungen', 'website-inhalt', 'baustein-bestellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'vertrag-vorlagen--*', 'vertraege--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'website-eingang', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'bausteine-einstellungen', 'website-inhalt', 'baustein-bestellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)

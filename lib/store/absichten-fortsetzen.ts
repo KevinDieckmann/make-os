@@ -41,6 +41,8 @@ const FORTSETZER: Record<AbsichtArt, () => Promise<Fortsetzer>> = {
   'angebot-anfrage': async () => (await import('@/lib/crm/formulare-server')).angebotAnfrageFortsetzen,
   // 30.10. (Kreislauf Geld): Angebot angenommen → Mandat + Liquiplan automatisch bzw. dessen Rückgängig (lib/crm/mandat-automatik-server.ts).
   'mandat-automatik': async () => (await import('@/lib/crm/mandat-automatik-server')).mandatAutomatikFortsetzen,
+  // 02.11. (Prüfung A, Fund 2): eine Anfrage — Firma, Kartei, CRM, Ereignis (lib/crm/anfrage-anlegen.ts).
+  'anfrage': async () => (await import('@/lib/crm/anfrage-anlegen')).anfrageFortsetzen,
 };
 
 export interface FortsetzenErgebnis { gefunden: number; fertig: number; weiterOffen: number; gescheitert: number; fehler: string[] }

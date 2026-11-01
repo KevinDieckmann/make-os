@@ -14,7 +14,8 @@ import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { ausfuellZeitOk } from '@/lib/kalender/buchung';
 import { emailSauber, vornameSauber, ANMELDUNG_TEXT, BESTAETIGT_TEXT, LINK_UNGUELTIG } from '@/lib/newsletter/regeln';
 import { stempelZeit } from '@/lib/newsletter/speicher';
-import { anmeldungVerarbeiten, bestaetigen, newsletterBereit, nachDerAntwort } from '@/lib/newsletter/server';
+import { bestaetigen, newsletterBereit, nachDerAntwort } from '@/lib/newsletter/server';
+import { EingangVoll, eingangFesthalten, eingangVerarbeiten } from '@/lib/oeffentlich/eingang-server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,7 +55,15 @@ export async function POST(req: Request) {
     if (!email) return antwort({ ok: false, fehler: 'Bitte eine gültige E-Mail-Adresse angeben.' }, 400);
     const vorname = vornameSauber(b.vorname);
     if (vorname === null) return antwort({ ok: false, fehler: 'Bitte im Vornamen nur Buchstaben verwenden (höchstens 60).' }, 400);
-    nachDerAntwort(() => anmeldungVerarbeiten({ email, vorname }, bereit));
+    // Prüfung A (Fund 7): erst die Eingangszeile fest speichern (für JEDE gültige Anmeldung — die Antwort bleibt dieselbe), dann die Arbeit nach der
+    // Antwort; Takt und Morgenlauf holen nach. Speicherfehler → 503 (nie geht eine Anmeldung still verloren).
+    let id: string;
+    try { id = await eingangFesthalten('newsletter', { email, vorname: vorname ?? '' }); }
+    catch (x) {
+      if (!(x instanceof EingangVoll)) console.error('[newsletter] Eingang:', x instanceof Error ? x.message.slice(0, 120) : 'Fehler');
+      return antwort({ ok: false, fehler: 'Ihre Anmeldung ließ sich gerade nicht speichern. Bitte versuchen Sie es in ein paar Minuten noch einmal.' }, 503);
+    }
+    nachDerAntwort(() => eingangVerarbeiten(id));
     return antwort({ ok: true, text: ANMELDUNG_TEXT });
   }
 

@@ -309,6 +309,7 @@ export async function bestellungAnnehmen(p: { baustein: Baustein; katalog: reado
   const b: Bestellung = {
     id: neueKennung('bb'), am, bausteinId: p.baustein.id, titel: p.baustein.titel, preisCent: p.baustein.preis, ustSatz: p.ustSatz, teile,
     besteller: p.besteller, unternehmer: true, bedingungen: { fassung: p.fassung, am }, status: 'neu',
+    anfrageIds: { kontakt: neueKennung('c'), followUp: neueKennung('fu') },
   };
   await updateJson<BestellDatei>(BESTELLUNGEN, cur => ({ bestellungen: [...nachFrist(Array.isArray(cur?.bestellungen) ? cur!.bestellungen : [], jetzt), b] }));
   await protokolliere(BESTELLUNGEN, [{ op: 'neu', id: b.id, felder: ['bausteinId', 'besteller', 'bedingungen'] }], { art: 'system' });
@@ -334,7 +335,7 @@ async function anfrageUndEntwurf(id: string, wer: Wer, jetzt: Date): Promise<Bes
     const s = b.besteller;
     const r = await anfrageAnlegen(
       { neu: { vorname: s.vorname, nachname: s.nachname, email: s.email, firma: s.firma, ...(s.telefon ? { telefon: s.telefon } : {}) }, kanal: 'website', text: anfrageText(b.titel, b.preisCent) },
-      { person: await erfassendePerson(), wer: { art: 'system' }, oeffentlich: true },
+      { person: await erfassendePerson(), wer: { art: 'system' }, oeffentlich: true, ...(b.anfrageIds ? { ids: b.anfrageIds } : {}) },
     ).catch(e => ({ ok: false as const, fehler: e instanceof Error ? e.message : 'Fehler' }));
     if (!r.ok) {
       const grund = `Kartei: ${r.fehler.slice(0, 160)}`;
@@ -343,7 +344,7 @@ async function anfrageUndEntwurf(id: string, wer: Wer, jetzt: Date): Promise<Bes
     }
     // Nur bei einer NEUEN Person hängt die Rechnung auch an ihrer Firma — eine vorhandene Person (Adresse unbestätigt) kann zu einer anderen Firma gehören.
     const firmaId = r.bau.neuePerson ? r.bau.kontakt.firmaId : undefined;
-    b = await bestellungAendern(id, x => ({ ...x, kontaktId: r.bau.kontakt.id, ...(r.bau.unbestaetigt ? { unbestaetigt: true as const } : {}), ...(firmaId ? { kundeFirmaId: firmaId } : {}), problem: undefined }));
+    b = await bestellungAendern(id, x => ({ ...x, kontaktId: r.bau.kontakt.id, followUpId: r.bau.followUp.id, ...(r.bau.unbestaetigt ? { unbestaetigt: true as const } : {}), ...(firmaId ? { kundeFirmaId: firmaId } : {}), problem: undefined }));
     if (!b) return null;
   }
   if (!b.rechnungId) {
@@ -379,16 +380,78 @@ async function anfrageUndEntwurf(id: string, wer: Wer, jetzt: Date): Promise<Bes
  * und Beträge — der Titel geht so auch an Telegram). Wirft nie weiter als ins Log.
  */
 export async function eingangVorbereiten(id: string, lage: WebsiteLage | null, jetzt = new Date()): Promise<void> {
-  const b = await anfrageUndEntwurf(id, { art: 'system' }, jetzt);
-  if (!b) return;
-  if (!b.bestaetigung && lage) {
-    const { websiteMailSenden } = await import('@/lib/oeffentlich/website-post');
-    const m = eingangMail({ marke: lage.marke, verantwortlich: lage.verantwortlich, datenschutzLink: lage.datenschutzLink, vorname: b.besteller.vorname, titel: b.titel, b: betraege(b.preisCent, b.ustSatz) });
-    const r = await websiteMailSenden({ an: b.besteller.email, vorname: b.besteller.vorname, betreff: m.betreff, text: m.text, art: 'bestellung', lage }, jetzt);
-    await bestellungAendern(id, x => ({ ...x, bestaetigung: { am: jetzt.toISOString(), ok: r.ok, ...(r.ok ? {} : { grund: r.grund }) } }));
+  // Prüfung A (Fund 3): wirft ein Schritt (Kartei, Rechnung, Versand), steht die Bestellung trotzdem in der Glocke — als „problem“ an der Bestellung,
+  // der Morgenlauf holt nach (`bestellungenNachholen`). Vorher endete das nur im Log, die Glocke kam nie.
+  try {
+    const b = await anfrageUndEntwurf(id, { art: 'system' }, jetzt);
+    if (b && !b.bestaetigung && lage) {
+      const { websiteMailSenden } = await import('@/lib/oeffentlich/website-post');
+      const m = eingangMail({ marke: lage.marke, verantwortlich: lage.verantwortlich, datenschutzLink: lage.datenschutzLink, vorname: b.besteller.vorname, titel: b.titel, b: betraege(b.preisCent, b.ustSatz) });
+      const r = await websiteMailSenden({ an: b.besteller.email, vorname: b.besteller.vorname, betreff: m.betreff, text: m.text, art: 'bestellung', lage }, jetzt);
+      await bestellungAendern(id, x => ({ ...x, bestaetigung: { am: jetzt.toISOString(), ok: r.ok, ...(r.ok ? {} : { grund: r.grund }) } }));
+    }
+  } catch (x) {
+    const grund = `Eingang: ${(x instanceof Error ? x.message : 'Fehler').slice(0, 160)}`;
+    console.warn('[bausteine] Eingang:', grund);
+    await bestellungAendern(id, y => ({ ...y, problem: grund })).catch(() => null);
+    const { websiteHinweisMelden } = await import('@/lib/oeffentlich/eingang-server');
+    await websiteHinweisMelden('eingang').catch(() => null);
   }
+  await bestellungEingangMelden(id, jetzt);
+}
+
+/** Glocke „Neue Baustein-Bestellung“ an den Haushalt — genau einmal je Bestellung (`eingangGemeldet`, in der Sperre gesetzt). Wirft nie. */
+async function bestellungEingangMelden(id: string, jetzt: Date): Promise<void> {
+  let neu = false;
+  await bestellungAendern(id, x => (x.eingangGemeldet || x.status !== 'neu' ? null : (neu = true, { ...x, eingangGemeldet: jetzt.toISOString() }))).catch(() => null);
+  if (!neu) return;
   const [{ haushaltsSpeicher }, { melde }] = await Promise.all([import('@/lib/aufgaben/sicht'), import('@/lib/meldungen/melden')]);
   for (const an of await haushaltsSpeicher().catch(() => [] as string[])) await melde({ an, art: 'angebot', titel: 'Neue Baustein-Bestellung — wartet auf deine Freigabe', link: WEG.marketing('anfragen') });
+}
+
+/**
+ * Morgenlauf (Prüfung A, Fund 3): neue Bestellungen, deren Vorbereitung nicht durchkam (kein Kontakt, kein Entwurf, ein Problem) oder deren Glocke fehlt,
+ * noch einmal vorbereiten — idempotent (feste Kennungen der Anfrage, Schritte am Eintrag). Erst nach 10 Minuten (die Arbeit nach der Antwort hatte
+ * ihre Chance). Liefert: nachgeholt, weiter offen.
+ */
+export async function bestellungenNachholen(jetzt = new Date()): Promise<{ nachgeholt: number; offen: number }> {
+  const alt = jetzt.getTime() - 10 * 60_000;
+  const kandidaten = (await bestellungenLaden()).filter(b => b.status === 'neu' && !inArbeitLaeuft(b, jetzt) && Date.parse(b.am) <= alt && (!b.kontaktId || !b.rechnungId || !!b.problem || !b.eingangGemeldet));
+  if (!kandidaten.length) return { nachgeholt: 0, offen: 0 };
+  const { websiteLage } = await import('@/lib/oeffentlich/website-post');
+  const lage = await websiteLage().catch(() => null);
+  let nachgeholt = 0, offen = 0;
+  for (const k of kandidaten) {
+    await eingangVorbereiten(k.id, lage, jetzt);
+    const b = (await bestellungenLaden()).find(x => x.id === k.id);
+    if (b && b.kontaktId && b.rechnungId && !b.problem) nachgeholt++; else offen++;
+  }
+  return { nachgeholt, offen };
+}
+
+/** Bestellungen, die im CRM noch fehlen (für den Head of IT, nur Zahl): neu, älter als 10 Minuten, ohne Kontakt. Wirft nie. */
+export async function bestellungenOhneCrm(jetzt = new Date()): Promise<number> {
+  const alt = jetzt.getTime() - 10 * 60_000;
+  return (await bestellungenLaden().catch(() => [] as Bestellung[])).filter(b => b.status === 'neu' && !b.kontaktId && Date.parse(b.am) <= alt).length;
+}
+
+/**
+ * Das Follow-up „Anfrage beantworten — Website“ der Bestellung schließen (Prüfung A, Fund 11): bei der Lieferung (beantwortet) bzw. der Ablehnung.
+ * Nur dieses eine (Kennung an der Bestellung) und nur, solange es offen ist — ein „Anfrage prüfen“ (Adresse unbestätigt) ebenso, denn die Freigabe
+ * IST die Prüfung. Wirft nie.
+ */
+async function anfrageFollowUpSchliessen(b: Bestellung, ergebnis: string, wer: Wer, jetzt: Date): Promise<void> {
+  const fuId = b.followUpId ?? b.anfrageIds?.followUp;
+  if (!fuId) return;
+  try {
+    const { aendereCrm } = await import('@/lib/crm/speicher');
+    const am = jetzt.toISOString();
+    await aendereCrm(c => {
+      const f = (c.followups ?? []).find(x => x.id === fuId);
+      if (!f || f.status !== 'offen') return c;
+      return { ...c, followups: (c.followups ?? []).map(x => (x.id === fuId ? { ...x, status: 'erledigt' as const, erledigtAm: am, ergebnis: ergebnis.slice(0, 60), geaendert: am } : x)) };
+    }, wer);
+  } catch (x) { console.warn('[bausteine] Follow-up nicht geschlossen:', x instanceof Error ? x.message.slice(0, 120) : 'Fehler'); }
 }
 
 // ── Freigabe („Freigeben und senden“) ───────────────────────────────────────────────────────────────────────────────────────────
@@ -468,6 +531,7 @@ export async function bestellungFreigeben(p: { id: string; person: string; wer: 
     }
     const fertig = (await bestellungAendern(p.id, x => ({ ...x, status: 'geliefert', geliefert: { am: jetzt.toISOString(), von: p.person, ueber: x.versandt?.ueber ?? lage.ueber }, inArbeit: undefined, problem: undefined })))!;
     await protokolliere(BESTELLUNGEN, [{ op: 'geaendert', id: p.id, felder: ['status', 'geliefert', 'versandt', 'rechnungId'] }], p.wer);
+    await anfrageFollowUpSchliessen(fertig, 'Bestellung geliefert', p.wer, jetzt);
     return { bestellung: fertig, schon: false, nummer: r.nummer };
   } catch (x) {
     await loslassen().catch(() => null);
@@ -532,6 +596,7 @@ export async function bestellungAblehnen(p: { id: string; person: string; wer: W
   }
   const fertig = (await bestellungAendern(p.id, x => ({ ...x, status: 'abgelehnt', abgelehnt: { am: jetzt.toISOString(), von: p.person, ...(grund ? { grund } : {}), ...(absage ? { absage: true } : {}) }, inArbeit: undefined })))!;
   await protokolliere(BESTELLUNGEN, [{ op: 'geaendert', id: p.id, felder: ['status', 'abgelehnt'] }], p.wer);
+  await anfrageFollowUpSchliessen(fertig, 'Bestellung abgelehnt', p.wer, jetzt);
   return fertig;
 }
 

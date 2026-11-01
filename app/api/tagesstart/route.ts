@@ -178,6 +178,21 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Fulfillment', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
+  // 0d4) Website-Eingänge (02.11., Prüfung A „Eingänge und Datenbasis“): was von der Website kam und nicht ankam — offene Eingangszeilen (Unterlage,
+  //      Newsletter), Check-Leads ohne CRM, Bestellungen ohne Vorbereitung, Newsletter-Bestätigungen — noch einmal (idempotent), dazu die Glocke
+  //      „Terminanfrage verfallen, ohne Reaktion“. Bleibt etwas offen: EINE neutrale Glocke an die Marketing-Verantwortliche.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Website-Eingänge', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { websiteEingaengeNachholen } = await import('@/lib/oeffentlich/eingang-server');
+      const w = await websiteEingaengeNachholen();
+      const was = [w.nachgeholt ? `${w.nachgeholt} nachgeholt` : '', w.offen ? `${w.offen} weiter offen` : '', w.verfallen ? `${w.verfallen} Terminanfrage${w.verfallen === 1 ? '' : 'n'} verfallen` : ''].filter(Boolean).join(' · ');
+      schritte.push({ name: 'Website-Eingänge', ok: !w.offen, info: was || 'alles angekommen' });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Website-Eingänge', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
   // 0e) CRM-Papierkorb der übrigen Listen (04.10., lib/crm/ablage.ts): Firmen, Mandate, Events, Segmente, Beiträge, Ausgaben,
   //     Kampagnen — älter als 30 Tage und ohne Verweise → endgültig; Events mit Kalender-Termin/Übergaben nur von Hand.
   try {

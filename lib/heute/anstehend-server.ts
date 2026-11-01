@@ -36,12 +36,12 @@ import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 const sicher = async <T>(p: Promise<T>, sonst: T): Promise<T> => { try { return await p; } catch { return sonst; } };
 
 /** Offene Buchungsanfragen der eigenen Seiten (Status „angefragt“ — „vorläufig“ wartet noch auf den Gast). */
-async function buchungenLesen(person: string): Promise<ABuchung[]> {
-  const { ladeBuchungBestand } = await import('@/lib/kalender/buchung-speicher');
-  const b = await ladeBuchungBestand();
+async function buchungenLesen(person: string, jetzt = new Date()): Promise<ABuchung[]> {
+  const [{ ladeBuchungBestand }, { anfrageWartet }] = await Promise.all([import('@/lib/kalender/buchung-speicher'), import('@/lib/kalender/buchung')]);
+  const b = await ladeBuchungBestand(jetzt);
   const seiten = new Map(b.seiten.filter(s => s.person === person).map(s => [s.id, s]));
   return b.buchungen.filter(x => x.status === 'angefragt' && seiten.has(x.seiteId))
-    .map(x => ({ id: x.id, titel: seiten.get(x.seiteId)!.titel, start: x.start, href: '/os/kalender?buchungen=1' }))
+    .map(x => { const w = anfrageWartet(x.angefragtAm ?? x.statusAm, x.start, jetzt); return { id: x.id, titel: seiten.get(x.seiteId)!.titel, start: x.start, href: '/os/kalender?buchungen=1', ...(w.lange ? { lange: true as const } : {}), ...(w.bald ? { bald: true as const } : {}) }; })
     .sort((a, c) => a.start.localeCompare(c.start));
 }
 
@@ -88,7 +88,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     sicher(kontakteFuerVerarbeitung(), []),
     sicher(ladeCrm(), null),
     sicher(fristenLesen(heute, tagPlus(heute, Math.max(2, vorlauf + 1)), heute, person), []),
-    sicher(buchungenLesen(person), []),
+    sicher(buchungenLesen(person, jetzt), []),
     sicher(vorschlaegeZaehlen(person), { kalender: 0, gesamt: 0 }),
     // Ab heute; 61 Tage, damit ein längerer Vorlauf eines Wichtigen Tages (Familie, ≤ 60) greift — `geburtstageVorlauf` schneidet.
     sicher(geburtstageIm({ von: heute, bis: tagPlus(heute, 61) }, person), []),

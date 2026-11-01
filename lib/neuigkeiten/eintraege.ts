@@ -33,6 +33,25 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-11',
+    datum: '2026-11-02',
+    titel: 'Keine Anfrage geht mehr verloren',
+    kurz: 'Was über die Website kommt, wird zuerst sicher gespeichert und notfalls am Morgen nachgeholt. Liegt eine Terminanfrage zu lange, erinnert die Glocke.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Unterlagen, Newsletter-Anmeldungen, der Check und Bestellungen von der Website werden zuerst fest gespeichert. Klappt etwas nicht, versucht MAKE OS es am Morgen noch einmal und meldet sich in der Glocke.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Eine Terminanfrage, die länger als einen Tag wartet oder deren Termin bald ist, meldet sich in der Glocke. Verfällt sie ohne Antwort, sagt die Glocke es dir.', bereich: 'business', weg: '/os/kalender?buchungen=1' },
+        { text: 'Schreibt eine Person, deren Daten gesperrt sind, landet ihre Nachricht unter Datenschutz zum Prüfen — statt zu verschwinden.', bereich: 'business', weg: WEG.stammdaten('datenschutz') },
+        { text: 'Aus einem Instagram-Kommentar wird nur einmal eine Anfrage. Danach führt der Knopf direkt zur Person.', bereich: 'business', weg: WEG.marketing('social') },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Eine Anfrage ohne Rückmeldung gilt nicht mehr als beantwortet. Bei einer Bestellung schließt die Lieferung die offene Rückmeldung.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Lange Nachrichten werden beim Übernehmen nicht mehr gekürzt, und eine Anfrage wird beim zweiten Senden nicht doppelt angelegt.', bereich: 'business' },
+        { text: 'Bei einer Terminbuchung wird die Firma jetzt mit der Person verknüpft, und eine Empfehlung zählt als Empfehlung.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-9',
     datum: '2026-11-02',
     titel: 'Marketing-Zahlen stimmen',

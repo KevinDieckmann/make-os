@@ -4,7 +4,8 @@
 // GET  ?id=<kennung>  → { ok, aktiv, titel, newsletter: { wortlaut, fassung } | null, hinweis: { zeilen, link } } — unbekannt → 404.
 // POST { id, vorname, email, firma?, newsletter?, newsletterFassung?, webseite (Honigtopf, leer) }
 //      → IMMER dieselbe Antwort { ok: true, text } — egal ob die Adresse bekannt, gesperrt, eingeschränkt oder über der Grenze ist; die Arbeit
-//        (Mail mit Download-Links, Anfrage im CRM, Newsletter-Anmeldung) läuft NACH der Antwort (lib/unterlagen/server.ts `anforderungVerarbeiten`).
+//        (Mail mit Download-Links, Anfrage im CRM, Newsletter-Anmeldung) läuft NACH der Antwort (lib/unterlagen/server.ts `anforderungVerarbeiten`) —
+//        seit 02.11. aus einer fest gespeicherten Eingangszeile (lib/oeffentlich/eingang-server.ts; Takt und Morgenlauf holen Offenes nach).
 // Aktiv nur mit Website-Absender (verbunden), Verantwortlichem und Adresse der Website (lib/oeffentlich/website-post.ts `websiteLage`) — sonst
 // `aktiv: false` und POST 404 (die Website zeigt dann einen Ersatz). Schutz: Drossel je Netz (Lesen großzügig, Anfordern knapp), Grenze je Adresse
 // (3 Mails je Tag, dieselbe Antwort), Honigtopf, Körper ≤ 8 KB (413), Fassung des Newsletter-Wortlauts muss zur Seite passen (409).
@@ -14,7 +15,8 @@ import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { emailSauber, vornameSauber, zeileSauber } from '@/lib/newsletter/regeln';
 import { ANFORDERUNG_TEXT, NICHT_DA_TEXT, UNTERLAGE_ID_OK, unterlageHinweis } from '@/lib/unterlagen/regeln';
-import { KatalogKaputt, anforderungVerarbeiten, unterlageVon } from '@/lib/unterlagen/server';
+import { KatalogKaputt, unterlageVon } from '@/lib/unterlagen/server';
+import { EingangVoll, eingangFesthalten, eingangVerarbeiten } from '@/lib/oeffentlich/eingang-server';
 import { nachDerAntwort, websiteLage } from '@/lib/oeffentlich/website-post';
 
 export const runtime = 'nodejs';
@@ -84,6 +86,15 @@ export async function POST(req: Request) {
   const { newsletterBereit } = await import('@/lib/newsletter/server');
   const nl = b.newsletter === true ? await newsletterBereit().catch(() => null) : null;
   if (b.newsletter === true && (!nl || b.newsletterFassung !== nl.fassung)) return antwort({ ok: false, fehler: 'Der Text zum Newsletter hat sich geändert. Bitte laden Sie die Seite neu.' }, 409);
-  nachDerAntwort(() => anforderungVerarbeiten({ email, vorname, firma, newsletter: !!nl }, u, lage), 'unterlagen');
+  // Prüfung A (Fund 7): erst die Eingangszeile fest speichern (für JEDE gültige Anforderung — die Antwort bleibt dieselbe), dann die Arbeit nach der
+  // Antwort; scheitert sie oder bricht ab, holen Takt und Morgenlauf nach. Ein Speicherfehler sagt es offen (503) — nie geht eine Anforderung still verloren.
+  let id: string;
+  try { id = await eingangFesthalten('unterlage', { email, vorname, ...(firma ? { firma } : {}), unterlageId: u.id, newsletter: !!nl }); }
+  catch (x) {
+    if (x instanceof EingangVoll) return antwort({ ok: false, fehler: 'Gerade sind keine Anforderungen möglich — bitte später noch einmal.' }, 503);
+    console.error('[unterlagen] Eingang:', x instanceof Error ? x.message.slice(0, 120) : 'Fehler');
+    return antwort({ ok: false, fehler: 'Ihre Anforderung ließ sich gerade nicht speichern. Bitte versuchen Sie es in ein paar Minuten noch einmal.' }, 503);
+  }
+  nachDerAntwort(() => eingangVerarbeiten(id), 'unterlagen');
   return antwort({ ok: true, text: ANFORDERUNG_TEXT });
 }

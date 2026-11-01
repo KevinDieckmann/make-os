@@ -35,7 +35,8 @@ export interface ATermin { id: string; titel: string; start: string; ende: strin
 export interface AFrist { id: string; art: Frist['art'] | 'event'; tag: string; titel: string; unter?: string; href: string; inTagen: number; kuendigung?: true; business?: true }
 export interface AFollowup { id: string; text: string; name: string; faellig: string; uhrzeit?: string; tageUeber: number; quelle: string; href: string }
 export interface ANachbereiten { kontaktId: string; name: string; titel: string; tag: string; zeit?: string; href: string }
-export interface ABuchung { id: string; titel: string; start: string; href: string }
+/** `lange`/`bald` (02.11., Prüfung A Fund 1): wartet seit über 24 h bzw. der Termin ist in unter 24 h — die Glocke erinnert (abgeleitet). */
+export interface ABuchung { id: string; titel: string; start: string; href: string; lange?: true; bald?: true }
 export interface AGeburtstag {
   id: string; name: string; tag: string; alter?: number; href: string; herkunft: Geburtstag['herkunft']; kontaktId?: string; menschId?: string;
   /** Vorschlag: Geschenk-Aufgabe (CRM) bzw. „Geschenk vormerken“ (Familie) mit dieser Deadline (10 Tage vorher, frühestens heute). */

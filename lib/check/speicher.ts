@@ -63,7 +63,9 @@ export interface CheckSitzung {
   ergebnis?: CheckErgebnisStand;
   /** Verweis ins CRM (Anfrage über die Website) — `abgelehnt` z. B. bei Art. 18, nie an den Teilnehmer. */
   /** `unbestaetigt` (31.10.): die Mail traf eine vorhandene Person — nur angehängt, „Anfrage prüfen — Adresse unbestätigt“. */
-  crm?: { status: 'ok' | 'abgelehnt' | 'fehler'; am: string; kontaktId?: string; followUpId?: string; grund?: string; unbestaetigt?: true };
+  crm?: { status: 'ok' | 'abgelehnt' | 'fehler'; am: string; kontaktId?: string; followUpId?: string; grund?: string; unbestaetigt?: true; /** Art. 18 (02.11.): als Betroffenenantrag abgelegt. */ eingeschraenkt?: true };
+  /** Feste Kennungen der Anfrage im CRM (02.11., Prüfung A) — beim Kontakt-Schritt vergeben; ein zweiter Versuch (Morgenlauf, „noch einmal“) legt nichts doppelt an. */
+  anfrageIds?: { kontakt: string; followUp: string };
   /** Bericht per E-Mail (31.10., lib/check/bericht-server.ts): genau einmal je Sitzung, sobald Ergebnis UND Kontakt da sind. Nur intern sichtbar
    *  (`ueber` = Absender maskiert, `grund` ohne Adresse) — nie an den Teilnehmer. `laeuft` = beansprucht, Versand nach der Antwort. */
   bericht?: CheckBericht;

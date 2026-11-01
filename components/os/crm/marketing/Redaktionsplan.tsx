@@ -22,6 +22,7 @@
 // 04.10. (Kevin: „alles anpassbar“): jede Beitragszeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter
 // Archiv, zurückholbar) und Löschen (Papierkorb 30 Tage, Rückgängig; steckt er in einer Ausgabe → Rückfrage).
 
+import { neueKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { anfrageKanalAusBeitrag } from '@/lib/crm/anfragen';
@@ -290,7 +291,7 @@ function BeitragKarte({ b, api, ablage, einstellung, heute, zuKontakt, schliesse
     // 5.10 (08.10.): „Anfrage“ läuft über DEN Anfrage-Weg (/api/crm/anfrage) — Verlauf, Follow-up „beantworten“, Lead, Einwilligung
     // „Antwort auf Anfrage“ und die Wirkung am Beitrag in einem. Vorher entstand nur die Wirkung, zählte aber im Trichter.
     if (art === 'anfrage') {
-      const r = await fetch('/api/crm/anfrage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'anlegen', kontaktId, kanal: anfrageKanalAusBeitrag(b.kanal), bezug: { art: 'beitrag', id: b.id }, text: notiz.trim() || `Anfrage auf den Beitrag „${b.titel}“` }) })
+      const r = await fetch('/api/crm/anfrage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'anlegen', anfrageId: neueKennung('anf'), kontaktId, kanal: anfrageKanalAusBeitrag(b.kanal), bezug: { art: 'beitrag', id: b.id }, text: notiz.trim() || `Anfrage auf den Beitrag „${b.titel}“` }) })
         .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung — nichts eingetragen.' })) as { ok?: boolean; fehler?: string; text?: string; hinweis?: string };
       setHinweis(r.ok ? [r.text ?? `Anfrage von ${name(kontaktId)} eingetragen.`, r.hinweis].filter(Boolean).join(' ') : r.fehler ?? 'Nicht eingetragen.');
       if (r.ok) { setNotiz(''); void api.laden(true); }

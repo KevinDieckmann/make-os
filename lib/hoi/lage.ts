@@ -113,6 +113,26 @@ export interface InnenLage {
   laufSpur?: LaufSpurLage | null;
   /** Prozesse (21.10., C1 „Laufen intern“, Punkt 88): Läufe im Motor — nur Zähler (Fehler, hängende, überfällige Freigaben, Flutschutz, Pausen). null = keine Läufe. */
   prozesse?: ProzesseLageHoi | null;
+  /** Website-Eingänge (02.11., Prüfung A): ohne CRM (Check-Leads, Bestellungen), wartende und gescheiterte Eingangszeilen — nur Zahlen. */
+  websiteEingang?: WebsiteEingangLageHoi | null;
+}
+
+/** Website-Eingänge (02.11.) — dieselbe Form wie lib/oeffentlich/eingang-server.ts `websiteEingangLage` (nur Zahlen, nie Adressen oder Namen). */
+export interface WebsiteEingangLageHoi { ohneCrm: number; wartend: number; gescheitert: number }
+
+/**
+ * „Website-Eingänge ohne CRM“ (02.11., Prüfung A „Eingänge und Datenbasis“): rot, wenn ein Eingang alle Versuche verbraucht hat oder ein Check-Lead bzw.
+ * eine Bestellung nicht im CRM steht; gelb, wenn Eingänge länger als 10 Minuten warten (Takt/Morgenlauf holen nach). Nichts da → kein Befund. Rein.
+ */
+export function websiteEingangBefunde(w: WebsiteEingangLageHoi | null | undefined): Befund[] {
+  if (!w || (!w.ohneCrm && !w.wartend && !w.gescheitert)) return [];
+  const rot = w.ohneCrm > 0 || w.gescheitert > 0;
+  return [{
+    id: 'website-eingang', bereich: 'app', label: 'Website-Eingänge ohne CRM', ampel: rot ? 'rot' : 'gelb',
+    wert: [w.ohneCrm ? `${w.ohneCrm} ohne CRM` : '', w.gescheitert ? `${w.gescheitert} gescheitert` : '', w.wartend ? `${w.wartend} wartend` : ''].filter(Boolean).join(' · '),
+    satz: rot ? 'Anfragen von der Website stehen nicht in der Markttraktion — Marketing › Anfragen prüfen; der Morgenlauf versucht es noch einmal'
+      : 'Eingänge der Website warten auf die Verarbeitung — Takt und Morgenlauf holen sie nach',
+  }];
 }
 
 /** Prozesse (21.10., C1) — dieselbe Form wie lib/prozesse/lauf-regeln.ts `laufLage` (nur Zahlen, nie Kennungen oder Namen). */
@@ -758,6 +778,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...ereignisBefunde(innen.ereignisse));
   b.push(...laufSpurBefunde(innen.laufSpur));
   b.push(...prozesseBefunde(innen.prozesse));
+  b.push(...websiteEingangBefunde(innen.websiteEingang));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));
   b.push(...kettenBefunde(innen.protokollKette, jetzt));

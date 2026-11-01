@@ -17,6 +17,7 @@
 // Detail-Spalte rollt); der Kontext steht nur daneben, wenn er etwas zeigt UND das Gespräch breit genug ist (`KONTEXT_DANEBEN_AB`), sonst klappbar
 // darunter. Ohne Person in der Kartei: eine kurze Zeile oben mit „Kontakt anlegen“ statt einer leeren Spalte.
 
+import { neueKennung } from '@/lib/kennung';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
@@ -119,7 +120,7 @@ export function GespraechAnsicht({ id, person, meldung, onGeaendert, onZurueck, 
   const kontaktAnlegen = async () => {
     const n = [...a.nachrichten].reverse().find(x => !x.vonUns);
     // 1.9 (09.10.): der Server prüft das Postfach (nur Business) über `gespraechId`; die Firma kommt aus der Mail-Domain (`firmaVorschlag`).
-    const r = await senden('/api/crm/anfrage', { aktion: 'anlegen', gespraechId: g.id, ...kontaktAusGespraech({ ...g, gegenueber: { ...g.gegenueber, name: n?.von.name ?? g.gegenueber.name } }, (n?.text ?? '').slice(0, 300), heute) });
+    const r = await senden('/api/crm/anfrage', { aktion: 'anlegen', anfrageId: neueKennung('anf'), gespraechId: g.id, ...kontaktAusGespraech({ ...g, gegenueber: { ...g.gegenueber, name: n?.von.name ?? g.gegenueber.name } }, (n?.text ?? '').slice(0, 300), heute) });
     meldung(r.d.ok ? `${String(r.d.text ?? 'Kontakt angelegt.')}${wa ? ' Jetzt „Zuordnen“, damit das Gespräch im Verlauf der Akte steht.' : ''}` : String(r.d.fehler ?? 'Kontakt nicht angelegt.'));
     if (r.d.ok) { await laden(); onGeaendert(); }
   };

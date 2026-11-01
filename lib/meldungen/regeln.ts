@@ -293,6 +293,8 @@ export interface AnstehendFuerGlocke {
   vorschlaege?: { kalender: number; jeBereich?: { privat: { kalender: number }; business: { kalender: number } } };
   /** Danke-Mails, die bereitliegen (Netzwerken, 02.10.) — je Event eine Zeile mit der Zahl. */
   danke?: readonly { id: string; n: number; eventTitel: string; href: string }[];
+  /** Offene Terminanfragen der eigenen Seiten (02.11., Prüfung A Fund 1) — erinnert wird nur bei `lange` (> 24 h) bzw. `bald` (Termin < 24 h). */
+  buchungen?: readonly { id: string; titel: string; start: string; href: string; lange?: true; bald?: true }[];
 }
 
 /**
@@ -324,6 +326,13 @@ export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; je
   if (a.vorschlaege?.kalender) dazu('vorschlag', `kalender-${a.vorschlaege.kalender}`, `${a.vorschlaege.kalender} Kalender-Vorschl${a.vorschlaege.kalender === 1 ? 'ag' : 'äge'} von ZOE ${a.vorschlaege.kalender === 1 ? 'wartet' : 'warten'} auf Freigabe`, stapelLink(a.vorschlaege));
   // Die Zahl steckt in der Kennung: wird eine Danke-Mail verschickt oder kommt eine dazu, meldet sich die Glocke neu.
   for (const d of a.danke ?? []) if (d.n > 0) dazu('danke', `${d.id}-${d.n}`, `${d.n} Danke-Mail${d.n === 1 ? '' : 's'} bereit — ${d.eventTitel}`, d.href);
+  // Terminanfragen, die zu lange warten (Prüfung A, Fund 1): die gespeicherte Glocke „Neue Terminanfrage“ kam beim Eingang — hier die Erinnerung,
+  // ohne Namen (nur Titel der Buchungsseite und Zeit). Eine Kennung je Anfrage und Anlass: „bald“ meldet sich auch nach „lange“ noch einmal.
+  for (const b of a.buchungen ?? []) {
+    const wann = `${b.start.slice(8, 10)}.${b.start.slice(5, 7)}. ${b.start.slice(11, 16)}`;
+    if (b.bald) dazu('frist', `buchung-${b.id}-bald`, `Terminanfrage „${b.titel}“ am ${wann} noch nicht beantwortet — der Termin ist in unter 24 Stunden`, b.href, true);
+    else if (b.lange) dazu('frist', `buchung-${b.id}-lange`, `Terminanfrage „${b.titel}“ (${wann}) wartet seit über 24 Stunden auf deine Entscheidung`, b.href, true);
+  }
   for (const f of a.followups) dazu('followup', f.id, `${f.tageUeber > 0 ? `Überfällig seit ${f.tageUeber} ${f.tageUeber === 1 ? 'Tag' : 'Tagen'}` : 'Heute'}: ${f.text}${f.name && !f.text.includes(f.name) ? ` (${f.name})` : ''}`, f.href);
   return raus;
 }

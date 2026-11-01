@@ -90,42 +90,88 @@ export async function dateiLesen(u: Unterlage, art: UnterlageArt): Promise<{ inh
 
 // ── Anfordern (nach der Antwort) ────────────────────────────────────────────────────────────────────────────────────────────────
 
-export type AnforderungErgebnis = 'gesendet' | 'versandFehler' | 'grenze' | 'eingeschraenkt' | 'gesperrt';
+export type AnforderungErgebnis = 'gesendet' | 'versandFehler' | 'grenze' | 'eingeschraenkt' | 'gesperrt' | 'ohneAbsender';
 
 export interface Anforderung { email: string; vorname: string; firma: string; newsletter: boolean }
 
 /**
- * Eine Anforderung verarbeiten — NACH der Antwort an den Gast (die Antwort ist für jede Adresse dieselbe, auch in der Zeit). Reihenfolge:
- * Grenze je Adresse (darüber: nichts, auch keine Anfrage) → Art. 18 (nichts) → Werbesperre/Sperrliste (keine Mail, aber die Anfrage mit Vermerk
- * „nicht verschickt, bitte klären“) → Mail → Anfrage im CRM mit dem Ergebnis im Text → Newsletter-Wunsch in die Anmeldung (Double-Opt-in, Sperren dort).
+ * Fortschritt einer Anforderung (02.11., Prüfung A): abgehakte Schritte (`mail`, `crm`, `newsletter`) mit ihrem Ergebnis — die Eingangszeile
+ * (lib/oeffentlich/eingang-server.ts) hält sie fest, damit ein zweiter Versuch keine Mail doppelt schickt und keine Anfrage doppelt anlegt.
  */
-export async function anforderungVerarbeiten(a: Anforderung, u: Unterlage, lage: WebsiteLage, jetzt = new Date()): Promise<AnforderungErgebnis> {
+export interface Fortschritt { erledigt: Readonly<Record<string, string>>; merke(name: string, wert: string): Promise<void>; ids?: { kontakt: string; followUp: string } }
+const imSpeicher = (): Fortschritt => { const e: Record<string, string> = {}; return { erledigt: e, merke: async (n, w) => { e[n] = w; } }; };
+
+/** Die Kartei ist gerade nicht lesbar — die Anforderung bleibt offen, Takt bzw. Morgenlauf versuchen es noch einmal. */
+export class KarteiUnklar extends Error {}
+
+/**
+ * Eine Anforderung verarbeiten — NACH der Antwort an den Gast (die Antwort ist für jede Adresse dieselbe, auch in der Zeit). Reihenfolge:
+ * Grenze je Adresse (darüber: nichts, auch keine Anfrage) → Art. 18 (keine Mail, keine Verarbeitung — die Anforderung als Betroffenenantrag, Glocke an
+ * den Inhaber) → Werbesperre/Sperrliste (keine Mail, aber die Anfrage mit Vermerk „nicht verschickt, bitte klären“) → Mail → Anfrage im CRM mit dem
+ * Ergebnis im Text → Newsletter-Wunsch in die Anmeldung (Double-Opt-in, Sperren dort).
+ * Seit 02.11. (Prüfung A): `lage` darf fehlen (Absender inzwischen aus) — dann keine Mail, aber die Anfrage mit Vermerk + Glocke „Unterlage nicht
+ * verschickt“ (Fund 10); Kartei nicht lesbar → `KarteiUnklar` (wird nachgeholt); ein Fehler im CRM wirft (statt nur ins Log) — die Eingangszeile
+ * zählt den Versuch, die Glocke meldet ihn (Fund 3). Öffentliche Strecke: eine vorhandene Person bekommt nur „Adresse unbestätigt“ (Fund 4).
+ */
+export async function anforderungVerarbeiten(a: Anforderung, u: Unterlage, lage: WebsiteLage | null, jetzt = new Date(), f: Fortschritt = imSpeicher()): Promise<AnforderungErgebnis> {
   const { websiteMailSenden, websiteLink } = await import('@/lib/oeffentlich/website-post');
-  const token = linkToken(u.id, jetzt);
-  const links = u.dateien.map(d => ({ name: d.name, art: d.art, link: downloadLink(lage.website, token, d.art) }));
-  const mail = unterlageMail({ marke: lage.marke, ...(a.vorname ? { vorname: a.vorname } : {}), titel: u.titel, links, seite: websiteLink(lage.website, u.seite) ?? lage.website, verantwortlich: lage.verantwortlich, datenschutzLink: lage.datenschutzLink });
-  const r = await websiteMailSenden({ an: a.email, vorname: a.vorname, betreff: mail.betreff, text: mail.text, art: 'unterlage', lage }, jetzt);
-  // Über der Grenze, Art. 18 oder Kartei nicht lesbar: nichts, auch keine Anfrage.
-  if (!r.ok && (r.grund === 'grenze' || r.grund === 'eingeschraenkt' || r.grund === 'unklar' || r.grund === 'adresse' || r.grund === 'aus')) return r.grund === 'grenze' ? 'grenze' : 'eingeschraenkt';
-  const ergebnis: AnforderungErgebnis = r.ok ? 'gesendet' : r.grund === 'fehler' ? 'versandFehler' : 'gesperrt';
-  const vermerk = r.ok ? `Download-Links per E-Mail geschickt (über ${lage.ueber}, ${LINK_TAGE} Tage gültig)`
-    : r.grund === 'fehler' ? 'die Mail ließ sich nicht verschicken — bitte die Unterlage von Hand schicken'
-    : 'nicht verschickt (Werbesperre bzw. Sperrliste) — bitte am Kontakt klären';
-  // Anfrage ins CRM (wie der Check): ein Fehler dort hält nichts auf, er steht nur im Log (ohne Adresse).
-  try {
-    const { ladeCheckEinstellungen } = await import('@/lib/check/speicher');
-    const { gastgeberVon } = await import('@/lib/check/server');
-    const person = (await gastgeberVon(await ladeCheckEinstellungen())) ?? 'system';
-    const { anfrageAnlegen } = await import('@/lib/crm/anfrage-anlegen');
-    const lead = await anfrageAnlegen({ neu: { vorname: a.vorname, email: a.email, ...(a.firma ? { firma: a.firma } : {}) }, kanal: 'website', text: `Vorlage „${u.titel}“ über die Website angefordert — ${vermerk}.` }, { person, wer: { art: 'system' } });
-    if (!lead.ok) console.warn('[unterlagen] Anfrage nicht angelegt:', lead.fehler.slice(0, 120));
-  } catch (x) { console.error('[unterlagen] Anfrage:', x instanceof Error ? x.message.slice(0, 200) : 'Fehler'); }
-  if (a.newsletter) {
+  const { websiteHinweisMelden } = await import('@/lib/oeffentlich/eingang-server');
+  // 1 · Mail (genau einmal — das Ergebnis steht danach am Fortschritt).
+  let mail = f.erledigt.mail;
+  if (!mail) {
+    if (!lage) mail = 'aus';
+    else {
+      const token = linkToken(u.id, jetzt);
+      const links = u.dateien.map(d => ({ name: d.name, art: d.art, link: downloadLink(lage.website, token, d.art) }));
+      const m = unterlageMail({ marke: lage.marke, ...(a.vorname ? { vorname: a.vorname } : {}), titel: u.titel, links, seite: websiteLink(lage.website, u.seite) ?? lage.website, verantwortlich: lage.verantwortlich, datenschutzLink: lage.datenschutzLink });
+      const r = await websiteMailSenden({ an: a.email, vorname: a.vorname, betreff: m.betreff, text: m.text, art: 'unterlage', lage }, jetzt);
+      if (!r.ok && r.grund === 'unklar') throw new KarteiUnklar('Kartei nicht lesbar — Unterlage noch nicht verschickt');
+      mail = r.ok ? 'gesendet' : r.grund;
+    }
+    await f.merke('mail', mail);
+    if (mail === 'fehler' || mail === 'aus') await websiteHinweisMelden('unterlage').catch(() => null);
+  }
+  // Über der Grenze oder keine gültige Adresse: nichts, auch keine Anfrage (Schutz gegen Fluten).
+  if (mail === 'grenze' || mail === 'adresse') return 'grenze';
+  // 2 · CRM (Art. 18 → Betroffenenantrag statt Anfrage).
+  if (!f.erledigt.crm) {
+    if (mail === 'eingeschraenkt') {
+      const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
+      const { alleAdressen } = await import('@/lib/crm/emails');
+      const { anzeigename } = await import('@/lib/make-one/crm');
+      const k = (await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).find(x => alleAdressen(x).includes(a.email.trim().toLowerCase()));
+      if (k?.eingeschraenkt) await eingeschraenktMeldenSicher({ kontaktId: k.id, name: anzeigename(k), email: a.email, weg: 'Unterlage', text: `Vorlage „${u.titel}“ über die Website angefordert.`, ...(f.ids ? { schluessel: f.ids.followUp } : {}) });
+      await f.merke('crm', 'eingeschraenkt');
+    } else {
+      const vermerk = mail === 'gesendet' ? `Download-Links per E-Mail geschickt (über ${lage?.ueber ?? 'den Website-Absender'}, ${LINK_TAGE} Tage gültig)`
+        : mail === 'fehler' ? 'die Mail ließ sich nicht verschicken — bitte die Unterlage von Hand schicken'
+        : mail === 'aus' ? 'nicht verschickt (kein Website-Absender eingerichtet) — bitte die Unterlage von Hand schicken'
+        : 'nicht verschickt (Werbesperre bzw. Sperrliste) — bitte am Kontakt klären';
+      const { ladeCheckEinstellungen } = await import('@/lib/check/speicher');
+      const { gastgeberVon } = await import('@/lib/check/server');
+      const person = (await gastgeberVon(await ladeCheckEinstellungen())) ?? 'system';
+      const { anfrageAnlegen } = await import('@/lib/crm/anfrage-anlegen');
+      const lead = await anfrageAnlegen({ neu: { vorname: a.vorname, email: a.email, ...(a.firma ? { firma: a.firma } : {}) }, kanal: 'website', text: `Vorlage „${u.titel}“ über die Website angefordert — ${vermerk}.` },
+        { person, wer: { art: 'system' }, oeffentlich: true, ...(f.ids ? { ids: f.ids } : {}) });
+      if (!lead.ok && lead.eingeschraenkt) await eingeschraenktMeldenSicher({ ...lead.eingeschraenkt, email: a.email, weg: 'Unterlage', text: `Vorlage „${u.titel}“ über die Website angefordert.`, ...(f.ids ? { schluessel: f.ids.followUp } : {}) });
+      else if (!lead.ok) console.warn('[unterlagen] Anfrage nicht angelegt:', lead.fehler.slice(0, 120));
+      await f.merke('crm', lead.ok ? 'ok' : lead.eingeschraenkt ? 'eingeschraenkt' : 'abgelehnt');
+    }
+  }
+  if (mail === 'eingeschraenkt') return 'eingeschraenkt';
+  // 3 · Newsletter-Wunsch (Double-Opt-in, Sperren dort).
+  if (a.newsletter && !f.erledigt.newsletter) {
     const { newsletterBereit, anmeldungVerarbeiten } = await import('@/lib/newsletter/server');
     const nl = await newsletterBereit().catch(() => null);
-    if (nl) await anmeldungVerarbeiten({ email: a.email, vorname: a.vorname }, nl, jetzt).catch(() => 'versandFehler');
+    const r = nl ? await anmeldungVerarbeiten({ email: a.email, vorname: a.vorname }, nl, jetzt).catch(() => 'versandFehler' as const) : 'aus';
+    await f.merke('newsletter', r);
   }
-  return ergebnis;
+  return mail === 'gesendet' ? 'gesendet' : mail === 'fehler' ? 'versandFehler' : mail === 'aus' ? 'ohneAbsender' : 'gesperrt';
+}
+
+async function eingeschraenktMeldenSicher(x: Parameters<typeof import('@/lib/oeffentlich/eingang-server').eingeschraenktMelden>[0]): Promise<void> {
+  const { eingeschraenktMelden } = await import('@/lib/oeffentlich/eingang-server');
+  await eingeschraenktMelden(x);
 }
 
 /** Für das Verzeichnis (Art. 30): Website-Absender eingerichtet UND mindestens eine Unterlage im Katalog — dann findet die Verarbeitung statt. Wirft nie. */

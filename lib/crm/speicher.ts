@@ -353,6 +353,7 @@ function antrag(o: Record<string, unknown>, jetzt: string, person: string): Antr
     ...(istKontaktKennung(String(o.kontaktId ?? '')) ? { kontaktId: String(o.kontaktId) } : {}),
     eingang, frist: tag(o.frist) ?? d.toISOString().slice(0, 10), status: o.status === 'erledigt' ? 'erledigt' : 'offen',
     ...(opt(o.ergebnis, 600) ? { ergebnis: opt(o.ergebnis, 600) } : {}), ...(tag(o.erledigtAm) ? { erledigtAm: tag(o.erledigtAm) } : {}), von: txt(o.von, 40) || person, geaendert: jetzt,
+    ...(opt(o.nachricht, 3000) ? { nachricht: opt(o.nachricht, 3000) } : {}),
   };
 }
 function verarbeitung(o: Record<string, unknown>, jetzt: string): Verarbeitung | null {

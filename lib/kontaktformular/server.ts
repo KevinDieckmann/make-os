@@ -97,9 +97,17 @@ export async function eingangVerarbeiten(e: KontaktEingabe): Promise<EingangErge
   const { gastgeberVon } = await import('@/lib/check/server');
   const person = (await gastgeberVon(await ladeCheckEinstellungen())) ?? 'system';
   const { anfrageAnlegen } = await import('@/lib/crm/anfrage-anlegen');
+  const text = anfrageText(e, await anlassAufloesen(e.anlass));
   const r = await anfrageAnlegen(
-    { neu: { vorname: e.vorname, ...(e.nachname ? { nachname: e.nachname } : {}), email: e.email, ...(e.firma ? { firma: e.firma } : {}), ...(e.telefon ? { telefon: e.telefon } : {}) }, kanal: 'website', text: anfrageText(e, await anlassAufloesen(e.anlass)) },
+    { neu: { vorname: e.vorname, ...(e.nachname ? { nachname: e.nachname } : {}), email: e.email, ...(e.firma ? { firma: e.firma } : {}), ...(e.telefon ? { telefon: e.telefon } : {}) }, kanal: 'website', text },
     { person, wer: { art: 'system' }, oeffentlich: true, webseite: 'formular' },
   );
-  return r.ok ? { ok: true, kontaktId: r.bau.kontakt.id, followUpId: r.bau.followUp.id, unbestaetigt: !!r.bau.unbestaetigt } : { ok: false, grund: r.fehler.slice(0, 200) };
+  if (r.ok) return { ok: true, kontaktId: r.bau.kontakt.id, followUpId: r.bau.followUp.id, unbestaetigt: !!r.bau.unbestaetigt };
+  // Art. 18 (02.11., Prüfung A Fund 5): die Nachricht verschwand bisher im Log — jetzt als Betroffenenantrag (Stammdaten › Datenschutz) mit neutraler
+  // Glocke an den Inhaber; die Person selbst wird im CRM nicht verarbeitet. Der Gast sieht dieselbe Antwort wie immer.
+  if (r.eingeschraenkt) {
+    const { eingeschraenktMelden } = await import('@/lib/oeffentlich/eingang-server');
+    await eingeschraenktMelden({ ...r.eingeschraenkt, email: e.email, weg: 'Kontaktformular', text });
+  }
+  return { ok: false, grund: r.fehler.slice(0, 200) };
 }

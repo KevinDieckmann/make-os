@@ -146,6 +146,15 @@ async function vorhandenerTermin(b: Buchung): Promise<{ uid: string; kalender: s
 async function kontaktSchritt(id: string, ids: { kontakt: string; followUp: string }, jetzt: string, heute: string, von: string) {
   const { b, s } = await buchungUndSeite(id);
   if (b.kontaktId) return { kontaktId: b.kontaktId };
+  // Prüfung A (Fund 8): die Firma einer NEUEN Person über denselben EINEN Weg wie jede Anfrage (`firmaSichern`: vorhanden über Name, Kennung oder
+  // Domain verknüpfen, sonst anlegen, aus dem Papierkorb zurück) — vorher blieb der Firmenname nur Text an der Person. Trifft die Adresse schon eine
+  // Person der Kartei, behält die ihre Firma. Idempotent (eine Wiederaufnahme findet die Firma).
+  let gesichert: { id: string; name: string } | undefined;
+  if (b.firma && !(await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).some(k => alleAdressen(k).includes(b.email))) {
+    const { firmaSichern } = await import('@/lib/crm/person-anlegen-server');
+    const plan = await firmaSichern(b.firma, { email: b.email }, { art: 'person', person: von });
+    if (plan) gesichert = { id: plan.firma.id, name: plan.firma.name };
+  }
   const crm = await ladeCrm();
   const sperrEintraege = await sperrlisteLaden();
   const { vorname, nachname } = nameTeilen(b.name);
@@ -160,7 +169,7 @@ async function kontaktSchritt(id: string, ids: { kontakt: string; followUp: stri
     const schon = f.kontakte.find(k => k.id === ids.kontakt || k.aktivitaeten.some(x => x.am === am && (x.text ?? '').endsWith(text)));
     if (schon) { ergebnis = { kontaktId: schon.id }; return f; }
     const r = anfrageBauen({ neu: { vorname, nachname, email: b.email, ...(b.firma ? { firma: b.firma } : {}) }, kanal: 'website', text, datum: tag },
-      { kontakte: f.kontakte, crm, person: s.person, heute, jetzt, ids, sperre: k => neuanlageSperre(k, sperrEintraege, heute) });
+      { kontakte: f.kontakte, crm, person: s.person, heute, jetzt, ids, sperre: k => neuanlageSperre(k, sperrEintraege, heute), ...(gesichert && crm.firmen.some(x => x.id === gesichert!.id) ? { firma: gesichert } : {}) });
     if (!r.ok) {
       // Werbesperre einer vorhandenen Person: ihre eigene Anfrage — verknüpfen, aber nichts Werbliches festhalten.
       // Art. 18 (eingeschränkt): gar nichts verknüpfen.

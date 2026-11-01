@@ -183,6 +183,12 @@ export interface Buchung {
   emailBestaetigtAm?: string;
   /** Offener Bestätigungslink: nur der SHA-256 (nie in Antworten), gültig bis `bis`, erzeugt `am`. Einmalig. */
   mailLink?: { hash: string; bis: string; am: string };
+  /**
+   * Verfallen OHNE Reaktion (02.11., Prüfung A Fund 1): die Anfrage stand noch auf „angefragt“, als der Termin vorbei war — gesetzt beim Nachziehen
+   * des Ablaufs. `verfallGemeldet` = wann die Glocke „Terminanfrage verfallen“ ging (genau einmal, `buchungenVerfallenMelden`).
+   */
+  verfallen?: true;
+  verfallGemeldet?: string;
 }
 
 export interface BuchungBestand {
@@ -376,10 +382,34 @@ export function ablaufNachziehen(bestand: BuchungBestand, jetzt: Date): { bestan
   let n = 0;
   const buchungen = bestand.buchungen.map(b => {
     if (b.status === 'vorlaeufig' && b.reserviertBis <= jetztIso) { n++; return { ...b, status: 'abgelaufen' as const, statusAm: b.reserviertBis }; }
-    if (b.status === 'angefragt' && ausWandzeit(b.ende).getTime() <= jetzt.getTime()) { n++; return { ...b, status: 'abgelaufen' as const, statusAm: jetztIso }; }
+    if (b.status === 'angefragt' && ausWandzeit(b.ende).getTime() <= jetzt.getTime()) { n++; return { ...b, status: 'abgelaufen' as const, statusAm: jetztIso, verfallen: true as const }; }
     return b;
   });
   return { bestand: n ? { ...bestand, buchungen } : bestand, n };
+}
+
+// ── Erinnern und Verfallen (02.11., Prüfung A Fund 1 — „nichts dem Zufall überlassen“) ──────────────────────────────────────────────
+
+/** Ab so vielen Stunden „angefragt“ erinnert die Glocke (abgeleitet, nie gespeichert). */
+export const ANFRAGE_ERINNERN_STD = 24;
+/** So viele Stunden vor dem Termin erinnert die Glocke an eine noch offene Anfrage. */
+export const ANFRAGE_VOR_TERMIN_STD = 24;
+
+/**
+ * Wartet eine Anfrage zu lange? (rein) `seit` = seit wann „angefragt“ (ISO), `start` = Termin (Berliner Wandzeit). `lange`: länger als 24 h ohne
+ * Entscheidung · `bald`: der Termin ist in höchstens 24 h. Beides kann gelten; vorbei (Termin begonnen) gilt keins mehr.
+ */
+export function anfrageWartet(seit: string | undefined, start: string, jetzt: Date): { lange: boolean; bald: boolean } {
+  const beginn = ausWandzeit(start).getTime(), t = jetzt.getTime();
+  if (beginn <= t) return { lange: false, bald: false };
+  const lange = !!seit && Number.isFinite(Date.parse(seit)) && t - Date.parse(seit) >= ANFRAGE_ERINNERN_STD * 3_600_000;
+  return { lange, bald: beginn - t <= ANFRAGE_VOR_TERMIN_STD * 3_600_000 };
+}
+
+/** Verfallene Anfragen, die noch nicht gemeldet sind — je Person der Seite (Seite fehlt → `null` = an den Haushalt). Rein. */
+export function verfalleneUngemeldet(bestand: BuchungBestand): { id: string; person: string | null }[] {
+  const seiten = new Map(bestand.seiten.map(x => [x.id, x]));
+  return bestand.buchungen.filter(b => b.verfallen && !b.verfallGemeldet).map(b => ({ id: b.id, person: seiten.get(b.seiteId)?.person ?? null }));
 }
 
 /**

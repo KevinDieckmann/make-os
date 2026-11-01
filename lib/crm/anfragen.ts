@@ -137,6 +137,15 @@ export function kanalAusPruefen(text: string): AnfrageKanal | undefined {
 }
 /** Text der Aktivität — die Marke, an der eine Anfrage erkannt wird. */
 export const anfrageText = (kanal: AnfrageKanal, text: string) => `${ANFRAGE_PRAEFIX}${kanalInfo(kanal)?.label ?? kanal}: ${text}`.slice(0, GRENZEN.text);
+/**
+ * Die Spur einer Anfrage in der Kartei (02.11., Prüfung A Fund 2): Zeitpunkt und mögliche Texte der Aktivität, die `anfrageBauen` aus genau dieser
+ * Eingabe schreibt — damit eine Wiederaufnahme (Absichtsprotokoll) erkennt, dass der Kartei-Schritt schon gewirkt hat, und nichts doppelt anhängt.
+ */
+export function anfrageSpur(e: Pick<AnfrageEingabe, 'kanal' | 'text' | 'datum'>, heute: string, jetzt: string): { am: string; texte: string[] } {
+  const text = txt(e.text, GRENZEN.text);
+  const datum = tagOk(e.datum) && e.datum! <= heute ? e.datum! : heute;
+  return { am: datum === heute ? jetzt : `${datum}T12:00:00.000Z`, texte: [anfrageText(e.kanal, text), anfrageUnbestaetigtText(e.kanal, text)] };
+}
 /** Höchstlänge der Lead-Notiz (wie `leadSaeubern`). */
 export const LEAD_NOTIZ_MAX = 2000;
 const GEKUERZT = '[ältere Notiz gekürzt] …';
@@ -199,7 +208,10 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
       const entwurf = personEntwurf({ vorname, nachname, ...(email ? { email } : {}), ...(txt(n.telefon, GRENZEN.telefon) ? { telefon: txt(n.telefon, GRENZEN.telefon) } : {}),
         ...(txt(n.linkedin, 200) ? { linkedin: txt(n.linkedin, 200) } : {}), ...(firma ? { firma } : {}) }, 'anfrage',
       { id: ctx.ids.kontakt, heute: datum, jetzt: jetztAm, person: ctx.person, ...(f ? { firma: { id: f.id, name: f.name } } : {}) });
-      basis = { ...entwurf, quelle: `Anfrage über ${info.label}`, aktivitaeten: [], geaendertAm: ctx.heute };
+      // Kanal „Empfehlung“ (02.11., Prüfung A Fund 14): die Angaben kamen von der Person, die empfohlen hat — nicht von der Person selbst.
+      // Herkunft „Empfehlung“ (fremd) → die Art.-14-Uhr läuft (Information binnen eines Monats); vorher stand „selbst angegeben“.
+      const empfohlen = e.kanal === 'empfehlung' ? { herkunft: 'empfehlung' as const, fremddaten: true as const } : {};
+      basis = { ...entwurf, ...empfohlen, quelle: `Anfrage über ${info.label}`, aktivitaeten: [], geaendertAm: ctx.heute };
       // Sperrliste: nicht blockieren — Werbesperre setzen, Hinweis zeigen (die Anfrage selbst wird beantwortet).
       const s = ctx.sperre?.(basis);
       if (s) { basis = s.kontakt; if (s.hinweis) hinweis = s.hinweis; }
@@ -308,7 +320,6 @@ export function anfragenListe(kontakte: Kontakt[], crm: CrmBestand, heute: strin
     const anfragen = (k.aktivitaeten ?? []).filter(a => istAnfrage(a) && a.am.slice(0, 10) >= ab && a.am.slice(0, 10) <= heute);
     if (!anfragen.length) continue;
     const fus = (crm.followups ?? []).filter(f => f.kontaktId === k.id && istAnfrageFollowUp(f)).sort((a, b) => b.angelegt.localeCompare(a.angelegt));
-    const offenes = fus.find(f => f.status === 'offen');
     const deal = crm.chancen.find(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(k.id));
     const firma = k.firmaId ? firmen.get(k.firmaId) : undefined;
     for (const a of anfragen) {
@@ -323,7 +334,8 @@ export function anfragenListe(kontakte: Kontakt[], crm: CrmBestand, heute: strin
         id: `${k.id}|${a.am}`, kontaktId: k.id, name: anzeigename(k), ...(firma?.name ?? k.firma ? { firma: firma?.name ?? k.firma } : {}), ...(k.firmaId ? { firmaId: k.firmaId } : {}),
         am: a.am, kanal, text, von: a.von, ...(bezug ? { bezug } : {}),
         ...(fu ? { followUp: { id: fu.id, faellig: fu.faellig, status: fu.status } } : {}),
-        offen: !!offenes && (fu ? fu.status === 'offen' : true),
+        // Ohne Follow-up (Prüfung A Fund 2: Abbruch zwischen Kartei und CRM, Altbestand) gilt die Anfrage als OFFEN — nie als beantwortet.
+        offen: fu ? fu.status === 'offen' : true,
         ...(deal ? { deal: { id: deal.id, titel: deal.titel } } : {}),
         ...((firma?.lead?.status ?? k.lead?.status) ? { leadStatus: firma?.lead?.status ?? k.lead?.status } : {}),
       });
