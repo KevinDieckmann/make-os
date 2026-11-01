@@ -25,7 +25,7 @@ import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Punkt, Zahl, Raster, us
 import { monatBeschriftung } from '@/lib/lichtfaeden/reihen';
 import { prognoseJeMonat } from './fokus-reihen';
 import { anzeigename } from '@/lib/make-one/crm';
-import { gesamtwert, dealWertText, geplanterMonatswert, prognose, prognoseJePerson, werZahlen, verlustgruende, dealsOhneWert, WIN_RATE_TEXT } from '@/lib/crm/pipeline';
+import { gesamtwert, dealWertText, geplanterMonatswert, prognose, prognoseJePerson, werZahlen, verlustgruende, verlustWiedervorlage, dealsOhneWert, WIN_RATE_TEXT } from '@/lib/crm/pipeline';
 import { dealWertAusProdukt } from '@/lib/crm/produkt-karte';
 import { zustaendig, mitglied, nameVon, verantwortlich } from '@/lib/crm/team';
 import type { Chance, ChancenStufe, Qual } from '@/lib/crm/typen';
@@ -480,7 +480,14 @@ export function ChancenDetail({ c, api, personen, zuKontakt, wunsch, wunschWeg }
         {wechsel && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, alignItems: 'center' }}>
             {wechsel.ziel === 'verloren'
-              ? <Wahl label="Verlustgrund" leer="+ Verlustgrund wählen" liste={verlustgruende(crm.stand.wertelisten).map(g => ({ id: g, label: g }))} wert={wechsel.grund || null} onWahl={grund => wechsle('verloren', { grund })} farbe={LEUCHT.kritisch} />
+              // 02.11. (Prüfung C): ein zeitbezogener Grund schlägt eine Wiedervorlage vor (+90 Tage, änderbar, „ohne“ geht auch) — der Lead kommt dann wieder.
+              ? <><Wahl label="Verlustgrund" leer="+ Verlustgrund wählen" liste={verlustgruende(crm.stand.wertelisten).map(g => ({ id: g, label: g }))} wert={wechsel.grund || null} onWahl={grund => { const wv = verlustWiedervorlage(grund, crm.heute); if (wv) setWechsel({ ziel: 'verloren', grund, wiedervorlage: wv }); else wechsle('verloren', { grund }); }} farbe={LEUCHT.kritisch} />
+                {wechsel.grund && verlustWiedervorlage(wechsel.grund, crm.heute) && <>
+                  <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Wiedervorlage am Lead</span>
+                  <input type="date" value={wechsel.wiedervorlage} onChange={e => setWechsel({ ...wechsel, wiedervorlage: e.target.value })} aria-label="Wiedervorlage am Lead" style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '7px 10px', color: C.ink }} />
+                  <Knopf onClick={() => { void setze({ stufe: 'verloren', grund: wechsel.grund, wiedervorlage: wechsel.wiedervorlage, letzteAktivitaet: tagVon(new Date().toISOString()) }); setWechsel(null); }}>Verloren — wieder vorlegen</Knopf>
+                  <Knopf leise onClick={() => { void setze({ stufe: 'verloren', grund: wechsel.grund, wiedervorlage: '', letzteAktivitaet: tagVon(new Date().toISOString()) }); setWechsel(null); }}>Ohne Wiedervorlage</Knopf>
+                </>}</>
               : <><input type="date" value={wechsel.wiedervorlage} onChange={e => setWechsel({ ...wechsel, wiedervorlage: e.target.value })} aria-label="Wiedervorlage" style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.06)', borderRadius: 10, padding: '7px 10px', color: C.ink }} /><Knopf onClick={() => wechsle('geparkt', { wiedervorlage: wechsel.wiedervorlage })}>Parken bis dahin</Knopf></>}
             <Knopf leise onClick={() => setWechsel(null)}>Abbrechen</Knopf>
           </div>

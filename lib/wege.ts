@@ -70,6 +70,8 @@ export const WEG = {
   prozesse: (a: ProzesseAdresse = {}) => prozesseLink(a),
   /** Einstellungen (Übersicht) bzw. die Einrichtung der Instanz (Onboarding). */
   system: () => '/os/system',
+  /** Head of IT (Lagebild) — z. B. aus der Glocke „Morgenlauf: Schritte gescheitert“ (02.11.). */
+  hoi: () => '/os/hoi',
   einrichtung: () => '/os/onboarding',
   /** Einstellungen › Bedienung (10.10.): Wischen am Handy, Menü „⋯“, Rückfrage vor dem Löschen, Dichte — je Gerät. */
   bedienung: () => '/os/system/bedienung',

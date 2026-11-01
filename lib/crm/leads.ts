@@ -186,17 +186,19 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
     // Folgeauftrag) bleibt.
     const kundeAktiv = (!!firma && firma.rolle === 'kunde') || crm.mandate.some(m => m.status === 'aktiv' && ((!!firma && mandatZuFirma(m, firma)) || (m.kontaktIds ?? []).some(id => ids.includes(id))));
     const gesetztNeu = lead?.status === 'neu';
+    // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung. Ebenso ein
+    // direkt angelegter Deal (2.3): der Lead blieb vor dem SQL stehen, sein Deal ist jetzt entschieden. Ein verlorener Deal mit Wiedervorlage
+    // (zeitbezogener Grund, 02.11.) gibt sie dem Lead — dann kommt er an dem Tag wieder in die Qualifizierung (`brauchtQualifizierung`).
+    const ausDeal: LeadStatus | undefined = (lead?.status === 'sql' || (!!lead?.direktAm && lead.chanceId === d?.id)) && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : undefined;
     return {
       id, art, name, ...(firma ? { firmaId: firma.id, branche: firma.branche, stadt: firma.stadt } : {}),
       personen: personen.map(k => ({ id: k.id, name: anzeigename(k), position: k.position ?? k.jobtitel, stufe: k.stufe })), ...(haupt ? { hauptKontaktId: haupt.id } : {}),
-      // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung. Ebenso ein
-      // direkt angelegter Deal (2.3): der Lead blieb vor dem SQL stehen, sein Deal ist jetzt entschieden.
-      status: (lead?.status === 'sql' || (!!lead?.direktAm && lead.chanceId === d?.id)) && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : gesetztNeu && kundeAktiv ? 'kunde' : lead?.status ?? abgeleitet(personen, offen, kundeAktiv), gesetzt: !!lead?.status,
+      status: ausDeal ?? (gesetztNeu && kundeAktiv ? 'kunde' : lead?.status ?? abgeleitet(personen, offen, kundeAktiv)), gesetzt: !!lead?.status,
       kriterien,
       score: leadScore(personen, lead, heute, kriterien, skx), kanal: kanalVon(haupt ?? personen[0] ?? {}),
       ...(lead?.antworten ? { antworten: lead.antworten } : {}), ...(lead?.qualifiziertAm ? { qualifiziertAm: lead.qualifiziertAm } : {}),
       ...(lead?.geprueftAm ? { geprueftAm: lead.geprueftAm } : {}), ...(lead?.direktAm ? { direkt: { am: lead.direktAm, offen: lead.direktOffen ?? [] } } : {}),
-      ...(lead?.stufen ? { stufen: lead.stufen } : {}), ...(lead?.wiedervorlage ? { wiedervorlage: lead.wiedervorlage } : {}), ...(lead?.grundArt ? { grundArt: lead.grundArt } : {}),
+      ...(lead?.stufen ? { stufen: lead.stufen } : {}), ...(lead?.wiedervorlage ? { wiedervorlage: lead.wiedervorlage } : ausDeal === 'ruht' && d?.stufe === 'verloren' && d.wiedervorlage ? { wiedervorlage: d.wiedervorlage } : {}), ...(lead?.grundArt ? { grundArt: lead.grundArt } : {}),
       ohneBesitzer: personen.every(k => !k.besitzer),
       ...(personen.some(k => frischAngelegt(k, heute)) ? { frisch: true as const } : {}),
       bean: firma ? beanFirma(firma, crm, personen).bean : beanVon(personen[0] ?? { id, firmaId: undefined }, crm).bean,

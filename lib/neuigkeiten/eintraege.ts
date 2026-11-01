@@ -96,6 +96,28 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-11-02-10',
+    datum: '2026-11-02',
+    titel: 'Vom Angebot zum Kunden — lückenlos',
+    kurz: 'Ein angenommenes Angebot wird immer zum gewonnenen Deal mit Mandat. Abgelaufene Laufzeiten, fehlende Unterschriften und Fehler im Morgenlauf melden sich jetzt von selbst.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Angebot angenommen: auch ein geparkter oder verlorener Deal wird gewonnen. Gibt es keinen Deal, entsteht er — danach legt MAKE OS das Mandat an wie gewohnt.', bereich: 'business', weg: WEG.deals() },
+        { text: 'Eine Werbesperre hält das Mandat nach einer Zusage nicht mehr auf — nur eine eingeschränkte Verarbeitung tut das.', bereich: 'business' },
+        { text: 'Verloren wegen „Zeitpunkt“, „Keine Rückmeldung“ oder „Keine Entscheidung“: der Lead kommt nach 90 Tagen wieder in die Qualifizierung. Das Datum steht im Dialog und lässt sich ändern.', bereich: 'business', weg: WEG.deals() },
+        { text: 'Nachfassen räumt sich auf: wird ein Angebot angenommen, ersetzt oder der Deal verloren, verschwinden die offenen Erinnerungen dazu.', bereich: 'business', weg: WEG.followup() },
+        { text: 'Ein fertiger Vertrag bekommt ein Follow-up „Unterschrift nachfassen“. Mit der Unterschrift ist es erledigt, und das Mandat zählt den Vertrag auch, wenn er aus dem Deal entstand.', bereich: 'business' },
+        { text: 'Ein beendeter oder gekündigter Vertrag ist auch im Register beendet — Fristen und Erinnerungen hören auf.', bereich: 'business' },
+      ] },
+      { art: 'neu', punkte: [
+        { text: 'Laufzeit eines Mandats vorbei und nichts entschieden: die Ampel bleibt rot, „Steht an“ und die Glocke erinnern, und es gibt eine Aufgabe „verlängern oder beenden“.', bereich: 'business' },
+        { text: 'Mandate ohne gewählte Gesellschaft bekommen eine Aufgabe „Gesellschaft wählen“ statt still keine Rechnung.', bereich: 'business' },
+        { text: 'Scheitert ein Schritt im Morgenlauf, meldet sich die Glocke. Scheitert die Rechnung eines Mandats dreimal hintereinander, gibt es eine Aufgabe dazu.', bereich: 'alle' },
+        { text: 'Die Verbindungsprüfung findet angenommene Angebote ohne Mandat und unterschriebene Verträge, die im Register fehlen.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-9',
     datum: '2026-11-02',
     titel: 'Marketing-Zahlen stimmen',

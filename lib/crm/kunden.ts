@@ -81,6 +81,20 @@ export function mandatFristen(m: Partial<MandatFristFelder>, heute: string): { e
   return { endeAm, frist };
 }
 
+/** Der Satz, wenn die Laufzeit vorbei ist und niemand entschieden hat — EIN Text für Ampel, Steht an und Aufgabe. */
+export const LAUFZEIT_ABGELAUFEN = 'Laufzeit abgelaufen — verlängern oder beenden';
+/**
+ * Ist die Laufzeit eines AKTIVEN Mandats vorbei, ohne dass jemand entschieden hat (02.11., Prüfung C)? Ende = `mandatFristen` (gesetztes Ende bzw. Ende der
+ * Mindestlaufzeit); „automatisch verlängern“ verlängert sich selbst und zählt nicht. Rein — abgeleitet, nie gespeichert.
+ */
+export function laufzeitAbgelaufen(m: Pick<Mandat, 'status' | 'verlaengerung'> & Partial<MandatFristFelder> & { geloeschtAm?: string }, heute: string): boolean {
+  if (m.status !== 'aktiv' || m.geloeschtAm || m.verlaengerung === 'auto') return false;
+  const { endeAm } = mandatFristen(m, heute);
+  return !!endeAm && endeAm < heute;
+}
+/** Feste Kennung der Aufgabe „Laufzeit abgelaufen“ je Mandat und Ende (neues Ende nach dem Verlängern → neue Aufgabe, wenn es wieder abläuft). */
+export const laufzeitAufgabeId = (mandatId: string, endeAm: string) => `mlz-${mandatId.slice(0, 50)}-${endeAm.replace(/-/g, '')}`;
+
 export function mandatLage(m: Mandat, heute: string, rechnungen?: RechnungKurz[]): MandatLage {
   // Zahlung: von Hand gesetzt gewinnt, sonst aus den Rechnungen gerechnet.
   if (rechnungen && m.health.zahlung === null) { const z = zahlungAusRechnungen(m, rechnungen, heute); if (z) m = { ...m, health: { ...m.health, zahlung: z.wert } }; }
@@ -99,6 +113,9 @@ export function mandatLage(m: Mandat, heute: string, rechnungen?: RechnungKurz[]
   const gruende: string[] = [];
   let ampel: MandatLage['ampel'] = health === null ? null : health > 75 ? (vorlaeufig ? null : 'gruen') : health >= 60 ? 'gelb' : 'rot';
   if (m.status === 'aktiv' && endeIn !== null && endeIn >= 0 && endeIn <= 60 && m.verlaengerung !== 'auto') { ampel = 'rot'; gruende.push(`Laufzeit endet in ${endeIn} Tagen — Verlängerung offen`); }
+  // Abgelaufen, aber noch aktiv und nicht entschieden (02.11., Prüfung C): vorher verschwand die Warnung am Tag nach dem Ende — jetzt bleibt sie rot, bis
+  // jemand verlängert (Ende/Laufzeit neu, „automatisch“) oder beendet.
+  if (laufzeitAbgelaufen(m, heute)) { ampel = 'rot'; gruende.push(LAUFZEIT_ABGELAUFEN); }
   if (health !== null && health < 60) gruende.push(`Gesundheit ${health}`);
   if (m.offen.length) gruende.push(anzahl(m.offen.length, 'offener Punkt', 'offene Punkte'));
   if (!m.vertragUnterschrieben && m.status === 'aktiv') gruende.push('Vertrag nicht unterschrieben');

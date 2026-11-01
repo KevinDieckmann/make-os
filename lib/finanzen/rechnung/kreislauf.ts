@@ -18,7 +18,7 @@
 
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { localDay } from '@/lib/zeit';
-import { bereichVon, finanzFirmaFuer, istGesellschaft } from '@/lib/einheiten';
+import { bereichVon, finanzFirmaFuer, istGesellschaft, NUR_GRUNDDATEN } from '@/lib/einheiten';
 import { WEG } from '@/lib/wege';
 import { sauberFile, type FinanzplanFile, type Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import { abgerechneteMonate, monatsName } from './regeln';
@@ -38,6 +38,11 @@ export interface KreislaufStand {
     erledigt?: Record<string, string>;
     /** Tagessatz (31.10.): so viele erfasste Stunden sind ein Tag (fehlt = 8). */
     stundenJeTag?: number;
+    /**
+     * Gescheiterte Läufe je Mandat hintereinander (02.11., Prüfung C) — `n` zählt höchstens einmal je Tag (`tag`), ein gelungener Entwurf setzt zurück.
+     * Ab `VORBEREITEN_FEHL_GRENZE` entsteht EINE feste Aufgabe zum Mandat (`rvf-<mandat>`). Nur Kennungen und Zahlen.
+     */
+    fehlschlaege?: Record<string, { n: number; tag: string }>;
   };
   /**
    * Mandate, die „Angebot angenommen“ AUTOMATISCH angelegt hat (Kevin 29.10.) — je Mandat das Angebot, der Tag und die Liquiplan-Posten. Nur so weiß
@@ -115,7 +120,17 @@ export async function ueberfaelligNachziehen(heute = localDay()): Promise<number
 
 // ── Rechnungen vorbereiten (Morgenlauf) ──────────────────────────────────────────────────────────────────────────────────────────────
 
-export interface VorbereitenErgebnis { aus?: true; entwuerfe: number; aufgaben: number; uebersprungen: number; ab?: string }
+/**
+ * `gruende` (02.11., Prüfung C): je übersprungenem Mandat der Grund (nur Kennung + Satz, nie Namen/Beträge) — vorher stand nur eine Zahl da, und Mandate
+ * ohne gewählte Gesellschaft zählten gar nicht. `hinweisAufgaben`: feste Aufgaben, die der Lauf dazu angelegt hat (Gesellschaft wählen, wiederholt gescheitert).
+ */
+export interface VorbereitenErgebnis { aus?: true; entwuerfe: number; aufgaben: number; uebersprungen: number; ab?: string; gruende?: { mandatId: string; grund: string }[]; hinweisAufgaben?: number }
+/** Ab so vielen gescheiterten Läufen hintereinander entsteht eine Aufgabe zum Mandat. */
+export const VORBEREITEN_FEHL_GRENZE = 3;
+/** Feste Kennungen der Hinweis-Aufgaben (je Mandat einmal — erledigt oder gelöscht kommt sie nicht wieder). */
+export const gesellschaftAufgabeId = (mandatId: string) => `rvg-${mandatId.slice(0, 60)}`;
+export const fehlAufgabeId = (mandatId: string) => `rvf-${mandatId.slice(0, 60)}`;
+export const GESELLSCHAFT_OFFEN_GRUND = 'Am Mandat ist keine Gesellschaft gewählt — ohne sie entsteht kein Rechnungsentwurf.';
 
 /**
  * Morgenlauf „Rechnungen vorbereiten“ — siehe Kopf. `haushalt` = Haushalt des Inhabers (Absender/Gesellschaften liegen je Haushalt). Gestellt wird nie.
@@ -141,7 +156,32 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
   ]);
   const crm = await ladeCrm();
   let plan = await planLaden();
-  const erg: VorbereitenErgebnis = { entwuerfe: 0, aufgaben: 0, uebersprungen: 0, ab };
+  const erg: VorbereitenErgebnis = { entwuerfe: 0, aufgaben: 0, uebersprungen: 0, ab, gruende: [], hinweisAufgaben: 0 };
+  const ueberspringen = (mandatId: string, grund: string) => { erg.uebersprungen++; erg.gruende!.push({ mandatId, grund: grund.slice(0, 200) }); };
+  // Gescheitert (Fehler beim Entwurf, Zeit nicht lesbar): zählen; ab der Grenze EINE feste Aufgabe zum Mandat. Gelungen: Zähler weg.
+  const fehlschlag = async (m: import('@/lib/crm/typen').Mandat, grund: string) => {
+    ueberspringen(m.id, grund);
+    let n = 0;
+    await updateJson<RW>(RECHNUNGSWESEN, cur => {
+      const v = cur?.kreislauf?.vorbereiten ?? {};
+      const alt = v.fehlschlaege?.[m.id];
+      n = alt?.tag === heute ? alt.n : (alt?.n ?? 0) + 1;
+      if (alt?.tag === heute) return cur ?? {};
+      return { ...(cur ?? {}), kreislauf: { ...(cur?.kreislauf ?? {}), vorbereiten: { ...v, fehlschlaege: { ...(v.fehlschlaege ?? {}), [m.id]: { n, tag: heute } } } } };
+    });
+    if (n >= VORBEREITEN_FEHL_GRENZE) erg.hinweisAufgaben! += await aufgabeAnlegen(m, fehlAufgabeId(m.id), 'Rechnung vorbereiten scheitert wiederholt — Mandat prüfen',
+      `Der Morgenlauf konnte für dieses Mandat ${n}-mal hintereinander keinen Rechnungsentwurf anlegen. Letzter Grund: ${grund.slice(0, 200)} Bitte das Mandat prüfen (Gesellschaft, Laufzeit, Honorar) und die Rechnung von Hand schreiben.`,
+      `[Mandat](${WEG.mandat(m.id)})`, heute);
+  };
+  const gelungen = async (mandatId: string) => {
+    if (!(await kreislaufLaden()).vorbereiten?.fehlschlaege?.[mandatId]) return;
+    await updateJson<RW>(RECHNUNGSWESEN, cur => {
+      const v = cur?.kreislauf?.vorbereiten ?? {};
+      if (!v.fehlschlaege?.[mandatId]) return cur ?? {};
+      const { [mandatId]: _weg, ...rest } = v.fehlschlaege;
+      return { ...(cur ?? {}), kreislauf: { ...(cur?.kreislauf ?? {}), vorbereiten: { ...v, fehlschlaege: rest } } };
+    });
+  };
   const merken = async (schluessel: string, wert: string) => {
     await updateJson<RW>(RECHNUNGSWESEN, cur => {
       const v = cur?.kreislauf?.vorbereiten ?? {};
@@ -169,7 +209,18 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
   for (const m of crm.mandate) {
     const g = m.gesellschaft;
     // Rechnungsfähig wie der Knopf in der Mandatsakte: Gesellschaft gewählt und im Finanzplan geführt (Register-Gesellschaften: nur Grunddaten).
-    if (mandatGesellschaftOffen(g) || !finanzFirmaFuer(g)) continue;
+    // 02.11. (Prüfung C): ein AKTIVES Mandat, das daran scheitert, zählt als übersprungen (mit Grund) und bekommt EINE feste Aufgabe — vorher fiel es still heraus.
+    if (mandatGesellschaftOffen(g) || !finanzFirmaFuer(g)) {
+      if (m.status === 'aktiv' && !m.geloeschtAm) {
+        const offen = mandatGesellschaftOffen(g);
+        ueberspringen(m.id, offen ? GESELLSCHAFT_OFFEN_GRUND : NUR_GRUNDDATEN);
+        erg.hinweisAufgaben! += await aufgabeAnlegen(m, gesellschaftAufgabeId(m.id), offen ? 'Gesellschaft am Mandat wählen' : 'Rechnungen zum Mandat von Hand schreiben',
+          offen ? `${GESELLSCHAFT_OFFEN_GRUND} In der Mandatsakte die Gesellschaft wählen — danach bereitet der Morgenlauf die Rechnungen wieder vor.`
+            : `${NUR_GRUNDDATEN} Der Morgenlauf bereitet für dieses Mandat darum keine Rechnung vor — bitte von Hand schreiben oder eine der festen Gesellschaften wählen.`,
+          `[Mandat](${WEG.mandat(m.id)})`, heute);
+      }
+      continue;
+    }
     // ── A: das Honorar (Monat, Rate/Zahlplan, Quartal, einmalig, Tagessatz) ──
     const faellig = vorbereitenFaellig(m, heute, abgerechneteMonate(m.id, plan.rechnungen), abMonat);
     if (faellig.length) {
@@ -188,7 +239,7 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
         let stunden = 0;
         if (f.art === 'tag') {
           const zeit = await zeitFuer(monat);
-          if (!zeit) { erg.uebersprungen++; break; } // Zeit nicht lesbar → ohne Merker, der nächste Lauf versucht es wieder
+          if (!zeit) { await fehlschlag(m, 'Die erfasste Zeit war nicht lesbar.'); break; } // Zeit nicht lesbar → ohne Merker, der nächste Lauf versucht es wieder
           stunden = Math.round(((zeit.get(m.id) ?? 0) / 3600) * 10) / 10;
           tage = tageAusZeit(zeit.get(m.id) ?? 0, stundenJeTag);
           if (!tage) {
@@ -210,12 +261,13 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
           id = e.rechnung.id;
           if (!e.vorhanden) erg.entwuerfe++;
         } catch (e) {
-          erg.uebersprungen++;
+          await fehlschlag(m, e instanceof Error ? e.message : 'Fehler beim Entwurf.');
           console.warn(`[rechnung] vorbereiten übersprungen (${m.id} ${monat}):`, e instanceof Error ? e.message.slice(0, 120) : e);
           break;
         }
         erg.aufgaben += await vorbereitenAufgabe(m, f, id, heute, tage || undefined);
         await merken(schl, `f:${heute}`);
+        await gelungen(m.id);
         plan = await planLaden();
         break; // höchstens EIN Entwurf je Mandat und Lauf
       }
@@ -244,7 +296,7 @@ export async function rechnungenVorbereiten(haushalt: string, heute = localDay()
           id = e.rechnung.id;
           if (!e.vorhanden) erg.entwuerfe++;
         } catch (e) {
-          erg.uebersprungen++;
+          await fehlschlag(m, e instanceof Error ? e.message : 'Fehler beim Entwurf der Einmalposten.');
           console.warn(`[rechnung] Einmalposten übersprungen (${m.id} ${z.nr}):`, e instanceof Error ? e.message.slice(0, 120) : e);
           break einmal;
         }
@@ -313,4 +365,28 @@ async function einmalAufgabe(m: import('@/lib/crm/typen').Mandat, angebotId: str
   return aufgabeAnlegen(m, einmalAufgabeId(m.id, angebotId, z.nr), `Rechnung prüfen & stellen — ${was}`,
     `Der Entwurf über die Einmalposten des angenommenen Angebots liegt bereit (${was}, ${monatsName(z.monat)}). Die laufende Leistung rechnet das Mandat monatlich ab. Prüfen und per Klick stellen — MAKE OS stellt nichts selbst.`,
     entwurfLink(m, rechnungId), heute);
+}
+
+// ── Laufzeit abgelaufen (Morgenlauf, 02.11., Prüfung C) ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Morgenlauf: je AKTIVEM Mandat, dessen Laufzeit vorbei ist, ohne dass jemand verlängert oder beendet hat (`laufzeitAbgelaufen`), EINE Aufgabe
+ * „Laufzeit abgelaufen — verlängern oder beenden“ (feste Kennung je Mandat und Ende, `laufzeitAufgabeId`; gibt es sie schon — auch erledigt oder im
+ * Papierkorb —, passiert nichts). Steht an/Glocke leiten dasselbe ohne Speichern ab (lib/heute/anstehend.ts `laufzeitAnstehend`). Wirft nie.
+ */
+export async function laufzeitAufgabenNachziehen(heute = localDay()): Promise<{ neu: number; fehler?: string }> {
+  try {
+    const [{ ladeCrm }, { laufzeitAbgelaufen, laufzeitAufgabeId, mandatFristen, LAUFZEIT_ABGELAUFEN }] = await Promise.all([import('@/lib/crm/speicher'), import('@/lib/crm/kunden')]);
+    let neu = 0;
+    for (const m of (await ladeCrm()).mandate.filter(x => laufzeitAbgelaufen(x, heute))) {
+      const ende = mandatFristen(m, heute).endeAm!;
+      neu += await aufgabeAnlegen(m, laufzeitAufgabeId(m.id, ende), `Mandat: ${LAUFZEIT_ABGELAUFEN}`,
+        `Die Laufzeit endete am ${ende.slice(8, 10)}.${ende.slice(5, 7)}.${ende.slice(0, 4)} — das Mandat ist noch aktiv, entschieden ist nichts. In der Mandatsakte verlängern (neues Ende bzw. automatisch) oder beenden.`,
+        `[Mandat](${WEG.mandat(m.id)})`, heute);
+    }
+    return { neu };
+  } catch (e) {
+    console.error('[rechnung] Laufzeit-Aufgaben nicht angelegt:', e instanceof Error ? e.message : e);
+    return { neu: 0, fehler: 'Laufzeit-Aufgaben nicht angelegt.' };
+  }
 }

@@ -33,7 +33,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /** `laeuft` (09.10., Takt robust): Riegel „gestartet, noch nicht fertig“ — Tag + Beginn; `lastRun` am Ende löscht ihn. */
-interface StartLog { lastRun?: string; laeuft?: { tag: string; seit: string } }
+interface StartLog { lastRun?: string; laeuft?: { tag: string; seit: string }; /** 02.11.: gescheiterte Schritte des letzten Laufs (nur Tag, Zahl, Namen) — HOI. */ fehler?: import('@/lib/tagesstart/fehler').MorgenlaufFehler }
 
 /** Was ist heute schon passiert und was fehlt? `person` = wer fragt (ohne: Systemlauf) — Läufe nur die eigenen + Systemläufe (08.10.). */
 async function status(today: string, person: string | null) {
@@ -252,7 +252,8 @@ export async function POST(req: Request) {
       // Kreislauf Geld (29.10., B7): Ereignis „Rechnung überfällig“ je frisch fälliger Mahnstufe (einmal je Stufe) — nur Kennungen, wirft nie.
       const { ueberfaelligNachziehen } = await import('@/lib/finanzen/rechnung/kreislauf');
       const ue = await ueberfaelligNachziehen();
-      schritte.push({ name: 'Mahnvorschläge', ok: true, info: [m.neu ? `${m.neu} neue Mahn-Aufgabe${m.neu === 1 ? '' : 'n'}` : 'nichts fällig', ue ? `${ue} Überfällig-Ereignis${ue === 1 ? '' : 'se'}` : ''].filter(Boolean).join(' · ') });
+      // 02.11. (Prüfung C): ein gescheiterter Lauf ist ✕ — vorher stand „nichts fällig“ da.
+      schritte.push({ name: 'Mahnvorschläge', ok: !m.fehler, info: [m.fehler ?? (m.neu ? `${m.neu} neue Mahn-Aufgabe${m.neu === 1 ? '' : 'n'}` : 'nichts fällig'), ue ? `${ue} Überfällig-Ereignis${ue === 1 ? '' : 'se'}` : ''].filter(Boolean).join(' · ') });
     }
   } catch (err) {
     schritte.push({ name: 'Mahnvorschläge', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
@@ -267,10 +268,25 @@ export async function POST(req: Request) {
     else {
       const { rechnungenVorbereiten } = await import('@/lib/finanzen/rechnung/kreislauf');
       const v = await rechnungenVorbereiten(h, today);
-      schritte.push({ name: 'Rechnungen vorbereiten', ok: true, info: v.aus ? 'ausgeschaltet' : [v.entwuerfe ? `${v.entwuerfe} Entwurf${v.entwuerfe === 1 ? '' : 'e'} angelegt` : 'nichts fällig', v.aufgaben ? `${v.aufgaben} Aufgabe${v.aufgaben === 1 ? '' : 'n'}` : '', v.uebersprungen ? `${v.uebersprungen} übersprungen` : ''].filter(Boolean).join(' · ') });
+      // 02.11. (Prüfung C): übersprungene Mandate mit Grund (nur Zahl je Grund — keine Namen) und die Hinweis-Aufgaben (Gesellschaft wählen, wiederholt gescheitert).
+      const gruende = Array.from((v.gruende ?? []).reduce((mm, g) => mm.set(g.grund, (mm.get(g.grund) ?? 0) + 1), new Map<string, number>()).entries()).map(([g, n]) => `${n}× ${g}`);
+      schritte.push({ name: 'Rechnungen vorbereiten', ok: true, info: v.aus ? 'ausgeschaltet' : [v.entwuerfe ? `${v.entwuerfe} Entwurf${v.entwuerfe === 1 ? '' : 'e'} angelegt` : 'nichts fällig', v.aufgaben ? `${v.aufgaben} Aufgabe${v.aufgaben === 1 ? '' : 'n'}` : '', v.uebersprungen ? `${v.uebersprungen} übersprungen${gruende.length ? ` (${gruende.join('; ')})` : ''}` : '', v.hinweisAufgaben ? `${v.hinweisAufgaben} Hinweis-Aufgabe${v.hinweisAufgaben === 1 ? '' : 'n'}` : ''].filter(Boolean).join(' · ') });
     }
   } catch (err) {
     schritte.push({ name: 'Rechnungen vorbereiten', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
+  }
+
+  // 0f4) Mandate: Laufzeit abgelaufen (02.11., Prüfung C) — aktiv, Ende vorbei, niemand hat verlängert oder beendet → EINE Aufgabe je Mandat und Ende
+  //      (idempotent). Steht an und Glocke zeigen dasselbe abgeleitet, bis entschieden ist.
+  try {
+    if (!(await imHaushaltOderSystemlauf(req))) schritte.push({ name: 'Mandate: Laufzeit', ok: false, info: 'nur im Haushalt des Inhabers' });
+    else {
+      const { laufzeitAufgabenNachziehen } = await import('@/lib/finanzen/rechnung/kreislauf');
+      const l = await laufzeitAufgabenNachziehen(today);
+      schritte.push({ name: 'Mandate: Laufzeit', ok: !l.fehler, info: l.fehler ?? (l.neu ? `${l.neu} Mandat${l.neu === 1 ? '' : 'e'}: Laufzeit abgelaufen — Aufgabe angelegt` : 'nichts abgelaufen') });
+    }
+  } catch (err) {
+    schritte.push({ name: 'Mandate: Laufzeit', ok: false, info: err instanceof Error ? err.message : 'Fehler' });
   }
 
   // 0g) Kapazität deaktivierter Team-Personen (DSGVO-Nachtrag 04.10.): 30 Tage nach dem Deaktivieren Grundwert, Urlaub/Blöcke,
@@ -406,7 +422,11 @@ export async function POST(req: Request) {
     schritte.push({ name: 'Index', ok: false });
   }
 
-  await updateJson<StartLog>('tagesstart', () => ({ lastRun: today }));
+  // 02.11. (Prüfung C): gescheiterte Schritte wirken nicht mehr wie Erfolg — EINE Glocke je Tag an den Haushalt des Inhabers und der Zähler für den HOI.
+  const { morgenlaufFehler, morgenlaufFehlerMelden } = await import('@/lib/tagesstart/fehler');
+  const fehler = morgenlaufFehler(today, schritte);
+  await morgenlaufFehlerMelden(today, fehler);
+  await updateJson<StartLog>('tagesstart', () => ({ lastRun: today, ...(fehler ? { fehler } : {}) }));
 
   return NextResponse.json({ ...(await status(today, person)), schritte, loop });
 }

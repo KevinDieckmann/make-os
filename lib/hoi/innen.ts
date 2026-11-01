@@ -234,7 +234,7 @@ export async function taktRobustLage(jetzt: Date): Promise<TaktRobustLage> {
   const heute = localDay(jetzt), h = Number(wandzeit(jetzt).slice(11, 13));
   const [warteschlange, sperreLesbar, start, auftraege] = await Promise.all([
     warteschlangeLage(jetzt), agentenEinstellungLesbar().catch(() => false),
-    loadJson<{ lastRun?: string; laeuft?: { tag?: string; seit?: string } }>('tagesstart').catch(() => null), lies().catch(() => []),
+    loadJson<{ lastRun?: string; laeuft?: { tag?: string; seit?: string }; fehler?: { tag?: string; anzahl?: number } }>('tagesstart').catch(() => null), lies().catch(() => []),
   ]);
   let tagesstart: TaktRobustLage['tagesstart'] = null;
   if (h >= 7 && start?.lastRun !== heute) {
@@ -246,7 +246,11 @@ export async function taktRobustLage(jetzt: Date): Promise<TaktRobustLage> {
     const s = await loadJson<{ voll?: { zeit: string; abgelehnt: number } }>(`head-${head}`).catch(() => null);
     if (s?.voll && jetzt.getTime() - Date.parse(s.voll.zeit) < 7 * 864e5) headsVoll.push({ head, abgelehnt: s.voll.abgelehnt });
   }
-  return { warteschlange, sperreLesbar, tagesstart, headsVoll };
+  // Morgenlauf mit gescheiterten Schritten (02.11.): nur der letzte Lauf, nur heute oder gestern — nur Tag und Zahl.
+  const gestern = localDay(new Date(jetzt.getTime() - 864e5));
+  const f = start?.fehler;
+  const schritteGescheitert = f?.tag && f.anzahl && start?.lastRun === f.tag && (f.tag === heute || f.tag === gestern) ? { tag: f.tag, anzahl: f.anzahl } : null;
+  return { warteschlange, sperreLesbar, tagesstart, headsVoll, schritteGescheitert };
 }
 
 /** Der Lagebericht des Hosts — Klartext-JSON vom Cron-Skript, kein Bestand der App. */

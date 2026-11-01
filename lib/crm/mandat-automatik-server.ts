@@ -7,7 +7,7 @@
 //                                 Kunde), danach die Liquiplan-Posten über DENSELBEN Rechenweg wie „Eintragen“ (`mandatLiquiplanEintragen`) — für Business
 //                                 und (31.10.) die Selbstständigkeit (Privat-Arbeits-Einheit, Posten mit ihrer Firma).
 //                                 Idempotent (gibt es zum Deal bzw. Angebot schon ein Mandat → nichts). Nichts, wenn: kein gewonnener Deal, keine Gesellschaft,
-//                                 Art. 18 bzw. Werbesperre einer beteiligten Person. Wirft nie — „angenommen“ ist schon gespeichert.
+//                                 Art. 18 einer beteiligten Person (seit 02.11. nicht mehr die Werbesperre — sie betrifft Werbung, nicht den Vertrag). Wirft nie.
 //   mandatAutomatikZurueck        „Rückgängig“: Mandat + seine Posten wieder weg — nur ein automatisch angelegtes, nur solange keine Rechnung (auch kein Entwurf)
 //                                 und kein Fall daran hängt (sonst 409 mit Grund). Firma/Personen bleiben „Kunde“ (der Deal ist gewonnen).
 //   mandatLiquiplanEintragen      „Eintragen“ / „Plan angleichen“ — die EINE Stelle, auch für POST /api/crm/liquiplan `anlegen`.
@@ -67,11 +67,14 @@ export const ZURUECK_SCHRITTE = ['crm', 'liquiplan', 'merker'] as const;
 interface AnlegenDaten { aktion: 'anlegen'; angebotId: string; dealId: string; mandatId: string; mandat: Mandat; kontaktIds: string[]; jetzt: string; heute: string; person: string; wer?: Wer; schonDa?: boolean; posten?: string[]; hinweis?: string }
 interface ZurueckDaten { aktion: 'zurueck'; angebotId: string; mandatId: string; planpostenId?: string; am: string; wer?: Wer; weg?: number }
 
-/** Art. 18 bzw. Werbesperre einer beteiligten Person? (die Kartei wird nicht weiter verarbeitet als nötig) */
+/**
+ * Art. 18 (eingeschränkte Verarbeitung) einer beteiligten Person? Nur DAS sperrt das Mandat (02.11., Prüfung C): eine Werbesperre (Art. 21) betrifft
+ * Werbung, nicht die Erfüllung eines Vertrags, dem der Kunde gerade zugestimmt hat — vorher brach die Automatik auch bei ihr ab.
+ */
 async function personGesperrt(ids: readonly string[]): Promise<boolean> {
   const { kontakteFuerVerarbeitung } = await import('./verarbeitung');
   const kartei = await kontakteFuerVerarbeitung({ mitEingeschraenkten: true });
-  return ids.some(id => { const k = kartei.find(x => x.id === id); return !!k && (k.eingeschraenkt || k.werbesperre); });
+  return ids.some(id => !!kartei.find(x => x.id === id)?.eingeschraenkt);
 }
 
 /** Die Schritte „anlegen“ — idempotent; nach `schonDa` (ein anderes Mandat zum Deal) nichts weiter. */
@@ -125,7 +128,7 @@ export async function mandatAusAngebotAutomatisch(p: { angebotId: string; person
     if (crm.mandate.some(m => m.chanceId === c.id)) return null;
     if (!gesellschaftAusEinheit(a.gesellschaft) && !istRegisterKennung(a.gesellschaft)) return { angelegt: false, grund: 'Am Angebot steht keine Gesellschaft — das Mandat bitte von Hand anlegen.' };
     const ids = Array.from(new Set([...c.kontaktIds, ...(a.kontaktId ? [a.kontaktId] : [])]));
-    if (await personGesperrt(ids)) return { angelegt: false, grund: 'Eine beteiligte Person ist eingeschränkt bzw. gesperrt — das Mandat bitte von Hand anlegen.' };
+    if (await personGesperrt(ids)) return { angelegt: false, grund: 'Eine beteiligte Person ist eingeschränkt (Art. 18) — das Mandat bitte von Hand anlegen.' };
     const m = mandatAusDeal(c, { leistungen: crm.leistungen, angebote: crm.angebote, firmen: crm.firmen, id: neueKennung('m'), jetzt, heute, person: p.person }).mandat;
     // VOR dem ersten Schreiben: die Absicht (mit dem fertig gebauten Mandat). Liegt zum Angebot schon eine offene, wird DIESE fortgesetzt.
     const h = await karteiHaushalt();

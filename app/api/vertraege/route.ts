@@ -84,7 +84,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, vertrag: mitStand(r.vertrag), pdf: r.pdf, ...(r.mail ? { mail: r.mail } : {}) });
       }
       case 'version': return NextResponse.json({ ok: true, vertrag: mitStand(await vertragVersion({ ...basis, id })) });
-      case 'status': return NextResponse.json({ ok: true, vertrag: mitStand(await vertragStatus({ ...basis, id, stand: b.stand, status: b.status })) });
+      case 'status': {
+        // 02.11.: beendet/gekündigt zieht den Register-Eintrag mit — klappt das nicht, sagt es der Hinweis.
+        const hinweise: string[] = [];
+        const v = await vertragStatus({ ...basis, id, stand: b.stand, status: b.status, hinweise });
+        return NextResponse.json({ ok: true, vertrag: mitStand(v), ...(hinweise.length ? { hinweise } : {}) });
+      }
       case 'loeschen': await vertragLoeschen({ haushalt: z.haushalt, id, stand: b.stand, wer }); return NextResponse.json({ ok: true });
       default: return fehler('aktion: anlegen, speichern, fertigstellen, version, status oder loeschen.', 400);
     }
