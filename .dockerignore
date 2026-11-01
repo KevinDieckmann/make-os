@@ -13,3 +13,5 @@ public/pdf.worker.min.mjs
 prototype
 # Landingpage makeinnovation.de — liest Caddy aus dem Repo-Ordner (compose.yml), gehört nicht ins App-Bild (01.10.)
 website
+# Ausnahme (01.11.): die Startwerte der Website-Inhalte liest die App (Markttraktion › Website › „Startwerte übernehmen“).
+!website/startwerte-inhalt.json
