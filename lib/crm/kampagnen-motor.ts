@@ -32,9 +32,9 @@ import { ausgenommen } from './einschraenkung';
 import { neuesFollowUp } from './followup';
 import { zustaendig, nameVon, BEIDE } from './team';
 import { weltDerKampagne } from './kampagnen-welt';
-import { beenden, faelligeStaende, istEnde, schrittVon, staendeStarten, standErsetzen, wartet, weiter, zieleDerKampagne, gleichesZiel } from './sequenz';
+import { beenden, erledigtUndBeenden, faelligeStaende, istEnde, schrittVon, staendeStarten, standErsetzen, wartet, weiter, zieleDerKampagne, gleichesZiel, zielSchluessel } from './sequenz';
 import {
-  antwortFollowupId, bounceFollowupId, einstellungenSaeubern, entwurfFuellen, imZeitfenster, JE_LAUF_MAX, mailFertig, platzhalterWerte, postEintragId, POST_GRENZEN,
+  antwortFollowupId, bounceFollowupId, einstellungenSaeubern, entwurfFuellen, FUND_SCHRITT, imZeitfenster, JE_LAUF_MAX, mailFertig, platzhalterWerte, postEintragId, POST_GRENZEN,
   rueckflussArt, SENDET_HAENGT_MS, sequenzFollowupId, zaehlerSchluessel, ART14_VORGABE,
   type MotorEinstellungen, type PostEintrag, type RueckKopf,
 } from './kampagnen-post';
@@ -121,7 +121,7 @@ export async function eigenesRisiko(): Promise<{ seit: string; von: string } | n
 // ── Ziel lesen ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 const ungueltigHash = (email: string) => createHash('sha256').update(`make-os-kampagne-ungueltig|${email.trim().toLowerCase()}`).digest('base64url');
-type FundKurz = { id: string; name: string; gebiet?: string; bewertung?: { gruende: string[] }; vorschau?: unknown; firmaId?: string; kontaktId?: string; leitfaden?: string };
+type FundKurz = { id: string; name: string; gebiet?: string; bewertung?: { gruende: string[] }; vorschau?: unknown; firmaId?: string; kontaktId?: string; leitfaden?: string; kampagneId?: string; angeschrieben?: boolean };
 
 export interface ZielLage {
   ziel: KampagnenZiel;
@@ -156,7 +156,7 @@ async function kontextLaden(ungueltig: readonly string[], jetzt: Date): Promise<
   try {
     const { ladeFunde } = await import('@/lib/funde/speicher');
     const { anrufLeitfaden } = await import('@/lib/funde/entwurf');
-    funde = (await ladeFunde()).funde.filter(f => f.firmaId || f.kontaktId).map(f => ({ id: f.id, name: f.name, gebiet: f.gebiet, bewertung: f.bewertung, vorschau: f.vorschau, firmaId: f.firmaId, kontaktId: f.kontaktId, leitfaden: anrufLeitfaden(f) }));
+    funde = (await ladeFunde()).funde.filter(f => f.firmaId || f.kontaktId).map(f => ({ id: f.id, name: f.name, gebiet: f.gebiet, bewertung: f.bewertung, vorschau: f.vorschau, firmaId: f.firmaId, kontaktId: f.kontaktId, leitfaden: anrufLeitfaden(f), kampagneId: f.kampagneId, angeschrieben: !!(f.gesendet || f.post) }));
   } catch { /* ohne Funde: {{befund}}/{{bezirk}} bleiben leer → Entwurf mit Fehler */ }
   return { crm, kontakte, sperrliste, funde, ungueltig: new Set(ungueltig), heute: localDay(jetzt) };
 }
@@ -206,16 +206,41 @@ const KANAL_AMPEL: Record<SequenzSchritt['kanal'], Kanal | null> = { mail: 'mail
 /** Ein Ziel hängt nicht mehr an der Kampagne (aus der Liste genommen). */
 const nochZiel = (k: Kampagne, s: ZielStand) => zieleDerKampagne(k).some(z => gleichesZiel(z, s));
 
+/** Mail-Einträge, die schon raus sind bzw. unterwegs (freigegeben, sendet, gesendet, unklar, unzustellbar). */
+const RAUS = new Set(['freigegeben', 'sendet', 'gesendet', 'unklar', 'bounce']);
+/**
+ * Wer in dieser Kampagne schon angeschrieben ist (M1, 01.11., gegen die Doppel-Mail): eine Mail im Stapel, die raus ist bzw. unterwegs, und ein
+ * Homepage-Fund dieser Kampagne mit gesendeter bzw. eingestellter Mail — bei einem Fund zählen Firma UND Person. Rein.
+ */
+export function schonAngeschrieben(k: Pick<Kampagne, 'id'>, eintraege: readonly PostEintrag[], funde: readonly Pick<FundKurz, 'id' | 'kampagneId' | 'firmaId' | 'kontaktId' | 'angeschrieben'>[]): Set<string> {
+  const raus = new Set<string>();
+  const vonFund = (f: Pick<FundKurz, 'firmaId' | 'kontaktId'>) => { if (f.firmaId) raus.add(`firma:${f.firmaId}`); if (f.kontaktId) raus.add(`kontakt:${f.kontaktId}`); };
+  for (const x of eintraege) {
+    if (x.kampagneId !== k.id || x.kanal !== 'mail' || !RAUS.has(x.status)) continue;
+    raus.add(zielSchluessel(x.ziel));
+    const f = x.fundId ? funde.find(y => y.id === x.fundId) : undefined;
+    if (f) vonFund(f);
+  }
+  for (const f of funde) if (f.kampagneId === k.id && f.angeschrieben) vonFund(f);
+  return raus;
+}
+
+/** Ergebnis eines Laufs: Zähler (nie Namen) und je Grund, warum etwas übersprungen bzw. gestoppt wurde. */
+export interface FortschreibenErgebnis { gestartet: number; entwuerfe: number; followups: number; weiter: number; gestoppt: number; gruende: Record<string, number>; kampagne?: { status: Kampagne['status']; mitSequenz: boolean } }
+
 /**
  * Ein Lauf über alle aktiven Kampagnen mit Sequenz — idempotent (feste Kennungen): neue Ziele starten (≤ neuJeTag), fällige Schritte erzeugen ihre
  * Arbeit (Entwurf/Follow-up/Druckliste), Erledigtes schaltet weiter. Liefert Zähler (nie Namen).
  */
-export async function sequenzenFortschreiben(jetzt = new Date()): Promise<{ gestartet: number; entwuerfe: number; followups: number; weiter: number; gestoppt: number }> {
-  const z = { gestartet: 0, entwuerfe: 0, followups: 0, weiter: 0, gestoppt: 0 };
+export async function sequenzenFortschreiben(jetzt = new Date(), o: { kampagneId?: string } = {}): Promise<FortschreibenErgebnis> {
+  const z: FortschreibenErgebnis = { gestartet: 0, entwuerfe: 0, followups: 0, weiter: 0, gestoppt: 0, gruende: {} };
+  // Warum etwas übersprungen bzw. gestoppt wurde — „Jetzt vorbereiten“ zeigt es (M1, 01.11.), statt still nichts zu tun. Nur Gründe, nie Namen.
+  const grund = (g: string) => { z.gruende[g] = (z.gruende[g] ?? 0) + 1; };
   const post = await ladePost();
   const risiko = await eigenesRisiko();
   const kx = await kontextLaden(post.ungueltig, jetzt);
   const heute = kx.heute, am = jetzt.toISOString();
+  if (o.kampagneId) { const k = kx.crm.kampagnen.find(x => x.id === o.kampagneId && !x.geloeschtAm); if (k) z.kampagne = { status: k.status, mitSequenz: !!k.sequenz?.length }; }
   if (!kx.crm.kampagnen.some(k => k.sequenz?.length)) return z;
   const postNach = new Map(post.eintraege.map(e => [e.id, e]));
   const neuePost: PostEintrag[] = [];
@@ -245,33 +270,43 @@ export async function sequenzenFortschreiben(jetzt = new Date()): Promise<{ gest
         if (f && f.status === 'offen') continue;
         if (f?.status === 'abgesagt') { k = standErsetzen(k, beenden(s, 'gestoppt', 'Follow-up abgesagt', am, 'gestoppt')); z.gestoppt++; continue; }
         if (f?.status === 'erledigt' && (f.ergebnis === 'sperre' || f.ergebnis === 'kein_bedarf')) { k = standErsetzen(k, beenden(s, 'gestoppt', f.ergebnis === 'sperre' ? 'Werbesperre' : 'kein Interesse', am, 'gestoppt')); z.gestoppt++; continue; }
-        if (f?.status === 'erledigt' && (f.ergebnis === 'gespraech' || f.ergebnis === 'termin')) { k = standErsetzen(k, beenden(s, 'reagiert', f.ergebnis === 'termin' ? 'Termin vereinbart' : 'Gespräch geführt', am, 'reagiert', f.zustaendig)); z.weiter++; continue; }
+        // M1 (01.11.): erst den Schritt als erledigt vermerken, dann beenden — sonst fehlt der Anruf im Trichter je Schritt.
+        if (f?.status === 'erledigt' && (f.ergebnis === 'gespraech' || f.ergebnis === 'termin')) { k = standErsetzen(k, erledigtUndBeenden(k, s, 'reagiert', f.ergebnis === 'termin' ? 'Termin vereinbart' : 'Gespräch geführt', am, 'reagiert', f.zustaendig)); z.weiter++; continue; }
         k = standErsetzen(k, weiter(k, s, heute, am, 'erledigt', f?.zustaendig)); z.weiter++;
       }
       if (k.status !== 'aktiv') return k;
       // 2 · Ziele aus der Liste genommen → Ende; neue Ziele starten (gesperrte gar nicht erst).
       for (const s of k.zielStaende ?? []) if (!istEnde(s) && !nochZiel(k, s)) { k = standErsetzen(k, beenden(s, 'gestoppt', 'aus der Kampagne genommen', am, 'gestoppt')); z.gestoppt++; }
-      const gestartet = staendeStarten(k, heute, am, ziel => !zielLage(ziel, kxc).sperre);
+      // Gesperrte gar nicht erst; schon Angeschriebene (Fund-Mail, gesendete Mail im Stapel) auch nicht — sonst bekämen sie eine zweite Erstansprache.
+      const raus = schonAngeschrieben(k, post.eintraege, kx.funde);
+      const gestartet = staendeStarten(k, heute, am, ziel => {
+        const sp = zielLage(ziel, kxc).sperre;
+        if (sp) { grund(`nicht gestartet: ${sp}`); return false; }
+        if (raus.has(zielSchluessel(ziel))) { grund('nicht gestartet: schon angeschrieben'); return false; }
+        return true;
+      });
       k = { ...k, zielStaende: gestartet.staende };
       z.gestartet += gestartet.neu;
       // 3 · Fällige Schritte erzeugen ihre Arbeit.
       for (const s of faelligeStaende(k, heute)) {
         const sch = schrittVon(k, s)!;
         const lage = zielLage(s, kxc, absender);
-        if (lage.sperre) { k = standErsetzen(k, beenden(s, 'gestoppt', lage.sperre, am, 'gestoppt')); z.gestoppt++; continue; }
+        if (lage.sperre) { k = standErsetzen(k, beenden(s, 'gestoppt', lage.sperre, am, 'gestoppt')); z.gestoppt++; grund(`gestoppt: ${lage.sperre}`); continue; }
         const ampelKanal = KANAL_AMPEL[sch.kanal];
         const ampel = ampelKanal ? lage.ampel(ampelKanal) : null;
         const rot = ampel?.farbe === 'rot' && ampel.grund !== 'keine Adresse';
         if (sch.kanal === 'mail' || sch.kanal === 'brief') {
-          if (sch.kanal === 'mail' && (!lage.email || kx.ungueltig.has(ungueltigHash(lage.email)))) { k = standErsetzen(k, weiter(k, s, heute, am, 'uebersprungen')); z.weiter++; continue; }
+          if (sch.kanal === 'mail' && (!lage.email || kx.ungueltig.has(ungueltigHash(lage.email)))) { k = standErsetzen(k, weiter(k, s, heute, am, 'uebersprungen')); z.weiter++; grund(!lage.email ? 'Mail übersprungen: keine Mail-Adresse' : 'Mail übersprungen: Adresse unzustellbar'); continue; }
           // Rote Ampel: nur im Playbook „eigenes Risiko“ (der Schalter wirkt bei der Freigabe und noch einmal beim Versand) — sonst nicht in den Stapel.
-          if (sch.kanal === 'mail' && rot && !risikoPlaybook(k)) { k = standErsetzen(k, weiter(k, s, heute, am, 'uebersprungen')); z.weiter++; continue; }
+          if (sch.kanal === 'mail' && rot && !risikoPlaybook(k)) { k = standErsetzen(k, weiter(k, s, heute, am, 'uebersprungen')); z.weiter++; grund('Mail übersprungen: Kanal-Ampel rot'); continue; }
+          // Gelbe Ampel (M1, 01.11.): Entwurf ja, aber gekennzeichnet — nur einzeln freigebbar (nie in der Sammelfreigabe).
+          const gelb = sch.kanal === 'mail' && ampel?.farbe === 'gelb' ? ampel.grund.slice(0, 200) : undefined;
           const id = postEintragId(k.id, s, sch.id);
           if (!postNach.has(id) && !neuePost.some(e => e.id === id)) {
             const f = entwurfFuellen(sch, lage.werte);
             neuePost.push({
               id, kampagneId: k.id, ziel: { art: s.art, id: s.id }, schrittId: sch.id, kanal: sch.kanal, an: { ...(sch.kanal === 'mail' ? { email: lage.email } : {}), name: lage.name, ...(lage.ort ? { ort: lage.ort } : {}) },
-              betreff: f.betreff, text: f.text, status: f.fehler ? 'fehler' : 'entwurf', ...(f.fehler ? { fehler: f.fehler } : {}), ...(sch.kanal === 'mail' && rot ? { risiko: true as const } : {}), angelegt: am, geaendert: am,
+              betreff: f.betreff, text: f.text, status: f.fehler ? 'fehler' : 'entwurf', ...(f.fehler ? { fehler: f.fehler } : {}), ...(sch.kanal === 'mail' && rot ? { risiko: true as const } : {}), ...(gelb ? { gelb } : {}), angelegt: am, geaendert: am,
             });
             z.entwuerfe++;
           }
@@ -279,7 +314,7 @@ export async function sequenzenFortschreiben(jetzt = new Date()): Promise<{ gest
           continue;
         }
         // Anruf / LinkedIn / Besuch: ein echtes Follow-up. Anruf ohne Nummer bzw. rote Ampel außerhalb von „eigenes Risiko“ → übersprungen.
-        if (sch.kanal === 'anruf' && (!lage.telefon || (rot && !(risikoPlaybook(k) && risiko)))) { k = standErsetzen(k, weiter(k, s, heute, am, 'uebersprungen')); z.weiter++; continue; }
+        if (sch.kanal === 'anruf' && (!lage.telefon || (rot && !(risikoPlaybook(k) && risiko)))) { k = standErsetzen(k, weiter(k, s, heute, am, 'uebersprungen')); z.weiter++; grund(!lage.telefon ? 'Anruf übersprungen: keine Nummer' : 'Anruf übersprungen: Kanal-Ampel rot'); continue; }
         const fid = sequenzFollowupId(k.id, s, sch.id);
         if (!fuNach.has(fid)) {
           const kontakt = lage.kontaktId ? kx.kontakte.find(x => x.id === lage.kontaktId) : undefined;
@@ -332,6 +367,8 @@ export async function stapelFreigeben(e: { person: string; kampagneId: string; i
       if (x.status !== 'entwurf') throw new MotorFehler(409, `„${x.an.name}“: ${x.status === 'fehler' ? `nicht freigebbar — ${x.fehler ?? 'Fehler im Entwurf'}` : 'ist nicht mehr im Entwurf'}.`);
       if (x.risiko && !(risikoPlaybook(k) && risiko)) throw new MotorFehler(409, `„${x.an.name}“: Kanal-Ampel rot — freigeben nur, wenn ein Inhaber „eigenes Risiko“ eingeschaltet hat (Homepage-Funde).`);
       if (x.risiko) mitRisiko = true;
+      // Gelbe Ampel (M1, 01.11.): nur einzeln — wer freigibt, soll den Grund gesehen haben.
+      if (x.gelb && ids.length > 1) throw new MotorFehler(409, `„${x.an.name}“: Kanal-Ampel gelb (${x.gelb}) — bitte einzeln freigeben, nicht in der Sammelfreigabe. Nichts freigegeben.`);
     }
     n = gewaehlt.length;
     return { ...b, eintraege: b.eintraege.map(x => (ids.includes(x.id) ? { ...x, status: 'freigegeben' as const, freigabe: { von: e.person, am, postfach: p.id, ...(x.risiko && risiko ? { eigenesRisiko: risiko } : {}) }, geaendert: am } : x)) };
@@ -342,6 +379,35 @@ export async function stapelFreigeben(e: { person: string; kampagneId: string; i
     { entscheidung: 'freigegeben', von: e.person, ergebnis: `${n} ${n === 1 ? 'Mail' : 'Mails'}${mitRisiko && risiko ? ` · auf eigenes Risiko (Schalter seit ${risiko.seit.slice(0, 10)})` : ''}`, at: am },
   )])).catch(() => { /* das Änderungsprotokoll trägt die Freigabe schon */ });
   return { freigegeben: n, eigenesRisiko: mitRisiko ? risiko : null };
+}
+
+/**
+ * Die Mail eines Homepage-Funds in den Stapel der Funde-Kampagne legen (M1, 01.11.) — EIN Versandweg: Drossel, Zeitfenster, Fußzeile, Abmeldelink,
+ * `List-Unsubscribe` und Rückfluss wie jede Kampagnen-Mail. Die Freigabe ist der Klick im ZOE-Stapel (lib/funde/uebernehmen.ts) „auf eigenes Risiko“
+ * — sie steht hier sichtbar am Eintrag: gesendet wird im Namen und Postfach des Absenders der Funde, `durch` = wer geklickt hat. Idempotent über die
+ * feste Kennung (Kampagne + Ziel + Schritt `fund`): ein zweiter Aufruf legt nichts doppelt an.
+ */
+export async function fundMailInStapel(e: {
+  fundId: string; kampagneId: string; ziel: KampagnenZiel; an: { email: string; name: string; ort?: string }; betreff: string; text: string;
+  absender: { person: string; postfach: string }; durch: string; eigenesRisiko: { seit: string; von: string }; wer: Wer;
+}, jetzt = new Date()): Promise<{ id: string; neu: boolean }> {
+  const id = postEintragId(e.kampagneId, e.ziel, FUND_SCHRITT);
+  const am = jetzt.toISOString();
+  let neu = false;
+  await aenderePost(b => {
+    if (b.eintraege.some(x => x.id === id)) return b;
+    neu = true;
+    const x: PostEintrag = {
+      id, kampagneId: e.kampagneId, ziel: { art: e.ziel.art, id: e.ziel.id }, schrittId: FUND_SCHRITT, kanal: 'mail', fundId: e.fundId,
+      an: { email: e.an.email.trim().toLowerCase(), name: e.an.name.slice(0, 160), ...(e.an.ort ? { ort: e.an.ort } : {}) },
+      betreff: e.betreff.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200), text: e.text.replace(/\u0000/g, '').replace(/\r\n?/g, '\n').trim(),
+      status: 'freigegeben', risiko: true,
+      freigabe: { von: e.absender.person, am, postfach: e.absender.postfach, eigenesRisiko: e.eigenesRisiko, ...(e.durch !== e.absender.person ? { durch: e.durch } : {}) },
+      angelegt: am, geaendert: am,
+    };
+    return { ...b, eintraege: [...b.eintraege, x] };
+  }, { wer: e.wer, felder: () => [{ id, felder: ['status', 'freigabe', 'eigenes-risiko', 'fund'], op: 'neu' }] });
+  return { id, neu };
 }
 
 /** Einen Entwurf bearbeiten (Betreff/Text) — nur im Entwurf bzw. Fehler; danach erneut geprüft (unbekannte Platzhalter = Fehler). */
@@ -412,7 +478,8 @@ function sendeSperre(x: PostEintrag, k: Kampagne | undefined, lage: ZielLage, ri
   if (ungueltig.has(ungueltigHash(lage.email))) return 'Die Adresse ist als unzustellbar vermerkt.';
   const a = lage.ampel('mail');
   if (a.farbe === 'rot' && a.grund !== 'keine Adresse') {
-    if (!risikoPlaybook(k)) return `Versand gesperrt: Kanal-Ampel rot (${a.grund}).`;
+    // Die Mail eines Homepage-Funds trägt ihre Freigabe „auf eigenes Risiko“ aus dem ZOE-Stapel (wie bis 01.11. der direkte Weg) — für jedes Funde-Profil.
+    if (!risikoPlaybook(k) && !x.fundId) return `Versand gesperrt: Kanal-Ampel rot (${a.grund}).`;
     if (!risiko) return 'Versand gesperrt: „eigenes Risiko“ ist inzwischen ausgeschaltet.';
     if (!x.freigabe?.eigenesRisiko) return 'Versand gesperrt: Kanal-Ampel rot, die Freigabe war nicht auf eigenes Risiko.';
   }
@@ -436,6 +503,11 @@ export async function versenden(jetzt = new Date()): Promise<{ gesendet: number;
   const crm = await ladeCrm();
   const aktiv = new Set(crm.kampagnen.filter(k => k.status === 'aktiv' && !k.geloeschtAm).map(k => k.id));
   const tag = localDay(jetzt);
+  // M1 (01.11.): erst prüfen, dann zählen — ohne Absender-/Impressumszeile bzw. Abmeldelink geht nichts raus, und das Tageskontingent bleibt frei.
+  const fuss = await fusszeileFuer(vorher.einstellungen);
+  const { abmeldeLink } = await import('@/lib/datenschutz/abmelden');
+  const ohneFuss = 'Absender-/Impressumszeile fehlt (Kampagnen-Einstellungen) — ohne sie geht keine Kampagnen-Mail raus.';
+  const ohneAbmelden = 'Ohne Abmeldelink kein Versand (Adresse der Instanz bzw. Pepper fehlt).';
   // Beanspruchen: je Person|Postfach bis zur Grenze, Zähler sofort hoch.
   let geholt: PostEintrag[] = [];
   await aenderePost(b => {
@@ -443,6 +515,8 @@ export async function versenden(jetzt = new Date()): Promise<{ gesendet: number;
     const jeLauf = new Map<string, number>();
     const eintraege = [...b.eintraege].sort((a, c) => (a.freigabe?.am ?? '').localeCompare(c.freigabe?.am ?? '')).map(x => {
       if (x.status !== 'freigegeben' || !x.freigabe || !aktiv.has(x.kampagneId)) return x;
+      const vorab = !fuss ? ohneFuss : !abmeldeLink(x.an.email) ? ohneAbmelden : null;
+      if (vorab) { if (vorab !== x.fehler) z.fehler++; return x.fehler === vorab ? x : { ...x, fehler: vorab, geaendert: am }; }
       const s = zaehlerSchluessel(tag, x.freigabe.von, x.freigabe.postfach);
       const lauf = jeLauf.get(s) ?? 0;
       if ((tage[s] ?? 0) >= b.einstellungen.tagesgrenze || lauf >= JE_LAUF_MAX) return x;
@@ -457,18 +531,16 @@ export async function versenden(jetzt = new Date()): Promise<{ gesendet: number;
   geholt = geholt.sort((a, c) => (a.freigabe?.am ?? '').localeCompare(c.freigabe?.am ?? ''));
   const risiko = await eigenesRisiko();
   const kx = await kontextLaden(vorher.ungueltig, jetzt);
-  const { abmeldeLink } = await import('@/lib/datenschutz/abmelden');
   const { inboxSenden } = await import('@/lib/inbox/senden-server');
-  const fuss = await fusszeileFuer(vorher.einstellungen);
   for (const x of geholt) {
     const k = kx.crm.kampagnen.find(y => y.id === x.kampagneId);
     const lage = zielLage(x.ziel, kx);
     const ergebnis = async (teil: Partial<PostEintrag>) => aenderePost(b => ({ ...b, eintraege: b.eintraege.map(y => (y.id === x.id ? { ...y, ...teil, geaendert: new Date().toISOString() } : y)) }), { wer: { art: 'person', person: x.freigabe!.von } });
     const sperre = sendeSperre(x, k, lage, risiko, kx.ungueltig);
     if (sperre) { await ergebnis({ status: 'gesperrt', fehler: sperre, sendetSeit: undefined }); z.gesperrt++; continue; }
-    if (!fuss) { await ergebnis({ status: 'freigegeben', sendetSeit: undefined, fehler: 'Absender-/Impressumszeile fehlt (Kampagnen-Einstellungen) — ohne sie geht keine Kampagnen-Mail raus.' }); z.fehler++; continue; }
+    if (!fuss) { await ergebnis({ status: 'freigegeben', sendetSeit: undefined, fehler: ohneFuss }); z.fehler++; continue; }
     const ab = abmeldeLink(x.an.email);
-    if (!ab) { await ergebnis({ status: 'freigegeben', sendetSeit: undefined, fehler: 'Ohne Abmeldelink kein Versand (Adresse der Instanz bzw. Pepper fehlt).' }); z.fehler++; continue; }
+    if (!ab) { await ergebnis({ status: 'freigegeben', sendetSeit: undefined, fehler: ohneAbmelden }); z.fehler++; continue; }
     const vorschau = /\{\{\s*vorschauLink/.test(x.text) ? await vorschauLinkNeu(lage.fund?.id, kx.heute) : null;
     const fertig = mailFertig(x.text, { abmeldeLink: ab.link, vorschauLink: vorschau, fusszeile: fuss, art14: lage.fremddaten ? (vorher.einstellungen.art14Text || ART14_VORGABE) : null });
     if (fertig.fehler) { await ergebnis({ status: 'fehler', fehler: fertig.fehler, sendetSeit: undefined }); z.fehler++; continue; }
@@ -487,27 +559,41 @@ export async function versenden(jetzt = new Date()): Promise<{ gesendet: number;
     const gesendet = { am: new Date().toISOString(), ...(typeof r.body.id === 'string' ? { id: r.body.id } : {}), ...(typeof r.body.threadId === 'string' ? { threadId: r.body.threadId } : {}), ...(typeof r.body.messageId === 'string' ? { messageId: r.body.messageId } : {}) };
     await ergebnis({ status: 'gesendet', gesendet, sendetSeit: undefined, fehler: undefined });
     z.gesendet++;
-    await nachDemSenden(x, k!, person, gesendet.am).catch(e => console.error('[kampagnen] nach dem Senden:', e instanceof Error ? e.message.slice(0, 160) : e));
+    await nachDemSenden(x, k!, person, gesendet.am, typeof r.body.von === 'string' ? r.body.von : '').catch(e => console.error('[kampagnen] nach dem Senden:', e instanceof Error ? e.message.slice(0, 160) : e));
   }
   return z;
 }
 
 /** Nach dem Senden: Stand weiter, Ergebnis „angesprochen“ an der Kampagne, Aktivität an der Akte (Betreff, nie Text). */
-async function nachDemSenden(x: PostEintrag, k: Kampagne, person: string, am: string): Promise<void> {
+async function nachDemSenden(x: PostEintrag, k: Kampagne, person: string, am: string, ueber = ''): Promise<void> {
   const heute = localDay(new Date(am));
   await aendereCrm(c => ({
     ...c, kampagnen: c.kampagnen.map(y => {
       if (y.id !== k.id) return y;
       const s = (y.zielStaende ?? []).find(st => gleichesZiel(st, x.ziel));
       const mit = s && s.status === 'wartet' && schrittVon(y, s)?.id === x.schrittId ? standErsetzen(y, weiter(y, s, heute, am, 'gesendet', person)) : y;
-      return x.ziel.art === 'kontakt' && !y.ergebnisse.some(e => e.kontaktId === x.ziel.id && e.ergebnis === 'angesprochen')
+      if (x.ziel.art === 'kontakt') return !y.ergebnisse.some(e => e.kontaktId === x.ziel.id && e.ergebnis === 'angesprochen')
         ? { ...mit, ergebnisse: [...mit.ergebnisse, { kontaktId: x.ziel.id, ergebnis: 'angesprochen' as const, am: heute, von: person }], geaendert: am, geaendertVon: person } : mit;
+      // Betrieb ohne Person (M1, 01.11.): das Ergebnis steht in `firmenErgebnisse` — die Personen-Liste bleibt, wie sie ist.
+      return !(y.firmenErgebnisse ?? []).some(e => e.firmaId === x.ziel.id && e.ergebnis === 'angesprochen')
+        ? { ...mit, firmenErgebnisse: [...(mit.firmenErgebnisse ?? []), { firmaId: x.ziel.id, ergebnis: 'angesprochen' as const, am: heute, von: person }], geaendert: am, geaendertVon: person } : mit;
     }),
+    // Die Mail eines Homepage-Funds: der Lead des Betriebs ist jetzt „kontaktiert“ (wie bis 01.11. der direkte Weg).
+    ...(x.fundId ? { firmen: c.firmen.map(f => {
+      const zielFirma = x.ziel.art === 'firma' ? x.ziel.id : undefined;
+      return (f.id === zielFirma || (!zielFirma && f.lead?.hauptKontaktId === x.ziel.id)) && f.lead?.status === 'neu' ? { ...f, lead: { ...f.lead, status: 'kontaktiert' as const } } : f;
+    }) } : {}),
   }), { art: 'person', person });
+  if (x.fundId) {
+    const { aendereFunde } = await import('@/lib/funde/speicher');
+    const { adresseMaskiert } = await import('@/lib/zugang/konten');
+    const id = x.fundId;
+    await aendereFunde(b => ({ ...b, funde: b.funde.map(f => (f.id === id && !f.gesendet ? { ...f, status: 'gesendet' as const, gesendet: { am, ueber: adresseMaskiert(ueber), von: person, eigenesRisiko: true as const }, geaendert: am } : f)) }), { wer: { art: 'person', person } });
+  }
   if (x.ziel.art !== 'kontakt') return;
   await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
     const l = cur ?? { kontakte: [] };
-    return { ...l, kontakte: l.kontakte.map(y => (y.id === x.ziel.id ? { ...y, aktivitaeten: [...(y.aktivitaeten ?? []), { am, art: 'mail' as const, text: `Mail: ${x.betreff} (Kampagne „${k.name}“)`, von: person }], letzterKontakt: heute } : y)) };
+    return { ...l, kontakte: l.kontakte.map(y => (y.id === x.ziel.id ? { ...y, aktivitaeten: [...(y.aktivitaeten ?? []), { am, art: 'mail' as const, text: `Mail: ${x.betreff} (Kampagne „${k.name}“${x.fundId ? ', auf eigenes Risiko freigegeben' : ''})`, von: person }], letzterKontakt: heute } : y)) };
   }, { art: 'person', person });
 }
 
@@ -542,10 +628,13 @@ async function spiegelVon(person: string): Promise<{ koepfe: RueckKopf[]; eigene
   return { koepfe: koepfe.sort((a, b) => a.am.localeCompare(b.am)), eigene };
 }
 
-/** Offene Follow-ups der Sequenz zu einem Ziel absagen (die Sequenz endet) — rein. */
-function sequenzFollowupsAbsagen(c: CrmBestand, kampagneId: string, ziel: KampagnenZiel, grund: string, am: string): FollowUp[] {
+/**
+ * Offene Follow-ups der Sequenz zu einem Ziel absagen (die Sequenz endet) — rein. Mit `fundId` auch das „Anrufen … nur ohne Antwort/Abmeldung“ des
+ * Homepage-Funds (`fu-<fund>`, lib/funde/uebernehmen.ts) — M1, 01.11.: es stand bis dahin trotz Antwort weiter da.
+ */
+export function sequenzFollowupsAbsagen(c: CrmBestand, kampagneId: string, ziel: KampagnenZiel, grund: string, am: string, fundId?: string): FollowUp[] {
   const k = c.kampagnen.find(x => x.id === kampagneId);
-  const ids = new Set((k?.sequenz ?? []).map(s => sequenzFollowupId(kampagneId, ziel, s.id)));
+  const ids = new Set([...(k?.sequenz ?? []).map(s => sequenzFollowupId(kampagneId, ziel, s.id)), ...(fundId ? [`fu-${fundId}`] : [])]);
   return (c.followups ?? []).map(f => (ids.has(f.id) && f.status === 'offen' ? { ...f, status: 'abgesagt' as const, notiz: `${f.notiz ? `${f.notiz}\n\n` : ''}${grund}`.slice(0, 1000), geaendert: am } : f));
 }
 
@@ -587,7 +676,7 @@ export async function rueckfluss(jetzt = new Date()): Promise<{ antworten: numbe
       const s = (k.zielStaende ?? []).find(st => gleichesZiel(st, t.x.ziel));
       const fuId = t.art === 'antwort' ? antwortFollowupId(t.x.id) : bounceFollowupId(t.x.id);
       const kontaktId = t.x.ziel.art === 'kontakt' ? t.x.ziel.id : undefined;
-      const followups = sequenzFollowupsAbsagen(neu, k.id, t.x.ziel, t.art === 'antwort' ? 'Antwort kam — die Sequenz endet.' : 'Mail kam zurück — die Sequenz endet.', am);
+      const followups = sequenzFollowupsAbsagen(neu, k.id, t.x.ziel, t.art === 'antwort' ? 'Antwort kam — die Sequenz endet.' : 'Mail kam zurück — die Sequenz endet.', am, t.x.fundId);
       if (!followups.some(f => f.id === fuId)) {
         followups.push(neuesFollowUp({
           id: fuId, bezug: kontaktId ? { art: 'kontakt', id: kontaktId } : { art: 'firma', id: t.x.ziel.id }, ...(kontaktId ? { kontaktId } : {}), art: t.art === 'antwort' ? 'mail' : 'sonstig',
@@ -598,7 +687,10 @@ export async function rueckfluss(jetzt = new Date()): Promise<{ antworten: numbe
       const kampagne = s ? standErsetzen(k, t.art === 'antwort' ? beenden(s, 'reagiert', 'Antwort erhalten', am, 'reagiert') : beenden(s, 'gestoppt', 'Adresse unzustellbar', am, 'bounce')) : k;
       const ergebnisse = t.art === 'antwort' && kontaktId && !kampagne.ergebnisse.some(e => e.kontaktId === kontaktId && e.ergebnis === 'reagiert')
         ? [...kampagne.ergebnisse, { kontaktId, ergebnis: 'reagiert' as const, am: heute }] : kampagne.ergebnisse;
-      neu = { ...neu, followups, kampagnen: neu.kampagnen.map(y => (y.id === k.id ? { ...kampagne, ergebnisse } : y)) };
+      const firmaId = t.x.ziel.art === 'firma' ? t.x.ziel.id : undefined;
+      const firmenErgebnisse = t.art === 'antwort' && firmaId && !(kampagne.firmenErgebnisse ?? []).some(e => e.firmaId === firmaId && e.ergebnis === 'reagiert')
+        ? [...(kampagne.firmenErgebnisse ?? []), { firmaId, ergebnis: 'reagiert' as const, am: heute }] : kampagne.firmenErgebnisse;
+      neu = { ...neu, followups, kampagnen: neu.kampagnen.map(y => (y.id === k.id ? { ...kampagne, ergebnisse, ...(firmenErgebnisse ? { firmenErgebnisse } : {}) } : y)) };
       if (t.art === 'antwort') z.antworten++; else z.ruecklaeufer++;
     }
     return neu;
@@ -628,8 +720,10 @@ export async function kampagnenAbmeldung(token: string, jetzt = new Date()): Pro
     for (const x of betroffen) {
       const k = neu.kampagnen.find(y => y.id === x.kampagneId);
       const s = k?.zielStaende?.find(st => gleichesZiel(st, x.ziel));
-      if (!k || !s || istEnde(s)) continue;
-      neu = { ...neu, followups: sequenzFollowupsAbsagen(neu, k.id, x.ziel, 'Abgemeldet — die Sequenz endet.', am), kampagnen: neu.kampagnen.map(y => (y.id === k.id ? standErsetzen(k, beenden(s, 'gestoppt', 'Abmeldung', am, 'abgemeldet')) : y)) };
+      // Die Mail eines Homepage-Funds hat oft keinen Stand in einer Sequenz — ihr „Anrufen …“ wird trotzdem abgesagt (M1, 01.11.).
+      if (!k || ((!s || istEnde(s)) && !x.fundId)) continue;
+      const followups = sequenzFollowupsAbsagen(neu, k.id, x.ziel, 'Abgemeldet — die Sequenz endet.', am, x.fundId);
+      neu = { ...neu, followups, kampagnen: s && !istEnde(s) ? neu.kampagnen.map(y => (y.id === k.id ? standErsetzen(k, beenden(s, 'gestoppt', 'Abmeldung', am, 'abgemeldet')) : y)) : neu.kampagnen };
     }
     return neu;
   }, { art: 'system' });

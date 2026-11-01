@@ -127,7 +127,7 @@ export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> =
   sitzungen: { karten: 2000 },
   beitraege: { wirkung: 20000, quellen: 1000 },
   newsletter: { beitragIds: GRENZE_IDS },
-  kampagnen: { schritte: 1000, kontaktIds: 20000, ergebnisse: 100000, sequenz: SEQUENZ_GRENZEN.schritte },
+  kampagnen: { schritte: 1000, kontaktIds: 20000, firmaIds: 20000, ergebnisse: 100000, firmenErgebnisse: 100000, sequenz: SEQUENZ_GRENZEN.schritte },
   angebote: { positionen: ANGEBOT_GRENZEN.positionen },
 };
 const grenzeVon = (liste: CrmListe, feld: string) => LISTEN_GRENZEN[liste]?.[feld] ?? GRENZE_IDS;
@@ -453,6 +453,8 @@ function kampagne(o: Record<string, unknown>, jetzt: string): Kampagne | null {
     // Betriebe ohne Person als Ziele (01.11., Welle A) — nur Firmen-Kennungen, ohne Doppelte.
     ...(Array.isArray(o.firmaIds) && o.firmaIds.length ? { firmaIds: Array.from(new Set((o.firmaIds as unknown[]).map(String).filter(x => /^f-[a-z0-9-]{2,63}$/.test(x)))).slice(0, grenzeVon('kampagnen', 'kontaktIds')) } : {}),
     ergebnisse: Array.isArray(o.ergebnisse) ? (o.ergebnisse as Record<string, unknown>[]).slice(0, grenzeVon('kampagnen', 'ergebnisse')).map(e => ({ kontaktId: txt(e.kontaktId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10), ...(wer(e.von) && wer(e.von) !== BEIDE ? { von: wer(e.von) } : {}) })).filter(e => /^c-/.test(e.kontaktId)) : [],
+    // Ergebnisse je Betrieb ohne Person (M1, 01.11.) — eigene Liste, die Personen-Liste bleibt unberührt.
+    ...(Array.isArray(o.firmenErgebnisse) && o.firmenErgebnisse.length ? { firmenErgebnisse: (o.firmenErgebnisse as Record<string, unknown>[]).slice(0, grenzeVon('kampagnen', 'firmenErgebnisse')).map(e => ({ firmaId: txt(e.firmaId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10), ...(wer(e.von) && wer(e.von) !== BEIDE ? { von: wer(e.von) } : {}) })).filter(e => /^f-[a-z0-9-]{2,63}$/.test(e.firmaId)) } : {}),
     von: aus(o.von, ['hand', 'head-sales', 'head-marketing'] as const, 'hand'), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,
     ...(vernetzenSaeubern(o.vernetzen) ? { vernetzen: vernetzenSaeubern(o.vernetzen) } : {}),
   };

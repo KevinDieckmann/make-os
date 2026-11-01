@@ -27,9 +27,14 @@ export interface PostEintrag {
   fehler?: string;
   /** Ampel rot, aber Playbook auf „eigenes Risiko“ — nur mit eingeschaltetem Schalter freigebbar. */
   risiko?: true;
+  /** Kanal-Ampel gelb (M1, 01.11.) — mit dem Grund; nur EINZELN freigebbar, nie in der Sammelfreigabe. */
+  gelb?: string;
+  /** Mail eines Homepage-Funds (M1, 01.11.): derselbe Stapel, dieselbe Drossel, derselbe Rückfluss — Schritt-Kennung `FUND_SCHRITT`. */
+  fundId?: string;
   /** Von Hand oder mit ZOE überarbeitet. */
   bearbeitet?: { von: string; am: string; zoe?: true };
-  freigabe?: { von: string; am: string; postfach: string; eigenesRisiko?: { seit: string; von: string } };
+  /** `von` = in wessen Namen und Postfach gesendet wird; `durch` = wer geklickt hat, wenn das jemand anderes war (Fund-Freigabe im ZOE-Stapel). */
+  freigabe?: { von: string; am: string; postfach: string; eigenesRisiko?: { seit: string; von: string }; durch?: string };
   /** Zeitpunkt, an dem der Versand begann (Neustart-Schutz: hängt er, wird er „unklar“, nie zweimal gesendet). */
   sendetSeit?: string;
   gesendet?: { am: string; id?: string; threadId?: string; messageId?: string };
@@ -80,8 +85,12 @@ const schl = (kampagneId: string, z: KampagnenZiel, schrittId: string) => `${kam
 export const postEintragId = (kampagneId: string, z: KampagnenZiel, schrittId: string): string => `km-${fnv(schl(kampagneId, z, schrittId))}${fnv(`x${schl(kampagneId, z, schrittId)}`)}`;
 /** Follow-up eines Sequenz-Schritts (Anruf, LinkedIn, Besuch) — echtes Follow-up in `crm.followups`, idempotent über die Kennung. */
 export const sequenzFollowupId = (kampagneId: string, z: KampagnenZiel, schrittId: string): string => `fu-ks-${fnv(schl(kampagneId, z, schrittId))}${fnv(`y${schl(kampagneId, z, schrittId)}`)}`;
+/** Schritt-Kennung der Mail eines Homepage-Funds im Stapel (kein Sequenz-Schritt — der Lauf schaltet daran nichts weiter). */
+export const FUND_SCHRITT = 'fund';
 /** Follow-up „Antwort bearbeiten“ nach einer Antwort auf einen Eintrag. */
 export const antwortFollowupId = (postId: string): string => `fu-kr-${postId.slice(3)}`;
+/** Umkehrung: aus dem Follow-up „Antwort bearbeiten“ der Eintrag im Stapel (null, wenn es keins ist). */
+export const postIdAusAntwort = (followupId: string): string | null => (/^fu-kr-[0-9a-f]{16}$/.test(followupId) ? `km-${followupId.slice(6)}` : null);
 /** Follow-up „Adresse prüfen“ nach einem Rückläufer. */
 export const bounceFollowupId = (postId: string): string => `fu-kb-${postId.slice(3)}`;
 

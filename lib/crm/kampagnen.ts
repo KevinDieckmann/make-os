@@ -11,7 +11,8 @@
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Firma, Kampagne, SegmentKriterien } from './typen';
 import { mandatLage } from './kunden';
-import { kontextAus, segmentAuswerten } from './segmente';
+import { kontextAus, segmentAuswerten, segmentFirmen } from './segmente';
+import { firmaKanalStatus, type KanalStatus } from './recht';
 import { firmenSchluessel } from './firmen';
 import { vernetzenStandard } from './netzwerk';
 import { firmenDerPerson } from './stationen';
@@ -255,6 +256,39 @@ export function zielgruppe(kontakte: Kontakt[], crm: CrmBestand, pb0: Pick<Playb
 }
 
 /**
+ * Die Betriebe ohne Person einer Zielgruppe (M1, 01.11.: Segment → Kampagne nahm bis dahin nur Personen mit) — dieselbe Regel wie das Segment
+ * (`segmentFirmen`, lib/crm/segmente.ts; gesperrte Betriebe sind nie Mitglied). Die Zusätze „Mandat grün“/„Laufzeit 90 Tage“ gelten nur für Personen
+ * (dann keine Betriebe), „Kunden wie unsere besten“ filtert auf die ähnlichen Firmen. Rein.
+ */
+export function zielgruppeFirmen(kontakte: Kontakt[], crm: CrmBestand, pb0: Pick<Playbook, 'zielgruppe' | 'zusatz' | 'segmentId'>, heute: string): Firma[] {
+  const z = zielKriterien(crm, pb0);
+  if (z.zusatz === 'health_gruen' || z.zusatz === 'laufzeit_90') return [];
+  const l = segmentFirmen(crm.firmen, kontakte, z.kriterien, kontextAus(crm, heute));
+  if (z.zusatz !== 'lookalike') return l;
+  const ids = new Set(aehnlicheFirmen(crm, heute, 40).map(a => a.firma.id));
+  return l.filter(f => ids.has(f.id));
+}
+
+/**
+ * Die Firmen-Ampel beim Planen (M1, 01.11.) — wie `kampagnenAmpel` für Personen (lib/crm/personen-schranke.ts): nur bei werblichem Kanal (Mail,
+ * LinkedIn, Newsletter). Rot (abmahnfähig bzw. keine Adresse) kommt nicht in die Kampagne, gelb mit Hinweis. Mail/Newsletter über `firmaKanalStatus`
+ * (eine Stelle); eine LinkedIn-Nachricht an einen Betrieb ohne Einwilligung ist Werbung wie eine Mail. Rein.
+ */
+export function kampagnenFirmenAmpel(kanal: string | undefined, firmen: readonly Firma[], crm: Pick<CrmBestand, 'mandate' | 'chancen'>): { rot: { id: string; grund: string }[]; gelb: { id: string; grund: string }[] } {
+  const raus = { rot: [] as { id: string; grund: string }[], gelb: [] as { id: string; grund: string }[] };
+  if (kanal !== 'mail' && kanal !== 'linkedin' && kanal !== 'newsletter') return raus;
+  for (const f of firmen) {
+    const ctx = { hatMandat: crm.mandate.some(m => m.status === 'aktiv' && m.firmaId === f.id), hatChance: crm.chancen.some(c => c.firmaId === f.id && !['gewonnen', 'verloren'].includes(c.stufe)) };
+    const st: Pick<KanalStatus, 'farbe' | 'grund'> = kanal === 'linkedin'
+      ? (f.werbesperre ? { farbe: 'rot', grund: `Werbesperre seit ${f.werbesperre.seit}` } : { farbe: 'rot', grund: 'LinkedIn-Nachricht an einen Betrieb ohne Einwilligung ist Werbung (§ 7 UWG) — Brief oder Besuch' })
+      : firmaKanalStatus(f, kanal, ctx);
+    if (st.farbe === 'rot') raus.rot.push({ id: f.id, grund: st.grund });
+    else if (st.farbe === 'gelb') raus.gelb.push({ id: f.id, grund: st.grund });
+  }
+  return raus;
+}
+
+/**
  * Eine Kampagne aus einem Playbook — mit der GANZEN aktuellen Zielgruppe als Auswahl. Bis 28.09. übernahm sie still
  * nur die ersten 40 (Integritätsprüfung: „nie abschneiden“); jetzt alle — wer weniger will, wählt in der Kampagne
  * bewusst aus. `max` nur für einen ausdrücklich gewollten Ausschnitt (die Route prüft die Grenze, 413).
@@ -271,16 +305,31 @@ export function planen(pb: Playbook, kontakte: Kontakt[], crm: CrmBestand, heute
   };
 }
 
-export interface KampagnenZahlen { personen: number; angesprochen: number; reagiert: number; gespraeche: number; chancen: number; keinInteresse: number; offen: number; schritteOffen: number; schritteFaellig: number }
+/**
+ * Zahlen einer Kampagne. Seit M1 (01.11.): Ziele = Personen + Betriebe (`firmenErgebnisse`), und der Trichter ist KUMULATIV — wer je reagiert hat,
+ * zählt als reagiert, auch wenn danach „Gespräch“ oder „Interesse“ kam (bis dahin zählte nur das letzte Ergebnis, ein Gespräch fiel aus „reagiert“).
+ * `keinInteresse` bleibt das letzte Ergebnis.
+ */
+export interface KampagnenZahlen { personen: number; firmen: number; ziele: number; angesprochen: number; reagiert: number; gespraeche: number; chancen: number; keinInteresse: number; offen: number; schritteOffen: number; schritteFaellig: number }
+const REAGIERT_KUMULATIV = new Set(['reagiert', 'gespraech', 'chance', 'kein_interesse']);
+const GESPRAECH_KUMULATIV = new Set(['gespraech', 'chance']);
 export function kampagnenZahlen(k: Kampagne, heute: string): KampagnenZahlen {
+  const alle = [
+    ...k.ergebnisse.map(e => ({ ziel: `c:${e.kontaktId}`, ergebnis: e.ergebnis, am: e.am })),
+    ...(k.firmenErgebnisse ?? []).map(e => ({ ziel: `f:${e.firmaId}`, ergebnis: e.ergebnis, am: e.am })),
+  ].sort((a, b) => a.am.localeCompare(b.am));
   const letzte = new Map<string, string>();
-  for (const e of [...k.ergebnisse].sort((a, b) => a.am.localeCompare(b.am))) letzte.set(e.kontaktId, e.ergebnis);
-  const z = (x: string) => Array.from(letzte.values()).filter(v => v === x).length;
+  const je = new Map<string, Set<string>>();
+  for (const e of alle) { letzte.set(e.ziel, e.ergebnis); je.set(e.ziel, (je.get(e.ziel) ?? new Set()).add(e.ergebnis)); }
+  const hat = (s: ReadonlySet<string>) => Array.from(je.values()).filter(v => Array.from(v).some(x => s.has(x))).length;
   const plus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
   const offene = k.schritte.filter(s => !s.erledigt);
+  const firmen = k.firmaIds ?? [];
   return {
-    personen: k.kontaktIds.length, angesprochen: letzte.size, reagiert: z('reagiert'), gespraeche: z('gespraech'), chancen: z('chance'), keinInteresse: z('kein_interesse'),
-    offen: k.kontaktIds.filter(id => !letzte.has(id)).length,
+    personen: k.kontaktIds.length, firmen: firmen.length, ziele: k.kontaktIds.length + firmen.length, angesprochen: letzte.size,
+    reagiert: hat(REAGIERT_KUMULATIV), gespraeche: hat(GESPRAECH_KUMULATIV), chancen: hat(new Set(['chance'])),
+    keinInteresse: Array.from(letzte.values()).filter(v => v === 'kein_interesse').length,
+    offen: k.kontaktIds.filter(id => !letzte.has(`c:${id}`)).length + firmen.filter(id => !letzte.has(`f:${id}`)).length,
     schritteOffen: offene.length, schritteFaellig: k.start ? offene.filter(s => plus(k.start!, s.tag) <= heute).length : 0,
   };
 }

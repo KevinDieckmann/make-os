@@ -34,7 +34,8 @@ export async function kampagneEinrichten(person: string, wer: Wer, profil: FundP
     const offen = c.kampagnen.find(k => k.playbook === profil.playbook && !k.geloeschtAm && !k.archiviertAm && (k.status === 'aktiv' || k.status === 'entwurf'));
     if (offen) { kampagneId = offen.id; return { ...c, segmente }; }
     kampagneId = neueKennung('kp'); neu = true;
-    const k = { ...planen(pb, [], { ...crm, segmente }, heute, kampagneId), status: 'aktiv' as const, segmentId: profil.segmentId, zustaendig: person, geaendertVon: person };
+    // Ohne festes `zustaendig` (M1, 01.11.): die Welt des Playbooks entscheidet (lib/crm/kampagnen-welt.ts — Homepage-Funde → Marketing), nicht wer einrichtet.
+    const k = { ...planen(pb, [], { ...crm, segmente }, heute, kampagneId), status: 'aktiv' as const, segmentId: profil.segmentId, geaendertVon: person };
     return { ...c, segmente, kampagnen: [...c.kampagnen, k] };
   }, wer);
   await aendereFunde(b => ({ ...b, einstellungen: profil.id === 'startup' ? { ...b.einstellungen, kampagneStartupId: kampagneId } : profil.id === 'scaleup' ? { ...b.einstellungen, kampagneScaleupId: kampagneId } : profil.id === 'unternehmer' ? { ...b.einstellungen, kampagneUnternehmerId: kampagneId } : { ...b.einstellungen, kampagneId, segmentId: profil.segmentId } }), { h, wer });

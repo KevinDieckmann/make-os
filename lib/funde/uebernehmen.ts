@@ -6,10 +6,12 @@
 //       entsteht nur für einen Inhaber aus der Anbieterkennzeichnung (`inhaberAusImpressum`) — über den EINEN Anlege-Weg `personAnlegen`.
 //   2 · Öffentlicher Vorschau-Link (Token `v1-…`, nur der Fingerabdruck im Bestand, 60 Tage).
 //   3 · Mail NUR wenn ein Inhaber „eigenes Risiko“ eingeschaltet hat, ein Absender-Postfach gewählt ist, die Adresse bekannt und nicht gesperrt
-//       ist und die Freigabe aus der Sitzung kommt — gesendet über den vorhandenen Weg der Inbox (`inboxSenden`, Absender = Postfach, Spiegel,
-//       Abmeldelink). `uwgBestaetigt: true` setzt NUR dieser Weg und nur mit eingeschaltetem Risiko (die Kanal-Ampel bleibt rot, RISIKO_HINWEIS).
+//       ist und die Freigabe aus der Sitzung kommt. Seit M1 (01.11.) EIN Versandweg: die Mail wird ein freigegebener Eintrag im Mail-Stapel der
+//       Funde-Kampagne (`fundMailInStapel`, lib/crm/kampagnen-motor.ts) — der Takt sendet sie gedrosselt (werktags 8–18 Uhr, Tagesgrenze je Postfach)
+//       mit Fußzeile, Abmeldelink, `List-Unsubscribe` und Rückfluss (Antwort/Abmeldung/Rückläufer stoppen und sagen das Anruf-Follow-up ab).
+//       `uwgBestaetigt` setzt der Versand nur für Einträge „auf eigenes Risiko“ (die Kanal-Ampel bleibt rot, RISIKO_HINWEIS).
 //   4 · Follow-up „Anrufen“ nach 72 h (Kevin 30.10.) — bzw. „Kontakt aufnehmen“ heute, wenn keine Mail ging.
-// Jeder Schritt ist wiederholbar (feste Kennungen am Fund: kontaktId, Vorschau-Token, `gesendet`) — ein Abbruch sendet nie doppelt.
+// Jeder Schritt ist wiederholbar (feste Kennungen am Fund: kontaktId, Vorschau-Token, `post`/`gesendet`) — ein Abbruch sendet nie doppelt.
 
 import { randomBytes } from 'node:crypto';
 import { localDay } from '@/lib/zeit';
@@ -23,12 +25,11 @@ import { leereKriterien } from '@/lib/crm/leads';
 import type { Firma } from '@/lib/crm/typen';
 import { betriebDomain, betriebBekannt, betriebFirmenId, inhaberAusImpressum } from '@/lib/crm/betrieb';
 import { unterNiveau } from './analyse';
-import { abmeldeLink, instanzAdresse } from '@/lib/datenschutz/abmelden';
-import { adresseMaskiert } from '@/lib/zugang/konten';
+import { instanzAdresse } from '@/lib/datenschutz/abmelden';
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { StapelArtFreigabe, ArtErgebnis } from '@/lib/zoe/stapel-arten';
 import { aendereFunde, fundeHaushalt, ladeFunde, vorschauTokenHash, FundeFehler } from './speicher';
-import { linksEinsetzen, EINSTIEG, ZIELGRUPPE_NAME } from './entwurf';
+import { EINSTIEG, ZIELGRUPPE_NAME, LINK_PLATZHALTER, ABMELDE_PLATZHALTER } from './entwurf';
 import { firmaIcpSaeubern } from '@/lib/crm/icp-firma';
 import { FUND_BRANCHEN, ANRUF_NACH_TAGEN, VORSCHAU_TAGE, profilFuer, type Fund } from './typen';
 
@@ -138,7 +139,8 @@ async function betriebUebernehmen(f: Fund, person: string, wer: Wer, jetzt: stri
   return { ok: true, firmaId: fid, ...(kontaktId ? { kontaktId } : {}) };
 }
 
-export type UebernahmeErgebnis = { ok: true; text: string; gesendet: boolean; fund: Fund } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string };
+/** `gesendet` = die Mail ist raus bzw. liegt freigegeben im Mail-Stapel der Kampagne (`imStapel`), der sie gedrosselt sendet. */
+export type UebernahmeErgebnis = { ok: true; text: string; gesendet: boolean; imStapel?: boolean; fund: Fund } | { ok: false; status: 400 | 403 | 404 | 409 | 413; fehler: string };
 
 /** Übernehmen (+ ggf. senden). `sitzung` = die Person hat selbst geklickt (nie Dienstweg/ZOE). */
 export async function fundUebernehmen(fundId: string, person: string, o: { sitzung: boolean }): Promise<UebernahmeErgebnis> {
@@ -163,18 +165,18 @@ export async function fundUebernehmen(fundId: string, person: string, o: { sitzu
   f = b.funde.find(x => x.id === fundId) as Fund;
 
   // 2 · Vorschau-Link (einmal; das Token steht nur in diesem Lauf, im Bestand nur sein Fingerabdruck).
-  let token: string | null = null;
+  // Seit M1 (01.11.) erzeugt der Versand den Link, den die Mail trägt, noch einmal frisch (lib/crm/kampagnen-motor.ts `vorschauLinkNeu`).
   const basis = instanzAdresse();
   if (!f.vorschau?.tokenHash && f.vorschau) {
-    token = `v1-${randomBytes(16).toString('hex')}`;
-    const hash = vorschauTokenHash(token);
+    const hash = vorschauTokenHash(`v1-${randomBytes(16).toString('hex')}`);
     await aendereFunde(x => ({ ...x, funde: x.funde.map(y => (y.id === fundId && y.vorschau ? { ...y, vorschau: { ...y.vorschau, tokenHash: hash, gueltigBis: tagPlus(heute, VORSCHAU_TAGE) } } : y)) }), { h });
   }
   b = await aendereFunde(x => ({ ...x, funde: x.funde.map(y => (y.id === fundId ? { ...y, status: y.status === 'gesendet' ? 'gesendet' : 'uebernommen', firmaId, geaendert: jetzt, von: person } : y)) }), { h, wer });
   f = b.funde.find(x => x.id === fundId) as Fund;
 
-  // 3 · Senden — nur unter allen Bedingungen; sonst bleibt der Entwurf, und der Fund trägt den Grund.
+  // 3 · Mail in den Stapel der Kampagne — nur unter allen Bedingungen; sonst bleibt der Entwurf, und der Fund trägt den Grund.
   let gesendet = false;
+  let imStapel = false;
   let grund = '';
   const e = b.einstellungen;
   const kontakt = kontaktId ? (await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).find(k => k.id === kontaktId) : undefined;
@@ -182,56 +184,46 @@ export async function fundUebernehmen(fundId: string, person: string, o: { sitzu
   // Empfänger: die Person (Inhaber), sonst die Mail-Adresse des Betriebs.
   const an = kontakt?.email ?? firma?.email;
   if (f.gesendet) gesendet = true;
+  else if (f.post) imStapel = true;
   else if (!o.sitzung) grund = 'Mail nur per Klick aus der eigenen Sitzung.';
   else if (!e.eigenesRisiko) grund = 'Mail nicht gesendet: „eigenes Risiko“ ist aus (Kanal-Ampel rot, § 7 UWG).';
   else if (!f.email || !an) grund = 'Keine Mail-Adresse bekannt — bitte anrufen oder vorbeigehen.';
   else if (kontakt?.werbesperre || kontakt?.eingeschraenkt || firma?.werbesperre) grund = 'Werbesperre bzw. Einschränkung — keine Mail.';
   else if (!basis) grund = 'Die Adresse der Instanz fehlt (MAKE_OS_ADRESSE) — ohne sie gibt es keinen Vorschau-Link.';
-  else if (f.vorschau && !token) grund = 'Der Vorschau-Link wurde schon einmal erzeugt, aber nicht gesendet — „Mail senden“ erzeugt einen neuen.';
   else {
     const abs = await absenderOk(e.absender);
     if (!abs.ok) grund = abs.grund;
     else {
-      const s = await mailSenden(f, { email: an, ...(kontakt ? { kontakt } : {}), firmaId }, token, basis, e.absender!, person, wer);
-      if (s.ok) gesendet = true; else grund = s.fehler;
+      const s = await mailEinstellen(f, { email: an, ...(kontakt?.email ? { kontakt } : {}), firmaId }, e.absender!, e.eigenesRisiko, person, wer);
+      if (s.ok) imStapel = true; else grund = s.fehler;
     }
   }
 
   // 4 · Follow-up (Anruf nach 72 h bzw. Kontakt heute) — einmal je Fund.
   const fuId = `fu-${fundId}`;
   await aendereCrm(c => ((c.followups ?? []).some(x => x.id === fuId) ? c : {
-    ...c, followups: [...(c.followups ?? []), { ...neuesFollowUp({ id: fuId, bezug: kontaktId ? { art: 'kontakt', id: kontaktId } : { art: 'firma', id: firmaId }, ...(kontaktId ? { kontaktId } : {}), art: gesendet ? 'anruf' : 'sonstig', text: gesendet ? 'Anrufen: Website-Entwurf besprechen (nur ohne Antwort/Abmeldung)' : 'Kontakt aufnehmen: Website-Entwurf (Mail ging nicht raus)', faellig: gesendet ? tagPlus(heute, ANRUF_NACH_TAGEN) : heute, quelle: 'hand' }, kontakt, person, jetzt), geaendertVon: person }],
+    ...c, followups: [...(c.followups ?? []), { ...neuesFollowUp({ id: fuId, bezug: kontaktId ? { art: 'kontakt', id: kontaktId } : { art: 'firma', id: firmaId }, ...(kontaktId ? { kontaktId } : {}), art: gesendet || imStapel ? 'anruf' : 'sonstig', text: gesendet || imStapel ? 'Anrufen: Website-Entwurf besprechen (nur ohne Antwort/Abmeldung)' : 'Kontakt aufnehmen: Website-Entwurf (Mail ging nicht raus)', faellig: gesendet || imStapel ? tagPlus(heute, ANRUF_NACH_TAGEN) : heute, quelle: 'hand' }, kontakt, person, jetzt), geaendertVon: person }],
   }), wer);
-  return { ok: true, gesendet, fund: f, text: gesendet ? 'Übernommen, Mail gesendet, Anruf in 3 Tagen vorgemerkt.' : `Übernommen. ${grund}`.trim() };
+  return { ok: true, gesendet: gesendet || imStapel, ...(imStapel ? { imStapel: true } : {}), fund: f, text: gesendet ? 'Übernommen, Mail gesendet, Anruf in 3 Tagen vorgemerkt.'
+    : imStapel ? 'Übernommen. Die Mail liegt freigegeben (auf eigenes Risiko) im Mail-Stapel der Kampagne — gesendet wird werktags zwischen 8 und 18 Uhr, gedrosselt je Postfach. Anruf in 3 Tagen vorgemerkt.'
+    : `Übernommen. ${grund}`.trim() };
 }
 
-/** Die Mail über die Inbox senden und alles vermerken (Fund, Lead, Kampagne, Aktivität). */
-async function mailSenden(f: Fund, z: { email: string; kontakt?: Kontakt; firmaId: string }, token: string | null, basis: string, absender: { person: string; postfach: string }, person: string, wer: Wer): Promise<{ ok: true } | { ok: false; fehler: string }> {
+/**
+ * Die Mail in den Mail-Stapel der Funde-Kampagne legen (M1, 01.11. — EIN Versandweg, kein `inboxSenden` mehr hier). Der Text behält die Platzhalter
+ * für Vorschau- und Abmeldelink: der Versand erzeugt den Vorschau-Link frisch (nur sein Fingerabdruck bleibt am Fund) und setzt den Abmeldelink ein.
+ * Ziel = die Person, wenn sie die Mail-Adresse trägt, sonst der Betrieb. Fund, Lead, Ergebnis und Aktivität vermerkt der Motor NACH dem Senden.
+ */
+async function mailEinstellen(f: Fund, z: { email: string; kontakt?: Kontakt; firmaId: string }, absender: { person: string; postfach: string }, risiko: { seit: string; von: string } | undefined, person: string, wer: Wer): Promise<{ ok: true } | { ok: false; fehler: string }> {
   if (!f.entwurf || !z.email) return { ok: false, fehler: 'Kein Entwurf.' };
-  const k = z.kontakt;
-  // Profil Start-ups hat keinen Website-Entwurf (kein Token, kein Link im Text).
-  const link = token ? `${basis}/vorschau/${token}` : '';
-  const ab = abmeldeLink(z.email, basis)?.link ?? null;
-  const text = linksEinsetzen(f.entwurf.text, link, ab);
-  const { inboxSenden } = await import('@/lib/inbox/senden-server');
-  let r: { status: number; body: Record<string, unknown> };
-  try {
-    r = await inboxSenden(absender.person, { neu: { postfach: absender.postfach, betreff: f.entwurf.betreff }, an: [{ email: z.email, name: f.name }], text, uwgBestaetigt: true }, wer);
-  } catch (err) { r = { status: 502, body: { fehler: err instanceof Error ? err.message.slice(0, 200) : 'Versand gescheitert.' } }; }
-  if (r.status !== 200 || r.body.ok !== true) return { ok: false, fehler: `Mail nicht gesendet: ${String(r.body.fehler ?? `Fehler ${r.status}`)}` };
+  if (!risiko) return { ok: false, fehler: 'Mail nicht gesendet: „eigenes Risiko“ ist aus.' };
+  // Profil Start-ups hat keinen Website-Entwurf (kein Vorschau-Link im Text).
+  const text = f.entwurf.text.split(LINK_PLATZHALTER).join(f.vorschau ? '{{vorschauLink}}' : '').split(ABMELDE_PLATZHALTER).join('{{abmeldeLink}}');
+  const ziel = z.kontakt ? { art: 'kontakt' as const, id: z.kontakt.id } : { art: 'firma' as const, id: z.firmaId };
+  const { fundMailInStapel } = await import('@/lib/crm/kampagnen-motor');
+  const r = await fundMailInStapel({ fundId: f.id, kampagneId: f.kampagneId, ziel, an: { email: z.email, name: f.name }, betreff: f.entwurf.betreff, text, absender, durch: person, eigenesRisiko: { seit: risiko.seit, von: risiko.von }, wer });
   const am = new Date().toISOString();
-  const ueber = adresseMaskiert(String(r.body.von ?? ''));
-  await aendereFunde(x => ({ ...x, funde: x.funde.map(y => (y.id === f.id ? { ...y, status: 'gesendet', gesendet: { am, ueber, von: person, eigenesRisiko: true }, geaendert: am } : y)) }), { wer });
-  // Kampagnen-Ergebnis je Person (die Ergebnis-Liste kennt nur Personen); ein Betrieb ohne Person trägt den Stand am Fund und am Lead.
-  await aendereCrm(c => ({
-    ...c,
-    kampagnen: k ? c.kampagnen.map(x => (x.id === f.kampagneId ? { ...x, ergebnisse: [...x.ergebnisse, { kontaktId: k.id, ergebnis: 'angesprochen', am, von: person }], geaendert: am, geaendertVon: person } : x)) : c.kampagnen,
-    firmen: c.firmen.map(x => (x.id === z.firmaId && x.lead && x.lead.status === 'neu' ? { ...x, lead: { ...x.lead, status: 'kontaktiert' } } : x)),
-  }), wer);
-  if (k) await aendereKontakte<{ kontakte: Kontakt[] }>(cur => {
-    const l = cur ?? { kontakte: [] };
-    return { ...l, kontakte: l.kontakte.map(x => (x.id === k.id ? { ...x, aktivitaeten: [...(x.aktivitaeten ?? []), { am, art: 'mail' as const, text: `Mail: Website-Entwurf (Kampagne, auf eigenes Risiko freigegeben)`, von: person }], letzterKontakt: localDay() } : x)) };
-  }, wer);
+  await aendereFunde(x => ({ ...x, funde: x.funde.map(y => (y.id === f.id && !y.post ? { ...y, post: { id: r.id, am, von: person }, geaendert: am } : y)) }), { wer });
   return { ok: true };
 }
 
@@ -242,6 +234,7 @@ export async function fundNachsenden(fundId: string, person: string): Promise<Ue
   const f = b.funde.find(x => x.id === fundId);
   if (!f || !(f.firmaId || f.kontaktId)) return { ok: false, status: 404, fehler: 'Erst übernehmen (ZOE-Stapel).' };
   if (f.status !== 'uebernommen') return { ok: false, status: 409, fehler: f.status === 'gesendet' ? 'Schon gesendet.' : 'Nicht im Zustand „übernommen“.' };
+  if (f.post) return { ok: false, status: 409, fehler: 'Die Mail liegt schon im Mail-Stapel der Kampagne — dort steht, ob sie gesendet ist (bei einem Fehler: „Erneut vorbereiten“).' };
   // Neuer Link (das alte Token kennt niemand mehr).
   await aendereFunde(x => ({ ...x, funde: x.funde.map(y => (y.id === fundId && y.vorschau ? { ...y, vorschau: { ...y.vorschau, tokenHash: undefined } } : y)) }), { h });
   return fundUebernehmen(fundId, person, { sitzung: true });
