@@ -13,6 +13,7 @@ import {
 } from '@/lib/vertraege/modell';
 import { vorlageAusText, wertAlsPlatzhalter, schluesselAus } from '@/lib/vertraege/import';
 import { istBusinessGesellschaft } from '@/lib/einheiten';
+import { sammelPruefen, sammelLesen, SAMMEL_FORMAT } from '@/lib/vertraege/sammel';
 
 const ordner = mkdtempSync(path.join(tmpdir(), 'make-os-vertraege-'));
 process.env.MAKE_OS_DATEN_DIR = ordner;
@@ -124,6 +125,38 @@ describe('Import: Paragraphen aus Text, Werte markieren', () => {
   });
 });
 
+describe('Sammel-Import (Datei): Vorschau je Vorlage, nur neue, nie überschreiben, ungeprüft', () => {
+  const datei = (vorlagen: unknown[], extra: Record<string, unknown> = {}) => ({ format: SAMMEL_FORMAT, version: 1, vorlagen, ...extra });
+  const neueId = (i: number) => `vv-sammel-${String(i).padStart(4, '0')}`;
+  const b = { jetzt: J, person: 'person-a', neueId };
+  it('Prüfvermerk, Kennung und Archiv aus der Datei werden nie übernommen', () => {
+    const r = sammelPruefen(datei([{ ...vorlageRoh, id: 'vv-fremd-0001', pruefung: { anwaltlichGeprueftAm: '2026-01-01' }, archiviert: true, stand: 'x' }]), { vorlagen: [] }, b);
+    expect(r.vorschau.zeilen[0]).toMatchObject({ zustand: 'neu', paragraphen: 3, felder: 1, fehler: [] });
+    expect(r.neu[0]).toMatchObject({ id: 'vv-sammel-0000', pruefung: {} });
+    expect(r.neu[0].archiviert).toBeUndefined();
+    expect(vorlageAmpel(r.neu[0]).stufe).toBe('ungeprueft');
+  });
+  it('unbekannter Platzhalter → Fehler je Vorlage; vorhandener Titel+Art → „gibt es schon“; doppelt in der Datei', () => {
+    const vorhanden = vorlageSaeubern(vorlageRoh, null, basis).v!;
+    const r = sammelPruefen(datei([
+      { ...vorlageRoh, titel: '  beispielvertrag ' },
+      { titel: 'Kaputt', art: 'nda', paragraphen: [{ nr: '§ 1', titel: 'x', text: '{{gibtsnicht}}' }] },
+      { ...vorlageRoh, titel: 'Zweite', art: 'nda' }, { ...vorlageRoh, titel: 'Zweite', art: 'nda' },
+      { ...vorlageRoh, titel: 'Eigene', art: 'x-kooperation' },
+    ], { arten: [{ label: 'Kooperation' }] }), { vorlagen: [vorhanden] }, b);
+    expect(r.vorschau.zeilen.map(z => z.zustand)).toEqual(['vorhanden', 'fehler', 'neu', 'doppelt', 'neu']);
+    expect(r.vorschau.zeilen[1].fehler.join(' ')).toMatch(/\{\{gibtsnicht\}\}/);
+    expect(r.arten.map(a => a.id)).toEqual(['x-kooperation']);
+    expect(r.neu.map(v => v.titel)).toEqual(['Zweite', 'Eigene']);
+  });
+  it('falsches Format → Fehler; mehr als 200 Paragraphen → Fehler der Vorlage; Datei > 2 MB → 413', () => {
+    expect(() => sammelPruefen({ format: 'anders', version: 1, vorlagen: [] }, { vorlagen: [] }, b)).toThrow(/Format/);
+    const viele = Array.from({ length: 201 }, (_, i) => ({ nr: `§ ${i + 1}`, titel: 't', text: 'x' }));
+    expect(sammelPruefen(datei([{ titel: 'Lang', art: 'nda', paragraphen: viele }]), { vorlagen: [] }, b).vorschau.zeilen[0].fehler.join(' ')).toMatch(/Höchstens 200 Paragraphen/);
+    expect(() => sammelLesen('x'.repeat(2 * 1024 * 1024 + 1))).toThrow(expect.objectContaining({ status: 413 }));
+  });
+});
+
 describe('Route: Nummer, festgeschrieben, Version, unterschrieben, Rechte', () => {
   type Route = { GET: (r: Request) => Promise<Response>; POST: (r: Request) => Promise<Response> };
   let vertraege: Route, vorlagen: Route, importR: Pick<Route, 'POST'>, unterschrift: Pick<Route, 'POST'>;
@@ -230,6 +263,38 @@ describe('Route: Nummer, festgeschrieben, Version, unterschrieben, Rechte', () =
     expect(r.status).toBe(200);
     expect(r.d.vorschau.paragraphen).toHaveLength(1);
     expect(await db.loadJson('vertrag-vorlagen--haus')).toEqual(vorher);
+  });
+
+  it('Sammel-Import: Vorschau speichert nichts, Übernahme nur neue (zweiter Lauf legt nichts doppelt an), nur Inhaber per Sitzung', async () => {
+    const sammel = (await import('@/app/api/vertraege/vorlagen/sammel/route')) as unknown as Pick<Route, 'POST'>;
+    const url = 'http://test/api/vertraege/vorlagen/sammel';
+    const inhalt = JSON.stringify({ format: 'make-os-vertragsvorlagen', version: 1, vorlagen: [
+      { ...vorlageRoh, titel: 'Sammel A', pruefung: { anwaltlichGeprueftAm: '2026-01-01' } },
+      { titel: 'Sammel B', art: 'nda', paragraphen: [{ nr: '§ 1', titel: 'Zweck', text: 'Für {{partner.name}}.' }] },
+      { titel: 'Sammel C', art: 'nda', paragraphen: [{ nr: '§ 1', titel: 'x', text: '{{erfunden}}' }] },
+    ] });
+    const vorher = await db.loadJson('vertrag-vorlagen--haus');
+    const v = await post(sammel, { aktion: 'vorschau', inhalt }, 'person-a', url);
+    expect(v.status).toBe(200);
+    expect(v.d.zeilen.map((z: { zustand: string }) => z.zustand)).toEqual(['neu', 'neu', 'fehler']);
+    expect(v.d.zeilen[2].fehler.join(' ')).toMatch(/erfunden/);
+    expect(await db.loadJson('vertrag-vorlagen--haus')).toEqual(vorher);
+    const u = await post(sammel, { aktion: 'uebernehmen', inhalt }, 'person-a', url);
+    expect(u.status).toBe(200);
+    expect(u.d.uebernommen).toHaveLength(2);
+    const nach = await db.loadJson<{ vorlagen: VertragVorlage[] }>('vertrag-vorlagen--haus');
+    const a = nach!.vorlagen.find(x => x.titel === 'Sammel A')!;
+    expect(a.pruefung).toEqual({});
+    expect(nach!.vorlagen.some(x => x.titel === 'Sammel C')).toBe(false);
+    const zweit = await post(sammel, { aktion: 'uebernehmen', inhalt }, 'person-a', url);
+    expect(zweit.d.uebernommen).toEqual([]);
+    expect(zweit.d.zeilen.slice(0, 2).map((z: { zustand: string }) => z.zustand)).toEqual(['vorhanden', 'vorhanden']);
+    expect(await db.loadJson('vertrag-vorlagen--haus')).toEqual(nach);
+    // Rechte: Mitglied (kein Inhaber) 403, Dienstweg 403 (auch mit Person), zu große Datei 413
+    expect((await post(sammel, { aktion: 'vorschau', inhalt }, 'person-b', url)).status).toBe(403);
+    const dienst = { 'content-type': 'application/json', 'x-make-key': 'pruef-schluessel-vertraege', 'x-make-person': 'person-a' };
+    expect((await sammel.POST(new Request(url, { method: 'POST', headers: dienst, body: JSON.stringify({ aktion: 'vorschau', inhalt }) }))).status).toBe(403);
+    expect((await post(sammel, { aktion: 'vorschau', inhalt: 'x'.repeat(2 * 1024 * 1024 + 10) }, 'person-a', url)).status).toBe(413);
   });
 
   it('Dienstweg: fertigstellen, Status, Vorlagen schreiben, Unterschrift, Import → 403', async () => {
