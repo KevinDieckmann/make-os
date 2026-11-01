@@ -20,7 +20,7 @@ import { Karte, Knopf, Chip, feld, useRueckfrage } from '../../ui';
 import Link from 'next/link';
 import { Wahl } from '../Wahl';
 import type { CrmApi } from '../daten';
-import { verlustgruende } from '@/lib/crm/pipeline';
+import { verlustgruende, verlustWiedervorlage } from '@/lib/crm/pipeline';
 import { angebotDokument } from '@/lib/crm/angebot-dokument';
 import { ANGEBOT_STATUS_LABEL, angebotEinmalRest, angebotGesendetVermerkt, gesellschaftLabel, mailVorlage, produktTexteFuer } from '@/lib/crm/angebote';
 import { mitVorgaben } from '@/lib/crm/gesellschaften';
@@ -44,6 +44,9 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
   const [ablehnen, setAblehnen] = useState(false);
   const [grund, setGrund] = useState<string | null>(null);
   const [grundFrei, setGrundFrei] = useState('');
+  /** Wiedervorlage am Lead bei zeitbezogenem Grund (02.11.): vorbelegt +90 Tage, änderbar, leer = keine. `null` = Vorschlag übernehmen. */
+  const [wiedervorlage, setWiedervorlage] = useState<string | null>(null);
+  const wvVorschlag = grund ? verlustWiedervorlage(grund, crm.heute) : undefined;
   const [mandat, setMandat] = useState<string | null>(null);
   const [mandatId, setMandatId] = useState<string | null>(null);
   const [einmal, setEinmal] = useState<{ id?: string; fehler?: string } | null>(null);
@@ -212,8 +215,14 @@ export function Ansicht({ a, api, daten, meldungStart, onOeffnen, onListe, zuKon
               <Wahl<string> label="Verlustgrund" liste={verlustgruende(crm.stand.wertelisten).map(x => ({ id: x, label: x }))} wert={grund} onWahl={setGrund} onLeeren={() => setGrund(null)} />
               <input value={grundFrei} onChange={e => setGrundFrei(e.target.value)} placeholder="Ergänzung (optional)" aria-label="Ergänzung zum Grund" style={{ ...feld, fontSize: TYP.bedien, padding: '8px 11px', flex: '1 1 200px' }} />
             </div>
+            {wvVorschlag && (
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: TYP.bedien, color: C.inkDim }}>
+                Wiedervorlage am Lead (leer = keine)
+                <input type="date" value={wiedervorlage ?? wvVorschlag} onChange={e => setWiedervorlage(e.target.value)} aria-label="Wiedervorlage am Lead" style={{ ...feld, fontSize: TYP.bedien, padding: '7px 10px' }} />
+              </label>
+            )}
             <div style={{ display: 'flex', gap: 8 }}>
-              <Knopf farbe={LEUCHT.kritisch} aus={!grund && !grundFrei.trim()} onClick={async () => { if (await aktion({ aktion: 'ablehnen', grund: [grund, grundFrei.trim()].filter(Boolean).join(' — ') }, 'Abgelehnt — Deal verloren mit Grund.')) setAblehnen(false); }}>Als abgelehnt markieren</Knopf>
+              <Knopf farbe={LEUCHT.kritisch} aus={!grund && !grundFrei.trim()} onClick={async () => { if (await aktion({ aktion: 'ablehnen', grund: [grund, grundFrei.trim()].filter(Boolean).join(' — '), ...(wvVorschlag ? { wiedervorlage: wiedervorlage ?? wvVorschlag } : {}) }, 'Abgelehnt — Deal verloren mit Grund.')) setAblehnen(false); }}>Als abgelehnt markieren</Knopf>
               <Knopf leise onClick={() => setAblehnen(false)}>Abbrechen</Knopf>
             </div>
           </div>

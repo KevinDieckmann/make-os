@@ -6,7 +6,7 @@
 //   stellen    { id, stand, nachfassenAm? } → Nummer, PDF in die Ablage, Deal/Follow-up/Aktivität (409 bei Sperre)
 //   annehmen   { id, stand }                → Deal gewonnen; seit 29.10. Mandat + Liquiplan automatisch (`automatik`, mit Rückgängig)
 //   mandat-zurueck { id }                   → Rückgängig der Automatik (nur ohne Rechnung/Fall; nie Dienstweg)
-//   ablehnen   { id, stand, grund }         → Deal verloren mit Grund (Grund Pflicht)
+//   ablehnen   { id, stand, grund, wiedervorlage? } → Deal verloren mit Grund (Grund Pflicht); zeitbezogener Grund → Wiedervorlage am Lead (+90 T., leer = keine)
 //   version    { id }                       → neue Fassung als Entwurf mit Bezug
 //   loeschen   { id, stand }                → nur Entwürfe, nur aus dem Papierkorb (endgültig, 04.10.)
 //   ablage     { id, art: archiv|papierkorb, zurueck? } → Archiv (jeder Status) bzw. Papierkorb (nur Entwürfe), hinein/zurück (04.10.)
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
   if (!z) return NextResponse.json(GESPERRT, { status: 403 });
   const alterBau = bauPruefen(req); // alter Tab nach dem Hochladen (29.09., A2)
   if (alterBau) return alterBau;
-  let b: { aktion?: string; id?: unknown; felder?: unknown; stand?: unknown; grund?: unknown; nachfassenAm?: unknown };
+  let b: { aktion?: string; id?: unknown; felder?: unknown; stand?: unknown; grund?: unknown; wiedervorlage?: unknown; nachfassenAm?: unknown };
   try { b = await jsonBegrenzt(req); } catch (e) { return jsonZuGross(e) ?? fehler('Kein JSON.', 400); }
   // Person aus dem Zugang (Regel 5) — Sitzung oder Dienstweg mit Person.
   const person = z.person;
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ...r, text: r.schonZurueck ? 'Schon zurückgenommen.' : `Mandat wieder entfernt${r.posten ? ` · ${r.posten} Posten aus dem Liquiplan genommen` : ''}.` });
       }
       case 'ablehnen': {
-        const r = await angebotAblehnen({ id, stand: b.stand, person, grund: b.grund, wer });
+        const r = await angebotAblehnen({ id, stand: b.stand, person, grund: b.grund, ...('wiedervorlage' in b ? { wiedervorlage: b.wiedervorlage } : {}), wer });
         return NextResponse.json({ ok: true, angebot: mitStand(r.angebot), dealId: r.dealId, ...(r.dealFehler ? { hinweis: r.dealFehler } : {}) });
       }
       case 'version': {

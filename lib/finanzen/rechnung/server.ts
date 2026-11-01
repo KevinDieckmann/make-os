@@ -1142,7 +1142,8 @@ export async function mahnAufgabenKern(heute: string, o: { bereich: 'alle' | 'pr
  * Weiche GENAU EINMAL gefragt; arbeitet der neue Weg, bleiben hier nur die Privat-Gesellschaften (Prozesse sind Business). Rechnet der neue Weg im Schatten mit,
  * meldet dieser Lauf sein Wirkungsbild (Business) dem Vergleich. Ohne Überführung bit-gleich wie vorher.
  */
-export async function mahnAufgabenNachziehen(heute = localDay()): Promise<{ neu: number }> {
+/** `fehler` (02.11., Prüfung C): der Lauf ist gescheitert — vorher kam dann still `{ neu: 0 }` zurück, und der Morgenlauf meldete „nichts fällig“. */
+export async function mahnAufgabenNachziehen(heute = localDay()): Promise<{ neu: number; fehler?: string }> {
   try {
     const ue = await import('@/lib/prozesse/ueberfuehrung-server');
     const weg = await ue.wegFuer('sp-rechnung');
@@ -1151,7 +1152,7 @@ export async function mahnAufgabenNachziehen(heute = localDay()): Promise<{ neu:
     return { neu: r.neu };
   } catch (e) {
     console.error('[rechnung] Mahn-Aufgaben nicht angelegt:', e instanceof Error ? e.message : e);
-    return { neu: 0 };
+    return { neu: 0, fehler: 'Mahn-Aufgaben nicht angelegt — der Lauf ist gescheitert.' };
   }
 }
 

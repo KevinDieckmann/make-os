@@ -11,7 +11,7 @@ import { protokolliere, bestandDiff, listenDiff, type Aenderung, type Wer } from
 import type { Kontakt } from '@/lib/make-one/crm';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { mandatZieleLesen } from './mandat-ziele';
-import { STUFEN, wechsleStufe, erwartetVerschiebung, gewonnenVerlorenSperre } from './pipeline';
+import { STUFEN, wechsleStufe, erwartetVerschiebung, gewonnenVerlorenSperre, verlustWiedervorlage } from './pipeline';
 import { firmaIdsErgaenzen, firmaIdsNachziehen } from './firmen-bezug';
 import { localDay, istKalendertag, tagVon } from '@/lib/zeit';
 import { istKontaktKennung } from '@/lib/kennung';
@@ -707,7 +707,11 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
       fehler.push(schritt?.datum && schritt.datum < heuteTag ? `„${alt.titel}“: der nächste Schritt vom ${schritt.datum} ist überfällig — erst ein neues Datum setzen, dann die Stufe wechseln.` : `„${alt.titel}“: Für ${STUFEN.find(s => s.id === ziel)?.label} braucht es einen nächsten Schritt mit Datum.`);
       continue;
     }
-    const neuFelder = { ...felder, stufe: ziel, historie: r.chance.historie, letzteAktivitaet: r.chance.letzteAktivitaet, ...(r.chance.grund ? { grund: r.chance.grund } : {}), ...(r.chance.wiedervorlage ? { wiedervorlage: r.chance.wiedervorlage } : {}) };
+    // Verloren (02.11., Prüfung C): ein zeitbezogener Grund („Zeitpunkt“, „Keine Rückmeldung“, „Keine Entscheidung“) bekommt ohne Angabe eine Wiedervorlage
+    // (+90 Tage) — der Lead kommt dann von selbst wieder in die Qualifizierung; ein ausdrücklich leeres Feld heißt „keine“. Jeder andere Grund räumt eine
+    // alte Wiedervorlage (z. B. vom Parken) ab — sonst käme ein „Wettbewerb“ still zurück.
+    const wvVerloren = ziel === 'verloren' ? ('wiedervorlage' in felder ? (typeof felder.wiedervorlage === 'string' ? felder.wiedervorlage : '') : verlustWiedervorlage(r.chance.grund, heuteTag) ?? '') : undefined;
+    const neuFelder = { ...felder, stufe: ziel, historie: r.chance.historie, letzteAktivitaet: r.chance.letzteAktivitaet, ...(r.chance.grund ? { grund: r.chance.grund } : {}), ...(wvVerloren !== undefined ? { wiedervorlage: wvVerloren } : r.chance.wiedervorlage ? { wiedervorlage: r.chance.wiedervorlage } : {}) };
     raus.push(mit(neuFelder));
   }
   return { ops: raus, fehler, grenze };

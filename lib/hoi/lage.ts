@@ -226,6 +226,8 @@ export interface TaktRobustLage {
   tagesstart: { fehlversuche: number; laeuft: boolean; umgangen: boolean } | null;
   /** Heads, deren Freigabe-Liste in den letzten 7 Tagen voll war (neue Vorschläge abgelehnt). */
   headsVoll: { head: string; abgelehnt: number }[];
+  /** Letzter Morgenlauf (heute oder gestern) mit gescheiterten Schritten (02.11., Prüfung C) — nur Tag und Zahl. Fehlt/null = keiner gescheitert. */
+  schritteGescheitert?: { tag: string; anzahl: number } | null;
 }
 
 /** Befunde zu Takt und Warteschlange (09.10., Takt robust) — rein, getestet (tests/takt-robust.test.ts). */
@@ -239,6 +241,10 @@ export function taktRobustBefunde(t: TaktRobustLage | null | undefined): Befund[
   if (!t.sperreLesbar) b.push({ id: 'agenten-sperre', bereich: 'app', label: 'Agenten-Einstellungen', ampel: 'rot', wert: 'nicht lesbar — alle Agenten angehalten', satz: 'der Bestand agenten-einstellung--<haushalt> ist beschädigt oder mit falschem Schlüssel — zur Sicherheit gilt Not-Aus; aus der Sicherung wiederherstellen (NOTFALL.md)' });
   const s = t.tagesstart;
   if (s && s.fehlversuche > 0) b.push({ id: 'morgenlauf', bereich: 'app', label: 'Morgenlauf', ampel: s.umgangen ? 'rot' : 'gelb', wert: `${s.fehlversuche} Fehlversuch${s.fehlversuche === 1 ? '' : 'e'} heute${s.laeuft ? ' · läuft gerade' : ''}`, satz: s.umgangen ? 'hakt — die übrigen Läufe (Heads, Head of Finance, Morgen-/Abendlauf, Tageslauf) laufen ohne ihn; Logs von /api/tagesstart prüfen' : 'scheitert — wird mit Pause erneut versucht; ab 3 Fehlversuchen bzw. ab Mittag laufen die übrigen Läufe ohne ihn' });
+  if (t.schritteGescheitert?.anzahl) {
+    const g = t.schritteGescheitert;
+    b.push({ id: 'morgenlauf-schritte', bereich: 'app', label: 'Morgenlauf · Schritte', ampel: 'gelb', wert: `${g.anzahl} Schritt${g.anzahl === 1 ? '' : 'e'} gescheitert (${g.tag.slice(8, 10)}.${g.tag.slice(5, 7)}.)`, satz: 'der Lauf ist durch, aber einzelne Schritte (z. B. Mahnvorschläge, Rechnungen vorbereiten) liefen nicht — die Antwort von /api/tagesstart bzw. die Logs nennen sie; der nächste Morgenlauf versucht es wieder' });
+  }
   for (const h of t.headsVoll) b.push({ id: `heads-voll:${h.head}`, bereich: 'app', label: `Freigabe-Liste ${h.head}`, ampel: 'rot', wert: `voll — ${h.abgelehnt} neue Vorschläge abgelehnt`, satz: 'zu viele offene Vorschläge — entscheiden (annehmen/ablehnen), dann nimmt der Head wieder neue auf; gekürzt wird nichts' });
   return b;
 }

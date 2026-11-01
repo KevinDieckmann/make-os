@@ -378,6 +378,17 @@ export function ablaufFollowUps(followups: readonly FollowUp[], abgelaufen: read
   return liste;
 }
 
+/**
+ * Das Nachfassen der Angebote schließen (02.11., Prüfung C „Lead → zahlender Kunde“): je Angebot `fu-<id>` (Nachfassen nach dem Stellen) und
+ * `fu-<id>-ablauf` (abgelaufen) — nur offene bzw. verpasste; erledigte/abgesagte bleiben, wie sie sind. Rein; dieselbe Liste kommt zurück, wenn nichts zu tun ist.
+ */
+export function angebotFollowupsSchliessen(followups: readonly FollowUp[], angebotIds: Iterable<string>, ctx: { status: 'erledigt' | 'abgesagt'; ergebnis: string; jetzt: string; person: string }): FollowUp[] {
+  const ids = new Set(Array.from(angebotIds).flatMap(id => [`fu-${id}`, `fu-${id}-ablauf`]));
+  if (!ids.size || !followups.some(f => ids.has(f.id) && (f.status === 'offen' || f.status === 'verpasst'))) return followups as FollowUp[];
+  return followups.map(f => (ids.has(f.id) && (f.status === 'offen' || f.status === 'verpasst')
+    ? { ...f, status: ctx.status, ergebnis: ctx.ergebnis, ...(ctx.status === 'erledigt' ? { erledigtAm: ctx.jetzt } : {}), geaendert: ctx.jetzt, geaendertVon: ctx.person } : f));
+}
+
 // ── Produkte ─────────────────────────────────────────────────────────────────
 
 /** Was einem Produkt für Angebote fehlt (Kevin: Leistungstext ist Pflicht). */

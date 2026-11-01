@@ -29,7 +29,7 @@ import { dankeZeilen, dankeOffen } from '@/lib/crm/netzwerken';
 import { eventsOhneTermin } from '@/lib/crm/besuche';
 import { WEG } from '@/lib/wege';
 import {
-  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, anstehendFuerSpace, type Anstehend, type ABuchung, type ADanke, type AVorschlaege,
+  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, anstehendFuerSpace, laufzeitAnstehend, type Anstehend, type ABuchung, type ADanke, type AVorschlaege,
 } from './anstehend';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 
@@ -111,7 +111,9 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     nachbereiten: nachbereitenAnstehend(nachbereitung(kontakte, heute, person, zeiten, jetztWand, crm?.followups)),
     nachbereitZeiten: Object.fromEntries(Object.entries(zeiten).filter(([k]) => verwiesen.has(k))),
     // Dazu (N5): besuchte Events, bei denen wir „angemeldet“ sind, aber noch kein Termin im Kalender steht — sonst fährt niemand hin, der es im Kalender sieht.
-    fristen: [...fristenAnstehend(fristen, person, heute, vorlauf), ...(crm ? eventsOhneTermin(crm.events, heute, person).map(x => ({ id: `event-ohne-termin-${x.id}`, art: 'event' as const, tag: x.tag, titel: `Event „${x.titel}“: angemeldet, aber kein Termin im Kalender`, href: WEG.besuch(x.id), inTagen: x.inTagen, business: true as const })) : [])],
+    fristen: [...fristenAnstehend(fristen, person, heute, vorlauf), ...(crm ? eventsOhneTermin(crm.events, heute, person).map(x => ({ id: `event-ohne-termin-${x.id}`, art: 'event' as const, tag: x.tag, titel: `Event „${x.titel}“: angemeldet, aber kein Termin im Kalender`, href: WEG.besuch(x.id), inTagen: x.inTagen, business: true as const })) : []),
+      // 02.11. (Prüfung C): Mandate mit abgelaufener Laufzeit ohne Entscheidung — bis jemand verlängert oder beendet.
+      ...(crm ? laufzeitAnstehend(crm.mandate, person, heute) : [])],
     followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten, ausgeblendet: ausgeblendet ?? ohneSichtbareKennung(crm, kontakte) }), person, mitAufgabe, zeiten) : [],
     buchungen,
     vorschlaege,

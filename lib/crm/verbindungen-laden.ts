@@ -57,7 +57,7 @@ async function quellen(): Promise<Quellen> {
 /** Die Speicher, deren Stand das ETag der Prüfung bestimmt. */
 function speicherNamen(q: Quellen): string[] {
   return ['kontakte', CRM_SPEICHER, 'finanzplan', 'tasks', 'ordnung', KONFLIKT_SPEICHER, 'liquiplan', ICLOUD_SPEICHER, BEZUG_SPEICHER, ...HEADS.map(h => standName(h)),
-    ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`, `${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`, `familie--${q.haushalt}`] : []),
+    ...(q.haushalt ? [`planung-einheiten--${q.haushalt}`, `crm-dateien--${q.haushalt}`, `${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`, `familie--${q.haushalt}`, `vertraege--${q.haushalt}`, `gesellschaften--${q.haushalt}`] : []),
     ...q.personen.map(p => speicherFuer('zeit', p)), ...zieleSpeicher(q), `buchung--${q.haushalt ?? HAUSHALT_ERSATZ}`,
     // Prozesse × Fulfillment (22.10.): `Leistung.prozessId` zeigt auf einen Prozess der Werkstatt.
     `prozesse--${q.haushalt ?? 'inhaber'}`];
@@ -235,7 +235,10 @@ export async function ladeVerbindungsBestaende(heute: string, betrachter?: strin
     Promise.all(q.personen.map(async p => ({ person: p, datei: await loadJson<ZeitDatei>(speicherFuer('zeit', p)) }))),
     q.haushalt ? loadJson<{ eintraege?: DateiEintrag[] }>(`${AUFGABEN_DATEI_PRAEFIX}${q.haushalt}`) : Promise.resolve(null),
   ]);
-  const registerEinheiten = q.haushalt ? registerEinheitenNamen(await loadJson<RegisterDatei>(`gesellschaften--${q.haushalt}`)) : [];
+  const registerDatei = q.haushalt ? await loadJson<RegisterDatei>(`gesellschaften--${q.haushalt}`) : null;
+  const registerEinheiten = q.haushalt ? registerEinheitenNamen(registerDatei) : [];
+  // Verträge (02.11., Prüfung C): nur Kennung, Status, Register-Verweis — und die Kennungen der Verträge im Register (ohne Papierkorb-Einträge zu unterscheiden).
+  const vertraegeDatei = q.haushalt ? await loadJson<{ vertraege?: { id: string; status: string; registerVertragId?: string }[] }>(`vertraege--${q.haushalt}`).catch(() => null) : null;
   const aufgaben: AufgabeKurz[] = (Array.isArray(tasks?.tasks) ? tasks!.tasks : []).map(t => ({ id: t.id, title: t.title, ...(t.description ? { description: t.description } : {}), projectId: t.projectId, status: t.status, ...(t.space ? { space: t.space } : {}), ...(t.einheit ? { einheit: t.einheit } : {}), ...(t.spaceId ? { spaceId: t.spaceId } : {}), ...(t.bezug ? { bezug: t.bezug } : {}), ...(t.parentId ? { parentId: t.parentId } : {}) }));
   return {
     heute,
@@ -258,6 +261,10 @@ export async function ladeVerbindungsBestaende(heute: string, betrachter?: strin
     termine,
     familieTage,
     prozesse,
+    vertraege: vertraegeDatei ? {
+      liste: (Array.isArray(vertraegeDatei.vertraege) ? vertraegeDatei.vertraege : []).map(v => ({ id: v.id, status: v.status, ...(v.registerVertragId ? { registerVertragId: v.registerVertragId } : {}) })),
+      register: (registerDatei?.gesellschaften ?? []).flatMap(g => (g.vertraege ?? []).filter(x => !x.geloeschtAm).map(x => x.id)),
+    } : null,
     heads: heads.map(h => ({ head: h.head, vorschlaege: (Array.isArray(h.stand?.vorschlaege) ? h.stand!.vorschlaege : []).map(v => ({ id: v.id, ...(v.kontakt_id ? { kontakt_id: v.kontakt_id } : {}), ...(v.status ? { status: v.status } : {}) })) })),
   };
 }

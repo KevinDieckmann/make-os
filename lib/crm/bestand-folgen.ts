@@ -14,6 +14,8 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand, Firma, Lead } from './typen';
+import { angebotFollowupsSchliessen } from './angebote';
+import { OFFENE_STUFEN } from './pipeline';
 
 /** Kennungen der Deals, die zwischen `vorher` und `nachher` verschwunden sind. */
 export function geloeschteDeals(vorher: Pick<CrmBestand, 'chancen'>, nachher: Pick<CrmBestand, 'chancen'>): Set<string> {
@@ -98,5 +100,22 @@ export function crmFolgen(vorher: CrmBestand, nachher: CrmBestand, jetzt: string
   const weg = geloeschteDeals(vorher, nachher);
   const firmen = firmenLeadsOhneDeals(nachher.firmen ?? [], weg, jetzt, person);
   const mitLeads = firmen === nachher.firmen ? nachher : { ...nachher, firmen };
-  return firmenNamenNachziehen(vorher, mitLeads, jetzt, person);
+  return angebotNachfassenBeiDealSchluss(vorher, firmenNamenNachziehen(vorher, mitLeads, jetzt, person), jetzt, person);
+}
+
+/**
+ * Deal von Hand verloren oder geparkt (02.11., Prüfung C): das Nachfassen seiner offenen Angebote (gestellt/abgelaufen — `fu-<angebot>`,
+ * `fu-<angebot>-ablauf`) wird abgesagt — sonst stand „Angebot nachfassen“ weiter in Steht an, obwohl der Deal entschieden ist. Die Angebote selbst
+ * bleiben, wie sie sind. Rein; ohne solchen Wechsel derselbe Bestand.
+ */
+export function angebotNachfassenBeiDealSchluss(vorher: CrmBestand, nachher: CrmBestand, jetzt: string, person?: string): CrmBestand {
+  const alt = new Map((vorher.chancen ?? []).map(c => [c.id, c.stufe]));
+  const zu = (nachher.chancen ?? []).filter(c => (c.stufe === 'verloren' || c.stufe === 'geparkt') && OFFENE_STUFEN.includes(alt.get(c.id) ?? 'gewonnen'));
+  if (!zu.length) return nachher;
+  let followups = nachher.followups ?? [];
+  for (const c of zu) {
+    const ids = (nachher.angebote ?? []).filter(a => a.dealId === c.id && (a.status === 'gestellt' || a.status === 'abgelaufen')).map(a => a.id);
+    followups = angebotFollowupsSchliessen(followups, ids, { status: 'abgesagt', ergebnis: c.stufe === 'verloren' ? 'Deal verloren' : 'Deal geparkt', jetzt, person: person ?? 'system' });
+  }
+  return followups === nachher.followups ? nachher : { ...nachher, followups };
 }
