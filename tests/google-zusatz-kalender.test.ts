@@ -182,7 +182,11 @@ describe('Rückweg', () => {
     expect((await I.ladeStand()).kalender.some(k => k.quelle === 'google-zusatz')).toBe(true);
     await zusatzRoute.POST!(new Request('http://localhost/api/kalender/google/zusatz', { method: 'POST', headers: kopf('kevin'), body: JSON.stringify({ aktion: 'trennen', konto }) }));
     const nachher = await I.ladeStand();
-    expect(nachher.kalender).toEqual(vorher.kalender);
+    // 01.11.: der „Belegt“-Spiegel hat in den Hauptkalender geschrieben und beim Trennen wieder gelöscht — nur dessen Zähler (`ctag`) ist weiter.
+    const ohneCtag = (l: typeof vorher.kalender) => l.map(({ ctag: _c, ...k }) => k);
+    expect(ohneCtag(nachher.kalender)).toEqual(ohneCtag(vorher.kalender));
     expect(Object.keys(nachher.objekte)).toEqual(Object.keys(vorher.objekte));
+    expect(Object.values(nachher.objekte).flat().length).toBe(Object.values(vorher.objekte).flat().length);
+    expect(await db.loadJson('kalender-belegt-spiegel--kevin')).toBeNull();
   });
 });

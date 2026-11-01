@@ -774,6 +774,25 @@ export async function demoSaen(o: { passwort?: string; zugang?: Record<string, Z
   await rufe(R.kalenderEinstellungen(), 'PUT', '/api/state/kalender-einstellungen', LENA, { teil: { belegt: { Arbeit: true } } });
   schritt('Termine', events.length);
 
+  // 9a) Weitere Kalender als Firmen-Gruppe (01.11.): Lena hat ein erfundenes weiteres Konto bei einer anderen Firma, Gruppe „Beispielverbund“ —
+  //     im Kalender EINE Ebene „Beispielverbund · Lena“, Jonas sieht nur „Belegt“. Ausnahme zur Regel „nur über Routen“: ein weiteres Konto
+  //     entsteht nur über die Google-Anmeldung (OAuth), die es in der Demo nicht gibt; der Spiegel ist der Stand, den sonst der Abgleich liest.
+  //     Kein Token gilt (Google ist in der Demo aus), der „Belegt“-Spiegel schreibt nichts (kein Google-Hauptkalender).
+  {
+    const { ausWandzeit } = await import('@/lib/kalender/zeit');
+    const { kennungFuer } = await import('@/lib/kalender/google/zusatz');
+    const konto = 'gz-00000000-0000-4000-8000-0000000000de';
+    const kalId = 'lena.verbund@example.invalid';
+    const gz = (tag: string, von: string, bis: string, summary: string) => ({ start: { dateTime: ausWandzeit(`${tag}T${von}:00`).toISOString(), timeZone: 'Europe/Berlin' }, end: { dateTime: ausWandzeit(`${tag}T${bis}:00`).toISOString(), timeZone: 'Europe/Berlin' }, summary, status: 'confirmed' as const });
+    const ereignisse = [
+      { id: 'demo-verbund-1', ...gz(tagPlus(montag, 8), '13:00', '14:00', 'Abstimmung Verbund (Beispiel)') },
+      { id: 'demo-verbund-2', ...gz(tagPlus(montag, 10), '15:00', '16:30', 'Planungsrunde Verbund (Beispiel)') },
+    ];
+    await saveJson(`google-zusatz--${LENA}`, { v: 1, konten: [{ id: konto, email: kalId, label: 'Verbund', gruppe: 'Beispielverbund', refreshToken: 'demo-ohne-gueltigkeit', scopes: ['openid', 'email'], kalender: [kalId], verbundenAm: jetzt.toISOString(), status: 'verbunden' }] });
+    await saveJson(`kalender-google-zusatz--${LENA}`, { v: 1, person: LENA, rev: 1, kalender: { [kennungFuer(konto, kalId)]: { konto, kalenderId: kalId, name: 'Verbund', events: Object.fromEntries(ereignisse.map(e => [e.id, e])), at: jetzt.toISOString(), fensterAb: tagPlus(heute, -90) } } });
+    schritt('Weitere Kalender (Gruppe)', ereignisse.length + 1);
+  }
+
   // 10) Kapazität: Grundwerte, Urlaub, Zuweisungen (Mandate).
   await rufe(R.kapazitaet(), 'PATCH', '/api/kapazitaet', LENA, { ops: [
     { op: 'grundwert', person: KONTO_LENA, stundenWoche: 40 },

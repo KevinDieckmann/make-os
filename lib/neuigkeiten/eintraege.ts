@@ -33,6 +33,24 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-5',
+    datum: '2026-11-02',
+    titel: 'Kalender: Firmen bündeln, Belegt bei Google',
+    kurz: 'Weitere Kalender-Konten lassen sich zu einer Firma zusammenfassen und stehen dann als eine Ebene im Kalender. Ihre Termine erscheinen auf Wunsch als neutrale Blöcke „Belegt“ im eigenen Google-Kalender.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Weitere Kalender: je Konto eine Firma oder Gruppe eintragen. Konten mit derselben Gruppe stehen im Kalender als eine Ebene mit eigener Farbe. Andere sehen davon nur „Belegt“.', bereich: 'business', weg: `${WEG.kalender()}?einstellungen=1` },
+        { text: 'Die Termine der weiteren Konten stehen als „Belegt“ in deinem eigenen Google-Kalender, ohne Titel und ohne Gäste. Verschiebt sich ein Termin, zieht der Block nach. Je Konto abschaltbar.', bereich: 'business', weg: `${WEG.kalender()}?einstellungen=1` },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Termin im Business für „Gemeinsam“: er landet in deinem Google-Kalender, die anderen werden eingeladen — erst nach deiner Bestätigung.', bereich: 'business', weg: `${WEG.kalender()}?space=business` },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Fehlt ein eingestellter Kalender in iCloud, fragt der Termin-Dialog einmal, welcher Kalender es sein soll, statt einen Fehler zu zeigen.', bereich: 'alle', weg: WEG.kalender() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-4',
     datum: '2026-11-02',
     titel: 'Checks in eigenen Worten, neue Zielgruppen',
@@ -327,7 +345,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     kurz: 'Wer auch für andere Firmen arbeitet, verbindet dort seinen Google-Kalender zusätzlich. MAKE OS liest ihn nur mit — belegte Zeiten zählen dann hier als belegt.',
     abschnitte: [
       { art: 'neu', punkte: [
-        { text: 'Kalender › Einstellungen › Weitere Kalender: bis zu fünf weitere Google-Konten verbinden, Kalender wählen, eine eigene Bezeichnung geben. MAKE OS schreibt dort nie etwas hinein.', bereich: 'business', weg: '/os/kalender?einstellungen=1' },
+        { text: 'Kalender › Einstellungen › Weitere Kalender: bis zu fünf weitere Google-Konten verbinden, Kalender wählen, eine eigene Bezeichnung geben. MAKE OS schreibt dort nie etwas hinein.', bereich: 'business', weg: `${WEG.kalender()}?einstellungen=1` },
         { text: 'Termine dieser Kalender zählen als belegt: freie Zeiten, Buchungsseiten und die Planung rechnen damit. Andere sehen davon nur „Belegt“.', bereich: 'business' },
         { text: 'Beim Anlegen eines Termins kommt ein Hinweis, wenn er sich mit einem Termin dort überschneidet — speichern könnt ihr trotzdem.', bereich: 'business' },
       ] },

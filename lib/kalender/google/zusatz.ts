@@ -11,6 +11,9 @@
 //               (lib/kalender/icloud.ts `persoenlichMarkieren`) — für alle anderen nur „Belegt“ (`maskieren`), für Verfügbarkeit,
 //               freie Zeit, Buchungsseiten, Kapazität belegt NUR ihre Person (`werFuerTermin`). Objekte, deren UID schon im
 //               Stand steht (dieselbe Einladung im Haupt-Kalender), zählen nur dort.
+//   Gruppe      (01.11.) Konten mit derselben `gruppe` (frei, von der Person gesetzt) → EINE Ebene „<Gruppe> · <Vorname>“ (`gruppenKennung`,
+//               Farbe `gruppeFarbe`), dieselbe Einladung in zwei Konten einmal. Andere sehen wie bisher nur den neutralen Namen.
+//   Spiegel     (01.11.) nach jedem Abgleich `belegtSpiegeln` (belegt-spiegel.ts): „Belegt“ in den eigenen Google-Hauptkalender.
 //   Hinweis     `ueberschneidungen` (rein): welche Termine der weiteren Konten EINER Person sich mit einer Zeitspanne decken —
 //               für den Hinweis beim Anlegen/Verschieben (nie blockieren).
 

@@ -184,6 +184,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'die Person sieht ihre Termine im Kalender; Dritte erfahren über die Auskunft, dass Termine sie in Google nennen (Zählung im Löschlauf)',
     loeschfrist: 'Spiegel ab heute − 90 Tage; „Trennen“ oder Konto löschen entfernt ihn sofort (samt Tageskopien)',
   }),
+  // „Belegt“-Spiegel in den eigenen Google-Hauptkalender (01.11.2026, lib/kalender/google/belegt-spiegel.ts): nur Kennungen.
+  mit(H('kalender-belegt-spiegel--*', 'Welche neutralen „Belegt“-Blöcke MAKE OS in den eigenen Google-Hauptkalender einer Person geschrieben hat: je Block nur Kennungen (Quelle, Google-ID, ETag) und ein Fingerabdruck — keine Titel, keine Zeiten, keine Gäste. Wahrheit sind die Blöcke bei Google; Trennen löscht sie dort und den Bestand.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (die Person spiegelt ihre eigenen Arbeitszeiten in ihren eigenen Kalender, Schalter je Konto)',
+    art15: 'Kalender › Einstellungen › Weitere Kalender zeigt je Konto, wie viele Blöcke im Google-Kalender stehen',
+    loeschfrist: 'Blöcke heute − 1 bis + 60 Tage; Schalter aus, Konto trennen oder Google trennen löscht die Blöcke bei Google und den Bestand',
+  }),
   K('google-zusatz-zustand', 'Kurzlebiger Anmelde-Zustand der weiteren Google-Konten (state-Hash, PKCE-Verifier, 15 Minuten) — keine Personendaten.'),
   // iCloud je Person (06.10.2026, lib/kalender/icloud-person.ts): Zugang und Spiegel je Person — wie Google, Wahrheit ist Apple.
   mit(A('kalender-icloud--*', 'Spiegel der EIGENEN iCloud-Kalender einer Person (Termine, Teilnehmer-Adressen Dritter) — Wahrheit ist iCloud, Löschung nur in Apple; der Abgleich holt ihn alle 5 Minuten neu, der Löschlauf meldet die Termine, die die Person nennen (person-weitere.ts). Andere Konten sehen nur „Belegt“.', 'kalender-caches'), {
@@ -1020,6 +1026,8 @@ const JE_PERSON: readonly string[] = [
   'google-verbindung--*', 'icloud-verbindung--*', 'kalender-icloud--*', 'postfaecher--*', 'postfach-zugang--*', 'oauth-tokens',
   // Weitere Google-Konten je Person (30.10.): Zugang und Spiegel gehören der Person
   'google-zusatz--*', 'kalender-google-zusatz--*',
+  // „Belegt“-Spiegel (01.11.): nur Kennungen der eigenen Blöcke im eigenen Google-Kalender
+  'kalender-belegt-spiegel--*',
   'zoe-kanal--*', 'zoe-whatsapp-medien',
   // eigene Einstellungen und eigene Ablagen
   'arbeitsmodus', 'arbeitsmodus--*', 'arbeitsrahmen--*', 'flaeche', 'flaeche--*', 'onboarding--*', 'fokus-laufend--*',

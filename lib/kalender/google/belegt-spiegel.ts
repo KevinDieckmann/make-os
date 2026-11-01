@@ -184,6 +184,9 @@ async function lauf(person: string, erzwingen: boolean): Promise<SpiegelErgebnis
     const sekunden = fehler instanceof GoogleUeberlastet ? fehler.sekunden : undefined;
     return { ...cur, bloecke, offen, gekappt, fehler: fehler instanceof Error ? fehler.message.slice(0, 200) : 'Google nicht erreichbar.', fehlerFolge: folge, pauseBis: new Date(jetzt + pauseNach(folge, anmeldung, sekunden)).toISOString() };
   });
+  // Nichts mehr gespiegelt (Schalter aus, Konto getrennt) → kein leerer Bestand bleibt liegen.
+  const rest = await ladeBelegtSpiegel(person).catch(() => null);
+  if (rest && !Object.keys(rest.bloecke).length && !rest.fehler && !rest.offen) await bestandEntfernen(belegtSpiegelName(person), { tageskopien: true }).catch(() => { /* nächster Lauf */ });
   await googleSpiegelAnwenden(person, neuEv, wegIds).catch(() => { /* der nächste Abgleich holt sie */ });
   if (protokoll.length) await protokolliere('kalender', protokoll, { art: 'system', person }).catch(() => { /* nur Protokoll */ });
   const neu = protokoll.filter(x => x.op === 'neu').length, geaendert = protokoll.filter(x => x.op === 'geaendert').length;

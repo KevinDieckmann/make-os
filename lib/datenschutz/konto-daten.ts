@@ -48,6 +48,8 @@ export const PERSON_BESTAENDE: readonly { basis: string; export?: false; grund?:
   { basis: 'google-verbindung', export: false, grund: 'Zugangsschlüssel zu Google (verschlüsselte Token) — nie in einer Datei; beim Löschen widerrufen und entfernt' },
   // Weitere Google-Konten (30.10., nur Kalender lesen): der Spiegel gehört der Person (Export); der Zugang (Token) nie in eine Datei.
   { basis: 'kalender-google-zusatz' },
+  // „Belegt“-Spiegel (01.11.): nur Kennungen der eigenen Blöcke im eigenen Google-Kalender — gehört der Person (Export, Löschen mit dem Konto).
+  { basis: 'kalender-belegt-spiegel' },
   { basis: 'google-zusatz', export: false, grund: 'Zugangsschlüssel der weiteren Google-Konten (verschlüsselte Token) — nie in einer Datei; beim Löschen bei Google widerrufen und entfernt' },
   // iCloud je Person (06.10.): der Spiegel der eigenen Kalender gehört der Person; der Zugang (App-Passwort) nie in eine Datei.
   { basis: 'kalender-icloud' },

@@ -12,6 +12,7 @@
 import { ladeEinstellungen, type KalenderEinstellungen } from '../einstellungen';
 import { googleKalenderNamen } from './namen';
 import type { KalenderBereich } from '../bereich';
+import { FAECHER, type Fach } from '@/lib/make-one/fach-namen';
 
 export { googleKalenderNamen };
 
@@ -51,8 +52,8 @@ export interface BusinessZielFehler { fehler: string; verbinden: 'google' }
 
 /** Rein: aus Fach, Personen hinter den Fächern, Google-Kalendern (Person → Name) und Google-Adressen (Person → Adresse) das Ziel. */
 export function businessZielRein(o: {
-  wer: 'kevin' | 'malin' | 'beide'; anlegend: string;
-  personen: Partial<Record<'kevin' | 'malin', { id: string; name: string }>>;
+  wer: Fach | 'beide'; anlegend: string;
+  personen: Partial<Record<Fach, { id: string; name: string }>>;
   google: Readonly<Record<string, string>>; adressen: Readonly<Record<string, string>>; icloud: Partial<Record<string, string>>;
 }): BusinessZiel | BusinessZielFehler {
   const vorname = (p: { name: string } | undefined, ersatz: string) => (p?.name ?? '').trim().split(/\s+/)[0] || ersatz;
@@ -65,7 +66,7 @@ export function businessZielRein(o: {
   }
   const eigen = o.google[o.anlegend];
   if (!eigen) return { fehler: `„Gemeinsam“ im Business legt den Termin in deinem Google-Kalender an — bitte zuerst verbinden: ${GOOGLE_VERBINDEN_WEG}.`, verbinden: 'google' };
-  const andere = (['kevin', 'malin'] as const).map(f => o.personen[f]).filter((p): p is { id: string; name: string } => !!p && p.id !== o.anlegend);
+  const andere = FAECHER.map(f => o.personen[f]).filter((p): p is { id: string; name: string } => !!p && p.id !== o.anlegend);
   const gaeste: BusinessZiel['gaeste'] = [];
   for (const p of andere) {
     const mail = o.adressen[p.id];
@@ -77,7 +78,7 @@ export function businessZielRein(o: {
 }
 
 /** Das Ziel eines neuen Business-Termins ohne gewählten Kalender (Server). */
-export async function businessZiel(anlegend: string, wer: 'kevin' | 'malin' | 'beide', einst?: Pick<KalenderEinstellungen, 'kalender'>): Promise<BusinessZiel | BusinessZielFehler> {
+export async function businessZiel(anlegend: string, wer: Fach | 'beide', einst?: Pick<KalenderEinstellungen, 'kalender'>): Promise<BusinessZiel | BusinessZielFehler> {
   const { fachKonten } = await import('../einstellungen');
   const { ladeGoogleStand } = await import('./stand');
   const [e, google, personen] = await Promise.all([einst ? Promise.resolve(einst) : ladeEinstellungen(), googleKalenderNamen(), fachKonten().catch(() => ({}))]);
