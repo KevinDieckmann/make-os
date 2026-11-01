@@ -65,6 +65,14 @@ describe('Bedarf, Potenzial, Segment', () => {
     expect(lageBewerten(s({ auszeichnung: { jahr: 2021, titel: 'TOP 100' } })).potenzial).toBe(ohne);
     expect(LAGE_REGELN.potenzial).toContain('Innovationspreis');
   });
+  it('laufendes Bundes-Förderprojekt zählt wie ein EU-Projekt, nicht doppelt', () => {
+    const ohne = lageBewerten(s({ belege: true })).potenzial;
+    const bund = lageBewerten(s({ belege: true, bundLaufend: 2 }));
+    expect(bund.potenzial - ohne).toBe(7);
+    expect(bund.gruendePotenzial.join(' ')).toContain('Bundes-Förderprojekt');
+    expect(lageBewerten(s({ belege: true, bundLaufend: 1, euLaufend: 1 })).potenzial - ohne).toBe(7);
+    expect(lageBewerten(s({ bundLaufend: 1 })).gruendeBedarf.join(' ')).toContain('Bundes-Förderprojekt läuft');
+  });
   it('Lead-Score nach Regel, Ausschluss = 0', () => {
     expect(leadScoreTief(80, { bedarf: 60, potenzial: 40 }, { mobil: '+49 170 0000000' })).toBe(Math.round(36 + 15 + 8 + 10));
     expect(leadScoreTief(0, { bedarf: 100, potenzial: 100 }, { mobil: 'x' })).toBe(0);

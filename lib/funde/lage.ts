@@ -22,8 +22,8 @@ export const SEGMENT_TEXT: Record<LageSegment, string> = {
 /** Die Regeln, so wie `lageBewerten` und `leadScoreTief` sie rechnen — zum Anzeigen. */
 export const LAGE_REGELN = {
   vertriebsleitung: 'Beleg-Leiter: besetzt (Team-/Über-uns-Seite oder Pressemeldung zur Besetzung) · wird gesucht (Stellenanzeige für die Leitung) · Vertrieb ohne sichtbare Leitung (Vertriebsstellen, Vertriebsrollen oder Vertriebskontakt, aber keine Leitung) · keine sichtbar (Team-Seite gelesen, keine Leitung) · unbekannt',
-  bedarf: 'Bedarf 0–100: Leitung gesucht 35 · Vertrieb ohne Leitung 30 · keine Leitung sichtbar 25 · unbekannt 10 · Vertriebsstellen offen 15 (ab 3: 20) · Demo-Vertrieb ohne CRM 10 · Finanzierung in den letzten 12 Monaten 15 · laufendes EU-Projekt ohne Referenzen 10 · keine Referenzen 5',
-  potenzial: 'Potenzial 0–100: Finanzierung in 24 Monaten 20 (ab 5 Mio. +5) · offene Stellen 5/10/15 (ab 1/3/10) · Mitarbeitende 10–49: 10, 50–249: 15, ab 250: 10 · Website-Reichweite (Tranco Top 200.000: 10, Top 1 Mio.: 5) · international 8 · ab 50 Kunden 7 · laufendes EU-Projekt 7 · Wachstums-/Pressemeldungen 8 · Innovationspreis/Auszeichnung in den letzten 2 Jahren 10 · Zertifikat 5 · Website gepflegt 5 · 2–10 Jahre alt 5 · übernommen −20',
+  bedarf: 'Bedarf 0–100: Leitung gesucht 35 · Vertrieb ohne Leitung 30 · keine Leitung sichtbar 25 · unbekannt 10 · Vertriebsstellen offen 15 (ab 3: 20) · Demo-Vertrieb ohne CRM 10 · Finanzierung in den letzten 12 Monaten 15 · laufendes EU-/Bundes-Förderprojekt ohne Referenzen 10 · keine Referenzen 5',
+  potenzial: 'Potenzial 0–100: Finanzierung in 24 Monaten 20 (ab 5 Mio. +5) · offene Stellen 5/10/15 (ab 1/3/10) · Mitarbeitende 10–49: 10, 50–249: 15, ab 250: 10 · Website-Reichweite (Tranco Top 200.000: 10, Top 1 Mio.: 5) · international 8 · ab 50 Kunden 7 · laufendes EU- oder Bundes-Förderprojekt 7 · Wachstums-/Pressemeldungen 8 · Innovationspreis/Auszeichnung in den letzten 2 Jahren 10 · Zertifikat 5 · Website gepflegt 5 · 2–10 Jahre alt 5 · übernommen −20',
   segment: 'Jetzt ansprechen: Bedarf ab 40 und Potenzial ab 30 (oder Bedarf ab 55 und Potenzial ab 20) · Beobachten: Vertriebsleitung besetzt · Kein Fokus: Passung unter 35 oder Bedarf unter 25 und Potenzial unter 15 · sonst Aufbauen',
   leadScore: 'Lead-Score = 45 % Passung + 25 % Bedarf + 20 % Potenzial + Erreichbarkeit (Handy 10 · Festnetz 6 · nur Mail 3)',
 } as const;
@@ -53,6 +53,8 @@ export interface LageSignale {
   uebernahme?: boolean;
   wachstumsMeldungen?: number;
   euLaufend?: number;
+  /** Laufende Vorhaben im Förderkatalog des Bundes. */
+  bundLaufend?: number;
   tranco?: number;
   versionen12?: number;
   international?: boolean;
@@ -113,7 +115,8 @@ export function lageBewerten(s: LageSignale): Lage {
   B(s.demoGefuehrt && !s.crm, 10, 'Demo-Vertrieb ohne erkennbares CRM');
   const fMon = s.finanzierung ? monateZwischen(s.finanzierung.datum, s.heute) : Infinity;
   B(fMon <= 12, 15, 'frisch finanziert — Umsatzdruck');
-  B((s.euLaufend ?? 0) > 0 && !s.belege, 10, 'EU-Projekt läuft, noch keine Referenzen');
+  const foerderLaeuft = (s.euLaufend ?? 0) > 0 ? 'EU-Projekt' : (s.bundLaufend ?? 0) > 0 ? 'Bundes-Förderprojekt' : null;
+  B(foerderLaeuft && !s.belege, 10, `${foerderLaeuft} läuft, noch keine Referenzen`);
   B(!s.belege, 5, 'keine Referenzen auf der Website');
 
   P(fMon <= 24, 20, `Finanzierung ${s.finanzierung?.datum.slice(0, 7)}${s.finanzierung?.betrag ? ` (${s.finanzierung.betrag})` : ''}`);
@@ -130,7 +133,7 @@ export function lageBewerten(s: LageSignale): Lage {
   P(s.tranco && s.tranco > 200_000 && s.tranco <= 1_000_000, 5, `Website im Tranco-Ranking (${s.tranco?.toLocaleString('de-DE')})`);
   P(s.international || (s.laender ?? 0) >= 3, 8, s.laender ? `in ${s.laender} Ländern` : 'international');
   P((s.kunden ?? 0) >= 50, 7, `über ${s.kunden} Kunden`);
-  P((s.euLaufend ?? 0) > 0, 7, 'laufendes EU-Projekt');
+  P(foerderLaeuft, 7, `laufendes ${foerderLaeuft}`);
   P((s.wachstumsMeldungen ?? 0) > 0, 8, 'Wachstum in der Presse');
   P((s.zertifikate ?? 0) > 0, 5, 'Zertifikat/Siegel');
   P(s.auszeichnung && Number(s.heute.slice(0, 4)) - s.auszeichnung.jahr <= 2, 10, `${s.auszeichnung?.titel} ${s.auszeichnung?.jahr}`);
