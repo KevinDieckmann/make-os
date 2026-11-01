@@ -118,7 +118,7 @@ export function seitePasst(pfad: string, suche: string, muster: string): boolean
 export function markttraktionHead(suche: string): string {
   const q = params(suche);
   const { s } = aufloesen(q.get('s'), q.get('a'));
-  if (s === 'marketing') return 'marketing';
+  if (s === 'marketing' || s === 'website') return 'marketing';
   if (s === 'besuche' || s === 'event') return 'event';
   return 'sales';
 }

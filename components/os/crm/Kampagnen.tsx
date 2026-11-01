@@ -29,6 +29,7 @@ import { FARBE as C, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Liste, Zeile, Leer, Knopf, Chip, Punkt, Raster, Zahl, LEUCHT, ZeileAktionen, Hinweis } from '../ui';
 import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte, type CrmAblage } from './ablage';
 import { anzeigename } from '@/lib/make-one/crm';
+import { anzahl } from '@/lib/text/zahlwort';
 import { kanalStatus } from '@/lib/crm/recht';
 import type { Kampagne, KampagnenErgebnis } from '@/lib/crm/typen';
 import type { Playbook, KampagnenZahlen } from '@/lib/crm/kampagnen';
@@ -146,7 +147,7 @@ export function Kampagnen({ api, zuKontakt, head = 'marketing' }: { api: CrmApi;
                   <ZeileAktionen href={WEG.kampagne(k.id)} onOeffnen={() => setOffen(k.id)} titel={k.name} archiviert={sicht === 'archiv'} onArchivieren={() => { setOffen(null); if (sicht === 'archiv') ablage.zurueckholen(k.id, k.name); else ablage.archivieren(k.id, k.name); }} onLoeschen={() => { setOffen(null); kampagneLoeschen(ablage, k); }}>
                   <Zeile onClick={() => setOffen(offen === k.id ? null : k.id)} aktiv={offen === k.id}
                     links={<Punkt farbe={k.status === 'aktiv' ? LEUCHT.gut : k.status === 'entwurf' ? LEUCHT.achtung : C.inkLeise} />}
-                    titel={k.name} unter={z ? `${z.personen} Personen${z.firmen ? ` · ${z.firmen} Betriebe` : ''} · ${z.angesprochen} angesprochen · ${z.gespraeche} Gespräche · ${z.chancen} Leads${z.schritteFaellig ? ` · ${z.schritteFaellig} Schritte fällig` : ''}${k.kostenEuro ? ` · ${euro(k.kostenEuro)} Kosten` : ''}` : ''}
+                    titel={k.name} unter={z ? `${anzahl(z.personen, 'Person', 'Personen')}${z.firmen ? ` · ${anzahl(z.firmen, 'Betrieb', 'Betriebe')}` : ''} · ${z.angesprochen} angesprochen · ${anzahl(z.gespraeche, 'Gespräch', 'Gespräche')} · ${anzahl(z.chancen, 'Lead', 'Leads')}${z.schritteFaellig ? ` · ${anzahl(z.schritteFaellig, 'Schritt', 'Schritte')} fällig` : ''}${k.kostenEuro ? ` · ${euro(k.kostenEuro)} Kosten` : ''}` : ''}
                     rechts={<span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>{k.archiviertAm && sicht !== 'archiv' && <Chip farbe={C.inkLeise}>archiviert</Chip>}{k.von !== 'hand' && <Chip farbe={LEUCHT.agenten}>{k.von === 'head-sales' ? 'Head of Sales' : 'Head of Marketing'}</Chip>}<Chip farbe={C.inkDim}>{STATUS.find(s => s.id === k.status)?.label}</Chip><Person id={zustaendig(k.zustaendig, weltDerKampagne(k))} groesse={18} /></span>} />
                   </ZeileAktionen>
                   {offen === k.id && <KampagnenDetail k={k} api={api} ablage={ablage} pb={d.playbooks.find(p => p.id === k.playbook)} z={z} heute={d.heute} post={post} zuKontakt={zuKontakt} meldung={meldung} setMeldung={setMeldung} />}
