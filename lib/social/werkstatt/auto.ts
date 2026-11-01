@@ -12,7 +12,7 @@
 import { wandzeit } from '@/lib/kalender/zeit';
 import { melde } from '@/lib/meldungen/melden';
 import { WEG } from '@/lib/wege';
-import { inhaberSpeicher } from '@/lib/zugang/haushalt-inhaber';
+import { verantwortlichePerson } from '@/lib/crm/verantwortung-server';
 import { ladeSocial, socialSystemSchreiben } from '../server';
 import { planLuecken, planVon } from '../plan';
 import type { SocialKanal } from '../typen';
@@ -24,7 +24,7 @@ export const ROH_TAGE = 14;
 /** Ohne KI: so viel vom Anfang des Clips (ein Reel ohne Schnitt soll kurz bleiben). */
 export const OHNE_KI_SEK = 60;
 
-const personVon = async (k: SocialKanal): Promise<string | null> => (k.art === 'person' && k.person) || (k.sichtbarkeit === 'person' && k.person) || await inhaberSpeicher().catch(() => null);
+const personVon = async (k: SocialKanal): Promise<string | null> => (k.art === 'person' && k.person) || (k.sichtbarkeit === 'person' && k.person) || await verantwortlichePerson('marketing').catch(() => null);   // B4 (02.11.): Marketing-Verantwortliche, Rückfall Inhaber
 
 /** Neue Rohclips der Kanäle mit Auto-Reel als Aufträge anlegen. */
 export async function autoReelScan(jetzt = new Date()): Promise<{ neu: number }> {

@@ -36,7 +36,7 @@ export default async function OsLayout({ children }: { children: React.ReactNode
   const konto = await wache('/os');
   // CRM-Team aus den Konten (14.10.) — nur Kennung, Vorname, Farbe, Verantwortung; im Browser vor allen Seiten gesetzt.
   const konten = await ladeKonten();
-  const team = teamAusKonten(konten.konten);
+  const team = teamAusKonten(konten.konten, konten.einstellungen);
   // Feinschliff 1 (23.10.): „nur Business“ steht schon beim ersten Bild fest (dieselbe Regel wie /api/konto/ich) — die Leiste zeigt Punkte nur für volle
   // Mitglieder (Unternehmen) nicht erst kurz an. Die Schranke bleibt der Server (403).
   const vorab = { nurBusiness: kontoSichtAus(konten, konto.speicher).nurBusiness };

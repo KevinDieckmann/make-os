@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { neueMailVorbereiten } from '@/lib/inbox/neue-mail';
 import { FARBE as C, SCHRIFT, TYP } from '@/lib/make-one/design';
 import { Karte, Ueberschrift, Knopf, Chip, LEUCHT } from '../ui';
@@ -39,6 +40,8 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
   const [s, setS] = useState<Stand | null>(null);
   const [laeuft, setLaeuft] = useState<string | null>(null);
   const [meldung, setMeldung] = useState('');
+  // 02.11. (M2): wohin das Angenommene führt (Beitrag im Redaktionsplan, Kampagne) — nur Wege innerhalb der App.
+  const [meldungWeg, setMeldungWeg] = useState<string | null>(null);
   const [frage, setFrage] = useState('');
   const [offen, setOffen] = useState(false);
   const [sicht, setSicht] = useState<string | null>(null);
@@ -66,7 +69,9 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
   };
   const entscheide = async (id: string, status: string, extra: Record<string, unknown> = {}) => {
     const r = await post({ aktion: 'entscheiden', id, status, ...extra });
-    if (r?.wohin) setMeldung(`Angenommen → ${r.wohin}.`);
+    setMeldungWeg(typeof r?.link === 'string' && r.link.startsWith('/os') ? r.link : null);
+    if (r?.ok === false) setMeldung(r.fehler ?? 'Nicht gespeichert.');
+    else if (r?.wohin) setMeldung(`Angenommen → ${r.wohin}.`);
     else if (status === 'abgelehnt') setMeldung('Abgelehnt — der Head lernt daraus.');
     setAblehnen(null); setBearbeiten(null);
     void laden(); nachEntscheid?.();
@@ -95,7 +100,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
         <Knopf leise aus={!!laeuft} onClick={() => lauf(standardModus)}>{laeuft === standardModus ? 'denkt …' : s?.modi.find(m => m.id === standardModus)?.label ?? 'Lauf'}</Knopf>
         <Knopf leise onClick={() => setAuf(true)}>{vorschlaege.length ? `${vorschlaege.length} zur Freigabe ›` : 'öffnen ›'}</Knopf>
       </div>
-      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
+      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}{meldungWeg && <> <Link href={meldungWeg} style={{ color: C.ink }}>Öffnen ›</Link></>}</div>}
     </Karte>
   );
 
@@ -123,7 +128,7 @@ export function HeadPanel({ head, standardModus, zuKontakt, i = 0, nachEntscheid
           {q.cent > 0 && <span>Kosten <b style={{ color: C.ink }}>{(q.cent / 100).toLocaleString('de-DE', { style: 'currency', currency: 'USD' })}</b>{q.cacheQuote !== null ? ` · Cache ${q.cacheQuote} %` : ''}</span>}
         </div>
       )}
-      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
+      {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}{meldungWeg && <> <Link href={meldungWeg} style={{ color: C.ink }}>Öffnen ›</Link></>}</div>}
 
       {vorschlaege.length > 0 && (
         <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>

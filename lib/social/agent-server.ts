@@ -6,13 +6,14 @@
 // bekommt EINE neutrale Glocke je Lauf.
 //   · Wer: Takt (Systemlauf, `lauf: 'hintergrund'`) — Hintergrund-KI, Not-Aus/Budget des Head of Marketing (`laufSperre`) gelten; von Hand
 //     („Jetzt Entwürfe schreiben“) als die auslösende Person (`lauf: 'aufruf'`), nur Kanäle, die sie sieht.
-//   · Person des KI-Aufrufs: die auslösende Person, im Systemlauf die Person der Marke bzw. der Inhaber — nie ein fester Name.
+//   · Person des KI-Aufrufs: die auslösende Person, im Systemlauf die Person der Marke bzw. die Marketing-Verantwortliche (Rückfall Inhaber, 02.11.) — nie ein fester Name.
 //   · Ohne KI (kein Schlüssel, Guthaben leer, KI aus): nichts geschrieben, Grund im Lauf-Stand — nie ein Platzhalter-Text, der live ginge.
 //   · Idempotent: der Schritt `entwurf` füllt jeden Platz höchstens einmal (zweiter Lauf, gleichzeitiger Knopf → nichts doppelt).
 
 import { askText, extractJson, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { wandzeit } from '@/lib/kalender/zeit';
-import { inhaberSpeicher, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { verantwortlichePerson } from '@/lib/crm/verantwortung-server';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
 import { melde } from '@/lib/meldungen/melden';
 import { WEG } from '@/lib/wege';
@@ -49,7 +50,8 @@ export async function socialRedaktionLauf(opt: { person: string | null; kanalId?
     const sperre = await laufSperre(opt.person, 'marketing', jetzt);
     if (sperre) return { ...erg, gestoppt: sperre.text };
     let d = await ladeSocial();
-    const inhaber = await inhaberSpeicher().catch(() => null);
+    // B4 (02.11.): ohne auslösende Person und ohne Personenmarke handelt die Marketing-Verantwortliche (Rückfall Inhaber).
+    const inhaber = await verantwortlichePerson('marketing').catch(() => null);
     const kanaele = d.kanaele.filter(k => !k.archiviertAm && k.status === 'aktiv'
       && (opt.kanalId ? k.id === opt.kanalId : planVon(k).agent)
       && (!opt.person || kanalSichtbar(k, opt.person)));

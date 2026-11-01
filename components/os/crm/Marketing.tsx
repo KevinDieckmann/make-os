@@ -107,8 +107,8 @@ export function Marketing({ api, zuKontakt, start, onAnsicht }: { api: CrmApi; z
         <span style={{ flex: 1 }} />
         <AuchHier passt={p => p.includes('s=marketing')} was="im Marketing" />
       </div>
-      {/* Die Kampagnen-Ansicht bringt ihren eigenen Head-Lauf (Modus „kampagne“) mit. */}
-      {unter !== 'kampagnen' && unter !== 'social' && <HeadPanel head="marketing" standardModus="wochenplan" zuKontakt={zuKontakt} i={0} />}
+      {/* Die Kampagnen-Ansicht bringt ihren eigenen Head-Lauf (Modus „kampagne“) mit. Seit 02.11. (M2) auch im Social-Reiter: der Head kennt Social. */}
+      {unter !== 'kampagnen' && <HeadPanel head="marketing" standardModus="wochenplan" zuKontakt={zuKontakt} i={0} />}
       <div style={{ overflowX: 'auto', scrollbarWidth: 'none' }}><Pillen einzeilig liste={liste} aktiv={unter} onWahl={u => { setFokus(null); waehle(u); }} /></div>
       {unter === 'uebersicht' && (startAktiv ? <Start api={api} onFertig={() => startBeenden(false)} onUeberspringen={() => startBeenden(true)} /> : <Uebersicht api={api} zuKontakt={zuKontakt} zu={zuEintrag} zuAnsicht={a => { setFokus(null); waehle(a); }} />)}
       {unter === 'anfragen' && <Anfragen api={api} zuKontakt={zuKontakt} />}

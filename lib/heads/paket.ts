@@ -15,7 +15,7 @@
 import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
 import { uebergaben } from '@/lib/crm/traktion';
-import { TEAM, verantwortlich, nameVon, haeltBeziehung, zustaendig, BEIDE } from '@/lib/crm/team';
+import { TEAM, verantwortlich, nameVon, haeltBeziehung, zustaendig, wer, BEIDE } from '@/lib/crm/team';
 import { datenpaket, type DatenpaketOptionen } from './daten';
 import { einstellungAus } from '@/lib/crm/marketing';
 import { grundlauf } from './grundlauf';
@@ -57,16 +57,28 @@ export function vollesPaket(head: HeadId, modus: string, kontakte: Kontakt[], cr
 }
 export type VollesPaket = ReturnType<typeof vollesPaket>;
 
+/**
+ * Wer bekommt einen Vorschlag mit Person, für die kein Eintrag spricht? (02.11., M2 B1) — Sales/Event: wer die Beziehung hält (ohne Eintrag die
+ * Sales-Verantwortung, wie bisher). Marketing: NUR eine ausdrücklich eingetragene Beziehung, sonst die Marketing-Verantwortung — vorher landete
+ * jeder Marketing-Vorschlag mit Person (Art. 14, Einwilligung …) über den Rückfall „Hält die Beziehung = Sales“ bei der Sales-Verantwortung.
+ */
+export function kontaktFuerHead(k: Pick<Kontakt, 'besitzer'>, head: HeadId): string {
+  if (head === 'marketing') return wer(k.besitzer) ?? verantwortlich('marketing');
+  return haeltBeziehung(k);
+}
+
 /** Wer einen Vorschlag tun soll — Chance → Mandat → Event → Beziehung → Verantwortung der Welt. „beide“ wird die Person des Laufs — im Systemlauf (ohne Person) bleibt es „beide“. */
 export function fuerWen(v: Pick<Vorschlag, 'kontakt_id' | 'chance_id' | 'mandat_id' | 'event_id'>, head: HeadId, kontakte: Map<string, Kontakt>, crm: CrmBestand, person: string | null): string {
   const aufloesen = (z: string) => (z === BEIDE ? person ?? BEIDE : z);
-  if (v.chance_id) { const c = crm.chancen.find(x => x.id === v.chance_id); if (c) return aufloesen(zustaendig(c.besitzer, 'sales')); }
-  if (v.mandat_id) { const m = crm.mandate.find(x => x.id === v.mandat_id); if (m) return aufloesen(zustaendig(m.zustaendig, 'sales')); }
+  // Marketing (B1): Deal/Mandat nur mit ausdrücklichem Eintrag, sonst die Marketing-Verantwortung (nicht der Rückfall der Sales-Welt).
+  const welt = head === 'marketing' ? 'marketing' as const : 'sales' as const;
+  if (v.chance_id) { const c = crm.chancen.find(x => x.id === v.chance_id); if (c) return aufloesen(zustaendig(c.besitzer, welt)); }
+  if (v.mandat_id) { const m = crm.mandate.find(x => x.id === v.mandat_id); if (m) return aufloesen(zustaendig(m.zustaendig, welt)); }
   if (v.event_id && head === 'event') {
     const t = v.kontakt_id ? crm.teilnahmen.find(x => x.eventId === v.event_id && x.kontaktId === v.kontakt_id) : undefined;
     if (t?.einladenDurch) return t.einladenDurch;
     const e = crm.events.find(x => x.id === v.event_id); if (e && !v.kontakt_id) return aufloesen(zustaendig(e.zustaendig, 'event'));
   }
-  if (v.kontakt_id) { const k = kontakte.get(v.kontakt_id); if (k) return aufloesen(haeltBeziehung(k)); }
+  if (v.kontakt_id) { const k = kontakte.get(v.kontakt_id); if (k) return aufloesen(kontaktFuerHead(k, head)); }
   return verantwortlich(head);
 }

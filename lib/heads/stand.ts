@@ -66,3 +66,19 @@ export function mischen(alt: HeadVorschlag[], neu: Vorschlag[], berichtId: strin
   const bleibt = new Set(entschieden);
   return { liste: liste.filter(x => x.status === 'offen' || bleibt.has(x)), neu: n, aktualisiert: a, abgelehnt };
 }
+
+/**
+ * Kampagnen-Dubletten über BEIDE Heads (02.11., M2 K3): Sales und Marketing teilen Playbooks — `mischen` prüft nur die eigene Liste, so schlug
+ * der eine Head dieselbe Kampagne vor, die beim anderen schon offen lag oder gerade angenommen/abgelehnt wurde. Gesperrt ist ein Playbook, wenn
+ * der andere Head es offen hat oder in den letzten 30 Tagen entschieden hat (rein).
+ */
+export function kampagnenDerAnderen(andere: readonly HeadVorschlag[], jetzt: string): Set<string> {
+  const raus = new Set<string>();
+  for (const x of andere) {
+    if (!x.kampagne?.playbook) continue;
+    const frisch = Date.parse(jetzt) - Date.parse(x.entschieden ?? x.aktualisiert) < 30 * TAG;
+    if (x.status === 'offen' || ((x.status === 'angenommen' || x.status === 'abgelehnt') && frisch)) raus.add(x.kampagne.playbook);
+  }
+  return raus;
+}
+export const ohneKampagnenDerAnderen = <V extends Pick<Vorschlag, 'kampagne'>>(vs: V[], gesperrt: ReadonlySet<string>): V[] => vs.filter(v => !v.kampagne?.playbook || !gesperrt.has(v.kampagne.playbook));
