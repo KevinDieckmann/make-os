@@ -16,7 +16,7 @@
 // hält sich daran. Filter „Alle · Meins · …“, „Für dich“ und „Diese Woche:
 // wer schreibt was“ zeigen, was bei wem liegt. Jede Änderung ist eine
 // Einzeländerung (api.teil) — Kevin und Malin überschreiben sich nie.
-// MAKE OS veröffentlicht nichts: Text kopieren, selbst posten, hier eintragen.
+// Aus dem Redaktionsplan veröffentlicht MAKE OS nichts: Text kopieren, selbst posten, hier eintragen (Social-Folgen: nur nach Freigabe, Marketing › Social).
 // Kosten (27.09.): je Beitrag pflegbar (Anzeigen, Produktion) — der Marketing-
 // Trichter rechnet daraus Kosten je Anfrage und je SQL.
 // 04.10. (Kevin: „alles anpassbar“): jede Beitragszeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter
@@ -144,7 +144,7 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
         {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>
           Neue Beiträge schreibt {nameVon(verantwortung)} (Verantwortung Marketing), bis jemand anderes eingetragen ist. Erscheint ein Beitrag im Namen einer Person, die ihn nicht selbst schreibt, gibt sie ihn vor dem Planen frei.
-          Beiträge ohne Datum stehen in jeder Ansicht. MAKE OS veröffentlicht nichts — Text kopieren, selbst posten, Status und Wirkung hier eintragen.
+          Beiträge ohne Datum stehen in jeder Ansicht. Aus dem Redaktionsplan veröffentlicht MAKE OS nichts — Text kopieren, selbst posten, Status und Wirkung hier eintragen. Instagram-Entwürfe stehen zusätzlich unter Social und gehen erst nach eurer Freigabe raus.
         </div>
       </Karte>
 

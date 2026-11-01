@@ -33,6 +33,28 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-9',
+    datum: '2026-11-02',
+    titel: 'Marketing-Zahlen stimmen',
+    kurz: 'Social-Beiträge, Kampagnen-Mails und Antworten zählen jetzt im Traktions-Score. Nichts wird doppelt gezählt, und aus einem Instagram-Kommentar wird mit einem Klick eine Anfrage.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Veröffentlichte Social-Beiträge zählen bei „Veröffentlichungen“ mit. Ein Beitrag, der im Redaktionsplan und unter Social steht, zählt einmal.', bereich: 'business', weg: WEG.marketing('social') },
+        { text: 'Zwei neue Zahlen im Traktions-Score: gesendete Kampagnen-Mails und wie viele darauf antworten. Sie erscheinen, sobald der Mail-Stapel etwas gesendet hat.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Aus einem Instagram-Kommentar oder einer Nachricht: „Als Anfrage übernehmen“. Die Person steht dann in der Kartei, mit Follow-up. Gesendet wird nichts.', bereich: 'business', weg: WEG.marketing('social') },
+        { text: 'Abmeldungen über den Abmeldelink zählt MAKE OS je Newsletter-Ausgabe selbst.', bereich: 'business', weg: WEG.marketing('newsletter') },
+        { text: 'Angenommene Instagram-Entwürfe des Head of Marketing stehen zusätzlich als Entwurf im Instagram-Kanal und warten dort auf eure Freigabe.', bereich: 'business', weg: WEG.marketing('social') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: '„Deals aus Marketing“ zählt überall gleich: Content, Anfrage oder eine Marketing-Kampagne.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Läuft die Website, zählen ihre Anfragen nur noch in der Website-Zahl, nicht zusätzlich bei „Anfragen“. Ein Newsletter-Beitrag zählt als die Ausgabe.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Gelöschte Beiträge und Kampagnen zählen nicht mehr bei den Kosten.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Am Reiter Social steht, wie viele Beiträge auf eure Freigabe warten.', bereich: 'business', weg: WEG.marketing('social') },
+        { text: 'Firmen- und Personenkanäle nehmen leere Felder ihres Markenprofils aus der Positionierung.', bereich: 'business', weg: WEG.marketing('positionierung') },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-8',
     datum: '2026-11-02',
     titel: 'Head of Marketing kennt alles',

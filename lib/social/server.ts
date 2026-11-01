@@ -121,7 +121,7 @@ export interface AutomatikLage {
   luecken: Record<string, PlanLuecke[]>;
 }
 
-export async function socialLage(person: string | null, jetzt = new Date()): Promise<SocialLage & { automatik: AutomatikLage }> {
+export async function socialLage(person: string | null, jetzt = new Date()): Promise<SocialLage & { automatik: AutomatikLage; markenVorgabe: import('./marke-vorgabe').MarkenVorgabe | null }> {
   const alle = await ladeSocial();
   const d = socialFuerPerson(alle, person);
   const { socialMedienLesen } = await import('./medien');
@@ -142,5 +142,7 @@ export async function socialLage(person: string | null, jetzt = new Date()): Pro
   }
   const luecken: AutomatikLage['luecken'] = {};
   for (const k of d.kanaele) luecken[k.id] = planLuecken(k, d.formate, d.folgen, jetztWand).slice(0, 7);
-  return { ...lage, automatik: { folgen, verbindungen: verbindungen.map(verbindungSicht), wege: { linkedin: linkedinEingerichtet(), instagram: instagramEingerichtet(), probe: probeErlaubt() }, lauf: await ladeLaufStand().catch(() => ({})), luecken } };
+  // Positionierung als Vorgabe der Markenprofile (02.11., M3) — nur zur Anzeige im Kanal-Formular (Platzhalter), nie gespeichert.
+  const { markenVorgabeLaden } = await import('./marke-vorgabe-server');
+  return { ...lage, markenVorgabe: await markenVorgabeLaden(), automatik: { folgen, verbindungen: verbindungen.map(verbindungSicht), wege: { linkedin: linkedinEingerichtet(), instagram: instagramEingerichtet(), probe: probeErlaubt() }, lauf: await ladeLaufStand().catch(() => ({})), luecken } };
 }

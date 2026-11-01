@@ -678,7 +678,7 @@ describe('F · Namen, Texte, Links, Mindestmengen, Berliner Tag', () => {
     const { anfrageBauen } = await import('@/lib/crm/anfragen');
     const r = anfrageBauen({ kanal: 'fax', text: 'x' } as never, { kontakte: [], heute: T, jetzt: J, person: 'kevin' } as never);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.fehler).toBe('Kanal: website, mail, linkedin, telefon, empfehlung, event oder whatsapp.');
+    if (!r.ok) expect(r.fehler).toBe('Kanal: website, mail, linkedin, telefon, empfehlung, event, whatsapp oder instagram.');
     expect(quelle('components/os/crm/marketing/Newsletter.tsx')).not.toContain('unter „Recht“');
     // Seit 14.10. (Abnahme A1) steht die Marke nicht mehr fest im Text — sie kommt aus `MARKE_EVENTS` (lib/crm/marke.ts, je Instanz).
     expect(quelle('components/os/crm/kontakt/SchnellLeiste.tsx')).toContain('Markttraktion › Events › {MARKE_EVENTS}');

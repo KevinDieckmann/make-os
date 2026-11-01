@@ -28,7 +28,7 @@ import { OFFENE_STUFEN } from './pipeline';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { alleAdressen } from './emails';
 
-export type AnfrageKanal = 'website' | 'mail' | 'linkedin' | 'telefon' | 'empfehlung' | 'event' | 'whatsapp';
+export type AnfrageKanal = 'website' | 'mail' | 'linkedin' | 'telefon' | 'empfehlung' | 'event' | 'whatsapp' | 'instagram';
 export type AnfrageBezugArt = 'beitrag' | 'kampagne' | 'event';
 export interface AnfrageKanalInfo {
   id: AnfrageKanal; label: string;
@@ -48,6 +48,10 @@ export const ANFRAGE_KANAELE: AnfrageKanalInfo[] = [
   // Nummer. Einwilligung „Antwort auf Anfrage“ im eigenen Kanal „whatsapp“ (Kevin 07.10.) — antworten ja, Werbe-Vorlagen erst mit echter
   // Einwilligung (lib/crm/recht.ts, lib/whatsapp/senden.ts).
   { id: 'whatsapp', label: 'WhatsApp', followUp: 'nachricht', einwilligung: 'whatsapp' },
+  // Instagram (02.11., Marketing-Projekt M3): „Als Anfrage übernehmen“ aus einem Kommentar oder einer DM (Marketing › Social › Kommentare & DMs).
+  // Eigene Kennung — zählt als Marketing-Anfrage (nicht in `ANFRAGE_OHNE_MARKETING`). Bewusst KEINE Einwilligung: geantwortet wird im Faden
+  // bei Instagram (24-h-Fenster der Plattform); eine Antwort-Einwilligung „social“ gälte sonst auch für LinkedIn-Nachrichten.
+  { id: 'instagram', label: 'Instagram', followUp: 'nachricht' },
 ];
 export const kanalInfo = (id: string): AnfrageKanalInfo | undefined => ANFRAGE_KANAELE.find(k => k.id === id);
 /**

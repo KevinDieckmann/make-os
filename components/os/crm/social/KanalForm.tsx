@@ -9,6 +9,8 @@ import { Karte, Ueberschrift, Knopf, Feldzeile, feld, eingabe, MehrfachPillen, S
 import { SOCIAL_PLATTFORMEN, PLATTFORM_NAME, LEITPLANKEN_VORGABE, KONTO_ARTEN, KONTO_ART_NAME, type SocialPlattform, type KontoArt } from '@/lib/social/typen';
 import { PersonWahl, AbsenderWahl } from './KanalArt';
 import { woerterAus, type MitStand, type SocialApi } from './daten';
+import { vorgabeGilt } from '@/lib/social/marke-vorgabe';
+import { FARBE as C, TYP } from '@/lib/make-one/design';
 import type { SocialKanal } from '@/lib/social/typen';
 
 export function KanalForm({ api, kanal, onFertig }: { api: SocialApi; kanal?: MitStand<SocialKanal>; onFertig: (id?: string) => void }) {
@@ -32,6 +34,8 @@ export function KanalForm({ api, kanal, onFertig }: { api: SocialApi; kanal?: Mi
   const [cta, setCta] = useState(kanal?.marke.cta ?? '');
   const [bio, setBio] = useState(kanal?.marke.bio ?? '');
   const lp = kanal?.leitplanken ?? LEITPLANKEN_VORGABE;
+  // Positionierung als Vorgabe (02.11., M3): nur bei Firmenaccount und Personenmarke (dieselbe Regel wie der Server, `vorgabeGilt`).
+  const vorgabe = vorgabeGilt({ art }) ? api.lage?.markenVorgabe ?? null : null;
   const [posts, setPosts] = useState(String(lp.postsProTag));
   const [antworten, setAntworten] = useState(String(lp.antwortenProTag));
   const [dms, setDms] = useState(String(lp.dmsProTag));
@@ -77,10 +81,11 @@ export function KanalForm({ api, kanal, onFertig }: { api: SocialApi; kanal?: Mi
           <Feldzeile label="Name der Persona"><input style={eingabe} value={persona} onChange={e => setPersona(e.target.value)} maxLength={60} /></Feldzeile>
           <Feldzeile label="Look der Persona"><textarea style={{ ...feld, minHeight: 72 }} value={look} onChange={e => setLook(e.target.value)} maxLength={2000} /></Feldzeile>
         </>}
-        <Feldzeile label="Versprechen"><input style={eingabe} value={versprechen} onChange={e => setVersprechen(e.target.value)} maxLength={300} /></Feldzeile>
-        <Feldzeile label="Für wen"><textarea style={{ ...feld, minHeight: 60 }} value={zielgruppe} onChange={e => setZielgruppe(e.target.value)} maxLength={2000} /></Feldzeile>
-        <Feldzeile label="Ton"><textarea style={{ ...feld, minHeight: 60 }} value={ton} onChange={e => setTon(e.target.value)} maxLength={2000} /></Feldzeile>
-        <Feldzeile label="Säulen (mit Komma getrennt)"><input style={eingabe} value={saeulen} onChange={e => setSaeulen(e.target.value)} /></Feldzeile>
+        {vorgabe && <span style={{ color: C.inkLeise, fontSize: TYP.bedien }}>Leere Felder übernehmen die Positionierung (Marketing › Positionierung) — grau steht, was dann gilt. Eigene Angaben gewinnen.</span>}
+        <Feldzeile label="Versprechen"><input style={eingabe} value={versprechen} onChange={e => setVersprechen(e.target.value)} maxLength={300} placeholder={vorgabe?.versprechen?.slice(0, 120)} /></Feldzeile>
+        <Feldzeile label="Für wen"><textarea style={{ ...feld, minHeight: 60 }} value={zielgruppe} onChange={e => setZielgruppe(e.target.value)} maxLength={2000} placeholder={vorgabe?.zielgruppe} /></Feldzeile>
+        <Feldzeile label="Ton"><textarea style={{ ...feld, minHeight: 60 }} value={ton} onChange={e => setTon(e.target.value)} maxLength={2000} placeholder={vorgabe?.ton} /></Feldzeile>
+        <Feldzeile label="Säulen (mit Komma getrennt)"><input style={eingabe} value={saeulen} onChange={e => setSaeulen(e.target.value)} placeholder={vorgabe?.saeulen.join(', ')} /></Feldzeile>
         <Feldzeile label="Sagen wir nie (mit Komma getrennt — der Prüfer stoppt diese Wörter)"><input style={eingabe} value={nieSagen} onChange={e => setNieSagen(e.target.value)} /></Feldzeile>
         <Feldzeile label="Aufruf am Ende (CTA)"><input style={eingabe} value={cta} onChange={e => setCta(e.target.value)} maxLength={300} /></Feldzeile>
         <Feldzeile label="Bio"><input style={eingabe} value={bio} onChange={e => setBio(e.target.value)} maxLength={300} /></Feldzeile>
