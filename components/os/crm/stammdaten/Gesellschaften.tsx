@@ -221,6 +221,14 @@ function GesellschaftKarte({ g, i, onNeu, naechste, onNummer }: { g: G; i: numbe
           {g.logoDateiId && <button onClick={() => void logoWeg()} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>entfernen</button>}
         </span>
       </Feldzeile>
+      {/* 02.11.: Akzentfarbe der Belege — das Band oben auf Angebot und Rechnung (ohne: dunkel). */}
+      <Feldzeile label="Akzentfarbe">
+        <span style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input type="color" aria-label="Akzentfarbe wählen" key={`${g.id}-${g.stand}-farbe`} defaultValue={g.akzentfarbe ?? '#0B0E10'} onBlur={e => { if (e.target.value.toUpperCase() !== (g.akzentfarbe ?? '#0B0E10').toUpperCase()) void setze({ akzentfarbe: e.target.value }, 'Akzentfarbe'); }} style={{ width: 44, height: 44, border: 'none', background: 'none', cursor: 'pointer' }} />
+          <span style={{ fontSize: TYP.bedien, color: C.inkDim }}>{g.akzentfarbe ?? 'ohne — dunkles Band'}</span>
+          {g.akzentfarbe && <button onClick={() => void setze({ akzentfarbe: '' }, 'Akzentfarbe')} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien }}>zurücksetzen</button>}
+        </span>
+      </Feldzeile>
       <Feldzeile label="Fußtext">
         <textarea defaultValue={g.fusstext ?? ''} key={`${g.id}-${g.stand}`} rows={2} aria-label="Fußtext" placeholder="z. B. Es gelten unsere AGB …"
           onBlur={e => { if (e.target.value.trim() !== (g.fusstext ?? '')) void setze({ fusstext: e.target.value.trim() }, 'Fußtext'); }}

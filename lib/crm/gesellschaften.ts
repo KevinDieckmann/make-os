@@ -62,6 +62,11 @@ export interface Gesellschaft {
    * bisherige PDF (z. B. wenn ein Empfänger kein ZUGFeRD will). Der alte Stand verwirft das Feld (dann gilt wieder „an“ — dort gibt es keine E-Rechnung).
    */
   eRechnungAus?: boolean;
+  /**
+   * Akzentfarbe der Belege (02.11., optional, additiv): `#RRGGBB` — das Band oben auf Angebot, Rechnung und Stornorechnung. Fehlt sie, ist das Band
+   * Tinte (dunkel). Je Gesellschaft, nie fest im Code (Plattform-Regel). Der alte Stand verwirft das Feld.
+   */
+  akzentfarbe?: string;
   geaendert?: string;
   geaendertVon?: string;
 }
@@ -138,6 +143,12 @@ export function gesellschaftAnwenden(alt: Gesellschaft, roh: Record<string, unkn
     if (u && !/^https:\/\/[^\s]+\.[^\s]+$/i.test(u)) fehler.push({ feld: 'agbUrl', text: 'AGB-Link: nur eine https-Adresse (z. B. https://www.beispiel.de/agb).' });
     else setze('agbUrl', u);
   }
+  // Akzentfarbe (02.11.): nur #RRGGBB — sonst Fehler (400), nie still verworfen.
+  if (hat('akzentfarbe')) {
+    const f = zeile(roh.akzentfarbe, 40);
+    if (f && !/^#[0-9a-f]{6}$/i.test(f)) fehler.push({ feld: 'akzentfarbe', text: 'Akzentfarbe: als Farbwert #RRGGBB (z. B. #A82E44).' });
+    else setze('akzentfarbe', f ? f.toUpperCase() : undefined);
+  }
   if (hat('logoDateiId')) setze('logoDateiId', typeof roh.logoDateiId === 'string' && /^d-[a-z0-9-]{4,60}$/.test(roh.logoDateiId) ? roh.logoDateiId : undefined);
   if (hat('bank')) {
     const b = roh.bank && typeof roh.bank === 'object' ? roh.bank as Record<string, unknown> : {};
@@ -164,7 +175,7 @@ export function gesellschaftFuerAnzeige<G extends { bank?: GesellschaftBank }>(g
 
 /** Die Felder des Absenders — NUR diese gehen in eine Absender-Antwort (Angebots-Tool, Stammdaten), nie Cap-Table, Organe, Verträge, Notizen des Registers. */
 export const ABSENDER_FELDER = ['id', 'firmierung', 'strasse', 'plz', 'ort', 'land', 'email', 'telefon', 'web', 'steuernummer', 'ustId', 'geschaeftsfuehrung', 'register', 'bank',
-  'kleinunternehmer', 'zahlungszielTage', 'gueltigkeitTage', 'nummernformat', 'rechnungsformat', 'stornoformat', 'kurz', 'logoDateiId', 'fusstext', 'annahmeblock', 'agbUrl', 'eRechnungAus', 'geaendert', 'geaendertVon'] as const satisfies readonly (keyof Gesellschaft)[];
+  'kleinunternehmer', 'zahlungszielTage', 'gueltigkeitTage', 'nummernformat', 'rechnungsformat', 'stornoformat', 'kurz', 'logoDateiId', 'fusstext', 'annahmeblock', 'agbUrl', 'eRechnungAus', 'akzentfarbe', 'geaendert', 'geaendertVon'] as const satisfies readonly (keyof Gesellschaft)[];
 
 /**
  * Ein Absender für den Browser (08.10., Sofort-Paket 3.1) — EINE Stelle für GET /api/crm/angebot und GET /api/crm/gesellschaften:

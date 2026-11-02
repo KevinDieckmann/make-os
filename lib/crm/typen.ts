@@ -423,7 +423,11 @@ export interface AngebotPosition {
  * Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). `annahme`/`agb` (25.10., optional, nur Angebote): Annahmeblock an und
  * der AGB-Link der Gesellschaft beim Stellen — so bleibt das PDF reproduzierbar. Rechnungen tragen sie nie.
  */
-export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean; annahme?: true; agb?: string }
+/**
+ * Absender eines Belegs. `leiste` (02.11., optional): die Angaben der rechten Spalte im PDF als Gruppen von Zeilen (Beschriftung + Wert; ohne
+ * Beschriftung = nur der Wert) — fehlt sie (alte Schnappschüsse), stehen die `fuss`-Zeilen dort. `akzent` (02.11., optional): Farbe des Bands oben.
+ */
+export interface AngebotAbsender { firmierung: string; zeilen: string[]; kontakt: string[]; fuss: string[]; kleinunternehmer: boolean; annahme?: true; agb?: string; leiste?: { label: string; wert: string }[][]; akzent?: string }
 /** Festgehaltener Empfänger beim Stellen. `kundennummer` (25.10., optional): die der Firma beim Stellen — steht so im PDF. */
 export interface AngebotEmpfaenger { name: string; firma?: string; zeilen: string[]; email?: string; kundennummer?: string }
 /** Zahlungsweise eines Angebots (26.10.): Raten · Anzahlung + Rest · eigener Satz. Säuberung `zahlweiseSaeubern` (lib/crm/angebote.ts). */
