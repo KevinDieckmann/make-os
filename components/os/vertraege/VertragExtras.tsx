@@ -117,7 +117,7 @@ export function SendenKarte({ v, onVertrag }: { v: VertragMitStand; onVertrag: (
     setLaeuft(true);
     try {
       const a = await senden<{ vertrag: VertragMitStand; an?: string; code?: string; error?: string }>('/api/vertraege', { aktion: 'senden', id: v.id, stand: v.stand, postfach, an, betreff, text, uwgBestaetigt, anfrageId: anfrage });
-      if (a.ok) { onVertrag(a.d.vertrag); setMeldung({ art: 'gut', text: `Gesendet an ${a.d.an ?? 'den Vertragspartner'} — Status „versendet“, Nachfassen in 7 Tagen steht im Follow-up.` }); setAnfrage(neueAnfrage('vtr-send')); return; }
+      if (a.ok) { onVertrag(a.d.vertrag); setMeldung({ art: 'gut', text: `Gesendet an ${a.d.an ?? 'den Vertragspartner'} — Status „versendet“, Nachfassen in 5 Werktagen steht im Follow-up.` }); setAnfrage(neueAnfrage('vtr-send')); return; }
       if (a.status === 409 && a.d.code === 'uwg') {
         if (await r.bestaetigen({ titel: 'Trotzdem senden?', text: `${a.d.fehler ?? ''}\n\nDer Vertrag ist eine persönliche 1:1-Mail — senden, wenn der Text dabei bleibt.`, ja: 'Trotzdem senden' })) return abschicken(true);
         return;

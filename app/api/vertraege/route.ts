@@ -11,7 +11,7 @@
 //   status        { id, stand, status }           → versendet · aktiv · beendet · gekuendigt („unterschrieben“ nur über /api/vertraege/unterschrift)
 //   loeschen      { id, stand }                   → nur Entwürfe
 //   senden        { id, stand, postfach, an, betreff, text, uwgBestaetigt?, anfrageId } → per Mail aus einem EIGENEN Business-Postfach mit genau dem PDF
-//                                                    dieses Vertrags (lib/vertraege/versand.ts); danach „versendet“, Akte, Follow-up +7 Tage. Einmal je anfrageId.
+//                                                    dieses Vertrags (lib/vertraege/versand.ts); danach „versendet“, Akte, Follow-up +5 Werktage (vertragFollowup). Einmal je anfrageId.
 //   finanzen      { id, geber, nehmer, anfrageId? } → unterschriebenes Darlehen in die Finanzplanung übernehmen (lib/vertraege/finanzen.ts) — erst der Klick
 // Zugang: Haushalt des Inhabers (Bestand je Haushalt über `businessHaushaltVon`). Rolle „nur Business“: lesen + Entwürfe — fertigstellen, version,
 // status, senden, finanzen → 403. Der Dienstweg (ZOE, Takt, Skripte) stellt nie fertig, sendet nie und vermerkt nie „versendet“ (403). Gesendet wird nur per Klick.
