@@ -15,6 +15,8 @@
 //   storno    { id, grund, stand?, anfrageId? } → Stornorechnung (eigene Nummer, eigenes PDF) — nie der Dienstweg
 //   mahnung   { id, stufe, anfrageId? }      → Stufe vermerken + Mail-Entwurf (der Browser öffnet das Mail-Programm) — nie der Dienstweg
 //   mahntage  { tage: [n, n, n] }            → Mahnstufen-Tage (nur volle Haushaltsmitglieder)
+//   startnummer { firmaId, nr, jahr? }       → „Nächste Rechnungsnummer“ im Kreis des laufenden Jahres (02.11.): nur nach oben (409, wenn schon
+//             eine Nummer ≥ nr vergeben ist), Sicht wie überall (Business-Konto nur Business-Gesellschaften) — nie der Dienstweg
 //   bezahlt   { id, am?, stand? }            → Zahlungseingang: Status + Buchung bu-re-<id> in einer Sperre (27.10.)
 //   kunde     { id, stand, kontaktId | kundeFirmaId, anschriftBehalten? } → Empfänger eines Entwurfs aus der Kartei (27.10.; 30.10.: nach „neu in
 //             der Markttraktion anlegen“ bleiben getippte Felder, wo die Kartei nichts weiß)
@@ -23,6 +25,7 @@
 // Stellen, Versand und Mahnung nur mit Zuordnung (Firma, Person oder Mandat der Markttraktion) → sonst 409 `grund: 'zuordnung'` (30.10.).
 //   kopie     { id, anfrageId? }             → neuer Entwurf als Kopie (Vorlage bzw. Korrektur nach Storno, 27.10.)
 // GET ?bereich=privat|business (27.10.) → nur dieser Bereich (Selbstständigkeit = Privat); ?re=<id> → `ort`, wenn sie im anderen Bereich steht
+// GET ?nummern=1 (02.11.)                → je Gesellschaft der Sicht die nächste Rechnungs-/Stornonummer des laufenden Jahres (nichts geschrieben)
 // GET ?katalog=1 (27.10.)                → aktive Produkte + Kartei (Kennung/Name/Ort) für den Editor
 // GET ?umsatz=1 (30.10.)                 → Rechnungen für den Reiter „Umsatz“ der Akte — nach Sicht gefiltert (Business-Konten nie Privat-Einheiten)
 // Zugang wie die Rechnungen des Finanzplans: Haushalt des Inhabers. Konten mit `finanzRecht: 'business'` bekommen die Business-Sicht —
@@ -41,7 +44,7 @@ import { einmalig } from '@/lib/store/anfragen';
 import { dateinameAscii } from '@/lib/dateien/regeln';
 import {
   RechnungFehler, entwurfKopie, entwurfKunde, entwurfLoeschen, entwurfNeu, entwurfSpeichern, mahnTageSetzen, mahnungVermerken, mitFassung, rechnungKatalog,
-  rechnungPdf, rechnungXRechnung, rechnungStellen, rechnungStornieren, rechnungsStand, rechnungZuordnen, rechnungenFuerUmsatz, type Sicht,
+  rechnungPdf, rechnungXRechnung, rechnungStellen, rechnungStornieren, rechnungsStand, rechnungZuordnen, rechnungenFuerUmsatz, naechsteNummern, startnummerSetzen, type Sicht,
 } from '@/lib/finanzen/rechnung/server';
 import { rechnungBezahltVermerken, stornoOhnePdf } from '@/lib/finanzen/rechnung/bezahlt-server';
 
@@ -99,6 +102,10 @@ export async function GET(req: Request) {
           'Cache-Control': 'no-store, private',
         },
       });
+    }
+    // Stammdaten › Gesellschaften (02.11.): die wirklich nächste Nummer je Gesellschaft der Sicht.
+    if (url.searchParams.get('nummern') === '1') {
+      return NextResponse.json({ ok: true, sicht: z.sicht, ...(await naechsteNummern(z)) }, { headers: { 'Cache-Control': 'no-store' } });
     }
     // Editor (27.10.): Produkte und Kartei zum Wählen — erst auf Klick.
     if (url.searchParams.get('katalog') === '1') {
@@ -205,6 +212,11 @@ export async function POST(req: Request) {
         if (z.sicht !== 'privat') return fehler('Die Mahnstufen stellt ein volles Haushaltsmitglied ein.', 403);
         return NextResponse.json({ ok: true, mahnTage: await mahnTageSetzen(b.tage) });
       }
+      // 02.11.: „Nächste Rechnungsnummer“ — nur nach oben, in der Sperre des Nummernkreises (lib/finanzen/rechnung/server.ts).
+      case 'startnummer': {
+        const nein = vonHand(); if (nein) return nein;
+        return NextResponse.json({ ok: true, naechste: await startnummerSetzen({ firmaId: b.firmaId, nr: b.nr, ...(b.jahr !== undefined ? { jahr: b.jahr } : {}), haushalt: z.haushalt, sicht: z.sicht, wer }) });
+      }
       case 'vorbereiten': {
         // 29.10. (Kreislauf Geld): Stellschraube „Rechnungen vorbereiten“ (Morgenlauf) — nur ein volles Haushaltsmitglied, nur von Hand.
         if (z.sicht !== 'privat') return fehler('Das stellt ein volles Haushaltsmitglied ein.', 403);
@@ -213,7 +225,7 @@ export async function POST(req: Request) {
         const { vorbereitenSetzen } = await import('@/lib/finanzen/rechnung/kreislauf');
         return NextResponse.json({ ok: true, vorbereiten: await vorbereitenSetzen(b.an) });
       }
-      default: return fehler('aktion: neu, speichern, kunde, zuordnen, kopie, loeschen, stellen, bezahlt, storno, mahnung, mahntage oder vorbereiten.', 400);
+      default: return fehler('aktion: neu, speichern, kunde, zuordnen, kopie, loeschen, stellen, bezahlt, storno, mahnung, mahntage, startnummer oder vorbereiten.', 400);
     }
   } catch (e) { return ausFehler(e); }
 }
