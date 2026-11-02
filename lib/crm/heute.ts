@@ -103,7 +103,7 @@ export interface Auswahl { karten: Karte[]; firmen: FirmenKarte[]; ausgefiltert:
  * EIGENEN Postfächern, geteilte WhatsApp-Nummer — nie fremde Postfächer; lib/ereignisse/server.ts `geradeGeschrieben`). Für sie schlägt die
  * Power Hour kein Nachfassen vor (die Antwort steht in der Inbox) — nur „Signale“ bleiben.
  */
-export interface WerIstDranOptionen { geradeGeschrieben?: ReadonlySet<string> }
+export interface WerIstDranOptionen { geradeGeschrieben?: ReadonlySet<string>; /** Sperrliste des Betriebs (Server, lib/crm/betrieb-sperre.ts `betriebSperrPrueferLaden`) — R2-4 Fund 10. */ firmaGesperrt?: (firmaId: string) => boolean }
 
 /**
  * Wem eine Karte gehört: Follow-up → Chance → Mandat → Kampagne → Einladung zum Event → wer die Beziehung hält.
@@ -299,7 +299,7 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   for (const k of [...pflege, ...neu]) { if (ergebnis.length >= n) break; if (!ergebnis.includes(k)) ergebnis.push(k); }
   ergebnis.sort((a, b) => rang(a.kategorie) - rang(b.kategorie) || b.punkte - a.punkte);
   // Betriebe ohne Person (02.11.): eigene Karten, dieselbe Zuständigkeitsregel (Follow-up), Werbesperre am Betrieb zählt wie eine Sperre.
-  const fk = firmenKarten(crm, heute, person);
+  const fk = firmenKarten(crm, heute, person, 12, opt.firmaGesperrt);
   aus.beiAnderen += fk.beiAnderen; aus.sperre += fk.sperre;
   return { karten: ergebnis.slice(0, n), firmen: fk.karten, ausgefiltert: aus };
 }

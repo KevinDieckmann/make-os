@@ -271,7 +271,8 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
     // Bei Werbesperre „Sonstiges“: eine Antwort auf IHRE Anfrage ist keine Werbung — werbliche Arten stünden in keiner Fälligkeitsliste.
     id: ctx.ids.followUp, bezug: { art: 'kontakt', id: kontakt.id }, kontaktId: kontakt.id, art: gesperrt ? 'sonstig' : info.followUp,
     text: `${ANFRAGE_FOLLOWUP} — ${info.label}${beitrag ? `, „${beitrag.titel.slice(0, 60)}“` : kampagne ? `, „${kampagne.name.slice(0, 60)}“` : event ? `, „${event.titel.slice(0, 60)}“` : ''}`,
-    faellig: ctx.heute, quelle: kampagne ? 'kampagne' : 'hand', notiz: text.slice(0, 1000),
+    // R2-4 Fund 1: die Antwort auf IHRE Anfrage ist nie Werbung — auch nicht bei einer Werbesperre des Betriebs (`anlass`, `istWerblich`).
+    faellig: ctx.heute, quelle: kampagne ? 'kampagne' : 'hand', anlass: 'anfrage', notiz: text.slice(0, 1000),
   }, kontakt, ctx.person, ctx.jetzt);
 
   return { ok: true, bau: { kontakt, neuePerson, ...(hinweis ? { hinweis } : {}), aktivitaetText, followUp, ...(wirkung ? { wirkung } : {}), ...(kp ? { kampagne: kp } : {}), ...(firmaLead ? { firmaLead } : {}) } };
@@ -288,7 +289,7 @@ function unbestaetigtBauen(basis: Kontakt, kanal: AnfrageKanal, text: string, da
   const kontakt: Kontakt = { ...wendeAktivitaetAn(basis, { art: 'system', text: aktivitaetText, von: 'system' }, datum, jetztAm, tagPlus), geaendertAm: ctx.heute };
   const followUp = neuesFollowUp({
     id: ctx.ids.followUp, bezug: { art: 'kontakt', id: kontakt.id }, kontaktId: kontakt.id, art: 'sonstig',
-    text: anfragePruefenText(info.label), faellig: ctx.heute, quelle: 'hand', notiz: text.slice(0, 1000),
+    text: anfragePruefenText(info.label), faellig: ctx.heute, quelle: 'hand', anlass: 'anfrage', notiz: text.slice(0, 1000),
   }, kontakt, ctx.person, ctx.jetzt);
   const satz = 'Adresse unbestätigt — die Anfrage hängt an der vorhandenen Person, aber ohne Einwilligung und ohne Stufe; erst prüfen, dann „Anfrage übernehmen“.';
   return { ok: true, bau: { kontakt, neuePerson: false, hinweis: [hinweis, satz].filter(Boolean).join(' '), aktivitaetText, followUp, unbestaetigt: true } };

@@ -18,7 +18,7 @@ import { kontakteFuerVerarbeitung } from './verarbeitung';
 import { ausgenommen } from './einschraenkung';
 import { nachweisLuecken } from './einwilligung';
 import { sperrlisteLaden, sperrPruefer } from './sperrliste';
-import { aenderePost, ladePost } from './kampagnen-motor';
+import { aenderePost, ladePost, type WillkommenEintrag } from './kampagnen-motor';
 import { entwurfFuellen, imZeitfenster, JE_LAUF_MAX, mailFertig, platzhalterWerte, WILLKOMMEN_VORGABE, type MotorEinstellungen } from './kampagnen-post';
 
 /** Die tragende Einwilligung für die Strecke (Newsletter/Mail, voller Nachweis, nicht widerrufen) ab `seit` — rein. */
@@ -28,10 +28,42 @@ export function willkommenEinwilligung(k: Pick<Kontakt, 'einwilligungen'>, seit:
     && !nachweisLuecken(e).length && (e.zeitpunkt ?? e.erteiltAm).slice(0, 10) >= ab) ?? null;
 }
 
-/** Welche Stufe heute dran ist (die erste fällige, noch nicht gesendete und nicht gescheiterte) — rein. */
-export function willkommenFaellig(stufen: readonly { tag: number }[], start: string, gesendet: readonly number[], heute: string, gescheitert: readonly number[] = []): number | null {
-  for (const [i, s] of stufen.entries()) if (!gesendet.includes(i) && !gescheitert.includes(i) && tagePlus(start, s.tag) <= heute) return i;
+/**
+ * Welche Stufe heute dran ist (die erste fällige, noch nicht gesendete bzw. übersprungene) — rein. Seit 02.11. (R2-4 Fund 5): ist eine Stufe gescheitert,
+ * steht die Strecke für diese Person, bis jemand in der Karte entscheidet („erneut“ / „überspringen“, `willkommenEntscheiden`) — sonst bekäme sie Mail 2
+ * ohne Mail 1.
+ */
+export function willkommenFaellig(stufen: readonly { tag: number }[], start: string, gesendet: readonly number[], heute: string, gescheitert: readonly number[] = [], uebersprungen: readonly number[] = []): number | null {
+  if (gescheitert.length) return null;
+  for (const [i, s] of stufen.entries()) if (!gesendet.includes(i) && !uebersprungen.includes(i) && tagePlus(start, s.tag) <= heute) return i;
   return null;
+}
+
+/**
+ * Entscheidung zu einer gescheiterten Stufe (R2-4 Fund 5, rein): „erneut“ = die Stufe kommt im nächsten Lauf noch einmal, „überspringen“ = sie gilt als
+ * erledigt, die Strecke läuft mit der nächsten weiter. Unbekannte Person/Stufe → null (404).
+ */
+export function willkommenEntscheiden(e: WillkommenEintrag | undefined, stufe: number, wahl: 'erneut' | 'ueberspringen'): WillkommenEintrag | null {
+  if (!e || !(e.gescheitert ?? []).some(g => g.stufe === stufe)) return null;
+  const gescheitert = (e.gescheitert ?? []).filter(g => g.stufe !== stufe);
+  const { gescheitert: _g, ...rest } = e;
+  return { ...rest, ...(gescheitert.length ? { gescheitert } : {}), ...(wahl === 'ueberspringen' ? { uebersprungen: Array.from(new Set([...(e.uebersprungen ?? []), stufe])).sort((a, b) => a - b) } : {}) };
+}
+
+/** EINE neutrale Glocke je Tag an die Marketing-Verantwortliche, wenn Willkommens-Mails scheiterten (R2-4 Fund 5) — nur die Zahl, nie Namen. Wirft nie. */
+async function gescheitertMelden(n: number, jetzt: Date): Promise<void> {
+  if (!n) return;
+  try {
+    const tag = localDay(jetzt);
+    const post = await ladePost();
+    if (post.gemeldet['willkommen-gescheitert'] === tag) return;
+    const { verantwortlichePerson } = await import('./verantwortung-server');
+    const an = await verantwortlichePerson('marketing');
+    if (!an) return;
+    const [{ melde }, { WEG }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/wege')]);
+    await melde({ an, art: 'prozess', titel: `Willkommens-Mails: ${n === 1 ? 'eine Mail ist' : `${n} Mails sind`} gescheitert — die Strecke wartet auf eine Entscheidung (erneut oder überspringen)`, link: WEG.website('formulare'), bezug: { art: 'prozess', id: 'willkommen-gescheitert' } });
+    await aenderePost(b => ({ ...b, gemeldet: { ...b.gemeldet, 'willkommen-gescheitert': tag } }));
+  } catch (e) { console.warn('[willkommen] Glocke:', e instanceof Error ? e.message.slice(0, 120) : e); }
 }
 
 export const willkommenStufen = (e: MotorEinstellungen) => (e.willkommenStufen?.length ? e.willkommenStufen : WILLKOMMEN_VORGABE);
@@ -64,7 +96,7 @@ export async function willkommenImTakt(jetzt = new Date()): Promise<number> {
     const e = willkommenEinwilligung(k, w.seit);
     if (!e) continue;
     const st = post.willkommen[k.id] ?? { start: (e.zeitpunkt ?? e.erteiltAm).slice(0, 10), gesendet: [] };
-    const i = willkommenFaellig(stufen, st.start, st.gesendet, heute, (st.gescheitert ?? []).map(g => g.stufe));
+    const i = willkommenFaellig(stufen, st.start, st.gesendet, heute, (st.gescheitert ?? []).map(g => g.stufe), st.uebersprungen ?? []);
     if (i !== null) dran.push({ k, stufe: i, start: st.start });
   }
   if (!dran.length) return 0;
@@ -109,6 +141,7 @@ export async function willkommenImTakt(jetzt = new Date()): Promise<number> {
     }
   }
   await laufVermerken({ ...(grund ? { grund } : {}), gesendet: n, gescheitert }, jetzt);
+  await gescheitertMelden(gescheitert, jetzt);
   return n;
 }
 
@@ -139,11 +172,6 @@ export async function willkommenRueckfluss(jetzt = new Date()): Promise<number> 
   }
   if (!treffer.length) return 0;
   const am = jetzt.toISOString(), heute = localDay(jetzt);
-  await aenderePost(b => {
-    const willkommen = { ...b.willkommen };
-    for (const t of treffer) { const e = willkommen[t.kontaktId]; if (e) willkommen[t.kontaktId] = { ...e, mails: (e.mails ?? []).map(m => (m.stufe === t.m.stufe && m.am === t.m.am ? { ...m, rueckfluss: { art: t.art, am: t.am } } : m)) }; }
-    return { ...b, willkommen };
-  }, { felder: () => treffer.map(t => ({ id: `willkommen:${t.kontaktId.slice(0, 2)}`, felder: ['rueckfluss'] })) });
   const { verantwortlichePerson } = await import('./verantwortung-server');
   const zustaendigFuer = (await verantwortlichePerson('marketing')) ?? treffer[0].m.von!;
   const { aendereCrm } = await import('./speicher');
@@ -154,11 +182,18 @@ export async function willkommenRueckfluss(jetzt = new Date()): Promise<number> 
       const id = `fu-kw-${fnv(`${t.kontaktId}|${t.m.stufe}|${t.m.am}`)}${fnv(`w${t.kontaktId}|${t.m.stufe}|${t.m.am}`)}`;
       if (followups.some(f => f.id === id)) continue;
       followups.push(neuesFollowUp({ id, bezug: { art: 'kontakt', id: t.kontaktId }, kontaktId: t.kontaktId, art: t.art === 'antwort' ? 'mail' : 'sonstig',
-        text: t.art === 'antwort' ? 'Antwort bearbeiten: Willkommens-Mail' : 'Willkommens-Mail kam zurück — Adresse prüfen', faellig: heute, zustaendig: zustaendigFuer, quelle: 'kampagne' }, kontakte.get(t.kontaktId), 'system', am));
+        text: t.art === 'antwort' ? 'Antwort bearbeiten: Willkommens-Mail' : 'Willkommens-Mail kam zurück — Adresse prüfen', faellig: heute, zustaendig: zustaendigFuer, quelle: 'kampagne', anlass: 'antwort' }, kontakte.get(t.kontaktId), 'system', am));
     }
     return { ...c, followups };
   }, { art: 'system' });
   const antworten = treffer.filter(t => t.art === 'antwort');
+  // R2-4 Fund 2: erst Follow-up (feste Kennung, idempotent) und Akte (idempotent über Betreff), DANN der Haken `rueckfluss` — scheitert vorher etwas,
+  // fehlt der Haken, und der nächste Lauf holt es nach (vorher stand der Haken schon, und die Antwort ging still verloren).
   if (antworten.length) await antwortAnAkte(antworten.map(t => ({ kontaktId: t.kontaktId, kampagneId: 'willkommen', betreff: t.betreff, am: t.am })), heute, 'Antwort auf Willkommens-Mail');
+  await aenderePost(b => {
+    const willkommen = { ...b.willkommen };
+    for (const t of treffer) { const e = willkommen[t.kontaktId]; if (e) willkommen[t.kontaktId] = { ...e, mails: (e.mails ?? []).map(m => (m.stufe === t.m.stufe && m.am === t.m.am ? { ...m, rueckfluss: { art: t.art, am: t.am } } : m)) }; }
+    return { ...b, willkommen };
+  }, { felder: () => treffer.map(t => ({ id: `willkommen:${t.kontaktId.slice(0, 2)}`, felder: ['rueckfluss'] })) });
   return treffer.length;
 }

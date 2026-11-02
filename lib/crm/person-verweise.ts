@@ -61,7 +61,8 @@ export function personEntfernen(crm: CrmBestand, id: string): CrmBestand {
     beitraege: (crm.beitraege ?? []).map(b => (b.quellen.includes(id) || b.wirkung.some(w => w.kontaktId === id) ? { ...b, quellen: ohne(b.quellen, id), wirkung: b.wirkung.filter(w => w.kontaktId !== id) } : b)),
     followups: (crm.followups ?? []).filter(f => f.kontaktId !== id && !(f.bezug.art === 'kontakt' && f.bezug.id === id)),
     sitzungen: (crm.sitzungen ?? []).map(s => (s.karten.some(k => k.kontaktId === id) ? { ...s, karten: s.karten.filter(k => k.kontaktId !== id) } : s)),
-    antraege: (crm.antraege ?? []).map(a => (a.kontaktId === id ? { ...a, kontaktId: undefined } : a)),
+    // R2-4 Fund 8: der Nachrichtentext der Person (Art.-18-Nachricht über die Website) wird getilgt — der Vorgang (Art, Frist, Status) bleibt als Nachweis.
+    antraege: (crm.antraege ?? []).map(a => (a.kontaktId === id ? { ...a, kontaktId: undefined, ...(a.nachricht ? { nachricht: '[gelöscht]' } : {}) } : a)),
     // Angebote (28.09.): Entwürfe fallen weg; gestellte sind Geschäftsunterlagen — Personenbezug lösen statt löschen.
     angebote: angebotePersonOhne(crm.angebote ?? [], id, localDay()),
   };

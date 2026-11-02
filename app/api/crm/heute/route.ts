@@ -42,7 +42,9 @@ export async function GET(req: Request) {
   const aufgaben = await sicher(async () => aufgabenFuerPowerHour((await ladeAufgabenSicht(ich)).tasks, heute), []);
   // Ereignisse (09.10., E1): wer der ANFRAGENDEN Person gerade geschrieben hat (eigene Postfächer, geteilte WhatsApp — nie fremde), bekommt kein Nachfassen.
   const geradeGeschrieben = await sicher(async () => (await import('@/lib/ereignisse/server')).geradeGeschrieben(ich), new Set<string>());
-  const a = werIstDran(kontakte, crm, heute, person, n, aufgaben, { geradeGeschrieben });
+  // R2-4 Fund 10: Sperrliste des Betriebs für die Karten der Betriebe ohne Person.
+  const firmaGesperrt = await sicher(async () => (await import('@/lib/crm/betrieb-sperre')).betriebSperrPrueferLaden(crm.firmen), undefined);
+  const a = werIstDran(kontakte, crm, heute, person, n, aufgaben, { geradeGeschrieben, ...(firmaGesperrt ? { firmaGesperrt } : {}) });
   const mandatJe = new Set(crm.mandate.filter(m => m.status === 'aktiv').flatMap(m => m.kontaktIds));
   const bezugArt = (bezug?: string) => !bezug ? undefined
     : crm.mandate.some(m => m.id === bezug) ? 'mandat' as const

@@ -430,7 +430,7 @@ async function mandateLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> 
       + `${m.ziele.length ? `\n  Ziele: ${m.ziele.map(z => `${z.text}${z.ziel ? ` (Ziel ${z.ziel}` : ''}${z.ist ? `, ist ${z.ist})` : z.ziel ? ')' : ''}`).join(' | ')}` : ''}${m.notiz ? `\n  Notiz: ${m.notiz}` : ''}`;
   });
   const zeitKopf = zeit ? `Zeit ${zeit.label} (${zeit.von} bis ${zeit.bis}): ${stundenText(zeit.gesamt.mitMandatSek)} mit Mandat · ${stundenText(zeit.gesamt.sek - zeit.gesamt.mitMandatSek)} ohne Mandat` : 'Zeit je Mandat: nicht lesbar';
-  const koerper = [`MRR ${eur(mrr(s.crm.mandate))}${k ? ` · größter Kunde ${k.kunde} mit ${Math.round(k.anteil * 100)} %` : ''}`, zeitKopf, block('Mandate', zeilen)].join('\n\n');
+  const koerper = [`MRR ${eur(mrr(s.crm.mandate))}${k ? ` · größter Kunde ${k.kunde} mit ${k.anteil} %` : ''}`, zeitKopf, block('Mandate', zeilen)].join('\n\n');
   return crmAntwort(`MANDATE · ${alle.length} von ${s.crm.mandate.length} · aktiv ${s.crm.mandate.filter(m => m.status === 'aktiv').length}`, koerper, i.teil, t => `mandate_lage mit teil: ${t}`);
 }
 

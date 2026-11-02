@@ -5,8 +5,8 @@
 // Speicherfehler → 503, der Gast weiß es), dann die Arbeit nach der Antwort — Schritt für Schritt abgehakt (`schritte`), damit ein zweiter Versuch
 // keine Mail doppelt schickt. Was offen bleibt, holen Takt und Morgenlauf nach (lib/oeffentlich/eingang-server.ts); nach `EINGANG_VERSUCHE`
 // gescheiterten Versuchen steht die Zeile auf „fehler“ — eine neutrale Glocke, der Head of IT zählt sie.
-// Datenschutz: `daten` (Adresse, Vorname, Firma) nur, solange die Zeile offen ist — beim Abschluss geleert; fertige fallen nach 7 Tagen weg,
-// nie fertig gewordene nach 30 Tagen (Frist im Register). Art. 17: Zeilen, die die Person nennen, raus (lib/crm/person-weitere.ts).
+// Datenschutz: `daten` (Adresse, Vorname, Firma) nur, solange die Zeile offen ist — beim Abschluss geleert; fertige fallen nach 7 Tagen weg.
+// Nie fertig gewordene seit 02.11. (R2-4 Fund 3) nicht mehr still nach 30 Tagen: sie stehen in Marketing › Anfragen (Aufgabe `we-…`), bis jemand entscheidet. Art. 17: Zeilen, die die Person nennen, raus (lib/crm/person-weitere.ts).
 
 export const EINGANG_SPEICHER = 'website-eingang';
 export type EingangArt = 'unterlage' | 'newsletter';
@@ -51,8 +51,31 @@ export const EINGANG_LAEUFT_MIN = 10;
 export const EINGANG_WARTE_MIN = 2;
 /** Fertige Zeilen bleiben so lange (Nachvollziehbarkeit, ohne Daten). */
 export const EINGANG_FERTIG_TAGE = 7;
-/** Nie fertig gewordene Zeilen (samt Daten) fallen nach so vielen Tagen weg. */
+/**
+ * Bis 02.11. fielen nie fertig gewordene Zeilen (samt Daten) nach so vielen Tagen still weg. Seit der Gegenprüfung R2-4 (Fund 3) bleibt eine offene
+ * bzw. gescheiterte Zeile, bis jemand entscheidet (Marketing › Anfragen: „noch einmal versuchen“, „als Anfrage von Hand übernehmen“, „verwerfen“) —
+ * vorher steht eine feste Aufgabe (`eingangAufgabeId`) bei der Marketing-Verantwortlichen. Die Zahl bleibt für alte Leser.
+ */
 export const EINGANG_FRIST_TAGE = 30;
+/** Ab so vielen Stunden ohne Abschluss (oder sobald alle Versuche verbraucht sind) braucht die Zeile einen Menschen: Aufgabe + Anzeige. */
+export const EINGANG_HAND_STUNDEN = 24;
+/** Feste Kennung der Aufgabe „Website-Eingang prüfen“ je Zeile (idempotent). */
+export const eingangAufgabeId = (id: string) => `we-${id.replace(/^we-/, '').slice(0, 60)}`;
+
+/** Braucht die Zeile einen Menschen? Alle Versuche verbraucht, oder seit `EINGANG_HAND_STUNDEN` nicht fertig. Rein. */
+export function eingangBrauchtHand(e: WebsiteEingang, jetztMs: number): boolean {
+  if (e.status === 'fertig') return false;
+  return (e.status === 'fehler' && e.versuche >= EINGANG_VERSUCHE) || jetztMs - Date.parse(e.am) >= EINGANG_HAND_STUNDEN * 60 * MIN;
+}
+
+/** Was Marketing › Anfragen zu einer offenen Zeile zeigt (Business-Sicht im Haushalt, wie die übrigen Anfragen — Adresse sichtbar zum Übernehmen). */
+export interface EingangOffen { id: string; art: EingangArt; am: string; status: EingangStatus; versuche: number; grund?: string; email: string; vorname: string; firma?: string; brauchtHand: boolean }
+export function eingaengeOffen(l: readonly WebsiteEingang[], jetztMs: number): EingangOffen[] {
+  return l.filter(e => e.status !== 'fertig' && e.daten && (e.status === 'fehler' || eingangBrauchtHand(e, jetztMs) || jetztMs - Date.parse(e.am) >= EINGANG_LAEUFT_MIN * MIN))
+    .map(e => ({ id: e.id, art: e.art, am: e.am, status: e.status, versuche: e.versuche, ...(e.grund ? { grund: e.grund } : {}), email: e.daten!.email, vorname: e.daten!.vorname,
+      ...(e.daten!.firma ? { firma: e.daten!.firma } : {}), brauchtHand: eingangBrauchtHand(e, jetztMs) }))
+    .sort((a, b) => b.am.localeCompare(a.am));
+}
 
 const MIN = 60_000, TAG = 86_400_000;
 
@@ -65,9 +88,12 @@ export function eingangFaellig(e: WebsiteEingang, jetztMs: number, sofort = fals
   return e.versuche < EINGANG_VERSUCHE && (!e.seit || jetztMs - Date.parse(e.seit) >= 30 * MIN * Math.max(1, e.versuche));
 }
 
-/** Fristen anwenden (rein): fertige nach 7 Tagen, alle übrigen nach 30 Tagen. */
+/**
+ * Fristen anwenden (rein): fertige (auch verworfene bzw. von Hand übernommene, ohne Daten) nach 7 Tagen. Nie fertig gewordene NIE still (R2-4 Fund 3) —
+ * sie stehen in Marketing › Anfragen und als Aufgabe, bis jemand entscheidet.
+ */
 export function eingangAufraeumen(l: readonly WebsiteEingang[], jetztMs: number): WebsiteEingang[] {
-  return l.filter(e => (e.status === 'fertig' ? jetztMs - Date.parse(e.fertigAm ?? e.am) < EINGANG_FERTIG_TAGE * TAG : jetztMs - Date.parse(e.am) < EINGANG_FRIST_TAGE * TAG));
+  return l.filter(e => e.status !== 'fertig' || jetztMs - Date.parse(e.fertigAm ?? e.am) < EINGANG_FERTIG_TAGE * TAG);
 }
 
 /** Zähler für den Head of IT (rein, nur Zahlen): offen (wartet), gescheitert (alle Versuche verbraucht). */

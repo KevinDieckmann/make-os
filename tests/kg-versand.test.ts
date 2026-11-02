@@ -348,7 +348,9 @@ describe('Fund 13/14/18 · Kleines', () => {
 
   it('Willkommen: gescheiterte Stufe kommt nicht automatisch wieder; Funde-Kampagne nicht aktiv → ehrlicher Hinweis', async () => {
     const { willkommenFaellig } = await import('@/lib/crm/willkommen');
-    expect(willkommenFaellig([{ tag: 0 }, { tag: 3 }], '2026-10-20', [], '2026-11-02', [0])).toBe(1);
+    // Seit R2-4 (Fund 5): nach einer gescheiterten Stufe steht die Strecke, bis „erneut“/„überspringen“ entschieden ist (tests/kg-nach.test.ts).
+    expect(willkommenFaellig([{ tag: 0 }, { tag: 3 }], '2026-10-20', [], '2026-11-02', [0])).toBeNull();
+    expect(willkommenFaellig([{ tag: 0 }, { tag: 3 }], '2026-10-20', [], '2026-11-02', [], [0])).toBe(1);
     expect(willkommenFaellig([{ tag: 0 }], '2026-10-20', [], '2026-11-02', [0])).toBeNull();
     // Freigegebene Mail einer nicht (mehr) aktiven Kampagne trägt den Grund
     await kampagneAnlegen({ kontaktIds: ['c-anna-0001'], firmaIds: [] });

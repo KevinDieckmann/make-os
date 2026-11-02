@@ -17,6 +17,7 @@ import { tagVon } from '@/lib/zeit';
 import type { CrmBestand, Firma, Lead } from './typen';
 import { angebotFollowupsSchliessen } from './angebote';
 import { OFFENE_STUFEN } from './pipeline';
+import { istWerblich } from './followup';
 
 /** Kennungen der Deals, die zwischen `vorher` und `nachher` verschwunden sind. */
 export function geloeschteDeals(vorher: Pick<CrmBestand, 'chancen'>, nachher: Pick<CrmBestand, 'chancen'>): Set<string> {
@@ -105,13 +106,16 @@ export function firmenWerbesperreFolgen(vorher: CrmBestand, nachher: CrmBestand,
   const alt = new Map((vorher.firmen ?? []).map(f => [f.id, f]));
   const neu = new Set((nachher.firmen ?? []).filter(f => f.werbesperre && !alt.get(f.id)?.werbesperre).map(f => f.id));
   if (!neu.size || !(nachher.followups ?? []).length) return nachher;
-  const werblich = (f: NonNullable<CrmBestand['followups']>[number]) => ['mail', 'linkedin', 'anruf'].includes(f.art) || f.id.startsWith('fu-ks-');
   const vermerk = `Abgesagt am ${tagVon(jetzt)}: Werbewiderspruch des Betriebs (Art. 21 DSGVO).`;
   let n = 0;
+  // EINE Regel (R2-4 Fund 1, `istWerblich`): nur, was WIR werblich anstoßen — Antworten, Anfragen, Verträge, Rechnungen, Termine bleiben offen.
   const followups = nachher.followups!.map(f => {
-    if (f.status !== 'offen' || f.bezug.art !== 'firma' || !neu.has(f.bezug.id) || !werblich(f)) return f;
+    if (f.status !== 'offen' || f.bezug.art !== 'firma' || !neu.has(f.bezug.id) || !istWerblich(f)) return f;
     n++;
-    return { ...f, status: 'abgesagt' as const, notiz: [f.notiz, vermerk].filter(Boolean).join(' · ').slice(0, 1000), geaendert: jetzt, ...(person ? { geaendertVon: person } : {}) };
+    // Nie still kürzen (R2-4 Fund 11): passt der Vermerk nicht mehr in die Notiz (1.000 Zeichen), bleibt die Notiz, wie sie ist — der Status
+    // „abgesagt“ und `geaendert` tragen die Absage, der Vermerk steht dann im Ergebnis.
+    const notiz = [f.notiz, vermerk].filter(Boolean).join(' · ');
+    return { ...f, status: 'abgesagt' as const, ...(notiz.length <= 1000 ? { notiz } : { ergebnis: 'Werbewiderspruch des Betriebs' }), geaendert: jetzt, ...(person ? { geaendertVon: person } : {}) };
   });
   return n ? { ...nachher, followups } : nachher;
 }

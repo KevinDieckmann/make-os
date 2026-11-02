@@ -61,6 +61,8 @@ export interface WillkommenEintrag {
   start: string;
   gesendet: number[];
   gescheitert?: { stufe: number; am: string; grund: string }[];
+  /** Stufen, die jemand nach einem Fehlschlag in der Karte übersprungen hat (R2-4 Fund 5) — gelten als erledigt. */
+  uebersprungen?: number[];
   mails?: { stufe: number; am: string; id?: string; threadId?: string; messageId?: string; von?: string; rueckfluss?: { art: 'antwort' | 'bounce'; am: string } }[];
 }
 export const kampagnenPostName = (h: string): string => `kampagnen-post--${h}`;
@@ -873,16 +875,6 @@ export async function rueckfluss(jetzt = new Date()): Promise<{ antworten: numbe
     }
   }
   if (!treffer.length) return z;
-  await aenderePost(b => {
-    let n: PostBestand = {
-      ...b,
-      eintraege: b.eintraege.map(y => { const t = treffer.find(q => q.x.id === y.id); return t && !y.rueckfluss ? { ...y, ...(t.art === 'bounce' ? { status: 'bounce' as const } : {}), rueckfluss: { art: t.art, am: t.am }, geaendert: am } : y; }),
-      ungueltig: Array.from(new Set([...b.ungueltig, ...treffer.filter(t => t.art === 'bounce' && t.x.an.email).map(t => ungueltigHash(t.x.an.email!))])),
-    };
-    // Fund 2/17: was zu diesem Ziel noch nicht raus ist, geht nicht mehr raus — bei einer Antwort in JEDER Kampagne, beim Rückläufer in dieser.
-    for (const t of treffer) n = zielEintraegeVerwerfen(n, t.art === 'antwort' ? null : t.x.kampagneId, t.x.ziel, t.art === 'antwort' ? 'Antwort kam — die Sequenz endet.' : 'Mail kam zurück — die Sequenz endet.', am);
-    return n;
-  });
   await aendereCrm(c => {
     let neu = c;
     for (const t of treffer) {
@@ -896,10 +888,10 @@ export async function rueckfluss(jetzt = new Date()): Promise<{ antworten: numbe
         followups.push(neuesFollowUp({
           id: fuId, bezug: kontaktId ? { art: 'kontakt', id: kontaktId } : { art: 'firma', id: t.x.ziel.id }, ...(kontaktId ? { kontaktId } : {}), art: t.art === 'antwort' ? 'mail' : 'sonstig',
           text: t.art === 'antwort' ? `Antwort bearbeiten: Kampagne „${k.name}“${t.x.ziel.art === 'firma' ? ` · ${t.x.an.name}` : ''}` : `Mail kam zurück — Adresse prüfen (Kampagne „${k.name}“${t.x.ziel.art === 'firma' ? ` · ${t.x.an.name}` : ''})`,
-          faellig: heute, zustaendig: t.x.freigabe!.von, quelle: 'kampagne',
+          faellig: heute, zustaendig: t.x.freigabe!.von, quelle: 'kampagne', anlass: 'antwort',
         }, undefined, 'system', am));
       }
-      const kampagne = s ? standErsetzen(k, t.art === 'antwort' ? beenden(s, 'reagiert', 'Antwort erhalten', am, 'reagiert') : beenden(s, 'gestoppt', 'Adresse unzustellbar', am, 'bounce')) : k;
+      const kampagne = s && !istEnde(s) ? standErsetzen(k, t.art === 'antwort' ? beenden(s, 'reagiert', 'Antwort erhalten', am, 'reagiert') : beenden(s, 'gestoppt', 'Adresse unzustellbar', am, 'bounce')) : k;
       const ergebnisse = t.art === 'antwort' && kontaktId && !kampagne.ergebnisse.some(e => e.kontaktId === kontaktId && e.ergebnis === 'reagiert')
         ? [...kampagne.ergebnisse, { kontaktId, ergebnis: 'reagiert' as const, am: heute }] : kampagne.ergebnisse;
       const firmaId = t.x.ziel.art === 'firma' ? t.x.ziel.id : undefined;
@@ -918,8 +910,24 @@ export async function rueckfluss(jetzt = new Date()): Promise<{ antworten: numbe
     return neu;
   }, { art: 'system' });
   // Fund 9: die Antwort steht in der Akte (Score, Lead, letzter Kontakt) — über den Kartei-Schreibweg, Art. 18 → nichts.
+  // R2-4 Fund 2: Follow-up (oben, feste Kennung) und Akte (idempotent über Kampagne + Betreff) ZUERST, dann der Haken `rueckfluss` — scheitert die Akte,
+  // bleibt der Haken für diese Antworten weg und der nächste Lauf holt sie nach (vorher stand der Haken schon, und die Antwort fehlte still).
   const antworten = treffer.filter(t => t.art === 'antwort' && t.x.ziel.art === 'kontakt');
-  if (antworten.length) await antwortAnAkte(antworten.map(t => ({ kontaktId: t.x.ziel.id, kampagneId: t.x.kampagneId, betreff: t.betreff, am: t.am })), heute).catch(e => console.error('[kampagnen] Antwort an die Akte:', e instanceof Error ? e.message.slice(0, 160) : e));
+  const akteOk = !antworten.length || await antwortAnAkte(antworten.map(t => ({ kontaktId: t.x.ziel.id, kampagneId: t.x.kampagneId, betreff: t.betreff, am: t.am })), heute).then(() => true, e => { console.error('[kampagnen] Antwort an die Akte:', e instanceof Error ? e.message.slice(0, 160) : e); return false; });
+  // Was zu diesem Ziel noch nicht raus ist, wird trotzdem sofort verworfen (sonst ginge die nächste Stufe hinaus) — nur der Haken wartet.
+  const fertig = new Set((akteOk ? treffer : treffer.filter(t => !(t.art === 'antwort' && t.x.ziel.art === 'kontakt'))).map(t => t.x.id));
+  {
+    await aenderePost(b => {
+      let n: PostBestand = {
+        ...b,
+        eintraege: b.eintraege.map(y => { const t = treffer.find(q => q.x.id === y.id && fertig.has(y.id)); return t && !y.rueckfluss ? { ...y, ...(t.art === 'bounce' ? { status: 'bounce' as const } : {}), rueckfluss: { art: t.art, am: t.am }, geaendert: am } : y; }),
+        ungueltig: Array.from(new Set([...b.ungueltig, ...treffer.filter(t => t.art === 'bounce' && t.x.an.email).map(t => ungueltigHash(t.x.an.email!))])),
+      };
+      // Fund 2/17: was zu diesem Ziel noch nicht raus ist, geht nicht mehr raus — bei einer Antwort in JEDER Kampagne, beim Rückläufer in dieser.
+      for (const t of treffer) n = zielEintraegeVerwerfen(n, t.art === 'antwort' ? null : t.x.kampagneId, t.x.ziel, t.art === 'antwort' ? 'Antwort kam — die Sequenz endet.' : 'Mail kam zurück — die Sequenz endet.', am);
+      return n;
+    });
+  }
   return z;
 }
 
@@ -1003,16 +1011,18 @@ export type MotorTeil = typeof MOTOR_TEILE[number];
 export interface MotorLauf { zuletzt: string; teile: Partial<Record<MotorTeil, { ok?: string; fehler?: { seit: string; n: number } }>> }
 
 /** Lagebild für den HOI (lib/hoi/lage.ts `kampagnenMotorBefunde`): Herzschlag, Fehler je Teil, offene Freigaben/Fehler — nur Zahlen. */
-export interface KampagnenMotorLage { zuletzt: string | null; minutenSeit: number | null; fehlerTeile: { teil: string; n: number }[]; freigegeben: number; fehler: number; unklar: number; sequenzen: number }
+export interface KampagnenMotorLage { zuletzt: string | null; minutenSeit: number | null; fehlerTeile: { teil: string; n: number }[]; freigegeben: number; fehler: number; unklar: number; sequenzen: number; /** R2-4 Fund 5: Personen, deren Willkommensstrecke nach einer gescheiterten Stufe wartet. */ willkommenGescheitert?: number }
 export async function kampagnenMotorLage(jetzt = Date.now()): Promise<KampagnenMotorLage | null> {
   const [lauf, post, crm] = await Promise.all([loadJson<MotorLauf>(MOTOR_LAUF).catch(() => null), ladePost().catch(() => null), ladeCrm().catch(() => null)]);
   const sequenzen = (crm?.kampagnen ?? []).filter(k => k.status === 'aktiv' && !k.geloeschtAm && k.sequenz?.length).length;
   const e = post?.eintraege ?? [];
-  if (!lauf && !sequenzen && !e.length) return null;
+  const willkommenGescheitert = Object.values(post?.willkommen ?? {}).filter(w => (w.gescheitert ?? []).length).length;
+  if (!lauf && !sequenzen && !e.length && !willkommenGescheitert) return null;
   return {
     zuletzt: lauf?.zuletzt ?? null, minutenSeit: lauf?.zuletzt ? Math.round((jetzt - Date.parse(lauf.zuletzt)) / 60_000) : null,
     fehlerTeile: Object.entries(lauf?.teile ?? {}).filter(([, t]) => (t?.fehler?.n ?? 0) > 0).map(([teil, t]) => ({ teil, n: t!.fehler!.n })),
     freigegeben: e.filter(x => x.status === 'freigegeben').length, fehler: e.filter(x => x.status === 'fehler').length, unklar: e.filter(x => x.status === 'unklar').length, sequenzen,
+    ...(willkommenGescheitert ? { willkommenGescheitert } : {}),
   };
 }
 

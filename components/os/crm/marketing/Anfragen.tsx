@@ -28,6 +28,7 @@ import { Wahl } from '../Wahl';
 import { Person } from '../team';
 import { PersonWahl, AlsNaechstes } from './gemeinsam';
 import { DealAusQuelle } from './DealAusQuelle';
+import { WebsiteEingaengeKarte } from './WebsiteEingaenge';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 
@@ -110,6 +111,8 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
   return (
     <>
       <Hinweis art="info">Kontaktformular, Bausteine und Unterlagen der Website pflegt ihr unter <Link href={WEG.website('formulare')} style={{ color: C.aktiv }}>Website</Link> — Anfragen von dort landen hier.</Hinweis>
+      {/* R2-4 Fund 3 (02.11.): Eingänge der Website, die nicht ankamen — sichtbar, mit „erneut“ / „von Hand übernehmen“ / „verwerfen“. */}
+      <WebsiteEingaengeKarte zuKontakt={zuKontakt} onUebernommen={async () => { await api.laden(); await laden(); }} />
       <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
         <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Alles hier bleibt im System — geantwortet wird in deinem Postfach.</span>}>Anfrage erfassen</Ueberschrift>
         <div style={{ display: 'grid', gap: 6 }}>

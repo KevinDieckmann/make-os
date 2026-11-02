@@ -476,7 +476,7 @@ export async function vertragFollowup(v: Pick<Vertrag, 'id' | 'nummer' | 'dealId
       if (alt && (alt.status === 'offen' || alt.status === 'verpasst')) return { ...b, followups: liste.map(f => (f.id === id ? { ...f, status: 'offen' as const, faellig, geaendert: p.jetzt, geaendertVon: p.person } : f)) };
       if (alt) return b; // erledigt/abgesagt bleibt (Verlauf)
       const zustaendig = deal?.besitzer || mandat?.zustaendig || zust || verantwortlich('sales');
-      return { ...b, followups: [...liste, { id, bezug, ...(v.kontaktId ? { kontaktId: v.kontaktId } : {}), art: 'anruf' as const, text, faellig, zustaendig, status: 'offen' as const, quelle: 'deal' as const, angelegt: p.jetzt, geaendert: p.jetzt, geaendertVon: p.person }] };
+      return { ...b, followups: [...liste, { id, bezug, ...(v.kontaktId ? { kontaktId: v.kontaktId } : {}), art: 'anruf' as const, text, faellig, zustaendig, status: 'offen' as const, quelle: 'deal' as const, anlass: 'vertrag' as const, angelegt: p.jetzt, geaendert: p.jetzt, geaendertVon: p.person }] };
     }, p.wer);
   } catch (e) {
     console.warn('[vertraege] Follow-up „Unterschrift nachfassen“ nicht geschrieben:', e instanceof Error ? e.message.slice(0, 120) : e);

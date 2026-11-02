@@ -404,7 +404,7 @@ async function unbestaetigtAnhaengen(D: AnfrageDaten, k0: Kontakt, quelleText: s
   }, wer);
   const fuId = pruefFollowUpId(D.eingangId);
   const fu = neuesFollowUp({
-    id: fuId, bezug: { art: 'kontakt', id: kontaktId }, kontaktId, art: 'sonstig', text: anfragePruefenText('Angebot anfordern'), faellig: D.heute, zustaendig: D.zustaendig, quelle: 'hand',
+    id: fuId, bezug: { art: 'kontakt', id: kontaktId }, kontaktId, art: 'sonstig', text: anfragePruefenText('Angebot anfordern'), faellig: D.heute, zustaendig: D.zustaendig, quelle: 'hand', anlass: 'anfrage',
     notiz: `${D.vertrieblerName}: Angebot angefordert${produkte ? ` (${produkte})` : ''}. Das Angebot liegt als Entwurf zur Freigabe — „Senden“ übernimmt die Anfrage, „Ablehnen“ verwirft sie.`,
   }, k0, D.person, D.jetzt);
   await aendereCrm(c => ((c.followups ?? []).some(x => x.id === fuId) ? c : { ...c, followups: [...(c.followups ?? []), { ...fu, geaendertVon: D.person }] }), wer);

@@ -28,7 +28,7 @@ import { geburtstagFuer, type Geburtstag, type AnlassAktion } from '@/lib/kalend
 import type { TerminZeit } from '@/lib/crm/aktivitaeten';
 import { WEG } from '@/lib/wege';
 import { tagPlus } from '@/lib/kalender/zeit';
-import { laufzeitAbgelaufen, mandatFristen, LAUFZEIT_ABGELAUFEN } from '@/lib/crm/kunden';
+import { laufzeitAbgelaufen, laufzeitAufgabeId, mandatFristen, LAUFZEIT_ABGELAUFEN } from '@/lib/crm/kunden';
 import { bereichVonGesellschaft } from '@/lib/einheiten';
 import type { Mandat } from '@/lib/crm/typen';
 
@@ -175,9 +175,11 @@ export function fristenAnstehend(fristen: readonly Frist[], person: string, heut
  * Mandate, deren Laufzeit vorbei ist, ohne dass jemand verlängert oder beendet hat (02.11., Prüfung C) — als Frist „überfällig“ in Steht an und Glocke
  * (abgeleitet, nie gespeichert), bis entschieden ist. Nur für die zuständige Person (bzw. „beide“/ohne). Bereich aus der Gesellschaft (offen = Business).
  */
-export function laufzeitAnstehend(mandate: readonly Mandat[], person: string, heute: string): AFrist[] {
+export function laufzeitAnstehend(mandate: readonly Mandat[], person: string, heute: string, offeneAufgaben?: ReadonlySet<string>): AFrist[] {
   return mandate
     .filter(m => laufzeitAbgelaufen(m, heute) && (!m.zustaendig || m.zustaendig === person || m.zustaendig === 'beide'))
+    // R2-4 Fund 12: EIN Weg meldet — liegt die Aufgabe des Morgenlaufs (`mlz-…`, mit eigener Glocke) offen, keine zweite (abgeleitete) Meldung.
+    .filter(m => !offeneAufgaben?.has(laufzeitAufgabeId(m.id, mandatFristen(m, heute).endeAm!)))
     .map(m => {
       const ende = mandatFristen(m, heute).endeAm!;
       return { id: `mandat-laufzeit-${m.id}`, art: 'mandat' as const, tag: ende, titel: `Mandat „${m.titel || m.kunde}“: ${LAUFZEIT_ABGELAUFEN}`, href: WEG.mandat(m.id), inTagen: tageZwischen(heute, ende), ...(bereichVonGesellschaft(m.gesellschaft) === 'business' ? { business: true as const } : {}) };

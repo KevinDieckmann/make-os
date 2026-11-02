@@ -256,7 +256,8 @@ describe('gatherBrain + mandate_lage (B4)', () => {
   });
   it('mandate_lage zeigt die Zeit je Mandat der Woche', async () => {
     const { speicherFuer } = await import('@/lib/zoe/raum');
-    const von = new Date(Date.now() - 2 * 3600_000).toISOString(), bis = new Date(Date.now() - 3600_000).toISOString();
+    // Fest am heutigen Berliner Tag (10–11 Uhr UTC = derselbe Tag in Berlin) — „vor zwei Stunden“ lag montags zwischen 0 und 2 Uhr in der Vorwoche (KW davor).
+    const von = `${H}T10:00:00.000Z`, bis = `${H}T11:00:00.000Z`;
     await db.saveJson(speicherFuer('zeit', 'kevin'), { tage: { [H]: { auto: {}, bewusst: { 'business:crm': 5400 }, bloecke: [{ von, bis, schluessel: 'business:crm', label: 'CRM', sek: 5400, mandatId: 'm-probe', firmaId: 'f-probe', einheit: 'kdc' }] } } });
     const W = await import('@/lib/zoe/werkzeuge');
     const aus = meldungVon(await W.WERKZEUGE.mandate_lage.lauf({}, 'http://test', 'kevin'));

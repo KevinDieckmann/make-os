@@ -15,6 +15,7 @@
 // M1 (01.11.): „vorbereiten“ liefert Zähler UND Gründe (übersprungen, nicht gestartet) und sagt, wenn die Kampagne nicht aktiv ist; „sequenz“ übersetzt
 // laufende Stände vorher auf die Schritt-Kennung (`standMitKennung`) und nennt, wie viele Ziele gerade laufen.
 //      { aktion: 'einstellungen', tagesgrenze?, fusszeile?, art14Text?, willkommen?: boolean, willkommenStufen? } → nur Inhaber
+//      { aktion: 'willkommen-entscheiden', kontaktId, stufe, wahl: 'erneut' | 'ueberspringen' } → nach einer gescheiterten Willkommens-Mail (R2-4 Fund 5)
 // Zugang: Haushalt des Inhabers (Modul Markttraktion). Schreiben nur per Sitzung (Dienstweg/ZOE 403) mit Bau-Kennung — die Freigabe ist der Klick
 // nach Eiserner Regel 3; senden tut der Takt im Namen der freigebenden Person und ihres Postfachs.
 
@@ -188,6 +189,18 @@ export async function POST(req: Request) {
         await aenderePost(p => ({ ...p, eintraege: p.eintraege.map(x => (x.kampagneId === kampagneId && gleichesZiel(x.ziel, ziel) && (x.status === 'entwurf' || x.status === 'freigegeben' || x.status === 'fehler') ? { ...x, status: 'verworfen' as const, geaendert: new Date().toISOString() } : x)) }), { wer });
         return NextResponse.json({ ok: true });
       }
+      case 'willkommen-entscheiden': {
+        // R2-4 Fund 5: nach einer gescheiterten Willkommens-Mail steht die Strecke der Person — hier entscheidet eine Person: erneut oder überspringen.
+        const kontaktId = typeof b.kontaktId === 'string' && /^[a-z0-9][a-z0-9-]{1,80}$/i.test(b.kontaktId) ? b.kontaktId : '';
+        const stufe = Number(b.stufe), wahl = b.wahl === 'erneut' || b.wahl === 'ueberspringen' ? b.wahl : null;
+        if (!kontaktId || !Number.isInteger(stufe) || stufe < 0 || !wahl) return fehler('kontaktId, stufe und wahl (erneut | ueberspringen) fehlen.', 400);
+        const { willkommenEntscheiden } = await import('@/lib/crm/willkommen');
+        let gefunden = false;
+        await aenderePost(p => { const n = willkommenEntscheiden(p.willkommen[kontaktId], stufe, wahl); if (!n) return p; gefunden = true; return { ...p, willkommen: { ...p.willkommen, [kontaktId]: n } }; },
+          { wer, felder: () => [{ id: `willkommen:${kontaktId.slice(0, 2)}`, felder: ['willkommen'] }] });
+        if (!gefunden) return fehler('Diese gescheiterte Mail gibt es nicht (mehr).', 404);
+        return NextResponse.json({ ok: true, text: wahl === 'erneut' ? 'Die Mail kommt im nächsten Lauf noch einmal (werktags 8–18 Uhr).' : 'Übersprungen — die Strecke läuft mit der nächsten Mail weiter.' });
+      }
       case 'einstellungen': {
         // Marketing steuern (02.11., Prüfung D): Inhaber ODER volles Mitglied des Haushalts — eine Regel (lib/zugang/steuern.ts).
         if (!(await darfSteuern(z.person))) return fehler(NUR_STEUERN, 403);
@@ -204,7 +217,7 @@ export async function POST(req: Request) {
         }, { wer });
         return NextResponse.json({ ok: true, einstellungen: { tagesgrenze: e.einstellungen.tagesgrenze, willkommen: !!e.einstellungen.willkommen } });
       }
-      default: return fehler('aktion: sequenz, vorbereiten, entwurf, feinschliff, freigeben, verwerfen, gedruckt, erneut, stoppen, als-lead oder einstellungen.', 400);
+      default: return fehler('aktion: sequenz, vorbereiten, entwurf, feinschliff, freigeben, verwerfen, gedruckt, erneut, stoppen, als-lead, willkommen-entscheiden oder einstellungen.', 400);
     }
   } catch (e) {
     if (e instanceof MotorFehler) return fehler(e.message, e.status);
@@ -238,7 +251,7 @@ async function willkommenLage(req: Request, person: string): Promise<Response> {
   const stufen = e.willkommenStufen ?? WILLKOMMEN_VORGABE;
   const empfaenger = Object.entries(post.willkommen).map(([id, w]) => ({ id, name: kontakte.get(id) ? anzeigename(kontakte.get(id)!) : 'Kontakt (nicht mehr in der Kartei)', start: w.start, gesendet: [...w.gesendet].sort((a, b) => a - b),
     // B-Prüfung (02.11., Fund 10/11): gescheiterte Stufen (mit Grund, ohne Adresse) und ob geantwortet wurde.
-    ...(w.gescheitert?.length ? { gescheitert: w.gescheitert.map(g => ({ stufe: g.stufe, am: g.am, grund: g.grund })) } : {}), ...((w.mails ?? []).some(m => m.rueckfluss?.art === 'antwort') ? { geantwortet: true } : {}) }))
+    ...(w.gescheitert?.length ? { gescheitert: w.gescheitert.map(g => ({ stufe: g.stufe, am: g.am, grund: g.grund })) } : {}), ...(w.uebersprungen?.length ? { uebersprungen: w.uebersprungen } : {}), ...((w.mails ?? []).some(m => m.rueckfluss?.art === 'antwort') ? { geantwortet: true } : {}) }))
     .sort((a, b) => b.start.localeCompare(a.start));
   leseZugriff(req, 'kontakte', { anzahl: empfaenger.length });
   return NextResponse.json({

@@ -5,7 +5,7 @@
 //   entsteht  Werbesperre an der Firma (jeder Schreibweg über `crmSchreiben`), Abmeldelink an die Firmen-Adresse, Art. 17 einer Inhaber-Person
 //   wirkt     Abendlauf und Datei-Import der Homepage-Funde, Übernahme eines Funds: ein gesperrter Betrieb wird nie wieder angelegt
 
-import { sperrHash, sperrHashV1, sperrHashesAufnehmen, type SperrEintrag, type SperrGrund } from './sperrliste';
+import { sperrHash, sperrHashV1, sperrHashesAufnehmen, sperrlisteLaden, type SperrEintrag, type SperrGrund } from './sperrliste';
 import { formatModus } from '@/lib/store/huelle.mjs';
 import { betriebMerkmale, type BetriebKandidat } from './betrieb';
 
@@ -30,4 +30,20 @@ export async function betriebeSperren(betriebe: readonly BetriebKandidat[], grun
   let n = 0;
   for (const f of betriebe) { const h = betriebSperrHashes(f); if (h.length) n += await sperrHashesAufnehmen(h, grund, am); }
   return n;
+}
+
+/**
+ * Prüfer „steht der Betrieb auf der Sperrliste?“ für die Server-Leser der Fälligkeiten (02.11., Gegenprüfung R2-4 Fund 10): Follow-up-Liste, Steht an
+ * (Glocke/Heute) und Power Hour geben ihn an `faellige({ firmaGesperrt })` bzw. `werIstDran({ firmaGesperrt })` — sonst zählte nur die Werbesperre AN
+ * der Firma, nicht ein „Nein“, das nur noch auf der Sperrliste steht. Je Firma einmal gerechnet. Liest die Sperrliste nicht → `undefined` (dann wie bisher).
+ */
+export async function betriebSperrPrueferLaden(firmen: readonly (BetriebKandidat & { id: string })[]): Promise<((firmaId: string) => boolean) | undefined> {
+  const eintraege = await sperrlisteLaden().catch(() => null);
+  if (!eintraege?.length) return undefined;
+  const nachId = new Map(firmen.map(f => [f.id, f]));
+  const merk = new Map<string, boolean>();
+  return id => {
+    if (!merk.has(id)) { const f = nachId.get(id); merk.set(id, !!f && betriebGesperrt(eintraege, f)); }
+    return merk.get(id)!;
+  };
 }

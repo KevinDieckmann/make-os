@@ -320,3 +320,22 @@ export async function meldungenEinstellen(person: string, e: { telegram: boolean
   const next = (await akteFilterFuer(person))(buchungenErledigen(gespeichert, await buchungenLage(gespeichert, jetzt)));
   return sichtBauen(next, abgeleitet(next, q.aufgaben, person, heute, q.geburtstage, q.anstehend, q.jetztWand, q.routinen), heute, await businessFreiLage(person, q.aufgaben, jetzt));
 }
+
+/**
+ * Eine gespeicherte Meldung zurücknehmen, weil sich ihr Anlass erledigt hat (02.11., Gegenprüfung R2-4 Fund 12): ungelesene Einträge mit diesem Bezug
+ * werden „gelesen“ — sonst stünde „Ein Website-Eingang kam nicht an“ weiter in der Glocke, obwohl der Takt ihn inzwischen nachgeholt hat. Nur der Bestand
+ * dieser Person; schreibt nur, wenn es etwas zurückzunehmen gibt. Wirft nie.
+ */
+export async function meldungZuruecknehmen(person: string, bezug: { art: string; id: string }): Promise<number> {
+  try {
+    const roh = await loadJson<unknown>(meldungenSpeicher(person));
+    const passt = (e: { bezug?: { art: string; id: string }; gelesen?: boolean }) => !e.gelesen && e.bezug?.art === bezug.art && e.bezug.id === bezug.id;
+    if (!bestandSaeubern(roh).eintraege.some(passt)) return 0;
+    let n = 0;
+    await updateJson<MeldungenBestand>(meldungenSpeicher(person), cur => {
+      const b = bestandSaeubern(cur);
+      return { ...b, eintraege: b.eintraege.map(e => (passt(e) ? (n++, { ...e, gelesen: true }) : e)) };
+    });
+    return n;
+  } catch { return 0; }
+}

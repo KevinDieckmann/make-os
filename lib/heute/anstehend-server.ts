@@ -96,6 +96,12 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     // Scheitert das Lesen, zeigt die Liste lieber KEINE echten Follow-ups ohne bekannte Person (siehe unten), statt Namen zu verraten.
     sicher<Set<string> | null>(eingeschraenkteKennungen(), null),
   ]);
+  // R2-4 Fund 10: Sperrliste des Betriebs (nur, was wir werblich anstoßen, fällt dann heraus). Fund 12: offene Aufgaben „Laufzeit abgelaufen“ (`mlz-…`)
+  // melden selbst — die abgeleitete Frist nur, solange es keine offene gibt.
+  const [firmaGesperrt, offeneMlz] = await Promise.all([
+    crm ? sicher((async () => (await import('@/lib/crm/betrieb-sperre')).betriebSperrPrueferLaden(crm.firmen))(), undefined) : Promise.resolve(undefined),
+    sicher((async () => new Set((await (await import('@/lib/aufgaben/sicht')).ladeAufgabenSicht(null)).tasks.filter(t => t.id.startsWith('mlz-') && t.status !== 'done' && t.status !== 'cancelled').map(t => t.id)))(), new Set<string>()),
+  ]);
   const sicht = (gelesen?.termine ?? []).map(t => maskieren(t, person));
   const kalenderVon = new Map(sicht.map(t => [t.id, t.kalender]));
   const mitAufgabe = new Set((crm?.followups ?? []).filter(f => f.aufgabeId).map(f => f.id));
@@ -113,8 +119,8 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     // Dazu (N5): besuchte Events, bei denen wir „angemeldet“ sind, aber noch kein Termin im Kalender steht — sonst fährt niemand hin, der es im Kalender sieht.
     fristen: [...fristenAnstehend(fristen, person, heute, vorlauf), ...(crm ? eventsOhneTermin(crm.events, heute, person).map(x => ({ id: `event-ohne-termin-${x.id}`, art: 'event' as const, tag: x.tag, titel: `Event „${x.titel}“: angemeldet, aber kein Termin im Kalender`, href: WEG.besuch(x.id), inTagen: x.inTagen, business: true as const })) : []),
       // 02.11. (Prüfung C): Mandate mit abgelaufener Laufzeit ohne Entscheidung — bis jemand verlängert oder beendet.
-      ...(crm ? laufzeitAnstehend(crm.mandate, person, heute) : [])],
-    followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten, ausgeblendet: ausgeblendet ?? ohneSichtbareKennung(crm, kontakte) }), person, mitAufgabe, zeiten) : [],
+      ...(crm ? laufzeitAnstehend(crm.mandate, person, heute, offeneMlz) : [])],
+    followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten, ausgeblendet: ausgeblendet ?? ohneSichtbareKennung(crm, kontakte), ...(firmaGesperrt ? { firmaGesperrt } : {}) }), person, mitAufgabe, zeiten) : [],
     buchungen,
     vorschlaege,
     geburtstage: geburtstageVorlauf(geburtstage, person, heute),
@@ -137,6 +143,6 @@ export async function anstehendStand(jetzt: Date = new Date()): Promise<string> 
   // 08.10.: Meilensteine an eigenen Zielen hängen an Konten (teilen) und Zielen — beide zählen mit.
   // 02.11. (Prüfung D): Mail-Stapel und Homepage-Funde (Steht an › Kundengewinnung).
   const motor = await sicher((await import('@/lib/crm/motor-dran-server')).motorDranBestaende(), [] as string[]);
-  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'ziele', 'konten', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h)] : []), ...motor];
+  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'tasks', 'finanzplan', 'meilensteine', 'ziele', 'konten', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h)] : []), ...motor];
   return `${wandzeit(jetzt).slice(0, 15)}:${await sicher(speicherStand(namen), '0')}`;
 }

@@ -14,8 +14,8 @@ import { neueKennung } from '@/lib/kennung';
 import { localDay } from '@/lib/zeit';
 import { WEG } from '@/lib/wege';
 import {
-  EINGANG_MAX, EINGANG_SPEICHER, EINGANG_VERSUCHE, eingangAufraeumen, eingangFaellig, eingangZaehler,
-  type EingangArt, type EingangDaten, type EingangDatei, type WebsiteEingang,
+  EINGANG_MAX, EINGANG_SPEICHER, EINGANG_VERSUCHE, eingangAufgabeId, eingangAufraeumen, eingangBrauchtHand, eingangFaellig, eingangZaehler, eingaengeOffen,
+  type EingangArt, type EingangDaten, type EingangDatei, type EingangOffen, type WebsiteEingang,
 } from './eingang';
 
 /** Der Bestand ist voll (`EINGANG_MAX`) — die Route antwortet 503, nichts wird gekürzt. */
@@ -78,6 +78,8 @@ export async function eingangVerarbeiten(id: string, jetzt = new Date(), opt: { 
       await f.merke('newsletter', r);
     }
     await zeileAendern(id, x => { const { daten: _d, grund: _g, ...rest } = x; return { ...rest, status: 'fertig', fertigAm: new Date().toISOString() }; });
+    // R2-4 Fund 3/12: gelingt es (Takt, „noch einmal versuchen“), schließt die Aufgabe, und die frühere Glocke wird zurückgenommen, wenn nichts mehr offen ist.
+    await nachAbschluss(jetzt).catch(() => null);
     return 'fertig';
   } catch (x) {
     const grund = `${x instanceof Error ? x.name : 'Fehler'}: ${(x instanceof Error ? x.message : String(x)).split('\n')[0]}`.slice(0, 160);
@@ -86,6 +88,108 @@ export async function eingangVerarbeiten(id: string, jetzt = new Date(), opt: { 
     await websiteHinweisMelden(e.art === 'unterlage' ? 'unterlage' : 'eingang').catch(() => null);
     return 'fehler';
   }
+}
+
+// ── Von Hand entscheiden (R2-4 Fund 3: Marketing › Anfragen) ─────────────────────────────────────────────────────────────────────
+
+/** Offene bzw. gescheiterte Zeilen für Marketing › Anfragen (Haushalt, Business-Sicht — wie die übrigen Anfragen). */
+export async function websiteEingaengeOffen(jetzt = new Date()): Promise<EingangOffen[]> {
+  return eingaengeOffen(liste(await loadJson<EingangDatei>(EINGANG_SPEICHER)), jetzt.getTime());
+}
+
+export class EingangUnbekannt extends Error {}
+
+/** „Noch einmal versuchen“: die Versuche zurück auf null, sofort verarbeiten. Liefert den neuen Stand. Unbekannt/schon fertig → EingangUnbekannt. */
+export async function eingangErneut(id: string, jetzt = new Date()): Promise<WebsiteEingang['status'] | null> {
+  const z = await zeileAendern(id, x => (x.status === 'fertig' || x.status === 'laeuft' || !x.daten ? null : { ...x, status: 'offen', versuche: 0, seit: undefined }));
+  if (!z) throw new EingangUnbekannt('Diesen Eingang gibt es nicht (mehr) oder er läuft gerade.');
+  return eingangVerarbeiten(id, jetzt, { sofort: true });
+}
+
+/**
+ * „Als Anfrage von Hand übernehmen“: über den EINEN Anfrage-Weg (`anfrageAnlegen`, Kanal Website, feste Kennungen der Zeile — nichts doppelt), ohne
+ * automatische Mail; die Zeile wird fertig (Daten geleert, Schritt `hand`). Die Person ruft dann selbst an bzw. schreibt aus dem eigenen Postfach.
+ */
+export async function eingangUebernehmen(id: string, person: string, wer: import('@/lib/store/aenderungsprotokoll').Wer, jetzt = new Date()): Promise<{ kontaktId?: string; fehler?: string }> {
+  const z = liste(await loadJson<EingangDatei>(EINGANG_SPEICHER)).find(x => x.id === id);
+  if (!z || z.status === 'fertig' || z.status === 'laeuft' || !z.daten) throw new EingangUnbekannt('Diesen Eingang gibt es nicht (mehr) oder er läuft gerade.');
+  const d = z.daten;
+  const text = z.art === 'unterlage'
+    ? 'Vorlage über die Website angefordert — der automatische Versand kam nicht zustande, von Hand übernommen (bitte die Unterlage selbst schicken).'
+    : 'Newsletter-Anmeldung über die Website — die Bestätigungsmail ging nicht raus, von Hand übernommen (ohne Double-Opt-in keine Newsletter-Einwilligung).';
+  const { anfrageAnlegen } = await import('@/lib/crm/anfrage-anlegen');
+  const r = await anfrageAnlegen({ neu: { vorname: d.vorname, email: d.email, ...(d.firma ? { firma: d.firma } : {}) }, kanal: 'website', text }, { person, wer, oeffentlich: true, ...(d.ids ? { ids: d.ids } : {}) });
+  if (!r.ok) {
+    if (r.eingeschraenkt) await eingeschraenktMelden({ ...r.eingeschraenkt, email: d.email, weg: z.art === 'unterlage' ? 'Unterlage' : 'Newsletter', text, ...(d.ids ? { schluessel: d.ids.followUp } : {}) });
+    else return { fehler: r.fehler };
+  }
+  await zeileAendern(id, x => { const { daten: _d, grund: _g, ...rest } = x; return { ...rest, status: 'fertig', fertigAm: jetzt.toISOString(), schritte: { ...(x.schritte ?? {}), hand: r.ok ? 'anfrage' : 'eingeschraenkt' } }; });
+  await nachAbschluss(jetzt).catch(() => null);
+  return r.ok ? { kontaktId: r.bau.kontakt.id } : {};
+}
+
+/** „Verwerfen“ (Spam, doppelt): die Zeile wird fertig, die Daten sofort geleert. */
+export async function eingangVerwerfen(id: string, jetzt = new Date()): Promise<void> {
+  const z = await zeileAendern(id, x => { if (x.status === 'fertig' || x.status === 'laeuft') return null; const { daten: _d, grund: _g, ...rest } = x; return { ...rest, status: 'fertig', fertigAm: jetzt.toISOString(), schritte: { ...(x.schritte ?? {}), hand: 'verworfen' } }; });
+  if (!z) throw new EingangUnbekannt('Diesen Eingang gibt es nicht (mehr) oder er läuft gerade.');
+  await nachAbschluss(jetzt).catch(() => null);
+}
+
+const AUFGABE_TITEL: Record<EingangArt, string> = {
+  unterlage: 'Website-Eingang prüfen: eine angeforderte Unterlage ging nicht raus',
+  newsletter: 'Website-Eingang prüfen: eine Newsletter-Anmeldung kam nicht durch',
+};
+
+/**
+ * Aufgaben zu den Zeilen nachziehen (R2-4 Fund 3): jede Zeile, die einen Menschen braucht (`eingangBrauchtHand`), bekommt EINE feste Aufgabe
+ * (`we-…`) bei der Marketing-Verantwortlichen (Rückfall Inhaber) — ohne Namen, ohne Adresse; jede erledigte bzw. verschwundene Zeile schließt ihre offene
+ * Aufgabe. Idempotent (gibt es die Aufgabe schon — auch erledigt/im Papierkorb —, entsteht keine zweite). Wirft nie.
+ */
+export async function eingangAufgabenNachziehen(jetzt = new Date()): Promise<{ neu: number; geschlossen: number }> {
+  const z = { neu: 0, geschlossen: 0 };
+  try {
+    const l = liste(await loadJson<EingangDatei>(EINGANG_SPEICHER));
+    const brauchen = l.filter(e => eingangBrauchtHand(e, jetzt.getTime()));
+    const nachId = new Map(l.map(e => [eingangAufgabeId(e.id), e]));
+    const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
+    const { verantwortlichePerson } = await import('@/lib/crm/verantwortung-server');
+    const an = brauchen.length ? await verantwortlichePerson('marketing') : null;
+    const iso = jetzt.toISOString(), heute = localDay(jetzt);
+    await systemAufgabenAendern(stand => {
+      const da = new Set(stand.tasks.map(t => t.id));
+      const neu = brauchen.filter(e => !da.has(eingangAufgabeId(e.id))).map(e => ({
+        id: eingangAufgabeId(e.id), title: AUFGABE_TITEL[e.art], status: 'todo', priority: 'high', assignee: an ?? 'both', dueDate: heute, space: 'business',
+        description: 'Ein Eingang über die Website ist nicht vollständig im CRM bzw. nicht verschickt. Unter Marketing › Anfragen entscheiden: noch einmal versuchen, als Anfrage von Hand übernehmen oder verwerfen. Er wird nicht still gelöscht.',
+        notiz: `[Marketing › Anfragen](${WEG.marketing('anfragen')})`, tags: ['website'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: iso, updatedAt: iso,
+      }));
+      // Geschlossen: die Zeile ist fertig (bzw. weg) und die Aufgabe noch offen.
+      const teile = stand.tasks.filter(t => t.id.startsWith('we-') && t.status !== 'done' && t.status !== 'cancelled' && !t.geloeschtAm)
+        .filter(t => { const e = nachId.get(t.id); return !e || e.status === 'fertig'; })
+        .map(t => ({ id: t.id, felder: { status: 'done' as const } }));
+      z.neu = neu.length; z.geschlossen = teile.length;
+      return { neu: neu as never, teile };
+    }, { jetzt: iso });
+  } catch (e) { console.warn('[website-eingang] Aufgaben:', e instanceof Error ? e.message.slice(0, 120) : 'Fehler'); }
+  return z;
+}
+
+/** Nach einem Abschluss: Aufgaben schließen; ist zu einem Anlass nichts mehr offen, die frühere Glocke zurücknehmen (R2-4 Fund 12). */
+async function nachAbschluss(jetzt: Date): Promise<void> {
+  await eingangAufgabenNachziehen(jetzt);
+  await hinweiseAbgleichen(jetzt);
+}
+
+/** Glocken „kam nicht an“ zurücknehmen, sobald zu ihrem Anlass nichts mehr offen ist (Zeilen; für „eingang“ auch Check-Leads/Bestellungen ohne CRM). */
+async function hinweiseAbgleichen(jetzt: Date): Promise<void> {
+  try {
+    const l = liste(await loadJson<EingangDatei>(EINGANG_SPEICHER)).filter(e => e.status !== 'fertig');
+    const { verantwortlichePerson } = await import('@/lib/crm/verantwortung-server');
+    const an = await verantwortlichePerson('marketing');
+    if (!an) return;
+    const { meldungZuruecknehmen } = await import('@/lib/meldungen/speicher');
+    if (!l.some(e => e.art === 'unterlage')) await meldungZuruecknehmen(an, { art: 'prozess', id: 'website-eingang-unterlage' });
+    if (!l.some(e => e.art !== 'unterlage') && (await websiteEingangLage(jetzt)).ohneCrm === 0) await meldungZuruecknehmen(an, { art: 'prozess', id: 'website-eingang-eingang' });
+  } catch { /* Glocke ist nie kritisch */ }
 }
 
 // ── Melden ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -145,8 +249,10 @@ async function zeilenNachholen(jetzt: Date): Promise<{ fertig: number; offen: nu
     const r = await eingangVerarbeiten(e.id, jetzt, { sofort: false });
     if (r === 'fertig') fertig++; else if (r) offen++;
   }
-  // Fristen (fertig 7 Tage, sonst 30 Tage) — schreibt nur, wenn etwas wegfällt.
+  // Fristen (fertig nach 7 Tagen; offene/gescheiterte NIE still — R2-4 Fund 3) — schreibt nur, wenn etwas wegfällt.
   await updateJson<EingangDatei>(EINGANG_SPEICHER, cur => { const a = liste(cur), b = eingangAufraeumen(a, jetzt.getTime()); return b.length === a.length ? (cur ?? { eintraege: [] }) : { eintraege: b }; }).catch(() => null);
+  // Was einen Menschen braucht, bekommt eine feste Aufgabe (und Erledigtes schließt sie); eine überholte Glocke wird zurückgenommen.
+  await nachAbschluss(jetzt).catch(() => null);
   return { fertig, offen };
 }
 

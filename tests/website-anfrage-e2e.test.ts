@@ -86,11 +86,13 @@ afterAll(() => { vi.useRealTimers(); rmSync(ordner, { recursive: true, force: tr
 let kontaktId = '';
 
 describe('Website-Anfrage: Kontaktformular → Lead → Prozess → Termin → Deal → Traktions-Index', () => {
-  it('Kontaktformular kommt AUS; einschalten nur der Inhaber', async () => {
+  it('Kontaktformular kommt AUS; einschalten Inhaber und volle Mitglieder (`darfSteuern`, 02.11.)', async () => {
     const { kontaktformularStempel } = await import('@/lib/kontaktformular/server');
     const aus = await anfrage.POST!(new Request('http://test/api/anfrage', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ vorname: 'X', email: `x@${D}`, nachricht: 'Hallo dort', stempel: kontaktformularStempel(uhr - 5000) }) }));
     expect(aus.status).toBe(404);
-    expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung('malin'), body: JSON.stringify({ aktiv: true }) })))).status).toBe(403);
+    // Eine Sitzung ohne Konto im Haushalt nie; ein volles Mitglied (Malin) darf (Kevin 02.11.) — hier zuerst „aus“, damit der Rest so beginnt wie vorher.
+    expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung('fremd'), body: JSON.stringify({ aktiv: true }) })))).status).toBe(403);
+    expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung('malin'), body: JSON.stringify({ aktiv: false }) })))).status).toBe(200);
     const an = await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung(), body: JSON.stringify({ aktiv: true }) })));
     expect(an).toMatchObject({ status: 200, d: { aktiv: true } });
   });

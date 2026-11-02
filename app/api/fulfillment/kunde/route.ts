@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   try { b = await jsonBegrenzt(req, 256 * 1024); } catch (e) { return jsonZuGross(e) ?? fehler('Kein gültiges JSON.', 400); }
   if (!b || typeof b !== 'object' || Array.isArray(b)) return fehler('Kein gültiges JSON.', 400);
   const aktion = String(b.aktion ?? '');
-  // Der Instanz-Schalter nur für den Inhaber (Konzept 5.4) — alles andere für jede Person im Haushalt per Sitzung.
+  // Der Instanz-Schalter: Inhaber ODER volles Mitglied des Haushalts (`darfSteuern`, Kevin 02.11.) — alles andere für jede Person im Haushalt per Sitzung.
   if (aktion === 'schalter') { const i = await fulfillmentZugang(req, { schreiben: true, inhaber: true }); if (i instanceof Response) return i; }
   const p = z.person;
   const mandatId = String(b.mandatId ?? '');

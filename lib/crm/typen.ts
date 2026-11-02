@@ -944,6 +944,12 @@ export type FollowUpBezugArt = 'kontakt' | 'firma' | 'chance' | 'mandat' | 'even
 export type FollowUpArt = 'anruf' | 'mail' | 'linkedin' | 'termin' | 'nachricht' | 'sonstig';
 export type FollowUpStatus = 'offen' | 'erledigt' | 'verpasst' | 'abgesagt';
 export type FollowUpQuelle = 'hand' | 'regel' | 'kadenz' | 'kampagne' | 'event' | 'head' | 'zoe' | 'deal';
+/**
+ * Worauf ein Follow-up antwortet (02.11., Gegenprüfung R2-4 Fund 1): eine Antwort, eine Anfrage der Person, ein Vertrag, eine Rechnung oder ein Termin —
+ * das ist NIE Werbung. Eine Werbesperre (Person oder Betrieb) blendet nur aus, was WIR werblich anstoßen (`istWerblich`, lib/crm/followup.ts).
+ * Optional: der alte Stand kennt das Feld nicht (er verwirft es beim nächsten Speichern — dann gilt wieder die alte Regel nach Art).
+ */
+export type FollowUpAnlass = 'antwort' | 'anfrage' | 'vertrag' | 'rechnung' | 'termin';
 export interface FollowUp {
   id: string;
   /** Woran es hängt — immer mit der Person, die man anspricht (kontaktId), wenn es eine gibt. */
@@ -961,6 +967,8 @@ export interface FollowUp {
   ergebnis?: string;
   notiz?: string;
   quelle: FollowUpQuelle;
+  /** Worauf es antwortet (nie werblich) — fehlt = nach Art/Herkunft (`istWerblich`). */
+  anlass?: FollowUpAnlass;
   /** Verknüpfte Aufgabe im Board, wenn man es sich dorthin geholt hat. */
   aufgabeId?: string;
   /**

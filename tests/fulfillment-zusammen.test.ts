@@ -209,9 +209,11 @@ describe('2 · EINE Regel für Kunden-Wege (fuerKundenFrei)', () => {
 // ── 3. Kunden-Link-Schalter und Willkommen ────────────────────────────────────────────────────────────────────────────────────────────
 
 describe('3 · Kunden-Link: EIN Schalter, die Willkommen-Karte liest die echte Antwort', () => {
-  it('Schalter nur über C2 (Inhaber); link-anlegen → linkAdresseAus', async () => {
+  it('Schalter nur über C2 (Inhaber oder volles Mitglied, `darfSteuern`); link-anlegen → linkAdresseAus', async () => {
     expect((await rufe('fulfillment', 'PATCH', sitzung('pia'), { ops: [{ op: 'einstellungen', felder: { kundenLink: { an: true } } }] })).status).toBe(400);
-    expect((await rufe('fulfillment/kunde', 'POST', sitzung('olaf'), { aktion: 'schalter', an: true })).status).toBe(403);
+    // Kevin 02.11.: „sie kann vollen Zugriff haben“ — ein volles Mitglied legt ihn um; eine Sitzung ohne Konto im Haushalt nie.
+    expect((await rufe('fulfillment/kunde', 'POST', sitzung('fremd'), { aktion: 'schalter', an: true })).status).toBe(403);
+    expect((await rufe('fulfillment/kunde', 'POST', sitzung('olaf'), { aktion: 'schalter', an: false })).status).toBe(200);
     expect((await rufe('fulfillment/kunde', 'POST', sitzung('pia'), { aktion: 'schalter', an: true })).status).toBe(200);
     const a = await rufe('fulfillment/kunde', 'POST', sitzung('pia'), { aktion: 'link-anlegen', mandatId: 'm-biz' });
     expect(a.status).toBe(200);

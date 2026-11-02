@@ -535,6 +535,7 @@ const FU_BEZUG = ['kontakt', 'firma', 'chance', 'mandat', 'event'] as const;
 const FU_ART = ['anruf', 'mail', 'linkedin', 'termin', 'nachricht', 'sonstig'] as const;
 const FU_STATUS = ['offen', 'erledigt', 'verpasst', 'abgesagt'] as const;
 const FU_QUELLE = ['hand', 'regel', 'kadenz', 'kampagne', 'event', 'head', 'zoe', 'deal'] as const;
+const FU_ANLASS = ['antwort', 'anfrage', 'vertrag', 'rechnung', 'termin'] as const;
 function followup(o: Record<string, unknown>, jetzt: string, person: string): FollowUp | null {
   const bz = (o.bezug ?? {}) as Record<string, unknown>;
   if (!idOk(o.id) || !idOk(bz.id) || !txt(o.text) || !tag(o.faellig)) return null;
@@ -546,7 +547,7 @@ function followup(o: Record<string, unknown>, jetzt: string, person: string): Fo
     ...(typeof o.uhrzeit === 'string' && /^\d{2}:\d{2}$/.test(o.uhrzeit) ? { uhrzeit: o.uhrzeit } : {}),
     zustaendig: wer(o.zustaendig) ?? (wer(person) && wer(person) !== BEIDE ? person : verantwortlich('sales')),
     status, ...(opt(o.ergebnis, 60) ? { ergebnis: opt(o.ergebnis, 60) } : {}), ...(opt(o.notiz, 1000) ? { notiz: opt(o.notiz, 1000) } : {}),
-    quelle: aus(o.quelle, FU_QUELLE, 'hand'), ...(opt(o.aufgabeId, 80) ? { aufgabeId: opt(o.aufgabeId, 80) } : {}),
+    quelle: aus(o.quelle, FU_QUELLE, 'hand'), ...((FU_ANLASS as readonly unknown[]).includes(o.anlass) ? { anlass: o.anlass as FollowUp['anlass'] } : {}), ...(opt(o.aufgabeId, 80) ? { aufgabeId: opt(o.aufgabeId, 80) } : {}),
     // K6a (29.09.): Termin, an dem das Follow-up hängt (Schlüssel wie `Aktivitaet.terminUid`).
     ...(typeof o.terminUid === 'string' && /^[^\u0000-\u001f\u007f]{1,300}$/.test(o.terminUid) ? { terminUid: o.terminUid } : {}),
     ...(zahl(o.verschoben, 0, 99) ? { verschoben: zahl(o.verschoben, 0, 99) } : {}),
@@ -819,6 +820,9 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
     const liste = l === 'events' ? uebergabenVomAltstand(b.events, r.liste as unknown as CrmBestand['events'])
       // Stand je Ziel der Kampagnen-Sequenz (31.10.): schreibt NUR der Motor — der Browser kann ihn weder setzen noch löschen.
       : l === 'kampagnen' ? zielStaendeVomAltstand(b.kampagnen, r.liste as unknown as CrmBestand['kampagnen'])
+      // Anlass eines Follow-ups (02.11., R2-4 Fund 1: Antwort/Anfrage/Vertrag … = nie Werbung): setzt NUR der Server — über den Bestand-Weg kann ihn
+      // niemand setzen (eine Werbesperre umgehen) oder entfernen.
+      : l === 'followups' ? anlassVomAltstand(b.followups ?? [], r.liste as unknown as FollowUp[])
       // Papierkorb-Marke der Produkte (04.10.): neu = Server-Zeit, bestehend bleibt — der Browser verschiebt die Frist nie.
       : l === 'leistungen' ? (r.liste as unknown as Leistung[]).map(x => markeVomServer(b.leistungen.find(a => a.id === x.id), x, jetzt))
       : r.liste;
@@ -843,6 +847,16 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
   // Qualifizierung; umbenannte Firma → Anzeigename an Mandaten/Deals. Personen-Leads führt `aendereCrm` nach.
   const hinweise = [...kanalWechsel.hinweise, ...kampagnenHinweise(b, roh, personen ?? personenImLauf.getStore() ?? []), ...zurueck.map(n => `Die Firma „${n}“ lag im Papierkorb — sie ist zurückgeholt (Vermerk in der Notiz).`)];
   return { bestand: crmFolgen(b, neu, jetzt, person), angewandt, fehler, konflikte: [], sperren: [], grenze: [], ...(hinweise.length ? { hinweise } : {}) };
+}
+
+/** Der Anlass eines Follow-ups kommt immer aus dem gespeicherten Stand (R2-4 Fund 1) — neue Einträge über den Bestand-Weg haben keinen. */
+function anlassVomAltstand(alt: readonly FollowUp[], neu: FollowUp[]): FollowUp[] {
+  const vorher = new Map(alt.map(f => [f.id, f.anlass]));
+  return neu.map(f => {
+    const { anlass: _vomBrowser, ...ohne } = f;
+    const gespeichert = vorher.get(f.id);
+    return gespeichert ? { ...ohne, anlass: gespeichert } : ohne;
+  });
 }
 
 /** Der Stand je Ziel der Kampagnen-Sequenz kommt immer aus dem gespeicherten Stand (lib/crm/kampagnen-motor.ts schreibt ihn über `aendereCrm`). */

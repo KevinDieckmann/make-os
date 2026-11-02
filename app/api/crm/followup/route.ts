@@ -25,6 +25,7 @@
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
+import { betriebSperrPrueferLaden } from '@/lib/crm/betrieb-sperre';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus, type Wer } from '@/lib/store/aenderungsprotokoll';
@@ -71,7 +72,9 @@ export async function GET(req: Request) {
   const [kontakte, crm] = await Promise.all([kontakteLaden(), ladeCrm()]);
   const heute = localDay();
   let gesperrt = 0;
-  const liste = faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten, beiSperre: () => { gesperrt++; } });
+  // R2-4 Fund 10: das „Nein“ eines Betriebs, das (nur noch) auf der Sperrliste steht, zählt mit.
+  const firmaGesperrt = await betriebSperrPrueferLaden(crm.firmen).catch(() => undefined);
+  const liste = faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten, beiSperre: () => { gesperrt++; }, ...(firmaGesperrt ? { firmaGesperrt } : {}) });
   return jsonAntwort(req, { ok: true, heute, liste, zahlen: zaehlen(liste), puenktlich: puenktlichkeit(crm.followups ?? [], heute), ...(gesperrt ? { hinweis: werbesperreHinweis(gesperrt) } : {}) }, etag);
 }
 

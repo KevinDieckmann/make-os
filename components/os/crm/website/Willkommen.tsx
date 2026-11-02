@@ -12,7 +12,7 @@ import type { WillkommenStufe } from '@/lib/crm/kampagnen-post';
 
 interface Lage {
   istInhaber: boolean; willkommen: { seit: string; von: string } | null; stufen: WillkommenStufe[]; vorgabe: WillkommenStufe[];
-  empfaenger: { id: string; name: string; start: string; gesendet: number[]; gescheitert?: { stufe: number; am: string; grund: string }[]; geantwortet?: boolean }[];
+  empfaenger: { id: string; name: string; start: string; gesendet: number[]; gescheitert?: { stufe: number; am: string; grund: string }[]; uebersprungen?: number[]; geantwortet?: boolean }[];
   /** Stand des letzten Laufs (B-Prüfung, 02.11.): warum die Strecke nichts tut bzw. wie viele Versuche scheiterten. */
   lauf: { am: string; grund?: string; gesendet: number; gescheitert: number } | null;
 }
@@ -34,6 +34,12 @@ export function WillkommenKarte({ i = 3 }: { i?: number }) {
     setMeldung(r.ok ? { art: 'gut', text: gut } : { art: 'achtung', text: r.fehler ?? 'Nicht gespeichert.' });
     await laden();
     return !!r.ok;
+  };
+  // R2-4 Fund 5: nach einer gescheiterten Mail steht die Strecke der Person, bis hier entschieden ist.
+  const entscheiden = async (kontaktId: string, stufe: number, wahl: 'erneut' | 'ueberspringen') => {
+    const r = await fetch('/api/crm/kampagnen/motor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'willkommen-entscheiden', kontaktId, stufe, wahl }) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
+    setMeldung(r.ok ? { art: 'gut', text: r.text ?? 'Gespeichert.' } : { art: 'achtung', text: r.fehler ?? 'Nicht gespeichert.' });
+    await laden();
   };
   if (!d) return <Karte i={i}><Ueberschrift>Willkommens-Mails</Ueberschrift><Leer>lädt …</Leer></Karte>;
   const bearbeitet = stufen ?? d.stufen;
@@ -91,7 +97,14 @@ export function WillkommenKarte({ i = 3 }: { i?: number }) {
                 <span>seit {tag(x.start)}</span>
                 <span>{x.gesendet.length ? `bekam Mail ${x.gesendet.map(n => n + 1).join(', ')} von ${d.stufen.length}` : 'noch keine'}</span>
                 {x.geantwortet && <span style={{ color: C.ink }}>hat geantwortet</span>}
-                {(x.gescheitert ?? []).map(g => <span key={g.stufe} style={{ color: C.inkLeise }}>Mail {g.stufe + 1} gescheitert am {tag(g.am)}: {g.grund}</span>)}
+                {(x.uebersprungen ?? []).length > 0 && <span style={{ color: C.inkLeise }}>übersprungen: Mail {x.uebersprungen!.map(n => n + 1).join(', ')}</span>}
+                {(x.gescheitert ?? []).map(g => (
+                  <span key={g.stufe} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ color: C.inkLeise }}>Mail {g.stufe + 1} gescheitert am {tag(g.am)}: {g.grund} — die Strecke wartet</span>
+                    <Knopf leise onClick={() => void entscheiden(x.id, g.stufe, 'erneut')}>Erneut</Knopf>
+                    <Knopf leise onClick={() => void entscheiden(x.id, g.stufe, 'ueberspringen')}>Überspringen</Knopf>
+                  </span>
+                ))}
               </div>
             ))}
             {d.empfaenger.length > 12 && <button onClick={() => setAlle(!alle)} style={{ background: 'none', border: 'none', color: C.inkLeise, cursor: 'pointer', fontSize: TYP.bedien, padding: 0, minHeight: 44 }}>{alle ? 'weniger' : `alle ${d.empfaenger.length}`}</button>}

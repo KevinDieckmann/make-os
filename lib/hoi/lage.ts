@@ -482,7 +482,7 @@ export interface WhatsappLage {
 
 /** Befund zur WhatsApp-Business-Nummer (rein): Schlüssel abgelehnt oder Qualität niedrig = rot; Auffälliges gelb; sonst grün. */
 /** Kampagnen-Motor (lib/crm/kampagnen-motor.ts `kampagnenMotorLage`) — nur Zähler und Zeiten, nie Namen, Adressen oder Texte. */
-export interface KampagnenMotorLageHoi { zuletzt: string | null; minutenSeit: number | null; fehlerTeile: { teil: string; n: number }[]; freigegeben: number; fehler: number; unklar: number; sequenzen: number }
+export interface KampagnenMotorLageHoi { zuletzt: string | null; minutenSeit: number | null; fehlerTeile: { teil: string; n: number }[]; freigegeben: number; fehler: number; unklar: number; sequenzen: number; willkommenGescheitert?: number }
 
 /**
  * Kampagnen-Motor (02.11., B-Prüfung Fund 5): läuft er (Herzschlag alle 2 Minuten aus dem Takt), scheitert ein Teil wiederholt, warten Mails?
@@ -494,17 +494,20 @@ export function kampagnenMotorBefunde(m: KampagnenMotorLageHoi | null | undefine
   const arbeit = m.sequenzen > 0 || m.freigegeben > 0;
   const steht = arbeit && (m.minutenSeit === null || m.minutenSeit > 30);
   const hart = m.fehlerTeile.filter(t => t.n >= 3);
-  const ampel: Ampel = steht || hart.length ? 'rot' : m.fehlerTeile.length || m.fehler || m.unklar ? 'gelb' : 'gruen';
+  const wg = m.willkommenGescheitert ?? 0;
+  const ampel: Ampel = steht || hart.length ? 'rot' : m.fehlerTeile.length || m.fehler || m.unklar || wg ? 'gelb' : 'gruen';
   const teile = [
     m.minutenSeit === null ? 'noch nie gelaufen' : `letzter Lauf vor ${m.minutenSeit} Min.`,
     `${m.sequenzen} aktive Sequenz${m.sequenzen === 1 ? '' : 'en'}`, `${m.freigegeben} freigegeben`,
     ...(m.fehler ? [`${m.fehler} mit Fehler`] : []), ...(m.unklar ? [`${m.unklar} unklar`] : []),
     ...(m.fehlerTeile.length ? [`scheitert: ${m.fehlerTeile.map(t => `${t.teil} (${t.n}×)`).join(', ')}`] : []),
+    ...(wg ? [`Willkommens-Strecke wartet bei ${wg} ${wg === 1 ? 'Person' : 'Personen'} (Mail gescheitert)`] : []),
   ];
   const satz = steht ? 'der Motor läuft nicht — es wird nichts vorbereitet, gesendet oder zurückgemeldet; Takt/Arbeiter prüfen (Logs „[kampagnen] Motor“)'
     : hart.length ? 'ein Teil des Motors scheitert wiederholt — die übrigen laufen weiter; Logs „[kampagnen] Motor ›“ prüfen'
     : m.fehlerTeile.length ? 'ein Teil scheiterte im letzten Lauf — wird im nächsten Takt erneut versucht'
     : m.fehler || m.unklar ? 'Mails mit Fehler bzw. „unklar“ warten im Mail-Stapel der Kampagnen auf einen Blick'
+    : wg ? 'eine Willkommens-Mail scheiterte — die Strecke dieser Person steht, bis in der Karte „erneut“ oder „überspringen“ gewählt ist'
     : 'läuft — Sequenzen, Versand und Rückfluss im Takt';
   return [{ id: 'kampagnen-motor', bereich: 'app', label: 'Kampagnen-Motor', ampel, wert: teile.join(' · '), satz }];
 }

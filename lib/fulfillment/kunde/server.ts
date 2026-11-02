@@ -4,7 +4,7 @@
 // Dazu die Schreibwege der Routen (intern `/api/fulfillment/kunde{,/datei,/vorschau}`, öffentlich `/api/kunde/kl-…{,/formular,/upload,/puls}`).
 //
 // Regeln (Entscheidungen 10.10., 23:25; Konzept 5.4):
-//   · Kunden-Link kommt AUSGESCHALTET — Umgebung `MAKE_OS_KUNDENLINK=an` UND Instanz-Schalter (nur Inhaber). Aus → jeder öffentliche Weg dieselbe 404.
+//   · Kunden-Link kommt AUSGESCHALTET — Umgebung `MAKE_OS_KUNDENLINK=an` UND Instanz-Schalter (Inhaber oder volles Mitglied, `darfSteuern`). Aus → jeder öffentliche Weg dieselbe 404.
 //   · Token nur im Fragment, im Bestand nur der Hash; das Token steht genau einmal in der Antwort von „Link anlegen“ bzw. „Puls-Anfrage“ — nie gespeichert,
 //     nie protokolliert (auch `einmalig` speichert Antworten — deshalb hier ohne).
 //   · Uploads: nur sichere Typen am Inhalt, Metadaten weg, verschlüsselt über lib/store/bild-ablage.ts, Status „ungeprüft“ bis ein Mensch freigibt.
@@ -331,7 +331,7 @@ export async function kundeStand(mandatId: string, heute = localDay()): Promise<
 
 const wer = (person: string): Wer => ({ art: 'person', person });
 
-/** Instanz-Schalter umlegen — nur der Inhaber (die Route prüft `inhaber: true`). */
+/** Instanz-Schalter umlegen — Inhaber ODER volles Mitglied des Haushalts (Kevin 02.11.: „sie kann vollen Zugriff haben“; die Route prüft `darfSteuern`). */
 export async function schalterSetzen(an: boolean, person: string, jetzt = new Date()): Promise<Ergebnis> {
   const r = await fulfillmentAendern('vorlagen', d => ({ ok: true, datei: { ...d, einstellungen: { ...d.einstellungen, kundenLink: { an, am: localDay(jetzt), von: person } } }, geaendert: ['einstellungen'] }), wer(person));
   if (!r.ok) return nein(r.status, r.fehler);

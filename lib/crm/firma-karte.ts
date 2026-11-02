@@ -14,6 +14,7 @@ import type { CrmBestand, FollowUp, KampagnenErgebnis, Kampagne } from './typen'
 import type { Ergebnis } from '@/lib/make-one/crm';
 import { sequenzFollowupId } from './kampagnen-post';
 import { wer, verantwortlich, BEIDE } from './team';
+import { istWerblich } from './followup';
 
 export interface FirmenKarte {
   firmaId: string; name: string; telefon?: string; ort?: string;
@@ -45,14 +46,15 @@ const tage = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) 
  * Fällige Follow-ups an Betrieben ohne Person als Karten. `person` null = alle (Systemlauf); sonst nur, was dieser Person gehört (oder beiden).
  * Zähler `beiAnderen`/`sperre` wie die übrigen Karten (die Power Hour nennt sie).
  */
-export function firmenKarten(crm: Pick<CrmBestand, 'followups' | 'firmen' | 'kampagnen'>, heute: string, person: string | null, max = 12): { karten: FirmenKarte[]; beiAnderen: number; sperre: number } {
+export function firmenKarten(crm: Pick<CrmBestand, 'followups' | 'firmen' | 'kampagnen'>, heute: string, person: string | null, max = 12, firmaGesperrt?: (firmaId: string) => boolean): { karten: FirmenKarte[]; beiAnderen: number; sperre: number } {
   const raus: FirmenKarte[] = [];
   let beiAnderen = 0, sperre = 0;
   const firmen = new Map(crm.firmen.map(f => [f.id, f]));
   for (const f of (crm.followups ?? []).filter(x => firmaFollowup(x) && x.faellig <= heute)) {
     const firma = firmen.get(f.bezug.id);
     if (!firma || firma.geloeschtAm || firma.archiviertAm) continue;
-    if (firma.werbesperre) { sperre++; continue; }
+    // Werbesperre am Betrieb bzw. auf der Sperrliste (R2-4 Fund 1/10): nur, was WIR werblich anstoßen, fällt heraus (`istWerblich`) — eine Antwort bleibt.
+    if ((firma.werbesperre || firmaGesperrt?.(firma.id)) && istWerblich(f)) { sperre++; continue; }
     const gehoert = wer(f.zustaendig) ?? verantwortlich('sales');
     if (person !== null && gehoert !== person && gehoert !== BEIDE) { beiAnderen++; continue; }
     const k = kampagneZuFirmaFollowup(crm.kampagnen ?? [], f);

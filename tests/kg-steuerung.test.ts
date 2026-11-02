@@ -241,7 +241,9 @@ describe('Fund 9 · Laufzeit: volles Mitglied darf, Konto „nur Business“ / f
 
 describe('Neuigkeit', () => {
   it('steht oben, neutral', () => {
-    expect(NEUIGKEITEN[0].id).toBe('u-2026-11-02-13');
-    expect(JSON.stringify(NEUIGKEITEN[0])).not.toMatch(/Malin|Kevin/);
+    // Neuere Einträge desselben Tages stehen darüber (absteigend, tests/kg-nach.test.ts) — dieser ist der neueste aus Prüfung D.
+    const n = NEUIGKEITEN.find(x => x.id === 'u-2026-11-02-13')!;
+    expect(NEUIGKEITEN.filter(x => x.datum > '2026-11-02')).toHaveLength(0);
+    expect(JSON.stringify(n)).not.toMatch(/Malin|Kevin/);
   });
 });
