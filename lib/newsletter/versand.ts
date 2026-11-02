@@ -30,7 +30,7 @@ export async function bestaetigungsmailSenden(id: string, token: string, b: Bere
     // frei geschriebene Mails) gilt hier nicht. Art. 18 prüft der Sendeweg trotzdem (eingeschränkte Personen bekommen nie etwas).
     r = await inboxSenden(b.absender.person, {
       neu: { postfach: b.absender.postfach, betreff: mail.betreff }, an: [{ email: a.email, ...(a.vorname ? { name: a.vorname } : {}) }], text: mail.text, uwgBestaetigt: true,
-    }, { art: 'system' });
+    }, { art: 'system' }, { automatisch: true });
   } catch (err) { r = { status: 502, body: { fehler: err instanceof Error ? err.message.slice(0, 200) : 'Versand gescheitert.' } }; }
   if (r.status !== 200 || r.body.ok !== true) {
     const grund = `Bestätigungsmail nicht verschickt: ${String(r.body.fehler ?? 'unbekannter Fehler').slice(0, 200)}`;

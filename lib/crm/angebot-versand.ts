@@ -110,7 +110,7 @@ export async function angebotVerschickenImAuftrag(eingangId: string, o: { ausgel
     r = await inboxSenden(absender.person, {
       neu: { postfach: absender.postfach, betreff: mail.betreff }, an: [{ email: an, name: `${k.vorname ?? ''} ${k.nachname ?? ''}`.trim() }], text: mail.text,
       anhaenge: [{ datei: a.pdfDateiId }], uwgBestaetigt: false,
-    }, wer);
+    }, wer, { automatisch: true });
   } catch (err) { r = { status: 502, body: { fehler: err instanceof Error ? err.message.slice(0, 200) : 'Versand gescheitert.' } }; }
   if (r.status !== 200 || r.body.ok !== true) {
     // Nicht gesendet (der Inbox-Weg wirft vor dem Senden bzw. meldet den abgelehnten Versand) — „begonnen“ wieder lösen.

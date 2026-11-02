@@ -115,6 +115,8 @@ export interface InnenLage {
   laufSpur?: LaufSpurLage | null;
   /** Prozesse (21.10., C1 „Laufen intern“, Punkt 88): Läufe im Motor — nur Zähler (Fehler, hängende, überfällige Freigaben, Flutschutz, Pausen). null = keine Läufe. */
   prozesse?: ProzesseLageHoi | null;
+  /** Herzschlag des Lauf-Motors (02.11., R2-2 Fund 4) — nur Zeiten und Zähler (lib/prozesse/lauf-server.ts `prozesseMotorLage`). null = nie gelaufen. */
+  prozesseMotor?: ProzesseMotorLageHoi | null;
   /** Website-Eingänge (02.11., Prüfung A): ohne CRM (Check-Leads, Bestellungen), wartende und gescheiterte Eingangszeilen — nur Zahlen. */
   websiteEingang?: WebsiteEingangLageHoi | null;
 }
@@ -159,6 +161,34 @@ export function prozesseBefunde(p: ProzesseLageHoi | null | undefined): Befund[]
       : gelb ? 'Läufe warten bzw. sind angehalten — Freigaben im Stapel, Aufgaben oder „erneut ab hier“ (Prozesse)'
         : 'Prozesse laufen — Menschen-Schritte als Aufgaben, Außenwirkung nur nach Freigabe',
   }];
+}
+
+/** Herzschlag des Lauf-Motors — dieselbe Form wie lib/prozesse/lauf-server.ts `prozesseMotorLage` (nur Zahlen). */
+export interface ProzesseMotorLageHoi { zuletzt: string | null; minutenSeit: number | null; fehlerInFolge: number; ereignisFehler: number; laufFehler: number; verworfenHeute: number; beschaedigt?: true }
+
+/**
+ * Prozess-Motor (02.11., R2-2 Fund 4; Vorbild `kampagnenMotorBefunde`): läuft der Takt, scheitert er, gingen Ereignisse verloren?
+ * Rot: Bestand nicht lesbar; seit über 30 Minuten kein Takt, obwohl Läufe offen sind; der Takt scheitert ≥ 3-mal in Folge.
+ * Gelb: Takt scheiterte zuletzt, Fehler an einzelnen Ereignissen bzw. Läufen, heute wegen Alter übersprungene Ereignisse. Rein, getestet.
+ */
+export function prozesseMotorBefunde(m: ProzesseMotorLageHoi | null | undefined, p?: ProzesseLageHoi | null): Befund[] {
+  if (!m) return [];
+  if (m.beschaedigt) return [{ id: 'prozesse-motor', bereich: 'app', label: 'Prozess-Motor', ampel: 'rot', wert: 'Herzschlag nicht lesbar', satz: 'Der Bestand „prozesse-motor-lauf“ ist nicht lesbar — Sicherung prüfen bzw. den Bestand beiseitelegen; der Takt legt ihn neu an' }];
+  const arbeit = (p?.offen ?? 0) > 0;
+  const steht = arbeit && (m.minutenSeit === null || m.minutenSeit > 30);
+  const hart = m.fehlerInFolge >= 3;
+  const ampel: Ampel = steht || hart ? 'rot' : m.fehlerInFolge || m.ereignisFehler || m.laufFehler || m.verworfenHeute ? 'gelb' : 'gruen';
+  const teile = [
+    m.minutenSeit === null ? 'noch nie gelaufen' : `letzter Takt vor ${m.minutenSeit} Min.`,
+    ...(m.fehlerInFolge ? [`${m.fehlerInFolge}× in Folge gescheitert`] : []), ...(m.ereignisFehler ? [`${m.ereignisFehler} Meldung${m.ereignisFehler === 1 ? '' : 'en'} mit Fehler`] : []),
+    ...(m.laufFehler ? [`${m.laufFehler} Lauf${m.laufFehler === 1 ? '' : 'e'} mit Fehler`] : []), ...(m.verworfenHeute ? [`${m.verworfenHeute} heute wegen Alter übersprungen`] : []),
+  ];
+  const satz = steht ? 'der Motor läuft nicht — Läufe warten, Uhren schlagen nicht an; Takt/Arbeiter prüfen (Logs „[prozesse/takt]“)'
+    : hart ? 'der Takt der Prozesse scheitert wiederholt — Logs „[prozesse/takt]“ prüfen'
+    : m.verworfenHeute ? 'Meldungen waren älter als drei Tage und lösten nichts mehr aus — lief der Takt? Betroffene Läufe von Hand prüfen'
+    : m.fehlerInFolge || m.ereignisFehler || m.laufFehler ? 'Einzelne Meldungen bzw. Läufe scheiterten — die übrigen liefen weiter; nächster Takt versucht es erneut'
+    : 'läuft — Meldungen, Uhren und Läufe im Takt';
+  return [{ id: 'prozesse-motor', bereich: 'app', label: 'Prozess-Motor', ampel, wert: teile.join(' · '), satz }];
 }
 
 /** Lauf-Spur (10.10., Paket V1 „Messen & sparen“) — gerechnet aus lib/agenten/spur.ts (`summeVon`, `zoeTempo`), nur Zahlen, nie Personen/Kennungen. */
@@ -818,6 +848,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...ereignisBefunde(innen.ereignisse));
   b.push(...laufSpurBefunde(innen.laufSpur));
   b.push(...prozesseBefunde(innen.prozesse));
+  b.push(...prozesseMotorBefunde(innen.prozesseMotor, innen.prozesse));
   b.push(...websiteEingangBefunde(innen.websiteEingang));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));

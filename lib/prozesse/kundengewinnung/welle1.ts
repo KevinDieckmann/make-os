@@ -156,7 +156,7 @@ const V12: KgVorlage = {
   kennzahlen: ['Tage von „gewonnen“ bis Kickoff (Leitkennzahl)', 'Stunden bis Willkommen', 'Prozesse: Anteil der Übergaben mit allen acht Blöcken in 2 Werktagen'],
   einstellbar: [
     { id: 'mandatStunden', label: 'Mandat in (Stunden)', vorgabe: 24 }, { id: 'uebergabeTage', label: 'Übergabe in (Werktagen)', vorgabe: 2, knoten: 'a3', feld: 'fristTage' },
-    { id: 'vertragTage', label: 'Vertrag in (Werktagen)', vorgabe: 5, knoten: 'a4v', feld: 'fristTage' }, { id: 'willkommenStunden', label: 'Willkommen in (Stunden)', vorgabe: 24 },
+    { id: 'vertragTage', label: 'Unterschrift abwarten (Tage)', vorgabe: 30, knoten: 'a4v', feld: 'hoechstensTage' }, { id: 'willkommenStunden', label: 'Willkommen in (Stunden)', vorgabe: 24 },
     { id: 'kickoffTage', label: 'Kickoff spätestens nach (Tagen)', vorgabe: 14 },
   ],
   offen: [
@@ -187,8 +187,14 @@ const V12: KgVorlage = {
         S.aufgabe('a6p', 'Persönlich begrüßen', { titel: 'Persönlich begrüßen (Mail nicht frei)', fristTage: 1 }, { zweige: { ja: 'a3' } }),
         S.mail('a7', 'Willkommen in 24 Stunden', { betreff: 'Willkommen — so starten wir', text: '{{kontakt.gruss}},\n\nschön, dass wir mit „{{deal.titel}}“ starten. In den nächsten Tagen melden wir uns mit dem Termin für den Auftakt.' }),
         S.aufgabe('a3', 'Übergabe vervollständigen', { titel: 'Übergabe vervollständigen (acht Blöcke)', fristTage: 2, prioritaet: 'high', beschreibung: 'Kunde · Umfang · Zeit · Geld · Personal · Risiken · Erwartungen · Kickoff.' }),
+      ] },
+      // 02.11. (R2-2 Fund 6): Vertrag und Kickoff als eigene Phase (höchstens zehn Schritte je Phase) — derselbe Strang.
+      { titel: 'Vertrag & Kickoff', schritte: [
         S.regel('a4', 'Vertrag unterschrieben?', [B.ist('deal.vertrag-unterschrieben', true)], { zweige: { nein: 'a4v' } }),
-        S.aufgabe('a4v', 'Vertrag unterschreiben lassen', { titel: 'Vertrag unterschreiben lassen', fristTage: 5, prioritaet: 'high' }),
+        // 02.11. (R2-2 Fund 6): keine eigene Aufgabe mehr — die Vertragsstrecke erinnert (Follow-up „Unterschrift nachfassen“), der Lauf wartet auf
+        // „Vertrag unterschrieben“ und läuft dann weiter (vorher blieb die Aufgabe offen, obwohl der Vertrag unterschrieben war: zwei Erinnerungen).
+        S.wartenEreignis('a4v', 'Unterschrift abwarten', 'vertrag-unterschrieben', 30, { zweige: { abgelaufen: 'a4g' } }),
+        S.glocke('a4g', 'Unterschrift steht aus', 'Der Vertrag zu einem gewonnenen Deal ist nach einem Monat noch nicht unterschrieben — bitte ansehen.', EIGNER),
         S.einladung('a8', 'Kickoff terminieren', { titel: 'Auftakt', dauerMin: 60, gaeste: AN_ANSPRECHPARTNER }),
         S.ziel('ez', 'Startklar — weiter im Fulfillment'),
       ] },

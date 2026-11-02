@@ -37,6 +37,7 @@
 // Kreislauf Werkstatt (29.10., „Alle Automatisierungen kommen aus der Werkstatt“):
 //   lead-mql               Firmen- bzw. Personen-Lead erreicht MQL (CRM- bzw. Kartei-Diff, EINE Regel `mqlErreicht` aus lib/crm/leads.ts — nur Marketing-Herkunft)
 //   neuer-lead             zusätzlich: Person von Hand in der Kartei angelegt (nie beim Massen-Import) und Formular „Angebot anfordern“ (neue Person)
+//   vertrag-unterschrieben Vertragsstrecke (02.11.): Unterschrift festgehalten (lib/vertraege/server.ts, Absichts-Schritt „ereignis“) — Bezug Vertrag, Deal, Mandat
 //   fall-abgeschlossen     Fulfillment-Fall neu auf „abgeschlossen“ — Stufe `mandatsende` (automatisch, wenn das Mandat endet) bzw. `hand`
 
 import type { SkillEreignis } from '@/lib/agenten/typen';
@@ -74,7 +75,7 @@ export const EREIGNIS_NAME: Readonly<Record<SkillEreignis, string>> = {
   webhook: 'Webhook von außen',
   'mandat-angelegt': 'Mandat angelegt', 'mandat-beendet': 'Mandat beendet', 'rechnung-gestellt': 'Rechnung gestellt',
   'fall-schritt-erledigt': 'Schritt im Fall erledigt', 'antwort-gesendet': 'Antwort gesendet', 'followup-erledigt': 'Follow-up erledigt', 'ziel-erreicht': 'Ziel erreicht',
-  'zusatz-gebucht': 'Zusatzmodul gebucht',
+  'zusatz-gebucht': 'Zusatzmodul gebucht', 'vertrag-unterschrieben': 'Vertrag unterschrieben',
   // ── Begleit-Prozesse am Fall (22.10., B1 — Quellen in ./quellen.ts: `fallEreignisse`, `fallHaengtEreignisse`, `kundeGeliefertEreignis`) ──
   'fall-phase': 'Phase im Fall begonnen bzw. abgeschlossen', 'fall-wartet-kunde': 'Schritt wartet auf den Kunden', 'abstimmung-bestaetigt': 'Bestätigung im Fall gegeben',
   'fall-haengt': 'Im Fall hängt etwas', 'kunde-geliefert': 'Kunde hat geliefert',
@@ -92,6 +93,8 @@ export const EREIGNISSE_ANGEBUNDEN: readonly SkillEreignis[] = ['neue-mail', 'ne
   'termin-vorbei', 'mandat-angelegt', 'mandat-beendet', 'rechnung-gestellt', 'fall-schritt-erledigt', 'antwort-gesendet', 'followup-erledigt', 'ziel-erreicht',
   // Prozesse × Fulfillment (22.10.)
   'zusatz-gebucht',
+  // Vertragsstrecke (02.11., R2-2 Fund 6)
+  'vertrag-unterschrieben',
   // Begleit-Prozesse am Fall (22.10., B1)
   'fall-phase', 'fall-wartet-kunde', 'abstimmung-bestaetigt', 'fall-haengt', 'kunde-geliefert',
   // Kreislauf Geld (29.10.)

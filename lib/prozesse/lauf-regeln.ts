@@ -63,15 +63,20 @@ export function fallSchluessel(prozessId: string, fall: LaufFall, periode?: stri
   return fall.art === 'keiner' || !fall.id ? `${prozessId}|keiner:${periode ?? ''}` : `${prozessId}|${fall.art}:${fall.id}`;
 }
 
-/** Der Fall eines Ereignisses für eine Fall-Art (rein): Deal → Deal, Mandat → Mandat, Firma → Firma, Lead → Firma bzw. Person. Ohne passende Kennung: null. */
+/**
+ * Der Fall eines Ereignisses für eine Fall-Art (rein): Deal → Deal, Mandat → Mandat, Firma → Firma, Lead → Firma bzw. Person, Event → Event, Kampagne →
+ * Kampagne. Ohne passende Kennung: null. Sonderfall Buchung (R2-2 Fund 2): eine Buchungsanfrage trägt vor der Freigabe noch keine Person — der Lauf startet
+ * mit einem VORLÄUFIGEN Lead-Fall (ohne Kennung, gebunden an die Buchung über die Start-Kennung) und übernimmt die Person beim ersten Ereignis, das sie
+ * trägt („Buchung bestätigt“, `fallNachEreignis`).
+ */
 export function fallAusEreignis(fallArt: FallArt, bezug: Readonly<Record<string, string | undefined>>): LaufFall | null {
   switch (fallArt) {
     case 'deal': return bezug.dealId ? { art: 'deal', id: bezug.dealId } : null;
     case 'mandat': return bezug.mandatId ? { art: 'mandat', id: bezug.mandatId } : null;
     case 'firma': return bezug.firmaId ? { art: 'firma', id: bezug.firmaId } : null;
-    case 'lead': return bezug.firmaId ? { art: 'lead', id: bezug.firmaId } : bezug.kontaktId ? { art: 'lead', id: bezug.kontaktId } : null;
-    case 'event': return null;
-    case 'kampagne': return null;
+    case 'lead': return bezug.firmaId ? { art: 'lead', id: bezug.firmaId } : bezug.kontaktId ? { art: 'lead', id: bezug.kontaktId } : bezug.terminBuchungId ? { art: 'lead' } : null;
+    case 'event': return bezug.eventId ? { art: 'event', id: bezug.eventId } : null;
+    case 'kampagne': return bezug.kampagneId ? { art: 'kampagne', id: bezug.kampagneId } : null;
     case 'keiner': return { art: 'keiner' };
   }
 }
@@ -82,6 +87,32 @@ export function ereignisZumFall(fall: LaufFall, bezug: Readonly<Record<string, s
   if (fall.art === 'lead') return bezug.firmaId === fall.id || bezug.kontaktId === fall.id;
   const f = fallAusEreignis(fall.art, bezug);
   return !!f && f.id === fall.id;
+}
+
+/**
+ * Ein vorläufiger Fall (Fall-Art mit, Kennung noch ohne — Buchung vor der Freigabe) ist an die Kennungen seines Start-Ereignisses gebunden (rein): trägt das
+ * neue Ereignis dieselbe Kennung anders (eine andere Buchung), passt es nicht. `daten` = die Kennungen des Laufs (`bezug.<name>` klein).
+ */
+export function startKennungPasst(fall: LaufFall, daten: Readonly<Record<string, unknown>>, bezug: Readonly<Record<string, string | undefined>>): boolean {
+  if (fall.art === 'keiner' || fall.id) return true;
+  for (const [k, v] of Object.entries(bezug)) {
+    if (typeof v !== 'string' || !v) continue;
+    const alt = daten[`bezug.${k.toLowerCase()}`];
+    if (k === 'terminBuchungId' || k === 'eventId' || k === 'kampagneId' || k === 'angebotId') { if (typeof alt === 'string' && alt && alt !== v) return false; }
+  }
+  // Ohne gemeinsame bindende Kennung weckt nur ein Ereignis mit der Buchung des Starts (sonst weckte jede Buchung jeden vorläufigen Lauf).
+  const start = daten['bezug.terminbuchungid'];
+  return typeof start !== 'string' || !start || bezug.terminBuchungId === start;
+}
+
+/** Ein vorläufiger Fall übernimmt die Kennung aus dem Ereignis, das ihn weckt (rein) — sonst unverändert. */
+export function fallNachEreignis(l: ProzessLauf, bezug: Readonly<Record<string, string | undefined>>): ProzessLauf {
+  if (l.fall.art === 'keiner' || l.fall.id) return l;
+  const f = fallAusEreignis(l.fall.art, bezug);
+  if (!f?.id) return l;
+  const n = kopie(l);
+  n.fall = f;
+  return n;
 }
 
 // ══ Zeit ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -681,6 +712,9 @@ function planFuer(l: ProzessLauf, k: K, def: ProzessDefinition, u: LaufUmfeld, k
       }
       const ober = w.hoechstensStunden ? (w.arbeitszeit ? arbeitsstundenPlus(u.jetzt, w.hoechstensStunden) : zeitPlus(u.jetzt, { stunden: w.hoechstensStunden }))
         : zeitPlus(u.jetzt, { tage: Math.max(1, w.hoechstensTage), arbeitszeit: w.arbeitszeit });
+      // R2-2 Fund 3: die eigene Sendung über das Schloss direkt davor (Marke `EIGEN_GESENDET`) IST die Antwort, auf die dieses Warten schaut — das Ereignis
+      // dazu weckt den eigenen Lauf nie (Schleifenschutz), sonst schlüge die Uhr trotz Antwort Alarm.
+      if (l.daten[EIGEN_GESENDET] && wartenArten(w).includes('antwort-gesendet')) return { art: 'weiter', ausgang: 'eingetreten', status: 'erledigt' };
       // 29.10. (W-B5): „eines von mehreren“ — die weiteren Arten stehen im Warten des Laufs (der Takt fragt nur danach, ohne die Version zu lesen).
       return { art: 'warten', ausgangSchatten: 'eingetreten', warten: { art: 'ereignis', ereignis: w.ereignis, ...(w.ereignisse?.length ? { ereignisse: wartenArten(w).slice(1) } : {}), bis: ober } };
     }
@@ -870,6 +904,8 @@ export function voran(laufEin: ProzessLauf, def: ProzessDefinition, u: LaufUmfel
     if (!k) { beenden(l, 'fehler', u.jetzt, { grund: 'knoten-fehlt' }); return { lauf: l, aktion: null }; }
     const kennung = wirkungsKennung(l.id, k.id, s.runde ?? 0);
     const plan = planFuer(l, k, def, u, kennung);
+    // Die Marke der eigenen Sendung gilt nur für das DIREKT folgende Warten (R2-2 Fund 3) — danach verfällt sie.
+    if (k.form === 'warten' && l.daten[EIGEN_GESENDET]) delete l.daten[EIGEN_GESENDET];
     // Werkstatt bau-fertig (Punkt 9): im Schatten der angenommene Weg statt des Hauptwegs (Raute, Freigabe, Warten) — scharf nie.
     const annahme = annahmeFuer(k, u, modus);
     if (modus === 'schatten' && u.beobachte) {
@@ -1049,13 +1085,15 @@ export function ereignisEingetreten(l: ProzessLauf, def: ProzessDefinition, jetz
 }
 
 /** Wartet der Lauf auf genau dieses Ereignis? (rein) — Art, derselbe Fall, „nur wenn …“ des Knotens über `daten`. */
-export function wartetAuf(l: ProzessLauf, def: ProzessDefinition, e: { art: SkillEreignis; bezug: Readonly<Record<string, string | undefined>>; bereich: 'privat' | 'business' | null; arbeit?: true }, daten: Readonly<Record<string, unknown>>): boolean {
+export function wartetAuf(l: ProzessLauf, def: ProzessDefinition, e: { art: SkillEreignis; bezug: Readonly<Record<string, string | undefined>>; bereich: 'privat' | 'business' | null; arbeit?: true; automatisch?: true }, daten: Readonly<Record<string, unknown>>): boolean {
+  // Eine automatische Sendung (Kampagnen-Motor, Website-Post, Willkommensstrecke …) ist keine persönliche Reaktion — sie stoppt keine Uhr (R2-2 Fund 3).
+  if (e.art === 'antwort-gesendet' && e.automatisch) return false;
   // Privat nie — außer Arbeit (25.10.): ein Ereignis mit Arbeits-Marke weckt einen Lauf, dessen Fall DIESES Mandat ist (`ereignisZumFall` unten); den Lauf gibt es
   // nur, wenn der Prozess für das Mandat der Privat-Arbeits-Einheit freigegeben war (Produkt-Bindung, Begleitung) bzw. ein Mensch ihn für den Fall startete.
   if (l.status !== 'wartet' || l.wartet?.art !== 'ereignis' || !laufWartetAufArt(l.wartet, e.art) || (e.bereich === 'privat' && !(e.arbeit === true && l.fall.art === 'mandat'))) return false;
   const k = def.knoten.find(x => x.id === l.wartet!.knoten);
   if (k?.warten?.art !== 'ereignis' || !wartenArten(k.warten).includes(e.art)) return false;
-  if (!ereignisZumFall(l.fall, e.bezug)) return false;
+  if (!ereignisZumFall(l.fall, e.bezug) || !startKennungPasst(l.fall, l.daten ?? {}, e.bezug)) return false;
   return bedingungenTreffen(k.warten.bedingungen, daten, k.warten.verknuepfung);
 }
 
@@ -1079,9 +1117,19 @@ export function aufgabeFertig(l: ProzessLauf, def: ProzessDefinition, aufgabeId:
   return n;
 }
 
-/** Eine Freigabe bzw. Entscheidung im Stapel ist gefallen (rein): freigegeben → ja, abgelehnt → nein, abgelaufen → abgelaufen (Entscheidung: nein). */
-export function freigabeEntschieden(l: ProzessLauf, def: ProzessDefinition, kennung: string, wie: 'ja' | 'nein' | 'abgelaufen', jetzt: string, o: { danachAufgabe?: string } = {}): ProzessLauf {
+/** Marke im Lauf: die Freigabe eben hat eine Mail bzw. WhatsApp gesendet (R2-2 Fund 3) — gilt für das direkt folgende Warten als „Antwort gesendet“. */
+export const EIGEN_GESENDET = 'lauf.eigen-gesendet';
+
+/**
+ * Eine Freigabe bzw. Entscheidung im Stapel ist gefallen (rein): freigegeben → ja, abgelehnt → nein, abgelaufen → abgelaufen (Entscheidung: nein).
+ * `gesendet` (R2-2 Fund 3): die Freigabe hat gesendet — der Lauf trägt dann die Marke `EIGEN_GESENDET`.
+ */
+export function freigabeEntschieden(l: ProzessLauf, def: ProzessDefinition, kennung: string, wie: 'ja' | 'nein' | 'abgelaufen', jetzt: string, o: { danachAufgabe?: string; gesendet?: boolean } = {}): ProzessLauf {
   if (l.status !== 'wartet' || l.wartet?.art !== 'freigabe' || l.wartet.wirkung !== kennung) return l;
+  if (wie === 'ja' && o.gesendet && !o.danachAufgabe) {
+    const n = freigabeEntschieden(l, def, kennung, wie, jetzt, {});
+    return n === l ? n : { ...n, daten: { ...n.daten, [EIGEN_GESENDET]: jetzt } };
+  }
   const k = def.knoten.find(x => x.id === l.wartet!.knoten);
   if (wie === 'ja' && o.danachAufgabe) {
     // Erst freigegeben, dann von Hand: der Lauf wartet weiter — jetzt auf die Aufgabe.

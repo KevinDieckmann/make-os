@@ -15,7 +15,7 @@ import { EREIGNISSE_ANGEBUNDEN, EREIGNISSE_INTERN, EREIGNIS_NAME, istEreignisArt
 import type { Ereignis } from '@/lib/ereignisse/typen';
 import { wiederkehrendPruefen } from '@/lib/agenten/zeitplan-regeln';
 import {
-  FELD_KENNUNG, LOOP_ARTEN, PERSON_TAGE, PROZESS_GRENZEN, PROZESS_TEXT, WEBHOOK_FELD_ARTEN,
+  FALL_ARTEN, FELD_KENNUNG, LOOP_ARTEN, PERSON_TAGE, PROZESS_GRENZEN, PROZESS_TEXT, WEBHOOK_FELD_ARTEN,
   type Ausloeser, type AusloeserArt, type Befund, type DatumsFeld, type FallArt, type LoopArt, type PersonTage, type SkillEreignis, type WebhookFeld, type WebhookFeldArt,
 } from './definition';
 import { wertDef } from './stellschrauben-werte';
@@ -183,6 +183,17 @@ export function webhookFelderAus(roh: unknown): { felder: WebhookFeld[]; befunde
 }
 
 /**
+ * Welche Fälle ein Ereignis tragen kann (rein; R2-2 Fund 2) — nur für Arten, deren Bezug fest ist. Ein Auslöser „Ereignis“, dessen Fall-Art hier nicht
+ * steht, startet nie: die Werkstatt meldet es (`ausloeserAus`). „ohne Fall“ passt immer.
+ */
+export const EREIGNIS_FAELLE: Partial<Record<SkillEreignis, readonly FallArt[]>> = {
+  'kampagne-aktiv': ['kampagne'], 'kampagnen-ergebnis': ['kampagne', 'lead', 'firma'],
+  'event-vorbei': ['event'], 'event-status': ['event'],
+  'buchung-angefragt': ['lead'], 'buchung-bestaetigt': ['lead', 'firma'],
+};
+export const ereignisTraegtFall = (e: SkillEreignis, fall: FallArt): boolean => fall === 'keiner' || !EREIGNIS_FAELLE[e] || EREIGNIS_FAELLE[e]!.includes(fall);
+
+/**
  * Einen Auslöser säubern und prüfen (rein). `fehler` = unlesbar (nicht speicherbar), `offen` = unvollständig (Entwurf ja, Veröffentlichen nein).
  * Ohne brauchbare Art: kein Auslöser (null) und ein Befund.
  */
@@ -202,6 +213,8 @@ export function ausloeserAus(roh: unknown, fall: FallArt, knotenId?: string): { 
       const v = verknuepfungAus(roh.verknuepfung);
       const raus: Befund[] = befunde.map(x => ({ ...x, feld: 'bedingungen', ...(knotenId ? { knotenId } : {}) }));
       if (!ereignisStartetProzess(e)) raus.push(b('offen', `„${EREIGNIS_NAME[e]}“ startet keinen Prozess${EREIGNISSE_INTERN.includes(e) ? '' : ' — noch nicht angebunden'}.`));
+      // R2-2 Fund 2: Ereignis und Fall-Art passen nie zusammen → der Prozess startet nie (vorher still).
+      else if (!ereignisTraegtFall(e, fall)) raus.push(b('offen', `„${EREIGNIS_NAME[e]}“ trägt keinen Fall der Art „${FALL_ARTEN.find(x => x.id === fall)?.titel ?? fall}“ — so startet der Prozess nie. Fall-Art ändern oder ein anderes Ereignis wählen.`));
       return { ausloeser: { art: 'ereignis', ereignis: e, ...(bedingungen.length ? { bedingungen } : {}), ...(v && bedingungen.length > 1 ? { verknuepfung: v } : {}) }, befunde: raus };
     }
     case 'datum': {

@@ -87,7 +87,8 @@ describe('W-B5: Warten auf eines von mehreren Ereignissen', () => {
     const v12 = vorlageVon('kg-v12')!.definition;
     const reihe = alleSchritte(v12).map(x => x.schritt.titel);
     expect(reihe.indexOf('Willkommen in 24 Stunden')).toBeLessThan(reihe.indexOf('Übergabe vervollständigen'));
-    expect(reihe.indexOf('Fall starten')).toBeLessThan(reihe.indexOf('Vertrag unterschreiben lassen'));
+    // Seit 02.11. (R2-2 Fund 6) wartet V12 auf „Vertrag unterschrieben“ statt einer eigenen Aufgabe.
+    expect(reihe.indexOf('Fall starten')).toBeLessThan(reihe.indexOf('Unterschrift abwarten'));
   });
 });
 

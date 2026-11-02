@@ -76,7 +76,9 @@ export async function GET(req: Request) {
     const { kreislaufHeuteLesen } = await import('@/lib/prozesse/kreislauf-heute-server');
     return NextResponse.json({ ok: true, kreislauf: await kreislaufHeuteLesen({ haushalt: z.haushalt, privat: z.privat }) });
   }
-  const d = await S.laeufeLesen(z.haushalt);
+  // Auch „heute“ und die Zahlen je Prozess ohne Läufe zu verborgenen Mandaten (R2-2 Fund 9) — sonst zählte ein Konto „nur Business“ Privat-Arbeit mit.
+  const roh = await S.laeufeLesen(z.haushalt);
+  const d = verborgen.size ? { ...roh, laeufe: roh.laeufe.filter(l => sichtbar(l.fall)), zurueckgehalten: roh.zurueckgehalten.filter(x => sichtbar(x.fall)) } : roh;
   if (q.get('heute') === '1') {
     const { heuteZeile } = await import('@/lib/prozesse/lauf-regeln');
     return NextResponse.json({ ok: true, heute: heuteZeile(d, z.person, new Date().toISOString()) });

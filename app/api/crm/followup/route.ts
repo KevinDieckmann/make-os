@@ -172,18 +172,29 @@ export async function POST(req: Request) {
     const notiz = typeof b.notiz === 'string' ? b.notiz.trim() : '';
     const { firmaErgebnisImCrm } = await import('@/lib/crm/firma-karte');
     const nochmalAm = folgeAus(ergebnis, heute, 'neu').wiedervorlage;
+    // Gespräch/Termin (R2-2 Fund 1): Folge-Follow-up am Betrieb — Gespräch: Wiedervorlage aus der Regel (5 Werktage), Termin: „Termin vorbereiten“
+    // am nächsten Werktag. Personen des Betriebs (ohne Gesperrte) für den abgeleiteten Lead-Stand wie in lib/crm/leads.ts.
+    const { personenDerFirma } = await import('@/lib/crm/stationen');
+    const { ausgenommen } = await import('@/lib/crm/einschraenkung');
+    const { werktagePlus } = await import('@/lib/zeit/kalender-kern');
+    const folgeAm = ergebnis === 'gespraech' ? (nochmalAm ?? werktagePlus(heute, 5)) : ergebnis === 'termin' ? werktagePlus(heute, 1) : undefined;
     let r: ReturnType<typeof firmaErgebnisImCrm> | null = null;
     let zuLang = false;
     await aendereCrm(c => {
       const fu = (c.followups ?? []).find(f => f.id === String(b.id));
       if (fu && notiz && `${fu.notiz ? `${fu.notiz}\n` : ''}${notiz}`.length > NOTIZ_MAX) { zuLang = true; return c; }
-      r = firmaErgebnisImCrm(c, { followupId: String(b.id), ergebnis, heute, jetzt, von: person, ...(nochmalAm ? { nochmalAm } : {}), ...(notiz ? { notiz } : {}) });
+      const personen = fu ? personenDerFirma(kontakte, fu.bezug.id).filter(k => !ausgenommen(k)) : [];
+      r = firmaErgebnisImCrm(c, { followupId: String(b.id), ergebnis, heute, jetzt, von: person, ...(nochmalAm && ergebnis !== 'gespraech' ? { nochmalAm } : {}), ...(notiz ? { notiz } : {}), personen, ...(folgeAm ? { folge: { id: neueId('fu'), faellig: folgeAm } } : {}) });
       return 'crm' in r ? r.crm : c;
     }, werAus(req));
     if (zuLang) return ZU_LANG('Notiz (zusammen mit der bisherigen)', NOTIZ_MAX);
     const x = r as ReturnType<typeof firmaErgebnisImCrm> | null;
     if (!x || !('crm' in x)) return NextResponse.json({ ok: false, fehler: x?.fehler ?? 'Follow-up nicht gefunden.' }, { status: x?.status ?? 404 });
-    return NextResponse.json({ ok: true, wie: x.wie, text: x.wie === 'verschoben' ? 'Festgehalten — die Karte kommt wieder, wenn der nächste Versuch dran ist.' : ergebnis === 'sperre' ? 'Werbesperre am Betrieb gesetzt — er taucht nirgends mehr auf.' : 'Festgehalten.' });
+    // Erledigt → `followup-erledigt` (wie das Erledigen in der Follow-up-Liste) — der Prozess-Motor wacht daran auf.
+    if (x.erledigt) await import('@/lib/ereignisse/quellen').then(q => q.followupErledigtEreignis({ id: x.erledigt!.id, bezug: x.erledigt!.bezug })).catch(() => 0);
+    const folgeSatz = x.folge ? ` Nächster Schritt „${x.folge.text}“ am ${x.folge.faellig}.` : '';
+    const leadSatz = x.lead ? ` Lead des Betriebs: ${x.lead.nach === 'qualifizierung' ? 'Qualifizierung' : 'im Gespräch'}.` : '';
+    return NextResponse.json({ ok: true, wie: x.wie, ...(x.folge ? { folge: { id: x.folge.id, faellig: x.folge.faellig } } : {}), ...(x.lead ? { lead: x.lead } : {}), text: x.wie === 'verschoben' ? 'Festgehalten — die Karte kommt wieder, wenn der nächste Versuch dran ist.' : ergebnis === 'sperre' ? 'Werbesperre am Betrieb gesetzt — er taucht nirgends mehr auf.' : `Festgehalten.${leadSatz}${folgeSatz}` });
   }
 
   const id = String(b.id ?? '');

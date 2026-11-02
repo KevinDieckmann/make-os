@@ -524,7 +524,8 @@ export async function bestellungFreigeben(p: { id: string; person: string; wer: 
         anhaenge: [{ datei: r.pdfDateiId }], beleg: { art: 'rechnung', id: r.id },
         // Vertragliche Lieferung auf die eigene Bestellung der Person, fester Text — keine Werbung (§ 7 UWG gilt hier nicht); Art. 18 prüft der Sendeweg.
         uwgBestaetigt: true,
-      }, p.wer).catch(e => ({ status: 502, body: { fehler: e instanceof Error ? e.message : 'Versand gescheitert.' } as Record<string, unknown> }));
+        // Fester Text an die Bestellung (R2-2 Fund 3): keine persönliche Antwort — `automatisch`, stoppt keine Uhr eines Laufs.
+      }, p.wer, { automatisch: true }).catch(e => ({ status: 502, body: { fehler: e instanceof Error ? e.message : 'Versand gescheitert.' } as Record<string, unknown> }));
       if (s.status !== 200 || s.body.ok !== true) throw new BausteinFehler(`Rechnung ${r.nummer} ist gestellt, die Mail ging aber nicht raus: ${String(s.body.fehler ?? 'unbekannter Fehler').slice(0, 200)} — „Freigeben und senden“ versucht nur noch das Senden.`, s.status >= 400 && s.status < 600 ? s.status : 502);
       const { adresseMaskiert } = await import('@/lib/zugang/konten');
       b = (await bestellungAendern(p.id, x => ({ ...x, versandt: { am: jetzt.toISOString(), von: p.person, ueber: adresseMaskiert(String(s.body.von ?? '')) } })))!;
@@ -556,7 +557,7 @@ export async function linksNeuSenden(p: { id: string; person: string; wer: Wer; 
   // Ohne Anhang: der Satz zur Rechnung entfällt (die Rechnung kam schon mit der Lieferung).
   const text = m.text.split('\n').filter(z => !z.startsWith('Die Rechnung ')).join('\n');
   const { inboxSenden } = await import('@/lib/inbox/senden-server');
-  const s = await inboxSenden(lage.absender.person, { neu: { postfach: lage.absender.postfach, betreff: `Neue Download-Links: ${b.titel}` }, an: [{ email: b.besteller.email, name: name(b.besteller) }], text, uwgBestaetigt: true }, p.wer)
+  const s = await inboxSenden(lage.absender.person, { neu: { postfach: lage.absender.postfach, betreff: `Neue Download-Links: ${b.titel}` }, an: [{ email: b.besteller.email, name: name(b.besteller) }], text, uwgBestaetigt: true }, p.wer, { automatisch: true })
     .catch(e => ({ status: 502, body: { fehler: e instanceof Error ? e.message : 'Versand gescheitert.' } as Record<string, unknown> }));
   if (s.status !== 200 || s.body.ok !== true) throw new BausteinFehler(`Nicht gesendet: ${String(s.body.fehler ?? 'unbekannter Fehler').slice(0, 200)}`, 502);
   await protokolliere(BESTELLUNGEN, [{ op: 'geaendert', id: p.id, felder: ['links-neu'] }], p.wer);

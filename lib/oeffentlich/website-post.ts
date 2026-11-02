@@ -183,7 +183,7 @@ export async function websiteMailSenden(m: { an: string; vorname?: string; betre
     // geschriebene Mails) gilt hier nicht; gesperrte Personen bekommen sie nie (oben). Art. 18 prüft der Sendeweg trotzdem noch einmal.
     r = await inboxSenden(lage.absender.person, {
       neu: { postfach: lage.absender.postfach, betreff: m.betreff }, an: [{ email: an, ...(name ? { name } : {}) }], text: m.text, uwgBestaetigt: true,
-    }, { art: 'system' }, m.listeAbmelden ? { listeAbmelden: m.listeAbmelden } : {});
+    }, { art: 'system' }, { ...(m.listeAbmelden ? { listeAbmelden: m.listeAbmelden } : {}), automatisch: true });
   } catch (err) { r = { status: 502, body: { fehler: err instanceof Error ? err.message.slice(0, 200) : 'Versand gescheitert.' } }; }
   if (r.status !== 200 || r.body.ok !== true) {
     const text = `Nicht verschickt: ${String(r.body.fehler ?? 'unbekannter Fehler').slice(0, 200)}`;

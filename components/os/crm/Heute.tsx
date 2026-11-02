@@ -67,6 +67,8 @@ interface HeuteAntwort {
 interface FirmenKarteSicht {
   firmaId: string; name: string; telefon?: string; ort?: string; followupId: string; art: string; text: string; faellig: string;
   gruende: string[]; punkte: number; gehoert: string; kampagneId?: string; kampagneName?: string; leitfaden?: string;
+  /** „Antwort bearbeiten“ einer Kampagnen-Mail — „Als Lead übernehmen“ (02.11.). */
+  antwort?: boolean;
 }
 
 const KAT_FARBE: Record<string, string> = { versprechen: LEUCHT.kritisch, signale: LEUCHT.achtung, chancen: LEUCHT.business, kunden: LEUCHT.geld, pflege: LEUCHT.beziehung, neu: LEUCHT.puls };
@@ -338,6 +340,17 @@ function FirmenKarten({ liste, lesen, i, neu, bestaetigen }: { liste: FirmenKart
     } catch { setMeldung(m => ({ ...m, [f.followupId]: 'Nicht erreichbar — nichts gespeichert.' })); }
     finally { setLaeuft(null); }
   }
+  // „Antwort bearbeiten“ (02.11., Zusatz C): wie in Follow-up › Fällig — derselbe Weg (Motor-Route `als-lead`), nichts wird versendet.
+  async function alsLead(f: FirmenKarteSicht) {
+    setLaeuft(f.followupId);
+    try {
+      const r = await fetch('/api/crm/kampagnen/motor', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion: 'als-lead', followupId: f.followupId }) });
+      const x = await r.json().catch(() => ({}));
+      setMeldung(m => ({ ...m, [f.followupId]: String(x.text ?? x.fehler ?? (r.ok ? 'Als Lead übernommen.' : 'Nicht übernommen.')) }));
+      if (r.ok) neu();
+    } catch { setMeldung(m => ({ ...m, [f.followupId]: 'Nicht erreichbar — nichts übernommen.' })); }
+    finally { setLaeuft(null); }
+  }
   return (
     <>
       {liste.map((f, j) => {
@@ -363,6 +376,7 @@ function FirmenKarten({ liste, lesen, i, neu, bestaetigen }: { liste: FirmenKart
             )}
             {!lesen && (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
+                {f.antwort && <Knopf farbe={LEUCHT.business} aus={laeuft === f.followupId} onClick={async () => { await alsLead(f); }}>Als Lead übernehmen</Knopf>}
                 {ERGEBNIS_KNOEPFE.map(e => (
                   <Knopf key={e.id} leise aus={laeuft === f.followupId} farbe={e.id === 'sperre' ? LEUCHT.kritisch : e.id === 'termin' || e.id === 'gespraech' ? LEUCHT.gut : undefined} onClick={async () => { await erfassen(f, e.id); }}>{e.label}</Knopf>
                 ))}

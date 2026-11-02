@@ -43,6 +43,8 @@ const EINGABE_FELD: Readonly<Record<BezugFeld, string>> = {
   leistungId: 'produkt',
   // Begleit-Prozesse am Fall (22.10., B1): das Paket des Falls und die Bestätigung.
   vorlageId: 'paket', freigabeId: 'bestaetigung',
+  // Vertragsstrecke (02.11., R2-2 Fund 6): der unterschriebene Vertrag.
+  vertragId: 'vertrag',
 };
 export function laufEingaben(f: Pick<FaelligesEreignis, 'ereignis' | 'konsument'>): Record<string, string> {
   const e = f.ereignis;

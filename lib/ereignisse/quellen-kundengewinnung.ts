@@ -6,7 +6,7 @@
 //   E6  einwilligungDiff        Kartei: neue, nicht widerrufene Einwilligung mit vollem Nachweis → `einwilligung-erteilt` (Stufe = Kanal)
 //   E7  crmDiffKundengewinnung  CRM: Event in neuem Status → `event-status`, auf „durchgeführt“ → `event-vorbei`
 //   E10 netzwerkEreignis        Vernetzen-Runde: „vernetzt“ bzw. „Antwort“ (app/api/crm/netzwerk/route.ts) → `vernetzt` · `linkedin-antwort`
-//   E11 crmDiffKundengewinnung  CRM: Kampagne wird aktiv → `kampagne-aktiv`; neues Ergebnis einer Person → `kampagnen-ergebnis`
+//   E11 crmDiffKundengewinnung  CRM: Kampagne wird aktiv → `kampagne-aktiv`; neues Ergebnis einer Person bzw. eines Betriebs → `kampagnen-ergebnis`
 // Regeln wie in ./quellen.ts: nur Kennungen (nie Namen, Titel, Texte, Beträge, Adressen), eingeschränkte Personen (Art. 18) lösen nie etwas aus, Bereich
 // Business (Prozesse hören nie auf Privates), Kennung je Wirkung deterministisch. Die reinen Diffs sind getestet (tests/prozesse-vorlagen-ereignisse.test.ts).
 
@@ -49,6 +49,14 @@ export function crmDiffKundengewinnung(vorher: Partial<Pick<CrmBestand, 'events'
       const umbenannt = rest.get(`${r.ergebnis}|${r.am}`) ?? 0;
       if (umbenannt > 0) { rest.set(`${r.ergebnis}|${r.am}`, umbenannt - 1); continue; }
       raus.push({ id: ereignisKennung('crm', 'kampagne', x.id, r.kontaktId, r.ergebnis, r.am), art: 'kampagnen-ergebnis', quelle: 'crm', stufe: r.ergebnis, bereich: 'business', bezug: { kampagneId: x.id, kontaktId: r.kontaktId } });
+    }
+    // Betriebe ohne Person (R2-2 Fund 1): ein neues Ergebnis am Betrieb (`firmenErgebnisse`) meldet sich ebenso — Bezug Kampagne + Firma.
+    const firmaGesehen = new Set((alt?.firmenErgebnisse ?? []).map(r => `${r.firmaId}|${r.ergebnis}|${r.am}`));
+    for (const r of x.firmenErgebnisse ?? []) {
+      const s = `${r.firmaId}|${r.ergebnis}|${r.am}`;
+      if (firmaGesehen.has(s) || !k(r.firmaId)) continue;
+      firmaGesehen.add(s);
+      raus.push({ id: ereignisKennung('crm', 'kampagne', x.id, 'firma', r.firmaId, r.ergebnis, r.am), art: 'kampagnen-ergebnis', quelle: 'crm', stufe: r.ergebnis, bereich: 'business', bezug: { kampagneId: x.id, firmaId: r.firmaId } });
     }
   }
   return raus;

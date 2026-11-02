@@ -445,6 +445,8 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Einträge der Person zählen in der Auskunft (weitere Speicher, person-weitere.ts); gesendete Mails stehen zusätzlich als Aktivität (Betreff) in der Akte',
     loeschfrist: 'Gesendet, verworfen, gesperrt, unzustellbar oder gedruckt: 12 Monate nach der letzten Änderung (Motor-Lauf `postAufraeumen`); Entwürfe, solange die Kampagne läuft',
   }),
+  K('prozesse-motor-lauf', 'Herzschlag des Lauf-Motors der Prozesse (R2-2 Fund 4, 02.11., lib/prozesse/lauf-server.ts `prozesseImTakt`): Zeit des letzten Takts, Fehler in Folge, Fehler je Ereignis bzw. Lauf, wegen Alter übersprungene Ereignisse je Tag, Zahlen des Takts und ein Fingerabdruck des Stands von Kartei/CRM — nur Zeiten und Zähler, keine Personen, keine Inhalte. HOI-Befund „Prozess-Motor“.'),
+  K('lead-mql-stand', 'Letzter Blick „Lead wird MQL“ (R2-2 Fund 7, 02.11., lib/ereignisse/quellen.ts `mqlBlick`): nur nicht umkehrbare Fingerabdrücke der Lead-Kennungen, die MQL sind, und die Zeit — damit ein Neustart keinen Wechsel verschluckt. Keine Kennungen, Namen oder Inhalte.'),
   K('kampagnen-motor-lauf', 'Herzschlag des Kampagnen-Motors (B-Prüfung, 02.11., lib/crm/kampagnen-motor.ts `motorImTakt`): Zeit des letzten Laufs und je Teil der letzte gute Lauf bzw. die Fehler in Folge — nur Zeiten und Zähler, keine Personen, keine Inhalte. HOI-Befund „Kampagnen-Motor“.'),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
@@ -1005,7 +1007,7 @@ const IN_PRIVAT: readonly string[] = [
 ];
 const IN_BUSINESS: readonly string[] = [
   // Kampagne „Homepage“ und Kampagnen-Motor (31.10./01.11.): Funde und Mail-Stapel gehören zur Kundengewinnung.
-  'kampagne-funde--*', 'kampagnen-post--*', 'kampagnen-motor-lauf',
+  'kampagne-funde--*', 'kampagnen-post--*', 'kampagnen-motor-lauf', 'prozesse-motor-lauf', 'lead-mql-stand',
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
