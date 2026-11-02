@@ -149,6 +149,27 @@ describe('Sammel-Import (Datei): Vorschau je Vorlage, nur neue, nie überschreib
     expect(r.arten.map(a => a.id)).toEqual(['x-kooperation']);
     expect(r.neu.map(v => v.titel)).toEqual(['Zweite', 'Eigene']);
   });
+  it('`pruefung.geprueftAm` aus der Datei → Prüfvermerk über pruefungSetzen (von = importierende Person); ohne → ungeprüft; falsches Datum → Fehler', () => {
+    const r = sammelPruefen(datei([
+      { ...vorlageRoh, titel: 'Geprüft', pruefung: { geprueftAm: '2026-03-04' } },
+      { ...vorlageRoh, titel: 'Mit Notiz', pruefung: { geprueftAm: '2026-03-05', notiz: 'Kanzlei-Stand März' } },
+      { ...vorlageRoh, titel: 'Ohne' },
+      { ...vorlageRoh, titel: 'Kaputt', pruefung: { geprueftAm: '04.03.2026' } },
+    ]), { vorlagen: [] }, b);
+    expect(r.vorschau.zeilen.map(z => z.zustand)).toEqual(['neu', 'neu', 'neu', 'fehler']);
+    expect(r.vorschau.zeilen[0].geprueftAm).toBe('2026-03-04');
+    expect(r.vorschau.zeilen[3].fehler.join(' ')).toMatch(/Prüfung/);
+    const [g, n, o] = r.neu;
+    expect(g.pruefung).toMatchObject({ anwaltlichGeprueftAm: '2026-03-04', von: 'person-a', notiz: 'beim Import als geprüft übernommen' });
+    expect(vorlageAmpel(g).stufe).toBe('geprueft');
+    expect(n.pruefung.notiz).toBe('Kanzlei-Stand März');
+    expect(o.pruefung).toEqual({});
+    // Eine vorhandene Vorlage gleichen Titels wird nie angefasst — auch nicht ihr Prüfvermerk.
+    const vorhanden = vorlageSaeubern({ ...vorlageRoh, titel: 'Geprüft' }, null, basis).v!;
+    const r2 = sammelPruefen(datei([{ ...vorlageRoh, titel: 'Geprüft', pruefung: { geprueftAm: '2026-03-04' } }]), { vorlagen: [vorhanden] }, b);
+    expect(r2.vorschau.zeilen[0].zustand).toBe('vorhanden');
+    expect(r2.neu).toEqual([]);
+  });
   it('falsches Format → Fehler; mehr als 200 Paragraphen → Fehler der Vorlage; Datei > 2 MB → 413', () => {
     expect(() => sammelPruefen({ format: 'anders', version: 1, vorlagen: [] }, { vorlagen: [] }, b)).toThrow(/Format/);
     const viele = Array.from({ length: 201 }, (_, i) => ({ nr: `§ ${i + 1}`, titel: 't', text: 'x' }));
@@ -270,7 +291,7 @@ describe('Route: Nummer, festgeschrieben, Version, unterschrieben, Rechte', () =
     const url = 'http://test/api/vertraege/vorlagen/sammel';
     const inhalt = JSON.stringify({ format: 'make-os-vertragsvorlagen', version: 1, vorlagen: [
       { ...vorlageRoh, titel: 'Sammel A', pruefung: { anwaltlichGeprueftAm: '2026-01-01' } },
-      { titel: 'Sammel B', art: 'nda', paragraphen: [{ nr: '§ 1', titel: 'Zweck', text: 'Für {{partner.name}}.' }] },
+      { titel: 'Sammel B', art: 'nda', paragraphen: [{ nr: '§ 1', titel: 'Zweck', text: 'Für {{partner.name}}.' }], pruefung: { geprueftAm: '2026-02-02' } },
       { titel: 'Sammel C', art: 'nda', paragraphen: [{ nr: '§ 1', titel: 'x', text: '{{erfunden}}' }] },
     ] });
     const vorher = await db.loadJson('vertrag-vorlagen--haus');
@@ -285,6 +306,8 @@ describe('Route: Nummer, festgeschrieben, Version, unterschrieben, Rechte', () =
     const nach = await db.loadJson<{ vorlagen: VertragVorlage[] }>('vertrag-vorlagen--haus');
     const a = nach!.vorlagen.find(x => x.titel === 'Sammel A')!;
     expect(a.pruefung).toEqual({});
+    // Prüfvermerk aus der Datei: gesetzt mit der importierenden Person der Sitzung
+    expect(nach!.vorlagen.find(x => x.titel === 'Sammel B')!.pruefung).toMatchObject({ anwaltlichGeprueftAm: '2026-02-02', von: 'person-a', notiz: 'beim Import als geprüft übernommen' });
     expect(nach!.vorlagen.some(x => x.titel === 'Sammel C')).toBe(false);
     const zweit = await post(sammel, { aktion: 'uebernehmen', inhalt }, 'person-a', url);
     expect(zweit.d.uebernommen).toEqual([]);

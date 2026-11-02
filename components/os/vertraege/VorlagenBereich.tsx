@@ -109,7 +109,7 @@ function SammelKarte({ onSchliessen, onFertig }: { onSchliessen: () => void; onF
           <div style={klein}>{vorschau.neu} neu · {vorschau.vorhanden} gibt es schon · {vorschau.fehlerhaft} mit Fehlern{vorschau.neueArten.length ? ` · neue Arten: ${vorschau.neueArten.map(a => a.label).join(', ')}` : ''}</div>
           <Liste>
             {vorschau.zeilen.map(z => (
-              <Zeile key={z.nr} titel={z.titel || `Vorlage ${z.nr}`} unter={[`${z.artLabel} · ${z.paragraphen} Paragraphen · ${z.felder} Felder`, ...z.fehler].join(' · ')}
+              <Zeile key={z.nr} titel={z.titel || `Vorlage ${z.nr}`} unter={[`${z.artLabel} · ${z.paragraphen} Paragraphen · ${z.felder} Felder`, ...(z.geprueftAm ? [`als geprüft übernommen (${z.geprueftAm.split('-').reverse().join('.')})`] : []), ...z.fehler].join(' · ')}
                 rechts={<Chip farbe={ZUSTAND[z.zustand].farbe}>{ZUSTAND[z.zustand].label}</Chip>} />
             ))}
           </Liste>

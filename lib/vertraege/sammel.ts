@@ -1,13 +1,15 @@
 // ─── Verträge · Sammel-Import von Vorlagen aus einer JSON-Datei (rein, client-sicher, 01.11.) ─────────────────────────────
 // Unternehmen › Verträge › Vorlagen › „Vorlagen importieren (Datei)“. Format:
-//   { format: 'make-os-vertragsvorlagen', version: 1, arten?: [{ label }], vorlagen: [{ titel, art, fassung?, sprache?, anrede?, paragraphen, felder?, notiz? }] }
-// Kennung, Stand, Prüfvermerk, Archiv, Startgerüst und Zeitstempel setzt der Server — aus der Datei wird davon NICHTS übernommen; jede
-// importierte Vorlage startet „ungeprüft“. Säuberung und Platzhalter-Prüfung über `vorlageSaeubern` (dieselben Regeln wie Speichern).
+//   { format: 'make-os-vertragsvorlagen', version: 1, arten?: [{ label }], vorlagen: [{ titel, art, fassung?, sprache?, anrede?, paragraphen, felder?, notiz?,
+//     pruefung?: { geprueftAm: 'JJJJ-MM-TT', notiz? } }] }
+// Kennung, Stand, Archiv, Startgerüst und Zeitstempel setzt der Server — aus der Datei wird davon NICHTS übernommen. Ohne `pruefung` startet jede
+// importierte Vorlage „ungeprüft“; mit `pruefung` setzt der Server den Prüfvermerk über `pruefungSetzen` (von = die importierende Person der Sitzung,
+// Fassung = die importierten Paragraphen) — nur für NEUE Vorlagen (vorhandene werden nie angefasst). Säuberung und Platzhalter-Prüfung über `vorlageSaeubern` (dieselben Regeln wie Speichern).
 // Übernommen wird nur, was es mit diesem Titel UND dieser Art noch nicht gibt (nie überschreiben, auch nicht archivierte). Die Vorschau und die
 // Übernahme rechnen mit DERSELBEN Funktion — die Übernahme in der Schreibsperre gegen den dann aktuellen Bestand.
 // Der Inhalt der Datei ist Text Dritter: nur gelesen, gesäubert und angezeigt.
 
-import { VERTRAG_GRENZEN, vorlageSaeubern, eigeneArtAus, artLabel, istFesteArt, type VertragVorlage, type VorlagenDatei, type EigeneArt } from './modell';
+import { VERTRAG_GRENZEN, vorlageSaeubern, eigeneArtAus, artLabel, istFesteArt, pruefungSetzen, type VertragVorlage, type VorlagenDatei, type EigeneArt } from './modell';
 
 export const SAMMEL_FORMAT = 'make-os-vertragsvorlagen';
 export const SAMMEL_VERSION = 1;
@@ -16,9 +18,11 @@ export const SAMMEL_MAX_BYTES = 2 * 1024 * 1024;
 const EIGENE_ARTEN_MAX = 40;
 /** Felder einer Vorlage, die aus der Datei kommen dürfen — alles andere setzt der Server. */
 const ERLAUBT = ['titel', 'art', 'fassung', 'sprache', 'anrede', 'paragraphen', 'felder', 'notiz'] as const;
+/** Vermerk, wenn die Datei keinen eigenen Satz zur Prüfung mitbringt. */
+export const SAMMEL_PRUEF_NOTIZ = 'beim Import als geprüft übernommen';
 
 export type SammelZustand = 'neu' | 'vorhanden' | 'doppelt' | 'fehler';
-export interface SammelZeile { nr: number; titel: string; art: string; artLabel: string; paragraphen: number; felder: number; zustand: SammelZustand; fehler: string[] }
+export interface SammelZeile { nr: number; titel: string; art: string; artLabel: string; paragraphen: number; felder: number; zustand: SammelZustand; fehler: string[]; geprueftAm?: string }
 export interface SammelVorschau { zeilen: SammelZeile[]; neu: number; vorhanden: number; fehlerhaft: number; neueArten: EigeneArt[] }
 export class SammelFormatFehler extends Error { constructor(msg: string, readonly status: 400 | 413 = 400) { super(msg); } }
 
@@ -72,12 +76,24 @@ export function sammelPruefen(roh: unknown, bestand: VorlagenDatei, basis: { jet
     if (!istFesteArt(art) && !alleArten.some(a => a.id === art)) z.fehler.push(`Unbekannte Art „${art || '—'}“ — eine feste Art nehmen oder unter „arten“ anlegen.`);
     const r = vorlageSaeubern(nurErlaubt, null, { id: basis.neueId(i), jetzt: basis.jetzt, person: basis.person, eigeneArten: alleArten });
     for (const f of r.fehler) if (!z.fehler.includes(f.text) && !/^Unbekannte Art/.test(f.text)) z.fehler.push(f.text);
+    // Prüfvermerk aus der Datei (optional): nur Datum + Notiz, gesetzt über dieselbe Regel wie von Hand.
+    let geprueft: VertragVorlage | null = null;
+    // Ohne `geprueftAm` (auch: fremde Felder wie ein eigener Prüfstempel) bleibt die Vorlage ungeprüft — nur dieses Feld zählt.
+    const pr = (q.pruefung && typeof q.pruefung === 'object' && !Array.isArray(q.pruefung) ? q.pruefung : null) as Record<string, unknown> | null;
+    if (pr && pr.geprueftAm !== undefined && r.v) {
+      {
+        const notiz = typeof pr.notiz === 'string' && pr.notiz.trim() ? pr.notiz : SAMMEL_PRUEF_NOTIZ;
+        const g = pruefungSetzen(r.v, { am: pr.geprueftAm, notiz, von: basis.person });
+        if ('text' in g) z.fehler.push(`Prüfung: ${g.text}`);
+        else { geprueft = g; z.geprueftAm = g.pruefung.anwaltlichGeprueftAm; }
+      }
+    }
     if (z.fehler.length || !r.v) { zeilen.push(z); return; }
     const schluessel = sammelSchluessel(r.v.titel, r.v.art);
     if (vergeben.has(schluessel)) z.zustand = 'vorhanden';
     else if (inDatei.has(schluessel)) z.zustand = 'doppelt';
     else if (platz <= 0) z.fehler.push(`Höchstens ${VERTRAG_GRENZEN.vorlagen} Vorlagen insgesamt.`);
-    else { z.zustand = 'neu'; platz--; neu.push({ ...r.v, pruefung: {} }); }
+    else { z.zustand = 'neu'; platz--; neu.push(geprueft ?? { ...r.v, pruefung: {} }); }
     inDatei.add(schluessel);
     zeilen.push(z);
   });
