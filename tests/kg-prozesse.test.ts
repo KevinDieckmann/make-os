@@ -226,5 +226,5 @@ describe('Fund 8 · deal-stufe trägt den Tag', () => {
 });
 
 describe('Neuigkeit', () => {
-  it('u-2026-11-02-16 steht ganz oben', () => { expect(NEUIGKEITEN[0].id).toBe('u-2026-11-02-16'); });
+  it('u-2026-11-02-16 steht vor den älteren Einträgen', () => { const i = NEUIGKEITEN.findIndex(n => n.id === 'u-2026-11-02-16'); expect(i).toBeGreaterThanOrEqual(0); expect(NEUIGKEITEN.findIndex(n => n.id === 'u-2026-11-02-15')).toBeGreaterThan(i); });
 });

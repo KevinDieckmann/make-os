@@ -273,8 +273,11 @@ describe('Fund 7 — Buchungsfreigabe setzt den Lead der Firma', () => {
 describe('Neuigkeit', () => {
   it('steht oben, neutral, nur Business', async () => {
     const { NEUIGKEITEN } = await import('@/lib/neuigkeiten/eintraege');
-    expect(NEUIGKEITEN[0].id).toBe('u-2026-11-02-17');
-    expect(JSON.stringify(NEUIGKEITEN[0])).not.toMatch(/Malin|Kevin/);
-    expect(NEUIGKEITEN[0].abschnitte.flatMap(a => a.punkte).every(p => p.bereich === 'business')).toBe(true);
+    // Per Kennung (spätere Updates stehen darüber), vor den älteren Einträgen desselben Tages.
+    const i = NEUIGKEITEN.findIndex(n => n.id === 'u-2026-11-02-17');
+    expect(i).toBeGreaterThanOrEqual(0);
+    expect(NEUIGKEITEN.findIndex(n => n.id === 'u-2026-11-02-16')).toBeGreaterThan(i);
+    expect(JSON.stringify(NEUIGKEITEN[i])).not.toMatch(/Malin|Kevin/);
+    expect(NEUIGKEITEN[i].abschnitte.flatMap(a => a.punkte).every(p => p.bereich === 'business')).toBe(true);
   });
 });
