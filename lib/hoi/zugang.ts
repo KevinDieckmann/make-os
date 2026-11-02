@@ -14,3 +14,11 @@ export async function hoiSehen(req: Request): Promise<boolean> {
   // Unlesbare Konten → wie „nur Business“ (fail-closed).
   return !(await privatAusgeblendetFuer(z.person).catch(() => true));
 }
+
+/**
+ * Sieht diese PERSON den Head of IT? (02.11., Gegenprüfung R2-4 Fund 13) — dieselbe Regel wie `hoiSehen`, für Server-Wege ohne Anfrage (Glocken mit
+ * Link auf den HOI): volles Mitglied im Haushalt des Inhabers, nie „nur Business“. Unlesbar → nein (fail-closed).
+ */
+export async function hoiSiehtPerson(person: string): Promise<boolean> {
+  return !(await privatAusgeblendetFuer(person).catch(() => true));
+}

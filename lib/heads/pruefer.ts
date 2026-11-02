@@ -18,18 +18,24 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import type { CrmBestand } from '@/lib/crm/typen';
 import { kanalStatus, type Kanal } from '@/lib/crm/recht';
 import { pruefeText } from '@/lib/finanzen/chef/pruefung';
-import { ARTEN, SIGNAL_TYPEN, verbotenMuster, type HeadId } from './prompt';
+import { ARTEN, SIGNAL_TYPEN, PERSON_KANAELE, INHALT_KANAELE, verbotenMuster, type HeadId } from './prompt';
 import { PLAYBOOKS } from '@/lib/crm/kampagnen';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 
 import { localDay } from '@/lib/zeit';
 const PLAYBOOK_IDS = new Set([...PLAYBOOKS.map(p => p.id), 'eigen']);
 
+export { PERSON_KANAELE, INHALT_KANAELE };
+export type EntwurfKanal = typeof PERSON_KANAELE[number] | typeof INHALT_KANAELE[number];
+export const istInhaltKanal = (k: unknown): k is typeof INHALT_KANAELE[number] => (INHALT_KANAELE as readonly unknown[]).includes(k);
+/** Inhalts-Entwürfe dürfen länger sein als eine Nachricht an eine Person (90 Wörter). */
+export const INHALT_WOERTER_MAX = 250;
+
 export interface Vorschlag {
   art: string; titel: string; begruendung: string;
   kontakt_id: string | null; chance_id: string | null; mandat_id: string | null; event_id: string | null;
   frist: string | null; prioritaet: 'hoch' | 'mittel' | 'niedrig'; dedup_schluessel: string; quelle: string[];
-  entwurf: { kanal: 'mail' | 'linkedin' | 'telefon' | 'vernetzen' | 'persoenlich'; text: string } | null;
+  entwurf: { kanal: EntwurfKanal; text: string } | null;
   /** Nur bei art „kampagne_planen“: Playbook, Name, Ziel und die ausgewählten Personen. */
   kampagne?: { playbook: string; name: string; ziel: string; kontakt_ids: string[] } | null;
   /** Das datierte Warum-jetzt (Pflicht für Priorität „hoch“, außer bei Frist/Zusage/Pflicht). */
@@ -42,6 +48,13 @@ export interface Vorschlag {
   maengel?: string[];
   /** Wer es tun soll — vom Code gesetzt (Beziehung/Zuständigkeit, sonst Verantwortung der Welt). */
   fuer?: string;
+  /** Säule des Redaktionsplans (Kennung aus "positionierung.saeulen") — nur Beitrag/Newsletter (02.11., M2). */
+  saeule?: string | null;
+  /**
+   * Inhalt eines Beitrags/Newsletters (02.11., M2 K1) — setzt nur der CODE (Grundlauf bzw. Lauf aus den Quellen), nie das Modell: Titel und
+   * Ideen-Text (Kundenstimme), Kennungen der Personen, aus deren Gesprächen das Thema stammt („quellen“ des Beitrags, nie im Text genannt).
+   */
+  inhalt?: { titel?: string; text?: string; quellen?: string[] };
 }
 export interface Antwort { status: 'ruhig' | 'beobachten' | 'handeln'; zusammenfassung: string; befunde: { titel: string; text: string; quelle: string[] }[]; vorschlaege: Vorschlag[]; fragen: string[]; datenluecken: string[]; antwort: string; /** Grundlauf-Vorschläge, die das Modell bewusst verworfen hat — mit Grund. */ verworfen?: { dedup_schluessel: string; grund: string }[] }
 export interface Pruefung { gestrichen: { titel: string; grund: string }[]; unbelegt: string[]; verstoesse: string[]; geprueft: number; /** Qualitätsmängel je Vorschlag (Titel → Mängel). */ maengel?: { titel: string; maengel: string[] }[] }
@@ -57,7 +70,7 @@ export function normalisiere(roh: unknown, head: HeadId): Antwort {
   const vorschlaege = liste(o.vorschlaege).slice(0, 6).map(x => {
     const v = (x ?? {}) as Record<string, unknown>;
     const e = v.entwurf && typeof v.entwurf === 'object' ? v.entwurf as Record<string, unknown> : null;
-    const kanal = ['mail', 'linkedin', 'telefon', 'vernetzen', 'persoenlich'].includes(String(e?.kanal)) ? String(e!.kanal) as NonNullable<Vorschlag['entwurf']>['kanal'] : null;
+    const kanal = ([...PERSON_KANAELE, ...INHALT_KANAELE] as readonly string[]).includes(String(e?.kanal)) ? String(e!.kanal) as EntwurfKanal : null;
     return {
       // Unbekannte Art → neutrale Handlung der Welt (nie „merken“: ein Merksatz entsteht nur ausdrücklich).
       art: ARTEN[head].includes(String(v.art)) ? String(v.art) : ({ sales: 'daten_pflegen', marketing: 'positionierung_schaerfen', event: 'ziel_schaerfen' } as const)[head],
@@ -68,6 +81,7 @@ export function normalisiere(roh: unknown, head: HeadId): Antwort {
       entwurf: e && kanal && s(e.text, 1500) ? { kanal, text: s(e.text, 1500) } : null,
       signal: v.signal && typeof v.signal === 'object' ? (() => { const g = v.signal as Record<string, unknown>; return { typ: (SIGNAL_TYPEN as readonly string[]).includes(String(g.typ)) ? g.typ as typeof SIGNAL_TYPEN[number] : 'sonstiges', datum: tag(g.datum), text: s(g.text, 200) }; })() : null,
       kampagne: v.kampagne && typeof v.kampagne === 'object' ? (() => { const kp = v.kampagne as Record<string, unknown>; return { playbook: s(kp.playbook, 40), name: s(kp.name, 160), ziel: s(kp.ziel, 400), kontakt_ids: liste(kp.kontakt_ids).map(x => s(x, 80)).filter(Boolean).slice(0, 40) }; })() : null,
+      ...(typeof v.saeule === 'string' && /^[a-z0-9][a-z0-9-]{0,59}$/.test(v.saeule.trim()) ? { saeule: v.saeule.trim() } : {}),
     } as Vorschlag;
   }).filter(v => v.titel);
   return {
@@ -111,10 +125,15 @@ export function qualitaet(v: Vorschlag, k: Kontakt | undefined, heute: string): 
     const t = v.entwurf.text;
     if (PLATZHALTER.test(t)) { m.push('Platzhalter im Entwurf'); weg = true; }
     if (VERBOTEN.test(t)) { m.push('verbotenes Wort im Entwurf'); weg = true; }
-    if (woerter(t) > 90) m.push(`Entwurf zu lang (${woerter(t)} Wörter, höchstens 90)`);
-    const anrede = k?.anrede ?? 'Sie';
-    if (anrede === 'Sie' && DU.test(t)) { m.push('Anrede falsch: Du statt Sie'); weg = true; }
-    if (anrede === 'Du' && SIE_FORMELL.test(t)) { m.push('Anrede falsch: Sie statt Du'); weg = true; }
+    // Inhalts-Entwurf (Beitrag, Newsletter — 02.11., M2): geht an keine Person — Länge großzügiger, Anrede laut Ton der Marke (keine Personen-Anrede).
+    const inhalt = istInhaltKanal(v.entwurf.kanal);
+    const max = inhalt ? INHALT_WOERTER_MAX : 90;
+    if (woerter(t) > max) m.push(`Entwurf zu lang (${woerter(t)} Wörter, höchstens ${max})`);
+    if (!inhalt) {
+      const anrede = k?.anrede ?? 'Sie';
+      if (anrede === 'Sie' && DU.test(t)) { m.push('Anrede falsch: Du statt Sie'); weg = true; }
+      if (anrede === 'Du' && SIE_FORMELL.test(t)) { m.push('Anrede falsch: Sie statt Du'); weg = true; }
+    }
   }
   return { maengel: m, entwurfUnbrauchbar: weg };
 }
@@ -136,11 +155,13 @@ export function pruefe(a: Antwort, daten: unknown, kontakte: Kontakt[], crm: Crm
       if (!k) return weg('Person gibt es nicht');
       if (k.eingeschraenkt) return weg('Verarbeitung der Person ist eingeschränkt (Art. 18)');
       if (k.werbesperre) return weg('Person hat eine Werbesperre');
-      if (v.entwurf && v.entwurf.kanal !== 'persoenlich') {
+      if (v.entwurf && v.entwurf.kanal !== 'persoenlich' && !istInhaltKanal(v.entwurf.kanal)) {
         const st = kanalStatus(k, v.entwurf.kanal as Kanal, { hatMandat: mandatJe.has(k.id), hatChance: crm.chancen.some(c => c.kontaktIds.includes(k.id)) });
         if (st.farbe === 'rot') return weg(`Kanal ${v.entwurf.kanal} nicht zulässig: ${st.grund}`);
       }
-    } else if (v.entwurf && v.entwurf.kanal !== 'persoenlich') return weg('Entwurf ohne Person');
+    } else if (v.entwurf && v.entwurf.kanal !== 'persoenlich' && !istInhaltKanal(v.entwurf.kanal)) return weg('Entwurf ohne Person');
+    // Inhalts-Entwurf nur bei Inhalts-Arten (Beitrag, Newsletter) — sonst wäre es ein Text an eine Person über einen Kanal ohne Ampel.
+    if (v.entwurf && istInhaltKanal(v.entwurf.kanal) && v.art !== 'beitrag_entwurf' && v.art !== 'newsletter_ausgabe') return weg(`Kanal ${v.entwurf.kanal} nur für Beitrag oder Newsletter`);
     if (v.kampagne) {
       if (!PLAYBOOK_IDS.has(v.kampagne.playbook) && !paketPlaybooks.has(v.kampagne.playbook)) return weg(`unbekanntes Vorgehen „${v.kampagne.playbook}“`);
       // Nur echte, nicht gesperrte Personen — Rest still aussortieren.

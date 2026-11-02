@@ -3,7 +3,7 @@
 // ─── Fulfillment · Fall › Kunde (C2, 10.10.; 12.10. neu gezeichnet; seit 17.10. „eine Karte je Sache“ — FULFILLMENT_KONZEPT.md 5.2, 5.4, 5.5) ──────────────
 // Die INTERNE Steuerung dessen, was beim Kunden ankommt und was zurückkommt. Rückmeldung 17.10.: „Es dupliziert sich — lieber wenig und klar.“ Seitdem ohne
 // eigene Lage-Kacheln oben (die Ampel steht im Kopf des Falls, „Dem Kunden zeigen“ dort als EIN Knopf) — nur noch je Sache eine Karte:
-//   1. Kunden-Link (Schalter der Instanz — nur Inhaber —, anlegen; verlängern/neu/widerrufen/Rechte hinter „⋯“).
+//   1. Kunden-Link (Schalter der Instanz — Inhaber und volle Mitglieder (`darfSteuern`, 02.11.) —, anlegen; verlängern/neu/widerrufen/Rechte hinter „⋯“).
 //   2. Playbook & Formulare (gemeinsam ausfüllen, exportieren — das Playbook gehört dem Kunden).
 //   3. Unterlagen (ungeprüft → freigegeben/gesperrt, Beleg, nur als Download).
 //   4. Fortschritts-Report: die Zeitachse im Zwei-Wochen-Takt (erstellte Reports, Soll-Termine, nächster fälliger Tag) und der Report-Weg der
@@ -222,7 +222,7 @@ function LinkKarte({ s, tun, frisch, setFrisch, setMeldung, bestaetigen, voll }:
     <Karte i={3} id="kunde-link">
       <Ueberschrift erklaerung="fulfillment.kundenLink" rechts={<span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Chip farbe={l?.status === 'aktiv' ? STATUS_FARBE.aktiv : s.schalter.an ? C.inkDim : C.inkLeise}>{l ? l.status : s.schalter.an ? 'kein Link' : s.schalter.grund === 'betrieb' ? 'aus (Betrieb)' : 'aus'}</Chip><MehrKnopf titel="Kunden-Link" mehr={mehr} /></span>}>Kunden-Link</Ueberschrift>
       <Schalter an={s.schalter.instanz} onChange={an => void tun({ aktion: 'schalter', an }, an ? 'Kunden-Link für diese Instanz eingeschaltet.' : 'Kunden-Link ausgeschaltet — alle Links antworten „nicht gültig“.')} erklaerung="fulfillment.kundenLink">
-        Kunden-Link der Instanz (nur Inhaber)
+        Kunden-Link der Instanz (Inhaber und volle Mitglieder)
       </Schalter>
       {!s.schalter.umgebung && <Hinweis art="info">Auf dieser Instanz ist der Kunden-Link noch aus. Einschalten kann ihn der Betreiber eurer Instanz nach der Prüfung; bis dahin antwortet jeder Link „nicht gültig“. „Dem Kunden zeigen“ und die Vorschau funktionieren trotzdem.</Hinweis>}
       {!s.fall && <Hinweis art="achtung">Für dieses Mandat läuft noch kein Fall. Der Kunden-Link zeigt den Stand des Falls — erst den Fall starten (Reiter „Reise“ dieses Mandats bzw. <Link href={WEG.fulfillment()} style={{ color: C.aktiv }}>Heute im Fulfillment</Link>).</Hinweis>}
@@ -232,7 +232,7 @@ function LinkKarte({ s, tun, frisch, setFrisch, setMeldung, bestaetigen, voll }:
         <div style={{ display: 'grid', gap: 8 }}>
           <div style={klein}>{s.verlauf.length ? `Kein aktiver Link (zuletzt: ${s.verlauf[0].status}).` : 'Noch kein Link für dieses Mandat.'} Ein neuer Link gilt 90 Tage; die Adresse seht ihr genau einmal.</div>
           {/* Abnahme C15: „Link anlegen“ war grau ohne Grund — jetzt steht dabei, was fehlt und wer es einschaltet. */}
-          {s.fall && !s.schalter.instanz && s.schalter.umgebung && <Hinweis art="info" titel="Erst den Kunden-Link einschalten">Der Schalter „Kunden-Link der Instanz“ (oben) ist aus — einschalten kann ihn nur die Inhaberin bzw. der Inhaber. Danach legt ihr hier den Link an. Bis dahin zeigen „Vorschau hier“ und „Dem Kunden zeigen“ dieselbe Seite.</Hinweis>}
+          {s.fall && !s.schalter.instanz && s.schalter.umgebung && <Hinweis art="info" titel="Erst den Kunden-Link einschalten">Der Schalter „Kunden-Link der Instanz“ (oben) ist aus — einschalten können Inhaber und volle Mitglieder des Haushalts. Danach legt ihr hier den Link an. Bis dahin zeigen „Vorschau hier“ und „Dem Kunden zeigen“ dieselbe Seite.</Hinweis>}
           <div><Knopf aus={!s.schalter.an || !s.fall} onClick={neu}>Link anlegen</Knopf></div>
         </div>
       )}

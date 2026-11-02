@@ -262,7 +262,9 @@ describe('Annehmen: Deal folgt im Titel nur, wenn er automatisch war — Mandat 
     const mandat = (await crm()).mandate.find(x => x.chanceId === 'ch-va')!;
     expect(mandat.titel).toBe('Atlas Beispiel GmbH · Strategie-Workshop');
     const { entwurfNeu } = await import('@/lib/finanzen/rechnung/server');
-    const r = await entwurfNeu({ person: 'kevin', haushalt: 'test-haus', sicht: 'privat', quelle: 'mandat', mandatId: mandat.id, monat: localDay().slice(0, 7) });
+    // 02.11. (R2-3 Fund 6): das automatische Mandat beginnt wie von Hand am Ersten des Folgemonats — die erste Rechnung ist für dessen Monat.
+    expect(mandat.start! > localDay()).toBe(true);
+    const r = await entwurfNeu({ person: 'kevin', haushalt: 'test-haus', sicht: 'privat', quelle: 'mandat', mandatId: mandat.id, monat: mandat.start!.slice(0, 7) });
     expect(r.rechnung.positionen![0].titel).toMatch(/^Atlas Beispiel GmbH · Strategie-Workshop/);
     expect(JSON.stringify(r.rechnung)).not.toContain('Vertriebsaufbau');
   });

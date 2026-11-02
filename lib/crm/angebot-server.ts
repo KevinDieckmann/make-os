@@ -25,13 +25,13 @@ import type { Wer } from '@/lib/store/aenderungsprotokoll';
 import type { Angebot, Chance, CrmBestand, FollowUp } from './typen';
 import { ladeCrm, aendereCrm, aendereCrmAsync } from './speicher';
 import { standVon } from './crm-stand';
-import { OFFENE_STUFEN, STUFEN, wechsleStufe } from './pipeline';
+import { OFFENE_STUFEN, STUFEN, wechsleStufe, verlustWiedervorlage } from './pipeline';
 import { dealAnlegen } from './deal-anlegen';
 import { wer, BEIDE, verantwortlich } from './team';
 import { phaseHeben } from './lifecycle';
 import { kanalStatus } from './recht';
 import {
-  ablaufen, ablaufFollowUps, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat, produktTexteFuer,
+  ablaufen, ablaufFollowUps, angebotEntwurfFollowupId, angebotFollowupsSchliessen, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat, produktTexteFuer,
   stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
   angebotHauptprodukt, dealProduktAnders, dealFrageText, dealTitelNachAngebot, angebotPlatzhalterFuellen, angebotPlatzhalterWerte, zahlweisePruefen,
 } from './angebote';
@@ -112,7 +112,8 @@ export async function angebotLoeschen(p: { id: string; stand?: unknown; wer?: We
       // Sicher statt endgültig (04.10.): erst in den Papierkorb (`angebotAblage`), endgültig nur von dort.
       if (!a.geloeschtAm) throw new AngebotFehler(`„${a.titel || 'Entwurf'}“ liegt nicht im Papierkorb — Löschen legt einen Entwurf erst in den Papierkorb (30 Tage wiederherstellbar), endgültig nur von dort.`, 409, { aktuell: mitStand(a) });
       standPruefen(a, p.stand);
-      return { ...b, angebote: b.angebote.filter(x => x.id !== p.id) };
+      // R2-1 Fund 3: ein offenes „Angebot fertigstellen“ fällt mit dem Entwurf weg (abgesagt, nicht gelöscht).
+      return { ...b, angebote: b.angebote.filter(x => x.id !== p.id), followups: angebotFollowupsSchliessen(b.followups ?? [], [p.id], { status: 'abgesagt', ergebnis: 'Entwurf gelöscht', jetzt: new Date().toISOString(), person: p.wer?.person ?? 'system', nurEntwurf: true }) };
     } catch (e) { fehler = e as AngebotFehler; return b; }
   }, p.wer);
   if (fehler) throw fehler;
@@ -136,12 +137,19 @@ export async function angebotAblage(p: { id: string; art: 'archiv' | 'papierkorb
       if (p.art === 'papierkorb' && !p.zurueck && !istEntwurf(a)) throw new AngebotFehler('Gestellte Angebote kommen nicht in den Papierkorb (Geschäftsunterlage) — archivieren blendet sie aus der Liste aus.', 409, { aktuell: mitStand(a) });
       const neu: Angebot = p.zurueck ? (({ [feld]: _weg, ...rest }) => rest as Angebot)(a) : { ...a, [feld]: a[feld] ?? jetzt };
       ergebnis = neu;
-      return neu === a ? b : { ...b, angebote: b.angebote.map(x => (x.id === a.id ? neu : x)) };
+      if (neu === a) return b;
+      // R2-1 Fund 3: „Angebot fertigstellen“ ruht, solange der Entwurf im Papierkorb liegt — zurückgeholt ist es wieder offen.
+      let followups = b.followups ?? [];
+      if (p.art === 'papierkorb' && !p.zurueck) followups = angebotFollowupsSchliessen(followups, [a.id], { status: 'abgesagt', ergebnis: ENTWURF_PAPIERKORB, jetzt, person: p.wer?.person ?? 'system', nurEntwurf: true });
+      if (p.art === 'papierkorb' && p.zurueck) followups = followups.map(f => (f.id === angebotEntwurfFollowupId(a.id) && f.status === 'abgesagt' && f.ergebnis === ENTWURF_PAPIERKORB ? { ...f, status: 'offen' as const, ergebnis: undefined, geaendert: jetzt, geaendertVon: p.wer?.person ?? 'system' } : f));
+      return { ...b, angebote: b.angebote.map(x => (x.id === a.id ? neu : x)), ...(followups !== (b.followups ?? []) ? { followups } : {}) };
     } catch (e) { fehler = e as AngebotFehler; return b; }
   }, p.wer);
   if (fehler) throw fehler;
   return ergebnis!;
 }
+/** Ergebnis am „Angebot fertigstellen“, solange der Entwurf im Papierkorb liegt (zurückgeholt → wieder offen). */
+const ENTWURF_PAPIERKORB = 'Entwurf im Papierkorb';
 
 /** Neue Version: Entwurf mit Bezug auf das gestellte Angebot. Gibt es schon einen offenen Nachfolge-Entwurf, kommt der zurück. */
 export async function angebotVersion(p: { id: string; person: string; haushalt?: string | null; wer?: Wer; jetzt?: Date }): Promise<Angebot> {
@@ -198,7 +206,9 @@ export async function ablaufNachziehen(jetzt = new Date()): Promise<number> {
     const neu = new Set(r.ids);
     abgelaufen = r.liste.filter(a => neu.has(a.id));
     const deals = new Map(b.chancen.map(c => [c.id, c]));
-    const followups = ablaufFollowUps(b.followups ?? [], r.liste.filter(a => neu.has(a.id)), {
+    // Ein Angebot an einem entschiedenen Deal (gewonnen, verloren, geparkt — 02.11., Prüfung C) bekommt kein „nachfassen oder Version 2“ mehr.
+    const entschieden = (a: Angebot) => { const c = a.dealId ? deals.get(a.dealId) : undefined; return !!c && !OFFENE_STUFEN.includes(c.stufe); };
+    const followups = ablaufFollowUps(b.followups ?? [], r.liste.filter(a => neu.has(a.id) && !entschieden(a)), {
       heute, jetzt: jetztIso, ausgenommen: id => gesperrt.has(id),
       zustaendig: a => zustaendigAus((a.dealId ? deals.get(a.dealId)?.besitzer : undefined) ?? a.gestelltVon ?? ''),
     });
@@ -397,7 +407,12 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
       id: `fu-${a.id}`, bezug: dealId ? { art: 'chance', id: dealId } : { art: 'kontakt', id: k.id }, kontaktId: k.id, art: 'anruf', text, faellig: nachfassen,
       zustaendig: zustaendigAus(p.person), status: 'offen', quelle: 'deal', angelegt: jetztIso, geaendert: jetztIso, geaendertVon: p.person,
     };
-    const followups = [...(b.followups ?? []).filter(f => f.id !== fu.id), fu];
+    // Ersetzt (02.11., Prüfung C): das Nachfassen der Vorversion (auch „abgelaufen — nachfassen“) fällt weg — es gilt nur noch das der neuen Version.
+    const vorgaengerErsetzt = !!a.vorgaengerId && angebote.some(x => x.id === a.vorgaengerId && x.status === 'ersetzt' && x.nachfolgerId === a.id);
+    const ohneVorgaenger = vorgaengerErsetzt ? angebotFollowupsSchliessen(b.followups ?? [], [a.vorgaengerId!], { status: 'abgesagt', ergebnis: 'Neue Version gestellt', jetzt: jetztIso, person: p.person }) : (b.followups ?? []);
+    // R2-1 Fund 3: „Angebot fertigstellen“ (Entwurf aus dem Netzwerken) ist mit dem Stellen erledigt.
+    const ohneEntwurf = angebotFollowupsSchliessen(ohneVorgaenger, [a.id], { status: 'erledigt', ergebnis: 'Angebot gestellt', jetzt: jetztIso, person: p.person, nurEntwurf: true });
+    const followups = [...ohneEntwurf.filter(f => f.id !== fu.id), fu];
     return { ...b, angebote, chancen, followups };
   }, p.wer);
   let e: { a: Angebot; pdf: { id: string; name: string } } | null = null;
@@ -537,7 +552,7 @@ async function verwaistePdfsEntfernen(haushalt: string, angebotId: string, behal
 
 // ── Antwort des Kunden ───────────────────────────────────────────────────────
 
-async function antwortSetzen(p: { id: string; stand?: unknown; person: string; wer?: Wer; jetzt?: Date }, art: 'angenommen' | 'abgelehnt', grund?: string): Promise<{ angebot: Angebot; dealId?: string; dealFehler?: string }> {
+async function antwortSetzen(p: { id: string; stand?: unknown; person: string; wer?: Wer; jetzt?: Date; wiedervorlage?: unknown }, art: 'angenommen' | 'abgelehnt', grund?: string): Promise<{ angebot: Angebot; dealId?: string; dealFehler?: string }> {
   const jetzt = p.jetzt ?? new Date();
   const jetztIso = jetzt.toISOString();
   const heute = localDay(jetzt);
@@ -553,10 +568,19 @@ async function antwortSetzen(p: { id: string; stand?: unknown; person: string; w
         ? { ...a, status: 'angenommen', angenommenAm: heute, geaendert: jetztIso, geaendertVon: p.person }
         : { ...a, status: 'abgelehnt', abgelehntAm: heute, grund: grund!, geaendert: jetztIso, geaendertVon: p.person };
       let dealFehler: string | undefined;
+      // Verloren mit zeitbezogenem Grund (02.11., Prüfung C): Wiedervorlage am Lead (+90 Tage) — ausdrücklich mitgeschickt gewinnt (leer = keine).
+      const wv = art === 'abgelehnt' ? (typeof p.wiedervorlage === 'string' ? (tagOk(p.wiedervorlage) ? p.wiedervorlage : '') : verlustWiedervorlage(grund, heute) ?? '') : undefined;
       const chancen = b.chancen.map(c => {
-        if (c.id !== a.dealId || !OFFENE_STUFEN.includes(c.stufe)) return c;
-        const r = wechsleStufe(c, art === 'angenommen' ? 'gewonnen' : 'verloren', p.person, jetztIso, art === 'abgelehnt' ? { grund } : {});
-        if (!r.ok) { dealFehler = r.fehler; return c; }
+        if (c.id !== a.dealId) return c;
+        // Angenommen (02.11., Prüfung C): auch ein geparkter oder verlorener Deal wird gewonnen (Historie zeigt den Wechsel) — sonst entstand weder Gewinn noch
+        // Mandat, obwohl der Kunde zugesagt hat. Ein schon gewonnener bleibt, wie er ist; abgelehnt trifft nur einen offenen Deal.
+        if (art === 'angenommen' ? c.stufe === 'gewonnen' : !OFFENE_STUFEN.includes(c.stufe)) return c;
+        const r0 = wechsleStufe(c, art === 'angenommen' ? 'gewonnen' : 'verloren', p.person, jetztIso, art === 'abgelehnt' ? { grund, ...(wv ? { wiedervorlage: wv } : {}) } : {});
+        if (!r0.ok) { dealFehler = r0.fehler; return c; }
+        // Eine alte Wiedervorlage (vom Parken) gilt nach der Antwort nicht mehr — nur die eben gesetzte; ein gewonnener Deal trägt keinen alten Verlustgrund.
+        const { wiedervorlage: _altWv, grund: altGrund, ...ohneWv } = r0.chance;
+        const basis = art === 'abgelehnt' && altGrund ? { ...ohneWv, grund: altGrund } : ohneWv;
+        const r = { ok: true as const, chance: (wv ? { ...basis, wiedervorlage: wv } : basis) as Chance };
         // Deal folgt dem Angebot (19.10., P3; Rundgang A3): enthält das angenommene Angebot ein anderes Hauptprodukt als der Deal, zieht der Deal nach —
         // sonst zählten „gewonnen“ und die Abschlussquote beim falschen Produkt. Bei mehreren Produkten zählt das Hauptprodukt.
         const hp = art === 'angenommen' ? angebotHauptprodukt(a, b.leistungen) : undefined;
@@ -566,8 +590,13 @@ async function antwortSetzen(p: { id: string; stand?: unknown; person: string; w
         const titel = folgt ? dealTitelNachAngebot(r.chance, a, b.leistungen, firma) : null;
         return { ...r.chance, ...(folgt ? { leistungId: hp } : {}), ...(titel ? { titel } : {}), geaendertVon: p.person };
       });
-      const followups = (b.followups ?? []).map(f => (f.id === `fu-${a.id}` && (f.status === 'offen' || f.status === 'verpasst')
-        ? { ...f, status: art === 'angenommen' ? 'erledigt' as const : 'abgesagt' as const, ergebnis: art === 'angenommen' ? 'Angebot angenommen' : 'Angebot abgelehnt', ...(art === 'angenommen' ? { erledigtAm: jetztIso } : {}), geaendert: jetztIso, geaendertVon: p.person } : f));
+      // Nachfassen schließen (02.11., Prüfung C): das eigene (`fu-<id>` UND `fu-<id>-ablauf`); beim Annehmen auch das der übrigen gestellten Angebote am
+      // selben Deal (Alternativen, Option A/B) — ihr Status bleibt (nur die Versions-Kette kennt „ersetzt“), aber niemand fasst mehr nach.
+      let followups = angebotFollowupsSchliessen(b.followups ?? [], [a.id], { status: art === 'angenommen' ? 'erledigt' : 'abgesagt', ergebnis: art === 'angenommen' ? 'Angebot angenommen' : 'Angebot abgelehnt', jetzt: jetztIso, person: p.person });
+      if (art === 'angenommen' && a.dealId) {
+        const geschwister = (b.angebote ?? []).filter(x => x.id !== a.id && x.dealId === a.dealId && (x.status === 'gestellt' || x.status === 'abgelaufen')).map(x => x.id);
+        followups = angebotFollowupsSchliessen(followups, geschwister, { status: 'abgesagt', ergebnis: 'Anderes Angebot zum Deal angenommen', jetzt: jetztIso, person: p.person });
+      }
       ergebnis = { angebot: neu, ...(a.dealId ? { dealId: a.dealId } : {}), ...(dealFehler ? { dealFehler } : {}) };
       return { ...b, angebote: b.angebote.map(x => (x.id === a.id ? neu : x)), chancen, followups };
     } catch (e) { fehler = e as AngebotFehler; return b; }
@@ -585,13 +614,61 @@ async function antwortSetzen(p: { id: string; stand?: unknown; person: string; w
  * sagt, was geschah (bzw. warum nicht) — die Oberfläche zeigt „Mandat angelegt · im Liquiplan eingetragen · Rückgängig“.
  */
 export async function angebotAnnehmen(p: { id: string; stand?: unknown; person: string; wer?: Wer; jetzt?: Date }) {
-  const r = await antwortSetzen(p, 'angenommen');
+  let r = await antwortSetzen(p, 'angenommen');
+  // Ohne (lebenden) Deal (02.11., Prüfung C): das Stellen konnte keinen anlegen, oder er wurde gelöscht — dann entsteht er JETZT über den EINEN Weg
+  // (`dealAnlegen`, feste Kennung `ch-<angebot>`, idempotent) und wird gewonnen; sonst bliebe die Annahme ohne Gewinn und ohne Mandat.
+  const ohne = await dealFuerAngenommenes({ angebotId: r.angebot.id, person: p.person, wer: p.wer, jetzt: p.jetzt });
+  if (ohne.dealId) r = { ...r, angebot: ohne.angebot ?? r.angebot, dealId: ohne.dealId };
+  else if (ohne.fehler) r = { ...r, dealFehler: ohne.fehler };
   const { mandatAusAngebotAutomatisch } = await import('./mandat-automatik-server');
   const automatik = await mandatAusAngebotAutomatisch({ angebotId: r.angebot.id, person: p.person, wer: p.wer, jetzt: p.jetzt });
   return { ...r, ...(automatik ? { automatik } : {}) };
 }
 
-export function angebotAblehnen(p: { id: string; stand?: unknown; person: string; grund?: unknown; wer?: Wer; jetzt?: Date }) {
+/** Feste Kennung des Deals, den „angenommen“ für ein Angebot ohne Deal anlegt. */
+export const dealIdFuerAngebot = (angebotId: string) => `ch-${angebotId}`.slice(0, 64);
+
+/**
+ * Angenommenes Angebot ohne lebenden Deal → Deal über `dealAnlegen` (feste Kennung, Stufe Abschluss, `trotzdem` — ein anderer offener Deal an der Firma
+ * bleibt, wie er ist), dann in EINER Sperre gewonnen und am Angebot verknüpft. Idempotent: gibt es den Deal mit der festen Kennung schon, wird nur noch
+ * verknüpft/gewonnen. Liefert `{}` (nichts zu tun), `{ dealId }` oder `{ fehler }` (z. B. Art. 18) — wirft nie.
+ */
+export async function dealFuerAngenommenes(p: { angebotId: string; person: string; wer?: Wer; jetzt?: Date }): Promise<{ dealId?: string; angebot?: Angebot; fehler?: string }> {
+  try {
+    const jetzt = p.jetzt ?? new Date();
+    const jetztIso = jetzt.toISOString();
+    const crm = await ladeCrm();
+    const a = (crm.angebote ?? []).find(x => x.id === p.angebotId);
+    if (!a || a.status !== 'angenommen') return {};
+    if (a.dealId && crm.chancen.some(c => c.id === a.dealId)) return {};
+    const id = dealIdFuerAngebot(a.id);
+    if (!crm.chancen.some(c => c.id === id)) {
+      const hp = angebotHauptprodukt(a, crm.leistungen);
+      const d = await dealAnlegen({
+        id, titel: a.titel, kontaktIds: a.kontaktId ? [a.kontaktId] : [], ...(a.firmaId ? { firmaId: a.firmaId } : {}), wert: dealWertAusAngebot(a), stufe: 'abschluss',
+        gesellschaft: a.gesellschaft, ...(hp ? { leistungId: hp } : {}), trotzdem: true, schritt: { text: 'Mandat anlegen', datum: localDay(jetzt) },
+      }, p.person, jetztIso, p.wer);
+      if (!d.ok) return { fehler: `Kein Deal zum angenommenen Angebot: ${d.fehler}` };
+    }
+    let ergebnis: { dealId?: string; angebot?: Angebot; fehler?: string } = {};
+    await aendereCrm(b => {
+      const c = b.chancen.find(x => x.id === id);
+      const ang = (b.angebote ?? []).find(x => x.id === p.angebotId);
+      if (!c || !ang) return b;
+      const w = c.stufe === 'gewonnen' ? { ok: true as const, chance: c } : wechsleStufe(c, 'gewonnen', p.person, jetztIso);
+      if (!w.ok) { ergebnis = { fehler: w.fehler }; return b; }
+      const neuAng: Angebot = { ...ang, dealId: id, geaendert: jetztIso, geaendertVon: p.person };
+      ergebnis = { dealId: id, angebot: neuAng };
+      return { ...b, chancen: b.chancen.map(x => (x.id === id ? { ...w.chance, geaendertVon: p.person } : x)), angebote: (b.angebote ?? []).map(x => (x.id === ang.id ? neuAng : x)) };
+    }, p.wer);
+    return ergebnis;
+  } catch (e) {
+    console.warn('[crm] Deal zum angenommenen Angebot nicht angelegt:', e instanceof Error ? e.message.slice(0, 120) : e);
+    return { fehler: 'Zum angenommenen Angebot ließ sich kein Deal anlegen — bitte in der Pipeline von Hand.' };
+  }
+}
+
+export function angebotAblehnen(p: { id: string; stand?: unknown; person: string; grund?: unknown; wiedervorlage?: unknown; wer?: Wer; jetzt?: Date }) {
   const grund = String(p.grund ?? '').replace(/\s+/g, ' ').trim();
   if (!grund) return Promise.reject(new AngebotFehler('Abgelehnt braucht einen Grund (Verlustgrund) — nur so lernt die Pipeline.', 400));
   if (grund.length > ANGEBOT_GRENZEN.grund) return Promise.reject(new AngebotFehler(`Grund ist länger als ${ANGEBOT_GRENZEN.grund} Zeichen.`, 413));

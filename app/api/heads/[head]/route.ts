@@ -7,9 +7,12 @@
 // POST { aktion: 'rueckgaengig', id } → selbst Übernommenes zurücknehmen (zählt als „passt nicht“)
 // POST { aktion: 'entscheiden', id, status, grund?, entwurf? } → abgelehnt mit
 //      Grund (daraus lernt der Head), angenommen mit dem übernommenen Entwurf;
-//      art „merken“ angenommen → Merksatz ins Gedächtnis. Sonst: mit Person und
-//      Frist wird es deren nächster Schritt (erscheint dann in der Power
-//      Hour), sonst eine Aufgabe. Nichts wird versendet.
+//      art „merken“ angenommen → Merksatz ins Gedächtnis. Beitrag/Newsletter
+//      (02.11., M2 K1) → echter Entwurf im Redaktionsplan (wie ZOE), nie eine
+//      Aufgabe. Kampagne → Entwurf, eine laufende gleiche wird weiterverwendet.
+//      Sonst: mit Person und Frist wird es deren nächster Schritt (erscheint
+//      dann in der Power Hour; nie bei Pflicht-/Meta-Arten wie Art. 14), sonst
+//      eine Aufgabe. Nichts wird versendet.
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { resolveAgent, disabledResponse } from '@/lib/agent-config';
@@ -28,12 +31,15 @@ import { HEADS, HEAD_NAME, MODI, AGENT_ID, type HeadId } from '@/lib/heads/promp
 import { headLauf, NUR_MIT_PERSON } from '@/lib/heads/lauf';
 import { vollesPaket } from '@/lib/heads/paket';
 import { lernstand, merksatzNeu, ABLEHNGRUENDE } from '@/lib/heads/lernen';
-import { ruecknehmbar } from '@/lib/heads/autonomie';
+import { ruecknehmbar, NUR_AUFGABE, INHALT_ARTEN } from '@/lib/heads/autonomie';
+import { kontaktFuerHead } from '@/lib/heads/paket';
+import { istInhaltKanal } from '@/lib/heads/pruefer';
+import { einstellungAus } from '@/lib/crm/marketing';
 import { uebersicht } from '@/lib/zoe/verbrauch';
-import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
+import { ladeCrm, aendereCrm, wendeCrmAn, type CrmAnwendung } from '@/lib/crm/speicher';
 import { planen } from '@/lib/crm/kampagnen';
 import { localDay, tagVon } from '@/lib/zeit';
-import { wer, verantwortlich, haeltBeziehung, nameVon, BEIDE } from '@/lib/crm/team';
+import { wer, verantwortlich, nameVon, BEIDE } from '@/lib/crm/team';
 import { leererStand, standName, type HeadStand, type HeadVorschlag, type Status } from '@/lib/heads/stand';
 import { einheitAusBezug } from '@/lib/aufgaben/einheit';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
@@ -64,7 +70,8 @@ export async function GET(req: Request, props: { params: Promise<{ head: string 
     wirkung: l.wirkung.ausgewertet ? `${l.wirkung.gewirkt} von ${l.wirkung.ausgewertet}${l.wirkung.termin || l.wirkung.chance ? ` · ${l.wirkung.termin} Termin, ${l.wirkung.chance} Chance` : ''}` : null, aenderungsgrad: l.aenderungsgrad,
     gestrichen: laeufe.reduce((a, x) => a + x.pruefung.gestrichen.length, 0), korrigiert: laeufe.filter(x => x.pruefung.korrigiert).length,
     // Kosten dieses Heads in 30 Tagen (US-Cent aus der Verbrauchs-Mitschrift, inkl. Cache).
-    cent: Math.round((await uebersicht(30)).jeZweck.filter(z => z.zweck.startsWith(`${AGENT_ID[h]}-`)).reduce((a, z) => a + z.cent, 0)),
+    // 02.11. (M2): beim Head of Marketing zählen die Social-Läufe mit (Redaktion, Antworten, Kommentieren, Schnitt — Zweck `social-…`).
+    cent: Math.round((await uebersicht(30)).jeZweck.filter(z => z.zweck.startsWith(`${AGENT_ID[h]}-`) || (h === 'marketing' && z.zweck.startsWith('social-'))).reduce((a, z) => a + z.cent, 0)),
     cacheQuote: (() => { const v = laeufe.map(x => x.verbrauch).filter(Boolean); const ein = v.reduce((a, x) => a + x!.ein + x!.cacheLesen + x!.cacheSchreiben, 0); return ein ? Math.round((v.reduce((a, x) => a + x!.cacheLesen, 0) / ein) * 100) : null; })() };
   const vor7 = new Date(Date.now() - 7 * 864e5).toISOString();
   const auto = s.vorschlaege.filter(v => v.auto && v.auto.am >= vor7).sort((a, b) => b.auto!.am.localeCompare(a.auto!.am)).slice(0, 12);
@@ -79,6 +86,88 @@ function ort(t: { art?: string; kontakt_id?: string | null; chance_id?: string |
   if (t.mandat_id) return mandateLink('mandate', t.mandat_id);
   if (t.event_id) return markttraktion('event', undefined, t.event_id);
   if (t.kontakt_id) return markttraktion('kontakte', 'akte', t.kontakt_id);
+  // Hinweis-Arten (02.11., M2 K2): die Liste, auf die der Vorschlag zeigt.
+  if (t.art === 'social_planen' || t.art === 'community_beantworten') return WEG.marketing('social');
+  if (t.art === 'stapel_freigeben' || t.art === 'antworten_bearbeiten') return WEG.marketing('kampagnen');
+  if (t.art === 'funde_pruefen') return markttraktion('marketing', 'funde');
+  return null;
+}
+
+/** Kennung des Beitrags bzw. der Ausgabe aus dem Vorschlag — fest, damit ein zweiter Klick nichts doppelt anlegt. */
+const inhaltKennung = (praefix: string, id: string) => `${praefix}-${id}`.toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 64);
+const BEITRAG_KANAL: Record<string, string> = { linkedin_beitrag: 'linkedin', newsletter: 'newsletter', instagram: 'sonstig' };
+
+/**
+ * Beitrag bzw. Newsletter-Ausgabe aus einem angenommenen Vorschlag (02.11., M2 K1) — derselbe Schreibweg wie ZOE (`crm_vorschlag`
+ * beitrag_entwurf/newsletter_entwurf → PATCH /api/crm/bestand → `wendeCrmAn` mit Säuberung, Personen-Schranke, Grenzen), hier ohne den
+ * Umweg über die Route. Mit Entwurf (bearbeitet: `entwurfFinal`) ein Entwurf, sonst eine Idee mit dem Ideen-Text; `quellen` = Personen, aus
+ * deren Gesprächen das Thema stammt (nur vorhandene, nicht gesperrte). Veröffentlicht/versendet wird nichts. Idempotent über die Kennung.
+ */
+async function inhaltAnlegen(t: HeadVorschlag, entwurfFinal: string | undefined, person: string, req: Request): Promise<{ ok: true; wohin: string; link: string } | { ok: false; status: number; fehler: string }> {
+  const crm = await ladeCrm();
+  const jetzt = new Date().toISOString();
+  const zustaendig = wer(t.fuer) && t.fuer !== BEIDE ? t.fuer! : person;
+  const text = (entwurfFinal ?? t.entwurf?.text ?? '').trim();
+  if (t.art === 'newsletter_ausgabe') {
+    const id = inhaltKennung('nl', t.id);
+    const link = WEG.marketing('newsletter', id);
+    if ((crm.newsletter ?? []).some(x => x.id === id)) return { ok: true, wohin: 'Newsletter-Entwurf (schon angelegt)', link };
+    const eintrag = { id, titel: t.inhalt?.titel ?? t.titel, status: 'entwurf', inhalt: text || t.inhalt?.text || t.begruendung, beitragIds: [], zustaendig };
+    const r = await crmOps([{ liste: 'newsletter', op: 'upsert', eintrag }], person, jetzt, req);
+    return r ?? { ok: true, wohin: 'Newsletter-Entwurf (Marketing › Newsletter) — versendet wird nichts', link };
+  }
+  const id = inhaltKennung('bt', t.id);
+  const link = WEG.marketing('redaktion', id);
+  const instagram = t.entwurf?.kanal === 'instagram';
+  if ((crm.beitraege ?? []).some(x => x.id === id)) {
+    const f = instagram ? await instagramFolge(id, t, text, person, req) : '';
+    return { ok: true, wohin: `Beitrag im Redaktionsplan (schon angelegt)${f}`, link };
+  }
+  const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
+  const quellen = (t.inhalt?.quellen ?? []).filter(q => kontakte.some(k => k.id === q && !ausgenommen(k)));
+  const saeule = t.saeule && einstellungAus(crm).saeulen.some(x => x.id === t.saeule) ? t.saeule : undefined;
+  const mitEntwurf = !!text;
+  const eintrag = {
+    id, titel: t.inhalt?.titel ?? t.titel, kanal: t.entwurf && istInhaltKanal(t.entwurf.kanal) ? BEITRAG_KANAL[t.entwurf.kanal] : 'linkedin',
+    status: mitEntwurf ? 'entwurf' : 'idee', text: mitEntwurf ? text : t.inhalt?.text ?? t.begruendung, wirkung: [], quellen, zustaendig, ...(saeule ? { saeule } : {}),
+  };
+  const r = await crmOps([{ liste: 'beitraege', op: 'upsert', eintrag }], person, jetzt, req);
+  if (r) return r;
+  // Instagram (02.11., M3): dazu EINE Social-Folge im Instagram-Kanal, verknüpft über `beitragId` — Entwurf, ohne Freigabe.
+  const f = instagram ? await instagramFolge(id, t, text, person, req) : '';
+  return { ok: true, wohin: `${mitEntwurf ? 'Beitrags-Entwurf' : 'Idee'} im Redaktionsplan${f} — veröffentlicht wird nichts ohne Freigabe`, link };
+}
+
+/**
+ * Social-Folge zu einem Instagram-Beitrag (02.11., M3, lib/social/beitrag-folge.ts): nur, wenn es genau EINEN laufenden Instagram-Kanal gibt, den die
+ * Person sieht; idempotent über `beitragId`. Über den Schreibweg der Social-Seite (`socialSchreiben`, Säuberung, Grenzen, Protokoll). Liefert einen
+ * kurzen Zusatz für die Rückmeldung — scheitert es, steht der Beitrag trotzdem (nie ein Fehler fürs Annehmen).
+ */
+async function instagramFolge(beitragId: string, t: HeadVorschlag, text: string, person: string, req: Request): Promise<string> {
+  try {
+    const [{ ladeSocial, socialSchreiben }, { socialFuerPerson }, bf] = await Promise.all([import('@/lib/social/server'), import('@/lib/social/daten'), import('@/lib/social/beitrag-folge')]);
+    const d = socialFuerPerson(await ladeSocial(), person);
+    if (bf.folgeZumBeitrag(d, beitragId)) return ' und als Folge unter Social';
+    const k = bf.instagramKanalFuer(d);
+    if (!k.kanal) return ` (${k.grund})`;
+    const saeule = t.saeule ? einstellungAus(await ladeCrm()).saeulen.find(x => x.id === t.saeule)?.name : undefined;
+    const r = await socialSchreiben([{ op: 'folge', eintrag: bf.folgeEintragAusBeitrag(k.kanal.id, { id: beitragId, titel: t.inhalt?.titel ?? t.titel, text, ...(saeule ? { saeule } : {}), mitEntwurf: !!text }) }], person, werAus(req));
+    return r.ok ? ` und als Entwurf im Instagram-Kanal „${k.kanal.name}“ (wartet auf Freigabe)` : ` (Social-Folge nicht angelegt: ${r.fehler})`;
+  } catch (e) {
+    console.error('[head-marketing] Social-Folge:', e instanceof Error ? e.message.slice(0, 160) : e);
+    return ' (Social-Folge nicht angelegt — bitte unter Marketing › Social)';
+  }
+}
+
+/** Eine Änderung am CRM-Bestand wie PATCH /api/crm/bestand — `null` = geschrieben, sonst der Grund (409/413/400). */
+async function crmOps(ops: Parameters<typeof wendeCrmAn>[1], person: string, jetzt: string, req: Request): Promise<{ ok: false; status: number; fehler: string } | null> {
+  const halter: { r?: CrmAnwendung } = {};
+  await aendereCrm(cur => { halter.r = wendeCrmAn(cur, ops, jetzt, person); return halter.r.bestand; }, werAus(req));
+  const r = halter.r;
+  if (!r) return { ok: false, status: 500, fehler: 'Nicht gespeichert.' };
+  if (r.grenze.length) return { ok: false, status: 413, fehler: r.grenze.join(' ') };
+  if (r.abgelehnt?.length || r.konflikte.length || r.sperren.length || r.ungueltig?.length) return { ok: false, status: 409, fehler: [...(r.abgelehnt ?? []), ...(r.ungueltig ?? [])].join(' ') || 'Nicht gespeichert — der Stand hat sich geändert.' };
+  if (!r.angewandt) return { ok: false, status: 400, fehler: r.fehler.join(' ') || 'Nicht gespeichert — der Eintrag war unvollständig.' };
   return null;
 }
 
@@ -93,10 +182,14 @@ const SYSTEMLAUF_NUR_TAKT = { ok: false, fehler: 'Ohne Person nur Takt-Läufe de
  * war die einzige Prüfung dieser Route — ein Lauf von Hand lief trotz Not-Aus, ausgeschaltetem Head oder erreichtem Budget. Jetzt gilt
  * dieselbe Sperre wie für Threads, Arbeiter und Takt (lib/agenten/einstellung.ts `laufSperre`); 409 mit ruhigem Satz, kein Modellaufruf.
  */
-async function laufGesperrt(person: string | null, h: HeadId): Promise<Response | null> {
-  const { laufSperre } = await import('@/lib/agenten/einstellung');
+async function laufGesperrt(person: string | null, h: HeadId, modus: string): Promise<{ antwort: Response } | { ohneKi?: string }> {
+  const { laufSperre, nurKiGesperrt } = await import('@/lib/agenten/einstellung');
   const s = await laufSperre(person, h);
-  return s ? NextResponse.json({ ok: false, fehler: s.text, gesperrt: s.grund }, { status: 409 }) : null;
+  if (!s) return {};
+  // Budget erreicht (02.11., Prüfung D): nur die KI ist gesperrt — Grundlauf, Power-Hour-Vorbereitung und Reviews laufen mit dem Regelwerk weiter.
+  // Eine Frage braucht das Modell und bleibt gesperrt.
+  if (modus !== 'frage' && nurKiGesperrt(s, h)) return { ohneKi: 'Monatsbudget erreicht' };
+  return { antwort: NextResponse.json({ ok: false, fehler: s.text, gesperrt: s.grund }, { status: 409 }) };
 }
 
 export async function POST(req: Request, props: { params: Promise<{ head: string }> }) {
@@ -115,15 +208,15 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
   if (zugang.person === null) {
     const modus = String(b.modus ?? 'frage');
     if (b.aktion !== 'lauf' || b.ausgeloest !== 'takt' || NUR_MIT_PERSON.has(modus)) return NextResponse.json(SYSTEMLAUF_NUR_TAKT, { status: 403 });
-    const gesperrt = await laufGesperrt(null, h); if (gesperrt) return gesperrt;
-    const r = await headLauf({ head: h, modus, person: null, ausgeloest: 'takt' });
+    const g = await laufGesperrt(null, h, modus); if ('antwort' in g) return g.antwort;
+    const r = await headLauf({ head: h, modus, person: null, ausgeloest: 'takt', ...(g.ohneKi ? { ohneKi: g.ohneKi } : {}) });
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
   }
   const person = zugang.person;
 
   if (b.aktion === 'lauf') {
-    const gesperrt = await laufGesperrt(person, h); if (gesperrt) return gesperrt;
-    const r = await headLauf({ head: h, modus: String(b.modus ?? 'frage'), person, frage: b.frage ? String(b.frage) : undefined, ausgeloest: b.ausgeloest === 'takt' ? 'takt' : b.ausgeloest === 'zoe' ? 'zoe' : 'hand' });
+    const g = await laufGesperrt(person, h, String(b.modus ?? 'frage')); if ('antwort' in g) return g.antwort;
+    const r = await headLauf({ head: h, modus: String(b.modus ?? 'frage'), person, ...(g.ohneKi ? { ohneKi: g.ohneKi } : {}), frage: b.frage ? String(b.frage) : undefined, ausgeloest: b.ausgeloest === 'takt' ? 'takt' : b.ausgeloest === 'zoe' ? 'zoe' : 'hand' });
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
   }
 
@@ -132,7 +225,10 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
     const st = { ...leererStand(), ...((await loadJson<HeadStand>(standName(h))) ?? {}) };
     const { kontakteMitTerminZeitenLesen } = await import('@/lib/crm/termin-zeiten-server'); // K6a: Meeting-Zeit aus dem Termin
     const { zieleFuerHead } = await import('@/lib/planung/jahresziele-sicht'); // Nachschliff 09.10.: dieselben Ziele wie im Lauf
-    const d = vollesPaket(h, String(b.modus ?? MODI[h][0].id), await kontakteMitTerminZeitenLesen(kontakte, person), await ladeCrm(), localDay(), person, st, await zieleFuerHead({ person, privat: false }));
+    const crm = await ladeCrm();
+    // 02.11. (M2): dieselben Marketing-Blöcke wie im Lauf (Social, Website, Funde, Mail-Stapel — nur Zahlen).
+    const marketingLage = h === 'marketing' ? await (await import('@/lib/heads/marketing-lage-server')).marketingLageLaden(person, crm).catch(() => undefined) : undefined;
+    const d = vollesPaket(h, String(b.modus ?? MODI[h][0].id), await kontakteMitTerminZeitenLesen(kontakte, person), crm, localDay(), person, st, await zieleFuerHead({ person, privat: false }), marketingLage ? { marketingLage } : {});
     return NextResponse.json({ ok: true, daten: d, zeichen: JSON.stringify(d).length });
   }
 
@@ -186,6 +282,18 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
     const status = (['angenommen', 'abgelehnt', 'erledigt', 'offen'] as Status[]).includes(b.status as Status) ? (b.status as Status) : null;
     if (!status || !b.id) return NextResponse.json({ ok: false, fehler: 'id und status nötig.' }, { status: 400 });
     const jetzt = new Date().toISOString();
+    // Beitrag/Newsletter (02.11., M2 K1): ZUERST den Entwurf im Redaktionsplan anlegen — scheitert das, bleibt der Vorschlag offen (nie „angenommen“
+    // ohne Ergebnis). Der Text kommt aus dem übernommenen (ggf. bearbeiteten) Entwurf.
+    let inhaltErgebnis: { wohin: string; link: string } | null = null;
+    if (status === 'angenommen') {
+      const vor = ({ ...leererStand(), ...((await loadJson<HeadStand>(standName(h))) ?? {}) }).vorschlaege.find(x => x.id === b.id);
+      if (vor && vor.status === 'offen' && INHALT_ARTEN.has(vor.art)) {
+        const final = typeof b.entwurf === 'string' && b.entwurf.trim() ? b.entwurf.trim().slice(0, 1500) : undefined;
+        const r = await inhaltAnlegen(vor, final, person, req);
+        if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: r.status });
+        inhaltErgebnis = r;
+      }
+    }
     let v: HeadVorschlag | null = null;
     await updateJson<HeadStand>(standName(h), s => {
       const st = { ...leererStand(), ...(s ?? {}) };
@@ -200,7 +308,10 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
     const t = v as HeadVorschlag | null;
     if (!t) return NextResponse.json({ ok: false, fehler: 'Vorschlag nicht gefunden.' }, { status: 404 });
     let wohin = '';
-    if (status === 'angenommen' && t.art === 'merken') wohin = 'Gedächtnis des Heads';
+    let link: string | undefined;
+    if (inhaltErgebnis) { wohin = inhaltErgebnis.wohin; link = inhaltErgebnis.link; }
+    else if (INHALT_ARTEN.has(t.art) && status !== 'erledigt') { /* Beitrag/Newsletter: nie eine Aufgabe (K1); „erledigt“ schließt höchstens eine alte Aufgabe */ }
+    else if (status === 'angenommen' && t.art === 'merken') wohin = 'Gedächtnis des Heads';
     else if (status === 'angenommen' && t.kampagne) {
       // Kampagnen-Vorschlag → Entwurf im Marketing › Kampagnen (Personen aus dem Vorschlag, sonst Zielgruppe des Playbooks).
       // Restpunkte (24.10.): die Playbooks des Haushalts (angepasst + eigene) — EINE Lesestelle.
@@ -211,10 +322,21 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
       const basis = pb ?? { ...alle[0], id: 'eigen', segmentId: undefined, name: t.kampagne.name, schritte: [{ text: 'Anlass und Botschaft festlegen', tag: 0 }, { text: 'Personen ansprechen', tag: 2 }, { text: 'Nachfassen', tag: 9 }] };
       const plan = planen(basis, kontakte, crm, localDay(), neueKennung('kp'), h === 'sales' ? 'head-sales' : 'head-marketing');
       const ids = t.kampagne.kontakt_ids.filter(id => kontakte.some(k => k.id === id && !ausgenommen(k)));
-      // Zuständig: wer angenommen hat — die Kampagne gehört der Person, die sie führen will.
-      await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, { ...plan, name: t.kampagne!.name || plan.name, ziel: t.kampagne!.ziel || plan.ziel, kontaktIds: ids.length ? ids : plan.kontaktIds, notiz: t.begruendung.slice(0, 1000), zustaendig: wer(person) ?? verantwortlich(h), geaendertVon: person }] }));
-      wohin = `Kampagnen-Entwurf (${h === 'sales' ? 'Sales' : 'Marketing'} › Kampagnen)`;
-    } else if (status === 'angenommen' && t.kontakt_id && t.frist) {
+      // K3 (02.11.): eine offene Kampagne desselben Playbooks (Entwurf oder aktiv, egal welcher Head sie angelegt hat) wird WEITERVERWENDET statt
+      // eine zweite anzulegen — in einen Entwurf kommen die neuen Personen dazu, eine aktive bleibt, wie sie ist (dort läuft die Sequenz).
+      const laufend = crm.kampagnen.find(k => k.playbook === (pb?.id ?? t.kampagne!.playbook) && (k.status === 'entwurf' || k.status === 'aktiv'));
+      if (laufend) {
+        const dazu = ids.filter(id => !laufend.kontaktIds.includes(id));
+        if (laufend.status === 'entwurf' && dazu.length) await aendereCrm(c => ({ ...c, kampagnen: c.kampagnen.map(k => (k.id === laufend.id && k.status === 'entwurf' ? { ...k, kontaktIds: [...k.kontaktIds, ...dazu.filter(id => !k.kontaktIds.includes(id))], geaendertVon: person } : k)) }), werAus(req));
+        wohin = `laufende Kampagne „${laufend.name}“ weiterverwendet${laufend.status === 'entwurf' && dazu.length ? ` (${dazu.length} Personen dazu)` : ''}`;
+        link = WEG.kampagne(laufend.id);
+      } else {
+        // Zuständig: wer angenommen hat — die Kampagne gehört der Person, die sie führen will.
+        await aendereCrm(c => ({ ...c, kampagnen: [...c.kampagnen, { ...plan, name: t.kampagne!.name || plan.name, ziel: t.kampagne!.ziel || plan.ziel, kontaktIds: ids.length ? ids : plan.kontaktIds, notiz: t.begruendung.slice(0, 1000), zustaendig: wer(person) ?? verantwortlich(h), geaendertVon: person }] }));
+        wohin = `Kampagnen-Entwurf (${h === 'sales' ? 'Sales' : 'Marketing'} › Kampagnen)`;
+        link = WEG.kampagne(plan.id);
+      }
+    } else if (status === 'angenommen' && t.kontakt_id && t.frist && !NUR_AUFGABE.has(t.art)) {
       // Nie still überschreiben (Prüfbericht 27.09., Punkt 17): steht schon ein nächster Schritt, bleibt er — und jede Head-Wirkung
       // steht als Aktivität im Verlauf der Person, damit in der Akte erkennbar ist, dass ein Agent gehandelt hat.
       const lage = { stand: 'nicht-gefunden' as 'gesetzt' | 'schon-da' | 'nicht-gefunden' };
@@ -230,9 +352,10 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
       }, werAus(req));
       wohin = lage.stand === 'gesetzt' ? 'nächster Schritt an der Person' : lage.stand === 'schon-da' ? 'nicht gesetzt — an der Person steht schon ein nächster Schritt (erst erledigen oder unter „Kontakt öffnen“ ändern)' : 'Person nicht gefunden';
     } else if (status === 'angenommen' || status === 'erledigt') {
-      // Die Aufgabe bekommt, wer die Beziehung hält — sonst die/der Verantwortliche der Welt (Sales: Kevin, Marketing/Event: Malin).
+      // Die Aufgabe bekommt, wer die Beziehung hält — sonst die/der Verantwortliche der Welt (lib/crm/team.ts). Marketing (02.11., B1): nur eine
+      // ausdrücklich eingetragene Beziehung, sonst die Marketing-Verantwortung (`kontaktFuerHead`).
       const k = t.kontakt_id ? ((await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? []).find(x => x.id === t.kontakt_id) : undefined;
-      const fuer = t.fuer ?? (k ? haeltBeziehung(k) : verantwortlich(h));
+      const fuer = t.fuer ?? (k ? kontaktFuerHead(k, h) : verantwortlich(h));
       const bearbeiter = fuer === BEIDE ? person : fuer;
       // Business-Einheit aus dem Deal/Mandat dahinter (27.09.) — ohne Bezug keine.
       const einheit = status === 'angenommen' && (t.chance_id || t.mandat_id) ? einheitAusBezug(await ladeCrm().catch(() => null), { chanceId: t.chance_id, mandatId: t.mandat_id }) : undefined;
@@ -245,7 +368,7 @@ export async function POST(req: Request, props: { params: Promise<{ head: string
       }, { person, wer: { art: 'system', person }, jetzt });
       wohin = bearbeiter === person ? 'Aufgabe' : `Aufgabe für ${nameVon(bearbeiter)}`;
     }
-    return NextResponse.json({ ok: true, vorschlag: t, wohin });
+    return NextResponse.json({ ok: true, vorschlag: t, wohin, ...(link ? { link } : {}) });
   }
   return NextResponse.json({ ok: false, fehler: 'aktion: lauf oder entscheiden.' }, { status: 400 });
 }

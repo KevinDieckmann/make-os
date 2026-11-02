@@ -3,7 +3,8 @@
 // Sperrliste aussortieren → Website prüfen (ohne KI) → nur „schlecht“ oder „keine“ wird ein Fund → Vorschau-Texte über das KI-Tor (sonst
 // Regelwerk) → Mail-Entwurf aus der Vorlage → je Fund EIN Vorschlag im ZOE-Stapel (Art `fund`). Es wird NICHTS versendet und nichts in die
 // Kartei geschrieben — das geschieht erst bei der Freigabe (lib/funde/uebernehmen.ts).
-// Takt: ab 20 Uhr, einmal je Tag, nur mit aktiver Kampagne und Gebieten (lib/zoe/takt.ts, `KI_LAEUFE` → ohne Hintergrund-KI kein Lauf).
+// Takt: ab 20 Uhr, einmal je Tag, nur mit aktiver Kampagne und Gebieten. Ohne Hintergrund-KI (02.11., Prüfung D) läuft er MIT dem Regelwerk —
+// nichts geht ans Modell; der Laufstand sagt ehrlich, womit die Texte entstanden (`texte`, `ohneKi`).
 
 import { localDay } from '@/lib/zeit';
 import { neueKennung } from '@/lib/kennung';
@@ -31,6 +32,8 @@ const LAUF_MS = 8 * 60_000;
 const PRUEF_FAKTOR = 4;
 
 export interface LaufErgebnis { ok: boolean; grund?: string; gebiet?: string; geholt: number; vorbereitet: number; ohneKi?: string }
+/** Grund im Laufstand, wenn die Hintergrund-KI aus ist (neutral, ohne Namen). */
+export const OHNE_HINTERGRUND_KI = 'Hintergrund-KI aus — Texte aus dem Regelwerk';
 
 /** Ist heute ein Lauf dran? (Takt fragt das; ein Fehler = nein.) */
 export async function fundeFaellig(jetzt = new Date()): Promise<boolean> {
@@ -49,8 +52,10 @@ export const alsBetrieb = (x: { id?: string; name: string; osmId?: string; adres
   ({ id: x.id ?? x.osmId ?? x.name, name: x.name, ...(x.osmId ? { osmId: x.osmId } : {}), ...(x.adresse ? { adresse: x.adresse } : {}), ...(x.website ? { webseite: x.website } : {}), ...(x.email ? { email: x.email } : {}) });
 
 /** Vorschau-Texte: Modell über das KI-Tor (Hintergrund, Kategorie crm), sonst Regelwerk. */
-async function vorschauFuer(f: Fund, person: string | null): Promise<{ v: Fund['vorschau']; ohneKi?: string }> {
+async function vorschauFuer(f: Fund, person: string | null, kiAn: boolean): Promise<{ v: Fund['vorschau']; ohneKi?: string }> {
   const { askJson, hasAnthropicKey } = await import('@/lib/anthropic');
+  // Hintergrund-KI aus (System › Datenschutz): gar kein Aufruf — das Regelwerk schreibt die Texte (02.11.).
+  if (!kiAn) return { v: vorschauRegelwerk(f), ohneKi: OHNE_HINTERGRUND_KI };
   if (!hasAnthropicKey()) return { v: vorschauRegelwerk(f), ohneKi: 'kein Schlüssel' };
   const p = vorschauPrompt(f);
   const r = await askJson<unknown>({
@@ -107,6 +112,8 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
 
   // 3 · Prüfen und vorbereiten — höchstens `jeAbend` Funde, höchstens LAUF_MS.
   const ctx = await fundKontext(e, h);
+  // Hintergrund-KI (02.11.): der Takt läuft als Systemlauf (`null`), von Hand mit der Person — derselbe Schalter wie für jeden Hintergrundlauf.
+  const kiAn = await import('@/lib/datenschutz/ki-einstellungen').then(m => m.kiSchalterFuer(o.person)).then(s => s.hintergrund).catch(() => false);
   const neu: Fund[] = [];
   const gut: string[] = [];
   let ohneKi: string | undefined;
@@ -135,7 +142,7 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
       ...(email && !adressen.has(email) ? { email } : {}), ...nummern,
       bewertung: bew, ...(analyse ? { analyse } : {}), status: 'neu', angelegt: am, geaendert: am,
     };
-    const vs = await vorschauFuer(f, o.person);
+    const vs = await vorschauFuer(f, o.person, kiAn);
     if (vs.ohneKi) ohneKi = vs.ohneKi;
     f.vorschau = vs.v;
     f.entwurf = entwurfBauen(f, ctx);
@@ -147,7 +154,7 @@ export async function fundeLauf(o: { person: string | null; jetzt?: Date; holen?
   await aendereFunde(x => ({
     ...x, funde: [...x.funde, ...neu], bekannt: [...new Set([...x.bekannt, ...gut])],
     einstellungen: { ...x.einstellungen, gebietIndex: (x.einstellungen.gebietIndex + 1) % Math.max(1, x.einstellungen.gebiete.length) },
-    lauf: { tag: heute, gebiet, geholt: roh.length, neu: kandidaten.length, vorbereitet: neu.length, ...(fehler ? { fehler } : {}), am },
+    lauf: { tag: heute, gebiet, geholt: roh.length, neu: kandidaten.length, vorbereitet: neu.length, ...(fehler ? { fehler } : {}), am, ...(neu.length ? { texte: ohneKi ? 'regelwerk' as const : 'ki' as const } : {}), ...(ohneKi ? { ohneKi: ohneKi.slice(0, 160) } : {}) },
   }), { h, wer: o.person ? { art: 'person', person: o.person } : { art: 'system' } });
   const { fundVorschlagLegen } = await import('./uebernehmen');
   for (const f of neu) await fundVorschlagLegen(f, o.person).catch(err => console.error('[funde] Vorschlag nicht gelegt:', err instanceof Error ? err.message.slice(0, 120) : err));

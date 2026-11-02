@@ -181,6 +181,8 @@ export async function POST(req: Request) {
     // Lifecycle (Prüfbericht F1): eine gesetzte Phase vor „Kunde“ wird Kunde — ohne gesetzte Phase bleibt es beim Vorschlag.
     // 10.10.: dieselbe Folge wie „+ Mandat“ mit Lead (lib/crm/mandat-anlegen-server.ts `personenWerdenKunde`) — eine Stelle.
     await personenWerdenKunde(Array.from(ids), jetzt, werAus(req));
+    // R2-1 Fund 2: eine offene Aufgabe „Mandat anlegen“ (Automatik griff nicht) ist damit erledigt.
+    await (await import('@/lib/crm/mandat-automatik-server')).mandatFehltAufgabenSchliessen();
     return NextResponse.json({ ok: true, mandatId: m.id, text: `Mandat „${m.kunde}“ angelegt — unter Produkte & Mandate: Vertrag und Kickoff klären.${platz ? ` ${platz}` : ''}`, ...(platz ? { hinweis: platz } : {}) });
   }
 

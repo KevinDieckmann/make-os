@@ -36,7 +36,9 @@ export const BEZUG_FELDER = ['kontaktId', 'firmaId', 'dealId', 'mandatId', 'rech
   // Prozesse × Fulfillment (22.10.): das Produkt eines gebuchten Zusatzmoduls (Ereignis „Zusatzmodul gebucht“) — nur die Kennung.
   'leistungId',
   // Begleit-Prozesse am Fall (22.10., B1): das Paket des Falls (`fp-…`) und die Bestätigung (F0 …) — nur Kennungen.
-  'vorlageId', 'freigabeId'] as const;
+  'vorlageId', 'freigabeId',
+  // Vertragsstrecke (02.11., R2-2 Fund 6): der unterschriebene Vertrag (`vertragId`) — nur die Kennung.
+  'vertragId'] as const;
 export type BezugFeld = typeof BEZUG_FELDER[number];
 export type EreignisBezug = Partial<Record<BezugFeld, string>>;
 export type EreignisBereich = 'privat' | 'business';
@@ -72,6 +74,12 @@ export interface Ereignis {
    * auf ein Ereignis seiner eigenen Läufe nie; eine Kette endet nach `LAUF_GRENZEN.kettenTiefe`.
    */
   herkunft?: string;
+  /**
+   * Automatisch gesendet (R2-2 Fund 3, 02.11.): NUR an „Antwort gesendet“ — Kampagnen-Motor, Website-Post (Willkommensstrecke, Bestätigungen),
+   * Newsletter-Bestätigung, Angebots-Formular, Download-Links. Eine solche Sendung ist keine persönliche Reaktion: sie stoppt keine Uhr eines Laufs
+   * (`wartetAuf`). Ohne Feld = von Hand gesendet (wie bisher).
+   */
+  automatisch?: true;
 }
 
 /** Was eine Quelle meldet (`nr`/`am` setzt die Ereignisstelle). */
@@ -153,6 +161,7 @@ export function eingabeSauber(e: EreignisEingabe, istArt: (a: unknown) => boolea
     ...(typeof e.stufe === 'string' && /^[a-z0-9_-]{1,40}$/.test(e.stufe) ? { stufe: e.stufe } : {}),
     ...(typeof e.am === 'string' && Number.isFinite(Date.parse(e.am)) ? { am: e.am } : {}),
     ...(typeof e.herkunft === 'string' && HERKUNFT.test(e.herkunft) ? { herkunft: e.herkunft } : {}),
+    ...(e.automatisch === true && e.art === 'antwort-gesendet' ? { automatisch: true as const } : {}),
   };
 }
 /** Herkunft aus einem Prozess-Lauf (Punkt 49): `prozess:pz-<uuid>:pl-<uuid>:<tiefe>`. */

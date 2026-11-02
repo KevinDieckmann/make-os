@@ -1,7 +1,7 @@
 // ─── Prozesse · Stellschrauben-Masken im Steckbrief (Restpunkte 24.10.) — Scoring, Buchungsseiten, Business-Heads ──────────────────────────────────────────
 // Kevin 22.10.: „alles muss anpassbar sein und es muss auch immer mal wieder zu bearbeiten sein.“ Rein: mit Stand werden die Ansichts-Zeilen Felder (ohne Stand
 // bleibt alles, wie es war); die Anfrage geht an den Weiterleiter. Route: der Weiterleiter schreibt über DIESELBE Stelle wie die Fachseite (Wert danach in der
-// Fachroute sichtbar), Stand/409, ungültig 400 (die Buchungsseite klemmt hier nicht still), Dienstweg 403, Heads nur der Inhaber (403, Rechte „nur lesen“),
+// Fachroute sichtbar), Stand/409, ungültig 400 (die Buchungsseite klemmt hier nicht still), Dienstweg 403, Heads nur Inhaber und volle Mitglieder (02.11.; Konto „nur Business“ 403, Rechte „nur lesen“),
 // fremder Haushalt 403. Eigener Datenordner, erfundene Konten (@example.invalid), kein Netz, kein Modell.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -195,10 +195,12 @@ describe('Route: Business-Heads über `einstellungAendern` — nur der Inhaber',
     const j = await landkarte('pia');
     const budget = schraube(j, 'sp-head-takt', 'head-sales-budget');
     expect(budget).toMatchObject({ art: 'zahl', einheit: '€', wert: null });
-    expect((await landkarte('mira')).stellschraubenRechte.head).toBe(false);
-    const fremd = await senden(budget, 25, 'mira');
+    // 02.11. (Prüfung D): ein volles Mitglied steuert wie ein Inhaber; die Sperre gilt einem Konto „nur Business“.
+    expect((await landkarte('mira')).stellschraubenRechte.head).toBe(true);
+    expect((await landkarte('partnerin')).stellschraubenRechte.head).toBe(false);
+    const fremd = await senden(budget, 25, 'partnerin');
     expect(fremd.status).toBe(403);
-    expect(fremd.j.fehler).toMatch(/nur der Inhaber/);
+    expect(fremd.j.fehler).toMatch(/volle Mitglieder|siehst du nicht/);
     expect((await senden(budget, 25.5)).status).toBe(200);
     const db = await import('@/lib/store/local-db');
     const { einstellungBestand } = await import('@/lib/agenten/typen');

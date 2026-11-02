@@ -6,19 +6,22 @@
 // bekommt EINE neutrale Glocke je Lauf.
 //   · Wer: Takt (Systemlauf, `lauf: 'hintergrund'`) — Hintergrund-KI, Not-Aus/Budget des Head of Marketing (`laufSperre`) gelten; von Hand
 //     („Jetzt Entwürfe schreiben“) als die auslösende Person (`lauf: 'aufruf'`), nur Kanäle, die sie sieht.
-//   · Person des KI-Aufrufs: die auslösende Person, im Systemlauf die Person der Marke bzw. der Inhaber — nie ein fester Name.
+//   · Person des KI-Aufrufs: die auslösende Person, im Systemlauf die Person der Marke bzw. die Marketing-Verantwortliche (Rückfall Inhaber, 02.11.) — nie ein fester Name.
 //   · Ohne KI (kein Schlüssel, Guthaben leer, KI aus): nichts geschrieben, Grund im Lauf-Stand — nie ein Platzhalter-Text, der live ginge.
 //   · Idempotent: der Schritt `entwurf` füllt jeden Platz höchstens einmal (zweiter Lauf, gleichzeitiger Knopf → nichts doppelt).
 
 import { askText, extractJson, kiGesperrt, kiSperrText } from '@/lib/anthropic';
 import { wandzeit } from '@/lib/kalender/zeit';
-import { inhaberSpeicher, haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { haushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { verantwortlichePerson } from '@/lib/crm/verantwortung-server';
 import { kontenDesHaushalts } from '@/lib/make-one/team-speicher';
 import { melde } from '@/lib/meldungen/melden';
 import { WEG } from '@/lib/wege';
 import { ladeSocial, socialSystemSchreiben } from './server';
 import { kanalSichtbar, folgeAus } from './daten';
 import { planLuecken, planVon } from './plan';
+import { markeMitVorgabe } from './marke-vorgabe';
+import { markenVorgabeLaden } from './marke-vorgabe-server';
 import { REDAKTION_SYSTEM, REDAKTION_SCHEMA, redaktionAuftrag, entwurfAus } from './agent';
 import { folgePruefen, kanalPruefen } from './pruefer';
 import { autonomieFuer } from './autonomie';
@@ -49,13 +52,17 @@ export async function socialRedaktionLauf(opt: { person: string | null; kanalId?
     const sperre = await laufSperre(opt.person, 'marketing', jetzt);
     if (sperre) return { ...erg, gestoppt: sperre.text };
     let d = await ladeSocial();
-    const inhaber = await inhaberSpeicher().catch(() => null);
+    // B4 (02.11.): ohne auslösende Person und ohne Personenmarke handelt die Marketing-Verantwortliche (Rückfall Inhaber).
+    const inhaber = await verantwortlichePerson('marketing').catch(() => null);
     const kanaele = d.kanaele.filter(k => !k.archiviertAm && k.status === 'aktiv'
       && (opt.kanalId ? k.id === opt.kanalId : planVon(k).agent)
       && (!opt.person || kanalSichtbar(k, opt.person)));
     const jetztWand = wandzeit(jetzt).slice(0, 16);
     const stapel = new Map<string, number>();
-    outer: for (const k of kanaele) {
+    // Positionierung als Vorgabe der Markenprofile (02.11., M3): leere Felder eines Firmen-/Personenkanals aus Marketing › Positionierung.
+    const vorgabe = await markenVorgabeLaden();
+    outer: for (const k0 of kanaele) {
+      const k = markeMitVorgabe(k0, vorgabe);
       const luecken = planLuecken(k, d.formate, d.folgen, jetztWand);
       if (!luecken.length) { erg.uebersprungen.push({ kanalId: k.id, grund: 'Alle Termine im Plan sind belegt.' }); continue; }
       const analyse = kanalAnalyse(d.folgen, k.id, { formatName: id => d.formate.find(f => f.id === id)?.name ?? id });

@@ -1,17 +1,18 @@
 // ─── Markttraktion › Formulare (25.10.2026) — „Angebot anfordern“, externe Links, Eingänge, Einstellungen ─────────────────────────────────
 // GET  → { ok, istInhaber, katalog (aktive Business-Produkte, Katalog-Form), einstellungen (Absender maskiert, Vorlage, Platzhalter, Standard,
-//          datenschutzFehlt), absenderWahl (nur Inhaber: eigene Business-Postfächer), links (nur Inhaber; ohne Fingerabdruck), eingaenge }
-//        Eingänge: ein Inhaber sieht alle, jede andere Person nur ihre eigenen (Trennung serverseitig). Nie Adressen im Klartext.
+//          datenschutzFehlt), absenderWahl (nur wer steuern darf (Inhaber oder volles Mitglied, 02.11.): eigene Business-Postfächer), links (nur Inhaber; ohne Fingerabdruck), eingaenge }
+//        Eingänge: wer steuern darf, sieht alle, jede andere Person nur ihre eigenen (Trennung serverseitig). Nie Adressen im Klartext.
 // POST { aktion: 'anfordern', anfrageId, anfrage }  → die EINE Funktion `angebotAnfordern` (Quelle „intern“) — jede Person im Haushalt (auch „nur
 //        Business“), nur per Sitzung (Dienstweg 403: ZOE, Takt und Skripte fordern nichts an), einmalig je anfrageId
-//      { aktion: 'link-neu', name, email?, produkte, bis? }                 → nur Inhaber; der ganze Link steht NUR in dieser Antwort (`pfad`)
-//      { aktion: 'link-aendern' | 'link-widerrufen' | 'link-erneuern' | 'link-entfernen', id, … } → nur Inhaber (erneuern: neuer Link, einmal gezeigt)
-//      { aktion: 'einstellungen', absender?: <Postfach-Kennung> | null, betreff?, text? } → nur Inhaber; Absender = eigenes Business-Postfach
+//      { aktion: 'link-neu', name, email?, produkte, bis? }                 → nur wer steuern darf (Inhaber oder volles Mitglied, 02.11.); der ganze Link steht NUR in dieser Antwort (`pfad`)
+//      { aktion: 'link-aendern' | 'link-widerrufen' | 'link-erneuern' | 'link-entfernen', id, … } → nur wer steuern darf (Inhaber oder volles Mitglied, 02.11.) (erneuern: neuer Link, einmal gezeigt)
+//      { aktion: 'einstellungen', absender?: <Postfach-Kennung> | null, betreff?, text? } → nur wer steuern darf (Inhaber oder volles Mitglied, 02.11.); Absender = eigenes Business-Postfach
 // Zugang: Haushalt des Inhabers (Modul Markttraktion). Schreiben nur per Sitzung (Dienstweg 403) mit Bau-Kennung.
 
 import { NextResponse } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
-import { imHaushaltDesInhabers, istInhaber, istDienst, nurHaushalt } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, istDienst, nurHaushalt } from '@/lib/zugang/tor';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { einmalig } from '@/lib/store/anfragen';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
@@ -20,7 +21,8 @@ import { ladeCrm } from '@/lib/crm/speicher';
 import { ladeFormular } from '@/lib/crm/formulare-speicher';
 import { FormularFehler, angebotAnfordern, einstellungenSpeichern, internerKatalog, linkAendern, linkAnlegen } from '@/lib/crm/formulare-server';
 import { absenderPruefen } from '@/lib/crm/angebot-versand';
-import { eingangFuerNurBusiness, formularPostfachBereichOk, linkLage, MAIL_PLATZHALTER, MAIL_STANDARD, type Eingang, type ExternerLink } from '@/lib/crm/formulare';
+import { eingangFuerNurBusiness, formularPostfachBereichOk, linkLage, linkProdukteInaktiv, MAIL_PLATZHALTER, MAIL_STANDARD, type Eingang, type ExternerLink } from '@/lib/crm/formulare';
+import type { Leistung } from '@/lib/crm/typen';
 import { adresseMaskiert, namenVon } from '@/lib/zugang/konten';
 import { localDay } from '@/lib/zeit';
 
@@ -30,9 +32,11 @@ export const dynamic = 'force-dynamic';
 const fehler = (text: string, status: number, extra: Record<string, unknown> = {}) => NextResponse.json({ ok: false, fehler: text, ...extra }, { status });
 
 /** Ein Link, wie er an den Browser geht — nie der Fingerabdruck. */
-const linkSicht = (l: ExternerLink, heute: string) => {
+const linkSicht = (l: ExternerLink, heute: string, leistungen: readonly Pick<Leistung, 'id' | 'status' | 'geloeschtAm'>[] = []) => {
   const { tokenHash: _t, ...rest } = l;
-  return { ...rest, lage: linkLage(l, heute) };
+  // 02.11. (R2-3 Fund 7): welche freigegebenen Produkte auf der Seite nicht mehr erscheinen — die Linkliste warnt.
+  const inaktiv = linkProdukteInaktiv(l, leistungen);
+  return { ...rest, lage: linkLage(l, heute), ...(inaktiv.length ? { inaktiv } : {}) };
 };
 
 export async function GET(req: Request) {
@@ -42,10 +46,11 @@ export async function GET(req: Request) {
   // Trennung serverseitig (25.10.): ein Konto „nur Business“ sieht weder Produkte noch Eingänge einer Privat-Arbeits-Einheit (Selbstständigkeit).
   const { privatAusgeblendetFuer } = await import('@/lib/zugang/konto-sicht-server');
   const nurBusiness = await privatAusgeblendetFuer(z.person);
-  const [inhaber, b, crm, katalog, namen] = await Promise.all([istInhaber(z.person), ladeFormular(), ladeCrm(), internerKatalog({ nurBusiness }), namenVon().catch(() => ({} as Record<string, string>))]);
+  // Steuern (Links, Einstellungen, alle Eingänge, Freigabe): Inhaber ODER volles Mitglied des Haushalts (02.11., lib/zugang/steuern.ts).
+  const [inhaber, b, crm, katalog, namen] = await Promise.all([darfSteuern(z.person), ladeFormular(), ladeCrm(), internerKatalog({ nurBusiness }), namenVon().catch(() => ({} as Record<string, string>))]);
   const linkName = new Map(b.links.map(l => [l.id, l.name] as const));
   const gesellschaftVon = (e: Eingang) => e.gesellschaft ?? (e.angebotId ? (crm.angebote ?? []).find(x => x.id === e.angebotId)?.gesellschaft : undefined);
-  // Trennung serverseitig: ein Inhaber sieht alle Eingänge, jede andere Person nur die eigenen — ein Konto „nur Business“ nie die einer Privat-Einheit.
+  // Trennung serverseitig: wer steuern darf, sieht alle Eingänge, jede andere Person nur die eigenen — ein Konto „nur Business“ nie die einer Privat-Einheit.
   const sichtbar = b.eingaenge.filter(e => (inhaber || (e.quelle === 'intern' && e.von === z.person)) && (!nurBusiness || eingangFuerNurBusiness(gesellschaftVon(e))));
   const eingaenge = [...sichtbar].sort((x, y) => y.am.localeCompare(x.am)).slice(0, 200).map((e: Eingang) => {
     const a = e.angebotId ? (crm.angebote ?? []).find(x => x.id === e.angebotId) : undefined;
@@ -78,7 +83,7 @@ export async function GET(req: Request) {
       platzhalter: MAIL_PLATZHALTER, standard: MAIL_STANDARD, datenschutzFehlt: !!ds.fehlt,
     },
     ...(absenderWahl ? { absenderWahl } : {}),
-    links: inhaber ? b.links.map(l => linkSicht(l, heute)) : [], ...(inhaber ? {} : { linksNurInhaber: true }),
+    links: inhaber ? b.links.map(l => linkSicht(l, heute, crm.leistungen)) : [], ...(inhaber ? {} : { linksNurInhaber: true }),
     eingaenge,
   }, { headers: { 'Cache-Control': 'no-store' } });
 }
@@ -97,8 +102,8 @@ export async function POST(req: Request) {
       const r = await einmalig<Record<string, unknown>>('angebot-anfordern', b.anfrageId, () => angebotAnfordern(b.anfrage, { art: 'intern', person: z.person }, { anfrageId: b.anfrageId, wer }), undefined, { wer: z.person });
       return NextResponse.json(r.body, { status: r.status });
     }
-    // Alles Weitere verwaltet nur ein Inhaber.
-    if (!(await istInhaber(z.person))) return fehler('Links und Einstellungen verwaltet nur ein Inhaber.', 403);
+    // Alles Weitere verwaltet, wer steuern darf (Inhaber oder volles Mitglied, 02.11.).
+    if (!(await darfSteuern(z.person))) return fehler(NUR_STEUERN, 403);
     switch (b.aktion) {
       case 'link-neu': {
         const r = await linkAnlegen(b, z.person);

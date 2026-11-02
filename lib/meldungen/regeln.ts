@@ -52,7 +52,9 @@ export type GespeicherteArt = MeldungArt | 'sammel';
  * heute/überfällig, Kalender-Vorschläge von ZOE im Stapel — alle aus lib/heute/anstehend.ts (`anstehendAbleiten`).
  * Offene Buchungsanfragen meldet die Glocke schon beim Eingang (gespeicherte Art „buchung“) — hier nicht doppelt.
  */
-export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag' | 'danke' | 'businessfrei' | 'routine';
+export type AbgeleiteteArt = 'geburtstag' | 'termin' | 'nachbereiten' | 'frist' | 'followup' | 'vorschlag' | 'danke' | 'businessfrei' | 'routine' | 'kampagne';
+// `kampagne` (02.11., Prüfung D): „n Kampagnen-Mails warten auf Freigabe“ · „n Briefe drucken“ · „n Funde prüfen“ — aus Mail-Stapel und Homepage-Funden
+// abgeleitet (lib/crm/motor-dran.ts), nie gespeichert, die Zahl steckt in der Kennung (wie `danke`), immer Business.
 // `routine` (10.10., Routinen 2): eine Routine mit „Erinnerung“ ist jetzt dran (Uhrzeit bzw. Tageszeit erreicht, noch nicht erledigt) —
 // aus Routinen + eigenem Log abgeleitet (lib/planung/routinen-erinnerung.ts), nie gespeichert; ein älterer Stand leitet sie einfach nicht ab.
 // `danke` (02.10., Netzwerken): „n Danke-Mails bereit“ — ab dem Folgetag eines Events, aus Teilnahme + Kartei abgeleitet.
@@ -293,6 +295,10 @@ export interface AnstehendFuerGlocke {
   vorschlaege?: { kalender: number; jeBereich?: { privat: { kalender: number }; business: { kalender: number } } };
   /** Danke-Mails, die bereitliegen (Netzwerken, 02.10.) — je Event eine Zeile mit der Zahl. */
   danke?: readonly { id: string; n: number; eventTitel: string; href: string }[];
+  /** Offene Terminanfragen der eigenen Seiten (02.11., Prüfung A Fund 1) — erinnert wird nur bei `lange` (> 24 h) bzw. `bald` (Termin < 24 h). */
+  buchungen?: readonly { id: string; titel: string; start: string; href: string; lange?: true; bald?: true; fremd?: true }[];
+  /** Kundengewinnung (02.11.): Mail-Stapel, Druckliste, Funde — je Art eine Zeile mit der Zahl. */
+  motor?: readonly { id: string; n: number; titel: string; href: string }[];
 }
 
 /**
@@ -324,6 +330,15 @@ export function anstehendAbleiten(a: AnstehendFuerGlocke, o: { heute: string; je
   if (a.vorschlaege?.kalender) dazu('vorschlag', `kalender-${a.vorschlaege.kalender}`, `${a.vorschlaege.kalender} Kalender-Vorschl${a.vorschlaege.kalender === 1 ? 'ag' : 'äge'} von ZOE ${a.vorschlaege.kalender === 1 ? 'wartet' : 'warten'} auf Freigabe`, stapelLink(a.vorschlaege));
   // Die Zahl steckt in der Kennung: wird eine Danke-Mail verschickt oder kommt eine dazu, meldet sich die Glocke neu.
   for (const d of a.danke ?? []) if (d.n > 0) dazu('danke', `${d.id}-${d.n}`, `${d.n} Danke-Mail${d.n === 1 ? '' : 's'} bereit — ${d.eventTitel}`, d.href);
+  // Terminanfragen, die zu lange warten (Prüfung A, Fund 1): die gespeicherte Glocke „Neue Terminanfrage“ kam beim Eingang — hier die Erinnerung,
+  // ohne Namen (nur Titel der Buchungsseite und Zeit). Eine Kennung je Anfrage und Anlass: „bald“ meldet sich auch nach „lange“ noch einmal.
+  for (const b of a.buchungen ?? []) {
+    const wann = `${b.start.slice(8, 10)}.${b.start.slice(5, 7)}. ${b.start.slice(11, 16)}`;
+    if (b.bald) dazu('frist', `buchung-${b.id}-bald`, `Terminanfrage „${b.titel}“ am ${wann} noch nicht beantwortet — der Termin ist in unter 24 Stunden`, b.href, true);
+    else if (b.lange) dazu('frist', `buchung-${b.id}-lange`, `Terminanfrage „${b.titel}“ (${wann}) wartet seit über 24 Stunden auf ${b.fremd ? 'eine' : 'deine'} Entscheidung`, b.href, true);
+  }
+  // Die Zahl steckt in der Kennung: kommt eine Mail/ein Fund dazu oder wird freigegeben, meldet sich die Glocke neu. Immer Business (ruht in einer Business-freien Zeit).
+  for (const m of a.motor ?? []) if (m.n > 0) dazu('kampagne', `${m.id}-${m.n}`, m.titel, m.href, true);
   for (const f of a.followups) dazu('followup', f.id, `${f.tageUeber > 0 ? `Überfällig seit ${f.tageUeber} ${f.tageUeber === 1 ? 'Tag' : 'Tagen'}` : 'Heute'}: ${f.text}${f.name && !f.text.includes(f.name) ? ` (${f.name})` : ''}`, f.href);
   return raus;
 }
@@ -340,6 +355,18 @@ export function routinenAbleiten(liste: readonly RoutineFuerGlocke[], o: { heute
   });
 }
 
+/**
+ * Vertriebler-Links ohne aktives Produkt (02.11., Prüfung R2-3 Fund 7): je aktivem Link, auf dem kein freigegebenes Produkt mehr erscheint, EINE Meldung an die
+ * Steuernden (Inhaber, volle Mitglieder — der Aufrufer liest nur für sie), nie gespeichert, immer Business. Kennung je Tag und Link.
+ */
+export function formularLinksAbleiten(liste: readonly { id: string; name: string; href: string }[], o: { heute: string; am: string; gelesen?: { tag: string; ids: string[] } }): Meldung[] {
+  const merker = o.gelesen?.tag === o.heute ? new Set(o.gelesen.ids) : new Set<string>();
+  return liste.filter(l => istLink(l.href)).map(l => {
+    const id = `angebot:${o.heute}:link-${kennung(l.id)}`;
+    return { id, art: 'angebot' as const, titel: `Link „${l.name}“ zeigt kein aktives Produkt mehr — Produkte am Link neu wählen`.slice(0, TITEL_MAX), link: l.href, am: o.am, virtuell: true as const, gelesen: merker.has(id), business: true as const };
+  });
+}
+
 /** Kurzer, stabiler Schlüssel aus einer langen Kennung (Termin `kalender|uid::RID`) — FNV-1a. */
 function kurzSchluessel(s: string): string {
   let h = 0x811c9dc5;
@@ -353,7 +380,7 @@ function kurzSchluessel(s: string): string {
  * Arten, die immer Business sind (Markttraktion, Netzwerken, Buchungsseiten, Verträge der Gesellschaften; Paket 4c: `medien` — Freigaben fürs Marketing
  * und KI-Videos aus dem Agenten-Bereich, beides nur im Business).
  */
-export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke', 'medien', 'produkte', 'prozess', 'angebot']);
+export const BUSINESS_ARTEN: ReadonlySet<string> = new Set(['netzwerken', 'vertrag', 'buchung', 'followup', 'nachbereiten', 'danke', 'medien', 'produkte', 'prozess', 'angebot', 'kampagne']);
 
 /**
  * Ist eine Meldung Business? Arten aus `BUSINESS_ARTEN`, Buchungs-Bezüge, abgeleitete Business-Fristen (`business`) und alles mit

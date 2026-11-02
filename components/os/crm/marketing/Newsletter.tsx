@@ -3,9 +3,10 @@
 // ─── Markttraktion · Marketing › Newsletter — nur mit Double-Opt-in ──────────────────
 // Empfänger sind ausschließlich Personen mit Newsletter-Einwilligung per
 // Double-Opt-in (R6/R7) — eine Mail-Einwilligung oder ein Mandat reicht nicht.
-// MAKE OS versendet nichts: Ausgabe hier schreiben, Empfänger exportieren,
-// im Versandwerkzeug verschicken, danach Empfänger, Antworten und
-// Abmeldungen von Hand eintragen. Öffnungsraten zählen hier bewusst nicht.
+// Den Newsletter versendet MAKE OS nicht: Ausgabe hier schreiben, Empfänger exportieren,
+// im Versandwerkzeug verschicken, danach Empfänger und Antworten von Hand eintragen.
+// Abmeldungen über den Abmeldelink zählt MAKE OS selbst (02.11., `abmeldungenUeberLink`).
+// Öffnungsraten zählen hier bewusst nicht.
 //
 // Zu zweit (25.09.): Jede Ausgabe hat eine Zuständige (ohne Eintrag Malin als
 // Verantwortliche für Marketing) und auf Wunsch eine Freigabe — Ziel wählbar,
@@ -26,7 +27,7 @@ import { useCrmAblage, useAblageSicht, AblageReiter, PapierkorbKarte } from '../
 import type { NewsletterAusgabe, Beitrag } from '@/lib/crm/typen';
 import { TEAM, anderer, nameVon } from '@/lib/crm/team';
 import {
-  AUSGABE_STATUS, stimmenWahl, newsletterEmpfaenger, abmeldequote, quotenAmpel, prozent, stimmeText,
+  AUSGABE_STATUS, stimmenWahl, newsletterEmpfaenger, abmeldequote, abmeldungenUeberLink, quotenAmpel, prozent, stimmeText,
   autorVon, ausgabeFreigabeStand, ausgabeSperre, ausgabeStatusWechsel, ausgabeNachTextAenderung, ausgabeNaechsterSchritt, freigabeAnfrage, freigabeOk, aenderungsWunsch, type Teil,
 } from '@/lib/crm/marketing';
 import { type CrmApi, neueId, datum } from '../daten';
@@ -54,6 +55,8 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
   const ich = api.ich;
   const kontakte = useMemo(() => api.kontakte ?? [], [api.kontakte]);
   const empfaenger = useMemo(() => newsletterEmpfaenger(kontakte).length, [kontakte]);
+  // Abmeldungen über den Abmeldelink automatisch gezählt (02.11., M3) — je versendeter Ausgabe, nur Zahlen.
+  const autoAbm = useMemo(() => abmeldungenUeberLink(api.crm?.stand.newsletter ?? [], kontakte), [api.crm, kontakte]);
   const ablage = useCrmAblage(api, 'newsletter');
   const [sicht, setSicht] = useAblageSicht(() => setOffen(null));
   const alleAusgaben = crm?.stand.newsletter;
@@ -73,7 +76,7 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
   // Zahlen oben über alle Ausgaben außer dem Papierkorb (auch archivierte zählen als versendet).
   const versendet = (alleAusgaben ?? []).filter(a => a.status === 'versendet');
   const antworten = versendet.reduce((s, a) => s + (a.antworten ?? 0), 0);
-  const letzteQuote = versendet.map(abmeldequote).find(q => q !== null) ?? null;
+  const letzteQuote = versendet.map(a => abmeldequote(a, autoAbm.get(a.id))).find(q => q !== null) ?? null;
 
   const anlegen = async () => {
     const t = titel.trim();
@@ -94,7 +97,7 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
           <Zahl wert={letzteQuote === null ? undefined : prozent(letzteQuote)} label="Abmeldequote zuletzt" farbe={letzteQuote === null ? undefined : KPI_FARBE[quotenAmpel(letzteQuote)]} />
         </Raster>
         {!empfaenger && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 10 }}>0 Empfänger mit Double-Opt-in — ohne DOI kein Newsletter. Die Einwilligung „Newsletter“ mit Nachweis (Bestätigungsklick) hältst du am Kontakt unter „Stammdaten › Datenschutz“ fest.</div>}
-        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>MAKE OS versendet nichts. Ausgabe hier schreiben, Empfänger exportieren (nur Name und Adresse, nur Double-Opt-in), im Versandwerkzeug verschicken — mit Abmeldelink. Danach Empfänger, Antworten und Abmeldungen eintragen. Öffnungsraten sind keine Steuergröße.</div>
+        <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 10, lineHeight: 1.5 }}>Den Newsletter versendet MAKE OS nicht selbst. Ausgabe hier schreiben, Empfänger exportieren (nur Name und Adresse, nur Double-Opt-in, je Person mit Abmeldelink), im Versandwerkzeug verschicken. Danach Empfänger und Antworten eintragen — Abmeldungen über den Abmeldelink zählt MAKE OS selbst. Öffnungsraten sind keine Steuergröße.</div>
       </Karte>
 
       {/* 30.10.: Anmeldung über die Website (Double-Opt-in) — füllt die Empfänger oben; der Versand bleibt Handarbeit. */}
@@ -111,7 +114,7 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
         {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginBottom: 8 }}>{meldung}</div>}
         <Liste>
           {sichtbar.map(a => {
-            const q = abmeldequote(a);
+            const q = abmeldequote(a, autoAbm.get(a.id));
             const stand = a.status === 'versendet' ? 'nicht_noetig' : ausgabeFreigabeStand(a);
             return (
               <div key={a.id}>
@@ -120,7 +123,7 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
                   unter={[a.datum ? datum(a.datum, heute) : 'ohne Datum', a.stimme ? `als ${stimmeText(a.stimme)}` : '', a.beitragIds.length ? `${a.beitragIds.length} Beiträge` : '', a.status === 'versendet' && a.empfaenger ? `${a.empfaenger} Empfänger` : '', a.antworten ? `${a.antworten} Antworten` : '', q !== null ? `Abmeldungen ${prozent(q)}` : ''].filter(Boolean).join(' · ')}
                   rechts={<span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{stand !== 'ok' && <FreigabeChip stand={stand} an={a.freigabe?.an} />}<Chip farbe={STATUS_FARBE[a.status]}>{AUSGABE_STATUS.find(s => s.id === a.status)?.label}</Chip></span>} />
                 </ZeileAktionen>
-                {offen === a.id && <AusgabeFormular a={a} api={api} heute={heute} empfaenger={empfaenger} beitraege={crm.stand.beitraege ?? []} schliessen={() => setOffen(null)} melde={setMeldung} loeschen={() => { setOffen(null); ablage.loeschen(a.id, a.titel); }} />}
+                {offen === a.id && <AusgabeFormular a={a} api={api} heute={heute} empfaenger={empfaenger} autoAbm={autoAbm.get(a.id)} beitraege={crm.stand.beitraege ?? []} schliessen={() => setOffen(null)} melde={setMeldung} loeschen={() => { setOffen(null); ablage.loeschen(a.id, a.titel); }} />}
               </div>
             );
           })}
@@ -134,8 +137,8 @@ export function Newsletter({ api, fokus }: { api: CrmApi; fokus?: string }) {
   );
 }
 
-function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, melde, loeschen }: {
-  a: NewsletterAusgabe; api: CrmApi; heute: string; empfaenger: number; beitraege: Beitrag[]; schliessen: () => void; melde: (t: string) => void; /** In den Papierkorb (mit Rückgängig). */ loeschen: () => void;
+function AusgabeFormular({ a, api, heute, empfaenger, autoAbm, beitraege, schliessen, melde, loeschen }: {
+  a: NewsletterAusgabe; api: CrmApi; heute: string; empfaenger: number; /** Über den Abmeldelink gezählt (automatisch). */ autoAbm?: number; beitraege: Beitrag[]; schliessen: () => void; melde: (t: string) => void; /** In den Papierkorb (mit Rückgängig). */ loeschen: () => void;
 }) {
   const [statusHinweis, setStatusHinweis] = useState('');
   const ich = api.ich;
@@ -156,7 +159,7 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
   const sperre = ausgabeSperre(a, ich);
   // Um Freigabe bitten kann man jede Person im Team außer sich selbst — auch die Zuständige, wenn jemand anderes mitgeschrieben hat.
   const ziele = TEAM.map(t => t.id).filter(id => id !== ich);
-  const q = abmeldequote(a);
+  const q = abmeldequote(a, autoAbm);
   const waehlbar = [...beitraege].filter(b => b.status !== 'idee' || a.beitragIds.includes(b.id)).sort((x, y) => (y.datum ?? '').localeCompare(x.datum ?? '')).slice(0, 30);
   const gewaehlt = beitraege.filter(b => a.beitragIds.includes(b.id));
   const text = [a.titel, '', a.inhalt, ...(gewaehlt.length ? ['', ...gewaehlt.map(b => `– ${b.titel}${b.link ? ` ${b.link}` : ''}`)] : [])].join('\n').trim();
@@ -199,14 +202,14 @@ function AusgabeFormular({ a, api, heute, empfaenger, beitraege, schliessen, mel
       {a.status !== 'entwurf' && !empfaenger && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, marginTop: 6 }}>Ohne Empfänger mit Double-Opt-in nicht versenden.</div>}
       {a.status === 'versendet' && (
         <div style={{ marginTop: 6 }}>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 4 }}>Zahlen aus dem Versandwerkzeug — von Hand</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginBottom: 4 }}>Zahlen aus dem Versandwerkzeug — von Hand{autoAbm !== undefined ? ` · über den Abmeldelink automatisch gezählt: ${autoAbm} ${autoAbm === 1 ? 'Abmeldung' : 'Abmeldungen'} (es gilt die größere Zahl)` : ''}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Feld typ="number" breite={130} wert={a.empfaenger == null ? '' : String(a.empfaenger)} platzhalter="Empfänger" onFertig={t => void teil({ empfaenger: zahl(t) })} />
             <Feld typ="number" breite={130} wert={a.antworten == null ? '' : String(a.antworten)} platzhalter="Antworten" onFertig={t => void teil({ antworten: zahl(t) })} />
             <Feld typ="number" breite={130} wert={a.abmeldungen == null ? '' : String(a.abmeldungen)} platzhalter="Abmeldungen" onFertig={t => void teil({ abmeldungen: zahl(t) })} />
             {q !== null ? <Chip farbe={KPI_FARBE[quotenAmpel(q)]}>Abmeldequote {prozent(q)}</Chip> : <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Quote erscheint mit Empfängern und Abmeldungen · Ziel &lt; 0,5 %</span>}
           </div>
-          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Abmeldungen im Versandwerkzeug sind Widerrufe — die Einwilligung in der Karteikarte der Person widerrufen, damit sie aus dem nächsten Export fällt.</div>
+          <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 6 }}>Wer den Abmeldelink nutzt, ist sofort abgemeldet (Werbesperre, Einwilligung widerrufen) und fällt aus dem nächsten Export. Abmeldungen nur im Versandwerkzeug sind ebenfalls Widerrufe — dann die Einwilligung in der Karteikarte der Person widerrufen.</div>
         </div>
       )}
       {a.geaendertVon && <div style={{ fontSize: 12, color: C.inkLeise, marginTop: 4 }}>Zuletzt geändert von {nameVon(a.geaendertVon)} · {datum(a.geaendert.slice(0, 10), heute)}</div>}

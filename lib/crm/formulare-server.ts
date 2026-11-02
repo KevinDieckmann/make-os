@@ -85,10 +85,10 @@ async function personName(person: string): Promise<string> {
   const { namenVon } = await import('@/lib/zugang/konten');
   return (await namenVon().catch(() => ({} as Record<string, string>)))[person] || person;
 }
-/** Die handelnde Person eines Links (Stempel am CRM): der Inhaber, der ihn anlegte — ist er keiner mehr, der Haupt-Inhaber. */
+/** Die handelnde Person eines Links (Stempel am CRM): wer ihn anlegte, solange sie steuern darf (02.11.) — sonst der Haupt-Inhaber. */
 async function linkPerson(l: ExternerLink): Promise<string> {
-  const { istInhaber, inhaberSpeicher } = await import('@/lib/zugang/haushalt-inhaber');
-  if (await istInhaber(l.angelegtVon)) return l.angelegtVon;
+  const [{ inhaberSpeicher }, { darfSteuern }] = await Promise.all([import('@/lib/zugang/haushalt-inhaber'), import('@/lib/zugang/steuern')]);
+  if (await darfSteuern(l.angelegtVon)) return l.angelegtVon;
   const h = await inhaberSpeicher();
   if (!h) throw new FormularFehler('Kein Inhaber eingerichtet.', 503);
   return h;
@@ -404,7 +404,7 @@ async function unbestaetigtAnhaengen(D: AnfrageDaten, k0: Kontakt, quelleText: s
   }, wer);
   const fuId = pruefFollowUpId(D.eingangId);
   const fu = neuesFollowUp({
-    id: fuId, bezug: { art: 'kontakt', id: kontaktId }, kontaktId, art: 'sonstig', text: anfragePruefenText('Angebot anfordern'), faellig: D.heute, zustaendig: D.zustaendig, quelle: 'hand',
+    id: fuId, bezug: { art: 'kontakt', id: kontaktId }, kontaktId, art: 'sonstig', text: anfragePruefenText('Angebot anfordern'), faellig: D.heute, zustaendig: D.zustaendig, quelle: 'hand', anlass: 'anfrage',
     notiz: `${D.vertrieblerName}: Angebot angefordert${produkte ? ` (${produkte})` : ''}. Das Angebot liegt als Entwurf zur Freigabe — „Senden“ übernimmt die Anfrage, „Ablehnen“ verwirft sie.`,
   }, k0, D.person, D.jetzt);
   await aendereCrm(c => ((c.followups ?? []).some(x => x.id === fuId) ? c : { ...c, followups: [...(c.followups ?? []), { ...fu, geaendertVon: D.person }] }), wer);
@@ -444,6 +444,8 @@ async function dealSichern(D: AnfrageDaten & { kontaktId: string; firmaId?: stri
     const r = await dealAnlegen({
       id, kontaktIds: [D.kontaktId], ...(D.firmaId ? { firmaId: D.firmaId } : {}), wert: dealWertAusAngebot({ positionen: D.positionen }), ...(l ? { leistungId: l.id, art: mandatArtVon(l) } : {}),
       gesellschaft: D.gesellschaft, trotzdem: true, schritt: { text: 'Angebot nachfassen', datum: werktagePlus(D.heute, 5) }, notiz, besitzer: D.zustaendig,
+      // Der gewünschte Start reist als Feld mit (02.11., R2-3 Fund 6) — das Mandat bei der Annahme beginnt dann, nicht am Annahmetag.
+      ...(D.eingabe.start ? { startWunsch: D.eingabe.start } : {}),
     }, D.person, D.jetzt, wer);
     if (r.ok) dealId = r.chance.id;
     else if (r.offen?.id === id) dealId = id;
@@ -462,10 +464,10 @@ async function nachVersand(p: { angebotId: string; kontaktId: string; person: st
   }, p.wer);
 }
 
-/** Glocke an alle Inhaber (nie an die auslösende Person selbst — `melde`). Telegram nur neutral (lib/meldungen/speicher.ts `telegramText`). */
+/** Glocke an alle, die freigeben dürfen (Inhaber und volle Mitglieder, 02.11.; nie an die auslösende Person selbst — `melde`). Telegram nur neutral. */
 async function inhaberMelden(titel: string, link: string, von?: string): Promise<void> {
-  const [{ alleInhaberSpeicher }, { melde }] = await Promise.all([import('@/lib/zugang/haushalt-inhaber'), import('@/lib/meldungen/melden')]);
-  for (const an of await alleInhaberSpeicher().catch(() => [] as string[])) await melde({ an, art: 'angebot', titel: titel.slice(0, 200), link, ...(von ? { von } : {}) });
+  const [{ alleSteuerer }, { melde }] = await Promise.all([import('@/lib/zugang/steuern'), import('@/lib/meldungen/melden')]);
+  for (const an of await alleSteuerer().catch(() => [] as string[])) await melde({ an, art: 'angebot', titel: titel.slice(0, 200), link, ...(von ? { von } : {}) });
 }
 
 // ── Freigabe im Stapel (Art „angebot-anfrage“) ───────────────────────────────────────────────────────────────────────────────────
@@ -480,8 +482,8 @@ const artNein = (status: 400 | 403 | 404 | 409 | 413, fehler: string): ArtErgebn
  */
 export const ANGEBOT_ANFRAGE_STAPEL_ART: import('@/lib/zoe/stapel-arten').StapelArtFreigabe = {
   freigeben: async (vIn, person, opt) => {
-    const [{ istInhaber }, { beanspruche, loslassen, entscheide }] = await Promise.all([import('@/lib/zugang/haushalt-inhaber'), import('@/lib/zoe/stapel')]);
-    if (!(await istInhaber(person))) return artNein(403, 'Angebote aus dem Formular gibt nur ein Inhaber frei.');
+    const [{ darfSteuern }, { beanspruche, loslassen, entscheide }] = await Promise.all([import('@/lib/zugang/steuern'), import('@/lib/zoe/stapel')]);
+    if (!(await darfSteuern(person))) return artNein(403, 'Angebote aus dem Formular geben nur Inhaber und volle Mitglieder des Haushalts frei.');
     if (!opt.sitzung) return artNein(403, 'Senden nur aus der eigenen Sitzung — über den Dienstweg wird nichts gesendet.');
     const a = await beanspruche(vIn.id, person, v => (v.bezug?.art !== 'angebot-anfrage' ? { status: 404, fehler: 'Vorschlag nicht gefunden.' } : null));
     if (!a.ok) return artNein(a.status, a.fehler);

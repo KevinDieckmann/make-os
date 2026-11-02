@@ -4,7 +4,7 @@
 //                     Metadaten, Kurzform — Lese-Protokoll „fulfillment“. ?m=&export=csv|pdf → die Antworten als Anhang (Playbook gehört dem Kunden).
 //      ohne m      → nur die Schalter (für Karten, die wissen wollen, ob es den Link gibt).
 // POST { aktion }:
-//   schalter { an }                       Instanz-Schalter (NUR Inhaber)            · puls-schwelle { wert }
+//   schalter { an }                       Instanz-Schalter (wer steuern darf)       · puls-schwelle { wert }
 //   link-anlegen { mandatId, rechte? }     → Token GENAU EINMAL in der Antwort (`token`, `pfad` = /kunde/<id>#t=…)
 //   widerrufen | verlaengern { linkId, tage? } | rechte { linkId, rechte }
 //   puls-anfrage { mandatId }              → Puls-Token GENAU EINMAL (`pfad` = /kunde/<id>#p=…), schließt eine offene Anfrage
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   try { b = await jsonBegrenzt(req, 256 * 1024); } catch (e) { return jsonZuGross(e) ?? fehler('Kein gültiges JSON.', 400); }
   if (!b || typeof b !== 'object' || Array.isArray(b)) return fehler('Kein gültiges JSON.', 400);
   const aktion = String(b.aktion ?? '');
-  // Der Instanz-Schalter nur für den Inhaber (Konzept 5.4) — alles andere für jede Person im Haushalt per Sitzung.
+  // Der Instanz-Schalter: Inhaber ODER volles Mitglied des Haushalts (`darfSteuern`, Kevin 02.11.) — alles andere für jede Person im Haushalt per Sitzung.
   if (aktion === 'schalter') { const i = await fulfillmentZugang(req, { schreiben: true, inhaber: true }); if (i instanceof Response) return i; }
   const p = z.person;
   const mandatId = String(b.mandatId ?? '');

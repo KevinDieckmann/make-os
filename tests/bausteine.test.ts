@@ -98,7 +98,7 @@ beforeAll(async () => {
   db = await import('@/lib/store/local-db');
   drossel = await import('@/lib/zugang/drossel');
   const konto = (id: string, sp: string, rolle: 'inhaber' | 'mitglied', extra: Record<string, unknown> = {}) => ({ id, speicher: sp, email: `${sp}@${D}`, name: `${sp} Test`, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...extra });
-  await db.saveJson('konten', { konten: [konto('k1', 'kevin', 'inhaber', { haushalt: 'test-haus' }), konto('k2', 'malin', 'mitglied', { haushalt: 'test-haus' }), konto('k4', 'gast', 'mitglied', { haushalt: 'anderer-haus' })], einladungen: [] });
+  await db.saveJson('konten', { konten: [konto('k1', 'kevin', 'inhaber', { haushalt: 'test-haus' }), konto('k2', 'malin', 'mitglied', { haushalt: 'test-haus' }), konto('k3', 'nurbusiness', 'mitglied', { haushalt: 'test-haus', finanzRecht: 'business' }), konto('k4', 'gast', 'mitglied', { haushalt: 'anderer-haus' })], einladungen: [] });
   await db.saveJson('kontakte', { kontakte: [] });
   await db.saveJson('gesellschaften--test-haus', { gesellschaften: [
     { id: 'kdv', firmierung: 'Beispiel Ventures UG (haftungsbeschränkt)', strasse: 'Beispielweg 1', plz: '12345', ort: 'Musterstadt', email: `info@${D}`, steuernummer: '12/345/67890', bank: { iban: IBAN, bic: 'COBADEFFXXX', bank: 'Beispielbank' }, geschaeftsfuehrung: 'Erika Beispiel', register: 'Amtsgericht Musterstadt HRB 1' },
@@ -168,7 +168,8 @@ describe('ausgeschaltet bzw. unvollständig', () => {
   });
   it('Einschalten ohne Gesellschaft bzw. Website-Absender → 409; nur ein Inhaber; nie eine Privat-Einheit; nie der Dienstweg', async () => {
     expect((await verwalten({ aktion: 'einstellungen', aktiv: true })).status).toBe(409);
-    expect((await verwalten({ aktion: 'einstellungen', gesellschaft: 'kdv' }, sitzung('malin'))).status).toBe(403);
+    // 02.11. (Prüfung D): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    expect((await verwalten({ aktion: 'einstellungen', gesellschaft: 'kdv' }, sitzung('nurbusiness'))).status).toBe(403);
     expect((await verwalten({ aktion: 'einstellungen', gesellschaft: 'kdc' })).status).toBe(400);
     expect((await verwalten({ aktion: 'einstellungen', gesellschaft: 'kdv' }, { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'kevin' })).status).toBe(403);
     const r = await verwalten({ aktion: 'einstellungen', gesellschaft: 'kdv', zahlungszielTage: 14 });

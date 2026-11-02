@@ -22,7 +22,7 @@ import type { Kontakt, Ergebnis } from '@/lib/make-one/crm';
 import type { CrmBestand, FollowUp, KampagnenErgebnis } from './typen';
 import { OFFENE_STUFEN } from './pipeline';
 import { verbindungenReparieren } from './verbindungen';
-import { dealSchrittErledigt } from './followup';
+import { dealSchrittErledigt, istWerblich } from './followup';
 
 export interface AktivitaetFolgenEingabe {
   kontakt: Kontakt;
@@ -50,7 +50,10 @@ export const FOLLOWUP_NOCHMAL: readonly Ergebnis[] = ['nicht_erreicht', 'mailbox
 export const followupDerPerson = (f: Pick<FollowUp, 'status' | 'kontaktId' | 'bezug'>, kontaktId: string): boolean =>
   f.status === 'offen' && (f.kontaktId === kontaktId || (!f.kontaktId && f.bezug.art === 'kontakt' && f.bezug.id === kontaktId));
 
-/** Werbliche Follow-up-Arten — bei Werbewiderspruch abgesagt. Termine/Nachrichten bleiben (Vertrag, eigene Anfrage). */
+/**
+ * Werbliche Follow-up-Arten — bei Werbewiderspruch abgesagt. Seit 02.11. (R2-4 Fund 1) entscheidet EINE Regel (`istWerblich`, followup.ts): Antworten,
+ * Anfragen, Verträge, Rechnungen, Termine bleiben immer; diese Liste bleibt nur für alte Leser.
+ */
 export const WERBLICHE_FOLLOWUPS: readonly FollowUp['art'][] = ['mail', 'linkedin', 'anruf'];
 const OFFEN: readonly FollowUp['status'][] = ['offen', 'verpasst'];
 
@@ -111,7 +114,7 @@ export function aktivitaetImCrm(crm: CrmBestand, e: AktivitaetFolgenEingabe): { 
   if (e.kontakt.werbesperre) {
     const vermerk = `Abgesagt am ${e.heute}: Werbewiderspruch (Art. 21 DSGVO).`;
     const followups = (neu.followups ?? []).map(f => {
-      if (!OFFEN.includes(f.status) || !WERBLICHE_FOLLOWUPS.includes(f.art)) return f;
+      if (!OFFEN.includes(f.status) || !istWerblich(f)) return f;
       if (f.kontaktId !== id && !(f.bezug.art === 'kontakt' && f.bezug.id === id)) return f;
       abgesagt++;
       return { ...f, status: 'abgesagt' as const, notiz: [f.notiz, vermerk].filter(Boolean).join(' · ').slice(0, 1000), geaendert: e.jetzt, geaendertVon: e.von };

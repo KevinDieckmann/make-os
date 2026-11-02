@@ -2,6 +2,7 @@
 // Kevin 26.10.: Ein Agent baut die Social-Kanäle auf und verwaltet sie (SOCIAL_PLAN.md). Grundlage: Kanäle mit Markenprofil und Leitplanken,
 // Serienformate, Folgen (Skript, Hooks, Quellen), Messungen und die Lernschleife.
 // GET   → Bestand (jeder Eintrag mit `stand`), je Folge Prüfung + Leitplanken-Entscheidung, je Kanal Analyse + Woche
+//         `?nur=zaehler` → { zurFreigabe } (02.11.): Folgen im Entwurf ohne Freigabe in den Kanälen, die die Person sieht — nur eine Zahl
 //         `?space=privat` → 400: Social gehört zu Business, der Privat-Bereich bekommt hier nichts
 // PATCH { ops }  → Einzel-Schritte (lib/social/daten.ts `SocialOp`): Ändern/Entfernen nur mit Stand (409), über den Grenzen 413, Unsinn 400
 // POST  { aktion: 'import-vorschau' | 'import', kanalId, plattform, text, stand?, zuordnung? } → Kennzahlen aus einem Plattform-Export (CSV):
@@ -25,7 +26,7 @@ import { tagPlus } from '@/lib/zeit/kalender-kern';
 import { NUR_BUSINESS, SOCIAL_PLATTFORMEN, SOCIAL_GRENZEN, type SocialPlattform } from '@/lib/social/typen';
 import { importVorschau } from '@/lib/social/csv';
 import { ladeSocial, socialLage, socialSchreiben } from '@/lib/social/server';
-import { socialFuerPerson, NUR_PERSON_SELBST } from '@/lib/social/daten';
+import { socialFuerPerson, folgenZurFreigabe, NUR_PERSON_SELBST } from '@/lib/social/daten';
 import { modellSchranke } from '@/lib/zugang/umfang';
 import { protokolliere } from '@/lib/store/aenderungsprotokoll';
 import { socialRedaktionLauf } from '@/lib/social/agent-server';
@@ -45,7 +46,10 @@ const fehlerAntwort = (status: number, fehler: string, extra: Record<string, unk
 export async function GET(req: Request) {
   const zugang = await imHaushaltDesInhabers(req);
   if (!zugang) return nurHaushalt();
-  if (new URL(req.url).searchParams.get('space') === 'privat') return fehlerAntwort(400, NUR_BUSINESS);
+  const q = new URL(req.url).searchParams;
+  if (q.get('space') === 'privat') return fehlerAntwort(400, NUR_BUSINESS);
+  // Nur Zähler (02.11., M3 — Reiter-Zähler im Marketing): wie viele Folgen auf eine Freigabe warten, in den Kanälen, die DIESE Person sieht.
+  if (q.get('nur') === 'zaehler') return NextResponse.json({ ok: true, zurFreigabe: folgenZurFreigabe(socialFuerPerson(await ladeSocial(), zugang.person)).length });
   return jsonAntwort(req, { ok: true, ...(await socialLage(zugang.person)) });
 }
 

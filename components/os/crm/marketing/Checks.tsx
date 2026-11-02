@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Markttraktion · Marketing › Innovations-Check (24.10., Branch `innovations-check`) ─────────────────────────
-// Die eine interne Stelle des Website-Checks: ein-/ausschalten (nur der Inhaber; kommt AUS, einschalten nur mit Verantwortlichem
+// Die eine interne Stelle des Website-Checks: ein-/ausschalten (Inhaber und volle Mitglieder, 02.11.; kommt AUS, einschalten nur mit Verantwortlichem
 // der Instanz), Buchungsseite für das Erstgespräch wählen, Name und Leitsatz, je Bereich (Sichtbarkeit · Vertrieb · Innovation) das
 // passende Angebot unter dem nächsten Schritt im Ergebnis (30.10.), eingegangene Checks sehen (Stufe, Säulen, Lead-Klasse, Kontakt,
 // CRM-Stand) und die Beleg-Antworten (C5, D6) nach Rubrik bewerten — die Stufe rechnet danach neu. Zahlen nur vom Server

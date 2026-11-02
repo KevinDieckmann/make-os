@@ -201,7 +201,7 @@ function musterKopie(m: ProzessVorlage, k: VorlagenKontext, verweise: (musterId:
  *   uebergang { vorlageId, eintrag } · uebergang-weg { vorlageId, von, nach }
  *   baustein { eintrag (id? = ändern), stand? } · baustein-weg { id, stand? } · recht-geprueft { id, notiz } · urheber-geprueft { id }
  *   ritual { eintrag, stand? } · ritual-weg { id } · zuordnung { leistungId, vorlageId|null } · agent-zusatz { agent, text|null }
- *   einstellungen { felder } (Kunden-Link nur Inhaber) · onboarding-aus { mandatId, aus }
+ *   einstellungen { felder } (Kunden-Link: Inhaber oder volles Mitglied) · onboarding-aus { mandatId, aus }
  */
 export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: VorlagenKontext): AnwendenErgebnis<VorlagenDatei> {
   return ausfuehren(() => {
@@ -470,8 +470,8 @@ export function vorlagenAnwenden(datei: VorlagenDatei, opsRoh: unknown, k: Vorla
         case 'einstellungen': {
           const f = istObj(o.felder) ? o.felder : nein('felder fehlen.');
           // Kunden-Link-Schalter und Puls-Schwelle haben EINEN Schreibweg: POST /api/fulfillment/kunde { aktion: 'schalter' | 'puls-schwelle' }
-          // (C2; Schalter nur Inhaber per Sitzung) — zusammengeführt 11.10. Hier nur der Takt des Onboardings.
-          if (f.kundenLink !== undefined || f.pulsSchwelle !== undefined) nein('Kunden-Link und Puls-Schwelle stellst du unter Fall › Kunde & Reports ein (dort gilt: Schalter nur der Inhaber).');
+          // (C2; Schalter: Inhaber oder volles Mitglied per Sitzung) — zusammengeführt 11.10. Hier nur der Takt des Onboardings.
+          if (f.kundenLink !== undefined || f.pulsSchwelle !== undefined) nein('Kunden-Link und Puls-Schwelle stellst du unter Fall › Kunde & Reports ein (dort gilt: Schalter nur Inhaber und volle Mitglieder).');
           for (const key of Object.keys(f)) if (!['willkommenStunden', 'nachsorgeTage'].includes(key)) nein(`Unbekannte Einstellung „${key}“.`);
           const w = optZahl(f.willkommenStunden, 1, 168, 'Willkommen (Stunden)'); if (w != null) d.einstellungen.willkommenStunden = Math.round(w);
           if (f.nachsorgeTage !== undefined) {

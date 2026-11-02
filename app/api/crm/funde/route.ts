@@ -1,20 +1,21 @@
 // ─── Markttraktion › Marketing › Homepage-Funde (30.10.2026, KAMPAGNE_HOMEPAGE_PLAN.md) ──────────────────────────────────────
-// GET  → { ok, istInhaber, eingerichtet, einstellungen (Absender maskiert, Risiko), risikoHinweis, funde (ohne Token), zahlen, lauf, produkte,
-//          gebietsVorlagen, absenderWahl (nur Inhaber) }
-// POST { aktion: 'einrichten' }                                  → Kampagne + Segment (einmal) — nur Inhaber
-//      { aktion: 'einstellungen', stadt?, gebiete?, branchen?, jeAbend?, absender?: <Postfach>|null, gesellschaft?, produktId? } — nur Inhaber
-//      { aktion: 'risiko', an: boolean }                         → „eigenes Risiko“ (Mail/Anruf ohne Einwilligung) — nur Inhaber, nur per Sitzung
+// GET  → { ok, istInhaber (= darf steuern: Inhaber oder volles Mitglied, 02.11.), eingerichtet, einstellungen (Absender maskiert, Risiko), risikoHinweis, funde (ohne Token), zahlen, lauf, produkte,
+//          gebietsVorlagen, absenderWahl (nur wer steuern darf) }
+// POST { aktion: 'einrichten' }                                  → Kampagne + Segment (einmal) — nur wer steuern darf
+//      { aktion: 'einstellungen', stadt?, gebiete?, branchen?, jeAbend?, absender?: <Postfach>|null, gesellschaft?, produktId? } — nur wer steuern darf
+//      { aktion: 'risiko', an: boolean }                         → „eigenes Risiko“ (Mail/Anruf ohne Einwilligung) — nur wer steuern darf, nur per Sitzung
 //      { aktion: 'hand', fund: {...} }                           → Fund von Hand (z. B. auf Google Maps gesehen)
 //      { aktion: 'verwerfen', id, grund? }                       → bleibt bekannt, kommt nie wieder
-//      { aktion: 'lauf' }                                        → Abendlauf jetzt (im Hintergrund, KI-Tor), nur Inhaber
-//      { aktion: 'import', datei: { format: 'make-os-funde', funde: [...] } } → Funde aus einer Recherche-Datei (≤ 200), nur Inhaber; Körper ≤ 1 MB
+//      { aktion: 'lauf' }                                        → Abendlauf jetzt (im Hintergrund, KI-Tor), nur wer steuern darf
+//      { aktion: 'import', datei: { format: 'make-os-funde', funde: [...] } } → Funde aus einer Recherche-Datei (≤ 200), nur wer steuern darf; Körper ≤ 1 MB
 //      { aktion: 'senden', id }                                  → übernommenen Fund nachsenden (gleiche Bedingungen wie die Freigabe)
 // Zugang: Haushalt des Inhabers (Modul Markttraktion). Schreiben nur per Sitzung (Dienstweg 403) mit Bau-Kennung. Übernommen wird über den
 // ZOE-Stapel (Art `fund`) — nicht hier.
 
 import { NextResponse, after } from 'next/server';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
-import { imHaushaltDesInhabers, istInhaber, istDienst, nurHaushalt } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, istDienst, nurHaushalt } from '@/lib/zugang/tor';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
@@ -36,7 +37,7 @@ const fehler = (text: string, status: number) => NextResponse.json({ ok: false, 
 export async function GET(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return nurHaushalt();
-  const [inhaber, b, crm, namen] = await Promise.all([istInhaber(z.person), ladeFunde(), ladeCrm(), namenVon().catch(() => ({} as Record<string, string>))]);
+  const [inhaber, b, crm, namen] = await Promise.all([darfSteuern(z.person), ladeFunde(), ladeCrm(), namenVon().catch(() => ({} as Record<string, string>))]);
   const e = b.einstellungen;
   const kampagne = e.kampagneId ? crm.kampagnen.find(k => k.id === e.kampagneId && !k.geloeschtAm) : undefined;
   // Reihenfolge: wer zuerst angerufen wird — Handy vor Festnetz vor nur Mail, dann Website-Bedarf (lib/funde/telefon.ts).
@@ -84,7 +85,8 @@ export async function POST(req: Request) {
   // 1 MB: eine Import-Datei mit bis zu 200 Funden (sonst reichen wenige KB).
   try { b = await jsonBegrenzt(req, 1024 * 1024); } catch (e) { return jsonZuGross(e) ?? fehler('Kein JSON.', 400); }
   const wer = werAus(req);
-  const inhaber = await istInhaber(z.person);
+  // Marketing steuern (02.11., Prüfung D): Inhaber ODER volles Mitglied des Haushalts (lib/zugang/steuern.ts).
+  const inhaber = await darfSteuern(z.person);
   try {
     switch (b.aktion) {
       case 'hand': {
@@ -105,7 +107,7 @@ export async function POST(req: Request) {
         return r.ok ? NextResponse.json({ ok: true, text: r.text, gesendet: r.gesendet }) : fehler(r.fehler, r.status);
       }
     }
-    if (!inhaber) return fehler('Einrichten, Einstellungen, Risiko und den Lauf steuert nur ein Inhaber.', 403);
+    if (!inhaber) return fehler(NUR_STEUERN, 403);
     switch (b.aktion) {
       case 'einrichten': return NextResponse.json({ ok: true, ...(await kampagneEinrichten(z.person, wer)) });
       case 'import': {

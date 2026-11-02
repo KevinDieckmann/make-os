@@ -25,6 +25,7 @@
 // Nur per Sitzung (Dienstweg 403), Bau-Kennung, nur Mandate mit Fulfillment (Business und seit 25.10. die Privat-Arbeits-Einheit — diese nur mit Privat-Recht). Wirkung nach außen: keine (Mails gehen per Klick
 // über /api/inbox/senden, danach `willkommen-gesendet`).
 
+import { darfSteuern } from '@/lib/zugang/steuern';
 import { NextResponse } from 'next/server';
 import { fulfillmentZugang, mandatAusserSicht } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
@@ -37,7 +38,6 @@ import { naechsterTermin } from '@/lib/fulfillment/prozesse/rituale';
 import { wartetAufEuch, wertKontoZeilen, aktuellerKnoten, fallFortschritt, unterschriftAm } from '@/lib/fulfillment/regeln';
 import { MANDAT_ID } from '@/lib/fulfillment/grenzen';
 import { MUSTER_FREIGABEN } from '@/lib/fulfillment/muster';
-import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
@@ -82,7 +82,7 @@ export async function GET(req: Request) {
   if (!f) {
     const produktAblauf = await produktAblaufLesen(mandat, crm, null);
     leseZugriff(req, 'fulfillment', { ids: [mandat.id], anzahl: mandat.kontaktIds.length });
-    return NextResponse.json({ ok: true, fall: null, mandat: mandatKurz, unterschrift: u, inhaber: await istInhaber(z.person), ...(produktAblauf ? { produktAblauf } : {}) });
+    return NextResponse.json({ ok: true, fall: null, mandat: mandatKurz, unterschrift: u, inhaber: await darfSteuern(z.person), ...(produktAblauf ? { produktAblauf } : {}) });
   }
 
   const nachricht = url.searchParams.get('nachricht');
@@ -164,7 +164,7 @@ export async function GET(req: Request) {
   const followups = (crm.followups ?? []).filter(x => x.bezug?.art === 'mandat' && x.bezug.id === m).sort((a, b) => (a.faellig < b.faellig ? 1 : -1)).slice(0, 12)
     .map(x => ({ id: x.id, text: x.text, faellig: x.faellig, status: x.status }));
   return NextResponse.json({
-    ok: true, inhaber: await istInhaber(z.person), mandat: mandatKurz, unterschrift: u,
+    ok: true, inhaber: await darfSteuern(z.person), mandat: mandatKurz, unterschrift: u,
     fall: { ...w, knoten: w.knoten.map(x => ({ ...x, stand: eintragStand(f.knoten.find(y => y.id === x.id) ?? x) })), stakeholder: w.stakeholder.map(s => ({ ...s, stand: eintragStand(s) })), entscheidungen: w.entscheidungen.map(e => ({ ...e, stand: eintragStand(e) })) },
     staende: { vereinbarung: eintragStand(f.vereinbarung ?? {}), wertKonto: Object.fromEntries(mandatZieleLesen(mandat.ziele).map(zl => [zl.id, eintragStand(f.wertKonto[zl.id] ?? { messungen: [] })])) },
     // Ohne Onboarding (aus einem Zusatzmodul gestartet, 17.10. spät): kein Onboarding-Stand — die Reise zeigt dann kein Band.

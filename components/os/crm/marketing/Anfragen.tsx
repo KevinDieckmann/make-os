@@ -12,6 +12,7 @@
 // MAKE OS versendet nichts — beantwortet wird im eigenen Postfach.
 
 import { localDay } from '@/lib/zeit';
+import { neueKennung } from '@/lib/kennung';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -27,6 +28,7 @@ import { Wahl } from '../Wahl';
 import { Person } from '../team';
 import { PersonWahl, AlsNaechstes } from './gemeinsam';
 import { DealAusQuelle } from './DealAusQuelle';
+import { WebsiteEingaengeKarte } from './WebsiteEingaenge';
 import Link from 'next/link';
 import { WEG } from '@/lib/wege';
 
@@ -59,6 +61,7 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
   const [text, setText] = useState('');
   const [tag, setTag] = useState(heute);
   const [laeuft, setLaeuft] = useState(false);
+  const anfrageId = useRef(neueKennung('anf'));
   const [meldung, setMeldung] = useState<{ text: string; kontaktId?: string; fehler?: boolean } | null>(null);
   const [dealFuer, setDealFuer] = useState<string | null>(null);
   const [beantwortet, setBeantwortet] = useState<string | null>(null);
@@ -78,13 +81,15 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
     if (!bereit || laeuft) return;
     setLaeuft(true); setMeldung(null);
     const body = {
-      aktion: 'anlegen', kanal, text: text.trim(), datum: tag || undefined,
+      // Prüfung A (Fund 12): EINE Kennung je Eingabe — ein Netz-Retry legt nichts doppelt an (`einmalig` im Server); neu erst nach dem Erfolg.
+      aktion: 'anlegen', anfrageId: anfrageId.current, kanal, text: text.trim(), datum: tag || undefined,
       ...(art === 'vorhanden' ? { kontaktId: person!.id } : { neu: { vorname: neu.vorname.trim(), nachname: neu.nachname.trim(), email: neu.email.trim(), firma: neu.firma.trim(), telefon: neu.telefon.trim() } }),
       ...(bezugArt !== 'keiner' && bezugId ? { bezug: { art: bezugArt, id: bezugId } } : {}),
     };
     const r = await fetch('/api/crm/anfrage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung.' }));
     setLaeuft(false);
     if (!r.ok) { setMeldung({ text: r.fehler ?? 'Nicht festgehalten.', fehler: true }); return; }
+    anfrageId.current = neueKennung('anf');
     setMeldung({ text: `${r.text}${r.hinweis ? ` ${r.hinweis}` : ''}`, kontaktId: r.kontaktId });
     setPerson(null); setNeu(leer); setText(''); setBezugArt('keiner'); setBezugId('');
     await api.laden(); await laden();
@@ -106,6 +111,8 @@ export function Anfragen({ api, zuKontakt }: { api: CrmApi; zuKontakt: (id: stri
   return (
     <>
       <Hinweis art="info">Kontaktformular, Bausteine und Unterlagen der Website pflegt ihr unter <Link href={WEG.website('formulare')} style={{ color: C.aktiv }}>Website</Link> — Anfragen von dort landen hier.</Hinweis>
+      {/* R2-4 Fund 3 (02.11.): Eingänge der Website, die nicht ankamen — sichtbar, mit „erneut“ / „von Hand übernehmen“ / „verwerfen“. */}
+      <WebsiteEingaengeKarte zuKontakt={zuKontakt} onUebernommen={async () => { await api.laden(); await laden(); }} />
       <Karte i={0} akzent={offen.length ? LEUCHT.achtung : undefined}>
         <Ueberschrift rechts={<span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Alles hier bleibt im System — geantwortet wird in deinem Postfach.</span>}>Anfrage erfassen</Ueberschrift>
         <div style={{ display: 'grid', gap: 6 }}>

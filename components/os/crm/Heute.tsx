@@ -61,6 +61,14 @@ interface HeuteAntwort {
   ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson?: number; geschrieben?: number };
   sitzungen: { id: string; datum: string; karten: { ergebnis?: string }[]; gelernt?: string }[];
   team: TeamTag[];
+  /** Betriebe ohne Person (02.11., Prüfung D) — fällige Kampagnen-Anrufe/-Besuche an Firmen (lib/crm/firma-karte.ts). Fehlt in älteren Ständen. */
+  firmen?: FirmenKarteSicht[];
+}
+interface FirmenKarteSicht {
+  firmaId: string; name: string; telefon?: string; ort?: string; followupId: string; art: string; text: string; faellig: string;
+  gruende: string[]; punkte: number; gehoert: string; kampagneId?: string; kampagneName?: string; leitfaden?: string;
+  /** „Antwort bearbeiten“ einer Kampagnen-Mail — „Als Lead übernehmen“ (02.11.). */
+  antwort?: boolean;
 }
 
 const KAT_FARBE: Record<string, string> = { versprechen: LEUCHT.kritisch, signale: LEUCHT.achtung, chancen: LEUCHT.business, kunden: LEUCHT.geld, pflege: LEUCHT.beziehung, neu: LEUCHT.puls };
@@ -307,8 +315,78 @@ export function Heute({ api, name, zuKontakt }: { api: CrmApi; name: (p: string)
           </Karte>
         );
       })}
+      {!fokus && (d.firmen ?? []).length > 0 && <FirmenKarten liste={d.firmen!} lesen={lesen} i={karten.length + 1} neu={() => { void laden(); void api.laden(); }} bestaetigen={bestaetigen} />}
       {!fokus && !lesen && <LetztePowerHours sitzungen={d.sitzungen} heute={d.heute} />}
       {dialog}
+    </>
+  );
+}
+
+/**
+ * Betriebe ohne Person (02.11., Prüfung D): fällige Kampagnen-Anrufe und -Besuche an Firmen — Firma, Telefon der Firma, Leitfaden, Ergebnis-Knöpfe.
+ * Das Ergebnis geht über POST /api/crm/followup { aktion: 'firma-ergebnis' } (dieselbe Regel wie an einer Person, Ergebnis am Betrieb in der Kampagne).
+ */
+function FirmenKarten({ liste, lesen, i, neu, bestaetigen }: { liste: FirmenKarteSicht[]; lesen: boolean; i: number; neu: () => void; bestaetigen: ReturnType<typeof useRueckfrage>['bestaetigen'] }) {
+  const [laeuft, setLaeuft] = useState<string | null>(null);
+  const [meldung, setMeldung] = useState<Record<string, string>>({});
+  async function erfassen(f: FirmenKarteSicht, ergebnis: Ergebnis) {
+    if (ergebnis === 'sperre' && !(await bestaetigen({ titel: `${f.name} widerspricht Werbung?`, text: 'Der Betrieb bekommt eine Werbesperre, kommt auf die Sperrliste und taucht nirgends mehr auf.', ja: 'Sperren', gefahr: true }))) return;
+    setLaeuft(f.followupId);
+    try {
+      const r = await fetch('/api/crm/followup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion: 'firma-ergebnis', id: f.followupId, ergebnis }) });
+      const x = await r.json().catch(() => ({}));
+      setMeldung(m => ({ ...m, [f.followupId]: String(x.text ?? x.fehler ?? (r.ok ? 'Festgehalten.' : 'Nicht gespeichert.')) }));
+      if (r.ok) neu();
+    } catch { setMeldung(m => ({ ...m, [f.followupId]: 'Nicht erreichbar — nichts gespeichert.' })); }
+    finally { setLaeuft(null); }
+  }
+  // „Antwort bearbeiten“ (02.11., Zusatz C): wie in Follow-up › Fällig — derselbe Weg (Motor-Route `als-lead`), nichts wird versendet.
+  async function alsLead(f: FirmenKarteSicht) {
+    setLaeuft(f.followupId);
+    try {
+      const r = await fetch('/api/crm/kampagnen/motor', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ aktion: 'als-lead', followupId: f.followupId }) });
+      const x = await r.json().catch(() => ({}));
+      setMeldung(m => ({ ...m, [f.followupId]: String(x.text ?? x.fehler ?? (r.ok ? 'Als Lead übernommen.' : 'Nicht übernommen.')) }));
+      if (r.ok) neu();
+    } catch { setMeldung(m => ({ ...m, [f.followupId]: 'Nicht erreichbar — nichts übernommen.' })); }
+    finally { setLaeuft(null); }
+  }
+  return (
+    <>
+      {liste.map((f, j) => {
+        const tel = f.telefon ? `tel:${f.telefon.replace(/[^\d+]/g, '')}` : null;
+        return (
+          <Karte key={f.followupId} i={i + j}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span title={f.gehoert === BEIDE ? 'gehört euch beiden' : `gehört ${nameVon(f.gehoert)}`} style={{ display: 'inline-flex' }}><Person id={f.gehoert} groesse={20} /></span>
+              <Chip farbe={KAT_FARBE.versprechen}>Versprechen</Chip>
+              <Chip farbe={C.inkDim}>Betrieb</Chip>
+              {f.kampagneName && <Chip farbe={C.inkDim}>{f.kampagneName}</Chip>}
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, marginTop: 8, letterSpacing: '-.01em' }}>{f.name}</div>
+            {f.ort && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{f.ort}</div>}
+            <ul style={{ margin: '12px 0 0', paddingLeft: 18, display: 'grid', gap: 3 }}>
+              {f.gruende.map((g, k) => <li key={k} style={{ fontSize: TYP.bedien, color: k === 0 ? C.ink : C.inkDim }}>{g}</li>)}
+            </ul>
+            {f.leitfaden && <details style={{ marginTop: 10, fontSize: TYP.bedien, color: C.inkDim }}><summary style={{ cursor: 'pointer', color: C.ink }}>Leitfaden</summary><div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, marginTop: 6 }}>{f.leitfaden}</div></details>}
+            {!lesen && tel && f.art === 'anruf' && (
+              <a href={tel} className="fassbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: 52, width: '100%', maxWidth: 460, marginTop: 14, borderRadius: 14, textDecoration: 'none', fontWeight: 800, fontSize: 17, ...TIEF.knopf(LEUCHT.gut) }}>
+                Anrufen<span style={{ fontWeight: 600, fontSize: 14, opacity: .75, fontVariantNumeric: 'tabular-nums' }}>{f.telefon}</span>
+              </a>
+            )}
+            {!lesen && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
+                {f.antwort && <Knopf farbe={LEUCHT.business} aus={laeuft === f.followupId} onClick={async () => { await alsLead(f); }}>Als Lead übernehmen</Knopf>}
+                {ERGEBNIS_KNOEPFE.map(e => (
+                  <Knopf key={e.id} leise aus={laeuft === f.followupId} farbe={e.id === 'sperre' ? LEUCHT.kritisch : e.id === 'termin' || e.id === 'gespraech' ? LEUCHT.gut : undefined} onClick={async () => { await erfassen(f, e.id); }}>{e.label}</Knopf>
+                ))}
+                <Link href={markttraktion('firmen', undefined, f.firmaId)} style={{ marginLeft: 'auto', fontSize: TYP.bedien, color: LEUCHT.business, textDecoration: 'none', alignSelf: 'center' }}>Zum Betrieb →</Link>
+              </div>
+            )}
+            {meldung[f.followupId] && <div style={{ marginTop: 8, fontSize: TYP.bedien, color: C.inkDim }}>{meldung[f.followupId]}</div>}
+          </Karte>
+        );
+      })}
     </>
   );
 }

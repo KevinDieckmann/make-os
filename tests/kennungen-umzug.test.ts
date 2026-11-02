@@ -97,6 +97,8 @@ beforeAll(async () => {
   await db.saveJson('konten', { konten: [
     { id: 'k1', speicher: 'kevin', email: 'k@test', name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
     { id: 'k2', speicher: 'malin', email: 'm@test', name: 'Malin Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
+    // 02.11. (Prüfung D, Kevin: „voller Zugriff“): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    { id: 'k3', speicher: 'nurbusiness', email: 'nb@test', name: 'Team Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS, finanzRecht: 'business' },
   ], einladungen: [] });
   umzug = await import('@/lib/crm/kennungen-umzug');
   route = (await import('@/app/api/crm/kennungen-umzug/route')) as unknown as Route;
@@ -127,8 +129,8 @@ describe('Kennungs-Umzug an 500 Kontakten', () => {
     expect(v.jeKennung.find(x => x.id === alteId(40))!.speicher).toMatchObject({ kontakte: 2, tasks: 2 });
     expect(v.rueckweg.moeglich).toBe(false);
     expect(await alles()).toBe(vorherStand.text);
-    expect((await aufruf('vorschau', 'malin')).status).toBe(403);
-    expect((await aufruf('ausfuehren', 'malin')).status).toBe(403);
+    expect((await aufruf('vorschau', 'nurbusiness')).status).toBe(403);
+    expect((await aufruf('ausfuehren', 'nurbusiness')).status).toBe(403);
   });
 
   let paare = new Map<string, string>();

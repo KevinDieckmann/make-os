@@ -167,7 +167,31 @@ const RUHT = new Set(['ruht', 'verloren']);
  * An Personen mit Werbesperre (Art. 21) stehen sie in keiner Fälligkeitsliste.
  */
 export const WERBLICHE_ARTEN: readonly FollowUpArt[] = ['mail', 'linkedin', 'anruf', 'nachricht'];
-export const istWerblich = (f: Pick<FollowUp, 'art' | 'bezug'>) => WERBLICHE_ARTEN.includes(f.art) && f.bezug?.art !== 'chance' && f.bezug?.art !== 'mandat';
+
+/**
+ * Antworten wir hier auf etwas? (02.11., Gegenprüfung R2-4 Fund 1 — EINE Regel für jede Werbesperre, Person oder Betrieb.) Eine Antwort auf eine
+ * Kampagnen- oder Willkommens-Mail, eine Anfrage der Person, ein Vertrag, eine Rechnung, ein Termin ist NIE Werbung — auch nicht als „Mail“ oder „Anruf“.
+ * Erkannt am Feld `anlass` (setzt nur der Server); Follow-ups von vorher ohne das Feld an ihren festen Kennungen bzw. dem festen Text der Anfrage.
+ */
+export const ANLASS_SEIT = '2026-11-03';
+export function keineWerbung(f: Pick<FollowUp, 'art' | 'bezug'> & Partial<Pick<FollowUp, 'id' | 'anlass' | 'text' | 'angelegt'>>): boolean {
+  if (f.anlass || f.art === 'termin') return true;
+  if (f.bezug?.art === 'chance' || f.bezug?.art === 'mandat') return true;
+  const id = f.id ?? '';
+  // fu-kr-/fu-kb- Antwort/Rückläufer einer Kampagnen-Mail, fu-kw- Willkommens-Mail, fu-vtr- Vertrag (Unterschrift nachfassen).
+  if (/^fu-(kr|kb|kw|vtr)-/.test(id)) return true;
+  // Anfrage von vorher (lib/crm/anfragen.ts — `ANFRAGE_FOLLOWUP`/`ANFRAGE_PRUEFEN` in marketing.ts; hier als Text, marketing.ts zöge den halben CRM-Baum
+  // nach). Nur für Follow-ups von VOR dem Feld (`ANLASS_SEIT`) — sonst machte ein frei geschriebener Text eine Ansprache zur „Antwort“.
+  return !!f.text && (!f.angelegt || f.angelegt < ANLASS_SEIT) && (f.text.startsWith('Anfrage beantworten') || f.text.startsWith('Anfrage prüfen'));
+}
+
+/**
+ * Ist das Follow-up etwas, das WIR werblich anstoßen? Nur das blendet eine Werbesperre aus (Person oder Betrieb) bzw. sagt sie ab: jeder Schritt einer
+ * Kampagnen-Sequenz (`fu-ks-…` — auch der Besuch, der als „Sonstiges“ läuft), alles aus einer Kampagne, und die Ansprache über einen werblichen Kanal
+ * (Mail, LinkedIn, Anruf, Nachricht). Nie, was antwortet (`keineWerbung`). EINE Stelle für Fälligkeitslisten, Power Hour, Absagen bei neuer Sperre.
+ */
+export const istWerblich = (f: Pick<FollowUp, 'art' | 'bezug'> & Partial<Pick<FollowUp, 'id' | 'anlass' | 'text' | 'quelle' | 'angelegt'>>): boolean =>
+  !keineWerbung(f) && (WERBLICHE_ARTEN.includes(f.art) || !!f.id?.startsWith('fu-ks-') || f.quelle === 'kampagne');
 /** Hinweis für die Oberfläche, wenn Follow-ups wegen Werbesperre ausgeblendet sind (wie `folgeAus` „sperre“ in heute.ts). */
 export const werbesperreHinweis = (n: number) => `${n} ${n === 1 ? 'Follow-up an eine Person' : 'Follow-ups an Personen'} mit Werbesperre ausgeblendet — keine Werbung mehr; nur mit Vertrag oder ihrer Anfrage weiterverfolgen (Stammdaten › Datenqualität).`;
 
@@ -181,7 +205,9 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
    * Kennungen eingeschränkter Personen (08.10., Woche 1 · 4.8): wer mit der verarbeitbaren Kartei rechnet (`kontakteFuerVerarbeitung`),
    * findet die Person nicht — ihr echtes Follow-up erschien dann mit dem Follow-up-Text als Namen (Glocke, Heute). Diese Kennungen fallen ganz weg.
    */
-  ausgeblendet?: ReadonlySet<string> } = {}): Faellig[] {
+  ausgeblendet?: ReadonlySet<string>;
+  /** Steht der Betrieb auf der Sperrliste? (Server mit Pepper, lib/crm/betrieb-sperre.ts) — ohne: nur die Werbesperre an der Firma zählt. */
+  firmaGesperrt?: (firmaId: string) => boolean } = {}): Faellig[] {
   const horizont = opts.horizont ?? HORIZONT_TAGE;
   const bis = tagPlus(heute, horizont);
   const nachId = new Map(kontakte.map(k => [k.id, k]));
@@ -200,8 +226,12 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     // Art. 18 (U2): eingeschränkte Personen stehen in keiner Fälligkeitsliste (Power Hour, „Für dich“) — auch nicht, wenn der Aufrufer
     // sie gar nicht kennt (4.8: verarbeitbare Kartei, Kennung in `ausgeblendet`).
     if (k?.eingeschraenkt || (f.kontaktId && opts.ausgeblendet?.has(f.kontaktId))) continue;
-    // Werbesperre (Art. 21, W8 28.09.): werbliche Arten fallen heraus — mit Hinweis über `beiSperre`.
-    if (k?.werbesperre && istWerblich(f)) { opts.beiSperre?.(f); continue; }
+    // Werbesperre (Art. 21, W8 28.09.): werbliche Arten fallen heraus — mit Hinweis über `beiSperre`. Seit 02.11. (B-Prüfung, Fund 1) auch die
+    // Werbesperre des BETRIEBS: am Follow-up einer Firma bzw. am Betrieb der Person (ein „Nein“ des Betriebs gilt für seine Leute mit), dazu eine
+    // Sperrliste des Betriebs, wenn der Aufrufer sie prüfen kann (`firmaGesperrt`).
+    const fid = f.bezug.art === 'firma' ? f.bezug.id : k?.firmaId;
+    const betriebNein = !!fid && (!!firmen.get(fid)?.werbesperre || !!opts.firmaGesperrt?.(fid));
+    if ((k?.werbesperre || betriebNein) && istWerblich(f)) { opts.beiSperre?.(f); continue; }
     const titel = f.bezug.art === 'chance' ? crm.chancen.find(c => c.id === f.bezug.id)?.titel : f.bezug.art === 'mandat' ? crm.mandate.find(m => m.id === f.bezug.id)?.kunde : f.bezug.art === 'event' ? crm.events.find(e => e.id === f.bezug.id)?.titel : f.bezug.art === 'firma' ? firmen.get(f.bezug.id)?.name : undefined;
     raus.push(mach({ id: f.id, virtuell: false, quelle: f.quelle, art: f.art, text: f.text, faellig: f.faellig, ...(f.uhrzeit ? { uhrzeit: f.uhrzeit } : {}), ...(f.kontaktId ? { kontaktId: f.kontaktId } : {}),
       name: k ? anzeigename(k) : titel ?? f.text, ...(firmaVon(f.kontaktId) ? { firma: firmaVon(f.kontaktId) } : {}), bezug: { ...f.bezug, ...(titel ? { titel } : {}) }, zustaendig: f.zustaendig, ...(f.verschoben ? { verschoben: f.verschoben } : {}), ...(f.terminUid ? { terminUid: f.terminUid } : {}) }));
@@ -262,6 +292,8 @@ export function faellige(kontakte: Kontakt[], crm: CrmBestand, heute: string, op
     const letzter = start.tag;
     const takt = taktVon(k, opts.wertelisten);
     if (!takt) continue;
+    // Die Kadenz ist Ansprache, die WIR anstoßen — ein „Nein“ des Betriebs gilt für seine Leute mit (R2-4 Fund 1).
+    if (k.firmaId && (firmen.get(k.firmaId)?.werbesperre || opts.firmaGesperrt?.(k.firmaId))) continue;
     const f = tagPlus(letzter, takt);
     if (f > bis || tage(f, heute) > 365) continue;
     // Hat die Person schon irgendein offenes Follow-up, braucht es keinen Kadenz-Eintrag.
@@ -302,10 +334,10 @@ export function puenktlichkeit(followups: FollowUp[], heute: string, tageZurueck
 }
 
 /** Ein neues Follow-up aus einer Eingabe — Zuständig: Angabe, sonst wer die Beziehung hält, sonst die Person, die anlegt. */
-export function neuesFollowUp(e: { id: string; bezug: { art: FollowUpBezugArt; id: string }; kontaktId?: string; art?: FollowUpArt; text: string; faellig: string; uhrzeit?: string; zustaendig?: string; quelle?: FollowUp['quelle']; notiz?: string; aufgabeId?: string; terminUid?: string }, kontakt: Kontakt | undefined, person: string, jetzt: string): FollowUp {
+export function neuesFollowUp(e: { id: string; bezug: { art: FollowUpBezugArt; id: string }; kontaktId?: string; art?: FollowUpArt; text: string; faellig: string; uhrzeit?: string; zustaendig?: string; quelle?: FollowUp['quelle']; anlass?: FollowUp['anlass']; notiz?: string; aufgabeId?: string; terminUid?: string }, kontakt: Kontakt | undefined, person: string, jetzt: string): FollowUp {
   return {
     id: e.id, bezug: e.bezug, ...(e.kontaktId ? { kontaktId: e.kontaktId } : {}), art: e.art ?? 'sonstig', text: e.text.trim().slice(0, 300), faellig: e.faellig,
-    ...(e.uhrzeit ? { uhrzeit: e.uhrzeit } : {}), zustaendig: e.zustaendig ?? (kontakt ? haeltBeziehung(kontakt) : person), status: 'offen', quelle: e.quelle ?? 'hand',
+    ...(e.uhrzeit ? { uhrzeit: e.uhrzeit } : {}), zustaendig: e.zustaendig ?? (kontakt ? haeltBeziehung(kontakt) : person), status: 'offen', quelle: e.quelle ?? 'hand', ...(e.anlass ? { anlass: e.anlass } : {}),
     ...(e.notiz ? { notiz: e.notiz.slice(0, 1000) } : {}), ...(e.aufgabeId ? { aufgabeId: e.aufgabeId } : {}), ...(e.terminUid ? { terminUid: e.terminUid } : {}), angelegt: jetzt, geaendert: jetzt,
   };
 }

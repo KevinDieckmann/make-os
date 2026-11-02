@@ -203,6 +203,9 @@ describe('Bestätigen → Glocke → Freigabe → EIN CRM-Vorgang + Termin', () 
     expect(b.kontaktId).toMatch(/^c-/);
     const kk = (await kontakte()).find(x => x.id === b.kontaktId)!;
     expect(kk).toMatchObject({ email: 'testa.gast@example.invalid', vorname: 'Testa', nachname: 'Gast', herkunft: 'selbst' });
+    // Prüfung A (Fund 8): die Firma kommt über den EINEN Weg (`firmaSichern`) — die Person ist mit ihr verknüpft, nicht nur Text.
+    expect(kk.firmaId).toBeTruthy();
+    expect((await db.loadJson<{ firmen: { id: string; name: string }[] }>('crm'))!.firmen.find(f => f.id === kk.firmaId)?.name).toBe('Probe GmbH');
     expect(kk.aktivitaeten.filter(a => (a.text ?? '').startsWith('Anfrage über Website: Terminbuchung „Erstgespräch“'))).toHaveLength(1);
     const ew = kk.einwilligungen!.find(e => e.grundlage === 'anfrage' && e.kanal === 'mail')!;
     expect(ew).toMatchObject({ belegRef: `buchung:${b.id}`, wortlautVersion: b.einwilligung.version, erfasstVon: 'kevin' });

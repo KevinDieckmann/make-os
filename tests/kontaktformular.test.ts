@@ -41,6 +41,8 @@ beforeAll(async () => {
   await db.saveJson('konten', { konten: [
     { id: 'k1', speicher: 'kevin', email: `k@${D}`, name: 'Kevin Test', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
     { id: 'k2', speicher: 'malin', email: `m@${D}`, name: 'Malin Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
+    // 02.11. (Prüfung D): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    { id: 'k3', speicher: 'nurbusiness', email: `nb@${D}`, name: 'Team Test', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS, finanzRecht: 'business' },
   ], einladungen: [] });
   await db.saveJson('kontakte', { kontakte: [
     { id: 'c-bekannt', vorname: 'Berta', nachname: 'Bestand', email: `berta.bestand@${D}`, eignung: '', prio: '', stufe: 'gespraech', aktivitaeten: [], importiertAm: '2026-09-01', geaendertAm: '2026-09-01', anrede: 'Sie' },
@@ -61,13 +63,14 @@ describe('Schalter und Verantwortlicher', () => {
     expect((await senden(gut())).status).toBe(404);
     expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung(), body: JSON.stringify({ aktiv: true }) })))).status).toBe(409);
     await db.saveJson('check-einstellungen', { aktiv: false, gastgeber: 'kevin', verantwortlich: `Probe GmbH, datenschutz@${D}` });
-    expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung('malin'), body: JSON.stringify({ aktiv: true }) })))).status).toBe(403);
+    expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung('nurbusiness'), body: JSON.stringify({ aktiv: true }) })))).status).toBe(403);
     expect((await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: { ...sitzung(), 'x-make-key': 'pruef-schluessel-kontaktformular', 'x-make-person': 'kevin' }, body: JSON.stringify({ aktiv: true }) })))).status).toBe(403);
     const an = await json(await intern.POST!(new Request('http://test/api/kontaktformular/intern', { method: 'POST', headers: sitzung(), body: JSON.stringify({ aktiv: true }) })));
     expect(an).toMatchObject({ status: 200, d: { aktiv: true } });
     expect(await status()).toEqual({ status: 200, d: { ok: true, aktiv: true } });
-    const lesen = await json(await intern.GET!(new Request('http://test/api/kontaktformular/intern', { headers: sitzung('malin') })));
+    const lesen = await json(await intern.GET!(new Request('http://test/api/kontaktformular/intern', { headers: sitzung('nurbusiness') })));
     expect(lesen.d).toMatchObject({ aktiv: true, bereit: true, pfad: '/anfrage', istInhaber: false });
+    expect((await json(await intern.GET!(new Request('http://test/api/kontaktformular/intern', { headers: sitzung('malin') })))).d.istInhaber).toBe(true);
     const fremd = await json(await intern.GET!(new Request('http://test/api/kontaktformular/intern', { headers: sitzung('gast') })));
     expect(fremd.status).toBe(403);
   });
@@ -125,6 +128,25 @@ describe('Eingang über den Anfrage-Weg', () => {
     const r = await senden(gut({ vorname: 'Gerd', email: `gerd.gesperrt@${D}` }));
     expect(r).toMatchObject({ status: 200, d: { ok: true } });
     expect(JSON.stringify((await kontakte()).find(x => x.id === 'c-gesperrt'))).toBe(vorher);
+  });
+});
+
+describe('Anlass aus dem Knopf der Website (01.11.)', () => {
+  it('nur bekannte Formen; unförmig oder unbekannt → kein Anlass, nie ein Fehler', async () => {
+    const { anlassVon } = await import('@/lib/kontaktformular/regeln');
+    expect(anlassVon('events')).toMatchObject({ anlass: 'events', titel: 'Einladung zu den Events' });
+    expect(anlassVon('baustein-elevator-pitch', { baustein: 'Elevator-Pitch-Baukasten' })?.titel).toBe('Baustein bestellen: Elevator-Pitch-Baukasten');
+    expect(anlassVon('vorlage-unbekannt', { vorlage: null })?.titel).toBe('Vorlage anfordern');
+    expect(anlassVon('angebot-ki-brain')?.titel).toBe('Anfrage zu einem Angebot');
+    for (const x of ['kontakt', 'EVENTS', '<b>x</b>', '../events', 'a'.repeat(61), 'angebot-', 42, null]) expect(anlassVon(x)).toBeNull();
+  });
+  it('der Anlass steht vor der Nachricht in der Anfrage; ein unförmiger fällt still weg', async () => {
+    expect(await senden(gut({ email: `ella.event@${D}`, vorname: 'Ella', nachricht: 'Gern beim nächsten Abend dabei.', anlass: 'events' }))).toMatchObject({ status: 200, d: { ok: true } });
+    const ella = (await kontakte()).find(x => x.email === `ella.event@${D}`)!;
+    expect(ella.aktivitaeten.some(a => a.text === 'Anfrage über Website: Kontaktformular · Einladung zu den Events (events) — Gern beim nächsten Abend dabei.')).toBe(true);
+    expect(await senden(gut({ email: `olaf.ohne@${D}`, vorname: 'Olaf', anlass: '<script>' }))).toMatchObject({ status: 200, d: { ok: true } });
+    const olaf = (await kontakte()).find(x => x.email === `olaf.ohne@${D}`)!;
+    expect(olaf.aktivitaeten.some(a => (a.text ?? '').startsWith('Anfrage über Website: Kontaktformular — '))).toBe(true);
   });
 });
 

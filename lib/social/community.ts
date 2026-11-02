@@ -9,6 +9,7 @@
 //     Not-Aus „Antworten anhalten“ und die Tageslimits des Kanals gelten; DMs nur im 24-h-Fenster (Messaging-Regel von Meta).
 //   · Frist: Einträge älter als `COMMUNITY_TAGE` fallen beim Abholen weg (die Originale bleiben bei Instagram).
 
+import { kanalMitMarkenVorgabe } from './marke-vorgabe-server';
 import { loadJson, updateJson } from '@/lib/store/local-db';
 import { neueKennung } from '@/lib/kennung';
 import { HAUSHALT_OK } from '@/lib/finanzen/haushalt/zugriff';
@@ -39,7 +40,8 @@ export interface IgEintrag {
   /** Wer bei uns geantwortet hat (Speichername) — nur eigene Antworten über MAKE OS. */
   durch?: string;
 }
-export interface IgFaden { gelesenBis?: string; erledigtBis?: string; beitrag?: string }
+/** `anfragen` (02.11., Prüfung A Fund 6): je eingehendem Eintrag die Akte, in die er „Als Anfrage übernommen“ wurde — schreibt nur der Server. */
+export interface IgFaden { gelesenBis?: string; erledigtBis?: string; beitrag?: string; anfragen?: Record<string, { kontaktId: string; am: string }> }
 /** Entwurf des Antwort-Agenten je Faden (für die jüngste eingehende Nachricht `fuer`) — mit dem Grund, warum er nicht selbst gesendet hat. */
 export interface IgEntwurf { fuer: string; text: string; am: string; grund: string }
 /**
@@ -71,6 +73,8 @@ export interface FadenSicht {
   eintraege: IgEintrag[]; zuletzt: string; ungelesen: number; offen: boolean;
   /** DM: kann man gerade antworten (letzte eingehende Nachricht < 24 h)? */
   fensterOffen?: boolean;
+  /** Schon als Anfrage übernommene Einträge → Akte (Prüfung A, Fund 6). */
+  anfragen?: Record<string, { kontaktId: string; am: string }>;
 }
 
 /** Fäden für die sichtbaren Kanäle (rein): jüngste zuerst; offen = letzte Nachricht ist eingehend und nicht als erledigt markiert. */
@@ -95,6 +99,7 @@ export function faedenAus(d: CommunityDatei, kanalIds: ReadonlySet<string>, jetz
       eintraege: n, zuletzt: juengste.am,
       ungelesen: ein.filter(x => !z.gelesenBis || x.am > z.gelesenBis).length,
       offen: juengste.richtung === 'ein' && (!z.erledigtBis || juengste.am > z.erledigtBis),
+      ...(z.anfragen && Object.keys(z.anfragen).length ? { anfragen: z.anfragen } : {}),
     });
   }
   return raus.sort((a, b) => b.zuletzt.localeCompare(a.zuletzt));
@@ -350,6 +355,23 @@ export async function communityAntworten(person: string, kanal: SocialKanal, fad
   return { ok: true };
 }
 
+/** Wurde dieser eingehende Eintrag schon als Anfrage übernommen? (Prüfung A, Fund 6) — die Akte oder null. Prüft, dass es den Eintrag gibt. */
+export async function anfrageVomEintrag(fadenId: string, eintragId: string): Promise<{ da: boolean; kontaktId?: string }> {
+  const d = await ladeCommunity();
+  const e = d.eintraege[eintragId];
+  if (!e || e.richtung !== 'ein' || fadenVon(e) !== fadenId) return { da: false };
+  const k = d.faeden[fadenId]?.anfragen?.[eintragId]?.kontaktId;
+  return { da: true, ...(k ? { kontaktId: k } : {}) };
+}
+/** Am Faden festhalten, in welche Akte ein Eintrag übernommen wurde (nur der Server, nach dem Anfrage-Weg). */
+export async function anfrageAmFaden(fadenId: string, eintragId: string, kontaktId: string, jetzt = new Date()): Promise<void> {
+  await updateJson<CommunityDatei>(await communitySpeicher(), cur => {
+    const f = cur?.faeden?.[fadenId] ?? {};
+    if (f.anfragen?.[eintragId]) return cur as CommunityDatei;
+    return { ...(cur ?? {}), eintraege: cur?.eintraege ?? {}, abgeholt: cur?.abgeholt ?? {}, faeden: { ...(cur?.faeden ?? {}), [fadenId]: { ...f, anfragen: { ...(f.anfragen ?? {}), [eintragId]: { kontaktId, am: jetzt.toISOString() } } } } };
+  });
+}
+
 /** Faden als gelesen bzw. erledigt markieren (gilt für alle, die den Kanal sehen — wie ein geteiltes Postfach). */
 export async function fadenMarkieren(fadenId: string, was: 'gelesen' | 'erledigt', jetzt = new Date()): Promise<void> {
   await updateJson<CommunityDatei>(await communitySpeicher(), cur => ({
@@ -369,6 +391,7 @@ Antworte NUR mit dem Antworttext (ohne Anführungszeichen).`;
 
 export async function antwortVorschlag(person: string, kanal: SocialKanal, faden: FadenSicht, lauf: 'aufruf' | 'hintergrund' = 'aufruf'): Promise<{ ok: true; text: string } | { ok: false; fehler: string }> {
   const { askText, fremd } = await import('@/lib/anthropic');
+  kanal = await kanalMitMarkenVorgabe(kanal); // Positionierung als Vorgabe (02.11., M3)
   const verlauf = faden.eintraege.slice(-12).map(e => `${e.richtung === 'ein' ? `@${e.gegen.name ?? 'jemand'}` : 'Wir'}: ${e.text}`).join('\n');
   const marke = [kanal.marke.ton && `Ton: ${kanal.marke.ton}`, kanal.marke.versprechen && `Worum es im Account geht: ${kanal.marke.versprechen}`].filter(Boolean).join('\n');
   const r = await askText({
@@ -395,6 +418,7 @@ export async function fremdEntwurf(person: string, kanal: SocialKanal, link: str
   const d = await ladeCommunity();
   if ((d.fremd ?? []).length >= FREMD_MAX) return { ok: false, status: 413, fehler: `Höchstens ${FREMD_MAX} Einträge — erledigte entfernen.` };
   const { askText, fremd } = await import('@/lib/anthropic');
+  kanal = await kanalMitMarkenVorgabe(kanal); // Positionierung als Vorgabe (02.11., M3)
   const marke = [kanal.marke.ton && `Ton: ${kanal.marke.ton}`, kanal.marke.versprechen && `Worum es im eigenen Account geht: ${kanal.marke.versprechen}`].filter(Boolean).join('\n');
   const r = await askText({
     system: FREMD_SYSTEM, systemStabil: FREMD_SYSTEM, maxTokens: 300, zweck: 'social-fremd', timeoutMs: 45_000, retries: 1,

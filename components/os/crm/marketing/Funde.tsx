@@ -20,14 +20,14 @@ interface Fund {
   adresse?: { strasse?: string; hausnummer?: string; plz?: string; ort?: string };
   bewertung?: { punkte: number; gruende: string[] }; entwurf?: { betreff: string; text: string; anruf: string };
   status: 'neu' | 'vorbereitet' | 'uebernommen' | 'gesendet' | 'verworfen' | 'gesperrt'; grund?: string; angelegt: string;
-  vorschlagId?: string; kontaktId?: string; firmaId?: string; gesendet?: { am: string; ueber: string }; angesehenAm?: string;
+  vorschlagId?: string; kontaktId?: string; firmaId?: string; gesendet?: { am: string; ueber: string }; post?: { am: string }; angesehenAm?: string;
 }
 interface Daten {
   istInhaber: boolean; eingerichtet: boolean; kampagne?: { id: string; name: string; status: string };
   einstellungen: { stadt?: string; gebiete: string[]; gebietIndex: number; branchen: string[]; jeAbend: number; produktId?: string; arten?: string[]; nurMitMail: boolean; nurMitTelefon: boolean; absender: { postfach: string; person: string; eigenes: boolean } | null; eigenesRisiko: { seit: string; von: string } | null };
   risikoHinweis: string; namensnennung: string; funde: Fund[];
   zahlen: { vorbereitet: number; uebernommen: number; gesendet: number; verworfen: number; angesehen: number; mitHandy: number; mitTelefon: number };
-  lauf?: { tag: string; gebiet?: string; geholt: number; vorbereitet: number; fehler?: string };
+  lauf?: { tag: string; gebiet?: string; geholt: number; vorbereitet: number; fehler?: string; texte?: 'ki' | 'regelwerk'; ohneKi?: string };
   produkte: { id: string; name: string }[]; branchen: { id: string; name: string }[];
   gebietsVorlagen: { id: string; name: string; stadt: string; gebiete: string[] }[];
   artenVorlagen: { id: string; name: string; arten: string[] }[];
@@ -184,7 +184,7 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
 
       <Karte>
         <Ueberschrift>Funde</Ueberschrift>
-        {d.lauf && <p style={{ margin: '0 0 8px', fontSize: TYP.bedien, color: C.inkLeise }}>Letzter Lauf {datum(d.lauf.tag)}{d.lauf.gebiet ? ` · ${d.lauf.gebiet}` : ''} · {d.lauf.geholt} Betriebe gelesen · {d.lauf.vorbereitet} vorbereitet{d.lauf.fehler ? ` · ${d.lauf.fehler}` : ''}</p>}
+        {d.lauf && <p style={{ margin: '0 0 8px', fontSize: TYP.bedien, color: C.inkLeise }}>Letzter Lauf {datum(d.lauf.tag)}{d.lauf.gebiet ? ` · ${d.lauf.gebiet}` : ''} · {d.lauf.geholt} Betriebe gelesen · {d.lauf.vorbereitet} vorbereitet{d.lauf.texte === 'regelwerk' ? ` · Texte ohne KI${d.lauf.ohneKi ? ` (${d.lauf.ohneKi})` : ''}` : d.lauf.texte === 'ki' ? ' · Texte mit KI' : ''}{d.lauf.fehler ? ` · ${d.lauf.fehler}` : ''}</p>}
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <Knopf leise={filter !== 'offen'} onClick={() => setFilter('offen')}>Offen</Knopf>
           <Knopf leise={filter !== 'alle'} onClick={() => setFilter('alle')}>Alle</Knopf>
@@ -224,10 +224,11 @@ export function Funde({ zuKontakt }: { zuKontakt: (id: string) => void }) {
                       <Knopf leise onClick={() => { window.open(`/api/crm/funde/vorschau?id=${encodeURIComponent(f.id)}`, '_blank', 'noopener'); }}>Vorschau ansehen</Knopf>
                       {f.vorschlagId && f.status === 'vorbereitet' && <Knopf haupt onClick={async () => { await tun({ id: f.vorschlagId, entscheidung: 'freigeben' }, '/api/zoe/stapel'); }}>{e.eigenesRisiko && f.email ? 'Freigeben und Mail senden' : 'Freigeben (übernehmen)'}</Knopf>}
                       {(f.status === 'vorbereitet' || f.status === 'neu') && <Knopf leise onClick={async () => { if (await bestaetigen({ titel: 'Diesen Fund verwerfen?', text: 'Er kommt nicht wieder.', ja: 'Verwerfen' })) await tun({ aktion: 'verwerfen', id: f.id }); }}>Verwerfen</Knopf>}
-                      {f.status === 'uebernommen' && e.eigenesRisiko && f.email && <Knopf leise onClick={async () => { await tun({ aktion: 'senden', id: f.id }); }}>Mail senden</Knopf>}
+                      {f.status === 'uebernommen' && !f.post && e.eigenesRisiko && f.email && <Knopf leise onClick={async () => { await tun({ aktion: 'senden', id: f.id }); }}>Mail senden</Knopf>}
                       {f.kontaktId && f.status !== 'vorbereitet' && <Knopf leise onClick={() => zuKontakt(f.kontaktId!)}>Zur Person</Knopf>}
                       {f.firmaId && f.status !== 'vorbereitet' && <Link href={WEG.firma(f.firmaId)} style={{ fontSize: TYP.bedien, color: C.aktiv, alignSelf: 'center' }}>Zur Firma ›</Link>}
                     </div>
+                    {!f.gesendet && f.post && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Mail freigegeben am {datum(f.post.am.slice(0, 10))} — liegt im Mail-Stapel der Kampagne und geht werktags zwischen 8 und 18 Uhr gedrosselt raus.</div>}
                     {f.gesendet && <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>Gesendet am {datum(f.gesendet.am.slice(0, 10))} über {f.gesendet.ueber}{f.angesehenAm ? ` · Vorschau geöffnet am ${datum(f.angesehenAm.slice(0, 10))}` : ''}</div>}
                     {f.entwurf && (
                       <details>

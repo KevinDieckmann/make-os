@@ -13,7 +13,11 @@
 //     `firmaId`). Standen sie auf dem ALTEN Namen, ziehen sie mit; ein bewusst anderer Name bleibt.
 
 import type { Kontakt } from '@/lib/make-one/crm';
+import { tagVon } from '@/lib/zeit';
 import type { CrmBestand, Firma, Lead } from './typen';
+import { angebotFollowupsSchliessen } from './angebote';
+import { OFFENE_STUFEN } from './pipeline';
+import { istWerblich } from './followup';
 
 /** Kennungen der Deals, die zwischen `vorher` und `nachher` verschwunden sind. */
 export function geloeschteDeals(vorher: Pick<CrmBestand, 'chancen'>, nachher: Pick<CrmBestand, 'chancen'>): Set<string> {
@@ -93,10 +97,50 @@ export function firmenNamenNachziehen(vorher: Pick<CrmBestand, 'firmen'>, nachhe
   return mandate === nachher.mandate && chancen === nachher.chancen ? nachher : { ...nachher, mandate, chancen };
 }
 
-/** Beide Regeln für den CRM-Bestand selbst (die Kartei führt `aendereCrm` nach). */
+/**
+ * 3 · Neue Werbesperre an einem Betrieb (B-Prüfung, 02.11., Fund 1) — dieselbe Absage-Regel wie bei Personen (lib/crm/aktivitaet-folgen.ts):
+ * offene werbliche Follow-ups des Betriebs (Bezug Firma; Mail, LinkedIn, Anruf, jeder Sequenz-Schritt `fu-ks-…` inkl. Besuch) werden abgesagt, mit
+ * Vermerk. Laufende Sequenzen und noch nicht gesendete Mails beendet der Kampagnen-Motor im nächsten Lauf (er verwirft dabei die Entwürfe).
+ */
+export function firmenWerbesperreFolgen(vorher: CrmBestand, nachher: CrmBestand, jetzt: string, person?: string): CrmBestand {
+  const alt = new Map((vorher.firmen ?? []).map(f => [f.id, f]));
+  const neu = new Set((nachher.firmen ?? []).filter(f => f.werbesperre && !alt.get(f.id)?.werbesperre).map(f => f.id));
+  if (!neu.size || !(nachher.followups ?? []).length) return nachher;
+  const vermerk = `Abgesagt am ${tagVon(jetzt)}: Werbewiderspruch des Betriebs (Art. 21 DSGVO).`;
+  let n = 0;
+  // EINE Regel (R2-4 Fund 1, `istWerblich`): nur, was WIR werblich anstoßen — Antworten, Anfragen, Verträge, Rechnungen, Termine bleiben offen.
+  const followups = nachher.followups!.map(f => {
+    if (f.status !== 'offen' || f.bezug.art !== 'firma' || !neu.has(f.bezug.id) || !istWerblich(f)) return f;
+    n++;
+    // Nie still kürzen (R2-4 Fund 11): passt der Vermerk nicht mehr in die Notiz (1.000 Zeichen), bleibt die Notiz, wie sie ist — der Status
+    // „abgesagt“ und `geaendert` tragen die Absage, der Vermerk steht dann im Ergebnis.
+    const notiz = [f.notiz, vermerk].filter(Boolean).join(' · ');
+    return { ...f, status: 'abgesagt' as const, ...(notiz.length <= 1000 ? { notiz } : { ergebnis: 'Werbewiderspruch des Betriebs' }), geaendert: jetzt, ...(person ? { geaendertVon: person } : {}) };
+  });
+  return n ? { ...nachher, followups } : nachher;
+}
+
+/** Die Regeln für den CRM-Bestand selbst (die Kartei führt `aendereCrm` nach). */
 export function crmFolgen(vorher: CrmBestand, nachher: CrmBestand, jetzt: string, person?: string): CrmBestand {
   const weg = geloeschteDeals(vorher, nachher);
   const firmen = firmenLeadsOhneDeals(nachher.firmen ?? [], weg, jetzt, person);
   const mitLeads = firmen === nachher.firmen ? nachher : { ...nachher, firmen };
-  return firmenNamenNachziehen(vorher, mitLeads, jetzt, person);
+  return angebotNachfassenBeiDealSchluss(vorher, firmenWerbesperreFolgen(vorher, firmenNamenNachziehen(vorher, mitLeads, jetzt, person), jetzt, person), jetzt, person);
+}
+
+/**
+ * Deal von Hand verloren oder geparkt (02.11., Prüfung C): das Nachfassen seiner offenen Angebote (gestellt/abgelaufen — `fu-<angebot>`,
+ * `fu-<angebot>-ablauf`) wird abgesagt — sonst stand „Angebot nachfassen“ weiter in Steht an, obwohl der Deal entschieden ist. Die Angebote selbst
+ * bleiben, wie sie sind. Rein; ohne solchen Wechsel derselbe Bestand.
+ */
+export function angebotNachfassenBeiDealSchluss(vorher: CrmBestand, nachher: CrmBestand, jetzt: string, person?: string): CrmBestand {
+  const alt = new Map((vorher.chancen ?? []).map(c => [c.id, c.stufe]));
+  const zu = (nachher.chancen ?? []).filter(c => (c.stufe === 'verloren' || c.stufe === 'geparkt') && OFFENE_STUFEN.includes(alt.get(c.id) ?? 'gewonnen'));
+  if (!zu.length) return nachher;
+  let followups = nachher.followups ?? [];
+  for (const c of zu) {
+    const ids = (nachher.angebote ?? []).filter(a => a.dealId === c.id && (a.status === 'gestellt' || a.status === 'abgelaufen')).map(a => a.id);
+    followups = angebotFollowupsSchliessen(followups, ids, { status: 'abgesagt', ergebnis: c.stufe === 'verloren' ? 'Deal verloren' : 'Deal geparkt', jetzt, person: person ?? 'system' });
+  }
+  return followups === nachher.followups ? nachher : { ...nachher, followups };
 }

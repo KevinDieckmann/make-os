@@ -189,3 +189,66 @@ export async function googleAntwort(f: Fund, status: Exclude<Teilnahme, 'offen'>
     await anwenden(person, neu);
   } catch (err) { return alsKalenderFehler(err); }
 }
+
+// ── „Belegt“-Spiegel (01.11., lib/kalender/google/belegt-spiegel.ts) ────────
+// Neutrale Blöcke im EIGENEN Google-Hauptkalender einer Person — nur mit ihrer Verbindung, nur Ereignisse mit der Spiegel-Marke
+// (`SPIEGEL_MARKE`). Nie Gäste, nie Post (`sendUpdates=none`). Die ID ist aus der Spiegel-Kennung abgeleitet (idempotent); ein
+// fremdes Ereignis ohne Marke wird nie überschrieben oder gelöscht. Das Ergebnis legt `googleSpiegelAnwenden` gesammelt in den Bestand.
+
+const OHNE_POST = { sendUpdates: 'none' } as const;
+const istUnserSpiegel = (e: GEvent | null): boolean => !!e?.privat?.makeOsSpiegel;
+
+/** Einen Spiegel-Block anlegen oder ersetzen. `etag` = der zuletzt von uns geschriebene Stand (If-Match). */
+export async function googleSpiegelSetzen(person: string, body: GBody & { id: string }, etag?: string): Promise<GEvent> {
+  const st = await standOder404(person);
+  if (!st.schreibbar) throw new KalenderVerboten('Der Google-Kalender ist nur lesbar.');
+  const put = async (tag?: string): Promise<GoogleAntwort> => googleAnfrage(person, 'kalender', eventsUrl(st, body.id), { method: 'PUT', body: { ...body, status: 'confirmed' }, query: OHNE_POST, kopf: tag ? { 'If-Match': tag } : {} });
+  const nachsehen = async (): Promise<GEvent | null> => { const r = await googleAnfrage(person, 'kalender', eventsUrl(st, body.id)); return r.status === 200 ? schlank(r.json) : null; };
+  let r: GoogleAntwort;
+  if (etag) {
+    r = await put(etag);
+    if (r.status === 412) {
+      const da = await nachsehen();
+      if (da && da.status !== 'cancelled' && !istUnserSpiegel(da)) throw new KalenderFehler('Unter dieser Kennung steht ein fremder Termin — der Spiegel lässt ihn stehen.', 409);
+      r = await put(da?.etag);
+    }
+    if (r.status === 404 || r.status === 410) r = await googleAnfrage(person, 'kalender', eventsUrl(st), { method: 'POST', body, query: OHNE_POST });
+  } else {
+    r = await googleAnfrage(person, 'kalender', eventsUrl(st), { method: 'POST', body, query: OHNE_POST });
+  }
+  if (r.status === 409) {
+    const da = await nachsehen();
+    if (da && da.status !== 'cancelled' && !istUnserSpiegel(da)) throw new KalenderFehler('Unter dieser Kennung steht ein fremder Termin — der Spiegel lässt ihn stehen.', 409);
+    r = await put(da?.status === 'cancelled' ? undefined : da?.etag);
+  }
+  const ev = schlank(r.json);
+  if (r.status !== 200 || !ev) throw new KalenderFehler(`Google hat den Block nicht angenommen (${r.status})${googleText(r)}.`, r.status >= 500 ? 502 : r.status === 403 ? 403 : 400);
+  return ev;
+}
+
+/** Einen Spiegel-Block löschen. Weg ist weg (404/410 = schon gelöscht); ein Ereignis ohne Spiegel-Marke bleibt immer stehen. */
+export async function googleSpiegelEntfernen(person: string, id: string, etag?: string): Promise<void> {
+  const st = await standOder404(person);
+  let r = await googleAnfrage(person, 'kalender', eventsUrl(st, id), { method: 'DELETE', query: OHNE_POST, kopf: etag ? { 'If-Match': etag } : {} });
+  if (r.status === 412) {
+    const da = await googleAnfrage(person, 'kalender', eventsUrl(st, id));
+    const ev = da.status === 200 ? schlank(da.json) : null;
+    if (!ev || ev.status === 'cancelled') return;
+    if (!istUnserSpiegel(ev)) return;
+    r = await googleAnfrage(person, 'kalender', eventsUrl(st, id), { method: 'DELETE', query: OHNE_POST, kopf: ev.etag ? { 'If-Match': ev.etag } : {} });
+  }
+  if (![200, 204, 404, 410].includes(r.status)) throw new KalenderFehler(`Google hat das Löschen nicht angenommen (${r.status})${googleText(r)}.`, r.status >= 500 ? 502 : r.status === 403 ? 403 : 400);
+}
+
+/** Geschriebene/gelöschte Spiegel-Blöcke auf einmal in den Bestand (als eigene Schreibung — der Abgleich zählt sie nicht „von außen“). */
+export async function googleSpiegelAnwenden(person: string, neu: readonly GEvent[], weg: readonly string[]): Promise<void> {
+  if (!neu.length && !weg.length) return;
+  await aendereGoogleStand(person, cur => {
+    const eigene = { ...(cur.eigene ?? {}) };
+    let events = ereignisseAnwenden(cur.events, neu);
+    for (const ev of neu) if (ev.etag) eigene[ev.id] = ev.etag;
+    if (weg.length) events = ereignisseAnwenden(events, weg.map(id => ({ id, status: 'cancelled' as const })));
+    return { ...cur, events, eigene: Object.fromEntries(Object.entries(eigene).slice(-200)) };
+  });
+  await cacheNeuSchreiben();
+}

@@ -112,6 +112,11 @@ export interface VerbindungsBestaende {
   familieTage?: FamilieTageStand | null;
   /** Prozesse × Fulfillment (22.10.): Kennungen der Prozesse der Werkstatt (Bestand `prozesse--<haushalt>`) — für `Leistung.prozessId`. null = nicht geprüft. */
   prozesse?: { ids: string[] } | null;
+  /**
+   * Verträge (02.11., Prüfung C): Status und Register-Verweis der Verträge (`vertraege--<haushalt>`) und die Kennungen der Verträge im
+   * Gesellschafts-Register (`gesellschaften--<haushalt>`) — nur Kennungen. null = nicht geprüft.
+   */
+  vertraege?: { liste: { id: string; status: string; registerVertragId?: string }[]; register: string[] } | null;
 }
 
 // ── Befunde ─────────────────────────────────────────────────────────────────
@@ -165,6 +170,7 @@ export const PRUEFUNGEN = {
   'mandat-firma-tot': { schwere: 'fehler', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'Mandat zeigt', 'Mandate zeigen')} auf eine Firma, die es nicht mehr gibt.` },
   'mandat-kontakt-tot': { schwere: 'fehler', bereich: 'mandate', reparierbar: true, art: 'mandat', text: n => `${n} ${e(n, 'Mandat nennt', 'Mandate nennen')} Personen, die es nicht mehr gibt.` },
   'mandat-produkt-tot': { schwere: 'fehler', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'Mandat zeigt', 'Mandate zeigen')} auf ein Produkt, das es nicht mehr gibt.` },
+  'zusatz-produkt-tot': { schwere: 'fehler', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'Mandat trägt', 'Mandate tragen')} ein Zusatzmodul aus einem Produkt, das es nicht mehr gibt — Name, Deckel und Optionen fehlen auf Rechnung und Liquidität.` },
   'mandat-ohne-rechnung': { schwere: 'hinweis', bereich: 'mandate', reparierbar: false, art: 'mandat', text: n => `${n} ${e(n, 'aktives Mandat hat', 'aktive Mandate haben')} keine Rechnung in den letzten 60 Tagen (Quartal: 120) — oder die Rechnung ist nicht mit dem Mandat verknüpft.` },
   'rechnung-mandat-tot': { schwere: 'fehler', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'Rechnung zeigt', 'Rechnungen zeigen')} auf ein Mandat, das es nicht mehr gibt.` },
   'rechnung-gesellschaft-tot': { schwere: 'fehler', bereich: 'rechnungen', reparierbar: false, art: 'rechnung', text: n => `${n} ${e(n, 'Rechnung gehört', 'Rechnungen gehören')} zu keiner Gesellschaft im Finanzplan.` },
@@ -216,6 +222,12 @@ export const PRUEFUNGEN = {
   'angebot-verweis-tot': { schwere: 'fehler', bereich: 'angebote', reparierbar: false, art: 'angebot', text: n => `${n} ${e(n, 'Angebot zeigt', 'Angebote zeigen')} auf eine Person, Firma, einen Deal, ein Mandat oder eine Vorversion, die es nicht mehr gibt.` },
   'angebot-produkt-tot': { schwere: 'hinweis', bereich: 'angebote', reparierbar: false, art: 'angebot', text: n => `${n} ${e(n, 'Angebot hat eine Position', 'Angebote haben Positionen')} aus einem Produkt, das es nicht mehr gibt — Text und Preis stehen im Angebot, es bleibt lesbar.` },
   'angebot-ohne-pdf': { schwere: 'fehler', bereich: 'angebote', reparierbar: false, art: 'angebot', text: n => `${n} ${e(n, 'gestelltes Angebot hat', 'gestellte Angebote haben')} kein PDF (oder es fehlt in der Dateiablage).` },
+  // Prüfung C (02.11., „vom Lead zum zahlenden Kunden“): ein angenommenes Angebot, zu dem kein Mandat läuft (weder am Angebot noch über seinen Deal) — die
+  // Automatik griff nicht (Art. 18, Abbruch, kein Deal). Und ein unterschriebener Vertrag ohne Eintrag im Gesellschafts-Register (keine Fristen, keine Erinnerung).
+  // R2-1 Fund 2 (02.11.): „fehler“ statt „warnung“ — ein angenommenes Angebot ohne Mandat heißt: keine Rechnung, keine Lieferung; die Befunde des Überblicks
+  // nehmen nur Fehler (lib/crm/befunde.ts). Dazu legt die Automatik die Aufgabe „Mandat anlegen“ (`mfa-<angebot>`) an die Sales-Verantwortung.
+  'angebot-angenommen-ohne-mandat': { schwere: 'fehler', bereich: 'angebote', reparierbar: false, art: 'angebot', text: n => `${n} ${e(n, 'angenommenes Angebot hat', 'angenommene Angebote haben')} noch kein Mandat — im Angebot bzw. am Deal „Mandat anlegen“.` },
+  'vertrag-unterschrieben-ohne-register': { schwere: 'warnung', bereich: 'mandate', reparierbar: false, art: 'kennung', text: n => `${n} ${e(n, 'unterschriebener Vertrag steht', 'unterschriebene Verträge stehen')} nicht im Gesellschafts-Register — ohne den Eintrag gibt es keine Fristen und keine Erinnerung; unter Unternehmen › Verträge nachtragen.` },
   'produkt-ohne-angebotstext': { schwere: 'hinweis', bereich: 'angebote', reparierbar: false, art: 'produkt', text: n => `${n} ${e(n, 'aktives Produkt hat', 'aktive Produkte haben')} noch keinen Leistungstext — im Angebots-Tool als „Text fehlt“ markiert (Produkte & Mandate › Produkte).` },
   'konflikt-veraltet': { schwere: 'warnung', bereich: 'import', reparierbar: true, art: 'kennung', text: n => `Import-Konflikte gelten ${n} ${e(n, 'Person', 'Personen')}, die es nicht mehr gibt — Reparieren räumt sie ab.` },
   // Integritätsprüfung 28.09. abends: Verknüpfungen, die bis dahin niemand prüfte.
@@ -429,6 +441,7 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     if (x.firmaId && !m.firmen.has(x.firmaId)) melde('mandat-firma-tot', x.id);
     if (liste(x.kontaktIds).some(id => !m.kontakte.has(id))) melde('mandat-kontakt-tot', x.id);
     if (x.leistungId && !m.leistungen.has(x.leistungId)) melde('mandat-produkt-tot', x.id);
+    if (liste(x.zusatz).some(z => z?.leistungId && !m.leistungen.has(z.leistungId))) melde('zusatz-produkt-tot', x.id);
     if (rechnungen && x.status === 'aktiv' && x.rechnungsrhythmus !== 'einmalig') {
       const fenster = x.rechnungsrhythmus === 'quartal' ? 120 : 60;
       const ab = tagPlus(b.heute, -fenster);
@@ -562,6 +575,12 @@ export function verbindungenPruefen(b: VerbindungsBestaende): VerbindungsBefund[
     if ((a.kontaktId && !m.kontakte.has(a.kontaktId)) || (a.firmaId && !m.firmen.has(a.firmaId)) || (a.dealId && !m.chancen.has(a.dealId)) || (a.mandatId && !m.mandate.has(a.mandatId)) || (a.vorgaengerId && !m.angebote.has(a.vorgaengerId))) melde('angebot-verweis-tot', a.id);
     if (liste(a.positionen).some(p => p.leistungId && !m.leistungen.has(p.leistungId))) melde('angebot-produkt-tot', a.id);
     if (a.status !== 'entwurf' && (!a.pdfDateiId || (pdfIds && !pdfIds.has(a.pdfDateiId)))) melde('angebot-ohne-pdf', a.id);
+    // Dieselbe Zuordnung wie `mandatZumAngebot` (lib/finanzen/rechnung/server.ts): Mandat am Angebot, sonst das Mandat seines Deals; Papierkorb zählt nicht.
+    if (a.status === 'angenommen' && !a.archiviertAm && !a.geloeschtAm && !liste(crm.mandate).some(mm => !mm.geloeschtAm && ((!!a.mandatId && mm.id === a.mandatId) || (!!a.dealId && mm.chanceId === a.dealId)))) melde('angebot-angenommen-ohne-mandat', a.id);
+  }
+  if (b.vertraege) {
+    const imRegister = new Set(b.vertraege.register);
+    for (const v of b.vertraege.liste) if (['unterschrieben', 'aktiv'].includes(v.status) && (!v.registerVertragId || !imRegister.has(v.registerVertragId))) melde('vertrag-unterschrieben-ohne-register', v.id);
   }
   for (const l of liste(crm.leistungen)) if (l.status === 'aktiv' && !l.angebot?.leistungstext?.trim()) melde('produkt-ohne-angebotstext', l.id);
   if (b.prozesse) { const ids = new Set(b.prozesse.ids); for (const l of liste(crm.leistungen)) if (l.prozessId && !ids.has(l.prozessId)) melde('produkt-prozess-tot', l.id); }

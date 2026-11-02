@@ -78,8 +78,9 @@ export async function GET(req: Request) {
   const datei = await ladeIndexDatei('traktion-index');
   // Die Kennzahlen der drei Welten gehen mit — der Index rechnet sie nicht noch einmal (Prüfbericht 27.09., Punkt 18).
   // 7.1 (08.10.): die ersten Wochen nach dem ersten Lauf „vorläufig“ (Kern-Mechanik).
-  const webseite = await (await import('@/lib/crm/webseite-zahlen-server')).webseiteStandLaden();
-  const index = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute), ...(webseite ? { webseite } : {}) });
+  // Website, Social und Kampagnen-Motor (02.11., M3): EINE Lesestelle für alle Aufrufer des Index.
+  const quellen = await (await import('@/lib/crm/traktion-quellen-server')).traktionQuellenLaden();
+  const index = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute), ...quellen });
   const heads = HEADS.map((h, i) => {
     const s = { ...leererStand(), ...(staende[i] ?? {}) };
     const b = s.berichte[s.berichte.length - 1];
@@ -98,7 +99,8 @@ export async function GET(req: Request) {
   ]);
   return {
     ok: true, heute, ich, team: TEAM,
-    fuerDich: fuerDich(ich, kontakte, crm, heute),
+    // 02.11. (Prüfung D): Mail-Stapel, Druckliste, Homepage-Funde — dieselbe Zahl wie Glocke und Heute › Steht an.
+    fuerDich: fuerDich(ich, kontakte, crm, heute, await (await import('@/lib/crm/motor-dran-server')).motorDranLesen(ich, crm).catch(() => [])),
     // Überblick „Für dich“ (04.10. abends): Umsatz der letzten 3 Monate → heute → Pipeline × Wahrscheinlichkeit (lib/fluss).
     fluss: flussAusCrm(crm, heute),
     teamFeed: teamFeed(kontakte, crm, new Date(Date.now() - 14 * 864e5).toISOString(), 14),

@@ -142,6 +142,240 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-11-02-17',
+    datum: '2026-11-02',
+    titel: 'Keine Anfrage geht mehr verloren',
+    kurz: 'Verfallene Terminanfragen stehen jetzt bei den Buchungsseiten — mit „Neuen Termin vorschlagen“ und „Als Anfrage übernehmen“. Angebots-Entwürfe, angenommene Angebote ohne Mandat und Leads aus verlorenen Deals melden sich von selbst.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Eine Terminanfrage, die niemand rechtzeitig freigegeben hat, steht bei den Buchungsseiten: Neuen Termin vorschlagen (als Mail-Entwurf, verschickt wird erst mit eurem Klick) oder als Anfrage ins CRM übernehmen.', bereich: 'business', weg: '/os/kalender?buchungen=1' },
+        { text: 'Leads aus verlorenen Deals, deren Wiedervorlage erreicht ist, stehen in „Für dich“ und unter „Steht an“.', bereich: 'business', weg: WEG.qualifizierung() },
+        { text: 'Ein Angebots-Entwurf aus dem Netzwerken bekommt ein Follow-up „Angebot fertigstellen“ — es erledigt sich mit dem Stellen.', bereich: 'business', weg: WEG.followup() },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Entsteht nach „angenommen“ kein Mandat von selbst, liegt eine Aufgabe „Mandat anlegen“ mit dem Grund bei der Sales-Verantwortung, und die Datenqualität zeigt es als Fehler.', bereich: 'business', weg: WEG.aufgaben() },
+        { text: 'Buchungsanfragen, die über einen Tag warten, und verfallene Anfragen sehen alle, die im Haushalt voll mitarbeiten.', bereich: 'business', weg: '/os/kalender?buchungen=1' },
+        { text: 'Bei einer Freigabe über die Buchungsseite geht auch der Lead der Firma auf „kontaktiert“.', bereich: 'business' },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: '„Wie lief es?“ meldet sich auch nach gebuchten Terminen — die Erinnerung „Termin vorbereiten“ hielt die Frage bisher zurück.', bereich: 'business', weg: WEG.powerHour() },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-16',
+    datum: '2026-11-02',
+    titel: 'Abläufe greifen sauber ineinander',
+    kurz: 'Ein Gespräch oder Termin mit einem Betrieb bringt ihn in die Lead-Liste und legt den nächsten Schritt an. Abläufe zu Kampagnen und Buchungen starten jetzt wirklich, und eure eigene Antwort hält die Uhr an.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Gespräch oder Termin bei einem Betrieb ohne Ansprechpartner: der Betrieb rückt in die Lead-Liste („im Gespräch“ bzw. „Qualifizierung“), und der nächste Schritt steht gleich an — nachfassen bzw. Termin vorbereiten.', bereich: 'business', weg: WEG.powerHour() },
+        { text: 'Betriebe, die auf eine Kampagne geantwortet haben, stehen auch ohne Ansprechpartner unter den Leads — mit dem Schritt „Ansprechpartner anlegen“.', bereich: 'business', weg: WEG.qualifizierung() },
+        { text: 'Antworten auf Kampagnen-Mails lassen sich auch an der Karte eines Betriebs als Lead übernehmen. Meldet sich ein früherer Kunde wieder, kommt er erneut in die Qualifizierung.', bereich: 'business', weg: WEG.powerHour() },
+        { text: 'Die Prozesslandkarte zeigt den heutigen Stand: Mail-Stapel, Druckliste, Rückläufer, Willkommens-Mails, Website-Anfragen, Mahnstufen, Vertrag und Laufzeit.', bereich: 'business', weg: WEG.prozesse() },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Abläufe zu Kampagnen und Buchungsanfragen starten jetzt. Die Werkstatt sagt, wenn ein Auslöser nie zu einem Ablauf passen kann.', bereich: 'business', weg: WEG.prozesse() },
+        { text: 'Wer eine vorbereitete Antwort freigibt, stoppt damit die Uhr des Ablaufs — automatische Mails zählen nicht als Antwort.', bereich: 'business', weg: WEG.prozesse() },
+        { text: 'Ist ein Vertrag unterschrieben, geht die Übergabe von selbst weiter — es gibt nur noch eine Erinnerung zur Unterschrift.', bereich: 'business', weg: WEG.prozesse() },
+        { text: 'Die Abläufe melden sich in der Systemübersicht, wenn sie stocken; ältere Meldungen, die liegen blieben, kommen in die Glocke.', bereich: 'business', weg: WEG.prozesse() },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-15',
+    datum: '2026-11-02',
+    titel: 'Kundengewinnung: Antworten gehen nie verloren',
+    kurz: 'Antworten, Anfragen und Vertrags-Rückfragen stehen jetzt immer an — auch bei Betrieben mit Werbesperre. Website-Eingänge, die nicht ankamen, seht ihr unter Anfragen.',
+    abschnitte: [
+      { art: 'behoben', punkte: [
+        { text: 'Eine Werbesperre (Person oder Betrieb) blendet nur noch aus, was ihr selbst werblich anstoßt — Antworten, Anfragen, Verträge, Rechnungen und Termine bleiben immer sichtbar.', bereich: 'business', weg: WEG.followup() },
+        { text: 'Antworten auf Kampagnen- und Willkommens-Mails werden erst abgehakt, wenn Follow-up und Verlauf stehen — fällt dazwischen etwas aus, holt der nächste Lauf es nach.', bereich: 'business' },
+        { text: '„Laufzeit abgelaufen“ meldet sich nur noch einmal (als Aufgabe), nicht doppelt.', bereich: 'business' },
+      ] },
+      { art: 'neu', punkte: [
+        { text: 'Website-Eingänge, die nicht ankamen, stehen unter Marketing › Anfragen — noch einmal versuchen, von Hand übernehmen oder verwerfen. Sie werden nicht mehr still gelöscht.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Scheitert eine Willkommens-Mail, wartet die Strecke dieser Person, bis ihr „Erneut“ oder „Überspringen“ wählt — mit Glocke.', bereich: 'business', weg: WEG.website('formulare') },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-14',
+    datum: '2026-11-02',
+    titel: 'Produkte rechnen wie zugesagt',
+    kurz: 'Raten und Anzahlung aus dem Angebot gelten jetzt auch für Kombi-Produkte, Jahresprodukte werden einmal im Jahr abgerechnet, und Zusatzmodule zählen im Monatsumsatz mit.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Ein Kombi-Produkt mit Raten oder Anzahlung im Angebot: die Rechnungen kommen genau so, wie das Angebot es zusagt.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Ein Produkt mit Jahrespreis wird eine Rechnung je Vertragsjahr über den vollen Betrag — auch in der Liquidität. Der Monatsumsatz zeigt weiter ein Zwölftel.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Monatsumsatz, Kundenanteil, Produkt-Zahlen und Business-Index zählen Zusatzmodule und geplante Tages- und Stundensätze mit.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Beim Annehmen gelten Zahlplan, Stunden-Deckel und Preise der Optionen, wie sie im Angebot standen — spätere Änderungen am Produkt ändern das Mandat nicht.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Ein Mandat, das beim Annehmen von selbst entsteht, beginnt wie von Hand am Ersten des Folgemonats — mit gewünschtem Start aus „Angebot anfordern“ an diesem Tag.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Ein Vertrag aus einem Angebot nennt auch Tages- und Stundensätze und beschreibt die Leistung so, wie sie im Angebot steht.', bereich: 'business' },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Ein Produkt, das nur noch als Zusatzmodul, auf einer Rechnung oder in einer Regel eines anderen Produkts steckt, wird nicht mehr endgültig gelöscht.', bereich: 'business', weg: WEG.mandat() },
+        { text: 'Vertriebler-Links warnen, wenn ein freigegebenes Produkt archiviert ist; ist keins mehr aktiv, meldet sich die Glocke.', bereich: 'business', weg: WEG.formulare() },
+        { text: 'Die Website-Pflege zeigt „Produkt nicht aktiv“ mit einem Knopf zum Verbergen; „Website-Preis in den Katalog“ klappt auch bei Produkten mit mehreren Preis-Teilen.', bereich: 'business', weg: WEG.website() },
+        { text: 'Raten werden wie im Angebot auf die Summe gerundet; Raten mit größerem Abstand stehen in der Planung.', bereich: 'business' },
+        { text: 'Ein Konto, das nur Business sieht, bekommt in der Markttraktion keine Produkte, Mandate, Deals oder Angebote aus dem Privat-Bereich mehr.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-13',
+    datum: '2026-11-02',
+    titel: 'Kundengewinnung meldet sich',
+    kurz: 'Anrufe bei Betrieben ohne Ansprechpartner stehen jetzt in der Power Hour. Mails zur Freigabe, Briefe zum Drucken und neue Funde melden sich in der Glocke und unter „Steht an“.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Die Power Hour zeigt fällige Anrufe und Besuche bei Betrieben ohne Ansprechpartner — mit Telefonnummer der Firma, Leitfaden und Ergebnis-Knöpfen.', bereich: 'business', weg: WEG.powerHour() },
+        { text: 'Glocke, „Steht an“ und „Für dich“ sagen, wenn Kampagnen-Mails auf eure Freigabe warten, Briefe gedruckt werden wollen oder neue Funde zu prüfen sind.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Wer im Haushalt voll mitarbeitet, kann jetzt alle Marketing- und Vertriebs-Einstellungen selbst ändern: Versand, Funde, Newsletter, Kontaktformular, Website, Checks, Formulare und die Heads.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Ist das Monatsbudget eines Heads erreicht, arbeitet er ohne KI weiter — die Power Hour wird trotzdem vorbereitet. Die Meldung geht an die Person, die den Bereich verantwortet.', bereich: 'business', weg: WEG.agenten() },
+        { text: 'Die Homepage-Funde laufen auch ohne Hintergrund-KI — die Texte kommen dann aus festen Vorlagen, und der Lauf sagt es.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Marketing › Übersicht und der Head of Marketing rechnen dieselben Zahlen wie der Traktions-Score.', bereich: 'business', weg: WEG.marketing() },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: '„Personen aus deinen Kampagnen“ zählt Kampagnen mit Ablauf nicht mehr doppelt.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Die Morgen-Nachricht der Markttraktion richtet sich nach deutscher Zeit.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-12',
+    datum: '2026-11-02',
+    titel: 'Kampagnen-Versand ohne Zufall',
+    kurz: 'Antworten, Abmeldungen und Sperren stoppen jetzt jede schon freigegebene Mail. Hakt die Postfach-Verbindung, wartet die Mail und kommt später — statt verloren zu gehen.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Kommt eine Antwort, gibt es eine Abmeldung oder wird ein Ziel aus der Kampagne genommen, geht keine weitere Mail mehr an dieses Ziel — auch keine, die schon freigegeben war. Eine Abmeldung gilt in jeder Kampagne.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Sagt ein Betrieb Nein (Werbesperre), fallen seine Anrufe, LinkedIn-Schritte und Besuche aus allen Listen.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Hakt die Verbindung zum Postfach, bleibt die Mail freigegeben und wird später noch einmal versucht. Die freigebende Person bekommt dazu höchstens eine Glocke am Tag.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Die Kanal-Ampel zählt beim Freigeben, wie sie jetzt steht. Mails verteilen sich über den Tag statt in den ersten Minuten.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Antworten auf Kampagnen-Mails stehen in der Akte und zählen im Lead. Eine Antwort beendet das Ziel auch in anderen Kampagnen, und wer gerade angeschrieben wurde, bekommt 30 Tage keine zweite Erstansprache.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Antworten auf Willkommens-Mails werden ein Follow-up für Marketing. Die Karte der Willkommens-Mails sagt, warum sie gerade nichts senden, und zeigt gescheiterte Mails.', bereich: 'business', weg: WEG.website('formulare') },
+        { text: 'Briefe mit Fehler stehen in der Druckliste und lassen sich bearbeiten.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: '„Als Lead übernehmen“ zählt bei einem Doppelklick nur einmal und schließt das Follow-up „Antwort bearbeiten“.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Der Trichter je Schritt zählt jetzt auch Betriebe ohne Person.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Eine Mail mit unklarem Versand wird „gesendet“, sobald sie im Postfach unter „Gesendet“ auftaucht. „Erneut vorbereiten“ fragt vorher nach.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-11',
+    datum: '2026-11-02',
+    titel: 'Keine Anfrage geht mehr verloren',
+    kurz: 'Was über die Website kommt, wird zuerst sicher gespeichert und notfalls am Morgen nachgeholt. Liegt eine Terminanfrage zu lange, erinnert die Glocke.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Unterlagen, Newsletter-Anmeldungen, der Check und Bestellungen von der Website werden zuerst fest gespeichert. Klappt etwas nicht, versucht MAKE OS es am Morgen noch einmal und meldet sich in der Glocke.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Eine Terminanfrage, die länger als einen Tag wartet oder deren Termin bald ist, meldet sich in der Glocke. Verfällt sie ohne Antwort, sagt die Glocke es dir.', bereich: 'business', weg: '/os/kalender?buchungen=1' },
+        { text: 'Schreibt eine Person, deren Daten gesperrt sind, landet ihre Nachricht unter Datenschutz zum Prüfen — statt zu verschwinden.', bereich: 'business', weg: WEG.stammdaten('datenschutz') },
+        { text: 'Aus einem Instagram-Kommentar wird nur einmal eine Anfrage. Danach führt der Knopf direkt zur Person.', bereich: 'business', weg: WEG.marketing('social') },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Eine Anfrage ohne Rückmeldung gilt nicht mehr als beantwortet. Bei einer Bestellung schließt die Lieferung die offene Rückmeldung.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Lange Nachrichten werden beim Übernehmen nicht mehr gekürzt, und eine Anfrage wird beim zweiten Senden nicht doppelt angelegt.', bereich: 'business' },
+        { text: 'Bei einer Terminbuchung wird die Firma jetzt mit der Person verknüpft, und eine Empfehlung zählt als Empfehlung.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-10',
+    datum: '2026-11-02',
+    titel: 'Vom Angebot zum Kunden — lückenlos',
+    kurz: 'Ein angenommenes Angebot wird immer zum gewonnenen Deal mit Mandat. Abgelaufene Laufzeiten, fehlende Unterschriften und Fehler im Morgenlauf melden sich jetzt von selbst.',
+    abschnitte: [
+      { art: 'besser', punkte: [
+        { text: 'Angebot angenommen: auch ein geparkter oder verlorener Deal wird gewonnen. Gibt es keinen Deal, entsteht er — danach legt MAKE OS das Mandat an wie gewohnt.', bereich: 'business', weg: WEG.deals() },
+        { text: 'Eine Werbesperre hält das Mandat nach einer Zusage nicht mehr auf — nur eine eingeschränkte Verarbeitung tut das.', bereich: 'business' },
+        { text: 'Verloren wegen „Zeitpunkt“, „Keine Rückmeldung“ oder „Keine Entscheidung“: der Lead kommt nach 90 Tagen wieder in die Qualifizierung. Das Datum steht im Dialog und lässt sich ändern.', bereich: 'business', weg: WEG.deals() },
+        { text: 'Nachfassen räumt sich auf: wird ein Angebot angenommen, ersetzt oder der Deal verloren, verschwinden die offenen Erinnerungen dazu.', bereich: 'business', weg: WEG.followup() },
+        { text: 'Ein fertiger Vertrag bekommt ein Follow-up „Unterschrift nachfassen“. Mit der Unterschrift ist es erledigt, und das Mandat zählt den Vertrag auch, wenn er aus dem Deal entstand.', bereich: 'business' },
+        { text: 'Ein beendeter oder gekündigter Vertrag ist auch im Register beendet — Fristen und Erinnerungen hören auf.', bereich: 'business' },
+      ] },
+      { art: 'neu', punkte: [
+        { text: 'Laufzeit eines Mandats vorbei und nichts entschieden: die Ampel bleibt rot, „Steht an“ und die Glocke erinnern, und es gibt eine Aufgabe „verlängern oder beenden“.', bereich: 'business' },
+        { text: 'Mandate ohne gewählte Gesellschaft bekommen eine Aufgabe „Gesellschaft wählen“ statt still keine Rechnung.', bereich: 'business' },
+        { text: 'Scheitert ein Schritt im Morgenlauf, meldet sich die Glocke. Scheitert die Rechnung eines Mandats dreimal hintereinander, gibt es eine Aufgabe dazu.', bereich: 'alle' },
+        { text: 'Die Verbindungsprüfung findet angenommene Angebote ohne Mandat und unterschriebene Verträge, die im Register fehlen.', bereich: 'business' },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-9',
+    datum: '2026-11-02',
+    titel: 'Marketing-Zahlen stimmen',
+    kurz: 'Social-Beiträge, Kampagnen-Mails und Antworten zählen jetzt im Traktions-Score. Nichts wird doppelt gezählt, und aus einem Instagram-Kommentar wird mit einem Klick eine Anfrage.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Veröffentlichte Social-Beiträge zählen bei „Veröffentlichungen“ mit. Ein Beitrag, der im Redaktionsplan und unter Social steht, zählt einmal.', bereich: 'business', weg: WEG.marketing('social') },
+        { text: 'Zwei neue Zahlen im Traktions-Score: gesendete Kampagnen-Mails und wie viele darauf antworten. Sie erscheinen, sobald der Mail-Stapel etwas gesendet hat.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Aus einem Instagram-Kommentar oder einer Nachricht: „Als Anfrage übernehmen“. Die Person steht dann in der Kartei, mit Follow-up. Gesendet wird nichts.', bereich: 'business', weg: WEG.marketing('social') },
+        { text: 'Abmeldungen über den Abmeldelink zählt MAKE OS je Newsletter-Ausgabe selbst.', bereich: 'business', weg: WEG.marketing('newsletter') },
+        { text: 'Angenommene Instagram-Entwürfe des Head of Marketing stehen zusätzlich als Entwurf im Instagram-Kanal und warten dort auf eure Freigabe.', bereich: 'business', weg: WEG.marketing('social') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: '„Deals aus Marketing“ zählt überall gleich: Content, Anfrage oder eine Marketing-Kampagne.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Läuft die Website, zählen ihre Anfragen nur noch in der Website-Zahl, nicht zusätzlich bei „Anfragen“. Ein Newsletter-Beitrag zählt als die Ausgabe.', bereich: 'business', weg: WEG.marketing('anfragen') },
+        { text: 'Gelöschte Beiträge und Kampagnen zählen nicht mehr bei den Kosten.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Am Reiter Social steht, wie viele Beiträge auf eure Freigabe warten.', bereich: 'business', weg: WEG.marketing('social') },
+        { text: 'Firmen- und Personenkanäle nehmen leere Felder ihres Markenprofils aus der Positionierung.', bereich: 'business', weg: WEG.marketing('positionierung') },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-8',
+    datum: '2026-11-02',
+    titel: 'Head of Marketing kennt alles',
+    kurz: 'Der Head of Marketing plant jetzt mit Social, Website, Homepage-Funden und dem Mail-Stapel. Nimmst du einen Beitrag an, steht er als Entwurf im Redaktionsplan.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Beitrags- und Newsletter-Vorschläge werden beim Annehmen ein echter Entwurf bzw. eine Idee im Redaktionsplan, mit Säule und Quelle. Es entsteht keine Aufgabe mehr, und veröffentlicht wird nichts.', bereich: 'business', weg: WEG.marketing('redaktion') },
+        { text: 'Der Head sieht freie Plätze im Social-Plan, offene Kommentare und Nachrichten, wartende Mails im Stapel, offene Antworten auf Kampagnen-Mails und vorbereitete Homepage-Funde. Daraus macht er Vorschläge mit Link zur Liste.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Den Head of Marketing gibt es jetzt auch im Reiter Social. Seine Kosten zählen die Social-Läufe mit.', bereich: 'business', weg: WEG.marketing('social') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Kampagnen-Vorschläge zählen auch Betriebe ohne Person. Läuft schon eine Kampagne mit demselben Vorgehen, wird sie weiterverwendet. Sales und Marketing schlagen dieselbe Kampagne nicht doppelt vor.', bereich: 'business', weg: WEG.marketing('kampagnen') },
+        { text: 'Vorschläge des Head of Marketing gehen an die Person, die Marketing verantwortet. Wer eine Beziehung ausdrücklich hält, bekommt sie weiter selbst. Art. 14 wird immer eine Aufgabe.', bereich: 'business', weg: WEG.marketing() },
+        { text: 'Kundenstimmen, die schon als Idee im Plan stehen, schlägt der Head nicht noch einmal vor.', bereich: 'business', weg: WEG.marketing('redaktion') },
+        { text: 'Social-Läufe für Firmenkanäle arbeiten im Namen der Person, die Marketing verantwortet.', bereich: 'business', weg: WEG.marketing('social') },
+      ] },
+    ],
+  },
+  {
+    id: 'u-2026-11-02-7',
+    datum: '2026-11-02',
+    titel: 'Kampagnen: Betriebe und Versand',
+    kurz: 'Kampagnen nehmen jetzt auch Betriebe ohne Person mit. Jede Kampagne zeigt alle Ziele mit ihrem Stand. Alle Kampagnen-Mails gehen über denselben Mail-Stapel.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Eine Kampagne aus einem Segment nimmt auch die Betriebe ohne Person mit. Betriebe mit roter Ampel kommen nicht hinein.', bereich: 'business', weg: WEG.marketing('segmente') },
+        { text: 'Im Kampagnen-Detail steht die Liste „Ziele“: Personen und Betriebe, mit Schritt, Fälligkeit und Grund. Dort kannst du ein Ziel stoppen und Betriebe hinzufügen oder herausnehmen.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Antwortet jemand auf eine Kampagnen-Mail, steht im Follow-up „Antwort bearbeiten“ der Knopf „Als Lead übernehmen“.', bereich: 'business', weg: WEG.followup() },
+        { text: 'Die Willkommens-Mails haben eine eigene Karte unter Website › Formulare & Termine. Dort stehen der Schalter, die Texte und wer welche Mail bekam.', bereich: 'business', weg: WEG.website('formulare') },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Die Mail eines Homepage-Funds geht jetzt über den Mail-Stapel der Kampagne. Sie wird gedrosselt gesendet, mit Abmeldelink und Absenderzeile. Eine Antwort sagt den Anruf ab.', bereich: 'business', weg: WEG.kampagne() },
+        { text: '„Jetzt vorbereiten“ sagt, was passiert ist und warum etwas nicht vorbereitet wurde.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Mails mit gelber Ampel gibst du einzeln frei, nicht in der Sammelfreigabe.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Die Zahlen einer Kampagne zählen Betriebe mit. Wer einmal reagiert hat, bleibt bei „reagiert“.', bereich: 'business', weg: WEG.kampagne() },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Wer schon eine Mail bekam, bekommt beim Start der Sequenz keine zweite Erstansprache.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Ändert ihr eine Sequenz, bleiben laufende Ziele an ihrem Schritt.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Ein Anruf mit Gespräch zählt jetzt im Trichter je Schritt.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Ohne Absenderzeile oder Abmeldelink verbraucht eine Mail kein Tageskontingent mehr.', bereich: 'business', weg: WEG.kampagne() },
+        { text: 'Sendefehler lassen sich wieder „erneut vorbereiten“.', bereich: 'business', weg: WEG.kampagne() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-6',
     datum: '2026-11-02',
     titel: 'Verträge aus Vorlagen',
@@ -155,6 +389,24 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
       ] },
       { art: 'besser', punkte: [
         { text: 'Jede Vorlage zeigt, ob sie anwaltlich geprüft ist. Ungeprüfte oder geänderte Vorlagen fragen vor dem Fertigstellen nach. Das ist eine Vorlage, keine Rechtsberatung.', bereich: 'business', weg: WEG.vertragVorlagen() },
+      ] },
+    ],
+  },
+  {  {
+    id: 'u-2026-11-02-5',
+    datum: '2026-11-02',
+    titel: 'Kalender: Firmen bündeln, Belegt bei Google',
+    kurz: 'Weitere Kalender-Konten lassen sich zu einer Firma zusammenfassen und stehen dann als eine Ebene im Kalender. Ihre Termine erscheinen auf Wunsch als neutrale Blöcke „Belegt“ im eigenen Google-Kalender.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Weitere Kalender: je Konto eine Firma oder Gruppe eintragen. Konten mit derselben Gruppe stehen im Kalender als eine Ebene mit eigener Farbe. Andere sehen davon nur „Belegt“.', bereich: 'business', weg: `${WEG.kalender()}?einstellungen=1` },
+        { text: 'Die Termine der weiteren Konten stehen als „Belegt“ in deinem eigenen Google-Kalender, ohne Titel und ohne Gäste. Verschiebt sich ein Termin, zieht der Block nach. Je Konto abschaltbar.', bereich: 'business', weg: `${WEG.kalender()}?einstellungen=1` },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Termin im Business für „Gemeinsam“: er landet in deinem Google-Kalender, die anderen werden eingeladen — erst nach deiner Bestätigung.', bereich: 'business', weg: `${WEG.kalender()}?space=business` },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: 'Fehlt ein eingestellter Kalender in iCloud, fragt der Termin-Dialog einmal, welcher Kalender es sein soll, statt einen Fehler zu zeigen.', bereich: 'alle', weg: WEG.kalender() },
       ] },
     ],
   },
@@ -453,7 +705,7 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     kurz: 'Wer auch für andere Firmen arbeitet, verbindet dort seinen Google-Kalender zusätzlich. MAKE OS liest ihn nur mit — belegte Zeiten zählen dann hier als belegt.',
     abschnitte: [
       { art: 'neu', punkte: [
-        { text: 'Kalender › Einstellungen › Weitere Kalender: bis zu fünf weitere Google-Konten verbinden, Kalender wählen, eine eigene Bezeichnung geben. MAKE OS schreibt dort nie etwas hinein.', bereich: 'business', weg: '/os/kalender?einstellungen=1' },
+        { text: 'Kalender › Einstellungen › Weitere Kalender: bis zu fünf weitere Google-Konten verbinden, Kalender wählen, eine eigene Bezeichnung geben. MAKE OS schreibt dort nie etwas hinein.', bereich: 'business', weg: `${WEG.kalender()}?einstellungen=1` },
         { text: 'Termine dieser Kalender zählen als belegt: freie Zeiten, Buchungsseiten und die Planung rechnen damit. Andere sehen davon nur „Belegt“.', bereich: 'business' },
         { text: 'Beim Anlegen eines Termins kommt ein Hinweis, wenn er sich mit einem Termin dort überschneidet — speichern könnt ihr trotzdem.', bereich: 'business' },
       ] },

@@ -18,17 +18,17 @@ import { NextResponse } from 'next/server';
 import { pruefe, fehlschlag, adresseNetz } from '@/lib/zugang/drossel';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { vorlageVon, STANDARD_VORLAGE } from '@/lib/check/katalog';
-import { antwortPruefen, eigeneWorte, frageVon, kurzFertig, phaseVon, ueberspringbar } from '@/lib/check/ablauf';
-import { auswerten, leadPunkte, profilAus, saeulenAuswerten } from '@/lib/check/auswertung';
+import { antwortPruefen, frageVon, kurzFertig, phaseVon, ueberspringbar } from '@/lib/check/ablauf';
+import { leadPunkte } from '@/lib/check/auswertung';
 import { ergebnisAnsicht, ergebnisVorschau, berichtGesperrt } from '@/lib/check/ergebnis';
 import { oeffentlicherKatalog } from '@/lib/check/oeffentlich';
-import { begruessung, dimensionName, gespraechSatz, kontaktSatz, kontaktSatzLang, vorschauSaetze, WAHL_SATZ } from '@/lib/check/zoe-texte';
-import type { DimKey } from '@/lib/check/typen';
+import { begruessung, gespraechSatz, kontaktSatz, kontaktSatzLang, vorschauSaetze, WAHL_SATZ } from '@/lib/check/zoe-texte';
 import { HINWEIS_FASSUNG } from '@/lib/check/datenschutz';
 import { ladeCheckEinstellungen, sitzungAnlegen, sitzungLesen, sitzungAendern, sitzungIntern, type CheckSitzung } from '@/lib/check/speicher';
-import { zoeKontext, hinweisLaden, stromFuerBrowser, ablaufStand, leadAnlegen, schritteMitAngeboten } from '@/lib/check/server';
+import { zoeKontext, hinweisLaden, stromFuerBrowser, ablaufStand, leadAnlegen, kurzcheckText, schritteMitAngeboten } from '@/lib/check/server';
 import { berichtAnstossen } from '@/lib/check/bericht-server';
 import { adresseMaskiert } from '@/lib/zugang/konten';
+import { neueKennung } from '@/lib/kennung';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -139,6 +139,7 @@ export async function POST(req: Request) {
       return {
         ...s, kontaktStand: 'erfasst',
         kontakt: { vorname, email, firma, ...(telefon ? { telefon } : {}), newsletterWunsch: b.newsletter === true, hinweisFassung: HINWEIS_FASSUNG, am: jetzt },
+        anfrageIds: s.anfrageIds ?? { kontakt: neueKennung('c'), followUp: neueKennung('fu') },
         antworten: { ...s.antworten, A5: { optionIds: [rolle], am: jetzt } },
       };
     });
@@ -148,19 +149,16 @@ export async function POST(req: Request) {
     if (nl) {
       const { emailSauber, vornameSauber } = await import('@/lib/newsletter/regeln');
       const adresse = emailSauber(email);
-      if (adresse) nachDerAntwort(() => anmeldungVerarbeiten({ email: adresse, vorname: vornameSauber(vorname) ?? '' }, nl));
+      // Prüfung A (Fund 7): erst als Eingangszeile festhalten (Takt/Morgenlauf holen nach), dann nach der Antwort — sonst wie bisher direkt.
+      if (adresse) {
+        const { eingangFesthalten, eingangVerarbeiten } = await import('@/lib/oeffentlich/eingang-server');
+        const id = await eingangFesthalten('newsletter', { email: adresse, vorname: vornameSauber(vorname) ?? '' }).catch(() => null);
+        nachDerAntwort(() => (id ? eingangVerarbeiten(id) : anmeldungVerarbeiten({ email: adresse, vorname: vornameSauber(vorname) ?? '' }, nl)));
+      }
     }
-    // Lead ins CRM — ein Fehler dort hält die Person nie auf (intern sichtbar, „noch einmal versuchen“ im Haushalt).
+    // Lead ins CRM — ein Fehler dort hält die Person nie auf (intern sichtbar, „noch einmal versuchen“ im Haushalt, Glocke, Morgenlauf holt nach).
     if (!r.crm || r.crm.status !== 'ok') {
-      const profil = profilAus(v.katalog, r.antworten);
-      const inno = auswerten(v.katalog, v.regeln, profil, r.antworten);
-      const vorl = saeulenAuswerten(v.katalog, v.regeln, r.antworten, inno);
-      const namen = Object.fromEntries((v.regeln.saeulen ?? []).map(sa => [sa.key, sa.name]));
-      // Mit Säulen deren Werte; der Innovations-Check (nur Innovation, 30.10.) nennt seine Bereiche.
-      const teile = (v.regeln.saeulen?.length ? Object.entries(vorl.werte).map(([sk, w]) => `${namen[sk] ?? sk} ${w}`)
-        : (Object.entries(inno.dimensionen) as [DimKey, number][]).map(([d, w]) => `${dimensionName(d)} ${w}`)).join(', ');
-      const worte = eigeneWorte(v, r.antworten);
-      const crm = await leadAnlegen(r, e, `${v.name} auf der Website: Kurzcheck ausgefüllt, vorläufige Stufe ${vorl.stufe} (${vorl.stufe_name}, ${vorl.gesamt} von 100${teile ? `; ${teile}` : ''}).${worte ? ` ${worte}` : ''}`);
+      const crm = await leadAnlegen(r, e, kurzcheckText(v, r.antworten));
       await sitzungIntern(r.id, s => ({ ...s, crm }));
     }
     // Kam der Kontakt NACH dem Ergebnis (ausführlicher Check, „Termin buchen“), geht der Bericht jetzt (genau einmal je Sitzung).

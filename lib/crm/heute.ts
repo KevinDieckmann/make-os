@@ -33,6 +33,8 @@ import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { dealZuFirma, mandatZuFirma } from './firmen-bezug';
 import { personenDerFirma } from './stationen';
 import { werktagePlus as kernWerktagePlus, istWerktag } from '@/lib/zeit/kalender-kern';
+import { firmenKarten, type FirmenKarte } from './firma-karte';
+export type { FirmenKarte };
 
 export type Kategorie = 'versprechen' | 'signale' | 'chancen' | 'kunden' | 'pflege' | 'neu';
 /** So viele „Neu“-Karten (Kampagnen, Prio A/B) nimmt die Power Hour je Tag höchstens — über alle Quellen (08.10., 5.3: im Text genannt). */
@@ -90,14 +92,18 @@ export function unbeantwortet(k: Kontakt, heute?: string): boolean {
  * `ohnePerson` (28.09., Ablaufprüfung): Deals/Mandate ohne Person, deren Firma auch niemanden hat, der angerufen
  * werden kann — sie fehlen hier und werden gezählt (Deals › Liste zeigt sie).
  */
-export interface Auswahl { karten: Karte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson?: number; /** hat gerade geschrieben (Ereignis, 09.10. E1) — erst antworten, nicht nachfassen */ geschrieben?: number } }
+/**
+ * `firmen` (02.11., Prüfung D): fällige Follow-ups an Betrieben OHNE Person (Kampagnen-Motor: Anruf, Besuch an OSM-Firmen) — eigene Karten mit Firma,
+ * Telefon der Firma und Leitfaden (lib/crm/firma-karte.ts). Sie zählen nicht in `n`; vorher fehlten sie in der Power Hour ganz.
+ */
+export interface Auswahl { karten: Karte[]; firmen: FirmenKarte[]; ausgefiltert: { sperre: number; ohneKanal: number; kuerzlich: number; beiAnderen: number; ohnePerson?: number; /** hat gerade geschrieben (Ereignis, 09.10. E1) — erst antworten, nicht nachfassen */ geschrieben?: number } }
 
 /**
  * Optionen der Auswahl (09.10., E1 Ereignisse): `geradeGeschrieben` = Kontakte, die der Person in den letzten 72 h geschrieben haben (Mail aus
  * EIGENEN Postfächern, geteilte WhatsApp-Nummer — nie fremde Postfächer; lib/ereignisse/server.ts `geradeGeschrieben`). Für sie schlägt die
  * Power Hour kein Nachfassen vor (die Antwort steht in der Inbox) — nur „Signale“ bleiben.
  */
-export interface WerIstDranOptionen { geradeGeschrieben?: ReadonlySet<string> }
+export interface WerIstDranOptionen { geradeGeschrieben?: ReadonlySet<string>; /** Sperrliste des Betriebs (Server, lib/crm/betrieb-sperre.ts `betriebSperrPrueferLaden`) — R2-4 Fund 10. */ firmaGesperrt?: (firmaId: string) => boolean }
 
 /**
  * Wem eine Karte gehört: Follow-up → Chance → Mandat → Kampagne → Einladung zum Event → wer die Beziehung hält.
@@ -292,7 +298,10 @@ export function werIstDran(kontakte: Kontakt[], crm: CrmBestand, heute: string, 
   const ergebnis = [...vorn, ...reserve];
   for (const k of [...pflege, ...neu]) { if (ergebnis.length >= n) break; if (!ergebnis.includes(k)) ergebnis.push(k); }
   ergebnis.sort((a, b) => rang(a.kategorie) - rang(b.kategorie) || b.punkte - a.punkte);
-  return { karten: ergebnis.slice(0, n), ausgefiltert: aus };
+  // Betriebe ohne Person (02.11.): eigene Karten, dieselbe Zuständigkeitsregel (Follow-up), Werbesperre am Betrieb zählt wie eine Sperre.
+  const fk = firmenKarten(crm, heute, person, 12, opt.firmaGesperrt);
+  aus.beiAnderen += fk.beiAnderen; aus.sperre += fk.sperre;
+  return { karten: ergebnis.slice(0, n), firmen: fk.karten, ausgefiltert: aus };
 }
 
 /** Was ein Ergebnis-Knopf nach sich zieht (Regel, kein Modell). */

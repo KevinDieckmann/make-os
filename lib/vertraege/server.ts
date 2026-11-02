@@ -216,9 +216,12 @@ async function vorbelegung(q: { angebotId?: unknown; dealId?: unknown; mandatId?
     const a = (crm.angebote ?? []).find(x => x.id === q.angebotId);
     if (!a) throw new VertragFehler('Angebot nicht gefunden.', 404);
     if (a.status === 'entwurf') throw new VertragFehler('Aus einem Angebots-Entwurf entsteht kein Vertrag — erst stellen.', 409);
-    const { angebotSummen, angebotHauptprodukt } = await import('@/lib/crm/angebote');
+    const { angebotSummen, angebotHauptprodukt, positionNettoCent } = await import('@/lib/crm/angebote');
     const s = angebotSummen(a);
-    const teile = [s.einmalig.netto ? `${euro(s.einmalig.netto / 100)} netto einmalig` : '', s.monat.netto ? `${euro(s.monat.netto / 100)} netto monatlich` : '', s.jahr.netto ? `${euro(s.jahr.netto / 100)} netto jährlich` : ''].filter(Boolean);
+    // Tages-/Stundensätze (02.11., R2-3 Fund 11): je Satz „1.200,00 € netto je Tag (geplant 2 je Monat)“ — vorher fehlten sie in der Vergütung ganz.
+    const saetze = a.positionen.filter(p => p.basis === 'monat' && (p.satz === 'tag' || p.satz === 'stunde'))
+      .map(p => `${euro(positionNettoCent({ menge: 1, einzelpreisCent: p.einzelpreisCent, rabattProzent: p.rabattProzent }) / 100)} netto je ${p.satz === 'tag' ? 'Tag' : 'Stunde'} (geplant ${p.menge.toLocaleString('de-DE')} je Monat)`);
+    const teile = [s.einmalig.netto ? `${euro(s.einmalig.netto / 100)} netto einmalig` : '', s.monat.netto ? `${euro(s.monat.netto / 100)} netto monatlich` : '', s.jahr.netto ? `${euro(s.jahr.netto / 100)} netto jährlich` : '', ...saetze].filter(Boolean);
     Object.assign(raus, { angebotId: a.id, ...(a.kontaktId ? { kontaktId: a.kontaktId } : {}), ...(a.firmaId ? { firmaId: a.firmaId } : {}), ...(a.dealId ? { dealId: a.dealId } : {}), gesellschaft: a.gesellschaft });
     const hp = angebotHauptprodukt(a, crm.leistungen);
     if (hp) raus.leistungId = hp;
@@ -291,7 +294,7 @@ export async function vertragLoeschen(p: { haushalt: string; id: string; stand: 
 }
 
 /** Absender, Vertragspartner und Leistung für das Füllen (Kontext aus Register, Kartei, Katalog). */
-export async function kontextFuer(haushalt: string, v: Pick<Vertrag, 'gesellschaft' | 'kontaktId' | 'firmaId' | 'leistungId'>): Promise<FuellKontext & { email?: string; logoDateiId?: string }> {
+export async function kontextFuer(haushalt: string, v: Pick<Vertrag, 'gesellschaft' | 'kontaktId' | 'firmaId' | 'leistungId'> & Partial<Pick<Vertrag, 'angebotId'>>): Promise<FuellKontext & { email?: string; logoDateiId?: string }> {
   const [{ gesellschaftenLaden }, { mitVorgaben }, { ladeCrm }, { empfaengerAus }] = await Promise.all([
     import('@/lib/crm/angebot-server'), import('@/lib/crm/gesellschaften'), import('@/lib/crm/speicher'), import('@/lib/crm/angebot-dokument'),
   ]);
@@ -314,9 +317,12 @@ export async function kontextFuer(haushalt: string, v: Pick<Vertrag, 'gesellscha
     partner = f ? { name: f.name, zeilen: e.zeilen.slice(1).filter(z => !z.startsWith('z. Hd.')), ...(e.name ? { ansprechpartner: e.name } : {}) } : { name: e.name, zeilen: e.zeilen.slice(1) };
   }
   const l = v.leistungId ? crm.leistungen.find(x => x.id === v.leistungId) : undefined;
+  // Aus einem Angebot (02.11., R2-3 Fund 11): die Leistung, wie sie im Angebot steht (Titel + Positionen mit ihrem Text) — nicht der heutige Text des Produkts.
+  const ang = v.angebotId ? (crm.angebote ?? []).find(x => x.id === v.angebotId && x.status !== 'entwurf') : undefined;
+  const ausAngebot = ang ? { titel: ang.titel, beschreibung: ang.positionen.map(p => [p.titel, p.text?.trim()].filter(Boolean).join('\n')).join('\n\n').slice(0, 20000) } : null;
   return {
     ...(absender ? { absender } : {}), ...(partner ? { partner } : {}),
-    ...(l ? { leistung: { titel: l.angebot?.titel || l.name, beschreibung: l.angebot?.leistungstext ?? l.beschreibung ?? '' } } : {}),
+    ...(ausAngebot ? { leistung: ausAngebot } : l ? { leistung: { titel: l.angebot?.titel || l.name, beschreibung: l.angebot?.leistungstext ?? l.beschreibung ?? '' } } : {}),
     ...(k?.email ? { email: k.email } : {}), ...(mv?.logoDateiId ? { logoDateiId: mv.logoDateiId } : {}),
   };
 }
@@ -406,6 +412,10 @@ export async function vertragFertigstellen(p: { haushalt: string; person: string
   });
   // Vorgänger ersetzt: der Nachfolger-Verweis (nur Status-Link, Inhalt bleibt).
   if (fertig.vorgaengerId) await vertragAendern(p.haushalt, fertig.vorgaengerId, a => ({ ...a, nachfolgerId: fertig.id })).catch(() => undefined);
+  // Nachfassen der Unterschrift (02.11., Prüfung C): EIN Follow-up am fertigen Vertrag; das der Vorversion fällt weg.
+  const fuWer = p.wer ?? { art: 'person', person: p.person } as Wer;
+  if (fertig.vorgaengerId) await vertragFollowup({ id: fertig.vorgaengerId }, 'abgesagt', { person: p.person, heute, jetzt: jetzt.toISOString(), ergebnis: 'Neue Version fertiggestellt', wer: fuWer });
+  await vertragFollowup(fertig, 'anlegen', { person: p.person, heute, jetzt: jetzt.toISOString(), wer: fuWer });
   const betreff = `${fertig.titel} ${fertig.nummer}`;
   const text = `${fertig.anrede === 'Du' ? 'Hallo' : 'Guten Tag'},\n\nanbei ${fertig.anrede === 'Du' ? 'dein' : 'Ihr'} Vertrag ${fertig.nummer} zur Unterschrift.\n\nViele Grüße\n${k.absender?.firmierung ?? ''}`;
   return { vertrag: fertig, pdf: pdf!, mail: { ...(k.email ? { an: k.email } : {}), betreff, text } };
@@ -431,15 +441,186 @@ export async function vertragVersion(p: { haushalt: string; person: string; id: 
   return neu!;
 }
 
+// ── Nachfassen der Unterschrift (02.11., Prüfung C „vom Lead zum zahlenden Kunden“) ─────────────────────────────────────────────────
+// Vorher merkte niemand, wenn ein fertiger bzw. versendeter Vertrag nie unterschrieben zurückkam. Jetzt hängt an jedem fertigen Vertrag EIN Follow-up
+// `fu-<vertrag>` „Unterschrift nachfassen“ (Deal → Mandat → Kontakt/Firma als Bezug; zuständig: Deal, sonst Mandat, sonst der Inhaber). Versendet → neu
+// fällig; unterschrieben → erledigt; beendet/gekündigt bzw. eine neue Version fertig → abgesagt. Art. 18 → keins. Wirft nie.
+
+/** Feste Kennung des Follow-ups „Unterschrift nachfassen“. */
+export const vertragFollowupId = (vertragId: string) => `fu-${vertragId}`;
+/** Nach so vielen Werktagen wird nachgefasst. */
+export const UNTERSCHRIFT_NACHFASSEN_WERKTAGE = 5;
+
+export async function vertragFollowup(v: Pick<Vertrag, 'id' | 'nummer' | 'dealId' | 'mandatId' | 'kontaktId' | 'firmaId'>, art: 'anlegen' | 'erledigt' | 'abgesagt', p: { person: string; heute: string; jetzt: string; ergebnis?: string; wer?: Wer }): Promise<void> {
+  try {
+    const { aendereCrm } = await import('@/lib/crm/speicher');
+    const id = vertragFollowupId(v.id);
+    let zust = '';
+    if (art === 'anlegen') {
+      const { inhaberSpeicher } = await import('@/lib/zugang/haushalt-inhaber');
+      zust = (await inhaberSpeicher()) ?? '';
+      if (v.kontaktId) {
+        const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
+        // Art. 18: an einer eingeschränkten Person wird nicht nachgefasst (die verarbeitbare Kartei kennt sie nicht).
+        if (!(await kontakteFuerVerarbeitung()).some(k => k.id === v.kontaktId)) return;
+      }
+    }
+    const { werktagePlus } = await import('@/lib/zeit/kalender-kern');
+    const { verantwortlich } = await import('@/lib/crm/team');
+    await aendereCrm(b => {
+      const liste = b.followups ?? [];
+      const alt = liste.find(f => f.id === id);
+      if (art !== 'anlegen') {
+        if (!alt || (alt.status !== 'offen' && alt.status !== 'verpasst')) return b;
+        const fertig = { ...alt, status: art, ergebnis: p.ergebnis ?? (art === 'erledigt' ? 'Vertrag unterschrieben' : 'Vertrag beendet'), ...(art === 'erledigt' ? { erledigtAm: p.jetzt } : {}), geaendert: p.jetzt, geaendertVon: p.person };
+        return { ...b, followups: liste.map(f => (f.id === id ? fertig : f)) };
+      }
+      const deal = v.dealId ? b.chancen.find(c => c.id === v.dealId) : undefined;
+      const mandat = v.mandatId ? b.mandate.find(m => m.id === v.mandatId && !m.geloeschtAm) : undefined;
+      const bezug = deal ? { art: 'chance' as const, id: deal.id } : mandat ? { art: 'mandat' as const, id: mandat.id } : v.kontaktId ? { art: 'kontakt' as const, id: v.kontaktId } : v.firmaId ? { art: 'firma' as const, id: v.firmaId } : null;
+      if (!bezug) return b;
+      const faellig = werktagePlus(p.heute, UNTERSCHRIFT_NACHFASSEN_WERKTAGE);
+      const text = `Unterschrift zu Vertrag ${v.nummer ?? ''} nachfassen`.replace('  ', ' ');
+      // Schon offen (z. B. „versendet“ nach „fertig“): nur neu fällig — nie ein zweites.
+      if (alt && (alt.status === 'offen' || alt.status === 'verpasst')) return { ...b, followups: liste.map(f => (f.id === id ? { ...f, status: 'offen' as const, faellig, geaendert: p.jetzt, geaendertVon: p.person } : f)) };
+      if (alt) return b; // erledigt/abgesagt bleibt (Verlauf)
+      const zustaendig = deal?.besitzer || mandat?.zustaendig || zust || verantwortlich('sales');
+      return { ...b, followups: [...liste, { id, bezug, ...(v.kontaktId ? { kontaktId: v.kontaktId } : {}), art: 'anruf' as const, text, faellig, zustaendig, status: 'offen' as const, quelle: 'deal' as const, anlass: 'vertrag' as const, angelegt: p.jetzt, geaendert: p.jetzt, geaendertVon: p.person }] };
+    }, p.wer);
+  } catch (e) {
+    console.warn('[vertraege] Follow-up „Unterschrift nachfassen“ nicht geschrieben:', e instanceof Error ? e.message.slice(0, 120) : e);
+  }
+}
+
+/**
+ * Der Register-Eintrag eines beendeten bzw. gekündigten Vertrags (02.11., Prüfung C): Status „beendet“ über die EINE Schreibstelle
+ * (lib/gesellschaften/server.ts) — sonst liefen Fristen und Erinnerungen weiter; offene Erinnerungs-Aufgaben (`vte-…`) werden abgebrochen. Liefert einen Hinweis bei Fehlschlag.
+ */
+async function registerBeenden(haushalt: string, person: string, v: Vertrag, wer: Wer): Promise<string | null> {
+  if (!v.registerVertragId) return null;
+  try {
+    const reg = await import('@/lib/gesellschaften/server');
+    const { gesellschaftVon } = await import('@/lib/gesellschaften/modell');
+    const g = gesellschaftVon(await reg.ladeRegister(haushalt), v.gesellschaft);
+    const e = g?.vertraege?.find(x => x.id === v.registerVertragId);
+    if (!g || !e) return 'Im Register steht der Vertrag nicht (mehr) — dort nichts zu beenden.';
+    if (e.status !== 'beendet') {
+      const r = await reg.registerAendern(haushalt, person, v.gesellschaft, reg.standVon(g), wer, reg.eintragSchreiben('vertraege', { status: 'beendet' }, e.id, person));
+      if (r.fehler?.length || r.konflikt) return `Register: ${r.fehler?.map(f => f.text).join(' · ') ?? 'gerade geändert'} — bitte dort von Hand auf „beendet“ setzen.`;
+    }
+    const praefix = `vte-${e.id.replace(/^vt-/, '').slice(0, 40)}-`;
+    const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
+    await systemAufgabenAendern(stand => ({ teile: stand.tasks.filter(t => t.id.startsWith(praefix) && !t.geloeschtAm && t.status !== 'done' && t.status !== 'cancelled').map(t => ({ id: t.id, felder: { status: 'cancelled' } })) }), { jetzt: new Date().toISOString() });
+    return null;
+  } catch (err) {
+    console.error('[vertraege] Register beenden:', err instanceof Error ? err.message : err);
+    return 'Register nicht nachgezogen — bitte unter Unternehmen › Verträge auf „beendet“ setzen.';
+  }
+}
+
 /** Status von Hand: fertig → versendet, unterschrieben → aktiv, aktiv/unterschrieben → beendet/gekündigt. */
-export function vertragStatus(p: { haushalt: string; person: string; id: string; stand: unknown; status: unknown; wer?: Wer; jetzt?: Date }): Promise<Vertrag> {
+export async function vertragStatus(p: { haushalt: string; person: string; id: string; stand: unknown; status: unknown; wer?: Wer; jetzt?: Date; hinweise?: string[] }): Promise<Vertrag> {
   const jetzt = (p.jetzt ?? new Date()).toISOString();
-  return vertragAendern(p.haushalt, p.id, a => {
+  const wer = p.wer ?? { art: 'person', person: p.person } as Wer;
+  const v = await vertragAendern(p.haushalt, p.id, a => {
     pruefeStand(a, p.stand);
     const s = p.status as VertragStatus;
     if (!(STATUS_WEITER[a.status] ?? []).includes(s)) throw new VertragFehler(`Von „${a.status}“ nicht nach „${String(p.status)}“ — „unterschrieben“ nur mit dem unterschriebenen PDF.`, 409);
     return { ...a, status: s, ...(s === 'versendet' ? { versendetAm: jetzt } : {}), ...(s === 'beendet' || s === 'gekuendigt' ? { beendetAm: jetzt } : {}), geaendert: jetzt, geaendertVon: p.person };
-  }, p.wer ?? { art: 'person', person: p.person });
+  }, wer);
+  const heute = localDay(p.jetzt ?? new Date());
+  if (v.status === 'versendet') await vertragFollowup(v, 'anlegen', { person: p.person, heute, jetzt, wer });
+  if (v.status === 'beendet' || v.status === 'gekuendigt') {
+    await vertragFollowup(v, 'abgesagt', { person: p.person, heute, jetzt, ergebnis: 'Vertrag beendet', wer });
+    const h = await registerBeenden(p.haushalt, p.person, v, wer);
+    if (h) p.hinweise?.push(h);
+  }
+  return v;
+}
+
+// ── Unterschrieben (Absichtsprotokoll, 02.11.) ────────────────────────────────────────────────────────────────────────────────────
+// Vier Bestände nacheinander (Ablage, Verträge, CRM-Mandat, Register) — vorher ohne Absicht: brach der Lauf nach dem Beleg ab, hing ein Beleg ohne
+// Unterschrift-Status, und ein zweiter Upload legte einen ZWEITEN Beleg an. Jetzt Art `vertrag-unterschrieben` (lib/store/absichten.ts): jeder Schritt
+// idempotent, der Beleg wird wiedererkannt (Eintrag mit `vertragId`, nicht das PDF des fertigen Vertrags); Wiederaufnahme `vertragUnterschriebenFortsetzen`.
+export const ABSICHT_VERTRAG_UNTERSCHRIEBEN = 'vertrag-unterschrieben' as const;
+export const UNTERSCHRIFT_SCHRITTE = ['beleg', 'status', 'mandat', 'register', 'followup', 'ereignis'] as const;
+interface UnterschriftDaten { haushalt: string; vertragId: string; person: string; am: string; jetzt: string; wer?: Wer; dateiId?: string }
+
+/** Der schon abgelegte Unterschrift-Beleg eines Vertrags (nicht das PDF des fertigen Vertrags) — null, wenn keiner da ist. */
+async function unterschriftBeleg(haushalt: string, v: Pick<Vertrag, 'id' | 'pdfDateiId' | 'unterschriftDateiId'>): Promise<string | null> {
+  if (v.unterschriftDateiId) return v.unterschriftDateiId;
+  const { ablageListe } = await import('@/lib/dateien/ablage');
+  return (await ablageListe(haushalt)).find(e => e.vertragId === v.id && e.art === 'vertrag' && e.id !== v.pdfDateiId)?.id ?? null;
+}
+
+/** Das Mandat zum Vertrag: am Vertrag, sonst das Mandat seines Deals, sonst das des Angebots (dieselbe Regel wie `mandatZumAngebot`). */
+export function mandatZumVertrag<M extends { id: string; chanceId?: string; geloeschtAm?: string }>(mandate: readonly M[], v: Pick<Vertrag, 'mandatId' | 'dealId' | 'angebotId'>, angebote: readonly { id: string; mandatId?: string; dealId?: string }[] = []): M | undefined {
+  const leb = mandate.filter(m => !m.geloeschtAm);
+  const a = v.angebotId ? angebote.find(x => x.id === v.angebotId) : undefined;
+  return (v.mandatId ? leb.find(m => m.id === v.mandatId) : undefined) ?? (v.dealId ? leb.find(m => m.chanceId === v.dealId) : undefined)
+    ?? (a?.mandatId ? leb.find(m => m.id === a.mandatId) : undefined) ?? (a?.dealId ? leb.find(m => m.chanceId === a.dealId) : undefined);
+}
+
+/** Die Schritte nach dem Beleg — idempotent; `hinweise` sammelt, was von Hand nachzutragen ist. */
+async function unterschriftSchritte(v0: import('@/lib/store/absichten').Vorgang, D: UnterschriftDaten, hinweise: string[]): Promise<Vertrag> {
+  const wer = D.wer ?? { art: 'person', person: D.person } as Wer;
+  const dateiId = v0.daten<string>('dateiId') ?? D.dateiId!;
+  let v = (await vertraegeLaden(D.haushalt)).find(x => x.id === D.vertragId)!;
+  await v0.schritt('status', async () => {
+    v = await vertragAendern(D.haushalt, D.vertragId, a => {
+      if (a.status === 'unterschrieben' && a.unterschriftDateiId === dateiId) return a;
+      if (a.status !== 'fertig' && a.status !== 'versendet') throw new VertragFehler('Ist schon unterschrieben.', 409);
+      return { ...a, status: 'unterschrieben', unterschriebenAm: D.am, unterschriftDateiId: dateiId, geaendert: D.jetzt, geaendertVon: D.person };
+    }, wer);
+  });
+  v = (await vertraegeLaden(D.haushalt)).find(x => x.id === D.vertragId) ?? v;
+  // Mandat: Vertrag unterschrieben — auch, wenn der Vertrag aus dem Deal bzw. Angebot entstand (02.11.: vorher nur `v.mandatId`).
+  await v0.schritt('mandat', async () => {
+    const { aendereCrm, ladeCrm } = await import('@/lib/crm/speicher');
+    const crm = await ladeCrm();
+    const m = mandatZumVertrag(crm.mandate, v, crm.angebote ?? []);
+    if (!m) { if (v.dealId || v.angebotId || v.mandatId) hinweise.push('Zum Vertrag läuft (noch) kein Mandat — „Vertrag unterschrieben“ bitte dort setzen, sobald es angelegt ist.'); return; }
+    await aendereCrm(b => ({ ...b, mandate: b.mandate.map(x => (x.id === m.id && !x.vertragUnterschrieben ? { ...x, vertragUnterschrieben: true, geaendert: D.jetzt, geaendertVon: D.person } : x)) }), wer)
+      .catch(() => { hinweise.push('Am Mandat konnte „Vertrag unterschrieben“ nicht gesetzt werden — bitte dort von Hand.'); });
+  });
+  // Register: Eintrag in vertraege[] der Gesellschaft (Fristen → Kalender, Erinnerung). Schon eingetragen (Wiederaufnahme) → nichts doppelt.
+  await v0.schritt('register', async () => {
+    try {
+      const reg = await import('@/lib/gesellschaften/server');
+      const { gesellschaftVon } = await import('@/lib/gesellschaften/modell');
+      const r0 = gesellschaftVon(await reg.ladeRegister(D.haushalt), v.gesellschaft);
+      if (!r0) { hinweise.push('Die Gesellschaft steht noch nicht im Register — der Vertrag erscheint dort nicht (Unternehmen › Gesellschaften).'); return; }
+      if (v.registerVertragId && (r0.vertraege ?? []).some(x => x.id === v.registerVertragId)) return;
+      // Ein schon geschriebener Eintrag ohne Rückverweis (Abbruch dazwischen) wird am Titel mit der Vertragsnummer wiedererkannt.
+      const titel = String(registerEintrag(v).titel ?? '');
+      const da = (r0.vertraege ?? []).find(x => !x.geloeschtAm && !!v.nummer && x.titel === titel);
+      let neuId = da?.id;
+      if (!neuId) {
+        const vorher = new Set((r0.vertraege ?? []).map(x => x.id));
+        const r = await reg.registerAendern(D.haushalt, D.person, v.gesellschaft, reg.standVon(r0), wer, reg.eintragSchreiben('vertraege', registerEintrag(v), undefined, D.person));
+        neuId = r.g ? (r.g.vertraege ?? []).find(x => !vorher.has(x.id))?.id : undefined;
+        if (!neuId) { hinweise.push(`Register: ${r.fehler?.map(f => f.text).join(' · ') ?? 'gerade geändert — bitte den Vertrag dort von Hand eintragen.'}`); return; }
+      }
+      v = await vertragAendern(D.haushalt, D.vertragId, a => ({ ...a, registerVertragId: neuId }));
+      await reg.vertragsErinnerungen(D.haushalt).catch(() => ({ neu: 0 }));
+    } catch (e) {
+      console.error('[vertraege] Register-Eintrag:', e instanceof Error ? e.message : e);
+      hinweise.push('Register-Eintrag nicht geschrieben — bitte unter Unternehmen › Verträge nachtragen.');
+    }
+  });
+  await v0.schritt('followup', () => vertragFollowup(v, 'erledigt', { person: D.person, heute: D.am, jetzt: D.jetzt, wer }));
+  // Ereignis „Vertrag unterschrieben“ (R2-2 Fund 6): weckt z. B. die Übergabe (V12 „Unterschrift abwarten“) — statt einer zweiten Erinnerung neben dem Follow-up.
+  // Deal auch über das Mandat des Vertrags; idempotent (eine Kennung je Vertrag), wirft nie.
+  // Eine vor dem 02.11. begonnene Absicht kennt den Schritt nicht — dann wird er ohne Haken ausgeführt (die Kennung je Vertrag hält ihn einmalig).
+  const ereignisSchritt = (fn: () => Promise<void>) => (v0.absicht.schritte.some(s => s.name === 'ereignis') ? v0.schritt('ereignis', fn) : fn());
+  await ereignisSchritt(async () => {
+    const { ladeCrm } = await import('@/lib/crm/speicher');
+    const crm = await ladeCrm().catch(() => null);
+    const m = crm ? mandatZumVertrag(crm.mandate, v, crm.angebote ?? []) : undefined;
+    const dealId = v.dealId ?? m?.chanceId;
+    await (await import('@/lib/ereignisse/quellen')).vertragUnterschriebenEreignis({ id: v.id, gesellschaft: v.gesellschaft, ...(dealId ? { dealId } : {}), ...(v.mandatId ?? m?.id ? { mandatId: v.mandatId ?? m!.id } : {}), ...(v.firmaId ? { firmaId: v.firmaId } : {}), ...(v.kontaktId ? { kontaktId: v.kontaktId } : {}) });
+  });
+  return (await vertraegeLaden(D.haushalt)).find(x => x.id === D.vertragId) ?? v;
 }
 
 /**
@@ -456,42 +637,42 @@ export async function vertragUnterschrieben(p: { haushalt: string; person: strin
   if (!v0) throw new VertragFehler('Vertrag nicht gefunden.', 404);
   if (v0.status !== 'fertig' && v0.status !== 'versendet') throw new VertragFehler(v0.status === 'entwurf' ? 'Erst fertigstellen, dann unterschreiben.' : 'Ist schon unterschrieben.', 409, { aktuell: mitStand(v0) });
   pruefeStand(v0, p.stand);
-  const { ablegen } = await import('@/lib/dateien/ablage');
-  const datei = await ablegen(p.haushalt, p.person, {
-    art: 'vertrag', titel: `Vertrag ${v0.nummer} – unterschrieben`.slice(0, 160), ...(v0.kontaktId ? { kontaktId: v0.kontaktId } : {}), ...(v0.firmaId ? { firmaId: v0.firmaId } : {}), ...(v0.mandatId ? { mandatId: v0.mandatId } : {}),
-    vertrag: { vertragsart: 'sonstig', ...(v0.werte.beginn ? { von: v0.werte.beginn } : {}), ...(v0.werte.ende ? { bis: v0.werte.ende } : {}) },
-  }, { bytes: p.datei.bytes, name: p.datei.name.slice(0, 120), typ: 'application/pdf' }, jetzt.toISOString(), { vertragId: v0.id, gesellschaft: v0.gesellschaft });
-  let v = await vertragAendern(p.haushalt, p.id, a => {
-    if (a.status !== 'fertig' && a.status !== 'versendet') throw new VertragFehler('Ist schon unterschrieben.', 409);
-    return { ...a, status: 'unterschrieben', unterschriebenAm: am, unterschriftDateiId: datei.id, geaendert: jetzt.toISOString(), geaendertVon: p.person };
-  }, p.wer ?? { art: 'person', person: p.person });
+  const { absichtBeginnen, absichtAbschliessen, mitVorgang } = await import('@/lib/store/absichten');
+  const daten: UnterschriftDaten = { haushalt: p.haushalt, vertragId: v0.id, person: p.person, am, jetzt: jetzt.toISOString(), ...(p.wer ? { wer: p.wer } : {}) };
+  const { absicht } = await absichtBeginnen(p.haushalt, { art: ABSICHT_VERTRAG_UNTERSCHRIEBEN, schluessel: v0.id, schritte: UNTERSCHRIFT_SCHRITTE, daten: daten as unknown as Record<string, unknown>, person: p.person });
   const hinweise: string[] = [];
-  // Mandat: Vertrag unterschrieben.
-  if (v.mandatId) {
-    const { aendereCrm } = await import('@/lib/crm/speicher');
-    await aendereCrm(b => ({ ...b, mandate: b.mandate.map(m => (m.id === v.mandatId && !m.vertragUnterschrieben ? { ...m, vertragUnterschrieben: true, geaendert: jetzt.toISOString(), geaendertVon: p.person } : m)) }), p.wer)
-      .catch(() => { hinweise.push('Am Mandat konnte „Vertrag unterschrieben“ nicht gesetzt werden — bitte dort von Hand.'); });
-  }
-  // Register: Eintrag in vertraege[] der Gesellschaft (Fristen → Kalender, Erinnerung).
-  try {
-    const reg = await import('@/lib/gesellschaften/server');
-    const { gesellschaftVon } = await import('@/lib/gesellschaften/modell');
-    const r0 = gesellschaftVon(await reg.ladeRegister(p.haushalt), v.gesellschaft);
-    if (!r0) hinweise.push('Die Gesellschaft steht noch nicht im Register — der Vertrag erscheint dort nicht (Unternehmen › Gesellschaften).');
-    else {
-      const vorher = new Set((r0.vertraege ?? []).map(x => x.id));
-      const r = await reg.registerAendern(p.haushalt, p.person, v.gesellschaft, reg.standVon(r0), p.wer ?? { art: 'person', person: p.person }, reg.eintragSchreiben('vertraege', registerEintrag(v), undefined, p.person));
-      const neu = r.g ? (r.g.vertraege ?? []).find(x => !vorher.has(x.id)) : undefined;
-      if (neu) {
-        v = await vertragAendern(p.haushalt, p.id, a => ({ ...a, registerVertragId: neu.id }));
-        await reg.vertragsErinnerungen(p.haushalt).catch(() => ({ neu: 0 }));
-      } else hinweise.push(`Register: ${r.fehler?.map(f => f.text).join(' · ') ?? 'gerade geändert — bitte den Vertrag dort von Hand eintragen.'}`);
-    }
-  } catch (e) {
-    console.error('[vertraege] Register-Eintrag:', e instanceof Error ? e.message : e);
-    hinweise.push('Register-Eintrag nicht geschrieben — bitte unter Unternehmen › Verträge nachtragen.');
-  }
+  const v = await mitVorgang(p.haushalt, absicht, async vg => {
+    await vg.schritt('beleg', async () => {
+      // Ein zweiter Upload nach einem Abbruch legt keinen zweiten Beleg an — der schon abgelegte gilt.
+      const schon = await unterschriftBeleg(p.haushalt, v0);
+      if (schon) return { dateiId: schon };
+      const { ablegen } = await import('@/lib/dateien/ablage');
+      const datei = await ablegen(p.haushalt, p.person, {
+        art: 'vertrag', titel: `Vertrag ${v0.nummer} – unterschrieben`.slice(0, 160), ...(v0.kontaktId ? { kontaktId: v0.kontaktId } : {}), ...(v0.firmaId ? { firmaId: v0.firmaId } : {}), ...(v0.mandatId ? { mandatId: v0.mandatId } : {}),
+        vertrag: { vertragsart: 'sonstig', ...(v0.werte.beginn ? { von: v0.werte.beginn } : {}), ...(v0.werte.ende ? { bis: v0.werte.ende } : {}) },
+      }, { bytes: p.datei.bytes, name: p.datei.name.slice(0, 120), typ: 'application/pdf' }, jetzt.toISOString(), { vertragId: v0.id, gesellschaft: v0.gesellschaft });
+      return { dateiId: datei.id };
+    }, r => r);
+    return unterschriftSchritte(vg, daten, hinweise);
+  });
+  await absichtAbschliessen(p.haushalt, absicht.id, 'fertig', ['vertragId']);
   return { vertrag: v, hinweise };
+}
+
+/** Wiederaufnahme (Start, Takt, Durchsicht): ohne abgehakten Beleg entscheidet die Ablage — kein Beleg → der Vorgang fand nie statt (verworfen). */
+export async function vertragUnterschriebenFortsetzen(h: string, a: import('@/lib/store/absichten').Absicht): Promise<void> {
+  const { absichtAbschliessen, mitVorgang, schrittErledigt, schrittAbhaken } = await import('@/lib/store/absichten');
+  const D = a.daten as unknown as UnterschriftDaten;
+  const v = (await vertraegeLaden(D.haushalt)).find(x => x.id === D.vertragId);
+  if (!v) { await absichtAbschliessen(h, a.id, 'verworfen'); return; }
+  if (!schrittErledigt(a, 'beleg')) {
+    const beleg = await unterschriftBeleg(D.haushalt, v);
+    if (!beleg) { await absichtAbschliessen(h, a.id, 'verworfen'); return; }
+    await schrittAbhaken(h, a.id, 'beleg', { dateiId: beleg });
+    a = { ...a, daten: { ...a.daten, dateiId: beleg }, schritte: a.schritte.map(s => (s.name === 'beleg' ? { ...s, erledigt: new Date().toISOString() } : s)) };
+  }
+  await mitVorgang(h, a, vg => unterschriftSchritte(vg, a.daten as unknown as UnterschriftDaten, []));
+  await absichtAbschliessen(h, a.id, 'fertig', ['vertragId']);
 }
 
 /** Für die Oberfläche: Vorlagen mit Stand und Ampel. */

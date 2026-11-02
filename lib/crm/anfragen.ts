@@ -28,7 +28,7 @@ import { OFFENE_STUFEN } from './pipeline';
 import { ausgenommen } from '@/lib/crm/einschraenkung';
 import { alleAdressen } from './emails';
 
-export type AnfrageKanal = 'website' | 'mail' | 'linkedin' | 'telefon' | 'empfehlung' | 'event' | 'whatsapp';
+export type AnfrageKanal = 'website' | 'mail' | 'linkedin' | 'telefon' | 'empfehlung' | 'event' | 'whatsapp' | 'instagram';
 export type AnfrageBezugArt = 'beitrag' | 'kampagne' | 'event';
 export interface AnfrageKanalInfo {
   id: AnfrageKanal; label: string;
@@ -48,6 +48,10 @@ export const ANFRAGE_KANAELE: AnfrageKanalInfo[] = [
   // Nummer. Einwilligung „Antwort auf Anfrage“ im eigenen Kanal „whatsapp“ (Kevin 07.10.) — antworten ja, Werbe-Vorlagen erst mit echter
   // Einwilligung (lib/crm/recht.ts, lib/whatsapp/senden.ts).
   { id: 'whatsapp', label: 'WhatsApp', followUp: 'nachricht', einwilligung: 'whatsapp' },
+  // Instagram (02.11., Marketing-Projekt M3): „Als Anfrage übernehmen“ aus einem Kommentar oder einer DM (Marketing › Social › Kommentare & DMs).
+  // Eigene Kennung — zählt als Marketing-Anfrage (nicht in `ANFRAGE_OHNE_MARKETING`). Bewusst KEINE Einwilligung: geantwortet wird im Faden
+  // bei Instagram (24-h-Fenster der Plattform); eine Antwort-Einwilligung „social“ gälte sonst auch für LinkedIn-Nachrichten.
+  { id: 'instagram', label: 'Instagram', followUp: 'nachricht' },
 ];
 export const kanalInfo = (id: string): AnfrageKanalInfo | undefined => ANFRAGE_KANAELE.find(k => k.id === id);
 /**
@@ -133,6 +137,15 @@ export function kanalAusPruefen(text: string): AnfrageKanal | undefined {
 }
 /** Text der Aktivität — die Marke, an der eine Anfrage erkannt wird. */
 export const anfrageText = (kanal: AnfrageKanal, text: string) => `${ANFRAGE_PRAEFIX}${kanalInfo(kanal)?.label ?? kanal}: ${text}`.slice(0, GRENZEN.text);
+/**
+ * Die Spur einer Anfrage in der Kartei (02.11., Prüfung A Fund 2): Zeitpunkt und mögliche Texte der Aktivität, die `anfrageBauen` aus genau dieser
+ * Eingabe schreibt — damit eine Wiederaufnahme (Absichtsprotokoll) erkennt, dass der Kartei-Schritt schon gewirkt hat, und nichts doppelt anhängt.
+ */
+export function anfrageSpur(e: Pick<AnfrageEingabe, 'kanal' | 'text' | 'datum'>, heute: string, jetzt: string): { am: string; texte: string[] } {
+  const text = txt(e.text, GRENZEN.text);
+  const datum = tagOk(e.datum) && e.datum! <= heute ? e.datum! : heute;
+  return { am: datum === heute ? jetzt : `${datum}T12:00:00.000Z`, texte: [anfrageText(e.kanal, text), anfrageUnbestaetigtText(e.kanal, text)] };
+}
 /** Höchstlänge der Lead-Notiz (wie `leadSaeubern`). */
 export const LEAD_NOTIZ_MAX = 2000;
 const GEKUERZT = '[ältere Notiz gekürzt] …';
@@ -157,6 +170,9 @@ export function leadNachAnfrage(alt: Lead | undefined, notiz: string, jetzt: str
   if (z.art !== 'setzen') return undefined;
   return n.gekuerzt ? Object.assign(z.lead, { gekuerzt: true }) : z.lead;
 }
+
+/** Die Zeile, die eine Anfrage an die Lead-Notiz hängt (eine Stelle — auch die Buchungsfreigabe, lib/kalender/buchung-ablauf.ts Schritt „crm“). */
+export const anfrageLeadNotiz = (kanal: AnfrageKanal, datum: string, bezugText = '') => `Anfrage über ${kanalInfo(kanal)?.label ?? kanal} (${datum})${bezugText}`;
 
 /** Aus einer Eingabe alles bauen, was zu einer Anfrage gehört — ohne zu schreiben. */
 export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErgebnis {
@@ -195,7 +211,10 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
       const entwurf = personEntwurf({ vorname, nachname, ...(email ? { email } : {}), ...(txt(n.telefon, GRENZEN.telefon) ? { telefon: txt(n.telefon, GRENZEN.telefon) } : {}),
         ...(txt(n.linkedin, 200) ? { linkedin: txt(n.linkedin, 200) } : {}), ...(firma ? { firma } : {}) }, 'anfrage',
       { id: ctx.ids.kontakt, heute: datum, jetzt: jetztAm, person: ctx.person, ...(f ? { firma: { id: f.id, name: f.name } } : {}) });
-      basis = { ...entwurf, quelle: `Anfrage über ${info.label}`, aktivitaeten: [], geaendertAm: ctx.heute };
+      // Kanal „Empfehlung“ (02.11., Prüfung A Fund 14): die Angaben kamen von der Person, die empfohlen hat — nicht von der Person selbst.
+      // Herkunft „Empfehlung“ (fremd) → die Art.-14-Uhr läuft (Information binnen eines Monats); vorher stand „selbst angegeben“.
+      const empfohlen = e.kanal === 'empfehlung' ? { herkunft: 'empfehlung' as const, fremddaten: true as const } : {};
+      basis = { ...entwurf, ...empfohlen, quelle: `Anfrage über ${info.label}`, aktivitaeten: [], geaendertAm: ctx.heute };
       // Sperrliste: nicht blockieren — Werbesperre setzen, Hinweis zeigen (die Anfrage selbst wird beantwortet).
       const s = ctx.sperre?.(basis);
       if (s) { basis = s.kontakt; if (s.hinweis) hinweis = s.hinweis; }
@@ -232,7 +251,7 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
   }
 
   // Lead: Firma, sonst die Person selbst.
-  const leadNotiz = `Anfrage über ${info.label} (${datum})${bezugText}`;
+  const leadNotiz = anfrageLeadNotiz(e.kanal, datum, bezugText);
   let firmaLead: AnfrageBau['firmaLead'];
   if (kontakt.firmaId) {
     const f = ctx.crm.firmen.find(x => x.id === kontakt.firmaId);
@@ -255,7 +274,8 @@ export function anfrageBauen(e: AnfrageEingabe, ctx: AnfrageKontext): AnfrageErg
     // Bei Werbesperre „Sonstiges“: eine Antwort auf IHRE Anfrage ist keine Werbung — werbliche Arten stünden in keiner Fälligkeitsliste.
     id: ctx.ids.followUp, bezug: { art: 'kontakt', id: kontakt.id }, kontaktId: kontakt.id, art: gesperrt ? 'sonstig' : info.followUp,
     text: `${ANFRAGE_FOLLOWUP} — ${info.label}${beitrag ? `, „${beitrag.titel.slice(0, 60)}“` : kampagne ? `, „${kampagne.name.slice(0, 60)}“` : event ? `, „${event.titel.slice(0, 60)}“` : ''}`,
-    faellig: ctx.heute, quelle: kampagne ? 'kampagne' : 'hand', notiz: text.slice(0, 1000),
+    // R2-4 Fund 1: die Antwort auf IHRE Anfrage ist nie Werbung — auch nicht bei einer Werbesperre des Betriebs (`anlass`, `istWerblich`).
+    faellig: ctx.heute, quelle: kampagne ? 'kampagne' : 'hand', anlass: 'anfrage', notiz: text.slice(0, 1000),
   }, kontakt, ctx.person, ctx.jetzt);
 
   return { ok: true, bau: { kontakt, neuePerson, ...(hinweis ? { hinweis } : {}), aktivitaetText, followUp, ...(wirkung ? { wirkung } : {}), ...(kp ? { kampagne: kp } : {}), ...(firmaLead ? { firmaLead } : {}) } };
@@ -272,7 +292,7 @@ function unbestaetigtBauen(basis: Kontakt, kanal: AnfrageKanal, text: string, da
   const kontakt: Kontakt = { ...wendeAktivitaetAn(basis, { art: 'system', text: aktivitaetText, von: 'system' }, datum, jetztAm, tagPlus), geaendertAm: ctx.heute };
   const followUp = neuesFollowUp({
     id: ctx.ids.followUp, bezug: { art: 'kontakt', id: kontakt.id }, kontaktId: kontakt.id, art: 'sonstig',
-    text: anfragePruefenText(info.label), faellig: ctx.heute, quelle: 'hand', notiz: text.slice(0, 1000),
+    text: anfragePruefenText(info.label), faellig: ctx.heute, quelle: 'hand', anlass: 'anfrage', notiz: text.slice(0, 1000),
   }, kontakt, ctx.person, ctx.jetzt);
   const satz = 'Adresse unbestätigt — die Anfrage hängt an der vorhandenen Person, aber ohne Einwilligung und ohne Stufe; erst prüfen, dann „Anfrage übernehmen“.';
   return { ok: true, bau: { kontakt, neuePerson: false, hinweis: [hinweis, satz].filter(Boolean).join(' '), aktivitaetText, followUp, unbestaetigt: true } };
@@ -304,7 +324,6 @@ export function anfragenListe(kontakte: Kontakt[], crm: CrmBestand, heute: strin
     const anfragen = (k.aktivitaeten ?? []).filter(a => istAnfrage(a) && a.am.slice(0, 10) >= ab && a.am.slice(0, 10) <= heute);
     if (!anfragen.length) continue;
     const fus = (crm.followups ?? []).filter(f => f.kontaktId === k.id && istAnfrageFollowUp(f)).sort((a, b) => b.angelegt.localeCompare(a.angelegt));
-    const offenes = fus.find(f => f.status === 'offen');
     const deal = crm.chancen.find(c => OFFENE_STUFEN.includes(c.stufe) && c.kontaktIds.includes(k.id));
     const firma = k.firmaId ? firmen.get(k.firmaId) : undefined;
     for (const a of anfragen) {
@@ -319,7 +338,8 @@ export function anfragenListe(kontakte: Kontakt[], crm: CrmBestand, heute: strin
         id: `${k.id}|${a.am}`, kontaktId: k.id, name: anzeigename(k), ...(firma?.name ?? k.firma ? { firma: firma?.name ?? k.firma } : {}), ...(k.firmaId ? { firmaId: k.firmaId } : {}),
         am: a.am, kanal, text, von: a.von, ...(bezug ? { bezug } : {}),
         ...(fu ? { followUp: { id: fu.id, faellig: fu.faellig, status: fu.status } } : {}),
-        offen: !!offenes && (fu ? fu.status === 'offen' : true),
+        // Ohne Follow-up (Prüfung A Fund 2: Abbruch zwischen Kartei und CRM, Altbestand) gilt die Anfrage als OFFEN — nie als beantwortet.
+        offen: fu ? fu.status === 'offen' : true,
         ...(deal ? { deal: { id: deal.id, titel: deal.titel } } : {}),
         ...((firma?.lead?.status ?? k.lead?.status) ? { leadStatus: firma?.lead?.status ?? k.lead?.status } : {}),
       });

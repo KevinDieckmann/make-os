@@ -89,6 +89,8 @@ export interface InnenLage {
   postfaecher?: PostfachLage | null;
   /** WhatsApp Business (07.10.): Zustand der Business-Nummer — nur Zahlen und Zustände, nie Nummern oder Namen. null = nicht eingerichtet. */
   whatsapp?: WhatsappLage | null;
+  /** Kampagnen-Motor (02.11., B-Prüfung): Herzschlag, Fehler je Teil, offene Freigaben/Fehler — nur Zahlen. null = nie gelaufen und nichts zu tun. */
+  kampagnenMotor?: KampagnenMotorLageHoi | null;
   /** ZOE auf WhatsApp (08.10.): die eigene ZOE-Nummer — nur Zähler und Zustände, nie Nummern/Texte. null = nicht eingerichtet. */
   zoeWhatsapp?: ZoeWhatsappLage | null;
   /** WHOOP je Person (08.10.): Verbindungen, Alter des Abgleichs, Webhooks — nur Zähler, nie Adressen/Kennungen/Werte. null = nicht eingerichtet. */
@@ -113,6 +115,28 @@ export interface InnenLage {
   laufSpur?: LaufSpurLage | null;
   /** Prozesse (21.10., C1 „Laufen intern“, Punkt 88): Läufe im Motor — nur Zähler (Fehler, hängende, überfällige Freigaben, Flutschutz, Pausen). null = keine Läufe. */
   prozesse?: ProzesseLageHoi | null;
+  /** Herzschlag des Lauf-Motors (02.11., R2-2 Fund 4) — nur Zeiten und Zähler (lib/prozesse/lauf-server.ts `prozesseMotorLage`). null = nie gelaufen. */
+  prozesseMotor?: ProzesseMotorLageHoi | null;
+  /** Website-Eingänge (02.11., Prüfung A): ohne CRM (Check-Leads, Bestellungen), wartende und gescheiterte Eingangszeilen — nur Zahlen. */
+  websiteEingang?: WebsiteEingangLageHoi | null;
+}
+
+/** Website-Eingänge (02.11.) — dieselbe Form wie lib/oeffentlich/eingang-server.ts `websiteEingangLage` (nur Zahlen, nie Adressen oder Namen). */
+export interface WebsiteEingangLageHoi { ohneCrm: number; wartend: number; gescheitert: number }
+
+/**
+ * „Website-Eingänge ohne CRM“ (02.11., Prüfung A „Eingänge und Datenbasis“): rot, wenn ein Eingang alle Versuche verbraucht hat oder ein Check-Lead bzw.
+ * eine Bestellung nicht im CRM steht; gelb, wenn Eingänge länger als 10 Minuten warten (Takt/Morgenlauf holen nach). Nichts da → kein Befund. Rein.
+ */
+export function websiteEingangBefunde(w: WebsiteEingangLageHoi | null | undefined): Befund[] {
+  if (!w || (!w.ohneCrm && !w.wartend && !w.gescheitert)) return [];
+  const rot = w.ohneCrm > 0 || w.gescheitert > 0;
+  return [{
+    id: 'website-eingang', bereich: 'app', label: 'Website-Eingänge ohne CRM', ampel: rot ? 'rot' : 'gelb',
+    wert: [w.ohneCrm ? `${w.ohneCrm} ohne CRM` : '', w.gescheitert ? `${w.gescheitert} gescheitert` : '', w.wartend ? `${w.wartend} wartend` : ''].filter(Boolean).join(' · '),
+    satz: rot ? 'Anfragen von der Website stehen nicht in der Markttraktion — Marketing › Anfragen prüfen; der Morgenlauf versucht es noch einmal'
+      : 'Eingänge der Website warten auf die Verarbeitung — Takt und Morgenlauf holen sie nach',
+  }];
 }
 
 /** Prozesse (21.10., C1) — dieselbe Form wie lib/prozesse/lauf-regeln.ts `laufLage` (nur Zahlen, nie Kennungen oder Namen). */
@@ -137,6 +161,34 @@ export function prozesseBefunde(p: ProzesseLageHoi | null | undefined): Befund[]
       : gelb ? 'Läufe warten bzw. sind angehalten — Freigaben im Stapel, Aufgaben oder „erneut ab hier“ (Prozesse)'
         : 'Prozesse laufen — Menschen-Schritte als Aufgaben, Außenwirkung nur nach Freigabe',
   }];
+}
+
+/** Herzschlag des Lauf-Motors — dieselbe Form wie lib/prozesse/lauf-server.ts `prozesseMotorLage` (nur Zahlen). */
+export interface ProzesseMotorLageHoi { zuletzt: string | null; minutenSeit: number | null; fehlerInFolge: number; ereignisFehler: number; laufFehler: number; verworfenHeute: number; beschaedigt?: true }
+
+/**
+ * Prozess-Motor (02.11., R2-2 Fund 4; Vorbild `kampagnenMotorBefunde`): läuft der Takt, scheitert er, gingen Ereignisse verloren?
+ * Rot: Bestand nicht lesbar; seit über 30 Minuten kein Takt, obwohl Läufe offen sind; der Takt scheitert ≥ 3-mal in Folge.
+ * Gelb: Takt scheiterte zuletzt, Fehler an einzelnen Ereignissen bzw. Läufen, heute wegen Alter übersprungene Ereignisse. Rein, getestet.
+ */
+export function prozesseMotorBefunde(m: ProzesseMotorLageHoi | null | undefined, p?: ProzesseLageHoi | null): Befund[] {
+  if (!m) return [];
+  if (m.beschaedigt) return [{ id: 'prozesse-motor', bereich: 'app', label: 'Prozess-Motor', ampel: 'rot', wert: 'Herzschlag nicht lesbar', satz: 'Der Bestand „prozesse-motor-lauf“ ist nicht lesbar — Sicherung prüfen bzw. den Bestand beiseitelegen; der Takt legt ihn neu an' }];
+  const arbeit = (p?.offen ?? 0) > 0;
+  const steht = arbeit && (m.minutenSeit === null || m.minutenSeit > 30);
+  const hart = m.fehlerInFolge >= 3;
+  const ampel: Ampel = steht || hart ? 'rot' : m.fehlerInFolge || m.ereignisFehler || m.laufFehler || m.verworfenHeute ? 'gelb' : 'gruen';
+  const teile = [
+    m.minutenSeit === null ? 'noch nie gelaufen' : `letzter Takt vor ${m.minutenSeit} Min.`,
+    ...(m.fehlerInFolge ? [`${m.fehlerInFolge}× in Folge gescheitert`] : []), ...(m.ereignisFehler ? [`${m.ereignisFehler} Meldung${m.ereignisFehler === 1 ? '' : 'en'} mit Fehler`] : []),
+    ...(m.laufFehler ? [`${m.laufFehler} Lauf${m.laufFehler === 1 ? '' : 'e'} mit Fehler`] : []), ...(m.verworfenHeute ? [`${m.verworfenHeute} heute wegen Alter übersprungen`] : []),
+  ];
+  const satz = steht ? 'der Motor läuft nicht — Läufe warten, Uhren schlagen nicht an; Takt/Arbeiter prüfen (Logs „[prozesse/takt]“)'
+    : hart ? 'der Takt der Prozesse scheitert wiederholt — Logs „[prozesse/takt]“ prüfen'
+    : m.verworfenHeute ? 'Meldungen waren älter als drei Tage und lösten nichts mehr aus — lief der Takt? Betroffene Läufe von Hand prüfen'
+    : m.fehlerInFolge || m.ereignisFehler || m.laufFehler ? 'Einzelne Meldungen bzw. Läufe scheiterten — die übrigen liefen weiter; nächster Takt versucht es erneut'
+    : 'läuft — Meldungen, Uhren und Läufe im Takt';
+  return [{ id: 'prozesse-motor', bereich: 'app', label: 'Prozess-Motor', ampel, wert: teile.join(' · '), satz }];
 }
 
 /** Lauf-Spur (10.10., Paket V1 „Messen & sparen“) — gerechnet aus lib/agenten/spur.ts (`summeVon`, `zoeTempo`), nur Zahlen, nie Personen/Kennungen. */
@@ -226,6 +278,8 @@ export interface TaktRobustLage {
   tagesstart: { fehlversuche: number; laeuft: boolean; umgangen: boolean } | null;
   /** Heads, deren Freigabe-Liste in den letzten 7 Tagen voll war (neue Vorschläge abgelehnt). */
   headsVoll: { head: string; abgelehnt: number }[];
+  /** Letzter Morgenlauf (heute oder gestern) mit gescheiterten Schritten (02.11., Prüfung C) — nur Tag und Zahl. Fehlt/null = keiner gescheitert. */
+  schritteGescheitert?: { tag: string; anzahl: number } | null;
 }
 
 /** Befunde zu Takt und Warteschlange (09.10., Takt robust) — rein, getestet (tests/takt-robust.test.ts). */
@@ -239,6 +293,10 @@ export function taktRobustBefunde(t: TaktRobustLage | null | undefined): Befund[
   if (!t.sperreLesbar) b.push({ id: 'agenten-sperre', bereich: 'app', label: 'Agenten-Einstellungen', ampel: 'rot', wert: 'nicht lesbar — alle Agenten angehalten', satz: 'der Bestand agenten-einstellung--<haushalt> ist beschädigt oder mit falschem Schlüssel — zur Sicherheit gilt Not-Aus; aus der Sicherung wiederherstellen (NOTFALL.md)' });
   const s = t.tagesstart;
   if (s && s.fehlversuche > 0) b.push({ id: 'morgenlauf', bereich: 'app', label: 'Morgenlauf', ampel: s.umgangen ? 'rot' : 'gelb', wert: `${s.fehlversuche} Fehlversuch${s.fehlversuche === 1 ? '' : 'e'} heute${s.laeuft ? ' · läuft gerade' : ''}`, satz: s.umgangen ? 'hakt — die übrigen Läufe (Heads, Head of Finance, Morgen-/Abendlauf, Tageslauf) laufen ohne ihn; Logs von /api/tagesstart prüfen' : 'scheitert — wird mit Pause erneut versucht; ab 3 Fehlversuchen bzw. ab Mittag laufen die übrigen Läufe ohne ihn' });
+  if (t.schritteGescheitert?.anzahl) {
+    const g = t.schritteGescheitert;
+    b.push({ id: 'morgenlauf-schritte', bereich: 'app', label: 'Morgenlauf · Schritte', ampel: 'gelb', wert: `${g.anzahl} Schritt${g.anzahl === 1 ? '' : 'e'} gescheitert (${g.tag.slice(8, 10)}.${g.tag.slice(5, 7)}.)`, satz: 'der Lauf ist durch, aber einzelne Schritte (z. B. Mahnvorschläge, Rechnungen vorbereiten) liefen nicht — die Antwort von /api/tagesstart bzw. die Logs nennen sie; der nächste Morgenlauf versucht es wieder' });
+  }
   for (const h of t.headsVoll) b.push({ id: `heads-voll:${h.head}`, bereich: 'app', label: `Freigabe-Liste ${h.head}`, ampel: 'rot', wert: `voll — ${h.abgelehnt} neue Vorschläge abgelehnt`, satz: 'zu viele offene Vorschläge — entscheiden (annehmen/ablehnen), dann nimmt der Head wieder neue auf; gekürzt wird nichts' });
   return b;
 }
@@ -453,6 +511,37 @@ export interface WhatsappLage {
 }
 
 /** Befund zur WhatsApp-Business-Nummer (rein): Schlüssel abgelehnt oder Qualität niedrig = rot; Auffälliges gelb; sonst grün. */
+/** Kampagnen-Motor (lib/crm/kampagnen-motor.ts `kampagnenMotorLage`) — nur Zähler und Zeiten, nie Namen, Adressen oder Texte. */
+export interface KampagnenMotorLageHoi { zuletzt: string | null; minutenSeit: number | null; fehlerTeile: { teil: string; n: number }[]; freigegeben: number; fehler: number; unklar: number; sequenzen: number; willkommenGescheitert?: number }
+
+/**
+ * Kampagnen-Motor (02.11., B-Prüfung Fund 5): läuft er (Herzschlag alle 2 Minuten aus dem Takt), scheitert ein Teil wiederholt, warten Mails?
+ * Rot: seit über 30 Minuten kein Lauf, obwohl Sequenzen laufen bzw. Mails freigegeben sind — oder ein Teil scheitert ≥ 3-mal in Folge.
+ * Gelb: ein Teil scheiterte zuletzt, Fehler bzw. „unklar“ im Stapel. Rein, getestet (tests/kg-versand.test.ts).
+ */
+export function kampagnenMotorBefunde(m: KampagnenMotorLageHoi | null | undefined): Befund[] {
+  if (!m) return [];
+  const arbeit = m.sequenzen > 0 || m.freigegeben > 0;
+  const steht = arbeit && (m.minutenSeit === null || m.minutenSeit > 30);
+  const hart = m.fehlerTeile.filter(t => t.n >= 3);
+  const wg = m.willkommenGescheitert ?? 0;
+  const ampel: Ampel = steht || hart.length ? 'rot' : m.fehlerTeile.length || m.fehler || m.unklar || wg ? 'gelb' : 'gruen';
+  const teile = [
+    m.minutenSeit === null ? 'noch nie gelaufen' : `letzter Lauf vor ${m.minutenSeit} Min.`,
+    `${m.sequenzen} aktive Sequenz${m.sequenzen === 1 ? '' : 'en'}`, `${m.freigegeben} freigegeben`,
+    ...(m.fehler ? [`${m.fehler} mit Fehler`] : []), ...(m.unklar ? [`${m.unklar} unklar`] : []),
+    ...(m.fehlerTeile.length ? [`scheitert: ${m.fehlerTeile.map(t => `${t.teil} (${t.n}×)`).join(', ')}`] : []),
+    ...(wg ? [`Willkommens-Strecke wartet bei ${wg} ${wg === 1 ? 'Person' : 'Personen'} (Mail gescheitert)`] : []),
+  ];
+  const satz = steht ? 'der Motor läuft nicht — es wird nichts vorbereitet, gesendet oder zurückgemeldet; Takt/Arbeiter prüfen (Logs „[kampagnen] Motor“)'
+    : hart.length ? 'ein Teil des Motors scheitert wiederholt — die übrigen laufen weiter; Logs „[kampagnen] Motor ›“ prüfen'
+    : m.fehlerTeile.length ? 'ein Teil scheiterte im letzten Lauf — wird im nächsten Takt erneut versucht'
+    : m.fehler || m.unklar ? 'Mails mit Fehler bzw. „unklar“ warten im Mail-Stapel der Kampagnen auf einen Blick'
+    : wg ? 'eine Willkommens-Mail scheiterte — die Strecke dieser Person steht, bis in der Karte „erneut“ oder „überspringen“ gewählt ist'
+    : 'läuft — Sequenzen, Versand und Rückfluss im Takt';
+  return [{ id: 'kampagnen-motor', bereich: 'app', label: 'Kampagnen-Motor', ampel, wert: teile.join(' · '), satz }];
+}
+
 export function whatsappBefunde(w: WhatsappLage | null | undefined): Befund[] {
   if (!w) return [];
   const alt = w.webhookVorMin;
@@ -749,6 +838,7 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...gmailBefunde(innen.gmail));
   b.push(...postfachBefunde(innen.postfaecher));
   b.push(...whatsappBefunde(innen.whatsapp));
+  b.push(...kampagnenMotorBefunde(innen.kampagnenMotor));
   b.push(...zoeWhatsappBefunde(innen.zoeWhatsapp));
   b.push(...whoopBefunde(innen.whoop));
   b.push(...medienBefunde(innen.medien));
@@ -758,6 +848,8 @@ export function befundeAus(innen: InnenLage, host: HostLage | null, aussen: Auss
   b.push(...ereignisBefunde(innen.ereignisse));
   b.push(...laufSpurBefunde(innen.laufSpur));
   b.push(...prozesseBefunde(innen.prozesse));
+  b.push(...prozesseMotorBefunde(innen.prozesseMotor, innen.prozesse));
+  b.push(...websiteEingangBefunde(innen.websiteEingang));
   // ── Brain-Index und Protokoll-Kette (05.10., Verschlüsselung lückenlos) ──
   b.push(...brainIndexBefunde(innen.brainIndex, innen.verschluesselt, innen.prozess.laufzeitStunden));
   b.push(...kettenBefunde(innen.protokollKette, jetzt));

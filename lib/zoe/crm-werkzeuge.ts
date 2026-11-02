@@ -431,7 +431,7 @@ async function mandateLage(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckgabe> 
       + `${m.ziele.length ? `\n  Ziele: ${m.ziele.map(z => `${z.text}${z.ziel ? ` (Ziel ${z.ziel}` : ''}${z.ist ? `, ist ${z.ist})` : z.ziel ? ')' : ''}`).join(' | ')}` : ''}${m.notiz ? `\n  Notiz: ${m.notiz}` : ''}`;
   });
   const zeitKopf = zeit ? `Zeit ${zeit.label} (${zeit.von} bis ${zeit.bis}): ${stundenText(zeit.gesamt.mitMandatSek)} mit Mandat · ${stundenText(zeit.gesamt.sek - zeit.gesamt.mitMandatSek)} ohne Mandat` : 'Zeit je Mandat: nicht lesbar';
-  const koerper = [`MRR ${eur(mrr(s.crm.mandate))}${k ? ` · größter Kunde ${k.kunde} mit ${Math.round(k.anteil * 100)} %` : ''}`, zeitKopf, block('Mandate', zeilen)].join('\n\n');
+  const koerper = [`MRR ${eur(mrr(s.crm.mandate))}${k ? ` · größter Kunde ${k.kunde} mit ${k.anteil} %` : ''}`, zeitKopf, block('Mandate', zeilen)].join('\n\n');
   return crmAntwort(`MANDATE · ${alle.length} von ${s.crm.mandate.length} · aktiv ${s.crm.mandate.filter(m => m.status === 'aktiv').length}`, koerper, i.teil, t => `mandate_lage mit teil: ${t}`);
 }
 
@@ -565,8 +565,8 @@ async function kennzahlenLesen(i: Eingabe, s: CrmSicht): Promise<WerkzeugRueckga
   const { kontakte, crm, heute } = s;
   const sales = kennzahlen(kontakte, crm, heute), marketing = marketingKennzahlen(kontakte, crm, heute), event = eventKennzahlen(kontakte, crm, heute);
   const datei = await ladeIndexDatei('traktion-index');
-  const webseite = await (await import('@/lib/crm/webseite-zahlen-server')).webseiteStandLaden();
-  const idx = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute), ...(webseite ? { webseite } : {}) });
+  const quellen = await (await import('@/lib/crm/traktion-quellen-server')).traktionQuellenLaden();
+  const idx = traktionsIndex({ kontakte, crm, heute, schwellen: datei.schwellen, kpis: [...sales, ...marketing, ...event], ersterLauf: ersterLauf(datei, heute), ...quellen });
   const t = traktion({ sales, marketing, event });
   const kz = (l: typeof sales) => l.map(k => `- ${k.label}: ${k.anzeige} (${k.ampel}) · Ziel ${k.ziel}`);
   const koerper = [

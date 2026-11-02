@@ -43,7 +43,7 @@ import { kontakteFuerVerarbeitung } from '@/lib/crm/verarbeitung';
 import { absichtBeginnen, absichtAbschliessen, absichtenLaden, istOffen, laeuftGerade, mitVorgang, type Absicht } from '@/lib/store/absichten';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
-import { anfrageBauen } from '@/lib/crm/anfragen';
+import { anfrageBauen, anfrageLeadNotiz, leadNachAnfrage } from '@/lib/crm/anfragen';
 import { alleAdressen } from '@/lib/crm/emails';
 import { sperrlisteLaden, neuanlageSperre, sperren } from '@/lib/crm/sperrliste';
 import { datenschutzStempeln } from '@/lib/crm/datenschutz-stempel';
@@ -146,6 +146,15 @@ async function vorhandenerTermin(b: Buchung): Promise<{ uid: string; kalender: s
 async function kontaktSchritt(id: string, ids: { kontakt: string; followUp: string }, jetzt: string, heute: string, von: string) {
   const { b, s } = await buchungUndSeite(id);
   if (b.kontaktId) return { kontaktId: b.kontaktId };
+  // Prüfung A (Fund 8): die Firma einer NEUEN Person über denselben EINEN Weg wie jede Anfrage (`firmaSichern`: vorhanden über Name, Kennung oder
+  // Domain verknüpfen, sonst anlegen, aus dem Papierkorb zurück) — vorher blieb der Firmenname nur Text an der Person. Trifft die Adresse schon eine
+  // Person der Kartei, behält die ihre Firma. Idempotent (eine Wiederaufnahme findet die Firma).
+  let gesichert: { id: string; name: string } | undefined;
+  if (b.firma && !(await kontakteFuerVerarbeitung({ mitEingeschraenkten: true })).some(k => alleAdressen(k).includes(b.email))) {
+    const { firmaSichern } = await import('@/lib/crm/person-anlegen-server');
+    const plan = await firmaSichern(b.firma, { email: b.email }, { art: 'person', person: von });
+    if (plan) gesichert = { id: plan.firma.id, name: plan.firma.name };
+  }
   const crm = await ladeCrm();
   const sperrEintraege = await sperrlisteLaden();
   const { vorname, nachname } = nameTeilen(b.name);
@@ -160,7 +169,7 @@ async function kontaktSchritt(id: string, ids: { kontakt: string; followUp: stri
     const schon = f.kontakte.find(k => k.id === ids.kontakt || k.aktivitaeten.some(x => x.am === am && (x.text ?? '').endsWith(text)));
     if (schon) { ergebnis = { kontaktId: schon.id }; return f; }
     const r = anfrageBauen({ neu: { vorname, nachname, email: b.email, ...(b.firma ? { firma: b.firma } : {}) }, kanal: 'website', text, datum: tag },
-      { kontakte: f.kontakte, crm, person: s.person, heute, jetzt, ids, sperre: k => neuanlageSperre(k, sperrEintraege, heute) });
+      { kontakte: f.kontakte, crm, person: s.person, heute, jetzt, ids, sperre: k => neuanlageSperre(k, sperrEintraege, heute), ...(gesichert && crm.firmen.some(x => x.id === gesichert!.id) ? { firma: gesichert } : {}) });
     if (!r.ok) {
       // Werbesperre einer vorhandenen Person: ihre eigene Anfrage — verknüpfen, aber nichts Werbliches festhalten.
       // Art. 18 (eingeschränkt): gar nichts verknüpfen.
@@ -322,11 +331,24 @@ async function freigabeSchritte(h: string, a: Absicht): Promise<void> {
       if (!b.kontaktId) return;
       const k = (await kontakteFuerVerarbeitung()).find(x => x.id === b.kontaktId);
       if (!k || k.eingeschraenkt) return;
+      // R2-1 Fund 7 (02.11.): der Lead der FIRMA geht auf „kontaktiert“ — `anfrageBauen` lieferte ihn (`firmaLead`), der Schritt „kontakt“ ließ ihn
+      // fallen. Hier frisch auf dem CRM-Stand über dieselbe Regel (`leadNachAnfrage` → `leadZiel`): idempotent (steht er schon, „bleibt“), nur für
+      // Freigaben mit Schritt „kontakt“ (dort entsteht die Anfrage), nie über Kein Fit/Ruht/SQL/Kunde oder Firmen ohne Vertrieb.
+      if (hatSchritt(a, 'kontakt') && k.firmaId) {
+        const notiz = anfrageLeadNotiz('website', localDay(new Date(b.angefragtAm ?? b.angelegt)));
+        await aendereCrm(c => {
+          const f = c.firmen.find(x => x.id === k.firmaId);
+          const l = f ? leadNachAnfrage(f.lead, notiz, jetzt, von, f.rolle) : undefined;
+          if (!f || !l) return c;
+          const { gekuerzt: _g, ...lead } = l;
+          return { ...c, firmen: c.firmen.map(x => (x.id === f.id ? { ...x, lead, geaendert: jetzt, geaendertVon: von } : x)) };
+        }, { art: 'person', person: von });
+      }
       await aendereCrm(c => {
         if ((c.followups ?? []).some(f => f.id === vorbereitenId)) return c;
         // F2 M3: am Termin verknüpft (`terminUid` = Schlüssel Kalender|UID wie R-K1) — verschiebt er sich, zieht die
         // Verbindungsprüfung das Datum nach. Das Datum steht NICHT im Text (die Anzeige leitet es aus dem Termin ab).
-        const fu = neuesFollowUp({ id: vorbereitenId, bezug: { art: 'kontakt', id: b.kontaktId! }, kontaktId: b.kontaktId, art: 'termin', text: `Termin vorbereiten — „${s.titel.slice(0, 60)}“`, faellig: vorbereitenTag(b.start, heute), quelle: 'hand', ...(b.terminUid ? { terminUid: b.terminUid } : {}), ...(b.anliegen ? { notiz: `Anliegen: ${b.anliegen}`.slice(0, 1000) } : {}) }, k, von, jetzt);
+        const fu = neuesFollowUp({ id: vorbereitenId, bezug: { art: 'kontakt', id: b.kontaktId! }, kontaktId: b.kontaktId, art: 'termin', text: `Termin vorbereiten — „${s.titel.slice(0, 60)}“`, faellig: vorbereitenTag(b.start, heute), quelle: 'hand', anlass: 'termin', ...(b.terminUid ? { terminUid: b.terminUid } : {}), ...(b.anliegen ? { notiz: `Anliegen: ${b.anliegen}`.slice(0, 1000) } : {}) }, k, von, jetzt);
         return { ...c, followups: [...(c.followups ?? []), { ...fu, zustaendig: s.person, geaendertVon: von }] };
       }, { art: 'person', person: von });
       // Ereignis (22.10., Kundengewinnung E5 + E12): Buchung bestätigt; eine bei der Freigabe NEU angelegte Person ist auch ein neuer Lead (`kontaktNeu`

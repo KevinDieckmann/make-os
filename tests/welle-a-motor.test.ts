@@ -191,11 +191,13 @@ describe('Motor von Ende zu Ende', () => {
     const pf = await postfachAnlegen();
     await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'einstellungen', fusszeile: 'Beispiel Innovation GmbH · Impressum' });
     const dora = (await M.ladePost()).eintraege.find(x => x.ziel.id === 'c-dora-0004')!;
-    await M.stapelFreigeben({ person: 'kevin', kampagneId: 'kp-test', ids: [dora.id], postfach: pf, wer: { art: 'person', person: 'kevin' } });
-    expect((await M.versenden(MONTAG_10)).gesperrt).toBe(1);
+    // Seit 02.11. (B-Prüfung, Fund 15) prüft schon die Freigabe die Lage von jetzt: Werbesperre → 409, nichts freigegeben.
+    await expect(M.stapelFreigeben({ person: 'kevin', kampagneId: 'kp-test', ids: [dora.id], postfach: pf, wer: { art: 'person', person: 'kevin' } })).rejects.toMatchObject({ status: 409 });
+    expect((await M.versenden(MONTAG_10)).gesendet).toBe(0);
     expect(server.gesendet).toHaveLength(0);
     await M.sequenzenFortschreiben(MONTAG_10);
     expect(await stand('c-dora-0004')).toMatchObject({ status: 'gestoppt' });
+    expect((await M.ladePost()).eintraege.find(x => x.id === dora.id)?.status).toBe('verworfen');
     // Tag 3: Cora (kalt, Telefon rot, kein „eigenes Risiko“) wird übersprungen — kein Kaltanruf.
     await M.sequenzenFortschreiben(new Date('2026-11-05T09:00:00Z'));
     expect((await stand('c-cora-0003'))?.status).toBe('fertig');
@@ -211,7 +213,18 @@ describe('Motor von Ende zu Ende', () => {
     const ids = (g.d.eintraege as { id: string }[]).map(x => x.id);
     expect(ids).toHaveLength(2);
     expect((await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'freigeben', kampagneId: 'kp-test', ids, postfach: pf }, dienst)).status).toBe(403);
-    expect((await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'einstellungen', tagesgrenze: 1, fusszeile: 'Beispiel Innovation GmbH · Beispielweg 1 · Impressum: https://beispiel.example.invalid/impressum' }, sitzung('malin'))).status).toBe(403);
+    // Einstellungen steuert, wer steuern darf (`darfSteuern`, 02.11.): Inhaber und volles Mitglied ja — „nur Business“, Testkunde, Dienstweg nein.
+    const einst = { aktion: 'einstellungen', tagesgrenze: 1, fusszeile: 'Beispiel Innovation GmbH · Beispielweg 1 · Impressum: https://beispiel.example.invalid/impressum' };
+    const probe = (id: string, speicher: string, extra: Record<string, unknown>) => ({ id, speicher, email: `${speicher}@${D}`, name: `Probe ${speicher}`, rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...extra });
+    await db.saveJson('konten', { ...KONTEN, konten: [...KONTEN.konten, probe('k3', 'partner', { haushalt: 'h', finanzRecht: 'business' }), probe('k4', 'kunde', {})] });
+    try {
+      expect((await POST(motorRoute, '/api/crm/kampagnen/motor', einst, sitzung('partner'))).status, 'Konto „nur Business“').toBe(403);
+      expect((await POST(motorRoute, '/api/crm/kampagnen/motor', einst, sitzung('kunde'))).status, 'Testkunde ohne Haushalt').toBe(403);
+      expect((await POST(motorRoute, '/api/crm/kampagnen/motor', einst, dienst)).status, 'Dienstweg').toBe(403);
+    } finally {
+      await db.saveJson('konten', KONTEN);
+    }
+    expect((await POST(motorRoute, '/api/crm/kampagnen/motor', einst, sitzung('malin'))).status, 'volles Mitglied').toBe(200);
     expect((await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'einstellungen', tagesgrenze: 1, fusszeile: 'Beispiel Innovation GmbH · Beispielweg 1 · Impressum: https://beispiel.example.invalid/impressum' })).status).toBe(200);
     const f = await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'freigeben', kampagneId: 'kp-test', ids, postfach: pf });
     expect(f.status, f.text).toBe(200);
@@ -297,10 +310,12 @@ describe('Motor von Ende zu Ende', () => {
     expect(f.status, f.text).toBe(200);
     expect(f.d.eigenesRisiko.von).toMatch(/Kevin/);
     expect((await M.ladePost()).eintraege[0].freigabe?.eigenesRisiko?.von).toBe('kevin');
-    // Schalter wieder aus → der Takt sendet nicht, der Eintrag ist gesperrt.
+    // Schalter wieder aus → der Takt sendet nicht; seit 02.11. (B-Prüfung, Fund 7) zurück in den Entwurf mit Hinweis — ein vorübergehender Grund
+    // stoppt das Ziel nicht endgültig.
     await db.saveJson('kampagne-funde--h', { funde: [], bekannt: [], einstellungen: {} });
-    expect((await M.versenden(MONTAG_10)).gesperrt).toBe(1);
+    expect((await M.versenden(MONTAG_10)).spaeter).toBe(1);
     expect(server.gesendet).toHaveLength(0);
+    expect((await M.ladePost()).eintraege[0]).toMatchObject({ status: 'entwurf', hinweis: expect.stringMatching(/eigenes Risiko/) });
   });
 
   it('Unbekannter Platzhalter: Entwurf mit Fehler, nicht freigebbar; Sequenz mit unbekanntem Platzhalter wird nicht gespeichert', async () => {

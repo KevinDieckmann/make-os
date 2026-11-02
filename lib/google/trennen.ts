@@ -16,6 +16,8 @@ import { watchStoppen } from '@/lib/gmail/meldung';
 async function kalenderVorher(person: string): Promise<void> {
   const s = await ladeGoogleStand(person);
   if (s) await kanalStoppenFuer(person, s);
+  // 01.11.: die „Belegt“-Blöcke aus den weiteren Konten im Hauptkalender löschen, solange das Token noch gilt.
+  await import('@/lib/kalender/google/belegt-spiegel').then(m => m.belegtSpiegelAufloesen(person)).catch(() => { /* Trennen geht vor */ });
 }
 
 /** Kalender: den Spiegel der Google-Termine verwerfen (Wahrheit bleibt Google) und den Zwischenspeicher neu schreiben. */

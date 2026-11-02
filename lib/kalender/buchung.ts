@@ -43,7 +43,7 @@ import { SICHERUNG_SATZ } from '@/lib/crm/loeschfristen';
 // Hinweis, keine Rechtsberatung — den Text einmal anwaltlich gegenlesen.
 
 /** Grundfassung des Hinweis- und Häkchentextes. Text ändern → hochzählen; die Fristen hängt `hinweisFassung` an. */
-export const EINWILLIGUNG_VERSION = 'buchung-2026-10-05-4';
+export const EINWILLIGUNG_VERSION = 'buchung-2026-11-02-5';
 /** Wortlaut des Pflicht-Häkchens — Kenntnisnahme, keine Einwilligung (so steht er als Nachweis an der Buchung und im CRM). */
 export const EINWILLIGUNG_WORTLAUT = 'Ich habe den Datenschutzhinweis oben zur Kenntnis genommen.';
 /** Wie der Nachweis im CRM heißt (Einwilligungs-Liste, Grundlage „Antwort auf Anfrage“). */
@@ -71,9 +71,12 @@ const monateText = (n: number) => `${n} ${n === 1 ? 'Monat' : 'Monate'}`;
 export function datenschutzHinweis(f: HinweisFristen): string[] {
   return [
     'Zweck und Rechtsgrundlage: Ihre Angaben (Name, E-Mail, Firma, Anliegen) verwenden wir nur, um Ihre Terminanfrage zu bearbeiten und den Termin vorzubereiten — auf Ihre Anfrage hin, vor einem möglichen Vertrag (Art. 6 Abs. 1 lit. b DSGVO). Ohne Name und E-Mail können wir die Anfrage nicht bearbeiten.',
-    `Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung. Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir ${tageText(f.buchungen)} nach der letzten Änderung, bestätigte Buchungen ${tageText(f.buchungen)} nach dem Termin.`,
+    `Bis wir den Termin bestätigen, liegt Ihre Anfrage nur in unserer Terminverwaltung (Ausnahme: der gewünschte Termin verstreicht vorher — siehe unten). Nicht bestätigte, abgelehnte, abgesagte oder abgelaufene Anfragen löschen wir ${tageText(f.buchungen)} nach der letzten Änderung, bestätigte Buchungen ${tageText(f.buchungen)} nach dem Termin.`,
     `Erst wenn wir den Termin bestätigen, legen wir Sie als Geschäftskontakt an (Name, E-Mail, Firma, Anliegen, Termin) und tragen den Termin mit Ihrem Namen und Ihrer E-Mail-Adresse in unseren Kalender ein. Den Geschäftskontakt prüfen wir spätestens ${monateText(f.kontakte)} nach dem letzten Kontakt auf Löschung. Den Kalendereintrag behalten wir, solange die Geschäftsbeziehung ihn braucht; die Zwischenkopie vergangener Termine in unserer Software löschen wir nach ${monateText(f.kalenderCaches)}.`,
-    `Nach dem Absenden führt Sie die Seite zu Ihrer persönlichen Status-Seite (die Adresse mit Ihrem Schlüssel kennen nur Sie — bitte aufbewahren). Gegebenenfalls schicken wir Ihnen per E-Mail einen Link, mit dem Sie bestätigen, dass die Adresse Ihnen gehört; jeder solche Link gilt ${tageText(f.mailLinkTage ?? MAIL_LINK_TAGE)} und nur einmal. Darüber hinaus schicken wir Ihnen keine E-Mails und keine Werbung.`,
+    // 02.11. (Fassung 5, Prüfung R2-1 Fund 1): eine verfallene Anfrage ist keine Sackgasse mehr — ein Terminvorschlag per Mail (Entwurf, Versand per
+    // Klick) bzw. die Anfrage ohne Termin weiterbearbeiten (Geschäftskontakt, `anfrageUebernehmen` in lib/kalender/buchung-uebernehmen.ts).
+    'Verstreicht der gewünschte Termin, bevor wir ihn bestätigen konnten, schreiben wir Ihnen gegebenenfalls einmal per E-Mail mit einem neuen Terminvorschlag, oder wir bearbeiten Ihre Anfrage ohne Termin weiter — dann legen wir Sie ebenfalls als Geschäftskontakt an (Name, E-Mail, Firma, Anliegen); auch das nur auf Ihre Anfrage hin.',
+    `Nach dem Absenden führt Sie die Seite zu Ihrer persönlichen Status-Seite (die Adresse mit Ihrem Schlüssel kennen nur Sie — bitte aufbewahren). Gegebenenfalls schicken wir Ihnen per E-Mail einen Link, mit dem Sie bestätigen, dass die Adresse Ihnen gehört; jeder solche Link gilt ${tageText(f.mailLinkTage ?? MAIL_LINK_TAGE)} und nur einmal. Darüber hinaus (und außer einem Terminvorschlag wie oben) schicken wir Ihnen keine E-Mails und keine Werbung.`,
     // 05.10. (Fassung 4): die Sicherungen wahrheitsgemäß (bis zu 12 Monate, SICHERUNG_SATZ in lib/crm/loeschfristen.ts).
     SICHERUNG_SATZ,
     'Sie können jederzeit Auskunft, Berichtigung, Einschränkung oder Löschung verlangen und sich bei einer Datenschutz-Aufsichtsbehörde beschweren — Ihr Ansprechpartner ist der Verantwortliche unten.',
@@ -183,6 +186,12 @@ export interface Buchung {
   emailBestaetigtAm?: string;
   /** Offener Bestätigungslink: nur der SHA-256 (nie in Antworten), gültig bis `bis`, erzeugt `am`. Einmalig. */
   mailLink?: { hash: string; bis: string; am: string };
+  /**
+   * Verfallen OHNE Reaktion (02.11., Prüfung A Fund 1): die Anfrage stand noch auf „angefragt“, als der Termin vorbei war — gesetzt beim Nachziehen
+   * des Ablaufs. `verfallGemeldet` = wann die Glocke „Terminanfrage verfallen“ ging (genau einmal, `buchungenVerfallenMelden`).
+   */
+  verfallen?: true;
+  verfallGemeldet?: string;
 }
 
 export interface BuchungBestand {
@@ -376,10 +385,65 @@ export function ablaufNachziehen(bestand: BuchungBestand, jetzt: Date): { bestan
   let n = 0;
   const buchungen = bestand.buchungen.map(b => {
     if (b.status === 'vorlaeufig' && b.reserviertBis <= jetztIso) { n++; return { ...b, status: 'abgelaufen' as const, statusAm: b.reserviertBis }; }
-    if (b.status === 'angefragt' && ausWandzeit(b.ende).getTime() <= jetzt.getTime()) { n++; return { ...b, status: 'abgelaufen' as const, statusAm: jetztIso }; }
+    if (b.status === 'angefragt' && ausWandzeit(b.ende).getTime() <= jetzt.getTime()) { n++; return { ...b, status: 'abgelaufen' as const, statusAm: jetztIso, verfallen: true as const }; }
     return b;
   });
   return { bestand: n ? { ...bestand, buchungen } : bestand, n };
+}
+
+// ── Erinnern und Verfallen (02.11., Prüfung A Fund 1 — „nichts dem Zufall überlassen“) ──────────────────────────────────────────────
+
+/** Ab so vielen Stunden „angefragt“ erinnert die Glocke (abgeleitet, nie gespeichert). */
+export const ANFRAGE_ERINNERN_STD = 24;
+/** So viele Stunden vor dem Termin erinnert die Glocke an eine noch offene Anfrage. */
+export const ANFRAGE_VOR_TERMIN_STD = 24;
+
+/**
+ * Wartet eine Anfrage zu lange? (rein) `seit` = seit wann „angefragt“ (ISO), `start` = Termin (Berliner Wandzeit). `lange`: länger als 24 h ohne
+ * Entscheidung · `bald`: der Termin ist in höchstens 24 h. Beides kann gelten; vorbei (Termin begonnen) gilt keins mehr.
+ */
+export function anfrageWartet(seit: string | undefined, start: string, jetzt: Date): { lange: boolean; bald: boolean } {
+  const beginn = ausWandzeit(start).getTime(), t = jetzt.getTime();
+  if (beginn <= t) return { lange: false, bald: false };
+  const lange = !!seit && Number.isFinite(Date.parse(seit)) && t - Date.parse(seit) >= ANFRAGE_ERINNERN_STD * 3_600_000;
+  return { lange, bald: beginn - t <= ANFRAGE_VOR_TERMIN_STD * 3_600_000 };
+}
+
+/** Verfallene Anfragen, die noch nicht gemeldet sind — je Person der Seite (Seite fehlt → `null` = an den Haushalt). Rein. */
+export function verfalleneUngemeldet(bestand: BuchungBestand): { id: string; person: string | null }[] {
+  const seiten = new Map(bestand.seiten.map(x => [x.id, x]));
+  return bestand.buchungen.filter(b => b.verfallen && !b.verfallGemeldet).map(b => ({ id: b.id, person: seiten.get(b.seiteId)?.person ?? null }));
+}
+
+/**
+ * Verfallene Terminanfragen, um die sich noch niemand gekümmert hat (02.11., Prüfung R2-1 Fund 1 — vorher eine Sackgasse: die Glocke führte ins Panel,
+ * das Panel zeigte sie nicht, ins CRM kam die Person nie, nach der Löschfrist war alles weg). Verfallen = stand noch auf „angefragt“, als der Termin
+ * vorbei war (`verfallen`); „gekümmert“ = als Anfrage übernommen (`kontaktId`). Jüngste Wunschzeit zuerst. Rein.
+ */
+export function verfalleneOffen<T extends Pick<Buchung, 'status' | 'verfallen' | 'kontaktId' | 'start'>>(buchungen: readonly T[]): T[] {
+  return buchungen.filter(b => b.status === 'abgelaufen' && b.verfallen && !b.kontaktId).sort((a, c) => c.start.localeCompare(a.start));
+}
+
+/**
+ * Mail-ENTWURF „Neuen Termin vorschlagen“ zu einer verfallenen Anfrage (Sie-Form, ohne Werbung) — verschickt wird er erst mit dem Klick in der Mail-App
+ * (`mailtoLink`, MAKE OS versendet nichts). `link` = volle Adresse der Buchungsseite (der Browser kennt den Ursprung). Rein.
+ */
+export function neuerTerminMail(a: { name: string; titel: string; start: string; /** fehlt, wenn die Seite nicht (mehr) aktiv ist — dann nur „antworten Sie“ */ link?: string; verantwortlich: string }): { betreff: string; text: string } {
+  const d = (w: string) => `${w.slice(8, 10)}.${w.slice(5, 7)}.${w.slice(0, 4)}`;
+  return {
+    betreff: `Ihre Terminanfrage „${a.titel}“ — neuer Terminvorschlag`,
+    text: [
+      `Guten Tag ${a.name},`,
+      '',
+      `vielen Dank für Ihre Terminanfrage „${a.titel}“ für den ${d(a.start)}, ${a.start.slice(11, 16)} Uhr. Leider konnten wir den Termin nicht rechtzeitig bestätigen — das bitten wir zu entschuldigen.`,
+      ...(a.link ? ['Wenn Sie mögen, wählen Sie hier gern eine neue Zeit:', '', a.link, ''] : []),
+      `${a.link ? 'Oder antworten' : 'Antworten'} Sie einfach auf diese Mail mit zwei, drei Zeiten, die Ihnen passen. Möchten Sie keinen Termin mehr, ignorieren Sie diese Mail bitte — dann geschieht nichts.`,
+      '',
+      'Freundliche Grüße',
+      '',
+      `Verantwortlich: ${a.verantwortlich}`,
+    ].join('\n'),
+  };
 }
 
 /**

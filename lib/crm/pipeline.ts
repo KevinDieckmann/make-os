@@ -49,6 +49,22 @@ export function verlustgruende(wertelisten?: Pick<Wertelisten, 'verlustgruende'>
   return [...VERLUSTGRUENDE, ...eigene];
 }
 
+/**
+ * Verlustgründe, die nur „jetzt nicht“ heißen (02.11., Prüfung C „Lead → zahlender Kunde“): bei ihnen kommt der Lead nach
+ * `VERLUST_WIEDERVORLAGE_TAGE` von selbst wieder in die Qualifizierung — sonst war ein „Zeitpunkt passt nicht“ für immer weg.
+ * Es sind die festen Gründe aus `VERLUSTGRUENDE` (ein Grund mit Ergänzung „Zeitpunkt — erst 2027“ zählt mit).
+ */
+export const ZEIT_VERLUSTGRUENDE: readonly string[] = ['Zeitpunkt', 'Keine Rückmeldung', 'Keine Entscheidung'];
+export const VERLUST_WIEDERVORLAGE_TAGE = 90;
+/** Zeitbezogener Grund → Wiedervorlage (Tag) `heute` + 90 Tage; sonst undefined. Rein. */
+export function verlustWiedervorlage(grund: string | undefined | null, heute: string): string | undefined {
+  const g = String(grund ?? '').trim().toLowerCase();
+  if (!g || !ZEIT_VERLUSTGRUENDE.some(z => g === z.toLowerCase() || g.startsWith(`${z.toLowerCase()} `))) return undefined;
+  const d = new Date(`${heute}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + VERLUST_WIEDERVORLAGE_TAGE);
+  return d.toISOString().slice(0, 10);
+}
+
 export function wahrscheinlichkeit(stufe: ChancenStufe, eigene?: CrmBestand['wahrscheinlichkeiten']): number {
   const v = eigene?.[stufe];
   return typeof v === 'number' ? Math.max(0, Math.min(100, v)) : STUFEN.find(s => s.id === stufe)?.p ?? 0;

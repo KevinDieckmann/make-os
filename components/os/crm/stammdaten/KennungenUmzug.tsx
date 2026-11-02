@@ -4,7 +4,7 @@
 // Alte Kontakt-Kennungen trugen die E-Mail (bzw. Name+Firma). Die Karte zeigt, wie viele Kontakte noch so heißen und
 // wo ihre Kennungen überall stehen (Vorschau, schreibt nichts); „Umstellen“ läuft erst nach einer Rückfrage — nie von
 // selbst. Danach: alte Links leiten weiter, der Rückweg geht, solange kein umgezogener Kontakt geändert wurde.
-// Nur der Inhaber (die Route antwortet sonst 403 — dann bleibt die Karte eine Zeile).
+// Inhaber und volle Mitglieder des Haushalts (`darfSteuern`, 02.11.; die Route antwortet sonst 403 — dann bleibt die Karte eine Zeile).
 
 import { useCallback, useEffect, useState } from 'react';
 import { FARBE as C, TYP } from '@/lib/make-one/design';
@@ -37,7 +37,7 @@ export function KennungenUmzug({ i = 0, onGeaendert }: { i?: number; onGeaendert
   const laden = useCallback(async () => {
     const r = await post('vorschau');
     if (r.ok) { setV(r as unknown as Vorschau); setFehler(null); }
-    else if (r.status === 403) setNichtFuerMich(true); // nur der Inhaber — für alle anderen keine Karte
+    else if (r.status === 403) setNichtFuerMich(true); // nur Inhaber und volle Mitglieder — für alle anderen keine Karte
     else setFehler(r.fehler ?? 'Nicht geladen.');
   }, []);
   useEffect(() => { void laden(); }, [laden]);

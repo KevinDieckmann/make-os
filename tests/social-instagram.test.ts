@@ -460,7 +460,8 @@ describe('Kommentare & DMs (Server)', () => {
     const lp = (await leseprotokollMonat('h-pruef', monatBerlin(new Date()))).filter(e => e.bereich === 'social');
     expect(lp.some(e => e.person === 'pa' && (e.anzahl ?? 0) >= 2 && (e.ids ?? []).length === 1 && !(e.ids ?? []).includes(kanalId))).toBe(true);
     expect(lp.some(e => e.person === 'pb')).toBe(false);
-    expect(JSON.stringify(lp)).not.toMatch(/Wie lange|Hallo zurück|lea|tom|501|502/);
+    // Ohne Zeitstempel, Ketten-Hash und Fingerabdrücke prüfen — die sind zufällig und können „501“ o. Ä. enthalten (01.11.: genau so einmal rot).
+    expect(JSON.stringify(lp.map(e => { const { at: _a, ids: _i, ...rest } = e as typeof e & { h?: string }; delete (rest as { h?: string }).h; return rest; }))).not.toMatch(/Wie lange|Hallo zurück|lea|tom|501|502/);
     // Konto-Export (31.10.): Anna bekommt ihre beiden eigenen Antworten — nie die Texte Dritter, nie das Gegenüber; Bert nichts daraus.
     const { kontoExport } = await import('@/lib/datenschutz/konto-daten');
     const ea = (await kontoExport('pa'))!.eintraege['social-community--h-pruef'] as { art: string; text: string; kanalId: string }[];

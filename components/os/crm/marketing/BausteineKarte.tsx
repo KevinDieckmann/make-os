@@ -3,7 +3,7 @@
 // ─── Markttraktion · Marketing › Anfragen — Bausteine bestellen (31.10.) ─────────────────────────────────────────────────────────────
 // Bestellungen der Website (bezahlte Arbeitspakete auf Rechnung): offen mit „Freigeben und senden“ (Rückfrage mit der Empfänger-Adresse — erst dann werden
 // Rechnung gestellt und Rechnung + Download-Links verschickt) und „Ablehnen“ (Entwurf weg; eine Absage nur, wenn gewählt), darunter die erledigten.
-// Einstellungen (an/aus, Gesellschaft der Rechnung, Zahlungsziel, Bestellbedingungen) nur ein Inhaber; alle im Haushalt sehen und geben frei.
+// Einstellungen (an/aus, Gesellschaft der Rechnung, Zahlungsziel, Bestellbedingungen) nur Inhaber und volle Mitglieder (02.11.); alle im Haushalt sehen und geben frei.
 // Server: /api/bausteine/intern (lib/bausteine/server.ts).
 
 import { useCallback, useEffect, useState } from 'react';
@@ -97,7 +97,7 @@ export function BausteineKarte() {
       <div style={{ display: 'grid', gap: 10 }}>
         <Schalter an={d.einstellungen.aktiv} aus={!d.istInhaber} onChange={an => void einstellen({ aktiv: an })} erklaerung="bausteine.bestellen">Bestellen über die Website</Schalter>
         <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Bestellungen kommen hier an, mit Anfrage in der Kartei und vorbereiteter Rechnung. Rechnung und Dateien gehen erst raus, wenn ihr „Freigeben und senden“ klickt. {d.katalog ? `${d.katalog} Bausteine im Katalog.` : 'Noch kein Katalog der Website.'}</span>
-        {!d.istInhaber && <Hinweis art="info">Einstellungen ändern kann nur ein Inhaber — freigeben und ablehnen kannst du.</Hinweis>}
+        {!d.istInhaber && <Hinweis art="info">Einstellungen ändern dürfen Inhaber und volle Mitglieder des Haushalts — freigeben und ablehnen kannst du.</Hinweis>}
         {d.gruende.length > 0 && <Hinweis art="achtung" titel="Noch nicht bestellbar">{d.gruende.join(' ')}</Hinweis>}
         {meldung && <Hinweis art={meldung.fehler ? 'kritisch' : 'gut'} rolle={meldung.fehler ? 'alert' : 'status'}>{meldung.text}</Hinweis>}
 

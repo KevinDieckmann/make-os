@@ -109,10 +109,12 @@ export async function POST(req: Request) {
       }
       case 'version': return NextResponse.json({ ok: true, vertrag: mitStand(await vertragVersion({ ...basis, id })) });
       case 'status': {
-        const v = await vertragStatus({ ...basis, id, stand: b.stand, status: b.status });
+        // 02.11.: beendet/gekündigt zieht den Register-Eintrag mit — klappt das nicht, sagt es der Hinweis.
+        const hinweise: string[] = [];
+        const v = await vertragStatus({ ...basis, id, stand: b.stand, status: b.status, hinweise });
         // Übernommenes Darlehen: beendet/gekündigt → offene Raten verschwinden aus der Liquidität (bezahlte bleiben).
-        if (v.finanzen) { const { ratenAbgleichen } = await import('@/lib/vertraege/finanzen'); await ratenAbgleichen(v, wer).catch(e => console.error('[vertraege] Raten', (e as Error)?.message)); }
-        return NextResponse.json({ ok: true, vertrag: mitStand(v) });
+        if (v.finanzen) { const { ratenAbgleichen } = await import('@/lib/vertraege/finanzen'); await ratenAbgleichen(v, wer).catch(e => { console.error('[vertraege] Raten', (e as Error)?.message); hinweise.push('Die offenen Raten in der Liquidität konnten nicht nachgezogen werden — bitte dort prüfen.'); }); }
+        return NextResponse.json({ ok: true, vertrag: mitStand(v), ...(hinweise.length ? { hinweise } : {}) });
       }
       case 'loeschen': await vertragLoeschen({ haushalt: z.haushalt, id, stand: b.stand, wer }); return NextResponse.json({ ok: true });
       case 'senden': {

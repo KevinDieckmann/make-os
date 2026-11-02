@@ -11,7 +11,7 @@ import { protokolliere, bestandDiff, listenDiff, type Aenderung, type Wer } from
 import type { Kontakt } from '@/lib/make-one/crm';
 import { wendeAn, type ListenOp } from '@/lib/sync';
 import { mandatZieleLesen } from './mandat-ziele';
-import { STUFEN, wechsleStufe, erwartetVerschiebung, gewonnenVerlorenSperre } from './pipeline';
+import { STUFEN, wechsleStufe, erwartetVerschiebung, gewonnenVerlorenSperre, verlustWiedervorlage } from './pipeline';
 import { firmaIdsErgaenzen, firmaIdsNachziehen } from './firmen-bezug';
 import { localDay, istKalendertag, tagVon } from '@/lib/zeit';
 import { istKontaktKennung } from '@/lib/kennung';
@@ -31,6 +31,7 @@ import { mutterPruefen } from './konzern';
 import { firmaIcpSaeubern, steckbriefSaeubern } from './icp-firma';
 import { adresseSaeubern, quellenSaeubern, bewertungSaeubern, analyseSaeubern, anreicherungSaeubern, osmIdSaeubern, instagramSaeubern, inhaberSaeubern, betriebRechtSaeubern, betriebRechtStempeln, BETRIEB_QUELLEN, ERREICHBARKEITEN } from './betrieb';
 import { angebotAusSpeicher, leistungAngebotSaeubern, produktAngebotFehlt, ANGEBOT_GRENZEN } from './angebote';
+import { jahresHonorarVon } from './mandat-laufzeit';
 import { pausenSaeubern, pausenStempeln, PAUSEN_MAX } from './mandat-pausen';
 import { kartenFelderSaeubern, mandatRatenSaeubern, mandatZusatzSaeubern, mandatZusatzPruefen, produktProzessKennung, produktSpiegeln, produktPruefen, spiegelKonflikt, zahlplanSaeubern, PRODUKT_GRENZEN } from './produkt-karte';
 import { mailTexteSaeubern } from './vorlage-platzhalter';
@@ -128,7 +129,7 @@ export const LISTEN_GRENZEN: Partial<Record<CrmListe, Record<string, number>>> =
   sitzungen: { karten: 2000 },
   beitraege: { wirkung: 20000, quellen: 1000 },
   newsletter: { beitragIds: GRENZE_IDS },
-  kampagnen: { schritte: 1000, kontaktIds: 20000, ergebnisse: 100000, sequenz: SEQUENZ_GRENZEN.schritte },
+  kampagnen: { schritte: 1000, kontaktIds: 20000, firmaIds: 20000, ergebnisse: 100000, firmenErgebnisse: 100000, sequenz: SEQUENZ_GRENZEN.schritte },
   angebote: { positionen: ANGEBOT_GRENZEN.positionen },
 };
 const grenzeVon = (liste: CrmListe, feld: string) => LISTEN_GRENZEN[liste]?.[feld] ?? GRENZE_IDS;
@@ -354,6 +355,7 @@ function antrag(o: Record<string, unknown>, jetzt: string, person: string): Antr
     ...(istKontaktKennung(String(o.kontaktId ?? '')) ? { kontaktId: String(o.kontaktId) } : {}),
     eingang, frist: tag(o.frist) ?? d.toISOString().slice(0, 10), status: o.status === 'erledigt' ? 'erledigt' : 'offen',
     ...(opt(o.ergebnis, 600) ? { ergebnis: opt(o.ergebnis, 600) } : {}), ...(tag(o.erledigtAm) ? { erledigtAm: tag(o.erledigtAm) } : {}), von: txt(o.von, 40) || person, geaendert: jetzt,
+    ...(opt(o.nachricht, 3000) ? { nachricht: opt(o.nachricht, 3000) } : {}),
   };
 }
 function verarbeitung(o: Record<string, unknown>, jetzt: string): Verarbeitung | null {
@@ -454,6 +456,8 @@ function kampagne(o: Record<string, unknown>, jetzt: string): Kampagne | null {
     // Betriebe ohne Person als Ziele (01.11., Welle A) — nur Firmen-Kennungen, ohne Doppelte.
     ...(Array.isArray(o.firmaIds) && o.firmaIds.length ? { firmaIds: Array.from(new Set((o.firmaIds as unknown[]).map(String).filter(x => /^f-[a-z0-9-]{2,63}$/.test(x)))).slice(0, grenzeVon('kampagnen', 'kontaktIds')) } : {}),
     ergebnisse: Array.isArray(o.ergebnisse) ? (o.ergebnisse as Record<string, unknown>[]).slice(0, grenzeVon('kampagnen', 'ergebnisse')).map(e => ({ kontaktId: txt(e.kontaktId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10), ...(wer(e.von) && wer(e.von) !== BEIDE ? { von: wer(e.von) } : {}) })).filter(e => /^c-/.test(e.kontaktId)) : [],
+    // Ergebnisse je Betrieb ohne Person (M1, 01.11.) — eigene Liste, die Personen-Liste bleibt unberührt.
+    ...(Array.isArray(o.firmenErgebnisse) && o.firmenErgebnisse.length ? { firmenErgebnisse: (o.firmenErgebnisse as Record<string, unknown>[]).slice(0, grenzeVon('kampagnen', 'firmenErgebnisse')).map(e => ({ firmaId: txt(e.firmaId, 80), ergebnis: aus(e.ergebnis, ['angesprochen', 'reagiert', 'gespraech', 'chance', 'kein_interesse'] as const, 'angesprochen'), am: tag(e.am) ?? jetzt.slice(0, 10), ...(wer(e.von) && wer(e.von) !== BEIDE ? { von: wer(e.von) } : {}) })).filter(e => /^f-[a-z0-9-]{2,63}$/.test(e.firmaId)) } : {}),
     von: aus(o.von, ['hand', 'head-sales', 'head-marketing'] as const, 'hand'), ...(opt(o.notiz, 3000) ? { notiz: opt(o.notiz, 3000) } : {}), ...zst(o), geaendert: jetzt,
     ...(vernetzenSaeubern(o.vernetzen) ? { vernetzen: vernetzenSaeubern(o.vernetzen) } : {}),
   };
@@ -468,7 +472,9 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       const rollen = o.personenRollen && typeof o.personenRollen === 'object'
         ? Object.fromEntries(Object.entries(o.personenRollen as Record<string, unknown>).filter(([k, v]) => idOk(k) && (DEAL_ROLLEN as readonly string[]).includes(String(v))).slice(0, grenzeVon('chancen', 'personenRollen')))
         : undefined;
-      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(rollen && Object.keys(rollen).length ? { personenRollen: rollen } : {}) };
+      // Gewünschter Start (02.11., R2-3 Fund 6) — ohne diese Zeile fiele er beim Speichern weg.
+      const wunsch = tag(o.startWunsch);
+      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(rollen && Object.keys(rollen).length ? { personenRollen: rollen } : {}), ...(wunsch ? { startWunsch: wunsch } : {}) };
     }
     case 'mandate': {
       // Zusatzmodule (19.10., lib/crm/produkt-karte.ts — Form; Rechnung/Liquidität/Fall in P3): ohne diese Zeile fielen sie beim Speichern weg.
@@ -479,9 +485,11 @@ function zusatz(liste: CrmListe, o: Record<string, unknown>): Record<string, unk
       const raten = mandatRatenSaeubern(o.raten);
       // Geplante Tage je Monat beim Tagessatz (21.10., B4) — 0,25 … 744, sonst weg.
       const tage = typeof o.tageJeMonat === 'number' && Number.isFinite(o.tageJeMonat) && o.tageJeMonat >= 0.25 && o.tageJeMonat <= 744 ? Math.round(o.tageJeMonat * 100) / 100 : undefined;
+      // Jahreshonorar (02.11., R2-3 Fund 3): nur, solange es zum Monatshonorar passt (`jahresHonorarVon`) — sonst weg (dann gilt das Monatshonorar).
+      const jahr = jahresHonorarVon({ honorar: (o.honorar ?? null) as Partial<Mandat['honorar']> | null, jahresHonorar: o.jahresHonorar });
       // Pausen (02.11., Kreislauf Runde 3): nur Form — setzen tut sie allein der Server (`pausenStempeln` in `wendeCrmAn`); ohne diese Zeile fielen sie weg.
       const pausen = pausenSaeubern(o.pausen, grenzeVon('mandate', 'pausen'));
-      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(zusatzModule ? { zusatz: zusatzModule } : {}), ...(raten ? { raten } : zahlplan ? { zahlplan } : {}), ...(tage !== undefined ? { tageJeMonat: tage } : {}), ...(pausen ? { pausen } : {}) };
+      return { ...(firmaId(o.firmaId) ? { firmaId: firmaId(o.firmaId) } : {}), ...(zusatzModule ? { zusatz: zusatzModule } : {}), ...(raten ? { raten } : zahlplan ? { zahlplan } : {}), ...(tage !== undefined ? { tageJeMonat: tage } : {}), ...(jahr !== null ? { jahresHonorar: jahr } : {}), ...(pausen ? { pausen } : {}) };
     }
     case 'leistungen': {
       // Produkt-Karte (19.10., PRODUKTE_KONZEPT.md): die neuen Felder — geprüft vorher (`produktOpsPruefen`, 400/413), hier nur gesäubert.
@@ -535,6 +543,7 @@ const FU_BEZUG = ['kontakt', 'firma', 'chance', 'mandat', 'event'] as const;
 const FU_ART = ['anruf', 'mail', 'linkedin', 'termin', 'nachricht', 'sonstig'] as const;
 const FU_STATUS = ['offen', 'erledigt', 'verpasst', 'abgesagt'] as const;
 const FU_QUELLE = ['hand', 'regel', 'kadenz', 'kampagne', 'event', 'head', 'zoe', 'deal'] as const;
+const FU_ANLASS = ['antwort', 'anfrage', 'vertrag', 'rechnung', 'termin'] as const;
 function followup(o: Record<string, unknown>, jetzt: string, person: string): FollowUp | null {
   const bz = (o.bezug ?? {}) as Record<string, unknown>;
   if (!idOk(o.id) || !idOk(bz.id) || !txt(o.text) || !tag(o.faellig)) return null;
@@ -546,7 +555,7 @@ function followup(o: Record<string, unknown>, jetzt: string, person: string): Fo
     ...(typeof o.uhrzeit === 'string' && /^\d{2}:\d{2}$/.test(o.uhrzeit) ? { uhrzeit: o.uhrzeit } : {}),
     zustaendig: wer(o.zustaendig) ?? (wer(person) && wer(person) !== BEIDE ? person : verantwortlich('sales')),
     status, ...(opt(o.ergebnis, 60) ? { ergebnis: opt(o.ergebnis, 60) } : {}), ...(opt(o.notiz, 1000) ? { notiz: opt(o.notiz, 1000) } : {}),
-    quelle: aus(o.quelle, FU_QUELLE, 'hand'), ...(opt(o.aufgabeId, 80) ? { aufgabeId: opt(o.aufgabeId, 80) } : {}),
+    quelle: aus(o.quelle, FU_QUELLE, 'hand'), ...((FU_ANLASS as readonly unknown[]).includes(o.anlass) ? { anlass: o.anlass as FollowUp['anlass'] } : {}), ...(opt(o.aufgabeId, 80) ? { aufgabeId: opt(o.aufgabeId, 80) } : {}),
     // K6a (29.09.): Termin, an dem das Follow-up hängt (Schlüssel wie `Aktivitaet.terminUid`).
     ...(typeof o.terminUid === 'string' && /^[^\u0000-\u001f\u007f]{1,300}$/.test(o.terminUid) ? { terminUid: o.terminUid } : {}),
     ...(zahl(o.verschoben, 0, 99) ? { verschoben: zahl(o.verschoben, 0, 99) } : {}),
@@ -708,7 +717,11 @@ export function dealRegeln(b: CrmBestand, ops: ListenOp[], jetzt: string, person
       fehler.push(schritt?.datum && schritt.datum < heuteTag ? `„${alt.titel}“: der nächste Schritt vom ${schritt.datum} ist überfällig — erst ein neues Datum setzen, dann die Stufe wechseln.` : `„${alt.titel}“: Für ${STUFEN.find(s => s.id === ziel)?.label} braucht es einen nächsten Schritt mit Datum.`);
       continue;
     }
-    const neuFelder = { ...felder, stufe: ziel, historie: r.chance.historie, letzteAktivitaet: r.chance.letzteAktivitaet, ...(r.chance.grund ? { grund: r.chance.grund } : {}), ...(r.chance.wiedervorlage ? { wiedervorlage: r.chance.wiedervorlage } : {}) };
+    // Verloren (02.11., Prüfung C): ein zeitbezogener Grund („Zeitpunkt“, „Keine Rückmeldung“, „Keine Entscheidung“) bekommt ohne Angabe eine Wiedervorlage
+    // (+90 Tage) — der Lead kommt dann von selbst wieder in die Qualifizierung; ein ausdrücklich leeres Feld heißt „keine“. Jeder andere Grund räumt eine
+    // alte Wiedervorlage (z. B. vom Parken) ab — sonst käme ein „Wettbewerb“ still zurück.
+    const wvVerloren = ziel === 'verloren' ? ('wiedervorlage' in felder ? (typeof felder.wiedervorlage === 'string' ? felder.wiedervorlage : '') : verlustWiedervorlage(r.chance.grund, heuteTag) ?? '') : undefined;
+    const neuFelder = { ...felder, stufe: ziel, historie: r.chance.historie, letzteAktivitaet: r.chance.letzteAktivitaet, ...(r.chance.grund ? { grund: r.chance.grund } : {}), ...(wvVerloren !== undefined ? { wiedervorlage: wvVerloren } : r.chance.wiedervorlage ? { wiedervorlage: r.chance.wiedervorlage } : {}) };
     raus.push(mit(neuFelder));
   }
   return { ops: raus, fehler, grenze };
@@ -816,6 +829,9 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
     const liste = l === 'events' ? uebergabenVomAltstand(b.events, r.liste as unknown as CrmBestand['events'])
       // Stand je Ziel der Kampagnen-Sequenz (31.10.): schreibt NUR der Motor — der Browser kann ihn weder setzen noch löschen.
       : l === 'kampagnen' ? zielStaendeVomAltstand(b.kampagnen, r.liste as unknown as CrmBestand['kampagnen'])
+      // Anlass eines Follow-ups (02.11., R2-4 Fund 1: Antwort/Anfrage/Vertrag … = nie Werbung): setzt NUR der Server — über den Bestand-Weg kann ihn
+      // niemand setzen (eine Werbesperre umgehen) oder entfernen.
+      : l === 'followups' ? anlassVomAltstand(b.followups ?? [], r.liste as unknown as FollowUp[])
       // Pausen eines Mandats (02.11., Kreislauf Runde 3): schreibt NUR der Server aus dem Statuswechsel — der Browser kann sie weder setzen noch löschen.
       : l === 'mandate' ? pausenVomAltstand(b.mandate, r.liste as unknown as Mandat[], tagVon(jetzt), pausenGrenze)
       // Papierkorb-Marke der Produkte (04.10.): neu = Server-Zeit, bestehend bleibt — der Browser verschiebt die Frist nie.
@@ -843,6 +859,16 @@ export function wendeCrmAn(gespeichert: CrmBestand, roh: ListenOp[], jetzt: stri
   // Qualifizierung; umbenannte Firma → Anzeigename an Mandaten/Deals. Personen-Leads führt `aendereCrm` nach.
   const hinweise = [...kanalWechsel.hinweise, ...kampagnenHinweise(b, roh, personen ?? personenImLauf.getStore() ?? []), ...zurueck.map(n => `Die Firma „${n}“ lag im Papierkorb — sie ist zurückgeholt (Vermerk in der Notiz).`)];
   return { bestand: crmFolgen(b, neu, jetzt, person), angewandt, fehler, konflikte: [], sperren: [], grenze: [], ...(hinweise.length ? { hinweise } : {}) };
+}
+
+/** Der Anlass eines Follow-ups kommt immer aus dem gespeicherten Stand (R2-4 Fund 1) — neue Einträge über den Bestand-Weg haben keinen. */
+function anlassVomAltstand(alt: readonly FollowUp[], neu: FollowUp[]): FollowUp[] {
+  const vorher = new Map(alt.map(f => [f.id, f.anlass]));
+  return neu.map(f => {
+    const { anlass: _vomBrowser, ...ohne } = f;
+    const gespeichert = vorher.get(f.id);
+    return gespeichert ? { ...ohne, anlass: gespeichert } : ohne;
+  });
 }
 
 /**

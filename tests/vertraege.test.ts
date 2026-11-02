@@ -195,7 +195,7 @@ describe('Route: Nummer, festgeschrieben, Version, unterschrieben, Rechte', () =
   beforeAll(async () => {
     db = await import('@/lib/store/local-db');
     const speicher = await import('@/lib/crm/speicher');
-    await db.saveJson('konten', { konten: [konto('k1', 'person-a', 'inhaber', 'haus'), konto('k2', 'person-b', 'mitglied', 'haus'), konto('k3', 'testkunde', 'inhaber', 'kunde-haus')], einladungen: [] });
+    await db.saveJson('konten', { konten: [konto('k1', 'person-a', 'inhaber', 'haus'), konto('k2', 'person-b', 'mitglied', 'haus'), konto('k3', 'testkunde', 'inhaber', 'kunde-haus'), { ...konto('k4', 'person-c', 'mitglied', 'haus'), finanzRecht: 'business' }], einladungen: [] });
     await db.saveJson('kontakte', { kontakte: [k('c-anna1', { firmaId: 'f-muster', firma: 'Muster GmbH' })] });
     await db.saveJson('crm', { ...speicher.leererBestand(), firmen: [{ id: 'f-muster', name: 'Muster GmbH', rolle: 'zielkunde', stadt: 'Musterstadt', geaendert: J }],
       mandate: [{ id: 'm-test-0001', kunde: 'Muster GmbH', firmaId: 'f-muster', kontaktIds: ['c-anna1'], titel: 'Mandat', art: 'retainer', gesellschaft: 'kdv', status: 'aktiv', vertragUnterschrieben: false, start: '2026-11-01', verlaengerung: 'manuell', honorar: { betrag: 1000, basis: 'monat', netto: true }, ustSatz: 19, rechnungsrhythmus: 'monatlich', zahlungszielTage: 14, ziele: [], health: { beteiligung: null, umsetzung: null, wirkung: null, zahlung: null, stimmung: null }, leistungen: [], offen: [], geaendert: J }] });
@@ -276,6 +276,11 @@ describe('Route: Nummer, festgeschrieben, Version, unterschrieben, Rechte', () =
     expect(vertragsStichtage(reg!.gesellschaften as never).some(s => s.vertragId === rv.id && s.kuendigung)).toBe(true);
     const crm = await (await import('@/lib/crm/speicher')).ladeCrm();
     expect(crm.mandate.find(m => m.id === 'm-test-0001')?.vertragUnterschrieben).toBe(true);
+    // R2-2 Fund 6 (02.11.): das Ereignis „Vertrag unterschrieben“ weckt die Übergabe (V12) — eine Kennung je Vertrag, Bezug Vertrag + Mandat, Business.
+    const { ereignisseLaden } = await import('@/lib/ereignisse/server');
+    const ev = (await ereignisseLaden()).eintraege.filter(x => x.art === 'vertrag-unterschrieben');
+    expect(ev).toHaveLength(1);
+    expect(ev[0]).toMatchObject({ id: `vertrag:${v.id}:unterschrieben`, bereich: 'business', bezug: { vertragId: v.id, mandatId: 'm-test-0001' } });
   });
 
   it('Import-Vorschau speichert nichts', async () => {
@@ -313,8 +318,9 @@ describe('Route: Nummer, festgeschrieben, Version, unterschrieben, Rechte', () =
     expect(zweit.d.uebernommen).toEqual([]);
     expect(zweit.d.zeilen.slice(0, 2).map((z: { zustand: string }) => z.zustand)).toEqual(['vorhanden', 'vorhanden']);
     expect(await db.loadJson('vertrag-vorlagen--haus')).toEqual(nach);
-    // Rechte: Mitglied (kein Inhaber) 403, Dienstweg 403 (auch mit Person), zu große Datei 413
-    expect((await post(sammel, { aktion: 'vorschau', inhalt }, 'person-b', url)).status).toBe(403);
+    // Rechte (02.11., Prüfung D): ein volles Mitglied steuert wie ein Inhaber — Konto „nur Business“ 403, Dienstweg 403 (auch mit Person), zu große Datei 413
+    expect((await post(sammel, { aktion: 'vorschau', inhalt }, 'person-b', url)).status).toBe(200);
+    expect((await post(sammel, { aktion: 'vorschau', inhalt }, 'person-c', url)).status).toBe(403);
     const dienst = { 'content-type': 'application/json', 'x-make-key': 'pruef-schluessel-vertraege', 'x-make-person': 'person-a' };
     expect((await sammel.POST(new Request(url, { method: 'POST', headers: dienst, body: JSON.stringify({ aktion: 'vorschau', inhalt }) }))).status).toBe(403);
     expect((await post(sammel, { aktion: 'vorschau', inhalt: 'x'.repeat(2 * 1024 * 1024 + 10) }, 'person-a', url)).status).toBe(413);

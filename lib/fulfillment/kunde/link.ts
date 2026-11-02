@@ -1,7 +1,7 @@
 // ─── Fulfillment · Kunde — Kunden-Link: Schalter, Ablauf, Status, Änderungen (rein, client-sicher; C2, 10.10.; FULFILLMENT_KONZEPT.md 5.4) ──────────
 // Der Kunden-Link kommt AUSGESCHALTET. Zwei Schlüssel müssen an sein, sonst antwortet jeder öffentliche Weg mit derselben 404:
 //   1. Umgebung `MAKE_OS_KUNDENLINK=an` (setzt der Betrieb erst nach der Prüfung in 12.4) — gelesen nur auf dem Server (lib/fulfillment/kunde/server.ts),
-//   2. Schalter der Instanz `einstellungen.kundenLink.an` (Bestand `fulfillment--<h>`, umlegen nur der Inhaber per Sitzung).
+//   2. Schalter der Instanz `einstellungen.kundenLink.an` (Bestand `fulfillment--<h>`, umlegen Inhaber oder volles Mitglied per Sitzung, `darfSteuern`).
 // Je Mandat gibt es höchstens EINEN nicht widerrufenen Link; ein neuer widerruft die alten (auch abgelaufene), „verlängern“ widerruft die anderen. Ablauf: Vorgabe 90 Tage, verlängerbar, nie über Mandatsende + 30 Tage.
 // Gespeichert wird nur der Hash des Tokens (lib/fulfillment/kunde/token.ts); hier wird nur gerechnet. Alles oder nichts, nie gekürzt.
 

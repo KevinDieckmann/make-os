@@ -8,6 +8,7 @@
 //                                                          Follow-up mit Zähler „verschoben“, das alte Feld fällt weg — 08.10., 4.17)
 //      { aktion: 'absagen', id }                          (überfällig abgesagt = verpasst)
 //      { aktion: 'anfrage-uebernehmen', id }              (31.10.: „Anfrage prüfen — Adresse unbestätigt“ nach der Prüfung übernehmen)
+//      { aktion: 'firma-ergebnis', id, ergebnis, notiz? }   (02.11.: Ergebnis-Knopf einer Betriebs-Karte der Power Hour — lib/crm/firma-karte.ts)
 // Regeln (Prüfbericht 27.09.):
 //   · Jede Änderung an echten Follow-ups liest den Eintrag IN der Schreibsperre — nie aus einem
 //     vorab geladenen Stand (zu zweit gingen sonst Änderungen verloren).
@@ -24,6 +25,7 @@
 
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
+import { betriebSperrPrueferLaden } from '@/lib/crm/betrieb-sperre';
 import { loadJson, speicherStand } from '@/lib/store/local-db';
 import { aendereKontakte } from '@/lib/crm/kartei-schreiben';
 import { werAus, type Wer } from '@/lib/store/aenderungsprotokoll';
@@ -70,7 +72,9 @@ export async function GET(req: Request) {
   const [kontakte, crm] = await Promise.all([kontakteLaden(), ladeCrm()]);
   const heute = localDay();
   let gesperrt = 0;
-  const liste = faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten, beiSperre: () => { gesperrt++; } });
+  // R2-4 Fund 10: das „Nein“ eines Betriebs, das (nur noch) auf der Sperrliste steht, zählt mit.
+  const firmaGesperrt = await betriebSperrPrueferLaden(crm.firmen).catch(() => undefined);
+  const liste = faellige(kontakte, crm, heute, { wertelisten: crm.wertelisten, beiSperre: () => { gesperrt++; }, ...(firmaGesperrt ? { firmaGesperrt } : {}) });
   return jsonAntwort(req, { ok: true, heute, liste, zahlen: zaehlen(liste), puenktlich: puenktlichkeit(crm.followups ?? [], heute), ...(gesperrt ? { hinweis: werbesperreHinweis(gesperrt) } : {}) }, etag);
 }
 
@@ -157,6 +161,40 @@ export async function POST(req: Request) {
     const r = await anfrageUebernehmen(String(b.id ?? ''), { person, wer: werAus(req) });
     if (!r.ok) return NextResponse.json({ ok: false, fehler: r.fehler }, { status: 'status' in r ? r.status : 400 });
     return NextResponse.json({ ok: true, followup: r.bau.followUp, text: `Anfrage übernommen — Follow-up „${r.bau.followUp.text}“ steht heute.` });
+  }
+
+  // Ergebnis an einer Betriebs-Karte der Power Hour (02.11., Prüfung D): Follow-up an einer Firma ohne Person — dieselbe Regel wie an einer Person
+  // (nicht erreicht · Mailbox · Rückruf → das Follow-up wandert, sonst erledigt), Ergebnis am Betrieb in der Kampagne, „Sperre“ = Werbewiderspruch
+  // am Betrieb (lib/crm/firma-karte.ts `firmaErgebnisImCrm`). In EINER Sperre; nichts wird versendet.
+  if (b.aktion === 'firma-ergebnis') {
+    const ergebnis = ERGEBNISSE.includes(b.ergebnis as Ergebnis) ? (b.ergebnis as Ergebnis) : null;
+    if (!ergebnis || !idOk(b.id)) return NextResponse.json({ ok: false, fehler: 'id und ergebnis sind Pflicht.' }, { status: 400 });
+    const notiz = typeof b.notiz === 'string' ? b.notiz.trim() : '';
+    const { firmaErgebnisImCrm } = await import('@/lib/crm/firma-karte');
+    const nochmalAm = folgeAus(ergebnis, heute, 'neu').wiedervorlage;
+    // Gespräch/Termin (R2-2 Fund 1): Folge-Follow-up am Betrieb — Gespräch: Wiedervorlage aus der Regel (5 Werktage), Termin: „Termin vorbereiten“
+    // am nächsten Werktag. Personen des Betriebs (ohne Gesperrte) für den abgeleiteten Lead-Stand wie in lib/crm/leads.ts.
+    const { personenDerFirma } = await import('@/lib/crm/stationen');
+    const { ausgenommen } = await import('@/lib/crm/einschraenkung');
+    const { werktagePlus } = await import('@/lib/zeit/kalender-kern');
+    const folgeAm = ergebnis === 'gespraech' ? (nochmalAm ?? werktagePlus(heute, 5)) : ergebnis === 'termin' ? werktagePlus(heute, 1) : undefined;
+    let r: ReturnType<typeof firmaErgebnisImCrm> | null = null;
+    let zuLang = false;
+    await aendereCrm(c => {
+      const fu = (c.followups ?? []).find(f => f.id === String(b.id));
+      if (fu && notiz && `${fu.notiz ? `${fu.notiz}\n` : ''}${notiz}`.length > NOTIZ_MAX) { zuLang = true; return c; }
+      const personen = fu ? personenDerFirma(kontakte, fu.bezug.id).filter(k => !ausgenommen(k)) : [];
+      r = firmaErgebnisImCrm(c, { followupId: String(b.id), ergebnis, heute, jetzt, von: person, ...(nochmalAm && ergebnis !== 'gespraech' ? { nochmalAm } : {}), ...(notiz ? { notiz } : {}), personen, ...(folgeAm ? { folge: { id: neueId('fu'), faellig: folgeAm } } : {}) });
+      return 'crm' in r ? r.crm : c;
+    }, werAus(req));
+    if (zuLang) return ZU_LANG('Notiz (zusammen mit der bisherigen)', NOTIZ_MAX);
+    const x = r as ReturnType<typeof firmaErgebnisImCrm> | null;
+    if (!x || !('crm' in x)) return NextResponse.json({ ok: false, fehler: x?.fehler ?? 'Follow-up nicht gefunden.' }, { status: x?.status ?? 404 });
+    // Erledigt → `followup-erledigt` (wie das Erledigen in der Follow-up-Liste) — der Prozess-Motor wacht daran auf.
+    if (x.erledigt) await import('@/lib/ereignisse/quellen').then(q => q.followupErledigtEreignis({ id: x.erledigt!.id, bezug: x.erledigt!.bezug })).catch(() => 0);
+    const folgeSatz = x.folge ? ` Nächster Schritt „${x.folge.text}“ am ${x.folge.faellig}.` : '';
+    const leadSatz = x.lead ? ` Lead des Betriebs: ${x.lead.nach === 'qualifizierung' ? 'Qualifizierung' : 'im Gespräch'}.` : '';
+    return NextResponse.json({ ok: true, wie: x.wie, ...(x.folge ? { folge: { id: x.folge.id, faellig: x.folge.faellig } } : {}), ...(x.lead ? { lead: x.lead } : {}), text: x.wie === 'verschoben' ? 'Festgehalten — die Karte kommt wieder, wenn der nächste Versuch dran ist.' : ergebnis === 'sperre' ? 'Werbesperre am Betrieb gesetzt — er taucht nirgends mehr auf.' : `Festgehalten.${leadSatz}${folgeSatz}` });
   }
 
   const id = String(b.id ?? '');

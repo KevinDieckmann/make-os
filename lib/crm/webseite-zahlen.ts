@@ -13,6 +13,7 @@ import { ausgenommen } from '@/lib/crm/einschraenkung';
 import type { Kpi, KpiAmpel } from './kennzahlen';
 import type { Detail } from '@/lib/kennzahlen/kern';
 import { WEG } from '@/lib/wege';
+import { ANFRAGE_WEBSITE, istWebseiteAnfrage } from './marketing';
 
 /** Was der Server über die Website weiß — nur Zähler und Tage, nie Adressen. */
 export interface WebseiteStand {
@@ -22,7 +23,8 @@ export interface WebseiteStand {
   checks: { tag: string; name: string }[];
 }
 
-const PRAEFIX = 'Anfrage über Website: ';
+// EINE Erkennung (02.11., M3): `istWebseiteAnfrage` aus lib/crm/marketing.ts — dieselbe wie Marketing › Anfragen und der Trichter.
+const PRAEFIX = ANFRAGE_WEBSITE;
 const TERMIN = `${PRAEFIX}Terminbuchung`;
 const tagMinus = (heute: string, n: number) => { const d = new Date(`${heute}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
 const tagKurz = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.`;
@@ -37,7 +39,7 @@ export function webseiteTreffer(kontakte: readonly Kontakt[], heute: string, art
     const gesehen = new Set<string>();
     for (const a of k.aktivitaeten ?? []) {
       const t = a.text ?? '';
-      if (!t.startsWith(PRAEFIX)) continue;
+      if (!istWebseiteAnfrage(a)) continue;
       if ((art === 'termin') !== t.startsWith(TERMIN)) continue;
       const tag = a.am.slice(0, 10);
       if (tag < ab || tag > heute || gesehen.has(tag)) continue;

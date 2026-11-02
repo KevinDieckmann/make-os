@@ -13,13 +13,16 @@ import { eventZahlen, followUpBis, nachfassenRest } from '@/lib/crm/events';
 import { istNetzwerkenEvent } from '@/lib/crm/marke';
 import { mix, checklisteStand, zielHinweis, budgetSumme, gaesteVorschlag } from '@/lib/crm/eventplanung';
 import type { HeadId } from './prompt';
-import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, kampagnenZahlen, type Playbook } from '@/lib/crm/kampagnen';
+import { PLAYBOOKS, kundenprofil, aehnlicheFirmen, zielgruppe, zielKriterien, kampagnenZahlen, type Playbook } from '@/lib/crm/kampagnen';
 import { leads as leadZeilen, fehltBisSqlZeile, salesBereit, mqlErreicht, geklaert, inArbeit, sqlEntscheidungOffen } from '@/lib/crm/leads';
 import { tagPlus } from '@/lib/zeit/kalender-kern';
 import { kanalLeistung } from '@/lib/crm/score';
-import { einstellungAus, marketingKennzahlen, wirkungZahlen, newsletterEmpfaenger, abmeldequote, marketingTrichter } from '@/lib/crm/marketing';
+import { marketingKennzahlenMitQuellen, type TraktionQuellen } from '@/lib/crm/traktion-index';
+import { einstellungAus, wirkungZahlen, newsletterEmpfaenger, abmeldequote, marketingTrichter, ideeTitel, schonUebernommen } from '@/lib/crm/marketing';
 import { anfragenListe } from '@/lib/crm/anfragen';
-import { kontextAus, segmentAuswerten } from '@/lib/crm/segmente';
+import { kontextAus, segmentAuswerten, segmentZiele, segmentFirmen } from '@/lib/crm/segmente';
+import { staendeZaehlen } from '@/lib/crm/sequenz';
+import type { MarketingLage } from './marketing-lage';
 import { netzRunde } from '@/lib/crm/netzwerk';
 import { TEAM } from '@/lib/crm/team';
 import { lifecycleVon, lifecycleVerteilung } from '@/lib/crm/vorschlaege';
@@ -79,7 +82,19 @@ export function dealSignale(c: CrmBestand['chancen'][number], personen: Kontakt[
 
 /** `personName` null = Systemlauf des Takts: die Karten aller (werIstDran ohne Personenfilter), `meta.fuer` = null. */
 /** Restpunkte (24.10.): `playbooks` = die Playbooks des Haushalts (lib/crm/vorlagen-anpassung-server.ts `playbooksFuer`) — ohne Angabe die Vorgaben im Code. */
-export type DatenpaketOptionen = WerIstDranOptionen & { playbooks?: readonly Playbook[] };
+/**
+ * `marketingLage` (02.11., M2 K2): Social, Website, Homepage-Funde und Mail-Stapel als Zahlen (lib/heads/marketing-lage-server.ts) — ohne Angabe
+ * (reine Läufe, Tests, Vorschau ohne Server) stehen die Blöcke als null da.
+ */
+/** `traktionQuellen` (02.11., Prüfung D): Website, Social, Kampagnen-Motor (lib/crm/traktion-quellen-server.ts) — die Kennzahlen des Head of Marketing
+ *  rechnen damit DIESELBE Zahl wie der Traktions-Index und Marketing › Übersicht (`marketingKennzahlenMitQuellen`). Ohne Angabe ohne Quellen. */
+export type DatenpaketOptionen = WerIstDranOptionen & { playbooks?: readonly Playbook[]; marketingLage?: MarketingLage; traktionQuellen?: TraktionQuellen };
+
+/** Kundenprofil kompakt (02.11., M2): Branchen, Orte, Größe, MRR je Kunde und Anzahl — ohne Namen (die stehen nur im Kampagnen-Modus). */
+function kundenprofilKurz(crm: CrmBestand, heute: string) {
+  const p = kundenprofil(crm, heute);
+  return { kunden: p.firmen.length, branchen: p.branchen, staedte: p.staedte, groesse: p.groesse, mrr_je_kunde: p.mrrJeKunde };
+}
 export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, personName: string | null, frueher: { titel: string; status: string }[], opt: DatenpaketOptionen = {}) {
   // Werbesperre und Einschränkung (Art. 18, U2): nie in ein Agentenpaket.
   const aktiv = kontakte.filter(k => !ausgenommen(k));
@@ -104,16 +119,22 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
     const profil = kundenprofil(crm, heute);
     // Personen einer Firma nur über die Stationen (28.09.).
     const personenJeFirma = personenJeFirmaVon(aktiv, { nurAktiv: true });
+    const ctxKampagne = kontextAus(crm, heute);
     return {
       meta,
       kundenprofil: { kunden: profil.firmen.map(f => ({ name: f.name, branche: f.branche, stadt: f.stadt, mitarbeiter: f.mitarbeiter })), branchen: profil.branchen, staedte: profil.staedte, groesse: profil.groesse, mrr_je_kunde: profil.mrrJeKunde },
       aehnliche: aehnlicheFirmen(crm, heute, 15).map(a => ({ firma: a.firma.name, branche: a.firma.branche, gruende: a.gruende, personen: (personenJeFirma.get(a.firma.id) ?? []).slice(0, 3).map(p) })),
+      // 02.11. (M2 K3): Ziele = Personen PLUS Betriebe ohne Person (wie der Kampagnen-Motor, `segmentFirmen`; mit einem Zusatz-Filter des Playbooks
+      // nur Personen) — und ob das Playbook schon eine laufende Kampagne hat (die beim Annehmen weiterverwendet wird, keine zweite).
       playbooks: (opt.playbooks ?? PLAYBOOKS).filter(pb => pb.fuer.includes(head === 'sales' ? 'head-sales' : 'head-marketing')).map(pb => {
         const zg = zielgruppe(aktiv, crm, pb, heute);
-        return { id: pb.id, name: pb.name, warum: pb.warum, kanal: pb.kanal, kennzahl: pb.kennzahl, recht: pb.recht, zielgruppe_anzahl: zg.length, zielgruppe: zg.slice(0, 20).map(p) };
+        const zk = zielKriterien(crm, pb);
+        const firmen = zk.zusatz ? 0 : segmentFirmen(crm.firmen, kontakte, zk.kriterien, ctxKampagne).length;
+        const laufend = crm.kampagnen.find(k => k.playbook === pb.id && (k.status === 'entwurf' || k.status === 'aktiv'));
+        return { id: pb.id, name: pb.name, warum: pb.warum, kanal: pb.kanal, kennzahl: pb.kennzahl, recht: pb.recht, zielgruppe_anzahl: zg.length, firmen_anzahl: firmen, ziele_anzahl: zg.length + firmen, laufend: laufend ? { id: laufend.id, name: laufend.name, status: laufend.status } : null, zielgruppe: zg.slice(0, 20).map(p) };
       }),
-      laufende_kampagnen: crm.kampagnen.filter(k => k.status === 'entwurf' || k.status === 'aktiv').map(k => ({ name: k.name, playbook: k.playbook, status: k.status, zahlen: kampagnenZahlen(k, heute) })),
-      segmente: crm.segmente.map(sg => ({ name: sg.name, kriterien: sg.kriterien })),
+      laufende_kampagnen: crm.kampagnen.filter(k => k.status === 'entwurf' || k.status === 'aktiv').map(k => ({ id: k.id, name: k.name, playbook: k.playbook, status: k.status, zahlen: kampagnenZahlen(k, heute) })),
+      segmente: crm.segmente.map(sg => { const z = segmentZiele(kontakte, crm.firmen, sg.kriterien, ctxKampagne); return { name: sg.name, kriterien: sg.kriterien, personen: z.personen.length, firmen: z.firmen.length }; }),
       mrr: mrr(crm.mandate), konzentration: konzentration(crm.mandate),
     };
   }
@@ -153,7 +174,12 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
   }
 
   if (head === 'marketing') {
-    const stimmen = aktiv.flatMap(k => (k.aktivitaeten ?? []).filter(x => x.notiz?.bedarf).map(x => ({ kontakt_id: k.id, am: x.am.slice(0, 10), bedarf: kurz(x.notiz!.bedarf, 240), phase: k.lebensphase }))).sort((a, b) => b.am.localeCompare(a.am)).slice(0, 20);
+    // W2 (02.11.): je Stimme, ob sie schon als Idee im Redaktionsplan steht (`schonUebernommen`, dieselbe Regel wie „Als Idee übernehmen“) — der
+    // Grundlauf schlägt sie dann nicht noch einmal vor; `idee_titel` ist der Titel, unter dem sie übernommen würde.
+    const stimmen = aktiv.flatMap(k => (k.aktivitaeten ?? []).filter(x => (x.notiz?.bedarf ?? '').trim()).map(x => {
+      const bedarf = x.notiz!.bedarf!.trim();
+      return { kontakt_id: k.id, am: x.am.slice(0, 10), bedarf: kurz(bedarf, 240), idee_titel: ideeTitel(bedarf), uebernommen: schonUebernommen({ kontaktId: k.id, name: '', am: x.am.slice(0, 10), bedarf }, crm.beitraege ?? []), phase: k.lebensphase };
+    })).sort((a, b) => b.am.localeCompare(a.am)).slice(0, 20);
     const quellen: Record<string, number> = {};
     for (const c of crm.chancen) quellen[c.quelle ?? 'nicht erfasst'] = (quellen[c.quelle ?? 'nicht erfasst'] ?? 0) + 1;
     const kanalLeistungMarketing = kanalLeistung(leadZeilen(aktiv, crm, heute));
@@ -166,8 +192,9 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
       kanal_leistung: kanalLeistungMarketing,
       lifecycle_verteilung: lifecycle(),
       bean_verteilung: bean(),
-      positionierung: { text: kurz(einst.positionierung, 1500), zielgruppe: kurz(einst.icp, 1500), ton: einst.ton, saeulen: einst.saeulen.map(x => ({ name: x.name, beschreibung: kurz(x.beschreibung, 200) })) },
-      kennzahlen: marketingKennzahlen(aktiv, crm, heute).map(x => ({ label: x.label, wert: x.anzeige, ampel: x.ampel, ziel: x.ziel })),
+      positionierung: { text: kurz(einst.positionierung, 1500), zielgruppe: kurz(einst.icp, 1500), ton: einst.ton, saeulen: einst.saeulen.map(x => ({ id: x.id, name: x.name, beschreibung: kurz(x.beschreibung, 200) })) },
+      kundenprofil: kundenprofilKurz(crm, heute),
+      kennzahlen: marketingKennzahlenMitQuellen({ kontakte: aktiv, crm, heute, ...(opt.traktionQuellen ?? {}) }).map(x => ({ label: x.label, wert: x.anzeige, ampel: x.ampel, ziel: x.ziel })),
       // 27.09.: die Marketing-Strecke und die offenen Anfragen — der Head sieht, was hängt.
       trichter: (() => { const t = marketingTrichter(aktiv, crm, heute); return { reichweite: t.reichweite, resonanz: t.resonanz, anfragen: { gesamt: t.anfragen.gesamt, offen: t.anfragen.offen, quote: t.anfragen.quote }, uebergabe: t.uebergabe, kosten: t.kosten }; })(),
       anfragen_offen: anfragenListe(aktiv, crm, heute, 30).filter(a => a.offen).slice(0, 10).map(a => ({ name: a.name, kanal: a.kanal, datum: a.am.slice(0, 10), text: kurz(a.text, 200) })),
@@ -175,9 +202,16 @@ export function datenpaket(head: HeadId, modus: string, kontakte: Kontakt[], crm
         titel: b.titel, kanal: b.kanal, saeule: saeule(b.saeule), status: b.status, datum: b.datum ?? null, wirkung: wirkungZahlen(b),
         reagiert: b.wirkung.map(w => nachId.get(w.kontaktId)).filter((k): k is Kontakt => !!k).slice(0, 5).map(k => ({ id: k.id, name: anzeigename(k), firma: k.firma })),
       })),
-      segmente: crm.segmente.map(sg => { const a = segmentAuswerten(aktiv, sg.kriterien, ctx); return { name: sg.name, anzahl: a.anzahl, kanaele: a.kanaele }; }),
+      // K2 (02.11.): Ziele eines Segments = Personen + Betriebe ohne Person (`segmentZiele`, wie Segment → Kampagne); Kanäle nur für Personen.
+      segmente: crm.segmente.map(sg => { const z = segmentZiele(kontakte, crm.firmen, sg.kriterien, ctx); const a = segmentAuswerten(aktiv, sg.kriterien, ctx); return { name: sg.name, anzahl: z.anzahl, personen: z.personen.length, firmen: z.firmen.length, kanaele: a.kanaele }; }),
       newsletter: { empfaenger_doi: newsletterEmpfaenger(aktiv).length, ausgaben: crm.newsletter.slice(-5).map(a => ({ titel: a.titel, status: a.status, datum: a.datum ?? null, empfaenger: a.empfaenger ?? null, antworten: a.antworten ?? null, abmeldequote: abmeldequote(a) })) },
-      kampagnen: crm.kampagnen.filter(k => k.status === 'entwurf' || k.status === 'aktiv').map(k => ({ name: k.name, playbook: k.playbook, zahlen: kampagnenZahlen(k, heute) })),
+      kampagnen: crm.kampagnen.filter(k => k.status === 'entwurf' || k.status === 'aktiv').map(k => ({ id: k.id, name: k.name, playbook: k.playbook, status: k.status, zahlen: kampagnenZahlen(k, heute) })),
+      // Kampagnen-Motor (02.11., K2): Stand je Ziel der laufenden Sequenzen — offen, wartet, reagiert, gestoppt, fertig (nur Zahlen).
+      sequenzen: crm.kampagnen.filter(k => k.status === 'aktiv' && (k.zielStaende ?? []).length).map(k => ({ kampagne_id: k.id, name: k.name, stand: staendeZaehlen(k) })),
+      social: opt.marketingLage?.social ?? null,
+      website: opt.marketingLage?.website ?? null,
+      funde: opt.marketingLage?.funde ?? null,
+      mail_stapel: opt.marketingLage?.mail_stapel ?? null,
       bestand: {
         kartei: kontakte.length, gesperrt: kontakte.length - aktiv.length,
         mail_freigegeben: aktiv.filter(k => kanalStatus(k, 'mail').farbe === 'gruen').length,

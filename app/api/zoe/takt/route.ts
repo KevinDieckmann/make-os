@@ -103,6 +103,8 @@ export async function POST(req: Request) {
   // Läufe voran. Ohne veröffentlichte Prozesse nichts; wartende Läufe kosten nichts. Regel-Schritte laufen nachts, Agenten-Schritte warten bis 7 Uhr.
   // Nie blockierend, wirft nie (lib/prozesse/lauf-server.ts).
   void import('@/lib/prozesse/lauf-server').then(m => m.prozesseImTakt()).catch(() => {});
+  // Website-Eingänge (02.11., Prüfung A): offene Eingangszeilen nachholen, verfallene Terminanfragen melden — höchstens alle 15 Minuten.
+  void import('@/lib/oeffentlich/eingang-server').then(m => m.eingaengeImTakt()).catch(() => {});
   void businessTagesstand();
   // Agenten (Härtetest 09.10.): verwaiste Läufe („läuft“ ohne Prozess nach einem Neustart, „wartet“ auf einen aufgegebenen Auftrag) enden
   // sichtbar mit „fehler“ und einer Glocke — nie „läuft“ für immer. Nie blockierend.

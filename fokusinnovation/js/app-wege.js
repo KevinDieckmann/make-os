@@ -1,16 +1,25 @@
 // Fokus Innovation · Wege der App nur zeigen, wenn sie eingeschaltet sind (31.10.). Kontaktformular (/anfrage) und Newsletter (/newsletter)
 // laufen in der App und kommen ausgeschaltet; ohne diesen Blick endete ein Link auf „Diese Seite gibt es gerade nicht“.
-//   [data-anfrage]           → GET /api/anfrage liefert nur { ok, aktiv }
+//   a[data-anfrage-mail]     → führt auf /anfrage?anlass=… (01.11.). Ist das Formular aus oder die App nicht erreichbar, wird der Link zur Mail
+//                              aus dem Attribut — nie ein Weg ins Leere. Bei 429 (zu viele Abfragen) bleibt der Link beim Formular.
+//   [data-anfrage]           → GET /api/anfrage liefert nur { ok, aktiv }; verborgen, bis das Formular an ist
 //   [data-wenn-seite="/pfad"] → HEAD auf die Seite der App: 200 = an (404 = aus)
-// Bei aus, Fehler oder 429 bleibt alles verborgen. Speichert nichts, sendet keine persönlichen Angaben.
+// Bei aus oder Fehler bleibt alles verborgen. Speichert nichts, sendet keine persönlichen Angaben.
 (() => {
   const zeigen = (liste) => { for (const el of liste) el.hidden = false; };
   const anfrage = document.querySelectorAll('[data-anfrage]');
-  if (anfrage.length) {
+  const zurMail = () => {
+    for (const a of document.querySelectorAll('a[data-anfrage-mail]')) if (a.dataset.anfrageMail.startsWith('mailto:')) a.href = a.dataset.anfrageMail;
+  };
+  if (anfrage.length || document.querySelector('a[data-anfrage-mail]')) {
     fetch('/api/anfrage', { cache: 'no-store', headers: { Accept: 'application/json' } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (j && j.ok === true && j.aktiv === true) zeigen(anfrage); })
-      .catch(() => {});
+      .then((r) => (r.status === 429 ? 'gedrosselt' : r.ok ? r.json() : null))
+      .then((j) => {
+        if (j === 'gedrosselt') return;
+        if (j && j.ok === true && j.aktiv === true) zeigen(anfrage);
+        else zurMail();
+      })
+      .catch(zurMail);
   }
   const jePfad = new Map();
   for (const el of document.querySelectorAll('[data-wenn-seite]')) {

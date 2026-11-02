@@ -182,6 +182,7 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     gmail: await gmailLage(Date.parse(jetzt)).catch((): GmailLage | null => null),
     postfaecher: await import('@/lib/postfach/lage').then(m => m.postfachLage(Date.parse(jetzt))).catch(() => null),
     whatsapp: await import('@/lib/whatsapp/lage').then(m => m.whatsappLage(Date.parse(jetzt))).catch(() => null),
+    kampagnenMotor: await import('@/lib/crm/kampagnen-motor').then(m => m.kampagnenMotorLage(Date.parse(jetzt))).catch(() => null),
     zoeWhatsapp: await import('@/lib/zoe-whatsapp/lage').then(m => m.zoeWhatsappLage(Date.parse(jetzt))).catch(() => null),
     whoop: await import('@/lib/whoop/lage').then(m => m.whoopLage(Date.parse(jetzt))).catch(() => null),
     medien: await import('@/lib/medien/hoi').then(m => m.medienLage()).catch(() => null),
@@ -206,6 +207,10 @@ export async function innenLage(jetzt = new Date().toISOString()): Promise<Innen
     laufSpur: await laufSpurLage(new Date(jetzt)).catch(() => null),
     // Prozesse (21.10., C1, Punkt 88): nur Zähler aus dem Bestand der Läufe (lib/prozesse/lauf-server.ts) — nie Kennungen.
     prozesse: await import('@/lib/prozesse/lauf-server').then(m => m.prozesseLage(new Date(jetzt))).catch(() => null),
+    // Herzschlag des Lauf-Motors (02.11., R2-2 Fund 4) — nur Zeiten und Zähler; ein beschädigter Bestand kommt als Befund, nie still null.
+    prozesseMotor: await import('@/lib/prozesse/lauf-server').then(m => m.prozesseMotorLage(new Date(jetzt))).catch(() => null),
+    // Website-Eingänge (02.11., Prüfung A): ohne CRM, wartend, gescheitert — nur Zahlen (lib/oeffentlich/eingang-server.ts).
+    websiteEingang: await import('@/lib/oeffentlich/eingang-server').then(m => m.websiteEingangLage(new Date(jetzt))).catch(() => null),
   };
 }
 
@@ -231,7 +236,7 @@ export async function taktRobustLage(jetzt: Date): Promise<TaktRobustLage> {
   const heute = localDay(jetzt), h = Number(wandzeit(jetzt).slice(11, 13));
   const [warteschlange, sperreLesbar, start, auftraege] = await Promise.all([
     warteschlangeLage(jetzt), agentenEinstellungLesbar().catch(() => false),
-    loadJson<{ lastRun?: string; laeuft?: { tag?: string; seit?: string } }>('tagesstart').catch(() => null), lies().catch(() => []),
+    loadJson<{ lastRun?: string; laeuft?: { tag?: string; seit?: string }; fehler?: { tag?: string; anzahl?: number } }>('tagesstart').catch(() => null), lies().catch(() => []),
   ]);
   let tagesstart: TaktRobustLage['tagesstart'] = null;
   if (h >= 7 && start?.lastRun !== heute) {
@@ -243,7 +248,11 @@ export async function taktRobustLage(jetzt: Date): Promise<TaktRobustLage> {
     const s = await loadJson<{ voll?: { zeit: string; abgelehnt: number } }>(`head-${head}`).catch(() => null);
     if (s?.voll && jetzt.getTime() - Date.parse(s.voll.zeit) < 7 * 864e5) headsVoll.push({ head, abgelehnt: s.voll.abgelehnt });
   }
-  return { warteschlange, sperreLesbar, tagesstart, headsVoll };
+  // Morgenlauf mit gescheiterten Schritten (02.11.): nur der letzte Lauf, nur heute oder gestern — nur Tag und Zahl.
+  const gestern = localDay(new Date(jetzt.getTime() - 864e5));
+  const f = start?.fehler;
+  const schritteGescheitert = f?.tag && f.anzahl && start?.lastRun === f.tag && (f.tag === heute || f.tag === gestern) ? { tag: f.tag, anzahl: f.anzahl } : null;
+  return { warteschlange, sperreLesbar, tagesstart, headsVoll, schritteGescheitert };
 }
 
 /** Der Lagebericht des Hosts — Klartext-JSON vom Cron-Skript, kein Bestand der App. */

@@ -118,6 +118,18 @@ Am Mac: `cd ~/Claude/Projects/MakeOS && git push origin entwicklung:main && git 
    age auf `: warnung — age fehlt — Sicherung nur mit Übergangs-Verschlüsselung …`. Die Kalender-Tagesdateien
    (`archiv/kalender-export-*`) sind bewusst NICHT im Archiv.
 
+## Rückweg nach dem Kundengewinnungs-Paket (02.11.2026, Prüfungen A–D + Gegenprüfung R2-4)
+**Vor dem Rückweg:** offene Absichten der neuen Arten **`anfrage`** und **`vertrag-unterschrieben`** leer laufen lassen (`/api/intern/absichten` →
+keine offene dieser Arten). Der alte Stand kennt die Arten nicht: sein Fortsetzer bricht bei einer unbekannten Art ab — am alten Stand wird nichts
+geändert, nur vorher leer laufen lassen.
+**Was der alte Stand verwirft bzw. nicht kennt (nichts geht dauerhaft verloren, Rückkehr = wieder da):**
+- `FollowUp.anlass` (Antwort/Anfrage/Vertrag/Rechnung/Termin — nie Werbung): der alte Säuberer verwirft das Feld beim nächsten Speichern; dann gilt
+  wieder die alte Regel nach Art (eine Antwort als „Mail“ bei Werbesperre der PERSON verschwindet dort aus den Listen).
+- `Antrag.nachricht` (Nachricht einer eingeschränkten Person über die Website): verworfen beim nächsten Speichern des Antrags.
+- `WillkommenEintrag.uebersprungen`: der alte Stand schickt übersprungene Willkommens-Mails ggf. noch einmal — vor dem Rückweg Willkommens-Mails ausschalten.
+- Website-Eingänge (`website-eingang`): der alte Stand löscht nie fertig gewordene Zeilen nach 30 Tagen wieder still — vorher Marketing › Anfragen leeren.
+- Aufgaben `we-…` (Website-Eingang prüfen) bleiben als normale Aufgaben stehen.
+
 ## Rückweg, falls nötig (solange `MAKE_OS_FORMAT` nicht `v2` ist) — Ziel: Online-Stand `f0c5526`
 **Vorher prüfen:**
 1. Offene Vorgänge: als Kevin im Browser `/api/intern/absichten` öffnen (oder am Server

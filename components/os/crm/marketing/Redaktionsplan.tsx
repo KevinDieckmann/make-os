@@ -16,12 +16,13 @@
 // hält sich daran. Filter „Alle · Meins · …“, „Für dich“ und „Diese Woche:
 // wer schreibt was“ zeigen, was bei wem liegt. Jede Änderung ist eine
 // Einzeländerung (api.teil) — Kevin und Malin überschreiben sich nie.
-// MAKE OS veröffentlicht nichts: Text kopieren, selbst posten, hier eintragen.
+// Aus dem Redaktionsplan veröffentlicht MAKE OS nichts: Text kopieren, selbst posten, hier eintragen (Social-Folgen: nur nach Freigabe, Marketing › Social).
 // Kosten (27.09.): je Beitrag pflegbar (Anzeigen, Produktion) — der Marketing-
 // Trichter rechnet daraus Kosten je Anfrage und je SQL.
 // 04.10. (Kevin: „alles anpassbar“): jede Beitragszeile am Baustein `ZeileAktionen` — Archivieren (`archiviertAm`, Reiter
 // Archiv, zurückholbar) und Löschen (Papierkorb 30 Tage, Rückgängig; steckt er in einer Ausgabe → Rückfrage).
 
+import { neueKennung } from '@/lib/kennung';
 import { WEG } from '@/lib/wege';
 import { localDay } from '@/lib/zeit';
 import { anfrageKanalAusBeitrag } from '@/lib/crm/anfragen';
@@ -144,7 +145,7 @@ export function Redaktionsplan({ api, zuKontakt, fokus }: { api: CrmApi; zuKonta
         {meldung && <div style={{ fontSize: TYP.bedien, color: C.inkDim, marginTop: 8 }}>{meldung}</div>}
         <div style={{ fontSize: TYP.bedien, color: C.inkLeise, marginTop: 8, lineHeight: 1.5 }}>
           Neue Beiträge schreibt {nameVon(verantwortung)} (Verantwortung Marketing), bis jemand anderes eingetragen ist. Erscheint ein Beitrag im Namen einer Person, die ihn nicht selbst schreibt, gibt sie ihn vor dem Planen frei.
-          Beiträge ohne Datum stehen in jeder Ansicht. MAKE OS veröffentlicht nichts — Text kopieren, selbst posten, Status und Wirkung hier eintragen.
+          Beiträge ohne Datum stehen in jeder Ansicht. Aus dem Redaktionsplan veröffentlicht MAKE OS nichts — Text kopieren, selbst posten, Status und Wirkung hier eintragen. Instagram-Entwürfe stehen zusätzlich unter Social und gehen erst nach eurer Freigabe raus.
         </div>
       </Karte>
 
@@ -290,7 +291,7 @@ function BeitragKarte({ b, api, ablage, einstellung, heute, zuKontakt, schliesse
     // 5.10 (08.10.): „Anfrage“ läuft über DEN Anfrage-Weg (/api/crm/anfrage) — Verlauf, Follow-up „beantworten“, Lead, Einwilligung
     // „Antwort auf Anfrage“ und die Wirkung am Beitrag in einem. Vorher entstand nur die Wirkung, zählte aber im Trichter.
     if (art === 'anfrage') {
-      const r = await fetch('/api/crm/anfrage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'anlegen', kontaktId, kanal: anfrageKanalAusBeitrag(b.kanal), bezug: { art: 'beitrag', id: b.id }, text: notiz.trim() || `Anfrage auf den Beitrag „${b.titel}“` }) })
+      const r = await fetch('/api/crm/anfrage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aktion: 'anlegen', anfrageId: neueKennung('anf'), kontaktId, kanal: anfrageKanalAusBeitrag(b.kanal), bezug: { art: 'beitrag', id: b.id }, text: notiz.trim() || `Anfrage auf den Beitrag „${b.titel}“` }) })
         .then(x => x.json()).catch(() => ({ ok: false, fehler: 'Keine Verbindung — nichts eingetragen.' })) as { ok?: boolean; fehler?: string; text?: string; hinweis?: string };
       setHinweis(r.ok ? [r.text ?? `Anfrage von ${name(kontaktId)} eingetragen.`, r.hinweis].filter(Boolean).join(' ') : r.fehler ?? 'Nicht eingetragen.');
       if (r.ok) { setNotiz(''); void api.laden(true); }

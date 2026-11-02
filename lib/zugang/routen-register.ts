@@ -48,7 +48,7 @@ export interface RoutenEintrag {
 export const TORE: Record<Exclude<BasisKlasse, 'offen'>, readonly string[]> = {
   dienst: ['istDienst', 'istZulieferer'],
   person: ['personStreng', 'personDerSitzung', 'eigenePerson', 'darfGesundheitSehen'],
-  haushalt: ['imHaushaltDesInhabers', 'imHaushaltOderSystemlauf', 'karteiZugang', 'kalenderZugang', 'kalenderLesen', 'personImHaushaltDesInhabers'],
+  haushalt: ['imHaushaltDesInhabers', 'imHaushaltOderSystemlauf', 'karteiZugang', 'kalenderZugang', 'kalenderLesen', 'personImHaushaltDesInhabers', 'steuernOderSystemlauf'],
   inhaber: ['nurInhaber', 'istInhaber', 'nurHauptInhaber'],
   'finanz-privat': ['haushaltVon', 'haushaltFuer', 'privatFinanzZugang'],
   'finanz-business': ['planZugangVon', 'planZugangFuer'],
@@ -209,7 +209,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'zoe/gedaechtnis': r('GET,DELETE', 'haushalt', 'ZOE-Gedächtnis (eigener und gemeinsamer Raum) des Haushalts.'),
   'zoe/wissen': r('GET,POST', 'haushalt', 'Vault/Brain des Haushalts lesen und fragen.'),
   'zoe/protokoll': r('GET,POST', 'haushalt', 'ZOE-Protokoll des Haushalts; zurücknehmen nur eigene bzw. Systemeinträge.'),
-  'zoe/selbstbild': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Selbstbild-Blätter: ansehen im Haushalt; in den Vault schreiben nur Inhaber bzw. Systemlauf.'),
+  'zoe/selbstbild': r('GET,POST', 'haushalt', 'Selbstbild-Blätter: ansehen im Haushalt; in den Vault schreiben Inhaber, volle Mitglieder des Haushalts (02.11., `steuernOderSystemlauf`) bzw. Systemlauf.'),
   'zoe/verbrauch': r('GET', 'haushalt', 'KI-Kosten der Instanz.'),
   // ZOE auf WhatsApp (08.10., lib/zoe-whatsapp/*): die eigene ZOE-Nummer der Instanz — Kanal JE PERSON.
   'zoe/whatsapp': r('GET,POST', 'person', 'Der eigene ZOE-Kanal auf WhatsApp: verbinden (Code), Einwilligung/Ausnahme, Test, trennen — NUR die Person selbst (eigenePerson; Dienstweg 403, keine Personen-Parameter); Nummer nur maskiert, Code nur einmal in der Antwort.'),
@@ -222,13 +222,13 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'meeting': r('POST', 'haushalt', 'Meeting-Agent → Aufgaben im Haushalt; auch als Systemlauf.'),
   'fokus': r('POST', 'haushalt', 'Tagesform-Agent aus Brain des Haushalts und eigenen Werten.'),
   'loop': r('POST', 'haushalt', 'Loops des Haushalts (S1).'),
-  'loop/verbesserung': r('POST', 'inhaber', 'Verbesserungs-Loop (Software) — Inhaber bzw. Systemlauf.'),
+  'loop/verbesserung': r('POST', 'haushalt', 'Verbesserungs-Loop (Software) — Inhaber, volle Mitglieder des Haushalts (02.11., `steuernOderSystemlauf`) bzw. Systemlauf.'),
   'tageslauf': r('GET,POST', 'haushalt', 'Tageslauf: Auslösen im Haushalt bzw. als Systemlauf (rechnet dann als Inhaber); Läufe je Person (seit 08.10. spät) — GET nur die eigenen; Post liest der Lauf nur für die eigene Person (Inbox 2).'),
   'tagesstart': r('GET,POST', 'haushalt', 'Tagesstart des Haushalts; Systemlauf erlaubt.'),
   'heads/[head]': r('GET,POST', 'haushalt', 'Heads (Agenten-Leitungen) des Haushalts. POST trägt den Systemlauf des Takts (Dienstweg ohne Person, `imHaushaltOderSystemlauf`) — nur `lauf` mit `ausgeloest: takt` und einem Modus ohne Person (08.10., Sofort-Paket 6.1); alles andere braucht eine Person im Haushalt.'),
-  'heads/eval': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Bewertung der Heads: ansehen im Haushalt, auslösen nur Inhaber.'),
-  'state/agent-log': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Agenten-Läufe (Ergebnisse mit Inhalten) — lesen im Haushalt nur eigene + Systemläufe (08.10.), schreiben Inhaber/Systemlauf.'),
-  'state/agents': rm({ GET: 'haushalt', PUT: 'inhaber' }, 'Agenten-Schalter: ansehen im Haushalt, ändern nur Inhaber.'),
+  'heads/eval': r('GET,POST', 'haushalt', 'Bewertung der Heads: ansehen im Haushalt, auslösen Inhaber oder volle Mitglieder des Haushalts (02.11., `darfSteuern`) bzw. der Systemlauf.'),
+  'state/agent-log': r('GET,POST', 'haushalt', 'Agenten-Läufe (Ergebnisse mit Inhalten) — lesen im Haushalt nur eigene + Systemläufe (08.10.), schreiben Inhaber, volle Mitglieder (02.11., `steuernOderSystemlauf`) bzw. Systemlauf.'),
+  'state/agents': r('GET,PUT', 'haushalt', 'Agenten-Schalter: ansehen im Haushalt; ändern Inhaber oder volle Mitglieder des Haushalts (02.11., Kevin: „voller Zugriff“, `steuernOderSystemlauf`) bzw. der Systemlauf.'),
   'state/zoe-verlauf': r('GET,PUT,DELETE', 'person', 'Eigene ZOE-Gespräche der Person.'),
   'state/kompass': r('GET,PUT', 'haushalt', 'Kompass (System-Einstellung) des Haushalts; lesen auch als Systemlauf.'),
   'brain/app': r('GET,POST', 'haushalt', 'Brücke App → Brain des Haushalts.'),
@@ -248,7 +248,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'agenten/faden': r('GET,POST', 'person', 'Eigene Threads mit ZOE, Heads und Mitarbeitern lesen und schreiben; Verlauf nur aus dem Bestand der Person — nur die Person selbst (eigenePerson, Dienstweg 403; Paket 1).'),
   'agenten/faden/lauf': r('POST', 'dienst', 'Arbeiter führt einen Thread-Lauf (Mitarbeiter, Skill, geplante Hintergrundaufgabe) aus — nur Dienstweg MIT Person aus dem Haushalt des Inhabers (sonst 401/403), gerechnet für die auslösende Person (Paket 1).'),
   'agenten/skills': r('GET,POST', 'person', 'Skills, eigene Mitarbeiter und Gedächtnis der sichtbaren Heads lesen und pflegen (Testlauf, aktivieren, SKILL.md) — nur die Person selbst (eigenePerson, Dienstweg 403); Agenten-Vorschläge nur über den Stapel (Paket 3).'),
-  'agenten/brain': r('GET,POST', 'inhaber', '„Aus dem Brain übernehmen“ (09.10.): Vorschau der Agenten-Notizen des Vaults (Agenten-Sicht, nie privat) und Übernahme in Heads, Mitarbeiter und Wissen je Head über die vorhandenen Schreibwege (Stand/409) — nur ein Inhaber mit eigener Sitzung (eigenePerson + istInhaber, Dienstweg 403); Inhalte liest der Server neu aus dem Vault, der Browser schickt nur die Auswahl.'),
+  'agenten/brain': r('GET,POST', 'person', '„Aus dem Brain übernehmen“ (09.10.): Vorschau der Agenten-Notizen des Vaults (Agenten-Sicht, nie privat) und Übernahme in Heads, Mitarbeiter und Wissen je Head über die vorhandenen Schreibwege (Stand/409) — nur wer steuern darf (Inhaber oder volles Mitglied, 02.11.) mit eigener Sitzung (eigenePerson + darfSteuern, Dienstweg 403); Inhalte liest der Server neu aus dem Vault, der Browser schickt nur die Auswahl.'),
   'agenten/kosten': r('GET', 'person', 'Kosten je Auftrag aus der Lauf-Spur (10.10., Paket V1): eigene Ketten (Dauer, Kosten, Werkzeuge, Cache-Quote, Ausgang), Summen 7/30 Tage, erstes Wort von ZOE; Inhaber zusätzlich Summen der Instanz ohne fremde Einzelheiten — nur Metadaten, Bereiche serverseitig nach Konto-Sicht und `space` (ein Konto „nur Business“ bekommt den Privat-Bestand nie geladen); nur die Person selbst (eigenePerson, Dienstweg 403).'),
   'agenten/laeufe': r('GET,POST', 'person', 'Hintergrundaufgaben (Läuft/Fertig/Fehler, nur eigene und Systemläufe), „Als Nächstes“ und geplante Aufgaben anlegen, abbrechen, neu starten — nur die Person selbst (eigenePerson, Dienstweg 403; Paket 3).'),
   'medien': r('GET,POST', 'person', 'Medien unterwegs (Bilder/Videos): Business des Haushalts, Privat nur eigene; hochladen, ordnen, fürs Marketing freigeben nur per Klick — nur die Person selbst (eigenePerson, Dienstweg 403; Paket 5).'),
@@ -350,11 +350,11 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Vertrieb › Verträge (01.11.): Bestände je Haushalt (`businessHaushaltVon`); Dienstweg stellt nie fertig, vermerkt nie „versendet“/„unterschrieben“.
   'vertraege': r('GET,POST', 'haushalt', 'Vertrieb › Verträge: Entwürfe aus Vorlagen, fertigstellen (Nummer, PDF als Beleg), Version, Status, per Mail aus einem eigenen Business-Postfach senden, Darlehen in die Finanzen übernehmen (Rechte der Finanzplanung, private Seite nur mit Privatzugang), Karte „Darlehen“ (?darlehen=) — Haushalt des Inhabers; „nur Business“ nur Entwürfe; Dienstweg nie fertigstellen/senden/Status/Finanzen (403).'),
   'vertraege/vorlagen': r('GET,POST', 'haushalt', 'Unternehmen › Verträge › Vorlagen: lesen im Haushalt, schreiben nur volle Mitglieder per Sitzung (Dienstweg 403).'),
-  'vertraege/vorlagen/sammel': r('POST', 'inhaber', 'Sammel-Import von Vorlagen aus einer JSON-Datei: Vorschau schreibt nichts, Übernahme legt nur neue an (nie überschreiben, ungeprüft) — nur ein Inhaber per Sitzung (Dienstweg 403).'),
+  'vertraege/vorlagen/sammel': r('POST', 'person', 'Sammel-Import von Vorlagen aus einer JSON-Datei: Vorschau schreibt nichts, Übernahme legt nur neue an (nie überschreiben, ungeprüft) — nur Inhaber oder volle Mitglieder per Sitzung (02.11., personDerSitzung + darfSteuern; Dienstweg 403).'),
   'vertraege/import': r('POST', 'haushalt', 'Import-Vorschau einer Vorlage aus DOCX/PDF/Text — liest nur, schreibt nichts; volle Mitglieder per Sitzung.'),
   'vertraege/unterschrift': r('POST', 'haushalt', 'Unterschriebenes PDF hochladen → Beleg, Mandat, Register-Eintrag mit Fristen; nur per Sitzung (Dienstweg 403).'),
-  'crm/formulare': r('GET,POST', MT, 'Formulare › „Angebot anfordern“ (25.10.): Anfordern jede Person im Haushalt (auch „nur Business“), nur per Sitzung; Links und Einstellungen nur Inhaber; Eingänge: Inhaber alle, sonst nur die eigenen (serverseitig).'),
-  'crm/funde': r('GET,POST', MT, 'Kampagne „Homepage“ (30.10., lib/funde): Funde, Einstellungen, Fund von Hand, verwerfen, nachsenden — nur per Sitzung (Dienstweg 403); Einrichten, Einstellungen, „eigenes Risiko“ und Lauf nur Inhaber. Übernommen wird über den ZOE-Stapel (Art `fund`).'),
+  'crm/formulare': r('GET,POST', MT, 'Formulare › „Angebot anfordern“ (25.10.): Anfordern jede Person im Haushalt (auch „nur Business“), nur per Sitzung; Links, Einstellungen, Freigabe und alle Eingänge: wer Vertrieb steuern darf (Inhaber oder volles Mitglied des Haushalts, 02.11., `darfSteuern`), sonst nur die eigenen Eingänge (serverseitig).'),
+  'crm/funde': r('GET,POST', MT, 'Kampagne „Homepage“ (30.10., lib/funde): Funde, Einstellungen, Fund von Hand, verwerfen, nachsenden — nur per Sitzung (Dienstweg 403); Einrichten, Einstellungen, „eigenes Risiko“ und Lauf: Inhaber oder volles Mitglied des Haushalts (02.11., `darfSteuern`). Übernommen wird über den ZOE-Stapel (Art `fund`).'),
   'crm/funde/vorschau': r('GET', MT, 'Interne Vorschau eines Funds als HTML (ohne Skripte, maskiert, noindex) — der öffentliche Link /vorschau/<token> entsteht erst bei der Freigabe.'),
   'crm/ansprechen': r('GET', MT, 'Wen heute ansprechen.'),
   'crm/bestand': r('GET,PATCH', MT, 'CRM-Bestand.'),
@@ -365,15 +365,15 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'crm/entwurf': r('POST', MT, 'Entwurf (KI) für einen Kontakt.'),
   'crm/events': r('GET,POST', MT, 'Events.'),
   'crm/export': r('GET', MT, 'Export.'),
-  'crm/firma-archiv': r('POST', MT, 'Firma archivieren (Inhaber).'),
+  'crm/firma-archiv': r('POST', MT, 'Firmen-Zusammenführung zurücknehmen — Inhaber oder volles Mitglied des Haushalts (02.11., `darfSteuern`).'),
   'crm/followup': r('GET,POST', MT, 'Follow-ups.'),
   'crm/heute': r('GET', MT, 'CRM heute.'),
   'crm/import': r('GET,POST', MT, 'Import.'),
   'crm/kampagnen': r('GET,POST', MT, 'Kampagnen.'),
-  'crm/kampagnen/motor': r('GET,POST', MT, 'Kampagnen-Motor (31.10., lib/crm/kampagnen-motor.ts): Sequenz je Ziel, Mail-Stapel, Druckliste — lesen im Haushalt; Freigabe (EIN Klick je Stapel), Bearbeiten, Verwerfen nur per Sitzung (Dienstweg/ZOE 403, Bau-Kennung); Versand-Einstellungen nur Inhaber. Gesendet wird im Takt im Namen der freigebenden Person.'),
+  'crm/kampagnen/motor': r('GET,POST', MT, 'Kampagnen-Motor (31.10., lib/crm/kampagnen-motor.ts): Sequenz je Ziel, Mail-Stapel, Druckliste — lesen im Haushalt; Freigabe (EIN Klick je Stapel), Bearbeiten, Verwerfen nur per Sitzung (Dienstweg/ZOE 403, Bau-Kennung); Versand-Einstellungen: Inhaber oder volles Mitglied des Haushalts (02.11., `darfSteuern`). Gesendet wird im Takt im Namen der freigebenden Person.'),
   // Restpunkte (24.10.): Playbooks und Event-Vorlagen je Haushalt bearbeiten — nur Abweichungen und eigene Kopien; Rechtshinweise bleiben fest im Code.
   'crm/vorlagen': r('GET,POST', MT, 'Playbooks und Event-Vorlagen (24.10.): GET die wirksamen Vorlagen des Haushalts mit Vorgabe, Stand und UWG-Hinweisen (Lesen schreibt nie); POST speichern/kopieren/zurück auf Standard/löschen eigener — nur eine angemeldete Person des Haushalts mit Bau-Kennung (Dienstweg 403), Stand/409, ungültig 400, zu groß 413.'),
-  'crm/kennungen-umzug': r('POST', MT, 'Kennungen umziehen (Inhaber).'),
+  'crm/kennungen-umzug': r('POST', MT, 'Kennungen umziehen — Inhaber oder volles Mitglied des Haushalts (02.11., `darfSteuern`).'),
   'crm/kontakt-frage': r('GET,POST', MT, 'Frage an einen Kontakt (KI).'),
   'crm/lead': r('GET,POST', MT, 'Leads.'),
   'crm/liquiplan': r('GET,POST', MT, 'Mandat → Liquiditätsplan (Schnittstelle Markttraktion ↔ Finanzen).'),
@@ -388,7 +388,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Abläufe über den Fulfillment-Weg. Dienstweg nur MIT Person des Haushalts (Import im Namen einer Person), Konto „nur Business“ darf (Business).
   'crm/produkte/import': r('POST', 'haushalt', 'Produkt-Import (Karten als JSON oder Tabelle): Vorschau neu/ändert/gleich/Fehler, dann anlegen bzw. Teil-Merge — nur Haushalt des Inhabers, Grenzen 413.'),
   'crm/scoring': r('GET,PATCH', MT, 'Lead-Scoring.'),
-  'social': r('GET,PATCH,POST', MT, 'Markttraktion › Social (26.10.): Kanäle, Serienformate, Folgen, Messungen, Prüfung + Leitplanken-Entscheidung, Analyse, Automatik; POST = Kennzahlen-Import (erst Vorschau), Entwürfe auf Knopfdruck, Verbinden/Trennen. Business; Schreiben nur per Sitzung (Dienstweg 403). Veröffentlicht selbst nichts — das macht der Takt nach den Leitplanken.'),
+  'social': r('GET,PATCH,POST', MT, 'Markttraktion › Social (26.10.): Kanäle, Serienformate, Folgen, Messungen, Prüfung + Leitplanken-Entscheidung, Analyse, Automatik; POST = Kennzahlen-Import (erst Vorschau), Entwürfe auf Knopfdruck, Verbinden/Trennen. Business; Schreiben nur per Sitzung (Dienstweg 403). Veröffentlicht selbst nichts — das macht der Takt nach den Leitplanken. GET `?nur=zaehler` (02.11.): nur die Zahl der Folgen zur Freigabe in den Kanälen der Person.'),
   'social/community': r('GET,POST', MT, 'Kommentare und DMs von Instagram (28.10.): Fäden der sichtbaren Kanäle; Antworten nur per Klick (Not-Aus, Tageslimits, Personenmarke nur die Person, DM nur im 24-h-Fenster), ZOE-Vorschlag mit gekapseltem Text Dritter. Schreiben nur per Sitzung (Dienstweg 403). Lese-Protokoll „social“ (31.10.).'),
   'social/werkstatt': r('GET,POST', MT, 'Reel-Werkstatt (28.10.): Aufträge aus Medien der Business-Ablage schneiden, Untertitel (lokal, whisper.cpp), KI-Schnittvorschlag, Rendern (ffmpeg) — Ergebnis = neues Medium, raus erst nach Freigabe eines Menschen. Sicht wie Social; Schreiben nur per Sitzung (Dienstweg 403), Stand/409.'),
   'social/medien/[token]': r('GET', 'offen', 'Instagram holt ein Bild/Video eines Beitrags selbst ab (Content Publishing verlangt eine öffentliche Adresse) — offen, aber eng: 128-Bit-Token je Versuch (nur Fingerabdruck gespeichert), gilt 60 Min., liefert nur EIN Medium, solange es für „Social Media“ freigegeben ist; gleiche 404 für jede Fehlerart, gedrosselt; handelt für niemanden, nie Metadaten.'),
@@ -410,7 +410,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
 
   // ── Fulfillment (10.10., FULFILLMENT_KONZEPT.md Abschnitt 9) — Modul `fulfillment`, Tor `fulfillmentZugang` (Haushalt des Inhabers, Sicht Privat 403,
   //    Schreiben nur per Sitzung + Bau-Kennung, Kunden-Link-Schalter nur Inhaber). C0 legt jede Route als Stub an (Tor + 501), die Pakete füllen sie.
-  'fulfillment': r('GET,PATCH', FF, 'Fulfillment (C1): Vorlagen, Bibliothek, Rituale, Zuordnung, Einstellungen, Onboarding-Kandidaten, Kennzahlen; PATCH Einzel-Ops mit Stand (409) — Business; Kunden-Link-Schalter nur Inhaber; Dienstweg schreibt nie.', 'fulfillmentZugang'),
+  'fulfillment': r('GET,PATCH', FF, 'Fulfillment (C1): Vorlagen, Bibliothek, Rituale, Zuordnung, Einstellungen, Onboarding-Kandidaten, Kennzahlen; PATCH Einzel-Ops mit Stand (409) — Business; Kunden-Link-Schalter Inhaber oder volle Mitglieder (02.11., `darfSteuern`); Dienstweg schreibt nie.', 'fulfillmentZugang'),
   'fulfillment/editor': r('GET,PATCH,POST', FF, 'Prozess-Editor (17.10.): eine Paket-Vorlage lesen (Stand der ganzen Vorlage), Editor-Ops mit Stand (409 mit aktueller Fassung, Kreis 409, 413 Grenzen), „Neuer Ablauf“ (anfrageId) — bearbeiten nur volle Mitglieder (Rolle „nur Business“ 403), nur per Sitzung; Dienstweg schreibt nie.', 'vorlagenZugang'),
   'fulfillment/import': r('POST', FF, 'Import der Bausteine, Abläufe und Pakete (C1; Pakete 17.10.): Vorschau, Übernehmen mit vorschauId, Rückgängig mit laufId; ≤ 4 MB — nur volle Mitglieder (Rolle „nur Business“ 403), nur per Sitzung.', 'vorlagenZugang'),
   'fulfillment/fall': r('GET,POST,PATCH', FF, 'Ein Fall je Mandat (C1): lesen (Lese-Protokoll „fulfillment“), starten (anfrageId), Ops am Fall mit Stand — nur Mandate von Business-Gesellschaften; Dienstweg schreibt nie.', 'fulfillmentZugang'),
@@ -421,7 +421,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   'fulfillment/kunde/vorschau': r('GET', FF, '„So sieht der Kunde es“ (C2): genau die serverseitig gefilterte Kunden-Sicht — nur lesen.', 'fulfillmentZugang'),
   'fulfillment/dossier': r('GET,POST', FF, 'Dossier je Mandat (C3) ohne Personenteil: anlegen, Eingaben, F1/F2, Interessenabwägung, Übernehmen/Verwerfen, Prüfen — Lese-Protokoll; Dienstweg schreibt nie.', 'fulfillmentZugang'),
   'fulfillment/analyse': r('GET,POST', FF, 'Analyse-Läufe (C3): Stand und Kostenschätzung je Lauf; Start NUR per Klick auf genau diesen Lauf mit bestätigtem Betrag (kein Autostart), Abbruch, Tiefenbericht — nur per Sitzung.', 'fulfillmentZugang'),
-  'fulfillment/personen': r('GET,POST', FF, 'Personenteil der Dossiers (C3): berufliche Personenkarten, Art.-14-Stand, Verknüpfen, Löschen — nur Inhaber oder Mitglied ohne finanzRecht „business“ (personenteilZugang); Lese-Protokoll „personenrecherche“.', 'personenteilZugang'),
+  'fulfillment/personen': r('GET,POST', FF, 'Personenteil der Dossiers (C3): berufliche Personenkarten, Art.-14-Stand, Verknüpfen, Löschen — nur Inhaber oder Mitglied ohne finanzRecht „business“ (personenteilZugang, 02.11. über `darfSteuern`); Lese-Protokoll „personenrecherche“.', 'personenteilZugang'),
   // ── Prozesse (21.10., Etappe A „Sehen“) — Modul `prozesse`, Tor `prozesseZugang` (Haushalt des Inhabers, Sicht Privat 403; „nur Business“ liest).
   'prozesse/landkarte': r('GET,POST', 'modul:prozesse', 'Landkarte der Prozesse (Fliege): System-Prozesse aus dem Register, Fulfillment-Vorlagen und Zahl der Fälle aus den vorhandenen Lesewegen — nur Business, nur Zahlen und Titel, GET schreibt nie; POST (22.10.) „Landkarte anpassen“ (Bereiche benennen/färben/anlegen, Kacheln zuordnen/beschriften/ausblenden, Reihenfolge, zurück auf die Vorgabe) nur per Sitzung mit Bau-Kennung und Recht „Entwurf“, Stand/409, Grenzen 413, gespeichert nur Abweichungen.', 'prozesseZugang'),
   'fulfillment/dossier/leseteil': r('GET', 'person', 'Leseteil „Tiefenbericht — nur für dich“ (C3): nur die Person der Sitzung, die ihn ausgelöst hat (andere 404); nie Dienstweg.'),
@@ -434,7 +434,7 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Stellschrauben der festen Prozesse (22.10.): eigener Bestand `prozesse-stellschrauben--<h>`, nur Abweichungen; Werte der Markttraktion gehen über die Wertelisten.
   'prozesse/stellschrauben': r('GET,POST', 'modul:prozesse', 'Stellschrauben der festen System-Prozesse (Head-Modi, Fenster des Monatsabschlusses, Buchung, Kapazität, Report-Abstand): GET gespeicherte Abweichungen, wirksame Werte und Stand (nur Business, schreibt nie); POST nur per Sitzung mit Bau-Kennung und nur volle Mitglieder, Stand/409, unbekannt 404, ungültig 400, zu viele 413 — alles oder nichts, gespeichert nur Abweichungen.', 'prozesseZugang'),
   // Restpunkte (24.10.): drei Masken des Steckbriefs (Scoring-Schwellen/Temperatur, Felder einer Buchungsseite, Regler der Business-Heads) — leitet an DIESELBE Schreibstelle wie die Fachseite weiter.
-  'prozesse/stellschrauben/weiter': r('POST', 'modul:prozesse', 'Stellschrauben-Masken im Steckbrief (24.10.): EIN Feld der Scoring-Einstellungen, einer Buchungsseite oder eines Business-Heads — der Server liest den aktuellen Stand (409), prüft die Grenzen (400) und schreibt über dieselbe Stelle wie die Fachseite (scoringSchreiben, seiteSpeichern, einstellungAendern); nur per Sitzung mit Bau-Kennung, Heads nur der Inhaber (403), Dienstweg 403.', 'prozesseZugang'),
+  'prozesse/stellschrauben/weiter': r('POST', 'modul:prozesse', 'Stellschrauben-Masken im Steckbrief (24.10.): EIN Feld der Scoring-Einstellungen, einer Buchungsseite oder eines Business-Heads — der Server liest den aktuellen Stand (409), prüft die Grenzen (400) und schreibt über dieselbe Stelle wie die Fachseite (scoringSchreiben, seiteSpeichern, einstellungAendern); nur per Sitzung mit Bau-Kennung, Heads wie unter /os/agenten: volle Mitglieder des Haushalts (02.11., `einstellungDarf`; sonst 403), Dienstweg 403.', 'prozesseZugang'),
   // ── Prozesse · Werkstatt (21.10., Etappe B1 „Modell & Bausteine“) — Modul `prozesse`, Tor `werkstattZugang` (Haushalt des Inhabers, Sicht Privat 403; schreiben nur
   //    per Sitzung + Bau-Kennung; veröffentlichen/Status/Webhook nur volle Mitglieder, Konto „nur Business“ baut Entwürfe).
   'prozesse/werkstatt': r('GET,POST', 'modul:prozesse', 'Werkstatt (B1): Prozesse aller Business-Bereiche — Liste (mit Paket-Vorlagen des Fulfillments, nur lesend), Entwurf mit Stand/409, Befunde, Versionen, Vergleich; anlegen (anfrageId), Steckbrief, Entwurf, veröffentlichen, Version übernehmen, Status, Webhook-Schlüssel (genau einmal in der Antwort); seit 22.10. kopieren, als eigene Vorlage speichern (ohne Personen und Fall-Daten), eigene Vorlage übernehmen bzw. löschen (nur volle Mitglieder); Überführung (Paket Ü, 22.10.): überführen (anfrageId, höchstens einer je System-Prozess, sonst 409), umschalten (erst ab N gleichen Läufen / M Tagen im Schatten, Stand/409), zurück in den Schatten — nur volle Mitglieder — Dienstweg schreibt nie.', 'werkstattZugang'),
@@ -452,12 +452,12 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
 
   // ── Innovations-Check (öffentlich, 24.10.) ─────────────────────────────────────────────────────────────────
   'check': r('POST', 'offen', 'Öffentliche Strecke des Innovations-Checks: enge Regex in der Middleware, kommt AUS (404), Token je Sitzung (nur SHA-256), Drossel, Honigtopf, Mindestzeit, Größe — handelt nie als Person.'),
-  'check/intern': r('GET,POST', 'haushalt', 'Eingegangene Checks, Beleg-Bewertung, Lead nachholen, Löschen — Haushalt des Inhabers mit Person; Einstellungen (an/aus, Buchungsseite, Gastgeber) nur der Inhaber.'),
+  'check/intern': r('GET,POST', 'haushalt', 'Eingegangene Checks, Beleg-Bewertung, Lead nachholen, Löschen — Haushalt des Inhabers mit Person; Einstellungen (an/aus, Buchungsseite, Gastgeber): Inhaber oder volles Mitglied des Haushalts (02.11., `darfSteuern`).'),
   // Newsletter-Anmeldung über die Website (30.10., lib/newsletter/*).
   'newsletter': r('POST', 'offen', 'Öffentliche Newsletter-Anmeldung mit Double-Opt-in: enge Regex in der Middleware, kommt AUS (404), immer dieselbe Antwort (Arbeit nach der Antwort), Token nur im Fragment und nur als SHA-256, Drossel, Honigtopf, Stempel, ≤ 4 KB — handelt nie als Person.'),
   // Kontaktformular der Website (31.10., Website-Anbau, lib/kontaktformular/*).
   'anfrage': r('GET,POST', 'offen', 'Öffentliches Kontaktformular der Website: enge Regex in der Middleware; GET nur „aktiv: ja/nein“ (keine Daten, gedrosselt, schreibt nichts); POST kommt AUS (404), immer dieselbe Antwort, Drossel, Honigtopf, signierter Stempel, ≤ 8 KB — Eingang nur über den Anfrage-Weg, keine Mail, handelt nie als Person.'),
-  'kontaktformular/intern': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Schalter des Kontaktformulars: lesen im Haushalt, umschalten nur ein Inhaber per Sitzung (Dienstweg 403).'),
+  'kontaktformular/intern': r('GET,POST', 'haushalt', 'Schalter des Kontaktformulars: lesen im Haushalt, umschalten Inhaber oder volles Mitglied des Haushalts per Sitzung (02.11., `darfSteuern`; Dienstweg 403).'),
   // Unterlagen per E-Mail anfordern (31.10., lib/unterlagen/*): große Vorlagen der Website gibt es nur per Mail.
   'unterlage': r('GET,POST', 'offen', 'Öffentliches Anfordern einer großen Vorlage der Website: enge Regex in der Middleware; GET nur Titel, Newsletter-Wortlaut und Datenschutzhinweis; POST immer dieselbe Antwort (Mail, Anfrage im CRM, Newsletter nach der Antwort), ohne Website-Absender 404, Drossel je Netz, Grenze je Adresse, Honigtopf, ≤ 8 KB — handelt nie als Person.'),
   'unterlage/laden': r('GET', 'offen', 'Download-Link aus der Mail: signiertes Token (Kennung + Ablauf 7 Tage, nie die Adresse), nur Dateien aus dem Katalog im Ordner unterlagen/, attachment + nosniff + CSP sandbox, Drossel je Netz, schreibt nichts — handelt nie als Person.'),
@@ -467,9 +467,10 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // Website-Inhalte (31.10., lib/website/*): der Vertrag mit der statischen Website (WEBSITE_VERTRAG_INHALT.md) und die Pflege unter Markttraktion › Website.
   'website/inhalt': r('GET', 'offen', 'Öffentliche Inhalte der Website: enge Regex in der Middleware, nur GET/HEAD, nur sichtbare Einträge und öffentliche Felder (keine Personen, keine Gäste, keine internen Kennungen), ETag + 304, fünf Minuten zwischenspeicherbar, Drossel je Netz — schreibt nichts, handelt nie als Person.'),
   'website/bild/[id]': r('GET', 'offen', 'Ein Bild der Website: nur ein in MAKE OS sichtbares Bild mit Alt-Text UND ein für den Kanal „Website“ freigegebenes Medium (Einwilligungen geprüft), Ansichts-Größe, nur JPEG/PNG/WebP, nosniff + CSP sandbox, Größe begrenzt, gleiche 404 je Fehlerart, Drossel je Netz — schreibt nichts, handelt nie als Person.'),
-  'website/intern': rm({ GET: 'haushalt', PATCH: 'haushalt', POST: 'inhaber' }, 'Website-Inhalte pflegen (Angebote, Bausteine, Events, FAQ, Fakten, Texte, Bilder): lesen im Haushalt (Eingänge mit Lese-Protokoll); schreiben nur eine Person per Sitzung (Dienstweg 403, Bau-Kennung, Stand je Eintrag → 409); Startwerte übernehmen nur ein Inhaber (Vorschau zuerst, nur Fehlendes).'),
-  'bausteine/intern': r('GET,POST', 'haushalt', 'Bestellungen und Einstellungen der Bausteine: lesen im Haushalt (Lese-Protokoll); Freigeben/Ablehnen/neue Links nur eine Person per Sitzung (Dienstweg 403, Bau-Kennung), Einstellungen nur ein Inhaber.'),
-  'newsletter/intern': rm({ GET: 'haushalt', POST: 'inhaber' }, 'Anmeldungen über die Website (Adressen maskiert) im Haushalt; Einstellungen (an/aus, Absender-Postfach = Freigabe der Bestätigungsmails, Text, Website), Löschen und CRM-Nachholen nur ein Inhaber per Sitzung (Dienstweg 403).'),
+  'website/intern': r('GET,PATCH,POST', 'haushalt', 'Website-Inhalte pflegen (Angebote, Bausteine, Events, FAQ, Fakten, Texte, Bilder): lesen im Haushalt (Eingänge mit Lese-Protokoll); schreiben nur eine Person per Sitzung (Dienstweg 403, Bau-Kennung, Stand je Eintrag → 409); Startwerte übernehmen Inhaber oder volles Mitglied des Haushalts (02.11., `darfSteuern`; Vorschau zuerst, nur Fehlendes).'),
+  'website/eingang': r('GET,POST', 'haushalt', 'Website-Eingänge, die nicht ankamen (02.11., R2-4 Fund 3): lesen im Haushalt (Business-Bestand, Lese-Protokoll); erneut versuchen, als Anfrage übernehmen oder verwerfen nur eine Person per Sitzung (Dienstweg 403, Bau-Kennung).'),
+  'bausteine/intern': r('GET,POST', 'haushalt', 'Bestellungen und Einstellungen der Bausteine: lesen im Haushalt (Lese-Protokoll); Freigeben/Ablehnen/neue Links nur eine Person per Sitzung (Dienstweg 403, Bau-Kennung), Einstellungen: Inhaber oder volles Mitglied des Haushalts (02.11., `darfSteuern`).'),
+  'newsletter/intern': r('GET,POST', 'haushalt', 'Anmeldungen über die Website (Adressen maskiert) im Haushalt; Einstellungen (an/aus, Absender-Postfach = Freigabe der Bestätigungsmails, Text, Website), Löschen und CRM-Nachholen: Inhaber oder volles Mitglied des Haushalts per Sitzung (02.11., `darfSteuern`; Dienstweg 403).'),
 
   // ── Konto, Anmeldung, System ───────────────────────────────────────────────────────────────────────────────
   // ── Datenschutz (05.10., DSGVO-Pakete) ────────────────────────────────────────────────────────────────────

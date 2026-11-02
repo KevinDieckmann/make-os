@@ -29,19 +29,26 @@ import { dankeZeilen, dankeOffen } from '@/lib/crm/netzwerken';
 import { eventsOhneTermin } from '@/lib/crm/besuche';
 import { WEG } from '@/lib/wege';
 import {
-  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, anstehendFuerSpace, type Anstehend, type ABuchung, type ADanke, type AVorschlaege,
+  termineHeute, fristenAnstehend, followupsAnstehend, nachbereitenAnstehend, geburtstageVorlauf, anstehendFuerSpace, laufzeitAnstehend, type Anstehend, type ABuchung, type ADanke, type AVorschlaege,
 } from './anstehend';
 import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
 
 const sicher = async <T>(p: Promise<T>, sonst: T): Promise<T> => { try { return await p; } catch { return sonst; } };
 
-/** Offene Buchungsanfragen der eigenen Seiten (Status „angefragt“ — „vorläufig“ wartet noch auf den Gast). */
-async function buchungenLesen(person: string): Promise<ABuchung[]> {
-  const { ladeBuchungBestand } = await import('@/lib/kalender/buchung-speicher');
-  const b = await ladeBuchungBestand();
-  const seiten = new Map(b.seiten.filter(s => s.person === person).map(s => [s.id, s]));
-  return b.buchungen.filter(x => x.status === 'angefragt' && seiten.has(x.seiteId))
-    .map(x => ({ id: x.id, titel: seiten.get(x.seiteId)!.titel, start: x.start, href: '/os/kalender?buchungen=1' }))
+/**
+ * Offene Buchungsanfragen der eigenen Seiten (Status „angefragt“ — „vorläufig“ wartet noch auf den Gast). Dazu (R2-1 Fund 5, 02.11.): wer die Arbeit
+ * steuern darf (`darfSteuern`), sieht ab der 24-h-Erinnerung (`lange`) auch die Anfragen der Seiten ANDERER — gekennzeichnet `fremd` (die Glocke
+ * spricht dann neutral von „einer Entscheidung“). Nur Titel der Seite und Zeit, nie der Gast. Nur Business (Privat leert `buchungen`).
+ */
+async function buchungenLesen(person: string, jetzt = new Date()): Promise<ABuchung[]> {
+  const [{ ladeBuchungBestand }, { anfrageWartet }, { darfSteuern }] = await Promise.all([import('@/lib/kalender/buchung-speicher'), import('@/lib/kalender/buchung'), import('@/lib/zugang/steuern')]);
+  const b = await ladeBuchungBestand(jetzt);
+  const alle = new Map(b.seiten.map(s => [s.id, s]));
+  const steuert = await darfSteuern(person).catch(() => false);
+  return b.buchungen.filter(x => x.status === 'angefragt' && alle.has(x.seiteId))
+    .map(x => { const s = alle.get(x.seiteId)!, w = anfrageWartet(x.angefragtAm ?? x.statusAm, x.start, jetzt); return { x, s, w, fremd: s.person !== person }; })
+    .filter(({ fremd, w }) => !fremd || (steuert && w.lange))
+    .map(({ x, s, w, fremd }) => ({ id: x.id, titel: s.titel, start: x.start, href: '/os/kalender?buchungen=1', ...(w.lange ? { lange: true as const } : {}), ...(w.bald ? { bald: true as const } : {}), ...(fremd ? { fremd: true as const } : {}) }))
     .sort((a, c) => a.start.localeCompare(c.start));
 }
 
@@ -85,6 +92,16 @@ async function darlehenHinweise(person: string, heute: string): Promise<Anstehen
   }));
 }
 
+/**
+ * Leads aus verlorenen Deals, deren Wiedervorlage erreicht ist (R2-1 Fund 6, 02.11.) — eine Zeile „Kundengewinnung“ mit der Zahl, an die Zuständige
+ * des Leads (wie „Für dich“: besitzer = Person oder „beide“). Neutral, ohne Namen; die Kennung trägt die Zahl (neue → Glocke meldet sich neu).
+ */
+async function wiederDranLesen(kontakte: Parameters<typeof import('@/lib/crm/leads').leads>[0], crm: Parameters<typeof import('@/lib/crm/leads').leads>[1], heute: string, person: string): Promise<import('./anstehend').AMotor[]> {
+  const { leads, ausVerlorenWiederDran, wiederDranSatz } = await import('@/lib/crm/leads');
+  const n = leads(kontakte, crm, heute).filter(z => (z.besitzer === person || z.besitzer === BEIDE) && ausVerlorenWiederDran(z, heute)).length;
+  return n ? [{ id: 'wieder', n, titel: `${wiederDranSatz(n)} — neu qualifizieren`, href: WEG.qualifizierung() }] : [];
+}
+
 /** Rückfall (4.8): ohne Liste der Eingeschränkten fallen alle echten Follow-ups weg, deren Person die verarbeitbare Kartei nicht kennt. */
 function ohneSichtbareKennung(crm: { followups?: { kontaktId?: string }[] }, kontakte: readonly { id: string }[]): Set<string> {
   const da = new Set(kontakte.map(k => k.id));
@@ -103,7 +120,7 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     sicher(kontakteFuerVerarbeitung(), []),
     sicher(ladeCrm(), null),
     sicher(fristenLesen(heute, tagPlus(heute, Math.max(2, vorlauf + 1)), heute, person), []),
-    sicher(buchungenLesen(person), []),
+    sicher(buchungenLesen(person, jetzt), []),
     sicher(vorschlaegeZaehlen(person), { kalender: 0, gesamt: 0 }),
     // Ab heute; 61 Tage, damit ein längerer Vorlauf eines Wichtigen Tages (Familie, ≤ 60) greift — `geburtstageVorlauf` schneidet.
     sicher(geburtstageIm({ von: heute, bis: tagPlus(heute, 61) }, person), []),
@@ -111,6 +128,12 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     // Scheitert das Lesen, zeigt die Liste lieber KEINE echten Follow-ups ohne bekannte Person (siehe unten), statt Namen zu verraten.
     sicher<Set<string> | null>(eingeschraenkteKennungen(), null),
     nurBusiness ? Promise.resolve([]) : sicher(darlehenHinweise(person, heute), []),
+  ]);
+  // R2-4 Fund 10: Sperrliste des Betriebs (nur, was wir werblich anstoßen, fällt dann heraus). Fund 12: offene Aufgaben „Laufzeit abgelaufen“ (`mlz-…`)
+  // melden selbst — die abgeleitete Frist nur, solange es keine offene gibt.
+  const [firmaGesperrt, offeneMlz] = await Promise.all([
+    crm ? sicher((async () => (await import('@/lib/crm/betrieb-sperre')).betriebSperrPrueferLaden(crm.firmen))(), undefined) : Promise.resolve(undefined),
+    sicher((async () => new Set((await (await import('@/lib/aufgaben/sicht')).ladeAufgabenSicht(null)).tasks.filter(t => t.id.startsWith('mlz-') && t.status !== 'done' && t.status !== 'cancelled').map(t => t.id)))(), new Set<string>()),
   ]);
   const sicht = (gelesen?.termine ?? []).map(t => maskieren(t, person));
   const kalenderVon = new Map(sicht.map(t => [t.id, t.kalender]));
@@ -127,12 +150,16 @@ export async function anstehendLesen(person: string, jetzt: Date = new Date()): 
     nachbereiten: nachbereitenAnstehend(nachbereitung(kontakte, heute, person, zeiten, jetztWand, crm?.followups)),
     nachbereitZeiten: Object.fromEntries(Object.entries(zeiten).filter(([k]) => verwiesen.has(k))),
     // Dazu (N5): besuchte Events, bei denen wir „angemeldet“ sind, aber noch kein Termin im Kalender steht — sonst fährt niemand hin, der es im Kalender sieht.
-    fristen: [...fristenAnstehend(fristen, person, heute, vorlauf), ...(crm ? eventsOhneTermin(crm.events, heute, person).map(x => ({ id: `event-ohne-termin-${x.id}`, art: 'event' as const, tag: x.tag, titel: `Event „${x.titel}“: angemeldet, aber kein Termin im Kalender`, href: WEG.besuch(x.id), inTagen: x.inTagen, business: true as const })) : []), ...darlehen],
-    followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten, ausgeblendet: ausgeblendet ?? ohneSichtbareKennung(crm, kontakte) }), person, mitAufgabe, zeiten) : [],
+    fristen: [...fristenAnstehend(fristen, person, heute, vorlauf), ...(crm ? eventsOhneTermin(crm.events, heute, person).map(x => ({ id: `event-ohne-termin-${x.id}`, art: 'event' as const, tag: x.tag, titel: `Event „${x.titel}“: angemeldet, aber kein Termin im Kalender`, href: WEG.besuch(x.id), inTagen: x.inTagen, business: true as const })) : []),
+      // 02.11. (Prüfung C): Mandate mit abgelaufener Laufzeit ohne Entscheidung — bis jemand verlängert oder beendet.
+      ...(crm ? laufzeitAnstehend(crm.mandate, person, heute, offeneMlz) : []), ...darlehen],
+    followups: crm ? followupsAnstehend(faellige(kontakte, crm, heute, { horizont: 0, wertelisten: crm.wertelisten, ausgeblendet: ausgeblendet ?? ohneSichtbareKennung(crm, kontakte), ...(firmaGesperrt ? { firmaGesperrt } : {}) }), person, mitAufgabe, zeiten) : [],
     buchungen,
     vorschlaege,
     geburtstage: geburtstageVorlauf(geburtstage, person, heute),
     danke: dankeAnstehend(crm, kontakte, heute, person),
+    // Kundengewinnung (02.11., Prüfung D): Mail-Stapel, Druckliste, Homepage-Funde — an die Zuständige (lib/crm/motor-dran.ts), nur Business.
+    motor: [...await sicher((await import('@/lib/crm/motor-dran-server')).motorDranLesen(person, crm), []), ...(crm ? await sicher(wiederDranLesen(kontakte, crm, heute, person), []) : [])],
   };
   return nurBusiness ? anstehendFuerSpace(a, 'business') : a;
 }
@@ -147,6 +174,8 @@ export async function anstehendStand(jetzt: Date = new Date()): Promise<string> 
   // F2 N9: alle Quellen von `anstehendLesen` — Bauplan-Etappen (`backlog`), Steuer-Vorlage (`steuern`), Familie (Geburtstage,
   // Wichtige Tage mit Geschenk-Vorlauf) — sonst bliebe das ETag nach einer Änderung dort stehen.
   // 08.10.: Meilensteine an eigenen Zielen hängen an Konten (teilen) und Zielen — beide zählen mit.
-  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'finanzplan', 'meilensteine', 'ziele', 'konten', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h), `vertraege--${h}`] : [])];
+  // 02.11. (Prüfung D): Mail-Stapel und Homepage-Funde (Steht an › Kundengewinnung).
+  const motor = await sicher((await import('@/lib/crm/motor-dran-server')).motorDranBestaende(), [] as string[]);
+  const namen = ['kalender-icloud', 'calendar-cache', 'kalender-bezug', 'kalender-einstellungen', 'crm', 'kontakte', 'tasks', 'finanzplan', 'meilensteine', 'ziele', 'konten', 'backlog', 'steuern', 'zoe-stapel', ...(h ? [`buchung--${h}`, familieName(h), `vertraege--${h}`] : []), ...motor];
   return `${wandzeit(jetzt).slice(0, 15)}:${await sicher(speicherStand(namen), '0')}`;
 }

@@ -6,7 +6,7 @@
 //   · fremder Haushalt, Testkunde ohne Haushalt, Dienstweg mit fremder Person → 403 (`nurHaushalt`)
 //   · `?space=privat` → 403: Fulfillment ist Business (die Middleware sperrt es über ROUTEN_BEREICH schon vorher; hier nochmals)
 //   · `schreiben`: nur eine angemeldete Person (Dienstweg → 403), Bau-Kennung (`bauPruefen`, fremde → 409 „neu laden“)
-//   · `inhaber`: nur ein Inhaber (z. B. Kunden-Link-Schalter) → sonst 403
+//   · `inhaber`: wer steuern darf (`darfSteuern`: Inhaber oder volles Mitglied; z. B. Kunden-Link-Schalter) → sonst 403
 //   · `privat` (25.10., Fulfillment für die Selbstständigkeit): darf die Anfrage Fälle/Mandate einer Privat-Arbeits-Einheit sehen? Nur ein Konto mit Privat-Recht
 //     (Konto-Sicht `privat` — nie `finanzRecht: 'business'`) und nicht die ausdrückliche Business-Sicht `?space=business`. Jede Antwort filtert damit
 //     (`mandatInSicht`, lib/fulfillment/regeln.ts); Lesen/Schreiben EINES solchen Mandats ohne Recht → `mandatAusserSicht` (404 bzw. 403).
@@ -15,8 +15,9 @@
 // `finanzRecht: 'business'`) — die Rolle „nur Business“ sieht nur, Schreiben → 403. Dieselbe Regel (`darfVorlagenBearbeiten`) prüft der alte Baum-Weg.
 
 import { NextResponse } from 'next/server';
-import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
-import { nurHaushalt, nurDerInhaber } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
+import { nurHaushalt } from '@/lib/zugang/tor';
 import { sichtDerAnfrage } from '@/lib/zugang/sicht-bereich';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { fulfillmentHaushalt } from './speicher';
@@ -39,7 +40,8 @@ export async function fulfillmentZugang(req: Request, opt: { schreiben?: boolean
     const alt = bauPruefen(req);
     if (alt) return alt;
   }
-  if (opt.inhaber && !(await istInhaber(z.person))) return nurDerInhaber();
+  // `inhaber` (02.11.): wer steuern darf — Inhaber ODER volles Mitglied des Haushalts (lib/zugang/steuern.ts).
+  if (opt.inhaber && !(await darfSteuern(z.person))) return NextResponse.json({ ok: false, fehler: NUR_STEUERN }, { status: 403 });
   const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
   const privat = !!(await kontoSicht(z.person))?.privat && sichtDerAnfrage(req) !== 'business';
   return { ...z, haushalt: await fulfillmentHaushalt(), privat };
@@ -78,7 +80,7 @@ export const PERSONENTEIL_GESPERRT = 'Den Personenteil der Dossiers sehen nur de
 export async function personenteilZugang(req: Request, opt: { schreiben?: boolean } = {}): Promise<FulfillmentTor | NextResponse> {
   const z = await fulfillmentZugang(req, opt);
   if (z instanceof NextResponse) return z;
-  if (await istInhaber(z.person)) return z;
+  if (await darfSteuern(z.person)) return z;
   const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
   const k = await kontoSicht(z.person);
   if (!k || k.nurBusiness || !k.imHaushalt) return NextResponse.json({ ok: false, fehler: PERSONENTEIL_GESPERRT }, { status: 403 });
@@ -90,9 +92,7 @@ export const VORLAGEN_NUR_LESEN = 'Abläufe bearbeiten nur volle Mitglieder — 
 
 /** Darf diese Person Abläufe (Prozess-Vorlagen) bearbeiten? Inhaber oder volles Mitglied im Haushalt (nicht „nur Business“). */
 export async function darfVorlagenBearbeiten(person: string): Promise<boolean> {
-  if (await istInhaber(person)) return true;
-  const { kontoSicht } = await import('@/lib/zugang/konto-sicht-server');
-  return !!(await kontoSicht(person))?.vollesMitglied;
+  return darfSteuern(person); // EINE Regel (02.11.): Inhaber ODER volles Mitglied
 }
 
 /** Prozess-Editor (17.10.): das Fulfillment-Tor; mit `schreiben` zusätzlich nur volle Mitglieder (sonst 403). */

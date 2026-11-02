@@ -184,6 +184,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'die Person sieht ihre Termine im Kalender; Dritte erfahren über die Auskunft, dass Termine sie in Google nennen (Zählung im Löschlauf)',
     loeschfrist: 'Spiegel ab heute − 90 Tage; „Trennen“ oder Konto löschen entfernt ihn sofort (samt Tageskopien)',
   }),
+  // „Belegt“-Spiegel in den eigenen Google-Hauptkalender (01.11.2026, lib/kalender/google/belegt-spiegel.ts): nur Kennungen.
+  mit(H('kalender-belegt-spiegel--*', 'Welche neutralen „Belegt“-Blöcke MAKE OS in den eigenen Google-Hauptkalender einer Person geschrieben hat: je Block nur Kennungen (Quelle, Google-ID, ETag) und ein Fingerabdruck — keine Titel, keine Zeiten, keine Gäste. Wahrheit sind die Blöcke bei Google; Trennen löscht sie dort und den Bestand.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (die Person spiegelt ihre eigenen Arbeitszeiten in ihren eigenen Kalender, Schalter je Konto)',
+    art15: 'Kalender › Einstellungen › Weitere Kalender zeigt je Konto, wie viele Blöcke im Google-Kalender stehen',
+    loeschfrist: 'Blöcke heute − 1 bis + 60 Tage; Schalter aus, Konto trennen oder Google trennen löscht die Blöcke bei Google und den Bestand',
+  }),
   K('google-zusatz-zustand', 'Kurzlebiger Anmelde-Zustand der weiteren Google-Konten (state-Hash, PKCE-Verifier, 15 Minuten) — keine Personendaten.'),
   // iCloud je Person (06.10.2026, lib/kalender/icloud-person.ts): Zugang und Spiegel je Person — wie Google, Wahrheit ist Apple.
   mit(A('kalender-icloud--*', 'Spiegel der EIGENEN iCloud-Kalender einer Person (Termine, Teilnehmer-Adressen Dritter) — Wahrheit ist iCloud, Löschung nur in Apple; der Abgleich holt ihn alle 5 Minuten neu, der Löschlauf meldet die Termine, die die Person nennen (person-weitere.ts). Andere Konten sehen nur „Belegt“.', 'kalender-caches'), {
@@ -367,6 +373,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Kontakt-Auskunft (Art. 15) listet die Bestellungen der Person (Kennung oder Adresse, `bestellungenAuskunft`) samt Rechnungsnummer und Fassung der Bedingungen; der Haushalt sieht sie unter Markttraktion › Marketing › Anfragen › Bausteine',
     loeschfrist: 'abgelehnt 90 Tage nach der Entscheidung, geliefert 6 Jahre ab Ende des Lieferjahres (§ 257 Abs. 4 HGB) — rollend bei jeder neuen Bestellung (`nachFrist`); offene bleiben bis zur Entscheidung; Art. 17 sofort (gelieferte nur ohne Telefon und Kartei-Bezug)',
   }),
+  // ── Website-Eingänge (02.11., Prüfung A, lib/oeffentlich/eingang*.ts) — die Eingangszeile VOR der Antwort (Unterlage, Newsletter) ──
+  mit(E('website-eingang', 'Eingangszeilen der öffentlichen Website-Wege (je Instanz): Unterlage anfordern und Newsletter-Anmeldung — E-Mail, Vorname, Firma (freiwillig), Kennung der Unterlage, Newsletter-Wunsch, feste Kennungen der Anfrage im CRM, abgehakte Schritte (nur Wörter), Versuche, technischer Grund ohne Adresse. Die Daten nur, bis die Zeile verarbeitet ist (dann geleert). Art. 17: Zeilen, die die Person nennen, raus (person-weitere.ts).'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. b DSGVO (die Person fordert selbst eine Unterlage an) bzw. lit. a (Newsletter-Anmeldung, Double-Opt-in im eigenen Bestand) — die Zeile sichert nur, dass die Anforderung nicht verloren geht',
+    art15: 'entfällt eigens — die Anforderung steht nach der Verarbeitung als Anfrage an der Akte bzw. als Anmeldung (dort die Auskunft); offene Zeilen stehen bis zur Entscheidung in Marketing › Anfragen (Art. 17 nimmt sie heraus)',
+    loeschfrist: 'Daten mit der Verarbeitung geleert; fertige Zeilen (ohne Daten) nach 7 Tagen. Nie fertig gewordene seit 02.11. (R2-4) nicht mehr still nach 30 Tagen, sondern sichtbar in Marketing › Anfragen mit fester Aufgabe an die Marketing-Verantwortliche, bis jemand übernimmt oder verwirft (dann sofort geleert); Art. 17 sofort',
+  }),
   H('newsletter-einstellungen', 'Schalter der Newsletter-Anmeldung, Absender-Postfach (Speichername eines Inhabers + Postfach-Kennung), Name, Einwilligungstext und Fassung, Adresse der Website, Abweichungen zum Verantwortlichen — kein Bezug zu Dritten.'),
   E('kennung-alias--*', 'Weiterleitung alter Kontakt-Kennungen (Kennungs-Umzug, lib/crm/kennung-alias.ts) — Zeilen der Person raus (aliasOhnePerson); ihre alten Kennungen bekommen vorher einen eigenen Grabstein.'),
   // ── Netzwerken (02.10., Erfassen) ──
@@ -433,6 +445,9 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     art15: 'Einträge der Person zählen in der Auskunft (weitere Speicher, person-weitere.ts); gesendete Mails stehen zusätzlich als Aktivität (Betreff) in der Akte',
     loeschfrist: 'Gesendet, verworfen, gesperrt, unzustellbar oder gedruckt: 12 Monate nach der letzten Änderung (Motor-Lauf `postAufraeumen`); Entwürfe, solange die Kampagne läuft',
   }),
+  K('prozesse-motor-lauf', 'Herzschlag des Lauf-Motors der Prozesse (R2-2 Fund 4, 02.11., lib/prozesse/lauf-server.ts `prozesseImTakt`): Zeit des letzten Takts, Fehler in Folge, Fehler je Ereignis bzw. Lauf, wegen Alter übersprungene Ereignisse je Tag, Zahlen des Takts und ein Fingerabdruck des Stands von Kartei/CRM — nur Zeiten und Zähler, keine Personen, keine Inhalte. HOI-Befund „Prozess-Motor“.'),
+  K('lead-mql-stand', 'Letzter Blick „Lead wird MQL“ (R2-2 Fund 7, 02.11., lib/ereignisse/quellen.ts `mqlBlick`): nur nicht umkehrbare Fingerabdrücke der Lead-Kennungen, die MQL sind, und die Zeit — damit ein Neustart keinen Wechsel verschluckt. Keine Kennungen, Namen oder Inhalte.'),
+  K('kampagnen-motor-lauf', 'Herzschlag des Kampagnen-Motors (B-Prüfung, 02.11., lib/crm/kampagnen-motor.ts `motorImTakt`): Zeit des letzten Laufs und je Teil der letzte gute Lauf bzw. die Fehler in Folge — nur Zeiten und Zähler, keine Personen, keine Inhalte. HOI-Befund „Kampagnen-Motor“.'),
   T('uebergabe-journal--*', 'Übergaben an Kunden (lib/crm/uebergabe-journal.ts): Event, Empfänger, Tag, Anzahl, Dateiname, Kennungen der Personen — keine Namen/Mails/Inhalte. Die Kennung der gelöschten Person wird getilgt, der Nachweis bleibt; 36 Monate, dann weg (Löschfristen-Lauf).', 'uebergabe-protokolle'),
   K('events-geloescht', 'Kennungen gelöschter Events + Tag der Löschung, 90 Tage (lib/crm/events-geloescht.ts, Praxis-Prüfung M2): verhindert, dass eine wartende Erfassung ein bewusst gelöschtes Event neu anlegt. Nur Kennung und Tag — kein Titel, keine Personen; räumt sich beim Schreiben selbst auf.'),
   // Netzwerken — BROWSER-Speicher (kein Bestand, vom Wächter nicht gescannt, hier der Vollständigkeit halber, 03.10.):
@@ -1008,13 +1023,13 @@ const IN_PRIVAT: readonly string[] = [
 ];
 const IN_BUSINESS: readonly string[] = [
   // Kampagne „Homepage“ und Kampagnen-Motor (31.10./01.11.): Funde und Mail-Stapel gehören zur Kundengewinnung.
-  'kampagne-funde--*', 'kampagnen-post--*',
+  'kampagne-funde--*', 'kampagnen-post--*', 'kampagnen-motor-lauf', 'prozesse-motor-lauf', 'lead-mql-stand',
   // Buchhaltung (02.11.): Regeln der Business-Gesellschaften — die übrigen liegen getrennt in buchungs-regeln-privat--* (lib/finanzen/buchhaltung/server.ts)
   'buchungs-regeln--*',
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
-  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'vertrag-vorlagen--*', 'vertraege--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'bausteine-einstellungen', 'website-inhalt', 'baustein-bestellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
+  'netzwerken-erfassungen--*', 'visitenkarten--*', 'buchung--*', 'angebot-formular--*', 'vertrag-vorlagen--*', 'vertraege--*', 'check-sitzungen', 'check-einstellungen', 'newsletter-anmeldungen', 'website-eingang', 'newsletter-einstellungen', 'kontaktformular-einstellungen', 'bausteine-einstellungen', 'website-inhalt', 'baustein-bestellungen', 'head-*', 'heads-replay-*', 'content-entwuerfe', 'delegation-runde',
   // Wissen der Business-Heads, Fokus · Business je Haushalt und je Person (10.10.)
   'agenten-wissen--*', 'fokus-business--*', 'fokus-eigen-business--*',
   // Lauf-Spur des Business-Bereichs (10.10., je Bereich ein Bestand — nie gemischt)
@@ -1052,6 +1067,8 @@ const JE_PERSON: readonly string[] = [
   'google-verbindung--*', 'icloud-verbindung--*', 'kalender-icloud--*', 'postfaecher--*', 'postfach-zugang--*', 'oauth-tokens',
   // Weitere Google-Konten je Person (30.10.): Zugang und Spiegel gehören der Person
   'google-zusatz--*', 'kalender-google-zusatz--*',
+  // „Belegt“-Spiegel (01.11.): nur Kennungen der eigenen Blöcke im eigenen Google-Kalender
+  'kalender-belegt-spiegel--*',
   'zoe-kanal--*', 'zoe-whatsapp-medien',
   // eigene Einstellungen und eigene Ablagen
   'arbeitsmodus', 'arbeitsmodus--*', 'arbeitsrahmen--*', 'flaeche', 'flaeche--*', 'onboarding--*', 'fokus-laufend--*',

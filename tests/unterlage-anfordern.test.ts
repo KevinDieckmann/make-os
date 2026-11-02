@@ -84,6 +84,7 @@ beforeAll(async () => {
   await db.saveJson('kontakte', { kontakte: [
     k('c-sperre', { email: `sperre@${D}`, werbesperre: { seit: '2026-09-01', grund: 'Widerspruch' } }),
     k('c-eng', { email: `eng@${D}`, eingeschraenkt: { seit: '2026-09-01', grund: 'Art. 18', von: 'kevin' } }),
+    k('c-bekannt', { email: `bekannt@${D}` }),
   ] });
   W = await import('@/lib/oeffentlich/website-post');
   U = await import('@/lib/unterlagen/server');
@@ -198,6 +199,24 @@ describe('anfordern', () => {
     const ks = await kontakte();
     expect(ks.find(x => x.id === 'c-eng')!.aktivitaeten).toHaveLength(0);
     expect(ks.find(x => x.id === 'c-sperre')!.aktivitaeten.some(a => /nicht verschickt \(Werbesperre/.test(a.text ?? ''))).toBe(true);
+  });
+  it('vorhandene Person (öffentliche Strecke, Prüfung A Fund 4): Mail ja, im CRM nur „Adresse unbestätigt“ — keine Einwilligung, keine Stufe', async () => {
+    expect((await anfordern(`bekannt@${D}`)).d.ok).toBe(true);
+    await W._nachlauf();
+    const b = (await kontakte()).find(x => x.id === 'c-bekannt')!;
+    expect(b.aktivitaeten.some(a => a.art === 'system' && (a.text ?? '').startsWith('Anfrage (Adresse unbestätigt) über Website: Vorlage'))).toBe(true);
+    expect(b.einwilligungen ?? []).toHaveLength(0);
+    expect(b.stufe).toBe('neu');
+  });
+  it('Art. 18 (Prüfung A Fund 5): die Anforderung steht als Betroffenenantrag unter Datenschutz — die Person wird nicht verarbeitet', async () => {
+    const crm = await db.loadJson<{ antraege: { kontaktId?: string; nachricht?: string }[] }>('crm');
+    expect(crm!.antraege.filter(a => a.kontaktId === 'c-eng')).toHaveLength(1);
+    expect(crm!.antraege.find(a => a.kontaktId === 'c-eng')!.nachricht).toContain('Vorlage');
+  });
+  it('Eingangszeile (Prüfung A Fund 7): jede Anforderung liegt fest im Bestand, nach der Arbeit ohne Daten', async () => {
+    const l = (await db.loadJson<{ eintraege: { art: string; status: string; daten?: unknown }[] }>('website-eingang'))!.eintraege.filter(x => x.art === 'unterlage');
+    expect(l.length).toBeGreaterThan(0);
+    expect(l.every(x => x.status === 'fertig' && x.daten === undefined)).toBe(true);
   });
   it('Grenze je Adresse: höchstens 3 Mails am Tag, danach dieselbe Antwort ohne Mail und ohne Anfrage; am nächsten Tag wieder', async () => {
     const adr = `grenze@${D}`;

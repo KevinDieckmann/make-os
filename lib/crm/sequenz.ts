@@ -107,7 +107,7 @@ export function staendeStarten(k: Kampagne, heute: string, jetzt: string, darf: 
     if (!frei) break;
     if (da.has(zielSchluessel(z)) || !darf(z)) continue;
     if (alt.length + dazu.length >= SEQUENZ_GRENZEN.staende) break; // die Grenze lehnt der Schreibweg ab — hier nur nicht darüber hinaus starten
-    dazu.push({ ...z, schritt: 0, faelligAm: tagePlus(heute, k.sequenz[0].tagAbstand), status: 'offen', verlauf: [{ am: jetzt, was: 'start' }] });
+    dazu.push({ ...z, schritt: 0, schrittId: k.sequenz[0].id, faelligAm: tagePlus(heute, k.sequenz[0].tagAbstand), status: 'offen', verlauf: [{ am: jetzt, was: 'start' }] });
     frei--;
   }
   return { staende: dazu.length ? [...alt, ...dazu] : alt, neu: dazu.length };
@@ -116,8 +116,28 @@ export function staendeStarten(k: Kampagne, heute: string, jetzt: string, darf: 
 /** Stände, deren Schritt heute (oder früher) dran ist und noch nichts erzeugt hat. */
 export const faelligeStaende = (k: Pick<Kampagne, 'zielStaende'>, heute: string): ZielStand[] => (k.zielStaende ?? []).filter(s => s.status === 'offen' && s.faelligAm <= heute);
 
+/**
+ * Wo ein Stand in der Sequenz steht (M1, 01.11.): an der Schritt-KENNUNG (`schrittId`) — ein eingefügter oder entfernter Schritt verschiebt so keinen
+ * laufenden Stand. Altstand ohne Kennung: der Index (wie bis 01.11.). Kennt die Sequenz die Kennung nicht mehr: -1 (der Lauf beendet das Ziel).
+ */
+export function schrittIndex(k: Pick<Kampagne, 'sequenz'>, s: Pick<ZielStand, 'schritt' | 'schrittId'>): number {
+  const seq = k.sequenz ?? [];
+  if (s.schrittId) return seq.findIndex(x => x.id === s.schrittId);
+  return Number.isInteger(s.schritt) && s.schritt >= 0 && s.schritt < seq.length ? s.schritt : -1;
+}
 /** Der aktuelle Schritt eines Stands (oder null, wenn die Sequenz ihn nicht mehr kennt). */
-export const schrittVon = (k: Pick<Kampagne, 'sequenz'>, s: Pick<ZielStand, 'schritt'>): SequenzSchritt | null => k.sequenz?.[s.schritt] ?? null;
+export const schrittVon = (k: Pick<Kampagne, 'sequenz'>, s: Pick<ZielStand, 'schritt' | 'schrittId'>): SequenzSchritt | null => { const i = schrittIndex(k, s); return i >= 0 ? k.sequenz![i] : null; };
+/**
+ * Altstand übersetzen (rein): der Index wird zur Kennung des Schritts in DIESER Sequenz. Läuft vor jedem Speichern einer geänderten Sequenz
+ * (Route `sequenz`) — danach hängt jeder laufende Stand an seinem Schritt, nicht an seiner Stelle. Beendete und schon übersetzte bleiben.
+ */
+export function standMitKennung(k: Pick<Kampagne, 'sequenz'>, s: ZielStand): ZielStand {
+  if (s.schrittId || istEnde(s)) return s;
+  const sch = k.sequenz?.[s.schritt];
+  return sch ? { ...s, schrittId: sch.id } : s;
+}
+/** Wie viele Ziele gerade laufen (offen/wartet) — für den Hinweis beim Ändern der Sequenz. */
+export const laufendeZiele = (k: Pick<Kampagne, 'zielStaende'>): number => (k.zielStaende ?? []).filter(s => !istEnde(s)).length;
 
 /** Erzeugt (Entwurf/Follow-up/Druckliste) → „wartet“. */
 export function wartet(s: ZielStand, am: string, was: ZielVerlaufWas, schritt?: string, von?: string): ZielStand {
@@ -127,17 +147,29 @@ export function wartet(s: ZielStand, am: string, was: ZielVerlaufWas, schritt?: 
 /** Der Schritt ist getan (gesendet/erledigt) → nächster Schritt mit seinem Abstand ab heute, sonst „fertig“. Beendete bleiben, wie sie sind. */
 export function weiter(k: Pick<Kampagne, 'sequenz'>, s: ZielStand, heute: string, am: string, was: ZielVerlaufWas, von?: string): ZielStand {
   if (istEnde(s)) return s;
-  const jetzt = schrittVon(k, s);
+  const i = schrittIndex(k, s);
+  const jetzt = i >= 0 ? k.sequenz![i] : null;
   const verlauf = verlaufDazu(s, was, am, { schritt: jetzt?.id, von });
-  const naechster = k.sequenz?.[s.schritt + 1];
+  const naechster = i >= 0 ? k.sequenz?.[i + 1] : undefined;
   if (!naechster) return { ...s, status: 'fertig', verlauf: verlaufDazu({ ...s, verlauf }, 'fertig', am) };
-  return { ...s, schritt: s.schritt + 1, status: 'offen', faelligAm: tagePlus(heute, naechster.tagAbstand), verlauf };
+  return { ...s, schritt: i + 1, schrittId: naechster.id, status: 'offen', faelligAm: tagePlus(heute, naechster.tagAbstand), verlauf };
 }
 
 /** Beenden (reagiert/gestoppt) — mit Grund; schon Beendetes bleibt. */
 export function beenden(s: ZielStand, status: 'reagiert' | 'gestoppt', grund: string, am: string, was: ZielVerlaufWas, von?: string): ZielStand {
   if (istEnde(s)) return s;
   return { ...s, status, grund: grund.slice(0, 200), verlauf: verlaufDazu(s, was, am, { von }) };
+}
+
+/**
+ * Der Schritt ist getan UND das Ziel endet (M1, 01.11.: Anruf-Ergebnis „Gespräch“/„Termin“) — erst „erledigt“ am Schritt vermerken, dann beenden.
+ * So zählt der Trichter je Schritt (`kennzahlenJeSchritt`) den Schritt als erreicht und die Reaktion an ihm.
+ */
+export function erledigtUndBeenden(k: Pick<Kampagne, 'sequenz'>, s: ZielStand, status: 'reagiert' | 'gestoppt', grund: string, am: string, was: ZielVerlaufWas, von?: string): ZielStand {
+  if (istEnde(s)) return s;
+  const sch = schrittVon(k, s);
+  const mit = sch ? { ...s, verlauf: verlaufDazu(s, 'erledigt', am, { schritt: sch.id, von }) } : s;
+  return beenden(mit, status, grund, am, was, von);
 }
 
 /** Einen Stand im Bestand der Kampagne ersetzen (rein). */
@@ -150,11 +182,13 @@ export function standErsetzen(k: Kampagne, s: ZielStand): Kampagne {
  * reagierten, und — für Personen — Gespräch/Chance aus den Ergebnissen der Kampagne. Ohne Sequenz: leer.
  */
 export interface SchrittZahlen { id: string; kanal: SequenzKanal; erreicht: number; reagiert: number; gespraech: number; chance: number }
-export function kennzahlenJeSchritt(k: Pick<Kampagne, 'sequenz' | 'zielStaende' | 'ergebnisse'>): SchrittZahlen[] {
+export function kennzahlenJeSchritt(k: Pick<Kampagne, 'sequenz' | 'zielStaende' | 'ergebnisse'> & Partial<Pick<Kampagne, 'firmenErgebnisse'>>): SchrittZahlen[] {
   const seq = k.sequenz ?? [];
   if (!seq.length) return [];
+  // Letztes Ergebnis je Ziel — Personen aus `ergebnisse`, Betriebe ohne Person aus `firmenErgebnisse` (B-Prüfung 02.11., Fund 13).
   const letztes = new Map<string, string>();
-  for (const e of [...(k.ergebnisse ?? [])].sort((a, b) => a.am.localeCompare(b.am))) letztes.set(e.kontaktId, e.ergebnis);
+  for (const e of [...(k.ergebnisse ?? [])].sort((a, b) => a.am.localeCompare(b.am))) letztes.set(`kontakt:${e.kontaktId}`, e.ergebnis);
+  for (const e of [...(k.firmenErgebnisse ?? [])].sort((a, b) => a.am.localeCompare(b.am))) letztes.set(`firma:${e.firmaId}`, e.ergebnis);
   const z = seq.map(s => ({ id: s.id, kanal: s.kanal, erreicht: 0, reagiert: 0, gespraech: 0, chance: 0 }));
   for (const st of k.zielStaende ?? []) {
     // Zuletzt getaner Schritt (gesendet/erledigt) — dort zählt die Reaktion.
@@ -167,11 +201,9 @@ export function kennzahlenJeSchritt(k: Pick<Kampagne, 'sequenz' | 'zielStaende' 
     }
     if (zuletzt < 0) continue;
     if (st.status === 'reagiert') z[zuletzt].reagiert++;
-    if (st.art === 'kontakt') {
-      const e = letztes.get(st.id);
-      if (e === 'gespraech' || e === 'chance') z[zuletzt].gespraech++;
-      if (e === 'chance') z[zuletzt].chance++;
-    }
+    const e = letztes.get(zielSchluessel(st));
+    if (e === 'gespraech' || e === 'chance') z[zuletzt].gespraech++;
+    if (e === 'chance') z[zuletzt].chance++;
   }
   return z;
 }

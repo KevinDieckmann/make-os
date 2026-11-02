@@ -18,7 +18,27 @@ export interface KontaktformularEinstellungen {
 /** Grenzen — darüber 413 mit Text, nie still gekürzt. */
 export const GRENZEN = { vorname: 60, nachname: 60, firma: 120, email: 160, telefon: 40, nachricht: 2500, koerper: 8 * 1024 } as const;
 
-export interface KontaktEingabe { vorname: string; nachname: string; firma: string; email: string; telefon: string; nachricht: string }
+export interface KontaktEingabe { vorname: string; nachname: string; firma: string; email: string; telefon: string; nachricht: string; anlass?: string }
+
+/**
+ * Anlass aus dem Link der Website (01.11., Kevin: „ich kann nicht auf Anfrage reingehen“): Knöpfe wie „Einladung erhalten“ führen auf
+ * `/anfrage?anlass=…`. Nur bekannte Formen, nie freier Text aus der Adresse (sonst stünde fremder Text auf unserer Seite). Unbekannt → kein Anlass,
+ * nie ein Fehler. Titel von Baustein/Vorlage kommen aus dem eigenen Katalog (Server, `anlassAufloesen`).
+ */
+export const ANLASS_OK = /^[a-z0-9-]{1,60}$/;
+
+export interface Anlass { anlass: string; titel: string; vorschlag: string }
+
+/** Rein: Titel (für das Formular und die Anfrage) und Vorschlag für die Nachricht. `kontakt` und Unbekanntes → null (Formular ohne Anlass). */
+export function anlassVon(roh: unknown, katalog: { baustein?: string | null; vorlage?: string | null } = {}): Anlass | null {
+  if (typeof roh !== 'string' || !ANLASS_OK.test(roh)) return null;
+  if (roh === 'events') return { anlass: roh, titel: 'Einladung zu den Events', vorschlag: 'Bitte nehmen Sie mich in die Einladungsliste für Ihre Events auf.' };
+  if (roh === 'frage') return { anlass: roh, titel: 'Eine Frage', vorschlag: '' };
+  if (/^angebot-[a-z0-9-]+$/.test(roh)) return { anlass: roh, titel: 'Anfrage zu einem Angebot', vorschlag: '' };
+  if (/^baustein-[a-z0-9-]+$/.test(roh)) return { anlass: roh, titel: katalog.baustein ? `Baustein bestellen: ${katalog.baustein}` : 'Baustein bestellen', vorschlag: 'Ich möchte diesen Baustein bestellen. Firma und Rechnungsanschrift:' };
+  if (/^vorlage-[a-z0-9-]+$/.test(roh)) return { anlass: roh, titel: katalog.vorlage ? `Vorlage anfordern: ${katalog.vorlage}` : 'Vorlage anfordern', vorschlag: 'Bitte schicken Sie mir die Vorlage zu.' };
+  return null;
+}
 
 export const NICHT_ANGENOMMEN = 'Das hat leider nicht geklappt. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.';
 export const DANKE_TEXT = 'Danke für Ihre Nachricht. Wir melden uns persönlich bei Ihnen — in der Regel innerhalb von zwei Werktagen.';
@@ -36,6 +56,8 @@ const feld = (x: unknown): string => (typeof x === 'string' ? x.normalize('NFC')
 /** Die Eingabe des Formulars prüfen (rein). Pflicht: Vorname, E-Mail, Nachricht. Zu lang → 413, unförmig → 400. */
 export function eingabePruefen(b: Record<string, unknown>): Pruefung {
   const e: KontaktEingabe = { vorname: feld(b.vorname), nachname: feld(b.nachname), firma: feld(b.firma), email: feld(b.email).toLowerCase(), telefon: feld(b.telefon), nachricht: feld(b.nachricht) };
+  // Der Anlass ist nie Pflicht und nie ein Grund abzulehnen — unförmig fällt er still weg (er kommt aus einem Link, nicht vom Gast).
+  if (typeof b.anlass === 'string' && ANLASS_OK.test(b.anlass)) e.anlass = b.anlass;
   for (const k of ['vorname', 'nachname', 'firma', 'email', 'telefon', 'nachricht'] as const) {
     if (e[k].length > GRENZEN[k]) return { ok: false, status: 413, fehler: k === 'nachricht' ? `Die Nachricht ist zu lang (höchstens ${GRENZEN.nachricht} Zeichen).` : 'Eine Angabe ist zu lang.' };
   }
@@ -47,8 +69,9 @@ export function eingabePruefen(b: Record<string, unknown>): Pruefung {
   return { ok: true, eingabe: e };
 }
 
-/** Der Text der Anfrage-Aktivität (nach „Anfrage über Website: “) — die Nachricht wörtlich, sie bleibt fremder Text. */
-export const anfrageText = (e: Pick<KontaktEingabe, 'nachricht'>): string => `Kontaktformular — ${e.nachricht}`;
+/** Der Text der Anfrage-Aktivität (nach „Anfrage über Website: “) — die Nachricht wörtlich, sie bleibt fremder Text; davor der Anlass, wenn es einen gibt. */
+export const anfrageText = (e: Pick<KontaktEingabe, 'nachricht'>, a: Anlass | null = null): string =>
+  a ? `Kontaktformular · ${a.titel} (${a.anlass}) — ${e.nachricht}` : `Kontaktformular — ${e.nachricht}`;
 
 /**
  * Datenschutzhinweis in Kürze (Art. 13) — Verantwortlicher aus der Einrichtung bzw. der Abweichung der Website (Check-Einstellungen). Hinweis,

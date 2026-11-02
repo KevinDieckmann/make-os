@@ -12,7 +12,8 @@
 import { jsonBegrenzt, jsonZuGross, JSON_GROSS } from '@/lib/zugang/json-grenze';
 import { NextResponse } from 'next/server';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
-import { imHaushaltDesInhabers, istInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { imHaushaltDesInhabers } from '@/lib/zugang/haushalt-inhaber';
+import { darfSteuern } from '@/lib/zugang/steuern';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { firmenArchive, firmenWiederherstellen } from '@/lib/crm/firma-umhaengen-server';
@@ -26,7 +27,8 @@ async function zugang(req: Request): Promise<{ person: string } | NextResponse> 
   if (haus.dienst) return NextResponse.json({ ok: false, fehler: 'Die Sicherungen sieht und nutzt nur eine angemeldete Person von Hand, nicht der Dienstweg.' }, { status: 403 });
   const person = personStreng(req);
   if (!person) return NextResponse.json({ ok: false, fehler: 'Nur mit angemeldeter Person.' }, { status: 401 });
-  if (!(await istInhaber(person))) return NextResponse.json({ ok: false, fehler: 'Eine Firmen-Zusammenführung nimmt nur der Inhaber zurück.' }, { status: 403 });
+  // Steuern (02.11., Kevin: volles Mitglied wie Inhaber): EINE Regel lib/zugang/steuern.ts.
+  if (!(await darfSteuern(person))) return NextResponse.json({ ok: false, fehler: 'Eine Firmen-Zusammenführung nehmen nur Inhaber und volle Mitglieder des Haushalts zurück.' }, { status: 403 });
   return { person };
 }
 

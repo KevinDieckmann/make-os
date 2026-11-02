@@ -16,15 +16,17 @@
 
 import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
-import type { CrmBestand, CrmListe } from './typen';
+import type { CrmBestand } from './typen';
 import type { Welt } from './traktion';
-import { leads, salesBereit, passtLeadFilter, sqlEntscheidungOffen, type LeadFilter } from './leads';
+import { leads, salesBereit, passtLeadFilter, sqlEntscheidungOffen, ausVerlorenWiederDran, wiederDranSatz, type LeadFilter } from './leads';
 import { nachbereitung } from './erfassen';
 import { faellige, fuerPerson as faelligeFuer } from './followup';
 import { istNetzwerkenEvent } from './marke';
 import { weltDerKampagne } from './kampagnen-welt';
 import { WEG } from '@/lib/wege';
 import { TEAM, BEIDE, type Mitglied } from './team-liste';
+import { faelligeStaende } from './sequenz';
+import type { MotorDran } from './motor-dran';
 
 // Die Liste selbst (Vorgabe bzw. NEXT_PUBLIC_MAKE_OS_CRM_TEAM) steht seit 09.10. in ./team-liste.ts (rein, ohne Importe) — so lesen
 // auch Dateien, die team.ts einbindet, dieselbe Liste.
@@ -42,12 +44,8 @@ export function wer(v: unknown): string | undefined {
   return s === BEIDE || TEAM.some(t => t.id === s) ? s : undefined;
 }
 
-/** Welche Welt eine Liste hat — für die Standard-Zuständigkeit. */
-export const WELT_DER_LISTE: Partial<Record<CrmListe, Welt>> = {
-  chancen: 'sales', mandate: 'sales', sitzungen: 'sales', kampagnen: 'sales',
-  beitraege: 'marketing', newsletter: 'marketing', segmente: 'marketing',
-  events: 'event', teilnahmen: 'event',
-};
+// `WELT_DER_LISTE` (Welt je CRM-Liste) ist am 02.11. (M2) entfernt — niemand las sie mehr, und sie sagte für Kampagnen „Sales“, obwohl die Welt
+// einer Kampagne aus ihrem Playbook kommt (lib/crm/kampagnen-welt.ts `weltDerKampagne`).
 
 /** Wer tatsächlich zuständig ist — die Eintragung, sonst die/der Verantwortliche. */
 export const zustaendig = (z: string | undefined, w: Welt) => wer(z) ?? verantwortlich(w);
@@ -107,8 +105,11 @@ export interface FuerDich { id: string; welt: Welt; titel: string; anzahl: numbe
 
 const tagPlus = (d: string, n: number) => { const x = new Date(`${d}T12:00:00Z`); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 
-/** Was heute bei dieser Person liegt — über alle drei Welten, nur das Eigene. */
-export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, heute: string): FuerDich[] {
+/**
+ * Was heute bei dieser Person liegt — über alle drei Welten, nur das Eigene. `motor` (02.11., Prüfung D): was der Kampagnen-Motor und die
+ * Homepage-Funde für diese Person bereithalten (lib/crm/motor-dran.ts `motorDranFuer` — Mail-Stapel, Druckliste, Funde); ohne Angabe nichts davon.
+ */
+export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, heute: string, motor: readonly MotorDran[] = []): FuerDich[] {
   const l: FuerDich[] = [];
   const bald = tagPlus(heute, 7);
   // Follow-up-Ebene führt (27.09.): alles Fällige aus EINER Liste — echte Follow-ups und die virtuellen aus den alten Feldern (Prüfbericht, Punkt 1).
@@ -162,6 +163,9 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Muss-Kriterien und Sales-Schwelle erreicht — die Entscheidung steht oben in der Runde', ziel: { s: 'qualifizierung' } });
   // „Leads in Qualifizierung“ zählt wie die Leads-Liste dahinter (Filter „Qualifizierung“, `passtLeadFilter`; Abnahme 14.10., B5) — vorher ohne die
   // SQL-bereiten und mit den kalten, die Liste beim Sprung zeigte eine andere Zahl. Der Sprung öffnet genau diesen Filter.
+  // R2-1 Fund 6 (02.11.): ein verlorener Deal mit Wiedervorlage — ist sie erreicht, holt die Runde den Lead zurück; hier steht es auch (vorher: nirgends).
+  const wieder = meineLeads.filter(z => ausVerlorenWiederDran(z, heute)).length;
+  if (wieder) l.push({ id: 'verloren-wieder', welt: 'sales', titel: 'Leads aus verlorenen Deals wieder dran', anzahl: wieder, text: `${wiederDranSatz(wieder)} — die Wiedervorlage ist erreicht; in der Runde neu qualifizieren`, ziel: { s: 'qualifizierung' } });
   const inQualiListe = meineLeads.filter(z => passtLeadFilter(z, 'qualifizierung'));
   const davonBereit = inQualiListe.filter(z => salesBereit(z)).length;
   // Abnahme 2 (16.10., B11): „Für dich“ zählt die eigenen, die Liste kennt auch das Team — weicht es ab, sagt der Satz beide Zahlen, und der Sprung
@@ -169,8 +173,16 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   const imTeam = alleLeads.filter(z => passtLeadFilter(z, 'qualifizierung')).length;
   const teamSatz = imTeam > inQualiListe.length ? `deine ${inQualiListe.length} von ${imTeam} im Team · ` : '';
   if (inQualiListe.length) l.push({ id: 'qualifizierung', welt: 'sales', titel: 'Leads in Qualifizierung', anzahl: inQualiListe.length, text: `${teamSatz}${davonBereit ? `davon ${davonBereit} SQL-bereit — was bis zum SQL fehlt, steht am Lead` : 'was bis zum SQL fehlt, steht am Lead (Scoring-Einstellungen)'}`, ziel: { s: 'qualifizierung', a: 'leads', filter: 'qualifizierung', wer: 'ich' } });
-  const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && istMeins(k.zustaendig, weltDerKampagne(k), person));
-  const kpOffen = kampagnen.reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);
+  const kampagnen = (crm.kampagnen ?? []).filter(k => k.status === 'aktiv' && !k.geloeschtAm && !k.archiviertAm && istMeins(k.zustaendig, weltDerKampagne(k), person));
+  // Kampagnen MIT Sequenz (Kampagnen-Motor) takten selbst — „noch nicht angesprochen“ zählt nur die ohne (02.11., Prüfung D; wie die Power Hour,
+  // lib/crm/heute.ts 5b). Vorher zählte jede Motor-Person, die schon im Stapel oder als Follow-up stand, hier ein zweites Mal.
+  const kpOffen = kampagnen.filter(k => !k.sequenz?.length).reduce((a, k) => { const e = new Set(k.ergebnisse.map(x => x.kontaktId)); return a + k.kontaktIds.filter(id => !e.has(id)).length; }, 0);
   if (kpOffen) l.push({ id: 'kampagnen', welt: 'marketing', titel: 'Personen aus deinen Kampagnen', anzahl: kpOffen, text: 'noch nicht angesprochen', ziel: { s: 'marketing', a: 'kampagnen' } });
+  // Motor-Kampagnen: Ziele mit fälligem Schritt, die der Motor noch nicht vorbereitet hat (Stand „offen“) — Entwürfe, Druckliste und Follow-ups
+  // stehen in ihren eigenen Zeilen (unten bzw. „Follow-ups fällig“), nie doppelt.
+  const schritte = kampagnen.filter(k => k.sequenz?.length).reduce((a, k) => a + faelligeStaende(k, heute).length, 0);
+  if (schritte) l.push({ id: 'kampagnen-schritte', welt: 'marketing', titel: 'Fällige Schritte deiner Kampagnen', anzahl: schritte, text: 'der Kampagnen-Motor bereitet sie im nächsten Lauf vor', ziel: { s: 'marketing', a: 'kampagnen' } });
+  // Mail-Stapel, Druckliste, Homepage-Funde (02.11., Prüfung D) — dieselbe Zahl wie Glocke und Heute › Steht an.
+  for (const m of motor) if (m.n > 0) l.push({ id: `motor-${m.id}`, welt: 'marketing', titel: m.titel, anzahl: m.n, text: m.id === 'mails' ? 'freigeben, bearbeiten oder verwerfen — nichts geht ohne Klick raus' : m.id === 'briefe' ? 'drucken und als gedruckt markieren' : 'übernehmen oder verwerfen', ziel: { s: 'marketing', href: m.href } });
   return l;
 }

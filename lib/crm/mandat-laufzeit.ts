@@ -68,6 +68,34 @@ export function leistungsmonat(m: Partial<Pick<Mandat, 'start' | 'ende' | 'pause
 /** Läuft das Mandat in diesem Monat (mindestens einen Tag, pausierte Tage zählen nicht)? */
 export const mandatLaeuftIm = (m: Partial<Pick<Mandat, 'start' | 'ende' | 'pausen'>>, monat: string) => (leistungsmonat(m, monat)?.tage ?? 0) > 0;
 
+// ── Jahreshonorar (02.11., Prüfung R2-3 Fund 3) ──────────────────────────────
+
+/**
+ * Das Jahreshonorar eines Mandats (Euro) — nur, solange es zum Monatshonorar passt: Basis „monat“ und `honorar.betrag` = Jahr ÷ 12 auf den Cent (± 1 Cent
+ * Rundung). Wer das Monatshonorar von Hand ändert, hat wieder ein Monatshonorar (das Jahr gilt dann nicht mehr). null = kein Jahreshonorar. EINE Stelle für
+ * Rechnung, Morgenlauf, Liquidität und Anzeige.
+ */
+export function jahresHonorarVon(m: { honorar?: Partial<Mandat['honorar']> | null; jahresHonorar?: unknown }): number | null {
+  const j = m.jahresHonorar;
+  const h = m.honorar;
+  if (typeof j !== 'number' || !Number.isFinite(j) || !(j > 0) || h?.basis !== 'monat' || typeof h.betrag !== 'number') return null;
+  return Math.abs(Math.round((j * 100) / 12) - Math.round(h.betrag * 100)) <= 1 ? Math.round(j * 100) / 100 : null;
+}
+/** Beginnt in diesem Monat ein Vertragsjahr (Monat des Beginns + 12·k) und läuft das Mandat darin? */
+export function vertragsjahrBeginnt(m: Partial<Pick<Mandat, 'start' | 'ende'>>, monat: string): boolean {
+  if (!tagOk(m.start) || !/^\d{4}-\d{2}$/.test(monat)) return false;
+  const k = monateZwischen(m.start.slice(0, 7), monat);
+  return k >= 0 && k % 12 === 0 && mandatLaeuftIm(m, monat);
+}
+/** Der nächste Monat ab `ab` (einschließlich), in dem ein Vertragsjahr beginnt — null ohne Beginn bzw. nach dem Ende (`ende`). */
+export function naechstesVertragsjahr(m: Partial<Pick<Mandat, 'start' | 'ende'>>, ab: string): string | null {
+  if (!tagOk(m.start)) return null;
+  const s = m.start.slice(0, 7);
+  const k = Math.max(0, Math.ceil(monateZwischen(s, ab) / 12));
+  const mo = monatPlus(s, k * 12);
+  return vertragsjahrBeginnt(m, mo) ? mo : null;
+}
+
 /**
  * Honorar eines Leistungsmonats, wie es am Mandat steht (netto bzw. brutto): angebrochen und Honorar je Monat → Honorar × Tage ÷ Tage
  * des Monats, auf den Cent kaufmännisch; sonst das volle Honorar (bit-gleich wie vorher).

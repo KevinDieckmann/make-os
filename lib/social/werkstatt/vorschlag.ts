@@ -5,6 +5,7 @@
 // ein Satz „warum“. Nur Ausschnitte aus vorhandenen Quellen innerhalb ihrer Länge; was nicht passt, fällt weg (gemeldet, nie erfunden).
 // Bilder (Fotos) gehen nicht an die KI — nur ihre Länge als Standbild.
 
+import { kanalMitMarkenVorgabe } from '../marke-vorgabe-server';
 import { askText, extractJson, fremd } from '@/lib/anthropic';
 import type { SocialKanal, SocialFormat } from '../typen';
 import { gesamtDauer, WERKSTATT_GRENZEN, type QuellInfo, type SchnittVorschlag, type WerkstattAuftrag, type EinblendungLage } from './regeln';
@@ -89,7 +90,7 @@ export function vorschlagAus(roh: unknown, namen: ReadonlyMap<string, string>, q
 
 /** Den Vorschlag rechnen (Modellaufruf über askText — KI-Tor, Budget, Protokoll). Person = die auslösende Person. */
 export async function schnittVorschlagen(a: WerkstattAuftrag, quellen: ReadonlyMap<string, QuellInfo | null>, kanal: SocialKanal | null, format: SocialFormat | null, person: string, lauf: 'aufruf' | 'hintergrund' = 'aufruf'): Promise<{ ok: true; vorschlag: SchnittVorschlag } | { ok: false; fehler: string }> {
-  const { text, namen } = vorschlagAuftrag(a, quellen, kanal, format);
+  const { text, namen } = vorschlagAuftrag(a, quellen, kanal ? await kanalMitMarkenVorgabe(kanal) : null, format); // Positionierung als Vorgabe (02.11., M3)
   if (!namen.size) return { ok: false, fehler: 'Keine Quelle — erst Clips hinzufügen.' };
   const r = await askText({
     system: VORSCHLAG_SYSTEM, systemStabil: VORSCHLAG_SYSTEM, user: text, schema: VORSCHLAG_SCHEMA as unknown as Record<string, unknown>,

@@ -54,7 +54,8 @@ const crmMit = (x: Partial<CrmBestand>): CrmBestand => ({ ...leererBestand(), ..
 
 describe('Fund 1 — Jahrespreis wird Monatshonorar (÷ 12 auf den Cent), EINE Stelle für „+ Mandat“ und Deal', () => {
   it('honorarAusPreis: jahr ÷ 12 auf den Cent, monat bleibt, einmalig bleibt einmalig', () => {
-    expect(honorarAusPreis({ betrag: 10_000, basis: 'jahr' })).toEqual({ honorar: { betrag: 833.33, basis: 'monat', netto: true }, rechnungsrhythmus: 'monatlich' });
+    // 02.11. (R2-3 Fund 3): dazu das Jahreshonorar — eine Rechnung je Vertragsjahr; das Monatshonorar (÷ 12) bleibt die Kennzahl.
+    expect(honorarAusPreis({ betrag: 10_000, basis: 'jahr' })).toEqual({ honorar: { betrag: 833.33, basis: 'monat', netto: true }, rechnungsrhythmus: 'monatlich', jahresHonorar: 10000 });
     expect(honorarAusPreis({ betrag: 1200, basis: 'monat' })).toEqual({ honorar: { betrag: 1200, basis: 'monat', netto: true }, rechnungsrhythmus: 'monatlich' });
     expect(honorarAusPreis({ betrag: 5000, basis: 'einmalig' })).toEqual({ honorar: { betrag: 5000, basis: 'einmalig', netto: true }, rechnungsrhythmus: 'einmalig' });
     expect(honorarAusPreis(null).honorar.betrag).toBe(0);

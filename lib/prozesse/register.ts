@@ -88,9 +88,10 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
 
   // ── Kern · Marketing ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   {
-    // lib/crm/kampagnen.ts (Playbooks), lib/crm/recht.ts (Kanal-Ampel)
+    // lib/crm/kampagnen.ts (Playbooks), lib/crm/recht.ts (Kanal-Ampel), lib/crm/kampagnen-motor.ts (Sequenz, Mail-Stapel, Druckliste, Rückfluss),
+    // lib/crm/willkommen.ts (Willkommensstrecke), lib/crm/firma-karte.ts (Betriebe ohne Person in der Power Hour). Stand 02.11. (R2-2 Fund 5).
     id: 'sp-kampagnen', titel: 'Kampagnen (Playbooks)', quelle: 'system', band: 'kern', stufe: 'marketing',
-    steckbrief: { ausloeser: 'Wochenziele bzw. Vorschlag des Head of Marketing', eingang: 'Segment und Playbook', ergebnis: 'Antworten und Interesse an der Person', empfaenger: 'Sales (Qualifizierung)', eigner: 'Head of Marketing' },
+    steckbrief: { ausloeser: 'Wochenziele bzw. Vorschlag des Head of Marketing', eingang: 'Segment bzw. gefundene Betriebe und Playbook', ergebnis: 'Antworten und Interesse an der Person bzw. am Betrieb', empfaenger: 'Sales (Qualifizierung)', eigner: 'Head of Marketing' },
     phasen: [
       phase('planen', 'Planen', [
         schritt('pl-1', 'Segment wählen'),
@@ -98,12 +99,25 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
         frage('pl-3', 'Kanal-Ampel grün oder gelb?', 'pl-4', 'Werbesperre, Einschränkung (Art. 18) und rote Ampel nehmen eine Person nie auf.'),
         schritt('pl-4', 'Person bleibt draußen', undefined, { ende: true }),
       ]),
-      phase('ansprechen', 'Ansprechen', [nachricht('an-1', 'Entwurf je Person', 'MAKE OS versendet nichts — Text zum Kopieren bzw. per Klick.'), schritt('an-2', 'In der Power Hour anrufen bzw. schreiben')]),
+      phase('ansprechen', 'Ansprechen', [
+        schritt('an-1', 'Schritte der Sequenz', 'Je Ziel die Schritte des Playbooks: Mail, Anruf, Besuch oder Brief — Betriebe ohne Ansprechpartner über die Firma.'),
+        nachricht('an-2', 'Mail-Stapel', 'Entwürfe je Ziel; hinaus geht nur, was per Klick freigegeben ist — höchstens so viele am Tag wie eingestellt, immer mit Abmeldelink.'),
+        schritt('an-3', 'Druckliste', 'Briefe und Besuche als Liste zum Ausdrucken.'),
+        schritt('an-4', 'In der Power Hour anrufen bzw. besuchen', 'Auch Betriebe ohne Person stehen dort als Karte.'),
+      ]),
+      phase('rueckfluss', 'Rückfluss', [
+        schritt('rf-1', 'Antworten erkennen', 'Eine Antwort wird ein Follow-up „Antwort bearbeiten“ — die Sequenz hält für dieses Ziel an.'),
+        schritt('rf-2', 'Rückläufer und Abmeldungen', 'Unzustellbar bzw. abgemeldet → raus aus der Sequenz; eine Abmeldung gilt als Werbesperre.'),
+        schritt('rf-3', 'Funde prüfen', 'Neu gefundene Betriebe aus öffentlichen Quellen werden erst nach der Prüfung Ziel einer Kampagne.'),
+      ]),
+      phase('willkommen', 'Willkommensstrecke', [
+        nachricht('wk-1', 'Willkommen nach der Einwilligung', 'Ausnahme von „nur per Klick“: geht automatisch, sobald eine Einwilligung bestätigt ist — fester Text mit Abmeldelink, zählt nie als persönliche Antwort.'),
+      ]),
       phase('ergebnis', 'Ergebnis', [
-        schritt('er-1', 'Antwort erfassen'),
-        frage('er-2', 'Interesse?', 'er-3'),
+        schritt('er-1', 'Antwort bzw. Gespräch erfassen'),
+        frage('er-2', 'Interesse?', 'er-3', 'Gespräch → Lead „im Gespräch“; vereinbarter Termin bzw. Interesse → Qualifizierung.'),
         schritt('er-3', 'Kein Interesse vermerken', undefined, { ende: true }),
-        schritt('er-4', 'Lead in die Qualifizierung'),
+        schritt('er-4', 'Lead in die Qualifizierung', 'Auch ein früherer Kunde ohne offenen Deal kommt wieder in die Qualifizierung.'),
       ]),
     ],
     link: { href: WEG.marketing('kampagnen'), text: 'Markttraktion › Marketing › Kampagnen' },
@@ -112,10 +126,12 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
   {
     // lib/inbox/*, app/api/crm/anfrage (Kontakt aus Mail, WhatsApp, Buchung)
     id: 'sp-anfrage', titel: 'Anfrage-Eingang', quelle: 'system', band: 'kern', stufe: 'marketing',
-    steckbrief: { ausloeser: 'Mail, WhatsApp-Nachricht oder Formular einer unbekannten Person', eingang: 'Nachricht in der Inbox', ergebnis: 'Kontakt mit Herkunft und Lead', empfaenger: 'Sales (Qualifizierung)', eigner: 'Head of Marketing' },
+    steckbrief: { ausloeser: 'Mail, WhatsApp-Nachricht oder Formular der Website einer unbekannten Person', eingang: 'Nachricht in der Inbox bzw. Eingang der Website', ergebnis: 'Kontakt mit Herkunft und Lead', empfaenger: 'Sales (Qualifizierung)', eigner: 'Head of Marketing' },
     phasen: [
       phase('eingang', 'Eingang', [
-        nachricht('ei-1', 'Nachricht in der Inbox'),
+        nachricht('ei-1', 'Nachricht in der Inbox bzw. Eingang der Website', 'Kontaktformular, Check, „Angebot anfordern“ und Newsletter-Anmeldung landen unter Marketing › Anfragen.'),
+        frage('ei-5', 'Adresse bestätigt?', 'ei-6', 'Kam die Anfrage von der Website, zählt sie erst mit bestätigter Adresse.'),
+        erinnerung('ei-6', 'Anfrage prüfen — Adresse unbestätigt', 'Ein Follow-up zur Prüfung; übernommen wird die Anfrage erst per Klick.', { zurueck: true }),
         frage('ei-2', 'Absender bekannt?', 'ei-3', 'Abgleich über alle Adressen bzw. die Nummer — Sammeladressen nie.'),
         schritt('ei-3', 'Kontakt anlegen', 'Herkunft „Anfrage über …“, Dublette über die Adresse bzw. Nummer.'),
         schritt('ei-4', 'Zuordnen per Klick', 'Erst „Zuordnen“ schreibt den Verlauf der Akte — nie automatisch.'),
@@ -219,7 +235,7 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
       phase('abschluss', 'Abschluss', [
         frage('as-1', 'Angenommen?', 'as-2', 'Angenommen → Deal gewonnen; abgelehnt → Grund ist Pflicht.'),
         schritt('as-2', 'Verloren mit Grund', undefined, { ende: true }),
-        schritt('as-3', 'Deal gewonnen'),
+        schritt('as-3', 'Deal gewonnen', 'Ein angenommenes Angebot gewinnt den Deal und legt das Mandat gleich an — mit Produkt, Laufzeit und Raten aus dem Angebot.'),
       ]),
     ],
     link: { href: WEG.deals(), text: 'Markttraktion › Deals' },
@@ -264,9 +280,16 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
   {
     // lib/crm/mandat-anlegen.ts, lib/fulfillment/prozesse/onboarding.ts
     id: 'sp-uebergabe', titel: 'Übergabe & Onboarding', quelle: 'system', band: 'kern', stufe: 'uebergabe',
-    steckbrief: { ausloeser: 'Deal gewonnen', eingang: 'Deal und angenommenes Angebot', ergebnis: 'Fall startklar, Kick-off vermerkt', empfaenger: 'Fulfillment (Lieferung)', eigner: 'Head of Kundenerfolg' },
+    steckbrief: { ausloeser: 'Deal gewonnen', eingang: 'Deal und angenommenes Angebot', ergebnis: 'Fall startklar, Vertrag unterschrieben, Kick-off vermerkt', empfaenger: 'Fulfillment (Lieferung)', eigner: 'Head of Kundenerfolg' },
     phasen: [
-      phase('mandat', 'Mandat', [schritt('ma-1', 'Mandat anlegen', 'Produkt und Ziele aus dem angenommenen Angebot vorbelegt.'), schritt('ma-2', 'Fall aus der Vorlage starten')]),
+      phase('mandat', 'Mandat', [schritt('ma-1', 'Mandat aus dem Angebot', 'Entsteht beim Annehmen des Angebots von selbst (Produkt, Ziele, Laufzeit) — ohne Angebot per Klick.'), schritt('ma-2', 'Fall aus der Vorlage starten')]),
+      phase('vertrag', 'Vertrag', [
+        schritt('ve-1', 'Vertrag fertig', 'Aus der Vorlage mit den Angaben des Mandats.'),
+        nachricht('ve-2', 'Vertrag versendet', 'Per Klick über die Inbox.'),
+        frage('ve-3', 'Unterschrieben?', 've-4'),
+        erinnerung('ve-4', 'Unterschrift nachfassen', 'Ein Follow-up — die eine Erinnerung; die Übergabe wartet darauf.', { zurueck: true }),
+        schritt('ve-5', 'Unterschrieben', 'Beleg abgelegt, im Register der Gesellschaft mit Fristen und Erinnerung; die Übergabe läuft weiter.'),
+      ]),
       phase('onboarding', 'Onboarding', [
         nachricht('on-1', 'Willkommen binnen 24 Stunden', 'Als Entwurf — gesendet wird per Klick.'),
         termin('on-2', 'Kick-off'),
@@ -340,6 +363,7 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
     steckbrief: { ausloeser: 'Leistung erbracht bzw. Mandat beendet', eingang: 'Bestandskunde', ergebnis: 'Bewertung, Empfehlung bzw. neuer Deal', empfaenger: 'Sales', eigner: 'Head of Sales' },
     phasen: [
       phase('nachher', 'Nach der Leistung', [nachricht('nl-1', 'Bewertung und Testimonial'), schritt('nl-2', 'Upselling und Cross-Selling'), nachricht('nl-3', 'Newsletter mit Einwilligung')]),
+      phase('laufzeit', 'Laufzeit', [erinnerung('lz-1', 'Laufzeit endet', 'Rot am Mandat, in „Steht an“ und als Aufgabe — verlängern, beenden oder ein neuer Deal.')]),
       phase('wiederkauf', 'Wiederkauf', [frage('wk-1', 'Neuer Bedarf?', 'wk-2'), erinnerung('wk-2', 'Später wieder fragen', undefined, { zurueck: true }), schritt('wk-3', 'Neuer Deal mit Bestandskunde')]),
     ],
     link: { href: WEG.vertriebsplanung('kreislauf'), text: 'Markttraktion › Planung › Kreislauf' },
@@ -353,8 +377,16 @@ export const SYSTEM_PROZESSE: readonly ProzessDef[] = [
     id: 'sp-rechnung', titel: 'Rechnung & Zahlung', quelle: 'system', band: 'unterstuetzung',
     steckbrief: { ausloeser: 'Mandat aktiv bzw. Leistung erbracht', eingang: 'Mandat und Produkte des Angebots', ergebnis: 'Bezahlte Rechnung mit Buchung', empfaenger: 'Monatsabschluss', eigner: 'Head of Finance' },
     phasen: [
-      phase('rechnung', 'Rechnung', [schritt('re-1', 'Entwurf'), schritt('re-2', 'Stellen — danach festgeschrieben', 'Betrag, Nummer und Datum ändern sich nie mehr; nur Storno mit Grund.')]),
-      phase('zahlung', 'Zahlung', [frage('za-1', 'Bezahlt?', 'za-2'), erinnerung('za-2', 'Fälligkeit — Zahlungserinnerung', undefined, { zurueck: true }), schritt('za-3', 'Buchung zur Rechnung')]),
+      phase('rechnung', 'Rechnung', [
+        schritt('re-1', 'Entwurf im Morgenlauf', 'Je fälligem Mandat (auch in Raten) ein Entwurf; gestellt wird per Klick. Was nicht vorbereitet werden konnte, steht mit Grund da.'),
+        schritt('re-2', 'Stellen — danach festgeschrieben', 'Betrag, Nummer und Datum ändern sich nie mehr.'),
+        schritt('re-3', 'Storno nur mit Grund', 'Eine Gegenbuchung — die Nummer bleibt.'),
+      ]),
+      phase('zahlung', 'Zahlung', [
+        frage('za-1', 'Bezahlt?', 'za-2'),
+        erinnerung('za-2', 'Mahnstufen 1 bis 3', 'Je fällige Stufe eine Aufgabe mit Entwurf aus dem Morgenlauf — versendet wird per Klick.', { zurueck: true }),
+        schritt('za-3', 'Buchung zur Rechnung'),
+      ]),
     ],
     link: { href: WEG.rechnungen(), text: 'Finanzen › Rechnungen & Zahlungen' },
     uebergaben: [{ nach: 'sp-monatsabschluss', text: 'bezahlt' }],

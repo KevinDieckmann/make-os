@@ -10,7 +10,7 @@
 import type { Angebot, Mandat } from './typen';
 import type { Rechnung } from '@/lib/finanzen/finanzplan-bestand';
 import { zahlplanMonate } from './mandat-zusatz';
-import { mandatLaeuftIm, monatsName } from './mandat-laufzeit';
+import { jahresHonorarVon, mandatLaeuftIm, monatsName, naechstesVertragsjahr } from './mandat-laufzeit';
 import { rechnungsZustand } from '@/lib/finanzen/rechnung/uebersicht';
 import { WEG } from '@/lib/wege';
 
@@ -35,7 +35,7 @@ export interface Zeitleiste {
   hier: number;
 }
 
-type ZlMandat = Pick<Mandat, 'id' | 'status' | 'honorar'> & Partial<Pick<Mandat, 'start' | 'ende' | 'chanceId' | 'rechnungsrhythmus' | 'raten' | 'zahlplan' | 'mindestlaufzeitMonate' | 'geloeschtAm'>>;
+type ZlMandat = Pick<Mandat, 'id' | 'status' | 'honorar'> & Partial<Pick<Mandat, 'start' | 'ende' | 'chanceId' | 'rechnungsrhythmus' | 'raten' | 'zahlplan' | 'mindestlaufzeitMonate' | 'geloeschtAm' | 'jahresHonorar'>>;
 type ZlAngebot = Pick<Angebot, 'id' | 'status'> & Partial<Pick<Angebot, 'nummer' | 'gestelltAm' | 'angenommenAm' | 'abgelehntAm' | 'abgelaufenAm' | 'mandatId' | 'dealId' | 'geloeschtAm' | 'angelegt'>>;
 type ZlRechnung = Pick<Rechnung, 'id' | 'status'> & Partial<Pick<Rechnung, 'faellig' | 'bezahltAm' | 'leistungVon' | 'art' | 'angebotId' | 'mandatId' | 'positionen'>>;
 /** Was die Zeitleiste vom Fall braucht (Leistungstreppe: `fall` je Mandat — nur Phase). */
@@ -104,6 +104,13 @@ export function kundenZeitleiste(a: { mandat: ZlMandat; angebote?: readonly ZlAn
   const imMonat = (mo: string) => { const r = rechnungImMonat(eigene, mo); if (r) benutzt.add(r.id); return r; };
   if (zp) {
     zp.forEach((mo, i) => rechnungsPunkte.push(rechnungsPunkt(`rate-${mo}-${i}`, m.raten ? `Rate ${i + 1} von ${m.raten.anzahl}` : zp.length > 1 ? (i === 0 ? 'Anzahlung' : 'Restzahlung') : 'Rechnung', imMonat(mo), mo, heute, m.id)));
+  } else if (m.honorar && jahresHonorarVon(m) !== null && m.start) {
+    // Jahreshonorar (02.11., R2-3 Fund 3): je Vertragsjahr EINE Rechnung — das laufende und das nächste Vertragsjahr.
+    const jetztJahr = naechstesVertragsjahr(m, vorMonaten(jetztMonat, 11));
+    for (let mo = jetztJahr, n = 0; mo && mo <= naechsterMonat(jetztMonat) && n < 2; n++) {
+      rechnungsPunkte.push(rechnungsPunkt(`jahr-${mo}`, `Jahr ab ${monatsName(mo)}`, imMonat(mo), mo, heute, m.id));
+      mo = naechstesVertragsjahr(m, naechsterMonat(mo));
+    }
   } else if (m.honorar?.basis === 'monat' && m.rechnungsrhythmus === 'monatlich' && m.start) {
     // Die letzten fünf Leistungsmonate bis zum nächsten — das Gespräch dreht sich um das, was gerade fällig ist, nicht um die ganze Laufzeit. Ein älterer
     // Monat ohne Rechnung (vor dem Vormonat) bleibt weg: der Altbestand wurde oft außerhalb abgerechnet — gemeldet wird nur, was gerade fällig ist.

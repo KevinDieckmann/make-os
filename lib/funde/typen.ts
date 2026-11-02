@@ -99,6 +99,8 @@ export interface Fund {
   kontaktId?: string;
   firmaId?: string;
   gesendet?: { am: string; ueber: string; von: string; eigenesRisiko: true };
+  /** Die Mail liegt (freigegeben „auf eigenes Risiko“) im Mail-Stapel der Funde-Kampagne (M1, 01.11.) — gesendet wird gedrosselt im Takt. */
+  post?: { id: string; am: string; von: string };
   /** Die öffentliche Vorschau wurde geöffnet (nur Zeitpunkt, keine Adresse/Kennung des Aufrufs). */
   angesehenAm?: string;
 }
@@ -142,7 +144,8 @@ export const ARTEN_VORLAGEN: { id: string; name: string; arten: string[] }[] = [
   { id: 'restaurant-cafe', name: 'Nur Restaurants & Cafés', arten: ['restaurant', 'cafe'] },
 ];
 
-export interface FundeLaufStand { tag: string; gebiet?: string; geholt: number; neu: number; vorbereitet: number; fehler?: string; am: string }
+/** `texte` (02.11.): womit die Vorschau-Texte dieses Laufs entstanden — Modell oder Regelwerk; `ohneKi` = warum ohne (z. B. Hintergrund-KI aus). */
+export interface FundeLaufStand { tag: string; gebiet?: string; geholt: number; neu: number; vorbereitet: number; fehler?: string; am: string; texte?: 'ki' | 'regelwerk'; ohneKi?: string }
 
 export interface FundeBestand {
   funde: Fund[];

@@ -148,6 +148,34 @@ Schritt 7.2, dort in deren Admin-Konsole) — meldet Google „Zugriff blockiert
 4. Widerruft Google den Zugriff einmal (Passwort geändert, Zugriff entfernt), meldet die Glocke es einmal, und in der Zeile steht **Neu verbinden**.
 5. **Trennen** widerruft den Zugriff bei Google, die Termine verschwinden aus MAKE OS (bei Google bleiben sie).
 
+### 10.4 Firmen-Gruppe (mehrere Konten = eine Ebene)
+Wer bei mehreren Firmen eines Verbunds ein Konto hat, fasst sie zu einer **Gruppe** zusammen:
+1. Kalender › Einstellungen › Weitere Kalender → beim Konto **Einstellen** → **Firma / Gruppe** eintragen (frei wählbar, 1–40 Zeichen).
+2. Dieselbe Gruppe bei allen Konten dieser Firma eintragen → **Speichern**.
+3. Im Kalender stehen die Termine dieser Konten dann als **eine** Ebene „<Gruppe> · <Vorname>“ mit eigener Farbe (im Bereich Business,
+   ein-/ausblendbar wie jeder Kalender). Dieselbe Einladung in zwei Konten zählt einmal. Andere Personen sehen nur „Belegt“ und den Namen
+   „Weitere Termine · <Vorname>“ — nie den Gruppennamen. Feld leeren = keine Gruppe (je Kalender eine Ebene wie bisher).
+
+### 10.5 „Belegt“ in den eigenen Google-Kalender spiegeln
+Damit auch in Google selbst sichtbar ist, wann man in einer anderen Firma gebunden ist, schreibt MAKE OS für jeden Termin der weiteren Konten
+einen neutralen Block in den **eigenen Google-Hauptkalender** (die Haupt-Verbindung aus Abschnitt 1–9 muss stehen):
+- Titel **„Belegt · <Gruppe>“** (ohne Gruppe: die Bezeichnung des Kontos), privat, beschäftigt — **ohne** Beschreibung, Ort, Gäste, Erinnerung,
+  nie mit Einladungen. Fenster: gestern bis 60 Tage voraus.
+- Wird die Quelle verschoben, abgesagt oder gelöscht, zieht der Block nach (alle 5 Minuten mit dem Abgleich). Termine, die als „frei“
+  stehen, und Einladungen, die schon im Hauptkalender stehen, werden nicht gespiegelt.
+- Schalter je Konto **„Belegt“ in meinen Google-Kalender** (Vorgabe **an**, schalten kann nur die Person selbst). Aus → die Blöcke dieses
+  Kontos werden gelöscht. Konto trennen oder die Google-Verbindung trennen → ebenso.
+- MAKE OS zählt die Blöcke nie doppelt: es erkennt sie an einer eigenen Marke, Verfügbarkeit und Kapazität rechnen die Zeit einmal. Ein
+  weiteres Konto, das selbst solche Blöcke enthält, wird nicht zurückgespiegelt.
+- Gemerkt werden nur Kennungen (keine Titel, keine Zeiten). Höchstens 500 Blöcke je Person, je Lauf höchstens 60 Änderungen — der Rest folgt
+  im nächsten Takt.
+
+### 10.6 Business „Für wen“
+Im Termin-Dialog im **Business**-Bereich landet ein Termin für eine Person in **ihrem Google-Kalender**. **„Gemeinsam“** legt ihn im
+Google-Kalender der Person an, die ihn anlegt, und lädt die anderen Personen des Haushalts als Gäste ein — erst nach der Rückfrage
+„Einladung senden?“. Ist jemand nicht mit Google verbunden, sagt der Dialog es und nennt den Weg (Kalender › Einstellungen). Fehlt ein
+iCloud-Kalender aus der Zuordnung (z. B. „Gemeinsam“), fragt der Dialog einmal, welcher vorhandene Kalender es sein soll, und merkt sich die Wahl.
+
 ## Prüfen
 - Kachel „Google Kalender (MAKE)“ zeigt **verbunden** und **letzter Abgleich vor … Min.** (ab 30 Minuten färbt sie sich).
 - In Google einen Test-Termin anlegen → erscheint in MAKE OS (mit Push sofort, sonst ≤ 5 Min.). In MAKE OS einen Termin im Kalender

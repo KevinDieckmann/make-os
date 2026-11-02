@@ -275,6 +275,17 @@ export const notAusBetrifft = (name: string): boolean => !NOT_AUS_AUSGENOMMEN.ha
 /** Fail-closed (09.10.): ohne prüfbare Sperre bleiben nur die Wartungsläufe — dieselbe Liste wie beim Not-Aus. Rein. */
 export const nurWartung = <T extends { auftrag: { name: string } }>(faellig: readonly T[]): T[] => faellig.filter(f => !notAusBetrifft(f.auftrag.name));
 
+/**
+ * Läufe, die ein Head auch OHNE Modell trägt (02.11., Prüfung D): die Takt-Läufe der drei Markttraktions-Heads (Grundlauf, Power-Hour-Vorbereitung,
+ * Reviews) — beim erreichten Budget sperrt nur die KI, das Regelwerk läuft weiter (`headLauf` mit `ohneKi`). Fragen an den Head (Fäden,
+ * ZOE-Fragen) bleiben gesperrt — sie brauchen das Modell.
+ */
+export const REGELWERK_HEADS: ReadonlySet<string> = new Set(['sales', 'marketing', 'event']);
+/** Sperrt diese Sperre bei diesem Head nur die KI (Budget eines Regelwerk-Heads)? Rein. */
+export const nurKiGesperrt = (s: Pick<Sperre, 'grund'> | null | undefined, headId: string): boolean => s?.grund === 'budget' && REGELWERK_HEADS.has(headId);
+/** Ein Takt-Lauf eines Regelwerk-Heads (Name `head-sales|marketing|event`) — nicht ein Faden. */
+const regelwerkLauf = (name: string): boolean => /^head-(sales|marketing|event)$/.test(name);
+
 /** Welcher Head hinter einem Auftrag der Warteschlange steht (Takt, Arbeiter) — oder null. */
 export function headVonAuftrag(a: { name: string; eingabe?: Record<string, unknown> }): string | null {
   const h = /^head-(sales|marketing|event)$/.exec(a.name);
@@ -295,7 +306,10 @@ export function taktFiltern<T extends { auftrag: { name: string; eingabe?: Recor
   return faellig.filter(f => {
     if (e.notAus && notAusBetrifft(f.auftrag.name)) return false;
     const h = headVonAuftrag(f.auftrag);
-    return !h || !sperre(h, f.auftrag.person ?? null);
+    if (!h) return true;
+    const s = sperre(h, f.auftrag.person ?? null);
+    // Budget erreicht (02.11.): der Lauf eines Regelwerk-Heads kommt trotzdem — er läuft ohne KI (Route `heads/[head]`).
+    return !s || (regelwerkLauf(f.auftrag.name) && nurKiGesperrt(s, h));
   });
 }
 
@@ -509,9 +523,13 @@ async function budgetGlocke(haushalt: string, head: HeadDef, person: string | nu
   });
   if (!neu) return;
   const [{ melde }, { inhaberSpeicher }, { WEG }] = await Promise.all([import('@/lib/meldungen/melden'), import('@/lib/zugang/haushalt-inhaber'), import('@/lib/wege')]);
-  const empfaenger = an ?? (await inhaberSpeicher());
+  // Empfänger (02.11., Prüfung D): wer zuständig ist — sonst bei den drei Markttraktions-Heads die/der Verantwortliche der Welt (lib/crm/verantwortung-server.ts),
+  // nicht pauschal der Haupt-Inhaber; erst ohne beides der Haupt-Inhaber.
+  const welt = REGELWERK_HEADS.has(head.id) ? head.id as 'sales' | 'marketing' | 'event' : null;
+  const empfaenger = an ?? (welt ? await (await import('@/lib/crm/verantwortung-server')).verantwortlichePerson(welt).catch(() => null) : null) ?? (await inhaberSpeicher());
   // Neutral, ohne Beträge (Telegram-Regel) — die Zahlen stehen in den Einstellungen des Heads.
-  if (empfaenger) await melde({ an: empfaenger, art: 'agenten', titel: stufe === 100 ? `Das Monatsbudget von ${head.name} ist erreicht — der Head pausiert` : `${head.name} hat 80 % des Monatsbudgets verbraucht`, link: WEG.agenten({ h: head.id }) });
+  const voll = welt ? `Das Monatsbudget von ${head.name} ist erreicht — bis Monatsende arbeitet der Head ohne KI (nur Regelwerk)` : `Das Monatsbudget von ${head.name} ist erreicht — der Head pausiert`;
+  if (empfaenger) await melde({ an: empfaenger, art: 'agenten', titel: stufe === 100 ? voll : `${head.name} hat 80 % des Monatsbudgets verbraucht`, link: WEG.agenten({ h: head.id }) });
 }
 
 /** Für den Arbeiter (app/api/zoe/auftraege/lauf): darf dieser Auftrag laufen? Grund (nie Inhalte) oder null. */
@@ -525,6 +543,8 @@ export async function auftragGesperrt(a: { name: string; eingabe?: Record<string
     const h = headVonAuftrag(a);
     if (!h) return null;
     const s = await laufSperre(a.person ?? null, h);
+    // Budget erreicht (02.11.): ein Takt-Lauf eines Regelwerk-Heads läuft weiter — ohne KI (die Route entscheidet es noch einmal).
+    if (s && regelwerkLauf(a.name) && nurKiGesperrt(s, h)) return null;
     return s ? (s.text === UNLESBAR_TEXT ? ANGEHALTEN_UNLESBAR : s.grund === 'not-aus' ? ANGEHALTEN : s.grund === 'budget' ? 'Pausiert (Budget des Heads erreicht).' : 'Der Head ist ausgeschaltet.') : null;
   } catch (err) {
     // Fail-closed (09.10.): nicht prüfbar = angehalten — nie „frei“ aus einem Lesefehler.

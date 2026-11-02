@@ -46,7 +46,7 @@ import { NextResponse } from 'next/server';
 import { kalenderZugang, KEIN_KALENDER } from '@/lib/kalender/zugang';
 import { verbunden, anlegen, aendern, loeschen, antwortSenden, terminAufloesen, terminLesen, termineZurPruefung, ladeStand, kalenderNachName, KalenderFehler, KalenderKonflikt, EinladungNoetig } from '@/lib/kalender/icloud';
 import { hauptZugangAuffrischen, personenMitIcloud, persoenlichFremd } from '@/lib/kalender/icloud-person';
-import { kalenderZiel, googleKalenderNamen } from '@/lib/kalender/google/ziel';
+import { kalenderZiel, googleKalenderNamen, businessZiel } from '@/lib/kalender/google/ziel';
 import { ladeEinstellungen, wemGehoert, fachVonPerson, type Wer } from '@/lib/kalender/einstellungen';
 import { anlegenPruefen, aendernPruefen, text } from '@/lib/kalender/eingabe';
 import { bezugSetzen, ladeBezuege, BezugZuGross } from '@/lib/kalender/bezug-server';
@@ -139,6 +139,27 @@ async function kalenderEintrag(name: string) {
   try { return kalenderNachName(await ladeStand(), name); } catch { return undefined; }
 }
 
+/**
+ * Fehlt ein iCloud-Kalender aus der Zuordnung im Stand? Dann die wählbaren iCloud-Kalender des Haushalts (schreibbar, nicht je Person,
+ * nicht Google). Kalender da, Google-Kalender, Stand nicht lesbar oder nichts zur Wahl → null (dann gilt der bisherige Weg).
+ */
+async function icloudAuswahlWennFehlt(name: string): Promise<string[] | null> {
+  try {
+    const s = await ladeStand();
+    if (kalenderNachName(s, name)) return null;
+    const auswahl = s.kalender.filter(k => k.schreibbar !== false && !k.person && (!k.quelle || k.quelle === 'icloud')).map(k => k.name);
+    return auswahl.length ? auswahl.slice(0, 40) : null;
+  } catch { return null; }
+}
+
+/** CRM-Gäste und Gäste aus dem Haushalt (Business „Gemeinsam“) — jede Adresse einmal. */
+function gaesteVereint(crm: readonly { email: string; name?: string }[], haushalt: readonly { email: string; name?: string }[]): { email: string; name?: string }[] {
+  const raus: { email: string; name?: string }[] = [];
+  const da = new Set<string>();
+  for (const x of [...crm, ...haushalt]) { const m = x.email.toLowerCase(); if (da.has(m)) continue; da.add(m); raus.push({ email: x.email, ...(x.name ? { name: x.name } : {}) }); }
+  return raus;
+}
+
 /** Einladungen, Post an Gäste und Antworten nur von Hand — nie über den Dienstweg (ZOE, Takt, Skripte). */
 const nurVonHand = () => NextResponse.json({ ok: false, fehler: 'Einladungen, Änderungen an Gäste und Antworten nur von Hand — nie über ZOE oder Skripte.' }, { status: 403 });
 
@@ -186,8 +207,23 @@ export async function POST(req: Request) {
   const wer: Wer | null = e.wer ?? (await fachVonPerson(z.person));
   if (!e.kalender && !wer) return NextResponse.json({ ok: false, fehler: 'In welchen Kalender? Bitte einen Kalender wählen.' }, { status: 400 });
   // Ohne gewählten Kalender: `bereich` (Standard „privat“ wie bisher) → EINE Zuordnung (`kalenderZiel`): Business → Google Kalender der Person, sonst iCloud.
-  const kalender = e.kalender || (await kalenderZiel(wer!, e.bereich ?? 'privat', einst)).kalender;
+  // Business (01.11.): die Person → ihr Google-Kalender; „Gemeinsam“ → der Google-Kalender der anlegenden Person, die anderen als Gäste
+  // (Einladung nur nach Bestätigung — `anlegen` fragt). Ohne Google-Verbindung eine Meldung mit dem Weg dorthin.
+  let kalender = e.kalender;
+  let haushaltGaeste: { email: string; name?: string }[] = [];
+  if (!kalender && e.bereich === 'business') {
+    const bz = await businessZiel(z.person, wer!, einst);
+    if ('fehler' in bz) return NextResponse.json({ ok: false, fehler: bz.fehler, verbinden: bz.verbinden }, { status: 409 });
+    kalender = bz.kalender; haushaltGaeste = bz.gaeste;
+  }
+  kalender ||= (await kalenderZiel(wer!, e.bereich ?? 'privat', einst)).kalender;
   if (!kalender) return NextResponse.json({ ok: false, fehler: 'Für diese Person ist kein Kalender hinterlegt — bitte einen Kalender wählen.' }, { status: 400 });
+  // iCloud-Ziel fehlt (01.11.: z. B. „Gemeinsam“ gibt es in iCloud nicht): statt eines Fehlers die vorhandenen Kalender zur Wahl —
+  // die Oberfläche legt den Kalender einmal fest (Kalender-Einstellungen) und speichert dann.
+  if (!e.kalender) {
+    const wahl = await icloudAuswahlWennFehlt(kalender);
+    if (wahl) return NextResponse.json({ ok: false, fehler: `Den Kalender „${kalender}“ gibt es in iCloud nicht — bitte einmal festlegen, wohin diese Termine gehen.`, kalenderWaehlen: { fach: wer, auswahl: wahl } }, { status: 409 });
+  }
   // Konten „nur Business“ (Gesamtprüfung 12.10.): nur in Business-Kalender — der Privat-Bereich des Haushalts bleibt zu.
   if (spaceVonKalender(einst, kalender) !== 'business' && await kalenderNurBusiness(z.person)) return NextResponse.json({ ok: false, fehler: NUR_BUSINESS_PRIVAT }, { status: 403 });
   // iCloud je Person (06.10.): in den Kalender aus der eigenen Verbindung einer anderen Person schreibt niemand sonst.
@@ -205,7 +241,7 @@ export async function POST(req: Request) {
       ...(e.ort ? { ort: e.ort } : {}), ...(e.notiz ? { notiz: e.notiz } : {}), ...(e.wiederholung ? { wiederholung: e.wiederholung } : {}),
       erinnerungenMin: e.erinnerungenMin, art: e.art, ...(e.farbe ? { farbe: e.farbe } : {}), beschaeftigt: e.beschaeftigt,
       sichtbarkeit: e.sichtbarkeit, zone: e.zone, ...(e.endZone ? { endZone: e.endZone } : {}), ...(e.arbeitsort ? { arbeitsort: e.arbeitsort } : {}), ...(e.blockArt ? { blockArt: e.blockArt } : {}),
-      ...(g.gaeste.length ? { gaeste: g.gaeste.map(x => ({ email: x.email, ...(x.name ? { name: x.name } : {}) })) } : {}),
+      ...(g.gaeste.length || haushaltGaeste.length ? { gaeste: gaesteVereint(g.gaeste, haushaltGaeste) } : {}),
     }, { einladungBestaetigt: e.einladungBestaetigt });
     // Sicht-Prüfung 08.10.: eine mitgeschickte UID, die es SCHON gibt (`schonDa`), ist nur der Wiederholversuch der eigenen
     // Anlage — der Bezug (`von`, „privat“) wird nur dann geschrieben, wenn der Termin dieser Person gehört (eigener Bezug, sonst

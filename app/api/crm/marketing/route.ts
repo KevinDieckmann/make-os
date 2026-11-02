@@ -26,7 +26,9 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { ladeCrm, aendereCrm } from '@/lib/crm/speicher';
 import { kontextAus } from '@/lib/crm/segmente';
 import { abmeldeLink } from '@/lib/datenschutz/abmelden';
-import { marketingKennzahlen, einstellungAus, saeubereEinstellung, stimmenAus, segmentCsv, newsletterCsv, dateiTeil, freigabeLage, beitraegeJePerson, marketingTrichter } from '@/lib/crm/marketing';
+import { marketingKennzahlenMitQuellen } from '@/lib/crm/traktion-index';
+import { fnv } from '@/lib/crm/kampagnen-post';
+import { einstellungAus, saeubereEinstellung, stimmenAus, segmentCsv, newsletterCsv, dateiTeil, freigabeLage, beitraegeJePerson, marketingTrichter } from '@/lib/crm/marketing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,7 +53,10 @@ export async function GET(req: Request) {
   const tage = url.searchParams.get('tage') === '30' ? 30 : 90;
   // ETag für die JSON-Antwort (27.09.): der Marketing-Reiter fragt bei jedem Abgleich — unverändert heißt 304.
   const nurJson = format === null && segmentId === null && url.searchParams.get('newsletter') === null;
-  const etag = nurJson ? etagAus('mk', await speicherStand(['crm', 'kontakte', 'crm-scoring']), heute, String(tage), personAus(req)) : null;
+  // Quellen außerhalb des CRM (02.11., Prüfung D): Website, Social, Kampagnen-Motor — dieselbe Lesestelle wie der Traktions-Index; ihr Fingerabdruck steht
+  // im ETag, damit eine neue Veröffentlichung oder gesendete Mail die Übersicht frisch macht.
+  const quellen = nurJson ? await (await import('@/lib/crm/traktion-quellen-server')).traktionQuellenLaden().catch(() => ({})) : {};
+  const etag = nurJson ? etagAus('mk', await speicherStand(['crm', 'kontakte', 'crm-scoring']), heute, String(tage), personAus(req), fnv(JSON.stringify(quellen))) : null;
   if (etag) { const gleich = unveraendert(req, etag); if (gleich) return gleich; }
   const kontakte = (await loadJson<{ kontakte: Kontakt[] }>('kontakte'))?.kontakte ?? [];
   const crm = await ladeCrm();
@@ -73,7 +78,8 @@ export async function GET(req: Request) {
   return jsonAntwort(req, {
     ok: true, heute, ich: personAus(req),
     einstellung: einstellungAus(crm),
-    kennzahlen: marketingKennzahlen(kontakte, crm, heute),
+    // EINE Rechnung mit dem Traktions-Index (02.11., Prüfung D): mit Social, Website und Kampagnen-Motor.
+    kennzahlen: marketingKennzahlenMitQuellen({ kontakte, crm, heute, ...quellen }),
     stimmen: stimmenAus(kontakte, 30),
     freigaben: freigabeLage(crm),
     jePerson: beitraegeJePerson(crm.beitraege ?? [], heute),

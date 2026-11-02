@@ -28,6 +28,9 @@ import { geburtstagFuer, type Geburtstag, type AnlassAktion } from '@/lib/kalend
 import type { TerminZeit } from '@/lib/crm/aktivitaeten';
 import { WEG } from '@/lib/wege';
 import { tagPlus } from '@/lib/kalender/zeit';
+import { laufzeitAbgelaufen, laufzeitAufgabeId, mandatFristen, LAUFZEIT_ABGELAUFEN } from '@/lib/crm/kunden';
+import { bereichVonGesellschaft } from '@/lib/einheiten';
+import type { Mandat } from '@/lib/crm/typen';
 
 /** `bereich` (10.10.): Bereich des Kalenders (lib/kalender/space.ts `spaceVonKalender`) — für die Sicht Privat · Business. */
 export interface ATermin { id: string; titel: string; start: string; ende: string; ganztags: boolean; ort?: string; art: string; href: string; laeuft: boolean; bereich?: 'privat' | 'business' }
@@ -35,7 +38,9 @@ export interface ATermin { id: string; titel: string; start: string; ende: strin
 export interface AFrist { id: string; art: Frist['art'] | 'event'; tag: string; titel: string; unter?: string; href: string; inTagen: number; kuendigung?: true; business?: true }
 export interface AFollowup { id: string; text: string; name: string; faellig: string; uhrzeit?: string; tageUeber: number; quelle: string; href: string }
 export interface ANachbereiten { kontaktId: string; name: string; titel: string; tag: string; zeit?: string; href: string }
-export interface ABuchung { id: string; titel: string; start: string; href: string }
+/** `lange`/`bald` (02.11., Prüfung A Fund 1): wartet seit über 24 h bzw. der Termin ist in unter 24 h — die Glocke erinnert (abgeleitet). */
+/** `fremd` (R2-1 Fund 5): die Seite gehört einer anderen Person — gezeigt, weil diese Person die Arbeit steuern darf und die Anfrage über 24 h wartet. */
+export interface ABuchung { id: string; titel: string; start: string; href: string; lange?: true; bald?: true; fremd?: true }
 export interface AGeburtstag {
   id: string; name: string; tag: string; alter?: number; href: string; herkunft: Geburtstag['herkunft']; kontaktId?: string; menschId?: string;
   /** Vorschlag: Geschenk-Aufgabe (CRM) bzw. „Geschenk vormerken“ (Familie) mit dieser Deadline (10 Tage vorher, frühestens heute). */
@@ -43,6 +48,10 @@ export interface AGeburtstag {
   /** Familie: der Wichtige Tag dazu — `ab` = Geburtstag − Vorlauf, `erledigt` für dieses Jahr (F2 M2). */
   anlass?: { tagId: string; aktion: AnlassAktion; ab: string; erledigt: boolean };
 }
+
+/** Was in der Kundengewinnung auf die Person wartet (02.11., Prüfung D): Mail-Stapel, Druckliste, Homepage-Funde — nur Zahl, Satz, Ziel. */
+/** `wieder` (R2-1 Fund 6): Leads aus verlorenen Deals, deren Wiedervorlage erreicht ist (abgeleitet, an die Zuständige des Leads). */
+export interface AMotor { id: 'mails' | 'briefe' | 'funde' | 'wieder'; n: number; titel: string; href: string }
 
 /** Danke-Mails, die zu einem Event bereitliegen (Netzwerken, 02.10.) — nur die Zahl und das Ziel. */
 export interface ADanke { id: string; n: number; eventTitel: string; href: string }
@@ -58,6 +67,8 @@ export interface Anstehend {
   geburtstage: AGeburtstag[];
   /** Danke-Mails nach einem Event (Netzwerken, 02.10.) — fehlt in älteren Ständen. */
   danke?: ADanke[];
+  /** Kampagnen-Mails zur Freigabe, Briefe zum Drucken, Funde zum Prüfen (02.11.) — nur Business; fehlt in älteren Ständen. */
+  motor?: AMotor[];
   /**
    * Zeiten der Termine hinter Meetings der letzten Tage (nur Schlüssel, auf die ein Meeting zeigt) — damit die Power Hour
    * „Wie lief's?“ aus der Kartei auf der Seite rechnen kann (lib/crm/erfassen.ts `nachbereitung` mit `termine`).
@@ -95,7 +106,7 @@ export function anstehendFuerSpace(a: Anstehend, space: 'privat' | 'business' | 
     return { ...z, jeBereich: { privat: s === 'privat' ? z : null0, business: s === 'business' ? z : null0 } };
   };
   const termine = (s: 'privat' | 'business') => a.termine.filter(t => !t.bereich || t.bereich === s);
-  if (space === 'privat') return { ...a, vorschlaege: vorschlaege('privat'), termine: termine('privat'), buchungen: [], followups: [], nachbereiten: [], danke: [], nachbereitZeiten: {}, fristen: a.fristen.filter(f => !f.business), geburtstage: a.geburtstage.filter(g => g.herkunft !== 'crm') };
+  if (space === 'privat') return { ...a, vorschlaege: vorschlaege('privat'), termine: termine('privat'), buchungen: [], followups: [], nachbereiten: [], danke: [], motor: [], nachbereitZeiten: {}, fristen: a.fristen.filter(f => !f.business), geburtstage: a.geburtstage.filter(g => g.herkunft !== 'crm') };
   if (space === 'business') return { ...a, vorschlaege: vorschlaege('business'), termine: termine('business'), fristen: a.fristen.filter(f => f.business), geburtstage: a.geburtstage.filter(g => g.herkunft === 'crm') };
   return a;
 }
@@ -160,6 +171,21 @@ export function fristenAnstehend(fristen: readonly Frist[], person: string, heut
     .filter(f => !f.erledigt && !f.review && (!f.fuer || f.fuer === person || f.fuer === 'beide'))
     .filter(f => f.tag >= heute && (f.tag <= morgen || (f.kuendigung && f.tag <= grenze)))
     .map(f => ({ id: f.id, art: f.art, tag: f.tag, titel: f.titel, ...(f.unter ? { unter: f.unter } : {}), href: f.href, inTagen: tageZwischen(heute, f.tag), ...(f.kuendigung ? { kuendigung: true as const } : {}), ...(f.bereich === 'business' ? { business: true as const } : {}) }));
+}
+
+/**
+ * Mandate, deren Laufzeit vorbei ist, ohne dass jemand verlängert oder beendet hat (02.11., Prüfung C) — als Frist „überfällig“ in Steht an und Glocke
+ * (abgeleitet, nie gespeichert), bis entschieden ist. Nur für die zuständige Person (bzw. „beide“/ohne). Bereich aus der Gesellschaft (offen = Business).
+ */
+export function laufzeitAnstehend(mandate: readonly Mandat[], person: string, heute: string, offeneAufgaben?: ReadonlySet<string>): AFrist[] {
+  return mandate
+    .filter(m => laufzeitAbgelaufen(m, heute) && (!m.zustaendig || m.zustaendig === person || m.zustaendig === 'beide'))
+    // R2-4 Fund 12: EIN Weg meldet — liegt die Aufgabe des Morgenlaufs (`mlz-…`, mit eigener Glocke) offen, keine zweite (abgeleitete) Meldung.
+    .filter(m => !offeneAufgaben?.has(laufzeitAufgabeId(m.id, mandatFristen(m, heute).endeAm!)))
+    .map(m => {
+      const ende = mandatFristen(m, heute).endeAm!;
+      return { id: `mandat-laufzeit-${m.id}`, art: 'mandat' as const, tag: ende, titel: `Mandat „${m.titel || m.kunde}“: ${LAUFZEIT_ABGELAUFEN}`, href: WEG.mandat(m.id), inTagen: tageZwischen(heute, ende), ...(bereichVonGesellschaft(m.gesellschaft) === 'business' ? { business: true as const } : {}) };
+    });
 }
 
 /**

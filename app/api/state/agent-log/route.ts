@@ -13,7 +13,7 @@ import { imHaushaltDesInhabers, nurHaushalt } from '@/lib/zugang/tor';
 import { NextResponse } from 'next/server';
 import { logRun, recentRuns } from '@/lib/agent-log';
 import { istDienst } from '@/lib/zugang/dienst';
-import { nurInhaber } from '@/lib/zugang/haushalt-inhaber';
+import { steuernOderSystemlauf } from '@/lib/zugang/steuern';
 import { personStreng } from '@/lib/finanzen/haushalt/zugriff';
 
 export const runtime = 'nodejs';
@@ -32,7 +32,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   // Agentenläufe steuern den Wochen-Loop — nur Dienstweg oder Inhaber tragen ein (26.09.).
-  if (!istDienst(req) && !(await nurInhaber(req))) return NextResponse.json({ ok: false, error: 'Nur für den Inhaber.' }, { status: 403 });
+  // Steuern (02.11., Kevin: volles Mitglied wie Inhaber): EINE Regel lib/zugang/steuern.ts.
+  if (!istDienst(req) && !(await steuernOderSystemlauf(req))) return NextResponse.json({ ok: false, error: 'Nur für Inhaber und volle Mitglieder des Haushalts.' }, { status: 403 });
   let body: { agent?: string; title?: string; payload?: unknown };
   try { body = await jsonBegrenzt(req, JSON_GROSS); } catch (e) { return jsonZuGross(e) ?? NextResponse.json({ ok: false, error: 'Kein gültiges JSON.' }, { status: 400 }); }
   const agent = (body.agent ?? '').trim();

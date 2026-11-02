@@ -8,7 +8,8 @@
 //   { aktion: 'links-neu', id }   — neue Download-Links an die bestellende Person (abgelaufener Link)
 
 import { NextResponse } from 'next/server';
-import { imHaushaltDesInhabers, istInhaber, istDienst, nurHaushalt, nurDerInhaber } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, istDienst, nurHaushalt } from '@/lib/zugang/tor';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
@@ -22,7 +23,7 @@ export const dynamic = 'force-dynamic';
 const fehler = (text: string, status: number) => NextResponse.json({ ok: false, fehler: text }, { status });
 
 async function stand(person: string) {
-  const [l, liste, wahl, inhaber, katalog] = await Promise.all([bausteineLage(), bestellungenStand(), gesellschaftWahl(), istInhaber(person), katalogLaden().catch(() => [])]);
+  const [l, liste, wahl, inhaber, katalog] = await Promise.all([bausteineLage(), bestellungenStand(), gesellschaftWahl(), darfSteuern(person), katalogLaden().catch(() => [])]);
   return {
     ok: true,
     einstellungen: { aktiv: l.e.aktiv, gesellschaft: l.e.gesellschaft ?? '', zahlungszielTage: l.zahlungszielTage, bedingungenText: l.e.bedingungenText ?? '', bedingungenVorgabe: BEDINGUNGEN_VORGABE.join('\n') },
@@ -51,7 +52,8 @@ export async function POST(req: Request) {
   const id = typeof b.id === 'string' ? b.id : '';
   try {
     if (b.aktion === 'einstellungen') {
-      if (!(await istInhaber(z.person))) return nurDerInhaber();
+      // Marketing steuern (02.11., Prüfung D): Inhaber ODER volles Mitglied des Haushalts (lib/zugang/steuern.ts).
+      if (!(await darfSteuern(z.person))) return fehler(NUR_STEUERN, 403);
       const teil: Record<string, unknown> = {};
       for (const k of ['aktiv', 'gesellschaft', 'zahlungszielTage', 'bedingungenText']) if (k in b) teil[k] = b[k];
       await einstellungenSetzen(teil, z.person);

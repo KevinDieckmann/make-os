@@ -3,7 +3,8 @@
 // POST { aktiv: boolean } → nur ein Inhaber per Sitzung (Dienstweg 403), mit Bau-Kennung. Einschalten nur mit Verantwortlichem (sonst 409).
 
 import { NextResponse } from 'next/server';
-import { imHaushaltDesInhabers, istInhaber, istDienst, nurHaushalt, nurDerInhaber } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, istDienst, nurHaushalt } from '@/lib/zugang/tor';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { protokolliere, werAus } from '@/lib/store/aenderungsprotokoll';
@@ -26,7 +27,7 @@ async function gruendeVon(): Promise<string[]> {
 export async function GET(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return nurHaushalt();
-  const [e, gruende, inhaber] = await Promise.all([ladeKontaktformularEinstellungen(), gruendeVon(), istInhaber(z.person)]);
+  const [e, gruende, inhaber] = await Promise.all([ladeKontaktformularEinstellungen(), gruendeVon(), darfSteuern(z.person)]);
   return NextResponse.json({ ok: true, aktiv: e.aktiv, bereit: e.aktiv && !gruende.length, gruende, pfad: PFAD, istInhaber: inhaber }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
@@ -34,7 +35,8 @@ export async function POST(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return nurHaushalt();
   if (istDienst(req)) return fehler('Nur per Klick einer Person — nicht über den Dienstweg.', 403);
-  if (!(await istInhaber(z.person))) return nurDerInhaber();
+  // Marketing steuern (02.11., Prüfung D): Inhaber ODER volles Mitglied des Haushalts (lib/zugang/steuern.ts).
+  if (!(await darfSteuern(z.person))) return fehler(NUR_STEUERN, 403);
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   let b: Record<string, unknown>;

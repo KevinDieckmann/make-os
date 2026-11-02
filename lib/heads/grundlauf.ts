@@ -14,6 +14,7 @@ import type { Antwort, Vorschlag } from './pruefer';
 import type { HeadId } from './prompt';
 
 import { localDay } from '@/lib/zeit';
+import { montagVon } from '@/lib/zeit/kalender-kern';
 import { anzahl } from '@/lib/text/zahlwort';
 type P = { id: string; name: string; firma?: string; kanal_erlaubt: string[]; anrede?: string; letzter_kontakt?: string; naechster_schritt?: { text: string; datum: string } | null; verlauf?: { am: string; art: string; bedarf?: string; zusage?: string }[] };
 type Karte = P & { kategorie: string; gruende: string[] };
@@ -121,31 +122,84 @@ export function grundlauf(head: HeadId, modus: string, daten: Record<string, unk
   }
 
   if ((head === 'sales' || head === 'marketing') && modus === 'kampagne') {
-    const pbs = (daten.playbooks as { id: string; name: string; warum: string; zielgruppe_anzahl: number; zielgruppe: P[] }[] | undefined) ?? [];
-    const bestes = [...pbs].filter(p => p.zielgruppe_anzahl > 0).sort((a, b) => b.zielgruppe_anzahl - a.zielgruppe_anzahl)[0];
+    // 02.11. (M2 K3): das beste Playbook nach ZIELEN (Personen + Betriebe ohne Person; ältere Datenpakete ohne `ziele_anzahl`: die Personen) — und
+    // nie eins, das schon eine laufende Kampagne hat (die wird weiterverwendet; Befund statt zweiter Kampagne).
+    type PbD = { id: string; name: string; warum: string; zielgruppe_anzahl: number; ziele_anzahl?: number; firmen_anzahl?: number; laufend?: { id: string; name: string; status: string } | null; zielgruppe: P[] };
+    const pbs = (daten.playbooks as PbD[] | undefined) ?? [];
+    const ziele = (p: PbD) => p.ziele_anzahl ?? p.zielgruppe_anzahl;
+    const kandidaten = [...pbs].filter(p => ziele(p) > 0).sort((a, b) => ziele(b) - ziele(a));
+    const bestes = kandidaten.find(p => !p.laufend);
+    const vorn = kandidaten[0];
+    if (vorn?.laufend && vorn !== bestes) befunde.push({ titel: `„${vorn.name}“ läuft schon`, text: `Die Kampagne „${kurz(vorn.laufend.name, 60)}“ (${vorn.laufend.status === 'aktiv' ? 'aktiv' : 'Entwurf'}) nutzt dieses Vorgehen — dort weiterarbeiten statt eine zweite anzulegen.`, quelle: [`playbooks[${pbs.indexOf(vorn)}].laufend`] });
     if (bestes) {
       const i = pbs.indexOf(bestes);
+      const firmen = bestes.firmen_anzahl ?? 0;
       vs.push(v({ art: 'kampagne_planen', titel: `Kampagne „${bestes.name}“ planen`, prioritaet: 'mittel', frist: tagPlus(heute, 7),
-        begruendung: `${kurz(bestes.warum, 200)} Heute passen ${bestes.zielgruppe_anzahl} Personen.`, dedup_schluessel: `kampagne:${bestes.id}`, quelle: [`playbooks[${i}]`],
+        begruendung: `${kurz(bestes.warum, 200)} Heute passen ${anzahl(bestes.zielgruppe_anzahl, 'Person', 'Personen')}${firmen ? ` und ${anzahl(firmen, 'Betrieb', 'Betriebe')} ohne Person` : ''}.`, dedup_schluessel: `kampagne:${bestes.id}`, quelle: [`playbooks[${i}]`],
         kampagne: { playbook: bestes.id, name: bestes.name, ziel: 'Gespräche aus bestehenden Beziehungen', kontakt_ids: bestes.zielgruppe.slice(0, 15).map(p => p.id) } }));
-    } else luecken.push('Für kein bewährtes Vorgehen gibt es heute eine Zielgruppe — Kreise und Lebensphasen in der Kartei pflegen.');
+    } else if (!vorn) luecken.push('Für kein bewährtes Vorgehen gibt es heute eine Zielgruppe — Kreise und Lebensphasen in der Kartei pflegen.');
   }
 
   if (head === 'marketing' && (modus === 'wochenplan' || modus === 'monatsreview')) {
-    const stimmen = (daten.stimme_der_kunden as { kontakt_id: string; am: string; bedarf?: string }[] | undefined) ?? [];
-    const gesehen = new Set<string>();
-    stimmen.forEach((s, i) => {
-      if (vs.length >= 3 || !s.bedarf) return;
-      const schluessel = s.bedarf.toLowerCase().slice(0, 40);
-      if (gesehen.has(schluessel)) return; gesehen.add(schluessel);
-      vs.push(v({ art: 'beitrag_entwurf', titel: `Beitrag aus Kundenstimme: ${kurz(s.bedarf, 60)}`, frist: tagPlus(heute, 5), prioritaet: 'mittel', signal: { typ: 'stimme', datum: s.am, text: 'Bedarf aus einem Kundengespräch' },
-        begruendung: `Aus einem Gespräch vom ${s.am}: „${kurz(s.bedarf, 120)}“ — echte Kundenprobleme mit eigener Einsicht beantworten; die Person bleibt ungenannt.`, dedup_schluessel: `beitrag:${schluessel}`, quelle: [`stimme_der_kunden[${i}]`] }));
-    });
+    // Reihenfolge (02.11., M2): Pflichten und Wartendes vor neuem Inhalt — Art. 14, offene Antworten, Mail-Stapel, Kommentare/DMs, Social-Plan,
+    // Homepage-Funde; dann Themen aus der Kundenstimme. Wiederkehrende Hinweise tragen Tag bzw. Woche im dedup_schluessel (sonst kämen sie
+    // nach einmal Annehmen nie wieder — lib/heads/stand.ts `mischen`).
+    const woche = montagVon(heute);
     const a14 = (daten.art14_faellig as (P & { tage: number })[] | undefined) ?? [];
     a14.slice(0, 2).forEach((p, i) => vs.push(v({ art: 'info_art14_nachholen', titel: `Art. 14 nachholen: ${wer(p)}`, kontakt_id: p.id, frist: heute, prioritaet: 'hoch', signal: { typ: 'pflicht', datum: null, text: 'Art.-14-Frist' }, begruendung: `Daten stammen nicht von der Person, seit ${p.tage} Tagen nicht informiert — die Frist ist ein Monat.`, dedup_schluessel: `art14:${p.id}`, quelle: [`art14_faellig[${i}]`] })));
+
+    type StapelD = { wartet_freigabe: number; freigegeben: number; fehler: number; antworten_offen: number; je_kampagne: { kampagne_id: string; name: string; wartet_freigabe: number; antworten_offen: number }[] };
+    const st = daten.mail_stapel as StapelD | null | undefined;
+    const kampagnenText = (f: (k: StapelD['je_kampagne'][number]) => number) => { const l = (st?.je_kampagne ?? []).filter(k => f(k) > 0); return l.length ? ` Kampagnen: ${l.slice(0, 3).map(k => kurz(k.name, 40)).join(', ')}.` : ''; };
+    if (st?.antworten_offen) vs.push(v({ art: 'antworten_bearbeiten', titel: `${anzahl(st.antworten_offen, 'Antwort', 'Antworten')} auf Kampagnen-Mails bearbeiten`, frist: heute, prioritaet: 'hoch',
+      signal: { typ: 'antwort', datum: heute, text: 'Antworten auf Kampagnen-Mails offen' },
+      begruendung: `${anzahl(st.antworten_offen, 'Antwort', 'Antworten')} auf Kampagnen-Mails ${st.antworten_offen === 1 ? 'wartet' : 'warten'} — die Sequenz ist gestoppt, das Follow-up „Antwort bearbeiten“ steht an. Wer schnell antwortet, bekommt das Gespräch.${kampagnenText(k => k.antworten_offen)}`,
+      dedup_schluessel: `antworten:${heute}`, quelle: ['mail_stapel.antworten_offen'] }));
+    if (st?.wartet_freigabe) vs.push(v({ art: 'stapel_freigeben', titel: `Mail-Stapel prüfen: ${anzahl(st.wartet_freigabe, 'Entwurf wartet', 'Entwürfe warten')} auf Freigabe`, frist: heute, prioritaet: 'mittel',
+      signal: { typ: 'kampagne', datum: heute, text: 'Entwürfe im Mail-Stapel' },
+      begruendung: `Der Kampagnen-Motor hat ${anzahl(st.wartet_freigabe, 'Mail', 'Mails')} vorbereitet — gesendet wird erst nach eurer Freigabe, bis dahin steht die Sequenz.${kampagnenText(k => k.wartet_freigabe)}`,
+      dedup_schluessel: `stapel:${woche}`, quelle: ['mail_stapel.wartet_freigabe'] }));
+    if (st?.fehler) befunde.push({ titel: 'Mail-Stapel: Fehler beim Versand', text: `${anzahl(st.fehler, 'Mail ist', 'Mails sind')} mit Fehler oder ungeklärt — im Mail-Stapel ansehen, nie doppelt senden.`, quelle: ['mail_stapel.fehler'] });
+
+    type SocialD = { kanaele: { id: string; name: string; aktiv: boolean; luecken_7_tage: number; geplant_7_tage: number; wartet_freigabe: number; offene_kommentare: number; offene_dms: number }[] };
+    const kanaele = (daten.social as SocialD | null | undefined)?.kanaele ?? [];
+    const offenKom = kanaele.reduce((a, k) => a + k.offene_kommentare, 0), offenDm = kanaele.reduce((a, k) => a + k.offene_dms, 0);
+    if (offenKom + offenDm) vs.push(v({ art: 'community_beantworten', titel: `Social: ${[offenKom ? anzahl(offenKom, 'Kommentar', 'Kommentare') : '', offenDm ? anzahl(offenDm, 'Nachricht', 'Nachrichten') : ''].filter(Boolean).join(' und ')} beantworten`, frist: heute, prioritaet: 'mittel',
+      signal: { typ: 'antwort', datum: heute, text: 'offene Kommentare/Nachrichten' },
+      begruendung: `Auf ${kanaele.filter(k => k.offene_kommentare || k.offene_dms).map(k => kurz(k.name, 30)).slice(0, 3).join(', ')} warten Menschen auf eine Antwort — eine Antwort am selben Tag zählt mehr als ein neuer Beitrag.`,
+      dedup_schluessel: `community:${heute}`, quelle: kanaele.map((k, i) => (k.offene_kommentare || k.offene_dms ? `social.kanaele[${i}]` : '')).filter(Boolean).slice(0, 3) }));
+    kanaele.map((k, i) => ({ k, i })).filter(x => x.k.aktiv && x.k.luecken_7_tage > 0).slice(0, 2).forEach(({ k, i }) => vs.push(v({ art: 'social_planen', titel: `Social-Lücke diese Woche: ${kurz(k.name, 40)} — ${anzahl(k.luecken_7_tage, 'freier Platz', 'freie Plätze')}`, frist: tagPlus(heute, 1), prioritaet: 'mittel',
+      signal: { typ: 'frist', datum: tagPlus(heute, 6), text: 'Redaktionsplan der nächsten 7 Tage' },
+      begruendung: `Im Plan von ${kurz(k.name, 40)} ${k.luecken_7_tage === 1 ? 'ist ein Platz' : `sind ${k.luecken_7_tage} Plätze`} der nächsten sieben Tage frei${k.geplant_7_tage ? `, ${k.geplant_7_tage} geplant` : ', nichts geplant'}${k.wartet_freigabe ? `; ${anzahl(k.wartet_freigabe, 'Entwurf wartet', 'Entwürfe warten')} auf Freigabe` : ''}. Regelmäßigkeit trägt den Kanal.`,
+      dedup_schluessel: `social:${k.id}:${woche}`, quelle: [`social.kanaele[${i}].luecken_7_tage`] })));
+
+    const fu = daten.funde as { neu: number; vorbereitet: number } | null | undefined;
+    if (fu?.vorbereitet) vs.push(v({ art: 'funde_pruefen', titel: `Homepage-Funde: ${anzahl(fu.vorbereitet, 'Betrieb', 'Betriebe')} vorbereitet — prüfen`, frist: tagPlus(heute, 2), prioritaet: 'mittel',
+      begruendung: `Der Abendlauf hat ${anzahl(fu.vorbereitet, 'Betrieb', 'Betriebe')} mit Befund vorbereitet; erst nach eurer Prüfung gehen sie in den Mail-Stapel.${fu.neu ? ` Dazu ${fu.neu} neu gefunden.` : ''}`,
+      dedup_schluessel: `funde:${woche}`, quelle: ['funde.vorbereitet'] }));
+
+    const web = daten.website as { eingaenge_30_tage: { anfragen: number; davon_checks: number; termine: number }; wege_aus: string[] } | null | undefined;
+    if (web?.wege_aus.length) befunde.push({ titel: 'Website: Wege nicht vollständig', text: web.wege_aus.slice(0, 4).join(' · '), quelle: ['website.wege_aus'] });
+    if (web && (web.eingaenge_30_tage.anfragen || web.eingaenge_30_tage.termine)) befunde.push({ titel: 'Website · 30 Tage', text: `${anzahl(web.eingaenge_30_tage.anfragen, 'Anfrage', 'Anfragen')} (davon ${web.eingaenge_30_tage.davon_checks} aus Checks), ${anzahl(web.eingaenge_30_tage.termine, 'Termin', 'Termine')} gebucht.`, quelle: ['website.eingaenge_30_tage'] });
+
+    // Kundenstimme → Idee (W2, 02.11.): was schon im Redaktionsplan steht (`uebernommen`), kommt nicht noch einmal; angenommen wird daraus eine
+    // Idee in derselben Form wie „Als Idee übernehmen“ (`inhalt`: Titel, Text ohne Namen, Quelle = Kennung der Person).
+    const stimmen = (daten.stimme_der_kunden as { kontakt_id: string; am: string; bedarf?: string; idee_titel?: string; uebernommen?: boolean }[] | undefined) ?? [];
+    const gesehen = new Set<string>();
+    let themen = 0;
+    stimmen.forEach((s, i) => {
+      if (themen >= 3 || !s.bedarf || s.uebernommen) return;
+      const schluessel = s.bedarf.toLowerCase().slice(0, 40);
+      if (gesehen.has(schluessel)) return; gesehen.add(schluessel);
+      themen++;
+      vs.push(v({ art: 'beitrag_entwurf', titel: `Beitrag aus Kundenstimme: ${kurz(s.bedarf, 60)}`, frist: tagPlus(heute, 5), prioritaet: 'mittel', signal: { typ: 'stimme', datum: s.am, text: 'Bedarf aus einem Kundengespräch' },
+        begruendung: `Aus einem Gespräch vom ${s.am}: „${kurz(s.bedarf, 120)}“ — echte Kundenprobleme mit eigener Einsicht beantworten; die Person bleibt ungenannt.`, dedup_schluessel: `beitrag:${schluessel}`, quelle: [`stimme_der_kunden[${i}]`],
+        inhalt: { titel: s.idee_titel ?? kurz(s.bedarf, 120), text: `Aus einem Kundengespräch (${s.am}): „${kurz(s.bedarf, 1500)}“`, quellen: [s.kontakt_id] } }));
+    });
     const kz = (daten.kennzahlen as { label: string; wert: string; ampel: string; ziel: string }[] | undefined) ?? [];
     for (const k of kz.filter(x => x.ampel === 'rot')) befunde.push({ titel: k.label, text: `${k.wert} — Ziel ${k.ziel}.`, quelle: ['kennzahlen'] });
     if (!stimmen.length) luecken.push('Keine Kundenstimme in den Gesprächsnotizen — nach Gesprächen „Bedarf / Schmerz“ ausfüllen, daraus entstehen die Themen.');
+    else if (!themen && stimmen.every(s => s.uebernommen)) befunde.push({ titel: 'Kundenstimmen schon im Plan', text: 'Alle jüngsten Kundenstimmen stehen schon als Idee im Redaktionsplan — dort weiterschreiben.', quelle: ['stimme_der_kunden'] });
   }
 
   // LinkedIn-Netzwerk (25.09.): je Profil der Tag in der Vernetzen-Runde — Annahmen zuerst, dann die Portion, dann anreichern.

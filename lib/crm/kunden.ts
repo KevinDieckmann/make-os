@@ -7,9 +7,10 @@
 
 import type { Mandat } from './typen';
 import { zahltage, letzterZahltag, type Planposten } from '@/lib/make-one/liquiditaet';
-import { geplantesEnde, laufzeitEnde, leistungsmonat, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, zahlungsziel } from './mandat-laufzeit';
+import { geplantesEnde, jahresHonorarVon, laufzeitEnde, leistungsmonat, mandatZahlplan, mindestEnde, monatsBrutto, monatsName, naechstesVertragsjahr, plusMonateGekappt, vertragsjahrBeginnt, zahlungsziel } from './mandat-laufzeit';
 import { mandatName } from './mandat-name';
-import { zusatzLiquiditaet, anrechnungLiquiditaet, zahlplanMonate, zahlplanPosition, zahlplanBeschreibung, type AnrechnungKontext } from './mandat-zusatz';
+import { monatswertVon } from './monatswert';
+import { zusatzLiquiditaet, anrechnungLiquiditaet, jahresPosition, zahlplanMonate, zahlplanPosition, zahlplanBeschreibung, type AnrechnungKontext } from './mandat-zusatz';
 import { rechnungSummen, abgerechneteMonate } from '@/lib/finanzen/rechnung/regeln';
 import { nettoAusBrutto } from '@/lib/finanzen/ust';
 import type { Leistung } from './typen';
@@ -81,6 +82,20 @@ export function mandatFristen(m: Partial<MandatFristFelder>, heute: string): { e
   return { endeAm, frist };
 }
 
+/** Der Satz, wenn die Laufzeit vorbei ist und niemand entschieden hat — EIN Text für Ampel, Steht an und Aufgabe. */
+export const LAUFZEIT_ABGELAUFEN = 'Laufzeit abgelaufen — verlängern oder beenden';
+/**
+ * Ist die Laufzeit eines AKTIVEN Mandats vorbei, ohne dass jemand entschieden hat (02.11., Prüfung C)? Ende = `mandatFristen` (gesetztes Ende bzw. Ende der
+ * Mindestlaufzeit); „automatisch verlängern“ verlängert sich selbst und zählt nicht. Rein — abgeleitet, nie gespeichert.
+ */
+export function laufzeitAbgelaufen(m: Pick<Mandat, 'status' | 'verlaengerung'> & Partial<MandatFristFelder> & { geloeschtAm?: string }, heute: string): boolean {
+  if (m.status !== 'aktiv' || m.geloeschtAm || m.verlaengerung === 'auto') return false;
+  const { endeAm } = mandatFristen(m, heute);
+  return !!endeAm && endeAm < heute;
+}
+/** Feste Kennung der Aufgabe „Laufzeit abgelaufen“ je Mandat und Ende (neues Ende nach dem Verlängern → neue Aufgabe, wenn es wieder abläuft). */
+export const laufzeitAufgabeId = (mandatId: string, endeAm: string) => `mlz-${mandatId.slice(0, 50)}-${endeAm.replace(/-/g, '')}`;
+
 export function mandatLage(m: Mandat, heute: string, rechnungen?: RechnungKurz[]): MandatLage {
   // Zahlung: von Hand gesetzt gewinnt, sonst aus den Rechnungen gerechnet.
   if (rechnungen && m.health.zahlung === null) { const z = zahlungAusRechnungen(m, rechnungen, heute); if (z) m = { ...m, health: { ...m.health, zahlung: z.wert } }; }
@@ -99,22 +114,28 @@ export function mandatLage(m: Mandat, heute: string, rechnungen?: RechnungKurz[]
   const gruende: string[] = [];
   let ampel: MandatLage['ampel'] = health === null ? null : health > 75 ? (vorlaeufig ? null : 'gruen') : health >= 60 ? 'gelb' : 'rot';
   if (m.status === 'aktiv' && endeIn !== null && endeIn >= 0 && endeIn <= 60 && m.verlaengerung !== 'auto') { ampel = 'rot'; gruende.push(`Laufzeit endet in ${endeIn} Tagen — Verlängerung offen`); }
+  // Abgelaufen, aber noch aktiv und nicht entschieden (02.11., Prüfung C): vorher verschwand die Warnung am Tag nach dem Ende — jetzt bleibt sie rot, bis
+  // jemand verlängert (Ende/Laufzeit neu, „automatisch“) oder beendet.
+  if (laufzeitAbgelaufen(m, heute)) { ampel = 'rot'; gruende.push(LAUFZEIT_ABGELAUFEN); }
   if (health !== null && health < 60) gruende.push(`Gesundheit ${health}`);
   if (m.offen.length) gruende.push(anzahl(m.offen.length, 'offener Punkt', 'offene Punkte'));
   if (!m.vertragUnterschrieben && m.status === 'aktiv') gruende.push('Vertrag nicht unterschrieben');
-  const monatswert = m.honorar.basis === 'monat' ? m.honorar.betrag : 0;
+  const monatswert = monatswertVon(m);
   return { endeAm, endeIn, fristBis, kuendigungIn: endeIn, health, ...(vorlaeufig ? { healthVorlaeufig: { faktoren, von: Object.keys(HEALTH_GEWICHTE).length } } : {}), ampel, gruende, monatswert };
 }
 
-/** Wiederkehrender Umsatz aller aktiven Mandate (netto, je Monat). */
+// Monatswert je Mandat (02.11., R2-3 Fund 9): EINE Regel in ./monatswert.ts — hier weiter exportiert.
+export { honorarMonatswert, monatswertVon, zusatzMonatswert } from './monatswert';
+
+/** Wiederkehrender Umsatz aller aktiven Mandate (netto, je Monat) — Monatswert je Mandat (`monatswertVon`, inkl. Zusatzmodule). */
 export function mrr(mandate: Mandat[]): number {
-  return mandate.filter(m => m.status === 'aktiv' && m.honorar.basis === 'monat').reduce((a, m) => a + m.honorar.betrag, 0);
+  return Math.round(mandate.filter(m => m.status === 'aktiv').reduce((a, m) => a + monatswertVon(m), 0) * 100) / 100;
 }
 
 /** Kundenkonzentration: Anteil des größten Kunden am MRR (> 50 % ist ein Risiko). */
 export function konzentration(mandate: Mandat[]): { kunde: string; anteil: number } | null {
   const je = new Map<string, number>();
-  for (const m of mandate.filter(m => m.status === 'aktiv' && m.honorar.basis === 'monat')) je.set(m.kunde, (je.get(m.kunde) ?? 0) + m.honorar.betrag);
+  for (const m of mandate.filter(m => m.status === 'aktiv' && monatswertVon(m) > 0)) je.set(m.kunde, (je.get(m.kunde) ?? 0) + monatswertVon(m));
   const gesamt = Array.from(je.values()).reduce((a, b) => a + b, 0);
   if (!gesamt) return null;
   const [kunde, wert] = Array.from(je.entries()).sort((a, b) => b[1] - a[1])[0];
@@ -214,6 +235,21 @@ function hauptPosten(m: Mandat, o: { ende: string | null; basis: string; name: s
       return [{ id: i ? teilPostenId(m, mo) : hauptPostenId(m), titel: titelMit(name, ` — ${was}`), betrag: rechnungSummen(pos).brutto / 100, rhythmus: 'einmalig', ab: plusTage(tag, ziel), ...gemeinsam, leistungsmonat: mo,
         notiz: `Aus dem Mandat (CRM): ${was} — ${(zahlplanBeschreibung(m) ?? '').replace(/\.$/, '')}, wie die Rechnung für ${monatsName(mo)}.` }];
     });
+  }
+  // Jahreshonorar (02.11., R2-3 Fund 3): EIN jährlicher Posten — je Vertragsjahr (Beginn + 12·k) der volle Jahresbetrag wie die Rechnung (`jahresPosition`),
+  // Zahltag = Beginn der Leistung im Monat + Zahlungsziel; endet mit dem letzten Vertragsjahr vor dem (geplanten) Ende.
+  if (jahresHonorarVon(m) !== null && !einmalig) {
+    const lauf = { start: m.start, ...(ende ? { ende } : {}) };
+    const erste = naechstesVertragsjahr(lauf, basis.slice(0, 7));
+    if (!erste) return [];
+    const pos = jahresPosition(m, erste, { nettoAusBrutto }, ende) ?? [];
+    if (!pos.length) return [];
+    const lm = leistungsmonat(lauf, erste);
+    const ab = plusTage(lm?.tage ? lm.von : `${erste}-01`, ziel);
+    let jahre = 1;
+    if (ende) while (vertragsjahrBeginnt(lauf, plusMonateGekappt(`${erste}-01`, 12 * jahre).slice(0, 7)) && jahre < 50) jahre++;
+    return [{ id: hauptPostenId(m), titel: titelMit(name), betrag: rechnungSummen(pos).brutto / 100, rhythmus: 'jaehrlich', ab, ...(ende ? { bis: plusMonateGekappt(ab, 12 * (jahre - 1)) } : {}), ...gemeinsam, leistungsmonat: erste,
+      notiz: `Aus dem Mandat (CRM): Jahreshonorar ${m.honorar.netto ? `${jahresHonorarVon(m)} € netto${m.ustSatz ? ` + ${m.ustSatz} % USt` : ', Reverse Charge'}` : `${jahresHonorarVon(m)} €`} — eine Rechnung je Vertragsjahr.` }];
   }
   if (einmalig || m.rechnungsrhythmus === 'quartal') {
     // Wie bisher: EIN Posten — einmalig am Beginn (bzw. heute) + Zahlungsziel; Quartal ab dem Monatsanfang (im Beginnmonat ab dem Beginn).

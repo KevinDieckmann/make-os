@@ -46,6 +46,7 @@ import { facturXEinbetten } from '@/lib/finanzen/erechnung/pdf';
 import { en16931Luecken } from '@/lib/finanzen/erechnung/pruefen';
 import type { AnschriftAnFirma, Mahnstufe } from './typen';
 import { einmalTeilPositionen, einmalZahlungen, einmalZahlungText, quartalMonate, type EinmalZahlung } from './kreislauf-regeln';
+import { jahresHonorarVon, naechstesVertragsjahr } from '@/lib/crm/mandat-laufzeit';
 
 export class RechnungFehler extends Error {
   constructor(msg: string, readonly status: number, readonly extra: Record<string, unknown> = {}) { super(msg); }
@@ -418,6 +419,11 @@ export async function entwurfNeu(p: NeuEingabe & { person: string; haushalt: str
     const honorarPositionen = quartal
       ? qMonate.flatMap(mo => monatsPositionen(m, mo, { katalog: crm.leistungen, kleinunternehmer: ku(g), nettoAusBrutto }))
       : monatsPositionen(m, monat, { katalog: crm.leistungen, kleinunternehmer: ku(g), nettoAusBrutto });
+    // Jahreshonorar (02.11., R2-3 Fund 3): eine Rechnung je Vertragsjahr — in einem Monat ohne Beginn eines Vertragsjahrs (und ohne anderes) entstünde eine leere Rechnung.
+    if (!quartal && !honorarPositionen.length && !abgerechnet.length && jahresHonorarVon(m) !== null) {
+      const naechstes = naechstesVertragsjahr(m, monat);
+      throw new RechnungFehler(`Jahreshonorar: für ${monatsName(monat)} ist keine Rechnung fällig${naechstes ? ` — die nächste ist für ${monatsName(naechstes)}` : ''}.`, 409, { grund: 'keine-zahlung', ...(naechstes ? { monat: naechstes } : {}) });
+    }
     // Tagessatz (31.10.): die Tage aus der erfassten Zeit (Morgenlauf) sind die Menge der Honorar-Position — der Satz dazu steht im Text (prüfen!).
     const tage = m.honorar.basis === 'tag' && typeof p.tage === 'number' && p.tage > 0 && p.tage <= 31 ? Math.round(p.tage * 100) / 100 : null;
     const hinweis = tage && typeof p.tageHinweis === 'string' ? p.tageHinweis.slice(0, 300) : '';
@@ -1194,7 +1200,8 @@ export async function mahnAufgabenKern(heute: string, o: { bereich: 'alle' | 'pr
  * Weiche GENAU EINMAL gefragt; arbeitet der neue Weg, bleiben hier nur die Privat-Gesellschaften (Prozesse sind Business). Rechnet der neue Weg im Schatten mit,
  * meldet dieser Lauf sein Wirkungsbild (Business) dem Vergleich. Ohne Überführung bit-gleich wie vorher.
  */
-export async function mahnAufgabenNachziehen(heute = localDay()): Promise<{ neu: number }> {
+/** `fehler` (02.11., Prüfung C): der Lauf ist gescheitert — vorher kam dann still `{ neu: 0 }` zurück, und der Morgenlauf meldete „nichts fällig“. */
+export async function mahnAufgabenNachziehen(heute = localDay()): Promise<{ neu: number; fehler?: string }> {
   try {
     const ue = await import('@/lib/prozesse/ueberfuehrung-server');
     const weg = await ue.wegFuer('sp-rechnung');
@@ -1203,7 +1210,7 @@ export async function mahnAufgabenNachziehen(heute = localDay()): Promise<{ neu:
     return { neu: r.neu };
   } catch (e) {
     console.error('[rechnung] Mahn-Aufgaben nicht angelegt:', e instanceof Error ? e.message : e);
-    return { neu: 0 };
+    return { neu: 0, fehler: 'Mahn-Aufgaben nicht angelegt — der Lauf ist gescheitert.' };
   }
 }
 

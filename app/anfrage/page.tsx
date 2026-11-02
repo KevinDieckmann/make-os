@@ -10,7 +10,7 @@ import { OEFFENTLICH_META } from '@/lib/oeffentlich/metadaten';
 import { Kontaktformular } from '@/components/kontaktformular/Kontaktformular';
 import { pruefe, fehlschlag, adresseAusKoepfen, netzVon } from '@/lib/zugang/drossel';
 import { merken } from '@/lib/store/memo';
-import { kontaktformularBereit, kontaktformularStempel } from '@/lib/kontaktformular/server';
+import { anlassAufloesen, kontaktformularBereit, kontaktformularStempel } from '@/lib/kontaktformular/server';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -26,12 +26,15 @@ export async function generateMetadata(): Promise<Metadata> {
   return { ...OEFFENTLICH_META, title: d ? `Kontakt · ${d.marke}` : 'Kontakt' };
 }
 
-export default async function Seite() {
+export default async function Seite({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const netz = netzVon(adresseAusKoepfen(await headers()));
   const schluessel = `kontaktformular-seite:${netz}`;
   if (!pruefe(schluessel).erlaubt) notFound();
   fehlschlag(schluessel, Date.now(), SEITE_FREI);
   const d = await seitenDaten();
   if (!d) notFound();
-  return <Kontaktformular marke={d.marke} gastgeber={d.gastgeber} hinweis={d.hinweis} erstgespraech={d.erstgespraech} website={d.website} stempel={kontaktformularStempel()} />;
+  // Anlass aus dem Knopf der Website (01.11.) — nur bekannte Formen, sonst das Formular ohne Anlass.
+  const roh = (await searchParams).anlass;
+  const anlass = await anlassAufloesen(typeof roh === 'string' ? roh : null);
+  return <Kontaktformular marke={d.marke} gastgeber={d.gastgeber} hinweis={d.hinweis} erstgespraech={d.erstgespraech} website={d.website} stempel={kontaktformularStempel()} anlass={anlass} />;
 }

@@ -226,8 +226,8 @@ async function ladeRohFrisch(heute: string) {
   const kontakte = kartei?.kontakte ?? [];
   // Traktions-Index (26.09.): dieselbe Zahl wie im Markttraktion-Überblick — eine Wahrheit.
   // Website-Zahlen (31.10.): dieselbe Lesestelle wie der Überblick — eine Zahl überall.
-  const webseite = await (await import('@/lib/crm/webseite-zahlen-server')).webseiteStandLaden();
-  const ti = traktionsIndex({ kontakte, crm, heute, schwellen: traktionDatei.schwellen, ersterLauf: ersterLauf(traktionDatei, heute), ...(webseite ? { webseite } : {}) });
+  const quellen = await (await import('@/lib/crm/traktion-quellen-server')).traktionQuellenLaden();
+  const ti = traktionsIndex({ kontakte, crm, heute, schwellen: traktionDatei.schwellen, ersterLauf: ersterLauf(traktionDatei, heute), ...quellen });
   const tr = alsTraktion(ti);
   const ab = new Date(`${heute}T12:00:00`); ab.setDate(ab.getDate() - 35);
   const abTag = localDay(ab);

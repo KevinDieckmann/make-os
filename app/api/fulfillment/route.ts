@@ -9,6 +9,7 @@
 //        Kunden-Link-Schalter und Puls-Schwelle NICHT hier (400) — EIN Weg: POST /api/fulfillment/kunde (C2). Nur per Sitzung (Dienstweg 403), Bau-Kennung. `?space=privat` → 403 (Business only).
 // Tor: `fulfillmentZugang` (Routen-Register, Modul fulfillment).
 
+import { darfSteuern } from '@/lib/zugang/steuern';
 import { NextResponse } from 'next/server';
 import { fulfillmentZugang, darfVorlagenBearbeiten, mandatAusserSicht, VORLAGEN_NUR_LESEN } from '@/lib/fulfillment/zugang';
 import { fulfillmentAendern, fulfillmentLesen, eintragStand } from '@/lib/fulfillment/speicher';
@@ -23,7 +24,6 @@ import { nurIntern, urheberGeprueft, rechtOffen, vorVerkaufOffen } from '@/lib/f
 import { mandatsEnde, unterschriftAm, tageZwischen } from '@/lib/fulfillment/regeln';
 import { gewonneneOhneMandat } from '@/lib/fulfillment/prozesse/heute';
 import { MUSTER_LANDKARTE, MUSTER_P1, MUSTER_P2, MUSTER_P3 } from '@/lib/fulfillment/muster';
-import { istInhaber } from '@/lib/zugang/haushalt-inhaber';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { neueKennung } from '@/lib/kennung';
@@ -111,7 +111,7 @@ export async function GET(req: Request) {
   }), { heute, jetzt: iso, willkommenStunden: vorlagen.einstellungen.willkommenStunden, reportTage: await reportTageWirksam() });
   const st = mitStaenden(vorlagen, eintragStand);
   return NextResponse.json({
-    ok: true, inhaber: await istInhaber(z.person), darfBearbeiten: await darfVorlagenBearbeiten(z.person),
+    ok: true, inhaber: await darfSteuern(z.person), darfBearbeiten: await darfVorlagenBearbeiten(z.person),
     prozesse: st.prozesse, werkstatt: paketeInWerkstatt(vorlagen),
     // Bibliothek in Kurzform: ohne Langtext und Fragen (die holt `?baustein=`), mit Marken und „steckt in …“.
     bausteine: st.bausteine.map(({ text: _t, fragen, gliederung, ...b }) => ({

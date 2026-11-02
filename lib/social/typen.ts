@@ -274,6 +274,11 @@ export interface SocialFolge {
   geplantUm?: string;
   /** Vom Redaktions-Agenten geschrieben (Herkunft; die Prüfung ist dieselbe). */
   quelle?: 'agent';
+  /**
+   * Beitrag des Redaktionsplans, zu dem diese Folge gehört (02.11., Marketing-Projekt M3) — z. B. ein Instagram-Entwurf des Head of Marketing, der
+   * im Redaktionsplan als Beitrag steht. Nur Kennung; gezählt wird die Veröffentlichung EINMAL (lib/crm/marketing.ts `veroeffentlichungen`).
+   */
+  beitragId?: string;
   /** Termin-Platz des Redaktionsplans (`JJJJ-MM-TTTHH:MM`) — der Agent füllt jeden Platz höchstens einmal. */
   platz?: string;
   /** Laufende bzw. gescheiterte Veröffentlichungs-Versuche je Plattform (setzt nur der Server). */

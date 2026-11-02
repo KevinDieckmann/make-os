@@ -71,6 +71,7 @@ describe('Seite → Head (rein)', () => {
     for (const s of ['?s=marketing', '?s=marketing&a=kampagnen']) expect(t(s), s).toBe('marketing');
     for (const s of ['?s=besuche', '?s=event', '?s=events']) expect(t(s), s).toBe('event');
     expect(markttraktionHead('?s=marketing')).toBe('marketing');
+    expect(markttraktionHead('?s=website&a=formulare')).toBe('marketing');
     expect(kontextHeadFuer('/os/netzwerken', '', 'business')).toBe('event');
   });
   it('die übrigen Bereiche', () => {

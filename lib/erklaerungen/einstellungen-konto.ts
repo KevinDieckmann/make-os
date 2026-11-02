@@ -214,6 +214,13 @@ export const EINSTELLUNGEN_KONTO = {
     an: 'Die Bedienungshilfe steht unter dem Raster.',
     aus: 'Das Raster bekommt die Zeile; die Hilfe kommt über das Fragezeichen oben links zurück.',
   },
+  'kalender.belegtSpiegel': {
+    was: 'Die Termine dieses weiteren Kontos stehen zusätzlich als neutrale Blöcke „Belegt“ in deinem eigenen Google-Kalender — ohne Titel, Ort, Beschreibung und Gäste. So siehst du bei Google auf einen Blick, wann du in einer anderen Firma gebunden bist. Nur du schaltest das.',
+    beispiel: 'Im Kalender einer anderen Firma steht dienstags 14–15 Uhr ein Termin. In deinem Google-Kalender erscheint dort „Belegt · <deine Gruppe>“; wird der Termin verschoben oder abgesagt, zieht der Block nach.',
+    an: 'MAKE OS legt die Blöcke an, ändert und löscht sie mit der Quelle (heute bis 60 Tage voraus).',
+    aus: 'Die Blöcke dieses Kontos werden aus deinem Google-Kalender gelöscht; in MAKE OS zählen die Termine weiter als belegt.',
+    daten: 'Geschrieben wird nur in deinen eigenen Google-Kalender, nie mit Einladungen. Gemerkt werden nur Kennungen, keine Titel.',
+  },
   'kalender.google': {
     was: 'Verbindet deinen Google Kalender (Workspace) für Business-Termine, in beide Richtungen. Privat, Familie und Gemeinsam bleiben in MAKE OS und iCloud.',
     beispiel: 'Ein Kunde lädt dich per Google-Kalender ein. Der Termin erscheint in MAKE OS; legst du hier einen Business-Termin an, steht er in deinem Google Kalender.',

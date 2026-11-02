@@ -67,6 +67,18 @@ rechnet und zeigt alles bit-gleich wie vorher (Wächter: finanzplan-regression-G
 - **Tests:** `tests/kdc-business.test.ts` (mit Variable: Sichten, Schreiben, Runway, Kasse, Steuern, Darlehen, Fokus, Aufgaben, „Business bekommt nichts aus
   Privat“), `tests/kdc-business-ohne.test.ts`.
 
+
+## 02.11.2026 — Gegenprüfung R2-4 der Kundengewinnung (nur lokal — Branch `kg-nach`, Basis 932a054b)
+- **Werbesperre (Person oder Betrieb) = EINE Regel** `istWerblich`/`keineWerbung` (lib/crm/followup.ts): ausgeblendet bzw. abgesagt wird nur, was wir
+  werblich anstoßen (Sequenz `fu-ks-…`, Kampagnen-Quelle, Ansprache über Mail/LinkedIn/Anruf/Nachricht, Kadenz); Antworten, Anfragen, Verträge, Rechnungen,
+  Termine nie. Neues Feld `FollowUp.anlass` (setzt nur der Server; Altbestand über feste Kennungen `fu-kr-/kb-/kw-/vtr-` und den Anfrage-Text).
+- Rückfluss (Kampagne, Willkommen): erst Follow-up + Akte, dann der Haken. Willkommens-Strecke hält nach einer gescheiterten Mail an (Glocke, HOI,
+  „Erneut“/„Überspringen“ in der Karte).
+- Website-Eingänge, die nicht ankamen: Marketing › Anfragen (`/api/website/eingang`), Aufgabe `we-…`, nie mehr still nach 30 Tagen gelöscht.
+- Sperrliste des Betriebs in Follow-up-Liste, Steht an, Power Hour. Laufzeit abgelaufen: nur EIN Weg meldet (Aufgabe `mlz-…` schlägt die abgeleitete Frist).
+  Morgenlauf-Glocke nur an Personen, die den HOI sehen. Art. 17 tilgt `Antrag.nachricht`.
+- **Rückweg:** GO_LIVE_CHECKLISTE.md › „Rückweg nach dem Kundengewinnungs-Paket“ (Absichten `anfrage`/`vertrag-unterschrieben` vorher leer laufen lassen).
+
 ## 31.10.2026 — ICP-Kampagnen: Start-ups, innovative Unternehmer, Scale-ups (nur lokal — Branch `icp-startups`, Basis `welle-a-firmen`)
 Drei neue Profile im Funde-Modul mit je eigener Kampagne, Segment, Label und Ansprache; ICP-Raster und Lead-Score als Daten (lib/funde/icp.ts); ICP und
 Steckbrief strukturiert an der Firma (lib/crm/icp-firma.ts). Kein neuer Bestand, keine neue Route; neue optionale Felder `Firma.icp`, `Firma.steckbrief`,

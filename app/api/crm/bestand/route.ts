@@ -34,6 +34,8 @@ import { werAus } from '@/lib/store/aenderungsprotokoll';
 import { ablaufNachziehen } from '@/lib/crm/angebot-server';
 import { eventSpiegelNachziehen, spiegelHinweiseMelden } from '@/lib/kalender/spiegel-server';
 import { leseZugriff } from '@/lib/store/leseprotokoll';
+import { privatAusgeblendetFuer } from '@/lib/zugang/konto-sicht-server';
+import { crmFuerNurBusiness, crmOpsNurBusiness } from '@/lib/crm/nur-business';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,8 +49,11 @@ const konfliktOhneIban = (k: CrmKonflikt): CrmKonflikt => {
   return k.liste === 'firmen' && k.aktuell && z?.iban ? { ...k, aktuell: { ...k.aktuell, zahlung: zahlungMaskiert(z) } } : k;
 };
 
-async function antwort(voll: CrmBestand, ich: string) {
+async function antwort(voll0: CrmBestand, ich: string) {
   const heute = localDay();
+  // Rolle „nur Business“ (02.11., R2-3 Fund 4): Produkte, Mandate, Deals, Angebote der Privat-Einheit (und Follow-ups daran) kommen gar nicht erst an —
+  // EINE Filterstelle (lib/crm/nur-business.ts `crmFuerNurBusiness`), vor allem, was daraus gerechnet wird (MRR, Lage, Zahlung, Papierkorb).
+  const voll = (await privatAusgeblendetFuer(ich)) ? crmFuerNurBusiness(voll0) : voll0;
   // Archiv & Papierkorb (04.10., lib/crm/ablage.ts): der Stand ohne Papierkorb — er kommt getrennt als `papierkorb` (nur
   // Kennung, Titel, Tag) für die Papierkorb-Ansichten der Listen. Alle Zahlen rechnen ohne ihn.
   const b = crmSicht(voll);
@@ -102,10 +107,16 @@ export async function PATCH(req: Request) {
   const ops = Array.isArray(body.ops) ? body.ops : [];
   if (!ops.length) return NextResponse.json({ ok: false, fehler: 'Keine Änderungen.' }, { status: 400 });
   const person = zugang.person;
+  // Rolle „nur Business“ (02.11., R2-3 Fund 4): Schreiben auf Deals, Mandate, Angebote, Produkte einer Privat-Einheit (bzw. Follow-ups daran) → 403, nichts gespeichert.
+  if (await privatAusgeblendetFuer(person)) {
+    const nein = crmOpsNurBusiness(await ladeCrmMitPapierkorb(), ops as Parameters<typeof crmOpsNurBusiness>[1]);
+    if (nein) return NextResponse.json({ ok: false, fehler: nein }, { status: 403 });
+  }
   // Löschsperre (28.09., K4): Personen, Rechnungen und (seit 28.09. abends, W6) die Einträge der Dateiablage liegen
   // außerhalb des CRM-Bestands — nur laden, wenn Firmen oder Mandate gelöscht werden.
-  // Seit 04.10. auch, wenn eine Firma/ein Mandat in den Papierkorb soll (lib/crm/ablage.ts `neuImPapierkorb`: nur ohne Verweise).
-  const loescht = ops.some(o => (o?.liste === 'firmen' || o?.liste === 'mandate') && (o.op === 'delete' || !!papierkorbMarke(((o.op === 'teil' ? o.felder : o.eintrag) ?? {}).geloeschtAm)));
+  // Seit 04.10. auch, wenn eine Firma/ein Mandat in den Papierkorb soll (lib/crm/ablage.ts `neuImPapierkorb`: nur ohne Verweise); seit 02.11. auch Produkte
+  // (Rechnungspositionen mit dem Produkt sperren das endgültige Löschen — R2-3 Fund 2).
+  const loescht = ops.some(o => (o?.liste === 'firmen' || o?.liste === 'mandate' || o?.liste === 'leistungen') && (o.op === 'delete' || !!papierkorbMarke(((o.op === 'teil' ? o.felder : o.eintrag) ?? {}).geloeschtAm)));
   const haushalt = loescht ? await haushaltDesInhabers() : null;
   const kontext: VerweisKontext = loescht
     ? {
@@ -133,6 +144,20 @@ export async function PATCH(req: Request) {
       .then(r => spiegelHinweiseMelden(r.hinweise, person))
       .catch(e => console.warn(`[spiegel] Events nicht nachgezogen: ${e instanceof Error ? `${e.name}: ${e.message.slice(0, 160)}` : 'Fehler'}`));
   }
+  // Produkt archiviert bzw. in den Papierkorb (02.11., R2-3 Fund 7): steckt es in Vertriebler-Links, sagt der Hinweis es — dort erscheint es nicht mehr.
+  const hinweise = [...(e.hinweise ?? []), ...(await linkHinweise(ops))];
   // Abgelehnte Stufenwechsel (Regeln, 27.09.) kommen als `fehler` mit — der Stand ist trotzdem der aktuelle.
-  return jsonAntwort(req, { ...(await antwort(b, person)), angewandt: e.angewandt, fehler: e.fehler, ...(e.hinweise?.length ? { hinweise: e.hinweise } : {}) });
+  return jsonAntwort(req, { ...(await antwort(b, person)), angewandt: e.angewandt, fehler: e.fehler, ...(hinweise.length ? { hinweise } : {}) });
+}
+
+/** Hinweise „steckt in n Links“ für Produkte, die dieser Satz archiviert oder in den Papierkorb legt — wirft nie. */
+async function linkHinweise(ops: ListenOp[]): Promise<string[]> {
+  const ids = ops.filter(o => o?.liste === 'leistungen' && o.op !== 'delete').filter(o => { const f = ((o.op === 'teil' ? o.felder : o.eintrag) ?? {}) as Record<string, unknown>; return f.status === 'eingestellt' || !!papierkorbMarke(f.geloeschtAm); })
+    .map(o => String(o.op === 'teil' ? o.id : o.eintrag?.id ?? '')).filter(Boolean);
+  if (!ids.length) return [];
+  try {
+    const [{ ladeFormular }, { linksMitProdukt, linkHinweisBeimArchivieren }] = await Promise.all([import('@/lib/crm/formulare-speicher'), import('@/lib/crm/formulare')]);
+    const links = (await ladeFormular()).links;
+    return ids.map(id => linkHinweisBeimArchivieren(linksMitProdukt(links, id, localDay()))).filter(Boolean);
+  } catch { return []; }
 }

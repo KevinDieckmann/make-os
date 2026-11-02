@@ -90,7 +90,7 @@ export function schlank(roh: unknown): GEvent | null {
   const meet = [txt(r.hangoutLink, 500), txt(video, 500)].find(u => u && /^https:\/\//.test(u));
   const ext = (r.extendedProperties as { private?: Record<string, unknown> } | undefined)?.private;
   const privat: Record<string, string> = {};
-  if (ext && typeof ext === 'object') for (const k of ['makeOsId', 'art', 'blockArt', 'farbe']) if (typeof ext[k] === 'string' && ext[k]) privat[k] = String(ext[k]).slice(0, 300);
+  if (ext && typeof ext === 'object') for (const k of ['makeOsId', 'art', 'blockArt', 'farbe', SPIEGEL_MARKE]) if (typeof ext[k] === 'string' && ext[k]) privat[k] = String(ext[k]).slice(0, 300);
   const start = zeitSauber(r.start), end = zeitSauber(r.end), orig = zeitSauber(r.originalStartTime);
   return {
     id, ...(status ? { status } : {}), ...(txt(r.etag, 200) ? { etag: txt(r.etag, 200) } : {}), ...(txt(r.updated, 40) ? { updated: txt(r.updated, 40) } : {}),
@@ -108,6 +108,14 @@ export function schlank(roh: unknown): GEvent | null {
     ...(Object.keys(privat).length ? { privat } : {}),
   };
 }
+
+/**
+ * Marke eines „Belegt“-Spiegels (01.11., lib/kalender/google/belegt-spiegel.ts): `extendedProperties.private.makeOsSpiegel =
+ * <Quelle>|<Ereignis>`. Solche Ereignisse liest MAKE OS NIE als eigenen Termin (die Quelle zählt schon) — weder im Hauptkalender
+ * noch in einem weiteren Konto (dort würden sie sonst zurückgespiegelt). Rein.
+ */
+export const SPIEGEL_MARKE = 'makeOsSpiegel';
+export const istSpiegelEvent = (e: Pick<GEvent, 'privat'>): boolean => !!e.privat?.[SPIEGEL_MARKE];
 
 /** Die UID, unter der MAKE OS ein Google-Ereignis kennt: unsere `makeOsId`, sonst die Google-ID. */
 export const uidVonEvent = (e: Pick<GEvent, 'id' | 'privat'>): string => e.privat?.makeOsId || e.id;
@@ -258,7 +266,10 @@ export interface GruppeKurz { masterId: string; uid: string; ics: string; etag: 
  */
 export function objekteAus(events: Readonly<Record<string, GEvent>>, person: string): { objekte: KalenderObjekt[]; kurz: GruppeKurz[] } {
   const nachMaster = new Map<string, GEvent[]>();
-  const alle = Object.values(events);
+  // „Belegt“-Spiegel (samt ihrer Ausnahmen) zählen nie als eigener Termin — sonst wäre dieselbe Zeit doppelt belegt (01.11.).
+  const roh = Object.values(events);
+  const spiegel = new Set(roh.filter(istSpiegelEvent).map(e => e.id));
+  const alle = spiegel.size ? roh.filter(e => !spiegel.has(e.id) && !(e.recurringEventId && spiegel.has(e.recurringEventId))) : roh;
   const masterIds = new Set(alle.filter(e => !e.recurringEventId).map(e => e.id));
   for (const e of alle) {
     if (!e.recurringEventId || !masterIds.has(e.recurringEventId)) continue;

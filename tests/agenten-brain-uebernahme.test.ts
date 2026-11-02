@@ -106,7 +106,7 @@ beforeAll(async () => {
   const konto = (id: string, speicher: string, rolle: 'inhaber' | 'mitglied', extra: Record<string, unknown> = {}) =>
     ({ id, speicher, email: `${speicher}@example.invalid`, name: `Name ${speicher}`, rolle, hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...extra });
   await db.saveJson('konten', { konten: [
-    konto('k1', 'person-a', 'inhaber', { haushalt: H }), konto('k2', 'person-b', 'mitglied', { haushalt: H }),
+    konto('k1', 'person-a', 'inhaber', { haushalt: H }), konto('k2', 'person-b', 'mitglied', { haushalt: H }), konto('k9', 'person-nb', 'mitglied', { haushalt: H, finanzRecht: 'business' }),
     konto('k3', 'gast', 'mitglied', { haushalt: 'haus-fremd' }),
   ], einladungen: [] });
   brain = await import('@/app/api/agenten/brain/route') as unknown as typeof brain;
@@ -190,11 +190,12 @@ const vorschau = async (p = 'person-a') => anfrage(brain.GET, '/api/agenten/brai
 const eintrag = (j: J, name: string) => (j.eintraege as B.PlanEintrag[]).find(e => e.name === name)!;
 
 describe('Rechte — nur ein Inhaber, nie der Dienstweg', () => {
-  it('Mitglied 403, fremder Haushalt 403, Dienstweg 403 (GET und POST)', async () => {
-    expect((await vorschau('person-b')).status).toBe(403);
+  it('Konto „nur Business“ 403, fremder Haushalt 403, Dienstweg 403 (GET und POST)', async () => {
+    // 02.11. (Prüfung D, Kevin: „voller Zugriff“): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    expect((await vorschau('person-nb')).status).toBe(403);
     expect((await vorschau('gast')).status).toBe(403);
     expect((await anfrage(brain.GET, '/api/agenten/brain', 'GET', dienst())).status).toBe(403);
-    expect((await anfrage(brain.POST, '/api/agenten/brain', 'POST', sitzung('person-b'), { aktion: 'uebernehmen', auswahl: [{ datei: 'x.md' }] })).status).toBe(403);
+    expect((await anfrage(brain.POST, '/api/agenten/brain', 'POST', sitzung('person-nb'), { aktion: 'uebernehmen', auswahl: [{ datei: 'x.md' }] })).status).toBe(403);
     expect((await anfrage(brain.POST, '/api/agenten/brain', 'POST', dienst(), { aktion: 'uebernehmen', auswahl: [{ datei: 'x.md' }] })).status).toBe(403);
   });
 });

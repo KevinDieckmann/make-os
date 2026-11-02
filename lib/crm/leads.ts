@@ -142,6 +142,11 @@ export interface LeadZeile {
   /** Besitzer wurde nie gesetzt — in der Runde per Klick übernehmen. */
   ohneBesitzer: boolean;
   /**
+   * Betrieb ohne Ansprechpartner (02.11., Zusatz zu R2-2 Fund 1 · A): ein Betrieb mit gesetztem Lead-Status bzw. einem Kampagnen-Ergebnis (reagiert,
+   * Gespräch, Chance), an dem noch keine Person hängt. `personen` ist leer, der nächste Schritt heißt „Ansprechpartner anlegen“.
+   */
+  ohnePerson?: true;
+  /**
    * Frisch angelegt (08.10., Markttraktion Sofort-Paket 1.1): eine Person dieses Leads wurde in den letzten `FRISCH_TAGE` Tagen
    * angelegt (`frischAngelegt`) — so ein Lead zählt nie als kalt. Fehlt bei älteren Leads und bei von Hand gebauten Zeilen.
    */
@@ -155,8 +160,10 @@ export interface LeadZeile {
 
 /**
  * Alle Leads: je Firma eine Zeile (mit ihren Personen), dazu Personen ohne
- * Firma einzeln. Firmen ohne Person und reine Dienstleister/Investoren fehlen
- * — sie sind kein Vertrieb.
+ * Firma einzeln. Reine Dienstleister/Investoren fehlen — sie sind kein Vertrieb. Firmen ohne Person fehlen, außer sie sind
+ * schon ein Lead (Status gesetzt) bzw. haben in einer Kampagne reagiert, ein Gespräch oder Interesse (02.11., R2-2 · A: sonst
+ * verschwand ein Betrieb aus Welle A nach „Als Lead übernehmen“ aus Liste, Runde, Trichter und Scoreboard) — dann mit `personen: []`,
+ * `ohnePerson` und dem nächsten Schritt „Ansprechpartner anlegen“; Werbesperre, Papierkorb und Archiv nie.
  *
  * `heute` ist Pflicht (28.09., K3 · #75): der Berliner Tag des Aufrufers (`localDay()`),
  * nie ein UTC-Tag aus `toISOString()` — der liegt nachts bis 2 Uhr einen Tag daneben.
@@ -186,17 +193,19 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
     // Folgeauftrag) bleibt.
     const kundeAktiv = (!!firma && firma.rolle === 'kunde') || crm.mandate.some(m => m.status === 'aktiv' && ((!!firma && mandatZuFirma(m, firma)) || (m.kontaktIds ?? []).some(id => ids.includes(id))));
     const gesetztNeu = lead?.status === 'neu';
+    // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung. Ebenso ein
+    // direkt angelegter Deal (2.3): der Lead blieb vor dem SQL stehen, sein Deal ist jetzt entschieden. Ein verlorener Deal mit Wiedervorlage
+    // (zeitbezogener Grund, 02.11.) gibt sie dem Lead — dann kommt er an dem Tag wieder in die Qualifizierung (`brauchtQualifizierung`).
+    const ausDeal: LeadStatus | undefined = (lead?.status === 'sql' || (!!lead?.direktAm && lead.chanceId === d?.id)) && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : undefined;
     return {
       id, art, name, ...(firma ? { firmaId: firma.id, branche: firma.branche, stadt: firma.stadt } : {}),
       personen: personen.map(k => ({ id: k.id, name: anzeigename(k), position: k.position ?? k.jobtitel, stufe: k.stufe })), ...(haupt ? { hauptKontaktId: haupt.id } : {}),
-      // Aus dem SQL wurde ein Deal: gewonnen → Kunde, verloren/geparkt → ruht (mit Verlustgrund) — ohne zweite Buchung. Ebenso ein
-      // direkt angelegter Deal (2.3): der Lead blieb vor dem SQL stehen, sein Deal ist jetzt entschieden.
-      status: (lead?.status === 'sql' || (!!lead?.direktAm && lead.chanceId === d?.id)) && d && !offen ? (d.stufe === 'gewonnen' ? 'kunde' : 'ruht') : gesetztNeu && kundeAktiv ? 'kunde' : lead?.status ?? abgeleitet(personen, offen, kundeAktiv), gesetzt: !!lead?.status,
+      status: ausDeal ?? (gesetztNeu && kundeAktiv ? 'kunde' : lead?.status ?? abgeleitet(personen, offen, kundeAktiv)), gesetzt: !!lead?.status,
       kriterien,
       score: leadScore(personen, lead, heute, kriterien, skx), kanal: kanalVon(haupt ?? personen[0] ?? {}),
       ...(lead?.antworten ? { antworten: lead.antworten } : {}), ...(lead?.qualifiziertAm ? { qualifiziertAm: lead.qualifiziertAm } : {}),
       ...(lead?.geprueftAm ? { geprueftAm: lead.geprueftAm } : {}), ...(lead?.direktAm ? { direkt: { am: lead.direktAm, offen: lead.direktOffen ?? [] } } : {}),
-      ...(lead?.stufen ? { stufen: lead.stufen } : {}), ...(lead?.wiedervorlage ? { wiedervorlage: lead.wiedervorlage } : {}), ...(lead?.grundArt ? { grundArt: lead.grundArt } : {}),
+      ...(lead?.stufen ? { stufen: lead.stufen } : {}), ...(lead?.wiedervorlage ? { wiedervorlage: lead.wiedervorlage } : ausDeal === 'ruht' && d?.stufe === 'verloren' && d.wiedervorlage ? { wiedervorlage: d.wiedervorlage } : {}), ...(lead?.grundArt ? { grundArt: lead.grundArt } : {}),
       ohneBesitzer: personen.every(k => !k.besitzer),
       ...(personen.some(k => frischAngelegt(k, heute)) ? { frisch: true as const } : {}),
       bean: firma ? beanFirma(firma, crm, personen).bean : beanVon(personen[0] ?? { id, firmaId: undefined }, crm).bean,
@@ -209,10 +218,35 @@ export function leads(kontakte: Kontakt[], crm: CrmBestand, heute: string): Lead
     };
   };
   const raus: LeadZeile[] = [];
+  // Betriebe ohne Person (A): das beste Kampagnen-Ergebnis je Betrieb (reagiert < Gespräch < Chance) und die Zuständigkeit der Kampagne.
+  const ERG_RANG: Partial<Record<string, number>> = { reagiert: 1, gespraech: 2, chance: 3 };
+  const ERG_STATUS: Record<number, LeadStatus> = { 1: 'kontaktiert', 2: 'im_gespraech', 3: 'qualifizierung' };
+  const kampagnenFirma = new Map<string, { rang: number; zustaendig?: string }>();
+  for (const k of crm.kampagnen ?? []) {
+    if (k.geloeschtAm) continue;
+    for (const e of k.firmenErgebnisse ?? []) {
+      const r = ERG_RANG[e.ergebnis];
+      if (!r || (kampagnenFirma.get(e.firmaId)?.rang ?? 0) >= r) continue;
+      kampagnenFirma.set(e.firmaId, { rang: r, ...(k.zustaendig ? { zustaendig: k.zustaendig } : {}) });
+    }
+  }
   for (const f of crm.firmen) {
     const personen = (jeFirma.get(f.id) ?? []).filter(k => !ausgenommen(k));
-    if (!personen.length || f.rolle === 'dienstleister' || f.rolle === 'investor' || f.rolle === 'wettbewerb') continue;
-    raus.push(zeile(f.id, 'firma', f.name, personen, f.lead, f));
+    if (f.rolle === 'dienstleister' || f.rolle === 'investor' || f.rolle === 'wettbewerb') continue;
+    if (personen.length) { raus.push(zeile(f.id, 'firma', f.name, personen, f.lead, f)); continue; }
+    // Ohne Person nur ein Betrieb, der schon Lead ist bzw. in einer Kampagne geantwortet hat — und nie mit Werbesperre, im Papierkorb oder Archiv.
+    // Personen der Firma, die gesperrt bzw. eingeschränkt sind, lassen den Betrieb ebenfalls draußen (er ist dann nicht „ohne Person“).
+    if (f.werbesperre || f.geloeschtAm || f.archiviertAm || (jeFirma.get(f.id) ?? []).length) continue;
+    const kp = kampagnenFirma.get(f.id);
+    if (!f.lead?.status && !kp) continue;
+    const z = zeile(f.id, 'firma', f.name, [], f.lead, f);
+    const status = !f.lead?.status && kp && (z.status === 'neu' || z.status === 'kontaktiert') ? ERG_STATUS[kp.rang] : z.status;
+    const zustaendig = kp?.zustaendig;
+    raus.push({
+      ...z, status, ohnePerson: true,
+      ...(z.naechsterSchritt ? {} : { naechsterSchritt: { text: 'Ansprechpartner anlegen', datum: heute, bei: f.name } }),
+      ...(zustaendig ? { besitzer: zustaendig, ohneBesitzer: false } : {}),
+    });
   }
   for (const k of ohneFirma.filter(k => !ausgenommen(k))) raus.push(zeile(k.id, 'person', `${anzeigename(k)}${k.firma ? ` (${k.firma})` : ''}`, [k], k.lead));
   const rang = (s: LeadStatus) => ['qualifizierung', 'im_gespraech', 'kontaktiert', 'sql', 'neu', 'kunde', 'ruht', 'kein_fit'].indexOf(s);
@@ -327,6 +361,17 @@ export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' 
   if (offeneMussFragen(z) > 0) return true;
   return !z.qualifiziertAm || tageZw(z.qualifiziertAm, heute) > tage;
 }
+/**
+ * Wieder dran aus einem verlorenen Deal (02.11., Prüfung R2-1 Fund 6): der Lead ruht, weil sein Deal verloren ging (Verlust mit zeitbezogenem Grund →
+ * Wiedervorlage), und die Wiedervorlage ist erreicht — dieselbe Regel, die ihn zurück in die Runde holt (`brauchtQualifizierung`). Bisher meldete das
+ * niemand. „Für dich“ und „Steht an“ zählen damit (an die Zuständige des Leads). Rein.
+ */
+export function ausVerlorenWiederDran(z: Pick<LeadZeile, 'status' | 'deal'> & { wiedervorlage?: string }, heute: string): boolean {
+  return z.status === 'ruht' && !!z.wiedervorlage && z.wiedervorlage <= heute && z.deal?.stufe === 'verloren' && !z.deal.offen;
+}
+/** Der Satz dazu (Einzahl/Mehrzahl) — neutral, ohne Namen. */
+export const wiederDranSatz = (n: number) => (n === 1 ? '1 Lead aus einem verlorenen Deal ist wieder dran' : `${n} Leads aus verlorenen Deals sind wieder dran`);
+
 /** Bis wann ein geprüfter Lead Ruhe hat (Tag) — für Texte in der Runde. Ohne Prüfung null. `tage` = Stellschraube (fehlt = Vorgabe). */
 export const ruheBis = (z: Pick<LeadZeile, 'geprueftAm'>, tage: number = QUALI_WIEDERVORLAGE_TAGE): string | null => {
   if (!z.geprueftAm) return null;

@@ -113,6 +113,11 @@ export interface Chance {
   geaendertVon?: string;
   letzteAktivitaet?: string;
   notiz?: string;
+  /**
+   * Gewünschter Start (02.11., Prüfung R2-3 Fund 6 — optional, additiv, Tag JJJJ-MM-TT): aus „Angebot anfordern“ bzw. dem Deal-Formular. Das Mandat, das bei der
+   * Annahme von selbst entsteht, beginnt dann (frühestens heute); ohne Wunsch am Ersten des Folgemonats — dieselbe Vorgabe wie „Mandat anlegen“ von Hand.
+   */
+  startWunsch?: string;
 }
 
 export type MandatStatus = 'angebot' | 'verhandlung' | 'aktiv' | 'pausiert' | 'beendet';
@@ -179,6 +184,13 @@ export interface Mandat {
    */
   tageJeMonat?: number;
   /**
+   * Jahreshonorar (02.11., Prüfung R2-3 Fund 3 — optional, additiv, Euro wie `honorar.betrag`): ein Produkt mit Jahrespreis wird EINE Rechnung je Vertragsjahr
+   * über den vollen Betrag (im Monat des Beginns und alle 12 Monate danach), Liquidität ebenso jährlich. `honorar` bleibt die Kennzahl je Monat (Basis „monat“,
+   * Jahr ÷ 12 auf den Cent — MRR, Business-Index) und ist zugleich der Rückweg: der alte Stand kennt das Feld nicht, verwirft es und rechnet monatlich Jahr ÷ 12.
+   * Gilt nur, solange es zu `honorar` passt (`jahresHonorarVon`, lib/crm/mandat-laufzeit.ts) — wer das Monatshonorar von Hand ändert, hat wieder ein Monatshonorar.
+   */
+  jahresHonorar?: number;
+  /**
    * Pausen (02.11., Kreislauf Runde 3 — optional, additiv): je Wechsel aktiv → pausiert ein Eintrag `{ von }` (erster pausierter Tag), beim Wechsel zurück
    * `bis` (letzter pausierter Tag, beide eingeschlossen). Setzt NUR der Server im CRM-Schreibweg (`pausenStempeln`, lib/crm/mandat-pausen.ts) — der Browser
    * nie. Leistungsmonate zählen pausierte Tage nicht (`leistungsmonat`, lib/crm/mandat-laufzeit.ts): ganz pausierte Monate bekommen keine Rechnung,
@@ -223,6 +235,18 @@ export interface MandatZusatz {
   stundenJeMonat?: number;
   /** Nur Tagessatz (21.10., B4): geplante Tage je Monat für die Liquidität — Vorgabe die geplante Menge des Produkts; abgerechnet wird nach Tagen. */
   tageJeMonat?: number;
+  /**
+   * Raten eines einmaligen Zusatzmoduls (02.11., Prüfung R2-3 Fund 1 — optional, additiv, schließt `zahlplan` aus): die Zahlungsweise des angenommenen Angebots
+   * („in 3 Raten“) gilt auch für den Festpreis einer Kombination, den das Mandat als Zusatzmodul trägt — erste Rate im Monat des Beginns, dann alle
+   * `abstandMonate` Monate (dieselbe Regel wie `Mandat.raten`). Der alte Stand verwirft das Feld: das Modul steht dann ganz im Monat des Beginns.
+   */
+  raten?: { anzahl: number; abstandMonate: number };
+  /**
+   * Beim Anlegen festgeschrieben (02.11., Prüfung R2-3 Fund 5 — optional, additiv): Deckel (Stunden je Monat) und Preise der optionalen Teile des Produkts, wie
+   * sie galten, als das Modul ans Mandat kam. Rechnung und Liquidität nehmen sie statt des heutigen Produkts; ohne die Felder (Altbestand) wie bisher das Produkt.
+   */
+  deckelStunden?: number;
+  optionPreise?: { teilId: string; betragCent: number }[];
 }
 export type MandatZusatzBasis = 'monat' | 'jahr' | 'einmalig' | 'einheit' | 'tag' | 'stunde';
 
@@ -428,6 +452,11 @@ export interface AngebotPosition {
   satz?: 'tag' | 'stunde';
   /** Artikelnummer aus dem Preis-Teil (25.10., optional, additiv) — wandert in die Rechnungsposition; der alte Stand verwirft sie beim Speichern des Entwurfs. */
   artikelnummer?: string;
+  /**
+   * Was beim Erstellen der Position am Preis-Teil galt (02.11., Prüfung R2-3 Fund 5 — optional, additiv): Zahlplan (Anzahlung %) und Deckel (Stunden je Monat).
+   * Vorhanden = festgeschrieben (auch leer `{}` = „ohne“); die Annahme nimmt dann das Angebot, nicht das heutige Produkt. Fehlt es (Altbestand), wie bisher das Produkt.
+   */
+  vereinbart?: { anzahlungProzent?: number; deckelStunden?: number };
 }
 /**
  * Festgehaltener Absender beim Stellen (ohne IBAN im Klartext — die steht nur im PDF). `annahme`/`agb` (25.10., optional, nur Angebote): Annahmeblock an und
@@ -870,6 +899,8 @@ export interface Kampagne {
   /** Betriebe ohne Ansprechpartner als Ziele (01.11., Welle A) — Ziel = { art: 'firma', id } (lib/crm/segmente.ts `segmentZiele`). */
   firmaIds?: string[];
   ergebnisse: { kontaktId: string; ergebnis: KampagnenErgebnis; am: string; /** Wer angesprochen hat. */ von?: string }[];
+  /** Ergebnisse je Betrieb ohne Person (M1, 01.11.) — dieselbe Form wie `ergebnisse`, nur mit `firmaId`; die Personen-Liste bleibt unberührt. */
+  firmenErgebnisse?: { firmaId: string; ergebnis: KampagnenErgebnis; am: string; von?: string }[];
   /** Wer sie angelegt hat — von Hand oder aus einem Vorschlag eines Heads. */
   von: 'hand' | 'head-sales' | 'head-marketing';
   /** Kosten der Kampagne in Euro (27.09.) — für Kosten je qualifiziertem Lead. */
@@ -910,7 +941,12 @@ export interface KampagnenZiel { art: ZielArt; id: string }
 export type ZielStatus = 'offen' | 'wartet' | 'reagiert' | 'gestoppt' | 'fertig';
 export type ZielVerlaufWas = 'start' | 'entwurf' | 'freigegeben' | 'gesendet' | 'erledigt' | 'uebersprungen' | 'reagiert' | 'bounce' | 'abgemeldet' | 'gestoppt' | 'fertig';
 export interface ZielVerlauf { am: string; was: ZielVerlaufWas; schritt?: string; von?: string }
-export interface ZielStand extends KampagnenZiel { schritt: number; faelligAm: string; status: ZielStatus; grund?: string; verlauf: ZielVerlauf[] }
+/**
+ * Stand je Ziel. `schritt` ist der Index in der Sequenz (Altstand bis 01.11.); seit M1 (01.11.) führt `schrittId` (die Kennung des Schritts) —
+ * so verschiebt ein eingefügter oder entfernter Schritt keinen laufenden Stand. Fehlt `schrittId`, wird der Index beim Lesen übersetzt
+ * (lib/crm/sequenz.ts `schrittIndex`).
+ */
+export interface ZielStand extends KampagnenZiel { schritt: number; schrittId?: string; faelligAm: string; status: ZielStatus; grund?: string; verlauf: ZielVerlauf[] }
 
 export interface MarketingEinstellung { positionierung: string; icp: string; ton: string; saeulen: { id: string; name: string; beschreibung: string }[] }
 
@@ -928,7 +964,8 @@ export interface PowerHourSitzung {
 
 /** Betroffenenantrag (Art. 15–21 DSGVO) — Frist ein Monat ab Eingang. */
 export type AntragArt = 'auskunft' | 'berichtigung' | 'loeschung' | 'einschraenkung' | 'uebertragbarkeit' | 'widerspruch';
-export interface Antrag { id: string; art: AntragArt; name: string; email?: string; kontaktId?: string; eingang: string; frist: string; status: 'offen' | 'erledigt'; ergebnis?: string; erledigtAm?: string; von?: string; geaendert: string }
+/** `nachricht` (02.11., Prüfung A Fund 5): der Text einer Nachricht, die eine eingeschränkte Person (Art. 18) über die Website schickte — nur zum Prüfen unter Datenschutz. */
+export interface Antrag { id: string; art: AntragArt; name: string; email?: string; kontaktId?: string; eingang: string; frist: string; status: 'offen' | 'erledigt'; ergebnis?: string; erledigtAm?: string; von?: string; geaendert: string; nachricht?: string }
 /** Verzeichnis der Verarbeitungstätigkeiten (Art. 30 DSGVO). */
 export interface Verarbeitung {
   id: string; name: string; zweck: string; personen: string; daten: string; rechtsgrundlage: string; empfaenger: string; drittland: string; loeschfrist: string; toms: string; verantwortlich: string; stand: string;
@@ -950,6 +987,12 @@ export type FollowUpBezugArt = 'kontakt' | 'firma' | 'chance' | 'mandat' | 'even
 export type FollowUpArt = 'anruf' | 'mail' | 'linkedin' | 'termin' | 'nachricht' | 'sonstig';
 export type FollowUpStatus = 'offen' | 'erledigt' | 'verpasst' | 'abgesagt';
 export type FollowUpQuelle = 'hand' | 'regel' | 'kadenz' | 'kampagne' | 'event' | 'head' | 'zoe' | 'deal';
+/**
+ * Worauf ein Follow-up antwortet (02.11., Gegenprüfung R2-4 Fund 1): eine Antwort, eine Anfrage der Person, ein Vertrag, eine Rechnung oder ein Termin —
+ * das ist NIE Werbung. Eine Werbesperre (Person oder Betrieb) blendet nur aus, was WIR werblich anstoßen (`istWerblich`, lib/crm/followup.ts).
+ * Optional: der alte Stand kennt das Feld nicht (er verwirft es beim nächsten Speichern — dann gilt wieder die alte Regel nach Art).
+ */
+export type FollowUpAnlass = 'antwort' | 'anfrage' | 'vertrag' | 'rechnung' | 'termin';
 export interface FollowUp {
   id: string;
   /** Woran es hängt — immer mit der Person, die man anspricht (kontaktId), wenn es eine gibt. */
@@ -967,6 +1010,8 @@ export interface FollowUp {
   ergebnis?: string;
   notiz?: string;
   quelle: FollowUpQuelle;
+  /** Worauf es antwortet (nie werblich) — fehlt = nach Art/Herkunft (`istWerblich`). */
+  anlass?: FollowUpAnlass;
   /** Verknüpfte Aufgabe im Board, wenn man es sich dorthin geholt hat. */
   aufgabeId?: string;
   /**

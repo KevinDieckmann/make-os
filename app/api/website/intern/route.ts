@@ -9,7 +9,8 @@
 //                                fehlende Einträge (nie überschreiben).
 
 import { NextResponse } from 'next/server';
-import { imHaushaltDesInhabers, istInhaber, istDienst, nurHaushalt, nurDerInhaber } from '@/lib/zugang/tor';
+import { imHaushaltDesInhabers, istDienst, nurHaushalt } from '@/lib/zugang/tor';
+import { darfSteuern, NUR_STEUERN } from '@/lib/zugang/steuern';
 import { bauPruefen } from '@/lib/bau/pruefen';
 import { jsonBegrenzt, jsonZuGross } from '@/lib/zugang/json-grenze';
 import { werAus } from '@/lib/store/aenderungsprotokoll';
@@ -62,7 +63,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, eingaenge }, OHNE);
   }
   if (teil !== 'inhalt') return fehler('teil: inhalt, ueberblick oder eingaenge.', 400);
-  const [inhalt, h, inhaber, startwerte] = await Promise.all([ladeWebsiteInhalt(), hilfen(), istInhaber(z.person), startwerteLesen().then(x => x !== null).catch(() => false)]);
+  const [inhalt, h, inhaber, startwerte] = await Promise.all([ladeWebsiteInhalt(), hilfen(), darfSteuern(z.person), startwerteLesen().then(x => x !== null).catch(() => false)]);
   return NextResponse.json({ ok: true, inhalt: mitStand(inhalt), bereiche: bereicheVon(inhalt), hilfen: h, istInhaber: inhaber, startwerte }, OHNE);
 }
 
@@ -92,7 +93,8 @@ export async function POST(req: Request) {
   const z = await imHaushaltDesInhabers(req);
   if (!z) return nurHaushalt();
   if (istDienst(req)) return fehler('Nur per Klick einer Person — nicht über den Dienstweg.', 403);
-  if (!(await istInhaber(z.person))) return nurDerInhaber();
+  // Marketing steuern (02.11., Prüfung D): Inhaber ODER volles Mitglied des Haushalts (lib/zugang/steuern.ts).
+  if (!(await darfSteuern(z.person))) return fehler(NUR_STEUERN, 403);
   const alterBau = bauPruefen(req);
   if (alterBau) return alterBau;
   let b: Record<string, unknown>;

@@ -51,6 +51,7 @@ import { kontextAus } from './segmente';
 import { gastVormerken, einladungswegAus } from './eventplanung';
 import { kanalStatus } from './recht';
 import { angebotSpeichern } from './angebot-server';
+import { angebotEntwurfFollowupId, istEntwurf } from './angebote';
 import { terminAktivitaetenSetzen } from './termin-aktivitaet-server';
 import { MARKE_EVENTS, istNetzwerkenEvent, nachfassText } from './marke';
 import { besuchAbgesagt } from './besuche-form';
@@ -567,6 +568,16 @@ async function lauf(e: Erfassung, ctx: ErfassungKontext): Promise<ErfassungErgeb
           try { await angebotSpeichern({ id, felder: { kontaktId, ...(kontakt0.firmaId ? { firmaId: kontakt0.firmaId } : {}), titel: `Angebot für ${name}` }, person: ctx.person, haushalt: ctx.haushalt, wer: ctx.wer, jetzt }); }
           catch (err) { throw new ErfassungFehler(err instanceof Error ? err.message : 'Das Angebot ließ sich nicht anlegen.', (err as { status?: number })?.status ?? 500); }
         }
+        // R2-1 Fund 3 (02.11.): der Entwurf bekommt eine Erinnerung „Angebot fertigstellen“ (feste Kennung, idempotent) an die zuständige Person —
+        // vorher nur eine Glocke, und die entfiel, wenn die erfassende Person selbst zuständig war. Schließt sich beim Stellen bzw. Löschen des Entwurfs
+        // (lib/crm/angebote.ts `angebotEntwurfFollowupId`). Nur solange der Entwurf noch ein Entwurf ist.
+        await aendereCrm(b => {
+          const fid = angebotEntwurfFollowupId(id);
+          const a = (b.angebote ?? []).find(x => x.id === id);
+          if (!a || !istEntwurf(a) || a.geloeschtAm || (b.followups ?? []).some(x => x.id === fid)) return b;
+          const fu = neuesFollowUp({ id: fid, bezug: { art: 'kontakt', id: kontaktId }, kontaktId, art: 'sonstig', text: `Angebot fertigstellen — kennengelernt bei „${event.titel}“`.slice(0, 300), faellig: frist, quelle: 'event', zustaendig: e.zustaendig, ...(e.info ? { notiz: `Info: ${e.info}`.slice(0, 1000) } : {}) }, kontakt0, ctx.person, jetztIso);
+          return { ...b, followups: [...(b.followups ?? []), { ...fu, geaendertVon: ctx.person }] };
+        }, ctx.wer);
         break;
       }
       default: break; // 'termin' (eigener Schritt) und 'nur-kontakt' (nichts)

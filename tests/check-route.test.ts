@@ -62,6 +62,8 @@ beforeAll(async () => {
   await db.saveJson('konten', { konten: [
     { id: 'k1', speicher: 'kevin', email: 'k@example.invalid', name: 'Testo Inhaber', rolle: 'inhaber', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
     { id: 'k2', speicher: 'malin', email: 'm@example.invalid', name: 'Proba Partnerin', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS },
+    // 02.11. (Prüfung D): ein volles Mitglied steuert wie ein Inhaber — die Sperre gilt einem Konto „nur Business“.
+    { id: 'k3', speicher: 'nurbusiness', email: 'b@example.invalid', name: 'Proba Team', rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, haushalt: HAUS, finanzRecht: 'business' },
   ], einladungen: [] });
   oeffentlich = await import('@/app/api/check/route');
   intern = await import('@/app/api/check/intern/route');
@@ -74,7 +76,8 @@ describe('kommt ausgeschaltet', () => {
     expect((await check({ aktion: 'start' })).status).toBe(404);
   });
   it('einschalten nur der Inhaber — und nur mit Verantwortlichem der Instanz', async () => {
-    expect((await innen({ aktion: 'einstellungen', aktiv: true }, 'malin')).status).toBe(403);
+    expect((await innen({ aktion: 'einstellungen', aktiv: true }, 'nurbusiness')).status).toBe(403);
+    expect((await innen({ aktion: 'einstellungen', aktiv: true }, 'malin')).status).toBe(409); // volles Mitglied: wie der Inhaber
     expect((await innen({ aktion: 'einstellungen', aktiv: true })).status).toBe(409);
     ds.wert = { verantwortlich: 'Probe GmbH, datenschutz@example.invalid', seite: 'example.invalid/datenschutz' };
     const r = await innen({ aktion: 'einstellungen', aktiv: true });
@@ -83,7 +86,7 @@ describe('kommt ausgeschaltet', () => {
     expect((await innen({ aktion: 'einstellungen', buchungSlug: 'erstgespraech-0123456789abcdef01234567' })).status).toBe(400);
   });
   it('Leitsatz und Angebote je Bereich (30.10.): nur der Inhaber, Links nur /… oder https', async () => {
-    expect((await innen({ aktion: 'einstellungen', angebote: { vertrieb: { titel: 'Vertriebsaufbau' } } }, 'malin')).status).toBe(403);
+    expect((await innen({ aktion: 'einstellungen', angebote: { vertrieb: { titel: 'Vertriebsaufbau' } } }, 'nurbusiness')).status).toBe(403);
     for (const link of ['javascript:alert(1)', '//fremd.example.invalid/x', 'http://example.invalid/', '/mit leerzeichen']) {
       expect((await innen({ aktion: 'einstellungen', angebote: { vertrieb: { titel: 'Vertriebsaufbau', link } } })).status, link).toBe(400);
     }

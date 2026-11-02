@@ -2,7 +2,7 @@
 
 // ─── Markttraktion · Marketing › Anfragen — Schalter des Kontaktformulars der Website (31.10., Website-Anbau) ─────────────────────────
 // Das Formular unter /anfrage (auch unter der Adresse der Website) kommt AUS. Nachrichten landen als Anfrage „über Website“ unten in der Liste,
-// mit Follow-up „Anfrage beantworten“. Umschalten nur ein Inhaber (Server: /api/kontaktformular/intern), alle anderen sehen den Stand.
+// mit Follow-up „Anfrage beantworten“. Umschalten nur Inhaber und volle Mitglieder (02.11., Server: /api/kontaktformular/intern), alle anderen sehen den Stand.
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -34,7 +34,7 @@ export function KontaktformularKarte() {
       <div style={{ display: 'grid', gap: 8 }}>
         <Schalter an={d.aktiv} aus={!d.istInhaber} onChange={an => void schalten(an)} erklaerung="kontaktformular.oeffentlich">Formular öffentlich</Schalter>
         <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Nachrichten kommen hier als Anfrage „über Website“ an, mit Follow-up „Anfrage beantworten“. Keine Werbe-Einwilligung, keine Mail — geantwortet wird von Hand.</span>
-        {!d.istInhaber && <Hinweis art="info">Einschalten kann nur ein Inhaber — du siehst den Stand.</Hinweis>}
+        {!d.istInhaber && <Hinweis art="info">Einschalten dürfen Inhaber und volle Mitglieder des Haushalts — du siehst den Stand.</Hinweis>}
         {d.gruende.length > 0 && <Hinweis art="achtung" titel="Verantwortlicher fehlt">{d.gruende.join(' ')} <Link href={WEG.datenschutz('verantwortlicher')} style={{ color: C.aktiv }}>Jetzt eintragen</Link></Hinweis>}
         {fehler && <Hinweis art="kritisch">{fehler}</Hinweis>}
       </div>

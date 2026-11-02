@@ -121,6 +121,8 @@ const ART: Record<GespeicherteArt | AbgeleiteteArt, { Icon: LucideIcon; label: s
   // Netzwerken (02.10.): jemand hat dir einen Termin gebucht bzw. eine Person zugeteilt (gespeichert) und „Danke-Mails bereit“ (abgeleitet).
   netzwerken: { Icon: Handshake, label: 'Netzwerken', farbe: C.aktiv },
   danke: { Icon: Mail, label: 'Danke-Mails', farbe: C.achtung },
+  // 02.11. (Prüfung D): Kampagnen-Mails zur Freigabe, Briefe zum Drucken, Funde zum Prüfen — abgeleitet, nie gespeichert.
+  kampagne: { Icon: Mail, label: 'Kundengewinnung', farbe: C.achtung },
   // 03.10.: etwas am eigenen Zugang wurde geändert (Anmelde-Adresse).
   sicherheit: { Icon: ShieldCheck, label: 'Sicherheit', farbe: C.achtung },
   // 04.10.: „kündigen bis“ eines Vertrags naht (Gesellschafts-Register).
@@ -154,7 +156,7 @@ const ART_UNTERNEHMEN = { Icon: Hourglass, label: 'Unternehmen', farbe: C.achtun
 const artVon = (m: { art: string; bezug?: { art?: string; id?: string } }) => (m.art === 'vertrag' && /^us[pdmr]-/.test(m.bezug?.id ?? '') ? ART_UNTERNEHMEN : ART[m.art as keyof typeof ART]);
 
 function zeitVon(m: Meldung, jetzt: number): string {
-  if (m.virtuell) return m.art === 'faellig' || m.art === 'termin' || m.art === 'nachbereiten' || m.art === 'frist' || m.art === 'followup' || m.art === 'vorschlag' || m.art === 'danke' || m.art === 'routine' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
+  if (m.virtuell) return m.art === 'faellig' || m.art === 'termin' || m.art === 'nachbereiten' || m.art === 'frist' || m.art === 'followup' || m.art === 'vorschlag' || m.art === 'danke' || m.art === 'kampagne' || m.art === 'routine' ? 'heute' : m.art === 'geburtstag' ? (m.titel.includes(' morgen ') ? 'morgen' : 'heute') : 'überfällig';
   return vorZeit(m.am, jetzt);
 }
 

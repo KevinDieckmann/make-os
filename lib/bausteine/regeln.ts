@@ -303,6 +303,13 @@ export interface Bestellung {
   abgelehnt?: { am: string; von: string; grund?: string; absage?: boolean };
   /** Art. 17 (Aufbewahrungspflicht): Telefon und Kartei-Bezug getilgt, die Rechnungsdaten bleiben. */
   getilgtAm?: string;
+  /**
+   * 02.11. (Prüfung A): feste Kennungen der Anfrage im CRM (ein zweiter Versuch legt nichts doppelt an), das Follow-up „Anfrage beantworten“ der
+   * Bestellung (Fund 11: bei Lieferung bzw. Ablehnung geschlossen) und wann die Glocke „Neue Bestellung“ ging (genau einmal, Fund 3).
+   */
+  anfrageIds?: { kontakt: string; followUp: string };
+  followUpId?: string;
+  eingangGemeldet?: string;
 }
 export interface BestellDatei { bestellungen: Bestellung[] }
 

@@ -106,6 +106,7 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['mandat-firma-tot', b => { b.crm.mandate[0].firmaId = 'f-weg'; }, 1, 'm-1'],
   ['mandat-kontakt-tot', b => { b.crm.mandate[0].kontaktIds.push('c-weg1'); }, 1, 'm-1'],
   ['mandat-produkt-tot', b => { b.crm.mandate[0].leistungId = 'l-weg'; }, 1, 'm-1'],
+  ['zusatz-produkt-tot', b => { b.crm.mandate[0].zusatz = [{ id: 'mz-1', leistungId: 'l-weg', honorar: { betragCent: 100, basis: 'monat' } }]; }, 1, 'm-1'],
   ['mandat-ohne-rechnung', b => { b.finanzplan!.rechnungen[0].datum = '2026-06-01'; }, 1, 'm-1'],
   ['rechnung-mandat-tot', b => { b.finanzplan!.rechnungen.push({ id: 'r-2', firmaId: 'kdc', mandatId: 'm-weg', status: 'geplant', betrag: 100 }); }, 1, 'r-2'],
   ['rechnung-gesellschaft-tot', b => { b.finanzplan!.rechnungen[0].firmaId = 'weg'; }, 1, 'r-1'],
@@ -212,6 +213,9 @@ const FAELLE: [PruefungId, (b: VerbindungsBestaende) => void, number, string][] 
   ['familie-tag-mensch-tot', b => { b.familieTage = { menschen: ['m-1'], tage: [{ id: 'tag-ok', menschId: 'm-1' }, { id: 'tag-tot', menschId: 'm-weg' }] }; }, 1, 'tag-tot'],
   // Prozesse × Fulfillment (22.10.): ein Produkt zeigt auf einen Prozess der Werkstatt, den es nicht mehr gibt (ohne geladene Prozesse keine Prüfung).
   ['produkt-prozess-tot', b => { b.prozesse = { ids: ['pz-00000000-0000-4000-8000-000000000001'] }; b.crm.leistungen = [produkt('l-ok', { prozessId: 'pz-00000000-0000-4000-8000-000000000001' }), produkt('l-tot', { prozessId: 'pz-00000000-0000-4000-8000-0000000000ff' })]; }, 1, 'l-tot'],
+  // Prüfung C (02.11.): angenommenes Angebot ohne Mandat (am Angebot oder über den Deal; archiviertes zählt nicht); unterschriebener Vertrag ohne Register-Eintrag.
+  ['angebot-angenommen-ohne-mandat', b => { b.crm.angebote = [angebot('ang-mitm', { status: 'angenommen', dealId: 'd-1', pdfDateiId: 'd-abcd1' }), angebot('ang-ohne', { status: 'angenommen', dealId: 'd-weg', pdfDateiId: 'd-abcd1' }), angebot('ang-arch', { status: 'angenommen', dealId: 'd-weg', archiviertAm: J, pdfDateiId: 'd-abcd1' })]; b.crm.mandate[0].chanceId = 'd-1'; b.crm.chancen.push(deal('d-weg', { stufe: 'gewonnen', kontaktIds: ['c-anna1'], firmaId: 'f-alpha' })); b.crm.mandate.push(mandat('m-2', { kontaktIds: ['c-anna1'], firmaId: 'f-alpha', start: '2026-01-01', chanceId: 'd-weg', geloeschtAm: J })); }, 1, 'ang-ohne'],
+  ['vertrag-unterschrieben-ohne-register', b => { b.vertraege = { liste: [{ id: 'vtr-ok', status: 'unterschrieben', registerVertragId: 'vt-1' }, { id: 'vtr-fehlt', status: 'aktiv' }, { id: 'vtr-tot', status: 'unterschrieben', registerVertragId: 'vt-weg' }, { id: 'vtr-offen', status: 'fertig' }], register: ['vt-1'] }; }, 2, 'vtr-fehlt'],
   ['einwilligung-beleg-tot', b => { b.kontakte[0].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'd-weg99' }]; b.kontakte[1].einwilligungen = [{ kanal: 'mail', grundlage: 'einwilligung', erteiltAm: HEUTE, nachweis: 'Formular', wortlaut: 'Ja, gern', belegRef: 'Formular d-abcd1' }]; }, 1, 'c-anna1'],
 ];
 
