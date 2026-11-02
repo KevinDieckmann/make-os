@@ -591,6 +591,12 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'solange die Regel gebraucht wird; Löschen der Regel entfernt sie sofort (die Buchungen behalten ihre Kategorie)',
     kategorie: ['vertraulich'],
   }),
+  mit(H('buchungs-regeln-privat--*', 'Private Buchungs-Regeln je Haushalt (getrennt vom Business-Bestand): Muster (Teiltext der Gegenseite/des Verwendungszwecks), Kategorie, Gesellschaft, Notiz — eigene Arbeitsregeln der Buchhaltung.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 238 HGB / § 147 AO (Buchführung der Gesellschaften) und lit. f (eigene Finanzen ordnen)',
+    art15: 'Muster mit dem Namen einer Person findet die Auskunft nicht automatisch — die Regel steht unter Finanzen › Buchungen › Regeln (bearbeiten/löschen)',
+    loeschfrist: 'solange die Regel gebraucht wird; Löschen der Regel entfernt sie sofort (die Buchungen behalten ihre Kategorie)',
+    kategorie: ['vertraulich'],
+  }),
   H('haushalt-umzug--*', 'Umzugs-Kopie der Haushaltsfinanzen — eigene Daten des Haushalts.'),
   H('telegram', 'Telegram-Verknüpfung der Personen des Haushalts (Chat-Kennungen).'),
   // Betroffenenrechte v2 (05.10.): mit Frist und Angaben — 12 Monate (FRIST_MONATE, lib/zugang/anmeldungen.ts), nicht mehr „300 Einträge“.
@@ -997,10 +1003,14 @@ const IN_PRIVAT: readonly string[] = [
   'lauf-spur--privat--*',
   // Fokus · Privat je Haushalt (10.10.), Prioritäten · Privat je Haushalt (10.10., Fokus-Steuerung)
   'fokus-privat--*', 'fokus-steuerung-privat--*',
+  // Buchhaltung (02.11.): Regeln privat, der Privat-Einheit und ohne Gesellschaft (getrennt von buchungs-regeln--*)
+  'buchungs-regeln-privat--*',
 ];
 const IN_BUSINESS: readonly string[] = [
   // Kampagne „Homepage“ und Kampagnen-Motor (31.10./01.11.): Funde und Mail-Stapel gehören zur Kundengewinnung.
   'kampagne-funde--*', 'kampagnen-post--*',
+  // Buchhaltung (02.11.): Regeln der Business-Gesellschaften — die übrigen liegen getrennt in buchungs-regeln-privat--* (lib/finanzen/buchhaltung/server.ts)
+  'buchungs-regeln--*',
   // Kartei-Pflicht und Markttraktion (die Kartei selbst steht unter GEMISCHT — Entscheidungsfrage 2 im Plan)
   'crm-import-konflikte', 'crm-import-laeufe--*', 'crm-sperrliste--*', 'crm-loeschprotokoll', 'kennung-alias--*', 'datenschutz-migration',
   'netzwerk', 'kunden', 'stammdaten', 'prospects', 'crm-signale', 'crm-scoring', 'kampagnen-vorlagen--*', 'event-vorlagen--*', 'markttraktion-planung--*', 'social--*', 'social-verbindungen--*', 'social-lauf--*', 'social-linkedin-zustand', 'social-instagram-zustand', 'social-medien-links', 'social-community--*', 'social-werkstatt--*', 'produkt-treppe--*', 'traktion-verlauf', 'uebergabe-journal--*', 'events-geloescht',
@@ -1128,7 +1138,6 @@ export const GEMISCHT: Readonly<Record<string, string>> = {
   'haushalt-umzug--*': 'Umzugskopie der Haushaltsfinanzen (wie haushalt-*--*)',
   'konten--*': 'Konten je Inhaber (Gesellschaft, privat, gemeinsam)',
   'kontoauszug-laeufe--*': 'je Lauf das Konto → Gesellschaft bzw. privat',
-  'buchungs-regeln--*': 'je Regel `ort` (Gesellschaft bzw. privat) — die Business-Sicht bekommt nur Regeln der Business-Gesellschaften (app/api/finanzen/buchhaltung)',
   // ── ZOE, Agenten, KI, Medien ──
   'zoe-verlauf': 'kein Feld — Gespräche mit ZOE über beide Bereiche',
   'zoe-gedaechtnis': 'kein Feld — Merksätze aus beiden Bereichen',

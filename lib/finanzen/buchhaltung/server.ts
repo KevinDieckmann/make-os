@@ -1,9 +1,11 @@
 // ─── Buchhaltung — Server: Regeln, Vorschläge für Gegenbuchungen, Schreiben auf `buchungen` (02.11.) ───────────────────────────────────
-// EINE Schreibstelle des Regel-Bestands `buchungs-regeln--<haushalt>` (Regeln „Empfänger/Zweck → Kategorie“ + eigene Kategorien des Haushalts —
-// ohne Personen-Feld; wer was geändert hat, steht nur im Änderungsprotokoll). Buchungen werden nur über `buchungenAendern` geschrieben: frisch in
+// EINE Schreibstelle der Regel-Bestände (Regeln „Empfänger/Zweck → Kategorie“ + eigene Kategorien des Haushalts — ohne Personen-Feld; wer was
+// geändert hat, steht nur im Änderungsprotokoll). Je Bereich ein eigener Bestand (Trennungsregel, tests/trennung-bereiche.test.ts):
+// `buchungs-regeln--<haushalt>` = Regeln der Business-Gesellschaften + eigene Kategorien, `buchungs-regeln-privat--<haushalt>` = alle übrigen
+// (privat, Privat-Einheit, ohne Gesellschaft). Gelesen wird zusammengelegt, geschrieben wird je Regel in den Bestand ihres Bereichs (`regelnTeilen`). Buchungen werden nur über `buchungenAendern` geschrieben: frisch in
 // der Sperre lesen, Stand je Zeile prüfen (409), nichts Ungeprüftes. Die Filterstelle „wer sieht welche Buchung“ ist `sichtbarFuer`.
 
-import { loadJson, updateJson } from '@/lib/store/local-db';
+import { loadJson, updateJson, updateJsonAsync } from '@/lib/store/local-db';
 import { fingerabdruck } from '@/lib/store/fingerabdruck';
 import { istBusinessGesellschaft } from '@/lib/einheiten';
 import { ibanGrundform } from '@/lib/crm/zahlung';
@@ -19,6 +21,25 @@ export function regelnName(haushalt: string): string {
   if (!HAUSHALT.test(haushalt)) throw new Error(`Ungültiger Haushalt: ${haushalt}`);
   return `buchungs-regeln--${haushalt}`;
 }
+/** Bestand der privaten Regeln je Haushalt (ausgeschrieben wie oben). */
+export function regelnNamePrivat(haushalt: string): string {
+  if (!HAUSHALT.test(haushalt)) throw new Error(`Ungültiger Haushalt: ${haushalt}`);
+  return `buchungs-regeln-privat--${haushalt}`;
+}
+/** Eine Regel gehört ins Business, wenn ihre Gesellschaft eine Business-Gesellschaft ist — sonst in den privaten Bestand. */
+const regelImBusiness = (r: { ort?: string }): boolean => !!r.ort && istBusinessGesellschaft(r.ort);
+/** Zusammengelegter Bestand → je Bereich ein Bestand (eigene Kategorien liegen beim Business, wie bisher für beide Sichten sichtbar). */
+export function regelnTeilen(b: RegelBestand): { business: RegelBestand; privat: RegelBestand } {
+  return { business: { regeln: b.regeln.filter(regelImBusiness), kategorien: b.kategorien }, privat: { regeln: b.regeln.filter(r => !regelImBusiness(r)), kategorien: [] } };
+}
+/** Beide Bestände → ein Bestand (ein Altbestand mit Privat-Regeln im Business-Bestand wird beim nächsten Schreiben umgelegt). */
+export function regelnZusammen(business: unknown, privat: unknown): RegelBestand {
+  const b = regelBestandLesen(business ?? LEERER_REGELBESTAND);
+  const p = regelBestandLesen(privat ?? LEERER_REGELBESTAND);
+  const ids = new Set(b.regeln.map(r => r.id));
+  const kat = [...b.kategorien, ...p.kategorien.filter(k => !b.kategorien.includes(k))];
+  return { regeln: [...b.regeln, ...p.regeln.filter(r => !ids.has(r.id))], kategorien: kat };
+}
 
 export type Sicht = 'privat' | 'business';
 /** Die EINE Filterstelle: die Business-Sicht bekommt nur Buchungen der Business-Gesellschaften. */
@@ -28,7 +49,8 @@ export const standVon = (b: BhBuchung): string => { const { stand: _s, ...rest }
 export const mitStand = (b: BhBuchung): BhBuchung => ({ ...b, stand: standVon(b) });
 
 export async function regelnLaden(haushalt: string): Promise<RegelBestand> {
-  return regelBestandLesen(await loadJson<unknown>(regelnName(haushalt)));
+  const [b, p] = await Promise.all([loadJson<unknown>(regelnName(haushalt)), loadJson<unknown>(regelnNamePrivat(haushalt))]);
+  return regelnZusammen(b, p);
 }
 export const regelnStand = (b: RegelBestand): string => fingerabdruck(b as unknown as Record<string, unknown>);
 
@@ -38,13 +60,20 @@ export async function regelnAendern(haushalt: string, stand: string | undefined,
   let konflikt: RegelBestand | null = null;
   let neu: RegelBestand | null = null;
   try {
-    await updateJson<RegelBestand>(regelnName(haushalt), roh => {
-      const alt = regelBestandLesen(roh ?? LEERER_REGELBESTAND);
-      if (stand !== undefined && stand !== regelnStand(alt)) { konflikt = alt; throw new Unveraendert(); }
-      const n = f(alt);
-      if (!n) { neu = alt; throw new Unveraendert(); }
-      neu = n;
-      return n;
+    // Zwei Bestände in einer Sperre: außen der Business-Bestand, innen der private (Regel der Datenschicht).
+    await updateJsonAsync<RegelBestand>(regelnName(haushalt), async rohB => {
+      let business: RegelBestand | null = null;
+      await updateJson<RegelBestand>(regelnNamePrivat(haushalt), rohP => {
+        const alt = regelnZusammen(rohB, rohP);
+        if (stand !== undefined && stand !== regelnStand(alt)) { konflikt = alt; throw new Unveraendert(); }
+        const n = f(alt);
+        if (!n) { neu = alt; throw new Unveraendert(); }
+        neu = n;
+        const t = regelnTeilen(n);
+        business = t.business;
+        return t.privat;
+      });
+      return business ?? LEERER_REGELBESTAND;
     });
   } catch (e) { if (!(e instanceof Unveraendert)) throw e; }
   if (konflikt) return { ok: false, konflikt };

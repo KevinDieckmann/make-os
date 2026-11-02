@@ -11,7 +11,8 @@ je Buchung Kategorie · Notiz · Gesellschaft · Rechnung/Mandat derselben Gesel
 veraltet → 409 mit aktueller Zeile, > 200 → 413). Reiter „Zu prüfen (n)“ (nach Gegenseite, Passt/Ändern, Fragen-Chips, Bewirtung mit Anlass + Teilnehmer,
 Beleg-Hinweis, „Alle ohne Frage bestätigen“) und „Monatssummen“ (nur Anzeige). Unten „Werkzeuge“: Umbuchung prüfen, Zahlung passt zu Rechnung, Regeln,
 Einlesen und Ausgeben (Paket + CSV).
-- **Regeln** `buchungs-regeln--<haushalt>` (EINE Schreibstelle `lib/finanzen/buchhaltung/server.ts`, Register mit Angaben): Gegenseite/Zweck → Kategorie je
+- **Regeln** je Bereich ein Bestand — `buchungs-regeln--<haushalt>` (Business-Gesellschaften + eigene Kategorien) und `buchungs-regeln-privat--<haushalt>`
+  (privat, ohne Gesellschaft); EINE Schreibstelle `lib/finanzen/buchhaltung/server.ts` (beide in einer Sperre, `regelnTeilen`), Register mit Angaben: Gegenseite/Zweck → Kategorie je
   Gesellschaft; beim Import angewandt, rückwirkend nur Vorschau → Klick (`rueckwirkend-vorschau`/`-anwenden` mit Stand je Zeile); **Hand gewinnt** (`kategorieHand`).
 - **Entnahme/Einlage statt Umbuchung** (`lib/finanzen/buchhaltung/gegenkonto.ts`, Bereich über die Rechtsart — nie kdc fest): Einzelunternehmen ↔ Privat =
   Privatentnahme/-einlage, Kapitalgesellschaft ↔ Privat = `zuordnen: gesellschafter` („Gesellschafterdarlehen oder Ausschüttung — bitte zuordnen“), zwischen
@@ -29,11 +30,11 @@ Einlesen und Ausgeben (Paket + CSV).
   kategorie?, notiz?, frage?, beleg?, bewirtung?}]}` — ordnet vorhandene Buchungen zu (Gesellschaft + Konto + Tag + Betrag), Hand nie überschrieben, idempotent,
   Vorschau zuerst, 409 bei fremdem Stand mit neuer Vorschau. Kategorien nur aus `lib/finanzen/buchhaltung/kategorien.ts`.
 - **Neue optionale Felder an `Buchung`** (alle additiv): `notiz`, `mandatId`, `kategorieHand`, `regel`, `zuordnen`, `pruefung {status, vorschlag?, frage?, antwort?,
-  geprueftAm?, geprueftVon?}`, `bewirtung {anlass, teilnehmer}`, `belegHinweis`. Neuer Bestand `buchungs-regeln--<haushalt>`. Neue Routen `finanzen/buchhaltung`,
-  `finanzen/buchhaltung/export` (Register). **Offen:** `pruefung.geprueftVon` ist ein Personenfeld im geteilten Bestand `buchungen` (Konto löschen tilgt es noch
-  nicht); Hinweis „n zu prüfen“ in Steht an/Glocke nicht gebaut.
+  geprueftAm?, geprueftVon?}`, `bewirtung {anlass, teilnehmer}`, `belegHinweis`. Neue Bestände `buchungs-regeln--<haushalt>`, `buchungs-regeln-privat--<haushalt>`. Neue Routen `finanzen/buchhaltung`,
+  `finanzen/buchhaltung/export` (Register). Konto löschen: `pruefung.geprueftVon` → „[gelöscht]“ (Buchungen bleiben). **Offen:**
+  Hinweis „n zu prüfen“ in Steht an/Glocke nicht gebaut.
 - **Rückweg:** der alte Stand kennt die neuen Felder nicht und verwirft sie beim nächsten Speichern einer Buchung (Kategorien bleiben — sie sind ein vorhandenes
-  Feld); `buchungs-regeln--*` bleibt liegen und stört nicht. Vor einem Rückweg Sicherung (wie immer).
+  Feld); `buchungs-regeln--*`/`buchungs-regeln-privat--*` bleiben liegen und stören nicht. Vor einem Rückweg Sicherung (wie immer).
 - **Nach dem Upload — drei Schritte:** (1) Je Bankkonto den CSV-Export in der Konten-Karte (Business › Liquidität bzw. Privat › Konten & Buchungen) am Konto über
   „Kontoauszug einlesen“ hochladen (leere Unterkonten melden „nichts zu tun“). (2) Finanzen › Buchungen › Werkzeuge › „Einlesen und Ausgeben“ → Paket-Datei wählen → Vorschau
   ansehen → „Übernehmen“. (3) Malin geht Finanzen › Buchungen › „Zu prüfen“ durch (Passt/Ändern, Fragen beantworten, Bewirtung ergänzen, zum Schluss
@@ -56,8 +57,8 @@ rechnet und zeigt alles bit-gleich wie vorher (Wächter: finanzplan-regression-G
 - **Workflow/Compose:** `pruefen-und-ausrollen.yml` reicht `vars.MAKE_OS_EINHEITEN`, `vars.MAKE_OS_CRM_TEAM`, `vars.MAKE_OS_EVENT_MARKE` als Build-Args
   durch (`compose.yml` ebenso, leer = wie bisher); der Test-Schritt läuft ohne die Variable. Werte stehen nie in den Dateien.
 - **Einmal-Schritte (Kevin):**
-  1. Repository-Variable setzen: `gh variable set MAKE_OS_EINHEITEN --body '{"kdc":{"bereich":"business"}}' -R KevinDieckmann/make-os` — wirkt ab dem
-     nächsten Bild (Build-Variable).
+  1. Repository-Variable setzen (VOR dem Push): GitHub › make-os › Settings › Secrets and variables › Actions › Variables › „New repository variable“,
+     Name `MAKE_OS_EINHEITEN`, Wert `{"kdc":{"bereich":"business"}}` (oder `gh variable set …`) — wirkt ab dem nächsten Bild (Build-Variable).
   2. Business-Cockpit › 0-Punkt: Selbstständigkeit wählen, Stichtag 01.06.2026 + Anfangsbestand (Kontostand, offene Posten) eintragen.
   3. Unternehmen › Gesellschaft (Selbstständigkeit) › Absender: USt-IdNr. eintragen.
 - **Rückweg:** Variable löschen (`gh variable delete MAKE_OS_EINHEITEN -R KevinDieckmann/make-os`) und neu ausrollen — die Selbstständigkeit steht wieder

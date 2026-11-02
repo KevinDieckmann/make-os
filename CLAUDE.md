@@ -230,6 +230,32 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
     Arbeit), tests/fulfillment-selbst-ohne-arbeit.test.ts; die älteren Grenz-Wächter (c1/c2/c3, fundament, prüf-funde, Werkstatt e1/Felder, Überführung-Gold) laufen
     mit `{"kdc":{"arbeit":false}}` (per `vi.hoisted`) und prüfen so „Privat ohne Arbeit bekommt nichts“ unverändert.
 
+## Selbstständigkeit wieder im Business (02.11., Branch `kdc-business`; UPDATES.md 02.11.)
+Kevin 02.11.: „Die Selbstständigkeit gehört wieder komplett zu Business“ (eigene USt-IdNr.) — **ab 01.06.2026 über ihren 0-Punkt**; bleibt Einzelunternehmen,
+die Einkommensteuer bleibt gemeinsam privat (`estGemeinsamFuer`/`estJahre` unverändert). Kehrt „Bereich je Einheit — Selbstständigkeit gehört zu Privat“ für
+UNSERE Instanz um, ohne Code-Sonderfall: die Zuordnung kommt aus `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` (GitHub-Variable
+`MAKE_OS_EINHEITEN` → Build-Arg in `pruefen-und-ausrollen.yml`/`compose.yml`; Tests laufen ohne). Ohne Variable bit-gleich wie vorher (Wächter
+`tests/kdc-business-ohne.test.ts`, finanzplan-regression-Gold, selbst-privat*). Mit Variable (`tests/kdc-business.test.ts`): Finanzplanung › Business mit Blatt
+„Selbstständigkeit“ (ESt-Zeilen/Vorsorge/Gehalt bleiben privat, Business schreibt nur Posten/Kontostart/Darlehen/GewSt-USt — Privates 403), Runway Privat ohne
+`frei` der Selbstständigkeit, Konten nur in der Business-Kasse, Steuern › Business ohne ESt, Index/`?scope=kdc`/Monatsabschluss/0-Punkt im Business. Alte
+Privat-Fokus-Blöcke und Aufgaben mit `space: 'privat'` im Space der Selbstständigkeit zählen weiter (`selbstArbeitsEinheit`, `gespeicherterSpace`) — nichts
+umgeschrieben. Bewusst nicht: Rechenkern startet die Achse weiter mit `selbst.kontoStart` (Formeln bis Kevins Wort). Weiter gilt: nie `kdc` abfragen, nur `bereichVon` & Co.
+
+## Buchhaltung (02.11., Branch `buchhaltung`; UPDATES.md 02.11., „Was ist neu“ u-2026-11-02-24)
+Kevin 02.11.: „die komplette Buchhaltung in der App sauber machen“ — Malin soll online nur durchklicken. Finanzen › Buchungen (Privat und Business, EINE
+`BuchungenView`) = Arbeitsliste: Filter, Seiten, Mehrfachauswahl, je Buchung Kategorie/Notiz/Gesellschaft/Rechnung/Mandat über `PATCH /api/state/buchungen?sicht=`
+(`{op:'teil', id, stand, felder}`, 409/413), Reiter „Zu prüfen“ und „Monatssummen“, Werkzeuge (Umbuchung prüfen, Zahlung ↔ Rechnung, Regeln, Paket + CSV).
+- **Regeln je Bereich** (Trennungsregel): `buchungs-regeln--<haushalt>` = Regeln der Business-Gesellschaften + eigene Kategorien, `buchungs-regeln-privat--<haushalt>`
+  = alle übrigen. EINE Schreibstelle `lib/finanzen/buchhaltung/server.ts` (`regelnLaden` legt zusammen, `regelnAendern` schreibt beide in einer Sperre über
+  `regelnTeilen`, Stand/409); der Kontoauszug-Import im Business nimmt nur `regelnTeilen(…).business`. Hand gewinnt (`kategorieHand`), rückwirkend nur Vorschau → Klick.
+  Wächter `tests/buchhaltung-regeln-trennung.test.ts`.
+- **Entnahme/Einlage statt Umbuchung** über die Rechtsart (`gegenkonto.ts`, nie kdc fest), nur bei neuen Importen automatisch. **Zahlung ↔ Rechnung** nur Vorschlag
+  (`zahlung-rechnung.ts`), bezahlt nur per Klick `POST /api/rechnung {aktion:'bezahlt', id, am, buchungId}`. Export `GET /api/finanzen/buchhaltung/export` (kein DATEV).
+- **Paket `make-buchhaltung-paket` v1** (`paket.ts`, `paket-vorschau`/`paket-uebernehmen`): ordnet vorhandene Buchungen zu (Gesellschaft + Konto + Tag + Betrag),
+  Hand nie überschrieben, idempotent, Vorschau zuerst. Echte Pakete entstehen NUR lokal (Schreibtisch/Scratchpad), nie im Repo. Kategorien nur aus `kategorien.ts`.
+- `finanzRecht: 'business'` sieht/bearbeitet nur Business-Buchungen (serverseitig, `?sicht=`); Beleg ohne Gesellschaft → 400. Konto löschen: Buchungen bleiben,
+  `pruefung.geprueftVon` → „[gelöscht]“ (`tests/buchhaltung-konto-loeschen.test.ts`). Offen: Hinweis „n zu prüfen“ in Steht an/Glocke.
+
 ## 0-Punkt (Eröffnung) je Business-Gesellschaft (05.10., Branch `nullpunkt`, nur lokal; UPDATES.md, FINANZPLANUNG_JETZT.md)
 Kevin 05.10.: „Bring in Business einen 0-Punkt rein. Ich lade alles hoch an Zahlen.“ Je Gesellschaft mit Bereich Business (`BUSINESS_GESELLSCHAFTEN`):
 Stichtag + Anfangsbestand (Kontostand, offene Forderungen/Verbindlichkeiten). Ab dem Stichtag rechnet die Gesellschaft neu; Älteres bleibt gespeichert und

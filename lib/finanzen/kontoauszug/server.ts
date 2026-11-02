@@ -33,7 +33,7 @@ import {
   type BusinessBuchung, type OffenerPostenKurz, type Plan, type PlanZeile, type Ziel,
 } from './plan';
 import type { Auszug, CsvInfo, LeseHinweis, Pruefsumme } from './typen';
-import { regelnLaden } from '@/lib/finanzen/buchhaltung/server';
+import { regelnLaden, regelnTeilen } from '@/lib/finanzen/buchhaltung/server';
 import type { BuchungsRegel } from '@/lib/finanzen/buchhaltung/regeln';
 import { gegenArt, haushaltSeite } from '@/lib/finanzen/buchhaltung/gegenkonto';
 
@@ -232,7 +232,7 @@ async function vorbereiten(ctx: Kontext, kontoId: unknown, bytes: Uint8Array, sp
   const eigeneOrte = new Map<string, KontoOrt>(register.konten.filter(k => k.id !== konto.id && k.iban).map(k => [ibanGrundform(k.iban), k.ort]));
   const eigeneIbans = new Set(Array.from(eigeneOrte).filter(([, o]) => gegenArt(konto.ort, o, 0).art === 'umbuchung').map(([i]) => i));
   const business = ziel.art === 'business' ? ((await loadJson<{ buchungen?: BusinessBuchung[] }>('buchungen'))?.buchungen ?? []) : undefined;
-  const regeln = ziel.art === 'business' ? (await regelnLaden(ctx.haushalt)).regeln : [];
+  const regeln = ziel.art === 'business' ? regelnTeilen(await regelnLaden(ctx.haushalt)).business.regeln : []; // nur Business-Regeln (Trennung)
   const haushalt = ziel.art === 'haushalt' && hh ? { buchungen: hh.buchungen, regeln: hh.stamm.regeln, kategorien: hh.stamm.kategorien } : undefined;
   // Business (09.10.): festgehaltene Zuordnungen „schon gebucht“ aller Läufe und die Rechnungsnummern (Nummer im Verwendungszweck).
   const abgeglichen = new Map<string, string>();

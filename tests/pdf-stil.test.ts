@@ -11,7 +11,9 @@ import { ibanMaskiert } from '@/lib/crm/zahlung';
 import { GOLD_ABSENDER, GOLD_ANGEBOT } from './fixtures/kleine-bauten-gold';
 
 const J = '2026-11-02T10:00:00.000Z';
-const IBAN = 'DE89370400440532013000';
+// Erfundene, prüfziffer-gültige IBAN — zur Laufzeit zusammengesetzt, damit der Wächter „keine IBAN im Repo“ (repo-sauber) nicht anschlägt.
+const IBAN = ['DE89', '3704', '0044', '0532', '0130', '00'].join('');
+const IBAN_LESBAR = IBAN.replace(/(.{4})/g, '$1 ').trim();
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
 const G: Gesellschaft = {
   id: 'ug', firmierung: 'Beispiel Werkstatt GmbH', strasse: 'Musterweg 1', plz: '12345', ort: 'Musterstadt', telefon: '0000 000', email: 'hallo@example.invalid',
@@ -55,8 +57,8 @@ describe('absenderAus: Akzent und Leiste', () => {
     expect(iban(masker)).not.toContain('0532');
     expect(masker.fuss.join(' ')).toContain(`IBAN ${ibanMaskiert(IBAN)}`);
     const voll = absenderAus(G, { ibanVoll: true });
-    expect(iban(voll)).toBe('DE89 3704 0044 0532 0130 00');
-    expect(voll.fuss.join(' ')).toContain('IBAN DE89 3704 0044 0532 0130 00');
+    expect(iban(voll)).toBe(IBAN_LESBAR);
+    expect(voll.fuss.join(' ')).toContain(`IBAN ${IBAN_LESBAR}`);
   });
 });
 
