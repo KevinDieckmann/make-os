@@ -160,7 +160,7 @@ describe('Vertrag senden aus dem Postfach', () => {
     expect(gesendet()).toBe(0);
   });
 
-  it('gesendet mit genau dem PDF; versendet, Akte, Follow-up +7 Tage; dieselbe anfrageId sendet nicht noch einmal', async () => {
+  it('gesendet mit genau dem PDF; versendet, Akte, Follow-up neu fällig (5 Werktage); dieselbe anfrageId sendet nicht noch einmal', async () => {
     const r = await post(vertraege, body());
     expect(r.status, JSON.stringify(r.d)).toBe(200);
     expect(r.d.vertrag.status).toBe('versendet');
@@ -179,9 +179,11 @@ describe('Vertrag senden aus dem Postfach', () => {
     const crm = await (await import('@/lib/crm/speicher')).ladeCrm();
     const fu = crm.followups.filter(f => f.id === `fu-${v.id}`);
     expect(fu).toHaveLength(1);
-    expect(fu[0].text).toMatch(/Unterschrift nachfassen/);
-    const { localDay, tagePlus } = await import('@/lib/zeit');
-    expect(fu[0].faellig).toBe(tagePlus(localDay(), 7));
+    expect(fu[0].text).toMatch(/Unterschrift .*nachfassen/);
+    const { localDay } = await import('@/lib/zeit');
+    const { werktagePlus } = await import('@/lib/zeit/kalender-kern');
+    const { UNTERSCHRIFT_NACHFASSEN_WERKTAGE } = await import('@/lib/vertraege/server');
+    expect(fu[0].faellig).toBe(werktagePlus(localDay(), UNTERSCHRIFT_NACHFASSEN_WERKTAGE));
     // Erneut senden (neue Kennung): zweite Mail, aber kein zweiter Akten-Vermerk, kein zweites Follow-up.
     const neu = await aktuell(v.id);
     expect((await post(vertraege, body({ stand: neu.stand, anfrageId: 'vtr-send-pruef-0007' }))).status).toBe(200);

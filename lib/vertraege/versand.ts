@@ -7,24 +7,21 @@
 //   · Empfänger = eine Adresse des Vertragspartners (Kontakt am Vertrag) — sonst 400; Art. 18 → 409; Werbesperre ist kein Grund (1:1-Vertragspost)
 //   · Postfach = ein EIGENES Postfach im Business-Bereich (nie Privat, nie ohne Bereich) — sonst 400
 // Nach dem Senden (`vertragVersendetVermerken`, wirft nie): Status „versendet“ (+ `versendetAm`, `versendetUeber` maskiert), Mail-Aktivität in der Akte,
-// Follow-up „Unterschrift nachfassen“ in 7 Tagen (`fu-<vertrag>`, idempotent), Änderungsprotokoll (nur Kennungen/Feldnamen über `vertragAendern`).
+// Follow-up „Unterschrift nachfassen“ über den EINEN Weg `vertragFollowup` (server.ts: `fu-<vertrag>`, versendet → neu fällig, nie ein zweites),
+// Änderungsprotokoll (nur Kennungen/Feldnamen über `vertragAendern`).
 // Der Weg „Ist versendet“ (Status von Hand) bleibt.
 
-import { localDay, tagePlus } from '@/lib/zeit';
+import { localDay } from '@/lib/zeit';
 import { bereichVonFirma, istBusinessGesellschaft } from '@/lib/einheiten';
 import type { Wer } from '@/lib/store/aenderungsprotokoll';
-import { mitStand, vertraegeLaden, VertragFehler, vertragAendernIntern } from './server';
+import { mitStand, vertraegeLaden, VertragFehler, vertragAendernIntern, vertragFollowup } from './server';
 import type { Vertrag } from './modell';
 
 export const VERSAND_GRENZEN = { betreff: 300, text: 20_000 } as const;
-export const NACHFASSEN_TAGE = 7;
-export const NACHFASSEN_TEXT = 'Unterschrift nachfassen';
 const ZUM_SENDEN: readonly Vertrag['status'][] = ['fertig', 'versendet'];
 
 /** Kopf der Mail-Aktivität in der Akte (je Vertragsnummer EINE — wiederholtes Senden schreibt keinen zweiten Vermerk). */
 export const vertragVermerkKopf = (nummer: string) => `Vertrag ${nummer} versendet`;
-/** Kennung des Follow-ups „Unterschrift nachfassen“ — aus dem Vertrag abgeleitet (idempotent). */
-export const vertragFollowUpId = (vertragId: string) => `fu-${vertragId}`;
 
 /** Text der Begleit-Mail (Vorgabe im Dialog; die Person kann ihn ändern). */
 export function vertragMailVorgabe(v: Pick<Vertrag, 'titel' | 'nummer' | 'anrede' | 'absender'>): { betreff: string; text: string } {
@@ -87,7 +84,7 @@ export async function vertragSenden(p: VertragSendenEingabe): Promise<{ status: 
 
 /**
  * Nach dem Senden (aus `belegVermerken`): Status, Akte, Follow-up — jeder Teil für sich, wirft nie. `ueber` = Postfach maskiert.
- * Idempotent: der Akten-Vermerk je Vertragsnummer einmal, das Follow-up `fu-<vertrag>` einmal.
+ * Idempotent: der Akten-Vermerk je Vertragsnummer einmal, das Follow-up `fu-<vertrag>` einmal (bei erneutem Senden neu fällig).
  */
 export async function vertragVersendetVermerken(p: { haushalt: string; id: string; ueber: string; person: string; wer: Wer; jetzt?: Date }): Promise<void> {
   const jetzt = p.jetzt ?? new Date();
@@ -112,16 +109,8 @@ export async function vertragVersendetVermerken(p: { haushalt: string; id: strin
       return { ...f, kontakte: f.kontakte.map(x => (x.id === kontaktId ? wendeAktivitaetAn(x, { art: 'mail', text: `${kopf} — ${titel}`, von: p.person, bezug: vid }, heute, jetzt.toISOString(), tagPlus) : x)) };
     }, p.wer);
   } catch (e) { console.warn('[vertraege] Akten-Vermerk:', e instanceof Error ? e.message.slice(0, 120) : 'Fehler'); }
-  try {
-    const { aendereCrm } = await import('@/lib/crm/speicher');
-    const { neuesFollowUp } = await import('@/lib/crm/followup');
-    const { kontakteFuerVerarbeitung } = await import('@/lib/crm/verarbeitung');
-    const k = (await kontakteFuerVerarbeitung()).find(x => x.id === kontaktId);
-    if (!k) return; // eingeschränkt oder weg: kein Follow-up
-    const id = vertragFollowUpId(vid);
-    const fu = neuesFollowUp({ id, bezug: { art: 'kontakt', id: kontaktId }, kontaktId, art: 'mail', text: `${NACHFASSEN_TEXT} — Vertrag ${nummer}`, faellig: tagePlus(heute, NACHFASSEN_TAGE), quelle: 'hand' }, k, p.person, jetzt.toISOString());
-    await aendereCrm(c => ((c.followups ?? []).some(x => x.id === id) ? c : { ...c, followups: [...(c.followups ?? []), { ...fu, geaendertVon: p.person }] }), p.wer);
-  } catch (e) { console.warn('[vertraege] Follow-up:', e instanceof Error ? e.message.slice(0, 120) : 'Fehler'); }
+  // Wie „Ist versendet“ von Hand: das Follow-up vom Fertigstellen wird ab heute neu fällig (Art. 18 → keins; wirft nie).
+  await vertragFollowup(v, 'anlegen', { person: p.person, heute, jetzt: jetzt.toISOString(), wer: p.wer });
 }
 
 /**

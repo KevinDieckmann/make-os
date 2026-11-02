@@ -331,7 +331,7 @@ export async function kundeStand(mandatId: string, heute = localDay()): Promise<
 
 const wer = (person: string): Wer => ({ art: 'person', person });
 
-/** Instanz-Schalter umlegen — Inhaber ODER volles Mitglied des Haushalts (Kevin 02.11.: „sie kann vollen Zugriff haben“; die Route prüft `darfSteuern`). */
+/** Instanz-Schalter umlegen — Inhaber ODER volles Mitglied des Haushalts (Entscheidung 02.11.: volles Mitglied darf steuern; die Route prüft `darfSteuern`). */
 export async function schalterSetzen(an: boolean, person: string, jetzt = new Date()): Promise<Ergebnis> {
   const r = await fulfillmentAendern('vorlagen', d => ({ ok: true, datei: { ...d, einstellungen: { ...d.einstellungen, kundenLink: { an, am: localDay(jetzt), von: person } } }, geaendert: ['einstellungen'] }), wer(person));
   if (!r.ok) return nein(r.status, r.fehler);
