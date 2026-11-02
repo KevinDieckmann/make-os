@@ -213,9 +213,18 @@ describe('Motor von Ende zu Ende', () => {
     const ids = (g.d.eintraege as { id: string }[]).map(x => x.id);
     expect(ids).toHaveLength(2);
     expect((await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'freigeben', kampagneId: 'kp-test', ids, postfach: pf }, dienst)).status).toBe(403);
-    // 02.11. (Kevin: volles Mitglied darf steuern, `darfSteuern`): ein Konto ohne Haushalt bzw. eine fremde Sitzung nicht — Malin (volles Mitglied) schon.
-    expect((await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'einstellungen', tagesgrenze: 1, fusszeile: 'Beispiel Innovation GmbH · Beispielweg 1 · Impressum: https://beispiel.example.invalid/impressum' }, sitzung('fremd'))).status).toBe(403);
-    expect((await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'einstellungen', tagesgrenze: 1, fusszeile: 'Beispiel Innovation GmbH · Beispielweg 1 · Impressum: https://beispiel.example.invalid/impressum' }, sitzung('malin'))).status).toBe(200);
+    // Einstellungen steuert, wer steuern darf (`darfSteuern`, 02.11.): Inhaber und volles Mitglied ja — „nur Business“, Testkunde, Dienstweg nein.
+    const einst = { aktion: 'einstellungen', tagesgrenze: 1, fusszeile: 'Beispiel Innovation GmbH · Beispielweg 1 · Impressum: https://beispiel.example.invalid/impressum' };
+    const probe = (id: string, speicher: string, extra: Record<string, unknown>) => ({ id, speicher, email: `${speicher}@${D}`, name: `Probe ${speicher}`, rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...extra });
+    await db.saveJson('konten', { ...KONTEN, konten: [...KONTEN.konten, probe('k3', 'partner', { haushalt: 'h', finanzRecht: 'business' }), probe('k4', 'kunde', {})] });
+    try {
+      expect((await POST(motorRoute, '/api/crm/kampagnen/motor', einst, sitzung('partner'))).status, 'Konto „nur Business“').toBe(403);
+      expect((await POST(motorRoute, '/api/crm/kampagnen/motor', einst, sitzung('kunde'))).status, 'Testkunde ohne Haushalt').toBe(403);
+      expect((await POST(motorRoute, '/api/crm/kampagnen/motor', einst, dienst)).status, 'Dienstweg').toBe(403);
+    } finally {
+      await db.saveJson('konten', KONTEN);
+    }
+    expect((await POST(motorRoute, '/api/crm/kampagnen/motor', einst, sitzung('malin'))).status, 'volles Mitglied').toBe(200);
     expect((await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'einstellungen', tagesgrenze: 1, fusszeile: 'Beispiel Innovation GmbH · Beispielweg 1 · Impressum: https://beispiel.example.invalid/impressum' })).status).toBe(200);
     const f = await POST(motorRoute, '/api/crm/kampagnen/motor', { aktion: 'freigeben', kampagneId: 'kp-test', ids, postfach: pf });
     expect(f.status, f.text).toBe(200);

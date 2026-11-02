@@ -39,7 +39,8 @@ export interface AFrist { id: string; art: Frist['art'] | 'event'; tag: string; 
 export interface AFollowup { id: string; text: string; name: string; faellig: string; uhrzeit?: string; tageUeber: number; quelle: string; href: string }
 export interface ANachbereiten { kontaktId: string; name: string; titel: string; tag: string; zeit?: string; href: string }
 /** `lange`/`bald` (02.11., Prüfung A Fund 1): wartet seit über 24 h bzw. der Termin ist in unter 24 h — die Glocke erinnert (abgeleitet). */
-export interface ABuchung { id: string; titel: string; start: string; href: string; lange?: true; bald?: true }
+/** `fremd` (R2-1 Fund 5): die Seite gehört einer anderen Person — gezeigt, weil diese Person die Arbeit steuern darf und die Anfrage über 24 h wartet. */
+export interface ABuchung { id: string; titel: string; start: string; href: string; lange?: true; bald?: true; fremd?: true }
 export interface AGeburtstag {
   id: string; name: string; tag: string; alter?: number; href: string; herkunft: Geburtstag['herkunft']; kontaktId?: string; menschId?: string;
   /** Vorschlag: Geschenk-Aufgabe (CRM) bzw. „Geschenk vormerken“ (Familie) mit dieser Deadline (10 Tage vorher, frühestens heute). */
@@ -49,7 +50,8 @@ export interface AGeburtstag {
 }
 
 /** Was in der Kundengewinnung auf die Person wartet (02.11., Prüfung D): Mail-Stapel, Druckliste, Homepage-Funde — nur Zahl, Satz, Ziel. */
-export interface AMotor { id: 'mails' | 'briefe' | 'funde'; n: number; titel: string; href: string }
+/** `wieder` (R2-1 Fund 6): Leads aus verlorenen Deals, deren Wiedervorlage erreicht ist (abgeleitet, an die Zuständige des Leads). */
+export interface AMotor { id: 'mails' | 'briefe' | 'funde' | 'wieder'; n: number; titel: string; href: string }
 
 /** Danke-Mails, die zu einem Event bereitliegen (Netzwerken, 02.10.) — nur die Zahl und das Ziel. */
 export interface ADanke { id: string; n: number; eventTitel: string; href: string }

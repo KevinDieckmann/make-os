@@ -112,8 +112,79 @@ async function anlegenAusfuehren(h: string, absicht: Absicht): Promise<AnlegenDa
   });
 }
 
+/** Feste Kennung der Aufgabe „Mandat anlegen“, wenn die Automatik nach „angenommen“ nicht griff (R2-1 Fund 2). */
+export const mandatFehltAufgabeId = (angebotId: string) => `mfa-${angebotId}`.slice(0, 80);
+
+/**
+ * Die Automatik griff nicht (02.11., Prüfung R2-1 Fund 2 — vorher stand der Grund nur im Text der Antwort, die Verbindungsprüfung nur als Warnung):
+ * EINE feste Aufgabe „Mandat anlegen“ (`mfa-<angebot>`) mit dem Grund an die Sales-Verantwortung (`verantwortlichePerson('sales')`, Rückfall Inhaber) —
+ * über den EINEN Server-Schreibweg (`systemAufgabenAendern`); gibt es sie schon (auch erledigt/im Papierkorb), passiert nichts. Wirft nie.
+ */
+export async function mandatFehltAufgabe(angebotId: string, grund: string, jetzt = new Date()): Promise<number> {
+  try {
+    const crm = await ladeCrm();
+    const a = (crm.angebote ?? []).find(x => x.id === angebotId);
+    if (!a) return 0;
+    const [{ systemAufgabenAendern }, { verantwortlichePerson }, { WEG }, E] = await Promise.all([import('@/lib/aufgaben/system-schreiben'), import('./verantwortung-server'), import('@/lib/wege'), import('@/lib/einheiten')]);
+    const an = await verantwortlichePerson('sales').catch(() => null);
+    const tid = mandatFehltAufgabeId(a.id), jetztIso = jetzt.toISOString(), heute = localDay(jetzt);
+    let neu = 0;
+    await systemAufgabenAendern(stand => {
+      if (stand.tasks.some(t => t.id === tid)) return {};
+      neu = 1;
+      return {
+        neu: [{
+          // Titel nur mit der Nummer (ein angenommenes Angebot ist gestellt) — nie der Angebots-Titel, der eine Person nennen kann (Netzwerken: „Angebot für …“).
+          id: tid, title: `Mandat anlegen — Angebot ${a.nummer ?? '(ohne Nummer)'} angenommen`.slice(0, 300),
+          description: `${grund} Das angenommene Angebot hat noch kein Mandat — im Angebot bzw. am Deal „Mandat anlegen“. MAKE OS legt es hier nicht selbst an.`.slice(0, 4000),
+          notiz: `[Angebot öffnen](${WEG.angebot({ angebotId: a.id })})${a.dealId ? ` · [Deal](${WEG.deal(a.dealId)})` : ''}`,
+          status: 'todo', priority: 'high', assignee: an ?? 'both', dueDate: heute, tags: ['mandat'], subTasks: [], dependencies: [], sortOrder: 0, createdAt: jetztIso, updatedAt: jetztIso,
+          space: E.bereichVon(a.gesellschaft), ...(E.istGesellschaft(a.gesellschaft) ? { spaceId: a.gesellschaft } : {}),
+          bezug: { ...(a.kontaktId ? { kontaktId: a.kontaktId } : {}), ...(a.firmaId ? { firmaId: a.firmaId } : {}), ...(a.dealId ? { dealId: a.dealId } : {}) },
+        }],
+      };
+    }, { jetzt: jetztIso });
+    return neu;
+  } catch (e) {
+    console.warn('[crm] Aufgabe „Mandat anlegen“ nicht angelegt:', e instanceof Error ? e.message.slice(0, 120) : e);
+    return 0;
+  }
+}
+
+/**
+ * Die Aufgabe „Mandat anlegen“ (`mfa-<angebot>`) erledigt sich, sobald das Angebot sein Mandat hat (R2-1 Fund 2) — aufgerufen nach „Mandat anlegen“ am
+ * Deal (/api/crm/lead aktion „mandat“). Dieselbe Zuordnung wie `mandatZumAngebot`. Nur offene; idempotent; wirft nie.
+ */
+export async function mandatFehltAufgabenSchliessen(jetzt = new Date()): Promise<number> {
+  try {
+    const crm = await ladeCrm();
+    const { mandatZumAngebot } = await import('@/lib/finanzen/rechnung/server');
+    const mitMandat = new Set((crm.angebote ?? []).filter(a => mandatZumAngebot(crm.mandate, a)).map(a => mandatFehltAufgabeId(a.id)));
+    if (!mitMandat.size) return 0;
+    const { systemAufgabenAendern } = await import('@/lib/aufgaben/system-schreiben');
+    let n = 0;
+    await systemAufgabenAendern(stand => {
+      const teile = stand.tasks.filter(t => mitMandat.has(t.id) && !t.geloeschtAm && t.status !== 'done' && t.status !== 'cancelled').map(t => ({ id: t.id, felder: { status: 'done' } as const }));
+      n = teile.length;
+      return { teile };
+    }, { jetzt: jetzt.toISOString() });
+    return n;
+  } catch (e) {
+    console.warn('[crm] Aufgabe „Mandat anlegen“ nicht geschlossen:', e instanceof Error ? e.message.slice(0, 120) : e);
+    return 0;
+  }
+}
+
 /** Nach „angenommen“ — siehe Kopf. `null` = es gab nichts zu tun (Mandat schon da, Angebot nicht angenommen). Wirft nie. */
 export async function mandatAusAngebotAutomatisch(p: { angebotId: string; person: string; wer?: Wer; jetzt?: Date }): Promise<AutomatikErgebnis | null> {
+  const r = await mandatAutomatischLauf(p);
+  // R2-1 Fund 2: griff die Automatik nicht (außer „wird gerade fertig angelegt“ — das holt die Wiederaufnahme nach), entsteht die feste Aufgabe.
+  if (r && !r.angelegt && !r.nachholen) await mandatFehltAufgabe(p.angebotId, r.grund, p.jetzt);
+  if (r && !r.angelegt) { const { nachholen: _n, ...rest } = r; return rest; }
+  return r;
+}
+
+async function mandatAutomatischLauf(p: { angebotId: string; person: string; wer?: Wer; jetzt?: Date }): Promise<(AutomatikErgebnis & { nachholen?: true }) | null> {
   let begonnen = false;
   try {
     const jetzt = (p.jetzt ?? new Date()).toISOString();
@@ -147,7 +218,7 @@ export async function mandatAusAngebotAutomatisch(p: { angebotId: string; person
     return { angelegt: true, mandatId: d.mandatId, liquiplan: posten.length, text, ...(d.hinweis ? { hinweis: d.hinweis } : {}) };
   } catch (e) {
     console.warn('[crm] Mandat aus Angebot nicht automatisch angelegt:', e instanceof Error ? e.message.slice(0, 120) : e);
-    if (begonnen) return { angelegt: false, grund: 'Das Mandat wird gerade fertig angelegt — das holt MAKE OS in wenigen Minuten von selbst nach (Liquiplan, Rückgängig).' };
+    if (begonnen) return { angelegt: false, nachholen: true, grund: 'Das Mandat wird gerade fertig angelegt — das holt MAKE OS in wenigen Minuten von selbst nach (Liquiplan, Rückgängig).' };
     return { angelegt: false, grund: 'Das Mandat ist nicht von selbst entstanden — bitte „Mandat anlegen“.' };
   }
 }

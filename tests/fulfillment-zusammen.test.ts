@@ -209,10 +209,22 @@ describe('2 · EINE Regel für Kunden-Wege (fuerKundenFrei)', () => {
 // ── 3. Kunden-Link-Schalter und Willkommen ────────────────────────────────────────────────────────────────────────────────────────────
 
 describe('3 · Kunden-Link: EIN Schalter, die Willkommen-Karte liest die echte Antwort', () => {
-  it('Schalter nur über C2 (Inhaber oder volles Mitglied, `darfSteuern`); link-anlegen → linkAdresseAus', async () => {
+  it('Schalter nur über C2, nur wer steuern darf (Inhaber, volles Mitglied — nicht „nur Business“, Testkunde, Dienstweg); link-anlegen → linkAdresseAus', async () => {
     expect((await rufe('fulfillment', 'PATCH', sitzung('pia'), { ops: [{ op: 'einstellungen', felder: { kundenLink: { an: true } } }] })).status).toBe(400);
-    // Kevin 02.11.: „sie kann vollen Zugriff haben“ — ein volles Mitglied legt ihn um; eine Sitzung ohne Konto im Haushalt nie.
-    expect((await rufe('fulfillment/kunde', 'POST', sitzung('fremd'), { aktion: 'schalter', an: true })).status).toBe(403);
+    // Regel `darfSteuern` (lib/zugang/steuern.ts, 02.11.): gesperrte Konten nur für diesen Fall dazu, danach wieder der alte Bestand.
+    const db = await import('@/lib/store/local-db');
+    const konten0 = (await db.loadJson<{ konten: Record<string, unknown>[]; einladungen: unknown[] }>('konten'))!;
+    const konto = (id: string, speicher: string, extra: Record<string, unknown>) => ({ id, speicher, email: `${speicher}@example.invalid`, name: `${speicher} Probe`, rolle: 'mitglied', hash: 'x', salz: 'y', angelegt: '2026-01-01', teilt: { gesundheit: [] }, ...extra });
+    await db.saveJson('konten', { ...konten0, konten: [...konten0.konten, konto('k3', 'bea', { haushalt: 'haus-ff', finanzRecht: 'business' }), konto('k4', 'tim', {})] });
+    try {
+      expect((await rufe('fulfillment/kunde', 'POST', sitzung('bea'), { aktion: 'schalter', an: true })).status, 'Konto „nur Business“').toBe(403);
+      expect((await rufe('fulfillment/kunde', 'POST', sitzung('tim'), { aktion: 'schalter', an: true })).status, 'Testkunde ohne Haushalt').toBe(403);
+      expect((await rufe('fulfillment/kunde', 'POST', { 'content-type': 'application/json', 'x-make-key': process.env.MAKE_OS_KEY!, 'x-make-person': 'olaf' }, { aktion: 'schalter', an: true })).status, 'Dienstweg').toBe(403);
+    } finally {
+      await db.saveJson('konten', konten0);
+    }
+    // Volles Mitglied darf schalten (ein- und wieder aus), der Inhaber ebenso.
+    expect((await rufe('fulfillment/kunde', 'POST', sitzung('olaf'), { aktion: 'schalter', an: true })).status).toBe(200);
     expect((await rufe('fulfillment/kunde', 'POST', sitzung('olaf'), { aktion: 'schalter', an: false })).status).toBe(200);
     expect((await rufe('fulfillment/kunde', 'POST', sitzung('pia'), { aktion: 'schalter', an: true })).status).toBe(200);
     const a = await rufe('fulfillment/kunde', 'POST', sitzung('pia'), { aktion: 'link-anlegen', mandatId: 'm-biz' });

@@ -33,6 +33,27 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-17',
+    datum: '2026-11-02',
+    titel: 'Keine Anfrage geht mehr verloren',
+    kurz: 'Verfallene Terminanfragen stehen jetzt bei den Buchungsseiten — mit „Neuen Termin vorschlagen“ und „Als Anfrage übernehmen“. Angebots-Entwürfe, angenommene Angebote ohne Mandat und Leads aus verlorenen Deals melden sich von selbst.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: 'Eine Terminanfrage, die niemand rechtzeitig freigegeben hat, steht bei den Buchungsseiten: Neuen Termin vorschlagen (als Mail-Entwurf, verschickt wird erst mit eurem Klick) oder als Anfrage ins CRM übernehmen.', bereich: 'business', weg: '/os/kalender?buchungen=1' },
+        { text: 'Leads aus verlorenen Deals, deren Wiedervorlage erreicht ist, stehen in „Für dich“ und unter „Steht an“.', bereich: 'business', weg: WEG.qualifizierung() },
+        { text: 'Ein Angebots-Entwurf aus dem Netzwerken bekommt ein Follow-up „Angebot fertigstellen“ — es erledigt sich mit dem Stellen.', bereich: 'business', weg: WEG.followup() },
+      ] },
+      { art: 'besser', punkte: [
+        { text: 'Entsteht nach „angenommen“ kein Mandat von selbst, liegt eine Aufgabe „Mandat anlegen“ mit dem Grund bei der Sales-Verantwortung, und die Datenqualität zeigt es als Fehler.', bereich: 'business', weg: WEG.aufgaben() },
+        { text: 'Buchungsanfragen, die über einen Tag warten, und verfallene Anfragen sehen alle, die im Haushalt voll mitarbeiten.', bereich: 'business', weg: '/os/kalender?buchungen=1' },
+        { text: 'Bei einer Freigabe über die Buchungsseite geht auch der Lead der Firma auf „kontaktiert“.', bereich: 'business' },
+      ] },
+      { art: 'behoben', punkte: [
+        { text: '„Wie lief es?“ meldet sich auch nach gebuchten Terminen — die Erinnerung „Termin vorbereiten“ hielt die Frage bisher zurück.', bereich: 'business', weg: WEG.powerHour() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-16',
     datum: '2026-11-02',
     titel: 'Abläufe greifen sauber ineinander',

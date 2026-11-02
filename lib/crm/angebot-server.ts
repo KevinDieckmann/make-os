@@ -31,7 +31,7 @@ import { wer, BEIDE, verantwortlich } from './team';
 import { phaseHeben } from './lifecycle';
 import { kanalStatus } from './recht';
 import {
-  ablaufen, ablaufFollowUps, angebotFollowupsSchliessen, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat, produktTexteFuer,
+  ablaufen, ablaufFollowUps, angebotEntwurfFollowupId, angebotFollowupsSchliessen, angebotGrenzen, angebotSummen, angebotVermerkKopf, dealWertAusAngebot, entwurfSaeubern, istEntwurf, mailVorlage, naechsteLaufnummer, nummerAusFormat, produktTexteFuer,
   stellenFehlt, SUMME_NULL, tagOk, werktagePlus, NACHFASSEN_WERKTAGE, ANGEBOT_GRENZEN, plusTage, istGesellschaft,
   angebotHauptprodukt, dealProduktAnders, dealFrageText, dealTitelNachAngebot, angebotPlatzhalterFuellen, angebotPlatzhalterWerte, zahlweisePruefen,
 } from './angebote';
@@ -112,7 +112,8 @@ export async function angebotLoeschen(p: { id: string; stand?: unknown; wer?: We
       // Sicher statt endgültig (04.10.): erst in den Papierkorb (`angebotAblage`), endgültig nur von dort.
       if (!a.geloeschtAm) throw new AngebotFehler(`„${a.titel || 'Entwurf'}“ liegt nicht im Papierkorb — Löschen legt einen Entwurf erst in den Papierkorb (30 Tage wiederherstellbar), endgültig nur von dort.`, 409, { aktuell: mitStand(a) });
       standPruefen(a, p.stand);
-      return { ...b, angebote: b.angebote.filter(x => x.id !== p.id) };
+      // R2-1 Fund 3: ein offenes „Angebot fertigstellen“ fällt mit dem Entwurf weg (abgesagt, nicht gelöscht).
+      return { ...b, angebote: b.angebote.filter(x => x.id !== p.id), followups: angebotFollowupsSchliessen(b.followups ?? [], [p.id], { status: 'abgesagt', ergebnis: 'Entwurf gelöscht', jetzt: new Date().toISOString(), person: p.wer?.person ?? 'system', nurEntwurf: true }) };
     } catch (e) { fehler = e as AngebotFehler; return b; }
   }, p.wer);
   if (fehler) throw fehler;
@@ -136,12 +137,19 @@ export async function angebotAblage(p: { id: string; art: 'archiv' | 'papierkorb
       if (p.art === 'papierkorb' && !p.zurueck && !istEntwurf(a)) throw new AngebotFehler('Gestellte Angebote kommen nicht in den Papierkorb (Geschäftsunterlage) — archivieren blendet sie aus der Liste aus.', 409, { aktuell: mitStand(a) });
       const neu: Angebot = p.zurueck ? (({ [feld]: _weg, ...rest }) => rest as Angebot)(a) : { ...a, [feld]: a[feld] ?? jetzt };
       ergebnis = neu;
-      return neu === a ? b : { ...b, angebote: b.angebote.map(x => (x.id === a.id ? neu : x)) };
+      if (neu === a) return b;
+      // R2-1 Fund 3: „Angebot fertigstellen“ ruht, solange der Entwurf im Papierkorb liegt — zurückgeholt ist es wieder offen.
+      let followups = b.followups ?? [];
+      if (p.art === 'papierkorb' && !p.zurueck) followups = angebotFollowupsSchliessen(followups, [a.id], { status: 'abgesagt', ergebnis: ENTWURF_PAPIERKORB, jetzt, person: p.wer?.person ?? 'system', nurEntwurf: true });
+      if (p.art === 'papierkorb' && p.zurueck) followups = followups.map(f => (f.id === angebotEntwurfFollowupId(a.id) && f.status === 'abgesagt' && f.ergebnis === ENTWURF_PAPIERKORB ? { ...f, status: 'offen' as const, ergebnis: undefined, geaendert: jetzt, geaendertVon: p.wer?.person ?? 'system' } : f));
+      return { ...b, angebote: b.angebote.map(x => (x.id === a.id ? neu : x)), ...(followups !== (b.followups ?? []) ? { followups } : {}) };
     } catch (e) { fehler = e as AngebotFehler; return b; }
   }, p.wer);
   if (fehler) throw fehler;
   return ergebnis!;
 }
+/** Ergebnis am „Angebot fertigstellen“, solange der Entwurf im Papierkorb liegt (zurückgeholt → wieder offen). */
+const ENTWURF_PAPIERKORB = 'Entwurf im Papierkorb';
 
 /** Neue Version: Entwurf mit Bezug auf das gestellte Angebot. Gibt es schon einen offenen Nachfolge-Entwurf, kommt der zurück. */
 export async function angebotVersion(p: { id: string; person: string; haushalt?: string | null; wer?: Wer; jetzt?: Date }): Promise<Angebot> {
@@ -402,7 +410,9 @@ export async function angebotStellen(p: { id: string; stand?: unknown; person: s
     // Ersetzt (02.11., Prüfung C): das Nachfassen der Vorversion (auch „abgelaufen — nachfassen“) fällt weg — es gilt nur noch das der neuen Version.
     const vorgaengerErsetzt = !!a.vorgaengerId && angebote.some(x => x.id === a.vorgaengerId && x.status === 'ersetzt' && x.nachfolgerId === a.id);
     const ohneVorgaenger = vorgaengerErsetzt ? angebotFollowupsSchliessen(b.followups ?? [], [a.vorgaengerId!], { status: 'abgesagt', ergebnis: 'Neue Version gestellt', jetzt: jetztIso, person: p.person }) : (b.followups ?? []);
-    const followups = [...ohneVorgaenger.filter(f => f.id !== fu.id), fu];
+    // R2-1 Fund 3: „Angebot fertigstellen“ (Entwurf aus dem Netzwerken) ist mit dem Stellen erledigt.
+    const ohneEntwurf = angebotFollowupsSchliessen(ohneVorgaenger, [a.id], { status: 'erledigt', ergebnis: 'Angebot gestellt', jetzt: jetztIso, person: p.person, nurEntwurf: true });
+    const followups = [...ohneEntwurf.filter(f => f.id !== fu.id), fu];
     return { ...b, angebote, chancen, followups };
   }, p.wer);
   let e: { a: Angebot; pdf: { id: string; name: string } } | null = null;

@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  // Steuern (02.11.: volles Mitglied wie Inhaber): EINE Regel lib/zugang/steuern.ts.
+  // Steuern (02.11., Wort des Inhabers: volles Mitglied wie Inhaber): EINE Regel lib/zugang/steuern.ts.
   if (!(await steuernOderSystemlauf(req))) return NextResponse.json({ ok: false, error: NUR_STEUERN }, { status: 403 });
   // Ohne Doku-Wurzel (Server, Demo-Instanz) gibt es keinen Ort fürs Selbstbild — das ist kein Fehler (Rundgang 09.10. „Agenten live“: vorher lief
   // der Takt-Auftrag „selbstbild“ jeden Tag mehrfach in „Fehler“ und füllte Agenten › Fehler und die Fehlerquote des Head of IT).

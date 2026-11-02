@@ -361,6 +361,17 @@ export function brauchtQualifizierung(z: Pick<LeadZeile, 'status' | 'kriterien' 
   if (offeneMussFragen(z) > 0) return true;
   return !z.qualifiziertAm || tageZw(z.qualifiziertAm, heute) > tage;
 }
+/**
+ * Wieder dran aus einem verlorenen Deal (02.11., Prüfung R2-1 Fund 6): der Lead ruht, weil sein Deal verloren ging (Verlust mit zeitbezogenem Grund →
+ * Wiedervorlage), und die Wiedervorlage ist erreicht — dieselbe Regel, die ihn zurück in die Runde holt (`brauchtQualifizierung`). Bisher meldete das
+ * niemand. „Für dich“ und „Steht an“ zählen damit (an die Zuständige des Leads). Rein.
+ */
+export function ausVerlorenWiederDran(z: Pick<LeadZeile, 'status' | 'deal'> & { wiedervorlage?: string }, heute: string): boolean {
+  return z.status === 'ruht' && !!z.wiedervorlage && z.wiedervorlage <= heute && z.deal?.stufe === 'verloren' && !z.deal.offen;
+}
+/** Der Satz dazu (Einzahl/Mehrzahl) — neutral, ohne Namen. */
+export const wiederDranSatz = (n: number) => (n === 1 ? '1 Lead aus einem verlorenen Deal ist wieder dran' : `${n} Leads aus verlorenen Deals sind wieder dran`);
+
 /** Bis wann ein geprüfter Lead Ruhe hat (Tag) — für Texte in der Runde. Ohne Prüfung null. `tage` = Stellschraube (fehlt = Vorgabe). */
 export const ruheBis = (z: Pick<LeadZeile, 'geprueftAm'>, tage: number = QUALI_WIEDERVORLAGE_TAGE): string | null => {
   if (!z.geprueftAm) return null;

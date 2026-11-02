@@ -385,11 +385,18 @@ export function ablaufFollowUps(followups: readonly FollowUp[], abgelaufen: read
 }
 
 /**
+ * „Angebot fertigstellen“ zu einem ENTWURF (02.11., Prüfung R2-1 Fund 3): der Angebots-Entwurf aus dem Netzwerken (`ang-nw-…`) hatte keine Erinnerung,
+ * wenn die erfassende Person selbst zuständig war (dann ging auch keine Glocke). Feste Kennung je Angebot — beim Stellen erledigt, beim Löschen bzw. im
+ * Papierkorb abgesagt (`angebotFollowupsSchliessen`, auch beim Annehmen/Ablehnen mit). Rein.
+ */
+export const angebotEntwurfFollowupId = (angebotId: string) => `fu-${angebotId}-entwurf`.slice(0, 64);
+
+/**
  * Das Nachfassen der Angebote schließen (02.11., Prüfung C „Lead → zahlender Kunde“): je Angebot `fu-<id>` (Nachfassen nach dem Stellen) und
  * `fu-<id>-ablauf` (abgelaufen) — nur offene bzw. verpasste; erledigte/abgesagte bleiben, wie sie sind. Rein; dieselbe Liste kommt zurück, wenn nichts zu tun ist.
  */
-export function angebotFollowupsSchliessen(followups: readonly FollowUp[], angebotIds: Iterable<string>, ctx: { status: 'erledigt' | 'abgesagt'; ergebnis: string; jetzt: string; person: string }): FollowUp[] {
-  const ids = new Set(Array.from(angebotIds).flatMap(id => [`fu-${id}`, `fu-${id}-ablauf`]));
+export function angebotFollowupsSchliessen(followups: readonly FollowUp[], angebotIds: Iterable<string>, ctx: { status: 'erledigt' | 'abgesagt'; ergebnis: string; jetzt: string; person: string; /** nur das „Angebot fertigstellen“ (R2-1 Fund 3) */ nurEntwurf?: boolean }): FollowUp[] {
+  const ids = new Set(Array.from(angebotIds).flatMap(id => (ctx.nurEntwurf ? [angebotEntwurfFollowupId(id)] : [`fu-${id}`, `fu-${id}-ablauf`, angebotEntwurfFollowupId(id)])));
   if (!ids.size || !followups.some(f => ids.has(f.id) && (f.status === 'offen' || f.status === 'verpasst'))) return followups as FollowUp[];
   return followups.map(f => (ids.has(f.id) && (f.status === 'offen' || f.status === 'verpasst')
     ? { ...f, status: ctx.status, ergebnis: ctx.ergebnis, ...(ctx.status === 'erledigt' ? { erledigtAm: ctx.jetzt } : {}), geaendert: ctx.jetzt, geaendertVon: ctx.person } : f));

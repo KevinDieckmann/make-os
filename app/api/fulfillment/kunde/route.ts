@@ -4,7 +4,7 @@
 //                     Metadaten, Kurzform — Lese-Protokoll „fulfillment“. ?m=&export=csv|pdf → die Antworten als Anhang (Playbook gehört dem Kunden).
 //      ohne m      → nur die Schalter (für Karten, die wissen wollen, ob es den Link gibt).
 // POST { aktion }:
-//   schalter { an }                       Instanz-Schalter (NUR Inhaber)            · puls-schwelle { wert }
+//   schalter { an }                       Instanz-Schalter (wer steuern darf)       · puls-schwelle { wert }
 //   link-anlegen { mandatId, rechte? }     → Token GENAU EINMAL in der Antwort (`token`, `pfad` = /kunde/<id>#t=…)
 //   widerrufen | verlaengern { linkId, tage? } | rechte { linkId, rechte }
 //   puls-anfrage { mandatId }              → Puls-Token GENAU EINMAL (`pfad` = /kunde/<id>#p=…), schließt eine offene Anfrage

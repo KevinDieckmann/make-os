@@ -18,7 +18,7 @@ import type { Kontakt } from '@/lib/make-one/crm';
 import { anzeigename } from '@/lib/make-one/crm';
 import type { CrmBestand } from './typen';
 import type { Welt } from './traktion';
-import { leads, salesBereit, passtLeadFilter, sqlEntscheidungOffen, type LeadFilter } from './leads';
+import { leads, salesBereit, passtLeadFilter, sqlEntscheidungOffen, ausVerlorenWiederDran, wiederDranSatz, type LeadFilter } from './leads';
 import { nachbereitung } from './erfassen';
 import { faellige, fuerPerson as faelligeFuer } from './followup';
 import { istNetzwerkenEvent } from './marke';
@@ -163,6 +163,9 @@ export function fuerDich(person: string, kontakte: Kontakt[], crm: CrmBestand, h
   if (sqlOffen) l.push({ id: 'sql_bereit', welt: 'sales', titel: 'SQL-bereit — Deal anlegen', anzahl: sqlOffen, text: 'Muss-Kriterien und Sales-Schwelle erreicht — die Entscheidung steht oben in der Runde', ziel: { s: 'qualifizierung' } });
   // „Leads in Qualifizierung“ zählt wie die Leads-Liste dahinter (Filter „Qualifizierung“, `passtLeadFilter`; Abnahme 14.10., B5) — vorher ohne die
   // SQL-bereiten und mit den kalten, die Liste beim Sprung zeigte eine andere Zahl. Der Sprung öffnet genau diesen Filter.
+  // R2-1 Fund 6 (02.11.): ein verlorener Deal mit Wiedervorlage — ist sie erreicht, holt die Runde den Lead zurück; hier steht es auch (vorher: nirgends).
+  const wieder = meineLeads.filter(z => ausVerlorenWiederDran(z, heute)).length;
+  if (wieder) l.push({ id: 'verloren-wieder', welt: 'sales', titel: 'Leads aus verlorenen Deals wieder dran', anzahl: wieder, text: `${wiederDranSatz(wieder)} — die Wiedervorlage ist erreicht; in der Runde neu qualifizieren`, ziel: { s: 'qualifizierung' } });
   const inQualiListe = meineLeads.filter(z => passtLeadFilter(z, 'qualifizierung'));
   const davonBereit = inQualiListe.filter(z => salesBereit(z)).length;
   // Abnahme 2 (16.10., B11): „Für dich“ zählt die eigenen, die Liste kennt auch das Team — weicht es ab, sagt der Satz beide Zahlen, und der Sprung

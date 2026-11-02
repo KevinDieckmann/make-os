@@ -26,7 +26,7 @@ import { WEG } from '@/lib/wege';
 import { fachDerPerson } from '@/lib/make-one/fach-namen';
 import { usePersonen } from '../aufgaben/hilfe';
 import type { KTermin } from './teile';
-import { bestaetigungsMail, verantwortlichFuerSeite, type Buchung, type BuchungsSeite, type DatenschutzOeffentlich } from '@/lib/kalender/buchung';
+import { bestaetigungsMail, neuerTerminMail, verfalleneOffen, verantwortlichFuerSeite, type Buchung, type BuchungsSeite, type DatenschutzOeffentlich } from '@/lib/kalender/buchung';
 import { mailtoLink } from '@/lib/crm/angebote';
 
 type SeiteSicht = BuchungsSeite & { pfad: string };
@@ -34,7 +34,7 @@ type BuchungSicht = Omit<Buchung, 'tokenHash' | 'mailLink'> & { mailLinkBis?: st
 /** Antwort der Verwaltung (Fehler tragen `konflikt`/`unbestaetigt` für die Rückfragen). */
 type Antwort = { ok: boolean; fehler?: string; konflikt?: boolean; unbestaetigt?: boolean; token?: string; pfad?: string; bis?: string };
 /** Ein fertiger Mail-Entwurf zum Bestätigungslink. */
-interface Entwurf { id: string; an: string; betreff: string; text: string; mailto: string }
+interface Entwurf { id: string; an: string; betreff: string; text: string; mailto: string; /** R2-1 Fund 1: Terminvorschlag zu einer verfallenen Anfrage (ohne Bestätigungslink). */ termin?: true }
 interface Stand { seiten: SeiteSicht[]; buchungen: BuchungSicht[]; vorschlaege: Record<string, { art: 'qualifizierung' | 'deal'; text: string; kontaktId: string }>; /** 05.10.: Verantwortlicher + Hinweis-Adresse aus Einstellungen › Datenschutz (für Seiten ohne eigenen Eintrag). */ datenschutz?: DatenschutzOeffentlich }
 
 const STATUS_TEXT: Record<Buchung['status'], string> = { vorlaeufig: 'vorläufig', angefragt: 'angefragt', bestaetigt: 'bestätigt', abgelehnt: 'abgelehnt', abgesagt: 'abgesagt', abgelaufen: 'abgelaufen' };
@@ -110,6 +110,20 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
     setTextKopiert(false);
     setEntwurf({ id: x.id, an: x.email, ...m, mailto: mailtoLink(x.email, m.betreff, m.text) });
   };
+  /** Verfallene Anfrage (R2-1 Fund 1): „Neuen Termin vorschlagen“ = Mail-ENTWURF mit dem Link der Buchungsseite — verschickt wird nur per Klick in der Mail-App. */
+  const neuerTermin = (x: BuchungSicht) => {
+    const s = stand?.seiten.find(y => y.id === x.seiteId);
+    const m = neuerTerminMail({ name: x.name, titel: s?.titel ?? 'Termin', start: x.start, ...(s?.aktiv ? { link: `${window.location.origin}${s.pfad}` } : {}), verantwortlich: verantwortlichFuerSeite(s, stand?.datenschutz) });
+    setTextKopiert(false);
+    setEntwurf({ id: x.id, an: x.email, ...m, mailto: mailtoLink(x.email, m.betreff, m.text), termin: true });
+  };
+  /** Verfallene Anfrage „Als Anfrage übernehmen“ — über den EINEN Anfrage-Weg ins CRM (Server, idempotent). */
+  const [uebernimmt, setUebernimmt] = useState<string | null>(null);
+  const uebernehmen = async (x: BuchungSicht) => {
+    if (uebernimmt) return;
+    setUebernimmt(x.id);
+    try { const r = await senden({ aktion: 'anfrage-uebernehmen', id: x.id }); if (r.ok) setMeldung(''); } finally { setUebernimmt(null); }
+  };
   const textKopieren = async (e: Entwurf) => { try { await navigator.clipboard.writeText(`${e.betreff}\n\n${e.text}`); setTextKopiert(true); } catch { setMeldung('Kopieren nicht möglich — Text bitte markieren.'); } };
   const kopieren = async (s: SeiteSicht) => { try { await navigator.clipboard.writeText(`${window.location.origin}${s.pfad}`); setKopiert(s.id); setTimeout(() => setKopiert(''), 1800); } catch { setMeldung('Kopieren nicht möglich — Link: ' + s.pfad); } };
   /** Buchung, deren Termin gerade entfernt wird (Restpunkte 29.09.) — „Termin entfernen“ ist so lange gesperrt (kein Doppelklick). */
@@ -133,6 +147,8 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
   const kommend = (stand?.buchungen ?? []).filter(x => x.status === 'bestaetigt');
   // Abgesagt — oder abgelehnt/abgelaufen, während die Freigabe lief (F1 #2): der Termin blieb stehen, entfernt wird von Hand.
   const abgesagtMitTermin = (stand?.buchungen ?? []).filter(x => (x.status === 'abgesagt' || x.status === 'abgelehnt' || x.status === 'abgelaufen') && x.terminUid);
+  // Verfallen ohne Reaktion (R2-1 Fund 1): bis jemand übernimmt oder die Löschfrist sie räumt — die Glocke „verfallen“ führt hierher.
+  const verfallen = verfalleneOffen(stand?.buchungen ?? []);
   const seiteVon = (id: string) => stand?.seiten.find(s => s.id === id);
   // Schlussprüfung (29.09.): Das Fenster zeigt `meldung` als Fehler — eine alte Meldung der Leiste („Termin im Kalender
   // entfernt.“) stand sonst beim Öffnen einer neuen Seite rot darin. Beim Öffnen leeren.
@@ -152,9 +168,9 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
         ))}
         {stand && !stand.seiten.length && <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Noch keine Buchungsseite — z. B. „30 min Kennenlernen“.</span>}
       </div>
-      {(anfragen.length > 0 || vorlaeufig.length > 0 || kommend.length > 0 || abgesagtMitTermin.length > 0) && (
+      {(anfragen.length > 0 || vorlaeufig.length > 0 || kommend.length > 0 || abgesagtMitTermin.length > 0 || verfallen.length > 0) && (
         <button onClick={() => setOffen(!offen)} style={{ background: 'none', border: 'none', color: anfragen.length ? LEUCHT.achtung : C.inkDim, fontSize: TYP.bedien, cursor: 'pointer', padding: 0, marginTop: 10, fontFamily: SCHRIFT.text, fontWeight: 600 }}>
-          {anfragen.length ? `${anfragen.length} ${anfragen.length === 1 ? 'Anfrage' : 'Anfragen'} zum Freigeben` : 'Buchungen'}{offen ? ' ▴' : ' ▾'}
+          {anfragen.length ? `${anfragen.length} ${anfragen.length === 1 ? 'Anfrage' : 'Anfragen'} zum Freigeben` : verfallen.length ? `${verfallen.length} verfallene ${verfallen.length === 1 ? 'Anfrage' : 'Anfragen'}` : 'Buchungen'}{offen ? ' ▴' : ' ▾'}
         </button>
       )}
       {offen && (
@@ -199,6 +215,20 @@ export function Buchungsseiten({ b }: { b: Buchungen }) {
               {v && <Link href={WEG.kontakt(v.kontaktId)} style={{ fontSize: TYP.bedien, color: LEUCHT.puls }}>Vorschlag: {v.text} ›</Link>}
             </div>
           ); })}
+          {verfallen.length > 0 && <div style={{ fontSize: TYP.bedien, color: LEUCHT.achtung, fontWeight: 600 }}>Verfallen, ohne Antwort — bitte nachfassen</div>}
+          {verfallen.map(x => (
+            <div key={x.id} style={{ display: 'grid', gap: 4, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,.03)', border: `1px dashed ${LEUCHT.achtung}55` }}>
+              <div style={{ fontSize: TYP.bedien, fontWeight: 700 }}>{x.name}{x.firma ? ` · ${x.firma}` : ''}</div>
+              <div style={{ fontSize: TYP.bedien, color: C.inkDim }}>{x.email} · Wunschtermin {zeit(x)} · {seiteVon(x.seiteId)?.titel ?? 'Seite'}</div>
+              {x.anliegen && <div style={{ fontSize: TYP.bedien, color: C.inkLeise }}>{x.anliegen}</div>}
+              {entwurf?.id === x.id && <MailEntwurf e={entwurf} kopiert={textKopiert} onKopieren={() => void textKopieren(entwurf)} onZu={() => setEntwurf(null)} />}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Knopf farbe={LEUCHT.gut} onClick={() => neuerTermin(x)}>Neuen Termin vorschlagen …</Knopf>
+                <Knopf leise aus={!!uebernimmt} onClick={async () => { await uebernehmen(x); }}>{uebernimmt === x.id ? 'übernimmt …' : 'Als Anfrage übernehmen'}</Knopf>
+              </div>
+              <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>Der Vorschlag ist ein Mail-Entwurf — er geht erst mit deinem Klick in der Mail-App raus. „Übernehmen“ legt die Anfrage im CRM an (mit Follow-up „Anfrage beantworten“).</span>
+            </div>
+          ))}
           {abgesagtMitTermin.map(x => (
             <div key={x.id} style={{ fontSize: TYP.bedien, color: C.inkDim, display: 'grid', gap: 6 }}>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -241,7 +271,7 @@ function MailEntwurf({ e, kopiert, onKopieren, onZu }: { e: Entwurf; kopiert: bo
         <Knopf leise onClick={onKopieren}>{kopiert ? 'kopiert ✓' : 'Text kopieren'}</Knopf>
         <Knopf leise onClick={onZu}>Schließen</Knopf>
       </div>
-      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>MAKE OS verschickt nichts selbst: Die Mail geht erst mit deinem Klick auf „Senden“ in der Mail-App raus. Der Link gilt 7 Tage und nur einmal; ein neuer Link ersetzt diesen.</span>
+      <span style={{ fontSize: TYP.bedien, color: C.inkLeise }}>MAKE OS verschickt nichts selbst: Die Mail geht erst mit deinem Klick auf „Senden“ in der Mail-App raus.{e.termin ? ' Ein Link führt auf die Buchungsseite (nur, solange sie aktiv ist) — dort wählt der Gast eine neue Zeit.' : ' Der Link gilt 7 Tage und nur einmal; ein neuer Link ersetzt diesen.'}</span>
     </div>
   );
 }
