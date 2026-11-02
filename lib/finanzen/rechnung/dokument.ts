@@ -18,7 +18,11 @@ const datumDe = (d?: string) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(
 /** Empfänger als Anschriftzeilen (Firma, z. Hd. Person, Straße, PLZ Ort, Land, USt-IdNr.). */
 export function empfaengerZeilen(e: RechnungEmpfaenger | undefined): string[] {
   if (!e) return [];
-  const ort = [e.plz, e.ort].filter(Boolean).join(' ');
+  // Doppelte Ortsangabe („Berlin Berlin“, z. B. aus Ort + Bundesland) nur einmal drucken (02.11.); gespeichert bleibt, was eingetragen ist.
+  const ortWoerter = (e.ort ?? '').trim().split(/\s+/);
+  const halb = ortWoerter.length / 2;
+  const ortText = ortWoerter.length > 1 && ortWoerter.length % 2 === 0 && ortWoerter.slice(0, halb).join(' ') === ortWoerter.slice(halb).join(' ') ? ortWoerter.slice(0, halb).join(' ') : e.ort;
+  const ort = [e.plz, ortText].filter(Boolean).join(' ');
   return [
     e.firma ?? '', e.name ? (e.firma ? `z. Hd. ${e.name}` : e.name) : '', e.strasse ?? '', ort,
     e.land && !/^(deutschland|germany|de)$/i.test(e.land) ? e.land : '', e.ustId ? `USt-IdNr. ${e.ustId}` : '',
