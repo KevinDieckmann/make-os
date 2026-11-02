@@ -583,6 +583,14 @@ const REGISTER_EINTRAEGE: readonly SpeicherEintrag[] = [
     loeschfrist: 'abgeschlossene Läufe 400 Tage (danach kein Rückgängig mehr, die Buchungen bleiben); Konto löschen tilgt den Speichernamen („[gelöscht]“)',
     kategorie: ['vertraulich'],
   }),
+  // Buchhaltung (02.11.): Regeln „Empfänger/Zweck → Kategorie“ je Gesellschaft + eigene Kategorien des Haushalts. Das Muster ist ein Teiltext aus der
+  // Gegenseite bzw. dem Verwendungszweck (kann einen Firmen- oder Personennamen enthalten); kein Personen-Feld, wer geändert hat steht nur im Änderungsprotokoll.
+  mit(H('buchungs-regeln--*', 'Buchungs-Regeln je Haushalt: Muster (Teiltext der Gegenseite/des Verwendungszwecks), Kategorie, Gesellschaft, Notiz — eigene Arbeitsregeln der Buchhaltung.'), {
+    rechtsgrundlage: 'Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 238 HGB / § 147 AO (Buchführung der Gesellschaften) und lit. f (eigene Finanzen ordnen)',
+    art15: 'Muster mit dem Namen einer Person findet die Auskunft nicht automatisch — die Regel steht unter Finanzen › Buchungen › Regeln (bearbeiten/löschen)',
+    loeschfrist: 'solange die Regel gebraucht wird; Löschen der Regel entfernt sie sofort (die Buchungen behalten ihre Kategorie)',
+    kategorie: ['vertraulich'],
+  }),
   H('haushalt-umzug--*', 'Umzugs-Kopie der Haushaltsfinanzen — eigene Daten des Haushalts.'),
   H('telegram', 'Telegram-Verknüpfung der Personen des Haushalts (Chat-Kennungen).'),
   // Betroffenenrechte v2 (05.10.): mit Frist und Angaben — 12 Monate (FRIST_MONATE, lib/zugang/anmeldungen.ts), nicht mehr „300 Einträge“.
@@ -1120,6 +1128,7 @@ export const GEMISCHT: Readonly<Record<string, string>> = {
   'haushalt-umzug--*': 'Umzugskopie der Haushaltsfinanzen (wie haushalt-*--*)',
   'konten--*': 'Konten je Inhaber (Gesellschaft, privat, gemeinsam)',
   'kontoauszug-laeufe--*': 'je Lauf das Konto → Gesellschaft bzw. privat',
+  'buchungs-regeln--*': 'je Regel `ort` (Gesellschaft bzw. privat) — die Business-Sicht bekommt nur Regeln der Business-Gesellschaften (app/api/finanzen/buchhaltung)',
   // ── ZOE, Agenten, KI, Medien ──
   'zoe-verlauf': 'kein Feld — Gespräche mit ZOE über beide Bereiche',
   'zoe-gedaechtnis': 'kein Feld — Merksätze aus beiden Bereichen',

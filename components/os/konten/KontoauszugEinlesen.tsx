@@ -31,7 +31,7 @@ const STATUS_FARBE = { neu: LEUCHT.gut, vorhanden: C.inkLeise, uebersprungen: LE
 const FELDER: Exclude<SpaltenFeld, 'zweck'>[] = ['datum', 'betrag', 'soll', 'haben', 'kennzeichen', 'gegenpartei', 'saldo', 'valuta', 'waehrung', 'iban', 'kennung', 'status', 'kategorie', 'gebuehr', 'eigeneIban'];
 const ERWEITERT: ReadonlySet<SpaltenFeld> = new Set(['valuta', 'waehrung', 'iban', 'kennung', 'status', 'kategorie', 'gebuehr', 'eigeneIban', 'kennzeichen']);
 
-type Fehler = { ok: false; fehler?: string; csv?: Omit<CsvInfo, 'beispiel'>; anderesKonto?: { id: string; name: string }; vorschau?: VorschauAntwort; pruefung?: unknown };
+type Fehler = { ok: false; fehler?: string; hinweis?: 'leer' | 'belegliste'; csv?: Omit<CsvInfo, 'beispiel'>; anderesKonto?: { id: string; name: string }; vorschau?: VorschauAntwort; pruefung?: unknown };
 type Uebernahme = { ok: true; lauf: AuszugLauf | null; angelegt: number; doppelt: number; saldo: 'neu' | 'vorhanden' | 'nicht' | null; nichtsNeu?: true; zugeordnet?: number; bezahlbar?: BezahltVorschlag[] };
 type Zurueck = { ok: true; lauf: AuszugLauf; entfernt: number; konflikte: { datum: string; betrag: number; wer: string }[]; schonWeg: number; standZurueck: number; hinweis?: string };
 
@@ -84,7 +84,7 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
     setLaeuft(false);
     if (r.ok) { setVorschau(r); setAnfrageId(`kaa-${zufallsUuid()}`); setTrotz(false); return; }
     setVorschau(null);
-    setMeldung({ art: 'kritisch', text: r.fehler ?? 'Die Vorschau ging nicht.' });
+    setMeldung({ art: r.hinweis ? 'info' : 'kritisch', text: r.fehler ?? 'Die Vorschau ging nicht.' });
   };
 
   const dateiGewaehlt = async (f: File | undefined) => {
@@ -96,6 +96,8 @@ export function KontoauszugEinlesen({ konto, bereich, onGeaendert }: { konto: Ko
     setDatei({ name: f.name, bytes });
     // Erst im Browser lesen: bei CSV die Spaltenzuordnung zeigen (Vorschlag), bei CAMT direkt zur Vorschau.
     const l = auszugLesen(bytes);
+    // Leeres Unterkonto oder Belegliste: kein Fehler, nur eine Auskunft — keine Spaltenmaske, nichts gespeichert.
+    if (!l.ok && l.hinweis) { setMeldung({ art: 'info', text: l.fehler }); return; }
     const info = 'csv' in l && l.csv ? l.csv : null;
     if (info) { setCsv(info); setSpalten(info.spalten ?? info.vorschlag); }
     if (!l.ok) { setMeldung({ art: info ? 'achtung' : 'kritisch', text: l.fehler }); return; }

@@ -268,7 +268,9 @@ describe('(3) Routen-Register: der zweite Inhaber darf alles, was der erste darf
   it('Haushalt des Inhabers: Partner („nur Business“) und fremder Haushalt bleiben draußen', async () => {
     expect((await rufe('konto/haushalt', sitzung('partner'))).status).toBe(403);
     expect((await rufe('konto/haushalt', sitzung('fremd'))).status).toBe(403);
-    expect((await rufe('state/buchungen', sitzung('partner'))).status).toBe(403);
+    // seit 02.11.: der Partner sieht die Business-Buchungen (serverseitig gefiltert, Wächter tests/buchhaltung-route.test.ts)
+    expect(JSON.stringify((await rufe('state/buchungen', sitzung('partner'))).d)).not.toContain('"ort":"privat"');
+    expect((await rufe('state/buchungen', sitzung('fremd'))).status).toBe(403);
   });
 });
 

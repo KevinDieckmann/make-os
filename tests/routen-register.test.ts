@@ -252,7 +252,7 @@ describe('Laufzeit: Modul Markttraktion (bis zur Lizenz = Haushalts-Tor)', () =>
 });
 
 describe('Laufzeit: private Finanzen (Partner mit finanzRecht business, fremder Haushalt → 403)', () => {
-  it.each([['state/buchungen', 'GET'], ['state/liquiplan', 'GET'], ['state/finanzplan', 'GET'], ['haushalt/pruefliste', 'GET']] as [string, Methode][])('%s %s', async (pfad, m) => {
+  it.each([['state/liquiplan', 'GET'], ['state/finanzplan', 'GET'], ['haushalt/pruefliste', 'GET']] as [string, Methode][])('%s %s', async (pfad, m) => {
     expect(await status(pfad, sitzung('partner'), m), 'Partner (business)').toBe(403);
     expect(await status(pfad, sitzung('gast'), m), 'fremder Haushalt').toBe(403);
     expect(await status(pfad, sitzung('kunde'), m), 'Testkunde').toBe(403);
@@ -264,6 +264,15 @@ describe('Laufzeit: private Finanzen (Partner mit finanzRecht business, fremder 
     expect(await status('beleg/uebernehmen', sitzung('gast'), 'POST', body)).toBe(403);
     expect(await status('beleg', sitzung('partner'), 'POST', { bild: 'data:image/png;base64,AAAA' })).toBe(403);
     expect(JSON.stringify(await db.loadJson('buchungen'))).toBe(vorher);
+  });
+  it('state/buchungen GET: Partner (business) bekommt nur Business-Buchungen, fremder Haushalt/Testkunde 403 (02.11.)', async () => {
+    const r = await (await route('state/buchungen')).GET!(anfrage('state/buchungen', sitzung('partner')));
+    expect(r.status).toBe(200);
+    const j = await r.json() as { buchungen: { ort?: string; id: string }[] };
+    expect(JSON.stringify(j)).not.toContain('b-privat-1');
+    expect(j.buchungen.every(b => b.ort && b.ort !== 'privat')).toBe(true);
+    expect(await status('state/buchungen', sitzung('gast'), 'GET')).toBe(403);
+    expect(await status('state/buchungen', sitzung('kunde'), 'GET')).toBe(403);
   });
   it('im Haushalt mit vollem Recht: die Buchungen sind da', async () => {
     const r = await (await route('state/buchungen')).GET!(anfrage('state/buchungen', sitzung('malin')));

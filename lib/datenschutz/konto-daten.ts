@@ -145,6 +145,7 @@ export const NICHT_PERSOENLICH: Readonly<Record<string, string>> = {
   'kapazitaet-plan--*': 'Wochenpläne je Haushalt — wie Kapazität',
   'kennung-alias--*': 'Weiterleitung alter Kontakt-Kennungen',
   'konten--*': 'Konten-Register je Haushalt (08.10.) — im Export die eigenen Konten (IBAN maskiert), beim Löschen bleiben die Konten des Haushalts, die Personen-Kennung wird „[gelöscht]“',
+  'buchungs-regeln--*': 'Buchungs-Regeln je Haushalt (02.11.) — Arbeitsregeln der Buchhaltung ohne Personen-Feld (wer geändert hat, steht nur im Änderungsprotokoll)',
   'kontoauszug-laeufe--*': 'Lauf-Protokoll der Kontoauszüge je Haushalt (09.10.) — im Export die selbst ausgelösten Läufe, beim Löschen bleiben die Läufe, der Speichername wird „[gelöscht]“',
   'meilenstein-raum--*': 'Austausch je Meilenstein (Arbeit des Haushalts)',
   'netzwerken-erfassungen--*': 'Journal der Erfassungen (technisch)',

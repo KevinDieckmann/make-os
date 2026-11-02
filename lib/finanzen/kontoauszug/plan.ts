@@ -25,6 +25,9 @@ import { centAus, naechsteZahlung, namenPassen, nummerImText } from '@/lib/finan
 import { N26_KATEGORIEN, istUmbuchungText, katIdFinder, vorbereiten, type Entwurf, type Rohbuchung } from '@/lib/finanzen/haushalt/import';
 import type { Buchung as HaushaltBuchung, Einheit, Regel } from '@/lib/finanzen/haushalt/typen';
 import { einordnen, katNamen, type Einordnung } from '@/lib/finanzen/haushalt/einordnung';
+import { KAT } from '@/lib/finanzen/buchhaltung/kategorien';
+import { regelFuer, type BuchungsRegel } from '@/lib/finanzen/buchhaltung/regeln';
+import { businessKategorie, gegenArt, type EigenerOrt } from '@/lib/finanzen/buchhaltung/gegenkonto';
 
 // ── Zuordnung Datei → Konto ──────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -80,6 +83,11 @@ export interface BusinessBuchung {
   auszug?: string;
   /** Ein übernommener Beleg ist mit diesem Bank-Umsatz verknüpft (Kennung `b-…`, 09.10.) — er steht dann nicht noch einmal da. */
   beleg?: string;
+  /** Buchhaltung (02.11.): Kategorie aus dieser Regel; „bitte zuordnen“ (Gesellschafter/Verrechnung). */
+  regel?: string;
+  zuordnen?: 'gesellschafter' | 'verrechnung';
+  /** Notiz aus der Regel (Buchhaltungs-Paket). */
+  notiz?: string;
 }
 
 /** Stammt die Buchung aus einem Kontoauszug (eines beliebigen Kontos)? */
@@ -319,29 +327,49 @@ export const planHatWirkung = (p: Plan): boolean => p.zahlen.neu > 0 || p.saldo?
 
 // ── Zeilen bauen (für die Übernahme) ─────────────────────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Buchhaltung (02.11.) — was die Übernahme zusätzlich weiß (alles optional; ohne gilt die Einordnung von vorher):
+ * `regeln` = Regeln „Empfänger/Zweck → Kategorie“ (lib/finanzen/buchhaltung/regeln.ts), `eigeneOrte` = IBAN eines eigenen Kontos → dessen Ort
+ * (Umbuchung, Entnahme/Einlage, Gesellschafter, Verrechnung — lib/finanzen/buchhaltung/gegenkonto.ts). Wirkt nur auf NEUE Zeilen.
+ */
+export interface BuchhaltungsWissen { regeln?: readonly BuchungsRegel[]; eigeneOrte?: ReadonlyMap<string, EigenerOrt> }
+
 /** Die neuen Business-Buchungen des Plans (feste Kennungen, Lauf-Marke `auszug`). */
-export function businessZeilen(p: Plan, auszug: Auszug, konto: KontoKurz, laufId: string): BusinessBuchung[] {
+export function businessZeilen(p: Plan, auszug: Auszug, konto: KontoKurz, laufId: string, wissen: BuchhaltungsWissen = {}): BusinessBuchung[] {
   if (p.ziel.art !== 'business') return [];
   const ort = p.ziel.ort;
   return p.zeilen.filter(z => z.status === 'neu').map(z => {
     const e = auszug.eintraege[z.i];
     const f = businessFelder(e);
+    let kategorie = z.umbuchung ? KAT.umbuchung : (e.kategorie || KAT.sonstiges).slice(0, 60);
+    let extra: Pick<BusinessBuchung, 'regel' | 'zuordnen' | 'notiz'> = {};
+    const dort = e.gegenIban ? wissen.eigeneOrte?.get(e.gegenIban) : undefined;
+    if (e.storno) kategorie = KAT.storno;
+    else if (dort) { const b = businessKategorie(gegenArt(ort, dort, e.cent).art); kategorie = b.kategorie; if (b.zuordnen) extra = { zuordnen: b.zuordnen }; }
+    else if (!z.umbuchung && wissen.regeln?.length) {
+      const r = regelFuer(wissen.regeln, { wer: f.wer, zweck: f.zweck, ort });
+      if (r) { kategorie = r.kategorie; extra = { regel: r.id, ...(r.notiz ? { notiz: r.notiz.slice(0, 1000) } : {}) }; }
+    }
     return {
-      id: businessId(konto.id, z.schluessel), datum: e.datum, wer: f.wer, betrag: centZuEuro(e.cent),
-      kategorie: z.umbuchung ? 'Umbuchung' : (e.kategorie || 'Sonstiges').slice(0, 60),
-      ...(f.zweck ? { zweck: f.zweck } : {}), konto: konto.name.slice(0, 60), ort, auszug: laufId,
+      id: businessId(konto.id, z.schluessel), datum: e.datum, wer: f.wer, betrag: centZuEuro(e.cent), kategorie,
+      ...(f.zweck ? { zweck: f.zweck } : {}), konto: konto.name.slice(0, 60), ort, auszug: laufId, ...extra,
     };
   });
 }
 
 /** Die neuen Haushalts-Buchungen des Plans (Regeln des Haushalts angewandt, `import_id` = Lauf, `zeilen_hash` wie der bisherige Import). */
-export function haushaltZeilen(p: Plan, auszug: Auszug, h: { regeln: Regel[]; kategorien: { id: string; name: string }[] }, laufId: string, person: string, jetzt: string, neueId: () => string, eigeneIbans?: ReadonlySet<string>): HaushaltBuchung[] {
+export function haushaltZeilen(p: Plan, auszug: Auszug, h: { regeln: Regel[]; kategorien: { id: string; name: string }[] }, laufId: string, person: string, jetzt: string, neueId: () => string, eigeneIbans?: ReadonlySet<string>, notizFuer?: (e: AuszugEintrag) => string | undefined): HaushaltBuchung[] {
   if (p.ziel.art !== 'haushalt') return [];
   const geb = auszug.eintraege.map((e, i) => ({ e, i })).filter(({ e }) => e.status === 'gebucht' && e.waehrung === 'EUR');
   const umb = (e: AuszugEintrag) => !!(e.gegenIban && eigeneIbans?.has(e.gegenIban));
   const entwuerfe = vorbereiten(geb.map(({ e }) => haushaltRoh(e, umb(e))), p.ziel.haushaltKontoId, h.regeln, katIdFinder(h.kategorien), p.ziel.einheit, laufId, person);
   const nachIndex = new Map(geb.map(({ i }, n) => [i, entwuerfe[n]]));
-  return p.zeilen.filter(z => z.status === 'neu').map(z => ({ ...nachIndex.get(z.i)!, id: neueId(), stand: 1, geaendert: jetzt }));
+  return p.zeilen.filter(z => z.status === 'neu').map(z => {
+    const b = { ...nachIndex.get(z.i)!, id: neueId(), stand: 1, geaendert: jetzt };
+    // Geld von/an eine Business-Gesellschaft ist im Haushalt Einnahme/Ausgabe (02.11.) — die Notiz sagt, woher („Entnahme aus …“).
+    const n = notizFuer?.(auszug.eintraege[z.i]);
+    return n && !b.notiz ? { ...b, notiz: n } : b;
+  });
 }
 
 // ── Offene Posten, die ein neuer Umsatz begleicht (09.10., Nahtstellen) ─────────────────────────────────────────────────────────────

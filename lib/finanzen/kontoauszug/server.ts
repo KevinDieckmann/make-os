@@ -32,7 +32,10 @@ import {
   auszugZuordnen, planBauen, planHatWirkung, businessZeilen, haushaltZeilen, fpBusiness, fpHaushalt, zielSatz, BUSINESS_PRAEFIX, kontoMarke, offeneHinweise, bezahltVorschlaege,
   type BusinessBuchung, type OffenerPostenKurz, type Plan, type PlanZeile, type Ziel,
 } from './plan';
-import type { Auszug, CsvInfo, Pruefsumme } from './typen';
+import type { Auszug, CsvInfo, LeseHinweis, Pruefsumme } from './typen';
+import { regelnLaden } from '@/lib/finanzen/buchhaltung/server';
+import type { BuchungsRegel } from '@/lib/finanzen/buchhaltung/regeln';
+import { gegenArt, haushaltSeite } from '@/lib/finanzen/buchhaltung/gegenkonto';
 
 // ── Lauf-Protokoll ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -106,7 +109,7 @@ export async function laeufeFuerKonto(haushalt: string, kontoId: string, sicht: 
 
 export interface Kontext { haushalt: string; person: string; sicht: KontenSicht; jetzt?: Date }
 
-export type Fehler = { ok: false; status: 400 | 403 | 404 | 409 | 413 | 415; fehler: string; csv?: Omit<CsvInfo, 'beispiel'>; anderesKonto?: { id: string; name: string }; pruefung?: Pruefsumme | null };
+export type Fehler = { ok: false; status: 400 | 403 | 404 | 409 | 413 | 415; fehler: string; hinweis?: LeseHinweis; csv?: Omit<CsvInfo, 'beispiel'>; anderesKonto?: { id: string; name: string }; pruefung?: Pruefsumme | null };
 
 type HaushaltDaten = Awaited<ReturnType<typeof ladeHaushalt>>;
 interface Vorbereitet {
@@ -119,6 +122,9 @@ interface Vorbereitet {
   format: 'camt' | 'csv';
   csv?: CsvInfo;
   eigeneIbans: Set<string>;
+  /** 02.11. (Buchhaltung): IBAN eines eigenen Kontos → dessen Ort (Entnahme/Einlage/Verrechnung) und die Regeln der Gesellschaften. */
+  eigeneOrte: Map<string, KontoOrt>;
+  regeln: BuchungsRegel[];
   haushaltKontoNeu?: HaushaltKonto;
   /** Die bisherige Verknüpfung zeigt auf ein Haushalts-Konto, das es nicht mehr gibt — sie wird ersetzt. */
   toteVerknuepfung?: string;
@@ -176,7 +182,7 @@ async function privatPlanHinweis(haushalt: string, alle: readonly RegisterKonto[
 /** Lesen + Zuordnen (rein). */
 function planEingang(bytes: Uint8Array, spalten: unknown, konto: RegisterKonto, andere: RegisterKonto[]) {
   const l = auszugLesen(bytes, { spalten });
-  if (!l.ok) return { ok: false as const, status: l.status, fehler: l.fehler, ...(l.csv ? { csv: l.csv } : {}) };
+  if (!l.ok) return { ok: false as const, status: l.status, fehler: l.fehler, ...(l.hinweis ? { hinweis: l.hinweis } : {}), ...(l.csv ? { csv: l.csv } : {}) };
   const z = auszugZuordnen(l, { id: konto.id, name: konto.name, ...(konto.iban ? { iban: konto.iban } : {}) }, andere.map(k => ({ id: k.id, name: k.name, ...(k.iban ? { iban: k.iban } : {}) })));
   if (!z.ok) return { ok: false as const, status: z.status, fehler: z.fehler, ...(z.anderesKonto ? { anderesKonto: z.anderesKonto } : {}) };
   return { ok: true as const, auszug: z.auszug, hinweise: [...l.hinweise, ...z.hinweise], format: l.format, ...(l.format === 'csv' ? { csv: l.csv } : {}) };
@@ -218,11 +224,15 @@ async function vorbereiten(ctx: Kontext, kontoId: unknown, bytes: Uint8Array, sp
   if (konto.archiviertAm) return { ok: false, status: 409, fehler: 'Das Konto ist archiviert — erst wieder aktivieren, dann einlesen.' };
   const andere = register.konten.filter(k => k.id !== konto.id && sichtbarIn(k, ctx.sicht));
   const e = planEingang(bytes, spalten, konto, andere);
-  if (!e.ok) return { ok: false, status: e.status, fehler: e.fehler, ...('csv' in e && e.csv ? { csv: ohneBeispiel(e.csv) } : {}), ...('anderesKonto' in e && e.anderesKonto ? { anderesKonto: e.anderesKonto } : {}) };
+  if (!e.ok) return { ok: false, status: e.status, fehler: e.fehler, ...('hinweis' in e && e.hinweis ? { hinweis: e.hinweis } : {}), ...('csv' in e && e.csv ? { csv: ohneBeispiel(e.csv) } : {}), ...('anderesKonto' in e && e.anderesKonto ? { anderesKonto: e.anderesKonto } : {}) };
   const hh = istPrivatOrt(konto.ort) ? await ladeHaushalt(ctx.haushalt) : null;
   const { ziel, neu, tot } = await zielBestimmen(ctx, konto, randomUUID(), hh);
-  const eigeneIbans = new Set(register.konten.filter(k => k.id !== konto.id && k.iban).map(k => ibanGrundform(k.iban)));
+  // 02.11.: Umbuchung ist nur Geld zwischen Konten DESSELBEN Ziels (bzw. desselben Bereichs); Geld zwischen einer Business-Gesellschaft und Privat
+  // ist Entnahme/Einlage bzw. „Gesellschafter — zuordnen“, zwischen zwei Gesellschaften „Verrechnung — zuordnen“ (lib/finanzen/buchhaltung/gegenkonto.ts).
+  const eigeneOrte = new Map<string, KontoOrt>(register.konten.filter(k => k.id !== konto.id && k.iban).map(k => [ibanGrundform(k.iban), k.ort]));
+  const eigeneIbans = new Set(Array.from(eigeneOrte).filter(([, o]) => gegenArt(konto.ort, o, 0).art === 'umbuchung').map(([i]) => i));
   const business = ziel.art === 'business' ? ((await loadJson<{ buchungen?: BusinessBuchung[] }>('buchungen'))?.buchungen ?? []) : undefined;
+  const regeln = ziel.art === 'business' ? (await regelnLaden(ctx.haushalt)).regeln : [];
   const haushalt = ziel.art === 'haushalt' && hh ? { buchungen: hh.buchungen, regeln: hh.stamm.regeln, kategorien: hh.stamm.kategorien } : undefined;
   // Business (09.10.): festgehaltene Zuordnungen „schon gebucht“ aller Läufe und die Rechnungsnummern (Nummer im Verwendungszweck).
   const abgeglichen = new Map<string, string>();
@@ -243,7 +253,7 @@ async function vorbereiten(ctx: Kontext, kontoId: unknown, bytes: Uint8Array, sp
   plan.hinweise.push(...uebergangHinweise(plan, konto, register.konten));
   if (plan.saldo?.status === 'neu' && istPrivatOrt(konto.ort) && !regiert(register.konten, istPrivatOrt)) plan.hinweise.push(...await privatPlanHinweis(ctx.haushalt, register.konten));
   return {
-    ok: true, plan, konto, auszug: e.auszug, format: e.format, ...('csv' in e && e.csv ? { csv: e.csv } : {}), eigeneIbans, bezahlbar,
+    ok: true, plan, konto, auszug: e.auszug, format: e.format, ...('csv' in e && e.csv ? { csv: e.csv } : {}), eigeneIbans, eigeneOrte, regeln, bezahlbar,
     ...(neu ? { haushaltKontoNeu: neu } : {}), ...(tot ? { toteVerknuepfung: tot } : {}), ...(hh ? { haushaltStamm: { regeln: hh.stamm.regeln, kategorien: hh.stamm.kategorien } } : {}),
   };
 }
@@ -338,8 +348,15 @@ export async function auszugUebernehmen(ctx: Kontext, kontoId: unknown, bytes: U
   const laufId = neueKennung('ka');
   const p = v.plan;
   const kontoKurz = { id: v.konto.id, name: v.konto.name };
-  const zeilen: EinDaten['zeilen'] = p.ziel.art === 'business' ? businessZeilen(p, v.auszug, kontoKurz, laufId)
-    : p.ziel.art === 'haushalt' ? haushaltZeilen(p, v.auszug, v.haushaltStamm!, laufId, ctx.person, jetzt, () => randomUUID(), v.eigeneIbans) : [];
+  // Haushalts-Seite von Geld an/aus einer Business-Gesellschaft: Einnahme/Ausgabe mit Notiz („Entnahme aus …“) statt Umbuchung (02.11.).
+  const notizFuer = (e: { gegenIban?: string; cent: number }) => {
+    const dort = e.gegenIban ? v.eigeneOrte.get(e.gegenIban) : undefined;
+    if (!dort) return undefined;
+    const g = gegenArt(v.konto.ort, dort, e.cent);
+    return haushaltSeite(g.art, g.gesellschaft, e.cent).notiz;
+  };
+  const zeilen: EinDaten['zeilen'] = p.ziel.art === 'business' ? businessZeilen(p, v.auszug, kontoKurz, laufId, { regeln: v.regeln, eigeneOrte: v.eigeneOrte })
+    : p.ziel.art === 'haushalt' ? haushaltZeilen(p, v.auszug, v.haushaltStamm!, laufId, ctx.person, jetzt, () => randomUUID(), v.eigeneIbans, notizFuer) : [];
   // Bestand zur Zeit der Vorschau: wie oft kam jeder Fingerabdruck der neuen Zeilen schon vor?
   const vorherFp: Record<string, number> = {};
   const fpZeile = (z: BusinessBuchung | HaushaltBuchung) => (p.ziel.art === 'business' ? fpBusiness(z as BusinessBuchung) : fpHaushalt(z as HaushaltBuchung));

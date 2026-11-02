@@ -100,6 +100,10 @@ export function datumAus(roh: unknown): string | null {
     const tag = `${jahr}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
     return istKalendertag(tag) ? tag : null;
   }
+  // TT-MM-JJJJ (englischer Statement-Export, 02.11.): mit Bindestrich und VIERSTELLIGEM Jahr immer Tag-Monat-Jahr — die US-Form (MM/TT) nutzt Schrägstriche,
+  // und ein Monat > 12 an zweiter Stelle wäre kein Kalendertag (→ null, nie vertauscht). Eine Uhrzeit dahinter zählt nicht.
+  m = /^(\d{2})-(\d{2})-(\d{4})(?:[T ]\d{2}:\d{2}(?::\d{2})?)?$/.exec(t);
+  if (m) { const tag = `${m[3]}-${m[2]}-${m[1]}`; return istKalendertag(tag) ? tag : null; }
   m = /^(\d{4})(\d{2})(\d{2})$/.exec(t);
   if (m) { const tag = `${m[1]}-${m[2]}-${m[3]}`; return istKalendertag(tag) ? tag : null; }
   return null;

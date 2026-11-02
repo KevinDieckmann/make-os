@@ -294,7 +294,11 @@ export const ROUTEN_REGISTER: Record<string, RoutenEintrag> = {
   // ── Finanzen ────────────────────────────────────────────────────────────────────────────────────────────────
   'beleg': r('POST', 'finanz-privat', 'Beleg lesen (KI) mit Kategorien aus den Buchungen der Instanz — Privatzugang im Inhaber-Haushalt.'),
   'beleg/uebernehmen': r('POST', 'finanz-privat', 'Schreibt Buchung bzw. Rechnung in die gemeinsamen Finanzbestände — Privatzugang im Inhaber-Haushalt.'),
-  'state/buchungen': r('GET,PUT,PATCH', 'finanz-privat', 'Bank-Buchungen inkl. Privatkonto — nur Haushaltsmitglieder ohne finanzRecht business.'),
+  // 02.11. (Buchhaltung, L5): Business-Konten sehen und ändern die Buchungen der Business-Gesellschaften (serverseitig gefiltert, Schreiben außerhalb → 403);
+  // der Voll-Ersatz (PUT) bleibt dem vollen Privatzugang.
+  'state/buchungen': rm({ GET: 'finanz-business', PATCH: 'finanz-business', PUT: 'finanz-privat' }, 'Bank-Buchungen (Bestand `buchungen`, inkl. alter privater Zeilen) im Haushalt des Inhabers; Sicht aus dem Konto (planZugangVon): „nur Business“ bekommt/ändert nur Buchungen der Business-Gesellschaften, nie eine private; Einzeländerungen (Op `teil`) mit Stand (409); PUT (ganze Liste) nur voller Privatzugang.'),
+  'finanzen/buchhaltung': r('GET,POST', 'finanz-business', 'Buchhaltung der Business-Buchungen: Regeln „Empfänger/Zweck → Kategorie“ je Gesellschaft (`buchungs-regeln--<haushalt>`), rückwirkend nur mit Vorschau + Klick (Hand gewinnt), Vorschläge Entnahme/Einlage statt Umbuchung und Zahlung ↔ Rechnung; Sicht aus dem Konto (Business nur Business-Gesellschaften, Privat-Seiten nur voller Zugang), Dienstweg 403.'),
+  'finanzen/buchhaltung/export': r('GET', 'finanz-business', 'CSV der Buchungen einer Gesellschaft und eines Zeitraums (IBAN maskiert, Formel-Anfänge neutralisiert) — nur Gesellschaften der Sicht aus dem Konto, Dienstweg 403, Lese-Protokoll.'),
   'state/liquiplan': r('GET,PUT,PATCH', 'finanz-privat', 'Liquiditätsplan inkl. privater Posten — nur Haushaltsmitglieder ohne finanzRecht business.'),
   'state/finanzplan': r('GET,PUT,PATCH', 'finanz-privat', 'Finanzplan-Altweg (Firmen inkl. Privatkonto, Rechnungen) — Business-Sicht gibt es über /api/finanzplan.', undefined, 'Erststart (leerer Bestand → Startgerüst) und einmaliger Nachzug neuer Abschnitte (Produkte, Uhrwerk) — idempotent.'),
   'state/finance': r('GET,PUT,PATCH', 'haushalt', 'Controlling (Business-Ist) des Haushalts.'),

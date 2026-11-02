@@ -25,6 +25,11 @@ export interface AuszugEintrag {
   /** Kennung des Umsatzes bei der Bank (CAMT `AcctSvcrRef`/`NtryRef`, CSV „Transaktions-ID“) — Dublettenschutz. */
   externeId?: string;
   status: EintragStatus;
+  /** Art des Umsatzes laut Bank („Transaction type“: INCOMING_TRANSFER, CARD, FEE …), wenn die Datei sie nennt. */
+  umsatzart?: string;
+  /** Storno/Rückbuchung (02.11.): ein Rückläufer und der gleich hohe Fehlversuch davor — beide werden übernommen (nie still gelöscht) und
+   *  heben sich auf (Kategorie „Storno/Rückbuchung“). */
+  storno?: true;
   /** Zeile in der CSV (1-basiert) bzw. laufende Nummer des Eintrags im CAMT — für Hinweise. */
   zeile: number;
 }
@@ -81,14 +86,17 @@ export interface Spalten {
   gebuehr?: number;
   /** IBAN des eigenen Kontos je Zeile (Sparkasse „Auftragskonto“) — ordnet den Auszug dem Konto zu. */
   eigeneIban?: number;
+  /** Art des Umsatzes („Transaction type“) — erkennt Rückbuchungen und das Vorzeichen bei Beträgen ohne Vorzeichen. */
+  umsatzart?: number;
 }
-export const SPALTEN_FELDER = ['datum', 'betrag', 'soll', 'haben', 'kennzeichen', 'valuta', 'gegenpartei', 'iban', 'zweck', 'saldo', 'waehrung', 'kennung', 'status', 'kategorie', 'gebuehr', 'eigeneIban'] as const;
+export const SPALTEN_FELDER = ['datum', 'betrag', 'soll', 'haben', 'kennzeichen', 'valuta', 'gegenpartei', 'iban', 'zweck', 'saldo', 'waehrung', 'kennung', 'status', 'kategorie', 'gebuehr', 'eigeneIban', 'umsatzart'] as const;
 export type SpaltenFeld = typeof SPALTEN_FELDER[number];
 
 export const SPALTEN_NAME: Readonly<Record<SpaltenFeld, string>> = {
   datum: 'Buchungstag', betrag: 'Betrag', soll: 'Soll (Ausgang)', haben: 'Haben (Eingang)', kennzeichen: 'Soll/Haben-Kennzeichen', valuta: 'Valuta',
   gegenpartei: 'Gegenseite (Name)', iban: 'IBAN der Gegenseite', zweck: 'Verwendungszweck', saldo: 'Saldo nach Buchung', waehrung: 'Währung',
   kennung: 'Kennung der Bank', status: 'Status (gebucht/vorgemerkt)', kategorie: 'Kategorie', gebuehr: 'Gebühr', eigeneIban: 'IBAN des eigenen Kontos',
+  umsatzart: 'Art des Umsatzes',
 };
 
 export interface CsvInfo {
@@ -111,7 +119,10 @@ export interface CsvInfo {
 export type LeseErgebnis =
   | { ok: true; format: 'camt'; version?: string; auszuege: Auszug[]; hinweise: string[] }
   | { ok: true; format: 'csv'; auszuege: Auszug[]; csv: CsvInfo; hinweise: string[] }
-  | { ok: false; status: 400 | 413 | 415; fehler: string; csv?: CsvInfo };
+  | { ok: false; status: 400 | 413 | 415; fehler: string; csv?: CsvInfo; hinweis?: LeseHinweis };
+
+/** Kein Fehler, sondern eine klare Auskunft (02.11.): `leer` = erkannter Kopf ohne Umsätze (leeres Unterkonto), `belegliste` = keine Kontoauszug-Datei. */
+export type LeseHinweis = 'leer' | 'belegliste';
 
 /** Grenzen — darüber wird abgelehnt (413), nie gekürzt. */
 export const AUSZUG_GRENZEN = { bytes: 5 * 1024 * 1024, eintraege: 10_000, tiefe: 64 } as const;

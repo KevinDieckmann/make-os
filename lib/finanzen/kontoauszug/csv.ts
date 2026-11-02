@@ -105,11 +105,14 @@ const REGELN: Regel[] = [
   { feld: 'kennung', genau: ['transaktions-id', 'transaction id', 'id', 'transaktionsnummer', 'umsatz-id', 'buchungsreferenz', 'referenznummer', 'transaktion id'] },
   { feld: 'status', genau: ['status', 'state', 'info', 'buchungsstatus', 'transaktionsstatus'] },
   { feld: 'kategorie', genau: ['kategorie', 'category'] },
+  { feld: 'umsatzart', genau: ['transaction type'] },
 ];
 const ZWECK_ERSATZ = ['payment reference', 'referenz', 'reference', 'beschreibung', 'description', 'buchungstext'];
 
 /** Aufbau bekannter Banken — nur für die Anzeige („sieht aus wie …“); alle Merkmale müssen als Spaltenname vorkommen. */
 const BANKEN: { name: string; merkmale: string[][] }[] = [
+  // Englischer Statement-Export eines Business-Kontos (02.11.) vor Qonto — beide nennen „Counterparty name“. Bankname bewusst neutral (repo-sauber).
+  { name: 'Business-Konto (Statement-Export)', merkmale: [['completed date', 'counterparty name', 'transaction type', 'account iban', 'payment amount']] },
   { name: 'N26', merkmale: [['booking date', 'partner name'], ['datum', 'empfaenger', 'betrag (eur)']] },
   { name: 'Sparkasse', merkmale: [['auftragskonto', 'beguenstigter/zahlungspflichtiger']] },
   { name: 'Volks- und Raiffeisenbanken', merkmale: [['iban auftragskonto', 'name zahlungsbeteiligter']] },
@@ -212,6 +215,25 @@ function ibanAusVorspann(zeilen: readonly CsvZeile[]): string | undefined {
   return undefined;
 }
 
+// ── Dateien, die kein Kontoauszug mit Umsätzen sind (02.11., Statement-Export je Unterkonto) ──────────────────────────────────────────────────
+export const LEER_TEXT = 'Diese Datei enthält keine Umsätze (leeres Unterkonto) — nichts zu tun.';
+export const BELEGLISTE_TEXT = 'Das ist die Belegliste der Bank („Business documents“), kein Kontoauszug — bitte den „Statement“-Export je Konto nehmen.';
+
+/**
+ * Erkennt (1) die Belegliste der Bank („Business documents“: Spalten „Internal operation id“ + „Document name“) und (2) eine Datei, die nur
+ * aus (Vorspann +) einer erkannten Kopfzeile besteht — Datum und Betrag zuordenbar, aber keine einzige Zeile mit einem Datum. Beides ist
+ * kein Fehler: es gibt nichts einzulesen, nichts wird gespeichert.
+ */
+function besondereDatei(zeilen: readonly CsvZeile[]): LeseErgebnis | null {
+  const oben = zeilen.slice(0, 60);
+  if (oben.some(z => { const n = z.zellen.map(kopfNorm); return n.includes('internal operation id') && n.includes('document name'); })) {
+    return { ok: false, status: 400, fehler: BELEGLISTE_TEXT, hinweis: 'belegliste' };
+  }
+  if (zeilen.some(z => z.zellen.some(c => !!datumAus(c)))) return null;
+  const kopf = oben.some(z => z.zellen.filter(istKopfZelle).length >= 2 && spaltenVollstaendig(spaltenVorschlag(z.zellen).vorschlag));
+  return kopf ? { ok: false, status: 400, fehler: LEER_TEXT, hinweis: 'leer' } : null;
+}
+
 /**
  * CSV-Bytes → Auszug. Ohne `spalten` gilt der Vorschlag; ist der unvollständig, kommt `ok: false` MIT den CSV-Angaben (Kopf, Beispiel,
  * Vorschlag) zurück — die Oberfläche lässt dann zuordnen. Mehrere eigene Konten in einer Datei (Spalte „Auftragskonto“) → ein Auszug je Konto.
@@ -221,6 +243,8 @@ export function csvLesen(bytes: Uint8Array, opt: { spalten?: unknown } = {}): Le
   const trenner = trennerErkennen(text);
   const zeilen = csvZerlegen(text, trenner);
   if (zeilen.length < 1) return { ok: false, status: 400, fehler: 'Die Datei ist leer.' };
+  const besonders = besondereDatei(zeilen);
+  if (besonders) return besonders;
   const k = kopfFinden(zeilen);
   const breite = Math.max(...zeilen.slice(Math.max(0, k), Math.max(0, k) + 50).map(z => z.zellen.length));
   const kopf = k >= 0 ? zeilen[k].zellen : Array.from({ length: breite }, (_, i) => `Spalte ${i + 1}`);
@@ -242,7 +266,7 @@ export function csvLesen(bytes: Uint8Array, opt: { spalten?: unknown } = {}): Le
 
   const zelle = (z: CsvZeile, i: number | undefined) => (typeof i === 'number' ? (z.zellen[i] ?? '').trim() : '');
   const hinweise: string[] = [];
-  const gruppen = new Map<string, { eintraege: AuszugEintrag[]; saldi: { saldo: number; datum: string; cent: number; pos: number }[] }>();
+  const gruppen = new Map<string, { eintraege: AuszugEintrag[]; saldi: { saldo: number; datum: string; cent: number; pos: number; nr: number }[] }>();
   let ohneDatum = 0, ohneBetrag = 0, fussAnfang: AuszugSaldo | undefined, fussEnde: AuszugSaldo | undefined;
   const ohneDatumZeilen: number[] = [];
   let pos = 0;
@@ -270,6 +294,7 @@ export function csvLesen(bytes: Uint8Array, opt: { spalten?: unknown } = {}): Le
       cent = s === null && h === null ? null : (h !== null ? Math.abs(h) : 0) - (s !== null ? Math.abs(s) : 0);
     }
     if (cent === null) { ohneBetrag++; continue; }
+    const umsatzart = zelle(z, spalten.umsatzart).toUpperCase().replace(/[^A-Z_]/g, '').slice(0, 40);
     const geb = betragCent(zelle(z, spalten.gebuehr), zahlformat);
     if (geb) cent -= Math.abs(geb);
     const w = zelle(z, spalten.waehrung).toUpperCase();
@@ -286,10 +311,10 @@ export function csvLesen(bytes: Uint8Array, opt: { spalten?: unknown } = {}): Le
       datum, ...(valuta ? { valuta } : {}), cent, waehrung,
       gegenpartei: textGlaetten(zelle(z, spalten.gegenpartei)), ...(ibanRoh && ibanGueltig(ibanRoh) ? { gegenIban: ibanGrundform(ibanRoh) } : {}),
       zweck: textGlaetten(zweck), ...(kat ? { kategorie: textGlaetten(kat).slice(0, 60) } : {}), ...(kennung ? { externeId: kennung.slice(0, 120) } : {}),
-      status: statusAus(zelle(z, spalten.status)), zeile: z.zeile,
+      status: statusAus(zelle(z, spalten.status)), ...(umsatzart ? { umsatzart } : {}), zeile: z.zeile,
     });
     const saldo = typeof spalten.saldo === 'number' ? betragCent(zelle(z, spalten.saldo), zahlformat) : null;
-    if (saldo !== null) g.saldi.push({ saldo, datum, cent, pos });
+    if (saldo !== null) g.saldi.push({ saldo, datum, cent, pos, nr: g.eintraege.length - 1 });
     pos++;
     gruppen.set(gruppe, g);
     if (pos > AUSZUG_GRENZEN.eintraege) return { ok: false, status: 413, fehler: `Mehr als ${AUSZUG_GRENZEN.eintraege.toLocaleString('de-DE')} Umsätze in einer Datei — bitte in kleineren Zeiträumen herunterladen. Nichts gelesen.`, csv };
@@ -297,6 +322,7 @@ export function csvLesen(bytes: Uint8Array, opt: { spalten?: unknown } = {}): Le
   if (ohneDatum) hinweise.push(`${ohneDatum} ${ohneDatum === 1 ? 'Zeile ohne gültigen Buchungstag wurde' : 'Zeilen ohne gültigen Buchungstag wurden'} übersprungen (Zeile ${ohneDatumZeilen.join(', ')}${ohneDatum > ohneDatumZeilen.length ? ' …' : ''}).`);
   if (ohneBetrag) hinweise.push(`${ohneBetrag} ${ohneBetrag === 1 ? 'Zeile ohne lesbaren Betrag wurde' : 'Zeilen ohne lesbaren Betrag wurden'} übersprungen — Spalte „Betrag“ prüfen.`);
   if (!gruppen.size) return { ok: false, status: 400, fehler: 'Keine Zeile sah nach einem Umsatz aus — passt die Spaltenzuordnung?', csv };
+  for (const g of Array.from(gruppen.values())) { vorzeichenAusUmsatzart(g.eintraege); for (const sd of g.saldi) sd.cent = g.eintraege[sd.nr].cent; const n = rueckbuchungenMarkieren(g.eintraege); if (n) hinweise.push(`${n} ${n === 1 ? 'Rückbuchung hebt' : 'Rückbuchungen heben'} einen gleich hohen Fehlversuch auf — beide als „Storno/Rückbuchung“ markiert (zählen zusammen 0).`); }
 
   // Saldo aus Vorspann/Fuß (nur mit Datum).
   for (const z of vorspann) { const s = saldoAusZeile(z, zahlformat); if (s?.art === 'ende' && !fussEnde) fussEnde = s.saldo; if (s?.art === 'anfang' && !fussAnfang) fussAnfang = s.saldo; }
@@ -327,4 +353,44 @@ export function csvLesen(bytes: Uint8Array, opt: { spalten?: unknown } = {}): Le
   }
   if (gruppen.size > 1) hinweise.push(`Die Datei enthält ${gruppen.size} Konten (Spalte „Auftragskonto“) — übernommen wird nur das gewählte.`);
   return { ok: true, format: 'csv', auszuege, csv, hinweise };
+}
+
+// ── Art des Umsatzes: Vorzeichen und Rückbuchungen (02.11., englischer Statement-Export) ─────────────────────────────────────────────────────────
+
+/** Abgänge laut Art des Umsatzes; Zugänge. Unbekannte Arten ändern nichts. */
+const ABGANG = new Set(['OUTGOING_TRANSFER', 'CARD', 'OUTGOING_SEPA_DIRECT_DEBIT', 'FEE']);
+const ZUGANG = new Set(['INCOMING_TRANSFER', 'OUTGOING_TRANSFER_REFUND']);
+export const RUECKBUCHUNG = 'OUTGOING_TRANSFER_REFUND';
+
+/**
+ * Nur wenn KEIN Betrag der Datei ein Vorzeichen trägt (Bank exportiert Beträge ohne Vorzeichen), setzt die Art des Umsatzes das Vorzeichen —
+ * trägt die Datei Vorzeichen, gelten die der Bank (nie umgedreht).
+ */
+export function vorzeichenAusUmsatzart(e: AuszugEintrag[]): void {
+  if (!e.some(x => x.umsatzart) || e.some(x => x.cent < 0)) return;
+  for (const x of e) {
+    if (x.umsatzart && ABGANG.has(x.umsatzart)) x.cent = -Math.abs(x.cent);
+    else if (x.umsatzart && ZUGANG.has(x.umsatzart)) x.cent = Math.abs(x.cent);
+  }
+}
+
+/**
+ * Eine Rückbuchung (OUTGOING_TRANSFER_REFUND, Eingang) hebt den gleich hohen Fehlversuch DAVOR auf (Überweisung, gleicher Betrag, gleicher Tag oder
+ * früher — der jüngste noch freie). Beide bekommen `storno` — übernommen werden beide, gelöscht wird nie. Ohne passenden Fehlversuch bleibt die
+ * Rückbuchung ein normaler Eingang. Liefert die Zahl der Paare.
+ */
+export function rueckbuchungenMarkieren(e: AuszugEintrag[]): number {
+  let n = 0;
+  const frei = new Set(e.map((_, i) => i));
+  const refunds = e.map((x, i) => ({ x, i })).filter(({ x }) => x.umsatzart === RUECKBUCHUNG && x.cent > 0).sort((a, b) => a.x.datum.localeCompare(b.x.datum) || a.i - b.i);
+  for (const { x, i } of refunds) {
+    const kandidat = e.map((y, j) => ({ y, j }))
+      .filter(({ y, j }) => j !== i && frei.has(j) && y.cent === -x.cent && y.datum <= x.datum && (y.umsatzart ?? 'OUTGOING_TRANSFER') === 'OUTGOING_TRANSFER')
+      .sort((a, b) => b.y.datum.localeCompare(a.y.datum) || Math.abs(i - a.j) - Math.abs(i - b.j))[0];
+    if (!kandidat) continue;
+    frei.delete(i); frei.delete(kandidat.j);
+    x.storno = true; kandidat.y.storno = true;
+    n++;
+  }
+  return n;
 }
