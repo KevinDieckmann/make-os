@@ -55,13 +55,14 @@ rechnet und zeigt alles bit-gleich wie vorher (Wächter: finanzplan-regression-G
 - **Bewusst nicht geändert:** der Rechenkern startet die Achse der Selbstständigkeit weiter mit `selbst.kontoStart`, nicht mit dem 0-Punkt
   (`FinanzDaten.eroeffnung` kennt nur ug/kdv — Formeln bleiben bis Kevins Wort); die gespeicherten Bestände (Abschlüsse, Buchungen, Konten, Aufgaben).
 - **Workflow/Compose:** `pruefen-und-ausrollen.yml` reicht `vars.MAKE_OS_EINHEITEN`, `vars.MAKE_OS_CRM_TEAM`, `vars.MAKE_OS_EVENT_MARKE` als Build-Args
-  durch (`compose.yml` ebenso, leer = wie bisher); der Test-Schritt läuft ohne die Variable. Werte stehen nie in den Dateien.
+  durch (`compose.yml` ebenso, leer = wie bisher); der Test-Schritt läuft ohne die Variable. **Kevin 02.11.:** für UNSERE Instanz steht die Vorgabe
+  `{"kdc":{"bereich":"business"}}` im Bauschritt selbst (`EINHEITEN_VORGABE`, wie Server-Adresse/Host-Schlüssel) — keine GitHub-Anmeldung nötig;
+  eine gesetzte Variable `MAKE_OS_EINHEITEN` gewinnt. Eine andere Instanz nimmt die Zeile heraus.
 - **Einmal-Schritte (Kevin):**
-  1. Repository-Variable setzen (VOR dem Push): GitHub › make-os › Settings › Secrets and variables › Actions › Variables › „New repository variable“,
-     Name `MAKE_OS_EINHEITEN`, Wert `{"kdc":{"bereich":"business"}}` (oder `gh variable set …`) — wirkt ab dem nächsten Bild (Build-Variable).
+  1. (entfällt — die Vorgabe steht im Bauschritt; nur zum Abweichen die Repository-Variable `MAKE_OS_EINHEITEN` setzen).
   2. Business-Cockpit › 0-Punkt: Selbstständigkeit wählen, Stichtag 01.06.2026 + Anfangsbestand (Kontostand, offene Posten) eintragen.
   3. Unternehmen › Gesellschaft (Selbstständigkeit) › Absender: USt-IdNr. eintragen.
-- **Rückweg:** Variable löschen (`gh variable delete MAKE_OS_EINHEITEN -R KevinDieckmann/make-os`) und neu ausrollen — die Selbstständigkeit steht wieder
+- **Rückweg:** Zeile `EINHEITEN_VORGABE` im Bauschritt entfernen (bzw. Variable löschen) und neu ausrollen — die Selbstständigkeit steht wieder
   unter Privat, alle Daten bleiben (es wurde nichts umgeschrieben); ein gesetzter 0-Punkt der Selbstständigkeit bleibt gespeichert und wirkt dann nicht.
 - **Tests:** `tests/kdc-business.test.ts` (mit Variable: Sichten, Schreiben, Runway, Kasse, Steuern, Darlehen, Fokus, Aufgaben, „Business bekommt nichts aus
   Privat“), `tests/kdc-business-ohne.test.ts`.

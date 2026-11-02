@@ -233,8 +233,8 @@ Instanz über `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` u
 ## Selbstständigkeit wieder im Business (02.11., Branch `kdc-business`; UPDATES.md 02.11.)
 Kevin 02.11.: „Die Selbstständigkeit gehört wieder komplett zu Business“ (eigene USt-IdNr.) — **ab 01.06.2026 über ihren 0-Punkt**; bleibt Einzelunternehmen,
 die Einkommensteuer bleibt gemeinsam privat (`estGemeinsamFuer`/`estJahre` unverändert). Kehrt „Bereich je Einheit — Selbstständigkeit gehört zu Privat“ für
-UNSERE Instanz um, ohne Code-Sonderfall: die Zuordnung kommt aus `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` (GitHub-Variable
-`MAKE_OS_EINHEITEN` → Build-Arg in `pruefen-und-ausrollen.yml`/`compose.yml`; Tests laufen ohne). Ohne Variable bit-gleich wie vorher (Wächter
+UNSERE Instanz um, ohne Code-Sonderfall: die Zuordnung kommt aus `NEXT_PUBLIC_MAKE_OS_EINHEITEN` `{"kdc":{"bereich":"business"}}` (Vorgabe unserer
+Instanz `EINHEITEN_VORGABE` im Bauschritt von `pruefen-und-ausrollen.yml`, eine GitHub-Variable `MAKE_OS_EINHEITEN` gewinnt → Build-Arg; `compose.yml` ebenso; Tests laufen ohne). Ohne Variable bit-gleich wie vorher (Wächter
 `tests/kdc-business-ohne.test.ts`, finanzplan-regression-Gold, selbst-privat*). Mit Variable (`tests/kdc-business.test.ts`): Finanzplanung › Business mit Blatt
 „Selbstständigkeit“ (ESt-Zeilen/Vorsorge/Gehalt bleiben privat, Business schreibt nur Posten/Kontostart/Darlehen/GewSt-USt — Privates 403), Runway Privat ohne
 `frei` der Selbstständigkeit, Konten nur in der Business-Kasse, Steuern › Business ohne ESt, Index/`?scope=kdc`/Monatsabschluss/0-Punkt im Business. Alte

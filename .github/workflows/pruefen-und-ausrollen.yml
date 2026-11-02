@@ -65,14 +65,18 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # Seit 26.09. abends: Das Bild entsteht HIER, nicht auf dem 1-CPU-Server (der war beim Bauen 10 Minuten kaum benutzbar).
-      # 02.11.: Instanz-Einstellungen (Zuordnung je Einheit, CRM-Team, Event-Marke) kommen als Repository-Variablen an den Bau —
-      # nie Werte in dieser Datei. Fehlt eine Variable, ist das Argument leer = Verhalten wie bisher. Der Prüf-Schritt läuft ohne sie.
+      # 02.11.: Instanz-Einstellungen (Zuordnung je Einheit, CRM-Team, Event-Marke) kommen als Repository-Variablen an den Bau.
+      # Fehlt eine Variable, ist das Argument leer = Verhalten wie bisher. Der Prüf-Schritt läuft ohne sie.
+      # Ausnahme (Kevin 02.11.): die Zuordnung „Selbstständigkeit = Business“ steht als Vorgabe UNSERER Instanz hier (wie Server-Adresse
+      # und Host-Schlüssel unten) — eine gesetzte Variable MAKE_OS_EINHEITEN gewinnt. Eine andere Instanz nimmt diese Zeile heraus.
       - name: Bild bauen
         env:
           EINHEITEN: ${{ vars.MAKE_OS_EINHEITEN }}
           CRM_TEAM: ${{ vars.MAKE_OS_CRM_TEAM }}
           EVENT_MARKE: ${{ vars.MAKE_OS_EVENT_MARKE }}
         run: |
+          EINHEITEN_VORGABE='{"kdc":{"bereich":"business"}}'
+          [ -n "$EINHEITEN" ] || EINHEITEN="$EINHEITEN_VORGABE"
           docker build --pull \
             --build-arg NEXT_PUBLIC_MAKE_OS_EINHEITEN="$EINHEITEN" \
             --build-arg NEXT_PUBLIC_MAKE_OS_CRM_TEAM="$CRM_TEAM" \
