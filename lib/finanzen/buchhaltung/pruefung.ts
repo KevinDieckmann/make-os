@@ -137,3 +137,18 @@ export function pruefGruppen(alle: readonly PruefBuchung[]): PruefGruppe[] {
   return Array.from(m.values()).map(g => ({ ...g, buchungen: g.buchungen.sort((a, b) => b.datum.localeCompare(a.datum) || a.id.localeCompare(b.id)) }))
     .sort((a, b) => b.buchungen.length - a.buchungen.length || a.gegenseite.localeCompare(b.gegenseite, 'de'));
 }
+
+/**
+ * Konto löschen (Art. 17): die Buchungen bleiben (Aufbewahrung § 147 AO / § 257 HGB), nur „geprüft von“ mit dem Speichernamen der
+ * Person wird „[gelöscht]“. Rein; dieselbe Liste und n = 0, wenn nichts zu tun war.
+ */
+export function buchungenOhnePruefer<T>(liste: readonly T[], speicher: string): { neu: T[]; n: number } {
+  let n = 0;
+  const neu = liste.map(b => {
+    const p = (b as { pruefung?: { geprueftVon?: unknown } } | null)?.pruefung;
+    if (!p || p.geprueftVon !== speicher) return b;
+    n++;
+    return { ...b, pruefung: { ...p, geprueftVon: '[gelöscht]' } } as T;
+  });
+  return { neu: n ? neu : (liste as T[]), n };
+}

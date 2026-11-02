@@ -670,6 +670,14 @@ export async function kontoLoeschen(speicher: string, opt: { grabstein?: boolean
       if (n) await protokolliere(regN, [{ liste: 'fassungen', op: 'geaendert', id: 'konto', felder: ['von', 'geaendertVon'] }], { art: 'system' });
       return n;
     });
+    // Buchhaltung (02.11.): Buchungen bleiben (Aufbewahrung), „geprüft von“ der Person wird „[gelöscht]“. Der Bestand liegt nicht je Haushalt.
+    await nurWenn('buchungen', async () => {
+      const { buchungenOhnePruefer } = await import('@/lib/finanzen/buchhaltung/pruefung');
+      let n = 0;
+      await updateJson<Obj>('buchungen', cur => { const l = liste(cur, 'buchungen'); const r = buchungenOhnePruefer(l, speicher); n = r.n; return n ? { ...(cur ?? {}), buchungen: r.neu } : (cur as Obj); });
+      if (n) await protokolliere('buchungen', [{ liste: 'buchungen', op: 'geaendert', id: 'konto', felder: ['pruefung.geprueftVon'] }], { art: 'system' });
+      return n;
+    });
     // Unternehmen › Schild (10.10.): Einträge bleiben (Geschäftsunterlagen), „wer“ wird „[gelöscht]“.
     const schild = `unternehmen-schild--${konto.haushalt}`;
     await nurWenn(schild, async () => (await import('@/lib/gesellschaften/schild-server')).schildKontoLoeschen(konto.haushalt!, speicher));
