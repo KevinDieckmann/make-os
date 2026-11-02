@@ -33,6 +33,21 @@ export const NEU_ART_NAME: Record<NeuArt, string> = { neu: 'Neu', besser: 'Besse
 
 export const NEUIGKEITEN: readonly Neuigkeit[] = [
   {
+    id: 'u-2026-11-02-20',
+    datum: '2026-11-02',
+    titel: 'Verträge senden, Darlehen mit Raten',
+    kurz: 'Fertige Verträge schickt ihr jetzt direkt aus eurem Postfach. Ein unterschriebener Darlehensvertrag kommt per Klick in die Finanzplanung, mit Raten und Zinsen.',
+    abschnitte: [
+      { art: 'neu', punkte: [
+        { text: '„Vertrag senden“: Postfach und Adresse wählen, Text prüfen, senden. Angehängt wird genau das PDF dieses Vertrags. Danach steht er auf „versendet“, in der Kontaktakte steht ein Vermerk, und nach sieben Tagen erinnert ein Follow-up ans Nachfassen.', bereich: 'business', weg: WEG.vertrag() },
+        { text: 'Vorlagen gelten für alle Gesellschaften, auch eine Vorlage für den Darlehensvertrag. Die Gesellschaft wählst du je Vertrag. Zinsen gesamt und der Tilgungsplan werden beim Fertigstellen ausgerechnet und stehen als Tabelle im PDF. Passen Raten und Betrag nicht zusammen, sagt das Fertigstellen, was fehlt.', bereich: 'business', weg: WEG.vertragVorlagen() },
+        { text: 'Ist ein Darlehensvertrag unterschrieben, schlägt „Steht an“ vor, ihn in die Finanzen zu übernehmen. Erst dein Klick legt das Darlehen an. Du wählst dabei Geber und Nehmer. Die Raten stehen dann in der Liquidität.', bereich: 'business', weg: WEG.vertrag() },
+        { text: 'In der Finanzplanung rechnen Darlehen jetzt mit Raten und Zinsen, laufend oder bis zum Ende gestundet.', bereich: 'business', weg: WEG.finanzplanung('business') },
+        { text: 'Im Steckbrief jeder Gesellschaft zeigt die Karte „Darlehen“ die Restschuld heute und die nächste Rate.', bereich: 'business', weg: WEG.unternehmen() },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-6',
     datum: '2026-11-02',
     titel: 'Verträge aus Vorlagen',
