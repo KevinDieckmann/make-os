@@ -61,6 +61,18 @@ export const NEUIGKEITEN: readonly Neuigkeit[] = [
     ],
   },
   {
+    id: 'u-2026-11-02-19',
+    datum: '2026-11-02',
+    titel: 'Rechnungs-PDF ohne Überlappung',
+    kurz: 'Im Kopf der Rechnung überlappen Beschriftung und Wert nicht mehr, auch bei langer Rechnungsnummer oder Leistungszeitraum.',
+    abschnitte: [
+      { art: 'behoben', punkte: [
+        { text: 'Im Kopf der Rechnung stehen Beschriftung und Wert (Rechnungsnummer, Leistungszeitraum) nicht mehr übereinander — die Spalte richtet sich nach dem längsten Eintrag.', bereich: 'alle' },
+        { text: 'Ein doppelt eingetragener Ort in der Anschrift wird nur einmal gedruckt.', bereich: 'alle' },
+      ] },
+    ],
+  },
+  {
     id: 'u-2026-11-02-6',
     datum: '2026-11-02',
     titel: 'Verträge aus Vorlagen',

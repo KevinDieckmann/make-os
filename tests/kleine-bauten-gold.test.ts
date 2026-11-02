@@ -18,8 +18,9 @@ const GOLD_DOKUMENT: Record<string, string> = {
 };
 const GOLD_PDF: Record<string, string> = {
   angebot: 'dfa4e8a924591472568e95167d2db0af6a586e0a7148c15158f79d5cae79f287',
-  rechnung: 'fb6717f4242399d77f74d4fe2be024b6cc3fe741c16c5855b007583a40a359f8',
-  storno: '7fab6f50765375f1816aff6635021e1dc8ae5e32d9730935aac9327bd953d3f1',
+  // 02.11.: Rechnung/Storno neu — schon die Gold-Rechnung hatte „Rechnungsnummer“ über der Nummer (pdf-kopf-luft.test.ts).
+  rechnung: '2b4a76701dedf0ec1296e9d38691688bd0684308b7aa024a7343defdbf694c61',
+  storno: '64d8f58eecb5139f79f3d950ed9022eafb47c164ba57d00d9be513e72dfda70e',
 };
 
 describe('Gold: ohne neue Felder bit-gleich (Dokument und PDF)', () => {

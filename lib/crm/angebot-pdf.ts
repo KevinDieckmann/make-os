@@ -114,8 +114,11 @@ export async function angebotPdf(d: AngebotDokument, opt: { logo?: PdfLogo | nul
   y -= 18;
   for (const z of d.empfaenger) { text(z, RAND, y, 10.5); y -= 14; }
   let my = empfY;
+  // Spalte der Angaben (02.11., Kevin: „überschneidet sich“): mindestens 150 pt wie bisher; ist ein Paar aus Beschriftung + Wert breiter,
+  // rückt die Beschriftung so weit nach links, dass immer 10 pt Luft bleiben — passt alles in 150 pt, Byte für Byte wie vorher.
+  const metaBreite = Math.max(150, ...d.meta.map(m => f.widthOfTextAtSize(s(m.label), 8.5) + 10 + (m.fett ?? m.label === 'Angebot' ? fb : f).widthOfTextAtSize(s(m.wert), 9.5)));
   for (const m of d.meta) {
-    text(m.label, A4[0] - RAND - 150, my, 8.5, { farbe: LEISE });
+    text(m.label, A4[0] - RAND - metaBreite, my, 8.5, { farbe: LEISE });
     text(m.wert, A4[0] - RAND, my, 9.5, { fett: m.fett ?? m.label === 'Angebot', rechts: true });
     my -= 14;
   }
